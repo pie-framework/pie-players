@@ -1,0 +1,74 @@
+# dependencies
+node_modules/
+
+# build outputs
+**/dist/
+**/build/
+.svelte-kit/
+.turbo/
+
+# local artifacts
+local-builds/
+
+# MCP servers
+.playwright-mcp/
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+
+# env
+.env
+.env.*
+
+# editor
+.vscode/
+.idea/
+
+# playwright
+test-results/
+playwright-report/
+.playwright-browsers/
+playwright-report-*/
+blob-report/
+e2e-report/
+
+# TypeScript incremental build artifacts
+*.tsbuildinfo
+
+# TypeScript trace output (debugging)
+.tsc-trace.txt
+
+# test coverage
+coverage/
+.nyc_output/
+
+# temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# cache directories
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+
+# claude plans (local planning artifacts)
+.claude/plans/
+
+# MCP servers
+.mcp/memory.db
+.mcp/memory.db-*
+.mcp/cache/
+.mcp/logs/
+
+# Keep configuration files
+!.mcp/servers.json
+!.mcp/README.md
+!.mcp/servers/*.json

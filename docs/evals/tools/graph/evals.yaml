@@ -1,0 +1,84 @@
+version: 1
+
+component:
+  area: tools
+  underTest: "pie-tool-graph"
+
+examplesApp:
+  app: "@pie-framework/pie-players-example"
+  routeTemplate: "/evals/assessment-toolkit"
+
+evals:
+  - id: tools/graph/desmos-integration-intent
+    gradeBand: "6-12"
+    subject: "math"
+    severity: warn
+    intent: "Desmos graphing calculator integration loads without errors (intent-first, may require API key)."
+    notes:
+      - "Production deployment requires Desmos API key configuration."
+      - "Local testing may show placeholder or limited functionality."
+    steps:
+      - action: navigate
+        path: "/evals/assessment-toolkit"
+
+      - action: observe
+        target:
+          testId: toolkit-root
+        expect:
+          exists: true
+
+    spiritChecks:
+      - "Graph tool loads gracefully even if API key is missing (shows helpful error)."
+      - "Error messages guide administrators to configure API key correctly."
+      - "Graph interface is appropriate for middle/high school mathematics."
+
+  - id: tools/graph/accessibility-keyboard
+    gradeBand: "6-12"
+    subject: "math"
+    severity: warn
+    intent: "Graph tool interface is keyboard accessible (intent-first)."
+    notes:
+      - "Desmos calculator has own accessibility features; verify they work in PIE context."
+    steps:
+      - action: navigate
+        path: "/evals/assessment-toolkit"
+
+      - action: observe
+        target:
+          testId: toolkit-root
+        expect:
+          exists: true
+
+    spiritChecks:
+      - "Graph tool can be opened via keyboard."
+      - "Graph controls (zoom, pan, trace) are keyboard accessible."
+      - "Focus indicators are visible within graph interface."
+      - "Screen reader users can understand graph state and controls."
+
+  - id: tools/graph/tool-coordination
+    gradeBand: "6-12"
+    subject: "math"
+    severity: warn
+    intent: "Graph tool integrates with ToolCoordinator for visibility and layering."
+    notes:
+      - "Uses demo tools as proxy; full integration requires toolbar implementation."
+    steps:
+      - action: navigate
+        path: "/evals/assessment-toolkit"
+
+      - action: click
+        target:
+          testId: toggle-tool-a
+
+      - action: observe
+        target:
+          testId: tool-a
+        expect:
+          exists: true
+
+    spiritChecks:
+      - "Graph tool can coexist with other tools (calculator, ruler, etc.)."
+      - "Graph tool does not block interaction with assessment items."
+      - "Tool can be minimized or moved out of the way if needed."
+
+

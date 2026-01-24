@@ -1,0 +1,72 @@
+version: 1
+
+component:
+  area: tools
+  # The tool being tested (e.g., "pie-tool-calculator", "pie-tool-graph")
+  underTest: "<tool-name>"
+
+examplesApp:
+  app: "@pie-framework/pie-players-example"
+  # Tools are typically tested in the assessment toolkit harness
+  routeTemplate: "/evals/assessment-toolkit"
+
+evals:
+  - id: "tools/<tool-slug>/<case-name>"
+    gradeBand: "K-12" # K-2, 3-6, 6-8, 9-12, K-12
+    subject: "general" # math, science, ela, social-studies, general
+    severity: "error" # error | warn
+    intent: "One sentence: what tool behavior or integration is being validated."
+    notes:
+      - "Keep steps focused on tool functionality, coordination, and accessibility."
+      - "Test both standalone behavior and integration with assessment context."
+      - "Assertion operators: equals, contains, containsAny, containsAll, equalsOrdered, notEqualsOrdered, lengthGte, isNullOrEmpty, gte, exists, valueContains, range, greaterThan, lessThan, notEquals, notContains, in, maxViolations (axe)"
+
+    steps:
+      - action: navigate
+        path: "/evals/assessment-toolkit"
+
+      - action: observe
+        target:
+          testId: toolkit-root
+
+      # Example: Open tool
+      - action: click
+        target:
+          testId: tool-<name>-toggle
+
+      # Example: Verify tool visibility
+      - action: observe
+        target:
+          testId: tool-<name>-container
+        expect:
+          exists: true
+
+      # Example: Interact with tool
+      - action: type
+        target:
+          testId: tool-<name>-input
+        value: "test value"
+
+      # Example: Verify tool state
+      - action: observe
+        target:
+          testId: tool-<name>-output
+        expect:
+          contains: "expected result"
+
+      # Example: Accessibility check
+      - action: axe
+        scope:
+          includeTestId: tool-<name>-container
+        expect:
+          maxViolations: 0
+
+    spiritChecks:
+      - "Tool UI is clear and age-appropriate for target grade band."
+      - "Tool interactions are intuitive and reversible."
+      - "Tool state is visually obvious (open/closed, active/inactive)."
+      - "Focus management is predictable when opening/closing tool."
+      - "Tool does not interfere with assessment item interactions."
+      - "Error states are helpful and non-blocking."
+
+

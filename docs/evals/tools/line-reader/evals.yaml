@@ -1,0 +1,41 @@
+version: 1
+
+component:
+  area: tools
+  underTest: "pie-tool-line-reader"
+
+examplesApp:
+  app: "@pie-framework/pie-players-example"
+  routeTemplate: "/evals/assessment-toolkit"
+
+evals:
+  - id: tools/line-reader/focus-tracking
+    gradeBand: "K-12"
+    subject: "ela"
+    severity: warn
+    intent: "Line reader highlights current line of text for reading focus."
+    steps:
+      - action: navigate
+        path: "/evals/assessment-toolkit"
+      - action: observe
+        target: { testId: toolkit-root }
+        expect: { exists: true }
+    spiritChecks:
+      - "Highlighted line is visually distinct."
+      - "Line reader can be moved up/down (arrow keys or mouse)."
+      - "Highlight color does not obscure text readability."
+
+  - id: tools/line-reader/accessibility
+    gradeBand: "K-12"
+    subject: "ela"
+    severity: warn
+    intent: "Line reader accommodation is itself accessible."
+    steps:
+      - action: navigate
+        path: "/evals/assessment-toolkit"
+      - action: axe
+        scope: { includeTestId: toolkit-root }
+        expect: { maxViolations: 0 }
+    spiritChecks:
+      - "Line reader positioning is keyboard controllable."
+      - "Screen reader users understand line reader purpose and position."

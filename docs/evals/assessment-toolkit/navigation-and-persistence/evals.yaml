@@ -1,0 +1,45 @@
+version: 1
+
+component:
+  area: assessment-toolkit
+  underTest: "navigation + persistence intent"
+
+examplesApp:
+  app: "@pie-framework/pie-players-example"
+  routeTemplate: "/evals/assessment-toolkit"
+
+evals:
+  - id: assessment-toolkit/navigation/next-requested
+    gradeBand: "K-12"
+    subject: "general"
+    severity: warn
+    intent: "Host can emit nav requests and observe them (contract for product-owned navigation)."
+    steps:
+      - action: navigate
+        path: "/evals/assessment-toolkit"
+      - action: click
+        target: { testId: emit-nav-next }
+      - action: observe
+        target: { testId: event-log }
+        expect: { contains: "nav:next-requested" }
+
+  - id: assessment-toolkit/persistence/save-and-restore
+    gradeBand: "K-12"
+    subject: "general"
+    severity: warn
+    intent: "Saving/restoring attempt state is explicit, observable, and reversible (intent-first)."
+    steps:
+      - action: navigate
+        path: "/evals/assessment-toolkit"
+      - action: click
+        target: { testId: save-state }
+      - action: observe
+        target: { testId: event-log }
+        expect: { containsAny: ["state:saved", "state:save-failed"] }
+      - action: click
+        target: { testId: restore-state }
+      - action: observe
+        target: { testId: event-log }
+        expect: { containsAny: ["state:restored", "state:restore-failed"] }
+
+

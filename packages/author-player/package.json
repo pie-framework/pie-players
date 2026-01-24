@@ -1,0 +1,50 @@
+{
+	"name": "@pie-framework/pie-author",
+	"version": "1.0.0",
+	"type": "module",
+	"description": "Legacy-compatible <pie-author> web component (authoring + optional preview) built on pie-players-shared.",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pie-framework/pie-players.git"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"unpkg": "./dist/pie-author.js",
+	"jsdelivr": "./dist/pie-author.js",
+	"main": "./dist/pie-author.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/pie-author.js"
+		}
+	},
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "../iife-player/node_modules/.bin/vite build",
+		"dev": "../iife-player/node_modules/.bin/vite build --watch",
+		"typecheck": "tsc --noEmit",
+		"check": "svelte-check --tsconfig ./tsconfig.json",
+		"lint": "biome check ."
+	},
+	"peerDependencies": {
+		"svelte": "^5.0.0"
+	},
+	"dependencies": {
+		"@pie-framework/pie-players-shared": "workspace:*"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.3.10",
+		"@sveltejs/vite-plugin-svelte": "^6.1.4",
+		"@types/node": "^22.12.7",
+		"svelte": "^5.16.1",
+		"svelte-check": "^4.1.1",
+		"typescript": "^5.7.0",
+		"vite": "^7.0.8",
+		"vite-plugin-dts": "^4.5.3"
+	}
+}

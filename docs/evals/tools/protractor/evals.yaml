@@ -1,0 +1,41 @@
+version: 1
+
+component:
+  area: tools
+  underTest: "pie-tool-protractor"
+
+examplesApp:
+  app: "@pie-framework/pie-players-example"
+  routeTemplate: "/evals/assessment-toolkit"
+
+evals:
+  - id: tools/protractor/basic-functionality
+    gradeBand: "3-8"
+    subject: "math"
+    severity: warn
+    intent: "Protractor tool provides angle measurement functionality."
+    steps:
+      - action: navigate
+        path: "/evals/assessment-toolkit"
+      - action: observe
+        target: { testId: toolkit-root }
+        expect: { exists: true }
+    spiritChecks:
+      - "Angle markings are clear (0-180 or 0-360)."
+      - "Protractor can be rotated and positioned."
+      - "Current angle measurement is displayed clearly."
+
+  - id: tools/protractor/accessibility
+    gradeBand: "3-8"
+    subject: "math"
+    severity: warn
+    intent: "Protractor tool meets accessibility standards."
+    steps:
+      - action: navigate
+        path: "/evals/assessment-toolkit"
+      - action: axe
+        scope: { includeTestId: toolkit-root }
+        expect: { maxViolations: 0 }
+    spiritChecks:
+      - "Angle values are readable by screen readers."
+      - "Keyboard controls for rotation are available."

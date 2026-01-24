@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/Users/eelco.hillenius/dev/prj/pie/pie-players"
+      ],
+      "env": {
+        "ALLOWED_DIRECTORIES": "/Users/eelco.hillenius/dev/prj/pie/pie-players"
+      }
+    }
+  }
+}

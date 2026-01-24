@@ -1,0 +1,33 @@
+{
+  "$schema": "https://modelcontextprotocol.io/schema/servers.json",
+  "comment": "Cursor IDE MCP Server Configuration",
+  "mcpServers": {
+    "browser-automation": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp"],
+      "env": {
+        "PLAYWRIGHT_CONFIG": "${workspaceFolder}/apps/example/playwright.config.ts",
+        "BASE_URL": "http://127.0.0.1:5200"
+      }
+    },
+    "npm-registry": {
+      "command": "bun",
+      "args": ["run", "@modelcontextprotocol/server-npm"],
+      "env": {
+        "NPM_REGISTRY": "https://registry.npmjs.org",
+        "WORKSPACE_ROOT": "${workspaceFolder}"
+      }
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "${workspaceFolder}"]
+    },
+    "memory": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"],
+      "env": {
+        "MEMORY_DB_PATH": "${workspaceFolder}/.mcp/memory.db"
+      }
+    }
+  }
+}

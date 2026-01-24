@@ -1,0 +1,42 @@
+version: 1
+
+component:
+  area: tools
+  underTest: "pie-tool-annotation-toolbar"
+
+examplesApp:
+  app: "@pie-framework/pie-players-example"
+  routeTemplate: "/evals/assessment-toolkit"
+
+evals:
+  - id: tools/annotation-toolbar/drawing-tools
+    gradeBand: "K-12"
+    subject: "general"
+    severity: warn
+    intent: "Annotation toolbar provides drawing/markup tools for test-taking."
+    steps:
+      - action: navigate
+        path: "/evals/assessment-toolkit"
+      - action: observe
+        target: { testId: toolkit-root }
+        expect: { exists: true }
+    spiritChecks:
+      - "Drawing tools (pen, highlighter, eraser) are clearly labeled."
+      - "Color selection is intuitive."
+      - "Undo/redo functionality works reliably."
+      - "Annotations can be cleared without losing test answers."
+
+  - id: tools/annotation-toolbar/accessibility
+    gradeBand: "K-12"
+    subject: "general"
+    severity: warn
+    intent: "Annotation toolbar meets accessibility standards."
+    steps:
+      - action: navigate
+        path: "/evals/assessment-toolkit"
+      - action: axe
+        scope: { includeTestId: toolkit-root }
+        expect: { maxViolations: 0 }
+    spiritChecks:
+      - "Tool buttons have accessible names and roles."
+      - "Color choices include non-color identifiers (patterns/labels)."

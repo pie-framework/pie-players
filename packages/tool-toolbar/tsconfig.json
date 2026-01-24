@@ -1,0 +1,12 @@
+{
+	"extends": "../../tsconfig.json",
+	"compilerOptions": {
+		"outDir": "./dist",
+		"rootDir": ".",
+		"declaration": true,
+		"declarationMap": true,
+		"composite": true
+	},
+	"include": ["index.ts", "tool-toolbar.svelte"],
+	"exclude": ["node_modules", "dist"]
+}

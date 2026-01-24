@@ -1,0 +1,36 @@
+{
+	"common": {
+		"save": "保存",
+		"cancel": "取消",
+		"close": "关闭",
+		"loading": "加载中...",
+		"error": "错误",
+		"retry": "重试",
+		"back": "返回",
+		"next": "下一步",
+		"previous": "上一步",
+		"submit": "提交",
+		"continue": "继续",
+		"finish": "完成",
+		"yes": "是",
+		"no": "否",
+		"ok": "确定",
+		"settings": "设置",
+		"language": "语言",
+		"theme": "主题",
+		"settings_aria": "打开设置菜单",
+		"rtl_notice": "RTL文本方向已激活",
+		"question": {
+			"one": "问题",
+			"other": "问题"
+		},
+		"item": {
+			"one": "项目",
+			"other": "项目"
+		},
+		"character": {
+			"one": "字符",
+			"other": "字符"
+		}
+	}
+}

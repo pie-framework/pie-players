@@ -1,0 +1,125 @@
+version: 1
+
+component:
+  area: tools
+  underTest: "pie-tool-toolbar"
+
+examplesApp:
+  app: "@pie-framework/pie-players-example"
+  routeTemplate: "/evals/assessment-toolkit"
+
+evals:
+  - id: tools/toolbar/toggle-and-front
+    gradeBand: "K-12"
+    subject: "general"
+    severity: warn
+    intent: "ToolCoordinator toggles tool visibility and manages z-index layering."
+    notes:
+      - "Reuses existing tools-coordination eval with explicit tool focus."
+    steps:
+      - action: navigate
+        path: "/evals/assessment-toolkit"
+
+      - action: click
+        target:
+          testId: toggle-tool-a
+
+      - action: observe
+        target:
+          testId: tool-a
+        expect:
+          exists: true
+
+      - action: click
+        target:
+          testId: toggle-tool-b
+
+      - action: observe
+        target:
+          testId: tool-b
+        expect:
+          exists: true
+
+      - action: click
+        target:
+          testId: front-tool-a
+
+      - action: observe
+        target:
+          testId: tool-a
+        expect:
+          exists: true
+
+    spiritChecks:
+      - "Toolbar provides clear visual feedback for tool state (open/closed)."
+      - "Tool buttons use consistent toggle pattern (pressed/unpressed)."
+      - "Multiple tools can be open simultaneously without confusion."
+      - "Toolbar remains clickable even when tools render overlays (buttons should not be covered by tool UI)."
+
+  - id: tools/toolbar/accessibility-keyboard
+    gradeBand: "K-12"
+    subject: "general"
+    severity: warn
+    intent: "Toolbar is fully keyboard accessible with logical focus order."
+    steps:
+      - action: navigate
+        path: "/evals/assessment-toolkit"
+
+      - action: axe
+        scope:
+          includeTestId: toolkit-root
+        expect:
+          maxViolations: 0
+
+    spiritChecks:
+      - "All tool buttons are reachable via Tab key."
+      - "Toolbar uses role='toolbar' with proper ARIA attributes."
+      - "Focus order follows visual order (left-to-right)."
+      - "Tool state is communicated via aria-pressed attribute."
+
+  - id: tools/toolbar/event-plumbing
+    gradeBand: "K-12"
+    subject: "general"
+    severity: warn
+    intent: "Toolbar state changes emit events for integration and debugging."
+    steps:
+      - action: navigate
+        path: "/evals/assessment-toolkit"
+
+      - action: click
+        target:
+          testId: toggle-tool-a
+
+      - action: observe
+        target:
+          testId: event-log
+        expect:
+          containsAny: ["tool", "visible", "toggle"]
+
+    spiritChecks:
+      - "Events contain enough detail for debugging (tool ID, action, timestamp)."
+      - "Events do not expose sensitive student data."
+
+  - id: tools/toolbar/responsive-layout
+    gradeBand: "K-12"
+    subject: "general"
+    severity: warn
+    intent: "Toolbar adapts to different screen sizes without breaking."
+    notes:
+      - "Intent-first; may require viewport resizing or responsive testing."
+    steps:
+      - action: navigate
+        path: "/evals/assessment-toolkit"
+
+      - action: observe
+        target:
+          testId: toolkit-root
+        expect:
+          exists: true
+
+    spiritChecks:
+      - "Toolbar remains usable on mobile/tablet screens."
+      - "Tool buttons don't overflow or disappear at narrow widths."
+      - "Toolbar can be collapsed/expanded on small screens if needed."
+
+

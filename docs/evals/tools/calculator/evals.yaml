@@ -1,0 +1,193 @@
+version: 1
+
+component:
+  area: tools
+  underTest: "pie-tool-calculator"
+
+examplesApp:
+  app: "@pie-framework/pie-players-example"
+  routeTemplate: "/evals/assessment-toolkit"
+
+evals:
+  - id: tools/calculator/demo-tool-toggle
+    gradeBand: "K-12"
+    subject: "math"
+    severity: warn
+    intent: "Demo tool A can be toggled to verify tool coordination infrastructure."
+    notes:
+      - "Uses demo tool placeholders in toolkit harness as proof of concept."
+      - "Full calculator integration would require toolbar component."
+    steps:
+      - action: navigate
+        path: "/evals/assessment-toolkit"
+
+      - action: observe
+        target:
+          testId: toolkit-root
+        expect:
+          exists: true
+
+      - action: click
+        target:
+          testId: toggle-tool-a
+
+      - action: observe
+        target:
+          testId: tool-a
+        expect:
+          exists: true
+
+    spiritChecks:
+      - "Tool opens without obscuring assessment content."
+      - "Tool state (open/closed) is visually obvious."
+      - "Tool can be toggled off to dismiss."
+
+  - id: tools/calculator/demo-tool-layering
+    gradeBand: "K-12"
+    subject: "math"
+    severity: warn
+    intent: "Multiple tools maintain correct z-index layering when opened together."
+    notes:
+      - "Tests ToolCoordinator bring-to-front functionality."
+    steps:
+      - action: navigate
+        path: "/evals/assessment-toolkit"
+
+      - action: click
+        target:
+          testId: toggle-tool-a
+
+      - action: observe
+        target:
+          testId: tool-a
+        expect:
+          exists: true
+
+      - action: click
+        target:
+          testId: toggle-tool-b
+
+      - action: observe
+        target:
+          testId: tool-b
+        expect:
+          exists: true
+
+      - action: click
+        target:
+          testId: front-tool-a
+
+      - action: observe
+        target:
+          testId: tool-a
+        expect:
+          exists: true
+
+      - action: observe
+        target:
+          testId: tool-b
+        expect:
+          exists: true
+
+    spiritChecks:
+      - "Tool layering is predictable when multiple tools are open."
+      - "Bringing a tool to front does not hide other tools unexpectedly."
+      - "Visual cues indicate which tool is in front."
+
+  - id: tools/calculator/accessibility-intent
+    gradeBand: "K-12"
+    subject: "math"
+    severity: warn
+    intent: "Tool components meet WCAG 2.2 Level AA accessibility standards."
+    steps:
+      - action: navigate
+        path: "/evals/assessment-toolkit"
+
+      - action: observe
+        target:
+          testId: toolkit-root
+        expect:
+          exists: true
+
+      - action: click
+        target:
+          testId: toggle-tool-a
+
+      - action: observe
+        target:
+          testId: tool-a
+        expect:
+          exists: true
+
+      - action: axe
+        scope:
+          includeTestId: toolkit-root
+        expect:
+          maxViolations: 0
+
+    spiritChecks:
+      - "Tool controls have accessible names (aria-label or visible text)."
+      - "Keyboard focus indicators are visible and clear."
+      - "Color contrast meets WCAG AA minimums."
+      - "No keyboard focus traps when tool is open."
+
+  - id: tools/calculator/focus-management
+    gradeBand: "K-12"
+    subject: "math"
+    severity: warn
+    intent: "Opening and closing tools manages focus predictably."
+    notes:
+      - "Intent-first test; may need manual verification."
+    steps:
+      - action: navigate
+        path: "/evals/assessment-toolkit"
+
+      - action: click
+        target:
+          testId: toggle-tool-a
+
+      - action: observe
+        target:
+          testId: tool-a
+        expect:
+          exists: true
+
+      - action: click
+        target:
+          testId: toggle-tool-a
+
+      - action: observe
+        target:
+          testId: tool-a
+        expect:
+          exists: false
+
+    spiritChecks:
+      - "Focus moves into tool when opened."
+      - "Focus returns to trigger button when tool is closed."
+      - "Focus order is logical (top-to-bottom, left-to-right)."
+
+  - id: tools/calculator/event-logging
+    gradeBand: "K-12"
+    subject: "math"
+    severity: warn
+    intent: "Tool state changes produce observable events for debugging and integration."
+    steps:
+      - action: navigate
+        path: "/evals/assessment-toolkit"
+
+      - action: click
+        target:
+          testId: toggle-tool-a
+
+      - action: observe
+        target:
+          testId: event-log
+        expect:
+          containsAny: ["tool", "toggle", "visible"]
+
+    spiritChecks:
+      - "Events are logged with sufficient detail for debugging."
+      - "Event log does not expose sensitive student data."
+
+

@@ -1,0 +1,151 @@
+version: 1
+
+component:
+  area: assessment-toolkit
+  underTest: "user-facing messages and accessibility feedback"
+
+examplesApp:
+  app: "@pie-framework/pie-players-example"
+  routeTemplate: "/evals/assessment-toolkit"
+
+# Spirit checks examples demonstrating semantic quality validation beyond technical correctness.
+# Inspired by BarbellBee's eval system for validating user-facing content quality.
+
+evals:
+  # Example 1: Tool status messages should be helpful and actionable
+  - id: assessment-toolkit/spirit/calculator-ready-message
+    severity: warn
+    intent: "Calculator announces ready state with actionable guidance"
+    notes:
+      - "Spirit checks validate that status messages help users understand what to do next"
+      - "Technical correctness: message exists and contains 'ready'"
+      - "Spirit check: message is actionable and uses plain language"
+    steps:
+      - action: navigate
+        path: "/evals/assessment-toolkit"
+
+      - action: observe
+        target: { testId: toolkit-root }
+        expect: { exists: true }
+
+      # Note: This is an example - actual implementation would need calculator tool
+      # - action: click
+      #   target: { testId: tool-calculator-open }
+      #
+      # - action: observe
+      #   target: { testId: calculator-status }
+      #   expect: { contains: "ready" }
+
+    spiritChecks:
+      - "Status message is actionable: mentions 'ready' or 'enter expression'"
+      - "User understands they can start using the calculator immediately"
+      - "Message avoids 'initialized' or other technical jargon"
+
+  # Example 2: Error messages should be supportive and guide users
+  - id: assessment-toolkit/spirit/helpful-error-message
+    severity: warn
+    intent: "Error messages use supportive tone and suggest corrective actions"
+    notes:
+      - "Spirit checks ensure errors help rather than blame the user"
+      - "Validates tone, clarity, and actionability"
+    steps:
+      - action: navigate
+        path: "/evals/assessment-toolkit"
+
+      - action: observe
+        target: { testId: toolkit-root }
+        expect: { exists: true }
+
+    spiritChecks:
+      - "Error messages avoid 'invalid', 'wrong', or 'failed'"
+      - "Tone is supportive: uses 'please try' instead of 'you must'"
+      - "User understands what went wrong and how to fix it"
+
+  # Example 3: Accessibility announcements should be informative but concise
+  - id: assessment-toolkit/spirit/screen-reader-navigation-announcement
+    severity: warn
+    intent: "Navigation announcements are informative without being overwhelming"
+    notes:
+      - "Screen reader users need context but too much text is counterproductive"
+      - "Spirit checks validate both content and brevity"
+    steps:
+      - action: navigate
+        path: "/evals/assessment-toolkit"
+
+      - action: observe
+        target: { testId: toolkit-root }
+        expect: { exists: true }
+
+    spiritChecks:
+      - "Announcement mentions progress like 'Question 2 of 10'"
+      - "User understands their position in the assessment"
+      - "Message is concise to avoid overwhelming screen reader users"
+
+  # Example 4: Tool coordination feedback should clarify state changes
+  - id: assessment-toolkit/spirit/tool-visibility-feedback
+    severity: warn
+    intent: "Tool state changes provide clear feedback about what happened"
+    notes:
+      - "Users need to understand when tools open, close, or change state"
+      - "Especially important for accessibility"
+    steps:
+      - action: navigate
+        path: "/evals/assessment-toolkit"
+
+      - action: observe
+        target: { testId: toolkit-root }
+        expect: { exists: true }
+
+    spiritChecks:
+      - "State change announcements mention the tool name clearly"
+      - "User understands whether tool opened or closed"
+      - "Focus management is explained: 'focus moved to calculator' or similar"
+
+  # Example 5: Success confirmations should be encouraging
+  - id: assessment-toolkit/spirit/save-success-confirmation
+    severity: warn
+    intent: "Save confirmations use encouraging tone and confirm what was saved"
+    notes:
+      - "Success messages should build user confidence"
+      - "Clear about what happened and that it's safe to continue"
+    steps:
+      - action: navigate
+        path: "/evals/assessment-toolkit"
+
+      - action: observe
+        target: { testId: toolkit-root }
+        expect: { exists: true }
+
+    spiritChecks:
+      - "Confirmation message uses positive language: 'saved' or 'success'"
+      - "User understands their progress is safe"
+      - "Tone is encouraging: mentions 'you can continue' or similar"
+
+  # Example 6: Using new assertion operators (range, notContains)
+  - id: assessment-toolkit/spirit/operators-demo
+    severity: warn
+    intent: "Demonstration of expanded assertion operators with spirit checks"
+    notes:
+      - "Shows how numeric matchers and negative assertions work alongside spirit checks"
+      - "Combines technical validation with quality validation"
+    steps:
+      - action: navigate
+        path: "/evals/assessment-toolkit"
+
+      - action: observe
+        target: { testId: toolkit-root }
+        expect: { exists: true }
+
+      # Example of numeric range validation (if we had a score display)
+      # - action: observe
+      #   target: { testId: score-display }
+      #   expect: { range: [0, 100] }
+
+      # Example of negative assertion (checking for absence of error)
+      # - action: observe
+      #   target: { testId: status-message }
+      #   expect: { notContains: "error" }
+
+    spiritChecks:
+      - "Status display uses plain language"
+      - "User understands their current state clearly"

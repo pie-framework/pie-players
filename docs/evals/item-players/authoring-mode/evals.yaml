@@ -1,0 +1,56 @@
+version: 1
+
+component:
+  area: item-players
+  underTest: "pie-iife-player|pie-esm-player"
+
+examplesApp:
+  app: "@pie-framework/pie-players-example"
+  routeTemplate: "/evals/item-player/{sampleId}?player={player}&mode={mode}&role={role}"
+
+evals:
+  - id: item-players/mc_basic/authoring-model-updated/iife
+    sampleId: mc_basic
+    gradeBand: "K-12"
+    subject: "general"
+    severity: warn
+    intent: "Author mode should support model update plumbing (intent-first; depends on editor bundles)."
+    steps:
+      - action: navigate
+        path: "/evals/item-player/mc_basic?player=iife&mode=author&role=instructor"
+
+      - action: observe
+        target: { testId: player-host }
+        expect: { exists: true }
+
+      # Simulate configure element's `model.updated` event on player host (falls back if internal root not present).
+      - action: dispatchEvent
+        target: { testId: player-host }
+        eventType: "model.updated"
+        detail:
+          update: { id: "manual", foo: "bar" }
+          reset: false
+
+      # If editor bundles are loaded and PieItemPlayer is active, this should become model-updated.
+      # Otherwise it may remain empty; keep this as a warning-only intent check.
+      - action: observe
+        target: { testId: last-event-detail }
+        expect: { exists: true }
+
+  - id: item-players/mc_basic/authoring/esm
+    sampleId: mc_basic
+    gradeBand: "K-12"
+    subject: "general"
+    severity: warn
+    intent: "ESM authoring mode resilience check (local env dependent)."
+    steps:
+      - action: navigate
+        path: "/evals/item-player/mc_basic?player=esm&mode=author&role=instructor"
+      - action: observe
+        target: { testId: player-host }
+        expect: { exists: true }
+      - action: observe
+        target: { testId: player-type }
+        expect: { equals: "esm" }
+
+

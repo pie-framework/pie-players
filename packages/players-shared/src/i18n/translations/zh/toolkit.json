@@ -1,0 +1,48 @@
+{
+	"assessment": {
+		"title": "评估",
+		"questions": {
+			"one": "{count} 个问题",
+			"other": "{count} 个问题"
+		},
+		"question_of": "问题 {current}/{total}",
+		"student_name": "学生姓名",
+		"fullscreen": "全屏",
+		"exit_fullscreen": "退出全屏",
+		"enter_fullscreen_aria": "进入全屏",
+		"exit_fullscreen_aria": "退出全屏"
+	},
+	"accommodation": {
+		"audio": "音频",
+		"audio_aria": "切换音频/文字转语音",
+		"contrast": "对比度",
+		"contrast_aria": "切换颜色对比度"
+	},
+	"navigation": {
+		"back": "← 返回",
+		"next": "下一步 →",
+		"previous": "上一步",
+		"submit": "提交",
+		"navigate_to": "导航到问题 {index}",
+		"section": "部分"
+	},
+	"section": {
+		"title": "评估结构",
+		"add": "+ 添加部分",
+		"untitled": "无标题部分",
+		"remove": "删除部分",
+		"items": {
+			"one": "{count} 项",
+			"other": "{count} 项"
+		},
+		"aria_label": "部分：{title}",
+		"drop_zone": "将项目拖到这里",
+		"unassigned": "未分配项目",
+		"unassigned_instruction": "将这些项目拖到部分中",
+		"unassigned_item_aria": "未分配的问题：{title}"
+	},
+	"item": {
+		"load_error": "无法加载问题。",
+		"untitled": "无标题"
+	}
+}

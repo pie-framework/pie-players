@@ -1,0 +1,48 @@
+{
+	"assessment": {
+		"title": "Assessment",
+		"questions": {
+			"one": "{count} Question",
+			"other": "{count} Questions"
+		},
+		"question_of": "Question {current} of {total}",
+		"student_name": "Student Name",
+		"fullscreen": "Fullscreen",
+		"exit_fullscreen": "Exit Fullscreen",
+		"enter_fullscreen_aria": "Enter fullscreen",
+		"exit_fullscreen_aria": "Exit fullscreen"
+	},
+	"accommodation": {
+		"audio": "Audio",
+		"audio_aria": "Toggle audio/text-to-speech",
+		"contrast": "Contrast",
+		"contrast_aria": "Toggle color contrast"
+	},
+	"navigation": {
+		"back": "← Back",
+		"next": "Next →",
+		"previous": "Previous",
+		"submit": "Submit",
+		"navigate_to": "Navigate to question {index}",
+		"section": "Section"
+	},
+	"section": {
+		"title": "Assessment Structure",
+		"add": "+ Add Section",
+		"untitled": "Untitled Section",
+		"remove": "Remove section",
+		"items": {
+			"one": "{count} item",
+			"other": "{count} items"
+		},
+		"aria_label": "Section: {title}",
+		"drop_zone": "Drop items here",
+		"unassigned": "Unassigned Items",
+		"unassigned_instruction": "Drag these items into sections",
+		"unassigned_item_aria": "Unassigned question: {title}"
+	},
+	"item": {
+		"load_error": "Question could not be loaded.",
+		"untitled": "Untitled"
+	}
+}

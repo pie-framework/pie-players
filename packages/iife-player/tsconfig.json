@@ -1,0 +1,14 @@
+{
+	"extends": "../../tsconfig.json",
+	"compilerOptions": {
+		"target": "ES2022",
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"types": ["vite/client"],
+		"composite": false,
+		"noUnusedLocals": false,
+		"noUnusedParameters": false
+	},
+	"include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.svelte"],
+	"exclude": ["node_modules", "dist", "build"]
+}

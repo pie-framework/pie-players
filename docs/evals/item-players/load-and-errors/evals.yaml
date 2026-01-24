@@ -1,0 +1,43 @@
+version: 1
+
+component:
+  area: item-players
+  underTest: "pie-iife-player|pie-esm-player"
+
+examplesApp:
+  app: "@pie-framework/pie-players-example"
+  routeTemplate: "/evals/item-player/{sampleId}?player={player}&mode={mode}&role={role}"
+
+evals:
+  - id: item-players/mc_basic/load-complete/iife
+    sampleId: mc_basic
+    gradeBand: "K-12"
+    subject: "general"
+    severity: warn
+    intent: "IIFE player should load a basic item; if bundles aren't reachable, it should at least render the harness without crashing."
+    steps:
+      - action: navigate
+        path: "/evals/item-player/mc_basic?player=iife&mode=gather&role=student"
+      - action: observe
+        target: { testId: sample-id }
+        expect: { equals: "mc_basic" }
+
+  - id: item-players/mc_basic/esm-error/esm
+    sampleId: mc_basic
+    gradeBand: "K-12"
+    subject: "general"
+    severity: warn
+    intent: "ESM player surfaces loading/configuration errors without crashing (local env dependent)."
+    notes:
+      - "This repo’s example configs may not have publicly-hosted ESM bundles; treat as a resilience check."
+    steps:
+      - action: navigate
+        path: "/evals/item-player/mc_basic?player=esm&mode=gather&role=student"
+      - action: observe
+        target: { testId: player-host }
+        expect: { exists: true }
+      - action: observe
+        target: { testId: player-type }
+        expect: { equals: "esm" }
+
+

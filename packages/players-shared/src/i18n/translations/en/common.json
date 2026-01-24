@@ -1,0 +1,36 @@
+{
+	"common": {
+		"save": "Save",
+		"cancel": "Cancel",
+		"close": "Close",
+		"loading": "Loading...",
+		"error": "Error",
+		"retry": "Retry",
+		"back": "Back",
+		"next": "Next",
+		"previous": "Previous",
+		"submit": "Submit",
+		"continue": "Continue",
+		"finish": "Finish",
+		"yes": "Yes",
+		"no": "No",
+		"ok": "OK",
+		"settings": "Settings",
+		"language": "Language",
+		"theme": "Theme",
+		"settings_aria": "Open settings menu",
+		"rtl_notice": "RTL text direction active",
+		"question": {
+			"one": "Question",
+			"other": "Questions"
+		},
+		"item": {
+			"one": "Item",
+			"other": "Items"
+		},
+		"character": {
+			"one": "character",
+			"other": "characters"
+		}
+	}
+}

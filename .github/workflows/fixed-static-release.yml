@@ -1,0 +1,83 @@
+name: Publish fixed-player-static (config-driven)
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - "configs/fixed-player-static/**"
+      - ".github/workflows/fixed-static-release.yml"
+  workflow_dispatch: {}
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
+jobs:
+  publish:
+    name: Build & publish changed configs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.5
+
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build monorepo (including CLI)
+        run: bun run build
+
+      - name: Configure npm auth
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "$NPM_TOKEN" ]; then
+            echo "NPM_TOKEN is not set"
+            exit 1
+          fi
+          echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
+
+      - name: Build/publish static packages for changed configs
+        env:
+          NODE_ENV: production
+        run: |
+          set -euo pipefail
+
+          CONFIG_DIR="configs/fixed-player-static"
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            CHANGED_FILES=$(find "$CONFIG_DIR" -maxdepth 1 -type f -name "*.json" -print | sort || true)
+          else
+            CHANGED_FILES=$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" -- "$CONFIG_DIR" \
+              | grep -E '\.json$' \
+              | sort \
+              || true)
+          fi
+
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "No changed config JSON files detected."
+            exit 0
+          fi
+
+          echo "Configs to build/publish:"
+          echo "$CHANGED_FILES" | sed 's/^/- /'
+          echo ""
+
+          for file in $CHANGED_FILES; do
+            echo "============================================================"
+            echo "Publishing for config: $file"
+            echo "============================================================"
+            node tools/cli/bin/run.js pie-packages:fixed-player-build-package \
+              --elements-file "$file" \
+              --publish
+            echo ""
+          done
+
+

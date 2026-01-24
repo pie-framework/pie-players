@@ -1,0 +1,36 @@
+{
+	"common": {
+		"save": "Guardar",
+		"cancel": "Cancelar",
+		"close": "Cerrar",
+		"loading": "Cargando...",
+		"error": "Error",
+		"retry": "Reintentar",
+		"back": "Atrás",
+		"next": "Siguiente",
+		"previous": "Anterior",
+		"submit": "Enviar",
+		"continue": "Continuar",
+		"finish": "Finalizar",
+		"yes": "Sí",
+		"no": "No",
+		"ok": "OK",
+		"settings": "Configuración",
+		"language": "Idioma",
+		"theme": "Tema",
+		"settings_aria": "Abrir menú de configuración",
+		"rtl_notice": "Dirección de texto RTL activa",
+		"question": {
+			"one": "Pregunta",
+			"other": "Preguntas"
+		},
+		"item": {
+			"one": "Ítem",
+			"other": "Ítems"
+		},
+		"character": {
+			"one": "carácter",
+			"other": "caracteres"
+		}
+	}
+}

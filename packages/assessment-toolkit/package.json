@@ -1,0 +1,61 @@
+{
+	"name": "@pie-framework/pie-assessment-toolkit",
+	"version": "0.1.0",
+	"type": "module",
+	"description": "PIE assessment toolkit: composable services + reference implementation for assessment players and tool coordination",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pie-framework/pie-players.git"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		},
+		"./tools/client": {
+			"types": "./dist/tools/client.d.ts",
+			"import": "./dist/tools/client.js"
+		},
+		"./assessment-player": {
+			"types": "./dist/player/index.d.ts",
+			"import": "./dist/player/index.js"
+		},
+		"./assessment-player/Layout.svelte": {
+			"svelte": "./src/player/AssessmentLayout.svelte",
+			"import": "./src/player/AssessmentLayout.svelte"
+		},
+		"./services/I18nService": {
+			"types": "./dist/services/I18nService.d.ts",
+			"import": "./dist/services/I18nService.js"
+		}
+	},
+	"files": [
+		"dist",
+		"src/**/*.svelte",
+		"README.md"
+	],
+	"scripts": {
+		"build": "tsc -p tsconfig.json",
+		"dev": "tsc -p tsconfig.json --watch",
+		"typecheck": "tsc -p tsconfig.json --noEmit",
+		"lint": "biome check .",
+		"check": "tsc -p tsconfig.json --noEmit",
+		"test": "bun test"
+	},
+	"dependencies": {
+		"@pie-framework/pie-players-shared": "workspace:*"
+	},
+	"peerDependencies": {
+		"svelte": "^5.0.0"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.3.10",
+		"typescript": "^5.9.3"
+	}
+}

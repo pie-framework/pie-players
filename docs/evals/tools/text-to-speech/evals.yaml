@@ -1,0 +1,116 @@
+version: 1
+
+component:
+  area: tools
+  underTest: "pie-tool-text-to-speech"
+
+examplesApp:
+  app: "@pie-framework/pie-players-example"
+  routeTemplate: "/evals/assessment-toolkit"
+
+evals:
+  - id: tools/text-to-speech/speak-or-unsupported
+    gradeBand: "K-12"
+    subject: "general"
+    severity: warn
+    intent: "TTS interface provides speak/stop controls and gracefully handles unsupported browsers."
+    notes:
+      - "Based on existing tts-and-highlights eval."
+    steps:
+      - action: navigate
+        path: "/evals/assessment-toolkit"
+
+      - action: observe
+        target:
+          testId: toolkit-root
+        expect:
+          exists: true
+
+      - action: observe
+        target:
+          testId: tts-speak
+        expect:
+          exists: true
+
+      - action: observe
+        target:
+          testId: tts-stop
+        expect:
+          exists: true
+
+    spiritChecks:
+      - "TTS controls are clearly labeled (Speak, Stop, Pause)."
+      - "Unsupported browser shows helpful message, not cryptic error."
+      - "TTS rate/pitch controls are intuitive if provided."
+
+  - id: tools/text-to-speech/accessibility
+    gradeBand: "K-12"
+    subject: "general"
+    severity: warn
+    intent: "TTS tool itself is accessible to keyboard and screen reader users."
+    steps:
+      - action: navigate
+        path: "/evals/assessment-toolkit"
+
+      - action: axe
+        scope:
+          includeTestId: toolkit-root
+        expect:
+          maxViolations: 0
+
+    spiritChecks:
+      - "TTS control buttons have accessible names."
+      - "TTS playback status is announced to screen readers."
+      - "Keyboard shortcuts for TTS are documented and discoverable."
+
+  - id: tools/text-to-speech/highlighting-sync
+    gradeBand: "K-12"
+    subject: "general"
+    severity: warn
+    intent: "TTS highlights words as they are spoken (visual-audio sync)."
+    notes:
+      - "Intent-first; requires functional TTS and highlight layer."
+    steps:
+      - action: navigate
+        path: "/evals/assessment-toolkit"
+
+      - action: click
+        target:
+          testId: tts-speak
+
+      # Observing event log as proxy for TTS activity
+      - action: observe
+        target:
+          testId: event-log
+        expect:
+          exists: true
+
+    spiritChecks:
+      - "Word highlighting follows speech in real-time."
+      - "Highlighted word is visually distinct (color, underline, etc.)."
+      - "Highlight color has sufficient contrast for readability."
+      - "TTS can be paused and resumed without losing highlight position."
+
+  - id: tools/text-to-speech/multi-voice-support
+    gradeBand: "K-12"
+    subject: "general"
+    severity: warn
+    intent: "TTS supports multiple voices/languages if available in browser."
+    notes:
+      - "Intent-first; voice availability depends on OS and browser."
+    steps:
+      - action: navigate
+        path: "/evals/assessment-toolkit"
+
+      - action: observe
+        target:
+          testId: toolkit-root
+        expect:
+          exists: true
+
+    spiritChecks:
+      - "Voice selection UI is clear if multiple voices are available."
+      - "Default voice is intelligible and age-appropriate."
+      - "Voice changes take effect immediately when selected."
+
+

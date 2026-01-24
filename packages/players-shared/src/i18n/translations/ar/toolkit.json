@@ -1,0 +1,48 @@
+{
+	"assessment": {
+		"title": "التقييم",
+		"questions": {
+			"one": "{count} سؤال",
+			"other": "{count} أسئلة"
+		},
+		"question_of": "السؤال {current} من {total}",
+		"student_name": "اسم الطالب",
+		"fullscreen": "ملء الشاشة",
+		"exit_fullscreen": "الخروج من ملء الشاشة",
+		"enter_fullscreen_aria": "الدخول إلى ملء الشاشة",
+		"exit_fullscreen_aria": "الخروج من ملء الشاشة"
+	},
+	"accommodation": {
+		"audio": "صوت",
+		"audio_aria": "تبديل الصوت/تحويل النص إلى كلام",
+		"contrast": "التباين",
+		"contrast_aria": "تبديل تباين الألوان"
+	},
+	"navigation": {
+		"back": "← رجوع",
+		"next": "التالي ←",
+		"previous": "السابق",
+		"submit": "إرسال",
+		"navigate_to": "الانتقال إلى السؤال {index}",
+		"section": "القسم"
+	},
+	"section": {
+		"title": "بنية التقييم",
+		"add": "+ إضافة قسم",
+		"untitled": "قسم بدون عنوان",
+		"remove": "حذف القسم",
+		"items": {
+			"one": "{count} عنصر",
+			"other": "{count} عناصر"
+		},
+		"aria_label": "القسم: {title}",
+		"drop_zone": "إسقاط العناصر هنا",
+		"unassigned": "عناصر غير مخصصة",
+		"unassigned_instruction": "اسحب هذه العناصر إلى الأقسام",
+		"unassigned_item_aria": "سؤال غير مخصص: {title}"
+	},
+	"item": {
+		"load_error": "تعذر تحميل السؤال.",
+		"untitled": "بدون عنوان"
+	}
+}

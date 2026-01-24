@@ -1,0 +1,77 @@
+version: 1
+
+component:
+  area: tools
+  underTest: "pie-tool-color-scheme"
+
+examplesApp:
+  app: "@pie-framework/pie-players-example"
+  routeTemplate: "/evals/assessment-toolkit"
+
+evals:
+  - id: tools/color-scheme/theme-switching
+    gradeBand: "K-12"
+    subject: "general"
+    severity: warn
+    intent: "Color scheme tool allows switching between visual themes (high contrast, dark mode, etc.)."
+    notes:
+      - "Based on existing toolkit theme tests."
+    steps:
+      - action: navigate
+        path: "/evals/assessment-toolkit"
+
+      - action: observe
+        target:
+          testId: toggle-high-contrast
+        expect:
+          exists: true
+
+      - action: click
+        target:
+          testId: toggle-high-contrast
+
+    spiritChecks:
+      - "Theme changes apply immediately without page reload."
+      - "High contrast theme meets WCAG AAA contrast ratios."
+      - "Theme preference persists across page navigation."
+      - "All UI elements adapt to theme (no broken styling)."
+
+  - id: tools/color-scheme/font-size-adjustment
+    gradeBand: "K-12"
+    subject: "general"
+    severity: warn
+    intent: "Font size can be adjusted for visual accessibility."
+    steps:
+      - action: navigate
+        path: "/evals/assessment-toolkit"
+
+      - action: observe
+        target:
+          testId: select-font-size
+        expect:
+          exists: true
+
+      - action: select
+        target:
+          testId: select-font-size
+        value: "large"
+
+    spiritChecks:
+      - "Font size options are clearly labeled (small, medium, large)."
+      - "Layout adapts without breaking when font size increases."
+      - "Font size preference persists across sessions."
+
+  - id: tools/color-scheme/accessibility
+    gradeBand: "K-12"
+    subject: "general"
+    severity: warn
+    intent: "Color scheme controls are themselves accessible."
+    steps:
+      - action: navigate
+        path: "/evals/assessment-toolkit"
+      - action: axe
+        scope: { includeTestId: toolkit-root }
+        expect: { maxViolations: 0 }
+    spiritChecks:
+      - "Theme controls are keyboard accessible."
+      - "Current theme is communicated to screen readers."

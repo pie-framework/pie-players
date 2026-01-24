@@ -1,0 +1,12 @@
+{
+	"extends": "../../tsconfig.json",
+	"compilerOptions": {
+		"noEmit": true,
+		"types": ["svelte"],
+		"composite": false,
+		"noUnusedLocals": false,
+		"noUnusedParameters": false
+	},
+	"include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.svelte"],
+	"exclude": ["dist", "node_modules"]
+}

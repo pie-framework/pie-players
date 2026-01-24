@@ -1,0 +1,41 @@
+version: 1
+
+component:
+  area: tools
+  underTest: "pie-tool-answer-eliminator"
+
+examplesApp:
+  app: "@pie-framework/pie-players-example"
+  routeTemplate: "/evals/assessment-toolkit"
+
+evals:
+  - id: tools/answer-eliminator/strikethrough-toggle
+    gradeBand: "3-12"
+    subject: "general"
+    severity: warn
+    intent: "Answer eliminator allows students to strike through distractors."
+    steps:
+      - action: navigate
+        path: "/evals/assessment-toolkit"
+      - action: observe
+        target: { testId: toolkit-root }
+        expect: { exists: true }
+    spiritChecks:
+      - "Strikethrough is visually clear (line through text)."
+      - "Eliminated answers can be un-eliminated (reversible)."
+      - "Tool does not interfere with answer selection."
+
+  - id: tools/answer-eliminator/accessibility
+    gradeBand: "3-12"
+    subject: "general"
+    severity: warn
+    intent: "Answer eliminator is accessible to all students."
+    steps:
+      - action: navigate
+        path: "/evals/assessment-toolkit"
+      - action: axe
+        scope: { includeTestId: toolkit-root }
+        expect: { maxViolations: 0 }
+    spiritChecks:
+      - "Eliminated state is communicated to screen readers."
+      - "Keyboard users can toggle elimination on/off."

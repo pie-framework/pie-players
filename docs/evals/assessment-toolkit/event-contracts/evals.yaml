@@ -1,0 +1,26 @@
+version: 1
+
+component:
+  area: assessment-toolkit
+  underTest: "TypedEventBus + event contracts"
+
+examplesApp:
+  app: "@pie-framework/pie-players-example"
+  routeTemplate: "/evals/assessment-toolkit"
+
+evals:
+  - id: assessment-toolkit/event-contracts/player-session-changed
+    gradeBand: "K-12"
+    subject: "general"
+    severity: error
+    intent: "Emitting player:session-changed produces an observable log entry in the host app."
+    steps:
+      - action: navigate
+        path: "/evals/assessment-toolkit"
+      - action: click
+        target: { testId: emit-session-changed }
+      - action: observe
+        target: { testId: event-log }
+        expect: { contains: "player:session-changed" }
+
+

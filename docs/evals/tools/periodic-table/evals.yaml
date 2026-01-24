@@ -1,0 +1,41 @@
+version: 1
+
+component:
+  area: tools
+  underTest: "pie-tool-periodic-table"
+
+examplesApp:
+  app: "@pie-framework/pie-players-example"
+  routeTemplate: "/evals/assessment-toolkit"
+
+evals:
+  - id: tools/periodic-table/element-display
+    gradeBand: "6-12"
+    subject: "science"
+    severity: warn
+    intent: "Periodic table displays elements with key properties accessible."
+    steps:
+      - action: navigate
+        path: "/evals/assessment-toolkit"
+      - action: observe
+        target: { testId: toolkit-root }
+        expect: { exists: true }
+    spiritChecks:
+      - "Element symbols are legible and correctly positioned."
+      - "Clicking element shows atomic number, mass, name."
+      - "Color coding (if used) has accessible legend."
+
+  - id: tools/periodic-table/accessibility
+    gradeBand: "6-12"
+    subject: "science"
+    severity: warn
+    intent: "Periodic table is navigable and readable by all students."
+    steps:
+      - action: navigate
+        path: "/evals/assessment-toolkit"
+      - action: axe
+        scope: { includeTestId: toolkit-root }
+        expect: { maxViolations: 0 }
+    spiritChecks:
+      - "Elements can be navigated via keyboard."
+      - "Element information is available to screen readers."

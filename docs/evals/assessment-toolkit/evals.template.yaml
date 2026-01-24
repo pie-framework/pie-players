@@ -1,0 +1,53 @@
+version: 1
+
+component:
+  area: assessment-toolkit
+  underTest: "assessment-toolkit"
+
+examplesApp:
+  app: "@pie-framework/pie-players-example"
+  routeTemplate: "/evals/assessment-toolkit"
+
+evals:
+  - id: "assessment-toolkit/<case-name>"
+    gradeBand: "K-12" # K-2, 3-6, 6-8, 9-12, K-12
+    subject: "general" # math, science, ela, social-studies, general
+    severity: "warn" # Most toolkit evals are intent-first
+    intent: "One sentence: what contract/intent is being validated."
+    notes:
+      - "Use severity=warn for intent that may not be fully implemented yet."
+      - "Keep checks focused on user impact: accessibility, predictability, reversibility."
+      - "Assertion operators: equals, contains, containsAny, containsAll, equalsOrdered, notEqualsOrdered, lengthGte, isNullOrEmpty, gte, exists, valueContains, range, greaterThan, lessThan, notEquals, notContains, in, maxViolations (axe)"
+
+    steps:
+      - action: navigate
+        path: "/evals/assessment-toolkit"
+
+      - action: observe
+        target:
+          testId: toolkit-root
+
+      # Event-bus contract: emit and verify event appears in the on-page event log
+      - action: click
+        target:
+          testId: emit-session-changed
+
+      - action: observe
+        target:
+          testId: event-log
+        expect:
+          contains: "player:session-changed"
+
+      # A11y intent checks (local-only)
+      - action: axe
+        scope:
+          includeTestId: toolkit-root
+        expect:
+          maxViolations: 0
+
+    spiritChecks:
+      - "No keyboard traps; focus order is predictable."
+      - "Controls have accessible names and visible focus indicators."
+      - "High-contrast and font-size settings do not break layout."
+
+

@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "npm-registry": {
+      "command": "bun",
+      "args": ["run", "@modelcontextprotocol/server-npm"],
+      "env": {
+        "NPM_REGISTRY": "https://registry.npmjs.org",
+        "WORKSPACE_ROOT": "/Users/eelco.hillenius/dev/prj/pie/pie-players"
+      }
+    }
+  }
+}

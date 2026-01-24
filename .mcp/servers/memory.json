@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "memory": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"],
+      "env": {
+        "MEMORY_STORAGE": "sqlite",
+        "MEMORY_DB_PATH": ".mcp/memory.db",
+        "MEMORY_EMBEDDING_MODEL": "text-embedding-3-small"
+      }
+    }
+  }
+}

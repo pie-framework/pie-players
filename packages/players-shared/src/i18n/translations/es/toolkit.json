@@ -1,0 +1,48 @@
+{
+	"assessment": {
+		"title": "Evaluación",
+		"questions": {
+			"one": "{count} Pregunta",
+			"other": "{count} Preguntas"
+		},
+		"question_of": "Pregunta {current} de {total}",
+		"student_name": "Nombre del Estudiante",
+		"fullscreen": "Pantalla Completa",
+		"exit_fullscreen": "Salir de Pantalla Completa",
+		"enter_fullscreen_aria": "Entrar en pantalla completa",
+		"exit_fullscreen_aria": "Salir de pantalla completa"
+	},
+	"accommodation": {
+		"audio": "Audio",
+		"audio_aria": "Alternar audio/texto a voz",
+		"contrast": "Contraste",
+		"contrast_aria": "Alternar contraste de color"
+	},
+	"navigation": {
+		"back": "← Atrás",
+		"next": "Siguiente →",
+		"previous": "Anterior",
+		"submit": "Enviar",
+		"navigate_to": "Navegar a la pregunta {index}",
+		"section": "Sección"
+	},
+	"section": {
+		"title": "Estructura de Evaluación",
+		"add": "+ Agregar Sección",
+		"untitled": "Sección Sin Título",
+		"remove": "Eliminar sección",
+		"items": {
+			"one": "{count} ítem",
+			"other": "{count} ítems"
+		},
+		"aria_label": "Sección: {title}",
+		"drop_zone": "Soltar ítems aquí",
+		"unassigned": "Ítems No Asignados",
+		"unassigned_instruction": "Arrastra estos ítems a las secciones",
+		"unassigned_item_aria": "Pregunta no asignada: {title}"
+	},
+	"item": {
+		"load_error": "No se pudo cargar la pregunta.",
+		"untitled": "Sin Título"
+	}
+}

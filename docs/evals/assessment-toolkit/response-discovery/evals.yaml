@@ -1,0 +1,33 @@
+version: 1
+
+component:
+  area: assessment-toolkit
+  underTest: "responseDiscovery (intent)"
+
+examplesApp:
+  app: "@pie-framework/pie-players-example"
+  routeTemplate: "/evals/assessment-toolkit"
+
+evals:
+  - id: assessment-toolkit/response-discovery/focus-and-insert
+    gradeBand: "K-12"
+    subject: "general"
+    severity: warn
+    intent: "Focusing a response sets it active; inserting tool output updates response content (intent-first)."
+    steps:
+      - action: navigate
+        path: "/evals/assessment-toolkit"
+
+      - action: click
+        target: { testId: focus-response }
+      - action: observe
+        target: { testId: active-response-id }
+        expect: { equals: "demo-input" }
+
+      - action: click
+        target: { testId: insert-into-response }
+      - action: observe
+        target: { testId: response-input }
+        expect: { valueContains: "42" }
+
+

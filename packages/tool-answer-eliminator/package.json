@@ -1,0 +1,65 @@
+{
+	"name": "@pie-framework/pie-tool-answer-eliminator",
+	"version": "1.0.0",
+	"type": "module",
+	"description": "Answer eliminator tool for PIE assessment player - supports process-of-elimination test-taking strategy",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pie-framework/pie-players.git"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"keywords": [
+		"pie",
+		"assessment",
+		"tool",
+		"answer-eliminator",
+		"test-strategy",
+		"wcag",
+		"accessibility"
+	],
+	"svelte": "./tool-answer-eliminator.svelte",
+	"main": "./dist/tool-answer-eliminator.js",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/tool-answer-eliminator.js",
+			"svelte": "./tool-answer-eliminator.svelte"
+		}
+	},
+	"files": [
+		"dist",
+		"tool-answer-eliminator.svelte",
+		"index.ts",
+		"package.json",
+		"answer-eliminator-core.ts",
+		"adapters/",
+		"strategies/"
+	],
+	"peerDependencies": {
+		"svelte": "^5.0.0"
+	},
+	"license": "MIT",
+	"unpkg": "./dist/tool-answer-eliminator.js",
+	"jsdelivr": "./dist/tool-answer-eliminator.js",
+	"dependencies": {
+		"@pie-framework/pie-assessment-toolkit": "workspace:*",
+		"@pie-framework/pie-players-shared": "workspace:*"
+	},
+	"types": "./dist/index.d.ts",
+	"scripts": {
+		"build": "vite build",
+		"dev": "vite build --watch",
+		"typecheck": "tsc --noEmit",
+		"lint": "biome check ."
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.3.10",
+		"@sveltejs/vite-plugin-svelte": "^6.1.4",
+		"svelte": "^5.16.1",
+		"typescript": "^5.7.0",
+		"vite": "^7.0.8",
+		"vite-plugin-dts": "^4.5.3"
+	}
+}

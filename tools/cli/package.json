@@ -1,0 +1,50 @@
+{
+	"name": "@pie-framework/pie-players-cli",
+	"version": "0.1.0",
+	"description": "CLI tools for pie-players",
+	"type": "module",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pie-framework/pie-players.git"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"bin": {
+		"pie-players": "./bin/run.js"
+	},
+	"exports": {
+		".": "./dist/index.js"
+	},
+	"files": [
+		"bin",
+		"dist",
+		"oclif.manifest.json"
+	],
+	"scripts": {
+		"build": "tsc",
+		"dev": "node --loader ts-node/esm --no-warnings=ExperimentalWarning ./bin/dev.js",
+		"clean": "rm -rf dist",
+		"prepack": "bun run build && oclif manifest"
+	},
+	"dependencies": {
+		"@oclif/core": "^4.0.0",
+		"@oclif/plugin-help": "^6.2.0"
+	},
+	"devDependencies": {
+		"@types/node": "^20.0.0",
+		"oclif": "^4.0.0",
+		"ts-node": "^10.9.2",
+		"typescript": "^5.7.0"
+	},
+	"engines": {
+		"node": ">=18.0.0"
+	},
+	"oclif": {
+		"bin": "pie-players",
+		"dirname": "pie-players",
+		"commands": "./dist/commands",
+		"topicSeparator": ":"
+	}
+}

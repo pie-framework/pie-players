@@ -1,0 +1,26 @@
+version: 1
+
+component:
+  area: assessment-toolkit
+  underTest: "TTSService + highlights (intent)"
+
+examplesApp:
+  app: "@pie-framework/pie-players-example"
+  routeTemplate: "/evals/assessment-toolkit"
+
+evals:
+  - id: assessment-toolkit/tts/speak-or-unsupported
+    gradeBand: "K-12"
+    subject: "general"
+    severity: warn
+    intent: "TTS control path is accessible and either speaks or cleanly reports unsupported environment."
+    steps:
+      - action: navigate
+        path: "/evals/assessment-toolkit"
+      - action: click
+        target: { testId: tts-speak }
+      - action: observe
+        target: { testId: event-log }
+        expect: { containsAny: ["tts:speak", "tts:unsupported"] }
+
+

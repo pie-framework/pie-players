@@ -1,108 +1,108 @@
 {
-	"name": "@pie-framework/pie-players-shared",
-	"version": "0.1.0",
-	"type": "module",
-	"description": "Shared runtime + UI utilities for PIE players",
-	"license": "MIT",
-	"repository": {
-		"type": "git",
-		"url": "git+https://github.com/pie-framework/pie-players.git"
-	},
-	"publishConfig": {
-		"access": "public"
-	},
-	"main": "./dist/index.js",
-	"types": "./dist/index.d.ts",
-	"exports": {
-		".": {
-			"types": "./dist/index.d.ts",
-			"import": "./dist/index.js"
-		},
-		"./loader-config": {
-			"types": "./src/loader-config.ts",
-			"import": "./src/loader-config.ts"
-		},
-		"./object": {
-			"types": "./src/object/index.ts",
-			"import": "./src/object/index.ts"
-		},
-		"./types": {
-			"types": "./src/types/index.ts",
-			"import": "./src/types/index.ts"
-		},
-		"./pie": {
-			"types": "./src/pie/index.ts",
-			"import": "./src/pie/index.ts"
-		},
-		"./pie/*": {
-			"types": "./src/pie/*.ts",
-			"import": "./src/pie/*.ts"
-		},
-		"./components": {
-			"types": "./src/components/index.ts",
-			"import": "./src/components/index.ts",
-			"svelte": "./src/components/index.ts"
-		},
-		"./components/PieItemPlayer.svelte": {
-			"import": "./src/components/PieItemPlayer.svelte",
-			"svelte": "./src/components/PieItemPlayer.svelte"
-		},
-		"./components/PieSpinner.svelte": {
-			"import": "./src/components/PieSpinner.svelte",
-			"svelte": "./src/components/PieSpinner.svelte"
-		},
-		"./components/ToolSettingsButton.svelte": {
-			"import": "./src/components/ToolSettingsButton.svelte",
-			"svelte": "./src/components/ToolSettingsButton.svelte"
-		},
-		"./components/ToolSettingsPanel.svelte": {
-			"import": "./src/components/ToolSettingsPanel.svelte",
-			"svelte": "./src/components/ToolSettingsPanel.svelte"
-		},
-		"./components/PiePreviewToggle.svelte": {
-			"import": "./src/components/PiePreviewToggle.svelte",
-			"svelte": "./src/components/PiePreviewToggle.svelte"
-		},
-		"./components/PiePreviewLayout.svelte": {
-			"import": "./src/components/PiePreviewLayout.svelte",
-			"svelte": "./src/components/PiePreviewLayout.svelte"
-		},
-		"./i18n": {
-			"types": "./src/i18n/index.ts",
-			"import": "./src/i18n/index.ts"
-		},
-		"./i18n/use-i18n": {
-			"types": "./src/i18n/use-i18n.svelte.ts",
-			"import": "./src/i18n/use-i18n.svelte.ts",
-			"svelte": "./src/i18n/use-i18n.svelte.ts"
-		},
-		"./i18n/use-i18n-standalone": {
-			"types": "./src/i18n/use-i18n-standalone.svelte.ts",
-			"import": "./src/i18n/use-i18n-standalone.svelte.ts",
-			"svelte": "./src/i18n/use-i18n-standalone.svelte.ts"
-		}
-	},
-	"files": [
-		"dist",
-		"src/components",
-		"src/i18n"
-	],
-	"scripts": {
-		"build": "tsc -p tsconfig.json",
-		"dev": "tsc -p tsconfig.json --watch",
-		"typecheck": "tsc -p tsconfig.json --noEmit",
-		"lint": "biome check .",
-		"check": "tsc -p tsconfig.json --noEmit",
-		"test": "bun test",
-		"check-i18n": "bun run src/i18n/scripts/check-coverage.ts",
-		"scan-hardcoded": "bun run src/i18n/scripts/scan-hardcoded.ts"
-	},
-	"devDependencies": {
-		"@biomejs/biome": "^2.3.10",
-		"glob": "^13.0.0",
-		"typescript": "^5.9.3"
-	},
-	"peerDependencies": {
-		"svelte": "^5.0.0"
-	}
+  "name": "@pie-framework/pie-players-shared",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Shared runtime + UI utilities for PIE players",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pie-framework/pie-players.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./loader-config": {
+      "types": "./src/loader-config.ts",
+      "import": "./src/loader-config.ts"
+    },
+    "./object": {
+      "types": "./src/object/index.ts",
+      "import": "./src/object/index.ts"
+    },
+    "./types": {
+      "types": "./src/types/index.ts",
+      "import": "./src/types/index.ts"
+    },
+    "./pie": {
+      "types": "./src/pie/index.ts",
+      "import": "./src/pie/index.ts"
+    },
+    "./pie/*": {
+      "types": "./src/pie/*.ts",
+      "import": "./src/pie/*.ts"
+    },
+    "./components": {
+      "types": "./src/components/index.ts",
+      "import": "./src/components/index.ts",
+      "svelte": "./src/components/index.ts"
+    },
+    "./components/PieItemPlayer.svelte": {
+      "import": "./src/components/PieItemPlayer.svelte",
+      "svelte": "./src/components/PieItemPlayer.svelte"
+    },
+    "./components/PieSpinner.svelte": {
+      "import": "./src/components/PieSpinner.svelte",
+      "svelte": "./src/components/PieSpinner.svelte"
+    },
+    "./components/ToolSettingsButton.svelte": {
+      "import": "./src/components/ToolSettingsButton.svelte",
+      "svelte": "./src/components/ToolSettingsButton.svelte"
+    },
+    "./components/ToolSettingsPanel.svelte": {
+      "import": "./src/components/ToolSettingsPanel.svelte",
+      "svelte": "./src/components/ToolSettingsPanel.svelte"
+    },
+    "./components/PiePreviewToggle.svelte": {
+      "import": "./src/components/PiePreviewToggle.svelte",
+      "svelte": "./src/components/PiePreviewToggle.svelte"
+    },
+    "./components/PiePreviewLayout.svelte": {
+      "import": "./src/components/PiePreviewLayout.svelte",
+      "svelte": "./src/components/PiePreviewLayout.svelte"
+    },
+    "./i18n": {
+      "types": "./src/i18n/index.ts",
+      "import": "./src/i18n/index.ts"
+    },
+    "./i18n/use-i18n": {
+      "types": "./src/i18n/use-i18n.svelte.ts",
+      "import": "./src/i18n/use-i18n.svelte.ts",
+      "svelte": "./src/i18n/use-i18n.svelte.ts"
+    },
+    "./i18n/use-i18n-standalone": {
+      "types": "./src/i18n/use-i18n-standalone.svelte.ts",
+      "import": "./src/i18n/use-i18n-standalone.svelte.ts",
+      "svelte": "./src/i18n/use-i18n-standalone.svelte.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "src/components",
+    "src/i18n"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "biome check .",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "bun test",
+    "check-i18n": "bun run src/i18n/scripts/check-coverage.ts",
+    "scan-hardcoded": "bun run src/i18n/scripts/scan-hardcoded.ts"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.3.10",
+    "glob": "^13.0.0",
+    "typescript": "^5.9.3"
+  },
+  "peerDependencies": {
+    "svelte": "^5.0.0"
+  }
 }

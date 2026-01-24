@@ -1,51 +1,144 @@
 name: Release
 
-# Only triggers on pushes to master
-# Merging to master creates/updates a "Version Packages" PR
-# Merging that PR publishes to NPM
 on:
   push:
     branches:
       - master
+    # Avoid running release on docs-only changes.
+    # Releases should be driven by Changesets (new .changeset files) and the
+    # resulting version-bump commits (packages/*/package.json + CHANGELOG.md).
+    paths:
+      - ".changeset/**"
+      - "packages/**"
+      - "tools/**"
+      - "package.json"
+      - "bun.lock"
+      - "turbo.json"
+      - "tsconfig*.json"
+      - ".github/workflows/release.yml"
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: 'Version bump type (major/minor/patch)'
+        required: false
+        type: choice
+        options:
+          - auto
+          - major
+          - minor
+          - patch
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
 jobs:
   release:
-    name: Release
+    name: Release to NPM
     runs-on: ubuntu-latest
     permissions:
-      contents: write      # Create releases and tags
-      pull-requests: write # Create/update version PRs
-      id-token: write      # For provenance
+      contents: write
+      pull-requests: write
+      id-token: write
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Need full history for changesets
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.19.0
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.3.5
 
-      - name: Install Dependencies
+      - name: Cache Bun downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Build Packages
+      - name: Detect release intent (changesets or version bumps)
+        id: detect
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Are there any Changesets present in the repo at this commit?
+          if ls .changeset/*.md >/dev/null 2>&1; then
+            echo "has_changesets=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_changesets=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          # Did this push include version/changelog changes (i.e. merged release PR)?
+          before="${{ github.event.before }}"
+          after="${{ github.sha }}"
+          changed="$(git diff --name-only "$before" "$after" || true)"
+
+          if echo "$changed" | grep -Eq '^(packages|tools)/[^/]+/(package\.json|CHANGELOG\.md)$'; then
+            echo "has_version_bumps=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_version_bumps=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Stop early (no changesets / no version bumps)
+        if: github.event_name != 'workflow_dispatch' && steps.detect.outputs.has_changesets != 'true' && steps.detect.outputs.has_version_bumps != 'true'
+        run: |
+          echo "No .changeset files and no package version/changelog updates in this push. Skipping release."
+          exit 0
+
+      - name: Build packages (publish runs only)
+        if: github.event_name == 'workflow_dispatch' || steps.detect.outputs.has_version_bumps == 'true'
         run: bun run build
 
-      - name: Create Release PR or Publish to npm
+      - name: Run tests (publish runs only)
+        if: github.event_name == 'workflow_dispatch' || steps.detect.outputs.has_version_bumps == 'true'
+        run: bun run test
+
+      - name: Create Release Pull Request or Publish to NPM
         id: changesets
         uses: changesets/action@v1
         with:
-          version: bun run version
           publish: bun run release
-          commit: "chore: version packages"
-          title: "chore: version packages"
+          version: bun run version
+          title: 'chore(release): version packages'
+          commit: 'chore(release): version packages'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create GitHub Release
+        if: steps.changesets.outputs.published == 'true'
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # changesets/action outputs `publishedPackages` as a JSON string; parse it before indexing.
+          tag_name: v${{ fromJson(steps.changesets.outputs.publishedPackages)[0].version }}
+          release_name: Release v${{ fromJson(steps.changesets.outputs.publishedPackages)[0].version }}
+          body: |
+            ## Changes
+
+            ${{ steps.changesets.outputs.publishedPackages }}
+
+            See CHANGELOG.md files in each package for detailed changes.
+          draft: false
+          prerelease: false
 
       - name: Summary
         if: steps.changesets.outputs.published == 'true'

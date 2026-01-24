@@ -202,7 +202,7 @@ Query package information and manage workspace:
 
 ```
 # Examples:
-- "Search for @pie-framework/pie-esm-player on npm"
+- "Search for @pie-players/pie-esm-player on npm"
 - "Compare published versions with local package.json versions"
 - "List all workspace packages"
 - "Show the dependency tree for assessment-player"
@@ -251,7 +251,7 @@ Store and retrieve project knowledge:
 ### npm/Registry
 - **Server**: `@modelcontextprotocol/server-npm`
 - **Registry**: https://registry.npmjs.org
-- **Scope**: All `@pie-framework/pie-*` packages (23 workspace packages)
+- **Scope**: All `@pie-players/pie-*` packages (23 workspace packages)
 - **Capabilities**: Package search, version management, dependency analysis, publishing status
 
 ### File System

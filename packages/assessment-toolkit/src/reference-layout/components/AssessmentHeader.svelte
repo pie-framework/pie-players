@@ -1,8 +1,8 @@
 <script lang="ts">
 	
-	import type { AssessmentEntity } from '@pie-framework/pie-players-shared';
-	import ToolColorScheme from '@pie-framework/pie-tool-color-scheme';
-	import ToolTextToSpeech from '@pie-framework/pie-tool-text-to-speech';
+	import type { AssessmentEntity } from '@pie-players/pie-players-shared';
+	import ToolColorScheme from '@pie-players/pie-tool-color-scheme';
+	import ToolTextToSpeech from '@pie-players/pie-tool-text-to-speech';
 	import { onMount } from 'svelte';
 import type { AssessmentPlayer } from '../../player/AssessmentPlayer';
 

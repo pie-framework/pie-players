@@ -1,8 +1,8 @@
 import type {
 	AssessmentEntity,
-	QuestionEntity,
 	QtiAssessmentSection,
-} from "@pie-framework/pie-players-shared/types";
+	QuestionEntity,
+} from "@pie-players/pie-players-shared/types";
 
 export interface QuestionRef {
 	/**
@@ -30,7 +30,9 @@ function toQuestionRef(q: QuestionEntity, idx: number): QuestionRef {
 
 export type AssessmentFormat = "flat" | "qti";
 
-export function detectAssessmentFormat(assessment: AssessmentEntity): AssessmentFormat {
+export function detectAssessmentFormat(
+	assessment: AssessmentEntity,
+): AssessmentFormat {
 	return assessment.testParts?.length ? "qti" : "flat";
 }
 
@@ -88,7 +90,9 @@ function extractFromLegacy(assessment: AssessmentEntity): QuestionRef[] {
 	return refs;
 }
 
-function buildNavigationFromLegacy(assessment: AssessmentEntity): NavigationNode[] {
+function buildNavigationFromLegacy(
+	assessment: AssessmentEntity,
+): NavigationNode[] {
 	const questions = assessment.questions ?? [];
 	const sections = assessment.sections;
 
@@ -135,7 +139,9 @@ function buildNavigationFromLegacy(assessment: AssessmentEntity): NavigationNode
 	});
 }
 
-function buildNavigationFromQti(assessment: AssessmentEntity): NavigationNode[] {
+function buildNavigationFromQti(
+	assessment: AssessmentEntity,
+): NavigationNode[] {
 	const testParts = assessment.testParts ?? [];
 	return testParts.map((tp, idx) => {
 		return {
@@ -186,10 +192,16 @@ function extractFromQti(assessment: AssessmentEntity): QuestionRef[] {
 	return refs;
 }
 
-function extractRefsFromSection(section: QtiAssessmentSection, out: QuestionRef[]): void {
+function extractRefsFromSection(
+	section: QtiAssessmentSection,
+	out: QuestionRef[],
+): void {
 	for (const ref of section.questionRefs ?? []) {
 		if (!ref?.itemVId) continue;
-		out.push({ identifier: ref.identifier || ref.itemVId, itemVId: ref.itemVId });
+		out.push({
+			identifier: ref.identifier || ref.itemVId,
+			itemVId: ref.itemVId,
+		});
 	}
 	for (const sub of section.sections ?? []) {
 		extractRefsFromSection(sub, out);

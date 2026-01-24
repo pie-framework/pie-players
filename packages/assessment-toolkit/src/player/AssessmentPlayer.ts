@@ -23,7 +23,7 @@ import type {
 	ItemConfig,
 	ItemEntity,
 	RubricBlock,
-} from "@pie-framework/pie-players-shared/types";
+} from "@pie-players/pie-players-shared/types";
 import {
 	createNewTestSession,
 	createTestSessionIdentifier,

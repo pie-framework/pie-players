@@ -33,7 +33,7 @@
 
 	To provide the API key, initialize the provider before using this component:
 
-		import { DesmosCalculatorProvider } from '@pie-framework/pie-assessment-toolkit/tools/client';
+		import { DesmosCalculatorProvider } from '@pie-players/pie-assessment-toolkit/tools/client';
 
 		const provider = new DesmosCalculatorProvider();
 		await provider.initialize({
@@ -47,13 +47,13 @@
 
 <script lang="ts">
 	
-	import type { IToolCoordinator } from '@pie-framework/pie-assessment-toolkit';
-	import { ZIndexLayer } from '@pie-framework/pie-assessment-toolkit';
-		import type { Calculator, CalculatorProviderConfig, CalculatorType } from '@pie-framework/pie-assessment-toolkit/tools/client';
-		import { DesmosCalculatorProvider, TICalculatorProvider } from '@pie-framework/pie-assessment-toolkit/tools/client';
-	import { createFocusTrap } from '@pie-framework/pie-players-shared';
-	import ToolSettingsButton from '@pie-framework/pie-players-shared/components/ToolSettingsButton.svelte';
-	import ToolSettingsPanel from '@pie-framework/pie-players-shared/components/ToolSettingsPanel.svelte';
+	import type { IToolCoordinator } from '@pie-players/pie-assessment-toolkit';
+	import { ZIndexLayer } from '@pie-players/pie-assessment-toolkit';
+		import type { Calculator, CalculatorProviderConfig, CalculatorType } from '@pie-players/pie-assessment-toolkit/tools/client';
+		import { DesmosCalculatorProvider, TICalculatorProvider } from '@pie-players/pie-assessment-toolkit/tools/client';
+	import { createFocusTrap } from '@pie-players/pie-players-shared';
+	import ToolSettingsButton from '@pie-players/pie-players-shared/components/ToolSettingsButton.svelte';
+	import ToolSettingsPanel from '@pie-players/pie-players-shared/components/ToolSettingsPanel.svelte';
 import { onMount } from 'svelte';
 
 	// ============================================================================

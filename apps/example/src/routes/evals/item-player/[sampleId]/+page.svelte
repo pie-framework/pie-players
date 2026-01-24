@@ -1,16 +1,16 @@
 <script lang="ts">
 	import '../../../../lib/players';
-	import { page } from '$app/stores';
 	import { browser } from '$app/environment';
-	import { getExampleById } from '$lib/sample-library/pie-examples';
-	import type { PieExample } from '$lib/sample-library/pie-examples';
+	import { page } from '$app/stores';
 	import {
 		coerceEsmSource,
 		DEFAULT_REMOTE_ESM_CDN_URL,
+		type EsmSource, 
 		getDefaultLocalEsmCdnUrl,
-		probeLocalEsmCdn,
-		type EsmSource
+		probeLocalEsmCdn
 	} from '$lib/esm-cdn';
+	import type { PieExample } from '$lib/sample-library/pie-examples';
+	import { getExampleById } from '$lib/sample-library/pie-examples';
 
 	type PlayerType = 'iife' | 'esm';
 	type PlayerMode = 'gather' | 'view' | 'evaluate' | 'browse' | 'author';

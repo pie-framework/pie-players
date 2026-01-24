@@ -1,7 +1,8 @@
 <script lang="ts">
 	
-	import type { QuestionRef } from '../../player/qti-navigation';
+	
 	import type { AssessmentPlayer } from '../../player/AssessmentPlayer';
+import type { QuestionRef } from '../../player/qti-navigation';
 
 	let {
 		player,

@@ -21,7 +21,7 @@ import type {
 	II18nService,
 	PluralTranslation,
 	TranslationBundle,
-} from "@pie-framework/pie-players-shared/i18n";
+} from "@pie-players/pie-players-shared/i18n";
 import { createLogger } from "../utils/logger";
 
 const log = createLogger("I18nService");

@@ -31,7 +31,7 @@ export type LoaderConfig = {
 	 *
 	 * @example Using DataDog
 	 * ```typescript
-	 * import { DataDogInstrumentationProvider } from '@pie-framework/pie-players-shared';
+	 * import { DataDogInstrumentationProvider } from '@pie-players/pie-players-shared';
 	 *
 	 * const provider = new DataDogInstrumentationProvider();
 	 * await provider.initialize({
@@ -49,7 +49,7 @@ export type LoaderConfig = {
 	 *
 	 * @example Using Console provider (for development/debugging)
 	 * ```typescript
-	 * import { ConsoleInstrumentationProvider } from '@pie-framework/pie-players-shared';
+	 * import { ConsoleInstrumentationProvider } from '@pie-players/pie-players-shared';
 	 *
 	 * const provider = new ConsoleInstrumentationProvider({ useColors: true });
 	 * await provider.initialize({ debug: true });

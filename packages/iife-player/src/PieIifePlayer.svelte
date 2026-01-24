@@ -3,7 +3,7 @@
 
   A custom element for dynamically loading PIE element bundles from the PIE build service.
   Uses IIFE (Immediately Invoked Function Expression) bundles, similar to the original
-  @pie-framework/pie-player-components.
+  @pie-players/pie-player-components.
 
   Usage:
     <pie-iife-player
@@ -59,10 +59,10 @@
 
 <script lang="ts">
 	
-	import type { ConfigEntity, Env, LoaderConfig } from '@pie-framework/pie-players-shared';
-	import { BundleType, createPieLogger, DEFAULT_BUNDLE_HOST, DEFAULT_LOADER_CONFIG, IifePieLoader, isGlobalDebugEnabled, makeUniqueTags } from '@pie-framework/pie-players-shared';
-	import PieItemPlayer from '@pie-framework/pie-players-shared/components/PieItemPlayer.svelte';
-	import PieSpinner from '@pie-framework/pie-players-shared/components/PieSpinner.svelte';
+	import type { ConfigEntity, Env, LoaderConfig } from '@pie-players/pie-players-shared';
+	import { BundleType, createPieLogger, DEFAULT_BUNDLE_HOST, DEFAULT_LOADER_CONFIG, IifePieLoader, isGlobalDebugEnabled, makeUniqueTags } from '@pie-players/pie-players-shared';
+	import PieItemPlayer from '@pie-players/pie-players-shared/components/PieItemPlayer.svelte';
+	import PieSpinner from '@pie-players/pie-players-shared/components/PieSpinner.svelte';
 	import { tick, untrack } from 'svelte';
 	// Import global component styles 
 	import './components.css';

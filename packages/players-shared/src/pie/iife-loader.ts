@@ -2,7 +2,7 @@
  * IIFE PIE Loader
  *
  * Dynamically loads PIE elements from IIFE bundles served by the PIE build service.
- * Matches the behavior of the original pie-player from @pie-framework/pie-player-components.
+ * Matches the behavior of the original pie-player from @pie-players/pie-player-components.
  *
  * Integrates with the existing PIE registry system to enable shared
  * initialization code to work with IIFE-loaded elements.

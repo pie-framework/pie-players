@@ -25,15 +25,15 @@
 />
 
 <script lang="ts">
-	import '@pie-framework/pie-iife-player';
-	import '@pie-framework/pie-tool-toolbar';
+	import '@pie-players/pie-iife-player';
+	import '@pie-players/pie-tool-toolbar';
 
-	import { createLoadItem } from '@pie-framework/pie-assessment-toolkit';
+	import { createLoadItem } from '@pie-players/pie-assessment-toolkit';
 	import {
 		AssessmentPlayer,
 		getAllQuestionRefs
-	} from '@pie-framework/pie-assessment-toolkit/assessment-player';
-	import type { PieIifePlayerElement } from '@pie-framework/pie-iife-player';
+	} from '@pie-players/pie-assessment-toolkit/assessment-player';
+	import type { PieIifePlayerElement } from '@pie-players/pie-iife-player';
 	import {
 		type AssessmentAuthoringCallbacks,
 		type AssessmentEntity,
@@ -41,7 +41,7 @@
 		type Env,
 		type ItemConfig,
 		type ItemEntity,
-	} from '@pie-framework/pie-players-shared';
+	} from '@pie-players/pie-players-shared';
 	import { onMount, untrack } from 'svelte';
 
 	import './color-schemes.css';

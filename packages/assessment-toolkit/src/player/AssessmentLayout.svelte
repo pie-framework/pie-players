@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { AssessmentEntity } from '@pie-framework/pie-players-shared';
+	import type { AssessmentEntity } from '@pie-players/pie-players-shared';
 	import { onDestroy, onMount } from 'svelte';
 	import { ReferenceLayout } from '../reference-layout';
 	import { AssessmentPlayer } from './AssessmentPlayer';

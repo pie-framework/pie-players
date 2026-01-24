@@ -58,7 +58,7 @@
 
 <script lang="ts">
 	
-	import type { ConfigEntity, Env, LoaderConfig } from '@pie-framework/pie-players-shared';
+	import type { ConfigEntity, Env, LoaderConfig } from '@pie-players/pie-players-shared';
 	import {
 		BundleType,
 		createPieLogger,
@@ -66,9 +66,9 @@
 		EsmPieLoader,
 		isGlobalDebugEnabled,
 		makeUniqueTags,
-	} from '@pie-framework/pie-players-shared';
-	import PieItemPlayer from '@pie-framework/pie-players-shared/components/PieItemPlayer.svelte';
-	import PieSpinner from '@pie-framework/pie-players-shared/components/PieSpinner.svelte';
+	} from '@pie-players/pie-players-shared';
+	import PieItemPlayer from '@pie-players/pie-players-shared/components/PieItemPlayer.svelte';
+	import PieSpinner from '@pie-players/pie-players-shared/components/PieSpinner.svelte';
 import { tick } from 'svelte';
 
 	type ItemSession = {

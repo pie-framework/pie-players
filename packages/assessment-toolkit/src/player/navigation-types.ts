@@ -7,7 +7,7 @@
 import type {
 	ItemEntity,
 	PassageEntity,
-} from "@pie-framework/pie-players-shared";
+} from "@pie-players/pie-players-shared";
 import type { ItemMetadata } from "../types/events";
 
 export interface NavigationResult {

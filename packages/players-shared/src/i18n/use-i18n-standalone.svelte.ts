@@ -15,7 +15,7 @@
  * @example
  * ```svelte
  * <script lang="ts">
- *   import { useI18nStandalone } from '@pie-framework/pie-players-shared/i18n';
+ *   import { useI18nStandalone } from '@pie-players/pie-players-shared/i18n';
  *
  *   const i18n = useI18nStandalone({ locale: 'en' });
  * </script>

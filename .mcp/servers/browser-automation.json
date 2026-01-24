@@ -1,12 +1,12 @@
 {
-  "mcpServers": {
-    "browser-automation": {
-      "command": "npx",
-      "args": ["-y", "@playwright/mcp"],
-      "env": {
-        "PLAYWRIGHT_CONFIG": "./apps/example/playwright.config.ts",
-        "BASE_URL": "http://127.0.0.1:5200"
-      }
-    }
-  }
+	"mcpServers": {
+		"browser-automation": {
+			"command": "npx",
+			"args": ["-y", "@playwright/mcp"],
+			"env": {
+				"PLAYWRIGHT_CONFIG": "./apps/example/playwright.config.ts",
+				"BASE_URL": "http://127.0.0.1:5200"
+			}
+		}
+	}
 }

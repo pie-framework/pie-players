@@ -1,4 +1,4 @@
-import type { AssessmentEntity } from "@pie-framework/pie-players-shared/types";
+import type { AssessmentEntity } from "@pie-players/pie-players-shared/types";
 
 export interface AssessmentExample {
 	id: string;
@@ -211,7 +211,10 @@ export function createAssessmentFromExample(
 ): AssessmentEntity {
 	// Demonstrate QTI-like passage sharing: a section-level passage (rubricBlock)
 	// shared across multiple assessment items.
-	if (example.tags?.includes("passage-based") || example.id === "reading-comprehension") {
+	if (
+		example.tags?.includes("passage-based") ||
+		example.id === "reading-comprehension"
+	) {
 		const passageContent =
 			"<h2>Reading Passage</h2><p>This passage is shared across the items in this section (modeled as a QTI rubric block on the section).</p>";
 

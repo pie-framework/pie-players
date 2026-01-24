@@ -14,7 +14,7 @@
       },
     },
     "apps/docs": {
-      "name": "@pie-framework/pie-players-docs",
+      "name": "@pie-players/pie-players-docs",
       "version": "0.1.0",
       "devDependencies": {
         "@sveltejs/adapter-static": "^3.0.10",
@@ -32,17 +32,17 @@
       },
     },
     "apps/example": {
-      "name": "@pie-framework/pie-players-example",
+      "name": "@pie-players/pie-players-example",
       "version": "0.1.0",
       "dependencies": {
-        "@pie-framework/pie-assessment-player": "workspace:*",
-        "@pie-framework/pie-assessment-toolkit": "workspace:*",
-        "@pie-framework/pie-author": "workspace:*",
-        "@pie-framework/pie-esm-player": "workspace:*",
-        "@pie-framework/pie-fixed-player": "workspace:*",
-        "@pie-framework/pie-iife-player": "workspace:*",
-        "@pie-framework/pie-inline-player": "workspace:*",
-        "@pie-framework/pie-players-shared": "workspace:*",
+        "@pie-players/pie-assessment-player": "workspace:*",
+        "@pie-players/pie-assessment-toolkit": "workspace:*",
+        "@pie-players/pie-author": "workspace:*",
+        "@pie-players/pie-esm-player": "workspace:*",
+        "@pie-players/pie-fixed-player": "workspace:*",
+        "@pie-players/pie-iife-player": "workspace:*",
+        "@pie-players/pie-inline-player": "workspace:*",
+        "@pie-players/pie-players-shared": "workspace:*",
         "@tiptap/core": "^3.15.3",
         "@tiptap/extension-code-block": "^3.15.3",
         "@tiptap/extension-code-block-lowlight": "^3.15.3",
@@ -76,8 +76,8 @@
       },
     },
     "apps/local-esm-cdn": {
-      "name": "@pie-framework/local-esm-cdn",
-      "version": "0.0.0",
+      "name": "@pie-players/local-esm-cdn",
+      "version": "0.1.0",
       "dependencies": {
         "es-module-lexer": "^2.0.0",
       },
@@ -95,13 +95,13 @@
       ],
     },
     "packages/assessment-player": {
-      "name": "@pie-framework/pie-assessment-player",
-      "version": "1.0.0",
+      "name": "@pie-players/pie-assessment-player",
+      "version": "0.1.0",
       "dependencies": {
-        "@pie-framework/pie-assessment-toolkit": "workspace:*",
-        "@pie-framework/pie-iife-player": "workspace:*",
-        "@pie-framework/pie-players-shared": "workspace:*",
-        "@pie-framework/pie-tool-toolbar": "workspace:*",
+        "@pie-players/pie-assessment-toolkit": "workspace:*",
+        "@pie-players/pie-iife-player": "workspace:*",
+        "@pie-players/pie-players-shared": "workspace:*",
+        "@pie-players/pie-tool-toolbar": "workspace:*",
       },
       "devDependencies": {
         "@biomejs/biome": "^2.3.10",
@@ -118,10 +118,10 @@
       },
     },
     "packages/assessment-toolkit": {
-      "name": "@pie-framework/pie-assessment-toolkit",
+      "name": "@pie-players/pie-assessment-toolkit",
       "version": "0.1.0",
       "dependencies": {
-        "@pie-framework/pie-players-shared": "workspace:*",
+        "@pie-players/pie-players-shared": "workspace:*",
       },
       "devDependencies": {
         "@biomejs/biome": "^2.3.10",
@@ -132,10 +132,10 @@
       },
     },
     "packages/author-player": {
-      "name": "@pie-framework/pie-author",
-      "version": "1.0.0",
+      "name": "@pie-players/pie-author",
+      "version": "0.1.0",
       "dependencies": {
-        "@pie-framework/pie-players-shared": "workspace:*",
+        "@pie-players/pie-players-shared": "workspace:*",
       },
       "devDependencies": {
         "@biomejs/biome": "^2.3.10",
@@ -152,10 +152,10 @@
       },
     },
     "packages/esm-player": {
-      "name": "@pie-framework/pie-esm-player",
-      "version": "1.0.0",
+      "name": "@pie-players/pie-esm-player",
+      "version": "0.1.0",
       "dependencies": {
-        "@pie-framework/pie-players-shared": "workspace:*",
+        "@pie-players/pie-players-shared": "workspace:*",
       },
       "devDependencies": {
         "@biomejs/biome": "^2.3.10",
@@ -174,10 +174,10 @@
       },
     },
     "packages/fixed-player": {
-      "name": "@pie-framework/pie-fixed-player",
-      "version": "1.0.1",
+      "name": "@pie-players/pie-fixed-player",
+      "version": "0.1.0",
       "dependencies": {
-        "@pie-framework/pie-players-shared": "workspace:*",
+        "@pie-players/pie-players-shared": "workspace:*",
       },
       "devDependencies": {
         "@biomejs/biome": "^2.3.10",
@@ -194,10 +194,10 @@
       },
     },
     "packages/iife-player": {
-      "name": "@pie-framework/pie-iife-player",
-      "version": "1.0.0",
+      "name": "@pie-players/pie-iife-player",
+      "version": "0.1.0",
       "dependencies": {
-        "@pie-framework/pie-players-shared": "workspace:*",
+        "@pie-players/pie-players-shared": "workspace:*",
       },
       "devDependencies": {
         "@biomejs/biome": "^2.3.10",
@@ -214,10 +214,10 @@
       },
     },
     "packages/inline-player": {
-      "name": "@pie-framework/pie-inline-player",
-      "version": "1.0.1",
+      "name": "@pie-players/pie-inline-player",
+      "version": "0.1.0",
       "dependencies": {
-        "@pie-framework/pie-players-shared": "workspace:*",
+        "@pie-players/pie-players-shared": "workspace:*",
       },
       "devDependencies": {
         "@biomejs/biome": "^2.3.10",
@@ -234,7 +234,7 @@
       },
     },
     "packages/players-shared": {
-      "name": "@pie-framework/pie-players-shared",
+      "name": "@pie-players/pie-players-shared",
       "version": "0.1.0",
       "devDependencies": {
         "@biomejs/biome": "^2.3.10",
@@ -246,11 +246,11 @@
       },
     },
     "packages/tool-annotation-toolbar": {
-      "name": "@pie-framework/pie-tool-annotation-toolbar",
-      "version": "1.0.0",
+      "name": "@pie-players/pie-tool-annotation-toolbar",
+      "version": "0.1.0",
       "dependencies": {
-        "@pie-framework/pie-assessment-toolkit": "workspace:*",
-        "@pie-framework/pie-players-shared": "workspace:*",
+        "@pie-players/pie-assessment-toolkit": "workspace:*",
+        "@pie-players/pie-players-shared": "workspace:*",
       },
       "devDependencies": {
         "@biomejs/biome": "^2.3.10",
@@ -265,11 +265,11 @@
       },
     },
     "packages/tool-answer-eliminator": {
-      "name": "@pie-framework/pie-tool-answer-eliminator",
-      "version": "1.0.0",
+      "name": "@pie-players/pie-tool-answer-eliminator",
+      "version": "0.1.0",
       "dependencies": {
-        "@pie-framework/pie-assessment-toolkit": "workspace:*",
-        "@pie-framework/pie-players-shared": "workspace:*",
+        "@pie-players/pie-assessment-toolkit": "workspace:*",
+        "@pie-players/pie-players-shared": "workspace:*",
       },
       "devDependencies": {
         "@biomejs/biome": "^2.3.10",
@@ -284,11 +284,11 @@
       },
     },
     "packages/tool-calculator": {
-      "name": "@pie-framework/pie-tool-calculator",
-      "version": "1.0.0",
+      "name": "@pie-players/pie-tool-calculator",
+      "version": "0.1.0",
       "dependencies": {
-        "@pie-framework/pie-assessment-toolkit": "workspace:*",
-        "@pie-framework/pie-players-shared": "workspace:*",
+        "@pie-players/pie-assessment-toolkit": "workspace:*",
+        "@pie-players/pie-players-shared": "workspace:*",
       },
       "devDependencies": {
         "@biomejs/biome": "^2.3.10",
@@ -303,11 +303,11 @@
       },
     },
     "packages/tool-color-scheme": {
-      "name": "@pie-framework/pie-tool-color-scheme",
-      "version": "1.0.0",
+      "name": "@pie-players/pie-tool-color-scheme",
+      "version": "0.1.0",
       "dependencies": {
-        "@pie-framework/pie-assessment-toolkit": "workspace:*",
-        "@pie-framework/pie-players-shared": "workspace:*",
+        "@pie-players/pie-assessment-toolkit": "workspace:*",
+        "@pie-players/pie-players-shared": "workspace:*",
       },
       "devDependencies": {
         "@biomejs/biome": "^2.3.10",
@@ -322,11 +322,11 @@
       },
     },
     "packages/tool-graph": {
-      "name": "@pie-framework/pie-tool-graph",
-      "version": "1.0.0",
+      "name": "@pie-players/pie-tool-graph",
+      "version": "0.1.0",
       "dependencies": {
-        "@pie-framework/pie-assessment-toolkit": "workspace:*",
-        "@pie-framework/pie-players-shared": "workspace:*",
+        "@pie-players/pie-assessment-toolkit": "workspace:*",
+        "@pie-players/pie-players-shared": "workspace:*",
       },
       "devDependencies": {
         "@biomejs/biome": "^2.3.10",
@@ -341,11 +341,11 @@
       },
     },
     "packages/tool-line-reader": {
-      "name": "@pie-framework/pie-tool-line-reader",
-      "version": "1.0.0",
+      "name": "@pie-players/pie-tool-line-reader",
+      "version": "0.1.0",
       "dependencies": {
-        "@pie-framework/pie-assessment-toolkit": "workspace:*",
-        "@pie-framework/pie-players-shared": "workspace:*",
+        "@pie-players/pie-assessment-toolkit": "workspace:*",
+        "@pie-players/pie-players-shared": "workspace:*",
       },
       "devDependencies": {
         "@biomejs/biome": "^2.3.10",
@@ -360,11 +360,11 @@
       },
     },
     "packages/tool-magnifier": {
-      "name": "@pie-framework/pie-tool-magnifier",
-      "version": "1.0.0",
+      "name": "@pie-players/pie-tool-magnifier",
+      "version": "0.1.0",
       "dependencies": {
-        "@pie-framework/pie-assessment-toolkit": "workspace:*",
-        "@pie-framework/pie-players-shared": "workspace:*",
+        "@pie-players/pie-assessment-toolkit": "workspace:*",
+        "@pie-players/pie-players-shared": "workspace:*",
       },
       "devDependencies": {
         "@biomejs/biome": "^2.3.10",
@@ -379,11 +379,11 @@
       },
     },
     "packages/tool-periodic-table": {
-      "name": "@pie-framework/pie-tool-periodic-table",
-      "version": "1.0.0",
+      "name": "@pie-players/pie-tool-periodic-table",
+      "version": "0.1.0",
       "dependencies": {
-        "@pie-framework/pie-assessment-toolkit": "workspace:*",
-        "@pie-framework/pie-players-shared": "workspace:*",
+        "@pie-players/pie-assessment-toolkit": "workspace:*",
+        "@pie-players/pie-players-shared": "workspace:*",
       },
       "devDependencies": {
         "@biomejs/biome": "^2.3.10",
@@ -398,11 +398,11 @@
       },
     },
     "packages/tool-protractor": {
-      "name": "@pie-framework/pie-tool-protractor",
-      "version": "1.0.0",
+      "name": "@pie-players/pie-tool-protractor",
+      "version": "0.1.0",
       "dependencies": {
-        "@pie-framework/pie-assessment-toolkit": "workspace:*",
-        "@pie-framework/pie-players-shared": "workspace:*",
+        "@pie-players/pie-assessment-toolkit": "workspace:*",
+        "@pie-players/pie-players-shared": "workspace:*",
         "moveable": "^0.53.0",
       },
       "devDependencies": {
@@ -418,11 +418,11 @@
       },
     },
     "packages/tool-ruler": {
-      "name": "@pie-framework/pie-tool-ruler",
-      "version": "1.0.0",
+      "name": "@pie-players/pie-tool-ruler",
+      "version": "0.1.0",
       "dependencies": {
-        "@pie-framework/pie-assessment-toolkit": "workspace:*",
-        "@pie-framework/pie-players-shared": "workspace:*",
+        "@pie-players/pie-assessment-toolkit": "workspace:*",
+        "@pie-players/pie-players-shared": "workspace:*",
         "moveable": "^0.53.0",
       },
       "devDependencies": {
@@ -438,11 +438,11 @@
       },
     },
     "packages/tool-text-to-speech": {
-      "name": "@pie-framework/pie-tool-text-to-speech",
-      "version": "1.0.0",
+      "name": "@pie-players/pie-tool-text-to-speech",
+      "version": "0.1.0",
       "dependencies": {
-        "@pie-framework/pie-assessment-toolkit": "workspace:*",
-        "@pie-framework/pie-players-shared": "workspace:*",
+        "@pie-players/pie-assessment-toolkit": "workspace:*",
+        "@pie-players/pie-players-shared": "workspace:*",
       },
       "devDependencies": {
         "@biomejs/biome": "^2.3.10",
@@ -457,22 +457,22 @@
       },
     },
     "packages/tool-toolbar": {
-      "name": "@pie-framework/pie-tool-toolbar",
-      "version": "1.0.0",
+      "name": "@pie-players/pie-tool-toolbar",
+      "version": "0.1.0",
       "dependencies": {
-        "@pie-framework/pie-assessment-toolkit": "workspace:*",
-        "@pie-framework/pie-players-shared": "workspace:*",
-        "@pie-framework/pie-tool-annotation-toolbar": "workspace:*",
-        "@pie-framework/pie-tool-answer-eliminator": "workspace:*",
-        "@pie-framework/pie-tool-calculator": "workspace:*",
-        "@pie-framework/pie-tool-color-scheme": "workspace:*",
-        "@pie-framework/pie-tool-graph": "workspace:*",
-        "@pie-framework/pie-tool-line-reader": "workspace:*",
-        "@pie-framework/pie-tool-magnifier": "workspace:*",
-        "@pie-framework/pie-tool-periodic-table": "workspace:*",
-        "@pie-framework/pie-tool-protractor": "workspace:*",
-        "@pie-framework/pie-tool-ruler": "workspace:*",
-        "@pie-framework/pie-tool-text-to-speech": "workspace:*",
+        "@pie-players/pie-assessment-toolkit": "workspace:*",
+        "@pie-players/pie-players-shared": "workspace:*",
+        "@pie-players/pie-tool-annotation-toolbar": "workspace:*",
+        "@pie-players/pie-tool-answer-eliminator": "workspace:*",
+        "@pie-players/pie-tool-calculator": "workspace:*",
+        "@pie-players/pie-tool-color-scheme": "workspace:*",
+        "@pie-players/pie-tool-graph": "workspace:*",
+        "@pie-players/pie-tool-line-reader": "workspace:*",
+        "@pie-players/pie-tool-magnifier": "workspace:*",
+        "@pie-players/pie-tool-periodic-table": "workspace:*",
+        "@pie-players/pie-tool-protractor": "workspace:*",
+        "@pie-players/pie-tool-ruler": "workspace:*",
+        "@pie-players/pie-tool-text-to-speech": "workspace:*",
       },
       "devDependencies": {
         "@biomejs/biome": "^2.3.10",
@@ -487,7 +487,7 @@
       },
     },
     "tools/cli": {
-      "name": "@pie-framework/pie-players-cli",
+      "name": "@pie-players/pie-players-cli",
       "version": "0.1.0",
       "bin": {
         "pie-players": "./bin/run.js",
@@ -791,55 +791,55 @@
 
     "@oclif/plugin-warn-if-update-available": ["@oclif/plugin-warn-if-update-available@3.1.53", "", { "dependencies": { "@oclif/core": "^4", "ansis": "^3.17.0", "debug": "^4.4.3", "http-call": "^5.2.2", "lodash": "^4.17.21", "registry-auth-token": "^5.1.0" } }, "sha512-ALxKMNFFJQJV1Z2OMVTV+q7EbKHhnTAPcTgkgHeXCNdW5nFExoXuwusZLS4Zv2o83j9UoDx1R/CSX7QZVgEHTA=="],
 
-    "@pie-framework/local-esm-cdn": ["@pie-framework/local-esm-cdn@workspace:apps/local-esm-cdn"],
-
-    "@pie-framework/pie-assessment-player": ["@pie-framework/pie-assessment-player@workspace:packages/assessment-player"],
-
-    "@pie-framework/pie-assessment-toolkit": ["@pie-framework/pie-assessment-toolkit@workspace:packages/assessment-toolkit"],
-
-    "@pie-framework/pie-author": ["@pie-framework/pie-author@workspace:packages/author-player"],
-
-    "@pie-framework/pie-esm-player": ["@pie-framework/pie-esm-player@workspace:packages/esm-player"],
-
-    "@pie-framework/pie-fixed-player": ["@pie-framework/pie-fixed-player@workspace:packages/fixed-player"],
-
-    "@pie-framework/pie-iife-player": ["@pie-framework/pie-iife-player@workspace:packages/iife-player"],
-
-    "@pie-framework/pie-inline-player": ["@pie-framework/pie-inline-player@workspace:packages/inline-player"],
-
-    "@pie-framework/pie-players-cli": ["@pie-framework/pie-players-cli@workspace:tools/cli"],
-
-    "@pie-framework/pie-players-docs": ["@pie-framework/pie-players-docs@workspace:apps/docs"],
-
-    "@pie-framework/pie-players-example": ["@pie-framework/pie-players-example@workspace:apps/example"],
-
-    "@pie-framework/pie-players-shared": ["@pie-framework/pie-players-shared@workspace:packages/players-shared"],
-
-    "@pie-framework/pie-tool-annotation-toolbar": ["@pie-framework/pie-tool-annotation-toolbar@workspace:packages/tool-annotation-toolbar"],
-
-    "@pie-framework/pie-tool-answer-eliminator": ["@pie-framework/pie-tool-answer-eliminator@workspace:packages/tool-answer-eliminator"],
-
-    "@pie-framework/pie-tool-calculator": ["@pie-framework/pie-tool-calculator@workspace:packages/tool-calculator"],
-
-    "@pie-framework/pie-tool-color-scheme": ["@pie-framework/pie-tool-color-scheme@workspace:packages/tool-color-scheme"],
-
-    "@pie-framework/pie-tool-graph": ["@pie-framework/pie-tool-graph@workspace:packages/tool-graph"],
-
-    "@pie-framework/pie-tool-line-reader": ["@pie-framework/pie-tool-line-reader@workspace:packages/tool-line-reader"],
-
-    "@pie-framework/pie-tool-magnifier": ["@pie-framework/pie-tool-magnifier@workspace:packages/tool-magnifier"],
-
-    "@pie-framework/pie-tool-periodic-table": ["@pie-framework/pie-tool-periodic-table@workspace:packages/tool-periodic-table"],
-
-    "@pie-framework/pie-tool-protractor": ["@pie-framework/pie-tool-protractor@workspace:packages/tool-protractor"],
-
-    "@pie-framework/pie-tool-ruler": ["@pie-framework/pie-tool-ruler@workspace:packages/tool-ruler"],
-
-    "@pie-framework/pie-tool-text-to-speech": ["@pie-framework/pie-tool-text-to-speech@workspace:packages/tool-text-to-speech"],
-
-    "@pie-framework/pie-tool-toolbar": ["@pie-framework/pie-tool-toolbar@workspace:packages/tool-toolbar"],
-
     "@pie-lib/math-rendering-module": ["@pie-lib/math-rendering-module@3.1.5", "", {}, "sha512-usSNsD/nvf2PRA8tLl+kxBwCLtZ7MROFSHSDV7YxkEyxwUhxvvPtSR/oLj19Nl6F2JJRdM3WaAIVD0L5FGEFUQ=="],
+
+    "@pie-players/local-esm-cdn": ["@pie-players/local-esm-cdn@workspace:apps/local-esm-cdn"],
+
+    "@pie-players/pie-assessment-player": ["@pie-players/pie-assessment-player@workspace:packages/assessment-player"],
+
+    "@pie-players/pie-assessment-toolkit": ["@pie-players/pie-assessment-toolkit@workspace:packages/assessment-toolkit"],
+
+    "@pie-players/pie-author": ["@pie-players/pie-author@workspace:packages/author-player"],
+
+    "@pie-players/pie-esm-player": ["@pie-players/pie-esm-player@workspace:packages/esm-player"],
+
+    "@pie-players/pie-fixed-player": ["@pie-players/pie-fixed-player@workspace:packages/fixed-player"],
+
+    "@pie-players/pie-iife-player": ["@pie-players/pie-iife-player@workspace:packages/iife-player"],
+
+    "@pie-players/pie-inline-player": ["@pie-players/pie-inline-player@workspace:packages/inline-player"],
+
+    "@pie-players/pie-players-cli": ["@pie-players/pie-players-cli@workspace:tools/cli"],
+
+    "@pie-players/pie-players-docs": ["@pie-players/pie-players-docs@workspace:apps/docs"],
+
+    "@pie-players/pie-players-example": ["@pie-players/pie-players-example@workspace:apps/example"],
+
+    "@pie-players/pie-players-shared": ["@pie-players/pie-players-shared@workspace:packages/players-shared"],
+
+    "@pie-players/pie-tool-annotation-toolbar": ["@pie-players/pie-tool-annotation-toolbar@workspace:packages/tool-annotation-toolbar"],
+
+    "@pie-players/pie-tool-answer-eliminator": ["@pie-players/pie-tool-answer-eliminator@workspace:packages/tool-answer-eliminator"],
+
+    "@pie-players/pie-tool-calculator": ["@pie-players/pie-tool-calculator@workspace:packages/tool-calculator"],
+
+    "@pie-players/pie-tool-color-scheme": ["@pie-players/pie-tool-color-scheme@workspace:packages/tool-color-scheme"],
+
+    "@pie-players/pie-tool-graph": ["@pie-players/pie-tool-graph@workspace:packages/tool-graph"],
+
+    "@pie-players/pie-tool-line-reader": ["@pie-players/pie-tool-line-reader@workspace:packages/tool-line-reader"],
+
+    "@pie-players/pie-tool-magnifier": ["@pie-players/pie-tool-magnifier@workspace:packages/tool-magnifier"],
+
+    "@pie-players/pie-tool-periodic-table": ["@pie-players/pie-tool-periodic-table@workspace:packages/tool-periodic-table"],
+
+    "@pie-players/pie-tool-protractor": ["@pie-players/pie-tool-protractor@workspace:packages/tool-protractor"],
+
+    "@pie-players/pie-tool-ruler": ["@pie-players/pie-tool-ruler@workspace:packages/tool-ruler"],
+
+    "@pie-players/pie-tool-text-to-speech": ["@pie-players/pie-tool-text-to-speech@workspace:packages/tool-text-to-speech"],
+
+    "@pie-players/pie-tool-toolbar": ["@pie-players/pie-tool-toolbar@workspace:packages/tool-toolbar"],
 
     "@playwright/test": ["@playwright/test@1.57.0", "", { "dependencies": { "playwright": "1.57.0" }, "bin": { "playwright": "cli.js" } }, "sha512-6TyEnHgd6SArQO8UO2OMTxshln3QMWBtPGrOCgs3wVEmQmwyuNtB10IZMfmYDE0riwNR1cu4q+pPcxMVtaG3TA=="],
 
@@ -1931,25 +1931,21 @@
 
     "@microsoft/api-extractor/typescript": ["typescript@5.8.2", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-aJn6wq13/afZp/jT9QZmwEjDqqvSGp1VT5GVg+f/t6/oVyrgXM6BY1h9BRh/O5p3PlUPAe+WuiEZOmb/49RqoQ=="],
 
-    "@pie-framework/pie-assessment-player/@types/node": ["@types/node@22.19.3", "", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-1N9SBnWYOJTrNZCdh/yJE+t910Y128BoyY+zBLWhL3r0TYzlTmFdXrPwHL9DyFZmlEXNQQolTZh3KHV31QDhyA=="],
+    "@pie-players/pie-assessment-player/@types/node": ["@types/node@22.19.3", "", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-1N9SBnWYOJTrNZCdh/yJE+t910Y128BoyY+zBLWhL3r0TYzlTmFdXrPwHL9DyFZmlEXNQQolTZh3KHV31QDhyA=="],
 
-    "@pie-framework/pie-author/@types/node": ["@types/node@22.19.3", "", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-1N9SBnWYOJTrNZCdh/yJE+t910Y128BoyY+zBLWhL3r0TYzlTmFdXrPwHL9DyFZmlEXNQQolTZh3KHV31QDhyA=="],
+    "@pie-players/pie-author/@types/node": ["@types/node@22.19.3", "", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-1N9SBnWYOJTrNZCdh/yJE+t910Y128BoyY+zBLWhL3r0TYzlTmFdXrPwHL9DyFZmlEXNQQolTZh3KHV31QDhyA=="],
 
-    "@pie-framework/pie-esm-player/@types/node": ["@types/node@22.19.3", "", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-1N9SBnWYOJTrNZCdh/yJE+t910Y128BoyY+zBLWhL3r0TYzlTmFdXrPwHL9DyFZmlEXNQQolTZh3KHV31QDhyA=="],
+    "@pie-players/pie-esm-player/@types/node": ["@types/node@22.19.3", "", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-1N9SBnWYOJTrNZCdh/yJE+t910Y128BoyY+zBLWhL3r0TYzlTmFdXrPwHL9DyFZmlEXNQQolTZh3KHV31QDhyA=="],
 
-    "@pie-framework/pie-fixed-player/@types/node": ["@types/node@22.19.3", "", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-1N9SBnWYOJTrNZCdh/yJE+t910Y128BoyY+zBLWhL3r0TYzlTmFdXrPwHL9DyFZmlEXNQQolTZh3KHV31QDhyA=="],
+    "@pie-players/pie-fixed-player/@types/node": ["@types/node@22.19.3", "", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-1N9SBnWYOJTrNZCdh/yJE+t910Y128BoyY+zBLWhL3r0TYzlTmFdXrPwHL9DyFZmlEXNQQolTZh3KHV31QDhyA=="],
 
-    "@pie-framework/pie-iife-player/@types/node": ["@types/node@22.19.3", "", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-1N9SBnWYOJTrNZCdh/yJE+t910Y128BoyY+zBLWhL3r0TYzlTmFdXrPwHL9DyFZmlEXNQQolTZh3KHV31QDhyA=="],
+    "@pie-players/pie-iife-player/@types/node": ["@types/node@22.19.3", "", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-1N9SBnWYOJTrNZCdh/yJE+t910Y128BoyY+zBLWhL3r0TYzlTmFdXrPwHL9DyFZmlEXNQQolTZh3KHV31QDhyA=="],
 
-    "@pie-framework/pie-inline-player/@types/node": ["@types/node@22.19.3", "", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-1N9SBnWYOJTrNZCdh/yJE+t910Y128BoyY+zBLWhL3r0TYzlTmFdXrPwHL9DyFZmlEXNQQolTZh3KHV31QDhyA=="],
+    "@pie-players/pie-inline-player/@types/node": ["@types/node@22.19.3", "", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-1N9SBnWYOJTrNZCdh/yJE+t910Y128BoyY+zBLWhL3r0TYzlTmFdXrPwHL9DyFZmlEXNQQolTZh3KHV31QDhyA=="],
 
-    "@pie-framework/pie-players-cli/@types/node": ["@types/node@20.19.27", "", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-N2clP5pJhB2YnZJ3PIHFk5RkygRX5WO/5f0WC08tp0wd+sv0rsJk3MqWn3CbNmT2J505a5336jaQj4ph1AdMug=="],
+    "@pie-players/pie-players-cli/@types/node": ["@types/node@20.19.27", "", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-N2clP5pJhB2YnZJ3PIHFk5RkygRX5WO/5f0WC08tp0wd+sv0rsJk3MqWn3CbNmT2J505a5336jaQj4ph1AdMug=="],
 
-    "@pie-framework/pie-players-docs/@types/node": ["@types/node@25.0.3", "", { "dependencies": { "undici-types": "~7.16.0" } }, "sha512-W609buLVRVmeW693xKfzHeIV6nJGGz98uCPfeXI1ELMLXVeKYZ9m15fAMSaUPBHYLGFsVRcMmSCksQOrZV9BYA=="],
-
-    "@pie-framework/pie-players-example/@pie-apps/local-esm-cdn": ["@pie-apps/local-esm-cdn@file:../pie-elements-ng/apps/local-esm-cdn", { "dependencies": { "es-module-lexer": "^2.0.0" }, "peerDependencies": { "@sveltejs/kit": "^2.0.0", "vite": "^5.0.0 || ^6.0.0" }, "optionalPeers": ["@sveltejs/kit", "vite"] }],
-
-    "@pie-framework/pie-players-example/@types/node": ["@types/node@25.0.3", "", { "dependencies": { "undici-types": "~7.16.0" } }, "sha512-W609buLVRVmeW693xKfzHeIV6nJGGz98uCPfeXI1ELMLXVeKYZ9m15fAMSaUPBHYLGFsVRcMmSCksQOrZV9BYA=="],
+    "@pie-players/pie-players-example/@pie-apps/local-esm-cdn": ["@pie-elements-ng/local-esm-cdn@file:../pie-elements-ng/apps/local-esm-cdn", { "dependencies": { "es-module-lexer": "^2.0.0" }, "peerDependencies": { "@sveltejs/kit": "^2.0.0", "vite": "^5.0.0 || ^6.0.0" }, "optionalPeers": ["@sveltejs/kit", "vite"] }],
 
     "@pnpm/network.ca-file/graceful-fs": ["graceful-fs@4.2.10", "", {}, "sha512-9ByhssR2fPVsNZj478qUUbKfmL0+t5BDVyjShtyZZLiK7ZDAArFFfopyOTj0M05wE2tJPisA4iTnnXl2YoPvOA=="],
 
@@ -2053,19 +2049,19 @@
 
     "@microsoft/api-extractor/semver/lru-cache": ["lru-cache@6.0.0", "", { "dependencies": { "yallist": "^4.0.0" } }, "sha512-Jo6dJ04CmSjuznwJSS3pUeWmd/H0ffTlkXXgwZi+eq1UCmqQwCh+eLsYOYCwY991i2Fah4h1BEMCx4qThGbsiA=="],
 
-    "@pie-framework/pie-assessment-player/@types/node/undici-types": ["undici-types@6.21.0", "", {}, "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ=="],
+    "@pie-players/pie-assessment-player/@types/node/undici-types": ["undici-types@6.21.0", "", {}, "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ=="],
 
-    "@pie-framework/pie-author/@types/node/undici-types": ["undici-types@6.21.0", "", {}, "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ=="],
+    "@pie-players/pie-author/@types/node/undici-types": ["undici-types@6.21.0", "", {}, "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ=="],
 
-    "@pie-framework/pie-esm-player/@types/node/undici-types": ["undici-types@6.21.0", "", {}, "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ=="],
+    "@pie-players/pie-esm-player/@types/node/undici-types": ["undici-types@6.21.0", "", {}, "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ=="],
 
-    "@pie-framework/pie-fixed-player/@types/node/undici-types": ["undici-types@6.21.0", "", {}, "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ=="],
+    "@pie-players/pie-fixed-player/@types/node/undici-types": ["undici-types@6.21.0", "", {}, "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ=="],
 
-    "@pie-framework/pie-iife-player/@types/node/undici-types": ["undici-types@6.21.0", "", {}, "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ=="],
+    "@pie-players/pie-iife-player/@types/node/undici-types": ["undici-types@6.21.0", "", {}, "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ=="],
 
-    "@pie-framework/pie-inline-player/@types/node/undici-types": ["undici-types@6.21.0", "", {}, "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ=="],
+    "@pie-players/pie-inline-player/@types/node/undici-types": ["undici-types@6.21.0", "", {}, "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ=="],
 
-    "@pie-framework/pie-players-cli/@types/node/undici-types": ["undici-types@6.21.0", "", {}, "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ=="],
+    "@pie-players/pie-players-cli/@types/node/undici-types": ["undici-types@6.21.0", "", {}, "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ=="],
 
     "@rushstack/node-core-library/fs-extra/jsonfile": ["jsonfile@6.2.0", "", { "dependencies": { "universalify": "^2.0.0" }, "optionalDependencies": { "graceful-fs": "^4.1.6" } }, "sha512-FGuPw30AdOIUTRMC2OMRtQV+jkVj2cfPqSeWXv1NEAJ1qZ5zb1X6z1mFhbfOB/iy3ssJCD+3KuZ8r8C3uVFlAg=="],
 

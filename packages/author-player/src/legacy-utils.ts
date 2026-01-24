@@ -1,5 +1,5 @@
-import { cloneDeep } from "@pie-framework/pie-players-shared/object";
-import { parsePackageName } from "@pie-framework/pie-players-shared/pie/utils";
+import { cloneDeep } from "@pie-players/pie-players-shared/object";
+import { parsePackageName } from "@pie-players/pie-players-shared/pie/utils";
 
 // Legacy: prefix new tag with pp- for pie player and to ensure custom element validity
 export const createTag = (npmPkg: string) =>

@@ -1,7 +1,7 @@
 <script lang="ts">
-	import '@pie-framework/pie-assessment-player';
+	import '@pie-players/pie-assessment-player';
 
-	import type { AssessmentEntity, ItemEntity } from '@pie-framework/pie-players-shared/types';
+	import type { AssessmentEntity, ItemEntity } from '@pie-players/pie-players-shared/types';
 	import { onMount, untrack } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';

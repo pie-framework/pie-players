@@ -1,16 +1,16 @@
 <script lang="ts">
 	import '../../lib/players';
 	import { untrack } from 'svelte';
+	import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
-	import { browser } from '$app/environment';
 	import CodeEditor from '$lib/components/CodeEditor.svelte';
 	import {
 		coerceEsmSource,
 		DEFAULT_REMOTE_ESM_CDN_URL,
+		type EsmSource, 
 		getDefaultLocalEsmCdnUrl,
-		probeLocalEsmCdn,
-		type EsmSource
+		probeLocalEsmCdn
 	} from '$lib/esm-cdn';
 	import { MULTIPLE_CHOICE_BASIC } from '$lib/sample-library/pie-examples';
 

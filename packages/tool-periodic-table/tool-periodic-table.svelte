@@ -12,9 +12,9 @@
 
 <script lang="ts">
 	
-	import type { IToolCoordinator } from '@pie-framework/pie-assessment-toolkit';
-	import { ZIndexLayer } from '@pie-framework/pie-assessment-toolkit';
-	import { createFocusTrap, safeLocalStorageGet, safeLocalStorageSet } from '@pie-framework/pie-players-shared';
+	import type { IToolCoordinator } from '@pie-players/pie-assessment-toolkit';
+	import { ZIndexLayer } from '@pie-players/pie-assessment-toolkit';
+	import { createFocusTrap, safeLocalStorageGet, safeLocalStorageSet } from '@pie-players/pie-players-shared';
 import { onMount } from 'svelte';
 	import periodicTableData from './periodic-table-data.json';
 

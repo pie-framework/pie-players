@@ -58,10 +58,10 @@
 
 <script lang="ts">
 	
-	import type { ConfigEntity, Env, LoaderConfig } from '@pie-framework/pie-players-shared';
-	import { BundleType, createPieLogger, DEFAULT_LOADER_CONFIG, isGlobalDebugEnabled, makeUniqueTags } from '@pie-framework/pie-players-shared';
-	import PieItemPlayer from '@pie-framework/pie-players-shared/components/PieItemPlayer.svelte';
-	import PieSpinner from '@pie-framework/pie-players-shared/components/PieSpinner.svelte';
+	import type { ConfigEntity, Env, LoaderConfig } from '@pie-players/pie-players-shared';
+	import { BundleType, createPieLogger, DEFAULT_LOADER_CONFIG, isGlobalDebugEnabled, makeUniqueTags } from '@pie-players/pie-players-shared';
+	import PieItemPlayer from '@pie-players/pie-players-shared/components/PieItemPlayer.svelte';
+	import PieSpinner from '@pie-players/pie-players-shared/components/PieSpinner.svelte';
 import { tick } from 'svelte';
 
 	// Import global component styles 

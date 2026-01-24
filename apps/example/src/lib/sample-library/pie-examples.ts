@@ -1,7 +1,7 @@
 import type {
 	ItemEntity,
 	PassageEntity,
-} from "@pie-framework/pie-players-shared";
+} from "@pie-players/pie-players-shared";
 
 export interface PieExample {
 	id: string;

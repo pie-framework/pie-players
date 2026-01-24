@@ -17,7 +17,7 @@ export interface BuildStaticConfig {
 }
 
 const DEFAULT_PITS_BASE_URL = "https://proxy.pie-api.com";
-const STATIC_PACKAGE_NAME = "@pie-framework/pie-fixed-player-static";
+const STATIC_PACKAGE_NAME = "@pie-players/pie-fixed-player-static";
 
 export function generateHash(elements: string[]): string {
 	const sorted = [...elements].sort();
@@ -262,7 +262,7 @@ export {};
 }
 
 function generateTypes(): string {
-	return `declare module '@pie-framework/pie-fixed-player-static' {
+	return `declare module '@pie-players/pie-fixed-player-static' {
   export {};
   global {
     interface HTMLElementTagNameMap {
@@ -410,7 +410,7 @@ export async function buildFixedPlayerStaticPackage(
 	await writeFile(join(outputDir, "dist", "index.d.ts"), generateTypes());
 	await writeFile(
 		join(outputDir, "README.md"),
-		`# @pie-framework/pie-fixed-player-static\n\nVersion: ${version}\n\nHash: ${hash}\n`,
+		`# @pie-players/pie-fixed-player-static\n\nVersion: ${version}\n\nHash: ${hash}\n`,
 	);
 
 	return { outputDir, version };

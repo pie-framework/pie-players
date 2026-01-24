@@ -6,7 +6,7 @@
         fetchItemData,
         type ItemData,
         initializePiePlayer,loadPieModule, 
-        type PiePlayerConfig} from '@pie-framework/pie-players-shared';
+        type PiePlayerConfig} from '@pie-players/pie-players-shared';
 import { onMount } from 'svelte';
 
     export let itemId: string;

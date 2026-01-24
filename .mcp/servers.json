@@ -1,41 +1,41 @@
 {
-  "$schema": "https://modelcontextprotocol.io/schema/servers.json",
-  "mcpServers": {
-    "browser-automation": {
-      "command": "npx",
-      "args": ["-y", "@playwright/mcp"],
-      "env": {
-        "PLAYWRIGHT_CONFIG": "./apps/example/playwright.config.ts",
-        "BASE_URL": "http://127.0.0.1:5200"
-      }
-    },
-    "npm-registry": {
-      "command": "bun",
-      "args": ["run", "@modelcontextprotocol/server-npm"],
-      "env": {
-        "NPM_REGISTRY": "https://registry.npmjs.org",
-        "WORKSPACE_ROOT": "/Users/eelco.hillenius/dev/prj/pie/pie-players"
-      }
-    },
-    "filesystem": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-filesystem",
-        "/Users/eelco.hillenius/dev/prj/pie/pie-players"
-      ],
-      "env": {
-        "ALLOWED_DIRECTORIES": "/Users/eelco.hillenius/dev/prj/pie/pie-players"
-      }
-    },
-    "memory": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-memory"],
-      "env": {
-        "MEMORY_STORAGE": "sqlite",
-        "MEMORY_DB_PATH": ".mcp/memory.db",
-        "MEMORY_EMBEDDING_MODEL": "text-embedding-3-small"
-      }
-    }
-  }
+	"$schema": "https://modelcontextprotocol.io/schema/servers.json",
+	"mcpServers": {
+		"browser-automation": {
+			"command": "npx",
+			"args": ["-y", "@playwright/mcp"],
+			"env": {
+				"PLAYWRIGHT_CONFIG": "./apps/example/playwright.config.ts",
+				"BASE_URL": "http://127.0.0.1:5200"
+			}
+		},
+		"npm-registry": {
+			"command": "bun",
+			"args": ["run", "@modelcontextprotocol/server-npm"],
+			"env": {
+				"NPM_REGISTRY": "https://registry.npmjs.org",
+				"WORKSPACE_ROOT": "/Users/eelco.hillenius/dev/prj/pie/pie-players"
+			}
+		},
+		"filesystem": {
+			"command": "npx",
+			"args": [
+				"-y",
+				"@modelcontextprotocol/server-filesystem",
+				"/Users/eelco.hillenius/dev/prj/pie/pie-players"
+			],
+			"env": {
+				"ALLOWED_DIRECTORIES": "/Users/eelco.hillenius/dev/prj/pie/pie-players"
+			}
+		},
+		"memory": {
+			"command": "npx",
+			"args": ["-y", "@modelcontextprotocol/server-memory"],
+			"env": {
+				"MEMORY_STORAGE": "sqlite",
+				"MEMORY_DB_PATH": ".mcp/memory.db",
+				"MEMORY_EMBEDDING_MODEL": "text-embedding-3-small"
+			}
+		}
+	}
 }

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { AssessmentSection, QuestionEntity } from '@pie-framework/pie-players-shared';
+	import type { AssessmentSection, QuestionEntity } from '@pie-players/pie-players-shared';
 
 	let {
 		sections = [] as AssessmentSection[],

@@ -2,9 +2,9 @@
 //
 // IMPORTANT: these custom elements extend HTMLElement and must not be imported during SSR.
 if (typeof window !== "undefined") {
-	void import("@pie-framework/pie-inline-player");
-	void import("@pie-framework/pie-fixed-player");
-	void import("@pie-framework/pie-iife-player");
-	void import("@pie-framework/pie-esm-player");
-	void import("@pie-framework/pie-author");
+	void import("@pie-players/pie-inline-player");
+	void import("@pie-players/pie-fixed-player");
+	void import("@pie-players/pie-iife-player");
+	void import("@pie-players/pie-esm-player");
+	void import("@pie-players/pie-author");
 }

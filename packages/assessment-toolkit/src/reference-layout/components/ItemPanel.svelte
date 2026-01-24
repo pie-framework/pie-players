@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { ItemConfig, ItemEntity } from '@pie-framework/pie-players-shared';
+	import type { ItemConfig, ItemEntity } from '@pie-players/pie-players-shared';
 	import type { ToolCoordinator } from '../../services/ToolCoordinator';
 	import '$lib/tags/pie-iife-player/PieIifePlayer.svelte';
 	import PiePlayerStyles from '$lib/components/PiePlayerStyles.svelte';

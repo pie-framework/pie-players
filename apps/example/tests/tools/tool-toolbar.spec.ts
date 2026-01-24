@@ -1,8 +1,11 @@
-import { test, expect } from "@playwright/test";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { expect, test } from "@playwright/test";
 
-const FIXTURE_PATH = path.resolve(process.cwd(), "tests/tools/fixtures/tool-toolbar.html");
+const FIXTURE_PATH = path.resolve(
+	process.cwd(),
+	"tests/tools/fixtures/tool-toolbar.html",
+);
 const FIXTURE_URL = pathToFileURL(FIXTURE_PATH).toString();
 
 type ToolId =
@@ -21,23 +24,28 @@ const EXPECTED_TOOLS: Array<{
 }> = [
 	{ id: "calculator", label: "Calculator", tag: "pie-tool-calculator" },
 	{ id: "graph", label: "Graph", tag: "pie-tool-graph" },
-	{ id: "periodicTable", label: "Periodic Table", tag: "pie-tool-periodic-table" },
+	{
+		id: "periodicTable",
+		label: "Periodic Table",
+		tag: "pie-tool-periodic-table",
+	},
 	{ id: "protractor", label: "Protractor", tag: "pie-tool-protractor" },
 	{ id: "lineReader", label: "Line Reader", tag: "pie-tool-line-reader" },
 	{ id: "magnifier", label: "Magnifier", tag: "pie-tool-magnifier" },
 	{ id: "ruler", label: "Ruler", tag: "pie-tool-ruler" },
 ];
 
-test("tool toolbar renders buttons and toggles tools visible", async ({ page }) => {
+test("tool toolbar renders buttons and toggles tools visible", async ({
+	page,
+}) => {
 	// Load a file:// fixture that imports the ESM bundle (avoids CORS restrictions from about:blank).
 	await page.goto(FIXTURE_URL);
 
 	// Ensure the toolbar custom element is registered.
 	await expect
-		.poll(
-			() => page.evaluate(() => !!customElements.get("pie-tool-toolbar")),
-			{ timeout: 15_000 },
-		)
+		.poll(() => page.evaluate(() => !!customElements.get("pie-tool-toolbar")), {
+			timeout: 15_000,
+		})
 		.toBeTruthy();
 
 	// Minimal coordinator that satisfies the APIs used by the toolbar + tools.
@@ -47,54 +55,59 @@ test("tool toolbar renders buttons and toggles tools visible", async ({ page }) 
 			#listeners = new Set();
 			#z = 1000;
 
-			subscribe(listener) {
+			subscribe(listener: () => void) {
 				this.#listeners.add(listener);
 				return () => this.#listeners.delete(listener);
 			}
 
 			#notify() {
-				for (const l of this.#listeners) l();
+				for (const l of this.#listeners) (l as () => void)();
 			}
 
-			registerTool(id, name, element) {
+			registerTool(id: string, name: string, element: HTMLElement | null) {
 				if (this.#tools.has(id)) return;
-				this.#tools.set(id, { id, name, element: element ?? null, isVisible: false });
+				this.#tools.set(id, {
+					id,
+					name,
+					element: element ?? null,
+					isVisible: false,
+				});
 			}
 
-			unregisterTool(id) {
+			unregisterTool(id: string) {
 				this.#tools.delete(id);
 			}
 
-			updateToolElement(id, element) {
+			updateToolElement(id: string, element: HTMLElement) {
 				const t = this.#tools.get(id);
 				if (!t) return;
 				t.element = element;
 			}
 
-			bringToFront(element) {
+			bringToFront(element: HTMLElement) {
 				if (!element) return;
 				element.style.zIndex = String(++this.#z);
 			}
 
-			isToolVisible(id) {
+			isToolVisible(id: string) {
 				return this.#tools.get(id)?.isVisible ?? false;
 			}
 
-			showTool(id) {
+			showTool(id: string) {
 				const t = this.#tools.get(id);
 				if (!t) return;
 				t.isVisible = true;
 				this.#notify();
 			}
 
-			hideTool(id) {
+			hideTool(id: string) {
 				const t = this.#tools.get(id);
 				if (!t) return;
 				t.isVisible = false;
 				this.#notify();
 			}
 
-			toggleTool(id) {
+			toggleTool(id: string) {
 				const t = this.#tools.get(id);
 				if (!t) return;
 				t.isVisible = !t.isVisible;
@@ -105,7 +118,7 @@ test("tool toolbar renders buttons and toggles tools visible", async ({ page }) 
 		const root = document.getElementById("root");
 		if (!root) throw new Error("root missing");
 
-		const toolbar = document.createElement("pie-tool-toolbar");
+		const toolbar = document.createElement("pie-tool-toolbar") as any;
 		toolbar.setAttribute(
 			"tools",
 			"calculator,graph,periodicTable,protractor,lineReader,magnifier,ruler",
@@ -124,7 +137,9 @@ test("tool toolbar renders buttons and toggles tools visible", async ({ page }) 
 
 	// Buttons should render (icons only; labels are aria-label).
 	for (const tool of EXPECTED_TOOLS) {
-		await expect(toolbar.locator(`button[aria-label="${tool.label}"]`)).toBeVisible();
+		await expect(
+			toolbar.locator(`button[aria-label="${tool.label}"]`),
+		).toBeVisible();
 	}
 
 	// Clicking each tool button should toggle it visible and mount its custom element.
@@ -140,11 +155,10 @@ test("tool toolbar renders buttons and toggles tools visible", async ({ page }) 
 		await expect
 			.poll(() =>
 				page.evaluate((tag) => {
-					const el = document.querySelector(`pie-tool-toolbar ${tag}`);
-					return !!el && (el).visible === true;
+					const el = document.querySelector(`pie-tool-toolbar ${tag}`) as any;
+					return !!el && el.visible === true;
 				}, tool.tag),
 			)
 			.toBeTruthy();
 	}
 });
-

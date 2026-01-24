@@ -1,9 +1,9 @@
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { sveltekit } from "@sveltejs/kit/vite";
 import tailwindcss from "@tailwindcss/vite";
 import { createLogger, defineConfig } from "vite";
-import path from "node:path";
-import fs from "node:fs";
-import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -45,22 +45,22 @@ async function createLocalEsmCdnPlugin() {
 }
 
 const PIE_WORKSPACE_PACKAGES = [
-	"@pie-framework/pie-assessment-player",
-	"@pie-framework/pie-assessment-toolkit",
-	"@pie-framework/pie-iife-player",
-	"@pie-framework/pie-players-shared",
-	"@pie-framework/pie-tool-toolbar",
-	"@pie-framework/pie-tool-answer-eliminator",
-	"@pie-framework/pie-tool-calculator",
-	"@pie-framework/pie-tool-color-scheme",
-	"@pie-framework/pie-tool-graph",
-	"@pie-framework/pie-tool-line-reader",
-	"@pie-framework/pie-tool-magnifier",
-	"@pie-framework/pie-tool-periodic-table",
-	"@pie-framework/pie-tool-protractor",
-	"@pie-framework/pie-tool-ruler",
-	"@pie-framework/pie-tool-annotation-toolbar",
-	"@pie-framework/pie-tool-text-to-speech",
+	"@pie-players/pie-assessment-player",
+	"@pie-players/pie-assessment-toolkit",
+	"@pie-players/pie-iife-player",
+	"@pie-players/pie-players-shared",
+	"@pie-players/pie-tool-toolbar",
+	"@pie-players/pie-tool-answer-eliminator",
+	"@pie-players/pie-tool-calculator",
+	"@pie-players/pie-tool-color-scheme",
+	"@pie-players/pie-tool-graph",
+	"@pie-players/pie-tool-line-reader",
+	"@pie-players/pie-tool-magnifier",
+	"@pie-players/pie-tool-periodic-table",
+	"@pie-players/pie-tool-protractor",
+	"@pie-players/pie-tool-ruler",
+	"@pie-players/pie-tool-annotation-toolbar",
+	"@pie-players/pie-tool-text-to-speech",
 ];
 
 const logger = createLogger("info", { allowClearScreen: false });
@@ -72,10 +72,10 @@ logger.warn = (msg, options) => {
 	originalWarn(msg, options);
 };
 
-export default defineConfig(async () => {
+export default (async () => {
 	const localEsmCdn = await createLocalEsmCdnPlugin();
 
-	return {
+	return defineConfig({
 		// Keep build output clean; the example app vendors large prebuilt packages
 		// that emit known eval warnings.
 		logLevel: "error",
@@ -113,5 +113,5 @@ export default defineConfig(async () => {
 			// The example app bundles large player packages; keep output clean.
 			chunkSizeWarningLimit: 6000,
 		},
-	};
-});
+	});
+})();

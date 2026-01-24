@@ -1,18 +1,18 @@
 <script lang="ts">
-	import { onDestroy, onMount } from 'svelte';
-	import { page } from '$app/stores';
-	import { goto } from '$app/navigation';
-	import { untrack } from 'svelte';
+	
 	import {
+		type AssessmentToolkitEvents,
 		BrowserTTSProvider,
 		HighlightCoordinator,
 		ThemeProvider,
 		ToolCoordinator,
 		TTSService,
 		TypedEventBus,
-		type AssessmentToolkitEvents,
-	} from '@pie-framework/pie-assessment-toolkit';
-	import { responseDiscovery } from '@pie-framework/pie-assessment-toolkit/tools/client';
+	} from '@pie-players/pie-assessment-toolkit';
+	import { responseDiscovery } from '@pie-players/pie-assessment-toolkit/tools/client';
+import { onDestroy, onMount, untrack } from 'svelte';
+	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 
 	type LogEntry = { ts: number; type: string; detail: any };
 
@@ -290,7 +290,7 @@
 	<div class="prose max-w-none">
 		<h1>Eval harness: assessment-toolkit</h1>
 		<p>
-			This page is a deterministic harness for validating <code>@pie-framework/pie-assessment-toolkit</code>
+			This page is a deterministic harness for validating <code>@pie-players/pie-assessment-toolkit</code>
 			intent and contracts (including accessibility intent). It is local-only and not part of static
 			prerender output.
 		</p>

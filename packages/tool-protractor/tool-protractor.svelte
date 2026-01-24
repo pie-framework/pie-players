@@ -11,8 +11,8 @@
 />
 
 <script lang="ts">
-	import type { IToolCoordinator } from '@pie-framework/pie-assessment-toolkit';
-	import { ZIndexLayer } from '@pie-framework/pie-assessment-toolkit';
+	import type { IToolCoordinator } from '@pie-players/pie-assessment-toolkit';
+	import { ZIndexLayer } from '@pie-players/pie-assessment-toolkit';
 	import Moveable from 'moveable';
 	import { onMount } from 'svelte';
 	import protractorSvg from './protractor.svg';

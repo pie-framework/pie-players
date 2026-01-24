@@ -1,7 +1,7 @@
-import { IifePieLoader } from "@pie-framework/pie-players-shared/pie/iife-loader";
-import { pieRegistry } from "@pie-framework/pie-players-shared/pie/registry";
-import { BundleType } from "@pie-framework/pie-players-shared/pie/types";
-import { parsePackageName } from "@pie-framework/pie-players-shared/pie/utils";
+import { IifePieLoader } from "@pie-players/pie-players-shared/pie/iife-loader";
+import { pieRegistry } from "@pie-players/pie-players-shared/pie/registry";
+import { BundleType } from "@pie-players/pie-players-shared/pie/types";
+import { parsePackageName } from "@pie-players/pie-players-shared/pie/utils";
 import { pieContentFromConfig } from "./legacy-utils";
 import PieAuthor from "./PieAuthor.svelte";
 import {

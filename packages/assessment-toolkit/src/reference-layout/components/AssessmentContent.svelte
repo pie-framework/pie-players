@@ -1,11 +1,11 @@
 <script lang="ts">
 	
-	import type { ItemConfig, ItemEntity, PassageEntity, RubricBlock } from '@pie-framework/pie-players-shared/types';
+	import type { ItemConfig, ItemEntity, PassageEntity, RubricBlock } from '@pie-players/pie-players-shared/types';
 	import { onDestroy, onMount } from 'svelte';
 	import type { AssessmentPlayer } from '../../player/AssessmentPlayer';
 	import ItemPanel from './ItemPanel.svelte';
-	import PassagePanel from './PassagePanel.svelte';
 	import NotesPanel from './NotesPanel.svelte';
+	import PassagePanel from './PassagePanel.svelte';
 
 	let {
 		player,

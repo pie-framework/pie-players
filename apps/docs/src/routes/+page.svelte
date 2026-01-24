@@ -109,12 +109,12 @@
 				<div class="card-body">
 					<h2 class="card-title">Packages</h2>
 					<ul class="mt-2 space-y-1 opacity-80">
-						<li><code>@pie-framework/pie-inline-player</code></li>
-						<li><code>@pie-framework/pie-fixed-player</code></li>
-						<li><code>@pie-framework/pie-iife-player</code></li>
-						<li><code>@pie-framework/pie-esm-player</code></li>
-						<li><code>@pie-framework/pie-players-shared</code></li>
-						<li><code>@pie-framework/pie-assessment-toolkit</code></li>
+						<li><code>@pie-players/pie-inline-player</code></li>
+						<li><code>@pie-players/pie-fixed-player</code></li>
+						<li><code>@pie-players/pie-iife-player</code></li>
+						<li><code>@pie-players/pie-esm-player</code></li>
+						<li><code>@pie-players/pie-players-shared</code></li>
+						<li><code>@pie-players/pie-assessment-toolkit</code></li>
 					</ul>
 					<div class="card-actions justify-end mt-4">
 						<a class="btn btn-sm btn-outline" href="https://github.com/pie-framework/pie-players/tree/main/packages" target="_blank" rel="noreferrer">

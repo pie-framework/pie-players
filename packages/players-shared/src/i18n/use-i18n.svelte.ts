@@ -7,7 +7,7 @@
  * Usage in a Svelte 5 component:
  * ```svelte
  * <script lang="ts">
- *   import { useI18n } from '@pie-framework/pie-players-shared/i18n';
+ *   import { useI18n } from '@pie-players/pie-players-shared/i18n';
  *
  *   let { player } = $props();
  *   const i18n = useI18n(() => player.getI18nService());

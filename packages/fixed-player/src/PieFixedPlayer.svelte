@@ -63,10 +63,10 @@
 
 <script lang="ts">
 
-	import type { ConfigEntity, Env, InstrumentationProvider, LoaderConfig } from '@pie-framework/pie-players-shared';
-	import { BundleType, createPieLogger, DEFAULT_LOADER_CONFIG, isGlobalDebugEnabled, makeUniqueTags, NewRelicInstrumentationProvider } from '@pie-framework/pie-players-shared';
-	import PieItemPlayer from '@pie-framework/pie-players-shared/components/PieItemPlayer.svelte';
-	import PieSpinner from '@pie-framework/pie-players-shared/components/PieSpinner.svelte';
+	import type { ConfigEntity, Env, InstrumentationProvider, LoaderConfig } from '@pie-players/pie-players-shared';
+	import { BundleType, createPieLogger, DEFAULT_LOADER_CONFIG, isGlobalDebugEnabled, makeUniqueTags, NewRelicInstrumentationProvider } from '@pie-players/pie-players-shared';
+	import PieItemPlayer from '@pie-players/pie-players-shared/components/PieItemPlayer.svelte';
+	import PieSpinner from '@pie-players/pie-players-shared/components/PieSpinner.svelte';
 	import { tick } from 'svelte';
 	// Import global component styles
 	import './components.css';

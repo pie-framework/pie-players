@@ -1,63 +1,63 @@
 {
-  "name": "@pie-framework/pie-tool-periodic-table",
-  "version": "0.1.0",
-  "type": "module",
-  "description": "Interactive periodic table reference tool for PIE assessment player",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/pie-framework/pie-players.git"
-  },
-  "publishConfig": {
-    "access": "public"
-  },
-  "keywords": [
-    "pie",
-    "assessment",
-    "tool",
-    "periodic-table",
-    "chemistry",
-    "reference"
-  ],
-  "svelte": "./tool-periodic-table.svelte",
-  "main": "./dist/tool-periodic-table.js",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/tool-periodic-table.js",
-      "svelte": "./tool-periodic-table.svelte"
-    }
-  },
-  "files": [
-    "dist",
-    "tool-periodic-table.svelte",
-    "index.ts",
-    "elements-data.ts",
-    "periodic-table-data.json",
-    "package.json"
-  ],
-  "peerDependencies": {
-    "svelte": "^5.0.0"
-  },
-  "license": "MIT",
-  "unpkg": "./dist/tool-periodic-table.js",
-  "jsdelivr": "./dist/tool-periodic-table.js",
-  "dependencies": {
-    "@pie-framework/pie-assessment-toolkit": "workspace:*",
-    "@pie-framework/pie-players-shared": "workspace:*"
-  },
-  "types": "./dist/index.d.ts",
-  "scripts": {
-    "build": "vite build",
-    "dev": "vite build --watch",
-    "typecheck": "tsc --noEmit",
-    "lint": "biome check ."
-  },
-  "devDependencies": {
-    "@biomejs/biome": "^2.3.10",
-    "@sveltejs/vite-plugin-svelte": "^6.1.4",
-    "svelte": "^5.16.1",
-    "typescript": "^5.7.0",
-    "vite": "^7.0.8",
-    "vite-plugin-dts": "^4.5.3"
-  }
+	"name": "@pie-players/pie-tool-periodic-table",
+	"version": "0.1.0",
+	"type": "module",
+	"description": "Interactive periodic table reference tool for PIE assessment player",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pie-framework/pie-players.git"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"keywords": [
+		"pie",
+		"assessment",
+		"tool",
+		"periodic-table",
+		"chemistry",
+		"reference"
+	],
+	"svelte": "./tool-periodic-table.svelte",
+	"main": "./dist/tool-periodic-table.js",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/tool-periodic-table.js",
+			"svelte": "./tool-periodic-table.svelte"
+		}
+	},
+	"files": [
+		"dist",
+		"tool-periodic-table.svelte",
+		"index.ts",
+		"elements-data.ts",
+		"periodic-table-data.json",
+		"package.json"
+	],
+	"peerDependencies": {
+		"svelte": "^5.0.0"
+	},
+	"license": "MIT",
+	"unpkg": "./dist/tool-periodic-table.js",
+	"jsdelivr": "./dist/tool-periodic-table.js",
+	"dependencies": {
+		"@pie-players/pie-assessment-toolkit": "workspace:*",
+		"@pie-players/pie-players-shared": "workspace:*"
+	},
+	"types": "./dist/index.d.ts",
+	"scripts": {
+		"build": "vite build",
+		"dev": "vite build --watch",
+		"typecheck": "tsc --noEmit",
+		"lint": "biome check ."
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.3.10",
+		"@sveltejs/vite-plugin-svelte": "^6.1.4",
+		"svelte": "^5.16.1",
+		"typescript": "^5.7.0",
+		"vite": "^7.0.8",
+		"vite-plugin-dts": "^4.5.3"
+	}
 }

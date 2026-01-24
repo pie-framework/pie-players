@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { PassageEntity, RubricBlock } from '@pie-framework/pie-players-shared/types';
+	import type { PassageEntity, RubricBlock } from '@pie-players/pie-players-shared/types';
 	import '$lib/tags/pie-iife-player/PieIifePlayer.svelte';
 	import PiePlayerStyles from '$lib/components/PiePlayerStyles.svelte';
 

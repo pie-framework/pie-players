@@ -12,8 +12,8 @@
 
 <script lang="ts">
 	
-	import type { IToolCoordinator, ITTSService } from '@pie-framework/pie-assessment-toolkit';
-	import { BrowserTTSProvider, TTSService, ZIndexLayer } from '@pie-framework/pie-assessment-toolkit';
+	import type { IToolCoordinator, ITTSService } from '@pie-players/pie-assessment-toolkit';
+	import { BrowserTTSProvider, TTSService, ZIndexLayer } from '@pie-players/pie-assessment-toolkit';
 import { onDestroy, onMount } from 'svelte';
 
 	// Props

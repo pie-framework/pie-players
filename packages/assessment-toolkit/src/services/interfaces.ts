@@ -8,7 +8,7 @@
  * Part of PIE Assessment Toolkit.
  */
 
-import type { II18nService } from "@pie-framework/pie-players-shared/i18n";
+import type { II18nService } from "@pie-players/pie-players-shared/i18n";
 import type { HighlightColor, HighlightType } from "./HighlightCoordinator";
 import type { FontSize, ThemeConfig } from "./ThemeProvider";
 import type { ZIndexLayer } from "./ToolCoordinator";
@@ -227,4 +227,4 @@ export interface ITTSService {
 	setHighlightCoordinator(coordinator: IHighlightCoordinator): void;
 }
 
-// II18nService is re-exported from @pie-framework/pie-players-shared/i18n
+// II18nService is re-exported from @pie-players/pie-players-shared/i18n

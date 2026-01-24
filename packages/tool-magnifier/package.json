@@ -1,64 +1,64 @@
 {
-  "name": "@pie-framework/pie-tool-magnifier",
-  "version": "0.1.0",
-  "type": "module",
-  "description": "PIE magnification tool for accessibility - magnifies content on screen",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/pie-framework/pie-players.git"
-  },
-  "publishConfig": {
-    "access": "public"
-  },
-  "keywords": [
-    "pie",
-    "assessment",
-    "tool",
-    "magnifier",
-    "magnification",
-    "accessibility",
-    "zoom"
-  ],
-  "svelte": "./tool-magnifier.svelte",
-  "main": "./dist/tool-magnifier.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/tool-magnifier.js",
-      "svelte": "./tool-magnifier.svelte"
-    }
-  },
-  "files": [
-    "dist",
-    "tool-magnifier.svelte",
-    "index.ts",
-    "Magnifier.svelte",
-    "package.json",
-    "README.md"
-  ],
-  "peerDependencies": {
-    "svelte": "^5.0.0"
-  },
-  "license": "MIT",
-  "unpkg": "./dist/tool-magnifier.js",
-  "jsdelivr": "./dist/tool-magnifier.js",
-  "dependencies": {
-    "@pie-framework/pie-assessment-toolkit": "workspace:*",
-    "@pie-framework/pie-players-shared": "workspace:*"
-  },
-  "scripts": {
-    "build": "vite build",
-    "dev": "vite build --watch",
-    "typecheck": "tsc --noEmit",
-    "lint": "biome check ."
-  },
-  "devDependencies": {
-    "@biomejs/biome": "^2.3.10",
-    "@sveltejs/vite-plugin-svelte": "^6.1.4",
-    "svelte": "^5.16.1",
-    "typescript": "^5.7.0",
-    "vite": "^7.0.8",
-    "vite-plugin-dts": "^4.5.3"
-  }
+	"name": "@pie-players/pie-tool-magnifier",
+	"version": "0.1.0",
+	"type": "module",
+	"description": "PIE magnification tool for accessibility - magnifies content on screen",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pie-framework/pie-players.git"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"keywords": [
+		"pie",
+		"assessment",
+		"tool",
+		"magnifier",
+		"magnification",
+		"accessibility",
+		"zoom"
+	],
+	"svelte": "./tool-magnifier.svelte",
+	"main": "./dist/tool-magnifier.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/tool-magnifier.js",
+			"svelte": "./tool-magnifier.svelte"
+		}
+	},
+	"files": [
+		"dist",
+		"tool-magnifier.svelte",
+		"index.ts",
+		"Magnifier.svelte",
+		"package.json",
+		"README.md"
+	],
+	"peerDependencies": {
+		"svelte": "^5.0.0"
+	},
+	"license": "MIT",
+	"unpkg": "./dist/tool-magnifier.js",
+	"jsdelivr": "./dist/tool-magnifier.js",
+	"dependencies": {
+		"@pie-players/pie-assessment-toolkit": "workspace:*",
+		"@pie-players/pie-players-shared": "workspace:*"
+	},
+	"scripts": {
+		"build": "vite build",
+		"dev": "vite build --watch",
+		"typecheck": "tsc --noEmit",
+		"lint": "biome check ."
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.3.10",
+		"@sveltejs/vite-plugin-svelte": "^6.1.4",
+		"svelte": "^5.16.1",
+		"typescript": "^5.7.0",
+		"vite": "^7.0.8",
+		"vite-plugin-dts": "^4.5.3"
+	}
 }

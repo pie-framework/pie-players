@@ -4,7 +4,7 @@ import type {
 	AssessmentSection,
 	QuestionEntity,
 	SectionQuestionRef,
-} from "@pie-framework/pie-players-shared";
+} from "@pie-players/pie-players-shared";
 import { TypedEventBus } from "../core/TypedEventBus";
 
 /**

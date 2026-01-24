@@ -93,7 +93,7 @@ export async function ensurePiePlayerLoaded(): Promise<void> {
 	if (customElements.get("pie-player")) return;
 
 	const url =
-		"https://cdn.jsdelivr.net/npm/@pie-framework/pie-player-components@latest/dist/pie-player-components/pie-player-components.esm.js";
+		"https://cdn.jsdelivr.net/npm/@pie-players/pie-player-components@latest/dist/pie-player-components/pie-player-components.esm.js";
 
 	await new Promise<void>((resolve, reject) => {
 		const existing = document.querySelector(

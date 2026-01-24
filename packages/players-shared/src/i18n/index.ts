@@ -3,7 +3,7 @@
  *
  * Internationalization system for PIE Players.
  *
- * @module @pie-framework/pie-players-shared/i18n
+ * @module @pie-players/pie-players-shared/i18n
  */
 
 export {

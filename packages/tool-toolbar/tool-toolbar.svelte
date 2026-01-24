@@ -33,23 +33,23 @@
 -->
 <script lang="ts">
 	
-	import type { HighlightCoordinator, ToolCoordinator } from '@pie-framework/pie-assessment-toolkit';
-	import { ZIndexLayer } from '@pie-framework/pie-assessment-toolkit';
+	import type { HighlightCoordinator, ToolCoordinator } from '@pie-players/pie-assessment-toolkit';
+	import { ZIndexLayer } from '@pie-players/pie-assessment-toolkit';
 import { onMount } from 'svelte';
 
 	const browser = typeof window !== 'undefined';
 	const log = (..._args: any[]) => {};
 
 	// Tool packages define custom elements (side-effect imports).
-	import '@pie-framework/pie-tool-answer-eliminator';
-	import '@pie-framework/pie-tool-calculator';
-	import '@pie-framework/pie-tool-color-scheme';
-	import '@pie-framework/pie-tool-graph';
-	import '@pie-framework/pie-tool-line-reader';
-	import '@pie-framework/pie-tool-magnifier';
-	import '@pie-framework/pie-tool-periodic-table';
-	import '@pie-framework/pie-tool-protractor';
-	import '@pie-framework/pie-tool-ruler';
+	import '@pie-players/pie-tool-answer-eliminator';
+	import '@pie-players/pie-tool-calculator';
+	import '@pie-players/pie-tool-color-scheme';
+	import '@pie-players/pie-tool-graph';
+	import '@pie-players/pie-tool-line-reader';
+	import '@pie-players/pie-tool-magnifier';
+	import '@pie-players/pie-tool-periodic-table';
+	import '@pie-players/pie-tool-protractor';
+	import '@pie-players/pie-tool-ruler';
 
 	// Props - using Svelte 5 $props() syntax
 	let {

@@ -12,10 +12,10 @@
 
 <script lang="ts">
 	
-	import type { IToolCoordinator } from '@pie-framework/pie-assessment-toolkit';
-	import { ZIndexLayer } from '@pie-framework/pie-assessment-toolkit';
-	import ToolSettingsButton from '@pie-framework/pie-players-shared/components/ToolSettingsButton.svelte';
-	import ToolSettingsPanel from '@pie-framework/pie-players-shared/components/ToolSettingsPanel.svelte';
+	import type { IToolCoordinator } from '@pie-players/pie-assessment-toolkit';
+	import { ZIndexLayer } from '@pie-players/pie-assessment-toolkit';
+	import ToolSettingsButton from '@pie-players/pie-players-shared/components/ToolSettingsButton.svelte';
+	import ToolSettingsPanel from '@pie-players/pie-players-shared/components/ToolSettingsPanel.svelte';
 import { onDestroy, onMount } from 'svelte';
 
 	// Props

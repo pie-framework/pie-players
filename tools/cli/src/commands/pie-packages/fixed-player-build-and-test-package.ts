@@ -116,7 +116,7 @@ export default class FixedPlayerBuildAndTestPackage extends Command {
 			overwriteBundle: flags.overwriteBundle,
 		});
 
-		this.log(`\n✅ Built: @pie-framework/pie-fixed-player-static@${version}`);
+		this.log(`\n✅ Built: @pie-players/pie-fixed-player-static@${version}`);
 		this.log(`   Output: ${outputDir}\n`);
 
 		if (flags.publish) {

@@ -33,10 +33,7 @@ export const BUNDLED_TRANSLATIONS: Record<string, TranslationBundle> = {
 	},
 };
 
-const LOCALE_IMPORTS: Record<
-	string,
-	() => Promise<[any, any, any]>
-> = {
+const LOCALE_IMPORTS: Record<string, () => Promise<[any, any, any]>> = {
 	es: () =>
 		Promise.all([
 			import("./translations/es/common.json"),

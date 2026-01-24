@@ -60,7 +60,7 @@ export async function generateFixedStaticTestProject(
 	if (opts.publishedVersion) {
 		const v =
 			opts.publishedVersion === "latest" ? "latest" : opts.publishedVersion;
-		importUrlOrPath = `https://cdn.jsdelivr.net/npm/@pie-framework/pie-fixed-player-static@${v}/dist/index.js`;
+		importUrlOrPath = `https://cdn.jsdelivr.net/npm/@pie-players/pie-fixed-player-static@${v}/dist/index.js`;
 	} else {
 		const pkgDir = opts.packagePath
 			? resolve(expandHome(opts.packagePath))
@@ -107,7 +107,7 @@ export async function generateFixedStaticTestProject(
 
 	const readme = `# PIE fixed-player-static test project
 
-This project loads a built \`@pie-framework/pie-fixed-player-static\` bundle and renders a \`<pie-fixed-player>\` element.
+This project loads a built \`@pie-players/pie-fixed-player-static\` bundle and renders a \`<pie-fixed-player>\` element.
 
 ## Run
 

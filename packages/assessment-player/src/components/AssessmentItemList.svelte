@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { QuestionEntity } from '@pie-framework/pie-players-shared';
+	import type { QuestionEntity } from '@pie-players/pie-players-shared';
 
 	let {
 		questions = [] as QuestionEntity[],

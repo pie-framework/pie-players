@@ -7,5 +7,5 @@
 	"access": "public",
 	"baseBranch": "master",
 	"updateInternalDependencies": "patch",
-	"ignore": ["@pie-framework/pie-players-example"]
+	"ignore": ["@pie-players/pie-players-example"]
 }

@@ -1,4 +1,4 @@
-import type { ItemEntity } from "@pie-framework/pie-players-shared";
+import type { ItemEntity } from "@pie-players/pie-players-shared";
 
 export type LoadItemOptions = {
 	organizationId?: string | null;

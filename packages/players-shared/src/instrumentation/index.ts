@@ -6,7 +6,7 @@
  *
  * @example Using New Relic (default)
  * ```typescript
- * import { NewRelicInstrumentationProvider } from '@pie-framework/pie-players-shared';
+ * import { NewRelicInstrumentationProvider } from '@pie-players/pie-players-shared';
  *
  * const provider = new NewRelicInstrumentationProvider();
  * await provider.initialize();
@@ -19,7 +19,7 @@
  *
  * @example Using DataDog
  * ```typescript
- * import { DataDogInstrumentationProvider } from '@pie-framework/pie-players-shared';
+ * import { DataDogInstrumentationProvider } from '@pie-players/pie-players-shared';
  *
  * const provider = new DataDogInstrumentationProvider();
  * await provider.initialize({
@@ -37,7 +37,7 @@
  *
  * @example Using console logger for development
  * ```typescript
- * import { ConsoleInstrumentationProvider } from '@pie-framework/pie-players-shared';
+ * import { ConsoleInstrumentationProvider } from '@pie-players/pie-players-shared';
  *
  * const provider = new ConsoleInstrumentationProvider();
  * await provider.initialize({ debug: true });

@@ -1,6 +1,6 @@
-import type { Handle } from '@sveltejs/kit';
-import type { LocalEsmCdnConfig } from '../core/config.js';
-import { createLocalEsmCdn } from '../embedded.js';
+import type { Handle } from "@sveltejs/kit";
+import type { LocalEsmCdnConfig } from "../core/config.js";
+import { createLocalEsmCdn } from "../embedded.js";
 
 /**
  * Create a SvelteKit handle function that serves local PIE packages as ESM modules
@@ -33,16 +33,18 @@ import { createLocalEsmCdn } from '../embedded.js';
  * export const handle = sequence(localEsmCdn, myOtherHandle);
  * ```
  */
-export function createSvelteKitHandle(config: Partial<LocalEsmCdnConfig>): Handle {
-  const cdn = createLocalEsmCdn(config);
+export function createSvelteKitHandle(
+	config: Partial<LocalEsmCdnConfig>,
+): Handle {
+	const cdn = createLocalEsmCdn(config);
 
-  return async ({ event, resolve }) => {
-    // Only handle PIE package requests
-    if (event.url.pathname.startsWith('/@pie-')) {
-      return cdn.handler(event.request);
-    }
+	return async ({ event, resolve }) => {
+		// Only handle PIE package requests
+		if (event.url.pathname.startsWith("/@pie-")) {
+			return cdn.handler(event.request);
+		}
 
-    // Pass through to SvelteKit for other routes
-    return resolve(event);
-  };
+		// Pass through to SvelteKit for other routes
+		return resolve(event);
+	};
 }

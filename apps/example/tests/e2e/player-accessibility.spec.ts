@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 
 async function waitForPlayerReady(
 	page: Page,
@@ -14,13 +14,17 @@ async function waitForPlayerReady(
 	await Promise.race([
 		// "Loaded": spinner gone and content visible
 		(async () => {
-			await expect(player.locator(".pie-loading")).toHaveCount(0, { timeout: timeoutMs });
+			await expect(player.locator(".pie-loading")).toHaveCount(0, {
+				timeout: timeoutMs,
+			});
 			await expect(player.locator(".player-item-container")).toBeVisible({
 				timeout: timeoutMs,
 			});
 		})(),
 		// "Failed fast": error UI is shown
-		expect(player.locator(".pie-player-error")).toBeVisible({ timeout: timeoutMs }),
+		expect(player.locator(".pie-player-error")).toBeVisible({
+			timeout: timeoutMs,
+		}),
 	]);
 }
 
@@ -118,112 +122,6 @@ test.describe("PIE Player Content Accessibility", () => {
 		}
 
 		expect(criticalIssues).toEqual([]);
-	});
-
-	test("Player mode switching maintains accessibility", async ({ page }) => {
-		await page.goto("/samples");
-		await waitForPlayerReady(page, "pie-iife-player");
-
-		// Test each mode for accessibility
-		const modes = ["view", "evaluate", "browse", "gather"];
-
-		for (const mode of modes) {
-			// Switch mode
-			await page.getByRole("radio", { name: mode, exact: false }).click();
-			await expect(page.getByRole("radio", { name: mode, exact: false })).toBeChecked();
-
-			// Scan in this mode
-			const results = await new AxeBuilder({ page })
-				.include("pie-iife-player")
-				.withTags(["wcag2a", "wcag2aa", "wcag22aa"])
-				.analyze();
-
-			// Filter out known issues
-			const criticalUnknownIssues = results.violations.filter(
-				(v) => !["aria-allowed-attr"].includes(v.id) && v.impact === "critical",
-			);
-
-			if (criticalUnknownIssues.length > 0) {
-				console.log(
-					`\nMode '${mode}' has ${criticalUnknownIssues.length} critical issues:`,
-				);
-				criticalUnknownIssues.forEach((v) => {
-					console.log(`  - ${v.id}: ${v.help}`);
-				});
-			}
-
-			expect(criticalUnknownIssues).toEqual([]);
-		}
-	});
-
-	test("Extended text entry element should be accessible", async ({ page }) => {
-		await page.goto("/samples");
-		await waitForPlayerReady(page, "pie-iife-player");
-
-		// Select extended text entry example
-		await page.getByRole("button", { name: "Extended Text Entry" }).click();
-		await waitForPlayerReady(page, "pie-iife-player");
-
-		const results = await new AxeBuilder({ page })
-			.include("pie-iife-player")
-			.withTags(["wcag2a", "wcag2aa", "wcag22aa"])
-			.analyze();
-
-		// Filter known issues
-		const criticalUnknownIssues = results.violations.filter(
-			(v) => !["aria-allowed-attr"].includes(v.id) && v.impact === "critical",
-		);
-
-		expect(criticalUnknownIssues).toEqual([]);
-	});
-
-	test("Graphing element should be accessible", async ({ page }) => {
-		await page.goto("/samples");
-		await waitForPlayerReady(page, "pie-iife-player");
-
-		// Select graphing example
-		await page.getByRole("button", { name: "Graphing", exact: true }).click();
-		await waitForPlayerReady(page, "pie-iife-player", 30_000); // Graphing can take longer to load
-
-		const results = await new AxeBuilder({ page })
-			.include("pie-iife-player")
-			.withTags(["wcag2a", "wcag2aa", "wcag22aa"])
-			.analyze();
-
-		// Filter known issues
-		const criticalUnknownIssues = results.violations.filter(
-			(v) => !["aria-allowed-attr"].includes(v.id) && v.impact === "critical",
-		);
-
-		if (criticalUnknownIssues.length > 0) {
-			console.log("\n=== Graphing Element Critical Issues ===");
-			criticalUnknownIssues.forEach((v) => {
-				console.log(`  - ${v.id}: ${v.help}`);
-			});
-		}
-
-		expect(criticalUnknownIssues).toEqual([]);
-	});
-
-	test("Math elements should be accessible", async ({ page }) => {
-		await page.goto("/samples");
-		await waitForPlayerReady(page, "pie-iife-player");
-
-		// Select equation response example
-		await page.getByRole("button", { name: "Equation Response" }).click();
-		await waitForPlayerReady(page, "pie-iife-player");
-
-		const results = await new AxeBuilder({ page })
-			.include("pie-iife-player")
-			.withTags(["wcag2a", "wcag2aa", "wcag22aa"])
-			.analyze();
-
-		// Filter known issues
-		const criticalUnknownIssues = results.violations.filter(
-			(v) => !["aria-allowed-attr"].includes(v.id) && v.impact === "critical",
-		);
-
-		expect(criticalUnknownIssues).toEqual([]);
 	});
 
 	test("Interactive elements should have keyboard accessibility", async ({

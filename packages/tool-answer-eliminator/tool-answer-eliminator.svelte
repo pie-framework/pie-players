@@ -41,8 +41,8 @@
 
 <script lang="ts">
 	
-	import type { IToolCoordinator } from '@pie-framework/pie-assessment-toolkit';
-	import { ZIndexLayer } from '@pie-framework/pie-assessment-toolkit';
+	import type { IToolCoordinator } from '@pie-players/pie-assessment-toolkit';
+	import { ZIndexLayer } from '@pie-players/pie-assessment-toolkit';
 import { onDestroy, onMount } from 'svelte';
 	import { AnswerEliminatorCore } from './answer-eliminator-core';
 

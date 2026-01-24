@@ -13,7 +13,7 @@
   - Accessible keyboard navigation
 -->
 <script lang="ts">
-	import { getAvailableLocales, useI18nStandalone } from '@pie-framework/pie-players-shared/i18n';
+	import { getAvailableLocales, useI18nStandalone } from '@pie-players/pie-players-shared/i18n';
 	import { onMount } from 'svelte';
 
 	// Props

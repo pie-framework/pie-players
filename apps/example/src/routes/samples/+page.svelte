@@ -1,18 +1,18 @@
 <script lang="ts">
 	import '../../lib/players';
 	import { onMount, untrack } from 'svelte';
+	import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
 	import { base } from '$app/paths';
 	import { page } from '$app/stores';
-	import { browser } from '$app/environment';
-	import { getExampleById, PIE_ELEMENT_GROUPS, type PieExample } from '$lib/sample-library/pie-examples';
 	import {
 		coerceEsmSource,
 		DEFAULT_REMOTE_ESM_CDN_URL,
+		type EsmSource, 
 		getDefaultLocalEsmCdnUrl,
-		probeLocalEsmCdn,
-		type EsmSource
+		probeLocalEsmCdn
 	} from '$lib/esm-cdn';
+	import { getExampleById, PIE_ELEMENT_GROUPS, type PieExample } from '$lib/sample-library/pie-examples';
 
 	type PlayerType = 'iife' | 'esm';
 	type PlayerMode = 'gather' | 'view' | 'evaluate' | 'browse';

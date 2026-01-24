@@ -31,15 +31,15 @@
 />
 
 <script lang="ts">
-	import PieItemPlayer from "@pie-framework/pie-players-shared/components/PieItemPlayer.svelte";
-	import PiePreviewLayout from "@pie-framework/pie-players-shared/components/PiePreviewLayout.svelte";
-	import PieSpinner from "@pie-framework/pie-players-shared/components/PieSpinner.svelte";
-	import type { LoaderConfig } from "@pie-framework/pie-players-shared/loader-config";
-	import { DEFAULT_LOADER_CONFIG } from "@pie-framework/pie-players-shared/loader-config";
-	import { IifePieLoader } from "@pie-framework/pie-players-shared/pie/iife-loader";
-	import { isGlobalDebugEnabled } from "@pie-framework/pie-players-shared/pie/logger";
-	import { BundleType } from "@pie-framework/pie-players-shared/pie/types";
-	import type { ImageHandler, SoundHandler } from "@pie-framework/pie-players-shared/types";
+	import PieItemPlayer from "@pie-players/pie-players-shared/components/PieItemPlayer.svelte";
+	import PiePreviewLayout from "@pie-players/pie-players-shared/components/PiePreviewLayout.svelte";
+	import PieSpinner from "@pie-players/pie-players-shared/components/PieSpinner.svelte";
+	import type { LoaderConfig } from "@pie-players/pie-players-shared/loader-config";
+	import { DEFAULT_LOADER_CONFIG } from "@pie-players/pie-players-shared/loader-config";
+	import { IifePieLoader } from "@pie-players/pie-players-shared/pie/iife-loader";
+	import { isGlobalDebugEnabled } from "@pie-players/pie-players-shared/pie/logger";
+	import { BundleType } from "@pie-players/pie-players-shared/pie/types";
+	import type { ImageHandler, SoundHandler } from "@pie-players/pie-players-shared/types";
 
 	import {
 		mergePieContentBackIntoConfig,

@@ -10,8 +10,8 @@
 />
 
 <script lang="ts">
-	import type { HighlightCoordinator, ITTSService } from '@pie-framework/pie-assessment-toolkit';
-	import { BrowserTTSProvider, HighlightColor, TTSService } from '@pie-framework/pie-assessment-toolkit';
+	import type { HighlightCoordinator, ITTSService } from '@pie-players/pie-assessment-toolkit';
+	import { BrowserTTSProvider, HighlightColor, TTSService } from '@pie-players/pie-assessment-toolkit';
 	import { onMount } from 'svelte';
 
 	interface Props {

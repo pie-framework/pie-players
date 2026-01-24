@@ -1,5 +1,5 @@
-import { cloneDeep } from "@pie-framework/pie-players-shared/object";
-import { parsePackageName } from "@pie-framework/pie-players-shared/pie/utils";
+import { cloneDeep } from "@pie-players/pie-players-shared/object";
+import { parsePackageName } from "@pie-players/pie-players-shared/pie/utils";
 import {
 	getPackageWithoutVersion,
 	type PieContent,

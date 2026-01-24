@@ -1,7 +1,7 @@
 <script lang="ts">
 	
-	import type { AssessmentEntity, ItemConfig, ItemEntity, PassageEntity, RubricBlock } from '@pie-framework/pie-players-shared/types';
-	import ToolAnnotationToolbar from '@pie-framework/pie-tool-annotation-toolbar';
+	import type { AssessmentEntity, ItemConfig, ItemEntity, PassageEntity, RubricBlock } from '@pie-players/pie-players-shared/types';
+	import ToolAnnotationToolbar from '@pie-players/pie-tool-annotation-toolbar';
 	import { onDestroy, onMount } from 'svelte';
 	import type { AssessmentPlayer } from '../player/AssessmentPlayer';
 	import AssessmentContent from './components/AssessmentContent.svelte';

@@ -50,11 +50,13 @@ jobs:
         run: bun run --cwd apps/docs build
         env:
           NODE_ENV: production
+          GITHUB_PAGES_CUSTOM_DOMAIN: true
 
       - name: Build examples site (GitHub Pages)
         run: bun run --cwd apps/example build
         env:
           NODE_ENV: production
+          GITHUB_PAGES_CUSTOM_DOMAIN: true
 
       - name: Assemble GitHub Pages artifact
         shell: bash

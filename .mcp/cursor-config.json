@@ -32,6 +32,13 @@
 			"env": {
 				"MEMORY_DB_PATH": "${workspaceFolder}/.mcp/memory.db"
 			}
+		},
+		"imagen": {
+			"command": "bun",
+			"args": ["run", "${workspaceFolder}/packages/mcp-imagen/src/index.ts"],
+			"env": {
+				"OUTPUT_DIR": "${workspaceFolder}/apps/docs/static/images/generated"
+			}
 		}
 	}
 }

@@ -28,6 +28,13 @@
 			"env": {
 				"MEMORY_DB_PATH": ".mcp/memory.db"
 			}
+		},
+		"pie-players-imagen": {
+			"command": "bun",
+			"args": ["run", "packages/mcp-imagen/src/index.ts"],
+			"env": {
+				"OUTPUT_DIR": "./apps/docs/static/images/generated"
+			}
 		}
 	}
 }

@@ -1,55 +1,55 @@
 {
-  "name": "pie-players",
-  "version": "0.1.0",
-  "private": true,
-  "description": "PIE players monorepo (assessment + item players + tooling)",
-  "license": "MIT",
-  "workspaces": [
-    "packages/*",
-    "apps/*",
-    "tools/*"
-  ],
-  "scripts": {
-    "build": "turbo build",
-    "dev": "turbo dev",
-    "test": "turbo test",
-    "test:evals": "bun run --cwd apps/example test:evals",
-    "test:all": "bun run test && bun run test:evals",
-    "cli": "bun --cwd tools/cli ./bin/run.js",
-    "local-esm-cdn": "bun run --cwd apps/local-esm-cdn dev",
-    "lint": "bun run lint:biome && bun run lint:svelte",
-    "lint:biome": "biome check .",
-    "lint:svelte": "turbo check",
-    "lint:all": "bun run lint && bun run check && bun run typecheck",
-    "lint:fix": "biome check --write .",
-    "format": "biome format --write .",
-    "clean": "turbo clean && rm -rf node_modules",
-    "typecheck": "turbo typecheck",
-    "check": "turbo check",
-    "dev:example": "bun run --cwd apps/example dev",
-    "preview:example": "bun run --cwd apps/example preview",
-    "dev:docs": "bun run --cwd apps/docs dev",
-    "preview:docs": "NODE_ENV=production bun run --cwd apps/docs build && bun run --cwd apps/docs preview",
-    "build:pages": "bun run build && NODE_ENV=production bun run --cwd apps/docs build && NODE_ENV=production bun run --cwd apps/example build",
-    "test:e2e": "bun run --cwd apps/example test:e2e",
-    "test:a11y": "bun run --cwd apps/example test:a11y",
-    "check-i18n": "bun run --cwd packages/players-shared check-i18n",
-    "scan-hardcoded": "bun run --cwd packages/players-shared scan-hardcoded",
-    "changeset": "changeset",
-    "version": "changeset version",
-    "release": "bun run build && changeset publish",
-    "pack:local": "turbo build && node ./scripts/pack-local.mjs"
-  },
-  "devDependencies": {
-    "@biomejs/biome": "^2.3.11",
-    "@changesets/cli": "^2.29.8",
-    "@types/bun": "^1.3.5",
-    "@pie-lib/math-rendering-module": "3.1.5",
-    "turbo": "^2.7.6",
-    "typescript": "^5.9.3"
-  },
-  "packageManager": "bun@1.3.5",
-  "engines": {
-    "bun": ">=1.1.0"
-  }
+	"name": "pie-players",
+	"version": "0.1.0",
+	"private": true,
+	"description": "PIE players monorepo (assessment + item players + tooling)",
+	"license": "MIT",
+	"workspaces": [
+		"packages/*",
+		"apps/*",
+		"tools/*"
+	],
+	"scripts": {
+		"build": "turbo build",
+		"dev": "turbo dev",
+		"test": "turbo test",
+		"test:evals": "bun run --cwd apps/example test:evals",
+		"test:all": "bun run test && bun run test:evals",
+		"cli": "bun --cwd tools/cli ./bin/run.js",
+		"local-esm-cdn": "bun run --cwd apps/local-esm-cdn dev",
+		"lint": "bun run lint:biome && bun run lint:svelte",
+		"lint:biome": "biome check .",
+		"lint:svelte": "turbo check",
+		"lint:all": "bun run lint && bun run check && bun run typecheck",
+		"lint:fix": "biome check --write .",
+		"format": "biome format --write .",
+		"clean": "turbo clean && rm -rf node_modules",
+		"typecheck": "turbo typecheck",
+		"check": "turbo check",
+		"dev:example": "bun run --cwd apps/example dev",
+		"preview:example": "bun run --cwd apps/example preview",
+		"dev:docs": "bun run --cwd apps/docs dev",
+		"preview:docs": "NODE_ENV=production bun run --cwd apps/docs build && bun run --cwd apps/docs preview",
+		"build:pages": "bun run build && NODE_ENV=production bun run --cwd apps/docs build && NODE_ENV=production bun run --cwd apps/example build",
+		"test:e2e": "bun run --cwd apps/example test:e2e",
+		"test:a11y": "bun run --cwd apps/example test:a11y",
+		"check-i18n": "bun run --cwd packages/players-shared check-i18n",
+		"scan-hardcoded": "bun run --cwd packages/players-shared scan-hardcoded",
+		"changeset": "changeset",
+		"version": "changeset version",
+		"release": "bun run build && changeset publish",
+		"pack:local": "turbo build && node ./scripts/pack-local.mjs"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.3.11",
+		"@changesets/cli": "^2.29.8",
+		"@types/bun": "^1.3.5",
+		"@pie-lib/math-rendering-module": "3.1.5",
+		"turbo": "^2.7.6",
+		"typescript": "^5.9.3"
+	},
+	"packageManager": "bun@1.3.5",
+	"engines": {
+		"bun": ">=1.1.0"
+	}
 }

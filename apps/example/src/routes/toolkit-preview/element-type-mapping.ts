@@ -9,13 +9,15 @@ export interface ElementTypeInfo {
 	examples: PieExample[];
 }
 
-export const ELEMENT_TYPES: ElementTypeInfo[] = PIE_ELEMENT_GROUPS.map((group) => ({
-	id: group.id,
-	name: group.name,
-	description: group.description,
-	icon: getIconForElementType(group.id),
-	examples: group.examples,
-}));
+export const ELEMENT_TYPES: ElementTypeInfo[] = PIE_ELEMENT_GROUPS.map(
+	(group) => ({
+		id: group.id,
+		name: group.name,
+		description: group.description,
+		icon: getIconForElementType(group.id),
+		examples: group.examples,
+	}),
+);
 
 function getIconForElementType(id: string): string {
 	const iconMap: Record<string, string> = {

@@ -1,19 +1,19 @@
 <script lang="ts">
 	import "@pie-players/pie-assessment-player";
-	import { page } from "$app/stores";
-	import { getContext } from "svelte";
-	import type { Writable } from "svelte/store";
-	import type { ProfileConfig } from "../profile-templates";
-	import {
-		getElementTypeById,
-		getDefaultExampleForType,
-	} from "../element-type-mapping";
 	import type {
 		AssessmentEntity,
 		ItemEntity,
 	} from "@pie-players/pie-players-shared/types";
-	import ProfileEditor from "../ProfileEditor.svelte";
+	import { getContext } from "svelte";
+	import type { Writable } from "svelte/store";
+	import { page } from "$app/stores";
 	import DebugPanel from "../DebugPanel.svelte";
+	import {
+		getDefaultExampleForType,
+		getElementTypeById,
+	} from "../element-type-mapping";
+	import ProfileEditor from "../ProfileEditor.svelte";
+	import type { ProfileConfig } from "../profile-templates";
 
 	const profileStore = getContext<Writable<ProfileConfig>>("profileStore");
 	const eventLogStore = getContext<Writable<any[]>>("eventLogStore");

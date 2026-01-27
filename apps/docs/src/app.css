@@ -1,26 +1,36 @@
-@import 'tailwindcss';
-@plugin '@tailwindcss/typography';
-@plugin 'daisyui';
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+@plugin "daisyui";
 
 /* Override DaisyUI colors with PIE theme */
-[data-theme='light'] {
-	--color-primary: oklch(0.63 0.22 27); /* #ee4923 - exact PIE orange from logo */
+[data-theme="light"] {
+	--color-primary: oklch(
+		0.63 0.22 27
+	); /* #ee4923 - exact PIE orange from logo */
 	--color-primary-content: oklch(1 0 0); /* white */
-	--color-secondary: oklch(0.35 0.08 230); /* #1e3a5f - deep navy blue (complements orange) */
+	--color-secondary: oklch(
+		0.35 0.08 230
+	); /* #1e3a5f - deep navy blue (complements orange) */
 	--color-secondary-content: oklch(1 0 0); /* white */
 }
 
-[data-theme='dark'] {
-	--color-primary: oklch(0.67 0.24 27); /* #ff5733 - brighter orange for dark mode */
+[data-theme="dark"] {
+	--color-primary: oklch(
+		0.67 0.24 27
+	); /* #ff5733 - brighter orange for dark mode */
 	--color-primary-content: oklch(1 0 0); /* white */
-	--color-secondary: oklch(0.62 0.24 250); /* #3b82f6 - lighter blue for dark mode */
+	--color-secondary: oklch(
+		0.62 0.24 250
+	); /* #3b82f6 - lighter blue for dark mode */
 	--color-secondary-content: oklch(1 0 0); /* white */
 }
 
 /* Custom base styles */
 @layer base {
 	/* Preflight fixes */
-	*, ::before, ::after {
+	*,
+	::before,
+	::after {
 		box-sizing: border-box;
 	}
 
@@ -36,7 +46,12 @@
 	}
 
 	/* Better heading scaling */
-	h1, h2, h3, h4, h5, h6 {
+	h1,
+	h2,
+	h3,
+	h4,
+	h5,
+	h6 {
 		font-weight: 700;
 		line-height: 1.2;
 	}

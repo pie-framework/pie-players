@@ -19,7 +19,9 @@ const config = {
 			// GitHub Pages: https://pie-framework.github.io/pie-players/examples/
 			base:
 				process.env.NODE_ENV === "production"
-					? (process.env.GITHUB_PAGES_CUSTOM_DOMAIN === "true" ? "/examples" : "/pie-players/examples")
+					? process.env.GITHUB_PAGES_CUSTOM_DOMAIN === "true"
+						? "/examples"
+						: "/pie-players/examples"
 					: "",
 		},
 		prerender: {

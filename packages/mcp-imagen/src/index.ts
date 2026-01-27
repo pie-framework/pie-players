@@ -1,24 +1,25 @@
 #!/usr/bin/env node
+
 /**
  * Entry point for Nano Banana MCP server
  */
 
-import { NanoBananaMcpServer } from './server.js';
-import { runSetup } from './setup.js';
-import { logger } from './logger.js';
+import { logger } from "./logger.js";
+import { NanoBananaMcpServer } from "./server.js";
+import { runSetup } from "./setup.js";
 
 async function main() {
-  const args = process.argv.slice(2);
+	const args = process.argv.slice(2);
 
-  // Handle setup command
-  if (args.includes('setup') || args.includes('--setup')) {
-    await runSetup();
-    process.exit(0);
-  }
+	// Handle setup command
+	if (args.includes("setup") || args.includes("--setup")) {
+		await runSetup();
+		process.exit(0);
+	}
 
-  // Handle help
-  if (args.includes('--help') || args.includes('-h')) {
-    console.log(`
+	// Handle help
+	if (args.includes("--help") || args.includes("-h")) {
+		console.log(`
 Nano Banana MCP Server 🍌 - Gemini Image Generation
 
 Usage:
@@ -52,32 +53,32 @@ More Info:
   - Get API key: https://aistudio.google.com/
   - Documentation: https://ai.google.dev/gemini-api/docs/imagen
 `);
-    process.exit(0);
-  }
+		process.exit(0);
+	}
 
-  // Start server
-  try {
-    logger.info('Starting Nano Banana MCP server');
-    const server = new NanoBananaMcpServer();
-    await server.start();
+	// Start server
+	try {
+		logger.info("Starting Nano Banana MCP server");
+		const server = new NanoBananaMcpServer();
+		await server.start();
 
-    // Handle graceful shutdown
-    process.on('SIGINT', async () => {
-      logger.info('Received SIGINT, shutting down...');
-      await server.stop();
-      process.exit(0);
-    });
+		// Handle graceful shutdown
+		process.on("SIGINT", async () => {
+			logger.info("Received SIGINT, shutting down...");
+			await server.stop();
+			process.exit(0);
+		});
 
-    process.on('SIGTERM', async () => {
-      logger.info('Received SIGTERM, shutting down...');
-      await server.stop();
-      process.exit(0);
-    });
-  } catch (error) {
-    logger.error('Failed to start server', { error });
-    console.error('Failed to start Nano Banana MCP server:', error);
-    process.exit(1);
-  }
+		process.on("SIGTERM", async () => {
+			logger.info("Received SIGTERM, shutting down...");
+			await server.stop();
+			process.exit(0);
+		});
+	} catch (error) {
+		logger.error("Failed to start server", { error });
+		console.error("Failed to start Nano Banana MCP server:", error);
+		process.exit(1);
+	}
 }
 
 main();

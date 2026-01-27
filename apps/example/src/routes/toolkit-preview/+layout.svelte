@@ -1,9 +1,10 @@
 <script lang="ts">
-	import { writable } from "svelte/store";
+	
+	import { setContext } from "svelte";
+import { writable } from "svelte/store";
+	import { base } from "$app/paths";
 	import type { ProfileConfig } from "./profile-templates";
 	import { DEFAULT_PROFILE } from "./profile-templates";
-	import { setContext } from "svelte";
-	import { base } from "$app/paths";
 
 	// Create stores for shared state
 	export const profileStore = writable<ProfileConfig>(DEFAULT_PROFILE);

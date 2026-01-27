@@ -6,17 +6,17 @@ export default {
 	theme: {
 		extend: {
 			fontFamily: {
-				sans: ['Inter', 'system-ui', 'sans-serif'],
-				mono: ['JetBrains Mono', 'Fira Code', 'monospace']
-			}
+				sans: ["Inter", "system-ui", "sans-serif"],
+				mono: ["JetBrains Mono", "Fira Code", "monospace"],
+			},
 		},
 	},
 	plugins: [
 		typography,
-		// @ts-ignore - daisyui types are not available
-		require("daisyui")
+		// @ts-expect-error - daisyui types are not available
+		require("daisyui"),
 	],
-	// @ts-ignore - daisyui config
+	// @ts-expect-error - daisyui config
 	daisyui: {
 		themes: [
 			{

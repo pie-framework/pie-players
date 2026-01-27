@@ -2,7 +2,7 @@
 	import { getContext } from "svelte";
 	import type { Writable } from "svelte/store";
 	import type { ProfileConfig, ProfileTemplate } from "./profile-templates";
-	import { PROFILE_TEMPLATES, getTemplateById } from "./profile-templates";
+	import { getTemplateById, PROFILE_TEMPLATES } from "./profile-templates";
 
 	const profileStore = getContext<Writable<ProfileConfig>>("profileStore");
 
@@ -64,10 +64,11 @@
 	<div class="p-4">
 		<!-- Template Selector -->
 		<div class="form-control mb-4">
-			<label class="label">
+			<label for="profile-template" class="label">
 				<span class="label-text font-semibold">Profile Template</span>
 			</label>
 			<select
+				id="profile-template"
 				class="select select-bordered select-sm"
 				bind:value={selectedTemplate}
 				on:change={loadTemplate}
@@ -76,11 +77,11 @@
 					<option value={template.id}>{template.name}</option>
 				{/each}
 			</select>
-			<label class="label">
+			<div class="label">
 				<span class="label-text-alt text-base-content/60">
 					{getTemplateById(selectedTemplate)?.description}
 				</span>
-			</label>
+			</div>
 		</div>
 
 		<!-- Mode Toggle -->
@@ -150,11 +151,11 @@
 					</div>
 
 					<!-- Font Size -->
-					<div class="form-control mb-2">
-						<label class="label">
+					<fieldset class="form-control mb-2">
+						<legend class="label">
 							<span class="label-text text-sm">Font Size</span>
-						</label>
-						<div class="btn-group btn-group-sm w-full">
+						</legend>
+						<div role="group" aria-label="Font size selection" class="btn-group btn-group-sm w-full">
 							<button
 								class="btn btn-sm flex-1"
 								class:btn-active={$profileStore.accessibility.fontSize === "small"}
@@ -198,17 +199,18 @@
 								XL
 							</button>
 						</div>
-					</div>
+					</fieldset>
 
 					<!-- Extended Time -->
 					<div class="form-control mb-2">
-						<label class="label">
+						<label for="extended-time" class="label">
 							<span class="label-text text-sm">Extended Time</span>
 							<span class="label-text-alt"
 								>{$profileStore.timing.extendedTimeMultiplier}x</span
 							>
 						</label>
 						<input
+							id="extended-time"
 							type="range"
 							min="1"
 							max="2"
@@ -248,10 +250,11 @@
 				<div class="collapse-content">
 					<!-- Calculator -->
 					<div class="form-control mb-2">
-						<label class="label">
+						<label for="calculator" class="label">
 							<span class="label-text text-sm">Calculator</span>
 						</label>
 						<select
+							id="calculator"
 							class="select select-bordered select-sm"
 							bind:value={$profileStore.tools.calculator}
 							on:change={handleProfileChange}
@@ -372,10 +375,11 @@
 				<div class="collapse-title font-medium text-sm">Assessment Settings</div>
 				<div class="collapse-content">
 					<div class="form-control mb-2">
-						<label class="label">
+						<label for="subject" class="label">
 							<span class="label-text text-sm">Subject</span>
 						</label>
 						<select
+							id="subject"
 							class="select select-bordered select-sm"
 							bind:value={$profileStore.assessment.subject}
 							on:change={handleProfileChange}
@@ -388,10 +392,11 @@
 					</div>
 
 					<div class="form-control mb-2">
-						<label class="label">
+						<label for="grade-level" class="label">
 							<span class="label-text text-sm">Grade Level</span>
 						</label>
 						<select
+							id="grade-level"
 							class="select select-bordered select-sm"
 							bind:value={$profileStore.assessment.gradeLevel}
 							on:change={handleProfileChange}
@@ -436,10 +441,11 @@
 				<div class="collapse-title font-medium text-sm">District Policies</div>
 				<div class="collapse-content">
 					<div class="form-control mb-2">
-						<label class="label">
+						<label for="wcag-level" class="label">
 							<span class="label-text text-sm">WCAG Level</span>
 						</label>
 						<select
+							id="wcag-level"
 							class="select select-bordered select-sm"
 							bind:value={$profileStore.district.wcagLevel}
 							on:change={handleProfileChange}

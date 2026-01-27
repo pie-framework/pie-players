@@ -1,26 +1,62 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
+@plugin "daisyui";
 
-@plugin "daisyui" {
-	themes: light, dark, corporate, business;
+/* Override DaisyUI colors with PIE theme */
+[data-theme="light"] {
+	--color-primary: oklch(
+		0.63 0.22 27
+	); /* #ee4923 - exact PIE orange from logo */
+	--color-primary-content: oklch(1 0 0); /* white */
+	--color-secondary: oklch(
+		0.35 0.08 230
+	); /* #1e3a5f - deep navy blue (complements orange) */
+	--color-secondary-content: oklch(1 0 0); /* white */
 }
 
+[data-theme="dark"] {
+	--color-primary: oklch(
+		0.67 0.24 27
+	); /* #ff5733 - brighter orange for dark mode */
+	--color-primary-content: oklch(1 0 0); /* white */
+	--color-secondary: oklch(
+		0.62 0.24 250
+	); /* #3b82f6 - lighter blue for dark mode */
+	--color-secondary-content: oklch(1 0 0); /* white */
+}
+
+/* Custom base styles */
 @layer base {
+	/* Preflight fixes */
 	*,
 	::before,
 	::after {
 		box-sizing: border-box;
 	}
 
+	/* Smooth scrolling */
 	html {
 		scroll-behavior: smooth;
 	}
 
+	/* Better font rendering */
 	body {
 		-webkit-font-smoothing: antialiased;
 		-moz-osx-font-smoothing: grayscale;
 	}
 
+	/* Better heading scaling */
+	h1,
+	h2,
+	h3,
+	h4,
+	h5,
+	h6 {
+		font-weight: 700;
+		line-height: 1.2;
+	}
+
+	/* Code block improvements - apply to all themes */
 	pre {
 		padding: 1rem !important;
 	}
@@ -29,5 +65,50 @@
 		padding: 0.125rem 0.375rem !important;
 		border-radius: 0.25rem !important;
 		font-size: 0.875em !important;
+	}
+
+	/* Enhanced focus styles for accessibility */
+	:focus-visible {
+		outline: 3px solid var(--color-primary);
+		outline-offset: 2px;
+		border-radius: 0.25rem;
+	}
+
+	/* Skip link specific focus style */
+	a[href="#main-content"]:focus {
+		outline: 3px solid var(--color-primary);
+	}
+
+	/* Button focus styles */
+	button:focus-visible,
+	.btn:focus-visible {
+		outline: 3px solid var(--color-primary);
+		outline-offset: 2px;
+	}
+
+	/* Link focus styles */
+	a:focus-visible {
+		outline: 3px solid var(--color-primary);
+		outline-offset: 2px;
+	}
+
+	/* Input and form element focus styles */
+	input:focus-visible,
+	textarea:focus-visible,
+	select:focus-visible {
+		outline: 3px solid var(--color-primary);
+		outline-offset: 1px;
+	}
+
+	/* Respect prefers-reduced-motion for accessibility */
+	@media (prefers-reduced-motion: reduce) {
+		*,
+		*::before,
+		*::after {
+			animation-duration: 0.01ms !important;
+			animation-iteration-count: 1 !important;
+			transition-duration: 0.01ms !important;
+			scroll-behavior: auto !important;
+		}
 	}
 }

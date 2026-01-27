@@ -14,10 +14,15 @@ const config = {
 			strict: false,
 		}),
 		paths: {
-			// Host the examples app under GitHub Pages project subpath:
-			// https://pie-framework.github.io/pie-players/examples/
+			// Host the examples app under /examples/ for custom domain or GitHub Pages
+			// Custom domain: https://players.pie-framework.org/examples/
+			// GitHub Pages: https://pie-framework.github.io/pie-players/examples/
 			base:
-				process.env.NODE_ENV === "production" ? "/pie-players/examples" : "",
+				process.env.NODE_ENV === "production"
+					? process.env.GITHUB_PAGES_CUSTOM_DOMAIN === "true"
+						? "/examples"
+						: "/pie-players/examples"
+					: "",
 		},
 		prerender: {
 			handleHttpError: ({ path, message }) => {

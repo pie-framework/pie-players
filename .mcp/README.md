@@ -4,12 +4,13 @@ This directory contains configuration for Model Context Protocol (MCP) servers t
 
 ## Overview
 
-Four MCP servers are configured to provide specialized capabilities:
+Five MCP servers are configured to provide specialized capabilities:
 
 1. **Browser Automation** (`@playwright/mcp`) - Extends Playwright testing
 2. **npm/Package Registry** (`@modelcontextprotocol/server-npm`) - Manages workspace packages
 3. **File System** (`@modelcontextprotocol/server-filesystem`) - Efficient monorepo navigation
 4. **Memory/Context** (`@modelcontextprotocol/server-memory`) - Persistent project knowledge
+5. **Imagen** (`@studio-gigs/mcp-imagen`) - Google Imagen 4 AI image generation
 
 ## Configuration Files
 
@@ -21,6 +22,7 @@ Four MCP servers are configured to provide specialized capabilities:
   - `npm-registry.json`
   - `filesystem.json`
   - `memory.json`
+  - `imagen.json`
 
 ### Configuration Notes
 

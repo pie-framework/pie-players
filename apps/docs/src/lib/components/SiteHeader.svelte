@@ -1,10 +1,8 @@
 <script lang="ts">
-	import { dev } from '$app/environment';
 	import { base } from '$app/paths';
 
-	// docs is prerendered; avoid creating an internal prerender-crawled link to /examples
-	// (that path is served by a separate app, merged into the final Pages artifact).
-	const examplesHref = dev ? `${base}/examples/` : 'https://pie-framework.github.io/pie-players/examples/';
+	// Link to examples app (separate SvelteKit app merged at /examples/)
+	const examplesHref = `${base}/examples/`;
 </script>
 
 <header class="border-b border-base-200 bg-base-100/80 backdrop-blur">

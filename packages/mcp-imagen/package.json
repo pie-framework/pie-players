@@ -1,0 +1,31 @@
+{
+	"name": "@studio-gigs/mcp-imagen",
+	"version": "0.2.0",
+	"private": true,
+	"description": "MCP server for Nano Banana (Gemini Image Generation)",
+	"type": "module",
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"scripts": {
+		"dev": "bun run src/index.ts",
+		"build": "tsc",
+		"start": "bun run dist/index.js",
+		"setup": "bun run src/index.ts setup"
+	},
+	"dependencies": {
+		"@google/genai": "^1.38.0",
+		"@modelcontextprotocol/sdk": "^1.0.4"
+	},
+	"devDependencies": {
+		"@types/node": "^20.0.0",
+		"typescript": "^5.3.3"
+	},
+	"keywords": [
+		"mcp",
+		"imagen",
+		"image-generation",
+		"google-ai"
+	],
+	"author": "",
+	"license": "MIT"
+}

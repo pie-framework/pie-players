@@ -247,32 +247,15 @@
 >
 	<!-- Pieoneer / SchoolCity-like header -->
 	<div class="bg-base-100 border-b border-base-300">
-		<div class="px-4 py-3 flex items-start justify-between gap-4">
+		<div class="px-4 py-2 flex items-center justify-between gap-4">
 			<div class="min-w-0">
 				<div class="text-sm font-semibold truncate">{assessment?.name || 'Assessment'}</div>
-				<div class="text-xs opacity-70">{navigationState.totalItems} Questions</div>
 			</div>
 			<div class="flex items-center gap-2">
 				<span class="text-xs opacity-70 mr-2">Student Name</span>
-				<button class="btn btn-sm btn-outline" onclick={toggleAudio}>Audio</button>
-				<button class="btn btn-sm btn-outline" onclick={toggleContrast}>Contrast</button>
-				<button class="btn btn-sm btn-outline" onclick={toggleFullscreen}>Fullscreen</button>
-			</div>
-		</div>
-
-		<!-- Question strip -->
-		<div class="px-4 pb-3 overflow-x-auto">
-			<div class="flex items-center gap-2 min-w-max">
-				{#each questionRefs as _ref, i}
-					<button
-						class="btn btn-sm"
-						class:btn-primary={i === navigationState.currentIndex}
-						class:btn-outline={i !== navigationState.currentIndex}
-						onclick={() => handleNavigateToIndex(i)}
-					>
-						{i + 1}
-					</button>
-				{/each}
+				<button class="btn btn-xs btn-outline" onclick={toggleAudio}>Audio</button>
+				<button class="btn btn-xs btn-outline" onclick={toggleContrast}>Contrast</button>
+				<button class="btn btn-xs btn-outline" onclick={toggleFullscreen}>Fullscreen</button>
 			</div>
 		</div>
 	</div>
@@ -311,7 +294,7 @@
 							bundle-host={bundleHost}
 							mode={mode}
 							configuration={configuration}
-							style="--pie-item-padding: 0.75rem; --pie-choice-gap: 0.5rem;"
+							style="--pie-item-padding: 0; --pie-choice-gap: 0.5rem;"
 						></pie-iife-player>
 					{:else}
 						<div class="flex items-center justify-center h-full">
@@ -329,8 +312,7 @@
 	</div>
 
 	<!-- Bottom tool strip -->
-	<div class="bg-base-100 border-t border-base-300 px-4 py-2 min-h-14 relative z-[3500]">
-		<div class="text-xs opacity-60 mb-2">Tools</div>
+	<div class="bg-base-100 border-t border-base-300 px-4 py-1 min-h-0 relative z-[3500]">
 		<pie-tool-toolbar
 			class="block w-full"
 			position="bottom"
@@ -342,7 +324,7 @@
 	</div>
 
 	<!-- Bottom navigation -->
-	<footer class="flex items-center justify-center gap-3 px-4 py-2 bg-base-100 border-t border-base-300 min-h-0">
+	<footer class="flex items-center justify-center gap-3 px-4 py-1 bg-base-100 border-t border-base-300 min-h-0">
 		{#if navigationState.currentIndex !== -1}
 			<span class="text-xs opacity-70">
 				Question {navigationState.currentIndex + 1} of {navigationState.totalItems}

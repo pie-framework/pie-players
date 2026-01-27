@@ -33,9 +33,8 @@
 </svelte:head>
 
 <div class="min-h-screen flex flex-col bg-base-200">
-	<div class="navbar bg-base-100 shadow-lg flex-nowrap">
-		<div class="w-full px-3 sm:px-4">
-			<div class="navbar-start">
+	<div class="navbar bg-base-100 shadow-lg">
+		<div class="navbar-start">
 				<div class="dropdown lg:hidden">
 					<div tabindex="0" role="button" class="btn btn-ghost" aria-label="Open navigation menu">
 						<svg
@@ -62,15 +61,23 @@
 								A11y
 							</a>
 						</li>
+						<li>
+							<a
+								href={href('/toolkit-preview/')}
+								class:active={currentPath.startsWith(href('/toolkit-preview/'))}
+							>
+								Toolkit Preview
+							</a>
+						</li>
 					</ul>
 				</div>
-				<a href={href('/')} class="btn btn-ghost normal-case text-xl px-2">
-					<img src="{base}/pie-logo-orange.svg" alt="PIE Logo" class="h-8 w-8" />
-					PIE Players
-				</a>
-			</div>
+			<a href={href('/')} class="btn btn-ghost normal-case text-xl px-2">
+				<img src="{base}/pie-logo-orange.svg" alt="PIE Logo" class="h-8 w-8" />
+				PIE Players
+			</a>
+		</div>
 
-			<div class="navbar-center hidden lg:flex">
+		<div class="navbar-center hidden lg:flex">
 				<ul class="menu menu-horizontal px-1">
 					<li><a href={href('/')} class:active={currentPath === href('/')}>Home</a></li>
 					<li><a href={href('/samples/')} class:active={currentPath === href('/samples/')}>Item Samples</a></li>
@@ -85,12 +92,19 @@
 							A11y
 						</a>
 					</li>
-				</ul>
-			</div>
+					<li>
+						<a
+							href={href('/toolkit-preview/')}
+							class:active={currentPath.startsWith(href('/toolkit-preview/'))}
+						>
+							Toolkit Preview
+						</a>
+					</li>
+			</ul>
+		</div>
 
-			<div class="navbar-end gap-2">
-				<SettingsMenu {theme} onThemeChange={changeTheme} availableThemes={themes} />
-			</div>
+		<div class="navbar-end">
+			<SettingsMenu {theme} onThemeChange={changeTheme} availableThemes={themes} />
 		</div>
 	</div>
 

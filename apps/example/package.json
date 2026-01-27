@@ -44,7 +44,7 @@
 	},
 	"devDependencies": {
 		"@axe-core/playwright": "^4.11.0",
-		"@pie-apps/local-esm-cdn": "file:../../../pie-elements-ng/apps/local-esm-cdn",
+		"@pie-players/local-esm-cdn": "workspace:*",
 		"@playwright/test": "^1.57.0",
 		"@sveltejs/adapter-auto": "^7.0.0",
 		"@sveltejs/adapter-static": "^3.0.10",

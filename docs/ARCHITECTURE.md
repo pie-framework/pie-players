@@ -243,13 +243,80 @@ The **Assessment Toolkit** provides composable services for coordinating tools, 
 
 ### QTI 3.0 Support
 
-The toolkit natively supports **QTI 3.0 Personal Needs Profile (PNP)** for student accommodations and accessibility features. Rather than maintaining a custom profile abstraction system, the toolkit uses industry-standard QTI 3.0 concepts directly:
+The toolkit natively supports **QTI 3.0** features for industry-standard assessment delivery:
 
-- **PNPMapper** - Maps QTI 3.0 PNP support IDs to PIE tool identifiers
-- **PNPToolResolver** - Resolves tool availability from PNP with precedence hierarchy
-- **AssessmentSettings** - Enhanced settings for district policies, tool configs, and themes
+#### Implemented Features
 
-This results in simpler code (72% reduction in abstraction), easier client usage (one-line initialization), and full standards compliance.
+**1. Personal Needs Profile (PNP)** - Student accommodations and IEP/504 support
+
+- Maps QTI 3.0 PNP support IDs to PIE tools (`textToSpeech` → `pie-tool-text-to-speech`)
+- Resolves tool availability with precedence hierarchy (district block > item requirement > PNP)
+- Supports district policies, test administration overrides, item-level requirements
+
+```typescript
+const assessment = {
+  personalNeedsProfile: {
+    supports: ['textToSpeech', 'calculator'],
+    activateAtInit: ['textToSpeech']
+  },
+  settings: {
+    districtPolicy: { blockedTools: [], requiredTools: ['ruler'] },
+    toolConfigs: { calculator: { type: 'scientific', provider: 'desmos' } }
+  }
+};
+
+const player = new AssessmentPlayer({ assessment, loadItem });
+// Tools automatically resolved and configured
+```
+
+**2. Context Declarations** - Global variables shared across items
+
+- Cross-item randomization (shared random seeds)
+- Adaptive testing (difficulty adjustment based on performance)
+- Shared configuration (currency symbols, measurement units)
+- Item dependencies
+
+```typescript
+const assessment = {
+  contextDeclarations: [
+    { identifier: 'RANDOM_SEED', baseType: 'integer', defaultValue: 42 },
+    { identifier: 'DIFFICULTY_LEVEL', baseType: 'string', defaultValue: 'medium' }
+  ]
+};
+
+const player = new AssessmentPlayer({ assessment, loadItem });
+
+// Access context variables
+const seed = player.getContextVariable('RANDOM_SEED');
+player.setContextVariable('DIFFICULTY_LEVEL', 'hard');
+
+// Pass to PIE elements
+const context = player.getContextVariables();
+await renderItem(item, session, context);
+```
+
+#### Planned Features
+
+**3. Accessibility Catalogs** (Phase 2) - Alternative content representations
+
+- Pre-recorded TTS audio files
+- Sign language videos
+- Braille representations
+- Simplified language versions
+
+**4. Stimulus References** (Phase 3) - Shared passages/stimuli
+
+- Reading comprehension passages
+- Shared diagrams/images
+- Split-view layouts
+- Common scenarios
+
+#### Benefits
+
+- **Standards Compliant**: Uses QTI 3.0 directly (no custom abstractions)
+- **Simpler Code**: 72% reduction in abstraction complexity
+- **Easy Integration**: One-line initialization for full QTI 3.0 support
+- **Third-Party Friendly**: All services work independently of AssessmentPlayer
 
 ### Toolkit Services
 
@@ -374,7 +441,81 @@ themeProvider.setFontSize("xlarge");
 
 ---
 
-#### 5. PNPToolResolver
+#### 5. ContextVariableStore
+
+**Purpose**: QTI 3.0 Context Declarations for global variables shared across assessment items.
+
+**Standalone Service**: Manages QTI 3.0 context variables independently of AssessmentPlayer.
+
+**Key Features**:
+
+- Global assessment-level variables
+- Cross-item randomization (shared random seeds)
+- Adaptive testing patterns (difficulty adjustment)
+- Shared configuration values (currency symbols, units)
+- Session persistence
+- Type validation for QTI 3.0 base types
+
+**API**:
+
+```typescript
+const store = new ContextVariableStore(declarations);
+
+// Get/set variables
+const seed = store.get('RANDOM_SEED');
+store.set('DIFFICULTY_LEVEL', 'hard');
+
+// Serialize for session persistence
+const state = store.toObject();
+store.fromObject(savedState);
+
+// Reset to defaults
+store.reset();
+```
+
+**Integration Example**:
+
+```typescript
+// Assessment with context declarations
+const assessment = {
+  contextDeclarations: [
+    {
+      identifier: 'RANDOM_SEED',
+      baseType: 'integer',
+      cardinality: 'single',
+      defaultValue: 42
+    },
+    {
+      identifier: 'DIFFICULTY_LEVEL',
+      baseType: 'string',
+      cardinality: 'single',
+      defaultValue: 'medium'
+    }
+  ]
+};
+
+// Initialize store
+const contextStore = new ContextVariableStore(assessment.contextDeclarations);
+
+// Use in adaptive testing
+function onItemCompleted(isCorrect: boolean) {
+  if (isCorrect) {
+    contextStore.set('DIFFICULTY_LEVEL', 'hard');
+  } else {
+    contextStore.set('DIFFICULTY_LEVEL', 'easy');
+  }
+}
+
+// Pass to next item
+const context = contextStore.toObject();
+await renderItem(nextItem, session, context);
+```
+
+See: [QTI 3.0 Context Declarations Plan](qti-3-context-declarations-plan.md)
+
+---
+
+#### 6. PNPToolResolver
 
 **Purpose**: QTI 3.0 Personal Needs Profile (PNP) tool resolution with precedence hierarchy.
 
@@ -665,6 +806,7 @@ Use assessment toolkit for complete test delivery with QTI 3.0 support:
 import {
   AssessmentPlayer,
   PNPToolResolver,
+  ContextVariableStore,
   TypedEventBus,
   ToolCoordinator,
   HighlightCoordinator,
@@ -672,13 +814,27 @@ import {
   ThemeProvider,
 } from "@pie-framework/assessment-toolkit";
 
-// QTI 3.0 assessment with PNP
+// QTI 3.0 assessment with PNP and Context Declarations
 const assessment = {
   id: 'test-assessment',
   personalNeedsProfile: {
     supports: ['calculator', 'textToSpeech'],
     activateAtInit: ['textToSpeech']
   },
+  contextDeclarations: [
+    {
+      identifier: 'RANDOM_SEED',
+      baseType: 'integer',
+      cardinality: 'single',
+      defaultValue: 42
+    },
+    {
+      identifier: 'DIFFICULTY_LEVEL',
+      baseType: 'string',
+      cardinality: 'single',
+      defaultValue: 'medium'
+    }
+  ],
   settings: {
     districtPolicy: {
       blockedTools: [],
@@ -690,24 +846,35 @@ const assessment = {
   }
 };
 
-// Simple initialization - framework handles tool resolution
+// Simple initialization - framework handles everything
 const player = new AssessmentPlayer({
   assessment,
   loadItem: async (itemId) => {
-    // Load item implementation
+    const item = await fetchItem(itemId);
+    return item;
   }
 });
 
-// Or use services directly
+// Access QTI 3.0 features
+const tools = player.getAvailableTools();
+const context = player.getContextVariables();
+player.setContextVariable('DIFFICULTY_LEVEL', 'hard');
+
+// Or use services directly for custom players
 const eventBus = new TypedEventBus();
 const pnpResolver = new PNPToolResolver();
+const contextStore = new ContextVariableStore(assessment.contextDeclarations);
+
 const tools = pnpResolver.resolveTools(assessment);
+const seed = contextStore.get('RANDOM_SEED');
 
 // Wire up events
 eventBus.on("player:session-changed", async (e) => {
   await backend.saveSession(e.detail);
 });
 ```
+
+**See complete examples:** [QTI 3.0 Features Client Guide](qti-3-features-client-guide.md)
 
 ### Pattern 4: Custom Assessment Player
 
@@ -749,10 +916,8 @@ class CustomAssessmentPlayer {
 - [Authoring Mode Guide](AUTHORING_MODE.md) - Complete authoring documentation
 - [Question Layout Engine Architecture](question-layout-engine-architecture.md) - Layout system design
 - [Tools & Accommodations Architecture](tools-and-accomodations/architecture.md) - Tools system design
-- [Assessment Toolkit README](../packages/assessment-toolkit/src/README.md) - Toolkit usage
+- [Assessment Toolkit README](../packages/assessment-toolkit/src/README.md) - Toolkit usage and QTI 3.0 examples
 - [Tools README](../packages/assessment-toolkit/src/tools/README.md) - Tool development guide
-- [QTI 3.0 Native Implementation](qti-3-toolkit-alignment-analysis.md) - QTI 3.0 PNP integration
-- [QTI 3.0 Feature Support](qti-3.0-feature-support.md) - QTI 3.0 features overview
 
 ### Standards & Specifications
 

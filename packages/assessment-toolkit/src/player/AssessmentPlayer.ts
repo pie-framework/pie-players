@@ -51,6 +51,7 @@ import {
 	PNPToolResolver,
 	type ResolvedToolConfig,
 } from "../services/PNPToolResolver";
+import { ContextVariableStore } from "../services/ContextVariableStore";
 import { AssessmentAuthoringService } from "../services/AssessmentAuthoringService";
 import { BrowserTTSProvider } from "../services/tts/browser-provider";
 import {
@@ -154,6 +155,9 @@ export class AssessmentPlayer {
 	private pnpResolver!: PNPToolResolver;
 	private currentTools: ResolvedToolConfig[] = [];
 
+	// QTI 3.0 Context Variables
+	private contextStore!: ContextVariableStore;
+
 	// Assessment format and navigation
 	private assessmentFormat: "flat" | "qti";
 	private questionRefs: QuestionRef[];
@@ -223,6 +227,12 @@ export class AssessmentPlayer {
 		this.initializeTools();
 		this.applyAssessmentTheme();
 		this.autoActivateTools();
+
+		// Initialize context variable store from QTI 3.0 contextDeclarations
+		this.contextStore = new ContextVariableStore(
+			config.assessment.contextDeclarations,
+		);
+		this.restoreContextVariables();
 
 		// Initialize highlight coordinator
 		// Use injected coordinator, or create new one if supported
@@ -1173,6 +1183,70 @@ export class AssessmentPlayer {
 	 */
 	getLayoutPreferences(): any {
 		return this.config.assessment.settings?.themeConfig || {};
+	}
+
+	// ============================================================================
+	// Context Variables (QTI 3.0 Context Declarations)
+	// ============================================================================
+
+	/**
+	 * Get context variable value
+	 *
+	 * @param identifier Variable identifier
+	 * @returns Variable value or undefined
+	 */
+	getContextVariable(identifier: string): any {
+		return this.contextStore.get(identifier);
+	}
+
+	/**
+	 * Set context variable value
+	 *
+	 * @param identifier Variable identifier
+	 * @param value New value
+	 */
+	setContextVariable(identifier: string, value: any): void {
+		this.contextStore.set(identifier, value);
+		this.persistContextVariables();
+	}
+
+	/**
+	 * Get all context variables as object
+	 *
+	 * @returns Object containing all context variables
+	 */
+	getContextVariables(): Record<string, any> {
+		return this.contextStore.toObject();
+	}
+
+	/**
+	 * Reset context variables to default values
+	 */
+	resetContextVariables(): void {
+		this.contextStore.reset();
+		this.persistContextVariables();
+	}
+
+	/**
+	 * Restore context variables from session storage
+	 */
+	private restoreContextVariables(): void {
+		if (this.testSession?.contextVariables) {
+			this.contextStore.fromObject(this.testSession.contextVariables);
+		}
+	}
+
+	/**
+	 * Persist context variables to session storage
+	 */
+	private persistContextVariables(): void {
+		if (this.testSession && this.attemptStorage) {
+			this.testSession = {
+				...this.testSession,
+				contextVariables: this.contextStore.toObject(),
+			};
+			saveTestSession(this.attemptStorage, this.testSession);
+		}
 	}
 
 	/**

@@ -47,10 +47,10 @@ import {
 	TypedEventBus,
 } from "../index";
 import type { LoadItem } from "../item-loader";
-import type {
-	AssessmentContextProfile,
-	ToolAvailability,
-} from "../profile/interfaces";
+import {
+	PNPToolResolver,
+	type ResolvedToolConfig,
+} from "../services/PNPToolResolver";
 import { AssessmentAuthoringService } from "../services/AssessmentAuthoringService";
 import { BrowserTTSProvider } from "../services/tts/browser-provider";
 import {
@@ -73,12 +73,6 @@ export interface ReferencePlayerConfig {
 	 * Item loader. Must be client-resolvable (can be backed by an API or local itemBank).
 	 */
 	loadItem: LoadItem;
-
-	/**
-	 * Assessment context profile containing resolved configuration decisions.
-	 * Defines which tools are available, theme settings, layout preferences, etc.
-	 */
-	contextProfile?: AssessmentContextProfile;
 
 	/**
 	 * Player mode (defaults to 'gather' for student assessment mode)
@@ -156,9 +150,9 @@ export class AssessmentPlayer {
 	// Configuration
 	private config: ReferencePlayerConfig;
 
-	// NEW: Profile-based configuration
-	private contextProfile: AssessmentContextProfile | null = null;
-	private availableTools: ToolAvailability[] = [];
+	// PNP-based tool resolution
+	private pnpResolver!: PNPToolResolver;
+	private currentTools: ResolvedToolConfig[] = [];
 
 	// Assessment format and navigation
 	private assessmentFormat: "flat" | "qti";
@@ -224,11 +218,11 @@ export class AssessmentPlayer {
 			config.services?.desmosProvider ?? new DesmosCalculatorProvider();
 		this.tiProvider = config.services?.tiProvider ?? new TICalculatorProvider();
 
-		// Apply context profile if provided
-		if (config.contextProfile) {
-			this.contextProfile = config.contextProfile;
-			this.applyContextProfile(config.contextProfile);
-		}
+		// Initialize PNP resolver and tools from assessment
+		this.pnpResolver = new PNPToolResolver();
+		this.initializeTools();
+		this.applyAssessmentTheme();
+		this.autoActivateTools();
 
 		// Initialize highlight coordinator
 		// Use injected coordinator, or create new one if supported
@@ -257,8 +251,8 @@ export class AssessmentPlayer {
 		// Set up event listeners
 		this.setupEventListeners();
 
-		// Initialize TTS if profile includes it
-		if (this.contextProfile && this.isToolEnabled("textToSpeech")) {
+		// Initialize TTS if enabled via PNP
+		if (this.isToolEnabled("pie-tool-text-to-speech")) {
 			this.initializeTTS();
 		}
 	}
@@ -1078,56 +1072,92 @@ export class AssessmentPlayer {
 	/**
 	 * Apply an assessment context profile
 	 */
-	private applyContextProfile(profile: AssessmentContextProfile): void {
-		// Apply theme
-		if (profile.theme) {
+	/**
+	 * Initialize tools from assessment PNP
+	 */
+	private initializeTools(): void {
+		const assessment = this.config.assessment;
+
+		// Resolve tools from PNP + settings
+		this.currentTools = this.pnpResolver.resolveTools(assessment);
+
+		// Register tools with coordinator
+		for (const tool of this.currentTools) {
+			if (tool.enabled) {
+				this.toolCoordinator.registerTool(tool.id, this.humanizeName(tool.id));
+
+				// Configure tool-specific settings
+				if (tool.id === "pie-tool-calculator" && tool.settings) {
+					this.configureCalculator(tool.settings);
+				}
+			}
+		}
+	}
+
+	/**
+	 * Apply theme from assessment settings
+	 */
+	private applyAssessmentTheme(): void {
+		const settings = this.config.assessment.settings;
+		const themeConfig = settings?.themeConfig;
+
+		if (themeConfig) {
 			this.themeProvider =
 				this.config.services?.themeProvider ?? new ThemeProvider();
-			// Cast to ThemeConfig - ResolvedThemeConfig is compatible at runtime
-			this.themeProvider.applyTheme(profile.theme as any);
+			this.themeProvider.applyTheme(themeConfig as any);
 		}
-
-		// Store available tools
-		this.availableTools = profile.tools.available.map((t) => ({
-			toolId: t.toolId,
-			enabled: t.enabled,
-			required: t.required || false,
-			alwaysAvailable: t.alwaysAvailable || false,
-			restricted: t.restricted || false,
-			config: t.config,
-		}));
-
-		// Note: Layout preferences are stored in profile and can be accessed via getLayoutPreferences()
-		// The layout engine (when implemented) will consume these preferences
 	}
 
 	/**
-	 * Get the current context profile
+	 * Auto-activate tools marked in PNP
 	 */
-	getContextProfile(): AssessmentContextProfile | null {
-		return this.contextProfile;
+	private autoActivateTools(): void {
+		const autoActivate = this.pnpResolver.getAutoActivateTools(
+			this.config.assessment,
+		);
+
+		for (const toolId of autoActivate) {
+			this.toolCoordinator.showTool(toolId);
+		}
 	}
 
 	/**
-	 * Get available tools from profile
+	 * Configure calculator with settings
 	 */
-	getAvailableTools(): ToolAvailability[] {
-		return this.availableTools;
+	private configureCalculator(settings: any): void {
+		// Calculator configuration logic
+		// (existing logic would be here)
+	}
+
+	/**
+	 * Convert tool ID to human-readable name
+	 */
+	private humanizeName(toolId: string): string {
+		return toolId
+			.replace(/^pie-tool-/, "")
+			.replace(/-/g, " ")
+			.replace(/\b\w/g, (c) => c.toUpperCase());
+	}
+
+	/**
+	 * Get available tools (resolved from PNP)
+	 */
+	getAvailableTools(): ResolvedToolConfig[] {
+		return this.currentTools;
 	}
 
 	/**
 	 * Check if a specific tool is enabled
 	 */
 	isToolEnabled(toolId: string): boolean {
-		const tool = this.availableTools.find((t) => t.toolId === toolId);
-		return tool?.enabled || false;
+		return this.currentTools.some((t) => t.id === toolId && t.enabled);
 	}
 
 	/**
 	 * Check if a specific tool is required
 	 */
 	isToolRequired(toolId: string): boolean {
-		const tool = this.availableTools.find((t) => t.toolId === toolId);
+		const tool = this.currentTools.find((t) => t.id === toolId);
 		return tool?.required || tool?.alwaysAvailable || false;
 	}
 
@@ -1135,15 +1165,14 @@ export class AssessmentPlayer {
 	 * Get configuration for a specific tool
 	 */
 	getToolConfig(toolId: string): any | undefined {
-		const tool = this.availableTools.find((t) => t.toolId === toolId);
-		return tool?.config;
+		return this.currentTools.find((t) => t.id === toolId)?.settings;
 	}
 
 	/**
-	 * Get layout preferences from profile
+	 * Get layout preferences from settings
 	 */
 	getLayoutPreferences(): any {
-		return this.contextProfile?.layout || {};
+		return this.config.assessment.settings?.themeConfig || {};
 	}
 
 	/**

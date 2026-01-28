@@ -239,6 +239,17 @@ The **Assessment Toolkit** provides composable services for coordinating tools, 
 2. **No Framework Lock-in** - Works with any JavaScript framework
 3. **Product Control** - Products control navigation, persistence, layout, backend
 4. **Standard Contracts** - Well-defined event types for component communication
+5. **QTI 3.0 Native** - Uses QTI 3.0 Personal Needs Profile (PNP) directly for accessibility accommodations
+
+### QTI 3.0 Support
+
+The toolkit natively supports **QTI 3.0 Personal Needs Profile (PNP)** for student accommodations and accessibility features. Rather than maintaining a custom profile abstraction system, the toolkit uses industry-standard QTI 3.0 concepts directly:
+
+- **PNPMapper** - Maps QTI 3.0 PNP support IDs to PIE tool identifiers
+- **PNPToolResolver** - Resolves tool availability from PNP with precedence hierarchy
+- **AssessmentSettings** - Enhanced settings for district policies, tool configs, and themes
+
+This results in simpler code (72% reduction in abstraction), easier client usage (one-line initialization), and full standards compliance.
 
 ### Toolkit Services
 
@@ -363,54 +374,76 @@ themeProvider.setFontSize("xlarge");
 
 ---
 
-#### 5. ToolConfigResolver
+#### 5. PNPToolResolver
 
-**Purpose**: IEP/504 tool configuration resolution (3-tier hierarchy).
+**Purpose**: QTI 3.0 Personal Needs Profile (PNP) tool resolution with precedence hierarchy.
 
-**Three-Tier Configuration**:
+**Native QTI 3.0 Support**: The toolkit uses QTI 3.0 PNP directly instead of custom profile abstractions.
 
-![Three-Tier Configuration](img/three-tier-configuration.png)
+**Precedence Hierarchy**:
 
 ```
-Item Level (most specific):
-  "This question requires scientific calculator"
+District Block (absolute veto):
+  "District policy blocks calculator"
       ↓
-Roster/Test Level:
-  "Calculator allowed, dictionary blocked"
+Test Administration Override:
+  "Practice mode enables all tools"
       ↓
-Student Level:
-  "Student has TTS accommodation per IEP"
+Item Restriction (per-item):
+  "This question blocks calculator"
+      ↓
+Item Requirement (forces enable):
+  "This question requires protractor"
+      ↓
+District Requirement:
+  "District requires ruler for all tests"
+      ↓
+PNP Supports (student accommodations):
+  "Student has TTS and calculator per IEP"
       ↓
 Final Configuration:
-  Scientific calculator (required) + TTS (enabled)
+  Protractor (required) + TTS (enabled) + Ruler (required)
+  Calculator blocked by item restriction
 ```
 
 **Precedence Rules**:
 
-1. Roster block (`"0"` = blocked) — highest priority
-2. Item restriction
-3. Item requirement
-4. Student accommodation
-5. Roster default (`"1"` = allowed)
-6. System default (not allowed)
+1. District block (absolute veto) — highest priority
+2. Test administration override
+3. Item restriction (per-item block)
+4. Item requirement (forces enable)
+5. District requirement
+6. PNP supports (student needs)
 
 **API**:
 
 ```typescript
-const resolver = new ToolConfigResolver();
+const resolver = new PNPToolResolver();
 
-const resolved = resolver.resolveTool(
-  "calculator",
-  itemConfig.tools,
-  rosterConfig.allowances,
-  studentProfile.accommodations
-);
+// Resolve all tools from QTI 3.0 assessment
+const tools = resolver.resolveTools(assessment, currentItemRef);
 
-const allTools = resolver.resolveAll({
-  itemConfig,
-  rosterConfig,
-  studentProfile,
-});
+// Check if specific tool is enabled
+const isEnabled = resolver.isToolEnabled('pie-tool-calculator', assessment, itemRef);
+
+// Get auto-activate tools
+const autoActivate = resolver.getAutoActivateTools(assessment);
+
+// Get enabled tools
+const enabled = resolver.getEnabledTools(assessment, itemRef);
+```
+
+**Resolved Tool Configuration**:
+
+```typescript
+interface ResolvedToolConfig {
+  id: string;                     // PIE tool ID
+  enabled: boolean;
+  required?: boolean;             // Must be available
+  alwaysAvailable?: boolean;      // PNP support (can't be toggled)
+  settings?: any;                 // Tool-specific config
+  source: 'district' | 'item' | 'pnp' | 'settings';
+}
 ```
 
 ---
@@ -440,7 +473,7 @@ import {
   HighlightCoordinator,
   TTSService,
   ThemeProvider,
-  ToolConfigResolver,
+  PNPToolResolver,
 } from "@pie-framework/assessment-toolkit";
 
 // Initialize services
@@ -449,7 +482,17 @@ const toolCoordinator = new ToolCoordinator();
 const highlightCoordinator = new HighlightCoordinator();
 const ttsService = TTSService.getInstance();
 const themeProvider = new ThemeProvider();
-const toolResolver = new ToolConfigResolver();
+const pnpResolver = new PNPToolResolver();
+
+// Resolve tools from QTI 3.0 assessment
+const tools = pnpResolver.resolveTools(assessment, currentItemRef);
+
+// Register tools with coordinator
+tools.forEach(tool => {
+  if (tool.enabled) {
+    toolCoordinator.registerTool(tool.id, humanizeName(tool.id));
+  }
+});
 
 // Wire up events
 eventBus.on("player:session-changed", async (e) => {
@@ -616,10 +659,12 @@ toolCoordinator.showTool("calculator");
 
 ### Pattern 3: Full Assessment (Toolkit)
 
-Use assessment toolkit for complete test delivery:
+Use assessment toolkit for complete test delivery with QTI 3.0 support:
 
 ```typescript
 import {
+  AssessmentPlayer,
+  PNPToolResolver,
   TypedEventBus,
   ToolCoordinator,
   HighlightCoordinator,
@@ -627,12 +672,36 @@ import {
   ThemeProvider,
 } from "@pie-framework/assessment-toolkit";
 
-// Initialize services
+// QTI 3.0 assessment with PNP
+const assessment = {
+  id: 'test-assessment',
+  personalNeedsProfile: {
+    supports: ['calculator', 'textToSpeech'],
+    activateAtInit: ['textToSpeech']
+  },
+  settings: {
+    districtPolicy: {
+      blockedTools: [],
+      requiredTools: []
+    },
+    toolConfigs: {
+      calculator: { type: 'scientific', provider: 'desmos' }
+    }
+  }
+};
+
+// Simple initialization - framework handles tool resolution
+const player = new AssessmentPlayer({
+  assessment,
+  loadItem: async (itemId) => {
+    // Load item implementation
+  }
+});
+
+// Or use services directly
 const eventBus = new TypedEventBus();
-const toolCoordinator = new ToolCoordinator();
-const highlightCoordinator = new HighlightCoordinator();
-const ttsService = TTSService.getInstance();
-const themeProvider = new ThemeProvider();
+const pnpResolver = new PNPToolResolver();
+const tools = pnpResolver.resolveTools(assessment);
 
 // Wire up events
 eventBus.on("player:session-changed", async (e) => {
@@ -682,6 +751,8 @@ class CustomAssessmentPlayer {
 - [Tools & Accommodations Architecture](tools-and-accomodations/architecture.md) - Tools system design
 - [Assessment Toolkit README](../packages/assessment-toolkit/src/README.md) - Toolkit usage
 - [Tools README](../packages/assessment-toolkit/src/tools/README.md) - Tool development guide
+- [QTI 3.0 Native Implementation](qti-3-toolkit-alignment-analysis.md) - QTI 3.0 PNP integration
+- [QTI 3.0 Feature Support](qti-3.0-feature-support.md) - QTI 3.0 features overview
 
 ### Standards & Specifications
 

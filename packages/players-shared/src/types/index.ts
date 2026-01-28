@@ -235,8 +235,7 @@ export interface RubricBlock {
  * This is the canonical way to reference items from an assessment definition.
  */
 export interface AssessmentItemRef
-	extends SearchMetaDataEntity,
-		SettingsMetaDataEntity {
+	extends SearchMetaDataEntity {
 	id?: string;
 	identifier: string;
 	itemVId: string;
@@ -246,6 +245,9 @@ export interface AssessmentItemRef
 	required?: boolean;
 	weight?: number;
 	item?: ItemEntity;
+
+	/** Item-level settings for tool requirements */
+	settings?: ItemSettings;
 }
 
 export interface QtiAssessmentSection
@@ -275,6 +277,41 @@ export interface TestPart {
 	sections: QtiAssessmentSection[];
 }
 
+// ============================================================================
+// QTI 3.0 Types
+// ============================================================================
+
+export interface ContextDeclaration {
+	identifier: string;
+	baseType: 'boolean' | 'integer' | 'float' | 'string' | 'identifier' |
+						'point' | 'pair' | 'directedPair' | 'duration' | 'file' | 'uri';
+	cardinality: 'single' | 'multiple' | 'ordered' | 'record';
+	defaultValue?: any;
+}
+
+export interface CatalogCard {
+	catalog: string; // 'spoken', 'sign-language', 'braille', etc.
+	language?: string;
+	content: string;
+}
+
+export interface AccessibilityCatalog {
+	identifier: string;
+	cards: CatalogCard[];
+}
+
+export interface PersonalNeedsProfile {
+	supports: string[];
+	prohibitedSupports?: string[];
+	activateAtInit?: string[];
+}
+
+export interface StimulusRef {
+	identifier: string;
+	href: string;
+	type: 'qti-stimulus';
+}
+
 /**
  * Reference to question and sorting info within a section.
  */
@@ -284,7 +321,7 @@ export interface SectionQuestionRef {
 }
 
 /**
- * Questions can optionally be grouped in sections.
+ * Questions can optionally be grouped in sections (legacy).
  */
 export interface AssessmentSection
 	extends SearchMetaDataEntity,
@@ -297,18 +334,102 @@ export interface AssessmentSection
 
 export interface AssessmentEntity
 	extends BaseEntity,
-		SearchMetaDataEntity,
-		SettingsMetaDataEntity {
+		SearchMetaDataEntity {
 	name?: string;
 	title?: string;
 	identifier?: string;
 	description?: string;
+
+	/** Enhanced structured settings for assessment configuration */
+	settings?: AssessmentSettings;
+
+	/** QTI version - '3.0' for QTI 3.0 format */
+	qtiVersion?: '3.0';
+
+	/** QTI 3.0: Context declarations (global shared variables) */
+	contextDeclarations?: ContextDeclaration[];
+
+	/** QTI 3.0: Integrated APIP accessibility catalogs */
+	accessibilityCatalogs?: AccessibilityCatalog[];
+
+	/** QTI 3.0: Personal Needs Profile (PNP 3.0) */
+	personalNeedsProfile?: PersonalNeedsProfile;
+
+	/** QTI 3.0: Stimulus references (shared passages) */
+	stimulusRefs?: StimulusRef[];
+
+	/** Legacy: Flat questions array */
 	questions?: QuestionEntity[];
+
+	/** Legacy: Simple sections */
 	sections?: AssessmentSection[];
+
 	/**
-	 * QTI-aligned structure. When present, this is the authoritative assessment model.
+	 * QTI 3.0: testParts structure (authoritative for QTI format).
 	 */
 	testParts?: TestPart[];
+}
+
+/**
+ * Enhanced settings structure for assessment configuration.
+ * Provides structured fields for district policies, test administration,
+ * tool configurations, and theme settings while remaining extensible.
+ */
+export interface AssessmentSettings {
+	/** District/organization policies */
+	districtPolicy?: {
+		blockedTools?: string[]; // PNP support IDs that are blocked
+		requiredTools?: string[]; // PNP support IDs that are required
+		policies?: Record<string, any>;
+	};
+
+	/** Test administration configuration */
+	testAdministration?: {
+		mode?: 'practice' | 'test' | 'benchmark';
+		toolOverrides?: Record<string, boolean>; // Override specific PNP supports
+		startDate?: string;
+		endDate?: string;
+	};
+
+	/** Tool-specific provider configurations */
+	toolConfigs?: {
+		calculator?: {
+			provider?: 'desmos' | 'ti' | 'mathjs';
+			type?: 'basic' | 'scientific' | 'graphing' | 'ti-84' | 'ti-108';
+			settings?: Record<string, any>;
+		};
+		textToSpeech?: {
+			provider?: 'browser' | 'polly' | 'custom';
+			voice?: string;
+			rate?: number;
+			pitch?: number;
+		};
+		[toolId: string]: any; // Other tool configs
+	};
+
+	/** Theme configuration (not in PNP) */
+	themeConfig?: {
+		colorScheme?: 'default' | 'high-contrast' | 'dark';
+		fontSize?: number;
+		fontFamily?: string;
+		lineHeight?: number;
+		reducedMotion?: boolean;
+	};
+
+	/** Product-specific extensions */
+	[key: string]: any;
+}
+
+/**
+ * Item-level settings for tool requirements.
+ * Used in AssessmentItemRef.settings to specify item-specific tool needs.
+ */
+export interface ItemSettings {
+	requiredTools?: string[]; // PNP support IDs required for this item
+	restrictedTools?: string[]; // PNP support IDs blocked for this item
+	toolParameters?: Record<string, any>; // Tool-specific config per item
+
+	[key: string]: any; // Product extensions
 }
 
 export interface SanctionedVersionEntity extends BaseEntity {

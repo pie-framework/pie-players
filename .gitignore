@@ -72,3 +72,6 @@ temp/
 !.mcp/servers.json
 !.mcp/README.md
 !.mcp/servers/*.json
+
+# Verdaccio local registry
+.verdaccio/

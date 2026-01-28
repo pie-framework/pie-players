@@ -126,6 +126,17 @@
 		}
 	});
 
+	// Reference to the player element for programmatic property setting
+	let playerElement = $state<any>(null);
+
+	// Set complex object properties on the web component after mount
+	$effect(() => {
+		if (playerElement && started) {
+			playerElement.assessment = assessment;
+			playerElement.itemBank = itemBank;
+		}
+	});
+
 	// state -> URL (debounced; avoid pushing history)
 	let urlSyncTimer: ReturnType<typeof setTimeout> | null = null;
 	$effect(() => {
@@ -310,7 +321,7 @@
 				</div>
 			{:else if selectedIds.length > 0}
 				<div class="h-full rounded-lg border border-base-300 bg-base-100 overflow-hidden">
-					<pie-assessment-player assessment={assessment} itemBank={itemBank} mode="gather" class="block"></pie-assessment-player>
+					<pie-assessment-player bind:this={playerElement} mode="gather" class="block"></pie-assessment-player>
 				</div>
 			{:else}
 				<div class="alert alert-warning">

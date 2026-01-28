@@ -20,6 +20,7 @@ The repository must be hosted on GitHub (likely at `pie-framework/pie-players`).
 ```bash
 # If not already set up, add the remote:
 git remote add origin git@github.com:pie-framework/pie-players.git
+git push -u origin develop
 git push -u origin master
 ```
 

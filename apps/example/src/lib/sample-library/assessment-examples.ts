@@ -201,6 +201,33 @@ export const ASSESSMENT_EXAMPLES: AssessmentExample[] = [
 		estimatedMinutes: 30,
 		tags: ["linear", "sequential", "practice"],
 	},
+	{
+		id: "qti3-accessibility-catalogs",
+		name: "QTI 3.0 Accessibility Catalogs Demo",
+		description:
+			"Demonstrates QTI 3.0 accessibility catalogs with spoken TTS, braille, simplified language, and multi-language support. Shows assessment-level and item-level catalog integration.",
+		itemIds: [
+			"mc_basic",
+			"mc_multi",
+			"et_basic",
+		],
+		estimatedMinutes: 10,
+		tags: ["qti3", "accessibility", "catalogs", "demo"],
+	},
+	{
+		id: "qti3-pnp-integration",
+		name: "QTI 3.0 Personal Needs Profile Demo",
+		description:
+			"Shows QTI 3.0 Personal Needs Profile (PNP) integration with automatic tool activation based on student accommodations (IEP/504 support).",
+		itemIds: [
+			"mc_basic",
+			"calculator",
+			"graphing",
+			"et_basic",
+		],
+		estimatedMinutes: 12,
+		tags: ["qti3", "pnp", "accommodations", "demo"],
+	},
 ];
 
 /**
@@ -209,6 +236,160 @@ export const ASSESSMENT_EXAMPLES: AssessmentExample[] = [
 export function createAssessmentFromExample(
 	example: AssessmentExample,
 ): AssessmentEntity {
+	// QTI 3.0 Accessibility Catalogs Demo
+	if (example.id === "qti3-accessibility-catalogs") {
+		return {
+			id: "qti3-a11y-demo",
+			name: example.name,
+			title: "QTI 3.0 Accessibility Catalogs",
+			identifier: "qti3-accessibility-demo",
+			qtiVersion: "3.0",
+
+			// Assessment-level accessibility catalogs (shared across items)
+			accessibilityCatalogs: [
+				{
+					identifier: "welcome-message",
+					cards: [
+						{
+							catalog: "spoken",
+							language: "en-US",
+							content:
+								'<speak><prosody rate="medium">Welcome to the QTI 3.0 accessibility demo. This assessment demonstrates spoken text, braille output, and simplified language alternatives.</prosody></speak>',
+						},
+						{
+							catalog: "simplified-language",
+							language: "en",
+							content: "Welcome! This test shows different ways to read questions.",
+						},
+						{
+							catalog: "spoken",
+							language: "es-ES",
+							content:
+								'<speak><prosody rate="medium">Bienvenido a la demostración de accesibilidad QTI 3.0.</prosody></speak>',
+						},
+					],
+				},
+				{
+					identifier: "shared-instructions",
+					cards: [
+						{
+							catalog: "spoken",
+							language: "en-US",
+							content:
+								'<speak>Read each question carefully. <break time="500ms"/> Select the best answer. <break time="500ms"/> You may use the text-to-speech tool to hear the questions.</speak>',
+						},
+						{
+							catalog: "simplified-language",
+							language: "en",
+							content: "Read each question. Pick the best answer. Use the speaker button to hear questions.",
+						},
+					],
+				},
+			],
+
+			// Personal Needs Profile (auto-activate TTS)
+			personalNeedsProfile: {
+				supports: ["textToSpeech", "highlighter"],
+				activateAtInit: ["textToSpeech"],
+			},
+
+			testParts: [
+				{
+					identifier: "part-1",
+					navigationMode: "nonlinear",
+					submissionMode: "individual",
+					sections: [
+						{
+							identifier: "section-1",
+							title: "Accessibility Features Demo",
+							rubricBlocks: [
+								{
+									view: "candidate",
+									use: "instructions",
+									content:
+										'<div data-catalog-id="welcome-message"><h3>Welcome</h3><p>This assessment demonstrates QTI 3.0 accessibility catalogs with multiple alternative formats.</p></div>',
+								},
+							],
+							questionRefs: example.itemIds.map((itemVId, idx) => ({
+								identifier: `q-${idx + 1}`,
+								itemVId,
+							})),
+						},
+					],
+				},
+			],
+		};
+	}
+
+	// QTI 3.0 Personal Needs Profile Demo
+	if (example.id === "qti3-pnp-integration") {
+		return {
+			id: "qti3-pnp-demo",
+			name: example.name,
+			title: "QTI 3.0 Personal Needs Profile",
+			identifier: "qti3-pnp-demo",
+			qtiVersion: "3.0",
+
+			// Personal Needs Profile with multiple accommodations
+			personalNeedsProfile: {
+				supports: [
+					"textToSpeech",
+					"calculator",
+					"highlighter",
+					"magnifier",
+					"colorContrast",
+				],
+				activateAtInit: ["textToSpeech", "calculator"],
+				prohibitedSupports: [], // Nothing explicitly prohibited
+			},
+
+			// District policy and settings
+			settings: {
+				districtPolicy: {
+					blockedTools: [], // No district blocks
+					requiredTools: ["textToSpeech"], // District requires TTS
+				},
+				toolConfigs: {
+					calculator: {
+						type: "scientific",
+						provider: "desmos",
+					},
+				},
+				themeConfig: {
+					colorScheme: "default",
+					fontSize: 16,
+					reducedMotion: false,
+				},
+			},
+
+			testParts: [
+				{
+					identifier: "part-1",
+					navigationMode: "nonlinear",
+					submissionMode: "individual",
+					sections: [
+						{
+							identifier: "section-1",
+							title: "Accommodations Demo",
+							rubricBlocks: [
+								{
+									view: "candidate",
+									use: "instructions",
+									content:
+										"<h3>Personal Needs Profile Demo</h3><p>This assessment demonstrates automatic tool activation based on student accommodations (IEP/504 support). Notice that TTS and calculator tools are automatically activated based on your profile.</p>",
+								},
+							],
+							questionRefs: example.itemIds.map((itemVId, idx) => ({
+								identifier: `q-${idx + 1}`,
+								itemVId,
+							})),
+						},
+					],
+				},
+			],
+		};
+	}
+
 	// Demonstrate QTI-like passage sharing: a section-level passage (rubricBlock)
 	// shared across multiple assessment items.
 	if (
@@ -246,7 +427,7 @@ export function createAssessmentFromExample(
 					],
 				},
 			],
-		} as AssessmentEntity;
+		};
 	}
 
 	return {
@@ -255,7 +436,7 @@ export function createAssessmentFromExample(
 			id: `q-${idx + 1}`,
 			itemVId,
 		})),
-	} as AssessmentEntity;
+	};
 }
 
 /**

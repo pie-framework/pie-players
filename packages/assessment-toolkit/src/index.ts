@@ -18,6 +18,7 @@ export { TypedEventBus } from "./core/TypedEventBus";
 // ============================================================================
 
 export type {
+	IAccessibilityCatalogResolver,
 	IHighlightCoordinator,
 	II18nService,
 	IThemeProvider,
@@ -64,6 +65,14 @@ export {
 } from "./services/PNPMapper";
 // Context Variable Store (QTI 3.0 Context Declarations)
 export { ContextVariableStore } from "./services/ContextVariableStore";
+// Accessibility Catalog Resolver (QTI 3.0 Accessibility Catalogs)
+export type {
+	CatalogLookupOptions,
+	CatalogStatistics,
+	CatalogType,
+	ResolvedCatalog,
+} from "./services/AccessibilityCatalogResolver";
+export { AccessibilityCatalogResolver } from "./services/AccessibilityCatalogResolver";
 // Tool Coordinator
 export { ToolCoordinator, ZIndexLayer } from "./services/ToolCoordinator";
 // Text-to-Speech Service

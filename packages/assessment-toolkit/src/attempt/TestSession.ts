@@ -62,6 +62,12 @@ export interface TestSession {
 	 * Keyed by QTI item identifier (questionRef.identifier).
 	 */
 	itemSessions: Record<string, ItemSession>;
+
+	/**
+	 * QTI 3.0 context variables (global assessment-level variables).
+	 * Managed by ContextVariableStore.
+	 */
+	contextVariables?: Record<string, any>;
 }
 
 const TEST_SESSION_VERSION = 1 as const;

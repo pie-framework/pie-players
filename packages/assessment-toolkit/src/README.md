@@ -358,16 +358,123 @@ const required = resolver.isToolRequired('calculator', input);
 const enabledTools = resolver.getEnabledTools(input);
 ```
 
-## Next Steps
+## QTI 3.0 Support
 
-1. ✅ Complete core services implementation
-2. 🚧 Build reference implementation (linear navigation, state management)
-3. 🚧 Create demo with reference layout
-4. 🚧 Add unit tests for all services
-5. 🚧 Write integration guides (Quiz Engine, reference implementation)
+The toolkit natively supports QTI 3.0 features for standards-compliant assessment delivery.
+
+### Personal Needs Profile (PNP)
+
+Student accommodations and IEP/504 support with automatic tool resolution:
+
+```typescript
+import { AssessmentPlayer, PNPToolResolver } from '@pie-players/pie-assessment-toolkit';
+
+// QTI 3.0 assessment with PNP
+const assessment = {
+  personalNeedsProfile: {
+    supports: ['textToSpeech', 'calculator'],
+    activateAtInit: ['textToSpeech']
+  },
+  settings: {
+    districtPolicy: {
+      blockedTools: [],              // District blocks (absolute veto)
+      requiredTools: ['ruler']        // District requires
+    },
+    toolConfigs: {
+      calculator: {
+        type: 'scientific',
+        provider: 'desmos'
+      }
+    }
+  }
+};
+
+// Simple initialization - tools automatically resolved
+const player = new AssessmentPlayer({ assessment, loadItem });
+
+// Or use PNPToolResolver directly
+const resolver = new PNPToolResolver();
+const tools = resolver.resolveTools(assessment, currentItemRef);
+// Returns: [{ id: 'pie-tool-text-to-speech', enabled: true, ... }, ...]
+```
+
+**Standard PNP Support IDs:**
+
+```typescript
+'textToSpeech'    → 'pie-tool-text-to-speech'
+'calculator'      → 'pie-tool-calculator'
+'ruler'           → 'pie-tool-ruler'
+'protractor'      → 'pie-tool-protractor'
+'highlighter'     → 'pie-tool-annotation-toolbar'
+'lineReader'      → 'pie-tool-line-reader'
+'magnifier'       → 'pie-tool-magnifier'
+'colorContrast'   → 'pie-theme-contrast'
+'answerMasking'   → 'pie-tool-answer-eliminator'
+```
+
+### Context Declarations
+
+Global variables shared across assessment items:
+
+```typescript
+import { AssessmentPlayer, ContextVariableStore } from '@pie-players/pie-assessment-toolkit';
+
+// Assessment with context declarations
+const assessment = {
+  contextDeclarations: [
+    {
+      identifier: 'RANDOM_SEED',
+      baseType: 'integer',
+      cardinality: 'single',
+      defaultValue: 42
+    },
+    {
+      identifier: 'DIFFICULTY_LEVEL',
+      baseType: 'string',
+      cardinality: 'single',
+      defaultValue: 'medium'
+    }
+  ]
+};
+
+// Use with AssessmentPlayer
+const player = new AssessmentPlayer({ assessment, loadItem });
+
+const seed = player.getContextVariable('RANDOM_SEED');
+player.setContextVariable('DIFFICULTY_LEVEL', 'hard');
+
+// Pass to PIE elements
+const context = player.getContextVariables();
+await renderItem(item, session, context);
+
+// Or use ContextVariableStore directly
+const store = new ContextVariableStore(assessment.contextDeclarations);
+store.set('RANDOM_SEED', 12345);
+const context = store.toObject();
+```
+
+**Use Cases:**
+
+- Cross-item randomization (shared random seeds)
+- Adaptive testing (difficulty adjustment based on performance)
+- Shared configuration (currency symbols, measurement units)
+- Item dependencies (later items react to earlier responses)
+
+### QTI 3.0 Precedence Hierarchy
+
+Tool resolution follows this precedence (highest to lowest):
+
+```
+1. District Block (absolute veto)
+2. Test Administration Override
+3. Item Restriction (per-item block)
+4. Item Requirement (forces enable)
+5. District Requirement
+6. PNP Supports (student accommodations)
+```
 
 ## Related Documentation
 
-- [Assessment Toolkit Architecture](../../../../../docs/tools-and-accomodations/assessment-player-architecture.md) - Complete design
-- [Tools High-Level Architecture](../../../../../docs/tools-and-accomodations/tools-high-level-architecture.md) - Tool coordination
-- [TTS Architecture](../../../../../docs/tools-and-accomodations/tts-architecture.md) - Text-to-speech design
+- [Architecture Overview](../../../docs/ARCHITECTURE.md) - Complete system architecture
+- [Assessment Toolkit Architecture](../../../docs/tools-and-accomodations/assessment-player-architecture.md) - Toolkit design
+- [Tools Architecture](../../../docs/tools-and-accomodations/tools-high-level-architecture.md) - Tool coordination

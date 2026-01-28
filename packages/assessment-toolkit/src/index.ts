@@ -62,6 +62,8 @@ export {
 	PNP_TO_PIE_TOOL_MAP,
 	registerCustomPNPMapping,
 } from "./services/PNPMapper";
+// Context Variable Store (QTI 3.0 Context Declarations)
+export { ContextVariableStore } from "./services/ContextVariableStore";
 // Tool Coordinator
 export { ToolCoordinator, ZIndexLayer } from "./services/ToolCoordinator";
 // Text-to-Speech Service

@@ -1,0 +1,46 @@
+storage: /verdaccio/storage/data
+plugins: /verdaccio/plugins
+
+web:
+  title: PIE Players Local Registry
+
+auth:
+  htpasswd:
+    file: /verdaccio/storage/htpasswd
+    # Allow registration
+    max_users: 1000
+    # No password required
+    algorithm: bcrypt
+    rounds: 10
+
+uplinks:
+  npmjs:
+    url: https://registry.npmjs.org/
+
+packages:
+  '@pie-players/*':
+    access: $all
+    publish: $all
+    unpublish: $all
+
+  '@pie-lib/*':
+    access: $all
+    publish: $all
+    unpublish: $all
+
+  '**':
+    access: $all
+    publish: $authenticated
+    unpublish: $authenticated
+    proxy: npmjs
+
+server:
+  keepAliveTimeout: 60
+
+log:
+  type: stdout
+  format: pretty
+  level: http
+
+i18n:
+  web: en-US

@@ -7,6 +7,7 @@
  *
  * Features:
  * - Pluggable TTS providers (browser, AWS Polly, etc.)
+ * - QTI 3.0 accessibility catalogs (pre-authored spoken content)
  * - Unified playback state management
  * - Prevents conflicts from simultaneous speech
  * - Word highlighting integration
@@ -15,12 +16,23 @@
  * Part of PIE Assessment Toolkit.
  */
 
-import type { IHighlightCoordinator } from "./interfaces";
 import type {
 	ITTSProvider,
 	ITTSProviderImplementation,
+	TTSConfig,
 	TTSProviderCapabilities,
-} from "./tts/provider-interface";
+} from "@pie-players/pie-tts-core";
+import type { AccessibilityCatalogResolver } from "./AccessibilityCatalogResolver";
+import type { IHighlightCoordinator } from "./interfaces";
+
+// Re-export core TTS types for convenience
+export type {
+	ITTSProvider,
+	ITTSProviderImplementation,
+	TTSConfig,
+	TTSFeature,
+	TTSProviderCapabilities,
+} from "@pie-players/pie-tts-core";
 
 /**
  * Playback state
@@ -34,17 +46,6 @@ export enum PlaybackState {
 }
 
 /**
- * TTS Configuration
- */
-export interface TTSConfig {
-	organizationId?: string;
-	region?: string;
-	voice?: string;
-	rate?: number;
-	pitch?: number;
-}
-
-/**
  * TTSService
  *
  * Instantiable service for text-to-speech functionality.
@@ -54,6 +55,7 @@ export class TTSService {
 	private currentProvider: ITTSProvider | null = null;
 	private provider: ITTSProviderImplementation | null = null;
 	private highlightCoordinator: IHighlightCoordinator | null = null;
+	private catalogResolver: AccessibilityCatalogResolver | null = null;
 	private state: PlaybackState = PlaybackState.IDLE;
 	private currentText: string | null = null;
 	private listeners = new Map<string, Set<(state: PlaybackState) => void>>();
@@ -84,6 +86,18 @@ export class TTSService {
 	}
 
 	/**
+	 * Set accessibility catalog resolver for spoken content
+	 *
+	 * When set, the speak() method will check for pre-authored spoken
+	 * content in catalogs before falling back to generated TTS.
+	 *
+	 * @param resolver AccessibilityCatalogResolver instance
+	 */
+	setCatalogResolver(resolver: AccessibilityCatalogResolver): void {
+		this.catalogResolver = resolver;
+	}
+
+	/**
 	 * Get provider capabilities
 	 */
 	getCapabilities(): TTSProviderCapabilities | null {
@@ -91,16 +105,45 @@ export class TTSService {
 	}
 
 	/**
-	 * Speak text
+	 * Speak text with optional catalog support
 	 *
 	 * @param text Text to speak
+	 * @param options Optional catalog ID and language
 	 */
-	async speak(text: string): Promise<void> {
+	async speak(
+		text: string,
+		options?: { catalogId?: string; language?: string },
+	): Promise<void> {
 		if (!this.provider) {
 			throw new Error("TTS service not initialized");
 		}
 
-		this.currentText = text;
+		// Try to resolve from accessibility catalog if catalogId provided
+		let contentToSpeak = text;
+		if (options?.catalogId && this.catalogResolver) {
+			const catalogContent = this.catalogResolver.getAlternative(
+				options.catalogId,
+				{
+					type: "spoken",
+					language: options.language || "en-US",
+					useFallback: true,
+				},
+			);
+
+			if (catalogContent) {
+				// Use pre-authored spoken content from catalog
+				contentToSpeak = catalogContent.content;
+				console.debug(
+					`[TTSService] Using catalog content for "${options.catalogId}" (${catalogContent.language})`,
+				);
+			} else {
+				console.debug(
+					`[TTSService] No catalog found for "${options.catalogId}", falling back to generated TTS`,
+				);
+			}
+		}
+
+		this.currentText = contentToSpeak;
 		this.setState(PlaybackState.LOADING);
 
 		try {
@@ -113,7 +156,7 @@ export class TTSService {
 			}
 
 			this.setState(PlaybackState.PLAYING);
-			await this.provider.speak(text);
+			await this.provider.speak(contentToSpeak);
 			this.setState(PlaybackState.IDLE);
 
 			// Clear highlights when done

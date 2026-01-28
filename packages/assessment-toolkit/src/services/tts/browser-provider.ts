@@ -7,13 +7,13 @@
  * Part of PIE Assessment Toolkit.
  */
 
-import type { TTSConfig } from "../TTSService";
 import type {
 	ITTSProvider,
 	ITTSProviderImplementation,
+	TTSConfig,
 	TTSFeature,
 	TTSProviderCapabilities,
-} from "./provider-interface";
+} from "@pie-players/pie-tts-core";
 
 /**
  * Browser TTS Provider

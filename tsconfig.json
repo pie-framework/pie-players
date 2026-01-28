@@ -43,7 +43,9 @@
 		{ "path": "./packages/tool-protractor" },
 		{ "path": "./packages/tool-ruler" },
 		{ "path": "./packages/tool-text-to-speech" },
-		{ "path": "./packages/tool-toolbar" }
+		{ "path": "./packages/tool-toolbar" },
+		{ "path": "./packages/tts-core" },
+		{ "path": "./packages/tts-polly" }
 	],
 	"exclude": ["node_modules", "dist", "build"]
 }

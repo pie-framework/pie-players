@@ -49,16 +49,19 @@ export { I18nService } from "./services/I18nService";
 // Theme Provider
 export type { FontSize, ThemeConfig } from "./services/ThemeProvider";
 export { ThemeProvider } from "./services/ThemeProvider";
-// Tool Configuration
-export type {
-	ItemToolConfig,
-	ResolvedToolConfig,
-	RosterToolConfig,
-	StudentAccommodations,
-	ToolAllowance,
-	ToolConfigInput,
-} from "./services/ToolConfigResolver";
-export { ToolConfigResolver } from "./services/ToolConfigResolver";
+// PNP Tool Resolution (QTI 3.0 Native)
+export type { ResolvedToolConfig } from "./services/PNPToolResolver";
+export { PNPToolResolver } from "./services/PNPToolResolver";
+// PNP Mapper
+export {
+	getAllPNPSupports,
+	isPNPSupportRegistered,
+	mapPNPSupportToToolId,
+	mapToolIdToPNPSupport,
+	PIE_TOOL_TO_PNP_MAP,
+	PNP_TO_PIE_TOOL_MAP,
+	registerCustomPNPMapping,
+} from "./services/PNPMapper";
 // Tool Coordinator
 export { ToolCoordinator, ZIndexLayer } from "./services/ToolCoordinator";
 // Text-to-Speech Service
@@ -126,38 +129,6 @@ export type {
 	ToolDeactivatedEvent,
 	ToolStateChangedEvent,
 } from "./types/events";
-
-// ============================================================================
-// Profile-Based Configuration System
-// ============================================================================
-
-export type {
-	AdministrationInput,
-	AssessmentContextProfile,
-	// Input types
-	AssessmentInput,
-	DistrictInput,
-	IEPInput,
-	ItemInput,
-	OrganizationInput,
-	ProfileMetadata,
-	ProfileResolver,
-	RegionSize,
-	ResolutionContext,
-	ResolutionExplanation,
-	ResolvedAccessibilitySettings,
-	ResolvedLayoutPreferences,
-	ResolvedThemeConfig,
-	ResolvedToolSet,
-	Section504Input,
-	StudentInput,
-	StudentPreferences,
-	ToolAvailability,
-	ToolResolution,
-	ToolSpecificConfig,
-} from "./profile";
-
-export { DefaultProfileResolver } from "./profile";
 
 // ============================================================================
 // Assessment Player (Optional Reference Implementation)

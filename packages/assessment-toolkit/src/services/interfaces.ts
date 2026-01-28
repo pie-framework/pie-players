@@ -17,6 +17,13 @@ import type {
 	ITTSProvider,
 	TTSProviderCapabilities,
 } from "./tts/provider-interface";
+import type {
+	AccessibilityCatalogResolver,
+	CatalogLookupOptions,
+	ResolvedCatalog,
+	CatalogStatistics,
+	CatalogType,
+} from "./AccessibilityCatalogResolver";
 
 // Re-export II18nService from players-shared
 export type { II18nService };
@@ -151,6 +158,7 @@ export interface IToolCoordinator {
  * TTS service interface
  *
  * Provides text-to-speech functionality with provider-based architecture.
+ * Supports QTI 3.0 accessibility catalogs for pre-authored spoken content.
  */
 export interface ITTSService {
 	/**
@@ -162,9 +170,12 @@ export interface ITTSService {
 	): Promise<void>;
 
 	/**
-	 * Speak text
+	 * Speak text with optional catalog support
 	 */
-	speak(text: string): Promise<void>;
+	speak(
+		text: string,
+		options?: { catalogId?: string; language?: string },
+	): Promise<void>;
 
 	/**
 	 * Speak a text range
@@ -225,6 +236,87 @@ export interface ITTSService {
 	 * Set highlight coordinator for word highlighting
 	 */
 	setHighlightCoordinator(coordinator: IHighlightCoordinator): void;
+
+	/**
+	 * Set accessibility catalog resolver for spoken content
+	 */
+	setCatalogResolver(resolver: AccessibilityCatalogResolver): void;
+}
+
+/**
+ * Accessibility catalog resolver interface
+ *
+ * Manages QTI 3.0 accessibility catalogs at assessment and item levels.
+ * Provides lookup and resolution services for alternative content representations.
+ */
+export interface IAccessibilityCatalogResolver {
+	/**
+	 * Set the default language for fallback resolution
+	 */
+	setDefaultLanguage(language: string): void;
+
+	/**
+	 * Get the default language
+	 */
+	getDefaultLanguage(): string;
+
+	/**
+	 * Add item-level catalogs (called when rendering a new item)
+	 */
+	addItemCatalogs(catalogs: any[]): void;
+
+	/**
+	 * Clear item-level catalogs (called when leaving an item)
+	 */
+	clearItemCatalogs(): void;
+
+	/**
+	 * Check if a catalog exists
+	 */
+	hasCatalog(catalogId: string): boolean;
+
+	/**
+	 * Get alternative content for a catalog identifier
+	 */
+	getAlternative(
+		catalogId: string,
+		options: CatalogLookupOptions,
+	): ResolvedCatalog | null;
+
+	/**
+	 * Get all available alternatives for a catalog identifier
+	 */
+	getAllAlternatives(catalogId: string): ResolvedCatalog[];
+
+	/**
+	 * Get all catalog identifiers available
+	 */
+	getAllCatalogIds(): string[];
+
+	/**
+	 * Get statistics about available catalogs
+	 */
+	getStatistics(): CatalogStatistics;
+
+	/**
+	 * Check if a specific catalog type is available
+	 */
+	hasAlternativeType(catalogId: string, type: CatalogType): boolean;
+
+	/**
+	 * Get all catalog IDs that have a specific type of alternative
+	 */
+	getCatalogsByType(type: CatalogType): string[];
+
+	/**
+	 * Reset all catalogs
+	 */
+	reset(): void;
+
+	/**
+	 * Destroy and cleanup
+	 */
+	destroy(): void;
 }
 
 // II18nService is re-exported from @pie-players/pie-players-shared/i18n

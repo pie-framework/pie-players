@@ -19,7 +19,7 @@ import type {
 	CalculatorProviderConfig,
 	CalculatorState,
 	CalculatorType,
-} from "../types";
+} from "@pie-players/pie-calculator";
 
 /**
  * Math.js Calculator Provider Implementation

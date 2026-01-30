@@ -12,7 +12,8 @@
 	"include": ["src/**/*.ts", "src/**/*.d.ts"],
 	"exclude": ["dist", "node_modules"],
 	"references": [
-		{ "path": "../tts-core" },
+		{ "path": "../calculator" },
+		{ "path": "../tts" },
 		{ "path": "../players-shared" }
 	]
 }

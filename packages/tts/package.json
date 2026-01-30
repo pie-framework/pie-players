@@ -1,7 +1,7 @@
 {
-  "name": "@pie-players/pie-tts-core",
+  "name": "@pie-players/pie-tts",
   "version": "1.0.0",
-  "description": "Core TTS interfaces and types for PIE Assessment Toolkit - No UI dependencies",
+  "description": "TTS interfaces and types for PIE Assessment Toolkit - No UI dependencies",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

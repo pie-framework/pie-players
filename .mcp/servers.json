@@ -39,7 +39,7 @@
 		},
 		"imagen": {
 			"command": "bun",
-			"args": ["run", "packages/mcp-imagen/src/index.ts"],
+			"args": ["run", ".mcp-imagen/src/index.ts"],
 			"env": {
 				"OUTPUT_DIR": "/Users/eelco.hillenius/dev/prj/pie/pie-players/apps/docs/static/images/generated"
 			}

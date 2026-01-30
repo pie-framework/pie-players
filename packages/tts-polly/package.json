@@ -33,7 +33,7 @@
   "license": "MIT",
   "dependencies": {
     "@aws-sdk/client-polly": "^3.713.0",
-    "@pie-players/pie-tts-core": "workspace:*"
+    "@pie-players/pie-tts": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.2"

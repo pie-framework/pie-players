@@ -31,7 +31,7 @@
 		},
 		"pie-players-imagen": {
 			"command": "bun",
-			"args": ["run", "packages/mcp-imagen/src/index.ts"],
+			"args": ["run", ".mcp-imagen/src/index.ts"],
 			"env": {
 				"OUTPUT_DIR": "./apps/docs/static/images/generated"
 			}

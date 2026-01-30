@@ -21,7 +21,7 @@ import type {
 	ITTSProviderImplementation,
 	TTSConfig,
 	TTSProviderCapabilities,
-} from "@pie-players/pie-tts-core";
+} from "@pie-players/pie-tts";
 import type { AccessibilityCatalogResolver } from "./AccessibilityCatalogResolver";
 import type { IHighlightCoordinator } from "./interfaces";
 
@@ -32,7 +32,7 @@ export type {
 	TTSConfig,
 	TTSFeature,
 	TTSProviderCapabilities,
-} from "@pie-players/pie-tts-core";
+} from "@pie-players/pie-tts";
 
 /**
  * Playback state

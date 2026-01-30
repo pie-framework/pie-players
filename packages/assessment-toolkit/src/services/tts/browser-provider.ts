@@ -13,7 +13,7 @@ import type {
 	TTSConfig,
 	TTSFeature,
 	TTSProviderCapabilities,
-} from "@pie-players/pie-tts-core";
+} from "@pie-players/pie-tts";
 
 /**
  * Browser TTS Provider

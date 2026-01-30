@@ -1,6 +1,6 @@
-# @pie-players/pie-tts-core
+# @pie-players/pie-tts
 
-Core TTS interfaces and types for PIE Assessment Toolkit - Pure TypeScript with no UI dependencies.
+TTS interfaces and types for PIE Assessment Toolkit - Pure TypeScript with no UI dependencies.
 
 ## Purpose
 
@@ -27,9 +27,9 @@ This package provides the foundational interfaces and types for building TTS (Te
 ## Installation
 
 ```bash
-npm install @pie-players/pie-tts-core
+npm install @pie-players/pie-tts
 # or
-bun add @pie-players/pie-tts-core
+bun add @pie-players/pie-tts
 ```
 
 ## Usage
@@ -43,7 +43,7 @@ import type {
   TTSConfig,
   TTSProviderCapabilities,
   TTSFeature
-} from '@pie-players/pie-tts-core';
+} from '@pie-players/pie-tts';
 
 class MyTTSImplementation implements ITTSProviderImplementation {
   async speak(text: string): Promise<void> {

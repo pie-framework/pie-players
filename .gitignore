@@ -12,6 +12,7 @@ local-builds/
 
 # MCP servers
 .playwright-mcp/
+.mcp-imagen/
 
 # logs
 npm-debug.log*

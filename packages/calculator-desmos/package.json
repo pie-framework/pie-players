@@ -1,0 +1,38 @@
+{
+  "name": "@pie-players/pie-calculator-desmos",
+  "version": "1.0.0",
+  "description": "Desmos calculator provider for PIE Assessment Toolkit - High-quality graphing calculators",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "pie",
+    "calculator",
+    "desmos",
+    "graphing",
+    "math",
+    "accessibility"
+  ],
+  "author": "PIE Framework",
+  "license": "MIT",
+  "dependencies": {
+    "@pie-players/pie-calculator": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}

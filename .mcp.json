@@ -1,0 +1,11 @@
+{
+	"mcpServers": {
+		"imagen": {
+			"command": "bun",
+			"args": ["run", ".mcp-imagen/src/index.ts"],
+			"env": {
+				"GOOGLE_API_KEY": "${GOOGLE_API_KEY}"
+			}
+		}
+	}
+}

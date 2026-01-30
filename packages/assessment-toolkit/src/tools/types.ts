@@ -2,6 +2,19 @@
  * Tool system type definitions
  */
 
+// Re-export calculator types from @pie-players/pie-calculator
+export type {
+	Calculator,
+	CalculatorProvider,
+	CalculatorProviderCapabilities,
+	CalculatorProviderConfig,
+	CalculatorState,
+	CalculatorType,
+	CalculationHistoryEntry,
+	DesmosCalculatorConfig,
+	TICalculatorConfig,
+} from "@pie-players/pie-calculator";
+
 export type ToolId = string;
 
 export interface ToolState {
@@ -410,169 +423,7 @@ export interface LibraryLoader {
 	getStats(): LoaderStats;
 }
 
-/**
- * Calculator Provider Interface
- * Abstract interface for multiple calculator providers (Desmos, TI, etc.)
- */
-export interface CalculatorProvider {
-	readonly providerId: string;
-	readonly providerName: string;
-	readonly supportedTypes: CalculatorType[];
-	readonly version: string;
-
-	initialize(): Promise<void>;
-	createCalculator(
-		type: CalculatorType,
-		container: HTMLElement,
-		config?: CalculatorProviderConfig,
-	): Promise<Calculator>;
-	supportsType(type: CalculatorType): boolean;
-	destroy(): void;
-	getCapabilities(): CalculatorProviderCapabilities;
-}
-
-/**
- * Calculator types
- */
-export type CalculatorType =
-	| "basic"
-	| "scientific"
-	| "graphing"
-	| "ti-84"
-	| "ti-108"
-	| "ti-34-mv";
-
-/**
- * Desmos-specific calculator configuration options
- * Based on production implementation patterns and Desmos API documentation
- */
-export interface DesmosCalculatorConfig {
-	// API Configuration
-	apiKey?: string; // Desmos API key (required for production use - obtain from https://www.desmos.com/api)
-
-	// Common options for all calculator types
-	border?: boolean; // Show border around calculator (default: false)
-	degreeMode?: boolean | "degree" | "radian"; // Angle mode: true = degrees, false = radians
-	decimalToFraction?: boolean; // Enable decimal to fraction conversion
-	links?: boolean; // Enable links to external Desmos resources
-
-	// Graphing Calculator specific options
-	settingsMenu?: boolean; // Show settings menu
-	expressions?: boolean; // Enable expression list/editor
-	zoomButtons?: boolean; // Show zoom buttons
-	expressionsTopbar?: boolean; // Show expressions topbar
-	notes?: boolean; // Enable notes
-	folders?: boolean; // Enable folders for organizing expressions
-	images?: boolean; // Enable image uploads
-	qwertyKeyboard?: boolean; // Use QWERTY keyboard layout
-	restrictedFunctions?: boolean; // Restrict certain functions (test mode)
-	plotSingleVariableImplicitEquations?: boolean; // Enable plotting implicit equations
-	distributions?: boolean; // Enable statistical distributions
-	plotImplicits?: boolean; // Enable implicit equation plotting
-	plotInequalities?: boolean; // Enable inequality plotting
-	geometryComputationFunctions?: boolean; // Enable geometry computation functions
-	sliders?: boolean; // Enable sliders for parameters
-	expressionsCollapsed?: boolean; // Start with expressions collapsed
-	administerSecretFolders?: boolean; // Enable secret folders
-	lockViewport?: boolean; // Lock viewport (disable panning/zooming)
-
-	// Scientific Calculator specific options
-	functionDefinition?: boolean; // Enable function definition
-	brailleExpressionDownload?: boolean; // Enable braille expression download
-
-	// Basic (Four-Function) Calculator specific options
-	keypad?: boolean; // Show on-screen keypad
-	graphpaper?: boolean; // Show graph paper background
-	additionalFunctions?: string[]; // Additional functions (e.g., ['sqrt', 'percent'])
-}
-
-/**
- * TI Calculator-specific configuration options
- * Based on production implementation patterns
- */
-export interface TICalculatorConfig {
-	// Required option for all TI calculators
-	elementId: string; // DOM element ID where calculator will be rendered (required)
-
-	// Common options for all TI calculators
-	ROMLocation?: string; // Path to ROM file
-	FaceplateLocation?: string; // Path to faceplate SVG
-	KeyMappingFile?: string; // Path to key mapping file (optional)
-	KeyHistBufferLength?: string; // Key history buffer length (default: '10')
-	DisplayMode?: "CLASSIC" | "MATHPRINT"; // Display mode for TI-84
-	AngleMode?: "DEG" | "RAD"; // Angle mode (DEG for TI-34MV, RAD for TI-84)
-	setTabOrder?: number; // Tab order for accessibility (default: 0)
-	setScreenReaderAria?: boolean; // Enable screen reader ARIA (default: true)
-	setAccessibleDisplay?: boolean; // Enable accessible display (default: true)
-	setupAPIs?: {
-		resetEmulator?: boolean; // Enable reset emulator API (TI-84)
-	};
-}
-
-/**
- * Calculator provider configuration
- */
-export interface CalculatorProviderConfig {
-	settings?: Record<string, any>;
-	restrictedMode?: boolean; // Quick toggle for restricted/test mode (affects multiple options)
-	locale?: string;
-	theme?: "light" | "dark" | "auto";
-	// Desmos-specific configuration
-	desmos?: DesmosCalculatorConfig;
-	// TI-specific configuration
-	ti?: TICalculatorConfig;
-}
-
-/**
- * Calculator provider capabilities
- */
-export interface CalculatorProviderCapabilities {
-	supportsHistory: boolean;
-	supportsGraphing: boolean;
-	supportsExpressions: boolean;
-	canExport: boolean;
-	maxPrecision?: number;
-	inputMethods: ("keyboard" | "mouse" | "touch")[];
-}
-
-/**
- * Calculator instance interface (provider-agnostic)
- */
-export interface Calculator {
-	readonly provider: CalculatorProvider;
-	readonly type: CalculatorType;
-
-	getValue(): string;
-	setValue(value: string): void;
-	clear(): void;
-	getHistory?(): CalculationHistoryEntry[];
-	clearHistory?(): void;
-	evaluate?(expression: string): Promise<string>;
-	resize?(): void; // Resize calculator when container dimensions change
-	exportState(): CalculatorState;
-	importState(state: CalculatorState): void;
-	destroy(): void;
-}
-
-/**
- * Calculation history entry
- */
-export interface CalculationHistoryEntry {
-	expression: string;
-	result: string;
-	timestamp: number;
-}
-
-/**
- * Calculator state for persistence
- */
-export interface CalculatorState {
-	type: CalculatorType;
-	provider: string;
-	value: string;
-	history?: CalculationHistoryEntry[];
-	providerState?: any;
-}
+// Calculator types now exported from @pie-players/pie-calculator (see top of file)
 
 /**
  * PIE Response Component Interface

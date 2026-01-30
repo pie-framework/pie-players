@@ -49,8 +49,9 @@
 		"test": "bun test"
 	},
 	"dependencies": {
+		"@pie-players/pie-calculator": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*",
-		"@pie-players/pie-tts-core": "workspace:*"
+		"@pie-players/pie-tts": "workspace:*"
 	},
 	"peerDependencies": {
 		"svelte": "^5.0.0"

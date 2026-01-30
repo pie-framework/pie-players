@@ -1,0 +1,34 @@
+{
+  "name": "@pie-players/pie-calculator",
+  "version": "1.0.0",
+  "description": "Calculator provider interfaces and types for PIE Assessment Toolkit - No UI dependencies",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "pie",
+    "calculator",
+    "math",
+    "interfaces",
+    "accessibility"
+  ],
+  "author": "PIE Framework",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}

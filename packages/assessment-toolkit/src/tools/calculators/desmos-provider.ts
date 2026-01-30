@@ -16,7 +16,7 @@ import type {
 	CalculatorState,
 	CalculatorType,
 	DesmosCalculatorConfig,
-} from "../types";
+} from "@pie-players/pie-calculator";
 
 /**
  * Desmos Calculator Provider Implementation

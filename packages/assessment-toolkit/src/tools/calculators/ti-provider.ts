@@ -17,7 +17,7 @@ import type {
 	CalculatorState,
 	CalculatorType,
 	TICalculatorConfig,
-} from "../types";
+} from "@pie-players/pie-calculator";
 
 /**
  * TI Calculator library version

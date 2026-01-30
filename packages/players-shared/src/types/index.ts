@@ -223,11 +223,20 @@ export interface RubricBlock {
 		| "testConstructor"
 		| "tutor";
 	use?: "instructions" | "passage" | "rubric";
+
 	/**
-	 * QTI rubric blocks are XML/HTML-like content. For the shared front-end model we
-	 * store this as an HTML string.
+	 * Embedded HTML content (QTI 3.0 Approach 1).
+	 * Use HTML5 data-* attributes within content for metadata like passage grouping.
+	 * Mutually exclusive with stimulusRef.
 	 */
-	content: string;
+	content?: string;
+
+	/**
+	 * Reference to shared stimulus (QTI 3.0 Approach 2).
+	 * When present, the renderer should resolve and fetch the stimulus content.
+	 * Mutually exclusive with content.
+	 */
+	stimulusRef?: StimulusRef;
 }
 
 /**
@@ -306,10 +315,16 @@ export interface PersonalNeedsProfile {
 	activateAtInit?: string[];
 }
 
+/**
+ * QTI 3.0: Reference to a shared stimulus (passage).
+ * Maps to qti-assessment-stimulus-ref element.
+ */
 export interface StimulusRef {
+	/** Unique identifier for the stimulus (required) */
 	identifier: string;
+
+	/** URL/path to the stimulus content (required) */
 	href: string;
-	type: 'qti-stimulus';
 }
 
 /**

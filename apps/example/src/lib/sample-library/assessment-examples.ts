@@ -310,7 +310,7 @@ export function createAssessmentFromExample(
 										'<div data-catalog-id="welcome-message"><h3>Welcome</h3><p>This assessment demonstrates QTI 3.0 accessibility catalogs with multiple alternative formats.</p></div>',
 								},
 							],
-							questionRefs: example.itemIds.map((itemVId, idx) => ({
+							assessmentItemRefs: example.itemIds.map((itemVId, idx) => ({
 								identifier: `q-${idx + 1}`,
 								itemVId,
 							})),
@@ -379,7 +379,7 @@ export function createAssessmentFromExample(
 										"<h3>Personal Needs Profile Demo</h3><p>This assessment demonstrates automatic tool activation based on student accommodations (IEP/504 support). Notice that TTS and calculator tools are automatically activated based on your profile.</p>",
 								},
 							],
-							questionRefs: example.itemIds.map((itemVId, idx) => ({
+							assessmentItemRefs: example.itemIds.map((itemVId, idx) => ({
 								identifier: `q-${idx + 1}`,
 								itemVId,
 							})),
@@ -419,7 +419,7 @@ export function createAssessmentFromExample(
 									content: passageContent,
 								},
 							],
-							questionRefs: itemIds.map((itemVId, idx) => ({
+							assessmentItemRefs: itemIds.map((itemVId, idx) => ({
 								identifier: `q-${idx + 1}`,
 								itemVId,
 							})),

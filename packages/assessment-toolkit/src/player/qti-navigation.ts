@@ -157,8 +157,8 @@ function buildNavigationFromQti(
 function buildSectionNavigation(section: QtiAssessmentSection): NavigationNode {
 	const children: NavigationNode[] = [];
 
-	// Item refs
-	for (const [idx, ref] of (section.questionRefs ?? []).entries()) {
+	// Item refs - QTI 3.0 aligned (maps to qti-assessment-item-ref)
+	for (const [idx, ref] of (section.assessmentItemRefs ?? []).entries()) {
 		children.push({
 			type: "question",
 			id: ref.id || ref.identifier || ref.itemVId,
@@ -196,7 +196,8 @@ function extractRefsFromSection(
 	section: QtiAssessmentSection,
 	out: QuestionRef[],
 ): void {
-	for (const ref of section.questionRefs ?? []) {
+	// QTI 3.0 aligned (maps to qti-assessment-item-ref)
+	for (const ref of section.assessmentItemRefs ?? []) {
 		if (!ref?.itemVId) continue;
 		out.push({
 			identifier: ref.identifier || ref.itemVId,

@@ -270,7 +270,12 @@ export interface QtiAssessmentSection
 	keepTogether?: boolean;
 
 	sections?: QtiAssessmentSection[];
-	questionRefs?: AssessmentItemRef[];
+
+	/**
+	 * QTI 3.0: Assessment item references (items in this section).
+	 * Maps to qti-assessment-item-ref in QTI 3.0 XML.
+	 */
+	assessmentItemRefs?: AssessmentItemRef[];
 
 	// Shared context (passages/instructions/rubrics) for this section
 	rubricBlocks?: RubricBlock[];

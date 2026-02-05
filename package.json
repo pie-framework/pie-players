@@ -8,7 +8,10 @@
 		"packages/*",
 		"apps/*",
 		"tools/*",
-		".mcp-imagen"
+		".mcp-imagen",
+		"packages/math-renderer-core",
+		"packages/math-renderer-mathjax",
+		"packages/math-renderer-katex"
 	],
 	"scripts": {
 		"build": "turbo build",

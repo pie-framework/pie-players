@@ -10,7 +10,6 @@
  * calculator functionality without requiring external licenses.
  */
 
-import { COMMON_LIBRARIES, libraryLoader } from "../library-loader";
 import type {
 	CalculationHistoryEntry,
 	Calculator,
@@ -20,6 +19,7 @@ import type {
 	CalculatorState,
 	CalculatorType,
 } from "@pie-players/pie-calculator";
+import { COMMON_LIBRARIES, libraryLoader } from "../library-loader";
 
 /**
  * Math.js Calculator Provider Implementation

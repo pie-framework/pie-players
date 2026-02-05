@@ -31,8 +31,17 @@ export type {
 // Toolkit Services
 // ============================================================================
 
+// Accessibility Catalog Resolver (QTI 3.0 Accessibility Catalogs)
+export type {
+	CatalogLookupOptions,
+	CatalogStatistics,
+	CatalogType,
+	ResolvedCatalog,
+} from "./services/AccessibilityCatalogResolver";
+export { AccessibilityCatalogResolver } from "./services/AccessibilityCatalogResolver";
 export { AssessmentAuthoringService } from "./services/AssessmentAuthoringService";
-
+// Context Variable Store (QTI 3.0 Context Declarations)
+export { ContextVariableStore } from "./services/ContextVariableStore";
 // Highlight Coordinator
 export type { Annotation } from "./services/HighlightCoordinator";
 export {
@@ -47,12 +56,6 @@ export type {
 	TranslationBundle,
 } from "./services/I18nService";
 export { I18nService } from "./services/I18nService";
-// Theme Provider
-export type { FontSize, ThemeConfig } from "./services/ThemeProvider";
-export { ThemeProvider } from "./services/ThemeProvider";
-// PNP Tool Resolution (QTI 3.0 Native)
-export type { ResolvedToolConfig } from "./services/PNPToolResolver";
-export { PNPToolResolver } from "./services/PNPToolResolver";
 // PNP Mapper
 export {
 	getAllPNPSupports,
@@ -63,16 +66,12 @@ export {
 	PNP_TO_PIE_TOOL_MAP,
 	registerCustomPNPMapping,
 } from "./services/PNPMapper";
-// Context Variable Store (QTI 3.0 Context Declarations)
-export { ContextVariableStore } from "./services/ContextVariableStore";
-// Accessibility Catalog Resolver (QTI 3.0 Accessibility Catalogs)
-export type {
-	CatalogLookupOptions,
-	CatalogStatistics,
-	CatalogType,
-	ResolvedCatalog,
-} from "./services/AccessibilityCatalogResolver";
-export { AccessibilityCatalogResolver } from "./services/AccessibilityCatalogResolver";
+// PNP Tool Resolution (QTI 3.0 Native)
+export type { ResolvedToolConfig } from "./services/PNPToolResolver";
+export { PNPToolResolver } from "./services/PNPToolResolver";
+// Theme Provider
+export type { FontSize, ThemeConfig } from "./services/ThemeProvider";
+export { ThemeProvider } from "./services/ThemeProvider";
 // Tool Coordinator
 export { ToolCoordinator, ZIndexLayer } from "./services/ToolCoordinator";
 // Text-to-Speech Service

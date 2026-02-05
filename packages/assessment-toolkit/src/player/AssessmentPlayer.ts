@@ -47,12 +47,12 @@ import {
 	TypedEventBus,
 } from "../index";
 import type { LoadItem } from "../item-loader";
+import { AssessmentAuthoringService } from "../services/AssessmentAuthoringService";
+import { ContextVariableStore } from "../services/ContextVariableStore";
 import {
 	PNPToolResolver,
 	type ResolvedToolConfig,
 } from "../services/PNPToolResolver";
-import { ContextVariableStore } from "../services/ContextVariableStore";
-import { AssessmentAuthoringService } from "../services/AssessmentAuthoringService";
 import { BrowserTTSProvider } from "../services/tts/browser-provider";
 import {
 	DesmosCalculatorProvider,

@@ -1,4 +1,8 @@
-import type { AssessmentEntity, ItemEntity, AccessibilityCatalog } from '@pie-players/pie-players-shared/types';
+import type {
+	AccessibilityCatalog,
+	AssessmentEntity,
+	ItemEntity,
+} from "@pie-players/pie-players-shared/types";
 
 /**
  * Comprehensive examples demonstrating all QTI 3.0 accessibility catalog types
@@ -20,14 +24,14 @@ import type { AssessmentEntity, ItemEntity, AccessibilityCatalog } from '@pie-pl
  * These are shared resources that multiple items can reference
  */
 export const assessmentLevelCatalogs: AccessibilityCatalog[] = [
-  // Shared reading passage with multiple accessibility alternatives
-  {
-    identifier: 'shared-passage-photosynthesis',
-    cards: [
-      {
-        catalog: 'spoken',
-        language: 'en-US',
-        content: `
+	// Shared reading passage with multiple accessibility alternatives
+	{
+		identifier: "shared-passage-photosynthesis",
+		cards: [
+			{
+				catalog: "spoken",
+				language: "en-US",
+				content: `
           <speak>
             <prosody rate="medium" pitch="medium">
               Photosynthesis is the process by which plants convert sunlight into chemical energy.
@@ -43,12 +47,12 @@ export const assessmentLevelCatalogs: AccessibilityCatalog[] = [
               while the oxygen is released into the atmosphere.
             </prosody>
           </speak>
-        `.trim()
-      },
-      {
-        catalog: 'spoken',
-        language: 'es-ES',
-        content: `
+        `.trim(),
+			},
+			{
+				catalog: "spoken",
+				language: "es-ES",
+				content: `
           <speak>
             <prosody rate="medium" pitch="medium">
               La fotosíntesis es el proceso mediante el cual las plantas convierten la luz solar en energía química.
@@ -60,25 +64,25 @@ export const assessmentLevelCatalogs: AccessibilityCatalog[] = [
               y utilizan la luz solar para convertirlos en glucosa y oxígeno.
             </prosody>
           </speak>
-        `.trim()
-      },
-      {
-        catalog: 'sign-language',
-        language: 'en-US',
-        content: 'https://cdn.example.com/asl/photosynthesis-explanation.mp4'
-      },
-      {
-        catalog: 'braille',
-        language: 'en',
-        content: `
+        `.trim(),
+			},
+			{
+				catalog: "sign-language",
+				language: "en-US",
+				content: "https://cdn.example.com/asl/photosynthesis-explanation.mp4",
+			},
+			{
+				catalog: "braille",
+				language: "en",
+				content: `
 ⠠⠏⠓⠕⠞⠕⠎⠽⠝⠞⠓⠑⠎⠊⠎ ⠊⠎ ⠞⠓⠑ ⠏⠗⠕⠉⠑⠎⠎ ⠃⠽ ⠺⠓⠊⠉⠓ ⠏⠇⠁⠝⠞⠎ ⠉⠕⠝⠧⠑⠗⠞ ⠎⠥⠝⠇⠊⠛⠓⠞ ⠊⠝⠞⠕ ⠉⠓⠑⠍⠊⠉⠁⠇ ⠑⠝⠑⠗⠛⠽⠲
 ⠠⠙⠥⠗⠊⠝⠛ ⠞⠓⠊⠎ ⠏⠗⠕⠉⠑⠎⠎⠂ ⠏⠇⠁⠝⠞⠎ ⠞⠁⠅⠑ ⠊⠝ ⠉⠁⠗⠃⠕⠝ ⠙⠊⠕⠭⠊⠙⠑ ⠋⠗⠕⠍ ⠞⠓⠑ ⠁⠊⠗ ⠁⠝⠙ ⠺⠁⠞⠑⠗ ⠋⠗⠕⠍ ⠞⠓⠑ ⠎⠕⠊⠇⠂ ⠁⠝⠙ ⠥⠎⠑ ⠎⠥⠝⠇⠊⠛⠓⠞ ⠞⠕ ⠉⠕⠝⠧⠑⠗⠞ ⠞⠓⠑⠎⠑ ⠊⠝⠞⠕ ⠛⠇⠥⠉⠕⠎⠑ ⠁⠝⠙ ⠕⠭⠽⠛⠑⠝⠲
-        `.trim()
-      },
-      {
-        catalog: 'simplified-language',
-        language: 'en',
-        content: `
+        `.trim(),
+			},
+			{
+				catalog: "simplified-language",
+				language: "en",
+				content: `
           <p>Plants make food from sunlight. This is called photosynthesis.</p>
           <p>Plants need three things:</p>
           <ul>
@@ -87,19 +91,19 @@ export const assessmentLevelCatalogs: AccessibilityCatalog[] = [
             <li>Water (from the ground)</li>
           </ul>
           <p>Plants use these to make sugar for food. They also make oxygen that we breathe.</p>
-        `.trim()
-      }
-    ]
-  },
+        `.trim(),
+			},
+		],
+	},
 
-  // Shared diagram with tactile and audio description
-  {
-    identifier: 'plant-cell-diagram',
-    cards: [
-      {
-        catalog: 'spoken',
-        language: 'en-US',
-        content: `
+	// Shared diagram with tactile and audio description
+	{
+		identifier: "plant-cell-diagram",
+		cards: [
+			{
+				catalog: "spoken",
+				language: "en-US",
+				content: `
           <speak>
             This diagram shows a plant cell with its major components.
             <break time="500ms"/>
@@ -115,12 +119,12 @@ export const assessmentLevelCatalogs: AccessibilityCatalog[] = [
             <emphasis level="strong">Chloroplasts</emphasis> are scattered throughout the cytoplasm.
             These are the organelles where photosynthesis takes place.
           </speak>
-        `.trim()
-      },
-      {
-        catalog: 'tactile',
-        language: 'en',
-        content: `
+        `.trim(),
+			},
+			{
+				catalog: "tactile",
+				language: "en",
+				content: `
           TACTILE GRAPHIC DESCRIPTION:
 
           This raised-line diagram depicts a plant cell in cross-section.
@@ -147,17 +151,18 @@ export const assessmentLevelCatalogs: AccessibilityCatalog[] = [
           - Cell wall forms complete outer boundary
           - Nucleus centrally positioned
           - Chloroplasts distributed in cytoplasm around nucleus
-        `.trim()
-      },
-      {
-        catalog: 'audio-description',
-        language: 'en-US',
-        content: 'https://cdn.example.com/audio-descriptions/plant-cell-extended.mp3'
-      },
-      {
-        catalog: 'extended-description',
-        language: 'en',
-        content: `
+        `.trim(),
+			},
+			{
+				catalog: "audio-description",
+				language: "en-US",
+				content:
+					"https://cdn.example.com/audio-descriptions/plant-cell-extended.mp3",
+			},
+			{
+				catalog: "extended-description",
+				language: "en",
+				content: `
           <div class="extended-description">
             <h3>Plant Cell Diagram - Extended Description</h3>
 
@@ -207,19 +212,19 @@ export const assessmentLevelCatalogs: AccessibilityCatalog[] = [
             converting light energy into chemical energy. Their distribution throughout the cytoplasm
             maximizes light absorption efficiency.</p>
           </div>
-        `.trim()
-      }
-    ]
-  },
+        `.trim(),
+			},
+		],
+	},
 
-  // Shared instructions with multiple accessibility formats
-  {
-    identifier: 'test-instructions',
-    cards: [
-      {
-        catalog: 'spoken',
-        language: 'en-US',
-        content: `
+	// Shared instructions with multiple accessibility formats
+	{
+		identifier: "test-instructions",
+		cards: [
+			{
+				catalog: "spoken",
+				language: "en-US",
+				content: `
           <speak>
             <prosody rate="slow">
               Welcome to the science assessment.
@@ -235,17 +240,17 @@ export const assessmentLevelCatalogs: AccessibilityCatalog[] = [
               Click the <emphasis>Submit</emphasis> button when you are finished.
             </prosody>
           </speak>
-        `.trim()
-      },
-      {
-        catalog: 'sign-language',
-        language: 'en-US',
-        content: 'https://cdn.example.com/asl/test-instructions-science.mp4'
-      },
-      {
-        catalog: 'simplified-language',
-        language: 'en',
-        content: `
+        `.trim(),
+			},
+			{
+				catalog: "sign-language",
+				language: "en-US",
+				content: "https://cdn.example.com/asl/test-instructions-science.mp4",
+			},
+			{
+				catalog: "simplified-language",
+				language: "en",
+				content: `
           <div>
             <p><strong>What to do:</strong></p>
             <ol>
@@ -256,10 +261,10 @@ export const assessmentLevelCatalogs: AccessibilityCatalog[] = [
             <p>You can use tools like ruler or calculator.</p>
             <p>There are 10 questions about plants.</p>
           </div>
-        `.trim()
-      }
-    ]
-  }
+        `.trim(),
+			},
+		],
+	},
 ];
 
 // =============================================================================
@@ -274,8 +279,8 @@ export const assessmentLevelCatalogs: AccessibilityCatalog[] = [
  */
 // Example structure (not a valid ItemEntity - for documentation only)
 export const itemWithCatalogsExample = {
-  id: 'photosynthesis-mc-001',
-  markup: `
+	id: "photosynthesis-mc-001",
+	markup: `
     <multiple-choice-item id="mc-photo-001" pie-type="pie-multiple-choice">
       <pie-stimulus>
         <!-- Reference to assessment-level shared passage -->
@@ -310,16 +315,16 @@ export const itemWithCatalogsExample = {
     </multiple-choice-item>
   `,
 
-  // Item-level accessibility catalogs
-  accessibilityCatalogs: [
-    // Prompt catalogs
-    {
-      identifier: 'prompt-photo-001',
-      cards: [
-        {
-          catalog: 'spoken',
-          language: 'en-US',
-          content: `
+	// Item-level accessibility catalogs
+	accessibilityCatalogs: [
+		// Prompt catalogs
+		{
+			identifier: "prompt-photo-001",
+			cards: [
+				{
+					catalog: "spoken",
+					language: "en-US",
+					content: `
             <speak>
               Based on the passage,
               <break time="300ms"/>
@@ -327,117 +332,122 @@ export const itemWithCatalogsExample = {
               <break time="200ms"/>
               required for photosynthesis?
             </speak>
-          `.trim()
-        },
-        {
-          catalog: 'simplified-language',
-          language: 'en',
-          content: 'What do plants need to make food?'
-        },
-        {
-          catalog: 'braille',
-          language: 'en',
-          content: '⠠⠃⠁⠎⠑⠙ ⠕⠝ ⠞⠓⠑ ⠏⠁⠎⠎⠁⠛⠑⠂ ⠺⠓⠁⠞ ⠁⠗⠑ ⠞⠓⠑ ⠍⠁⠊⠝ ⠊⠝⠏⠥⠞⠎ ⠗⠑⠟⠥⠊⠗⠑⠙ ⠋⠕⠗ ⠏⠓⠕⠞⠕⠎⠽⠝⠞⠓⠑⠎⠊⠎⠦'
-        }
-      ]
-    },
+          `.trim(),
+				},
+				{
+					catalog: "simplified-language",
+					language: "en",
+					content: "What do plants need to make food?",
+				},
+				{
+					catalog: "braille",
+					language: "en",
+					content:
+						"⠠⠃⠁⠎⠑⠙ ⠕⠝ ⠞⠓⠑ ⠏⠁⠎⠎⠁⠛⠑⠂ ⠺⠓⠁⠞ ⠁⠗⠑ ⠞⠓⠑ ⠍⠁⠊⠝ ⠊⠝⠏⠥⠞⠎ ⠗⠑⠟⠥⠊⠗⠑⠙ ⠋⠕⠗ ⠏⠓⠕⠞⠕⠎⠽⠝⠞⠓⠑⠎⠊⠎⠦",
+				},
+			],
+		},
 
-    // Choice A catalogs (correct answer)
-    {
-      identifier: 'choice-photo-001-A',
-      cards: [
-        {
-          catalog: 'spoken',
-          language: 'en-US',
-          content: '<speak>Choice A: <break time="200ms"/> Sunlight, carbon dioxide, and water</speak>'
-        },
-        {
-          catalog: 'simplified-language',
-          language: 'en',
-          content: 'Sun, air (CO2), and water'
-        },
-        {
-          catalog: 'braille',
-          language: 'en',
-          content: '⠠⠎⠥⠝⠇⠊⠛⠓⠞⠂ ⠉⠁⠗⠃⠕⠝ ⠙⠊⠕⠭⠊⠙⠑⠂ ⠁⠝⠙ ⠺⠁⠞⠑⠗'
-        }
-      ]
-    },
+		// Choice A catalogs (correct answer)
+		{
+			identifier: "choice-photo-001-A",
+			cards: [
+				{
+					catalog: "spoken",
+					language: "en-US",
+					content:
+						'<speak>Choice A: <break time="200ms"/> Sunlight, carbon dioxide, and water</speak>',
+				},
+				{
+					catalog: "simplified-language",
+					language: "en",
+					content: "Sun, air (CO2), and water",
+				},
+				{
+					catalog: "braille",
+					language: "en",
+					content: "⠠⠎⠥⠝⠇⠊⠛⠓⠞⠂ ⠉⠁⠗⠃⠕⠝ ⠙⠊⠕⠭⠊⠙⠑⠂ ⠁⠝⠙ ⠺⠁⠞⠑⠗",
+				},
+			],
+		},
 
-    // Choice B catalogs
-    {
-      identifier: 'choice-photo-001-B',
-      cards: [
-        {
-          catalog: 'spoken',
-          language: 'en-US',
-          content: '<speak>Choice B: <break time="200ms"/> Glucose and oxygen</speak>'
-        },
-        {
-          catalog: 'simplified-language',
-          language: 'en',
-          content: 'Sugar and oxygen'
-        },
-        {
-          catalog: 'braille',
-          language: 'en',
-          content: '⠠⠛⠇⠥⠉⠕⠎⠑ ⠁⠝⠙ ⠕⠭⠽⠛⠑⠝'
-        }
-      ]
-    },
+		// Choice B catalogs
+		{
+			identifier: "choice-photo-001-B",
+			cards: [
+				{
+					catalog: "spoken",
+					language: "en-US",
+					content:
+						'<speak>Choice B: <break time="200ms"/> Glucose and oxygen</speak>',
+				},
+				{
+					catalog: "simplified-language",
+					language: "en",
+					content: "Sugar and oxygen",
+				},
+				{
+					catalog: "braille",
+					language: "en",
+					content: "⠠⠛⠇⠥⠉⠕⠎⠑ ⠁⠝⠙ ⠕⠭⠽⠛⠑⠝",
+				},
+			],
+		},
 
-    // Choice C catalogs
-    {
-      identifier: 'choice-photo-001-C',
-      cards: [
-        {
-          catalog: 'spoken',
-          language: 'en-US',
-          content: '<speak>Choice C: <break time="200ms"/> Soil and air only</speak>'
-        },
-        {
-          catalog: 'simplified-language',
-          language: 'en',
-          content: 'Ground and air'
-        },
-        {
-          catalog: 'braille',
-          language: 'en',
-          content: '⠠⠎⠕⠊⠇ ⠁⠝⠙ ⠁⠊⠗ ⠕⠝⠇⠽'
-        }
-      ]
-    },
+		// Choice C catalogs
+		{
+			identifier: "choice-photo-001-C",
+			cards: [
+				{
+					catalog: "spoken",
+					language: "en-US",
+					content:
+						'<speak>Choice C: <break time="200ms"/> Soil and air only</speak>',
+				},
+				{
+					catalog: "simplified-language",
+					language: "en",
+					content: "Ground and air",
+				},
+				{
+					catalog: "braille",
+					language: "en",
+					content: "⠠⠎⠕⠊⠇ ⠁⠝⠙ ⠁⠊⠗ ⠕⠝⠇⠽",
+				},
+			],
+		},
 
-    // Choice D catalogs
-    {
-      identifier: 'choice-photo-001-D',
-      cards: [
-        {
-          catalog: 'spoken',
-          language: 'en-US',
-          content: '<speak>Choice D: <break time="200ms"/> Sunlight and glucose</speak>'
-        },
-        {
-          catalog: 'simplified-language',
-          language: 'en',
-          content: 'Sun and sugar'
-        },
-        {
-          catalog: 'braille',
-          language: 'en',
-          content: '⠠⠎⠥⠝⠇⠊⠛⠓⠞ ⠁⠝⠙ ⠛⠇⠥⠉⠕⠎⠑'
-        }
-      ]
-    },
+		// Choice D catalogs
+		{
+			identifier: "choice-photo-001-D",
+			cards: [
+				{
+					catalog: "spoken",
+					language: "en-US",
+					content:
+						'<speak>Choice D: <break time="200ms"/> Sunlight and glucose</speak>',
+				},
+				{
+					catalog: "simplified-language",
+					language: "en",
+					content: "Sun and sugar",
+				},
+				{
+					catalog: "braille",
+					language: "en",
+					content: "⠠⠎⠥⠝⠇⠊⠛⠓⠞ ⠁⠝⠙ ⠛⠇⠥⠉⠕⠎⠑",
+				},
+			],
+		},
 
-    // Rationale/feedback catalogs
-    {
-      identifier: 'rationale-photo-001',
-      cards: [
-        {
-          catalog: 'spoken',
-          language: 'en-US',
-          content: `
+		// Rationale/feedback catalogs
+		{
+			identifier: "rationale-photo-001",
+			cards: [
+				{
+					catalog: "spoken",
+					language: "en-US",
+					content: `
             <speak>
               <prosody rate="medium">
                 The correct answer is <emphasis level="strong">A</emphasis>.
@@ -454,12 +464,12 @@ export const itemWithCatalogsExample = {
                 not the inputs.
               </prosody>
             </speak>
-          `.trim()
-        },
-        {
-          catalog: 'simplified-language',
-          language: 'en',
-          content: `
+          `.trim(),
+				},
+				{
+					catalog: "simplified-language",
+					language: "en",
+					content: `
             <p><strong>Answer: A is correct</strong></p>
             <p>Plants need:</p>
             <ul>
@@ -468,11 +478,11 @@ export const itemWithCatalogsExample = {
               <li>Water (from ground)</li>
             </ul>
             <p>They make sugar and oxygen. These are not inputs - they are what plants make.</p>
-          `.trim()
-        }
-      ]
-    }
-  ]
+          `.trim(),
+				},
+			],
+		},
+	],
 };
 
 /**
@@ -480,8 +490,8 @@ export const itemWithCatalogsExample = {
  */
 // Example structure (not a valid ItemEntity - for documentation only)
 export const mathItemWithCatalogsExample = {
-  id: 'algebra-equation-001',
-  markup: `
+	id: "algebra-equation-001",
+	markup: `
     <math-item id="math-algebra-001" pie-type="pie-math-inline">
       <pie-prompt>
         <div data-catalog-id="prompt-algebra-001">
@@ -503,29 +513,29 @@ export const mathItemWithCatalogsExample = {
     </math-item>
   `,
 
-  accessibilityCatalogs: [
-    {
-      identifier: 'prompt-algebra-001',
-      cards: [
-        {
-          catalog: 'spoken',
-          language: 'en-US',
-          content: '<speak>Solve for x</speak>'
-        },
-        {
-          catalog: 'braille',
-          language: 'en',
-          content: '⠠⠎⠕⠇⠧⠑ ⠋⠕⠗ ⠭⠒' // Nemeth Braille Code for math
-        }
-      ]
-    },
-    {
-      identifier: 'equation-algebra-001',
-      cards: [
-        {
-          catalog: 'spoken',
-          language: 'en-US',
-          content: `
+	accessibilityCatalogs: [
+		{
+			identifier: "prompt-algebra-001",
+			cards: [
+				{
+					catalog: "spoken",
+					language: "en-US",
+					content: "<speak>Solve for x</speak>",
+				},
+				{
+					catalog: "braille",
+					language: "en",
+					content: "⠠⠎⠕⠇⠧⠑ ⠋⠕⠗ ⠭⠒", // Nemeth Braille Code for math
+				},
+			],
+		},
+		{
+			identifier: "equation-algebra-001",
+			cards: [
+				{
+					catalog: "spoken",
+					language: "en-US",
+					content: `
             <speak>
               <prosody rate="slow">
                 Two x
@@ -537,22 +547,22 @@ export const mathItemWithCatalogsExample = {
                 seventeen
               </prosody>
             </speak>
-          `.trim()
-        },
-        {
-          catalog: 'braille',
-          language: 'en',
-          content: '⠼⠆⠭⠬⠼⠑⠀⠨⠅⠀⠼⠁⠛' // Nemeth: 2x+5 = 17
-        },
-        {
-          catalog: 'simplified-language',
-          language: 'en',
-          content: 'Two times x, plus five, equals seventeen'
-        },
-        {
-          catalog: 'tactile',
-          language: 'en',
-          content: `
+          `.trim(),
+				},
+				{
+					catalog: "braille",
+					language: "en",
+					content: "⠼⠆⠭⠬⠼⠑⠀⠨⠅⠀⠼⠁⠛", // Nemeth: 2x+5 = 17
+				},
+				{
+					catalog: "simplified-language",
+					language: "en",
+					content: "Two times x, plus five, equals seventeen",
+				},
+				{
+					catalog: "tactile",
+					language: "en",
+					content: `
             TACTILE REPRESENTATION:
 
             Linear equation shown horizontally:
@@ -570,11 +580,11 @@ export const mathItemWithCatalogsExample = {
             - Number "17"
 
             All elements are on a single horizontal line with consistent spacing.
-          `.trim()
-        }
-      ]
-    }
-  ]
+          `.trim(),
+				},
+			],
+		},
+	],
 };
 
 /**
@@ -582,8 +592,8 @@ export const mathItemWithCatalogsExample = {
  */
 // Example structure (not a valid ItemEntity - for documentation only)
 export const scienceItemWithMediaExample = {
-  id: 'cell-structure-001',
-  markup: `
+	id: "cell-structure-001",
+	markup: `
     <science-item id="sci-cell-001" pie-type="pie-extended-text">
       <pie-stimulus>
         <figure data-catalog-id="plant-cell-diagram">
@@ -600,16 +610,16 @@ export const scienceItemWithMediaExample = {
     </science-item>
   `,
 
-  // Note: References assessment-level catalog 'plant-cell-diagram'
-  // but adds item-specific prompt catalog
-  accessibilityCatalogs: [
-    {
-      identifier: 'prompt-cell-001',
-      cards: [
-        {
-          catalog: 'spoken',
-          language: 'en-US',
-          content: `
+	// Note: References assessment-level catalog 'plant-cell-diagram'
+	// but adds item-specific prompt catalog
+	accessibilityCatalogs: [
+		{
+			identifier: "prompt-cell-001",
+			cards: [
+				{
+					catalog: "spoken",
+					language: "en-US",
+					content: `
             <speak>
               Using the diagram above,
               <break time="300ms"/>
@@ -617,21 +627,23 @@ export const scienceItemWithMediaExample = {
               <break time="200ms"/>
               where photosynthesis occurs.
             </speak>
-          `.trim()
-        },
-        {
-          catalog: 'simplified-language',
-          language: 'en',
-          content: 'Look at the picture. Which part of the cell makes food from sunlight?'
-        },
-        {
-          catalog: 'braille',
-          language: 'en',
-          content: '⠠⠥⠎⠊⠝⠛ ⠞⠓⠑ ⠙⠊⠁⠛⠗⠁⠍ ⠁⠃⠕⠧⠑⠂ ⠊⠙⠑⠝⠞⠊⠋⠽ ⠞⠓⠑ ⠕⠗⠛⠁⠝⠑⠇⠇⠑ ⠺⠓⠑⠗⠑ ⠏⠓⠕⠞⠕⠎⠽⠝⠞⠓⠑⠎⠊⠎ ⠕⠉⠉⠥⠗⠎⠲'
-        }
-      ]
-    }
-  ]
+          `.trim(),
+				},
+				{
+					catalog: "simplified-language",
+					language: "en",
+					content:
+						"Look at the picture. Which part of the cell makes food from sunlight?",
+				},
+				{
+					catalog: "braille",
+					language: "en",
+					content:
+						"⠠⠥⠎⠊⠝⠛ ⠞⠓⠑ ⠙⠊⠁⠛⠗⠁⠍ ⠁⠃⠕⠧⠑⠂ ⠊⠙⠑⠝⠞⠊⠋⠽ ⠞⠓⠑ ⠕⠗⠛⠁⠝⠑⠇⠇⠑ ⠺⠓⠑⠗⠑ ⠏⠓⠕⠞⠕⠎⠽⠝⠞⠓⠑⠎⠊⠎ ⠕⠉⠉⠥⠗⠎⠲",
+				},
+			],
+		},
+	],
 };
 
 // =============================================================================
@@ -642,62 +654,62 @@ export const scienceItemWithMediaExample = {
  * Complete assessment demonstrating accessibility catalogs
  */
 export const accessibilityDemoAssessment: AssessmentEntity = {
-  id: 'accessibility-demo-001',
-  name: 'QTI 3.0 Accessibility Catalog Demo',
-  title: 'Plant Biology Assessment with Full Accessibility Support',
-  identifier: 'assessment-accessibility-demo',
-  qtiVersion: '3.0',
+	id: "accessibility-demo-001",
+	name: "QTI 3.0 Accessibility Catalog Demo",
+	title: "Plant Biology Assessment with Full Accessibility Support",
+	identifier: "assessment-accessibility-demo",
+	qtiVersion: "3.0",
 
-  // Assessment-level accessibility catalogs (shared resources)
-  accessibilityCatalogs: assessmentLevelCatalogs,
+	// Assessment-level accessibility catalogs (shared resources)
+	accessibilityCatalogs: assessmentLevelCatalogs,
 
-  // Personal Needs Profile example
-  personalNeedsProfile: {
-    supports: ['textToSpeech', 'highlighter', 'magnifier'],
-    activateAtInit: ['textToSpeech']
-  },
+	// Personal Needs Profile example
+	personalNeedsProfile: {
+		supports: ["textToSpeech", "highlighter", "magnifier"],
+		activateAtInit: ["textToSpeech"],
+	},
 
-  testParts: [
-    {
-      identifier: 'part1',
-      navigationMode: 'nonlinear',
-      submissionMode: 'individual',
-      sections: [
-        {
-          identifier: 'section1',
-          title: 'Photosynthesis and Cell Structure',
-          visible: true,
+	testParts: [
+		{
+			identifier: "part1",
+			navigationMode: "nonlinear",
+			submissionMode: "individual",
+			sections: [
+				{
+					identifier: "section1",
+					title: "Photosynthesis and Cell Structure",
+					visible: true,
 
-          // Rubric block with catalog reference
-          rubricBlocks: [
-            {
-              use: 'instructions',
-              view: 'candidate',
-              content: '<div data-catalog-id="test-instructions">...</div>'
-            }
-          ],
+					// Rubric block with catalog reference
+					rubricBlocks: [
+						{
+							use: "instructions",
+							view: "candidate",
+							content: '<div data-catalog-id="test-instructions">...</div>',
+						},
+					],
 
-          questionRefs: [
-            {
-              identifier: 'item1',
-              itemVId: 'photosynthesis-mc-001',
-              required: true
-            },
-            {
-              identifier: 'item2',
-              itemVId: 'cell-structure-001',
-              required: true
-            },
-            {
-              identifier: 'item3',
-              itemVId: 'algebra-equation-001',
-              required: false
-            }
-          ]
-        }
-      ]
-    }
-  ]
+					questionRefs: [
+						{
+							identifier: "item1",
+							itemVId: "photosynthesis-mc-001",
+							required: true,
+						},
+						{
+							identifier: "item2",
+							itemVId: "cell-structure-001",
+							required: true,
+						},
+						{
+							identifier: "item3",
+							itemVId: "algebra-equation-001",
+							required: false,
+						},
+					],
+				},
+			],
+		},
+	],
 };
 
 // =============================================================================
@@ -709,15 +721,15 @@ export const accessibilityDemoAssessment: AssessmentEntity = {
  * Useful for discovering which catalogs an item references
  */
 export function extractCatalogIdsFromMarkup(markup: string): string[] {
-  const catalogIds: string[] = [];
-  const regex = /data-catalog-id=["']([^"']+)["']/g;
-  let match;
+	const catalogIds: string[] = [];
+	const regex = /data-catalog-id=["']([^"']+)["']/g;
+	let match;
 
-  while ((match = regex.exec(markup)) !== null) {
-    catalogIds.push(match[1]);
-  }
+	while ((match = regex.exec(markup)) !== null) {
+		catalogIds.push(match[1]);
+	}
 
-  return catalogIds;
+	return catalogIds;
 }
 
 /**
@@ -731,10 +743,10 @@ export function extractCatalogIdsFromMarkup(markup: string): string[] {
 // =============================================================================
 
 export default {
-  assessmentLevelCatalogs,
-  itemWithCatalogsExample,
-  mathItemWithCatalogsExample,
-  scienceItemWithMediaExample,
-  accessibilityDemoAssessment,
-  extractCatalogIdsFromMarkup
+	assessmentLevelCatalogs,
+	itemWithCatalogsExample,
+	mathItemWithCatalogsExample,
+	scienceItemWithMediaExample,
+	accessibilityDemoAssessment,
+	extractCatalogIdsFromMarkup,
 };

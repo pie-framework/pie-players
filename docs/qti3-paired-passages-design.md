@@ -1,15 +1,18 @@
 # QTI 3.0 Paired Passages Design
 
+**Last Updated**: 2026-02-05
+
 ## Overview
 
-This document describes how PIE Assessment Toolkit models paired passages and page-level rendering using pure QTI 3.0 constructs, without custom extensions.
+This document describes how PIE Assessment Toolkit models paired passages and page-level rendering using QTI 3.0-aligned structures with PIE entities.
 
 ## Key Principles
 
-1. **QTI 3.0 Native**: Use only standard QTI 3.0 constructs
-2. **No XML in JSON**: Avoid XML tags embedded in strings; use typed objects
+1. **QTI-aligned structure**: Use `rubricBlocks` and `assessmentItemRefs` from QTI 3.0
+2. **PIE-native entities**: Store `PassageEntity` and `ItemEntity` (not HTML strings or external references)
 3. **Page = Section**: `QtiAssessmentSection` with `keepTogether: true` represents a page
-4. **HTML5 Metadata**: Use standard HTML5 `class` and `data-*` attributes for metadata
+4. **No loading logic**: Player receives fully resolved entities
+5. **Uniform rendering**: Passages and items both use ItemPlayer infrastructure
 
 ## Data Model
 
@@ -39,9 +42,7 @@ export interface QtiAssessmentSection {
 }
 ```
 
-### Rubric Block (Passages)
-
-Rubric blocks support two approaches for passages:
+### Rubric Block (PIE Entity Approach)
 
 ```typescript
 export interface RubricBlock {
@@ -49,28 +50,19 @@ export interface RubricBlock {
   view: "candidate" | "author" | "proctor" | "scorer" | "testConstructor" | "tutor";
   use?: "instructions" | "passage" | "rubric";
 
-  // Approach 1: Embedded content
-  content?: string;
+  // PIE entity with config (markup, elements, models)
+  passage?: PassageEntity;
 
-  // Approach 2: Stimulus reference
-  stimulusRef?: StimulusRef;
+  // Optional settings for layout/display
+  settings?: RubricBlockSettings;
 }
 ```
 
-### Stimulus Reference (QTI 3.0 Native)
+**Note**: We store `PassageEntity` directly (not HTML strings or external references). The passage contains a PIE config and is rendered using the same ItemPlayer infrastructure as items.
 
-```typescript
-export interface StimulusRef {
-  identifier: string;  // Unique ID
-  href: string;        // URL/path to content
-}
-```
+## Implementation Approach (PIE-Native)
 
-**Note**: The previous `type: 'qti-stimulus'` field was removed as it's not part of the QTI 3.0 specification.
-
-## Approach 1: Embedded Content (Recommended for Adaptive)
-
-This approach embeds passage content directly in the section, making it self-contained and ideal for adaptive assessments where the backend determines content dynamically.
+Passages are embedded as `PassageEntity` objects, making sections self-contained. Ideal for all assessment types.
 
 ```typescript
 const page: QtiAssessmentSection = {
@@ -82,113 +74,114 @@ const page: QtiAssessmentSection = {
       id: 'passage-mountain-terrains',
       view: 'candidate',
       use: 'passage',
-      content: `
-        <div class="paired-passage"
-             data-group="pair-1"
-             data-order="1"
-             data-display="tabs">
-          <h2>Mountain Terrains</h2>
-          <h3>Subtitle</h3>
-          <p>Lorem ipsum dolor sit amet...</p>
-        </div>
-      `
+      passage: {
+        id: 'passage-001',
+        name: 'Mountain Terrains',
+        baseId: 'passage-001',
+        version: { major: 1, minor: 0, patch: 0 },
+        config: {
+          markup: '<reading-passage id="p1"></reading-passage>',
+          elements: {
+            'reading-passage': '@pie-element/reading-passage@latest'
+          },
+          models: [{
+            id: 'p1',
+            element: 'reading-passage',
+            title: 'Mountain Terrains',
+            content: '<div class="passage"><h2>Mountain Terrains</h2><p>Lorem ipsum...</p></div>'
+          }]
+        }
+      },
+      settings: {
+        pairedPassage: { group: 'pair-1', order: 1, displayMode: 'tabs' }
+      }
     },
     {
       id: 'passage-forests',
       view: 'candidate',
       use: 'passage',
-      content: `
-        <div class="paired-passage"
-             data-group="pair-1"
-             data-order="2"
-             data-display="tabs">
-          <h2>Forests</h2>
-          <p>Content about forests...</p>
-        </div>
-      `
+      passage: {
+        id: 'passage-002',
+        name: 'Forests',
+        baseId: 'passage-002',
+        version: { major: 1, minor: 0, patch: 0 },
+        config: {
+          markup: '<reading-passage id="p2"></reading-passage>',
+          elements: {
+            'reading-passage': '@pie-element/reading-passage@latest'
+          },
+          models: [{
+            id: 'p2',
+            element: 'reading-passage',
+            title: 'Forests',
+            content: '<div class="passage"><h2>Forests</h2><p>Content about forests...</p></div>'
+          }]
+        }
+      },
+      settings: {
+        pairedPassage: { group: 'pair-1', order: 2, displayMode: 'tabs' }
+      }
     }
   ],
 
-  questionRefs: [
-    { identifier: 'q1', itemVId: 'item-001', item: {...} },
-    { identifier: 'q2', itemVId: 'item-002', item: {...} },
-    { identifier: 'q3', itemVId: 'item-003', item: {...} }
+  assessmentItemRefs: [
+    { identifier: 'q1', required: true, item: { /* ItemEntity */ } },
+    { identifier: 'q2', required: true, item: { /* ItemEntity */ } },
+    { identifier: 'q3', required: true, item: { /* ItemEntity */ } }
   ]
 };
 ```
 
-### HTML5 Data Attributes for Metadata
+### Settings for Paired Passages
 
-All passage metadata is expressed using standard HTML5 attributes:
-
-- `class="paired-passage"` - Identifies this as a paired passage
-- `data-group="pair-1"` - Groups related passages together
-- `data-order="1"` - Display order within group
-- `data-display="tabs"` - Display mode hint (tabs, side-by-side, stacked)
-
-## Approach 2: Stimulus References (Reusable Content)
-
-This approach defines stimuli at the assessment level and references them from sections, useful when the same passage is used across multiple sections.
+Use `RubricBlockSettings` for paired passage metadata:
 
 ```typescript
-const assessment: AssessmentEntity = {
-  qtiVersion: '3.0',
-
-  // Define stimuli once at assessment level
-  stimulusRefs: [
-    {
-      identifier: 'mountain-terrains',
-      href: '/stimuli/mountain-terrains.html'
-    },
-    {
-      identifier: 'forests',
-      href: '/stimuli/forests.html'
-    }
-  ],
-
-  testParts: [{
-    identifier: 'part-1',
-    navigationMode: 'nonlinear',
-    submissionMode: 'individual',
-    sections: [{
-      identifier: 'section-1',
-      keepTogether: true,
-
-      // Reference stimuli by identifier
-      rubricBlocks: [
-        {
-          id: 'passage-1',
-          view: 'candidate',
-          use: 'passage',
-          stimulusRef: {
-            identifier: 'mountain-terrains',
-            href: '/stimuli/mountain-terrains.html'
-          }
-        },
-        {
-          id: 'passage-2',
-          view: 'candidate',
-          use: 'passage',
-          stimulusRef: {
-            identifier: 'forests',
-            href: '/stimuli/forests.html'
-          }
-        }
-      ],
-
-      questionRefs: [...]
-    }]
-  }]
-};
+settings: {
+  pairedPassage: {
+    group: 'pair-1',           // Groups related passages
+    order: 1,                  // Display order
+    displayMode: 'tabs'        // tabs, side-by-side, stacked
+  }
+}
 ```
 
-### Rendering Logic
+## Rendering
 
-When a `RubricBlock` has a `stimulusRef`:
+The SectionPlayer renders passages using the ItemPlayer infrastructure:
 
-1. Resolve the reference by fetching content from `stimulusRef.href`
-2. Cache the content for reuse
-3. The fetched HTML should include the same metadata attributes as Approach 1
+```typescript
+class SectionPlayer {
+  private createPassagePlayer(passage: PassageEntity): HTMLElement {
+    const player = document.createElement('pie-esm-player');
+    player.setAttribute('config', JSON.stringify(passage.config));
+    player.setAttribute('env', JSON.stringify({ mode: 'view' }));
+    return player;
+  }
+
+  private getAllPassages(): PassageEntity[] {
+    const passages: PassageEntity[] = [];
+
+    // Extract from rubricBlocks
+    for (const rb of this.section.rubricBlocks || []) {
+      if (rb.passage && rb.view === this.currentView) {
+        passages.push(rb.passage);
+      }
+    }
+
+    // Extract from item-linked passages
+    for (const itemRef of this.section.assessmentItemRefs || []) {
+      if (itemRef.item?.passage && typeof itemRef.item.passage === 'object') {
+        // Deduplicate
+        if (!passages.find(p => p.id === itemRef.item.passage.id)) {
+          passages.push(itemRef.item.passage);
+        }
+      }
+    }
+
+    return passages;
+  }
+}
 
 ## Adaptive Assessment Support (Star Assessments)
 
@@ -255,32 +248,33 @@ The Reference Layout component should:
 
 ## Changes Made
 
-1. ✅ Removed non-standard `type: 'qti-stimulus'` from `StimulusRef`
-2. ✅ Made `RubricBlock.content` optional (was required)
-3. ✅ Added `RubricBlock.stimulusRef` for reference approach
-4. ✅ Updated documentation to reflect QTI 3.0 compliance
-5. ✅ Added comprehensive JSDoc comments
+1. ✅ Replaced `RubricBlock.content` (HTML string) with `passage: PassageEntity` (PIE entity)
+2. ✅ Removed `stimulusRef` - always embed passages directly
+3. ✅ Simplified `AssessmentItemRef` - removed backend-specific fields
+4. ✅ Added `RubricBlockSettings` for paired passage metadata
+5. ✅ Updated documentation to reflect PIE-native approach
 
 ## Files Modified
 
 - `packages/players-shared/src/types/index.ts` - Core type definitions
-- `docs/qti-3.0-feature-support.md` - Updated StimulusRef example
+- `docs/SECTION-PLAYER-IMPLEMENTATION-PLAN.md` - Implementation plan
+- `docs/SECTION-STRUCTURE-DESIGN.md` - Design rationale
 - `docs/qti3-paired-passages-design.md` - This document
 
 ## Next Steps
 
-1. Implement Reference Layout support for paired passages
-2. Add rendering logic for `RubricBlock.stimulusRef`
-3. Create Star Assessment integration adapter
-4. Add examples and tests for both approaches
-5. Document CSS classes and data attributes for passage styling
+1. Implement SectionPlayer with passage extraction from rubricBlocks
+2. Implement layout engine for paired passages (tabs, side-by-side, stacked)
+3. Add support for `pairedPassage` settings (grouping, ordering)
+4. Update example assessments to use new structure
+5. Add tests for passage rendering and deduplication
 
 ## Standards Compliance
 
-This design is **100% QTI 3.0 compliant**:
+This design is **QTI 3.0-aligned** where practical:
 
-- ✅ Uses standard QTI 3.0 constructs (`QtiAssessmentSection`, `RubricBlock`, `StimulusRef`)
-- ✅ No custom TypeScript extensions (only optional `settings` field for PIE-specific hints)
-- ✅ HTML5 data attributes for metadata (standard HTML5)
-- ✅ No XML embedded in JSON strings
-- ✅ Based on official IMS Global QTI 3.0 specification
+- ✅ Uses QTI 3.0 structure (`QtiAssessmentSection`, `rubricBlocks`, `assessmentItemRefs`)
+- ✅ Uses QTI 3.0 semantics (`keepTogether`, `view`, `use`)
+- ✅ Stores PIE entities (not QTI XML) - PIE-native approach
+- ✅ No loading logic - player receives resolved entities
+- ✅ Can export to QTI XML if needed

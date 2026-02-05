@@ -6,7 +6,6 @@
  * Based on Desmos API v1.10+
  */
 
-import { COMMON_LIBRARIES, libraryLoader } from "../library-loader";
 import type {
 	CalculationHistoryEntry,
 	Calculator,
@@ -17,6 +16,7 @@ import type {
 	CalculatorType,
 	DesmosCalculatorConfig,
 } from "@pie-players/pie-calculator";
+import { COMMON_LIBRARIES, libraryLoader } from "../library-loader";
 
 /**
  * Desmos Calculator Provider Implementation

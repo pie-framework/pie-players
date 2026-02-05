@@ -225,37 +225,31 @@ export interface RubricBlock {
 	use?: "instructions" | "passage" | "rubric";
 
 	/**
-	 * Embedded HTML content (QTI 3.0 Approach 1).
-	 * Use HTML5 data-* attributes within content for metadata like passage grouping.
-	 * Mutually exclusive with stimulusRef.
+	 * Embedded passage entity (PIE-native approach).
+	 * The passage is rendered using the same ItemPlayer infrastructure as items.
+	 * Contains a PIE config with markup, elements, and models.
 	 */
-	content?: string;
-
-	/**
-	 * Reference to shared stimulus (QTI 3.0 Approach 2).
-	 * When present, the renderer should resolve and fetch the stimulus content.
-	 * Mutually exclusive with content.
-	 */
-	stimulusRef?: StimulusRef;
+	passage?: PassageEntity;
 }
 
 /**
- * QTI-like assessment item reference (maps to qti-assessment-item-ref).
- * This is the canonical way to reference items from an assessment definition.
+ * QTI-aligned assessment item reference (maps to qti-assessment-item-ref).
+ * References an item within a section. The item property contains the resolved
+ * ItemEntity with its PIE config.
  */
-export interface AssessmentItemRef
-	extends SearchMetaDataEntity {
+export interface AssessmentItemRef extends SearchMetaDataEntity {
 	id?: string;
 	identifier: string;
-	itemVId: string;
-	href?: string;
 	title?: string;
-	fixed?: boolean;
 	required?: boolean;
-	weight?: number;
+
+	/**
+	 * Resolved item entity with PIE config.
+	 * This is populated by the client before passing to the player.
+	 */
 	item?: ItemEntity;
 
-	/** Item-level settings for tool requirements */
+	/** Item-level settings for tool requirements and customization */
 	settings?: ItemSettings;
 }
 
@@ -297,9 +291,19 @@ export interface TestPart {
 
 export interface ContextDeclaration {
 	identifier: string;
-	baseType: 'boolean' | 'integer' | 'float' | 'string' | 'identifier' |
-						'point' | 'pair' | 'directedPair' | 'duration' | 'file' | 'uri';
-	cardinality: 'single' | 'multiple' | 'ordered' | 'record';
+	baseType:
+		| "boolean"
+		| "integer"
+		| "float"
+		| "string"
+		| "identifier"
+		| "point"
+		| "pair"
+		| "directedPair"
+		| "duration"
+		| "file"
+		| "uri";
+	cardinality: "single" | "multiple" | "ordered" | "record";
 	defaultValue?: any;
 }
 
@@ -323,14 +327,16 @@ export interface PersonalNeedsProfile {
 /**
  * QTI 3.0: Reference to a shared stimulus (passage).
  * Maps to qti-assessment-stimulus-ref element.
+ *
+ * NOTE: Not currently used. We embed PassageEntity directly in RubricBlock instead.
+ * Kept for potential future use if we need to support external stimulus references.
  */
+/*
 export interface StimulusRef {
-	/** Unique identifier for the stimulus (required) */
 	identifier: string;
-
-	/** URL/path to the stimulus content (required) */
 	href: string;
 }
+*/
 
 /**
  * Reference to question and sorting info within a section.
@@ -352,9 +358,7 @@ export interface AssessmentSection
 	questions: SectionQuestionRef[];
 }
 
-export interface AssessmentEntity
-	extends BaseEntity,
-		SearchMetaDataEntity {
+export interface AssessmentEntity extends BaseEntity, SearchMetaDataEntity {
 	name?: string;
 	title?: string;
 	identifier?: string;
@@ -364,7 +368,7 @@ export interface AssessmentEntity
 	settings?: AssessmentSettings;
 
 	/** QTI version - '3.0' for QTI 3.0 format */
-	qtiVersion?: '3.0';
+	qtiVersion?: "3.0";
 
 	/** QTI 3.0: Context declarations (global shared variables) */
 	contextDeclarations?: ContextDeclaration[];
@@ -374,9 +378,6 @@ export interface AssessmentEntity
 
 	/** QTI 3.0: Personal Needs Profile (PNP 3.0) */
 	personalNeedsProfile?: PersonalNeedsProfile;
-
-	/** QTI 3.0: Stimulus references (shared passages) */
-	stimulusRefs?: StimulusRef[];
 
 	/** Legacy: Flat questions array */
 	questions?: QuestionEntity[];
@@ -405,7 +406,7 @@ export interface AssessmentSettings {
 
 	/** Test administration configuration */
 	testAdministration?: {
-		mode?: 'practice' | 'test' | 'benchmark';
+		mode?: "practice" | "test" | "benchmark";
 		toolOverrides?: Record<string, boolean>; // Override specific PNP supports
 		startDate?: string;
 		endDate?: string;
@@ -414,12 +415,12 @@ export interface AssessmentSettings {
 	/** Tool-specific provider configurations */
 	toolConfigs?: {
 		calculator?: {
-			provider?: 'desmos' | 'ti' | 'mathjs';
-			type?: 'basic' | 'scientific' | 'graphing' | 'ti-84' | 'ti-108';
+			provider?: "desmos" | "ti" | "mathjs";
+			type?: "basic" | "scientific" | "graphing" | "ti-84" | "ti-108";
 			settings?: Record<string, any>;
 		};
 		textToSpeech?: {
-			provider?: 'browser' | 'polly' | 'custom';
+			provider?: "browser" | "polly" | "custom";
 			voice?: string;
 			rate?: number;
 			pitch?: number;
@@ -429,7 +430,7 @@ export interface AssessmentSettings {
 
 	/** Theme configuration (not in PNP) */
 	themeConfig?: {
-		colorScheme?: 'default' | 'high-contrast' | 'dark';
+		colorScheme?: "default" | "high-contrast" | "dark";
 		fontSize?: number;
 		fontFamily?: string;
 		lineHeight?: number;

@@ -29,9 +29,10 @@ Built with Bun, TypeScript, and Svelte 5, the architecture leverages modern web 
 3. [Assessment Toolkit](#assessment-toolkit)
 4. [Tools & Accommodations](#tools--accommodations)
 5. [Question Layout Engine](#question-layout-engine)
-6. [Technology Stack](#technology-stack)
-7. [Integration Patterns](#integration-patterns)
-8. [References](#references)
+6. [Math Rendering](#math-rendering)
+7. [Technology Stack](#technology-stack)
+8. [Integration Patterns](#integration-patterns)
+9. [References](#references)
 
 ---
 
@@ -55,7 +56,11 @@ Item players are Web Components that render individual PIE assessment items. The
 
 ### Player Types
 
-#### 1. IIFE Player (`<pie-iife-player>`)
+The system includes both **interactive players** (for student/teacher interaction) and a **print player** (for static print views).
+
+#### Interactive Players
+
+##### 1. IIFE Player (`<pie-iife-player>`)
 
 **Purpose**: Load PIE elements dynamically from IIFE bundles (legacy format).
 
@@ -96,24 +101,25 @@ See: [packages/iife-player/src/README.md](../packages/iife-player/src/README.md)
 
 #### 2. ESM Player (`<pie-esm-player>`)
 
-**Purpose**: Load PIE elements from modern ESM packages (future-forward).
+**Purpose**: Load PIE elements from modern ESM packages with view-based architecture.
 
 **Use Cases**:
 
 - Modern browsers with native ESM support
 - Smaller bundle sizes (~85% reduction vs IIFE)
 - Faster loading with import maps
+- UI variant selection (mobile, accessibility, branding)
 
 **Loading Strategy**:
 
 ![ESM Player Loading Strategy](img/esm-player-loading.png)
 
 1. Receive item config → extract element packages
-2. Generate import map for all PIE packages
+2. Generate import map for all PIE packages and requested views
 3. Inject import map into document
-4. Dynamic import() each package
-5. Register custom elements
-6. Render item markup
+4. Dynamic import() each package from the specified view subpath
+5. Register custom elements with view-appropriate tag names
+6. Render item markup with fallback support
 
 **Key Features**:
 
@@ -122,12 +128,67 @@ See: [packages/iife-player/src/README.md](../packages/iife-player/src/README.md)
 - Configurable CDN (esm.sh, jsDelivr)
 - Smaller bundle size
 - Modern browsers only (Chrome 89+, Firefox 108+, Safari 16.4+)
+- **View-based loading**: Load different UI implementations (delivery, author, print, custom variants)
+- **Automatic fallback**: Falls back to standard view if custom view unavailable
+- **UI variant support**: Enable mobile-optimized, accessibility-focused, or branded UIs without duplicating elements
+
+**View System**:
+
+The ESM player supports loading different views/variants of elements:
+
+```typescript
+// Load standard delivery view
+await esmLoader.load(config, document, {
+  view: 'delivery',
+  loadControllers: true
+});
+
+// Load author/configuration view
+await esmLoader.load(config, document, {
+  view: 'author',
+  loadControllers: false
+});
+
+// Load custom mobile-optimized view with fallback
+await esmLoader.load(config, document, {
+  view: 'delivery-mobile',
+  viewConfig: {
+    subpath: '/delivery-mobile',
+    tagSuffix: '',
+    fallback: 'delivery'
+  },
+  loadControllers: true
+});
+```
+
+**Built-in views**:
+
+- `delivery` - Standard student/teacher interaction (root export, no suffix)
+- `author` - Configuration UI (`/author` export, `-config` suffix)
+- `print` - Print views (`/print` export, `-print` suffix)
+
+**Custom views** (enabled by ESM subpath exports):
+
+- `delivery-mobile` - Touch-optimized UI for tablets/phones
+- `delivery-a11y` - Accessibility-optimized (screen readers, high contrast)
+- `delivery-simple` - Simplified UI for younger students
+- `delivery-branded` - Custom district branding
+- Any subpath defined in element's package.json exports
+
+**Benefits of view system**:
+
+✅ **Shared controller logic** - All UI variants use the same scoring/validation
+✅ **Consistent behavior** - Assessment results identical across all views
+✅ **Easy maintenance** - Single codebase for business logic
+✅ **Flexible deployment** - Users choose preferred UI without forking
+✅ **Graceful degradation** - Automatic fallback to standard view
 
 **Attributes**:
 
 - `config` - Item configuration
 - `env` - Environment
 - `session` - Session data
+- `mode` - View mode ('view' or 'author') - determines which view to load
 - `esm-cdn-url` - ESM CDN base URL
 - `esm-probe-timeout` - Package probe timeout
 
@@ -135,7 +196,9 @@ See: [packages/esm-player/src/README.md](../packages/esm-player/src/README.md)
 
 ---
 
-#### 3. Fixed Player (`<pie-fixed-player>`)
+##### 3. Fixed Player (`<pie-fixed-player>`)
+
+**Purpose**: Ultra-portable player with all dependencies pre-bundled.
 
 **Purpose**: Pre-bundled player with fixed element combinations (performance optimized).
 
@@ -180,17 +243,79 @@ See: [packages/fixed-player/src/README.md](../packages/fixed-player/src/README.m
 
 ---
 
+#### Print Player
+
+##### `<pie-print>` - Item-Level Print Rendering
+
+**Purpose**: Render complete assessment items for print (paper tests, answer keys, PDF export).
+
+**Package**: `@pie-player/print`
+
+**Use Cases**:
+
+- Paper-based assessments
+- Teacher answer keys with rationales
+- PDF exports for archival/compliance
+- Print previews in content authoring systems
+
+**Loading Strategy**:
+
+1. Receive item config (markup + models + element map)
+2. Parse markup to identify element types
+3. Dynamically load print modules from CDN
+4. Register print elements with hash-based unique names
+5. Transform markup (replace interactive tags with print tags)
+6. Apply model data to all elements
+7. Render static print view
+
+**Key Features**:
+
+- Multi-element support (passage + questions + rubrics)
+- Role-based rendering (student worksheets vs instructor answer keys)
+- Markup transformation and floater handling
+- Hash-based element naming (avoid conflicts)
+- Graceful degradation for missing modules
+- CDN verification before loading
+
+**API Example**:
+
+```html
+<pie-print id="player"></pie-print>
+<script>
+  player.config = {
+    item: {
+      markup: '<passage id="p1"></passage><multiple-choice id="q1"></multiple-choice>',
+      elements: {
+        'passage': '@pie-element/passage@5.0.0',
+        'multiple-choice': '@pie-element/multiple-choice@12.0.0'
+      },
+      models: [
+        { id: 'p1', element: 'passage', text: '...' },
+        { id: 'q1', element: 'multiple-choice', prompt: '...', choices: [...] }
+      ]
+    },
+    options: { role: 'student' } // or 'instructor' for answer key
+  };
+</script>
+```
+
+**Architecture Note**: Print components are self-contained. Each element's print export handles its own transformations (`preparePrintModel`), role-based visibility, and rendering. The print player simply loads and orchestrates them.
+
+See: [packages/print-player/README.md](../packages/print-player/README.md)
+
+---
+
 ### Player Comparison
 
-| Feature             | IIFE Player   | ESM Player  | Fixed Player |
-| ------------------- | ------------- | ----------- | ------------ |
-| **Bundle Format**   | IIFE          | ESM         | Pre-bundled  |
-| **Loading**         | Dynamic       | Dynamic     | Static       |
-| **Browser Support** | All           | Modern      | All          |
-| **Bundle Size**     | Large         | Small       | Smallest     |
-| **Performance**     | Medium        | Medium      | Fast         |
-| **Flexibility**     | High          | High        | Low          |
-| **Use Case**        | Legacy compat | Modern apps | Performance  |
+| Feature             | IIFE Player   | ESM Player  | Fixed Player | Print Player |
+| ------------------- | ------------- | ----------- | ------------ | ------------ |
+| **Bundle Format**   | IIFE          | ESM         | Pre-bundled  | ESM          |
+| **Loading**         | Dynamic       | Dynamic     | Static       | Dynamic      |
+| **Browser Support** | All           | Modern      | All          | Modern       |
+| **Bundle Size**     | Large         | Small       | Smallest     | Small        |
+| **Performance**     | Medium        | Medium      | Fast         | Fast         |
+| **Interactivity**   | Yes           | Yes         | Yes          | No (static)  |
+| **Use Case**        | Legacy compat | Modern apps | Performance  | Print/PDF    |
 
 ---
 
@@ -668,6 +793,50 @@ The Question Layout Engine defines how assessment UI is composed (template selec
 **Canonical doc:**
 
 - [Question Layout Engine Architecture](question-layout-engine-architecture.md)
+
+---
+
+## Math Rendering
+
+PIE players use a **pluggable, programmatic math rendering system** that allows switching between MathJax, KaTeX, or custom renderers without code changes.
+
+### Architecture
+
+- **Provider pattern**: Global `mathRendererProvider` manages the active renderer
+- **Unified interface**: `MathRenderer = (element: HTMLElement) => void | Promise<void>`
+- **Factory functions**: `createMathjaxRenderer()`, `createKatexRenderer()`
+- **Type-safe**: No string-based configuration, compile-time checking
+
+### Usage
+
+```typescript
+import { createKatexRenderer } from '@pie-players/math-renderer-katex';
+import { setMathRenderer } from '@pie-players/pie-players-shared/pie';
+
+// Set renderer before loading PIE elements
+const renderer = await createKatexRenderer();
+setMathRenderer(renderer);
+
+// PIE elements now use KaTeX for math rendering
+```
+
+### Available Renderers
+
+| Renderer | Bundle Size | Speed | Use Case |
+|----------|-------------|-------|----------|
+| **MathJax** (default) | ~2.7MB | Slower | Full LaTeX/MathML, accessibility |
+| **KaTeX** | ~100KB | ~100x faster | Performance, smaller bundles |
+| **Custom** | Varies | Varies | Specialized rendering needs |
+
+### Packages
+
+- `@pie-players/math-renderer-core` - Core types and provider
+- `@pie-players/math-renderer-mathjax` - MathJax adapter
+- `@pie-players/math-renderer-katex` - KaTeX adapter
+
+**Canonical doc:**
+
+- [Math Renderer Architecture](../MATH-RENDERER-ARCHITECTURE.md)
 
 ---
 

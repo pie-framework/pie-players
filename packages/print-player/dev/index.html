@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PIE Print Player Demo</title>
+    <link href="https://fonts.googleapis.com/css?family=Roboto" rel="stylesheet" />
+
+    <script type="module" src="../src/index.ts"></script>
+
+    <style>
+      * {
+        font-family: 'Roboto', sans-serif;
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 20px;
+        background: #f5f5f5;
+      }
+
+      h1 {
+        color: #333;
+        margin-bottom: 10px;
+      }
+
+      .description {
+        color: #666;
+        margin-bottom: 30px;
+      }
+
+      .controls {
+        background: white;
+        padding: 20px;
+        margin-bottom: 20px;
+        border-radius: 4px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      .controls label {
+        display: inline-block;
+        margin-right: 20px;
+        font-weight: 500;
+      }
+
+      .controls select {
+        padding: 5px 10px;
+        margin-left: 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
+
+      pie-print {
+        display: block;
+        background: white;
+        margin: 20px 0;
+        border-radius: 4px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      .example-title {
+        font-size: 1.2em;
+        font-weight: bold;
+        color: #333;
+        margin: 30px 0 10px 0;
+      }
+
+      .loading {
+        padding: 20px;
+        text-align: center;
+        color: #666;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>PIE Print Player Demo</h1>
+    <p class="description">
+      Dynamically loads and renders PIE elements in print-friendly mode.
+    </p>
+
+    <div class="controls">
+      <label>
+        Role:
+        <select id="role-selector">
+          <option value="student">Student</option>
+          <option value="instructor">Instructor</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="example-title">Example 1: Multiple Choice</div>
+    <pie-print id="example-1"></pie-print>
+
+    <div class="example-title">Example 2: Multiple Elements</div>
+    <pie-print id="example-2"></pie-print>
+
+    <script>
+      const init = () => {
+        customElements.whenDefined('pie-print').then(() => {
+          const example1 = document.querySelector('#example-1');
+          const example2 = document.querySelector('#example-2');
+          const roleSelector = document.querySelector('#role-selector');
+
+          // Example 1: Simple multiple choice
+          const config1 = {
+            item: {
+              markup: '<multiple-choice id="q1"></multiple-choice>',
+              elements: {
+                'multiple-choice': '@pie-element/multiple-choice@12.0.0',
+              },
+              models: [
+                {
+                  id: 'q1',
+                  element: 'multiple-choice',
+                  feedbackEnabled: false,
+                  choiceMode: 'radio',
+                  choices: [
+                    {
+                      value: '0',
+                      correct: true,
+                      label: '<div>Choice A (Correct)</div>',
+                      rationale: '<div>This is the correct answer because...</div>',
+                    },
+                    {
+                      value: '1',
+                      correct: false,
+                      label: '<div>Choice B</div>',
+                    },
+                    {
+                      value: '2',
+                      correct: false,
+                      label: '<div>Choice C</div>',
+                    },
+                  ],
+                  prompt: '<div>What is the correct answer?</div>',
+                  promptEnabled: true,
+                  rationaleEnabled: true,
+                  choicePrefix: 'letters',
+                },
+              ],
+            },
+            options: {
+              role: 'student',
+            },
+          };
+
+          // Example 2: Multiple elements with passage
+          const config2 = {
+            item: {
+              markup:
+                '<passage id="p1"></passage><multiple-choice id="q2"></multiple-choice>',
+              elements: {
+                passage: '@pie-element/passage@5.0.0',
+                'multiple-choice': '@pie-element/multiple-choice@12.0.0',
+              },
+              models: [
+                {
+                  id: 'p1',
+                  element: 'passage',
+                  text: '<h3>Reading Passage</h3><p>This is a sample passage for the assessment.</p>',
+                },
+                {
+                  id: 'q2',
+                  element: 'multiple-choice',
+                  choiceMode: 'radio',
+                  choices: [
+                    { value: '0', correct: false, label: '<div>Answer A</div>' },
+                    { value: '1', correct: true, label: '<div>Answer B (Correct)</div>' },
+                    { value: '2', correct: false, label: '<div>Answer C</div>' },
+                  ],
+                  prompt: '<div>Based on the passage, what is the answer?</div>',
+                  promptEnabled: true,
+                  choicePrefix: 'letters',
+                },
+              ],
+            },
+            options: {
+              role: 'student',
+            },
+          };
+
+          // Custom resolver for pie-elements-ng packages
+          const resolve = (tagName, pkg) => {
+            const match = pkg.match(/@pie-element\/(.*?)@(.*)/);
+            if (match) {
+              const [_, name, version] = match;
+              return Promise.resolve({
+                tagName,
+                pkg,
+                // Point to your built packages - adjust this URL as needed
+                url: `https://cdn.jsdelivr.net/npm/@pie-element/${name}@${version}/dist/print/index.js`,
+                module: true,
+              });
+            }
+            return Promise.reject(new Error(`Cannot resolve ${pkg}`));
+          };
+
+          example1.resolve = resolve;
+          example2.resolve = resolve;
+
+          example1.config = config1;
+          example2.config = config2;
+
+          // Role switcher
+          roleSelector.addEventListener('change', (e) => {
+            const role = e.target.value;
+            config1.options.role = role;
+            config2.options.role = role;
+            example1.config = { ...config1 }; // Trigger update
+            example2.config = { ...config2 };
+          });
+        });
+      };
+
+      if (document.readyState === 'complete') {
+        init();
+      } else {
+        document.addEventListener('DOMContentLoaded', init);
+      }
+    </script>
+  </body>
+</html>

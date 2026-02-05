@@ -301,7 +301,9 @@ class DesmosCalculator implements Calculator {
 
 				// Give Desmos time to process
 				setTimeout(() => {
-					const helperExpression = this.calculator.HelperExpression({ latex: expression });
+					const helperExpression = this.calculator.HelperExpression({
+						latex: expression,
+					});
 					const result = helperExpression.numericValue || expression;
 					this.calculator.removeExpression({ id });
 					resolve(String(result));

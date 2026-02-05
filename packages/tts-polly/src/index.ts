@@ -7,5 +7,5 @@
  * ideal for QTI 3.0 accessibility catalogs.
  */
 
-export { PollyTTSProvider } from "./polly-provider";
 export type { PollyTTSConfig } from "./polly-provider";
+export { PollyTTSProvider } from "./polly-provider";

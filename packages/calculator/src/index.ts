@@ -6,13 +6,13 @@
  */
 
 export type {
+	CalculationHistoryEntry,
 	Calculator,
 	CalculatorProvider,
 	CalculatorProviderCapabilities,
 	CalculatorProviderConfig,
 	CalculatorState,
 	CalculatorType,
-	CalculationHistoryEntry,
 	DesmosCalculatorConfig,
 	TICalculatorConfig,
 } from "./provider-interface";

@@ -48,7 +48,10 @@
 		{ "path": "./packages/tts-polly" },
 		{ "path": "./packages/calculator" },
 		{ "path": "./packages/calculator-mathjs" },
-		{ "path": "./packages/calculator-desmos" }
+		{ "path": "./packages/calculator-desmos" },
+		{ "path": "./packages/math-renderer-core" },
+		{ "path": "./packages/math-renderer-mathjax" },
+		{ "path": "./packages/math-renderer-katex" }
 	],
 	"exclude": ["node_modules", "dist", "build"]
 }

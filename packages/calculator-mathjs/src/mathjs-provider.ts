@@ -17,13 +17,13 @@
  */
 
 import type {
+	CalculationHistoryEntry,
 	Calculator,
 	CalculatorProvider,
 	CalculatorProviderCapabilities,
 	CalculatorProviderConfig,
 	CalculatorState,
 	CalculatorType,
-	CalculationHistoryEntry,
 } from "@pie-players/pie-calculator";
 
 declare global {
@@ -539,9 +539,7 @@ class MathJsCalculator implements Calculator {
 		this.errorEl = this.container.querySelector(
 			".calculator-error",
 		) as HTMLElement;
-		this.gridEl = this.container.querySelector(
-			"[role='grid']",
-		) as HTMLElement;
+		this.gridEl = this.container.querySelector("[role='grid']") as HTMLElement;
 	}
 
 	private _buildGrid(): void {
@@ -882,9 +880,7 @@ class MathJsCalculator implements Calculator {
 
 	private _showError(message: string): void {
 		if (this.errorEl) {
-			const messageEl = this.errorEl.querySelector(
-				".calculator-error-message",
-			);
+			const messageEl = this.errorEl.querySelector(".calculator-error-message");
 			if (messageEl) messageEl.textContent = message;
 			this.errorEl.classList.remove("hidden");
 		}
@@ -912,7 +908,10 @@ class MathJsCalculator implements Calculator {
 		if (this.displayEl) {
 			const displayValue = this.currentExpression || this.currentValue;
 			this.displayEl.value = displayValue;
-			this.displayEl.setAttribute("aria-label", `Calculator display: ${displayValue}`);
+			this.displayEl.setAttribute(
+				"aria-label",
+				`Calculator display: ${displayValue}`,
+			);
 		}
 	}
 

@@ -179,10 +179,7 @@ export class ContextVariableStore {
 	 *
 	 * @private
 	 */
-	private getDefaultValueForType(
-		baseType: string,
-		cardinality: string,
-	): any {
+	private getDefaultValueForType(baseType: string, cardinality: string): any {
 		if (cardinality === "multiple" || cardinality === "ordered") {
 			return [];
 		}

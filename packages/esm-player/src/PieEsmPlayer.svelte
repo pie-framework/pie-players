@@ -195,7 +195,12 @@ import { tick } from 'svelte';
 
 					// Load ESM elements into the global PIE registry
 					logger.debug('Loading ESM elements');
-					await esmLoader.load(transformedConfig, document, true); // Always load controllers for ESM
+					// Determine which view to load based on mode
+					const view = mode === 'author' ? 'author' : 'delivery';
+					await esmLoader.load(transformedConfig, document, {
+						view,
+						loadControllers: true // Always load controllers for ESM
+					});
 
 					// Wait for elements to be defined
 					const elements = Object.keys(transformedConfig.elements).map(el => ({

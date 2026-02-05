@@ -3,14 +3,15 @@
 	 * Main Calculator Component
 	 * Professional, WCAG 2.2 Level AA compliant calculator with DaisyUI theming
 	 */
-	import { onMount, onDestroy } from 'svelte';
+	
 	import type { CalculationHistoryEntry } from '@pie-players/pie-calculator';
+import { onDestroy, onMount } from 'svelte';
 
 	import CalculatorDisplay from './CalculatorDisplay.svelte';
+	import CalculatorGrid from './CalculatorGrid.svelte';
 	import ErrorAlert from './ErrorAlert.svelte';
 	import MemoryButtons from './MemoryButtons.svelte';
 	import ScientificButtons from './ScientificButtons.svelte';
-	import CalculatorGrid from './CalculatorGrid.svelte';
 
 	interface Props {
 		type?: 'basic' | 'scientific';

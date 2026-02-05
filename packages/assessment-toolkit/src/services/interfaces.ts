@@ -9,6 +9,13 @@
  */
 
 import type { II18nService } from "@pie-players/pie-players-shared/i18n";
+import type {
+	AccessibilityCatalogResolver,
+	CatalogLookupOptions,
+	CatalogStatistics,
+	CatalogType,
+	ResolvedCatalog,
+} from "./AccessibilityCatalogResolver";
 import type { HighlightColor, HighlightType } from "./HighlightCoordinator";
 import type { FontSize, ThemeConfig } from "./ThemeProvider";
 import type { ZIndexLayer } from "./ToolCoordinator";
@@ -17,13 +24,6 @@ import type {
 	ITTSProvider,
 	TTSProviderCapabilities,
 } from "./tts/provider-interface";
-import type {
-	AccessibilityCatalogResolver,
-	CatalogLookupOptions,
-	ResolvedCatalog,
-	CatalogStatistics,
-	CatalogType,
-} from "./AccessibilityCatalogResolver";
 
 // Re-export II18nService from players-shared
 export type { II18nService };

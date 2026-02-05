@@ -5,18 +5,17 @@
  * This version uses Svelte 5 components for clean, maintainable code
  */
 
-import { mount, unmount } from 'svelte';
-import Calculator from './components/Calculator.svelte';
-
 import type {
-	Calculator as ICalculator,
+	CalculationHistoryEntry,
 	CalculatorProvider,
 	CalculatorProviderCapabilities,
 	CalculatorProviderConfig,
 	CalculatorState,
 	CalculatorType,
-	CalculationHistoryEntry,
+	Calculator as ICalculator,
 } from "@pie-players/pie-calculator";
+import { mount, unmount } from "svelte";
+import Calculator from "./components/Calculator.svelte";
 
 declare global {
 	interface Window {
@@ -124,12 +123,12 @@ class MathJsCalculator implements ICalculator {
 			target: this.container,
 			props: {
 				type,
-				theme: config?.theme || 'light',
+				theme: config?.theme || "light",
 				math: window.math,
 				onStateChange: (state: any) => {
 					// Handle state changes if needed
-				}
-			}
+				},
+			},
 		});
 
 		this.component = this.componentInstance;
@@ -148,7 +147,7 @@ class MathJsCalculator implements ICalculator {
 	clear(): void {
 		// Clear is handled by the component internally
 		// We can trigger it by calling setValue
-		this.component.setValue('0');
+		this.component.setValue("0");
 		this.component.clearHistory();
 	}
 

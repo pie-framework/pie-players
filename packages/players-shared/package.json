@@ -87,6 +87,10 @@
 		"src/components",
 		"src/i18n"
 	],
+	"dependencies": {
+		"@pie-players/math-renderer-core": "workspace:*",
+		"@pie-players/math-renderer-mathjax": "workspace:*"
+	},
 	"scripts": {
 		"build": "tsc -p tsconfig.json",
 		"dev": "tsc -p tsconfig.json --watch",

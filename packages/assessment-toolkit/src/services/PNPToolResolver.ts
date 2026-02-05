@@ -149,8 +149,7 @@ export class PNPToolResolver {
 		// 6. PNP supports (student needs)
 		if (context.pnp?.supports?.includes(supportId)) {
 			// Check if prohibited
-			const isProhibited =
-				context.pnp.prohibitedSupports?.includes(supportId);
+			const isProhibited = context.pnp.prohibitedSupports?.includes(supportId);
 
 			if (!isProhibited) {
 				return this.buildToolConfig(supportId, context, {

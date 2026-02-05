@@ -206,11 +206,7 @@ export const ASSESSMENT_EXAMPLES: AssessmentExample[] = [
 		name: "QTI 3.0 Accessibility Catalogs Demo",
 		description:
 			"Demonstrates QTI 3.0 accessibility catalogs with spoken TTS, braille, simplified language, and multi-language support. Shows assessment-level and item-level catalog integration.",
-		itemIds: [
-			"mc_basic",
-			"mc_multi",
-			"et_basic",
-		],
+		itemIds: ["mc_basic", "mc_multi", "et_basic"],
 		estimatedMinutes: 10,
 		tags: ["qti3", "accessibility", "catalogs", "demo"],
 	},
@@ -219,12 +215,7 @@ export const ASSESSMENT_EXAMPLES: AssessmentExample[] = [
 		name: "QTI 3.0 Personal Needs Profile Demo",
 		description:
 			"Shows QTI 3.0 Personal Needs Profile (PNP) integration with automatic tool activation based on student accommodations (IEP/504 support).",
-		itemIds: [
-			"mc_basic",
-			"calculator",
-			"graphing",
-			"et_basic",
-		],
+		itemIds: ["mc_basic", "calculator", "graphing", "et_basic"],
 		estimatedMinutes: 12,
 		tags: ["qti3", "pnp", "accommodations", "demo"],
 	},
@@ -259,7 +250,8 @@ export function createAssessmentFromExample(
 						{
 							catalog: "simplified-language",
 							language: "en",
-							content: "Welcome! This test shows different ways to read questions.",
+							content:
+								"Welcome! This test shows different ways to read questions.",
 						},
 						{
 							catalog: "spoken",
@@ -281,7 +273,8 @@ export function createAssessmentFromExample(
 						{
 							catalog: "simplified-language",
 							language: "en",
-							content: "Read each question. Pick the best answer. Use the speaker button to hear questions.",
+							content:
+								"Read each question. Pick the best answer. Use the speaker button to hear questions.",
 						},
 					],
 				},

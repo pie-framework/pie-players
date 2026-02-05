@@ -4,13 +4,13 @@
 
 // Re-export calculator types from @pie-players/pie-calculator
 export type {
+	CalculationHistoryEntry,
 	Calculator,
 	CalculatorProvider,
 	CalculatorProviderCapabilities,
 	CalculatorProviderConfig,
 	CalculatorState,
 	CalculatorType,
-	CalculationHistoryEntry,
 	DesmosCalculatorConfig,
 	TICalculatorConfig,
 } from "@pie-players/pie-calculator";

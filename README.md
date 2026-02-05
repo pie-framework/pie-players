@@ -25,14 +25,17 @@ bun format       # Format code
 
 ## Packages
 
-**Players**: pie-iife-player, pie-esm-player, pie-fixed-player, pie-inline-player
+**Interactive Players**: pie-iife-player, pie-esm-player, pie-fixed-player, pie-inline-player
+**Print Player**: print-player - Item-level print rendering for production use
 **Tools**: calculator, graph, ruler, protractor, magnifier, annotation-toolbar, color-scheme, periodic-table
 **Assessment**: pie-assessment-player
+**Math Rendering**: math-renderer-core, math-renderer-mathjax, math-renderer-katex
 **Shared**: players-shared, assessment-toolkit
 
 ## Documentation
 
 - [Architecture](docs/ARCHITECTURE.md)
+- [Math Renderer Architecture](MATH-RENDERER-ARCHITECTURE.md) - Pluggable math rendering system
 - [Authoring Mode](docs/AUTHORING_MODE.md)
 - [GitHub Pages Setup](docs/GITHUB_PAGES_SETUP.md)
 - [NPM Token Setup](docs/NPM_TOKEN_SETUP.md)

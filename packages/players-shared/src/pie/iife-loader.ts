@@ -48,17 +48,12 @@ export interface IifeLoaderConfig {
 // Use the public proxy endpoint (stable + cached) rather than the builder origin directly.
 export const DEFAULT_BUNDLE_HOST = "https://proxy.pie-api.com/bundles/";
 
-// Helper to track loading scripts globally (prevent duplicate loads)
-declare global {
-	interface Window {
-		pieHelpers?: {
-			loadingScripts: Record<string, boolean>;
-		};
-	}
-}
-
+// Initialize pieHelpers on window if not already present
 if (typeof window !== "undefined" && !window.pieHelpers) {
-	window.pieHelpers = { loadingScripts: {} };
+	window.pieHelpers = {
+		loadingScripts: {},
+		loadingPromises: {}
+	};
 }
 
 export class IifePieLoader {
@@ -333,45 +328,80 @@ export class IifePieLoader {
 			return;
 		}
 
-		// 3. Mark as loading
-		if (window.pieHelpers) {
-			window.pieHelpers.loadingScripts[bundleUrl] = true;
-		}
-
-		try {
-			// 4. Load the IIFE bundle
-			logger.debug("Loading IIFE bundle from:", bundleUrl);
-			try {
-				await this.loadBundleScript(bundleUrl, doc);
-			} catch (e) {
-				if (this.config.reFetchBundle) {
-					const retryUrl =
-						bundleUrl +
-						(bundleUrl.includes("?") ? "&" : "?") +
-						`t=${Date.now()}`;
-					logger.warn(
-						"[IifePieLoader] Initial bundle load failed, retrying with cache bust:",
-						retryUrl,
-					);
-					await this.loadBundleScript(retryUrl, doc);
-				} else {
-					throw e;
-				}
-			}
-
-			// 5. Register elements from the loaded bundle
-			logger.debug("Registering elements from loaded bundle");
+		// 3. Check if bundle is currently loading - if so, wait for it
+		if (window.pieHelpers?.loadingPromises?.[bundleUrl]) {
+			logger.debug("Bundle is already loading, waiting for existing load:", bundleUrl);
+			await window.pieHelpers.loadingPromises[bundleUrl];
+			logger.debug("Existing bundle load completed, registering elements");
 			await this.registerElementsFromBundle(
 				contentConfig.elements,
 				needsControllers,
 				bundleType,
 			);
-
-			logger.debug("✅ IIFE bundle loaded and elements registered");
-		} catch (err) {
-			logger.error("Failed to load IIFE bundle:", err);
-			throw err;
+			logger.debug("✅ Elements registered from already-loading bundle");
+			return;
 		}
+
+		// 4. Mark as loading and create promise
+		if (window.pieHelpers) {
+			window.pieHelpers.loadingScripts[bundleUrl] = true;
+		}
+
+		// Create and store the loading promise
+		const loadPromise = (async () => {
+			try {
+				// Load the IIFE bundle
+				logger.debug("Loading IIFE bundle from:", bundleUrl);
+				try {
+					await this.loadBundleScript(bundleUrl, doc);
+				} catch (e) {
+					if (this.config.reFetchBundle) {
+						const retryUrl =
+							bundleUrl +
+							(bundleUrl.includes("?") ? "&" : "?") +
+							`t=${Date.now()}`;
+						logger.warn(
+							"[IifePieLoader] Initial bundle load failed, retrying with cache bust:",
+							retryUrl,
+						);
+						await this.loadBundleScript(retryUrl, doc);
+					} else {
+						throw e;
+					}
+				}
+
+				// Register elements from the loaded bundle
+				logger.debug("Registering elements from loaded bundle");
+				await this.registerElementsFromBundle(
+					contentConfig.elements,
+					needsControllers,
+					bundleType,
+				);
+
+				logger.debug("✅ IIFE bundle loaded and elements registered");
+			} catch (err) {
+				logger.error("Failed to load IIFE bundle:", err);
+				// Clean up on error
+				if (window.pieHelpers) {
+					delete window.pieHelpers.loadingPromises[bundleUrl];
+					delete window.pieHelpers.loadingScripts[bundleUrl];
+				}
+				throw err;
+			} finally {
+				// Clean up promise after completion (success or failure)
+				if (window.pieHelpers?.loadingPromises?.[bundleUrl]) {
+					delete window.pieHelpers.loadingPromises[bundleUrl];
+				}
+			}
+		})();
+
+		// Store the promise so other loaders can wait for it
+		if (window.pieHelpers) {
+			window.pieHelpers.loadingPromises[bundleUrl] = loadPromise;
+		}
+
+		// Wait for the load to complete
+		await loadPromise;
 	}
 
 	/**

@@ -110,9 +110,115 @@ Updated documentation includes:
 - `packages/section-player/demos/index.html` - Added TTS demo to list
 - This file (`TTS-INTEGRATION.md`) - Implementation summary
 
+## SSML Extraction
+
+✅ **IMPLEMENTED:** The section player automatically extracts embedded SSML from item and passage content!
+
+### How It Works
+
+When an item or passage loads, the section player:
+
+1. **Scans for SSML**: Finds all `<speak>` elements in content
+2. **Extracts Content**: Captures SSML with language information
+3. **Generates Catalogs**: Creates QTI 3.0 accessibility catalog entries
+4. **Cleans Markup**: Removes SSML tags from visual content
+5. **Adds IDs**: Inserts `data-catalog-id` attributes for TTS lookup
+6. **Registers Catalogs**: Adds extracted catalogs to resolver
+
+### Before and After
+
+**Author Creates (with embedded SSML):**
+
+```typescript
+{
+  config: {
+    models: [{
+      prompt: `<div>
+        <speak xml:lang="en-US">
+          Solve <prosody rate="slow">x squared, plus two x</prosody>.
+        </speak>
+        <p>Solve x² + 2x = 0</p>
+      </div>`
+    }]
+  }
+}
+```
+
+**After Extraction (at runtime):**
+
+```typescript
+{
+  config: {
+    models: [{
+      prompt: `<div data-catalog-id="auto-prompt-q1-0">
+        <p>Solve x² + 2x = 0</p>
+      </div>`
+    }],
+    extractedCatalogs: [{
+      identifier: 'auto-prompt-q1-0',
+      cards: [{
+        catalog: 'spoken',
+        language: 'en-US',
+        content: '<speak xml:lang="en-US">Solve <prosody rate="slow">x squared, plus two x</prosody>.</speak>'
+      }]
+    }]
+  }
+}
+```
+
+### Integration Points
+
+**ItemRenderer.svelte** (lines 70-90):
+
+```typescript
+$effect(() => {
+  if (item?.config && catalogResolver) {
+    const extractor = new SSMLExtractor();
+    const result = extractor.extractFromItemConfig(item.config);
+
+    // Update config with cleaned content
+    item.config = result.cleanedConfig;
+    item.config.extractedCatalogs = result.catalogs;
+
+    // Register with catalog resolver
+    if (result.catalogs.length > 0) {
+      catalogResolver.clearItemCatalogs();
+      catalogResolver.addItemCatalogs(result.catalogs);
+    }
+  }
+});
+```
+
+**PassageRenderer.svelte** (similar pattern):
+
+```typescript
+$effect(() => {
+  if (passage?.config && catalogResolver) {
+    const extractor = new SSMLExtractor();
+    const result = extractor.extractFromMarkup(
+      passage.config.markup,
+      `passage-${passage.id}`
+    );
+
+    passage.config.markup = result.cleanedMarkup;
+    // ... register catalogs
+  }
+});
+```
+
+### Catalog ID Format
+
+Auto-generated catalog IDs follow this pattern:
+
+- **Prompts**: `auto-prompt-{modelId}-{counter}`
+- **Choices**: `auto-choice-{modelId}-{value}-{counter}`
+- **Passages**: `auto-passage-{passageId}-{counter}`
+
+The counter ensures uniqueness when multiple SSML blocks exist in the same context.
+
 ## TTS Inline Tool Rendering
 
-✅ **IMPLEMENTED:** The section player now includes inline TTS tool icons in passage and item headers!
+✅ **IMPLEMENTED:** The section player includes inline TTS tool icons in passage and item headers!
 
 The section player uses `pie-tool-tts-inline` - a toolkit tool component that renders inline in passage and item headers.
 
@@ -164,8 +270,12 @@ The section player uses `pie-tool-tts-inline` - a toolkit tool component that re
 1. User clicks TTS icon in passage/item header
 2. Tool extracts text from nearest `.passage-content` or `.item-content`
 3. TTSService.speak() called with `catalogId` from tool prop
-4. AccessibilityCatalogResolver checks for SSML content
-5. If found: speaks pre-authored SSML, else: plain text fallback
+4. AccessibilityCatalogResolver checks for SSML content:
+   - First checks extracted catalogs (from SSML extraction)
+   - Then checks manually-authored item catalogs
+   - Then checks assessment-level catalogs
+5. If found: speaks SSML with proper pronunciation/pacing
+6. If not found: falls back to plain text TTS
 
 ### Visual Design
 

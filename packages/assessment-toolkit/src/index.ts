@@ -85,6 +85,9 @@ export type {
 	TTSFeature,
 	TTSProviderCapabilities,
 } from "./services/tts/provider-interface";
+// SSML Extractor (Auto-generates catalogs from embedded SSML)
+export type { ExtractionResult } from "./services/SSMLExtractor";
+export { SSMLExtractor } from "./services/SSMLExtractor";
 
 // Note: Removed deprecated exports:
 // - ttsService singleton (use: const service = new TTSService())

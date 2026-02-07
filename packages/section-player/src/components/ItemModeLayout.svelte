@@ -21,9 +21,12 @@
 		mode = 'gather',
 		bundleHost = '',
 		esmCdnUrl = 'https://esm.sh',
+		playerVersion = 'latest',
+		useLegacyPlayer = true,
 		ttsService = null,
 		toolCoordinator = null,
 		highlightCoordinator = null,
+		catalogResolver = null,
 		onprevious,
 		onnext,
 		onsessionchanged
@@ -38,9 +41,12 @@
 		mode?: 'gather' | 'view' | 'evaluate' | 'author';
 		bundleHost?: string;
 		esmCdnUrl?: string;
+		playerVersion?: string;
+		useLegacyPlayer?: boolean;
 		ttsService?: any;
 		toolCoordinator?: any;
 		highlightCoordinator?: any;
+		catalogResolver?: any;
 		onprevious?: () => void;
 		onnext?: () => void;
 		onsessionchanged?: (session: any) => void;
@@ -65,6 +71,7 @@
 					{ttsService}
 					{toolCoordinator}
 					{highlightCoordinator}
+					{catalogResolver}
 					class="passage-item"
 				/>
 			{/each}
@@ -80,9 +87,12 @@
 				session={itemSession}
 				{bundleHost}
 				{esmCdnUrl}
+				{playerVersion}
+				{useLegacyPlayer}
 				{ttsService}
 				{toolCoordinator}
 				{highlightCoordinator}
+				{catalogResolver}
 				onsessionchanged={handleSessionChanged}
 				class="item-content"
 			/>

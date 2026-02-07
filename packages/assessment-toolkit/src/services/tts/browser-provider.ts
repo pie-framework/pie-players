@@ -86,6 +86,10 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 
 			this.utterance = new SpeechSynthesisUtterance(text);
 
+			// Track for word boundary fallback
+			let lastBoundaryIndex = -1;
+			let boundaryCount = 0;
+
 			// Apply config
 			if (this.config.voice) {
 				const voices = speechSynthesis.getVoices();
@@ -111,6 +115,13 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 			this.utterance.onerror = (event) => {
 				this._isPlaying = false;
 				this._isPaused = false;
+
+				// Ignore "interrupted" errors (expected when user stops TTS)
+				if (event.error === "interrupted" || event.error === "canceled") {
+					resolve(); // Treat interruption as successful completion
+					return;
+				}
+
 				reject(new Error(`Speech synthesis error: ${event.error}`));
 			};
 
@@ -124,12 +135,27 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 
 			// Word boundary events (if supported)
 			this.utterance.onboundary = (event) => {
+				console.log('[BrowserProvider] Boundary event:', event.name, 'charIndex:', event.charIndex, 'charLength:', event.charLength);
 				if (event.name === "word" && this.onWordBoundary) {
+					boundaryCount++;
+
+					// Detect if browser word boundaries are broken (Safari bug)
+					// If we get multiple events at the same position, boundaries don't work
+					if (event.charIndex === lastBoundaryIndex && boundaryCount > 2) {
+						console.warn('[BrowserProvider] Browser word boundaries broken - disabling word highlighting');
+						if (this.utterance) {
+							this.utterance.onboundary = null; // Stop listening
+						}
+						return;
+					}
+					lastBoundaryIndex = event.charIndex;
+
 					// Extract word from text
 					const word = text.substring(
 						event.charIndex,
-						event.charIndex + event.charLength,
+						event.charIndex + (event.charLength || 0),
 					);
+					console.log('[BrowserProvider] Calling onWordBoundary with word:', word, 'at position:', event.charIndex);
 					this.onWordBoundary(word, event.charIndex);
 				}
 			};

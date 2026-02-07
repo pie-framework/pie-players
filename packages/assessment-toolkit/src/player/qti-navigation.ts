@@ -161,7 +161,7 @@ function buildSectionNavigation(section: QtiAssessmentSection): NavigationNode {
 	for (const [idx, ref] of (section.assessmentItemRefs ?? []).entries()) {
 		children.push({
 			type: "question",
-			id: ref.id || ref.identifier || ref.itemVId,
+			id: ref.id || ref.identifier || ref.itemVId || `q-${idx + 1}`,
 			identifier: ref.identifier || ref.itemVId || `q-${idx + 1}`,
 			title: ref.title,
 			itemVId: ref.itemVId,

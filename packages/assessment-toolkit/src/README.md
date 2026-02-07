@@ -34,7 +34,9 @@ See [assessment-player-architecture.md](../../../../../docs/tools-and-accomodati
 
 - **ToolCoordinator**: Manages z-index layering and visibility for floating tools
 - **HighlightCoordinator**: Separate highlight layers for TTS (temporary) and annotations (persistent)
-- **TTSService**: Singleton service providing text-to-speech across multiple entry points
+- **TTSService**: Singleton service providing text-to-speech across multiple entry points with QTI 3.0 catalog support
+- **AccessibilityCatalogResolver**: QTI 3.0 accessibility catalog management for SSML, sign language, braille, etc.
+- **SSMLExtractor**: Automatic extraction of embedded `<speak>` tags from content into accessibility catalogs
 - **ThemeProvider**: Consistent accessibility theming across items and tools
 - **ToolConfigResolver**: 3-tier hierarchy for IEP/504 tool configuration
 
@@ -62,19 +64,21 @@ Features implemented:
 ```
 assessment-toolkit/
 ├── core/
-│   └── TypedEventBus.ts              # Event system
+│   └── TypedEventBus.ts                    # Event system
 ├── services/
-│   ├── ToolCoordinator.ts            # Z-index, visibility
-│   ├── HighlightCoordinator.ts       # TTS + annotation highlights
-│   ├── TTSService.ts                 # Text-to-speech
-│   ├── ThemeProvider.ts              # Accessibility theming
-│   └── ToolConfigResolver.ts         # IEP/504 configuration
+│   ├── ToolCoordinator.ts                  # Z-index, visibility
+│   ├── HighlightCoordinator.ts             # TTS + annotation highlights
+│   ├── TTSService.ts                       # Text-to-speech with catalog support
+│   ├── AccessibilityCatalogResolver.ts     # QTI 3.0 catalog management
+│   ├── SSMLExtractor.ts                    # Automatic SSML extraction
+│   ├── ThemeProvider.ts                    # Accessibility theming
+│   └── ToolConfigResolver.ts               # IEP/504 configuration
 ├── types/
-│   └── events.ts                     # Event definitions
+│   └── events.ts                           # Event definitions
 ├── player/
-│   ├── README.md                     # Optional reference patterns
-│   └── navigation-types.ts           # Navigation abstractions
-└── index.ts                          # Public exports
+│   ├── README.md                           # Optional reference patterns
+│   └── navigation-types.ts                 # Navigation abstractions
+└── index.ts                                # Public exports
 ```
 
 ## Usage Examples
@@ -298,17 +302,35 @@ highlightCoordinator.removeAnnotation(id);
 
 ### TTSService
 
-Singleton text-to-speech service.
+Singleton text-to-speech service with QTI 3.0 accessibility catalog support.
 
 ```typescript
-const ttsService = TTSService.getInstance();
+import {
+  TTSService,
+  BrowserTTSProvider,
+  AccessibilityCatalogResolver
+} from '@pie-players/pie-assessment-toolkit';
 
-// Initialize
-await ttsService.initialize('browser');
+const ttsService = new TTSService();
 
-// Playback
+// Initialize with provider
+await ttsService.initialize(new BrowserTTSProvider());
+
+// Set up catalog resolver for SSML support
+const catalogResolver = new AccessibilityCatalogResolver(
+  assessment.accessibilityCatalogs,
+  'en-US'
+);
+ttsService.setCatalogResolver(catalogResolver);
+
+// Playback with catalog support
+await ttsService.speak('Read this text', {
+  catalogId: 'prompt-001',  // Uses pre-authored SSML if available
+  language: 'en-US'
+});
+
+// Plain text fallback (no catalog)
 await ttsService.speak('Read this text');
-await ttsService.speakRange(selectedRange);
 
 // Controls
 ttsService.pause();
@@ -318,6 +340,95 @@ ttsService.stop();
 // State
 const isPlaying = ttsService.isPlaying();
 ```
+
+### AccessibilityCatalogResolver
+
+Manages QTI 3.0 accessibility catalogs (SSML, sign language, braille, simplified language, etc.).
+
+```typescript
+import { AccessibilityCatalogResolver } from '@pie-players/pie-assessment-toolkit';
+
+// Initialize with assessment-level catalogs
+const resolver = new AccessibilityCatalogResolver(
+  assessment.accessibilityCatalogs,
+  'en-US'  // default language
+);
+
+// Add item-level catalogs (higher priority)
+resolver.addItemCatalogs(item.accessibilityCatalogs);
+
+// Get alternative representation
+const alternative = resolver.getAlternative('prompt-001', {
+  type: 'spoken',
+  language: 'en-US',
+  useFallback: true
+});
+
+// Clear item catalogs when navigating away
+resolver.clearItemCatalogs();
+
+// Get all alternatives for an identifier
+const alternatives = resolver.getAllAlternatives('prompt-001');
+
+// Check availability
+const hasSpoken = resolver.hasCatalog('prompt-001');
+```
+
+### SSMLExtractor
+
+Automatically extracts embedded `<speak>` tags from PIE content and generates QTI 3.0 accessibility catalogs.
+
+```typescript
+import { SSMLExtractor } from '@pie-players/pie-assessment-toolkit';
+
+const extractor = new SSMLExtractor();
+
+// Extract from item config
+const result = extractor.extractFromItemConfig(item.config);
+
+// Result contains:
+// - cleanedConfig: Config with SSML removed, catalog IDs added
+// - catalogs: Generated accessibility catalogs
+
+// Update item with cleaned config
+item.config = result.cleanedConfig;
+item.config.extractedCatalogs = result.catalogs;
+
+// Register with catalog resolver
+catalogResolver.addItemCatalogs(result.catalogs);
+```
+
+**Example Input:**
+```typescript
+{
+  prompt: `<div>
+    <speak>Solve <prosody rate="slow">x squared</prosody>.</speak>
+    <p>Solve x² = 0</p>
+  </div>`
+}
+```
+
+**Example Output:**
+```typescript
+{
+  // Cleaned config
+  prompt: `<div data-catalog-id="auto-prompt-q1-0">
+    <p>Solve x² = 0</p>
+  </div>`,
+
+  // Generated catalogs
+  extractedCatalogs: [{
+    identifier: 'auto-prompt-q1-0',
+    cards: [{
+      catalog: 'spoken',
+      language: 'en-US',
+      content: '<speak>Solve <prosody rate="slow">x squared</prosody>.</speak>'
+    }]
+  }]
+}
+```
+
+**Integration:** Used automatically by section player's ItemRenderer and PassageRenderer components.
 
 ### ThemeProvider
 

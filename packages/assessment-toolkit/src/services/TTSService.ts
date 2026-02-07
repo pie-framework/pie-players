@@ -58,6 +58,8 @@ export class TTSService {
 	private catalogResolver: AccessibilityCatalogResolver | null = null;
 	private state: PlaybackState = PlaybackState.IDLE;
 	private currentText: string | null = null;
+	private currentContentElement: Element | null = null;
+	private normalizedToDOM: Map<number, { node: Text; offset: number }> = new Map();
 	private listeners = new Map<string, Set<(state: PlaybackState) => void>>();
 
 	constructor() {}
@@ -105,21 +107,180 @@ export class TTSService {
 	}
 
 	/**
+	 * Build a character-by-character map from normalized text positions to DOM positions
+	 * This handles the complexity of whitespace normalization
+	 */
+	private buildPositionMap(element: Element, spokenText: string): void {
+		this.normalizedToDOM.clear();
+
+		// Get the actual DOM text as it will be rendered
+		const range = document.createRange();
+		range.selectNodeContents(element);
+		const domText = range.toString();
+
+		// Normalize the DOM text the same way the spoken text is normalized
+		// (trim + collapse whitespace)
+		const normalizedDomText = domText.trim().replace(/\s+/g, ' ');
+
+		console.log('[TTSService] Text comparison:', {
+			spokenLength: spokenText.length,
+			normalizedDomLength: normalizedDomText.length,
+			match: spokenText === normalizedDomText,
+			spokenPreview: spokenText.substring(0, 150),
+			normalizedPreview: normalizedDomText.substring(0, 150),
+			differAtIndex: spokenText === normalizedDomText ? null : (() => {
+				for (let i = 0; i < Math.min(spokenText.length, normalizedDomText.length); i++) {
+					if (spokenText[i] !== normalizedDomText[i]) {
+						return {
+							index: i,
+							spokenChar: spokenText[i],
+							normalizedChar: normalizedDomText[i],
+							spokenContext: spokenText.substring(Math.max(0, i - 20), i + 20),
+							normalizedContext: normalizedDomText.substring(Math.max(0, i - 20), i + 20)
+						};
+					}
+				}
+				return null;
+			})()
+		});
+
+		// Build map by walking through nodes and tracking normalized position
+		let normalizedPos = 0;
+		let inLeadingWhitespace = true;
+		let lastCharWasWhitespace = false;
+
+		const walk = (node: Node): void => {
+			if (node.nodeType === Node.TEXT_NODE) {
+				const textNode = node as Text;
+				const text = textNode.textContent || '';
+
+				for (let i = 0; i < text.length; i++) {
+					const char = text[i];
+					const isWhitespace = /\s/.test(char);
+
+					if (inLeadingWhitespace) {
+						// Skip leading whitespace entirely - don't map it
+						if (!isWhitespace) {
+							inLeadingWhitespace = false;
+							this.normalizedToDOM.set(normalizedPos, { node: textNode, offset: i });
+							normalizedPos++;
+							lastCharWasWhitespace = false;
+						}
+					} else {
+						// Past leading whitespace
+						if (isWhitespace) {
+							// Only map the first whitespace in a sequence (collapse multiple)
+							if (!lastCharWasWhitespace) {
+								this.normalizedToDOM.set(normalizedPos, { node: textNode, offset: i });
+								normalizedPos++;
+							}
+							lastCharWasWhitespace = true;
+						} else {
+							// Regular character - always map it
+							this.normalizedToDOM.set(normalizedPos, { node: textNode, offset: i });
+							normalizedPos++;
+							lastCharWasWhitespace = false;
+						}
+					}
+				}
+			} else if (node.nodeType === Node.ELEMENT_NODE) {
+				const element = node as Element;
+				if (element.tagName !== 'SCRIPT' && element.tagName !== 'STYLE') {
+					for (const child of Array.from(node.childNodes)) {
+						walk(child);
+					}
+				}
+			}
+		};
+
+		walk(element);
+
+		console.log('[TTSService] Position map built:', {
+			entries: this.normalizedToDOM.size,
+			spokenTextLength: spokenText.length,
+			normalizedDomLength: normalizedDomText.length,
+			mapLengthMatchesSpoken: this.normalizedToDOM.size === spokenText.length,
+			firstFewMappings: Array.from(this.normalizedToDOM.entries()).slice(0, 10).map(([pos, {node, offset}]) => ({
+				pos,
+				offset,
+				char: node.textContent?.[offset],
+				expected: spokenText[pos]
+			}))
+		});
+	}
+
+	/**
+	 * Find text node and offsets for highlighting a word
+	 *
+	 * @param charIndex Character position in normalized/spoken text
+	 * @param length Length of the word
+	 * @returns Text node and local offsets, or null if not found
+	 */
+	private findHighlightRange(
+		charIndex: number,
+		length: number
+	): { node: Text; start: number; end: number } | null {
+		const startPos = this.normalizedToDOM.get(charIndex);
+		if (!startPos) {
+			console.warn(`[TTSService] No mapping found for start position ${charIndex}`, {
+				totalMappings: this.normalizedToDOM.size,
+				nearbyMappings: Array.from(this.normalizedToDOM.entries())
+					.filter(([pos]) => Math.abs(pos - charIndex) < 5)
+					.map(([pos, {offset, node}]) => ({ pos, offset, char: node.textContent?.[offset] }))
+			});
+			return null;
+		}
+
+		// Find the end position (last character of the word)
+		const endIndex = charIndex + length - 1;
+		const endPos = this.normalizedToDOM.get(endIndex);
+		if (!endPos) {
+			console.warn(`[TTSService] No mapping found for end position ${endIndex}`, {
+				startChar: charIndex,
+				length,
+				totalMappings: this.normalizedToDOM.size
+			});
+			return null;
+		}
+
+		// For simplicity, if the word spans multiple nodes, just highlight in the first node
+		// (This is a rare edge case and would require creating multiple ranges)
+		if (startPos.node !== endPos.node) {
+			console.warn(`[TTSService] Word spans multiple nodes, highlighting in first node only`);
+			return {
+				node: startPos.node,
+				start: startPos.offset,
+				end: (startPos.node.textContent || '').length
+			};
+		}
+
+		return {
+			node: startPos.node,
+			start: startPos.offset,
+			end: endPos.offset + 1 // +1 because we want to include the character at endPos
+		};
+	}
+
+	/**
 	 * Speak text with optional catalog support
 	 *
-	 * @param text Text to speak
-	 * @param options Optional catalog ID and language
+	 * @param text Text to speak (will be normalized: trimmed and whitespace collapsed)
+	 * @param options Optional catalog ID, language, and content element for highlighting
 	 */
 	async speak(
 		text: string,
-		options?: { catalogId?: string; language?: string },
+		options?: { catalogId?: string; language?: string; contentElement?: Element },
 	): Promise<void> {
 		if (!this.provider) {
 			throw new Error("TTS service not initialized");
 		}
 
+		// Normalize the input text to ensure consistency
+		// This handles cases where the caller didn't normalize
+		const normalizedText = text.trim().replace(/\s+/g, ' ');
+
 		// Try to resolve from accessibility catalog if catalogId provided
-		let contentToSpeak = text;
+		let contentToSpeak = normalizedText;
 		if (options?.catalogId && this.catalogResolver) {
 			const catalogContent = this.catalogResolver.getAlternative(
 				options.catalogId,
@@ -144,14 +305,41 @@ export class TTSService {
 		}
 
 		this.currentText = contentToSpeak;
+		this.currentContentElement = options?.contentElement || null;
 		this.setState(PlaybackState.LOADING);
 
+		// Build position map for highlighting if we have a content element
+		if (this.currentContentElement && this.highlightCoordinator) {
+			this.buildPositionMap(this.currentContentElement, contentToSpeak);
+
+			// Apply sentence-level highlighting as base layer
+			const range = document.createRange();
+			range.selectNodeContents(this.currentContentElement);
+			this.highlightCoordinator.highlightTTSSentence([range]);
+			console.log('[TTSService] Applied sentence-level highlighting');
+		}
+
 		try {
-			// Set up word boundary highlighting if coordinator available
-			if (this.highlightCoordinator) {
-				this.provider.onWordBoundary = (word, position) => {
-					// This is simplified - production would need proper range calculation
-					// this.highlightCoordinator.highlightTTSWord(textNode, start, end);
+			// Setup word boundary highlighting
+			if (this.highlightCoordinator && this.currentContentElement) {
+				this.provider.onWordBoundary = (word: string, charIndex: number, length?: number) => {
+					const wordLength = length || word.length;
+
+					const highlightRange = this.findHighlightRange(charIndex, wordLength);
+					if (highlightRange && this.highlightCoordinator) {
+						const highlightText = highlightRange.node.textContent?.substring(
+							highlightRange.start,
+							highlightRange.end
+						) || '';
+						console.log(`[TTSService] Highlighting "${highlightText}" (word: "${word}") at position ${charIndex}`);
+						this.highlightCoordinator.highlightTTSWord(
+							highlightRange.node,
+							highlightRange.start,
+							highlightRange.end
+						);
+					} else {
+						console.warn(`[TTSService] Could not find highlight range for position ${charIndex}, length ${wordLength}`);
+					}
 				};
 			}
 
@@ -161,11 +349,25 @@ export class TTSService {
 
 			// Clear highlights when done
 			if (this.highlightCoordinator) {
-				this.highlightCoordinator.clearHighlights("tts" as any);
+				this.highlightCoordinator.clearTTS();
 			}
+
+			// Clear tracking
+			this.currentContentElement = null;
+			this.normalizedToDOM.clear();
 		} catch (error) {
 			console.error("TTS error:", error);
 			this.setState(PlaybackState.ERROR);
+
+			// Clear highlights on error
+			if (this.highlightCoordinator) {
+				this.highlightCoordinator.clearTTS();
+			}
+
+			// Clear tracking
+			this.currentContentElement = null;
+			this.normalizedToDOM.clear();
+
 			throw error;
 		}
 	}
@@ -216,8 +418,12 @@ export class TTSService {
 
 		// Clear highlights
 		if (this.highlightCoordinator) {
-			this.highlightCoordinator.clearHighlights("tts" as any);
+			this.highlightCoordinator.clearTTS();
 		}
+
+		// Clear tracking
+		this.currentContentElement = null;
+		this.normalizedToDOM.clear();
 	}
 
 	/**

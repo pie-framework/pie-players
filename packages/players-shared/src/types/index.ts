@@ -108,12 +108,12 @@ export interface SemVer {
 	major: number;
 	minor: number;
 	patch: number;
-	prerelease: SemVerPrerelease;
+	prerelease?: SemVerPrerelease;
 }
 
 export interface VersionEntity extends BaseEntity {
 	baseId: string;
-	signature: string;
+	signature?: string;
 	version: SemVer;
 }
 
@@ -728,7 +728,7 @@ export function isPrerelease(version: any): version is SemVer {
 export function formatVersion(semVer: SemVer): string {
 	if (!semVer) return "";
 	const base = [semVer.major, semVer.minor, semVer.patch].join(".");
-	if (isPrerelease(semVer)) {
+	if (isPrerelease(semVer) && semVer.prerelease) {
 		const prerelease = [semVer.prerelease.tag, semVer.prerelease.version].join(
 			".",
 		);

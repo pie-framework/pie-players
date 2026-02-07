@@ -1,19 +1,19 @@
 // @ts-nocheck
-import daisyui from 'daisyui';
-import type { Config } from 'tailwindcss';
+import daisyui from "daisyui";
+import type { Config } from "tailwindcss";
 
 export default {
-	content: ['./src/**/*.{html,js,svelte,ts}'],
+	content: ["./src/**/*.{html,js,svelte,ts}"],
 	theme: {
-		extend: {}
+		extend: {},
 	},
 	plugins: [daisyui],
 	daisyui: {
-		themes: ['light', 'dark'],
-		darkTheme: 'dark',
+		themes: ["light", "dark"],
+		darkTheme: "dark",
 		base: true,
 		styled: true,
 		utils: true,
-		logs: false
-	}
+		logs: false,
+	},
 } satisfies Config;

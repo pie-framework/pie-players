@@ -6,10 +6,11 @@
   Not exposed as a web component - used internally in PieSectionPlayer.
 -->
 <script lang="ts">
-	import { onMount, untrack } from 'svelte';
-	import type { PassageEntity } from '@pie-players/pie-players-shared/types';
-	import { ZIndexLayer } from '../utils/z-index';
+	
 	import { SSMLExtractor } from '@pie-players/pie-assessment-toolkit';
+	import type { PassageEntity } from '@pie-players/pie-players-shared/types';
+import { onMount, untrack } from 'svelte';
+	import { ZIndexLayer } from '../utils/z-index';
 
 	let {
 		passage,

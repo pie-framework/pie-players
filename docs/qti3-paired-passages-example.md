@@ -7,6 +7,10 @@ This document provides a complete, realistic example of paired passages for a Gr
 - **Option 1**: Embedded content (recommended for adaptive assessments like Star)
 - **Option 2**: Single-section assessment with stimulus references (for traditional assessments with reusable content)
 
+**Note**: This document uses the **PIE-native structure** where rubricBlocks contain `passage` objects (PassageEntity) with `config.markup`, not plain HTML strings in a `content` property. This aligns with the PIE ecosystem and allows passages to be rendered using the same PIE player infrastructure as items.
+
+A working implementation of this example can be found in `packages/section-player/demos/paired-passages-urban-gardens.html`.
+
 ## Assessment Context
 
 **Subject**: English Language Arts
@@ -58,23 +62,53 @@ This approach embeds all content directly in the section, making it self-contain
       "id": "instructions",
       "view": "candidate",
       "use": "instructions",
-      "content": "<div class=\"instructions\"><h3>Directions</h3><p>Read both passages carefully. Then answer the questions that follow. You may look back at the passages as often as you need.</p></div>"
+      "passage": {
+        "id": "inst-001",
+        "name": "Directions",
+        "baseId": "inst-001",
+        "version": { "major": 1, "minor": 0, "patch": 0 },
+        "config": {
+          "markup": "<div class=\"instructions\"><h3>Directions</h3><p>Read both passages carefully. Then answer the questions that follow. You may look back at the passages as often as you need.</p></div>",
+          "elements": {},
+          "models": []
+        }
+      }
     },
     {
       "id": "passage-benefits",
       "view": "candidate",
       "use": "passage",
-      "content": "<div class=\"paired-passage\" data-group=\"urban-gardens-pair\" data-order=\"1\" data-display=\"tabs\"><h2>The Benefits of Urban Gardening</h2><p class=\"byline\">By Maria Santos, Community Garden Coordinator</p><p>When empty lots transform into thriving gardens, entire neighborhoods change for the better. Urban gardens are sprouting up in cities across America, and they're bringing more than just fresh vegetables to our communities.</p><p>First, urban gardens provide access to healthy, affordable food in neighborhoods that often lack grocery stores. Families can grow tomatoes, lettuce, and herbs right in their own backyards or shared community spaces. This fresh produce is not only nutritious but also costs far less than store-bought alternatives.</p><p>Second, these gardens bring people together. Neighbors who might never have spoken now work side-by-side, sharing gardening tips and recipes. Children learn where food comes from and develop an appreciation for nature. One community garden in Chicago even started a weekly harvest potluck, creating friendships that extend far beyond the garden gates.</p><p>Urban gardens also benefit the environment. They reduce urban heat by providing green spaces in concrete-heavy neighborhoods. Plants absorb rainwater, preventing flooding and reducing pollution runoff. Gardens even attract beneficial insects like bees and butterflies, supporting urban biodiversity.</p><p>Perhaps most importantly, urban gardens give residents ownership of their neighborhoods. When people invest time in creating something beautiful and productive, they develop pride in their community. Empty lots that once collected trash become sources of food, friendship, and hope.</p><p>The benefits of urban gardening extend far beyond the garden plot. They represent a grassroots movement toward healthier, more connected, and more sustainable cities.</p></div>"
+      "passage": {
+        "id": "passage-benefits-urban-gardening",
+        "name": "The Benefits of Urban Gardening",
+        "baseId": "passage-benefits",
+        "version": { "major": 1, "minor": 0, "patch": 0 },
+        "config": {
+          "markup": "<div class=\"paired-passage\" data-group=\"urban-gardens-pair\" data-order=\"1\" data-display=\"tabs\"><h2>The Benefits of Urban Gardening</h2><p class=\"byline\">By Maria Santos, Community Garden Coordinator</p><p>When empty lots transform into thriving gardens, entire neighborhoods change for the better. Urban gardens are sprouting up in cities across America, and they're bringing more than just fresh vegetables to our communities.</p><p>First, urban gardens provide access to healthy, affordable food in neighborhoods that often lack grocery stores. Families can grow tomatoes, lettuce, and herbs right in their own backyards or shared community spaces. This fresh produce is not only nutritious but also costs far less than store-bought alternatives.</p><p>Second, these gardens bring people together. Neighbors who might never have spoken now work side-by-side, sharing gardening tips and recipes. Children learn where food comes from and develop an appreciation for nature. One community garden in Chicago even started a weekly harvest potluck, creating friendships that extend far beyond the garden gates.</p><p>Urban gardens also benefit the environment. They reduce urban heat by providing green spaces in concrete-heavy neighborhoods. Plants absorb rainwater, preventing flooding and reducing pollution runoff. Gardens even attract beneficial insects like bees and butterflies, supporting urban biodiversity.</p><p>Perhaps most importantly, urban gardens give residents ownership of their neighborhoods. When people invest time in creating something beautiful and productive, they develop pride in their community. Empty lots that once collected trash become sources of food, friendship, and hope.</p><p>The benefits of urban gardening extend far beyond the garden plot. They represent a grassroots movement toward healthier, more connected, and more sustainable cities.</p></div>",
+          "elements": {},
+          "models": []
+        }
+      }
     },
     {
       "id": "passage-challenges",
       "view": "candidate",
       "use": "passage",
-      "content": "<div class=\"paired-passage\" data-group=\"urban-gardens-pair\" data-order=\"2\" data-display=\"tabs\"><h2>Urban Gardens: Challenges and Limitations</h2><p class=\"byline\">By David Chen, Urban Planning Consultant</p><p>While urban gardens have gained popularity in recent years, we must carefully examine whether they represent a practical solution to food access and community development challenges in our cities.</p><p>The first concern is space. Cities face intense competition for land. Every plot used for a garden could instead house affordable apartments, serve as a playground, or provide parking. In densely populated areas, dedicating valuable real estate to gardens may not be the most efficient use of limited space. A single community garden might produce enough vegetables for twenty families, but that same land could provide housing for two hundred people.</p><p>Maintenance presents another significant challenge. Gardens require consistent care: watering, weeding, pest control, and seasonal planting. When initial enthusiasm fades, gardens often fall into neglect. Abandoned plots become eyesores and can even pose safety concerns. Cities must consider who will maintain these spaces long-term and who will fund the water, tools, and infrastructure needed to sustain them.</p><p>Economic viability is also questionable. While advocates celebrate fresh produce, urban gardens typically produce far less food than traditional farms. The cost per pound of vegetables, when factoring in land value, water, materials, and labor, often exceeds supermarket prices. For addressing food insecurity, investing in transportation to existing grocery stores or supporting rural farmers might prove more cost-effective.</p><p>Finally, we must ask whether urban gardens truly build lasting community connections or simply attract people who are already environmentally conscious and socially engaged. Without intentional outreach and inclusive programming, gardens may primarily serve those with time, resources, and gardening knowledge.</p><p>Urban gardens may offer value, but city planners must weigh their benefits against limitations and consider whether other interventions might better serve community needs.</p></div>"
+      "passage": {
+        "id": "passage-challenges-urban-gardening",
+        "name": "Urban Gardens: Challenges and Limitations",
+        "baseId": "passage-challenges",
+        "version": { "major": 1, "minor": 0, "patch": 0 },
+        "config": {
+          "markup": "<div class=\"paired-passage\" data-group=\"urban-gardens-pair\" data-order=\"2\" data-display=\"tabs\"><h2>Urban Gardens: Challenges and Limitations</h2><p class=\"byline\">By David Chen, Urban Planning Consultant</p><p>While urban gardens have gained popularity in recent years, we must carefully examine whether they represent a practical solution to food access and community development challenges in our cities.</p><p>The first concern is space. Cities face intense competition for land. Every plot used for a garden could instead house affordable apartments, serve as a playground, or provide parking. In densely populated areas, dedicating valuable real estate to gardens may not be the most efficient use of limited space. A single community garden might produce enough vegetables for twenty families, but that same land could provide housing for two hundred people.</p><p>Maintenance presents another significant challenge. Gardens require consistent care: watering, weeding, pest control, and seasonal planting. When initial enthusiasm fades, gardens often fall into neglect. Abandoned plots become eyesores and can even pose safety concerns. Cities must consider who will maintain these spaces long-term and who will fund the water, tools, and infrastructure needed to sustain them.</p><p>Economic viability is also questionable. While advocates celebrate fresh produce, urban gardens typically produce far less food than traditional farms. The cost per pound of vegetables, when factoring in land value, water, materials, and labor, often exceeds supermarket prices. For addressing food insecurity, investing in transportation to existing grocery stores or supporting rural farmers might prove more cost-effective.</p><p>Finally, we must ask whether urban gardens truly build lasting community connections or simply attract people who are already environmentally conscious and socially engaged. Without intentional outreach and inclusive programming, gardens may primarily serve those with time, resources, and gardening knowledge.</p><p>Urban gardens may offer value, but city planners must weigh their benefits against limitations and consider whether other interventions might better serve community needs.</p></div>",
+          "elements": {},
+          "models": []
+        }
+      }
     }
   ],
 
-  "questionRefs": [
+  "assessmentItemRefs": [
     {
       "identifier": "q1-main-idea-passage1",
       "itemVId": "item-urban-gardens-001",
@@ -375,7 +409,7 @@ This approach defines stimuli at the assessment level and references them from t
             }
           ],
 
-          "questionRefs": [
+          "assessmentItemRefs": [
             {
               "identifier": "q1-main-idea-passage1",
               "itemVId": "item-urban-gardens-001",

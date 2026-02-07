@@ -47,6 +47,10 @@
     // Authoring mode props
     mode = "view" as "view" | "author",
     configuration = {} as Record<string, any>,
+    // Toolkit service integration (optional)
+    ttsService = null,
+    toolCoordinator = null,
+    highlightCoordinator = null,
     // Asset handler callbacks
     onInsertImage,
     onDeleteImage,
@@ -71,6 +75,10 @@
     // Authoring mode props
     mode?: "view" | "author";
     configuration?: Record<string, any>;
+    // Toolkit service integration
+    ttsService?: any;
+    toolCoordinator?: any;
+    highlightCoordinator?: any;
     // Asset handlers
     onInsertImage?: (handler: ImageHandler) => void;
     onDeleteImage?: (src: string, done: (err?: Error) => void) => void;

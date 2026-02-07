@@ -323,7 +323,13 @@ CSS.highlights.set('tts-current-word', highlight)
 Yellow highlight with border (::highlight CSS)
 ```
 
-**Design Decision:** TTS is a singleton service, not a tool. Multiple entry points (global button, selection toolbar, standalone modal) all use the same service to prevent conflicts.
+**QTI 3.0 Catalog Integration:** TTS integrates with AccessibilityCatalogResolver for SSML support. The section player automatically extracts embedded `<speak>` tags from content and generates accessibility catalogs at runtime.
+
+**Multi-Level TTS Entry Points:**
+- **Content-Level TTS** (`tool-tts-inline`): Speaker icons in passage/item headers with explicit catalog IDs
+- **User-Selection TTS** (`tool-text-to-speech`): Triggered from annotation toolbar, detects nearest `data-catalog-id`
+
+**Design Decision:** TTS is a singleton service, not a tool. Multiple entry points (global button, selection toolbar, content buttons) all use the same service to prevent conflicts. Catalog resolution ensures consistent pronunciation across all entry points.
 
 ---
 

@@ -1,0 +1,54 @@
+{
+	"name": "@pie-players/pie-section-player",
+	"version": "0.1.0",
+	"type": "module",
+	"description": "Web component for rendering QTI 3.0 assessment sections with passages and items",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pie-framework/pie-players.git"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"unpkg": "./dist/pie-section-player.js",
+	"jsdelivr": "./dist/pie-section-player.js",
+	"main": "./dist/pie-section-player.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/pie-section-player.js"
+		}
+	},
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "vite build",
+		"dev": "vite build --watch",
+		"typecheck": "tsc --noEmit",
+		"check": "svelte-check --tsconfig ./tsconfig.json",
+		"lint": "biome check ."
+	},
+	"peerDependencies": {
+		"svelte": "^5.0.0"
+	},
+	"dependencies": {
+		"@pie-players/pie-assessment-toolkit": "workspace:*",
+		"@pie-players/pie-players-shared": "workspace:*",
+		"@pie-players/pie-tool-tts-inline": "workspace:*"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.3.13",
+		"@sveltejs/adapter-auto": "^7.0.0",
+		"@sveltejs/kit": "^2.50.1",
+		"@sveltejs/vite-plugin-svelte": "^6.2.4",
+		"@types/node": "^25.1.0",
+		"svelte": "^5.49.1",
+		"svelte-check": "^4.3.5",
+		"typescript": "^5.9.3",
+		"vite": "^7.3.1",
+		"vite-plugin-dts": "^4.5.4"
+	}
+}

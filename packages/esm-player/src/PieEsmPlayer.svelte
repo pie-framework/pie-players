@@ -51,7 +51,13 @@
 
 			// Authoring mode props
 			mode: { attribute: 'mode', type: 'String' },
-			configuration: { attribute: 'configuration', type: 'Object' }
+			configuration: { attribute: 'configuration', type: 'Object' },
+
+			// Toolkit service integration (optional, passed as properties not attributes)
+			// Note: These CANNOT be attributes - must be set as JavaScript properties
+			ttsService: { type: 'Object', reflect: false },
+			toolCoordinator: { type: 'Object', reflect: false },
+			highlightCoordinator: { type: 'Object', reflect: false }
 		}
   }}
 />
@@ -105,7 +111,12 @@ import { tick } from 'svelte';
 
 		// Authoring mode props
 		mode = 'view' as 'view' | 'author',
-		configuration = {} as Record<string, any>
+		configuration = {} as Record<string, any>,
+
+		// Toolkit service integration (optional - passed as JS properties, not attributes)
+		ttsService = null as any,
+		toolCoordinator = null as any,
+		highlightCoordinator = null as any
 	} = $props();
 
 	// Browser detection (SSR safety)
@@ -383,6 +394,9 @@ import { tick } from 'svelte';
 				{loaderConfig}
 				{mode}
 				configuration={typeof configuration === 'string' ? JSON.parse(configuration) : configuration}
+				{ttsService}
+				{toolCoordinator}
+				{highlightCoordinator}
 				onLoadComplete={(detail) => handlePlayerEvent(new CustomEvent('load-complete', { detail }))}
 				onPlayerError={(detail) => handlePlayerEvent(new CustomEvent('player-error', { detail }))}
 				onSessionChanged={(detail) => handleSessionChanged(new CustomEvent('session-changed', { detail }))}

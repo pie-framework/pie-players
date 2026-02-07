@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>PIE Section Player Demos</title>
+	<style>
+		body {
+			font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+			max-width: 1000px;
+			margin: 0 auto;
+			padding: 3rem 2rem;
+			background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+			min-height: 100vh;
+		}
+
+		.container {
+			background: white;
+			border-radius: 12px;
+			box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+			padding: 3rem;
+		}
+
+		h1 {
+			color: #333;
+			margin: 0 0 0.5rem 0;
+			font-size: 2.5rem;
+		}
+
+		.subtitle {
+			color: #666;
+			font-size: 1.1rem;
+			margin-bottom: 2rem;
+		}
+
+		.demo-grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+			gap: 2rem;
+			margin-top: 2rem;
+		}
+
+		.demo-card {
+			border: 2px solid #e0e0e0;
+			border-radius: 8px;
+			padding: 1.5rem;
+			transition: all 0.3s ease;
+			cursor: pointer;
+			text-decoration: none;
+			color: inherit;
+			display: block;
+			background: white;
+		}
+
+		.demo-card:hover {
+			border-color: #667eea;
+			box-shadow: 0 8px 16px rgba(102, 126, 234, 0.2);
+			transform: translateY(-4px);
+		}
+
+		.demo-card h2 {
+			margin: 0 0 0.5rem 0;
+			color: #667eea;
+			font-size: 1.5rem;
+			display: flex;
+			align-items: center;
+			gap: 0.5rem;
+		}
+
+		.demo-card .emoji {
+			font-size: 2rem;
+		}
+
+		.demo-card p {
+			color: #666;
+			line-height: 1.6;
+			margin: 0.5rem 0;
+		}
+
+		.demo-card .meta {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 0.5rem;
+			margin-top: 1rem;
+		}
+
+		.demo-card .badge {
+			background: #f0f0f0;
+			color: #555;
+			padding: 0.25rem 0.75rem;
+			border-radius: 12px;
+			font-size: 0.85rem;
+			font-weight: 500;
+		}
+
+		.demo-card .badge.primary {
+			background: #e3f2fd;
+			color: #1976d2;
+		}
+
+		.demo-card .badge.success {
+			background: #e8f5e9;
+			color: #388e3c;
+		}
+
+		.footer {
+			margin-top: 3rem;
+			padding-top: 2rem;
+			border-top: 1px solid #e0e0e0;
+			color: #666;
+			font-size: 0.9rem;
+		}
+
+		.footer a {
+			color: #667eea;
+			text-decoration: none;
+		}
+
+		.footer a:hover {
+			text-decoration: underline;
+		}
+
+		.info-box {
+			background: #f8f9fa;
+			border-left: 4px solid #667eea;
+			padding: 1rem 1.5rem;
+			margin: 2rem 0;
+			border-radius: 4px;
+		}
+
+		.info-box p {
+			margin: 0;
+			line-height: 1.6;
+		}
+
+		.info-box code {
+			background: #e9ecef;
+			padding: 0.2rem 0.4rem;
+			border-radius: 3px;
+			font-family: 'Monaco', 'Courier New', monospace;
+			font-size: 0.9em;
+		}
+	</style>
+</head>
+<body>
+	<div class="container">
+		<h1>🥧 PIE Section Player Demos</h1>
+		<p class="subtitle">Interactive examples showcasing the PIE Section Player web component capabilities</p>
+
+		<div class="info-box">
+			<p>
+				<strong>About:</strong> The PIE Section Player renders QTI 3.0 assessment sections with passages and items.
+				It supports both <strong>page mode</strong> (all items visible) and <strong>item mode</strong> (one at a time).
+				Built with Svelte, exposed as a framework-agnostic web component.
+			</p>
+		</div>
+
+		<div class="demo-grid">
+			<a href="tts-integration-demo.html" class="demo-card">
+				<h2><span class="emoji">🔊</span> TTS Integration</h2>
+				<p>
+					<strong>NEW: Assessment Toolkit TTS integration</strong> demonstrating how the section player
+					integrates with TTSService, ToolCoordinator, and HighlightCoordinator.
+				</p>
+				<p>
+					Shows how services are passed as JavaScript properties through the component hierarchy
+					from parent applications to PIE elements.
+				</p>
+				<div class="meta">
+					<span class="badge success">NEW</span>
+					<span class="badge primary">Toolkit Integration</span>
+					<span class="badge">TTS Service</span>
+					<span class="badge">Page Mode</span>
+					<span class="badge">Item Mode</span>
+				</div>
+			</a>
+
+			<a href="paired-passages-urban-gardens.html" class="demo-card">
+				<h2><span class="emoji">📖</span> Paired Passages</h2>
+				<p>
+					<strong>Full QTI 3.0 paired passages implementation</strong> with two contrasting reading passages
+					(Grade 6-8 ELA) and four multiple-choice comprehension questions using real PIE elements.
+				</p>
+				<p>
+					This demo matches the specification in <code>docs/qti3-paired-passages-example.md</code>
+					and demonstrates section-level passage placement.
+				</p>
+				<div class="meta">
+					<span class="badge primary">QTI 3.0</span>
+					<span class="badge success">PIE Elements</span>
+					<span class="badge">Page Mode</span>
+					<span class="badge">Item Mode</span>
+					<span class="badge">Session Restore</span>
+				</div>
+			</a>
+
+			<a href="basic-demo.html" class="demo-card">
+				<h2><span class="emoji">⭐</span> Basic Demo</h2>
+				<p>
+					<strong>Simple introduction</strong> to the section player with one passage (Solar System)
+					and three basic items.
+				</p>
+				<p>
+					Great starting point for understanding the component structure and basic features
+					without complex PIE elements.
+				</p>
+				<div class="meta">
+					<span class="badge primary">Beginner Friendly</span>
+					<span class="badge">Page Mode</span>
+					<span class="badge">Item Mode</span>
+				</div>
+			</a>
+
+			<a href="../demo.html" class="demo-card">
+				<h2><span class="emoji">🔧</span> Original Demo</h2>
+				<p>
+					<strong>Proof-of-concept demo</strong> from initial development.
+					Shows the component in both page and item modes with simple examples.
+				</p>
+				<p>
+					Located in the package root, this was the first working demo during development.
+				</p>
+				<div class="meta">
+					<span class="badge">Legacy</span>
+					<span class="badge">Simple</span>
+				</div>
+			</a>
+		</div>
+
+		<div class="footer">
+			<p>
+				<strong>Documentation:</strong>
+				<a href="../README.md">Usage Guide</a> •
+				<a href="../ARCHITECTURE.md">Architecture</a> •
+				<a href="README.md">Demo Documentation</a>
+			</p>
+			<p>
+				<strong>Related:</strong>
+				<a href="../../docs/qti3-paired-passages-example.md">QTI 3.0 Paired Passages Example</a> •
+				<a href="../../docs/SECTION-STRUCTURE-DESIGN.md">Section Structure Design</a>
+			</p>
+		</div>
+	</div>
+</body>
+</html>

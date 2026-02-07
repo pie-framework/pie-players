@@ -141,8 +141,11 @@ export type {
 } from "./types/events";
 
 // ============================================================================
-// Assessment Player (Optional Reference Implementation)
+// Players (Optional Reference Implementations)
 // ============================================================================
 
+// Assessment Player - Full assessment with navigation
 // Note: Assessment player is optional and not exported by default.
-// Products can import from './assessment-player' if desired.
+// Products can import from './player/AssessmentPlayer' if desired.
+
+// Section Player - Use @pie-players/pie-section-player web component instead

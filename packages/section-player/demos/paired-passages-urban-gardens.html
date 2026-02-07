@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Paired Passages Demo - Urban Gardens</title>
+	<style>
+		body {
+			font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+			max-width: 1400px;
+			margin: 0 auto;
+			padding: 2rem;
+			background: #f5f5f5;
+		}
+
+		h1 {
+			color: #333;
+			margin-bottom: 0.5rem;
+		}
+
+		.demo-header {
+			margin-bottom: 2rem;
+			padding: 1rem;
+			background: white;
+			border-radius: 8px;
+			box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+		}
+
+		.demo-meta {
+			display: flex;
+			gap: 2rem;
+			margin-top: 1rem;
+			color: #666;
+			font-size: 0.9rem;
+		}
+
+		.demo-meta span {
+			display: flex;
+			align-items: center;
+			gap: 0.5rem;
+		}
+
+		.controls {
+			margin-bottom: 2rem;
+			padding: 1rem;
+			background: white;
+			border-radius: 8px;
+			box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+		}
+
+		.controls h2 {
+			margin-top: 0;
+			font-size: 1.2rem;
+			color: #555;
+		}
+
+		.button-group {
+			display: flex;
+			gap: 1rem;
+			margin-bottom: 1rem;
+			flex-wrap: wrap;
+		}
+
+		button {
+			padding: 0.5rem 1rem;
+			background: #007bff;
+			color: white;
+			border: none;
+			border-radius: 4px;
+			cursor: pointer;
+			font-size: 0.9rem;
+			transition: background 0.2s;
+		}
+
+		button:hover {
+			background: #0056b3;
+		}
+
+		button.secondary {
+			background: #6c757d;
+		}
+
+		button.secondary:hover {
+			background: #545b62;
+		}
+
+		button.success {
+			background: #28a745;
+		}
+
+		button.success:hover {
+			background: #218838;
+		}
+
+		.player-container {
+			background: white;
+			border-radius: 8px;
+			box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+			padding: 2rem;
+			min-height: 600px;
+		}
+
+		.event-log {
+			margin-top: 2rem;
+			padding: 1rem;
+			background: #f9f9f9;
+			border: 1px solid #ddd;
+			border-radius: 4px;
+			max-height: 300px;
+			overflow-y: auto;
+		}
+
+		.event-log h3 {
+			margin-top: 0;
+			font-size: 1rem;
+			color: #555;
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+		}
+
+		.event-log pre {
+			margin: 0.5rem 0;
+			padding: 0.5rem;
+			background: white;
+			border: 1px solid #e0e0e0;
+			border-radius: 2px;
+			font-size: 0.85rem;
+			overflow-x: auto;
+		}
+
+		.event-log pre.section-loaded { border-left: 3px solid #28a745; }
+		.event-log pre.item-changed { border-left: 3px solid #007bff; }
+		.event-log pre.session-changed { border-left: 3px solid #ffc107; }
+		.event-log pre.player-error { border-left: 3px solid #dc3545; }
+
+		/* PIE Element Styling */
+		:global(.passage-item) {
+			padding: 1.5rem;
+			background: #fafafa;
+			border: 1px solid #e0e0e0;
+			border-radius: 4px;
+			margin-bottom: 1rem;
+		}
+
+		:global(.passage-item h2) {
+			margin-top: 0;
+			color: #2c3e50;
+			font-size: 1.5rem;
+			border-bottom: 2px solid #3498db;
+			padding-bottom: 0.5rem;
+		}
+
+		:global(.passage-item .byline) {
+			font-style: italic;
+			color: #666;
+			margin-bottom: 1rem;
+		}
+
+		:global(.instructions) {
+			background: #e3f2fd;
+			padding: 1rem;
+			border-radius: 4px;
+			border-left: 4px solid #2196f3;
+			margin-bottom: 1.5rem;
+		}
+
+		:global(.instructions h3) {
+			margin-top: 0;
+			color: #1976d2;
+		}
+	</style>
+</head>
+<body>
+	<div class="demo-header">
+		<h1>🥧 PIE Section Player - Paired Passages Demo</h1>
+		<p><strong>Assessment:</strong> Urban Gardens: Different Perspectives (Grade 6-8 ELA)</p>
+		<div class="demo-meta">
+			<span><strong>Standard:</strong> CCSS.ELA-LITERACY.RI.7.6</span>
+			<span><strong>Format:</strong> Paired Passages with 4 Multiple Choice Questions</span>
+			<span><strong>Time:</strong> ~15-20 minutes</span>
+		</div>
+	</div>
+
+	<div class="controls">
+		<h2>Demo Controls</h2>
+		<div class="button-group">
+			<button onclick="loadPageMode()" class="success">Load Page Mode (All Items Visible)</button>
+			<button onclick="loadItemMode()">Load Item Mode (One at a Time)</button>
+			<button onclick="loadWithSessions()" class="secondary">Load with Saved Sessions</button>
+			<button onclick="clearLog()" class="secondary">Clear Event Log</button>
+		</div>
+		<p style="color: #666; font-size: 0.9rem; margin: 0;">
+			<strong>Note:</strong> This demo uses the full paired passages example from
+			<code>docs/qti3-paired-passages-example.md</code> with real PIE multiple-choice elements.
+		</p>
+	</div>
+
+	<div class="player-container">
+		<pie-section-player
+			id="player"
+			mode="gather"
+			view="candidate"
+			bundle-host=""
+			esm-cdn-url="https://esm.sh">
+		</pie-section-player>
+	</div>
+
+	<div class="event-log">
+		<h3>
+			<span>Event Log</span>
+			<button onclick="clearLog()" class="secondary" style="font-size: 0.8rem; padding: 0.25rem 0.5rem;">Clear</button>
+		</h3>
+		<div id="log"></div>
+	</div>
+
+	<script type="module">
+		// Import the web component
+		import '../dist/pie-section-player.js';
+
+		const player = document.getElementById('player');
+		const log = document.getElementById('log');
+
+		// Event listeners
+		player.addEventListener('section-loaded', (e) => {
+			addLog('section-loaded', e.detail);
+		});
+
+		player.addEventListener('item-changed', (e) => {
+			addLog('item-changed', e.detail);
+		});
+
+		player.addEventListener('session-changed', (e) => {
+			addLog('session-changed', e.detail);
+			console.log('Session changed:', e.detail);
+		});
+
+		player.addEventListener('player-error', (e) => {
+			addLog('player-error', e.detail);
+		});
+
+		function addLog(eventName, detail) {
+			const entry = document.createElement('pre');
+			entry.className = eventName;
+			entry.textContent = `[${new Date().toLocaleTimeString()}] ${eventName}: ${JSON.stringify(detail, null, 2)}`;
+			log.insertBefore(entry, log.firstChild);
+		}
+
+		window.clearLog = () => {
+			log.innerHTML = '';
+		};
+
+		// Paired Passages Section Data - Based on qti3-paired-passages-example.md
+		const pairedPassagesSection = {
+			identifier: 'paired-passages-urban-gardens',
+			title: 'Urban Gardens: Different Perspectives',
+			keepTogether: true,
+			visible: true,
+			required: false,
+
+			rubricBlocks: [
+				{
+					id: 'instructions',
+					view: 'candidate',
+					use: 'instructions',
+					passage: {
+						id: 'inst-001',
+						name: 'Directions',
+						baseId: 'inst-001',
+						version: { major: 1, minor: 0, patch: 0 },
+						config: {
+							markup: '<div id="inst" class="instructions"><h3>Directions</h3><p>Read both passages carefully. Then answer the questions that follow. You may look back at the passages as often as you need.</p></div>',
+							elements: {},
+							models: []
+						}
+					}
+				},
+				{
+					id: 'passage-benefits',
+					view: 'candidate',
+					use: 'passage',
+					passage: {
+						id: 'passage-benefits-urban-gardening',
+						name: 'The Benefits of Urban Gardening',
+						baseId: 'passage-benefits',
+						version: { major: 1, minor: 0, patch: 0 },
+						config: {
+							markup: `<div class="paired-passage passage-item" data-group="urban-gardens-pair" data-order="1">
+								<h2>Passage 1: The Benefits of Urban Gardening</h2>
+								<p class="byline">By Maria Santos, Community Garden Coordinator</p>
+
+								<p>When empty lots transform into thriving gardens, entire neighborhoods change for the better. Urban gardens are sprouting up in cities across America, and they're bringing more than just fresh vegetables to our communities.</p>
+
+								<p>First, urban gardens provide access to healthy, affordable food in neighborhoods that often lack grocery stores. Families can grow tomatoes, lettuce, and herbs right in their own backyards or shared community spaces. This fresh produce is not only nutritious but also costs far less than store-bought alternatives.</p>
+
+								<p>Second, these gardens bring people together. Neighbors who might never have spoken now work side-by-side, sharing gardening tips and recipes. Children learn where food comes from and develop an appreciation for nature. One community garden in Chicago even started a weekly harvest potluck, creating friendships that extend far beyond the garden gates.</p>
+
+								<p>Urban gardens also benefit the environment. They reduce urban heat by providing green spaces in concrete-heavy neighborhoods. Plants absorb rainwater, preventing flooding and reducing pollution runoff. Gardens even attract beneficial insects like bees and butterflies, supporting urban biodiversity.</p>
+
+								<p>Perhaps most importantly, urban gardens give residents ownership of their neighborhoods. When people invest time in creating something beautiful and productive, they develop pride in their community. Empty lots that once collected trash become sources of food, friendship, and hope.</p>
+
+								<p>The benefits of urban gardening extend far beyond the garden plot. They represent a grassroots movement toward healthier, more connected, and more sustainable cities.</p>
+							</div>`,
+							elements: {},
+							models: []
+						}
+					}
+				},
+				{
+					id: 'passage-challenges',
+					view: 'candidate',
+					use: 'passage',
+					passage: {
+						id: 'passage-challenges-urban-gardening',
+						name: 'Urban Gardens: Challenges and Limitations',
+						baseId: 'passage-challenges',
+						version: { major: 1, minor: 0, patch: 0 },
+						config: {
+							markup: `<div class="paired-passage passage-item" data-group="urban-gardens-pair" data-order="2">
+								<h2>Passage 2: Urban Gardens: Challenges and Limitations</h2>
+								<p class="byline">By David Chen, Urban Planning Consultant</p>
+
+								<p>While urban gardens have gained popularity in recent years, we must carefully examine whether they represent a practical solution to food access and community development challenges in our cities.</p>
+
+								<p>The first concern is space. Cities face intense competition for land. Every plot used for a garden could instead house affordable apartments, serve as a playground, or provide parking. In densely populated areas, dedicating valuable real estate to gardens may not be the most efficient use of limited space. A single community garden might produce enough vegetables for twenty families, but that same land could provide housing for two hundred people.</p>
+
+								<p>Maintenance presents another significant challenge. Gardens require consistent care: watering, weeding, pest control, and seasonal planting. When initial enthusiasm fades, gardens often fall into neglect. Abandoned plots become eyesores and can even pose safety concerns. Cities must consider who will maintain these spaces long-term and who will fund the water, tools, and infrastructure needed to sustain them.</p>
+
+								<p>Economic viability is also questionable. While advocates celebrate fresh produce, urban gardens typically produce far less food than traditional farms. The cost per pound of vegetables, when factoring in land value, water, materials, and labor, often exceeds supermarket prices. For addressing food insecurity, investing in transportation to existing grocery stores or supporting rural farmers might prove more cost-effective.</p>
+
+								<p>Finally, we must ask whether urban gardens truly build lasting community connections or simply attract people who are already environmentally conscious and socially engaged. Without intentional outreach and inclusive programming, gardens may primarily serve those with time, resources, and gardening knowledge.</p>
+
+								<p>Urban gardens may offer value, but city planners must weigh their benefits against limitations and consider whether other interventions might better serve community needs.</p>
+							</div>`,
+							elements: {},
+							models: []
+						}
+					}
+				}
+			],
+
+			assessmentItemRefs: [
+				{
+					identifier: 'q1-main-idea-passage1',
+					required: true,
+					item: {
+						id: 'item-urban-gardens-001',
+						name: 'Question 1',
+						baseId: 'item-urban-gardens-001',
+						version: { major: 1, minor: 0, patch: 0 },
+						config: {
+							markup: '<multiple-choice id="q1"></multiple-choice>',
+							elements: {
+								'multiple-choice': '@pie-element/multiple-choice@latest'
+							},
+							models: [
+								{
+									id: 'q1',
+									element: 'multiple-choice',
+									prompt: '<p><strong>Question 1:</strong> What is the main idea of Passage 1, "The Benefits of Urban Gardening"?</p>',
+									choiceMode: 'radio',
+									keyMode: 'none',
+									lockChoiceOrder: false,
+									choices: [
+										{
+											label: 'A',
+											value: 'choice-a',
+											content: '<p>Urban gardens help reduce flooding in cities.</p>',
+											correct: false
+										},
+										{
+											label: 'B',
+											value: 'choice-b',
+											content: '<p>Urban gardens improve neighborhoods in multiple important ways.</p>',
+											correct: true
+										},
+										{
+											label: 'C',
+											value: 'choice-c',
+											content: '<p>Community gardens are more popular in Chicago than other cities.</p>',
+											correct: false
+										},
+										{
+											label: 'D',
+											value: 'choice-d',
+											content: '<p>Growing vegetables at home costs less than buying them at stores.</p>',
+											correct: false
+										}
+									]
+								}
+							]
+						}
+					}
+				},
+				{
+					identifier: 'q2-author-purpose-passage2',
+					required: true,
+					item: {
+						id: 'item-urban-gardens-002',
+						name: 'Question 2',
+						baseId: 'item-urban-gardens-002',
+						version: { major: 1, minor: 0, patch: 0 },
+						config: {
+							markup: '<multiple-choice id="q2"></multiple-choice>',
+							elements: {
+								'multiple-choice': '@pie-element/multiple-choice@latest'
+							},
+							models: [
+								{
+									id: 'q2',
+									element: 'multiple-choice',
+									prompt: '<p><strong>Question 2:</strong> What is the author\'s main purpose in Passage 2, "Urban Gardens: Challenges and Limitations"?</p>',
+									choiceMode: 'radio',
+									keyMode: 'none',
+									lockChoiceOrder: false,
+									choices: [
+										{
+											label: 'A',
+											value: 'choice-a',
+											content: '<p>To argue that urban gardens should be completely banned in cities.</p>',
+											correct: false
+										},
+										{
+											label: 'B',
+											value: 'choice-b',
+											content: '<p>To explain how to maintain a successful community garden.</p>',
+											correct: false
+										},
+										{
+											label: 'C',
+											value: 'choice-c',
+											content: '<p>To raise questions about whether urban gardens are the best solution for cities.</p>',
+											correct: true
+										},
+										{
+											label: 'D',
+											value: 'choice-d',
+											content: '<p>To persuade readers to volunteer at their local community garden.</p>',
+											correct: false
+										}
+									]
+								}
+							]
+						}
+					}
+				},
+				{
+					identifier: 'q3-compare-perspectives',
+					required: true,
+					item: {
+						id: 'item-urban-gardens-003',
+						name: 'Question 3',
+						baseId: 'item-urban-gardens-003',
+						version: { major: 1, minor: 0, patch: 0 },
+						config: {
+							markup: '<multiple-choice id="q3"></multiple-choice>',
+							elements: {
+								'multiple-choice': '@pie-element/multiple-choice@latest'
+							},
+							models: [
+								{
+									id: 'q3',
+									element: 'multiple-choice',
+									prompt: '<p><strong>Question 3:</strong> How do the authors\' perspectives on urban gardens differ?</p>',
+									choiceMode: 'radio',
+									keyMode: 'none',
+									lockChoiceOrder: false,
+									choices: [
+										{
+											label: 'A',
+											value: 'choice-a',
+											content: '<p>The author of Passage 1 focuses on benefits while the author of Passage 2 examines potential drawbacks.</p>',
+											correct: true
+										},
+										{
+											label: 'B',
+											value: 'choice-b',
+											content: '<p>The author of Passage 1 writes about Chicago while the author of Passage 2 writes about rural areas.</p>',
+											correct: false
+										},
+										{
+											label: 'C',
+											value: 'choice-c',
+											content: '<p>The author of Passage 1 opposes urban gardens while the author of Passage 2 supports them.</p>',
+											correct: false
+										},
+										{
+											label: 'D',
+											value: 'choice-d',
+											content: '<p>Both authors agree that urban gardens are too expensive to maintain.</p>',
+											correct: false
+										}
+									]
+								}
+							]
+						}
+					}
+				},
+				{
+					identifier: 'q4-synthesize-both',
+					required: true,
+					item: {
+						id: 'item-urban-gardens-004',
+						name: 'Question 4',
+						baseId: 'item-urban-gardens-004',
+						version: { major: 1, minor: 0, patch: 0 },
+						config: {
+							markup: '<multiple-choice id="q4"></multiple-choice>',
+							elements: {
+								'multiple-choice': '@pie-element/multiple-choice@latest'
+							},
+							models: [
+								{
+									id: 'q4',
+									element: 'multiple-choice',
+									prompt: '<p><strong>Question 4:</strong> Based on both passages, which statement would <em>both</em> authors most likely agree with?</p>',
+									choiceMode: 'radio',
+									keyMode: 'none',
+									lockChoiceOrder: false,
+									choices: [
+										{
+											label: 'A',
+											value: 'choice-a',
+											content: '<p>Urban gardens always fail because people lose interest in maintaining them.</p>',
+											correct: false
+										},
+										{
+											label: 'B',
+											value: 'choice-b',
+											content: '<p>Urban gardens have no impact on community relationships or neighborhood pride.</p>',
+											correct: false
+										},
+										{
+											label: 'C',
+											value: 'choice-c',
+											content: '<p>Urban gardens require ongoing resources and community involvement to succeed.</p>',
+											correct: true
+										},
+										{
+											label: 'D',
+											value: 'choice-d',
+											content: '<p>Urban gardens produce more food per acre than traditional farms.</p>',
+											correct: false
+										}
+									]
+								}
+							]
+						}
+					}
+				}
+			]
+		};
+
+		// Load functions
+		window.loadPageMode = () => {
+			player.section = pairedPassagesSection;
+			player.mode = 'gather';
+			player.view = 'candidate';
+			player.itemSessions = {};
+			console.log('Loaded page mode (keepTogether: true) - all items visible');
+		};
+
+		window.loadItemMode = () => {
+			const itemModeSection = {
+				...pairedPassagesSection,
+				keepTogether: false
+			};
+			player.section = itemModeSection;
+			player.mode = 'gather';
+			player.view = 'candidate';
+			player.itemSessions = {};
+			console.log('Loaded item mode (keepTogether: false) - one item at a time');
+		};
+
+		window.loadWithSessions = () => {
+			// Simulate saved sessions with partial answers
+			const savedSessions = {
+				'item-urban-gardens-001': {
+					value: 'choice-b' // Correct answer selected
+				},
+				'item-urban-gardens-002': {
+					value: 'choice-a' // Incorrect answer selected
+				}
+			};
+
+			player.section = pairedPassagesSection;
+			player.mode = 'gather';
+			player.view = 'candidate';
+			player.itemSessions = savedSessions;
+			console.log('Loaded with saved sessions:', savedSessions);
+		};
+
+		// Load page mode by default
+		loadPageMode();
+	</script>
+</body>
+</html>

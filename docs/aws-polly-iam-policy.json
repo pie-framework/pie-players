@@ -1,14 +1,11 @@
 {
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "PollySynthesisOnly",
-      "Effect": "Allow",
-      "Action": [
-        "polly:SynthesizeSpeech",
-        "polly:DescribeVoices"
-      ],
-      "Resource": "*"
-    }
-  ]
+	"Version": "2012-10-17",
+	"Statement": [
+		{
+			"Sid": "PollySynthesisOnly",
+			"Effect": "Allow",
+			"Action": ["polly:SynthesizeSpeech", "polly:DescribeVoices"],
+			"Resource": "*"
+		}
+	]
 }

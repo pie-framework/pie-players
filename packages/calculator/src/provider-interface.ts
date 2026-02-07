@@ -10,7 +10,13 @@
 /**
  * Calculator types
  */
-export type CalculatorType = "basic" | "scientific" | "graphing" | "ti-84" | "ti-108" | "ti-34-mv";
+export type CalculatorType =
+	| "basic"
+	| "scientific"
+	| "graphing"
+	| "ti-84"
+	| "ti-108"
+	| "ti-34-mv";
 
 /**
  * TI-specific calculator configuration options

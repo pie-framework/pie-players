@@ -52,7 +52,7 @@ export const DEFAULT_BUNDLE_HOST = "https://proxy.pie-api.com/bundles/";
 if (typeof window !== "undefined" && !window.pieHelpers) {
 	window.pieHelpers = {
 		loadingScripts: {},
-		loadingPromises: {}
+		loadingPromises: {},
 	};
 }
 
@@ -330,7 +330,10 @@ export class IifePieLoader {
 
 		// 3. Check if bundle is currently loading - if so, wait for it
 		if (window.pieHelpers?.loadingPromises?.[bundleUrl]) {
-			logger.debug("Bundle is already loading, waiting for existing load:", bundleUrl);
+			logger.debug(
+				"Bundle is already loading, waiting for existing load:",
+				bundleUrl,
+			);
 			await window.pieHelpers.loadingPromises[bundleUrl];
 			logger.debug("Existing bundle load completed, registering elements");
 			await this.registerElementsFromBundle(

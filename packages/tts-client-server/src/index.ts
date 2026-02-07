@@ -3,5 +3,5 @@
  * @module @pie-players/tts-client-server
  */
 
-export { ServerTTSProvider } from './ServerTTSProvider.js';
-export type { ServerTTSProviderConfig } from './ServerTTSProvider.js';
+export { ServerTTSProvider } from "./ServerTTSProvider.js";
+export type { ServerTTSProviderConfig } from "./ServerTTSProvider.js";

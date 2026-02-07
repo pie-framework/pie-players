@@ -17,7 +17,11 @@
  * Part of PIE Assessment Toolkit.
  */
 
-import type { AccessibilityCatalog, ConfigEntity, PieModel } from "@pie-players/pie-players-shared/types";
+import type {
+	AccessibilityCatalog,
+	ConfigEntity,
+	PieModel,
+} from "@pie-players/pie-players-shared/types";
 
 /**
  * Result from extracting SSML from markup
@@ -127,7 +131,9 @@ export class SSMLExtractor {
 
 		// Check if running in browser environment
 		if (typeof window === "undefined" || typeof DOMParser === "undefined") {
-			console.warn("[SSMLExtractor] DOMParser not available (SSR?), skipping extraction");
+			console.warn(
+				"[SSMLExtractor] DOMParser not available (SSR?), skipping extraction",
+			);
 			return { catalogs: [], cleanedMarkup: markup };
 		}
 
@@ -195,7 +201,10 @@ export class SSMLExtractor {
 						],
 					});
 				} catch (error) {
-					console.error("[SSMLExtractor] Error processing <speak> element:", error);
+					console.error(
+						"[SSMLExtractor] Error processing <speak> element:",
+						error,
+					);
 					// Continue with other elements
 				}
 			}

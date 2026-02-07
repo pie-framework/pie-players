@@ -135,14 +135,23 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 
 			// Word boundary events (if supported)
 			this.utterance.onboundary = (event) => {
-				console.log('[BrowserProvider] Boundary event:', event.name, 'charIndex:', event.charIndex, 'charLength:', event.charLength);
+				console.log(
+					"[BrowserProvider] Boundary event:",
+					event.name,
+					"charIndex:",
+					event.charIndex,
+					"charLength:",
+					event.charLength,
+				);
 				if (event.name === "word" && this.onWordBoundary) {
 					boundaryCount++;
 
 					// Detect if browser word boundaries are broken (Safari bug)
 					// If we get multiple events at the same position, boundaries don't work
 					if (event.charIndex === lastBoundaryIndex && boundaryCount > 2) {
-						console.warn('[BrowserProvider] Browser word boundaries broken - disabling word highlighting');
+						console.warn(
+							"[BrowserProvider] Browser word boundaries broken - disabling word highlighting",
+						);
 						if (this.utterance) {
 							this.utterance.onboundary = null; // Stop listening
 						}
@@ -155,7 +164,12 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 						event.charIndex,
 						event.charIndex + (event.charLength || 0),
 					);
-					console.log('[BrowserProvider] Calling onWordBoundary with word:', word, 'at position:', event.charIndex);
+					console.log(
+						"[BrowserProvider] Calling onWordBoundary with word:",
+						word,
+						"at position:",
+						event.charIndex,
+					);
 					this.onWordBoundary(word, event.charIndex);
 				}
 			};

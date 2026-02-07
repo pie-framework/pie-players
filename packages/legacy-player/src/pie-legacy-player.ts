@@ -6,7 +6,7 @@
  */
 
 // Import the Svelte component to register the custom element
-import PieLegacyPlayer from './PieLegacyPlayer.svelte';
+import PieLegacyPlayer from "./PieLegacyPlayer.svelte";
 
 export { PieLegacyPlayer };
 export default PieLegacyPlayer;

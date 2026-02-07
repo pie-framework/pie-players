@@ -1,37 +1,37 @@
 {
-  "name": "@pie-players/tts-server-polly",
-  "version": "0.1.0",
-  "description": "AWS Polly provider for server-side TTS with speech marks support",
-  "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    }
-  },
-  "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch",
-    "test": "vitest",
-    "test:coverage": "vitest --coverage"
-  },
-  "keywords": [
-    "tts",
-    "text-to-speech",
-    "aws-polly",
-    "speech-marks",
-    "server-side"
-  ],
-  "author": "PIE Framework",
-  "license": "MIT",
-  "dependencies": {
-    "@aws-sdk/client-polly": "^3.700.0",
-    "@pie-players/tts-server-core": "workspace:*"
-  },
-  "devDependencies": {
-    "typescript": "^5.3.3",
-    "vitest": "^1.0.4"
-  }
+	"name": "@pie-players/tts-server-polly",
+	"version": "0.1.0",
+	"description": "AWS Polly provider for server-side TTS with speech marks support",
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"scripts": {
+		"build": "tsc",
+		"dev": "tsc --watch",
+		"test": "vitest",
+		"test:coverage": "vitest --coverage"
+	},
+	"keywords": [
+		"tts",
+		"text-to-speech",
+		"aws-polly",
+		"speech-marks",
+		"server-side"
+	],
+	"author": "PIE Framework",
+	"license": "MIT",
+	"dependencies": {
+		"@aws-sdk/client-polly": "^3.700.0",
+		"@pie-players/tts-server-core": "workspace:*"
+	},
+	"devDependencies": {
+		"typescript": "^5.3.3",
+		"vitest": "^1.0.4"
+	}
 }

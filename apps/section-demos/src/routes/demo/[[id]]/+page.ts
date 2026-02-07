@@ -1,6 +1,6 @@
-import { getSectionDemoById } from '$lib/content/sections';
-import { error } from '@sveltejs/kit';
-import type { PageLoad } from './$types';
+import { getSectionDemoById } from "$lib/content/sections";
+import { error } from "@sveltejs/kit";
+import type { PageLoad } from "./$types";
 
 export const load: PageLoad = ({ params }) => {
 	const demo = getSectionDemoById(params.id);
@@ -11,6 +11,6 @@ export const load: PageLoad = ({ params }) => {
 
 	return {
 		demo,
-		section: demo.section
+		section: demo.section,
 	};
 };

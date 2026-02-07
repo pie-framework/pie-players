@@ -5,10 +5,10 @@
   Not exposed as a web component - used internally in PieSectionPlayer.
 -->
 <script lang="ts">
-	import type { PassageEntity, ItemEntity } from '@pie-players/pie-players-shared/types';
-	import PassageRenderer from './PassageRenderer.svelte';
-	import ItemRenderer from './ItemRenderer.svelte';
+	import type { ItemEntity, PassageEntity } from '@pie-players/pie-players-shared/types';
 	import ItemNavigation from './ItemNavigation.svelte';
+	import ItemRenderer from './ItemRenderer.svelte';
+	import PassageRenderer from './PassageRenderer.svelte';
 
 	let {
 		passages,

@@ -1,4 +1,4 @@
-import type { QtiAssessmentSection } from '@pie-players/pie-players-shared/types';
+import type { QtiAssessmentSection } from "@pie-players/pie-players-shared/types";
 
 /**
  * Demo 4: TTS with SSML Extraction
@@ -22,19 +22,19 @@ import type { QtiAssessmentSection } from '@pie-players/pie-players-shared/types
  * - Content-level TTS buttons in headers
  */
 export const demo4Section: QtiAssessmentSection = {
-	identifier: 'demo4-tts-ssml',
-	title: 'Demo 4: TTS with SSML Extraction',
+	identifier: "demo4-tts-ssml",
+	title: "Demo 4: TTS with SSML Extraction",
 	keepTogether: true, // Page mode - all content visible
 
 	rubricBlocks: [
 		{
-			id: 'passage-quadratic-equations',
-			view: 'candidate',
-			use: 'passage',
+			id: "passage-quadratic-equations",
+			view: "candidate",
+			use: "passage",
 			passage: {
-				id: 'passage-quadratic-001',
-				name: 'Understanding Quadratic Equations',
-				baseId: 'passage-quadratic',
+				id: "passage-quadratic-001",
+				name: "Understanding Quadratic Equations",
+				baseId: "passage-quadratic",
 				version: { major: 1, minor: 0, patch: 0 },
 				config: {
 					markup: `<div class="passage" style="padding: 1.5rem; line-height: 1.7; background: #f8f9fa; border-radius: 8px;">
@@ -106,30 +106,30 @@ export const demo4Section: QtiAssessmentSection = {
             </div>
           </div>`,
 					elements: {},
-					models: []
-				}
-			}
-		}
+					models: [],
+				},
+			},
+		},
 	],
 
 	assessmentItemRefs: [
 		{
-			identifier: 'q1-quadratic-method',
+			identifier: "q1-quadratic-method",
 			required: true,
 			item: {
-				id: 'quadratic-q1',
-				name: 'Question 1: Method Selection',
-				baseId: 'quadratic-q1',
+				id: "quadratic-q1",
+				name: "Question 1: Method Selection",
+				baseId: "quadratic-q1",
 				version: { major: 1, minor: 0, patch: 0 },
 				config: {
 					markup: '<multiple-choice id="q1"></multiple-choice>',
 					elements: {
-						'multiple-choice': '@pie-element/multiple-choice@latest'
+						"multiple-choice": "@pie-element/multiple-choice@latest",
 					},
 					models: [
 						{
-							id: 'q1',
-							element: 'multiple-choice',
+							id: "q1",
+							element: "multiple-choice",
 							prompt: `<div>
                 <speak xml:lang="en-US">
                   Based on the passage, which method should you use to solve
@@ -139,106 +139,106 @@ export const demo4Section: QtiAssessmentSection = {
 
                 <p><strong>Based on the passage, which method should you use to solve x² - 5x + 6 = 0?</strong></p>
               </div>`,
-							choiceMode: 'radio',
+							choiceMode: "radio",
 							choices: [
 								{
-									value: 'a',
+									value: "a",
 									label: `<div>
                     <speak>The <emphasis>quadratic formula</emphasis>, because it works for all equations</speak>
                     <span>The quadratic formula, because it works for all equations</span>
-                  </div>`
+                  </div>`,
 								},
 								{
-									value: 'b',
+									value: "b",
 									label: `<div>
                     <speak><emphasis level="strong">Factoring</emphasis>, because this equation factors easily into <prosody rate="slow">x minus 2, times x minus 3</prosody></speak>
                     <span>Factoring, because this equation factors easily into (x - 2)(x - 3)</span>
-                  </div>`
+                  </div>`,
 								},
 								{
-									value: 'c',
+									value: "c",
 									label: `<div>
                     <speak>Completing the square</speak>
                     <span>Completing the square</span>
-                  </div>`
+                  </div>`,
 								},
 								{
-									value: 'd',
+									value: "d",
 									label: `<div>
                     <speak>Graphing the equation</speak>
                     <span>Graphing the equation</span>
-                  </div>`
-								}
-							]
-						}
-					]
-				}
-			}
+                  </div>`,
+								},
+							],
+						},
+					],
+				},
+			},
 		},
 		{
-			identifier: 'q2-find-factors',
+			identifier: "q2-find-factors",
 			required: true,
 			item: {
-				id: 'quadratic-q2',
-				name: 'Question 2: Finding Factors',
-				baseId: 'quadratic-q2',
+				id: "quadratic-q2",
+				name: "Question 2: Finding Factors",
+				baseId: "quadratic-q2",
 				version: { major: 1, minor: 0, patch: 0 },
 				config: {
 					markup: '<multiple-choice id="q2"></multiple-choice>',
 					elements: {
-						'multiple-choice': '@pie-element/multiple-choice@latest'
+						"multiple-choice": "@pie-element/multiple-choice@latest",
 					},
 					models: [
 						{
-							id: 'q2',
-							element: 'multiple-choice',
+							id: "q2",
+							element: "multiple-choice",
 							prompt: `<div>
                 <p><strong>What are the factors of the equation x² - 5x + 6 = 0?</strong></p>
                 <p style="font-size: 0.9rem; color: #6c757d; margin-top: 0.5rem;">
                   <em>Note: This question has no embedded SSML - demonstrating plain text TTS fallback.</em>
                 </p>
               </div>`,
-							choiceMode: 'radio',
+							choiceMode: "radio",
 							choices: [
 								{
-									value: 'a',
-									label: '(x - 2)(x - 3)'
+									value: "a",
+									label: "(x - 2)(x - 3)",
 								},
 								{
-									value: 'b',
-									label: '(x - 1)(x - 6)'
+									value: "b",
+									label: "(x - 1)(x - 6)",
 								},
 								{
-									value: 'c',
-									label: '(x + 2)(x + 3)'
+									value: "c",
+									label: "(x + 2)(x + 3)",
 								},
 								{
-									value: 'd',
-									label: '(x + 1)(x + 6)'
-								}
-							]
-						}
-					]
-				}
-			}
+									value: "d",
+									label: "(x + 1)(x + 6)",
+								},
+							],
+						},
+					],
+				},
+			},
 		},
 		{
-			identifier: 'q3-essay-instructions',
+			identifier: "q3-essay-instructions",
 			required: true,
 			item: {
-				id: 'quadratic-q3',
-				name: 'Question 3: Essay Instructions (AWS SSML)',
-				baseId: 'quadratic-q3',
+				id: "quadratic-q3",
+				name: "Question 3: Essay Instructions (AWS SSML)",
+				baseId: "quadratic-q3",
 				version: { major: 1, minor: 0, patch: 0 },
 				config: {
 					markup: '<extended-text-entry id="q3"></extended-text-entry>',
 					elements: {
-						'extended-text-entry': '@pie-element/extended-text-entry@latest'
+						"extended-text-entry": "@pie-element/extended-text-entry@latest",
 					},
 					models: [
 						{
-							id: 'q3',
-							element: 'extended-text-entry',
+							id: "q3",
+							element: "extended-text-entry",
 							prompt: `<div>
                 <speak xml:lang="en-US">
                   Write a detailed explanation of how to solve quadratic equations.
@@ -288,11 +288,11 @@ export const demo4Section: QtiAssessmentSection = {
                   For example, write x² as "x squared".</em>
                 </p>
               </div>`,
-							maxCharacters: 2000
-						}
-					]
-				}
-			}
-		}
-	]
+							maxCharacters: 2000,
+						},
+					],
+				},
+			},
+		},
+	],
 };

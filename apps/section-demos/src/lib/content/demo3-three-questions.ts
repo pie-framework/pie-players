@@ -1,4 +1,4 @@
-import type { QtiAssessmentSection } from '@pie-players/pie-players-shared/types';
+import type { QtiAssessmentSection } from "@pie-players/pie-players-shared/types";
 
 /**
  * Demo 3: Three Questions, One Passage
@@ -13,22 +13,22 @@ import type { QtiAssessmentSection } from '@pie-players/pie-players-shared/types
  * - Learn about photosynthesis and its role in ecosystems
  */
 export const demo3Section: QtiAssessmentSection = {
-  identifier: 'demo3-three-questions',
-  title: 'Demo 3: Three Questions, One Passage',
-  keepTogether: true, // Page mode - all content visible
+	identifier: "demo3-three-questions",
+	title: "Demo 3: Three Questions, One Passage",
+	keepTogether: true, // Page mode - all content visible
 
-  rubricBlocks: [
-    {
-      id: 'passage-photosynthesis',
-      view: 'candidate',
-      use: 'passage',
-      passage: {
-        id: 'passage-photosynthesis-001',
-        name: 'Photosynthesis: The Foundation of Life on Earth',
-        baseId: 'passage-photosynthesis',
-        version: { major: 1, minor: 0, patch: 0 },
-        config: {
-          markup: `<div class="passage" style="padding: 1.5rem; line-height: 1.7;">
+	rubricBlocks: [
+		{
+			id: "passage-photosynthesis",
+			view: "candidate",
+			use: "passage",
+			passage: {
+				id: "passage-photosynthesis-001",
+				name: "Photosynthesis: The Foundation of Life on Earth",
+				baseId: "passage-photosynthesis",
+				version: { major: 1, minor: 0, patch: 0 },
+				config: {
+					markup: `<div class="passage" style="padding: 1.5rem; line-height: 1.7;">
             <h2 style="margin-top: 0; color: #2c3e50; font-size: 1.5rem; margin-bottom: 1rem;">
               Photosynthesis: The Foundation of Life on Earth
             </h2>
@@ -77,145 +77,146 @@ export const demo3Section: QtiAssessmentSection = {
               that makes Earth habitable for all organisms, including humans.
             </p>
           </div>`,
-          elements: {},
-          models: []
-        }
-      }
-    }
-  ],
+					elements: {},
+					models: [],
+				},
+			},
+		},
+	],
 
-  assessmentItemRefs: [
-    {
-      identifier: 'q1-photosynthesis-products',
-      required: true,
-      item: {
-        id: 'photosynthesis-q1',
-        name: 'Question 1',
-        baseId: 'photosynthesis-q1',
-        version: { major: 1, minor: 0, patch: 0 },
-        config: {
-          markup: '<multiple-choice id="q1"></multiple-choice>',
-          elements: {
-            'multiple-choice': '@pie-element/multiple-choice@latest'
-          },
-          models: [
-            {
-              id: 'q1',
-              element: 'multiple-choice',
-              prompt: `<div>
+	assessmentItemRefs: [
+		{
+			identifier: "q1-photosynthesis-products",
+			required: true,
+			item: {
+				id: "photosynthesis-q1",
+				name: "Question 1",
+				baseId: "photosynthesis-q1",
+				version: { major: 1, minor: 0, patch: 0 },
+				config: {
+					markup: '<multiple-choice id="q1"></multiple-choice>',
+					elements: {
+						"multiple-choice": "@pie-element/multiple-choice@latest",
+					},
+					models: [
+						{
+							id: "q1",
+							element: "multiple-choice",
+							prompt: `<div>
                 <p><strong>Question 1: Based on the passage, what are the two main products of photosynthesis?</strong></p>
               </div>`,
-              choiceMode: 'radio',
-              choices: [
-                {
-                  value: 'a',
-                  label: 'Chlorophyll and carbon dioxide'
-                },
-                {
-                  value: 'b',
-                  label: 'Glucose and oxygen'
-                },
-                {
-                  value: 'c',
-                  label: 'Water and light energy'
-                },
-                {
-                  value: 'd',
-                  label: 'Cellulose and starch'
-                }
-              ]
-            }
-          ]
-        }
-      }
-    },
-    {
-      identifier: 'q2-photosynthesis-location',
-      required: true,
-      item: {
-        id: 'photosynthesis-q2',
-        name: 'Question 2',
-        baseId: 'photosynthesis-q2',
-        version: { major: 1, minor: 0, patch: 0 },
-        config: {
-          markup: '<multiple-choice id="q2"></multiple-choice>',
-          elements: {
-            'multiple-choice': '@pie-element/multiple-choice@latest'
-          },
-          models: [
-            {
-              id: 'q2',
-              element: 'multiple-choice',
-              prompt: `<div>
+							choiceMode: "radio",
+							choices: [
+								{
+									value: "a",
+									label: "Chlorophyll and carbon dioxide",
+								},
+								{
+									value: "b",
+									label: "Glucose and oxygen",
+								},
+								{
+									value: "c",
+									label: "Water and light energy",
+								},
+								{
+									value: "d",
+									label: "Cellulose and starch",
+								},
+							],
+						},
+					],
+				},
+			},
+		},
+		{
+			identifier: "q2-photosynthesis-location",
+			required: true,
+			item: {
+				id: "photosynthesis-q2",
+				name: "Question 2",
+				baseId: "photosynthesis-q2",
+				version: { major: 1, minor: 0, patch: 0 },
+				config: {
+					markup: '<multiple-choice id="q2"></multiple-choice>',
+					elements: {
+						"multiple-choice": "@pie-element/multiple-choice@latest",
+					},
+					models: [
+						{
+							id: "q2",
+							element: "multiple-choice",
+							prompt: `<div>
                 <p><strong>Question 2: According to the passage, where in plant cells does photosynthesis primarily occur?</strong></p>
               </div>`,
-              choiceMode: 'radio',
-              choices: [
-                {
-                  value: 'a',
-                  label: 'In the roots'
-                },
-                {
-                  value: 'b',
-                  label: 'In the cell walls'
-                },
-                {
-                  value: 'c',
-                  label: 'In the chloroplasts'
-                },
-                {
-                  value: 'd',
-                  label: 'In the atmosphere'
-                }
-              ]
-            }
-          ]
-        }
-      }
-    },
-    {
-      identifier: 'q3-photosynthesis-environment',
-      required: true,
-      item: {
-        id: 'photosynthesis-q3',
-        name: 'Question 3',
-        baseId: 'photosynthesis-q3',
-        version: { major: 1, minor: 0, patch: 0 },
-        config: {
-          markup: '<multiple-choice id="q3"></multiple-choice>',
-          elements: {
-            'multiple-choice': '@pie-element/multiple-choice@latest'
-          },
-          models: [
-            {
-              id: 'q3',
-              element: 'multiple-choice',
-              prompt: `<div>
+							choiceMode: "radio",
+							choices: [
+								{
+									value: "a",
+									label: "In the roots",
+								},
+								{
+									value: "b",
+									label: "In the cell walls",
+								},
+								{
+									value: "c",
+									label: "In the chloroplasts",
+								},
+								{
+									value: "d",
+									label: "In the atmosphere",
+								},
+							],
+						},
+					],
+				},
+			},
+		},
+		{
+			identifier: "q3-photosynthesis-environment",
+			required: true,
+			item: {
+				id: "photosynthesis-q3",
+				name: "Question 3",
+				baseId: "photosynthesis-q3",
+				version: { major: 1, minor: 0, patch: 0 },
+				config: {
+					markup: '<multiple-choice id="q3"></multiple-choice>',
+					elements: {
+						"multiple-choice": "@pie-element/multiple-choice@latest",
+					},
+					models: [
+						{
+							id: "q3",
+							element: "multiple-choice",
+							prompt: `<div>
                 <p><strong>Question 3: What role do forests and oceans play in addressing modern environmental challenges, according to the passage?</strong></p>
               </div>`,
-              choiceMode: 'radio',
-              choices: [
-                {
-                  value: 'a',
-                  label: 'They produce more oxygen than animals need'
-                },
-                {
-                  value: 'b',
-                  label: 'They absorb excess carbon dioxide from human activities'
-                },
-                {
-                  value: 'c',
-                  label: 'They prevent ancient bacteria from evolving'
-                },
-                {
-                  value: 'd',
-                  label: 'They increase the temperature of Earth\'s atmosphere'
-                }
-              ]
-            }
-          ]
-        }
-      }
-    }
-  ]
+							choiceMode: "radio",
+							choices: [
+								{
+									value: "a",
+									label: "They produce more oxygen than animals need",
+								},
+								{
+									value: "b",
+									label:
+										"They absorb excess carbon dioxide from human activities",
+								},
+								{
+									value: "c",
+									label: "They prevent ancient bacteria from evolving",
+								},
+								{
+									value: "d",
+									label: "They increase the temperature of Earth's atmosphere",
+								},
+							],
+						},
+					],
+				},
+			},
+		},
+	],
 };

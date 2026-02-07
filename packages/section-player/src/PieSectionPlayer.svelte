@@ -52,15 +52,15 @@
 
 <script lang="ts">
 	import type {
-		QtiAssessmentSection,
-		PassageEntity,
 		ItemEntity,
+		PassageEntity,
+		QtiAssessmentSection,
 		RubricBlock
 	} from '@pie-players/pie-players-shared/types';
 	import { onMount, untrack } from 'svelte';
-	import VerticalLayout from './components/layouts/VerticalLayout.svelte';
-	import SplitPanelLayout from './components/layouts/SplitPanelLayout.svelte';
 	import ItemModeLayout from './components/ItemModeLayout.svelte';
+	import SplitPanelLayout from './components/layouts/SplitPanelLayout.svelte';
+	import VerticalLayout from './components/layouts/VerticalLayout.svelte';
 
 	// Props
 	let {

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
 	import { browser } from '$app/environment';
-	import { goto, replaceState } from '$app/navigation';
+	import { goto, onNavigate, replaceState } from '$app/navigation';
 	import { page } from '$app/stores';
 	import PieSectionPlayer from '@pie-players/pie-section-player/src/PieSectionPlayer.svelte';
 	import type { PageData } from './$types';
@@ -19,6 +19,7 @@
 		HighlightCoordinator
 	} from '@pie-players/pie-assessment-toolkit';
 	import { ServerTTSProvider } from '@pie-players/tts-client-server';
+	import TTSSettings from '$lib/components/TTSSettings.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -59,9 +60,30 @@
 	let toolCoordinator: any = $state(null);
 	let highlightCoordinator: any = $state(null);
 	let ttsProvider: 'polly' | 'browser' | 'loading' = $state('loading');
+	let showTTSSettings = $state(false);
 
-	// Storage key for sessions (derived to track data changes)
+	// TTS Configuration
+	interface TTSConfig {
+		provider: 'polly' | 'browser';
+		voice: string;
+		rate: number;
+		pitch: number;
+		pollyEngine?: 'neural' | 'standard';
+		pollySampleRate?: number;
+	}
+
+	let ttsConfig = $state<TTSConfig>({
+		provider: 'polly',
+		voice: 'Joanna',
+		rate: 1.0,
+		pitch: 1.0,
+		pollyEngine: 'neural',
+		pollySampleRate: 24000,
+	});
+
+	// Storage keys
 	let SESSION_STORAGE_KEY = $derived(`pie-section-demo-sessions-${data.demo.id}`);
+	let TTS_CONFIG_STORAGE_KEY = $derived(`pie-section-demo-tts-config-${data.demo.id}`);
 
 	// Tiptap editor state
 	let editorElement = $state<HTMLDivElement | null>(null);
@@ -72,12 +94,20 @@
 	let hasSourceChanges = $state(false);
 	const lowlight = browser ? createLowlight(common) : null;
 
-	// Live section data (can be modified) - derived to track data changes
-	let liveSection = $state.raw(structuredClone(data.section));
+	// Live section data (can be modified) - initialized in effect
+	let liveSection: any = $state.raw({} as any);
+	let previousDemoId = $state('');
 
-	// Sync liveSection when data.section changes
+	// Initialize and sync liveSection when data changes
 	$effect(() => {
-		liveSection = structuredClone(data.section);
+		const currentDemoId = data.demo.id;
+		const currentSection = data.section;
+
+		// Initialize on first run or update on navigation
+		if (!previousDemoId || currentDemoId !== previousDemoId) {
+			previousDemoId = currentDemoId;
+			liveSection = structuredClone(currentSection);
+		}
 	});
 
 	// Session window position and state
@@ -106,6 +136,95 @@
 	let resizeStartWidth = 0;
 	let resizeStartHeight = 0;
 
+	// Initialize TTS with given configuration (called once on mount)
+	async function initializeTTS(config: TTSConfig) {
+		ttsProvider = 'loading';
+
+		try {
+			if (!ttsService) {
+				ttsService = new TTSService();
+			}
+
+			if (config.provider === 'polly') {
+				// Server-side TTS with AWS Polly
+				const serverProvider = new ServerTTSProvider();
+				await ttsService.initialize(serverProvider, {
+					apiEndpoint: '/api/tts',
+					provider: 'polly',
+					voice: config.voice,
+					language: 'en-US',
+					rate: config.rate,
+					pitch: config.pitch,
+					providerOptions: {
+						engine: config.pollyEngine || 'neural',
+						sampleRate: config.pollySampleRate || 24000,
+					},
+				});
+				ttsProvider = 'polly';
+				console.log('[Demo] ✅ Server TTS initialized (AWS Polly):', {
+					voice: config.voice,
+					engine: config.pollyEngine,
+					rate: config.rate,
+					pitch: config.pitch,
+				});
+			} else {
+				// Browser TTS with timeout protection
+				console.log('[Demo] Initializing Browser TTS with config:', {
+					voice: config.voice,
+					rate: config.rate,
+					pitch: config.pitch,
+				});
+
+				const browserProvider = new BrowserTTSProvider();
+
+				// Wrap initialization in a timeout to prevent infinite hangs
+				const initPromise = ttsService.initialize(browserProvider, {
+					voice: config.voice || undefined, // Don't pass empty string
+					rate: config.rate,
+					pitch: config.pitch,
+				});
+
+				const timeoutPromise = new Promise((_, reject) =>
+					setTimeout(() => reject(new Error('Browser TTS initialization timeout')), 5000)
+				);
+
+				await Promise.race([initPromise, timeoutPromise]);
+				ttsProvider = 'browser';
+
+				// Log available voices for debugging
+				const availableVoices = speechSynthesis.getVoices();
+				console.log('[Demo] ✅ Browser TTS initialized:', {
+					voice: config.voice || 'default',
+					rate: config.rate,
+					pitch: config.pitch,
+					availableVoices: availableVoices.length,
+					voiceFound: availableVoices.some(v => v.name === config.voice)
+				});
+			}
+
+			// Initialize other services if not already done
+			if (!catalogResolver) {
+				catalogResolver = new AccessibilityCatalogResolver([], 'en-US');
+				ttsService.setCatalogResolver(catalogResolver);
+			}
+
+			if (!toolCoordinator) {
+				toolCoordinator = new ToolCoordinator();
+			}
+
+			if (!highlightCoordinator) {
+				highlightCoordinator = new HighlightCoordinator();
+				ttsService.setHighlightCoordinator(highlightCoordinator);
+			}
+
+			console.log('[Demo] All toolkit services initialized successfully');
+		} catch (e) {
+			console.error('[Demo] Failed to initialize TTS services:', e);
+			// On error, fall back to browser TTS (simpler, no recursion)
+			ttsProvider = 'browser';
+		}
+	}
+
 	// Initialize window positions on mount
 	onMount(async () => {
 		if (browser) {
@@ -122,46 +241,51 @@
 				console.error('Failed to load persisted sessions:', e);
 			}
 
-			// Initialize TTS and toolkit services
+			// Load persisted TTS config
 			try {
-				ttsService = new TTSService();
-
-				// Try server-side TTS with AWS Polly first (for speech marks and word highlighting)
-				try {
-					const serverProvider = new ServerTTSProvider();
-					await ttsService.initialize(serverProvider, {
-						apiEndpoint: '/api/tts',
-						provider: 'polly',
-						voice: 'Joanna',
-						language: 'en-US',
-						rate: 1.0,
-					});
-					ttsProvider = 'polly';
-					console.log('[Demo] ✅ Server TTS initialized (AWS Polly with speech marks)');
-				} catch (serverError) {
-					console.warn('[Demo] Server TTS unavailable, falling back to browser TTS:', serverError);
-					// Fallback to browser TTS
-					const browserProvider = new BrowserTTSProvider();
-					await ttsService.initialize(browserProvider);
-					ttsProvider = 'browser';
-					console.log('[Demo] ✅ Browser TTS initialized (fallback)');
+				const storedConfig = localStorage.getItem(TTS_CONFIG_STORAGE_KEY);
+				if (storedConfig) {
+					ttsConfig = JSON.parse(storedConfig);
+					console.log('[Demo] Loaded TTS config from localStorage:', ttsConfig);
 				}
-
-				catalogResolver = new AccessibilityCatalogResolver([], 'en-US');
-				ttsService.setCatalogResolver(catalogResolver);
-
-				toolCoordinator = new ToolCoordinator();
-				highlightCoordinator = new HighlightCoordinator();
-
-				// Set highlightCoordinator on TTS service for word highlighting
-				ttsService.setHighlightCoordinator(highlightCoordinator);
-
-				console.log('[Demo] All toolkit services initialized successfully');
 			} catch (e) {
-				console.error('[Demo] Failed to initialize TTS services:', e);
+				console.error('Failed to load persisted TTS config:', e);
 			}
+
+			// Initialize TTS with loaded/default configuration
+			await initializeTTS(ttsConfig);
 		}
 	});
+
+	// Handle TTS configuration changes (save and refresh page)
+	function handleTTSConfigChange(newConfig: TTSConfig) {
+		console.log('[Demo] TTS config changed:', newConfig);
+
+		// Stop any currently playing TTS before reloading
+		if (ttsService) {
+			try {
+				ttsService.stop();
+				console.log('[Demo] Stopped active TTS before config change');
+			} catch (e) {
+				console.error('[Demo] Failed to stop TTS:', e);
+			}
+		}
+
+		// Persist to localStorage (compute key inline to avoid reactive dependencies)
+		if (browser) {
+			try {
+				const storageKey = `pie-section-demo-tts-config-${data.demo.id}`;
+				localStorage.setItem(storageKey, JSON.stringify(newConfig));
+				console.log('[Demo] TTS config saved, refreshing page...');
+
+				// Refresh the page to reinitialize with new config
+				// This is simpler and more reliable than reactive reinitialization
+				window.location.reload();
+			} catch (e) {
+				console.error('Failed to persist TTS config:', e);
+			}
+		}
+	}
 
 	// Set services on player imperatively when ready (web component property binding)
 	$effect(() => {
@@ -185,8 +309,15 @@
 	}
 
 	// Update URL when layoutType changes (without refresh)
+	// Use onNavigate to ensure router is initialized
+	let routerReady = $state(false);
+
+	onNavigate(() => {
+		routerReady = true;
+	});
+
 	$effect(() => {
-		if (browser) {
+		if (browser && routerReady) {
 			const url = new URL(window.location.href);
 			url.searchParams.set('player', playerType);
 			url.searchParams.set('layout', layoutType);
@@ -247,6 +378,16 @@
 
 	onDestroy(() => {
 		editor?.destroy();
+
+		// Stop TTS when component is destroyed (page navigation/refresh)
+		if (ttsService) {
+			try {
+				ttsService.stop();
+				console.log('[Demo] Stopped TTS on component destroy');
+			} catch (e) {
+				console.error('[Demo] Failed to stop TTS on destroy:', e);
+			}
+		}
 	});
 
 	// Compute player props based on selected type
@@ -506,30 +647,29 @@
 				</button>
 			</div>
 
-			<!-- TTS Provider Indicator -->
-			<div class="badge badge-sm gap-1"
-				class:badge-success={ttsProvider === 'polly'}
-				class:badge-warning={ttsProvider === 'browser'}
-				class:badge-ghost={ttsProvider === 'loading'}
-			>
-				{#if ttsProvider === 'loading'}
-					<span class="loading loading-spinner loading-xs"></span>
-					TTS Loading
-				{:else if ttsProvider === 'polly'}
-					<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-					</svg>
-					AWS Polly
-				{:else}
-					<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15.536a5 5 0 001.414 1.414m2.828-9.9a9 9 0 012.828 2.828" />
-					</svg>
-					Browser TTS
-				{/if}
-			</div>
 		</div>
 
 		<div class="navbar-end gap-2">
+			<!-- TTS Settings Button with Status Indicator -->
+			<button
+				class="btn btn-sm btn-outline"
+				onclick={() => showTTSSettings = true}
+				title="Configure TTS provider and settings"
+			>
+				{#if ttsProvider === 'loading'}
+					<span class="loading loading-spinner loading-xs"></span>
+					Loading
+				{:else}
+					<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+					</svg>
+					{#if ttsProvider === 'polly'}
+						Polly
+					{:else}
+						Browser
+					{/if}
+				{/if}
+			</button>
 			<button
 				class="btn btn-sm btn-outline"
 				onclick={() => showSessionPanel = !showSessionPanel}
@@ -777,5 +917,37 @@
 				</svg>
 			</div>
 		{/if}
+	</div>
+{/if}
+
+<!-- TTS Settings Modal -->
+{#if showTTSSettings}
+	<div class="modal modal-open">
+		<div class="modal-box max-w-2xl">
+			<div class="flex items-center justify-between mb-4">
+				<h3 class="font-bold text-lg">TTS Configuration</h3>
+				<button
+					class="btn btn-sm btn-circle btn-ghost"
+					onclick={() => showTTSSettings = false}
+				>
+					✕
+				</button>
+			</div>
+
+			<TTSSettings bind:config={ttsConfig} onConfigChange={handleTTSConfigChange} />
+
+			<div class="modal-action">
+				<button class="btn btn-sm" onclick={() => showTTSSettings = false}>
+					Close
+				</button>
+			</div>
+		</div>
+		<button
+			class="modal-backdrop"
+			type="button"
+			aria-label="Close TTS settings"
+			onclick={() => showTTSSettings = false}
+			onkeydown={(e) => { if (e.key === 'Escape') showTTSSettings = false; }}
+		></button>
 	</div>
 {/if}

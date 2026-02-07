@@ -5,9 +5,11 @@
 
 	let { data } = $props();
 
+	const demoId = $derived(data.demoId);
+
 	onMount(() => {
 		// Redirect to delivery view with current query params
-		goto(`/demo/${data.demoId}/delivery?${$page.url.searchParams}`, {
+		goto(`/demo/${demoId}/delivery?${$page.url.searchParams}`, {
 			replaceState: true
 		});
 	});

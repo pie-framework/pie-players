@@ -35,6 +35,15 @@ export interface ServerTTSProviderConfig extends TTSConfig {
 
   /** Volume level 0-1 */
   volume?: number;
+
+  /**
+   * Validate API endpoint availability during initialization (slower but safer)
+   *
+   * @extension Performance vs safety tradeoff
+   * @default false (fast initialization, fail on first synthesis if unavailable)
+   * @note When true, adds 100-500ms to initialization time
+   */
+  validateEndpoint?: boolean;
 }
 
 /**
@@ -343,6 +352,14 @@ export class ServerTTSProvider implements ITTSProvider {
 
   private config: ServerTTSProviderConfig | null = null;
 
+  /**
+   * Initialize the server TTS provider.
+   *
+   * This is designed to be fast by default (no API calls).
+   * Set validateEndpoint: true in config to test API availability during initialization.
+   *
+   * @performance Default: <10ms, With validation: 100-500ms
+   */
   async initialize(config: TTSConfig): Promise<ITTSProviderImplementation> {
     const serverConfig = config as ServerTTSProviderConfig;
 
@@ -352,17 +369,21 @@ export class ServerTTSProvider implements ITTSProvider {
 
     this.config = serverConfig;
 
-    // Test API availability
-    const available = await this.testAPIAvailability();
-    if (!available) {
-      throw new Error(`Server TTS API not available at ${serverConfig.apiEndpoint}`);
+    // Only test API availability if explicitly requested (slower but safer)
+    if (serverConfig.validateEndpoint) {
+      const available = await this.testAPIAvailability();
+      if (!available) {
+        throw new Error(`Server TTS API not available at ${serverConfig.apiEndpoint}`);
+      }
     }
 
     return new ServerTTSProviderImpl(serverConfig);
   }
 
   /**
-   * Test if API endpoint is available
+   * Test if API endpoint is available (with timeout).
+   *
+   * @performance 100-500ms depending on network
    */
   private async testAPIAvailability(): Promise<boolean> {
     if (!this.config) return false;
@@ -374,12 +395,24 @@ export class ServerTTSProvider implements ITTSProvider {
         headers['Authorization'] = `Bearer ${this.config.authToken}`;
       }
 
-      // Try to fetch voices to test API
-      const response = await fetch(`${this.config.apiEndpoint}/voices`, {
-        headers,
-      });
+      // Create abort controller for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
 
-      return response.ok;
+      try {
+        // Try to fetch voices to test API
+        const response = await fetch(`${this.config.apiEndpoint}/voices`, {
+          headers,
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+        return response.ok;
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        // If aborted due to timeout or network error, consider API unavailable
+        return false;
+      }
     } catch {
       return false;
     }

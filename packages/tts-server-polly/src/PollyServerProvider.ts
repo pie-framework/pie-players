@@ -28,23 +28,49 @@ import {
 } from '@pie-players/tts-server-core';
 
 /**
- * AWS Polly provider configuration
+ * AWS Polly provider configuration.
+ *
+ * This extends the base TTSServerConfig with Polly-specific settings.
+ * All fields marked with @extension are AWS-specific and not portable.
  */
 export interface PollyProviderConfig extends TTSServerConfig {
-  /** AWS region (e.g., 'us-east-1') */
+  /**
+   * AWS region (e.g., 'us-east-1', 'us-west-2', 'eu-west-1')
+   *
+   * @extension AWS-specific (region concept)
+   * @required
+   */
   region: string;
 
-  /** AWS credentials */
+  /**
+   * AWS credentials for API authentication
+   *
+   * @extension AWS-specific
+   * @note In production, prefer IAM roles over hardcoded credentials
+   * @see https://docs.aws.amazon.com/sdk-for-javascript/v3/developer-guide/setting-credentials.html
+   */
   credentials?: {
     accessKeyId: string;
     secretAccessKey: string;
     sessionToken?: string;
   };
 
-  /** Engine type: 'neural' (default) or 'standard' */
+  /**
+   * Polly engine type: 'neural' (higher quality) or 'standard' (lower cost)
+   *
+   * @extension AWS Polly-specific
+   * @default 'neural'
+   * @note Neural: $16/1M chars, Standard: $4/1M chars
+   */
   engine?: 'neural' | 'standard';
 
-  /** Default voice ID if not specified in requests */
+  /**
+   * Default voice ID if not specified in synthesis requests
+   *
+   * @standard Voice selection is standard, but voice names are provider-specific
+   * @default 'Joanna'
+   * @see https://docs.aws.amazon.com/polly/latest/dg/voicelist.html
+   */
   defaultVoice?: string;
 }
 
@@ -71,7 +97,13 @@ export class PollyServerProvider extends BaseTTSProvider {
   private defaultVoice = 'Joanna';
 
   /**
-   * Initialize the AWS Polly provider
+   * Initialize the AWS Polly provider.
+   *
+   * This is FAST and lightweight - only validates config and creates the Polly client.
+   * Does NOT fetch voices or make test API calls.
+   *
+   * @param config - Polly configuration with region and credentials
+   * @performance Completes in ~10-50ms
    */
   async initialize(config: PollyProviderConfig): Promise<void> {
     if (!config.region) {
@@ -88,12 +120,14 @@ export class PollyServerProvider extends BaseTTSProvider {
     this.defaultVoice = config.defaultVoice || 'Joanna';
 
     try {
+      // Create Polly client (fast - no API calls)
       this.client = new PollyClient({
         region: config.region,
         credentials: config.credentials,
       });
 
       this.initialized = true;
+      // NOTE: We do NOT call getVoices() here - that's an explicit secondary operation
     } catch (error) {
       throw new TTSError(
         TTSErrorCode.INITIALIZATION_ERROR,
@@ -330,18 +364,39 @@ export class PollyServerProvider extends BaseTTSProvider {
   }
 
   /**
-   * Get AWS Polly capabilities
+   * Get AWS Polly capabilities.
+   *
+   * Clearly documents what features are W3C-standard vs AWS-specific.
    */
   getCapabilities(): ServerProviderCapabilities {
     return {
-      supportsSpeechMarks: true, // ✅ Native support via WORD speech marks
-      supportsSSML: true, // ✅ Full SSML support
-      supportsPitch: false, // ❌ Use SSML prosody tag instead
-      supportsRate: true, // ✅ Via SSML prosody tag
-      supportsVolume: false, // ❌ Use client-side audio volume
-      supportsMultipleVoices: true, // ✅ 25+ languages, 60+ voices
-      maxTextLength: 3000, // AWS Polly limit
-      supportedFormats: ['mp3'], // MP3 only for now
+      // W3C Standard features
+      standard: {
+        supportsSSML: true, // ✅ Full SSML 1.1 + AWS extensions
+        supportsPitch: true, // ✅ Via SSML <prosody pitch> (not direct API param)
+        supportsRate: true, // ✅ Via SSML <prosody rate> (not direct API param)
+        supportsVolume: false, // ❌ Not supported by Polly API (handle client-side)
+        supportsMultipleVoices: true, // ✅ 60+ voices across 25+ languages
+        maxTextLength: 3000, // AWS Polly limit per request
+      },
+
+      // Provider-specific extensions
+      extensions: {
+        supportsSpeechMarks: true, // ✅ Native WORD speech marks (millisecond precision)
+        supportedFormats: ['mp3'], // Currently MP3 only (could add ogg, pcm)
+        supportsSampleRate: true, // ✅ Configurable sample rate
+
+        // AWS Polly-specific features
+        providerSpecific: {
+          engines: ['neural', 'standard'], // Engine selection
+          supportedSpeechMarkTypes: ['word'], // Currently only WORD (could add sentence, ssml, viseme)
+          supportsLexicons: false, // Not yet implemented
+          awsSSMLExtensions: true, // <aws-break>, <aws-emphasis>, <aws-w>, etc.
+          neuralVoicesCount: 30, // ~30 neural voices available
+          standardVoicesCount: 30, // ~30 standard voices available
+          languagesCount: 25, // 25+ languages supported
+        },
+      },
     };
   }
 

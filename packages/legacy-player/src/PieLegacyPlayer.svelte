@@ -143,6 +143,7 @@
 				playerElement.removeEventListener('player-error', handlePlayerError);
 			};
 		}
+		return undefined;
 	});
 
 	// Forward events from pie-player

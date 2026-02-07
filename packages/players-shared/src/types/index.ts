@@ -430,11 +430,59 @@ export interface AssessmentSettings {
 			type?: "basic" | "scientific" | "graphing" | "ti-84" | "ti-108";
 			settings?: Record<string, any>;
 		};
+		/**
+		 * Text-to-speech configuration.
+		 *
+		 * Standard parameters (voice, rate, pitch) are portable across providers
+		 * and follow W3C Web Speech API specifications.
+		 *
+		 * Provider-specific extensions should be placed in providerOptions.
+		 *
+		 * @see https://w3c.github.io/speech-api/
+		 */
 		textToSpeech?: {
+			/**
+			 * TTS provider
+			 *
+			 * @standard "browser" uses W3C Web Speech API
+			 * @extension "polly" and "custom" are provider-specific
+			 */
 			provider?: "browser" | "polly" | "custom";
+
+			/**
+			 * Voice identifier (provider-specific names)
+			 *
+			 * @standard W3C Web Speech API (concept)
+			 * @example "Joanna" (Polly), "en-US-Standard-A" (Google), browser voices
+			 */
 			voice?: string;
+
+			/**
+			 * Speech rate (speed multiplier)
+			 *
+			 * @standard W3C Web Speech API
+			 * @range 0.25 to 4.0
+			 * @default 1.0
+			 */
 			rate?: number;
+
+			/**
+			 * Pitch adjustment
+			 *
+			 * @standard W3C Web Speech API
+			 * @range 0 to 2 (as multiplier)
+			 * @default 1.0
+			 */
 			pitch?: number;
+
+			/**
+			 * Provider-specific options (extensions)
+			 *
+			 * @extension Not portable across providers
+			 * @example For AWS Polly: { engine: "neural", region: "us-east-1" }
+			 * @example For Google Cloud: { audioEncoding: "MP3", effectsProfileId: ["headphone-class-device"] }
+			 */
+			providerOptions?: Record<string, any>;
 		};
 		[toolId: string]: any; // Other tool configs
 	};

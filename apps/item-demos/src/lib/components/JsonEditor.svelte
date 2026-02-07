@@ -1,0 +1,59 @@
+<script lang="ts">
+	import { onMount, onDestroy } from 'svelte';
+	import { Editor } from '@tiptap/core';
+	import Document from '@tiptap/extension-document';
+	import Text from '@tiptap/extension-text';
+	import History from '@tiptap/extension-history';
+	import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
+	import { common, createLowlight } from 'lowlight';
+
+	let {
+		value,
+		onInput
+	}: {
+		value: string;
+		onInput?: (value: string) => void;
+	} = $props();
+
+	let editorElement: HTMLDivElement;
+	let editor: Editor | null = null;
+	const lowlight = createLowlight(common);
+
+	onMount(() => {
+		editor = new Editor({
+			element: editorElement,
+			extensions: [
+				Document,
+				Text,
+				History,
+				CodeBlockLowlight.configure({
+					lowlight,
+					defaultLanguage: 'json'
+				})
+			],
+			content: `<pre><code class="language-json">${value}</code></pre>`,
+			editorProps: {
+				attributes: {
+					class: 'prose prose-sm max-w-none focus:outline-none min-h-96'
+				}
+			},
+			onUpdate: ({ editor }) => {
+				const text = editor.state.doc.textContent;
+				onInput?.(text);
+			}
+		});
+	});
+
+	onDestroy(() => {
+		editor?.destroy();
+	});
+
+	// Update editor when value changes externally
+	$effect(() => {
+		if (editor && value !== editor.state.doc.textContent) {
+			editor.commands.setContent(`<pre><code class="language-json">${value}</code></pre>`);
+		}
+	});
+</script>
+
+<div bind:this={editorElement} class="border border-base-300 rounded p-2"></div>

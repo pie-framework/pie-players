@@ -28,8 +28,13 @@
 		"@pie-players/pie-fixed-player": "workspace:*",
 		"@pie-players/pie-iife-player": "workspace:*",
 		"@pie-players/pie-esm-player": "workspace:*",
+		"@pie-players/pie-section-player": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*",
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
+		"@pie-players/pie-assessment-player": "workspace:*",
+		"@pie-players/tts-server-core": "workspace:*",
+		"@pie-players/tts-server-polly": "workspace:*",
+		"@pie-players/tts-client-server": "workspace:*",
 		"@tiptap/core": "^3.18.0",
 		"@tiptap/extension-code-block": "^3.18.0",
 		"@tiptap/extension-code-block-lowlight": "^3.18.0",
@@ -39,8 +44,7 @@
 		"@tiptap/starter-kit": "^3.18.0",
 		"@tiptap/pm": "^3.18.0",
 		"highlight.js": "^11.11.1",
-		"lowlight": "^3.3.0",
-		"@pie-players/pie-assessment-player": "workspace:*"
+		"lowlight": "^3.3.0"
 	},
 	"devDependencies": {
 		"@axe-core/playwright": "^4.11.0",

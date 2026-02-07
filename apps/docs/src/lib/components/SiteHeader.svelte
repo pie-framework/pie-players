@@ -1,8 +1,5 @@
 <script lang="ts">
 	import { base } from '$app/paths';
-
-	// Link to examples app (separate SvelteKit app merged at /examples/)
-	const examplesHref = `${base}/examples/`;
 </script>
 
 <header class="border-b border-base-200 bg-base-100/80 backdrop-blur">
@@ -22,7 +19,6 @@
 		<div class="navbar-center hidden md:flex">
 			<ul class="menu menu-horizontal px-1">
 				<li><a href={`${base}/`}>Overview</a></li>
-				<li><a href={examplesHref}>Examples</a></li>
 			</ul>
 		</div>
 

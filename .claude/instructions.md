@@ -91,6 +91,13 @@ These checks ensure:
 - **Event-driven**: PIE player events for communication
 - **Global registry**: Elements register in `window.pie.default`
 
+### Web Components and Reactivity
+
+- Treat custom elements as imperative APIs: set properties, not attributes.
+- Do not assume attribute updates are reactive for object data.
+- For model/session updates, reassign new objects when needed to trigger updates.
+- When using controller-based elements, rebuild and re-set the element model on mode/session changes.
+
 ### Element API
 
 Each element exports three entry points:

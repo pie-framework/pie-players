@@ -1,4 +1,4 @@
-name: Deploy Docs + Examples to GitHub Pages
+name: Deploy Docs to GitHub Pages
 
 on:
   push:
@@ -6,7 +6,6 @@ on:
       - master
     paths:
       - 'apps/docs/**'
-      - 'apps/example/**'
       - 'packages/**'
       - 'package.json'
       - 'bun.lock'
@@ -52,19 +51,12 @@ jobs:
           NODE_ENV: production
           GITHUB_PAGES_CUSTOM_DOMAIN: true
 
-      - name: Build examples site (GitHub Pages)
-        run: bun run --cwd apps/example build
-        env:
-          NODE_ENV: production
-          GITHUB_PAGES_CUSTOM_DOMAIN: true
-
       - name: Assemble GitHub Pages artifact
         shell: bash
         run: |
           rm -rf site
-          mkdir -p site/examples
+          mkdir -p site
           cp -a apps/docs/build/. site/
-          cp -a apps/example/build/. site/examples/
           touch site/.nojekyll
 
       - name: Upload artifact

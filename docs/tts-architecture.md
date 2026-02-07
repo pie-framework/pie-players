@@ -342,29 +342,37 @@ export class MyTTSProvider implements ITTSProvider {
 }
 ```
 
-## QTI 3.0 Integration
+## QTI 3.0 Integration with Section Player
 
-The TTS system integrates seamlessly with QTI 3.0 accessibility catalogs:
+The TTS system integrates seamlessly with QTI 3.0 accessibility catalogs through the **PIE Section Player**:
 
-```typescript
+```javascript
 import {
   TTSService,
-  AccessibilityCatalogResolver
+  AccessibilityCatalogResolver,
+  BrowserTTSProvider
 } from '@pie-players/pie-assessment-toolkit';
 
+// Initialize services
+const ttsService = new TTSService();
 const catalogResolver = new AccessibilityCatalogResolver(
-  assessment.accessibilityCatalogs,
+  assessment.accessibilityCatalogs || [],
   'en-US'
 );
 
+await ttsService.initialize(new BrowserTTSProvider());
 ttsService.setCatalogResolver(catalogResolver);
 
-// Uses pre-authored SSML from catalog if available,
-// falls back to generated TTS
-await ttsService.speak("Welcome message", {
-  catalogId: 'welcome-message',
-  language: 'en-US'
-});
+// Pass to section player - it handles the rest automatically
+const sectionPlayer = document.getElementById('section-player');
+sectionPlayer.ttsService = ttsService;
+sectionPlayer.catalogResolver = catalogResolver;
+sectionPlayer.section = section;
+
+// TTS tools in the section player will automatically:
+// - Extract SSML from passages and items
+// - Use pre-authored SSML from catalogs if available
+// - Fall back to generated TTS if no catalog exists
 ```
 
 ## SSML Extraction and Auto-Catalog Generation
@@ -450,9 +458,13 @@ catalogResolver.addItemCatalogs(result.catalogs);
 ```
 
 **Integration Points:**
+- `PieSectionPlayer` - Primary interface for toolkit services
 - `ItemRenderer.svelte` - Extracts SSML from items automatically
 - `PassageRenderer.svelte` - Extracts SSML from passages automatically
 - Runs transparently during render (no author action needed)
+
+**Usage Pattern:**
+The section player is the primary container for assessment toolkit integration. Simply pass services as JavaScript properties, and the player handles SSML extraction, catalog management, and TTS tool rendering automatically.
 
 See [Accessibility Catalogs Integration Guide](./accessibility-catalogs-integration-guide.md) for complete examples.
 

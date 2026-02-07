@@ -306,41 +306,57 @@ dist/
 
 ---
 
-## Integration with AssessmentPlayer
+## Integration with Assessment Toolkit
 
-The `AssessmentPlayer` can now use `<pie-section-player>` web component:
+The **Section Player is the primary interface** for integrating assessment toolkit services.
 
-```svelte
-<!-- PieAssessmentPlayer.svelte -->
-<script>
-  import '@pie-players/pie-section-player';
+### Service Integration Pattern
 
-  let currentSection = $state(sections[0]);
-</script>
+```javascript
+import {
+  TTSService,
+  BrowserTTSProvider,
+  AccessibilityCatalogResolver,
+  ToolCoordinator,
+  HighlightCoordinator
+} from '@pie-players/pie-assessment-toolkit';
 
-<pie-section-player
-  section={JSON.stringify(currentSection)}
-  mode="gather"
-  view="candidate"
-></pie-section-player>
+// Initialize services
+const ttsService = new TTSService();
+const toolCoordinator = new ToolCoordinator();
+const highlightCoordinator = new HighlightCoordinator();
+const catalogResolver = new AccessibilityCatalogResolver(
+  assessment.accessibilityCatalogs || [],
+  'en-US'
+);
+
+await ttsService.initialize(new BrowserTTSProvider());
+ttsService.setCatalogResolver(catalogResolver);
+ttsService.setHighlightCoordinator(highlightCoordinator);
+
+// Pass services to section player (JavaScript properties, NOT HTML attributes)
+const sectionPlayer = document.getElementById('section-player');
+sectionPlayer.ttsService = ttsService;
+sectionPlayer.toolCoordinator = toolCoordinator;
+sectionPlayer.highlightCoordinator = highlightCoordinator;
+sectionPlayer.catalogResolver = catalogResolver;
+
+// Section player automatically:
+// - Extracts SSML from passages and items
+// - Manages item-level catalog lifecycle
+// - Renders TTS tools inline in headers
+// - Handles catalog resolution
 ```
 
-Or use the Svelte component directly (if both are in Svelte):
+### Future: AssessmentPlayer Integration
 
-```svelte
-<script>
-  import PieSectionPlayer from '@pie-players/pie-section-player';
+A reference `AssessmentPlayer` may be implemented as a convenience wrapper for multi-section assessments. It would:
+- Manage navigation across sections
+- Coordinate section player instances
+- Provide assessment-level state management
+- But delegate to section players for rendering and toolkit integration
 
-  let currentSection = $state(sections[0]);
-</script>
-
-<!-- No JSON serialization - direct Svelte reactivity -->
-<PieSectionPlayer
-  section={currentSection}
-  mode="gather"
-  view="candidate"
-/>
-```
+The section player remains the primary interface for toolkit services.
 
 ---
 
@@ -383,18 +399,31 @@ Create new internal components:
 - `PairedPassageTabs.svelte`
 - `PairedPassageSideBySide.svelte`
 
-### Phase 3: Tool Integration
+### Phase 3: Tool Integration ✅ Complete
 
-Add tool coordination from assessment-toolkit:
-- Calculator integration
-- TTS integration
-- Theme/highlight support
+**Status**: Implemented
 
-Pass services via props or context.
+Tool coordination from assessment-toolkit integrated:
+- ✅ TTS service integration with automatic SSML extraction
+- ✅ ToolCoordinator for z-index management
+- ✅ HighlightCoordinator for CSS Custom Highlight API
+- ✅ AccessibilityCatalogResolver for QTI 3.0 catalogs
 
-### Phase 4: AssessmentPlayer Integration
+Services passed via JavaScript properties (not HTML attributes).
 
-Refactor `PieAssessmentPlayer` to use `<pie-section-player>` web component or import the Svelte component directly for better performance.
+See [TTS-INTEGRATION.md](./TTS-INTEGRATION.md) for complete details.
+
+### Phase 4: Enhanced Layouts
+
+Add support for paired passage layouts:
+- Tabs layout
+- Side-by-side layout
+- Stacked layout
+- Collapsible layout
+
+Create new internal components:
+- `PairedPassageTabs.svelte`
+- `PairedPassageSideBySide.svelte`
 
 ---
 

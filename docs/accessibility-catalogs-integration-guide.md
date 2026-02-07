@@ -12,7 +12,7 @@
 2. [Architecture](#architecture)
 3. [Integration with PIE](#integration-with-pie)
 4. [TTSService Integration](#ttsservice-integration)
-5. [AssessmentPlayer Integration](#assessmentplayer-integration)
+5. [Section Player Integration](#section-player-integration)
 6. [PIE Element Authoring](#pie-element-authoring)
 7. [Usage Examples](#usage-examples)
 8. [Implementation Phases](#implementation-phases)
@@ -44,17 +44,17 @@ QTI 3.0 Accessibility Catalogs provide standardized alternative representations 
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                  AssessmentPlayer                       │
+│              PIE Section Player (Primary)               │
 │  ┌───────────────────────────────────────────────────┐ │
 │  │     AccessibilityCatalogResolver                  │ │
 │  │                                                   │ │
 │  │  ┌─────────────────┐  ┌─────────────────┐       │ │
 │  │  │ Assessment-     │  │ Item-Level      │       │ │
 │  │  │ Level Catalogs  │  │ Catalogs        │       │ │
-│  │  │ (Shared)        │  │ (Per-Item)      │       │ │
+│  │  │ (Shared)        │  │ (Auto-managed)  │       │ │
 │  │  └─────────────────┘  └─────────────────┘       │ │
 │  │                                                   │ │
-│  │  Priority: Item-level > Assessment-level         │ │
+│  │  Priority: Extracted > Item > Assessment         │ │
 │  └───────────────────────────────────────────────────┘ │
 │                         │                               │
 │                         ├──────┬──────┬─────────────┐   │
@@ -70,11 +70,16 @@ QTI 3.0 Accessibility Catalogs provide standardized alternative representations 
 
 ### Data Flow
 
-1. **Assessment Load**: Index assessment-level catalogs
-2. **Item Render**: Add item-level catalogs (temporary, cleared on navigation)
-3. **Content Request**: Resolve catalog by ID and type
-4. **Service Integration**: Pass resolved content to appropriate service (TTS, video player, etc.)
-5. **Fallback**: If catalog not found, use default rendering
+1. **Service Initialization**: Create services and pass to section player
+2. **Section Load**: Section player receives assessment-level catalogs via resolver
+3. **Item/Passage Render**: Section player automatically:
+   - Extracts SSML from embedded `<speak>` tags
+   - Generates catalog entries with unique IDs
+   - Adds item-level catalogs to resolver
+4. **Content Request**: Resolve catalog by ID and type (extracted → item → assessment)
+5. **Service Integration**: Pass resolved content to appropriate service (TTS, video player, etc.)
+6. **Navigation**: Section player automatically clears item-level catalogs
+7. **Fallback**: If catalog not found, use default rendering
 
 ---
 
@@ -474,84 +479,66 @@ class AssessmentPlayer {
 
 ---
 
-## AssessmentPlayer Integration
+## Section Player Integration
+
+The **PIE Section Player** is the primary interface for integrating accessibility catalogs with the assessment toolkit.
 
 ### Complete Integration Example
 
-```typescript
-// packages/assessment-toolkit/src/player/AssessmentPlayer.ts
+```javascript
+import {
+  TTSService,
+  BrowserTTSProvider,
+  AccessibilityCatalogResolver,
+  ToolCoordinator,
+  HighlightCoordinator
+} from '@pie-players/pie-assessment-toolkit';
 
-import { AccessibilityCatalogResolver } from '../services/AccessibilityCatalogResolver';
+// Initialize services
+const ttsService = new TTSService();
+const toolCoordinator = new ToolCoordinator();
+const highlightCoordinator = new HighlightCoordinator();
 
-export class AssessmentPlayer {
-  private catalogResolver: AccessibilityCatalogResolver;
+// Initialize catalog resolver with assessment-level catalogs
+const catalogResolver = new AccessibilityCatalogResolver(
+  assessment.accessibilityCatalogs || [],
+  'en-US'
+);
 
-  constructor(config: AssessmentPlayerConfig) {
-    // Initialize catalog resolver with assessment-level catalogs
-    this.catalogResolver = new AccessibilityCatalogResolver(
-      config.assessment.accessibilityCatalogs,
-      config.locale || 'en'
-    );
+// Initialize TTS with a provider
+await ttsService.initialize(new BrowserTTSProvider());
+ttsService.setCatalogResolver(catalogResolver);
+ttsService.setHighlightCoordinator(highlightCoordinator);
 
-    // Pass resolver to services
-    this.services.ttsService.setCatalogResolver(this.catalogResolver);
-  }
+// Pass services to section player (JavaScript properties, NOT HTML attributes)
+const sectionPlayer = document.getElementById('section-player');
+sectionPlayer.ttsService = ttsService;
+sectionPlayer.toolCoordinator = toolCoordinator;
+sectionPlayer.highlightCoordinator = highlightCoordinator;
+sectionPlayer.catalogResolver = catalogResolver;
 
-  /**
-   * Load item and add item-level catalogs
-   */
-  private async loadItemContent(itemRef: AssessmentItemRef): Promise<ItemEntity> {
-    const item = await this.config.loadItem(itemRef.itemVId);
+// Set section data
+sectionPlayer.section = section;
 
-    // Add item-level catalogs to resolver
-    if (item.accessibilityCatalogs) {
-      this.catalogResolver.addItemCatalogs(item.accessibilityCatalogs);
-      console.debug(`[Player] Added ${item.accessibilityCatalogs.length} item catalogs`);
-    }
-
-    return item;
-  }
-
-  /**
-   * Clear item-level catalogs when navigating away
-   */
-  private async navigateToItem(index: number): Promise<void> {
-    // Clear previous item's catalogs
-    this.catalogResolver.clearItemCatalogs();
-
-    // Load new item (which adds its catalogs)
-    const itemRef = this.getCurrentItemRef();
-    const item = await this.loadItemContent(itemRef);
-
-    // Render item...
-  }
-
-  /**
-   * Expose catalog resolver to PIE elements
-   */
-  async render(container: HTMLElement): Promise<void> {
-    // Make catalog resolver available to PIE elements via context
-    const pieContext = {
-      ...this.getPieContext(),
-      catalogResolver: this.catalogResolver
-    };
-
-    // Render with enhanced context
-    await piePlayer.render({
-      item: this.currentItem,
-      session: this.currentSession,
-      context: pieContext
-    });
-  }
-
-  /**
-   * Get statistics about available catalogs
-   */
-  getCatalogStatistics(): CatalogStatistics {
-    return this.catalogResolver.getStatistics();
-  }
-}
+// The section player now automatically:
+// - Extracts SSML from embedded <speak> tags
+// - Generates catalog entries with unique IDs
+// - Manages item-level catalog lifecycle (add on load, clear on navigation)
+// - Renders TTS tools inline in passage/item headers
+// - Resolves catalogs with priority: extracted > item > assessment
 ```
+
+### What Happens Automatically
+
+When you pass the `catalogResolver` to the section player:
+
+1. **SSML Extraction**: The section player scans passages and items for embedded `<speak>` tags
+2. **Catalog Generation**: Auto-generates QTI 3.0 catalog entries with IDs like `auto-prompt-q1-0`
+3. **Lifecycle Management**: Adds item catalogs on load, clears them on navigation
+4. **TTS Tool Rendering**: Shows inline TTS buttons when `ttsService` is provided
+5. **Catalog Resolution**: Uses extracted catalogs first, then item catalogs, then assessment catalogs
+
+**You don't need to manually manage catalog lifecycle** - the section player handles it.
 
 ---
 

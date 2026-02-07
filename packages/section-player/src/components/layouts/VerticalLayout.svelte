@@ -1,13 +1,14 @@
 <!--
-  PageModeLayout - Internal Component
+  VerticalLayout - Internal Component
 
-  Renders page mode (keepTogether: true) - all items and passages visible.
+  Renders vertical layout - passages first, then all items stacked vertically.
+  Traditional assessment format with linear reading flow.
   Not exposed as a web component - used internally in PieSectionPlayer.
 -->
 <script lang="ts">
 	import type { PassageEntity, ItemEntity } from '@pie-players/pie-players-shared/types';
-	import PassageRenderer from './PassageRenderer.svelte';
-	import ItemRenderer from './ItemRenderer.svelte';
+	import PassageRenderer from '../PassageRenderer.svelte';
+	import ItemRenderer from '../ItemRenderer.svelte';
 
 	let {
 		passages,
@@ -48,7 +49,7 @@
 	}
 </script>
 
-<div class="page-mode-layout">
+<div class="vertical-layout">
 	<!-- Passages -->
 	{#if passages.length > 0}
 		<div class="passages-section">
@@ -92,24 +93,20 @@
 </div>
 
 <style>
-	.page-mode-layout {
+	.vertical-layout {
 		display: flex;
 		flex-direction: column;
 		gap: 1.5rem;
 		padding: 1rem;
+		height: 100%;
+		overflow-y: auto;
+		overflow-x: hidden;
 	}
 
 	.passages-section {
 		display: flex;
 		flex-direction: column;
-		gap: 1rem;
-	}
-
-	.passages-section :global(.passage-item) {
-		padding: 1rem;
-		background: #fafafa;
-		border: 1px solid #e0e0e0;
-		border-radius: 4px;
+		gap: 1.5rem;
 	}
 
 	.items-section {
@@ -118,16 +115,9 @@
 		gap: 1.5rem;
 	}
 
-	.item-wrapper {
-		padding: 1rem;
-		background: white;
-		border: 1px solid #e0e0e0;
-		border-radius: 4px;
-	}
-
 	/* Responsive */
 	@media (max-width: 768px) {
-		.page-mode-layout {
+		.vertical-layout {
 			padding: 0.5rem;
 			gap: 1rem;
 		}
@@ -135,5 +125,24 @@
 		.items-section {
 			gap: 1rem;
 		}
+	}
+
+	/* Scrollbar styling */
+	.vertical-layout::-webkit-scrollbar {
+		width: 8px;
+	}
+
+	.vertical-layout::-webkit-scrollbar-track {
+		background: #f1f1f1;
+		border-radius: 4px;
+	}
+
+	.vertical-layout::-webkit-scrollbar-thumb {
+		background: #c1c1c1;
+		border-radius: 4px;
+	}
+
+	.vertical-layout::-webkit-scrollbar-thumb:hover {
+		background: #a1a1a1;
 	}
 </style>

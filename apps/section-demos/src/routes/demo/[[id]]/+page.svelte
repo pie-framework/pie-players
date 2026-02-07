@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
 	import { browser } from '$app/environment';
+	import { goto, replaceState } from '$app/navigation';
+	import { page } from '$app/stores';
 	import PieSectionPlayer from '@pie-players/pie-section-player/src/PieSectionPlayer.svelte';
 	import type { PageData } from './$types';
 	import { Editor } from '@tiptap/core';
@@ -20,8 +22,30 @@
 
 	let { data }: { data: PageData } = $props();
 
+	// Read URL params for initial state
+	function getInitialPlayerType(): 'legacy' | 'iife' | 'esm' {
+		if (browser) {
+			const urlPlayerType = new URLSearchParams(window.location.search).get('player');
+			if (urlPlayerType && ['legacy', 'iife', 'esm'].includes(urlPlayerType)) {
+				return urlPlayerType as 'legacy' | 'iife' | 'esm';
+			}
+		}
+		return 'legacy';
+	}
+
+	function getInitialLayoutType(): 'vertical' | 'split-panel' {
+		if (browser) {
+			const urlLayoutType = new URLSearchParams(window.location.search).get('layout');
+			if (urlLayoutType && ['vertical', 'split-panel'].includes(urlLayoutType)) {
+				return urlLayoutType as 'vertical' | 'split-panel';
+			}
+		}
+		return 'split-panel';
+	}
+
 	let showJson = $state(false);
-	let playerType = $state<'legacy' | 'iife' | 'esm'>('legacy');
+	let playerType = $state<'legacy' | 'iife' | 'esm'>(getInitialPlayerType());
+	let layoutType = $state<'vertical' | 'split-panel'>(getInitialLayoutType());
 	let showSessionPanel = $state(false);
 	let showSourcePanel = $state(false);
 	let isSessionMinimized = $state(false);
@@ -147,6 +171,26 @@
 			sectionPlayer.toolCoordinator = toolCoordinator;
 			sectionPlayer.highlightCoordinator = highlightCoordinator;
 			console.log('[Demo] Services set on section player');
+		}
+	});
+
+	// Handle player type change with page refresh
+	function handlePlayerChange(newPlayerType: 'legacy' | 'iife' | 'esm') {
+		if (browser) {
+			const url = new URL(window.location.href);
+			url.searchParams.set('player', newPlayerType);
+			url.searchParams.set('layout', layoutType);
+			window.location.href = url.toString();
+		}
+	}
+
+	// Update URL when layoutType changes (without refresh)
+	$effect(() => {
+		if (browser) {
+			const url = new URL(window.location.href);
+			url.searchParams.set('player', playerType);
+			url.searchParams.set('layout', layoutType);
+			replaceState(url.pathname + url.search, {});
 		}
 	});
 
@@ -403,9 +447,9 @@
 	<title>{data.demo?.name || 'Demo'} - PIE Section Player</title>
 </svelte:head>
 
-<div class="container mx-auto px-4 py-8 max-w-6xl">
+<div class="w-full h-screen flex flex-col">
 	<!-- Menu Bar (Sticky) -->
-	<div class="navbar bg-base-200 rounded-lg mb-6 sticky top-4 z-50 shadow-lg">
+	<div class="navbar bg-base-200 mb-0 sticky top-0 z-50 shadow-lg">
 		<div class="navbar-start">
 			<a href="/" class="btn btn-ghost btn-sm">&#8592; Back to Demos</a>
 		</div>
@@ -415,23 +459,50 @@
 				<button
 					class="btn btn-sm join-item"
 					class:btn-active={playerType === 'legacy'}
-					onclick={() => playerType = 'legacy'}
+					onclick={() => handlePlayerChange('legacy')}
 				>
 					Legacy
 				</button>
 				<button
 					class="btn btn-sm join-item"
 					class:btn-active={playerType === 'iife'}
-					onclick={() => playerType = 'iife'}
+					onclick={() => handlePlayerChange('iife')}
 				>
 					IIFE
 				</button>
 				<button
 					class="btn btn-sm join-item"
 					class:btn-active={playerType === 'esm'}
-					onclick={() => playerType = 'esm'}
+					onclick={() => handlePlayerChange('esm')}
 				>
 					ESM
+				</button>
+			</div>
+
+			<div class="divider divider-horizontal"></div>
+
+			<div class="join">
+				<button
+					class="btn btn-sm join-item"
+					class:btn-active={layoutType === 'split-panel'}
+					onclick={() => layoutType = 'split-panel'}
+					title="Split panel - passages left, items right"
+				>
+					<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 4H5a2 2 0 00-2 2v12a2 2 0 002 2h4m0-16v16m0-16h10a2 2 0 012 2v12a2 2 0 01-2 2H9" />
+					</svg>
+					Split
+				</button>
+				<button
+					class="btn btn-sm join-item"
+					class:btn-active={layoutType === 'vertical'}
+					onclick={() => layoutType = 'vertical'}
+					title="Vertical layout - passages first, then items"
+				>
+					<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+					</svg>
+					Vertical
 				</button>
 			</div>
 
@@ -461,22 +532,12 @@
 		<div class="navbar-end gap-2">
 			<button
 				class="btn btn-sm btn-outline"
-				onclick={resetSessions}
-				title="Reset all session data and reload page"
-			>
-				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-				</svg>
-				Reset
-			</button>
-			<button
-				class="btn btn-sm btn-outline"
 				onclick={() => showSessionPanel = !showSessionPanel}
 			>
 				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
 				</svg>
-				Session Data
+				Session
 			</button>
 			<button
 				class="btn btn-sm btn-outline"
@@ -490,23 +551,17 @@
 		</div>
 	</div>
 
-	<div class="mb-8">
-		<h1 class="text-4xl font-bold mb-2">{data.demo.name}</h1>
-		<p class="text-base-content/70">{data.demo.description}</p>
-	</div>
-
-	<div class="card bg-base-100 shadow-xl mb-8">
-		<div class="card-body">
-			<PieSectionPlayer
-				bind:this={sectionPlayer}
-				section={liveSection}
-				mode="gather"
-				view="candidate"
-				itemSessions={itemSessions}
-				{...playerProps}
-				onsessionchanged={handleSessionChanged}
-			/>
-		</div>
+	<div class="flex-1 overflow-hidden">
+		<PieSectionPlayer
+			bind:this={sectionPlayer}
+			section={liveSection}
+			layout={layoutType}
+			mode="gather"
+			view="candidate"
+			itemSessions={itemSessions}
+			{...playerProps}
+			onsessionchanged={handleSessionChanged}
+		/>
 	</div>
 
 </div>

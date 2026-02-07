@@ -222,11 +222,8 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		padding: 0.75rem 1rem;
-		background: #e3f2fd;
-		border: 1px solid #90caf9;
-		border-bottom: none;
-		border-radius: 4px 4px 0 0;
+		padding: 0.75rem 0;
+		margin-bottom: 0.5rem;
 	}
 
 	.item-title {
@@ -237,9 +234,8 @@
 	}
 
 	.item-content {
-		border: 1px solid #90caf9;
-		border-radius: 0 0 4px 4px;
 		padding: 1rem;
-		background: white;
+		border: 1px solid #e5e7eb;
+		border-radius: 4px;
 	}
 </style>

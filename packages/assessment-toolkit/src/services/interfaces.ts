@@ -73,7 +73,11 @@ export interface IHighlightCoordinator {
 	/**
 	 * Highlight a word for TTS (temporary)
 	 */
-	highlightTTSWord(textNode: Text, startOffset: number, endOffset: number): void;
+	highlightTTSWord(
+		textNode: Text,
+		startOffset: number,
+		endOffset: number,
+	): void;
 
 	/**
 	 * Highlight sentence(s) for TTS (background layer)

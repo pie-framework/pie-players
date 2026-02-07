@@ -59,7 +59,8 @@ export class TTSService {
 	private state: PlaybackState = PlaybackState.IDLE;
 	private currentText: string | null = null;
 	private currentContentElement: Element | null = null;
-	private normalizedToDOM: Map<number, { node: Text; offset: number }> = new Map();
+	private normalizedToDOM: Map<number, { node: Text; offset: number }> =
+		new Map();
 	private listeners = new Map<string, Set<(state: PlaybackState) => void>>();
 
 	constructor() {}
@@ -120,28 +121,41 @@ export class TTSService {
 
 		// Normalize the DOM text the same way the spoken text is normalized
 		// (trim + collapse whitespace)
-		const normalizedDomText = domText.trim().replace(/\s+/g, ' ');
+		const normalizedDomText = domText.trim().replace(/\s+/g, " ");
 
-		console.log('[TTSService] Text comparison:', {
+		console.log("[TTSService] Text comparison:", {
 			spokenLength: spokenText.length,
 			normalizedDomLength: normalizedDomText.length,
 			match: spokenText === normalizedDomText,
 			spokenPreview: spokenText.substring(0, 150),
 			normalizedPreview: normalizedDomText.substring(0, 150),
-			differAtIndex: spokenText === normalizedDomText ? null : (() => {
-				for (let i = 0; i < Math.min(spokenText.length, normalizedDomText.length); i++) {
-					if (spokenText[i] !== normalizedDomText[i]) {
-						return {
-							index: i,
-							spokenChar: spokenText[i],
-							normalizedChar: normalizedDomText[i],
-							spokenContext: spokenText.substring(Math.max(0, i - 20), i + 20),
-							normalizedContext: normalizedDomText.substring(Math.max(0, i - 20), i + 20)
-						};
-					}
-				}
-				return null;
-			})()
+			differAtIndex:
+				spokenText === normalizedDomText
+					? null
+					: (() => {
+							for (
+								let i = 0;
+								i < Math.min(spokenText.length, normalizedDomText.length);
+								i++
+							) {
+								if (spokenText[i] !== normalizedDomText[i]) {
+									return {
+										index: i,
+										spokenChar: spokenText[i],
+										normalizedChar: normalizedDomText[i],
+										spokenContext: spokenText.substring(
+											Math.max(0, i - 20),
+											i + 20,
+										),
+										normalizedContext: normalizedDomText.substring(
+											Math.max(0, i - 20),
+											i + 20,
+										),
+									};
+								}
+							}
+							return null;
+						})(),
 		});
 
 		// Build map by walking through nodes and tracking normalized position
@@ -152,7 +166,7 @@ export class TTSService {
 		const walk = (node: Node): void => {
 			if (node.nodeType === Node.TEXT_NODE) {
 				const textNode = node as Text;
-				const text = textNode.textContent || '';
+				const text = textNode.textContent || "";
 
 				for (let i = 0; i < text.length; i++) {
 					const char = text[i];
@@ -162,7 +176,10 @@ export class TTSService {
 						// Skip leading whitespace entirely - don't map it
 						if (!isWhitespace) {
 							inLeadingWhitespace = false;
-							this.normalizedToDOM.set(normalizedPos, { node: textNode, offset: i });
+							this.normalizedToDOM.set(normalizedPos, {
+								node: textNode,
+								offset: i,
+							});
 							normalizedPos++;
 							lastCharWasWhitespace = false;
 						}
@@ -171,13 +188,19 @@ export class TTSService {
 						if (isWhitespace) {
 							// Only map the first whitespace in a sequence (collapse multiple)
 							if (!lastCharWasWhitespace) {
-								this.normalizedToDOM.set(normalizedPos, { node: textNode, offset: i });
+								this.normalizedToDOM.set(normalizedPos, {
+									node: textNode,
+									offset: i,
+								});
 								normalizedPos++;
 							}
 							lastCharWasWhitespace = true;
 						} else {
 							// Regular character - always map it
-							this.normalizedToDOM.set(normalizedPos, { node: textNode, offset: i });
+							this.normalizedToDOM.set(normalizedPos, {
+								node: textNode,
+								offset: i,
+							});
 							normalizedPos++;
 							lastCharWasWhitespace = false;
 						}
@@ -185,7 +208,7 @@ export class TTSService {
 				}
 			} else if (node.nodeType === Node.ELEMENT_NODE) {
 				const element = node as Element;
-				if (element.tagName !== 'SCRIPT' && element.tagName !== 'STYLE') {
+				if (element.tagName !== "SCRIPT" && element.tagName !== "STYLE") {
 					for (const child of Array.from(node.childNodes)) {
 						walk(child);
 					}
@@ -195,17 +218,19 @@ export class TTSService {
 
 		walk(element);
 
-		console.log('[TTSService] Position map built:', {
+		console.log("[TTSService] Position map built:", {
 			entries: this.normalizedToDOM.size,
 			spokenTextLength: spokenText.length,
 			normalizedDomLength: normalizedDomText.length,
 			mapLengthMatchesSpoken: this.normalizedToDOM.size === spokenText.length,
-			firstFewMappings: Array.from(this.normalizedToDOM.entries()).slice(0, 10).map(([pos, {node, offset}]) => ({
-				pos,
-				offset,
-				char: node.textContent?.[offset],
-				expected: spokenText[pos]
-			}))
+			firstFewMappings: Array.from(this.normalizedToDOM.entries())
+				.slice(0, 10)
+				.map(([pos, { node, offset }]) => ({
+					pos,
+					offset,
+					char: node.textContent?.[offset],
+					expected: spokenText[pos],
+				})),
 		});
 	}
 
@@ -218,16 +243,23 @@ export class TTSService {
 	 */
 	private findHighlightRange(
 		charIndex: number,
-		length: number
+		length: number,
 	): { node: Text; start: number; end: number } | null {
 		const startPos = this.normalizedToDOM.get(charIndex);
 		if (!startPos) {
-			console.warn(`[TTSService] No mapping found for start position ${charIndex}`, {
-				totalMappings: this.normalizedToDOM.size,
-				nearbyMappings: Array.from(this.normalizedToDOM.entries())
-					.filter(([pos]) => Math.abs(pos - charIndex) < 5)
-					.map(([pos, {offset, node}]) => ({ pos, offset, char: node.textContent?.[offset] }))
-			});
+			console.warn(
+				`[TTSService] No mapping found for start position ${charIndex}`,
+				{
+					totalMappings: this.normalizedToDOM.size,
+					nearbyMappings: Array.from(this.normalizedToDOM.entries())
+						.filter(([pos]) => Math.abs(pos - charIndex) < 5)
+						.map(([pos, { offset, node }]) => ({
+							pos,
+							offset,
+							char: node.textContent?.[offset],
+						})),
+				},
+			);
 			return null;
 		}
 
@@ -235,29 +267,34 @@ export class TTSService {
 		const endIndex = charIndex + length - 1;
 		const endPos = this.normalizedToDOM.get(endIndex);
 		if (!endPos) {
-			console.warn(`[TTSService] No mapping found for end position ${endIndex}`, {
-				startChar: charIndex,
-				length,
-				totalMappings: this.normalizedToDOM.size
-			});
+			console.warn(
+				`[TTSService] No mapping found for end position ${endIndex}`,
+				{
+					startChar: charIndex,
+					length,
+					totalMappings: this.normalizedToDOM.size,
+				},
+			);
 			return null;
 		}
 
 		// For simplicity, if the word spans multiple nodes, just highlight in the first node
 		// (This is a rare edge case and would require creating multiple ranges)
 		if (startPos.node !== endPos.node) {
-			console.warn(`[TTSService] Word spans multiple nodes, highlighting in first node only`);
+			console.warn(
+				`[TTSService] Word spans multiple nodes, highlighting in first node only`,
+			);
 			return {
 				node: startPos.node,
 				start: startPos.offset,
-				end: (startPos.node.textContent || '').length
+				end: (startPos.node.textContent || "").length,
 			};
 		}
 
 		return {
 			node: startPos.node,
 			start: startPos.offset,
-			end: endPos.offset + 1 // +1 because we want to include the character at endPos
+			end: endPos.offset + 1, // +1 because we want to include the character at endPos
 		};
 	}
 
@@ -269,7 +306,11 @@ export class TTSService {
 	 */
 	async speak(
 		text: string,
-		options?: { catalogId?: string; language?: string; contentElement?: Element },
+		options?: {
+			catalogId?: string;
+			language?: string;
+			contentElement?: Element;
+		},
 	): Promise<void> {
 		if (!this.provider) {
 			throw new Error("TTS service not initialized");
@@ -277,7 +318,7 @@ export class TTSService {
 
 		// Normalize the input text to ensure consistency
 		// This handles cases where the caller didn't normalize
-		const normalizedText = text.trim().replace(/\s+/g, ' ');
+		const normalizedText = text.trim().replace(/\s+/g, " ");
 
 		// Try to resolve from accessibility catalog if catalogId provided
 		let contentToSpeak = normalizedText;
@@ -316,29 +357,38 @@ export class TTSService {
 			const range = document.createRange();
 			range.selectNodeContents(this.currentContentElement);
 			this.highlightCoordinator.highlightTTSSentence([range]);
-			console.log('[TTSService] Applied sentence-level highlighting');
+			console.log("[TTSService] Applied sentence-level highlighting");
 		}
 
 		try {
 			// Setup word boundary highlighting
 			if (this.highlightCoordinator && this.currentContentElement) {
-				this.provider.onWordBoundary = (word: string, charIndex: number, length?: number) => {
+				this.provider.onWordBoundary = (
+					word: string,
+					charIndex: number,
+					length?: number,
+				) => {
 					const wordLength = length || word.length;
 
 					const highlightRange = this.findHighlightRange(charIndex, wordLength);
 					if (highlightRange && this.highlightCoordinator) {
-						const highlightText = highlightRange.node.textContent?.substring(
-							highlightRange.start,
-							highlightRange.end
-						) || '';
-						console.log(`[TTSService] Highlighting "${highlightText}" (word: "${word}") at position ${charIndex}`);
+						const highlightText =
+							highlightRange.node.textContent?.substring(
+								highlightRange.start,
+								highlightRange.end,
+							) || "";
+						console.log(
+							`[TTSService] Highlighting "${highlightText}" (word: "${word}") at position ${charIndex}`,
+						);
 						this.highlightCoordinator.highlightTTSWord(
 							highlightRange.node,
 							highlightRange.start,
-							highlightRange.end
+							highlightRange.end,
 						);
 					} else {
-						console.warn(`[TTSService] Could not find highlight range for position ${charIndex}, length ${wordLength}`);
+						console.warn(
+							`[TTSService] Could not find highlight range for position ${charIndex}, length ${wordLength}`,
+						);
 					}
 				};
 			}

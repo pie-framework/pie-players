@@ -8,9 +8,9 @@
  */
 
 interface DefinitionState {
-  inProgress?: boolean;
-  ready?: boolean;
-  error?: Error;
+	inProgress?: boolean;
+	ready?: boolean;
+	error?: Error;
 }
 
 const definitions = new Map<string, DefinitionState>();
@@ -22,52 +22,52 @@ const definitions = new Map<string, DefinitionState>();
  * @param def - Custom element constructor
  */
 export const define = (name: string, def: CustomElementConstructor): void => {
-  const existing = definitions.get(name);
+	const existing = definitions.get(name);
 
-  if (existing) {
-    if (existing.ready) {
-      return;
-    }
-    if (existing.inProgress) {
-      return;
-    }
-    if (existing.error) {
-      throw existing.error;
-    }
-  }
+	if (existing) {
+		if (existing.ready) {
+			return;
+		}
+		if (existing.inProgress) {
+			return;
+		}
+		if (existing.error) {
+			throw existing.error;
+		}
+	}
 
-  definitions.set(name, { inProgress: true });
+	definitions.set(name, { inProgress: true });
 
-  try {
-    customElements.define(name, def);
-  } catch (e) {
-    /**
-     * It can be the case that different tags will use the same CustomElement.
-     * We don't want to process all the markup so we wrap the definition in an anonymous class.
-     */
-    if (e && (e as DOMException).code === DOMException.NOT_SUPPORTED_ERR) {
-      try {
-        customElements.define(
-          name,
-          class extends def {}
-        );
-      } catch (wrappedError) {
-        console.error('[ce-registry] Wrapped class failed', wrappedError);
-        definitions.set(name, { inProgress: false, error: wrappedError as Error });
-      }
-    } else {
-      definitions.set(name, { inProgress: false, error: e as Error });
-    }
-  }
+	try {
+		customElements.define(name, def);
+	} catch (e) {
+		/**
+		 * It can be the case that different tags will use the same CustomElement.
+		 * We don't want to process all the markup so we wrap the definition in an anonymous class.
+		 */
+		if (e && (e as DOMException).code === DOMException.NOT_SUPPORTED_ERR) {
+			try {
+				customElements.define(name, class extends def {});
+			} catch (wrappedError) {
+				console.error("[ce-registry] Wrapped class failed", wrappedError);
+				definitions.set(name, {
+					inProgress: false,
+					error: wrappedError as Error,
+				});
+			}
+		} else {
+			definitions.set(name, { inProgress: false, error: e as Error });
+		}
+	}
 
-  customElements
-    .whenDefined(name)
-    .then(() => {
-      definitions.set(name, { inProgress: false, ready: true });
-    })
-    .catch((e) => {
-      definitions.set(name, { inProgress: false, error: e });
-    });
+	customElements
+		.whenDefined(name)
+		.then(() => {
+			definitions.set(name, { inProgress: false, ready: true });
+		})
+		.catch((e) => {
+			definitions.set(name, { inProgress: false, error: e });
+		});
 };
 
 /**
@@ -76,21 +76,23 @@ export const define = (name: string, def: CustomElementConstructor): void => {
  * @param name - Custom element tag name
  * @returns Status string indicating registration state
  */
-export const status = (name: string): 'error' | 'inProgress' | 'none' | 'inRegistry' => {
-  const existing = definitions.get(name);
+export const status = (
+	name: string,
+): "error" | "inProgress" | "none" | "inRegistry" => {
+	const existing = definitions.get(name);
 
-  if (existing) {
-    if (existing.inProgress) {
-      return 'inProgress';
-    }
-    if (existing.ready) {
-      return 'inRegistry';
-    }
-    if (existing.error) {
-      return 'error';
-    }
-  }
-  return 'none';
+	if (existing) {
+		if (existing.inProgress) {
+			return "inProgress";
+		}
+		if (existing.ready) {
+			return "inRegistry";
+		}
+		if (existing.error) {
+			return "error";
+		}
+	}
+	return "none";
 };
 
 /**
@@ -99,6 +101,8 @@ export const status = (name: string): 'error' | 'inProgress' | 'none' | 'inRegis
  * @param name - Custom element tag name
  * @returns Promise that resolves when element is defined
  */
-export const whenDefined = (name: string): Promise<CustomElementConstructor> => {
-  return customElements.whenDefined(name);
+export const whenDefined = (
+	name: string,
+): Promise<CustomElementConstructor> => {
+	return customElements.whenDefined(name);
 };

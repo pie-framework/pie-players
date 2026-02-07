@@ -103,7 +103,9 @@ export class EsmPieLoader {
 	): any {
 		const imports: Record<string, string> = {};
 		const viewConfig =
-			options.viewConfig || BUILT_IN_VIEWS[options.view] || BUILT_IN_VIEWS.delivery;
+			options.viewConfig ||
+			BUILT_IN_VIEWS[options.view] ||
+			BUILT_IN_VIEWS.delivery;
 
 		for (const [tag, packageVersion] of Object.entries(elements)) {
 			const packageName = this.extractPackageName(packageVersion);
@@ -182,7 +184,9 @@ export class EsmPieLoader {
 	): Promise<void> {
 		const registry = pieRegistry();
 		const viewConfig =
-			options.viewConfig || BUILT_IN_VIEWS[options.view] || BUILT_IN_VIEWS.delivery;
+			options.viewConfig ||
+			BUILT_IN_VIEWS[options.view] ||
+			BUILT_IN_VIEWS.delivery;
 
 		try {
 			const packageName = this.extractPackageName(packageVersion);
@@ -246,7 +250,7 @@ export class EsmPieLoader {
 				try {
 					// @vite-ignore - Dynamic import from CDN via import maps (runtime resolution)
 					const controllerModule = await import(
-						/* @vite-ignore */ `${packageName}/controller`,
+						/* @vite-ignore */ `${packageName}/controller`
 					);
 					logger.debug(
 						`Controller module loaded for ${actualTag}:`,
@@ -359,7 +363,9 @@ export class EsmPieLoader {
 		}
 
 		const viewConfig =
-			options.viewConfig || BUILT_IN_VIEWS[options.view] || BUILT_IN_VIEWS.delivery;
+			options.viewConfig ||
+			BUILT_IN_VIEWS[options.view] ||
+			BUILT_IN_VIEWS.delivery;
 
 		// 0. Initialize math-rendering (required by PIE elements)
 		await initializeMathRendering();
@@ -388,7 +394,9 @@ export class EsmPieLoader {
 
 		// 3. Wait for all custom elements to be defined
 		logger.debug("Waiting for custom elements to be defined");
-		const tagsWithSuffix = elementTags.map((tag) => `${tag}${viewConfig.tagSuffix}`);
+		const tagsWithSuffix = elementTags.map(
+			(tag) => `${tag}${viewConfig.tagSuffix}`,
+		);
 		await Promise.all(
 			tagsWithSuffix.map((tag) => customElements.whenDefined(tag)),
 		);

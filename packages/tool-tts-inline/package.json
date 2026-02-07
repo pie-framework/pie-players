@@ -10,7 +10,9 @@
 			"default": "./dist/tool-tts-inline.js"
 		}
 	},
-	"files": ["dist"],
+	"files": [
+		"dist"
+	],
 	"scripts": {
 		"build": "vite build",
 		"dev": "vite build --watch"

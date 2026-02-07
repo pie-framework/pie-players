@@ -37,6 +37,8 @@
 			// Bundle/CDN configuration
 			bundleHost: { attribute: 'bundle-host', type: 'String' },
 			esmCdnUrl: { attribute: 'esm-cdn-url', type: 'String' },
+			playerVersion: { attribute: 'player-version', type: 'String' },
+			useLegacyPlayer: { attribute: 'use-legacy-player', type: 'Boolean' },
 
 			// Styling
 			customClassname: { attribute: 'custom-classname', type: 'String' },
@@ -54,26 +56,32 @@
 		ItemEntity,
 		RubricBlock
 	} from '@pie-players/pie-players-shared/types';
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import PageModeLayout from './components/PageModeLayout.svelte';
 	import ItemModeLayout from './components/ItemModeLayout.svelte';
 	import PassageRenderer from './components/PassageRenderer.svelte';
 
 	// Props
 	let {
-		section = $bindable(null as QtiAssessmentSection | null),
+		section = null as QtiAssessmentSection | null,
 		mode = 'gather' as 'gather' | 'view' | 'evaluate' | 'author',
 		view = 'candidate' as 'candidate' | 'scorer' | 'author' | 'proctor' | 'testConstructor' | 'tutor',
 		itemSessions = {} as Record<string, any>,
 		bundleHost = '',
-		esmCdnUrl = 'https://esm.sh',
+		esmCdnUrl = '',
+		playerVersion = 'latest',
+		useLegacyPlayer = true,
 		customClassname = '',
 		debug = '' as string | boolean,
 
 		// Service integration (optional - for TTS, tools, highlighting)
 		ttsService = null as any,
 		toolCoordinator = null as any,
-		highlightCoordinator = null as any
+		highlightCoordinator = null as any,
+		catalogResolver = null as any,
+
+		// Event handlers
+		onsessionchanged = null as ((event: CustomEvent) => void) | null
 	} = $props();
 
 	// State
@@ -199,8 +207,10 @@
 
 	// React to section changes
 	$effect(() => {
-		if (section) {
-			extractContent();
+		// Track section to react to changes, but don't track the execution of extractContent
+		const currentSection = section;
+		if (currentSection) {
+			untrack(() => extractContent());
 		}
 	});
 
@@ -216,19 +226,40 @@
 
 	// Handle session changes from items
 	function handleSessionChanged(itemId: string, sessionDetail: any) {
+		console.log('[PieSectionPlayer] handleSessionChanged called:', itemId, sessionDetail);
+
+		// Extract the actual session data from the event detail
+		// The sessionDetail contains { complete, component, session }
+		// We want to store the session property
+		const actualSession = sessionDetail.session || sessionDetail;
+
 		// Update local sessions
 		itemSessions = {
 			...itemSessions,
-			[itemId]: sessionDetail
+			[itemId]: actualSession
 		};
 
-		// Dispatch event to parent
+		// Create event detail
+		const eventDetail = {
+			itemId,
+			session: actualSession,
+			complete: sessionDetail.complete,
+			timestamp: Date.now()
+		};
+
+		// Call handler prop if provided (for Svelte component usage)
+		if (onsessionchanged) {
+			const customEvent = new CustomEvent('session-changed', {
+				detail: eventDetail,
+				bubbles: true,
+				composed: true
+			});
+			onsessionchanged(customEvent);
+		}
+
+		// Also dispatch event (for custom element usage)
 		dispatchEvent(new CustomEvent('session-changed', {
-			detail: {
-				itemId,
-				session: sessionDetail,
-				timestamp: Date.now()
-			},
+			detail: eventDetail,
 			bubbles: true,
 			composed: true
 		}));
@@ -271,9 +302,12 @@
 				{mode}
 				{bundleHost}
 				{esmCdnUrl}
+				{playerVersion}
+				{useLegacyPlayer}
 				{ttsService}
 				{toolCoordinator}
 				{highlightCoordinator}
+				{catalogResolver}
 				onsessionchanged={handleSessionChanged}
 			/>
 		{:else}
@@ -289,9 +323,12 @@
 				{mode}
 				{bundleHost}
 				{esmCdnUrl}
+				{playerVersion}
+				{useLegacyPlayer}
 				{ttsService}
 				{toolCoordinator}
 				{highlightCoordinator}
+				{catalogResolver}
 				onprevious={navigatePrevious}
 				onnext={navigateNext}
 				onsessionchanged={(sessionDetail) => handleSessionChanged(currentItem?.id || '', sessionDetail)}

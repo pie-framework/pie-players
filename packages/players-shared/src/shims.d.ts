@@ -11,5 +11,6 @@ interface Window {
 	pie?: any;
 	pieHelpers?: {
 		loadingScripts: Record<string, boolean>;
+		loadingPromises: Record<string, Promise<void>>;
 	};
 }

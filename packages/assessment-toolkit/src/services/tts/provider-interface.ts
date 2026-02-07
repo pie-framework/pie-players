@@ -92,8 +92,11 @@ export interface ITTSProviderImplementation {
 	/**
 	 * Word boundary callback (optional)
 	 * Called during speech for word highlighting
+	 * @param word - The word being spoken (may be empty for server providers)
+	 * @param position - Character position in the text
+	 * @param length - Optional word length (for server providers with speech marks)
 	 */
-	onWordBoundary?: (word: string, position: number) => void;
+	onWordBoundary?: (word: string, position: number, length?: number) => void;
 }
 
 /**

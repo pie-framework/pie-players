@@ -71,6 +71,21 @@ export interface IHighlightCoordinator {
 	): void;
 
 	/**
+	 * Highlight a word for TTS (temporary)
+	 */
+	highlightTTSWord(textNode: Text, startOffset: number, endOffset: number): void;
+
+	/**
+	 * Highlight sentence(s) for TTS (background layer)
+	 */
+	highlightTTSSentence(ranges: Range[]): void;
+
+	/**
+	 * Clear all TTS highlights (word and sentence)
+	 */
+	clearTTS(): void;
+
+	/**
 	 * Clear highlights of a specific type
 	 */
 	clearHighlights(type: HighlightType): void;

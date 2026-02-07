@@ -125,7 +125,13 @@ import { onDestroy, onMount } from 'svelte';
 			// Set the root element for highlighting
 			ttsService.setRootElement(container);
 
+			// Detect catalog ID from selected content (for SSML lookup)
+			const catalogId = container
+				.closest('[data-catalog-id]')
+				?.getAttribute('data-catalog-id') || undefined;
+
 			await ttsService.speak(selectedText, {
+				catalogId,  // Pass catalog ID for SSML resolution
 				rate,
 				highlightWords: true
 			}, {

@@ -266,34 +266,83 @@ Passages are automatically deduplicated by ID.
 
 ## Assessment Toolkit Integration
 
-The section player integrates with the [PIE Assessment Toolkit](../assessment-toolkit/) services for TTS, tool coordination, and highlighting.
+The section player integrates with the [PIE Assessment Toolkit](../assessment-toolkit/) services for TTS, tool coordination, highlighting, and **automatic SSML extraction**.
+
+### SSML Extraction
+
+✅ **Automatic SSML Extraction**: The section player automatically extracts embedded `<speak>` tags from item and passage content, converting them into QTI 3.0 accessibility catalogs at runtime.
+
+**Benefits:**
+- Authors embed SSML directly in content (no separate catalog files)
+- Proper pronunciation of technical terms and math expressions
+- Emphasis and pacing control via SSML
+- Automatic catalog generation and registration
+
+**Example:**
+
+Authors create content with embedded SSML:
+```typescript
+{
+  config: {
+    models: [{
+      prompt: `<div>
+        <speak>Solve <prosody rate="slow">x squared, plus two x</prosody>.</speak>
+        <p>Solve x² + 2x = 0</p>
+      </div>`
+    }]
+  }
+}
+```
+
+At runtime, the section player:
+1. Extracts SSML and generates catalog entry
+2. Cleans visual markup (removes SSML tags)
+3. Adds `data-catalog-id` attribute for TTS lookup
+4. Registers catalog with AccessibilityCatalogResolver
+
+**Result:** TTS uses proper math pronunciation while visual display shows clean HTML.
+
+See [TTS-INTEGRATION.md](./TTS-INTEGRATION.md) for complete details.
 
 ### TTS Integration
 
-To enable TTS (Text-to-Speech) functionality, pass the `TTSService` as a JavaScript property:
+To enable TTS (Text-to-Speech) functionality with SSML support, pass the `TTSService` and `AccessibilityCatalogResolver` as JavaScript properties:
 
 ```javascript
-import { TTSService, BrowserTTSProvider } from '@pie-players/pie-assessment-toolkit';
+import {
+  TTSService,
+  BrowserTTSProvider,
+  AccessibilityCatalogResolver
+} from '@pie-players/pie-assessment-toolkit';
 
 // Create and initialize TTS service
 const ttsService = new TTSService();
 await ttsService.initialize(new BrowserTTSProvider());
 
-// Pass to section player as JavaScript property (NOT an HTML attribute)
+// Create catalog resolver for SSML support
+const catalogResolver = new AccessibilityCatalogResolver(
+  assessment.accessibilityCatalogs || [],
+  'en-US'
+);
+ttsService.setCatalogResolver(catalogResolver);
+
+// Pass to section player as JavaScript properties (NOT HTML attributes)
 const player = document.getElementById('player');
 player.ttsService = ttsService;
+player.catalogResolver = catalogResolver;  // Required for SSML extraction
 ```
 
 **Important:** Services must be set as JavaScript properties, not HTML attributes. They cannot be serialized to strings.
 
 ### Full Toolkit Integration
 
-For complete toolkit integration with TTS, tool coordination, and highlighting:
+For complete toolkit integration with TTS, SSML extraction, tool coordination, and highlighting:
 
 ```javascript
 import {
   TTSService,
   BrowserTTSProvider,
+  AccessibilityCatalogResolver,
   ToolCoordinator,
   HighlightCoordinator
 } from '@pie-players/pie-assessment-toolkit';
@@ -302,14 +351,20 @@ import {
 const ttsService = new TTSService();
 const toolCoordinator = new ToolCoordinator();
 const highlightCoordinator = new HighlightCoordinator();
+const catalogResolver = new AccessibilityCatalogResolver(
+  assessment.accessibilityCatalogs || [],
+  'en-US'
+);
 
 await ttsService.initialize(new BrowserTTSProvider());
+ttsService.setCatalogResolver(catalogResolver);
 
 // Pass all services to player
 const player = document.getElementById('player');
 player.ttsService = ttsService;
 player.toolCoordinator = toolCoordinator;
 player.highlightCoordinator = highlightCoordinator;
+player.catalogResolver = catalogResolver;  // Enables SSML extraction
 ```
 
 ### Service Flow

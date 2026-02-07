@@ -16,9 +16,12 @@
 		mode = 'gather',
 		bundleHost = '',
 		esmCdnUrl = 'https://esm.sh',
+		playerVersion = 'latest',
+		useLegacyPlayer = true,
 		ttsService = null,
 		toolCoordinator = null,
 		highlightCoordinator = null,
+		catalogResolver = null,
 		onsessionchanged
 	}: {
 		passages: PassageEntity[];
@@ -27,9 +30,12 @@
 		mode?: 'gather' | 'view' | 'evaluate' | 'author';
 		bundleHost?: string;
 		esmCdnUrl?: string;
+		playerVersion?: string;
+		useLegacyPlayer?: boolean;
 		ttsService?: any;
 		toolCoordinator?: any;
 		highlightCoordinator?: any;
+		catalogResolver?: any;
 		onsessionchanged?: (itemId: string, session: any) => void;
 	} = $props();
 
@@ -54,6 +60,7 @@
 					{ttsService}
 					{toolCoordinator}
 					{highlightCoordinator}
+					{catalogResolver}
 					class="passage-item"
 				/>
 			{/each}
@@ -70,9 +77,12 @@
 					session={itemSessions[item.id || '']}
 					{bundleHost}
 					{esmCdnUrl}
+					{playerVersion}
+					{useLegacyPlayer}
 					{ttsService}
 					{toolCoordinator}
 					{highlightCoordinator}
+					{catalogResolver}
 					onsessionchanged={handleItemSessionChanged(item.id || '')}
 					class="item-content"
 				/>

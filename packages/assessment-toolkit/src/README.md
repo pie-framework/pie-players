@@ -14,7 +14,11 @@ This is not an opinionated framework or monolithic "player" - it's a toolkit tha
 
 ## Architecture Overview
 
-See [assessment-player-architecture.md](../../../../../docs/tools-and-accomodations/assessment-player-architecture.md) for complete design documentation.
+See [Tools & Accommodations Architecture](../../../docs/tools-and-accomodations/architecture.md) for complete design documentation.
+
+### Primary Interface: Section Player
+
+The **PIE Section Player** (`@pie-players/pie-section-player`) is the primary interface for integrating toolkit services. Pass services as JavaScript properties, and the player handles SSML extraction, catalog lifecycle, and TTS tool rendering automatically.
 
 ### Core Principles
 
@@ -22,6 +26,7 @@ See [assessment-player-architecture.md](../../../../../docs/tools-and-accomodati
 2. **No Framework Lock-in**: Works with any JavaScript framework
 3. **Product Control**: Products control navigation, persistence, layout, backend
 4. **Standard Contracts**: Well-defined event types for component communication
+5. **Section Player Integration**: Seamless integration with the section player for automatic service coordination
 
 ## Implementation Status
 
@@ -40,24 +45,45 @@ See [assessment-player-architecture.md](../../../../../docs/tools-and-accomodati
 - **ThemeProvider**: Consistent accessibility theming across items and tools
 - **ToolConfigResolver**: 3-tier hierarchy for IEP/504 tool configuration
 
-### ✅ Reference Implementation
+### ✅ Section Player Integration
 
-- **AssessmentPlayer**: Complete working player showing how to wire toolkit services together
-- Linear navigation through assessment items
-- Event-driven architecture with TypedEventBus
-- Session state management with subscriptions
-- TTS integration via TTSService
-- Theme support via ThemeProvider
-- ToolCoordinator and HighlightCoordinator integration
-- Product-specific callbacks for customization
+The toolkit integrates seamlessly with the **PIE Section Player**:
 
-### ✅ Live Integration
+- **Primary Interface**: Section player is the main integration point
+- **Automatic SSML Extraction**: Extracts embedded `<speak>` tags from passages and items
+- **Catalog Lifecycle**: Manages item-level catalogs automatically (add on load, clear on navigation)
+- **TTS Tool Rendering**: Shows inline TTS buttons in passage/item headers
+- **Service Coordination**: All toolkit services work together automatically
 
-Features implemented:
-- Accessibility settings UI (high contrast toggle, font size selector)
-- TTS controls integrated with TTSService
-- Navigation using AssessmentPlayer
-- Theme changes applied dynamically via ThemeProvider
+**Integration Pattern**:
+
+```javascript
+import {
+  TTSService,
+  AccessibilityCatalogResolver,
+  ToolCoordinator,
+  HighlightCoordinator
+} from '@pie-players/pie-assessment-toolkit';
+
+// Initialize services
+const ttsService = new TTSService();
+const catalogResolver = new AccessibilityCatalogResolver([], 'en-US');
+// ... initialize other services
+
+// Pass to section player
+sectionPlayer.ttsService = ttsService;
+sectionPlayer.catalogResolver = catalogResolver;
+sectionPlayer.section = section;
+```
+
+### ✅ Reference Implementation (Future)
+
+An optional **AssessmentPlayer** reference implementation may be provided for multi-section assessments. It would:
+
+- Manage navigation across sections
+- Coordinate section player instances
+- Provide assessment-level state management
+- But delegate to section players for rendering
 
 ## Project Structure
 

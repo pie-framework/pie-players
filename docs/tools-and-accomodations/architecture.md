@@ -107,11 +107,12 @@ The PIE Assessment Tools system provides:
 
 ### High-Level Components
 
-**Player Container**
-- Lifecycle management for assessment session
-- Navigation between questions
-- Tool instantiation and configuration
-- Integration point for all components
+**Section Player Container** (Primary Interface)
+- Renders QTI 3.0 sections with passages and items
+- Automatic SSML extraction from embedded `<speak>` tags
+- Manages accessibility catalog lifecycle
+- Integrates toolkit services (TTS, tools, highlighting)
+- Renders TTS tools inline in passage/item headers
 
 **PIE Item Player**
 - Renders individual assessment items

@@ -358,6 +358,15 @@ See: [docs/AUTHORING_MODE.md](AUTHORING_MODE.md)
 
 The **Assessment Toolkit** provides composable services for coordinating tools, accommodations, and full test delivery. It's designed as a **toolkit, not a framework** — products use only what they need.
 
+### Primary Interface: Section Player
+
+The **PIE Section Player** (`@pie-players/pie-section-player`) is the primary container/interface for integrating assessment toolkit services. It automatically:
+
+- Extracts SSML from embedded `<speak>` tags in passages and items
+- Manages accessibility catalog lifecycle (add on load, clear on navigation)
+- Renders TTS tools inline in passage/item headers
+- Resolves catalogs with priority: extracted → item → assessment
+
 ### Core Principles
 
 1. **Composable Services** - Import only what you need
@@ -365,6 +374,7 @@ The **Assessment Toolkit** provides composable services for coordinating tools, 
 3. **Product Control** - Products control navigation, persistence, layout, backend
 4. **Standard Contracts** - Well-defined event types for component communication
 5. **QTI 3.0 Native** - Uses QTI 3.0 Personal Needs Profile (PNP) directly for accessibility accommodations
+6. **Section Player Integration** - Toolkit services integrate seamlessly with the section player
 
 ### QTI 3.0 Support
 
@@ -714,23 +724,56 @@ interface ResolvedToolConfig {
 
 ---
 
-### Assessment Player (Reference Implementation)
+### Section Player Integration (Primary Pattern)
 
-The **Assessment Player** is a reference implementation showing how to wire toolkit services together for full test delivery.
+The **PIE Section Player** is the primary interface for integrating toolkit services. Pass services as JavaScript properties, and the player handles the rest automatically.
 
-![Assessment Player Example](img/schoolcity-1.png)
+**Example Integration**:
 
-**Features**:
+```javascript
+import {
+  TTSService,
+  BrowserTTSProvider,
+  AccessibilityCatalogResolver,
+  ToolCoordinator,
+  HighlightCoordinator
+} from '@pie-players/pie-assessment-toolkit';
 
-- Linear navigation through assessment items
-- Event-driven architecture with TypedEventBus
-- Session state management with subscriptions
-- TTS integration via TTSService
-- Theme support via ThemeProvider
-- ToolCoordinator and HighlightCoordinator integration
-- Product-specific callbacks for customization
+// Initialize services
+const ttsService = new TTSService();
+const catalogResolver = new AccessibilityCatalogResolver([], 'en-US');
+const toolCoordinator = new ToolCoordinator();
+const highlightCoordinator = new HighlightCoordinator();
 
-**Integration Pattern**:
+await ttsService.initialize(new BrowserTTSProvider());
+ttsService.setCatalogResolver(catalogResolver);
+ttsService.setHighlightCoordinator(highlightCoordinator);
+
+// Pass to section player
+const sectionPlayer = document.getElementById('section-player');
+sectionPlayer.ttsService = ttsService;
+sectionPlayer.toolCoordinator = toolCoordinator;
+sectionPlayer.highlightCoordinator = highlightCoordinator;
+sectionPlayer.catalogResolver = catalogResolver;
+sectionPlayer.section = section;
+```
+
+See: [Section Player Integration](../packages/section-player/TTS-INTEGRATION.md)
+
+---
+
+### Assessment Player (Future Reference Implementation)
+
+A reference **Assessment Player** may be provided as an optional higher-level abstraction for multi-section assessments. It would:
+
+- Manage navigation across multiple sections
+- Coordinate section player instances
+- Provide assessment-level state management
+- But delegate to section players for rendering and toolkit integration
+
+**Current Status**: The section player is the primary interface. An AssessmentPlayer would be a convenience wrapper.
+
+**Integration Pattern for Custom Players**:
 
 ```typescript
 import {
@@ -967,83 +1010,64 @@ toolCoordinator.registerTool("calculator", "Calculator", calcElement);
 toolCoordinator.showTool("calculator");
 ```
 
-### Pattern 3: Full Assessment (Toolkit)
+### Pattern 3: Section Player with Toolkit
 
-Use assessment toolkit for complete test delivery with QTI 3.0 support:
+Use section player with assessment toolkit for complete section delivery with QTI 3.0 support:
 
-```typescript
+```javascript
+import '@pie-players/pie-section-player';
 import {
-  AssessmentPlayer,
-  PNPToolResolver,
-  ContextVariableStore,
-  TypedEventBus,
+  TTSService,
+  BrowserTTSProvider,
+  AccessibilityCatalogResolver,
   ToolCoordinator,
   HighlightCoordinator,
-  TTSService,
-  ThemeProvider,
-} from "@pie-framework/assessment-toolkit";
+  PNPToolResolver,
+  ContextVariableStore
+} from "@pie-players/pie-assessment-toolkit";
 
-// QTI 3.0 assessment with PNP and Context Declarations
-const assessment = {
-  id: 'test-assessment',
-  personalNeedsProfile: {
-    supports: ['calculator', 'textToSpeech'],
-    activateAtInit: ['textToSpeech']
-  },
-  contextDeclarations: [
-    {
-      identifier: 'RANDOM_SEED',
-      baseType: 'integer',
-      cardinality: 'single',
-      defaultValue: 42
-    },
-    {
-      identifier: 'DIFFICULTY_LEVEL',
-      baseType: 'string',
-      cardinality: 'single',
-      defaultValue: 'medium'
-    }
-  ],
-  settings: {
-    districtPolicy: {
-      blockedTools: [],
-      requiredTools: []
-    },
-    toolConfigs: {
-      calculator: { type: 'scientific', provider: 'desmos' }
-    }
-  }
-};
-
-// Simple initialization - framework handles everything
-const player = new AssessmentPlayer({
-  assessment,
-  loadItem: async (itemId) => {
-    const item = await fetchItem(itemId);
-    return item;
-  }
-});
-
-// Access QTI 3.0 features
-const tools = player.getAvailableTools();
-const context = player.getContextVariables();
-player.setContextVariable('DIFFICULTY_LEVEL', 'hard');
-
-// Or use services directly for custom players
-const eventBus = new TypedEventBus();
+// Initialize toolkit services
+const ttsService = new TTSService();
+const catalogResolver = new AccessibilityCatalogResolver(
+  assessment.accessibilityCatalogs || [],
+  'en-US'
+);
+const toolCoordinator = new ToolCoordinator();
+const highlightCoordinator = new HighlightCoordinator();
 const pnpResolver = new PNPToolResolver();
 const contextStore = new ContextVariableStore(assessment.contextDeclarations);
 
-const tools = pnpResolver.resolveTools(assessment);
-const seed = contextStore.get('RANDOM_SEED');
+// Initialize TTS
+await ttsService.initialize(new BrowserTTSProvider());
+ttsService.setCatalogResolver(catalogResolver);
+ttsService.setHighlightCoordinator(highlightCoordinator);
 
-// Wire up events
-eventBus.on("player:session-changed", async (e) => {
+// Resolve tools from QTI 3.0 PNP
+const tools = pnpResolver.resolveTools(assessment);
+
+// Pass services to section player
+const sectionPlayer = document.getElementById('section-player');
+sectionPlayer.ttsService = ttsService;
+sectionPlayer.catalogResolver = catalogResolver;
+sectionPlayer.toolCoordinator = toolCoordinator;
+sectionPlayer.highlightCoordinator = highlightCoordinator;
+
+// Set section data
+sectionPlayer.section = section;
+
+// Section player automatically:
+// - Extracts SSML from passages and items
+// - Manages item-level catalog lifecycle
+// - Renders TTS tools inline
+// - Coordinates all services
+
+// Listen to section events
+sectionPlayer.addEventListener('session-changed', async (e) => {
   await backend.saveSession(e.detail);
 });
 ```
 
-**See complete examples:** [QTI 3.0 Features Client Guide](qti-3-features-client-guide.md)
+**See complete examples:** [Section Player Integration](../packages/section-player/TTS-INTEGRATION.md)
 
 ### Pattern 4: Custom Assessment Player
 

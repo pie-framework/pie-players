@@ -10,15 +10,19 @@
 
 			// Services (passed as JS properties, not attributes)
 			coordinator: { type: 'Object', reflect: false },
-			ttsService: { type: 'Object', reflect: false }
+			ttsService: { type: 'Object', reflect: false },
+			highlightCoordinator: { type: 'Object', reflect: false }
 		}
 	}}
 />
 
 <script lang="ts">
-	import type { IToolCoordinator, ITTSService } from '@pie-players/pie-assessment-toolkit';
+	import type {
+		IToolCoordinator,
+		ITTSService,
+		IHighlightCoordinator
+	} from '@pie-players/pie-assessment-toolkit';
 	import { ZIndexLayer } from '@pie-players/pie-assessment-toolkit';
-	import { onMount } from 'svelte';
 
 	// Props
 	let {
@@ -27,7 +31,8 @@
 		language = 'en-US',
 		size = 'md' as 'sm' | 'md' | 'lg',
 		coordinator,
-		ttsService
+		ttsService,
+		highlightCoordinator
 	}: {
 		toolId?: string;
 		catalogId?: string;
@@ -35,16 +40,19 @@
 		size?: 'sm' | 'md' | 'lg';
 		coordinator?: IToolCoordinator;
 		ttsService?: ITTSService;
+		highlightCoordinator?: IHighlightCoordinator;
 	} = $props();
 
 	const isBrowser = typeof window !== 'undefined';
 
 	// State
-	let containerEl = $state<HTMLButtonElement | undefined>();
+	let containerEl = $state<HTMLDivElement | undefined>();
 	let registered = $state(false);
 	let speaking = $state(false);
+	let paused = $state(false);
+	let statusMessage = $state('');
 
-	// Register with coordinator (standard pattern - coordinator controls visibility)
+	// Register with coordinator (don't control visibility here - let parent handle it)
 	$effect(() => {
 		if (coordinator && toolId && containerEl && !registered) {
 			coordinator.registerTool(toolId, 'TTS Inline', containerEl, ZIndexLayer.TOOL);
@@ -52,8 +60,8 @@
 		}
 	});
 
-	// Cleanup
-	onMount(() => {
+	// Cleanup when component unmounts
+	$effect(() => {
 		return () => {
 			if (coordinator && toolId) {
 				coordinator.unregisterTool(toolId);
@@ -61,16 +69,68 @@
 		};
 	});
 
-	// Handle TTS click
-	async function handleClick() {
-		if (!ttsService || speaking) return;
+	// Handle Play/Pause click
+	async function handlePlayPause() {
+		if (!ttsService) return;
 
+		// If paused, resume
+		if (paused) {
+			ttsService.resume();
+			paused = false;
+			statusMessage = 'Reading resumed';
+			return;
+		}
+
+		// If speaking, pause
+		if (speaking && !paused) {
+			ttsService.pause();
+			paused = true;
+			statusMessage = 'Reading paused';
+			return;
+		}
+
+		// Otherwise, start speaking
 		try {
 			speaking = true;
+			paused = false;
+			statusMessage = 'Reading started';
 
-			// Find target container (parent of this button)
-			const targetContainer = containerEl?.closest('.passage-content, .item-content');
-			const text = targetContainer?.textContent?.trim() || '';
+			// Find target container
+			// First check if button is in a header with a sibling content div
+			const header = containerEl?.closest('.passage-header, .item-header');
+			let targetContainer: Element | null = null;
+
+			if (header) {
+				// Look for sibling content div
+				const parent = header.parentElement;
+				targetContainer = parent?.querySelector('.passage-content, .item-content') || null;
+			}
+
+			// Fallback: look up the parent chain
+			if (!targetContainer) {
+				targetContainer = containerEl?.closest('.passage-content, .item-content') || null;
+			}
+
+			if (!targetContainer) {
+				console.warn('[TTS Inline] No target container found');
+				speaking = false;
+				return;
+			}
+
+			// Get text and normalize whitespace to match what TTS will speak
+			// This ensures the text matches what's in the contentElement
+			const range = document.createRange();
+			range.selectNodeContents(targetContainer);
+			const rawText = range.toString();
+
+			// Normalize: trim and collapse whitespace (this is what TTS providers expect)
+			const text = rawText.trim().replace(/\s+/g, ' ');
+
+			console.log('[TTS Inline] Text extraction:', {
+				rawLength: rawText.length,
+				normalizedLength: text.length,
+				preview: text.substring(0, 100)
+			});
 
 			if (!text) {
 				console.warn('[TTS Inline] No text content found');
@@ -78,16 +138,48 @@
 				return;
 			}
 
-			// Speak with catalog support
+			// Set highlightCoordinator on TTS service if available
+			if (highlightCoordinator && ttsService.setHighlightCoordinator) {
+				ttsService.setHighlightCoordinator(highlightCoordinator);
+			}
+
+			// Speak with catalog support and highlighting
 			await ttsService.speak(text, {
 				catalogId: catalogId || undefined,
-				language
+				language,
+				contentElement: targetContainer
 			});
 
 			speaking = false;
+			paused = false;
+
+			// Clear highlights when done
+			if (highlightCoordinator) {
+				highlightCoordinator.clearTTS();
+			}
 		} catch (error) {
 			console.error('[TTS Inline] Error:', error);
 			speaking = false;
+			paused = false;
+
+			// Clear highlights on error
+			if (highlightCoordinator) {
+				highlightCoordinator.clearTTS();
+			}
+		}
+	}
+
+	// Handle Stop click
+	function handleStop() {
+		if (!ttsService) return;
+		ttsService.stop();
+		speaking = false;
+		paused = false;
+		statusMessage = 'Reading stopped';
+
+		// Clear highlights
+		if (highlightCoordinator) {
+			highlightCoordinator.clearTTS();
 		}
 	}
 
@@ -98,31 +190,88 @@
 </script>
 
 {#if isBrowser}
-	<button
-		bind:this={containerEl}
-		type="button"
-		class="tts-inline {sizeClass}"
-		class:tts-inline--speaking={speaking}
-		onclick={handleClick}
-		aria-label="Read aloud"
-		aria-pressed={speaking}
-		disabled={speaking || !ttsService}
-	>
-		<!-- Material Design Speaker Icon -->
-		<svg
-			xmlns="http://www.w3.org/2000/svg"
-			viewBox="0 0 24 24"
-			class="tts-inline__icon"
-			aria-hidden="true"
+	<div bind:this={containerEl} class="tts-inline-controls">
+		<!-- Play/Pause Button -->
+		<button
+			type="button"
+			class="tts-inline {sizeClass}"
+			class:tts-inline--speaking={speaking}
+			class:tts-inline--paused={paused}
+			onclick={handlePlayPause}
+			aria-label={paused ? 'Resume reading' : speaking ? 'Pause reading' : 'Read aloud'}
+			aria-pressed={speaking || paused}
+			disabled={!ttsService}
 		>
-			<path
-				d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"
-			/>
-		</svg>
-	</button>
+			{#if paused}
+				<!-- Material Design Play Icon (for resume) -->
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					viewBox="0 0 24 24"
+					class="tts-inline__icon"
+					aria-hidden="true"
+				>
+					<path d="M8 5v14l11-7z" />
+				</svg>
+			{:else if speaking}
+				<!-- Material Design Pause Icon -->
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					viewBox="0 0 24 24"
+					class="tts-inline__icon"
+					aria-hidden="true"
+				>
+					<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+				</svg>
+			{:else}
+				<!-- Material Design Speaker Icon -->
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					viewBox="0 0 24 24"
+					class="tts-inline__icon"
+					aria-hidden="true"
+				>
+					<path
+						d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"
+					/>
+				</svg>
+			{/if}
+		</button>
+
+		<!-- Stop Button (only show when speaking or paused) -->
+		{#if speaking || paused}
+			<button
+				type="button"
+				class="tts-inline tts-inline--stop {sizeClass}"
+				onclick={handleStop}
+				aria-label="Stop reading"
+				disabled={!ttsService}
+			>
+				<!-- Material Design Stop Icon -->
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					viewBox="0 0 24 24"
+					class="tts-inline__icon"
+					aria-hidden="true"
+				>
+					<path d="M6 6h12v12H6z" />
+				</svg>
+			</button>
+		{/if}
+
+		<!-- Screen reader status announcements -->
+		<div class="sr-only" role="status" aria-live="polite" aria-atomic="true">
+			{statusMessage}
+		</div>
+	</div>
 {/if}
 
 <style>
+	.tts-inline-controls {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.25rem;
+	}
+
 	.tts-inline {
 		display: inline-flex;
 		align-items: center;
@@ -135,6 +284,7 @@
 			background-color 0.15s ease,
 			transform 0.1s ease;
 		padding: 0.25rem;
+		position: relative;
 	}
 
 	.tts-inline:hover:not(:disabled) {
@@ -145,9 +295,33 @@
 		transform: scale(0.95);
 	}
 
+	/* Focus indicator - WCAG 2.4.7, 2.4.13 */
+	.tts-inline:focus-visible {
+		outline: 2px solid #0066cc;
+		outline-offset: 2px;
+		box-shadow: 0 0 0 4px rgba(0, 102, 204, 0.2);
+		z-index: 1;
+	}
+
 	.tts-inline--speaking {
 		background-color: rgba(103, 126, 234, 0.15);
 		animation: pulse 1.5s ease-in-out infinite;
+	}
+
+	.tts-inline--paused {
+		background-color: rgba(255, 152, 0, 0.15);
+	}
+
+	.tts-inline--stop {
+		background-color: transparent;
+	}
+
+	.tts-inline--stop:hover:not(:disabled) {
+		background-color: rgba(244, 67, 54, 0.1);
+	}
+
+	.tts-inline--stop .tts-inline__icon {
+		color: #c62828; /* Darker red for better contrast - WCAG 1.4.11 */
 	}
 
 	.tts-inline:disabled {
@@ -159,6 +333,8 @@
 	.tts-inline--sm {
 		width: 1.5rem;
 		height: 1.5rem;
+		/* Increase padding to meet 44px touch target - WCAG 2.5.2 */
+		padding: 0.625rem;
 	}
 
 	.tts-inline--sm .tts-inline__icon {
@@ -207,6 +383,19 @@
 		50% {
 			opacity: 0.7;
 		}
+	}
+
+	/* Screen reader only content */
+	.sr-only {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
 	}
 
 	/* Accessibility */

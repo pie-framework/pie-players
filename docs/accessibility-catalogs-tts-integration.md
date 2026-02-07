@@ -87,6 +87,54 @@ catalogResolver.clearItemCatalogs();
 
 ---
 
+## SSML Extraction Workflow
+
+The PIE Players automatically extract embedded SSML from content at runtime:
+
+```
+┌────────────────────────────────────────────┐
+│ Item/Passage loads with embedded SSML      │
+└─────────────────┬──────────────────────────┘
+                  │
+                  ▼
+         ┌────────────────┐
+         │ SSMLExtractor  │
+         │ parses content │
+         └────────┬───────┘
+                  │
+          ┌───────┴────────┐
+          │                │
+          ▼                ▼
+    Find <speak>    Clean markup
+    elements        (remove SSML)
+          │                │
+          ▼                ▼
+    Extract SSML     Add catalog IDs
+    + language       (data-catalog-id)
+          │                │
+          └───────┬────────┘
+                  │
+                  ▼
+         ┌────────────────┐
+         │ Generate       │
+         │ catalog        │
+         │ entries        │
+         └────────┬───────┘
+                  │
+          ┌───────┴────────┐
+          │                │
+          ▼                ▼
+    Update config    Register with
+    (cleaned +       CatalogResolver
+    catalogs)
+```
+
+**Extraction Points:**
+- `ItemRenderer.svelte` - Processes item config on load
+- `PassageRenderer.svelte` - Processes passage config on load
+- Runs automatically in `$effect` hook
+- No author configuration required
+
 ## Catalog Resolution Flow
 
 The TTSService follows this resolution flow:
@@ -122,9 +170,10 @@ The TTSService follows this resolution flow:
 ```
 
 **Priority Order:**
-1. Item-level catalog (if present)
-2. Assessment-level catalog (if present)
-3. Plain text fallback (generated TTS)
+1. Extracted catalogs from SSML (auto-generated)
+2. Item-level catalog (manually authored)
+3. Assessment-level catalog (manually authored)
+4. Plain text fallback (generated TTS)
 
 ---
 
@@ -373,13 +422,94 @@ The BrowserTTSProvider (Web Speech API) has limited SSML support:
 
 ---
 
+## Embedded SSML Authoring Pattern
+
+Authors can embed SSML directly in PIE content:
+
+```typescript
+const item = {
+  config: {
+    models: [{
+      prompt: `<div>
+        <speak xml:lang="en-US">
+          Solve for <emphasis>x</emphasis> in the equation
+          <prosody rate="slow">x squared, plus two x, equals eight</prosody>.
+        </speak>
+        <p>Solve for <em>x</em> in the equation: x² + 2x = 8</p>
+      </div>`
+    }]
+  }
+};
+```
+
+**At Runtime:**
+- SSML extracted automatically
+- Catalog generated with ID `auto-prompt-{modelId}-0`
+- Visual markup cleaned (SSML removed)
+- `data-catalog-id` attribute added
+- Catalog registered with resolver
+
+**Result:**
+- TTS buttons use extracted SSML
+- User-selection TTS uses extracted SSML
+- Visual display shows clean HTML
+- No separate catalog authoring needed
+
+## Troubleshooting
+
+### SSML Not Working
+
+**Symptoms:** TTS uses plain text instead of SSML pronunciation
+
+**Possible Causes:**
+1. **SSML not detected during extraction**
+   - Check: Does content have `<speak>` tags?
+   - Fix: Ensure SSML is properly wrapped in `<speak>` element
+
+2. **Catalog ID not passed to TTS**
+   - Check: Does element have `data-catalog-id` attribute?
+   - Fix: Verify SSMLExtractor ran (check `item.config.extractedCatalogs`)
+
+3. **Invalid SSML markup**
+   - Check: Browser console for SSML parsing errors
+   - Fix: Validate SSML syntax (matching tags, proper attributes)
+
+4. **Language mismatch**
+   - Check: SSML `xml:lang` matches TTS request language
+   - Fix: Use consistent language codes (`en-US`, `es-ES`, etc.)
+
+### Visual Content Shows SSML Tags
+
+**Symptoms:** Users see `<speak>` or `<prosody>` tags in display
+
+**Cause:** SSML extraction not running
+
+**Fix:**
+1. Verify `catalogResolver` prop is passed to section player
+2. Check ItemRenderer/PassageRenderer have extraction code
+3. Ensure `$effect` hook is executing
+4. Check browser console for extraction errors
+
+### Catalog IDs Colliding
+
+**Symptoms:** Wrong SSML spoken for content
+
+**Cause:** Duplicate auto-generated catalog IDs
+
+**Fix:**
+1. SSMLExtractor uses counter to ensure uniqueness
+2. Format: `auto-{context}-{identifier}-{counter}`
+3. Counter resets per extraction session
+4. Item-level catalogs cleared on navigation
+
 ## Next Steps
 
 ### Phase 3: Extended Integration
 
-- **TTS Tool Integration**: Update pie-tool-text-to-speech to detect catalog IDs in clicked content
-- **AssessmentPlayer Integration**: Automatic catalog resolver initialization
-- **HTML Content Detection**: Utility to extract catalog IDs from DOM elements
+- ✅ **SSML Extraction**: Automatic extraction from embedded `<speak>` tags
+- ✅ **TTS Tool Integration**: Updated pie-tool-text-to-speech to detect catalog IDs
+- ✅ **AssessmentPlayer Integration**: Automatic catalog resolver initialization
+- ✅ **HTML Content Detection**: Catalog ID detection from DOM elements
 
 ### Phase 4: Extended Catalog Types
 

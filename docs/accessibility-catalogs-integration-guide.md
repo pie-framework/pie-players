@@ -80,9 +80,243 @@ QTI 3.0 Accessibility Catalogs provide standardized alternative representations 
 
 ## Integration with PIE
 
+### Automatic SSML Extraction from PIE Content
+
+The PIE Players automatically extract embedded `<speak>` SSML tags from item content and convert them into QTI 3.0 accessibility catalogs at runtime.
+
+#### Why Automatic Extraction?
+
+Authors can embed SSML directly in content for convenience:
+- Proper pronunciation of technical terms (e.g., "polynomial")
+- Math expressions spoken correctly ("x squared minus five x")
+- Emphasis and pacing control
+- No need to maintain separate catalog files
+
+The system automatically:
+1. Extracts SSML during item/passage load
+2. Generates catalog entries with unique IDs
+3. Cleans visual markup (removes SSML tags)
+4. Registers catalogs with AccessibilityCatalogResolver
+
+#### Complete Transformation Example
+
+**Before (Author Creates This):**
+
+```typescript
+{
+  identifier: 'q1-quadratic',
+  item: {
+    id: 'quadratic-q1',
+    name: 'Quadratic Question',
+    baseId: 'quadratic-q1',
+    version: { major: 1, minor: 0, patch: 0 },
+    config: {
+      markup: '<multiple-choice id="q1"></multiple-choice>',
+      elements: {
+        'multiple-choice': '@pie-element/multiple-choice@latest'
+      },
+      models: [
+        {
+          id: 'q1',
+          element: 'multiple-choice',
+          prompt: `<div>
+            <!-- Author embeds SSML for proper math pronunciation -->
+            <speak xml:lang="en-US">
+              Which method should you use to solve
+              <prosody rate="slow">x squared, minus five x, plus six,
+              equals zero</prosody>?
+            </speak>
+
+            <!-- Visual content for display -->
+            <p><strong>Which method should you use to solve x² - 5x + 6 = 0?</strong></p>
+          </div>`,
+          choiceMode: 'radio',
+          choices: [
+            {
+              value: 'a',
+              label: `<speak>The <emphasis>quadratic formula</emphasis></speak>
+                      <span>The quadratic formula</span>`
+            },
+            {
+              value: 'b',
+              label: `<speak><emphasis level="strong">Factoring</emphasis>,
+                      because it's easiest</speak>
+                      <span>Factoring, because it's easiest</span>`
+            },
+            {
+              value: 'c',
+              label: `<speak>Completing the square</speak>
+                      <span>Completing the square</span>`
+            },
+            {
+              value: 'd',
+              label: 'Graphing'  // No SSML - will use plain text
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
+```
+
+**After (Automatic Extraction at Runtime):**
+
+```typescript
+{
+  identifier: 'q1-quadratic',
+  item: {
+    id: 'quadratic-q1',
+    name: 'Quadratic Question',
+    baseId: 'quadratic-q1',
+    version: { major: 1, minor: 0, patch: 0 },
+    config: {
+      markup: '<multiple-choice id="q1"></multiple-choice>',
+      elements: {
+        'multiple-choice': '@pie-element/multiple-choice@latest'
+      },
+
+      // ✅ CLEANED: SSML removed, catalog IDs added
+      models: [
+        {
+          id: 'q1',
+          element: 'multiple-choice',
+          prompt: `<div data-catalog-id="auto-prompt-q1-0">
+            <p><strong>Which method should you use to solve x² - 5x + 6 = 0?</strong></p>
+          </div>`,
+          choiceMode: 'radio',
+          choices: [
+            {
+              value: 'a',
+              label: `<span data-catalog-id="auto-choice-q1-a-0">The quadratic formula</span>`
+            },
+            {
+              value: 'b',
+              label: `<span data-catalog-id="auto-choice-q1-b-0">Factoring, because it's easiest</span>`
+            },
+            {
+              value: 'c',
+              label: `<span data-catalog-id="auto-choice-q1-c-0">Completing the square</span>`
+            },
+            {
+              value: 'd',
+              label: 'Graphing'  // No catalog ID - no SSML found
+            }
+          ]
+        }
+      ],
+
+      // ✅ NEW: Extracted SSML catalogs
+      extractedCatalogs: [
+        {
+          identifier: 'auto-prompt-q1-0',
+          cards: [
+            {
+              catalog: 'spoken',
+              language: 'en-US',
+              content: `<speak xml:lang="en-US">
+                Which method should you use to solve
+                <prosody rate="slow">x squared, minus five x, plus six,
+                equals zero</prosody>?
+              </speak>`
+            }
+          ]
+        },
+        {
+          identifier: 'auto-choice-q1-a-0',
+          cards: [
+            {
+              catalog: 'spoken',
+              language: 'en-US',
+              content: `<speak>The <emphasis>quadratic formula</emphasis></speak>`
+            }
+          ]
+        },
+        {
+          identifier: 'auto-choice-q1-b-0',
+          cards: [
+            {
+              catalog: 'spoken',
+              language: 'en-US',
+              content: `<speak><emphasis level="strong">Factoring</emphasis>,
+                because it's easiest</speak>`
+            }
+          ]
+        },
+        {
+          identifier: 'auto-choice-q1-c-0',
+          cards: [
+            {
+              catalog: 'spoken',
+              language: 'en-US',
+              content: `<speak>Completing the square</speak>`
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
+```
+
+#### Key Transformations
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| **Visual Content** | Mixed SSML + HTML | Clean HTML only |
+| **Catalog IDs** | None | Auto-generated `data-catalog-id` |
+| **SSML Storage** | Embedded in markup | Separate `extractedCatalogs` array |
+| **Structure** | Dual content (speak + visual) | Single visual + catalog reference |
+
+#### TTS Behavior After Extraction
+
+1. **Content-Level TTS (tool-tts-inline):**
+   - User clicks speaker icon in header
+   - Tool calls `ttsService.speak(text, { catalogId: 'auto-prompt-q1-0' })`
+   - Resolver finds SSML in `extractedCatalogs`
+   - Polly/Browser speaks with proper math pronunciation and pacing
+
+2. **User-Selection TTS (annotation toolbar):**
+   - User selects "The quadratic formula" text
+   - Tool detects nearest `data-catalog-id="auto-choice-q1-a-0"`
+   - Calls `ttsService.speak(selectedText, { catalogId: 'auto-choice-q1-a-0' })`
+   - Resolver finds SSML with `<emphasis>`
+   - Speaks with proper emphasis
+
+3. **Plain Text Fallback:**
+   - User selects "Graphing" (choice d - no SSML)
+   - No catalog ID present
+   - TTS uses plain text with browser TTS
+   - Still works, just without enhanced pronunciation
+
+#### Extraction Service
+
+**Location:** `packages/assessment-toolkit/src/services/SSMLExtractor.ts`
+
+**Usage:**
+
+```typescript
+import { SSMLExtractor } from '@pie-players/pie-assessment-toolkit';
+
+const extractor = new SSMLExtractor();
+const result = extractor.extractFromItemConfig(item.config);
+
+// Update config with cleaned content
+item.config = result.cleanedConfig;
+item.config.extractedCatalogs = result.catalogs;
+
+// Register with resolver
+catalogResolver.addItemCatalogs(result.catalogs);
+```
+
+**Integration Points:**
+- `ItemRenderer.svelte` - Extracts SSML from items automatically
+- `PassageRenderer.svelte` - Extracts SSML from passages automatically
+- Runs transparently during render (no author action needed)
+
 ### Catalog References in PIE Markup
 
-PIE items reference catalogs using the `data-catalog-id` attribute:
+PIE items reference catalogs using the `data-catalog-id` attribute (either manually authored or auto-generated by SSML extraction):
 
 ```html
 <!-- Prompt with catalog reference -->

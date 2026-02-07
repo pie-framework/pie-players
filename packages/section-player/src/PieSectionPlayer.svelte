@@ -30,6 +30,7 @@
 			section: { attribute: 'section', type: 'Object' },
 			mode: { attribute: 'mode', type: 'String' },
 			view: { attribute: 'view', type: 'String' },
+			layout: { attribute: 'layout', type: 'String' },
 
 			// Item sessions for restoration
 			itemSessions: { attribute: 'item-sessions', type: 'Object' },
@@ -57,15 +58,16 @@
 		RubricBlock
 	} from '@pie-players/pie-players-shared/types';
 	import { onMount, untrack } from 'svelte';
-	import PageModeLayout from './components/PageModeLayout.svelte';
+	import VerticalLayout from './components/layouts/VerticalLayout.svelte';
+	import SplitPanelLayout from './components/layouts/SplitPanelLayout.svelte';
 	import ItemModeLayout from './components/ItemModeLayout.svelte';
-	import PassageRenderer from './components/PassageRenderer.svelte';
 
 	// Props
 	let {
 		section = null as QtiAssessmentSection | null,
 		mode = 'gather' as 'gather' | 'view' | 'evaluate' | 'author',
 		view = 'candidate' as 'candidate' | 'scorer' | 'author' | 'proctor' | 'testConstructor' | 'tutor',
+		layout = 'split-panel' as 'vertical' | 'split-panel',
 		itemSessions = {} as Record<string, any>,
 		bundleHost = '',
 		esmCdnUrl = '',
@@ -294,22 +296,41 @@
 		{/if}
 
 		{#if isPageMode}
-			<!-- Page Mode: Use internal Svelte component -->
-			<PageModeLayout
-				{passages}
-				{items}
-				{itemSessions}
-				{mode}
-				{bundleHost}
-				{esmCdnUrl}
-				{playerVersion}
-				{useLegacyPlayer}
-				{ttsService}
-				{toolCoordinator}
-				{highlightCoordinator}
-				{catalogResolver}
-				onsessionchanged={handleSessionChanged}
-			/>
+			<!-- Page Mode: Choose layout based on layout prop -->
+			{#if layout === 'split-panel'}
+				<SplitPanelLayout
+					{passages}
+					{items}
+					{itemSessions}
+					{mode}
+					{bundleHost}
+					{esmCdnUrl}
+					{playerVersion}
+					{useLegacyPlayer}
+					{ttsService}
+					{toolCoordinator}
+					{highlightCoordinator}
+					{catalogResolver}
+					onsessionchanged={handleSessionChanged}
+				/>
+			{:else}
+				<!-- Default: vertical layout -->
+				<VerticalLayout
+					{passages}
+					{items}
+					{itemSessions}
+					{mode}
+					{bundleHost}
+					{esmCdnUrl}
+					{playerVersion}
+					{useLegacyPlayer}
+					{ttsService}
+					{toolCoordinator}
+					{highlightCoordinator}
+					{catalogResolver}
+					onsessionchanged={handleSessionChanged}
+				/>
+			{/if}
 		{:else}
 			<!-- Item Mode: Use internal Svelte component -->
 			<ItemModeLayout
@@ -345,6 +366,7 @@
 	.pie-section-player {
 		display: block;
 		width: 100%;
+		height: 100%;
 		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
 	}
 

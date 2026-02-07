@@ -177,30 +177,29 @@
 	.passage-renderer {
 		display: block;
 		margin-bottom: 1rem;
+		padding: 1rem;
+		border: 1px solid #e5e7eb;
+		border-radius: 4px;
 	}
 
 	.passage-header {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		padding: 0.75rem 1rem;
-		background: #f5f5f5;
-		border: 1px solid #e0e0e0;
-		border-bottom: none;
-		border-radius: 4px 4px 0 0;
+		padding: 0.75rem 0;
+		margin-bottom: 0.5rem;
 	}
 
 	.passage-title {
 		margin: 0;
-		font-size: 1rem;
+		font-size: 0.95rem;
 		font-weight: 600;
-		color: #333;
+		color: #1976d2;
 	}
 
 	.passage-content {
-		border: 1px solid #e0e0e0;
-		border-radius: 0 0 4px 4px;
 		padding: 1rem;
-		background: white;
+		border: 1px solid #e5e7eb;
+		border-radius: 4px;
 	}
 </style>

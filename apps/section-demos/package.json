@@ -1,0 +1,37 @@
+{
+  "name": "@pie-players/section-demos",
+  "version": "0.1.0",
+  "description": "Progressive demos for PIE Section Player",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@pie-players/pie-assessment-toolkit": "workspace:*",
+    "@pie-players/pie-section-player": "workspace:*",
+    "@pie-players/pie-players-shared": "workspace:*",
+    "@pie-players/tts-server-core": "workspace:*",
+    "@pie-players/tts-server-polly": "workspace:*",
+    "@pie-players/tts-client-server": "workspace:*",
+    "dotenv": "^16.4.7"
+  },
+  "devDependencies": {
+    "@sveltejs/adapter-auto": "^7.0.0",
+    "@sveltejs/adapter-static": "^3.0.10",
+    "@sveltejs/kit": "^2.50.1",
+    "@sveltejs/vite-plugin-svelte": "^6.2.4",
+    "@tailwindcss/vite": "^4.0.0-beta.7",
+    "daisyui": "^5.5.14",
+    "svelte": "^5.49.1",
+    "svelte-check": "^4.1.1",
+    "tailwindcss": "^4.0.0-beta.7",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1"
+  },
+  "license": "MIT"
+}

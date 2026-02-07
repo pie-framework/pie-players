@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+/* Import DaisyUI v5 styles and themes */
+@import "daisyui/daisyui.css";
+@import "daisyui/themes.css";
+
+/* Custom theme configuration for Tailwind v4 with DaisyUI */
+@layer theme {
+	:root[data-theme="light"] {
+		/* DaisyUI uses CSS variables internally */
+		--p: 26 93 71; /* Orange from PIE logo #ee4923 */
+		--pc: 0 0 100; /* White text on primary */
+		--s: 217 55 37; /* Deep navy blue #1e3a5f */
+		--sc: 0 0 100; /* White text on secondary */
+	}
+
+	:root[data-theme="dark"] {
+		--p: 10 79 62; /* Brighter orange for dark mode #ff5733 */
+		--pc: 0 0 100; /* White text on primary */
+		--s: 217 91 72; /* Lighter blue for dark mode #3b82f6 */
+		--sc: 0 0 100; /* White text on secondary */
+	}
+}
+
+/* Custom styles for the section player */
+pie-section-player {
+	display: block;
+}

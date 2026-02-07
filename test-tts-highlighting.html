@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TTS Highlighting Test - Plain Text Only</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+            line-height: 1.6;
+        }
+
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 0.5rem;
+        }
+
+        .test-content {
+            background: #f8f9fa;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            padding: 2rem;
+            margin: 2rem 0;
+            font-size: 1.1rem;
+            line-height: 1.8;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        button {
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .status {
+            padding: 1rem;
+            border-radius: 6px;
+            margin: 1rem 0;
+            font-weight: 500;
+        }
+
+        .status.info {
+            background: #e3f2fd;
+            color: #1565c0;
+            border: 1px solid #90caf9;
+        }
+
+        .status.success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            border: 1px solid #81c784;
+        }
+
+        .status.error {
+            background: #ffebee;
+            color: #c62828;
+            border: 1px solid #e57373;
+        }
+
+        .log-container {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 1rem;
+            border-radius: 6px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+            font-size: 0.85rem;
+            margin: 2rem 0;
+        }
+
+        .log-entry {
+            margin: 0.25rem 0;
+            padding: 0.25rem 0;
+            border-bottom: 1px solid #333;
+        }
+
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+
+        .log-timestamp {
+            color: #858585;
+            margin-right: 0.5rem;
+        }
+
+        .log-level {
+            font-weight: bold;
+            margin-right: 0.5rem;
+        }
+
+        .log-level.info {
+            color: #4fc3f7;
+        }
+
+        .log-level.warn {
+            color: #ffb74d;
+        }
+
+        .log-level.error {
+            color: #e57373;
+        }
+
+        .log-level.success {
+            color: #81c784;
+        }
+
+        /* Highlight styles (matching HighlightCoordinator styles) */
+        ::highlight(tts-word) {
+            background-color: rgba(255, 235, 59, 0.6);
+            color: inherit;
+        }
+
+        ::highlight(tts-sentence) {
+            background-color: rgba(173, 216, 230, 0.3);
+            color: inherit;
+        }
+
+        .info-box {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 6px;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+
+        .info-box h3 {
+            margin: 0 0 0.5rem 0;
+            color: #856404;
+        }
+
+        .info-box p {
+            margin: 0.5rem 0;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔬 TTS Highlighting Test (Plain Text Only)</h1>
+
+    <div class="info-box">
+        <h3>⚠️ Test Conditions</h3>
+        <p><strong>Goal:</strong> Isolate highlighting issues by using ONLY plain text (no SSML)</p>
+        <p><strong>Provider:</strong> Will try ServerTTSProvider (AWS Polly) first, fallback to BrowserTTSProvider</p>
+        <p><strong>Test Text:</strong> Simple sentence with easily countable words</p>
+    </div>
+
+    <div id="status" class="status info">
+        Initializing TTS system...
+    </div>
+
+    <div class="test-content" id="content">
+        The quick brown fox jumps over the lazy dog.
+    </div>
+
+    <div class="controls">
+        <button class="btn-primary" onclick="testSpeak()">▶️ Speak (Plain Text)</button>
+        <button class="btn-secondary" onclick="testPause()">⏸️ Pause</button>
+        <button class="btn-secondary" onclick="testResume()">⏯️ Resume</button>
+        <button class="btn-danger" onclick="testStop()">⏹️ Stop</button>
+        <button class="btn-secondary" onclick="clearLog()">🗑️ Clear Log</button>
+    </div>
+
+    <h3>📊 Debug Log</h3>
+    <div class="log-container" id="log">
+        <div class="log-entry">
+            <span class="log-timestamp">[00:00:00.000]</span>
+            <span class="log-level info">[INFO]</span>
+            Starting initialization...
+        </div>
+    </div>
+
+    <script type="module">
+        import { TTSService, HighlightCoordinator, BrowserTTSProvider } from './packages/assessment-toolkit/dist/index.js';
+        import { ServerTTSProvider } from './packages/tts-client-server/dist/index.js';
+
+        let ttsService;
+        let highlightCoordinator;
+        let providerName = 'unknown';
+        const startTime = Date.now();
+
+        function log(level, message, data) {
+            const elapsed = Date.now() - startTime;
+            const timestamp = new Date(elapsed).toISOString().substr(11, 12);
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            logEntry.innerHTML = `
+                <span class="log-timestamp">[${timestamp}]</span>
+                <span class="log-level ${level}">[${level.toUpperCase()}]</span>
+                <span>${message}${data ? ': ' + JSON.stringify(data) : ''}</span>
+            `;
+            document.getElementById('log').appendChild(logEntry);
+            document.getElementById('log').scrollTop = document.getElementById('log').scrollHeight;
+        }
+
+        function updateStatus(message, type = 'info') {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = `status ${type}`;
+        }
+
+        async function init() {
+            try {
+                log('info', 'Creating TTSService and HighlightCoordinator');
+
+                ttsService = new TTSService();
+                highlightCoordinator = new HighlightCoordinator();
+
+                // Check if highlight API is supported
+                if (!highlightCoordinator.isSupported()) {
+                    log('error', 'CSS Highlight API not supported in this browser');
+                    updateStatus('❌ CSS Highlight API not supported', 'error');
+                    return;
+                }
+
+                log('success', 'HighlightCoordinator created and supported');
+
+                // Try ServerTTSProvider first
+                try {
+                    log('info', 'Attempting to initialize ServerTTSProvider (AWS Polly)');
+                    const serverProvider = new ServerTTSProvider();
+
+                    await ttsService.initialize(serverProvider, {
+                        apiEndpoint: '/api/tts',
+                        provider: 'polly',
+                        voice: 'Joanna',
+                        language: 'en-US',
+                        rate: 1.0,
+                    });
+
+                    providerName = 'AWS Polly (Server)';
+                    log('success', 'ServerTTSProvider initialized', { provider: providerName });
+                    updateStatus(`✅ Ready: ${providerName}`, 'success');
+                } catch (serverError) {
+                    log('warn', 'ServerTTSProvider failed, falling back to BrowserTTSProvider', { error: serverError.message });
+
+                    // Fallback to browser
+                    const browserProvider = new BrowserTTSProvider();
+                    await ttsService.initialize(browserProvider);
+
+                    providerName = 'Browser Web Speech API';
+                    log('success', 'BrowserTTSProvider initialized', { provider: providerName });
+                    updateStatus(`✅ Ready: ${providerName} (fallback)`, 'success');
+                }
+
+                // Set highlight coordinator on TTS service
+                ttsService.setHighlightCoordinator(highlightCoordinator);
+                log('success', 'HighlightCoordinator set on TTSService');
+
+            } catch (error) {
+                log('error', 'Initialization failed', { error: error.message });
+                updateStatus('❌ Initialization failed: ' + error.message, 'error');
+                console.error('Initialization error:', error);
+            }
+        }
+
+        window.testSpeak = async function() {
+            if (!ttsService) {
+                log('error', 'TTS service not initialized');
+                return;
+            }
+
+            const content = document.getElementById('content');
+            const text = content.textContent.trim();
+
+            log('info', 'Starting speech', {
+                provider: providerName,
+                textLength: text.length,
+                text: text
+            });
+
+            updateStatus('🔊 Speaking...', 'info');
+
+            try {
+                // Pass the contentElement for highlighting
+                await ttsService.speak(text, {
+                    language: 'en-US',
+                    contentElement: content
+                });
+
+                log('success', 'Speech completed');
+                updateStatus('✅ Speech completed', 'success');
+            } catch (error) {
+                log('error', 'Speech failed', { error: error.message });
+                updateStatus('❌ Speech failed: ' + error.message, 'error');
+                console.error('Speech error:', error);
+            }
+        };
+
+        window.testPause = function() {
+            if (!ttsService) return;
+            ttsService.pause();
+            log('info', 'Paused');
+            updateStatus('⏸️ Paused', 'info');
+        };
+
+        window.testResume = function() {
+            if (!ttsService) return;
+            ttsService.resume();
+            log('info', 'Resumed');
+            updateStatus('🔊 Resumed', 'info');
+        };
+
+        window.testStop = function() {
+            if (!ttsService) return;
+            ttsService.stop();
+            log('info', 'Stopped');
+            updateStatus('⏹️ Stopped', 'info');
+        };
+
+        window.clearLog = function() {
+            document.getElementById('log').innerHTML = '';
+            log('info', 'Log cleared');
+        };
+
+        // Initialize on load
+        init();
+    </script>
+</body>
+</html>

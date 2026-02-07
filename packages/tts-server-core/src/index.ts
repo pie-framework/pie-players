@@ -6,6 +6,8 @@
 // Export types
 export type {
   SpeechMark,
+  StandardTTSParameters,
+  TTSProviderExtensions,
   SynthesizeRequest,
   SynthesizeResponse,
   SynthesizeMetadata,

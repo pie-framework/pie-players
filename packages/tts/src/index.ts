@@ -8,6 +8,8 @@
 export type {
 	ITTSProvider,
 	ITTSProviderImplementation,
+	StandardTTSConfig,
+	TTSConfigExtensions,
 	TTSConfig,
 	TTSFeature,
 	TTSProviderCapabilities,

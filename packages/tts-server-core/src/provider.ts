@@ -24,6 +24,31 @@ export interface TTSServerConfig {
  *
  * All server-side TTS providers must implement this interface.
  * Providers handle synthesis requests and return audio with speech marks.
+ *
+ * ## Initialization Performance
+ *
+ * The `initialize()` method MUST be fast and lightweight:
+ * - Should only validate config and create API clients
+ * - MUST NOT fetch voices or make expensive API calls
+ * - MUST NOT perform test synthesis requests
+ *
+ * Use `getVoices()` explicitly when voice discovery is needed (e.g., in demo/admin UIs).
+ * Runtime synthesis should work with hardcoded voice IDs without querying available voices.
+ *
+ * @example Fast initialization (runtime)
+ * ```typescript
+ * const provider = new PollyServerProvider();
+ * await provider.initialize({ region: 'us-east-1', defaultVoice: 'Joanna' });
+ * // Ready to synthesize immediately - no voices query
+ * await provider.synthesize({ text: 'Hello', voice: 'Joanna' });
+ * ```
+ *
+ * @example Explicit voice discovery (admin/demo UIs)
+ * ```typescript
+ * const provider = new PollyServerProvider();
+ * await provider.initialize({ region: 'us-east-1' });
+ * const voices = await provider.getVoices(); // Explicit, separate call
+ * ```
  */
 export interface ITTSServerProvider {
   /**
@@ -42,10 +67,14 @@ export interface ITTSServerProvider {
   readonly version: string;
 
   /**
-   * Initialize the provider with configuration
+   * Initialize the provider with configuration.
+   *
+   * MUST be fast and lightweight - only validates config and creates clients.
+   * MUST NOT fetch voices or make expensive API calls during initialization.
    *
    * @param config - Provider-specific configuration
    * @throws {TTSError} If initialization fails
+   * @performance Should complete in <100ms
    */
   initialize(config: TTSServerConfig): Promise<void>;
 
@@ -59,18 +88,25 @@ export interface ITTSServerProvider {
   synthesize(request: SynthesizeRequest): Promise<SynthesizeResponse>;
 
   /**
-   * Get available voices
+   * Get available voices (explicit, secondary query).
+   *
+   * This is an EXPLICIT operation for voice discovery in demo/admin UIs.
+   * NOT called during initialization - call separately when needed.
    *
    * @param options - Optional filters for voices
    * @returns List of available voices
    * @throws {TTSError} If voice listing fails
+   * @note May take 200-500ms depending on provider
    */
   getVoices(options?: GetVoicesOptions): Promise<Voice[]>;
 
   /**
-   * Get provider capabilities
+   * Get provider capabilities (synchronous, fast).
+   *
+   * Returns static capability information without API calls.
    *
    * @returns Provider feature support
+   * @performance Should complete in <1ms (synchronous)
    */
   getCapabilities(): ServerProviderCapabilities;
 

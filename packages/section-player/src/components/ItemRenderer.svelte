@@ -2,8 +2,7 @@
   ItemRenderer - Internal Component
 
   Renders a single item using pie-legacy-player, pie-iife-player, or pie-esm-player.
-  Player selection: legacy (default) > IIFE (if bundleHost) > ESM (if esmCdnUrl).
-  Not exposed as a web component - used internally in PieSectionPlayer.
+  Handles SSML extraction, TTS service binding, and player lifecycle.
 -->
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';

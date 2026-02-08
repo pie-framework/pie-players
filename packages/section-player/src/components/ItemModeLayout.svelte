@@ -18,12 +18,10 @@
 		canNext,
 		canPrevious,
 		itemSession,
-		mode = 'gather',
+		env = { mode: 'gather', role: 'student' },
 		bundleHost = '',
 		esmCdnUrl = 'https://esm.sh',
 		playerVersion = 'latest',
-		useLegacyPlayer = true,
-		skipElementLoading = false,
 		ttsService = null,
 		toolCoordinator = null,
 		highlightCoordinator = null,
@@ -39,12 +37,10 @@
 		canNext: boolean;
 		canPrevious: boolean;
 		itemSession?: any;
-		mode?: 'gather' | 'view' | 'evaluate' | 'author';
+		env?: { mode: 'gather' | 'view' | 'evaluate' | 'author'; role: 'student' | 'instructor' };
 		bundleHost?: string;
 		esmCdnUrl?: string;
 		playerVersion?: string;
-		useLegacyPlayer?: boolean;
-		skipElementLoading?: boolean;
 		ttsService?: any;
 		toolCoordinator?: any;
 		highlightCoordinator?: any;
@@ -85,14 +81,12 @@
 		<div class="current-item-section">
 			<ItemRenderer
 				item={currentItem}
-				{mode}
+				{env}
 				session={itemSession}
 				{bundleHost}
 				{esmCdnUrl}
 				{playerVersion}
-				{useLegacyPlayer}
-				{skipElementLoading}
-				{ttsService}
+					{ttsService}
 				{toolCoordinator}
 				{highlightCoordinator}
 				{catalogResolver}

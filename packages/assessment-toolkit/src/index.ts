@@ -69,6 +69,9 @@ export {
 // PNP Tool Resolution (QTI 3.0 Native)
 export type { ResolvedToolConfig } from "./services/PNPToolResolver";
 export { PNPToolResolver } from "./services/PNPToolResolver";
+// SSML Extractor (Auto-generates catalogs from embedded SSML)
+export type { ExtractionResult } from "./services/SSMLExtractor";
+export { SSMLExtractor } from "./services/SSMLExtractor";
 // Theme Provider
 export type { FontSize, ThemeConfig } from "./services/ThemeProvider";
 export { ThemeProvider } from "./services/ThemeProvider";
@@ -85,9 +88,6 @@ export type {
 	TTSFeature,
 	TTSProviderCapabilities,
 } from "./services/tts/provider-interface";
-// SSML Extractor (Auto-generates catalogs from embedded SSML)
-export type { ExtractionResult } from "./services/SSMLExtractor";
-export { SSMLExtractor } from "./services/SSMLExtractor";
 
 // Note: Removed deprecated exports:
 // - ttsService singleton (use: const service = new TTSService())

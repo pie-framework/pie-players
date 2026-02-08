@@ -2,8 +2,8 @@
 	import { getContext, onMount, untrack } from 'svelte';
 	import ModeSelector from '$lib/components/ModeSelector.svelte';
 	import RoleSelector from '$lib/components/RoleSelector.svelte';
-	import SessionPanel from '$lib/components/SessionPanel.svelte';
 	import ScoringPanel from '$lib/components/ScoringPanel.svelte';
+	import SessionPanel from '$lib/components/SessionPanel.svelte';
 
 	let { data } = $props();
 	const demoState: any = getContext('demo-state');

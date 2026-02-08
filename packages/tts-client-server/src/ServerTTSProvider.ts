@@ -197,9 +197,11 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 
 		if (!response.ok) {
 			const errorData = await response.json().catch(() => ({}));
-			throw new Error(
-				errorData.error?.message || `Server returned ${response.status}`,
-			);
+			const errorMessage =
+				errorData.message ||
+				errorData.error?.message ||
+				`Server returned ${response.status}`;
+			throw new Error(errorMessage);
 		}
 
 		const data: SynthesizeAPIResponse = await response.json();

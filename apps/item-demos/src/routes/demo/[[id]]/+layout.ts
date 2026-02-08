@@ -1,5 +1,5 @@
-import { getDemoById } from "$lib/content/demos";
 import { error } from "@sveltejs/kit";
+import { getDemoById } from "$lib/content/demos";
 import type { LayoutLoad } from "./$types";
 
 export const load: LayoutLoad = ({ params }) => {

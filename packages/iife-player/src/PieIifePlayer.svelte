@@ -49,6 +49,7 @@
 
 			// IIFE-specific props
 			bundleHost: { attribute: 'bundle-host', type: 'String' },
+			skipElementLoading: { attribute: 'skip-element-loading', type: 'Boolean' },
 
 			// Authoring mode props
 			mode: { attribute: 'mode', type: 'String' },
@@ -99,6 +100,7 @@
 
 		// IIFE-specific props
 		bundleHost = DEFAULT_BUNDLE_HOST,
+		skipElementLoading = false,
 
 		// Authoring mode props
 		mode = 'view' as 'view' | 'author',
@@ -236,44 +238,50 @@
 			const transformed = makeUniqueTags({ config: parsedConfig });
 			const transformedConfig = transformed.config;
 
-			// Initialize IIFE loader
-			stage = 'create-iife-loader';
-			logger.debug('Creating IIFE loader with bundle host:', bundleHost);
-			const iifeLoader = new IifePieLoader({
-				bundleHost: bundleHost,
-				debugEnabled: () => debugEnabled
-			});
+			// Check if elements need to be loaded or are already pre-loaded
+			if (!skipElementLoading) {
+				// Initialize IIFE loader
+				stage = 'create-iife-loader';
+				logger.debug('Creating IIFE loader with bundle host:', bundleHost);
+				const iifeLoader = new IifePieLoader({
+					bundleHost: bundleHost,
+					debugEnabled: () => debugEnabled
+				});
 
-			// Determine bundle type based on mode and hosted flag
-			stage = 'determine-bundleType';
-			const bundleType = mode === 'author'
-				? BundleType.editor
-				: (hosted ? BundleType.player : BundleType.clientPlayer);
-			// Authoring bundles (editor.js) should not require controllers.
-			const needsControllers = bundleType !== BundleType.editor && !hosted;
+				// Determine bundle type based on mode and hosted flag
+				stage = 'determine-bundleType';
+				const bundleType = mode === 'author'
+					? BundleType.editor
+					: (hosted ? BundleType.player : BundleType.clientPlayer);
+				// Authoring bundles (editor.js) should not require controllers.
+				const needsControllers = bundleType !== BundleType.editor && !hosted;
 
-			// Load IIFE elements into the global PIE registry
-			stage = 'iifeLoader.load';
-			logger.debug('Loading IIFE elements, bundle type:', bundleType);
-			logger.debug('Bundle type determination: mode=%s, hosted=%s, needsControllers=%s', mode, hosted, needsControllers);
-			await iifeLoader.load(
-				transformedConfig,
-				document,
-				bundleType,
-				needsControllers
-			);
+				// Load IIFE elements into the global PIE registry
+				stage = 'iifeLoader.load';
+				logger.debug('Loading IIFE elements, bundle type:', bundleType);
+				logger.debug('Bundle type determination: mode=%s, hosted=%s, needsControllers=%s', mode, hosted, needsControllers);
+				await iifeLoader.load(
+					transformedConfig,
+					document,
+					bundleType,
+					needsControllers
+				);
 
-			// Wait for elements to be defined
-			stage = 'elementsHaveLoaded';
-			const isEditorBundle = bundleType === BundleType.editor;
-			const elements = Object.keys(transformedConfig.elements).map((el) => ({
-				name: el,
-				// Editor bundles register configure elements with `-config` suffix
-				tag: isEditorBundle ? `${el}-config` : el,
-			}));
-			logger.debug('Waiting for elements:', elements);
-			await iifeLoader.elementsHaveLoaded(elements);
-			logger.debug('IIFE elements loaded and ready');
+				// Wait for elements to be defined
+				stage = 'elementsHaveLoaded';
+				const isEditorBundle = bundleType === BundleType.editor;
+				const elements = Object.keys(transformedConfig.elements).map((el) => ({
+					name: el,
+					// Editor bundles register configure elements with `-config` suffix
+					tag: isEditorBundle ? `${el}-config` : el,
+				}));
+				logger.debug('Waiting for elements:', elements);
+				await iifeLoader.elementsHaveLoaded(elements);
+				logger.debug('IIFE elements loaded and ready');
+			} else {
+				// Elements pre-loaded by parent (section-level aggregation)
+				logger.debug('[PieIifePlayer] Skipping element loading (pre-loaded by parent)');
+			}
 
 			// Set item config - this will trigger PieItemPlayer to initialize
 			stage = 'set-itemConfig';

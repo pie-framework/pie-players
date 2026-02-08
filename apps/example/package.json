@@ -47,9 +47,9 @@
 		"lowlight": "^3.3.0"
 	},
 	"devDependencies": {
-		"@axe-core/playwright": "^4.11.0",
+		"@axe-core/playwright": "4.11.0",
 		"@pie-players/local-esm-cdn": "workspace:*",
-		"@playwright/test": "^1.57.0",
+		"@playwright/test": "1.58.0",
 		"@sveltejs/adapter-auto": "^7.0.0",
 		"@sveltejs/adapter-static": "^3.0.10",
 		"@sveltejs/kit": "^2.50.1",

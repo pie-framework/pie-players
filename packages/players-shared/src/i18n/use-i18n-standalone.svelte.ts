@@ -27,7 +27,6 @@
 
 import { BUNDLED_TRANSLATIONS, loadTranslations } from "./loader";
 import { SimpleI18n } from "./simple-i18n";
-import type { I18nConfig } from "./types";
 
 /**
  * Standalone i18n configuration

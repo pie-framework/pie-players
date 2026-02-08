@@ -153,9 +153,9 @@
 
 					<!-- Provider Selection -->
 					<div class="form-control">
-						<label class="label">
+						<div class="label">
 							<span class="label-text font-semibold">TTS Provider</span>
-						</label>
+						</div>
 						<div class="flex gap-4">
 							<label class="label cursor-pointer gap-2 flex-1 border rounded-lg p-4">
 								<input
@@ -187,10 +187,10 @@
 					{#if localTtsConfig.provider === 'polly'}
 						<!-- Polly Settings -->
 						<div class="form-control">
-							<label class="label">
+							<label class="label" for="polly-voice-select">
 								<span class="label-text">Voice</span>
 							</label>
-							<select bind:value={localTtsConfig.voice} class="select select-bordered w-full">
+							<select id="polly-voice-select" bind:value={localTtsConfig.voice} class="select select-bordered w-full">
 								{#each pollyVoices as voice}
 									<option value={voice.name}>{voice.name} ({voice.gender})</option>
 								{/each}
@@ -198,20 +198,21 @@
 						</div>
 
 						<div class="form-control">
-							<label class="label">
+							<label class="label" for="polly-engine-select">
 								<span class="label-text">Engine</span>
 							</label>
-							<select bind:value={localTtsConfig.pollyEngine} class="select select-bordered w-full">
+							<select id="polly-engine-select" bind:value={localTtsConfig.pollyEngine} class="select select-bordered w-full">
 								<option value="neural">Neural (Best Quality)</option>
 								<option value="standard">Standard</option>
 							</select>
 						</div>
 
 						<div class="form-control">
-							<label class="label">
+							<label class="label" for="polly-sample-rate-select">
 								<span class="label-text">Sample Rate</span>
 							</label>
 							<select
+								id="polly-sample-rate-select"
 								bind:value={localTtsConfig.pollySampleRate}
 								class="select select-bordered w-full"
 							>
@@ -224,12 +225,12 @@
 					{:else}
 						<!-- Browser TTS Settings -->
 						<div class="form-control">
-							<label class="label">
+							<label class="label" for="browser-voice-select">
 								<span class="label-text">
 									Voice {voicesLoaded ? `(${englishVoices.length} available)` : '(Loading...)'}
 								</span>
 							</label>
-							<select bind:value={localTtsConfig.voice} class="select select-bordered w-full">
+							<select id="browser-voice-select" bind:value={localTtsConfig.voice} class="select select-bordered w-full">
 								<option value="">Default</option>
 								{#each englishVoices as voice}
 									<option value={voice.name}>{voice.name} ({voice.lang})</option>
@@ -240,16 +241,18 @@
 
 					<!-- Common Settings -->
 					<div class="form-control">
-						<label class="label">
+						<label class="label" for="speech-rate-input">
 							<span class="label-text">Speech Rate: {localTtsConfig.rate.toFixed(1)}x</span>
 						</label>
 						<input
+							id="speech-rate-input"
 							type="range"
 							bind:value={localTtsConfig.rate}
 							min="0.5"
 							max="2.0"
 							step="0.1"
 							class="range range-primary"
+							aria-label="Speech rate"
 						/>
 						<div class="w-full flex justify-between text-xs px-2 opacity-60">
 							<span>Slower</span>
@@ -259,16 +262,18 @@
 					</div>
 
 					<div class="form-control">
-						<label class="label">
+						<label class="label" for="pitch-input">
 							<span class="label-text">Pitch: {localTtsConfig.pitch.toFixed(1)}x</span>
 						</label>
 						<input
+							id="pitch-input"
 							type="range"
 							bind:value={localTtsConfig.pitch}
 							min="0.5"
 							max="2.0"
 							step="0.1"
 							class="range range-primary"
+							aria-label="Pitch"
 						/>
 						<div class="w-full flex justify-between text-xs px-2 opacity-60">
 							<span>Lower</span>
@@ -287,16 +292,16 @@
 							<input type="checkbox" bind:checked={localHighlightConfig.enabled} class="checkbox" />
 							<span class="label-text">Enable text highlighting</span>
 						</label>
-						<label class="label">
+						<div class="label">
 							<span class="label-text-alt">Allow students to highlight text in passages and questions</span>
-						</label>
+						</div>
 					</div>
 
 					{#if localHighlightConfig.enabled}
 						<div class="form-control">
-							<label class="label">
+							<div class="label">
 								<span class="label-text">Highlight Color</span>
-							</label>
+							</div>
 							<div class="flex gap-2 flex-wrap">
 								{#each highlightPresets as preset}
 									<button
@@ -325,18 +330,20 @@
 						</div>
 
 						<div class="form-control">
-							<label class="label">
+							<label class="label" for="highlight-opacity-input">
 								<span class="label-text">
 									Opacity: {Math.round(localHighlightConfig.opacity * 100)}%
 								</span>
 							</label>
 							<input
+								id="highlight-opacity-input"
 								type="range"
 								bind:value={localHighlightConfig.opacity}
 								min="0.1"
 								max="1.0"
 								step="0.1"
 								class="range range-primary"
+								aria-label="Highlight opacity"
 							/>
 							<div class="w-full flex justify-between text-xs px-2 opacity-60">
 								<span>Subtle</span>
@@ -374,5 +381,5 @@
 			</div>
 		</div>
 	</div>
-	<button class="modal-backdrop" onclick={onClose}></button>
+	<button class="modal-backdrop" onclick={onClose} aria-label="Close settings modal"></button>
 </div>

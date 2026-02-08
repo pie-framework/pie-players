@@ -689,7 +689,7 @@ export const accessibilityDemoAssessment: AssessmentEntity = {
 						},
 					],
 
-					questionRefs: [
+					assessmentItemRefs: [
 						{
 							identifier: "item1",
 							itemVId: "photosynthesis-mc-001",

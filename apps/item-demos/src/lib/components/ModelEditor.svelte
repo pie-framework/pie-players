@@ -18,10 +18,10 @@
 		<h3 class="card-title">Model: {model.id}</h3>
 
 		<div class="form-control">
-			<label class="label">
+			<label class="label" for="prompt-textarea-{model.id}">
 				<span class="label-text">Prompt</span>
 			</label>
-			<textarea class="textarea textarea-bordered" value={model.prompt} oninput={handlePromptChange}
+			<textarea id="prompt-textarea-{model.id}" class="textarea textarea-bordered" value={model.prompt} oninput={handlePromptChange}
 			></textarea>
 		</div>
 

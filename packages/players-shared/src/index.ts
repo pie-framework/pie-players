@@ -1,6 +1,7 @@
 export * from "./config/profile";
 export * from "./instrumentation";
 export * from "./loader-config";
+export * from "./loaders";
 export * from "./object";
 // Barrel export for PIE runtime utilities
 export * from "./pie";

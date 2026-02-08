@@ -1,37 +1,38 @@
 <script lang="ts">
-	import { onDestroy, onMount } from 'svelte';
+	
+	import {
+		AccessibilityCatalogResolver,
+		BrowserTTSProvider,
+		HighlightCoordinator, 
+		ToolCoordinator,
+		TTSService
+	} from '@pie-players/pie-assessment-toolkit';
+	import PieSectionPlayer from '@pie-players/pie-section-player/src/PieSectionPlayer.svelte';
+	import { ServerTTSProvider } from '@pie-players/tts-client-server';
+	import { Editor } from '@tiptap/core';
+	import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
+	import Document from '@tiptap/extension-document';
+	import History from '@tiptap/extension-history';
+	import Text from '@tiptap/extension-text';
+	import { common, createLowlight } from 'lowlight';
+import { onDestroy, onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import { goto, onNavigate, replaceState } from '$app/navigation';
 	import { page } from '$app/stores';
-	import PieSectionPlayer from '@pie-players/pie-section-player/src/PieSectionPlayer.svelte';
-	import type { PageData } from './$types';
-	import { Editor } from '@tiptap/core';
-	import Document from '@tiptap/extension-document';
-	import Text from '@tiptap/extension-text';
-	import History from '@tiptap/extension-history';
-	import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
-	import { common, createLowlight } from 'lowlight';
-	import {
-		TTSService,
-		BrowserTTSProvider,
-		AccessibilityCatalogResolver,
-		ToolCoordinator,
-		HighlightCoordinator
-	} from '@pie-players/pie-assessment-toolkit';
-	import { ServerTTSProvider } from '@pie-players/tts-client-server';
 	import AssessmentToolkitSettings from '$lib/components/AssessmentToolkitSettings.svelte';
+	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
 
 	// Read URL params for initial state
-	function getInitialPlayerType(): 'legacy' | 'iife' | 'esm' {
+	function getInitialPlayerType(): 'iife' | 'esm' {
 		if (browser) {
 			const urlPlayerType = new URLSearchParams(window.location.search).get('player');
-			if (urlPlayerType && ['legacy', 'iife', 'esm'].includes(urlPlayerType)) {
-				return urlPlayerType as 'legacy' | 'iife' | 'esm';
+			if (urlPlayerType && ['iife', 'esm'].includes(urlPlayerType)) {
+				return urlPlayerType as 'iife' | 'esm';
 			}
 		}
-		return 'legacy';
+		return 'iife';
 	}
 
 	function getInitialLayoutType(): 'vertical' | 'split-panel' {
@@ -45,7 +46,7 @@
 	}
 
 	let showJson = $state(false);
-	let playerType = $state<'legacy' | 'iife' | 'esm'>(getInitialPlayerType());
+	let playerType = $state<'iife' | 'esm'>(getInitialPlayerType());
 	let layoutType = $state<'vertical' | 'split-panel'>(getInitialLayoutType());
 	let showSessionPanel = $state(false);
 	let showSourcePanel = $state(false);
@@ -341,7 +342,7 @@
 	});
 
 	// Handle player type change with page refresh
-	function handlePlayerChange(newPlayerType: 'legacy' | 'iife' | 'esm') {
+	function handlePlayerChange(newPlayerType: 'iife' | 'esm') {
 		if (browser) {
 			const url = new URL(window.location.href);
 			url.searchParams.set('player', newPlayerType);
@@ -435,8 +436,6 @@
 	// Compute player props based on selected type
 	let playerProps = $derived.by(() => {
 		switch (playerType) {
-			case 'legacy':
-				return { useLegacyPlayer: true, bundleHost: '', esmCdnUrl: '' };
 			case 'iife':
 				return { useLegacyPlayer: false, bundleHost: 'https://proxy.pie-api.com/bundles/', esmCdnUrl: '' };
 			case 'esm':
@@ -647,13 +646,6 @@
 			<div class="join">
 				<button
 					class="btn btn-sm join-item"
-					class:btn-active={playerType === 'legacy'}
-					onclick={() => handlePlayerChange('legacy')}
-				>
-					Legacy
-				</button>
-				<button
-					class="btn btn-sm join-item"
 					class:btn-active={playerType === 'iife'}
 					onclick={() => handlePlayerChange('iife')}
 				>
@@ -737,6 +729,7 @@
 	</div>
 
 	<div class="flex-1 overflow-hidden">
+		<!-- svelte-ignore a11y_unknown_aria_attribute -->
 		<PieSectionPlayer
 			bind:this={sectionPlayer}
 			section={liveSection}

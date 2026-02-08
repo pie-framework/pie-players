@@ -16,5 +16,5 @@
  * ```
  */
 
-export type { MathjaxRendererOptions } from "./mathjax-renderer";
-export { createMathjaxRenderer } from "./mathjax-renderer";
+export type { MathjaxRendererOptions } from "./mathjax-renderer.js";
+export { createMathjaxRenderer } from "./mathjax-renderer.js";

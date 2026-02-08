@@ -1,17 +1,28 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+
+	import { TTSService, BrowserTTSProvider } from '@pie-players/pie-assessment-toolkit';
+	import { ServerTTSProvider } from '@pie-players/tts-client-server';
+import { onMount } from 'svelte';
 	import AssessmentToolkitSettings from '$lib/components/AssessmentToolkitSettings.svelte';
-	import { TTSService } from '@pie-players/pie-assessment-toolkit';
 
 	let showSettings = $state(true);
-	let ttsService: TTSService | null = null;
+	let ttsService = $state<TTSService | undefined>(undefined);
 
-	let ttsConfig = $state({
-		provider: 'polly' as 'polly' | 'browser',
+	type TTSConfigType = {
+		provider: 'polly' | 'browser';
+		voice: string;
+		rate: number;
+		pitch: number;
+		pollyEngine?: 'neural' | 'standard';
+		pollySampleRate?: number;
+	};
+
+	let ttsConfig = $state<TTSConfigType>({
+		provider: 'polly',
 		voice: 'Joanna',
 		rate: 1.0,
 		pitch: 1.0,
-		pollyEngine: 'neural' as 'neural' | 'standard',
+		pollyEngine: 'neural',
 		pollySampleRate: 24000
 	});
 
@@ -24,13 +35,13 @@
 	onMount(async () => {
 		// Initialize TTS Service
 		ttsService = new TTSService();
-		await ttsService.initialize({
-			provider: ttsConfig.provider,
+		const provider = ttsConfig.provider === 'browser'
+			? new BrowserTTSProvider()
+			: new ServerTTSProvider();
+		await ttsService.initialize(provider, {
 			voice: ttsConfig.voice,
 			rate: ttsConfig.rate,
-			pitch: ttsConfig.pitch,
-			pollyEngine: ttsConfig.pollyEngine,
-			pollySampleRate: ttsConfig.pollySampleRate
+			pitch: ttsConfig.pitch
 		});
 	});
 
@@ -49,7 +60,14 @@
 		) {
 			console.log('[Settings Test] Re-initializing TTS with new provider/voice');
 			if (ttsService) {
-				await ttsService.initialize(settings.tts);
+				const provider = settings.tts.provider === 'browser'
+					? new BrowserTTSProvider()
+					: new ServerTTSProvider();
+				await ttsService.initialize(provider, {
+					voice: settings.tts.voice,
+					rate: settings.tts.rate,
+					pitch: settings.tts.pitch
+				});
 			}
 		}
 

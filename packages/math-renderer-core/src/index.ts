@@ -18,10 +18,10 @@
  */
 
 // Provider
-export { mathRendererProvider } from "./provider";
+export { mathRendererProvider } from "./provider.js";
 // Core types
 export type {
 	MathRenderer,
 	MathRendererOptions,
 	MathRenderingAPI,
-} from "./types";
+} from "./types.js";

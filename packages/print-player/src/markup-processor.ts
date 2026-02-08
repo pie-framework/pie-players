@@ -8,11 +8,11 @@
  */
 
 import type {
-	PkgResolution,
+	Elements,
 	Item,
 	Model,
-	Elements,
 	NodeResult,
+	PkgResolution,
 } from "./types.js";
 
 /**

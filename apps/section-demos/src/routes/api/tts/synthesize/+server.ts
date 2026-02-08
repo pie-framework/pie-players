@@ -5,9 +5,9 @@
  * Speech marks provide millisecond-precise word timing for synchronization.
  */
 
-import { json, error } from "@sveltejs/kit";
-import type { RequestHandler } from "./$types";
 import { PollyServerProvider } from "@pie-players/tts-server-polly";
+import { error, json } from "@sveltejs/kit";
+import type { RequestHandler } from "./$types";
 
 // Singleton provider instance (reused across requests)
 let pollyProvider: PollyServerProvider | null = null;
@@ -113,8 +113,23 @@ export const POST: RequestHandler = async ({ request }) => {
 			throw error(400, { message: "Text too long (max 3000 characters)" });
 		}
 
-		// Get Polly provider
-		const polly = await getPollyProvider();
+		// Get Polly provider (may throw if credentials not configured)
+		let polly;
+		try {
+			polly = await getPollyProvider();
+		} catch (err) {
+			// Handle credential configuration errors with user-friendly message
+			if (
+				err instanceof Error &&
+				err.message.includes("AWS credentials not configured")
+			) {
+				throw error(503, {
+					message:
+						"Text-to-speech service is not configured. AWS Polly credentials are required but not available.",
+				});
+			}
+			throw err;
+		}
 
 		// Synthesize speech
 		const result = await polly.synthesize({
@@ -144,17 +159,68 @@ export const POST: RequestHandler = async ({ request }) => {
 	} catch (err) {
 		console.error("[TTS API] Synthesis error:", err);
 
+		// If it's already a SvelteKit error, re-throw it
+		if (typeof err === "object" && err !== null && "status" in err) {
+			throw err;
+		}
+
 		if (err instanceof Error) {
-			// Check for AWS credential errors
-			if (err.message.includes("credentials") || err.message.includes("AWS")) {
-				throw error(500, {
-					message: `AWS Polly error: ${err.message}. Check your .env configuration.`,
+			// Check for specific AWS/Polly errors and provide user-friendly messages
+			if (
+				err.message.includes("credentials") ||
+				err.message.includes("not configured")
+			) {
+				throw error(503, {
+					message:
+						"Text-to-speech service is not configured. AWS Polly credentials are required but not available.",
 				});
 			}
 
-			throw error(500, { message: err.message });
+			if (
+				err.message.includes("InvalidSignatureException") ||
+				err.message.includes("SignatureDoesNotMatch")
+			) {
+				throw error(503, {
+					message:
+						"Text-to-speech service authentication failed. AWS credentials may be incorrect.",
+				});
+			}
+
+			if (
+				err.message.includes("ThrottlingException") ||
+				err.message.includes("TooManyRequestsException")
+			) {
+				throw error(429, {
+					message:
+						"Text-to-speech service is temporarily busy. Please try again in a moment.",
+				});
+			}
+
+			if (
+				err.message.includes("NetworkingError") ||
+				err.message.includes("ENOTFOUND") ||
+				err.message.includes("ETIMEDOUT")
+			) {
+				throw error(503, {
+					message:
+						"Text-to-speech service is temporarily unavailable. Please check your network connection.",
+				});
+			}
+
+			// Generic AWS error
+			if (err.message.includes("AWS") || err.message.includes("Polly")) {
+				throw error(503, {
+					message:
+						"Text-to-speech service encountered an error. Please try again later.",
+				});
+			}
+
+			// Unknown error
+			throw error(500, { message: `Text-to-speech error: ${err.message}` });
 		}
 
-		throw error(500, { message: "Internal server error" });
+		throw error(500, {
+			message: "Text-to-speech service encountered an unexpected error.",
+		});
 	}
 };

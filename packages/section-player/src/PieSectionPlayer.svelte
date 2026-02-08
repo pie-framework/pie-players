@@ -51,7 +51,9 @@
 />
 
 <script lang="ts">
-	import type {
+	
+	import { type ElementLoaderInterface, EsmElementLoader, IifeElementLoader } from '@pie-players/pie-players-shared/loaders';
+import type {
 		ItemEntity,
 		PassageEntity,
 		QtiAssessmentSection,
@@ -94,6 +96,12 @@
 	let isLoading = $state(false);
 	let error = $state<string | null>(null);
 
+	// Element loading state
+	let elementsLoaded = $state(false);
+
+	// TTS error state
+	let ttsError = $state<string | null>(null);
+
 	// Computed
 	let isPageMode = $derived(section?.keepTogether === true);
 	let currentItem = $derived(isPageMode ? null : items[currentItemIndex] || null);
@@ -116,7 +124,7 @@
 
 		// 1. Extract passages from rubricBlocks
 		for (const rb of rubricBlocks) {
-			if (rb.use === 'passage' && rb.passage) {
+			if (rb.use === 'passage' && rb.passage && rb.passage.id) {
 				passageMap.set(rb.passage.id, rb.passage);
 			}
 		}
@@ -128,7 +136,7 @@
 				items.push(itemRef.item);
 
 				// Item-linked passage (deduplicated)
-				if (itemRef.item.passage && typeof itemRef.item.passage === 'object') {
+				if (itemRef.item.passage && typeof itemRef.item.passage === 'object' && itemRef.item.passage.id) {
 					if (!passageMap.has(itemRef.item.passage.id)) {
 						passageMap.set(itemRef.item.passage.id, itemRef.item.passage);
 					}
@@ -216,14 +224,100 @@
 		}
 	});
 
+	// Element pre-loading effect (loads all unique elements before rendering items)
+	$effect(() => {
+		if (!section) {
+			elementsLoaded = false;
+			return;
+		}
+
+		// Collect all items (passages + questions) that need elements loaded
+		const allItems: ItemEntity[] = [
+			...passages,
+			...items
+		];
+
+		if (allItems.length === 0) {
+			elementsLoaded = true;
+			return;
+		}
+
+		// Legacy player handles its own loading per-item
+		if (useLegacyPlayer) {
+			elementsLoaded = true;
+			return;
+		}
+
+		// Create appropriate loader based on configuration
+		let loader: ElementLoaderInterface | null = null;
+
+		if (esmCdnUrl) {
+			loader = new EsmElementLoader({
+				esmCdnUrl,
+				debugEnabled: () => !!debug
+			});
+		} else if (bundleHost) {
+			loader = new IifeElementLoader({
+				bundleHost,
+				debugEnabled: () => !!debug
+			});
+		} else {
+			console.warn('[PieSectionPlayer] No loader configuration provided (esmCdnUrl or bundleHost)');
+			elementsLoaded = true;
+			return;
+		}
+
+		// Load all elements upfront
+		loader.loadFromItems(allItems, {
+			view: mode === 'author' ? 'author' : 'delivery',
+			needsControllers: true
+		})
+			.then(() => {
+				elementsLoaded = true;
+				console.log(`[PieSectionPlayer] Loaded elements for ${allItems.length} items`);
+			})
+			.catch((err) => {
+				console.error('[PieSectionPlayer] Failed to load elements:', err);
+				// Still set loaded to true to allow rendering (items will handle their own errors)
+				elementsLoaded = true;
+			});
+
+		// Cleanup
+		return () => {
+			// Cleanup if needed
+		};
+	});
+
+	// Listen for TTS errors
+	$effect(() => {
+		if (!ttsService) {
+			ttsError = null;
+			return;
+		}
+
+		const handleTTSStateChange = (state: any) => {
+			// PlaybackState.ERROR = "error"
+			if (state === 'error') {
+				const errorMsg = ttsService.getLastError?.() || 'Text-to-speech error occurred';
+				ttsError = errorMsg;
+				console.error('[PieSectionPlayer] TTS error:', errorMsg);
+			} else if (state === 'playing' || state === 'loading') {
+				// Clear error when successfully starting playback
+				ttsError = null;
+			}
+		};
+
+		ttsService.onStateChange?.('section-player', handleTTSStateChange);
+
+		// Cleanup
+		return () => {
+			ttsService.offStateChange?.('section-player', handleTTSStateChange);
+		};
+	});
+
 	// Get instructions
 	let instructions = $derived(
 		rubricBlocks.filter(rb => rb.use === 'instructions')
-	);
-
-	// Get passage rubric blocks
-	let passageRubricBlocks = $derived(
-		rubricBlocks.filter(rb => rb.use === 'passage')
 	);
 
 	// Handle session changes from items
@@ -301,65 +395,96 @@
 			</div>
 		{/if}
 
-		{#if isPageMode}
-			<!-- Page Mode: Choose layout based on layout prop -->
-			{#if layout === 'split-panel'}
-				<SplitPanelLayout
-					{passages}
-					{items}
-					{itemSessions}
-					{mode}
-					{bundleHost}
-					{esmCdnUrl}
-					{playerVersion}
-					{useLegacyPlayer}
-					{ttsService}
-					{toolCoordinator}
-					{highlightCoordinator}
-					{catalogResolver}
-					onsessionchanged={handleSessionChanged}
-				/>
+		<!-- TTS Error Banner -->
+		{#if ttsError}
+			<div class="tts-error-banner" role="alert">
+				<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<circle cx="12" cy="12" r="10"></circle>
+					<line x1="12" y1="8" x2="12" y2="12"></line>
+					<line x1="12" y1="16" x2="12.01" y2="16"></line>
+				</svg>
+				<span>Text-to-speech unavailable: {ttsError}</span>
+				<button
+					class="tts-error-dismiss"
+					onclick={() => ttsError = null}
+					aria-label="Dismiss error"
+				>
+					<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<line x1="18" y1="6" x2="6" y2="18"></line>
+						<line x1="6" y1="6" x2="18" y2="18"></line>
+					</svg>
+				</button>
+			</div>
+		{/if}
+
+		{#if elementsLoaded}
+			{#if isPageMode}
+				<!-- Page Mode: Choose layout based on layout prop -->
+				{#if layout === 'split-panel'}
+					<SplitPanelLayout
+						{passages}
+						{items}
+						{itemSessions}
+						{mode}
+						{bundleHost}
+						{esmCdnUrl}
+						{playerVersion}
+						{useLegacyPlayer}
+						skipElementLoading={!useLegacyPlayer}
+						{ttsService}
+						{toolCoordinator}
+						{highlightCoordinator}
+						{catalogResolver}
+						onsessionchanged={handleSessionChanged}
+					/>
+				{:else}
+					<!-- Default: vertical layout -->
+					<VerticalLayout
+						{passages}
+						{items}
+						{itemSessions}
+						{mode}
+						{bundleHost}
+						{esmCdnUrl}
+						{playerVersion}
+						{useLegacyPlayer}
+						skipElementLoading={!useLegacyPlayer}
+						{ttsService}
+						{toolCoordinator}
+						{highlightCoordinator}
+						{catalogResolver}
+						onsessionchanged={handleSessionChanged}
+					/>
+				{/if}
 			{:else}
-				<!-- Default: vertical layout -->
-				<VerticalLayout
+				<!-- Item Mode: Use internal Svelte component -->
+				<ItemModeLayout
 					{passages}
-					{items}
-					{itemSessions}
+					{currentItem}
+					currentIndex={currentItemIndex}
+					totalItems={items.length}
+					canNext={canNavigateNext}
+					canPrevious={canNavigatePrevious}
+					itemSession={currentItemSession}
 					{mode}
 					{bundleHost}
 					{esmCdnUrl}
 					{playerVersion}
 					{useLegacyPlayer}
+					skipElementLoading={!useLegacyPlayer}
 					{ttsService}
 					{toolCoordinator}
 					{highlightCoordinator}
 					{catalogResolver}
-					onsessionchanged={handleSessionChanged}
+					onprevious={navigatePrevious}
+					onnext={navigateNext}
+					onsessionchanged={(sessionDetail) => handleSessionChanged(currentItem?.id || '', sessionDetail)}
 				/>
 			{/if}
 		{:else}
-			<!-- Item Mode: Use internal Svelte component -->
-			<ItemModeLayout
-				{passages}
-				{currentItem}
-				currentIndex={currentItemIndex}
-				totalItems={items.length}
-				canNext={canNavigateNext}
-				canPrevious={canNavigatePrevious}
-				itemSession={currentItemSession}
-				{mode}
-				{bundleHost}
-				{esmCdnUrl}
-				{playerVersion}
-				{useLegacyPlayer}
-				{ttsService}
-				{toolCoordinator}
-				{highlightCoordinator}
-				{catalogResolver}
-				onprevious={navigatePrevious}
-				onnext={navigateNext}
-				onsessionchanged={(sessionDetail) => handleSessionChanged(currentItem?.id || '', sessionDetail)}
-			/>
+			<div class="loading">
+				<p>Loading assessment elements...</p>
+			</div>
 		{/if}
 	{:else}
 		<div class="loading">
@@ -395,5 +520,49 @@
 		padding: 1rem;
 		background: #f5f5f5;
 		border-radius: 4px;
+	}
+
+	.tts-error-banner {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		padding: 0.875rem 1rem;
+		margin-bottom: 1rem;
+		background: #fff3cd;
+		border: 1px solid #ffc107;
+		border-radius: 4px;
+		color: #856404;
+		font-size: 0.875rem;
+		line-height: 1.4;
+	}
+
+	.tts-error-banner svg {
+		flex-shrink: 0;
+	}
+
+	.tts-error-banner span {
+		flex: 1;
+	}
+
+	.tts-error-dismiss {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0.25rem;
+		background: transparent;
+		border: none;
+		border-radius: 2px;
+		color: #856404;
+		cursor: pointer;
+		transition: background-color 0.2s;
+	}
+
+	.tts-error-dismiss:hover {
+		background: rgba(0, 0, 0, 0.1);
+	}
+
+	.tts-error-dismiss:focus {
+		outline: 2px solid #856404;
+		outline-offset: 2px;
 	}
 </style>

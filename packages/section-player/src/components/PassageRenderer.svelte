@@ -10,7 +10,6 @@
 	import { SSMLExtractor } from '@pie-players/pie-assessment-toolkit';
 	import type { PassageEntity } from '@pie-players/pie-players-shared/types';
 import { onMount, untrack } from 'svelte';
-	import { ZIndexLayer } from '../utils/z-index';
 
 	let {
 		passage,
@@ -33,7 +32,9 @@ import { onMount, untrack } from 'svelte';
 	} = $props();
 
 	// Get the DOM element reference for service binding
+	// @ts-expect-error - Used in bind:this but TypeScript doesn't recognize it
 	let passageElement: HTMLElement | null = $state(null);
+	// @ts-expect-error - Used in bind:this but TypeScript doesn't recognize it
 	let passageContentElement: HTMLElement | null = $state(null);
 	let ttsToolElement: HTMLElement | null = $state(null);
 	let playerElement: any = $state(null);
@@ -54,17 +55,19 @@ import { onMount, untrack } from 'svelte';
 	let useIifePlayer = $derived(!!bundleHost);
 
 	// Import the appropriate player web component (only if passage has PIE elements)
-	onMount(async () => {
+	onMount(() => {
 		// Import TTS tool on client side only (avoids SSR customElements error)
-		await import('@pie-players/pie-tool-tts-inline');
+		(async () => {
+			await import('@pie-players/pie-tool-tts-inline');
 
-		if (hasElements) {
-			if (useIifePlayer) {
-				await import('@pie-players/pie-iife-player');
-			} else {
-				await import('@pie-players/pie-esm-player');
+			if (hasElements) {
+				if (useIifePlayer) {
+					await import('@pie-players/pie-iife-player');
+				} else {
+					await import('@pie-players/pie-esm-player');
+				}
 			}
-		}
+		})();
 
 		// Cleanup: Clear passage catalogs on unmount
 		return () => {

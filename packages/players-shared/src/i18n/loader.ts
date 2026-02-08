@@ -12,7 +12,7 @@
 import enCommon from "./translations/en/common.json";
 import enToolkit from "./translations/en/toolkit.json";
 import enTools from "./translations/en/tools.json";
-import type { PluralTranslation, TranslationBundle } from "./types";
+import type { TranslationBundle } from "./types";
 
 // RTL locales
 const RTL_LOCALES = ["ar", "he", "fa", "ur"];

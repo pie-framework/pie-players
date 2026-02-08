@@ -35,8 +35,9 @@
 />
 
 <script lang="ts">
-	import { onMount } from 'svelte';
+	
 	import { createPieLogger } from '@pie-players/pie-players-shared';
+import { onMount } from 'svelte';
 
 	type ItemSession = {
 		id: string;

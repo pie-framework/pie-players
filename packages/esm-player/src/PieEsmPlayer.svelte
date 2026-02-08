@@ -48,6 +48,7 @@
 
 			// ESM-specific props
 			esmCdnUrl: { attribute: 'esm-cdn-url', type: 'String' },
+			skipElementLoading: { attribute: 'skip-element-loading', type: 'Boolean' },
 
 			// Authoring mode props
 			mode: { attribute: 'mode', type: 'String' },
@@ -108,6 +109,7 @@ import { tick } from 'svelte';
 
 		// ESM-specific props
 		esmCdnUrl = 'https://esm.sh',
+		skipElementLoading = false,
 
 		// Authoring mode props
 		mode = 'view' as 'view' | 'author',
@@ -197,30 +199,36 @@ import { tick } from 'svelte';
 					const transformed = makeUniqueTags({ config: parsedConfig });
 					const transformedConfig = transformed.config;
 
-					// Initialize ESM loader
-					logger.debug('Creating ESM loader with CDN:', esmCdnUrl);
-					const esmLoader = new EsmPieLoader({
-						cdnBaseUrl: esmCdnUrl,
-						debugEnabled: () => debugEnabled
-					});
+					// Check if elements need to be loaded or are already pre-loaded
+					if (!skipElementLoading) {
+						// Initialize ESM loader
+						logger.debug('Creating ESM loader with CDN:', esmCdnUrl);
+						const esmLoader = new EsmPieLoader({
+							cdnBaseUrl: esmCdnUrl,
+							debugEnabled: () => debugEnabled
+						});
 
-					// Load ESM elements into the global PIE registry
-					logger.debug('Loading ESM elements');
-					// Determine which view to load based on mode
-					const view = mode === 'author' ? 'author' : 'delivery';
-					await esmLoader.load(transformedConfig, document, {
-						view,
-						loadControllers: true // Always load controllers for ESM
-					});
+						// Load ESM elements into the global PIE registry
+						logger.debug('Loading ESM elements');
+						// Determine which view to load based on mode
+						const view = mode === 'author' ? 'author' : 'delivery';
+						await esmLoader.load(transformedConfig, document, {
+							view,
+							loadControllers: true // Always load controllers for ESM
+						});
 
-					// Wait for elements to be defined
-					const elements = Object.keys(transformedConfig.elements).map(el => ({
-						name: el,
-						tag: el
-					}));
-					logger.debug('Waiting for elements:', elements);
-					await esmLoader.elementsHaveLoaded(elements);
-					logger.debug('✅ ESM elements loaded and ready');
+						// Wait for elements to be defined
+						const elements = Object.keys(transformedConfig.elements).map(el => ({
+							name: el,
+							tag: el
+						}));
+						logger.debug('Waiting for elements:', elements);
+						await esmLoader.elementsHaveLoaded(elements);
+						logger.debug('✅ ESM elements loaded and ready');
+					} else {
+						// Elements pre-loaded by parent (section-level aggregation)
+						logger.debug('[PieEsmPlayer] Skipping element loading (pre-loaded by parent)');
+					}
 
 					// Set item config - this will trigger PieItemPlayer to initialize
 					itemConfig = transformedConfig;

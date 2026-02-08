@@ -7,15 +7,19 @@
 		ToolCoordinator,
 		TTSService
 	} from '@pie-players/pie-assessment-toolkit';
-	import PieSectionPlayer from '@pie-players/pie-section-player/src/PieSectionPlayer.svelte';
 	import { ServerTTSProvider } from '@pie-players/tts-client-server';
+
+	// Load the web component
+	onMount(async () => {
+		await import('@pie-players/pie-section-player');
+	});
 	import { Editor } from '@tiptap/core';
 	import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 	import Document from '@tiptap/extension-document';
 	import History from '@tiptap/extension-history';
 	import Text from '@tiptap/extension-text';
 	import { common, createLowlight } from 'lowlight';
-import { onDestroy, onMount } from 'svelte';
+import { onDestroy, onMount, untrack } from 'svelte';
 	import { browser } from '$app/environment';
 	import { goto, onNavigate, replaceState } from '$app/navigation';
 	import { page } from '$app/stores';
@@ -443,6 +447,17 @@ import { onDestroy, onMount } from 'svelte';
 		}
 	});
 
+	// Set complex properties imperatively on the web component
+	// (Web components can only receive simple values via attributes)
+	$effect(() => {
+		if (sectionPlayer && liveSection) {
+			untrack(() => {
+				sectionPlayer.section = liveSection;
+				sectionPlayer.itemSessions = itemSessions;
+			});
+		}
+	});
+
 	// Handle session changes from items
 	function handleSessionChanged(event: CustomEvent) {
 		console.log('[Demo] Session changed event:', event.detail);
@@ -729,17 +744,18 @@ import { onDestroy, onMount } from 'svelte';
 	</div>
 
 	<div class="flex-1 overflow-hidden">
+		<!-- Use web component - set complex properties imperatively via $effect -->
 		<!-- svelte-ignore a11y_unknown_aria_attribute -->
-		<PieSectionPlayer
+		<pie-section-player
 			bind:this={sectionPlayer}
-			section={liveSection}
 			layout={layoutType}
 			mode="gather"
 			view="candidate"
-			itemSessions={itemSessions}
-			{...playerProps}
+			bundle-host={playerProps.bundleHost}
+			esm-cdn-url={playerProps.esmCdnUrl}
+			use-legacy-player={playerProps.useLegacyPlayer}
 			onsessionchanged={handleSessionChanged}
-		/>
+		></pie-section-player>
 	</div>
 
 </div>

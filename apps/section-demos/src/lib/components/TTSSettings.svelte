@@ -38,10 +38,12 @@
 			pollyEngine: 'neural',
 			pollySampleRate: 24000,
 		}),
-		onConfigChange
+		onConfigChange,
+		ttsService = null
 	}: {
 		config?: TTSConfig;
 		onConfigChange?: (config: TTSConfig) => void;
+		ttsService?: any;
 	} = $props();
 
 	// Voice discovery state
@@ -141,6 +143,39 @@
 		}
 		return currentProviderVoices;
 	});
+
+	// Voice preview state
+	let isPreviewing = $state(false);
+
+	// Preview voice with sample text
+	// Uses updateSettings() to temporarily apply current UI settings without page reload
+	async function previewVoice() {
+		if (!ttsService || isPreviewing) return;
+
+		isPreviewing = true;
+		try {
+			// Stop any current playback
+			ttsService.stop();
+
+			// Temporarily apply current UI settings for preview
+			await ttsService.updateSettings({
+				rate: config.rate,
+				pitch: config.pitch,
+				voice: config.voice
+			});
+
+			// Speak preview text with updated settings
+			const sampleText = 'This is a preview of the selected voice with current settings.';
+			await ttsService.speak(sampleText);
+		} catch (error) {
+			console.error('[TTSSettings] Failed to preview voice:', error);
+		} finally {
+			// Add a small delay to prevent rapid clicking
+			setTimeout(() => {
+				isPreviewing = false;
+			}, 500);
+		}
+	}
 </script>
 
 <div class="tts-settings space-y-4">
@@ -395,6 +430,32 @@
 			</div>
 		</div>
 
+		<!-- Voice Preview -->
+		{#if ttsService}
+			<div class="form-control">
+				<button
+					class="btn btn-sm btn-primary w-full gap-2"
+					onclick={previewVoice}
+					disabled={isPreviewing}
+				>
+					{#if isPreviewing}
+						<span class="loading loading-spinner loading-xs"></span>
+						Playing...
+					{:else}
+						<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+						</svg>
+						Preview Voice
+					{/if}
+				</button>
+				<div class="label">
+					<span class="label-text-alt text-xs opacity-70 text-center w-full">
+						Hear how your selected voice and settings will sound
+					</span>
+				</div>
+			</div>
+		{/if}
+
 		<!-- Reset to Defaults -->
 		<button
 			class="btn btn-xs btn-ghost w-full"
@@ -447,9 +508,79 @@
 
 	.range {
 		cursor: pointer;
+		transition: all 0.2s ease;
+	}
+
+	.range:hover {
+		opacity: 0.8;
+	}
+
+	.range::-webkit-slider-thumb {
+		transition: transform 0.2s ease;
+	}
+
+	.range::-webkit-slider-thumb:hover {
+		transform: scale(1.2);
+	}
+
+	.range::-moz-range-thumb {
+		transition: transform 0.2s ease;
+	}
+
+	.range::-moz-range-thumb:hover {
+		transform: scale(1.2);
 	}
 
 	.divider {
 		margin: 0.5rem 0;
+	}
+
+	/* Button enhancements */
+	.btn {
+		transition: all 0.2s ease;
+	}
+
+	.btn:not(:disabled):hover {
+		transform: translateY(-1px);
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+	}
+
+	.btn:not(:disabled):active {
+		transform: translateY(0);
+	}
+
+	/* Form control enhancements */
+	.form-control {
+		transition: opacity 0.2s ease;
+	}
+
+	/* Alert pulse animation */
+	.alert {
+		animation: fadeIn 0.3s ease-in;
+	}
+
+	@keyframes fadeIn {
+		from {
+			opacity: 0;
+			transform: translateY(-10px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	/* Provider section background animation */
+	.bg-base-200 {
+		transition: background-color 0.3s ease;
+	}
+
+	/* Select hover effect */
+	.select:hover:not(:disabled) {
+		border-color: var(--fallback-bc, oklch(var(--bc) / 0.4));
+	}
+
+	.select:focus {
+		outline-offset: 2px;
 	}
 </style>

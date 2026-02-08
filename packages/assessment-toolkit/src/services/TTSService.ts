@@ -82,6 +82,35 @@ export class TTSService {
 	}
 
 	/**
+	 * Update TTS settings dynamically without full reinitialization
+	 *
+	 * This allows changing rate, pitch, and voice on the fly.
+	 * Note: Some providers may require reinitialization for voice changes.
+	 *
+	 * @param settings Partial settings to update (rate, pitch, voice)
+	 */
+	async updateSettings(settings: Partial<TTSConfig>): Promise<void> {
+		if (!this.provider) {
+			throw new Error("TTSService not initialized. Call initialize() first.");
+		}
+
+		// If the provider implementation has an updateSettings method, use it
+		if (
+			"updateSettings" in this.provider &&
+			typeof (this.provider as any).updateSettings === "function"
+		) {
+			await (this.provider as any).updateSettings(settings);
+		} else {
+			// Fallback: Reinitialize with merged config
+			// This requires storing the original config, which we don't have
+			// So for now, just log a warning
+			console.warn(
+				"[TTSService] Provider does not support dynamic settings updates. Some settings may require reinitialization.",
+			);
+		}
+	}
+
+	/**
 	 * Set highlight coordinator for word highlighting
 	 */
 	setHighlightCoordinator(coordinator: IHighlightCoordinator): void {

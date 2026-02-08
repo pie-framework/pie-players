@@ -19,7 +19,7 @@
 		HighlightCoordinator
 	} from '@pie-players/pie-assessment-toolkit';
 	import { ServerTTSProvider } from '@pie-players/tts-client-server';
-	import TTSSettings from '$lib/components/TTSSettings.svelte';
+	import AssessmentToolkitSettings from '$lib/components/AssessmentToolkitSettings.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -53,6 +53,7 @@
 	let isSourceMinimized = $state(false);
 	let sectionPlayer: any = $state(null);
 	let itemSessions = $state<Record<string, any>>({});
+	let itemMetadata = $state<Record<string, { complete?: boolean; component?: string }>>({});
 
 	// TTS and toolkit services
 	let ttsService: any = $state(null);
@@ -81,9 +82,17 @@
 		pollySampleRate: 24000,
 	});
 
+	// Highlighting Configuration
+	let highlightConfig = $state({
+		enabled: true,
+		color: '#ffeb3b',
+		opacity: 0.4
+	});
+
 	// Storage keys
 	let SESSION_STORAGE_KEY = $derived(`pie-section-demo-sessions-${data.demo.id}`);
 	let TTS_CONFIG_STORAGE_KEY = $derived(`pie-section-demo-tts-config-${data.demo.id}`);
+	let HIGHLIGHT_CONFIG_STORAGE_KEY = $derived(`pie-section-demo-highlight-config-${data.demo.id}`);
 
 	// Tiptap editor state
 	let editorElement = $state<HTMLDivElement | null>(null);
@@ -215,6 +224,14 @@
 			if (!highlightCoordinator) {
 				highlightCoordinator = new HighlightCoordinator();
 				ttsService.setHighlightCoordinator(highlightCoordinator);
+
+				// Apply highlight style from config
+				if (highlightConfig) {
+					highlightCoordinator.updateTTSHighlightStyle(
+						highlightConfig.color,
+						highlightConfig.opacity
+					);
+				}
 			}
 
 			console.log('[Demo] All toolkit services initialized successfully');
@@ -252,14 +269,25 @@
 				console.error('Failed to load persisted TTS config:', e);
 			}
 
+			// Load persisted highlight config
+			try {
+				const storedHighlightConfig = localStorage.getItem(HIGHLIGHT_CONFIG_STORAGE_KEY);
+				if (storedHighlightConfig) {
+					highlightConfig = JSON.parse(storedHighlightConfig);
+					console.log('[Demo] Loaded highlight config from localStorage:', highlightConfig);
+				}
+			} catch (e) {
+				console.error('Failed to load persisted highlight config:', e);
+			}
+
 			// Initialize TTS with loaded/default configuration
 			await initializeTTS(ttsConfig);
 		}
 	});
 
-	// Handle TTS configuration changes (save and refresh page)
-	function handleTTSConfigChange(newConfig: TTSConfig) {
-		console.log('[Demo] TTS config changed:', newConfig);
+	// Handle settings apply (save and refresh page)
+	async function handleUnifiedSettingsApply(settings: { tts: TTSConfig; highlight: typeof highlightConfig }) {
+		console.log('[Demo] Unified settings applied:', settings);
 
 		// Stop any currently playing TTS before reloading
 		if (ttsService) {
@@ -271,20 +299,34 @@
 			}
 		}
 
-		// Persist to localStorage (compute key inline to avoid reactive dependencies)
+		// Update highlight coordinator with new style
+		if (highlightCoordinator && settings.highlight) {
+			highlightCoordinator.updateTTSHighlightStyle(
+				settings.highlight.color,
+				settings.highlight.opacity
+			);
+		}
+
+		// Persist to localStorage
 		if (browser) {
 			try {
-				const storageKey = `pie-section-demo-tts-config-${data.demo.id}`;
-				localStorage.setItem(storageKey, JSON.stringify(newConfig));
-				console.log('[Demo] TTS config saved, refreshing page...');
+				const ttsStorageKey = `pie-section-demo-tts-config-${data.demo.id}`;
+				const highlightStorageKey = `pie-section-demo-highlight-config-${data.demo.id}`;
+
+				localStorage.setItem(ttsStorageKey, JSON.stringify(settings.tts));
+				localStorage.setItem(highlightStorageKey, JSON.stringify(settings.highlight));
+
+				console.log('[Demo] Unified settings saved, refreshing page...');
 
 				// Refresh the page to reinitialize with new config
-				// This is simpler and more reliable than reactive reinitialization
 				window.location.reload();
 			} catch (e) {
-				console.error('Failed to persist TTS config:', e);
+				console.error('Failed to persist unified settings:', e);
 			}
 		}
+
+		// Close modal
+		showTTSSettings = false;
 	}
 
 	// Set services on player imperatively when ready (web component property binding)
@@ -405,10 +447,16 @@
 	// Handle session changes from items
 	function handleSessionChanged(event: CustomEvent) {
 		console.log('[Demo] Session changed event:', event.detail);
-		const { itemId, session } = event.detail;
+		const { itemId, session, complete, component } = event.detail;
 		if (itemId && session) {
 			console.log('[Demo] Updating itemSessions:', itemId, session);
 			itemSessions = { ...itemSessions, [itemId]: session };
+
+			// Store metadata separately
+			itemMetadata = {
+				...itemMetadata,
+				[itemId]: { complete, component }
+			};
 		} else {
 			console.warn('[Demo] Missing itemId or session in event:', event.detail);
 		}
@@ -650,24 +698,21 @@
 		</div>
 
 		<div class="navbar-end gap-2">
-			<!-- TTS Settings Button with Status Indicator -->
+			<!-- Settings Button -->
 			<button
 				class="btn btn-sm btn-outline"
 				onclick={() => showTTSSettings = true}
-				title="Configure TTS provider and settings"
+				title="Configure assessment toolkit settings"
 			>
 				{#if ttsProvider === 'loading'}
 					<span class="loading loading-spinner loading-xs"></span>
 					Loading
 				{:else}
-					<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+					<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
 					</svg>
-					{#if ttsProvider === 'polly'}
-						Polly
-					{:else}
-						Browser
-					{/if}
+					Settings
 				{/if}
 			</button>
 			<button
@@ -771,9 +816,25 @@
 								<input type="checkbox" />
 								<div class="collapse-title text-sm font-medium min-h-0 py-2">
 									Item: {itemId}
+									{#if itemMetadata[itemId]?.complete !== undefined}
+										<span class="badge badge-sm {itemMetadata[itemId].complete ? 'badge-success' : 'badge-ghost'} ml-2">
+											{itemMetadata[itemId].complete ? 'Complete' : 'Incomplete'}
+										</span>
+									{/if}
 								</div>
 								<div class="collapse-content">
-									<pre class="bg-base-300 p-2 rounded text-xs overflow-auto max-h-48">{JSON.stringify(session, null, 2)}</pre>
+									<div class="space-y-2">
+										<div>
+											<div class="text-xs font-semibold mb-1">Session Data:</div>
+											<pre class="bg-base-300 p-2 rounded text-xs overflow-auto max-h-48">{JSON.stringify(session, null, 2)}</pre>
+										</div>
+										{#if itemMetadata[itemId]}
+											<div>
+												<div class="text-xs font-semibold mb-1">Metadata:</div>
+												<pre class="bg-base-300 p-2 rounded text-xs overflow-auto max-h-24">{JSON.stringify(itemMetadata[itemId], null, 2)}</pre>
+											</div>
+										{/if}
+									</div>
 								</div>
 							</div>
 						{/each}
@@ -920,34 +981,13 @@
 	</div>
 {/if}
 
-<!-- TTS Settings Modal -->
+<!-- Assessment Toolkit Settings Modal -->
 {#if showTTSSettings}
-	<div class="modal modal-open">
-		<div class="modal-box max-w-2xl">
-			<div class="flex items-center justify-between mb-4">
-				<h3 class="font-bold text-lg">TTS Configuration</h3>
-				<button
-					class="btn btn-sm btn-circle btn-ghost"
-					onclick={() => showTTSSettings = false}
-				>
-					✕
-				</button>
-			</div>
-
-			<TTSSettings bind:config={ttsConfig} onConfigChange={handleTTSConfigChange} />
-
-			<div class="modal-action">
-				<button class="btn btn-sm" onclick={() => showTTSSettings = false}>
-					Close
-				</button>
-			</div>
-		</div>
-		<button
-			class="modal-backdrop"
-			type="button"
-			aria-label="Close TTS settings"
-			onclick={() => showTTSSettings = false}
-			onkeydown={(e) => { if (e.key === 'Escape') showTTSSettings = false; }}
-		></button>
-	</div>
+	<AssessmentToolkitSettings
+		{ttsService}
+		bind:ttsConfig
+		bind:highlightConfig
+		onClose={() => showTTSSettings = false}
+		onApply={handleUnifiedSettingsApply}
+	/>
 {/if}

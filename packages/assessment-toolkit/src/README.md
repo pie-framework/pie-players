@@ -365,7 +365,16 @@ ttsService.stop();
 
 // State
 const isPlaying = ttsService.isPlaying();
+
+// Dynamic settings updates (for preview/live changes)
+await ttsService.updateSettings({
+  rate: 1.5,
+  pitch: 1.2,
+  voice: 'Matthew'
+});
 ```
+
+**Unified Settings UI**: A pre-built settings component is available in `section-demos/src/lib/components/AssessmentToolkitSettings.svelte` that provides a tabbed interface for configuring TTS, highlighting, and other toolkit features. See the component's README for integration details.
 
 ### AccessibilityCatalogResolver
 

@@ -363,6 +363,7 @@ const registerPieElementsFromBundle = (
 				config,
 				session,
 				env: options.env,
+				container: options.container,
 				...(options.eventListeners?.[elName] && {
 					eventListeners: options.eventListeners[elName],
 				}),
@@ -373,6 +374,7 @@ const registerPieElementsFromBundle = (
 				updatePieElement(editorElName, {
 					config,
 					session,
+					container: options.container,
 					...(options.eventListeners?.[editorElName] && {
 						eventListeners: options.eventListeners[editorElName],
 					}),

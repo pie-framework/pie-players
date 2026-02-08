@@ -207,5 +207,26 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 		return this._isPaused;
 	}
 
+	/**
+	 * Update settings dynamically (rate, pitch, voice)
+	 * Changes take effect on the next speak() call
+	 */
+	updateSettings(settings: Partial<TTSConfig>): void {
+		if (!this.config) {
+			this.config = {} as TTSConfig;
+		}
+
+		// Update config with new settings
+		if (settings.rate !== undefined) {
+			this.config.rate = settings.rate;
+		}
+		if (settings.pitch !== undefined) {
+			this.config.pitch = settings.pitch;
+		}
+		if (settings.voice !== undefined) {
+			this.config.voice = settings.voice;
+		}
+	}
+
 	onWordBoundary?: (word: string, position: number) => void;
 }

@@ -121,7 +121,14 @@
 		if (playerElement && config && scriptLoaded && !loading) {
 			logger.debug('Setting player config');
 			playerElement.config = config;
-			playerElement.session = session;
+
+			// Ensure session has the correct structure
+			const normalizedSession = {
+				id: session?.id || '',
+				data: Array.isArray(session?.data) ? session.data : []
+			};
+			logger.debug('Setting normalized session:', normalizedSession);
+			playerElement.session = normalizedSession;
 			playerElement.env = env;
 		}
 	});

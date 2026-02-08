@@ -432,6 +432,77 @@ export class HighlightCoordinator implements IHighlightCoordinator {
 	}
 
 	/**
+	 * Update TTS highlight style dynamically
+	 *
+	 * @param color CSS color value (e.g., '#ffeb3b')
+	 * @param opacity Opacity value (0.0 to 1.0)
+	 */
+	updateTTSHighlightStyle(color: string, opacity: number): void {
+		if (!this.supported) return;
+		if (typeof document === "undefined") return;
+
+		const styleEl = document.getElementById("pie-highlight-styles");
+		if (!styleEl) return;
+
+		// Convert hex to rgba
+		const hexToRgb = (hex: string) => {
+			const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+			return result
+				? {
+						r: parseInt(result[1], 16),
+						g: parseInt(result[2], 16),
+						b: parseInt(result[3], 16),
+					}
+				: null;
+		};
+
+		const rgb = hexToRgb(color);
+		if (!rgb) return;
+
+		const rgbaColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity})`;
+
+		// Update the style element
+		styleEl.textContent = `
+      /* TTS highlights - temporary */
+      ::highlight(tts-word) {
+        background-color: ${rgbaColor};
+        color: inherit;
+      }
+
+      ::highlight(tts-sentence) {
+        background-color: rgba(173, 216, 230, 0.3);
+        color: inherit;
+      }
+
+      /* Annotation highlights - persistent */
+      ::highlight(annotation-yellow) {
+        background-color: rgba(255, 255, 0, 0.3);
+        color: inherit;
+      }
+
+      ::highlight(annotation-green) {
+        background-color: rgba(144, 238, 144, 0.3);
+        color: inherit;
+      }
+
+      ::highlight(annotation-blue) {
+        background-color: rgba(173, 216, 230, 0.3);
+        color: inherit;
+      }
+
+      ::highlight(annotation-pink) {
+        background-color: rgba(255, 182, 193, 0.3);
+        color: inherit;
+      }
+
+      ::highlight(annotation-orange) {
+        background-color: rgba(255, 165, 0, 0.3);
+        color: inherit;
+      }
+    `;
+	}
+
+	/**
 	 * Cleanup - remove all highlights
 	 */
 	destroy(): void {

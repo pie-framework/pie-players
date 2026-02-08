@@ -149,7 +149,7 @@ export const updatePieElement = (
 	elName: string,
 	opts: UpdatePieElementOptions,
 ): void => {
-	const { config, session, env, eventListeners, invokeControllerForModel } =
+	const { config, session, env, eventListeners, invokeControllerForModel, container } =
 		mergeObjectsIgnoringNullUndefined(defaultPieElementOptions, opts);
 	if (!env) {
 		throw new Error("env is required");
@@ -160,7 +160,9 @@ export const updatePieElement = (
 	if (!config) {
 		throw new Error("config is required");
 	}
-	const pieElements = document.querySelectorAll(elName);
+	// Use container for scoped query or fallback to document for global query
+	const searchRoot = container || document;
+	const pieElements = searchRoot.querySelectorAll(elName);
 	if (!pieElements || pieElements.length === 0) {
 		logger.debug(`no elements found for ${elName}`);
 		return;
@@ -237,9 +239,10 @@ export const updatePieElements = (
 	config: ConfigEntity,
 	session: any[],
 	env: Env,
+	container?: Element | Document,
 ): void => {
 	logger.debug("[updatePieElements] Updating all elements with env:", env);
 	Object.entries(config.elements).forEach(([elName, _pkg]) => {
-		updatePieElement(elName, { config, session, env });
+		updatePieElement(elName, { config, session, env, container });
 	});
 };

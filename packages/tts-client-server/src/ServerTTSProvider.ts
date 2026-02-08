@@ -370,6 +370,33 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 	isPaused(): boolean {
 		return this.pausedState;
 	}
+
+	/**
+	 * Update settings dynamically (rate, pitch, voice)
+	 * Note: Voice changes require resynthesis, so voice updates are stored but
+	 * take effect on the next speak() call. Rate can be applied to current playback.
+	 */
+	updateSettings(settings: Partial<ServerTTSProviderConfig>): void {
+		// Update config
+		if (settings.rate !== undefined) {
+			this.config.rate = settings.rate;
+			// Apply rate immediately to current playback if active
+			if (this.currentAudio) {
+				this.currentAudio.playbackRate = Math.max(
+					0.25,
+					Math.min(4.0, settings.rate),
+				);
+			}
+		}
+		if (settings.pitch !== undefined) {
+			// Server-side pitch is baked into audio, so this only affects next speak()
+			this.config.pitch = settings.pitch;
+		}
+		if (settings.voice !== undefined) {
+			// Voice change requires resynthesis, affects next speak()
+			this.config.voice = settings.voice;
+		}
+	}
 }
 
 /**

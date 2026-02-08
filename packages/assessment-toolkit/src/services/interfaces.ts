@@ -103,6 +103,11 @@ export interface IHighlightCoordinator {
 	 * Check if highlighting is supported in current environment
 	 */
 	isSupported(): boolean;
+
+	/**
+	 * Update TTS highlight style dynamically
+	 */
+	updateTTSHighlightStyle(color: string, opacity: number): void;
 }
 
 /**
@@ -250,6 +255,11 @@ export interface ITTSService {
 	 * Get capabilities of current provider
 	 */
 	getCapabilities(): TTSProviderCapabilities | null;
+
+	/**
+	 * Update TTS settings dynamically (rate, pitch, voice)
+	 */
+	updateSettings(settings: Partial<TTSConfig>): Promise<void>;
 
 	/**
 	 * Set highlight coordinator for word highlighting

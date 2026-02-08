@@ -6,6 +6,8 @@ A comprehensive, tabbed settings interface for all PIE Assessment Toolkit featur
 
 The `AssessmentToolkitSettings` component provides a single, unified interface for configuring all assessment toolkit features including Text-to-Speech, highlighting, tools, and accessibility options.
 
+This component is currently deployed in the section-demos app and can be tested at `/settings-test` or toggled in any demo page.
+
 ## Features
 
 ### 🎨 Modern UI Design
@@ -29,7 +31,7 @@ Configure TTS providers and voice settings:
 - **Playback Controls**:
   - Speech Rate: 0.5x to 2.0x with visual slider
   - Pitch: 0.5x to 2.0x with visual slider
-- **Voice Preview**: Test button to hear current settings
+- **Voice Preview**: Test button to hear current settings (uses `updateSettings()` for real-time preview)
 
 #### 2. ✏️ Highlighting
 Configure text highlighting appearance:
@@ -242,20 +244,35 @@ Settings are organized into logical tabs, showing only relevant options based on
 - New setting groups follow consistent pattern
 - Can add more tool/accessibility features as they're implemented
 
+## Current Features
+
+- TTS provider selection (Polly/Browser)
+- Voice selection with filtering
+- Rate and pitch controls with live sliders
+- Voice preview functionality with `updateSettings()` method
+- Highlighting color and opacity controls
+- Live highlight preview
+- Tabbed interface with smooth navigation
+- Modal with proper accessibility (keyboard navigation, focus trap)
+- Settings persistence to localStorage
+- Reset to defaults functionality
+
 ## Future Enhancements
 
 ### Short Term
-- [ ] Tools tab: actual configuration options
-- [ ] Accessibility tab: high contrast mode toggle
-- [ ] Keyboard shortcuts customization
-- [ ] Import/Export settings
+
+- Tools tab: actual configuration options
+- Accessibility tab: high contrast mode toggle
+- Keyboard shortcuts customization
+- Import/Export settings
 
 ### Long Term
-- [ ] Per-assessment override settings
-- [ ] User profiles for different students
-- [ ] Integration with backend user preferences
-- [ ] Analytics on settings usage
-- [ ] A/B testing different default configurations
+
+- Per-assessment override settings
+- User profiles for different students
+- Integration with backend user preferences
+- Analytics on settings usage
+- A/B testing different default configurations
 
 ## Performance Considerations
 
@@ -281,11 +298,22 @@ Settings are organized into logical tabs, showing only relevant options based on
 
 ## Related Components
 
-- `TTSSettings.svelte` - Previous standalone TTS settings (can be deprecated)
 - `PieSectionPlayer.svelte` - Main player that uses these settings
 - `TTSService` - Service that applies TTS configuration
 - `HighlightCoordinator` - Service that applies highlight configuration
 
-## Questions?
+## Testing
 
-See [INTEGRATION_EXAMPLE.md](./INTEGRATION_EXAMPLE.md) for step-by-step migration guide.
+To test the unified settings component:
+
+1. **Isolated Testing**: Navigate to `/settings-test` route for a dedicated test page
+2. **In Demo**: Use the settings toggle in any demo page navigation bar
+3. **Feature Flag**: Check `SETTINGS_MIGRATION_GUIDE.md` for A/B testing details
+
+## Integration
+
+For integration into your own application, refer to the [Usage Example](#usage-example) section above. The component requires:
+
+- TTS Service instance (optional, enables preview)
+- Config objects for TTS and highlighting
+- Event handlers for close and apply actions

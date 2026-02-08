@@ -90,6 +90,13 @@ export interface ITTSProviderImplementation {
 	isPaused(): boolean;
 
 	/**
+	 * Update settings dynamically (optional)
+	 * Allows changing rate, pitch, and voice without full reinitialization.
+	 * Changes take effect on the next speak() call.
+	 */
+	updateSettings?(settings: Partial<TTSConfig>): void | Promise<void>;
+
+	/**
 	 * Word boundary callback (optional)
 	 * Called during speech for word highlighting
 	 * @param word - The word being spoken (may be empty for server providers)

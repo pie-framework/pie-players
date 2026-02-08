@@ -237,9 +237,9 @@
       // Svelte reactivity won't necessarily re-run effects on in-place mutation,
       // so we must push the updated session into the PIE elements explicitly.
       try {
-        updatePieElements(itemConfig, session, env);
+        updatePieElements(itemConfig, session, env, rootElement);
         if (passageConfig) {
-          updatePieElements(passageConfig, session, env);
+          updatePieElements(passageConfig, session, env, rootElement);
         }
       } catch (e) {
         logger.warn(
@@ -371,7 +371,7 @@
 
           // STEP 1: Initialize bundles and register controllers (don't pass session yet)
           // This registers controllers in the registry so we can call createCorrectResponseSession
-          initializePiesFromLoadedBundle(itemConfig, [], { env, bundleType });
+          initializePiesFromLoadedBundle(itemConfig, [], { env, bundleType, container: rootElement });
           logger.debug(
             "[PieItemPlayer] Item bundle initialized (bundle type: %s)",
             bundleType
@@ -381,6 +381,7 @@
             initializePiesFromLoadedBundle(passageConfig, [], {
               env,
               bundleType,
+              container: rootElement,
             });
             logger.debug(
               "[PieItemPlayer] Passage bundle initialized (bundle type: %s)",
@@ -397,10 +398,10 @@
               session.length +
               ")"
           );
-          updatePieElements(itemConfig, session, env);
+          updatePieElements(itemConfig, session, env, rootElement);
 
           if (passageConfig) {
-            updatePieElements(passageConfig, session, env);
+            updatePieElements(passageConfig, session, env, rootElement);
           }
         }
 
@@ -455,14 +456,20 @@
 
               const customEvent = event as CustomEvent;
               logger.debug(
-                "[PieItemPlayer] session-changed event received from PIE element"
+                "[PieItemPlayer] session-changed event received from PIE element",
+                customEvent.detail
               );
 
               // Set flag before dispatching
               isDispatching = true;
               try {
-                // Re-dispatch to parent (pie-fixed-player/pie-inline-player)
-                dispatch("session-changed", customEvent.detail);
+                // Re-dispatch to parent with full session data (not just event detail)
+                // The event detail only contains metadata like {complete: boolean, component: string}
+                // The actual session data is in the session array prop (it's already the data array)
+                dispatch("session-changed", {
+                  ...customEvent.detail,
+                  session: { id: "", data: session },
+                });
               } finally {
                 // Reset flag after dispatch (use setTimeout to ensure it happens after event propagation)
                 setTimeout(() => {
@@ -555,10 +562,10 @@
     isUpdating = true;
     untrack(() => {
       try {
-        updatePieElements(itemConfig, session, env);
+        updatePieElements(itemConfig, session, env, rootElement);
 
         if (passageConfig) {
-          updatePieElements(passageConfig, session, env);
+          updatePieElements(passageConfig, session, env, rootElement);
         }
       } finally {
         isUpdating = false;

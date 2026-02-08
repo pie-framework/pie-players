@@ -108,6 +108,7 @@ export interface UpdatePieElementOptions {
 	env?: Env;
 	invokeControllerForModel?: boolean;
 	eventListeners?: EventListeners;
+	container?: Element | Document; // Optional container to scope querySelector (defaults to document)
 }
 
 /**
@@ -135,6 +136,7 @@ export interface LoadPieElementsOptions {
 	env?: Env;
 	bundleUrl?: string;
 	eventListeners?: EventListenersMap;
+	container?: Element | Document; // Optional container to scope querySelector
 }
 
 /**

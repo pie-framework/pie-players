@@ -235,17 +235,23 @@
 		// We want to store the session property
 		const actualSession = sessionDetail.session || sessionDetail;
 
-		// Update local sessions
-		itemSessions = {
-			...itemSessions,
-			[itemId]: actualSession
-		};
+		// Only update itemSessions if we have valid session data structure
+		// The session should have an 'id' property and a 'data' array
+		// Skip metadata-only events that just have { complete, component }
+		if (actualSession && ('id' in actualSession || 'data' in actualSession)) {
+			// Update local sessions with pure session data (no metadata mixed in)
+			itemSessions = {
+				...itemSessions,
+				[itemId]: actualSession
+			};
+		}
 
-		// Create event detail
+		// Create event detail with session and metadata kept separate
 		const eventDetail = {
 			itemId,
-			session: actualSession,
+			session: itemSessions[itemId] || actualSession,
 			complete: sessionDetail.complete,
+			component: sessionDetail.component,
 			timestamp: Date.now()
 		};
 

@@ -1,11 +1,12 @@
 <script lang="ts">
-	import { onMount, onDestroy } from 'svelte';
+	
 	import { Editor } from '@tiptap/core';
-	import Document from '@tiptap/extension-document';
-	import Text from '@tiptap/extension-text';
-	import History from '@tiptap/extension-history';
 	import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
+	import Document from '@tiptap/extension-document';
+	import History from '@tiptap/extension-history';
+	import Text from '@tiptap/extension-text';
 	import { common, createLowlight } from 'lowlight';
+import { onDestroy, onMount } from 'svelte';
 
 	let {
 		value,

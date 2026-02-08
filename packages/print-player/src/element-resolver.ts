@@ -7,9 +7,9 @@
 
 import { define, status, whenDefined } from "./ce-registry.js";
 import type {
+	LoadResolutionResult,
 	PkgResolution,
 	ResolverFn,
-	LoadResolutionResult,
 } from "./types.js";
 
 /**

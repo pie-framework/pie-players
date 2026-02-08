@@ -9,8 +9,8 @@ export type {
 	ITTSProvider,
 	ITTSProviderImplementation,
 	StandardTTSConfig,
-	TTSConfigExtensions,
 	TTSConfig,
+	TTSConfigExtensions,
 	TTSFeature,
 	TTSProviderCapabilities,
 } from "./provider-interface";

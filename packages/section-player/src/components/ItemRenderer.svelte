@@ -9,7 +9,6 @@
 	import { SSMLExtractor } from '@pie-players/pie-assessment-toolkit';
 	import type { ItemEntity } from '@pie-players/pie-players-shared/types';
 import { onMount, untrack } from 'svelte';
-	import { ZIndexLayer } from '../utils/z-index';
 
 	let {
 		item,
@@ -19,6 +18,7 @@ import { onMount, untrack } from 'svelte';
 		esmCdnUrl = 'https://esm.sh',
 		playerVersion = 'latest',
 		useLegacyPlayer = true,
+		skipElementLoading = false,
 		ttsService = null,
 		toolCoordinator = null,
 		highlightCoordinator = null,
@@ -33,6 +33,7 @@ import { onMount, untrack } from 'svelte';
 		esmCdnUrl?: string;
 		playerVersion?: string;
 		useLegacyPlayer?: boolean;
+		skipElementLoading?: boolean;
 		ttsService?: any;
 		toolCoordinator?: any;
 		highlightCoordinator?: any;
@@ -42,7 +43,9 @@ import { onMount, untrack } from 'svelte';
 	} = $props();
 
 	// Get the DOM element reference for service binding
+	// @ts-expect-error - Used in bind:this but TypeScript doesn't recognize it
 	let itemElement: HTMLElement | null = $state(null);
+	// @ts-expect-error - Used in bind:this but TypeScript doesn't recognize it
 	let itemContentElement: HTMLElement | null = $state(null);
 	let ttsToolElement: HTMLElement | null = $state(null);
 	let playerElement: any = $state(null);
@@ -64,17 +67,19 @@ import { onMount, untrack } from 'svelte';
 	});
 
 	// Import the appropriate player web component
-	onMount(async () => {
+	onMount(() => {
 		// Import TTS tool on client side only (avoids SSR customElements error)
-		await import('@pie-players/pie-tool-tts-inline');
+		(async () => {
+			await import('@pie-players/pie-tool-tts-inline');
 
-		if (playerType === 'legacy') {
-			await import('@pie-players/pie-legacy-player');
-		} else if (playerType === 'iife') {
-			await import('@pie-players/pie-iife-player');
-		} else {
-			await import('@pie-players/pie-esm-player');
-		}
+			if (playerType === 'legacy') {
+				await import('@pie-players/pie-legacy-player');
+			} else if (playerType === 'iife') {
+				await import('@pie-players/pie-iife-player');
+			} else {
+				await import('@pie-players/pie-esm-player');
+			}
+		})();
 
 		// Cleanup: Clear item catalogs on unmount
 		return () => {
@@ -164,15 +169,8 @@ import { onMount, untrack } from 'svelte';
 				playerElement.removeEventListener('session-changed', handler);
 			};
 		}
+		return undefined;
 	});
-
-	function handleSessionChanged(event: Event) {
-		console.log('[ItemRenderer] handleSessionChanged called:', event);
-		console.log('[ItemRenderer] Full event detail:', (event as CustomEvent).detail);
-		if (onsessionchanged) {
-			onsessionchanged(event as CustomEvent);
-		}
-	}
 </script>
 
 {#if item.config}
@@ -201,11 +199,13 @@ import { onMount, untrack } from 'svelte';
 				<pie-iife-player
 					bind:this={playerElement}
 					bundle-host={bundleHost}
+					skip-element-loading={skipElementLoading}
 				></pie-iife-player>
 			{:else}
 				<pie-esm-player
 					bind:this={playerElement}
 					esm-cdn-url={esmCdnUrl}
+					skip-element-loading={skipElementLoading}
 				></pie-esm-player>
 			{/if}
 		</div>

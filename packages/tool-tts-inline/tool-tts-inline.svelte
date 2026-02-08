@@ -18,9 +18,9 @@
 
 <script lang="ts">
 	import type {
+		IHighlightCoordinator, 
 		IToolCoordinator,
-		ITTSService,
-		IHighlightCoordinator
+		ITTSService
 	} from '@pie-players/pie-assessment-toolkit';
 	import { ZIndexLayer } from '@pie-players/pie-assessment-toolkit';
 

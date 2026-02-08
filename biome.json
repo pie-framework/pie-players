@@ -35,15 +35,23 @@
 				"noImplicitAnyLet": "off",
 				"noAssignInExpressions": "off",
 				"useIterableCallbackReturn": "off"
+			},
+			"style": {
+				"useFilenamingConvention": "off",
+				"useImportType": "off",
+				"useNamingConvention": "off"
 			}
 		}
 	},
 	"formatter": {
 		"enabled": true
 	},
+	"assist": {
+		"enabled": false
+	},
 	"css": {
 		"parser": {
-			"cssModules": false,
+			"cssModules": true,
 			"tailwindDirectives": true
 		},
 		"linter": {
@@ -58,6 +66,17 @@
 			},
 			"formatter": {
 				"enabled": false
+			}
+		},
+		{
+			"includes": ["**/app.css", "**/*tailwind*.css"],
+			"linter": {
+				"enabled": true,
+				"rules": {
+					"suspicious": {
+						"noUnknownAtRules": "off"
+					}
+				}
 			}
 		}
 	]

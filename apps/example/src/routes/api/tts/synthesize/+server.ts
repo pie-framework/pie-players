@@ -5,9 +5,9 @@
  * Speech marks provide millisecond-precise word timing for synchronization.
  */
 
-import { json, error } from "@sveltejs/kit";
-import type { RequestHandler } from "./$types";
 import { PollyServerProvider } from "@pie-players/tts-server-polly";
+import { error, json } from "@sveltejs/kit";
+import type { RequestHandler } from "./$types";
 
 // Singleton provider instance (reused across requests)
 let pollyProvider: PollyServerProvider | null = null;

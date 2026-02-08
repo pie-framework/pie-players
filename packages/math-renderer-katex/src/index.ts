@@ -17,5 +17,5 @@
  * ```
  */
 
-export type { KatexRendererOptions } from "./katex-renderer";
-export { createKatexRenderer } from "./katex-renderer";
+export type { KatexRendererOptions } from "./katex-renderer.js";
+export { createKatexRenderer } from "./katex-renderer.js";

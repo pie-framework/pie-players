@@ -6,28 +6,28 @@
  * @packageDocumentation
  */
 
-export { PiePrint } from "./pie-print.js";
 export { define, status, whenDefined } from "./ce-registry.js";
 export {
-	defaultResolve,
 	defaultLoadResolution,
+	defaultResolve,
 	hashCode,
 } from "./element-resolver.js";
 export {
-	processMarkup,
-	printItemAndFloaters,
 	mkItem,
+	printItemAndFloaters,
+	processMarkup,
 } from "./markup-processor.js";
+export { PiePrint } from "./pie-print.js";
 
 export type {
 	Config,
-	Item,
-	Model,
 	Elements,
-	PkgResolution,
-	ResolverFn,
+	Item,
 	LoadResolutionFn,
 	LoadResolutionResult,
 	MissingElFn,
+	Model,
 	NodeResult,
+	PkgResolution,
+	ResolverFn,
 } from "./types.js";

@@ -10,25 +10,25 @@
  * - Support for pie-elements-ng packages
  */
 
-import { LitElement, html, css, type PropertyValues } from "lit";
+import { css, html, LitElement, type PropertyValues } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 
 import { define, whenDefined } from "./ce-registry.js";
 import {
-	defaultResolve,
 	defaultLoadResolution,
+	defaultResolve,
 	hashCode,
 } from "./element-resolver.js";
-import { printItemAndFloaters, mkItem } from "./markup-processor.js";
+import { mkItem, printItemAndFloaters } from "./markup-processor.js";
 
 import type {
 	Config,
 	Item,
-	PkgResolution,
-	ResolverFn,
 	LoadResolutionFn,
 	MissingElFn,
+	PkgResolution,
+	ResolverFn,
 } from "./types.js";
 
 /**

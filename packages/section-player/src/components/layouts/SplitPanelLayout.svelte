@@ -19,6 +19,7 @@
 		esmCdnUrl = 'https://esm.sh',
 		playerVersion = 'latest',
 		useLegacyPlayer = true,
+		skipElementLoading = false,
 		ttsService = null,
 		toolCoordinator = null,
 		highlightCoordinator = null,
@@ -33,6 +34,7 @@
 		esmCdnUrl?: string;
 		playerVersion?: string;
 		useLegacyPlayer?: boolean;
+		skipElementLoading?: boolean;
 		ttsService?: any;
 		toolCoordinator?: any;
 		highlightCoordinator?: any;
@@ -81,6 +83,17 @@
 		}
 	}
 
+	function handleKeyDown(event: KeyboardEvent) {
+		const step = 5; // 5% change per key press
+		if (event.key === 'ArrowLeft') {
+			event.preventDefault();
+			leftPanelWidth = Math.max(20, leftPanelWidth - step);
+		} else if (event.key === 'ArrowRight') {
+			event.preventDefault();
+			leftPanelWidth = Math.min(80, leftPanelWidth + step);
+		}
+	}
+
 	// Attach global mouse listeners when dragging
 	$effect(() => {
 		if (isDragging) {
@@ -92,6 +105,7 @@
 				window.removeEventListener('mouseup', handleMouseUp);
 			};
 		}
+		return undefined;
 	});
 
 	// Check if we have passages to determine layout
@@ -126,9 +140,13 @@
 			class="divider"
 			class:dragging={isDragging}
 			onmousedown={handleMouseDown}
+			onkeydown={handleKeyDown}
 			role="separator"
 			aria-orientation="vertical"
 			aria-label="Resize panels"
+			aria-valuenow={Math.round(leftPanelWidth)}
+			aria-valuemin="20"
+			aria-valuemax="80"
 			tabindex="0"
 		>
 			<div class="divider-handle"></div>
@@ -147,6 +165,7 @@
 					{esmCdnUrl}
 					{playerVersion}
 					{useLegacyPlayer}
+					{skipElementLoading}
 					{ttsService}
 					{toolCoordinator}
 					{highlightCoordinator}
@@ -249,13 +268,6 @@
 		display: flex;
 		flex-direction: column;
 		gap: 1.5rem;
-	}
-
-	.empty-state {
-		padding: 2rem;
-		text-align: center;
-		color: #999;
-		font-style: italic;
 	}
 
 	/* Mobile/Narrow: Fall back to vertical layout */

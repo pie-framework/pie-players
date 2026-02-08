@@ -62,6 +62,7 @@ export class TTSService {
 	private normalizedToDOM: Map<number, { node: Text; offset: number }> =
 		new Map();
 	private listeners = new Map<string, Set<(state: PlaybackState) => void>>();
+	private lastError: string | null = null;
 
 	constructor() {}
 
@@ -376,6 +377,7 @@ export class TTSService {
 
 		this.currentText = contentToSpeak;
 		this.currentContentElement = options?.contentElement || null;
+		this.lastError = null; // Clear previous error
 		this.setState(PlaybackState.LOADING);
 
 		// Build position map for highlighting if we have a content element
@@ -436,6 +438,7 @@ export class TTSService {
 			this.normalizedToDOM.clear();
 		} catch (error) {
 			console.error("TTS error:", error);
+			this.lastError = error instanceof Error ? error.message : String(error);
 			this.setState(PlaybackState.ERROR);
 
 			// Clear highlights on error
@@ -531,6 +534,14 @@ export class TTSService {
 	 */
 	getCurrentText(): string | null {
 		return this.currentText;
+	}
+
+	/**
+	 * Get the last error message
+	 * Returns null if no error has occurred
+	 */
+	getLastError(): string | null {
+		return this.lastError;
 	}
 
 	/**

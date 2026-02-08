@@ -5,8 +5,9 @@
   Supports both standard W3C parameters and provider-specific extensions.
 -->
 <script lang="ts">
-	import { browser } from '$app/environment';
+	
 	import { onMount } from 'svelte';
+import { browser } from '$app/environment';
 
 	interface Voice {
 		id: string;

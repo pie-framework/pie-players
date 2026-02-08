@@ -149,8 +149,14 @@ export const updatePieElement = (
 	elName: string,
 	opts: UpdatePieElementOptions,
 ): void => {
-	const { config, session, env, eventListeners, invokeControllerForModel, container } =
-		mergeObjectsIgnoringNullUndefined(defaultPieElementOptions, opts);
+	const {
+		config,
+		session,
+		env,
+		eventListeners,
+		invokeControllerForModel,
+		container,
+	} = mergeObjectsIgnoringNullUndefined(defaultPieElementOptions, opts);
 	if (!env) {
 		throw new Error("env is required");
 	}

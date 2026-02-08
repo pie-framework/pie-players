@@ -197,7 +197,7 @@ export const qti3TestAssessment: AssessmentEntity = {
 						},
 					],
 
-					questionRefs: [
+					assessmentItemRefs: [
 						{
 							identifier: "item1",
 							itemVId: "mc_basic",

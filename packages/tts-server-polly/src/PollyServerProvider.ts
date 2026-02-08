@@ -4,27 +4,27 @@
  */
 
 import {
-	PollyClient,
-	SynthesizeSpeechCommand,
 	DescribeVoicesCommand,
+	type DescribeVoicesCommandInput,
 	Engine,
 	OutputFormat,
-	VoiceId,
+	PollyClient,
 	SpeechMarkType,
-	type DescribeVoicesCommandInput,
+	SynthesizeSpeechCommand,
+	VoiceId,
 } from "@aws-sdk/client-polly";
 
 import {
 	BaseTTSProvider,
-	type SynthesizeRequest,
-	type SynthesizeResponse,
-	type Voice,
 	type GetVoicesOptions,
 	type ServerProviderCapabilities,
 	type SpeechMark,
-	type TTSServerConfig,
+	type SynthesizeRequest,
+	type SynthesizeResponse,
 	TTSError,
 	TTSErrorCode,
+	type TTSServerConfig,
+	type Voice,
 } from "@pie-players/tts-server-core";
 
 /**

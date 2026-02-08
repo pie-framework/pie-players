@@ -107,7 +107,7 @@ export class EsmPieLoader {
 			BUILT_IN_VIEWS[options.view] ||
 			BUILT_IN_VIEWS.delivery;
 
-		for (const [tag, packageVersion] of Object.entries(elements)) {
+		for (const [_tag, packageVersion] of Object.entries(elements)) {
 			const packageName = this.extractPackageName(packageVersion);
 
 			// Add root package import (for delivery/default view)

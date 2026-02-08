@@ -1,7 +1,8 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import { TTSService, BrowserTTSProvider } from '@pie-players/pie-assessment-toolkit';
-	import { ServerTTSProvider } from '@pie-players/tts-client-server';
+
+	import { BrowserTTSProvider, TTSService } from '@pie-players/pie-assessment-toolkit';
+	import { ServerTTSProvider, type ServerTTSProviderConfig } from '@pie-players/tts-client-server';
+import { onMount } from 'svelte';
 
 	let ttsService: TTSService;
 	let contentElement: HTMLElement;
@@ -33,12 +34,13 @@
 						voice: 'Joanna',
 						language: 'en-US',
 						rate: 1.0,
-					});
+					} as Partial<ServerTTSProviderConfig>);
 					currentProvider = 'AWS Polly (Server-side) with Speech Marks';
 					status = '✅ Server TTS ready (AWS Polly with speech marks)';
 				} catch (error) {
 					console.error('Server TTS failed:', error);
-					status = `❌ Server TTS failed: ${error.message}. Falling back to browser TTS.`;
+					const errorMessage = error instanceof Error ? error.message : String(error);
+					status = `❌ Server TTS failed: ${errorMessage}. Falling back to browser TTS.`;
 					// Fallback to browser TTS
 					const browserProvider = new BrowserTTSProvider();
 					await ttsService.initialize(browserProvider);
@@ -54,7 +56,8 @@
 			}
 		} catch (error) {
 			console.error('TTS initialization failed:', error);
-			status = `❌ Error: ${error.message}`;
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			status = `❌ Error: ${errorMessage}`;
 		}
 	}
 
@@ -78,7 +81,8 @@
 			status = '✅ Finished speaking';
 		} catch (error) {
 			console.error('Speak failed:', error);
-			status = `❌ Error: ${error.message}`;
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			status = `❌ Error: ${errorMessage}`;
 			isPlaying = false;
 		}
 	}

@@ -236,6 +236,12 @@ export interface RubricBlock {
 	 * Contains a PIE config with markup, elements, and models.
 	 */
 	passage?: PassageEntity;
+
+	/**
+	 * Simple HTML content string (for basic use cases).
+	 * Alternative to the passage entity approach.
+	 */
+	content?: string;
 }
 
 /**
@@ -400,6 +406,9 @@ export interface AssessmentEntity extends BaseEntity, SearchMetaDataEntity {
 	 * QTI 3.0: testParts structure (authoritative for QTI format).
 	 */
 	testParts?: TestPart[];
+
+	/** QTI 3.0: Stimulus material references (Phase 3 - placeholder) */
+	stimulusRefs?: any[];
 }
 
 /**

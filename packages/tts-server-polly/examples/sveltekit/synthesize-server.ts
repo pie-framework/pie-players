@@ -5,10 +5,10 @@
  * src/routes/api/tts/synthesize/+server.ts
  */
 
-import { json, error } from "@sveltejs/kit";
-import type { RequestHandler } from "./$types";
-import { PollyServerProvider } from "@pie-players/tts-server-polly";
 import { generateHashedCacheKey } from "@pie-players/tts-server-core";
+import { PollyServerProvider } from "@pie-players/tts-server-polly";
+import { error, json } from "@sveltejs/kit";
+import type { RequestHandler } from "./$types";
 
 // Initialize Polly provider (singleton)
 let pollyProvider: PollyServerProvider | null = null;

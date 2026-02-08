@@ -1,7 +1,8 @@
 <script lang="ts">
-	import { page } from '$app/stores';
-	import { goto } from '$app/navigation';
+	
 	import { setContext, untrack } from 'svelte';
+	import { goto } from '$app/navigation';
+import { page } from '$app/stores';
 	import { coerceMode, coerceRole } from '$lib/utils/coercion';
 
 	let { data, children } = $props();

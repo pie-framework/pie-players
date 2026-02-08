@@ -23,6 +23,7 @@
 		esmCdnUrl = 'https://esm.sh',
 		playerVersion = 'latest',
 		useLegacyPlayer = true,
+		skipElementLoading = false,
 		ttsService = null,
 		toolCoordinator = null,
 		highlightCoordinator = null,
@@ -43,6 +44,7 @@
 		esmCdnUrl?: string;
 		playerVersion?: string;
 		useLegacyPlayer?: boolean;
+		skipElementLoading?: boolean;
 		ttsService?: any;
 		toolCoordinator?: any;
 		highlightCoordinator?: any;
@@ -89,6 +91,7 @@
 				{esmCdnUrl}
 				{playerVersion}
 				{useLegacyPlayer}
+				{skipElementLoading}
 				{ttsService}
 				{toolCoordinator}
 				{highlightCoordinator}

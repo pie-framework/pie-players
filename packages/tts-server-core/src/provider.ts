@@ -4,11 +4,11 @@
  */
 
 import type {
+	GetVoicesOptions,
+	ServerProviderCapabilities,
 	SynthesizeRequest,
 	SynthesizeResponse,
 	Voice,
-	GetVoicesOptions,
-	ServerProviderCapabilities,
 } from "./types.js";
 
 /**
@@ -161,18 +161,18 @@ export abstract class BaseTTSProvider implements ITTSServerProvider {
 			throw new Error("Text is required and cannot be empty");
 		}
 
-		if (request.text.length > capabilities.maxTextLength) {
+		if (request.text.length > capabilities.standard.maxTextLength) {
 			throw new Error(
-				`Text length (${request.text.length}) exceeds maximum (${capabilities.maxTextLength})`,
+				`Text length (${request.text.length}) exceeds maximum (${capabilities.standard.maxTextLength})`,
 			);
 		}
 
 		if (
 			request.format &&
-			!capabilities.supportedFormats.includes(request.format)
+			!capabilities.extensions.supportedFormats.includes(request.format)
 		) {
 			throw new Error(
-				`Format '${request.format}' not supported. Supported formats: ${capabilities.supportedFormats.join(", ")}`,
+				`Format '${request.format}' not supported. Supported formats: ${capabilities.extensions.supportedFormats.join(", ")}`,
 			);
 		}
 

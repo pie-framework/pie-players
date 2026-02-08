@@ -5,9 +5,9 @@
  * Supports filtering by language, gender, and quality.
  */
 
-import { json, error } from "@sveltejs/kit";
-import type { RequestHandler } from "./$types";
 import { PollyServerProvider } from "@pie-players/tts-server-polly";
+import { error, json } from "@sveltejs/kit";
+import type { RequestHandler } from "./$types";
 
 // Use same singleton as synthesize route
 let pollyProvider: PollyServerProvider | null = null;

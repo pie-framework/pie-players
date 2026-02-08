@@ -38,6 +38,10 @@
 			"types": "./src/pie/*.ts",
 			"import": "./src/pie/*.ts"
 		},
+		"./loaders": {
+			"types": "./src/loaders/index.ts",
+			"import": "./src/loaders/index.ts"
+		},
 		"./components": {
 			"types": "./src/components/index.ts",
 			"import": "./src/components/index.ts",

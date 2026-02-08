@@ -3,51 +3,48 @@
  * @module @pie-players/tts-server-core
  */
 
-// Export types
+// Export cache interfaces
 export type {
-	SpeechMark,
-	StandardTTSParameters,
-	TTSProviderExtensions,
-	SynthesizeRequest,
-	SynthesizeResponse,
-	SynthesizeMetadata,
-	Voice,
-	VoiceFeatures,
-	GetVoicesOptions,
-	ServerProviderCapabilities,
-} from "./types.js";
-
-export { TTSErrorCode, TTSError } from "./types.js";
+	CacheKeyComponents,
+	CacheStats,
+	ITTSCache,
+} from "./cache.js";
+export {
+	generateCacheKey,
+	generateHashedCacheKey,
+	hashText,
+	MemoryCache,
+} from "./cache.js";
 
 // Export provider interfaces
 export type {
-	TTSServerConfig,
 	ITTSServerProvider,
+	TTSServerConfig,
 } from "./provider.js";
 
 export { BaseTTSProvider } from "./provider.js";
 
 // Export speech marks utilities
 export {
-	estimateSpeechMarks,
 	adjustSpeechMarksForRate,
-	validateSpeechMarks,
-	mergeSpeechMarks,
+	estimateSpeechMarks,
 	filterSpeechMarksByType,
 	getSpeechMarkAtTime,
 	getSpeechMarksStats,
+	mergeSpeechMarks,
+	validateSpeechMarks,
 } from "./speech-marks.js";
-
-// Export cache interfaces
+// Export types
 export type {
-	CacheKeyComponents,
-	ITTSCache,
-	CacheStats,
-} from "./cache.js";
-
-export {
-	generateCacheKey,
-	hashText,
-	generateHashedCacheKey,
-	MemoryCache,
-} from "./cache.js";
+	GetVoicesOptions,
+	ServerProviderCapabilities,
+	SpeechMark,
+	StandardTTSParameters,
+	SynthesizeMetadata,
+	SynthesizeRequest,
+	SynthesizeResponse,
+	TTSProviderExtensions,
+	Voice,
+	VoiceFeatures,
+} from "./types.js";
+export { TTSError, TTSErrorCode } from "./types.js";

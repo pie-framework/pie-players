@@ -1,7 +1,7 @@
 <!--
   ItemRenderer - Internal Component
 
-  Renders a single item using pie-legacy-player, pie-iife-player, or pie-esm-player.
+  Renders a single item using pie-iife-player or pie-esm-player.
   Handles SSML extraction, TTS service binding, and player lifecycle.
 -->
 <script lang="ts">
@@ -12,13 +12,11 @@ import { onMount, untrack } from 'svelte';
 
 	let {
 		item,
-		mode = 'gather',
+		env = { mode: 'gather', role: 'student' },
 		session = { id: '', data: [] },
 		bundleHost = '',
 		esmCdnUrl = 'https://esm.sh',
 		playerVersion = 'latest',
-		useLegacyPlayer = true,
-		skipElementLoading = false,
 		ttsService = null,
 		toolCoordinator = null,
 		highlightCoordinator = null,
@@ -27,13 +25,11 @@ import { onMount, untrack } from 'svelte';
 		onsessionchanged
 	}: {
 		item: ItemEntity;
-		mode?: 'gather' | 'view' | 'evaluate' | 'author';
+		env?: { mode: 'gather' | 'view' | 'evaluate' | 'author'; role: 'student' | 'instructor' };
 		session?: any;
 		bundleHost?: string;
 		esmCdnUrl?: string;
 		playerVersion?: string;
-		useLegacyPlayer?: boolean;
-		skipElementLoading?: boolean;
 		ttsService?: any;
 		toolCoordinator?: any;
 		highlightCoordinator?: any;
@@ -55,15 +51,14 @@ import { onMount, untrack } from 'svelte';
 
 	// Track last values to avoid unnecessary updates
 	let lastConfig: any = null;
-	let lastMode: string | null = null;
+	let lastEnv: any = null;
 
 	// Determine which player to use based on configuration
-	// Priority: legacy > IIFE (if bundleHost) > ESM (if esmCdnUrl)
+	// Priority: IIFE (if bundleHost) > ESM (if esmCdnUrl)
 	let playerType = $derived.by(() => {
-		if (useLegacyPlayer) return 'legacy';
 		if (bundleHost) return 'iife';
 		if (esmCdnUrl) return 'esm';
-		return 'legacy'; // fallback
+		return 'iife'; // fallback
 	});
 
 	// Import the appropriate player web component
@@ -72,9 +67,7 @@ import { onMount, untrack } from 'svelte';
 		(async () => {
 			await import('@pie-players/pie-tool-tts-inline');
 
-			if (playerType === 'legacy') {
-				await import('@pie-players/pie-legacy-player');
-			} else if (playerType === 'iife') {
+			if (playerType === 'iife') {
 				await import('@pie-players/pie-iife-player');
 			} else {
 				await import('@pie-players/pie-esm-player');
@@ -134,22 +127,25 @@ import { onMount, untrack } from 'svelte';
 		}
 	});
 
-	// Set player properties imperatively when config or mode changes
+	// Set player properties imperatively when config or env changes
 	$effect(() => {
 		const currentConfig = item.config;
-		const currentMode = mode;
+		const currentEnv = env;
 		const currentSession = session;
 
 		if (playerElement && currentConfig) {
-			if (currentConfig !== lastConfig || currentMode !== lastMode) {
+			// Check if config or env changed
+			const envChanged = !lastEnv || lastEnv.mode !== currentEnv.mode || lastEnv.role !== currentEnv.role;
+
+			if (currentConfig !== lastConfig || envChanged) {
 				untrack(() => {
 					playerElement.config = currentConfig;
 					playerElement.session = currentSession;
-					playerElement.env = { mode: currentMode };
+					playerElement.env = currentEnv;
 				});
 
 				lastConfig = currentConfig;
-				lastMode = currentMode;
+				lastEnv = currentEnv;
 			}
 		}
 	});
@@ -190,22 +186,15 @@ import { onMount, untrack } from 'svelte';
 		</div>
 
 		<div class="item-content" bind:this={itemContentElement}>
-			{#if playerType === 'legacy'}
-				<pie-legacy-player
-					bind:this={playerElement}
-					player-version={playerVersion}
-				></pie-legacy-player>
-			{:else if playerType === 'iife'}
+			{#if playerType === 'iife'}
 				<pie-iife-player
 					bind:this={playerElement}
 					bundle-host={bundleHost}
-					skip-element-loading={skipElementLoading}
 				></pie-iife-player>
 			{:else}
 				<pie-esm-player
 					bind:this={playerElement}
 					esm-cdn-url={esmCdnUrl}
-					skip-element-loading={skipElementLoading}
 				></pie-esm-player>
 			{/if}
 		</div>

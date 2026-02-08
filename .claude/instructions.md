@@ -98,6 +98,13 @@ These checks ensure:
 - For model/session updates, reassign new objects when needed to trigger updates.
 - When using controller-based elements, rebuild and re-set the element model on mode/session changes.
 
+### Demo UI Preferences
+
+- **Prefer simplicity**: Use URL parameters with page refresh over complicated reactive component tracking for demo toggles (player type, layout, mode/role)
+- **Why**: Mode and role switches are primarily for demos - in production environments, these are typically fixed
+- **Pattern**: Read from URL params on page load (`?player=iife&layout=split-panel&mode=scorer`), refresh page when changed
+- **Avoid**: Complex reactive effects, router state management, or `{#key}` blocks for simple demo switches
+
 ### Element API
 
 Each element exports three entry points:

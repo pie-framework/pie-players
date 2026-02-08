@@ -14,12 +14,10 @@
 		passages,
 		items,
 		itemSessions = {},
-		mode = 'gather',
+		env = { mode: 'gather', role: 'student' },
 		bundleHost = '',
 		esmCdnUrl = 'https://esm.sh',
 		playerVersion = 'latest',
-		useLegacyPlayer = true,
-		skipElementLoading = false,
 		ttsService = null,
 		toolCoordinator = null,
 		highlightCoordinator = null,
@@ -29,12 +27,10 @@
 		passages: PassageEntity[];
 		items: ItemEntity[];
 		itemSessions?: Record<string, any>;
-		mode?: 'gather' | 'view' | 'evaluate' | 'author';
+		env?: { mode: 'gather' | 'view' | 'evaluate' | 'author'; role: 'student' | 'instructor' };
 		bundleHost?: string;
 		esmCdnUrl?: string;
 		playerVersion?: string;
-		useLegacyPlayer?: boolean;
-		skipElementLoading?: boolean;
 		ttsService?: any;
 		toolCoordinator?: any;
 		highlightCoordinator?: any;
@@ -76,14 +72,12 @@
 			<div class="item-wrapper" data-item-index={index}>
 				<ItemRenderer
 					{item}
-					{mode}
+					{env}
 					session={itemSessions[item.id || '']}
 					{bundleHost}
 					{esmCdnUrl}
 					{playerVersion}
-					{useLegacyPlayer}
-					{skipElementLoading}
-					{ttsService}
+							{ttsService}
 					{toolCoordinator}
 					{highlightCoordinator}
 					{catalogResolver}
@@ -116,6 +110,10 @@
 		display: flex;
 		flex-direction: column;
 		gap: 1.5rem;
+	}
+
+	.item-wrapper {
+		flex-shrink: 0;
 	}
 
 	/* Responsive */

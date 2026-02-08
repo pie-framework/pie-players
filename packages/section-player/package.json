@@ -38,7 +38,6 @@
 	"dependencies": {
 		"@pie-players/pie-esm-player": "workspace:*",
 		"@pie-players/pie-iife-player": "workspace:*",
-		"@pie-players/pie-legacy-player": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*"
 	},
 	"devDependencies": {

@@ -49,9 +49,20 @@ import { onDestroy, onMount, untrack } from 'svelte';
 		return 'split-panel';
 	}
 
+	function getInitialMode(): 'candidate' | 'scorer' {
+		if (browser) {
+			const urlMode = new URLSearchParams(window.location.search).get('mode');
+			if (urlMode && ['candidate', 'scorer'].includes(urlMode)) {
+				return urlMode as 'candidate' | 'scorer';
+			}
+		}
+		return 'candidate';
+	}
+
 	let showJson = $state(false);
 	let playerType = $state<'iife' | 'esm'>(getInitialPlayerType());
 	let layoutType = $state<'vertical' | 'split-panel'>(getInitialLayoutType());
+	let roleType = $state<'candidate' | 'scorer'>(getInitialMode());
 	let showSessionPanel = $state(false);
 	let showSourcePanel = $state(false);
 	let isSessionMinimized = $state(false);
@@ -346,31 +357,17 @@ import { onDestroy, onMount, untrack } from 'svelte';
 	});
 
 	// Handle player type change with page refresh
-	function handlePlayerChange(newPlayerType: 'iife' | 'esm') {
+	// Update URL and refresh page when player, layout, or mode changes
+	function updateUrlAndRefresh(updates: { player?: 'iife' | 'esm'; layout?: 'vertical' | 'split-panel'; mode?: 'candidate' | 'scorer' }) {
 		if (browser) {
 			const url = new URL(window.location.href);
-			url.searchParams.set('player', newPlayerType);
-			url.searchParams.set('layout', layoutType);
+			// Preserve current values and apply updates
+			url.searchParams.set('player', updates.player || playerType);
+			url.searchParams.set('layout', updates.layout || layoutType);
+			url.searchParams.set('mode', updates.mode || roleType);
 			window.location.href = url.toString();
 		}
 	}
-
-	// Update URL when layoutType changes (without refresh)
-	// Use onNavigate to ensure router is initialized
-	let routerReady = $state(false);
-
-	onNavigate(() => {
-		routerReady = true;
-	});
-
-	$effect(() => {
-		if (browser && routerReady) {
-			const url = new URL(window.location.href);
-			url.searchParams.set('player', playerType);
-			url.searchParams.set('layout', layoutType);
-			replaceState(url.pathname + url.search, {});
-		}
-	});
 
 	// Persist sessions to localStorage whenever they change
 	$effect(() => {
@@ -438,12 +435,32 @@ import { onDestroy, onMount, untrack } from 'svelte';
 	});
 
 	// Compute player props based on selected type
+	// Map role toggle to PIE environment
+	// candidate → gather mode + student role (interactive assessment)
+	// scorer → evaluate mode + instructor role (scoring/review)
+	let pieEnv = $derived<{ mode: 'gather' | 'view' | 'evaluate'; role: 'student' | 'instructor' }>({
+		mode: roleType === 'candidate' ? 'gather' : 'evaluate',
+		role: roleType === 'candidate' ? 'student' : 'instructor'
+	});
+	let qtiView = $derived<string>(roleType); // Keep QTI view for rubric filtering
+
 	let playerProps = $derived.by(() => {
 		switch (playerType) {
 			case 'iife':
-				return { useLegacyPlayer: false, bundleHost: 'https://proxy.pie-api.com/bundles/', esmCdnUrl: '' };
+				return { bundleHost: 'https://proxy.pie-api.com/bundles/', esmCdnUrl: '' };
 			case 'esm':
-				return { useLegacyPlayer: false, bundleHost: '', esmCdnUrl: 'https://esm.sh' };
+				return { bundleHost: '', esmCdnUrl: 'https://esm.sh' };
+		}
+	});
+
+	// Set player configuration properties imperatively FIRST (before section/env)
+	// Boolean attributes don't work correctly with Svelte custom elements
+	$effect(() => {
+		if (sectionPlayer) {
+			untrack(() => {
+				sectionPlayer.bundleHost = playerProps.bundleHost;
+				sectionPlayer.esmCdnUrl = playerProps.esmCdnUrl;
+			});
 		}
 	});
 
@@ -453,6 +470,7 @@ import { onDestroy, onMount, untrack } from 'svelte';
 		if (sectionPlayer && liveSection) {
 			untrack(() => {
 				sectionPlayer.section = liveSection;
+				sectionPlayer.env = pieEnv;
 				sectionPlayer.itemSessions = itemSessions;
 			});
 		}
@@ -662,14 +680,14 @@ import { onDestroy, onMount, untrack } from 'svelte';
 				<button
 					class="btn btn-sm join-item"
 					class:btn-active={playerType === 'iife'}
-					onclick={() => handlePlayerChange('iife')}
+					onclick={() => updateUrlAndRefresh({ player: 'iife' })}
 				>
 					IIFE
 				</button>
 				<button
 					class="btn btn-sm join-item"
 					class:btn-active={playerType === 'esm'}
-					onclick={() => handlePlayerChange('esm')}
+					onclick={() => updateUrlAndRefresh({ player: 'esm' })}
 				>
 					ESM
 				</button>
@@ -681,7 +699,7 @@ import { onDestroy, onMount, untrack } from 'svelte';
 				<button
 					class="btn btn-sm join-item"
 					class:btn-active={layoutType === 'split-panel'}
-					onclick={() => layoutType = 'split-panel'}
+					onclick={() => updateUrlAndRefresh({ layout: 'split-panel' })}
 					title="Split panel - passages left, items right"
 				>
 					<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -692,13 +710,34 @@ import { onDestroy, onMount, untrack } from 'svelte';
 				<button
 					class="btn btn-sm join-item"
 					class:btn-active={layoutType === 'vertical'}
-					onclick={() => layoutType = 'vertical'}
+					onclick={() => updateUrlAndRefresh({ layout: 'vertical' })}
 					title="Vertical layout - passages first, then items"
 				>
 					<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
 					</svg>
 					Vertical
+				</button>
+			</div>
+
+			<div class="divider divider-horizontal"></div>
+
+			<div class="join">
+				<button
+					class="btn btn-sm join-item"
+					class:btn-active={roleType === 'candidate'}
+					onclick={() => updateUrlAndRefresh({ mode: 'candidate' })}
+					title="Candidate view - student taking assessment (gather mode)"
+				>
+					Student
+				</button>
+				<button
+					class="btn btn-sm join-item"
+					class:btn-active={roleType === 'scorer'}
+					onclick={() => updateUrlAndRefresh({ mode: 'scorer' })}
+					title="Scorer view - instructor reviewing/scoring (evaluate mode)"
+				>
+					Scorer
 				</button>
 			</div>
 
@@ -749,11 +788,9 @@ import { onDestroy, onMount, untrack } from 'svelte';
 		<pie-section-player
 			bind:this={sectionPlayer}
 			layout={layoutType}
-			mode="gather"
-			view="candidate"
+			view={qtiView}
 			bundle-host={playerProps.bundleHost}
 			esm-cdn-url={playerProps.esmCdnUrl}
-			use-legacy-player={playerProps.useLegacyPlayer}
 			onsessionchanged={handleSessionChanged}
 		></pie-section-player>
 	</div>

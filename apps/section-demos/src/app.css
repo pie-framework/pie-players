@@ -26,3 +26,13 @@
 pie-section-player {
 	display: block;
 }
+
+/* Ensure pie-section-player web component respects parent height constraints */
+pie-section-player {
+	display: block;
+	width: 100%;
+	height: 100%;
+	min-height: 0;
+	max-height: 100%;
+	overflow: hidden;
+}

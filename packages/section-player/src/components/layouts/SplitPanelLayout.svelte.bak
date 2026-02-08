@@ -192,7 +192,6 @@
 
 	.passages-panel,
 	.items-panel {
-		height: 100%;
 		overflow-y: auto;
 		overflow-x: hidden;
 		min-height: 0;

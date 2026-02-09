@@ -23,9 +23,7 @@ export interface ElementIdComponents {
 
 export class ElementToolStateStore {
 	private elementStates = new Map<string, Map<string, any>>();
-	private listeners = new Set<
-		(state: Map<string, Map<string, any>>) => void
-	>();
+	private listeners = new Set<(state: Map<string, Map<string, any>>) => void>();
 	private onStateChange:
 		| ((state: Record<string, Record<string, any>>) => void)
 		| null = null;

@@ -15,13 +15,14 @@ export default defineConfig({
 			tsconfigPath: resolve(__dirname, "tsconfig.json"),
 			outDir: "dist",
 			insertTypesEntry: true,
+			include: ["index.ts"],
 		}),
 	],
 	build: {
 		lib: {
-			entry: resolve(__dirname, "src/pie-section-player.ts"),
-			name: "PieSectionPlayer",
-			fileName: () => "pie-section-player.js",
+			entry: resolve(__dirname, "section-tools-toolbar.svelte"),
+			name: "PieSectionToolsToolbar",
+			fileName: () => "section-tools-toolbar.js",
 			formats: ["es"],
 		},
 		outDir: "dist",
@@ -32,11 +33,14 @@ export default defineConfig({
 		rollupOptions: {
 			external: [
 				"@datadog/browser-rum",
-				"@pie-players/pie-calculator-desmos",
-				"@pie-players/pie-section-tools-toolbar",
-				"@pie-players/pie-tool-answer-eliminator",
-				"@pie-players/pie-tool-tts-inline",
-				"@pie-players/tts-client-server",
+				"@pie-players/pie-assessment-toolkit",
+				"@pie-players/pie-tool-calculator",
+				"@pie-players/pie-tool-graph",
+				"@pie-players/pie-tool-periodic-table",
+				"@pie-players/pie-tool-protractor",
+				"@pie-players/pie-tool-line-reader",
+				"@pie-players/pie-tool-magnifier",
+				"@pie-players/pie-tool-ruler",
 			],
 			output: {
 				format: "es",

@@ -89,7 +89,9 @@ async function getGoogleProvider(): Promise<GoogleCloudTTSProvider> {
 
 		console.log(
 			"[TTS API] GOOGLE_API_KEY:",
-			hasApiKey ? `✓ Set (${process.env.GOOGLE_API_KEY?.substring(0, 8)}...)` : "✗ Missing",
+			hasApiKey
+				? `✓ Set (${process.env.GOOGLE_API_KEY?.substring(0, 8)}...)`
+				: "✗ Missing",
 		);
 		console.log(
 			"[TTS API] GOOGLE_APPLICATION_CREDENTIALS:",
@@ -164,9 +166,18 @@ async function getGoogleProvider(): Promise<GoogleCloudTTSProvider> {
 export const POST: RequestHandler = async ({ request }) => {
 	try {
 		const body = await request.json();
-		const { text, voice, language, rate, includeSpeechMarks = true, provider = "polly" } = body;
+		const {
+			text,
+			voice,
+			language,
+			rate,
+			includeSpeechMarks = true,
+			provider = "polly",
+		} = body;
 
-		console.log(`[TTS API] Synthesis request: provider=${provider}, voice=${voice}, language=${language}`);
+		console.log(
+			`[TTS API] Synthesis request: provider=${provider}, voice=${voice}, language=${language}`,
+		);
 
 		// Validate request
 		if (!text || typeof text !== "string") {
@@ -178,7 +189,9 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		if (provider !== "polly" && provider !== "google") {
-			throw error(400, { message: "Invalid provider. Must be 'polly' or 'google'" });
+			throw error(400, {
+				message: "Invalid provider. Must be 'polly' or 'google'",
+			});
 		}
 
 		// Get the appropriate provider

@@ -1,9 +1,14 @@
 <script lang="ts">
 	import type { ItemConfig, ItemEntity } from '@pie-players/pie-players-shared';
 	import type { ToolCoordinator } from '../../services/ToolCoordinator';
+	import type { ITTSService, IHighlightCoordinator, IElementToolStateStore } from '../../services/interfaces';
 	import '$lib/tags/pie-iife-player/PieIifePlayer.svelte';
 	import PiePlayerStyles from '$lib/components/PiePlayerStyles.svelte';
-	import ToolAnswerEliminator from '$lib/tags/tool-answer-eliminator/tool-answer-eliminator.svelte';
+	import '../../components/QuestionToolBar.svelte';
+
+	// NOTE: Parent applications using ItemPanel with showHeader=true must import tool web components:
+	//   import '@pie-players/pie-tool-answer-eliminator';
+	//   import '@pie-players/pie-tool-tts-inline';
 
 	let {
 		currentItem,
@@ -11,7 +16,14 @@
 		session,
 		bundleHost,
 		env,
+		assessmentId = '',
+		sectionId = '',
 		toolCoordinator,
+		ttsService,
+		highlightCoordinator,
+		catalogResolver,
+		elementToolStateStore,
+		showHeader = false,
 		isLoading = false
 	}: {
 		currentItem: ItemEntity | null;
@@ -19,41 +31,91 @@
 		session: { id: string; data: any[] };
 		bundleHost?: string;
 		env: { mode: string; role: string };
+		assessmentId?: string;
+		sectionId?: string;
 		toolCoordinator?: ToolCoordinator;
+		ttsService?: ITTSService;
+		highlightCoordinator?: IHighlightCoordinator;
+		catalogResolver?: any;
+		elementToolStateStore?: IElementToolStateStore;
+		showHeader?: boolean;
 		isLoading?: boolean;
 	} = $props();
 
 	let piePlayerElement = $state<HTMLElement | null>(null);
+	let itemContentElement = $state<HTMLElement | null>(null);
+	let questionToolbarElement = $state<HTMLElement | null>(null);
+	let toolbarServicesBound = $state(false);
+
+	// Bind services, scope, and IDs to question toolbar (must be JS properties)
+	$effect(() => {
+		if (questionToolbarElement && !toolbarServicesBound && showHeader) {
+			if (toolCoordinator) {
+				(questionToolbarElement as any).toolCoordinator = toolCoordinator;
+			}
+			if (ttsService) {
+				(questionToolbarElement as any).ttsService = ttsService;
+			}
+			if (highlightCoordinator) {
+				(questionToolbarElement as any).highlightCoordinator = highlightCoordinator;
+			}
+			if (itemContentElement) {
+				(questionToolbarElement as any).scopeElement = itemContentElement;
+			}
+			if (elementToolStateStore) {
+				(questionToolbarElement as any).elementToolStateStore = elementToolStateStore;
+			}
+			if (assessmentId) {
+				(questionToolbarElement as any).assessmentId = assessmentId;
+			}
+			if (sectionId) {
+				(questionToolbarElement as any).sectionId = sectionId;
+			}
+
+			toolbarServicesBound = true;
+		}
+	});
 </script>
 
-<div class="item-panel">
+<div
+	class="item-panel"
+	data-assessment-id={assessmentId}
+	data-section-id={sectionId}
+	data-item-id={currentItem?.id}
+>
 	{#if isLoading}
 		<div class="loading-container">
 			<span class="loading loading-spinner loading-lg"></span>
 		</div>
 	{:else if config}
-		<PiePlayerStyles>
-			<pie-iife-player
-				bind:this={piePlayerElement}
-				config={config}
-				env={env}
-				session={session}
-				hosted={false}
-				show-bottom-border={false}
-				bundle-host={bundleHost}
-			></pie-iife-player>
-		</PiePlayerStyles>
-
-		<!-- Answer Eliminator (inline tool) -->
-		{#if toolCoordinator}
-			<ToolAnswerEliminator
-				visible={true}
-				toolId="answerEliminator"
-				strategy="strikethrough"
-				buttonAlignment="inline"
-				coordinator={toolCoordinator}
-			/>
+		<!-- Optional Question Header with Toolbar -->
+		{#if showHeader && currentItem}
+			<div class="item-header">
+				<h4 class="item-title">{currentItem.name || 'Question'}</h4>
+				<pie-question-toolbar
+					bind:this={questionToolbarElement}
+					item-id={currentItem.id}
+					catalog-id={currentItem.id}
+					tools="tts,answerEliminator"
+					size="md"
+					language="en-US"
+				></pie-question-toolbar>
+			</div>
 		{/if}
+
+		<div class="item-content" bind:this={itemContentElement}>
+			<PiePlayerStyles>
+				<pie-iife-player
+					bind:this={piePlayerElement}
+					config={config}
+					env={env}
+					session={session}
+					hosted={false}
+					show-bottom-border={false}
+					bundle-host={bundleHost}
+				></pie-iife-player>
+			</PiePlayerStyles>
+		</div>
 	{:else}
 		<div class="empty-container">
 			<p class="empty-message">Question could not be loaded.</p>
@@ -67,6 +129,25 @@
 		padding: 1rem;
 		overflow-y: auto;
 		overflow-x: hidden;
+	}
+
+	.item-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 0.75rem 0;
+		margin-bottom: 0.5rem;
+	}
+
+	.item-title {
+		margin: 0;
+		font-size: 0.95rem;
+		font-weight: 600;
+		color: var(--pie-primary, #1976d2);
+	}
+
+	.item-content {
+		/* Player container */
 	}
 
 	.loading-container,

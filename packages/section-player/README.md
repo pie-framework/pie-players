@@ -19,6 +19,13 @@ npm install @pie-players/pie-section-player
 bun add @pie-players/pie-section-player
 ```
 
+**Note:** The section player requires the following peer dependencies for tool integration:
+
+- `@pie-players/pie-tool-answer-eliminator` - Answer eliminator tool for test-taking strategies
+- `@pie-players/pie-tool-tts-inline` - Inline TTS tool for accessibility
+
+These are automatically resolved when using the section player as a library dependency.
+
 ## Usage
 
 ### As Web Component (Vanilla JS/HTML)
@@ -311,7 +318,115 @@ Passages are automatically deduplicated by ID.
 
 ## Assessment Toolkit Integration
 
-The section player integrates with the [PIE Assessment Toolkit](../assessment-toolkit/) services for TTS, tool coordination, highlighting, and **automatic SSML extraction**.
+The section player integrates with the [PIE Assessment Toolkit](../assessment-toolkit/) for centralized service management via **ToolkitCoordinator**.
+
+### Using ToolkitCoordinator (Recommended)
+
+The **ToolkitCoordinator** provides a single entry point for all toolkit services, simplifying initialization:
+
+```javascript
+import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
+
+// Create coordinator with configuration
+const coordinator = new ToolkitCoordinator({
+  assessmentId: 'my-assessment',
+  tools: {
+    tts: { enabled: true, defaultVoice: 'en-US' },
+    answerEliminator: { enabled: true }
+  },
+  accessibility: {
+    catalogs: assessment.accessibilityCatalogs || [],
+    language: 'en-US'
+  }
+});
+
+// Pass to section player as JavaScript property
+const player = document.getElementById('player');
+player.toolkitCoordinator = coordinator;
+player.section = mySection;
+```
+
+**Benefits:**
+- **Single initialization point**: One coordinator instead of 5+ services
+- **Centralized configuration**: Tool settings in one place
+- **Automatic service wiring**: Services work together automatically
+- **Element-level tool state**: Answer eliminations, highlights tracked per element
+- **State separation**: Tool state (ephemeral) separate from session data (persistent)
+
+### What the Coordinator Provides
+
+The coordinator owns and orchestrates all toolkit services:
+
+```typescript
+coordinator.ttsService              // Text-to-speech service
+coordinator.toolCoordinator         // Tool visibility and z-index management
+coordinator.highlightCoordinator    // TTS and annotation highlights
+coordinator.elementToolStateStore   // Element-level tool state (answer eliminator, etc.)
+coordinator.catalogResolver         // QTI 3.0 accessibility catalogs for SSML
+```
+
+### Automatic Features
+
+When using the coordinator, the section player automatically:
+
+1. **Extracts services** from the coordinator
+2. **Generates section ID** (from `section.identifier` or auto-generated)
+3. **Passes IDs + services** through component hierarchy
+4. **Extracts SSML** from embedded `<speak>` tags
+5. **Manages catalog lifecycle** (add on item load, clear on navigation)
+6. **Renders TTS tools** in passage/item headers
+7. **Tracks element-level state** with global uniqueness
+
+### Standalone Sections (No Coordinator)
+
+If no coordinator is provided, the section player creates a default one:
+
+```javascript
+// No coordinator provided - section player creates default
+const player = document.getElementById('player');
+player.section = mySection;
+
+// Internally creates:
+// new ToolkitCoordinator({
+//   assessmentId: 'anon_...',  // auto-generated
+//   tools: { tts: { enabled: true }, answerEliminator: { enabled: true } }
+// })
+```
+
+### Advanced: Manual Service Integration (Legacy)
+
+For backward compatibility or advanced scenarios, you can still pass services individually:
+
+```javascript
+import {
+  TTSService,
+  BrowserTTSProvider,
+  ToolCoordinator,
+  HighlightCoordinator,
+  AccessibilityCatalogResolver,
+  ElementToolStateStore
+} from '@pie-players/pie-assessment-toolkit';
+
+// Initialize each service
+const ttsService = new TTSService();
+const toolCoordinator = new ToolCoordinator();
+const highlightCoordinator = new HighlightCoordinator();
+const elementToolStateStore = new ElementToolStateStore();
+const catalogResolver = new AccessibilityCatalogResolver([], 'en-US');
+
+await ttsService.initialize(new BrowserTTSProvider());
+ttsService.setCatalogResolver(catalogResolver);
+
+// Pass services individually
+const player = document.getElementById('player');
+player.ttsService = ttsService;
+player.toolCoordinator = toolCoordinator;
+player.highlightCoordinator = highlightCoordinator;
+player.elementToolStateStore = elementToolStateStore;
+player.catalogResolver = catalogResolver;
+```
+
+**Note:** Using ToolkitCoordinator is recommended for most use cases.
 
 ### SSML Extraction
 
@@ -349,90 +464,43 @@ At runtime, the section player:
 
 See [TTS-INTEGRATION.md](./TTS-INTEGRATION.md) for complete details.
 
-### TTS Integration
+### Element-Level Tool State
 
-To enable TTS (Text-to-Speech) functionality with SSML support, pass the `TTSService` and `AccessibilityCatalogResolver` as JavaScript properties:
+Tool state (answer eliminations, highlights, etc.) is tracked at the **element level** using globally unique composite keys:
 
-```javascript
-import {
-  TTSService,
-  BrowserTTSProvider,
-  AccessibilityCatalogResolver
-} from '@pie-players/pie-assessment-toolkit';
+**Format**: `${assessmentId}:${sectionId}:${itemId}:${elementId}`
 
-// Create and initialize TTS service
-const ttsService = new TTSService();
-await ttsService.initialize(new BrowserTTSProvider());
+**Example**: `"demo-assessment:section-1:question-1:mc1"`
 
-// Create catalog resolver for SSML support
-const catalogResolver = new AccessibilityCatalogResolver(
-  assessment.accessibilityCatalogs || [],
-  'en-US'
-);
-ttsService.setCatalogResolver(catalogResolver);
-
-// Pass to section player as JavaScript properties (NOT HTML attributes)
-const player = document.getElementById('player');
-player.ttsService = ttsService;
-player.catalogResolver = catalogResolver;  // Required for SSML extraction
-```
-
-**Important:** Services must be set as JavaScript properties, not HTML attributes. They cannot be serialized to strings.
-
-### Full Toolkit Integration
-
-For complete toolkit integration with TTS, SSML extraction, tool coordination, and highlighting:
-
-```javascript
-import {
-  TTSService,
-  BrowserTTSProvider,
-  AccessibilityCatalogResolver,
-  ToolCoordinator,
-  HighlightCoordinator
-} from '@pie-players/pie-assessment-toolkit';
-
-// Initialize services
-const ttsService = new TTSService();
-const toolCoordinator = new ToolCoordinator();
-const highlightCoordinator = new HighlightCoordinator();
-const catalogResolver = new AccessibilityCatalogResolver(
-  assessment.accessibilityCatalogs || [],
-  'en-US'
-);
-
-await ttsService.initialize(new BrowserTTSProvider());
-ttsService.setCatalogResolver(catalogResolver);
-
-// Pass all services to player
-const player = document.getElementById('player');
-player.ttsService = ttsService;
-player.toolCoordinator = toolCoordinator;
-player.highlightCoordinator = highlightCoordinator;
-player.catalogResolver = catalogResolver;  // Enables SSML extraction
-```
+**Benefits:**
+- Each PIE element has independent tool state
+- No cross-item contamination
+- Persists across section navigation
+- Separate from PIE session data (not sent to server)
 
 ### Service Flow
 
-Services are passed through the component hierarchy:
+Services are passed through the component hierarchy with IDs:
 
 ```
-SectionPlayer
-  ↓ (services passed as props)
-PageModeLayout / ItemModeLayout
+SectionPlayer (coordinator → services + assessmentId + sectionId)
   ↓
-PassageRenderer / ItemRenderer
+PageModeLayout / ItemModeLayout (passes assessmentId + sectionId + services)
   ↓
-pie-esm-player
+PassageRenderer / ItemRenderer (uses item.id, passes assessmentId + sectionId + services)
   ↓
-PieItemPlayer
+QuestionToolBar (generates globalElementId)
   ↓
-PIE Elements (if they support services)
+Tool web components (use globalElementId for state)
 ```
 
-### Demo
+### Demos
 
-See [TTS Integration Demo](./demos/tts-integration-demo.html) for a working example.
+See the [section-demos](../../apps/section-demos/) for complete examples:
+
+- **Three Questions Demo**: Element-level answer eliminator with ToolkitCoordinator
+- **TTS Integration Demo**: Coordinator with TTS service
+- **Paired Passages Demo**: Multi-section with cross-section state persistence
 
 ## Styling
 

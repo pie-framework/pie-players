@@ -26,6 +26,10 @@
 			"types": "./dist/index.d.ts",
 			"import": "./dist/tool-answer-eliminator.js",
 			"svelte": "./tool-answer-eliminator.svelte"
+		},
+		"./adapters/adapter-registry": {
+			"types": "./adapters/adapter-registry.ts",
+			"import": "./adapters/adapter-registry.ts"
 		}
 	},
 	"files": [

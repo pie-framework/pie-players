@@ -44,13 +44,17 @@
 			customClassname: { attribute: 'custom-classname', type: 'String' },
 
 			// Debug
-			debug: { attribute: 'debug', type: 'String' }
+			debug: { attribute: 'debug', type: 'String' },
+
+			// Toolkit coordinator (JS property, not attribute)
+			toolkitCoordinator: { type: 'Object', reflect: false }
 		}
 	}}
 />
 
 <script lang="ts">
-	
+
+	import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
 	import { type ElementLoaderInterface, EsmElementLoader, IifeElementLoader } from '@pie-players/pie-players-shared/loaders';
 import type {
 		ItemEntity,
@@ -76,15 +80,38 @@ import type {
 		customClassname = '',
 		debug = '' as string | boolean,
 
-		// Service integration (optional - for TTS, tools, highlighting)
-		ttsService = null as any,
-		toolCoordinator = null as any,
-		highlightCoordinator = null as any,
-		catalogResolver = null as any,
+		// Toolkit coordinator (optional - creates default if not provided)
+		toolkitCoordinator = null as any,
 
 		// Event handlers
 		onsessionchanged = null as ((event: CustomEvent) => void) | null
 	} = $props();
+
+	// Generate or use provided coordinator
+	const coordinator = $derived.by(() => {
+		if (toolkitCoordinator) return toolkitCoordinator;
+
+		// Generate default assessmentId for standalone sections
+		const fallbackId = `anon_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+
+		return new ToolkitCoordinator({
+			assessmentId: fallbackId,
+			tools: {
+				tts: { enabled: true },
+				answerEliminator: { enabled: true }
+			}
+		});
+	});
+
+	// Extract services from coordinator
+	const services = $derived(coordinator.getServiceBundle());
+	const assessmentId = $derived(coordinator.assessmentId);
+
+	// Generate or extract sectionId
+	const sectionId = $derived.by(() => {
+		if (section?.identifier) return section.identifier;
+		return `section_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+	});
 
 	// State
 	let passages = $state<PassageEntity[]>([]);
@@ -291,6 +318,7 @@ import type {
 
 	// Listen for TTS errors
 	$effect(() => {
+		const ttsService = services.ttsService;
 		if (!ttsService) {
 			ttsError = null;
 			return;
@@ -374,7 +402,13 @@ import type {
 	);
 </script>
 
-<div class="pie-section-player {customClassname}" class:page-mode={isPageMode} class:item-mode={!isPageMode}>
+<div
+	class="pie-section-player {customClassname}"
+	class:page-mode={isPageMode}
+	class:item-mode={!isPageMode}
+	data-assessment-id={assessmentId}
+	data-section-id={sectionId}
+>
 	{#if error}
 		<div class="error">
 			<p>Error loading section: {error}</p>
@@ -430,10 +464,13 @@ import type {
 						{bundleHost}
 						{esmCdnUrl}
 						{playerVersion}
-						{ttsService}
-						{toolCoordinator}
-						{highlightCoordinator}
-						{catalogResolver}
+						{assessmentId}
+						{sectionId}
+						ttsService={services.ttsService}
+						toolCoordinator={services.toolCoordinator}
+						highlightCoordinator={services.highlightCoordinator}
+						catalogResolver={services.catalogResolver}
+						elementToolStateStore={services.elementToolStateStore}
 						onsessionchanged={handleSessionChanged}
 					/>
 				{:else}
@@ -446,10 +483,13 @@ import type {
 						{bundleHost}
 						{esmCdnUrl}
 						{playerVersion}
-						{ttsService}
-						{toolCoordinator}
-						{highlightCoordinator}
-						{catalogResolver}
+						{assessmentId}
+						{sectionId}
+						ttsService={services.ttsService}
+						toolCoordinator={services.toolCoordinator}
+						highlightCoordinator={services.highlightCoordinator}
+						catalogResolver={services.catalogResolver}
+						elementToolStateStore={services.elementToolStateStore}
 						onsessionchanged={handleSessionChanged}
 					/>
 				{/if}
@@ -467,10 +507,13 @@ import type {
 					{bundleHost}
 					{esmCdnUrl}
 					{playerVersion}
-					{ttsService}
-					{toolCoordinator}
-					{highlightCoordinator}
-					{catalogResolver}
+					{assessmentId}
+					{sectionId}
+					ttsService={services.ttsService}
+					toolCoordinator={services.toolCoordinator}
+					highlightCoordinator={services.highlightCoordinator}
+					catalogResolver={services.catalogResolver}
+					elementToolStateStore={services.elementToolStateStore}
 					onprevious={navigatePrevious}
 					onnext={navigateNext}
 					onsessionchanged={(sessionDetail) => handleSessionChanged(currentItem?.id || '', sessionDetail)}

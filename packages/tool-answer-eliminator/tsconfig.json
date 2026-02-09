@@ -7,6 +7,6 @@
 		"declarationMap": true,
 		"composite": true
 	},
-	"include": ["index.ts", "tool-answer-eliminator.svelte"],
+	"include": ["**/*.ts", "**/*.svelte"],
 	"exclude": ["node_modules", "dist"]
 }

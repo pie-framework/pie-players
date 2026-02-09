@@ -5,10 +5,10 @@
   Handles SSML extraction, TTS service binding, and player lifecycle.
 -->
 <script lang="ts">
-	
+
 	import { SSMLExtractor } from '@pie-players/pie-assessment-toolkit';
 	import type { ItemEntity } from '@pie-players/pie-players-shared/types';
-import { onMount, untrack } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 
 	let {
 		item,
@@ -17,10 +17,13 @@ import { onMount, untrack } from 'svelte';
 		bundleHost = '',
 		esmCdnUrl = 'https://esm.sh',
 		playerVersion = 'latest',
+		assessmentId = '',
+		sectionId = '',
 		ttsService = null,
 		toolCoordinator = null,
 		highlightCoordinator = null,
 		catalogResolver = null,
+		elementToolStateStore = null,
 		class: className = '',
 		onsessionchanged
 	}: {
@@ -30,10 +33,13 @@ import { onMount, untrack } from 'svelte';
 		bundleHost?: string;
 		esmCdnUrl?: string;
 		playerVersion?: string;
+		assessmentId?: string;
+		sectionId?: string;
 		ttsService?: any;
 		toolCoordinator?: any;
 		highlightCoordinator?: any;
 		catalogResolver?: any;
+		elementToolStateStore?: any;
 		class?: string;
 		onsessionchanged?: (event: CustomEvent) => void;
 	} = $props();
@@ -43,11 +49,11 @@ import { onMount, untrack } from 'svelte';
 	let itemElement: HTMLElement | null = $state(null);
 	// @ts-expect-error - Used in bind:this but TypeScript doesn't recognize it
 	let itemContentElement: HTMLElement | null = $state(null);
-	let ttsToolElement: HTMLElement | null = $state(null);
+	let questionToolbarElement: HTMLElement | null = $state(null);
 	let playerElement: any = $state(null);
 
 	// Track if services have been bound
-	let servicesBound = $state(false);
+	let toolbarServicesBound = $state(false);
 
 	// Track last values to avoid unnecessary updates
 	let lastConfig: any = null;
@@ -61,12 +67,14 @@ import { onMount, untrack } from 'svelte';
 		return 'iife'; // fallback
 	});
 
-	// Import the appropriate player web component
+	// Import the appropriate player and QuestionToolBar web component
 	onMount(() => {
-		// Import TTS tool on client side only (avoids SSR customElements error)
+		// Import components on client side only
 		(async () => {
-			await import('@pie-players/pie-tool-tts-inline');
+			// @ts-expect-error - Dynamic import of web component
+			await import('@pie-players/pie-assessment-toolkit/components/QuestionToolBar.svelte');
 
+			// Import player
 			if (playerType === 'iife') {
 				await import('@pie-players/pie-iife-player');
 			} else {
@@ -110,22 +118,6 @@ import { onMount, untrack } from 'svelte';
 		}
 	});
 
-	// Bind services to TTS tool (must be JS properties)
-	$effect(() => {
-		if (ttsToolElement && !servicesBound) {
-			// Set services as JS properties
-			if (toolCoordinator) {
-				(ttsToolElement as any).coordinator = toolCoordinator;
-			}
-			if (ttsService) {
-				(ttsToolElement as any).ttsService = ttsService;
-			}
-			if (highlightCoordinator) {
-				(ttsToolElement as any).highlightCoordinator = highlightCoordinator;
-			}
-			servicesBound = true;
-		}
-	});
 
 	// Set player properties imperatively when config or env changes
 	$effect(() => {
@@ -150,6 +142,35 @@ import { onMount, untrack } from 'svelte';
 		}
 	});
 
+	// Bind services, scope, and IDs to question toolbar (must be JS properties)
+	$effect(() => {
+		if (questionToolbarElement && !toolbarServicesBound) {
+			if (toolCoordinator) {
+				(questionToolbarElement as any).toolCoordinator = toolCoordinator;
+			}
+			if (ttsService) {
+				(questionToolbarElement as any).ttsService = ttsService;
+			}
+			if (highlightCoordinator) {
+				(questionToolbarElement as any).highlightCoordinator = highlightCoordinator;
+			}
+			if (itemContentElement) {
+				(questionToolbarElement as any).scopeElement = itemContentElement;
+			}
+			if (elementToolStateStore) {
+				(questionToolbarElement as any).elementToolStateStore = elementToolStateStore;
+			}
+			if (assessmentId) {
+				(questionToolbarElement as any).assessmentId = assessmentId;
+			}
+			if (sectionId) {
+				(questionToolbarElement as any).sectionId = sectionId;
+			}
+
+			toolbarServicesBound = true;
+		}
+	});
+
 	// Attach event listener to player element imperatively
 	$effect(() => {
 		if (playerElement && onsessionchanged) {
@@ -170,19 +191,23 @@ import { onMount, untrack } from 'svelte';
 </script>
 
 {#if item.config}
-	<div class="item-renderer {className}" bind:this={itemElement}>
+	<div
+		class="item-renderer {className}"
+		bind:this={itemElement}
+		data-assessment-id={assessmentId}
+		data-section-id={sectionId}
+		data-item-id={item.id}
+	>
 		<div class="item-header">
 			<h4 class="item-title">{item.name || 'Question'}</h4>
-			<!-- Only render if TTS service available -->
-			{#if ttsService}
-				<pie-tool-tts-inline
-					bind:this={ttsToolElement}
-					tool-id="tts-item-{item.id}"
-					catalog-id={item.id}
-					language="en-US"
-					size="md"
-				></pie-tool-tts-inline>
-			{/if}
+			<pie-question-toolbar
+				bind:this={questionToolbarElement}
+				item-id={item.id}
+				catalog-id={item.id}
+				tools="tts,answerEliminator"
+				size="md"
+				language="en-US"
+			></pie-question-toolbar>
 		</div>
 
 		<div class="item-content" bind:this={itemContentElement}>

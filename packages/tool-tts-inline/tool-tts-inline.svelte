@@ -276,23 +276,28 @@
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		border: none;
-		background: transparent;
+		border: 1px solid var(--pie-border, #ccc);
+		background-color: var(--pie-background, white);
+		color: var(--pie-text, #333);
 		border-radius: 4px;
 		cursor: pointer;
 		transition:
 			background-color 0.15s ease,
-			transform 0.1s ease;
+			transform 0.1s ease,
+			box-shadow 0.15s ease;
 		padding: 0.25rem;
 		position: relative;
 	}
 
 	.tts-inline:hover:not(:disabled) {
-		background-color: rgba(0, 0, 0, 0.05);
+		background-color: var(--pie-secondary-background, #f5f5f5);
+		transform: translateY(-1px);
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 	}
 
 	.tts-inline:active:not(:disabled) {
-		transform: scale(0.95);
+		transform: translateY(0);
+		box-shadow: none;
 	}
 
 	/* Focus indicator - WCAG 2.4.7, 2.4.13 */
@@ -304,7 +309,9 @@
 	}
 
 	.tts-inline--speaking {
-		background-color: rgba(103, 126, 234, 0.15);
+		background-color: var(--pie-primary, #1976d2);
+		color: white;
+		border-color: var(--pie-primary, #1976d2);
 		animation: pulse 1.5s ease-in-out infinite;
 	}
 

@@ -1,11 +1,8 @@
 <script lang="ts">
 	
 	import {
-		AccessibilityCatalogResolver,
-		BrowserTTSProvider,
-		HighlightCoordinator, 
-		ToolCoordinator,
-		TTSService
+		ToolkitCoordinator,
+		BrowserTTSProvider
 	} from '@pie-players/pie-assessment-toolkit';
 	import { ServerTTSProvider } from '@pie-players/tts-client-server';
 
@@ -71,11 +68,8 @@ import { onDestroy, onMount, untrack } from 'svelte';
 	let itemSessions = $state<Record<string, any>>({});
 	let itemMetadata = $state<Record<string, { complete?: boolean; component?: string }>>({});
 
-	// TTS and toolkit services
-	let ttsService: any = $state(null);
-	let catalogResolver: any = $state(null);
-	let toolCoordinator: any = $state(null);
-	let highlightCoordinator: any = $state(null);
+	// Toolkit coordinator (owns all services)
+	let toolkitCoordinator: any = $state(null);
 	let ttsProvider: 'polly' | 'browser' | 'loading' = $state('loading');
 	let showTTSSettings = $state(false);
 
@@ -107,6 +101,7 @@ import { onDestroy, onMount, untrack } from 'svelte';
 
 	// Storage keys
 	let SESSION_STORAGE_KEY = $derived(`pie-section-demo-sessions-${data.demo.id}`);
+	let TOOL_STATE_STORAGE_KEY = $derived(`demo-tool-state:${data.demo.id}`);
 	let TTS_CONFIG_STORAGE_KEY = $derived(`pie-section-demo-tts-config-${data.demo.id}`);
 	let HIGHLIGHT_CONFIG_STORAGE_KEY = $derived(`pie-section-demo-highlight-config-${data.demo.id}`);
 
@@ -130,6 +125,12 @@ import { onDestroy, onMount, untrack } from 'svelte';
 
 		// Initialize on first run or update on navigation
 		if (!previousDemoId || currentDemoId !== previousDemoId) {
+			// Switching demos - clear tool state to prevent leakage
+			if (previousDemoId && toolkitCoordinator) {
+				toolkitCoordinator.elementToolStateStore.clearAll();
+				console.log('[Demo] Cleared tool state when switching demos');
+			}
+
 			previousDemoId = currentDemoId;
 			liveSection = structuredClone(currentSection);
 		}
@@ -161,15 +162,51 @@ import { onDestroy, onMount, untrack } from 'svelte';
 	let resizeStartWidth = 0;
 	let resizeStartHeight = 0;
 
-	// Initialize TTS with given configuration (called once on mount)
+	// Initialize toolkit coordinator and TTS
 	async function initializeTTS(config: TTSConfig) {
 		ttsProvider = 'loading';
 
 		try {
-			if (!ttsService) {
-				ttsService = new TTSService();
+			// Create toolkit coordinator if not exists
+			if (!toolkitCoordinator) {
+				// Use demo ID to ensure uniqueness
+				const assessmentId = `demo-${data.demo.id}`;
+
+				toolkitCoordinator = new ToolkitCoordinator({
+					assessmentId,
+					tools: {
+						tts: { enabled: true },
+						answerEliminator: { enabled: true }
+					},
+					accessibility: {
+						catalogs: [],
+						language: 'en-US'
+					}
+				});
+
+				// Set up tool state persistence
+				toolkitCoordinator.elementToolStateStore.setOnStateChange((state: any) => {
+					localStorage.setItem(TOOL_STATE_STORAGE_KEY, JSON.stringify(state));
+				});
+
+				// Load persisted tool state
+				try {
+					const saved = localStorage.getItem(TOOL_STATE_STORAGE_KEY);
+					if (saved) {
+						toolkitCoordinator.elementToolStateStore.loadState(JSON.parse(saved));
+						console.log('[Demo] Loaded tool state from localStorage');
+					}
+				} catch (e) {
+					console.warn('[Demo] Failed to load tool state:', e);
+				}
+
+				console.log('[Demo] ToolkitCoordinator created with assessmentId:', assessmentId);
 			}
 
+			// Get TTS service from coordinator
+			const ttsService = toolkitCoordinator.ttsService;
+
+			// Re-initialize TTS service with new provider
 			if (config.provider === 'polly') {
 				// Server-side TTS with AWS Polly
 				const serverProvider = new ServerTTSProvider();
@@ -227,27 +264,12 @@ import { onDestroy, onMount, untrack } from 'svelte';
 				});
 			}
 
-			// Initialize other services if not already done
-			if (!catalogResolver) {
-				catalogResolver = new AccessibilityCatalogResolver([], 'en-US');
-				ttsService.setCatalogResolver(catalogResolver);
-			}
-
-			if (!toolCoordinator) {
-				toolCoordinator = new ToolCoordinator();
-			}
-
-			if (!highlightCoordinator) {
-				highlightCoordinator = new HighlightCoordinator();
-				ttsService.setHighlightCoordinator(highlightCoordinator);
-
-				// Apply highlight style from config
-				if (highlightConfig) {
-					highlightCoordinator.updateTTSHighlightStyle(
-						highlightConfig.color,
-						highlightConfig.opacity
-					);
-				}
+			// Apply highlight style from config
+			if (highlightConfig) {
+				toolkitCoordinator.highlightCoordinator.updateTTSHighlightStyle(
+					highlightConfig.color,
+					highlightConfig.opacity
+				);
 			}
 
 			console.log('[Demo] All toolkit services initialized successfully');
@@ -306,9 +328,9 @@ import { onDestroy, onMount, untrack } from 'svelte';
 		console.log('[Demo] Unified settings applied:', settings);
 
 		// Stop any currently playing TTS before reloading
-		if (ttsService) {
+		if (toolkitCoordinator) {
 			try {
-				ttsService.stop();
+				toolkitCoordinator.ttsService.stop();
 				console.log('[Demo] Stopped active TTS before config change');
 			} catch (e) {
 				console.error('[Demo] Failed to stop TTS:', e);
@@ -316,8 +338,8 @@ import { onDestroy, onMount, untrack } from 'svelte';
 		}
 
 		// Update highlight coordinator with new style
-		if (highlightCoordinator && settings.highlight) {
-			highlightCoordinator.updateTTSHighlightStyle(
+		if (toolkitCoordinator && settings.highlight) {
+			toolkitCoordinator.highlightCoordinator.updateTTSHighlightStyle(
 				settings.highlight.color,
 				settings.highlight.opacity
 			);
@@ -345,14 +367,11 @@ import { onDestroy, onMount, untrack } from 'svelte';
 		showTTSSettings = false;
 	}
 
-	// Set services on player imperatively when ready (web component property binding)
+	// Set toolkit coordinator on player imperatively when ready (web component property binding)
 	$effect(() => {
-		if (browser && sectionPlayer && ttsService) {
-			sectionPlayer.ttsService = ttsService;
-			sectionPlayer.catalogResolver = catalogResolver;
-			sectionPlayer.toolCoordinator = toolCoordinator;
-			sectionPlayer.highlightCoordinator = highlightCoordinator;
-			console.log('[Demo] Services set on section player');
+		if (browser && sectionPlayer && toolkitCoordinator) {
+			sectionPlayer.toolkitCoordinator = toolkitCoordinator;
+			console.log('[Demo] ToolkitCoordinator set on section player');
 		}
 	});
 
@@ -424,9 +443,9 @@ import { onDestroy, onMount, untrack } from 'svelte';
 		editor?.destroy();
 
 		// Stop TTS when component is destroyed (page navigation/refresh)
-		if (ttsService) {
+		if (toolkitCoordinator) {
 			try {
-				ttsService.stop();
+				toolkitCoordinator.ttsService.stop();
 				console.log('[Demo] Stopped TTS on component destroy');
 			} catch (e) {
 				console.error('[Demo] Failed to stop TTS on destroy:', e);
@@ -849,6 +868,19 @@ import { onDestroy, onMount, untrack } from 'svelte';
 		{#if !isSessionMinimized}
 			<div class="p-4 overflow-y-auto" style="max-height: {sessionWindowHeight - 60}px;">
 				<div class="space-y-3">
+					<!-- Tool State (Ephemeral - client only) -->
+					{#if toolkitCoordinator}
+						<div class="mb-4">
+							<div class="text-sm font-bold mb-2 text-warning">Tool State (Ephemeral - Client Only)</div>
+							<pre class="bg-base-300 p-2 rounded text-xs overflow-auto max-h-48">{JSON.stringify(toolkitCoordinator.elementToolStateStore.getAllState(), null, 2)}</pre>
+						</div>
+					{/if}
+
+					<!-- Session Data (Persistent - sent to server) -->
+					<div class="mb-2">
+						<div class="text-sm font-bold mb-2">PIE Session Data (Persistent)</div>
+					</div>
+
 					{#if Object.keys(itemSessions).length === 0}
 						<div class="alert alert-info">
 							<svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-5 w-5" fill="none" viewBox="0 0 24 24">
@@ -1028,9 +1060,9 @@ import { onDestroy, onMount, untrack } from 'svelte';
 {/if}
 
 <!-- Assessment Toolkit Settings Modal -->
-{#if showTTSSettings}
+{#if showTTSSettings && toolkitCoordinator}
 	<AssessmentToolkitSettings
-		{ttsService}
+		ttsService={toolkitCoordinator.ttsService}
 		bind:ttsConfig
 		bind:highlightConfig
 		onClose={() => showTTSSettings = false}

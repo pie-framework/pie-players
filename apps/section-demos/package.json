@@ -15,6 +15,8 @@
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
 		"@pie-players/pie-section-player": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*",
+		"@pie-players/pie-tool-answer-eliminator": "workspace:*",
+		"@pie-players/pie-tool-tts-inline": "workspace:*",
 		"@pie-players/tts-server-core": "workspace:*",
 		"@pie-players/tts-server-polly": "workspace:*",
 		"@pie-players/tts-client-server": "workspace:*",

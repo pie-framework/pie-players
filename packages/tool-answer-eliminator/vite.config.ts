@@ -15,7 +15,7 @@ export default defineConfig({
 			tsconfigPath: resolve(__dirname, "tsconfig.json"),
 			outDir: "dist",
 			insertTypesEntry: true,
-			include: ["index.ts"],
+			include: ["**/*.ts", "**/*.svelte"],
 		}),
 	],
 	build: {

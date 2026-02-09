@@ -11,12 +11,17 @@ import { StrikethroughStrategy } from "./strategies/strikethrough-strategy";
 export class AnswerEliminatorCore {
 	private registry: AdapterRegistry;
 	private strategy: EliminationStrategy;
-	private eliminatedChoices = new Map<string, Set<string>>(); // questionId -> Set<choiceId>
+	private eliminatedChoices = new Set<string>(); // Set<choiceId> for current element
 	private choiceElements = new Map<string, HTMLElement>(); // choiceId -> element
 	private choiceButtons = new Map<string, HTMLButtonElement>(); // choiceId -> button
-	private currentQuestionId: string = "";
 	private buttonAlignment: "left" | "right" | "inline" = "right";
-	private shouldRestoreState: boolean = true; // Whether to restore eliminations from localStorage
+	private shouldRestoreState: boolean = true; // Whether to restore eliminations from state storage
+
+	// Store integration (replaces session/localStorage)
+	private storeIntegration: {
+		store: any; // ElementToolStateStore
+		globalElementId: string; // Composite key: "assessmentId:sectionId:itemId:elementId"
+	} | null = null;
 
 	constructor(
 		strategyType: "strikethrough" | "mask" | "gray" = "strikethrough",
@@ -42,9 +47,6 @@ export class AnswerEliminatorCore {
 	 * Initialize eliminator for a question
 	 */
 	initializeForQuestion(questionRoot: HTMLElement): void {
-		// Get question ID
-		this.currentQuestionId = this.getQuestionId(questionRoot);
-
 		// Clean up previous question
 		this.cleanupButtons();
 
@@ -57,7 +59,7 @@ export class AnswerEliminatorCore {
 			this.initializeChoice(choice, adapter);
 		}
 
-		// Restore eliminated state from localStorage (only if enabled)
+		// Restore eliminated state from store (only if enabled)
 		if (this.shouldRestoreState) {
 			this.restoreState();
 		}
@@ -198,10 +200,7 @@ export class AnswerEliminatorCore {
 		this.strategy.apply(choiceId, range);
 
 		// Track in state
-		if (!this.eliminatedChoices.has(this.currentQuestionId)) {
-			this.eliminatedChoices.set(this.currentQuestionId, new Set());
-		}
-		this.eliminatedChoices.get(this.currentQuestionId)!.add(choiceId);
+		this.eliminatedChoices.add(choiceId);
 
 		// Update button appearance to show eliminated state
 		const button = this.choiceButtons.get(choiceId);
@@ -213,6 +212,9 @@ export class AnswerEliminatorCore {
 			button.style.borderColor = "#ff9800";
 			button.style.color = "white";
 		}
+
+		// Save to store
+		this.saveState();
 	}
 
 	/**
@@ -223,7 +225,7 @@ export class AnswerEliminatorCore {
 		this.strategy.remove(choiceId);
 
 		// Remove from state
-		this.eliminatedChoices.get(this.currentQuestionId)?.delete(choiceId);
+		this.eliminatedChoices.delete(choiceId);
 
 		// Reset button appearance to default state
 		const button = this.choiceButtons.get(choiceId);
@@ -235,60 +237,80 @@ export class AnswerEliminatorCore {
 			button.style.borderColor = "#ccc";
 			button.style.color = "#666";
 		}
+
+		// Save to store
+		this.saveState();
 	}
 
 	/**
-	 * Reset all eliminations for current question
+	 * Reset all eliminations for current element
 	 */
 	resetAll(): void {
-		const eliminated = this.eliminatedChoices.get(this.currentQuestionId);
-		if (!eliminated) return;
+		if (this.eliminatedChoices.size === 0) return;
 
 		// Restore all choices
-		for (const choiceId of Array.from(eliminated)) {
+		for (const choiceId of Array.from(this.eliminatedChoices)) {
 			this.restoreChoice(choiceId);
 		}
 
 		// Clear state
-		this.eliminatedChoices.delete(this.currentQuestionId);
+		this.eliminatedChoices.clear();
 		this.saveState();
 		this.emitStateChange();
 	}
 
 	/**
-	 * Get count of eliminated choices for current question
+	 * Get count of eliminated choices for current element
 	 */
 	getEliminatedCount(): number {
-		return this.eliminatedChoices.get(this.currentQuestionId)?.size || 0;
+		return this.eliminatedChoices.size;
 	}
 
 	/**
-	 * Save state to localStorage
+	 * Set store integration for element-level state
+	 * @param store ElementToolStateStore instance
+	 * @param globalElementId Composite key: "assessmentId:sectionId:itemId:elementId"
+	 */
+	setStoreIntegration(store: any, globalElementId: string): void {
+		this.storeIntegration = { store, globalElementId };
+	}
+
+	/**
+	 * Save state to ElementToolStateStore
 	 */
 	private saveState(): void {
-		const state: Record<string, string[]> = {};
+		if (!this.storeIntegration) return;
 
-		for (const [questionId, choices] of this.eliminatedChoices.entries()) {
-			state[questionId] = Array.from(choices);
-		}
+		const state = {
+			eliminatedChoices: Array.from(this.eliminatedChoices)
+		};
 
-		localStorage.setItem("pie-answer-eliminator-state", JSON.stringify(state));
+		this.storeIntegration.store.setState(
+			this.storeIntegration.globalElementId,
+			'answerEliminator',
+			state
+		);
 	}
 
 	/**
-	 * Restore state from localStorage
+	 * Restore state from ElementToolStateStore
 	 */
 	private restoreState(): void {
-		const stateJson = localStorage.getItem("pie-answer-eliminator-state");
-		if (!stateJson) return;
+		if (!this.storeIntegration) return;
+
+		const state = this.storeIntegration.store.getState(
+			this.storeIntegration.globalElementId,
+			'answerEliminator'
+		);
+
+		if (!state || !state.eliminatedChoices) return;
 
 		try {
-			const state: Record<string, string[]> = JSON.parse(stateJson);
-			const eliminated = state[this.currentQuestionId];
+			const eliminated = state.eliminatedChoices;
 
 			if (!eliminated || eliminated.length === 0) return;
 
-			// Restore eliminated choices for current question
+			// Restore eliminated choices for current element
 			for (const choiceId of eliminated) {
 				const choice = this.choiceElements.get(choiceId);
 				if (!choice) continue;
@@ -303,10 +325,7 @@ export class AnswerEliminatorCore {
 					this.strategy.apply(choiceId, range);
 
 					// Track in memory
-					if (!this.eliminatedChoices.has(this.currentQuestionId)) {
-						this.eliminatedChoices.set(this.currentQuestionId, new Set());
-					}
-					this.eliminatedChoices.get(this.currentQuestionId)!.add(choiceId);
+					this.eliminatedChoices.add(choiceId);
 
 					// Update button appearance to show eliminated state
 					const button = this.choiceButtons.get(choiceId);
@@ -342,25 +361,7 @@ export class AnswerEliminatorCore {
 	}
 
 	/**
-	 * Get question ID from question root
-	 */
-	private getQuestionId(questionRoot: HTMLElement): string {
-		// Try to get from data attribute
-		const id =
-			questionRoot.getAttribute("data-question-id") ||
-			questionRoot.getAttribute("data-item-id") ||
-			questionRoot.id;
-
-		if (id) return id;
-
-		// Fallback: generate from position in DOM
-		const items = document.querySelectorAll(".assessment-player__item");
-		const index = Array.from(items).indexOf(questionRoot);
-		return `question-${index}`;
-	}
-
-	/**
-	 * Cleanup buttons from previous question
+	 * Cleanup buttons from previous element
 	 */
 	private cleanupButtons(): void {
 		for (const button of this.choiceButtons.values()) {

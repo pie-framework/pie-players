@@ -30,7 +30,11 @@ export default defineConfig({
 		minify: "esbuild",
 		sourcemap: true,
 		rollupOptions: {
-			external: ["@datadog/browser-rum"],
+			external: [
+				"@datadog/browser-rum",
+				"@pie-players/pie-tool-answer-eliminator",
+				"@pie-players/pie-tool-tts-inline",
+			],
 			output: {
 				format: "es",
 				inlineDynamicImports: true,

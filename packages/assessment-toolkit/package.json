@@ -30,6 +30,10 @@
 			"svelte": "./src/player/AssessmentLayout.svelte",
 			"import": "./src/player/AssessmentLayout.svelte"
 		},
+		"./components/QuestionToolBar.svelte": {
+			"svelte": "./src/components/QuestionToolBar.svelte",
+			"import": "./src/components/QuestionToolBar.svelte"
+		},
 		"./services/I18nService": {
 			"types": "./dist/services/I18nService.d.ts",
 			"import": "./dist/services/I18nService.js"

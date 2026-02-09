@@ -348,4 +348,160 @@ export interface IAccessibilityCatalogResolver {
 	destroy(): void;
 }
 
+/**
+ * Element tool state store interface
+ *
+ * Manages element-level ephemeral tool state using composite keys for global uniqueness.
+ * Tool state is client-only and separate from PIE session data (which is sent to server for scoring).
+ */
+export interface IElementToolStateStore {
+	/**
+	 * Generate a globally unique element ID from components
+	 */
+	getGlobalElementId(
+		assessmentId: string,
+		sectionId: string,
+		itemId: string,
+		elementId: string,
+	): string;
+
+	/**
+	 * Parse a global element ID into its components
+	 */
+	parseGlobalElementId(globalElementId: string): {
+		assessmentId: string;
+		sectionId: string;
+		itemId: string;
+		elementId: string;
+	} | null;
+
+	/**
+	 * Set state for a specific tool on an element
+	 */
+	setState(globalElementId: string, toolId: string, state: any): void;
+
+	/**
+	 * Get state for a specific tool on an element
+	 */
+	getState(globalElementId: string, toolId: string): any | undefined;
+
+	/**
+	 * Get all tool states for a specific element
+	 */
+	getElementState(globalElementId: string): Record<string, any>;
+
+	/**
+	 * Get all element states
+	 */
+	getAllState(): Record<string, Record<string, any>>;
+
+	/**
+	 * Subscribe to state changes
+	 */
+	subscribe(
+		callback: (state: Map<string, Map<string, any>>) => void,
+	): () => void;
+
+	/**
+	 * Set callback for persistence integration
+	 */
+	setOnStateChange(
+		callback: (state: Record<string, Record<string, any>>) => void,
+	): void;
+
+	/**
+	 * Load state from persistence
+	 */
+	loadState(state: Record<string, Record<string, any>>): void;
+
+	/**
+	 * Clear state for a specific element
+	 */
+	clearElement(globalElementId: string): void;
+
+	/**
+	 * Clear state for a specific tool across all elements
+	 */
+	clearTool(toolId: string): void;
+
+	/**
+	 * Clear all elements in a specific section
+	 */
+	clearSection(assessmentId: string, sectionId: string): void;
+
+	/**
+	 * Clear all state
+	 */
+	clearAll(): void;
+}
+
+/**
+ * Toolkit coordinator interface
+ *
+ * Orchestrates all toolkit services (TTS, tools, accessibility, state management) from a single entry point.
+ * Provides centralized configuration for tool availability and settings.
+ */
+export interface IToolkitCoordinator {
+	/**
+	 * Assessment identifier
+	 */
+	readonly assessmentId: string;
+
+	/**
+	 * Configuration
+	 */
+	readonly config: any;
+
+	/**
+	 * TTS service
+	 */
+	readonly ttsService: ITTSService;
+
+	/**
+	 * Tool coordinator
+	 */
+	readonly toolCoordinator: IToolCoordinator;
+
+	/**
+	 * Highlight coordinator
+	 */
+	readonly highlightCoordinator: IHighlightCoordinator;
+
+	/**
+	 * Element tool state store
+	 */
+	readonly elementToolStateStore: IElementToolStateStore;
+
+	/**
+	 * Catalog resolver
+	 */
+	readonly catalogResolver: IAccessibilityCatalogResolver;
+
+	/**
+	 * Get all services as a bundle
+	 */
+	getServiceBundle(): {
+		ttsService: ITTSService;
+		toolCoordinator: IToolCoordinator;
+		highlightCoordinator: IHighlightCoordinator;
+		elementToolStateStore: IElementToolStateStore;
+		catalogResolver: IAccessibilityCatalogResolver;
+	};
+
+	/**
+	 * Check if a tool is enabled
+	 */
+	isToolEnabled(toolId: string): boolean;
+
+	/**
+	 * Get tool configuration
+	 */
+	getToolConfig(toolId: string): any | null;
+
+	/**
+	 * Update tool configuration
+	 */
+	updateToolConfig(toolId: string, updates: any): void;
+}
+
 // II18nService is re-exported from @pie-players/pie-players-shared/i18n

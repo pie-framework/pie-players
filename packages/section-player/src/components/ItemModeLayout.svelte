@@ -22,10 +22,13 @@
 		bundleHost = '',
 		esmCdnUrl = 'https://esm.sh',
 		playerVersion = 'latest',
+		assessmentId = '',
+		sectionId = '',
 		ttsService = null,
 		toolCoordinator = null,
 		highlightCoordinator = null,
 		catalogResolver = null,
+		elementToolStateStore = null,
 		onprevious,
 		onnext,
 		onsessionchanged
@@ -41,10 +44,13 @@
 		bundleHost?: string;
 		esmCdnUrl?: string;
 		playerVersion?: string;
+		assessmentId?: string;
+		sectionId?: string;
 		ttsService?: any;
 		toolCoordinator?: any;
 		highlightCoordinator?: any;
 		catalogResolver?: any;
+		elementToolStateStore?: any;
 		onprevious?: () => void;
 		onnext?: () => void;
 		onsessionchanged?: (session: any) => void;
@@ -66,10 +72,13 @@
 					{passage}
 					{bundleHost}
 					{esmCdnUrl}
+					{assessmentId}
+					{sectionId}
 					{ttsService}
 					{toolCoordinator}
 					{highlightCoordinator}
 					{catalogResolver}
+					{elementToolStateStore}
 					class="passage-item"
 				/>
 			{/each}
@@ -86,10 +95,13 @@
 				{bundleHost}
 				{esmCdnUrl}
 				{playerVersion}
-					{ttsService}
+				{assessmentId}
+				{sectionId}
+				{ttsService}
 				{toolCoordinator}
 				{highlightCoordinator}
 				{catalogResolver}
+				{elementToolStateStore}
 				onsessionchanged={handleSessionChanged}
 				class="item-content"
 			/>

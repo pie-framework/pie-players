@@ -158,6 +158,8 @@
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-players-shared": "workspace:*",
         "@pie-players/pie-section-player": "workspace:*",
+        "@pie-players/pie-tool-answer-eliminator": "workspace:*",
+        "@pie-players/pie-tool-tts-inline": "workspace:*",
         "@pie-players/tts-client-server": "workspace:*",
         "@pie-players/tts-server-core": "workspace:*",
         "@pie-players/tts-server-polly": "workspace:*",
@@ -419,9 +421,12 @@
       "name": "@pie-players/pie-section-player",
       "version": "0.1.0",
       "dependencies": {
+        "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-esm-player": "workspace:*",
         "@pie-players/pie-iife-player": "workspace:*",
         "@pie-players/pie-players-shared": "workspace:*",
+        "@pie-players/pie-tool-answer-eliminator": "workspace:*",
+        "@pie-players/pie-tool-tts-inline": "workspace:*",
       },
       "devDependencies": {
         "@biomejs/biome": "^2.3.13",

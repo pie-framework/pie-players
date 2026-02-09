@@ -8,7 +8,12 @@
 			strategy: { type: 'String', attribute: 'strategy' },
 			alwaysOn: { type: 'Boolean', attribute: 'always-on' },
 			buttonAlignment: { type: 'String', attribute: 'button-alignment' },
-			coordinator: { type: 'Object' }
+			coordinator: { type: 'Object' },
+			scopeElement: { type: 'Object', reflect: false },
+
+			// Store integration (JS properties only)
+			elementToolStateStore: { type: 'Object', reflect: false },
+			globalElementId: { type: 'String', reflect: false }
 		}
 	}}
 />
@@ -53,7 +58,12 @@ import { onDestroy, onMount } from 'svelte';
 		strategy = 'strikethrough' as 'strikethrough' | 'mask' | 'gray',
 		alwaysOn = false, // Set true for profile-based accommodation
 		buttonAlignment = 'right' as 'left' | 'right' | 'inline', // Button placement: left, right, or inline with checkbox
-		coordinator
+		coordinator,
+		scopeElement = null, // Container element to limit DOM queries (for multi-item pages)
+
+		// Store integration
+		elementToolStateStore = null, // ElementToolStateStore instance
+		globalElementId = '' // Composite key: "assessmentId:sectionId:itemId:elementId"
 	}: {
 		visible?: boolean;
 		toolId?: string;
@@ -61,6 +71,9 @@ import { onDestroy, onMount } from 'svelte';
 		alwaysOn?: boolean;
 		buttonAlignment?: 'left' | 'right' | 'inline';
 		coordinator?: IToolCoordinator;
+		scopeElement?: HTMLElement | null;
+		elementToolStateStore?: any;
+		globalElementId?: string;
 	} = $props();
 
 	// State
@@ -77,16 +90,19 @@ import { onDestroy, onMount } from 'svelte';
 	function initializeForCurrentQuestion() {
 		if (!isActive || !core) return;
 
-		// Find the current question/item in the assessment player
+		// Use scopeElement if provided (for multi-item pages), otherwise search globally
+		const searchRoot = scopeElement || document.body;
+
+		// Find the current question/item within the search scope
 		const questionRoot =
-			document.querySelector('pie-player') ||
-			document.querySelector('multiple-choice') ||
-			document.querySelector('ebsr') ||
-			document.querySelector('[data-pie-element]') ||
-			document.body;
+			searchRoot.querySelector('pie-player') ||
+			searchRoot.querySelector('multiple-choice') ||
+			searchRoot.querySelector('ebsr') ||
+			searchRoot.querySelector('[data-pie-element]') ||
+			searchRoot;
 
 		if (!questionRoot) {
-			console.warn('[AnswerEliminator] Could not find question root');
+			console.warn('[AnswerEliminator] Could not find question root within scope');
 			return;
 		}
 
@@ -95,13 +111,16 @@ import { onDestroy, onMount } from 'svelte';
 	}
 
 	function waitForPIEElements(callback: () => void, timeout: number = 5000) {
+		// Use scopeElement if provided, otherwise search globally
+		const searchRoot = scopeElement || document.body;
+
 		// Check if PIE elements already exist
 		const checkElements = () => {
 			const questionRoot =
-				document.querySelector('pie-player') ||
-				document.querySelector('multiple-choice') ||
-				document.querySelector('ebsr') ||
-				document.querySelector('[data-pie-element]');
+				searchRoot.querySelector('pie-player') ||
+				searchRoot.querySelector('multiple-choice') ||
+				searchRoot.querySelector('ebsr') ||
+				searchRoot.querySelector('[data-pie-element]');
 
 			if (questionRoot) {
 				// Elements found, clean up observer and execute callback
@@ -118,13 +137,13 @@ import { onDestroy, onMount } from 'svelte';
 		// Try immediately first
 		if (checkElements()) return;
 
-		// Set up MutationObserver to watch for elements
+		// Set up MutationObserver to watch for elements within scope
 		mutationObserver = new MutationObserver(() => {
 			checkElements();
 		});
 
-		// Observe the body for added nodes
-		mutationObserver.observe(document.body, {
+		// Observe the search root for added nodes
+		mutationObserver.observe(searchRoot, {
 			childList: true,
 			subtree: true
 		});
@@ -159,9 +178,21 @@ import { onDestroy, onMount } from 'svelte';
 		}
 	});
 
+	// Update store integration when store props change
+	$effect(() => {
+		if (core && elementToolStateStore && globalElementId) {
+			core.setStoreIntegration(elementToolStateStore, globalElementId);
+		}
+	});
+
 	onMount(() => {
 		// Initialize core engine with configuration
 		core = new AnswerEliminatorCore(strategy, buttonAlignment);
+
+		// Set up store integration if provided
+		if (core && elementToolStateStore && globalElementId) {
+			core.setStoreIntegration(elementToolStateStore, globalElementId);
+		}
 
 		// Listen for question changes (PIE player emits this)
 		document.addEventListener('pie-item-changed', handleItemChange);

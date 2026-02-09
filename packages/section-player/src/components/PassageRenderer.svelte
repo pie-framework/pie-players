@@ -6,28 +6,34 @@
   Not exposed as a web component - used internally in PieSectionPlayer.
 -->
 <script lang="ts">
-	
+
 	import { SSMLExtractor } from '@pie-players/pie-assessment-toolkit';
 	import type { PassageEntity } from '@pie-players/pie-players-shared/types';
-import { onMount, untrack } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 
 	let {
 		passage,
 		bundleHost = '',
 		esmCdnUrl = 'https://esm.sh',
+		assessmentId = '',
+		sectionId = '',
 		ttsService = null,
 		toolCoordinator = null,
 		highlightCoordinator = null,
 		catalogResolver = null,
+		elementToolStateStore = null,
 		class: className = ''
 	}: {
 		passage: PassageEntity;
 		bundleHost?: string;
 		esmCdnUrl?: string;
+		assessmentId?: string;
+		sectionId?: string;
 		ttsService?: any;
 		toolCoordinator?: any;
 		highlightCoordinator?: any;
 		catalogResolver?: any;
+		elementToolStateStore?: any;
 		class?: string;
 	} = $props();
 
@@ -36,11 +42,11 @@ import { onMount, untrack } from 'svelte';
 	let passageElement: HTMLElement | null = $state(null);
 	// @ts-expect-error - Used in bind:this but TypeScript doesn't recognize it
 	let passageContentElement: HTMLElement | null = $state(null);
-	let ttsToolElement: HTMLElement | null = $state(null);
+	let questionToolbarElement: HTMLElement | null = $state(null);
 	let playerElement: any = $state(null);
 
 	// Track if services have been bound
-	let servicesBound = $state(false);
+	let toolbarServicesBound = $state(false);
 
 	// Track last config to avoid unnecessary updates
 	let lastConfig: any = null;
@@ -54,12 +60,14 @@ import { onMount, untrack } from 'svelte';
 	// Prefer IIFE if bundleHost is provided, otherwise use ESM
 	let useIifePlayer = $derived(!!bundleHost);
 
-	// Import the appropriate player web component (only if passage has PIE elements)
+	// Import the appropriate player and QuestionToolBar web component
 	onMount(() => {
-		// Import TTS tool on client side only (avoids SSR customElements error)
+		// Import components on client side only
 		(async () => {
-			await import('@pie-players/pie-tool-tts-inline');
+			// @ts-expect-error - Dynamic import of web component
+			await import('@pie-players/pie-assessment-toolkit/components/QuestionToolBar.svelte');
 
+			// Import player (only if passage has PIE elements)
 			if (hasElements) {
 				if (useIifePlayer) {
 					await import('@pie-players/pie-iife-player');
@@ -105,20 +113,32 @@ import { onMount, untrack } from 'svelte';
 		}
 	});
 
-	// Bind services to TTS tool (must be JS properties)
+
+	// Bind services, scope, and IDs to question toolbar (must be JS properties)
 	$effect(() => {
-		if (ttsToolElement && !servicesBound) {
-			// Set services as JS properties
+		if (questionToolbarElement && !toolbarServicesBound) {
 			if (toolCoordinator) {
-				(ttsToolElement as any).coordinator = toolCoordinator;
+				(questionToolbarElement as any).toolCoordinator = toolCoordinator;
 			}
 			if (ttsService) {
-				(ttsToolElement as any).ttsService = ttsService;
+				(questionToolbarElement as any).ttsService = ttsService;
 			}
 			if (highlightCoordinator) {
-				(ttsToolElement as any).highlightCoordinator = highlightCoordinator;
+				(questionToolbarElement as any).highlightCoordinator = highlightCoordinator;
 			}
-			servicesBound = true;
+			if (passageContentElement) {
+				(questionToolbarElement as any).scopeElement = passageContentElement;
+			}
+			if (elementToolStateStore) {
+				(questionToolbarElement as any).elementToolStateStore = elementToolStateStore;
+			}
+			if (assessmentId) {
+				(questionToolbarElement as any).assessmentId = assessmentId;
+			}
+			if (sectionId) {
+				(questionToolbarElement as any).sectionId = sectionId;
+			}
+			toolbarServicesBound = true;
 		}
 	});
 
@@ -140,19 +160,23 @@ import { onMount, untrack } from 'svelte';
 </script>
 
 {#if passage.config}
-	<div class="passage-renderer {className}" bind:this={passageElement}>
+	<div
+		class="passage-renderer {className}"
+		bind:this={passageElement}
+		data-assessment-id={assessmentId}
+		data-section-id={sectionId}
+		data-item-id={passage.id}
+	>
 		<div class="passage-header">
 			<h3 class="passage-title">{passage.name || 'Passage'}</h3>
-			<!-- Only render if TTS service available -->
-			{#if ttsService}
-				<pie-tool-tts-inline
-					bind:this={ttsToolElement}
-					tool-id="tts-passage-{passage.id}"
-					catalog-id={passage.id}
-					language="en-US"
-					size="md"
-				></pie-tool-tts-inline>
-			{/if}
+			<pie-question-toolbar
+				bind:this={questionToolbarElement}
+				item-id={passage.id}
+				catalog-id={passage.id}
+				tools="tts,answerEliminator"
+				size="md"
+				language="en-US"
+			></pie-question-toolbar>
 		</div>
 
 		<div class="passage-content" bind:this={passageContentElement}>

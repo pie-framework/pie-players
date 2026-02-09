@@ -44,8 +44,12 @@
 	// Parent components should:
 	//   import '@pie-players/pie-tool-answer-eliminator';
 	//   import '@pie-players/pie-tool-tts-inline';
+	//   import '@pie-players/pie-tool-calculator-inline';
 
 	const isBrowser = typeof window !== 'undefined';
+
+	// Track if tools have been loaded
+	let toolsLoaded = $state(false);
 
 	/**
 	 * Detect if the scoped element contains compatible answer choices for the answer eliminator.
@@ -71,7 +75,7 @@
 	let {
 		itemId = '',
 		catalogId = '',
-		tools = 'tts,answerEliminator',
+		tools = 'calculator,tts,answerEliminator',
 		ttsService,
 		toolCoordinator,
 		highlightCoordinator,
@@ -148,13 +152,40 @@
 		return () => observer.disconnect();
 	});
 
+	// Dynamically load tool components based on enabled tools
+	$effect(() => {
+		if (!isBrowser || toolsLoaded) return;
+
+		(async () => {
+			const loadPromises = [];
+
+			if (enabledTools.includes('tts')) {
+				loadPromises.push(import('@pie-players/pie-tool-tts-inline'));
+			}
+			if (enabledTools.includes('answerEliminator')) {
+				loadPromises.push(import('@pie-players/pie-tool-answer-eliminator'));
+			}
+			if (enabledTools.includes('calculator')) {
+				loadPromises.push(
+					import('@pie-players/pie-tool-calculator-inline'),
+					import('@pie-players/pie-tool-calculator')
+				);
+			}
+
+			await Promise.all(loadPromises);
+			toolsLoaded = true;
+		})();
+	});
+
 	// Should show each tool
-	let showTTS = $derived(enabledTools.includes('tts') && ttsService);
+	let showTTS = $derived(enabledTools.includes('tts') && ttsService && toolsLoaded);
 	let showAnswerEliminator = $derived(
 		enabledTools.includes('answerEliminator') &&
 		toolCoordinator &&
-		hasCompatibleChoices
+		hasCompatibleChoices &&
+		toolsLoaded
 	);
+	let showCalculator = $derived(enabledTools.includes('calculator') && toolCoordinator && toolsLoaded);
 
 	// Track answer eliminator visibility state
 	let answerEliminatorVisible = $state(false);
@@ -223,10 +254,35 @@
 		if (!toolCoordinator) return;
 		toolCoordinator.toggleTool(`answerEliminator-${itemId}`);
 	}
+
+	// Calculator element reference for coordinator binding
+	let calculatorInlineElement = $state<HTMLElement | null>(null);
+	let calculatorBound = $state(false);
+
+	// Bind coordinator to calculator inline tool
+	$effect(() => {
+		if (calculatorInlineElement && !calculatorBound) {
+			if (toolCoordinator) {
+				(calculatorInlineElement as any).coordinator = toolCoordinator;
+			}
+			calculatorBound = true;
+		}
+	});
 </script>
 
 {#if isBrowser}
 	<div class="question-toolbar {className} question-toolbar--{size}">
+		<!-- Calculator Button (inline tool) -->
+		{#if showCalculator}
+			<pie-tool-calculator-inline
+				bind:this={calculatorInlineElement}
+				tool-id="calculator-inline-{itemId}"
+				calculator-type="scientific"
+				available-types="basic,scientific,graphing"
+				size={size}
+			></pie-tool-calculator-inline>
+		{/if}
+
 		<!-- TTS Button (inline tool) -->
 		{#if showTTS}
 			<pie-tool-tts-inline

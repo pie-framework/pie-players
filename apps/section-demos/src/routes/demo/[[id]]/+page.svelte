@@ -178,13 +178,21 @@ import { onDestroy, onMount, untrack } from 'svelte';
 					assessmentId,
 					tools: {
 						tts: { enabled: true },
-						answerEliminator: { enabled: true }
+						answerEliminator: { enabled: true },
+						calculator: {
+							enabled: true,
+							defaultType: 'scientific',
+							availableTypes: ['basic', 'scientific', 'graphing']
+						}
 					},
 					accessibility: {
 						catalogs: [],
 						language: 'en-US'
 					}
 				});
+
+				// Calculator provider is automatically registered by ToolkitCoordinator
+				// No manual registration needed - it handles Desmos provider creation
 
 				// Set up tool state persistence
 				toolkitCoordinator.elementToolStateStore.setOnStateChange((state: any) => {
@@ -514,6 +522,7 @@ import { onDestroy, onMount, untrack } from 'svelte';
 				sectionPlayer.section = liveSection;
 				sectionPlayer.env = pieEnv;
 				sectionPlayer.itemSessions = itemSessions;
+				sectionPlayer.toolkitCoordinator = toolkitCoordinator;
 			});
 		}
 	});

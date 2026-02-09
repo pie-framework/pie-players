@@ -21,8 +21,11 @@
 		playerType = 'auto',
 		assessmentId = '',
 		sectionId = '',
-		toolkitCoordinator = null,
-
+		ttsService = null,
+		toolCoordinator = null,
+		highlightCoordinator = null,
+		catalogResolver = null,
+		elementToolStateStore = null,
 		onsessionchanged
 	}: {
 		passages: PassageEntity[];
@@ -35,8 +38,11 @@
 		playerType?: 'auto' | 'iife' | 'esm' | 'fixed' | 'inline';
 		assessmentId?: string;
 		sectionId?: string;
-		toolkitCoordinator?: any;
-
+		ttsService?: any;
+		toolCoordinator?: any;
+		highlightCoordinator?: any;
+		catalogResolver?: any;
+		elementToolStateStore?: any;
 		onsessionchanged?: (itemId: string, session: any) => void;
 	} = $props();
 
@@ -60,7 +66,11 @@
 					{esmCdnUrl}
 					{assessmentId}
 					{sectionId}
-					{toolkitCoordinator}
+					{ttsService}
+					{toolCoordinator}
+					{highlightCoordinator}
+					{catalogResolver}
+					{elementToolStateStore}
 					class="passage-item"
 				/>
 			{/each}
@@ -81,7 +91,11 @@
 					{playerType}
 					{assessmentId}
 					{sectionId}
-					{toolkitCoordinator}
+					{ttsService}
+					{toolCoordinator}
+					{highlightCoordinator}
+					{catalogResolver}
+					{elementToolStateStore}
 					onsessionchanged={handleItemSessionChanged(item.id || '')}
 					class="item-content"
 				/>

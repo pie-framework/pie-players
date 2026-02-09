@@ -8,6 +8,7 @@
 <script lang="ts">
 
 	import { SSMLExtractor } from '@pie-players/pie-assessment-toolkit';
+	import '@pie-players/pie-assessment-toolkit/components/QuestionToolBar.svelte';
 	import type { PassageEntity } from '@pie-players/pie-players-shared/types';
 	import { onMount, untrack } from 'svelte';
 
@@ -17,11 +18,7 @@
 		esmCdnUrl = 'https://esm.sh',
 		assessmentId = '',
 		sectionId = '',
-		ttsService = null,
-		toolCoordinator = null,
-		highlightCoordinator = null,
-		catalogResolver = null,
-		elementToolStateStore = null,
+		toolkitCoordinator = null,
 		class: className = ''
 	}: {
 		passage: PassageEntity;
@@ -29,24 +26,34 @@
 		esmCdnUrl?: string;
 		assessmentId?: string;
 		sectionId?: string;
-		ttsService?: any;
-		toolCoordinator?: any;
-		highlightCoordinator?: any;
-		catalogResolver?: any;
-		elementToolStateStore?: any;
+		toolkitCoordinator?: any;
 		class?: string;
 	} = $props();
 
+	// Extract individual services from coordinator
+	const ttsService = $derived(toolkitCoordinator?.ttsService);
+	const toolCoordinator = $derived(toolkitCoordinator?.toolCoordinator);
+	const highlightCoordinator = $derived(toolkitCoordinator?.highlightCoordinator);
+	const catalogResolver = $derived(toolkitCoordinator?.catalogResolver);
+	const elementToolStateStore = $derived(toolkitCoordinator?.elementToolStateStore);
+
 	// Get the DOM element reference for service binding
-	// @ts-expect-error - Used in bind:this but TypeScript doesn't recognize it
 	let passageElement: HTMLElement | null = $state(null);
-	// @ts-expect-error - Used in bind:this but TypeScript doesn't recognize it
 	let passageContentElement: HTMLElement | null = $state(null);
 	let questionToolbarElement: HTMLElement | null = $state(null);
 	let playerElement: any = $state(null);
+	let calculatorElement: HTMLElement | null = $state(null);
+
+	// Set toolkitCoordinator on calculator element
+	$effect(() => {
+		if (calculatorElement && toolkitCoordinator) {
+			(calculatorElement as any).toolkitCoordinator = toolkitCoordinator;
+		}
+	});
 
 	// Track if services have been bound
 	let toolbarServicesBound = $state(false);
+	let calculatorVisible = $state(false);
 
 	// Track last config to avoid unnecessary updates
 	let lastConfig: any = null;
@@ -60,13 +67,10 @@
 	// Prefer IIFE if bundleHost is provided, otherwise use ESM
 	let useIifePlayer = $derived(!!bundleHost);
 
-	// Import the appropriate player and QuestionToolBar web component
+	// Import the appropriate player web component
 	onMount(() => {
 		// Import components on client side only
 		(async () => {
-			// @ts-expect-error - Dynamic import of web component
-			await import('@pie-players/pie-assessment-toolkit/components/QuestionToolBar.svelte');
-
 			// Import player (only if passage has PIE elements)
 			if (hasElements) {
 				if (useIifePlayer) {
@@ -142,6 +146,21 @@
 		}
 	});
 
+
+	// Subscribe to calculator visibility changes
+	$effect(() => {
+		if (!toolCoordinator || !passage) return;
+
+		const unsubscribe = toolCoordinator.subscribe(() => {
+			calculatorVisible = toolCoordinator.isToolVisible(`calculator-${passage.id}`);
+		});
+
+		// Initial update
+		calculatorVisible = toolCoordinator.isToolVisible(`calculator-${passage.id}`);
+
+		return unsubscribe;
+	});
+
 	// Set player properties imperatively when config changes
 	$effect(() => {
 		const currentConfig = passage.config;
@@ -173,7 +192,7 @@
 				bind:this={questionToolbarElement}
 				item-id={passage.id}
 				catalog-id={passage.id}
-				tools="tts,answerEliminator"
+				tools="calculator,tts,answerEliminator"
 				size="md"
 				language="en-US"
 			></pie-question-toolbar>
@@ -199,6 +218,15 @@
 			{/if}
 		</div>
 	</div>
+
+	<!-- Calculator Tool Instance (rendered outside panel for floating overlay) -->
+	{#if passage}
+		<pie-tool-calculator
+			bind:this={calculatorElement}
+			visible={calculatorVisible}
+			tool-id="calculator-{passage.id}"
+		></pie-tool-calculator>
+	{/if}
 {/if}
 
 <style>

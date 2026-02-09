@@ -216,7 +216,10 @@ export class ToolkitCoordinator {
 					authFetcher: ttsConfig?.authFetcher,
 				});
 			} catch (error) {
-				console.warn("[ToolkitCoordinator] Failed to register TTS provider:", error);
+				console.warn(
+					"[ToolkitCoordinator] Failed to register TTS provider:",
+					error,
+				);
 			}
 		}
 

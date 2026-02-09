@@ -7,9 +7,7 @@
 			toolId: { type: 'String', attribute: 'tool-id' },
 			calculatorType: { type: 'String', attribute: 'calculator-type' },
 			availableTypes: { type: 'Array', attribute: 'available-types' },
-			coordinator: { type: 'Object' },
-			desmosProvider: { type: 'Object' },
-			tiProvider: { type: 'Object' }
+			toolkitCoordinator: { type: 'Object', reflect: false }
 		}
 	}}
 />
@@ -53,20 +51,15 @@
 		import { DesmosCalculatorProvider, TICalculatorProvider } from '@pie-players/pie-assessment-toolkit/tools/client';
 	import { createFocusTrap } from '@pie-players/pie-players-shared';
 	import ToolSettingsButton from '@pie-players/pie-players-shared/components/ToolSettingsButton.svelte';
-	import ToolSettingsPanel from '@pie-players/pie-players-shared/components/ToolSettingsPanel.svelte';
 import { onMount } from 'svelte';
 
 	// ============================================================================
 	// Constants
 	// ============================================================================
 
-	const TI_CALCULATOR_TYPES: CalculatorType[] = ['ti-84', 'ti-108', 'ti-34-mv'];
 	const DESMOS_CALCULATOR_TYPES: CalculatorType[] = ['basic', 'scientific', 'graphing'];
 
 	const CALCULATOR_SIZES: Record<CalculatorType, { width: number; height: number }> = {
-		'ti-84': { width: 260, height: 608 },
-		'ti-108': { width: 210, height: 316 },
-		'ti-34-mv': { width: 254, height: 508 },
 		'basic': { width: 700, height: 600 },
 		'scientific': { width: 700, height: 600 },
 		'graphing': { width: 700, height: 600 }
@@ -75,10 +68,7 @@ import { onMount } from 'svelte';
 	const CALCULATOR_TYPE_NAMES: Record<CalculatorType, string> = {
 		'basic': 'Basic',
 		'scientific': 'Scientific',
-		'graphing': 'Graphing',
-		'ti-84': 'TI-84 Plus CE',
-		'ti-108': 'TI-108 Elementary',
-		'ti-34-mv': 'TI-34 MultiView'
+		'graphing': 'Graphing'
 	};
 
 	const isBrowser = typeof window !== 'undefined';
@@ -91,19 +81,18 @@ import { onMount } from 'svelte';
 		visible = false,
 		toolId = 'calculator',
 		calculatorType = 'scientific' as CalculatorType,
-		availableTypes: availableTypesInput = ['basic', 'scientific', 'graphing', 'ti-84', 'ti-108', 'ti-34-mv'] as CalculatorType[],
-		coordinator,
-		desmosProvider,
-		tiProvider
+		availableTypes: availableTypesInput = ['basic', 'scientific', 'graphing'] as CalculatorType[],
+		toolkitCoordinator = null
 	}: {
 		visible?: boolean;
 		toolId?: string;
 		calculatorType?: CalculatorType;
 		availableTypes?: CalculatorType[] | string;
-		coordinator?: IToolCoordinator;
-		desmosProvider: DesmosCalculatorProvider;
-		tiProvider: TICalculatorProvider;
+		toolkitCoordinator?: any;
 	} = $props();
+
+	// Extract services from toolkitCoordinator
+	const coordinator = $derived(toolkitCoordinator?.toolCoordinator as IToolCoordinator | undefined);
 
 	// ============================================================================
 	// Derived State
@@ -134,20 +123,29 @@ import { onMount } from 'svelte';
 	let tiCalculatedWidth = $state<number | undefined>(undefined);
 	let tiCalculatedHeight = $state<number | undefined>(undefined);
 
+	// Drag state
+	let isDragging = $state(false);
+	let dragOffsetX = $state(0);
+	let dragOffsetY = $state(0);
+	let positionX = $state<number | null>(null);
+	let positionY = $state<number | null>(null);
+
 	// ============================================================================
 	// Helper Functions
 	// ============================================================================
-
-	function isTICalculator(type: CalculatorType): boolean {
-		return TI_CALCULATOR_TYPES.includes(type);
-	}
 
 	function isDesmosCalculator(type: CalculatorType): boolean {
 		return DESMOS_CALCULATOR_TYPES.includes(type);
 	}
 
-	function getProvider(type: CalculatorType) {
-		return isTICalculator(type) ? tiProvider : desmosProvider;
+	async function getProvider(type: CalculatorType) {
+		if (!toolkitCoordinator?.toolProviderRegistry) return null;
+		try {
+			return await toolkitCoordinator.toolProviderRegistry.getProvider('calculator-desmos');
+		} catch (error) {
+			console.error('[ToolCalculator] Failed to get provider:', error);
+			return null;
+		}
 	}
 
 	function getCalculatorTypeName(type: CalculatorType): string {
@@ -188,18 +186,24 @@ import { onMount } from 'svelte';
 	// ============================================================================
 
 	let calculatorSize = $derived(CALCULATOR_SIZES[currentCalculatorType]);
-	let width = $derived(isTICalculator(currentCalculatorType) ? tiCalculatedWidth : calculatorSize.width);
-	let height = $derived(isTICalculator(currentCalculatorType) ? tiCalculatedHeight : calculatorSize.height);
+	let width = $derived(false ? tiCalculatedWidth : calculatorSize.width);
+	let height = $derived(false ? tiCalculatedHeight : calculatorSize.height);
 
 	let positionStyle = $derived.by(() => {
 		if (!isBrowser) {
 			return { left: '50%', top: '50%', transform: 'translate(-50%, -50%)' };
 		}
 
-		if (isTICalculator(currentCalculatorType) && window.innerHeight < 700) {
+		// Use dragged position if set (absolute positioning, no centering)
+		if (positionX !== null && positionY !== null) {
+			return { left: `${positionX}px`, top: `${positionY}px`, transform: '' };
+		}
+
+		if (false && window.innerHeight < 700) {
 			return { left: '50%', top: '1%', transform: 'translateX(-50%) translateY(0)' };
 		}
 
+		// Default: centered
 		return { left: '50%', top: '50%', transform: 'translate(-50%, -50%)' };
 	});
 
@@ -208,7 +212,7 @@ import { onMount } from 'svelte';
 	// ============================================================================
 
 	function getInitialConfig(type: CalculatorType): CalculatorProviderConfig {
-		if (isTICalculator(type)) {
+		if (false) {
 			const placeholderElementId = `ti-calculator-${type.replace(/-/g, '')}-placeholder`;
 			const baseConfig: CalculatorProviderConfig = {
 				theme: 'light',
@@ -264,7 +268,7 @@ import { onMount } from 'svelte';
 	// ============================================================================
 
 	function measureTICalculatorSize(): void {
-		if (!calculatorContainerEl || !isTICalculator(currentCalculatorType)) return;
+		if (!calculatorContainerEl || !false) return;
 
 		// Try calculator div
 		const calculatorDiv = calculatorContainerEl.querySelector('[id^="ti-calculator-"]') as HTMLElement;
@@ -319,20 +323,26 @@ import { onMount } from 'svelte';
 				currentCalculatorType = availableTypes[0] || 'scientific';
 			}
 
-			const provider = getProvider(currentCalculatorType);
-			await provider.initialize();
+			// Get tool provider from toolkitCoordinator registry
+			const toolProvider = await getProvider(currentCalculatorType);
+			if (!toolProvider) {
+				throw new Error('Desmos calculator tool provider not available');
+			}
+
+			// Get actual calculator provider from tool provider
+			const calculatorProvider = await toolProvider.createInstance();
 
 			if (!calculatorContainerEl || calculatorInstance || isSwitching) {
 				return;
 			}
 
-			calculatorInstance = await provider.createCalculator(
+			calculatorInstance = await calculatorProvider.createCalculator(
 				currentCalculatorType,
 				calculatorContainerEl,
 				calculatorConfig
 			);
 
-			if (isTICalculator(currentCalculatorType)) {
+			if (false) {
 				await waitForAnimationFrames(2);
 				measureTICalculatorSize();
 			}
@@ -416,8 +426,13 @@ import { onMount } from 'svelte';
 			if (signal.aborted) return;
 
 			// Create new calculator
-			const provider = getProvider(newType);
-			await provider.initialize();
+			const toolProvider = await getProvider(newType);
+			if (!toolProvider) {
+				throw new Error('Calculator tool provider not available');
+			}
+
+			// Get actual calculator provider from tool provider
+			const calculatorProvider = await toolProvider.createInstance();
 
 			if (signal.aborted) return;
 
@@ -425,14 +440,14 @@ import { onMount } from 'svelte';
 				throw new Error('Container removed during provider initialization');
 			}
 
-			calculatorInstance = await provider.createCalculator(
+			calculatorInstance = await calculatorProvider.createCalculator(
 				newType,
 				calculatorContainerEl,
 				calculatorConfig
 			);
 
 			// Measure TI calculator size
-			if (isTICalculator(newType)) {
+			if (false) {
 				await waitForAnimationFrames(2);
 				measureTICalculatorSize();
 			} else {
@@ -520,6 +535,55 @@ import { onMount } from 'svelte';
 		const target = e.target as HTMLElement;
 		if (target.closest('.tool-header') && containerEl) {
 			coordinator?.bringToFront(containerEl);
+
+			// Start dragging if clicking on header (but not buttons)
+			if (!target.closest('button') && !target.closest('.header-buttons')) {
+				e.preventDefault();
+				isDragging = true;
+
+				// Calculate offset from pointer to element's current position
+				const rect = containerEl.getBoundingClientRect();
+				dragOffsetX = e.clientX - rect.left;
+				dragOffsetY = e.clientY - rect.top;
+
+				containerEl.setPointerCapture(e.pointerId);
+			}
+		}
+	}
+
+	function handlePointerMove(e: PointerEvent) {
+		if (!isDragging || !containerEl) return;
+
+		e.preventDefault();
+
+		// Update position - using left/top with transform cleared for smooth GPU-accelerated movement
+		const x = e.clientX - dragOffsetX;
+		const y = e.clientY - dragOffsetY;
+
+		// Set position directly on element for instant feedback
+		containerEl.style.left = `${x}px`;
+		containerEl.style.top = `${y}px`;
+		containerEl.style.transform = '';
+	}
+
+	function handlePointerUp(e: PointerEvent) {
+		if (isDragging && containerEl) {
+			isDragging = false;
+			containerEl.releasePointerCapture(e.pointerId);
+
+			// Commit the position to state
+			const left = parseFloat(containerEl.style.left);
+			const top = parseFloat(containerEl.style.top);
+
+			if (!isNaN(left) && !isNaN(top)) {
+				positionX = left;
+				positionY = top;
+			}
+
+			// Clear inline styles - will use positionStyle derived
+			containerEl.style.left = '';
+			containerEl.style.top = '';
+			containerEl.style.transform = '';
 		}
 	}
 
@@ -605,7 +669,7 @@ import { onMount } from 'svelte';
 						}
 					}
 
-					if (isTICalculator(currentCalculatorType)) {
+					if (false) {
 						measureTICalculatorSize();
 					}
 
@@ -655,11 +719,14 @@ import { onMount } from 'svelte';
 	<div
 		bind:this={containerEl}
 		class="calculator-tool"
+		class:is-dragging={isDragging}
 		role="dialog"
 		tabindex="-1"
-		aria-label="Calculator tool - Use Alt+Arrow keys to move, Escape to close"
+		aria-label="Calculator tool - Drag header to move, Escape to close"
 		style="left: {positionStyle.left}; top: {positionStyle.top}; {width !== undefined ? `width: ${width}px;` : ''} {height !== undefined ? `height: ${height}px;` : ''} transform: {positionStyle.transform};"
 		onpointerdown={handlePointerDown}
+		onpointermove={handlePointerMove}
+		onpointerup={handlePointerUp}
 		onkeydown={handleKeyDown}
 	>
 		<div class="tool-header">
@@ -689,14 +756,28 @@ import { onMount } from 'svelte';
 		</div>
 
 		<div bind:this={calculatorContainerEl} class="calculator-container" data-calculator-type={currentCalculatorType}></div>
-	</div>
 
-	<ToolSettingsPanel
-		open={settingsOpen}
-		title="Calculator Settings"
-		onClose={closeSettings}
-		anchorEl={settingsButtonEl}
-	>
+		{#if settingsOpen}
+			<div class="settings-overlay">
+				<div class="settings-panel">
+					<div class="settings-header">
+						<h2 class="settings-title">Calculator Settings</h2>
+						<button type="button" class="settings-close-btn" onclick={closeSettings} aria-label="Close settings">
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								class="h-5 w-5"
+								viewBox="0 0 20 20"
+								fill="currentColor"
+							>
+								<path
+									fill-rule="evenodd"
+									d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+									clip-rule="evenodd"
+								/>
+							</svg>
+						</button>
+					</div>
+					<div class="settings-content">
 		<fieldset class="setting-group">
 			<legend>Calculator Type</legend>
 			{#each availableTypes as type (type)}
@@ -768,7 +849,7 @@ import { onMount } from 'svelte';
 				<span>QWERTY Keyboard</span>
 			</label>
 
-			{#if isTICalculator(currentCalculatorType)}
+			{#if false}
 				{#if currentCalculatorType === 'ti-84' || currentCalculatorType === 'ti-34-mv'}
 					<label>
 						<span class="setting-label">
@@ -912,7 +993,11 @@ import { onMount } from 'svelte';
 				</label>
 			{/if}
 		</fieldset>
-	</ToolSettingsPanel>
+					</div>
+				</div>
+			</div>
+		{/if}
+	</div>
 {/if}
 
 <style>
@@ -928,6 +1013,16 @@ import { onMount } from 'svelte';
 		min-width: 320px;
 		display: flex;
 		flex-direction: column;
+	}
+
+	.calculator-tool.is-dragging {
+		cursor: move;
+		will-change: transform;
+	}
+
+	.calculator-tool.is-dragging * {
+		cursor: move !important;
+		pointer-events: none; /* Prevent hover effects during drag */
 	}
 
 	.tool-header {
@@ -1011,5 +1106,138 @@ import { onMount } from 'svelte';
 
 	:global(.calculator-tool .mathjs-btn) {
 		pointer-events: auto;
+	}
+
+	/* Settings overlay and panel */
+	.settings-overlay {
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background: rgba(0, 0, 0, 0.5);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		z-index: 10;
+		pointer-events: auto;
+	}
+
+	.settings-panel {
+		background: white;
+		border-radius: 8px;
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+		width: 90%;
+		max-width: 400px;
+		max-height: 80%;
+		overflow: hidden;
+		display: flex;
+		flex-direction: column;
+	}
+
+	.settings-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 12px 16px;
+		border-bottom: 1px solid #e0e0e0;
+		background: #f5f5f5;
+	}
+
+	.settings-title {
+		font-weight: 600;
+		font-size: 14px;
+		margin: 0;
+		color: #333;
+	}
+
+	.settings-close-btn {
+		background: transparent;
+		border: none;
+		color: #666;
+		cursor: pointer;
+		padding: 4px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: 4px;
+		transition: background-color 0.2s;
+	}
+
+	.settings-close-btn:hover {
+		background: rgba(0, 0, 0, 0.05);
+		color: #333;
+	}
+
+	.settings-close-btn:active {
+		background: rgba(0, 0, 0, 0.1);
+	}
+
+	.settings-content {
+		padding: 16px;
+		overflow-y: auto;
+		font-size: 14px;
+	}
+
+	.settings-content :global(.setting-group) {
+		border: 1px solid #e0e0e0;
+		border-radius: 4px;
+		padding: 12px;
+		margin-bottom: 16px;
+	}
+
+	.settings-content :global(.setting-group:last-child) {
+		margin-bottom: 0;
+	}
+
+	.settings-content :global(legend) {
+		font-weight: 600;
+		font-size: 13px;
+		color: #333;
+		padding: 0 4px;
+	}
+
+	.settings-content :global(label) {
+		display: block;
+		margin-bottom: 8px;
+		cursor: pointer;
+		font-size: 13px;
+		color: #666;
+	}
+
+	.settings-content :global(label:last-child) {
+		margin-bottom: 0;
+	}
+
+	.settings-content :global(input[type="radio"]),
+	.settings-content :global(input[type="checkbox"]) {
+		margin-right: 8px;
+		cursor: pointer;
+	}
+
+	.settings-content :global(select) {
+		width: 100%;
+		padding: 6px;
+		border: 1px solid #ccc;
+		border-radius: 4px;
+		font-size: 13px;
+		margin-top: 4px;
+		background: white;
+		cursor: pointer;
+	}
+
+	.settings-content :global(.setting-label) {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 4px;
+		font-weight: 500;
+		color: #333;
+	}
+
+	.settings-content :global(.setting-value) {
+		font-weight: normal;
+		color: #666;
+		font-size: 12px;
 	}
 </style>

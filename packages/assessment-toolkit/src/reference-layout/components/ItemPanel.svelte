@@ -9,6 +9,8 @@
 	// NOTE: Parent applications using ItemPanel with showHeader=true must import tool web components:
 	//   import '@pie-players/pie-tool-answer-eliminator';
 	//   import '@pie-players/pie-tool-tts-inline';
+	//   import '@pie-players/pie-tool-calculator-inline';
+	//   import '@pie-players/pie-tool-calculator';
 
 	let {
 		currentItem,
@@ -46,6 +48,8 @@
 	let itemContentElement = $state<HTMLElement | null>(null);
 	let questionToolbarElement = $state<HTMLElement | null>(null);
 	let toolbarServicesBound = $state(false);
+	let calculatorElement = $state<HTMLElement | null>(null);
+	let calculatorVisible = $state(false);
 
 	// Bind services, scope, and IDs to question toolbar (must be JS properties)
 	$effect(() => {
@@ -75,6 +79,27 @@
 			toolbarServicesBound = true;
 		}
 	});
+
+	// Bind coordinator to calculator tool
+	$effect(() => {
+		if (calculatorElement && toolCoordinator) {
+			(calculatorElement as any).coordinator = toolCoordinator;
+		}
+	});
+
+	// Subscribe to calculator visibility changes
+	$effect(() => {
+		if (!showHeader || !toolCoordinator || !currentItem) return;
+
+		const unsubscribe = toolCoordinator.subscribe(() => {
+			calculatorVisible = toolCoordinator.isToolVisible(`calculator-${currentItem.id}`);
+		});
+
+		// Initial update
+		calculatorVisible = toolCoordinator.isToolVisible(`calculator-${currentItem.id}`);
+
+		return unsubscribe;
+	});
 </script>
 
 <div
@@ -96,7 +121,7 @@
 					bind:this={questionToolbarElement}
 					item-id={currentItem.id}
 					catalog-id={currentItem.id}
-					tools="tts,answerEliminator"
+					tools="tts,answerEliminator,calculator"
 					size="md"
 					language="en-US"
 				></pie-question-toolbar>
@@ -120,6 +145,15 @@
 		<div class="empty-container">
 			<p class="empty-message">Question could not be loaded.</p>
 		</div>
+	{/if}
+
+	<!-- Calculator Tool Instance (rendered outside panel for floating overlay) -->
+	{#if showHeader && currentItem}
+		<pie-tool-calculator
+			bind:this={calculatorElement}
+			visible={calculatorVisible}
+			tool-id="calculator-{currentItem.id}"
+		></pie-tool-calculator>
 	{/if}
 </div>
 
@@ -147,7 +181,7 @@
 	}
 
 	.item-content {
-		/* Player container */
+		position: relative;
 	}
 
 	.loading-container,

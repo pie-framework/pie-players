@@ -19,8 +19,11 @@
     playerType = "auto",
     assessmentId = "",
     sectionId = "",
-    toolkitCoordinator = null,
-
+    ttsService = null,
+    toolCoordinator = null,
+    highlightCoordinator = null,
+    catalogResolver = null,
+    elementToolStateStore = null,
     class: className = "",
     onsessionchanged,
   }: {
@@ -36,18 +39,14 @@
     playerType?: "auto" | "iife" | "esm" | "fixed" | "inline";
     assessmentId?: string;
     sectionId?: string;
-    toolkitCoordinator?: any;
-
+    ttsService?: any;
+    toolCoordinator?: any;
+    highlightCoordinator?: any;
+    catalogResolver?: any;
+    elementToolStateStore?: any;
     class?: string;
     onsessionchanged?: (event: CustomEvent) => void;
   } = $props();
-
-  // Extract individual services from coordinator
-  const ttsService = $derived(toolkitCoordinator?.ttsService);
-  const toolCoordinator = $derived(toolkitCoordinator?.toolCoordinator);
-  const highlightCoordinator = $derived(toolkitCoordinator?.highlightCoordinator);
-  const catalogResolver = $derived(toolkitCoordinator?.catalogResolver);
-  const elementToolStateStore = $derived(toolkitCoordinator?.elementToolStateStore);
 
   // Get the DOM element reference for service binding
   let itemElement: HTMLElement | null = $state(null);
@@ -55,13 +54,6 @@
   let questionToolbarElement: HTMLElement | null = $state(null);
   let playerElement: any = $state(null);
   let calculatorElement: HTMLElement | null = $state(null);
-
-  // Set toolkitCoordinator on calculator element
-  $effect(() => {
-    if (calculatorElement && toolkitCoordinator) {
-      (calculatorElement as any).toolkitCoordinator = toolkitCoordinator;
-    }
-  });
 
   // Track if services have been bound
   let toolbarServicesBound = $state(false);
@@ -202,6 +194,22 @@
     }
   });
 
+  // Bind coordinator and providers to calculator tool
+  $effect(() => {
+    if (calculatorElement && toolCoordinator) {
+      (calculatorElement as any).coordinator = toolCoordinator;
+
+      // Get providers from registry (async)
+      (async () => {
+        try {
+          const desmosProvider = await (toolCoordinator as any).getToolProvider('calculator-desmos');
+          (calculatorElement as any).desmosProvider = desmosProvider;
+        } catch (error) {
+          console.warn('[ItemRenderer] Calculator providers not available:', error);
+        }
+      })();
+    }
+  });
 
   // Subscribe to calculator visibility changes
   $effect(() => {

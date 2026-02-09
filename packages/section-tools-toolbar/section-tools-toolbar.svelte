@@ -244,6 +244,8 @@
 		<pie-tool-calculator
 			bind:this={calculatorElement}
 			visible={showCalculator}
+			coordinator={toolProviderRegistry ? { getToolProvider: (id) => toolProviderRegistry.getProvider(id) } : undefined}
+
 			tool-id="calculator"
 		></pie-tool-calculator>
 	{/if}

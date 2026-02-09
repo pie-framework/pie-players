@@ -1,0 +1,38 @@
+{
+	"name": "@pie-players/tts-server-google",
+	"version": "0.1.0",
+	"description": "Google Cloud Text-to-Speech provider for server-side TTS with speech marks support",
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"scripts": {
+		"build": "tsc",
+		"dev": "tsc --watch",
+		"test": "vitest",
+		"test:coverage": "vitest --coverage"
+	},
+	"keywords": [
+		"tts",
+		"text-to-speech",
+		"google-cloud",
+		"wavenet",
+		"speech-marks",
+		"server-side"
+	],
+	"author": "PIE Framework",
+	"license": "MIT",
+	"dependencies": {
+		"@google-cloud/text-to-speech": "^5.0.0",
+		"@pie-players/tts-server-core": "workspace:*"
+	},
+	"devDependencies": {
+		"typescript": "^5.3.3",
+		"vitest": "^1.0.4"
+	}
+}

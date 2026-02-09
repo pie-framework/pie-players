@@ -87,6 +87,7 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 	private pausedState = false;
 	private wordTimings: WordTiming[] = [];
 	private highlightInterval: number | null = null;
+	private intentionallyStopped = false;
 
 	public onWordBoundary?: (
 		word: string,
@@ -101,6 +102,9 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 	async speak(text: string): Promise<void> {
 		// Stop any current playback
 		this.stop();
+
+		// Reset intentionally stopped flag for new playback
+		this.intentionallyStopped = false;
 
 		// Call server API to synthesize speech
 		const { audioUrl, wordTimings } = await this.synthesizeSpeech(text);
@@ -146,12 +150,18 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 				resolve();
 			};
 
-			audio.onerror = () => {
+			audio.onerror = (event) => {
 				this.stopWordHighlighting();
 				URL.revokeObjectURL(audioUrl);
 				this.currentAudio = null;
 				this.wordTimings = [];
-				reject(new Error("Failed to play audio from server"));
+				// Only reject if this wasn't an intentional stop
+				if (!this.intentionallyStopped) {
+					reject(new Error("Failed to play audio from server"));
+				} else {
+					// Intentional stop, resolve normally
+					resolve();
+				}
 			};
 
 			audio.onpause = () => {
@@ -353,6 +363,8 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 		this.stopWordHighlighting();
 
 		if (this.currentAudio) {
+			// Mark as intentionally stopped to prevent error handler from rejecting
+			this.intentionallyStopped = true;
 			this.currentAudio.pause();
 			if (this.currentAudio.src) {
 				URL.revokeObjectURL(this.currentAudio.src);

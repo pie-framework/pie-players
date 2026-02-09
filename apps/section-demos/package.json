@@ -19,6 +19,7 @@
 		"@pie-players/pie-tool-tts-inline": "workspace:*",
 		"@pie-players/tts-server-core": "workspace:*",
 		"@pie-players/tts-server-polly": "workspace:*",
+		"@pie-players/tts-server-google": "workspace:*",
 		"@pie-players/tts-client-server": "workspace:*",
 		"dotenv": "^16.4.7"
 	},

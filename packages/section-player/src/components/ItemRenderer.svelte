@@ -17,6 +17,7 @@
 		bundleHost = '',
 		esmCdnUrl = 'https://esm.sh',
 		playerVersion = 'latest',
+		playerType = 'auto',
 		assessmentId = '',
 		sectionId = '',
 		ttsService = null,
@@ -33,6 +34,7 @@
 		bundleHost?: string;
 		esmCdnUrl?: string;
 		playerVersion?: string;
+		playerType?: 'auto' | 'iife' | 'esm' | 'fixed' | 'inline';
 		assessmentId?: string;
 		sectionId?: string;
 		ttsService?: any;
@@ -60,8 +62,10 @@
 	let lastEnv: any = null;
 
 	// Determine which player to use based on configuration
-	// Priority: IIFE (if bundleHost) > ESM (if esmCdnUrl)
-	let playerType = $derived.by(() => {
+	// If playerType is 'auto', determine based on available props
+	// Priority: IIFE (if bundleHost) > ESM (if esmCdnUrl) > IIFE fallback
+	let resolvedPlayerType = $derived.by(() => {
+		if (playerType !== 'auto') return playerType;
 		if (bundleHost) return 'iife';
 		if (esmCdnUrl) return 'esm';
 		return 'iife'; // fallback
@@ -74,11 +78,23 @@
 			// @ts-expect-error - Dynamic import of web component
 			await import('@pie-players/pie-assessment-toolkit/components/QuestionToolBar.svelte');
 
-			// Import player
-			if (playerType === 'iife') {
-				await import('@pie-players/pie-iife-player');
-			} else {
-				await import('@pie-players/pie-esm-player');
+			// Import player based on resolved type
+			switch (resolvedPlayerType) {
+				case 'iife':
+					await import('@pie-players/pie-iife-player');
+					break;
+				case 'esm':
+					await import('@pie-players/pie-esm-player');
+					break;
+				case 'fixed':
+					await import('@pie-players/pie-fixed-player');
+					break;
+				case 'inline':
+					await import('@pie-players/pie-inline-player');
+					break;
+				default:
+					console.warn(`[ItemRenderer] Unknown player type: ${resolvedPlayerType}, falling back to IIFE`);
+					await import('@pie-players/pie-iife-player');
 			}
 		})();
 
@@ -211,16 +227,24 @@
 		</div>
 
 		<div class="item-content" bind:this={itemContentElement}>
-			{#if playerType === 'iife'}
+			{#if resolvedPlayerType === 'iife'}
 				<pie-iife-player
 					bind:this={playerElement}
 					bundle-host={bundleHost}
 				></pie-iife-player>
-			{:else}
+			{:else if resolvedPlayerType === 'esm'}
 				<pie-esm-player
 					bind:this={playerElement}
 					esm-cdn-url={esmCdnUrl}
 				></pie-esm-player>
+			{:else if resolvedPlayerType === 'fixed'}
+				<pie-fixed-player
+					bind:this={playerElement}
+				></pie-fixed-player>
+			{:else if resolvedPlayerType === 'inline'}
+				<pie-inline-player
+					bind:this={playerElement}
+				></pie-inline-player>
 			{/if}
 		</div>
 	</div>

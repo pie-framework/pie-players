@@ -43,18 +43,22 @@ export const demo1Section: QtiAssessmentSection = {
 								{
 									value: "a",
 									label: "Oxygen (O₂)",
+									correct: false,
 								},
 								{
 									value: "b",
 									label: "Nitrogen (N₂)",
+									correct: false,
 								},
 								{
 									value: "c",
 									label: "Carbon dioxide (CO₂)",
+									correct: true,
 								},
 								{
 									value: "d",
 									label: "Argon (Ar)",
+									correct: false,
 								},
 							],
 						},

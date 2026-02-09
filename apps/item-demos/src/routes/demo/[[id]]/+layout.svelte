@@ -11,7 +11,7 @@ import { page } from '$app/stores';
 	let mode = $state<'gather' | 'view' | 'evaluate'>('gather');
 	let role = $state<'student' | 'instructor'>('student');
 	let session = $state<any>({ id: '', data: [] });
-	let config = $state<any>(data.demo.item.config);
+	let config = $state<any>();
 	let score = $state<any>(null);
 	let sessionVersion = $state(0);
 

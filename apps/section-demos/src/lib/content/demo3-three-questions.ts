@@ -110,18 +110,22 @@ export const demo3Section: QtiAssessmentSection = {
 								{
 									value: "a",
 									label: "Chlorophyll and carbon dioxide",
+									correct: false,
 								},
 								{
 									value: "b",
 									label: "Glucose and oxygen",
+									correct: true,
 								},
 								{
 									value: "c",
 									label: "Water and light energy",
+									correct: false,
 								},
 								{
 									value: "d",
 									label: "Cellulose and starch",
+									correct: false,
 								},
 							],
 						},
@@ -154,18 +158,22 @@ export const demo3Section: QtiAssessmentSection = {
 								{
 									value: "a",
 									label: "In the roots",
+									correct: false,
 								},
 								{
 									value: "b",
 									label: "In the cell walls",
+									correct: false,
 								},
 								{
 									value: "c",
 									label: "In the chloroplasts",
+									correct: true,
 								},
 								{
 									value: "d",
 									label: "In the atmosphere",
+									correct: false,
 								},
 							],
 						},
@@ -198,19 +206,23 @@ export const demo3Section: QtiAssessmentSection = {
 								{
 									value: "a",
 									label: "They produce more oxygen than animals need",
+									correct: false,
 								},
 								{
 									value: "b",
 									label:
 										"They absorb excess carbon dioxide from human activities",
+									correct: true,
 								},
 								{
 									value: "c",
 									label: "They prevent ancient bacteria from evolving",
+									correct: false,
 								},
 								{
 									value: "d",
 									label: "They increase the temperature of Earth's atmosphere",
+									correct: false,
 								},
 							],
 						},

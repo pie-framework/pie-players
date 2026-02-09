@@ -91,19 +91,23 @@ export const demo2Section: QtiAssessmentSection = {
 									value: "a",
 									label:
 										"It allowed artists to reproduce their paintings more accurately",
+									correct: false,
 								},
 								{
 									value: "b",
 									label:
 										"It helped spread knowledge and ideas more quickly to more people",
+									correct: true,
 								},
 								{
 									value: "c",
 									label: "It enabled scientists to conduct more experiments",
+									correct: false,
 								},
 								{
 									value: "d",
 									label: "It replaced the need for wealthy patrons of the arts",
+									correct: false,
 								},
 							],
 						},

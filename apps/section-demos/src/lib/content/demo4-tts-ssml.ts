@@ -147,6 +147,7 @@ export const demo4Section: QtiAssessmentSection = {
                     <speak>The <emphasis>quadratic formula</emphasis>, because it works for all equations</speak>
                     <span>The quadratic formula, because it works for all equations</span>
                   </div>`,
+									correct: false,
 								},
 								{
 									value: "b",
@@ -154,6 +155,7 @@ export const demo4Section: QtiAssessmentSection = {
                     <speak><emphasis level="strong">Factoring</emphasis>, because this equation factors easily into <prosody rate="slow">x minus 2, times x minus 3</prosody></speak>
                     <span>Factoring, because this equation factors easily into (x - 2)(x - 3)</span>
                   </div>`,
+									correct: true,
 								},
 								{
 									value: "c",
@@ -161,6 +163,7 @@ export const demo4Section: QtiAssessmentSection = {
                     <speak>Completing the square</speak>
                     <span>Completing the square</span>
                   </div>`,
+									correct: false,
 								},
 								{
 									value: "d",
@@ -168,6 +171,7 @@ export const demo4Section: QtiAssessmentSection = {
                     <speak>Graphing the equation</speak>
                     <span>Graphing the equation</span>
                   </div>`,
+									correct: false,
 								},
 							],
 						},
@@ -203,18 +207,22 @@ export const demo4Section: QtiAssessmentSection = {
 								{
 									value: "a",
 									label: "(x - 2)(x - 3)",
+									correct: true,
 								},
 								{
 									value: "b",
 									label: "(x - 1)(x - 6)",
+									correct: false,
 								},
 								{
 									value: "c",
 									label: "(x + 2)(x + 3)",
+									correct: false,
 								},
 								{
 									value: "d",
 									label: "(x + 1)(x + 6)",
+									correct: false,
 								},
 							],
 						},

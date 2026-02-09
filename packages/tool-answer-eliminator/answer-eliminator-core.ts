@@ -282,13 +282,13 @@ export class AnswerEliminatorCore {
 		if (!this.storeIntegration) return;
 
 		const state = {
-			eliminatedChoices: Array.from(this.eliminatedChoices)
+			eliminatedChoices: Array.from(this.eliminatedChoices),
 		};
 
 		this.storeIntegration.store.setState(
 			this.storeIntegration.globalElementId,
-			'answerEliminator',
-			state
+			"answerEliminator",
+			state,
 		);
 	}
 
@@ -300,7 +300,7 @@ export class AnswerEliminatorCore {
 
 		const state = this.storeIntegration.store.getState(
 			this.storeIntegration.globalElementId,
-			'answerEliminator'
+			"answerEliminator",
 		);
 
 		if (!state || !state.eliminatedChoices) return;

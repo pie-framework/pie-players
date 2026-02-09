@@ -21,6 +21,17 @@ import { HighlightCoordinator } from "./HighlightCoordinator";
 import { ToolCoordinator } from "./ToolCoordinator";
 import { TTSService } from "./TTSService";
 import { BrowserTTSProvider } from "./tts/browser-provider";
+import {
+	ToolProviderRegistry,
+	DesmosToolProvider,
+	TIToolProvider,
+	TTSToolProvider,
+} from "./tool-providers";
+import type {
+	DesmosToolProviderConfig,
+	TIToolProviderConfig,
+	TTSToolProviderConfig,
+} from "./tool-providers";
 
 /**
  * Generic tool configuration
@@ -34,10 +45,12 @@ export interface ToolConfig {
  * TTS tool configuration
  */
 export interface TTSToolConfig extends ToolConfig {
+	backend?: "browser" | "polly" | "google" | "server";
 	defaultVoice?: string;
 	rate?: number;
 	pitch?: number;
-	provider?: "browser"; // Future: 'server' for AWS Polly
+	apiEndpoint?: string;
+	authFetcher?: () => Promise<Partial<TTSToolProviderConfig>>;
 }
 
 /**
@@ -45,6 +58,24 @@ export interface TTSToolConfig extends ToolConfig {
  */
 export interface AnswerEliminatorToolConfig extends ToolConfig {
 	strategy?: "strikethrough" | "hide";
+}
+
+/**
+ * Calculator tool configuration
+ */
+export interface CalculatorToolConfig extends ToolConfig {
+	provider?: "desmos" | "ti" | "mathjs";
+	authFetcher?: () => Promise<
+		Partial<DesmosToolProviderConfig | TIToolProviderConfig>
+	>;
+}
+
+/**
+ * Floating tools configuration (calculator, graph, etc.)
+ */
+export interface FloatingToolsConfig extends ToolConfig {
+	enabledTools?: string[];
+	calculator?: CalculatorToolConfig;
 }
 
 /**
@@ -66,6 +97,7 @@ export interface ToolkitCoordinatorConfig {
 		answerEliminator?: AnswerEliminatorToolConfig;
 		highlighter?: ToolConfig;
 		flagging?: ToolConfig;
+		floatingTools?: FloatingToolsConfig;
 	};
 
 	/**
@@ -87,6 +119,7 @@ export interface ToolkitServiceBundle {
 	highlightCoordinator: HighlightCoordinator;
 	elementToolStateStore: ElementToolStateStore;
 	catalogResolver: AccessibilityCatalogResolver;
+	toolProviderRegistry: ToolProviderRegistry;
 }
 
 /**
@@ -124,15 +157,14 @@ export class ToolkitCoordinator {
 	readonly highlightCoordinator: HighlightCoordinator;
 	readonly elementToolStateStore: ElementToolStateStore;
 	readonly catalogResolver: AccessibilityCatalogResolver;
+	readonly toolProviderRegistry: ToolProviderRegistry;
 
 	/** Track TTS initialization state */
 	private ttsInitialized = false;
 
 	constructor(config: ToolkitCoordinatorConfig) {
 		if (!config.assessmentId) {
-			throw new Error(
-				"ToolkitCoordinator requires assessmentId in config",
-			);
+			throw new Error("ToolkitCoordinator requires assessmentId in config");
 		}
 
 		this.assessmentId = config.assessmentId;
@@ -147,6 +179,10 @@ export class ToolkitCoordinator {
 			config.accessibility?.language || "en-US",
 		);
 
+		// Initialize tool provider registry
+		this.toolProviderRegistry = new ToolProviderRegistry();
+		this._registerToolProviders();
+
 		// Initialize TTS service based on config
 		this.ttsService = new TTSService();
 		const ttsConfig = config.tools?.tts;
@@ -159,12 +195,95 @@ export class ToolkitCoordinator {
 	}
 
 	/**
+	 * Register tool providers in the registry
+	 */
+	private _registerToolProviders(): void {
+		// Register TTS provider
+		const ttsConfig = this.config.tools?.tts;
+		if (ttsConfig?.enabled !== false) {
+			const backend = ttsConfig?.backend || "browser";
+			try {
+				this.toolProviderRegistry.register("tts", {
+					provider: new TTSToolProvider(backend),
+					config: {
+						backend,
+						apiEndpoint: ttsConfig?.apiEndpoint,
+						voice: ttsConfig?.defaultVoice,
+						rate: ttsConfig?.rate,
+						pitch: ttsConfig?.pitch,
+					},
+					lazy: true,
+					authFetcher: ttsConfig?.authFetcher,
+				});
+			} catch (error) {
+				console.warn("[ToolkitCoordinator] Failed to register TTS provider:", error);
+			}
+		}
+
+		// Register calculator providers
+		const floatingTools = this.config.tools?.floatingTools;
+		const calculatorConfig = floatingTools?.calculator;
+		if (calculatorConfig?.enabled !== false) {
+			const provider = calculatorConfig?.provider || "desmos";
+
+			if (provider === "desmos") {
+				try {
+					this.toolProviderRegistry.register("calculator-desmos", {
+						provider: new DesmosToolProvider(),
+						config: {},
+						lazy: true,
+						authFetcher: calculatorConfig?.authFetcher,
+					});
+				} catch (error) {
+					console.warn(
+						"[ToolkitCoordinator] Failed to register Desmos calculator provider:",
+						error,
+					);
+				}
+			} else if (provider === "ti") {
+				try {
+					this.toolProviderRegistry.register("calculator-ti", {
+						provider: new TIToolProvider(),
+						config: {},
+						lazy: true,
+					});
+				} catch (error) {
+					console.warn(
+						"[ToolkitCoordinator] Failed to register TI calculator provider:",
+						error,
+					);
+				}
+			}
+		}
+	}
+
+	/**
 	 * Initialize TTS service with provider
 	 */
 	private async _initializeTTS(config?: TTSToolConfig): Promise<void> {
 		if (this.ttsInitialized) return;
 
-		// Initialize with browser provider (only supported provider for now)
+		// Try to use TTS provider from registry if available
+		if (this.toolProviderRegistry.has("tts")) {
+			try {
+				const ttsProvider = await this.toolProviderRegistry.getProvider("tts");
+				const providerInstance = await ttsProvider.createInstance();
+				await this.ttsService.initialize(providerInstance);
+				this.ttsService.setCatalogResolver(this.catalogResolver);
+				this.ttsInitialized = true;
+				console.log(
+					"[ToolkitCoordinator] TTS initialized via ToolProviderRegistry",
+				);
+				return;
+			} catch (error) {
+				console.warn(
+					"[ToolkitCoordinator] Failed to initialize TTS via registry, falling back to browser provider:",
+					error,
+				);
+			}
+		}
+
+		// Fallback to browser provider
 		const provider = new BrowserTTSProvider();
 		await this.ttsService.initialize(provider);
 		this.ttsService.setCatalogResolver(this.catalogResolver);
@@ -189,7 +308,18 @@ export class ToolkitCoordinator {
 			highlightCoordinator: this.highlightCoordinator,
 			elementToolStateStore: this.elementToolStateStore,
 			catalogResolver: this.catalogResolver,
+			toolProviderRegistry: this.toolProviderRegistry,
 		};
+	}
+
+	/**
+	 * Get a tool provider from the registry
+	 *
+	 * @param providerId Provider identifier
+	 * @returns Tool provider instance
+	 */
+	async getToolProvider(providerId: string) {
+		return this.toolProviderRegistry.getProvider(providerId);
 	}
 
 	/**

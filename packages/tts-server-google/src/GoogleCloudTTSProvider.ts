@@ -294,7 +294,11 @@ export class GoogleCloudTTSProvider extends BaseTTSProvider {
 	private async synthesizeWithSpeechMarks(
 		request: SynthesizeRequest,
 		voice: string,
-	): Promise<{ audio: Buffer; contentType: string; speechMarks: SpeechMark[] }> {
+	): Promise<{
+		audio: Buffer;
+		contentType: string;
+		speechMarks: SpeechMark[];
+	}> {
 		// Check if the text is already SSML
 		const isUserSSML = this.detectSSML(request.text);
 
@@ -455,7 +459,10 @@ export class GoogleCloudTTSProvider extends BaseTTSProvider {
 	 * Extract speech marks from Google's timepoints
 	 */
 	private extractSpeechMarksFromTimepoints(
-		timepoints: protos.google.cloud.texttospeech.v1beta1.ITimepoint[] | null | undefined,
+		timepoints:
+			| protos.google.cloud.texttospeech.v1beta1.ITimepoint[]
+			| null
+			| undefined,
 		wordMap: Array<{
 			word: string;
 			start: number;
@@ -566,8 +573,7 @@ export class GoogleCloudTTSProvider extends BaseTTSProvider {
 			FEMALE: "female",
 			NEUTRAL: "neutral",
 		};
-		const gender =
-			genderMap[googleVoice.ssmlGender || "NEUTRAL"] || "neutral";
+		const gender = genderMap[googleVoice.ssmlGender || "NEUTRAL"] || "neutral";
 
 		return {
 			id: voiceName,

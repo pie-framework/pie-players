@@ -26,7 +26,9 @@ async function getGoogleProvider(): Promise<GoogleCloudTTSProvider> {
 
 		console.log(
 			"[Google TTS API] GOOGLE_API_KEY:",
-			hasApiKey ? `✓ Set (${process.env.GOOGLE_API_KEY?.substring(0, 8)}...)` : "✗ Missing",
+			hasApiKey
+				? `✓ Set (${process.env.GOOGLE_API_KEY?.substring(0, 8)}...)`
+				: "✗ Missing",
 		);
 		console.log(
 			"[Google TTS API] GOOGLE_APPLICATION_CREDENTIALS:",

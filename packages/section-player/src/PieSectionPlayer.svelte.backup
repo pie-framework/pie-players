@@ -479,8 +479,11 @@ import type {
 						{playerType}
 						{assessmentId}
 						{sectionId}
-						toolkitCoordinator={coordinator}
-
+						ttsService={services.ttsService}
+						toolCoordinator={services.toolCoordinator}
+						highlightCoordinator={services.highlightCoordinator}
+						catalogResolver={services.catalogResolver}
+						elementToolStateStore={services.elementToolStateStore}
 						onsessionchanged={handleSessionChanged}
 					/>
 				{:else}
@@ -496,8 +499,11 @@ import type {
 						{playerType}
 						{assessmentId}
 						{sectionId}
-						toolkitCoordinator={coordinator}
-
+						ttsService={services.ttsService}
+						toolCoordinator={services.toolCoordinator}
+						highlightCoordinator={services.highlightCoordinator}
+						catalogResolver={services.catalogResolver}
+						elementToolStateStore={services.elementToolStateStore}
 						onsessionchanged={handleSessionChanged}
 					/>
 				{/if}
@@ -518,8 +524,11 @@ import type {
 					{playerType}
 					{assessmentId}
 					{sectionId}
-					toolkitCoordinator={coordinator}
-
+					ttsService={services.ttsService}
+					toolCoordinator={services.toolCoordinator}
+					highlightCoordinator={services.highlightCoordinator}
+					catalogResolver={services.catalogResolver}
+					elementToolStateStore={services.elementToolStateStore}
 					onprevious={navigatePrevious}
 					onnext={navigateNext}
 					onsessionchanged={(sessionDetail) => handleSessionChanged(currentItem?.id || '', sessionDetail)}

@@ -35,6 +35,8 @@ export default defineConfig({
 				"@pie-players/pie-calculator-desmos",
 				"@pie-players/pie-section-tools-toolbar",
 				"@pie-players/pie-tool-answer-eliminator",
+				"@pie-players/pie-tool-calculator",
+				"@pie-players/pie-tool-calculator-inline",
 				"@pie-players/pie-tool-tts-inline",
 				"@pie-players/tts-client-server",
 			],

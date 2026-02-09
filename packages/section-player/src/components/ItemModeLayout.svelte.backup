@@ -25,8 +25,11 @@
 		playerType = 'auto',
 		assessmentId = '',
 		sectionId = '',
-		toolkitCoordinator = null,
-
+		ttsService = null,
+		toolCoordinator = null,
+		highlightCoordinator = null,
+		catalogResolver = null,
+		elementToolStateStore = null,
 		onprevious,
 		onnext,
 		onsessionchanged
@@ -45,8 +48,11 @@
 		playerType?: 'auto' | 'iife' | 'esm' | 'fixed' | 'inline';
 		assessmentId?: string;
 		sectionId?: string;
-		toolkitCoordinator?: any;
-
+		ttsService?: any;
+		toolCoordinator?: any;
+		highlightCoordinator?: any;
+		catalogResolver?: any;
+		elementToolStateStore?: any;
 		onprevious?: () => void;
 		onnext?: () => void;
 		onsessionchanged?: (session: any) => void;
@@ -70,7 +76,11 @@
 					{esmCdnUrl}
 					{assessmentId}
 					{sectionId}
-					{toolkitCoordinator}
+					{ttsService}
+					{toolCoordinator}
+					{highlightCoordinator}
+					{catalogResolver}
+					{elementToolStateStore}
 					class="passage-item"
 				/>
 			{/each}
@@ -90,7 +100,11 @@
 				{playerType}
 				{assessmentId}
 				{sectionId}
-				{toolkitCoordinator}
+				{ttsService}
+				{toolCoordinator}
+				{highlightCoordinator}
+				{catalogResolver}
+				{elementToolStateStore}
 				onsessionchanged={handleSessionChanged}
 				class="item-content"
 			/>

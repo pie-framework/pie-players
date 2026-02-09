@@ -32,7 +32,12 @@ export default defineConfig({
 		minify: "esbuild",
 		sourcemap: true,
 		rollupOptions: {
-			external: ["@datadog/browser-rum"],
+			external: [
+				"@datadog/browser-rum",
+				"@pie-players/pie-calculator-desmos",
+				"@pie-players/tts-client-server",
+				"@pie-players/pie-assessment-toolkit"
+			],
 			output: {
 				format: "es",
 				inlineDynamicImports: true,

@@ -70,17 +70,18 @@ import { onDestroy, onMount, untrack } from 'svelte';
 
 	// Toolkit coordinator (owns all services)
 	let toolkitCoordinator: any = $state(null);
-	let ttsProvider: 'polly' | 'browser' | 'loading' = $state('loading');
+	let ttsProvider: 'polly' | 'browser' | 'google' | 'loading' = $state('loading');
 	let showTTSSettings = $state(false);
 
 	// TTS Configuration
 	interface TTSConfig {
-		provider: 'polly' | 'browser';
+		provider: 'polly' | 'browser' | 'google';
 		voice: string;
 		rate: number;
 		pitch: number;
 		pollyEngine?: 'neural' | 'standard';
 		pollySampleRate?: number;
+		googleVoiceType?: 'wavenet' | 'standard' | 'studio';
 	}
 
 	let ttsConfig = $state<TTSConfig>({
@@ -90,6 +91,7 @@ import { onDestroy, onMount, untrack } from 'svelte';
 		pitch: 1.0,
 		pollyEngine: 'neural',
 		pollySampleRate: 24000,
+		googleVoiceType: 'wavenet',
 	});
 
 	// Highlighting Configuration
@@ -226,6 +228,27 @@ import { onDestroy, onMount, untrack } from 'svelte';
 				console.log('[Demo] ✅ Server TTS initialized (AWS Polly):', {
 					voice: config.voice,
 					engine: config.pollyEngine,
+					rate: config.rate,
+					pitch: config.pitch,
+				});
+			} else if (config.provider === 'google') {
+				// Server-side TTS with Google Cloud
+				const serverProvider = new ServerTTSProvider();
+				await ttsService.initialize(serverProvider, {
+					apiEndpoint: '/api/tts',
+					provider: 'google',
+					voice: config.voice,
+					language: 'en-US',
+					rate: config.rate,
+					pitch: config.pitch,
+					providerOptions: {
+						voiceType: config.googleVoiceType || 'wavenet',
+					},
+				});
+				ttsProvider = 'google';
+				console.log('[Demo] ✅ Server TTS initialized (Google Cloud):', {
+					voice: config.voice,
+					voiceType: config.googleVoiceType,
 					rate: config.rate,
 					pitch: config.pitch,
 				});

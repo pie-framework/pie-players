@@ -11,9 +11,17 @@
       section='{"identifier":"section-1","keepTogether":true,...}'
       mode="gather"
       view="candidate"
+      player-type="esm"
       bundle-host="https://cdn.pie.org"
       esm-cdn-url="https://esm.sh">
     </pie-section-player>
+
+  Player Types (player-type attribute):
+    - "auto" (default): Automatically choose based on bundle-host/esm-cdn-url
+    - "iife": Use IIFE player (SystemJS bundles) - requires bundle-host
+    - "esm": Use ESM player (ESM CDN) - requires esm-cdn-url
+    - "fixed": Use fixed player (pre-bundled elements)
+    - "inline": Use inline player (single-request rendering)
 
   Events:
     - section-loaded: Fired when section is loaded and ready
@@ -42,6 +50,9 @@
 
 			// Styling
 			customClassname: { attribute: 'custom-classname', type: 'String' },
+
+			// Player type selection
+			playerType: { attribute: 'player-type', type: 'String' },
 
 			// Debug
 			debug: { attribute: 'debug', type: 'String' },
@@ -77,6 +88,7 @@ import type {
 		bundleHost = '',
 		esmCdnUrl = '',
 		playerVersion = 'latest',
+		playerType = 'auto' as 'auto' | 'iife' | 'esm' | 'fixed' | 'inline',
 		customClassname = '',
 		debug = '' as string | boolean,
 
@@ -464,6 +476,7 @@ import type {
 						{bundleHost}
 						{esmCdnUrl}
 						{playerVersion}
+						{playerType}
 						{assessmentId}
 						{sectionId}
 						ttsService={services.ttsService}
@@ -483,6 +496,7 @@ import type {
 						{bundleHost}
 						{esmCdnUrl}
 						{playerVersion}
+						{playerType}
 						{assessmentId}
 						{sectionId}
 						ttsService={services.ttsService}
@@ -507,6 +521,7 @@ import type {
 					{bundleHost}
 					{esmCdnUrl}
 					{playerVersion}
+					{playerType}
 					{assessmentId}
 					{sectionId}
 					ttsService={services.ttsService}

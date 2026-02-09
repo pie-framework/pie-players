@@ -226,10 +226,15 @@ export class EsmPieLoader {
 						`Failed to load ${importPath}, trying fallback: ${viewConfig.fallback}`,
 					);
 					const fallbackConfig = BUILT_IN_VIEWS[viewConfig.fallback];
-					const fallbackPath = fallbackConfig.subpath
-						? `${packageName}${fallbackConfig.subpath}`
-						: packageName;
+					// Construct fallback path
+					let fallbackPath: string;
+					if (fallbackConfig.subpath) {
+						fallbackPath = `${packageName}${fallbackConfig.subpath}`;
+					} else {
+						fallbackPath = packageName;
+					}
 
+					// @vite-ignore - Dynamic import from CDN via import maps (runtime resolution)
 					module = await import(/* @vite-ignore */ fallbackPath);
 					ElementClass = module.default || module.Element;
 					logger.debug(`Loaded fallback view for ${actualTag}`);

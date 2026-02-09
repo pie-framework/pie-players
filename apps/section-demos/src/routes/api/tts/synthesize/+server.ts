@@ -1,16 +1,18 @@
 /**
  * TTS Synthesis API Route
  *
- * Synthesizes text to speech using AWS Polly with speech marks support.
+ * Synthesizes text to speech using AWS Polly or Google Cloud TTS with speech marks support.
  * Speech marks provide millisecond-precise word timing for synchronization.
  */
 
 import { PollyServerProvider } from "@pie-players/tts-server-polly";
+import { GoogleCloudTTSProvider } from "@pie-players/tts-server-google";
 import { error, json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
-// Singleton provider instance (reused across requests)
+// Singleton provider instances (reused across requests)
 let pollyProvider: PollyServerProvider | null = null;
+let googleProvider: GoogleCloudTTSProvider | null = null;
 
 /**
  * Get or initialize the Polly provider
@@ -74,6 +76,65 @@ async function getPollyProvider(): Promise<PollyServerProvider> {
 }
 
 /**
+ * Get or initialize the Google provider
+ */
+async function getGoogleProvider(): Promise<GoogleCloudTTSProvider> {
+	if (!googleProvider) {
+		console.log("[TTS API] Initializing Google Cloud TTS provider...");
+
+		// Check for API key (simple method)
+		const hasApiKey = !!process.env.GOOGLE_API_KEY;
+		// Check for service account credentials (advanced method)
+		const hasServiceAccount = !!process.env.GOOGLE_APPLICATION_CREDENTIALS;
+
+		console.log(
+			"[TTS API] GOOGLE_API_KEY:",
+			hasApiKey ? `✓ Set (${process.env.GOOGLE_API_KEY?.substring(0, 8)}...)` : "✗ Missing",
+		);
+		console.log(
+			"[TTS API] GOOGLE_APPLICATION_CREDENTIALS:",
+			hasServiceAccount ? "✓ Set" : "✗ Missing",
+		);
+		console.log(
+			"[TTS API] GOOGLE_CLOUD_PROJECT:",
+			process.env.GOOGLE_CLOUD_PROJECT ? "✓ Set" : "✗ Missing",
+		);
+
+		// Require at least one authentication method
+		if (!hasApiKey && !hasServiceAccount) {
+			const errorMsg =
+				"Google Cloud credentials not configured. Please set either:\n" +
+				"  - GOOGLE_API_KEY (simpler, for testing)\n" +
+				"  - GOOGLE_APPLICATION_CREDENTIALS (recommended for production, path to service account JSON)";
+			console.error(`[TTS API] ${errorMsg}`);
+			throw new Error(errorMsg);
+		}
+
+		googleProvider = new GoogleCloudTTSProvider();
+
+		// Build credentials object based on what's available
+		let credentials: string | { apiKey: string } | undefined;
+		if (hasApiKey) {
+			console.log("[TTS API] Using API key authentication");
+			credentials = { apiKey: process.env.GOOGLE_API_KEY! };
+		} else if (hasServiceAccount) {
+			console.log("[TTS API] Using service account authentication");
+			credentials = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+		}
+
+		await googleProvider.initialize({
+			projectId: process.env.GOOGLE_CLOUD_PROJECT || "pie-tts-project",
+			credentials,
+			defaultVoice: "en-US-Wavenet-A",
+			voiceType: "wavenet",
+		});
+
+		console.log("[TTS API] Google provider initialized successfully");
+	}
+	return googleProvider;
+}
+
+/**
  * POST /api/tts/synthesize
  *
  * Request body:
@@ -83,6 +144,7 @@ async function getPollyProvider(): Promise<PollyServerProvider> {
  *   language?: string;
  *   rate?: number;
  *   includeSpeechMarks?: boolean;
+ *   provider?: 'polly' | 'google';  // Defaults to 'polly'
  * }
  *
  * Response:
@@ -102,7 +164,9 @@ async function getPollyProvider(): Promise<PollyServerProvider> {
 export const POST: RequestHandler = async ({ request }) => {
 	try {
 		const body = await request.json();
-		const { text, voice, language, rate, includeSpeechMarks = true } = body;
+		const { text, voice, language, rate, includeSpeechMarks = true, provider = "polly" } = body;
+
+		console.log(`[TTS API] Synthesis request: provider=${provider}, voice=${voice}, language=${language}`);
 
 		// Validate request
 		if (!text || typeof text !== "string") {
@@ -113,32 +177,50 @@ export const POST: RequestHandler = async ({ request }) => {
 			throw error(400, { message: "Text too long (max 3000 characters)" });
 		}
 
-		// Get Polly provider (may throw if credentials not configured)
-		let polly;
+		if (provider !== "polly" && provider !== "google") {
+			throw error(400, { message: "Invalid provider. Must be 'polly' or 'google'" });
+		}
+
+		// Get the appropriate provider
+		let result;
 		try {
-			polly = await getPollyProvider();
+			if (provider === "google") {
+				const google = await getGoogleProvider();
+				result = await google.synthesize({
+					text,
+					voice: voice || "en-US-Wavenet-A",
+					language: language || "en-US",
+					rate,
+					includeSpeechMarks,
+				});
+			} else {
+				const polly = await getPollyProvider();
+				result = await polly.synthesize({
+					text,
+					voice: voice || "Joanna",
+					language: language || "en-US",
+					rate,
+					includeSpeechMarks,
+				});
+			}
 		} catch (err) {
 			// Handle credential configuration errors with user-friendly message
-			if (
-				err instanceof Error &&
-				err.message.includes("AWS credentials not configured")
-			) {
-				throw error(503, {
-					message:
-						"Text-to-speech service is not configured. AWS Polly credentials are required but not available.",
-				});
+			if (err instanceof Error) {
+				if (err.message.includes("AWS credentials not configured")) {
+					throw error(503, {
+						message:
+							"Text-to-speech service is not configured. AWS Polly credentials are required but not available.",
+					});
+				}
+				if (err.message.includes("Google Cloud credentials not configured")) {
+					throw error(503, {
+						message:
+							"Text-to-speech service is not configured. Google Cloud credentials are required but not available.",
+					});
+				}
 			}
 			throw err;
 		}
-
-		// Synthesize speech
-		const result = await polly.synthesize({
-			text,
-			voice: voice || "Joanna",
-			language: language || "en-US",
-			rate,
-			includeSpeechMarks,
-		});
 
 		// Convert Buffer to base64 for JSON response
 		const response = {

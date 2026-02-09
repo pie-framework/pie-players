@@ -22,6 +22,7 @@
 		bundleHost = '',
 		esmCdnUrl = 'https://esm.sh',
 		playerVersion = 'latest',
+		playerType = 'auto',
 		assessmentId = '',
 		sectionId = '',
 		ttsService = null,
@@ -44,6 +45,7 @@
 		bundleHost?: string;
 		esmCdnUrl?: string;
 		playerVersion?: string;
+		playerType?: 'auto' | 'iife' | 'esm' | 'fixed' | 'inline';
 		assessmentId?: string;
 		sectionId?: string;
 		ttsService?: any;
@@ -95,6 +97,7 @@
 				{bundleHost}
 				{esmCdnUrl}
 				{playerVersion}
+				{playerType}
 				{assessmentId}
 				{sectionId}
 				{ttsService}

@@ -32,6 +32,8 @@
 		"check": "turbo check",
 		"dev:example": "dotenvx run -- bun run --cwd apps/example dev",
 		"preview:example": "dotenvx run -- bun run --cwd apps/example preview",
+		"dev:item": "dotenvx run -- bun run --cwd apps/item-demos dev",
+		"preview:item": "dotenvx run -- bun run --cwd apps/item-demos preview",
 		"dev:section": "dotenvx run -- bun run --cwd apps/section-demos dev",
 		"preview:section": "dotenvx run -- bun run --cwd apps/section-demos preview",
 		"dev:docs": "dotenvx run -- bun run --cwd apps/docs dev",

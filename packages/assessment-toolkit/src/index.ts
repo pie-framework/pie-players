@@ -19,10 +19,12 @@ export { TypedEventBus } from "./core/TypedEventBus";
 
 export type {
 	IAccessibilityCatalogResolver,
+	IElementToolStateStore,
 	IHighlightCoordinator,
 	II18nService,
 	IThemeProvider,
 	IToolCoordinator,
+	IToolkitCoordinator,
 	ITTSService,
 	ToolState,
 } from "./services/interfaces";
@@ -42,6 +44,8 @@ export { AccessibilityCatalogResolver } from "./services/AccessibilityCatalogRes
 export { AssessmentAuthoringService } from "./services/AssessmentAuthoringService";
 // Context Variable Store (QTI 3.0 Context Declarations)
 export { ContextVariableStore } from "./services/ContextVariableStore";
+// Element Tool State Store (Element-level ephemeral tool state)
+export { ElementToolStateStore } from "./services/ElementToolStateStore";
 // Highlight Coordinator
 export type { Annotation } from "./services/HighlightCoordinator";
 export {
@@ -77,6 +81,15 @@ export type { FontSize, ThemeConfig } from "./services/ThemeProvider";
 export { ThemeProvider } from "./services/ThemeProvider";
 // Tool Coordinator
 export { ToolCoordinator, ZIndexLayer } from "./services/ToolCoordinator";
+// Toolkit Coordinator (Centralized service management)
+export type {
+	AnswerEliminatorToolConfig,
+	ToolConfig,
+	ToolkitCoordinatorConfig,
+	ToolkitServiceBundle,
+	TTSToolConfig,
+} from "./services/ToolkitCoordinator";
+export { ToolkitCoordinator } from "./services/ToolkitCoordinator";
 // Text-to-Speech Service
 export type { TTSConfig } from "./services/TTSService";
 export { PlaybackState, TTSService } from "./services/TTSService";
@@ -152,3 +165,10 @@ export type {
 // Products can import from './player/AssessmentPlayer' if desired.
 
 // Section Player - Use @pie-players/pie-section-player web component instead
+
+// ============================================================================
+// Shared Components
+// ============================================================================
+
+// QuestionToolBar is exported via package.json exports field
+// Import using: import QuestionToolBar from '@pie-players/pie-assessment-toolkit/components/QuestionToolBar.svelte';

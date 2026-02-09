@@ -5,4 +5,7 @@
  * Import the built version for CDN usage, or the .svelte source for Svelte projects.
  */
 
+// Re-export AdapterRegistry for auto-hide detection
+export { AdapterRegistry } from './adapters/adapter-registry';
+
 // Re-export any TypeScript types defined in the package

@@ -36,3 +36,39 @@ pie-section-player {
 	max-height: 100%;
 	overflow: hidden;
 }
+
+/* Outer (page) scrollbar: hidden unless actively scrolling */
+html,
+body {
+	scrollbar-width: auto;
+	scrollbar-color: transparent transparent;
+}
+html.outer-scrolling,
+body.outer-scrolling {
+	scrollbar-color: #c1c1c1 #f1f1f1;
+}
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+	width: 0;
+	height: 0;
+	background: transparent;
+}
+html.outer-scrolling::-webkit-scrollbar,
+body.outer-scrolling::-webkit-scrollbar {
+	width: 8px;
+	height: 8px;
+}
+html.outer-scrolling::-webkit-scrollbar-track,
+body.outer-scrolling::-webkit-scrollbar-track {
+	background: #f1f1f1;
+	border-radius: 4px;
+}
+html.outer-scrolling::-webkit-scrollbar-thumb,
+body.outer-scrolling::-webkit-scrollbar-thumb {
+	background: #c1c1c1;
+	border-radius: 4px;
+}
+html.outer-scrolling::-webkit-scrollbar-thumb:hover,
+body.outer-scrolling::-webkit-scrollbar-thumb:hover {
+	background: #a1a1a1;
+}

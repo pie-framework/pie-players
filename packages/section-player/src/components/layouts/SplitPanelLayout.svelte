@@ -52,6 +52,10 @@
 	let leftPanelWidth = $state(50); // percentage
 	let isDragging = $state(false);
 	let containerElement: HTMLDivElement | null = $state(null);
+	let passagesScrolling = $state(false);
+	let itemsScrolling = $state(false);
+	let passagesScrollTimer: ReturnType<typeof setTimeout> | null = null;
+	let itemsScrollTimer: ReturnType<typeof setTimeout> | null = null;
 
 	function handleMouseDown(event: MouseEvent) {
 		event.preventDefault();
@@ -92,6 +96,22 @@
 		}
 	}
 
+	function markScrolling(target: 'passages' | 'items') {
+		if (target === 'passages') {
+			passagesScrolling = true;
+			if (passagesScrollTimer) clearTimeout(passagesScrollTimer);
+			passagesScrollTimer = setTimeout(() => {
+				passagesScrolling = false;
+			}, 700);
+		} else {
+			itemsScrolling = true;
+			if (itemsScrollTimer) clearTimeout(itemsScrollTimer);
+			itemsScrollTimer = setTimeout(() => {
+				itemsScrolling = false;
+			}, 700);
+		}
+	}
+
 	// Attach global mouse listeners when dragging
 	$effect(() => {
 		if (isDragging) {
@@ -118,7 +138,12 @@
 >
 	{#if hasPassages}
 		<!-- Left Panel: Passages -->
-		<aside class="passages-panel" aria-label="Reading passages">
+		<aside
+			class="passages-panel"
+			class:is-scrolling={passagesScrolling}
+			aria-label="Reading passages"
+			onscroll={() => markScrolling('passages')}
+		>
 			{#each passages as passage (passage.id)}
 				<PassageRenderer
 					{passage}
@@ -132,26 +157,26 @@
 			{/each}
 		</aside>
 
-		<!-- Draggable Divider -->
-		<div
+		<!-- Draggable Divider: focusable resize handle, Arrow keys adjust panel width -->
+		<button
+			type="button"
 			class="divider"
 			class:dragging={isDragging}
 			onmousedown={handleMouseDown}
 			onkeydown={handleKeyDown}
-			role="separator"
-			aria-orientation="vertical"
 			aria-label="Resize panels"
-			aria-valuenow={Math.round(leftPanelWidth)}
-			aria-valuemin="20"
-			aria-valuemax="80"
-			tabindex="0"
 		>
-			<div class="divider-handle"></div>
-		</div>
+			<span class="divider-handle"></span>
+		</button>
 	{/if}
 
 	<!-- Items Panel -->
-	<main class="items-panel" aria-label="Assessment items">
+	<main
+		class="items-panel"
+		class:is-scrolling={itemsScrolling}
+		aria-label="Assessment items"
+		onscroll={() => markScrolling('items')}
+	>
 		{#each items as item, index (item.id || index)}
 			<div class="item-wrapper" data-item-index={index}>
 				<ItemRenderer
@@ -176,6 +201,7 @@
 <style>
 	.split-panel-layout {
 		display: grid;
+		grid-template-rows: 1fr;
 		padding: 1rem;
 		height: 100%;
 		max-height: 100%;
@@ -197,9 +223,26 @@
 		overflow-y: auto;
 		overflow-x: hidden;
 		min-height: 0;
+		/* Firefox auto-hide scrollbar */
+		scrollbar-width: auto;
+		scrollbar-color: transparent transparent;
+	}
+
+	.passages-panel.is-scrolling,
+	.items-panel.is-scrolling {
+		scrollbar-color: #c1c1c1 #f1f1f1;
 	}
 
 	.divider {
+		/* Reset button defaults so it looks like a divider strip */
+		border: none;
+		padding: 0;
+		margin: 0;
+		font: inherit;
+		/* Fill grid cell height so the handle is vertically centered in the visible area */
+		align-self: stretch;
+		height: 100%;
+		min-height: 0;
 		position: relative;
 		cursor: col-resize;
 		background: #f3f4f6;
@@ -221,12 +264,16 @@
 	}
 
 	.divider-handle {
+		/* Absolutely centered in the divider button (button fills grid cell height) */
+		position: absolute;
+		inset: 0;
+		margin: auto;
 		width: 6px;
 		height: 60px;
 		background: #9ca3af;
 		border-radius: 3px;
 		transition: all 0.2s ease;
-		position: relative;
+		pointer-events: none;
 	}
 
 	.divider-handle::before {
@@ -295,26 +342,33 @@
 		}
 	}
 
-	/* Improved scrollbar styling */
+	/* Hide scrollbar by default - WebKit (Chrome, Safari, Edge) */
 	.passages-panel::-webkit-scrollbar,
 	.items-panel::-webkit-scrollbar {
+		width: 0px;
+		background: transparent;
+	}
+
+	/* Show scrollbar while scrolling */
+	.passages-panel.is-scrolling::-webkit-scrollbar,
+	.items-panel.is-scrolling::-webkit-scrollbar {
 		width: 8px;
 	}
 
-	.passages-panel::-webkit-scrollbar-track,
-	.items-panel::-webkit-scrollbar-track {
+	.passages-panel.is-scrolling::-webkit-scrollbar-track,
+	.items-panel.is-scrolling::-webkit-scrollbar-track {
 		background: #f1f1f1;
 		border-radius: 4px;
 	}
 
-	.passages-panel::-webkit-scrollbar-thumb,
-	.items-panel::-webkit-scrollbar-thumb {
+	.passages-panel.is-scrolling::-webkit-scrollbar-thumb,
+	.items-panel.is-scrolling::-webkit-scrollbar-thumb {
 		background: #c1c1c1;
 		border-radius: 4px;
 	}
 
-	.passages-panel::-webkit-scrollbar-thumb:hover,
-	.items-panel::-webkit-scrollbar-thumb:hover {
+	.passages-panel.is-scrolling::-webkit-scrollbar-thumb:hover,
+	.items-panel.is-scrolling::-webkit-scrollbar-thumb:hover {
 		background: #a1a1a1;
 	}
 </style>

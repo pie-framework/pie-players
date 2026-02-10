@@ -164,6 +164,10 @@ import { onDestroy, onMount, untrack } from 'svelte';
 	let resizeStartWidth = 0;
 	let resizeStartHeight = 0;
 
+	// Outer scrollbar: show only while scrolling (cleaned up in onDestroy)
+	let outerScrollTimeoutId: ReturnType<typeof setTimeout> | null = null;
+	let removeOuterScrollListener: (() => void) | null = null;
+
 	// Initialize toolkit coordinator and TTS
 	async function initializeTTS(config: TTSConfig) {
 		ttsProvider = 'loading';
@@ -351,6 +355,23 @@ import { onDestroy, onMount, untrack } from 'svelte';
 
 			// Initialize TTS with loaded/default configuration
 			await initializeTTS(ttsConfig);
+
+			// Outer scrollbar: show only while the user is scrolling
+			function markOuterScrolling() {
+				document.documentElement.classList.add('outer-scrolling');
+				document.body.classList.add('outer-scrolling');
+				if (outerScrollTimeoutId) clearTimeout(outerScrollTimeoutId);
+				outerScrollTimeoutId = setTimeout(() => {
+					document.documentElement.classList.remove('outer-scrolling');
+					document.body.classList.remove('outer-scrolling');
+					outerScrollTimeoutId = null;
+				}, 700);
+			}
+			window.addEventListener('scroll', markOuterScrolling, { passive: true });
+			removeOuterScrollListener = () => {
+				window.removeEventListener('scroll', markOuterScrolling);
+				if (outerScrollTimeoutId) clearTimeout(outerScrollTimeoutId);
+			};
 		}
 	});
 
@@ -472,6 +493,14 @@ import { onDestroy, onMount, untrack } from 'svelte';
 
 	onDestroy(() => {
 		editor?.destroy();
+
+		// Remove outer scrollbar listener and class
+		if (removeOuterScrollListener) {
+			removeOuterScrollListener();
+			removeOuterScrollListener = null;
+		}
+		document.documentElement.classList.remove('outer-scrolling');
+		document.body.classList.remove('outer-scrolling');
 
 		// Stop TTS when component is destroyed (page navigation/refresh)
 		if (toolkitCoordinator) {

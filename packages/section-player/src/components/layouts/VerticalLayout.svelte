@@ -47,9 +47,24 @@
 			}
 		};
 	}
+
+	let isScrolling = $state(false);
+	let scrollTimer: ReturnType<typeof setTimeout> | null = null;
+
+	function markScrolling() {
+		isScrolling = true;
+		if (scrollTimer) clearTimeout(scrollTimer);
+		scrollTimer = setTimeout(() => {
+			isScrolling = false;
+		}, 700);
+	}
 </script>
 
-<div class="vertical-layout">
+<div
+	class="vertical-layout"
+	class:is-scrolling={isScrolling}
+	onscroll={markScrolling}
+>
 	<!-- Passages -->
 	{#if passages.length > 0}
 		<div class="passages-section">
@@ -99,6 +114,13 @@
 		height: 100%;
 		overflow-y: auto;
 		overflow-x: hidden;
+		/* Firefox auto-hide scrollbar */
+		scrollbar-width: auto;
+		scrollbar-color: transparent transparent;
+	}
+
+	.vertical-layout.is-scrolling {
+		scrollbar-color: #c1c1c1 #f1f1f1;
 	}
 
 	.passages-section {
@@ -129,22 +151,28 @@
 		}
 	}
 
-	/* Scrollbar styling */
+	/* Hide scrollbar by default - WebKit (Chrome, Safari, Edge) */
 	.vertical-layout::-webkit-scrollbar {
+		width: 0px;
+		background: transparent;
+	}
+
+	/* Show scrollbar while scrolling */
+	.vertical-layout.is-scrolling::-webkit-scrollbar {
 		width: 8px;
 	}
 
-	.vertical-layout::-webkit-scrollbar-track {
+	.vertical-layout.is-scrolling::-webkit-scrollbar-track {
 		background: #f1f1f1;
 		border-radius: 4px;
 	}
 
-	.vertical-layout::-webkit-scrollbar-thumb {
+	.vertical-layout.is-scrolling::-webkit-scrollbar-thumb {
 		background: #c1c1c1;
 		border-radius: 4px;
 	}
 
-	.vertical-layout::-webkit-scrollbar-thumb:hover {
+	.vertical-layout.is-scrolling::-webkit-scrollbar-thumb:hover {
 		background: #a1a1a1;
 	}
 </style>

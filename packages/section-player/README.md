@@ -13,6 +13,41 @@ A web component for rendering QTI 3.0 assessment sections with passages and item
 
 ## Installation
 
+### Option 1: CDN (No Build Step)
+
+Load directly from a CDN in your browser - no npm install or build step required:
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <script type="module">
+    // Import from jsdelivr CDN
+    import 'https://cdn.jsdelivr.net/npm/@pie-players/pie-section-player/dist/pie-section-player.js';
+    import 'https://cdn.jsdelivr.net/npm/@pie-players/pie-esm-player/dist/pie-esm-player.js';
+  </script>
+</head>
+<body>
+  <pie-section-player id="player"></pie-section-player>
+
+  <script type="module">
+    const player = document.getElementById('player');
+    player.section = { /* your section data */ };
+    player.mode = 'gather';
+  </script>
+</body>
+</html>
+```
+
+**Alternative CDNs:**
+
+- **unpkg**: `https://unpkg.com/@pie-players/pie-section-player@latest/dist/pie-section-player.js`
+- **esm.sh**: `https://esm.sh/@pie-players/pie-section-player` (auto-resolves dependencies)
+
+### Option 2: NPM (For Build Tools)
+
+Install via npm for use with build tools (Vite, Webpack, etc.):
+
 ```bash
 npm install @pie-players/pie-section-player
 # or

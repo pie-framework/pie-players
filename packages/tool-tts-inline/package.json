@@ -4,10 +4,15 @@
 	"type": "module",
 	"main": "./dist/tool-tts-inline.js",
 	"types": "./dist/tool-tts-inline.d.ts",
+	"unpkg": "./dist/tool-tts-inline.js",
+	"jsdelivr": "./dist/tool-tts-inline.js",
+	"publishConfig": {
+		"access": "public"
+	},
 	"exports": {
 		".": {
 			"types": "./dist/tool-tts-inline.d.ts",
-			"default": "./dist/tool-tts-inline.js"
+			"import": "./dist/tool-tts-inline.js"
 		}
 	},
 	"files": [

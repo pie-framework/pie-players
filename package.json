@@ -35,6 +35,8 @@
 		"dev:item": "dotenvx run -- bun run --cwd apps/item-demos dev",
 		"preview:item": "dotenvx run -- bun run --cwd apps/item-demos preview",
 		"dev:section": "dotenvx run -- bun run --cwd apps/section-demos dev",
+		"dev:section:cdn": "dotenvx run -- bun run --cwd apps/section-demos dev:cdn",
+		"dev:section:cdn-debug": "dotenvx run -- bun run --cwd apps/section-demos dev:cdn-debug",
 		"preview:section": "dotenvx run -- bun run --cwd apps/section-demos preview",
 		"dev:docs": "dotenvx run -- bun run --cwd apps/docs dev",
 		"preview:docs": "NODE_ENV=production bun run --cwd apps/docs build && dotenvx run -- bun run --cwd apps/docs preview",

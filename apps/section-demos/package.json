@@ -6,6 +6,8 @@
 	"private": true,
 	"scripts": {
 		"dev": "vite dev",
+		"dev:cdn": "LOCAL_ESM_CDN=true vite dev",
+		"dev:cdn-debug": "LOCAL_ESM_CDN=true LOCAL_ESM_CDN_DEBUG=true vite dev",
 		"build": "vite build",
 		"preview": "vite preview",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",

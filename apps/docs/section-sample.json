@@ -1,0 +1,1464 @@
+{
+    "identifier": "1",
+    "keepTogether": true,
+    "rubricBlocks": [
+        {
+            "identifier": "E12631",
+            "view": "candidate",
+            "class": "stimulus",
+            "passageVId": "4028e4a23db2924e013db74d723b0362",
+            "passage": {
+                "id": "94aceaf0-bb30-11f0-8dcf-cfb9d6157de8",
+                "name": "E12631",
+                "config": {
+                    "id": "690cd1a1386bcfa9d0da5b90",
+                    "markup": "<pie-passage id=\"4028e4a23db2924e013db74d723b0362\"></pie-passage>",
+                    "elements": {
+                        "pie-passage": "@pie-element/passage@latest"
+                    },
+                    "models": [
+                        {
+                            "passages": [
+                                {
+                                    "title": "Henri Rousseau Web Page",
+                                    "subtitle": "",
+                                    "author": "",
+                                    "teacherInstructions": "",
+                                    "text": "<div><div class=\"numbered-paragraph\"><p>&nbsp;&nbsp;&nbsp;&nbsp;<span class=\"no-number\"><img alt=\"A database page titled Master Artist Search shows four black and white artworks by Henri Rousseau. The first three images are paintings showing jungle and nature scenes, while the last is a portrait of the artist himself. From left to right: Struggle between Tiger and Bull (1908-1909), Sleeping Gypsy (1897), Tiger in a Tropical Storm (1891), and a Self Portrait (1902-1903).\" id=\"4e6f3109a1e8465aa129fea75832172c\" src=\"https://assets.pie-api.com/assets/18b7e93e-8b19-4ee5-bb66-89f057b609d6/image/jpeg/e4e15c95-d874-4148-8ca8-09c3da0c171d\"></span></p></div><div class=\"p-number\">1</div><div class=\"numbered-paragraph\"><p>Henri Rousseau became a famous artist, but not until later in his life. Born a plumber's son in 1844, he held a variety of jobs before concentrating on art. He worked for a lawyer, joined the army, and worked in government offices.</p></div><div class=\"p-number\">2</div><div class=\"numbered-paragraph\"><p>Rousseau started focusing on painting when he was in his early forties. He did not have any formal training but rather taught himself to paint. He said he had \"no teacher other than nature.\" Rousseau painted what he saw around him and combined that with his imagination. Having nine children to support, he continued to work as a tax collector until he was 49, when he devoted all of his time to his artwork.</p></div><div class=\"p-number\">3</div><div class=\"numbered-paragraph\"><p>Rousseau loved to visit gardens and look at interesting plants from faraway places. Although he had never been to a jungle, Rousseau used what he saw along with his imagination to create fantastic paintings of jungles. Ferocious tigers, moonlit deserts, and strange flowers leap right off the paintings. These subjects continue to draw people to his work.</p></div><div class=\"p-number\">4</div><div class=\"numbered-paragraph\"><p>Early in his career, Rousseau's artwork was mocked. People said his paintings looked childish. However, soon famous artists like Pablo Picasso noticed Rousseau's art and admired it. It was not until very late in his life that Rousseau gained respect as an artist. But today his talent is recognized and celebrated by many.</p></div></div>"
+                                },
+                                {
+                                    "title": "Review: Henri Rousseau at the Salon, April 12, 1898",
+                                    "subtitle": "",
+                                    "author": "",
+                                    "teacherInstructions": "",
+                                    "text": "<div><div class=\"p-number\">1</div><div class=\"numbered-paragraph\"><p>&#160;&#160;&#160;&#160; A collection of Henri Rousseau&#8217;s paintings is currently on display at the Salon. The collection can only be described as uninteresting, childish, and confusing.</p></div><div class=\"p-number\">2</div><div class=\"numbered-paragraph\"><p>&#160;&#160;&#160;&#160; Rousseau, a tax collector, has not received any proper training, and it clearly shows.</p></div><div class=\"p-number\">3</div><div class=\"numbered-paragraph\"><p>&#160;&#160;&#160;&#160; The world through Rousseau&#8217;s eyes lacks beauty and sense of realness. A painting of a gypsy asleep in the desert, painted in 1897, is a good example. Hands are larger than they should be, and figures seem to be paper cutouts rather than living, breathing people. Backdrops in the art fail to have any depth.</p></div><div class=\"p-number\">4</div><div class=\"numbered-paragraph\"><p>&#160;&#160;&#160;&#160; One painting of a tiger in a storm, painted in 1891, shows a tiger that awkwardly looks as if it is standing on a leaf. The tiger&#8217;s white teeth and eyes make it look lifeless and boring. The jungle plants are bent over as if they were carelessly placed onto the canvas. Perhaps Rousseau intended for it to look like a storm, but instead it looks like the work of an artist lacking both experience and talent. One can quickly see that Rousseau has never set foot in a real jungle. In fact, he has never left France.</p></div><div class=\"p-number\">5</div><div class=\"numbered-paragraph\"><p>&#160;&#160;&#160;&#160; Rousseau&#8217;s paintings should not be on any gallery wall unless it is inside a school for young children. Why this man continues to paint and show off his work is bewildering.</p></div></div>"
+                                }
+                            ],
+                            "id": "4028e4a23db2924e013db74d723b0362",
+                            "element": "pie-passage"
+                        }
+                    ],
+                    "layout": "left",
+                    "buildInfo": [
+                        {
+                            "name": "@pie-element/passage",
+                            "version": "latest"
+                        }
+                    ]
+                },
+                "retired": false,
+                "published": true,
+                "baseId": "4028e4a23db2924e013db74d723b0362",
+                "signature": "14dec9b81a44b5f404f9b7ee183a1a1b972d766c52da4f1fa51661a9f62d1b27",
+                "version": {
+                    "major": 0,
+                    "minor": 0,
+                    "patch": 980,
+                    "prerelease": {
+                        "tag": null,
+                        "version": null
+                    }
+                },
+                "searchMetaData": {
+                    "id": "94aceaf0-bb30-11f0-8dcf-cfb9d6157de8",
+                    "baseId": "4028e4a23db2924e013db74d723b0362",
+                    "name": "E12631",
+                    "version": "0.0.980",
+                    "isRelease": true,
+                    "collections_id": [
+                        "1",
+                        "36c6b46e-2294-44d0-a0e3-3147d5ac099b",
+                        "8a80808163605df901636562699b22cd"
+                    ],
+                    "organizations_id": [
+                        "",
+                        "1"
+                    ],
+                    "retired": false,
+                    "published": true,
+                    "pies": [
+                        "@pie-element/passage"
+                    ],
+                    "bundle_@pie-element/passage": "latest",
+                    "passageContent": "<div><div class=\"numbered-paragraph\"><p>&nbsp;&nbsp;&nbsp;&nbsp;<span class=\"no-number\"><img alt=\"A database page titled Master Artist Search shows four black and white artworks by Henri Rousseau. The first three images are paintings showing jungle and nature scenes, while the last is a portrait of the artist himself. From left to right: Struggle between Tiger and Bull (1908-1909), Sleeping Gypsy (1897), Tiger in a Tropical Storm (1891), and a Self Portrait (1902-1903).\" id=\"4e6f3109a1e8465aa129fea75832172c\" src=\"https://assets.pie-api.com/assets/18b7e93e-8b19-4ee5-bb66-89f057b609d6/image/jpeg/e4e15c95-d874-4148-8ca8-09c3da0c171d\"></span></p></div><div class=\"p-number\">1</div><div class=\"numbered-paragraph\"><p>Henri Rousseau became a famous artist, but not until later in his life. Born a plumber's son in 1844, he held a variety of jobs before concentrating on art. He worked for a lawyer, joined the army, and worked in government offices.</p></div><div class=\"p-number\">2</div><div class=\"numbered-paragraph\"><p>Rousseau started focusing on painting when he was in his early forties. He did not have any formal training but rather taught himself to paint. He said he had \"no teacher other than nature.\" Rousseau painted what he saw around him and combined that with his imagination. Having nine children to support, he continued to work as a tax collector until he was 49, when he devoted all of his time to his artwork.</p></div><div class=\"p-number\">3</div><div class=\"numbered-paragraph\"><p>Rousseau loved to visit gardens and look at interesting plants from faraway places. Although he had never been to a jungle, Rousseau used what he saw along with his imagination to create fantastic paintings of jungles. Ferocious tigers, moonlit deserts, and strange flowers leap right off the paintings. These subjects continue to draw people to his work.</p></div><div class=\"p-number\">4</div><div class=\"numbered-paragraph\"><p>Early in his career, Rousseau's artwork was mocked. People said his paintings looked childish. However, soon famous artists like Pablo Picasso noticed Rousseau's art and admired it. It was not until very late in his life that Rousseau gained respect as an artist. But today his talent is recognized and celebrated by many.</p></div></div> <div><div class=\"p-number\">1</div><div class=\"numbered-paragraph\"><p>&#160;&#160;&#160;&#160; A collection of Henri Rousseau&#8217;s paintings is currently on display at the Salon. The collection can only be described as uninteresting, childish, and confusing.</p></div><div class=\"p-number\">2</div><div class=\"numbered-paragraph\"><p>&#160;&#160;&#160;&#160; Rousseau, a tax collector, has not received any proper training, and it clearly shows.</p></div><div class=\"p-number\">3</div><div class=\"numbered-paragraph\"><p>&#160;&#160;&#160;&#160; The world through Rousseau&#8217;s eyes lacks beauty and sense of realness. A painting of a gypsy asleep in the desert, painted in 1897, is a good example. Hands are larger than they should be, and figures seem to be paper cutouts rather than living, breathing people. Backdrops in the art fail to have any depth.</p></div><div class=\"p-number\">4</div><div class=\"numbered-paragraph\"><p>&#160;&#160;&#160;&#160; One painting of a tiger in a storm, painted in 1891, shows a tiger that awkwardly looks as if it is standing on a leaf. The tiger&#8217;s white teeth and eyes make it look lifeless and boring. The jungle plants are bent over as if they were carelessly placed onto the canvas. Perhaps Rousseau intended for it to look like a storm, but instead it looks like the work of an artist lacking both experience and talent. One can quickly see that Rousseau has never set foot in a real jungle. In fact, he has never left France.</p></div><div class=\"p-number\">5</div><div class=\"numbered-paragraph\"><p>&#160;&#160;&#160;&#160; Rousseau&#8217;s paintings should not be on any gallery wall unless it is inside a school for young children. Why this man continues to paint and show off his work is bewildering.</p></div></div>",
+                    "k12_passageTitle": "Henri Rousseau Web Page Review: Henri Rousseau at the Salon, April 12, 1898",
+                    "passageText": "Henri Rousseau Web Page Review: Henri Rousseau at the Salon, April 12, 1898 <div><div class=\"numbered-paragraph\"><p>&nbsp;&nbsp;&nbsp;&nbsp;<span class=\"no-number\"><img alt=\"A database page titled Master Artist Search shows four black and white artworks by Henri Rousseau. The first three images are paintings showing jungle and nature scenes, while the last is a portrait of the artist himself. From left to right: Struggle between Tiger and Bull (1908-1909), Sleeping Gypsy (1897), Tiger in a Tropical Storm (1891), and a Self Portrait (1902-1903).\" id=\"4e6f3109a1e8465aa129fea75832172c\" src=\"https://assets.pie-api.com/assets/18b7e93e-8b19-4ee5-bb66-89f057b609d6/image/jpeg/e4e15c95-d874-4148-8ca8-09c3da0c171d\"></span></p></div><div class=\"p-number\">1</div><div class=\"numbered-paragraph\"><p>Henri Rousseau became a famous artist, but not until later in his life. Born a plumber's son in 1844, he held a variety of jobs before concentrating on art. He worked for a lawyer, joined the army, and worked in government offices.</p></div><div class=\"p-number\">2</div><div class=\"numbered-paragraph\"><p>Rousseau started focusing on painting when he was in his early forties. He did not have any formal training but rather taught himself to paint. He said he had \"no teacher other than nature.\" Rousseau painted what he saw around him and combined that with his imagination. Having nine children to support, he continued to work as a tax collector until he was 49, when he devoted all of his time to his artwork.</p></div><div class=\"p-number\">3</div><div class=\"numbered-paragraph\"><p>Rousseau loved to visit gardens and look at interesting plants from faraway places. Although he had never been to a jungle, Rousseau used what he saw along with his imagination to create fantastic paintings of jungles. Ferocious tigers, moonlit deserts, and strange flowers leap right off the paintings. These subjects continue to draw people to his work.</p></div><div class=\"p-number\">4</div><div class=\"numbered-paragraph\"><p>Early in his career, Rousseau's artwork was mocked. People said his paintings looked childish. However, soon famous artists like Pablo Picasso noticed Rousseau's art and admired it. It was not until very late in his life that Rousseau gained respect as an artist. But today his talent is recognized and celebrated by many.</p></div></div> <div><div class=\"p-number\">1</div><div class=\"numbered-paragraph\"><p>&#160;&#160;&#160;&#160; A collection of Henri Rousseau&#8217;s paintings is currently on display at the Salon. The collection can only be described as uninteresting, childish, and confusing.</p></div><div class=\"p-number\">2</div><div class=\"numbered-paragraph\"><p>&#160;&#160;&#160;&#160; Rousseau, a tax collector, has not received any proper training, and it clearly shows.</p></div><div class=\"p-number\">3</div><div class=\"numbered-paragraph\"><p>&#160;&#160;&#160;&#160; The world through Rousseau&#8217;s eyes lacks beauty and sense of realness. A painting of a gypsy asleep in the desert, painted in 1897, is a good example. Hands are larger than they should be, and figures seem to be paper cutouts rather than living, breathing people. Backdrops in the art fail to have any depth.</p></div><div class=\"p-number\">4</div><div class=\"numbered-paragraph\"><p>&#160;&#160;&#160;&#160; One painting of a tiger in a storm, painted in 1891, shows a tiger that awkwardly looks as if it is standing on a leaf. The tiger&#8217;s white teeth and eyes make it look lifeless and boring. The jungle plants are bent over as if they were carelessly placed onto the canvas. Perhaps Rousseau intended for it to look like a storm, but instead it looks like the work of an artist lacking both experience and talent. One can quickly see that Rousseau has never set foot in a real jungle. In fact, he has never left France.</p></div><div class=\"p-number\">5</div><div class=\"numbered-paragraph\"><p>&#160;&#160;&#160;&#160; Rousseau&#8217;s paintings should not be on any gallery wall unless it is inside a school for young children. Why this man continues to paint and show off his work is bewildering.</p></div></div>",
+                    "content": "Henri Rousseau Web Page 1Henri Rousseau became a famous artist, but not until later in his life. Born a plumber's son in 1844, he held a variety of jobs before concentrating on art. He worked for a lawyer, joined the army, and worked in government offices.2Rousseau started focusing on painting when he was in his early forties. He did not have any formal training but rather taught himself to paint. He said he had \"no teacher other than nature.\" Rousseau painted what he saw around him and combined that with his imagination. Having nine children to support, he continued to work as a tax collector until he was 49, when he devoted all of his time to his artwork.3Rousseau loved to visit gardens and look at interesting plants from faraway places. Although he had never been to a jungle, Rousseau used what he saw along with his imagination to create fantastic paintings of jungles. Ferocious tigers, moonlit deserts, and strange flowers leap right off the paintings. These subjects continue to draw people to his work.4Early in his career, Rousseau's artwork was mocked. People said his paintings looked childish. However, soon famous artists like Pablo Picasso noticed Rousseau's art and admired it. It was not until very late in his life that Rousseau gained respect as an artist. But today his talent is recognized and celebrated by many. Review: Henri Rousseau at the Salon, April 12, 1898 1 A collection of Henri Rousseau’s paintings is currently on display at the Salon. The collection can only be described as uninteresting, childish, and confusing.2 Rousseau, a tax collector, has not received any proper training, and it clearly shows.3 The world through Rousseau’s eyes lacks beauty and sense of realness. A painting of a gypsy asleep in the desert, painted in 1897, is a good example. Hands are larger than they should be, and figures seem to be paper cutouts rather than living, breathing people. Backdrops in the art fail to have any depth.4 One painting of a tiger in a storm, painted in 1891, shows a tiger that awkwardly looks as if it is standing on a leaf. The tiger’s white teeth and eyes make it look lifeless and boring. The jungle plants are bent over as if they were carelessly placed onto the canvas. Perhaps Rousseau intended for it to look like a storm, but instead it looks like the work of an artist lacking both experience and talent. One can quickly see that Rousseau has never set foot in a real jungle. In fact, he has never left France.5 Rousseau’s paintings should not be on any gallery wall unless it is inside a school for young children. Why this man continues to paint and show off his work is bewildering."
+                },
+                "createdAt": "2025-11-06T16:49:37.567Z",
+                "updatedAt": "2025-12-22T00:50:42.879Z"
+            }
+        }
+    ],
+    "assessmentItemRefs": [
+        {
+            "identifier": "E227998",
+            "itemVId": "4028e4a24b37ea67014b5eff623c6541",
+            "item": {
+                "id": "be9ca0f0-5c6a-11f0-977d-272f05a28dd6",
+                "name": "E227998",
+                "config": {
+                    "markup": "<multiple-choice id=\"4028e4a24b37ea67014b5eff623c6541\"></multiple-choice>",
+                    "elements": {
+                        "multiple-choice": "@pie-element/multiple-choice@latest"
+                    },
+                    "models": [
+                        {
+                            "keyMode": "none",
+                            "lockChoiceOrder": true,
+                            "id": "4028e4a24b37ea67014b5eff623c6541",
+                            "choiceMode": "radio",
+                            "choices": [
+                                {
+                                    "correct": false,
+                                    "label": "<p>He worked for a lawyer, joined the army, and worked in government offices.</p>",
+                                    "value": "4028e4a24b37ea67014b5eff623c6542",
+                                    "rationale": "<p>This sentence describes what Rousseau did for work before he began to focus his attention on his painting. It does not describe how Rousseau learned to paint or where he found inspiration for his work.</p>"
+                                },
+                                {
+                                    "correct": false,
+                                    "label": "<p>Rousseau started focusing on painting when he was in his early forties.</p>",
+                                    "value": "4028e4a24b37ea67014b5eff623d6543",
+                                    "rationale": "<p>This sentence explains that Rousseau did not start focusing on painting until fairly late in life, but it does not refer to the idea that Rousseau was self-taught or that he was inspired by what he saw in nature.</p>"
+                                },
+                                {
+                                    "correct": false,
+                                    "label": "<p>Rousseau painted what he saw around him and combined that with his imagination.</p>",
+                                    "value": "4028e4a24b37ea67014b5eff623d6544",
+                                    "rationale": "<p>While the statement that &#8220;Rousseau painted what he saw around him&#8221; could refer to the things Rousseau saw in nature, this is not the best option since it could also refer to any number of other subjects (people, buildings, etc.).</p>"
+                                },
+                                {
+                                    "correct": true,
+                                    "label": "<p>Rousseau loved to visit gardens and look at interesting plants from faraway places.</p>",
+                                    "value": "4028e4a24b37ea67014b5eff623d6545",
+                                    "rationale": "<p>This sentence suggests that plants, which are of course found in abundance in nature, provided inspiration for Rousseau&#8217;s paintings, rather than any formal instruction from other artists or teachers.</p>"
+                                }
+                            ],
+                            "prompt": "<p>Read this sentence from paragraph 2 of <span class=\"passage-title\">Henri Rousseau Web Page.</span></p><p><span class=\"block-quote\">He said he had &#8220;no teacher other than nature.&#8221;</span></p><p>Which sentence from the text <span class=\"relative-emphasis\">best </span>supports Rousseau&#8217;s statement?</p>",
+                            "element": "multiple-choice"
+                        }
+                    ],
+                    "id": "686dd106a1d4aa2f3a180f4a"
+                },
+                "searchMetaData": {
+                    "k12_passageCertifiedLexile": 930,
+                    "k12_status": "PUBLISHED",
+                    "kds_published": "2015-03-31",
+                    "kds_type": "MC",
+                    "kds_modified": "2025-07-09",
+                    "k12_abStandard": [
+                        "543374E4-DA6F-11E2-85CC-52EDD51F4EFC",
+                        "CD8333A2-93DB-11E0-8527-63159DFF4B22",
+                        "BF397AF4-128D-4566-ABBA-4845F537D4FB",
+                        "368EDD64-DA67-11E2-B1AA-803E9DFF4B22",
+                        "E0BFFF7A-76D1-11EB-B4D6-62D9C80FF06B",
+                        "AA09A382-87B9-11DE-8BA3-DB299DFF4B22",
+                        "9DCA63DA-DA6D-11E2-BA53-9B72D51F4EFC",
+                        "07c57a35-6c45-46e9-8121-05dfc5f3503d",
+                        "C789A46A-D9E6-11E2-BBB0-00249DFF4B22",
+                        "9BD85135-7E03-43B1-9242-AD9AEFF61E53",
+                        "DAFFF920-DE81-11E0-831A-85489DFF4B22",
+                        "1C8A9C32-9892-11E0-8388-5F489DFF4B22",
+                        "4FB5C4AB-1006-48E6-BEF9-4170C929F939",
+                        "cc422c2e-fa00-11ee-85ad-0ea0ac55c34d",
+                        "FAC49C6E-5D52-481D-9A22-0746370B645A",
+                        "A20C3398-D9D6-11E2-8B79-45B7D51F4EFC",
+                        "23DA2C52-3A33-11E2-B7CD-2BFEBCAA0334",
+                        "AA89A826-D305-453D-B9DE-ECEB5A553EF2",
+                        "E34D936C-835A-11E0-A099-8AF99CFF4B22",
+                        "2B0B3F9A-DA72-11E2-9C75-52EDD51F4EFC",
+                        "6ca383dc-3b17-47b5-b713-04212e69b795",
+                        "97442310-A777-4DF5-B3F1-747059F8C952",
+                        "437A46C3-7220-4847-98C0-2C67FEBB04C6",
+                        "30BD0462-31A6-11E6-AA75-8FD5092D2668",
+                        "23814E3C-D9AE-11E2-8F9A-BB82D51F4EFC",
+                        "22F6770A-7C48-11E0-9647-CB109DFF4B22",
+                        "719C2FF6-54A0-4193-9747-781CC1C39C71",
+                        "3DEB1508-D9D3-11E2-A820-F2109DFF4B22",
+                        "95fd11e7-a318-4b09-bd03-c8ab39267f19",
+                        "4A3F0682-8512-4AA0-8078-62FF5E59260B",
+                        "90F6DE77-7B88-4827-8771-CFA050B94861",
+                        "9121CFCD-E491-4489-9DB5-A3B1E30AC6F2",
+                        "E90F2AAE-AF87-11E1-913D-05249DFF4B22",
+                        "DCFAACB2-5E08-42C8-85DB-54492A3E06B1",
+                        "26C476A0-DA71-11E2-B055-E63F9DFF4B22",
+                        "CC3E7C28-D443-11E6-BA42-6A36CDC8CA83",
+                        "23D7F3FE-D9D1-11E2-A302-B4A5D51F4EFC",
+                        "6197ED64-C9A2-11E2-8534-660B9DFF4B22",
+                        "614E223C-BFDC-11E0-8BD1-2C4B9DFF4B22",
+                        "64CDD909-3BF6-4205-BA3A-F8F6BBEB32B8",
+                        "e6783f39-53aa-4d63-998c-745ec39e69f2",
+                        "95A72D54-936A-11EC-B196-34ECB4076729",
+                        "C0DC6610-C9E0-11E5-9D41-704E3C6237C7",
+                        "D69C7BB7-19A1-409E-9F22-B71BBD127FA0",
+                        "F5FC4C3F-E08A-41A6-A997-DAD0A1344911",
+                        "E442F4A2-B8C9-11E0-9889-17519DFF4B22",
+                        "3C60F006-BA88-11E1-B2D2-09269DFF4B22",
+                        "D3C31D6E-87E0-4F46-8E50-41A4D8460897",
+                        "1327E313-7336-46C2-B7DF-21F8608DBC66",
+                        "43274118-D9E2-11E2-96B6-A0BED51F4EFC",
+                        "86d3f119-cb98-404d-81f6-fcdbb71a3ac9",
+                        "C11AF767-0BBF-4379-8BD5-6E2185F0CFA5",
+                        "51D4FA30-D90F-11E2-9D4F-28629DFF4B22",
+                        "49002A95-79FC-4EBB-A10A-7D8DF967E42A",
+                        "95B384CA-33BD-4305-AF52-E47049F8F44F",
+                        "B08ACFF2-F048-11E5-A5EB-5FE2092D2668",
+                        "D412F1EE-6DD8-11E6-ADDA-31AABF03DF2F",
+                        "8E142800-D9B3-11E2-BE28-04169DFF4B22",
+                        "9ECEE5CA-24F8-11E6-A83D-E4DD99AB8BA3",
+                        "C47DD491-5ED7-4E38-9689-DFF9F4A6ED35",
+                        "D4FDCCDC-393A-11E6-8644-A1299AAB8BA3",
+                        "A0915A98-279E-11E1-814D-E1469DFF4B22",
+                        "6C41799D-67EE-4700-8DDF-2EB5F84BBC4C",
+                        "43D3D16C-576F-448D-BF40-A5EB9D346AEE",
+                        "C6C71FA8-D9B4-11E2-9DF4-B4A5D51F4EFC",
+                        "7FC06790-7440-11DF-93FA-01FD9CFF4B22",
+                        "3E661E88-DA78-11E2-A988-824A9DFF4B22",
+                        "B6CAC8B2-AA92-4B4E-846F-E9FC4D2631BF",
+                        "92DDA168-D357-11E5-9DCB-5761D9353DDA",
+                        "0BDC54AB-E077-4FBE-B8B5-B008125BCB21",
+                        "963CB492-4D20-11EA-8F74-F9F5127CAE8C",
+                        "385BA3B4-D9A6-11E2-8171-BA739DFF4B22",
+                        "AA6E89DE-EC09-11E1-B53C-5B739DFF4B22",
+                        "8132E684-8664-475A-800B-295FD6BB6D42",
+                        "9E3D7E2A-1C59-11E6-9171-240E9AAB8BA3",
+                        "2D513D9E-0AD4-4D66-A932-80CC35032A60",
+                        "404f7a1b-8b62-43d8-9f5e-6e74ec9042aa"
+                    ],
+                    "k12_depthOfKnowledge": "DOK2",
+                    "kds_aligned": "2025-07-01",
+                    "k12_sbacClaims": [
+                        "Claim 1"
+                    ],
+                    "k12_stem": "<p>Read this sentence from paragraph 2 of <span class=\"passage-title\">Henri Rousseau Web Page.</span></p><p><span class=\"block-quote\">He said he had &#8220;no teacher other than nature.&#8221;</span></p><p>Which sentence from the text <span class=\"relative-emphasis\">best </span>supports Rousseau&#8217;s statement?</p>",
+                    "kds_itemBankName": "College and Career Readiness Item Bank",
+                    "k12_locales": [
+                        "en_US"
+                    ],
+                    "kds_itemBankId": "4028e4a22998350701299839890b3c87",
+                    "kds_version": "15",
+                    "k12_parccClaims": [
+                        "Sub Claim I.2"
+                    ],
+                    "k12_author": "Krista O'Connell",
+                    "k12_passageAuthentic": false,
+                    "k12_passageTitle": "Grouped Passage",
+                    "k12_delivery": "BOTH",
+                    "id": "be9ca0f0-5c6a-11f0-977d-272f05a28dd6",
+                    "baseId": "4028e4a24b37ea67014b5eff623c6541",
+                    "name": "E227998",
+                    "version": "0.0.87",
+                    "isRelease": true,
+                    "collections_id": [
+                        "36c6b46e-2294-44d0-a0e3-3147d5ac099b",
+                        "8a80808163605df901636562699b22cd"
+                    ],
+                    "organizations_id": [
+                        "1"
+                    ],
+                    "retired": false,
+                    "published": true,
+                    "pies": [
+                        "@pie-element/multiple-choice"
+                    ],
+                    "bundle_@pie-element/multiple-choice": "latest",
+                    "prompt": "<p>Read this sentence from paragraph 2 of <span class=\"passage-title\">Henri Rousseau Web Page.</span></p><p><span class=\"block-quote\">He said he had &#8220;no teacher other than nature.&#8221;</span></p><p>Which sentence from the text <span class=\"relative-emphasis\">best </span>supports Rousseau&#8217;s statement?</p>",
+                    "content": "Read this sentence from paragraph 2 of Henri Rousseau Web Page.He said he had “no teacher other than nature.”Which sentence from the text best supports Rousseau’s statement? He worked for a lawyer, joined the army, and worked in government offices. 4028e4a24b37ea67014b5eff623c6542 Rousseau started focusing on painting when he was in his early forties. 4028e4a24b37ea67014b5eff623d6543 Rousseau painted what he saw around him and combined that with his imagination. 4028e4a24b37ea67014b5eff623d6544 Rousseau loved to visit gardens and look at interesting plants from faraway places. 4028e4a24b37ea67014b5eff623d6545"
+                },
+                "passage": "be959c10-5c6a-11f0-977d-272f05a28dd6",
+                "retired": false,
+                "published": true,
+                "baseId": "4028e4a24b37ea67014b5eff623c6541",
+                "signature": "b386136de36862be0e1a5ecac66e725a863f60417492b24dab7e23a7efa327b2",
+                "version": {
+                    "major": 0,
+                    "minor": 0,
+                    "patch": 87,
+                    "prerelease": {
+                        "tag": null,
+                        "version": null
+                    }
+                },
+                "createdAt": "2025-07-09T02:16:38.271Z",
+                "updatedAt": "2025-12-22T03:15:20.936Z"
+            }
+        },
+        {
+            "identifier": "E184728",
+            "itemVId": "4028e4a23db2924e013db77c9ba703fb",
+            "item": {
+                "id": "87c0f700-bb30-11f0-8dcf-cfb9d6157de8",
+                "name": "E184728",
+                "config": {
+                    "markup": "<multiple-choice id=\"4028e4a23db2924e013db77c9ba703fb\"></multiple-choice>",
+                    "elements": {
+                        "multiple-choice": "@pie-element/multiple-choice@latest"
+                    },
+                    "models": [
+                        {
+                            "keyMode": "none",
+                            "lockChoiceOrder": false,
+                            "id": "4028e4a23db2924e013db77c9ba703fb",
+                            "choiceMode": "radio",
+                            "choices": [
+                                {
+                                    "correct": false,
+                                    "label": "<p>Rousseau's taught his own children how to paint.</p>",
+                                    "value": "4028e4a23db2924e013db77c9ba703ff",
+                                    "rationale": "<p>Though it is true that Rousseau had many children and may have taught them how to paint, this statement does not describe the intent of the sentence from the text.</p>"
+                                },
+                                {
+                                    "correct": false,
+                                    "label": "<p>Many of Rousseau's paintings were mocked.</p>",
+                                    "value": "4028e4a23db2924e013db77c9ba703fd",
+                                    "rationale": "<p>Although this does support the idea that the reviewer thinks his paintings should only be in an elementary school, the idea is better supported by the statement that some people thought he painted like a child.</p>"
+                                },
+                                {
+                                    "correct": true,
+                                    "label": "<p>Some people thought he painted like a child.</p>",
+                                    "value": "4028e4a23db2924e013db77c9ba703fc",
+                                    "rationale": "<p>The reviewer is saying it looks like a child painted the paintings on display.</p>"
+                                },
+                                {
+                                    "correct": false,
+                                    "label": "<p>Young people were attracted to his paintings.</p>",
+                                    "value": "4028e4a23db2924e013db77c9ba703fe",
+                                    "rationale": "<p>Although it's true that a younger generation was first to appreciate Rousseau's work, this idea is not supported by the sentence in question.</p>"
+                                }
+                            ],
+                            "prompt": "<p>Read this sentence from paragraph 5 of \"Review:&#160;Henri Rousseau at the Salon, April 12, 1898.\"</p>\r\n<p><span class=\"block-quote\">Rousseau&#8217;s paintings should not be on any gallery wall unless it is inside a school for young children.</span></p>\r\n<p>Which sentence <span class=\"relative-emphasis\">best </span>describes what the author is suggesting?</p>",
+                            "element": "multiple-choice"
+                        }
+                    ],
+                    "id": "690cd18b386bcfa9d0da5aeb"
+                },
+                "searchMetaData": {
+                    "k12_passageCertifiedLexile": 930,
+                    "k12_status": "PUBLISHED",
+                    "kds_published": "2013-05-09",
+                    "kds_type": "MC",
+                    "kds_modified": "2025-11-06",
+                    "k12_abStandard": [
+                        "543374E4-DA6F-11E2-85CC-52EDD51F4EFC",
+                        "CD8333A2-93DB-11E0-8527-63159DFF4B22",
+                        "BF397AF4-128D-4566-ABBA-4845F537D4FB",
+                        "368EDD64-DA67-11E2-B1AA-803E9DFF4B22",
+                        "E0BFFF7A-76D1-11EB-B4D6-62D9C80FF06B",
+                        "AA09A382-87B9-11DE-8BA3-DB299DFF4B22",
+                        "9DCA63DA-DA6D-11E2-BA53-9B72D51F4EFC",
+                        "07c57a35-6c45-46e9-8121-05dfc5f3503d",
+                        "C789A46A-D9E6-11E2-BBB0-00249DFF4B22",
+                        "9BD85135-7E03-43B1-9242-AD9AEFF61E53",
+                        "DAFFF920-DE81-11E0-831A-85489DFF4B22",
+                        "1C8A9C32-9892-11E0-8388-5F489DFF4B22",
+                        "4FB5C4AB-1006-48E6-BEF9-4170C929F939",
+                        "cc422c2e-fa00-11ee-85ad-0ea0ac55c34d",
+                        "FAC49C6E-5D52-481D-9A22-0746370B645A",
+                        "A20C3398-D9D6-11E2-8B79-45B7D51F4EFC",
+                        "23DA2C52-3A33-11E2-B7CD-2BFEBCAA0334",
+                        "AA89A826-D305-453D-B9DE-ECEB5A553EF2",
+                        "E34D936C-835A-11E0-A099-8AF99CFF4B22",
+                        "2B0B3F9A-DA72-11E2-9C75-52EDD51F4EFC",
+                        "6ca383dc-3b17-47b5-b713-04212e69b795",
+                        "97442310-A777-4DF5-B3F1-747059F8C952",
+                        "437A46C3-7220-4847-98C0-2C67FEBB04C6",
+                        "30BD0462-31A6-11E6-AA75-8FD5092D2668",
+                        "23814E3C-D9AE-11E2-8F9A-BB82D51F4EFC",
+                        "22F6770A-7C48-11E0-9647-CB109DFF4B22",
+                        "719C2FF6-54A0-4193-9747-781CC1C39C71",
+                        "3DEB1508-D9D3-11E2-A820-F2109DFF4B22",
+                        "95fd11e7-a318-4b09-bd03-c8ab39267f19",
+                        "4A3F0682-8512-4AA0-8078-62FF5E59260B",
+                        "90F6DE77-7B88-4827-8771-CFA050B94861",
+                        "9121CFCD-E491-4489-9DB5-A3B1E30AC6F2",
+                        "E90F2AAE-AF87-11E1-913D-05249DFF4B22",
+                        "DCFAACB2-5E08-42C8-85DB-54492A3E06B1",
+                        "26C476A0-DA71-11E2-B055-E63F9DFF4B22",
+                        "CC3E7C28-D443-11E6-BA42-6A36CDC8CA83",
+                        "23D7F3FE-D9D1-11E2-A302-B4A5D51F4EFC",
+                        "6197ED64-C9A2-11E2-8534-660B9DFF4B22",
+                        "614E223C-BFDC-11E0-8BD1-2C4B9DFF4B22",
+                        "64CDD909-3BF6-4205-BA3A-F8F6BBEB32B8",
+                        "e6783f39-53aa-4d63-998c-745ec39e69f2",
+                        "95A72D54-936A-11EC-B196-34ECB4076729",
+                        "C0DC6610-C9E0-11E5-9D41-704E3C6237C7",
+                        "D69C7BB7-19A1-409E-9F22-B71BBD127FA0",
+                        "F5FC4C3F-E08A-41A6-A997-DAD0A1344911",
+                        "E442F4A2-B8C9-11E0-9889-17519DFF4B22",
+                        "3C60F006-BA88-11E1-B2D2-09269DFF4B22",
+                        "D3C31D6E-87E0-4F46-8E50-41A4D8460897",
+                        "1327E313-7336-46C2-B7DF-21F8608DBC66",
+                        "43274118-D9E2-11E2-96B6-A0BED51F4EFC",
+                        "86d3f119-cb98-404d-81f6-fcdbb71a3ac9",
+                        "C11AF767-0BBF-4379-8BD5-6E2185F0CFA5",
+                        "51D4FA30-D90F-11E2-9D4F-28629DFF4B22",
+                        "49002A95-79FC-4EBB-A10A-7D8DF967E42A",
+                        "95B384CA-33BD-4305-AF52-E47049F8F44F",
+                        "B08ACFF2-F048-11E5-A5EB-5FE2092D2668",
+                        "D412F1EE-6DD8-11E6-ADDA-31AABF03DF2F",
+                        "8E142800-D9B3-11E2-BE28-04169DFF4B22",
+                        "9ECEE5CA-24F8-11E6-A83D-E4DD99AB8BA3",
+                        "C47DD491-5ED7-4E38-9689-DFF9F4A6ED35",
+                        "D4FDCCDC-393A-11E6-8644-A1299AAB8BA3",
+                        "A0915A98-279E-11E1-814D-E1469DFF4B22",
+                        "6C41799D-67EE-4700-8DDF-2EB5F84BBC4C",
+                        "43D3D16C-576F-448D-BF40-A5EB9D346AEE",
+                        "C6C71FA8-D9B4-11E2-9DF4-B4A5D51F4EFC",
+                        "7FC06790-7440-11DF-93FA-01FD9CFF4B22",
+                        "3E661E88-DA78-11E2-A988-824A9DFF4B22",
+                        "B6CAC8B2-AA92-4B4E-846F-E9FC4D2631BF",
+                        "92DDA168-D357-11E5-9DCB-5761D9353DDA",
+                        "0BDC54AB-E077-4FBE-B8B5-B008125BCB21",
+                        "963CB492-4D20-11EA-8F74-F9F5127CAE8C",
+                        "385BA3B4-D9A6-11E2-8171-BA739DFF4B22",
+                        "AA6E89DE-EC09-11E1-B53C-5B739DFF4B22",
+                        "8132E684-8664-475A-800B-295FD6BB6D42",
+                        "9E3D7E2A-1C59-11E6-9171-240E9AAB8BA3",
+                        "2D513D9E-0AD4-4D66-A932-80CC35032A60",
+                        "404f7a1b-8b62-43d8-9f5e-6e74ec9042aa"
+                    ],
+                    "k12_depthOfKnowledge": "DOK2",
+                    "kds_aligned": "2025-07-01",
+                    "k12_sbacClaims": [
+                        "Claim 1"
+                    ],
+                    "k12_stem": "<p>Read this sentence from paragraph 5 of \"Review:&#160;Henri Rousseau at the Salon, April 12, 1898.\"</p>\r\n<p><span class=\"block-quote\">Rousseau&#8217;s paintings should not be on any gallery wall unless it is inside a school for young children.</span></p>\r\n<p>Which sentence <span class=\"relative-emphasis\">best </span>describes what the author is suggesting?</p>",
+                    "kds_itemBankName": "College and Career Readiness Item Bank",
+                    "k12_locales": [
+                        "en_US"
+                    ],
+                    "kds_itemBankId": "4028e4a22998350701299839890b3c87",
+                    "kds_version": "18",
+                    "k12_parccClaims": [
+                        "Sub Claim I.2"
+                    ],
+                    "k12_author": "Suzanne Francis",
+                    "k12_passageAuthentic": false,
+                    "k12_passageTitle": "Grouped Passage",
+                    "k12_delivery": "BOTH",
+                    "id": "87c0f700-bb30-11f0-8dcf-cfb9d6157de8",
+                    "baseId": "4028e4a23db2924e013db77c9ba703fb",
+                    "name": "E184728",
+                    "version": "0.0.100",
+                    "isRelease": true,
+                    "collections_id": [
+                        "36c6b46e-2294-44d0-a0e3-3147d5ac099b",
+                        "8a80808163605df901636562699b22cd"
+                    ],
+                    "organizations_id": [
+                        "1"
+                    ],
+                    "retired": false,
+                    "published": true,
+                    "pies": [
+                        "@pie-element/multiple-choice"
+                    ],
+                    "bundle_@pie-element/multiple-choice": "latest",
+                    "prompt": "<p>Read this sentence from paragraph 5 of \"Review:&#160;Henri Rousseau at the Salon, April 12, 1898.\"</p>\r\n<p><span class=\"block-quote\">Rousseau&#8217;s paintings should not be on any gallery wall unless it is inside a school for young children.</span></p>\r\n<p>Which sentence <span class=\"relative-emphasis\">best </span>describes what the author is suggesting?</p>",
+                    "content": "Read this sentence from paragraph 5 of \"Review: Henri Rousseau at the Salon, April 12, 1898.\" Rousseau’s paintings should not be on any gallery wall unless it is inside a school for young children. Which sentence best describes what the author is suggesting? Rousseau's taught his own children how to paint. 4028e4a23db2924e013db77c9ba703ff Many of Rousseau's paintings were mocked. 4028e4a23db2924e013db77c9ba703fd Some people thought he painted like a child. 4028e4a23db2924e013db77c9ba703fc Young people were attracted to his paintings. 4028e4a23db2924e013db77c9ba703fe"
+                },
+                "passage": "87b7f650-bb30-11f0-8dcf-cfb9d6157de8",
+                "retired": false,
+                "published": true,
+                "baseId": "4028e4a23db2924e013db77c9ba703fb",
+                "signature": "1be102ff4228f16b3cea60e1dc418bad7e8cc5ea13cdad4787d9844eecfecf07",
+                "version": {
+                    "major": 0,
+                    "minor": 0,
+                    "patch": 100,
+                    "prerelease": {
+                        "tag": null,
+                        "version": null
+                    }
+                },
+                "createdAt": "2025-11-06T16:49:15.889Z",
+                "updatedAt": "2025-12-22T03:10:56.210Z"
+            }
+        },
+        {
+            "identifier": "E228014",
+            "itemVId": "4028e4a24b37ea67014b5f5e809865b1",
+            "item": {
+                "id": "f0097b30-6170-11f0-afe7-29cbf5864da8",
+                "name": "E228014",
+                "config": {
+                    "markup": "<pie-ebsr id=\"4028e4a24b37ea67014b5f5e809865b1\"></pie-ebsr>",
+                    "elements": {
+                        "pie-ebsr": "@pie-element/ebsr@latest"
+                    },
+                    "models": [
+                        {
+                            "partA": {
+                                "keyMode": "none",
+                                "lockChoiceOrder": false,
+                                "id": "4028e4a24b37ea67014b5f5e808a65a7",
+                                "choiceMode": "radio",
+                                "choices": [
+                                    {
+                                        "correct": false,
+                                        "label": "<p>Rousseau is a citizen of France.</p>",
+                                        "value": "4028e4a24b37ea67014b5f5e808a65aa",
+                                        "rationale": "<p>This can logically be inferred based on the statement in paragraph 4 that Rousseau has never left France, but it is not a main idea of the text. The author refers to France to support the idea that Rousseau has never seen many of the exotic subjects of his paintings in real life.</p>"
+                                    },
+                                    {
+                                        "correct": false,
+                                        "label": "<p>Rousseau is a puzzling person.</p>",
+                                        "value": "4028e4a24b37ea67014b5f5e808a65ab",
+                                        "rationale": "<p>While the author describes Rousseau&#8217;s collection as &#8220;confusing&#8221; and believes that his decision to continue producing and showcasing his work is &#8220;bewildering,&#8221; the notion that Rousseau himself is a puzzling or confusing man is not a main idea of the text.</p>"
+                                    },
+                                    {
+                                        "correct": false,
+                                        "label": "<p>Rousseau has an art collection on display.</p>",
+                                        "value": "4028e4a24b37ea67014b5f5e808a65a9",
+                                        "rationale": "<p>The fact that a collection of Rousseau&#8217;s paintings is on display is mentioned in the first paragraph of the text, but this information merely provides context for the review and helps the reader understand why it was written.</p>"
+                                    },
+                                    {
+                                        "correct": true,
+                                        "label": "<p>Rousseau has no formal art education.</p>",
+                                        "value": "4028e4a24b37ea67014b5f5e808a65a8",
+                                        "rationale": "<p>This fact is alluded to in paragraph 2 of the text, and the subsequent paragraphs criticizing Rousseau&#8217;s work support the author&#8217;s statement that Rousseau &#8220;has not received any proper training, and it clearly shows.&#34;</p>"
+                                    }
+                                ],
+                                "prompt": "<p><strong>The following question has two parts. First, answer Part A. Then, answer Part B.</strong></p><p><strong>Part A:</strong></p><p>Which choice correctly describes the&#160;<span class=\"relative-emphasis\">main</span> idea&#160;of <span class=\"passage-title\">Review: Henri Rousseau at the Salon, April 12, 1898</span>?</p>",
+                                "element": "multiple-choice"
+                            },
+                            "partB": {
+                                "keyMode": "none",
+                                "lockChoiceOrder": true,
+                                "id": "4028e4a24b37ea67014b5f5e808e65ac",
+                                "choiceMode": "radio",
+                                "choices": [
+                                    {
+                                        "correct": false,
+                                        "label": "<p>A collection of Henri Rousseau&#8217;s paintings is currently on display at the Salon.</p>",
+                                        "value": "4028e4a24b37ea67014b5f5e808e65ad",
+                                        "rationale": "<p>This sentence refers to an art collection of Rousseau&#8217;s that is on display, but it does not develop a main idea of the text.</p>"
+                                    },
+                                    {
+                                        "correct": false,
+                                        "label": "<p>The collection can only be described as uninteresting, childish, and confusing.</p>",
+                                        "value": "4028e4a24b37ea67014b5f5e808e65b0",
+                                        "rationale": "<p>While &#8220;confusing&#8221; is a synonym for &#8220;puzzling,&#8221; the word&#160;is used to describe Rousseau&#8217;s collection of paintings as opposed to Rousseau himself.</p>"
+                                    },
+                                    {
+                                        "correct": true,
+                                        "label": "<p>Rousseau, a tax collector, has not received any proper training, and it clearly shows.</p>",
+                                        "value": "4028e4a24b37ea67014b5f5e808e65ae",
+                                        "rationale": "<p>This sentence contributes to the development of the idea that Rousseau has not completed formal art education by referring to his career as a tax collector, explicitly stating that Rousseau &#8220;has not received any proper training,&#8221; and implying that his lack of training is reflected in the quality of his work.</p>"
+                                    },
+                                    {
+                                        "correct": false,
+                                        "label": "<p>In fact, he has never left France.</p>",
+                                        "value": "4028e4a24b37ea67014b5f5e808e65af",
+                                        "rationale": "<p>This sentence suggests that Rousseau is a citizen of France, but this is not a main idea of the text. Instead, it supports the idea that Rousseau&#8217;s 1891 painting of a tiger in a jungle is not realistic because Rousseau has never seen an actual jungle.</p>"
+                                    }
+                                ],
+                                "prompt": "<p><strong>Part B:</strong></p><p>Which sentence from the text <span class=\"relative-emphasis\">most</span> helps to develop this main idea?</p>",
+                                "element": "multiple-choice"
+                            },
+                            "id": "4028e4a24b37ea67014b5f5e809865b1",
+                            "prompt": "",
+                            "element": "pie-ebsr",
+                            "partLabels": false
+                        }
+                    ],
+                    "id": "68763ee5acd367efa5a664ec"
+                },
+                "searchMetaData": {
+                    "k12_passageTitle": "Grouped Passage",
+                    "k12_author": "Krista O'Connell",
+                    "k12_delivery": "BOTH",
+                    "k12_passageAuthentic": false,
+                    "k12_stem": "<p><strong>The following question has two parts. First, answer Part A. Then, answer Part B.</strong></p><p><strong>Part A:</strong></p><p>Which choice correctly describes the&#160;<span class=\"relative-emphasis\">main</span> idea&#160;of <span class=\"passage-title\">Review: Henri Rousseau at the Salon, April 12, 1898</span>?</p><p><strong>Part B:</strong></p><p>Which sentence from the text <span class=\"relative-emphasis\">most</span> helps to develop this main idea?</p>",
+                    "k12_passageCertifiedLexile": 930,
+                    "k12_abStandard": [
+                        "151b14e4-63af-487c-af61-10ba2b11727e",
+                        "E44364C8-B8C9-11E0-9889-17519DFF4B22",
+                        "23DC4DAC-3A33-11E2-B7CD-2BFEBCAA0334",
+                        "0dfcfff8-8ca8-4508-8044-7caea2b7c85e",
+                        "9DCE0FA8-DA6D-11E2-BA53-9B72D51F4EFC",
+                        "594b15b9-6d92-4527-9849-cfbb43cbffab",
+                        "2A8A3072-191E-4B15-9552-5AD2E95D011D",
+                        "05BD8EAA-5476-11DD-A31F-17FB9CFF4B22",
+                        "84F55EE7-74DB-46D0-99E5-E81BA1DC4282",
+                        "3DEE19A6-D9D3-11E2-A820-F2109DFF4B22",
+                        "A20FB7DE-D9D6-11E2-8B79-45B7D51F4EFC",
+                        "3A9D687D-84C0-4C48-97B0-FA17AA533C67",
+                        "C6CA05D8-D9B4-11E2-9DF4-B4A5D51F4EFC",
+                        "C8E6C248-55AD-4B1C-BBDF-0D53FBA03D7D",
+                        "3C6169BE-BA88-11E1-B2D2-09269DFF4B22",
+                        "E34A3CB2-835A-11E0-A099-8AF99CFF4B22",
+                        "E0CCAF9C-393A-11E6-AAC8-83299AAB8BA3",
+                        "8E1753FE-D9B3-11E2-BE28-04169DFF4B22",
+                        "7FC17266-7440-11DF-93FA-01FD9CFF4B22",
+                        "23DA2C52-3A33-11E2-B7CD-2BFEBCAA0334",
+                        "1EAF2AC2-617A-4D86-848E-349A1872A994",
+                        "19055B64-7515-4958-AA59-22E9356A5768",
+                        "cc67f008-fa00-11ee-85ad-0ea0ac55c34d",
+                        "17CFA46A-C9DF-4978-B67C-6B92B4082C9B",
+                        "A091C2F8-279E-11E1-814D-E1469DFF4B22",
+                        "E09DF5C7-913E-4133-93BB-95FAE2BCC84C",
+                        "9ABA0CFE-4D20-11EA-8FC4-D923BFBA2FDB",
+                        "C7341CAA-7ADE-41BF-BF7F-3D582FC8DF2D",
+                        "1C8B5E4C-9892-11E0-8388-5F489DFF4B22",
+                        "39F6885C-6C44-41E3-AB5A-933ADCE3FA5A",
+                        "719C2FF6-54A0-4193-9747-781CC1C39C71",
+                        "22F6E9BA-7C48-11E0-9647-CB109DFF4B22",
+                        "4485ADE6-31A6-11E6-829C-B0169AAB8BA3",
+                        "432B7666-D9E2-11E2-96B6-A0BED51F4EFC",
+                        "E0C7B882-76D1-11EB-B4D6-62D9C80FF06B",
+                        "B097D9EA-F048-11E5-A5EB-5FE2092D2668",
+                        "8C7604FE-371C-4A64-99EB-4EFD2E324113",
+                        "2B0F6C0A-DA72-11E2-9C75-52EDD51F4EFC",
+                        "E90F9F0C-AF87-11E1-913D-05249DFF4B22",
+                        "61985E66-C9A2-11E2-8534-660B9DFF4B22",
+                        "C645E4FA-C9E0-11E5-BC8A-57E88A248D58",
+                        "95AFC75C-936A-11EC-B196-34ECB4076729",
+                        "7811A657-DBBE-4E2B-8FDC-199A528C2B22",
+                        "DB0068CE-DE81-11E0-831A-85489DFF4B22",
+                        "5C01F4CF-A73B-4210-B355-4B76CC105B10",
+                        "51D99F04-D90F-11E2-9D4F-28629DFF4B22",
+                        "C78D21DA-D9E6-11E2-BBB0-00249DFF4B22",
+                        "D10749A6-D443-11E6-93EE-3C37CDC8CA83",
+                        "6009EE03-3194-45D5-AEB3-2ADE7B5BAFCB",
+                        "795830CB-2A68-46CA-8478-B3F58F74F9B9",
+                        "9251f07d-2358-4712-97f4-1cda9842f49a",
+                        "B8487F9C-1396-4AB4-822B-BCC50B5F9261",
+                        "EA19D0DE-AA24-4F61-9C30-5CD79A9E5327",
+                        "CD839E46-93DB-11E0-8527-63159DFF4B22",
+                        "B7CB4B82-6D84-4180-AB32-AAD80DBDCDCC",
+                        "AA6F0FD0-EC09-11E1-B53C-5B739DFF4B22",
+                        "5C77B8B9-9145-4654-975E-96312C72FA57",
+                        "9A4E0462-ADB1-4B82-8D03-CDA4CE222A5E",
+                        "9952cff8-6b49-4c61-9896-8062633e652d",
+                        "26D26742-DA71-11E2-B055-E63F9DFF4B22",
+                        "6CE63B72-5033-4B31-AD5D-ED7B4A051F8E",
+                        "2EC1384B-2040-415B-A177-D5DAFE933E1C",
+                        "D4F473BB-CA26-4B0A-9357-9821280CDF0E",
+                        "5955E564-49BB-40D4-8C23-2F37C0E091FC",
+                        "54380CCA-DA6F-11E2-85CC-52EDD51F4EFC",
+                        "A51966A0-1C59-11E6-BADF-62D4092D2668",
+                        "3E6A86F8-DA78-11E2-A988-824A9DFF4B22",
+                        "23845FDC-D9AE-11E2-8F9A-BB82D51F4EFC",
+                        "99AABF44-D357-11E5-99D7-06110A2D2668",
+                        "36930FCE-DA67-11E2-B1AA-803E9DFF4B22",
+                        "607f1ac8-3d0c-4f38-aa1b-284569a5315e",
+                        "23DD4610-D9D1-11E2-A302-B4A5D51F4EFC",
+                        "385E8106-D9A6-11E2-8171-BA739DFF4B22",
+                        "752B7A56-EAC5-4775-8100-0CD1485A6F6E",
+                        "A1DDB597-C713-4013-A617-C885671EBBEA",
+                        "614E85EC-BFDC-11E0-8BD1-2C4B9DFF4B22"
+                    ],
+                    "k12_sbacClaims": [
+                        "Claim 1"
+                    ],
+                    "k12_locales": [
+                        "en_US"
+                    ],
+                    "k12_parccClaims": [
+                        "Sub Claim I.2"
+                    ],
+                    "k12_depthOfKnowledge": "DOK2",
+                    "k12_status": "PUBLISHED",
+                    "kds_itemBankId": "4028e4a22998350701299839890b3c87",
+                    "kds_itemBankName": "College and Career Readiness Item Bank",
+                    "kds_type": "LMC",
+                    "kds_version": "14",
+                    "kds_modified": "2025-05-27",
+                    "kds_published": "2015-03-31",
+                    "kds_aligned": "2025-07-15",
+                    "id": "f0097b30-6170-11f0-afe7-29cbf5864da8",
+                    "baseId": "4028e4a24b37ea67014b5f5e809865b1",
+                    "name": "E228014",
+                    "version": "0.0.99",
+                    "isRelease": true,
+                    "collections_id": [
+                        "36c6b46e-2294-44d0-a0e3-3147d5ac099b",
+                        "8a80808163605df901636562699b22cd"
+                    ],
+                    "organizations_id": [
+                        "1"
+                    ],
+                    "retired": false,
+                    "published": true,
+                    "pies": [
+                        "@pie-element/ebsr"
+                    ],
+                    "bundle_@pie-element/ebsr": "latest"
+                },
+                "passage": "f001b300-6170-11f0-afe7-29cbf5864da8",
+                "retired": false,
+                "published": true,
+                "baseId": "4028e4a24b37ea67014b5f5e809865b1",
+                "signature": "27bc5aeb04afa8aea4e3238cced30b7e7f8e8b46f4a5a9ff02b605775fd7b337",
+                "version": {
+                    "major": 0,
+                    "minor": 0,
+                    "patch": 99,
+                    "prerelease": {
+                        "tag": null,
+                        "version": null
+                    }
+                },
+                "createdAt": "2025-07-15T11:43:33.988Z",
+                "updatedAt": "2025-12-22T03:15:20.936Z"
+            }
+        },
+        {
+            "identifier": "E184729",
+            "itemVId": "4028e4a23db2924e013db78475270424",
+            "item": {
+                "id": "87db5cd0-bb30-11f0-8dcf-cfb9d6157de8",
+                "name": "E184729",
+                "config": {
+                    "markup": "<multiple-choice id=\"4028e4a23db2924e013db78475270424\"></multiple-choice>",
+                    "elements": {
+                        "multiple-choice": "@pie-element/multiple-choice@latest"
+                    },
+                    "models": [
+                        {
+                            "keyMode": "none",
+                            "lockChoiceOrder": false,
+                            "id": "4028e4a23db2924e013db78475270424",
+                            "choiceMode": "radio",
+                            "choices": [
+                                {
+                                    "correct": false,
+                                    "label": "<p>other artist's paintings</p>",
+                                    "value": "4028e4a23db2924e013db78475280426",
+                                    "rationale": "<p>Though the text says that Pablo Picasso noticed and admired Rousseau's work, it does not say that Rousseau was influenced by him.</p>"
+                                },
+                                {
+                                    "correct": false,
+                                    "label": "<p>children</p>",
+                                    "value": "4028e4a23db2924e013db78475280427",
+                                    "rationale": "<p>Though Rousseau had many children, the text does not say he was influenced by them.</p>"
+                                },
+                                {
+                                    "correct": false,
+                                    "label": "<p>family events</p>",
+                                    "value": "4028e4a23db2924e013db78475280428",
+                                    "rationale": "<p>Although he did have a large family and continued to work to support them, Rousseau painted natural and jungle landscapes, not family events.</p>"
+                                },
+                                {
+                                    "correct": true,
+                                    "label": "<p>nature</p>",
+                                    "value": "4028e4a23db2924e013db78475280425",
+                                    "rationale": "<p>Rousseau's most famous paintings are of jungles and landscapes, which were inspired and influenced by his garden visits and flower viewing.</p>"
+                                }
+                            ],
+                            "prompt": "<p>Based on <span class=\"relative-emphasis\">both</span> texts, what strongly influenced the subjects of Rousseau's paintings?&#160;</p>",
+                            "element": "multiple-choice"
+                        }
+                    ],
+                    "id": "690cd18c386bcfa9d0da5afe"
+                },
+                "searchMetaData": {
+                    "k12_passageCertifiedLexile": 930,
+                    "k12_status": "PUBLISHED",
+                    "kds_published": "2013-05-14",
+                    "kds_type": "MC",
+                    "kds_modified": "2025-11-06",
+                    "k12_abStandard": [
+                        "A98137CC-1C59-11E6-816F-9A0C9AAB8BA3",
+                        "67D518F0-D976-41B5-8D83-B193BD9C840D",
+                        "C6CCE780-D9B4-11E2-9DF4-B4A5D51F4EFC",
+                        "EBC6E2FA-393A-11E6-86F3-522A9AAB8BA3",
+                        "751E5C85-2289-4564-82AA-DCA205BAC236",
+                        "A21336D4-D9D6-11E2-8B79-45B7D51F4EFC",
+                        "3E6FB790-DA78-11E2-A988-824A9DFF4B22",
+                        "9DD2028E-DA6D-11E2-BA53-9B72D51F4EFC",
+                        "614EEADC-BFDC-11E0-8BD1-2C4B9DFF4B22",
+                        "2387657E-D9AE-11E2-8F9A-BB82D51F4EFC",
+                        "369740A8-DA67-11E2-B1AA-803E9DFF4B22",
+                        "9EDACCAC-D357-11E5-9819-6461D9353DDA",
+                        "3e2618a0-f4fa-4548-8cc4-0040bee16fdf",
+                        "E74464D1-DE91-481C-9D5E-E0C9CD7C560E",
+                        "577A622A-31A6-11E6-9ACE-B1169AAB8BA3",
+                        "CD57F0F8-C9E0-11E5-9DA3-10E98A248D58",
+                        "B0A4CEC0-F048-11E5-A5EB-5FE2092D2668",
+                        "DB00D7DC-DE81-11E0-831A-85489DFF4B22",
+                        "432F2D06-D9E2-11E2-96B6-A0BED51F4EFC",
+                        "23DA2C52-3A33-11E2-B7CD-2BFEBCAA0334",
+                        "7FC263EC-7440-11DF-93FA-01FD9CFF4B22",
+                        "D87127B5-4B65-4657-90EF-85BB48842CD0",
+                        "205881DA-A882-48F1-86E9-1C8073F547B5",
+                        "E0D315BA-76D1-11EB-B4D6-62D9C80FF06B",
+                        "E344ECB2-835A-11E0-A099-8AF99CFF4B22",
+                        "0FF79867-E4EF-4539-99F4-4ECDD214DACD",
+                        "7C15E980-9369-4380-A4AE-D185BB86468A",
+                        "51DF6010-D90F-11E2-9D4F-28629DFF4B22",
+                        "6A02A5A9-B100-4350-849B-472A3348AC0B",
+                        "E443E312-B8C9-11E0-9889-17519DFF4B22",
+                        "2B13999C-DA72-11E2-9C75-52EDD51F4EFC",
+                        "3C61EA4C-BA88-11E1-B2D2-09269DFF4B22",
+                        "1C8C29F8-9892-11E0-8388-5F489DFF4B22",
+                        "719C2FF6-54A0-4193-9747-781CC1C39C71",
+                        "6E631C4D-0B9F-40DB-B4A8-A29632DF909A",
+                        "2D025FF9-55C4-4DE4-9974-416C0DC2B68D",
+                        "1623E22E-2C7A-4958-B892-77333EC10DB4",
+                        "FA8D9678-B796-4849-ACA1-C5028265D251",
+                        "C0EE50B7-B264-4025-8771-1750EDBB2118",
+                        "6198D300-C9A2-11E2-8534-660B9DFF4B22",
+                        "AA6FC72C-EC09-11E1-B53C-5B739DFF4B22",
+                        "22F75C2E-7C48-11E0-9647-CB109DFF4B22",
+                        "896235E8-2FDB-44DA-911C-7BBC7D720B27",
+                        "05BEE4D0-5476-11DD-A31F-17FB9CFF4B22",
+                        "9E356324-4D20-11EA-AD4B-F2CC03833148",
+                        "22B4A84D-07B6-438A-8745-E35425A0543D",
+                        "64CDD909-3BF6-4205-BA3A-F8F6BBEB32B8",
+                        "38615D18-D9A6-11E2-8171-BA739DFF4B22",
+                        "D59FE716-D443-11E6-9A9C-DC36CDC8CA83",
+                        "4B57C4AD-7ADD-43BB-AD3E-DBE82BD98022",
+                        "23E293EA-D9D1-11E2-A302-B4A5D51F4EFC",
+                        "1cf6b911-856f-449e-8258-ec003daa09f5",
+                        "13C8361F-11A9-4C5E-9D7F-A9E378942110",
+                        "F613B968-6DD8-11E6-92E5-7AAABF03DF2F",
+                        "E9101450-AF87-11E1-913D-05249DFF4B22",
+                        "26DDD190-DA71-11E2-B055-E63F9DFF4B22",
+                        "C4BE78E6-B9BF-47D4-BBE9-C68B7E13182D",
+                        "95BB79EE-936A-11EC-B196-34ECB4076729",
+                        "CD8404C6-93DB-11E0-8527-63159DFF4B22",
+                        "543CA3A2-DA6F-11E2-85CC-52EDD51F4EFC",
+                        "17F5F787-6101-47D8-BC05-C51B9A5D2453",
+                        "68d9e5aa-eeb5-4c5a-bb10-77f956c2242b",
+                        "BB986DE3-BD50-4886-B08D-535DE5A06B0D",
+                        "47F216DE-E44D-4575-A444-C213E0D5CB35",
+                        "cca6e847-3347-4d3e-a85c-6d421678d571",
+                        "cc72e2bc-fa00-11ee-85ad-0ea0ac55c34d",
+                        "C790D60E-D9E6-11E2-BBB0-00249DFF4B22",
+                        "B6CAC8B2-AA92-4B4E-846F-E9FC4D2631BF",
+                        "605D8E55-38CF-414D-9FD3-4FEA8F42C582",
+                        "8E1A87C2-D9B3-11E2-BE28-04169DFF4B22",
+                        "9E96BAB9-8E41-4F3D-A170-13992999E7F9",
+                        "3DF10CBA-D9D3-11E2-A820-F2109DFF4B22",
+                        "BB6A609A-DDE8-4138-AF9C-0A453E28C166",
+                        "fc1d46fa-e336-426f-9f72-49139948838b"
+                    ],
+                    "k12_depthOfKnowledge": "DOK2",
+                    "kds_aligned": "2025-07-01",
+                    "k12_sbacClaims": [
+                        "Claim 1"
+                    ],
+                    "k12_stem": "<p>Based on <span class=\"relative-emphasis\">both</span> texts, what strongly influenced the subjects of Rousseau's paintings?&#160;</p>",
+                    "kds_itemBankName": "College and Career Readiness Item Bank",
+                    "k12_locales": [
+                        "en_US"
+                    ],
+                    "kds_itemBankId": "4028e4a22998350701299839890b3c87",
+                    "kds_version": "19",
+                    "k12_parccClaims": [
+                        "Sub Claim I.2"
+                    ],
+                    "k12_author": "Suzanne Francis",
+                    "k12_passageAuthentic": false,
+                    "k12_passageTitle": "Grouped Passage",
+                    "k12_delivery": "BOTH",
+                    "id": "87db5cd0-bb30-11f0-8dcf-cfb9d6157de8",
+                    "baseId": "4028e4a23db2924e013db78475270424",
+                    "name": "E184729",
+                    "version": "0.0.105",
+                    "isRelease": true,
+                    "collections_id": [
+                        "36c6b46e-2294-44d0-a0e3-3147d5ac099b",
+                        "8a80808163605df901636562699b22cd"
+                    ],
+                    "organizations_id": [
+                        "1"
+                    ],
+                    "retired": false,
+                    "published": true,
+                    "pies": [
+                        "@pie-element/multiple-choice"
+                    ],
+                    "bundle_@pie-element/multiple-choice": "latest",
+                    "prompt": "<p>Based on <span class=\"relative-emphasis\">both</span> texts, what strongly influenced the subjects of Rousseau's paintings?&#160;</p>",
+                    "content": "Based on both texts, what strongly influenced the subjects of Rousseau's paintings? other artist's paintings 4028e4a23db2924e013db78475280426 children 4028e4a23db2924e013db78475280427 family events 4028e4a23db2924e013db78475280428 nature 4028e4a23db2924e013db78475280425"
+                },
+                "passage": "87d28330-bb30-11f0-8dcf-cfb9d6157de8",
+                "retired": false,
+                "published": true,
+                "baseId": "4028e4a23db2924e013db78475270424",
+                "signature": "c58d01514be020cfdbf624ab68948e3094c62af1b2bb9736619df2a41effa411",
+                "version": {
+                    "major": 0,
+                    "minor": 0,
+                    "patch": 105,
+                    "prerelease": {
+                        "tag": null,
+                        "version": null
+                    }
+                },
+                "createdAt": "2025-11-06T16:49:16.062Z",
+                "updatedAt": "2025-12-22T03:10:56.210Z"
+            }
+        },
+        {
+            "identifier": "E184731",
+            "itemVId": "4028e4a23db2924e013db79a741e048d",
+            "item": {
+                "id": "88074ed0-bb30-11f0-8dcf-cfb9d6157de8",
+                "name": "E184731",
+                "config": {
+                    "markup": "<multiple-choice id=\"4028e4a23db2924e013db79a741e048d\"></multiple-choice>",
+                    "elements": {
+                        "multiple-choice": "@pie-element/multiple-choice@latest"
+                    },
+                    "models": [
+                        {
+                            "keyMode": "none",
+                            "lockChoiceOrder": false,
+                            "id": "4028e4a23db2924e013db79a741e048d",
+                            "choiceMode": "radio",
+                            "choices": [
+                                {
+                                    "correct": true,
+                                    "label": "<p>The web page describes events in the order they occurred, while the review examines several of Rousseau&#39;s paintings.</p>",
+                                    "value": "4028e4a23db2924e013db79a741f048e",
+                                    "rationale": "<p>The website is in chronological order, while the review analyzes a couple of his paintings on display.</p>"
+                                },
+                                {
+                                    "correct": false,
+                                    "label": "<p>The web page presents a problem and provides a solution, while the review includes ideas organized by their importance.</p>",
+                                    "value": "4028e4a23db2924e013db79a741f0491",
+                                    "rationale": "<p>The website does suggest problems Rousseau had in getting his art noticed or accepted, but the site is not organized as problem and solution, nor does the review present ideas in order of importance.</p>"
+                                },
+                                {
+                                    "correct": false,
+                                    "label": "<p>The web page uses comparison and contrast, while the review uses a main idea and details to support it.</p>",
+                                    "value": "4028e4a23db2924e013db79a741f0490",
+                                    "rationale": "<p>Though the main idea of the review is the opinion of the author and does include details to support it, the website does not make use of comparison and contrast.</p>"
+                                },
+                                {
+                                    "correct": false,
+                                    "label": "<p>The web page is organized by cause and effect, while the review focuses on events in Rousseau&#39;s life.</p>",
+                                    "value": "4028e4a23db2924e013db79a741f048f",
+                                    "rationale": "<p>While cause and effect does occasionally appear in the website, the main structure is chronological. Though the review does include a couple of dates, it does not focus on events in the painter&#39;s life.</p>"
+                                }
+                            ],
+                            "prompt": "<p>How are the structures of the texts different?&#160;</p>",
+                            "element": "multiple-choice"
+                        }
+                    ],
+                    "id": "690cd18c386bcfa9d0da5b24"
+                },
+                "searchMetaData": {
+                    "k12_passageCertifiedLexile": 930,
+                    "k12_status": "PUBLISHED",
+                    "kds_published": "2013-05-17",
+                    "kds_type": "MC",
+                    "kds_modified": "2025-11-06",
+                    "k12_abStandard": [
+                        "3DF6FA80-D9D3-11E2-A820-F2109DFF4B22",
+                        "E9117430-AF87-11E1-913D-05249DFF4B22",
+                        "bd122421-e69e-4173-973c-6e6adffae392",
+                        "67D518F0-D976-41B5-8D83-B193BD9C840D",
+                        "DB022D08-DE81-11E0-831A-85489DFF4B22",
+                        "22F83E96-7C48-11E0-9647-CB109DFF4B22",
+                        "39D21874-E515-4D2F-8403-EC40DDB1979A",
+                        "3A1E5729-57F8-407D-BE6E-13F2A09A6E3E",
+                        "2B1BF9F2-DA72-11E2-9C75-52EDD51F4EFC",
+                        "76D4F491-18F3-4007-A466-1CB8AB32052C",
+                        "23DD61C4-3A33-11E2-B7CD-2BFEBCAA0334",
+                        "E1473469-B8BC-4DFC-B072-C925D44B4448",
+                        "8E2133C4-D9B3-11E2-BE28-04169DFF4B22",
+                        "3E7884C4-DA78-11E2-A988-824A9DFF4B22",
+                        "A093623E-279E-11E1-814D-E1469DFF4B22",
+                        "369F9F32-DA67-11E2-B1AA-803E9DFF4B22",
+                        "B0BF6CDA-F048-11E5-A5EB-5FE2092D2668",
+                        "7A95EEAA-31A6-11E6-9729-A1159AAB8BA3",
+                        "B04DB037-AB51-4195-B0BA-D9F2B6013494",
+                        "cc9c0ec9-2893-46bb-8445-65d99fea5c58",
+                        "51EA540C-D90F-11E2-9D4F-28629DFF4B22",
+                        "7FC4BD86-7440-11DF-93FA-01FD9CFF4B22",
+                        "23DA2C52-3A33-11E2-B7CD-2BFEBCAA0334",
+                        "A3DB2DD6-A2DF-421A-A932-51B1390ACEB0",
+                        "3C637E66-BA88-11E1-B2D2-09269DFF4B22",
+                        "26F4A00A-DA71-11E2-B055-E63F9DFF4B22",
+                        "619A98C0-C9A2-11E2-8534-660B9DFF4B22",
+                        "88C6A1F6-D3E5-4A06-96A8-41F288B27310",
+                        "01dd5a2d-8725-4b1a-b3a5-dbf9ca821a11",
+                        "5447A630-DA6F-11E2-85CC-52EDD51F4EFC",
+                        "DC9BF156-FCCB-4988-AE89-8E9E219F1547",
+                        "C3BE0785-F330-4836-8DCE-4CD1D3D6F6D9",
+                        "9E52CCAE-3405-4A6E-B733-6D805C375C8C",
+                        "E3239AEE-835A-11E0-A099-8AF99CFF4B22",
+                        "2D025FF9-55C4-4DE4-9974-416C0DC2B68D",
+                        "A69DED2E-4D20-11EA-AD24-A5807BADA423",
+                        "cc6c390e-fa00-11ee-85ad-0ea0ac55c34d",
+                        "CD6E0D46-4AEA-4E9D-84A0-6928EA7EA9D1",
+                        "9DDA9854-DA6D-11E2-BA53-9B72D51F4EFC",
+                        "131eaf79-d52e-4bcf-a439-7609f96df184",
+                        "E4453E7E-B8C9-11E0-9889-17519DFF4B22",
+                        "4336A63A-D9E2-11E2-96B6-A0BED51F4EFC",
+                        "38671848-D9A6-11E2-8171-BA739DFF4B22",
+                        "78BB818E-FD68-4345-84B7-7E94043DC654",
+                        "0EC3B5DA-6DD9-11E6-A8DE-FDF2CCC8CA83",
+                        "0C231AAD-5F9A-4A62-BA49-7BABE12FC1D6",
+                        "95D2EB4C-936A-11EC-B196-34ECB4076729",
+                        "0B3D2DEC-393B-11E6-A42E-D5299AAB8BA3",
+                        "e8c2de33-7ae2-443d-aa51-2725a2a00380",
+                        "2B63DD21-AA68-4744-8874-9AD643650B7A",
+                        "CD853FEE-93DB-11E0-8527-63159DFF4B22",
+                        "0160798A-4DCE-4A5A-BEA3-899A28D99738",
+                        "70F53AE2-24FC-11E6-933E-ECAF092D2668",
+                        "C6D2B584-D9B4-11E2-9DF4-B4A5D51F4EFC",
+                        "F2BBEFFC-C9E0-11E5-BF3F-EBE88A248D58",
+                        "1C8EA32C-9892-11E0-8388-5F489DFF4B22",
+                        "B3EC0156-D357-11E5-9B1C-6B110A2D2668",
+                        "F8D1A27C-ABB4-432B-A2B5-1A31C8BA03EB",
+                        "4B790643-7909-4D17-BB8D-C103FF81503C",
+                        "23ED2936-D9D1-11E2-A302-B4A5D51F4EFC",
+                        "C79827C4-D9E6-11E2-BBB0-00249DFF4B22",
+                        "1D5FB1A0-7752-48EE-B07F-FB54D90BDBD1",
+                        "2892AAF3-82D5-44CC-8A94-7FCF66B788EE",
+                        "05BE3BB6-5476-11DD-A31F-17FB9CFF4B22",
+                        "A21A7FC0-D9D6-11E2-8B79-45B7D51F4EFC",
+                        "AA7231A6-EC09-11E1-B53C-5B739DFF4B22",
+                        "E0E40AAA-76D1-11EB-B4D6-62D9C80FF06B",
+                        "238D7B94-D9AE-11E2-8F9A-BB82D51F4EFC",
+                        "615017D6-BFDC-11E0-8BD1-2C4B9DFF4B22",
+                        "DAC51449-2E0C-4570-B0FC-4ABC2365A4E0",
+                        "93F7166D-47EA-4B35-BF12-F493941942F5",
+                        "0549F822-1C5B-11E6-AF12-BFD6092D2668",
+                        "132AAB88-883E-40B9-BC3C-65A63E2AFB14",
+                        "E002D722-D443-11E6-88E1-6CA4BF03DF2F",
+                        "755e32c6-a610-4147-9180-e778c23f7152",
+                        "24376910-DEAF-4C70-8BBA-BB3F64FE1D5F"
+                    ],
+                    "k12_depthOfKnowledge": "DOK3",
+                    "kds_aligned": "2025-07-01",
+                    "k12_sbacClaims": [
+                        "Claim 1"
+                    ],
+                    "k12_stem": "<p>How are the structures of the texts different?&#160;</p>",
+                    "kds_itemBankName": "College and Career Readiness Item Bank",
+                    "k12_locales": [
+                        "en_US"
+                    ],
+                    "kds_itemBankId": "4028e4a22998350701299839890b3c87",
+                    "kds_version": "20",
+                    "k12_parccClaims": [
+                        "Sub Claim I.2"
+                    ],
+                    "k12_author": "Suzanne Francis",
+                    "k12_passageAuthentic": false,
+                    "k12_passageTitle": "Grouped Passage",
+                    "k12_delivery": "BOTH",
+                    "id": "88074ed0-bb30-11f0-8dcf-cfb9d6157de8",
+                    "baseId": "4028e4a23db2924e013db79a741e048d",
+                    "name": "E184731",
+                    "version": "0.0.94",
+                    "isRelease": true,
+                    "collections_id": [
+                        "36c6b46e-2294-44d0-a0e3-3147d5ac099b",
+                        "8a80808163605df901636562699b22cd"
+                    ],
+                    "organizations_id": [
+                        "1"
+                    ],
+                    "retired": false,
+                    "published": true,
+                    "pies": [
+                        "@pie-element/multiple-choice"
+                    ],
+                    "bundle_@pie-element/multiple-choice": "latest",
+                    "prompt": "<p>How are the structures of the texts different?&#160;</p>",
+                    "content": "How are the structures of the texts different? The web page describes events in the order they occurred, while the review examines several of Rousseau's paintings. 4028e4a23db2924e013db79a741f048e The web page presents a problem and provides a solution, while the review includes ideas organized by their importance. 4028e4a23db2924e013db79a741f0491 The web page uses comparison and contrast, while the review uses a main idea and details to support it. 4028e4a23db2924e013db79a741f0490 The web page is organized by cause and effect, while the review focuses on events in Rousseau's life. 4028e4a23db2924e013db79a741f048f"
+                },
+                "passage": "87ff5f90-bb30-11f0-8dcf-cfb9d6157de8",
+                "retired": false,
+                "published": true,
+                "baseId": "4028e4a23db2924e013db79a741e048d",
+                "signature": "73e7f47c0b52202be9953ed4fcc2925020026585bea37153c6d540fbff6789ed",
+                "version": {
+                    "major": 0,
+                    "minor": 0,
+                    "patch": 94,
+                    "prerelease": {
+                        "tag": null,
+                        "version": null
+                    }
+                },
+                "createdAt": "2025-11-06T16:49:16.349Z",
+                "updatedAt": "2025-12-22T03:10:56.210Z"
+            }
+        },
+        {
+            "identifier": "E228002",
+            "itemVId": "4028e4a24b37ea67014b5f1b4877655d",
+            "item": {
+                "id": "f663ea60-6170-11f0-afe7-29cbf5864da8",
+                "name": "E228002",
+                "config": {
+                    "markup": "<multiple-choice id=\"4028e4a24b37ea67014b5f1b4877655d\"></multiple-choice>",
+                    "elements": {
+                        "multiple-choice": "@pie-element/multiple-choice@latest"
+                    },
+                    "models": [
+                        {
+                            "keyMode": "none",
+                            "lockChoiceOrder": false,
+                            "id": "4028e4a24b37ea67014b5f1b4877655d",
+                            "choiceMode": "radio",
+                            "choices": [
+                                {
+                                    "correct": false,
+                                    "label": "<p>Rousseau worked in a government office, and this made it hard for him to concentrate on his art.</p>",
+                                    "value": "4028e4a24b37ea67014b5f1b4878655f",
+                                    "rationale": "<p>Rousseau had other jobs before he became a full-time artist, but the fact that he worked in a government office is not a main idea; nor is the notion that Rousseau found it difficult to concentrate on his art.</p>"
+                                },
+                                {
+                                    "correct": false,
+                                    "label": "<p>Rousseau was interested in other artists&#39; work, and he became friends with some&#160;famous artists.</p>",
+                                    "value": "4028e4a24b37ea67014b5f1b48786560",
+                                    "rationale": "<p>While the final paragraph of the text states that the renowned artist Pablo Picasso &#8220;noticed Rousseau&#8217;s art and admired it,&#8221; there is no indication that Rousseau and Picasso knew each other personally or that Rousseau was interested in Picasso&#39;s work.</p>"
+                                },
+                                {
+                                    "correct": true,
+                                    "label": "<p>Rousseau started painting later in life, and it took time for him to become a respected artist.</p>",
+                                    "value": "4028e4a24b37ea67014b5f1b4878655e",
+                                    "rationale": "<p>The information in paragraph 2 develops the idea that Rousseau did not become an artist until his forties, and the final paragraph develops the idea that it took time for him to become respected. These are both main ideas in the text.</p>"
+                                },
+                                {
+                                    "correct": false,
+                                    "label": "<p>Rousseau had an elegant garden, and he often included interesting flowers in his paintings.</p>",
+                                    "value": "4028e4a24b37ea67014b5f1b48786561",
+                                    "rationale": "<p>The fact that Rousseau painted &#34;strange flowers&#34; is mentioned in paragraph 3 of the text, but it is not a main idea of the text&#8212;it is included as part of a broader discussion about the subjects of Rousseau&#8217;s work. Also, there is no indication that Rousseau had a garden of his own; the text notes only that he enjoyed visiting gardens.</p>"
+                                }
+                            ],
+                            "prompt": "<p>Which statement correctly describes two <span class=\"relative-emphasis\">main</span> ideas of <span class=\"passage-title\">Henri Rousseau Web Page</span>?</p>",
+                            "element": "multiple-choice"
+                        }
+                    ],
+                    "id": "68763ef0acd367efa5a66504"
+                },
+                "searchMetaData": {
+                    "k12_passageTitle": "Grouped Passage",
+                    "k12_author": "Krista O'Connell",
+                    "k12_delivery": "BOTH",
+                    "k12_passageAuthentic": false,
+                    "k12_stem": "<p>Which statement correctly describes two <span class=\"relative-emphasis\">main</span> ideas of <span class=\"passage-title\">Henri Rousseau Web Page</span>?</p>",
+                    "k12_passageCertifiedLexile": 930,
+                    "k12_abStandard": [
+                        "151b14e4-63af-487c-af61-10ba2b11727e",
+                        "E44364C8-B8C9-11E0-9889-17519DFF4B22",
+                        "23DC4DAC-3A33-11E2-B7CD-2BFEBCAA0334",
+                        "0dfcfff8-8ca8-4508-8044-7caea2b7c85e",
+                        "9DCE0FA8-DA6D-11E2-BA53-9B72D51F4EFC",
+                        "594b15b9-6d92-4527-9849-cfbb43cbffab",
+                        "2A8A3072-191E-4B15-9552-5AD2E95D011D",
+                        "05BD8EAA-5476-11DD-A31F-17FB9CFF4B22",
+                        "84F55EE7-74DB-46D0-99E5-E81BA1DC4282",
+                        "3DEE19A6-D9D3-11E2-A820-F2109DFF4B22",
+                        "A20FB7DE-D9D6-11E2-8B79-45B7D51F4EFC",
+                        "3A9D687D-84C0-4C48-97B0-FA17AA533C67",
+                        "C6CA05D8-D9B4-11E2-9DF4-B4A5D51F4EFC",
+                        "C8E6C248-55AD-4B1C-BBDF-0D53FBA03D7D",
+                        "3C6169BE-BA88-11E1-B2D2-09269DFF4B22",
+                        "E34A3CB2-835A-11E0-A099-8AF99CFF4B22",
+                        "E0CCAF9C-393A-11E6-AAC8-83299AAB8BA3",
+                        "8E1753FE-D9B3-11E2-BE28-04169DFF4B22",
+                        "7FC17266-7440-11DF-93FA-01FD9CFF4B22",
+                        "23DA2C52-3A33-11E2-B7CD-2BFEBCAA0334",
+                        "1EAF2AC2-617A-4D86-848E-349A1872A994",
+                        "19055B64-7515-4958-AA59-22E9356A5768",
+                        "cc67f008-fa00-11ee-85ad-0ea0ac55c34d",
+                        "17CFA46A-C9DF-4978-B67C-6B92B4082C9B",
+                        "A091C2F8-279E-11E1-814D-E1469DFF4B22",
+                        "E09DF5C7-913E-4133-93BB-95FAE2BCC84C",
+                        "9ABA0CFE-4D20-11EA-8FC4-D923BFBA2FDB",
+                        "C7341CAA-7ADE-41BF-BF7F-3D582FC8DF2D",
+                        "1C8B5E4C-9892-11E0-8388-5F489DFF4B22",
+                        "39F6885C-6C44-41E3-AB5A-933ADCE3FA5A",
+                        "719C2FF6-54A0-4193-9747-781CC1C39C71",
+                        "22F6E9BA-7C48-11E0-9647-CB109DFF4B22",
+                        "4485ADE6-31A6-11E6-829C-B0169AAB8BA3",
+                        "432B7666-D9E2-11E2-96B6-A0BED51F4EFC",
+                        "E0C7B882-76D1-11EB-B4D6-62D9C80FF06B",
+                        "B097D9EA-F048-11E5-A5EB-5FE2092D2668",
+                        "8C7604FE-371C-4A64-99EB-4EFD2E324113",
+                        "2B0F6C0A-DA72-11E2-9C75-52EDD51F4EFC",
+                        "E90F9F0C-AF87-11E1-913D-05249DFF4B22",
+                        "61985E66-C9A2-11E2-8534-660B9DFF4B22",
+                        "C645E4FA-C9E0-11E5-BC8A-57E88A248D58",
+                        "95AFC75C-936A-11EC-B196-34ECB4076729",
+                        "7811A657-DBBE-4E2B-8FDC-199A528C2B22",
+                        "DB0068CE-DE81-11E0-831A-85489DFF4B22",
+                        "51D99F04-D90F-11E2-9D4F-28629DFF4B22",
+                        "C78D21DA-D9E6-11E2-BBB0-00249DFF4B22",
+                        "D10749A6-D443-11E6-93EE-3C37CDC8CA83",
+                        "6009EE03-3194-45D5-AEB3-2ADE7B5BAFCB",
+                        "795830CB-2A68-46CA-8478-B3F58F74F9B9",
+                        "9251f07d-2358-4712-97f4-1cda9842f49a",
+                        "B8487F9C-1396-4AB4-822B-BCC50B5F9261",
+                        "EA19D0DE-AA24-4F61-9C30-5CD79A9E5327",
+                        "CD839E46-93DB-11E0-8527-63159DFF4B22",
+                        "B7CB4B82-6D84-4180-AB32-AAD80DBDCDCC",
+                        "AA6F0FD0-EC09-11E1-B53C-5B739DFF4B22",
+                        "5C77B8B9-9145-4654-975E-96312C72FA57",
+                        "9A4E0462-ADB1-4B82-8D03-CDA4CE222A5E",
+                        "9952cff8-6b49-4c61-9896-8062633e652d",
+                        "26D26742-DA71-11E2-B055-E63F9DFF4B22",
+                        "6CE63B72-5033-4B31-AD5D-ED7B4A051F8E",
+                        "2EC1384B-2040-415B-A177-D5DAFE933E1C",
+                        "D4F473BB-CA26-4B0A-9357-9821280CDF0E",
+                        "5955E564-49BB-40D4-8C23-2F37C0E091FC",
+                        "54380CCA-DA6F-11E2-85CC-52EDD51F4EFC",
+                        "A51966A0-1C59-11E6-BADF-62D4092D2668",
+                        "3E6A86F8-DA78-11E2-A988-824A9DFF4B22",
+                        "23845FDC-D9AE-11E2-8F9A-BB82D51F4EFC",
+                        "99AABF44-D357-11E5-99D7-06110A2D2668",
+                        "36930FCE-DA67-11E2-B1AA-803E9DFF4B22",
+                        "607f1ac8-3d0c-4f38-aa1b-284569a5315e",
+                        "23DD4610-D9D1-11E2-A302-B4A5D51F4EFC",
+                        "385E8106-D9A6-11E2-8171-BA739DFF4B22",
+                        "752B7A56-EAC5-4775-8100-0CD1485A6F6E",
+                        "A1DDB597-C713-4013-A617-C885671EBBEA",
+                        "614E85EC-BFDC-11E0-8BD1-2C4B9DFF4B22"
+                    ],
+                    "k12_sbacClaims": [
+                        "Claim 1"
+                    ],
+                    "k12_locales": [
+                        "en_US"
+                    ],
+                    "k12_parccClaims": [
+                        "Sub Claim I.2"
+                    ],
+                    "k12_depthOfKnowledge": "DOK2",
+                    "k12_status": "PUBLISHED",
+                    "kds_itemBankId": "4028e4a22998350701299839890b3c87",
+                    "kds_itemBankName": "College and Career Readiness Item Bank",
+                    "kds_type": "MC",
+                    "kds_version": "13",
+                    "kds_modified": "2025-05-27",
+                    "kds_published": "2015-03-31",
+                    "kds_aligned": "2025-07-15",
+                    "id": "f663ea60-6170-11f0-afe7-29cbf5864da8",
+                    "baseId": "4028e4a24b37ea67014b5f1b4877655d",
+                    "name": "E228002",
+                    "version": "0.0.92",
+                    "isRelease": true,
+                    "collections_id": [
+                        "36c6b46e-2294-44d0-a0e3-3147d5ac099b",
+                        "8a80808163605df901636562699b22cd"
+                    ],
+                    "organizations_id": [
+                        "1"
+                    ],
+                    "retired": false,
+                    "published": true,
+                    "pies": [
+                        "@pie-element/multiple-choice"
+                    ],
+                    "bundle_@pie-element/multiple-choice": "latest",
+                    "prompt": "<p>Which statement correctly describes two <span class=\"relative-emphasis\">main</span> ideas of <span class=\"passage-title\">Henri Rousseau Web Page</span>?</p>",
+                    "content": "Which statement correctly describes two main ideas of Henri Rousseau Web Page? Rousseau worked in a government office, and this made it hard for him to concentrate on his art. 4028e4a24b37ea67014b5f1b4878655f Rousseau was interested in other artists' work, and he became friends with some famous artists. 4028e4a24b37ea67014b5f1b48786560 Rousseau started painting later in life, and it took time for him to become a respected artist. 4028e4a24b37ea67014b5f1b4878655e Rousseau had an elegant garden, and he often included interesting flowers in his paintings. 4028e4a24b37ea67014b5f1b48786561"
+                },
+                "passage": "f65c7050-6170-11f0-afe7-29cbf5864da8",
+                "retired": false,
+                "published": true,
+                "baseId": "4028e4a24b37ea67014b5f1b4877655d",
+                "signature": "b139fb8be11bddd51000ac49ae5701762cb78decfc8450862bf9bd2cf3f687c0",
+                "version": {
+                    "major": 0,
+                    "minor": 0,
+                    "patch": 92,
+                    "prerelease": {
+                        "tag": null,
+                        "version": null
+                    }
+                },
+                "createdAt": "2025-07-15T11:43:44.647Z",
+                "updatedAt": "2025-12-22T03:15:20.936Z"
+            }
+        },
+        {
+            "identifier": "E184724",
+            "itemVId": "4028e4a23db2924e013db76193c10379",
+            "item": {
+                "id": "94865020-bb30-11f0-8dcf-cfb9d6157de8",
+                "name": "E184724",
+                "config": {
+                    "markup": "<multiple-choice id=\"4028e4a23db2924e013db76193c10379\"></multiple-choice>",
+                    "elements": {
+                        "multiple-choice": "@pie-element/multiple-choice@latest"
+                    },
+                    "models": [
+                        {
+                            "keyMode": "none",
+                            "lockChoiceOrder": false,
+                            "id": "4028e4a23db2924e013db76193c10379",
+                            "choiceMode": "radio",
+                            "choices": [
+                                {
+                                    "correct": false,
+                                    "label": "<p>Rousseau loved to look at strange plants.</p>",
+                                    "value": "4028e4a23db2924e013db76193c1037c",
+                                    "rationale": "<p>Though the website mentions Rousseau&#39;s admiration of gardens and exotic plants, the reviewer does not mention it.</p>"
+                                },
+                                {
+                                    "correct": true,
+                                    "label": "<p>Rousseau had never been to the jungle.</p>",
+                                    "value": "4028e4a23db2924e013db76193c1037a",
+                                    "rationale": "<p>Both passages mention the fact that Rousseau had never seen an actual jungle.</p>"
+                                },
+                                {
+                                    "correct": false,
+                                    "label": "<p>Rousseau&#39;s paintings were displayed for the public to view.</p>",
+                                    "value": "4028e4a23db2924e013db76193c1037b",
+                                    "rationale": "<p>Though this is mentioned in the review and is the subject of the review, it is not mentioned in the website.</p>"
+                                },
+                                {
+                                    "correct": false,
+                                    "label": "<p>Rousseau&#39;s father was a plumber.</p>",
+                                    "value": "4028e4a23db2924e013db76193c1037d",
+                                    "rationale": "<p>This fact can be found in the website text, but it is not present in the review.</p>"
+                                }
+                            ],
+                            "prompt": "<p>Which sentence describes a fact included in <span class=\"relative-emphasis\">both</span> texts?&#160;</p>",
+                            "element": "multiple-choice"
+                        }
+                    ],
+                    "id": "690cd1a1386bcfa9d0da5b75"
+                },
+                "searchMetaData": {
+                    "k12_passageCertifiedLexile": 930,
+                    "k12_status": "PUBLISHED",
+                    "kds_published": "2013-05-09",
+                    "kds_type": "MC",
+                    "kds_modified": "2025-11-06",
+                    "k12_abStandard": [
+                        "3E8D9FF8-DA78-11E2-A988-824A9DFF4B22",
+                        "D2C1EC26-D357-11E5-A32E-6A110A2D2668",
+                        "C6DE4192-D9B4-11E2-9DF4-B4A5D51F4EFC",
+                        "44214138-CD0B-4B39-8A95-9D0287D99850",
+                        "A9DDFF8F-C9D7-45AA-9093-7723A38CE5B5",
+                        "2402DE0C-D9D1-11E2-A302-B4A5D51F4EFC",
+                        "387283C2-D9A6-11E2-8171-BA739DFF4B22",
+                        "E10B16FE-76D1-11EB-B4D6-62D9C80FF06B",
+                        "E6F2C741-3530-489C-85BC-6F576E47F6B7",
+                        "402DF98C-6DD9-11E6-93F7-4AF3CCC8CA83",
+                        "EFDC6166-102A-4E5E-88A6-0B39E02718F3",
+                        "9d447da1-3a95-432a-80c9-dcea955c4615",
+                        "D01AEC2A-98B6-41AC-B9D4-5863079B2A42",
+                        "F4CEF35C-D443-11E6-BC4A-5037CDC8CA83",
+                        "12F0309A-BD80-4A3F-AD25-2A7CA34E50D1",
+                        "6FB41BBF-5416-4B05-A608-5447ED68D4B4",
+                        "A095A184-279E-11E1-814D-E1469DFF4B22",
+                        "23DA2C52-3A33-11E2-B7CD-2BFEBCAA0334",
+                        "4EAD0EC8-07AF-45CA-A40E-122934D84AB5",
+                        "8566d590-4ab6-4f12-a06a-8d75e964baac",
+                        "9DEB8736-DA6D-11E2-BA53-9B72D51F4EFC",
+                        "4C38B348-8108-44E9-8DB9-B1BDCAA630F2",
+                        "B5206D72-4D20-11EA-9162-E817062ECCEF",
+                        "5202E18E-D90F-11E2-9D4F-28629DFF4B22",
+                        "681B010B-B961-44E5-B198-91D63954AF0D",
+                        "682FE7C7-AC94-422E-BBB5-4AC3BCFC55DA",
+                        "766A34FC-31A7-11E6-84A4-04189AAB8BA3",
+                        "9E225A84-835A-11E0-A099-8AF99CFF4B22",
+                        "d7574098-6549-409c-92ed-c4d8a74c1b34",
+                        "36B062F4-DA67-11E2-B1AA-803E9DFF4B22",
+                        "95FFBCE4-936A-11EC-B196-34ECB4076729",
+                        "1C929CF2-9892-11E0-8388-5F489DFF4B22",
+                        "0622C1D9-726F-4998-86AF-BFD80DF796C2",
+                        "FA8D9678-B796-4849-ACA1-C5028265D251",
+                        "4A975F85-1504-4DCD-832C-60D07BF4F42A",
+                        "c459e485-44bb-41d2-9459-670b36eda879",
+                        "fb44eaef-990b-4a94-bb5d-9f8156b9b9d2",
+                        "61520BAE-BFDC-11E0-8BD1-2C4B9DFF4B22",
+                        "1DAB88B2-C9E1-11E5-8917-724F3C6237C7",
+                        "7936183E-24FC-11E6-933E-ECAF092D2668",
+                        "619C5FF2-C9A2-11E2-8534-660B9DFF4B22",
+                        "5469951A-DA6F-11E2-85CC-52EDD51F4EFC",
+                        "3C65F8E4-BA88-11E1-B2D2-09269DFF4B22",
+                        "BED2CE16-585D-4712-A6BD-70003E02A305",
+                        "05BEE4D0-5476-11DD-A31F-17FB9CFF4B22",
+                        "8E2E08EC-D9B3-11E2-BE28-04169DFF4B22",
+                        "6B3EC27A-1C5B-11E6-9836-9DD7092D2668",
+                        "A228CDB4-D9D6-11E2-8B79-45B7D51F4EFC",
+                        "4345AD38-D9E2-11E2-96B6-A0BED51F4EFC",
+                        "9A919A59-AA6B-4CEA-9F52-EE15FC76A1BD",
+                        "4C02BD0D-48D3-4960-AB89-F6BA4BD9519F",
+                        "E913BCCC-AF87-11E1-913D-05249DFF4B22",
+                        "22FA0A00-7C48-11E0-9647-CB109DFF4B22",
+                        "4396EBCD-7E39-4D67-B3E3-9A105F534B68",
+                        "272168C4-DA71-11E2-B055-E63F9DFF4B22",
+                        "2399BFF8-D9AE-11E2-8F9A-BB82D51F4EFC",
+                        "DB04722A-DE81-11E0-831A-85489DFF4B22",
+                        "CD87400A-93DB-11E0-8527-63159DFF4B22",
+                        "3E033E30-D9D3-11E2-A820-F2109DFF4B22",
+                        "E44722DE-B8C9-11E0-9889-17519DFF4B22",
+                        "B0F34870-F048-11E5-A5EB-5FE2092D2668",
+                        "2B2C9640-DA72-11E2-9C75-52EDD51F4EFC",
+                        "021542AF-C6EB-43A3-868D-FA788056157C",
+                        "AA74C2E0-EC09-11E1-B53C-5B739DFF4B22",
+                        "C7A8C174-D9E6-11E2-BBB0-00249DFF4B22",
+                        "5946E0B4-393B-11E6-BCE2-132B9AAB8BA3",
+                        "661164D1-FB62-4CD1-9E04-CBA8D0DBACE0",
+                        "E0B8C41F-189F-421B-9C3A-B929E06C12B8",
+                        "cc639793-fa00-11ee-85ad-0ea0ac55c34d",
+                        "C970923F-9FD8-4085-9FDB-49822A1CB492",
+                        "7FC814CC-7440-11DF-93FA-01FD9CFF4B22"
+                    ],
+                    "k12_depthOfKnowledge": "DOK2",
+                    "kds_aligned": "2025-07-01",
+                    "k12_sbacClaims": [
+                        "Claim 1"
+                    ],
+                    "k12_stem": "<p>Which sentence describes a fact included in <span class=\"relative-emphasis\">both</span> texts?&#160;</p>",
+                    "kds_itemBankName": "College and Career Readiness Item Bank",
+                    "k12_locales": [
+                        "en_US"
+                    ],
+                    "kds_itemBankId": "4028e4a22998350701299839890b3c87",
+                    "kds_version": "16",
+                    "k12_parccClaims": [
+                        "Sub Claim I.2"
+                    ],
+                    "k12_author": "Suzanne Francis",
+                    "k12_passageAuthentic": false,
+                    "k12_passageTitle": "Grouped Passage",
+                    "k12_delivery": "BOTH",
+                    "id": "94865020-bb30-11f0-8dcf-cfb9d6157de8",
+                    "baseId": "4028e4a23db2924e013db76193c10379",
+                    "name": "E184724",
+                    "version": "0.0.88",
+                    "isRelease": true,
+                    "collections_id": [
+                        "36c6b46e-2294-44d0-a0e3-3147d5ac099b",
+                        "8a80808163605df901636562699b22cd"
+                    ],
+                    "organizations_id": [
+                        "1"
+                    ],
+                    "retired": false,
+                    "published": true,
+                    "pies": [
+                        "@pie-element/multiple-choice"
+                    ],
+                    "bundle_@pie-element/multiple-choice": "latest",
+                    "prompt": "<p>Which sentence describes a fact included in <span class=\"relative-emphasis\">both</span> texts?&#160;</p>",
+                    "content": "Which sentence describes a fact included in both texts? Rousseau loved to look at strange plants. 4028e4a23db2924e013db76193c1037c Rousseau had never been to the jungle. 4028e4a23db2924e013db76193c1037a Rousseau's paintings were displayed for the public to view. 4028e4a23db2924e013db76193c1037b Rousseau's father was a plumber. 4028e4a23db2924e013db76193c1037d"
+                },
+                "passage": "947d9d90-bb30-11f0-8dcf-cfb9d6157de8",
+                "retired": false,
+                "published": true,
+                "baseId": "4028e4a23db2924e013db76193c10379",
+                "signature": "84f593cb33476f85c952aed429f0e22869ea8c269c9d827602dd7e4aa77a6369",
+                "version": {
+                    "major": 0,
+                    "minor": 0,
+                    "patch": 88,
+                    "prerelease": {
+                        "tag": null,
+                        "version": null
+                    }
+                },
+                "createdAt": "2025-11-06T16:49:37.314Z",
+                "updatedAt": "2025-12-22T03:10:56.210Z"
+            }
+        }
+    ]
+}

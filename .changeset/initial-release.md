@@ -9,6 +9,8 @@
 "@pie-players/pie-section-tools-toolbar": minor
 "@pie-players/pie-tool-answer-eliminator": minor
 "@pie-players/pie-tool-tts-inline": minor
+"@pie-players/tts-client-server": minor
+"@pie-players/pie-calculator-desmos": minor
 ---
 
 Initial 0.1.0 release of PIE section player and dependencies
@@ -34,6 +36,8 @@ This release includes:
 ### Core Libraries
 - **@pie-players/pie-assessment-toolkit** - Core toolkit with tool coordination, TTS services, and accessibility features
 - **@pie-players/pie-players-shared** - Shared types and utilities
+- **@pie-players/tts-client-server** - Client-side TTS provider for server API integration
+- **@pie-players/pie-calculator-desmos** - Desmos calculator provider for graphing and scientific calculators
 
 ## Publishing Fixes
 

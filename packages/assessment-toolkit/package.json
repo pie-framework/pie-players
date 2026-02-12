@@ -59,6 +59,10 @@
 		"@pie-players/pie-players-shared": "workspace:*",
 		"@pie-players/pie-tts": "workspace:*"
 	},
+	"optionalDependencies": {
+		"@pie-players/tts-client-server": "workspace:*",
+		"@pie-players/pie-calculator-desmos": "workspace:*"
+	},
 	"peerDependencies": {
 		"svelte": "^5.0.0"
 	},

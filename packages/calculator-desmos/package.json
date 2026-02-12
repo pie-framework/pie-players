@@ -29,6 +29,9 @@
 	],
 	"author": "PIE Framework",
 	"license": "MIT",
+	"publishConfig": {
+		"access": "public"
+	},
 	"dependencies": {
 		"@pie-players/pie-calculator": "workspace:*"
 	},

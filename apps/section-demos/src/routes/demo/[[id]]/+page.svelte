@@ -56,10 +56,21 @@ import { onDestroy, onMount, untrack } from 'svelte';
 		return 'candidate';
 	}
 
+	function getInitialEsmSource(): 'local' | 'remote' {
+		if (browser) {
+			const urlParam = new URLSearchParams(window.location.search).get('esmSource');
+			if (urlParam === 'local') {
+				return 'local';
+			}
+		}
+		return 'remote';
+	}
+
 	let showJson = $state(false);
 	let playerType = $state<'iife' | 'esm'>(getInitialPlayerType());
 	let layoutType = $state<'vertical' | 'split-panel'>(getInitialLayoutType());
 	let roleType = $state<'candidate' | 'scorer'>(getInitialMode());
+	let esmSource = $state<'local' | 'remote'>(getInitialEsmSource());
 	let showSessionPanel = $state(false);
 	let showSourcePanel = $state(false);
 	let isSessionMinimized = $state(false);
@@ -429,13 +440,14 @@ import { onDestroy, onMount, untrack } from 'svelte';
 
 	// Handle player type change with page refresh
 	// Update URL and refresh page when player, layout, or mode changes
-	function updateUrlAndRefresh(updates: { player?: 'iife' | 'esm'; layout?: 'vertical' | 'split-panel'; mode?: 'candidate' | 'scorer' }) {
+	function updateUrlAndRefresh(updates: { player?: 'iife' | 'esm'; layout?: 'vertical' | 'split-panel'; mode?: 'candidate' | 'scorer'; esmSource?: 'local' | 'remote' }) {
 		if (browser) {
 			const url = new URL(window.location.href);
 			// Preserve current values and apply updates
 			url.searchParams.set('player', updates.player || playerType);
 			url.searchParams.set('layout', updates.layout || layoutType);
 			url.searchParams.set('mode', updates.mode || roleType);
+			url.searchParams.set('esmSource', updates.esmSource || esmSource);
 			window.location.href = url.toString();
 		}
 	}
@@ -528,7 +540,8 @@ import { onDestroy, onMount, untrack } from 'svelte';
 			case 'iife':
 				return { bundleHost: 'https://proxy.pie-api.com/bundles/', esmCdnUrl: '' };
 			case 'esm':
-				return { bundleHost: '', esmCdnUrl: 'https://esm.sh' };
+				// Empty esmCdnUrl means same-origin (Vite dev server with local-esm-cdn plugin)
+				return { bundleHost: '', esmCdnUrl: esmSource === 'local' ? '' : 'https://esm.sh' };
 		}
 	});
 
@@ -772,6 +785,27 @@ import { onDestroy, onMount, untrack } from 'svelte';
 					ESM
 				</button>
 			</div>
+
+			{#if playerType === 'esm'}
+				<div class="join">
+					<button
+						class="btn btn-sm join-item"
+						class:btn-active={esmSource === 'remote'}
+						onclick={() => updateUrlAndRefresh({ esmSource: 'remote' })}
+						title="Use remote CDN (esm.sh)"
+					>
+						Remote CDN
+					</button>
+					<button
+						class="btn btn-sm join-item"
+						class:btn-active={esmSource === 'local'}
+						onclick={() => updateUrlAndRefresh({ esmSource: 'local' })}
+						title="Use local-esm-cdn (prod testing)"
+					>
+						Local CDN
+					</button>
+				</div>
+			{/if}
 
 			<div class="divider divider-horizontal"></div>
 

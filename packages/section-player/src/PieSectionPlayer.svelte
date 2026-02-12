@@ -167,7 +167,7 @@ import type {
 		// Passages should be visible in both candidate and scorer modes
 		const allRubricBlocks = section.rubricBlocks || [];
 		for (const rb of allRubricBlocks) {
-			if (rb.use === 'passage' && rb.passage && rb.passage.id) {
+			if (rb.class === 'stimulus' && rb.passage && rb.passage.id) {
 				// Include passages from candidate view (always shown) and current view
 				if (rb.view === 'candidate' || rb.view === view) {
 					passageMap.set(rb.passage.id, rb.passage);
@@ -358,7 +358,7 @@ import type {
 
 	// Get instructions
 	let instructions = $derived(
-		rubricBlocks.filter(rb => rb.use === 'instructions')
+		rubricBlocks.filter(rb => rb.class === 'instructions')
 	);
 
 	// Handle session changes from items

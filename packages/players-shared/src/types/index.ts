@@ -220,7 +220,7 @@ export interface QuestionEntity
 // ============================================================================
 
 export interface RubricBlock {
-	id?: string;
+	identifier?: string;
 	view:
 		| "author"
 		| "candidate"
@@ -228,7 +228,12 @@ export interface RubricBlock {
 		| "scorer"
 		| "testConstructor"
 		| "tutor";
-	use?: "instructions" | "passage" | "rubric";
+	class?: "stimulus" | "instructions" | "rubric";
+
+	/**
+	 * Versioned ID reference to the passage (when class="stimulus").
+	 */
+	passageVId?: string;
 
 	/**
 	 * Embedded passage entity (PIE-native approach).

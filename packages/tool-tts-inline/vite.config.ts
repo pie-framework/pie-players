@@ -16,6 +16,7 @@ export default defineConfig({
 			entry: "tool-tts-inline.svelte",
 			name: "PieToolTTSInline",
 			fileName: "tool-tts-inline",
+			formats: ["es"],
 		},
 		rollupOptions: {
 			external: ["svelte", "@pie-players/pie-assessment-toolkit"],

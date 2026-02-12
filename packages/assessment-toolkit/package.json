@@ -56,12 +56,10 @@
 	},
 	"dependencies": {
 		"@pie-players/pie-calculator": "workspace:*",
+		"@pie-players/pie-calculator-desmos": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*",
-		"@pie-players/pie-tts": "workspace:*"
-	},
-	"optionalDependencies": {
-		"@pie-players/tts-client-server": "workspace:*",
-		"@pie-players/pie-calculator-desmos": "workspace:*"
+		"@pie-players/pie-tts": "workspace:*",
+		"@pie-players/tts-client-server": "workspace:*"
 	},
 	"peerDependencies": {
 		"svelte": "^5.0.0"

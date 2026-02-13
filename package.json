@@ -14,7 +14,7 @@
 		"packages/math-renderer-katex"
 	],
 	"scripts": {
-		"build": "turbo build",
+		"build": "turbo build --filter='!./apps/*' --filter='!./tools/*'",
 		"dev": "turbo dev --filter=example",
 		"test": "turbo test",
 		"test:evals": "dotenvx run -- bun run --cwd apps/example test:evals",

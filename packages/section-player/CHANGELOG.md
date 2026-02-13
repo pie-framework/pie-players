@@ -1,5 +1,26 @@
 # @pie-players/pie-section-player
 
+## 0.2.2
+
+### Patch Changes
+
+- 8c467cf: Fix bundle URL construction to handle bundleHost without trailing slash
+
+  - Normalize bundleHost to ensure proper URL construction with exactly one trailing slash
+  - Handle edge cases: missing slash, multiple slashes, empty string, whitespace
+  - Fixes error: `bundles@pie-element` → `bundles/@pie-element` in production environments
+
+- Updated dependencies [8c467cf]
+  - @pie-players/pie-players-shared@0.2.1
+  - @pie-players/pie-assessment-toolkit@0.2.1
+  - @pie-players/pie-esm-player@0.2.1
+  - @pie-players/pie-fixed-player@0.2.1
+  - @pie-players/pie-iife-player@0.2.1
+  - @pie-players/pie-inline-player@0.2.1
+  - @pie-players/pie-section-tools-toolbar@0.2.1
+  - @pie-players/pie-tool-answer-eliminator@0.2.2
+  - @pie-players/pie-tool-tts-inline@1.1.1
+
 ## 0.2.1
 
 ### Patch Changes

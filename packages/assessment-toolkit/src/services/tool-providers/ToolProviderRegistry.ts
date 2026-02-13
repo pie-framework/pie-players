@@ -218,8 +218,20 @@ export class ToolProviderRegistry {
 		providerId: string,
 		autoInitialize = true,
 	): Promise<T> {
+		console.log('[ToolProviderRegistry] getProvider called', {
+			providerId,
+			autoInitialize,
+			isRegistered: this.providers.has(providerId),
+			isInitialized: this.initialized.get(providerId),
+			allProviderIds: Array.from(this.providers.keys())
+		});
+
 		const provider = this.providers.get(providerId);
 		if (!provider) {
+			console.error('[ToolProviderRegistry] Provider not found:', {
+				requestedId: providerId,
+				availableProviders: Array.from(this.providers.keys())
+			});
 			throw new Error(
 				`[ToolProviderRegistry] Provider "${providerId}" not registered`,
 			);
@@ -227,8 +239,15 @@ export class ToolProviderRegistry {
 
 		// Auto-initialize if needed
 		if (autoInitialize && !this.initialized.get(providerId)) {
+			console.log('[ToolProviderRegistry] Auto-initializing provider:', providerId);
 			await this.initialize(providerId);
 		}
+
+		console.log('[ToolProviderRegistry] Returning provider:', {
+			providerId,
+			providerName: provider.providerName,
+			isReady: provider.isReady()
+		});
 
 		return provider as T;
 	}

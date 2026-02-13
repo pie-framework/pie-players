@@ -1,5 +1,15 @@
 # @pie-players/pie-section-player
 
+## 0.2.3
+
+### Patch Changes
+
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.2.2
+  - @pie-players/pie-section-tools-toolbar@0.2.2
+  - @pie-players/pie-tool-answer-eliminator@0.2.3
+  - @pie-players/pie-tool-tts-inline@1.1.2
+
 ## 0.2.2
 
 ### Patch Changes

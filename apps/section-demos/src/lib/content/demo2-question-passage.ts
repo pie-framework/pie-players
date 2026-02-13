@@ -19,9 +19,9 @@ export const demo2Section: QtiAssessmentSection = {
 
 	rubricBlocks: [
 		{
-			id: "passage-renaissance",
+			identifier: "passage-renaissance",
 			view: "candidate",
-			use: "passage",
+			class: "stimulus",
 			passage: {
 				id: "passage-renaissance-001",
 				name: "The Renaissance: A Cultural Rebirth",

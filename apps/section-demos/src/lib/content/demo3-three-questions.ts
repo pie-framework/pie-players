@@ -19,9 +19,9 @@ export const demo3Section: QtiAssessmentSection = {
 
 	rubricBlocks: [
 		{
-			id: "passage-photosynthesis",
+			identifier: "passage-photosynthesis",
 			view: "candidate",
-			use: "passage",
+			class: "stimulus",
 			passage: {
 				id: "passage-photosynthesis-001",
 				name: "Photosynthesis: The Foundation of Life on Earth",

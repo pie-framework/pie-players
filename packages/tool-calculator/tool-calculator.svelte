@@ -139,9 +139,22 @@ import { onMount } from 'svelte';
 	}
 
 	async function getProvider(type: CalculatorType) {
-		if (!toolkitCoordinator?.toolProviderRegistry) return null;
+		console.log('[ToolCalculator] getProvider called', {
+			type,
+			hasToolkitCoordinator: !!toolkitCoordinator,
+			hasRegistry: !!toolkitCoordinator?.toolProviderRegistry
+		});
+
+		if (!toolkitCoordinator?.toolProviderRegistry) {
+			console.warn('[ToolCalculator] No toolkitCoordinator or registry available');
+			return null;
+		}
+
 		try {
-			return await toolkitCoordinator.toolProviderRegistry.getProvider('calculator-desmos');
+			console.log('[ToolCalculator] Requesting calculator-desmos provider from registry');
+			const provider = await toolkitCoordinator.toolProviderRegistry.getProvider('calculator-desmos');
+			console.log('[ToolCalculator] Got provider from registry:', provider);
+			return provider;
 		} catch (error) {
 			console.error('[ToolCalculator] Failed to get provider:', error);
 			return null;
@@ -312,7 +325,18 @@ import { onMount } from 'svelte';
 	}
 
 	async function initCalculator() {
+		console.log('[ToolCalculator] initCalculator called', {
+			isInitializing,
+			isSwitching,
+			hasCalculatorInstance: !!calculatorInstance,
+			hasContainerEl: !!calculatorContainerEl,
+			initializationFailed,
+			hasToolkitCoordinator: !!toolkitCoordinator,
+			hasRegistry: !!toolkitCoordinator?.toolProviderRegistry
+		});
+
 		if (isInitializing || isSwitching || calculatorInstance || !calculatorContainerEl || initializationFailed) {
+			console.log('[ToolCalculator] Early return from initCalculator');
 			return;
 		}
 
@@ -320,21 +344,38 @@ import { onMount } from 'svelte';
 
 		try {
 			if (!availableTypes.includes(currentCalculatorType)) {
+				console.log('[ToolCalculator] Calculator type not available, using fallback', {
+					requested: currentCalculatorType,
+					availableTypes,
+					fallback: availableTypes[0] || 'scientific'
+				});
 				currentCalculatorType = availableTypes[0] || 'scientific';
 			}
 
+			console.log('[ToolCalculator] Getting provider for type:', currentCalculatorType);
 			// Get tool provider from toolkitCoordinator registry
 			const toolProvider = await getProvider(currentCalculatorType);
+			console.log('[ToolCalculator] Got tool provider:', toolProvider);
+
 			if (!toolProvider) {
 				throw new Error('Desmos calculator tool provider not available');
 			}
 
+			console.log('[ToolCalculator] Creating calculator provider instance');
 			// Get actual calculator provider from tool provider
 			const calculatorProvider = await toolProvider.createInstance();
+			console.log('[ToolCalculator] Got calculator provider:', calculatorProvider);
 
 			if (!calculatorContainerEl || calculatorInstance || isSwitching) {
+				console.log('[ToolCalculator] Aborting due to state change');
 				return;
 			}
+
+			console.log('[ToolCalculator] Creating calculator with config:', {
+				type: currentCalculatorType,
+				hasContainer: !!calculatorContainerEl,
+				config: calculatorConfig
+			});
 
 			calculatorInstance = await calculatorProvider.createCalculator(
 				currentCalculatorType,
@@ -342,13 +383,15 @@ import { onMount } from 'svelte';
 				calculatorConfig
 			);
 
+			console.log('[ToolCalculator] Calculator instance created:', calculatorInstance);
+
 			if (false) {
 				await waitForAnimationFrames(2);
 				measureTICalculatorSize();
 			}
 
 			initializationFailed = false;
-			console.log(`[ToolCalculator] ${currentCalculatorType} calculator initialized`);
+			console.log(`[ToolCalculator] ${currentCalculatorType} calculator initialized successfully`);
 		} catch (error) {
 			initializationFailed = true;
 			console.error('[ToolCalculator] Failed to initialize calculator:', error);

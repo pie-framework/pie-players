@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-section-tools-toolbar",
-	"version": "0.2.1",
+	"version": "0.2.2",
 	"type": "module",
 	"description": "Section-level tools toolbar for PIE assessment player",
 	"repository": {

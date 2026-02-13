@@ -1,5 +1,12 @@
 # @pie-players/pie-tool-answer-eliminator
 
+## 0.2.3
+
+### Patch Changes
+
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.2.2
+
 ## 0.2.2
 
 ### Patch Changes

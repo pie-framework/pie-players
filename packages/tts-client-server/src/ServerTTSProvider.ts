@@ -95,10 +95,6 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 		length?: number,
 	) => void;
 
-	constructor(config: ServerTTSProviderConfig) {
-		this.config = config;
-	}
-
 	async speak(text: string): Promise<void> {
 		// Stop any current playback
 		this.stop();

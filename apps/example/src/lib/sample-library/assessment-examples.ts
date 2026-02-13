@@ -297,8 +297,9 @@ export function createAssessmentFromExample(
 							title: "Accessibility Features Demo",
 							rubricBlocks: [
 								{
+									identifier: "instructions-1",
 									view: "candidate",
-									use: "instructions",
+									class: "instructions",
 									content:
 										'<div data-catalog-id="welcome-message"><h3>Welcome</h3><p>This assessment demonstrates QTI 3.0 accessibility catalogs with multiple alternative formats.</p></div>',
 								},
@@ -366,8 +367,9 @@ export function createAssessmentFromExample(
 							title: "Accommodations Demo",
 							rubricBlocks: [
 								{
+									identifier: "instructions-2",
 									view: "candidate",
-									use: "instructions",
+									class: "instructions",
 									content:
 										"<h3>Personal Needs Profile Demo</h3><p>This assessment demonstrates automatic tool activation based on student accommodations (IEP/504 support). Notice that TTS and calculator tools are automatically activated based on your profile.</p>",
 								},
@@ -407,8 +409,9 @@ export function createAssessmentFromExample(
 							title: "Passage Set",
 							rubricBlocks: [
 								{
+									identifier: "passage-1",
 									view: "candidate",
-									use: "passage",
+									class: "stimulus",
 									content: passageContent,
 								},
 							],

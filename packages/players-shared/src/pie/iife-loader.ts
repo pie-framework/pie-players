@@ -90,7 +90,7 @@ export class IifePieLoader {
 		let bundleHost = this.config.bundleHost || DEFAULT_BUNDLE_HOST;
 		bundleHost = bundleHost.trim();
 		// Remove trailing slash and re-add to ensure exactly one
-		bundleHost = bundleHost.replace(/\/+$/, '') + '/';
+		bundleHost = bundleHost.replace(/\/+$/, "") + "/";
 		const url = `${bundleHost}${encodeURI(packageVersions)}/${bundleType}`;
 		logger.debug("Using bundle host URL:", url);
 		return url;

@@ -1,5 +1,12 @@
 # @pie-players/pie-tool-line-reader
 
+## 0.1.4
+
+### Patch Changes
+
+- Updated dependencies [6f7d346]
+  - @pie-players/pie-assessment-toolkit@0.2.3
+
 ## 0.1.3
 
 ### Patch Changes

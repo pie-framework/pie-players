@@ -1,5 +1,13 @@
 # @pie-players/pie-tool-calculator
 
+## 0.1.4
+
+### Patch Changes
+
+- 6f7d346: Fix Desmos calculator authentication by including API key in script URL query parameter. The Desmos API requires the API key to be passed when loading the calculator library script.
+- Updated dependencies [6f7d346]
+  - @pie-players/pie-assessment-toolkit@0.2.3
+
 ## 0.1.3
 
 ### Patch Changes

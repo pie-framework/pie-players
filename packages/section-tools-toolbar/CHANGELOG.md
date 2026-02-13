@@ -1,5 +1,17 @@
 # @pie-players/pie-section-tools-toolbar
 
+## 0.2.3
+
+### Patch Changes
+
+- Updated dependencies [6f7d346]
+  - @pie-players/pie-assessment-toolkit@0.2.3
+  - @pie-players/pie-tool-graph@0.1.4
+  - @pie-players/pie-tool-line-reader@0.1.4
+  - @pie-players/pie-tool-magnifier@0.1.4
+  - @pie-players/pie-tool-periodic-table@0.1.4
+  - @pie-players/pie-tool-protractor@0.1.4
+
 ## 0.2.2
 
 ### Patch Changes

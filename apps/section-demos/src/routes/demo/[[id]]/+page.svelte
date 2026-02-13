@@ -194,10 +194,11 @@ import { onDestroy, onMount, untrack } from 'svelte';
 					tools: {
 						tts: { enabled: true },
 						answerEliminator: { enabled: true },
-						calculator: {
-							enabled: true,
-							defaultType: 'scientific',
-							availableTypes: ['basic', 'scientific', 'graphing']
+						floatingTools: {
+							calculator: {
+								enabled: true,
+								provider: 'desmos'
+							}
 						}
 					},
 					accessibility: {

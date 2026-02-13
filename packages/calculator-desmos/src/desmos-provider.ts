@@ -61,6 +61,30 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 	}
 
 	/**
+	 * Dynamically load the Desmos calculator library
+	 * @private
+	 */
+	private async loadDesmosScript(): Promise<void> {
+		return new Promise((resolve, reject) => {
+			const script = document.createElement("script");
+			script.src = "https://www.desmos.com/api/v1.10/calculator.js";
+			script.async = true;
+			script.onload = () => {
+				if (window.Desmos) {
+					console.log("[DesmosProvider] Desmos API loaded successfully");
+					resolve();
+				} else {
+					reject(new Error("Desmos API loaded but window.Desmos is undefined"));
+				}
+			};
+			script.onerror = () => {
+				reject(new Error("Failed to load Desmos API from CDN"));
+			};
+			document.head.appendChild(script);
+		});
+	}
+
+	/**
 	 * Initialize Desmos library
 	 * @param config Configuration with API key (development) or proxy endpoint (production)
 	 */
@@ -127,11 +151,10 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 			);
 		}
 
-		// Check if Desmos API is loaded (should be loaded via CDN or bundled)
+		// Load Desmos API if not already loaded
 		if (!window.Desmos) {
-			throw new Error(
-				"Desmos API not found. Please load the Desmos calculator API before initializing.",
-			);
+			console.log("[DesmosProvider] Loading Desmos API library...");
+			await this.loadDesmosScript();
 		}
 
 		this.initialized = true;

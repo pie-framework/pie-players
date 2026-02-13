@@ -1,60 +1,60 @@
 {
-  "name": "@pie-players/pie-calculator-mathjs",
-  "version": "0.1.0",
-  "description": "Math.js calculator provider for PIE Assessment Toolkit - Open-source, always-available fallback",
-  "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    },
-    "./svelte": {
-      "types": "./dist/svelte-provider.d.ts",
-      "import": "./dist/svelte-provider.js",
-      "svelte": "./src/components/Calculator.svelte"
-    }
-  },
-  "files": [
-    "dist",
-    "src/components",
-    "README.md",
-    "ACCESSIBILITY.md"
-  ],
-  "scripts": {
-    "build": "tsc",
-    "typecheck": "tsc --noEmit",
-    "demo": "cd demo && bun install && bun run dev",
-    "demo:build": "cd demo && bun install && bun run build"
-  },
-  "keywords": [
-    "pie",
-    "calculator",
-    "mathjs",
-    "math",
-    "accessibility",
-    "svelte",
-    "daisyui",
-    "wcag"
-  ],
-  "author": "PIE Framework",
-  "license": "MIT",
-  "dependencies": {
-    "@pie-players/pie-calculator": "workspace:*"
-  },
-  "peerDependencies": {
-    "mathjs": ">=12.0.0",
-    "svelte": "^5.0.0"
-  },
-  "peerDependenciesMeta": {
-    "svelte": {
-      "optional": true
-    }
-  },
-  "devDependencies": {
-    "playwright": "^1.58.0",
-    "svelte": "^5.49.0",
-    "typescript": "^5.9.3"
-  }
+	"name": "@pie-players/pie-calculator-mathjs",
+	"version": "0.1.0",
+	"description": "Math.js calculator provider for PIE Assessment Toolkit - Open-source, always-available fallback",
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		},
+		"./svelte": {
+			"types": "./dist/svelte-provider.d.ts",
+			"import": "./dist/svelte-provider.js",
+			"svelte": "./src/components/Calculator.svelte"
+		}
+	},
+	"files": [
+		"dist",
+		"src/components",
+		"README.md",
+		"ACCESSIBILITY.md"
+	],
+	"scripts": {
+		"build": "tsc",
+		"typecheck": "tsc --noEmit",
+		"demo": "cd demo && bun install && bun run dev",
+		"demo:build": "cd demo && bun install && bun run build"
+	},
+	"keywords": [
+		"pie",
+		"calculator",
+		"mathjs",
+		"math",
+		"accessibility",
+		"svelte",
+		"daisyui",
+		"wcag"
+	],
+	"author": "PIE Framework",
+	"license": "MIT",
+	"dependencies": {
+		"@pie-players/pie-calculator": "workspace:*"
+	},
+	"peerDependencies": {
+		"mathjs": ">=12.0.0",
+		"svelte": "^5.0.0"
+	},
+	"peerDependenciesMeta": {
+		"svelte": {
+			"optional": true
+		}
+	},
+	"devDependencies": {
+		"playwright": "^1.58.0",
+		"svelte": "^5.49.0",
+		"typescript": "^5.9.3"
+	}
 }

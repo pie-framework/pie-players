@@ -83,3 +83,4 @@ temp/
 
 # Verdaccio local registry
 .verdaccio/
+.claude/settings.local.json

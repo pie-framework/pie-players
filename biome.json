@@ -15,7 +15,8 @@
 			"!**/.svelte-kit",
 			"!**/.turbo",
 			"!**/playwright-report",
-			"!**/test-results"
+			"!**/test-results",
+			"!**/.claude"
 		]
 	},
 	"linter": {

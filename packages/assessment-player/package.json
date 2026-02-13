@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-assessment-player",
-	"version": "0.1.4",
+	"version": "0.1.5",
 	"type": "module",
 	"description": "Assessment player web component that orchestrates PIE item players and assessment-toolkit services",
 	"license": "MIT",

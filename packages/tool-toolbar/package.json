@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-tool-toolbar",
-	"version": "0.1.4",
+	"version": "0.1.5",
 	"type": "module",
 	"description": "Tool panel toolbar for PIE assessment player - displays and manages tool buttons",
 	"repository": {

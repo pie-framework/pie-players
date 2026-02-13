@@ -1,22 +1,7 @@
-# @pie-players/pie-tool-calculator-inline
+# Changelog
 
-## 1.0.3
+All notable changes to this project will be documented in this file.
 
-### Patch Changes
+## 0.1.0
 
-- Updated dependencies
-  - @pie-players/pie-assessment-toolkit@0.2.2
-
-## 1.0.2
-
-### Patch Changes
-
-- Updated dependencies
-  - @pie-players/pie-assessment-toolkit@0.2.1
-
-## 1.0.1
-
-### Patch Changes
-
-- Updated dependencies [8584a3f]
-  - @pie-players/pie-assessment-toolkit@0.2.0
+Initial release

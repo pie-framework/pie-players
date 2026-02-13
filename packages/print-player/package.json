@@ -1,5 +1,5 @@
 {
-	"name": "@pie-player/print",
+	"name": "@pie-players/pie-print-player",
 	"version": "1.0.0",
 	"description": "Print player for PIE elements - dynamically loads and renders print-friendly versions of PIE elements",
 	"type": "module",
@@ -41,5 +41,8 @@
 		"url": "https://github.com/pie-framework/pie-players.git",
 		"directory": "packages/print-player"
 	},
-	"license": "MIT"
+	"license": "MIT",
+	"publishConfig": {
+		"access": "public"
+	}
 }

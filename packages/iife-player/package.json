@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-iife-player",
-	"version": "0.2.0",
+	"version": "0.2.1",
 	"type": "module",
 	"description": "IIFE-based web component for rendering PIE assessment items (bundle-hosted or embedded) with session management",
 	"license": "MIT",

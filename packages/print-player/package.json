@@ -1,48 +1,48 @@
 {
-	"name": "@pie-players/pie-print-player",
-	"version": "1.0.0",
-	"description": "Print player for PIE elements - dynamically loads and renders print-friendly versions of PIE elements",
-	"type": "module",
-	"main": "./dist/print-player.js",
-	"module": "./dist/print-player.js",
-	"types": "./dist/print-player.d.ts",
-	"exports": {
-		".": {
-			"types": "./dist/print-player.d.ts",
-			"default": "./dist/print-player.js"
-		}
-	},
-	"files": [
-		"dist",
-		"src"
-	],
-	"scripts": {
-		"build": "bun x vite build && bun x tsc --emitDeclarationOnly",
-		"dev": "bun x vite build --watch",
-		"serve": "bun x vite preview --port 8000"
-	},
-	"dependencies": {
-		"lit": "^3.2.1"
-	},
-	"devDependencies": {
-		"@types/node": "^22.10.2",
-		"typescript": "^5.9.3",
-		"vite": "^6.0.7"
-	},
-	"keywords": [
-		"pie",
-		"assessment",
-		"print",
-		"web-components",
-		"custom-elements"
-	],
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/pie-framework/pie-players.git",
-		"directory": "packages/print-player"
-	},
-	"license": "MIT",
-	"publishConfig": {
-		"access": "public"
-	}
+  "name": "@pie-players/pie-print-player",
+  "version": "0.1.0",
+  "description": "Print player for PIE elements - dynamically loads and renders print-friendly versions of PIE elements",
+  "type": "module",
+  "main": "./dist/print-player.js",
+  "module": "./dist/print-player.js",
+  "types": "./dist/print-player.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/print-player.d.ts",
+      "default": "./dist/print-player.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "bun x vite build && bun x tsc --emitDeclarationOnly",
+    "dev": "bun x vite build --watch",
+    "serve": "bun x vite preview --port 8000"
+  },
+  "dependencies": {
+    "lit": "^3.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.9.3",
+    "vite": "^6.0.7"
+  },
+  "keywords": [
+    "pie",
+    "assessment",
+    "print",
+    "web-components",
+    "custom-elements"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pie-framework/pie-players.git",
+    "directory": "packages/print-player"
+  },
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  }
 }

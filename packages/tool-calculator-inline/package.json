@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-tool-calculator-inline",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"type": "module",
 	"description": "Inline calculator toggle button for PIE assessment player question headers",
 	"repository": {

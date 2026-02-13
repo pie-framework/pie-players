@@ -47,7 +47,7 @@
 		"scan-hardcoded": "bun run --cwd packages/players-shared scan-hardcoded",
 		"changeset": "changeset",
 		"version": "changeset version",
-		"release": "bun run build && changeset publish",
+		"release": "turbo build --filter='!./apps/*' --filter='!./tools/*' && changeset publish",
 		"pack:local": "turbo build && node ./scripts/pack-local.mjs",
 		"registry:start": "bun scripts/verdaccio.ts start",
 		"registry:stop": "bun scripts/verdaccio.ts stop",

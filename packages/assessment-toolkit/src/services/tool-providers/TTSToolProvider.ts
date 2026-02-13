@@ -186,12 +186,8 @@ export class TTSToolProvider
 				"@pie-players/tts-client-server"
 			);
 
-			this.ttsProvider = new ServerTTSProvider({
-				apiEndpoint: config.apiEndpoint,
-				provider: config.serverProvider || config.backend,
-				authToken: config.authToken,
-				organizationId: config.organizationId,
-			});
+			// Create provider instance (no constructor args, will be initialized on first use)
+			this.ttsProvider = new ServerTTSProvider();
 
 			console.log(
 				`[TTSToolProvider] Server TTS initialized (provider: ${config.serverProvider || config.backend})`,
@@ -202,7 +198,7 @@ export class TTSToolProvider
 				error,
 			);
 			throw new Error(
-				"Failed to load server TTS provider. Ensure @pie-players/pie-tts-client-server is installed.",
+				"Failed to load server TTS provider. Ensure @pie-players/tts-client-server is installed.",
 			);
 		}
 	}

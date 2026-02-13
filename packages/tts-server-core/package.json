@@ -14,7 +14,7 @@
 	"scripts": {
 		"build": "tsc",
 		"dev": "tsc --watch",
-		"test": "vitest",
+		"test": "vitest run --passWithNoTests",
 		"test:coverage": "vitest --coverage"
 	},
 	"keywords": [

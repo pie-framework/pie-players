@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-fixed-player",
-	"version": "0.2.0",
+	"version": "0.2.1",
 	"type": "module",
 	"description": "Production-ready web component for rendering PIE assessment items with pre-bundled elements",
 	"license": "MIT",

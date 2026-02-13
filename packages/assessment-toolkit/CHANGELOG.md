@@ -1,5 +1,45 @@
 # @pie-players/pie-assessment-toolkit
 
+## 0.2.1
+
+### Patch Changes
+
+- Add auto-loading of Desmos API library
+
+  The Desmos calculator provider now automatically loads the Desmos API library from CDN if not already present. This removes the need to manually include script tags in HTML files.
+
+  **Breaking change for configuration**: Calculator configuration must now be under `tools.floatingTools.calculator` instead of `tools.calculator`.
+
+  **Before:**
+
+  ```typescript
+  tools: {
+    calculator: {
+      enabled: true,
+      defaultType: 'scientific',
+      availableTypes: ['basic', 'scientific', 'graphing']
+    }
+  }
+  ```
+
+  **After:**
+
+  ```typescript
+  tools: {
+    floatingTools: {
+      calculator: {
+        enabled: true,
+        provider: 'desmos'
+      }
+    }
+  }
+  ```
+
+- Updated dependencies
+- Updated dependencies [46295ee]
+  - @pie-players/pie-calculator-desmos@1.2.0
+  - @pie-players/pie-players-shared@0.2.1
+
 ## 0.2.0
 
 ### Minor Changes

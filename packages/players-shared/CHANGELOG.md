@@ -1,5 +1,15 @@
 # @pie-players/pie-players-shared
 
+## 0.2.1
+
+### Patch Changes
+
+- 46295ee: Fix bundle URL construction to handle bundleHost without trailing slash
+
+  - Normalize bundleHost to ensure proper URL construction with exactly one trailing slash
+  - Handle edge cases: missing slash, multiple slashes, empty string, whitespace
+  - Fixes error: `bundles@pie-element` → `bundles/@pie-element` in production environments
+
 ## 0.2.0
 
 ### Minor Changes

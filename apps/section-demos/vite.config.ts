@@ -55,10 +55,10 @@ export default (async () => {
 
 	return defineConfig({
 		plugins: [sveltekit(), tailwindcss(), localEsmCdn].filter(Boolean),
-	server: {
-		port: 5300,
-		open: true,
-	},
+		server: {
+			port: 5300,
+			open: true,
+		},
 		resolve: {
 			alias: {
 				"@pie-players/tts-client-server": resolve(

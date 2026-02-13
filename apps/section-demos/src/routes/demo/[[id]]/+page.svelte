@@ -197,7 +197,11 @@ import { onDestroy, onMount, untrack } from 'svelte';
 						floatingTools: {
 							calculator: {
 								enabled: true,
-								provider: 'desmos'
+								provider: 'desmos',
+								authFetcher: async () => {
+									const response = await fetch('/api/tools/desmos/auth');
+									return response.json();
+								}
 							}
 						}
 					},

@@ -67,7 +67,11 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 	private async loadDesmosScript(): Promise<void> {
 		return new Promise((resolve, reject) => {
 			const script = document.createElement("script");
-			script.src = "https://www.desmos.com/api/v1.10/calculator.js";
+			// Include API key in script URL if available
+			const scriptUrl = this.apiKey
+				? `https://www.desmos.com/api/v1.10/calculator.js?apiKey=${this.apiKey}`
+				: "https://www.desmos.com/api/v1.10/calculator.js";
+			script.src = scriptUrl;
 			script.async = true;
 			script.onload = () => {
 				if (window.Desmos) {

@@ -28,9 +28,9 @@ export const demo4Section: QtiAssessmentSection = {
 
 	rubricBlocks: [
 		{
-			id: "passage-quadratic-equations",
+			identifier: "passage-quadratic-equations",
 			view: "candidate",
-			use: "passage",
+			class: "stimulus",
 			passage: {
 				id: "passage-quadratic-001",
 				name: "Understanding Quadratic Equations",

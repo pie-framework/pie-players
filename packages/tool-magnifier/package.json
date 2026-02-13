@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-tool-magnifier",
-	"version": "0.1.2",
+	"version": "0.1.3",
 	"type": "module",
 	"description": "PIE magnification tool for accessibility - magnifies content on screen",
 	"repository": {

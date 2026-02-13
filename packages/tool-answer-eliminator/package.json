@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-tool-answer-eliminator",
-	"version": "0.2.2",
+	"version": "0.2.3",
 	"type": "module",
 	"description": "Answer eliminator tool for PIE assessment player - supports process-of-elimination test-taking strategy",
 	"repository": {

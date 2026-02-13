@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-author",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"type": "module",
 	"description": "Legacy-compatible <pie-author> web component (authoring + optional preview) built on pie-players-shared.",
 	"license": "MIT",

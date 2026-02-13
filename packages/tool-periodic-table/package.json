@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-tool-periodic-table",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"type": "module",
 	"description": "Interactive periodic table reference tool for PIE assessment player",
 	"repository": {

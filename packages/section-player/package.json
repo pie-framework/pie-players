@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-section-player",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"type": "module",
 	"description": "Web component for rendering QTI 3.0 assessment sections with passages and items",
 	"license": "MIT",

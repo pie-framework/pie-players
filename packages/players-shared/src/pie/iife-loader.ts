@@ -84,7 +84,14 @@ export class IifePieLoader {
 
 		// 2. Build URL from element versions using bundle host
 		const packageVersions = Object.values(elements).join("+");
-		const url = `${this.config.bundleHost}${encodeURI(packageVersions)}/${bundleType}`;
+		// Normalize bundleHost to ensure proper URL construction
+		// - Remove trailing slash if present (we'll add it back)
+		// - Handle empty string (use default)
+		let bundleHost = this.config.bundleHost || DEFAULT_BUNDLE_HOST;
+		bundleHost = bundleHost.trim();
+		// Remove trailing slash and re-add to ensure exactly one
+		bundleHost = bundleHost.replace(/\/+$/, '') + '/';
+		const url = `${bundleHost}${encodeURI(packageVersions)}/${bundleType}`;
 		logger.debug("Using bundle host URL:", url);
 		return url;
 	}

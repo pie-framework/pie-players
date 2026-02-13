@@ -13,7 +13,9 @@
 	"exclude": ["dist", "node_modules"],
 	"references": [
 		{ "path": "../calculator" },
+		{ "path": "../calculator-desmos" },
 		{ "path": "../tts" },
+		{ "path": "../tts-client-server" },
 		{ "path": "../players-shared" }
 	]
 }

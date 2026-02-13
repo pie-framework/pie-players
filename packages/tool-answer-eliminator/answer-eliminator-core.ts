@@ -447,7 +447,6 @@ export class AnswerEliminatorCore {
 	private emitStateChange(): void {
 		const event = new CustomEvent("answer-eliminator-state-change", {
 			detail: {
-				questionId: this.currentQuestionId,
 				eliminatedCount: this.getEliminatedCount(),
 			},
 			bubbles: true,

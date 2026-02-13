@@ -1,5 +1,11 @@
 # @pie-players/pie-assessment-player
 
+## 0.1.2
+
+### Patch Changes
+
+- @pie-players/pie-tool-toolbar@0.1.2
+
 ## 0.1.1
 
 ### Patch Changes

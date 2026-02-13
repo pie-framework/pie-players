@@ -1,5 +1,13 @@
 # @pie-players/section-demos
 
+## 0.1.2
+
+### Patch Changes
+
+- Updated dependencies [42ed80f]
+  - @pie-players/pie-section-player@0.2.1
+  - @pie-players/pie-tool-answer-eliminator@0.2.1
+
 ## 0.1.1
 
 ### Patch Changes

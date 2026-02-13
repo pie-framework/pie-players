@@ -1,5 +1,14 @@
 # @pie-players/pie-tool-answer-eliminator
 
+## 0.2.1
+
+### Patch Changes
+
+- 42ed80f: Fix section player entry point and answer eliminator TypeScript error
+
+  - Removed redundant static tool imports from section-player entry point (tools are loaded dynamically by assessment-toolkit)
+  - Fixed TypeScript error in answer-eliminator by removing reference to non-existent currentQuestionId property
+
 ## 0.2.0
 
 ### Minor Changes

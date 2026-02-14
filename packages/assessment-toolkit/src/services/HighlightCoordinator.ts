@@ -9,6 +9,7 @@
  * - CSS Custom Highlight API (no DOM mutation)
  * - Full accessibility support (screen readers see original text)
  * - Configurable colors and styles
+ * - Annotation persistence via RangeSerializer
  *
  * Part of PIE Assessment Toolkit.
  *
@@ -21,6 +22,7 @@
  */
 
 import type { IHighlightCoordinator } from "./interfaces";
+import { RangeSerializer, type SerializedRange } from "./RangeSerializer";
 
 /**
  * Highlight types
@@ -64,12 +66,16 @@ export class HighlightCoordinator implements IHighlightCoordinator {
 	private ttsWordHighlight: Highlight | null = null;
 	private ttsSentenceHighlight: Highlight | null = null;
 	private annotations = new Map<string, Annotation>();
-	private annotationHighlights = new Map<string, Highlight>();
+	// Shared highlights per color (one Highlight object per color, contains all ranges)
+	private colorHighlights = new Map<HighlightColor, Highlight>();
 	private nextAnnotationId = 1;
 	private supported = false;
+	private rangeSerializer: RangeSerializer;
 
 	constructor(config: HighlightCoordinatorConfig = {}) {
 		this.config = config;
+		this.rangeSerializer = new RangeSerializer();
+
 		// SSR guard
 		if (typeof CSS === "undefined" || !("highlights" in CSS)) {
 			console.warn(
@@ -89,13 +95,20 @@ export class HighlightCoordinator implements IHighlightCoordinator {
 	private initializeHighlights(): void {
 		if (!this.supported) return;
 
-		// Create highlight registries
+		// Create highlight registries for TTS
 		this.ttsWordHighlight = new Highlight();
 		this.ttsSentenceHighlight = new Highlight();
 
-		// Register with CSS
+		// Register TTS highlights with CSS
 		CSS.highlights.set("tts-word", this.ttsWordHighlight);
 		CSS.highlights.set("tts-sentence", this.ttsSentenceHighlight);
+
+		// Create shared highlights for each annotation color
+		for (const color of Object.values(HighlightColor)) {
+			const highlight = new Highlight();
+			this.colorHighlights.set(color, highlight);
+			CSS.highlights.set(`annotation-${color}`, highlight);
+		}
 	}
 
 	/**
@@ -241,12 +254,11 @@ export class HighlightCoordinator implements IHighlightCoordinator {
 		};
 		this.annotations.set(id, annotation);
 
-		// Create highlight for this annotation
-		const highlight = new Highlight(range);
-		this.annotationHighlights.set(id, highlight);
-
-		// Register with CSS
-		CSS.highlights.set(`annotation-${color}-${id}`, highlight);
+		// Add range to the shared color highlight
+		const colorHighlight = this.colorHighlights.get(color);
+		if (colorHighlight) {
+			colorHighlight.add(range);
+		}
 
 		return id;
 	}
@@ -260,11 +272,13 @@ export class HighlightCoordinator implements IHighlightCoordinator {
 		const annotation = this.annotations.get(id);
 		if (!annotation) return;
 
-		// Remove from CSS highlights
-		CSS.highlights.delete(`annotation-${annotation.color}-${id}`);
+		// Remove range from the shared color highlight
+		const colorHighlight = this.colorHighlights.get(annotation.color);
+		if (colorHighlight) {
+			colorHighlight.delete(annotation.range);
+		}
 
 		// Clean up
-		this.annotationHighlights.delete(id);
 		this.annotations.delete(id);
 	}
 
@@ -272,9 +286,13 @@ export class HighlightCoordinator implements IHighlightCoordinator {
 	 * Remove all annotations
 	 */
 	clearAnnotations(): void {
-		for (const id of this.annotations.keys()) {
-			this.removeAnnotation(id);
+		// Clear all color highlights
+		for (const colorHighlight of this.colorHighlights.values()) {
+			colorHighlight.clear();
 		}
+
+		// Clear annotation data
+		this.annotations.clear();
 	}
 
 	/**
@@ -301,61 +319,66 @@ export class HighlightCoordinator implements IHighlightCoordinator {
 		const annotation = this.annotations.get(id);
 		if (!annotation) return;
 
-		// Remove old highlight
-		CSS.highlights.delete(`annotation-${annotation.color}-${id}`);
+		const oldColor = annotation.color;
+		if (oldColor === newColor) return;
+
+		// Remove from old color highlight
+		const oldColorHighlight = this.colorHighlights.get(oldColor);
+		if (oldColorHighlight) {
+			oldColorHighlight.delete(annotation.range);
+		}
 
 		// Update color
 		annotation.color = newColor;
 
-		// Re-register with new color
-		const highlight = this.annotationHighlights.get(id);
-		if (highlight) {
-			CSS.highlights.set(`annotation-${newColor}-${id}`, highlight);
+		// Add to new color highlight
+		const newColorHighlight = this.colorHighlights.get(newColor);
+		if (newColorHighlight) {
+			newColorHighlight.add(annotation.range);
 		}
 	}
 
 	/**
-	 * Export annotations as serializable data
+	 * Export annotations as serializable data for persistence.
+	 * Uses RangeSerializer for robust DOM range serialization.
+	 *
+	 * @param root Root element for serialization (typically document.body or content container)
+	 * @returns Array of serialized annotations
 	 */
-	exportAnnotations(): Array<{
-		id: string;
-		startContainer: string;
-		startOffset: number;
-		endContainer: string;
-		endOffset: number;
-		color: HighlightColor;
-		timestamp: number;
-	}> {
-		// Note: This is a simplified export. Production implementation
-		// would need a robust way to serialize DOM ranges.
+	exportAnnotations(
+		root: Element = document.body,
+	): Array<SerializedRange & { id: string; color: HighlightColor; timestamp: number }> {
 		return this.getAnnotations().map((annotation) => ({
+			...this.rangeSerializer.serialize(annotation.range, root),
 			id: annotation.id,
-			startContainer: this.getNodePath(annotation.range.startContainer),
-			startOffset: annotation.range.startOffset,
-			endContainer: this.getNodePath(annotation.range.endContainer),
-			endOffset: annotation.range.endOffset,
 			color: annotation.color,
 			timestamp: annotation.timestamp,
 		}));
 	}
 
 	/**
-	 * Get XPath-like path for a node (simplified)
+	 * Import annotations from serialized data.
+	 * Restores annotations after page navigation or refresh.
+	 *
+	 * @param data Array of serialized annotations
+	 * @param root Root element for deserialization (same as used in export)
+	 * @returns Number of successfully restored annotations
 	 */
-	private getNodePath(node: Node): string {
-		const path: string[] = [];
-		let current: Node | null = node;
+	importAnnotations(
+		data: Array<SerializedRange & { id?: string; color: HighlightColor; timestamp?: number }>,
+		root: Element = document.body,
+	): number {
+		let restored = 0;
 
-		while (current && current !== document.body) {
-			if (current.parentNode) {
-				const siblings = Array.from(current.parentNode.childNodes);
-				const index = siblings.indexOf(current as ChildNode);
-				path.unshift(`${current.nodeName}[${index}]`);
+		for (const item of data) {
+			const range = this.rangeSerializer.deserialize(item, root);
+			if (range) {
+				this.addAnnotation(range, item.color);
+				restored++;
 			}
-			current = current.parentNode;
 		}
 
-		return "/" + path.join("/");
+		return restored;
 	}
 
 	// ============================================================================

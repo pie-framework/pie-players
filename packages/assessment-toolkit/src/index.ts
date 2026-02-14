@@ -53,6 +53,9 @@ export {
 	HighlightCoordinator,
 	HighlightType,
 } from "./services/HighlightCoordinator";
+// Range Serializer (for annotation persistence)
+export type { SerializedRange } from "./services/RangeSerializer";
+export { RangeSerializer } from "./services/RangeSerializer";
 // I18n Service
 export type {
 	I18nConfig,

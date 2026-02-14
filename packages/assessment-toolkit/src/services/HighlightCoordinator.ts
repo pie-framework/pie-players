@@ -42,6 +42,7 @@ export enum HighlightColor {
 	BLUE = "blue",
 	PINK = "pink",
 	ORANGE = "orange",
+	UNDERLINE = "underline",
 }
 
 /**
@@ -160,6 +161,13 @@ export class HighlightCoordinator implements IHighlightCoordinator {
         background-color: rgba(255, 165, 0, 0.3);
         color: inherit;
       }
+
+      ::highlight(annotation-underline) {
+        background-color: transparent;
+        text-decoration: underline 2px solid #0066cc;
+        text-underline-offset: 2px;
+        color: inherit;
+      }
     `;
 		document.head.appendChild(style);
 	}
@@ -244,20 +252,24 @@ export class HighlightCoordinator implements IHighlightCoordinator {
 	): string {
 		const id = `annotation-${this.nextAnnotationId++}`;
 
+		// Clone the range to store
+		const clonedRange = range.cloneRange();
+
 		// Store annotation data
 		const annotation: Annotation = {
 			id,
-			range: range.cloneRange(),
+			range: clonedRange,
 			type: HighlightType.ANNOTATION,
 			color,
 			timestamp: Date.now(),
 		};
 		this.annotations.set(id, annotation);
 
-		// Add range to the shared color highlight
+		// Add the SAME range object to the shared color highlight
+		// This ensures we can later delete it by reference
 		const colorHighlight = this.colorHighlights.get(color);
 		if (colorHighlight) {
-			colorHighlight.add(range);
+			colorHighlight.add(clonedRange);
 		}
 
 		return id;
@@ -270,16 +282,23 @@ export class HighlightCoordinator implements IHighlightCoordinator {
 	 */
 	removeAnnotation(id: string): void {
 		const annotation = this.annotations.get(id);
-		if (!annotation) return;
+		if (!annotation) {
+			console.warn(`[HighlightCoordinator] Annotation ${id} not found`);
+			return;
+		}
+
+		console.log(`[HighlightCoordinator] Removing annotation ${id} (color: ${annotation.color})`);
 
 		// Remove range from the shared color highlight
 		const colorHighlight = this.colorHighlights.get(annotation.color);
 		if (colorHighlight) {
-			colorHighlight.delete(annotation.range);
+			const deleted = colorHighlight.delete(annotation.range);
+			console.log(`[HighlightCoordinator] Highlight.delete() returned:`, deleted);
 		}
 
 		// Clean up
 		this.annotations.delete(id);
+		console.log(`[HighlightCoordinator] Annotation ${id} removed from map. Remaining:`, this.annotations.size);
 	}
 
 	/**
@@ -520,6 +539,13 @@ export class HighlightCoordinator implements IHighlightCoordinator {
 
       ::highlight(annotation-orange) {
         background-color: rgba(255, 165, 0, 0.3);
+        color: inherit;
+      }
+
+      ::highlight(annotation-underline) {
+        background-color: transparent;
+        text-decoration: underline 2px solid #0066cc;
+        text-underline-offset: 2px;
         color: inherit;
       }
     `;

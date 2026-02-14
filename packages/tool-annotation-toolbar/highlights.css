@@ -1,0 +1,247 @@
+/**
+ * PIE Annotation Toolbar - Comprehensive Highlight Styles
+ *
+ * CSS Custom Highlight API styles with support for:
+ * - TTS word/sentence highlighting
+ * - Persistent annotations (yellow, pink, blue, green, underline)
+ * - Dark mode
+ * - High contrast mode
+ * - Print styles
+ *
+ * Browser Support:
+ * - Chrome/Edge 105+
+ * - Safari 17.2+
+ * - Firefox: Behind flag (not recommended for production)
+ */
+
+/* ============================================================================
+   TTS Highlights (Temporary)
+   ============================================================================ */
+
+::highlight(tts-word) {
+	background-color: rgba(253, 233, 149, 0.6);
+	text-decoration: underline 2px solid rgba(0, 0, 0, 0.4);
+	text-shadow: 0 0 1px rgba(0, 0, 0, 0.2);
+	color: inherit;
+}
+
+::highlight(tts-sentence) {
+	background-color: rgba(253, 233, 149, 0.3);
+	color: inherit;
+}
+
+/* ============================================================================
+   Annotation Highlights (Persistent)
+   ============================================================================ */
+
+::highlight(annotation-yellow) {
+	background-color: rgba(253, 233, 149, 0.5);
+	color: inherit;
+}
+
+::highlight(annotation-pink) {
+	background-color: rgba(255, 159, 174, 0.5);
+	color: inherit;
+}
+
+::highlight(annotation-blue) {
+	background-color: rgba(167, 224, 246, 0.5);
+	color: inherit;
+}
+
+::highlight(annotation-green) {
+	background-color: rgba(166, 225, 197, 0.5);
+	color: inherit;
+}
+
+::highlight(annotation-underline) {
+	background-color: transparent;
+	text-decoration: underline 2px solid #0066cc;
+	text-underline-offset: 2px;
+	color: inherit;
+}
+
+/* ============================================================================
+   Dark Mode
+   ============================================================================ */
+
+@media (prefers-color-scheme: dark) {
+	/* TTS highlights - darker, more visible on dark backgrounds */
+	::highlight(tts-word) {
+		background-color: rgba(139, 117, 0, 0.7);
+		text-decoration: underline 2px solid rgba(255, 255, 255, 0.6);
+		text-shadow: 0 0 2px rgba(255, 255, 255, 0.3);
+	}
+
+	::highlight(tts-sentence) {
+		background-color: rgba(139, 117, 0, 0.4);
+	}
+
+	/* Annotation highlights - adjusted for dark mode */
+	::highlight(annotation-yellow) {
+		background-color: rgba(139, 117, 0, 0.6);
+	}
+
+	::highlight(annotation-pink) {
+		background-color: rgba(139, 51, 74, 0.6);
+	}
+
+	::highlight(annotation-blue) {
+		background-color: rgba(0, 102, 170, 0.6);
+	}
+
+	::highlight(annotation-green) {
+		background-color: rgba(45, 92, 63, 0.6);
+	}
+
+	::highlight(annotation-underline) {
+		text-decoration-color: #4da6ff;
+	}
+}
+
+/* ============================================================================
+   High Contrast Mode
+   ============================================================================ */
+
+@media (prefers-contrast: high) {
+	/* TTS highlights - thicker underlines, higher contrast */
+	::highlight(tts-word) {
+		background-color: rgba(255, 255, 0, 0.9);
+		text-decoration-thickness: 3px;
+		text-shadow: none;
+	}
+
+	::highlight(tts-sentence) {
+		background-color: rgba(255, 255, 0, 0.5);
+	}
+
+	/* Annotation highlights - more saturated colors */
+	::highlight(annotation-yellow) {
+		background-color: rgba(255, 255, 0, 0.7);
+	}
+
+	::highlight(annotation-pink) {
+		background-color: rgba(255, 105, 180, 0.7);
+	}
+
+	::highlight(annotation-blue) {
+		background-color: rgba(0, 191, 255, 0.7);
+	}
+
+	::highlight(annotation-green) {
+		background-color: rgba(0, 255, 127, 0.7);
+	}
+
+	::highlight(annotation-underline) {
+		text-decoration-thickness: 3px;
+		text-decoration-color: #000;
+	}
+}
+
+/* ============================================================================
+   High Contrast Dark Mode (combination)
+   ============================================================================ */
+
+@media (prefers-color-scheme: dark) and (prefers-contrast: high) {
+	::highlight(tts-word) {
+		background-color: rgba(255, 255, 0, 0.8);
+		text-decoration-color: rgba(255, 255, 255, 0.9);
+	}
+
+	::highlight(annotation-underline) {
+		text-decoration-color: #fff;
+	}
+}
+
+/* ============================================================================
+   Print Styles
+   ============================================================================ */
+
+@media print {
+	/* Hide TTS highlights when printing */
+	::highlight(tts-word),
+	::highlight(tts-sentence) {
+		background-color: transparent;
+		text-decoration: none;
+		text-shadow: none;
+	}
+
+	/* Reduce annotation highlight opacity for print */
+	::highlight(annotation-yellow),
+	::highlight(annotation-pink),
+	::highlight(annotation-blue),
+	::highlight(annotation-green) {
+		background-color: transparent;
+		border-bottom: 2px solid currentColor;
+	}
+
+	/* Preserve underlines in print */
+	::highlight(annotation-yellow) {
+		border-bottom-color: #ffeb3b;
+	}
+
+	::highlight(annotation-pink) {
+		border-bottom-color: #ff9fae;
+	}
+
+	::highlight(annotation-blue) {
+		border-bottom-color: #a7e0f6;
+	}
+
+	::highlight(annotation-green) {
+		border-bottom-color: #a6e1c5;
+	}
+
+	::highlight(annotation-underline) {
+		text-decoration-color: #000;
+		border-bottom: none;
+	}
+}
+
+/* ============================================================================
+   Reduced Motion
+   ============================================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+	/* Remove text shadows that might appear animated */
+	::highlight(tts-word) {
+		text-shadow: none;
+	}
+}
+
+/* ============================================================================
+   Screen Reader Only (accessibility helper class)
+   ============================================================================ */
+
+.sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border-width: 0;
+}
+
+/* ============================================================================
+   Focus Indicators (for toolbar buttons)
+   ============================================================================ */
+
+.annotation-toolbar button:focus-visible {
+	outline: 2px solid #0066cc;
+	outline-offset: 2px;
+}
+
+@media (prefers-color-scheme: dark) {
+	.annotation-toolbar button:focus-visible {
+		outline-color: #4da6ff;
+	}
+}
+
+@media (prefers-contrast: high) {
+	.annotation-toolbar button:focus-visible {
+		outline-width: 3px;
+	}
+}

@@ -544,6 +544,13 @@ export class AssessmentPlayer {
 	}
 
 	/**
+	 * Get TTSService for text-to-speech functionality
+	 */
+	getTTSService(): TTSService {
+		return this.ttsService;
+	}
+
+	/**
 	 * Get ThemeProvider for accessibility theming
 	 */
 	getThemeProvider(): ThemeProvider | null {

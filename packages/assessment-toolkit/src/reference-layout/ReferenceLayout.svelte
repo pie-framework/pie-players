@@ -52,6 +52,12 @@
 		alert(`Translation request: ${detail.text}`);
 	}
 
+	function handlePictureDictionaryLookup(detail: { text: string }) {
+		// TODO: Open picture dictionary modal
+		console.log('Picture dictionary lookup:', detail.text);
+		alert(`Picture dictionary: ${detail.text}`);
+	}
+
 	// Load passage when item changes
 	async function loadPassage(item: ItemEntity | null) {
 		if (!item?.passage) {
@@ -173,6 +179,7 @@
 	highlightCoordinator={player.getHighlightCoordinator()}
 	ondictionarylookup={handleDictionaryLookup}
 	ontranslationrequest={handleTranslationRequest}
+	onpicturedictionarylookup={handlePictureDictionaryLookup}
 />
 
 <style>

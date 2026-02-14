@@ -4,10 +4,15 @@
 		shadow: 'none',
 		props: {
 			enabled: { type: 'Boolean', attribute: 'enabled' },
-			highlightCoordinator: { type: 'Object', attribute: 'highlight-coordinator' }
+			highlightCoordinator: { type: 'Object' },
+			ttsService: { type: 'Object' }
 		}
 	}}
 />
+
+<svelte:head>
+	<link rel="stylesheet" href="./highlights.css">
+</svelte:head>
 
 <script lang="ts">
 	import type { HighlightCoordinator, ITTSService } from '@pie-players/pie-assessment-toolkit';
@@ -16,7 +21,7 @@
 	interface Props {
 		enabled?: boolean;
 		highlightCoordinator?: HighlightCoordinator | null;
-		ttsService: ITTSService;
+		ttsService?: ITTSService | null;
 		ondictionarylookup?: (detail: { text: string }) => void;
 		ontranslationrequest?: (detail: { text: string }) => void;
 		onpicturedictionarylookup?: (detail: { text: string }) => void;
@@ -25,7 +30,7 @@
 	let {
 		enabled = true,
 		highlightCoordinator = null,
-		ttsService,
+		ttsService = null,
 		ondictionarylookup,
 		ontranslationrequest,
 		onpicturedictionarylookup
@@ -73,8 +78,45 @@
 	let justShown = $state(false); // Flag to prevent immediate hiding after showing
 	let positionAnnouncement = $state(''); // For screen readers when toolbar is repositioned
 
+	// Track annotation count for reactivity (increments on add/remove to trigger UI updates)
+	let annotationCount = $state(0);
+
+	// Track if current selection overlaps with an existing annotation
+	let overlappingAnnotationId = $state<string | null>(null);
+
 	// Derived state
-	let hasAnnotations = $derived(highlightCoordinator ? highlightCoordinator.getAnnotations().length > 0 : false);
+	let hasAnnotations = $derived(annotationCount > 0);
+	let hasOverlappingAnnotation = $derived(overlappingAnnotationId !== null);
+
+	/**
+	 * Find annotation that overlaps with the given range
+	 */
+	function findOverlappingAnnotation(range: Range): string | null {
+		if (!highlightCoordinator) return null;
+
+		const annotations = highlightCoordinator.getAnnotations();
+		for (const annotation of annotations) {
+			// Check if ranges overlap
+			// Two ranges overlap if: startA < endB && startB < endA
+			const cmp1 = range.compareBoundaryPoints(Range.START_TO_START, annotation.range);
+			const cmp2 = range.compareBoundaryPoints(Range.END_TO_END, annotation.range);
+			const cmp3 = range.compareBoundaryPoints(Range.START_TO_END, annotation.range);
+			const cmp4 = range.compareBoundaryPoints(Range.END_TO_START, annotation.range);
+
+			// Check various overlap conditions:
+			// 1. Selection is inside annotation
+			// 2. Annotation is inside selection
+			// 3. Selection partially overlaps annotation
+			if (
+				(cmp1 >= 0 && cmp2 <= 0) || // selection inside annotation
+				(cmp1 <= 0 && cmp2 >= 0) || // annotation inside selection
+				(cmp3 > 0 && cmp4 < 0)      // partial overlap
+			) {
+				return annotation.id;
+			}
+		}
+		return null;
+	}
 
 	/**
 	 * Check if selection is in an allowed area
@@ -130,6 +172,7 @@
 			const restored = highlightCoordinator.importAnnotations(data, root);
 
 			console.log(`[AnnotationToolbar] Restored ${restored} annotations`);
+			annotationCount = highlightCoordinator.getAnnotations().length;
 		} catch (error) {
 			console.error('[AnnotationToolbar] Failed to load annotations:', error);
 		}
@@ -157,10 +200,18 @@
 		const x = rect.left + rect.width / 2;
 		const y = rect.top - 8;
 
+		// Check if selection overlaps with an existing annotation
+		overlappingAnnotationId = findOverlappingAnnotation(range);
+
 		toolbarState.isVisible = true;
 		toolbarState.selectedText = text;
 		toolbarState.selectedRange = range.cloneRange();
 		toolbarState.toolbarPosition = { x, y };
+
+		// Announce to screen readers
+		const textPreview = text.length > 30 ? text.substring(0, 30) + '...' : text;
+		positionAnnouncement = `Annotation toolbar opened for "${textPreview}"`;
+		setTimeout(() => { positionAnnouncement = ''; }, 2000);
 
 		// Set justShown flag to prevent immediate hiding
 		justShown = true;
@@ -187,8 +238,49 @@
 	 */
 	function handleHighlight(color: HighlightColor) {
 		if (!toolbarState.selectedRange || !highlightCoordinator) return;
+		const text = toolbarState.selectedText;
 		highlightCoordinator.addAnnotation(toolbarState.selectedRange, color);
+		annotationCount = highlightCoordinator.getAnnotations().length;
 		saveAnnotations();
+
+		// Announce to screen readers
+		const colorName = color === HighlightColor.UNDERLINE ? 'underlined' : `highlighted in ${color}`;
+		const textPreview = text.length > 30 ? text.substring(0, 30) + '...' : text;
+		positionAnnouncement = `"${textPreview}" ${colorName}`;
+		setTimeout(() => { positionAnnouncement = ''; }, 3000);
+
+		hideToolbar();
+	}
+
+	/**
+	 * Remove the annotation that overlaps with current selection
+	 */
+	function handleRemoveAnnotation() {
+		if (!overlappingAnnotationId || !highlightCoordinator) {
+			console.warn('[AnnotationToolbar] No overlapping annotation to remove');
+			return;
+		}
+
+		console.log('[AnnotationToolbar] Removing annotation:', overlappingAnnotationId);
+
+		const annotation = highlightCoordinator.getAnnotation(overlappingAnnotationId);
+		if (!annotation) {
+			console.warn('[AnnotationToolbar] Annotation not found:', overlappingAnnotationId);
+			return;
+		}
+
+		const text = annotation.range.toString();
+		highlightCoordinator.removeAnnotation(overlappingAnnotationId);
+		const newCount = highlightCoordinator.getAnnotations().length;
+		annotationCount = newCount;
+		console.log('[AnnotationToolbar] Annotations remaining:', newCount);
+		saveAnnotations();
+
+		// Announce to screen readers
+		const textPreview = text.length > 30 ? text.substring(0, 30) + '...' : text;
+		positionAnnouncement = `Removed annotation from "${textPreview}"`;
+		setTimeout(() => { positionAnnouncement = ''; }, 3000);
+
 		hideToolbar();
 	}
 
@@ -196,8 +288,15 @@
 	 * Clear all annotations
 	 */
 	function handleClearAnnotations() {
+		const count = annotationCount;
 		highlightCoordinator?.clearAnnotations();
+		annotationCount = 0;
 		sessionStorage.removeItem(STORAGE_KEY);
+
+		// Announce to screen readers
+		positionAnnouncement = `${count} annotation${count === 1 ? '' : 's'} cleared`;
+		setTimeout(() => { positionAnnouncement = ''; }, 3000);
+
 		hideToolbar();
 	}
 
@@ -232,19 +331,20 @@
 	 * Read aloud with TTS
 	 */
 	async function handleTTSClick() {
-		if (!toolbarState.selectedRange) return;
+		if (!toolbarState.selectedRange || !ttsService) return;
 
 		ttsSpeaking = true;
 		try {
-			if (!ttsInitialized) {
-				await ensureTts();
-				ttsInitialized = true;
-			}
+			console.log('[AnnotationToolbar] Speaking range:', toolbarState.selectedRange.toString().substring(0, 50));
 
 			// Use speakRange for accurate word highlighting
+			// Note: TTS service should already be initialized by ToolkitCoordinator
 			await ttsService.speakRange(toolbarState.selectedRange);
+
+			console.log('[AnnotationToolbar] TTS completed successfully');
 		} catch (error) {
 			console.error('[AnnotationToolbar] TTS error:', error);
+			alert(`TTS failed: ${error instanceof Error ? error.message : String(error)}`);
 		} finally {
 			ttsSpeaking = false;
 		}
@@ -319,16 +419,12 @@
 			</button>
 		{/each}
 
-		<!-- Divider -->
-		<div class="divider divider-horizontal mx-0 w-px"></div>
-
-		<!-- Text-to-Speech -->
+		<!-- Underline Button -->
 		<button
 			class="btn btn-sm btn-square"
-			onclick={handleTTSClick}
-			disabled={ttsSpeaking}
-			aria-label="Read selected text aloud"
-			title="Read Aloud"
+			onclick={() => handleHighlight(HighlightColor.UNDERLINE)}
+			aria-label="Underline selected text"
+			title="Underline"
 		>
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
@@ -339,10 +435,35 @@
 				aria-hidden="true"
 			>
 				<path
-					d="M14,3.23V5.29C16.89,6.15 19,8.83 19,12C19,15.17 16.89,17.84 14,18.7V20.77C18,19.86 21,16.28 21,12C21,7.72 18,4.14 14,3.23M16.5,12C16.5,10.23 15.5,8.71 14,7.97V16C15.5,15.29 16.5,13.76 16.5,12M3,9V15H7L12,20V4L7,9H3Z"
+					d="M5,21H19V19H5V21M12,17A6,6 0 0,0 18,11V3H15.5V11A3.5,3.5 0 0,1 12,14.5A3.5,3.5 0 0,1 8.5,11V3H6V11A6,6 0 0,0 12,17Z"
 				/>
 			</svg>
 		</button>
+
+		<!-- Text-to-Speech (only if ttsService available) -->
+		{#if ttsService}
+			<div class="divider divider-horizontal mx-0 w-px"></div>
+			<button
+				class="btn btn-sm btn-square"
+				onclick={handleTTSClick}
+				disabled={ttsSpeaking}
+				aria-label="Read selected text aloud"
+				title="Read Aloud"
+			>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					viewBox="0 0 24 24"
+					width="18"
+					height="18"
+					fill="currentColor"
+					aria-hidden="true"
+				>
+					<path
+						d="M14,3.23V5.29C16.89,6.15 19,8.83 19,12C19,15.17 16.89,17.84 14,18.7V20.77C18,19.86 21,16.28 21,12C21,7.72 18,4.14 14,3.23M16.5,12C16.5,10.23 15.5,8.71 14,7.97V16C15.5,15.29 16.5,13.76 16.5,12M3,9V15H7L12,20V4L7,9H3Z"
+					/>
+				</svg>
+			</button>
+		{/if}
 
 		<!-- Dictionary -->
 		{#if ondictionarylookup}
@@ -411,19 +532,44 @@
 			</button>
 		{/if}
 
-		<!-- Divider before Clear -->
-		{#if hasAnnotations}
+		<!-- Divider before Remove/Clear -->
+		{#if hasOverlappingAnnotation || hasAnnotations}
 			<div class="divider divider-horizontal mx-0 w-px"></div>
 
+			<!-- Remove This Annotation -->
+			{#if hasOverlappingAnnotation}
+				<button
+					class="btn btn-sm btn-ghost text-warning"
+					onclick={handleRemoveAnnotation}
+					aria-label="Remove this annotation"
+					title="Remove"
+				>
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						viewBox="0 0 24 24"
+						width="18"
+						height="18"
+						fill="currentColor"
+						aria-hidden="true"
+					>
+						<path
+							d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"
+						/>
+					</svg>
+				</button>
+			{/if}
+
 			<!-- Clear All Annotations -->
-			<button
-				class="btn btn-sm btn-ghost text-error"
-				onclick={handleClearAnnotations}
-				aria-label="Clear all annotations from document"
-				title="Clear All"
-			>
-				Clear
-			</button>
+			{#if hasAnnotations}
+				<button
+					class="btn btn-sm btn-ghost text-error"
+					onclick={handleClearAnnotations}
+					aria-label="Clear all annotations from document"
+					title="Clear All"
+				>
+					Clear All
+				</button>
+			{/if}
 		{/if}
 	</div>
 {/if}

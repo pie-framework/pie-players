@@ -56,6 +56,17 @@ export {
 // Range Serializer (for annotation persistence)
 export type { SerializedRange } from "./services/RangeSerializer";
 export { RangeSerializer } from "./services/RangeSerializer";
+// Annotation Toolbar Configuration (Backend API endpoints)
+export type {
+	AnnotationToolbarConfig,
+	DictionaryLookupRequest,
+	DictionaryLookupResponse,
+	PictureDictionaryLookupRequest,
+	PictureDictionaryLookupResponse,
+	TranslationRequest,
+	TranslationResponse,
+} from "./services/AnnotationToolbarConfig";
+export { AnnotationToolbarAPIClient } from "./services/AnnotationToolbarConfig";
 // I18n Service
 export type {
 	I18nConfig,

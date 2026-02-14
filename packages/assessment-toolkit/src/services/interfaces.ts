@@ -153,6 +153,16 @@ export interface IToolCoordinator {
 	hideTool(id: string): void;
 
 	/**
+	 * Toggle tool visibility
+	 */
+	toggleTool(id: string): void;
+
+	/**
+	 * Check if tool is visible
+	 */
+	isToolVisible(id: string): boolean;
+
+	/**
 	 * Bring an element to the front of its layer
 	 */
 	bringToFront(element: HTMLElement): void;

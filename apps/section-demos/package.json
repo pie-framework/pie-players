@@ -18,6 +18,7 @@
 		"@pie-players/pie-section-player": "workspace:*",
 		"@pie-players/pie-section-tools-toolbar": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*",
+		"@pie-players/pie-tool-annotation-toolbar": "workspace:*",
 		"@pie-players/pie-tool-answer-eliminator": "workspace:*",
 		"@pie-players/pie-tool-tts-inline": "workspace:*",
 		"@pie-players/tts-server-core": "workspace:*",

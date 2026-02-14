@@ -53,6 +53,7 @@ import {
 	PNPToolResolver,
 	type ResolvedToolConfig,
 } from "../services/PNPToolResolver";
+import { createDefaultToolRegistry } from "../services/createDefaultToolRegistry";
 import { BrowserTTSProvider } from "../services/tts/browser-provider";
 import {
 	DesmosCalculatorProvider,
@@ -222,8 +223,9 @@ export class AssessmentPlayer {
 			config.services?.desmosProvider ?? new DesmosCalculatorProvider();
 		this.tiProvider = config.services?.tiProvider ?? new TICalculatorProvider();
 
-		// Initialize PNP resolver and tools from assessment
-		this.pnpResolver = new PNPToolResolver();
+		// Initialize PNP resolver with default tool registry
+		const toolRegistry = createDefaultToolRegistry();
+		this.pnpResolver = new PNPToolResolver(toolRegistry);
 		this.initializeTools();
 		this.applyAssessmentTheme();
 		this.autoActivateTools();

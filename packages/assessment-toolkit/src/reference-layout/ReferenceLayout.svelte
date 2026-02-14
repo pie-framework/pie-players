@@ -39,24 +39,17 @@
 	let passage = $state<PassageEntity | null>(null);
 	let rubricBlocks = $state<RubricBlock[]>([]);
 
-	// Picture Dictionary Modal state
-	let showPictureDictionaryModal = $state(false);
-	let pictureDictionaryWord = $state('');
-
 	// Annotation toolbar event handlers
 	function handleDictionaryLookup(detail: { text: string }) {
 		// TODO: Open dictionary modal
 		console.log('Dictionary lookup:', detail.text);
+		alert(`Dictionary lookup: ${detail.text}`);
 	}
 
 	function handleTranslationRequest(detail: { text: string }) {
 		// TODO: Open translation modal
 		console.log('Translation request:', detail.text);
-	}
-
-	function handlePictureDictionaryLookup(detail: { text: string }) {
-		pictureDictionaryWord = detail.text;
-		showPictureDictionaryModal = true;
+		alert(`Translation request: ${detail.text}`);
 	}
 
 	// Load passage when item changes
@@ -180,14 +173,6 @@
 	highlightCoordinator={player.getHighlightCoordinator()}
 	ondictionarylookup={handleDictionaryLookup}
 	ontranslationrequest={handleTranslationRequest}
-	onpicturedictionarylookup={handlePictureDictionaryLookup}
-/>
-
-<!-- Picture Dictionary Modal -->
-<PictureDictionaryModal
-	bind:visible={showPictureDictionaryModal}
-	word={pictureDictionaryWord}
-	organizationId={organizationId || undefined}
 />
 
 <style>

@@ -26,7 +26,8 @@
 			"types": "./dist/index.d.ts",
 			"import": "./dist/tool-annotation-toolbar.js",
 			"svelte": "./tool-annotation-toolbar.svelte"
-		}
+		},
+		"./tool-annotation-toolbar.svelte": "./tool-annotation-toolbar.svelte"
 	},
 	"files": [
 		"dist",

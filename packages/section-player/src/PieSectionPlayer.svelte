@@ -54,6 +54,9 @@
 			// Player type selection
 			playerType: { attribute: 'player-type', type: 'String' },
 
+			// Tools toolbar position
+			toolbarPosition: { attribute: 'toolbar-position', type: 'String' },
+
 			// Debug
 			debug: { attribute: 'debug', type: 'String' },
 
@@ -78,6 +81,9 @@ import type {
 	import SplitPanelLayout from './components/layouts/SplitPanelLayout.svelte';
 	import VerticalLayout from './components/layouts/VerticalLayout.svelte';
 
+	// Import section tools toolbar web component
+	import '@pie-players/pie-section-tools-toolbar';
+
 	// Props
 	let {
 		section = null as QtiAssessmentSection | null,
@@ -90,6 +96,7 @@ import type {
 		playerVersion = 'latest',
 		playerType = 'auto' as 'auto' | 'iife' | 'esm' | 'fixed' | 'inline',
 		customClassname = '',
+		toolbarPosition = 'right' as 'top' | 'right' | 'bottom' | 'left',
 		debug = '' as string | boolean,
 
 		// Toolkit coordinator (optional - creates default if not provided)
@@ -138,6 +145,22 @@ import type {
 
 	// TTS error state
 	let ttsError = $state<string | null>(null);
+
+	// Section tools toolbar element reference
+	let toolbarElement = $state<HTMLElement | null>(null);
+
+	// Section toolbar enabled tools (reactive state)
+	let sectionToolsEnabled = $state<string[]>([]);
+
+	// Subscribe to floating tools changes from coordinator
+	$effect(() => {
+		if (coordinator) {
+			const unsubscribe = coordinator.onFloatingToolsChange((toolIds) => {
+				sectionToolsEnabled = toolIds;
+			});
+			return unsubscribe;
+		}
+	});
 
 	// Computed
 	let isPageMode = $derived(section?.keepTogether === true);
@@ -412,6 +435,26 @@ import type {
 	let currentItemSession = $derived(
 		currentItem ? itemSessions[currentItem.id || ''] : undefined
 	);
+
+	// Compute enabled tools string from reactive state
+	let enabledToolsString = $derived(sectionToolsEnabled.join(','));
+
+	// Bind toolkitCoordinator, registry, position, and enabled tools to toolbar element
+	$effect(() => {
+		if (toolbarElement) {
+			if (coordinator) {
+				(toolbarElement as any).toolCoordinator = coordinator.toolCoordinator;
+				(toolbarElement as any).toolProviderRegistry = coordinator.toolProviderRegistry;
+			}
+			// Set position property and attribute
+			(toolbarElement as any).position = toolbarPosition;
+			toolbarElement.setAttribute('position', toolbarPosition);
+			toolbarElement.setAttribute('data-position', toolbarPosition);
+			// Set enabled tools
+			(toolbarElement as any).enabledTools = enabledToolsString;
+			toolbarElement.setAttribute('enabled-tools', enabledToolsString);
+		}
+	});
 </script>
 
 <div
@@ -464,31 +507,55 @@ import type {
 			</div>
 		{/if}
 
-		{#if elementsLoaded}
-			{#if isPageMode}
-				<!-- Page Mode: Choose layout based on layout prop -->
-				{#if layout === 'split-panel'}
-					<SplitPanelLayout
-						{passages}
-						{items}
-						{itemSessions}
-						{env}
-						{bundleHost}
-						{esmCdnUrl}
-						{playerVersion}
-						{playerType}
-						{assessmentId}
-						{sectionId}
-						toolkitCoordinator={coordinator}
+		<!-- Main content area -->
+		<div class="pie-section-player__content">
+			{#if elementsLoaded}
+				{#if isPageMode}
+					<!-- Page Mode: Choose layout based on layout prop -->
+					{#if layout === 'split-panel'}
+						<SplitPanelLayout
+							{passages}
+							{items}
+							{itemSessions}
+							{env}
+							{bundleHost}
+							{esmCdnUrl}
+							{playerVersion}
+							{playerType}
+							{assessmentId}
+							{sectionId}
+							toolkitCoordinator={coordinator}
 
-						onsessionchanged={handleSessionChanged}
-					/>
+							onsessionchanged={handleSessionChanged}
+						/>
+					{:else}
+						<!-- Default: vertical layout -->
+						<VerticalLayout
+							{passages}
+							{items}
+							{itemSessions}
+							{env}
+							{bundleHost}
+							{esmCdnUrl}
+							{playerVersion}
+							{playerType}
+							{assessmentId}
+							{sectionId}
+							toolkitCoordinator={coordinator}
+
+							onsessionchanged={handleSessionChanged}
+						/>
+					{/if}
 				{:else}
-					<!-- Default: vertical layout -->
-					<VerticalLayout
+					<!-- Item Mode: Use internal Svelte component -->
+					<ItemModeLayout
 						{passages}
-						{items}
-						{itemSessions}
+						{currentItem}
+						currentIndex={currentItemIndex}
+						totalItems={items.length}
+						canNext={canNavigateNext}
+						canPrevious={canNavigatePrevious}
+						itemSession={currentItemSession}
 						{env}
 						{bundleHost}
 						{esmCdnUrl}
@@ -498,38 +565,24 @@ import type {
 						{sectionId}
 						toolkitCoordinator={coordinator}
 
-						onsessionchanged={handleSessionChanged}
+						onprevious={navigatePrevious}
+						onnext={navigateNext}
+						onsessionchanged={(sessionDetail) => handleSessionChanged(currentItem?.id || '', sessionDetail)}
 					/>
 				{/if}
 			{:else}
-				<!-- Item Mode: Use internal Svelte component -->
-				<ItemModeLayout
-					{passages}
-					{currentItem}
-					currentIndex={currentItemIndex}
-					totalItems={items.length}
-					canNext={canNavigateNext}
-					canPrevious={canNavigatePrevious}
-					itemSession={currentItemSession}
-					{env}
-					{bundleHost}
-					{esmCdnUrl}
-					{playerVersion}
-					{playerType}
-					{assessmentId}
-					{sectionId}
-					toolkitCoordinator={coordinator}
-
-					onprevious={navigatePrevious}
-					onnext={navigateNext}
-					onsessionchanged={(sessionDetail) => handleSessionChanged(currentItem?.id || '', sessionDetail)}
-				/>
+				<div class="loading">
+					<p>Loading assessment elements...</p>
+				</div>
 			{/if}
-		{:else}
-			<div class="loading">
-				<p>Loading assessment elements...</p>
-			</div>
-		{/if}
+		</div>
+
+		<!-- Section-level floating tools toolbar -->
+		<pie-section-tools-toolbar
+			bind:this={toolbarElement}
+			position={toolbarPosition}
+			enabled-tools={enabledToolsString}
+		></pie-section-tools-toolbar>
 	{:else}
 		<div class="loading">
 			<p>Loading section...</p>
@@ -547,13 +600,60 @@ import type {
 		overflow: hidden;
 	}
 	.pie-section-player {
-		display: block;
+		display: flex;
 		width: 100%;
 		height: 100%;
 		min-height: 0;
 		max-height: 100%;
 		overflow: hidden;
 		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+	}
+
+	/* Layout direction based on toolbar position */
+	.pie-section-player:has(pie-section-tools-toolbar[position="top"]),
+	.pie-section-player:has(pie-section-tools-toolbar[position="bottom"]),
+	.pie-section-player:has(pie-section-tools-toolbar[data-position="top"]),
+	.pie-section-player:has(pie-section-tools-toolbar[data-position="bottom"]),
+	.pie-section-player:not(:has(pie-section-tools-toolbar[position])):not(:has(pie-section-tools-toolbar[data-position])) {
+		flex-direction: column;
+	}
+
+	.pie-section-player:has(pie-section-tools-toolbar[position="left"]),
+	.pie-section-player:has(pie-section-tools-toolbar[position="right"]),
+	.pie-section-player:has(pie-section-tools-toolbar[data-position="left"]),
+	.pie-section-player:has(pie-section-tools-toolbar[data-position="right"]) {
+		flex-direction: row;
+	}
+
+	/* Toolbar ordering - control whether toolbar appears before or after content */
+	.pie-section-player:has(pie-section-tools-toolbar[position="top"]) .pie-section-player__content,
+	.pie-section-player:has(pie-section-tools-toolbar[data-position="top"]) .pie-section-player__content {
+		order: 2;
+	}
+
+	.pie-section-player:has(pie-section-tools-toolbar[position="top"]) pie-section-tools-toolbar,
+	.pie-section-player:has(pie-section-tools-toolbar[data-position="top"]) pie-section-tools-toolbar {
+		order: 1;
+	}
+
+	.pie-section-player:has(pie-section-tools-toolbar[position="left"]) .pie-section-player__content,
+	.pie-section-player:has(pie-section-tools-toolbar[data-position="left"]) .pie-section-player__content {
+		order: 2;
+	}
+
+	.pie-section-player:has(pie-section-tools-toolbar[position="left"]) pie-section-tools-toolbar,
+	.pie-section-player:has(pie-section-tools-toolbar[data-position="left"]) pie-section-tools-toolbar {
+		order: 1;
+	}
+
+	/* Main content area takes remaining space */
+	.pie-section-player__content {
+		flex: 1;
+		min-height: 0;
+		min-width: 0;
+		overflow: hidden;
+		display: flex;
+		flex-direction: column;
 	}
 
 	.error {

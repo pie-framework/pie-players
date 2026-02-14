@@ -70,7 +70,7 @@
 		"@pie-players/tts-client-server": "workspace:*"
 	},
 	"peerDependencies": {
-		"svelte": "^5.0.0"
+		"svelte": "^5.51.0"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.3.10",

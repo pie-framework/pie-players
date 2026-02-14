@@ -33,7 +33,7 @@
 		"lint": "biome check ."
 	},
 	"peerDependencies": {
-		"svelte": "^5.0.0"
+		"svelte": "^5.51.0"
 	},
 	"dependencies": {
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
@@ -50,10 +50,10 @@
 		"@biomejs/biome": "^2.3.13",
 		"@playwright/test": "^1.58.2",
 		"@sveltejs/adapter-auto": "^7.0.0",
-		"@sveltejs/kit": "^2.50.1",
+		"@sveltejs/kit": "^2.51.0",
 		"@sveltejs/vite-plugin-svelte": "^6.2.4",
 		"@types/node": "^25.1.0",
-		"svelte": "^5.49.1",
+		"svelte": "^5.51.0",
 		"svelte-check": "^4.3.5",
 		"typescript": "^5.9.3",
 		"vite": "^7.3.1",

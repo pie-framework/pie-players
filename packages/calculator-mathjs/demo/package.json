@@ -10,12 +10,12 @@
 	},
 	"dependencies": {
 		"mathjs": "^15.1.0",
-		"svelte": "^5.49.0"
+		"svelte": "^5.51.0"
 	},
 	"devDependencies": {
 		"@sveltejs/vite-plugin-svelte": "^6.2.4",
 		"autoprefixer": "^10.4.23",
-		"daisyui": "^5.5.14",
+		"daisyui": "^5.5.18",
 		"postcss": "^8.5.6",
 		"tailwindcss": "^4.1.18",
 		"vite": "^7.3.1"

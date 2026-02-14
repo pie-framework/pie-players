@@ -384,16 +384,31 @@
 		}, 2000);
 
 		// Set up event listeners
+		// Mouse events
 		document.addEventListener('mouseup', handleSelectionChange);
-		document.addEventListener('keydown', handleKeyDown);
 		document.addEventListener('click', handleDocumentClick);
+
+		// Touch events for mobile/tablet support
+		document.addEventListener('touchend', handleSelectionChange);
+		document.addEventListener('touchstart', handleDocumentClick);
+
+		// Keyboard and scroll events
+		document.addEventListener('keydown', handleKeyDown);
 		window.addEventListener('scroll', hideToolbar, true);
 
 		return () => {
 			clearTimeout(loadTimer);
+
+			// Remove mouse events
 			document.removeEventListener('mouseup', handleSelectionChange);
-			document.removeEventListener('keydown', handleKeyDown);
 			document.removeEventListener('click', handleDocumentClick);
+
+			// Remove touch events
+			document.removeEventListener('touchend', handleSelectionChange);
+			document.removeEventListener('touchstart', handleDocumentClick);
+
+			// Remove keyboard and scroll events
+			document.removeEventListener('keydown', handleKeyDown);
 			window.removeEventListener('scroll', hideToolbar, true);
 		};
 	});
@@ -401,10 +416,11 @@
 
 {#if toolbarState.isVisible}
 	<div
-		class="annotation-toolbar fixed z-[4200] flex gap-1 bg-base-100 shadow-lg rounded-lg p-2 border border-base-300"
+		class="annotation-toolbar notranslate fixed z-[4200] flex gap-1 bg-base-100 shadow-lg rounded-lg p-2 border border-base-300"
 		style={`left:${toolbarState.toolbarPosition.x}px; top:${toolbarState.toolbarPosition.y}px; transform: translate(-50%, -100%);`}
 		role="toolbar"
 		aria-label="Text annotation toolbar"
+		translate="no"
 	>
 		<!-- Highlight Color Swatches -->
 		{#each HIGHLIGHT_COLORS as color}

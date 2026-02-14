@@ -269,7 +269,8 @@ import { onMount } from 'svelte';
 				qwertyKeyboard: false,
 				notes: isGraphing,
 				folders: isGraphing,
-				sliders: isGraphing
+				sliders: isGraphing,
+				tables: isGraphing
 			}
 		};
 	}
@@ -761,11 +762,12 @@ import { onMount } from 'svelte';
 {#if visible}
 	<div
 		bind:this={containerEl}
-		class="calculator-tool"
+		class="calculator-tool notranslate"
 		class:is-dragging={isDragging}
 		role="dialog"
 		tabindex="-1"
 		aria-label="Calculator tool - Drag header to move, Escape to close"
+		translate="no"
 		style="left: {positionStyle.left}; top: {positionStyle.top}; {width !== undefined ? `width: ${width}px;` : ''} {height !== undefined ? `height: ${height}px;` : ''} transform: {positionStyle.transform};"
 		onpointerdown={handlePointerDown}
 		onpointermove={handlePointerMove}
@@ -1033,6 +1035,21 @@ import { onMount } from 'svelte';
 						}}
 					/>
 					<span>Sliders</span>
+				</label>
+
+				<label>
+					<input
+						type="checkbox"
+						checked={calculatorConfig.desmos?.tables ?? true}
+						onchange={(e) => {
+							calculatorConfig.desmos = {
+								...calculatorConfig.desmos,
+								tables: (e.target as HTMLInputElement).checked,
+							};
+							handleConfigChange();
+						}}
+					/>
+					<span>Tables</span>
 				</label>
 			{/if}
 		</fieldset>

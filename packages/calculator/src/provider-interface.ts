@@ -61,6 +61,7 @@ export interface DesmosCalculatorConfig {
 	plotInequalities?: boolean; // Enable inequality plotting
 	geometryComputationFunctions?: boolean; // Enable geometry computation functions
 	sliders?: boolean; // Enable sliders for parameters
+	tables?: boolean; // Enable data tables feature
 	expressionsCollapsed?: boolean; // Start with expressions collapsed
 	administerSecretFolders?: boolean; // Enable secret folders
 	lockViewport?: boolean; // Lock viewport (disable panning/zooming)

@@ -18,6 +18,9 @@
 			color: '#ffeb3b',
 			opacity: 0.4
 		}),
+		layoutConfig = $bindable({
+			toolbarPosition: 'right' as 'top' | 'right' | 'bottom' | 'left'
+		}),
 		onClose,
 		onApply
 	}: {
@@ -36,16 +39,20 @@
 			color: string;
 			opacity: number;
 		};
+		layoutConfig?: {
+			toolbarPosition: 'top' | 'right' | 'bottom' | 'left';
+		};
 		onClose?: () => void;
-		onApply?: (settings: { tts: typeof ttsConfig; highlight: typeof highlightConfig }) => void;
+		onApply?: (settings: { tts: typeof ttsConfig; highlight: typeof highlightConfig; layout: typeof layoutConfig }) => void;
 	} = $props();
 
 	// Active tab
-	let activeTab = $state<'tts' | 'highlight'>('tts');
+	let activeTab = $state<'tts' | 'highlight' | 'layout'>('tts');
 
 	// Local copies for editing
 	let localTtsConfig = $state({ ...ttsConfig });
 	let localHighlightConfig = $state({ ...highlightConfig });
+	let localLayoutConfig = $state({ ...layoutConfig });
 
 	// Voice options
 	let browserVoices = $state<SpeechSynthesisVoice[]>([]);
@@ -301,7 +308,8 @@
 		if (onApply) {
 			onApply({
 				tts: localTtsConfig,
-				highlight: localHighlightConfig
+				highlight: localHighlightConfig,
+				layout: localLayoutConfig
 			});
 		}
 	}
@@ -320,6 +328,9 @@
 			enabled: true,
 			color: '#ffeb3b',
 			opacity: 0.4
+		};
+		localLayoutConfig = {
+			toolbarPosition: 'right'
 		};
 	}
 
@@ -361,6 +372,15 @@
 				onclick={() => (activeTab = 'highlight')}
 			>
 				Highlighting
+			</button>
+			<button
+				type="button"
+				role="tab"
+				class="tab"
+				class:tab-active={activeTab === 'layout'}
+				onclick={() => (activeTab = 'layout')}
+			>
+				Layout
 			</button>
 		</div>
 
@@ -653,6 +673,71 @@
 							</div>
 						</div>
 					{/if}
+				</div>
+			{:else if activeTab === 'layout'}
+				<!-- Layout Settings -->
+				<div class="space-y-4">
+					<h4 class="font-semibold text-base">Layout Configuration</h4>
+
+					<!-- Toolbar Position -->
+					<div class="form-control">
+						<div class="label">
+							<span class="label-text font-semibold">Tools Toolbar Position</span>
+						</div>
+						<div class="label">
+							<span class="label-text-alt">Choose where the floating tools toolbar appears</span>
+						</div>
+						<div class="grid grid-cols-2 gap-3 mt-2">
+							<label class="label cursor-pointer gap-2 border rounded-lg p-4 flex-col items-start">
+								<input
+									type="radio"
+									bind:group={localLayoutConfig.toolbarPosition}
+									value="top"
+									class="radio"
+								/>
+								<span class="label-text">
+									<div class="font-semibold">Top</div>
+									<div class="text-sm opacity-70">Toolbar at top of content</div>
+								</span>
+							</label>
+							<label class="label cursor-pointer gap-2 border rounded-lg p-4 flex-col items-start">
+								<input
+									type="radio"
+									bind:group={localLayoutConfig.toolbarPosition}
+									value="right"
+									class="radio"
+								/>
+								<span class="label-text">
+									<div class="font-semibold">Right</div>
+									<div class="text-sm opacity-70">Toolbar on right side (default)</div>
+								</span>
+							</label>
+							<label class="label cursor-pointer gap-2 border rounded-lg p-4 flex-col items-start">
+								<input
+									type="radio"
+									bind:group={localLayoutConfig.toolbarPosition}
+									value="bottom"
+									class="radio"
+								/>
+								<span class="label-text">
+									<div class="font-semibold">Bottom</div>
+									<div class="text-sm opacity-70">Toolbar at bottom of content</div>
+								</span>
+							</label>
+							<label class="label cursor-pointer gap-2 border rounded-lg p-4 flex-col items-start">
+								<input
+									type="radio"
+									bind:group={localLayoutConfig.toolbarPosition}
+									value="left"
+									class="radio"
+								/>
+								<span class="label-text">
+									<div class="font-semibold">Left</div>
+									<div class="text-sm opacity-70">Toolbar on left side</div>
+								</span>
+							</label>
+						</div>
+					</div>
 				</div>
 			{/if}
 		</div>

@@ -122,6 +122,154 @@ player.toolCoordinator = toolCoordinator;
 // ...
 ```
 
+## Tool Architecture: Item-Level vs Floating Tools
+
+The toolkit distinguishes between two fundamentally different categories of tools based on their scope and lifecycle:
+
+### Item-Level Tools (`tools` configuration)
+
+Tools that operate **within the context of a specific question/item**:
+
+```typescript
+tools: {
+  tts: { enabled: true },           // Reads this question's text
+  answerEliminator: { enabled: true } // Strikes through this item's choices
+}
+```
+
+**Characteristics:**
+- **Scope**: Bound to a specific item's DOM context
+- **Lifecycle**: Instance created/destroyed as you navigate between items
+- **State**: Isolated per-item (eliminations for Q5 don't affect Q6)
+- **UI Pattern**: Inline buttons in question headers/toolbars
+- **State Persistence**: Tracked per-item in ElementToolStateStore
+
+**Available Item-Level Tools:**
+- **TTS (Text-to-Speech)**: Reads the specific question/passage text
+- **Answer Eliminator**: Strikes through answer choices for that question
+- **Highlighter**: Highlights text within the item (future)
+
+**Example Use Case:**
+A student uses answer eliminator on Question 3 to cross out choices B and D. When they navigate to Question 4, they see fresh, uneliminated choices. When they return to Question 3, their eliminations are restored.
+
+### Section-Level Floating Tools (`floatingTools` configuration)
+
+Tools that **float above the entire assessment** and persist across questions:
+
+```typescript
+floatingTools: {
+  calculator: {
+    enabled: true,
+    provider: 'desmos',
+    authFetcher: async () => { /* ... */ }
+  },
+  graph: { enabled: true },
+  periodicTable: { enabled: true },
+  protractor: { enabled: true },
+  ruler: { enabled: true },
+  lineReader: { enabled: true },
+  magnifier: { enabled: true },
+  colorScheme: { enabled: true }
+}
+```
+
+**Characteristics:**
+- **Scope**: Section-wide, shared across all questions
+- **Lifecycle**: Single instance initialized for entire section
+- **State**: Persistent (calculator history remains as you navigate)
+- **UI Pattern**: Draggable floating panels/overlays with z-index management
+- **State Persistence**: Global state maintained throughout section
+
+**Available Floating Tools:**
+- **Calculator**: Scientific/graphing calculator with computation history
+- **Graph**: Graphing tool for plotting functions
+- **Periodic Table**: Interactive periodic table reference
+- **Protractor**: Angle measurement tool
+- **Ruler**: Linear measurement tool (metric/imperial)
+- **Line Reader**: Reading guide/masking overlay
+- **Magnifier**: Screen magnification tool
+- **Color Scheme**: High-contrast color adjustments
+
+**Example Use Case:**
+A student opens the calculator on Question 2, computes 45 × 12 = 540. They navigate to Question 7, and the calculator still shows their computation history. They can reference previous calculations across multiple questions without losing context.
+
+### When to Use Each
+
+Use **item-level tools** when:
+- Tool needs to read/interact with specific question content
+- State should be isolated per-question
+- Tool appears inline with the question (space-efficient)
+- Tool behavior is contextual to the current item
+
+Use **floating tools** when:
+- Tool is a general-purpose utility used across multiple questions
+- State should persist across navigation
+- Tool needs independent positioning and sizing
+- Tool provides reference information or computation capability
+
+### Configuration Example
+
+Complete example showing both types:
+
+```typescript
+const coordinator = new ToolkitCoordinator({
+  assessmentId: 'math-exam',
+  tools: {
+    // Item-level: Different for each question
+    tts: { enabled: true },
+    answerEliminator: { enabled: true }
+  },
+  floatingTools: {
+    // Section-level: Shared across all questions
+    calculator: {
+      enabled: true,
+      provider: 'desmos',
+      authFetcher: async () => {
+        const response = await fetch('/api/tools/desmos/auth');
+        return response.json();
+      }
+    },
+    graph: { enabled: true },
+    periodicTable: { enabled: true },
+    protractor: { enabled: true },
+    ruler: { enabled: true },
+    lineReader: { enabled: true },
+    magnifier: { enabled: true },
+    colorScheme: { enabled: true }
+  },
+  accessibility: {
+    catalogs: [],
+    language: 'en-US'
+  }
+});
+```
+
+**Simple Default (All Tools Enabled):**
+
+For most use cases, simply enable all available tools:
+
+```typescript
+const coordinator = new ToolkitCoordinator({
+  assessmentId: 'my-assessment',
+  tools: {
+    tts: { enabled: true },
+    answerEliminator: { enabled: true }
+  },
+  floatingTools: {
+    calculator: { enabled: true, provider: 'desmos' },
+    graph: { enabled: true },
+    periodicTable: { enabled: true },
+    protractor: { enabled: true },
+    ruler: { enabled: true },
+    lineReader: { enabled: true },
+    magnifier: { enabled: true },
+    colorScheme: { enabled: true }
+  }
+});
+```
+
+The ToolkitCoordinator handles all internal complexity (service initialization, provider management, state coordination). The only special configuration is `authFetcher` for Desmos calculator (optional - falls back to local calculator if not provided).
+
 ## Implementation Status
 
 ### ✅ Core Infrastructure
@@ -133,13 +281,21 @@ player.toolCoordinator = toolCoordinator;
 
 - **ToolkitCoordinator**: ⭐ NEW - Centralized service orchestration
 - **ElementToolStateStore**: ⭐ NEW - Element-level ephemeral tool state management
+- **ToolRegistry**: ⭐ NEW - Registry-based tool management with QTI 3.0 PNP support
+- **PNPToolResolver**: ⭐ REFACTORED - QTI 3.0 Personal Needs Profile tool resolution via registry
 - **ToolCoordinator**: Manages z-index layering and visibility for floating tools
 - **HighlightCoordinator**: Separate highlight layers for TTS (temporary) and annotations (persistent)
 - **TTSService**: Text-to-speech with QTI 3.0 catalog support
 - **AccessibilityCatalogResolver**: QTI 3.0 accessibility catalog management
 - **SSMLExtractor**: Automatic extraction of embedded `<speak>` tags
 - **ThemeProvider**: Consistent accessibility theming
-- **PNPToolResolver**: QTI 3.0 Personal Needs Profile tool resolution
+
+### ✅ QTI 3.0 Standard Access Features
+
+- **95+ Standardized Features**: Complete QTI 3.0 / IMS AfA 3.0 accessibility features
+- **9 Feature Categories**: Visual, auditory, motor, cognitive, reading, navigation, linguistic, assessment
+- **Example Configurations**: Illustrative PNP profile examples (low vision, dyslexia, ADHD, etc.)
+- **Tool Mappings**: All 12 default tools map to standard QTI 3.0 features
 
 ### ✅ Section Player Integration
 
@@ -511,6 +667,8 @@ import type {
 
 ## Related Documentation
 
+- **[Tool Registry Architecture](docs/TOOL_REGISTRY.md)** - ⭐ NEW - Registry-based tool management and QTI 3.0 PNP support
+- **[PNP Configuration Guide](docs/PNP_CONFIGURATION.md)** - ⭐ NEW - How to configure student profiles, district policies, and governance rules
 - [ToolkitCoordinator Architecture](../../docs/architecture/TOOLKIT_COORDINATOR.md) - Design decisions and patterns
 - [Section Player README](../section-player/README.md) - Section player integration
 - [Architecture Overview](../../docs/ARCHITECTURE.md) - Complete system architecture

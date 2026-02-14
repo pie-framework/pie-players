@@ -683,7 +683,8 @@ export const accessibilityDemoAssessment: AssessmentEntity = {
 					// Rubric block with catalog reference
 					rubricBlocks: [
 						{
-							use: "instructions",
+							identifier: "instructions-1",
+							class: "instructions",
 							view: "candidate",
 							content: '<div data-catalog-id="test-instructions">...</div>',
 						},

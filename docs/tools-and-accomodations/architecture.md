@@ -213,6 +213,208 @@ Tools are organized into three tiers based on their dependencies:
 
 ---
 
+## Tool Scope Architecture: Item-Level vs Floating
+
+In addition to the three-tier dependency hierarchy, tools are categorized by their **scope and lifecycle** within an assessment:
+
+### Item-Level Tools
+
+Tools that operate within the context of a specific question/item:
+
+**Lifecycle:**
+```
+Section loaded
+  ↓
+Question 1 displayed → Item-level tools created (TTS, Answer Eliminator for Q1)
+  ↓
+User navigates to Question 2 → Q1 tools destroyed, Q2 tools created
+  ↓
+User returns to Question 1 → Q1 tools recreated, state restored from ElementToolStateStore
+```
+
+**Characteristics:**
+- **Instance per item**: Each question has its own tool instances
+- **DOM-scoped**: Tools query/interact with specific item's DOM subtree
+- **State isolation**: Tool state tracked per-item (Q5 eliminations ≠ Q6 eliminations)
+- **UI integration**: Rendered inline in question headers/toolbars
+- **Compact footprint**: Small buttons appropriate for inline placement
+
+**Examples:**
+- **TTS (tool-tts-inline)**: Reads this question's text (not other questions)
+- **Answer Eliminator**: Strikes through choices for this item only
+- **Highlighter** (future): Highlights within this item's text
+
+**State Management:**
+```typescript
+// State stored with item-specific ID
+elementToolStateStore.setState(
+  'assessment:section-1:question-5:mc1',
+  'answerEliminator',
+  { eliminatedChoices: ['choice-b', 'choice-d'] }
+);
+
+// When user returns to Q5, state is restored
+const state = elementToolStateStore.getState('assessment:section-1:question-5:mc1', 'answerEliminator');
+// { eliminatedChoices: ['choice-b', 'choice-d'] }
+```
+
+### Section-Level Floating Tools
+
+Tools that float above the entire assessment and persist across navigation:
+
+**Lifecycle:**
+```
+Section loaded → All floating tools initialized (calculator, graph, protractor, etc.)
+  ↓
+Question 1 displayed → Floating tools available
+  ↓
+User opens calculator, computes 45 × 12
+  ↓
+User navigates to Question 2 → Calculator remains open, history preserved
+  ↓
+User navigates to Question 7 → Calculator still shows previous computations
+  ↓
+Section complete → Floating tools destroyed
+```
+
+**Characteristics:**
+- **Single instance per section**: One calculator, one graph, etc. for entire section
+- **Global scope**: Not bound to specific item's DOM
+- **Persistent state**: Calculator history, graph equations, tool positions maintained
+- **UI pattern**: Draggable floating panels/overlays with z-index management
+- **Rich UI**: Full-featured interfaces (can be large, user controls positioning)
+
+**Examples:**
+- **Calculator**: Computation history persists across questions
+- **Graph**: Plot multiple functions, reference throughout test
+- **Periodic Table**: Reference material available anytime
+- **Protractor**: Measure angles in diagrams across items
+- **Ruler**: Measure lengths in diagrams across items
+- **Line Reader**: Reading guide overlay across all content
+- **Magnifier**: Screen magnification across entire assessment
+- **Color Scheme**: High-contrast mode affects all content
+
+**State Management:**
+```typescript
+// Calculator state is global (not item-specific)
+calculatorState = {
+  history: [
+    { expression: '45 * 12', result: 540 },
+    { expression: 'sqrt(144)', result: 12 }
+  ],
+  position: { x: 100, y: 200 },
+  size: { width: 300, height: 400 }
+};
+
+// State persists as user navigates between questions
+```
+
+### Configuration in ToolkitCoordinator
+
+The configuration structure reflects this scope distinction:
+
+```typescript
+const coordinator = new ToolkitCoordinator({
+  assessmentId: 'math-exam',
+
+  // Item-level tools: scoped to each question
+  tools: {
+    tts: { enabled: true },
+    answerEliminator: { enabled: true }
+  },
+
+  // Floating tools: shared across all questions in section
+  floatingTools: {
+    calculator: { enabled: true, provider: 'desmos' },
+    graph: { enabled: true },
+    periodicTable: { enabled: true },
+    protractor: { enabled: true },
+    ruler: { enabled: true },
+    lineReader: { enabled: true },
+    magnifier: { enabled: true },
+    colorScheme: { enabled: true }
+  }
+});
+```
+
+### Why This Separation Matters
+
+**1. Different Lifecycle Management**
+- Item tools created/destroyed per navigation event
+- Floating tools initialized once, persist throughout section
+
+**2. Different Service Requirements**
+- Floating tools may need providers (Desmos API, auth tokens)
+- Item tools typically use simpler built-in services
+
+**3. Different UI Patterns**
+- Item tools: compact inline buttons (limited space in question headers)
+- Floating tools: rich draggable panels (full-featured interfaces)
+
+**4. Different State Models**
+- Item tools: state per-question (which answers eliminated for Q5)
+- Floating tools: global state (calculator equation history)
+
+**5. Different PNP Mapping**
+- QTI 3.0 accessibility features map to appropriate tool level
+- Example: `ext:answer-masking` → item-level answerEliminator
+- Example: `ext:calculator-scientific` → floating calculator
+
+### Implementation Example
+
+**Section Player Rendering:**
+
+```svelte
+<!-- Section-level: One toolbar for all questions -->
+<section-tools-toolbar
+  toolCoordinator={coordinator.toolCoordinator}
+  enabledTools="calculator,graph,periodicTable,protractor,ruler"
+/>
+
+<!-- Item-level: New toolbar instance per question -->
+{#each items as item}
+  <div class="item-container">
+    <!-- Question header with item-scoped tools -->
+    <question-toolbar
+      itemId={item.id}
+      tools="tts,answerEliminator"
+      toolCoordinator={coordinator.toolCoordinator}
+      ttsService={coordinator.ttsService}
+      scopeElement={itemElement}
+    />
+
+    <!-- Question content -->
+    <pie-item-player item={item} />
+  </div>
+{/each}
+
+<!-- Floating tool instances (outside item loop) -->
+<tool-calculator visible={showCalculator} />
+<tool-graph visible={showGraph} />
+<!-- ... other floating tools ... -->
+```
+
+### Architecture Decision: Why Two Categories?
+
+This separation emerged from real-world assessment platform analysis and reflects natural tool usage patterns:
+
+**Educational Context:**
+- Students need **contextual tools** (TTS, eliminator) that change per-question
+- Students need **utility tools** (calculator, ruler) that remain available throughout
+
+**Technical Benefits:**
+- Clear lifecycle boundaries (when to create/destroy)
+- Appropriate state management (per-item vs global)
+- Natural UI patterns (inline vs floating)
+- Simplified PNP resolution (features map to correct scope)
+
+**User Experience:**
+- Intuitive: contextual tools are scoped to their context
+- Predictable: utility tools remain accessible and maintain state
+- Efficient: compact inline tools don't clutter screen, floating tools can be positioned as needed
+
+---
+
 ## Core Services
 
 ### ToolCoordinator

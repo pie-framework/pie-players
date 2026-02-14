@@ -53,6 +53,20 @@ export {
 	HighlightCoordinator,
 	HighlightType,
 } from "./services/HighlightCoordinator";
+// Range Serializer (for annotation persistence)
+export type { SerializedRange } from "./services/RangeSerializer";
+export { RangeSerializer } from "./services/RangeSerializer";
+// Annotation Toolbar Configuration (Backend API endpoints)
+export type {
+	AnnotationToolbarConfig,
+	DictionaryLookupRequest,
+	DictionaryLookupResponse,
+	PictureDictionaryLookupRequest,
+	PictureDictionaryLookupResponse,
+	TranslationRequest,
+	TranslationResponse,
+} from "./services/AnnotationToolbarConfig";
+export { AnnotationToolbarAPIClient } from "./services/AnnotationToolbarConfig";
 // I18n Service
 export type {
 	I18nConfig,
@@ -60,19 +74,69 @@ export type {
 	TranslationBundle,
 } from "./services/I18nService";
 export { I18nService } from "./services/I18nService";
-// PNP Mapper
+// Tool Registry (Registry-based tool system)
+export type {
+	ToolButtonDefinition,
+	ToolButtonOptions,
+	ToolInstanceOptions,
+	ToolRegistration,
+} from "./services/ToolRegistry";
+export { ToolRegistry } from "./services/ToolRegistry";
+export type {
+	AssessmentToolContext,
+	BaseToolContext,
+	ElementToolContext,
+	ItemToolContext,
+	PassageToolContext,
+	RubricToolContext,
+	SectionToolContext,
+	ToolContext,
+	ToolLevel,
+} from "./services/tool-context";
 export {
-	getAllPNPSupports,
-	isPNPSupportRegistered,
-	mapPNPSupportToToolId,
-	mapToolIdToPNPSupport,
-	PIE_TOOL_TO_PNP_MAP,
-	PNP_TO_PIE_TOOL_MAP,
-	registerCustomPNPMapping,
-} from "./services/PNPMapper";
+	extractTextContent,
+	hasChoiceInteraction,
+	hasMathContent,
+	hasReadableText,
+	isAssessmentContext,
+	isElementContext,
+	isItemContext,
+	isPassageContext,
+	isRubricContext,
+	isSectionContext,
+} from "./services/tool-context";
+export {
+	createDefaultToolRegistry,
+	DEFAULT_TOOL_PLACEMENT,
+	DEFAULT_TOOL_ORDER,
+} from "./services/createDefaultToolRegistry";
 // PNP Tool Resolution (QTI 3.0 Native)
-export type { ResolvedToolConfig } from "./services/PNPToolResolver";
+export type {
+	ResolvedToolConfig,
+	ToolResolutionResult,
+} from "./services/PNPToolResolver";
 export { PNPToolResolver } from "./services/PNPToolResolver";
+// PNP Provenance Tracking
+export type {
+	FeatureResolutionTrail,
+	PNPResolutionProvenance,
+	ResolutionDecision,
+} from "./services/pnp-provenance";
+export {
+	formatProvenanceAsJSON,
+	formatProvenanceAsMarkdown,
+	getFeatureExplanation,
+	PNPProvenanceBuilder,
+} from "./services/pnp-provenance";
+// QTI 3.0 Standard Access Features
+export {
+	ALL_STANDARD_ACCESS_FEATURES,
+	EXAMPLE_PNP_CONFIGURATIONS,
+	getFeatureCategory,
+	getFeaturesInCategory,
+	isStandardAccessFeature,
+	QTI_STANDARD_ACCESS_FEATURES,
+} from "./services/pnp-standard-features";
 // SSML Extractor (Auto-generates catalogs from embedded SSML)
 export type { ExtractionResult } from "./services/SSMLExtractor";
 export { SSMLExtractor } from "./services/SSMLExtractor";

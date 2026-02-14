@@ -162,6 +162,9 @@ export class ToolkitCoordinator {
 	/** Track TTS initialization state */
 	private ttsInitialized = false;
 
+	/** Callback for floating tools changes */
+	private floatingToolsChangeCallback: ((toolIds: string[]) => void) | null = null;
+
 	constructor(config: ToolkitCoordinatorConfig) {
 		if (!config.assessmentId) {
 			throw new Error("ToolkitCoordinator requires assessmentId in config");
@@ -365,6 +368,52 @@ export class ToolkitCoordinator {
 
 		// Apply configuration changes to services
 		this._applyToolConfigChange(toolId, updates);
+	}
+
+	/**
+	 * Update the enabled tools list for floating tools (calculator, graph, etc.).
+	 * Used for PNP profile changes or dynamic tool configuration.
+	 *
+	 * @param toolIds Array of tool IDs to enable
+	 */
+	updateFloatingTools(toolIds: string[]): void {
+		if (!this.config.tools) {
+			this.config.tools = {};
+		}
+		if (!this.config.tools.floatingTools) {
+			this.config.tools.floatingTools = {};
+		}
+		this.config.tools.floatingTools.enabledTools = toolIds;
+
+		// Notify listener of change
+		if (this.floatingToolsChangeCallback) {
+			this.floatingToolsChangeCallback(toolIds);
+		}
+	}
+
+	/**
+	 * Get currently enabled floating tools.
+	 *
+	 * @returns Array of enabled tool IDs
+	 */
+	getFloatingTools(): string[] {
+		return this.config.tools?.floatingTools?.enabledTools || [];
+	}
+
+	/**
+	 * Set a callback to be notified when floating tools change.
+	 *
+	 * @param callback Function to call when floating tools are updated
+	 * @returns Unsubscribe function
+	 */
+	onFloatingToolsChange(callback: (toolIds: string[]) => void): () => void {
+		this.floatingToolsChangeCallback = callback;
+		// Call immediately with current value
+		callback(this.getFloatingTools());
+		// Return unsubscribe function
+		return () => {
+			this.floatingToolsChangeCallback = null;
+		};
 	}
 
 	/**

@@ -9,7 +9,7 @@
 		"noUnusedLocals": false,
 		"noUnusedParameters": false
 	},
-	"include": ["src/**/*.ts", "src/**/*.d.ts"],
+	"include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.svelte"],
 	"exclude": ["dist", "node_modules"],
 	"references": [
 		{ "path": "../calculator" },

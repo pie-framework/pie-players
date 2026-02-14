@@ -184,14 +184,16 @@ export const qti3TestAssessment: AssessmentEntity = {
 					// Rubric blocks with catalog references
 					rubricBlocks: [
 						{
+							identifier: "welcome-1",
 							view: "candidate",
-							use: "instructions",
+							class: "instructions",
 							content:
 								'<div data-catalog-id="welcome-message"><h3>Welcome</h3><p>This is a QTI 3.0 compliant assessment demonstrating accessibility catalogs, context declarations, and personal needs profiles.</p></div>',
 						},
 						{
+							identifier: "instructions-1",
 							view: "candidate",
-							use: "instructions",
+							class: "instructions",
 							content:
 								'<div data-catalog-id="test-instructions"><h4>Instructions</h4><p>Read each question carefully and select the best answer.</p></div>',
 						},

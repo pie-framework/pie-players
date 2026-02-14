@@ -455,13 +455,84 @@ export class TTSService {
 	}
 
 	/**
-	 * Speak a text range
+	 * Speak a text range with accurate word highlighting
+	 *
+	 * This calculates the offset of the range within its parent element
+	 * to ensure word highlighting aligns correctly with the selected text.
 	 *
 	 * @param range DOM Range to speak
 	 */
 	async speakRange(range: Range): Promise<void> {
-		const text = range.toString();
-		await this.speak(text);
+		if (!this.provider) {
+			throw new Error("TTS service not initialized");
+		}
+
+		const text = range.toString().trim();
+		if (!text) return;
+
+		// Find the root content element (closest element with data-pie-content or body)
+		let root: Element | null = null;
+		let node: Node | null = range.commonAncestorContainer;
+		while (node && node.nodeType !== Node.ELEMENT_NODE) {
+			node = node.parentNode;
+		}
+		if (node) {
+			root =
+				(node as Element).closest("[data-pie-content]") || document.body;
+		} else {
+			root = document.body;
+		}
+
+		// Calculate the offset of the range start within the root element
+		const beforeRange = document.createRange();
+		beforeRange.selectNodeContents(root);
+		beforeRange.setEnd(range.startContainer, range.startOffset);
+		const textBeforeRange = beforeRange.toString();
+		const offset = textBeforeRange.trim().replace(/\s+/g, " ").length;
+
+		console.log("[TTSService] speakRange offset calculation:", {
+			selectedText: text,
+			textBeforeRange: textBeforeRange.substring(0, 100),
+			offset,
+			rootTag: root.tagName,
+		});
+
+		// Store the offset for word boundary calculations
+		const originalOnWordBoundary = this.provider.onWordBoundary;
+
+		// Wrap the onWordBoundary handler to adjust character indices
+		this.provider.onWordBoundary = (
+			word: string,
+			charIndex: number,
+			length?: number,
+		) => {
+			// Adjust the character index by the offset
+			const adjustedIndex = charIndex + offset;
+			// Call the handler from speak() method which will handle the highlighting
+			// Pass the adjusted index so highlighting aligns with the actual selection
+			if (this.highlightCoordinator && this.currentContentElement) {
+				const wordLength = length || word.length;
+				const highlightRange = this.findHighlightRange(
+					adjustedIndex,
+					wordLength,
+				);
+				if (highlightRange) {
+					this.highlightCoordinator.highlightTTSWord(
+						highlightRange.node,
+						highlightRange.start,
+						highlightRange.end,
+					);
+				}
+			}
+		};
+
+		try {
+			// Speak the text with the root element as context
+			await this.speak(text, { contentElement: root });
+		} finally {
+			// Restore original handler
+			this.provider.onWordBoundary = originalOnWordBoundary;
+		}
 	}
 
 	/**

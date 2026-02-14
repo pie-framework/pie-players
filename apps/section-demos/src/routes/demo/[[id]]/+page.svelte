@@ -2,8 +2,14 @@
 	
 	import {
 		ToolkitCoordinator,
-		BrowserTTSProvider
+		BrowserTTSProvider,
+		PNPToolResolver,
+		createDefaultToolRegistry,
+		AnnotationToolbarAPIClient
 	} from '@pie-players/pie-assessment-toolkit';
+	import PNPProfileTester from '@pie-players/pie-assessment-toolkit/components/PNPProfileTester.svelte';
+	import PNPProvenanceViewer from '@pie-players/pie-assessment-toolkit/components/PNPProvenanceViewer.svelte';
+	import ToolAnnotationToolbar from '@pie-players/pie-tool-annotation-toolbar/tool-annotation-toolbar.svelte';
 	import { ServerTTSProvider } from '@pie-players/tts-client-server';
 
 	// Load the web component
@@ -71,10 +77,14 @@ import { onDestroy, onMount, untrack } from 'svelte';
 	let layoutType = $state<'vertical' | 'split-panel'>(getInitialLayoutType());
 	let roleType = $state<'candidate' | 'scorer'>(getInitialMode());
 	let esmSource = $state<'local' | 'remote'>(getInitialEsmSource());
+	let toolbarPosition = $state<'top' | 'right' | 'bottom' | 'left'>('right');
+	let layoutConfig = $state({ toolbarPosition: 'right' as 'top' | 'right' | 'bottom' | 'left' });
 	let showSessionPanel = $state(false);
 	let showSourcePanel = $state(false);
+	let showPNPPanel = $state(false);
 	let isSessionMinimized = $state(false);
 	let isSourceMinimized = $state(false);
+	let isPNPMinimized = $state(false);
 	let sectionPlayer: any = $state(null);
 	let itemSessions = $state<Record<string, any>>({});
 	let itemMetadata = $state<Record<string, { complete?: boolean; component?: string }>>({});
@@ -112,11 +122,61 @@ import { onDestroy, onMount, untrack } from 'svelte';
 		opacity: 0.4
 	});
 
+	// Annotation Toolbar API Client (for dictionary/translation features)
+	const annotationAPIClient = browser ? new AnnotationToolbarAPIClient({
+		dictionaryEndpoint: '/api/dictionary',
+		pictureDictionaryEndpoint: '/api/picture-dictionary',
+		translationEndpoint: '/api/translation',
+		defaultLanguage: 'en-us'
+	}) : null;
+
+	// Dialog state for dictionary/translation features
+	let dictionaryDialog = $state<{
+		open: boolean;
+		keyword: string;
+		language: string;
+		definitions: Array<{
+			partOfSpeech: string;
+			definition: string;
+			example?: string;
+		}>;
+	}>({
+		open: false,
+		keyword: '',
+		language: '',
+		definitions: []
+	});
+
+	let pictureDictionaryDialog = $state<{
+		open: boolean;
+		keyword: string;
+		images: Array<{ image: string }>;
+	}>({
+		open: false,
+		keyword: '',
+		images: []
+	});
+
+	let translationDialog = $state<{
+		open: boolean;
+		originalText: string;
+		translatedText: string;
+		sourceLanguage: string;
+		targetLanguage: string;
+	}>({
+		open: false,
+		originalText: '',
+		translatedText: '',
+		sourceLanguage: '',
+		targetLanguage: ''
+	});
+
 	// Storage keys
 	let SESSION_STORAGE_KEY = $derived(`pie-section-demo-sessions-${data.demo.id}`);
 	let TOOL_STATE_STORAGE_KEY = $derived(`demo-tool-state:${data.demo.id}`);
 	let TTS_CONFIG_STORAGE_KEY = $derived(`pie-section-demo-tts-config-${data.demo.id}`);
 	let HIGHLIGHT_CONFIG_STORAGE_KEY = $derived(`pie-section-demo-highlight-config-${data.demo.id}`);
+	let LAYOUT_CONFIG_STORAGE_KEY = $derived(`pie-section-demo-layout-config-${data.demo.id}`);
 
 	// Tiptap editor state
 	let editorElement = $state<HTMLDivElement | null>(null);
@@ -165,6 +225,19 @@ import { onDestroy, onMount, untrack } from 'svelte';
 	let isSourceDragging = $state(false);
 	let isSourceResizing = $state(false);
 
+	// PNP window position and state
+	let pnpWindowX = $state(100);
+	let pnpWindowY = $state(150);
+	let pnpWindowWidth = $state(900);
+	let pnpWindowHeight = $state(650);
+	let isPNPDragging = $state(false);
+	let isPNPResizing = $state(false);
+
+	// PNP state
+	let testProfile = $state<any>(null);
+	let pnpResolutionResult = $state<any>(null);
+	let showProvenance = $state(true);
+
 	// Shared drag/resize state
 	let dragStartX = 0;
 	let dragStartY = 0;
@@ -189,12 +262,29 @@ import { onDestroy, onMount, untrack } from 'svelte';
 				// Use demo ID to ensure uniqueness
 				const assessmentId = `demo-${data.demo.id}`;
 
+				// Default tools list for PNP Profile Tester
+				const defaultToolsList = [
+					'calculator',
+					'calculatorScientific',
+					'calculatorGraphing',
+					'graph',
+					'periodicTable',
+					'protractor',
+					'ruler',
+					'lineReader',
+					'magnifier',
+					'screenMagnifier',
+					'textToSpeech',
+					'answerEliminator'
+				];
+
 				toolkitCoordinator = new ToolkitCoordinator({
 					assessmentId,
 					tools: {
 						tts: { enabled: true },
 						answerEliminator: { enabled: true },
 						floatingTools: {
+							enabledTools: defaultToolsList,
 							calculator: {
 								enabled: true,
 								provider: 'desmos',
@@ -202,7 +292,14 @@ import { onDestroy, onMount, untrack } from 'svelte';
 									const response = await fetch('/api/tools/desmos/auth');
 									return response.json();
 								}
-							}
+							},
+							graph: { enabled: true },
+							periodicTable: { enabled: true },
+							protractor: { enabled: true },
+							ruler: { enabled: true },
+							lineReader: { enabled: true },
+							magnifier: { enabled: true },
+							colorScheme: { enabled: true }
 						}
 					},
 					accessibility: {
@@ -369,6 +466,19 @@ import { onDestroy, onMount, untrack } from 'svelte';
 				console.error('Failed to load persisted highlight config:', e);
 			}
 
+			// Load persisted layout config
+			try {
+				const storedLayoutConfig = localStorage.getItem(LAYOUT_CONFIG_STORAGE_KEY);
+				if (storedLayoutConfig) {
+					const parsed = JSON.parse(storedLayoutConfig);
+					layoutConfig = parsed;
+					toolbarPosition = parsed.toolbarPosition;
+					console.log('[Demo] Loaded layout config from localStorage:', layoutConfig);
+				}
+			} catch (e) {
+				console.error('Failed to load persisted layout config:', e);
+			}
+
 			// Initialize TTS with loaded/default configuration
 			await initializeTTS(ttsConfig);
 
@@ -392,7 +502,7 @@ import { onDestroy, onMount, untrack } from 'svelte';
 	});
 
 	// Handle settings apply (save and refresh page)
-	async function handleUnifiedSettingsApply(settings: { tts: TTSConfig; highlight: typeof highlightConfig }) {
+	async function handleUnifiedSettingsApply(settings: { tts: TTSConfig; highlight: typeof highlightConfig; layout: { toolbarPosition: 'top' | 'right' | 'bottom' | 'left' } }) {
 		console.log('[Demo] Unified settings applied:', settings);
 
 		// Stop any currently playing TTS before reloading
@@ -413,14 +523,17 @@ import { onDestroy, onMount, untrack } from 'svelte';
 			);
 		}
 
+		// Update toolbar position (no reload needed for layout changes)
+		if (settings.layout) {
+			toolbarPosition = settings.layout.toolbarPosition;
+		}
+
 		// Persist to localStorage
 		if (browser) {
 			try {
-				const ttsStorageKey = `pie-section-demo-tts-config-${data.demo.id}`;
-				const highlightStorageKey = `pie-section-demo-highlight-config-${data.demo.id}`;
-
-				localStorage.setItem(ttsStorageKey, JSON.stringify(settings.tts));
-				localStorage.setItem(highlightStorageKey, JSON.stringify(settings.highlight));
+				localStorage.setItem(TTS_CONFIG_STORAGE_KEY, JSON.stringify(settings.tts));
+				localStorage.setItem(HIGHLIGHT_CONFIG_STORAGE_KEY, JSON.stringify(settings.highlight));
+				localStorage.setItem(LAYOUT_CONFIG_STORAGE_KEY, JSON.stringify(settings.layout));
 
 				console.log('[Demo] Unified settings saved, refreshing page...');
 
@@ -441,6 +554,11 @@ import { onDestroy, onMount, untrack } from 'svelte';
 			sectionPlayer.toolkitCoordinator = toolkitCoordinator;
 			console.log('[Demo] ToolkitCoordinator set on section player');
 		}
+	});
+
+	// Sync layoutConfig with toolbarPosition changes
+	$effect(() => {
+		layoutConfig = { toolbarPosition };
 	});
 
 	// Handle player type change with page refresh
@@ -570,6 +688,7 @@ import { onDestroy, onMount, untrack } from 'svelte';
 				sectionPlayer.env = pieEnv;
 				sectionPlayer.itemSessions = itemSessions;
 				sectionPlayer.toolkitCoordinator = toolkitCoordinator;
+				sectionPlayer.toolbarPosition = toolbarPosition;
 			});
 		}
 	});
@@ -726,6 +845,99 @@ import { onDestroy, onMount, untrack } from 'svelte';
 		isSourceResizing = false;
 		document.removeEventListener('mousemove', onSourceResize);
 		document.removeEventListener('mouseup', stopSourceResize);
+	}
+
+	// PNP window dragging handlers
+	function startPNPDrag(e: MouseEvent) {
+		isPNPDragging = true;
+		dragStartX = e.clientX;
+		dragStartY = e.clientY;
+		dragStartWindowX = pnpWindowX;
+		dragStartWindowY = pnpWindowY;
+
+		document.addEventListener('mousemove', onPNPDrag);
+		document.addEventListener('mouseup', stopPNPDrag);
+	}
+
+	function onPNPDrag(e: MouseEvent) {
+		if (!isPNPDragging) return;
+
+		const deltaX = e.clientX - dragStartX;
+		const deltaY = e.clientY - dragStartY;
+
+		pnpWindowX = dragStartWindowX + deltaX;
+		pnpWindowY = dragStartWindowY + deltaY;
+
+		pnpWindowX = Math.max(0, Math.min(pnpWindowX, window.innerWidth - pnpWindowWidth));
+		pnpWindowY = Math.max(0, Math.min(pnpWindowY, window.innerHeight - 100));
+	}
+
+	function stopPNPDrag() {
+		isPNPDragging = false;
+		document.removeEventListener('mousemove', onPNPDrag);
+		document.removeEventListener('mouseup', stopPNPDrag);
+	}
+
+	// PNP window resize handlers
+	function startPNPResize(e: MouseEvent) {
+		isPNPResizing = true;
+		resizeStartX = e.clientX;
+		resizeStartY = e.clientY;
+		resizeStartWidth = pnpWindowWidth;
+		resizeStartHeight = pnpWindowHeight;
+
+		document.addEventListener('mousemove', onPNPResize);
+		document.addEventListener('mouseup', stopPNPResize);
+		e.stopPropagation();
+	}
+
+	function onPNPResize(e: MouseEvent) {
+		if (!isPNPResizing) return;
+
+		const deltaX = e.clientX - resizeStartX;
+		const deltaY = e.clientY - resizeStartY;
+
+		pnpWindowWidth = Math.max(600, Math.min(resizeStartWidth + deltaX, window.innerWidth - pnpWindowX));
+		pnpWindowHeight = Math.max(400, Math.min(resizeStartHeight + deltaY, window.innerHeight - pnpWindowY));
+	}
+
+	function stopPNPResize() {
+		isPNPResizing = false;
+		document.removeEventListener('mousemove', onPNPResize);
+		document.removeEventListener('mouseup', stopPNPResize);
+	}
+
+	// PNP Profile Testing
+	function handlePNPProfileChange(profile: any) {
+		testProfile = profile;
+
+		if (!toolkitCoordinator) {
+			console.warn('[Demo] ToolkitCoordinator not initialized yet');
+			return;
+		}
+
+		// Create mock assessment from current section
+		const mockAssessment = {
+			id: data.demo.id,
+			name: data.demo.name,
+			personalNeedsProfile: profile,
+			settings: {}
+		};
+
+		// Create resolver and resolve with override
+		const registry = createDefaultToolRegistry();
+		const resolver = new PNPToolResolver(registry, true);
+		const result = resolver.resolveWithOverride(mockAssessment, profile);
+
+		pnpResolutionResult = result;
+
+		// Apply resolved tools to toolkit coordinator
+		const toolIds = result.tools.filter((t: any) => t.enabled).map((t: any) => t.id);
+		console.log('[Demo] PNP Profile changed - enabled tools:', toolIds);
+
+		// Update the toolkit coordinator's floating tools
+		toolkitCoordinator.updateFloatingTools(toolIds);
+		console.log('[Demo] Applied PNP profile to toolkit coordinator');
 	}
 
 	function copyJson() {
@@ -898,6 +1110,16 @@ import { onDestroy, onMount, untrack } from 'svelte';
 				</svg>
 				Source
 			</button>
+			<button
+				class="btn btn-sm btn-outline"
+				onclick={() => showPNPPanel = !showPNPPanel}
+				title="PNP Profile Tester"
+			>
+				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+				</svg>
+				PNP
+			</button>
 		</div>
 	</div>
 
@@ -915,6 +1137,67 @@ import { onDestroy, onMount, untrack } from 'svelte';
 	</div>
 
 </div>
+
+<!-- Annotation Toolbar (floating, appears on text selection) -->
+<!-- Outside main container to avoid overflow: hidden affecting fixed positioning -->
+{#if toolkitCoordinator}
+	<ToolAnnotationToolbar
+		enabled={true}
+		ttsService={toolkitCoordinator.ttsService}
+		highlightCoordinator={toolkitCoordinator.highlightCoordinator}
+		ondictionarylookup={async (detail) => {
+			console.log('Dictionary lookup:', detail.text);
+			if (!annotationAPIClient) return;
+			try {
+				const result = await annotationAPIClient.lookupDictionary(detail.text);
+				console.log('Dictionary result:', result);
+				dictionaryDialog = {
+					open: true,
+					keyword: result.keyword,
+					language: result.language,
+					definitions: result.definitions
+				};
+			} catch (error) {
+				console.error('Dictionary lookup failed:', error);
+				alert(`Dictionary lookup failed: ${error}`);
+			}
+		}}
+		ontranslationrequest={async (detail) => {
+			console.log('Translation request:', detail.text);
+			if (!annotationAPIClient) return;
+			try {
+				const result = await annotationAPIClient.translate(detail.text, 'es'); // Translate to Spanish
+				console.log('Translation result:', result);
+				translationDialog = {
+					open: true,
+					originalText: result.text,
+					translatedText: result.translatedText,
+					sourceLanguage: result.sourceLanguage,
+					targetLanguage: result.targetLanguage
+				};
+			} catch (error) {
+				console.error('Translation failed:', error);
+				alert(`Translation failed: ${error}`);
+			}
+		}}
+		onpicturedictionarylookup={async (detail) => {
+			console.log('Picture dictionary lookup:', detail.text);
+			if (!annotationAPIClient) return;
+			try {
+				const result = await annotationAPIClient.lookupPictureDictionary(detail.text, undefined, 10);
+				console.log('Picture dictionary result:', result);
+				pictureDictionaryDialog = {
+					open: true,
+					keyword: detail.text,
+					images: result.images
+				};
+			} catch (error) {
+				console.error('Picture dictionary lookup failed:', error);
+				alert(`Picture dictionary lookup failed: ${error}`);
+			}
+		}}
+	/>
+{/if}
 
 <!-- Floating Session Window -->
 {#if showSessionPanel}
@@ -1159,13 +1442,298 @@ import { onDestroy, onMount, untrack } from 'svelte';
 	</div>
 {/if}
 
+<!-- Floating PNP Panel -->
+{#if showPNPPanel}
+	<div
+		class="fixed z-[100] bg-base-100 rounded-lg shadow-2xl border-2 border-base-300"
+		style="left: {pnpWindowX}px; top: {pnpWindowY}px; width: {pnpWindowWidth}px; {isPNPMinimized ? 'height: auto;' : `height: ${pnpWindowHeight}px;`}"
+	>
+		<!-- Title Bar -->
+		<div
+			class="flex items-center justify-between px-4 py-2 bg-base-200 rounded-t-lg cursor-move select-none border-b border-base-300"
+			onmousedown={startPNPDrag}
+			role="button"
+			tabindex="0"
+			aria-label="Drag PNP panel"
+		>
+			<div class="flex items-center gap-2">
+				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+				</svg>
+				<h3 class="font-bold text-sm">PNP Profile Tester</h3>
+			</div>
+			<div class="flex gap-1">
+				<button
+					class="btn btn-xs btn-ghost btn-circle"
+					onclick={() => isPNPMinimized = !isPNPMinimized}
+					title={isPNPMinimized ? 'Maximize' : 'Minimize'}
+				>
+					{#if isPNPMinimized}
+						<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+						</svg>
+					{:else}
+						<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+						</svg>
+					{/if}
+				</button>
+				<button
+					class="btn btn-xs btn-ghost btn-circle"
+					onclick={() => showPNPPanel = false}
+					title="Close"
+				>
+					<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+					</svg>
+				</button>
+			</div>
+		</div>
+
+		<!-- Content -->
+		{#if !isPNPMinimized}
+			<div class="flex h-full" style="height: {pnpWindowHeight - 50}px;">
+				<!-- Left: Profile Tester -->
+				<div class="w-1/2 border-r border-base-300 overflow-y-auto p-4">
+					<PNPProfileTester onProfileChange={handlePNPProfileChange} />
+				</div>
+
+				<!-- Right: Results & Provenance -->
+				<div class="w-1/2 overflow-y-auto p-4">
+					{#if pnpResolutionResult}
+						<!-- Enabled Tools Summary -->
+						<div class="card bg-base-200 shadow-sm mb-4">
+							<div class="card-body p-3">
+								<h4 class="card-title text-sm">Enabled Tools</h4>
+								<div class="flex flex-wrap gap-2">
+									{#each pnpResolutionResult.tools.filter((t: any) => t.enabled) as tool}
+										<div class="badge badge-primary">{tool.id}</div>
+									{/each}
+								</div>
+							</div>
+						</div>
+
+						<!-- Provenance Toggle -->
+						<div class="form-control mb-4">
+							<label class="label cursor-pointer justify-start gap-2">
+								<input
+									type="checkbox"
+									class="toggle toggle-sm toggle-primary"
+									bind:checked={showProvenance}
+								/>
+								<span class="label-text text-xs">Show Resolution Provenance</span>
+							</label>
+						</div>
+
+						<!-- Provenance Viewer -->
+						{#if showProvenance}
+							<PNPProvenanceViewer provenance={pnpResolutionResult.provenance} compact={true} />
+						{/if}
+					{:else}
+						<div class="alert alert-info">
+							<svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-5 w-5" fill="none" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+							</svg>
+							<span class="text-xs">Select a profile or toggle features to see resolution results.</span>
+						</div>
+					{/if}
+				</div>
+			</div>
+		{/if}
+
+		<!-- Resize Handle -->
+		{#if !isPNPMinimized}
+			<div
+				class="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize"
+				onmousedown={startPNPResize}
+				role="button"
+				tabindex="0"
+				title="Resize window"
+			>
+				<svg
+					class="w-full h-full text-base-content/30"
+					viewBox="0 0 16 16"
+					fill="currentColor"
+				>
+					<path d="M16 16V14H14V16H16Z" />
+					<path d="M16 11V9H14V11H16Z" />
+					<path d="M13 16V14H11V16H13Z" />
+				</svg>
+			</div>
+		{/if}
+	</div>
+{/if}
+
 <!-- Assessment Toolkit Settings Modal -->
 {#if showTTSSettings && toolkitCoordinator}
 	<AssessmentToolkitSettings
 		ttsService={toolkitCoordinator.ttsService}
 		bind:ttsConfig
 		bind:highlightConfig
+		bind:layoutConfig
 		onClose={() => showTTSSettings = false}
 		onApply={handleUnifiedSettingsApply}
 	/>
+{/if}
+
+<!-- Dictionary Dialog -->
+{#if dictionaryDialog.open}
+	<dialog class="modal modal-open">
+		<div class="modal-box max-w-2xl">
+			<form method="dialog">
+				<button
+					class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
+					onclick={() => dictionaryDialog = { ...dictionaryDialog, open: false }}
+				>✕</button>
+			</form>
+			<h3 class="font-bold text-lg mb-4 flex items-center gap-2">
+				<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+				</svg>
+				Dictionary: <span class="text-primary">{dictionaryDialog.keyword}</span>
+			</h3>
+
+			<div class="space-y-4">
+				{#each dictionaryDialog.definitions as definition, i}
+					<div class="card bg-base-200">
+						<div class="card-body p-4">
+							<div class="badge badge-primary badge-sm mb-2">{definition.partOfSpeech}</div>
+							<p class="text-base">{definition.definition}</p>
+							{#if definition.example}
+								<div class="mt-2 pl-4 border-l-2 border-primary/30">
+									<p class="text-sm text-base-content/70 italic">
+										Example: "{definition.example}"
+									</p>
+								</div>
+							{/if}
+						</div>
+					</div>
+				{/each}
+			</div>
+
+			<div class="modal-action">
+				<button
+					class="btn btn-primary"
+					onclick={() => dictionaryDialog = { ...dictionaryDialog, open: false }}
+				>Close</button>
+			</div>
+		</div>
+		<form method="dialog" class="modal-backdrop">
+			<button onclick={() => dictionaryDialog = { ...dictionaryDialog, open: false }}>close</button>
+		</form>
+	</dialog>
+{/if}
+
+<!-- Picture Dictionary Dialog -->
+{#if pictureDictionaryDialog.open}
+	<dialog class="modal modal-open">
+		<div class="modal-box max-w-4xl">
+			<form method="dialog">
+				<button
+					class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
+					onclick={() => pictureDictionaryDialog = { ...pictureDictionaryDialog, open: false }}
+				>✕</button>
+			</form>
+			<h3 class="font-bold text-lg mb-4 flex items-center gap-2">
+				<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+				</svg>
+				Picture Dictionary: <span class="text-primary">{pictureDictionaryDialog.keyword}</span>
+			</h3>
+
+			{#if pictureDictionaryDialog.images.length === 0}
+				<div class="alert alert-info">
+					<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+					</svg>
+					<span>No images found for "{pictureDictionaryDialog.keyword}"</span>
+				</div>
+			{:else}
+				<div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+					{#each pictureDictionaryDialog.images as img, i}
+						<div class="card bg-base-200 shadow-xl">
+							<figure class="px-4 pt-4">
+								<img
+									src={img.image}
+									alt="{pictureDictionaryDialog.keyword} - Image {i + 1}"
+									class="rounded-xl w-full h-48 object-cover"
+									onerror={(e) => {
+										e.currentTarget.src = 'https://via.placeholder.com/200x200/cccccc/666666?text=Image+Not+Found';
+									}}
+								/>
+							</figure>
+						</div>
+					{/each}
+				</div>
+			{/if}
+
+			<div class="modal-action">
+				<button
+					class="btn btn-primary"
+					onclick={() => pictureDictionaryDialog = { ...pictureDictionaryDialog, open: false }}
+				>Close</button>
+			</div>
+		</div>
+		<form method="dialog" class="modal-backdrop">
+			<button onclick={() => pictureDictionaryDialog = { ...pictureDictionaryDialog, open: false }}>close</button>
+		</form>
+	</dialog>
+{/if}
+
+<!-- Translation Dialog -->
+{#if translationDialog.open}
+	<dialog class="modal modal-open">
+		<div class="modal-box max-w-2xl">
+			<form method="dialog">
+				<button
+					class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
+					onclick={() => translationDialog = { ...translationDialog, open: false }}
+				>✕</button>
+			</form>
+			<h3 class="font-bold text-lg mb-4 flex items-center gap-2">
+				<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
+				</svg>
+				Translation
+			</h3>
+
+			<div class="space-y-4">
+				<div class="card bg-base-200">
+					<div class="card-body p-4">
+						<div class="flex items-center gap-2 mb-2">
+							<div class="badge badge-outline">{translationDialog.sourceLanguage.toUpperCase()}</div>
+							<span class="text-xs text-base-content/50">Original</span>
+						</div>
+						<p class="text-base">{translationDialog.originalText}</p>
+					</div>
+				</div>
+
+				<div class="flex justify-center">
+					<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+					</svg>
+				</div>
+
+				<div class="card bg-primary/10 border-2 border-primary/20">
+					<div class="card-body p-4">
+						<div class="flex items-center gap-2 mb-2">
+							<div class="badge badge-primary">{translationDialog.targetLanguage.toUpperCase()}</div>
+							<span class="text-xs text-base-content/50">Translation</span>
+						</div>
+						<p class="text-base font-medium">{translationDialog.translatedText}</p>
+					</div>
+				</div>
+			</div>
+
+			<div class="modal-action">
+				<button
+					class="btn btn-primary"
+					onclick={() => translationDialog = { ...translationDialog, open: false }}
+				>Close</button>
+			</div>
+		</div>
+		<form method="dialog" class="modal-backdrop">
+			<button onclick={() => translationDialog = { ...translationDialog, open: false }}>close</button>
+		</form>
+	</dialog>
 {/if}

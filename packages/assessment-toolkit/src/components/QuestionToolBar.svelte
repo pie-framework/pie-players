@@ -15,6 +15,11 @@
 			highlightCoordinator: { type: 'Object', reflect: false },
 			scopeElement: { type: 'Object', reflect: false },
 			elementToolStateStore: { type: 'Object', reflect: false },
+			toolRegistry: { type: 'Object', reflect: false },
+			pnpResolver: { type: 'Object', reflect: false },
+			assessment: { type: 'Object', reflect: false },
+			itemRef: { type: 'Object', reflect: false },
+			item: { type: 'Object', reflect: false },
 
 			// IDs for element-level state (passed as JS properties, not attributes)
 			assessmentId: { type: 'String', reflect: false },
@@ -26,11 +31,10 @@
 <!--
   QuestionToolBar - Inline toolbar for question/passage headers
 
-  Displays tool buttons (TTS, Answer Eliminator, etc.) in a compact,
-  horizontal layout suitable for embedding in question headers.
+  Now uses ToolButtonGroup with registry-based two-pass visibility model.
 
-  Similar to the SchoolCity pattern where tool buttons appear next to
-  question titles rather than in a global sidebar.
+  If toolRegistry is provided, uses new architecture.
+  Otherwise, falls back to legacy hardcoded buttons.
 -->
 <script lang="ts">
 	import type {
@@ -38,13 +42,15 @@
 		ITTSService,
 		IHighlightCoordinator,
 	} from '../services/interfaces';
-
-	// NOTE: Tool web components must be imported by parent components
-	// that use QuestionToolBar (to avoid circular dependencies).
-	// Parent components should:
-	//   import '@pie-players/pie-tool-answer-eliminator';
-	//   import '@pie-players/pie-tool-tts-inline';
-	//   import '@pie-players/pie-tool-calculator-inline';
+	import type { ToolRegistry } from '../services/ToolRegistry';
+	import type { PNPToolResolver } from '../services/PNPToolResolver';
+	import type {
+		AssessmentEntity,
+		AssessmentItemRef,
+		ItemEntity,
+	} from '@pie-players/pie-players-shared/types';
+	import type { ItemToolContext } from '../services/tool-context';
+	import ToolButtonGroup from './ToolButtonGroup.svelte';
 
 	const isBrowser = typeof window !== 'undefined';
 
@@ -75,12 +81,17 @@
 	let {
 		itemId = '',
 		catalogId = '',
-		tools = 'calculator,tts,answerEliminator',
+		tools = 'calculator,textToSpeech,answerEliminator',
 		ttsService,
 		toolCoordinator,
 		highlightCoordinator,
 		scopeElement = null,
 		elementToolStateStore,
+		toolRegistry = null,
+		pnpResolver = null,
+		assessment = null,
+		itemRef = null,
+		item = null,
 		assessmentId = '',
 		sectionId = '',
 		class: className = '',
@@ -95,6 +106,11 @@
 		highlightCoordinator?: IHighlightCoordinator;
 		scopeElement?: HTMLElement | null;
 		elementToolStateStore?: any;
+		toolRegistry?: ToolRegistry | null;
+		pnpResolver?: PNPToolResolver | null;
+		assessment?: AssessmentEntity | null;
+		itemRef?: AssessmentItemRef | null;
+		item?: ItemEntity | null;
 		assessmentId?: string;
 		sectionId?: string;
 		class?: string;
@@ -109,7 +125,46 @@
 		// Note: Using itemId as elementId since toolbar is scoped to one item/element
 	});
 
-	// Parse enabled tools
+	// Determine if using new registry-based architecture
+	const useRegistryArchitecture = $derived(
+		!!(toolRegistry && pnpResolver && assessment && itemRef && item),
+	);
+
+	// NEW ARCHITECTURE: Registry-based rendering
+	const allowedToolIds = $derived.by(() => {
+		if (!useRegistryArchitecture || !pnpResolver || !assessment || !itemRef) {
+			return [];
+		}
+		return pnpResolver.getAllowedToolIds(assessment, itemRef);
+	});
+
+	const toolContext = $derived.by((): ItemToolContext | null => {
+		if (!useRegistryArchitecture || !assessment || !itemRef || !item) {
+			return null;
+		}
+		return {
+			level: 'item',
+			assessment,
+			itemRef,
+			item,
+		};
+	});
+
+	// Handle tool click (activates tool)
+	function handleToolClick(toolId: string) {
+		console.log('[QuestionToolBar] Tool clicked:', toolId);
+
+		if (!toolCoordinator) {
+			console.warn('[QuestionToolBar] No toolCoordinator available');
+			return;
+		}
+
+		// Toggle tool visibility
+		const fullToolId = `${toolId}-${itemId}`;
+		toolCoordinator.toggleTool(fullToolId);
+	}
+
+	// LEGACY ARCHITECTURE: Fallback to old hardcoded rendering
 	let enabledTools = $derived(
 		tools
 			.split(',')
@@ -121,7 +176,7 @@
 	let hasCompatibleChoices = $state(false);
 
 	$effect(() => {
-		if (!isBrowser || !scopeElement) {
+		if (!isBrowser || !scopeElement || useRegistryArchitecture) {
 			hasCompatibleChoices = false;
 			return;
 		}
@@ -130,10 +185,6 @@
 		const checkChoices = () => {
 			const hasChoices = hasCompatibleAnswerChoices(scopeElement);
 			hasCompatibleChoices = hasChoices;
-			console.debug('[QuestionToolBar] Checked choices:', {
-				scopeElementTag: scopeElement.tagName,
-				hasCompatibleChoices
-			});
 		};
 
 		// Initial check
@@ -152,14 +203,14 @@
 		return () => observer.disconnect();
 	});
 
-	// Dynamically load tool components based on enabled tools
+	// Dynamically load tool components based on enabled tools (LEGACY)
 	$effect(() => {
-		if (!isBrowser || toolsLoaded) return;
+		if (!isBrowser || toolsLoaded || useRegistryArchitecture) return;
 
 		(async () => {
 			const loadPromises = [];
 
-			if (enabledTools.includes('tts')) {
+			if (enabledTools.includes('tts') || enabledTools.includes('textToSpeech')) {
 				loadPromises.push(import('@pie-players/pie-tool-tts-inline'));
 			}
 			if (enabledTools.includes('answerEliminator')) {
@@ -177,22 +228,33 @@
 		})();
 	});
 
-	// Should show each tool
-	let showTTS = $derived(enabledTools.includes('tts') && ttsService && toolsLoaded);
+	// Should show each tool (LEGACY)
+	let showTTS = $derived(
+		!useRegistryArchitecture &&
+		(enabledTools.includes('tts') || enabledTools.includes('textToSpeech')) &&
+		ttsService &&
+		toolsLoaded
+	);
 	let showAnswerEliminator = $derived(
+		!useRegistryArchitecture &&
 		enabledTools.includes('answerEliminator') &&
 		toolCoordinator &&
 		hasCompatibleChoices &&
 		toolsLoaded
 	);
-	let showCalculator = $derived(enabledTools.includes('calculator') && toolCoordinator && toolsLoaded);
+	let showCalculator = $derived(
+		!useRegistryArchitecture &&
+		enabledTools.includes('calculator') &&
+		toolCoordinator &&
+		toolsLoaded
+	);
 
 	// Track answer eliminator visibility state
 	let answerEliminatorVisible = $state(false);
 
 	// Subscribe to tool coordinator to update button state
 	$effect(() => {
-		if (!isBrowser || !toolCoordinator) return;
+		if (!isBrowser || !toolCoordinator || useRegistryArchitecture) return;
 
 		const unsubscribe = toolCoordinator.subscribe(() => {
 			answerEliminatorVisible = toolCoordinator.isToolVisible(
@@ -272,63 +334,78 @@
 
 {#if isBrowser}
 	<div class="question-toolbar {className} question-toolbar--{size}">
-		<!-- Calculator Button (inline tool) -->
-		{#if showCalculator}
-			<pie-tool-calculator-inline
-				bind:this={calculatorInlineElement}
-				tool-id="calculator-inline-{itemId}"
-				calculator-type="scientific"
-				available-types="basic,scientific,graphing"
-				size={size}
-			></pie-tool-calculator-inline>
-		{/if}
+		{#if useRegistryArchitecture && toolRegistry && toolContext}
+			<!-- NEW ARCHITECTURE: Registry-based rendering -->
+			<ToolButtonGroup
+				{toolRegistry}
+				{allowedToolIds}
+				context={toolContext}
+				onToolClick={handleToolClick}
+				orientation="horizontal"
+				compact={size === 'sm'}
+			/>
+		{:else}
+			<!-- LEGACY ARCHITECTURE: Hardcoded tool buttons -->
+			<!-- This will be removed in Phase 5 after migration complete -->
 
-		<!-- TTS Button (inline tool) -->
-		{#if showTTS}
-			<pie-tool-tts-inline
-				bind:this={ttsToolElement}
-				tool-id="tts-{itemId}"
-				catalog-id={catalogId || itemId}
-				language={language}
-				size={size}
-			></pie-tool-tts-inline>
-		{/if}
+			<!-- Calculator Button (inline tool) -->
+			{#if showCalculator}
+				<pie-tool-calculator-inline
+					bind:this={calculatorInlineElement}
+					tool-id="calculator-inline-{itemId}"
+					calculator-type="scientific"
+					available-types="basic,scientific,graphing"
+					size={size}
+				></pie-tool-calculator-inline>
+			{/if}
 
-		<!-- Answer Eliminator Toggle Button -->
-		{#if showAnswerEliminator}
-			<button
-				type="button"
-				class="question-toolbar__button"
-				class:question-toolbar__button--active={answerEliminatorVisible}
-				onclick={toggleAnswerEliminator}
-				aria-label="Answer Eliminator"
-				aria-pressed={answerEliminatorVisible}
-				title="Toggle answer elimination mode"
-			>
-				<!-- X in Circle Icon (matches SchoolCity) -->
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					viewBox="0 0 24 24"
-					width="20"
-					height="20"
-					fill="currentColor"
-					aria-hidden="true"
+			<!-- TTS Button (inline tool) -->
+			{#if showTTS}
+				<pie-tool-tts-inline
+					bind:this={ttsToolElement}
+					tool-id="tts-{itemId}"
+					catalog-id={catalogId || itemId}
+					language={language}
+					size={size}
+				></pie-tool-tts-inline>
+			{/if}
+
+			<!-- Answer Eliminator Toggle Button -->
+			{#if showAnswerEliminator}
+				<button
+					type="button"
+					class="question-toolbar__button"
+					class:question-toolbar__button--active={answerEliminatorVisible}
+					onclick={toggleAnswerEliminator}
+					aria-label="Answer Eliminator"
+					aria-pressed={answerEliminatorVisible}
+					title="Toggle answer elimination mode"
 				>
-					<path
-						d="M19,3H16.3H7.7H5A2,2 0 0,0 3,5V7.7V16.4V19A2,2 0 0,0 5,21H7.7H16.4H19A2,2 0 0,0 21,19V16.3V7.7V5A2,2 0 0,0 19,3M15.6,17L12,13.4L8.4,17L7,15.6L10.6,12L7,8.4L8.4,7L12,10.6L15.6,7L17,8.4L13.4,12L17,15.6L15.6,17Z"
-					/>
-				</svg>
-			</button>
+					<!-- X in Circle Icon (matches SchoolCity) -->
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						viewBox="0 0 24 24"
+						width="20"
+						height="20"
+						fill="currentColor"
+						aria-hidden="true"
+					>
+						<path
+							d="M19,3H16.3H7.7H5A2,2 0 0,0 3,5V7.7V16.4V19A2,2 0 0,0 5,21H7.7H16.4H19A2,2 0 0,0 21,19V16.3V7.7V5A2,2 0 0,0 19,3M15.6,17L12,13.4L8.4,17L7,15.6L10.6,12L7,8.4L8.4,7L12,10.6L15.6,7L17,8.4L13.4,12L17,15.6L15.6,17Z"
+						/>
+					</svg>
+				</button>
 
-			<!-- Answer Eliminator Tool Instance (hidden, manages state) -->
-			<pie-tool-answer-eliminator
-				bind:this={answerEliminatorElement}
-				visible={answerEliminatorVisible}
-				tool-id="answerEliminator-{itemId}"
-				strategy="strikethrough"
-				button-alignment="inline"
-				coordinator={toolCoordinator}
-			></pie-tool-answer-eliminator>
+				<!-- Answer Eliminator Tool Instance (hidden, manages state) -->
+				<pie-tool-answer-eliminator
+					bind:this={answerEliminatorElement}
+					visible={answerEliminatorVisible}
+					tool-id="answerEliminator-{itemId}"
+					strategy="strikethrough"
+					button-alignment="inline"
+					coordinator={toolCoordinator}
+				></pie-tool-answer-eliminator>
+			{/if}
 		{/if}
 	</div>
 {/if}
@@ -356,8 +433,8 @@
 	}
 
 	.question-toolbar--sm .question-toolbar__button {
-		width: 1.5rem;
-		height: 1.5rem;
+		width: 2.75rem;  /* 44px - WCAG 2.5.2 Level A minimum */
+		height: 2.75rem;
 	}
 
 	.question-toolbar--lg .question-toolbar__button {

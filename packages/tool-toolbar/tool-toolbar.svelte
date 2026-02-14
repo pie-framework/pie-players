@@ -53,7 +53,7 @@ import { onMount } from 'svelte';
 
 	// Props - using Svelte 5 $props() syntax
 	let {
-		tools = 'colorScheme,answerEliminator,calculator,ruler,protractor,periodicTable,graph,lineReader,magnifier', // Comma-separated tool IDs (ordered by frequency of use)
+		tools = 'answerEliminator,calculator', // Comma-separated tool IDs (ordered by frequency of use) - question-level tools only
 		disabled = false,
 		position = 'right' as 'left' | 'right' | 'top' | 'bottom',
 		showLabels = false,
@@ -84,6 +84,7 @@ import { onMount } from 'svelte';
 	let showGraph = $state(false);
 	let showPeriodicTable = $state(false);
 	let showMagnifier = $state(false);
+	let statusMessage = $state('');
 
 	// Update visibility state from coordinator
 	function updateToolVisibility() {
@@ -262,6 +263,11 @@ import { onMount } from 'svelte';
 			if (toolCoordinator) {
 				const isVisible = toolCoordinator.isToolVisible(toolId);
 				log('Tool', toolId, 'is now visible:', isVisible);
+				// Get tool name from registry
+				const toolConfig = TOOL_REGISTRY[toolId];
+				if (toolConfig) {
+					statusMessage = `${toolConfig.name} ${isVisible ? 'opened' : 'closed'}`;
+				}
 			}
 		}, 100);
 	}
@@ -293,7 +299,6 @@ import { onMount } from 'svelte';
 		class:tool-toolbar--bottom={position === 'bottom'}
 		data-position={position}
 		role="toolbar"
-		tabindex="0"
 		aria-label="Assessment tools"
 		onkeydown={handleKeyDown}
 	>
@@ -365,6 +370,11 @@ import { onMount } from 'svelte';
 	{/if}
 	<!-- Note: Annotation toolbar is intentionally not mounted here yet.
 	     It currently requires a ttsService prop that isn't exposed via its custom element API. -->
+
+	<!-- Live region for status announcements -->
+	<div role="status" aria-live="polite" aria-atomic="true" class="sr-only">
+		{statusMessage}
+	</div>
 
 {/if}
 
@@ -528,5 +538,18 @@ import { onMount } from 'svelte';
 	.tool-toolbar__button:focus-visible {
 		outline: 2px solid var(--tool-toolbar-focus-color, hsl(var(--p)));
 		outline-offset: 2px;
+	}
+
+	/* Screen reader only content */
+	.sr-only {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border-width: 0;
 	}
 </style>

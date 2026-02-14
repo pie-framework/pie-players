@@ -36,6 +36,14 @@
 			"svelte": "./src/components/QuestionToolBar.svelte",
 			"import": "./src/components/QuestionToolBar.svelte"
 		},
+		"./components/PNPProvenanceViewer.svelte": {
+			"svelte": "./src/components/PNPProvenanceViewer.svelte",
+			"import": "./src/components/PNPProvenanceViewer.svelte"
+		},
+		"./components/PNPProfileTester.svelte": {
+			"svelte": "./src/components/PNPProfileTester.svelte",
+			"import": "./src/components/PNPProfileTester.svelte"
+		},
 		"./services/I18nService": {
 			"types": "./dist/services/I18nService.d.ts",
 			"import": "./dist/services/I18nService.js"
@@ -62,7 +70,7 @@
 		"@pie-players/tts-client-server": "workspace:*"
 	},
 	"peerDependencies": {
-		"svelte": "^5.0.0"
+		"svelte": "^5.51.0"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.3.10",

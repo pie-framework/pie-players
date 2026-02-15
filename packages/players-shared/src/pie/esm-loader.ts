@@ -14,6 +14,7 @@
 import { createPieLogger } from "./logger";
 import { initializeMathRendering } from "./math-rendering";
 import { pieRegistry } from "./registry";
+import { validateCustomElementTag } from "./tag-names";
 import { isCustomElementConstructor, Status } from "./types";
 
 // Logger factory - will be initialized when loader is created
@@ -190,7 +191,10 @@ export class EsmPieLoader {
 
 		try {
 			const packageName = this.extractPackageName(packageVersion);
-			const actualTag = `${tag}${viewConfig.tagSuffix}`;
+			const actualTag = validateCustomElementTag(
+				`${tag}${viewConfig.tagSuffix}`,
+				`element tag for ${packageName}`,
+			);
 
 			logger.debug(
 				`Loading element ${actualTag} from ${packageName} (${packageVersion})`,
@@ -399,8 +403,11 @@ export class EsmPieLoader {
 
 		// 3. Wait for all custom elements to be defined
 		logger.debug("Waiting for custom elements to be defined");
-		const tagsWithSuffix = elementTags.map(
-			(tag) => `${tag}${viewConfig.tagSuffix}`,
+		const tagsWithSuffix = elementTags.map((tag) =>
+			validateCustomElementTag(
+				`${tag}${viewConfig.tagSuffix}`,
+				`element tag for view "${options.view}"`,
+			),
 		);
 		await Promise.all(
 			tagsWithSuffix.map((tag) => customElements.whenDefined(tag)),

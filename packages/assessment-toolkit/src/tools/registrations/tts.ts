@@ -16,6 +16,10 @@ import type {
 } from "../../services/ToolRegistry";
 import type { ToolContext } from "../../services/tool-context";
 import { hasReadableText } from "../../services/tool-context";
+import {
+	createToolElement,
+	type ToolComponentOverrides,
+} from "../tool-tag-map";
 
 /**
  * Text-to-Speech tool registration
@@ -69,8 +73,7 @@ export const ttsToolRegistration: ToolRegistration = {
 			icon: icon,
 			disabled: options.disabled || false,
 			ariaLabel:
-				options.ariaLabel ||
-				"Read aloud - Press to activate text-to-speech",
+				options.ariaLabel || "Read aloud - Press to activate text-to-speech",
 			tooltip: options.tooltip || "Read Aloud",
 			onClick: options.onClick || (() => {}),
 			className: options.className,
@@ -87,40 +90,38 @@ export const ttsToolRegistration: ToolRegistration = {
 		context: ToolContext,
 		options: ToolInstanceOptions,
 	): HTMLElement {
-		// For TTS, we typically don't create a visible component
-		// Instead, we activate the TTSService to read the content
+		const componentOverrides =
+			(options.config as ToolComponentOverrides | undefined) ?? {};
+		const tts = createToolElement(
+			this.toolId,
+			context,
+			options,
+			componentOverrides,
+		) as HTMLElement & {
+			visible: boolean;
+			toolId: string;
+			coordinator?: unknown;
+			ttsService?: unknown;
+			contentElement?: HTMLElement;
+		};
 
-		// Create a placeholder container that will trigger TTS
-		const container = document.createElement("div");
-		container.className = "tts-active-indicator";
-		container.setAttribute("role", "status");
-		container.setAttribute("aria-live", "polite");
-		container.textContent = "Text to speech active";
+		tts.visible = true;
+		tts.toolId = this.toolId;
 
-		// If TTSService is available from config, start reading
+		if (options.config?.toolkitCoordinator) {
+			tts.coordinator = options.config.toolkitCoordinator;
+		}
 		if (options.config?.ttsService) {
-			const ttsService = options.config.ttsService as any;
-
-			// Get the content to read based on context
-			const contentElement = options.config?.contentElement as
-				| HTMLElement
-				| undefined;
-
-			if (contentElement && ttsService.read) {
-				// Start reading the content
-				ttsService
-					.read(contentElement)
-					.catch((error: Error) => {
-						console.error("TTS error:", error);
-					});
-			}
+			tts.ttsService = options.config.ttsService;
+		}
+		if (options.config?.contentElement) {
+			tts.contentElement = options.config.contentElement as HTMLElement;
 		}
 
-		// Handle close callback
 		if (options.onClose) {
-			container.addEventListener("close", options.onClose);
+			tts.addEventListener("close", options.onClose);
 		}
 
-		return container;
+		return tts;
 	},
 };

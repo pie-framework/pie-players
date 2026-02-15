@@ -25,9 +25,7 @@ const mockCalculatorTool: ToolRegistration = {
 		className: options.className,
 	}),
 	createToolInstance: (context, options) => {
-		const el = document.createElement("div");
-		el.className = "calculator-tool";
-		return el;
+		return { className: "calculator-tool" } as any;
 	},
 };
 
@@ -51,9 +49,7 @@ const mockTTSTool: ToolRegistration = {
 		className: options.className,
 	}),
 	createToolInstance: (context, options) => {
-		const el = document.createElement("div");
-		el.className = "tts-tool";
-		return el;
+		return { className: "tts-tool" } as any;
 	},
 };
 
@@ -74,7 +70,7 @@ describe("ToolRegistry", () => {
 		test("throws error when registering duplicate tool ID", () => {
 			registry.register(mockCalculatorTool);
 			expect(() => registry.register(mockCalculatorTool)).toThrow(
-				"Tool 'calculator' is already registered"
+				"Tool 'calculator' is already registered",
 			);
 		});
 
@@ -86,9 +82,15 @@ describe("ToolRegistry", () => {
 
 		test("indexes multiple PNP support IDs for same tool", () => {
 			registry.register(mockCalculatorTool);
-			expect(registry.getToolsByPNPSupport("calculator").has("calculator")).toBe(true);
-			expect(registry.getToolsByPNPSupport("basicCalculator").has("calculator")).toBe(true);
-			expect(registry.getToolsByPNPSupport("scientificCalculator").has("calculator")).toBe(true);
+			expect(
+				registry.getToolsByPNPSupport("calculator").has("calculator"),
+			).toBe(true);
+			expect(
+				registry.getToolsByPNPSupport("basicCalculator").has("calculator"),
+			).toBe(true);
+			expect(
+				registry.getToolsByPNPSupport("scientificCalculator").has("calculator"),
+			).toBe(true);
 		});
 	});
 
@@ -107,7 +109,7 @@ describe("ToolRegistry", () => {
 
 		test("throws error when overriding non-existent tool", () => {
 			expect(() => registry.override(mockCalculatorTool)).toThrow(
-				"Cannot override non-existent tool 'calculator'"
+				"Cannot override non-existent tool 'calculator'",
 			);
 		});
 
@@ -125,7 +127,9 @@ describe("ToolRegistry", () => {
 			expect(registry.getToolsByPNPSupport("basicCalculator").size).toBe(0);
 
 			// New PNP ID should be added
-			expect(registry.getToolsByPNPSupport("graphingCalculator").has("calculator")).toBe(true);
+			expect(
+				registry.getToolsByPNPSupport("graphingCalculator").has("calculator"),
+			).toBe(true);
 		});
 	});
 
@@ -264,11 +268,17 @@ describe("ToolRegistry", () => {
 			};
 
 			// Should be visible at item level
-			const visibleAtItem = registry.filterVisibleInContext(["conditional"], itemContext);
+			const visibleAtItem = registry.filterVisibleInContext(
+				["conditional"],
+				itemContext,
+			);
 			expect(visibleAtItem.length).toBe(1);
 
 			// Should not be visible at section level
-			const visibleAtSection = registry.filterVisibleInContext(["conditional"], sectionContext);
+			const visibleAtSection = registry.filterVisibleInContext(
+				["conditional"],
+				sectionContext,
+			);
 			expect(visibleAtSection.length).toBe(0);
 		});
 
@@ -314,7 +324,10 @@ describe("ToolRegistry", () => {
 			};
 
 			// Calculator doesn't support assessment level
-			const visible = registry.filterVisibleInContext(["calculator"], assessmentContext);
+			const visible = registry.filterVisibleInContext(
+				["calculator"],
+				assessmentContext,
+			);
 			expect(visible.length).toBe(0);
 		});
 	});
@@ -332,7 +345,11 @@ describe("ToolRegistry", () => {
 				toolId: "calculator",
 				name: "Calculator",
 				description: "Basic calculator tool",
-				pnpSupportIds: ["calculator", "basicCalculator", "scientificCalculator"],
+				pnpSupportIds: [
+					"calculator",
+					"basicCalculator",
+					"scientificCalculator",
+				],
 				supportedLevels: ["item", "section", "element"],
 			});
 		});
@@ -343,7 +360,10 @@ describe("ToolRegistry", () => {
 			registry.register(mockCalculatorTool);
 			registry.register(mockTTSTool);
 
-			const pnpSupports = registry.generatePNPSupportsFromTools(["calculator", "textToSpeech"]);
+			const pnpSupports = registry.generatePNPSupportsFromTools([
+				"calculator",
+				"textToSpeech",
+			]);
 
 			expect(pnpSupports).toContain("calculator");
 			expect(pnpSupports).toContain("basicCalculator");
@@ -378,6 +398,32 @@ describe("ToolRegistry", () => {
 
 			expect(registry.getAllToolIds().length).toBe(0);
 			expect(registry.getToolsByPNPSupport("calculator").size).toBe(0);
+		});
+	});
+
+	describe("createToolInstance", () => {
+		test("creates instance for registered tool", () => {
+			registry.register(mockCalculatorTool);
+			const context: ToolContext = {
+				level: "item",
+				assessment: {} as any,
+				itemRef: {} as any,
+				item: {} as any,
+			};
+			const el = registry.createToolInstance("calculator", context, {});
+			expect(el.className).toBe("calculator-tool");
+		});
+
+		test("throws when tool is not registered", () => {
+			const context: ToolContext = {
+				level: "item",
+				assessment: {} as any,
+				itemRef: {} as any,
+				item: {} as any,
+			};
+			expect(() =>
+				registry.createToolInstance("missing-tool", context, {}),
+			).toThrow("Tool 'missing-tool' is not registered");
 		});
 	});
 });

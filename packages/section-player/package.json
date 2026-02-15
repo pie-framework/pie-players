@@ -23,13 +23,14 @@
 		"./src/PieSectionPlayer.svelte": "./src/PieSectionPlayer.svelte"
 	},
 	"files": [
-		"dist"
+		"dist",
+		"src/**/*.svelte"
 	],
 	"scripts": {
 		"build": "vite build",
 		"dev": "vite build --watch",
 		"typecheck": "tsc --noEmit",
-		"check": "svelte-check --tsconfig ./tsconfig.json",
+		"check": "svelte-check --tsconfig ./tsconfig.svelte-check.json",
 		"lint": "biome check ."
 	},
 	"peerDependencies": {

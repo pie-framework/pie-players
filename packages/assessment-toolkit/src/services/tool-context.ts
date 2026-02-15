@@ -164,7 +164,9 @@ export function isSectionContext(
 /**
  * Type guard to check if context is at item level
  */
-export function isItemContext(context: ToolContext): context is ItemToolContext {
+export function isItemContext(
+	context: ToolContext,
+): context is ItemToolContext {
 	return context.level === "item";
 }
 
@@ -292,11 +294,9 @@ export function hasChoiceInteraction(context: ToolContext): boolean {
 	if (isItemContext(context)) {
 		const models = context.item.config?.models || [];
 		return models.some((m) =>
-			[
-				"pie-multiple-choice",
-				"pie-inline-choice",
-				"pie-select-text",
-			].includes(m.element || ""),
+			["pie-multiple-choice", "pie-inline-choice", "pie-select-text"].includes(
+				m.element || "",
+			),
 		);
 	}
 

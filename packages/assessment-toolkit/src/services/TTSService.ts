@@ -477,8 +477,7 @@ export class TTSService {
 			node = node.parentNode;
 		}
 		if (node) {
-			root =
-				(node as Element).closest("[data-pie-content]") || document.body;
+			root = (node as Element).closest("[data-pie-content]") || document.body;
 		} else {
 			root = document.body;
 		}

@@ -541,21 +541,35 @@ const player = new AssessmentPlayer({ assessment, loadItem });
 // Or use PNPToolResolver directly
 const resolver = new PNPToolResolver();
 const tools = resolver.resolveTools(assessment, currentItemRef);
-// Returns: [{ id: 'pie-tool-text-to-speech', enabled: true, ... }, ...]
+// Returns: [{ id: 'textToSpeech', enabled: true, ... }, ...]
 ```
 
-**Standard PNP Support IDs:**
+**Standard PNP Support IDs -> toolkit tool IDs (semantic):**
 
 ```typescript
-'textToSpeech'    → 'pie-tool-text-to-speech'
-'calculator'      → 'pie-tool-calculator'
-'ruler'           → 'pie-tool-ruler'
-'protractor'      → 'pie-tool-protractor'
-'highlighter'     → 'pie-tool-annotation-toolbar'
-'lineReader'      → 'pie-tool-line-reader'
-'magnifier'       → 'pie-tool-magnifier'
-'colorContrast'   → 'pie-theme-contrast'
-'answerMasking'   → 'pie-tool-answer-eliminator'
+'textToSpeech'    → 'textToSpeech'
+'calculator'      → 'calculator'
+'ruler'           → 'ruler'
+'protractor'      → 'protractor'
+'highlighter'     → 'highlighter'
+'lineReader'      → 'lineReader'
+'magnifier'       → 'magnifier'
+'colorContrast'   → 'colorScheme'
+'answerMasking'   → 'answerEliminator'
+```
+
+Toolkit tool IDs resolve to default web component tags through `DEFAULT_TOOL_TAG_MAP`
+and can be overridden via `createDefaultToolRegistry(...)`:
+
+```typescript
+import { createDefaultToolRegistry } from '@pie-players/pie-assessment-toolkit';
+
+const toolRegistry = createDefaultToolRegistry({
+  toolTagMap: {
+    calculator: 'my-calculator-tool',
+    textToSpeech: 'my-tts-tool'
+  }
+});
 ```
 
 ### Context Declarations

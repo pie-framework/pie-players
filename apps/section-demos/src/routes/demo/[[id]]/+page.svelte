@@ -1658,7 +1658,10 @@ import { onDestroy, onMount, untrack } from 'svelte';
 									alt="{pictureDictionaryDialog.keyword} - Image {i + 1}"
 									class="rounded-xl w-full h-48 object-cover"
 									onerror={(e) => {
-										e.currentTarget.src = 'https://via.placeholder.com/200x200/cccccc/666666?text=Image+Not+Found';
+										const target = e.currentTarget as HTMLImageElement | null;
+										if (target) {
+											target.src = "https://via.placeholder.com/200x200/cccccc/666666?text=Image+Not+Found";
+										}
 									}}
 								/>
 							</figure>

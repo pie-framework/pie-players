@@ -287,18 +287,26 @@ export class HighlightCoordinator implements IHighlightCoordinator {
 			return;
 		}
 
-		console.log(`[HighlightCoordinator] Removing annotation ${id} (color: ${annotation.color})`);
+		console.log(
+			`[HighlightCoordinator] Removing annotation ${id} (color: ${annotation.color})`,
+		);
 
 		// Remove range from the shared color highlight
 		const colorHighlight = this.colorHighlights.get(annotation.color);
 		if (colorHighlight) {
 			const deleted = colorHighlight.delete(annotation.range);
-			console.log(`[HighlightCoordinator] Highlight.delete() returned:`, deleted);
+			console.log(
+				`[HighlightCoordinator] Highlight.delete() returned:`,
+				deleted,
+			);
 		}
 
 		// Clean up
 		this.annotations.delete(id);
-		console.log(`[HighlightCoordinator] Annotation ${id} removed from map. Remaining:`, this.annotations.size);
+		console.log(
+			`[HighlightCoordinator] Annotation ${id} removed from map. Remaining:`,
+			this.annotations.size,
+		);
 	}
 
 	/**
@@ -366,7 +374,9 @@ export class HighlightCoordinator implements IHighlightCoordinator {
 	 */
 	exportAnnotations(
 		root: Element = document.body,
-	): Array<SerializedRange & { id: string; color: HighlightColor; timestamp: number }> {
+	): Array<
+		SerializedRange & { id: string; color: HighlightColor; timestamp: number }
+	> {
 		return this.getAnnotations().map((annotation) => ({
 			...this.rangeSerializer.serialize(annotation.range, root),
 			id: annotation.id,
@@ -384,7 +394,13 @@ export class HighlightCoordinator implements IHighlightCoordinator {
 	 * @returns Number of successfully restored annotations
 	 */
 	importAnnotations(
-		data: Array<SerializedRange & { id?: string; color: HighlightColor; timestamp?: number }>,
+		data: Array<
+			SerializedRange & {
+				id?: string;
+				color: HighlightColor;
+				timestamp?: number;
+			}
+		>,
 		root: Element = document.body,
 	): number {
 		let restored = 0;

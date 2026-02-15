@@ -7,6 +7,8 @@
  * Ported from pie-print-support/src/ce.ts
  */
 
+import { validateCustomElementTag } from "./tag-names.js";
+
 interface DefinitionState {
 	inProgress?: boolean;
 	ready?: boolean;
@@ -22,7 +24,8 @@ const definitions = new Map<string, DefinitionState>();
  * @param def - Custom element constructor
  */
 export const define = (name: string, def: CustomElementConstructor): void => {
-	const existing = definitions.get(name);
+	const validName = validateCustomElementTag(name, "print element tag");
+	const existing = definitions.get(validName);
 
 	if (existing) {
 		if (existing.ready) {
@@ -36,10 +39,10 @@ export const define = (name: string, def: CustomElementConstructor): void => {
 		}
 	}
 
-	definitions.set(name, { inProgress: true });
+	definitions.set(validName, { inProgress: true });
 
 	try {
-		customElements.define(name, def);
+		customElements.define(validName, def);
 	} catch (e) {
 		/**
 		 * It can be the case that different tags will use the same CustomElement.
@@ -47,26 +50,26 @@ export const define = (name: string, def: CustomElementConstructor): void => {
 		 */
 		if (e && (e as DOMException).code === DOMException.NOT_SUPPORTED_ERR) {
 			try {
-				customElements.define(name, class extends def {});
+				customElements.define(validName, class extends def {});
 			} catch (wrappedError) {
 				console.error("[ce-registry] Wrapped class failed", wrappedError);
-				definitions.set(name, {
+				definitions.set(validName, {
 					inProgress: false,
 					error: wrappedError as Error,
 				});
 			}
 		} else {
-			definitions.set(name, { inProgress: false, error: e as Error });
+			definitions.set(validName, { inProgress: false, error: e as Error });
 		}
 	}
 
 	customElements
-		.whenDefined(name)
+		.whenDefined(validName)
 		.then(() => {
-			definitions.set(name, { inProgress: false, ready: true });
+			definitions.set(validName, { inProgress: false, ready: true });
 		})
 		.catch((e) => {
-			definitions.set(name, { inProgress: false, error: e });
+			definitions.set(validName, { inProgress: false, error: e });
 		});
 };
 
@@ -79,7 +82,8 @@ export const define = (name: string, def: CustomElementConstructor): void => {
 export const status = (
 	name: string,
 ): "error" | "inProgress" | "none" | "inRegistry" => {
-	const existing = definitions.get(name);
+	const validName = validateCustomElementTag(name, "print element tag");
+	const existing = definitions.get(validName);
 
 	if (existing) {
 		if (existing.inProgress) {
@@ -104,5 +108,6 @@ export const status = (
 export const whenDefined = (
 	name: string,
 ): Promise<CustomElementConstructor> => {
-	return customElements.whenDefined(name);
+	const validName = validateCustomElementTag(name, "print element tag");
+	return customElements.whenDefined(validName);
 };

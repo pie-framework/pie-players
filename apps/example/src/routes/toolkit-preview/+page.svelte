@@ -22,7 +22,9 @@
 				Select an element type below to preview with different profiles and
 				accommodations. Use the profile editor to simulate various student
 				accommodations (IEP, 504, ELL) and the debug panel to inspect events and
-				accessibility compliance.
+				accessibility compliance. Toolkit tool IDs are semantic (for example
+				<code>calculator</code>) and resolve to web components via an overrideable
+				mapping.
 			</p>
 
 			<!-- Special Demos -->

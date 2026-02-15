@@ -20,6 +20,10 @@ import type {
 } from "../../services/ToolRegistry";
 import type { ToolContext } from "../../services/tool-context";
 import { hasReadableText } from "../../services/tool-context";
+import {
+	createToolElement,
+	type ToolComponentOverrides,
+} from "../tool-tag-map";
 
 /**
  * Magnifier tool registration
@@ -63,8 +67,7 @@ export const magnifierToolRegistration: ToolRegistration = {
 			label: this.name,
 			icon: typeof this.icon === "function" ? this.icon(context) : this.icon,
 			disabled: options.disabled || false,
-			ariaLabel:
-				options.ariaLabel || "Magnifier - Zoom in on content",
+			ariaLabel: options.ariaLabel || "Magnifier - Zoom in on content",
 			tooltip: options.tooltip || "Magnifier",
 			onClick: options.onClick || (() => {}),
 			className: options.className,
@@ -75,8 +78,13 @@ export const magnifierToolRegistration: ToolRegistration = {
 		context: ToolContext,
 		options: ToolInstanceOptions,
 	): HTMLElement {
-		const magnifier = document.createElement(
-			"pie-tool-magnifier",
+		const componentOverrides =
+			(options.config as ToolComponentOverrides | undefined) ?? {};
+		const magnifier = createToolElement(
+			this.toolId,
+			context,
+			options,
+			componentOverrides,
 		) as HTMLElement & {
 			visible: boolean;
 			toolkitCoordinator: unknown;
@@ -148,8 +156,13 @@ export const lineReaderToolRegistration: ToolRegistration = {
 		context: ToolContext,
 		options: ToolInstanceOptions,
 	): HTMLElement {
-		const lineReader = document.createElement(
-			"pie-tool-line-reader",
+		const componentOverrides =
+			(options.config as ToolComponentOverrides | undefined) ?? {};
+		const lineReader = createToolElement(
+			this.toolId,
+			context,
+			options,
+			componentOverrides,
 		) as HTMLElement & {
 			visible: boolean;
 			toolkitCoordinator: unknown;
@@ -223,8 +236,13 @@ export const colorSchemeToolRegistration: ToolRegistration = {
 		context: ToolContext,
 		options: ToolInstanceOptions,
 	): HTMLElement {
-		const colorScheme = document.createElement(
-			"pie-tool-color-scheme",
+		const componentOverrides =
+			(options.config as ToolComponentOverrides | undefined) ?? {};
+		const colorScheme = createToolElement(
+			this.toolId,
+			context,
+			options,
+			componentOverrides,
 		) as HTMLElement & {
 			visible: boolean;
 			toolkitCoordinator: unknown;
@@ -285,8 +303,7 @@ export const annotationToolbarRegistration: ToolRegistration = {
 			label: this.name,
 			icon: typeof this.icon === "function" ? this.icon(context) : this.icon,
 			disabled: options.disabled || false,
-			ariaLabel:
-				options.ariaLabel || "Annotation toolbar - Highlight text",
+			ariaLabel: options.ariaLabel || "Annotation toolbar - Highlight text",
 			tooltip: options.tooltip || "Highlight",
 			onClick: options.onClick || (() => {}),
 			className: options.className,
@@ -297,8 +314,13 @@ export const annotationToolbarRegistration: ToolRegistration = {
 		context: ToolContext,
 		options: ToolInstanceOptions,
 	): HTMLElement {
-		const toolbar = document.createElement(
-			"pie-tool-annotation-toolbar",
+		const componentOverrides =
+			(options.config as ToolComponentOverrides | undefined) ?? {};
+		const toolbar = createToolElement(
+			this.toolId,
+			context,
+			options,
+			componentOverrides,
 		) as HTMLElement & {
 			visible: boolean;
 			toolkitCoordinator: unknown;

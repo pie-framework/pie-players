@@ -11,6 +11,7 @@
 import { createPieLogger } from "./logger";
 import { initializeMathRendering } from "./math-rendering";
 import { pieRegistry } from "./registry";
+import { validateCustomElementTag } from "./tag-names";
 import { BundleType, isCustomElementConstructor, Status } from "./types";
 import { getPackageWithoutVersion } from "./utils";
 
@@ -206,7 +207,10 @@ export class IifePieLoader {
 				const controller = needsControllers ? elementData.controller : null;
 
 				// For editor bundles, append -config suffix to tag name
-				const actualTagName = isEditorBundle ? `${tagName}-config` : tagName;
+				const actualTagName = validateCustomElementTag(
+					isEditorBundle ? `${tagName}-config` : tagName,
+					`element tag for ${packageName}`,
+				);
 
 				if (!ElementClass) {
 					const classType = isEditorBundle ? "Configure" : "Element";

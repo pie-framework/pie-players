@@ -20,6 +20,7 @@ import {
 	defaultResolve,
 	hashCode,
 } from "./element-resolver.js";
+import { toPrintHashedTag, validateCustomElementTag } from "./tag-names.js";
 import { mkItem, printItemAndFloaters } from "./markup-processor.js";
 
 import type {
@@ -134,10 +135,14 @@ export class PiePrint extends LitElement {
 		// Resolve all element packages to URLs and print tag names
 		Promise.all(
 			Object.entries(this.config.item.elements).map(([tagName, pkg]) => {
+				const validatedTag = validateCustomElementTag(
+					tagName,
+					`item element tag for ${pkg}`,
+				);
 				console.log("[pie-print] Resolving tagName:", tagName, "pkg", pkg);
-				return this._resolve(tagName, pkg).then((res) => {
+				return this._resolve(validatedTag, pkg).then((res) => {
 					if (!res.printTagName) {
-						res.printTagName = `${res.tagName}-print-${hashCode(res.url)}`;
+						res.printTagName = toPrintHashedTag(res.tagName, res.url, hashCode);
 					}
 					return res;
 				});

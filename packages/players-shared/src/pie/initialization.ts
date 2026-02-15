@@ -13,6 +13,7 @@ import { createPieLogger, isGlobalDebugEnabled } from "./logger";
 import { initializeMathRendering } from "./math-rendering";
 import { pieRegistry } from "./registry";
 import { findPieController } from "./scoring";
+import { validateCustomElementTag } from "./tag-names";
 import type {
 	EventListeners,
 	LoadPieElementsOptions,
@@ -169,8 +170,12 @@ const registerPieElementsFromBundle = (
 	}
 
 	Object.entries(config.elements).forEach(([elName, pkg]) => {
+		const elementTagName = validateCustomElementTag(
+			elName,
+			`element tag in config.elements for ${String(pkg)}`,
+		);
 		logger.debug(
-			`[registerPieElementsFromBundle] Processing element: ${elName} -> ${pkg}`,
+			`[registerPieElementsFromBundle] Processing element: ${elementTagName} -> ${pkg}`,
 		);
 		const pkgStripped = getPackageWithoutVersion(pkg as string);
 		logger.debug(
@@ -231,7 +236,7 @@ const registerPieElementsFromBundle = (
 			}
 		}
 
-		if (!customElements.get(elName)) {
+		if (!customElements.get(elementTagName)) {
 			// Register the element in our registry
 			logger.debug(
 				`[registerPieElementsFromBundle] Registering ${elName} in registry${
@@ -240,22 +245,22 @@ const registerPieElementsFromBundle = (
 						: " (no controller - server-processed models)"
 				}`,
 			);
-			registry[elName] = {
+			registry[elementTagName] = {
 				package: pkg as string,
 				status: Status.loading,
-				tagName: elName,
+				tagName: elementTagName,
 				controller: elementData.controller || null,
 				config: elementData.config,
 				bundleType: options.bundleType,
 			};
 
 			if (isCustomElementConstructor(elementData.Element)) {
-				customElements.define(elName, elementData.Element);
+				customElements.define(elementTagName, elementData.Element);
 
 				// Initialize existing elements
-				const elements = document.querySelectorAll(elName);
+				const elements = document.querySelectorAll(elementTagName);
 				logger.debug(
-					`[registerPieElementsFromBundle] Found ${elements.length} elements for tag '${elName}'`,
+					`[registerPieElementsFromBundle] Found ${elements.length} elements for tag '${elementTagName}'`,
 				);
 
 				elements.forEach((el) => {
@@ -263,21 +268,21 @@ const registerPieElementsFromBundle = (
 						config,
 						session,
 						env: options.env,
-						eventListeners: options.eventListeners?.[elName],
+						eventListeners: options.eventListeners?.[elementTagName],
 					});
 				});
 
 				// Update registry status
-				registry[elName] = {
-					...registry[elName],
+				registry[elementTagName] = {
+					...registry[elementTagName],
 					status: Status.loaded,
 				};
 
 				promises.push(
-					customElements.whenDefined(elName).then(() => {
+					customElements.whenDefined(elementTagName).then(() => {
 						logger.debug(
 							"[registerPieElementsFromBundle] defined custom PIE element: %s",
-							elName,
+							elementTagName,
 						);
 					}),
 				);
@@ -336,7 +341,10 @@ const registerPieElementsFromBundle = (
 				// Handle editor elements if needed
 				if (options.bundleType === BundleType.editor) {
 					if (isCustomElementConstructor(elementData.Configure)) {
-						const editorElName = elName + editorPostFix;
+						const editorElName = validateCustomElementTag(
+							elementTagName + editorPostFix,
+							`editor element tag for ${String(pkg)}`,
+						);
 						customElements.define(editorElName, elementData.Configure);
 						promises.push(
 							customElements.whenDefined(editorElName).then(() => {
@@ -359,18 +367,21 @@ const registerPieElementsFromBundle = (
 			}
 		} else {
 			// Element already defined, just update it
-			updatePieElement(elName, {
+			updatePieElement(elementTagName, {
 				config,
 				session,
 				env: options.env,
 				container: options.container,
-				...(options.eventListeners?.[elName] && {
-					eventListeners: options.eventListeners[elName],
+				...(options.eventListeners?.[elementTagName] && {
+					eventListeners: options.eventListeners[elementTagName],
 				}),
 			});
 
 			if (options.bundleType === BundleType.editor) {
-				const editorElName = elName + editorPostFix;
+				const editorElName = validateCustomElementTag(
+					elementTagName + editorPostFix,
+					`editor element tag for ${String(pkg)}`,
+				);
 				updatePieElement(editorElName, {
 					config,
 					session,

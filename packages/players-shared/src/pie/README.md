@@ -118,6 +118,41 @@ PIE uses versioned tag names to allow multiple versions side-by-side:
 
 This is necessary because custom elements can't be redefined once registered.
 
+## Custom Element Tag Validation
+
+Dynamic registration paths now validate custom element names before calling
+`customElements.define(...)`.
+
+Validation rules:
+
+- must contain at least one hyphen (`-`)
+- must be lowercase
+- must match allowed custom element name format
+- must not use reserved HTML names
+
+Reserved names rejected by the validator:
+
+- `annotation-xml`
+- `color-profile`
+- `font-face`
+- `font-face-src`
+- `font-face-uri`
+- `font-face-format`
+- `font-face-name`
+- `missing-glyph`
+
+This set is taken from the HTML Custom Elements specification's reserved-name
+list (names that are explicitly disallowed for autonomous custom elements).
+
+Use helpers from `pie/tag-names`:
+
+```typescript
+import { validateCustomElementTag, toViewTag } from "@pie-players/pie-players-shared/pie";
+
+const baseTag = validateCustomElementTag("multiple-choice");
+const authorTag = toViewTag(baseTag, "author"); // multiple-choice-config
+```
+
 ## Logging
 
 Simple logging with debug mode:

@@ -110,6 +110,19 @@ export {
 	DEFAULT_TOOL_PLACEMENT,
 	DEFAULT_TOOL_ORDER,
 } from "./services/createDefaultToolRegistry";
+export type { DefaultToolRegistryOptions } from "./services/createDefaultToolRegistry";
+export type {
+	ToolComponentFactory,
+	ToolComponentFactoryMap,
+	ToolComponentOverrides,
+	ToolTagMap,
+} from "./tools/tool-tag-map";
+export {
+	createToolElement,
+	DEFAULT_TOOL_TAG_MAP,
+	resolveToolTag,
+	toToolIdFromTag,
+} from "./tools/tool-tag-map";
 // PNP Tool Resolution (QTI 3.0 Native)
 export type {
 	ResolvedToolConfig,

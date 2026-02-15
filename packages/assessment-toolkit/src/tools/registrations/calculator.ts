@@ -17,6 +17,10 @@ import type {
 } from "../../services/ToolRegistry";
 import type { ToolContext } from "../../services/tool-context";
 import { hasMathContent } from "../../services/tool-context";
+import {
+	createToolElement,
+	type ToolComponentOverrides,
+} from "../tool-tag-map";
 
 /**
  * Calculator tool registration
@@ -77,7 +81,8 @@ export const calculatorToolRegistration: ToolRegistration = {
 			icon: icon,
 			disabled: options.disabled || false,
 			ariaLabel:
-				options.ariaLabel || "Open calculator - Press to activate calculator tool",
+				options.ariaLabel ||
+				"Open calculator - Press to activate calculator tool",
 			tooltip: options.tooltip || "Calculator",
 			onClick: options.onClick || (() => {}),
 			className: options.className,
@@ -93,9 +98,13 @@ export const calculatorToolRegistration: ToolRegistration = {
 		context: ToolContext,
 		options: ToolInstanceOptions,
 	): HTMLElement {
-		// Create calculator web component
-		const calculator = document.createElement(
-			"pie-tool-calculator",
+		const componentOverrides =
+			(options.config as ToolComponentOverrides | undefined) ?? {};
+		const calculator = createToolElement(
+			this.toolId,
+			context,
+			options,
+			componentOverrides,
 		) as HTMLElement & {
 			visible: boolean;
 			calculatorType: string;
@@ -106,12 +115,11 @@ export const calculatorToolRegistration: ToolRegistration = {
 		// Set default calculator type (can be overridden via config)
 		const calculatorType =
 			(options.config?.calculatorType as string) || "scientific";
-		const availableTypes =
-			(options.config?.availableTypes as string[]) || [
-				"basic",
-				"scientific",
-				"graphing",
-			];
+		const availableTypes = (options.config?.availableTypes as string[]) || [
+			"basic",
+			"scientific",
+			"graphing",
+		];
 
 		// Configure calculator
 		calculator.visible = true;

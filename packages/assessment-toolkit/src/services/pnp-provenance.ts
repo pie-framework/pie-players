@@ -44,7 +44,13 @@ export interface ResolutionDecision {
 
 	/** Where the decision came from */
 	source: {
-		type: "organization" | "assessment" | "section" | "item" | "student" | "system";
+		type:
+			| "organization"
+			| "assessment"
+			| "section"
+			| "item"
+			| "student"
+			| "system";
 		id?: string; // Entity ID (e.g., org ID, assessment ID)
 		name?: string; // Human-readable name
 	};

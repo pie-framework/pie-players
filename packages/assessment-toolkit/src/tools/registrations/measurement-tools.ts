@@ -16,6 +16,10 @@ import type {
 } from "../../services/ToolRegistry";
 import type { ToolContext } from "../../services/tool-context";
 import { hasMathContent } from "../../services/tool-context";
+import {
+	createToolElement,
+	type ToolComponentOverrides,
+} from "../tool-tag-map";
 
 /**
  * Ruler tool registration
@@ -66,7 +70,14 @@ export const rulerToolRegistration: ToolRegistration = {
 		context: ToolContext,
 		options: ToolInstanceOptions,
 	): HTMLElement {
-		const ruler = document.createElement("pie-tool-ruler") as HTMLElement & {
+		const componentOverrides =
+			(options.config as ToolComponentOverrides | undefined) ?? {};
+		const ruler = createToolElement(
+			this.toolId,
+			context,
+			options,
+			componentOverrides,
+		) as HTMLElement & {
 			visible: boolean;
 			toolkitCoordinator: unknown;
 		};
@@ -134,8 +145,13 @@ export const protractorToolRegistration: ToolRegistration = {
 		context: ToolContext,
 		options: ToolInstanceOptions,
 	): HTMLElement {
-		const protractor = document.createElement(
-			"pie-tool-protractor",
+		const componentOverrides =
+			(options.config as ToolComponentOverrides | undefined) ?? {};
+		const protractor = createToolElement(
+			this.toolId,
+			context,
+			options,
+			componentOverrides,
 		) as HTMLElement & {
 			visible: boolean;
 			toolkitCoordinator: unknown;

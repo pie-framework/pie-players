@@ -23,6 +23,7 @@
     - load-complete: Fired when PIE elements are ready
     - player-error: Fired on errors
 -->
+<!-- svelte-ignore options_missing_custom_element -->
 <svelte:options
 	customElement={{
     tag: 'pie-iife-player',

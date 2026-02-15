@@ -224,9 +224,7 @@ export class AnnotationToolbarAPIClient {
 
 		if (!response.ok) {
 			const errorText = await response.text();
-			throw new Error(
-				`API request failed (${response.status}): ${errorText}`,
-			);
+			throw new Error(`API request failed (${response.status}): ${errorText}`);
 		}
 
 		return response;

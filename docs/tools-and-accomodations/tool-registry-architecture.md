@@ -15,6 +15,11 @@ This document defines the confirmed architecture for tool registration, configur
 
 Key principle: **One-way veto power** - Tools can hide themselves but cannot override orchestrator's NO.
 
+> **Implementation Update (pre-1.0):**
+> - Canonical toolkit identifiers are semantic `toolId` values (for example `calculator`, `textToSpeech`).
+> - Web component tags (for example `pie-tool-calculator`) are resolved through configurable tag mapping.
+> - Integrators can override tag mapping and component factories via `createDefaultToolRegistry(...)`.
+
 ---
 
 ## Core Principles
@@ -136,7 +141,7 @@ interface ToolContext {
 **Process**:
 ```typescript
 // For each tool in allowedToolIds
-const calcReg = registry.get('pie-tool-calculator');
+const calcReg = registry.get('calculator');
 
 // Build rich context
 const context: ElementContext = {
@@ -525,9 +530,9 @@ import { DEFAULT_TOOL_PLACEMENT } from '@pie-players/pie-assessment-toolkit';
 
 // Framework default placement
 const DEFAULT_TOOL_PLACEMENT = {
-  questionHeader: ['pie-tool-calculator', 'pie-tool-text-to-speech', 'pie-tool-answer-eliminator'],
-  passageHeader: ['pie-tool-text-to-speech', 'pie-tool-annotation-toolbar'],
-  sectionToolbar: ['pie-tool-calculator', 'pie-tool-graph', 'pie-tool-periodic-table', 'pie-tool-protractor', 'pie-tool-ruler']
+  questionHeader: ['calculator', 'textToSpeech', 'answerEliminator'],
+  passageHeader: ['textToSpeech', 'annotationToolbar'],
+  sectionToolbar: ['calculator', 'graph', 'periodicTable', 'protractor', 'ruler']
 };
 ```
 
@@ -536,10 +541,10 @@ const DEFAULT_TOOL_PLACEMENT = {
 ```typescript
 // Client defines where tool buttons appear
 const customPlacement = {
-  questionHeader: ['pie-tool-text-to-speech'],  // Only TTS on questions
-  passageHeader: ['pie-tool-text-to-speech', 'pie-tool-annotation-toolbar'],
-  sectionToolbar: ['pie-tool-calculator', 'pie-tool-graph'],  // Minimal section toolbar
-  customSidebar: ['pie-tool-dictionary', 'my-custom-tool']  // Custom placement
+  questionHeader: ['textToSpeech'],  // Only TTS on questions
+  passageHeader: ['textToSpeech', 'annotationToolbar'],
+  sectionToolbar: ['calculator', 'graph'],  // Minimal section toolbar
+  customSidebar: ['dictionary', 'my-custom-tool']  // Custom placement
 };
 
 <pie-section-player
@@ -563,9 +568,27 @@ const customPlacement = {
 
 Clients can use default PIE tools, add custom tools, or override tool behavior.
 
+Why the default registrations exist:
+
+- They are the canonical contracts for built-in tools (semantic `toolId`, PNP mappings, visibility logic, and instance creation).
+- They keep orchestration and rendering decoupled: policies resolve `toolId`s, registrations decide UI behavior.
+- They provide safe defaults while still allowing integrators to replace behavior via `registry.override(...)`,
+  `toolTagMap`, and `toolComponentFactories`.
+
 ```typescript
 // Start with PIE defaults
 const registry = createDefaultToolRegistry();
+
+// Optional: override default web-component mapping/factories
+const registryWithCustomComponents = createDefaultToolRegistry({
+  toolTagMap: {
+    calculator: 'my-calculator-tool',
+    textToSpeech: 'my-tts-tool'
+  },
+  toolComponentFactories: {
+    calculator: ({ tagName }) => document.createElement(tagName)
+  }
+});
 
 // Add custom tool
 registry.register({
@@ -584,8 +607,8 @@ registry.register({
 });
 
 // Override calculator visibility logic
-const calcReg = registry.get('pie-tool-calculator');
-registry.register({
+const calcReg = registry.get('calculator');
+registry.override({
   ...calcReg,
   isVisibleInContext: (ctx) => {
     // Use MY advanced math detection
@@ -602,8 +625,8 @@ Clients can override how tools detect relevant content:
 const registry = createDefaultToolRegistry();
 
 // Override calculator's math detection
-const calcReg = registry.get('pie-tool-calculator');
-registry.register({
+const calcReg = registry.get('calculator');
+registry.override({
   ...calcReg,
   isVisibleInContext: (ctx) => {
     if (ctx.level === 'element') {
@@ -652,16 +675,16 @@ registry.register({
 });
 
 // 3. Override calculator visibility
-const calcReg = registry.get('pie-tool-calculator');
-registry.register({
+const calcReg = registry.get('calculator');
+registry.override({
   ...calcReg,
   isVisibleInContext: (ctx) => myCustomMathDetection(ctx)
 });
 
 // 4. Custom placement
 const customPlacement = {
-  questionHeader: ['pie-tool-text-to-speech'],
-  sectionToolbar: ['my-periodic-table', 'pie-tool-calculator', 'pie-tool-graph']
+  questionHeader: ['textToSpeech'],
+  sectionToolbar: ['my-periodic-table', 'calculator', 'graph']
 };
 
 // 5. Use in section player
@@ -694,8 +717,8 @@ const registry = createDefaultToolRegistry();
 const allTools = registry.getAll();
 /*
 [
-  { toolId: 'pie-tool-calculator', name: 'Calculator', description: '...', pnpSupportIds: ['calculator', ...] },
-  { toolId: 'pie-tool-text-to-speech', name: 'Text-to-Speech', description: '...', pnpSupportIds: ['textToSpeech'] },
+  { toolId: 'calculator', name: 'Calculator', description: '...', pnpSupportIds: ['calculator', ...] },
+  { toolId: 'textToSpeech', name: 'Text-to-Speech', description: '...', pnpSupportIds: ['textToSpeech'] },
   // ... all registered tools
 ]
 */
@@ -737,7 +760,7 @@ function handleSelect(selectedTools) {
 // packages/tool-calculator/registration.ts
 
 export const calculatorRegistration: ToolRegistration = {
-  toolId: 'pie-tool-calculator',
+  toolId: 'calculator',
   name: 'Calculator',
   description: 'Scientific, basic, and graphing calculator',
   icon: '<svg>...</svg>',
@@ -793,7 +816,7 @@ export const calculatorRegistration: ToolRegistration = {
   },
 
   createToolInstance(context: ToolContext, options: ToolOptions): HTMLElement {
-    const element = document.createElement('pie-tool-calculator');
+    const element = createToolElement(this.toolId, context, options, options.componentOverrides);
     const config = this.getConfiguration(context);
     element.setAttribute('calculator-type', config.type);
     element.setAttribute('tool-id', getToolInstanceId(context));

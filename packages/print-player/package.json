@@ -5,11 +5,13 @@
 	"type": "module",
 	"main": "./dist/print-player.js",
 	"module": "./dist/print-player.js",
-	"types": "./dist/print-player.d.ts",
+	"types": "./dist/index.d.ts",
+	"unpkg": "./dist/print-player.js",
+	"jsdelivr": "./dist/print-player.js",
 	"exports": {
 		".": {
-			"types": "./dist/print-player.d.ts",
-			"default": "./dist/print-player.js"
+			"types": "./dist/index.d.ts",
+			"import": "./dist/print-player.js"
 		}
 	},
 	"files": [

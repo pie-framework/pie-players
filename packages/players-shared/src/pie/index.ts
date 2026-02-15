@@ -73,6 +73,14 @@ export {
 	isPieRegistryAvailable,
 	Status,
 } from "./types";
+// Tag naming helpers
+export {
+	toPrintHashedTag,
+	toViewTag,
+	validateCustomElementTag,
+	VIEW_TAG_SUFFIX,
+} from "./tag-names";
+export type { PieViewMode } from "./tag-names";
 // Updates
 export {
 	updatePieElement,

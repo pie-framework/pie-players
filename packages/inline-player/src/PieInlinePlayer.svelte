@@ -24,6 +24,7 @@
     - load-complete: Fired when PIE elements are ready
     - player-error: Fired on errors
 -->
+<!-- svelte-ignore options_missing_custom_element -->
 <svelte:options
 	customElement={{
 		tag: 'pie-inline-player',
@@ -420,7 +421,8 @@ import { tick } from 'svelte';
 				</div>
 				
 				{#if allowedResize}
-					<div
+				<!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
+				<div
 						class="pie-stimulus-resizer"
 						role="separator"
 						aria-orientation="vertical"

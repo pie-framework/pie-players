@@ -217,11 +217,7 @@ export class PNPToolResolver {
 		};
 
 		for (const supportId of allSupports) {
-			const config = this.resolveSupport(
-				supportId,
-				context,
-				provenanceBuilder,
-			);
+			const config = this.resolveSupport(supportId, context, provenanceBuilder);
 
 			if (config) {
 				resolved.push(config);
@@ -441,7 +437,7 @@ export class PNPToolResolver {
 	/**
 	 * Check if a specific tool is enabled
 	 *
-	 * @param toolId PIE tool identifier (e.g., 'pie-tool-calculator')
+	 * @param toolId Toolkit tool identifier (e.g., 'calculator')
 	 * @param assessment Assessment with PNP
 	 * @param itemRef Optional item context
 	 * @returns true if tool is enabled
@@ -458,7 +454,7 @@ export class PNPToolResolver {
 	/**
 	 * Check if a tool is required (cannot be disabled)
 	 *
-	 * @param toolId PIE tool identifier
+	 * @param toolId Toolkit tool identifier
 	 * @param assessment Assessment with PNP
 	 * @param itemRef Optional item context
 	 * @returns true if tool is required or always available
@@ -484,7 +480,7 @@ export class PNPToolResolver {
 	 *
 	 * @example
 	 * const autoActivate = resolver.getAutoActivateTools(assessment);
-	 * // Returns: ['pie-tool-text-to-speech', 'pie-tool-line-reader']
+	 * // Returns: ['textToSpeech', 'lineReader']
 	 */
 	getAutoActivateTools(assessment: AssessmentEntity): string[] {
 		const pnp = assessment.personalNeedsProfile;
@@ -633,7 +629,7 @@ export class PNPToolResolver {
 	/**
 	 * Get tool configuration settings
 	 *
-	 * @param toolId PIE tool identifier
+	 * @param toolId Toolkit tool identifier
 	 * @param assessment Assessment with PNP
 	 * @param itemRef Optional item context
 	 * @returns Tool-specific settings or null if not found

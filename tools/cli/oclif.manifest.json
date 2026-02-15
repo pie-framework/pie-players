@@ -1,351 +1,376 @@
 {
-	"commands": {
-		"pack:local": {
-			"aliases": [],
-			"args": {},
-			"description": "Build and pack local installable artifacts for PIEOneer testing (no npm publish).",
-			"examples": ["$ pie-players pack:local"],
-			"flags": {},
-			"hasDynamicHelp": false,
-			"hiddenAliases": [],
-			"id": "pack:local",
-			"pluginAlias": "@pie-players/pie-players-cli",
-			"pluginName": "@pie-players/pie-players-cli",
-			"pluginType": "core",
-			"strict": true,
-			"enableJsonFlag": false,
-			"isESM": true,
-			"relativePath": ["dist", "commands", "pack", "local.js"]
-		},
-		"pie-packages:fixed-player-build-package": {
-			"aliases": [],
-			"args": {},
-			"description": "Build (and optionally publish) PIE fixed player static package",
-			"examples": [
-				"$ pie-players pie-packages:fixed-player-build-package --elements-file elements.json",
-				"$ pie-players pie-packages:fixed-player-build-package -e \"@pie-element/calculator@1.0.0,@pie-element/ruler@2.0.0\""
-			],
-			"flags": {
-				"elementsFile": {
-					"char": "f",
-					"description": "Path to elements JSON file",
-					"exclusive": ["elements"],
-					"name": "elementsFile",
-					"hasDynamicHelp": false,
-					"multiple": false,
-					"type": "option"
-				},
-				"elements": {
-					"char": "e",
-					"description": "Comma-separated list of elements (package@version)",
-					"exclusive": ["elementsFile"],
-					"name": "elements",
-					"hasDynamicHelp": false,
-					"multiple": false,
-					"type": "option"
-				},
-				"iteration": {
-					"char": "i",
-					"description": "Iteration number for package versioning (used for version string)",
-					"name": "iteration",
-					"hasDynamicHelp": false,
-					"multiple": false,
-					"type": "option"
-				},
-				"loaderVersion": {
-					"description": "Override loader version used in the static package version string (default: pie-fixed-player version in this repo)",
-					"name": "loaderVersion",
-					"hasDynamicHelp": false,
-					"multiple": false,
-					"type": "option"
-				},
-				"overwriteBundle": {
-					"description": "Force rebuild of bundle even if it exists in cache (adds ?overwrite=true)",
-					"name": "overwriteBundle",
-					"allowNo": false,
-					"type": "boolean"
-				},
-				"publish": {
-					"char": "p",
-					"description": "Publish package to npm after building",
-					"name": "publish",
-					"allowNo": false,
-					"type": "boolean"
-				},
-				"dryRun": {
-					"description": "Dry run (build but do not publish)",
-					"name": "dryRun",
-					"allowNo": false,
-					"type": "boolean"
-				},
-				"pitsBaseUrl": {
-					"description": "Bundle builder base URL (default: https://proxy.pie-api.com)",
-					"name": "pitsBaseUrl",
-					"hasDynamicHelp": false,
-					"multiple": false,
-					"type": "option"
-				}
-			},
-			"hasDynamicHelp": false,
-			"hiddenAliases": [],
-			"id": "pie-packages:fixed-player-build-package",
-			"pluginAlias": "@pie-players/pie-players-cli",
-			"pluginName": "@pie-players/pie-players-cli",
-			"pluginType": "core",
-			"strict": true,
-			"enableJsonFlag": false,
-			"isESM": true,
-			"relativePath": [
-				"dist",
-				"commands",
-				"pie-packages",
-				"fixed-player-build-package.js"
-			]
-		},
-		"pie-packages:fixed-player-build-and-test-package": {
-			"aliases": [],
-			"args": {},
-			"description": "Build a pie-fixed-player-static package (optionally publish) and optionally generate a browser test project",
-			"examples": [
-				"$ pie-players pie-packages:fixed-player-build-and-test-package --elements-file configs/fixed-player-static/example.json --generate-test-project",
-				"$ pie-players pie-packages:fixed-player-build-and-test-package -e \"@pie-element/multiple-choice@11.4.3\" --publish --dry-run"
-			],
-			"flags": {
-				"elementsFile": {
-					"char": "f",
-					"description": "Path to elements JSON file",
-					"exclusive": ["elements"],
-					"name": "elementsFile",
-					"hasDynamicHelp": false,
-					"multiple": false,
-					"type": "option"
-				},
-				"elements": {
-					"char": "e",
-					"description": "Comma-separated list of elements (package@version)",
-					"exclusive": ["elementsFile"],
-					"name": "elements",
-					"hasDynamicHelp": false,
-					"multiple": false,
-					"type": "option"
-				},
-				"iteration": {
-					"char": "i",
-					"description": "Iteration number for package versioning (used for version string)",
-					"name": "iteration",
-					"hasDynamicHelp": false,
-					"multiple": false,
-					"type": "option"
-				},
-				"loaderVersion": {
-					"description": "Override loader version used in the static package version string (default: pie-fixed-player version in this repo)",
-					"name": "loaderVersion",
-					"hasDynamicHelp": false,
-					"multiple": false,
-					"type": "option"
-				},
-				"overwriteBundle": {
-					"description": "Force rebuild of bundle even if it exists in cache (adds ?overwrite=true)",
-					"name": "overwriteBundle",
-					"allowNo": false,
-					"type": "boolean"
-				},
-				"publish": {
-					"char": "p",
-					"description": "Publish package to npm after building",
-					"name": "publish",
-					"allowNo": false,
-					"type": "boolean"
-				},
-				"dryRun": {
-					"description": "Dry run (build but do not publish)",
-					"name": "dryRun",
-					"allowNo": false,
-					"type": "boolean"
-				},
-				"pitsBaseUrl": {
-					"description": "Bundle builder base URL (default: https://proxy.pie-api.com)",
-					"name": "pitsBaseUrl",
-					"hasDynamicHelp": false,
-					"multiple": false,
-					"type": "option"
-				},
-				"generateTestProject": {
-					"char": "g",
-					"description": "Generate a browser test project after building",
-					"name": "generateTestProject",
-					"allowNo": false,
-					"type": "boolean"
-				},
-				"outputDir": {
-					"char": "o",
-					"description": "Output directory for the generated test project",
-					"name": "outputDir",
-					"hasDynamicHelp": false,
-					"multiple": false,
-					"type": "option"
-				},
-				"name": {
-					"char": "n",
-					"description": "Test project name (directory name)",
-					"name": "name",
-					"hasDynamicHelp": false,
-					"multiple": false,
-					"type": "option"
-				},
-				"start": {
-					"char": "s",
-					"description": "Start a simple static server (python3 http.server) after generation",
-					"name": "start",
-					"allowNo": false,
-					"type": "boolean"
-				},
-				"port": {
-					"description": "Port for the static server (only used with --start)",
-					"name": "port",
-					"hasDynamicHelp": false,
-					"multiple": false,
-					"type": "option"
-				}
-			},
-			"hasDynamicHelp": false,
-			"hiddenAliases": [],
-			"id": "pie-packages:fixed-player-build-and-test-package",
-			"pluginAlias": "@pie-players/pie-players-cli",
-			"pluginName": "@pie-players/pie-players-cli",
-			"pluginType": "core",
-			"strict": true,
-			"enableJsonFlag": false,
-			"isESM": true,
-			"relativePath": [
-				"dist",
-				"commands",
-				"pie-packages",
-				"fixed-player-build-and-test-package.js"
-			]
-		},
-		"pie-packages:fixed-player-generate-test-project": {
-			"aliases": [],
-			"args": {},
-			"description": "Generate a simple browser test project for a pie-fixed-player-static build (local or published)",
-			"examples": [
-				"$ pie-players pie-packages:fixed-player-generate-test-project --package-path ./local-builds/local",
-				"$ pie-players pie-packages:fixed-player-generate-test-project --published-version latest"
-			],
-			"flags": {
-				"packagePath": {
-					"char": "P",
-					"description": "Path to a built static package directory (must contain dist/)",
-					"exclusive": ["publishedVersion"],
-					"name": "packagePath",
-					"hasDynamicHelp": false,
-					"multiple": false,
-					"type": "option"
-				},
-				"publishedVersion": {
-					"char": "v",
-					"description": "Use published npm package version (e.g., \"1.0.0\" or \"latest\")",
-					"exclusive": ["packagePath"],
-					"name": "publishedVersion",
-					"hasDynamicHelp": false,
-					"multiple": false,
-					"type": "option"
-				},
-				"outputDir": {
-					"char": "o",
-					"description": "Output directory for the generated test project",
-					"name": "outputDir",
-					"hasDynamicHelp": false,
-					"multiple": false,
-					"type": "option"
-				},
-				"name": {
-					"char": "n",
-					"description": "Project name (directory name)",
-					"name": "name",
-					"hasDynamicHelp": false,
-					"multiple": false,
-					"type": "option"
-				},
-				"start": {
-					"char": "s",
-					"description": "Start a simple static server (python3 http.server) after generation",
-					"name": "start",
-					"allowNo": false,
-					"type": "boolean"
-				},
-				"port": {
-					"description": "Port for the static server (only used with --start)",
-					"name": "port",
-					"hasDynamicHelp": false,
-					"multiple": false,
-					"type": "option"
-				}
-			},
-			"hasDynamicHelp": false,
-			"hiddenAliases": [],
-			"id": "pie-packages:fixed-player-generate-test-project",
-			"pluginAlias": "@pie-players/pie-players-cli",
-			"pluginName": "@pie-players/pie-players-cli",
-			"pluginType": "core",
-			"strict": true,
-			"enableJsonFlag": false,
-			"isESM": true,
-			"relativePath": [
-				"dist",
-				"commands",
-				"pie-packages",
-				"fixed-player-generate-test-project.js"
-			]
-		},
-		"pie-packages:pie-player-build-tag": {
-			"aliases": [],
-			"args": {},
-			"description": "Build PIE player custom element tags (pie-fixed-player, pie-inline-player, pie-esm-player)",
-			"examples": [
-				"$ pie-players pie-packages:pie-player-build-tag --tag pie-fixed-player",
-				"$ pie-players pie-packages:pie-player-build-tag -t all --clean"
-			],
-			"flags": {
-				"tag": {
-					"char": "t",
-					"description": "Tag name to build",
-					"name": "tag",
-					"required": true,
-					"hasDynamicHelp": false,
-					"multiple": false,
-					"options": [
-						"pie-fixed-player",
-						"pie-inline-player",
-						"pie-esm-player",
-						"all"
-					],
-					"type": "option"
-				},
-				"clean": {
-					"char": "c",
-					"description": "Clean dist/ before building",
-					"name": "clean",
-					"allowNo": false,
-					"type": "boolean"
-				}
-			},
-			"hasDynamicHelp": false,
-			"hiddenAliases": [],
-			"id": "pie-packages:pie-player-build-tag",
-			"pluginAlias": "@pie-players/pie-players-cli",
-			"pluginName": "@pie-players/pie-players-cli",
-			"pluginType": "core",
-			"strict": true,
-			"enableJsonFlag": false,
-			"isESM": true,
-			"relativePath": [
-				"dist",
-				"commands",
-				"pie-packages",
-				"pie-player-build-tag.js"
-			]
-		}
-	},
-	"version": "0.1.0"
+  "commands": {
+    "pack:local": {
+      "aliases": [],
+      "args": {},
+      "description": "Build and pack local installable artifacts for PIEOneer testing (no npm publish).",
+      "examples": [
+        "$ pie-players pack:local"
+      ],
+      "flags": {},
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "pack:local",
+      "pluginAlias": "@pie-players/pie-players-cli",
+      "pluginName": "@pie-players/pie-players-cli",
+      "pluginType": "core",
+      "strict": true,
+      "enableJsonFlag": false,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "pack",
+        "local.js"
+      ]
+    },
+    "pie-packages:fixed-player-build-and-test-package": {
+      "aliases": [],
+      "args": {},
+      "description": "Build a pie-fixed-player-static package (optionally publish) and optionally generate a browser test project",
+      "examples": [
+        "$ bun run cli pie-packages:fixed-player-build-and-test-package --elements-file configs/fixed-player-static/example.json --generate-test-project",
+        "$ bun run cli pie-packages:fixed-player-build-and-test-package -e \"@pie-element/multiple-choice@11.4.3\" --publish --dry-run"
+      ],
+      "flags": {
+        "elementsFile": {
+          "char": "f",
+          "description": "Path to elements JSON file",
+          "exclusive": [
+            "elements"
+          ],
+          "name": "elementsFile",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "elements": {
+          "char": "e",
+          "description": "Comma-separated list of elements (package@version)",
+          "exclusive": [
+            "elementsFile"
+          ],
+          "name": "elements",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "iteration": {
+          "char": "i",
+          "description": "Iteration number for package versioning (used for version string)",
+          "name": "iteration",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "loaderVersion": {
+          "description": "Override loader version used in the static package version string (default: pie-fixed-player version in this repo)",
+          "name": "loaderVersion",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "overwriteBundle": {
+          "description": "Force rebuild of bundle even if it exists in cache (adds ?overwrite=true)",
+          "name": "overwriteBundle",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "publish": {
+          "char": "p",
+          "description": "Publish package to npm after building",
+          "name": "publish",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "dryRun": {
+          "description": "Dry run (build but do not publish)",
+          "name": "dryRun",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "pitsBaseUrl": {
+          "description": "Bundle builder base URL (default: https://proxy.pie-api.com)",
+          "name": "pitsBaseUrl",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "generateTestProject": {
+          "char": "g",
+          "description": "Generate a browser test project after building",
+          "name": "generateTestProject",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "outputDir": {
+          "char": "o",
+          "description": "Output directory for the generated test project",
+          "name": "outputDir",
+          "default": "~/Downloads/pie-tag-test-projects",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "name": {
+          "char": "n",
+          "description": "Test project name (directory name)",
+          "name": "name",
+          "default": "pie-fixed-player-static-test",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "start": {
+          "char": "s",
+          "description": "Start a simple static server (python3 http.server) after generation",
+          "name": "start",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "port": {
+          "description": "Port for the static server (only used with --start)",
+          "name": "port",
+          "default": 4173,
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "pie-packages:fixed-player-build-and-test-package",
+      "pluginAlias": "@pie-players/pie-players-cli",
+      "pluginName": "@pie-players/pie-players-cli",
+      "pluginType": "core",
+      "strict": true,
+      "enableJsonFlag": false,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "pie-packages",
+        "fixed-player-build-and-test-package.js"
+      ]
+    },
+    "pie-packages:fixed-player-build-package": {
+      "aliases": [],
+      "args": {},
+      "description": "Build (and optionally publish) PIE fixed player static package",
+      "examples": [
+        "$ bun run cli pie-packages:fixed-player-build-package --elements-file elements.json",
+        "$ bun run cli pie-packages:fixed-player-build-package -e \"@pie-element/calculator@1.0.0,@pie-element/ruler@2.0.0\""
+      ],
+      "flags": {
+        "elementsFile": {
+          "char": "f",
+          "description": "Path to elements JSON file",
+          "exclusive": [
+            "elements"
+          ],
+          "name": "elementsFile",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "elements": {
+          "char": "e",
+          "description": "Comma-separated list of elements (package@version)",
+          "exclusive": [
+            "elementsFile"
+          ],
+          "name": "elements",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "iteration": {
+          "char": "i",
+          "description": "Iteration number for package versioning (used for version string)",
+          "name": "iteration",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "loaderVersion": {
+          "description": "Override loader version used in the static package version string (default: pie-fixed-player version in this repo)",
+          "name": "loaderVersion",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "overwriteBundle": {
+          "description": "Force rebuild of bundle even if it exists in cache (adds ?overwrite=true)",
+          "name": "overwriteBundle",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "publish": {
+          "char": "p",
+          "description": "Publish package to npm after building",
+          "name": "publish",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "dryRun": {
+          "description": "Dry run (build but do not publish)",
+          "name": "dryRun",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "pitsBaseUrl": {
+          "description": "Bundle builder base URL (default: https://proxy.pie-api.com)",
+          "name": "pitsBaseUrl",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "pie-packages:fixed-player-build-package",
+      "pluginAlias": "@pie-players/pie-players-cli",
+      "pluginName": "@pie-players/pie-players-cli",
+      "pluginType": "core",
+      "strict": true,
+      "enableJsonFlag": false,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "pie-packages",
+        "fixed-player-build-package.js"
+      ]
+    },
+    "pie-packages:fixed-player-generate-test-project": {
+      "aliases": [],
+      "args": {},
+      "description": "Generate a simple browser test project for a pie-fixed-player-static build (local or published)",
+      "examples": [
+        "$ bun run cli pie-packages:fixed-player-generate-test-project --package-path ./local-builds/local",
+        "$ bun run cli pie-packages:fixed-player-generate-test-project --published-version latest"
+      ],
+      "flags": {
+        "packagePath": {
+          "char": "P",
+          "description": "Path to a built static package directory (must contain dist/)",
+          "exclusive": [
+            "publishedVersion"
+          ],
+          "name": "packagePath",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "publishedVersion": {
+          "char": "v",
+          "description": "Use published npm package version (e.g., \"1.0.0\" or \"latest\")",
+          "exclusive": [
+            "packagePath"
+          ],
+          "name": "publishedVersion",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "outputDir": {
+          "char": "o",
+          "description": "Output directory for the generated test project",
+          "name": "outputDir",
+          "default": "~/Downloads/pie-tag-test-projects",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "name": {
+          "char": "n",
+          "description": "Project name (directory name)",
+          "name": "name",
+          "default": "pie-fixed-player-static-test",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "start": {
+          "char": "s",
+          "description": "Start a simple static server (python3 http.server) after generation",
+          "name": "start",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "port": {
+          "description": "Port for the static server (only used with --start)",
+          "name": "port",
+          "default": 4173,
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "pie-packages:fixed-player-generate-test-project",
+      "pluginAlias": "@pie-players/pie-players-cli",
+      "pluginName": "@pie-players/pie-players-cli",
+      "pluginType": "core",
+      "strict": true,
+      "enableJsonFlag": false,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "pie-packages",
+        "fixed-player-generate-test-project.js"
+      ]
+    },
+    "pie-packages:pie-player-build-tag": {
+      "aliases": [],
+      "args": {},
+      "description": "Build PIE player custom element tags (pie-fixed-player, pie-inline-player, pie-esm-player)",
+      "examples": [
+        "$ bun run cli pie-packages:pie-player-build-tag --tag pie-fixed-player",
+        "$ bun run cli pie-packages:pie-player-build-tag -t all --clean"
+      ],
+      "flags": {
+        "tag": {
+          "char": "t",
+          "description": "Tag name to build",
+          "name": "tag",
+          "required": true,
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "options": [
+            "pie-fixed-player",
+            "pie-inline-player",
+            "pie-esm-player",
+            "all"
+          ],
+          "type": "option"
+        },
+        "clean": {
+          "char": "c",
+          "description": "Clean dist/ before building",
+          "name": "clean",
+          "allowNo": false,
+          "type": "boolean"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "pie-packages:pie-player-build-tag",
+      "pluginAlias": "@pie-players/pie-players-cli",
+      "pluginName": "@pie-players/pie-players-cli",
+      "pluginType": "core",
+      "strict": true,
+      "enableJsonFlag": false,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "pie-packages",
+        "pie-player-build-tag.js"
+      ]
+    }
+  },
+  "version": "0.1.0"
 }

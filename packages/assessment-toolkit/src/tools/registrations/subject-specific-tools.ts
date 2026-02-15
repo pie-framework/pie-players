@@ -19,6 +19,10 @@ import type {
 } from "../../services/ToolRegistry";
 import type { ToolContext } from "../../services/tool-context";
 import { hasMathContent, hasScienceContent } from "../../services/tool-context";
+import {
+	createToolElement,
+	type ToolComponentOverrides,
+} from "../tool-tag-map";
 
 /**
  * Graph tool registration
@@ -71,7 +75,14 @@ export const graphToolRegistration: ToolRegistration = {
 		context: ToolContext,
 		options: ToolInstanceOptions,
 	): HTMLElement {
-		const graph = document.createElement("pie-tool-graph") as HTMLElement & {
+		const componentOverrides =
+			(options.config as ToolComponentOverrides | undefined) ?? {};
+		const graph = createToolElement(
+			this.toolId,
+			context,
+			options,
+			componentOverrides,
+		) as HTMLElement & {
 			visible: boolean;
 			toolkitCoordinator: unknown;
 		};
@@ -129,8 +140,7 @@ export const periodicTableToolRegistration: ToolRegistration = {
 			label: this.name,
 			icon: typeof this.icon === "function" ? this.icon(context) : this.icon,
 			disabled: options.disabled || false,
-			ariaLabel:
-				options.ariaLabel || "Periodic table - Chemistry reference",
+			ariaLabel: options.ariaLabel || "Periodic table - Chemistry reference",
 			tooltip: options.tooltip || "Periodic Table",
 			onClick: options.onClick || (() => {}),
 			className: options.className,
@@ -141,8 +151,13 @@ export const periodicTableToolRegistration: ToolRegistration = {
 		context: ToolContext,
 		options: ToolInstanceOptions,
 	): HTMLElement {
-		const periodicTable = document.createElement(
-			"pie-tool-periodic-table",
+		const componentOverrides =
+			(options.config as ToolComponentOverrides | undefined) ?? {};
+		const periodicTable = createToolElement(
+			this.toolId,
+			context,
+			options,
+			componentOverrides,
 		) as HTMLElement & {
 			visible: boolean;
 			toolkitCoordinator: unknown;

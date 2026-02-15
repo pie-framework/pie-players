@@ -1,9 +1,14 @@
 import PieAssessmentPlayer from "./PieAssessmentPlayer.svelte";
+import { validateCustomElementTag } from "@pie-players/pie-players-shared/pie/tag-names";
 
 export function definePieAssessmentPlayer(tagName = "pie-assessment-player") {
-	if (!customElements.get(tagName)) {
+	const validTagName = validateCustomElementTag(
+		tagName,
+		"pie-assessment-player tagName",
+	);
+	if (!customElements.get(validTagName)) {
 		customElements.define(
-			tagName,
+			validTagName,
 			PieAssessmentPlayer as unknown as CustomElementConstructor,
 		);
 	}

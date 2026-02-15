@@ -30,7 +30,8 @@
 		}
 	},
 	"files": [
-		"dist"
+		"dist",
+		"src/components"
 	],
 	"scripts": {
 		"build": "vite build",

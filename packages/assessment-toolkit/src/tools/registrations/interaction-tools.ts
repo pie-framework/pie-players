@@ -22,6 +22,10 @@ import {
 	hasChoiceInteraction,
 	hasReadableText,
 } from "../../services/tool-context";
+import {
+	createToolElement,
+	type ToolComponentOverrides,
+} from "../tool-tag-map";
 
 /**
  * Answer Eliminator tool registration
@@ -75,27 +79,40 @@ export const answerEliminatorToolRegistration: ToolRegistration = {
 		context: ToolContext,
 		options: ToolInstanceOptions,
 	): HTMLElement {
-		// Answer eliminator typically works as a mode/service
-		// rather than a separate component
-		const container = document.createElement("div");
-		container.className = "answer-eliminator-active";
-		container.setAttribute("role", "status");
-		container.setAttribute("aria-live", "polite");
-		container.textContent = "Answer eliminator active - Click choices to strike through";
+		const componentOverrides =
+			(options.config as ToolComponentOverrides | undefined) ?? {};
+		const answerEliminator = createToolElement(
+			this.toolId,
+			context,
+			options,
+			componentOverrides,
+		) as HTMLElement & {
+			visible: boolean;
+			toolId: string;
+			coordinator?: unknown;
+			elementToolStateStore?: unknown;
+			globalElementId?: string;
+		};
 
-		// If answer eliminator service is available, activate it
-		if (options.config?.answerEliminatorService) {
-			const service = options.config.answerEliminatorService as any;
-			if (service.activate) {
-				service.activate();
-			}
+		answerEliminator.visible = true;
+		answerEliminator.toolId = this.toolId;
+
+		if (options.config?.toolkitCoordinator) {
+			answerEliminator.coordinator = options.config.toolkitCoordinator;
+		}
+		if (options.config?.elementToolStateStore) {
+			answerEliminator.elementToolStateStore =
+				options.config.elementToolStateStore;
+		}
+		if (typeof options.config?.globalElementId === "string") {
+			answerEliminator.globalElementId = options.config.globalElementId;
 		}
 
 		if (options.onClose) {
-			container.addEventListener("close", options.onClose);
+			answerEliminator.addEventListener("close", options.onClose);
 		}
 
-		return container;
+		return answerEliminator;
 	},
 };
 
@@ -144,34 +161,31 @@ export const highlighterToolRegistration: ToolRegistration = {
 		context: ToolContext,
 		options: ToolInstanceOptions,
 	): HTMLElement {
-		// Highlighter works as a service/mode
-		const container = document.createElement("div");
-		container.className = "highlighter-active";
-		container.setAttribute("role", "status");
-		container.setAttribute("aria-live", "polite");
-		container.textContent = "Highlighter active - Select text to highlight";
+		const componentOverrides =
+			(options.config as ToolComponentOverrides | undefined) ?? {};
+		const highlighter = createToolElement(
+			this.toolId,
+			context,
+			options,
+			componentOverrides,
+		) as HTMLElement & {
+			enabled: boolean;
+			highlightCoordinator?: unknown;
+			ttsService?: unknown;
+		};
 
-		// If highlight coordinator is available, activate highlighting
+		highlighter.enabled = true;
 		if (options.config?.highlightCoordinator) {
-			const coordinator = options.config.highlightCoordinator as any;
-			if (coordinator.enableHighlighting) {
-				coordinator.enableHighlighting();
-			}
+			highlighter.highlightCoordinator = options.config.highlightCoordinator;
+		}
+		if (options.config?.ttsService) {
+			highlighter.ttsService = options.config.ttsService;
 		}
 
 		if (options.onClose) {
-			container.addEventListener("close", () => {
-				// Disable highlighting when closed
-				if (options.config?.highlightCoordinator) {
-					const coordinator = options.config.highlightCoordinator as any;
-					if (coordinator.disableHighlighting) {
-						coordinator.disableHighlighting();
-					}
-				}
-				options.onClose?.();
-			});
+			highlighter.addEventListener("close", options.onClose);
 		}
 
-		return container;
+		return highlighter;
 	},
 };

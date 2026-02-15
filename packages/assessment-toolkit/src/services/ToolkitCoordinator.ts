@@ -163,7 +163,8 @@ export class ToolkitCoordinator {
 	private ttsInitialized = false;
 
 	/** Callback for floating tools changes */
-	private floatingToolsChangeCallback: ((toolIds: string[]) => void) | null = null;
+	private floatingToolsChangeCallback: ((toolIds: string[]) => void) | null =
+		null;
 
 	constructor(config: ToolkitCoordinatorConfig) {
 		if (!config.assessmentId) {

@@ -53,6 +53,7 @@ import {
 	PNPToolResolver,
 	type ResolvedToolConfig,
 } from "../services/PNPToolResolver";
+import type { DefaultToolRegistryOptions } from "../services/createDefaultToolRegistry";
 import { createDefaultToolRegistry } from "../services/createDefaultToolRegistry";
 import { BrowserTTSProvider } from "../services/tts/browser-provider";
 import {
@@ -120,6 +121,10 @@ export interface ReferencePlayerConfig {
 		desmosProvider?: DesmosCalculatorProvider;
 		tiProvider?: TICalculatorProvider;
 	};
+	/**
+	 * Optional overrides for default tool-component mapping/factories.
+	 */
+	toolRegistryOptions?: DefaultToolRegistryOptions;
 }
 
 export interface NavigationState {
@@ -224,7 +229,7 @@ export class AssessmentPlayer {
 		this.tiProvider = config.services?.tiProvider ?? new TICalculatorProvider();
 
 		// Initialize PNP resolver with default tool registry
-		const toolRegistry = createDefaultToolRegistry();
+		const toolRegistry = createDefaultToolRegistry(config.toolRegistryOptions);
 		this.pnpResolver = new PNPToolResolver(toolRegistry);
 		this.initializeTools();
 		this.applyAssessmentTheme();
@@ -264,7 +269,7 @@ export class AssessmentPlayer {
 		this.setupEventListeners();
 
 		// Initialize TTS if enabled via PNP
-		if (this.isToolEnabled("pie-tool-text-to-speech")) {
+		if (this.isToolEnabled("textToSpeech")) {
 			this.initializeTTS();
 		}
 	}
@@ -1106,7 +1111,7 @@ export class AssessmentPlayer {
 				this.toolCoordinator.registerTool(tool.id, this.humanizeName(tool.id));
 
 				// Configure tool-specific settings
-				if (tool.id === "pie-tool-calculator" && tool.settings) {
+				if (tool.id === "calculator" && tool.settings) {
 					this.configureCalculator(tool.settings);
 				}
 			}
@@ -1154,6 +1159,7 @@ export class AssessmentPlayer {
 	private humanizeName(toolId: string): string {
 		return toolId
 			.replace(/^pie-tool-/, "")
+			.replace(/([a-z])([A-Z])/g, "$1 $2")
 			.replace(/-/g, " ")
 			.replace(/\b\w/g, (c) => c.toUpperCase());
 	}

@@ -11,6 +11,13 @@ The Tool Registry replaces hardcoded tool lists with a flexible, extensible syst
 3. **Context-aware filtering**: Tools show/hide based on content analysis
 4. **Type-safe registrations**: Full TypeScript support with standardized interfaces
 
+### Canonical IDs and Component Resolution
+
+- Toolkit APIs use semantic `toolId` values (for example `calculator`, `textToSpeech`).
+- Web component tags (for example `pie-tool-calculator`) are resolved through `toolTagMap`.
+- Integrators can override both tag mapping and creation logic via
+  `createDefaultToolRegistry({ toolTagMap, toolComponentFactories })`.
+
 ## Architecture
 
 ### Two-Pass Visibility Model
@@ -180,7 +187,12 @@ export const calculatorToolRegistration: ToolRegistration = {
 
   // Create tool instance (web component)
   createToolInstance(context, options): HTMLElement {
-    const calculator = document.createElement('pie-tool-calculator');
+    const calculator = createToolElement(
+      this.toolId,
+      context,
+      options,
+      options.componentOverrides
+    );
     calculator.visible = true;
 
     if (options.config?.toolkitCoordinator) {
@@ -266,10 +278,20 @@ import { createDefaultToolRegistry } from '@pie-players/pie-assessment-toolkit';
 // Create registry with all 12 default PIE tools
 const toolRegistry = createDefaultToolRegistry();
 
+// Optional: replace default tag mapping/factories for selected tools
+const customRegistry = createDefaultToolRegistry({
+  toolTagMap: {
+    calculator: 'my-calculator-tool'
+  },
+  toolComponentFactories: {
+    calculator: ({ tagName }) => document.createElement(tagName)
+  }
+});
+
 // Or create custom registry
-const customRegistry = new ToolRegistry();
-customRegistry.register(calculatorToolRegistration);
-customRegistry.register(ttsToolRegistration);
+const selectiveRegistry = new ToolRegistry();
+selectiveRegistry.register(calculatorToolRegistration);
+selectiveRegistry.register(ttsToolRegistration);
 // ... register only the tools you need
 ```
 

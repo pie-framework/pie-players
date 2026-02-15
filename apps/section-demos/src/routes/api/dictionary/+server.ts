@@ -1,4 +1,4 @@
-import { json, error, type RequestHandler } from '@sveltejs/kit';
+import { json, error, type RequestHandler } from "@sveltejs/kit";
 
 /**
  * Dictionary API - Stub implementation for development
@@ -26,51 +26,50 @@ import { json, error, type RequestHandler } from '@sveltejs/kit';
  *   }
  */
 
-const DEFAULT_LANGUAGE = 'en-us';
+const DEFAULT_LANGUAGE = "en-us";
 
 // Mock dictionary data for development
 const MOCK_DEFINITIONS: Record<string, any> = {
 	hello: {
 		definitions: [
 			{
-				partOfSpeech: 'interjection',
-				definition: 'Used as a greeting or to begin a phone conversation.',
-				example: 'Hello, how are you?'
+				partOfSpeech: "interjection",
+				definition: "Used as a greeting or to begin a phone conversation.",
+				example: "Hello, how are you?",
 			},
 			{
-				partOfSpeech: 'noun',
+				partOfSpeech: "noun",
 				definition: 'An utterance of "hello"; a greeting.',
-				example: 'She gave a warm hello.'
-			}
-		]
+				example: "She gave a warm hello.",
+			},
+		],
 	},
 	triangle: {
 		definitions: [
 			{
-				partOfSpeech: 'noun',
+				partOfSpeech: "noun",
 				definition:
-					'A plane figure with three straight sides and three angles.',
-				example: 'An equilateral triangle has all sides equal.'
+					"A plane figure with three straight sides and three angles.",
+				example: "An equilateral triangle has all sides equal.",
 			},
 			{
-				partOfSpeech: 'noun',
+				partOfSpeech: "noun",
 				definition:
-					'A musical instrument consisting of a steel rod bent into a triangle.',
-				example: 'The triangle player waited for their cue.'
-			}
-		]
+					"A musical instrument consisting of a steel rod bent into a triangle.",
+				example: "The triangle player waited for their cue.",
+			},
+		],
 	},
 	photosynthesis: {
 		definitions: [
 			{
-				partOfSpeech: 'noun',
+				partOfSpeech: "noun",
 				definition:
-					'The process by which green plants use sunlight to synthesize nutrients from carbon dioxide and water.',
-				example:
-					'Photosynthesis generates oxygen as a byproduct.'
-			}
-		]
-	}
+					"The process by which green plants use sunlight to synthesize nutrients from carbon dioxide and water.",
+				example: "Photosynthesis generates oxygen as a byproduct.",
+			},
+		],
+	},
 };
 
 export const POST: RequestHandler = async ({ request }) => {
@@ -78,13 +77,13 @@ export const POST: RequestHandler = async ({ request }) => {
 	const { keyword, language = DEFAULT_LANGUAGE } = body;
 
 	if (!keyword) {
-		error(400, 'Missing required parameter: keyword');
+		error(400, "Missing required parameter: keyword");
 	}
 
 	try {
-		console.log('[dictionary] Looking up word:', {
+		console.log("[dictionary] Looking up word:", {
 			keyword,
-			language
+			language,
 		});
 
 		// Check if we have mock data for this word
@@ -93,31 +92,34 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		if (mockData) {
 			console.log(
-				'[dictionary] Found %d definitions for: %s',
+				"[dictionary] Found %d definitions for: %s",
 				mockData.definitions.length,
-				keyword
+				keyword,
 			);
 
 			return json({
 				keyword,
 				language,
-				definitions: mockData.definitions
+				definitions: mockData.definitions,
 			});
 		}
 
 		// Return generic definition for unknown words
-		console.log('[dictionary] No mock data, returning generic definition for:', keyword);
+		console.log(
+			"[dictionary] No mock data, returning generic definition for:",
+			keyword,
+		);
 
 		return json({
 			keyword,
 			language,
 			definitions: [
 				{
-					partOfSpeech: 'noun',
+					partOfSpeech: "noun",
 					definition: `A word or term used in educational content. (Mock definition for "${keyword}")`,
-					example: `This is a placeholder definition for development purposes.`
-				}
-			]
+					example: `This is a placeholder definition for development purposes.`,
+				},
+			],
 		});
 	} catch (e: any) {
 		console.error(`[dictionary] Failed to look up word "${keyword}":`, e);
@@ -132,9 +134,9 @@ export const OPTIONS: RequestHandler = async () => {
 	return new Response(null, {
 		status: 200,
 		headers: {
-			'Access-Control-Allow-Origin': '*',
-			'Access-Control-Allow-Methods': 'POST, OPTIONS',
-			'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-		}
+			"Access-Control-Allow-Origin": "*",
+			"Access-Control-Allow-Methods": "POST, OPTIONS",
+			"Access-Control-Allow-Headers": "Content-Type, Authorization",
+		},
 	});
 };

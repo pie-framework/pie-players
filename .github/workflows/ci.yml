@@ -29,6 +29,9 @@ jobs:
       - name: Build Packages
         run: bun run build
 
+      - name: Verify Published Package Exports
+        run: bun run check:pack-exports
+
       - name: Lint
         run: bun run lint:all
 

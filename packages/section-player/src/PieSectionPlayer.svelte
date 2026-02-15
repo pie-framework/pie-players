@@ -155,7 +155,7 @@ import type {
 	// Subscribe to floating tools changes from coordinator
 	$effect(() => {
 		if (coordinator) {
-			const unsubscribe = coordinator.onFloatingToolsChange((toolIds) => {
+			const unsubscribe = coordinator.onFloatingToolsChange((toolIds: string[]) => {
 				sectionToolsEnabled = toolIds;
 			});
 			return unsubscribe;
@@ -612,37 +612,43 @@ import type {
 	/* Layout direction based on toolbar position */
 	.pie-section-player:has(pie-section-tools-toolbar[position="top"]),
 	.pie-section-player:has(pie-section-tools-toolbar[position="bottom"]),
-	.pie-section-player:has(pie-section-tools-toolbar[data-position="top"]),
-	.pie-section-player:has(pie-section-tools-toolbar[data-position="bottom"]),
+	.pie-section-player:has(:global(pie-section-tools-toolbar[data-position="top"])),
+	.pie-section-player:has(
+		:global(pie-section-tools-toolbar[data-position="bottom"])
+	),
 	.pie-section-player:not(:has(pie-section-tools-toolbar[position])):not(:has(pie-section-tools-toolbar[data-position])) {
 		flex-direction: column;
 	}
 
 	.pie-section-player:has(pie-section-tools-toolbar[position="left"]),
 	.pie-section-player:has(pie-section-tools-toolbar[position="right"]),
-	.pie-section-player:has(pie-section-tools-toolbar[data-position="left"]),
-	.pie-section-player:has(pie-section-tools-toolbar[data-position="right"]) {
+	.pie-section-player:has(:global(pie-section-tools-toolbar[data-position="left"])),
+	.pie-section-player:has(:global(pie-section-tools-toolbar[data-position="right"])) {
 		flex-direction: row;
 	}
 
 	/* Toolbar ordering - control whether toolbar appears before or after content */
 	.pie-section-player:has(pie-section-tools-toolbar[position="top"]) .pie-section-player__content,
-	.pie-section-player:has(pie-section-tools-toolbar[data-position="top"]) .pie-section-player__content {
+	.pie-section-player:has(:global(pie-section-tools-toolbar[data-position="top"]))
+		.pie-section-player__content {
 		order: 2;
 	}
 
 	.pie-section-player:has(pie-section-tools-toolbar[position="top"]) pie-section-tools-toolbar,
-	.pie-section-player:has(pie-section-tools-toolbar[data-position="top"]) pie-section-tools-toolbar {
+	.pie-section-player:has(:global(pie-section-tools-toolbar[data-position="top"]))
+		pie-section-tools-toolbar {
 		order: 1;
 	}
 
 	.pie-section-player:has(pie-section-tools-toolbar[position="left"]) .pie-section-player__content,
-	.pie-section-player:has(pie-section-tools-toolbar[data-position="left"]) .pie-section-player__content {
+	.pie-section-player:has(:global(pie-section-tools-toolbar[data-position="left"]))
+		.pie-section-player__content {
 		order: 2;
 	}
 
 	.pie-section-player:has(pie-section-tools-toolbar[position="left"]) pie-section-tools-toolbar,
-	.pie-section-player:has(pie-section-tools-toolbar[data-position="left"]) pie-section-tools-toolbar {
+	.pie-section-player:has(:global(pie-section-tools-toolbar[data-position="left"]))
+		pie-section-tools-toolbar {
 		order: 1;
 	}
 

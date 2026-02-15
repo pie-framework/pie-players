@@ -65,7 +65,7 @@ export class RangeSerializer {
 			startOffset: range.startOffset,
 			endContainer: this.getNodePath(range.endContainer, root),
 			endOffset: range.endOffset,
-			text: range.toString()
+			text: range.toString(),
 		};
 	}
 
@@ -110,7 +110,7 @@ export class RangeSerializer {
 			return null;
 		} catch (error) {
 			// Range construction failed (offsets invalid, etc.)
-			console.warn('Failed to deserialize range:', error);
+			console.warn("Failed to deserialize range:", error);
 			return null;
 		}
 	}
@@ -128,18 +128,20 @@ export class RangeSerializer {
 	 */
 	private getNodePath(node: Node, root: Element): string {
 		if (node === root) {
-			return '';
+			return "";
 		}
 
 		// Handle text nodes
 		if (node.nodeType === Node.TEXT_NODE) {
 			const parent = node.parentElement;
 			if (!parent) {
-				throw new Error('Text node has no parent');
+				throw new Error("Text node has no parent");
 			}
 
 			// Get index of this text node among its siblings
-			const textNodes = Array.from(parent.childNodes).filter((n) => n.nodeType === Node.TEXT_NODE);
+			const textNodes = Array.from(parent.childNodes).filter(
+				(n) => n.nodeType === Node.TEXT_NODE,
+			);
 			const index = textNodes.indexOf(node as Text);
 
 			const parentPath = this.getElementPath(parent, root);
@@ -163,7 +165,7 @@ export class RangeSerializer {
 	 */
 	private getElementPath(element: Element, root: Element): string {
 		if (element === root) {
-			return '';
+			return "";
 		}
 
 		const path: string[] = [];
@@ -180,7 +182,9 @@ export class RangeSerializer {
 			const parent: Element | null = current.parentElement;
 			if (!parent) break;
 
-			const siblings = Array.from(parent.children).filter((el: Element) => el.tagName === current!.tagName);
+			const siblings = Array.from(parent.children).filter(
+				(el: Element) => el.tagName === current!.tagName,
+			);
 			const index = siblings.indexOf(current);
 			const selector =
 				siblings.length > 1
@@ -191,7 +195,7 @@ export class RangeSerializer {
 			current = parent;
 		}
 
-		return path.join(' > ');
+		return path.join(" > ");
 	}
 
 	/**
@@ -202,21 +206,23 @@ export class RangeSerializer {
 	 * @returns Node, or null if not found
 	 */
 	private findNodeByPath(path: string, root: Element): Node | null {
-		if (path === '') {
+		if (path === "") {
 			return root;
 		}
 
 		// Handle text node paths
-		if (path.includes('::text[')) {
-			const [elementPath, textPart] = path.split('::text[');
-			const textIndex = Number.parseInt(textPart.replace(']', ''), 10);
+		if (path.includes("::text[")) {
+			const [elementPath, textPart] = path.split("::text[");
+			const textIndex = Number.parseInt(textPart.replace("]", ""), 10);
 
 			// Find parent element
 			const parent = elementPath ? root.querySelector(elementPath) : root;
 			if (!parent) return null;
 
 			// Find text node by index
-			const textNodes = Array.from(parent.childNodes).filter((n) => n.nodeType === Node.TEXT_NODE);
+			const textNodes = Array.from(parent.childNodes).filter(
+				(n) => n.nodeType === Node.TEXT_NODE,
+			);
 
 			return textNodes[textIndex] || null;
 		}
@@ -225,7 +231,7 @@ export class RangeSerializer {
 		try {
 			return root.querySelector(path);
 		} catch (error) {
-			console.warn('Invalid selector path:', path, error);
+			console.warn("Invalid selector path:", path, error);
 			return null;
 		}
 	}

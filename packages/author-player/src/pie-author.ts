@@ -1,5 +1,6 @@
 import { IifePieLoader } from "@pie-players/pie-players-shared/pie/iife-loader";
 import { pieRegistry } from "@pie-players/pie-players-shared/pie/registry";
+import { validateCustomElementTag } from "@pie-players/pie-players-shared/pie/tag-names";
 import { BundleType } from "@pie-players/pie-players-shared/pie/types";
 import { parsePackageName } from "@pie-players/pie-players-shared/pie/utils";
 import { pieContentFromConfig } from "./legacy-utils";
@@ -39,13 +40,14 @@ export interface PieAuthorElement extends HTMLElement {
 }
 
 export function definePieAuthor(tagName = "pie-author") {
-	if (!customElements.get(tagName)) {
+	const validTagName = validateCustomElementTag(tagName, "pie-author tagName");
+	if (!customElements.get(validTagName)) {
 		customElements.define(
-			tagName,
+			validTagName,
 			PieAuthor as unknown as CustomElementConstructor,
 		);
 	}
-	attachLegacyMethods(tagName);
+	attachLegacyMethods(validTagName);
 }
 
 function resolveBundleHost(el: PieAuthorElement): string {

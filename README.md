@@ -23,6 +23,16 @@ bun test         # Run tests
 bun format       # Format code
 ```
 
+## Release Labels
+
+Use release labels to tag a coordinated release wave without forcing lockstep package versions.
+
+```bash
+bun run release:label                # Create annotated tag (default: pie-players-YYYY.MM.DD)
+bun run release:label -- --label players-2026.02
+bun run release:label:push           # Create and push tag to origin
+```
+
 ## Packages
 
 **Interactive Players**: pie-iife-player, pie-esm-player, pie-fixed-player, pie-inline-player

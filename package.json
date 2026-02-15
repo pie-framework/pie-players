@@ -51,6 +51,8 @@
 		"changeset": "changeset",
 		"version": "changeset version",
 		"release": "turbo build --filter='!./apps/*' --filter='!./tools/*' && changeset publish",
+		"release:label": "node ./scripts/create-release-label.mjs",
+		"release:label:push": "node ./scripts/create-release-label.mjs --push",
 		"pack:local": "turbo build && node ./scripts/pack-local.mjs",
 		"registry:start": "bun scripts/verdaccio.ts start",
 		"registry:stop": "bun scripts/verdaccio.ts stop",

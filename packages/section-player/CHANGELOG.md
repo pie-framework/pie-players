@@ -1,5 +1,21 @@
 # @pie-players/pie-section-player
 
+## 0.2.5
+
+### Patch Changes
+
+- ce22976: Release all public PIE packages with the latest toolkit/loader/tag-name updates, publish metadata fixes, and CI/publish hardening improvements.
+- Updated dependencies [ce22976]
+  - @pie-players/pie-assessment-toolkit@0.2.4
+  - @pie-players/pie-esm-player@0.2.2
+  - @pie-players/pie-fixed-player@0.2.2
+  - @pie-players/pie-iife-player@0.2.2
+  - @pie-players/pie-inline-player@0.2.2
+  - @pie-players/pie-players-shared@0.2.2
+  - @pie-players/pie-section-tools-toolbar@0.2.4
+  - @pie-players/pie-tool-answer-eliminator@0.2.5
+  - @pie-players/pie-tool-tts-inline@0.1.2
+
 ## 0.2.4
 
 ### Patch Changes

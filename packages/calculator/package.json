@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-calculator",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "Calculator provider interfaces and types for PIE Assessment Toolkit - No UI dependencies",
 	"type": "module",
 	"main": "./dist/index.js",

@@ -49,6 +49,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20.19.0
+          registry-url: https://registry.npmjs.org
+          always-auth: true
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -110,6 +112,18 @@ jobs:
         if: github.event_name == 'workflow_dispatch' || steps.detect.outputs.has_version_bumps == 'true'
         run: bun run test
 
+      - name: Verify npm registry and auth
+        if: github.event_name == 'workflow_dispatch' || steps.detect.outputs.has_version_bumps == 'true'
+        run: |
+          set -euo pipefail
+          REGISTRY="$(npm config get registry)"
+          echo "npm registry: ${REGISTRY}"
+          if [ "${REGISTRY}" != "https://registry.npmjs.org/" ]; then
+            echo "Unexpected npm registry configured: ${REGISTRY}" >&2
+            exit 1
+          fi
+          npm whoami --registry=https://registry.npmjs.org/
+
       - name: Create Release Pull Request or Publish to NPM
         id: changesets
         uses: changesets/action@v1
@@ -121,6 +135,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_REGISTRY: https://registry.npmjs.org/
 
       - name: Create GitHub Release
         if: steps.changesets.outputs.published == 'true'

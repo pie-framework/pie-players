@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/math-renderer-core",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"type": "module",
 	"description": "Core types and provider for pluggable math rendering in PIE players",
 	"license": "MIT",

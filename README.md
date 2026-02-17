@@ -23,6 +23,15 @@ bun test         # Run tests
 bun format       # Format code
 ```
 
+## Releasing From Workspace
+
+This monorepo keeps internal dependencies as `workspace:*` during development.
+
+On release, `bun run release` runs a publish wrapper that temporarily rewrites workspace
+ranges to concrete package versions, executes `changeset publish`, then restores the
+original workspace ranges. This avoids leaking `workspace:*` into npm metadata while
+keeping local development ergonomics unchanged.
+
 ## Release Labels
 
 Use release labels to tag a coordinated release wave without forcing lockstep package versions.

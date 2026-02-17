@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-inline-player",
-	"version": "0.2.1",
+	"version": "0.2.2",
 	"type": "module",
 	"description": "A standalone web component to render a PIE item in a single request.",
 	"license": "MIT",

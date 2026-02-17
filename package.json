@@ -50,7 +50,7 @@
 		"verify:publish": "bun run build && bun run check:pack-exports",
 		"changeset": "changeset",
 		"version": "changeset version",
-		"release": "turbo build --filter='!./apps/*' --filter='!./tools/*' && changeset publish",
+		"release": "turbo build --filter='!./apps/*' --filter='!./tools/*' && node ./scripts/changeset-publish-resolved-workspaces.mjs",
 		"release:label": "node ./scripts/create-release-label.mjs",
 		"release:label:push": "node ./scripts/create-release-label.mjs --push",
 		"pack:local": "turbo build && node ./scripts/pack-local.mjs",

@@ -1,5 +1,31 @@
 # @pie-players/pie-tool-toolbar
 
+## 0.1.6
+
+### Patch Changes
+
+- ce22976: Release all public PIE packages with the latest toolkit/loader/tag-name updates, publish metadata fixes, and CI/publish hardening improvements.
+- Republish packages with correctly resolved internal dependency versions in published metadata.
+
+  This release uses publish-time workspace range resolution, so development keeps `workspace:*`
+  while npm artifacts publish concrete dependency ranges.
+
+- Updated dependencies [ce22976]
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.2.4
+  - @pie-players/pie-players-shared@0.2.2
+  - @pie-players/pie-tool-annotation-toolbar@0.1.5
+  - @pie-players/pie-tool-answer-eliminator@0.2.5
+  - @pie-players/pie-tool-calculator@0.1.5
+  - @pie-players/pie-tool-color-scheme@0.1.5
+  - @pie-players/pie-tool-graph@0.1.5
+  - @pie-players/pie-tool-line-reader@0.1.5
+  - @pie-players/pie-tool-magnifier@0.1.5
+  - @pie-players/pie-tool-periodic-table@0.1.5
+  - @pie-players/pie-tool-protractor@0.1.5
+  - @pie-players/pie-tool-ruler@0.1.5
+  - @pie-players/pie-tool-text-to-speech@0.1.5
+
 ## 0.1.5
 
 ### Patch Changes

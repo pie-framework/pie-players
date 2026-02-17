@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/tts-client-server",
-	"version": "0.2.0",
+	"version": "0.2.1",
 	"description": "Client-side TTS provider that calls server API for synthesis",
 	"type": "module",
 	"main": "./dist/index.js",

@@ -1,6 +1,6 @@
-# @pie-players/pie-author
+# @pie-players/tts-server-polly
 
-## 0.1.3
+## 0.1.1
 
 ### Patch Changes
 
@@ -11,19 +11,4 @@
   while npm artifacts publish concrete dependency ranges.
 
 - Updated dependencies [ce22976]
-- Updated dependencies
-  - @pie-players/pie-players-shared@0.2.2
-
-## 0.1.2
-
-### Patch Changes
-
-- Updated dependencies [46295ee]
-  - @pie-players/pie-players-shared@0.2.1
-
-## 0.1.1
-
-### Patch Changes
-
-- Updated dependencies [8584a3f]
-  - @pie-players/pie-players-shared@0.2.0
+  - @pie-players/tts-server-core@0.1.1

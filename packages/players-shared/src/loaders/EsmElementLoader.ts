@@ -5,14 +5,14 @@
  * Aggregates elements from multiple items and loads them once using ESM modules.
  */
 
-import { EsmPieLoader } from "../pie/esm-loader";
-import type { ItemEntity } from "../types";
+import { EsmPieLoader } from "../pie/esm-loader.js";
+import type { ItemEntity } from "../types/index.js";
 import {
 	aggregateElements,
 	type ElementLoaderInterface,
 	type ElementMap,
 	type LoadOptions,
-} from "./ElementLoader";
+} from "./ElementLoader.js";
 
 /**
  * Configuration for ESM element loader

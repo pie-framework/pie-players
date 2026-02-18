@@ -13,4 +13,4 @@ export type {
 	TTSConfigExtensions,
 	TTSFeature,
 	TTSProviderCapabilities,
-} from "./provider-interface";
+} from "./provider-interface.js";

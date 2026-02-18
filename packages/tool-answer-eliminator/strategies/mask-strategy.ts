@@ -1,4 +1,4 @@
-import type { EliminationStrategy } from "./elimination-strategy";
+import type { EliminationStrategy } from "./elimination-strategy.js";
 
 /**
  * Mask strategy using CSS Custom Highlight API

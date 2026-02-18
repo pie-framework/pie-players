@@ -5,15 +5,15 @@
  * Aggregates elements from multiple items and loads them once using IIFE bundles.
  */
 
-import { IifePieLoader } from "../pie/iife-loader";
-import { BundleType } from "../pie/types";
-import type { ItemEntity } from "../types";
+import { IifePieLoader } from "../pie/iife-loader.js";
+import { BundleType } from "../pie/types.js";
+import type { ItemEntity } from "../types/index.js";
 import {
 	aggregateElements,
 	type ElementLoaderInterface,
 	type ElementMap,
 	type LoadOptions,
-} from "./ElementLoader";
+} from "./ElementLoader.js";
 
 /**
  * Configuration for IIFE element loader

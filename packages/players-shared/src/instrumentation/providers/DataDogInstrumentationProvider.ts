@@ -31,8 +31,8 @@
  * ```
  */
 
-import type { InstrumentationConfig } from "../types";
-import { BaseInstrumentationProvider } from "./BaseInstrumentationProvider";
+import type { InstrumentationConfig } from "../types.js";
+import { BaseInstrumentationProvider } from "./BaseInstrumentationProvider.js";
 
 /**
  * DataDog-specific configuration

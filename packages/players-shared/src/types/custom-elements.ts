@@ -5,7 +5,7 @@
  * that are defined as Svelte components with customElement option.
  */
 
-import type { ItemConfig } from "./index";
+import type { ItemConfig } from "./index.js";
 
 /**
  * PIE IIFE Player custom element interface

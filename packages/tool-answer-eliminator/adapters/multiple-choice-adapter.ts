@@ -1,4 +1,4 @@
-import type { ChoiceAdapter } from "./choice-adapter";
+import type { ChoiceAdapter } from "./choice-adapter.js";
 
 /**
  * Adapter for PIE multiple-choice elements

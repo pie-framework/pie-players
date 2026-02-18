@@ -22,8 +22,8 @@ import type {
 	TTSConfig,
 	TTSProviderCapabilities,
 } from "@pie-players/pie-tts";
-import type { AccessibilityCatalogResolver } from "./AccessibilityCatalogResolver";
-import type { IHighlightCoordinator } from "./interfaces";
+import type { AccessibilityCatalogResolver } from "./AccessibilityCatalogResolver.js";
+import type { IHighlightCoordinator } from "./interfaces.js";
 
 // Re-export core TTS types for convenience
 export type {

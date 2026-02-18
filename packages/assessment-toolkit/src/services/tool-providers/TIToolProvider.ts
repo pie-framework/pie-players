@@ -13,8 +13,8 @@ import type {
 	CalculatorProvider,
 	TICalculatorConfig,
 } from "@pie-players/pie-calculator";
-import { TICalculatorProvider } from "../../tools/calculators/ti-provider";
-import type { IToolProvider, ToolProviderCapabilities } from "./IToolProvider";
+import { TICalculatorProvider } from "../../tools/calculators/ti-provider.js";
+import type { IToolProvider, ToolProviderCapabilities } from "./IToolProvider.js";
 
 /**
  * TI tool provider configuration

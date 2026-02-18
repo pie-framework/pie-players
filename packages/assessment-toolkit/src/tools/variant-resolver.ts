@@ -13,7 +13,7 @@ import type {
 	ToolConfig,
 	VariantContext,
 	VariantResolver,
-} from "./types";
+} from "./types.js";
 
 export class VariantResolverImpl implements VariantResolver {
 	/**

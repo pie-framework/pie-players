@@ -15,23 +15,23 @@
  */
 
 import type { AccessibilityCatalog } from "@pie-players/pie-players-shared/types";
-import { AccessibilityCatalogResolver } from "./AccessibilityCatalogResolver";
-import { ElementToolStateStore } from "./ElementToolStateStore";
-import { HighlightCoordinator } from "./HighlightCoordinator";
-import { ToolCoordinator } from "./ToolCoordinator";
-import { TTSService } from "./TTSService";
-import { BrowserTTSProvider } from "./tts/browser-provider";
+import { AccessibilityCatalogResolver } from "./AccessibilityCatalogResolver.js";
+import { ElementToolStateStore } from "./ElementToolStateStore.js";
+import { HighlightCoordinator } from "./HighlightCoordinator.js";
+import { ToolCoordinator } from "./ToolCoordinator.js";
+import { TTSService } from "./TTSService.js";
+import { BrowserTTSProvider } from "./tts/browser-provider.js";
 import {
 	ToolProviderRegistry,
 	DesmosToolProvider,
 	TIToolProvider,
 	TTSToolProvider,
-} from "./tool-providers";
+} from "./tool-providers/index.js";
 import type {
 	DesmosToolProviderConfig,
 	TIToolProviderConfig,
 	TTSToolProviderConfig,
-} from "./tool-providers";
+} from "./tool-providers/index.js";
 
 /**
  * Generic tool configuration

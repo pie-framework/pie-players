@@ -26,4 +26,4 @@
  * ```
  */
 
-export { MathJsCalculatorProvider } from "./mathjs-provider";
+export { MathJsCalculatorProvider } from "./mathjs-provider.js";

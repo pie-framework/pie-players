@@ -24,10 +24,10 @@
  */
 
 import { onDestroy } from "svelte";
-import type { LoaderConfig } from "../loader-config";
-import { DEFAULT_LOADER_CONFIG } from "../loader-config";
-import { createPieLogger } from "./logger";
-import { ResourceMonitor } from "./resource-monitor";
+import type { LoaderConfig } from "../loader-config.js";
+import { DEFAULT_LOADER_CONFIG } from "../loader-config.js";
+import { createPieLogger } from "./logger.js";
+import { ResourceMonitor } from "./resource-monitor.js";
 
 // Default maximum retry delay (matches ResourceMonitor default)
 const DEFAULT_MAX_RETRY_DELAY = 5000;

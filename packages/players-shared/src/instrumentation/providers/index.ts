@@ -5,10 +5,10 @@
  */
 
 // Base class for creating custom providers
-export { BaseInstrumentationProvider } from "./BaseInstrumentationProvider";
-export type { ConsoleProviderConfig } from "./ConsoleInstrumentationProvider";
+export { BaseInstrumentationProvider } from "./BaseInstrumentationProvider.js";
+export type { ConsoleProviderConfig } from "./ConsoleInstrumentationProvider.js";
 // Built-in providers
-export { ConsoleInstrumentationProvider } from "./ConsoleInstrumentationProvider";
-export type { DataDogConfig } from "./DataDogInstrumentationProvider";
-export { DataDogInstrumentationProvider } from "./DataDogInstrumentationProvider";
-export { NewRelicInstrumentationProvider } from "./NewRelicInstrumentationProvider";
+export { ConsoleInstrumentationProvider } from "./ConsoleInstrumentationProvider.js";
+export type { DataDogConfig } from "./DataDogInstrumentationProvider.js";
+export { DataDogInstrumentationProvider } from "./DataDogInstrumentationProvider.js";
+export { NewRelicInstrumentationProvider } from "./NewRelicInstrumentationProvider.js";

@@ -50,7 +50,7 @@
  */
 
 // Providers
-export * from "./providers";
+export * from "./providers/index.js";
 // Core types
 export type {
 	ErrorAttributes,
@@ -58,4 +58,4 @@ export type {
 	InstrumentationConfig,
 	InstrumentationProvider,
 	MetricAttributes,
-} from "./types";
+} from "./types.js";

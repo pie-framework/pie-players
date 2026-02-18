@@ -1,7 +1,7 @@
-import type { ChoiceAdapter } from "./choice-adapter";
-import { EBSRAdapter } from "./ebsr-adapter";
-import { InlineDropdownAdapter } from "./inline-dropdown-adapter";
-import { MultipleChoiceAdapter } from "./multiple-choice-adapter";
+import type { ChoiceAdapter } from "./choice-adapter.js";
+import { EBSRAdapter } from "./ebsr-adapter.js";
+import { InlineDropdownAdapter } from "./inline-dropdown-adapter.js";
+import { MultipleChoiceAdapter } from "./multiple-choice-adapter.js";
 
 export interface ChoiceWithAdapter {
 	choice: HTMLElement;

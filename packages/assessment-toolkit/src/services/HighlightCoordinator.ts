@@ -21,8 +21,8 @@
  * @see https://developer.mozilla.org/en-US/docs/Web/API/CSS_Custom_Highlight_API
  */
 
-import type { IHighlightCoordinator } from "./interfaces";
-import { RangeSerializer, type SerializedRange } from "./RangeSerializer";
+import type { IHighlightCoordinator } from "./interfaces.js";
+import { RangeSerializer, type SerializedRange } from "./RangeSerializer.js";
 
 /**
  * Highlight types

@@ -19,7 +19,7 @@ import type {
 	CalculatorState,
 	CalculatorType,
 } from "@pie-players/pie-calculator";
-import { COMMON_LIBRARIES, libraryLoader } from "../library-loader";
+import { COMMON_LIBRARIES, libraryLoader } from "../library-loader.js";
 
 /**
  * Math.js Calculator Provider Implementation

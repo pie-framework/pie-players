@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { PNPResolutionProvenance } from '../services/pnp-provenance';
+	import type { PNPResolutionProvenance } from '@pie-players/pie-assessment-toolkit/services/pnp-provenance';
 
 	// PNP Provenance Viewer Component
 	// Visualizes how PNP resolution decisions were made.

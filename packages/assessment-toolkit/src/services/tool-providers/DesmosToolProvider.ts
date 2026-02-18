@@ -16,7 +16,7 @@ import type {
 	DesmosCalculatorConfig,
 } from "@pie-players/pie-calculator";
 import { DesmosCalculatorProvider } from "@pie-players/pie-calculator-desmos";
-import type { IToolProvider, ToolProviderCapabilities } from "./IToolProvider";
+import type { IToolProvider, ToolProviderCapabilities } from "./IToolProvider.js";
 
 /**
  * Desmos tool provider configuration

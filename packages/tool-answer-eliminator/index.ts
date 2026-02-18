@@ -6,6 +6,6 @@
  */
 
 // Re-export AdapterRegistry for auto-hide detection
-export { AdapterRegistry } from "./adapters/adapter-registry";
+export { AdapterRegistry } from "./adapters/adapter-registry.js";
 
 // Re-export any TypeScript types defined in the package

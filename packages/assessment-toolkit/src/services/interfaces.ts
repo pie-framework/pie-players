@@ -15,15 +15,15 @@ import type {
 	CatalogStatistics,
 	CatalogType,
 	ResolvedCatalog,
-} from "./AccessibilityCatalogResolver";
-import type { HighlightColor, HighlightType } from "./HighlightCoordinator";
-import type { FontSize, ThemeConfig } from "./ThemeProvider";
-import type { ZIndexLayer } from "./ToolCoordinator";
-import type { PlaybackState, TTSConfig } from "./TTSService";
+} from "./AccessibilityCatalogResolver.js";
+import type { HighlightColor, HighlightType } from "./HighlightCoordinator.js";
+import type { FontSize, ThemeConfig } from "./ThemeProvider.js";
+import type { ZIndexLayer } from "./ToolCoordinator.js";
+import type { PlaybackState, TTSConfig } from "./TTSService.js";
 import type {
 	ITTSProvider,
 	TTSProviderCapabilities,
-} from "./tts/provider-interface";
+} from "./tts/provider-interface.js";
 
 // Re-export II18nService from players-shared
 export type { II18nService };

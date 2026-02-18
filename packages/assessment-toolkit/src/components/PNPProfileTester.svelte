@@ -7,7 +7,7 @@
 		EXAMPLE_PNP_CONFIGURATIONS,
 		QTI_STANDARD_ACCESS_FEATURES,
 		getFeatureCategory,
-	} from '../services/pnp-standard-features';
+	} from '@pie-players/pie-assessment-toolkit/services/pnp-standard-features';
 
 	interface Props {
 		/** Callback when profile changes */

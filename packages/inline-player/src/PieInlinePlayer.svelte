@@ -61,9 +61,8 @@
 	
 	import type { ConfigEntity, Env, LoaderConfig } from '@pie-players/pie-players-shared';
 	import { BundleType, createPieLogger, DEFAULT_LOADER_CONFIG, isGlobalDebugEnabled, makeUniqueTags } from '@pie-players/pie-players-shared';
-	import PieItemPlayer from '@pie-players/pie-players-shared/components/PieItemPlayer.svelte';
-	import PieSpinner from '@pie-players/pie-players-shared/components/PieSpinner.svelte';
-import { tick } from 'svelte';
+	import { PieItemPlayer, PieSpinner } from '@pie-players/pie-players-shared/components';
+	import { tick } from 'svelte';
 
 	// Import global component styles 
 	import './components.css';
@@ -414,9 +413,9 @@ import { tick } from 'svelte';
 						containerClass={resolvedPassageContainerClass}
 						bundleType={bundleType === 'client-player.js' ? BundleType.clientPlayer : BundleType.player}
 						{loaderConfig}
-						onLoadComplete={(detail) => handlePlayerEvent(new CustomEvent('load-complete', { detail }))}
-						onPlayerError={(detail) => handlePlayerEvent(new CustomEvent('player-error', { detail }))}
-						onSessionChanged={(detail) => handleSessionChanged(new CustomEvent('session-changed', { detail }))}
+						onLoadComplete={(detail: unknown) => handlePlayerEvent(new CustomEvent('load-complete', { detail }))}
+						onPlayerError={(detail: unknown) => handlePlayerEvent(new CustomEvent('player-error', { detail }))}
+						onSessionChanged={(detail: unknown) => handleSessionChanged(new CustomEvent('session-changed', { detail }))}
 					/>
 				</div>
 				
@@ -453,9 +452,9 @@ import { tick } from 'svelte';
 						containerClass={resolvedContainerClass}
 						bundleType={bundleType === 'client-player.js' ? BundleType.clientPlayer : BundleType.player}
 						{loaderConfig}
-						onLoadComplete={(detail) => handlePlayerEvent(new CustomEvent('load-complete', { detail }))}
-						onPlayerError={(detail) => handlePlayerEvent(new CustomEvent('player-error', { detail }))}
-						onSessionChanged={(detail) => handleSessionChanged(new CustomEvent('session-changed', { detail }))}
+						onLoadComplete={(detail: unknown) => handlePlayerEvent(new CustomEvent('load-complete', { detail }))}
+						onPlayerError={(detail: unknown) => handlePlayerEvent(new CustomEvent('player-error', { detail }))}
+						onSessionChanged={(detail: unknown) => handleSessionChanged(new CustomEvent('session-changed', { detail }))}
 					/>
 				</div>
 			</div>
@@ -475,9 +474,9 @@ import { tick } from 'svelte';
 				containerClass={resolvedContainerClass}
 				bundleType={bundleType === 'client-player.js' ? BundleType.clientPlayer : BundleType.player}
 				{loaderConfig}
-				onLoadComplete={(detail) => handlePlayerEvent(new CustomEvent('load-complete', { detail }))}
-				onPlayerError={(detail) => handlePlayerEvent(new CustomEvent('player-error', { detail }))}
-				onSessionChanged={(detail) => handleSessionChanged(new CustomEvent('session-changed', { detail }))}
+				onLoadComplete={(detail: unknown) => handlePlayerEvent(new CustomEvent('load-complete', { detail }))}
+				onPlayerError={(detail: unknown) => handlePlayerEvent(new CustomEvent('player-error', { detail }))}
+				onSessionChanged={(detail: unknown) => handleSessionChanged(new CustomEvent('session-changed', { detail }))}
 			/>
 		{/if}
 	{/if}

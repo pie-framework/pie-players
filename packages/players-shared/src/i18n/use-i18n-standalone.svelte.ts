@@ -25,8 +25,8 @@
  * ```
  */
 
-import { BUNDLED_TRANSLATIONS, loadTranslations } from "./loader";
-import { SimpleI18n } from "./simple-i18n";
+import { BUNDLED_TRANSLATIONS, loadTranslations } from "./loader.js";
+import { SimpleI18n } from "./simple-i18n.js";
 
 /**
  * Standalone i18n configuration

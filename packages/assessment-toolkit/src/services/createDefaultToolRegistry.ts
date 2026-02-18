@@ -5,34 +5,34 @@
  * Integrators can use this as a starting point and customize as needed.
  */
 
-import { ToolRegistry } from "./ToolRegistry";
-import type { ToolRegistration } from "./ToolRegistry";
-import { calculatorToolRegistration } from "../tools/registrations/calculator";
-import { ttsToolRegistration } from "../tools/registrations/tts";
+import { ToolRegistry } from "./ToolRegistry.js";
+import type { ToolRegistration } from "./ToolRegistry.js";
+import { calculatorToolRegistration } from "../tools/registrations/calculator.js";
+import { ttsToolRegistration } from "../tools/registrations/tts.js";
 import {
 	rulerToolRegistration,
 	protractorToolRegistration,
-} from "../tools/registrations/measurement-tools";
+} from "../tools/registrations/measurement-tools.js";
 import {
 	answerEliminatorToolRegistration,
 	highlighterToolRegistration,
-} from "../tools/registrations/interaction-tools";
+} from "../tools/registrations/interaction-tools.js";
 import {
 	magnifierToolRegistration,
 	lineReaderToolRegistration,
 	colorSchemeToolRegistration,
 	annotationToolbarRegistration,
-} from "../tools/registrations/accessibility-tools";
+} from "../tools/registrations/accessibility-tools.js";
 import {
 	graphToolRegistration,
 	periodicTableToolRegistration,
-} from "../tools/registrations/subject-specific-tools";
+} from "../tools/registrations/subject-specific-tools.js";
 import {
 	DEFAULT_TOOL_TAG_MAP,
 	type ToolComponentFactory,
 	type ToolComponentFactoryMap,
 	type ToolTagMap,
-} from "../tools/tool-tag-map";
+} from "../tools/tool-tag-map.js";
 
 export interface DefaultToolRegistryOptions {
 	/**

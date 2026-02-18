@@ -1,5 +1,24 @@
 # @pie-players/pie-section-tools-toolbar
 
+## 0.2.5
+
+### Patch Changes
+
+- Fix section player + PNP consumer packaging reliability.
+
+  - Export toolkit PNP service subpaths used by Svelte component exports
+  - Update PNP Svelte components to import from published package exports
+  - Add missing section player and section tools toolbar runtime dependencies
+
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.2.5
+  - @pie-players/pie-tool-graph@0.1.6
+  - @pie-players/pie-tool-line-reader@0.1.6
+  - @pie-players/pie-tool-magnifier@0.1.6
+  - @pie-players/pie-tool-periodic-table@0.1.6
+  - @pie-players/pie-tool-protractor@0.1.6
+  - @pie-players/pie-tool-ruler@0.1.6
+
 ## 0.2.4
 
 ### Patch Changes

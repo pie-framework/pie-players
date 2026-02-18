@@ -5,8 +5,8 @@
  * and button/instance creation. Supports dynamic registration and override by integrators.
  */
 
-import type { ToolContext, ToolLevel } from "./tool-context";
-import type { ToolComponentOverrides } from "../tools/tool-tag-map";
+import type { ToolContext, ToolLevel } from "./tool-context.js";
+import type { ToolComponentOverrides } from "../tools/tool-tag-map.js";
 
 /**
  * Options for creating a tool button

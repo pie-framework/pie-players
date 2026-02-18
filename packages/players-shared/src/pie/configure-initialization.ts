@@ -5,11 +5,11 @@
  * Parallel to initialization.ts but for configure elements with -config suffix.
  */
 
-import type { ConfigEntity } from "../types";
-import { createPieLogger, isGlobalDebugEnabled } from "./logger";
-import { pieRegistry } from "./registry";
-import type { AuthoringEnv, ConfigureElement } from "./types";
-import { parsePackageName } from "./utils";
+import type { ConfigEntity } from "../types/index.js";
+import { createPieLogger, isGlobalDebugEnabled } from "./logger.js";
+import { pieRegistry } from "./registry.js";
+import type { AuthoringEnv, ConfigureElement } from "./types.js";
+import { parsePackageName } from "./utils.js";
 
 const logger = createPieLogger("configure-init", () => isGlobalDebugEnabled());
 

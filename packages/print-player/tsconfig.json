@@ -2,7 +2,7 @@
 	"extends": "../../tsconfig.base.json",
 	"compilerOptions": {
 		"target": "ES2020",
-		"module": "ESNext",
+		"module": "NodeNext",
 		"lib": ["ES2020", "DOM", "DOM.Iterable"],
 		"declaration": true,
 		"declarationMap": true,
@@ -10,7 +10,7 @@
 		"rootDir": "./src",
 		"experimentalDecorators": true,
 		"useDefineForClassFields": false,
-		"moduleResolution": "bundler",
+		"moduleResolution": "NodeNext",
 		"allowSyntheticDefaultImports": true,
 		"esModuleInterop": true,
 		"skipLibCheck": true

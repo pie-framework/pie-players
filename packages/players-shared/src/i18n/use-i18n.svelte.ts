@@ -20,7 +20,7 @@
  * ```
  */
 
-import type { II18nService } from "./types";
+import type { II18nService } from "./types.js";
 
 /**
  * Svelte 5 composable for internationalization

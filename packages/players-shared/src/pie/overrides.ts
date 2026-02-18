@@ -7,8 +7,8 @@
  * - build URLs/params for sharing override state
  */
 
-import { cloneDeep } from "../object";
-import { parsePackageName } from "./utils";
+import { cloneDeep } from "../object/index.js";
+import { parsePackageName } from "./utils.js";
 
 export type ElementOverrides = Record<string, string>;
 

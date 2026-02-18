@@ -13,22 +13,22 @@
 export type {
 	NavigationState,
 	ReferencePlayerConfig,
-} from "./AssessmentPlayer";
-export { AssessmentPlayer } from "./AssessmentPlayer";
+} from "./AssessmentPlayer.js";
+export { AssessmentPlayer } from "./AssessmentPlayer.js";
 export type {
 	AssessmentFormat,
 	NavigationNode,
 	QuestionRef,
-} from "./qti-navigation";
+} from "./qti-navigation.js";
 // Navigation helpers/types (useful when building custom UIs without instantiating AssessmentPlayer)
 export {
 	buildNavigationStructure,
 	detectAssessmentFormat,
 	getAllQuestionRefs,
-} from "./qti-navigation";
+} from "./qti-navigation.js";
 
 // Layout Svelte component is exported via package.json path export:
 //   @pie-players/pie-assessment-toolkit/player/AssessmentLayout.svelte
 
 // Navigation types (optional abstractions)
-export type * from "./navigation-types";
+export type * from "./navigation-types.js";

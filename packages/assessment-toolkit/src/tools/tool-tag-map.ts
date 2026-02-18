@@ -1,6 +1,6 @@
 import { validateCustomElementTag } from "@pie-players/pie-players-shared/pie/tag-names";
-import type { ToolContext } from "../services/tool-context";
-import type { ToolInstanceOptions } from "../services/ToolRegistry";
+import type { ToolContext } from "../services/tool-context.js";
+import type { ToolInstanceOptions } from "../services/ToolRegistry.js";
 
 export type ToolTagMap = Record<string, string>;
 

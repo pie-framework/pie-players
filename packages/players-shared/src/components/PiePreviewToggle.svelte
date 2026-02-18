@@ -5,7 +5,7 @@
   Emits mode changes via callback prop.
 -->
 <script lang="ts">
-	import { createPieLogger, isGlobalDebugEnabled } from '../pie/logger';
+	import { createPieLogger, isGlobalDebugEnabled } from '../pie/logger.js';
 
 	const logger = createPieLogger('pie-preview-toggle', () => isGlobalDebugEnabled());
 

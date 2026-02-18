@@ -14,7 +14,7 @@
  * Part of PIE Assessment Toolkit.
  */
 
-import type { IThemeProvider } from "./interfaces";
+import type { IThemeProvider } from "./interfaces.js";
 
 /**
  * Font size options

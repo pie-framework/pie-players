@@ -7,7 +7,7 @@
  * Part of PIE Assessment Toolkit.
  */
 
-import type { TTSConfig } from "../TTSService";
+import type { TTSConfig } from "../TTSService.js";
 
 /**
  * TTS Provider interface

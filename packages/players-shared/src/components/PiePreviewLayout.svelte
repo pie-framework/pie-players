@@ -6,11 +6,11 @@
 -->
 <script lang="ts">
 	import { tick } from 'svelte';
-	import type { LoaderConfig } from '../loader-config';
-	import { DEFAULT_LOADER_CONFIG } from '../loader-config';
-	import { createPieLogger, isGlobalDebugEnabled } from '../pie/logger';
-	import { BundleType } from '../pie/types';
-	import type { ConfigEntity, Env, ImageHandler, SoundHandler } from '../types';
+	import type { LoaderConfig } from '../loader-config.js';
+	import { DEFAULT_LOADER_CONFIG } from '../loader-config.js';
+	import { createPieLogger, isGlobalDebugEnabled } from '../pie/logger.js';
+	import { BundleType } from '../pie/types.js';
+	import type { ConfigEntity, Env, ImageHandler, SoundHandler } from '../types/index.js';
 	import PieItemPlayer from './PieItemPlayer.svelte';
 	import PiePreviewToggle from './PiePreviewToggle.svelte';
 

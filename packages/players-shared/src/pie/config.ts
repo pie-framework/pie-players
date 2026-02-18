@@ -4,9 +4,9 @@
  * Configuration entity manipulation utilities.
  */
 
-import { cloneDeep } from "../object";
-import type { ConfigContainerEntity, ConfigEntity, PieModel } from "../types";
-import { parsePackageName } from "./utils";
+import { cloneDeep } from "../object/index.js";
+import type { ConfigContainerEntity, ConfigEntity, PieModel } from "../types/index.js";
+import { parsePackageName } from "./utils.js";
 
 /**
  * Get all models for a given npm package

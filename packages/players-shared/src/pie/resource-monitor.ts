@@ -11,11 +11,11 @@
  * - Works with all resource types (audio, video, img, link)
  */
 
-import { NewRelicInstrumentationProvider } from "../instrumentation/providers/NewRelicInstrumentationProvider";
-import type { InstrumentationProvider } from "../instrumentation/types";
-import type { ComponentContext } from "./component-context";
-import { getCurrentComponentContext } from "./component-context";
-import { createPieLogger } from "./logger";
+import { NewRelicInstrumentationProvider } from "../instrumentation/providers/NewRelicInstrumentationProvider.js";
+import type { InstrumentationProvider } from "../instrumentation/types.js";
+import type { ComponentContext } from "./component-context.js";
+import { getCurrentComponentContext } from "./component-context.js";
+import { createPieLogger } from "./logger.js";
 
 export type ResourceMonitorConfig = {
 	/**

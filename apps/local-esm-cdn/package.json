@@ -37,11 +37,13 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
-		"es-module-lexer": "^2.0.0"
+		"daisyui": "^5.5.18",
+		"es-module-lexer": "^2.0.0",
+		"svelte": "^5.51.3"
 	},
 	"peerDependencies": {
 		"vite": "^5.0.0 || ^6.0.0 || ^7.0.0",
-		"@sveltejs/kit": "^2.51.0"
+		"@sveltejs/kit": "^2.52.0"
 	},
 	"peerDependenciesMeta": {
 		"vite": {

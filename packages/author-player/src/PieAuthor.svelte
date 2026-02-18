@@ -45,7 +45,7 @@
 		mergePieContentBackIntoConfig,
 		type PieContent,
 		pieContentFromConfig
-	} from "./legacy-utils";
+	} from "./legacy-utils.js";
 	import {
 		addComplexRubric,
 		addPackageToContent,
@@ -53,7 +53,7 @@
 		COMPLEX_RUBRIC,
 		complexRubricChecks,
 		removeComplexRubricFromMarkup
-	} from "./rubric-utils";
+	} from "./rubric-utils.js";
 
 	// Legacy default endpoints (copied from pie-player-components DEFAULT_ENDPOINTS)
 	const DEFAULT_ENDPOINTS = {

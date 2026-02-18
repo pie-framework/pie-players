@@ -63,8 +63,7 @@
 	
 	import type { ConfigEntity, Env, LoaderConfig } from '@pie-players/pie-players-shared';
 	import { BundleType, createPieLogger, DEFAULT_BUNDLE_HOST, DEFAULT_LOADER_CONFIG, IifePieLoader, isGlobalDebugEnabled, makeUniqueTags } from '@pie-players/pie-players-shared';
-	import PieItemPlayer from '@pie-players/pie-players-shared/components/PieItemPlayer.svelte';
-	import PieSpinner from '@pie-players/pie-players-shared/components/PieSpinner.svelte';
+	import { PieItemPlayer, PieSpinner } from '@pie-players/pie-players-shared/components';
 	import { tick, untrack } from 'svelte';
 	// Import global component styles 
 	import './components.css';
@@ -475,10 +474,10 @@
 				{loaderConfig}
 				{mode}
 				configuration={typeof configuration === 'string' ? JSON.parse(configuration) : configuration}
-				onLoadComplete={(detail) => handlePlayerEvent(new CustomEvent('load-complete', { detail }))}
-				onPlayerError={(detail) => handlePlayerEvent(new CustomEvent('player-error', { detail }))}
-				onSessionChanged={(detail) => handleSessionChanged(new CustomEvent('session-changed', { detail }))}
-				onModelUpdated={(detail) => handlePlayerEvent(new CustomEvent('model-updated', { detail }))}
+				onLoadComplete={(detail: unknown) => handlePlayerEvent(new CustomEvent('load-complete', { detail }))}
+				onPlayerError={(detail: unknown) => handlePlayerEvent(new CustomEvent('player-error', { detail }))}
+				onSessionChanged={(detail: unknown) => handleSessionChanged(new CustomEvent('session-changed', { detail }))}
+				onModelUpdated={(detail: unknown) => handlePlayerEvent(new CustomEvent('model-updated', { detail }))}
 			/>
 		</div>
 	{/if}

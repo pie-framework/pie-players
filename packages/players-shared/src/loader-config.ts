@@ -4,7 +4,7 @@
  * Mirrors the `LoaderConfig` used by PIEOneer's custom element tags.
  */
 
-import type { InstrumentationProvider } from "./instrumentation/types";
+import type { InstrumentationProvider } from "./instrumentation/types.js";
 
 export type LoaderConfig = {
 	/**

@@ -1,10 +1,10 @@
-export * from "./config/profile";
-export * from "./instrumentation";
-export * from "./loader-config";
-export * from "./loaders";
-export * from "./object";
+export * from "./config/profile.js";
+export * from "./instrumentation/index.js";
+export * from "./loader-config.js";
+export * from "./loaders/index.js";
+export * from "./object/index.js";
 // Barrel export for PIE runtime utilities
-export * from "./pie";
+export * from "./pie/index.js";
 export type {
 	AssessmentAuthoringCallbacks,
 	AssessmentEntity,
@@ -24,7 +24,7 @@ export type {
 	RubricBlock,
 	SectionQuestionRef,
 	TestPart,
-} from "./types";
-export { editorPostFix } from "./types";
-export * from "./ui/focus-trap";
-export * from "./ui/safe-storage";
+} from "./types/index.js";
+export { editorPostFix } from "./types/index.js";
+export * from "./ui/focus-trap.js";
+export * from "./ui/safe-storage.js";

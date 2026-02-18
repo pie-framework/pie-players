@@ -5,33 +5,33 @@
  * This is the core of the PIE player system.
  */
 
-import { BUILDER_BUNDLE_URL } from "../config/profile";
-import { mergeObjectsIgnoringNullUndefined } from "../object";
-import type { ConfigEntity, Env, PieModel } from "../types";
-import { editorPostFix } from "../types";
-import { createPieLogger, isGlobalDebugEnabled } from "./logger";
-import { initializeMathRendering } from "./math-rendering";
-import { pieRegistry } from "./registry";
-import { findPieController } from "./scoring";
-import { validateCustomElementTag } from "./tag-names";
+import { BUILDER_BUNDLE_URL } from "../config/profile.js";
+import { mergeObjectsIgnoringNullUndefined } from "../object/index.js";
+import type { ConfigEntity, Env, PieModel } from "../types/index.js";
+import { editorPostFix } from "../types/index.js";
+import { createPieLogger, isGlobalDebugEnabled } from "./logger.js";
+import { initializeMathRendering } from "./math-rendering.js";
+import { pieRegistry } from "./registry.js";
+import { findPieController } from "./scoring.js";
+import { validateCustomElementTag } from "./tag-names.js";
 import type {
 	EventListeners,
 	LoadPieElementsOptions,
 	PieElement,
 	PieRegistry,
-} from "./types";
+} from "./types.js";
 import {
 	BundleType,
 	isCustomElementConstructor,
 	isPieAvailable,
 	Status,
-} from "./types";
-import { updatePieElement } from "./updates";
+} from "./types.js";
+import { updatePieElement } from "./updates.js";
 import {
 	findOrAddSession,
 	getPackageWithoutVersion,
 	getPieElementBundlesUrl,
-} from "./utils";
+} from "./utils.js";
 
 // Create module-level logger (respects global debug flag - pass function for dynamic checking)
 const logger = createPieLogger("pie-initialization", () =>

@@ -22,7 +22,7 @@ import type {
 	PluralTranslation,
 	TranslationBundle,
 } from "@pie-players/pie-players-shared/i18n";
-import { createLogger } from "../utils/logger";
+import { createLogger } from "../utils/logger.js";
 
 const log = createLogger("I18nService");
 

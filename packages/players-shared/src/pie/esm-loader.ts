@@ -11,11 +11,11 @@
  * initialization code to work with ESM-loaded elements.
  */
 
-import { createPieLogger } from "./logger";
-import { initializeMathRendering } from "./math-rendering";
-import { pieRegistry } from "./registry";
-import { validateCustomElementTag } from "./tag-names";
-import { isCustomElementConstructor, Status } from "./types";
+import { createPieLogger } from "./logger.js";
+import { initializeMathRendering } from "./math-rendering.js";
+import { pieRegistry } from "./registry.js";
+import { validateCustomElementTag } from "./tag-names.js";
+import { isCustomElementConstructor, Status } from "./types.js";
 
 // Logger factory - will be initialized when loader is created
 let logger: ReturnType<typeof createPieLogger>;

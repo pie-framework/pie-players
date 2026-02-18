@@ -5,7 +5,7 @@
  * Used for standalone components that don't need the full service architecture.
  */
 
-import type { I18nConfig, PluralTranslation, TranslationBundle } from "./types";
+import type { I18nConfig, PluralTranslation, TranslationBundle } from "./types.js";
 
 /**
  * Simple I18n class for standalone use

@@ -1,5 +1,56 @@
 # @pie-players/pie-section-tools-toolbar
 
+## 0.2.9
+
+### Patch Changes
+
+- Add explicit section toolbar visibility controls and prevent empty toolbar gutters.
+
+  `pie-section-player` now supports `show-toolbar` and `toolbar-position="none"`, and the toolbar is not rendered when there are no enabled tools.
+
+## 0.2.8
+
+### Patch Changes
+
+- Make section player imports SSR-safe by deferring custom element module loading to the browser.
+
+  This prevents server-side `HTMLElement` errors when consuming `pie-section-player` in SSR apps and keeps integration hack-free for standard npm consumers.
+
+## 0.2.7
+
+### Patch Changes
+
+- Release patch versions for all deployable packages.
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.2.7
+  - @pie-players/pie-calculator-mathjs@0.1.3
+  - @pie-players/pie-players-shared@0.2.4
+  - @pie-players/pie-tool-graph@0.1.8
+  - @pie-players/pie-tool-line-reader@0.1.8
+  - @pie-players/pie-tool-magnifier@0.1.8
+  - @pie-players/pie-tool-periodic-table@0.1.8
+  - @pie-players/pie-tool-protractor@0.1.8
+  - @pie-players/pie-tool-ruler@0.1.8
+
+## 0.2.6
+
+### Patch Changes
+
+- ce5211a: Release all packages after the NodeNext/ESM migration updates.
+
+  This includes explicit `.js` relative import specifiers, NodeNext TypeScript configuration alignment, and dependency/version housekeeping needed for consistent package builds and publishing.
+
+- Updated dependencies [ce5211a]
+  - @pie-players/pie-assessment-toolkit@0.2.6
+  - @pie-players/pie-calculator-mathjs@0.1.2
+  - @pie-players/pie-players-shared@0.2.3
+  - @pie-players/pie-tool-graph@0.1.7
+  - @pie-players/pie-tool-line-reader@0.1.7
+  - @pie-players/pie-tool-magnifier@0.1.7
+  - @pie-players/pie-tool-periodic-table@0.1.7
+  - @pie-players/pie-tool-protractor@0.1.7
+  - @pie-players/pie-tool-ruler@0.1.7
+
 ## 0.2.5
 
 ### Patch Changes

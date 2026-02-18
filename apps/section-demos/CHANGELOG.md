@@ -1,5 +1,55 @@
 # @pie-players/section-demos
 
+## 0.1.11
+
+### Patch Changes
+
+- Updated dependencies
+  - @pie-players/pie-section-player@0.2.10
+  - @pie-players/pie-section-tools-toolbar@0.2.9
+
+## 0.1.10
+
+### Patch Changes
+
+- Updated dependencies
+  - @pie-players/pie-section-player@0.2.9
+  - @pie-players/pie-section-tools-toolbar@0.2.8
+
+## 0.1.9
+
+### Patch Changes
+
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.2.7
+  - @pie-players/pie-players-shared@0.2.4
+  - @pie-players/pie-section-player@0.2.8
+  - @pie-players/pie-section-tools-toolbar@0.2.7
+  - @pie-players/pie-tool-annotation-toolbar@0.1.8
+  - @pie-players/pie-tool-answer-eliminator@0.2.8
+  - @pie-players/pie-tool-tts-inline@0.1.5
+  - @pie-players/tts-client-server@0.2.3
+  - @pie-players/tts-server-core@0.1.3
+  - @pie-players/tts-server-google@0.1.3
+  - @pie-players/tts-server-polly@0.1.3
+
+## 0.1.8
+
+### Patch Changes
+
+- Updated dependencies [ce5211a]
+  - @pie-players/pie-assessment-toolkit@0.2.6
+  - @pie-players/pie-players-shared@0.2.3
+  - @pie-players/pie-section-player@0.2.7
+  - @pie-players/pie-section-tools-toolbar@0.2.6
+  - @pie-players/pie-tool-annotation-toolbar@0.1.7
+  - @pie-players/pie-tool-answer-eliminator@0.2.7
+  - @pie-players/pie-tool-tts-inline@0.1.4
+  - @pie-players/tts-client-server@0.2.2
+  - @pie-players/tts-server-core@0.1.2
+  - @pie-players/tts-server-google@0.1.2
+  - @pie-players/tts-server-polly@0.1.2
+
 ## 0.1.7
 
 ### Patch Changes

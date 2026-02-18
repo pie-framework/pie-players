@@ -56,6 +56,7 @@
 
 			// Tools toolbar position
 			toolbarPosition: { attribute: 'toolbar-position', type: 'String' },
+			showToolbar: { attribute: 'show-toolbar', type: 'Boolean' },
 
 			// Debug
 			debug: { attribute: 'debug', type: 'String' },
@@ -81,8 +82,7 @@ import type {
 	import SplitPanelLayout from './components/layouts/SplitPanelLayout.svelte';
 	import VerticalLayout from './components/layouts/VerticalLayout.svelte';
 
-	// Import section tools toolbar web component
-	import '@pie-players/pie-section-tools-toolbar';
+	const isBrowser = typeof window !== 'undefined';
 
 	// Props
 	let {
@@ -96,7 +96,8 @@ import type {
 		playerVersion = 'latest',
 		playerType = 'auto' as 'auto' | 'iife' | 'esm' | 'fixed' | 'inline',
 		customClassname = '',
-		toolbarPosition = 'right' as 'top' | 'right' | 'bottom' | 'left',
+		toolbarPosition = 'right' as 'top' | 'right' | 'bottom' | 'left' | 'none',
+		showToolbar = true,
 		debug = '' as string | boolean,
 
 		// Toolkit coordinator (optional - creates default if not provided)
@@ -269,6 +270,12 @@ import type {
 
 	// Lifecycle
 	onMount(() => {
+		if (isBrowser) {
+			import('@pie-players/pie-section-tools-toolbar').catch((err) => {
+				console.error('[PieSectionPlayer] Failed to load section tools toolbar:', err);
+			});
+		}
+
 		extractContent();
 
 		// Dispatch loaded event
@@ -438,6 +445,8 @@ import type {
 
 	// Compute enabled tools string from reactive state
 	let enabledToolsString = $derived(sectionToolsEnabled.join(','));
+	let hasEnabledTools = $derived(enabledToolsString.trim().length > 0);
+	let shouldRenderToolbar = $derived(showToolbar && toolbarPosition !== 'none' && hasEnabledTools);
 
 	// Bind toolkitCoordinator, registry, position, and enabled tools to toolbar element
 	$effect(() => {
@@ -578,11 +587,13 @@ import type {
 		</div>
 
 		<!-- Section-level floating tools toolbar -->
-		<pie-section-tools-toolbar
-			bind:this={toolbarElement}
-			position={toolbarPosition}
-			enabled-tools={enabledToolsString}
-		></pie-section-tools-toolbar>
+		{#if shouldRenderToolbar}
+			<pie-section-tools-toolbar
+				bind:this={toolbarElement}
+				position={toolbarPosition}
+				enabled-tools={enabledToolsString}
+			></pie-section-tools-toolbar>
+		{/if}
 	{:else}
 		<div class="loading">
 			<p>Loading section...</p>

@@ -1,5 +1,48 @@
 # @pie-players/pie-tool-toolbar
 
+## 0.1.9
+
+### Patch Changes
+
+- Release patch versions for all deployable packages.
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.2.7
+  - @pie-players/pie-players-shared@0.2.4
+  - @pie-players/pie-tool-annotation-toolbar@0.1.8
+  - @pie-players/pie-tool-answer-eliminator@0.2.8
+  - @pie-players/pie-tool-calculator@0.1.8
+  - @pie-players/pie-tool-color-scheme@0.1.8
+  - @pie-players/pie-tool-graph@0.1.8
+  - @pie-players/pie-tool-line-reader@0.1.8
+  - @pie-players/pie-tool-magnifier@0.1.8
+  - @pie-players/pie-tool-periodic-table@0.1.8
+  - @pie-players/pie-tool-protractor@0.1.8
+  - @pie-players/pie-tool-ruler@0.1.8
+  - @pie-players/pie-tool-text-to-speech@0.1.8
+
+## 0.1.8
+
+### Patch Changes
+
+- ce5211a: Release all packages after the NodeNext/ESM migration updates.
+
+  This includes explicit `.js` relative import specifiers, NodeNext TypeScript configuration alignment, and dependency/version housekeeping needed for consistent package builds and publishing.
+
+- Updated dependencies [ce5211a]
+  - @pie-players/pie-assessment-toolkit@0.2.6
+  - @pie-players/pie-players-shared@0.2.3
+  - @pie-players/pie-tool-annotation-toolbar@0.1.7
+  - @pie-players/pie-tool-answer-eliminator@0.2.7
+  - @pie-players/pie-tool-calculator@0.1.7
+  - @pie-players/pie-tool-color-scheme@0.1.7
+  - @pie-players/pie-tool-graph@0.1.7
+  - @pie-players/pie-tool-line-reader@0.1.7
+  - @pie-players/pie-tool-magnifier@0.1.7
+  - @pie-players/pie-tool-periodic-table@0.1.7
+  - @pie-players/pie-tool-protractor@0.1.7
+  - @pie-players/pie-tool-ruler@0.1.7
+  - @pie-players/pie-tool-text-to-speech@0.1.7
+
 ## 0.1.7
 
 ### Patch Changes

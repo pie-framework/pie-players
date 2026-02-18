@@ -1,5 +1,32 @@
 # @pie-players/pie-assessment-toolkit
 
+## 0.2.7
+
+### Patch Changes
+
+- Release patch versions for all deployable packages.
+- Updated dependencies
+  - @pie-players/pie-calculator@0.1.3
+  - @pie-players/pie-calculator-desmos@0.1.4
+  - @pie-players/pie-players-shared@0.2.4
+  - @pie-players/pie-tts@0.1.3
+  - @pie-players/tts-client-server@0.2.3
+
+## 0.2.6
+
+### Patch Changes
+
+- ce5211a: Release all packages after the NodeNext/ESM migration updates.
+
+  This includes explicit `.js` relative import specifiers, NodeNext TypeScript configuration alignment, and dependency/version housekeeping needed for consistent package builds and publishing.
+
+- Updated dependencies [ce5211a]
+  - @pie-players/pie-calculator@0.1.2
+  - @pie-players/pie-calculator-desmos@0.1.3
+  - @pie-players/pie-players-shared@0.2.3
+  - @pie-players/pie-tts@0.1.2
+  - @pie-players/tts-client-server@0.2.2
+
 ## 0.2.5
 
 ### Patch Changes

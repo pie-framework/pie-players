@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-esm-player",
-	"version": "0.2.2",
+	"version": "0.2.4",
 	"type": "module",
 	"description": "ESM-based web component for rendering PIE assessment items with full session management",
 	"license": "MIT",

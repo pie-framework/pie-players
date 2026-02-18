@@ -1,5 +1,68 @@
 # @pie-players/pie-section-player
 
+## 0.2.10
+
+### Patch Changes
+
+- Add explicit section toolbar visibility controls and prevent empty toolbar gutters.
+
+  `pie-section-player` now supports `show-toolbar` and `toolbar-position="none"`, and the toolbar is not rendered when there are no enabled tools.
+
+- Updated dependencies
+  - @pie-players/pie-section-tools-toolbar@0.2.9
+
+## 0.2.9
+
+### Patch Changes
+
+- Make section player imports SSR-safe by deferring custom element module loading to the browser.
+
+  This prevents server-side `HTMLElement` errors when consuming `pie-section-player` in SSR apps and keeps integration hack-free for standard npm consumers.
+
+- Updated dependencies
+  - @pie-players/pie-section-tools-toolbar@0.2.8
+
+## 0.2.8
+
+### Patch Changes
+
+- Release patch versions for all deployable packages.
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.2.7
+  - @pie-players/pie-esm-player@0.2.4
+  - @pie-players/pie-fixed-player@0.2.4
+  - @pie-players/pie-iife-player@0.2.4
+  - @pie-players/pie-inline-player@0.2.4
+  - @pie-players/pie-players-shared@0.2.4
+  - @pie-players/pie-section-tools-toolbar@0.2.7
+  - @pie-players/pie-tool-answer-eliminator@0.2.8
+  - @pie-players/pie-tool-calculator@0.1.8
+  - @pie-players/pie-tool-calculator-inline@0.1.5
+  - @pie-players/pie-tool-tts-inline@0.1.5
+  - @pie-players/tts-client-server@0.2.3
+
+## 0.2.7
+
+### Patch Changes
+
+- ce5211a: Release all packages after the NodeNext/ESM migration updates.
+
+  This includes explicit `.js` relative import specifiers, NodeNext TypeScript configuration alignment, and dependency/version housekeeping needed for consistent package builds and publishing.
+
+- Updated dependencies [ce5211a]
+  - @pie-players/pie-assessment-toolkit@0.2.6
+  - @pie-players/pie-esm-player@0.2.3
+  - @pie-players/pie-fixed-player@0.2.3
+  - @pie-players/pie-iife-player@0.2.3
+  - @pie-players/pie-inline-player@0.2.3
+  - @pie-players/pie-players-shared@0.2.3
+  - @pie-players/pie-section-tools-toolbar@0.2.6
+  - @pie-players/pie-tool-answer-eliminator@0.2.7
+  - @pie-players/pie-tool-calculator@0.1.7
+  - @pie-players/pie-tool-calculator-inline@0.1.4
+  - @pie-players/pie-tool-tts-inline@0.1.4
+  - @pie-players/tts-client-server@0.2.2
+
 ## 0.2.6
 
 ### Patch Changes

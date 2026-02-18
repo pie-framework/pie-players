@@ -1,5 +1,26 @@
 # @pie-players/pie-tool-periodic-table
 
+## 0.1.8
+
+### Patch Changes
+
+- Release patch versions for all deployable packages.
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.2.7
+  - @pie-players/pie-players-shared@0.2.4
+
+## 0.1.7
+
+### Patch Changes
+
+- ce5211a: Release all packages after the NodeNext/ESM migration updates.
+
+  This includes explicit `.js` relative import specifiers, NodeNext TypeScript configuration alignment, and dependency/version housekeeping needed for consistent package builds and publishing.
+
+- Updated dependencies [ce5211a]
+  - @pie-players/pie-assessment-toolkit@0.2.6
+  - @pie-players/pie-players-shared@0.2.3
+
 ## 0.1.6
 
 ### Patch Changes

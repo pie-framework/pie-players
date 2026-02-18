@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-tool-tts-inline",
-	"version": "0.1.3",
+	"version": "0.1.5",
 	"type": "module",
 	"main": "./dist/tool-tts-inline.js",
 	"types": "./dist/tool-tts-inline.d.ts",

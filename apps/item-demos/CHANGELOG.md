@@ -1,5 +1,21 @@
 # @pie-players/item-demos
 
+## 0.1.5
+
+### Patch Changes
+
+- Updated dependencies
+  - @pie-players/pie-iife-player@0.2.4
+  - @pie-players/pie-players-shared@0.2.4
+
+## 0.1.4
+
+### Patch Changes
+
+- Updated dependencies [ce5211a]
+  - @pie-players/pie-iife-player@0.2.3
+  - @pie-players/pie-players-shared@0.2.3
+
 ## 0.1.3
 
 ### Patch Changes

@@ -34,15 +34,6 @@
 	} from '@pie-players/pie-assessment-toolkit';
 	import { onDestroy, onMount } from 'svelte';
 
-	// Import tool web components to register them
-	import '@pie-players/pie-tool-calculator';
-	import '@pie-players/pie-tool-graph';
-	import '@pie-players/pie-tool-periodic-table';
-	import '@pie-players/pie-tool-protractor';
-	import '@pie-players/pie-tool-line-reader';
-	import '@pie-players/pie-tool-magnifier';
-	import '@pie-players/pie-tool-ruler';
-
 	const isBrowser = typeof window !== 'undefined';
 
 	// Props
@@ -53,7 +44,7 @@
 		toolProviderRegistry
 	}: {
 		enabledTools?: string;
-		position?: 'top' | 'right' | 'bottom' | 'left';
+		position?: 'top' | 'right' | 'bottom' | 'left' | 'none';
 		toolCoordinator?: IToolCoordinator;
 		toolProviderRegistry?: ToolProviderRegistry;
 	} = $props();
@@ -65,6 +56,7 @@
 			.map((t) => t.trim())
 			.filter(Boolean)
 	);
+	let hasEnabledTools = $derived(enabledToolsList.length > 0);
 
 	// Tool visibility state (reactive to coordinator changes)
 	let showGraph = $state(false);
@@ -104,6 +96,27 @@
 	let unsubscribe: (() => void) | null = null;
 
 	onMount(() => {
+		if (isBrowser && hasEnabledTools) {
+			const toolModules: Record<string, string> = {
+				calculator: '@pie-players/pie-tool-calculator',
+				graph: '@pie-players/pie-tool-graph',
+				periodicTable: '@pie-players/pie-tool-periodic-table',
+				protractor: '@pie-players/pie-tool-protractor',
+				lineReader: '@pie-players/pie-tool-line-reader',
+				magnifier: '@pie-players/pie-tool-magnifier',
+				ruler: '@pie-players/pie-tool-ruler'
+			};
+
+			Promise.all(
+				enabledToolsList
+					.map((toolId) => toolModules[toolId])
+					.filter(Boolean)
+					.map((moduleId) => import(moduleId))
+			).catch((err) => {
+				console.error('[SectionToolsToolbar] Failed to load tool web components:', err);
+			});
+		}
+
 		if (toolCoordinator) {
 			updateToolVisibility();
 			unsubscribe = toolCoordinator.subscribe(() => {
@@ -195,7 +208,7 @@
 	});
 </script>
 
-{#if isBrowser}
+{#if isBrowser && position !== 'none' && hasEnabledTools}
 	<div
 		class="section-tools-toolbar section-tools-toolbar--{position}"
 		class:section-tools-toolbar--top={position === 'top'}

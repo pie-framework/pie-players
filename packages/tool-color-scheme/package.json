@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-tool-color-scheme",
-	"version": "0.1.6",
+	"version": "0.1.8",
 	"type": "module",
 	"description": "Color scheme tool for PIE assessment player - provides Learnosity-standard accessible color schemes",
 	"repository": {

@@ -35,7 +35,7 @@ import {
 	type TestSession,
 	upsertItemSessionFromPieSessionChange,
 	upsertVisitedItem,
-} from "../attempt/TestSession";
+} from "../attempt/TestSession.js";
 import {
 	type AssessmentToolkitEvents,
 	HighlightCoordinator,
@@ -45,28 +45,28 @@ import {
 	ToolCoordinator,
 	TTSService,
 	TypedEventBus,
-} from "../index";
-import type { LoadItem } from "../item-loader";
-import { AssessmentAuthoringService } from "../services/AssessmentAuthoringService";
-import { ContextVariableStore } from "../services/ContextVariableStore";
+} from "../index.js";
+import type { LoadItem } from "../item-loader.js";
+import { AssessmentAuthoringService } from "../services/AssessmentAuthoringService.js";
+import { ContextVariableStore } from "../services/ContextVariableStore.js";
 import {
 	PNPToolResolver,
 	type ResolvedToolConfig,
-} from "../services/PNPToolResolver";
-import type { DefaultToolRegistryOptions } from "../services/createDefaultToolRegistry";
-import { createDefaultToolRegistry } from "../services/createDefaultToolRegistry";
-import { BrowserTTSProvider } from "../services/tts/browser-provider";
+} from "../services/PNPToolResolver.js";
+import type { DefaultToolRegistryOptions } from "../services/createDefaultToolRegistry.js";
+import { createDefaultToolRegistry } from "../services/createDefaultToolRegistry.js";
+import { BrowserTTSProvider } from "../services/tts/browser-provider.js";
 import {
 	DesmosCalculatorProvider,
 	TICalculatorProvider,
-} from "../tools/client";
+} from "../tools/client.js";
 import {
 	buildNavigationStructure,
 	detectAssessmentFormat,
 	getAllQuestionRefs,
 	type NavigationNode,
 	type QuestionRef,
-} from "./qti-navigation";
+} from "./qti-navigation.js";
 
 export interface ReferencePlayerConfig {
 	assessment: AssessmentEntity;

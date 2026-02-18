@@ -24,9 +24,9 @@ export type {
 	ElementLoaderInterface,
 	ElementMap,
 	LoadOptions,
-} from "./ElementLoader";
-export { aggregateElements } from "./ElementLoader";
-export type { EsmElementLoaderConfig } from "./EsmElementLoader";
-export { EsmElementLoader } from "./EsmElementLoader";
-export type { IifeElementLoaderConfig } from "./IifeElementLoader";
-export { IifeElementLoader } from "./IifeElementLoader";
+} from "./ElementLoader.js";
+export { aggregateElements } from "./ElementLoader.js";
+export type { EsmElementLoaderConfig } from "./EsmElementLoader.js";
+export { EsmElementLoader } from "./EsmElementLoader.js";
+export type { IifeElementLoaderConfig } from "./IifeElementLoader.js";
+export { IifeElementLoader } from "./IifeElementLoader.js";

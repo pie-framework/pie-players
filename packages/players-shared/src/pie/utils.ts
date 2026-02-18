@@ -4,8 +4,8 @@
  * URL building, package name parsing, and session utilities.
  */
 
-import type { ConfigEntity } from "../types";
-import type { LoadPieElementsOptions } from "./types";
+import type { ConfigEntity } from "../types/index.js";
+import type { LoadPieElementsOptions } from "./types.js";
 
 /**
  * Build URL for fetching PIE element bundles from build service

@@ -14,26 +14,26 @@
 export {
 	DesmosCalculatorProvider,
 	desmosProvider,
-} from "./calculators/desmos-provider";
+} from "./calculators/desmos-provider.js";
 // @deprecated Instantiate providers directly instead
 export {
 	MathJsCalculatorProvider,
 	mathjsProvider,
-} from "./calculators/mathjs-provider";
+} from "./calculators/mathjs-provider.js";
 // @deprecated Instantiate providers directly instead
-export { TICalculatorProvider, tiProvider } from "./calculators/ti-provider";
+export { TICalculatorProvider, tiProvider } from "./calculators/ti-provider.js";
 // Library loader (client-safe, has SSR guards)
 export {
 	COMMON_LIBRARIES,
 	LibraryLoaderImpl,
 	libraryLoader,
-} from "./library-loader";
+} from "./library-loader.js";
 // Response discovery (client-safe, browser-only)
 export {
 	ResponseDiscoveryServiceImpl,
 	responseDiscovery,
-} from "./response-discovery";
+} from "./response-discovery.js";
 // Tool coordinator (client-safe, uses Svelte stores)
-export * from "./tool-coordinator";
+export * from "./tool-coordinator.js";
 // Core types (client-safe)
-export * from "./types";
+export * from "./types.js";

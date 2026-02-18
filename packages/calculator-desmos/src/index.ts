@@ -4,4 +4,4 @@
  * Desmos calculator provider - High-quality graphing calculators.
  */
 
-export { DesmosCalculatorProvider } from "./desmos-provider";
+export { DesmosCalculatorProvider } from "./desmos-provider.js";

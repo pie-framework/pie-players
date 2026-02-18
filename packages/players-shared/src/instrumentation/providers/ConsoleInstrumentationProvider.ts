@@ -19,8 +19,8 @@
  * ```
  */
 
-import type { InstrumentationConfig, MetricAttributes } from "../types";
-import { BaseInstrumentationProvider } from "./BaseInstrumentationProvider";
+import type { InstrumentationConfig, MetricAttributes } from "../types.js";
+import { BaseInstrumentationProvider } from "./BaseInstrumentationProvider.js";
 
 export interface ConsoleProviderConfig {
 	/**

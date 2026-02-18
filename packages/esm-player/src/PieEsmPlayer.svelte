@@ -74,9 +74,8 @@
 		isGlobalDebugEnabled,
 		makeUniqueTags,
 	} from '@pie-players/pie-players-shared';
-	import PieItemPlayer from '@pie-players/pie-players-shared/components/PieItemPlayer.svelte';
-	import PieSpinner from '@pie-players/pie-players-shared/components/PieSpinner.svelte';
-import { tick } from 'svelte';
+	import { PieItemPlayer, PieSpinner } from '@pie-players/pie-players-shared/components';
+	import { tick } from 'svelte';
 
 	type ItemSession = {
 		id: string;
@@ -405,10 +404,10 @@ import { tick } from 'svelte';
 				{ttsService}
 				{toolCoordinator}
 				{highlightCoordinator}
-				onLoadComplete={(detail) => handlePlayerEvent(new CustomEvent('load-complete', { detail }))}
-				onPlayerError={(detail) => handlePlayerEvent(new CustomEvent('player-error', { detail }))}
-				onSessionChanged={(detail) => handleSessionChanged(new CustomEvent('session-changed', { detail }))}
-				onModelUpdated={(detail) => handlePlayerEvent(new CustomEvent('model-updated', { detail }))}
+				onLoadComplete={(detail: unknown) => handlePlayerEvent(new CustomEvent('load-complete', { detail }))}
+				onPlayerError={(detail: unknown) => handlePlayerEvent(new CustomEvent('player-error', { detail }))}
+				onSessionChanged={(detail: unknown) => handleSessionChanged(new CustomEvent('session-changed', { detail }))}
+				onModelUpdated={(detail: unknown) => handlePlayerEvent(new CustomEvent('model-updated', { detail }))}
 			/>
 		</div>
 	{/if}

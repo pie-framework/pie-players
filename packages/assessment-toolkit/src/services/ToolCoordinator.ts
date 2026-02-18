@@ -13,8 +13,8 @@
  * Part of PIE Assessment Toolkit.
  */
 
-import { createLogger } from "../utils/logger";
-import type { IToolCoordinator, ToolState } from "./interfaces";
+import { createLogger } from "../utils/logger.js";
+import type { IToolCoordinator, ToolState } from "./interfaces.js";
 
 const log = createLogger("ToolCoordinator");
 

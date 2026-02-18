@@ -1,5 +1,13 @@
 # @pie-players/pie-assessment-player
 
+## 0.1.7
+
+### Patch Changes
+
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.2.5
+  - @pie-players/pie-tool-toolbar@0.1.7
+
 ## 0.1.6
 
 ### Patch Changes

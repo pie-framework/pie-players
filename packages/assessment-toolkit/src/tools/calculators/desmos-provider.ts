@@ -16,7 +16,7 @@ import type {
 	CalculatorType,
 	DesmosCalculatorConfig,
 } from "@pie-players/pie-calculator";
-import { COMMON_LIBRARIES, libraryLoader } from "../library-loader";
+import { COMMON_LIBRARIES, libraryLoader } from "../library-loader.js";
 
 /**
  * Desmos Calculator Provider Implementation

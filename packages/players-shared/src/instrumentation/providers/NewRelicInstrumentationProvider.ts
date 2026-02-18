@@ -21,8 +21,8 @@
  * ```
  */
 
-import type { InstrumentationConfig } from "../types";
-import { BaseInstrumentationProvider } from "./BaseInstrumentationProvider";
+import type { InstrumentationConfig } from "../types.js";
+import { BaseInstrumentationProvider } from "./BaseInstrumentationProvider.js";
 
 export class NewRelicInstrumentationProvider extends BaseInstrumentationProvider {
 	readonly providerId = "newrelic";

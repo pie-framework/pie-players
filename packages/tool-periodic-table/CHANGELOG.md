@@ -1,5 +1,12 @@
 # @pie-players/pie-tool-periodic-table
 
+## 0.1.6
+
+### Patch Changes
+
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.2.5
+
 ## 0.1.5
 
 ### Patch Changes

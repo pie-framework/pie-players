@@ -4,13 +4,13 @@
  * Functions for updating PIE elements with new models, sessions, and env.
  */
 
-import { mergeObjectsIgnoringNullUndefined } from "../object";
-import type { ConfigEntity, Env, PieController, PieModel } from "../types";
-import { createPieLogger, isGlobalDebugEnabled } from "./logger";
-import { findPieController } from "./scoring";
-import type { PieElement, UpdatePieElementOptions } from "./types";
-import { defaultPieElementOptions } from "./types";
-import { findOrAddSession } from "./utils";
+import { mergeObjectsIgnoringNullUndefined } from "../object/index.js";
+import type { ConfigEntity, Env, PieController, PieModel } from "../types/index.js";
+import { createPieLogger, isGlobalDebugEnabled } from "./logger.js";
+import { findPieController } from "./scoring.js";
+import type { PieElement, UpdatePieElementOptions } from "./types.js";
+import { defaultPieElementOptions } from "./types.js";
+import { findOrAddSession } from "./utils.js";
 
 // Create module-level logger (respects global debug flag - pass function for dynamic checking)
 const logger = createPieLogger("pie-updates", () => isGlobalDebugEnabled());

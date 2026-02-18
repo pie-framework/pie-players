@@ -7,7 +7,7 @@
  * Part of PIE Assessment Toolkit.
  */
 
-import type { IToolProvider, ToolCategory } from "./IToolProvider";
+import type { IToolProvider, ToolCategory } from "./IToolProvider.js";
 
 /**
  * Configuration for registering a tool provider

@@ -50,11 +50,11 @@ import type {
 	ItemSettings,
 	PersonalNeedsProfile,
 } from "@pie-players/pie-players-shared/types";
-import type { ToolRegistry } from "./ToolRegistry";
+import type { ToolRegistry } from "./ToolRegistry.js";
 import {
 	PNPProvenanceBuilder,
 	type PNPResolutionProvenance,
-} from "./pnp-provenance";
+} from "./pnp-provenance.js";
 
 /**
  * Resolved tool configuration with source tracking

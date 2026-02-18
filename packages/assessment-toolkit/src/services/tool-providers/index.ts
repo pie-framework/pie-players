@@ -12,21 +12,21 @@ export type {
 	IToolProvider,
 	ToolCategory,
 	ToolProviderCapabilities,
-} from "./IToolProvider";
+} from "./IToolProvider.js";
 
 // Registry
-export { ToolProviderRegistry } from "./ToolProviderRegistry";
-export type { ToolProviderConfig } from "./ToolProviderRegistry";
+export { ToolProviderRegistry } from "./ToolProviderRegistry.js";
+export type { ToolProviderConfig } from "./ToolProviderRegistry.js";
 
 // Concrete providers
-export { DesmosToolProvider } from "./DesmosToolProvider";
-export type { DesmosToolProviderConfig } from "./DesmosToolProvider";
+export { DesmosToolProvider } from "./DesmosToolProvider.js";
+export type { DesmosToolProviderConfig } from "./DesmosToolProvider.js";
 
-export { TIToolProvider } from "./TIToolProvider";
-export type { TIToolProviderConfig } from "./TIToolProvider";
+export { TIToolProvider } from "./TIToolProvider.js";
+export type { TIToolProviderConfig } from "./TIToolProvider.js";
 
-export { TTSToolProvider } from "./TTSToolProvider";
+export { TTSToolProvider } from "./TTSToolProvider.js";
 export type {
 	TTSToolProviderConfig,
 	TTSBackend,
-} from "./TTSToolProvider";
+} from "./TTSToolProvider.js";

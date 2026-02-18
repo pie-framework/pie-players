@@ -17,7 +17,7 @@
  */
 
 import { derived, get, writable } from "svelte/store";
-import type { ToolCoordinator, ToolId, ToolState } from "./types";
+import type { ToolCoordinator, ToolId, ToolState } from "./types.js";
 
 interface ToolCoordinatorState {
 	tools: Map<ToolId, ToolState>;

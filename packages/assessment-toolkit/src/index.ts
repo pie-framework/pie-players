@@ -11,7 +11,7 @@
 // Core Infrastructure
 // ============================================================================
 
-export { TypedEventBus } from "./core/TypedEventBus";
+export { TypedEventBus } from "./core/TypedEventBus.js";
 
 // ============================================================================
 // Service Interfaces
@@ -27,7 +27,7 @@ export type {
 	IToolkitCoordinator,
 	ITTSService,
 	ToolState,
-} from "./services/interfaces";
+} from "./services/interfaces.js";
 
 // ============================================================================
 // Toolkit Services
@@ -39,23 +39,23 @@ export type {
 	CatalogStatistics,
 	CatalogType,
 	ResolvedCatalog,
-} from "./services/AccessibilityCatalogResolver";
-export { AccessibilityCatalogResolver } from "./services/AccessibilityCatalogResolver";
-export { AssessmentAuthoringService } from "./services/AssessmentAuthoringService";
+} from "./services/AccessibilityCatalogResolver.js";
+export { AccessibilityCatalogResolver } from "./services/AccessibilityCatalogResolver.js";
+export { AssessmentAuthoringService } from "./services/AssessmentAuthoringService.js";
 // Context Variable Store (QTI 3.0 Context Declarations)
-export { ContextVariableStore } from "./services/ContextVariableStore";
+export { ContextVariableStore } from "./services/ContextVariableStore.js";
 // Element Tool State Store (Element-level ephemeral tool state)
-export { ElementToolStateStore } from "./services/ElementToolStateStore";
+export { ElementToolStateStore } from "./services/ElementToolStateStore.js";
 // Highlight Coordinator
-export type { Annotation } from "./services/HighlightCoordinator";
+export type { Annotation } from "./services/HighlightCoordinator.js";
 export {
 	HighlightColor,
 	HighlightCoordinator,
 	HighlightType,
-} from "./services/HighlightCoordinator";
+} from "./services/HighlightCoordinator.js";
 // Range Serializer (for annotation persistence)
-export type { SerializedRange } from "./services/RangeSerializer";
-export { RangeSerializer } from "./services/RangeSerializer";
+export type { SerializedRange } from "./services/RangeSerializer.js";
+export { RangeSerializer } from "./services/RangeSerializer.js";
 // Annotation Toolbar Configuration (Backend API endpoints)
 export type {
 	AnnotationToolbarConfig,
@@ -65,23 +65,23 @@ export type {
 	PictureDictionaryLookupResponse,
 	TranslationRequest,
 	TranslationResponse,
-} from "./services/AnnotationToolbarConfig";
-export { AnnotationToolbarAPIClient } from "./services/AnnotationToolbarConfig";
+} from "./services/AnnotationToolbarConfig.js";
+export { AnnotationToolbarAPIClient } from "./services/AnnotationToolbarConfig.js";
 // I18n Service
 export type {
 	I18nConfig,
 	PluralTranslation,
 	TranslationBundle,
-} from "./services/I18nService";
-export { I18nService } from "./services/I18nService";
+} from "./services/I18nService.js";
+export { I18nService } from "./services/I18nService.js";
 // Tool Registry (Registry-based tool system)
 export type {
 	ToolButtonDefinition,
 	ToolButtonOptions,
 	ToolInstanceOptions,
 	ToolRegistration,
-} from "./services/ToolRegistry";
-export { ToolRegistry } from "./services/ToolRegistry";
+} from "./services/ToolRegistry.js";
+export { ToolRegistry } from "./services/ToolRegistry.js";
 export type {
 	AssessmentToolContext,
 	BaseToolContext,
@@ -92,7 +92,7 @@ export type {
 	SectionToolContext,
 	ToolContext,
 	ToolLevel,
-} from "./services/tool-context";
+} from "./services/tool-context.js";
 export {
 	extractTextContent,
 	hasChoiceInteraction,
@@ -104,43 +104,43 @@ export {
 	isPassageContext,
 	isRubricContext,
 	isSectionContext,
-} from "./services/tool-context";
+} from "./services/tool-context.js";
 export {
 	createDefaultToolRegistry,
 	DEFAULT_TOOL_PLACEMENT,
 	DEFAULT_TOOL_ORDER,
-} from "./services/createDefaultToolRegistry";
-export type { DefaultToolRegistryOptions } from "./services/createDefaultToolRegistry";
+} from "./services/createDefaultToolRegistry.js";
+export type { DefaultToolRegistryOptions } from "./services/createDefaultToolRegistry.js";
 export type {
 	ToolComponentFactory,
 	ToolComponentFactoryMap,
 	ToolComponentOverrides,
 	ToolTagMap,
-} from "./tools/tool-tag-map";
+} from "./tools/tool-tag-map.js";
 export {
 	createToolElement,
 	DEFAULT_TOOL_TAG_MAP,
 	resolveToolTag,
 	toToolIdFromTag,
-} from "./tools/tool-tag-map";
+} from "./tools/tool-tag-map.js";
 // PNP Tool Resolution (QTI 3.0 Native)
 export type {
 	ResolvedToolConfig,
 	ToolResolutionResult,
-} from "./services/PNPToolResolver";
-export { PNPToolResolver } from "./services/PNPToolResolver";
+} from "./services/PNPToolResolver.js";
+export { PNPToolResolver } from "./services/PNPToolResolver.js";
 // PNP Provenance Tracking
 export type {
 	FeatureResolutionTrail,
 	PNPResolutionProvenance,
 	ResolutionDecision,
-} from "./services/pnp-provenance";
+} from "./services/pnp-provenance.js";
 export {
 	formatProvenanceAsJSON,
 	formatProvenanceAsMarkdown,
 	getFeatureExplanation,
 	PNPProvenanceBuilder,
-} from "./services/pnp-provenance";
+} from "./services/pnp-provenance.js";
 // QTI 3.0 Standard Access Features
 export {
 	ALL_STANDARD_ACCESS_FEATURES,
@@ -149,15 +149,15 @@ export {
 	getFeaturesInCategory,
 	isStandardAccessFeature,
 	QTI_STANDARD_ACCESS_FEATURES,
-} from "./services/pnp-standard-features";
+} from "./services/pnp-standard-features.js";
 // SSML Extractor (Auto-generates catalogs from embedded SSML)
-export type { ExtractionResult } from "./services/SSMLExtractor";
-export { SSMLExtractor } from "./services/SSMLExtractor";
+export type { ExtractionResult } from "./services/SSMLExtractor.js";
+export { SSMLExtractor } from "./services/SSMLExtractor.js";
 // Theme Provider
-export type { FontSize, ThemeConfig } from "./services/ThemeProvider";
-export { ThemeProvider } from "./services/ThemeProvider";
+export type { FontSize, ThemeConfig } from "./services/ThemeProvider.js";
+export { ThemeProvider } from "./services/ThemeProvider.js";
 // Tool Coordinator
-export { ToolCoordinator, ZIndexLayer } from "./services/ToolCoordinator";
+export { ToolCoordinator, ZIndexLayer } from "./services/ToolCoordinator.js";
 // Toolkit Coordinator (Centralized service management)
 export type {
 	AnswerEliminatorToolConfig,
@@ -165,19 +165,19 @@ export type {
 	ToolkitCoordinatorConfig,
 	ToolkitServiceBundle,
 	TTSToolConfig,
-} from "./services/ToolkitCoordinator";
-export { ToolkitCoordinator } from "./services/ToolkitCoordinator";
+} from "./services/ToolkitCoordinator.js";
+export { ToolkitCoordinator } from "./services/ToolkitCoordinator.js";
 // Text-to-Speech Service
-export type { TTSConfig } from "./services/TTSService";
-export { PlaybackState, TTSService } from "./services/TTSService";
-export { BrowserTTSProvider } from "./services/tts/browser-provider";
+export type { TTSConfig } from "./services/TTSService.js";
+export { PlaybackState, TTSService } from "./services/TTSService.js";
+export { BrowserTTSProvider } from "./services/tts/browser-provider.js";
 // TTS Provider System
 export type {
 	ITTSProvider,
 	ITTSProviderImplementation,
 	TTSFeature,
 	TTSProviderCapabilities,
-} from "./services/tts/provider-interface";
+} from "./services/tts/provider-interface.js";
 
 // Note: Removed deprecated exports:
 // - ttsService singleton (use: const service = new TTSService())
@@ -193,12 +193,12 @@ export type {
 	CreateLoadItemOptions,
 	LoadItem,
 	LoadItemOptions,
-} from "./item-loader";
+} from "./item-loader.js";
 export {
 	createFetchItemLoader,
 	createLoadItem,
 	ItemLoadError,
-} from "./item-loader";
+} from "./item-loader.js";
 
 // ============================================================================
 // Event Types (Standard Contracts)
@@ -231,7 +231,7 @@ export type {
 	ToolActivatedEvent,
 	ToolDeactivatedEvent,
 	ToolStateChangedEvent,
-} from "./types/events";
+} from "./types/events.js";
 
 // ============================================================================
 // Players (Optional Reference Implementations)

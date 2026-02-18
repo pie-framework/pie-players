@@ -12,9 +12,9 @@ import {
 	InsertImageEvent,
 	InsertSoundEvent,
 	type SoundHandler,
-} from "../types";
-import { createPieLogger, isGlobalDebugEnabled } from "./logger";
-import type { AssetHandler } from "./types";
+} from "../types/index.js";
+import { createPieLogger, isGlobalDebugEnabled } from "./logger.js";
+import type { AssetHandler } from "./types.js";
 
 const logger = createPieLogger("asset-handler", () => isGlobalDebugEnabled());
 
@@ -221,7 +221,7 @@ export function createDefaultImageInsertHandler(
 
 		// Connect the handler methods
 		handler.cancel = () => dataURLHandler.cancel();
-		handler.done = (err?, src?) => dataURLHandler.done(err, src);
+		handler.done = (err?: Error, src?: string) => dataURLHandler.done(err, src);
 
 		// Trigger file chooser if not a paste event
 		if (!handler.isPasted) {
@@ -257,7 +257,7 @@ export function createDefaultSoundInsertHandler(
 
 		// Connect the handler methods
 		handler.cancel = () => dataURLHandler.cancel();
-		handler.done = (err?, src?) => dataURLHandler.done(err, src);
+		handler.done = (err?: Error, src?: string) => dataURLHandler.done(err, src);
 
 		// Trigger file chooser
 		const input = document.createElement("input");

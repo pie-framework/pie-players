@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-assessment-toolkit",
-	"version": "0.2.4",
+	"version": "0.2.5",
 	"type": "module",
 	"description": "PIE assessment toolkit: composable services + reference implementation for assessment players and tool coordination",
 	"license": "MIT",
@@ -44,6 +44,14 @@
 			"svelte": "./src/components/PNPProfileTester.svelte",
 			"import": "./src/components/PNPProfileTester.svelte"
 		},
+		"./services/pnp-standard-features": {
+			"types": "./dist/services/pnp-standard-features.d.ts",
+			"import": "./dist/services/pnp-standard-features.js"
+		},
+		"./services/pnp-provenance": {
+			"types": "./dist/services/pnp-provenance.d.ts",
+			"import": "./dist/services/pnp-provenance.js"
+		},
 		"./services/I18nService": {
 			"types": "./dist/services/I18nService.d.ts",
 			"import": "./dist/services/I18nService.js"
@@ -67,10 +75,12 @@
 		"@pie-players/pie-calculator-desmos": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*",
 		"@pie-players/pie-tts": "workspace:*",
-		"@pie-players/tts-client-server": "workspace:*"
+		"@pie-players/tts-client-server": "workspace:*",
+		"@sveltejs/kit": "^2.52.0",
+		"daisyui": "^5.5.18"
 	},
 	"peerDependencies": {
-		"svelte": "^5.51.0"
+		"svelte": "^5.51.3"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.3.10",

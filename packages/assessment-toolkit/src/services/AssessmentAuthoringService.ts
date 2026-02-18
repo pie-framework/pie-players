@@ -5,7 +5,7 @@ import type {
 	QuestionEntity,
 	SectionQuestionRef,
 } from "@pie-players/pie-players-shared";
-import { TypedEventBus } from "../core/TypedEventBus";
+import { TypedEventBus } from "../core/TypedEventBus.js";
 
 /**
  * Service for managing assessment structure in authoring mode.
@@ -76,7 +76,7 @@ export class AssessmentAuthoringService {
 	 */
 	removeItem(itemId: string): void {
 		const questions = this.assessment.questions || [];
-		const index = questions.findIndex((q) => q.id === itemId);
+		const index = questions.findIndex((q: QuestionEntity) => q.id === itemId);
 
 		if (index === -1) {
 			return;
@@ -87,9 +87,9 @@ export class AssessmentAuthoringService {
 
 		// Also remove from sections
 		if (this.assessment.sections) {
-			this.assessment.sections = this.assessment.sections.map((section) => ({
+			this.assessment.sections = this.assessment.sections.map((section: AssessmentSection) => ({
 				...section,
-				questions: section.questions.filter((ref) => ref.questionId !== itemId),
+				questions: section.questions.filter((ref: SectionQuestionRef) => ref.questionId !== itemId),
 			}));
 		}
 
@@ -125,7 +125,7 @@ export class AssessmentAuthoringService {
 	 */
 	updateItem(itemId: string, updates: Partial<QuestionEntity>): void {
 		const questions = this.assessment.questions || [];
-		const index = questions.findIndex((q) => q.id === itemId);
+		const index = questions.findIndex((q: QuestionEntity) => q.id === itemId);
 
 		if (index === -1) {
 			return;
@@ -143,7 +143,7 @@ export class AssessmentAuthoringService {
 	 */
 	reorderItems(newOrder: string[]): void {
 		const questions = this.assessment.questions || [];
-		const questionMap = new Map(questions.map((q) => [q.id, q]));
+		const questionMap = new Map(questions.map((q: QuestionEntity) => [q.id, q]));
 
 		const reordered = newOrder
 			.map((id) => questionMap.get(id))
@@ -172,7 +172,7 @@ export class AssessmentAuthoringService {
 	 */
 	removeSection(sectionId: string): void {
 		const sections = this.assessment.sections || [];
-		const index = sections.findIndex((s) => s.id === sectionId);
+		const index = sections.findIndex((s: AssessmentSection) => s.id === sectionId);
 
 		if (index === -1) {
 			return;
@@ -190,7 +190,7 @@ export class AssessmentAuthoringService {
 	 */
 	updateSection(sectionId: string, updates: Partial<AssessmentSection>): void {
 		const sections = this.assessment.sections || [];
-		const index = sections.findIndex((s) => s.id === sectionId);
+		const index = sections.findIndex((s: AssessmentSection) => s.id === sectionId);
 
 		if (index === -1) {
 			return;
@@ -212,7 +212,7 @@ export class AssessmentAuthoringService {
 		sort?: string,
 	): void {
 		const sections = this.assessment.sections || [];
-		const section = sections.find((s) => s.id === sectionId);
+		const section = sections.find((s: AssessmentSection) => s.id === sectionId);
 
 		if (!section) {
 			return;
@@ -229,14 +229,14 @@ export class AssessmentAuthoringService {
 	 */
 	removeQuestionFromSection(sectionId: string, questionId: string): void {
 		const sections = this.assessment.sections || [];
-		const section = sections.find((s) => s.id === sectionId);
+		const section = sections.find((s: AssessmentSection) => s.id === sectionId);
 
 		if (!section) {
 			return;
 		}
 
 		section.questions = section.questions.filter(
-			(ref) => ref.questionId !== questionId,
+			(ref: SectionQuestionRef) => ref.questionId !== questionId,
 		);
 
 		this.emitUpdate();

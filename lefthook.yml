@@ -1,0 +1,9 @@
+pre-commit:
+  parallel: true
+  commands:
+    svelte-check:
+      glob: "*.{js,ts,svelte}"
+      run: bun run check
+    svelte-build:
+      glob: "apps/**/*.{js,ts,svelte,css}"
+      run: bun run --cwd apps/example build

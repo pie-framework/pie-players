@@ -10,7 +10,7 @@ import type {
 	ContentFormat,
 	PIEResponseComponent,
 	ResponseDiscoveryService,
-} from "./types";
+} from "./types.js";
 
 export class ResponseDiscoveryServiceImpl implements ResponseDiscoveryService {
 	private responses = new Map<string, PIEResponseComponent>();

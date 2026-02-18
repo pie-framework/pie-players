@@ -4,7 +4,7 @@ import {
 	getPackageWithoutVersion,
 	type PieContent,
 	pieShortIdGenerator,
-} from "./legacy-utils";
+} from "./legacy-utils.js";
 
 export const COMPLEX_RUBRIC = "complex-rubric";
 

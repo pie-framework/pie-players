@@ -6,8 +6,8 @@
  * bundle requests when multiple items use the same elements.
  */
 
-import type { BundleType } from "../pie/types";
-import type { ItemEntity } from "../types";
+import type { BundleType } from "../pie/types.js";
+import type { ItemEntity } from "../types/index.js";
 
 /**
  * Map of element tag names to their package versions

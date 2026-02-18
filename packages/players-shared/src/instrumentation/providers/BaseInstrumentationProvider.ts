@@ -15,7 +15,7 @@ import type {
 	InstrumentationConfig,
 	InstrumentationProvider,
 	MetricAttributes,
-} from "../types";
+} from "../types.js";
 
 /**
  * Abstract base class for instrumentation providers

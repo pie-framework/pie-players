@@ -17,13 +17,13 @@ import type {
 	ToolButtonDefinition,
 	ToolButtonOptions,
 	ToolInstanceOptions,
-} from "../../services/ToolRegistry";
-import type { ToolContext } from "../../services/tool-context";
-import { hasReadableText } from "../../services/tool-context";
+} from "../../services/ToolRegistry.js";
+import type { ToolContext } from "../../services/tool-context.js";
+import { hasReadableText } from "../../services/tool-context.js";
 import {
 	createToolElement,
 	type ToolComponentOverrides,
-} from "../tool-tag-map";
+} from "../tool-tag-map.js";
 
 /**
  * Magnifier tool registration

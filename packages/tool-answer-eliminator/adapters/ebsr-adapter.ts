@@ -1,5 +1,5 @@
-import type { ChoiceAdapter } from "./choice-adapter";
-import { MultipleChoiceAdapter } from "./multiple-choice-adapter";
+import type { ChoiceAdapter } from "./choice-adapter.js";
+import { MultipleChoiceAdapter } from "./multiple-choice-adapter.js";
 
 /**
  * Adapter for EBSR (Evidence-Based Selected Response) elements

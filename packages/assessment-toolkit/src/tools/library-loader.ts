@@ -6,7 +6,7 @@
  * Supports both static and dynamic library loading
  */
 
-import type { LibraryConfig, LibraryLoader, LoaderStats } from "./types";
+import type { LibraryConfig, LibraryLoader, LoaderStats } from "./types.js";
 
 /**
  * Implementation of LibraryLoader service

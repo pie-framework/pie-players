@@ -1,7 +1,7 @@
 import PieIifePlayer from "./PieIifePlayer.svelte";
 import { validateCustomElementTag } from "@pie-players/pie-players-shared/pie/tag-names";
 
-export type { PieIifePlayerElement } from "./types";
+export type { PieIifePlayerElement } from "./types.js";
 
 export function definePieIifePlayer(tagName = "pie-iife-player") {
 	const validTagName = validateCustomElementTag(

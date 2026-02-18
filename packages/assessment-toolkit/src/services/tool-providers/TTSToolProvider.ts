@@ -10,8 +10,8 @@
  */
 
 import type { ITTSProvider, TTSConfig } from "@pie-players/pie-tts";
-import { BrowserTTSProvider } from "../../services/tts/browser-provider";
-import type { IToolProvider, ToolProviderCapabilities } from "./IToolProvider";
+import { BrowserTTSProvider } from "../../services/tts/browser-provider.js";
+import type { IToolProvider, ToolProviderCapabilities } from "./IToolProvider.js";
 
 /**
  * TTS backend type

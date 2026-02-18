@@ -3,13 +3,13 @@ import { pieRegistry } from "@pie-players/pie-players-shared/pie/registry";
 import { validateCustomElementTag } from "@pie-players/pie-players-shared/pie/tag-names";
 import { BundleType } from "@pie-players/pie-players-shared/pie/types";
 import { parsePackageName } from "@pie-players/pie-players-shared/pie/utils";
-import { pieContentFromConfig } from "./legacy-utils";
+import { pieContentFromConfig } from "./legacy-utils.js";
 import PieAuthor from "./PieAuthor.svelte";
 import {
 	addMultiTraitRubric,
 	addPackageToContent,
 	addRubric,
-} from "./rubric-utils";
+} from "./rubric-utils.js";
 
 export interface PieAuthorElement extends HTMLElement {
 	config: unknown;

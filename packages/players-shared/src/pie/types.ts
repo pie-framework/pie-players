@@ -5,7 +5,7 @@
  * This module has NO runtime dependencies on other PIE modules.
  */
 
-import type { ConfigEntity, Env, PieController, PieModel } from "../types";
+import type { ConfigEntity, Env, PieController, PieModel } from "../types/index.js";
 
 /**
  * Player modes

@@ -1,8 +1,8 @@
-import { AdapterRegistry } from "./adapters/adapter-registry";
-import type { ChoiceAdapter } from "./adapters/choice-adapter";
-import type { EliminationStrategy } from "./strategies/elimination-strategy";
-import { MaskStrategy } from "./strategies/mask-strategy";
-import { StrikethroughStrategy } from "./strategies/strikethrough-strategy";
+import { AdapterRegistry } from "./adapters/adapter-registry.js";
+import type { ChoiceAdapter } from "./adapters/choice-adapter.js";
+import type { EliminationStrategy } from "./strategies/elimination-strategy.js";
+import { MaskStrategy } from "./strategies/mask-strategy.js";
+import { StrikethroughStrategy } from "./strategies/strikethrough-strategy.js";
 
 /**
  * Core engine for answer eliminator tool

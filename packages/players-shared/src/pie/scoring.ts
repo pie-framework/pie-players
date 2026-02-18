@@ -4,12 +4,12 @@
  * Scoring and outcome calculation for PIE elements.
  */
 
-import type { ConfigEntity, OutcomeResponse, PieController } from "../types";
-import { createPieLogger, isGlobalDebugEnabled } from "./logger";
-import { pieRegistry } from "./registry";
-import type { PieElement } from "./types";
-import { BundleType } from "./types";
-import { findOrAddSession } from "./utils";
+import type { ConfigEntity, OutcomeResponse, PieController } from "../types/index.js";
+import { createPieLogger, isGlobalDebugEnabled } from "./logger.js";
+import { pieRegistry } from "./registry.js";
+import type { PieElement } from "./types.js";
+import { BundleType } from "./types.js";
+import { findOrAddSession } from "./utils.js";
 
 // Create module-level logger (respects global debug flag - pass function for dynamic checking)
 const logger = createPieLogger("pie-scoring", () => isGlobalDebugEnabled());

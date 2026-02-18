@@ -4,8 +4,8 @@
  * Manages the global PIE registry that tracks loaded elements.
  */
 
-import type { PieRegistry } from "./types";
-import { isPieRegistryAvailable } from "./types";
+import type { PieRegistry } from "./types.js";
+import { isPieRegistryAvailable } from "./types.js";
 
 /**
  * Get or create the global PIE registry

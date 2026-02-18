@@ -4,7 +4,7 @@
  * Manages the active renderer and window globals for PIE element compatibility
  */
 
-import type { MathRenderingAPI } from "./types";
+import type { MathRenderingAPI } from "./types.js";
 
 /**
  * Math renderer provider class

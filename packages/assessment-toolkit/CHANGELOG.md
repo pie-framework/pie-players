@@ -1,5 +1,15 @@
 # @pie-players/pie-assessment-toolkit
 
+## 0.2.5
+
+### Patch Changes
+
+- Fix section player + PNP consumer packaging reliability.
+
+  - Export toolkit PNP service subpaths used by Svelte component exports
+  - Update PNP Svelte components to import from published package exports
+  - Add missing section player and section tools toolbar runtime dependencies
+
 ## 0.2.4
 
 ### Patch Changes

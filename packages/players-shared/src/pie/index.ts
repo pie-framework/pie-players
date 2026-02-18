@@ -20,28 +20,28 @@ export {
 	elementForPackage,
 	makeUniqueTags,
 	modelsForPackage,
-} from "./config";
+} from "./config.js";
 // Loaders
-export type { EsmLoaderConfig } from "./esm-loader";
-export { EsmPieLoader } from "./esm-loader";
-export type { IifeLoaderConfig } from "./iife-loader";
-export { DEFAULT_BUNDLE_HOST, IifePieLoader } from "./iife-loader";
+export type { EsmLoaderConfig } from "./esm-loader.js";
+export { EsmPieLoader } from "./esm-loader.js";
+export type { IifeLoaderConfig } from "./iife-loader.js";
+export { DEFAULT_BUNDLE_HOST, IifePieLoader } from "./iife-loader.js";
 // Initialization
 export {
 	initializePiesFromLoadedBundle,
 	loadBundleFromString,
 	loadPieModule,
 	loadPieModuleFromString,
-} from "./initialization";
+} from "./initialization.js";
 // Logging
-export type { PieLogger } from "./logger";
-export { createPieLogger, isGlobalDebugEnabled } from "./logger";
+export type { PieLogger } from "./logger.js";
+export { createPieLogger, isGlobalDebugEnabled } from "./logger.js";
 // Player bootstrap helpers (used by inline/fixed players)
 export type {
 	ItemData,
 	PiePlayerConfig,
 	PiePlayerElements,
-} from "./player-initializer";
+} from "./player-initializer.js";
 export {
 	buildApiParams,
 	buildEventListenersMap,
@@ -49,11 +49,11 @@ export {
 	extractPassageMarkup,
 	fetchItemData,
 	initializePiePlayer,
-} from "./player-initializer";
+} from "./player-initializer.js";
 // Registry
-export { pieRegistry } from "./registry";
+export { pieRegistry } from "./registry.js";
 // Scoring
-export { findPieController, scorePieItem } from "./scoring";
+export { findPieController, scorePieItem } from "./scoring.js";
 // Types and interfaces
 export type {
 	Entry,
@@ -63,7 +63,7 @@ export type {
 	PieElement,
 	PieRegistry,
 	UpdatePieElementOptions,
-} from "./types";
+} from "./types.js";
 export {
 	BundleType,
 	defaultPieElementOptions,
@@ -72,25 +72,25 @@ export {
 	isPieAvailable,
 	isPieRegistryAvailable,
 	Status,
-} from "./types";
+} from "./types.js";
 // Tag naming helpers
 export {
 	toPrintHashedTag,
 	toViewTag,
 	validateCustomElementTag,
 	VIEW_TAG_SUFFIX,
-} from "./tag-names";
-export type { PieViewMode } from "./tag-names";
+} from "./tag-names.js";
+export type { PieViewMode } from "./tag-names.js";
 // Updates
 export {
 	updatePieElement,
 	updatePieElements,
 	updatePieElementWithRef,
-} from "./updates";
+} from "./updates.js";
 // Utils
 export {
 	findOrAddSession,
 	getPackageWithoutVersion,
 	getPieElementBundlesUrl,
 	parsePackageName,
-} from "./utils";
+} from "./utils.js";

@@ -49,7 +49,7 @@
 	import type { IToolCoordinator } from '@pie-players/pie-assessment-toolkit';
 	import { ZIndexLayer } from '@pie-players/pie-assessment-toolkit';
 import { onDestroy, onMount } from 'svelte';
-	import { AnswerEliminatorCore } from './answer-eliminator-core';
+	import { AnswerEliminatorCore } from './answer-eliminator-core.js';
 
 	// Props
 	let {

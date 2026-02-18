@@ -8,24 +8,24 @@
 -->
 <script lang="ts">
   import { onDestroy, tick, untrack } from "svelte";
-  import type { LoaderConfig } from "../loader-config";
-  import { DEFAULT_LOADER_CONFIG } from "../loader-config";
-  import { AssetEventManager } from "../pie/asset-handler";
-  import { initializeConfiguresFromLoadedBundle } from "../pie/configure-initialization";
-  import { initializePiesFromLoadedBundle } from "../pie/initialization";
-  import { createPieLogger, isGlobalDebugEnabled } from "../pie/logger";
-  import { findPieController } from "../pie/scoring";
-  import type { AuthoringEnv } from "../pie/types";
-  import { BundleType } from "../pie/types";
-  import { updatePieElements } from "../pie/updates";
-  import { useResourceMonitor } from "../pie/use-resource-monitor.svelte";
+  import type { LoaderConfig } from "../loader-config.js";
+  import { DEFAULT_LOADER_CONFIG } from "../loader-config.js";
+  import { AssetEventManager } from "../pie/asset-handler.js";
+  import { initializeConfiguresFromLoadedBundle } from "../pie/configure-initialization.js";
+  import { initializePiesFromLoadedBundle } from "../pie/initialization.js";
+  import { createPieLogger, isGlobalDebugEnabled } from "../pie/logger.js";
+  import { findPieController } from "../pie/scoring.js";
+  import type { AuthoringEnv } from "../pie/types.js";
+  import { BundleType } from "../pie/types.js";
+  import { updatePieElements } from "../pie/updates.js";
+  import { useResourceMonitor } from "../pie/use-resource-monitor.svelte.js";
   import type {
     ConfigEntity,
     Env,
     ImageHandler,
     ModelUpdatedEvent,
     SoundHandler,
-  } from "../types";
+  } from "../types/index.js";
 
   // Create logger (respects global debug flag - pass function for dynamic checking)
   const logger = createPieLogger("pie-item-player", () =>
@@ -182,7 +182,7 @@
         "[PieItemPlayer] Controller lookup for %s: %s (createCorrectResponseSession=%s)",
         model.element,
         controller ? "FOUND" : "NOT FOUND",
-        controller && controller.createCorrectResponseSession ? "YES" : "NO"
+        controller ? "YES" : "NO"
       );
 
       if (controller && controller.createCorrectResponseSession) {
@@ -237,9 +237,9 @@
       // Svelte reactivity won't necessarily re-run effects on in-place mutation,
       // so we must push the updated session into the PIE elements explicitly.
       try {
-        updatePieElements(itemConfig, session, env, rootElement);
+        updatePieElements(itemConfig, session, env, rootElement ?? undefined);
         if (passageConfig) {
-          updatePieElements(passageConfig, session, env, rootElement);
+          updatePieElements(passageConfig, session, env, rootElement ?? undefined);
         }
       } catch (e) {
         logger.warn(
@@ -371,7 +371,11 @@
 
           // STEP 1: Initialize bundles and register controllers (don't pass session yet)
           // This registers controllers in the registry so we can call createCorrectResponseSession
-          initializePiesFromLoadedBundle(itemConfig, [], { env, bundleType, container: rootElement });
+          initializePiesFromLoadedBundle(itemConfig, [], {
+            env,
+            bundleType,
+            container: rootElement ?? undefined,
+          });
           logger.debug(
             "[PieItemPlayer] Item bundle initialized (bundle type: %s)",
             bundleType
@@ -381,7 +385,7 @@
             initializePiesFromLoadedBundle(passageConfig, [], {
               env,
               bundleType,
-              container: rootElement,
+              container: rootElement ?? undefined,
             });
             logger.debug(
               "[PieItemPlayer] Passage bundle initialized (bundle type: %s)",
@@ -398,10 +402,10 @@
               session.length +
               ")"
           );
-          updatePieElements(itemConfig, session, env, rootElement);
+          updatePieElements(itemConfig, session, env, rootElement ?? undefined);
 
           if (passageConfig) {
-            updatePieElements(passageConfig, session, env, rootElement);
+            updatePieElements(passageConfig, session, env, rootElement ?? undefined);
           }
         }
 
@@ -562,10 +566,10 @@
     isUpdating = true;
     untrack(() => {
       try {
-        updatePieElements(itemConfig, session, env, rootElement);
+        updatePieElements(itemConfig, session, env, rootElement ?? undefined);
 
         if (passageConfig) {
-          updatePieElements(passageConfig, session, env, rootElement);
+          updatePieElements(passageConfig, session, env, rootElement ?? undefined);
         }
       } finally {
         isUpdating = false;

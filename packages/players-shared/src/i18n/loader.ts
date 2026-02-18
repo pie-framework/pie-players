@@ -9,10 +9,10 @@
  */
 
 // Import English translations (bundled)
-import enCommon from "./translations/en/common.json";
-import enToolkit from "./translations/en/toolkit.json";
-import enTools from "./translations/en/tools.json";
-import type { TranslationBundle } from "./types";
+import enCommon from "./translations/en/common.json" with { type: "json" };
+import enToolkit from "./translations/en/toolkit.json" with { type: "json" };
+import enTools from "./translations/en/tools.json" with { type: "json" };
+import type { TranslationBundle } from "./types.js";
 
 // RTL locales
 const RTL_LOCALES = ["ar", "he", "fa", "ur"];

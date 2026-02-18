@@ -50,26 +50,32 @@
 			"svelte": "./src/components/index.ts"
 		},
 		"./components/PieItemPlayer.svelte": {
+			"types": "./src/components/PieItemPlayer.svelte",
 			"import": "./src/components/PieItemPlayer.svelte",
 			"svelte": "./src/components/PieItemPlayer.svelte"
 		},
 		"./components/PieSpinner.svelte": {
+			"types": "./src/components/PieSpinner.svelte",
 			"import": "./src/components/PieSpinner.svelte",
 			"svelte": "./src/components/PieSpinner.svelte"
 		},
 		"./components/ToolSettingsButton.svelte": {
+			"types": "./src/components/ToolSettingsButton.svelte",
 			"import": "./src/components/ToolSettingsButton.svelte",
 			"svelte": "./src/components/ToolSettingsButton.svelte"
 		},
 		"./components/ToolSettingsPanel.svelte": {
+			"types": "./src/components/ToolSettingsPanel.svelte",
 			"import": "./src/components/ToolSettingsPanel.svelte",
 			"svelte": "./src/components/ToolSettingsPanel.svelte"
 		},
 		"./components/PiePreviewToggle.svelte": {
+			"types": "./src/components/PiePreviewToggle.svelte",
 			"import": "./src/components/PiePreviewToggle.svelte",
 			"svelte": "./src/components/PiePreviewToggle.svelte"
 		},
 		"./components/PiePreviewLayout.svelte": {
+			"types": "./src/components/PiePreviewLayout.svelte",
 			"import": "./src/components/PiePreviewLayout.svelte",
 			"svelte": "./src/components/PiePreviewLayout.svelte"
 		},
@@ -95,7 +101,9 @@
 	],
 	"dependencies": {
 		"@pie-players/math-renderer-core": "workspace:*",
-		"@pie-players/math-renderer-mathjax": "workspace:*"
+		"@pie-players/math-renderer-mathjax": "workspace:*",
+		"@sveltejs/kit": "^2.52.0",
+		"daisyui": "^5.5.18"
 	},
 	"scripts": {
 		"build": "tsc -p tsconfig.json",
@@ -113,6 +121,6 @@
 		"typescript": "^5.9.3"
 	},
 	"peerDependencies": {
-		"svelte": "^5.51.0"
+		"svelte": "^5.51.3"
 	}
 }

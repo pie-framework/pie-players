@@ -24,7 +24,6 @@
 		"serve": "bun x vite preview --port 8000"
 	},
 	"dependencies": {
-		"@sveltejs/kit": "^2.52.0",
 		"daisyui": "^5.5.18",
 		"lit": "^3.2.1",
 		"svelte": "^5.51.3"

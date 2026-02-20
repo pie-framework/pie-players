@@ -41,15 +41,15 @@
 		IToolCoordinator,
 		ITTSService,
 		IHighlightCoordinator,
-	} from '../services/interfaces';
-	import type { ToolRegistry } from '../services/ToolRegistry';
-	import type { PNPToolResolver } from '../services/PNPToolResolver';
+	} from '../services/interfaces.js';
+	import type { ToolRegistry } from '../services/ToolRegistry.js';
+	import type { PNPToolResolver } from '../services/PNPToolResolver.js';
 	import type {
 		AssessmentEntity,
 		AssessmentItemRef,
 		ItemEntity,
 	} from '@pie-players/pie-players-shared/types';
-	import type { ItemToolContext } from '../services/tool-context';
+	import type { ItemToolContext } from '../services/tool-context.js';
 	import ToolButtonGroup from './ToolButtonGroup.svelte';
 
 	const isBrowser = typeof window !== 'undefined';

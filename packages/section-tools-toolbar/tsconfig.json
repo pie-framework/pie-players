@@ -2,8 +2,15 @@
 	"extends": "../../tsconfig.json",
 	"compilerOptions": {
 		"rootDir": ".",
-		"outDir": "dist"
+		"outDir": "dist",
+		"moduleResolution": "NodeNext"
 	},
-	"include": ["**/*.ts", "**/*.svelte"],
-	"exclude": ["node_modules", "dist"]
+	"include": [
+		"**/*.ts",
+		"**/*.svelte"
+	],
+	"exclude": [
+		"node_modules",
+		"dist"
+	]
 }

@@ -4,7 +4,7 @@
 	import ToolColorScheme from '@pie-players/pie-tool-color-scheme';
 	import ToolTextToSpeech from '@pie-players/pie-tool-text-to-speech';
 	import { onMount } from 'svelte';
-import type { AssessmentPlayer } from '../../player/AssessmentPlayer';
+import type { AssessmentPlayer } from '../../player/AssessmentPlayer.js';
 
 	let {
 		player,

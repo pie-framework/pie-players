@@ -8,7 +8,7 @@ import type {
 	ItemEntity,
 	PassageEntity,
 } from "@pie-players/pie-players-shared";
-import type { ItemMetadata } from "../types/events.js";
+import type { ItemMetadata } from "@pie-players/pie-assessment-toolkit";
 
 export interface NavigationResult {
 	success: boolean;

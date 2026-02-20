@@ -24,14 +24,6 @@
 			"types": "./dist/tools/client.d.ts",
 			"import": "./dist/tools/client.js"
 		},
-		"./assessment-player": {
-			"types": "./dist/player/index.d.ts",
-			"import": "./dist/player/index.js"
-		},
-		"./assessment-player/Layout.svelte": {
-			"svelte": "./src/player/AssessmentLayout.svelte",
-			"import": "./src/player/AssessmentLayout.svelte"
-		},
 		"./components/QuestionToolBar.svelte": {
 			"svelte": "./src/components/QuestionToolBar.svelte",
 			"import": "./src/components/QuestionToolBar.svelte"
@@ -76,7 +68,6 @@
 		"@pie-players/pie-players-shared": "workspace:*",
 		"@pie-players/pie-tts": "workspace:*",
 		"@pie-players/tts-client-server": "workspace:*",
-		"@sveltejs/kit": "^2.52.0",
 		"daisyui": "^5.5.18"
 	},
 	"peerDependencies": {

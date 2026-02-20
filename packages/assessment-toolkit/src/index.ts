@@ -233,15 +233,8 @@ export type {
 	ToolStateChangedEvent,
 } from "./types/events.js";
 
-// ============================================================================
-// Players (Optional Reference Implementations)
-// ============================================================================
-
-// Assessment Player - Full assessment with navigation
-// Note: Assessment player is optional and not exported by default.
-// Products can import from './player/AssessmentPlayer' if desired.
-
-// Section Player - Use @pie-players/pie-section-player web component instead
+// Section Player - Use @pie-players/pie-section-player web component
+// Assessment Player - Use @pie-players/pie-assessment-player package
 
 // ============================================================================
 // Shared Components

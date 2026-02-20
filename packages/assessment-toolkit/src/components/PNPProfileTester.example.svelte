@@ -7,10 +7,10 @@
 	 */
 	import PNPProfileTester from './PNPProfileTester.svelte';
 	import PNPProvenanceViewer from './PNPProvenanceViewer.svelte';
-	import { PNPToolResolver } from '../services/PNPToolResolver';
-	import { createDefaultToolRegistry } from '../services/createDefaultToolRegistry';
+	import { PNPToolResolver } from '../services/PNPToolResolver.js';
+	import { createDefaultToolRegistry } from '../services/createDefaultToolRegistry.js';
 	import type { PersonalNeedsProfile } from '@pie-players/pie-players-shared/types';
-	import type { PNPResolutionProvenance } from '../services/pnp-provenance';
+	import type { PNPResolutionProvenance } from '../services/pnp-provenance.js';
 
 	// Mock assessment for testing
 	const mockAssessment = {

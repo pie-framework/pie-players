@@ -2,6 +2,13 @@
 	"name": "@pie-players/pie-calculator",
 	"version": "0.1.3",
 	"author": "PIE Framework",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pie-framework/pie-players.git"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
 	"main": "./dist/index.js",
 	"devDependencies": {
 		"typescript": "^5.7.2"
@@ -30,5 +37,6 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"type": "module",
-	"types": "./dist/index.d.ts"
+	"types": "./dist/index.d.ts",
+	"sideEffects": false
 }

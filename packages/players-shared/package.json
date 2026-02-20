@@ -102,7 +102,6 @@
 	"dependencies": {
 		"@pie-players/math-renderer-core": "workspace:*",
 		"@pie-players/math-renderer-mathjax": "workspace:*",
-		"@sveltejs/kit": "^2.52.0",
 		"daisyui": "^5.5.18"
 	},
 	"scripts": {

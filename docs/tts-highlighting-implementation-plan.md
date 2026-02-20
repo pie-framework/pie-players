@@ -6,7 +6,7 @@ This document outlines the implementation plan to fix TTS highlighting synchroni
 
 ### Key Finding
 
-The pieoneer implementation at `/Users/eelco.hillenius/dev/prj/kds/pie-api-aws/containers/pieoneer/src/lib/assessment-toolkit` achieves excellent TTS highlighting synchronization through **AWS Polly Speech Marks** - a feature that provides millisecond-precise word timing metadata, which is not available from the browser's Web Speech API.
+The pieoneer implementation at `<pieoneer-repo>/containers/pieoneer/src/lib/assessment-toolkit` achieves excellent TTS highlighting synchronization through **AWS Polly Speech Marks** - a feature that provides millisecond-precise word timing metadata, which is not available from the browser's Web Speech API.
 
 ---
 
@@ -1361,12 +1361,12 @@ With Redis caching and typical content reuse patterns:
 
 ### Pieoneer Implementation
 
-- **Location:** `/Users/eelco.hillenius/dev/prj/kds/pie-api-aws/containers/pieoneer/src/lib/assessment-toolkit/`
+- **Location:** `<pieoneer-repo>/containers/pieoneer/src/lib/assessment-toolkit/`
 - **Key files:**
   - `services/tts/providers/PollyProvider.ts` - Speech marks implementation
   - `services/highlight/HighlightCoordinator.ts` - CSS Custom Highlight API
   - `services/highlight/HighlightManager.ts` - Low-level highlight operations
-- **Server:** `/Users/eelco.hillenius/dev/prj/kds/pie-api-aws/packages/polly/src/synthesize.ts`
+- **Server:** `<pieoneer-repo>/packages/polly/src/synthesize.ts`
 
 ### AWS Documentation
 

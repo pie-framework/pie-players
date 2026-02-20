@@ -5,8 +5,15 @@
 		"rootDir": ".",
 		"declaration": true,
 		"declarationMap": true,
-		"composite": true
+		"composite": true,
+		"moduleResolution": "NodeNext"
 	},
-	"include": ["index.ts", "svelte-shims.d.ts"],
-	"exclude": ["node_modules", "dist"]
+	"include": [
+		"index.ts",
+		"svelte-shims.d.ts"
+	],
+	"exclude": [
+		"node_modules",
+		"dist"
+	]
 }

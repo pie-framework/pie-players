@@ -32,7 +32,7 @@
 	import {
 		AssessmentPlayer,
 		getAllQuestionRefs
-	} from '@pie-players/pie-assessment-toolkit/assessment-player';
+	} from './player/index.js';
 	import type { PieIifePlayerElement } from '@pie-players/pie-iife-player';
 	import {
 		type AssessmentAuthoringCallbacks,

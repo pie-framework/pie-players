@@ -43,5 +43,6 @@
 		"katex",
 		"rendering",
 		"latex"
-	]
+	],
+	"sideEffects": false
 }

@@ -29,6 +29,13 @@
 	],
 	"author": "PIE Framework",
 	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pie-framework/pie-players.git"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
 	"dependencies": {
 		"@aws-sdk/client-polly": "^3.700.0",
 		"@pie-players/tts-server-core": "workspace:*"
@@ -36,5 +43,6 @@
 	"devDependencies": {
 		"typescript": "^5.3.3",
 		"vitest": "^1.0.4"
-	}
+	},
+	"sideEffects": false
 }

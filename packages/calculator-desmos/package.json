@@ -29,6 +29,10 @@
 	],
 	"author": "PIE Framework",
 	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pie-framework/pie-players.git"
+	},
 	"publishConfig": {
 		"access": "public"
 	},
@@ -37,5 +41,6 @@
 	},
 	"devDependencies": {
 		"typescript": "^5.7.2"
-	}
+	},
+	"sideEffects": false
 }

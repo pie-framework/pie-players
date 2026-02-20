@@ -40,8 +40,6 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.3.13",
-		"@sveltejs/adapter-auto": "^7.0.0",
-		"@sveltejs/kit": "^2.52.0",
 		"@sveltejs/vite-plugin-svelte": "^6.2.4",
 		"@types/node": "^25.1.0",
 		"svelte": "^5.51.3",

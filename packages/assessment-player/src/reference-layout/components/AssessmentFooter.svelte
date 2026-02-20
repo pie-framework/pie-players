@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { AssessmentPlayer } from '../../player/AssessmentPlayer';
+	import type { AssessmentPlayer } from '../../player/AssessmentPlayer.js';
 
 	let {
 		player,

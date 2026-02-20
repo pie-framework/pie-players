@@ -14,7 +14,7 @@
 			"args": ["run", "@modelcontextprotocol/server-npm"],
 			"env": {
 				"NPM_REGISTRY": "https://registry.npmjs.org",
-				"WORKSPACE_ROOT": "/Users/eelco.hillenius/dev/prj/pie/pie-players"
+				"WORKSPACE_ROOT": "."
 			}
 		},
 		"filesystem": {
@@ -22,10 +22,10 @@
 			"args": [
 				"-y",
 				"@modelcontextprotocol/server-filesystem",
-				"/Users/eelco.hillenius/dev/prj/pie/pie-players"
+				"."
 			],
 			"env": {
-				"ALLOWED_DIRECTORIES": "/Users/eelco.hillenius/dev/prj/pie/pie-players"
+				"ALLOWED_DIRECTORIES": "."
 			}
 		},
 		"memory": {
@@ -41,7 +41,7 @@
 			"command": "bun",
 			"args": ["run", ".mcp-imagen/src/index.ts"],
 			"env": {
-				"OUTPUT_DIR": "/Users/eelco.hillenius/dev/prj/pie/pie-players/apps/docs/static/images/generated"
+				"OUTPUT_DIR": "./apps/docs/static/images/generated"
 			}
 		}
 	}

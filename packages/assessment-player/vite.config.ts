@@ -19,9 +19,16 @@ export default defineConfig({
 	],
 	build: {
 		lib: {
-			entry: resolve(__dirname, "src/pie-assessment-player.ts"),
+			entry: {
+				"pie-assessment-player": resolve(__dirname, "src/pie-assessment-player.ts"),
+				"player/index": resolve(__dirname, "src/player/index.ts"),
+				"reference-layout/index": resolve(
+					__dirname,
+					"src/reference-layout/index.ts",
+				),
+			},
 			name: "PieAssessmentPlayer",
-			fileName: () => "pie-assessment-player.js",
+			fileName: (_, entryName) => `${entryName}.js`,
 			formats: ["es"],
 		},
 		outDir: "dist",
@@ -30,7 +37,8 @@ export default defineConfig({
 		minify: "esbuild",
 		sourcemap: false,
 		rollupOptions: {
-			external: ["@datadog/browser-rum"],
+			external: (id) =>
+				id === "@datadog/browser-rum" || id.startsWith("@pie-players/"),
 			output: {
 				format: "es",
 							},

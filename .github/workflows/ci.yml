@@ -29,11 +29,17 @@ jobs:
       - name: Check Dependency Declarations
         run: bun run check:deps
 
+      - name: Check Source Export Policy
+        run: bun run check:source-exports
+
       - name: Build Packages
         run: bun run build
 
       - name: Verify Published Package Exports
         run: bun run check:pack-exports
+
+      - name: Verify Runtime Compatibility Boundaries
+        run: bun run check:runtime-compat
 
       - name: Lint
         run: bun run lint:all
@@ -56,8 +62,14 @@ jobs:
       - name: Check Dependency Declarations
         run: bun run check:deps
 
+      - name: Check Source Export Policy
+        run: bun run check:source-exports
+
       - name: Build All Packages
         run: bun run build
+
+      - name: Verify Runtime Compatibility Boundaries
+        run: bun run check:runtime-compat
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
@@ -85,6 +97,12 @@ jobs:
       - name: Check Dependency Declarations
         run: bun run check:deps
 
+      - name: Check Source Export Policy
+        run: bun run check:source-exports
+
       - name: Build Packages
         run: bun run build
+
+      - name: Verify Runtime Compatibility Boundaries
+        run: bun run check:runtime-compat
 

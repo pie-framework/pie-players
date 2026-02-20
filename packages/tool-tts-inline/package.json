@@ -3,15 +3,19 @@
 	"version": "0.1.5",
 	"type": "module",
 	"main": "./dist/tool-tts-inline.js",
-	"types": "./dist/tool-tts-inline.d.ts",
+	"types": "./dist/index.d.ts",
 	"unpkg": "./dist/tool-tts-inline.js",
 	"jsdelivr": "./dist/tool-tts-inline.js",
 	"publishConfig": {
 		"access": "public"
 	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pie-framework/pie-players.git"
+	},
 	"exports": {
 		".": {
-			"types": "./dist/tool-tts-inline.d.ts",
+			"types": "./dist/index.d.ts",
 			"import": "./dist/tool-tts-inline.js"
 		}
 	},
@@ -24,7 +28,6 @@
 	},
 	"dependencies": {
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
-		"@sveltejs/kit": "^2.52.0",
 		"daisyui": "^5.5.18"
 	},
 	"devDependencies": {

@@ -74,7 +74,7 @@ Add the following to your Claude Desktop configuration file:
       "command": "npx",
       "args": ["-y", "@playwright/mcp"],
       "env": {
-        "PLAYWRIGHT_CONFIG": "/Users/eelco.hillenius/dev/prj/pie/pie-players/apps/example/playwright.config.ts",
+        "PLAYWRIGHT_CONFIG": "<repo-root>/apps/example/playwright.config.ts",
         "BASE_URL": "http://127.0.0.1:5200"
       }
     },
@@ -82,7 +82,7 @@ Add the following to your Claude Desktop configuration file:
       "command": "bun",
       "args": ["run", "@modelcontextprotocol/server-npm"],
       "env": {
-        "WORKSPACE_ROOT": "/Users/eelco.hillenius/dev/prj/pie/pie-players"
+        "WORKSPACE_ROOT": "<repo-root>"
       }
     },
     "pie-players-fs": {
@@ -90,21 +90,21 @@ Add the following to your Claude Desktop configuration file:
       "args": [
         "-y",
         "@modelcontextprotocol/server-filesystem",
-        "/Users/eelco.hillenius/dev/prj/pie/pie-players"
+        "<repo-root>"
       ]
     },
     "pie-players-memory": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-memory"],
       "env": {
-        "MEMORY_DB_PATH": "/Users/eelco.hillenius/dev/prj/pie/pie-players/.mcp/memory.db"
+        "MEMORY_DB_PATH": "<repo-root>/.mcp/memory.db"
       }
     }
   }
 }
 ```
 
-**Important**: Replace `/Users/eelco.hillenius/dev/prj/pie/pie-players` with your actual absolute path to the project.
+**Important**: Replace `<repo-root>` with your actual absolute path to the project.
 
 ### Claude Code (CLI) Configuration
 
@@ -114,7 +114,7 @@ If using Claude Code (the CLI tool), you have two options:
 
 Create a symlink in your home directory:
 ```bash
-ln -s /Users/eelco.hillenius/dev/prj/pie/pie-players/.mcp/claude-code-config.json ~/.claude-code/mcp-servers.json
+ln -s <repo-root>/.mcp/claude-code-config.json ~/.claude-code/mcp-servers.json
 ```
 
 Or copy the configuration:

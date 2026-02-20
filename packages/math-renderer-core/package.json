@@ -31,5 +31,6 @@
 		"lint": "biome check ."
 	},
 	"type": "module",
-	"types": "./dist/index.d.ts"
+	"types": "./dist/index.d.ts",
+	"sideEffects": false
 }

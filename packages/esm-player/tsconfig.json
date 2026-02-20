@@ -2,11 +2,21 @@
 	"extends": "../../tsconfig.json",
 	"compilerOptions": {
 		"noEmit": true,
-		"types": ["svelte"],
+		"types": [
+			"svelte"
+		],
 		"composite": false,
 		"noUnusedLocals": false,
-		"noUnusedParameters": false
+		"noUnusedParameters": false,
+		"moduleResolution": "NodeNext"
 	},
-	"include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.svelte"],
-	"exclude": ["dist", "node_modules"]
+	"include": [
+		"src/**/*.ts",
+		"src/**/*.d.ts",
+		"src/**/*.svelte"
+	],
+	"exclude": [
+		"dist",
+		"node_modules"
+	]
 }

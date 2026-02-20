@@ -1,13 +1,6 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
-	import ToolCalculator from '$lib/tags/tool-calculator/tool-calculator.svelte';
-	import ToolGraph from '$lib/tags/tool-graph/tool-graph.svelte';
-	import ToolLineReader from '$lib/tags/tool-line-reader/tool-line-reader.svelte';
-	import ToolMagnifier from '$lib/tags/tool-magnifier/tool-magnifier.svelte';
-	import ToolPeriodicTable from '$lib/tags/tool-periodic-table/tool-periodic-table.svelte';
-	import ToolProtractor from '$lib/tags/tool-protractor/tool-protractor.svelte';
-	import ToolRuler from '$lib/tags/tool-ruler/tool-ruler.svelte';
-	import type { AssessmentPlayer } from '../../player/AssessmentPlayer';
+	import type { AssessmentPlayer } from '../../player/AssessmentPlayer.js';
 
 	let {
 		player,
@@ -103,25 +96,25 @@
 
 <!-- Tool Instances - Rendered outside bar for floating modals/overlays -->
 {#if enabledTools.includes('calculator')}
-	<ToolCalculator visible={showCalculator} toolId="calculator" coordinator={toolCoordinator} desmosProvider={player.getDesmosProvider()} tiProvider={player.getTIProvider()} />
+	<pie-tool-calculator visible={showCalculator} tool-id="calculator" coordinator={toolCoordinator} desmos-provider={player.getDesmosProvider()} ti-provider={player.getTIProvider()}></pie-tool-calculator>
 {/if}
 {#if enabledTools.includes('graph')}
-	<ToolGraph visible={showGraph} toolId="graph" coordinator={toolCoordinator} />
+	<pie-tool-graph visible={showGraph} tool-id="graph" coordinator={toolCoordinator}></pie-tool-graph>
 {/if}
 {#if enabledTools.includes('periodicTable')}
-	<ToolPeriodicTable visible={showPeriodicTable} toolId="periodicTable" coordinator={toolCoordinator} />
+	<pie-tool-periodic-table visible={showPeriodicTable} tool-id="periodicTable" coordinator={toolCoordinator}></pie-tool-periodic-table>
 {/if}
 {#if enabledTools.includes('protractor')}
-	<ToolProtractor visible={showProtractor} toolId="protractor" coordinator={toolCoordinator} />
+	<pie-tool-protractor visible={showProtractor} tool-id="protractor" coordinator={toolCoordinator}></pie-tool-protractor>
 {/if}
 {#if enabledTools.includes('lineReader')}
-	<ToolLineReader visible={showLineReader} toolId="lineReader" coordinator={toolCoordinator} />
+	<pie-tool-line-reader visible={showLineReader} tool-id="lineReader" coordinator={toolCoordinator}></pie-tool-line-reader>
 {/if}
 {#if enabledTools.includes('magnifier')}
-	<ToolMagnifier visible={showMagnifier} toolId="magnifier" coordinator={toolCoordinator} />
+	<pie-tool-magnifier visible={showMagnifier} tool-id="magnifier" coordinator={toolCoordinator}></pie-tool-magnifier>
 {/if}
 {#if enabledTools.includes('ruler')}
-	<ToolRuler visible={showRuler} toolId="ruler" coordinator={toolCoordinator} />
+	<pie-tool-ruler visible={showRuler} tool-id="ruler" coordinator={toolCoordinator}></pie-tool-ruler>
 {/if}
 
 <style>

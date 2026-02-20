@@ -7,8 +7,17 @@
 		"emitDeclarationOnly": false,
 		"outDir": "dist",
 		"rootDir": "src",
-		"types": ["svelte"]
+		"types": [
+			"svelte"
+		],
+		"moduleResolution": "NodeNext"
 	},
-	"include": ["src/**/*.ts", "src/**/*.svelte"],
-	"exclude": ["dist", "node_modules"]
+	"include": [
+		"src/**/*.ts",
+		"src/**/*.svelte"
+	],
+	"exclude": [
+		"dist",
+		"node_modules"
+	]
 }

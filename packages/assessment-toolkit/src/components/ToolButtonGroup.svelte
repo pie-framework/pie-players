@@ -8,8 +8,8 @@
 	 * - Pass 2: Filters by tool relevance using ToolRegistry
 	 */
 
-	import type { ToolRegistry } from "../services/ToolRegistry";
-	import type { ToolContext } from "../services/tool-context";
+	import type { ToolRegistry } from "../services/ToolRegistry.js";
+	import type { ToolContext } from "../services/tool-context.js";
 	import ToolButton from "./ToolButton.svelte";
 
 	// Props

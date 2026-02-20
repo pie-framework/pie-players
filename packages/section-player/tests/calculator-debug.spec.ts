@@ -1,4 +1,8 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Locator } from "@playwright/test";
+import { fileURLToPath } from "node:url";
+
+const screenshotPath = (name: string) =>
+	fileURLToPath(new URL(`./screenshots/${name}`, import.meta.url));
 
 test("calculator visibility debug", async ({ page }) => {
 	const consoleMessages: string[] = [];
@@ -59,7 +63,7 @@ test("calculator visibility debug", async ({ page }) => {
 		'button[data-testid*="calculator"]',
 	];
 
-	let calculatorButton = null;
+	let calculatorButton: Locator | null = null;
 	for (const selector of calculatorSelectors) {
 		const button = page.locator(selector).first();
 		if ((await button.count()) > 0) {
@@ -215,7 +219,7 @@ test("calculator visibility debug", async ({ page }) => {
 
 	// Take final screenshot
 	await page.screenshot({
-		path: "/Users/eelco.hillenius/dev/prj/pie/pie-players/packages/section-player/tests/screenshots/debug-calculator.png",
+		path: screenshotPath("debug-calculator.png"),
 		fullPage: true,
 	});
 	console.log("\n✓ Screenshot saved: debug-calculator.png");

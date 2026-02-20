@@ -1,8 +1,9 @@
 <script lang="ts">
+	import { createLoadItem } from '@pie-players/pie-assessment-toolkit';
 	import type { AssessmentEntity } from '@pie-players/pie-players-shared';
 	import { onDestroy, onMount } from 'svelte';
-	import { ReferenceLayout } from '../reference-layout';
-	import { AssessmentPlayer } from './AssessmentPlayer';
+	import { ReferenceLayout } from '../reference-layout/index.js';
+	import { AssessmentPlayer } from './AssessmentPlayer.js';
 
 	let {
 		assessment,
@@ -25,12 +26,7 @@
 			organizationId: organizationId || undefined,
 			bundleHost,
 			mode: 'gather',
-			role: 'student',
-			enableTTS: true,
-			theme: {
-				highContrast: false,
-				fontSize: 'normal'
-			}
+			loadItem: createLoadItem({})
 		});
 
 		// Start at first item

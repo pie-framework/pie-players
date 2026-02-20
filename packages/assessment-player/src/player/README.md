@@ -56,10 +56,10 @@ The simplest way to get a complete assessment UI:
 
 ```svelte
 <script>
-  import { ReferenceAssessmentLayout } from '@pie-framework/pie-assessment-toolkit/assessment-player/Layout.svelte';
+  import AssessmentLayout from '@pie-players/pie-assessment-player/Layout.svelte';
 </script>
 
-<ReferenceAssessmentLayout
+<AssessmentLayout
   {assessment}
   {organizationId}
   bundleHost="prod"
@@ -71,7 +71,7 @@ The simplest way to get a complete assessment UI:
 If you want to use your own layout:
 
 ```typescript
-import { AssessmentPlayer } from '@pie-framework/pie-assessment-toolkit/assessment-player';
+import { AssessmentPlayer } from '@pie-players/pie-assessment-player/player';
 
 const player = new AssessmentPlayer({
   assessment,

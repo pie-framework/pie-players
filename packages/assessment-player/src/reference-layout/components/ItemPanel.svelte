@@ -1,10 +1,13 @@
 <script lang="ts">
 	import type { ItemConfig, ItemEntity } from '@pie-players/pie-players-shared';
-	import type { ToolCoordinator } from '../../services/ToolCoordinator';
-	import type { ITTSService, IHighlightCoordinator, IElementToolStateStore } from '../../services/interfaces';
-	import '$lib/tags/pie-iife-player/PieIifePlayer.svelte';
-	import PiePlayerStyles from '$lib/components/PiePlayerStyles.svelte';
-	import '../../components/QuestionToolBar.svelte';
+	import type { ToolCoordinator } from '@pie-players/pie-assessment-toolkit';
+	import type {
+		ITTSService,
+		IHighlightCoordinator,
+		IElementToolStateStore
+	} from '@pie-players/pie-assessment-toolkit';
+	import '@pie-players/pie-iife-player';
+	import '@pie-players/pie-assessment-toolkit/components/QuestionToolBar.svelte';
 
 	// NOTE: Parent applications using ItemPanel with showHeader=true must import tool web components:
 	//   import '@pie-players/pie-tool-answer-eliminator';
@@ -32,7 +35,7 @@
 		config: ItemConfig | null;
 		session: { id: string; data: any[] };
 		bundleHost?: string;
-		env: { mode: string; role: string };
+		env: { mode: string; role?: string };
 		assessmentId?: string;
 		sectionId?: string;
 		toolCoordinator?: ToolCoordinator;
@@ -129,17 +132,15 @@
 		{/if}
 
 		<div class="item-content" bind:this={itemContentElement}>
-			<PiePlayerStyles>
-				<pie-iife-player
-					bind:this={piePlayerElement}
-					config={config}
-					env={env}
-					session={session}
-					hosted={false}
-					show-bottom-border={false}
-					bundle-host={bundleHost}
-				></pie-iife-player>
-			</PiePlayerStyles>
+			<pie-iife-player
+				bind:this={piePlayerElement}
+				config={config}
+				env={env}
+				session={session}
+				hosted={false}
+				show-bottom-border={false}
+				bundle-host={bundleHost}
+			></pie-iife-player>
 		</div>
 	{:else}
 		<div class="empty-container">

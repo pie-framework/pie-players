@@ -6,7 +6,7 @@
 	 * Uses ToolButtonDefinition from ToolRegistry for consistent tool button rendering.
 	 */
 
-	import type { ToolButtonDefinition } from "../services/ToolRegistry";
+	import type { ToolButtonDefinition } from "../services/ToolRegistry.js";
 
 	// Props
 	let {

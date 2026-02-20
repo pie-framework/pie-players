@@ -49,7 +49,6 @@
 		"@pie-players/pie-tool-periodic-table": "workspace:*",
 		"@pie-players/pie-tool-protractor": "workspace:*",
 		"@pie-players/pie-tool-ruler": "workspace:*",
-		"@sveltejs/kit": "^2.52.0",
 		"daisyui": "^5.5.18"
 	},
 	"types": "./dist/index.d.ts",

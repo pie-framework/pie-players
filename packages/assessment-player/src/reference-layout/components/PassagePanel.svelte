@@ -1,7 +1,6 @@
 <script lang="ts">
 	import type { PassageEntity, RubricBlock } from '@pie-players/pie-players-shared/types';
-	import '$lib/tags/pie-iife-player/PieIifePlayer.svelte';
-	import PiePlayerStyles from '$lib/components/PiePlayerStyles.svelte';
+	import '@pie-players/pie-iife-player';
 
 	let {
 		passage,
@@ -12,7 +11,7 @@
 		passage: PassageEntity | null;
 		rubricBlocks?: RubricBlock[];
 		bundleHost?: string;
-		env: { mode: string; role: string };
+		env: { mode: string; role?: string };
 	} = $props();
 
 	const passageConfig = $derived(passage?.config || null);
@@ -32,16 +31,14 @@
 	</div>
 {:else if passageConfig}
 	<div class="passage-panel">
-		<PiePlayerStyles>
-			<pie-iife-player
-				config={passageConfig}
-				env={env}
-				session={{ id: '', data: [] }}
-				hosted={false}
-				show-bottom-border={false}
-				bundle-host={bundleHost}
-			></pie-iife-player>
-		</PiePlayerStyles>
+		<pie-iife-player
+			config={passageConfig}
+			env={env}
+			session={{ id: '', data: [] }}
+			hosted={false}
+			show-bottom-border={false}
+			bundle-host={bundleHost}
+		></pie-iife-player>
 	</div>
 {:else}
 	<div class="passage-panel empty">

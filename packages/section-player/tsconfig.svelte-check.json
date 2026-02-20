@@ -2,8 +2,15 @@
 	"extends": "./tsconfig.json",
 	"compilerOptions": {
 		"noUnusedLocals": false,
-		"noUnusedParameters": false
+		"noUnusedParameters": false,
+		"moduleResolution": "NodeNext"
 	},
-	"include": ["src/**/*.ts", "src/**/*.svelte"],
-	"exclude": ["node_modules", "dist"]
+	"include": [
+		"src/**/*.ts",
+		"src/**/*.svelte"
+	],
+	"exclude": [
+		"node_modules",
+		"dist"
+	]
 }

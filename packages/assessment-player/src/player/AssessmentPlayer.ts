@@ -45,21 +45,21 @@ import {
 	ToolCoordinator,
 	TTSService,
 	TypedEventBus,
-} from "../index.js";
-import type { LoadItem } from "../item-loader.js";
-import { AssessmentAuthoringService } from "../services/AssessmentAuthoringService.js";
-import { ContextVariableStore } from "../services/ContextVariableStore.js";
+} from "@pie-players/pie-assessment-toolkit";
+import type { LoadItem } from "@pie-players/pie-assessment-toolkit";
+import { AssessmentAuthoringService } from "@pie-players/pie-assessment-toolkit";
+import { ContextVariableStore } from "@pie-players/pie-assessment-toolkit";
 import {
 	PNPToolResolver,
 	type ResolvedToolConfig,
-} from "../services/PNPToolResolver.js";
-import type { DefaultToolRegistryOptions } from "../services/createDefaultToolRegistry.js";
-import { createDefaultToolRegistry } from "../services/createDefaultToolRegistry.js";
-import { BrowserTTSProvider } from "../services/tts/browser-provider.js";
+} from "@pie-players/pie-assessment-toolkit";
+import type { DefaultToolRegistryOptions } from "@pie-players/pie-assessment-toolkit";
+import { createDefaultToolRegistry } from "@pie-players/pie-assessment-toolkit";
+import { BrowserTTSProvider } from "@pie-players/pie-assessment-toolkit";
 import {
 	DesmosCalculatorProvider,
 	TICalculatorProvider,
-} from "../tools/client.js";
+} from "@pie-players/pie-assessment-toolkit/tools/client";
 import {
 	buildNavigationStructure,
 	detectAssessmentFormat,

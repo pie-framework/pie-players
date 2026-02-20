@@ -76,14 +76,10 @@ sectionPlayer.catalogResolver = catalogResolver;
 sectionPlayer.section = section;
 ```
 
-### ✅ Reference Implementation (Future)
+### ✅ Assessment Runtime Package
 
-An optional **AssessmentPlayer** reference implementation may be provided for multi-section assessments. It would:
-
-- Manage navigation across sections
-- Coordinate section player instances
-- Provide assessment-level state management
-- But delegate to section players for rendering
+Assessment-level player/runtime APIs live in `@pie-players/pie-assessment-player`.
+Use this toolkit package for shared services and tool orchestration.
 
 ## Project Structure
 
@@ -513,7 +509,8 @@ The toolkit natively supports QTI 3.0 features for standards-compliant assessmen
 Student accommodations and IEP/504 support with automatic tool resolution:
 
 ```typescript
-import { AssessmentPlayer, PNPToolResolver } from '@pie-players/pie-assessment-toolkit';
+import { AssessmentPlayer } from '@pie-players/pie-assessment-player/player';
+import { PNPToolResolver } from '@pie-players/pie-assessment-toolkit';
 
 // QTI 3.0 assessment with PNP
 const assessment = {
@@ -577,7 +574,8 @@ const toolRegistry = createDefaultToolRegistry({
 Global variables shared across assessment items:
 
 ```typescript
-import { AssessmentPlayer, ContextVariableStore } from '@pie-players/pie-assessment-toolkit';
+import { AssessmentPlayer } from '@pie-players/pie-assessment-player/player';
+import { ContextVariableStore } from '@pie-players/pie-assessment-toolkit';
 
 // Assessment with context declarations
 const assessment = {

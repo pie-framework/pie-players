@@ -61,6 +61,7 @@ Example:
 - CDN imports require the package to publish its built file under `dist/` and register the custom element tag (this repo’s player/tool packages do).
 - Tool coordination is done via **JS properties** (e.g. `toolbar.toolCoordinator = new ToolCoordinator()`), not HTML attributes.
 - Pin versions in production (`@x.y.z`) to avoid breaking changes.
+- For package compatibility tiers and source-export policy, see `docs/publish-compatibility-matrix.md`.
 
 ## Local ESM CDN (development, no publishing)
 

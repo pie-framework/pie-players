@@ -53,7 +53,6 @@
 		"@pie-players/pie-tool-protractor": "workspace:*",
 		"@pie-players/pie-tool-ruler": "workspace:*",
 		"@pie-players/pie-tool-text-to-speech": "workspace:*",
-		"@sveltejs/kit": "^2.52.0",
 		"daisyui": "^5.5.18"
 	},
 	"types": "./dist/index.d.ts",

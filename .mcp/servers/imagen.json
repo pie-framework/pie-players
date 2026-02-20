@@ -2,6 +2,6 @@
 	"command": "bun",
 	"args": ["run", ".mcp-imagen/src/index.ts"],
 	"env": {
-		"OUTPUT_DIR": "/Users/eelco.hillenius/dev/prj/pie/pie-players/apps/docs/static/images/generated"
+		"OUTPUT_DIR": "./apps/docs/static/images/generated"
 	}
 }

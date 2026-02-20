@@ -4,8 +4,15 @@
 		"outDir": "dist",
 		"rootDir": "src",
 		"declaration": true,
-		"declarationMap": true
+		"declarationMap": true,
+		"moduleResolution": "NodeNext"
 	},
-	"include": ["src/**/*.ts"],
-	"exclude": ["node_modules", "dist", "build"]
+	"include": [
+		"src/**/*.ts"
+	],
+	"exclude": [
+		"node_modules",
+		"dist",
+		"build"
+	]
 }

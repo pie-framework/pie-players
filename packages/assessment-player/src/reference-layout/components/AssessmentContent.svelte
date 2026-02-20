@@ -2,7 +2,7 @@
 	
 	import type { ItemConfig, ItemEntity, PassageEntity, RubricBlock } from '@pie-players/pie-players-shared/types';
 	import { onDestroy, onMount } from 'svelte';
-	import type { AssessmentPlayer } from '../../player/AssessmentPlayer';
+	import type { AssessmentPlayer } from '../../player/AssessmentPlayer.js';
 	import ItemPanel from './ItemPanel.svelte';
 	import NotesPanel from './NotesPanel.svelte';
 	import PassagePanel from './PassagePanel.svelte';

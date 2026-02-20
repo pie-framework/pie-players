@@ -1,5 +1,5 @@
 /**
- * PIE Assessment Toolkit - Assessment Player
+ * PIE Assessment Player
  *
  * Optional default implementation showing how to wire toolkit services together.
  *
@@ -28,7 +28,7 @@ export {
 } from "./qti-navigation.js";
 
 // Layout Svelte component is exported via package.json path export:
-//   @pie-players/pie-assessment-toolkit/player/AssessmentLayout.svelte
+//   @pie-players/pie-assessment-player/Layout.svelte
 
 // Navigation types (optional abstractions)
 export type * from "./navigation-types.js";

@@ -42,7 +42,7 @@ The demo is now running! Open your browser to:
 ### From Package Root
 
 ```bash
-cd /Users/eelco.hillenius/dev/prj/pie/pie-players/packages/calculator-mathjs
+cd <repo-root>/packages/calculator-mathjs
 bun run demo
 ```
 
@@ -165,7 +165,7 @@ Manually open: http://localhost:3000
 Make sure you're in the correct directory:
 
 ```bash
-cd /Users/eelco.hillenius/dev/prj/pie/pie-players/packages/calculator-mathjs
+cd <repo-root>/packages/calculator-mathjs
 bun run demo
 ```
 

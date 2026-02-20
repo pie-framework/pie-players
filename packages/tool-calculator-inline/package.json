@@ -21,10 +21,10 @@
 	],
 	"svelte": "./tool-calculator-inline.svelte",
 	"main": "./dist/tool-calculator-inline.js",
-	"types": "./dist/tool-calculator-inline.d.ts",
+	"types": "./dist/tool-calculator-inline.svelte.d.ts",
 	"exports": {
 		".": {
-			"types": "./dist/tool-calculator-inline.d.ts",
+			"types": "./dist/tool-calculator-inline.svelte.d.ts",
 			"import": "./dist/tool-calculator-inline.js",
 			"svelte": "./tool-calculator-inline.svelte"
 		}
@@ -41,7 +41,6 @@
 	"jsdelivr": "./dist/tool-calculator-inline.js",
 	"dependencies": {
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
-		"@sveltejs/kit": "^2.52.0",
 		"daisyui": "^5.5.18"
 	},
 	"scripts": {

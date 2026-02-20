@@ -20,6 +20,22 @@
 			"types": "./dist/index.d.ts",
 			"import": "./dist/pie-assessment-player.js"
 		},
+		"./player": {
+			"types": "./dist/player/index.d.ts",
+			"import": "./dist/player/index.js"
+		},
+		"./Layout.svelte": {
+			"svelte": "./src/player/AssessmentLayout.svelte",
+			"import": "./src/player/AssessmentLayout.svelte"
+		},
+		"./reference-layout": {
+			"types": "./dist/reference-layout/index.d.ts",
+			"import": "./dist/reference-layout/index.js"
+		},
+		"./reference-layout/ReferenceLayout.svelte": {
+			"svelte": "./src/reference-layout/ReferenceLayout.svelte",
+			"import": "./src/reference-layout/ReferenceLayout.svelte"
+		},
 		"./components/AssessmentItemList.svelte": {
 			"svelte": "./src/components/AssessmentItemList.svelte",
 			"import": "./src/components/AssessmentItemList.svelte"
@@ -31,13 +47,15 @@
 	},
 	"files": [
 		"dist",
-		"src/components"
+		"src/components",
+		"src/player",
+		"src/reference-layout"
 	],
 	"scripts": {
 		"build": "vite build",
 		"dev": "vite build --watch",
 		"typecheck": "tsc --noEmit",
-		"check": "svelte-check --tsconfig ./tsconfig.json",
+		"check": "svelte-check --tsconfig ./tsconfig.json --compiler-warnings options_missing_custom_element:ignore",
 		"lint": "biome check ."
 	},
 	"peerDependencies": {
@@ -47,8 +65,10 @@
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
 		"@pie-players/pie-iife-player": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*",
+		"@pie-players/pie-tool-annotation-toolbar": "workspace:*",
+		"@pie-players/pie-tool-color-scheme": "workspace:*",
+		"@pie-players/pie-tool-text-to-speech": "workspace:*",
 		"@pie-players/pie-tool-toolbar": "workspace:*",
-		"@sveltejs/kit": "^2.52.0",
 		"daisyui": "^5.5.18"
 	},
 	"devDependencies": {

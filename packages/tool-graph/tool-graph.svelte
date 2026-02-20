@@ -185,6 +185,34 @@ import { onDestroy, onMount } from 'svelte';
 		return pointId === tempLineStartPointId || pointId === draggingPointId;
 	}
 
+	function activatePoint(pointId: number) {
+		if (currentTool === 'delete') {
+			points = points.filter((p) => p.id !== pointId);
+			lines = lines.filter((l) => l.p1Id !== pointId && l.p2Id !== pointId);
+			return;
+		}
+
+		if (currentTool === 'line') {
+			if (tempLineStartPointId === null) {
+				tempLineStartPointId = pointId;
+				return;
+			}
+
+			if (tempLineStartPointId !== pointId) {
+				const exists = lines.some(
+					(l) =>
+						(l.p1Id === tempLineStartPointId && l.p2Id === pointId) ||
+						(l.p1Id === pointId && l.p2Id === tempLineStartPointId)
+				);
+				if (!exists) {
+					lines = [...lines, { id: getUniqueId(), p1Id: tempLineStartPointId, p2Id: pointId }];
+				}
+			}
+			tempLineStartPointId = null;
+			currentPointerPos = null;
+		}
+	}
+
 	// Computed grid lines (matching production implementation)
 	let gridLines = $derived.by(() => {
 		const lines = {
@@ -634,9 +662,18 @@ import { onDestroy, onMount } from 'svelte';
 							class="user-point"
 							class:highlight={isPointHighlighted(point.id)}
 							data-id={point.id}
+							role="button"
+							tabindex="0"
+							aria-label="Graph point {point.id}"
 							onpointerdown={(e) => {
 								e.stopPropagation();
 								handlePointPointerDown(point.id, e);
+							}}
+							onkeydown={(e) => {
+								if (e.key === 'Enter' || e.key === ' ') {
+									e.preventDefault();
+									activatePoint(point.id);
+								}
 							}}
 						/>
 					{/each}

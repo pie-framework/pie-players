@@ -300,6 +300,7 @@ import { onMount } from 'svelte';
 		data-position={position}
 		role="toolbar"
 		aria-label="Assessment tools"
+		tabindex="0"
 		onkeydown={handleKeyDown}
 	>
 		<h2 class="tool-toolbar__title">Tools</h2>

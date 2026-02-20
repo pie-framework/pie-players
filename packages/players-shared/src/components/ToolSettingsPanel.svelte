@@ -1,16 +1,19 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
 	import { onMount } from 'svelte';
 
 	let {
 		open,
 		title = 'Settings',
 		onClose,
-		anchorEl = null
+		anchorEl = null,
+		children
 	}: {
 		open: boolean;
 		title?: string;
 		onClose: () => void;
 		anchorEl?: HTMLElement | null;
+		children?: Snippet;
 	} = $props();
 
 	let panelEl = $state<HTMLDivElement | null>(null);
@@ -84,7 +87,7 @@
 			<button type="button" class="btn btn-ghost btn-xs" onclick={onClose} aria-label="Close settings">Close</button>
 		</div>
 		<div class="text-sm">
-			<slot />
+			{@render children?.()}
 		</div>
 	</div>
 {/if}

@@ -273,7 +273,12 @@
 			/>
 
 			<!-- Unit toggle button group (matching production implementation style) -->
-			<div class="btn-group" onpointerdown={(e) => e.stopPropagation()}>
+			<div
+				class="btn-group"
+				role="group"
+				aria-label="Ruler unit selection"
+				onpointerdown={(e) => e.stopPropagation()}
+			>
 				<button
 					class="unit-btn"
 					class:active={unit === 'inches'}

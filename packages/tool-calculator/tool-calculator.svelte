@@ -112,7 +112,7 @@ import { onMount } from 'svelte';
 	let calculatorContainerEl = $state<HTMLDivElement | undefined>();
 	let settingsButtonEl = $state<HTMLButtonElement | undefined>();
 	let calculatorInstance = $state<Calculator | null>(null);
-	let currentCalculatorType = $state<CalculatorType>(calculatorType);
+	let currentCalculatorType = $state<CalculatorType>('scientific');
 	let settingsOpen = $state(false);
 	let switchAbortController = $state<AbortController | null>(null);
 	let isInitializing = $state(false);
@@ -275,7 +275,7 @@ import { onMount } from 'svelte';
 		};
 	}
 
-	let calculatorConfig = $state<CalculatorProviderConfig>(getInitialConfig(calculatorType || 'scientific'));
+	let calculatorConfig = $state<CalculatorProviderConfig>(getInitialConfig(currentCalculatorType));
 
 	// ============================================================================
 	// Calculator Lifecycle

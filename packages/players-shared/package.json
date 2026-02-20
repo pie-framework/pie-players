@@ -121,6 +121,12 @@
 		"typescript": "^5.9.3"
 	},
 	"peerDependencies": {
+		"@datadog/browser-rum": "^6.23.0",
 		"svelte": "^5.51.3"
+	},
+	"peerDependenciesMeta": {
+		"@datadog/browser-rum": {
+			"optional": true
+		}
 	}
 }

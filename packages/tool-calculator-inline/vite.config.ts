@@ -10,7 +10,7 @@ export default defineConfig({
 			},
 			emitCss: false,
 		}),
-		dts({ rollupTypes: true }),
+		dts({ rollupTypes: false }),
 	],
 	build: {
 		lib: {
@@ -23,7 +23,7 @@ export default defineConfig({
 		emptyOutDir: true,
 		target: "es2022",
 		minify: "esbuild",
-		sourcemap: true,
+		sourcemap: false,
 		rollupOptions: {
 			external: ["svelte", "@pie-players/pie-assessment-toolkit"],
 			output: {

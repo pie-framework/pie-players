@@ -254,6 +254,7 @@ import { onDestroy, onMount } from 'svelte';
 		onpointerdown={handlePointerDown}
 		role="dialog"
 		aria-label="Text-to-Speech Tool"
+		tabindex="-1"
 	>
 		<!-- Header -->
 		<div class="tool-header">

@@ -514,11 +514,9 @@ class TICalculator implements Calculator {
 	async evaluate(expression: string): Promise<string> {
 		console.log(`[TICalculator] evaluate: ${expression}`);
 
-		// Stub: Simple evaluation using JavaScript
 		try {
-			// WARNING: This is unsafe for production - only for stub
-			// eslint-disable-next-line no-eval
-			const result = eval(expression.replace(/×/g, "*").replace(/÷/g, "/"));
+			const normalizedExpression = this._normalizeExpression(expression);
+			const result = this._evaluateArithmeticExpression(normalizedExpression);
 			const resultStr = String(result);
 
 			this.history.push({
@@ -531,6 +529,160 @@ class TICalculator implements Calculator {
 		} catch (error) {
 			throw new Error(`Evaluation error: ${error}`);
 		}
+	}
+
+	private _normalizeExpression(expression: string): string {
+		return expression.replace(/×/g, "*").replace(/÷/g, "/").replace(/\s+/g, "");
+	}
+
+	private _evaluateArithmeticExpression(expression: string): number {
+		if (!expression) {
+			throw new Error("Expression is empty");
+		}
+
+		if (!/^[\d+\-*/().]+$/.test(expression)) {
+			throw new Error("Expression contains unsupported characters");
+		}
+
+		const values: number[] = [];
+		const operators: string[] = [];
+		const precedence = (op: string) => (op === "+" || op === "-" ? 1 : 2);
+
+		const applyOperator = () => {
+			const operator = operators.pop();
+			const right = values.pop();
+			const left = values.pop();
+
+			if (!operator || left === undefined || right === undefined) {
+				throw new Error("Invalid expression");
+			}
+
+			switch (operator) {
+				case "+":
+					values.push(left + right);
+					break;
+				case "-":
+					values.push(left - right);
+					break;
+				case "*":
+					values.push(left * right);
+					break;
+				case "/":
+					if (right === 0) {
+						throw new Error("Division by zero");
+					}
+					values.push(left / right);
+					break;
+				default:
+					throw new Error(`Unsupported operator: ${operator}`);
+			}
+		};
+
+		let index = 0;
+		while (index < expression.length) {
+			const char = expression[index];
+
+			if ((char >= "0" && char <= "9") || char === ".") {
+				let end = index;
+				while (
+					end < expression.length &&
+					((expression[end] >= "0" && expression[end] <= "9") ||
+						expression[end] === ".")
+				) {
+					end++;
+				}
+
+				const numericToken = expression.slice(index, end);
+				const value = Number(numericToken);
+				if (Number.isNaN(value)) {
+					throw new Error(`Invalid number: ${numericToken}`);
+				}
+
+				values.push(value);
+				index = end;
+				continue;
+			}
+
+			if (char === "(") {
+				operators.push(char);
+				index++;
+				continue;
+			}
+
+			if (char === ")") {
+				while (operators.length && operators[operators.length - 1] !== "(") {
+					applyOperator();
+				}
+				if (operators.pop() !== "(") {
+					throw new Error("Mismatched parentheses");
+				}
+				index++;
+				continue;
+			}
+
+			if (char === "+" || char === "-" || char === "*" || char === "/") {
+				const isUnarySign =
+					(char === "+" || char === "-") &&
+					(index === 0 ||
+						expression[index - 1] === "(" ||
+						expression[index - 1] === "+" ||
+						expression[index - 1] === "-" ||
+						expression[index - 1] === "*" ||
+						expression[index - 1] === "/");
+
+				if (isUnarySign) {
+					if (expression[index + 1] === "(") {
+						values.push(0);
+					} else {
+						let end = index + 1;
+						while (
+							end < expression.length &&
+							((expression[end] >= "0" && expression[end] <= "9") ||
+								expression[end] === ".")
+						) {
+							end++;
+						}
+
+						const numericToken = expression.slice(index, end);
+						const value = Number(numericToken);
+						if (Number.isNaN(value)) {
+							throw new Error(`Invalid signed number: ${numericToken}`);
+						}
+
+						values.push(value);
+						index = end;
+						continue;
+					}
+				}
+
+				while (
+					operators.length &&
+					operators[operators.length - 1] !== "(" &&
+					precedence(operators[operators.length - 1]) >= precedence(char)
+				) {
+					applyOperator();
+				}
+
+				operators.push(char);
+				index++;
+				continue;
+			}
+
+			throw new Error(`Unexpected token: ${char}`);
+		}
+
+		while (operators.length) {
+			if (operators[operators.length - 1] === "(") {
+				throw new Error("Mismatched parentheses");
+			}
+			applyOperator();
+		}
+
+		if (values.length !== 1) {
+			throw new Error("Invalid expression");
+		}
+
+		return values[0];
 	}
 
 	/**

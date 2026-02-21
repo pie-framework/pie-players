@@ -21,6 +21,8 @@
 		"test:coverage": "vitest --coverage"
 	},
 	"keywords": [
+		"pie-players",
+		"pie",
 		"tts",
 		"text-to-speech",
 		"client",
@@ -43,5 +45,9 @@
 		"typescript": "^5.3.3",
 		"vitest": "^1.0.4"
 	},
-	"sideEffects": false
+	"sideEffects": false,
+	"homepage": "https://github.com/pie-framework/pie-players#readme",
+	"bugs": {
+		"url": "https://github.com/pie-framework/pie-players/issues"
+	}
 }

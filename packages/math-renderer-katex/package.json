@@ -38,11 +38,16 @@
 		"typescript": "^5.9.3"
 	},
 	"keywords": [
+		"pie-players",
 		"pie",
 		"math",
 		"katex",
 		"rendering",
 		"latex"
 	],
-	"sideEffects": false
+	"sideEffects": false,
+	"homepage": "https://github.com/pie-framework/pie-players#readme",
+	"bugs": {
+		"url": "https://github.com/pie-framework/pie-players/issues"
+	}
 }

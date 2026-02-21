@@ -34,6 +34,7 @@
 		"vite": "^6.0.7"
 	},
 	"keywords": [
+		"pie-players",
 		"pie",
 		"assessment",
 		"print",
@@ -48,5 +49,9 @@
 	"license": "MIT",
 	"publishConfig": {
 		"access": "public"
+	},
+	"homepage": "https://github.com/pie-framework/pie-players#readme",
+	"bugs": {
+		"url": "https://github.com/pie-framework/pie-players/issues"
 	}
 }

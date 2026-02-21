@@ -20,6 +20,7 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"keywords": [
+		"pie-players",
 		"pie",
 		"calculator",
 		"desmos",
@@ -42,5 +43,9 @@
 	"devDependencies": {
 		"typescript": "^5.7.2"
 	},
-	"sideEffects": false
+	"sideEffects": false,
+	"homepage": "https://github.com/pie-framework/pie-players#readme",
+	"bugs": {
+		"url": "https://github.com/pie-framework/pie-players/issues"
+	}
 }

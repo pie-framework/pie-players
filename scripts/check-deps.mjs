@@ -196,6 +196,38 @@ function collectTsAliasPrefixes(pkgDir) {
 	return [...aliases];
 }
 
+function toPosixRelativePath(fullPath, rootPath) {
+	return path.relative(rootPath, fullPath).split(path.sep).join("/");
+}
+
+function isDevOnlyFilePath(relativePath) {
+	const fileName = path.posix.basename(relativePath);
+	if (/\.test\.[cm]?[jt]sx?$/.test(fileName)) return true;
+	if (/\.spec\.[cm]?[jt]sx?$/.test(fileName)) return true;
+	if (/\.stories\.[cm]?[jt]sx?$/.test(fileName)) return true;
+	if (
+		/^(svelte|vite|vitest|playwright|biome|eslint|prettier|rollup|webpack|tailwind|postcss)\.config\.[cm]?[jt]s$/.test(
+			fileName,
+		)
+	) {
+		return true;
+	}
+	if (/\.config\.[cm]?[jt]s$/.test(fileName)) return true;
+
+	return /(^|\/)(__tests__|tests|test|spec|specs|e2e|fixtures|mocks|scripts)(\/|$)/.test(
+		relativePath,
+	);
+}
+
+function isPublishablePackageOrToolWorkspace(workspaceDir) {
+	const relativeDir = path.relative(ROOT, workspaceDir).split(path.sep).join("/");
+	return /^(packages|tools)\//.test(relativeDir);
+}
+
+function isRuntimeSourceFile(relativePath) {
+	return relativePath.startsWith("src/");
+}
+
 function main() {
 	if (!fs.existsSync(rootManifestPath)) {
 		fail("run from repository root (package.json not found).");
@@ -242,18 +274,23 @@ function main() {
 
 	for (const workspace of workspaceEntries) {
 		const manifest = readJson(workspace.manifestPath);
-		const declared = new Set([
+		const declaredRuntime = new Set([
 			...Object.keys(manifest.dependencies ?? {}),
-			...Object.keys(manifest.devDependencies ?? {}),
 			...Object.keys(manifest.peerDependencies ?? {}),
 			...Object.keys(manifest.optionalDependencies ?? {}),
 		]);
+		const declaredDev = new Set(Object.keys(manifest.devDependencies ?? {}));
+		const declaredAny = new Set([...declaredRuntime, ...declaredDev]);
 
 		const aliasPrefixes = collectTsAliasPrefixes(workspace.dir);
 		const files = [];
 		walkFiles(workspace.dir, files);
+		const enforceRuntimeClassification =
+			!manifest.private && isPublishablePackageOrToolWorkspace(workspace.dir);
 
 		for (const filePath of files) {
+			const relativeFile = toPosixRelativePath(filePath, workspace.dir);
+			const devOnlyContext = isDevOnlyFilePath(relativeFile);
 			let content = "";
 			try {
 				content = fs.readFileSync(filePath, "utf8");
@@ -271,15 +308,32 @@ function main() {
 					(packageName === manifest.name || specifier.startsWith(`${manifest.name}/`));
 
 				if (isSelfImport || workspacePackageNames.has(packageName)) continue;
-				if (declared.has(packageName)) continue;
+				if (!declaredAny.has(packageName)) {
+					violations.push({
+						type: "missing-dependency",
+						workspace: workspace.name,
+						file: path.relative(ROOT, filePath),
+						specifier,
+						packageName,
+					});
+					continue;
+				}
 
-				violations.push({
-					type: "missing-dependency",
-					workspace: workspace.name,
-					file: path.relative(ROOT, filePath),
-					specifier,
-					packageName,
-				});
+				const runtimeUsingDevOnlyDep =
+					enforceRuntimeClassification &&
+					isRuntimeSourceFile(relativeFile) &&
+					!devOnlyContext &&
+					declaredDev.has(packageName) &&
+					!declaredRuntime.has(packageName);
+				if (runtimeUsingDevOnlyDep) {
+					violations.push({
+						type: "runtime-imports-dev-dependency",
+						workspace: workspace.name,
+						file: path.relative(ROOT, filePath),
+						specifier,
+						packageName,
+					});
+				}
 			}
 		}
 
@@ -307,7 +361,7 @@ function main() {
 
 				const expectedPackage = KNOWN_BIN_TO_PACKAGE[executable];
 				if (!expectedPackage) continue;
-				if (declared.has(expectedPackage)) continue;
+				if (declaredAny.has(expectedPackage)) continue;
 
 				violations.push({
 					type: "undeclared-script-binary",
@@ -339,6 +393,10 @@ function main() {
 		} else if (violation.type === "undeclared-script-binary") {
 			console.error(
 				`  [undeclared-script-binary] ${violation.workspace}#${violation.scriptName}: "${violation.executable}" used but "${violation.expectedPackage}" is not declared locally.`,
+			);
+		} else if (violation.type === "runtime-imports-dev-dependency") {
+			console.error(
+				`  [runtime-imports-dev-dependency] ${violation.workspace}: ${violation.file} imports "${violation.specifier}" but "${violation.packageName}" is only in devDependencies.`,
 			);
 		}
 	}

@@ -25,6 +25,7 @@
 		"README.md"
 	],
 	"keywords": [
+		"pie-players",
 		"pie",
 		"tts",
 		"text-to-speech",
@@ -38,5 +39,9 @@
 	},
 	"type": "module",
 	"types": "./dist/index.d.ts",
-	"sideEffects": false
+	"sideEffects": false,
+	"homepage": "https://github.com/pie-framework/pie-players#readme",
+	"bugs": {
+		"url": "https://github.com/pie-framework/pie-players/issues"
+	}
 }

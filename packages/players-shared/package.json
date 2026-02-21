@@ -127,5 +127,13 @@
 		"@datadog/browser-rum": {
 			"optional": true
 		}
-	}
+	},
+	"homepage": "https://github.com/pie-framework/pie-players#readme",
+	"bugs": {
+		"url": "https://github.com/pie-framework/pie-players/issues"
+	},
+	"keywords": [
+		"pie-players",
+		"pie"
+	]
 }

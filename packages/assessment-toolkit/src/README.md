@@ -536,8 +536,9 @@ const assessment = {
 const player = new AssessmentPlayer({ assessment, loadItem });
 
 // Or use PNPToolResolver directly
-const resolver = new PNPToolResolver();
-const tools = resolver.resolveTools(assessment, currentItemRef);
+const registry = createDefaultToolRegistry();
+const resolver = new PNPToolResolver(registry);
+const { tools } = resolver.resolveToolsWithProvenance(assessment, currentItemRef);
 // Returns: [{ id: 'textToSpeech', enabled: true, ... }, ...]
 ```
 

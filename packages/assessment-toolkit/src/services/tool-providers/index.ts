@@ -22,9 +22,6 @@ export type { ToolProviderConfig } from "./ToolProviderRegistry.js";
 export { DesmosToolProvider } from "./DesmosToolProvider.js";
 export type { DesmosToolProviderConfig } from "./DesmosToolProvider.js";
 
-export { TIToolProvider } from "./TIToolProvider.js";
-export type { TIToolProviderConfig } from "./TIToolProvider.js";
-
 export { TTSToolProvider } from "./TTSToolProvider.js";
 export type {
 	TTSToolProviderConfig,

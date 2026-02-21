@@ -44,6 +44,9 @@
 	"jsdelivr": "./dist/tool-annotation-toolbar.js",
 	"dependencies": {
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
+		"@pie-players/pie-tool-dictionary": "workspace:*",
+		"@pie-players/pie-tool-picture-dictionary": "workspace:*",
+		"@pie-players/pie-tool-translation": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*",
 		"daisyui": "^5.5.18"
 	},

@@ -23,7 +23,13 @@ import type { PlaybackState, TTSConfig } from "./TTSService.js";
 import type {
 	ITTSProvider,
 	TTSProviderCapabilities,
-} from "./tts/provider-interface.js";
+} from "@pie-players/pie-tts";
+import type { TestAttemptSession } from "../attempt/TestSession.js";
+import type {
+	TestAttemptSessionItemChange,
+	TestAttemptSessionPosition,
+	TestAttemptSessionTrackerConfig,
+} from "../attempt/TestSessionTracker.js";
 
 // Re-export II18nService from players-shared
 export type { II18nService };
@@ -446,6 +452,30 @@ export interface IElementToolStateStore {
 }
 
 /**
+ * Test attempt session tracker interface
+ *
+ * Tracks assessment/test attempt progress and links item identifiers to PIE item sessions.
+ * This is orchestration metadata and should not store full tool-state payloads.
+ */
+export interface ITestAttemptSessionTracker {
+	initialize(itemIdentifiers: string[]): TestAttemptSession;
+	getSnapshot(): TestAttemptSession | null;
+	setCurrentPosition(
+		position: TestAttemptSessionPosition,
+	): TestAttemptSession | null;
+	recordItemSessionChange(
+		change: TestAttemptSessionItemChange,
+	): TestAttemptSession | null;
+	subscribe(listener: (session: TestAttemptSession) => void): () => void;
+}
+
+export type {
+	TestAttemptSessionItemChange,
+	TestAttemptSessionPosition,
+	TestAttemptSessionTrackerConfig,
+};
+
+/**
  * Toolkit coordinator interface
  *
  * Orchestrates all toolkit services (TTS, tools, accessibility, state management) from a single entry point.
@@ -486,6 +516,7 @@ export interface IToolkitCoordinator {
 	 * Catalog resolver
 	 */
 	readonly catalogResolver: IAccessibilityCatalogResolver;
+	readonly testAttemptSessionTracker?: ITestAttemptSessionTracker;
 
 	/**
 	 * Get all services as a bundle
@@ -512,6 +543,25 @@ export interface IToolkitCoordinator {
 	 * Update tool configuration
 	 */
 	updateToolConfig(toolId: string, updates: any): void;
+
+	/**
+	 * Initialize test session tracking with the realized item order.
+	 */
+	initializeTestAttemptSession?(itemIdentifiers: string[]): TestAttemptSession | null;
+
+	/**
+	 * Update current test navigation position.
+	 */
+	updateTestAttemptSessionPosition?(
+		position: TestAttemptSessionPosition,
+	): TestAttemptSession | null;
+
+	/**
+	 * Record an item-session change in the test tracker.
+	 */
+	recordTestAttemptSessionItemChange?(
+		change: TestAttemptSessionItemChange,
+	): TestAttemptSession | null;
 }
 
 // II18nService is re-exported from @pie-players/pie-players-shared/i18n

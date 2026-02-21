@@ -4,7 +4,7 @@
  * Unified interface for all assessment tools that require
  * configuration, authentication, or external services.
  *
- * Examples: Desmos calculators, TI calculators, TTS services,
+ * Examples: Desmos calculators, TTS services,
  * translation services, dictionary APIs, etc.
  *
  * Part of PIE Assessment Toolkit.
@@ -18,6 +18,7 @@ export type ToolCategory =
 	| "tts"
 	| "translation"
 	| "dictionary"
+	| "pictureDictionary"
 	| "annotation"
 	| "accessibility"
 	| "other";
@@ -73,7 +74,7 @@ export interface IToolProvider<TConfig = any, TInstance = any> {
 	/**
 	 * Unique identifier for this provider
 	 *
-	 * @example 'desmos-calculator', 'aws-polly-tts', 'ti-calculator'
+	 * @example 'desmos-calculator', 'aws-polly-tts'
 	 */
 	readonly providerId: string;
 

@@ -10,7 +10,7 @@ This document describes how PIE Assessment Toolkit models paired passages and pa
 
 1. **QTI-aligned structure**: Use `rubricBlocks` and `assessmentItemRefs` from QTI 3.0
 2. **PIE-native entities**: Store `PassageEntity` and `ItemEntity` (not HTML strings or external references)
-3. **Page = Section**: `QtiAssessmentSection` with `keepTogether: true` represents a page
+3. **Page = Section**: `AssessmentSection` with `keepTogether: true` represents a page
 4. **No loading logic**: Player receives fully resolved entities
 5. **Uniform rendering**: Passages and items both use ItemPlayer infrastructure
 
@@ -18,10 +18,10 @@ This document describes how PIE Assessment Toolkit models paired passages and pa
 
 ### Page-Level Structure
 
-A "page" in the assessment is represented as a `QtiAssessmentSection`:
+A "page" in the assessment is represented as an `AssessmentSection`:
 
 ```typescript
-export interface QtiAssessmentSection {
+export interface AssessmentSection {
   identifier: string;
   title?: string;
   keepTogether: boolean;  // true = page boundary
@@ -65,7 +65,7 @@ export interface RubricBlock {
 Passages are embedded as `PassageEntity` objects, making sections self-contained. Ideal for all assessment types.
 
 ```typescript
-const page: QtiAssessmentSection = {
+const page: AssessmentSection = {
   identifier: 'paired-passages-page-1',
   keepTogether: true,
 
@@ -190,7 +190,7 @@ For adaptive assessments like Renaissance Star:
 ### Backend Responsibility
 - Determines next page based on student performance
 - Selects appropriate items and passages
-- Sends complete `QtiAssessmentSection` to frontend
+- Sends complete `AssessmentSection` to frontend
 
 ### Frontend Responsibility
 - Renders the received section as a page
@@ -214,7 +214,7 @@ Body: {
 // Backend determines next page and responds
 Response: {
   success: true,
-  section: QtiAssessmentSection,  // Next page to render
+  section: AssessmentSection,  // Next page to render
   pageNumber?: number,
   totalPages?: number,
   canNavigateNext?: boolean,
@@ -273,7 +273,7 @@ The Reference Layout component should:
 
 This design is **QTI 3.0-aligned** where practical:
 
-- ✅ Uses QTI 3.0 structure (`QtiAssessmentSection`, `rubricBlocks`, `assessmentItemRefs`)
+- ✅ Uses QTI 3.0 structure (`AssessmentSection`, `rubricBlocks`, `assessmentItemRefs`)
 - ✅ Uses QTI 3.0 semantics (`keepTogether`, `view`, `use`)
 - ✅ Stores PIE entities (not QTI XML) - PIE-native approach
 - ✅ No loading logic - player receives resolved entities

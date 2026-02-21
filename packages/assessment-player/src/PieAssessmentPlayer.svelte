@@ -17,8 +17,6 @@
 			mode: { attribute: 'mode', type: 'String' },
 			role: { attribute: 'role', type: 'String' },
 
-			// Authoring mode
-			authoringCallbacks: { attribute: 'authoring-callbacks', type: 'Object' },
 			configuration: { attribute: 'configuration', type: 'Object' }
 		}
 	}}
@@ -35,7 +33,6 @@
 	} from './player/index.js';
 	import type { PieIifePlayerElement } from '@pie-players/pie-iife-player';
 	import {
-		type AssessmentAuthoringCallbacks,
 		type AssessmentEntity,
 		BUILDER_BUNDLE_URL,
 		type Env,
@@ -59,7 +56,6 @@
 		loadItem: loadItemProp = undefined,
 		mode = 'gather',
 		role = 'student',
-		authoringCallbacks = undefined,
 		configuration = {}
 	}: {
 		assessment: AssessmentEntity;
@@ -68,11 +64,10 @@
 		itemBank?: Record<string, ItemEntity>;
 		fetchBaseUrl?: string;
 		itemEndpoint?: string;
-		mode?: 'gather' | 'view' | 'evaluate' | 'author';
+		mode?: 'gather' | 'view' | 'evaluate';
 		role?: 'student' | 'instructor';
 		// Note: `loadItem` can be set programmatically as a property on the custom element
 		loadItem?: LoadItemFn;
-		authoringCallbacks?: AssessmentAuthoringCallbacks;
 		configuration?: Record<string, any>;
 	} = $props();
 
@@ -185,7 +180,6 @@
 			bundleHost,
 			mode,
 			loadItem,
-			authoringCallbacks,
 			onItemChanged: async () => {
 				// host can listen to toolkit events if desired; we keep default behavior minimal
 			}
@@ -320,6 +314,7 @@
 			tools="calculator,graph,periodicTable,protractor,lineReader,magnifier,ruler"
 			toolCoordinator={player?.getToolCoordinator()}
 			highlightCoordinator={player?.getHighlightCoordinator()}
+			ttsService={player?.getTTSService()}
 		></pie-tool-toolbar>
 	</div>
 

@@ -97,7 +97,7 @@ export interface AssessmentItemRef extends SearchMetaDataEntity {
 - `@pie-players/pie-legacy-player`
 - `@pie-players/pie-inline-player`
 - `@pie-players/pie-fixed-player`
-- `@pie-players/pie-author`
+- `@pie-players/pie-iife-author-player`
 - All other core packages
 
 ### ⚠️ Known Issues (Not Blocking)

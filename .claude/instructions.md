@@ -2,7 +2,7 @@
 
 ## Project Context
 
-**PIE Players** is a comprehensive web component and assessment player framework for educational assessments. It provides multiple player implementations (IIFE, ESM, Fixed, Inline) and supports full assessment delivery with authoring mode, tools, and accommodations.
+**PIE Players** is a comprehensive web component and assessment player framework for educational assessments. It provides multiple player implementations (IIFE, ESM, Fixed, Inline) and supports full assessment delivery with tools and accommodations.
 
 **Critical Requirements**:
 
@@ -35,7 +35,7 @@ pie-players/
 │   ├── players-shared/         # Shared utilities & components
 │   └── pie-tool-*/             # 10+ assessment tools (calculator, graph, etc.)
 ├── apps/
-│   ├── example/                # Demo app (authoring + assessment)
+│   ├── example/                # Demo app (player + assessment)
 │   └── docs/                   # Documentation site
 └── tools/cli/                  # oclif-based CLI
 ```
@@ -139,11 +139,11 @@ bun run check          # Svelte component validation
 - Axe-core integration in Playwright tests
 - Multiple assessment accommodations (tools for special needs)
 
-### Authoring Mode
+### Runtime Scope
 
-- Items can be configured/edited live
-- Dual mode: authoring + student interaction
-- Configuration UI in separate entry point (`author.js`)
+- Item-level author mode remains part of PIE runtime support
+- Assessment-level authoring orchestration is out of scope for this repository
+- Keep guidance centered on assessment delivery and accommodation tooling
 
 ### Model-Driven Architecture
 

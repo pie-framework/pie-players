@@ -43,15 +43,37 @@
 		'answerEliminator'
 	];
 
-	// Current state - initialize with default profile if no initialProfile provided
-	let activeFeatures = $state<Set<string>>(
-		new Set(initialProfile?.supports || DEFAULT_ALL_TOOLS_PROFILE),
-	);
-	let selectedPreset = $state<string | null>(initialProfile ? null : 'default');
+	// Current state - derived from `initialProfile` and then user-driven.
+	let activeFeatures = $state<Set<string>>(new Set(DEFAULT_ALL_TOOLS_PROFILE));
+	let selectedPreset = $state<string | null>('default');
 	let customFeature = $state('');
 	let showCategoryFilter = $state<string | null>(null);
 	let searchQuery = $state('');
 	let statusMessage = $state('');
+	let lastAppliedInitialProfileKey = $state<string | null>(null);
+
+	// Keep internal state aligned if parent provides/changes an initial profile.
+	$effect(() => {
+		const supports = initialProfile?.supports;
+		const nextKey =
+			supports && supports.length > 0
+				? JSON.stringify([...supports].sort())
+				: '__default__';
+
+		// Prevent reapplying equivalent values and creating parent-child update churn.
+		if (nextKey === lastAppliedInitialProfileKey) {
+			return;
+		}
+		lastAppliedInitialProfileKey = nextKey;
+
+		if (supports && supports.length > 0) {
+			activeFeatures = new Set(supports);
+			selectedPreset = null;
+		} else {
+			activeFeatures = new Set(DEFAULT_ALL_TOOLS_PROFILE);
+			selectedPreset = 'default';
+		}
+	});
 
 	// Computed profile
 	$effect(() => {
@@ -90,6 +112,20 @@
 
 		return filtered;
 	});
+
+	function handlePresetSelectionChange(event: Event) {
+		const target = event.target as HTMLSelectElement | null;
+		const value = target?.value ?? '';
+		if (value === 'default') {
+			activeFeatures = new Set(DEFAULT_ALL_TOOLS_PROFILE);
+			selectedPreset = 'default';
+			statusMessage = `Default profile applied. ${activeFeatures.size} features enabled.`;
+		} else if (value === '') {
+			clearAll();
+		} else {
+			applyPreset(value);
+		}
+	}
 
 	function applyPreset(presetKey: string) {
 		const preset = EXAMPLE_PNP_CONFIGURATIONS[presetKey as keyof typeof EXAMPLE_PNP_CONFIGURATIONS];
@@ -191,18 +227,7 @@
 				class="select select-sm select-bordered w-full"
 				value={selectedPreset || ''}
 				aria-label="Select an example accessibility profile"
-				onchange={(e) => {
-					const value = (e.target as HTMLSelectElement).value;
-					if (value === 'default') {
-						activeFeatures = new Set(DEFAULT_ALL_TOOLS_PROFILE);
-						selectedPreset = 'default';
-						statusMessage = `Default profile applied. ${activeFeatures.size} features enabled.`;
-					} else if (value === '') {
-						clearAll();
-					} else {
-						applyPreset(value);
-					}
-				}}
+				onchange={handlePresetSelectionChange}
 			>
 				<option value="default">Default - All Tools</option>
 				<option value="">None (Clear All)</option>

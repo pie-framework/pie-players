@@ -41,7 +41,6 @@ export type {
 	ResolvedCatalog,
 } from "./services/AccessibilityCatalogResolver.js";
 export { AccessibilityCatalogResolver } from "./services/AccessibilityCatalogResolver.js";
-export { AssessmentAuthoringService } from "./services/AssessmentAuthoringService.js";
 // Context Variable Store (QTI 3.0 Context Declarations)
 export { ContextVariableStore } from "./services/ContextVariableStore.js";
 // Element Tool State Store (Element-level ephemeral tool state)
@@ -167,6 +166,50 @@ export type {
 	TTSToolConfig,
 } from "./services/ToolkitCoordinator.js";
 export { ToolkitCoordinator } from "./services/ToolkitCoordinator.js";
+
+// Activity/Test session tracking (backend-agnostic)
+export type {
+	ItemSession as ToolkitItemSession,
+	StorageLike as ToolkitStorageLike,
+	TestAttemptSession as ToolkitTestAttemptSession,
+	TestAttemptSessionNavigationState as ToolkitTestAttemptSessionNavigationState,
+	TestAttemptSessionRealization as ToolkitTestAttemptSessionRealization,
+} from "./attempt/TestSession.js";
+export {
+	createMemoryStorage as createToolkitMemoryStorage,
+	createNewTestAttemptSession as createToolkitTestAttemptSession,
+	createTestAttemptSessionIdentifier as createToolkitTestAttemptSessionIdentifier,
+	getBrowserLocalStorage as getToolkitBrowserLocalStorage,
+	loadTestAttemptSession as loadToolkitTestAttemptSession,
+	saveTestAttemptSession as saveToolkitTestAttemptSession,
+	setCurrentPosition as setToolkitCurrentPosition,
+	upsertItemSessionFromPieSessionChange as upsertToolkitItemSessionFromPieSessionChange,
+	upsertVisitedItem as upsertToolkitVisitedItem,
+} from "./attempt/TestSession.js";
+export type {
+	ItemSession,
+	StorageLike,
+	TestAttemptSession,
+	TestAttemptSessionNavigationState,
+	TestAttemptSessionRealization,
+} from "./attempt/TestSession.js";
+export {
+	createMemoryStorage,
+	createNewTestAttemptSession,
+	createTestAttemptSessionIdentifier,
+	getBrowserLocalStorage,
+	loadTestAttemptSession,
+	saveTestAttemptSession,
+	setCurrentPosition,
+	upsertItemSessionFromPieSessionChange,
+	upsertVisitedItem,
+} from "./attempt/TestSession.js";
+export type {
+	TestAttemptSessionItemChange,
+	TestAttemptSessionPosition,
+	TestAttemptSessionTrackerConfig,
+} from "./attempt/TestSessionTracker.js";
+export { TestAttemptSessionTracker } from "./attempt/TestSessionTracker.js";
 // Text-to-Speech Service
 export type { TTSConfig } from "./services/TTSService.js";
 export { PlaybackState, TTSService } from "./services/TTSService.js";
@@ -177,7 +220,7 @@ export type {
 	ITTSProviderImplementation,
 	TTSFeature,
 	TTSProviderCapabilities,
-} from "./services/tts/provider-interface.js";
+} from "@pie-players/pie-tts";
 
 // Note: Removed deprecated exports:
 // - ttsService singleton (use: const service = new TTSService())

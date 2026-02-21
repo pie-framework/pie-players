@@ -1,8 +1,8 @@
 {
-	"name": "@pie-players/pie-author",
+	"name": "@pie-players/pie-iife-author-player",
 	"version": "0.1.5",
 	"type": "module",
-	"description": "Legacy-compatible <pie-author> web component (authoring + optional preview) built on pie-players-shared.",
+	"description": "Legacy-compatible IIFE-based <pie-author> web component (authoring + optional preview) built on pie-players-shared.",
 	"license": "MIT",
 	"repository": {
 		"type": "git",
@@ -11,14 +11,14 @@
 	"publishConfig": {
 		"access": "public"
 	},
-	"unpkg": "./dist/pie-author.js",
-	"jsdelivr": "./dist/pie-author.js",
-	"main": "./dist/pie-author.js",
+	"unpkg": "./dist/pie-iife-author-player.js",
+	"jsdelivr": "./dist/pie-iife-author-player.js",
+	"main": "./dist/pie-iife-author-player.js",
 	"types": "./dist/index.d.ts",
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/pie-author.js"
+			"import": "./dist/pie-iife-author-player.js"
 		}
 	},
 	"files": [

@@ -1,8 +1,8 @@
 import type { SvelteComponent } from "svelte";
-import type { QtiAssessmentSection } from "@pie-players/pie-players-shared/types";
+import type { AssessmentSection } from "@pie-players/pie-players-shared";
 
 export interface PieSectionPlayerProps {
-	section?: QtiAssessmentSection | null;
+	section?: AssessmentSection | null;
 	mode?: "gather" | "view" | "evaluate" | "author";
 	view?:
 		| "candidate"

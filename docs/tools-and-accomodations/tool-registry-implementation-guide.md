@@ -42,7 +42,7 @@ export interface SectionContext extends BaseToolContext {
   level: 'section';
   assessmentId: string;
   sectionId: string;
-  section: QtiAssessmentSection;
+  section: AssessmentSection;
 }
 
 export interface ItemContext extends BaseToolContext {

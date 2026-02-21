@@ -25,7 +25,7 @@
 	"dependencies": {
 		"@pie-players/pie-assessment-player": "workspace:*",
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
-		"@pie-players/pie-author": "workspace:*",
+		"@pie-players/pie-iife-author-player": "workspace:*",
 		"@pie-players/pie-esm-player": "workspace:*",
 		"@pie-players/pie-fixed-player": "workspace:*",
 		"@pie-players/pie-iife-player": "workspace:*",
@@ -52,7 +52,7 @@
 		"@pie-players/local-esm-cdn": "workspace:*",
 		"@playwright/test": "1.58.2",
 		"@sveltejs/adapter-auto": "^7.0.0",
-		"@sveltejs/adapter-static": "^3.0.10",
+		"@sveltejs/adapter-node": "^5.3.3",
 		"@sveltejs/kit": "^2.52.0",
 		"@sveltejs/vite-plugin-svelte": "^6.2.4",
 		"@tailwindcss/vite": "^4.0.0-beta.7",
@@ -64,7 +64,7 @@
 		"svelte": "^5.51.3",
 		"svelte-check": "^4.1.1",
 		"tailwindcss": "^4.0.0-beta.7",
-		"turbo": "^2.8.8",
+		"turbo": "^2.8.10",
 		"typescript": "^5.9.3",
 		"vite": "^7.3.1"
 	},

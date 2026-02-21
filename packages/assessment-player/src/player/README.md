@@ -48,6 +48,13 @@ This separation allows:
 - LTI integration
 - Authentication/authorization
 
+## Naming Convention
+
+For `pie-players`, terminology follows QTI-oriented separation:
+
+- **Assessment**: content container and player surface (`AssessmentPlayer`)
+- **Test**: runtime attempt/session tracking (`TestAttemptSession`, `testAttemptSessionTracker`)
+
 ## Usage
 
 ### Using ReferenceAssessmentLayout (Recommended)
@@ -79,6 +86,7 @@ const player = new AssessmentPlayer({
   bundleHost,
   mode: 'gather',
   role: 'student',
+  testAttemptSessionTracker: toolkitCoordinator?.testAttemptSessionTracker,
   // ...
 });
 

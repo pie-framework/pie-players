@@ -20,10 +20,10 @@ We've designed a **QTI-aligned section structure using PIE entities** that balan
 
 ## Core Types
 
-### QtiAssessmentSection
+### AssessmentSection
 
 ```typescript
-export interface QtiAssessmentSection {
+export interface AssessmentSection {
   identifier: string;
   title?: string;
   keepTogether?: boolean;  // true = page mode, false = item mode
@@ -35,7 +35,7 @@ export interface QtiAssessmentSection {
   assessmentItemRefs?: AssessmentItemRef[];
 
   // Nested sections (QTI 3.0 supports recursive sections)
-  sections?: QtiAssessmentSection[];
+  sections?: AssessmentSection[];
 
   // PIE settings
   settings?: SettingsMetaData;

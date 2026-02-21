@@ -1,4 +1,4 @@
-import type { QtiAssessmentSection } from "@pie-players/pie-players-shared/types";
+import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
 
 /**
  * Demo 1: Single Question, No Passage
@@ -12,7 +12,7 @@ import type { QtiAssessmentSection } from "@pie-players/pie-players-shared/types
  * - See how a single question renders in page mode
  * - Learn about greenhouse gases and climate change
  */
-export const demo1Section: QtiAssessmentSection = {
+export const demo1Section: AssessmentSection = {
 	identifier: "demo1-single-question",
 	title: "Demo 1: Single Question",
 	keepTogether: true, // Page mode - all content visible

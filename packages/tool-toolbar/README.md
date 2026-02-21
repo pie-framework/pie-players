@@ -41,7 +41,6 @@ That's it! This gives you all tools with default configuration.
 <ToolToolbar
   tools="protractor,ruler,lineReader,graph,periodicTable"
   position="right"
-  ondictionarylookup={handleDictionary}
 />
 ```
 
@@ -70,14 +69,19 @@ The toolbar automatically manages these tools:
 | `disabled` | `Boolean` | `false` | Disables all buttons |
 | `position` | `'left' \| 'right'` | `'right'` | Toolbar placement |
 | `showLabels` | `Boolean` | `false` | Show text labels under icons |
+| `ttsService` | `ITTSService` | `undefined` | Enables read-aloud in annotation toolbar |
+| `annotationApiClient` | `AnnotationToolbarAPIClient` | `undefined` | API client for dictionary/picture/translation dialogs |
+| `enableAnnotationToolbar` | `Boolean` | `true` | Enables floating annotation toolbar integration |
 
-### Event Callbacks (Annotation Toolbar)
+### Host Delegation Callbacks (Compatibility Mode)
 
 | Callback | Type | Description |
 |----------|------|-------------|
-| `ondictionarylookup` | `(detail: {text}) => void` | Fired when user selects dictionary |
-| `ontranslationrequest` | `(detail: {text}) => void` | Fired when user requests translation |
-| `onpicturedictionarylookup` | `(detail: {text}) => void` | Fired for picture dictionary |
+| `ondictionarylookup` | `(detail: {text}) => void` | Used only when delegating dialog UX to host |
+| `ontranslationrequest` | `(detail: {text}) => void` | Used only when delegating dialog UX to host |
+| `onpicturedictionarylookup` | `(detail: {text}) => void` | Used only when delegating dialog UX to host |
+
+When callbacks are provided, `pie-tool-toolbar` sets annotation toolbar delegation mode and forwards requests to host code.
 
 ## Available Tools
 
@@ -151,7 +155,7 @@ The toolbar uses CSS custom properties:
 3. **Build button config** → Icons, names, toggle functions
 4. **Render toolbar UI** → Buttons with active states
 5. **Instantiate tools** → Only render visible tool components
-6. **Handle events** → Forward annotation toolbar events
+6. **Handle annotation UX** → Uses tool-owned dictionary/picture/translation dialogs by default
 
 ## Real-World Example
 
@@ -160,13 +164,12 @@ The toolbar uses CSS custom properties:
 <script>
   import ToolToolbar from '$lib/tags/tool-toolbar';
 
-  let showDictionaryModal = false;
-  let selectedText = '';
-
-  function openDictionary(detail) {
-    selectedText = detail.text;
-    showDictionaryModal = true;
-  }
+  import { AnnotationToolbarAPIClient } from '@pie-players/pie-assessment-toolkit';
+  const annotationApiClient = new AnnotationToolbarAPIClient({
+    dictionaryEndpoint: '/api/dictionary',
+    pictureDictionaryEndpoint: '/api/picture-dictionary',
+    translationEndpoint: '/api/translation'
+  });
 </script>
 
 <div class="assessment-layout">
@@ -176,13 +179,9 @@ The toolbar uses CSS custom properties:
 
   <ToolToolbar
     tools="protractor,ruler,graph"
-    ondictionarylookup={openDictionary}
+    annotationApiClient={annotationApiClient}
   />
 </div>
-
-{#if showDictionaryModal}
-  <DictionaryModal {selectedText} />
-{/if}
 ```
 
 ## Browser-Only

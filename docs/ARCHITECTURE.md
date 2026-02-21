@@ -15,7 +15,7 @@ Built with Bun, TypeScript, and Svelte 5, the architecture leverages modern web 
 ### Key Capabilities
 
 - **Multiple Player Types**: IIFE (legacy compatible), ESM (modern), and Fixed (pre-bundled) players
-- **Unified Authoring & Delivery**: Single players support both student/teacher delivery views and authoring/configuration modes
+- **Unified Item Authoring & Delivery**: Item players support student/teacher delivery views and item-level authoring/configuration modes
 - **Assessment Toolkit**: Composable services for full test delivery with navigation, tools, and accommodations
 - **Accessibility First**: WCAG 2.2 AA compliance, IEP/504 accommodation support
 - **Framework Agnostic**: Web Components work with any JavaScript framework
@@ -159,7 +159,7 @@ See: [packages/fixed-player/src/README.md](../packages/fixed-player/src/README.m
 - Paper-based assessments
 - Teacher answer keys with rationales
 - PDF exports for archival/compliance
-- Print previews in content authoring systems
+- Print previews in content platforms
 
 See: [packages/print-player/README.md](../packages/print-player/README.md)
 
@@ -203,19 +203,16 @@ See: `@pie-players/pie-players-shared/loaders` for implementation details.
 
 ---
 
-### Unified Authoring & Delivery
+### Unified Item Authoring & Delivery
 
-**New in this generation**: All players support both **delivery** (student/teacher views) and **authoring** (configuration) modes in a single package.
+Item players support both delivery workflows and item-level authoring/configuration views.
 
 **Benefits**:
-- Single package to install and maintain
-- Consistent API across modes
+- Consistent API across delivery and item-authoring modes
 - Easier version management
-- Reduced bundle duplication
+- Reduced integration complexity across products
 
-**Mode Switching**: Players accept a `mode` attribute/property that switches between delivery and authoring views, loading the appropriate element view variant.
-
-See: [docs/AUTHORING_MODE.md](AUTHORING_MODE.md)
+**Mode Switching**: Item players accept a `mode` attribute/property for delivery and item-authoring behavior (including `author` where supported).
 
 ---
 
@@ -518,7 +515,6 @@ Build your own assessment player using toolkit services for complete control ove
 
 ### Architecture Documentation
 
-- [Authoring Mode Guide](AUTHORING_MODE.md) - Complete authoring documentation
 - [Tools & Accommodations Architecture](tools-and-accomodations/architecture.md) - Tools system design
 - [Math Renderer Architecture](../MATH-RENDERER-ARCHITECTURE.md) - Pluggable math rendering
 - [Question Layout Engine Architecture](question-layout-engine-architecture.md) - Layout system design

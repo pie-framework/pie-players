@@ -279,9 +279,3 @@ export class VariantResolverImpl implements VariantResolver {
 	}
 }
 
-/**
- * Singleton instance (deprecated)
- * @deprecated Instantiate VariantResolverImpl directly instead:
- *   const resolver = new VariantResolverImpl();
- */
-export const variantResolver = new VariantResolverImpl();

@@ -1,4 +1,4 @@
-import type { QtiAssessmentSection } from "@pie-players/pie-players-shared/types";
+import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
 
 /**
  * Demo 3: Three Questions, One Passage
@@ -12,7 +12,7 @@ import type { QtiAssessmentSection } from "@pie-players/pie-players-shared/types
  * - Understand reading comprehension assessment structure
  * - Learn about photosynthesis and its role in ecosystems
  */
-export const demo3Section: QtiAssessmentSection = {
+export const demo3Section: AssessmentSection = {
 	identifier: "demo3-three-questions",
 	title: "Demo 3: Three Questions, One Passage",
 	keepTogether: true, // Page mode - all content visible

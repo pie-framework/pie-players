@@ -131,7 +131,7 @@ Each demo has a TypeScript file defining the QTI 3.0 assessment section:
 - `demo3-three-questions.ts` - Photosynthesis passage + 3 questions
 
 ### Customizing Demos
-To modify content, edit the files in `src/lib/content/`. Each file exports a `QtiAssessmentSection` object with:
+To modify content, edit the files in `src/lib/content/`. Each file exports an `AssessmentSection` object with:
 - Section metadata (identifier, title)
 - `keepTogether: true` for page mode
 - Rubric blocks (passages, instructions)

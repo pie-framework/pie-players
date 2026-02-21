@@ -36,7 +36,7 @@ export default defineConfig({
 		lib: {
 			entry: resolve(__dirname, "src/pie-author.ts"),
 			name: "PieAuthor",
-			fileName: () => "pie-author.js",
+			fileName: () => "pie-iife-author-player.js",
 			formats: ["es"],
 		},
 		outDir: "dist",

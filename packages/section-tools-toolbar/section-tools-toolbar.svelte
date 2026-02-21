@@ -38,7 +38,7 @@
 
 	// Props
 	let {
-		enabledTools = 'graph,periodicTable,protractor,lineReader,magnifier,ruler',
+		enabledTools = '',
 		position = 'bottom',
 		toolCoordinator,
 		toolProviderRegistry
@@ -95,10 +95,19 @@
 	// Subscribe to tool coordinator changes
 	let unsubscribe: (() => void) | null = null;
 
+	function logOptionalToolLoadFailure(toolId: string, err: unknown) {
+		const details = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+		console.error(
+			`[SectionToolsToolbar] Optional tool "${toolId}" could not be loaded. ` +
+				`This usually means the host app did not install/bundle the corresponding tool package. ` +
+				`Hint: add the package for this tool in your app and include the tool id in enabled-tools. ` +
+				`Details: ${details}`,
+		);
+	}
+
 	onMount(() => {
 		if (isBrowser && hasEnabledTools) {
-			const toolModules: Record<string, string> = {
-				calculator: '@pie-players/pie-tool-calculator',
+			const toolModuleSpecifiers: Record<string, string> = {
 				graph: '@pie-players/pie-tool-graph',
 				periodicTable: '@pie-players/pie-tool-periodic-table',
 				protractor: '@pie-players/pie-tool-protractor',
@@ -106,12 +115,25 @@
 				magnifier: '@pie-players/pie-tool-magnifier',
 				ruler: '@pie-players/pie-tool-ruler'
 			};
+			const toolLoads = enabledToolsList
+				.map((toolId) => ({ toolId, specifier: toolModuleSpecifiers[toolId] }))
+				.filter(
+					(
+						entry,
+					): entry is {
+						toolId: string;
+						specifier: string;
+					} => !!entry.specifier,
+				);
 
-			Promise.all(
-				enabledToolsList
-					.map((toolId) => toolModules[toolId])
-					.filter(Boolean)
-					.map((moduleId) => import(moduleId))
+			Promise.allSettled(
+				toolLoads.map(async ({ toolId, specifier }) => {
+						try {
+							await import(/* @vite-ignore */ specifier);
+						} catch (err) {
+							logOptionalToolLoadFailure(toolId, err);
+						}
+					}),
 			).catch((err) => {
 				console.error('[SectionToolsToolbar] Failed to load tool web components:', err);
 			});

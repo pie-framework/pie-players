@@ -1,8 +1,8 @@
 <script lang="ts">
-	import type { AssessmentSection, QuestionEntity } from '@pie-players/pie-players-shared';
+	import type { LegacyAssessmentSection, QuestionEntity } from '@pie-players/pie-players-shared';
 
 	let {
-		sections = [] as AssessmentSection[],
+		sections = [] as LegacyAssessmentSection[],
 		questions = [] as QuestionEntity[],
 		currentSectionId = null,
 		currentQuestionId = null,
@@ -23,14 +23,14 @@
 
 		readOnly = false
 	}: {
-		sections?: AssessmentSection[];
+		sections?: LegacyAssessmentSection[];
 		questions?: QuestionEntity[];
 		currentSectionId?: string | null;
 		currentQuestionId?: string | null;
 
 		onSectionAdd?: () => void;
 		onSectionRemove?: (sectionId: string) => void;
-		onSectionUpdate?: (sectionId: string, updates: Partial<AssessmentSection>) => void;
+		onSectionUpdate?: (sectionId: string, updates: Partial<LegacyAssessmentSection>) => void;
 		onSectionMove?: (fromIndex: number, toIndex: number) => void;
 
 		onQuestionMoveToSection?: (questionId: string, sectionId: string, index: number) => void;
@@ -50,7 +50,7 @@
 	// Derived: Resolve questions for each section
 	const questionsMap = $derived(new Map(questions.map((q) => [q.id, q])));
 
-	function getSectionQuestions(section: AssessmentSection): QuestionEntity[] {
+	function getSectionQuestions(section: LegacyAssessmentSection): QuestionEntity[] {
 		return section.questions
 			.map((ref) => questionsMap.get(ref.questionId))
 			.filter((q): q is QuestionEntity => q !== undefined);

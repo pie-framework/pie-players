@@ -13,10 +13,14 @@
 			// Toolkit coordinators (passed as JS properties)
 			toolCoordinator: { type: 'Object', attribute: 'tool-coordinator' },
 			highlightCoordinator: { type: 'Object', attribute: 'highlight-coordinator' },
+			ttsService: { type: 'Object', attribute: 'tts-service' },
+			annotationApiClient: { type: 'Object', attribute: 'annotation-api-client' },
+			enableAnnotationToolbar: { type: 'Boolean', attribute: 'enable-annotation-toolbar' },
 
 			// Optional callbacks (passed as JS properties)
 			ondictionarylookup: { type: 'Object', attribute: 'ondictionarylookup' },
-			ontranslationrequest: { type: 'Object', attribute: 'ontranslationrequest' }
+			ontranslationrequest: { type: 'Object', attribute: 'ontranslationrequest' },
+			onpicturedictionarylookup: { type: 'Object', attribute: 'onpicturedictionarylookup' }
 		}
 	}}
 />
@@ -33,9 +37,13 @@
 -->
 <script lang="ts">
 	
-	import type { HighlightCoordinator, ToolCoordinator } from '@pie-players/pie-assessment-toolkit';
-	import { ZIndexLayer } from '@pie-players/pie-assessment-toolkit';
-import { onMount } from 'svelte';
+	import type {
+		AnnotationToolbarAPIClient,
+		HighlightCoordinator,
+		ITTSService,
+		ToolCoordinator
+	} from '@pie-players/pie-assessment-toolkit';
+	import '@pie-players/pie-tool-annotation-toolbar';
 
 	const browser = typeof window !== 'undefined';
 	const log = (..._args: any[]) => {};
@@ -53,7 +61,7 @@ import { onMount } from 'svelte';
 
 	// Props - using Svelte 5 $props() syntax
 	let {
-		tools = 'answerEliminator,calculator', // Comma-separated tool IDs (ordered by frequency of use) - question-level tools only
+		tools = '', // Comma-separated tool IDs. Empty means no tools are enabled by default.
 		disabled = false,
 		position = 'right' as 'left' | 'right' | 'top' | 'bottom',
 		showLabels = false,
@@ -65,11 +73,17 @@ import { onMount } from 'svelte';
 		// Coordinators from assessment toolkit
 		toolCoordinator = undefined as ToolCoordinator | null | undefined,
 		highlightCoordinator = undefined as HighlightCoordinator | null | undefined,
+		ttsService = undefined as ITTSService | null | undefined,
+		annotationApiClient = undefined as AnnotationToolbarAPIClient | null | undefined,
+		enableAnnotationToolbar = false,
 
-		// Event callbacks for annotation toolbar (dictionary/translation not yet implemented)
+		// Optional host delegation callbacks for annotation toolbar requests
 		ondictionarylookup = undefined as ((detail: { text: string }) => void) | undefined,
-		ontranslationrequest = undefined as ((detail: { text: string }) => void) | undefined
+		ontranslationrequest = undefined as ((detail: { text: string }) => void) | undefined,
+		onpicturedictionarylookup = undefined as ((detail: { text: string }) => void) | undefined
 	} = $props();
+	void organizationId;
+	void baseUrl;
 
 	// Parse enabled tools from prop
 	let enabledToolIds = $derived(tools.split(',').map(t => t.trim()).filter(Boolean));
@@ -155,7 +169,16 @@ import { onMount } from 'svelte';
 
 	// Tool configuration registry - all available tools
 	// Using Material Design Icons (inline SVG) for consistency with PIE items
-	const TOOL_REGISTRY = {
+	type ToolRegistryEntry = {
+		id: string;
+		name: string;
+		icon: string;
+		getVisibility: () => boolean;
+		toggle: () => void;
+		implemented: boolean;
+	};
+
+	const TOOL_REGISTRY: Record<string, ToolRegistryEntry> = {
 		colorScheme: {
 			id: 'colorScheme',
 			name: 'Color Scheme',
@@ -289,7 +312,6 @@ import { onMount } from 'svelte';
 </script>
 
 {#if browser}
-	{@const _ = log('Rendering in browser, showColorSchemeTool:', showColorSchemeTool, 'enabledToolIds:', enabledToolIds)}
 	<!-- Toolbar UI -->
 	<div
 		class="tool-toolbar {className}"
@@ -347,7 +369,7 @@ import { onMount } from 'svelte';
 			visible={showCalculator}
 			tool-id="calculator"
 			calculator-type="scientific"
-			availableTypes={['basic', 'scientific', 'graphing', 'ti-84', 'ti-108', 'ti-34-mv']}
+			availableTypes={['basic', 'scientific', 'graphing']}
 			coordinator={toolCoordinator}
 		></pie-tool-calculator>
 	{/if}
@@ -369,8 +391,20 @@ import { onMount } from 'svelte';
 	{#if showMagnifierTool}
 		<pie-tool-magnifier visible={showMagnifier} tool-id="magnifier" coordinator={toolCoordinator}></pie-tool-magnifier>
 	{/if}
-	<!-- Note: Annotation toolbar is intentionally not mounted here yet.
-	     It currently requires a ttsService prop that isn't exposed via its custom element API. -->
+	{#if enableAnnotationToolbar}
+		<pie-tool-annotation-toolbar
+			enabled={!disabled}
+			highlightCoordinator={highlightCoordinator}
+			ttsService={ttsService}
+			annotationApiClient={annotationApiClient}
+			delegateDialogsToHost={Boolean(
+				ondictionarylookup || ontranslationrequest || onpicturedictionarylookup
+			)}
+			ondictionarylookup={ondictionarylookup}
+			ontranslationrequest={ontranslationrequest}
+			onpicturedictionarylookup={onpicturedictionarylookup}
+		></pie-tool-annotation-toolbar>
+	{/if}
 
 	<!-- Live region for status announcements -->
 	<div role="status" aria-live="polite" aria-atomic="true" class="sr-only">

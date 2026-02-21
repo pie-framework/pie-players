@@ -81,7 +81,7 @@
 	let {
 		itemId = '',
 		catalogId = '',
-		tools = 'calculator,textToSpeech,answerEliminator',
+		tools = '',
 		ttsService,
 		toolCoordinator,
 		highlightCoordinator,
@@ -208,22 +208,51 @@
 		if (!isBrowser || toolsLoaded || useRegistryArchitecture) return;
 
 		(async () => {
-			const loadPromises = [];
+			const loadSpecifiers: Array<{ toolId: string; specifier: string }> = [];
 
 			if (enabledTools.includes('tts') || enabledTools.includes('textToSpeech')) {
-				loadPromises.push(import('@pie-players/pie-tool-tts-inline'));
+				loadSpecifiers.push({
+					toolId: 'textToSpeech',
+					specifier: '@pie-players/pie-tool-tts-inline',
+				});
 			}
 			if (enabledTools.includes('answerEliminator')) {
-				loadPromises.push(import('@pie-players/pie-tool-answer-eliminator'));
+				loadSpecifiers.push({
+					toolId: 'answerEliminator',
+					specifier: '@pie-players/pie-tool-answer-eliminator',
+				});
 			}
 			if (enabledTools.includes('calculator')) {
-				loadPromises.push(
-					import('@pie-players/pie-tool-calculator-inline'),
-					import('@pie-players/pie-tool-calculator')
+				loadSpecifiers.push(
+					{
+						toolId: 'calculator',
+						specifier: '@pie-players/pie-tool-calculator-inline',
+					},
+					{
+						toolId: 'calculator',
+						specifier: '@pie-players/pie-tool-calculator',
+					}
 				);
 			}
 
-			await Promise.all(loadPromises);
+			await Promise.allSettled(
+				loadSpecifiers.map(async ({ toolId, specifier }) => {
+					try {
+						await import(/* @vite-ignore */ specifier);
+					} catch (err) {
+						const details =
+							err instanceof Error
+								? `${err.name}: ${err.message}`
+								: String(err);
+						console.error(
+							`[QuestionToolBar] Optional tool "${toolId}" could not be loaded. ` +
+								`This usually means the host app did not install/bundle the corresponding tool package. ` +
+								`Hint: add the package for this tool in your app and include "${toolId}" in the toolbar tools list. ` +
+								`Details: ${details}`,
+						);
+					}
+				}),
+			);
 			toolsLoaded = true;
 		})();
 	});

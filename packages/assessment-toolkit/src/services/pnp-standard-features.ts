@@ -130,6 +130,7 @@ export const QTI_STANDARD_ACCESS_FEATURES = {
 		// Tools
 		calculator: "calculator",
 		dictionary: "dictionary",
+		pictureDictionary: "pictureDictionary",
 		thesaurus: "thesaurus",
 		spellingAssistance: "spellingAssistance",
 		grammarAssistance: "grammarAssistance",
@@ -185,6 +186,7 @@ export const QTI_STANDARD_ACCESS_FEATURES = {
 		// Languages
 		multilingualText: "multilingualText",
 		translatedText: "translatedText",
+		translation: "translation",
 		glossary: "glossary",
 
 		// Sign language

@@ -11,6 +11,7 @@ This directory contains a complete layout implementation demonstrating a product
 - Navigation bar with question selector and numbered navigation
 - Bottom bar with item-level tools
 - Item-specific inline tools (answer eliminator, notes)
+- Tool-owned annotation dialogs (dictionary, picture dictionary, translation)
 
 ## Architecture
 
@@ -18,6 +19,7 @@ This layout is **presentation-only** - it orchestrates visual layout but delegat
 - `AssessmentPlayer` for navigation and state management
 - Assessment Toolkit services (ToolCoordinator, TTSService, etc.)
 - Existing tool components from `/lib/tags/tool-*`
+- Tool-owned annotation dialog components (no host dialog markup required)
 
 ## Components
 

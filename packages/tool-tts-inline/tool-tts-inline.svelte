@@ -144,11 +144,14 @@
 			}
 
 			// Speak with catalog support and highlighting
-			await ttsService.speak(text, {
-				catalogId: catalogId || undefined,
-				language,
-				contentElement: targetContainer
-			});
+			await ttsService.speak(
+				text,
+				{
+					catalogId: catalogId || undefined,
+					language,
+					contentElement: targetContainer
+				} as any
+			);
 
 			speaking = false;
 			paused = false;

@@ -88,7 +88,7 @@
 			{
 				'@pie-element/multiple-choice': {
 					// Example configuration options for multiple-choice configure element
-					// These would be used to control what authoring features are available
+					// These are used to control what authoring features are available
 				},
 			},
 			null,

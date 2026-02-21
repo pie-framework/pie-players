@@ -18,26 +18,24 @@
  */
 
 import type {
-	AssessmentAuthoringCallbacks,
 	AssessmentEntity,
 	ItemConfig,
 	ItemEntity,
 	RubricBlock,
 } from "@pie-players/pie-players-shared/types";
 import {
-	createNewTestSession,
-	createTestSessionIdentifier,
-	getBrowserLocalStorage,
-	loadTestSession,
-	type StorageLike,
-	saveTestSession,
-	setCurrentPosition,
-	type TestSession,
-	upsertItemSessionFromPieSessionChange,
-	upsertVisitedItem,
-} from "../attempt/TestSession.js";
-import {
+	createToolkitTestAttemptSession as createNewTestAttemptSession,
+	createToolkitTestAttemptSessionIdentifier as createTestAttemptSessionIdentifier,
+	getToolkitBrowserLocalStorage as getBrowserLocalStorage,
+	loadToolkitTestAttemptSession as loadTestAttemptSession,
+	type ToolkitStorageLike as StorageLike,
+	saveToolkitTestAttemptSession as saveTestAttemptSession,
+	setToolkitCurrentPosition as setCurrentPosition,
+	type ToolkitTestAttemptSession as TestAttemptSession,
+	upsertToolkitItemSessionFromPieSessionChange as upsertItemSessionFromPieSessionChange,
+	upsertToolkitVisitedItem as upsertVisitedItem,
 	type AssessmentToolkitEvents,
+	type TestAttemptSessionTracker,
 	HighlightCoordinator,
 	I18nService,
 	type ThemeConfig,
@@ -47,7 +45,6 @@ import {
 	TypedEventBus,
 } from "@pie-players/pie-assessment-toolkit";
 import type { LoadItem } from "@pie-players/pie-assessment-toolkit";
-import { AssessmentAuthoringService } from "@pie-players/pie-assessment-toolkit";
 import { ContextVariableStore } from "@pie-players/pie-assessment-toolkit";
 import {
 	PNPToolResolver,
@@ -56,10 +53,7 @@ import {
 import type { DefaultToolRegistryOptions } from "@pie-players/pie-assessment-toolkit";
 import { createDefaultToolRegistry } from "@pie-players/pie-assessment-toolkit";
 import { BrowserTTSProvider } from "@pie-players/pie-assessment-toolkit";
-import {
-	DesmosCalculatorProvider,
-	TICalculatorProvider,
-} from "@pie-players/pie-assessment-toolkit/tools/client";
+import { DesmosCalculatorProvider } from "@pie-players/pie-assessment-toolkit/tools/client";
 import {
 	buildNavigationStructure,
 	detectAssessmentFormat,
@@ -80,14 +74,15 @@ export interface ReferencePlayerConfig {
 	/**
 	 * Player mode (defaults to 'gather' for student assessment mode)
 	 */
-	mode?: "gather" | "view" | "evaluate" | "author";
+	mode?: "gather" | "view" | "evaluate";
 
 	/**
-	 * Optional context to generate a deterministic TestSession identifier.
+	 * Optional context to generate a deterministic TestAttemptSession identifier.
 	 * If omitted, a stable anonymous device id is used.
 	 */
 	userId?: string | null;
 	assignmentId?: string | null;
+	testAttemptSessionTracker?: TestAttemptSessionTracker | null;
 	/**
 	 * Optional storage injection for tests / custom persistence.
 	 * Defaults to browser localStorage when available.
@@ -107,9 +102,6 @@ export interface ReferencePlayerConfig {
 		targetIndex?: number,
 	) => void | Promise<void>;
 
-	// Authoring mode support
-	authoringCallbacks?: AssessmentAuthoringCallbacks;
-
 	// Service injection (optional - for testing and customization)
 	services?: {
 		eventBus?: TypedEventBus<AssessmentToolkitEvents>;
@@ -119,7 +111,6 @@ export interface ReferencePlayerConfig {
 		highlightCoordinator?: HighlightCoordinator;
 		i18nService?: I18nService;
 		desmosProvider?: DesmosCalculatorProvider;
-		tiProvider?: TICalculatorProvider;
 	};
 	/**
 	 * Optional overrides for default tool-component mapping/factories.
@@ -151,8 +142,6 @@ export class AssessmentPlayer {
 	private highlightCoordinator: HighlightCoordinator | null = null;
 	private i18nService: I18nService;
 	private desmosProvider: DesmosCalculatorProvider;
-	private tiProvider: TICalculatorProvider;
-	private authoringService: AssessmentAuthoringService | null = null;
 
 	// Configuration
 	private config: ReferencePlayerConfig;
@@ -178,7 +167,8 @@ export class AssessmentPlayer {
 
 	// QTI-like attempt (client-only)
 	private attemptStorage: StorageLike | null = null;
-	private testSession: TestSession | null = null;
+	private testAttemptSession: TestAttemptSession | null = null;
+	private testAttemptSessionTracker: TestAttemptSessionTracker | null = null;
 
 	// TTS state
 	private ttsInitialized = false;
@@ -203,9 +193,15 @@ export class AssessmentPlayer {
 		this.questionRefs = getAllQuestionRefs(config.assessment);
 		this.navigationStructure = buildNavigationStructure(config.assessment);
 
-		// Initialize/load QTI-like TestSession (client-only)
+		// Initialize/load QTI-like TestAttemptSession (client-only)
 		this.attemptStorage = config.attemptStorage || getBrowserLocalStorage();
-		this.initializeOrLoadTestSession();
+		this.initializeOrLoadTestAttemptSession();
+		this.testAttemptSessionTracker = config.testAttemptSessionTracker || null;
+		if (this.testAttemptSessionTracker) {
+			this.testAttemptSessionTracker.initialize(
+				this.questionRefs.map((q) => q.identifier),
+			);
+		}
 
 		// Determine navigation mode
 		// Priority: explicit config > QTI testPart setting > default to nonlinear
@@ -226,7 +222,6 @@ export class AssessmentPlayer {
 		this.i18nService = config.services?.i18nService ?? new I18nService();
 		this.desmosProvider =
 			config.services?.desmosProvider ?? new DesmosCalculatorProvider();
-		this.tiProvider = config.services?.tiProvider ?? new TICalculatorProvider();
 
 		// Initialize PNP resolver with default tool registry
 		const toolRegistry = createDefaultToolRegistry(config.toolRegistryOptions);
@@ -257,14 +252,6 @@ export class AssessmentPlayer {
 			this.ttsService.setHighlightCoordinator(this.highlightCoordinator);
 		}
 
-		// Initialize authoring service if in author mode
-		if (config.mode === "author" && config.authoringCallbacks) {
-			this.authoringService = new AssessmentAuthoringService(
-				config.assessment,
-				config.authoringCallbacks,
-			);
-		}
-
 		// Set up event listeners
 		this.setupEventListeners();
 
@@ -274,7 +261,7 @@ export class AssessmentPlayer {
 		}
 	}
 
-	private initializeOrLoadTestSession(): void {
+	private initializeOrLoadTestAttemptSession(): void {
 		if (!this.attemptStorage) {
 			return;
 		}
@@ -286,16 +273,17 @@ export class AssessmentPlayer {
 			return;
 		}
 
-		const { testSessionIdentifier, seed } = createTestSessionIdentifier({
+		const { testAttemptSessionIdentifier, seed } =
+			createTestAttemptSessionIdentifier({
 			assessmentId,
 			assignmentId: this.config.assignmentId,
 			userId: this.config.userId,
 			storage: this.attemptStorage,
-		});
+			});
 
-		const existing = loadTestSession(
+		const existing = loadTestAttemptSession(
 			this.attemptStorage,
-			testSessionIdentifier,
+			testAttemptSessionIdentifier,
 		);
 		const currentItemIdentifiers = this.questionRefs.map((q) => q.identifier);
 
@@ -307,7 +295,7 @@ export class AssessmentPlayer {
 				existing.realization.itemIdentifiers.length !==
 					currentItemIdentifiers.length;
 
-			this.testSession = needsUpdate
+			this.testAttemptSession = needsUpdate
 				? {
 						...existing,
 						realization: {
@@ -318,8 +306,8 @@ export class AssessmentPlayer {
 					}
 				: existing;
 		} else {
-			this.testSession = createNewTestSession({
-				testSessionIdentifier,
+			this.testAttemptSession = createNewTestAttemptSession({
+				testAttemptSessionIdentifier,
 				assessmentId,
 				seed,
 				itemIdentifiers: currentItemIdentifiers,
@@ -327,8 +315,8 @@ export class AssessmentPlayer {
 		}
 
 		// Persist immediately to ensure updatedAt/version exists
-		if (this.testSession) {
-			saveTestSession(this.attemptStorage, this.testSession);
+		if (this.testAttemptSession) {
+			saveTestAttemptSession(this.attemptStorage, this.testAttemptSession);
 		}
 	}
 
@@ -519,10 +507,10 @@ export class AssessmentPlayer {
 	}
 
 	/**
-	 * Get the client-side QTI-like TestSession (attempt) state.
+	 * Get the client-side QTI-like TestAttemptSession (attempt) state.
 	 */
-	getTestSession(): TestSession | null {
-		return this.testSession;
+	getTestAttemptSession(): TestAttemptSession | null {
+		return this.testAttemptSession;
 	}
 
 	/**
@@ -574,13 +562,6 @@ export class AssessmentPlayer {
 	 */
 	getDesmosProvider(): DesmosCalculatorProvider {
 		return this.desmosProvider;
-	}
-
-	/**
-	 * Get TI calculator provider
-	 */
-	getTIProvider(): TICalculatorProvider {
-		return this.tiProvider;
 	}
 
 	/**
@@ -664,7 +645,7 @@ export class AssessmentPlayer {
 	 */
 	async start(): Promise<void> {
 		const startIndexRaw =
-			this.testSession?.navigationState?.currentItemIndex ?? 0;
+			this.testAttemptSession?.navigationState?.currentItemIndex ?? 0;
 		const startIndex = startIndexRaw >= 0 ? startIndexRaw : 0;
 		await this.navigate(startIndex);
 
@@ -777,24 +758,35 @@ export class AssessmentPlayer {
 			timestamp: Date.now(),
 		});
 
-		// Update/persist TestSession itemSessions mapping (QTI item identifier -> PIE session id)
+		// Update/persist TestAttemptSession itemSessions mapping (QTI item identifier -> PIE session id)
 		const pieSessionId = detail?.id;
 		const currentQuestion = this.questionRefs[this.currentItemIndex];
 		if (
 			this.attemptStorage &&
-			this.testSession &&
+			this.testAttemptSession &&
 			currentQuestion?.identifier &&
 			pieSessionId
 		) {
-			this.testSession = upsertItemSessionFromPieSessionChange(
-				this.testSession,
+			this.testAttemptSession = upsertItemSessionFromPieSessionChange(
+				this.testAttemptSession,
 				{
 					itemIdentifier: currentQuestion.identifier,
 					pieSessionId,
 					isCompleted: !!detail.complete,
 				},
 			);
-			saveTestSession(this.attemptStorage, this.testSession);
+			saveTestAttemptSession(this.attemptStorage, this.testAttemptSession);
+		}
+		if (pieSessionId && currentQuestion?.identifier) {
+			this.testAttemptSessionTracker?.recordItemSessionChange({
+				itemIdentifier: currentQuestion.identifier,
+				pieSessionId,
+				isCompleted: !!detail.complete,
+				currentItemIndex: this.currentItemIndex,
+				currentSectionIdentifier:
+					this.findSectionIdentifierForQuestion(currentQuestion.identifier) ||
+					undefined,
+			});
 		}
 	}
 
@@ -802,20 +794,25 @@ export class AssessmentPlayer {
 		itemIdentifier: string | undefined,
 		index: number,
 	): void {
-		if (!this.attemptStorage || !this.testSession || !itemIdentifier) {
+		if (!this.attemptStorage || !this.testAttemptSession || !itemIdentifier) {
 			return;
 		}
 
 		const currentSectionIdentifier =
 			this.findSectionIdentifierForQuestion(itemIdentifier) || undefined;
-		this.testSession = setCurrentPosition(
-			upsertVisitedItem(this.testSession, itemIdentifier),
+		this.testAttemptSession = setCurrentPosition(
+			upsertVisitedItem(this.testAttemptSession, itemIdentifier),
 			{
 				currentItemIndex: index,
 				currentSectionIdentifier,
 			},
 		);
-		saveTestSession(this.attemptStorage, this.testSession);
+		saveTestAttemptSession(this.attemptStorage, this.testAttemptSession);
+		this.testAttemptSessionTracker?.setCurrentPosition({
+			itemIdentifier,
+			currentItemIndex: index,
+			currentSectionIdentifier,
+		});
 	}
 
 	private findSectionIdentifierForQuestion(
@@ -1068,29 +1065,6 @@ export class AssessmentPlayer {
 		}));
 	}
 
-	/**
-	 * Get the authoring service (only available in author mode)
-	 */
-	getAuthoringService(): AssessmentAuthoringService | null {
-		return this.authoringService;
-	}
-
-	/**
-	 * Enable or disable authoring mode
-	 */
-	setAuthoringMode(enabled: boolean): void {
-		if (enabled && !this.authoringService) {
-			this.authoringService = new AssessmentAuthoringService(
-				this.config.assessment,
-				this.config.authoringCallbacks || {},
-			);
-			this.config.mode = "author";
-		} else if (!enabled && this.authoringService) {
-			this.authoringService = null;
-			this.config.mode = "gather";
-		}
-	}
-
 	// ===== PROFILE-BASED CONFIGURATION =====
 
 	/**
@@ -1103,7 +1077,8 @@ export class AssessmentPlayer {
 		const assessment = this.config.assessment;
 
 		// Resolve tools from PNP + settings
-		this.currentTools = this.pnpResolver.resolveTools(assessment);
+		this.currentTools =
+			this.pnpResolver.resolveToolsWithProvenance(assessment).tools;
 
 		// Register tools with coordinator
 		for (const tool of this.currentTools) {
@@ -1246,8 +1221,8 @@ export class AssessmentPlayer {
 	 * Restore context variables from session storage
 	 */
 	private restoreContextVariables(): void {
-		if (this.testSession?.contextVariables) {
-			this.contextStore.fromObject(this.testSession.contextVariables);
+		if (this.testAttemptSession?.contextVariables) {
+			this.contextStore.fromObject(this.testAttemptSession.contextVariables);
 		}
 	}
 
@@ -1255,12 +1230,12 @@ export class AssessmentPlayer {
 	 * Persist context variables to session storage
 	 */
 	private persistContextVariables(): void {
-		if (this.testSession && this.attemptStorage) {
-			this.testSession = {
-				...this.testSession,
+		if (this.testAttemptSession && this.attemptStorage) {
+			this.testAttemptSession = {
+				...this.testAttemptSession,
 				contextVariables: this.contextStore.toObject(),
 			};
-			saveTestSession(this.attemptStorage, this.testSession);
+			saveTestAttemptSession(this.attemptStorage, this.testAttemptSession);
 		}
 	}
 

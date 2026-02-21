@@ -98,7 +98,7 @@ We simplified by removing `stimulusRef` and always embedding passages directly i
 ### Section Structure (QTI-Aligned with PIE Entities)
 
 ```typescript
-export interface QtiAssessmentSection {
+export interface AssessmentSection {
   identifier: string;
   title?: string;
   keepTogether?: boolean;  // true = page mode, false = item mode
@@ -109,7 +109,7 @@ export interface QtiAssessmentSection {
   rubricBlocks?: RubricBlock[];         // Instructions, passages, rubrics
   assessmentItemRefs?: AssessmentItemRef[];  // Items
 
-  sections?: QtiAssessmentSection[];    // Nested sections
+  sections?: AssessmentSection[];    // Nested sections
   settings?: SettingsMetaData;
 }
 
@@ -201,7 +201,7 @@ class AssessmentPlayer {
 
 ```typescript
 export interface SectionPlayerConfig {
-  section: QtiAssessmentSection;  // Fully resolved with passages and items
+  section: AssessmentSection;  // Fully resolved with passages and items
 
   // Player mode
   mode?: "gather" | "view" | "evaluate" | "author";

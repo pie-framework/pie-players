@@ -5,7 +5,10 @@
 		props: {
 			enabled: { type: 'Boolean', attribute: 'enabled' },
 			highlightCoordinator: { type: 'Object' },
-			ttsService: { type: 'Object' }
+			ttsService: { type: 'Object' },
+			annotationApiClient: { type: 'Object' },
+			delegateDialogsToHost: { type: 'Boolean', attribute: 'delegate-dialogs-to-host' },
+			translationTargetLanguage: { type: 'String', attribute: 'translation-target-language' }
 		}
 	}}
 />
@@ -16,12 +19,18 @@
 
 <script lang="ts">
 	import type { HighlightCoordinator, ITTSService } from '@pie-players/pie-assessment-toolkit';
-	import { BrowserTTSProvider, HighlightColor } from '@pie-players/pie-assessment-toolkit';
+	import { HighlightColor, type AnnotationToolbarAPIClient } from '@pie-players/pie-assessment-toolkit';
+	import '@pie-players/pie-tool-dictionary';
+	import '@pie-players/pie-tool-picture-dictionary';
+	import '@pie-players/pie-tool-translation';
 
 	interface Props {
 		enabled?: boolean;
 		highlightCoordinator?: HighlightCoordinator | null;
 		ttsService?: ITTSService | null;
+		annotationApiClient?: AnnotationToolbarAPIClient | null;
+		delegateDialogsToHost?: boolean;
+		translationTargetLanguage?: string;
 		ondictionarylookup?: (detail: { text: string }) => void;
 		ontranslationrequest?: (detail: { text: string }) => void;
 		onpicturedictionarylookup?: (detail: { text: string }) => void;
@@ -31,6 +40,9 @@
 		enabled = true,
 		highlightCoordinator = null,
 		ttsService = null,
+		annotationApiClient = null,
+		delegateDialogsToHost = false,
+		translationTargetLanguage = 'es',
 		ondictionarylookup,
 		ontranslationrequest,
 		onpicturedictionarylookup
@@ -71,7 +83,6 @@
 	});
 
 	// TTS state
-	let ttsInitialized = $state(false);
 	let ttsSpeaking = $state(false);
 
 	// UX state
@@ -87,6 +98,21 @@
 	// Derived state
 	let hasAnnotations = $derived(annotationCount > 0);
 	let hasOverlappingAnnotation = $derived(overlappingAnnotationId !== null);
+	let dictionaryEnabled = $derived.by(() =>
+		delegateDialogsToHost ? Boolean(ondictionarylookup) : Boolean(annotationApiClient)
+	);
+	let pictureDictionaryEnabled = $derived.by(() =>
+		delegateDialogsToHost ? Boolean(onpicturedictionarylookup) : Boolean(annotationApiClient)
+	);
+	let translationEnabled = $derived.by(() =>
+		delegateDialogsToHost ? Boolean(ontranslationrequest) : Boolean(annotationApiClient)
+	);
+	let dictionaryRequestText = $state('');
+	let pictureDictionaryRequestText = $state('');
+	let translationRequestText = $state('');
+	let dictionaryRequestNonce = $state(0);
+	let pictureDictionaryRequestNonce = $state(0);
+	let translationRequestNonce = $state(0);
 
 	/**
 	 * Find annotation that overlaps with the given range
@@ -224,7 +250,7 @@
 	 * Hide toolbar and clean up TTS
 	 */
 	function hideToolbar() {
-		if (ttsSpeaking) {
+		if (ttsSpeaking && ttsService) {
 			ttsService.stop();
 			ttsSpeaking = false;
 		}
@@ -305,7 +331,12 @@
 	 */
 	function handleDictionaryClick() {
 		if (!toolbarState.selectedText) return;
-		ondictionarylookup?.({ text: toolbarState.selectedText });
+		if (delegateDialogsToHost && ondictionarylookup) {
+			ondictionarylookup({ text: toolbarState.selectedText });
+		} else {
+			dictionaryRequestText = toolbarState.selectedText;
+			dictionaryRequestNonce += 1;
+		}
 		hideToolbar();
 	}
 
@@ -314,7 +345,12 @@
 	 */
 	function handleTranslationClick() {
 		if (!toolbarState.selectedText) return;
-		ontranslationrequest?.({ text: toolbarState.selectedText });
+		if (delegateDialogsToHost && ontranslationrequest) {
+			ontranslationrequest({ text: toolbarState.selectedText });
+		} else {
+			translationRequestText = toolbarState.selectedText;
+			translationRequestNonce += 1;
+		}
 		hideToolbar();
 	}
 
@@ -323,7 +359,12 @@
 	 */
 	function handlePictureDictionaryClick() {
 		if (!toolbarState.selectedText) return;
-		onpicturedictionarylookup?.({ text: toolbarState.selectedText });
+		if (delegateDialogsToHost && onpicturedictionarylookup) {
+			onpicturedictionarylookup({ text: toolbarState.selectedText });
+		} else {
+			pictureDictionaryRequestText = toolbarState.selectedText;
+			pictureDictionaryRequestNonce += 1;
+		}
 		hideToolbar();
 	}
 
@@ -363,7 +404,7 @@
 	/**
 	 * Handle click outside toolbar
 	 */
-	function handleDocumentClick(e: MouseEvent) {
+	function handleDocumentClick(e: Event) {
 		if (!toolbarState.isVisible || justShown) return;
 
 		const toolbar = document.querySelector('.annotation-toolbar');
@@ -482,7 +523,7 @@
 		{/if}
 
 		<!-- Dictionary -->
-		{#if ondictionarylookup}
+		{#if dictionaryEnabled}
 			<button
 				class="btn btn-sm btn-square"
 				onclick={handleDictionaryClick}
@@ -503,7 +544,7 @@
 		{/if}
 
 		<!-- Picture Dictionary -->
-		{#if onpicturedictionarylookup}
+		{#if pictureDictionaryEnabled}
 			<button
 				class="btn btn-sm btn-square"
 				onclick={handlePictureDictionaryClick}
@@ -526,7 +567,7 @@
 		{/if}
 
 		<!-- Translation -->
-		{#if ontranslationrequest}
+		{#if translationEnabled}
 			<button
 				class="btn btn-sm btn-square"
 				onclick={handleTranslationClick}
@@ -588,6 +629,28 @@
 			{/if}
 		{/if}
 	</div>
+{/if}
+
+{#if !delegateDialogsToHost}
+	<pie-tool-dictionary
+		enabled={enabled}
+		request-text={dictionaryRequestText}
+		request-nonce={dictionaryRequestNonce}
+		annotationApiClient={annotationApiClient}
+	></pie-tool-dictionary>
+	<pie-tool-picture-dictionary
+		enabled={enabled}
+		request-text={pictureDictionaryRequestText}
+		request-nonce={pictureDictionaryRequestNonce}
+		annotationApiClient={annotationApiClient}
+	></pie-tool-picture-dictionary>
+	<pie-tool-translation
+		enabled={enabled}
+		request-text={translationRequestText}
+		request-nonce={translationRequestNonce}
+		target-language={translationTargetLanguage}
+		annotationApiClient={annotationApiClient}
+	></pie-tool-translation>
 {/if}
 
 <!-- Screen reader announcements -->

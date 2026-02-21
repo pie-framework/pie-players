@@ -230,6 +230,3 @@ export const toolCoordinatorStore: ToolCoordinator & {
 	isToolVisible,
 };
 
-// Backward compatibility alias (deprecated - use toolCoordinatorStore)
-/** @deprecated Use toolCoordinatorStore instead */
-export const toolCoordinator = toolCoordinatorStore;

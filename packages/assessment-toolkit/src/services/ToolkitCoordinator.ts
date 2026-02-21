@@ -22,14 +22,17 @@ import { ToolCoordinator } from "./ToolCoordinator.js";
 import { TTSService } from "./TTSService.js";
 import { BrowserTTSProvider } from "./tts/browser-provider.js";
 import {
+	TestAttemptSessionTracker,
+	type TestAttemptSessionItemChange,
+	type TestAttemptSessionPosition,
+} from "../attempt/TestSessionTracker.js";
+import {
 	ToolProviderRegistry,
 	DesmosToolProvider,
-	TIToolProvider,
 	TTSToolProvider,
 } from "./tool-providers/index.js";
 import type {
 	DesmosToolProviderConfig,
-	TIToolProviderConfig,
 	TTSToolProviderConfig,
 } from "./tool-providers/index.js";
 
@@ -64,10 +67,8 @@ export interface AnswerEliminatorToolConfig extends ToolConfig {
  * Calculator tool configuration
  */
 export interface CalculatorToolConfig extends ToolConfig {
-	provider?: "desmos" | "ti" | "mathjs";
-	authFetcher?: () => Promise<
-		Partial<DesmosToolProviderConfig | TIToolProviderConfig>
-	>;
+	provider?: "desmos" | "mathjs";
+	authFetcher?: () => Promise<Partial<DesmosToolProviderConfig>>;
 }
 
 /**
@@ -90,7 +91,7 @@ export interface ToolkitCoordinatorConfig {
 
 	/**
 	 * Tool availability and configuration.
-	 * Defaults: all tools enabled with default settings.
+	 * Defaults: tools are disabled unless explicitly enabled.
 	 */
 	tools?: {
 		tts?: TTSToolConfig;
@@ -107,6 +108,18 @@ export interface ToolkitCoordinatorConfig {
 	accessibility?: {
 		catalogs?: AccessibilityCatalog[];
 		language?: string;
+	};
+
+	/**
+	 * Optional test session tracking.
+	 * This is backend-agnostic and can be used by section-player, assessment-player,
+	 * or any custom host player.
+	 */
+	testAttemptSession?: {
+		enabled?: boolean;
+		assignmentId?: string | null;
+		userId?: string | null;
+		tracker?: TestAttemptSessionTracker;
 	};
 }
 
@@ -158,6 +171,7 @@ export class ToolkitCoordinator {
 	readonly elementToolStateStore: ElementToolStateStore;
 	readonly catalogResolver: AccessibilityCatalogResolver;
 	readonly toolProviderRegistry: ToolProviderRegistry;
+	readonly testAttemptSessionTracker: TestAttemptSessionTracker | null;
 
 	/** Track TTS initialization state */
 	private ttsInitialized = false;
@@ -182,6 +196,18 @@ export class ToolkitCoordinator {
 			config.accessibility?.catalogs || [],
 			config.accessibility?.language || "en-US",
 		);
+		const sessionCfg = config.testAttemptSession;
+		if (sessionCfg?.enabled !== false) {
+			this.testAttemptSessionTracker =
+				sessionCfg?.tracker ||
+				new TestAttemptSessionTracker({
+					assessmentId: config.assessmentId,
+					assignmentId: sessionCfg?.assignmentId,
+					userId: sessionCfg?.userId,
+				});
+		} else {
+			this.testAttemptSessionTracker = null;
+		}
 
 		// Initialize tool provider registry
 		this.toolProviderRegistry = new ToolProviderRegistry();
@@ -190,7 +216,7 @@ export class ToolkitCoordinator {
 		// Initialize TTS service based on config
 		this.ttsService = new TTSService();
 		const ttsConfig = config.tools?.tts;
-		if (ttsConfig?.enabled !== false) {
+		if (ttsConfig?.enabled === true) {
 			// Initialize async (fire and forget - service will become available when ready)
 			this._initializeTTS(ttsConfig).catch((err) => {
 				console.error("[ToolkitCoordinator] Failed to initialize TTS:", err);
@@ -204,7 +230,7 @@ export class ToolkitCoordinator {
 	private _registerToolProviders(): void {
 		// Register TTS provider
 		const ttsConfig = this.config.tools?.tts;
-		if (ttsConfig?.enabled !== false) {
+		if (ttsConfig?.enabled === true) {
 			const backend = ttsConfig?.backend || "browser";
 			try {
 				this.toolProviderRegistry.register("tts", {
@@ -230,7 +256,7 @@ export class ToolkitCoordinator {
 		// Register calculator providers
 		const floatingTools = this.config.tools?.floatingTools;
 		const calculatorConfig = floatingTools?.calculator;
-		if (calculatorConfig?.enabled !== false) {
+		if (calculatorConfig?.enabled === true) {
 			const provider = calculatorConfig?.provider || "desmos";
 
 			if (provider === "desmos") {
@@ -244,19 +270,6 @@ export class ToolkitCoordinator {
 				} catch (error) {
 					console.warn(
 						"[ToolkitCoordinator] Failed to register Desmos calculator provider:",
-						error,
-					);
-				}
-			} else if (provider === "ti") {
-				try {
-					this.toolProviderRegistry.register("calculator-ti", {
-						provider: new TIToolProvider(),
-						config: {},
-						lazy: true,
-					});
-				} catch (error) {
-					console.warn(
-						"[ToolkitCoordinator] Failed to register TI calculator provider:",
 						error,
 					);
 				}
@@ -319,6 +332,20 @@ export class ToolkitCoordinator {
 		};
 	}
 
+	initializeTestAttemptSession(itemIdentifiers: string[]) {
+		return this.testAttemptSessionTracker?.initialize(itemIdentifiers) ?? null;
+	}
+
+	updateTestAttemptSessionPosition(position: TestAttemptSessionPosition) {
+		return this.testAttemptSessionTracker?.setCurrentPosition(position) ?? null;
+	}
+
+	recordTestAttemptSessionItemChange(change: TestAttemptSessionItemChange) {
+		return (
+			this.testAttemptSessionTracker?.recordItemSessionChange(change) ?? null
+		);
+	}
+
 	/**
 	 * Get a tool provider from the registry
 	 *
@@ -331,15 +358,14 @@ export class ToolkitCoordinator {
 
 	/**
 	 * Check if a tool is enabled.
-	 * Tools are enabled by default unless explicitly disabled.
+	 * Tools are disabled by default unless explicitly enabled.
 	 *
 	 * @param toolId Tool identifier (e.g., 'tts', 'answerEliminator')
 	 * @returns True if tool is enabled
 	 */
 	isToolEnabled(toolId: string): boolean {
 		const toolConfig = (this.config.tools as any)?.[toolId];
-		// Enabled by default unless explicitly set to false
-		return toolConfig?.enabled !== false;
+		return toolConfig?.enabled === true;
 	}
 
 	/**

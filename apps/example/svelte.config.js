@@ -1,18 +1,9 @@
-import adapter from "@sveltejs/adapter-static";
+import adapter from "@sveltejs/adapter-node";
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
 	kit: {
-		adapter: adapter({
-			pages: "build",
-			assets: "build",
-			// GitHub Pages does not serve `index.html` for directory routes unless the URL ends with `/`.
-			// Emit an SPA fallback so deep links like `/examples/a11y-components/foo/` still work.
-			// (GitHub Pages serves `404.html` for unknown paths; SvelteKit will then route client-side.)
-			fallback: "404.html",
-			precompress: false,
-			strict: false,
-		}),
+		adapter: adapter(),
 		paths: {
 			// Host the examples app under /examples/ for custom domain or GitHub Pages
 			// Custom domain: https://players.pie-framework.org/examples/

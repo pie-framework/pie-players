@@ -1,6 +1,6 @@
 import type {
 	AssessmentEntity,
-	QtiAssessmentSection,
+	AssessmentSection,
 	QuestionEntity,
 } from "@pie-players/pie-players-shared/types";
 
@@ -154,7 +154,7 @@ function buildNavigationFromQti(
 	});
 }
 
-function buildSectionNavigation(section: QtiAssessmentSection): NavigationNode {
+function buildSectionNavigation(section: AssessmentSection): NavigationNode {
 	const children: NavigationNode[] = [];
 
 	// Item refs - QTI 3.0 aligned (maps to qti-assessment-item-ref)
@@ -193,7 +193,7 @@ function extractFromQti(assessment: AssessmentEntity): QuestionRef[] {
 }
 
 function extractRefsFromSection(
-	section: QtiAssessmentSection,
+	section: AssessmentSection,
 	out: QuestionRef[],
 ): void {
 	// QTI 3.0 aligned (maps to qti-assessment-item-ref)

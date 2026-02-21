@@ -378,6 +378,8 @@ const coordinator = new ToolkitCoordinator({
 // Pass to section player as JavaScript property
 const player = document.getElementById('player');
 player.toolkitCoordinator = coordinator;
+// Optional explicit tracker injection
+player.testAttemptSessionTracker = coordinator.testAttemptSessionTracker;
 player.section = mySection;
 ```
 
@@ -387,6 +389,21 @@ player.section = mySection;
 - **Automatic service wiring**: Services work together automatically
 - **Element-level tool state**: Answer eliminations, highlights tracked per element
 - **State separation**: Tool state (ephemeral) separate from session data (persistent)
+
+### Test Session Tracker Naming
+
+The section player now uses **test attempt session** runtime naming:
+
+- `testAttemptSessionTracker`
+
+This keeps `pie-players` terminology closer to QTI: assessment content + test attempt/session runtime.
+
+### Host Integration Boundary
+
+`pie-section-player` is backend-agnostic and does not fetch/save backend data itself.
+
+- Hosts can send backend-native activity payloads (`activityDefinition`, `activitySession`) to the player layer.
+- Hosts map those payloads to player props/session data, then optionally connect tracker updates to backend `activity/save` and `activity/score`.
 
 ### What the Coordinator Provides
 

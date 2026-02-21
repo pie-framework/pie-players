@@ -1,4 +1,4 @@
-import type { QtiAssessmentSection } from "@pie-players/pie-players-shared/types";
+import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
 import { demo1Section } from "./demo1-single-question";
 import { demo2Section } from "./demo2-question-passage";
 import { demo3Section } from "./demo3-three-questions";
@@ -8,7 +8,7 @@ export interface SectionDemoInfo {
 	id: string;
 	name: string;
 	description: string;
-	section: QtiAssessmentSection;
+	section: AssessmentSection;
 }
 
 export const sectionDemos: Record<string, SectionDemoInfo> = {

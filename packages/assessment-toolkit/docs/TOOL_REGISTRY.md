@@ -218,7 +218,7 @@ type ToolLevel = "assessment" | "section" | "item" | "passage" | "rubric" | "ele
 interface ItemToolContext {
   level: "item";
   assessment: AssessmentEntity;
-  section: QtiAssessmentSection;
+  section: AssessmentSection;
   itemRef: AssessmentItemRef;
   item: ItemEntity;
   passage?: PassageEntity;
@@ -227,7 +227,7 @@ interface ItemToolContext {
 interface ElementToolContext {
   level: "element";
   assessment: AssessmentEntity;
-  section: QtiAssessmentSection;
+  section: AssessmentSection;
   itemRef: AssessmentItemRef;
   item: ItemEntity;
   elementId: string;

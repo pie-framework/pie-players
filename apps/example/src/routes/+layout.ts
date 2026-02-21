@@ -1,5 +1,5 @@
-// Prerender all pages for static export (GitHub Pages)
-export const prerender = true;
+// Demo app is runtime-hosted (adapter-node), not statically prerendered.
+export const prerender = false;
 
 // Disable SSR for SPA mode
 export const ssr = false;

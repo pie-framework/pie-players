@@ -34,7 +34,7 @@ export default defineConfig({
 			external: ["@datadog/browser-rum"],
 			output: {
 				format: "es",
-							},
+			},
 		},
 	},
 });

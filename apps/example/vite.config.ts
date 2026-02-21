@@ -53,14 +53,17 @@ const PIE_WORKSPACE_PACKAGES = [
 	"@pie-players/pie-tool-answer-eliminator",
 	"@pie-players/pie-tool-calculator",
 	"@pie-players/pie-tool-color-scheme",
+	"@pie-players/pie-tool-dictionary",
 	"@pie-players/pie-tool-graph",
 	"@pie-players/pie-tool-line-reader",
 	"@pie-players/pie-tool-magnifier",
 	"@pie-players/pie-tool-periodic-table",
+	"@pie-players/pie-tool-picture-dictionary",
 	"@pie-players/pie-tool-protractor",
 	"@pie-players/pie-tool-ruler",
 	"@pie-players/pie-tool-annotation-toolbar",
 	"@pie-players/pie-tool-text-to-speech",
+	"@pie-players/pie-tool-translation",
 ];
 
 const logger = createLogger("info", { allowClearScreen: false });

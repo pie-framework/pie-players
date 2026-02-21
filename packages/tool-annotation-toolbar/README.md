@@ -39,18 +39,29 @@ A text selection toolbar for highlighting and annotating text in the PIEoneer as
 
 ## Props
 
-This component doesn't take props - it automatically shows when text is selected and hides when selection is cleared or Escape is pressed.
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `enabled` | `boolean` | `true` | Enables or disables toolbar behavior |
+| `highlightCoordinator` | `HighlightCoordinator \| null` | `null` | Shared highlight manager for annotations |
+| `ttsService` | `ITTSService \| null` | `null` | Enables read-aloud button |
+| `annotationApiClient` | `AnnotationToolbarAPIClient \| null` | `null` | API client used by tool-owned dictionary/translation dialogs |
+| `translationTargetLanguage` | `string` | `"es"` | Target language for translation requests |
+| `delegateDialogsToHost` | `boolean` | `false` | Compatibility mode that forwards requests to host callbacks instead of tool-owned dialogs |
 
-## Events
+## Host Delegation Callbacks (Compatibility)
 
-- `dictionarylookup`: Dispatched when dictionary button is clicked
-  - `detail: { text: string }` - The selected text
-- `translationrequest`: Dispatched when translation button is clicked
-  - `detail: { text: string }` - The selected text
-- `picturedictionarylookup`: Dispatched when picture dictionary button is clicked
-  - `detail: { text: string }` - The selected text
+When `delegateDialogsToHost={true}` is set, the toolbar forwards selection requests to host callbacks:
 
-**Note**: Text-to-Speech (Read Aloud) button does not emit an event - it directly uses the TTS service to read the selected text.
+- `ondictionarylookup(detail: { text: string })`
+- `ontranslationrequest(detail: { text: string })`
+- `onpicturedictionarylookup(detail: { text: string })`
+
+By default (`delegateDialogsToHost={false}`), the toolbar opens tool-owned dialog UX via:
+- `@pie-players/pie-tool-dictionary`
+- `@pie-players/pie-tool-picture-dictionary`
+- `@pie-players/pie-tool-translation`
+
+**Note**: Text-to-Speech (Read Aloud) does not use host callbacks; it directly uses `ttsService`.
 
 ## Architecture
 

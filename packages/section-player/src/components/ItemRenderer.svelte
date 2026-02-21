@@ -7,7 +7,7 @@
 <script lang="ts">
   import { SSMLExtractor } from "@pie-players/pie-assessment-toolkit";
   import "@pie-players/pie-assessment-toolkit/components/QuestionToolBar.svelte";
-  import type { ItemEntity } from "@pie-players/pie-players-shared/types";
+  import type { ItemEntity } from "@pie-players/pie-players-shared";
   import { onMount, untrack } from "svelte";
 
   let {

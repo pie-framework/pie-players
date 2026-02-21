@@ -6,7 +6,7 @@
   Not exposed as a web component - used internally in PieSectionPlayer.
 -->
 <script lang="ts">
-	import type { ItemEntity, PassageEntity } from '@pie-players/pie-players-shared/types';
+	import type { ItemEntity, PassageEntity } from '@pie-players/pie-players-shared';
 	import ItemRenderer from '../ItemRenderer.svelte';
 	import PassageRenderer from '../PassageRenderer.svelte';
 

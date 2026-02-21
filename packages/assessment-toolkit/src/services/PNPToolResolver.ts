@@ -109,30 +109,6 @@ export class PNPToolResolver {
 	}
 
 	/**
-	 * Resolve all tools from QTI 3.0 assessment + optional item context
-	 *
-	 * @param assessment QTI 3.0 assessment with personalNeedsProfile
-	 * @param currentItemRef Current item for item-specific requirements (optional)
-	 * @returns Array of resolved tool configurations (for backward compatibility)
-	 *
-	 * @deprecated Use resolveToolsWithProvenance() to get provenance tracking
-	 *
-	 * @example
-	 * const resolver = new PNPToolResolver(registry);
-	 * const tools = resolver.resolveTools(assessment, itemRef);
-	 * tools.forEach(tool => {
-	 *   console.log(`${tool.id}: ${tool.enabled ? 'enabled' : 'disabled'}`);
-	 * });
-	 */
-	resolveTools(
-		assessment: AssessmentEntity,
-		currentItemRef?: AssessmentItemRef,
-	): ResolvedToolConfig[] {
-		const result = this.resolveToolsWithProvenance(assessment, currentItemRef);
-		return result.tools;
-	}
-
-	/**
 	 * Resolve all tools with full provenance tracking
 	 *
 	 * Returns both resolved tools and complete provenance trail showing:
@@ -447,7 +423,7 @@ export class PNPToolResolver {
 		assessment: AssessmentEntity,
 		itemRef?: AssessmentItemRef,
 	): boolean {
-		const resolved = this.resolveTools(assessment, itemRef);
+		const resolved = this.resolveToolsWithProvenance(assessment, itemRef).tools;
 		return resolved.some((t) => t.id === toolId && t.enabled);
 	}
 
@@ -464,7 +440,7 @@ export class PNPToolResolver {
 		assessment: AssessmentEntity,
 		itemRef?: AssessmentItemRef,
 	): boolean {
-		const resolved = this.resolveTools(assessment, itemRef);
+		const resolved = this.resolveToolsWithProvenance(assessment, itemRef).tools;
 		const tool = resolved.find((t) => t.id === toolId);
 		return tool?.required || tool?.alwaysAvailable || false;
 	}
@@ -505,7 +481,7 @@ export class PNPToolResolver {
 		assessment: AssessmentEntity,
 		itemRef?: AssessmentItemRef,
 	): string[] {
-		const resolved = this.resolveTools(assessment, itemRef);
+		const resolved = this.resolveToolsWithProvenance(assessment, itemRef).tools;
 		return resolved.filter((t) => t.enabled).map((t) => t.id);
 	}
 
@@ -620,7 +596,7 @@ export class PNPToolResolver {
 		assessment: AssessmentEntity,
 		itemRef?: AssessmentItemRef,
 	): string[] {
-		const resolved = this.resolveTools(assessment, itemRef);
+		const resolved = this.resolveToolsWithProvenance(assessment, itemRef).tools;
 		return resolved
 			.filter((t) => t.required || t.alwaysAvailable)
 			.map((t) => t.id);
@@ -639,7 +615,7 @@ export class PNPToolResolver {
 		assessment: AssessmentEntity,
 		itemRef?: AssessmentItemRef,
 	): any | null {
-		const resolved = this.resolveTools(assessment, itemRef);
+		const resolved = this.resolveToolsWithProvenance(assessment, itemRef).tools;
 		const tool = resolved.find((t) => t.id === toolId);
 		return tool?.settings || null;
 	}

@@ -96,7 +96,7 @@
 
 <!-- Tool Instances - Rendered outside bar for floating modals/overlays -->
 {#if enabledTools.includes('calculator')}
-	<pie-tool-calculator visible={showCalculator} tool-id="calculator" coordinator={toolCoordinator} desmos-provider={player.getDesmosProvider()} ti-provider={player.getTIProvider()}></pie-tool-calculator>
+	<pie-tool-calculator visible={showCalculator} tool-id="calculator" coordinator={toolCoordinator} desmos-provider={player.getDesmosProvider()}></pie-tool-calculator>
 {/if}
 {#if enabledTools.includes('graph')}
 	<pie-tool-graph visible={showGraph} tool-id="graph" coordinator={toolCoordinator}></pie-tool-graph>

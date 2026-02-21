@@ -1,8 +1,9 @@
 <script lang="ts">
-	import '@pie-players/pie-assessment-player';
+	import '@pie-players/pie-section-player';
+	import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
 
 	import type { AssessmentEntity, ItemEntity } from '@pie-players/pie-players-shared/types';
-	import { onMount, untrack } from 'svelte';
+	import { untrack } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import {
@@ -126,16 +127,76 @@
 		}
 	});
 
-	// Reference to the player element for programmatic property setting
-	let playerElement = $state<any>(null);
+	// Reference to section player and coordinator
+	let sectionPlayerElement = $state<any>(null);
+	let toolkitCoordinator = $state<ToolkitCoordinator | null>(null);
+	let itemSessions = $state<Record<string, any>>({});
+	let itemMetadata = $state<Record<string, { complete?: boolean; component?: string }>>({});
+	let showSessionPanel = $state(false);
+	const testAttemptSessionSnapshot = $derived.by(
+		() => (toolkitCoordinator as any)?.testAttemptSessionTracker?.getSnapshot?.() ?? null
+	);
+	const persistentItemSessionSnapshot = $derived.by(() => ({
+		itemSessionsByItemId: itemSessions,
+		itemMetadataByItemId: itemMetadata
+	}));
+	const canonicalSessionSnapshot = $derived.by(() => ({
+		testAttemptSession: testAttemptSessionSnapshot,
+		itemSessionsByItemId: itemSessions,
+		itemMetadataByItemId: itemMetadata
+	}));
 
-	// Set complex object properties on the web component after mount
+	const section = $derived.by(() => {
+		const refs = selectedIds
+			.map((id) => {
+				const item = itemBank[id];
+				if (!item?.config) return null;
+				return {
+					identifier: id,
+					item
+				};
+			})
+			.filter(Boolean);
+
+		return {
+			identifier: 'assessment-section',
+			keepTogether: false,
+			assessmentItemRefs: refs
+		};
+	});
+
+	// Set complex object properties on section-player web component after start
 	$effect(() => {
-		if (playerElement && started) {
-			playerElement.assessment = assessment;
-			playerElement.itemBank = itemBank;
+		if (started && !toolkitCoordinator) {
+			toolkitCoordinator = new ToolkitCoordinator({
+				assessmentId: `assessment-demo-${selectedTemplate || 'custom'}`
+			});
 		}
 	});
+
+	$effect(() => {
+		if (sectionPlayerElement && started && toolkitCoordinator) {
+			sectionPlayerElement.section = section;
+			sectionPlayerElement.env = { mode: 'gather', role: 'student' };
+			sectionPlayerElement.itemSessions = itemSessions;
+			sectionPlayerElement.toolkitCoordinator = toolkitCoordinator;
+		}
+	});
+
+	function handleSessionChanged(event: CustomEvent) {
+		const { itemId, session, complete, component } = event.detail || {};
+		if (!itemId || !session) return;
+		itemSessions = { ...itemSessions, [itemId]: session };
+		itemMetadata = { ...itemMetadata, [itemId]: { complete, component } };
+	}
+
+	function toggleSelectedItem(exampleId: string, event: Event) {
+		const target = event.target as HTMLInputElement | null;
+		const checked = !!target?.checked;
+		selectedIds = checked
+			? Array.from(new Set([...selectedIds, exampleId]))
+			: selectedIds.filter((x) => x !== exampleId);
+	}
 
 	// state -> URL (debounced; avoid pushing history)
 	let urlSyncTimer: ReturnType<typeof setTimeout> | null = null;
@@ -195,7 +256,14 @@
 					<div class="text-sm font-semibold truncate">
 						{assessment?.name ?? 'Assessment'}
 					</div>
-					<button class="btn btn-sm btn-outline" onclick={() => (started = false)}>Back to setup</button>
+					<div class="flex items-center gap-2">
+						<button class="btn btn-sm btn-outline" onclick={() => (showSessionPanel = !showSessionPanel)}>
+							Session
+						</button>
+						<button class="btn btn-sm btn-outline" onclick={() => { started = false; showSessionPanel = false; }}>
+							Back to setup
+						</button>
+					</div>
 				</div>
 			{:else}
 				<div class="flex items-center justify-between">
@@ -272,13 +340,7 @@
 																	type="checkbox"
 																	class="checkbox checkbox-xs"
 																	checked={selectedIds.includes(ex.id)}
-																	onchange={(e) => {
-																		const checked = (e.target as HTMLInputElement).checked;
-																		const id = ex.id;
-																		selectedIds = checked
-																			? Array.from(new Set([...selectedIds, id]))
-																			: selectedIds.filter((x) => x !== id);
-																	}}
+																	onchange={(e) => toggleSelectedItem(ex.id, e)}
 																/>
 																<span class="text-sm">{ex.name}</span>
 															</span>
@@ -310,8 +372,8 @@
 					<div class="rounded-lg border border-base-300 bg-base-100 p-4 overflow-hidden">
 						<div class="text-sm font-semibold mb-2">What you’re looking at</div>
 						<p class="text-sm opacity-80">
-							This demo runs the real assessment player chrome and renders items from an in-memory bank.
-							No network calls needed.
+							This assessment demo runs through <code>pie-section-player</code> with toolkit coordination,
+							using an in-memory item bank (no backend calls).
 						</p>
 						<div class="divider my-3"></div>
 						<div class="text-xs opacity-70">
@@ -321,7 +383,11 @@
 				</div>
 			{:else if selectedIds.length > 0}
 				<div class="h-full rounded-lg border border-base-300 bg-base-100 overflow-hidden">
-					<pie-assessment-player bind:this={playerElement} mode="gather" class="block"></pie-assessment-player>
+					<pie-section-player
+						bind:this={sectionPlayerElement}
+						view="candidate"
+						onsessionchanged={handleSessionChanged}
+					></pie-section-player>
 				</div>
 			{:else}
 				<div class="alert alert-warning">
@@ -331,3 +397,42 @@
 		</div>
 	</div>
 </div>
+
+{#if started && showSessionPanel}
+	<div class="fixed right-4 top-20 z-[100] w-[440px] max-h-[70vh] overflow-hidden rounded-lg border border-base-300 bg-base-100 shadow-xl">
+		<div class="flex items-center justify-between border-b border-base-300 px-3 py-2">
+			<div class="text-sm font-semibold">Session Data</div>
+			<button class="btn btn-xs btn-ghost" onclick={() => (showSessionPanel = false)}>Close</button>
+		</div>
+		<div class="space-y-3 overflow-y-auto p-3 max-h-[calc(70vh-42px)]">
+			{#if toolkitCoordinator}
+				<div>
+					<div class="mb-1 text-xs font-semibold text-warning">Tool State (Ephemeral)</div>
+					<pre class="rounded bg-base-200 p-2 text-xs">{JSON.stringify(toolkitCoordinator.elementToolStateStore.getAllState(), null, 2)}</pre>
+				</div>
+				<div>
+					<div class="mb-1 text-xs font-semibold text-info">TestAttemptSession (Canonical Orchestration Model)</div>
+					{#if testAttemptSessionSnapshot}
+						<pre class="rounded bg-base-200 p-2 text-xs">{JSON.stringify(testAttemptSessionSnapshot, null, 2)}</pre>
+					{:else}
+						<div class="rounded bg-base-200 p-2 text-xs opacity-80">
+							Not initialized yet. It will populate after section-player establishes the attempt/session state.
+						</div>
+					{/if}
+				</div>
+			{/if}
+			<div>
+				<div class="mb-1 text-xs font-semibold">PIE Item Sessions (Persistent)</div>
+				{#if Object.keys(itemSessions).length === 0}
+					<div class="text-xs opacity-70">No session data yet. Interact with questions to populate.</div>
+				{:else}
+					<pre class="rounded bg-base-200 p-2 text-xs">{JSON.stringify(persistentItemSessionSnapshot, null, 2)}</pre>
+				{/if}
+			</div>
+			<div>
+				<div class="mb-1 text-xs font-semibold">Combined Session View (Canonical Shape)</div>
+				<pre class="rounded bg-base-200 p-2 text-xs">{JSON.stringify(canonicalSessionSnapshot, null, 2)}</pre>
+			</div>
+		</div>
+	</div>
+{/if}

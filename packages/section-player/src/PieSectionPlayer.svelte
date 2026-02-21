@@ -62,7 +62,8 @@
 			debug: { attribute: 'debug', type: 'String' },
 
 			// Toolkit coordinator (JS property, not attribute)
-			toolkitCoordinator: { type: 'Object', reflect: false }
+			toolkitCoordinator: { type: 'Object', reflect: false },
+			testAttemptSessionTracker: { type: 'Object', reflect: false }
 		}
 	}}
 />
@@ -70,13 +71,13 @@
 <script lang="ts">
 
 	import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
-	import { type ElementLoaderInterface, EsmElementLoader, IifeElementLoader } from '@pie-players/pie-players-shared/loaders';
+	import { type ElementLoaderInterface, EsmElementLoader, IifeElementLoader } from '@pie-players/pie-players-shared';
 import type {
 		ItemEntity,
 		PassageEntity,
-		QtiAssessmentSection,
+		AssessmentSection,
 		RubricBlock
-	} from '@pie-players/pie-players-shared/types';
+	} from '@pie-players/pie-players-shared';
 	import { onMount, untrack } from 'svelte';
 	import ItemModeLayout from './components/ItemModeLayout.svelte';
 	import SplitPanelLayout from './components/layouts/SplitPanelLayout.svelte';
@@ -86,7 +87,7 @@ import type {
 
 	// Props
 	let {
-		section = null as QtiAssessmentSection | null,
+		section = null as AssessmentSection | null,
 		env = { mode: 'gather', role: 'student' } as { mode: 'gather' | 'view' | 'evaluate' | 'author'; role: 'student' | 'instructor' },
 		view = 'candidate' as 'candidate' | 'scorer' | 'author' | 'proctor' | 'testConstructor' | 'tutor',
 		layout = 'split-panel' as 'vertical' | 'split-panel',
@@ -102,6 +103,7 @@ import type {
 
 		// Toolkit coordinator (optional - creates default if not provided)
 		toolkitCoordinator = null as any,
+		testAttemptSessionTracker = null as any,
 
 		// Event handlers
 		onsessionchanged = null as ((event: CustomEvent) => void) | null
@@ -126,6 +128,11 @@ import type {
 	// Extract services from coordinator
 	const services = $derived(coordinator.getServiceBundle());
 	const assessmentId = $derived(coordinator.assessmentId);
+	const resolvedTestAttemptSessionTracker = $derived(
+		testAttemptSessionTracker ||
+		coordinator.testAttemptSessionTracker ||
+		null
+	);
 
 	// Generate or extract sectionId
 	const sectionId = $derived.by(() => {
@@ -184,7 +191,7 @@ import type {
 		const passageMap = new Map<string, PassageEntity>();
 
 		// Extract rubric blocks for current view
-		rubricBlocks = (section.rubricBlocks || []).filter(rb => rb.view === view);
+		rubricBlocks = (section.rubricBlocks || []).filter((rb: RubricBlock) => rb.view === view);
 
 		// 1. Extract passages from rubricBlocks
 		// IMPORTANT: Always extract passages from 'candidate' view, regardless of current view
@@ -230,6 +237,11 @@ import type {
 
 		const previousItemId = currentItem?.id || '';
 		currentItemIndex = index;
+		resolvedTestAttemptSessionTracker?.setCurrentPosition({
+			currentItemIndex: index,
+			itemIdentifier: items[index]?.id,
+			currentSectionIdentifier: section?.identifier
+		});
 
 		// Dispatch event
 		dispatchEvent(new CustomEvent('item-changed', {
@@ -297,6 +309,11 @@ import type {
 		const currentSection = section;
 		if (currentSection) {
 			untrack(() => extractContent());
+			resolvedTestAttemptSessionTracker?.initialize(
+				(currentSection.assessmentItemRefs || [])
+					.map((ref: any) => ref?.identifier || ref?.item?.id)
+					.filter(Boolean)
+			);
 		}
 	});
 
@@ -419,6 +436,17 @@ import type {
 			component: sessionDetail.component,
 			timestamp: Date.now()
 		};
+
+		const pieSessionId = eventDetail?.session?.id;
+		if (pieSessionId && resolvedTestAttemptSessionTracker) {
+			resolvedTestAttemptSessionTracker.recordItemSessionChange({
+				itemIdentifier: itemId,
+				pieSessionId,
+				isCompleted: !!sessionDetail?.complete,
+				currentItemIndex: currentItemIndex,
+				currentSectionIdentifier: section?.identifier
+			});
+		}
 
 		// Call handler prop if provided (for Svelte component usage)
 		if (onsessionchanged) {

@@ -5,13 +5,12 @@
 	let {
 		ttsService,
 		ttsConfig = $bindable({
-			provider: 'polly' as 'polly' | 'browser' | 'google',
-			voice: 'Joanna',
+			provider: 'polly' as 'polly' | 'browser',
+			voice: '',
 			rate: 1.0,
 			pitch: 1.0,
 			pollyEngine: 'neural' as 'neural' | 'standard',
-			pollySampleRate: 24000,
-			googleVoiceType: 'wavenet' as 'wavenet' | 'standard' | 'studio'
+			pollySampleRate: 24000
 		}),
 		highlightConfig = $bindable({
 			enabled: true,
@@ -26,13 +25,12 @@
 	}: {
 		ttsService?: TTSService;
 		ttsConfig?: {
-			provider: 'polly' | 'browser' | 'google';
+			provider: 'polly' | 'browser';
 			voice: string;
 			rate: number;
 			pitch: number;
 			pollyEngine?: 'neural' | 'standard';
 			pollySampleRate?: number;
-			googleVoiceType?: 'wavenet' | 'standard' | 'studio';
 		};
 		highlightConfig?: {
 			enabled: boolean;
@@ -68,24 +66,7 @@
 	};
 
 	let pollyVoices = $state<VoiceInfo[]>([]);
-	let googleVoices = $state<VoiceInfo[]>([]);
 	let pollyVoicesLoading = $state(false);
-	let googleVoicesLoading = $state(false);
-
-	// Map googleVoiceType to quality values
-	const voiceTypeToQuality = {
-		'wavenet': 'neural' as const,
-		'studio': 'premium' as const,
-		'standard': 'standard' as const
-	};
-
-	// Filter Google voices by selected type
-	let filteredGoogleVoices = $derived(
-		googleVoices.filter(v =>
-			!localTtsConfig.googleVoiceType ||
-			v.quality === voiceTypeToQuality[localTtsConfig.googleVoiceType]
-		)
-	);
 
 	// Load browser voices
 	$effect(() => {
@@ -118,46 +99,15 @@
 		}
 	}
 
-	// Fetch Google voices dynamically (fetch all, filter client-side)
-	async function fetchGoogleVoices() {
-		googleVoicesLoading = true;
-		try {
-			const response = await fetch('/api/tts/google/voices?language=en-US');
-			if (response.ok) {
-				const data = await response.json();
-				googleVoices = data.voices || [];
-			} else {
-				console.error('Failed to fetch Google voices:', await response.text());
-			}
-		} catch (error) {
-			console.error('Error fetching Google voices:', error);
-		} finally {
-			googleVoicesLoading = false;
-		}
-	}
-
 	// Load voices when provider changes
 	$effect(() => {
 		if (localTtsConfig.provider === 'polly' && pollyVoices.length === 0) {
 			fetchPollyVoices();
-		} else if (localTtsConfig.provider === 'google' && googleVoices.length === 0) {
-			fetchGoogleVoices();
 		}
 	});
 
 	// Filtered browser voices (English only)
 	let englishVoices = $derived(browserVoices.filter((v) => v.lang.startsWith('en')));
-
-	// Update Google voice when voice type changes
-	$effect(() => {
-		if (localTtsConfig.provider === 'google' && localTtsConfig.googleVoiceType) {
-			const voicesOfType = filteredGoogleVoices;
-			if (voicesOfType.length > 0 && !voicesOfType.some(v => v.id === localTtsConfig.voice)) {
-				// Current voice is not available for this type, switch to first available
-				localTtsConfig.voice = voicesOfType[0].id;
-			}
-		}
-	});
 
 	// TTS Engine availability testing
 	let engineTestStatus = $state<'idle' | 'testing' | 'success' | 'error'>('idle');
@@ -191,15 +141,14 @@
 		testEngineAvailability(provider);
 	});
 
-	function getProviderName(provider: 'polly' | 'browser' | 'google'): string {
+	function getProviderName(provider: 'polly' | 'browser'): string {
 		switch (provider) {
 			case 'polly': return 'AWS Polly';
-			case 'google': return 'Google Cloud TTS';
 			case 'browser': return 'Browser TTS';
 		}
 	}
 
-	function parseErrorMessage(response: Response, errorText: string, provider: 'polly' | 'browser' | 'google'): string {
+	function parseErrorMessage(response: Response, errorText: string, provider: 'polly' | 'browser'): string {
 		const providerName = getProviderName(provider);
 
 		// Check if it's an HTML error page (starts with <!doctype or <html)
@@ -237,7 +186,7 @@
 		return `${providerName} unavailable (${response.status} ${response.statusText})`;
 	}
 
-	async function testEngineAvailability(provider: 'polly' | 'browser' | 'google') {
+	async function testEngineAvailability(provider: 'polly' | 'browser') {
 		try {
 			if (provider === 'browser') {
 				// Browser TTS is always available if speechSynthesis exists
@@ -253,10 +202,8 @@
 					});
 				}
 			} else {
-				// For server-based TTS (Polly and Google), test the endpoint
-				const testEndpoint = provider === 'polly'
-					? '/api/tts/polly/voices'
-					: '/api/tts/google/voices';
+				// For server-based TTS (Polly), test the endpoint
+				const testEndpoint = '/api/tts/polly/voices';
 
 				const response = await fetch(testEndpoint, {
 					method: 'GET',
@@ -317,12 +264,11 @@
 	function handleReset() {
 		localTtsConfig = {
 			provider: 'polly',
-			voice: 'Joanna',
+			voice: '',
 			rate: 1.0,
 			pitch: 1.0,
 			pollyEngine: 'neural',
-			pollySampleRate: 24000,
-			googleVoiceType: 'wavenet'
+			pollySampleRate: 24000
 		};
 		localHighlightConfig = {
 			enabled: true,
@@ -396,7 +342,7 @@
 						<div class="label">
 							<span class="label-text font-semibold">TTS Provider</span>
 						</div>
-						<div class="grid grid-cols-3 gap-3">
+						<div class="grid grid-cols-2 gap-3">
 							<label class="label cursor-pointer gap-2 border rounded-lg p-4 flex-col items-start">
 								<input
 									type="radio"
@@ -407,18 +353,6 @@
 								<span class="label-text">
 									<div class="font-semibold">AWS Polly</div>
 									<div class="text-sm opacity-70">High-quality neural voices</div>
-								</span>
-							</label>
-							<label class="label cursor-pointer gap-2 border rounded-lg p-4 flex-col items-start">
-								<input
-									type="radio"
-									bind:group={localTtsConfig.provider}
-									value="google"
-									class="radio"
-								/>
-								<span class="label-text">
-									<div class="font-semibold">Google Cloud</div>
-									<div class="text-sm opacity-70">WaveNet & Studio voices</div>
 								</span>
 							</label>
 							<label class="label cursor-pointer gap-2 border rounded-lg p-4 flex-col items-start">
@@ -465,6 +399,7 @@
 								</span>
 							</label>
 							<select id="polly-voice-select" bind:value={localTtsConfig.voice} class="select select-bordered w-full" disabled={pollyVoicesLoading}>
+								<option value="">Default</option>
 								{#each pollyVoices as voice}
 									<option value={voice.id}>
 										{voice.name}
@@ -497,34 +432,6 @@
 								<option value={22050}>22.05kHz</option>
 								<option value={16000}>16kHz</option>
 								<option value={8000}>8kHz</option>
-							</select>
-						</div>
-					{:else if localTtsConfig.provider === 'google'}
-						<!-- Google Cloud TTS Settings -->
-						<div class="form-control">
-							<label class="label" for="google-voice-type-select">
-								<span class="label-text">Voice Type</span>
-							</label>
-							<select id="google-voice-type-select" bind:value={localTtsConfig.googleVoiceType} class="select select-bordered w-full">
-								<option value="wavenet">WaveNet (Neural, Recommended)</option>
-								<option value="studio">Studio (Premium Quality)</option>
-								<option value="standard">Standard</option>
-							</select>
-						</div>
-
-						<div class="form-control">
-							<label class="label" for="google-voice-select">
-								<span class="label-text">
-									Voice {googleVoicesLoading ? '(Loading...)' : `(${filteredGoogleVoices.length} available)`}
-								</span>
-							</label>
-							<select id="google-voice-select" bind:value={localTtsConfig.voice} class="select select-bordered w-full" disabled={googleVoicesLoading}>
-								{#each filteredGoogleVoices as voice}
-									<option value={voice.id}>
-										{voice.name}
-										{#if voice.gender}({voice.gender}){/if}
-									</option>
-								{/each}
 							</select>
 						</div>
 					{:else}

@@ -9,18 +9,17 @@ import { onMount } from 'svelte';
 	let ttsService = $state<TTSService | undefined>(undefined);
 
 	type TTSConfigType = {
-		provider: 'polly' | 'browser' | 'google';
+		provider: 'polly' | 'browser';
 		voice: string;
 		rate: number;
 		pitch: number;
 		pollyEngine?: 'neural' | 'standard';
 		pollySampleRate?: number;
-		googleVoiceType?: 'wavenet' | 'standard' | 'studio';
 	};
 
 	let ttsConfig = $state<TTSConfigType>({
 		provider: 'polly',
-		voice: 'Joanna',
+		voice: '',
 		rate: 1.0,
 		pitch: 1.0,
 		pollyEngine: 'neural',
@@ -65,7 +64,6 @@ import { onMount } from 'svelte';
 				if (settings.tts.provider === 'browser') {
 					provider = new BrowserTTSProvider();
 				} else {
-					// Both 'polly' and 'google' use ServerTTSProvider
 					provider = new ServerTTSProvider();
 				}
 				await ttsService.initialize(provider, {

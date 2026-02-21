@@ -112,6 +112,15 @@ export interface ToolToolbarElement extends HTMLElement {
 
 	/** Highlight coordinator instance */
 	highlightCoordinator?: any; // HighlightCoordinator type
+
+	/** TTS service instance */
+	ttsService?: any;
+
+	/** Annotation API client instance */
+	annotationApiClient?: any;
+
+	/** Enable/disable floating annotation toolbar */
+	enableAnnotationToolbar?: boolean;
 }
 
 /**
@@ -195,6 +204,25 @@ export interface ToolAnswerEliminatorElement extends BaseToolElement {
 	// No additional properties beyond BaseToolElement
 }
 
+export interface ToolDictionaryElement extends HTMLElement {
+	requestText?: string;
+	requestNonce?: number;
+	annotationApiClient?: any;
+}
+
+export interface ToolPictureDictionaryElement extends HTMLElement {
+	requestText?: string;
+	requestNonce?: number;
+	annotationApiClient?: any;
+}
+
+export interface ToolTranslationElement extends HTMLElement {
+	requestText?: string;
+	requestNonce?: number;
+	targetLanguage?: string;
+	annotationApiClient?: any;
+}
+
 /**
  * Helper type to get element interface by tag name
  *
@@ -225,7 +253,13 @@ export type CustomElementByTag<T extends string> = T extends "pie-iife-player"
 										? ToolTextToSpeechElement
 										: T extends "pie-tool-answer-eliminator"
 											? ToolAnswerEliminatorElement
-											: HTMLElement;
+											: T extends "pie-tool-dictionary"
+												? ToolDictionaryElement
+												: T extends "pie-tool-picture-dictionary"
+													? ToolPictureDictionaryElement
+													: T extends "pie-tool-translation"
+														? ToolTranslationElement
+														: HTMLElement;
 
 /**
  * Declare custom elements in global namespace for TypeScript
@@ -243,5 +277,8 @@ declare global {
 		"pie-tool-line-reader": ToolLineReaderElement;
 		"pie-tool-text-to-speech": ToolTextToSpeechElement;
 		"pie-tool-answer-eliminator": ToolAnswerEliminatorElement;
+		"pie-tool-dictionary": ToolDictionaryElement;
+		"pie-tool-picture-dictionary": ToolPictureDictionaryElement;
+		"pie-tool-translation": ToolTranslationElement;
 	}
 }

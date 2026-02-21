@@ -5,7 +5,6 @@
  * src/routes/api/tts/synthesize/+server.ts
  */
 
-import { generateHashedCacheKey } from "@pie-players/tts-server-core";
 import { PollyServerProvider } from "@pie-players/tts-server-polly";
 import { error, json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
@@ -29,17 +28,11 @@ async function getPollyProvider(): Promise<PollyServerProvider> {
 	return pollyProvider;
 }
 
-// Optional: Redis caching
-// import { createClient } from 'redis';
-// const redis = createClient({ url: process.env.REDIS_URL });
-// await redis.connect();
-
 export const POST: RequestHandler = async ({ request }) => {
 	try {
 		const body = await request.json();
 		const {
 			text,
-			provider = "polly",
 			voice,
 			language,
 			rate,
@@ -54,22 +47,6 @@ export const POST: RequestHandler = async ({ request }) => {
 		if (text.length > 3000) {
 			throw error(400, { message: "Text too long (max 3000 characters)" });
 		}
-
-		// Optional: Check Redis cache
-		// const cacheKey = await generateHashedCacheKey({
-		//   providerId: 'aws-polly',
-		//   text,
-		//   voice: voice || 'Joanna',
-		//   language: language || 'en-US',
-		//   rate: rate || 1.0,
-		//   format: 'mp3',
-		// });
-		//
-		// const cached = await redis.get(cacheKey);
-		// if (cached) {
-		//   console.log('[TTS API] Cache hit:', cacheKey);
-		//   return json(JSON.parse(cached));
-		// }
 
 		// Get Polly provider
 		const polly = await getPollyProvider();
@@ -93,9 +70,6 @@ export const POST: RequestHandler = async ({ request }) => {
 			speechMarks: result.speechMarks,
 			metadata: result.metadata,
 		};
-
-		// Optional: Cache result
-		// await redis.setex(cacheKey, 24 * 60 * 60, JSON.stringify(response));
 
 		return json(response);
 	} catch (err) {

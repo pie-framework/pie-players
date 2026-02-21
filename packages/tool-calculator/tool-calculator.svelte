@@ -19,7 +19,6 @@
 
 	Calculator Types:
 	- basic, scientific, graphing: Desmos calculators (requires API key for production)
-	- ti-84, ti-108, ti-34-mv: TI emulators (stub implementation)
 
 	Desmos API Key (Required for Production):
 	The Desmos calculators (basic, scientific, graphing) require an API key for production use.
@@ -47,8 +46,7 @@
 	
 	import type { IToolCoordinator } from '@pie-players/pie-assessment-toolkit';
 	import { ZIndexLayer } from '@pie-players/pie-assessment-toolkit';
-		import type { Calculator, CalculatorProviderConfig, CalculatorType } from '@pie-players/pie-assessment-toolkit/tools/client';
-		import { DesmosCalculatorProvider, TICalculatorProvider } from '@pie-players/pie-assessment-toolkit/tools/client';
+	import type { Calculator, CalculatorProviderConfig } from '@pie-players/pie-calculator';
 	import { createFocusTrap } from '@pie-players/pie-players-shared';
 	import ToolSettingsButton from '@pie-players/pie-players-shared/components/ToolSettingsButton.svelte';
 import { onMount } from 'svelte';
@@ -57,15 +55,16 @@ import { onMount } from 'svelte';
 	// Constants
 	// ============================================================================
 
-	const DESMOS_CALCULATOR_TYPES: CalculatorType[] = ['basic', 'scientific', 'graphing'];
+	type SupportedCalculatorType = 'basic' | 'scientific' | 'graphing';
+	const DESMOS_CALCULATOR_TYPES: SupportedCalculatorType[] = ['basic', 'scientific', 'graphing'];
 
-	const CALCULATOR_SIZES: Record<CalculatorType, { width: number; height: number }> = {
+	const CALCULATOR_SIZES: Record<SupportedCalculatorType, { width: number; height: number }> = {
 		'basic': { width: 700, height: 600 },
 		'scientific': { width: 700, height: 600 },
 		'graphing': { width: 700, height: 600 }
 	};
 
-	const CALCULATOR_TYPE_NAMES: Record<CalculatorType, string> = {
+	const CALCULATOR_TYPE_NAMES: Record<SupportedCalculatorType, string> = {
 		'basic': 'Basic',
 		'scientific': 'Scientific',
 		'graphing': 'Graphing'
@@ -80,14 +79,14 @@ import { onMount } from 'svelte';
 	let {
 		visible = false,
 		toolId = 'calculator',
-		calculatorType = 'scientific' as CalculatorType,
-		availableTypes: availableTypesInput = ['basic', 'scientific', 'graphing'] as CalculatorType[],
+		calculatorType = 'scientific' as SupportedCalculatorType,
+		availableTypes: availableTypesInput = ['basic', 'scientific', 'graphing'] as SupportedCalculatorType[],
 		toolkitCoordinator = null
 	}: {
 		visible?: boolean;
 		toolId?: string;
-		calculatorType?: CalculatorType;
-		availableTypes?: CalculatorType[] | string;
+		calculatorType?: SupportedCalculatorType;
+		availableTypes?: SupportedCalculatorType[] | string;
 		toolkitCoordinator?: any;
 	} = $props();
 
@@ -100,7 +99,7 @@ import { onMount } from 'svelte';
 
 	let availableTypes = $derived(
 		typeof availableTypesInput === 'string'
-			? (availableTypesInput.split(',').map((t) => t.trim()) as CalculatorType[])
+			? (availableTypesInput.split(',').map((t) => t.trim()) as SupportedCalculatorType[])
 			: availableTypesInput
 	);
 
@@ -110,9 +109,8 @@ import { onMount } from 'svelte';
 
 	let containerEl = $state<HTMLDivElement | undefined>();
 	let calculatorContainerEl = $state<HTMLDivElement | undefined>();
-	let settingsButtonEl = $state<HTMLButtonElement | undefined>();
 	let calculatorInstance = $state<Calculator | null>(null);
-	let currentCalculatorType = $state<CalculatorType>('scientific');
+	let currentCalculatorType = $state<SupportedCalculatorType>('scientific');
 	let settingsOpen = $state(false);
 	let switchAbortController = $state<AbortController | null>(null);
 	let isInitializing = $state(false);
@@ -120,8 +118,6 @@ import { onMount } from 'svelte';
 	let initializationFailed = $state(false);
 	let cleanupFocusTrap = $state<(() => void) | null>(null);
 	let registered = $state(false);
-	let tiCalculatedWidth = $state<number | undefined>(undefined);
-	let tiCalculatedHeight = $state<number | undefined>(undefined);
 
 	// Drag state
 	let isDragging = $state(false);
@@ -134,11 +130,11 @@ import { onMount } from 'svelte';
 	// Helper Functions
 	// ============================================================================
 
-	function isDesmosCalculator(type: CalculatorType): boolean {
+	function isDesmosCalculator(type: SupportedCalculatorType): boolean {
 		return DESMOS_CALCULATOR_TYPES.includes(type);
 	}
 
-	async function getProvider(type: CalculatorType) {
+	async function getProvider(type: SupportedCalculatorType) {
 		console.log('[ToolCalculator] getProvider called', {
 			type,
 			hasToolkitCoordinator: !!toolkitCoordinator,
@@ -161,7 +157,7 @@ import { onMount } from 'svelte';
 		}
 	}
 
-	function getCalculatorTypeName(type: CalculatorType): string {
+	function getCalculatorTypeName(type: SupportedCalculatorType): string {
 		return CALCULATOR_TYPE_NAMES[type] || type;
 	}
 
@@ -199,8 +195,8 @@ import { onMount } from 'svelte';
 	// ============================================================================
 
 	let calculatorSize = $derived(CALCULATOR_SIZES[currentCalculatorType]);
-	let width = $derived(false ? tiCalculatedWidth : calculatorSize.width);
-	let height = $derived(false ? tiCalculatedHeight : calculatorSize.height);
+	let width = $derived(calculatorSize.width);
+	let height = $derived(calculatorSize.height);
 
 	let positionStyle = $derived.by(() => {
 		if (!isBrowser) {
@@ -212,10 +208,6 @@ import { onMount } from 'svelte';
 			return { left: `${positionX}px`, top: `${positionY}px`, transform: '' };
 		}
 
-		if (false && window.innerHeight < 700) {
-			return { left: '50%', top: '1%', transform: 'translateX(-50%) translateY(0)' };
-		}
-
 		// Default: centered
 		return { left: '50%', top: '50%', transform: 'translate(-50%, -50%)' };
 	});
@@ -224,40 +216,7 @@ import { onMount } from 'svelte';
 	// Configuration Management
 	// ============================================================================
 
-	function getInitialConfig(type: CalculatorType): CalculatorProviderConfig {
-		if (false) {
-			const placeholderElementId = `ti-calculator-${type.replace(/-/g, '')}-placeholder`;
-			const baseConfig: CalculatorProviderConfig = {
-				theme: 'light',
-				restrictedMode: false,
-				ti: {
-					elementId: placeholderElementId,
-					KeyHistBufferLength: '10'
-				}
-			};
-
-			// Type-specific TI config
-			if (type === 'ti-84') {
-				baseConfig.ti = {
-					...baseConfig.ti,
-					DisplayMode: 'CLASSIC',
-					AngleMode: 'RAD',
-					setTabOrder: 0,
-					setScreenReaderAria: true,
-					setAccessibleDisplay: true,
-					setupAPIs: { resetEmulator: true }
-				};
-			} else if (type === 'ti-34-mv') {
-				baseConfig.ti = {
-					...baseConfig.ti,
-					DisplayMode: 'CLASSIC',
-					AngleMode: 'DEG'
-				};
-			}
-
-			return baseConfig;
-		}
-
+	function getInitialConfig(type: SupportedCalculatorType): CalculatorProviderConfig {
 		// Desmos config
 		const isGraphing = type === 'graphing';
 		return {
@@ -275,55 +234,11 @@ import { onMount } from 'svelte';
 		};
 	}
 
-	let calculatorConfig = $state<CalculatorProviderConfig>(getInitialConfig(currentCalculatorType));
+	let calculatorConfig = $state<CalculatorProviderConfig>(getInitialConfig('scientific'));
 
 	// ============================================================================
 	// Calculator Lifecycle
 	// ============================================================================
-
-	function measureTICalculatorSize(): void {
-		if (!calculatorContainerEl || !false) return;
-
-		// Try calculator div
-		const calculatorDiv = calculatorContainerEl.querySelector('[id^="ti-calculator-"]') as HTMLElement;
-		if (calculatorDiv) {
-			const computedStyle = window.getComputedStyle(calculatorDiv);
-			const measuredWidth = calculatorDiv.offsetWidth || parseFloat(computedStyle.width) || calculatorDiv.style.width;
-			const measuredHeight = calculatorDiv.offsetHeight || parseFloat(computedStyle.height) || calculatorDiv.style.height;
-
-			if (measuredWidth && measuredHeight) {
-				const widthNum = typeof measuredWidth === 'string' ? parseFloat(measuredWidth) : measuredWidth;
-				const heightNum = typeof measuredHeight === 'string' ? parseFloat(measuredHeight) : measuredHeight;
-
-				if (widthNum > 0 && heightNum > 0) {
-					tiCalculatedWidth = widthNum;
-					tiCalculatedHeight = heightNum;
-					console.log(`[ToolCalculator] Measured TI calculator size: ${widthNum}x${heightNum}`);
-					return;
-				}
-			}
-		}
-
-		// Try SVG fallback
-		const svg = calculatorContainerEl.querySelector('svg[class*="TI"]') as SVGSVGElement;
-		if (svg) {
-			const svgWidth = svg.width?.baseVal?.value || parseFloat(svg.getAttribute('width') || '0');
-			const svgHeight = svg.height?.baseVal?.value || parseFloat(svg.getAttribute('height') || '0');
-
-			if (svgWidth > 0 && svgHeight > 0) {
-				tiCalculatedWidth = svgWidth;
-				tiCalculatedHeight = svgHeight;
-				console.log(`[ToolCalculator] Measured TI calculator size from SVG: ${svgWidth}x${svgHeight}`);
-				return;
-			}
-		}
-
-		// Use fallback size
-		const fallbackSize = CALCULATOR_SIZES[currentCalculatorType];
-		tiCalculatedWidth = fallbackSize.width;
-		tiCalculatedHeight = fallbackSize.height;
-		console.log(`[ToolCalculator] Using fallback TI calculator size: ${fallbackSize.width}x${fallbackSize.height}`);
-	}
 
 	async function initCalculator() {
 		console.log('[ToolCalculator] initCalculator called', {
@@ -386,11 +301,6 @@ import { onMount } from 'svelte';
 
 			console.log('[ToolCalculator] Calculator instance created:', calculatorInstance);
 
-			if (false) {
-				await waitForAnimationFrames(2);
-				measureTICalculatorSize();
-			}
-
 			initializationFailed = false;
 			console.log(`[ToolCalculator] ${currentCalculatorType} calculator initialized successfully`);
 		} catch (error) {
@@ -430,7 +340,7 @@ import { onMount } from 'svelte';
 		}
 	}
 
-	async function handleCalculatorTypeChange(newType: CalculatorType) {
+	async function handleCalculatorTypeChange(newType: SupportedCalculatorType) {
 		if (newType === currentCalculatorType || !availableTypes.includes(newType)) return;
 
 		switchAbortController?.abort();
@@ -489,15 +399,6 @@ import { onMount } from 'svelte';
 				calculatorContainerEl,
 				calculatorConfig
 			);
-
-			// Measure TI calculator size
-			if (false) {
-				await waitForAnimationFrames(2);
-				measureTICalculatorSize();
-			} else {
-				tiCalculatedWidth = undefined;
-				tiCalculatedHeight = undefined;
-			}
 
 			if (signal.aborted) {
 				calculatorInstance?.destroy();
@@ -682,8 +583,6 @@ import { onMount } from 'svelte';
 				}
 			}
 			initializationFailed = false;
-			tiCalculatedWidth = undefined;
-			tiCalculatedHeight = undefined;
 			return;
 		}
 
@@ -713,10 +612,6 @@ import { onMount } from 'svelte';
 						}
 					}
 
-					if (false) {
-						measureTICalculatorSize();
-					}
-
 					if (calculatorInstance?.resize && calculatorContainerEl?.isConnected && visible) {
 						try {
 							calculatorInstance.resize();
@@ -744,6 +639,7 @@ import { onMount } from 'svelte';
 				resizeObserver.disconnect();
 				resizeObserver = null;
 			}
+			return;
 		}
 	});
 
@@ -778,7 +674,6 @@ import { onMount } from 'svelte';
 			<span class="tool-title">Calculator</span>
 			<div class="header-buttons">
 				<ToolSettingsButton
-					bind:buttonEl={settingsButtonEl}
 					onClick={toggleSettings}
 					ariaLabel="Calculator settings"
 					active={settingsOpen}
@@ -893,88 +788,6 @@ import { onMount } from 'svelte';
 				/>
 				<span>QWERTY Keyboard</span>
 			</label>
-
-			{#if false}
-				{#if currentCalculatorType === 'ti-84' || currentCalculatorType === 'ti-34-mv'}
-					<label>
-						<span class="setting-label">
-							Angle Mode
-							<span class="setting-value">
-								{calculatorConfig.ti?.AngleMode === 'DEG' ? 'Degrees' : 'Radians'}
-							</span>
-						</span>
-						<select
-							value={calculatorConfig.ti?.AngleMode || (currentCalculatorType === 'ti-84' ? 'RAD' : 'DEG')}
-							onchange={(e) => {
-								calculatorConfig.ti = {
-									...calculatorConfig.ti,
-									AngleMode: (e.target as HTMLSelectElement).value === 'degree' ? 'DEG' : 'RAD',
-								};
-								handleConfigChange();
-							}}
-						>
-							<option value="degree">Degrees</option>
-							<option value="radian">Radians</option>
-						</select>
-					</label>
-				{/if}
-
-				{#if currentCalculatorType === 'ti-84' || currentCalculatorType === 'ti-34-mv'}
-					<label>
-						<span class="setting-label">
-							Display Mode
-							<span class="setting-value">
-								{calculatorConfig.ti?.DisplayMode || 'CLASSIC'}
-							</span>
-						</span>
-						<select
-							value={calculatorConfig.ti?.DisplayMode || 'CLASSIC'}
-							onchange={(e) => {
-								calculatorConfig.ti = {
-									...calculatorConfig.ti,
-									DisplayMode: (e.target as HTMLSelectElement).value === 'MATHPRINT' ? 'MATHPRINT' : 'CLASSIC',
-								};
-								handleConfigChange();
-							}}
-						>
-							<option value="CLASSIC">Classic</option>
-							<option value="MATHPRINT">MathPrint</option>
-						</select>
-					</label>
-				{/if}
-
-				{#if currentCalculatorType === 'ti-84'}
-					<label>
-						<input
-							type="checkbox"
-							checked={calculatorConfig.ti?.setScreenReaderAria ?? true}
-							onchange={(e) => {
-								calculatorConfig.ti = {
-									...calculatorConfig.ti,
-									setScreenReaderAria: (e.target as HTMLInputElement).checked,
-								};
-								handleConfigChange();
-							}}
-						/>
-						<span>Screen Reader Support</span>
-					</label>
-
-					<label>
-						<input
-							type="checkbox"
-							checked={calculatorConfig.ti?.setAccessibleDisplay ?? true}
-							onchange={(e) => {
-								calculatorConfig.ti = {
-									...calculatorConfig.ti,
-									setAccessibleDisplay: (e.target as HTMLInputElement).checked,
-								};
-								handleConfigChange();
-							}}
-						/>
-						<span>Accessible Display</span>
-					</label>
-				{/if}
-			{/if}
 
 			{#if currentCalculatorType === 'graphing'}
 				<label>
@@ -1143,20 +956,6 @@ import { onMount } from 'svelte';
 		min-height: 400px;
 		position: relative;
 		overflow: hidden;
-	}
-
-	.calculator-container[data-calculator-type="ti-84"],
-	.calculator-container[data-calculator-type="ti-108"],
-	.calculator-container[data-calculator-type="ti-34-mv"] {
-		width: auto;
-		height: auto;
-		min-width: 0;
-		min-height: 0;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		padding: 0;
-		overflow: visible;
 	}
 
 	:global(.calculator-container .dcg-container) {

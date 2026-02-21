@@ -2,27 +2,15 @@
  * Client-only tool system exports
  *
  * This entry point exports only browser-safe code for use in custom elements.
- * It excludes server-side services like accommodationResolver, variantResolver, etc.
+ * It excludes server-side services like accommodationResolver.
  *
  * Tools should import from '@pie-players/pie-assessment-toolkit/tools/client' instead of
  * '@pie-players/pie-assessment-toolkit' to ensure
  * they don't accidentally pull in server-side dependencies.
  */
 
-// Calculator providers (client-safe, have SSR guards)
-// Deprecated singleton exports (kept for backward compatibility)
-// @deprecated Instantiate providers directly instead
-export {
-	DesmosCalculatorProvider,
-	desmosProvider,
-} from "./calculators/desmos-provider.js";
-// @deprecated Instantiate providers directly instead
-export {
-	MathJsCalculatorProvider,
-	mathjsProvider,
-} from "./calculators/mathjs-provider.js";
-// @deprecated Instantiate providers directly instead
-export { TICalculatorProvider, tiProvider } from "./calculators/ti-provider.js";
+// Calculator providers (canonical packages)
+export { DesmosCalculatorProvider } from "@pie-players/pie-calculator-desmos";
 // Library loader (client-safe, has SSR guards)
 export {
 	COMMON_LIBRARIES,

@@ -34,6 +34,9 @@ export function createVitePlugin(config: Partial<LocalEsmCdnConfig>): Plugin {
 	return {
 		name: "vite-plugin-local-esm-cdn",
 		enforce: "pre", // Run before other plugins
+		// This adapter is for dev-time module serving only.
+		// Never run during `vite build` (client or SSR) to avoid build-time 404s.
+		apply: "serve",
 
 		resolveId(id) {
 			// Only intercept packages from pie-elements-ng (@pie-element, @pie-lib, @pie-elements-ng)

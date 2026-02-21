@@ -320,30 +320,4 @@ export const COMMON_LIBRARIES: Record<string, LibraryConfig> = {
 		timeout: 8000,
 		retry: { maxAttempts: 3, delay: 1000, backoffMultiplier: 2 },
 	},
-
-	// TI Calculator emulators (placeholder URLs - replace with actual)
-	ti84: {
-		id: "ti-84-emulator",
-		url: "https://example.com/ti-84-emulator.js", // Replace with actual URL
-		fallbackUrls: ["/static/lib/ti-84-emulator.js"],
-		globalVar: "TI84",
-		timeout: 15000,
-		retry: { maxAttempts: 3, delay: 2000, backoffMultiplier: 2 },
-	},
-
-	ti108: {
-		id: "ti-108-emulator",
-		url: "https://example.com/ti-108-emulator.js", // Replace with actual URL
-		fallbackUrls: ["/static/lib/ti-108-emulator.js"],
-		globalVar: "TI108",
-		timeout: 15000,
-	},
-
-	ti34mv: {
-		id: "ti-34mv-emulator",
-		url: "https://example.com/ti-34mv-emulator.js", // Replace with actual URL
-		fallbackUrls: ["/static/lib/ti-34mv-emulator.js"],
-		globalVar: "TI34MV",
-		timeout: 15000,
-	},
 };

@@ -1,0 +1,62 @@
+{
+	"name": "@pie-players/pie-tool-translation",
+	"version": "0.1.0",
+	"type": "module",
+	"description": "Translation lookup tool dialog for PIE assessment players",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pie-framework/pie-players.git"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"keywords": [
+		"pie",
+		"assessment",
+		"tool",
+		"translation",
+		"accessibility"
+	],
+	"svelte": "./tool-translation.svelte",
+	"main": "./dist/tool-translation.js",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/tool-translation.js",
+			"svelte": "./tool-translation.svelte"
+		},
+		"./tool-translation.svelte": "./tool-translation.svelte"
+	},
+	"files": [
+		"dist",
+		"tool-translation.svelte",
+		"index.ts",
+		"package.json",
+		"README.md"
+	],
+	"peerDependencies": {
+		"svelte": "^5.51.0"
+	},
+	"license": "MIT",
+	"unpkg": "./dist/tool-translation.js",
+	"jsdelivr": "./dist/tool-translation.js",
+	"dependencies": {
+		"@pie-players/pie-assessment-toolkit": "workspace:*",
+		"daisyui": "^5.5.18"
+	},
+	"types": "./dist/index.d.ts",
+	"scripts": {
+		"build": "vite build",
+		"dev": "vite build --watch",
+		"typecheck": "tsc --noEmit",
+		"lint": "biome check ."
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.3.10",
+		"@sveltejs/vite-plugin-svelte": "^6.1.4",
+		"svelte": "^5.51.3",
+		"typescript": "^5.7.0",
+		"vite": "^7.0.8",
+		"vite-plugin-dts": "^4.5.3"
+	}
+}

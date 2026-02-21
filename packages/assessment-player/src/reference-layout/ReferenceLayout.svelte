@@ -1,7 +1,8 @@
 <script lang="ts">
 	
+	import { AnnotationToolbarAPIClient } from '@pie-players/pie-assessment-toolkit';
 	import type { AssessmentEntity, ItemConfig, ItemEntity, PassageEntity, RubricBlock } from '@pie-players/pie-players-shared/types';
-	import ToolAnnotationToolbar from '@pie-players/pie-tool-annotation-toolbar';
+	import '@pie-players/pie-tool-annotation-toolbar';
 	import { onDestroy, onMount } from 'svelte';
 	import type { AssessmentPlayer } from '../player/AssessmentPlayer.js';
 	import AssessmentContent from './components/AssessmentContent.svelte';
@@ -39,24 +40,15 @@
 	let passage = $state<PassageEntity | null>(null);
 	let rubricBlocks = $state<RubricBlock[]>([]);
 
-	// Annotation toolbar event handlers
-	function handleDictionaryLookup(detail: { text: string }) {
-		// TODO: Open dictionary modal
-		console.log('Dictionary lookup:', detail.text);
-		alert(`Dictionary lookup: ${detail.text}`);
-	}
-
-	function handleTranslationRequest(detail: { text: string }) {
-		// TODO: Open translation modal
-		console.log('Translation request:', detail.text);
-		alert(`Translation request: ${detail.text}`);
-	}
-
-	function handlePictureDictionaryLookup(detail: { text: string }) {
-		// TODO: Open picture dictionary modal
-		console.log('Picture dictionary lookup:', detail.text);
-		alert(`Picture dictionary: ${detail.text}`);
-	}
+	const annotationApiClient =
+		typeof window !== 'undefined'
+			? new AnnotationToolbarAPIClient({
+					dictionaryEndpoint: '/api/dictionary',
+					pictureDictionaryEndpoint: '/api/picture-dictionary',
+					translationEndpoint: '/api/translation',
+					defaultLanguage: 'en-us',
+				})
+			: null;
 
 	// Load passage when item changes
 	async function loadPassage(item: ItemEntity | null) {
@@ -173,14 +165,13 @@
 
 <!-- Annotation Toolbar (floating, appears on text selection) -->
 <!-- Outside layout container to avoid overflow: hidden affecting fixed positioning -->
-<ToolAnnotationToolbar
+<pie-tool-annotation-toolbar
 	enabled={true}
 	ttsService={player.getTTSService()}
 	highlightCoordinator={player.getHighlightCoordinator()}
-	ondictionarylookup={handleDictionaryLookup}
-	ontranslationrequest={handleTranslationRequest}
-	onpicturedictionarylookup={handlePictureDictionaryLookup}
-/>
+	annotationApiClient={annotationApiClient}
+	translationTargetLanguage="es"
+></pie-tool-annotation-toolbar>
 
 <style>
 	.reference-layout {

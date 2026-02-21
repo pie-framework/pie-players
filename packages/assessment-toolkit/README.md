@@ -314,6 +314,12 @@ The toolkit integrates seamlessly with the **PIE Section Player**:
 ```typescript
 export interface ToolkitCoordinatorConfig {
   assessmentId: string;  // Required: unique assessment identifier
+  testAttemptSession?: {        // Optional: backend-agnostic test attempt session tracking
+    enabled?: boolean;
+    assignmentId?: string | null;
+    userId?: string | null;
+    tracker?: TestAttemptSessionTracker;
+  };
   tools?: {
     tts?: {
       enabled?: boolean;
@@ -346,6 +352,19 @@ const services = coordinator.getServiceBundle();
 coordinator.isToolEnabled('tts');  // Check if tool is enabled
 coordinator.getToolConfig('tts');  // Get tool-specific config
 coordinator.updateToolConfig('tts', { rate: 1.5 });  // Update tool config
+
+// Test session tracking (preferred names)
+coordinator.initializeTestAttemptSession(['q-1', 'q-2']);
+coordinator.updateTestAttemptSessionPosition({
+  itemIdentifier: 'q-1',
+  currentItemIndex: 0,
+  currentSectionIdentifier: 'section-1'
+});
+coordinator.recordTestAttemptSessionItemChange({
+  itemIdentifier: 'q-1',
+  pieSessionId: 'pie-session-1',
+  isCompleted: true
+});
 ```
 
 ### Direct Service Access
@@ -358,7 +377,21 @@ coordinator.toolCoordinator         // ToolCoordinator instance
 coordinator.highlightCoordinator    // HighlightCoordinator instance
 coordinator.elementToolStateStore   // ElementToolStateStore instance
 coordinator.catalogResolver         // AccessibilityCatalogResolver instance
+coordinator.testAttemptSessionTracker      // TestAttemptSessionTracker
 ```
+
+### Naming Convention
+
+- **Assessment**: container/content-level concepts (`assessmentId`, assessment player)
+- **Test**: runtime/attempt/session tracking (`TestAttemptSession`, `TestAttemptSessionTracker`)
+
+### Backend Boundary
+
+`pie-assessment-toolkit` does not call backend APIs directly.
+
+- Wire contracts from hosts can remain backend-native (`activity`, `activityDefinition`, `activitySession`).
+- Hosts normalize backend payloads into toolkit runtime state (`TestAttemptSession`) before passing data into the tracker.
+- Persistence is host-owned: toolkit emits/updates client runtime state, and host code decides when/how to call backend `load`/`save`/`score`.
 
 ## ElementToolStateStore API
 
@@ -600,6 +633,14 @@ player.section = mySection;
 ## State Separation: Tool State vs Session Data
 
 The toolkit enforces a clear separation between ephemeral tool state and persistent session data:
+
+### Three Distinct State Layers
+
+1. **Tool state** (`ElementToolStateStore`): ephemeral UI/tool metadata per element.
+2. **PIE item session state**: item response/session data used for scoring.
+3. **Test attempt session state** (`TestAttemptSessionTracker`): orchestration metadata (navigation + item-to-session linkage).
+
+`TestAttemptSession` should remain summary/index state and should not duplicate full response payloads or tool annotations.
 
 ### Tool State (Ephemeral - ElementToolStateStore)
 

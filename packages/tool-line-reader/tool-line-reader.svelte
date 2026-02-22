@@ -449,12 +449,12 @@ import { onMount } from 'svelte';
 	}
 
 	.line-reader-frame:focus {
-		outline: 3px solid #4A90E2;
+		outline: 3px solid var(--pie-primary, #4A90E2);
 		outline-offset: 2px;
 	}
 
 	.line-reader-frame:focus-visible {
-		outline: 3px solid #4A90E2;
+		outline: 3px solid var(--pie-primary, #4A90E2);
 		outline-offset: 2px;
 	}
 
@@ -483,7 +483,7 @@ import { onMount } from 'svelte';
 		height: 16px;
 		background-color: rgba(255, 255, 255, 0.9);
 		border-radius: 8px;
-		border: 2px solid #4CAF50;
+		border: 2px solid var(--pie-correct, #4CAF50);
 	}
 
 	.resize-handle:hover {

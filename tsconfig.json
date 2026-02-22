@@ -31,6 +31,8 @@
 		{ "path": "./packages/fixed-player" },
 		{ "path": "./packages/iife-player" },
 		{ "path": "./packages/inline-player" },
+		{ "path": "./packages/player-theme" },
+		{ "path": "./packages/player-theme-daisyui" },
 		{ "path": "./packages/players-shared" },
 		{ "path": "./packages/tool-annotation-toolbar" },
 		{ "path": "./packages/tool-answer-eliminator" },

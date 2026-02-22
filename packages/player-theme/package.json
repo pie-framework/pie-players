@@ -1,0 +1,43 @@
+{
+	"name": "@pie-players/pie-theme",
+	"version": "0.1.0",
+	"type": "module",
+	"description": "Generic theming wrapper custom element for PIE players",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pie-framework/pie-players.git"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"files": [
+		"dist",
+		"README.md"
+	],
+	"scripts": {
+		"build": "tsc -p tsconfig.json",
+		"typecheck": "tsc -p tsconfig.json --noEmit",
+		"lint": "biome check ."
+	},
+	"dependencies": {
+		"@pie-players/pie-players-shared": "workspace:*"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.3.11",
+		"typescript": "^5.9.3"
+	},
+	"homepage": "https://github.com/pie-framework/pie-players#readme",
+	"bugs": {
+		"url": "https://github.com/pie-framework/pie-players/issues"
+	}
+}
+

@@ -506,7 +506,7 @@ All existing tools in `/lib/tags/tool-*` can be used as-is:
 - ToolCoordinator (tool visibility, z-index)
 - HighlightCoordinator (TTS highlighting, annotations)
 - TTSService (text-to-speech)
-- ThemeProvider (contrast, font size)
+- Shared wrapper/token theming (contrast, font size)
 
 ## Implementation Steps
 

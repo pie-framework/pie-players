@@ -316,10 +316,10 @@
 
 			<div class="card bg-base-100 border border-base-300">
 				<div class="card-body">
-					<h4 class="font-bold text-primary mb-2">ThemeProvider</h4>
+					<h4 class="font-bold text-primary mb-2">Theme Tokens + Wrappers</h4>
 					<p class="text-sm">
-						Accessibility theming for high contrast modes, color schemes, and font size adjustments
-						via CSS custom properties.
+						Unified theming through canonical `--pie-*` tokens and wrapper elements such as
+						`pie-theme-daisyui`.
 					</p>
 				</div>
 			</div>

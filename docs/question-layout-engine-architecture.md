@@ -160,7 +160,7 @@ interface AssessmentSessionManager {
 
   // Service Access
   getToolCoordinator(): ToolCoordinator;
-  getThemeProvider(): ThemeProvider;
+  getThemeConfig(): ThemeConfig | null;
   getTTSService(): TTSService;
   getHighlightCoordinator(): HighlightCoordinator;
 
@@ -535,7 +535,7 @@ The system supports three distinct tool scopes:
 │ ASSESSMENT-LEVEL TOOLS                  │
 │ Apply uniformly to all items            │
 │ Examples: Color scheme, font size       │
-│ Managed by: ThemeProvider               │
+│ Managed by: shared theming wrappers     │
 └─────────────────────────────────────────┘
           ↓
 ┌─────────────────────────────────────────┐
@@ -567,10 +567,11 @@ The system supports three distinct tool scopes:
 **Architecture**:
 
 ```typescript
-interface ThemeProvider {
-  applyTheme(config: ThemeConfig): void;
-  // Sets CSS variables on document root
-  // Affects ALL items, passages, rubrics simultaneously
+interface ThemeConfig {
+  theme?: 'light' | 'dark' | 'auto';
+  scope?: 'self' | 'document';
+  colorScheme?: string;
+  variables?: Record<`--pie-${string}`, string>;
 }
 ```
 
@@ -707,7 +708,7 @@ Assessment Initialization
   ↓
 Create Services:
   - ToolCoordinator
-  - ThemeProvider
+  - shared theming wrappers/tokens
   - TTSService
   - HighlightCoordinator
   ↓
@@ -819,12 +820,12 @@ Layout accesses services through session manager:
 
 ```typescript
 const toolCoordinator = sessionManager.getToolCoordinator();
-const themeProvider = sessionManager.getThemeProvider();
+const themeConfig = sessionManager.getThemeConfig();
 const ttsService = sessionManager.getTTSService();
 
 // Use in layout
 function handleThemeChange(theme: ThemeConfig) {
-  themeProvider.applyTheme(theme);
+  // Apply via pie-theme or pie-theme-daisyui wrapper
 }
 
 function handleTTSToggle(rootElement: HTMLElement) {

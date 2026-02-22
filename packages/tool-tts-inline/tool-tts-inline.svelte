@@ -305,9 +305,9 @@
 
 	/* Focus indicator - WCAG 2.4.7, 2.4.13 */
 	.tts-inline:focus-visible {
-		outline: 2px solid #0066cc;
+		outline: 2px solid var(--pie-primary, #0066cc);
 		outline-offset: 2px;
-		box-shadow: 0 0 0 4px rgba(0, 102, 204, 0.2);
+		box-shadow: 0 0 0 4px color-mix(in srgb, var(--pie-primary, #0066cc) 20%, transparent);
 		z-index: 1;
 	}
 
@@ -331,7 +331,7 @@
 	}
 
 	.tts-inline--stop .tts-inline__icon {
-		color: #c62828; /* Darker red for better contrast - WCAG 1.4.11 */
+		color: var(--pie-incorrect, #c62828); /* Darker red for better contrast - WCAG 1.4.11 */
 	}
 
 	.tts-inline:disabled {
@@ -374,15 +374,15 @@
 
 	.tts-inline__icon {
 		fill: currentColor;
-		color: #555;
+		color: var(--pie-text-secondary, #555);
 	}
 
 	.tts-inline:hover:not(:disabled) .tts-inline__icon {
-		color: #667eea;
+		color: var(--pie-primary, #667eea);
 	}
 
 	.tts-inline--speaking .tts-inline__icon {
-		color: #667eea;
+		color: var(--pie-white, #ffffff);
 	}
 
 	@keyframes pulse {

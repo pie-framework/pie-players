@@ -58,7 +58,6 @@
 />
 
 <script lang="ts">
-	
 	import type { ConfigEntity, Env, LoaderConfig } from '@pie-players/pie-players-shared';
 	import { BundleType, createPieLogger, DEFAULT_LOADER_CONFIG, isGlobalDebugEnabled, makeUniqueTags } from '@pie-players/pie-players-shared';
 	import { PieItemPlayer, PieSpinner } from '@pie-players/pie-players-shared/components';
@@ -377,10 +376,10 @@
 		<div class="pie-player-error" style="
 			padding: 20px;
 			margin: 20px;
-			border: 2px solid #d32f2f;
+			border: 2px solid var(--pie-incorrect, #d32f2f);
 			border-radius: 4px;
-			background-color: #ffebee;
-			color: #c62828;
+			background-color: var(--pie-secondary-background, #ffebee);
+			color: var(--pie-text, #c62828);
 			font-family: sans-serif;
 		">
 			<h3 style="margin: 0 0 10px 0">⚠️ Configuration Error</h3>

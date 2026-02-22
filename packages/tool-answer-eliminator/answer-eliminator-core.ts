@@ -114,32 +114,32 @@ export class AnswerEliminatorCore {
 			width: "28px",
 			height: "28px",
 			padding: "0",
-			border: "1px solid #ccc",
+			border: "1px solid var(--pie-border, #ccc)",
 			borderRadius: "4px",
-			background: "white",
+			background: "var(--pie-background, white)",
 			cursor: "pointer",
 			fontSize: "18px",
 			lineHeight: "1",
 			display: "flex",
 			alignItems: "center",
 			justifyContent: "center",
-			color: "#666",
+			color: "var(--pie-text-secondary, #666)",
 			transition: "all 0.2s ease",
 			zIndex: "10",
 		});
 
 		// Add hover effect
 		button.addEventListener("mouseenter", () => {
-			button.style.background = "#f0f0f0";
-			button.style.borderColor = "#999";
-			button.style.color = "#333";
+			button.style.background = "var(--pie-secondary-background, #f0f0f0)";
+			button.style.borderColor = "var(--pie-border-dark, #999)";
+			button.style.color = "var(--pie-text, #333)";
 		});
 
 		button.addEventListener("mouseleave", () => {
 			if (!this.strategy.isEliminated(choiceId)) {
-				button.style.background = "white";
-				button.style.borderColor = "#ccc";
-				button.style.color = "#666";
+				button.style.background = "var(--pie-background, white)";
+				button.style.borderColor = "var(--pie-border, #ccc)";
+				button.style.color = "var(--pie-text-secondary, #666)";
 			}
 		});
 
@@ -208,9 +208,9 @@ export class AnswerEliminatorCore {
 			button.classList.add("active");
 			button.setAttribute("aria-pressed", "true");
 			// Visual feedback: filled/highlighted when eliminated
-			button.style.background = "#ff9800";
-			button.style.borderColor = "#ff9800";
-			button.style.color = "white";
+			button.style.background = "var(--pie-incorrect, #ff9800)";
+			button.style.borderColor = "var(--pie-incorrect, #ff9800)";
+			button.style.color = "var(--pie-white, white)";
 		}
 
 		// Save to store
@@ -233,9 +233,9 @@ export class AnswerEliminatorCore {
 			button.classList.remove("active");
 			button.setAttribute("aria-pressed", "false");
 			// Reset to default styling
-			button.style.background = "white";
-			button.style.borderColor = "#ccc";
-			button.style.color = "#666";
+			button.style.background = "var(--pie-background, white)";
+			button.style.borderColor = "var(--pie-border, #ccc)";
+			button.style.color = "var(--pie-text-secondary, #666)";
 		}
 
 		// Save to store
@@ -333,9 +333,9 @@ export class AnswerEliminatorCore {
 						button.classList.add("active");
 						button.setAttribute("aria-pressed", "true");
 						// Apply eliminated styling
-						button.style.background = "#ff9800";
-						button.style.borderColor = "#ff9800";
-						button.style.color = "white";
+						button.style.background = "var(--pie-incorrect, #ff9800)";
+						button.style.borderColor = "var(--pie-incorrect, #ff9800)";
+						button.style.color = "var(--pie-white, white)";
 					}
 				}
 			}

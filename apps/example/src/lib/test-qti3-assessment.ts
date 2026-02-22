@@ -125,11 +125,11 @@ export const qti3TestAssessment: AssessmentEntity = {
 			},
 		},
 		themeConfig: {
+			theme: "light",
+			scope: "document",
 			colorScheme: "default",
-			fontSize: 16,
-			lineHeight: 1.6,
-			reducedMotion: false,
-		},
+			variables: {},
+		} as any,
 	},
 
 	// ============================================================================

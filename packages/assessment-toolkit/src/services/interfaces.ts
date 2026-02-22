@@ -17,7 +17,6 @@ import type {
 	ResolvedCatalog,
 } from "./AccessibilityCatalogResolver.js";
 import type { HighlightColor, HighlightType } from "./HighlightCoordinator.js";
-import type { FontSize, ThemeConfig } from "./ThemeProvider.js";
 import type { ZIndexLayer } from "./ToolCoordinator.js";
 import type { PlaybackState, TTSConfig } from "./TTSService.js";
 import type {
@@ -33,33 +32,6 @@ import type {
 
 // Re-export II18nService from players-shared
 export type { II18nService };
-
-/**
- * Theme provider interface
- *
- * Applies consistent accessibility theming across items and tools.
- */
-export interface IThemeProvider {
-	/**
-	 * Apply theme configuration
-	 */
-	applyTheme(config: ThemeConfig): void;
-
-	/**
-	 * Get current theme configuration
-	 */
-	getCurrentTheme(): Required<ThemeConfig>;
-
-	/**
-	 * Reset to default theme
-	 */
-	reset(): void;
-
-	/**
-	 * Clean up and remove theme styles
-	 */
-	destroy(): void;
-}
 
 /**
  * Highlight coordinator interface

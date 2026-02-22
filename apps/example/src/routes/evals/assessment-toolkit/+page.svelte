@@ -4,11 +4,17 @@
 		type AssessmentToolkitEvents,
 		BrowserTTSProvider,
 		HighlightCoordinator,
-		ThemeProvider,
 		ToolCoordinator,
 		TTSService,
 		TypedEventBus,
 	} from '@pie-players/pie-assessment-toolkit';
+	import {
+		applyTokens,
+		getBaseTokens,
+		getColorSchemeTokens,
+		mergeTokens,
+		resolveThemeMode,
+	} from '@pie-players/pie-players-shared/theming';
 	import { responseDiscovery } from '@pie-players/pie-assessment-toolkit/tools/client';
 import { onDestroy, onMount, untrack } from 'svelte';
 	import { goto } from '$app/navigation';
@@ -18,16 +24,24 @@ import { onDestroy, onMount, untrack } from 'svelte';
 
 	const eventBus = new TypedEventBus<AssessmentToolkitEvents>();
 	const toolCoordinator = new ToolCoordinator();
-	const themeProvider = new ThemeProvider();
 	const ttsService = new TTSService();
 	const highlightCoordinator = new HighlightCoordinator();
 	const highlightSupported = highlightCoordinator.isSupported();
+	let appliedThemeKeys = new Set<string>();
 
 	let log = $state<LogEntry[]>([]);
 
-	// Theme (intent: accessible settings)
-	let highContrast = $state(false);
-	let fontSize = $state<'small' | 'medium' | 'large' | 'xlarge'>('medium');
+	// Theme (intent: wrapper/token model)
+	let theme = $state<'light' | 'dark' | 'auto'>('light');
+	let colorScheme = $state<
+		| 'default'
+		| 'black-on-white'
+		| 'white-on-black'
+		| 'rose-on-green'
+		| 'yellow-on-blue'
+		| 'black-on-rose'
+		| 'light-gray-on-dark-gray'
+	>('default');
 
 	// Tool coordination demo (intent: predictable z-index + visibility)
 	let toolAVisible = $state(false);
@@ -50,38 +64,75 @@ import { onDestroy, onMount, untrack } from 'svelte';
 	}
 
 	function applyTheme() {
-		themeProvider.applyTheme({
-			highContrast,
-			fontSize,
-		} as any);
-		pushLog('theme:applied', { highContrast, fontSize });
+		const resolvedTheme = resolveThemeMode(theme);
+		const baseTokens =
+			colorScheme !== 'default'
+				? getColorSchemeTokens(colorScheme)
+				: getBaseTokens(resolvedTheme);
+		const mergedTokens = mergeTokens(baseTokens, {});
+		appliedThemeKeys = applyTokens(document.documentElement, mergedTokens, appliedThemeKeys);
+		pushLog('theme:applied', { theme, colorScheme });
 	}
 
 	function coerceBool(v: string | null, fallback: boolean): boolean {
 		if (v === null) return fallback;
 		return v === '1' || v === 'true' || v === 'yes' || v === 'on';
 	}
-	function coerceFontSize(
+	function coerceTheme(
 		v: string | null,
-		fallback: 'small' | 'medium' | 'large' | 'xlarge'
-	): 'small' | 'medium' | 'large' | 'xlarge' {
-		return v === 'small' || v === 'large' || v === 'xlarge' ? v : fallback;
+		fallback: 'light' | 'dark' | 'auto'
+	): 'light' | 'dark' | 'auto' {
+		return v === 'dark' || v === 'auto' || v === 'light' ? v : fallback;
+	}
+	function coerceColorScheme(
+		v: string | null,
+		fallback:
+			| 'default'
+			| 'black-on-white'
+			| 'white-on-black'
+			| 'rose-on-green'
+			| 'yellow-on-blue'
+			| 'black-on-rose'
+			| 'light-gray-on-dark-gray'
+	):
+		| 'default'
+		| 'black-on-white'
+		| 'white-on-black'
+		| 'rose-on-green'
+		| 'yellow-on-blue'
+		| 'black-on-rose'
+		| 'light-gray-on-dark-gray' {
+		switch (v) {
+			case 'black-on-white':
+			case 'white-on-black':
+			case 'rose-on-green':
+			case 'yellow-on-blue':
+			case 'black-on-rose':
+			case 'light-gray-on-dark-gray':
+			case 'default':
+				return v;
+			default:
+				return fallback;
+		}
 	}
 
 	// URL -> state (bookmarkable)
 	$effect(() => {
 		const q = $page.url.searchParams;
 
-		const nextHighContrast = coerceBool(q.get('contrast'), untrack(() => highContrast));
-		const nextFontSize = coerceFontSize(q.get('font'), untrack(() => fontSize));
+		const nextTheme = coerceTheme(q.get('theme'), untrack(() => theme));
+		const nextColorScheme = coerceColorScheme(
+			q.get('colorScheme'),
+			untrack(() => colorScheme)
+		);
 		const nextToolA = coerceBool(q.get('toolA'), untrack(() => toolAVisible));
 		const nextToolB = coerceBool(q.get('toolB'), untrack(() => toolBVisible));
 
-		const themeChanged = nextHighContrast !== highContrast || nextFontSize !== fontSize;
+		const themeChanged = nextTheme !== theme || nextColorScheme !== colorScheme;
 
 		// Avoid tracking local state in this effect (it should only depend on URL).
-		if (untrack(() => highContrast) !== nextHighContrast) highContrast = nextHighContrast;
-		if (untrack(() => fontSize) !== nextFontSize) fontSize = nextFontSize;
+		if (untrack(() => theme) !== nextTheme) theme = nextTheme;
+		if (untrack(() => colorScheme) !== nextColorScheme) colorScheme = nextColorScheme;
 		if (untrack(() => toolAVisible) !== nextToolA) toolAVisible = nextToolA;
 		if (untrack(() => toolBVisible) !== nextToolB) toolBVisible = nextToolB;
 
@@ -93,8 +144,8 @@ import { onDestroy, onMount, untrack } from 'svelte';
 		const url = $page.url;
 		const params = new URLSearchParams(url.searchParams);
 
-		params.set('contrast', highContrast ? '1' : '0');
-		params.set('font', fontSize);
+		params.set('theme', theme);
+		params.set('colorScheme', colorScheme);
 		params.set('toolA', toolAVisible ? '1' : '0');
 		params.set('toolB', toolBVisible ? '1' : '0');
 
@@ -220,6 +271,7 @@ import { onDestroy, onMount, untrack } from 'svelte';
 	});
 
 	onDestroy(() => {
+		appliedThemeKeys = applyTokens(document.documentElement, {}, appliedThemeKeys);
 		try {
 			toolCoordinator.unregisterTool('tool-a');
 			toolCoordinator.unregisterTool('tool-b');
@@ -318,32 +370,38 @@ import { onDestroy, onMount, untrack } from 'svelte';
 			</div>
 
 			<div>
-				<div class="font-semibold mb-2">Theme (a11y intent)</div>
-				<label class="flex items-center gap-2 cursor-pointer">
-					<input
-						type="checkbox"
-						class="toggle toggle-sm"
-						bind:checked={highContrast}
-						aria-label="Toggle high contrast"
-						data-testid="toggle-high-contrast"
+				<div class="font-semibold mb-2">Theme (token model)</div>
+				<label class="block mt-3 text-sm">
+					<span class="opacity-70">Theme</span>
+					<select
+						class="select select-bordered select-sm w-full mt-1"
+						bind:value={theme}
+						aria-label="Select theme"
+						data-testid="select-theme"
 						onchange={applyTheme}
-					/>
-					<span class="text-sm">High contrast</span>
+					>
+						<option value="light">light</option>
+						<option value="dark">dark</option>
+						<option value="auto">auto</option>
+					</select>
 				</label>
 
 				<label class="block mt-3 text-sm">
-					<span class="opacity-70">Font size</span>
+					<span class="opacity-70">Color scheme</span>
 					<select
 						class="select select-bordered select-sm w-full mt-1"
-						bind:value={fontSize}
-						aria-label="Select font size"
-						data-testid="select-font-size"
+						bind:value={colorScheme}
+						aria-label="Select color scheme"
+						data-testid="select-color-scheme"
 						onchange={applyTheme}
 					>
-						<option value="small">small</option>
-						<option value="medium">medium</option>
-						<option value="large">large</option>
-						<option value="xlarge">xlarge</option>
+						<option value="default">default</option>
+						<option value="black-on-white">black-on-white</option>
+						<option value="white-on-black">white-on-black</option>
+						<option value="rose-on-green">rose-on-green</option>
+						<option value="yellow-on-blue">yellow-on-blue</option>
+						<option value="black-on-rose">black-on-rose</option>
+						<option value="light-gray-on-dark-gray">light-gray-on-dark-gray</option>
 					</select>
 				</label>
 			</div>

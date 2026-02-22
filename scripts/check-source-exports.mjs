@@ -40,6 +40,7 @@ const ALLOWED_SOURCE_EXPORT_PATTERNS = new Map([
 			/^\.\/src\/components\/PiePreviewLayout\.svelte$/,
 			/^\.\/src\/i18n\/use-i18n\.svelte\.ts$/,
 			/^\.\/src\/i18n\/use-i18n-standalone\.svelte\.ts$/,
+			/^\.\/src\/theming\/index\.ts$/,
 		],
 	],
 	[

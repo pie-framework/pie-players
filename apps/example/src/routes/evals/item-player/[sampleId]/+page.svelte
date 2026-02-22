@@ -1,4 +1,5 @@
 <script lang="ts">
+	import "@pie-players/pie-theme-daisyui";
 	import '../../../../lib/players';
 	import { browser } from '$app/environment';
 	import { page } from '$app/stores';
@@ -200,6 +201,7 @@
 	<title>PIE Players - Evals: Item Player ({sampleId})</title>
 </svelte:head>
 
+<pie-theme-daisyui theme="light" data-scope="document">
 <div class="container mx-auto px-6 py-6" data-testid="player-root">
 	<div class="prose max-w-none">
 		<h1>Eval harness: item player</h1>
@@ -309,5 +311,6 @@
 		</div>
 	{/if}
 </div>
+</pie-theme-daisyui>
 
 

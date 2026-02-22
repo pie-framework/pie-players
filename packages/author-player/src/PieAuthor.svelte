@@ -375,7 +375,7 @@
 
 <div class="pie-author" bind:this={hostEl}>
 	{#if error}
-		<div class="pie-player-error" style="padding: 12px; border: 1px solid #d32f2f; color: #c62828; background: #ffebee;">
+		<div class="pie-player-error" style="padding: 12px; border: 1px solid var(--pie-incorrect, #d32f2f); color: var(--pie-text, #c62828); background: var(--pie-secondary-background, #ffebee);">
 			<strong>pie-author error:</strong> {error}
 		</div>
 	{:else if loading || !pieContentModel}

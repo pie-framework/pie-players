@@ -290,12 +290,12 @@
 	}
 
 	.protractor-frame:focus {
-		outline: 3px solid #4A90E2;
+		outline: 3px solid var(--pie-primary, #4A90E2);
 		outline-offset: 2px;
 	}
 
 	.protractor-frame:focus-visible {
-		outline: 3px solid #4A90E2;
+		outline: 3px solid var(--pie-primary, #4A90E2);
 		outline-offset: 2px;
 	}
 
@@ -308,7 +308,7 @@
 
 	/* Semi-transparent white overlay for visibility (matching production implementation) */
 	.protractor-container::after {
-		background-color: #fff;
+		background-color: var(--pie-background, #fff);
 		border-radius: 283px 283px 0 0;
 		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); /* Matching production implementation shadow */
 		content: '';

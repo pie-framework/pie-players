@@ -42,7 +42,7 @@ The **PIE Section Player** (`@pie-players/pie-section-player`) is the primary in
 - **TTSService**: Singleton service providing text-to-speech across multiple entry points with QTI 3.0 catalog support
 - **AccessibilityCatalogResolver**: QTI 3.0 accessibility catalog management for SSML, sign language, braille, etc.
 - **SSMLExtractor**: Automatic extraction of embedded `<speak>` tags from content into accessibility catalogs
-- **ThemeProvider**: Consistent accessibility theming across items and tools
+- **Shared theming tokens**: Wrapper-aligned `--pie-*` token theming across items and tools
 - **ToolConfigResolver**: 3-tier hierarchy for IEP/504 tool configuration
 
 ### ✅ Section Player Integration
@@ -93,7 +93,7 @@ assessment-toolkit/
 │   ├── TTSService.ts                       # Text-to-speech with catalog support
 │   ├── AccessibilityCatalogResolver.ts     # QTI 3.0 catalog management
 │   ├── SSMLExtractor.ts                    # Automatic SSML extraction
-│   ├── ThemeProvider.ts                    # Accessibility theming
+│   ├── theme.ts                            # Shared theme config typing
 │   └── ToolConfigResolver.ts               # IEP/504 configuration
 ├── types/
 │   └── events.ts                           # Event definitions
@@ -138,7 +138,6 @@ import {
   ToolCoordinator,
   HighlightCoordinator,
   TTSService,
-  ThemeProvider,
   ToolConfigResolver,
   type AssessmentToolkitEvents
 } from '$lib/assessment-toolkit';
@@ -148,18 +147,14 @@ const eventBus = new TypedEventBus<AssessmentToolkitEvents>();
 const toolCoordinator = new ToolCoordinator();
 const highlightCoordinator = new HighlightCoordinator();
 const ttsService = TTSService.getInstance();
-const themeProvider = new ThemeProvider();
 const toolResolver = new ToolConfigResolver();
 
 // Initialize TTS
 await ttsService.initialize('browser');
 ttsService.setHighlightCoordinator(highlightCoordinator);
 
-// Apply accessibility theme
-themeProvider.applyTheme({
-  highContrast: true,
-  fontSize: 'large'
-});
+// Apply wrapper-aligned theme via shared tokens
+document.documentElement.style.setProperty('--pie-primary', '#ff6f00');
 
 // Resolve tool configuration
 const toolConfig = toolResolver.resolveTool(
@@ -461,25 +456,11 @@ catalogResolver.addItemCatalogs(result.catalogs);
 
 **Integration:** Used automatically by section player's ItemRenderer and PassageRenderer components.
 
-### ThemeProvider
+### Theme Config
 
-Accessibility theming.
-
-```typescript
-const themeProvider = new ThemeProvider();
-
-// Apply theme
-themeProvider.applyTheme({
-  highContrast: true,
-  fontSize: 'large',
-  backgroundColor: '#000',
-  foregroundColor: '#fff'
-});
-
-// Quick settings
-themeProvider.setHighContrast(true);
-themeProvider.setFontSize('xlarge');
-```
+Assessment/runtime theming uses the shared wrapper/token model only. Configure
+`themeConfig` on the assessment and/or apply token overrides via wrapper elements:
+`pie-theme` or `pie-theme-daisyui`.
 
 ### ToolConfigResolver
 

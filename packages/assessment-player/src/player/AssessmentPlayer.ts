@@ -11,7 +11,7 @@
  * - Event-driven architecture using TypedEventBus
  * - Session state management
  * - TTS integration via TTSService
- * - Theme support via ThemeProvider
+ * - Theme support via shared --pie-* tokens
  * - Tool coordination (optional)
  *
  * Products can use this as-is, extend it, or use it as a pattern for their own implementation.
@@ -38,12 +38,21 @@ import {
 	type TestAttemptSessionTracker,
 	HighlightCoordinator,
 	I18nService,
-	type ThemeConfig,
-	ThemeProvider,
 	ToolCoordinator,
 	TTSService,
 	TypedEventBus,
 } from "@pie-players/pie-assessment-toolkit";
+import {
+	applyTokens,
+	getBaseTokens,
+	getColorSchemeTokens,
+	mergeTokens,
+	resolveThemeMode,
+	type PieColorSchemeName,
+	type PieThemeMode,
+	type PieThemeScope,
+	type PieTokenMap,
+} from "@pie-players/pie-players-shared/theming";
 import type { LoadItem } from "@pie-players/pie-assessment-toolkit";
 import { ContextVariableStore } from "@pie-players/pie-assessment-toolkit";
 import {
@@ -61,6 +70,13 @@ import {
 	type NavigationNode,
 	type QuestionRef,
 } from "./qti-navigation.js";
+
+type ThemeConfig = {
+	theme?: PieThemeMode;
+	scope?: PieThemeScope;
+	colorScheme?: PieColorSchemeName;
+	variables?: PieTokenMap;
+};
 
 export interface ReferencePlayerConfig {
 	assessment: AssessmentEntity;
@@ -107,7 +123,6 @@ export interface ReferencePlayerConfig {
 		eventBus?: TypedEventBus<AssessmentToolkitEvents>;
 		ttsService?: TTSService;
 		toolCoordinator?: ToolCoordinator;
-		themeProvider?: ThemeProvider;
 		highlightCoordinator?: HighlightCoordinator;
 		i18nService?: I18nService;
 		desmosProvider?: DesmosCalculatorProvider;
@@ -137,11 +152,11 @@ export class AssessmentPlayer {
 	// Toolkit services
 	private eventBus: TypedEventBus<AssessmentToolkitEvents>;
 	private ttsService: TTSService;
-	private themeProvider: ThemeProvider | null = null;
 	private toolCoordinator: ToolCoordinator;
 	private highlightCoordinator: HighlightCoordinator | null = null;
 	private i18nService: I18nService;
 	private desmosProvider: DesmosCalculatorProvider;
+	private appliedThemeKeys = new Set<string>();
 
 	// Configuration
 	private config: ReferencePlayerConfig;
@@ -544,13 +559,6 @@ export class AssessmentPlayer {
 	}
 
 	/**
-	 * Get ThemeProvider for accessibility theming
-	 */
-	getThemeProvider(): ThemeProvider | null {
-		return this.themeProvider;
-	}
-
-	/**
 	 * Get I18nService for internationalization
 	 */
 	getI18nService(): I18nService {
@@ -739,10 +747,17 @@ export class AssessmentPlayer {
 	 * Apply theme
 	 */
 	applyTheme(theme: ThemeConfig): void {
-		if (!this.themeProvider) {
-			this.themeProvider = new ThemeProvider();
-		}
-		this.themeProvider.applyTheme(theme);
+		const resolvedTheme = resolveThemeMode(theme.theme ?? "light");
+		const baseTokens =
+			theme.colorScheme && theme.colorScheme !== "default"
+				? getColorSchemeTokens(theme.colorScheme)
+				: getBaseTokens(resolvedTheme);
+		const mergedTokens = mergeTokens(baseTokens, theme.variables ?? {});
+		this.appliedThemeKeys = applyTokens(
+			document.documentElement,
+			mergedTokens,
+			this.appliedThemeKeys,
+		);
 	}
 
 	/**
@@ -1101,9 +1116,7 @@ export class AssessmentPlayer {
 		const themeConfig = settings?.themeConfig;
 
 		if (themeConfig) {
-			this.themeProvider =
-				this.config.services?.themeProvider ?? new ThemeProvider();
-			this.themeProvider.applyTheme(themeConfig as any);
+			this.applyTheme(themeConfig as ThemeConfig);
 		}
 	}
 
@@ -1247,9 +1260,11 @@ export class AssessmentPlayer {
 			this.ttsService.offStateChange("reference-player", () => {});
 		}
 
-		if (this.themeProvider) {
-			this.themeProvider.destroy();
-		}
+		this.appliedThemeKeys = applyTokens(
+			document.documentElement,
+			{},
+			this.appliedThemeKeys,
+		);
 
 		if (this.highlightCoordinator) {
 			this.highlightCoordinator.destroy();

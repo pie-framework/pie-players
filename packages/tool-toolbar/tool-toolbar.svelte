@@ -571,7 +571,7 @@
 
 	/* Keyboard focus styling */
 	.tool-toolbar__button:focus-visible {
-		outline: 2px solid var(--tool-toolbar-focus-color, hsl(var(--p)));
+		outline: 2px solid var(--tool-toolbar-focus-color, var(--pie-primary, #3f51b5));
 		outline-offset: 2px;
 	}
 

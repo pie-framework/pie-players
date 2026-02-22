@@ -350,10 +350,11 @@ export function createAssessmentFromExample(
 					},
 				},
 				themeConfig: {
+					theme: "light",
+					scope: "document",
 					colorScheme: "default",
-					fontSize: 16,
-					reducedMotion: false,
-				},
+					variables: {},
+				} as any,
 			},
 
 			testParts: [

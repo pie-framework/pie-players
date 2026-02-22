@@ -2,7 +2,7 @@
 	position: absolute;
 	height: 100%;
 	width: 100%;
-	background-color: #fff;
+	background-color: var(--pie-background, #fff);
 	bottom: 0;
 	left: 0;
 	right: 0;
@@ -18,12 +18,12 @@
 .pie-loading:before {
 	content: "";
 	background-color: rgba(0, 0, 0, 0);
-	border: 5px solid rgba(63, 81, 181, 0.9);
+	border: 5px solid color-mix(in srgb, var(--pie-primary, #3f51b5) 90%, transparent);
 	opacity: 0.9;
 	border-right: 5px solid rgba(0, 0, 0, 0);
 	border-left: 5px solid rgba(0, 0, 0, 0);
 	border-radius: 50px;
-	box-shadow: 0 0 35px rgba(63, 81, 181, 0.9);
+	box-shadow: 0 0 35px color-mix(in srgb, var(--pie-primary, #3f51b5) 90%, transparent);
 	width: 50px;
 	height: 50px;
 	-moz-animation: spinPulse 1s infinite ease-in-out;
@@ -37,12 +37,12 @@
 .pie-loading:after {
 	content: "";
 	background-color: rgba(0, 0, 0, 0);
-	border: 5px solid rgba(63, 81, 181, 0.9);
+	border: 5px solid color-mix(in srgb, var(--pie-primary, #3f51b5) 90%, transparent);
 	opacity: 0.9;
 	border-left: 5px solid rgba(0, 0, 0, 0);
 	border-right: 5px solid rgba(0, 0, 0, 0);
 	border-radius: 50px;
-	box-shadow: 0 0 15px rgba(63, 81, 181, 0.9);
+	box-shadow: 0 0 15px color-mix(in srgb, var(--pie-primary, #3f51b5) 90%, transparent);
 	width: 30px;
 	height: 30px;
 	-moz-animation: spinoffPulse 1s infinite linear;
@@ -57,7 +57,7 @@
 	0% {
 		transform: rotate(160deg);
 		opacity: 0;
-		box-shadow: 0 0 1px rgba(63, 81, 181, 0.9);
+		box-shadow: 0 0 1px color-mix(in srgb, var(--pie-primary, #3f51b5) 90%, transparent);
 	}
 	50% {
 		transform: rotate(145deg);
@@ -139,7 +139,7 @@ span.short-quote:after {
 
 .content-emphasis {
 	font-weight: bold;
-	color: red;
+	color: var(--pie-incorrect, red);
 }
 
 span.passage-title:before {
@@ -442,49 +442,49 @@ table.KdsTable01 {
 }
 
 table.KdsTable01 > tbody > tr > th {
-	background-color: #d3d3d3;
-	border: 1px solid black;
+	background-color: var(--pie-background-dark, #d3d3d3);
+	border: 1px solid var(--pie-border, black);
 	font-weight: normal;
 	padding: 2px;
 	text-align: center;
 }
 
 table.KdsTable01 > tbody > tr > th.bold {
-	background-color: #d3d3d3;
-	border: 1px solid black;
+	background-color: var(--pie-background-dark, #d3d3d3);
+	border: 1px solid var(--pie-border, black);
 	font-weight: bold;
 	padding: 2px;
 	text-align: center;
 }
 
 table.KdsTable01 > tbody > tr > td {
-	border: 1px solid black;
+	border: 1px solid var(--pie-border, black);
 	padding: 2px;
 	text-align: center;
 }
 
 table.KdsTable01 > tbody > tr > td.bold {
-	border: 1px solid black;
+	border: 1px solid var(--pie-border, black);
 	font-weight: bold;
 	padding: 2px;
 	text-align: center;
 }
 
 table.KdsTable02 {
-	border: 1px solid black;
+	border: 1px solid var(--pie-border, black);
 	border-collapse: collapse;
 	border-spacing: 0px;
 }
 
 table.KdsTable02 > tbody > tr > th {
-	background-color: #d3d3d3;
-	border: 1px solid black;
+	background-color: var(--pie-background-dark, #d3d3d3);
+	border: 1px solid var(--pie-border, black);
 	font-weight: normal;
 	padding: 2px;
 }
 
 table.KdsTable02 > tbody > tr > td {
-	border: 1px solid black;
+	border: 1px solid var(--pie-border, black);
 	padding: 2px;
 }
 
@@ -499,16 +499,16 @@ table.KdsTable02 > tbody > tr > td {
 .table td {
 	padding: 0.75em;
 	vertical-align: top;
-	border-top: 1px solid #dee2e6;
+	border-top: 1px solid var(--pie-border-light, #dee2e6);
 }
 
 .table tbody + tbody {
-	border-top: 2px solid #dee2e6;
+	border-top: 2px solid var(--pie-border-light, #dee2e6);
 }
 
 .table thead th {
 	vertical-align: bottom;
-	border-bottom: 2px solid #dee2e6;
+	border-bottom: 2px solid var(--pie-border-light, #dee2e6);
 }
 
 th {
@@ -518,7 +518,7 @@ th {
 .table-bordered,
 .table-bordered th,
 .table-bordered td {
-	border: 1px solid #dee2e6;
+	border: 1px solid var(--pie-border-light, #dee2e6);
 }
 
 .table-bordered thead td,
@@ -620,5 +620,5 @@ table {
 .evaluate-bottom-border > :first-child::after {
 	content: "";
 	display: block;
-	border-bottom: 1px solid #d3d3d3;
+	border-bottom: 1px solid var(--pie-border, #d3d3d3);
 }

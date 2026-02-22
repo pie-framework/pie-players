@@ -683,13 +683,13 @@
 	}
 
 	.highlight-swatch:focus-visible {
-		outline: 2px solid hsl(var(--p));
+		outline: 2px solid var(--pie-primary, #3f51b5);
 		outline-offset: 2px;
 	}
 
 	.divider-horizontal {
 		height: auto;
-		background-color: hsl(var(--bc) / 0.2);
+		background-color: var(--pie-border-light, rgba(0, 0, 0, 0.2));
 	}
 
 	/* Screen reader only content */

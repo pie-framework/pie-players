@@ -195,38 +195,27 @@ export interface ResolvedCatalog {
 
 ---
 
-### 3. Theme Provider System ⭐⭐⭐ (MEDIUM PRIORITY)
+### 3. Shared Theming System ⭐⭐⭐ (MEDIUM PRIORITY)
 
 **Current State:**
-- Single implementation: `ThemeProvider`
-- Uses CSS custom properties (no framework deps)
+- Single implementation: shared wrapper/token theming
+- Uses canonical `--pie-*` CSS custom properties (no framework deps)
 - Could have alternative implementations (Tailwind, CSS-in-JS)
 
 **Evidence:**
 ```typescript
-// Current location: assessment-toolkit/src/services/interfaces.ts
-export interface IThemeProvider {
-  applyTheme(config: ThemeConfig): void;
-  getCurrentTheme(): Required<ThemeConfig>;
-  reset(): void;
-  destroy(): void;
-}
-
 export interface ThemeConfig {
-  highContrast?: boolean;
-  fontSize?: FontSize;
-  backgroundColor?: string;
-  foregroundColor?: string;
-  accentColor?: string;
-  // ... more color options
+  theme?: 'light' | 'dark' | 'auto';
+  scope?: 'self' | 'document';
+  colorScheme?: string;
+  variables?: Record<`--pie-${string}`, string>;
 }
 ```
 
 **Potential Implementations:**
-1. **CSSVarThemeProvider** (current) - CSS custom properties
-2. **TailwindThemeProvider** - Tailwind CSS classes
-3. **EmotionThemeProvider** - CSS-in-JS (Emotion/styled-components)
-4. **MaterialThemeProvider** - Material Design theming
+1. **Base wrapper** (`pie-theme`) - canonical token application
+2. **DaisyUI wrapper** (`pie-theme-daisyui`) - DaisyUI mapping
+3. **Future wrappers** - framework/theme specific mappings
 
 **Benefits:**
 - ✅ **Framework flexibility** - Support different styling approaches
@@ -335,7 +324,7 @@ Instead of separate packages for each service, consider:
 │   ├── catalog-interface.ts    # IAccessibilityCatalogResolver
 │   └── types.ts
 ├── theme/
-│   ├── theme-interface.ts      # IThemeProvider
+│   ├── theme-types.ts          # ThemeConfig
 │   └── types.ts
 ├── highlight/
 │   ├── highlight-interface.ts  # IHighlightCoordinator
@@ -366,7 +355,7 @@ The following should **remain in assessment-toolkit** as they:
 2. Use standard DOM/Browser APIs
 3. Are unlikely to have alternatives
 
-- ThemeProvider (CSS custom properties work universally)
+- Shared wrapper/token theming (CSS custom properties work universally)
 - HighlightCoordinator (CSS Highlight API is standard)
 - ToolCoordinator (DOM manipulation is straightforward)
 - AccessibilityCatalogResolver (single implementation, well-integrated)
@@ -396,7 +385,7 @@ Based on the successful TTS refactoring, apply these principles:
 3. **Unified Services Core** - If multiple services need extraction
 
 ### Not Recommended
-- Theme Provider (current implementation is universal)
+- Shared theming wrappers/tokens (current implementation is universal)
 - Highlight Coordinator (browser API is standard)
 - Tool Coordinator (straightforward implementation)
 

@@ -137,68 +137,63 @@
 						</div>
 					{/if}
 
-					<!-- High Contrast -->
+					<!-- Theme -->
 					<div class="form-control mb-2">
-						<label class="label cursor-pointer py-1">
-							<span class="label-text text-sm">High Contrast</span>
-							<input
-								type="checkbox"
-								class="toggle toggle-primary toggle-sm"
-								bind:checked={$profileStore.accessibility.highContrast}
-								on:change={handleProfileChange}
-							/>
-						</label>
-					</div>
-
-					<!-- Font Size -->
-					<fieldset class="form-control mb-2">
-						<legend class="label">
-							<span class="label-text text-sm">Font Size</span>
-						</legend>
-						<div role="group" aria-label="Font size selection" class="btn-group btn-group-sm w-full">
+						<div class="label py-1">
+							<span class="label-text text-sm">Theme</span>
+						</div>
+						<div role="group" aria-label="Theme selection" class="btn-group btn-group-sm w-full">
 							<button
 								class="btn btn-sm flex-1"
-								class:btn-active={$profileStore.accessibility.fontSize === "small"}
+								class:btn-active={$profileStore.accessibility.theme === "light"}
 								on:click={() => {
-									$profileStore.accessibility.fontSize = "small";
+									$profileStore.accessibility.theme = "light";
 									handleProfileChange();
 								}}
 							>
-								S
+								Light
 							</button>
 							<button
 								class="btn btn-sm flex-1"
-								class:btn-active={$profileStore.accessibility.fontSize ===
-									"medium"}
+								class:btn-active={$profileStore.accessibility.theme === "dark"}
 								on:click={() => {
-									$profileStore.accessibility.fontSize = "medium";
+									$profileStore.accessibility.theme = "dark";
 									handleProfileChange();
 								}}
 							>
-								M
+								Dark
 							</button>
 							<button
 								class="btn btn-sm flex-1"
-								class:btn-active={$profileStore.accessibility.fontSize === "large"}
+								class:btn-active={$profileStore.accessibility.theme === "auto"}
 								on:click={() => {
-									$profileStore.accessibility.fontSize = "large";
+									$profileStore.accessibility.theme = "auto";
 									handleProfileChange();
 								}}
 							>
-								L
-							</button>
-							<button
-								class="btn btn-sm flex-1"
-								class:btn-active={$profileStore.accessibility.fontSize ===
-									"xlarge"}
-								on:click={() => {
-									$profileStore.accessibility.fontSize = "xlarge";
-									handleProfileChange();
-								}}
-							>
-								XL
+								Auto
 							</button>
 						</div>
+					</div>
+
+					<!-- Color Scheme -->
+					<fieldset class="form-control mb-2">
+						<legend class="label">
+							<span class="label-text text-sm">Color Scheme</span>
+						</legend>
+						<select
+							class="select select-bordered select-sm w-full"
+							bind:value={$profileStore.accessibility.colorScheme}
+							on:change={handleProfileChange}
+						>
+							<option value="default">Default</option>
+							<option value="black-on-white">Black on White</option>
+							<option value="white-on-black">White on Black</option>
+							<option value="rose-on-green">Rose on Green</option>
+							<option value="yellow-on-blue">Yellow on Blue</option>
+							<option value="black-on-rose">Black on Rose</option>
+							<option value="light-gray-on-dark-gray">Light Gray on Dark Gray</option>
+						</select>
 					</fieldset>
 
 					<!-- Extended Time -->

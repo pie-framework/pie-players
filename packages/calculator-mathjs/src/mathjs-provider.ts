@@ -473,7 +473,7 @@ class MathJsCalculator implements Calculator {
 
       /* Enhanced focus visibility for WCAG 2.4.7 */
       .calculator-mathjs .btn:focus-visible {
-        outline: 3px solid hsl(var(--p));
+        outline: 3px solid var(--pie-primary, #3f51b5);
         outline-offset: 2px;
         z-index: 10;
       }

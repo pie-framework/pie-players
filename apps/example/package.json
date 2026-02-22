@@ -32,6 +32,7 @@
 		"@pie-players/pie-inline-player": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*",
 		"@pie-players/pie-section-player": "workspace:*",
+		"@pie-players/pie-theme-daisyui": "workspace:*",
 		"@pie-players/tts-client-server": "workspace:*",
 		"@pie-players/tts-server-core": "workspace:*",
 		"@pie-players/tts-server-polly": "workspace:*",

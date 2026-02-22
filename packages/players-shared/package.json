@@ -44,6 +44,10 @@
 			"types": "./dist/loaders/index.d.ts",
 			"import": "./dist/loaders/index.js"
 		},
+		"./theming": {
+			"types": "./src/theming/index.ts",
+			"import": "./src/theming/index.ts"
+		},
 		"./components": {
 			"types": "./src/components/index.ts",
 			"import": "./src/components/index.ts",
@@ -97,7 +101,8 @@
 	"files": [
 		"dist",
 		"src/components",
-		"src/i18n"
+		"src/i18n",
+		"src/theming"
 	],
 	"dependencies": {
 		"@pie-players/math-renderer-core": "workspace:*",

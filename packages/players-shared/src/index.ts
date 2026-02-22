@@ -26,3 +26,4 @@ export type {
 export { editorPostFix } from "./types/index.js";
 export * from "./ui/focus-trap.js";
 export * from "./ui/safe-storage.js";
+export * from "./theming/index.js";

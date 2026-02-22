@@ -1,4 +1,5 @@
 <script lang="ts">
+	import "@pie-players/pie-theme-daisyui";
 	import '@pie-players/pie-section-player';
 	import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
 
@@ -247,6 +248,7 @@
 	});
 </script>
 
+<pie-theme-daisyui theme="light" data-scope="document">
 <div class="h-[calc(100vh-4rem)]">
 	<!-- SchoolCity-like shell: settings panel (setup) + full-height player (run) -->
 	<div class="h-full grid grid-rows-[auto_1fr]">
@@ -436,3 +438,5 @@
 		</div>
 	</div>
 {/if}
+
+</pie-theme-daisyui>

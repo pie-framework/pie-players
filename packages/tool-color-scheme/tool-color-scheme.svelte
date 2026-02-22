@@ -24,10 +24,23 @@
 <script lang="ts">
 	const browser = typeof window !== "undefined";
 
-		import type { IToolCoordinator } from '@pie-players/pie-assessment-toolkit';
+	import type { IToolCoordinator } from '@pie-players/pie-assessment-toolkit';
 	import { ZIndexLayer } from '@pie-players/pie-assessment-toolkit';
-	import { createFocusTrap, safeLocalStorageGet, safeLocalStorageSet } from '@pie-players/pie-players-shared';
+	import {
+		createFocusTrap,
+		safeLocalStorageGet,
+		safeLocalStorageSet
+	} from '@pie-players/pie-players-shared';
 	import { onMount } from 'svelte';
+
+	type PieColorSchemeName =
+		| 'default'
+		| 'black-on-white'
+		| 'white-on-black'
+		| 'rose-on-green'
+		| 'yellow-on-blue'
+		| 'black-on-rose'
+		| 'light-gray-on-dark-gray';
 
 	let {
 		visible = false,
@@ -118,6 +131,44 @@
 		}
 	];
 
+	const TOKEN_PRESETS: Record<PieColorSchemeName, Record<string, string>> = {
+		default: {
+			'--pie-background': '#ffffff',
+			'--pie-text': '#000000',
+			'--pie-primary': '#3f51b5',
+		},
+		'black-on-white': {
+			'--pie-background': '#ffffff',
+			'--pie-text': '#000000',
+			'--pie-primary': '#0000cc',
+		},
+		'white-on-black': {
+			'--pie-background': '#000000',
+			'--pie-text': '#ffffff',
+			'--pie-primary': '#ffff00',
+		},
+		'rose-on-green': {
+			'--pie-background': '#ccffcc',
+			'--pie-text': '#3d0022',
+			'--pie-primary': '#660044',
+		},
+		'yellow-on-blue': {
+			'--pie-background': '#000066',
+			'--pie-text': '#ffff00',
+			'--pie-primary': '#ffff66',
+		},
+		'black-on-rose': {
+			'--pie-background': '#ffccdd',
+			'--pie-text': '#000000',
+			'--pie-primary': '#880044',
+		},
+		'light-gray-on-dark-gray': {
+			'--pie-background': '#333333',
+			'--pie-text': '#e0e0e0',
+			'--pie-primary': '#aaaaaa',
+		},
+	};
+
 	// Current color scheme
 	let currentScheme = $state('default');
 
@@ -127,29 +178,26 @@
 	// Focus trap cleanup function (plain variable, not reactive)
 	let cleanupFocusTrap: (() => void) | null = null;
 
-	// Apply color scheme to document
+	// Apply color scheme to theme wrappers
 	function applyColorScheme(schemeId: string) {
 		if (!browser) return;
 
-		const root = document.documentElement;
-		if (schemeId === 'default') {
-			root.removeAttribute('data-color-scheme');
+		const tokens = TOKEN_PRESETS[schemeId as PieColorSchemeName] ?? TOKEN_PRESETS.default;
+		const wrappers = document.querySelectorAll(
+			'pie-theme, pie-theme-daisyui'
+		) as NodeListOf<HTMLElement & { variables?: Record<string, string> }>;
+
+		if (wrappers.length > 0) {
+			wrappers.forEach((wrapper) => {
+				wrapper.variables = tokens;
+			});
 		} else {
-			root.setAttribute('data-color-scheme', schemeId);
+			for (const [key, value] of Object.entries(tokens)) {
+				document.documentElement.style.setProperty(key, value);
+			}
 		}
 
-		// Also apply to pie-player elements
-		const piePlayers = document.querySelectorAll('pie-player');
-		piePlayers.forEach(player => {
-			if (schemeId === 'default') {
-				player.removeAttribute('data-color-scheme');
-			} else {
-				player.setAttribute('data-color-scheme', schemeId);
-			}
-		});
-
-		// Save to localStorage safely
-		safeLocalStorageSet('pie-color-scheme', schemeId);
+		safeLocalStorageSet('pie-theme-color-scheme', schemeId);
 	}
 
 	// Select scheme and close the tool
@@ -231,12 +279,12 @@
 	onMount(() => {
 		// Load saved scheme from localStorage safely
 		if (browser) {
-			const saved = safeLocalStorageGet<string>('pie-color-scheme', 'default');
+			const saved = safeLocalStorageGet('pie-theme-color-scheme') ?? 'default';
 			if (saved && saved !== 'default') {
-				currentScheme = saved;
+				currentScheme = String(saved);
 				// Use requestAnimationFrame to ensure DOM and styles are ready
 				requestAnimationFrame(() => {
-					applyColorScheme(saved);
+					applyColorScheme(String(saved));
 				});
 			}
 		}

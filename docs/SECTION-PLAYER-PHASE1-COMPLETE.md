@@ -130,7 +130,7 @@ All services are properly integrated:
 - ✅ **ContextVariableStore** - QTI 3.0 context variables
 - ✅ **TTSService** - Text-to-speech
 - ✅ **ToolCoordinator** - Calculator and tool management
-- ✅ **ThemeProvider** - Accessibility themes
+- ✅ **Shared theming wrappers/tokens** - Accessibility themes
 - ✅ **HighlightCoordinator** - Annotations and highlighting
 - ✅ **I18nService** - Internationalization
 - ✅ **DesmosProvider** - Desmos calculator

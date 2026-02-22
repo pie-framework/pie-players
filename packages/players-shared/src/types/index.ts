@@ -503,11 +503,17 @@ export interface AssessmentSettings {
 
 	/** Theme configuration (not in PNP) */
 	themeConfig?: {
-		colorScheme?: "default" | "high-contrast" | "dark";
-		fontSize?: number;
-		fontFamily?: string;
-		lineHeight?: number;
-		reducedMotion?: boolean;
+		theme?: "light" | "dark" | "auto";
+		scope?: "self" | "document";
+		colorScheme?:
+			| "default"
+			| "black-on-white"
+			| "white-on-black"
+			| "rose-on-green"
+			| "yellow-on-blue"
+			| "black-on-rose"
+			| "light-gray-on-dark-gray";
+		variables?: Record<string, string>;
 	};
 
 	/** Product-specific extensions */

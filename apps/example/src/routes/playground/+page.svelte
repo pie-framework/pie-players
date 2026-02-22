@@ -1,4 +1,5 @@
 <script lang="ts">
+	import "@pie-players/pie-theme-daisyui";
 	import '../../lib/players';
 	import { untrack } from 'svelte';
 	import { browser } from '$app/environment';
@@ -162,6 +163,7 @@
 	<title>PIE Players - Playground</title>
 </svelte:head>
 
+<pie-theme-daisyui theme="light" data-scope="document">
 <div class="container mx-auto px-6 py-6">
 	<div class="flex items-start justify-between gap-4 mb-4">
 		<div>
@@ -263,5 +265,6 @@
 		</div>
 	</div>
 </div>
+</pie-theme-daisyui>
 
 

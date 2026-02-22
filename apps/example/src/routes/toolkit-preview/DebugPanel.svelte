@@ -155,11 +155,9 @@
 									: "Disabled"}
 							</li>
 							<li>
-								High Contrast: {$profileStore.accessibility.highContrast
-									? "Yes"
-									: "No"}
+								Theme: {$profileStore.accessibility.theme}
 							</li>
-							<li>Font Size: {$profileStore.accessibility.fontSize}</li>
+							<li>Color Scheme: {$profileStore.accessibility.colorScheme}</li>
 							<li>
 								Extended Time: {$profileStore.timing.extendedTimeMultiplier}x
 							</li>
@@ -228,10 +226,12 @@
 							</span>
 						</div>
 						<div class="flex justify-between">
-							<span>High Contrast:</span>
-							<span class="font-mono">
-								{$profileStore.accessibility.highContrast ? "Yes" : "No"}
-							</span>
+							<span>Theme:</span>
+							<span class="font-mono">{$profileStore.accessibility.theme}</span>
+						</div>
+						<div class="flex justify-between">
+							<span>Color Scheme:</span>
+							<span class="font-mono">{$profileStore.accessibility.colorScheme}</span>
 						</div>
 						<div class="flex justify-between">
 							<span>Screen Reader:</span>

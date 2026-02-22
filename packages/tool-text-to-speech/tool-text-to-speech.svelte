@@ -391,8 +391,8 @@ import { onDestroy, onMount } from 'svelte';
 	.tool-tts {
 		position: fixed;
 		width: 300px;
-		background: white;
-		border: 1px solid #cbd5e0;
+		background: var(--pie-background, white);
+		border: 1px solid var(--pie-border-light, #cbd5e0);
 		border-radius: 8px;
 		box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
 		cursor: move;
@@ -405,8 +405,12 @@ import { onDestroy, onMount } from 'svelte';
 		justify-content: space-between;
 		align-items: center;
 		padding: 12px 16px;
-		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-		color: white;
+		background: linear-gradient(
+			135deg,
+			var(--pie-primary, #667eea) 0%,
+			var(--pie-primary-dark, #764ba2) 100%
+		);
+		color: var(--pie-white, white);
 		border-radius: 8px 8px 0 0;
 		cursor: move;
 	}
@@ -425,7 +429,7 @@ import { onDestroy, onMount } from 'svelte';
 	.close-button {
 		background: rgba(255, 255, 255, 0.2);
 		border: none;
-		color: white;
+		color: var(--pie-white, white);
 		width: 24px;
 		height: 24px;
 		border-radius: 4px;
@@ -457,21 +461,21 @@ import { onDestroy, onMount } from 'svelte';
 	}
 
 	.error-message {
-		background: #fee;
-		color: #c33;
-		border: 1px solid #fcc;
+		background: var(--pie-secondary-background, #fee);
+		color: var(--pie-incorrect, #c33);
+		border: 1px solid var(--pie-border-light, #fcc);
 	}
 
 	.loading-message {
-		background: #f0f4f8;
-		color: #4a5568;
+		background: var(--pie-secondary-background, #f0f4f8);
+		color: var(--pie-text-secondary, #4a5568);
 		justify-content: center;
 	}
 
 	.instructions {
 		margin-bottom: 16px;
 		font-size: 13px;
-		color: #4a5568;
+		color: var(--pie-text-secondary, #4a5568);
 	}
 
 	.instructions p {
@@ -484,10 +488,10 @@ import { onDestroy, onMount } from 'svelte';
 		align-items: center;
 		gap: 6px;
 		padding: 8px 12px;
-		background: #e6fffa;
-		border: 1px solid #81e6d9;
+		background: var(--pie-secondary-background, #e6fffa);
+		border: 1px solid var(--pie-border, #81e6d9);
 		border-radius: 6px;
-		color: #234e52;
+		color: var(--pie-text, #234e52);
 		font-size: 12px;
 	}
 
@@ -505,11 +509,11 @@ import { onDestroy, onMount } from 'svelte';
 		align-items: center;
 		margin-bottom: 8px;
 		font-size: 13px;
-		color: #4a5568;
+		color: var(--pie-text-secondary, #4a5568);
 	}
 
 	.control-group label strong {
-		color: #667eea;
+		color: var(--pie-primary, #667eea);
 		font-weight: 600;
 	}
 
@@ -517,7 +521,7 @@ import { onDestroy, onMount } from 'svelte';
 		width: 100%;
 		height: 6px;
 		border-radius: 3px;
-		background: #e2e8f0;
+		background: var(--pie-secondary-background, #e2e8f0);
 		outline: none;
 		-webkit-appearance: none;
 	}
@@ -527,13 +531,13 @@ import { onDestroy, onMount } from 'svelte';
 		width: 18px;
 		height: 18px;
 		border-radius: 50%;
-		background: #667eea;
+		background: var(--pie-primary, #667eea);
 		cursor: pointer;
 		transition: all 0.2s;
 	}
 
 	.control-group input[type="range"]::-webkit-slider-thumb:hover {
-		background: #764ba2;
+		background: var(--pie-primary-dark, #764ba2);
 		transform: scale(1.1);
 	}
 
@@ -568,8 +572,12 @@ import { onDestroy, onMount } from 'svelte';
 	}
 
 	.btn-primary {
-		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-		color: white;
+		background: linear-gradient(
+			135deg,
+			var(--pie-primary, #667eea) 0%,
+			var(--pie-primary-dark, #764ba2) 100%
+		);
+		color: var(--pie-white, white);
 	}
 
 	.btn-primary:hover:not(:disabled) {
@@ -578,13 +586,13 @@ import { onDestroy, onMount } from 'svelte';
 	}
 
 	.btn-secondary {
-		background: #f7fafc;
-		color: #4a5568;
-		border: 1px solid #e2e8f0;
+		background: var(--pie-secondary-background, #f7fafc);
+		color: var(--pie-text-secondary, #4a5568);
+		border: 1px solid var(--pie-border-light, #e2e8f0);
 	}
 
 	.btn-secondary:hover:not(:disabled) {
-		background: #edf2f7;
+		background: var(--pie-background-dark, #edf2f7);
 	}
 
 	.playback-controls button:disabled {
@@ -598,18 +606,18 @@ import { onDestroy, onMount } from 'svelte';
 		align-items: center;
 		gap: 8px;
 		padding: 8px 12px;
-		background: #f0fdf4;
-		border: 1px solid #86efac;
+		background: var(--pie-secondary-background, #f0fdf4);
+		border: 1px solid var(--pie-border, #86efac);
 		border-radius: 6px;
 		font-size: 12px;
-		color: #166534;
+		color: var(--pie-correct, #166534);
 		animation: fadeIn 0.3s;
 	}
 
 	.status-indicator.paused {
-		background: #fef3c7;
-		border-color: #fcd34d;
-		color: #92400e;
+		background: var(--pie-secondary-background, #fef3c7);
+		border-color: var(--pie-border, #fcd34d);
+		color: var(--pie-warning, #92400e);
 	}
 
 	.status-icon {
@@ -621,7 +629,7 @@ import { onDestroy, onMount } from 'svelte';
 	.pulse {
 		width: 8px;
 		height: 8px;
-		background: #10b981;
+		background: var(--pie-correct, #10b981);
 		border-radius: 50%;
 		animation: pulse 1.5s ease-in-out infinite;
 	}

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import "@pie-players/pie-theme-daisyui";
 	import "@pie-players/pie-assessment-player";
 	import type {
 		AssessmentEntity,
@@ -108,6 +109,7 @@
 	<title>{elementType?.name || "Element"} Preview - Toolkit Preview</title>
 </svelte:head>
 
+<pie-theme-daisyui theme="light" data-scope="document">
 {#if !elementType || !example}
 	<div class="flex-1 flex items-center justify-center">
 		<div class="text-center">
@@ -154,3 +156,4 @@
 		{/if}
 	</div>
 {/if}
+</pie-theme-daisyui>

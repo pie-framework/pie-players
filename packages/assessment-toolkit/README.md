@@ -48,7 +48,7 @@ player.toolkitCoordinator = toolkitCoordinator;
 - **Accommodation support**: IEP/504 tool configuration logic
 - **TTS + annotation coordination**: Prevent conflicts between highlights
 - **Event communication**: Standard contracts between components
-- **Accessibility theming**: Consistent high-contrast, font sizing
+- **Token-based theming**: Shared `--pie-*` tokens aligned with PIE element wrappers
 - **State separation**: Ephemeral tool state separate from persistent session data
 
 ## Architecture Overview
@@ -288,7 +288,7 @@ The ToolkitCoordinator handles all internal complexity (service initialization, 
 - **TTSService**: Text-to-speech with QTI 3.0 catalog support
 - **AccessibilityCatalogResolver**: QTI 3.0 accessibility catalog management
 - **SSMLExtractor**: Automatic extraction of embedded `<speak>` tags
-- **ThemeProvider**: Consistent accessibility theming
+- **Shared theming tokens**: Wrapper-driven `--pie-*` theming via `themeConfig`
 
 ### ✅ QTI 3.0 Standard Access Features
 

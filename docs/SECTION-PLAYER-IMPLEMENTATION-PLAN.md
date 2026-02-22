@@ -284,7 +284,7 @@ export class SectionPlayer {
   // === Theme ===
 
   applyTheme(theme: ThemeConfig): void
-  getThemeProvider(): ThemeProvider | null
+  getThemeConfig(): ThemeConfig | null
 
   // === Rubric Blocks (Passages) ===
 

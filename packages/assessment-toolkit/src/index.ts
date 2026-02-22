@@ -22,7 +22,6 @@ export type {
 	IElementToolStateStore,
 	IHighlightCoordinator,
 	II18nService,
-	IThemeProvider,
 	IToolCoordinator,
 	IToolkitCoordinator,
 	ITTSService,
@@ -152,9 +151,8 @@ export {
 // SSML Extractor (Auto-generates catalogs from embedded SSML)
 export type { ExtractionResult } from "./services/SSMLExtractor.js";
 export { SSMLExtractor } from "./services/SSMLExtractor.js";
-// Theme Provider
-export type { FontSize, ThemeConfig } from "./services/ThemeProvider.js";
-export { ThemeProvider } from "./services/ThemeProvider.js";
+// Theme configuration
+export type { ThemeConfig } from "./services/theme.js";
 // Tool Coordinator
 export { ToolCoordinator, ZIndexLayer } from "./services/ToolCoordinator.js";
 // Toolkit Coordinator (Centralized service management)

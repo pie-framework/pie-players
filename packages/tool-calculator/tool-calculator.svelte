@@ -736,7 +736,7 @@ import { onMount } from 'svelte';
 
 		<fieldset class="setting-group">
 			<legend>Configuration</legend>
-			<p style="font-size: 0.75rem; color: #666; margin: 0 0 8px 0;">
+			<p style="font-size: 0.75rem; color: var(--pie-text-secondary, #666); margin: 0 0 8px 0;">
 				These settings are useful for testing. They may be hidden or restricted for students in production.
 			</p>
 
@@ -876,7 +876,7 @@ import { onMount } from 'svelte';
 <style>
 	.calculator-tool {
 		position: fixed;
-		background: white;
+		background: var(--pie-background, white);
 		box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
 		user-select: none;
 		touch-action: none;
@@ -949,7 +949,7 @@ import { onMount } from 'svelte';
 	}
 
 	.calculator-container {
-		background: white;
+		background: var(--pie-background, white);
 		width: 100%;
 		height: 100%;
 		min-width: 320px;
@@ -983,7 +983,7 @@ import { onMount } from 'svelte';
 	}
 
 	.settings-panel {
-		background: white;
+		background: var(--pie-background, white);
 		border-radius: 8px;
 		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 		width: 90%;
@@ -999,21 +999,21 @@ import { onMount } from 'svelte';
 		align-items: center;
 		justify-content: space-between;
 		padding: 12px 16px;
-		border-bottom: 1px solid #e0e0e0;
-		background: #f5f5f5;
+		border-bottom: 1px solid var(--pie-border-light, #e0e0e0);
+		background: var(--pie-secondary-background, #f5f5f5);
 	}
 
 	.settings-title {
 		font-weight: 600;
 		font-size: 14px;
 		margin: 0;
-		color: #333;
+		color: var(--pie-text, #333);
 	}
 
 	.settings-close-btn {
 		background: transparent;
 		border: none;
-		color: #666;
+		color: var(--pie-text-secondary, #666);
 		cursor: pointer;
 		padding: 4px;
 		display: flex;
@@ -1025,7 +1025,7 @@ import { onMount } from 'svelte';
 
 	.settings-close-btn:hover {
 		background: rgba(0, 0, 0, 0.05);
-		color: #333;
+		color: var(--pie-text, #333);
 	}
 
 	.settings-close-btn:active {
@@ -1039,7 +1039,7 @@ import { onMount } from 'svelte';
 	}
 
 	.settings-content :global(.setting-group) {
-		border: 1px solid #e0e0e0;
+		border: 1px solid var(--pie-border-light, #e0e0e0);
 		border-radius: 4px;
 		padding: 12px;
 		margin-bottom: 16px;
@@ -1052,7 +1052,7 @@ import { onMount } from 'svelte';
 	.settings-content :global(legend) {
 		font-weight: 600;
 		font-size: 13px;
-		color: #333;
+		color: var(--pie-text, #333);
 		padding: 0 4px;
 	}
 
@@ -1061,7 +1061,7 @@ import { onMount } from 'svelte';
 		margin-bottom: 8px;
 		cursor: pointer;
 		font-size: 13px;
-		color: #666;
+		color: var(--pie-text-secondary, #666);
 	}
 
 	.settings-content :global(label:last-child) {
@@ -1077,11 +1077,11 @@ import { onMount } from 'svelte';
 	.settings-content :global(select) {
 		width: 100%;
 		padding: 6px;
-		border: 1px solid #ccc;
+		border: 1px solid var(--pie-border, #ccc);
 		border-radius: 4px;
 		font-size: 13px;
 		margin-top: 4px;
-		background: white;
+		background: var(--pie-background, white);
 		cursor: pointer;
 	}
 
@@ -1091,12 +1091,12 @@ import { onMount } from 'svelte';
 		align-items: center;
 		margin-bottom: 4px;
 		font-weight: 500;
-		color: #333;
+		color: var(--pie-text, #333);
 	}
 
 	.settings-content :global(.setting-value) {
 		font-weight: normal;
-		color: #666;
+		color: var(--pie-text-secondary, #666);
 		font-size: 12px;
 	}
 </style>

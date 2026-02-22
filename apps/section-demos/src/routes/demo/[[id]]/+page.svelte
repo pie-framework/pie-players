@@ -1,4 +1,5 @@
 <script lang="ts">
+  import "@pie-players/pie-theme-daisyui";
   import {
     ToolkitCoordinator,
     BrowserTTSProvider,
@@ -723,6 +724,7 @@
   <title>{data.demo?.name || "Demo"} - PIE Section Player</title>
 </svelte:head>
 
+<pie-theme-daisyui theme="light" data-scope="document">
 <div class="w-full h-screen flex flex-col">
   <!-- Menu Bar (Sticky) -->
   <div class="navbar bg-base-200 mb-0 sticky top-0 z-50 shadow-lg">
@@ -930,6 +932,7 @@
     ></pie-section-player>
   </div>
 </div>
+</pie-theme-daisyui>
 
 <!-- Annotation Toolbar (floating, appears on text selection) -->
 <!-- Outside main container to avoid overflow: hidden affecting fixed positioning -->

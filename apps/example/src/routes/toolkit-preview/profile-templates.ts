@@ -11,8 +11,15 @@ export interface ProfileConfig {
 			enabled: boolean;
 			autoRead: boolean;
 		};
-		highContrast: boolean;
-		fontSize: "small" | "medium" | "large" | "xlarge";
+		theme: "light" | "dark" | "auto";
+		colorScheme:
+			| "default"
+			| "black-on-white"
+			| "white-on-black"
+			| "rose-on-green"
+			| "yellow-on-blue"
+			| "black-on-rose"
+			| "light-gray-on-dark-gray";
 		screenReader: boolean;
 		keyboardOnly: boolean;
 	};
@@ -52,8 +59,8 @@ export const DEFAULT_PROFILE: ProfileConfig = {
 			enabled: false,
 			autoRead: false,
 		},
-		highContrast: false,
-		fontSize: "medium",
+		theme: "light",
+		colorScheme: "default",
 		screenReader: false,
 		keyboardOnly: false,
 	},
@@ -105,8 +112,8 @@ export const PROFILE_TEMPLATES: ProfileTemplate[] = [
 					enabled: true,
 					autoRead: true,
 				},
-				highContrast: true,
-				fontSize: "xlarge",
+				theme: "dark",
+				colorScheme: "white-on-black",
 				screenReader: false,
 				keyboardOnly: false,
 			},
@@ -154,8 +161,8 @@ export const PROFILE_TEMPLATES: ProfileTemplate[] = [
 					enabled: true,
 					autoRead: false,
 				},
-				highContrast: false,
-				fontSize: "large",
+				theme: "light",
+				colorScheme: "default",
 				screenReader: false,
 				keyboardOnly: false,
 			},
@@ -176,8 +183,8 @@ export const PROFILE_TEMPLATES: ProfileTemplate[] = [
 					enabled: true,
 					autoRead: false,
 				},
-				highContrast: false,
-				fontSize: "medium",
+				theme: "light",
+				colorScheme: "default",
 				screenReader: false,
 				keyboardOnly: false,
 			},
@@ -259,8 +266,8 @@ export const PROFILE_TEMPLATES: ProfileTemplate[] = [
 					enabled: true,
 					autoRead: true,
 				},
-				highContrast: true,
-				fontSize: "xlarge",
+				theme: "dark",
+				colorScheme: "white-on-black",
 				screenReader: true,
 				keyboardOnly: true,
 			},

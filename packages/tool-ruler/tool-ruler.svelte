@@ -324,8 +324,8 @@
 	}
 
 	.ruler-frame {
-		border-left: 1px solid #000;
-		border-right: 1px solid #000;
+		border-left: 1px solid var(--pie-border-dark, #000);
+		border-right: 1px solid var(--pie-border-dark, #000);
 		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); /* Matching production implementation shadow */
 		cursor: move;
 		left: 50%;
@@ -339,12 +339,12 @@
 	}
 
 	.ruler-frame:focus {
-		outline: 3px solid #4A90E2;
+		outline: 3px solid var(--pie-primary, #4A90E2);
 		outline-offset: 2px;
 	}
 
 	.ruler-frame:focus-visible {
-		outline: 3px solid #4A90E2;
+		outline: 3px solid var(--pie-primary, #4A90E2);
 		outline-offset: 2px;
 	}
 
@@ -416,7 +416,7 @@
 	/* Moveable.js control styling (matching production implementation) */
 	/* Production implementation uses black (--moveable-color: #000) globally, not red for ruler */
 	:global(body .moveable-control-box[data-moveablejs-tool-control-box="ruler"]) {
-		--moveable-color: #000; /* Black, matching production implementation default */
+		--moveable-color: var(--pie-border-dark, #000); /* Black, matching production implementation default */
 		z-index: 2003; /* ZIndexLayer.CONTROL */
 	}
 

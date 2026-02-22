@@ -290,7 +290,7 @@ let showAnswerEliminator = $derived(
 - TTSService ✅
 - AccessibilityCatalogResolver ✅
 - SSMLExtractor ✅
-- ThemeProvider ✅
+- Shared theming wrapper/token model ✅
 
 ---
 

@@ -29,14 +29,26 @@ jobs:
       - name: Check Dependency Declarations
         run: bun run check:deps
 
+      - name: Check Publish Metadata Policy
+        run: bun run check:package-metadata
+
       - name: Check Source Export Policy
         run: bun run check:source-exports
 
       - name: Build Packages
         run: bun run build
 
+      - name: Verify Publint Package Surface
+        run: bun run check:publint
+
+      - name: Verify Published Type Declarations (ATTW)
+        run: bun run check:types-publish
+
       - name: Verify Published Package Exports
         run: bun run check:pack-exports
+
+      - name: Smoke Test Packed Tarballs
+        run: bun run check:pack-smoke
 
       - name: Verify Runtime Compatibility Boundaries
         run: bun run check:runtime-compat
@@ -61,6 +73,9 @@ jobs:
 
       - name: Check Dependency Declarations
         run: bun run check:deps
+
+      - name: Check Publish Metadata Policy
+        run: bun run check:package-metadata
 
       - name: Check Source Export Policy
         run: bun run check:source-exports
@@ -96,6 +111,9 @@ jobs:
 
       - name: Check Dependency Declarations
         run: bun run check:deps
+
+      - name: Check Publish Metadata Policy
+        run: bun run check:package-metadata
 
       - name: Check Source Export Policy
         run: bun run check:source-exports

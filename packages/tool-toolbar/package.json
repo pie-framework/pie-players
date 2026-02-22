@@ -5,7 +5,8 @@
 	"description": "Tool panel toolbar for PIE assessment player - displays and manages tool buttons",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/pie-framework/pie-players.git"
+		"url": "git+https://github.com/pie-framework/pie-players.git",
+		"directory": "packages/tool-toolbar"
 	},
 	"publishConfig": {
 		"access": "public"
@@ -69,5 +70,13 @@
 		"typescript": "^5.7.0",
 		"vite": "^7.0.8",
 		"vite-plugin-dts": "^4.5.3"
-	}
+	},
+	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/tool-toolbar#readme",
+	"bugs": {
+		"url": "https://github.com/pie-framework/pie-players/issues"
+	},
+	"engines": {
+		"node": ">=18.0.0"
+	},
+	"sideEffects": true
 }

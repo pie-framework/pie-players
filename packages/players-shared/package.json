@@ -6,7 +6,8 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/pie-framework/pie-players.git"
+		"url": "git+https://github.com/pie-framework/pie-players.git",
+		"directory": "packages/players-shared"
 	},
 	"publishConfig": {
 		"access": "public"
@@ -127,5 +128,13 @@
 		"@datadog/browser-rum": {
 			"optional": true
 		}
-	}
+	},
+	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/players-shared#readme",
+	"bugs": {
+		"url": "https://github.com/pie-framework/pie-players/issues"
+	},
+	"engines": {
+		"node": ">=18.0.0"
+	},
+	"sideEffects": true
 }

@@ -32,6 +32,12 @@ ranges to concrete package versions, executes `changeset publish`, then restores
 original workspace ranges. This avoids leaking `workspace:*` into npm metadata while
 keeping local development ergonomics unchanged.
 
+Before release merges/publishes, run:
+
+```bash
+bun run verify:publish
+```
+
 ## Release Labels
 
 Use release labels to tag a coordinated release wave without forcing lockstep package versions.
@@ -58,6 +64,7 @@ bun run release:label:push           # Create and push tag to origin
 - [Authoring Mode](docs/AUTHORING_MODE.md)
 - [GitHub Pages Setup](docs/GITHUB_PAGES_SETUP.md)
 - [NPM Token Setup](docs/NPM_TOKEN_SETUP.md)
+- [Publishing Contract](docs/publishing.md)
 - [Workflow Strategy](docs/WORKFLOW_STRATEGY.md)
 
 ## License

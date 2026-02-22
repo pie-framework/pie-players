@@ -2,6 +2,7 @@
 	"name": "@pie-players/pie-tool-tts-inline",
 	"version": "0.1.5",
 	"type": "module",
+	"license": "MIT",
 	"main": "./dist/tool-tts-inline.js",
 	"types": "./dist/index.d.ts",
 	"unpkg": "./dist/tool-tts-inline.js",
@@ -11,7 +12,8 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/pie-framework/pie-players.git"
+		"url": "git+https://github.com/pie-framework/pie-players.git",
+		"directory": "packages/tool-tts-inline"
 	},
 	"exports": {
 		".": {
@@ -35,5 +37,13 @@
 		"svelte": "^5.51.3",
 		"vite": "^7.3.1",
 		"vite-plugin-dts": "^4.5.4"
-	}
+	},
+	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/tool-tts-inline#readme",
+	"bugs": {
+		"url": "https://github.com/pie-framework/pie-players/issues"
+	},
+	"engines": {
+		"node": ">=18.0.0"
+	},
+	"sideEffects": true
 }

@@ -38,21 +38,16 @@
       section: { attribute: "section", type: "Object" },
       env: { attribute: "env", type: "Object" },
       view: { attribute: "view", type: "String" },
-      layout: { attribute: "layout", type: "String" },
+      pageLayout: { attribute: "page-layout", type: "String" },
+      player: { attribute: "player", type: "String" },
 
       // Item sessions for restoration
       itemSessions: { attribute: "item-sessions", type: "Object" },
 
-      // Bundle/CDN configuration
-      bundleHost: { attribute: "bundle-host", type: "String" },
-      esmCdnUrl: { attribute: "esm-cdn-url", type: "String" },
       playerVersion: { attribute: "player-version", type: "String" },
 
       // Styling
-      customClassname: { attribute: "custom-classname", type: "String" },
-
-      // Player type selection
-      playerType: { attribute: "player-type", type: "String" },
+      customClassName: { attribute: "custom-class-name", type: "String" },
 
       // Tools toolbar position
       toolbarPosition: { attribute: "toolbar-position", type: "String" },
@@ -63,6 +58,9 @@
 
       // Toolkit coordinator (JS property, not attribute)
       toolkitCoordinator: { type: "Object", reflect: false },
+      // Host-provided web component definitions
+      playerDefinitions: { type: "Object", reflect: false },
+      layoutDefinitions: { type: "Object", reflect: false },
     },
   }}
 />
@@ -70,20 +68,24 @@
 <script lang="ts">
   import { ToolkitCoordinator } from "@pie-players/pie-assessment-toolkit";
   import {
+    DEFAULT_LAYOUT_DEFINITIONS,
+    DEFAULT_PLAYER_DEFINITIONS,
+    mergeComponentDefinitions,
+    type ComponentDefinition,
+  } from "./component-definitions.js";
+  import {
     type ElementLoaderInterface,
     EsmElementLoader,
     IifeElementLoader,
-  } from "@pie-players/pie-players-shared/loaders";
+  } from "@pie-players/pie-players-shared";
   import type {
     ItemEntity,
     PassageEntity,
     QtiAssessmentSection,
     RubricBlock,
-  } from "@pie-players/pie-players-shared/types";
+  } from "@pie-players/pie-players-shared";
   import { onMount, untrack } from "svelte";
   import ItemModeLayout from "./components/ItemModeLayout.svelte";
-  import SplitPanelLayout from "./components/layouts/SplitPanelLayout.svelte";
-  import VerticalLayout from "./components/layouts/VerticalLayout.svelte";
 
   const isBrowser = typeof window !== "undefined";
 
@@ -101,19 +103,19 @@
       | "proctor"
       | "testConstructor"
       | "tutor",
-    layout = "split-panel" as "vertical" | "split-panel",
+    pageLayout = "split-panel",
+    player = "iife",
     itemSessions = {} as Record<string, any>,
-    bundleHost = "",
-    esmCdnUrl = "",
     playerVersion = "latest",
-    playerType = "auto" as "auto" | "iife" | "esm" | "fixed" | "inline",
-    customClassname = "",
+    customClassName = "",
     toolbarPosition = "right" as "top" | "right" | "bottom" | "left" | "none",
     showToolbar = true,
     debug = "" as string | boolean,
 
     // Toolkit coordinator (optional - creates default if not provided)
     toolkitCoordinator = null as any,
+    playerDefinitions = {} as Partial<Record<string, ComponentDefinition>>,
+    layoutDefinitions = {} as Partial<Record<string, ComponentDefinition>>,
 
     // Event handlers
     onsessionchanged = null as ((event: CustomEvent) => void) | null,
@@ -161,6 +163,7 @@
 
   // Section tools toolbar element reference
   let toolbarElement = $state<HTMLElement | null>(null);
+  let pageLayoutElement = $state<HTMLElement | null>(null);
 
   // Computed
   let isPageMode = $derived(section?.keepTogether === true);
@@ -174,6 +177,28 @@
 
   // Extract mode from env for convenience
   let mode = $derived(env.mode);
+  let mergedPlayerDefinitions = $derived.by(() =>
+    mergeComponentDefinitions(DEFAULT_PLAYER_DEFINITIONS, playerDefinitions),
+  );
+  let resolvedPlayer = $derived(player);
+  let resolvedPlayerDefinition = $derived.by(
+    () => mergedPlayerDefinitions[resolvedPlayer] || mergedPlayerDefinitions["iife"],
+  );
+  let resolvedPlayerTag = $derived(
+    resolvedPlayerDefinition?.tagName || "pie-iife-player",
+  );
+  let mergedLayoutDefinitions = $derived.by(() =>
+    mergeComponentDefinitions(DEFAULT_LAYOUT_DEFINITIONS, layoutDefinitions),
+  );
+  let resolvedPageLayout = $derived(pageLayout);
+  let resolvedLayoutDefinition = $derived.by(
+    () =>
+      mergedLayoutDefinitions[resolvedPageLayout] ||
+      mergedLayoutDefinitions["split-panel"],
+  );
+  let resolvedLayoutTag = $derived(
+    resolvedLayoutDefinition?.tagName || "pie-split-panel-layout",
+  );
 
   // Extract content from section
   function extractContent() {
@@ -309,6 +334,21 @@
     );
   });
 
+  // Ensure selected page-mode layout web component is registered.
+  $effect(() => {
+    if (!isPageMode) return;
+    resolvedLayoutDefinition?.ensureDefined?.().catch((err) => {
+      console.error("[PieSectionPlayer] Failed to load layout component:", err);
+    });
+  });
+
+  // Ensure selected player web component is registered.
+  $effect(() => {
+    resolvedPlayerDefinition?.ensureDefined?.().catch((err) => {
+      console.error("[PieSectionPlayer] Failed to load player component:", err);
+    });
+  });
+
   // React to section changes
   $effect(() => {
     // Track section to react to changes, but don't track the execution of extractContent
@@ -325,30 +365,43 @@
       return;
     }
 
-    // Collect all items (passages + questions) that need elements loaded
-    const allItems: ItemEntity[] = [...passages, ...items];
+    // Collect all renderables needing element preloading:
+    // - passages (stimulus rubric blocks / linked passages)
+    // - assessment items
+    // - rubric blocks with PIE passage configs (e.g. instructions/rubrics)
+    const additionalRubricPassages = (rubricBlocks || [])
+      .map((rb) => rb?.passage)
+      .filter((p): p is PassageEntity => !!p && !!p.config);
+    const allItems: ItemEntity[] = [...passages, ...items, ...additionalRubricPassages];
 
     if (allItems.length === 0) {
       elementsLoaded = true;
       return;
     }
 
-    // Create appropriate loader based on configuration
+    const effectiveBundleHost = String(
+      resolvedPlayerDefinition?.attributes?.["bundle-host"] || "",
+    );
+    const effectiveEsmCdnUrl = String(
+      resolvedPlayerDefinition?.attributes?.["esm-cdn-url"] || "",
+    );
+
+    // Create appropriate loader from selected player definition.
     let loader: ElementLoaderInterface | null = null;
 
-    if (esmCdnUrl) {
+    if (resolvedPlayer === "esm" && effectiveEsmCdnUrl) {
       loader = new EsmElementLoader({
-        esmCdnUrl,
+        esmCdnUrl: effectiveEsmCdnUrl,
         debugEnabled: () => !!debug,
       });
-    } else if (bundleHost) {
+    } else if (resolvedPlayer === "iife" && effectiveBundleHost) {
       loader = new IifeElementLoader({
-        bundleHost,
+        bundleHost: effectiveBundleHost,
         debugEnabled: () => !!debug,
       });
     } else {
       console.warn(
-        "[PieSectionPlayer] No loader configuration provided (esmCdnUrl or bundleHost)",
+        `[PieSectionPlayer] No element preloader mapping for player '${resolvedPlayer}'.`,
       );
       elementsLoaded = true;
       return;
@@ -489,10 +542,26 @@
       toolbarElement.setAttribute("enabled-tools", "");
     }
   });
+
+  // Bind page-mode layout custom element properties imperatively.
+  $effect(() => {
+    if (!pageLayoutElement || !isPageMode) return;
+    (pageLayoutElement as any).passages = passages;
+    (pageLayoutElement as any).items = items;
+    (pageLayoutElement as any).itemSessions = itemSessions;
+    (pageLayoutElement as any).player = resolvedPlayer;
+    (pageLayoutElement as any).env = env;
+    (pageLayoutElement as any).playerVersion = playerVersion;
+    (pageLayoutElement as any).assessmentId = assessmentId;
+    (pageLayoutElement as any).sectionId = sectionId;
+    (pageLayoutElement as any).toolkitCoordinator = coordinator;
+    (pageLayoutElement as any).playerDefinitions = mergedPlayerDefinitions;
+    (pageLayoutElement as any).onsessionchanged = handleSessionChanged;
+  });
 </script>
 
 <div
-  class={`pie-section-player ${customClassname} ${isPageMode ? "pie-section-player--page-mode" : "pie-section-player--item-mode"}`}
+  class={`pie-section-player ${customClassName} ${isPageMode ? "pie-section-player--page-mode" : "pie-section-player--item-mode"}`}
   data-assessment-id={assessmentId}
   data-section-id={sectionId}
 >
@@ -506,12 +575,15 @@
       <div class="pie-section-player__instructions">
         {#each instructions as rb}
           {#if rb.passage && rb.passage.config}
-            <pie-esm-player
-              config={JSON.stringify(rb.passage.config)}
-              env={JSON.stringify({ mode: "view" })}
-              bundle-host={bundleHost}
-              esm-cdn-url={esmCdnUrl}
-            ></pie-esm-player>
+            <svelte:element
+              this={resolvedPlayerTag}
+              {...({
+                config: JSON.stringify(rb.passage.config),
+                env: JSON.stringify({ mode: "view" }),
+                "skip-element-loading": true,
+                ...(resolvedPlayerDefinition?.attributes || {}),
+              } as any)}
+            ></svelte:element>
           {/if}
         {/each}
       </div>
@@ -564,38 +636,10 @@
       {#if elementsLoaded}
         {#if isPageMode}
           <!-- Page Mode: Choose layout based on layout prop -->
-          {#if layout === "split-panel"}
-            <SplitPanelLayout
-              {passages}
-              {items}
-              {itemSessions}
-              {env}
-              {bundleHost}
-              {esmCdnUrl}
-              {playerVersion}
-              {playerType}
-              {assessmentId}
-              {sectionId}
-              toolkitCoordinator={coordinator}
-              onsessionchanged={handleSessionChanged}
-            />
-          {:else}
-            <!-- Default: vertical layout -->
-            <VerticalLayout
-              {passages}
-              {items}
-              {itemSessions}
-              {env}
-              {bundleHost}
-              {esmCdnUrl}
-              {playerVersion}
-              {playerType}
-              {assessmentId}
-              {sectionId}
-              toolkitCoordinator={coordinator}
-              onsessionchanged={handleSessionChanged}
-            />
-          {/if}
+          {#key resolvedLayoutTag}
+            <svelte:element this={resolvedLayoutTag} bind:this={pageLayoutElement}>
+            </svelte:element>
+          {/key}
         {:else}
           <!-- Item Mode: Use internal Svelte component -->
           <ItemModeLayout
@@ -606,14 +650,13 @@
             canNext={canNavigateNext}
             canPrevious={canNavigatePrevious}
             itemSession={currentItemSession}
+            player={resolvedPlayer}
             {env}
-            {bundleHost}
-            {esmCdnUrl}
             {playerVersion}
-            {playerType}
             {assessmentId}
             {sectionId}
             toolkitCoordinator={coordinator}
+            playerDefinitions={mergedPlayerDefinitions}
             onprevious={navigatePrevious}
             onnext={navigateNext}
             onsessionchanged={(sessionDetail) =>

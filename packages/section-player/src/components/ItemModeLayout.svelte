@@ -5,10 +5,10 @@
   Not exposed as a web component - used internally in PieSectionPlayer.
 -->
 <script lang="ts">
-	import type { ItemEntity, PassageEntity } from '@pie-players/pie-players-shared/types';
+	import type { ComponentDefinition } from '../component-definitions.js';
+	import type { ItemEntity, PassageEntity } from '@pie-players/pie-players-shared';
 	import ItemNavigation from './ItemNavigation.svelte';
 	import ItemRenderer from './ItemRenderer.svelte';
-	import PassageRenderer from './PassageRenderer.svelte';
 
 	let {
 		passages,
@@ -18,14 +18,13 @@
 		canNext,
 		canPrevious,
 		itemSession,
+		player = '',
 		env = { mode: 'gather', role: 'student' },
-		bundleHost = '',
-		esmCdnUrl = 'https://esm.sh',
 		playerVersion = 'latest',
-		playerType = 'auto',
 		assessmentId = '',
 		sectionId = '',
 		toolkitCoordinator = null,
+		playerDefinitions = {} as Partial<Record<string, ComponentDefinition>>,
 
 		onprevious,
 		onnext,
@@ -38,14 +37,13 @@
 		canNext: boolean;
 		canPrevious: boolean;
 		itemSession?: any;
+		player?: string;
 		env?: { mode: 'gather' | 'view' | 'evaluate' | 'author'; role: 'student' | 'instructor' };
-		bundleHost?: string;
-		esmCdnUrl?: string;
 		playerVersion?: string;
-		playerType?: 'auto' | 'iife' | 'esm' | 'fixed' | 'inline';
 		assessmentId?: string;
 		sectionId?: string;
 		toolkitCoordinator?: any;
+		playerDefinitions?: Partial<Record<string, ComponentDefinition>>;
 
 		onprevious?: () => void;
 		onnext?: () => void;
@@ -64,15 +62,19 @@
 	{#if passages.length > 0}
 		<div class="pie-section-player__passages-section">
 			{#each passages as passage (passage.id)}
-				<PassageRenderer
-					{passage}
-					{bundleHost}
-					{esmCdnUrl}
-					{assessmentId}
-					{sectionId}
-					{toolkitCoordinator}
-					class="pie-section-player__passage-item"
-				/>
+				<div class="pie-section-player__passage-wrapper">
+					<ItemRenderer
+						item={passage}
+						{player}
+						contentKind="rubric-block-stimulus"
+						env={{ mode: 'view', role: env.role }}
+						{assessmentId}
+						{sectionId}
+						{toolkitCoordinator}
+						{playerDefinitions}
+						customClassName="pie-section-player__passage-item"
+					/>
+				</div>
 			{/each}
 		</div>
 	{/if}
@@ -82,17 +84,17 @@
 		<div class="pie-section-player__current-item-section">
 			<ItemRenderer
 				item={currentItem}
+				{player}
+				contentKind="assessment-item"
 				{env}
 				session={itemSession}
-				{bundleHost}
-				{esmCdnUrl}
 				{playerVersion}
-				{playerType}
 				{assessmentId}
 				{sectionId}
 				{toolkitCoordinator}
+				{playerDefinitions}
 				onsessionchanged={handleSessionChanged}
-				class="pie-section-player__item-content"
+				customClassName="pie-section-player__item-content"
 			/>
 		</div>
 	{:else}
@@ -126,17 +128,25 @@
 	}
 
 	.pie-section-player__passages-section :global(.pie-section-player__passage-item) {
-		padding: 1rem;
-		background: var(--pie-secondary-background, #fafafa);
-		border: 1px solid var(--pie-border-light, #e0e0e0);
-		border-radius: 4px;
+		padding: 0;
+		background: transparent;
+		border: 0;
+		border-radius: 0;
+	}
+
+	.pie-section-player__passage-wrapper {
+		flex-shrink: 0;
+		padding: 0.25rem;
+		background: var(--pie-white, white);
+		border: 1px solid var(--pie-border-light, #e5e7eb);
+		border-radius: 6px;
 	}
 
 	.pie-section-player__current-item-section {
-		padding: 1rem;
+		padding: 0.25rem;
 		background: var(--pie-white, white);
-		border: 1px solid var(--pie-border-light, #e0e0e0);
-		border-radius: 4px;
+		border: 1px solid var(--pie-border-light, #e5e7eb);
+		border-radius: 6px;
 		min-height: 300px;
 	}
 

@@ -85,7 +85,7 @@ Matches `<pie-player>` interface exactly:
 | `bundle-endpoints` | object | - | Custom endpoints for build service and CDN |
 | `use-cdn` | boolean | `false` | Use CDN with bundle hash if available |
 | `external-style-urls` | string | - | Comma-separated URLs for external stylesheets |
-| `custom-classname` | string | - | Custom class name for scoped styles |
+| `custom-class-name` | string | - | Custom class name for scoped styles |
 | `container-class` | string | - | CSS class for item container |
 
 ## Events

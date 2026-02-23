@@ -14,7 +14,7 @@
       renderStimulus="true"
       allowedResize="false"
       showBottomBorder="false"
-      customClassname="my-class"
+      customClassName="my-class"
       containerClass="item-class"
       passageContainerClass="passage-class">
     </pie-inline-player>
@@ -43,7 +43,7 @@
 			debug: { attribute: 'debug', type: 'Boolean' },
 			
 			// Styling props (match pie-player API)
-			customClassname: { attribute: 'custom-classname', type: 'String' },
+			customClassName: { attribute: 'custom-class-name', type: 'String' },
 			containerClass: { attribute: 'container-class', type: 'String' },
 			passageContainerClass: { attribute: 'passage-container-class', type: 'String' },
 			externalStyleUrls: { attribute: 'external-style-urls', type: 'String' },
@@ -91,7 +91,7 @@
 		debug = false,
 		
 		// Styling props
-		customClassname = '',
+		customClassName = '',
 		containerClass = '',
 		passageContainerClass = '',
 		externalStyleUrls = '',
@@ -186,7 +186,7 @@
 	
 	// Generate unique class name for scoping external styles
 	const fallbackScopeClass = `pie-player-${Math.random().toString(36).slice(2, 11)}`;
-	const scopeClass = $derived((customClassname || fallbackScopeClass).trim());
+	const scopeClass = $derived((customClassName || fallbackScopeClass).trim());
 	
 	// Helper to load and scope external stylesheet (matches pie-player behavior)
 	const loadScopedExternalStyle = async (url: string) => {
@@ -409,7 +409,7 @@
 							return parsedSession.data || [];
 						})()}
 						addCorrectResponse={false}
-						customClassname={scopeClass}
+						customClassName={scopeClass}
 						containerClass={resolvedPassageContainerClass}
 						bundleType={bundleType === 'client-player.js' ? BundleType.clientPlayer : BundleType.player}
 						{loaderConfig}
@@ -448,7 +448,7 @@
 							return parsedSession.data || [];
 						})()}
 						{addCorrectResponse}
-						customClassname={scopeClass}
+						customClassName={scopeClass}
 						containerClass={resolvedContainerClass}
 						bundleType={bundleType === 'client-player.js' ? BundleType.clientPlayer : BundleType.player}
 						{loaderConfig}
@@ -469,7 +469,7 @@
 					return parsedSession.data || [];
 				})()}
 				{addCorrectResponse}
-				customClassname={scopeClass}
+				customClassName={scopeClass}
 				passageContainerClass={resolvedPassageContainerClass}
 				containerClass={resolvedContainerClass}
 				bundleType={bundleType === 'client-player.js' ? BundleType.clientPlayer : BundleType.player}

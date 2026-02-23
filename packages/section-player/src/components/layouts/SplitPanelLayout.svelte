@@ -6,36 +6,34 @@
   Not exposed as a web component - used internally in PieSectionPlayer.
 -->
 <script lang="ts">
-	import type { ItemEntity, PassageEntity } from '@pie-players/pie-players-shared/types';
+	import type { ComponentDefinition } from '../../component-definitions.js';
+	import type { ItemEntity, PassageEntity } from '@pie-players/pie-players-shared';
 	import ItemRenderer from '../ItemRenderer.svelte';
-	import PassageRenderer from '../PassageRenderer.svelte';
 
 	let {
 		passages,
 		items,
 		itemSessions = {},
+		player = '',
 		env = { mode: 'gather', role: 'student' },
-		bundleHost = '',
-		esmCdnUrl = 'https://esm.sh',
 		playerVersion = 'latest',
-		playerType = 'auto',
 		assessmentId = '',
 		sectionId = '',
 		toolkitCoordinator = null,
+		playerDefinitions = {} as Partial<Record<string, ComponentDefinition>>,
 
 		onsessionchanged
 	}: {
 		passages: PassageEntity[];
 		items: ItemEntity[];
 		itemSessions?: Record<string, any>;
+		player?: string;
 		env?: { mode: 'gather' | 'view' | 'evaluate' | 'author'; role: 'student' | 'instructor' };
-		bundleHost?: string;
-		esmCdnUrl?: string;
 		playerVersion?: string;
-		playerType?: 'auto' | 'iife' | 'esm' | 'fixed' | 'inline';
 		assessmentId?: string;
 		sectionId?: string;
 		toolkitCoordinator?: any;
+		playerDefinitions?: Partial<Record<string, ComponentDefinition>>;
 
 		onsessionchanged?: (itemId: string, session: any) => void;
 	} = $props();
@@ -143,15 +141,19 @@
 			onscroll={() => markScrolling('passages')}
 		>
 			{#each passages as passage (passage.id)}
-				<PassageRenderer
-					{passage}
-					{bundleHost}
-					{esmCdnUrl}
-					{assessmentId}
-					{sectionId}
-					{toolkitCoordinator}
-					class="pie-section-player__passage-item"
-				/>
+				<div class="pie-section-player__passage-wrapper">
+					<ItemRenderer
+						item={passage}
+						{player}
+						contentKind="rubric-block-stimulus"
+						env={{ mode: 'view', role: env.role }}
+						{assessmentId}
+						{sectionId}
+						{toolkitCoordinator}
+						{playerDefinitions}
+						customClassName="pie-section-player__passage-item"
+					/>
+				</div>
 			{/each}
 		</aside>
 
@@ -177,17 +179,17 @@
 			<div class="pie-section-player__item-wrapper" data-item-index={index}>
 				<ItemRenderer
 					{item}
+					{player}
+					contentKind="assessment-item"
 					{env}
 					session={itemSessions[item.id || '']}
-					{bundleHost}
-					{esmCdnUrl}
 					{playerVersion}
-					{playerType}
 					{assessmentId}
 					{sectionId}
 					{toolkitCoordinator}
+					{playerDefinitions}
 					onsessionchanged={handleItemSessionChanged(item.id || '')}
-					class="pie-section-player__item-content"
+					customClassName="pie-section-player__item-content"
 				/>
 			</div>
 		{/each}
@@ -310,6 +312,18 @@
 
 	.pie-section-player__item-wrapper {
 		flex-shrink: 0;
+	}
+
+	.pie-section-player__passage-wrapper {
+		flex-shrink: 0;
+	}
+
+	.pie-section-player__item-wrapper,
+	.pie-section-player__passage-wrapper {
+		padding: 0.25rem;
+		background: var(--pie-white, white);
+		border: 1px solid var(--pie-border-light, #e5e7eb);
+		border-radius: 6px;
 	}
 
 	/* Mobile/Narrow: Fall back to vertical layout */

@@ -25,7 +25,7 @@
 		env = { mode: 'gather', role: 'student' } as Env,
 		session = [] as any[],
 		addCorrectResponse = false,
-		customClassname = '',
+		customClassName = '',
 		passageContainerClass = '',
 		containerClass = '',
 		// Legacy: authoring uses editor.js, preview uses player/client-player.
@@ -52,7 +52,7 @@
 		env?: Env;
 		session?: any[];
 		addCorrectResponse?: boolean;
-		customClassname?: string;
+		customClassName?: string;
 		passageContainerClass?: string;
 		containerClass?: string;
 		bundleType?: BundleType;
@@ -110,7 +110,7 @@
 				{env}
 				{session}
 				{addCorrectResponse}
-				{customClassname}
+				{customClassName}
 				{passageContainerClass}
 				{containerClass}
 				bundleType={effectiveBundleType}

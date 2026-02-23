@@ -67,7 +67,7 @@ You can include the module directly from a CDN such as jsDelivr:
 - `session` (optional): Session data array
 - `add-correct-response` (optional): Force showing correct answers
 - `external-style-urls` (optional): External CSS URLs
-- `custom-classname` (optional): Custom CSS class for the player
+- `custom-class-name` (optional): Custom CSS class for the player
 - `container-class` (optional): Custom CSS class for the item container
 - `passage-container-class` (optional): Custom CSS class for the passage container
 

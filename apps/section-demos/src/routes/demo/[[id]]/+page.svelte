@@ -587,7 +587,7 @@ import { onDestroy, onMount, untrack } from 'svelte';
 		}
 	});
 
-	// Compute player props based on selected type
+	// Compute player definitions for selected type/source
 	// Map role toggle to PIE environment
 	// candidate → gather mode + student role (interactive assessment)
 	// scorer → evaluate mode + instructor role (scoring/review)
@@ -597,26 +597,20 @@ import { onDestroy, onMount, untrack } from 'svelte';
 	});
 	let qtiView = $derived<string>(roleType); // Keep QTI view for rubric filtering
 
-	let playerProps = $derived.by(() => {
-		switch (playerType) {
-			case 'iife':
-				return { bundleHost: 'https://proxy.pie-api.com/bundles/', esmCdnUrl: '' };
-			case 'esm':
-				// Empty esmCdnUrl means same-origin (Vite dev server with local-esm-cdn plugin)
-				return { bundleHost: '', esmCdnUrl: esmSource === 'local' ? '' : 'https://esm.sh' };
+	let playerDefinitions = $derived.by(() => ({
+		iife: {
+			tagName: 'pie-iife-player',
+			attributes: {
+				'bundle-host': 'https://proxy.pie-api.com/bundles'
+			}
+		},
+		esm: {
+			tagName: 'pie-esm-player',
+			attributes: {
+				'esm-cdn-url': esmSource === 'local' ? '' : 'https://esm.sh'
+			}
 		}
-	});
-
-	// Set player configuration properties imperatively FIRST (before section/env)
-	// Boolean attributes don't work correctly with Svelte custom elements
-	$effect(() => {
-		if (sectionPlayer) {
-			untrack(() => {
-				sectionPlayer.bundleHost = playerProps.bundleHost;
-				sectionPlayer.esmCdnUrl = playerProps.esmCdnUrl;
-			});
-		}
-	});
+	}));
 
 	// Set complex properties imperatively on the web component
 	// (Web components can only receive simple values via attributes)
@@ -628,6 +622,7 @@ import { onDestroy, onMount, untrack } from 'svelte';
 				sectionPlayer.itemSessions = itemSessions;
 				sectionPlayer.toolkitCoordinator = toolkitCoordinator;
 				sectionPlayer.toolbarPosition = toolbarPosition;
+				sectionPlayer.playerDefinitions = playerDefinitions;
 			});
 		}
 	});
@@ -947,10 +942,9 @@ import { onDestroy, onMount, untrack } from 'svelte';
 		<!-- svelte-ignore a11y_unknown_aria_attribute -->
 		<pie-section-player
 			bind:this={sectionPlayer}
-			layout={layoutType}
+			player={playerType}
+			page-layout={layoutType}
 			view={qtiView}
-			bundle-host={playerProps.bundleHost}
-			esm-cdn-url={playerProps.esmCdnUrl}
 			onsessionchanged={handleSessionChanged}
 		></pie-section-player>
 	</div>

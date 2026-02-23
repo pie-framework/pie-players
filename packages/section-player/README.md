@@ -159,9 +159,20 @@ These are automatically resolved when using the section player as a library depe
 
 <PieSectionPlayer
   {section}
-  mode="gather"
+  env={{ mode: 'gather', role: 'student' }}
   view="candidate"
-  bundleHost="https://cdn.pie.org"
+  player="iife"
+  pageLayout="split-panel"
+  playerDefinitions={{
+    iife: {
+      tagName: 'pie-iife-player',
+      attributes: { 'bundle-host': 'https://proxy.pie-api.com/bundles/' }
+    },
+    esm: {
+      tagName: 'pie-esm-player',
+      attributes: { 'esm-cdn-url': 'https://esm.sh' }
+    }
+  }}
 />
 ```
 
@@ -189,12 +200,14 @@ function AssessmentSection({ section }) {
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
 | `section` | `QtiAssessmentSection` | `null` | Section data with passages and items |
-| `mode` | `'gather' \| 'view' \| 'evaluate' \| 'author'` | `'gather'` | Player mode |
+| `env` | `{ mode, role }` | `{ mode: 'gather', role: 'student' }` | Runtime environment |
 | `view` | `'candidate' \| 'scorer' \| 'author' \| ...` | `'candidate'` | Current view (filters rubricBlocks) |
+| `player` | `string` | `'iife'` | Selected player definition key |
+| `page-layout` | `string` | `'split-panel'` | Selected page-mode layout definition key |
+| `playerDefinitions` | `Record<string, ComponentDefinition>` | built-ins | Host player web-component definitions |
+| `layoutDefinitions` | `Record<string, ComponentDefinition>` | built-ins | Host page-layout web-component definitions |
 | `item-sessions` | `Record<string, any>` | `{}` | Item sessions for restoration |
-| `bundle-host` | `string` | `''` | CDN host for PIE bundles |
-| `esm-cdn-url` | `string` | `'https://esm.sh'` | ESM CDN URL |
-| `custom-classname` | `string` | `''` | Custom CSS class |
+| `custom-class-name` | `string` | `''` | Custom CSS class |
 | `debug` | `string \| boolean` | `''` | Debug mode |
 
 ## Events

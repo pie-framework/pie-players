@@ -287,7 +287,9 @@ import { onMount } from 'svelte';
 		};
 	}
 
-	let calculatorConfig = $state<CalculatorProviderConfig>(getInitialConfig(currentCalculatorType));
+	let calculatorConfig = $state<CalculatorProviderConfig>(
+		getInitialConfig('scientific')
+	);
 
 	// ============================================================================
 	// Calculator Lifecycle
@@ -423,7 +425,7 @@ import { onMount } from 'svelte';
 			const parent = calculatorContainerEl.parentElement;
 			const oldContainer = calculatorContainerEl;
 			const newContainer = document.createElement('div');
-			newContainer.className = oldContainer.className || 'calculator-container';
+			newContainer.className = oldContainer.className || 'pie-tool-calculator__container';
 			parent.replaceChild(newContainer, oldContainer);
 			calculatorContainerEl = newContainer;
 
@@ -589,11 +591,11 @@ import { onMount } from 'svelte';
 
 	function handlePointerDown(e: PointerEvent) {
 		const target = e.target as HTMLElement;
-		if (target.closest('.tool-header') && containerEl) {
+		if (target.closest('.pie-tool-calculator__header') && containerEl) {
 			coordinator?.bringToFront(containerEl);
 
 			// Start dragging if clicking on header (but not buttons)
-			if (!target.closest('button') && !target.closest('.header-buttons')) {
+			if (!target.closest('button') && !target.closest('.pie-tool-calculator__header-buttons')) {
 				e.preventDefault();
 				isDragging = true;
 
@@ -774,8 +776,8 @@ import { onMount } from 'svelte';
 {#if visible}
 	<div
 		bind:this={containerEl}
-		class="calculator-tool notranslate"
-		class:is-dragging={isDragging}
+		class="pie-tool-calculator notranslate"
+		class:pie-tool-calculator--dragging={isDragging}
 		role="dialog"
 		tabindex="-1"
 		aria-label="Calculator tool - Drag header to move, Escape to close"
@@ -786,16 +788,16 @@ import { onMount } from 'svelte';
 		onpointerup={handlePointerUp}
 		onkeydown={handleKeyDown}
 	>
-		<div class="tool-header">
-			<span class="tool-title">Calculator</span>
-			<div class="header-buttons">
+		<div class="pie-tool-calculator__header">
+			<span class="pie-tool-calculator__title">Calculator</span>
+			<div class="pie-tool-calculator__header-buttons">
 				<ToolSettingsButton
 					bind:buttonEl={settingsButtonEl}
 					onClick={toggleSettings}
 					ariaLabel="Calculator settings"
 					active={settingsOpen}
 				/>
-				<button class="close-btn" onclick={handleClose} aria-label="Close calculator">
+				<button class="pie-tool-calculator__close-btn" onclick={handleClose} aria-label="Close calculator">
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
 						class="h-5 w-5"
@@ -812,14 +814,14 @@ import { onMount } from 'svelte';
 			</div>
 		</div>
 
-		<div bind:this={calculatorContainerEl} class="calculator-container" data-calculator-type={currentCalculatorType}></div>
+		<div bind:this={calculatorContainerEl} class="pie-tool-calculator__container" data-calculator-type={currentCalculatorType}></div>
 
 		{#if settingsOpen}
-			<div class="settings-overlay">
-				<div class="settings-panel">
-					<div class="settings-header">
-						<h2 class="settings-title">Calculator Settings</h2>
-						<button type="button" class="settings-close-btn" onclick={closeSettings} aria-label="Close settings">
+			<div class="pie-tool-calculator__settings-overlay">
+				<div class="pie-tool-calculator__settings-panel">
+					<div class="pie-tool-calculator__settings-header">
+						<h2 class="pie-tool-calculator__settings-title">Calculator Settings</h2>
+						<button type="button" class="pie-tool-calculator__settings-close-btn" onclick={closeSettings} aria-label="Close settings">
 							<svg
 								xmlns="http://www.w3.org/2000/svg"
 								class="h-5 w-5"
@@ -834,8 +836,8 @@ import { onMount } from 'svelte';
 							</svg>
 						</button>
 					</div>
-					<div class="settings-content">
-		<fieldset class="setting-group">
+					<div class="pie-tool-calculator__settings-content">
+		<fieldset class="pie-tool-calculator__setting-group">
 			<legend>Calculator Type</legend>
 			{#each availableTypes as type (type)}
 				<label>
@@ -851,7 +853,7 @@ import { onMount } from 'svelte';
 			{/each}
 		</fieldset>
 
-		<fieldset class="setting-group">
+		<fieldset class="pie-tool-calculator__setting-group">
 			<legend>Configuration</legend>
 			<p style="font-size: 0.75rem; color: #666; margin: 0 0 8px 0;">
 				These settings are useful for testing. They may be hidden or restricted for students in production.
@@ -870,9 +872,9 @@ import { onMount } from 'svelte';
 			</label>
 
 			<label>
-				<span class="setting-label">
+				<span class="pie-tool-calculator__setting-label">
 					Angle Mode
-					<span class="setting-value">
+					<span class="pie-tool-calculator__setting-value">
 						{calculatorConfig.desmos?.degreeMode === false ? 'Radians' : 'Degrees'}
 					</span>
 				</span>
@@ -909,9 +911,9 @@ import { onMount } from 'svelte';
 			{#if false}
 				{#if currentCalculatorType === 'ti-84' || currentCalculatorType === 'ti-34-mv'}
 					<label>
-						<span class="setting-label">
+						<span class="pie-tool-calculator__setting-label">
 							Angle Mode
-							<span class="setting-value">
+							<span class="pie-tool-calculator__setting-value">
 								{calculatorConfig.ti?.AngleMode === 'DEG' ? 'Degrees' : 'Radians'}
 							</span>
 						</span>
@@ -933,9 +935,9 @@ import { onMount } from 'svelte';
 
 				{#if currentCalculatorType === 'ti-84' || currentCalculatorType === 'ti-34-mv'}
 					<label>
-						<span class="setting-label">
+						<span class="pie-tool-calculator__setting-label">
 							Display Mode
-							<span class="setting-value">
+							<span class="pie-tool-calculator__setting-value">
 								{calculatorConfig.ti?.DisplayMode || 'CLASSIC'}
 							</span>
 						</span>
@@ -1073,7 +1075,7 @@ import { onMount } from 'svelte';
 {/if}
 
 <style>
-	.calculator-tool {
+	.pie-tool-calculator {
 		position: fixed;
 		background: white;
 		box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
@@ -1087,17 +1089,17 @@ import { onMount } from 'svelte';
 		flex-direction: column;
 	}
 
-	.calculator-tool.is-dragging {
+	.pie-tool-calculator.pie-tool-calculator--dragging {
 		cursor: move;
 		will-change: transform;
 	}
 
-	.calculator-tool.is-dragging * {
+	.pie-tool-calculator.pie-tool-calculator--dragging * {
 		cursor: move !important;
 		pointer-events: none; /* Prevent hover effects during drag */
 	}
 
-	.tool-header {
+	.pie-tool-calculator__header {
 		padding: 12px 16px;
 		background: var(--pie-primary-dark, #2c3e50);
 		color: var(--pie-white, white);
@@ -1109,19 +1111,19 @@ import { onMount } from 'svelte';
 		border-radius: 12px 12px 0 0;
 	}
 
-	.tool-title {
+	.pie-tool-calculator__title {
 		font-weight: 600;
 		font-size: 16px;
 		color: var(--pie-white, white);
 	}
 
-	.header-buttons {
+	.pie-tool-calculator__header-buttons {
 		display: flex;
 		gap: 8px;
 		align-items: center;
 	}
 
-	.close-btn {
+	.pie-tool-calculator__close-btn {
 		background: transparent;
 		border: none;
 		color: var(--pie-white, white);
@@ -1134,20 +1136,20 @@ import { onMount } from 'svelte';
 		transition: background-color 0.2s;
 	}
 
-	.close-btn:hover {
+	.pie-tool-calculator__close-btn:hover {
 		background: rgba(255, 255, 255, 0.1);
 	}
 
-	.close-btn:active {
+	.pie-tool-calculator__close-btn:active {
 		background: rgba(255, 255, 255, 0.2);
 	}
 
-	.close-btn:focus-visible {
+	.pie-tool-calculator__close-btn:focus-visible {
 		outline: 2px solid var(--pie-primary, #3f51b5);
 		outline-offset: 2px;
 	}
 
-	.calculator-container {
+	.pie-tool-calculator__container {
 		background: white;
 		width: 100%;
 		height: 100%;
@@ -1157,9 +1159,9 @@ import { onMount } from 'svelte';
 		overflow: hidden;
 	}
 
-	.calculator-container[data-calculator-type="ti-84"],
-	.calculator-container[data-calculator-type="ti-108"],
-	.calculator-container[data-calculator-type="ti-34-mv"] {
+	.pie-tool-calculator__container[data-calculator-type="ti-84"],
+	.pie-tool-calculator__container[data-calculator-type="ti-108"],
+	.pie-tool-calculator__container[data-calculator-type="ti-34-mv"] {
 		width: auto;
 		height: auto;
 		min-width: 0;
@@ -1171,17 +1173,17 @@ import { onMount } from 'svelte';
 		overflow: visible;
 	}
 
-	:global(.calculator-container .dcg-container) {
+	:global(.pie-tool-calculator__container .dcg-container) {
 		width: 100% !important;
 		height: 100% !important;
 	}
 
-	:global(.calculator-tool .mathjs-btn) {
+	:global(.pie-tool-calculator .mathjs-btn) {
 		pointer-events: auto;
 	}
 
 	/* Settings overlay and panel */
-	.settings-overlay {
+	.pie-tool-calculator__settings-overlay {
 		position: absolute;
 		top: 0;
 		left: 0;
@@ -1195,7 +1197,7 @@ import { onMount } from 'svelte';
 		pointer-events: auto;
 	}
 
-	.settings-panel {
+	.pie-tool-calculator__settings-panel {
 		background: white;
 		border-radius: 8px;
 		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
@@ -1207,7 +1209,7 @@ import { onMount } from 'svelte';
 		flex-direction: column;
 	}
 
-	.settings-header {
+	.pie-tool-calculator__settings-header {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
@@ -1216,14 +1218,14 @@ import { onMount } from 'svelte';
 		background: #f5f5f5;
 	}
 
-	.settings-title {
+	.pie-tool-calculator__settings-title {
 		font-weight: 600;
 		font-size: 14px;
 		margin: 0;
 		color: #333;
 	}
 
-	.settings-close-btn {
+	.pie-tool-calculator__settings-close-btn {
 		background: transparent;
 		border: none;
 		color: #666;
@@ -1236,40 +1238,40 @@ import { onMount } from 'svelte';
 		transition: background-color 0.2s;
 	}
 
-	.settings-close-btn:hover {
+	.pie-tool-calculator__settings-close-btn:hover {
 		background: rgba(0, 0, 0, 0.05);
 		color: #333;
 	}
 
-	.settings-close-btn:active {
+	.pie-tool-calculator__settings-close-btn:active {
 		background: rgba(0, 0, 0, 0.1);
 	}
 
-	.settings-content {
+	.pie-tool-calculator__settings-content {
 		padding: 16px;
 		overflow-y: auto;
 		font-size: 14px;
 	}
 
-	.settings-content :global(.setting-group) {
+	.pie-tool-calculator__settings-content :global(.pie-tool-calculator__setting-group) {
 		border: 1px solid #e0e0e0;
 		border-radius: 4px;
 		padding: 12px;
 		margin-bottom: 16px;
 	}
 
-	.settings-content :global(.setting-group:last-child) {
+	.pie-tool-calculator__settings-content :global(.pie-tool-calculator__setting-group:last-child) {
 		margin-bottom: 0;
 	}
 
-	.settings-content :global(legend) {
+	.pie-tool-calculator__settings-content :global(legend) {
 		font-weight: 600;
 		font-size: 13px;
 		color: #333;
 		padding: 0 4px;
 	}
 
-	.settings-content :global(label) {
+	.pie-tool-calculator__settings-content :global(label) {
 		display: block;
 		margin-bottom: 8px;
 		cursor: pointer;
@@ -1277,17 +1279,17 @@ import { onMount } from 'svelte';
 		color: #666;
 	}
 
-	.settings-content :global(label:last-child) {
+	.pie-tool-calculator__settings-content :global(label:last-child) {
 		margin-bottom: 0;
 	}
 
-	.settings-content :global(input[type="radio"]),
-	.settings-content :global(input[type="checkbox"]) {
+	.pie-tool-calculator__settings-content :global(input[type="radio"]),
+	.pie-tool-calculator__settings-content :global(input[type="checkbox"]) {
 		margin-right: 8px;
 		cursor: pointer;
 	}
 
-	.settings-content :global(select) {
+	.pie-tool-calculator__settings-content :global(select) {
 		width: 100%;
 		padding: 6px;
 		border: 1px solid #ccc;
@@ -1298,7 +1300,7 @@ import { onMount } from 'svelte';
 		cursor: pointer;
 	}
 
-	.settings-content :global(.setting-label) {
+	.pie-tool-calculator__settings-content :global(.pie-tool-calculator__setting-label) {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
@@ -1307,7 +1309,7 @@ import { onMount } from 'svelte';
 		color: #333;
 	}
 
-	.settings-content :global(.setting-value) {
+	.pie-tool-calculator__settings-content :global(.pie-tool-calculator__setting-value) {
 		font-weight: normal;
 		color: #666;
 		font-size: 12px;

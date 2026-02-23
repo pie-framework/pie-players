@@ -6,6 +6,8 @@ This document provides a complete template for creating new assessment tools.
 
 **Package Name Pattern:** `@pie-framework/pie-tool-{name}`
 
+**CSS Class Pattern:** `pie-tool-{name}` root with `pie-tool-{name}__*` descendants
+
 Examples:
 - `@pie-framework/pie-tool-protractor`
 - `@pie-framework/pie-tool-ruler`
@@ -137,7 +139,7 @@ src/lib/tags/tool-{name}/
 {#if visible}
   <div
     bind:this={containerEl}
-    class="tool-{name}"
+    class="pie-tool-{name}"
     style="left: {position.x}px; top: {position.y}px;"
     on:mousedown={handleMouseDown}
     role="dialog"
@@ -145,10 +147,10 @@ src/lib/tags/tool-{name}/
     tabindex="-1"
   >
     <!-- Header -->
-    <div class="tool-header">
-      <span class="tool-title">{Name}</span>
+    <div class="pie-tool-{name}__header">
+      <span class="pie-tool-{name}__title">{Name}</span>
       <button 
-        class="close-btn" 
+        class="pie-tool-{name}__close-btn" 
         on:click={handleClose} 
         aria-label="Close {name}"
       >
@@ -157,14 +159,14 @@ src/lib/tags/tool-{name}/
     </div>
 
     <!-- Tool content goes here -->
-    <div class="tool-body">
+    <div class="pie-tool-{name}__body">
       <!-- Add your tool's UI here -->
     </div>
   </div>
 {/if}
 
 <style>
-  .tool-{name} {
+  .pie-tool-{name} {
     position: fixed;
     min-width: 200px;
     background: white;
@@ -175,7 +177,7 @@ src/lib/tags/tool-{name}/
     user-select: none;
   }
 
-  .tool-header {
+  .pie-tool-{name}__header {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -186,13 +188,13 @@ src/lib/tags/tool-{name}/
     cursor: move;
   }
 
-  .tool-title {
+  .pie-tool-{name}__title {
     font-weight: 600;
     font-size: 14px;
     color: #333;
   }
 
-  .close-btn {
+  .pie-tool-{name}__close-btn {
     background: none;
     border: none;
     font-size: 24px;
@@ -208,12 +210,12 @@ src/lib/tags/tool-{name}/
     border-radius: 4px;
   }
 
-  .close-btn:hover {
+  .pie-tool-{name}__close-btn:hover {
     background: #e0e0e0;
     color: #333;
   }
 
-  .tool-body {
+  .pie-tool-{name}__body {
     padding: 12px;
   }
 </style>

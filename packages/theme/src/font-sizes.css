@@ -106,14 +106,14 @@ pie-player[data-font-size] option {
 }
 
 /* Preserve normal size for tool UIs and controls */
-[data-font-size] .tool-toolbar,
-[data-font-size] .tool-toolbar *,
-[data-font-size] .calculator-tool,
-[data-font-size] .calculator-tool *,
+[data-font-size] .pie-tool-toolbar,
+[data-font-size] .pie-tool-toolbar *,
+[data-font-size] .pie-tool-calculator,
+[data-font-size] .pie-tool-calculator *,
 [data-font-size] .tool-settings-panel,
 [data-font-size] .tool-settings-panel *,
-[data-font-size] [class*="tool-"],
-[data-font-size] [class*="tool-"] *,
+[data-font-size] [class*="pie-tool-"],
+[data-font-size] [class*="pie-tool-"] *,
 [data-font-size] header,
 [data-font-size] header *,
 [data-font-size] footer,

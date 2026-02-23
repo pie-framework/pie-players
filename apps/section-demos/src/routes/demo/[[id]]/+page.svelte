@@ -268,7 +268,19 @@ import { onDestroy, onMount, untrack } from 'svelte';
 							enabledTools: defaultToolsList,
 							calculator: {
 								enabled: true,
-								provider: 'mathjs'
+								provider: 'desmos',
+								authFetcher: async () => {
+									const response = await fetch('/api/tools/desmos/auth');
+									if (!response.ok) {
+										throw new Error(
+											`Failed to load Desmos auth config: ${response.status} ${response.statusText}`
+										);
+									}
+									const authConfig = await response.json();
+									return {
+										apiKey: authConfig?.apiKey || undefined
+									};
+								}
 							},
 							graph: { enabled: true },
 							periodicTable: { enabled: true },
@@ -428,7 +440,10 @@ import { onDestroy, onMount, untrack } from 'svelte';
 							...(parsedConfig?.highlightStyle || {})
 						}
 					};
-					console.log('[Demo] Loaded TTS config from localStorage:', ttsConfig);
+					console.log(
+						'[Demo] Loaded TTS config from localStorage:',
+						$state.snapshot(ttsConfig)
+					);
 				}
 			} catch (e) {
 				console.error('Failed to load persisted TTS config:', e);
@@ -441,7 +456,10 @@ import { onDestroy, onMount, untrack } from 'svelte';
 					const parsed = JSON.parse(storedLayoutConfig);
 					layoutConfig = parsed;
 					toolbarPosition = parsed.toolbarPosition;
-					console.log('[Demo] Loaded layout config from localStorage:', layoutConfig);
+					console.log(
+						'[Demo] Loaded layout config from localStorage:',
+						$state.snapshot(layoutConfig)
+					);
 				}
 			} catch (e) {
 				console.error('Failed to load persisted layout config:', e);

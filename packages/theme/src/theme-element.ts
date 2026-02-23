@@ -46,7 +46,15 @@ const LIGHT_THEME_VARS: ThemeVariables = {
 	"--pie-blue-grey-100": "#f3f5f7",
 	"--pie-blue-grey-300": "#c0c3cf",
 	"--pie-blue-grey-600": "#7e8494",
-	"--pie-blue-grey-900": "#152452"
+	"--pie-blue-grey-900": "#152452",
+	"--pie-button-bg": "#ffffff",
+	"--pie-button-border": "#d1d5db",
+	"--pie-button-color": "#374151",
+	"--pie-button-hover-bg": "#f9fafb",
+	"--pie-button-hover-border": "#9ca3af",
+	"--pie-button-hover-color": "#111827",
+	"--pie-button-active-bg": "#f3f4f6",
+	"--pie-button-focus-outline": "#3b82f6",
 };
 
 const DARK_THEME_VARS: ThemeVariables = {
@@ -88,7 +96,15 @@ const DARK_THEME_VARS: ThemeVariables = {
 	"--pie-blue-grey-100": "#2a2a2a",
 	"--pie-blue-grey-300": "#555555",
 	"--pie-blue-grey-600": "#999999",
-	"--pie-blue-grey-900": "#ffffff"
+	"--pie-blue-grey-900": "#ffffff",
+	"--pie-button-bg": "#1f2937",
+	"--pie-button-border": "#4b5563",
+	"--pie-button-color": "#f9fafb",
+	"--pie-button-hover-bg": "#374151",
+	"--pie-button-hover-border": "#6b7280",
+	"--pie-button-hover-color": "#ffffff",
+	"--pie-button-active-bg": "#4b5563",
+	"--pie-button-focus-outline": "#93c5fd",
 };
 
 function isThemeMode(value: string | null): value is ThemeMode {
@@ -117,7 +133,9 @@ function parseVariableOverrides(value: unknown): ThemeVariables {
 	}
 
 	const output: ThemeVariables = {};
-	for (const [key, rawValue] of Object.entries(value as Record<string, unknown>)) {
+	for (const [key, rawValue] of Object.entries(
+		value as Record<string, unknown>,
+	)) {
 		if (!key.startsWith("--")) {
 			continue;
 		}
@@ -192,7 +210,7 @@ export class PieThemeElement extends HTMLElementBase {
 	attributeChangedCallback(
 		name: string,
 		oldValue: string | null,
-		newValue: string | null
+		newValue: string | null,
 	) {
 		if (oldValue === newValue) {
 			return;
@@ -223,13 +241,17 @@ export class PieThemeElement extends HTMLElementBase {
 
 		const effectiveTheme = this.resolveEffectiveTheme();
 		const target = this.getTarget();
-		const themeVars = effectiveTheme === "dark" ? DARK_THEME_VARS : LIGHT_THEME_VARS;
+		target.setAttribute("data-theme", effectiveTheme);
+
+		const themeVars =
+			effectiveTheme === "dark" ? DARK_THEME_VARS : LIGHT_THEME_VARS;
+		const daisyVars = this.resolveDaisyVariables(target);
 		const vars = {
 			...themeVars,
-			...this.variablesOverride
+			...daisyVars,
+			...this.variablesOverride,
 		};
 
-		target.setAttribute("data-theme", effectiveTheme);
 		this.clearPreviousKeys(target);
 		for (const [key, value] of Object.entries(vars)) {
 			target.style.setProperty(key, value);
@@ -237,9 +259,95 @@ export class PieThemeElement extends HTMLElementBase {
 		this.previousKeys = new Set(Object.keys(vars));
 	}
 
+	private resolveDaisyVariables(target: HTMLElement): ThemeVariables {
+		const resolve = (el: HTMLElement) => {
+			const computed = getComputedStyle(el);
+			const value = (key: string) =>
+				computed.getPropertyValue(key).trim() || undefined;
+			const base100 = value("--color-base-100");
+			const base200 = value("--color-base-200");
+			const base300 = value("--color-base-300");
+			const baseContent = value("--color-base-content");
+			const primary = value("--color-primary");
+			const secondary = value("--color-secondary");
+			const accent = value("--color-accent");
+			const neutral = value("--color-neutral");
+			const neutralContent = value("--color-neutral-content");
+			const success = value("--color-success");
+			const successContent = value("--color-success-content");
+			const warning = value("--color-warning");
+			const error = value("--color-error");
+			const errorContent = value("--color-error-content");
+
+			if (!base100 && !baseContent && !primary) {
+				return null;
+			}
+
+			return Object.fromEntries(
+				Object.entries({
+					"--pie-background": base100,
+					"--pie-background-dark": base200,
+					"--pie-secondary-background": base200,
+					"--pie-dropdown-background": base300,
+					"--pie-text": baseContent,
+					"--pie-primary": primary,
+					"--pie-primary-light": primary,
+					"--pie-primary-dark": primary,
+					"--pie-secondary": secondary,
+					"--pie-secondary-light": secondary,
+					"--pie-secondary-dark": secondary,
+					"--pie-tertiary": accent,
+					"--pie-tertiary-light": accent,
+					"--pie-border": base300,
+					"--pie-border-light": base200,
+					"--pie-border-dark": neutral,
+					"--pie-border-gray": base300,
+					"--pie-correct": success,
+					"--pie-correct-secondary": successContent,
+					"--pie-correct-tertiary": success,
+					"--pie-correct-icon": success,
+					"--pie-incorrect": error,
+					"--pie-incorrect-secondary": errorContent,
+					"--pie-incorrect-icon": error,
+					"--pie-missing": warning,
+					"--pie-missing-icon": warning,
+					"--pie-disabled": base300,
+					"--pie-disabled-secondary": base200,
+					"--pie-focus-checked": primary,
+					"--pie-focus-checked-border": primary,
+					"--pie-focus-unchecked": base200,
+					"--pie-focus-unchecked-border": base300,
+					"--pie-blue-grey-100": base100,
+					"--pie-blue-grey-300": base200,
+					"--pie-blue-grey-600": base300,
+					"--pie-blue-grey-900": baseContent,
+					"--pie-black": neutralContent,
+					"--pie-white": base100,
+					"--pie-button-bg": base100,
+					"--pie-button-border": base300,
+					"--pie-button-color": baseContent,
+					"--pie-button-hover-bg": base200,
+					"--pie-button-hover-border": base300,
+					"--pie-button-hover-color": baseContent,
+					"--pie-button-active-bg": base300,
+					"--pie-button-focus-outline": primary,
+				}).filter((entry): entry is [string, string] => Boolean(entry[1])),
+			) as ThemeVariables;
+		};
+
+		return (
+			resolve(target) ??
+			(target !== document.documentElement
+				? (resolve(document.documentElement) ?? {})
+				: {})
+		);
+	}
+
 	private resolveEffectiveTheme(): "light" | "dark" {
 		if (this.theme === "auto") {
-			const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+			const prefersDark = window.matchMedia(
+				"(prefers-color-scheme: dark)",
+			).matches;
 			return prefersDark ? "dark" : "light";
 		}
 		return this.theme;

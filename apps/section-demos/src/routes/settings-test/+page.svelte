@@ -16,21 +16,23 @@ import { onMount } from 'svelte';
 		pollyEngine?: 'neural' | 'standard';
 		pollySampleRate?: number;
 		googleVoiceType?: 'wavenet' | 'standard' | 'studio';
+		highlightStyle?: {
+			color: string;
+			opacity: number;
+		};
 	};
 
 	let ttsConfig = $state<TTSConfigType>({
-		provider: 'polly',
-		voice: 'Joanna',
+		provider: 'browser',
+		voice: '',
 		rate: 1.0,
 		pitch: 1.0,
 		pollyEngine: 'neural',
-		pollySampleRate: 24000
-	});
-
-	let highlightConfig = $state({
-		enabled: true,
-		color: '#ffeb3b',
-		opacity: 0.4
+		pollySampleRate: 24000,
+		highlightStyle: {
+			color: '#ffeb3b',
+			opacity: 0.4
+		}
 	});
 
 	onMount(async () => {
@@ -51,7 +53,7 @@ import { onMount } from 'svelte';
 		console.log('[Settings Test] Settings closed without applying');
 	}
 
-	async function handleApply(settings: { tts: typeof ttsConfig; highlight: typeof highlightConfig }) {
+	async function handleApply(settings: { tts: typeof ttsConfig; layout: { toolbarPosition: 'top' | 'right' | 'bottom' | 'left' } }) {
 		console.log('[Settings Test] Applying settings:', settings);
 
 		// Re-initialize TTS if provider or voice changed
@@ -78,7 +80,6 @@ import { onMount } from 'svelte';
 
 		// Update configs
 		ttsConfig = settings.tts;
-		highlightConfig = settings.highlight;
 
 		// Save to localStorage
 		localStorage.setItem('toolkit-settings-test', JSON.stringify(settings));
@@ -123,16 +124,16 @@ import { onMount } from 'svelte';
 			<div class="config-section">
 				<h4>Highlighting Settings</h4>
 				<ul>
-					<li><strong>Enabled:</strong> {highlightConfig.enabled ? 'Yes' : 'No'}</li>
+					<li><strong>Mode:</strong> TTS highlight style</li>
 					<li>
 						<strong>Color:</strong>
 						<span
 							class="color-swatch"
-							style="background-color: {highlightConfig.color}"
+							style="background-color: {ttsConfig.highlightStyle?.color || '#ffeb3b'}"
 						></span>
-						{highlightConfig.color}
+						{ttsConfig.highlightStyle?.color || '#ffeb3b'}
 					</li>
-					<li><strong>Opacity:</strong> {Math.round(highlightConfig.opacity * 100)}%</li>
+					<li><strong>Opacity:</strong> {Math.round((ttsConfig.highlightStyle?.opacity || 0.4) * 100)}%</li>
 				</ul>
 			</div>
 		</div>
@@ -154,7 +155,7 @@ import { onMount } from 'svelte';
 					This is a test paragraph with
 					<span
 						class="highlighted"
-						style="background-color: {highlightConfig.color}; opacity: {highlightConfig.opacity}"
+						style="background-color: {ttsConfig.highlightStyle?.color || '#ffeb3b'}; opacity: {ttsConfig.highlightStyle?.opacity || 0.4}"
 					>
 						highlighted text
 					</span>
@@ -182,7 +183,6 @@ import { onMount } from 'svelte';
 		<AssessmentToolkitSettings
 			{ttsService}
 			bind:ttsConfig
-			bind:highlightConfig
 			onClose={handleClose}
 			onApply={handleApply}
 		/>

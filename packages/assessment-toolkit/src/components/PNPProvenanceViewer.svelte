@@ -3,7 +3,6 @@
 
 	// PNP Provenance Viewer Component
 	// Visualizes how PNP resolution decisions were made.
-	// See PNP_TESTING.md for usage documentation.
 
 	interface Props {
 		provenance: PNPResolutionProvenance;

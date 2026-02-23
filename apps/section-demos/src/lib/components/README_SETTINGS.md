@@ -90,20 +90,16 @@ interface Props {
     pitch: number;
     pollyEngine?: 'neural' | 'standard';
     pollySampleRate?: number;
-  };
-
-  // Highlight Configuration (bindable)
-  highlightConfig?: {
-    enabled: boolean;
-    color: string;
-    opacity: number;
+    highlightStyle?: {
+      color: string;
+      opacity: number;
+    };
   };
 
   // Event handlers
   onClose?: () => void;
   onApply?: (settings: {
     tts: typeof ttsConfig;
-    highlight: typeof highlightConfig;
   }) => void;
 }
 ```
@@ -130,18 +126,14 @@ interface Props {
   let ttsService = new TTSService();
 
   let ttsConfig = $state({
-    provider: 'polly',
-    voice: 'Joanna',
+    provider: 'browser',
+    voice: '',
     rate: 1.0,
     pitch: 1.0,
-    pollyEngine: 'neural',
-    pollySampleRate: 24000
-  });
-
-  let highlightConfig = $state({
-    enabled: true,
-    color: '#ffeb3b',
-    opacity: 0.4
+    highlightStyle: {
+      color: '#ffeb3b',
+      opacity: 0.4
+    }
   });
 
   async function handleApply(settings) {
@@ -152,7 +144,6 @@ interface Props {
 
     // Update configs
     ttsConfig = settings.tts;
-    highlightConfig = settings.highlight;
 
     // Save to localStorage
     localStorage.setItem('settings', JSON.stringify(settings));
@@ -170,7 +161,6 @@ interface Props {
   <AssessmentToolkitSettings
     {ttsService}
     bind:ttsConfig
-    bind:highlightConfig
     onClose={() => showSettings = false}
     onApply={handleApply}
   />

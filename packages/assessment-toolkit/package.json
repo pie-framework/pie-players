@@ -33,10 +33,6 @@
 			"svelte": "./src/components/PNPProvenanceViewer.svelte",
 			"import": "./src/components/PNPProvenanceViewer.svelte"
 		},
-		"./components/PNPProfileTester.svelte": {
-			"svelte": "./src/components/PNPProfileTester.svelte",
-			"import": "./src/components/PNPProfileTester.svelte"
-		},
 		"./services/pnp-standard-features": {
 			"types": "./dist/services/pnp-standard-features.d.ts",
 			"import": "./dist/services/pnp-standard-features.js"

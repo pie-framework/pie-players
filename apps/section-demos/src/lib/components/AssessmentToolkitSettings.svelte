@@ -5,18 +5,17 @@
 	let {
 		ttsService,
 		ttsConfig = $bindable({
-			provider: 'polly' as 'polly' | 'browser' | 'google',
-			voice: 'Joanna',
+			provider: 'browser' as 'polly' | 'browser' | 'google',
+			voice: '',
 			rate: 1.0,
 			pitch: 1.0,
 			pollyEngine: 'neural' as 'neural' | 'standard',
 			pollySampleRate: 24000,
-			googleVoiceType: 'wavenet' as 'wavenet' | 'standard' | 'studio'
-		}),
-		highlightConfig = $bindable({
-			enabled: true,
-			color: '#ffeb3b',
-			opacity: 0.4
+			googleVoiceType: 'wavenet' as 'wavenet' | 'standard' | 'studio',
+			highlightStyle: {
+				color: '#ffeb3b',
+				opacity: 0.4
+			}
 		}),
 		layoutConfig = $bindable({
 			toolbarPosition: 'right' as 'top' | 'right' | 'bottom' | 'left'
@@ -33,25 +32,55 @@
 			pollyEngine?: 'neural' | 'standard';
 			pollySampleRate?: number;
 			googleVoiceType?: 'wavenet' | 'standard' | 'studio';
-		};
-		highlightConfig?: {
-			enabled: boolean;
-			color: string;
-			opacity: number;
+			highlightStyle?: {
+				color: string;
+				opacity: number;
+			};
 		};
 		layoutConfig?: {
 			toolbarPosition: 'top' | 'right' | 'bottom' | 'left';
 		};
 		onClose?: () => void;
-		onApply?: (settings: { tts: typeof ttsConfig; highlight: typeof highlightConfig; layout: typeof layoutConfig }) => void;
+		onApply?: (settings: { tts: typeof ttsConfig; layout: typeof layoutConfig }) => void;
 	} = $props();
 
 	// Active tab
 	let activeTab = $state<'tts' | 'highlight' | 'layout'>('tts');
 
 	// Local copies for editing
-	let localTtsConfig = $state({ ...ttsConfig });
-	let localHighlightConfig = $state({ ...highlightConfig });
+	type NormalizedTtsConfig = {
+		provider: 'polly' | 'browser' | 'google';
+		voice: string;
+		rate: number;
+		pitch: number;
+		pollyEngine?: 'neural' | 'standard';
+		pollySampleRate?: number;
+		googleVoiceType?: 'wavenet' | 'standard' | 'studio';
+		highlightStyle: {
+			color: string;
+			opacity: number;
+		};
+	};
+
+	function normalizeTtsConfig(config: Partial<NormalizedTtsConfig> = {}): NormalizedTtsConfig {
+		return {
+			provider: 'browser' as 'polly' | 'browser' | 'google',
+			voice: '',
+			rate: 1.0,
+			pitch: 1.0,
+			pollyEngine: 'neural' as 'neural' | 'standard',
+			pollySampleRate: 24000,
+			googleVoiceType: 'wavenet' as 'wavenet' | 'standard' | 'studio',
+			...config,
+			highlightStyle: {
+				color: '#ffeb3b',
+				opacity: 0.4,
+				...(config?.highlightStyle || {})
+			}
+		};
+	}
+
+	let localTtsConfig = $state(normalizeTtsConfig(ttsConfig || {}));
 	let localLayoutConfig = $state({ ...layoutConfig });
 
 	// Voice options
@@ -308,27 +337,18 @@
 		if (onApply) {
 			onApply({
 				tts: localTtsConfig,
-				highlight: localHighlightConfig,
 				layout: localLayoutConfig
 			});
 		}
 	}
 
 	function handleReset() {
-		localTtsConfig = {
-			provider: 'polly',
-			voice: 'Joanna',
+		localTtsConfig = normalizeTtsConfig({
+			provider: 'browser',
+			voice: '',
 			rate: 1.0,
-			pitch: 1.0,
-			pollyEngine: 'neural',
-			pollySampleRate: 24000,
-			googleVoiceType: 'wavenet'
-		};
-		localHighlightConfig = {
-			enabled: true,
-			color: '#ffeb3b',
-			opacity: 0.4
-		};
+			pitch: 1.0
+		});
 		localLayoutConfig = {
 			toolbarPosition: 'right'
 		};
@@ -590,89 +610,80 @@
 			{:else if activeTab === 'highlight'}
 				<!-- Highlighting Settings -->
 				<div class="space-y-4">
-					<h4 class="font-semibold text-base">Text Highlighting Configuration</h4>
+					<h4 class="font-semibold text-base">TTS Highlight Style</h4>
+					<div class="text-sm opacity-80">
+						These settings control highlight styling used during text-to-speech playback.
+					</div>
 
 					<div class="form-control">
-						<label class="label cursor-pointer justify-start gap-3">
-							<input type="checkbox" bind:checked={localHighlightConfig.enabled} class="checkbox" />
-							<span class="label-text">Enable text highlighting</span>
-						</label>
 						<div class="label">
-							<span class="label-text-alt">Allow students to highlight text in passages and questions</span>
+							<span class="label-text">Highlight Color</span>
+						</div>
+						<div class="flex gap-2 flex-wrap">
+							{#each highlightPresets as preset}
+								<button
+									type="button"
+									class="btn btn-square"
+									class:btn-outline={localTtsConfig.highlightStyle.color !== preset.color}
+									style="background-color: {preset.color}; border-color: {preset.color};"
+									onclick={(e) => {
+										e.stopPropagation();
+										localTtsConfig.highlightStyle.color = preset.color;
+									}}
+									title={preset.name}
+								>
+									{#if localTtsConfig.highlightStyle.color === preset.color}
+										<span class="text-white text-xl">✓</span>
+									{/if}
+								</button>
+							{/each}
+							<input
+								type="color"
+								bind:value={localTtsConfig.highlightStyle.color}
+								class="btn btn-square"
+								title="Custom color"
+							/>
 						</div>
 					</div>
 
-					{#if localHighlightConfig.enabled}
-						<div class="form-control">
-							<div class="label">
-								<span class="label-text">Highlight Color</span>
-							</div>
-							<div class="flex gap-2 flex-wrap">
-								{#each highlightPresets as preset}
-									<button
-										type="button"
-										class="btn btn-square"
-										class:btn-outline={localHighlightConfig.color !== preset.color}
-										style="background-color: {preset.color}; border-color: {preset.color};"
-										onclick={(e) => {
-											e.stopPropagation();
-											localHighlightConfig.color = preset.color;
-										}}
-										title={preset.name}
-									>
-										{#if localHighlightConfig.color === preset.color}
-											<span class="text-white text-xl">✓</span>
-										{/if}
-									</button>
-								{/each}
-								<input
-									type="color"
-									bind:value={localHighlightConfig.color}
-									class="btn btn-square"
-									title="Custom color"
-								/>
-							</div>
+					<div class="form-control">
+						<label class="label" for="highlight-opacity-input">
+							<span class="label-text">
+								Opacity: {Math.round(localTtsConfig.highlightStyle.opacity * 100)}%
+							</span>
+						</label>
+						<input
+							id="highlight-opacity-input"
+							type="range"
+							bind:value={localTtsConfig.highlightStyle.opacity}
+							min="0.1"
+							max="1.0"
+							step="0.1"
+							class="range range-primary"
+							aria-label="Highlight opacity"
+						/>
+						<div class="w-full flex justify-between text-xs px-2 opacity-60">
+							<span>Subtle</span>
+							<span>Medium</span>
+							<span>Bold</span>
 						</div>
+					</div>
 
-						<div class="form-control">
-							<label class="label" for="highlight-opacity-input">
-								<span class="label-text">
-									Opacity: {Math.round(localHighlightConfig.opacity * 100)}%
+					<!-- Preview -->
+					<div class="alert">
+						<div>
+							<div class="text-sm">
+								This is a preview of how highlighted text will appear.
+								<span
+									class="px-1 rounded"
+									style="background-color: {localTtsConfig.highlightStyle.color}; opacity: {localTtsConfig.highlightStyle.opacity};"
+								>
+									Sample highlighted text
 								</span>
-							</label>
-							<input
-								id="highlight-opacity-input"
-								type="range"
-								bind:value={localHighlightConfig.opacity}
-								min="0.1"
-								max="1.0"
-								step="0.1"
-								class="range range-primary"
-								aria-label="Highlight opacity"
-							/>
-							<div class="w-full flex justify-between text-xs px-2 opacity-60">
-								<span>Subtle</span>
-								<span>Medium</span>
-								<span>Bold</span>
+								in the assessment.
 							</div>
 						</div>
-
-						<!-- Preview -->
-						<div class="alert">
-							<div>
-								<div class="text-sm">
-									This is a preview of how highlighted text will appear.
-									<span
-										class="px-1 rounded"
-										style="background-color: {localHighlightConfig.color}; opacity: {localHighlightConfig.opacity};"
-									>
-										Sample highlighted text
-									</span>
-									in the assessment.
-								</div>
-							</div>
-						</div>
-					{/if}
+					</div>
 				</div>
 			{:else if activeTab === 'layout'}
 				<!-- Layout Settings -->

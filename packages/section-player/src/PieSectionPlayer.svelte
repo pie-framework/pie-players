@@ -675,22 +675,22 @@ import type {
 
 	.error {
 		padding: 1rem;
-		background: #fee;
-		border: 1px solid #fcc;
+		background: var(--pie-incorrect-secondary, #fee);
+		border: 1px solid var(--pie-incorrect, #fcc);
 		border-radius: 4px;
-		color: #c00;
+		color: var(--pie-incorrect-icon, #c00);
 	}
 
 	.loading {
 		padding: 2rem;
 		text-align: center;
-		color: #666;
+		color: var(--pie-disabled, #666);
 	}
 
 	.section-instructions {
 		margin-bottom: 1.5rem;
 		padding: 1rem;
-		background: #f5f5f5;
+		background: var(--pie-secondary-background, #f5f5f5);
 		border-radius: 4px;
 	}
 
@@ -700,10 +700,10 @@ import type {
 		gap: 0.75rem;
 		padding: 0.875rem 1rem;
 		margin-bottom: 1rem;
-		background: #fff3cd;
-		border: 1px solid #ffc107;
+		background: var(--pie-secondary-background, #fff3cd);
+		border: 1px solid var(--pie-missing, #ffc107);
 		border-radius: 4px;
-		color: #856404;
+		color: var(--pie-text, #856404);
 		font-size: 0.875rem;
 		line-height: 1.4;
 	}
@@ -724,7 +724,7 @@ import type {
 		background: transparent;
 		border: none;
 		border-radius: 2px;
-		color: #856404;
+		color: var(--pie-text, #856404);
 		cursor: pointer;
 		transition: background-color 0.2s;
 	}
@@ -734,7 +734,7 @@ import type {
 	}
 
 	.tts-error-dismiss:focus {
-		outline: 2px solid #856404;
+		outline: 2px solid var(--pie-focus-checked-border, #856404);
 		outline-offset: 2px;
 	}
 </style>

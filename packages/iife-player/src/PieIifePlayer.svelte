@@ -65,8 +65,8 @@
 	import { BundleType, createPieLogger, DEFAULT_BUNDLE_HOST, DEFAULT_LOADER_CONFIG, IifePieLoader, isGlobalDebugEnabled, makeUniqueTags } from '@pie-players/pie-players-shared';
 	import { PieItemPlayer, PieSpinner } from '@pie-players/pie-players-shared/components';
 	import { tick, untrack } from 'svelte';
-	// Import global component styles 
-	import './components.css';
+	// Import global component styles
+	import "@pie-players/pie-theme/components.css";
 
 	type ItemSession = {
 		id: string;

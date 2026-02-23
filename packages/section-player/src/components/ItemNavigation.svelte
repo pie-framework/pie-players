@@ -50,15 +50,15 @@
 		justify-content: space-between;
 		align-items: center;
 		padding: 1rem;
-		background: #f9f9f9;
-		border-top: 1px solid #e0e0e0;
+		background: var(--pie-secondary-background, #f9f9f9);
+		border-top: 1px solid var(--pie-border-light, #e0e0e0);
 		gap: 1rem;
 	}
 
 	.nav-button {
 		padding: 0.5rem 1rem;
-		background: #007bff;
-		color: white;
+		background: var(--pie-primary, #007bff);
+		color: var(--pie-white, white);
 		border: none;
 		border-radius: 4px;
 		cursor: pointer;
@@ -68,18 +68,18 @@
 	}
 
 	.nav-button:hover:not(:disabled) {
-		background: #0056b3;
+		background: var(--pie-primary-dark, #0056b3);
 	}
 
 	.nav-button:disabled {
-		background: #ccc;
+		background: var(--pie-disabled-secondary, #ccc);
 		cursor: not-allowed;
 		opacity: 0.6;
 	}
 
 	.item-counter {
 		font-size: 0.9rem;
-		color: #666;
+		color: var(--pie-disabled, #666);
 		font-weight: 500;
 	}
 

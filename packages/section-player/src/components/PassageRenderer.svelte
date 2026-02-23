@@ -234,7 +234,7 @@
 		display: block;
 		margin-bottom: 1rem;
 		padding: 1rem;
-		border: 1px solid #e5e7eb;
+		border: 1px solid var(--pie-border-light, #e5e7eb);
 		border-radius: 4px;
 	}
 
@@ -250,12 +250,12 @@
 		margin: 0;
 		font-size: 0.95rem;
 		font-weight: 600;
-		color: #1976d2;
+		color: var(--pie-primary, #1976d2);
 	}
 
 	.passage-content {
 		padding: 1rem;
-		border: 1px solid #e5e7eb;
+		border: 1px solid var(--pie-border-light, #e5e7eb);
 		border-radius: 4px;
 	}
 </style>

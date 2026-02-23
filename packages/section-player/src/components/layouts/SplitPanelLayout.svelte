@@ -230,7 +230,7 @@
 
 	.passages-panel.is-scrolling,
 	.items-panel.is-scrolling {
-		scrollbar-color: #c1c1c1 #f1f1f1;
+		scrollbar-color: var(--pie-blue-grey-300, #c1c1c1) var(--pie-secondary-background, #f1f1f1);
 	}
 
 	.divider {
@@ -245,7 +245,7 @@
 		min-height: 0;
 		position: relative;
 		cursor: col-resize;
-		background: #f3f4f6;
+		background: var(--pie-secondary-background, #f3f4f6);
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -255,11 +255,11 @@
 	}
 
 	.divider:hover {
-		background: #e5e7eb;
+		background: var(--pie-border-light, #e5e7eb);
 	}
 
 	.divider:focus {
-		outline: 2px solid #1976d2;
+		outline: 2px solid var(--pie-focus-checked-border, #1976d2);
 		outline-offset: -2px;
 	}
 
@@ -270,7 +270,7 @@
 		margin: auto;
 		width: 6px;
 		height: 60px;
-		background: #9ca3af;
+		background: var(--pie-blue-grey-600, #9ca3af);
 		border-radius: 3px;
 		transition: all 0.2s ease;
 		pointer-events: none;
@@ -284,7 +284,7 @@
 		transform: translate(-50%, -50%);
 		width: 2px;
 		height: 20px;
-		background: white;
+		background: var(--pie-white, white);
 		border-radius: 1px;
 		opacity: 0.8;
 	}
@@ -292,13 +292,13 @@
 	.divider:hover .divider-handle,
 	.divider:focus .divider-handle,
 	.divider.dragging .divider-handle {
-		background: #1976d2;
+		background: var(--pie-primary, #1976d2);
 		height: 80px;
 		box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3);
 	}
 
 	.divider.dragging {
-		background: #dbeafe;
+		background: var(--pie-primary-light, #dbeafe);
 	}
 
 	.passages-panel {
@@ -357,18 +357,18 @@
 
 	.passages-panel.is-scrolling::-webkit-scrollbar-track,
 	.items-panel.is-scrolling::-webkit-scrollbar-track {
-		background: #f1f1f1;
+		background: var(--pie-secondary-background, #f1f1f1);
 		border-radius: 4px;
 	}
 
 	.passages-panel.is-scrolling::-webkit-scrollbar-thumb,
 	.items-panel.is-scrolling::-webkit-scrollbar-thumb {
-		background: #c1c1c1;
+		background: var(--pie-blue-grey-300, #c1c1c1);
 		border-radius: 4px;
 	}
 
 	.passages-panel.is-scrolling::-webkit-scrollbar-thumb:hover,
 	.items-panel.is-scrolling::-webkit-scrollbar-thumb:hover {
-		background: #a1a1a1;
+		background: var(--pie-blue-grey-600, #a1a1a1);
 	}
 </style>

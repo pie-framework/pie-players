@@ -1,0 +1,60 @@
+{
+	"name": "@pie-players/pie-theme",
+	"version": "0.1.0",
+	"type": "module",
+	"description": "Shared PIE theme tokens, css variables, and theme custom element",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pie-framework/pie-players.git",
+		"directory": "packages/theme"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"unpkg": "./dist/index.js",
+	"jsdelivr": "./dist/index.js",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		},
+		"./theme-element": {
+			"types": "./dist/theme-element.d.ts",
+			"import": "./dist/theme-element.js"
+		},
+		"./tokens.css": "./src/tokens.css",
+		"./color-schemes.css": "./src/color-schemes.css",
+		"./font-sizes.css": "./src/font-sizes.css",
+		"./components.css": "./src/components.css"
+	},
+	"files": [
+		"dist",
+		"src/*.css",
+		"README.md"
+	],
+	"scripts": {
+		"build": "tsc -p tsconfig.json",
+		"dev": "tsc -p tsconfig.json --watch",
+		"typecheck": "tsc -p tsconfig.json --noEmit",
+		"lint": "biome check .",
+		"check": "tsc -p tsconfig.json --noEmit"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.3.10",
+		"typescript": "^5.9.3"
+	},
+	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/theme#readme",
+	"bugs": {
+		"url": "https://github.com/pie-framework/pie-players/issues"
+	},
+	"engines": {
+		"node": ">=18.0.0"
+	},
+	"sideEffects": [
+		"./dist/index.js",
+		"./src/*.css"
+	]
+}

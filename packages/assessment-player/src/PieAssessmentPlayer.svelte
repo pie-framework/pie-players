@@ -44,8 +44,8 @@
 	} from '@pie-players/pie-players-shared';
 	import { onMount, untrack } from 'svelte';
 
-	import './color-schemes.css';
-	import './font-sizes.css';
+	import "@pie-players/pie-theme/color-schemes.css";
+	import "@pie-players/pie-theme/font-sizes.css";
 
 	type LoadItemFn = (itemVId: string, opts?: { organizationId?: string | null }) => Promise<any>;
 

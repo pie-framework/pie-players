@@ -64,8 +64,8 @@
 	import { PieItemPlayer, PieSpinner } from '@pie-players/pie-players-shared/components';
 	import { tick } from 'svelte';
 
-	// Import global component styles 
-	import './components.css';
+	// Import global component styles
+	import "@pie-players/pie-theme/components.css";
 	
 	type ItemSession = {
 		id: string;

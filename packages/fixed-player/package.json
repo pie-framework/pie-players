@@ -37,6 +37,7 @@
 	},
 	"dependencies": {
 		"@pie-players/pie-players-shared": "workspace:*",
+		"@pie-players/pie-theme": "workspace:*",
 		"daisyui": "^5.5.18"
 	},
 	"devDependencies": {

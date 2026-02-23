@@ -24,11 +24,13 @@ import { BrowserTTSProvider } from "./tts/browser-provider.js";
 import {
 	ToolProviderRegistry,
 	DesmosToolProvider,
+	MathJsToolProvider,
 	TIToolProvider,
 	TTSToolProvider,
 } from "./tool-providers/index.js";
 import type {
 	DesmosToolProviderConfig,
+	MathJsToolProviderConfig,
 	TIToolProviderConfig,
 	TTSToolProviderConfig,
 } from "./tool-providers/index.js";
@@ -66,7 +68,9 @@ export interface AnswerEliminatorToolConfig extends ToolConfig {
 export interface CalculatorToolConfig extends ToolConfig {
 	provider?: "desmos" | "ti" | "mathjs";
 	authFetcher?: () => Promise<
-		Partial<DesmosToolProviderConfig | TIToolProviderConfig>
+		Partial<
+			DesmosToolProviderConfig | TIToolProviderConfig | MathJsToolProviderConfig
+		>
 	>;
 }
 
@@ -257,6 +261,19 @@ export class ToolkitCoordinator {
 				} catch (error) {
 					console.warn(
 						"[ToolkitCoordinator] Failed to register TI calculator provider:",
+						error,
+					);
+				}
+			} else if (provider === "mathjs") {
+				try {
+					this.toolProviderRegistry.register("calculator-mathjs", {
+						provider: new MathJsToolProvider(),
+						config: {},
+						lazy: true,
+					});
+				} catch (error) {
+					console.warn(
+						"[ToolkitCoordinator] Failed to register Math.js calculator provider:",
 						error,
 					);
 				}

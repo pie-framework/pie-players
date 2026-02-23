@@ -123,27 +123,19 @@ pie-player[data-font-size] option {
 [data-font-size] button:not(.pie-button),
 [data-font-size] .btn,
 [data-font-size] .btn * {
-	font-size: 1rem !important; /* Reset to normal for UI controls */
+	font-size: 1rem !important;
 }
 
 /* Ensure proper line-height scaling for readability */
 [data-font-size="large"] pie-player,
 [data-font-size="xlarge"] pie-player,
 [data-font-size="xxlarge"] pie-player {
-	line-height: 1.6; /* Increased line height for better readability at larger sizes */
+	line-height: 1.6;
 }
 
 /* Prevent layout issues with scaled text */
 [data-font-size] pie-player {
-	/* Allow content to reflow naturally */
 	overflow-wrap: break-word;
 	word-wrap: break-word;
 	hyphens: auto;
 }
-
-/* WCAG 2.2 Level AA Compliance Notes:
- * - 1.4.4 Resize Text: Text can be resized up to 200% (we support up to 175% via presets, plus browser zoom)
- * - 1.4.8 Visual Presentation: Line spacing and paragraph spacing scale proportionally
- * - 1.4.10 Reflow: Content reflows without horizontal scrolling
- * - 1.4.12 Text Spacing: User can override text spacing without loss of functionality
- */

@@ -120,7 +120,7 @@
 	}
 
 	.vertical-layout.is-scrolling {
-		scrollbar-color: #c1c1c1 #f1f1f1;
+		scrollbar-color: var(--pie-blue-grey-300, #c1c1c1) var(--pie-secondary-background, #f1f1f1);
 	}
 
 	.passages-section {
@@ -163,16 +163,16 @@
 	}
 
 	.vertical-layout.is-scrolling::-webkit-scrollbar-track {
-		background: #f1f1f1;
+		background: var(--pie-secondary-background, #f1f1f1);
 		border-radius: 4px;
 	}
 
 	.vertical-layout.is-scrolling::-webkit-scrollbar-thumb {
-		background: #c1c1c1;
+		background: var(--pie-blue-grey-300, #c1c1c1);
 		border-radius: 4px;
 	}
 
 	.vertical-layout.is-scrolling::-webkit-scrollbar-thumb:hover {
-		background: #a1a1a1;
+		background: var(--pie-blue-grey-600, #a1a1a1);
 	}
 </style>

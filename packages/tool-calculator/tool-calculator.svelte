@@ -138,6 +138,17 @@ import { onMount } from 'svelte';
 		return DESMOS_CALCULATOR_TYPES.includes(type);
 	}
 
+	function getConfiguredProviderId(): 'calculator-desmos' | 'calculator-ti' | 'calculator-mathjs' {
+		const configuredProvider = toolkitCoordinator?.config?.tools?.floatingTools?.calculator?.provider;
+		if (configuredProvider === 'ti') {
+			return 'calculator-ti';
+		}
+		if (configuredProvider === 'mathjs') {
+			return 'calculator-mathjs';
+		}
+		return 'calculator-desmos';
+	}
+
 	async function getProvider(type: CalculatorType) {
 		console.log('[ToolCalculator] getProvider called', {
 			type,
@@ -151,8 +162,9 @@ import { onMount } from 'svelte';
 		}
 
 		try {
-			console.log('[ToolCalculator] Requesting calculator-desmos provider from registry');
-			const provider = await toolkitCoordinator.toolProviderRegistry.getProvider('calculator-desmos');
+			const providerId = getConfiguredProviderId();
+			console.log(`[ToolCalculator] Requesting ${providerId} provider from registry`);
+			const provider = await toolkitCoordinator.toolProviderRegistry.getProvider(providerId);
 			console.log('[ToolCalculator] Got provider from registry:', provider);
 			return provider;
 		} catch (error) {

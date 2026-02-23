@@ -66,6 +66,7 @@
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
 		"@pie-players/pie-iife-player": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*",
+		"@pie-players/pie-theme": "workspace:*",
 		"@pie-players/pie-tool-annotation-toolbar": "workspace:*",
 		"@pie-players/pie-tool-color-scheme": "workspace:*",
 		"@pie-players/pie-tool-text-to-speech": "workspace:*",

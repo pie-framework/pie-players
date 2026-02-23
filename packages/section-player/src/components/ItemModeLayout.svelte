@@ -127,15 +127,15 @@
 
 	.passages-section :global(.passage-item) {
 		padding: 1rem;
-		background: #fafafa;
-		border: 1px solid #e0e0e0;
+		background: var(--pie-secondary-background, #fafafa);
+		border: 1px solid var(--pie-border-light, #e0e0e0);
 		border-radius: 4px;
 	}
 
 	.current-item-section {
 		padding: 1rem;
-		background: white;
-		border: 1px solid #e0e0e0;
+		background: var(--pie-white, white);
+		border: 1px solid var(--pie-border-light, #e0e0e0);
 		border-radius: 4px;
 		min-height: 300px;
 	}
@@ -143,7 +143,7 @@
 	.no-item {
 		padding: 2rem;
 		text-align: center;
-		color: #999;
+		color: var(--pie-disabled-secondary, #999);
 	}
 
 	/* Responsive */

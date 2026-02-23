@@ -287,11 +287,7 @@ import { onDestroy, onMount, untrack } from 'svelte';
 							enabledTools: defaultToolsList,
 							calculator: {
 								enabled: true,
-								provider: 'desmos',
-								authFetcher: async () => {
-									const response = await fetch('/api/tools/desmos/auth');
-									return response.json();
-								}
+								provider: 'mathjs'
 							},
 							graph: { enabled: true },
 							periodicTable: { enabled: true },

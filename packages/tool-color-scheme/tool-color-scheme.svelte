@@ -138,9 +138,11 @@
 			root.setAttribute('data-color-scheme', schemeId);
 		}
 
-		// Also apply to pie-player elements
-		const piePlayers = document.querySelectorAll('pie-player');
-		piePlayers.forEach(player => {
+		// Also mirror on all player host elements
+		const piePlayers = document.querySelectorAll(
+			'pie-player, pie-inline-player, pie-iife-player, pie-fixed-player, pie-esm-player, pie-assessment-player, pie-section-player',
+		);
+		piePlayers.forEach((player) => {
 			if (schemeId === 'default') {
 				player.removeAttribute('data-color-scheme');
 			} else {
@@ -231,8 +233,8 @@
 	onMount(() => {
 		// Load saved scheme from localStorage safely
 		if (browser) {
-			const saved = safeLocalStorageGet<string>('pie-color-scheme', 'default');
-			if (saved && saved !== 'default') {
+			const saved = safeLocalStorageGet('pie-color-scheme') ?? 'default';
+			if (saved !== 'default') {
 				currentScheme = saved;
 				// Use requestAnimationFrame to ensure DOM and styles are ready
 				requestAnimationFrame(() => {

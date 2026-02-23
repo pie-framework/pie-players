@@ -30,8 +30,13 @@
 <script lang="ts">
 	import type {
 		IToolCoordinator,
-		ToolProviderRegistry,
 	} from '@pie-players/pie-assessment-toolkit';
+	import '@pie-players/pie-tool-graph';
+	import '@pie-players/pie-tool-line-reader';
+	import '@pie-players/pie-tool-magnifier';
+	import '@pie-players/pie-tool-periodic-table';
+	import '@pie-players/pie-tool-protractor';
+	import '@pie-players/pie-tool-ruler';
 	import { onDestroy, onMount } from 'svelte';
 
 	const isBrowser = typeof window !== 'undefined';
@@ -41,12 +46,12 @@
 		enabledTools = 'graph,periodicTable,protractor,lineReader,magnifier,ruler',
 		position = 'bottom',
 		toolCoordinator,
-		toolProviderRegistry
+		toolProviderRegistry: _toolProviderRegistry
 	}: {
 		enabledTools?: string;
 		position?: 'top' | 'right' | 'bottom' | 'left' | 'none';
 		toolCoordinator?: IToolCoordinator;
-		toolProviderRegistry?: ToolProviderRegistry;
+		toolProviderRegistry?: unknown;
 	} = $props();
 
 	// Parse enabled tools from comma-separated string
@@ -88,7 +93,7 @@
 		const tool = toolButtons.find(t => t.id === toolId);
 		if (tool) {
 			const isVisible = toolCoordinator.isToolVisible(toolId);
-			statusMessage = `${tool.label} ${isVisible ? 'opened' : 'closed'}`;
+			statusMessage = `${tool.ariaLabel} ${isVisible ? 'opened' : 'closed'}`;
 		}
 	}
 
@@ -96,33 +101,23 @@
 	let unsubscribe: (() => void) | null = null;
 
 	onMount(() => {
-		if (isBrowser && hasEnabledTools) {
-			const toolModules: Record<string, string> = {
-				calculator: '@pie-players/pie-tool-calculator',
-				graph: '@pie-players/pie-tool-graph',
-				periodicTable: '@pie-players/pie-tool-periodic-table',
-				protractor: '@pie-players/pie-tool-protractor',
-				lineReader: '@pie-players/pie-tool-line-reader',
-				magnifier: '@pie-players/pie-tool-magnifier',
-				ruler: '@pie-players/pie-tool-ruler'
-			};
+		updateToolVisibility();
+	});
 
-			Promise.all(
-				enabledToolsList
-					.map((toolId) => toolModules[toolId])
-					.filter(Boolean)
-					.map((moduleId) => import(moduleId))
-			).catch((err) => {
-				console.error('[SectionToolsToolbar] Failed to load tool web components:', err);
-			});
-		}
+	$effect(() => {
+		unsubscribe?.();
+		unsubscribe = null;
+		if (!toolCoordinator) return;
 
-		if (toolCoordinator) {
+		updateToolVisibility();
+		unsubscribe = toolCoordinator.subscribe(() => {
 			updateToolVisibility();
-			unsubscribe = toolCoordinator.subscribe(() => {
-				updateToolVisibility();
-			});
-		}
+		});
+
+		return () => {
+			unsubscribe?.();
+			unsubscribe = null;
+		};
 	});
 
 	onDestroy(() => {
@@ -246,6 +241,7 @@
 			bind:this={graphElement}
 			visible={showGraph}
 			tool-id="graph"
+			coordinator={toolCoordinator}
 		></pie-tool-graph>
 	{/if}
 
@@ -254,6 +250,7 @@
 			bind:this={periodicTableElement}
 			visible={showPeriodicTable}
 			tool-id="periodicTable"
+			coordinator={toolCoordinator}
 		></pie-tool-periodic-table>
 	{/if}
 
@@ -262,6 +259,7 @@
 			bind:this={protractorElement}
 			visible={showProtractor}
 			tool-id="protractor"
+			coordinator={toolCoordinator}
 		></pie-tool-protractor>
 	{/if}
 
@@ -270,6 +268,7 @@
 			bind:this={lineReaderElement}
 			visible={showLineReader}
 			tool-id="lineReader"
+			coordinator={toolCoordinator}
 		></pie-tool-line-reader>
 	{/if}
 
@@ -278,6 +277,7 @@
 			bind:this={magnifierElement}
 			visible={showMagnifier}
 			tool-id="magnifier"
+			coordinator={toolCoordinator}
 		></pie-tool-magnifier>
 	{/if}
 
@@ -286,6 +286,7 @@
 			bind:this={rulerElement}
 			visible={showRuler}
 			tool-id="ruler"
+			coordinator={toolCoordinator}
 		></pie-tool-ruler>
 	{/if}
 
@@ -374,7 +375,7 @@
 		transition: all 0.15s ease;
 	}
 
-	.tool-button svg {
+	.tool-button :global(svg) {
 		width: 100%;
 		height: 100%;
 	}

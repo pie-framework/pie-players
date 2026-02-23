@@ -864,4 +864,4 @@ The math renderer provider pattern is now consistent between both projects, prov
 - **Created:** 2026-02-02
 - **pie-elements-ng analyzed:** `/pie-elements-ng/packages/element-player/`
 - **pie-players analyzed:** `/pie-players/packages/esm-player/`, `/pie-players/packages/players-shared/`
-- **Related:** [MATH-RENDERER-ARCHITECTURE.md](../MATH-RENDERER-ARCHITECTURE.md), [ARCHITECTURE.md](ARCHITECTURE.md)
+- **Related:** [MATH-RENDERER-ARCHITECTURE.md](MATH-RENDERER-ARCHITECTURE.md), [ARCHITECTURE.md](ARCHITECTURE.md)

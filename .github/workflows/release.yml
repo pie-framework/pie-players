@@ -139,6 +139,10 @@ jobs:
         if: (github.event_name == 'workflow_dispatch' && inputs.release_intent == 'publish') || (github.event_name != 'workflow_dispatch' && steps.detect.outputs.has_version_bumps == 'true')
         run: bun run test
 
+      - name: Check custom element package compliance (publish runs only)
+        if: (github.event_name == 'workflow_dispatch' && inputs.release_intent == 'publish') || (github.event_name != 'workflow_dispatch' && steps.detect.outputs.has_version_bumps == 'true')
+        run: bun run check:custom-elements
+
       - name: Run publish preflight checks (publish runs only)
         if: (github.event_name == 'workflow_dispatch' && inputs.release_intent == 'publish') || (github.event_name != 'workflow_dispatch' && steps.detect.outputs.has_version_bumps == 'true')
         run: bun run verify:publish

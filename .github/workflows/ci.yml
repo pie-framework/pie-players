@@ -35,6 +35,9 @@ jobs:
       - name: Check Source Export Policy
         run: bun run check:source-exports
 
+      - name: Check Custom Element Package Compliance
+        run: bun run check:custom-elements
+
       - name: Build Packages
         run: bun run build
 
@@ -80,6 +83,9 @@ jobs:
       - name: Check Source Export Policy
         run: bun run check:source-exports
 
+      - name: Check Custom Element Package Compliance
+        run: bun run check:custom-elements
+
       - name: Build All Packages
         run: bun run build
 
@@ -117,6 +123,9 @@ jobs:
 
       - name: Check Source Export Policy
         run: bun run check:source-exports
+
+      - name: Check Custom Element Package Compliance
+        run: bun run check:custom-elements
 
       - name: Build Packages
         run: bun run build

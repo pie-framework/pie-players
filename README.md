@@ -59,7 +59,7 @@ bun run release:label:push           # Create and push tag to origin
 ## Documentation
 
 - [Architecture](docs/ARCHITECTURE.md)
-- [Math Renderer Architecture](MATH-RENDERER-ARCHITECTURE.md) - Pluggable math rendering system
+- [Math Renderer Architecture](docs/MATH-RENDERER-ARCHITECTURE.md) - Pluggable math rendering system
 - [Authoring Mode](docs/AUTHORING_MODE.md)
 - [GitHub Pages Setup](docs/GITHUB_PAGES_SETUP.md)
 - [NPM Token Setup](docs/NPM_TOKEN_SETUP.md)

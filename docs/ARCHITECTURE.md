@@ -520,7 +520,7 @@ Build your own assessment player using toolkit services for complete control ove
 
 - [Authoring Mode Guide](AUTHORING_MODE.md) - Complete authoring documentation
 - [Tools & Accommodations Architecture](tools-and-accomodations/architecture.md) - Tools system design
-- [Math Renderer Architecture](../MATH-RENDERER-ARCHITECTURE.md) - Pluggable math rendering
+- [Math Renderer Architecture](MATH-RENDERER-ARCHITECTURE.md) - Pluggable math rendering
 - [Question Layout Engine Architecture](question-layout-engine-architecture.md) - Layout system design
 
 ### Package Documentation

@@ -33,13 +33,13 @@ import { onMount } from 'svelte';
     let itemContainerClassAttr: string = '';
 
     $: passageContainerClassAttr = [
-        'passage-container',
+        'pie-player-passage-container',
         customClassname || '',
         passageContainerClass || ''
     ].filter(Boolean).join(' ');
 
     $: itemContainerClassAttr = [
-        'item-container',
+        'pie-player-item-container',
         customClassname || '',
         containerClass || ''
     ].filter(Boolean).join(' ');

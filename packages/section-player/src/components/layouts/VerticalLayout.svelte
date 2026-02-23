@@ -61,13 +61,12 @@
 </script>
 
 <div
-	class="vertical-layout"
-	class:is-scrolling={isScrolling}
+	class={`pie-section-player__vertical-layout ${isScrolling ? 'pie-section-player__vertical-layout--scrolling' : ''}`}
 	onscroll={markScrolling}
 >
 	<!-- Passages -->
 	{#if passages.length > 0}
-		<div class="passages-section">
+		<div class="pie-section-player__passages-section">
 			{#each passages as passage (passage.id)}
 				<PassageRenderer
 					{passage}
@@ -76,16 +75,16 @@
 					{assessmentId}
 					{sectionId}
 					{toolkitCoordinator}
-					class="passage-item"
+					class="pie-section-player__passage-item"
 				/>
 			{/each}
 		</div>
 	{/if}
 
 	<!-- All Items -->
-	<div class="items-section">
+	<div class="pie-section-player__items-section">
 		{#each items as item, index (item.id || index)}
-			<div class="item-wrapper" data-item-index={index}>
+			<div class="pie-section-player__item-wrapper" data-item-index={index}>
 				<ItemRenderer
 					{item}
 					{env}
@@ -98,7 +97,7 @@
 					{sectionId}
 					{toolkitCoordinator}
 					onsessionchanged={handleItemSessionChanged(item.id || '')}
-					class="item-content"
+					class="pie-section-player__item-content"
 				/>
 			</div>
 		{/each}
@@ -106,7 +105,7 @@
 </div>
 
 <style>
-	.vertical-layout {
+	.pie-section-player__vertical-layout {
 		display: flex;
 		flex-direction: column;
 		gap: 1.5rem;
@@ -119,60 +118,60 @@
 		scrollbar-color: transparent transparent;
 	}
 
-	.vertical-layout.is-scrolling {
+	.pie-section-player__vertical-layout--scrolling {
 		scrollbar-color: var(--pie-blue-grey-300, #c1c1c1) var(--pie-secondary-background, #f1f1f1);
 	}
 
-	.passages-section {
+	.pie-section-player__passages-section {
 		display: flex;
 		flex-direction: column;
 		gap: 1.5rem;
 	}
 
-	.items-section {
+	.pie-section-player__items-section {
 		display: flex;
 		flex-direction: column;
 		gap: 1.5rem;
 	}
 
-	.item-wrapper {
+	.pie-section-player__item-wrapper {
 		flex-shrink: 0;
 	}
 
 	/* Responsive */
 	@media (max-width: 768px) {
-		.vertical-layout {
+		.pie-section-player__vertical-layout {
 			padding: 0.5rem;
 			gap: 1rem;
 		}
 
-		.items-section {
+		.pie-section-player__items-section {
 			gap: 1rem;
 		}
 	}
 
 	/* Hide scrollbar by default - WebKit (Chrome, Safari, Edge) */
-	.vertical-layout::-webkit-scrollbar {
+	.pie-section-player__vertical-layout::-webkit-scrollbar {
 		width: 0px;
 		background: transparent;
 	}
 
 	/* Show scrollbar while scrolling */
-	.vertical-layout.is-scrolling::-webkit-scrollbar {
+	.pie-section-player__vertical-layout--scrolling::-webkit-scrollbar {
 		width: 8px;
 	}
 
-	.vertical-layout.is-scrolling::-webkit-scrollbar-track {
+	.pie-section-player__vertical-layout--scrolling::-webkit-scrollbar-track {
 		background: var(--pie-secondary-background, #f1f1f1);
 		border-radius: 4px;
 	}
 
-	.vertical-layout.is-scrolling::-webkit-scrollbar-thumb {
+	.pie-section-player__vertical-layout--scrolling::-webkit-scrollbar-thumb {
 		background: var(--pie-blue-grey-300, #c1c1c1);
 		border-radius: 4px;
 	}
 
-	.vertical-layout.is-scrolling::-webkit-scrollbar-thumb:hover {
+	.pie-section-player__vertical-layout--scrolling::-webkit-scrollbar-thumb:hover {
 		background: var(--pie-blue-grey-600, #a1a1a1);
 	}
 </style>

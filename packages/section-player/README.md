@@ -547,12 +547,12 @@ The web component uses Shadow DOM mode `'none'`, so you can style it with global
   margin: 0 auto;
 }
 
-.pie-section-player .section-passages {
+.pie-section-player .pie-section-player__passages-section {
   background: #f5f5f5;
   padding: 1rem;
 }
 
-.pie-section-player .item-container {
+.pie-section-player .pie-section-player__item-content {
   border: 1px solid #ddd;
   margin-bottom: 1rem;
 }

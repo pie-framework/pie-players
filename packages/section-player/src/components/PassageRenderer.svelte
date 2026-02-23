@@ -180,14 +180,14 @@
 
 {#if passage.config}
 	<div
-		class="passage-renderer {className}"
+		class="pie-section-player__passage-renderer {className}"
 		bind:this={passageElement}
 		data-assessment-id={assessmentId}
 		data-section-id={sectionId}
 		data-item-id={passage.id}
 	>
-		<div class="passage-header">
-			<h3 class="passage-title">{passage.name || 'Passage'}</h3>
+		<div class="pie-section-player__passage-header">
+			<h3 class="pie-section-player__passage-title">{passage.name || 'Passage'}</h3>
 			<pie-question-toolbar
 				bind:this={questionToolbarElement}
 				item-id={passage.id}
@@ -198,7 +198,7 @@
 			></pie-question-toolbar>
 		</div>
 
-		<div class="passage-content" bind:this={passageContentElement}>
+		<div class="pie-section-player__passage-content" bind:this={passageContentElement}>
 			{#if hasElements}
 				<!-- Passage with PIE elements - use player -->
 				{#if useIifePlayer}
@@ -230,7 +230,7 @@
 {/if}
 
 <style>
-	.passage-renderer {
+	.pie-section-player__passage-renderer {
 		display: block;
 		margin-bottom: 1rem;
 		padding: 1rem;
@@ -238,7 +238,7 @@
 		border-radius: 4px;
 	}
 
-	.passage-header {
+	.pie-section-player__passage-header {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
@@ -246,14 +246,14 @@
 		margin-bottom: 0.5rem;
 	}
 
-	.passage-title {
+	.pie-section-player__passage-title {
 		margin: 0;
 		font-size: 0.95rem;
 		font-weight: 600;
 		color: var(--pie-primary, #1976d2);
 	}
 
-	.passage-content {
+	.pie-section-player__passage-content {
 		padding: 1rem;
 		border: 1px solid var(--pie-border-light, #e5e7eb);
 		border-radius: 4px;

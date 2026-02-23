@@ -97,18 +97,25 @@
 
 			// Find target container
 			// First check if button is in a header with a sibling content div
-			const header = containerEl?.closest('.passage-header, .item-header');
+			const header = containerEl?.closest(
+				'.pie-section-player__passage-header, .pie-section-player__item-header'
+			);
 			let targetContainer: Element | null = null;
 
 			if (header) {
 				// Look for sibling content div
 				const parent = header.parentElement;
-				targetContainer = parent?.querySelector('.passage-content, .item-content') || null;
+				targetContainer =
+					parent?.querySelector(
+						'.pie-section-player__passage-content, .pie-section-player__item-content'
+					) || null;
 			}
 
 			// Fallback: look up the parent chain
 			if (!targetContainer) {
-				targetContainer = containerEl?.closest('.passage-content, .item-content') || null;
+				targetContainer = containerEl?.closest(
+					'.pie-section-player__passage-content, .pie-section-player__item-content'
+				) || null;
 			}
 
 			if (!targetContainer) {

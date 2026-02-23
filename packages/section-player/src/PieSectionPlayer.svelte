@@ -467,20 +467,18 @@ import type {
 </script>
 
 <div
-	class="pie-section-player {customClassname}"
-	class:page-mode={isPageMode}
-	class:item-mode={!isPageMode}
+	class={`pie-section-player ${customClassname} ${isPageMode ? 'pie-section-player--page-mode' : 'pie-section-player--item-mode'}`}
 	data-assessment-id={assessmentId}
 	data-section-id={sectionId}
 >
 	{#if error}
-		<div class="error">
+		<div class="pie-section-player__error">
 			<p>Error loading section: {error}</p>
 		</div>
 	{:else if section}
 		<!-- Instructions -->
 		{#if instructions.length > 0}
-			<div class="section-instructions">
+			<div class="pie-section-player__instructions">
 				{#each instructions as rb}
 					{#if rb.passage && rb.passage.config}
 						<pie-esm-player
@@ -496,7 +494,7 @@ import type {
 
 		<!-- TTS Error Banner -->
 		{#if ttsError}
-			<div class="tts-error-banner" role="alert">
+			<div class="pie-section-player__tts-error-banner" role="alert">
 				<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 					<circle cx="12" cy="12" r="10"></circle>
 					<line x1="12" y1="8" x2="12" y2="12"></line>
@@ -504,7 +502,7 @@ import type {
 				</svg>
 				<span>Text-to-speech unavailable: {ttsError}</span>
 				<button
-					class="tts-error-dismiss"
+					class="pie-section-player__tts-error-dismiss"
 					onclick={() => ttsError = null}
 					aria-label="Dismiss error"
 				>
@@ -580,7 +578,7 @@ import type {
 					/>
 				{/if}
 			{:else}
-				<div class="loading">
+				<div class="pie-section-player__loading">
 					<p>Loading assessment elements...</p>
 				</div>
 			{/if}
@@ -595,7 +593,7 @@ import type {
 			></pie-section-tools-toolbar>
 		{/if}
 	{:else}
-		<div class="loading">
+		<div class="pie-section-player__loading">
 			<p>Loading section...</p>
 		</div>
 	{/if}
@@ -673,7 +671,7 @@ import type {
 		flex-direction: column;
 	}
 
-	.error {
+	.pie-section-player__error {
 		padding: 1rem;
 		background: var(--pie-incorrect-secondary, #fee);
 		border: 1px solid var(--pie-incorrect, #fcc);
@@ -681,20 +679,20 @@ import type {
 		color: var(--pie-incorrect-icon, #c00);
 	}
 
-	.loading {
+	.pie-section-player__loading {
 		padding: 2rem;
 		text-align: center;
 		color: var(--pie-disabled, #666);
 	}
 
-	.section-instructions {
+	.pie-section-player__instructions {
 		margin-bottom: 1.5rem;
 		padding: 1rem;
 		background: var(--pie-secondary-background, #f5f5f5);
 		border-radius: 4px;
 	}
 
-	.tts-error-banner {
+	.pie-section-player__tts-error-banner {
 		display: flex;
 		align-items: center;
 		gap: 0.75rem;
@@ -708,15 +706,15 @@ import type {
 		line-height: 1.4;
 	}
 
-	.tts-error-banner svg {
+	.pie-section-player__tts-error-banner svg {
 		flex-shrink: 0;
 	}
 
-	.tts-error-banner span {
+	.pie-section-player__tts-error-banner span {
 		flex: 1;
 	}
 
-	.tts-error-dismiss {
+	.pie-section-player__tts-error-dismiss {
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -729,11 +727,11 @@ import type {
 		transition: background-color 0.2s;
 	}
 
-	.tts-error-dismiss:hover {
+	.pie-section-player__tts-error-dismiss:hover {
 		background: rgba(0, 0, 0, 0.1);
 	}
 
-	.tts-error-dismiss:focus {
+	.pie-section-player__tts-error-dismiss:focus {
 		outline: 2px solid var(--pie-focus-checked-border, #856404);
 		outline-offset: 2px;
 	}

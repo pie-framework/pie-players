@@ -32,7 +32,7 @@
 		"check": "turbo check",
 		"dev:item": "dotenvx run -- bun run --cwd apps/item-demos dev",
 		"preview:item": "dotenvx run -- bun run --cwd apps/item-demos preview",
-		"dev:section": "dotenvx run -- bun run --cwd apps/section-demos dev",
+		"dev:section": "dotenvx run -- bun scripts/dev-section.ts",
 		"dev:section:cdn": "dotenvx run -- bun run --cwd apps/section-demos dev:cdn",
 		"dev:section:cdn-debug": "dotenvx run -- bun run --cwd apps/section-demos dev:cdn-debug",
 		"preview:section": "dotenvx run -- bun run --cwd apps/section-demos preview",

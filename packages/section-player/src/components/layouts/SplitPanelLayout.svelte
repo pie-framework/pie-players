@@ -131,16 +131,14 @@
 </script>
 
 <div
-	class="split-panel-layout"
-	class:no-passages={!hasPassages}
+	class={`pie-section-player__split-panel-layout ${!hasPassages ? 'pie-section-player__split-panel-layout--no-passages' : ''}`}
 	bind:this={containerElement}
 	style={hasPassages ? `grid-template-columns: ${leftPanelWidth}% 0.5rem ${100 - leftPanelWidth - 0.5}%` : 'grid-template-columns: 1fr'}
 >
 	{#if hasPassages}
 		<!-- Left Panel: Passages -->
 		<aside
-			class="passages-panel"
-			class:is-scrolling={passagesScrolling}
+			class={`pie-section-player__passages-panel ${passagesScrolling ? 'pie-section-player__panel--scrolling' : ''}`}
 			aria-label="Reading passages"
 			onscroll={() => markScrolling('passages')}
 		>
@@ -152,7 +150,7 @@
 					{assessmentId}
 					{sectionId}
 					{toolkitCoordinator}
-					class="passage-item"
+					class="pie-section-player__passage-item"
 				/>
 			{/each}
 		</aside>
@@ -160,25 +158,23 @@
 		<!-- Draggable Divider: focusable resize handle, Arrow keys adjust panel width -->
 		<button
 			type="button"
-			class="divider"
-			class:dragging={isDragging}
+			class={`pie-section-player__split-divider ${isDragging ? 'pie-section-player__split-divider--dragging' : ''}`}
 			onmousedown={handleMouseDown}
 			onkeydown={handleKeyDown}
 			aria-label="Resize panels"
 		>
-			<span class="divider-handle"></span>
+			<span class="pie-section-player__split-divider-handle"></span>
 		</button>
 	{/if}
 
 	<!-- Items Panel -->
 	<main
-		class="items-panel"
-		class:is-scrolling={itemsScrolling}
+		class={`pie-section-player__items-panel ${itemsScrolling ? 'pie-section-player__panel--scrolling' : ''}`}
 		aria-label="Assessment items"
 		onscroll={() => markScrolling('items')}
 	>
 		{#each items as item, index (item.id || index)}
-			<div class="item-wrapper" data-item-index={index}>
+			<div class="pie-section-player__item-wrapper" data-item-index={index}>
 				<ItemRenderer
 					{item}
 					{env}
@@ -191,7 +187,7 @@
 					{sectionId}
 					{toolkitCoordinator}
 					onsessionchanged={handleItemSessionChanged(item.id || '')}
-					class="item-content"
+					class="pie-section-player__item-content"
 				/>
 			</div>
 		{/each}
@@ -199,7 +195,7 @@
 </div>
 
 <style>
-	.split-panel-layout {
+	.pie-section-player__split-panel-layout {
 		display: grid;
 		grid-template-rows: 1fr;
 		padding: 1rem;
@@ -209,16 +205,16 @@
 		gap: 0;
 	}
 
-	.split-panel-layout.no-passages {
+	.pie-section-player__split-panel-layout--no-passages {
 		padding: 1rem;
 	}
 
-	.split-panel-layout.no-passages .items-panel {
+	.pie-section-player__split-panel-layout--no-passages .pie-section-player__items-panel {
 		padding: 0;
 	}
 
-	.passages-panel,
-	.items-panel {
+	.pie-section-player__passages-panel,
+	.pie-section-player__items-panel {
 		height: 100%;
 		overflow-y: auto;
 		overflow-x: hidden;
@@ -228,12 +224,11 @@
 		scrollbar-color: transparent transparent;
 	}
 
-	.passages-panel.is-scrolling,
-	.items-panel.is-scrolling {
+	.pie-section-player__panel--scrolling {
 		scrollbar-color: var(--pie-blue-grey-300, #c1c1c1) var(--pie-secondary-background, #f1f1f1);
 	}
 
-	.divider {
+	.pie-section-player__split-divider {
 		/* Reset button defaults so it looks like a divider strip */
 		border: none;
 		padding: 0;
@@ -254,16 +249,16 @@
 		transition: background 0.2s ease;
 	}
 
-	.divider:hover {
+	.pie-section-player__split-divider:hover {
 		background: var(--pie-border-light, #e5e7eb);
 	}
 
-	.divider:focus {
+	.pie-section-player__split-divider:focus {
 		outline: 2px solid var(--pie-focus-checked-border, #1976d2);
 		outline-offset: -2px;
 	}
 
-	.divider-handle {
+	.pie-section-player__split-divider-handle {
 		/* Absolutely centered in the divider button (button fills grid cell height) */
 		position: absolute;
 		inset: 0;
@@ -276,7 +271,7 @@
 		pointer-events: none;
 	}
 
-	.divider-handle::before {
+	.pie-section-player__split-divider-handle::before {
 		content: '';
 		position: absolute;
 		top: 50%;
@@ -289,86 +284,82 @@
 		opacity: 0.8;
 	}
 
-	.divider:hover .divider-handle,
-	.divider:focus .divider-handle,
-	.divider.dragging .divider-handle {
+	.pie-section-player__split-divider:hover .pie-section-player__split-divider-handle,
+	.pie-section-player__split-divider:focus .pie-section-player__split-divider-handle,
+	.pie-section-player__split-divider--dragging .pie-section-player__split-divider-handle {
 		background: var(--pie-primary, #1976d2);
 		height: 80px;
 		box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3);
 	}
 
-	.divider.dragging {
+	.pie-section-player__split-divider--dragging {
 		background: var(--pie-primary-light, #dbeafe);
 	}
 
-	.passages-panel {
+	.pie-section-player__passages-panel {
 		display: flex;
 		flex-direction: column;
 		gap: 1.5rem;
 	}
 
-	.items-panel {
+	.pie-section-player__items-panel {
 		display: flex;
 		flex-direction: column;
 		gap: 1.5rem;
 	}
 
-	.item-wrapper {
+	.pie-section-player__item-wrapper {
 		flex-shrink: 0;
 	}
 
 	/* Mobile/Narrow: Fall back to vertical layout */
 	@media (max-width: 768px) {
-		.split-panel-layout {
+		.pie-section-player__split-panel-layout {
 			grid-template-columns: 1fr !important;
 			gap: 1rem;
 			min-height: auto;
 			padding: 0.5rem;
 		}
 
-		.divider {
+		.pie-section-player__split-divider {
 			display: none;
 		}
 
-		.passages-panel,
-		.items-panel {
+		.pie-section-player__passages-panel,
+		.pie-section-player__items-panel {
 			height: auto;
 			max-height: none;
 			overflow-y: visible;
 		}
 
-		.items-panel {
+		.pie-section-player__items-panel {
 			gap: 1rem;
 		}
 	}
 
 	/* Hide scrollbar by default - WebKit (Chrome, Safari, Edge) */
-	.passages-panel::-webkit-scrollbar,
-	.items-panel::-webkit-scrollbar {
+	.pie-section-player__passages-panel::-webkit-scrollbar,
+	.pie-section-player__items-panel::-webkit-scrollbar {
 		width: 0px;
 		background: transparent;
 	}
 
 	/* Show scrollbar while scrolling */
-	.passages-panel.is-scrolling::-webkit-scrollbar,
-	.items-panel.is-scrolling::-webkit-scrollbar {
+	.pie-section-player__panel--scrolling::-webkit-scrollbar {
 		width: 8px;
 	}
 
-	.passages-panel.is-scrolling::-webkit-scrollbar-track,
-	.items-panel.is-scrolling::-webkit-scrollbar-track {
+	.pie-section-player__panel--scrolling::-webkit-scrollbar-track {
 		background: var(--pie-secondary-background, #f1f1f1);
 		border-radius: 4px;
 	}
 
-	.passages-panel.is-scrolling::-webkit-scrollbar-thumb,
-	.items-panel.is-scrolling::-webkit-scrollbar-thumb {
+	.pie-section-player__panel--scrolling::-webkit-scrollbar-thumb {
 		background: var(--pie-blue-grey-300, #c1c1c1);
 		border-radius: 4px;
 	}
 
-	.passages-panel.is-scrolling::-webkit-scrollbar-thumb:hover,
-	.items-panel.is-scrolling::-webkit-scrollbar-thumb:hover {
+	.pie-section-player__panel--scrolling::-webkit-scrollbar-thumb:hover {
 		background: var(--pie-blue-grey-600, #a1a1a1);
 	}
 </style>

@@ -460,7 +460,7 @@
 		<PieSpinner />
 	{:else}
 		<!-- Use PieItemPlayer for rendering - shared with all other players -->
-		<div class="player-item-container {containerClass}">
+		<div class="pie-player-item-container {containerClass}">
 			<PieItemPlayer
 				{itemConfig}
 				env={typeof env === 'string' ? JSON.parse(env) : env}
@@ -492,7 +492,7 @@
 		width: 100%;
 	}
 
-	:global(.player-item-container) {
+	:global(.pie-player-item-container) {
 		width: 100%;
 	}
 </style>

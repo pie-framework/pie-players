@@ -243,14 +243,14 @@
 
 {#if item.config}
   <div
-    class="item-renderer {className}"
+    class="pie-section-player__item-renderer {className}"
     bind:this={itemElement}
     data-assessment-id={assessmentId}
     data-section-id={sectionId}
     data-item-id={item.id}
   >
-    <div class="item-header">
-      <h4 class="item-title">{item.name || "Question"}</h4>
+    <div class="pie-section-player__item-header">
+      <h4 class="pie-section-player__item-title">{item.name || "Question"}</h4>
       <pie-question-toolbar
         bind:this={questionToolbarElement}
         item-id={item.id}
@@ -261,7 +261,7 @@
       ></pie-question-toolbar>
     </div>
 
-    <div class="item-content" bind:this={itemContentElement}>
+    <div class="pie-section-player__item-content" bind:this={itemContentElement}>
       {#if resolvedPlayerType === "iife"}
         <pie-iife-player bind:this={playerElement} bundle-host={bundleHost}
         ></pie-iife-player>
@@ -287,12 +287,12 @@
 {/if}
 
 <style>
-  .item-renderer {
+  .pie-section-player__item-renderer {
     display: block;
     margin-bottom: 1rem;
   }
 
-  .item-header {
+  .pie-section-player__item-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -300,14 +300,14 @@
     margin-bottom: 0.5rem;
   }
 
-  .item-title {
+  .pie-section-player__item-title {
     margin: 0;
     font-size: 0.95rem;
     font-weight: 600;
     color: var(--pie-primary, #1976d2);
   }
 
-  .item-content {
+  .pie-section-player__item-content {
     padding: 1rem;
     border: 1px solid var(--pie-border-light, #e5e7eb);
     border-radius: 4px;

@@ -397,7 +397,7 @@
 				style="display: flex; width: 100%; {isResizing ? 'user-select: none;' : ''}"
 			>
 				<div
-					class="player-stimulus-container {resolvedPassageContainerClass}"
+					class="pie-player-stimulus-container {resolvedPassageContainerClass}"
 					style="flex: 0 0 {splitPct}%; min-width: 0;"
 				>
 					<!-- Parity with pie-player: never apply addCorrectResponse to the passage side -->
@@ -437,7 +437,7 @@
 				{/if}
 				
 				<div
-					class="player-item-container {resolvedContainerClass}"
+					class="pie-player-item-container {resolvedContainerClass}"
 					style="flex: 1 1 calc({100 - splitPct}%); min-width: 0;"
 				>
 					<PieItemPlayer
@@ -491,8 +491,8 @@
 		width: 100%;
 	}
 	
-	:global(.player-item-container),
-	:global(.player-stimulus-container) {
+	:global(.pie-player-item-container),
+	:global(.pie-player-stimulus-container) {
 		width: 100%;
 	}
 </style>

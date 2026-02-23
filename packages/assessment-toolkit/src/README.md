@@ -369,8 +369,6 @@ await ttsService.updateSettings({
 });
 ```
 
-**Unified Settings UI**: A pre-built settings component is available in `section-demos/src/lib/components/AssessmentToolkitSettings.svelte` that provides a tabbed interface for configuring TTS, highlighting, and other toolkit features. See the component's README for integration details.
-
 ### AccessibilityCatalogResolver
 
 Manages QTI 3.0 accessibility catalogs (SSML, sign language, braille, simplified language, etc.).

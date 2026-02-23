@@ -7,6 +7,12 @@ type RunOptions = {
 	cwd?: string;
 };
 
+const sectionDemosDir = resolve(process.cwd(), "apps/section-demos");
+const svelteKitTsconfigPath = resolve(
+	sectionDemosDir,
+	".svelte-kit/tsconfig.json",
+);
+
 async function runCommand(cmd: string[], options: RunOptions = {}) {
 	const proc = Bun.spawn(cmd, {
 		cwd: options.cwd,
@@ -36,13 +42,20 @@ if (shouldRebuild) {
 	console.log("[dev:section] --rebuild enabled");
 	console.log("[dev:section] Cleaning section demo caches...");
 
-	removeDirIfExists(resolve(process.cwd(), "apps/section-demos/.svelte-kit"));
+	removeDirIfExists(resolve(sectionDemosDir, ".svelte-kit"));
 	removeDirIfExists(
-		resolve(process.cwd(), "apps/section-demos/node_modules/.vite"),
+		resolve(sectionDemosDir, "node_modules/.vite"),
 	);
 
 	console.log("[dev:section] Rebuilding workspace packages...");
 	await runCommand(["bun", "run", "build"]);
+}
+
+if (!existsSync(svelteKitTsconfigPath)) {
+	console.log("[dev:section] Syncing SvelteKit generated files...");
+	await runCommand(["bun", "x", "svelte-kit", "sync"], {
+		cwd: sectionDemosDir,
+	});
 }
 
 console.log("[dev:section] Starting section demo dev server...");

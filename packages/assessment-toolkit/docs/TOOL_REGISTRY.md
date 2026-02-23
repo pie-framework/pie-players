@@ -274,12 +274,21 @@ isVisibleInContext(context: ToolContext): boolean {
 
 ```typescript
 import { createDefaultToolRegistry } from '@pie-players/pie-assessment-toolkit';
+import {
+  DEFAULT_TOOL_MODULE_LOADERS,
+} from '@pie-players/pie-default-tool-loaders';
 
 // Create registry with all 12 default PIE tools
 const toolRegistry = createDefaultToolRegistry();
 
+// Optional: wire lazy module loaders at bootstrap
+const lazyRegistry = createDefaultToolRegistry({
+  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS
+});
+
 // Optional: replace default tag mapping/factories for selected tools
 const customRegistry = createDefaultToolRegistry({
+  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
   toolTagMap: {
     calculator: 'my-calculator-tool'
   },
@@ -287,6 +296,12 @@ const customRegistry = createDefaultToolRegistry({
     calculator: ({ tagName }) => document.createElement(tagName)
   }
 });
+
+// Optional: provide only section-level default loaders
+import {
+  registerSectionToolModuleLoaders
+} from '@pie-players/pie-default-tool-loaders';
+registerSectionToolModuleLoaders(customRegistry);
 
 // Or create custom registry
 const selectiveRegistry = new ToolRegistry();

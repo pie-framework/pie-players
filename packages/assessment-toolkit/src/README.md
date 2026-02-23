@@ -555,8 +555,11 @@ and can be overridden via `createDefaultToolRegistry(...)`:
 
 ```typescript
 import { createDefaultToolRegistry } from '@pie-players/pie-assessment-toolkit';
+import { DEFAULT_TOOL_MODULE_LOADERS } from '@pie-players/pie-default-tool-loaders';
 
 const toolRegistry = createDefaultToolRegistry({
+  // Lazy tool module loading (recommended)
+  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
   toolTagMap: {
     calculator: 'my-calculator-tool',
     textToSpeech: 'my-tts-tool'

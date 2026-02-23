@@ -6,10 +6,8 @@ export * from "./object/index.js";
 // Barrel export for PIE runtime utilities
 export * from "./pie/index.js";
 export type {
-	AssessmentAuthoringCallbacks,
 	AssessmentEntity,
 	AssessmentItemRef,
-	AssessmentMode,
 	AssessmentSection,
 	ConfigEntity,
 	Env,

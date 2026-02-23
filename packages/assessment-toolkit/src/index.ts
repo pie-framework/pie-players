@@ -41,7 +41,6 @@ export type {
 	ResolvedCatalog,
 } from "./services/AccessibilityCatalogResolver.js";
 export { AccessibilityCatalogResolver } from "./services/AccessibilityCatalogResolver.js";
-export { AssessmentAuthoringService } from "./services/AssessmentAuthoringService.js";
 // Context Variable Store (QTI 3.0 Context Declarations)
 export { ContextVariableStore } from "./services/ContextVariableStore.js";
 // Element Tool State Store (Element-level ephemeral tool state)
@@ -234,7 +233,6 @@ export type {
 } from "./types/events.js";
 
 // Section Player - Use @pie-players/pie-section-player web component
-// Assessment Player - Use @pie-players/pie-assessment-player package
 
 // ============================================================================
 // Shared Components

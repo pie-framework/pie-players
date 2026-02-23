@@ -308,9 +308,9 @@ touch index.ts
 touch README.md
 ```
 
-### 2. Add to Assessment Player
+### 2. Add to Host Runtime
 
-In `pie-assessment-player.svelte`:
+In your host runtime shell component:
 
 ```svelte
 <script lang="ts">

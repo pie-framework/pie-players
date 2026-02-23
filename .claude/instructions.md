@@ -2,7 +2,7 @@
 
 ## Project Context
 
-**PIE Players** is a comprehensive web component and assessment player framework for educational assessments. It provides multiple player implementations (IIFE, ESM, Fixed, Inline) and supports full assessment delivery with authoring mode, tools, and accommodations.
+**PIE Players** is a comprehensive web component framework for educational assessments. It provides multiple player implementations (IIFE, ESM, Fixed, Inline, Section) and supports authoring mode, tools, and accommodations.
 
 **Critical Requirements**:
 
@@ -30,13 +30,13 @@ pie-players/
 │   ├── pie-esm-player/         # ESM CDN player (esm.sh, jsDelivr)
 │   ├── pie-fixed-player/       # Pre-bundled monolithic player
 │   ├── pie-inline-player/      # Embedded player for existing systems
-│   ├── pie-assessment-player/  # Full assessment delivery player
 │   ├── assessment-toolkit/     # Core assessment services (framework-agnostic)
 │   ├── players-shared/         # Shared utilities & components
 │   └── pie-tool-*/             # 10+ assessment tools (calculator, graph, etc.)
 ├── apps/
-│   ├── example/                # Demo app (authoring + assessment)
-│   └── docs/                   # Documentation site
+│   ├── docs/                   # Documentation site
+│   ├── item-demos/             # Item demo host app
+│   └── section-demos/          # Section demo host app
 └── tools/cli/                  # oclif-based CLI
 ```
 
@@ -61,9 +61,7 @@ These checks ensure:
 1. TypeScript compilation passes: `bun run typecheck`
 2. Svelte components validated: `bun run check`
 3. All tests pass: `bun test`
-4. E2E tests pass: `bun run test:e2e`
-5. Accessibility tests pass (axe-core)
-6. Linting clean: `bun run lint` (Biome)
+4. Linting clean: `bun run lint` (Biome)
 
 ## Testing Strategy
 
@@ -175,7 +173,7 @@ bun run check          # Svelte component validation
 ├── pie-elements-ng/          # Sibling repo (REQUIRED for dev)
 │   └── apps/local-esm-cdn/   # Local ESM CDN server
 └── pie-players/              # This repo
-    └── apps/example/         # Dev server auto-detects sibling
+    └── apps/section-demos/   # Demo app can auto-detect sibling
 ```
 
 **Auto-detection**: When `../pie-elements-ng` exists:
@@ -196,7 +194,7 @@ bun run check          # Svelte component validation
 - Critical for developing new element types or fixing element bugs
 - Allows tight integration testing between players and elements
 
-**References**: apps/example/vite.config.ts, docs/CDN_USAGE.md
+**References**: apps/section-demos/vite.config.ts, docs/CDN_USAGE.md
 
 ## Current Work Focus
 

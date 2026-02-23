@@ -273,10 +273,9 @@ passages = Array.from(passageMap.values());
 - Uses internal Svelte components (`PieItemPlayer.svelte`)
 - Published as web component
 
-**`@pie-players/pie-assessment-player`**:
-- Uses TypeScript `AssessmentPlayer` class as controller
-- Wraps in Svelte for web component publishing
-- Uses `<pie-iife-player>` for item rendering
+**Legacy assessment runtime**:
+- A separate wrapper runtime was previously used
+- Section-player now serves as the supported assessment runtime surface
 
 **`@pie-players/pie-section-player`** (NEW):
 - Pure Svelte components internally

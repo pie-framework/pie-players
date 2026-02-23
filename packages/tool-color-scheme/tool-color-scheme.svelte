@@ -140,7 +140,7 @@
 
 		// Also mirror on all player host elements
 		const piePlayers = document.querySelectorAll(
-			'pie-player, pie-inline-player, pie-iife-player, pie-fixed-player, pie-esm-player, pie-assessment-player, pie-section-player',
+			'pie-player, pie-inline-player, pie-iife-player, pie-fixed-player, pie-esm-player, pie-section-player',
 		);
 		piePlayers.forEach((player) => {
 			if (schemeId === 'default') {

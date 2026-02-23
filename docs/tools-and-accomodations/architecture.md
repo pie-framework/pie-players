@@ -85,8 +85,6 @@ The PIE Assessment Tools system provides:
 
 ### System Boundary
 
-![Assessment Player Boundary](../img/assessment-player.png)
-
 **In Scope:**
 - Tool implementations (calculator, ruler, protractor, etc.)
 - Coordination services (z-index, highlighting, TTS)

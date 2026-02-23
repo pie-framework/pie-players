@@ -22,10 +22,8 @@
 	},
 	"files": [],
 	"references": [
-		{ "path": "./apps/example" },
 		{ "path": "./apps/docs" },
 		{ "path": "./tools/cli" },
-		{ "path": "./packages/assessment-player" },
 		{ "path": "./packages/assessment-toolkit" },
 		{ "path": "./packages/esm-player" },
 		{ "path": "./packages/fixed-player" },

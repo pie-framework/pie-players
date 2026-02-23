@@ -121,7 +121,7 @@ See the implementation guide in [tts-server-api-architecture.md](../../docs/tts-
 
 Example route structure:
 ```
-apps/example/src/routes/api/tts/
+apps/<host-app>/src/routes/api/tts/
 ├── synthesize/+server.ts
 └── voices/+server.ts
 ```

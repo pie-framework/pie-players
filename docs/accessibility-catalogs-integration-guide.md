@@ -956,7 +956,7 @@ class ContentTransformer {
 ## Next Steps
 
 1. **Implement Phase 1** (Core Infrastructure) - See [AccessibilityCatalogResolver.ts](../packages/assessment-toolkit/src/services/AccessibilityCatalogResolver.ts)
-2. **Review Examples** - See [accessibility-catalog-examples.ts](../apps/example/src/lib/accessibility-catalog-examples.ts)
+2. **Review Examples** - Use the examples in [accessibility-catalogs-quick-start.md](./accessibility-catalogs-quick-start.md)
 3. **Integrate with TTSService** - Phase 2 task
 4. **Update AssessmentPlayer** - Phase 3 task
 5. **Build Extended Services** - Phase 4-5 tasks

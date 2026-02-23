@@ -981,19 +981,3 @@ export interface CmsBlueprintItemEntity extends BaseEntity {
 	assessmentId?: string;
 }
 
-// Assessment Authoring Types
-export type AssessmentMode = "view" | "author";
-
-export interface AssessmentAuthoringCallbacks {
-	onItemAdded?: (item: QuestionEntity, index: number) => void;
-	onItemRemoved?: (itemId: string, index: number) => void;
-	onItemMoved?: (fromIndex: number, toIndex: number) => void;
-	onItemUpdated?: (itemId: string, updates: Partial<QuestionEntity>) => void;
-	onAssessmentUpdated?: (assessment: AssessmentEntity) => void;
-	onSectionAdded?: (section: AssessmentSection, index: number) => void;
-	onSectionRemoved?: (sectionId: string, index: number) => void;
-	onSectionUpdated?: (
-		sectionId: string,
-		updates: Partial<AssessmentSection>,
-	) => void;
-}

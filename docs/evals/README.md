@@ -14,13 +14,13 @@ This repo uses **local-only** evals to validate `pie-iife-player`, `pie-esm-play
 
 ## Running locally
 
-From repo root (recommended):
+From repo root (recommended, if eval runner scripts are configured in your host app):
 
 ```bash
-bun run test:evals
+bun run --cwd apps/section-demos test:evals
 ```
 
-From `apps/example` (equivalent):
+From `apps/section-demos` (equivalent):
 
 ```bash
 bun run test:evals
@@ -503,7 +503,7 @@ See templates:
 
 ### Test Runner
 
-The eval system is implemented in [apps/example/tests/evals/docs-evals.spec.ts](../../apps/example/tests/evals/docs-evals.spec.ts).
+The eval system is implemented in host-app eval specs (for example, under `apps/section-demos/tests/evals/`).
 
 **Key features:**
 - Recursively discovers all `evals.yaml` files in `docs/evals/`

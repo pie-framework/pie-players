@@ -7,7 +7,6 @@ import path from "node:path";
 const ROOT = process.cwd();
 const ROOT_PACKAGE_JSON = path.join(ROOT, "package.json");
 const ATTW_EXCLUDED = new Set([
-	"@pie-players/pie-assessment-player",
 	"@pie-players/pie-assessment-toolkit",
 	"@pie-players/pie-author",
 	"@pie-players/pie-calculator-mathjs",

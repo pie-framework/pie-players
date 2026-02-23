@@ -103,6 +103,6 @@ esac
 echo "📖 For detailed documentation, see: .mcp/README.md"
 echo ""
 echo "🔧 To test the setup:"
-echo "  1. Start the dev server: cd apps/example && bun run dev"
-echo "  2. Ask Claude: 'Navigate to http://127.0.0.1:5200 and take a screenshot'"
+echo "  1. Verify npm/filesystem/memory servers appear in your MCP client"
+echo "  2. Ask Claude to read package metadata from this workspace"
 echo ""

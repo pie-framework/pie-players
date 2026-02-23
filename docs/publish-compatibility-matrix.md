@@ -42,7 +42,6 @@ Default policy is to publish **compiled `dist/` exports** for JS/TS runtime entr
 
 Source exports are allowed only for packages that intentionally publish Svelte component entrypoints for framework consumers:
 
-- `@pie-players/pie-assessment-player`
 - `@pie-players/pie-assessment-toolkit`
 - `@pie-players/pie-calculator-mathjs`
 - `@pie-players/pie-players-shared`

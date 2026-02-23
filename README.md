@@ -10,7 +10,7 @@ PIE players and assessment toolkit with Bun + TypeScript + Svelte 5.
 ```bash
 bun install
 bun run dev:docs      # Docs site
-bun run dev:example   # Examples app
+bun run dev:section   # Section demos
 ```
 
 ## Development
@@ -53,7 +53,6 @@ bun run release:label:push           # Create and push tag to origin
 **Interactive Players**: pie-iife-player, pie-esm-player, pie-fixed-player, pie-inline-player
 **Print Player**: print-player - Item-level print rendering for production use
 **Tools**: calculator, graph, ruler, protractor, magnifier, annotation-toolbar, color-scheme, periodic-table
-**Assessment**: pie-assessment-player
 **Math Rendering**: math-renderer-core, math-renderer-mathjax, math-renderer-katex
 **Shared**: players-shared, assessment-toolkit
 

@@ -25,8 +25,8 @@
 3. **[packages/assessment-toolkit/src/player/section/index.ts](../packages/assessment-toolkit/src/player/section/index.ts)**
    - Module exports
 
-4. **[apps/example/src/lib/section-player-example.ts](../apps/example/src/lib/section-player-example.ts)**
-   - Complete usage examples
+4. **Section player usage examples**
+   - Complete usage examples were added to demo hosts during phase work
    - Paired passages example
    - Item-by-item example
    - Full assessment structure

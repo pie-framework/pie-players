@@ -77,6 +77,7 @@ export { I18nService } from "./services/I18nService.js";
 export type {
 	ToolButtonDefinition,
 	ToolButtonOptions,
+	ToolModuleLoader,
 	ToolInstanceOptions,
 	ToolRegistration,
 } from "./services/ToolRegistry.js";

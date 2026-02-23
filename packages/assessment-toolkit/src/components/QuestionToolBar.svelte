@@ -151,12 +151,17 @@
 	});
 
 	// Handle tool click (activates tool)
-	function handleToolClick(toolId: string) {
+	async function handleToolClick(toolId: string) {
 		console.log('[QuestionToolBar] Tool clicked:', toolId);
 
 		if (!toolCoordinator) {
 			console.warn('[QuestionToolBar] No toolCoordinator available');
 			return;
+		}
+
+		// Registry-owned lazy module loading before tool activation.
+		if (toolRegistry) {
+			await toolRegistry.ensureToolModuleLoaded(toolId);
 		}
 
 		// Toggle tool visibility

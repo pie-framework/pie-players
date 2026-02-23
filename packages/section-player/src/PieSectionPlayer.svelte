@@ -150,19 +150,6 @@ import type {
 	// Section tools toolbar element reference
 	let toolbarElement = $state<HTMLElement | null>(null);
 
-	// Section toolbar enabled tools (reactive state)
-	let sectionToolsEnabled = $state<string[]>([]);
-
-	// Subscribe to floating tools changes from coordinator
-	$effect(() => {
-		if (coordinator) {
-			const unsubscribe = coordinator.onFloatingToolsChange((toolIds: string[]) => {
-				sectionToolsEnabled = toolIds;
-			});
-			return unsubscribe;
-		}
-	});
-
 	// Computed
 	let isPageMode = $derived(section?.keepTogether === true);
 	let currentItem = $derived(isPageMode ? null : items[currentItemIndex] || null);
@@ -443,10 +430,7 @@ import type {
 		currentItem ? itemSessions[currentItem.id || ''] : undefined
 	);
 
-	// Compute enabled tools string from reactive state
-	let enabledToolsString = $derived(sectionToolsEnabled.join(','));
-	let hasEnabledTools = $derived(enabledToolsString.trim().length > 0);
-	let shouldRenderToolbar = $derived(showToolbar && toolbarPosition !== 'none' && hasEnabledTools);
+	let shouldRenderToolbar = $derived(showToolbar && toolbarPosition !== 'none');
 
 	// Bind toolkitCoordinator, registry, position, and enabled tools to toolbar element
 	$effect(() => {
@@ -459,9 +443,9 @@ import type {
 			(toolbarElement as any).position = toolbarPosition;
 			toolbarElement.setAttribute('position', toolbarPosition);
 			toolbarElement.setAttribute('data-position', toolbarPosition);
-			// Set enabled tools
-			(toolbarElement as any).enabledTools = enabledToolsString;
-			toolbarElement.setAttribute('enabled-tools', enabledToolsString);
+			// Let section toolbar compute allowed tools from placement/context.
+			(toolbarElement as any).enabledTools = '';
+			toolbarElement.setAttribute('enabled-tools', '');
 		}
 	});
 </script>
@@ -589,7 +573,7 @@ import type {
 			<pie-section-tools-toolbar
 				bind:this={toolbarElement}
 				position={toolbarPosition}
-				enabled-tools={enabledToolsString}
+				enabled-tools=""
 			></pie-section-tools-toolbar>
 		{/if}
 	{:else}

@@ -8,6 +8,8 @@
 import type { ToolContext, ToolLevel } from "./tool-context.js";
 import type { ToolComponentOverrides } from "../tools/tool-tag-map.js";
 
+export type ToolModuleLoader = () => Promise<unknown>;
+
 /**
  * Options for creating a tool button
  */
@@ -143,6 +145,9 @@ export class ToolRegistry {
 	private tools = new Map<string, ToolRegistration>();
 	private pnpIndex = new Map<string, Set<string>>(); // pnpSupportId → Set<toolId>
 	private componentOverrides: ToolComponentOverrides = {};
+	private moduleLoaders = new Map<string, ToolModuleLoader>();
+	private loadedToolModules = new Set<string>();
+	private moduleLoadPromises = new Map<string, Promise<void>>();
 
 	/**
 	 * Register a tool
@@ -403,6 +408,48 @@ export class ToolRegistry {
 	 */
 	setComponentOverrides(overrides: ToolComponentOverrides): void {
 		this.componentOverrides = overrides;
+	}
+
+	/**
+	 * Register lazy module loaders by toolId.
+	 * Toolbars call ensureToolModuleLoaded(toolId) before instance creation.
+	 */
+	setToolModuleLoaders(
+		loaders: Partial<Record<string, ToolModuleLoader>>,
+	): void {
+		for (const [toolId, loader] of Object.entries(loaders)) {
+			if (!loader) continue;
+			this.moduleLoaders.set(toolId, loader);
+		}
+	}
+
+	/**
+	 * Ensure tool module side-effects are loaded exactly once.
+	 * Safe to call repeatedly; concurrent callers share the same promise.
+	 */
+	async ensureToolModuleLoaded(toolId: string): Promise<void> {
+		if (this.loadedToolModules.has(toolId)) return;
+
+		const existingPromise = this.moduleLoadPromises.get(toolId);
+		if (existingPromise) {
+			await existingPromise;
+			return;
+		}
+
+		const loader = this.moduleLoaders.get(toolId);
+		if (!loader) return;
+
+		const loadPromise = (async () => {
+			await loader();
+			this.loadedToolModules.add(toolId);
+		})();
+
+		this.moduleLoadPromises.set(toolId, loadPromise);
+		try {
+			await loadPromise;
+		} finally {
+			this.moduleLoadPromises.delete(toolId);
+		}
 	}
 
 	/**

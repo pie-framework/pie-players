@@ -30,16 +30,21 @@
 <script lang="ts">
 	import type {
 		IToolCoordinator,
+		ToolRegistry as ToolRegistryType,
 	} from '@pie-players/pie-assessment-toolkit';
-	import '@pie-players/pie-tool-graph';
-	import '@pie-players/pie-tool-line-reader';
-	import '@pie-players/pie-tool-magnifier';
-	import '@pie-players/pie-tool-periodic-table';
-	import '@pie-players/pie-tool-protractor';
-	import '@pie-players/pie-tool-ruler';
+	import { ToolRegistry } from '@pie-players/pie-assessment-toolkit';
 	import { onDestroy, onMount } from 'svelte';
 
 	const isBrowser = typeof window !== 'undefined';
+	const moduleLoaderRegistry: ToolRegistryType = new ToolRegistry();
+	moduleLoaderRegistry.setToolModuleLoaders({
+		graph: () => import('@pie-players/pie-tool-graph'),
+		periodicTable: () => import('@pie-players/pie-tool-periodic-table'),
+		protractor: () => import('@pie-players/pie-tool-protractor'),
+		lineReader: () => import('@pie-players/pie-tool-line-reader'),
+		magnifier: () => import('@pie-players/pie-tool-magnifier'),
+		ruler: () => import('@pie-players/pie-tool-ruler'),
+	});
 
 	// Props
 	let {
@@ -54,12 +59,27 @@
 		toolProviderRegistry?: unknown;
 	} = $props();
 
-	// Parse enabled tools from comma-separated string
-	let enabledToolsList = $derived(
+	const defaultEnabledTools = [
+		'graph',
+		'periodicTable',
+		'protractor',
+		'lineReader',
+		'magnifier',
+		'ruler',
+	] as const;
+
+	// Parse enabled tools from comma-separated string.
+	// Empty string falls back to built-in defaults.
+	let requestedEnabledToolsList = $derived(
 		enabledTools
 			.split(',')
 			.map((t) => t.trim())
 			.filter(Boolean)
+	);
+	let enabledToolsList = $derived(
+		requestedEnabledToolsList.length > 0
+			? requestedEnabledToolsList
+			: [...defaultEnabledTools]
 	);
 	let hasEnabledTools = $derived(enabledToolsList.length > 0);
 
@@ -84,8 +104,9 @@
 	}
 
 	// Toggle tool visibility
-	function toggleTool(toolId: string) {
+	async function toggleTool(toolId: string) {
 		if (!toolCoordinator) return;
+		await moduleLoaderRegistry.ensureToolModuleLoaded(toolId);
 		toolCoordinator.toggleTool(toolId);
 		updateToolVisibility();
 

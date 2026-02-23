@@ -42,14 +42,8 @@
 	"jsdelivr": "./dist/section-tools-toolbar.js",
 	"dependencies": {
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
+		"@pie-players/pie-default-tool-loaders": "workspace:*",
 		"@pie-players/pie-calculator-mathjs": "workspace:*",
-		"@pie-players/pie-players-shared": "workspace:*",
-		"@pie-players/pie-tool-graph": "workspace:*",
-		"@pie-players/pie-tool-line-reader": "workspace:*",
-		"@pie-players/pie-tool-magnifier": "workspace:*",
-		"@pie-players/pie-tool-periodic-table": "workspace:*",
-		"@pie-players/pie-tool-protractor": "workspace:*",
-		"@pie-players/pie-tool-ruler": "workspace:*",
 		"daisyui": "^5.5.18"
 	},
 	"types": "./dist/index.d.ts",

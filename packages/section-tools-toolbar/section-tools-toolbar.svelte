@@ -33,18 +33,12 @@
 		ToolRegistry as ToolRegistryType,
 	} from '@pie-players/pie-assessment-toolkit';
 	import { ToolRegistry } from '@pie-players/pie-assessment-toolkit';
+	import { registerSectionToolModuleLoaders } from '@pie-players/pie-default-tool-loaders';
 	import { onDestroy, onMount } from 'svelte';
 
 	const isBrowser = typeof window !== 'undefined';
 	const moduleLoaderRegistry: ToolRegistryType = new ToolRegistry();
-	moduleLoaderRegistry.setToolModuleLoaders({
-		graph: () => import('@pie-players/pie-tool-graph'),
-		periodicTable: () => import('@pie-players/pie-tool-periodic-table'),
-		protractor: () => import('@pie-players/pie-tool-protractor'),
-		lineReader: () => import('@pie-players/pie-tool-line-reader'),
-		magnifier: () => import('@pie-players/pie-tool-magnifier'),
-		ruler: () => import('@pie-players/pie-tool-ruler'),
-	});
+	registerSectionToolModuleLoaders(moduleLoaderRegistry);
 
 	// Props
 	let {

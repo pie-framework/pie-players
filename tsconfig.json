@@ -25,6 +25,7 @@
 		{ "path": "./apps/docs" },
 		{ "path": "./tools/cli" },
 		{ "path": "./packages/assessment-toolkit" },
+		{ "path": "./packages/default-tool-loaders" },
 		{ "path": "./packages/esm-player" },
 		{ "path": "./packages/fixed-player" },
 		{ "path": "./packages/iife-player" },

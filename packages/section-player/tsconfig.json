@@ -5,6 +5,15 @@
 		"module": "NodeNext",
 		"lib": ["ES2020", "DOM", "DOM.Iterable"],
 		"moduleResolution": "NodeNext",
+		"baseUrl": ".",
+		"paths": {
+			"@pie-players/pie-players-shared/loaders": [
+				"../players-shared/dist/loaders/index.d.ts"
+			],
+			"@pie-players/pie-players-shared/types": [
+				"../players-shared/dist/types/index.d.ts"
+			]
+		},
 		"resolveJsonModule": true,
 		"allowJs": true,
 		"checkJs": true,

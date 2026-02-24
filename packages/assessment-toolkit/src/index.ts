@@ -12,6 +12,12 @@
 // ============================================================================
 
 export { TypedEventBus } from "./core/TypedEventBus.js";
+export type {
+	AssessmentToolkitRuntimeContext,
+} from "./context/assessment-toolkit-context.js";
+export {
+	assessmentToolkitRuntimeContext,
+} from "./context/assessment-toolkit-context.js";
 
 // ============================================================================
 // Service Interfaces

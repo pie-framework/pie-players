@@ -203,7 +203,7 @@ function AssessmentSection({ section }) {
 | `env` | `{ mode, role }` | `{ mode: 'gather', role: 'student' }` | Runtime environment |
 | `view` | `'candidate' \| 'scorer' \| 'author' \| ...` | `'candidate'` | Current view (filters rubricBlocks) |
 | `player` | `string` | `'iife'` | Selected player definition key |
-| `page-layout` | `string` | `'split-panel'` | Selected page-mode layout definition key |
+| `page-layout` | `string` | `'split-panel'` | Selected page-mode layout definition key (`split-panel`, `split-panel-composed`, `vertical`, or custom) |
 | `playerDefinitions` | `Record<string, ComponentDefinition>` | built-ins | Host player web-component definitions |
 | `layoutDefinitions` | `Record<string, ComponentDefinition>` | built-ins | Host page-layout web-component definitions |
 | `item-sessions` | `Record<string, any>` | `{}` | Item sessions for restoration |
@@ -544,21 +544,23 @@ Tool state (answer eliminations, highlights, etc.) is tracked at the **element l
 - Persists across section navigation
 - Separate from PIE session data (not sent to server)
 
-### Service Flow
+### Runtime Context Flow
 
-Services are passed through the component hierarchy with IDs:
+`pie-section-player` now provides orchestration/runtime dependencies through a
+context scope rooted at the section-player container. Components keep explicit
+props for direct contracts (`item`, `passage`, layout inputs), and consume
+ambient runtime concerns from context (`toolCoordinator`, TTS services, IDs).
 
 ```
-SectionPlayer (coordinator → services + assessmentId + sectionId)
+pie-section-player (provides runtime context)
   ↓
-PageModeLayout / ItemModeLayout (passes assessmentId + sectionId + services)
+layouts / item shells (explicit composition + item contracts)
   ↓
-PassageRenderer / ItemRenderer (uses item.id, passes assessmentId + sectionId + services)
-  ↓
-QuestionToolBar (generates globalElementId)
-  ↓
-Tool web components (use globalElementId for state)
+pie-question-toolbar + tool components (consume context + explicit item scope)
 ```
+
+This reduces prop-drilling through intermediate layout components while keeping
+public component contracts explicit.
 
 ### Demos
 

@@ -70,14 +70,17 @@
 
 <script lang="ts">
   import {
+    assessmentToolkitRuntimeContext,
     ToolkitCoordinator,
     mapActivityToTestAttemptSession,
     setCurrentPosition,
     toItemSessionsRecord,
     upsertItemSessionFromPieSessionChange,
     upsertVisitedItem,
+    type AssessmentToolkitRuntimeContext,
     type TestAttemptSession,
   } from "@pie-players/pie-assessment-toolkit";
+  import { ContextProvider, ContextRoot } from "@pie-players/pie-context";
   import {
     DEFAULT_LAYOUT_DEFINITIONS,
     DEFAULT_PLAYER_DEFINITIONS,
@@ -178,6 +181,11 @@
   // Section tools toolbar element reference
   let toolbarElement = $state<HTMLElement | null>(null);
   let pageLayoutElement = $state<HTMLElement | null>(null);
+  let rootElement = $state<HTMLElement | null>(null);
+  let runtimeContextProvider: ContextProvider<
+    typeof assessmentToolkitRuntimeContext
+  > | null = null;
+  let runtimeContextRoot: ContextRoot | null = null;
 
   // Computed
   let isPageMode = $derived(section?.keepTogether === true);
@@ -191,6 +199,18 @@
 
   // Extract mode from env for convenience
   let mode = $derived(env.mode);
+  let runtimeContextValue = $derived.by(
+    (): AssessmentToolkitRuntimeContext => ({
+      toolkitCoordinator: coordinator,
+      toolCoordinator: coordinator?.toolCoordinator || null,
+      ttsService: services?.ttsService || null,
+      highlightCoordinator: services?.highlightCoordinator || null,
+      catalogResolver: services?.catalogResolver || null,
+      elementToolStateStore: services?.elementToolStateStore || null,
+      assessmentId,
+      sectionId,
+    }),
+  );
   let mergedPlayerDefinitions = $derived.by(() =>
     mergeComponentDefinitions(DEFAULT_PLAYER_DEFINITIONS, playerDefinitions),
   );
@@ -598,6 +618,34 @@
     }
   });
 
+  // Establish runtime context provider at the section-player root.
+  $effect(() => {
+    if (!rootElement) return;
+    const provider = new ContextProvider(rootElement, {
+      context: assessmentToolkitRuntimeContext,
+      initialValue: runtimeContextValue,
+    });
+    provider.connect();
+    runtimeContextProvider = provider;
+
+    const root = new ContextRoot(rootElement);
+    root.attach();
+    runtimeContextRoot = root;
+
+    return () => {
+      runtimeContextRoot?.detach();
+      runtimeContextRoot = null;
+      runtimeContextProvider?.disconnect();
+      runtimeContextProvider = null;
+    };
+  });
+
+  // Push runtime value updates into the provider.
+  $effect(() => {
+    if (!runtimeContextProvider) return;
+    runtimeContextProvider.setValue(runtimeContextValue);
+  });
+
   // Bind page-mode layout custom element properties imperatively.
   $effect(() => {
     if (!pageLayoutElement || !isPageMode) return;
@@ -620,6 +668,7 @@
   class={`pie-section-player ${customClassName} ${isPageMode ? "pie-section-player--page-mode" : "pie-section-player--item-mode"}`}
   data-assessment-id={assessmentId}
   data-section-id={sectionId}
+  bind:this={rootElement}
 >
   {#if error}
     <div class="pie-section-player__error">

@@ -605,11 +605,38 @@ The section player provides automatic ToolkitCoordinator integration:
   // Player automatically:
   // - Extracts services from coordinator
   // - Generates section ID
-  // - Passes services to all child components
+  // - Provides runtime context to child components
   // - Manages SSML extraction
   // - Handles catalog lifecycle
 </script>
 ```
+
+### Runtime Context Contract
+
+The toolkit now exports a shared context key used by section-player and toolkit
+components:
+
+```typescript
+import {
+  assessmentToolkitRuntimeContext,
+  type AssessmentToolkitRuntimeContext
+} from "@pie-players/pie-assessment-toolkit";
+```
+
+`AssessmentToolkitRuntimeContext` carries ambient orchestration dependencies
+that should not be prop-drilled through intermediate components:
+
+- `toolkitCoordinator`
+- `toolCoordinator`
+- `ttsService`
+- `highlightCoordinator`
+- `catalogResolver`
+- `elementToolStateStore`
+- `assessmentId`
+- `sectionId`
+
+Use explicit props/events for direct contracts, and use runtime context for
+cross-cutting orchestration scope.
 
 ### Standalone Sections (No Coordinator Provided)
 

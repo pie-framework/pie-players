@@ -37,6 +37,11 @@
   - Pass 2: tool-owned isVisibleInContext(context)
 -->
 <script lang="ts">
+	import { ContextConsumer } from '@pie-players/pie-context';
+	import {
+		assessmentToolkitRuntimeContext,
+		type AssessmentToolkitRuntimeContext,
+	} from '../context/assessment-toolkit-context.js';
 	import type {
 		IToolCoordinator,
 		ITTSService,
@@ -106,10 +111,51 @@
 		language?: string;
 	} = $props();
 
+	let toolbarRootElement = $state<HTMLDivElement | null>(null);
+	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	let runtimeContextConsumer: ContextConsumer<
+		typeof assessmentToolkitRuntimeContext
+	> | null = null;
+
+	$effect(() => {
+		if (!toolbarRootElement) return;
+		runtimeContextConsumer = new ContextConsumer(toolbarRootElement, {
+			context: assessmentToolkitRuntimeContext,
+			subscribe: true,
+			onValue: (value: AssessmentToolkitRuntimeContext) => {
+				runtimeContext = value;
+			},
+		});
+		runtimeContextConsumer.connect();
+		return () => {
+			runtimeContextConsumer?.disconnect();
+			runtimeContextConsumer = null;
+		};
+	});
+
+	const effectiveToolCoordinator = $derived(
+		toolCoordinator || runtimeContext?.toolCoordinator,
+	);
+	const effectiveTTSService = $derived(ttsService || runtimeContext?.ttsService);
+	const effectiveHighlightCoordinator = $derived(
+		highlightCoordinator || runtimeContext?.highlightCoordinator,
+	);
+	const effectiveElementToolStateStore = $derived(
+		elementToolStateStore || runtimeContext?.elementToolStateStore,
+	);
+	const effectiveAssessmentId = $derived(assessmentId || runtimeContext?.assessmentId || '');
+	const effectiveSectionId = $derived(sectionId || runtimeContext?.sectionId || '');
+
 	// Generate globalElementId using store utility
 	let globalElementId = $derived.by(() => {
-		if (!elementToolStateStore || !assessmentId || !sectionId || !itemId) return null;
-		return elementToolStateStore.getGlobalElementId(assessmentId, sectionId, itemId, itemId);
+		if (!effectiveElementToolStateStore || !effectiveAssessmentId || !effectiveSectionId || !itemId)
+			return null;
+		return effectiveElementToolStateStore.getGlobalElementId(
+			effectiveAssessmentId,
+			effectiveSectionId,
+			itemId,
+			itemId,
+		);
 		// Note: Using itemId as elementId since toolbar is scoped to one item/element
 	});
 
@@ -188,7 +234,7 @@
 	async function handleToolClick(toolId: string) {
 		console.log('[QuestionToolBar] Tool clicked:', toolId);
 
-		if (!toolCoordinator) {
+		if (!effectiveToolCoordinator) {
 			console.warn('[QuestionToolBar] No toolCoordinator available');
 			return;
 		}
@@ -200,7 +246,7 @@
 
 		// Toggle tool visibility
 		const fullToolId = `${toolId}-${itemId}`;
-		toolCoordinator.toggleTool(fullToolId);
+		effectiveToolCoordinator.toggleTool(fullToolId);
 	}
 
 	// Dynamically load tool components needed by visible toolbar tools
@@ -231,17 +277,17 @@
 	// Registry-driven per-tool visibility
 	let showTTS = $derived(
 		visibleToolIds.includes('textToSpeech') &&
-		ttsService &&
+		effectiveTTSService &&
 		toolsLoaded
 	);
 	let showAnswerEliminator = $derived(
 		visibleToolIds.includes('answerEliminator') &&
-		toolCoordinator &&
+		effectiveToolCoordinator &&
 		toolsLoaded
 	);
 	let showCalculator = $derived(
 		visibleToolIds.includes('calculator') &&
-		toolCoordinator &&
+		effectiveToolCoordinator &&
 		toolsLoaded
 	);
 
@@ -250,16 +296,16 @@
 
 	// Subscribe to tool coordinator to update button state
 	$effect(() => {
-		if (!isBrowser || !toolCoordinator) return;
+		if (!isBrowser || !effectiveToolCoordinator) return;
 
-		const unsubscribe = toolCoordinator.subscribe(() => {
-			answerEliminatorVisible = toolCoordinator.isToolVisible(
+		const unsubscribe = effectiveToolCoordinator.subscribe(() => {
+			answerEliminatorVisible = effectiveToolCoordinator.isToolVisible(
 				`answerEliminator-${itemId}`,
 			);
 		});
 
 		// Initial update
-		answerEliminatorVisible = toolCoordinator.isToolVisible(
+		answerEliminatorVisible = effectiveToolCoordinator.isToolVisible(
 			`answerEliminator-${itemId}`,
 		);
 
@@ -273,14 +319,14 @@
 	// Bind services to TTS tool
 	$effect(() => {
 		if (ttsToolElement && !ttsBound) {
-			if (toolCoordinator) {
-				(ttsToolElement as any).coordinator = toolCoordinator;
+			if (effectiveToolCoordinator) {
+				(ttsToolElement as any).coordinator = effectiveToolCoordinator;
 			}
-			if (ttsService) {
-				(ttsToolElement as any).ttsService = ttsService;
+			if (effectiveTTSService) {
+				(ttsToolElement as any).ttsService = effectiveTTSService;
 			}
-			if (highlightCoordinator) {
-				(ttsToolElement as any).highlightCoordinator = highlightCoordinator;
+			if (effectiveHighlightCoordinator) {
+				(ttsToolElement as any).highlightCoordinator = effectiveHighlightCoordinator;
 			}
 			ttsBound = true;
 		}
@@ -293,14 +339,15 @@
 	// Bind scope, coordinator, store, and globalElementId to answer eliminator
 	$effect(() => {
 		if (answerEliminatorElement && !eliminatorBound) {
-			if (toolCoordinator) {
-				(answerEliminatorElement as any).coordinator = toolCoordinator;
+			if (effectiveToolCoordinator) {
+				(answerEliminatorElement as any).coordinator = effectiveToolCoordinator;
 			}
 			if (scopeElement) {
 				(answerEliminatorElement as any).scopeElement = scopeElement;
 			}
-			if (elementToolStateStore && globalElementId) {
-				(answerEliminatorElement as any).elementToolStateStore = elementToolStateStore;
+			if (effectiveElementToolStateStore && globalElementId) {
+				(answerEliminatorElement as any).elementToolStateStore =
+					effectiveElementToolStateStore;
 				(answerEliminatorElement as any).globalElementId = globalElementId;
 			}
 			eliminatorBound = true;
@@ -309,8 +356,8 @@
 
 	// Handle answer eliminator toggle
 	function toggleAnswerEliminator() {
-		if (!toolCoordinator) return;
-		toolCoordinator.toggleTool(`answerEliminator-${itemId}`);
+		if (!effectiveToolCoordinator) return;
+		effectiveToolCoordinator.toggleTool(`answerEliminator-${itemId}`);
 	}
 
 	const answerEliminatorButtonMeta = $derived.by(() => {
@@ -338,8 +385,8 @@
 	// Bind coordinator to calculator inline tool
 	$effect(() => {
 		if (calculatorInlineElement && !calculatorBound) {
-			if (toolCoordinator) {
-				(calculatorInlineElement as any).coordinator = toolCoordinator;
+			if (effectiveToolCoordinator) {
+				(calculatorInlineElement as any).coordinator = effectiveToolCoordinator;
 			}
 			calculatorBound = true;
 		}
@@ -347,7 +394,10 @@
 </script>
 
 {#if isBrowser}
-	<div class="question-toolbar {className} question-toolbar--{size}">
+	<div
+		class="question-toolbar {className} question-toolbar--{size}"
+		bind:this={toolbarRootElement}
+	>
 		<!-- Calculator Button (inline tool) -->
 		{#if showCalculator}
 			<pie-tool-calculator-inline
@@ -391,7 +441,7 @@
 				tool-id="answerEliminator-{itemId}"
 				strategy="strikethrough"
 				button-alignment="inline"
-				coordinator={toolCoordinator}
+				coordinator={effectiveToolCoordinator}
 			></pie-tool-answer-eliminator>
 		{/if}
 	</div>

@@ -21,6 +21,9 @@
 	],
 	"references": [
 		{
+			"path": "../pie-context"
+		},
+		{
 			"path": "../calculator"
 		},
 		{

@@ -27,7 +27,7 @@ import {
  * Supports:
  * - Reading content aloud using browser TTS or external providers
  * - Context-aware visibility (shows when readable text is available)
- * - All levels except assessment (section, item, passage, rubric, element)
+ * - All levels except assessment and element
  */
 export const ttsToolRegistration: ToolRegistration = {
 	toolId: "textToSpeech",
@@ -35,8 +35,8 @@ export const ttsToolRegistration: ToolRegistration = {
 	description: "Read content aloud",
 	icon: "volume-up",
 
-	// TTS can appear at all levels except assessment
-	supportedLevels: ["section", "item", "passage", "rubric", "element"],
+	// TTS can appear at all levels except assessment and element.
+	supportedLevels: ["section", "item", "passage", "rubric"],
 
 	// PNP support IDs that enable this tool
 	// Maps to QTI 3.0 standard features: textToSpeech, readAloud

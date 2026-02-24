@@ -28,7 +28,7 @@ import {
  * Supports:
  * - Basic, scientific, and graphing calculators via Desmos
  * - Context-aware visibility (shows only when math content is detected)
- * - Element level only
+ * - Item level only
  */
 export const calculatorToolRegistration: ToolRegistration = {
 	toolId: "calculator",
@@ -36,9 +36,8 @@ export const calculatorToolRegistration: ToolRegistration = {
 	description: "Multi-type calculator (basic, scientific, graphing)",
 	icon: "calculator",
 
-	// Calculator is only eligible in element context.
-	// Passage-level display is intentionally excluded.
-	supportedLevels: ["element"],
+	// Calculator is item-level in this player architecture.
+	supportedLevels: ["item"],
 
 	// PNP support IDs that enable this tool
 	// Maps to QTI 3.0 standard features: calculator, graphingCalculator
@@ -56,7 +55,7 @@ export const calculatorToolRegistration: ToolRegistration = {
 	 * (MathML, LaTeX, arithmetic markers).
 	 */
 	isVisibleInContext(context: ToolContext): boolean {
-		// For supported levels (item/element), show only when math is present.
+		// Show only when math is present in item content.
 		return hasMathContent(context);
 	},
 

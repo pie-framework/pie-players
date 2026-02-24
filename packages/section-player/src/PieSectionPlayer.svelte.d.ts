@@ -21,9 +21,7 @@ export interface PieSectionPlayerProps {
 	activityDefinition?: Record<string, any> | null;
 	activitySession?: Record<string, any> | null;
 	pageLayout?: string;
-	player?: string;
 	playerVersion?: string;
-	playerDefinitions?: Partial<Record<string, ComponentDefinition>>;
 	layoutDefinitions?: Partial<Record<string, ComponentDefinition>>;
 	toolbarPosition?: "top" | "right" | "bottom" | "left" | "none";
 	showToolbar?: boolean;

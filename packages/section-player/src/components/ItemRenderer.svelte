@@ -1,7 +1,7 @@
 <!--
   ItemRenderer - Internal Component
 
-  Renders a single item using pie-iife-player or pie-esm-player.
+  Renders a single item using the IIFE player.
   Handles SSML extraction, TTS service binding, and player lifecycle.
 -->
 <script lang="ts">
@@ -14,8 +14,6 @@
   import "@pie-players/pie-assessment-toolkit/components/QuestionToolBar.svelte";
 	import {
 		DEFAULT_PLAYER_DEFINITIONS,
-		mergeComponentDefinitions,
-		type ComponentDefinition,
 	} from "../component-definitions.js";
   import ItemPlayerBridge from "./ItemPlayerBridge.svelte";
   import ItemShell, { type QtiContentKind } from "./ItemShell.svelte";
@@ -26,13 +24,11 @@
     item,
     env = { mode: "gather", role: "student" },
     session = { id: "", data: [] },
-    player = "iife",
     contentKind = "assessment-item" as QtiContentKind,
     skipElementLoading = true,
     assessmentId = "",
     sectionId = "",
     toolkitCoordinator = null,
-    playerDefinitions = {} as Partial<Record<string, ComponentDefinition>>,
     customClassName = "",
     onsessionchanged,
   }: {
@@ -42,14 +38,12 @@
       role: "student" | "instructor";
     };
     session?: any;
-    player?: string;
     contentKind?: QtiContentKind;
     skipElementLoading?: boolean;
     playerVersion?: string;
     assessmentId?: string;
     sectionId?: string;
     toolkitCoordinator?: any;
-    playerDefinitions?: Partial<Record<string, ComponentDefinition>>;
     customClassName?: string;
     onsessionchanged?: (event: CustomEvent) => void;
   } = $props();
@@ -109,14 +103,8 @@
     !!(item?.config?.elements && Object.keys(item.config.elements).length > 0),
   );
 
-  let resolvedPlayerType = $derived(player);
-
-  let mergedPlayerDefinitions = $derived.by(() =>
-    mergeComponentDefinitions(DEFAULT_PLAYER_DEFINITIONS, playerDefinitions),
-  );
   let resolvedPlayerDefinition = $derived.by(
-    () =>
-      mergedPlayerDefinitions[resolvedPlayerType] || mergedPlayerDefinitions["iife"],
+    () => DEFAULT_PLAYER_DEFINITIONS["iife"],
   );
   let resolvedPlayerTag = $derived(resolvedPlayerDefinition?.tagName || "pie-iife-player");
 

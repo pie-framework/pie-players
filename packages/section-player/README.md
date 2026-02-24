@@ -24,7 +24,6 @@ Load directly from a CDN in your browser - no npm install or build step required
   <script type="module">
     // Import from jsdelivr CDN
     import 'https://cdn.jsdelivr.net/npm/@pie-players/pie-section-player/dist/pie-section-player.js';
-    import 'https://cdn.jsdelivr.net/npm/@pie-players/pie-esm-player/dist/pie-esm-player.js';
   </script>
 </head>
 <body>
@@ -71,7 +70,6 @@ These are automatically resolved when using the section player as a library depe
 <head>
   <script type="module">
     import '@pie-players/pie-section-player';
-    import '@pie-players/pie-esm-player'; // Required for rendering passages/items
   </script>
 </head>
 <body>
@@ -161,18 +159,7 @@ These are automatically resolved when using the section player as a library depe
   {section}
   env={{ mode: 'gather', role: 'student' }}
   view="candidate"
-  player="iife"
   pageLayout="split-panel"
-  playerDefinitions={{
-    iife: {
-      tagName: 'pie-iife-player',
-      attributes: { 'bundle-host': 'https://proxy.pie-api.com/bundles/' }
-    },
-    esm: {
-      tagName: 'pie-esm-player',
-      attributes: { 'esm-cdn-url': 'https://esm.sh' }
-    }
-  }}
 />
 ```
 
@@ -202,9 +189,7 @@ function AssessmentSection({ section }) {
 | `section` | `QtiAssessmentSection` | `null` | Section data with passages and items |
 | `env` | `{ mode, role }` | `{ mode: 'gather', role: 'student' }` | Runtime environment |
 | `view` | `'candidate' \| 'scorer' \| 'author' \| ...` | `'candidate'` | Current view (filters rubricBlocks) |
-| `player` | `string` | `'iife'` | Selected player definition key |
 | `page-layout` | `string` | `'split-panel'` | Selected page-mode layout definition key (`split-panel`, `split-panel-composed`, `vertical`, or custom) |
-| `playerDefinitions` | `Record<string, ComponentDefinition>` | built-ins | Host player web-component definitions |
 | `layoutDefinitions` | `Record<string, ComponentDefinition>` | built-ins | Host page-layout web-component definitions |
 | `item-sessions` | `Record<string, any>` | `{}` | Item sessions for restoration |
 | `test-attempt-session` | `TestAttemptSession \| null` | `null` | Canonical attempt runtime state consumed by section player |
@@ -212,6 +197,8 @@ function AssessmentSection({ section }) {
 | `activity-session` | `Record<string, any> \| null` | `null` | Pie backend activity session (`../../kds/pie-api-aws`) |
 | `custom-class-name` | `string` | `''` | Custom CSS class |
 | `debug` | `string \| boolean` | `''` | Debug mode |
+
+The section player currently renders items with the IIFE player by default.
 
 ## Events
 

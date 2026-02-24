@@ -6,7 +6,6 @@
   Not exposed as a web component - used internally in PieSectionPlayer.
 -->
 <script lang="ts">
-	import type { ComponentDefinition } from '../../component-definitions.js';
 	import type { ItemEntity, PassageEntity } from '@pie-players/pie-players-shared';
 	import ItemRenderer from '../ItemRenderer.svelte';
 
@@ -14,20 +13,16 @@
 		passages,
 		items,
 		itemSessions = {},
-		player = '',
 		env = { mode: 'gather', role: 'student' },
 		playerVersion = 'latest',
-		playerDefinitions = {} as Partial<Record<string, ComponentDefinition>>,
 
 		onsessionchanged
 	}: {
 		passages: PassageEntity[];
 		items: ItemEntity[];
 		itemSessions?: Record<string, any>;
-		player?: string;
 		env?: { mode: 'gather' | 'view' | 'evaluate' | 'author'; role: 'student' | 'instructor' };
 		playerVersion?: string;
-		playerDefinitions?: Partial<Record<string, ComponentDefinition>>;
 
 		onsessionchanged?: (itemId: string, session: any) => void;
 	} = $props();
@@ -63,10 +58,8 @@
 				<div class="pie-section-player__passage-wrapper">
 					<ItemRenderer
 						item={passage}
-						{player}
 						contentKind="rubric-block-stimulus"
 						env={{ mode: 'view', role: env.role }}
-						{playerDefinitions}
 						customClassName="pie-section-player__passage-item"
 					/>
 				</div>
@@ -80,12 +73,10 @@
 			<div class="pie-section-player__item-wrapper" data-item-index={index}>
 				<ItemRenderer
 					{item}
-					{player}
 					contentKind="assessment-item"
 					{env}
 					session={itemSessions[item.id || '']}
 					{playerVersion}
-					{playerDefinitions}
 					onsessionchanged={handleItemSessionChanged(item.id || '')}
 					customClassName="pie-section-player__item-content"
 				/>

@@ -11,17 +11,8 @@
       section='{"identifier":"section-1","keepTogether":true,...}'
       mode="gather"
       view="candidate"
-      player-type="esm"
-      bundle-host="https://cdn.pie.org"
-      esm-cdn-url="https://esm.sh">
+      bundle-host="https://cdn.pie.org">
     </pie-section-player>
-
-  Player Types (player-type attribute):
-    - "auto" (default): Automatically choose based on bundle-host/esm-cdn-url
-    - "iife": Use IIFE player (SystemJS bundles) - requires bundle-host
-    - "esm": Use ESM player (ESM CDN) - requires esm-cdn-url
-    - "fixed": Use fixed player (pre-bundled elements)
-    - "inline": Use inline player (single-request rendering)
 
   Events:
     - section-loaded: Fired when section is loaded and ready
@@ -40,7 +31,6 @@
       env: { attribute: "env", type: "Object" },
       view: { attribute: "view", type: "String" },
       pageLayout: { attribute: "page-layout", type: "String" },
-      player: { attribute: "player", type: "String" },
 
       // Item sessions for restoration
       itemSessions: { attribute: "item-sessions", type: "Object" },
@@ -64,7 +54,6 @@
       toolkitCoordinator: { type: "Object", reflect: false },
       ontoolkitcoordinatorready: { type: "Object", reflect: false },
       // Host-provided web component definitions
-      playerDefinitions: { type: "Object", reflect: false },
       layoutDefinitions: { type: "Object", reflect: false },
     },
   }}
@@ -91,7 +80,6 @@
   } from "./component-definitions.js";
   import {
     type ElementLoaderInterface,
-    EsmElementLoader,
     IifeElementLoader,
   } from "@pie-players/pie-players-shared";
   import type {
@@ -120,7 +108,6 @@
       | "testConstructor"
       | "tutor",
     pageLayout = "split-panel",
-    player = "iife",
     itemSessions = {} as Record<string, any>,
     testAttemptSession = null as TestAttemptSession | null,
     activityDefinition = null as Record<string, any> | null,
@@ -136,7 +123,6 @@
     ontoolkitcoordinatorready = null as
       | ((event: CustomEvent<any>) => void)
       | null,
-    playerDefinitions = {} as Partial<Record<string, ComponentDefinition>>,
     layoutDefinitions = {} as Partial<Record<string, ComponentDefinition>>,
 
     // Event handlers
@@ -253,12 +239,8 @@
       sectionId,
     }),
   );
-  let mergedPlayerDefinitions = $derived.by(() =>
-    mergeComponentDefinitions(DEFAULT_PLAYER_DEFINITIONS, playerDefinitions),
-  );
-  let resolvedPlayer = $derived(player);
   let resolvedPlayerDefinition = $derived.by(
-    () => mergedPlayerDefinitions[resolvedPlayer] || mergedPlayerDefinitions["iife"],
+    () => DEFAULT_PLAYER_DEFINITIONS["iife"],
   );
   let resolvedPlayerTag = $derived(
     resolvedPlayerDefinition?.tagName || "pie-iife-player",
@@ -494,27 +476,17 @@
     const effectiveBundleHost = String(
       resolvedPlayerDefinition?.attributes?.["bundle-host"] || "",
     );
-    const effectiveEsmCdnUrl = String(
-      resolvedPlayerDefinition?.attributes?.["esm-cdn-url"] || "",
-    );
 
-    // Create appropriate loader from selected player definition.
+    // Create the loader from the fixed IIFE player definition.
     let loader: ElementLoaderInterface | null = null;
 
-    if (resolvedPlayer === "esm" && effectiveEsmCdnUrl) {
-      loader = new EsmElementLoader({
-        esmCdnUrl: effectiveEsmCdnUrl,
-        debugEnabled: () => !!debug,
-      });
-    } else if (resolvedPlayer === "iife" && effectiveBundleHost) {
+    if (effectiveBundleHost) {
       loader = new IifeElementLoader({
         bundleHost: effectiveBundleHost,
         debugEnabled: () => !!debug,
       });
     } else {
-      console.warn(
-        `[PieSectionPlayer] No element preloader mapping for player '${resolvedPlayer}'.`,
-      );
+      console.warn("[PieSectionPlayer] Missing bundle-host for IIFE element preloader.");
       elementsLoaded = true;
       return;
     }
@@ -704,12 +676,10 @@
     (pageLayoutElement as any).items = items;
     (pageLayoutElement as any).itemSessions = resolvedItemSessions;
     (pageLayoutElement as any).testAttemptSession = resolvedTestAttemptSession;
-    (pageLayoutElement as any).player = resolvedPlayer;
     (pageLayoutElement as any).env = env;
     (pageLayoutElement as any).playerVersion = playerVersion;
     (pageLayoutElement as any).assessmentId = assessmentId;
     (pageLayoutElement as any).sectionId = sectionId;
-    (pageLayoutElement as any).playerDefinitions = mergedPlayerDefinitions;
     (pageLayoutElement as any).onsessionchanged = handleSessionChanged;
   });
 </script>
@@ -809,12 +779,10 @@
             canNext={canNavigateNext}
             canPrevious={canNavigatePrevious}
             itemSession={currentItemSession}
-            player={resolvedPlayer}
             {env}
             {playerVersion}
             {assessmentId}
             {sectionId}
-            playerDefinitions={mergedPlayerDefinitions}
             onprevious={navigatePrevious}
             onnext={navigateNext}
             onsessionchanged={(sessionDetail) =>

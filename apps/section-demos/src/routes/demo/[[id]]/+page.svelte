@@ -2,6 +2,7 @@
 	
 	import {
 		AnnotationToolbarAPIClient,
+		ToolkitCoordinator,
 		type ToolkitCoordinatorHooks
 	} from '@pie-players/pie-assessment-toolkit';
 
@@ -17,17 +18,6 @@
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
-
-	// Read URL params for initial state
-	function getInitialPlayerType(): 'iife' | 'esm' {
-		if (browser) {
-			const urlPlayerType = new URLSearchParams(window.location.search).get('player');
-			if (urlPlayerType && ['iife', 'esm'].includes(urlPlayerType)) {
-				return urlPlayerType as 'iife' | 'esm';
-			}
-		}
-		return 'iife';
-	}
 
 	function getInitialLayoutType(): 'vertical' | 'split-panel' {
 		if (browser) {
@@ -49,21 +39,9 @@
 		return 'candidate';
 	}
 
-	function getInitialEsmSource(): 'local' | 'remote' {
-		if (browser) {
-			const urlParam = new URLSearchParams(window.location.search).get('esmSource');
-			if (urlParam === 'local') {
-				return 'local';
-			}
-		}
-		return 'remote';
-	}
-
 	let showJson = $state(false);
-	let playerType = $state<'iife' | 'esm'>(getInitialPlayerType());
 	let layoutType = $state<'vertical' | 'split-panel'>(getInitialLayoutType());
 	let roleType = $state<'candidate' | 'scorer'>(getInitialMode());
-	let esmSource = $state<'local' | 'remote'>(getInitialEsmSource());
 	let toolbarPosition = $state<'top' | 'right' | 'bottom' | 'left'>('right');
 	let layoutConfig = $state({ toolbarPosition: 'right' as 'top' | 'right' | 'bottom' | 'left' });
 	let showSessionPanel = $state(false);
@@ -286,6 +264,32 @@
 		};
 	}
 
+	async function fetchDesmosAuthConfig() {
+		const response = await fetch('/api/tools/desmos/auth');
+		if (!response.ok) {
+			throw new Error(`Desmos auth request failed (${response.status})`);
+		}
+		const payload = await response.json();
+		return payload?.apiKey ? { apiKey: payload.apiKey } : {};
+	}
+
+	function createDemoToolkitCoordinator() {
+		const coordinator = new ToolkitCoordinator({
+			assessmentId: data.demo?.id || 'section-demo',
+			lazyInit: true,
+			tools: {
+				floatingTools: {
+					calculator: {
+						provider: 'desmos',
+						authFetcher: fetchDesmosAuthConfig
+					}
+				}
+			}
+		});
+		coordinator.setHooks?.(createDemoToolkitHooks());
+		return coordinator;
+	}
+
 	async function applyTTSConfig(config: TTSConfig) {
 		if (!toolkitCoordinator) return;
 		try {
@@ -399,9 +403,8 @@
 				console.error('Failed to load persisted layout config:', e);
 			}
 
-			// Apply config if coordinator already available.
-			if (toolkitCoordinator) {
-				await applyTTSConfig(ttsConfig);
+			if (!toolkitCoordinator) {
+				toolkitCoordinator = createDemoToolkitCoordinator();
 			}
 
 			// Outer scrollbar: show only while the user is scrolling
@@ -433,16 +436,13 @@
 		void applyTTSConfig(ttsConfig);
 	});
 
-	// Handle player type change with page refresh
-	// Update URL and refresh page when player, layout, or mode changes
-	function updateUrlAndRefresh(updates: { player?: 'iife' | 'esm'; layout?: 'vertical' | 'split-panel'; mode?: 'candidate' | 'scorer'; esmSource?: 'local' | 'remote' }) {
+	// Update URL and refresh page when layout or mode changes
+	function updateUrlAndRefresh(updates: { layout?: 'vertical' | 'split-panel'; mode?: 'candidate' | 'scorer' }) {
 		if (browser) {
 			const url = new URL(window.location.href);
 			// Preserve current values and apply updates
-			url.searchParams.set('player', updates.player || playerType);
 			url.searchParams.set('layout', updates.layout || layoutType);
 			url.searchParams.set('mode', updates.mode || roleType);
-			url.searchParams.set('esmSource', updates.esmSource || esmSource);
 			window.location.href = url.toString();
 		}
 	}
@@ -493,21 +493,6 @@
 	});
 	let qtiView = $derived<string>(roleType); // Keep QTI view for rubric filtering
 
-	let playerDefinitions = $derived.by(() => ({
-		iife: {
-			tagName: 'pie-iife-player',
-			attributes: {
-				'bundle-host': 'https://proxy.pie-api.com/bundles'
-			}
-		},
-		esm: {
-			tagName: 'pie-esm-player',
-			attributes: {
-				'esm-cdn-url': esmSource === 'local' ? '' : 'https://esm.sh'
-			}
-		}
-	}));
-
 	// Set complex properties imperatively on the web component
 	// (Web components can only receive simple values via attributes)
 	$effect(() => {
@@ -515,11 +500,10 @@
 			untrack(() => {
 				sectionPlayer.section = resolvedSectionForPlayer;
 				sectionPlayer.env = pieEnv;
+				sectionPlayer.toolkitCoordinator = toolkitCoordinator;
 				sectionPlayer.itemSessions = itemSessions;
-				sectionPlayer.onsessionchanged = handleSessionChanged;
 				sectionPlayer.ontoolkitcoordinatorready = handleToolkitCoordinatorReady;
 				sectionPlayer.toolbarPosition = toolbarPosition;
-				sectionPlayer.playerDefinitions = playerDefinitions;
 			});
 		}
 	});
@@ -829,46 +813,6 @@
 			<div class="join">
 				<button
 					class="btn btn-sm join-item"
-					class:btn-active={playerType === 'iife'}
-					onclick={() => updateUrlAndRefresh({ player: 'iife' })}
-				>
-					IIFE
-				</button>
-				<button
-					class="btn btn-sm join-item"
-					class:btn-active={playerType === 'esm'}
-					onclick={() => updateUrlAndRefresh({ player: 'esm' })}
-				>
-					ESM
-				</button>
-			</div>
-
-			{#if playerType === 'esm'}
-				<div class="join">
-					<button
-						class="btn btn-sm join-item"
-						class:btn-active={esmSource === 'remote'}
-						onclick={() => updateUrlAndRefresh({ esmSource: 'remote' })}
-						title="Use remote CDN (esm.sh)"
-					>
-						Remote CDN
-					</button>
-					<button
-						class="btn btn-sm join-item"
-						class:btn-active={esmSource === 'local'}
-						onclick={() => updateUrlAndRefresh({ esmSource: 'local' })}
-						title="Use local-esm-cdn (prod testing)"
-					>
-						Local CDN
-					</button>
-				</div>
-			{/if}
-
-			<div class="divider divider-horizontal"></div>
-
-			<div class="join">
-				<button
-					class="btn btn-sm join-item"
 					class:btn-active={layoutType === 'split-panel'}
 					onclick={() => updateUrlAndRefresh({ layout: 'split-panel' })}
 					title="Split panel - passages left, items right"
@@ -960,7 +904,6 @@
 		<pie-section-player
 			class="block h-full min-h-0"
 			bind:this={sectionPlayer}
-			player={playerType}
 			page-layout={layoutType}
 			view={qtiView}
 			onsession-changed={handleSessionChanged}

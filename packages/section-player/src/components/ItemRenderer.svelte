@@ -5,7 +5,12 @@
   Handles SSML extraction, TTS service binding, and player lifecycle.
 -->
 <script lang="ts">
-  import { SSMLExtractor } from "@pie-players/pie-assessment-toolkit";
+  import {
+    SSMLExtractor,
+    assessmentToolkitRuntimeContext,
+    type AssessmentToolkitRuntimeContext,
+  } from "@pie-players/pie-assessment-toolkit";
+  import { ContextConsumer } from "@pie-players/pie-context";
   import "@pie-players/pie-assessment-toolkit/components/QuestionToolBar.svelte";
 	import {
 		DEFAULT_PLAYER_DEFINITIONS,
@@ -49,24 +54,55 @@
     onsessionchanged?: (event: CustomEvent) => void;
   } = $props();
 
-  // Extract individual services from coordinator
-  const toolCoordinator = $derived(toolkitCoordinator?.toolCoordinator);
-  const catalogResolver = $derived(toolkitCoordinator?.catalogResolver);
-
   // Get the DOM element reference for service binding
+  let contextHostElement: HTMLElement | null = $state(null);
   let itemContentElement: HTMLElement | null = $state(null);
   let questionToolbarElement: HTMLElement | null = $state(null);
   let calculatorElement: HTMLElement | null = $state(null);
+  let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+  let runtimeContextConsumer: ContextConsumer<
+    typeof assessmentToolkitRuntimeContext
+  > | null = null;
 
-  // Set toolkitCoordinator on calculator element
+  // Context-first: resolve runtime dependencies from context with prop fallback.
+  const effectiveToolkitCoordinator = $derived(
+    toolkitCoordinator || runtimeContext?.toolkitCoordinator,
+  );
+  const toolCoordinator = $derived(
+    effectiveToolkitCoordinator?.toolCoordinator || runtimeContext?.toolCoordinator,
+  );
+  const catalogResolver = $derived(
+    effectiveToolkitCoordinator?.catalogResolver || runtimeContext?.catalogResolver,
+  );
+  const effectiveAssessmentId = $derived(
+    assessmentId || runtimeContext?.assessmentId || "",
+  );
+  const effectiveSectionId = $derived(sectionId || runtimeContext?.sectionId || "");
+
+  // Consume runtime context from the section-player provider tree.
   $effect(() => {
-    if (calculatorElement && toolkitCoordinator) {
-      (calculatorElement as any).toolkitCoordinator = toolkitCoordinator;
+    if (!contextHostElement) return;
+    runtimeContextConsumer = new ContextConsumer(contextHostElement, {
+      context: assessmentToolkitRuntimeContext,
+      subscribe: true,
+      onValue: (value: AssessmentToolkitRuntimeContext) => {
+        runtimeContext = value;
+      },
+    });
+    runtimeContextConsumer.connect();
+    return () => {
+      runtimeContextConsumer?.disconnect();
+      runtimeContextConsumer = null;
+    };
+  });
+
+  // Set toolkitCoordinator on calculator element.
+  $effect(() => {
+    if (calculatorElement && effectiveToolkitCoordinator) {
+      (calculatorElement as any).toolkitCoordinator = effectiveToolkitCoordinator;
     }
   });
 
-  // Track if services have been bound
-  let toolbarServicesBound = $state(false);
   let calculatorVisible = $state(false);
 
   let hasElements = $derived(
@@ -125,21 +161,18 @@
 
   // Bind direct item contracts to question toolbar.
   $effect(() => {
-    if (questionToolbarElement && !toolbarServicesBound) {
-      if (itemContentElement) {
-        (questionToolbarElement as any).scopeElement = itemContentElement;
-      }
-      if (assessmentId) {
-        (questionToolbarElement as any).assessmentId = assessmentId;
-      }
-      if (sectionId) {
-        (questionToolbarElement as any).sectionId = sectionId;
-      }
-      if (item) {
-        (questionToolbarElement as any).item = item;
-      }
-
-      toolbarServicesBound = true;
+    if (!questionToolbarElement) return;
+    if (itemContentElement) {
+      (questionToolbarElement as any).scopeElement = itemContentElement;
+    }
+    if (effectiveAssessmentId) {
+      (questionToolbarElement as any).assessmentId = effectiveAssessmentId;
+    }
+    if (effectiveSectionId) {
+      (questionToolbarElement as any).sectionId = effectiveSectionId;
+    }
+    if (item) {
+      (questionToolbarElement as any).item = item;
     }
   });
 
@@ -161,48 +194,50 @@
   });
 </script>
 
-{#if item.config}
-  <ItemShell
-    {item}
-    {contentKind}
-    {assessmentId}
-    {sectionId}
-    {customClassName}
-  >
-    <pie-question-toolbar
-      slot="toolbar"
-      bind:this={questionToolbarElement}
-      item-id={item.id}
-      catalog-id={item.id}
-      tools="calculator,tts,answerEliminator"
-      content-kind={contentKind}
-      size="md"
-      language="en-US"
-    ></pie-question-toolbar>
+<div bind:this={contextHostElement}>
+  {#if item.config}
+    <ItemShell
+      {item}
+      {contentKind}
+      assessmentId={effectiveAssessmentId}
+      sectionId={effectiveSectionId}
+      {customClassName}
+    >
+      <pie-question-toolbar
+        slot="toolbar"
+        bind:this={questionToolbarElement}
+        item-id={item.id}
+        catalog-id={item.id}
+        tools="calculator,tts,answerEliminator"
+        content-kind={contentKind}
+        size="md"
+        language="en-US"
+      ></pie-question-toolbar>
 
-    <div class="pie-section-player__item-content" bind:this={itemContentElement}>
-      <ItemPlayerBridge
-        {item}
-        {env}
-        {session}
-        {hasElements}
-        resolvedPlayerTag={resolvedPlayerTag}
-        resolvedPlayerDefinition={resolvedPlayerDefinition}
-        {skipElementLoading}
-        {onsessionchanged}
-      />
-    </div>
-  </ItemShell>
+      <div class="pie-section-player__item-content" bind:this={itemContentElement}>
+        <ItemPlayerBridge
+          {item}
+          {env}
+          {session}
+          {hasElements}
+          resolvedPlayerTag={resolvedPlayerTag}
+          resolvedPlayerDefinition={resolvedPlayerDefinition}
+          {skipElementLoading}
+          {onsessionchanged}
+        />
+      </div>
+    </ItemShell>
 
-  <!-- Calculator Tool Instance (rendered outside panel for floating overlay) -->
-  {#if item}
-    <pie-tool-calculator
-      bind:this={calculatorElement}
-      visible={calculatorVisible}
-      tool-id="calculator-{item.id}"
-    ></pie-tool-calculator>
+    <!-- Calculator Tool Instance (rendered outside panel for floating overlay) -->
+    {#if item}
+      <pie-tool-calculator
+        bind:this={calculatorElement}
+        visible={calculatorVisible}
+        tool-id="calculator-{item.id}"
+      ></pie-tool-calculator>
+    {/if}
   {/if}
-{/if}
+</div>
 
 <style>
   .pie-section-player__item-content {

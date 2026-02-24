@@ -1,11 +1,9 @@
 <script lang="ts">
 	
 	import {
-		ToolkitCoordinator,
-		BrowserTTSProvider,
-		AnnotationToolbarAPIClient
+		AnnotationToolbarAPIClient,
+		type ToolkitCoordinatorHooks
 	} from '@pie-players/pie-assessment-toolkit';
-	import { ServerTTSProvider } from '@pie-players/tts-client-server';
 
 	// Load the web component
 	onMount(async () => {
@@ -14,10 +12,8 @@
 			import('@pie-players/pie-tool-annotation-toolbar')
 		]);
 	});
-import { onDestroy, onMount, untrack } from 'svelte';
+	import { onDestroy, onMount, untrack } from 'svelte';
 	import { browser } from '$app/environment';
-	import { goto, onNavigate, replaceState } from '$app/navigation';
-	import { page } from '$app/stores';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -260,169 +256,50 @@ import { onDestroy, onMount, untrack } from 'svelte';
 	let outerScrollTimeoutId: ReturnType<typeof setTimeout> | null = null;
 	let removeOuterScrollListener: (() => void) | null = null;
 
-	// Initialize toolkit coordinator and TTS
-	async function initializeTTS(config: TTSConfig) {
-		try {
-			// Create toolkit coordinator if not exists
-			if (!toolkitCoordinator) {
-				// Use demo ID to ensure uniqueness
-				const assessmentId = `demo-${data.demo.id}`;
-
-				// Default floating tools list for demo mode
-				const defaultToolsList = [
-					'calculator',
-					'calculatorScientific',
-					'calculatorGraphing',
-					'graph',
-					'periodicTable',
-					'protractor',
-					'ruler',
-					'lineReader',
-					'magnifier',
-					'screenMagnifier',
-					'textToSpeech',
-					'answerEliminator'
-				];
-
-				toolkitCoordinator = new ToolkitCoordinator({
-					assessmentId,
-					tools: {
-						tts: { enabled: true },
-						answerEliminator: { enabled: true },
-						floatingTools: {
-							enabledTools: defaultToolsList,
-							calculator: {
-								enabled: true,
-								provider: 'desmos',
-								authFetcher: async () => {
-									const response = await fetch('/api/tools/desmos/auth');
-									if (!response.ok) {
-										throw new Error(
-											`Failed to load Desmos auth config: ${response.status} ${response.statusText}`
-										);
-									}
-									const authConfig = await response.json();
-									return {
-										apiKey: authConfig?.apiKey || undefined
-									};
-								}
-							},
-							graph: { enabled: true },
-							periodicTable: { enabled: true },
-							protractor: { enabled: true },
-							ruler: { enabled: true },
-							lineReader: { enabled: true },
-							magnifier: { enabled: true },
-							colorScheme: { enabled: true }
-						}
-					},
-					accessibility: {
-						catalogs: [],
-						language: 'en-US'
-					}
-				});
-
-				// Calculator provider is automatically registered by ToolkitCoordinator
-				// No manual registration needed - it handles Desmos provider creation
-
-				// Set up tool state persistence
-				toolkitCoordinator.elementToolStateStore.setOnStateChange((state: any) => {
-					localStorage.setItem(TOOL_STATE_STORAGE_KEY, JSON.stringify(state));
-				});
-
-				// Load persisted tool state
+	function createDemoToolkitHooks(): ToolkitCoordinatorHooks {
+		return {
+			onError: (error, context) => {
+				console.error('[Demo] Toolkit hook error:', context, error);
+			},
+			onTelemetry: (eventName, payload) => {
+				console.log('[Demo] Toolkit telemetry:', eventName, payload);
+			},
+			loadToolState: () => {
 				try {
 					const saved = localStorage.getItem(TOOL_STATE_STORAGE_KEY);
-					if (saved) {
-						toolkitCoordinator.elementToolStateStore.loadState(JSON.parse(saved));
-						console.log('[Demo] Loaded tool state from localStorage');
-					}
+					if (!saved) return null;
+					const parsed = JSON.parse(saved);
+					console.log('[Demo] Loaded tool state from localStorage');
+					return parsed;
 				} catch (e) {
 					console.warn('[Demo] Failed to load tool state:', e);
+					return null;
 				}
-
-				console.log('[Demo] ToolkitCoordinator created with assessmentId:', assessmentId);
+			},
+			saveToolState: (state) => {
+				try {
+					localStorage.setItem(TOOL_STATE_STORAGE_KEY, JSON.stringify(state));
+				} catch (e) {
+					console.warn('[Demo] Failed to persist tool state:', e);
+				}
 			}
+		};
+	}
 
-			// Get TTS service from coordinator
-			const ttsService = toolkitCoordinator.ttsService;
+	async function applyTTSConfig(config: TTSConfig) {
+		if (!toolkitCoordinator) return;
+		try {
+			const backend = config.provider === 'browser' ? 'browser' : config.provider;
+			toolkitCoordinator.updateToolConfig('tts', {
+				enabled: true,
+				backend,
+				defaultVoice: config.voice || undefined,
+				rate: config.rate,
+				pitch: config.pitch,
+				apiEndpoint: backend === 'browser' ? undefined : '/api/tts',
+			});
+			await toolkitCoordinator.ensureTTSReady();
 
-			// Re-initialize TTS service with new provider
-			if (config.provider === 'polly') {
-				// Server-side TTS with AWS Polly
-				const serverProvider = new ServerTTSProvider();
-				await ttsService.initialize(serverProvider, {
-					apiEndpoint: '/api/tts',
-					provider: 'polly',
-					voice: config.voice,
-					language: 'en-US',
-					rate: config.rate,
-					pitch: config.pitch,
-					providerOptions: {
-						engine: config.pollyEngine || 'neural',
-						sampleRate: config.pollySampleRate || 24000,
-					},
-				});
-				console.log('[Demo] ✅ Server TTS initialized (AWS Polly):', {
-					voice: config.voice,
-					engine: config.pollyEngine,
-					rate: config.rate,
-					pitch: config.pitch,
-				});
-			} else if (config.provider === 'google') {
-				// Server-side TTS with Google Cloud
-				const serverProvider = new ServerTTSProvider();
-				await ttsService.initialize(serverProvider, {
-					apiEndpoint: '/api/tts',
-					provider: 'google',
-					voice: config.voice,
-					language: 'en-US',
-					rate: config.rate,
-					pitch: config.pitch,
-					providerOptions: {
-						voiceType: config.googleVoiceType || 'wavenet',
-					},
-				});
-				console.log('[Demo] ✅ Server TTS initialized (Google Cloud):', {
-					voice: config.voice,
-					voiceType: config.googleVoiceType,
-					rate: config.rate,
-					pitch: config.pitch,
-				});
-			} else {
-				// Browser TTS with timeout protection
-				console.log('[Demo] Initializing Browser TTS with config:', {
-					voice: config.voice,
-					rate: config.rate,
-					pitch: config.pitch,
-				});
-
-				const browserProvider = new BrowserTTSProvider();
-
-				// Wrap initialization in a timeout to prevent infinite hangs
-				const initPromise = ttsService.initialize(browserProvider, {
-					voice: config.voice || undefined, // Don't pass empty string
-					rate: config.rate,
-					pitch: config.pitch,
-				});
-
-				const timeoutPromise = new Promise((_, reject) =>
-					setTimeout(() => reject(new Error('Browser TTS initialization timeout')), 5000)
-				);
-
-				await Promise.race([initPromise, timeoutPromise]);
-				// Log available voices for debugging
-				const availableVoices = speechSynthesis.getVoices();
-				console.log('[Demo] ✅ Browser TTS initialized:', {
-					voice: config.voice || 'default',
-					rate: config.rate,
-					pitch: config.pitch,
-					availableVoices: availableVoices.length,
-					voiceFound: availableVoices.some(v => v.name === config.voice)
-				});
-			}
-
-			// Apply TTS highlight style from config
 			if (config.highlightStyle) {
 				toolkitCoordinator.highlightCoordinator.updateTTSHighlightStyle(
 					config.highlightStyle.color,
@@ -430,10 +307,21 @@ import { onDestroy, onMount, untrack } from 'svelte';
 				);
 			}
 
-			console.log('[Demo] All toolkit services initialized successfully');
+			console.log('[Demo] Toolkit TTS configured successfully');
 		} catch (e) {
 			console.error('[Demo] Failed to initialize TTS services:', e);
 		}
+	}
+
+	function handleToolkitCoordinatorReady(event: CustomEvent) {
+		const nextCoordinator = event?.detail?.toolkitCoordinator;
+		if (!nextCoordinator || nextCoordinator === toolkitCoordinator) {
+			return;
+		}
+		toolkitCoordinator = nextCoordinator;
+		toolkitCoordinator.setHooks?.(createDemoToolkitHooks());
+		void applyTTSConfig(ttsConfig);
+		console.log('[Demo] Received ToolkitCoordinator from section player');
 	}
 
 	// Initialize window positions on mount
@@ -511,8 +399,10 @@ import { onDestroy, onMount, untrack } from 'svelte';
 				console.error('Failed to load persisted layout config:', e);
 			}
 
-			// Initialize TTS with loaded/default configuration
-			await initializeTTS(ttsConfig);
+			// Apply config if coordinator already available.
+			if (toolkitCoordinator) {
+				await applyTTSConfig(ttsConfig);
+			}
 
 			// Outer scrollbar: show only while the user is scrolling
 			function markOuterScrolling() {
@@ -533,17 +423,14 @@ import { onDestroy, onMount, untrack } from 'svelte';
 		}
 	});
 
-	// Set toolkit coordinator on player imperatively when ready (web component property binding)
-	$effect(() => {
-		if (browser && sectionPlayer && toolkitCoordinator) {
-			sectionPlayer.toolkitCoordinator = toolkitCoordinator;
-			console.log('[Demo] ToolkitCoordinator set on section player');
-		}
-	});
-
 	// Sync layoutConfig with toolbarPosition changes
 	$effect(() => {
 		layoutConfig = { toolbarPosition };
+	});
+
+	$effect(() => {
+		if (!toolkitCoordinator) return;
+		void applyTTSConfig(ttsConfig);
 	});
 
 	// Handle player type change with page refresh
@@ -630,7 +517,7 @@ import { onDestroy, onMount, untrack } from 'svelte';
 				sectionPlayer.env = pieEnv;
 				sectionPlayer.itemSessions = itemSessions;
 				sectionPlayer.onsessionchanged = handleSessionChanged;
-				sectionPlayer.toolkitCoordinator = toolkitCoordinator;
+				sectionPlayer.ontoolkitcoordinatorready = handleToolkitCoordinatorReady;
 				sectionPlayer.toolbarPosition = toolbarPosition;
 				sectionPlayer.playerDefinitions = playerDefinitions;
 			});

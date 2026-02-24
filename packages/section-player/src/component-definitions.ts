@@ -41,11 +41,6 @@ export const DEFAULT_LAYOUT_DEFINITIONS: LayoutDefinitionMap = {
 		ensureDefined: () =>
 			import("./components/layout-elements/PieSplitPanelLayoutElement.svelte"),
 	},
-	"split-panel-composed": {
-		tagName: "pie-composed-split-panel-layout",
-		ensureDefined: () =>
-			import("./components/layout-elements/PieComposedSplitPanelLayoutElement.svelte"),
-	},
 	vertical: {
 		tagName: "pie-vertical-layout",
 		ensureDefined: () =>

@@ -2,6 +2,7 @@ import { ContextProviderEvent, ContextRequestEvent } from "./events.js";
 import type { ContextType, UnknownContext } from "./types.js";
 
 interface Subscription<ValueType> {
+	consumerHost: Element;
 	callback: (value: ValueType, unsubscribe?: () => void) => void;
 	unsubscribe: () => void;
 }
@@ -34,6 +35,10 @@ export class ContextProvider<T extends UnknownContext> {
 			"context-request",
 			this.handleContextRequest as EventListener,
 		);
+		this.host.addEventListener(
+			"context-provider",
+			this.handleContextProvider as EventListener,
+		);
 		this.host.dispatchEvent(new ContextProviderEvent(this.context, this.host));
 	}
 
@@ -43,6 +48,10 @@ export class ContextProvider<T extends UnknownContext> {
 		this.host.removeEventListener(
 			"context-request",
 			this.handleContextRequest as EventListener,
+		);
+		this.host.removeEventListener(
+			"context-provider",
+			this.handleContextProvider as EventListener,
 		);
 		this.subscriptions.clear();
 	}
@@ -57,12 +66,23 @@ export class ContextProvider<T extends UnknownContext> {
 		return this.currentValue;
 	}
 
+	private getContextTarget(event: Event, fallback: Element): Element {
+		if ("contextTarget" in event && event.contextTarget) {
+			return event.contextTarget as Element;
+		}
+		const path =
+			typeof event.composedPath === "function" ? event.composedPath() : [];
+		const firstPathTarget = path[0];
+		return firstPathTarget ? (firstPathTarget as Element) : fallback;
+	}
+
 	private readonly handleContextRequest = (event: ContextRequestEvent) => {
 		if (event.context !== this.context) return;
-		if (event.contextTarget === this.host) return;
+		const consumerHost = this.getContextTarget(event, this.host);
+		if (consumerHost === this.host) return;
 
 		// Closest provider wins for this context key.
-		event.stopImmediatePropagation();
+		event.stopPropagation();
 
 		if (!event.subscribe) {
 			event.callback(this.currentValue);
@@ -77,10 +97,28 @@ export class ContextProvider<T extends UnknownContext> {
 		};
 
 		this.subscriptions.set(event.callback, {
+			consumerHost,
 			callback: event.callback,
 			unsubscribe,
 		});
 		event.callback(this.currentValue, unsubscribe);
+	};
+
+	private readonly handleContextProvider = (event: ContextProviderEvent) => {
+		if (event.context !== this.context) return;
+		const providerHost = this.getContextTarget(event, this.host);
+		if (providerHost === this.host) return;
+
+		// A newly connected nested provider should take over matching consumers.
+		const seen = new Set<unknown>();
+		for (const [callback, { consumerHost }] of this.subscriptions) {
+			if (seen.has(callback)) continue;
+			seen.add(callback);
+			consumerHost.dispatchEvent(
+				new ContextRequestEvent(this.context, consumerHost, callback, true),
+			);
+		}
+		event.stopPropagation();
 	};
 
 	private notifySubscribers(): void {

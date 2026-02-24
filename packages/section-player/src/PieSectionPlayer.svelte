@@ -28,6 +28,7 @@
     - item-changed: Fired when current item changes (item mode only)
     - section-complete: Fired when all items completed
     - player-error: Fired on errors
+    - toolkit-coordinator-ready: Fired when coordinator is resolved
 -->
 <svelte:options
   customElement={{
@@ -61,6 +62,7 @@
 
       // Toolkit coordinator (JS property, not attribute)
       toolkitCoordinator: { type: "Object", reflect: false },
+      ontoolkitcoordinatorready: { type: "Object", reflect: false },
       // Host-provided web component definitions
       playerDefinitions: { type: "Object", reflect: false },
       layoutDefinitions: { type: "Object", reflect: false },
@@ -131,6 +133,9 @@
 
     // Toolkit coordinator (optional - creates default if not provided)
     toolkitCoordinator = null as any,
+    ontoolkitcoordinatorready = null as
+      | ((event: CustomEvent<any>) => void)
+      | null,
     playerDefinitions = {} as Partial<Record<string, ComponentDefinition>>,
     layoutDefinitions = {} as Partial<Record<string, ComponentDefinition>>,
 
@@ -138,25 +143,62 @@
     onsessionchanged = null as ((event: CustomEvent) => void) | null,
   } = $props();
 
-  // Generate or use provided coordinator
-  const coordinator = $derived.by(() => {
-    if (toolkitCoordinator) return toolkitCoordinator;
+  type ToolkitCoordinatorReadyDetail = {
+    toolkitCoordinator: ToolkitCoordinator;
+    createdBySectionPlayer: boolean;
+  };
 
-    // Generate default assessmentId for standalone sections
-    const fallbackId = `anon_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+  let ownedToolkitCoordinator = $state<ToolkitCoordinator | null>(null);
+  let fallbackAssessmentId = $state<string | null>(null);
+  let lastNotifiedCoordinator = $state<ToolkitCoordinator | null>(null);
 
-    return new ToolkitCoordinator({
-      assessmentId: fallbackId,
-      tools: {
-        tts: { enabled: true },
-        answerEliminator: { enabled: true },
-      },
+  function getFallbackAssessmentId(): string {
+    if (!fallbackAssessmentId) {
+      fallbackAssessmentId = `anon_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+    }
+    return fallbackAssessmentId;
+  }
+
+  const preferredAssessmentId = $derived.by(() => {
+    if (section?.identifier) return section.identifier;
+    if (typeof activityDefinition?.id === "string" && activityDefinition.id) {
+      return activityDefinition.id;
+    }
+    return null;
+  });
+
+  // Lazily create a coordinator only when host does not provide one.
+  $effect(() => {
+    if (toolkitCoordinator || ownedToolkitCoordinator) return;
+    ownedToolkitCoordinator = new ToolkitCoordinator({
+      assessmentId: preferredAssessmentId ?? getFallbackAssessmentId(),
+      lazyInit: true,
     });
   });
 
+  const coordinator = $derived.by(
+    () => (toolkitCoordinator as ToolkitCoordinator | null) ?? ownedToolkitCoordinator,
+  );
+
+  $effect(() => {
+    if (!coordinator || coordinator === lastNotifiedCoordinator) return;
+    lastNotifiedCoordinator = coordinator;
+    const detail: ToolkitCoordinatorReadyDetail = {
+      toolkitCoordinator: coordinator,
+      createdBySectionPlayer: coordinator === ownedToolkitCoordinator,
+    };
+    const event = new CustomEvent("toolkit-coordinator-ready", {
+      detail,
+      bubbles: true,
+      composed: true,
+    });
+    ontoolkitcoordinatorready?.(event);
+    dispatchEvent(event);
+  });
+
   // Extract services from coordinator
-  const services = $derived(coordinator.getServiceBundle());
-  const assessmentId = $derived(coordinator.assessmentId);
+  const services = $derived.by(() => coordinator?.getServiceBundle() ?? null);
+  const assessmentId = $derived(coordinator?.assessmentId || "");
 
   // Generate or extract sectionId
   const sectionId = $derived.by(() => {
@@ -203,10 +245,10 @@
     (): AssessmentToolkitRuntimeContext => ({
       toolkitCoordinator: coordinator,
       toolCoordinator: coordinator?.toolCoordinator || null,
-      ttsService: services?.ttsService || null,
-      highlightCoordinator: services?.highlightCoordinator || null,
-      catalogResolver: services?.catalogResolver || null,
-      elementToolStateStore: services?.elementToolStateStore || null,
+      ttsService: services?.ttsService ?? null,
+      highlightCoordinator: services?.highlightCoordinator ?? null,
+      catalogResolver: services?.catalogResolver ?? null,
+      elementToolStateStore: services?.elementToolStateStore ?? null,
       assessmentId,
       sectionId,
     }),
@@ -503,7 +545,16 @@
 
   // Listen for TTS errors
   $effect(() => {
-    const ttsService = services.ttsService;
+    if (!showToolbar) return;
+    if (typeof coordinator?.ensureTTSReady !== "function") return;
+    void coordinator.ensureTTSReady().catch((err: unknown) => {
+      console.error("[PieSectionPlayer] Failed to lazily initialize TTS:", err);
+    });
+  });
+
+  // Listen for TTS errors
+  $effect(() => {
+    const ttsService = services?.ttsService;
     if (!ttsService) {
       ttsError = null;
       return;
@@ -658,7 +709,6 @@
     (pageLayoutElement as any).playerVersion = playerVersion;
     (pageLayoutElement as any).assessmentId = assessmentId;
     (pageLayoutElement as any).sectionId = sectionId;
-    (pageLayoutElement as any).toolkitCoordinator = coordinator;
     (pageLayoutElement as any).playerDefinitions = mergedPlayerDefinitions;
     (pageLayoutElement as any).onsessionchanged = handleSessionChanged;
   });
@@ -764,7 +814,6 @@
             {playerVersion}
             {assessmentId}
             {sectionId}
-            toolkitCoordinator={coordinator}
             playerDefinitions={mergedPlayerDefinitions}
             onprevious={navigatePrevious}
             onnext={navigateNext}

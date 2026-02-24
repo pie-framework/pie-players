@@ -9,9 +9,6 @@
 			player: { type: "String" },
 			env: { type: "Object" },
 			playerVersion: { type: "String", attribute: "player-version" },
-			assessmentId: { type: "String", attribute: "assessment-id" },
-			sectionId: { type: "String", attribute: "section-id" },
-			toolkitCoordinator: { type: "Object", reflect: false },
 			playerDefinitions: { type: "Object", reflect: false },
 			onsessionchanged: { type: "Object", reflect: false },
 		},
@@ -33,9 +30,6 @@
 			role: "student" | "instructor";
 		},
 		playerVersion = "latest",
-		assessmentId = "",
-		sectionId = "",
-		toolkitCoordinator = null,
 		playerDefinitions = {} as Partial<Record<string, ComponentDefinition>>,
 		onsessionchanged = undefined as ((itemId: string, session: any) => void) | undefined,
 	} = $props();
@@ -48,9 +42,6 @@
 	{player}
 	{env}
 	{playerVersion}
-	{assessmentId}
-	{sectionId}
-	{toolkitCoordinator}
 	{playerDefinitions}
 	{onsessionchanged}
 />

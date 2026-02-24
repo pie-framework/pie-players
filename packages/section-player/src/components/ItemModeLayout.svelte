@@ -23,7 +23,6 @@
 		playerVersion = 'latest',
 		assessmentId = '',
 		sectionId = '',
-		toolkitCoordinator = null,
 		playerDefinitions = {} as Partial<Record<string, ComponentDefinition>>,
 
 		onprevious,
@@ -42,7 +41,6 @@
 		playerVersion?: string;
 		assessmentId?: string;
 		sectionId?: string;
-		toolkitCoordinator?: any;
 		playerDefinitions?: Partial<Record<string, ComponentDefinition>>;
 
 		onprevious?: () => void;
@@ -68,9 +66,6 @@
 						{player}
 						contentKind="rubric-block-stimulus"
 						env={{ mode: 'view', role: env.role }}
-						{assessmentId}
-						{sectionId}
-						{toolkitCoordinator}
 						{playerDefinitions}
 						customClassName="pie-section-player__passage-item"
 					/>
@@ -89,9 +84,6 @@
 				{env}
 				session={itemSession}
 				{playerVersion}
-				{assessmentId}
-				{sectionId}
-				{toolkitCoordinator}
 				{playerDefinitions}
 				onsessionchanged={handleSessionChanged}
 				customClassName="pie-section-player__item-content"

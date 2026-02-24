@@ -17,9 +17,14 @@ import type {
 	ResolvedCatalog,
 } from "./AccessibilityCatalogResolver.js";
 import type { HighlightColor, HighlightType } from "./HighlightCoordinator.js";
+import type {
+	ToolkitCoordinatorHooks,
+	ToolkitInitStatus,
+} from "./ToolkitCoordinator.js";
 import type { FontSize, ThemeConfig } from "./ThemeProvider.js";
 import type { ZIndexLayer } from "./ToolCoordinator.js";
 import type { PlaybackState, TTSConfig } from "./TTSService.js";
+import type { ToolProviderRegistry } from "./tool-providers/ToolProviderRegistry.js";
 import type {
 	ITTSProvider,
 	TTSProviderCapabilities,
@@ -488,6 +493,11 @@ export interface IToolkitCoordinator {
 	readonly catalogResolver: IAccessibilityCatalogResolver;
 
 	/**
+	 * Tool provider registry
+	 */
+	readonly toolProviderRegistry: ToolProviderRegistry;
+
+	/**
 	 * Get all services as a bundle
 	 */
 	getServiceBundle(): {
@@ -496,7 +506,33 @@ export interface IToolkitCoordinator {
 		highlightCoordinator: IHighlightCoordinator;
 		elementToolStateStore: IElementToolStateStore;
 		catalogResolver: IAccessibilityCatalogResolver;
+		toolProviderRegistry: ToolProviderRegistry;
 	};
+
+	/**
+	 * Ensure TTS service is initialized and ready.
+	 */
+	ensureTTSReady(config?: Record<string, unknown>): Promise<void>;
+
+	/**
+	 * Ensure a provider is initialized and ready.
+	 */
+	ensureProviderReady(providerId: string): Promise<unknown>;
+
+	/**
+	 * Wait until coordinator initialization is complete.
+	 */
+	waitUntilReady(): Promise<void>;
+
+	/**
+	 * Check if coordinator has completed initialization.
+	 */
+	isReady(): boolean;
+
+	/**
+	 * Read current initialization status.
+	 */
+	getInitStatus(): ToolkitInitStatus;
 
 	/**
 	 * Check if a tool is enabled
@@ -512,6 +548,11 @@ export interface IToolkitCoordinator {
 	 * Update tool configuration
 	 */
 	updateToolConfig(toolId: string, updates: any): void;
+
+	/**
+	 * Register or update lifecycle hooks at runtime.
+	 */
+	setHooks(hooks: ToolkitCoordinatorHooks): void;
 }
 
 // II18nService is re-exported from @pie-players/pie-players-shared/i18n

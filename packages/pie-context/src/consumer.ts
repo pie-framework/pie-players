@@ -40,19 +40,28 @@ export class ContextConsumer<T extends UnknownContext> {
 		return this.currentValue;
 	}
 
+	private readonly handleValue = (
+		value: ContextType<T>,
+		unsubscribe?: () => void,
+	): void => {
+		if (unsubscribe !== this.unsubscribe) {
+			this.unsubscribe?.();
+			this.unsubscribe = unsubscribe;
+		}
+		if (!this.subscribe && this.unsubscribe) {
+			this.unsubscribe();
+			this.unsubscribe = undefined;
+		}
+		this.currentValue = value;
+		this.onValue?.(value);
+	};
+
 	public requestValue(): void {
 		this.host.dispatchEvent(
 			new ContextRequestEvent(
 				this.context,
 				this.host,
-				(value, unsubscribe) => {
-					if (unsubscribe !== this.unsubscribe) {
-						this.unsubscribe?.();
-						this.unsubscribe = unsubscribe;
-					}
-					this.currentValue = value;
-					this.onValue?.(value);
-				},
+				this.handleValue,
 				this.subscribe,
 			),
 		);

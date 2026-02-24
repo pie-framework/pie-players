@@ -17,9 +17,6 @@
 		player = '',
 		env = { mode: 'gather', role: 'student' },
 		playerVersion = 'latest',
-		assessmentId = '',
-		sectionId = '',
-		toolkitCoordinator = null,
 		playerDefinitions = {} as Partial<Record<string, ComponentDefinition>>,
 
 		onsessionchanged
@@ -30,9 +27,6 @@
 		player?: string;
 		env?: { mode: 'gather' | 'view' | 'evaluate' | 'author'; role: 'student' | 'instructor' };
 		playerVersion?: string;
-		assessmentId?: string;
-		sectionId?: string;
-		toolkitCoordinator?: any;
 		playerDefinitions?: Partial<Record<string, ComponentDefinition>>;
 
 		onsessionchanged?: (itemId: string, session: any) => void;
@@ -72,9 +66,6 @@
 						{player}
 						contentKind="rubric-block-stimulus"
 						env={{ mode: 'view', role: env.role }}
-						{assessmentId}
-						{sectionId}
-						{toolkitCoordinator}
 						{playerDefinitions}
 						customClassName="pie-section-player__passage-item"
 					/>
@@ -94,9 +85,6 @@
 					{env}
 					session={itemSessions[item.id || '']}
 					{playerVersion}
-					{assessmentId}
-					{sectionId}
-					{toolkitCoordinator}
 					{playerDefinitions}
 					onsessionchanged={handleItemSessionChanged(item.id || '')}
 					customClassName="pie-section-player__item-content"

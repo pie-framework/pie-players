@@ -22,7 +22,7 @@ export class ContextRequestEvent<
 		this.context = context;
 		this.contextTarget = contextTarget;
 		this.callback = callback;
-		this.subscribe = subscribe;
+		this.subscribe = subscribe ?? false;
 	}
 }
 

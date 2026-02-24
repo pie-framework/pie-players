@@ -17,9 +17,16 @@ so orchestration/runtime dependencies can be shared without prop drilling.
 
 - Events are emitted with `bubbles: true` and `composed: true`.
 - Provider matching uses strict key identity (`===`).
-- Providers call `stopImmediatePropagation()` when they satisfy a request.
+- `ContextRequestEvent.subscribe` defaults to `false` (one-shot request).
+- Providers call `stopPropagation()` when they satisfy a matching request.
+- Providers re-dispatch existing subscriptions when a nested provider for the
+  same context announces itself.
 - Subscriptions are opt-in (`subscribe: true`) and include unsubscribe callbacks.
 - `ContextRoot` only tracks subscribing requests to avoid unnecessary retention.
+- `ContextRoot` dedupes pending replay by `(requestor, callback)` pair.
+
+See `LIT_PARITY_CHECKLIST.md` for the parity checklist used to align semantics
+with `../lit/packages/context` core APIs.
 
 ## Svelte usage pattern
 
@@ -31,7 +38,7 @@ import { onMount } from "svelte";
 import { ContextConsumer, createContext } from "@pie-players/pie-context";
 
 const toolkitContext = createContext<{ assessmentId: string }>(
-	Symbol("toolkit-runtime"),
+  Symbol("toolkit-runtime"),
 );
 
 let host: HTMLElement;
@@ -39,14 +46,14 @@ let assessmentId = "";
 let consumer: ContextConsumer<typeof toolkitContext>;
 
 onMount(() => {
-	consumer = new ContextConsumer(host, {
-		context: toolkitContext,
-		subscribe: true,
-		onValue: (value) => {
-			assessmentId = value.assessmentId;
-		},
-	});
-	consumer.connect();
-	return () => consumer.disconnect();
+  consumer = new ContextConsumer(host, {
+    context: toolkitContext,
+    subscribe: true,
+    onValue: (value) => {
+      assessmentId = value.assessmentId;
+    },
+  });
+  consumer.connect();
+  return () => consumer.disconnect();
 });
 ```

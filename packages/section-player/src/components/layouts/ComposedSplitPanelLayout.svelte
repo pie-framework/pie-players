@@ -76,9 +76,6 @@
 					{player}
 					contentKind="rubric-block-stimulus"
 					env={{ mode: "view", role: env.role }}
-					{assessmentId}
-					{sectionId}
-					{toolkitCoordinator}
 					{playerDefinitions}
 					customClassName="pie-section-player__passage-item"
 				/>
@@ -102,9 +99,6 @@
 					{env}
 					session={itemSessions[item.id || ""]}
 					{playerVersion}
-					{assessmentId}
-					{sectionId}
-					{toolkitCoordinator}
 					{playerDefinitions}
 					onsessionchanged={handleItemSessionChanged(item.id || "")}
 					customClassName="pie-section-player__item-content"

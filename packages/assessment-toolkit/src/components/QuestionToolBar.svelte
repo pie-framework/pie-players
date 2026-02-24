@@ -10,12 +10,8 @@
 			size: { type: 'String', attribute: 'size' },
 			language: { type: 'String', attribute: 'language' },
 
-			// Services (passed as JS properties, not attributes)
-			ttsService: { type: 'Object', reflect: false },
-			toolCoordinator: { type: 'Object', reflect: false },
-			highlightCoordinator: { type: 'Object', reflect: false },
+			// Local runtime contracts (passed as JS properties, not attributes)
 			scopeElement: { type: 'Object', reflect: false },
-			elementToolStateStore: { type: 'Object', reflect: false },
 			toolRegistry: { type: 'Object', reflect: false },
 			pnpResolver: { type: 'Object', reflect: false },
 			assessment: { type: 'Object', reflect: false },
@@ -42,11 +38,6 @@
 		assessmentToolkitRuntimeContext,
 		type AssessmentToolkitRuntimeContext,
 	} from '../context/assessment-toolkit-context.js';
-	import type {
-		IToolCoordinator,
-		ITTSService,
-		IHighlightCoordinator,
-	} from '../services/interfaces.js';
 	import type { ToolRegistry } from '../services/ToolRegistry.js';
 	import type { PNPToolResolver } from '../services/PNPToolResolver.js';
 	import { createDefaultToolRegistry } from '../services/createDefaultToolRegistry.js';
@@ -74,11 +65,7 @@
 		catalogId = '',
 		tools = 'calculator,textToSpeech,answerEliminator',
 		contentKind = 'assessment-item',
-		ttsService,
-		toolCoordinator,
-		highlightCoordinator,
 		scopeElement = null,
-		elementToolStateStore,
 		toolRegistry = null,
 		pnpResolver = null,
 		assessment = null,
@@ -94,11 +81,7 @@
 		catalogId?: string;
 		tools?: string;
 		contentKind?: string;
-		ttsService?: ITTSService;
-		toolCoordinator?: IToolCoordinator;
-		highlightCoordinator?: IHighlightCoordinator;
 		scopeElement?: HTMLElement | null;
-		elementToolStateStore?: any;
 		toolRegistry?: ToolRegistry | null;
 		pnpResolver?: PNPToolResolver | null;
 		assessment?: AssessmentEntity | null;
@@ -133,18 +116,12 @@
 		};
 	});
 
-	const effectiveToolCoordinator = $derived(
-		toolCoordinator || runtimeContext?.toolCoordinator,
-	);
-	const effectiveTTSService = $derived(ttsService || runtimeContext?.ttsService);
-	const effectiveHighlightCoordinator = $derived(
-		highlightCoordinator || runtimeContext?.highlightCoordinator,
-	);
-	const effectiveElementToolStateStore = $derived(
-		elementToolStateStore || runtimeContext?.elementToolStateStore,
-	);
-	const effectiveAssessmentId = $derived(assessmentId || runtimeContext?.assessmentId || '');
-	const effectiveSectionId = $derived(sectionId || runtimeContext?.sectionId || '');
+	const effectiveToolCoordinator = $derived(runtimeContext?.toolCoordinator);
+	const effectiveTTSService = $derived(runtimeContext?.ttsService);
+	const effectiveHighlightCoordinator = $derived(runtimeContext?.highlightCoordinator);
+	const effectiveElementToolStateStore = $derived(runtimeContext?.elementToolStateStore);
+	const effectiveAssessmentId = $derived(runtimeContext?.assessmentId || assessmentId || '');
+	const effectiveSectionId = $derived(runtimeContext?.sectionId || sectionId || '');
 
 	// Generate globalElementId using store utility
 	let globalElementId = $derived.by(() => {

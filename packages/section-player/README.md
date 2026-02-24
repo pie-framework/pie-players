@@ -195,6 +195,7 @@ function AssessmentSection({ section }) {
 | `test-attempt-session` | `TestAttemptSession \| null` | `null` | Canonical attempt runtime state consumed by section player |
 | `activity-definition` | `Record<string, any> \| null` | `null` | Pie backend activity definition (`../../kds/pie-api-aws`) |
 | `activity-session` | `Record<string, any> \| null` | `null` | Pie backend activity session (`../../kds/pie-api-aws`) |
+| `toolkitCoordinator` | `ToolkitCoordinator \| null` | `null` | Runtime toolkit coordinator for context-provided tool services |
 | `custom-class-name` | `string` | `''` | Custom CSS class |
 | `debug` | `string \| boolean` | `''` | Debug mode |
 
@@ -273,7 +274,6 @@ The section player automatically optimizes element loading for sections with mul
 - **50%+ faster loading** for sections with repeated elements
 - **Fewer network requests** - one bundle request per unique element (not per item)
 - **Automatic** - no configuration needed, works out of the box
-- **Backward compatible** - existing code works without changes
 
 ### Example Performance
 
@@ -430,28 +430,14 @@ When using the coordinator, the section player automatically:
 6. **Renders TTS tools** in passage/item headers
 7. **Tracks element-level state** with global uniqueness
 
-### Standalone Sections (No Coordinator)
-
-If no coordinator is provided, the section player creates a default one:
-
-```javascript
-// No coordinator provided - section player creates default
-const player = document.getElementById('player');
-player.section = mySection;
-
-// Internally creates:
-// new ToolkitCoordinator({
-//   assessmentId: 'anon_...',  // auto-generated
-//   tools: { tts: { enabled: true }, answerEliminator: { enabled: true } }
-// })
-```
-
 ### Runtime Contract
 
 Section player runtime dependencies are coordinated via
 `toolkitCoordinator` and provided downstream through
 `assessmentToolkitRuntimeContext`. Passing individual toolkit services to
 child tools/components is no longer a supported integration pattern.
+`toolkitCoordinator` may be provided by the host, or section player can create
+one lazily when not supplied.
 
 ### SSML Extraction
 

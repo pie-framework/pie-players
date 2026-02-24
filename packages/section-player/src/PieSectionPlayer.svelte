@@ -52,7 +52,6 @@
 
       // Toolkit coordinator (JS property, not attribute)
       toolkitCoordinator: { type: "Object", reflect: false },
-      ontoolkitcoordinatorready: { type: "Object", reflect: false },
       // Host-provided web component definitions
       layoutDefinitions: { type: "Object", reflect: false },
     },
@@ -118,11 +117,8 @@
     showToolbar = true,
     debug = "" as string | boolean,
 
-    // Toolkit coordinator (optional - creates default if not provided)
+    // Toolkit coordinator (host may provide; section player creates one lazily if absent)
     toolkitCoordinator = null as ToolkitCoordinator | null,
-    ontoolkitcoordinatorready = null as
-      | ((event: CustomEvent<any>) => void)
-      | null,
     layoutDefinitions = {} as Partial<Record<string, ComponentDefinition>>,
 
     // Event handlers
@@ -131,7 +127,6 @@
 
   type ToolkitCoordinatorReadyDetail = {
     toolkitCoordinator: ToolkitCoordinator;
-    createdBySectionPlayer: boolean;
   };
 
   let ownedToolkitCoordinator = $state<ToolkitCoordinator | null>(null);
@@ -172,14 +167,12 @@
     lastNotifiedCoordinator = coordinator;
     const detail: ToolkitCoordinatorReadyDetail = {
       toolkitCoordinator: coordinator,
-      createdBySectionPlayer: coordinator === ownedToolkitCoordinator,
     };
     const event = new CustomEvent("toolkit-coordinator-ready", {
       detail,
       bubbles: true,
       composed: true,
     });
-    ontoolkitcoordinatorready?.(event);
     dispatchEvent(event);
   });
 

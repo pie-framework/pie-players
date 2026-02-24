@@ -53,7 +53,7 @@
 	let testAttemptSessionData = $state<any | null>(null);
 
 	// Toolkit coordinator (owns all services)
-	let toolkitCoordinator: any = $state(null);
+	let toolkitCoordinator: any = $state(createDemoToolkitCoordinator());
 
 	// TTS Configuration
 	interface TTSHighlightStyle {
@@ -267,17 +267,6 @@
 		}
 	}
 
-	function handleToolkitCoordinatorReady(event: CustomEvent) {
-		const nextCoordinator = event?.detail?.toolkitCoordinator;
-		if (!nextCoordinator || nextCoordinator === toolkitCoordinator) {
-			return;
-		}
-		toolkitCoordinator = nextCoordinator;
-		toolkitCoordinator.setHooks?.(createDemoToolkitHooks());
-		void applyTTSConfig(ttsConfig);
-		console.log('[Demo] Received ToolkitCoordinator from section player');
-	}
-
 	// Initialize window positions on mount
 	onMount(async () => {
 		if (browser) {
@@ -351,10 +340,6 @@
 				}
 			} catch (e) {
 				console.error('Failed to load persisted layout config:', e);
-			}
-
-			if (!toolkitCoordinator) {
-				toolkitCoordinator = createDemoToolkitCoordinator();
 			}
 
 			// Outer scrollbar: show only while the user is scrolling
@@ -452,7 +437,6 @@
 				sectionPlayer.env = pieEnv;
 				sectionPlayer.toolkitCoordinator = toolkitCoordinator;
 				sectionPlayer.itemSessions = itemSessions;
-				sectionPlayer.ontoolkitcoordinatorready = handleToolkitCoordinatorReady;
 				sectionPlayer.toolbarPosition = toolbarPosition;
 			});
 		}

@@ -62,6 +62,18 @@ Tools can **hide themselves** but cannot **override orchestrator's NO**:
 
 This is enforced architecturally: `filterVisibleInContext()` only filters the `allowedToolIds` array.
 
+### Refresh / Init Contract
+
+Toolbar containers may remain mounted, but button visibility is re-evaluated on each
+init/render refresh:
+
+1. Resolve `allowedToolIds` (Pass 1).
+2. Rebuild the current `ToolContext`.
+3. Call `filterVisibleInContext(allowedToolIds, context)` (Pass 2).
+4. Render only the resulting buttons.
+
+This keeps visibility deterministic and context-driven for every refresh cycle.
+
 ## QTI 3.0 Standard Access Features
 
 The toolkit includes comprehensive QTI 3.0 / IMS Access for All (AfA) 3.0 standard features in `pnp-standard-features.ts`:
@@ -149,7 +161,7 @@ export const calculatorToolRegistration: ToolRegistration = {
   icon: "calculator",
 
   // Which context levels support this tool
-  supportedLevels: ["section", "item", "passage", "rubric", "element"],
+  supportedLevels: ["item", "element"],
 
   // QTI 3.0 PNP support IDs that enable this tool
   // Maps to standard features from pnp-standard-features.ts
@@ -162,12 +174,7 @@ export const calculatorToolRegistration: ToolRegistration = {
 
   // Pass 2: Is this tool relevant in the current context?
   isVisibleInContext(context: ToolContext): boolean {
-    // Show at section/item level (student might need it)
-    if (context.level === "section" || context.level === "item") {
-      return true;
-    }
-
-    // At element level, only show if math content detected
+    // Show only when math content is present
     return hasMathContent(context);
   },
 

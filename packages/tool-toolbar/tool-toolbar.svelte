@@ -33,10 +33,22 @@
 -->
 <script lang="ts">
 	
-	import type { HighlightCoordinator, ToolCoordinator } from '@pie-players/pie-assessment-toolkit';
+	import {
+		createDefaultToolRegistry,
+		type HighlightCoordinator,
+		type ToolCoordinator,
+		type ToolContext,
+	} from '@pie-players/pie-assessment-toolkit';
 
 	const browser = typeof window !== 'undefined';
 	const log = (..._args: any[]) => {};
+	const metadataRegistry = createDefaultToolRegistry();
+	const metadataContext: ToolContext = {
+		level: 'item',
+		assessment: {} as any,
+		itemRef: {} as any,
+		item: { config: {} } as any,
+	};
 
 	// Tool packages define custom elements (side-effect imports).
 	import '@pie-players/pie-tool-answer-eliminator';
@@ -251,14 +263,20 @@
 		? enabledToolIds
 				.map(id => TOOL_REGISTRY[id as keyof typeof TOOL_REGISTRY])
 				.filter((tool): tool is (typeof TOOL_REGISTRY)[keyof typeof TOOL_REGISTRY] => Boolean(tool))
-				.map(tool => ({
+				.map(tool => {
+					const registration = metadataRegistry.get(tool.id);
+					const buttonMeta = registration?.createButton(metadataContext, {});
+					return {
 					id: tool.id,
-					name: tool.name,
+					name: buttonMeta?.label || tool.name,
+					ariaLabel: buttonMeta?.ariaLabel || tool.name,
+					tooltip: buttonMeta?.tooltip || buttonMeta?.label || tool.name,
 					enabled: tool.implemented,
 					isVisible: tool.getVisibility(),
-					icon: tool.icon,
+					icon: buttonMeta?.icon || tool.icon,
 					toggle: tool.toggle
-				}))
+					};
+				})
 		: []);
 
 	// Handle tool toggle
@@ -318,8 +336,8 @@
 					class="pie-tool-toolbar__button"
 					class:pie-tool-toolbar__button--active={tool.isVisible}
 					class:pie-tool-toolbar__button--disabled={!tool.enabled}
-					title={tool.name}
-					aria-label={tool.name}
+					title={tool.tooltip}
+					aria-label={tool.ariaLabel}
 					aria-pressed={tool.isVisible}
 					disabled={disabled || !tool.enabled}
 					onclick={() => handleToolToggle(tool.id, tool.toggle)}

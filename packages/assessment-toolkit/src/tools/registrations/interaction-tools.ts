@@ -39,8 +39,8 @@ export const answerEliminatorToolRegistration: ToolRegistration = {
 	description: "Strike through answer choices",
 	icon: "strikethrough",
 
-	// Answer eliminator appears at item and element level
-	supportedLevels: ["item", "element"],
+	// Answer eliminator appears at element level only
+	supportedLevels: ["element"],
 
 	// PNP support IDs
 	// Maps to QTI 3.0 standard feature: answerMasking

@@ -138,14 +138,11 @@ export const DEFAULT_TOOL_PLACEMENT = {
 		// Global accessibility + common tools
 		"magnifier",
 		"colorScheme",
-		"calculator",
 		"textToSpeech",
 	],
 	item: [
 		// Most common item-level tools
-		"calculator",
 		"textToSpeech",
-		"answerEliminator",
 		"highlighter",
 		"annotationToolbar",
 		"graph",
@@ -168,6 +165,7 @@ export const DEFAULT_TOOL_PLACEMENT = {
 	element: [
 		// Element-specific tools
 		"calculator",
+		"answerEliminator",
 		"textToSpeech",
 		"ruler",
 		"protractor",

@@ -216,6 +216,9 @@
       if (sectionId) {
         (questionToolbarElement as any).sectionId = sectionId;
       }
+      if (item) {
+        (questionToolbarElement as any).item = item;
+      }
 
       toolbarServicesBound = true;
     }
@@ -275,6 +278,7 @@
         item-id={item.id}
         catalog-id={item.id}
         tools="calculator,tts,answerEliminator"
+        content-kind={contentKind}
         size="md"
         language="en-US"
       ></pie-question-toolbar>

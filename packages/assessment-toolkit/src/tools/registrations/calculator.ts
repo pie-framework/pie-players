@@ -27,8 +27,8 @@ import {
  *
  * Supports:
  * - Basic, scientific, and graphing calculators via Desmos
- * - Context-aware visibility (shows when math content is detected)
- * - All levels except assessment (section, item, passage, rubric, element)
+ * - Context-aware visibility (shows only when math content is detected)
+ * - Element level only
  */
 export const calculatorToolRegistration: ToolRegistration = {
 	toolId: "calculator",
@@ -36,8 +36,9 @@ export const calculatorToolRegistration: ToolRegistration = {
 	description: "Multi-type calculator (basic, scientific, graphing)",
 	icon: "calculator",
 
-	// Calculator can appear at all levels except assessment
-	supportedLevels: ["section", "item", "passage", "rubric", "element"],
+	// Calculator is only eligible in element context.
+	// Passage-level display is intentionally excluded.
+	supportedLevels: ["element"],
 
 	// PNP support IDs that enable this tool
 	// Maps to QTI 3.0 standard features: calculator, graphingCalculator
@@ -51,17 +52,11 @@ export const calculatorToolRegistration: ToolRegistration = {
 	/**
 	 * Pass 2: Determine if calculator is relevant in this context
 	 *
-	 * Calculator is relevant when:
-	 * - Context contains mathematical content (MathML, LaTeX, arithmetic)
-	 * - Section/item level (always show - student might need for any problem)
+	 * Calculator is relevant when context contains mathematical content
+	 * (MathML, LaTeX, arithmetic markers).
 	 */
 	isVisibleInContext(context: ToolContext): boolean {
-		// At section/item level, always show (student might need it)
-		if (context.level === "section" || context.level === "item") {
-			return true;
-		}
-
-		// At passage/rubric/element level, show if math content detected
+		// For supported levels (item/element), show only when math is present.
 		return hasMathContent(context);
 	},
 

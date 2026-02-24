@@ -199,11 +199,12 @@
 <style>
 	.pie-section-player__split-panel-layout {
 		display: grid;
-		grid-template-rows: 1fr;
+		grid-template-rows: minmax(0, 1fr);
 		padding: 1rem;
 		height: 100%;
 		max-height: 100%;
 		min-height: 0;
+		overflow: hidden;
 		gap: 0;
 	}
 
@@ -218,9 +219,12 @@
 	.pie-section-player__passages-panel,
 	.pie-section-player__items-panel {
 		height: 100%;
+		max-height: 100%;
 		overflow-y: auto;
 		overflow-x: hidden;
+		overscroll-behavior: contain;
 		min-height: 0;
+		min-width: 0;
 		/* Firefox auto-hide scrollbar */
 		scrollbar-width: auto;
 		scrollbar-color: transparent transparent;
@@ -261,7 +265,7 @@
 	}
 
 	.pie-section-player__split-divider-handle {
-		/* Absolutely centered in the divider button (button fills grid cell height) */
+		/* Absolutely centered in the divider button (matches develop behavior) */
 		position: absolute;
 		inset: 0;
 		margin: auto;

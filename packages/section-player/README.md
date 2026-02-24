@@ -207,6 +207,9 @@ function AssessmentSection({ section }) {
 | `playerDefinitions` | `Record<string, ComponentDefinition>` | built-ins | Host player web-component definitions |
 | `layoutDefinitions` | `Record<string, ComponentDefinition>` | built-ins | Host page-layout web-component definitions |
 | `item-sessions` | `Record<string, any>` | `{}` | Item sessions for restoration |
+| `test-attempt-session` | `TestAttemptSession \| null` | `null` | Canonical attempt runtime state consumed by section player |
+| `activity-definition` | `Record<string, any> \| null` | `null` | Pie backend activity definition (`../../kds/pie-api-aws`) |
+| `activity-session` | `Record<string, any> \| null` | `null` | Pie backend activity session (`../../kds/pie-api-aws`) |
 | `custom-class-name` | `string` | `''` | Custom CSS class |
 | `debug` | `string \| boolean` | `''` | Debug mode |
 
@@ -252,6 +255,19 @@ Fired when all items in the section are completed.
 ### `player-error`
 
 Fired when an error occurs.
+
+### `session-changed`
+
+Fired when an item session changes. Includes the current canonical `testAttemptSession` snapshot so hosts can decide when/how to persist to pie backend.
+
+```javascript
+player.addEventListener("session-changed", (e) => {
+  const { itemId, session, testAttemptSession } = e.detail;
+
+  // Host decides persistence strategy to ../../kds/pie-api-aws
+  // (immediate, debounced, checkpoint, submit).
+});
+```
 
 ## Performance Optimization
 
@@ -367,6 +383,8 @@ Passages are automatically deduplicated by ID.
 ## Assessment Toolkit Integration
 
 The section player integrates with the [PIE Assessment Toolkit](../assessment-toolkit/) for centralized service management via **ToolkitCoordinator**.
+
+The section player remains backend-agnostic by design. Hosts load `activityDefinition`/`activitySession` (pie backend), pass state into the player, then listen to `session-changed` and persist updates using host-owned API logic.
 
 ### Using ToolkitCoordinator (Recommended)
 

@@ -14,12 +14,6 @@
 			import('@pie-players/pie-tool-annotation-toolbar')
 		]);
 	});
-	import { Editor } from '@tiptap/core';
-	import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
-	import Document from '@tiptap/extension-document';
-	import History from '@tiptap/extension-history';
-	import Text from '@tiptap/extension-text';
-	import { common, createLowlight } from 'lowlight';
 import { onDestroy, onMount, untrack } from 'svelte';
 	import { browser } from '$app/environment';
 	import { goto, onNavigate, replaceState } from '$app/navigation';
@@ -78,11 +72,12 @@ import { onDestroy, onMount, untrack } from 'svelte';
 	let layoutConfig = $state({ toolbarPosition: 'right' as 'top' | 'right' | 'bottom' | 'left' });
 	let showSessionPanel = $state(false);
 	let showSourcePanel = $state(false);
+	let showPnpPanel = $state(false);
 	let isSessionMinimized = $state(false);
 	let isSourceMinimized = $state(false);
 	let sectionPlayer: any = $state(null);
 	let itemSessions = $state<Record<string, any>>({});
-	let itemMetadata = $state<Record<string, { complete?: boolean; component?: string }>>({});
+	let testAttemptSessionData = $state<any | null>(null);
 
 	// Toolkit coordinator (owns all services)
 	let toolkitCoordinator: any = $state(null);
@@ -174,18 +169,40 @@ import { onDestroy, onMount, untrack } from 'svelte';
 	let TTS_CONFIG_STORAGE_KEY = $derived(`pie-section-demo-tts-config-${data.demo.id}`);
 	let LAYOUT_CONFIG_STORAGE_KEY = $derived(`pie-section-demo-layout-config-${data.demo.id}`);
 
-	// Tiptap editor state
-	let editorElement = $state<HTMLDivElement | null>(null);
-	let editor: Editor | null = null;
+	// Source panel state (read-only JSON view)
 	let editedSourceJson = $state('');
-	let isSourceValid = $state(true);
-	let sourceParseError = $state<string | null>(null);
-	let hasSourceChanges = $state(false);
-	const lowlight = browser ? createLowlight(common) : null;
 
 	// Live section data (can be modified) - initialized in effect
 	let liveSection: any = $state.raw({} as any);
 	let previousDemoId = $state('');
+	const DEFAULT_DEMO_PNP_PROFILE = {
+		supports: [
+			'calculator',
+			'textToSpeech',
+			'lineReader',
+			'magnification',
+			'screenMagnifier',
+			'answerEliminator',
+			'periodicTable',
+			'protractor',
+			'ruler',
+			'graph'
+		],
+		prohibitedSupports: [],
+		activateAtInit: []
+	};
+
+	let resolvedSectionForPlayer = $derived.by(() => {
+		if (!liveSection) return liveSection;
+		const hasExplicitPnp = Boolean(
+			liveSection?.personalNeedsProfile || liveSection?.settings?.personalNeedsProfile
+		);
+		if (hasExplicitPnp) return liveSection;
+		return {
+			...liveSection,
+			personalNeedsProfile: structuredClone(DEFAULT_DEMO_PNP_PROFILE)
+		};
+	});
 
 	// Initialize and sync liveSection when data changes
 	$effect(() => {
@@ -220,6 +237,14 @@ import { onDestroy, onMount, untrack } from 'svelte';
 	let sourceWindowHeight = $state(700);
 	let isSourceDragging = $state(false);
 	let isSourceResizing = $state(false);
+
+	let pnpWindowX = $state(80);
+	let pnpWindowY = $state(120);
+	let pnpWindowWidth = $state(460);
+	let pnpWindowHeight = $state(560);
+	let isPnpMinimized = $state(false);
+	let isPnpDragging = $state(false);
+	let isPnpResizing = $state(false);
 
 	// Shared drag/resize state
 	let dragStartX = 0;
@@ -414,8 +439,29 @@ import { onDestroy, onMount, untrack } from 'svelte';
 	// Initialize window positions on mount
 	onMount(async () => {
 		if (browser) {
-			sessionWindowX = window.innerWidth - 450;
-			editedSourceJson = JSON.stringify(data.section, null, 2);
+			const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(value, max));
+			const viewportWidth = window.innerWidth;
+			const viewportHeight = window.innerHeight;
+
+			// Session panel: centered and proportionally larger
+			sessionWindowWidth = clamp(Math.round(viewportWidth * 0.58), 420, 980);
+			sessionWindowHeight = clamp(Math.round(viewportHeight * 0.72), 360, 860);
+			sessionWindowX = Math.max(16, Math.round((viewportWidth - sessionWindowWidth) / 2));
+			sessionWindowY = Math.max(16, Math.round((viewportHeight - sessionWindowHeight) / 2));
+
+			// Source panel: slightly larger than session for code editing
+			sourceWindowWidth = clamp(Math.round(viewportWidth * 0.72), 640, 1200);
+			sourceWindowHeight = clamp(Math.round(viewportHeight * 0.78), 420, 940);
+			sourceWindowX = Math.max(16, Math.round((viewportWidth - sourceWindowWidth) / 2));
+			sourceWindowY = Math.max(16, Math.round((viewportHeight - sourceWindowHeight) / 2));
+
+			// PNP panel: medium size, centered
+			pnpWindowWidth = clamp(Math.round(viewportWidth * 0.62), 460, 1040);
+			pnpWindowHeight = clamp(Math.round(viewportHeight * 0.72), 360, 860);
+			pnpWindowX = Math.max(16, Math.round((viewportWidth - pnpWindowWidth) / 2));
+			pnpWindowY = Math.max(16, Math.round((viewportHeight - pnpWindowHeight) / 2));
+
+			editedSourceJson = formatJsonForSourceView(data.section);
 
 			// Load persisted sessions from localStorage
 			try {
@@ -525,49 +571,12 @@ import { onDestroy, onMount, untrack } from 'svelte';
 		}
 	});
 
-	// Initialize Tiptap editor when element is available
+	// Keep read-only source view in sync with current section
 	$effect(() => {
-		if (browser && lowlight && editorElement && !editor) {
-			editor = new Editor({
-				element: editorElement,
-				extensions: [
-					Document,
-					Text,
-					History,
-					CodeBlockLowlight.configure({
-						lowlight,
-						defaultLanguage: 'json'
-					})
-				],
-				content: `<pre><code class="language-json">${editedSourceJson}</code></pre>`,
-				editorProps: {
-					attributes: {
-						class: 'prose prose-sm max-w-none focus:outline-none min-h-[400px] p-4'
-					}
-				},
-				onUpdate: ({ editor }) => {
-					const text = editor.state.doc.textContent;
-					editedSourceJson = text;
-					try {
-						JSON.parse(text);
-						isSourceValid = true;
-						sourceParseError = null;
-						// Check if content has changed from original
-						const originalJson = JSON.stringify(liveSection, null, 2);
-						hasSourceChanges = text.trim() !== originalJson.trim();
-					} catch (e: any) {
-						isSourceValid = false;
-						sourceParseError = e.message;
-						hasSourceChanges = true;
-					}
-				}
-			});
-		}
+		editedSourceJson = formatJsonForSourceView(liveSection);
 	});
 
 	onDestroy(() => {
-		editor?.destroy();
-
 		// Remove outer scrollbar listener and class
 		if (removeOuterScrollListener) {
 			removeOuterScrollListener();
@@ -617,9 +626,10 @@ import { onDestroy, onMount, untrack } from 'svelte';
 	$effect(() => {
 		if (sectionPlayer && liveSection) {
 			untrack(() => {
-				sectionPlayer.section = liveSection;
+				sectionPlayer.section = resolvedSectionForPlayer;
 				sectionPlayer.env = pieEnv;
 				sectionPlayer.itemSessions = itemSessions;
+				sectionPlayer.onsessionchanged = handleSessionChanged;
 				sectionPlayer.toolkitCoordinator = toolkitCoordinator;
 				sectionPlayer.toolbarPosition = toolbarPosition;
 				sectionPlayer.playerDefinitions = playerDefinitions;
@@ -630,16 +640,15 @@ import { onDestroy, onMount, untrack } from 'svelte';
 	// Handle session changes from items
 	function handleSessionChanged(event: CustomEvent) {
 		console.log('[Demo] Session changed event:', event.detail);
-		const { itemId, session, complete, component } = event.detail;
+		const { itemId, session, testAttemptSession } = event.detail;
+
+		if (testAttemptSession) {
+			testAttemptSessionData = testAttemptSession;
+		}
+
 		if (itemId && session) {
 			console.log('[Demo] Updating itemSessions:', itemId, session);
 			itemSessions = { ...itemSessions, [itemId]: session };
-
-			// Store metadata separately
-			itemMetadata = {
-				...itemMetadata,
-				[itemId]: { complete, component }
-			};
 		} else {
 			console.warn('[Demo] Missing itemId or session in event:', event.detail);
 		}
@@ -648,6 +657,7 @@ import { onDestroy, onMount, untrack } from 'svelte';
 	// Reset all sessions
 	function resetSessions() {
 		itemSessions = {};
+		testAttemptSessionData = null;
 		if (browser) {
 			try {
 				localStorage.removeItem(SESSION_STORAGE_KEY);
@@ -723,6 +733,37 @@ import { onDestroy, onMount, untrack } from 'svelte';
 		document.removeEventListener('mouseup', stopSourceDrag);
 	}
 
+	// PNP window dragging handlers
+	function startPnpDrag(e: MouseEvent) {
+		isPnpDragging = true;
+		dragStartX = e.clientX;
+		dragStartY = e.clientY;
+		dragStartWindowX = pnpWindowX;
+		dragStartWindowY = pnpWindowY;
+
+		document.addEventListener('mousemove', onPnpDrag);
+		document.addEventListener('mouseup', stopPnpDrag);
+	}
+
+	function onPnpDrag(e: MouseEvent) {
+		if (!isPnpDragging) return;
+
+		const deltaX = e.clientX - dragStartX;
+		const deltaY = e.clientY - dragStartY;
+
+		pnpWindowX = dragStartWindowX + deltaX;
+		pnpWindowY = dragStartWindowY + deltaY;
+
+		pnpWindowX = Math.max(0, Math.min(pnpWindowX, window.innerWidth - pnpWindowWidth));
+		pnpWindowY = Math.max(0, Math.min(pnpWindowY, window.innerHeight - 100));
+	}
+
+	function stopPnpDrag() {
+		isPnpDragging = false;
+		document.removeEventListener('mousemove', onPnpDrag);
+		document.removeEventListener('mouseup', stopPnpDrag);
+	}
+
 	// Session window resize handlers
 	function startSessionResize(e: MouseEvent) {
 		isSessionResizing = true;
@@ -781,36 +822,107 @@ import { onDestroy, onMount, untrack } from 'svelte';
 		document.removeEventListener('mouseup', stopSourceResize);
 	}
 
+	// PNP window resize handlers
+	function startPnpResize(e: MouseEvent) {
+		isPnpResizing = true;
+		resizeStartX = e.clientX;
+		resizeStartY = e.clientY;
+		resizeStartWidth = pnpWindowWidth;
+		resizeStartHeight = pnpWindowHeight;
+
+		e.preventDefault();
+		e.stopPropagation();
+
+		document.addEventListener('mousemove', onPnpResize);
+		document.addEventListener('mouseup', stopPnpResize);
+	}
+
+	function onPnpResize(e: MouseEvent) {
+		if (!isPnpResizing) return;
+
+		const deltaX = e.clientX - resizeStartX;
+		const deltaY = e.clientY - resizeStartY;
+
+		pnpWindowWidth = Math.max(320, Math.min(resizeStartWidth + deltaX, window.innerWidth - pnpWindowX));
+		pnpWindowHeight = Math.max(220, Math.min(resizeStartHeight + deltaY, window.innerHeight - pnpWindowY));
+	}
+
+	function stopPnpResize() {
+		isPnpResizing = false;
+		document.removeEventListener('mousemove', onPnpResize);
+		document.removeEventListener('mouseup', stopPnpResize);
+	}
+
+	let pnpPanelData = $derived.by(() => {
+		const directProfile = liveSection?.personalNeedsProfile;
+		const settingsProfile = liveSection?.settings?.personalNeedsProfile;
+		const profile = directProfile || settingsProfile || DEFAULT_DEMO_PNP_PROFILE;
+		const source = directProfile
+			? 'section.personalNeedsProfile'
+			: settingsProfile
+				? 'section.settings.personalNeedsProfile'
+				: 'demo default profile (derived)';
+
+		const toolkitToolConfig = toolkitCoordinator?.config?.tools || null;
+		const floatingTools = toolkitCoordinator?.getFloatingTools?.() || toolkitToolConfig?.floatingTools?.enabledTools || [];
+		const hasCatalogResolver = Boolean(toolkitCoordinator?.catalogResolver);
+		const catalogStats = hasCatalogResolver ? toolkitCoordinator.catalogResolver.getStatistics?.() : null;
+
+		return {
+			pnpProfile: profile,
+			determination: {
+				source,
+				checked: [
+					'section.personalNeedsProfile',
+					'section.settings.personalNeedsProfile'
+				],
+				note: directProfile || settingsProfile
+					? 'Profile was taken directly from section payload.'
+					: 'No explicit PNP profile was found in section payload, so a demo default PNP profile is applied.',
+				runtimeContext: {
+					role: roleType,
+					floatingToolsEnabled: floatingTools,
+					hasCatalogResolver,
+					catalogCount: catalogStats?.totalCatalogs ?? 0,
+					assessmentCatalogCount: catalogStats?.assessmentCatalogs ?? 0,
+					itemCatalogCount: catalogStats?.itemCatalogs ?? 0
+				}
+			}
+		};
+	});
+
+	function decodeEscapedTextForDisplay(value: string): string {
+		return value
+			.replaceAll('\\r\\n', '\n')
+			.replaceAll('\\n', '\n')
+			.replaceAll('\\r', '\r')
+			.replaceAll('\\t', '\t');
+	}
+
+	function normalizeContentForSourceView(value: any): any {
+		if (typeof value === 'string') {
+			return decodeEscapedTextForDisplay(value);
+		}
+		if (Array.isArray(value)) {
+			return value.map(normalizeContentForSourceView);
+		}
+		if (value && typeof value === 'object') {
+			const normalized: Record<string, any> = {};
+			for (const [key, child] of Object.entries(value)) {
+				normalized[key] = normalizeContentForSourceView(child);
+			}
+			return normalized;
+		}
+		return value;
+	}
+
+	function formatJsonForSourceView(value: any): string {
+		return JSON.stringify(normalizeContentForSourceView(value), null, 2);
+	}
+
 	function copyJson() {
 		if (browser) {
 			navigator.clipboard.writeText(editedSourceJson);
-		}
-	}
-
-	function applyChanges() {
-		if (isSourceValid && hasSourceChanges) {
-			try {
-				const parsed = JSON.parse(editedSourceJson);
-				// Update the live section data
-				liveSection = parsed;
-				// Clear item sessions when section changes to prevent stale data
-				itemSessions = {};
-				hasSourceChanges = false;
-				console.log('Applied changes to section and cleared item sessions');
-			} catch (e) {
-				console.error('Failed to apply changes:', e);
-			}
-		}
-	}
-
-	function resetChanges() {
-		if (browser && editor) {
-			const original = JSON.stringify(liveSection, null, 2);
-			editor.commands.setContent(`<pre><code class="language-json">${original}</code></pre>`);
-			editedSourceJson = original;
-			isSourceValid = true;
-			sourceParseError = null;
-			hasSourceChanges = false;
 		}
 	}
 </script>
@@ -819,7 +931,7 @@ import { onDestroy, onMount, untrack } from 'svelte';
 	<title>{data.demo?.name || 'Demo'} - PIE Section Player</title>
 </svelte:head>
 
-<div class="w-full h-screen flex flex-col">
+<div class="w-full h-screen min-h-0 overflow-hidden flex flex-col">
 	<!-- Menu Bar (Sticky) -->
 	<div class="navbar bg-base-200 mb-0 sticky top-0 z-50 shadow-lg">
 		<div class="navbar-start">
@@ -917,35 +1029,54 @@ import { onDestroy, onMount, untrack } from 'svelte';
 
 		<div class="navbar-end gap-2">
 			<button
-				class="btn btn-sm btn-outline"
+				class="btn btn-sm btn-outline btn-square"
+				class:btn-active={showSessionPanel}
 				onclick={() => showSessionPanel = !showSessionPanel}
+				title="Session"
+				aria-label="Toggle session panel"
+				aria-pressed={showSessionPanel}
 			>
 				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
 				</svg>
-				Session
 			</button>
 			<button
-				class="btn btn-sm btn-outline"
+				class="btn btn-sm btn-outline btn-square"
+				class:btn-active={showSourcePanel}
 				onclick={() => showSourcePanel = !showSourcePanel}
+				title="Source"
+				aria-label="Toggle source panel"
+				aria-pressed={showSourcePanel}
 			>
 				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
 				</svg>
-				Source
+			</button>
+			<button
+				class="btn btn-sm btn-outline btn-square"
+				class:btn-active={showPnpPanel}
+				onclick={() => showPnpPanel = !showPnpPanel}
+				title="PNP profile"
+				aria-label="Toggle PNP profile panel"
+				aria-pressed={showPnpPanel}
+			>
+				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-7 8h8a2 2 0 002-2V6a2 2 0 00-2-2H8a2 2 0 00-2 2v12a2 2 0 002 2zm1-12h4m-4 4h4m-4 4h4" />
+				</svg>
 			</button>
 		</div>
 	</div>
 
-	<div class="flex-1 overflow-hidden">
+	<div class="flex-1 min-h-0 overflow-hidden">
 		<!-- Use web component - set complex properties imperatively via $effect -->
 		<!-- svelte-ignore a11y_unknown_aria_attribute -->
 		<pie-section-player
+			class="block h-full min-h-0"
 			bind:this={sectionPlayer}
 			player={playerType}
 			page-layout={layoutType}
 			view={qtiView}
-			onsessionchanged={handleSessionChanged}
+			onsession-changed={handleSessionChanged}
 		></pie-section-player>
 	</div>
 
@@ -1062,22 +1193,14 @@ import { onDestroy, onMount, untrack } from 'svelte';
 
 		<!-- Content -->
 		{#if !isSessionMinimized}
-			<div class="p-4 overflow-y-auto" style="max-height: {sessionWindowHeight - 60}px;">
-				<div class="space-y-3">
-					<!-- Tool State (Ephemeral - client only) -->
-					{#if toolkitCoordinator}
-						<div class="mb-4">
-							<div class="text-sm font-bold mb-2 text-warning">Tool State (Ephemeral - Client Only)</div>
-							<pre class="bg-base-300 p-2 rounded text-xs overflow-auto max-h-48">{JSON.stringify(toolkitCoordinator.elementToolStateStore.getAllState(), null, 2)}</pre>
-						</div>
-					{/if}
-
+			<div class="p-4 flex flex-col min-h-0 overflow-hidden" style="height: {sessionWindowHeight - 60}px;">
+				<div class="space-y-3 flex-1 min-h-0 flex flex-col">
 					<!-- Session Data (Persistent - sent to server) -->
 					<div class="mb-2">
 						<div class="text-sm font-bold mb-2">PIE Session Data (Persistent)</div>
 					</div>
 
-					{#if Object.keys(itemSessions).length === 0}
+					{#if !testAttemptSessionData && Object.keys(itemSessions).length === 0}
 						<div class="alert alert-info">
 							<svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-5 w-5" fill="none" viewBox="0 0 24 24">
 								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -1085,33 +1208,12 @@ import { onDestroy, onMount, untrack } from 'svelte';
 							<span class="text-xs">No session data yet. Interact with the questions to see updates.</span>
 						</div>
 					{:else}
-						{#each Object.entries(itemSessions) as [itemId, session]}
-							<div class="collapse collapse-arrow bg-base-200 collapse-sm">
-								<input type="checkbox" />
-								<div class="collapse-title text-sm font-medium min-h-0 py-2">
-									Item: {itemId}
-									{#if itemMetadata[itemId]?.complete !== undefined}
-										<span class="badge badge-sm {itemMetadata[itemId].complete ? 'badge-success' : 'badge-ghost'} ml-2">
-											{itemMetadata[itemId].complete ? 'Complete' : 'Incomplete'}
-										</span>
-									{/if}
-								</div>
-								<div class="collapse-content">
-									<div class="space-y-2">
-										<div>
-											<div class="text-xs font-semibold mb-1">Session Data:</div>
-											<pre class="bg-base-300 p-2 rounded text-xs overflow-auto max-h-48">{JSON.stringify(session, null, 2)}</pre>
-										</div>
-										{#if itemMetadata[itemId]}
-											<div>
-												<div class="text-xs font-semibold mb-1">Metadata:</div>
-												<pre class="bg-base-300 p-2 rounded text-xs overflow-auto max-h-24">{JSON.stringify(itemMetadata[itemId], null, 2)}</pre>
-											</div>
-										{/if}
-									</div>
-								</div>
+						<div class="bg-base-200 rounded p-3 flex-1 min-h-0 flex flex-col">
+							<div class="text-xs font-semibold mb-2">
+								{testAttemptSessionData ? 'Test Attempt Session' : 'Item Sessions (Fallback)'}
 							</div>
-						{/each}
+							<pre class="bg-base-300 p-2 rounded text-xs overflow-auto flex-1 min-h-0">{JSON.stringify(testAttemptSessionData || itemSessions, null, 2)}</pre>
+						</div>
 					{/if}
 				</div>
 			</div>
@@ -1190,11 +1292,11 @@ import { onDestroy, onMount, untrack } from 'svelte';
 
 		<!-- Content -->
 		{#if !isSourceMinimized}
-			<div class="flex flex-col" style="height: {sourceWindowHeight - 50}px;">
+			<div class="flex flex-col overflow-hidden" style="height: {sourceWindowHeight - 50}px;">
 				<!-- Toolbar -->
 				<div class="flex items-center justify-between px-4 py-2 bg-base-200/50 border-b border-base-300">
 					<div class="text-xs text-base-content/70">
-						{isSourceValid ? 'Valid JSON' : 'Invalid JSON'}
+						Read-only formatted JSON
 					</div>
 					<div class="flex gap-2">
 						<button
@@ -1210,24 +1312,9 @@ import { onDestroy, onMount, untrack } from 'svelte';
 					</div>
 				</div>
 
-				<!-- Parse Error Alert -->
-				{#if sourceParseError}
-					<div class="mx-4 mt-2">
-						<div class="alert alert-error alert-sm">
-							<svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-4 w-4" fill="none" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-							</svg>
-							<span class="text-xs">{sourceParseError}</span>
-						</div>
-					</div>
-				{/if}
-
-				<!-- Tiptap Editor -->
-				<div class="flex-1 overflow-auto">
-					<div
-						bind:this={editorElement}
-						class="border-none focus:outline-none bg-base-300 text-xs font-mono"
-					></div>
+				<!-- Read-only JSON -->
+				<div class="flex-1 min-h-0 overflow-auto">
+					<pre class="h-full w-full m-0 p-4 bg-base-300 text-xs font-mono overflow-auto whitespace-pre-wrap">{editedSourceJson}</pre>
 				</div>
 			</div>
 		{/if}
@@ -1237,6 +1324,93 @@ import { onDestroy, onMount, untrack } from 'svelte';
 			<div
 				class="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize"
 				onmousedown={startSourceResize}
+				role="button"
+				tabindex="0"
+				title="Resize window"
+			>
+				<svg
+					class="w-full h-full text-base-content/30"
+					viewBox="0 0 16 16"
+					fill="currentColor"
+				>
+					<path d="M16 16V14H14V16H16Z" />
+					<path d="M16 11V9H14V11H16Z" />
+					<path d="M13 16V14H11V16H13Z" />
+				</svg>
+			</div>
+		{/if}
+	</div>
+{/if}
+
+<!-- Floating PNP Profile Window -->
+{#if showPnpPanel}
+	<div
+		class="fixed z-100 bg-base-100 rounded-lg shadow-2xl border-2 border-base-300"
+		style="left: {pnpWindowX}px; top: {pnpWindowY}px; width: {pnpWindowWidth}px; {isPnpMinimized ? 'height: auto;' : `height: ${pnpWindowHeight}px;`}"
+	>
+		<!-- Title Bar -->
+		<div
+			class="flex items-center justify-between px-4 py-2 bg-base-200 rounded-t-lg cursor-move select-none border-b border-base-300"
+			onmousedown={startPnpDrag}
+			role="button"
+			tabindex="0"
+			aria-label="Drag PNP profile panel"
+		>
+			<div class="flex items-center gap-2">
+				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-7 8h8a2 2 0 002-2V6a2 2 0 00-2-2H8a2 2 0 00-2 2v12a2 2 0 002 2zm1-12h4m-4 4h4m-4 4h4" />
+				</svg>
+				<h3 class="font-bold text-sm">PNP Profile</h3>
+			</div>
+			<div class="flex gap-1">
+				<button
+					class="btn btn-xs btn-ghost btn-circle"
+					onclick={() => isPnpMinimized = !isPnpMinimized}
+					title={isPnpMinimized ? 'Maximize' : 'Minimize'}
+				>
+					{#if isPnpMinimized}
+						<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+						</svg>
+					{:else}
+						<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+						</svg>
+					{/if}
+				</button>
+				<button
+					class="btn btn-xs btn-ghost btn-circle"
+					onclick={() => showPnpPanel = false}
+					title="Close"
+				>
+					<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+					</svg>
+				</button>
+			</div>
+		</div>
+
+		<!-- Content -->
+		{#if !isPnpMinimized}
+			<div class="p-4 overflow-y-auto" style="max-height: {pnpWindowHeight - 60}px;">
+				<div class="space-y-3">
+					<div class="bg-base-200 rounded p-3">
+						<div class="text-xs font-semibold mb-2">Determination (read-only)</div>
+						<pre class="bg-base-300 p-2 rounded text-xs overflow-auto max-h-56">{JSON.stringify(pnpPanelData.determination, null, 2)}</pre>
+					</div>
+					<div class="bg-base-200 rounded p-3">
+						<div class="text-xs font-semibold mb-2">PNP Profile (read-only)</div>
+						<pre class="bg-base-300 p-2 rounded text-xs overflow-auto max-h-72">{JSON.stringify(pnpPanelData.pnpProfile, null, 2)}</pre>
+					</div>
+				</div>
+			</div>
+		{/if}
+
+		<!-- Resize Handle -->
+		{#if !isPnpMinimized}
+			<div
+				class="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize"
+				onmousedown={startPnpResize}
 				role="button"
 				tabindex="0"
 				title="Resize window"

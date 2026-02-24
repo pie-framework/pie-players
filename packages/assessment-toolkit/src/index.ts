@@ -201,6 +201,44 @@ export {
 } from "./item-loader.js";
 
 // ============================================================================
+// Attempt Session
+// ============================================================================
+
+export type {
+	StorageLike,
+	TestAttemptItemSession,
+	TestAttemptSession,
+	TestAttemptSessionNavigationState,
+	TestAttemptSessionRealization,
+} from "./attempt/TestSession.js";
+export {
+	createMemoryStorage,
+	createTestAttemptSessionIdentifier,
+	createNewTestAttemptSession,
+	getBrowserLocalStorage,
+	getOrCreateAnonymousDeviceId,
+	getTestAttemptSessionStorageKey,
+	loadTestAttemptSession,
+	saveTestAttemptSession,
+	setCurrentPosition,
+	upsertItemSessionFromPieSessionChange,
+	upsertVisitedItem,
+} from "./attempt/TestSession.js";
+export type {
+	ActivitySessionPatchPayload,
+	MapActivityToTestAttemptSessionArgs,
+	PieBackendActivityDefinition,
+	PieBackendActivityItemRef,
+	PieBackendActivitySession,
+} from "./attempt/adapters/activity-to-test-attempt-session.js";
+export {
+	buildActivitySessionItemUpdate,
+	buildActivitySessionPatchFromTestAttemptSession,
+	mapActivityToTestAttemptSession,
+	toItemSessionsRecord,
+} from "./attempt/adapters/activity-to-test-attempt-session.js";
+
+// ============================================================================
 // Event Types (Standard Contracts)
 // ============================================================================
 

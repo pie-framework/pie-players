@@ -43,6 +43,9 @@
 
       // Item sessions for restoration
       itemSessions: { attribute: "item-sessions", type: "Object" },
+      testAttemptSession: { attribute: "test-attempt-session", type: "Object" },
+      activityDefinition: { attribute: "activity-definition", type: "Object" },
+      activitySession: { attribute: "activity-session", type: "Object" },
 
       playerVersion: { attribute: "player-version", type: "String" },
 
@@ -66,7 +69,15 @@
 />
 
 <script lang="ts">
-  import { ToolkitCoordinator } from "@pie-players/pie-assessment-toolkit";
+  import {
+    ToolkitCoordinator,
+    mapActivityToTestAttemptSession,
+    setCurrentPosition,
+    toItemSessionsRecord,
+    upsertItemSessionFromPieSessionChange,
+    upsertVisitedItem,
+    type TestAttemptSession,
+  } from "@pie-players/pie-assessment-toolkit";
   import {
     DEFAULT_LAYOUT_DEFINITIONS,
     DEFAULT_PLAYER_DEFINITIONS,
@@ -106,6 +117,9 @@
     pageLayout = "split-panel",
     player = "iife",
     itemSessions = {} as Record<string, any>,
+    testAttemptSession = null as TestAttemptSession | null,
+    activityDefinition = null as Record<string, any> | null,
+    activitySession = null as Record<string, any> | null,
     playerVersion = "latest",
     customClassName = "",
     toolbarPosition = "right" as "top" | "right" | "bottom" | "left" | "none",
@@ -200,6 +214,33 @@
     resolvedLayoutDefinition?.tagName || "pie-split-panel-layout",
   );
 
+  const adapterItemRefs = $derived.by(() =>
+    (section?.assessmentItemRefs || []).map((itemRef) => ({
+      identifier: itemRef.identifier || itemRef.item?.id || itemRef.item?.name,
+      item: {
+        id: itemRef.item?.id,
+        identifier: itemRef.identifier || itemRef.item?.id,
+      },
+    })),
+  );
+
+  // Canonical attempt runtime source of truth for section player integration.
+  const resolvedTestAttemptSession = $derived.by(
+    () =>
+      testAttemptSession ||
+      mapActivityToTestAttemptSession({
+        activityDefinition,
+        activitySession,
+        itemRefs: adapterItemRefs,
+        itemSessionsByItemIdentifier: itemSessions,
+        assessmentId,
+      }),
+  );
+
+  const resolvedItemSessions = $derived.by(
+    () => toItemSessionsRecord(resolvedTestAttemptSession) as Record<string, any>,
+  );
+
   // Extract content from section
   function extractContent() {
     if (!section) {
@@ -266,6 +307,15 @@
 
     const previousItemId = currentItem?.id || "";
     currentItemIndex = index;
+    const nextItemId = items[index]?.id || "";
+
+    testAttemptSession = upsertVisitedItem(
+      setCurrentPosition(resolvedTestAttemptSession, {
+        currentItemIndex: index,
+        currentSectionIdentifier: section?.identifier,
+      }),
+      nextItemId,
+    );
 
     // Dispatch event
     dispatchEvent(
@@ -482,17 +532,22 @@
     // The session should have an 'id' property and a 'data' array
     // Skip metadata-only events that just have { complete, component }
     if (actualSession && ("id" in actualSession || "data" in actualSession)) {
-      // Update local sessions with pure session data (no metadata mixed in)
-      itemSessions = {
-        ...itemSessions,
-        [itemId]: actualSession,
-      };
+      testAttemptSession = upsertItemSessionFromPieSessionChange(
+        resolvedTestAttemptSession,
+        {
+          itemIdentifier: itemId,
+          pieSessionId: String(actualSession.id || itemId),
+          isCompleted: Boolean(sessionDetail.complete),
+          session: actualSession,
+        },
+      );
     }
 
     // Create event detail with session and metadata kept separate
     const eventDetail = {
       itemId,
-      session: itemSessions[itemId] || actualSession,
+      session: resolvedItemSessions[itemId] || actualSession,
+      testAttemptSession,
       complete: sessionDetail.complete,
       component: sessionDetail.component,
       timestamp: Date.now(),
@@ -520,7 +575,7 @@
 
   // Get current item session
   let currentItemSession = $derived(
-    currentItem ? itemSessions[currentItem.id || ""] : undefined,
+    currentItem ? resolvedItemSessions[currentItem.id || ""] : undefined,
   );
 
   let shouldRenderToolbar = $derived(showToolbar && toolbarPosition !== "none");
@@ -548,7 +603,8 @@
     if (!pageLayoutElement || !isPageMode) return;
     (pageLayoutElement as any).passages = passages;
     (pageLayoutElement as any).items = items;
-    (pageLayoutElement as any).itemSessions = itemSessions;
+    (pageLayoutElement as any).itemSessions = resolvedItemSessions;
+    (pageLayoutElement as any).testAttemptSession = resolvedTestAttemptSession;
     (pageLayoutElement as any).player = resolvedPlayer;
     (pageLayoutElement as any).env = env;
     (pageLayoutElement as any).playerVersion = playerVersion;
@@ -637,7 +693,11 @@
         {#if isPageMode}
           <!-- Page Mode: Choose layout based on layout prop -->
           {#key resolvedLayoutTag}
-            <svelte:element this={resolvedLayoutTag} bind:this={pageLayoutElement}>
+            <svelte:element
+              this={resolvedLayoutTag}
+              class="pie-section-player__page-layout"
+              bind:this={pageLayoutElement}
+            >
             </svelte:element>
           {/key}
         {:else}
@@ -686,6 +746,16 @@
 </div>
 
 <style>
+  /* In no-shadow custom-element mode, enforce host-like sizing via global tag rule. */
+  :global(pie-section-player) {
+    display: block;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    max-height: 100%;
+    overflow: hidden;
+  }
+
   :host {
     display: block;
     width: 100%;
@@ -776,6 +846,16 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
+  }
+
+  /* Ensure dynamic page-layout custom elements are height-constrained containers. */
+  .pie-section-player__page-layout {
+    display: block;
+    flex: 1;
+    height: 100%;
+    min-height: 0;
+    min-width: 0;
+    overflow: hidden;
   }
 
   .pie-section-player__error {

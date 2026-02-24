@@ -37,6 +37,32 @@ const getWorkspaceDirs = () => {
 	return [...dirs].filter((dir) => existsSync(path.join(dir, "package.json")));
 };
 
+const collectTargets = (value, out) => {
+	if (!value) return;
+	if (typeof value === "string") {
+		out.add(value);
+		return;
+	}
+	if (Array.isArray(value)) {
+		for (const entry of value) collectTargets(entry, out);
+		return;
+	}
+	if (typeof value === "object") {
+		for (const entry of Object.values(value)) collectTargets(entry, out);
+	}
+};
+
+const getPublishedEntryTargets = (pkg) => {
+	const targets = new Set();
+	collectTargets(pkg.exports, targets);
+	collectTargets(pkg.main, targets);
+	collectTargets(pkg.module, targets);
+	collectTargets(pkg.types, targets);
+	return [...targets]
+		.filter((target) => typeof target === "string" && target.startsWith("./"))
+		.filter((target) => !target.includes("*"));
+};
+
 const run = () => {
 	const packageDirs = getWorkspaceDirs();
 	const failures = [];
@@ -47,6 +73,19 @@ const run = () => {
 		if (pkg.private) continue;
 		checked += 1;
 		try {
+			const publishedTargets = getPublishedEntryTargets(pkg);
+			const missingTargets = publishedTargets.filter(
+				(target) => !existsSync(path.join(dir, target)),
+			);
+			const relativeDir = path.relative(ROOT, dir);
+			const isToolWorkspace = relativeDir.startsWith("tools/");
+			if ((missingTargets.length > 0 || isToolWorkspace) && pkg.scripts?.build) {
+				execSync("rm -rf dist tsconfig.tsbuildinfo && bun run build", {
+					cwd: dir,
+					stdio: "pipe",
+				});
+			}
+
 			execSync("bunx publint .", {
 				cwd: dir,
 				stdio: "pipe",

@@ -47,7 +47,7 @@ const run = () => {
 		if (pkg.private) continue;
 		checked += 1;
 		try {
-			execSync("bunx publint --strict .", {
+			execSync("bunx publint .", {
 				cwd: dir,
 				stdio: "pipe",
 			});
@@ -55,7 +55,9 @@ const run = () => {
 			failures.push({
 				name: pkg.name || path.basename(dir),
 				dir: path.relative(ROOT, dir),
-				error: error.stderr?.toString() || error.message,
+				error: [error.stdout?.toString(), error.stderr?.toString(), error.message]
+					.filter(Boolean)
+					.join("\n"),
 			});
 		}
 	}

@@ -14,8 +14,6 @@
 			toolCoordinator: { type: 'Object', attribute: 'tool-coordinator' },
 			highlightCoordinator: { type: 'Object', attribute: 'highlight-coordinator' },
 
-			// Optional callbacks (passed as JS properties)
-			ontranslationrequest: { type: 'Object', attribute: 'ontranslationrequest' }
 		}
 	}}
 />
@@ -73,10 +71,7 @@
 
 		// Coordinators from assessment toolkit
 		toolCoordinator = undefined as ToolCoordinator | null | undefined,
-		highlightCoordinator = undefined as HighlightCoordinator | null | undefined,
-
-		// Event callbacks for annotation toolbar
-		ontranslationrequest = undefined as ((detail: { text: string }) => void) | undefined
+		highlightCoordinator = undefined as HighlightCoordinator | null | undefined
 	} = $props();
 
 	// Keep these in the public custom element API even when not mounted yet.
@@ -84,7 +79,6 @@
 		void organizationId;
 		void baseUrl;
 		void highlightCoordinator;
-		void ontranslationrequest;
 	});
 
 	// Parse enabled tools from prop

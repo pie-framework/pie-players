@@ -5,10 +5,10 @@ A **self-contained** tool management component that handles everything: instanti
 ## Overview
 
 The Tool Toolbar is a complete tool orchestration system that:
+
 - **Instantiates** all configured tool components
 - **Manages** tool visibility via `toolCoordinator` store
 - **Renders** toolbar UI with buttons
-- **Handles** annotation toolbar (text selection tools)
 - **Coordinates** z-index and tool lifecycle
 
 ## Zero-Setup Usage
@@ -45,30 +45,21 @@ That's it! This gives you all tools with default configuration.
 The toolbar automatically manages these tools:
 
 ### Tier 1 Tools (Measurement & Visualization)
+
 - **Protractor** - Angle measurement
 - **Ruler** - Length measurement
 - **Line Reader** - Reading guide overlay
 - **Graph** - Coordinate plane with graphing
 - **Periodic Table** - Element reference
 
-### Tier 2 Tools (Text Annotation)
-- **Annotation Toolbar** - Appears on text selection
-  - Translation request
-
 ## Props
 
 | Prop | Type | Default | Description |
-|------|------|---------|-------------|
+| ------ | ------ | ------- | ----------- |
 | `tools` | `String` | All tools | Comma-separated tool IDs to enable |
 | `disabled` | `Boolean` | `false` | Disables all buttons |
 | `position` | `'left' \| 'right'` | `'right'` | Toolbar placement |
 | `showLabels` | `Boolean` | `false` | Show text labels under icons |
-
-### Event Callbacks (Annotation Toolbar)
-
-| Callback | Type | Description |
-|----------|------|-------------|
-| `ontranslationrequest` | `(detail: {text}) => void` | Fired when user requests translation |
 
 ## Available Tools
 
@@ -86,7 +77,7 @@ Tool IDs you can use in the `tools` prop:
 
 ## Architecture
 
-```
+```text
 ┌──────────────────────────────────┐
 │ <pie-tool-toolbar>               │
 │  Self-Contained Component        │
@@ -115,6 +106,7 @@ Tool IDs you can use in the `tools` prop:
 ### No External Dependencies
 
 Unlike typical toolbars, **you don't need**:
+
 - ❌ Separate tool manager component
 - ❌ Manual tool instantiation
 - ❌ State management setup
@@ -142,7 +134,7 @@ The toolbar uses CSS custom properties:
 3. **Build button config** → Icons, names, toggle functions
 4. **Render toolbar UI** → Buttons with active states
 5. **Instantiate tools** → Only render visible tool components
-6. **Handle events** → Forward annotation toolbar events
+6. **Handle events** → Emit status updates for tool toggles
 
 ## Real-World Example
 

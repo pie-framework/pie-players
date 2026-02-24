@@ -8,7 +8,6 @@ A text selection toolbar for highlighting and annotating text in the PIEoneer as
 - **Underline Annotation**: Underline selected text
 - **Persistent Annotations**: Saved to sessionStorage and restored on page load
 - **Clear Annotations**: Remove annotations from selected text or clear all
-- **Translation**: Translate selected text
 - **Text-to-Speech (Read Aloud)**: Read selected text aloud with word-level highlighting
 - **Modern CSS Custom Highlight API**:
   - Zero DOM mutation (no `<span>` wrappers)
@@ -41,10 +40,7 @@ This component doesn't take props - it automatically shows when text is selected
 
 ## Events
 
-- `translationrequest`: Dispatched when translation button is clicked
-  - `detail: { text: string }` - The selected text
-
-**Note**: Text-to-Speech (Read Aloud) button does not emit an event - it directly uses the TTS service to read the selected text.
+Text-to-Speech (Read Aloud) button does not emit an event - it directly uses the TTS service to read the selected text.
 
 ## Architecture
 
@@ -57,6 +53,7 @@ The annotation toolbar integrates with PIE's shared highlight infrastructure:
 ### Browser Support
 
 Requires CSS Custom Highlight API support:
+
 - Chrome/Edge 105+
 - Safari 17.2+
 - Firefox 128+
@@ -68,6 +65,7 @@ For unsupported browsers, the component gracefully degrades (no highlights shown
 Annotations are automatically saved to `sessionStorage` and restored on page load. The storage key includes the current URL path to scope annotations to specific content.
 
 Storage format:
+
 ```typescript
 {
   "annotation-highlight-yellow-1234567890": {
@@ -81,6 +79,7 @@ Storage format:
 ```
 
 Annotations are automatically cleared when:
+
 - User explicitly clicks "Clear" button
 - User navigates to different content
 - sessionStorage is cleared
@@ -92,7 +91,7 @@ The annotation toolbar includes a "Read" button that uses the TTS service to rea
 ### How It Works
 
 1. **User selects text** in the assessment content
-2. **Annotation toolbar appears** with highlight, translate, and read buttons
+2. **Annotation toolbar appears** with highlight and read buttons
 3. **User clicks "Read"** button (speaker icon)
 4. **TTS service speaks the selected text** using Web Speech API
 5. **Words are highlighted** in sync with speech using CSS Custom Highlight API
@@ -113,6 +112,7 @@ await ttsService.speakRange(selectedRange, {
 ```
 
 **Why this matters:**
+
 - User selects text in the middle of a paragraph
 - `speak(text)` would highlight from the beginning of the container (wrong)
 - `speakRange(range)` highlights the exact selected text (correct)
@@ -124,7 +124,7 @@ await ttsService.speakRange(selectedRange, {
 - **TTS stops automatically** when toolbar is hidden (user clicks away)
 - **No conflicts** with annotation highlights (different highlight layers)
 
-### Browser Support
+### TTS Browser Support
 
 - **TTS (Web Speech API)**: 97%+ browser support
 - **Word Highlighting**: 85-90% browser support (CSS Custom Highlight API)

@@ -22,14 +22,12 @@
 		enabled?: boolean;
 		highlightCoordinator?: HighlightCoordinator | null;
 		ttsService?: ITTSService | null;
-		ontranslationrequest?: (detail: { text: string }) => void;
 	}
 
 	let {
 		enabled = true,
 		highlightCoordinator = null,
-		ttsService = null,
-		ontranslationrequest
+		ttsService = null
 	}: Props = $props();
 
 	const isBrowser = typeof window !== 'undefined';
@@ -296,15 +294,6 @@
 	}
 
 	/**
-	 * Translation request
-	 */
-	function handleTranslationClick() {
-		if (!toolbarState.selectedText) return;
-		ontranslationrequest?.({ text: toolbarState.selectedText });
-		hideToolbar();
-	}
-
-	/**
 	 * Read aloud with TTS
 	 */
 	async function handleTTSClick() {
@@ -453,29 +442,6 @@
 				>
 					<path
 						d="M14,3.23V5.29C16.89,6.15 19,8.83 19,12C19,15.17 16.89,17.84 14,18.7V20.77C18,19.86 21,16.28 21,12C21,7.72 18,4.14 14,3.23M16.5,12C16.5,10.23 15.5,8.71 14,7.97V16C15.5,15.29 16.5,13.76 16.5,12M3,9V15H7L12,20V4L7,9H3Z"
-					/>
-				</svg>
-			</button>
-		{/if}
-
-		<!-- Translation -->
-		{#if ontranslationrequest}
-			<button
-				class="btn btn-sm btn-square"
-				onclick={handleTranslationClick}
-				aria-label="Translate selected text"
-				title="Translation"
-			>
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					viewBox="0 0 24 24"
-					width="18"
-					height="18"
-					fill="currentColor"
-					aria-hidden="true"
-				>
-					<path
-						d="M12.87,15.07L10.33,12.56L10.36,12.53C12.1,10.59 13.34,8.36 14.07,6H17V4H10V2H8V4H1V6H12.17C11.5,7.92 10.44,9.75 9,11.35C8.07,10.32 7.3,9.19 6.69,8H4.69C5.42,9.63 6.42,11.17 7.67,12.56L2.58,17.58L4,19L9,14L12.11,17.11L12.87,15.07M18.5,10H16.5L12,22H14L15.12,19H19.87L21,22H23L18.5,10M15.88,17L17.5,12.67L19.12,17H15.88Z"
 					/>
 				</svg>
 			</button>

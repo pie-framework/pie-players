@@ -1,7 +1,6 @@
 <script lang="ts">
 	
 	import {
-		AnnotationToolbarAPIClient,
 		ToolkitCoordinator,
 		type ToolkitCoordinatorHooks
 	} from '@pie-players/pie-assessment-toolkit';
@@ -87,28 +86,6 @@
 	}
 
 	let ttsConfig = $state<TTSConfig>(getDefaultTTSConfig());
-
-	// Annotation Toolbar API Client (for translation features)
-	const annotationAPIClient = browser ? new AnnotationToolbarAPIClient({
-		translationEndpoint: '/api/translation',
-		defaultLanguage: 'en-us'
-	}) : null;
-
-	// Dialog state for translation features
-
-	let translationDialog = $state<{
-		open: boolean;
-		originalText: string;
-		translatedText: string;
-		sourceLanguage: string;
-		targetLanguage: string;
-	}>({
-		open: false,
-		originalText: '',
-		translatedText: '',
-		sourceLanguage: '',
-		targetLanguage: ''
-	});
 
 	// Storage keys
 	let SESSION_STORAGE_KEY = $derived(`pie-section-demo-sessions-${data.demo.id}`);
@@ -892,24 +869,6 @@
 		enabled={true}
 		ttsService={toolkitCoordinator.ttsService}
 		highlightCoordinator={toolkitCoordinator.highlightCoordinator}
-		ontranslationrequest={async (detail: { text: string }) => {
-			console.log('Translation request:', detail.text);
-			if (!annotationAPIClient) return;
-			try {
-				const result = await annotationAPIClient.translate(detail.text, 'es'); // Translate to Spanish
-				console.log('Translation result:', result);
-				translationDialog = {
-					open: true,
-					originalText: result.text,
-					translatedText: result.translatedText,
-					sourceLanguage: result.sourceLanguage,
-					targetLanguage: result.targetLanguage
-				};
-			} catch (error) {
-				console.error('Translation failed:', error);
-				alert(`Translation failed: ${error}`);
-			}
-		}}
 	></pie-tool-annotation-toolbar>
 {/if}
 
@@ -1199,60 +1158,3 @@
 	</div>
 {/if}
 
-<!-- Translation Dialog -->
-{#if translationDialog.open}
-	<dialog class="modal modal-open">
-		<div class="modal-box max-w-2xl">
-			<form method="dialog">
-				<button
-					class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
-					onclick={() => translationDialog = { ...translationDialog, open: false }}
-				>✕</button>
-			</form>
-			<h3 class="font-bold text-lg mb-4 flex items-center gap-2">
-				<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
-				</svg>
-				Translation
-			</h3>
-
-			<div class="space-y-4">
-				<div class="card bg-base-200">
-					<div class="card-body p-4">
-						<div class="flex items-center gap-2 mb-2">
-							<div class="badge badge-outline">{translationDialog.sourceLanguage.toUpperCase()}</div>
-							<span class="text-xs text-base-content/50">Original</span>
-						</div>
-						<p class="text-base">{translationDialog.originalText}</p>
-					</div>
-				</div>
-
-				<div class="flex justify-center">
-					<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-					</svg>
-				</div>
-
-				<div class="card bg-primary/10 border-2 border-primary/20">
-					<div class="card-body p-4">
-						<div class="flex items-center gap-2 mb-2">
-							<div class="badge badge-primary">{translationDialog.targetLanguage.toUpperCase()}</div>
-							<span class="text-xs text-base-content/50">Translation</span>
-						</div>
-						<p class="text-base font-medium">{translationDialog.translatedText}</p>
-					</div>
-				</div>
-			</div>
-
-			<div class="modal-action">
-				<button
-					class="btn btn-primary"
-					onclick={() => translationDialog = { ...translationDialog, open: false }}
-				>Close</button>
-			</div>
-		</div>
-		<form method="dialog" class="modal-backdrop">
-			<button onclick={() => translationDialog = { ...translationDialog, open: false }}>close</button>
-		</form>
-	</dialog>
-{/if}

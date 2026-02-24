@@ -1,5 +1,8 @@
 import type { SvelteComponent } from "svelte";
-import type { TestAttemptSession } from "@pie-players/pie-assessment-toolkit";
+import type {
+	TestAttemptSession,
+	ToolkitCoordinator,
+} from "@pie-players/pie-assessment-toolkit";
 import type { QtiAssessmentSection } from "@pie-players/pie-players-shared";
 import type { ComponentDefinition } from "./component-definitions.js";
 
@@ -25,7 +28,7 @@ export interface PieSectionPlayerProps {
 	layoutDefinitions?: Partial<Record<string, ComponentDefinition>>;
 	toolbarPosition?: "top" | "right" | "bottom" | "left" | "none";
 	showToolbar?: boolean;
-	toolkitCoordinator?: any;
+	toolkitCoordinator?: ToolkitCoordinator | null;
 	customClassName?: string;
 	debug?: string | boolean;
 }

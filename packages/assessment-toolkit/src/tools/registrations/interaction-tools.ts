@@ -97,9 +97,13 @@ export const answerEliminatorToolRegistration: ToolRegistration = {
 		answerEliminator.visible = true;
 		answerEliminator.toolId = this.toolId;
 
-		if (options.config?.toolkitCoordinator) {
-			answerEliminator.coordinator = options.config.toolkitCoordinator;
+		const toolkitCoordinator = options.config?.toolkitCoordinator;
+		if (!toolkitCoordinator) {
+			throw new Error(
+				"[answerEliminatorToolRegistration] toolkitCoordinator is required in ToolInstanceOptions.config",
+			);
 		}
+		answerEliminator.coordinator = toolkitCoordinator;
 		if (options.config?.elementToolStateStore) {
 			answerEliminator.elementToolStateStore =
 				options.config.elementToolStateStore;

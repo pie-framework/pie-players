@@ -424,7 +424,7 @@ When using the coordinator, the section player automatically:
 
 1. **Extracts services** from the coordinator
 2. **Generates section ID** (from `section.identifier` or auto-generated)
-3. **Passes IDs + services** through component hierarchy
+3. **Provides a runtime context scope** for toolkit and tool components
 4. **Extracts SSML** from embedded `<speak>` tags
 5. **Manages catalog lifecycle** (add on item load, clear on navigation)
 6. **Renders TTS tools** in passage/item headers
@@ -446,40 +446,12 @@ player.section = mySection;
 // })
 ```
 
-### Advanced: Manual Service Integration (Legacy)
+### Runtime Contract
 
-For backward compatibility or advanced scenarios, you can still pass services individually:
-
-```javascript
-import {
-  TTSService,
-  BrowserTTSProvider,
-  ToolCoordinator,
-  HighlightCoordinator,
-  AccessibilityCatalogResolver,
-  ElementToolStateStore
-} from '@pie-players/pie-assessment-toolkit';
-
-// Initialize each service
-const ttsService = new TTSService();
-const toolCoordinator = new ToolCoordinator();
-const highlightCoordinator = new HighlightCoordinator();
-const elementToolStateStore = new ElementToolStateStore();
-const catalogResolver = new AccessibilityCatalogResolver([], 'en-US');
-
-await ttsService.initialize(new BrowserTTSProvider());
-ttsService.setCatalogResolver(catalogResolver);
-
-// Pass services individually
-const player = document.getElementById('player');
-player.ttsService = ttsService;
-player.toolCoordinator = toolCoordinator;
-player.highlightCoordinator = highlightCoordinator;
-player.elementToolStateStore = elementToolStateStore;
-player.catalogResolver = catalogResolver;
-```
-
-**Note:** Using ToolkitCoordinator is recommended for most use cases.
+Section player runtime dependencies are coordinated via
+`toolkitCoordinator` and provided downstream through
+`assessmentToolkitRuntimeContext`. Passing individual toolkit services to
+child tools/components is no longer a supported integration pattern.
 
 ### SSML Extraction
 

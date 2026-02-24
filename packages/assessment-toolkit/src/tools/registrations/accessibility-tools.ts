@@ -92,9 +92,13 @@ export const magnifierToolRegistration: ToolRegistration = {
 
 		magnifier.visible = true;
 
-		if (options.config?.toolkitCoordinator) {
-			magnifier.toolkitCoordinator = options.config.toolkitCoordinator;
+		const magnifierCoordinator = options.config?.toolkitCoordinator;
+		if (!magnifierCoordinator) {
+			throw new Error(
+				"[magnifierToolRegistration] toolkitCoordinator is required in ToolInstanceOptions.config",
+			);
 		}
+		magnifier.toolkitCoordinator = magnifierCoordinator;
 
 		if (options.onClose) {
 			magnifier.addEventListener("close", options.onClose);
@@ -170,9 +174,13 @@ export const lineReaderToolRegistration: ToolRegistration = {
 
 		lineReader.visible = true;
 
-		if (options.config?.toolkitCoordinator) {
-			lineReader.toolkitCoordinator = options.config.toolkitCoordinator;
+		const lineReaderCoordinator = options.config?.toolkitCoordinator;
+		if (!lineReaderCoordinator) {
+			throw new Error(
+				"[lineReaderToolRegistration] toolkitCoordinator is required in ToolInstanceOptions.config",
+			);
 		}
+		lineReader.toolkitCoordinator = lineReaderCoordinator;
 
 		if (options.onClose) {
 			lineReader.addEventListener("close", options.onClose);
@@ -250,9 +258,13 @@ export const colorSchemeToolRegistration: ToolRegistration = {
 
 		colorScheme.visible = true;
 
-		if (options.config?.toolkitCoordinator) {
-			colorScheme.toolkitCoordinator = options.config.toolkitCoordinator;
+		const colorSchemeCoordinator = options.config?.toolkitCoordinator;
+		if (!colorSchemeCoordinator) {
+			throw new Error(
+				"[colorSchemeToolRegistration] toolkitCoordinator is required in ToolInstanceOptions.config",
+			);
 		}
+		colorScheme.toolkitCoordinator = colorSchemeCoordinator;
 
 		if (options.onClose) {
 			colorScheme.addEventListener("close", options.onClose);
@@ -328,9 +340,13 @@ export const annotationToolbarRegistration: ToolRegistration = {
 
 		toolbar.visible = true;
 
-		if (options.config?.toolkitCoordinator) {
-			toolbar.toolkitCoordinator = options.config.toolkitCoordinator;
+		const annotationCoordinator = options.config?.toolkitCoordinator;
+		if (!annotationCoordinator) {
+			throw new Error(
+				"[annotationToolbarRegistration] toolkitCoordinator is required in ToolInstanceOptions.config",
+			);
 		}
+		toolbar.toolkitCoordinator = annotationCoordinator;
 
 		if (options.onClose) {
 			toolbar.addEventListener("close", options.onClose);

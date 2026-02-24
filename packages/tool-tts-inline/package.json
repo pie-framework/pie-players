@@ -32,6 +32,7 @@
 	},
 	"dependencies": {
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
+		"@pie-players/pie-context": "workspace:*",
 		"daisyui": "^5.5.18"
 	},
 	"devDependencies": {

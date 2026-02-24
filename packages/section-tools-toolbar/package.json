@@ -42,6 +42,7 @@
 	"jsdelivr": "./dist/section-tools-toolbar.js",
 	"dependencies": {
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
+		"@pie-players/pie-context": "workspace:*",
 		"@pie-players/pie-default-tool-loaders": "workspace:*",
 		"@pie-players/pie-calculator-mathjs": "workspace:*",
 		"daisyui": "^5.5.18"

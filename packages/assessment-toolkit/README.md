@@ -635,8 +635,10 @@ that should not be prop-drilled through intermediate components:
 - `assessmentId`
 - `sectionId`
 
-Use explicit props/events for direct contracts, and use runtime context for
-cross-cutting orchestration scope.
+These runtime fields are expected to be present once the section-player
+provider is established (host-supplied coordinator or lazily created by
+section-player). Use explicit props/events for direct content contracts, and
+use runtime context for cross-cutting orchestration scope.
 
 ### Standalone Sections (No Coordinator Provided)
 

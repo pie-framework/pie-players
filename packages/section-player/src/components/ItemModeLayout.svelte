@@ -19,8 +19,6 @@
 		itemSession,
 		env = { mode: 'gather', role: 'student' },
 		playerVersion = 'latest',
-		assessmentId = '',
-		sectionId = '',
 
 		onprevious,
 		onnext,
@@ -35,8 +33,6 @@
 		itemSession?: any;
 		env?: { mode: 'gather' | 'view' | 'evaluate' | 'author'; role: 'student' | 'instructor' };
 		playerVersion?: string;
-		assessmentId?: string;
-		sectionId?: string;
 
 		onprevious?: () => void;
 		onnext?: () => void;

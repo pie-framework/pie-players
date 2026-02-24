@@ -9,14 +9,14 @@ import type {
 } from "../services/interfaces.js";
 
 export interface AssessmentToolkitRuntimeContext {
-	toolkitCoordinator?: IToolkitCoordinator | null;
-	toolCoordinator?: IToolCoordinator | null;
-	ttsService?: ITTSService | null;
-	highlightCoordinator?: IHighlightCoordinator | null;
-	catalogResolver?: IAccessibilityCatalogResolver | null;
-	elementToolStateStore?: IElementToolStateStore | null;
-	assessmentId?: string;
-	sectionId?: string;
+	toolkitCoordinator: IToolkitCoordinator;
+	toolCoordinator: IToolCoordinator;
+	ttsService: ITTSService;
+	highlightCoordinator: IHighlightCoordinator;
+	catalogResolver: IAccessibilityCatalogResolver;
+	elementToolStateStore: IElementToolStateStore;
+	assessmentId: string;
+	sectionId: string;
 }
 
 export const assessmentToolkitRuntimeContext =

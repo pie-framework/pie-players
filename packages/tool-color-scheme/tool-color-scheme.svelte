@@ -4,8 +4,7 @@
 		shadow: 'none',
 		props: {
 			visible: { type: 'Boolean', attribute: 'visible' },
-			toolId: { type: 'String', attribute: 'tool-id' },
-			coordinator: { type: 'Object' }
+			toolId: { type: 'String', attribute: 'tool-id' }
 		}
 	}}
 />
@@ -24,25 +23,53 @@
 <script lang="ts">
 	const browser = typeof window !== "undefined";
 
-		import type { IToolCoordinator } from '@pie-players/pie-assessment-toolkit';
-	import { ZIndexLayer } from '@pie-players/pie-assessment-toolkit';
+	import {
+		assessmentToolkitRuntimeContext,
+		ZIndexLayer,
+	} from '@pie-players/pie-assessment-toolkit';
+	import type {
+		AssessmentToolkitRuntimeContext,
+		IToolCoordinator,
+	} from '@pie-players/pie-assessment-toolkit';
+	import { ContextConsumer } from '@pie-players/pie-context';
 	import { createFocusTrap, safeLocalStorageGet, safeLocalStorageSet } from '@pie-players/pie-players-shared';
 	import { onMount } from 'svelte';
 
 	let {
 		visible = false,
-		toolId = 'colorScheme',
-		coordinator
+		toolId = 'colorScheme'
 	}: {
 		visible?: boolean;
 		toolId?: string;
-		coordinator?: IToolCoordinator;
 	} = $props();
 
 	let containerEl = $state<HTMLDivElement | undefined>();
+	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	let runtimeContextConsumer: ContextConsumer<
+		typeof assessmentToolkitRuntimeContext
+	> | null = null;
+	const coordinator = $derived(
+		runtimeContext?.toolCoordinator as IToolCoordinator | undefined,
+	);
 
 	// Track registration state
 	let registered = $state(false);
+
+	$effect(() => {
+		if (!containerEl) return;
+		runtimeContextConsumer = new ContextConsumer(containerEl, {
+			context: assessmentToolkitRuntimeContext,
+			subscribe: true,
+			onValue: (value: AssessmentToolkitRuntimeContext) => {
+				runtimeContext = value;
+			},
+		});
+		runtimeContextConsumer.connect();
+		return () => {
+			runtimeContextConsumer?.disconnect();
+			runtimeContextConsumer = null;
+		};
+	});
 
 	// Color scheme options (Learnosity-compatible industry standards)
 	const COLOR_SCHEMES = [

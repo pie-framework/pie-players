@@ -89,9 +89,13 @@ export const graphToolRegistration: ToolRegistration = {
 
 		graph.visible = true;
 
-		if (options.config?.toolkitCoordinator) {
-			graph.toolkitCoordinator = options.config.toolkitCoordinator;
+		const graphCoordinator = options.config?.toolkitCoordinator;
+		if (!graphCoordinator) {
+			throw new Error(
+				"[graphToolRegistration] toolkitCoordinator is required in ToolInstanceOptions.config",
+			);
 		}
+		graph.toolkitCoordinator = graphCoordinator;
 
 		if (options.onClose) {
 			graph.addEventListener("close", options.onClose);
@@ -165,9 +169,13 @@ export const periodicTableToolRegistration: ToolRegistration = {
 
 		periodicTable.visible = true;
 
-		if (options.config?.toolkitCoordinator) {
-			periodicTable.toolkitCoordinator = options.config.toolkitCoordinator;
+		const periodicTableCoordinator = options.config?.toolkitCoordinator;
+		if (!periodicTableCoordinator) {
+			throw new Error(
+				"[periodicTableToolRegistration] toolkitCoordinator is required in ToolInstanceOptions.config",
+			);
 		}
+		periodicTable.toolkitCoordinator = periodicTableCoordinator;
 
 		if (options.onClose) {
 			periodicTable.addEventListener("close", options.onClose);

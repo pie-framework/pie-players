@@ -1,4 +1,9 @@
 <script lang="ts">
+	import {
+		assessmentToolkitRuntimeContext,
+		type AssessmentToolkitRuntimeContext,
+	} from "@pie-players/pie-assessment-toolkit";
+	import { ContextConsumer } from "@pie-players/pie-context";
 	import type { ItemEntity, PassageEntity } from "@pie-players/pie-players-shared";
 
 	export type QtiContentKind =
@@ -10,22 +15,44 @@
 	let {
 		item,
 		contentKind = "assessment-item" as QtiContentKind,
-		assessmentId = "",
-		sectionId = "",
 		customClassName = "",
 	}: {
 		item: ItemEntity | PassageEntity;
 		contentKind?: QtiContentKind;
-		assessmentId?: string;
-		sectionId?: string;
 		customClassName?: string;
 	} = $props();
+
+	let contextHostElement = $state<HTMLElement | null>(null);
+	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	let runtimeContextConsumer: ContextConsumer<
+		typeof assessmentToolkitRuntimeContext
+	> | null = null;
+
+	const effectiveAssessmentId = $derived(runtimeContext?.assessmentId ?? "");
+	const effectiveSectionId = $derived(runtimeContext?.sectionId ?? "");
+
+	$effect(() => {
+		if (!contextHostElement) return;
+		runtimeContextConsumer = new ContextConsumer(contextHostElement, {
+			context: assessmentToolkitRuntimeContext,
+			subscribe: true,
+			onValue: (value: AssessmentToolkitRuntimeContext) => {
+				runtimeContext = value;
+			},
+		});
+		runtimeContextConsumer.connect();
+		return () => {
+			runtimeContextConsumer?.disconnect();
+			runtimeContextConsumer = null;
+		};
+	});
 </script>
 
 <div
+	bind:this={contextHostElement}
 	class="pie-section-player__item-renderer {customClassName}"
-	data-assessment-id={assessmentId}
-	data-section-id={sectionId}
+	data-assessment-id={effectiveAssessmentId}
+	data-section-id={effectiveSectionId}
 	data-item-id={item.id}
 	data-content-kind={contentKind}
 >

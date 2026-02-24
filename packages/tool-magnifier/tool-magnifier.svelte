@@ -18,32 +18,44 @@
 		shadow: 'none',
 		props: {
 			visible: { type: 'Boolean', attribute: 'visible' },
-			toolId: { type: 'String', attribute: 'tool-id' },
-			coordinator: { type: 'Object' }
+			toolId: { type: 'String', attribute: 'tool-id' }
 		}
 	}}
 />
 
 <script lang="ts">
-	import type { IToolCoordinator } from '@pie-players/pie-assessment-toolkit';
-	import { ZIndexLayer } from '@pie-players/pie-assessment-toolkit';
+	import {
+		assessmentToolkitRuntimeContext,
+		ZIndexLayer,
+	} from '@pie-players/pie-assessment-toolkit';
+	import type {
+		AssessmentToolkitRuntimeContext,
+		IToolCoordinator,
+	} from '@pie-players/pie-assessment-toolkit';
+	import { ContextConsumer } from '@pie-players/pie-context';
 	import Magnifier from './Magnifier.svelte';
 
 	// Props
 	let {
 		visible = false,
-		toolId = 'magnifier',
-		coordinator
+		toolId = 'magnifier'
 	}: {
 		visible?: boolean;
 		toolId?: string;
-		coordinator?: IToolCoordinator;
 	} = $props();
 
 	// Check if running in browser
 	const isBrowser = typeof window !== 'undefined';
 
 	// State
+	let contextHostElement = $state<HTMLDivElement | null>(null);
+	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	let runtimeContextConsumer: ContextConsumer<
+		typeof assessmentToolkitRuntimeContext
+	> | null = null;
+	const coordinator = $derived(
+		runtimeContext?.toolCoordinator as IToolCoordinator | undefined,
+	);
 	let registered = $state(false);
 	let zoomLevel = $state<1.5 | 2 | 3>(1.5);
 
@@ -52,6 +64,22 @@
 	function handleZoomChange(level: 1.5 | 2 | 3) {
 		zoomLevel = level;
 	}
+
+	$effect(() => {
+		if (!contextHostElement) return;
+		runtimeContextConsumer = new ContextConsumer(contextHostElement, {
+			context: assessmentToolkitRuntimeContext,
+			subscribe: true,
+			onValue: (value: AssessmentToolkitRuntimeContext) => {
+				runtimeContext = value;
+			},
+		});
+		runtimeContextConsumer.connect();
+		return () => {
+			runtimeContextConsumer?.disconnect();
+			runtimeContextConsumer = null;
+		};
+	});
 
 	// Register with coordinator when it becomes available
 	$effect(() => {
@@ -72,6 +100,7 @@
 	});
 </script>
 
+<div bind:this={contextHostElement}>
 {#if isBrowser}
 	<Magnifier bind:visible zoom={zoomLevel} width={420} height={280} shape="square">
 		<!-- Zoom controls -->
@@ -91,6 +120,7 @@
 		</div>
 	</Magnifier>
 {/if}
+</div>
 
 <style>
 	.pie-tool-magnifier__zoom-group {

@@ -108,9 +108,13 @@ export const ttsToolRegistration: ToolRegistration = {
 		tts.visible = true;
 		tts.toolId = this.toolId;
 
-		if (options.config?.toolkitCoordinator) {
-			tts.coordinator = options.config.toolkitCoordinator;
+		const toolkitCoordinator = options.config?.toolkitCoordinator;
+		if (!toolkitCoordinator) {
+			throw new Error(
+				"[ttsToolRegistration] toolkitCoordinator is required in ToolInstanceOptions.config",
+			);
 		}
+		tts.coordinator = toolkitCoordinator;
 		if (options.config?.ttsService) {
 			tts.ttsService = options.config.ttsService;
 		}

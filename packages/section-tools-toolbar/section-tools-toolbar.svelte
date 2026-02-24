@@ -4,10 +4,7 @@
 		shadow: 'none',
 		props: {
 			enabledTools: { type: 'String', attribute: 'enabled-tools' },
-			position: { type: 'String', attribute: 'position' },
-			// Services passed as JS properties (not attributes)
-			toolCoordinator: { type: 'Object', reflect: false },
-			toolProviderRegistry: { type: 'Object', reflect: false }
+			position: { type: 'String', attribute: 'position' }
 		}
 	}}
 />
@@ -28,12 +25,17 @@
   Similar to SchoolCity pattern - section-wide tools independent of item navigation.
 -->
 <script lang="ts">
+	import {
+		assessmentToolkitRuntimeContext,
+		createDefaultToolRegistry,
+	} from '@pie-players/pie-assessment-toolkit';
 	import type {
+		AssessmentToolkitRuntimeContext,
 		IToolCoordinator,
 		ToolButtonDefinition,
 		ToolContext,
 	} from '@pie-players/pie-assessment-toolkit';
-	import { createDefaultToolRegistry } from '@pie-players/pie-assessment-toolkit';
+	import { ContextConsumer } from '@pie-players/pie-context';
 	import { registerSectionToolModuleLoaders } from '@pie-players/pie-default-tool-loaders';
 	import { onDestroy, onMount } from 'svelte';
 
@@ -44,15 +46,19 @@
 	// Props
 	let {
 		enabledTools = 'graph,periodicTable,protractor,lineReader,magnifier,ruler',
-		position = 'bottom',
-		toolCoordinator,
-		toolProviderRegistry: _toolProviderRegistry
+		position = 'bottom'
 	}: {
 		enabledTools?: string;
 		position?: 'top' | 'right' | 'bottom' | 'left' | 'none';
-		toolCoordinator?: IToolCoordinator;
-		toolProviderRegistry?: unknown;
 	} = $props();
+	let toolbarRootElement = $state<HTMLElement | null>(null);
+	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	let runtimeContextConsumer: ContextConsumer<
+		typeof assessmentToolkitRuntimeContext
+	> | null = null;
+	const effectiveToolCoordinator = $derived(
+		runtimeContext?.toolCoordinator as IToolCoordinator | undefined,
+	);
 
 	const defaultEnabledTools = [
 		'graph',
@@ -94,26 +100,26 @@
 
 	// Update visibility state from coordinator
 	function updateToolVisibility() {
-		if (!toolCoordinator) return;
-		showGraph = toolCoordinator.isToolVisible('graph');
-		showPeriodicTable = toolCoordinator.isToolVisible('periodicTable');
-		showProtractor = toolCoordinator.isToolVisible('protractor');
-		showLineReader = toolCoordinator.isToolVisible('lineReader');
-		showMagnifier = toolCoordinator.isToolVisible('magnifier');
-		showRuler = toolCoordinator.isToolVisible('ruler');
+		if (!effectiveToolCoordinator) return;
+		showGraph = effectiveToolCoordinator.isToolVisible('graph');
+		showPeriodicTable = effectiveToolCoordinator.isToolVisible('periodicTable');
+		showProtractor = effectiveToolCoordinator.isToolVisible('protractor');
+		showLineReader = effectiveToolCoordinator.isToolVisible('lineReader');
+		showMagnifier = effectiveToolCoordinator.isToolVisible('magnifier');
+		showRuler = effectiveToolCoordinator.isToolVisible('ruler');
 	}
 
 	// Toggle tool visibility
 	async function toggleTool(toolId: string) {
-		if (!toolCoordinator) return;
+		if (!effectiveToolCoordinator) return;
 		await toolRegistry.ensureToolModuleLoaded(toolId);
-		toolCoordinator.toggleTool(toolId);
+		effectiveToolCoordinator.toggleTool(toolId);
 		updateToolVisibility();
 
 		// Get tool name for status message
 		const tool = visibleButtons.find((t) => t.toolId === toolId);
 		if (tool) {
-			const isVisible = toolCoordinator.isToolVisible(toolId);
+			const isVisible = effectiveToolCoordinator.isToolVisible(toolId);
 			statusMessage = `${tool.ariaLabel} ${isVisible ? 'opened' : 'closed'}`;
 		}
 	}
@@ -126,12 +132,28 @@
 	});
 
 	$effect(() => {
+		if (!toolbarRootElement) return;
+		runtimeContextConsumer = new ContextConsumer(toolbarRootElement, {
+			context: assessmentToolkitRuntimeContext,
+			subscribe: true,
+			onValue: (value: AssessmentToolkitRuntimeContext) => {
+				runtimeContext = value;
+			},
+		});
+		runtimeContextConsumer.connect();
+		return () => {
+			runtimeContextConsumer?.disconnect();
+			runtimeContextConsumer = null;
+		};
+	});
+
+	$effect(() => {
 		unsubscribe?.();
 		unsubscribe = null;
-		if (!toolCoordinator) return;
+		if (!effectiveToolCoordinator) return;
 
 		updateToolVisibility();
-		unsubscribe = toolCoordinator.subscribe(() => {
+		unsubscribe = effectiveToolCoordinator.subscribe(() => {
 			updateToolVisibility();
 		});
 
@@ -171,41 +193,11 @@
 		return iconMap[icon] || '';
 	}
 
-	// Tool element references for service binding
-	let graphElement = $state<HTMLElement | null>(null);
-	let periodicTableElement = $state<HTMLElement | null>(null);
-	let protractorElement = $state<HTMLElement | null>(null);
-	let lineReaderElement = $state<HTMLElement | null>(null);
-	let magnifierElement = $state<HTMLElement | null>(null);
-	let rulerElement = $state<HTMLElement | null>(null);
-
-	// Bind coordinator to tool elements
-	$effect(() => {
-		if (toolCoordinator) {
-			if (graphElement) {
-				(graphElement as any).coordinator = toolCoordinator;
-			}
-			if (periodicTableElement) {
-				(periodicTableElement as any).coordinator = toolCoordinator;
-			}
-			if (protractorElement) {
-				(protractorElement as any).coordinator = toolCoordinator;
-			}
-			if (lineReaderElement) {
-				(lineReaderElement as any).coordinator = toolCoordinator;
-			}
-			if (magnifierElement) {
-				(magnifierElement as any).coordinator = toolCoordinator;
-			}
-			if (rulerElement) {
-				(rulerElement as any).coordinator = toolCoordinator;
-			}
-		}
-	});
 </script>
 
 {#if isBrowser && position !== 'none' && hasEnabledTools}
 	<div
+		bind:this={toolbarRootElement}
 		class="section-tools-toolbar section-tools-toolbar--{position}"
 		class:section-tools-toolbar--top={position === 'top'}
 		class:section-tools-toolbar--right={position === 'right'}
@@ -220,11 +212,11 @@
 				<button
 					type="button"
 					class="tool-button"
-					class:active={toolCoordinator?.isToolVisible(button.toolId)}
+					class:active={effectiveToolCoordinator?.isToolVisible(button.toolId)}
 					onclick={button.onClick}
 					title={button.tooltip || button.label}
 					aria-label={button.ariaLabel}
-					aria-pressed={toolCoordinator?.isToolVisible(button.toolId)}
+					aria-pressed={effectiveToolCoordinator?.isToolVisible(button.toolId)}
 				>
 					{@html resolveIconMarkup(button.icon)}
 				</button>
@@ -237,55 +229,43 @@
 
 	{#if enabledToolsList.includes('graph')}
 		<pie-tool-graph
-			bind:this={graphElement}
 			visible={showGraph}
 			tool-id="graph"
-			coordinator={toolCoordinator}
 		></pie-tool-graph>
 	{/if}
 
 	{#if enabledToolsList.includes('periodicTable')}
 		<pie-tool-periodic-table
-			bind:this={periodicTableElement}
 			visible={showPeriodicTable}
 			tool-id="periodicTable"
-			coordinator={toolCoordinator}
 		></pie-tool-periodic-table>
 	{/if}
 
 	{#if enabledToolsList.includes('protractor')}
 		<pie-tool-protractor
-			bind:this={protractorElement}
 			visible={showProtractor}
 			tool-id="protractor"
-			coordinator={toolCoordinator}
 		></pie-tool-protractor>
 	{/if}
 
 	{#if enabledToolsList.includes('lineReader')}
 		<pie-tool-line-reader
-			bind:this={lineReaderElement}
 			visible={showLineReader}
 			tool-id="lineReader"
-			coordinator={toolCoordinator}
 		></pie-tool-line-reader>
 	{/if}
 
 	{#if enabledToolsList.includes('magnifier')}
 		<pie-tool-magnifier
-			bind:this={magnifierElement}
 			visible={showMagnifier}
 			tool-id="magnifier"
-			coordinator={toolCoordinator}
 		></pie-tool-magnifier>
 	{/if}
 
 	{#if enabledToolsList.includes('ruler')}
 		<pie-tool-ruler
-			bind:this={rulerElement}
 			visible={showRuler}
 			tool-id="ruler"
-			coordinator={toolCoordinator}
 		></pie-tool-ruler>
 	{/if}
 

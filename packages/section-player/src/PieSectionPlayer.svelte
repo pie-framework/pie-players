@@ -119,7 +119,7 @@
     debug = "" as string | boolean,
 
     // Toolkit coordinator (optional - creates default if not provided)
-    toolkitCoordinator = null as any,
+    toolkitCoordinator = null as ToolkitCoordinator | null,
     ontoolkitcoordinatorready = null as
       | ((event: CustomEvent<any>) => void)
       | null,
@@ -153,17 +153,18 @@
     return null;
   });
 
-  // Lazily create a coordinator only when host does not provide one.
-  $effect(() => {
-    if (toolkitCoordinator || ownedToolkitCoordinator) return;
-    ownedToolkitCoordinator = new ToolkitCoordinator({
-      assessmentId: preferredAssessmentId ?? getFallbackAssessmentId(),
-      lazyInit: true,
-    });
-  });
+  function ensureOwnedCoordinator(): ToolkitCoordinator {
+    if (!ownedToolkitCoordinator) {
+      ownedToolkitCoordinator = new ToolkitCoordinator({
+        assessmentId: preferredAssessmentId ?? getFallbackAssessmentId(),
+        lazyInit: true,
+      });
+    }
+    return ownedToolkitCoordinator;
+  }
 
   const coordinator = $derived.by(
-    () => (toolkitCoordinator as ToolkitCoordinator | null) ?? ownedToolkitCoordinator,
+    () => (toolkitCoordinator as ToolkitCoordinator | null) ?? ensureOwnedCoordinator(),
   );
 
   $effect(() => {
@@ -183,8 +184,8 @@
   });
 
   // Extract services from coordinator
-  const services = $derived.by(() => coordinator?.getServiceBundle() ?? null);
-  const assessmentId = $derived(coordinator?.assessmentId || "");
+  const services = $derived.by(() => coordinator.getServiceBundle());
+  const assessmentId = $derived(coordinator.assessmentId);
 
   // Generate or extract sectionId
   const sectionId = $derived.by(() => {
@@ -230,11 +231,11 @@
   let runtimeContextValue = $derived.by(
     (): AssessmentToolkitRuntimeContext => ({
       toolkitCoordinator: coordinator,
-      toolCoordinator: coordinator?.toolCoordinator || null,
-      ttsService: services?.ttsService ?? null,
-      highlightCoordinator: services?.highlightCoordinator ?? null,
-      catalogResolver: services?.catalogResolver ?? null,
-      elementToolStateStore: services?.elementToolStateStore ?? null,
+      toolCoordinator: coordinator.toolCoordinator,
+      ttsService: services.ttsService,
+      highlightCoordinator: services.highlightCoordinator,
+      catalogResolver: services.catalogResolver,
+      elementToolStateStore: services.elementToolStateStore,
       assessmentId,
       sectionId,
     }),
@@ -518,7 +519,6 @@
   // Listen for TTS errors
   $effect(() => {
     if (!showToolbar) return;
-    if (typeof coordinator?.ensureTTSReady !== "function") return;
     void coordinator.ensureTTSReady().catch((err: unknown) => {
       console.error("[PieSectionPlayer] Failed to lazily initialize TTS:", err);
     });
@@ -526,11 +526,7 @@
 
   // Listen for TTS errors
   $effect(() => {
-    const ttsService = services?.ttsService;
-    if (!ttsService) {
-      ttsError = null;
-      return;
-    }
+    const ttsService = services.ttsService;
 
     const handleTTSStateChange = (state: any) => {
       // PlaybackState.ERROR = "error"
@@ -623,14 +619,9 @@
 
   let shouldRenderToolbar = $derived(showToolbar && toolbarPosition !== "none");
 
-  // Bind toolkitCoordinator, registry, position, and enabled tools to toolbar element
+  // Keep toolbar placement attributes synced on the host element.
   $effect(() => {
     if (toolbarElement) {
-      if (coordinator) {
-        (toolbarElement as any).toolCoordinator = coordinator.toolCoordinator;
-        (toolbarElement as any).toolProviderRegistry =
-          coordinator.toolProviderRegistry;
-      }
       // Set position property and attribute
       (toolbarElement as any).position = toolbarPosition;
       toolbarElement.setAttribute("position", toolbarPosition);
@@ -678,8 +669,6 @@
     (pageLayoutElement as any).testAttemptSession = resolvedTestAttemptSession;
     (pageLayoutElement as any).env = env;
     (pageLayoutElement as any).playerVersion = playerVersion;
-    (pageLayoutElement as any).assessmentId = assessmentId;
-    (pageLayoutElement as any).sectionId = sectionId;
     (pageLayoutElement as any).onsessionchanged = handleSessionChanged;
   });
 </script>
@@ -781,8 +770,6 @@
             itemSession={currentItemSession}
             {env}
             {playerVersion}
-            {assessmentId}
-            {sectionId}
             onprevious={navigatePrevious}
             onnext={navigateNext}
             onsessionchanged={(sessionDetail) =>

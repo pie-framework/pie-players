@@ -16,11 +16,7 @@
 			pnpResolver: { type: 'Object', reflect: false },
 			assessment: { type: 'Object', reflect: false },
 			itemRef: { type: 'Object', reflect: false },
-			item: { type: 'Object', reflect: false },
-
-			// IDs for element-level state (passed as JS properties, not attributes)
-			assessmentId: { type: 'String', reflect: false },
-			sectionId: { type: 'String', reflect: false }
+			item: { type: 'Object', reflect: false }
 		}
 	}}
 />
@@ -71,8 +67,6 @@
 		assessment = null,
 		itemRef = null,
 		item = null,
-		assessmentId = '',
-		sectionId = '',
 		class: className = '',
 		size = 'md' as 'sm' | 'md' | 'lg',
 		language = 'en-US'
@@ -87,8 +81,6 @@
 		assessment?: AssessmentEntity | null;
 		itemRef?: AssessmentItemRef | null;
 		item?: ItemEntity | null;
-		assessmentId?: string;
-		sectionId?: string;
 		class?: string;
 		size?: 'sm' | 'md' | 'lg';
 		language?: string;
@@ -118,10 +110,9 @@
 
 	const effectiveToolCoordinator = $derived(runtimeContext?.toolCoordinator);
 	const effectiveTTSService = $derived(runtimeContext?.ttsService);
-	const effectiveHighlightCoordinator = $derived(runtimeContext?.highlightCoordinator);
 	const effectiveElementToolStateStore = $derived(runtimeContext?.elementToolStateStore);
-	const effectiveAssessmentId = $derived(runtimeContext?.assessmentId || assessmentId || '');
-	const effectiveSectionId = $derived(runtimeContext?.sectionId || sectionId || '');
+	const effectiveAssessmentId = $derived(runtimeContext?.assessmentId ?? '');
+	const effectiveSectionId = $derived(runtimeContext?.sectionId ?? '');
 
 	// Generate globalElementId using store utility
 	let globalElementId = $derived.by(() => {
@@ -289,26 +280,6 @@
 		return unsubscribe;
 	});
 
-	// TTS element reference for service binding
-	let ttsToolElement = $state<HTMLElement | null>(null);
-	let ttsBound = $state(false);
-
-	// Bind services to TTS tool
-	$effect(() => {
-		if (ttsToolElement && !ttsBound) {
-			if (effectiveToolCoordinator) {
-				(ttsToolElement as any).coordinator = effectiveToolCoordinator;
-			}
-			if (effectiveTTSService) {
-				(ttsToolElement as any).ttsService = effectiveTTSService;
-			}
-			if (effectiveHighlightCoordinator) {
-				(ttsToolElement as any).highlightCoordinator = effectiveHighlightCoordinator;
-			}
-			ttsBound = true;
-		}
-	});
-
 	// Answer eliminator element reference for scope binding
 	let answerEliminatorElement = $state<HTMLElement | null>(null);
 	let eliminatorBound = $state(false);
@@ -316,9 +287,6 @@
 	// Bind scope, coordinator, store, and globalElementId to answer eliminator
 	$effect(() => {
 		if (answerEliminatorElement && !eliminatorBound) {
-			if (effectiveToolCoordinator) {
-				(answerEliminatorElement as any).coordinator = effectiveToolCoordinator;
-			}
 			if (scopeElement) {
 				(answerEliminatorElement as any).scopeElement = scopeElement;
 			}
@@ -355,19 +323,6 @@
 		return '';
 	}
 
-	// Calculator element reference for coordinator binding
-	let calculatorInlineElement = $state<HTMLElement | null>(null);
-	let calculatorBound = $state(false);
-
-	// Bind coordinator to calculator inline tool
-	$effect(() => {
-		if (calculatorInlineElement && !calculatorBound) {
-			if (effectiveToolCoordinator) {
-				(calculatorInlineElement as any).coordinator = effectiveToolCoordinator;
-			}
-			calculatorBound = true;
-		}
-	});
 </script>
 
 {#if isBrowser}
@@ -378,7 +333,6 @@
 		<!-- Calculator Button (inline tool) -->
 		{#if showCalculator}
 			<pie-tool-calculator-inline
-				bind:this={calculatorInlineElement}
 				tool-id="calculator-inline-{itemId}"
 				calculator-type="scientific"
 				available-types="basic,scientific,graphing"
@@ -389,7 +343,6 @@
 		<!-- TTS Button (inline tool) -->
 		{#if showTTS}
 			<pie-tool-tts-inline
-				bind:this={ttsToolElement}
 				tool-id="tts-{itemId}"
 				catalog-id={catalogId || itemId}
 				language={language}

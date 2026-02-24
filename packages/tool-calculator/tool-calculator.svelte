@@ -6,8 +6,7 @@
 			visible: { type: 'Boolean', attribute: 'visible' },
 			toolId: { type: 'String', attribute: 'tool-id' },
 			calculatorType: { type: 'String', attribute: 'calculator-type' },
-			availableTypes: { type: 'Array', attribute: 'available-types' },
-			toolkitCoordinator: { type: 'Object', reflect: false }
+			availableTypes: { type: 'Array', attribute: 'available-types' }
 		}
 	}}
 />
@@ -45,8 +44,15 @@
 
 <script lang="ts">
 	
-	import type { IToolCoordinator } from '@pie-players/pie-assessment-toolkit';
-	import { ZIndexLayer } from '@pie-players/pie-assessment-toolkit';
+	import {
+		assessmentToolkitRuntimeContext,
+		ZIndexLayer,
+	} from '@pie-players/pie-assessment-toolkit';
+	import type {
+		AssessmentToolkitRuntimeContext,
+		IToolCoordinator,
+	} from '@pie-players/pie-assessment-toolkit';
+	import { ContextConsumer } from '@pie-players/pie-context';
 		import type { Calculator, CalculatorProviderConfig, CalculatorType } from '@pie-players/pie-assessment-toolkit/tools/client';
 		import { DesmosCalculatorProvider, TICalculatorProvider } from '@pie-players/pie-assessment-toolkit/tools/client';
 	import { createFocusTrap } from '@pie-players/pie-players-shared';
@@ -81,18 +87,23 @@ import { onMount } from 'svelte';
 		visible = false,
 		toolId = 'calculator',
 		calculatorType = 'scientific' as CalculatorType,
-		availableTypes: availableTypesInput = ['basic', 'scientific', 'graphing'] as CalculatorType[],
-		toolkitCoordinator = null
+		availableTypes: availableTypesInput = ['basic', 'scientific', 'graphing'] as CalculatorType[]
 	}: {
 		visible?: boolean;
 		toolId?: string;
 		calculatorType?: CalculatorType;
 		availableTypes?: CalculatorType[] | string;
-		toolkitCoordinator?: any;
 	} = $props();
 
-	// Extract services from toolkitCoordinator
-	const coordinator = $derived(toolkitCoordinator?.toolCoordinator as IToolCoordinator | undefined);
+	let contextHostElement = $state<HTMLDivElement | null>(null);
+	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	let runtimeContextConsumer: ContextConsumer<
+		typeof assessmentToolkitRuntimeContext
+	> | null = null;
+	const effectiveToolkitCoordinator = $derived(runtimeContext?.toolkitCoordinator);
+	const coordinator = $derived(
+		effectiveToolkitCoordinator?.toolCoordinator as IToolCoordinator | undefined,
+	);
 
 	// ============================================================================
 	// Derived State
@@ -130,6 +141,22 @@ import { onMount } from 'svelte';
 	let positionX = $state<number | null>(null);
 	let positionY = $state<number | null>(null);
 
+	$effect(() => {
+		if (!contextHostElement) return;
+		runtimeContextConsumer = new ContextConsumer(contextHostElement, {
+			context: assessmentToolkitRuntimeContext,
+			subscribe: true,
+			onValue: (value: AssessmentToolkitRuntimeContext) => {
+				runtimeContext = value;
+			},
+		});
+		runtimeContextConsumer.connect();
+		return () => {
+			runtimeContextConsumer?.disconnect();
+			runtimeContextConsumer = null;
+		};
+	});
+
 	// ============================================================================
 	// Helper Functions
 	// ============================================================================
@@ -139,7 +166,7 @@ import { onMount } from 'svelte';
 	}
 
 	function getConfiguredProviderId(): 'calculator-desmos' | 'calculator-ti' | 'calculator-mathjs' {
-		const configuredProvider = toolkitCoordinator?.config?.tools?.floatingTools?.calculator?.provider;
+		const configuredProvider = effectiveToolkitCoordinator?.config?.tools?.floatingTools?.calculator?.provider;
 		if (configuredProvider === 'ti') {
 			return 'calculator-ti';
 		}
@@ -152,11 +179,11 @@ import { onMount } from 'svelte';
 	async function getProvider(type: CalculatorType) {
 		console.log('[ToolCalculator] getProvider called', {
 			type,
-			hasToolkitCoordinator: !!toolkitCoordinator,
-			hasRegistry: !!toolkitCoordinator?.toolProviderRegistry
+			hasToolkitCoordinator: !!effectiveToolkitCoordinator,
+			hasRegistry: !!effectiveToolkitCoordinator?.toolProviderRegistry
 		});
 
-		if (!toolkitCoordinator?.toolProviderRegistry) {
+		if (!effectiveToolkitCoordinator?.toolProviderRegistry) {
 			console.warn('[ToolCalculator] No toolkitCoordinator or registry available');
 			return null;
 		}
@@ -164,7 +191,7 @@ import { onMount } from 'svelte';
 		try {
 			const providerId = getConfiguredProviderId();
 			console.log(`[ToolCalculator] Requesting ${providerId} provider from registry`);
-			const provider = await toolkitCoordinator.toolProviderRegistry.getProvider(providerId);
+			const provider = await effectiveToolkitCoordinator.toolProviderRegistry.getProvider(providerId);
 			console.log('[ToolCalculator] Got provider from registry:', provider);
 			return provider;
 		} catch (error) {
@@ -346,8 +373,8 @@ import { onMount } from 'svelte';
 			hasCalculatorInstance: !!calculatorInstance,
 			hasContainerEl: !!calculatorContainerEl,
 			initializationFailed,
-			hasToolkitCoordinator: !!toolkitCoordinator,
-			hasRegistry: !!toolkitCoordinator?.toolProviderRegistry
+			hasToolkitCoordinator: !!effectiveToolkitCoordinator,
+			hasRegistry: !!effectiveToolkitCoordinator?.toolProviderRegistry
 		});
 
 		if (isInitializing || isSwitching || calculatorInstance || !calculatorContainerEl || initializationFailed) {
@@ -368,7 +395,7 @@ import { onMount } from 'svelte';
 			}
 
 			console.log('[ToolCalculator] Getting provider for type:', currentCalculatorType);
-			// Get tool provider from toolkitCoordinator registry
+			// Get tool provider from toolkit coordinator registry
 			const toolProvider = await getProvider(currentCalculatorType);
 			console.log('[ToolCalculator] Got tool provider:', toolProvider);
 
@@ -773,6 +800,7 @@ import { onMount } from 'svelte';
 	});
 </script>
 
+<div bind:this={contextHostElement}>
 {#if visible}
 	<div
 		bind:this={containerEl}
@@ -1073,6 +1101,7 @@ import { onMount } from 'svelte';
 		{/if}
 	</div>
 {/if}
+</div>
 
 <style>
 	.pie-tool-calculator {

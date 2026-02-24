@@ -120,10 +120,13 @@ export const calculatorToolRegistration: ToolRegistration = {
 		calculator.calculatorType = calculatorType;
 		calculator.availableTypes = availableTypes;
 
-		// Pass toolkit coordinator if available from context
-		if (options.config?.toolkitCoordinator) {
-			calculator.toolkitCoordinator = options.config.toolkitCoordinator;
+		const toolkitCoordinator = options.config?.toolkitCoordinator;
+		if (!toolkitCoordinator) {
+			throw new Error(
+				"[calculatorToolRegistration] toolkitCoordinator is required in ToolInstanceOptions.config",
+			);
 		}
+		calculator.toolkitCoordinator = toolkitCoordinator;
 
 		// Handle close callback
 		if (options.onClose) {

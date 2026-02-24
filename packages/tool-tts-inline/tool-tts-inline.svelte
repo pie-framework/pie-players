@@ -6,51 +6,69 @@
 			toolId: { type: 'String', attribute: 'tool-id' },
 			catalogId: { type: 'String', attribute: 'catalog-id' },
 			language: { type: 'String', attribute: 'language' },
-			size: { type: 'String', attribute: 'size' },
-
-			// Services (passed as JS properties, not attributes)
-			coordinator: { type: 'Object', reflect: false },
-			ttsService: { type: 'Object', reflect: false },
-			highlightCoordinator: { type: 'Object', reflect: false }
+			size: { type: 'String', attribute: 'size' }
 		}
 	}}
 />
 
 <script lang="ts">
-	import type {
-		IHighlightCoordinator, 
-		IToolCoordinator,
-		ITTSService
+	import { ContextConsumer } from '@pie-players/pie-context';
+	import {
+		assessmentToolkitRuntimeContext,
+		type AssessmentToolkitRuntimeContext,
+		type IHighlightCoordinator,
+		type IToolCoordinator,
+		type ITTSService,
+		ZIndexLayer,
 	} from '@pie-players/pie-assessment-toolkit';
-	import { ZIndexLayer } from '@pie-players/pie-assessment-toolkit';
 
-	// Props
 	let {
 		toolId = 'tts-inline',
 		catalogId = '', // Explicit catalog ID
 		language = 'en-US',
-		size = 'md' as 'sm' | 'md' | 'lg',
-		coordinator,
-		ttsService,
-		highlightCoordinator
+		size = 'md' as 'sm' | 'md' | 'lg'
 	}: {
 		toolId?: string;
 		catalogId?: string;
 		language?: string;
 		size?: 'sm' | 'md' | 'lg';
-		coordinator?: IToolCoordinator;
-		ttsService?: ITTSService;
-		highlightCoordinator?: IHighlightCoordinator;
 	} = $props();
 
 	const isBrowser = typeof window !== 'undefined';
 
 	// State
 	let containerEl = $state<HTMLDivElement | undefined>();
+	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	let runtimeContextConsumer: ContextConsumer<
+		typeof assessmentToolkitRuntimeContext
+	> | null = null;
+	const coordinator = $derived(
+		runtimeContext?.toolCoordinator as IToolCoordinator | undefined,
+	);
+	const ttsService = $derived(runtimeContext?.ttsService as ITTSService | undefined);
+	const highlightCoordinator = $derived(
+		runtimeContext?.highlightCoordinator as IHighlightCoordinator | undefined,
+	);
 	let registered = $state(false);
 	let speaking = $state(false);
 	let paused = $state(false);
 	let statusMessage = $state('');
+
+	$effect(() => {
+		if (!containerEl) return;
+		runtimeContextConsumer = new ContextConsumer(containerEl, {
+			context: assessmentToolkitRuntimeContext,
+			subscribe: true,
+			onValue: (value: AssessmentToolkitRuntimeContext) => {
+				runtimeContext = value;
+			},
+		});
+		runtimeContextConsumer.connect();
+		return () => {
+			runtimeContextConsumer?.disconnect();
+			runtimeContextConsumer = null;
+		};
+	});
 
 	// Register with coordinator (don't control visibility here - let parent handle it)
 	$effect(() => {

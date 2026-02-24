@@ -6,40 +6,65 @@
 			toolId: { type: 'String', attribute: 'tool-id' },
 			calculatorType: { type: 'String', attribute: 'calculator-type' },
 			availableTypes: { type: 'String', attribute: 'available-types' },
-			size: { type: 'String', attribute: 'size' },
-
-			// Services (passed as JS properties, not attributes)
-			coordinator: { type: 'Object', reflect: false }
+			size: { type: 'String', attribute: 'size' }
 		}
 	}}
 />
 
 <script lang="ts">
-	import type { IToolCoordinator } from '@pie-players/pie-assessment-toolkit';
-	import { ZIndexLayer } from '@pie-players/pie-assessment-toolkit';
+	import {
+		assessmentToolkitRuntimeContext,
+		ZIndexLayer,
+	} from '@pie-players/pie-assessment-toolkit';
+	import type {
+		AssessmentToolkitRuntimeContext,
+		IToolCoordinator,
+	} from '@pie-players/pie-assessment-toolkit';
+	import { ContextConsumer } from '@pie-players/pie-context';
 
 	// Props
 	let {
 		toolId = 'calculator-inline',
 		calculatorType = 'scientific',
 		availableTypes = 'basic,scientific,graphing',
-		size = 'md' as 'sm' | 'md' | 'lg',
-		coordinator
+		size = 'md' as 'sm' | 'md' | 'lg'
 	}: {
 		toolId?: string;
 		calculatorType?: string;
 		availableTypes?: string;
 		size?: 'sm' | 'md' | 'lg';
-		coordinator?: IToolCoordinator;
 	} = $props();
 
 	const isBrowser = typeof window !== 'undefined';
 
 	// State
 	let containerEl = $state<HTMLDivElement | undefined>();
+	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	let runtimeContextConsumer: ContextConsumer<
+		typeof assessmentToolkitRuntimeContext
+	> | null = null;
+	const coordinator = $derived(
+		runtimeContext?.toolCoordinator as IToolCoordinator | undefined,
+	);
 	let registered = $state(false);
 	let calculatorVisible = $state(false);
 	let statusMessage = $state('');
+
+	$effect(() => {
+		if (!containerEl) return;
+		runtimeContextConsumer = new ContextConsumer(containerEl, {
+			context: assessmentToolkitRuntimeContext,
+			subscribe: true,
+			onValue: (value: AssessmentToolkitRuntimeContext) => {
+				runtimeContext = value;
+			},
+		});
+		runtimeContextConsumer.connect();
+		return () => {
+			runtimeContextConsumer?.disconnect();
+			runtimeContextConsumer = null;
+		};
+	});
 
 	// Register with coordinator
 	$effect(() => {

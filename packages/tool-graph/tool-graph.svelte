@@ -4,16 +4,22 @@
 		shadow: 'none',
 		props: {
 			visible: { type: 'Boolean', attribute: 'visible' },
-			toolId: { type: 'String', attribute: 'tool-id' },
-			coordinator: { type: 'Object' }
+			toolId: { type: 'String', attribute: 'tool-id' }
 		}
 	}}
 />
 
 <script lang="ts">
 	
-	import type { IToolCoordinator } from '@pie-players/pie-assessment-toolkit';
-	import { ZIndexLayer } from '@pie-players/pie-assessment-toolkit';
+	import {
+		assessmentToolkitRuntimeContext,
+		ZIndexLayer,
+	} from '@pie-players/pie-assessment-toolkit';
+	import type {
+		AssessmentToolkitRuntimeContext,
+		IToolCoordinator,
+	} from '@pie-players/pie-assessment-toolkit';
+	import { ContextConsumer } from '@pie-players/pie-context';
 	import ToolSettingsButton from '@pie-players/pie-players-shared/components/ToolSettingsButton.svelte';
 	import ToolSettingsPanel from '@pie-players/pie-players-shared/components/ToolSettingsPanel.svelte';
 import { onDestroy, onMount } from 'svelte';
@@ -21,12 +27,10 @@ import { onDestroy, onMount } from 'svelte';
 	// Props
 	let {
 		visible = false,
-		toolId = 'graph',
-		coordinator
+		toolId = 'graph'
 	}: {
 		visible?: boolean;
 		toolId?: string;
-		coordinator?: IToolCoordinator;
 	} = $props();
 
 	// Check if running in browser
@@ -55,6 +59,13 @@ import { onDestroy, onMount } from 'svelte';
 
 	// State
 	let containerEl = $state<HTMLDivElement | undefined>();
+	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	let runtimeContextConsumer: ContextConsumer<
+		typeof assessmentToolkitRuntimeContext
+	> | null = null;
+	const coordinator = $derived(
+		runtimeContext?.toolCoordinator as IToolCoordinator | undefined,
+	);
 	let canvasWrapperEl = $state<HTMLDivElement | undefined>();
 	let svgCanvasEl = $state<SVGSVGElement | undefined>();
 	let settingsButtonEl = $state<HTMLButtonElement | undefined>();
@@ -88,6 +99,22 @@ import { onDestroy, onMount } from 'svelte';
 	// Container pixel dimensions (from ResizeObserver)
 	let containerPixelWidth = $state(0);
 	let containerPixelHeight = $state(0);
+
+	$effect(() => {
+		if (!containerEl) return;
+		runtimeContextConsumer = new ContextConsumer(containerEl, {
+			context: assessmentToolkitRuntimeContext,
+			subscribe: true,
+			onValue: (value: AssessmentToolkitRuntimeContext) => {
+				runtimeContext = value;
+			},
+		});
+		runtimeContextConsumer.connect();
+		return () => {
+			runtimeContextConsumer?.disconnect();
+			runtimeContextConsumer = null;
+		};
+	});
 
 	// Dynamic viewBox width (matching production implementation)
 	let viewBoxWidth = $derived.by(() => {

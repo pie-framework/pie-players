@@ -8,7 +8,6 @@
 			strategy: { type: 'String', attribute: 'strategy' },
 			alwaysOn: { type: 'Boolean', attribute: 'always-on' },
 			buttonAlignment: { type: 'String', attribute: 'button-alignment' },
-			coordinator: { type: 'Object' },
 			scopeElement: { type: 'Object', reflect: false },
 
 			// Store integration (JS properties only)
@@ -46,8 +45,15 @@
 
 <script lang="ts">
 	
-	import type { IToolCoordinator } from '@pie-players/pie-assessment-toolkit';
-	import { ZIndexLayer } from '@pie-players/pie-assessment-toolkit';
+	import {
+		assessmentToolkitRuntimeContext,
+		ZIndexLayer,
+	} from '@pie-players/pie-assessment-toolkit';
+	import type {
+		AssessmentToolkitRuntimeContext,
+		IToolCoordinator,
+	} from '@pie-players/pie-assessment-toolkit';
+	import { ContextConsumer } from '@pie-players/pie-context';
 import { onDestroy, onMount } from 'svelte';
 	import { AnswerEliminatorCore } from './answer-eliminator-core.js';
 
@@ -58,7 +64,6 @@ import { onDestroy, onMount } from 'svelte';
 		strategy = 'strikethrough' as 'strikethrough' | 'mask' | 'gray',
 		alwaysOn = false, // Set true for profile-based accommodation
 		buttonAlignment = 'right' as 'left' | 'right' | 'inline', // Button placement: left, right, or inline with checkbox
-		coordinator,
 		scopeElement = null, // Container element to limit DOM queries (for multi-item pages)
 
 		// Store integration
@@ -70,13 +75,20 @@ import { onDestroy, onMount } from 'svelte';
 		strategy?: 'strikethrough' | 'mask' | 'gray';
 		alwaysOn?: boolean;
 		buttonAlignment?: 'left' | 'right' | 'inline';
-		coordinator?: IToolCoordinator;
 		scopeElement?: HTMLElement | null;
 		elementToolStateStore?: any;
 		globalElementId?: string;
 	} = $props();
 
 	// State
+	let contextHostElement = $state<HTMLElement | null>(null);
+	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	let runtimeContextConsumer: ContextConsumer<
+		typeof assessmentToolkitRuntimeContext
+	> | null = null;
+	const coordinator = $derived(
+		runtimeContext?.toolCoordinator as IToolCoordinator | undefined,
+	);
 	let core = $state<AnswerEliminatorCore | null>(null);
 	let eliminatedCount = $state(0);
 	let mutationObserver = $state<MutationObserver | null>(null);
@@ -86,6 +98,22 @@ import { onDestroy, onMount } from 'svelte';
 
 	// Determine if tool should be active (either toggled on OR always-on mode)
 	let isActive = $derived(alwaysOn || visible);
+
+	$effect(() => {
+		if (!contextHostElement) return;
+		runtimeContextConsumer = new ContextConsumer(contextHostElement, {
+			context: assessmentToolkitRuntimeContext,
+			subscribe: true,
+			onValue: (value: AssessmentToolkitRuntimeContext) => {
+				runtimeContext = value;
+			},
+		});
+		runtimeContextConsumer.connect();
+		return () => {
+			runtimeContextConsumer?.disconnect();
+			runtimeContextConsumer = null;
+		};
+	});
 
 	function initializeForCurrentQuestion() {
 		if (!isActive || !core) return;
@@ -248,3 +276,4 @@ import { onDestroy, onMount } from 'svelte';
 
 <!-- No visible UI - tool operates entirely through injected buttons next to choices -->
 <!-- The toolbar button visibility is managed by tool-toolbar.svelte -->
+<div bind:this={contextHostElement} style="display: none;" aria-hidden="true"></div>

@@ -84,9 +84,13 @@ export const rulerToolRegistration: ToolRegistration = {
 
 		ruler.visible = true;
 
-		if (options.config?.toolkitCoordinator) {
-			ruler.toolkitCoordinator = options.config.toolkitCoordinator;
+		const rulerCoordinator = options.config?.toolkitCoordinator;
+		if (!rulerCoordinator) {
+			throw new Error(
+				"[rulerToolRegistration] toolkitCoordinator is required in ToolInstanceOptions.config",
+			);
 		}
+		ruler.toolkitCoordinator = rulerCoordinator;
 
 		if (options.onClose) {
 			ruler.addEventListener("close", options.onClose);
@@ -159,9 +163,13 @@ export const protractorToolRegistration: ToolRegistration = {
 
 		protractor.visible = true;
 
-		if (options.config?.toolkitCoordinator) {
-			protractor.toolkitCoordinator = options.config.toolkitCoordinator;
+		const protractorCoordinator = options.config?.toolkitCoordinator;
+		if (!protractorCoordinator) {
+			throw new Error(
+				"[protractorToolRegistration] toolkitCoordinator is required in ToolInstanceOptions.config",
+			);
 		}
+		protractor.toolkitCoordinator = protractorCoordinator;
 
 		if (options.onClose) {
 			protractor.addEventListener("close", options.onClose);

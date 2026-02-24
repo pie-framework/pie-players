@@ -26,9 +26,6 @@
     session = { id: "", data: [] },
     contentKind = "assessment-item" as QtiContentKind,
     skipElementLoading = true,
-    assessmentId = "",
-    sectionId = "",
-    toolkitCoordinator = null,
     customClassName = "",
     onsessionchanged,
   }: {
@@ -41,9 +38,6 @@
     contentKind?: QtiContentKind;
     skipElementLoading?: boolean;
     playerVersion?: string;
-    assessmentId?: string;
-    sectionId?: string;
-    toolkitCoordinator?: any;
     customClassName?: string;
     onsessionchanged?: (event: CustomEvent) => void;
   } = $props();
@@ -52,26 +46,19 @@
   let contextHostElement: HTMLElement | null = $state(null);
   let itemContentElement: HTMLElement | null = $state(null);
   let questionToolbarElement: HTMLElement | null = $state(null);
-  let calculatorElement: HTMLElement | null = $state(null);
   let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
   let runtimeContextConsumer: ContextConsumer<
     typeof assessmentToolkitRuntimeContext
   > | null = null;
 
-  // Context-first: resolve runtime dependencies from context with prop fallback.
-  const effectiveToolkitCoordinator = $derived(
-    toolkitCoordinator || runtimeContext?.toolkitCoordinator,
-  );
+  // Runtime dependencies come from assessment toolkit context.
+  const effectiveToolkitCoordinator = $derived(runtimeContext?.toolkitCoordinator);
   const toolCoordinator = $derived(
-    effectiveToolkitCoordinator?.toolCoordinator || runtimeContext?.toolCoordinator,
+    effectiveToolkitCoordinator?.toolCoordinator,
   );
   const catalogResolver = $derived(
-    effectiveToolkitCoordinator?.catalogResolver || runtimeContext?.catalogResolver,
+    effectiveToolkitCoordinator?.catalogResolver,
   );
-  const effectiveAssessmentId = $derived(
-    assessmentId || runtimeContext?.assessmentId || "",
-  );
-  const effectiveSectionId = $derived(sectionId || runtimeContext?.sectionId || "");
 
   // Consume runtime context from the section-player provider tree.
   $effect(() => {
@@ -88,13 +75,6 @@
       runtimeContextConsumer?.disconnect();
       runtimeContextConsumer = null;
     };
-  });
-
-  // Set toolkitCoordinator on calculator element.
-  $effect(() => {
-    if (calculatorElement && effectiveToolkitCoordinator) {
-      (calculatorElement as any).toolkitCoordinator = effectiveToolkitCoordinator;
-    }
   });
 
   let calculatorVisible = $state(false);
@@ -153,12 +133,6 @@
     if (itemContentElement) {
       (questionToolbarElement as any).scopeElement = itemContentElement;
     }
-    if (effectiveAssessmentId) {
-      (questionToolbarElement as any).assessmentId = effectiveAssessmentId;
-    }
-    if (effectiveSectionId) {
-      (questionToolbarElement as any).sectionId = effectiveSectionId;
-    }
     if (item) {
       (questionToolbarElement as any).item = item;
     }
@@ -187,8 +161,6 @@
     <ItemShell
       {item}
       {contentKind}
-      assessmentId={effectiveAssessmentId}
-      sectionId={effectiveSectionId}
       {customClassName}
     >
       <pie-question-toolbar
@@ -219,7 +191,6 @@
     <!-- Calculator Tool Instance (rendered outside panel for floating overlay) -->
     {#if item}
       <pie-tool-calculator
-        bind:this={calculatorElement}
         visible={calculatorVisible}
         tool-id="calculator-{item.id}"
       ></pie-tool-calculator>

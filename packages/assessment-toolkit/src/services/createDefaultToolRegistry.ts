@@ -7,6 +7,7 @@
 
 import { ToolRegistry } from "./ToolRegistry.js";
 import type { ToolRegistration } from "./ToolRegistry.js";
+import type { ToolModuleLoader } from "./ToolRegistry.js";
 import { calculatorToolRegistration } from "../tools/registrations/calculator.js";
 import { ttsToolRegistration } from "../tools/registrations/tts.js";
 import {
@@ -49,6 +50,11 @@ export interface DefaultToolRegistryOptions {
 	 */
 	toolComponentFactory?: ToolComponentFactory;
 	toolComponentFactories?: Partial<ToolComponentFactoryMap>;
+	/**
+	 * Optional lazy module loaders keyed by toolId.
+	 * Hosts can inject default loaders from an external package.
+	 */
+	toolModuleLoaders?: Partial<Record<string, ToolModuleLoader>>;
 }
 
 /**
@@ -100,6 +106,10 @@ export function createDefaultToolRegistry(
 	registry.register(applyOverrides(graphToolRegistration));
 	registry.register(applyOverrides(periodicTableToolRegistration));
 
+	if (options.toolModuleLoaders) {
+		registry.setToolModuleLoaders(options.toolModuleLoaders);
+	}
+
 	registry.setComponentOverrides(componentConfig);
 
 	return registry;
@@ -128,14 +138,11 @@ export const DEFAULT_TOOL_PLACEMENT = {
 		// Global accessibility + common tools
 		"magnifier",
 		"colorScheme",
-		"calculator",
 		"textToSpeech",
 	],
 	item: [
 		// Most common item-level tools
-		"calculator",
 		"textToSpeech",
-		"answerEliminator",
 		"highlighter",
 		"annotationToolbar",
 		"graph",
@@ -158,6 +165,7 @@ export const DEFAULT_TOOL_PLACEMENT = {
 	element: [
 		// Element-specific tools
 		"calculator",
+		"answerEliminator",
 		"textToSpeech",
 		"ruler",
 		"protractor",

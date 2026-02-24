@@ -475,7 +475,7 @@ describe('AccessibilityCatalogResolver', () => {
 
 ### Complete Working Example
 
-See [accessibility-catalog-examples.ts](../apps/example/src/lib/accessibility-catalog-examples.ts) for:
+See the examples in this guide and in [accessibility-catalogs-integration-guide.md](./accessibility-catalogs-integration-guide.md) for:
 
 - ✅ Assessment with shared catalogs
 - ✅ Items with item-specific catalogs
@@ -489,7 +489,7 @@ See [accessibility-catalog-examples.ts](../apps/example/src/lib/accessibility-ca
 ## Next Steps
 
 1. **Read the full guide:** [Integration Guide](./accessibility-catalogs-integration-guide.md)
-2. **Review examples:** [Examples](../apps/example/src/lib/accessibility-catalog-examples.ts)
+2. **Review examples:** [Integration Guide](./accessibility-catalogs-integration-guide.md)
 3. **Check implementation plan:** [Roadmap](./accessibility-catalogs-implementation-roadmap.md)
 4. **Start coding!** The service is ready to use.
 
@@ -535,7 +535,7 @@ See [accessibility-catalog-examples.ts](../apps/example/src/lib/accessibility-ca
 
 - **API Docs:** See [AccessibilityCatalogResolver.ts](../packages/assessment-toolkit/src/services/AccessibilityCatalogResolver.ts)
 - **Integration Guide:** [accessibility-catalogs-integration-guide.md](./accessibility-catalogs-integration-guide.md)
-- **Examples:** [accessibility-catalog-examples.ts](../apps/example/src/lib/accessibility-catalog-examples.ts)
+- **Examples:** [accessibility-catalogs-integration-guide.md](./accessibility-catalogs-integration-guide.md)
 
 ---
 

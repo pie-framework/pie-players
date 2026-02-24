@@ -32,7 +32,8 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/pie-framework/pie-players.git"
+		"url": "git+https://github.com/pie-framework/pie-players.git",
+		"directory": "packages/tts-server-google"
 	},
 	"publishConfig": {
 		"access": "public"
@@ -45,5 +46,12 @@
 		"typescript": "^5.3.3",
 		"vitest": "^1.0.4"
 	},
-	"sideEffects": false
+	"sideEffects": false,
+	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/tts-server-google#readme",
+	"bugs": {
+		"url": "https://github.com/pie-framework/pie-players/issues"
+	},
+	"engines": {
+		"node": ">=18.0.0"
+	}
 }

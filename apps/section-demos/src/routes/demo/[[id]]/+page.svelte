@@ -3,30 +3,21 @@
 	import {
 		ToolkitCoordinator,
 		BrowserTTSProvider,
-		PNPToolResolver,
-		createDefaultToolRegistry,
 		AnnotationToolbarAPIClient
 	} from '@pie-players/pie-assessment-toolkit';
-	import PNPProfileTester from '@pie-players/pie-assessment-toolkit/components/PNPProfileTester.svelte';
-	import PNPProvenanceViewer from '@pie-players/pie-assessment-toolkit/components/PNPProvenanceViewer.svelte';
-	import ToolAnnotationToolbar from '@pie-players/pie-tool-annotation-toolbar/tool-annotation-toolbar.svelte';
 	import { ServerTTSProvider } from '@pie-players/tts-client-server';
 
 	// Load the web component
 	onMount(async () => {
-		await import('@pie-players/pie-section-player');
+		await Promise.all([
+			import('@pie-players/pie-section-player'),
+			import('@pie-players/pie-tool-annotation-toolbar')
+		]);
 	});
-	import { Editor } from '@tiptap/core';
-	import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
-	import Document from '@tiptap/extension-document';
-	import History from '@tiptap/extension-history';
-	import Text from '@tiptap/extension-text';
-	import { common, createLowlight } from 'lowlight';
 import { onDestroy, onMount, untrack } from 'svelte';
 	import { browser } from '$app/environment';
 	import { goto, onNavigate, replaceState } from '$app/navigation';
 	import { page } from '$app/stores';
-	import AssessmentToolkitSettings from '$lib/components/AssessmentToolkitSettings.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -81,20 +72,22 @@ import { onDestroy, onMount, untrack } from 'svelte';
 	let layoutConfig = $state({ toolbarPosition: 'right' as 'top' | 'right' | 'bottom' | 'left' });
 	let showSessionPanel = $state(false);
 	let showSourcePanel = $state(false);
-	let showPNPPanel = $state(false);
+	let showPnpPanel = $state(false);
 	let isSessionMinimized = $state(false);
 	let isSourceMinimized = $state(false);
-	let isPNPMinimized = $state(false);
 	let sectionPlayer: any = $state(null);
 	let itemSessions = $state<Record<string, any>>({});
-	let itemMetadata = $state<Record<string, { complete?: boolean; component?: string }>>({});
+	let testAttemptSessionData = $state<any | null>(null);
 
 	// Toolkit coordinator (owns all services)
 	let toolkitCoordinator: any = $state(null);
-	let ttsProvider: 'polly' | 'browser' | 'google' | 'loading' = $state('loading');
-	let showTTSSettings = $state(false);
 
 	// TTS Configuration
+	interface TTSHighlightStyle {
+		color: string;
+		opacity: number;
+	}
+
 	interface TTSConfig {
 		provider: 'polly' | 'browser' | 'google';
 		voice: string;
@@ -103,24 +96,23 @@ import { onDestroy, onMount, untrack } from 'svelte';
 		pollyEngine?: 'neural' | 'standard';
 		pollySampleRate?: number;
 		googleVoiceType?: 'wavenet' | 'standard' | 'studio';
+		highlightStyle?: TTSHighlightStyle;
 	}
 
-	let ttsConfig = $state<TTSConfig>({
-		provider: 'polly',
-		voice: 'Joanna',
-		rate: 1.0,
-		pitch: 1.0,
-		pollyEngine: 'neural',
-		pollySampleRate: 24000,
-		googleVoiceType: 'wavenet',
-	});
+	function getDefaultTTSConfig(): TTSConfig {
+		return {
+			provider: 'browser',
+			voice: '',
+			rate: 1.0,
+			pitch: 1.0,
+			highlightStyle: {
+				color: '#ffeb3b',
+				opacity: 0.4
+			}
+		};
+	}
 
-	// Highlighting Configuration
-	let highlightConfig = $state({
-		enabled: true,
-		color: '#ffeb3b',
-		opacity: 0.4
-	});
+	let ttsConfig = $state<TTSConfig>(getDefaultTTSConfig());
 
 	// Annotation Toolbar API Client (for dictionary/translation features)
 	const annotationAPIClient = browser ? new AnnotationToolbarAPIClient({
@@ -175,21 +167,42 @@ import { onDestroy, onMount, untrack } from 'svelte';
 	let SESSION_STORAGE_KEY = $derived(`pie-section-demo-sessions-${data.demo.id}`);
 	let TOOL_STATE_STORAGE_KEY = $derived(`demo-tool-state:${data.demo.id}`);
 	let TTS_CONFIG_STORAGE_KEY = $derived(`pie-section-demo-tts-config-${data.demo.id}`);
-	let HIGHLIGHT_CONFIG_STORAGE_KEY = $derived(`pie-section-demo-highlight-config-${data.demo.id}`);
 	let LAYOUT_CONFIG_STORAGE_KEY = $derived(`pie-section-demo-layout-config-${data.demo.id}`);
 
-	// Tiptap editor state
-	let editorElement = $state<HTMLDivElement | null>(null);
-	let editor: Editor | null = null;
+	// Source panel state (read-only JSON view)
 	let editedSourceJson = $state('');
-	let isSourceValid = $state(true);
-	let sourceParseError = $state<string | null>(null);
-	let hasSourceChanges = $state(false);
-	const lowlight = browser ? createLowlight(common) : null;
 
 	// Live section data (can be modified) - initialized in effect
 	let liveSection: any = $state.raw({} as any);
 	let previousDemoId = $state('');
+	const DEFAULT_DEMO_PNP_PROFILE = {
+		supports: [
+			'calculator',
+			'textToSpeech',
+			'lineReader',
+			'magnification',
+			'screenMagnifier',
+			'answerEliminator',
+			'periodicTable',
+			'protractor',
+			'ruler',
+			'graph'
+		],
+		prohibitedSupports: [],
+		activateAtInit: []
+	};
+
+	let resolvedSectionForPlayer = $derived.by(() => {
+		if (!liveSection) return liveSection;
+		const hasExplicitPnp = Boolean(
+			liveSection?.personalNeedsProfile || liveSection?.settings?.personalNeedsProfile
+		);
+		if (hasExplicitPnp) return liveSection;
+		return {
+			...liveSection,
+			personalNeedsProfile: structuredClone(DEFAULT_DEMO_PNP_PROFILE)
+		};
+	});
 
 	// Initialize and sync liveSection when data changes
 	$effect(() => {
@@ -225,18 +238,13 @@ import { onDestroy, onMount, untrack } from 'svelte';
 	let isSourceDragging = $state(false);
 	let isSourceResizing = $state(false);
 
-	// PNP window position and state
-	let pnpWindowX = $state(100);
-	let pnpWindowY = $state(150);
-	let pnpWindowWidth = $state(900);
-	let pnpWindowHeight = $state(650);
-	let isPNPDragging = $state(false);
-	let isPNPResizing = $state(false);
-
-	// PNP state
-	let testProfile = $state<any>(null);
-	let pnpResolutionResult = $state<any>(null);
-	let showProvenance = $state(true);
+	let pnpWindowX = $state(80);
+	let pnpWindowY = $state(120);
+	let pnpWindowWidth = $state(460);
+	let pnpWindowHeight = $state(560);
+	let isPnpMinimized = $state(false);
+	let isPnpDragging = $state(false);
+	let isPnpResizing = $state(false);
 
 	// Shared drag/resize state
 	let dragStartX = 0;
@@ -254,15 +262,13 @@ import { onDestroy, onMount, untrack } from 'svelte';
 
 	// Initialize toolkit coordinator and TTS
 	async function initializeTTS(config: TTSConfig) {
-		ttsProvider = 'loading';
-
 		try {
 			// Create toolkit coordinator if not exists
 			if (!toolkitCoordinator) {
 				// Use demo ID to ensure uniqueness
 				const assessmentId = `demo-${data.demo.id}`;
 
-				// Default tools list for PNP Profile Tester
+				// Default floating tools list for demo mode
 				const defaultToolsList = [
 					'calculator',
 					'calculatorScientific',
@@ -290,7 +296,15 @@ import { onDestroy, onMount, untrack } from 'svelte';
 								provider: 'desmos',
 								authFetcher: async () => {
 									const response = await fetch('/api/tools/desmos/auth');
-									return response.json();
+									if (!response.ok) {
+										throw new Error(
+											`Failed to load Desmos auth config: ${response.status} ${response.statusText}`
+										);
+									}
+									const authConfig = await response.json();
+									return {
+										apiKey: authConfig?.apiKey || undefined
+									};
 								}
 							},
 							graph: { enabled: true },
@@ -349,7 +363,6 @@ import { onDestroy, onMount, untrack } from 'svelte';
 						sampleRate: config.pollySampleRate || 24000,
 					},
 				});
-				ttsProvider = 'polly';
 				console.log('[Demo] ✅ Server TTS initialized (AWS Polly):', {
 					voice: config.voice,
 					engine: config.pollyEngine,
@@ -370,7 +383,6 @@ import { onDestroy, onMount, untrack } from 'svelte';
 						voiceType: config.googleVoiceType || 'wavenet',
 					},
 				});
-				ttsProvider = 'google';
 				console.log('[Demo] ✅ Server TTS initialized (Google Cloud):', {
 					voice: config.voice,
 					voiceType: config.googleVoiceType,
@@ -399,8 +411,6 @@ import { onDestroy, onMount, untrack } from 'svelte';
 				);
 
 				await Promise.race([initPromise, timeoutPromise]);
-				ttsProvider = 'browser';
-
 				// Log available voices for debugging
 				const availableVoices = speechSynthesis.getVoices();
 				console.log('[Demo] ✅ Browser TTS initialized:', {
@@ -412,27 +422,46 @@ import { onDestroy, onMount, untrack } from 'svelte';
 				});
 			}
 
-			// Apply highlight style from config
-			if (highlightConfig) {
+			// Apply TTS highlight style from config
+			if (config.highlightStyle) {
 				toolkitCoordinator.highlightCoordinator.updateTTSHighlightStyle(
-					highlightConfig.color,
-					highlightConfig.opacity
+					config.highlightStyle.color,
+					config.highlightStyle.opacity
 				);
 			}
 
 			console.log('[Demo] All toolkit services initialized successfully');
 		} catch (e) {
 			console.error('[Demo] Failed to initialize TTS services:', e);
-			// On error, fall back to browser TTS (simpler, no recursion)
-			ttsProvider = 'browser';
 		}
 	}
 
 	// Initialize window positions on mount
 	onMount(async () => {
 		if (browser) {
-			sessionWindowX = window.innerWidth - 450;
-			editedSourceJson = JSON.stringify(data.section, null, 2);
+			const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(value, max));
+			const viewportWidth = window.innerWidth;
+			const viewportHeight = window.innerHeight;
+
+			// Session panel: centered and proportionally larger
+			sessionWindowWidth = clamp(Math.round(viewportWidth * 0.58), 420, 980);
+			sessionWindowHeight = clamp(Math.round(viewportHeight * 0.72), 360, 860);
+			sessionWindowX = Math.max(16, Math.round((viewportWidth - sessionWindowWidth) / 2));
+			sessionWindowY = Math.max(16, Math.round((viewportHeight - sessionWindowHeight) / 2));
+
+			// Source panel: slightly larger than session for code editing
+			sourceWindowWidth = clamp(Math.round(viewportWidth * 0.72), 640, 1200);
+			sourceWindowHeight = clamp(Math.round(viewportHeight * 0.78), 420, 940);
+			sourceWindowX = Math.max(16, Math.round((viewportWidth - sourceWindowWidth) / 2));
+			sourceWindowY = Math.max(16, Math.round((viewportHeight - sourceWindowHeight) / 2));
+
+			// PNP panel: medium size, centered
+			pnpWindowWidth = clamp(Math.round(viewportWidth * 0.62), 460, 1040);
+			pnpWindowHeight = clamp(Math.round(viewportHeight * 0.72), 360, 860);
+			pnpWindowX = Math.max(16, Math.round((viewportWidth - pnpWindowWidth) / 2));
+			pnpWindowY = Math.max(16, Math.round((viewportHeight - pnpWindowHeight) / 2));
+
+			editedSourceJson = formatJsonForSourceView(data.section);
 
 			// Load persisted sessions from localStorage
 			try {
@@ -448,22 +477,22 @@ import { onDestroy, onMount, untrack } from 'svelte';
 			try {
 				const storedConfig = localStorage.getItem(TTS_CONFIG_STORAGE_KEY);
 				if (storedConfig) {
-					ttsConfig = JSON.parse(storedConfig);
-					console.log('[Demo] Loaded TTS config from localStorage:', ttsConfig);
+					const parsedConfig = JSON.parse(storedConfig);
+					ttsConfig = {
+						...getDefaultTTSConfig(),
+						...parsedConfig,
+						highlightStyle: {
+							...getDefaultTTSConfig().highlightStyle,
+							...(parsedConfig?.highlightStyle || {})
+						}
+					};
+					console.log(
+						'[Demo] Loaded TTS config from localStorage:',
+						$state.snapshot(ttsConfig)
+					);
 				}
 			} catch (e) {
 				console.error('Failed to load persisted TTS config:', e);
-			}
-
-			// Load persisted highlight config
-			try {
-				const storedHighlightConfig = localStorage.getItem(HIGHLIGHT_CONFIG_STORAGE_KEY);
-				if (storedHighlightConfig) {
-					highlightConfig = JSON.parse(storedHighlightConfig);
-					console.log('[Demo] Loaded highlight config from localStorage:', highlightConfig);
-				}
-			} catch (e) {
-				console.error('Failed to load persisted highlight config:', e);
 			}
 
 			// Load persisted layout config
@@ -473,7 +502,10 @@ import { onDestroy, onMount, untrack } from 'svelte';
 					const parsed = JSON.parse(storedLayoutConfig);
 					layoutConfig = parsed;
 					toolbarPosition = parsed.toolbarPosition;
-					console.log('[Demo] Loaded layout config from localStorage:', layoutConfig);
+					console.log(
+						'[Demo] Loaded layout config from localStorage:',
+						$state.snapshot(layoutConfig)
+					);
 				}
 			} catch (e) {
 				console.error('Failed to load persisted layout config:', e);
@@ -500,53 +532,6 @@ import { onDestroy, onMount, untrack } from 'svelte';
 			};
 		}
 	});
-
-	// Handle settings apply (save and refresh page)
-	async function handleUnifiedSettingsApply(settings: { tts: TTSConfig; highlight: typeof highlightConfig; layout: { toolbarPosition: 'top' | 'right' | 'bottom' | 'left' } }) {
-		console.log('[Demo] Unified settings applied:', settings);
-
-		// Stop any currently playing TTS before reloading
-		if (toolkitCoordinator) {
-			try {
-				toolkitCoordinator.ttsService.stop();
-				console.log('[Demo] Stopped active TTS before config change');
-			} catch (e) {
-				console.error('[Demo] Failed to stop TTS:', e);
-			}
-		}
-
-		// Update highlight coordinator with new style
-		if (toolkitCoordinator && settings.highlight) {
-			toolkitCoordinator.highlightCoordinator.updateTTSHighlightStyle(
-				settings.highlight.color,
-				settings.highlight.opacity
-			);
-		}
-
-		// Update toolbar position (no reload needed for layout changes)
-		if (settings.layout) {
-			toolbarPosition = settings.layout.toolbarPosition;
-		}
-
-		// Persist to localStorage
-		if (browser) {
-			try {
-				localStorage.setItem(TTS_CONFIG_STORAGE_KEY, JSON.stringify(settings.tts));
-				localStorage.setItem(HIGHLIGHT_CONFIG_STORAGE_KEY, JSON.stringify(settings.highlight));
-				localStorage.setItem(LAYOUT_CONFIG_STORAGE_KEY, JSON.stringify(settings.layout));
-
-				console.log('[Demo] Unified settings saved, refreshing page...');
-
-				// Refresh the page to reinitialize with new config
-				window.location.reload();
-			} catch (e) {
-				console.error('Failed to persist unified settings:', e);
-			}
-		}
-
-		// Close modal
-		showTTSSettings = false;
-	}
 
 	// Set toolkit coordinator on player imperatively when ready (web component property binding)
 	$effect(() => {
@@ -586,49 +571,12 @@ import { onDestroy, onMount, untrack } from 'svelte';
 		}
 	});
 
-	// Initialize Tiptap editor when element is available
+	// Keep read-only source view in sync with current section
 	$effect(() => {
-		if (browser && lowlight && editorElement && !editor) {
-			editor = new Editor({
-				element: editorElement,
-				extensions: [
-					Document,
-					Text,
-					History,
-					CodeBlockLowlight.configure({
-						lowlight,
-						defaultLanguage: 'json'
-					})
-				],
-				content: `<pre><code class="language-json">${editedSourceJson}</code></pre>`,
-				editorProps: {
-					attributes: {
-						class: 'prose prose-sm max-w-none focus:outline-none min-h-[400px] p-4'
-					}
-				},
-				onUpdate: ({ editor }) => {
-					const text = editor.state.doc.textContent;
-					editedSourceJson = text;
-					try {
-						JSON.parse(text);
-						isSourceValid = true;
-						sourceParseError = null;
-						// Check if content has changed from original
-						const originalJson = JSON.stringify(liveSection, null, 2);
-						hasSourceChanges = text.trim() !== originalJson.trim();
-					} catch (e: any) {
-						isSourceValid = false;
-						sourceParseError = e.message;
-						hasSourceChanges = true;
-					}
-				}
-			});
-		}
+		editedSourceJson = formatJsonForSourceView(liveSection);
 	});
 
 	onDestroy(() => {
-		editor?.destroy();
-
 		// Remove outer scrollbar listener and class
 		if (removeOuterScrollListener) {
 			removeOuterScrollListener();
@@ -648,7 +596,7 @@ import { onDestroy, onMount, untrack } from 'svelte';
 		}
 	});
 
-	// Compute player props based on selected type
+	// Compute player definitions for selected type/source
 	// Map role toggle to PIE environment
 	// candidate → gather mode + student role (interactive assessment)
 	// scorer → evaluate mode + instructor role (scoring/review)
@@ -658,37 +606,33 @@ import { onDestroy, onMount, untrack } from 'svelte';
 	});
 	let qtiView = $derived<string>(roleType); // Keep QTI view for rubric filtering
 
-	let playerProps = $derived.by(() => {
-		switch (playerType) {
-			case 'iife':
-				return { bundleHost: 'https://proxy.pie-api.com/bundles/', esmCdnUrl: '' };
-			case 'esm':
-				// Empty esmCdnUrl means same-origin (Vite dev server with local-esm-cdn plugin)
-				return { bundleHost: '', esmCdnUrl: esmSource === 'local' ? '' : 'https://esm.sh' };
+	let playerDefinitions = $derived.by(() => ({
+		iife: {
+			tagName: 'pie-iife-player',
+			attributes: {
+				'bundle-host': 'https://proxy.pie-api.com/bundles'
+			}
+		},
+		esm: {
+			tagName: 'pie-esm-player',
+			attributes: {
+				'esm-cdn-url': esmSource === 'local' ? '' : 'https://esm.sh'
+			}
 		}
-	});
-
-	// Set player configuration properties imperatively FIRST (before section/env)
-	// Boolean attributes don't work correctly with Svelte custom elements
-	$effect(() => {
-		if (sectionPlayer) {
-			untrack(() => {
-				sectionPlayer.bundleHost = playerProps.bundleHost;
-				sectionPlayer.esmCdnUrl = playerProps.esmCdnUrl;
-			});
-		}
-	});
+	}));
 
 	// Set complex properties imperatively on the web component
 	// (Web components can only receive simple values via attributes)
 	$effect(() => {
 		if (sectionPlayer && liveSection) {
 			untrack(() => {
-				sectionPlayer.section = liveSection;
+				sectionPlayer.section = resolvedSectionForPlayer;
 				sectionPlayer.env = pieEnv;
 				sectionPlayer.itemSessions = itemSessions;
+				sectionPlayer.onsessionchanged = handleSessionChanged;
 				sectionPlayer.toolkitCoordinator = toolkitCoordinator;
 				sectionPlayer.toolbarPosition = toolbarPosition;
+				sectionPlayer.playerDefinitions = playerDefinitions;
 			});
 		}
 	});
@@ -696,16 +640,15 @@ import { onDestroy, onMount, untrack } from 'svelte';
 	// Handle session changes from items
 	function handleSessionChanged(event: CustomEvent) {
 		console.log('[Demo] Session changed event:', event.detail);
-		const { itemId, session, complete, component } = event.detail;
+		const { itemId, session, testAttemptSession } = event.detail;
+
+		if (testAttemptSession) {
+			testAttemptSessionData = testAttemptSession;
+		}
+
 		if (itemId && session) {
 			console.log('[Demo] Updating itemSessions:', itemId, session);
 			itemSessions = { ...itemSessions, [itemId]: session };
-
-			// Store metadata separately
-			itemMetadata = {
-				...itemMetadata,
-				[itemId]: { complete, component }
-			};
 		} else {
 			console.warn('[Demo] Missing itemId or session in event:', event.detail);
 		}
@@ -714,6 +657,7 @@ import { onDestroy, onMount, untrack } from 'svelte';
 	// Reset all sessions
 	function resetSessions() {
 		itemSessions = {};
+		testAttemptSessionData = null;
 		if (browser) {
 			try {
 				localStorage.removeItem(SESSION_STORAGE_KEY);
@@ -789,6 +733,37 @@ import { onDestroy, onMount, untrack } from 'svelte';
 		document.removeEventListener('mouseup', stopSourceDrag);
 	}
 
+	// PNP window dragging handlers
+	function startPnpDrag(e: MouseEvent) {
+		isPnpDragging = true;
+		dragStartX = e.clientX;
+		dragStartY = e.clientY;
+		dragStartWindowX = pnpWindowX;
+		dragStartWindowY = pnpWindowY;
+
+		document.addEventListener('mousemove', onPnpDrag);
+		document.addEventListener('mouseup', stopPnpDrag);
+	}
+
+	function onPnpDrag(e: MouseEvent) {
+		if (!isPnpDragging) return;
+
+		const deltaX = e.clientX - dragStartX;
+		const deltaY = e.clientY - dragStartY;
+
+		pnpWindowX = dragStartWindowX + deltaX;
+		pnpWindowY = dragStartWindowY + deltaY;
+
+		pnpWindowX = Math.max(0, Math.min(pnpWindowX, window.innerWidth - pnpWindowWidth));
+		pnpWindowY = Math.max(0, Math.min(pnpWindowY, window.innerHeight - 100));
+	}
+
+	function stopPnpDrag() {
+		isPnpDragging = false;
+		document.removeEventListener('mousemove', onPnpDrag);
+		document.removeEventListener('mouseup', stopPnpDrag);
+	}
+
 	// Session window resize handlers
 	function startSessionResize(e: MouseEvent) {
 		isSessionResizing = true;
@@ -847,129 +822,107 @@ import { onDestroy, onMount, untrack } from 'svelte';
 		document.removeEventListener('mouseup', stopSourceResize);
 	}
 
-	// PNP window dragging handlers
-	function startPNPDrag(e: MouseEvent) {
-		isPNPDragging = true;
-		dragStartX = e.clientX;
-		dragStartY = e.clientY;
-		dragStartWindowX = pnpWindowX;
-		dragStartWindowY = pnpWindowY;
-
-		document.addEventListener('mousemove', onPNPDrag);
-		document.addEventListener('mouseup', stopPNPDrag);
-	}
-
-	function onPNPDrag(e: MouseEvent) {
-		if (!isPNPDragging) return;
-
-		const deltaX = e.clientX - dragStartX;
-		const deltaY = e.clientY - dragStartY;
-
-		pnpWindowX = dragStartWindowX + deltaX;
-		pnpWindowY = dragStartWindowY + deltaY;
-
-		pnpWindowX = Math.max(0, Math.min(pnpWindowX, window.innerWidth - pnpWindowWidth));
-		pnpWindowY = Math.max(0, Math.min(pnpWindowY, window.innerHeight - 100));
-	}
-
-	function stopPNPDrag() {
-		isPNPDragging = false;
-		document.removeEventListener('mousemove', onPNPDrag);
-		document.removeEventListener('mouseup', stopPNPDrag);
-	}
-
 	// PNP window resize handlers
-	function startPNPResize(e: MouseEvent) {
-		isPNPResizing = true;
+	function startPnpResize(e: MouseEvent) {
+		isPnpResizing = true;
 		resizeStartX = e.clientX;
 		resizeStartY = e.clientY;
 		resizeStartWidth = pnpWindowWidth;
 		resizeStartHeight = pnpWindowHeight;
 
-		document.addEventListener('mousemove', onPNPResize);
-		document.addEventListener('mouseup', stopPNPResize);
+		e.preventDefault();
 		e.stopPropagation();
+
+		document.addEventListener('mousemove', onPnpResize);
+		document.addEventListener('mouseup', stopPnpResize);
 	}
 
-	function onPNPResize(e: MouseEvent) {
-		if (!isPNPResizing) return;
+	function onPnpResize(e: MouseEvent) {
+		if (!isPnpResizing) return;
 
 		const deltaX = e.clientX - resizeStartX;
 		const deltaY = e.clientY - resizeStartY;
 
-		pnpWindowWidth = Math.max(600, Math.min(resizeStartWidth + deltaX, window.innerWidth - pnpWindowX));
-		pnpWindowHeight = Math.max(400, Math.min(resizeStartHeight + deltaY, window.innerHeight - pnpWindowY));
+		pnpWindowWidth = Math.max(320, Math.min(resizeStartWidth + deltaX, window.innerWidth - pnpWindowX));
+		pnpWindowHeight = Math.max(220, Math.min(resizeStartHeight + deltaY, window.innerHeight - pnpWindowY));
 	}
 
-	function stopPNPResize() {
-		isPNPResizing = false;
-		document.removeEventListener('mousemove', onPNPResize);
-		document.removeEventListener('mouseup', stopPNPResize);
+	function stopPnpResize() {
+		isPnpResizing = false;
+		document.removeEventListener('mousemove', onPnpResize);
+		document.removeEventListener('mouseup', stopPnpResize);
 	}
 
-	// PNP Profile Testing
-	function handlePNPProfileChange(profile: any) {
-		testProfile = profile;
+	let pnpPanelData = $derived.by(() => {
+		const directProfile = liveSection?.personalNeedsProfile;
+		const settingsProfile = liveSection?.settings?.personalNeedsProfile;
+		const profile = directProfile || settingsProfile || DEFAULT_DEMO_PNP_PROFILE;
+		const source = directProfile
+			? 'section.personalNeedsProfile'
+			: settingsProfile
+				? 'section.settings.personalNeedsProfile'
+				: 'demo default profile (derived)';
 
-		if (!toolkitCoordinator) {
-			console.warn('[Demo] ToolkitCoordinator not initialized yet');
-			return;
-		}
+		const toolkitToolConfig = toolkitCoordinator?.config?.tools || null;
+		const floatingTools = toolkitCoordinator?.getFloatingTools?.() || toolkitToolConfig?.floatingTools?.enabledTools || [];
+		const hasCatalogResolver = Boolean(toolkitCoordinator?.catalogResolver);
+		const catalogStats = hasCatalogResolver ? toolkitCoordinator.catalogResolver.getStatistics?.() : null;
 
-		// Create mock assessment from current section
-		const mockAssessment = {
-			id: data.demo.id,
-			name: data.demo.name,
-			personalNeedsProfile: profile,
-			settings: {}
+		return {
+			pnpProfile: profile,
+			determination: {
+				source,
+				checked: [
+					'section.personalNeedsProfile',
+					'section.settings.personalNeedsProfile'
+				],
+				note: directProfile || settingsProfile
+					? 'Profile was taken directly from section payload.'
+					: 'No explicit PNP profile was found in section payload, so a demo default PNP profile is applied.',
+				runtimeContext: {
+					role: roleType,
+					floatingToolsEnabled: floatingTools,
+					hasCatalogResolver,
+					catalogCount: catalogStats?.totalCatalogs ?? 0,
+					assessmentCatalogCount: catalogStats?.assessmentCatalogs ?? 0,
+					itemCatalogCount: catalogStats?.itemCatalogs ?? 0
+				}
+			}
 		};
+	});
 
-		// Create resolver and resolve with override
-		const registry = createDefaultToolRegistry();
-		const resolver = new PNPToolResolver(registry, true);
-		const result = resolver.resolveWithOverride(mockAssessment, profile);
+	function decodeEscapedTextForDisplay(value: string): string {
+		return value
+			.replaceAll('\\r\\n', '\n')
+			.replaceAll('\\n', '\n')
+			.replaceAll('\\r', '\r')
+			.replaceAll('\\t', '\t');
+	}
 
-		pnpResolutionResult = result;
+	function normalizeContentForSourceView(value: any): any {
+		if (typeof value === 'string') {
+			return decodeEscapedTextForDisplay(value);
+		}
+		if (Array.isArray(value)) {
+			return value.map(normalizeContentForSourceView);
+		}
+		if (value && typeof value === 'object') {
+			const normalized: Record<string, any> = {};
+			for (const [key, child] of Object.entries(value)) {
+				normalized[key] = normalizeContentForSourceView(child);
+			}
+			return normalized;
+		}
+		return value;
+	}
 
-		// Apply resolved tools to toolkit coordinator
-		const toolIds = result.tools.filter((t: any) => t.enabled).map((t: any) => t.id);
-		console.log('[Demo] PNP Profile changed - enabled tools:', toolIds);
-
-		// Update the toolkit coordinator's floating tools
-		toolkitCoordinator.updateFloatingTools(toolIds);
-		console.log('[Demo] Applied PNP profile to toolkit coordinator');
+	function formatJsonForSourceView(value: any): string {
+		return JSON.stringify(normalizeContentForSourceView(value), null, 2);
 	}
 
 	function copyJson() {
 		if (browser) {
 			navigator.clipboard.writeText(editedSourceJson);
-		}
-	}
-
-	function applyChanges() {
-		if (isSourceValid && hasSourceChanges) {
-			try {
-				const parsed = JSON.parse(editedSourceJson);
-				// Update the live section data
-				liveSection = parsed;
-				// Clear item sessions when section changes to prevent stale data
-				itemSessions = {};
-				hasSourceChanges = false;
-				console.log('Applied changes to section and cleared item sessions');
-			} catch (e) {
-				console.error('Failed to apply changes:', e);
-			}
-		}
-	}
-
-	function resetChanges() {
-		if (browser && editor) {
-			const original = JSON.stringify(liveSection, null, 2);
-			editor.commands.setContent(`<pre><code class="language-json">${original}</code></pre>`);
-			editedSourceJson = original;
-			isSourceValid = true;
-			sourceParseError = null;
-			hasSourceChanges = false;
 		}
 	}
 </script>
@@ -978,7 +931,7 @@ import { onDestroy, onMount, untrack } from 'svelte';
 	<title>{data.demo?.name || 'Demo'} - PIE Section Player</title>
 </svelte:head>
 
-<div class="w-full h-screen flex flex-col">
+<div class="w-full h-screen min-h-0 overflow-hidden flex flex-col">
 	<!-- Menu Bar (Sticky) -->
 	<div class="navbar bg-base-200 mb-0 sticky top-0 z-50 shadow-lg">
 		<div class="navbar-start">
@@ -1075,64 +1028,55 @@ import { onDestroy, onMount, untrack } from 'svelte';
 		</div>
 
 		<div class="navbar-end gap-2">
-			<!-- Settings Button -->
 			<button
-				class="btn btn-sm btn-outline"
-				onclick={() => showTTSSettings = true}
-				title="Configure assessment toolkit settings"
-			>
-				{#if ttsProvider === 'loading'}
-					<span class="loading loading-spinner loading-xs"></span>
-					Loading
-				{:else}
-					<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-					</svg>
-					Settings
-				{/if}
-			</button>
-			<button
-				class="btn btn-sm btn-outline"
+				class="btn btn-sm btn-outline btn-square"
+				class:btn-active={showSessionPanel}
 				onclick={() => showSessionPanel = !showSessionPanel}
+				title="Session"
+				aria-label="Toggle session panel"
+				aria-pressed={showSessionPanel}
 			>
 				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
 				</svg>
-				Session
 			</button>
 			<button
-				class="btn btn-sm btn-outline"
+				class="btn btn-sm btn-outline btn-square"
+				class:btn-active={showSourcePanel}
 				onclick={() => showSourcePanel = !showSourcePanel}
+				title="Source"
+				aria-label="Toggle source panel"
+				aria-pressed={showSourcePanel}
 			>
 				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
 				</svg>
-				Source
 			</button>
 			<button
-				class="btn btn-sm btn-outline"
-				onclick={() => showPNPPanel = !showPNPPanel}
-				title="PNP Profile Tester"
+				class="btn btn-sm btn-outline btn-square"
+				class:btn-active={showPnpPanel}
+				onclick={() => showPnpPanel = !showPnpPanel}
+				title="PNP profile"
+				aria-label="Toggle PNP profile panel"
+				aria-pressed={showPnpPanel}
 			>
 				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-7 8h8a2 2 0 002-2V6a2 2 0 00-2-2H8a2 2 0 00-2 2v12a2 2 0 002 2zm1-12h4m-4 4h4m-4 4h4" />
 				</svg>
-				PNP
 			</button>
 		</div>
 	</div>
 
-	<div class="flex-1 overflow-hidden">
+	<div class="flex-1 min-h-0 overflow-hidden">
 		<!-- Use web component - set complex properties imperatively via $effect -->
 		<!-- svelte-ignore a11y_unknown_aria_attribute -->
 		<pie-section-player
+			class="block h-full min-h-0"
 			bind:this={sectionPlayer}
-			layout={layoutType}
+			player={playerType}
+			page-layout={layoutType}
 			view={qtiView}
-			bundle-host={playerProps.bundleHost}
-			esm-cdn-url={playerProps.esmCdnUrl}
-			onsessionchanged={handleSessionChanged}
+			onsession-changed={handleSessionChanged}
 		></pie-section-player>
 	</div>
 
@@ -1141,11 +1085,11 @@ import { onDestroy, onMount, untrack } from 'svelte';
 <!-- Annotation Toolbar (floating, appears on text selection) -->
 <!-- Outside main container to avoid overflow: hidden affecting fixed positioning -->
 {#if toolkitCoordinator}
-	<ToolAnnotationToolbar
+	<pie-tool-annotation-toolbar
 		enabled={true}
 		ttsService={toolkitCoordinator.ttsService}
 		highlightCoordinator={toolkitCoordinator.highlightCoordinator}
-		ondictionarylookup={async (detail) => {
+		ondictionarylookup={async (detail: { text: string }) => {
 			console.log('Dictionary lookup:', detail.text);
 			if (!annotationAPIClient) return;
 			try {
@@ -1162,7 +1106,7 @@ import { onDestroy, onMount, untrack } from 'svelte';
 				alert(`Dictionary lookup failed: ${error}`);
 			}
 		}}
-		ontranslationrequest={async (detail) => {
+		ontranslationrequest={async (detail: { text: string }) => {
 			console.log('Translation request:', detail.text);
 			if (!annotationAPIClient) return;
 			try {
@@ -1180,7 +1124,7 @@ import { onDestroy, onMount, untrack } from 'svelte';
 				alert(`Translation failed: ${error}`);
 			}
 		}}
-		onpicturedictionarylookup={async (detail) => {
+		onpicturedictionarylookup={async (detail: { text: string }) => {
 			console.log('Picture dictionary lookup:', detail.text);
 			if (!annotationAPIClient) return;
 			try {
@@ -1196,13 +1140,13 @@ import { onDestroy, onMount, untrack } from 'svelte';
 				alert(`Picture dictionary lookup failed: ${error}`);
 			}
 		}}
-	/>
+	></pie-tool-annotation-toolbar>
 {/if}
 
 <!-- Floating Session Window -->
 {#if showSessionPanel}
 	<div
-		class="fixed z-[100] bg-base-100 rounded-lg shadow-2xl border-2 border-base-300"
+		class="fixed z-100 bg-base-100 rounded-lg shadow-2xl border-2 border-base-300"
 		style="left: {sessionWindowX}px; top: {sessionWindowY}px; width: {sessionWindowWidth}px; {isSessionMinimized ? 'height: auto;' : `height: ${sessionWindowHeight}px;`}"
 	>
 		<!-- Title Bar -->
@@ -1249,22 +1193,14 @@ import { onDestroy, onMount, untrack } from 'svelte';
 
 		<!-- Content -->
 		{#if !isSessionMinimized}
-			<div class="p-4 overflow-y-auto" style="max-height: {sessionWindowHeight - 60}px;">
-				<div class="space-y-3">
-					<!-- Tool State (Ephemeral - client only) -->
-					{#if toolkitCoordinator}
-						<div class="mb-4">
-							<div class="text-sm font-bold mb-2 text-warning">Tool State (Ephemeral - Client Only)</div>
-							<pre class="bg-base-300 p-2 rounded text-xs overflow-auto max-h-48">{JSON.stringify(toolkitCoordinator.elementToolStateStore.getAllState(), null, 2)}</pre>
-						</div>
-					{/if}
-
+			<div class="p-4 flex flex-col min-h-0 overflow-hidden" style="height: {sessionWindowHeight - 60}px;">
+				<div class="space-y-3 flex-1 min-h-0 flex flex-col">
 					<!-- Session Data (Persistent - sent to server) -->
 					<div class="mb-2">
 						<div class="text-sm font-bold mb-2">PIE Session Data (Persistent)</div>
 					</div>
 
-					{#if Object.keys(itemSessions).length === 0}
+					{#if !testAttemptSessionData && Object.keys(itemSessions).length === 0}
 						<div class="alert alert-info">
 							<svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-5 w-5" fill="none" viewBox="0 0 24 24">
 								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -1272,33 +1208,12 @@ import { onDestroy, onMount, untrack } from 'svelte';
 							<span class="text-xs">No session data yet. Interact with the questions to see updates.</span>
 						</div>
 					{:else}
-						{#each Object.entries(itemSessions) as [itemId, session]}
-							<div class="collapse collapse-arrow bg-base-200 collapse-sm">
-								<input type="checkbox" />
-								<div class="collapse-title text-sm font-medium min-h-0 py-2">
-									Item: {itemId}
-									{#if itemMetadata[itemId]?.complete !== undefined}
-										<span class="badge badge-sm {itemMetadata[itemId].complete ? 'badge-success' : 'badge-ghost'} ml-2">
-											{itemMetadata[itemId].complete ? 'Complete' : 'Incomplete'}
-										</span>
-									{/if}
-								</div>
-								<div class="collapse-content">
-									<div class="space-y-2">
-										<div>
-											<div class="text-xs font-semibold mb-1">Session Data:</div>
-											<pre class="bg-base-300 p-2 rounded text-xs overflow-auto max-h-48">{JSON.stringify(session, null, 2)}</pre>
-										</div>
-										{#if itemMetadata[itemId]}
-											<div>
-												<div class="text-xs font-semibold mb-1">Metadata:</div>
-												<pre class="bg-base-300 p-2 rounded text-xs overflow-auto max-h-24">{JSON.stringify(itemMetadata[itemId], null, 2)}</pre>
-											</div>
-										{/if}
-									</div>
-								</div>
+						<div class="bg-base-200 rounded p-3 flex-1 min-h-0 flex flex-col">
+							<div class="text-xs font-semibold mb-2">
+								{testAttemptSessionData ? 'Test Attempt Session' : 'Item Sessions (Fallback)'}
 							</div>
-						{/each}
+							<pre class="bg-base-300 p-2 rounded text-xs overflow-auto flex-1 min-h-0">{JSON.stringify(testAttemptSessionData || itemSessions, null, 2)}</pre>
+						</div>
 					{/if}
 				</div>
 			</div>
@@ -1330,7 +1245,7 @@ import { onDestroy, onMount, untrack } from 'svelte';
 <!-- Floating Source Window -->
 {#if showSourcePanel}
 	<div
-		class="fixed z-[100] bg-base-100 rounded-lg shadow-2xl border-2 border-base-300"
+		class="fixed z-100 bg-base-100 rounded-lg shadow-2xl border-2 border-base-300"
 		style="left: {sourceWindowX}px; top: {sourceWindowY}px; width: {sourceWindowWidth}px; {isSourceMinimized ? 'height: auto;' : `height: ${sourceWindowHeight}px;`}"
 	>
 		<!-- Title Bar -->
@@ -1377,11 +1292,11 @@ import { onDestroy, onMount, untrack } from 'svelte';
 
 		<!-- Content -->
 		{#if !isSourceMinimized}
-			<div class="flex flex-col" style="height: {sourceWindowHeight - 50}px;">
+			<div class="flex flex-col overflow-hidden" style="height: {sourceWindowHeight - 50}px;">
 				<!-- Toolbar -->
 				<div class="flex items-center justify-between px-4 py-2 bg-base-200/50 border-b border-base-300">
 					<div class="text-xs text-base-content/70">
-						{isSourceValid ? 'Valid JSON' : 'Invalid JSON'}
+						Read-only formatted JSON
 					</div>
 					<div class="flex gap-2">
 						<button
@@ -1397,24 +1312,9 @@ import { onDestroy, onMount, untrack } from 'svelte';
 					</div>
 				</div>
 
-				<!-- Parse Error Alert -->
-				{#if sourceParseError}
-					<div class="mx-4 mt-2">
-						<div class="alert alert-error alert-sm">
-							<svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-4 w-4" fill="none" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-							</svg>
-							<span class="text-xs">{sourceParseError}</span>
-						</div>
-					</div>
-				{/if}
-
-				<!-- Tiptap Editor -->
-				<div class="flex-1 overflow-auto">
-					<div
-						bind:this={editorElement}
-						class="border-none focus:outline-none bg-base-300 text-xs font-mono"
-					></div>
+				<!-- Read-only JSON -->
+				<div class="flex-1 min-h-0 overflow-auto">
+					<pre class="h-full w-full m-0 p-4 bg-base-300 text-xs font-mono overflow-auto whitespace-pre-wrap">{editedSourceJson}</pre>
 				</div>
 			</div>
 		{/if}
@@ -1442,33 +1342,33 @@ import { onDestroy, onMount, untrack } from 'svelte';
 	</div>
 {/if}
 
-<!-- Floating PNP Panel -->
-{#if showPNPPanel}
+<!-- Floating PNP Profile Window -->
+{#if showPnpPanel}
 	<div
-		class="fixed z-[100] bg-base-100 rounded-lg shadow-2xl border-2 border-base-300"
-		style="left: {pnpWindowX}px; top: {pnpWindowY}px; width: {pnpWindowWidth}px; {isPNPMinimized ? 'height: auto;' : `height: ${pnpWindowHeight}px;`}"
+		class="fixed z-100 bg-base-100 rounded-lg shadow-2xl border-2 border-base-300"
+		style="left: {pnpWindowX}px; top: {pnpWindowY}px; width: {pnpWindowWidth}px; {isPnpMinimized ? 'height: auto;' : `height: ${pnpWindowHeight}px;`}"
 	>
 		<!-- Title Bar -->
 		<div
 			class="flex items-center justify-between px-4 py-2 bg-base-200 rounded-t-lg cursor-move select-none border-b border-base-300"
-			onmousedown={startPNPDrag}
+			onmousedown={startPnpDrag}
 			role="button"
 			tabindex="0"
-			aria-label="Drag PNP panel"
+			aria-label="Drag PNP profile panel"
 		>
 			<div class="flex items-center gap-2">
 				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-7 8h8a2 2 0 002-2V6a2 2 0 00-2-2H8a2 2 0 00-2 2v12a2 2 0 002 2zm1-12h4m-4 4h4m-4 4h4" />
 				</svg>
-				<h3 class="font-bold text-sm">PNP Profile Tester</h3>
+				<h3 class="font-bold text-sm">PNP Profile</h3>
 			</div>
 			<div class="flex gap-1">
 				<button
 					class="btn btn-xs btn-ghost btn-circle"
-					onclick={() => isPNPMinimized = !isPNPMinimized}
-					title={isPNPMinimized ? 'Maximize' : 'Minimize'}
+					onclick={() => isPnpMinimized = !isPnpMinimized}
+					title={isPnpMinimized ? 'Maximize' : 'Minimize'}
 				>
-					{#if isPNPMinimized}
+					{#if isPnpMinimized}
 						<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
 						</svg>
@@ -1480,7 +1380,7 @@ import { onDestroy, onMount, untrack } from 'svelte';
 				</button>
 				<button
 					class="btn btn-xs btn-ghost btn-circle"
-					onclick={() => showPNPPanel = false}
+					onclick={() => showPnpPanel = false}
 					title="Close"
 				>
 					<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1491,61 +1391,26 @@ import { onDestroy, onMount, untrack } from 'svelte';
 		</div>
 
 		<!-- Content -->
-		{#if !isPNPMinimized}
-			<div class="flex h-full" style="height: {pnpWindowHeight - 50}px;">
-				<!-- Left: Profile Tester -->
-				<div class="w-1/2 border-r border-base-300 overflow-y-auto p-4">
-					<PNPProfileTester onProfileChange={handlePNPProfileChange} />
-				</div>
-
-				<!-- Right: Results & Provenance -->
-				<div class="w-1/2 overflow-y-auto p-4">
-					{#if pnpResolutionResult}
-						<!-- Enabled Tools Summary -->
-						<div class="card bg-base-200 shadow-sm mb-4">
-							<div class="card-body p-3">
-								<h4 class="card-title text-sm">Enabled Tools</h4>
-								<div class="flex flex-wrap gap-2">
-									{#each pnpResolutionResult.tools.filter((t: any) => t.enabled) as tool}
-										<div class="badge badge-primary">{tool.id}</div>
-									{/each}
-								</div>
-							</div>
-						</div>
-
-						<!-- Provenance Toggle -->
-						<div class="form-control mb-4">
-							<label class="label cursor-pointer justify-start gap-2">
-								<input
-									type="checkbox"
-									class="toggle toggle-sm toggle-primary"
-									bind:checked={showProvenance}
-								/>
-								<span class="label-text text-xs">Show Resolution Provenance</span>
-							</label>
-						</div>
-
-						<!-- Provenance Viewer -->
-						{#if showProvenance}
-							<PNPProvenanceViewer provenance={pnpResolutionResult.provenance} compact={true} />
-						{/if}
-					{:else}
-						<div class="alert alert-info">
-							<svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-5 w-5" fill="none" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-							</svg>
-							<span class="text-xs">Select a profile or toggle features to see resolution results.</span>
-						</div>
-					{/if}
+		{#if !isPnpMinimized}
+			<div class="p-4 overflow-y-auto" style="max-height: {pnpWindowHeight - 60}px;">
+				<div class="space-y-3">
+					<div class="bg-base-200 rounded p-3">
+						<div class="text-xs font-semibold mb-2">Determination (read-only)</div>
+						<pre class="bg-base-300 p-2 rounded text-xs overflow-auto max-h-56">{JSON.stringify(pnpPanelData.determination, null, 2)}</pre>
+					</div>
+					<div class="bg-base-200 rounded p-3">
+						<div class="text-xs font-semibold mb-2">PNP Profile (read-only)</div>
+						<pre class="bg-base-300 p-2 rounded text-xs overflow-auto max-h-72">{JSON.stringify(pnpPanelData.pnpProfile, null, 2)}</pre>
+					</div>
 				</div>
 			</div>
 		{/if}
 
 		<!-- Resize Handle -->
-		{#if !isPNPMinimized}
+		{#if !isPnpMinimized}
 			<div
 				class="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize"
-				onmousedown={startPNPResize}
+				onmousedown={startPnpResize}
 				role="button"
 				tabindex="0"
 				title="Resize window"
@@ -1562,18 +1427,6 @@ import { onDestroy, onMount, untrack } from 'svelte';
 			</div>
 		{/if}
 	</div>
-{/if}
-
-<!-- Assessment Toolkit Settings Modal -->
-{#if showTTSSettings && toolkitCoordinator}
-	<AssessmentToolkitSettings
-		ttsService={toolkitCoordinator.ttsService}
-		bind:ttsConfig
-		bind:highlightConfig
-		bind:layoutConfig
-		onClose={() => showTTSSettings = false}
-		onApply={handleUnifiedSettingsApply}
-	/>
 {/if}
 
 <!-- Dictionary Dialog -->

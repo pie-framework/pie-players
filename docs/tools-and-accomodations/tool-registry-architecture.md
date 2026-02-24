@@ -568,6 +568,17 @@ const customPlacement = {
 
 Clients can use default PIE tools, add custom tools, or override tool behavior.
 
+**Bootstrap recommendation (lazy loading + cycle safety):**
+
+```typescript
+import { createDefaultToolRegistry } from '@pie-players/pie-assessment-toolkit';
+import { DEFAULT_TOOL_MODULE_LOADERS } from '@pie-players/pie-default-tool-loaders';
+
+const registry = createDefaultToolRegistry({
+  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS
+});
+```
+
 Why the default registrations exist:
 
 - They are the canonical contracts for built-in tools (semantic `toolId`, PNP mappings, visibility logic, and instance creation).

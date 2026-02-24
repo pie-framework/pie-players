@@ -39,7 +39,7 @@
     env = { mode: "gather", role: "student" } as Env,
     session = [] as any[],
     addCorrectResponse = false,
-    customClassname = "",
+    customClassName = "",
     passageContainerClass = "",
     containerClass = "",
     bundleType = BundleType.player, // Default to player.js (server-processed models)
@@ -67,7 +67,7 @@
     env?: Env;
     session?: any[];
     addCorrectResponse?: boolean;
-    customClassname?: string;
+    customClassName?: string;
     passageContainerClass?: string;
     containerClass?: string;
     bundleType?: BundleType;
@@ -267,13 +267,13 @@
 
   // Build CSS classes for containers using $derived
   const passageContainerClassFinal = $derived(
-    ["pie-passage-container", customClassname, passageContainerClass]
+    ["pie-passage-container", customClassName, passageContainerClass]
       .filter(Boolean)
       .join(" ")
   );
 
   const itemContainerClassFinal = $derived(
-    ["pie-item-container", customClassname, containerClass]
+    ["pie-item-container", customClassName, containerClass]
       .filter(Boolean)
       .join(" ")
   );

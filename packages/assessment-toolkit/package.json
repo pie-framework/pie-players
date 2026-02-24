@@ -6,7 +6,8 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/pie-framework/pie-players.git"
+		"url": "git+https://github.com/pie-framework/pie-players.git",
+		"directory": "packages/assessment-toolkit"
 	},
 	"publishConfig": {
 		"access": "public"
@@ -31,10 +32,6 @@
 		"./components/PNPProvenanceViewer.svelte": {
 			"svelte": "./src/components/PNPProvenanceViewer.svelte",
 			"import": "./src/components/PNPProvenanceViewer.svelte"
-		},
-		"./components/PNPProfileTester.svelte": {
-			"svelte": "./src/components/PNPProfileTester.svelte",
-			"import": "./src/components/PNPProfileTester.svelte"
 		},
 		"./services/pnp-standard-features": {
 			"types": "./dist/services/pnp-standard-features.d.ts",
@@ -76,5 +73,13 @@
 	"devDependencies": {
 		"@biomejs/biome": "^2.3.10",
 		"typescript": "^5.9.3"
-	}
+	},
+	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/assessment-toolkit#readme",
+	"bugs": {
+		"url": "https://github.com/pie-framework/pie-players/issues"
+	},
+	"engines": {
+		"node": ">=18.0.0"
+	},
+	"sideEffects": true
 }

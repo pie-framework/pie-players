@@ -1,0 +1,58 @@
+{
+	"name": "@pie-players/pie-default-tool-loaders",
+	"version": "0.1.0",
+	"type": "module",
+	"description": "Default lazy module loaders for PIE assessment tools",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pie-framework/pie-players.git",
+		"directory": "packages/default-tool-loaders"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"license": "MIT",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"files": [
+		"dist",
+		"README.md"
+	],
+	"scripts": {
+		"build": "tsc -p tsconfig.json",
+		"dev": "tsc -p tsconfig.json --watch",
+		"typecheck": "tsc -p tsconfig.json --noEmit",
+		"lint": "biome check ."
+	},
+	"dependencies": {
+		"@pie-players/pie-tool-annotation-toolbar": "workspace:*",
+		"@pie-players/pie-tool-answer-eliminator": "workspace:*",
+		"@pie-players/pie-tool-calculator": "workspace:*",
+		"@pie-players/pie-tool-color-scheme": "workspace:*",
+		"@pie-players/pie-tool-graph": "workspace:*",
+		"@pie-players/pie-tool-line-reader": "workspace:*",
+		"@pie-players/pie-tool-magnifier": "workspace:*",
+		"@pie-players/pie-tool-periodic-table": "workspace:*",
+		"@pie-players/pie-tool-protractor": "workspace:*",
+		"@pie-players/pie-tool-ruler": "workspace:*",
+		"@pie-players/pie-tool-text-to-speech": "workspace:*"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.3.10",
+		"typescript": "^5.9.3"
+	},
+	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/default-tool-loaders#readme",
+	"bugs": {
+		"url": "https://github.com/pie-framework/pie-players/issues"
+	},
+	"engines": {
+		"node": ">=18.0.0"
+	},
+	"sideEffects": false
+}

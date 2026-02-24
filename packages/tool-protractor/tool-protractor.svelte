@@ -235,7 +235,7 @@
 
 {#if visible && isBrowser}
 	<!-- Screen reader announcements -->
-	<div class="sr-only" role="status" aria-live="polite" aria-atomic="true">
+	<div class="pie-sr-only" role="status" aria-live="polite" aria-atomic="true">
 		{announceText}
 	</div>
 
@@ -243,7 +243,7 @@
 	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 	<div
 		bind:this={containerEl}
-		class="protractor-frame"
+		class="pie-tool-protractor"
 		data-moveablejs-tool-id={toolId}
 		onpointerdown={() => coordinator?.bringToFront(containerEl)}
 		onkeydown={handleKeyDown}
@@ -252,9 +252,9 @@
 		aria-label="Protractor tool. Use arrow keys to move, Shift+arrows to rotate, PageUp/PageDown for fine rotation. Current rotation displayed via Moveable.js"
 		aria-roledescription="Draggable and rotatable protractor measurement tool"
 	>
-		<div class="protractor-container">
+		<div class="pie-tool-protractor__container">
 			<img
-				class="protractor"
+				class="pie-tool-protractor__image"
 				src={protractorSvg}
 				alt="Protractor with 180-degree semicircular scale marked from 0 to 180 degrees in both directions, with degree markings every 10 degrees"
 				draggable="false"
@@ -264,7 +264,7 @@
 {/if}
 
 <style>
-	.sr-only {
+	.pie-sr-only {
 		position: absolute;
 		width: 1px;
 		height: 1px;
@@ -276,7 +276,7 @@
 		border-width: 0;
 	}
 
-	.protractor-frame {
+	.pie-tool-protractor {
 		border: 0;
 		cursor: move;
 		left: 50%;
@@ -289,17 +289,17 @@
 		touch-action: none;
 	}
 
-	.protractor-frame:focus {
+	.pie-tool-protractor:focus {
 		outline: 3px solid #4A90E2;
 		outline-offset: 2px;
 	}
 
-	.protractor-frame:focus-visible {
+	.pie-tool-protractor:focus-visible {
 		outline: 3px solid #4A90E2;
 		outline-offset: 2px;
 	}
 
-	.protractor-container {
+	.pie-tool-protractor__container {
 		border: 0;
 		position: relative;
 		width: 400px;
@@ -307,7 +307,7 @@
 	}
 
 	/* Semi-transparent white overlay for visibility (matching production implementation) */
-	.protractor-container::after {
+	.pie-tool-protractor__container::after {
 		background-color: #fff;
 		border-radius: 283px 283px 0 0;
 		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); /* Matching production implementation shadow */
@@ -322,7 +322,7 @@
 		pointer-events: none;
 	}
 
-	.protractor {
+	.pie-tool-protractor__image {
 		width: 400px;
 		height: 210px;
 		position: relative;

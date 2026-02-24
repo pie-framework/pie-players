@@ -1,0 +1,52 @@
+/* Maps DaisyUI CSS variables to PIE variables. */
+
+:root,
+[data-theme] {
+	--pie-background: var(--color-base-100);
+	--pie-background-dark: var(--color-base-200);
+	--pie-secondary-background: var(--color-base-200);
+	--pie-dropdown-background: var(--color-base-300);
+
+	--pie-text: var(--color-base-content);
+	--pie-primary: var(--color-primary);
+	--pie-primary-light: var(--color-primary);
+	--pie-primary-dark: var(--color-primary);
+	--pie-secondary: var(--color-secondary);
+	--pie-secondary-light: var(--color-secondary);
+	--pie-secondary-dark: var(--color-secondary);
+	--pie-tertiary: var(--color-accent);
+	--pie-tertiary-light: var(--color-accent);
+	--pie-border: var(--color-base-300);
+	--pie-border-light: var(--color-base-200);
+	--pie-border-dark: var(--color-neutral);
+	--pie-border-gray: var(--color-base-300);
+	--pie-disabled: var(--color-base-300);
+	--pie-disabled-secondary: var(--color-base-200);
+	--pie-correct: var(--color-success);
+	--pie-correct-secondary: var(--color-success-content);
+	--pie-correct-tertiary: var(--color-success);
+	--pie-correct-icon: var(--color-success);
+	--pie-incorrect: var(--color-error);
+	--pie-incorrect-secondary: var(--color-error-content);
+	--pie-incorrect-icon: var(--color-error);
+	--pie-missing: var(--color-warning);
+	--pie-missing-icon: var(--color-warning);
+	--pie-focus-checked: var(--color-primary);
+	--pie-focus-checked-border: var(--color-primary);
+	--pie-focus-unchecked: var(--color-base-200);
+	--pie-focus-unchecked-border: var(--color-base-300);
+	--pie-blue-grey-100: var(--color-base-100);
+	--pie-blue-grey-300: var(--color-base-200);
+	--pie-blue-grey-600: var(--color-base-300);
+	--pie-blue-grey-900: var(--color-base-content);
+	--pie-black: var(--color-neutral-content);
+	--pie-white: var(--color-base-100);
+	--pie-button-bg: var(--color-base-100);
+	--pie-button-border: var(--color-base-300);
+	--pie-button-color: var(--color-base-content);
+	--pie-button-hover-bg: var(--color-base-200);
+	--pie-button-hover-border: var(--color-base-300);
+	--pie-button-hover-color: var(--color-base-content);
+	--pie-button-active-bg: var(--color-base-300);
+	--pie-button-focus-outline: var(--color-primary);
+}

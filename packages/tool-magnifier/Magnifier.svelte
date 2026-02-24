@@ -88,8 +88,8 @@
 			...bodyCopy.querySelectorAll('script'),
 			...bodyCopy.querySelectorAll('audio'),
 			...bodyCopy.querySelectorAll('video'),
-			...bodyCopy.querySelectorAll('.magnifier'),
-			...bodyCopy.querySelectorAll('.magnifier-clone-ignore'),
+			...bodyCopy.querySelectorAll('.pie-tool-magnifier__viewport'),
+			...bodyCopy.querySelectorAll('.pie-tool-magnifier__clone-ignore'),
 			...bodyCopy.querySelectorAll('[data-magnifier-ignore]')
 		];
 		elementsToRemove.forEach(el => el.remove());
@@ -291,7 +291,7 @@
 
 <div
 	bind:this={magnifierEl}
-	class="magnifier"
+	class="pie-tool-magnifier__viewport"
 	style={magnifierStyle}
 	onpointerdown={handlePointerDown}
 	onpointermove={handlePointerMove}
@@ -299,13 +299,13 @@
 	role="region"
 	aria-label="Content magnifier"
 >
-	<div bind:this={contentEl} class="magnifier-content" style={contentStyle}></div>
-	<div class="magnifier-glass"></div>
+	<div bind:this={contentEl} class="pie-tool-magnifier__content" style={contentStyle}></div>
+	<div class="pie-tool-magnifier__glass"></div>
 	<slot />
 </div>
 
 <style>
-	.magnifier {
+	.pie-tool-magnifier__viewport {
 		position: fixed;
 		overflow: hidden;
 		background-color: white;
@@ -316,7 +316,7 @@
 		touch-action: none;
 	}
 
-	.magnifier-content {
+	.pie-tool-magnifier__content {
 		position: absolute;
 		top: 0;
 		left: 0;
@@ -327,7 +327,7 @@
 		pointer-events: none;
 	}
 
-	.magnifier-glass {
+	.pie-tool-magnifier__glass {
 		position: absolute;
 		top: 0;
 		left: 0;

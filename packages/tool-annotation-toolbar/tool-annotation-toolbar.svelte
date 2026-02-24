@@ -16,7 +16,7 @@
 
 <script lang="ts">
 	import type { HighlightCoordinator, ITTSService } from '@pie-players/pie-assessment-toolkit';
-	import { BrowserTTSProvider, HighlightColor } from '@pie-players/pie-assessment-toolkit';
+	import { HighlightColor } from '@pie-players/pie-assessment-toolkit';
 
 	interface Props {
 		enabled?: boolean;
@@ -56,8 +56,8 @@
 		'select',
 		'textarea',
 		'[contenteditable="true"]',
-		'.annotation-toolbar',
-		'.tool-toolbar',
+		'.pie-tool-annotation-toolbar',
+		'.pie-tool-toolbar',
 		'[role="button"]',
 		'[role="textbox"]'
 	];
@@ -71,7 +71,6 @@
 	});
 
 	// TTS state
-	let ttsInitialized = $state(false);
 	let ttsSpeaking = $state(false);
 
 	// UX state
@@ -224,7 +223,7 @@
 	 * Hide toolbar and clean up TTS
 	 */
 	function hideToolbar() {
-		if (ttsSpeaking) {
+		if (ttsSpeaking && ttsService) {
 			ttsService.stop();
 			ttsSpeaking = false;
 		}
@@ -363,10 +362,10 @@
 	/**
 	 * Handle click outside toolbar
 	 */
-	function handleDocumentClick(e: MouseEvent) {
+	function handleDocumentClick(e: Event) {
 		if (!toolbarState.isVisible || justShown) return;
 
-		const toolbar = document.querySelector('.annotation-toolbar');
+		const toolbar = document.querySelector('.pie-tool-annotation-toolbar');
 		if (toolbar && !toolbar.contains(e.target as Node)) {
 			hideToolbar();
 		}
@@ -416,7 +415,7 @@
 
 {#if toolbarState.isVisible}
 	<div
-		class="annotation-toolbar notranslate fixed z-[4200] flex gap-1 bg-base-100 shadow-lg rounded-lg p-2 border border-base-300"
+		class="pie-tool-annotation-toolbar notranslate fixed z-[4200] flex gap-1 bg-base-100 shadow-lg rounded-lg p-2 border border-base-300"
 		style={`left:${toolbarState.toolbarPosition.x}px; top:${toolbarState.toolbarPosition.y}px; transform: translate(-50%, -100%);`}
 		role="toolbar"
 		aria-label="Text annotation toolbar"
@@ -425,13 +424,13 @@
 		<!-- Highlight Color Swatches -->
 		{#each HIGHLIGHT_COLORS as color}
 			<button
-				class="highlight-swatch"
+				class="pie-tool-annotation-toolbar__highlight-swatch"
 				style="background-color: {color.hex};"
 				onclick={() => handleHighlight(color.name)}
 				aria-label={color.label}
 				title={color.label}
 			>
-				<span class="sr-only">{color.label}</span>
+				<span class="pie-sr-only">{color.label}</span>
 			</button>
 		{/each}
 
@@ -591,16 +590,16 @@
 {/if}
 
 <!-- Screen reader announcements -->
-<div role="status" aria-live="polite" aria-atomic="true" class="sr-only">
+<div role="status" aria-live="polite" aria-atomic="true" class="pie-sr-only">
 	{positionAnnouncement}
 </div>
 
 <style>
-	.annotation-toolbar {
+	.pie-tool-annotation-toolbar {
 		user-select: none;
 	}
 
-	.highlight-swatch {
+	.pie-tool-annotation-toolbar__highlight-swatch {
 		width: 2.5rem;
 		height: 2rem;
 		border: 2px solid rgba(0, 0, 0, 0.2);
@@ -613,24 +612,24 @@
 		padding: 0;
 	}
 
-	.highlight-swatch:hover {
+	.pie-tool-annotation-toolbar__highlight-swatch:hover {
 		transform: scale(1.1);
 		border-color: rgba(0, 0, 0, 0.4);
 		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 	}
 
-	.highlight-swatch:focus-visible {
+	.pie-tool-annotation-toolbar__highlight-swatch:focus-visible {
 		outline: 2px solid hsl(var(--p));
 		outline-offset: 2px;
 	}
 
-	.divider-horizontal {
+	.pie-tool-annotation-toolbar .divider-horizontal {
 		height: auto;
 		background-color: hsl(var(--bc) / 0.2);
 	}
 
 	/* Screen reader only content */
-	.sr-only {
+	.pie-sr-only {
 		position: absolute;
 		width: 1px;
 		height: 1px;
@@ -643,11 +642,11 @@
 	}
 
 	/* Button styling */
-	.btn-square {
+	.pie-tool-annotation-toolbar .btn-square {
 		padding: 0.5rem;
 	}
 
-	.btn-square svg {
+	.pie-tool-annotation-toolbar .btn-square svg {
 		width: 18px;
 		height: 18px;
 	}

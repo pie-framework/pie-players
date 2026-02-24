@@ -270,6 +270,35 @@ const coordinator = new ToolkitCoordinator({
 
 The ToolkitCoordinator handles all internal complexity (service initialization, provider management, state coordination). The only special configuration is `authFetcher` for Desmos calculator (optional - falls back to local calculator if not provided).
 
+## Test Attempt Session Adapter (pie backend)
+
+The toolkit exposes a canonical `TestAttemptSession` runtime and a deterministic adapter for pie backend activity payloads from `../../kds/pie-api-aws`.
+
+```typescript
+import {
+  mapActivityToTestAttemptSession,
+  toItemSessionsRecord,
+  buildActivitySessionPatchFromTestAttemptSession
+} from "@pie-players/pie-assessment-toolkit";
+
+const testAttemptSession = mapActivityToTestAttemptSession({
+  activityDefinition,
+  activitySession
+});
+
+// Use in section-player handoff (same item session shape as item players expect)
+const itemSessions = toItemSessionsRecord(testAttemptSession);
+
+// Host-owned backend persistence payload
+const patch = buildActivitySessionPatchFromTestAttemptSession(testAttemptSession);
+```
+
+### Integration Boundary
+
+- `@pie-players/pie-section-player` stays backend-agnostic and emits session/state changes.
+- Host applications own backend I/O to pie backend (`../../kds/pie-api-aws`).
+- Hosts decide persistence policy (immediate, debounced, checkpoint, submit).
+
 ## Implementation Status
 
 ### ✅ Core Infrastructure

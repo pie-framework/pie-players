@@ -4,7 +4,8 @@
 	"author": "PIE Framework",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/pie-framework/pie-players.git"
+		"url": "git+https://github.com/pie-framework/pie-players.git",
+		"directory": "packages/tts"
 	},
 	"publishConfig": {
 		"access": "public"
@@ -38,5 +39,12 @@
 	},
 	"type": "module",
 	"types": "./dist/index.d.ts",
-	"sideEffects": false
+	"sideEffects": false,
+	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/tts#readme",
+	"bugs": {
+		"url": "https://github.com/pie-framework/pie-players/issues"
+	},
+	"engines": {
+		"node": ">=18.0.0"
+	}
 }

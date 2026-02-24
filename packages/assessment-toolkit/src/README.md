@@ -76,14 +76,13 @@ sectionPlayer.catalogResolver = catalogResolver;
 sectionPlayer.section = section;
 ```
 
-### ✅ Assessment Runtime Package
+### ✅ Runtime Integration
 
-Assessment-level player/runtime APIs live in `@pie-players/pie-assessment-player`.
-Use this toolkit package for shared services and tool orchestration.
+Use this toolkit package for shared services, section-player orchestration, and host-app integrations.
 
 ## Project Structure
 
-```
+```text
 assessment-toolkit/
 ├── core/
 │   └── TypedEventBus.ts                    # Event system
@@ -370,8 +369,6 @@ await ttsService.updateSettings({
 });
 ```
 
-**Unified Settings UI**: A pre-built settings component is available in `section-demos/src/lib/components/AssessmentToolkitSettings.svelte` that provides a tabbed interface for configuring TTS, highlighting, and other toolkit features. See the component's README for integration details.
-
 ### AccessibilityCatalogResolver
 
 Manages QTI 3.0 accessibility catalogs (SSML, sign language, braille, simplified language, etc.).
@@ -430,6 +427,7 @@ catalogResolver.addItemCatalogs(result.catalogs);
 ```
 
 **Example Input:**
+
 ```typescript
 {
   prompt: `<div>
@@ -440,6 +438,7 @@ catalogResolver.addItemCatalogs(result.catalogs);
 ```
 
 **Example Output:**
+
 ```typescript
 {
   // Cleaned config
@@ -509,7 +508,6 @@ The toolkit natively supports QTI 3.0 features for standards-compliant assessmen
 Student accommodations and IEP/504 support with automatic tool resolution:
 
 ```typescript
-import { AssessmentPlayer } from '@pie-players/pie-assessment-player/player';
 import { PNPToolResolver } from '@pie-players/pie-assessment-toolkit';
 
 // QTI 3.0 assessment with PNP
@@ -531,9 +529,6 @@ const assessment = {
     }
   }
 };
-
-// Simple initialization - tools automatically resolved
-const player = new AssessmentPlayer({ assessment, loadItem });
 
 // Or use PNPToolResolver directly
 const resolver = new PNPToolResolver();
@@ -560,8 +555,11 @@ and can be overridden via `createDefaultToolRegistry(...)`:
 
 ```typescript
 import { createDefaultToolRegistry } from '@pie-players/pie-assessment-toolkit';
+import { DEFAULT_TOOL_MODULE_LOADERS } from '@pie-players/pie-default-tool-loaders';
 
 const toolRegistry = createDefaultToolRegistry({
+  // Lazy tool module loading (recommended)
+  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
   toolTagMap: {
     calculator: 'my-calculator-tool',
     textToSpeech: 'my-tts-tool'
@@ -574,7 +572,6 @@ const toolRegistry = createDefaultToolRegistry({
 Global variables shared across assessment items:
 
 ```typescript
-import { AssessmentPlayer } from '@pie-players/pie-assessment-player/player';
 import { ContextVariableStore } from '@pie-players/pie-assessment-toolkit';
 
 // Assessment with context declarations
@@ -595,17 +592,7 @@ const assessment = {
   ]
 };
 
-// Use with AssessmentPlayer
-const player = new AssessmentPlayer({ assessment, loadItem });
-
-const seed = player.getContextVariable('RANDOM_SEED');
-player.setContextVariable('DIFFICULTY_LEVEL', 'hard');
-
-// Pass to PIE elements
-const context = player.getContextVariables();
-await renderItem(item, session, context);
-
-// Or use ContextVariableStore directly
+// Use ContextVariableStore directly
 const store = new ContextVariableStore(assessment.contextDeclarations);
 store.set('RANDOM_SEED', 12345);
 const context = store.toObject();
@@ -622,7 +609,7 @@ const context = store.toObject();
 
 Tool resolution follows this precedence (highest to lowest):
 
-```
+```text
 1. District Block (absolute veto)
 2. Test Administration Override
 3. Item Restriction (per-item block)
@@ -634,5 +621,5 @@ Tool resolution follows this precedence (highest to lowest):
 ## Related Documentation
 
 - [Architecture Overview](../../../docs/ARCHITECTURE.md) - Complete system architecture
-- [Assessment Toolkit Architecture](../../../docs/tools-and-accomodations/assessment-player-architecture.md) - Toolkit design
+- [Assessment Toolkit Architecture](../../../docs/tools-and-accomodations/tools-high-level-architecture.md) - Toolkit design
 - [Tools Architecture](../../../docs/tools-and-accomodations/tools-high-level-architecture.md) - Tool coordination

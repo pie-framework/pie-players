@@ -97,7 +97,7 @@ Global singleton for managing the active math renderer.
 
 ## Architecture
 
-See [MATH-RENDERER-ARCHITECTURE.md](../../MATH-RENDERER-ARCHITECTURE.md) for the complete unified architecture documentation.
+See [MATH-RENDERER-ARCHITECTURE.md](../../docs/MATH-RENDERER-ARCHITECTURE.md) for the complete unified architecture documentation.
 
 ## License
 

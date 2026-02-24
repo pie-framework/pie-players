@@ -4,13 +4,13 @@ export interface StorageLike {
 	removeItem(key: string): void;
 }
 
-export interface TestSessionNavigationState {
+export interface TestAttemptSessionNavigationState {
 	currentItemIndex: number;
 	visitedItemIdentifiers: string[];
 	currentSectionIdentifier?: string;
 }
 
-export interface TestSessionRealization {
+export interface TestAttemptSessionRealization {
 	/**
 	 * Deterministic seed for shuffling/selection.
 	 * (Future: use for QTI ordering.shuffle / selection rules.)
@@ -22,7 +22,7 @@ export interface TestSessionRealization {
 	itemIdentifiers: string[];
 }
 
-export interface ItemSession {
+export interface TestAttemptItemSession {
 	/**
 	 * QTI assessmentItemRef identifier (same as questionRef.identifier).
 	 */
@@ -39,15 +39,16 @@ export interface ItemSession {
 	startedAt?: string;
 	updatedAt?: string;
 	completedAt?: string;
+	session?: unknown;
 }
 
-export interface TestSession {
+export interface TestAttemptSession {
 	version: 1;
 
 	/**
 	 * QTI-like identifier for the delivery attempt (administration).
 	 */
-	testSessionIdentifier: string;
+	testAttemptSessionIdentifier: string;
 
 	assessmentId: string;
 
@@ -55,13 +56,13 @@ export interface TestSession {
 	updatedAt: string;
 	completedAt?: string;
 
-	navigationState: TestSessionNavigationState;
-	realization: TestSessionRealization;
+	navigationState: TestAttemptSessionNavigationState;
+	realization: TestAttemptSessionRealization;
 
 	/**
 	 * Keyed by QTI item identifier (questionRef.identifier).
 	 */
-	itemSessions: Record<string, ItemSession>;
+	itemSessions: Record<string, TestAttemptItemSession>;
 
 	/**
 	 * QTI 3.0 context variables (global assessment-level variables).
@@ -70,8 +71,8 @@ export interface TestSession {
 	contextVariables?: Record<string, any>;
 }
 
-const TEST_SESSION_VERSION = 1 as const;
-const STORAGE_PREFIX = "pieoneer:testSession:v1:";
+const TEST_ATTEMPT_SESSION_VERSION = 1 as const;
+const STORAGE_PREFIX = "pieoneer:testAttemptSession:v1:";
 const ANON_DEVICE_ID_KEY = "pieoneer:anonymousDeviceId:v1";
 
 export function createMemoryStorage(
@@ -141,12 +142,12 @@ export function getOrCreateAnonymousDeviceId(storage: StorageLike): string {
 	return created;
 }
 
-export function createTestSessionIdentifier(args: {
+export function createTestAttemptSessionIdentifier(args: {
 	assessmentId: string;
 	assignmentId?: string | null;
 	userId?: string | null;
 	storage: StorageLike;
-}): { testSessionIdentifier: string; seed: string } {
+}): { testAttemptSessionIdentifier: string; seed: string } {
 	const { assessmentId, assignmentId, userId, storage } = args;
 	if (!assessmentId) {
 		throw new Error(
@@ -157,55 +158,59 @@ export function createTestSessionIdentifier(args: {
 	const subject = userId || getOrCreateAnonymousDeviceId(storage);
 	const source = `v1|${assessmentId}|${assignmentId || ""}|${subject}`;
 	const seed = fnv1a32Hex(source);
-	return { testSessionIdentifier: `ts_v1_${seed}`, seed };
+	return { testAttemptSessionIdentifier: `tas_v1_${seed}`, seed };
 }
 
-export function getTestSessionStorageKey(
-	testSessionIdentifier: string,
+export function getTestAttemptSessionStorageKey(
+	testAttemptSessionIdentifier: string,
 ): string {
-	return `${STORAGE_PREFIX}${testSessionIdentifier}`;
+	return `${STORAGE_PREFIX}${testAttemptSessionIdentifier}`;
 }
 
-export function loadTestSession(
+export function loadTestAttemptSession(
 	storage: StorageLike,
-	testSessionIdentifier: string,
-): TestSession | null {
-	const raw = storage.getItem(getTestSessionStorageKey(testSessionIdentifier));
+	testAttemptSessionIdentifier: string,
+): TestAttemptSession | null {
+	const raw = storage.getItem(
+		getTestAttemptSessionStorageKey(testAttemptSessionIdentifier),
+	);
 	if (!raw) return null;
 	try {
-		const parsed = JSON.parse(raw) as TestSession;
-		if (!parsed || parsed.version !== TEST_SESSION_VERSION) return null;
-		if (parsed.testSessionIdentifier !== testSessionIdentifier) return null;
+		const parsed = JSON.parse(raw) as TestAttemptSession;
+		if (!parsed || parsed.version !== TEST_ATTEMPT_SESSION_VERSION) return null;
+		if (parsed.testAttemptSessionIdentifier !== testAttemptSessionIdentifier) {
+			return null;
+		}
 		return parsed;
 	} catch {
 		return null;
 	}
 }
 
-export function saveTestSession(
+export function saveTestAttemptSession(
 	storage: StorageLike,
-	session: TestSession,
+	session: TestAttemptSession,
 ): void {
-	const updated: TestSession = {
+	const updated: TestAttemptSession = {
 		...session,
 		updatedAt: nowIso(),
 	};
 	storage.setItem(
-		getTestSessionStorageKey(session.testSessionIdentifier),
+		getTestAttemptSessionStorageKey(session.testAttemptSessionIdentifier),
 		JSON.stringify(updated),
 	);
 }
 
-export function createNewTestSession(args: {
-	testSessionIdentifier: string;
+export function createNewTestAttemptSession(args: {
+	testAttemptSessionIdentifier: string;
 	assessmentId: string;
 	seed: string;
 	itemIdentifiers: string[];
-}): TestSession {
+}): TestAttemptSession {
 	const startedAt = nowIso();
 	return {
-		version: TEST_SESSION_VERSION,
-		testSessionIdentifier: args.testSessionIdentifier,
+		version: TEST_ATTEMPT_SESSION_VERSION,
+		testAttemptSessionIdentifier: args.testAttemptSessionIdentifier,
 		assessmentId: args.assessmentId,
 		startedAt,
 		updatedAt: startedAt,
@@ -222,9 +227,9 @@ export function createNewTestSession(args: {
 }
 
 export function upsertVisitedItem(
-	session: TestSession,
+	session: TestAttemptSession,
 	itemIdentifier: string,
-): TestSession {
+): TestAttemptSession {
 	if (!itemIdentifier) return session;
 	const visited = new Set(session.navigationState.visitedItemIdentifiers || []);
 	visited.add(itemIdentifier);
@@ -238,12 +243,12 @@ export function upsertVisitedItem(
 }
 
 export function setCurrentPosition(
-	session: TestSession,
+	session: TestAttemptSession,
 	args: {
 		currentItemIndex: number;
 		currentSectionIdentifier?: string;
 	},
-): TestSession {
+): TestAttemptSession {
 	return {
 		...session,
 		navigationState: {
@@ -255,9 +260,14 @@ export function setCurrentPosition(
 }
 
 export function upsertItemSessionFromPieSessionChange(
-	session: TestSession,
-	args: { itemIdentifier: string; pieSessionId: string; isCompleted?: boolean },
-): TestSession {
+	session: TestAttemptSession,
+	args: {
+		itemIdentifier: string;
+		pieSessionId: string;
+		isCompleted?: boolean;
+		session?: unknown;
+	},
+): TestAttemptSession {
 	const { itemIdentifier, pieSessionId, isCompleted } = args;
 	if (!itemIdentifier || !pieSessionId) return session;
 
@@ -273,7 +283,7 @@ export function upsertItemSessionFromPieSessionChange(
 
 	const completed = !!(isCompleted ?? existing?.isCompleted);
 
-	const next: ItemSession = {
+	const next: TestAttemptItemSession = {
 		itemIdentifier,
 		pieSessionId,
 		attemptCount,
@@ -281,6 +291,7 @@ export function upsertItemSessionFromPieSessionChange(
 		startedAt: existing?.startedAt || now,
 		updatedAt: now,
 		completedAt: completed ? existing?.completedAt || now : undefined,
+		session: args.session ?? existing?.session,
 	};
 
 	return {

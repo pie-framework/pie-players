@@ -5,8 +5,5 @@
 		"rootDir": ".",
 		"moduleResolution": "NodeNext"
 	},
-	"include": [
-		"**/*.ts",
-		"**/*.svelte"
-	]
+	"include": ["**/*.ts", "**/*.svelte"]
 }

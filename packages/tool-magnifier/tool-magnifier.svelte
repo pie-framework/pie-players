@@ -75,17 +75,17 @@
 {#if isBrowser}
 	<Magnifier bind:visible zoom={zoomLevel} width={420} height={280} shape="square">
 		<!-- Zoom controls -->
-		<div class="btn-group magnifier-clone-ignore" data-magnifier-ignore="true">
+		<div class="pie-tool-magnifier__zoom-group pie-tool-magnifier__clone-ignore" data-magnifier-ignore="true">
 			{#each ZOOM_LEVELS as level}
 				<button
-					class="zoom-btn"
-					class:active={zoomLevel === level}
+					class="pie-tool-magnifier__zoom-button"
+					class:pie-tool-magnifier__zoom-button--active={zoomLevel === level}
 					data-zoom={level}
 					title="{level}x zoom"
 					aria-label="Set zoom to {level}x"
 					onclick={() => handleZoomChange(level)}
 				>
-					<span class="btn-label">{level}x</span>
+					<span class="pie-tool-magnifier__zoom-label">{level}x</span>
 				</button>
 			{/each}
 		</div>
@@ -93,7 +93,7 @@
 {/if}
 
 <style>
-	.btn-group {
+	.pie-tool-magnifier__zoom-group {
 		background-color: rgba(255, 255, 255, 0.8);
 		border: 1px solid var(--pie-primary, #007bff);
 		border-radius: 4px;
@@ -105,7 +105,7 @@
 		overflow: hidden;
 	}
 
-	.zoom-btn {
+	.pie-tool-magnifier__zoom-button {
 		background: white;
 		border: none;
 		border-right: 1px solid var(--pie-primary, #007bff);
@@ -116,25 +116,25 @@
 		transition: background-color 0.2s, color 0.2s;
 	}
 
-	.zoom-btn:last-child {
+	.pie-tool-magnifier__zoom-button:last-child {
 		border-right: none;
 	}
 
-	.zoom-btn:hover {
+	.pie-tool-magnifier__zoom-button:hover {
 		background-color: rgba(0, 123, 255, 0.1);
 	}
 
-	.zoom-btn.active {
+	.pie-tool-magnifier__zoom-button.pie-tool-magnifier__zoom-button--active {
 		background-color: var(--pie-primary, #007bff);
 		color: white;
 	}
 
-	.zoom-btn:focus-visible {
+	.pie-tool-magnifier__zoom-button:focus-visible {
 		outline: 2px solid var(--pie-primary, #007bff);
 		outline-offset: 2px;
 	}
 
-	.btn-label {
+	.pie-tool-magnifier__zoom-label {
 		font-size: 0.8em;
 	}
 </style>

@@ -41,7 +41,6 @@ export type {
 	ResolvedCatalog,
 } from "./services/AccessibilityCatalogResolver.js";
 export { AccessibilityCatalogResolver } from "./services/AccessibilityCatalogResolver.js";
-export { AssessmentAuthoringService } from "./services/AssessmentAuthoringService.js";
 // Context Variable Store (QTI 3.0 Context Declarations)
 export { ContextVariableStore } from "./services/ContextVariableStore.js";
 // Element Tool State Store (Element-level ephemeral tool state)
@@ -78,6 +77,7 @@ export { I18nService } from "./services/I18nService.js";
 export type {
 	ToolButtonDefinition,
 	ToolButtonOptions,
+	ToolModuleLoader,
 	ToolInstanceOptions,
 	ToolRegistration,
 } from "./services/ToolRegistry.js";
@@ -201,6 +201,44 @@ export {
 } from "./item-loader.js";
 
 // ============================================================================
+// Attempt Session
+// ============================================================================
+
+export type {
+	StorageLike,
+	TestAttemptItemSession,
+	TestAttemptSession,
+	TestAttemptSessionNavigationState,
+	TestAttemptSessionRealization,
+} from "./attempt/TestSession.js";
+export {
+	createMemoryStorage,
+	createTestAttemptSessionIdentifier,
+	createNewTestAttemptSession,
+	getBrowserLocalStorage,
+	getOrCreateAnonymousDeviceId,
+	getTestAttemptSessionStorageKey,
+	loadTestAttemptSession,
+	saveTestAttemptSession,
+	setCurrentPosition,
+	upsertItemSessionFromPieSessionChange,
+	upsertVisitedItem,
+} from "./attempt/TestSession.js";
+export type {
+	ActivitySessionPatchPayload,
+	MapActivityToTestAttemptSessionArgs,
+	PieBackendActivityDefinition,
+	PieBackendActivityItemRef,
+	PieBackendActivitySession,
+} from "./attempt/adapters/activity-to-test-attempt-session.js";
+export {
+	buildActivitySessionItemUpdate,
+	buildActivitySessionPatchFromTestAttemptSession,
+	mapActivityToTestAttemptSession,
+	toItemSessionsRecord,
+} from "./attempt/adapters/activity-to-test-attempt-session.js";
+
+// ============================================================================
 // Event Types (Standard Contracts)
 // ============================================================================
 
@@ -234,7 +272,6 @@ export type {
 } from "./types/events.js";
 
 // Section Player - Use @pie-players/pie-section-player web component
-// Assessment Player - Use @pie-players/pie-assessment-player package
 
 // ============================================================================
 // Shared Components

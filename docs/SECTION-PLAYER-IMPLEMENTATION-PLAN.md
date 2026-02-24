@@ -543,14 +543,14 @@ export interface TestSession {
 - `packages/assessment-toolkit/src/components/AssessmentPlayer.svelte` (update)
 
 **Files to Modify**:
-- `apps/example/src/App.svelte` (use new components)
+- Host demo application entrypoint (use new components)
 
 **Success Criteria**:
 - ✅ Components render correctly
 - ✅ Navigation works in UI
 - ✅ Tools panel displays and functions
 - ✅ TTS controls work
-- ✅ Example app demonstrates features
+- ✅ Demo host app demonstrates features
 
 ---
 

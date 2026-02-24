@@ -77,10 +77,16 @@ export class IifePieLoader {
 		bundleType: string,
 		bundleInfo?: { url?: string },
 	): string {
+		const elementTags = Object.keys(elements || {}).sort().join(",");
+
 		// 1. If explicit bundle URL provided in config, use that
 		if (bundleInfo?.url) {
-			logger.debug("Using explicit bundle URL from config:", bundleInfo.url);
-			return bundleInfo.url;
+			const separator = bundleInfo.url.includes("?") ? "&" : "?";
+			const taggedUrl = elementTags
+				? `${bundleInfo.url}${separator}elements=${encodeURIComponent(elementTags)}`
+				: bundleInfo.url;
+			logger.debug("Using explicit bundle URL from config:", taggedUrl);
+			return taggedUrl;
 		}
 
 		// 2. Build URL from element versions using bundle host
@@ -92,7 +98,10 @@ export class IifePieLoader {
 		bundleHost = bundleHost.trim();
 		// Remove trailing slash and re-add to ensure exactly one
 		bundleHost = bundleHost.replace(/\/+$/, "") + "/";
-		const url = `${bundleHost}${encodeURI(packageVersions)}/${bundleType}`;
+		const baseUrl = `${bundleHost}${encodeURI(packageVersions)}/${bundleType}`;
+		const url = elementTags
+			? `${baseUrl}?elements=${encodeURIComponent(elementTags)}`
+			: baseUrl;
 		logger.debug("Using bundle host URL:", url);
 		return url;
 	}

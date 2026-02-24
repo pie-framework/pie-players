@@ -5,17 +5,42 @@
  */
 
 import { config } from "dotenv";
+import { existsSync } from "fs";
 import { resolve } from "path";
 import { fileURLToPath } from "url";
 
-// Load .env from monorepo root (two levels up from this file)
+function findUpWithAnchor(startDir: string): string | null {
+	let currentDir = startDir;
+
+	while (true) {
+		const hasAnchor =
+			existsSync(resolve(currentDir, "bun.lock")) ||
+			existsSync(resolve(currentDir, ".git"));
+		if (hasAnchor) return currentDir;
+
+		const parentDir = resolve(currentDir, "..");
+		if (parentDir === currentDir) return null;
+		currentDir = parentDir;
+	}
+}
+
+// Resolve .env via anchor-based upward search across runtime contexts.
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
-const envPath = resolve(__dirname, "../../../../.env");
+const rootCandidates = [process.cwd(), __dirname]
+	.map((startDir) => findUpWithAnchor(startDir))
+	.filter((value): value is string => Boolean(value));
+const envCandidates = Array.from(
+	new Set(rootCandidates.map((rootDir) => resolve(rootDir, ".env"))),
+);
+const envPath = envCandidates.find((candidate) => existsSync(candidate));
 
-// Load environment variables
-const result = config({ path: envPath });
+// Load environment variables when an .env file is present.
+const result = envPath ? config({ path: envPath }) : { error: undefined };
 
-if (result.error) {
+if (!envPath) {
+	console.warn("[Hooks] Warning: Could not find a .env file.");
+	console.warn("[Hooks] Checked paths:", envCandidates.join(", "));
+} else if (result.error) {
 	console.warn("[Hooks] Warning: Could not load .env file from:", envPath);
 	console.warn("[Hooks] Error:", result.error.message);
 } else {

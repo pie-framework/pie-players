@@ -1,0 +1,141 @@
+/* PIE Font Size System - Learnosity-compatible font scaling for K-12 assessments
+ *
+ * Based on Learnosity's font size accommodation feature which provides 4 preset sizes:
+ * - Normal (100% - default)
+ * - Large (125% - 1.25x scale)
+ * - Extra Large (150% - 1.5x scale)
+ * - Extra Extra Large (175% - 1.75x scale)
+ *
+ * All sizes meet WCAG 2.2 Level AA requirements for text sizing:
+ * - Users can scale text up to 200% without assistive technology
+ * - Text remains readable and functional at all scale levels
+ * - No horizontal scrolling required in scaled states
+ *
+ * Usage: Apply data-font-size attribute to document root or pie-player element
+ * Example: <html data-font-size="large">
+ *
+ * Implementation Note: Uses CSS custom property (--pie-font-scale) to scale all
+ * typography consistently. Base font sizes are defined in the PIE player components.
+ */
+
+/* Default font size (100% - no scaling) */
+:root {
+	--pie-font-scale: 1;
+}
+
+/* Normal (100% - explicit setting) */
+[data-font-size="normal"] {
+	--pie-font-scale: 1;
+}
+
+/* Large (125%) - Learnosity "large" preset */
+[data-font-size="large"] {
+	--pie-font-scale: 1.25;
+}
+
+/* Extra Large (150%) - Learnosity "xlarge" preset */
+[data-font-size="xlarge"] {
+	--pie-font-scale: 1.5;
+}
+
+/* Extra Extra Large (175%) - Learnosity "xxlarge" preset */
+[data-font-size="xxlarge"] {
+	--pie-font-scale: 1.75;
+}
+
+/* Apply font scaling to assessment content
+ * Target PIE player elements and assessment content
+ * Exclude tool UIs (calculator, graph, etc.) which should remain at normal size
+ *
+ * Using !important to override PIE's inline styles and component-specific styles
+ */
+
+/* Apply to pie-player root element */
+pie-player[data-font-size] {
+	font-size: calc(1rem * var(--pie-font-scale)) !important;
+}
+
+/* Apply to all text elements within pie-player - using inherit to cascade from root */
+pie-player[data-font-size] *,
+pie-player[data-font-size] p,
+pie-player[data-font-size] span,
+pie-player[data-font-size] div,
+pie-player[data-font-size] li,
+pie-player[data-font-size] label,
+pie-player[data-font-size] input,
+pie-player[data-font-size] textarea,
+pie-player[data-font-size] select,
+pie-player[data-font-size] button,
+pie-player[data-font-size] h1,
+pie-player[data-font-size] h2,
+pie-player[data-font-size] h3,
+pie-player[data-font-size] h4,
+pie-player[data-font-size] h5,
+pie-player[data-font-size] h6,
+pie-player[data-font-size] td,
+pie-player[data-font-size] th,
+pie-player[data-font-size] option {
+	font-size: inherit !important;
+}
+
+/* Also apply to parent container if data-font-size is on document root */
+[data-font-size] pie-player {
+	font-size: calc(1rem * var(--pie-font-scale)) !important;
+}
+
+[data-font-size] pie-player *,
+[data-font-size] pie-player p,
+[data-font-size] pie-player span,
+[data-font-size] pie-player div,
+[data-font-size] pie-player li,
+[data-font-size] pie-player label,
+[data-font-size] pie-player input,
+[data-font-size] pie-player textarea,
+[data-font-size] pie-player select,
+[data-font-size] pie-player button,
+[data-font-size] pie-player h1,
+[data-font-size] pie-player h2,
+[data-font-size] pie-player h3,
+[data-font-size] pie-player h4,
+[data-font-size] pie-player h5,
+[data-font-size] pie-player h6,
+[data-font-size] pie-player td,
+[data-font-size] pie-player th,
+[data-font-size] pie-player option {
+	font-size: inherit !important;
+}
+
+/* Preserve normal size for tool UIs and controls */
+[data-font-size] .pie-tool-toolbar,
+[data-font-size] .pie-tool-toolbar *,
+[data-font-size] .pie-tool-calculator,
+[data-font-size] .pie-tool-calculator *,
+[data-font-size] .tool-settings-panel,
+[data-font-size] .tool-settings-panel *,
+[data-font-size] [class*="pie-tool-"],
+[data-font-size] [class*="pie-tool-"] *,
+[data-font-size] header,
+[data-font-size] header *,
+[data-font-size] footer,
+[data-font-size] footer *,
+[data-font-size] nav,
+[data-font-size] nav *,
+[data-font-size] button:not(.pie-button),
+[data-font-size] .btn,
+[data-font-size] .btn * {
+	font-size: 1rem !important;
+}
+
+/* Ensure proper line-height scaling for readability */
+[data-font-size="large"] pie-player,
+[data-font-size="xlarge"] pie-player,
+[data-font-size="xxlarge"] pie-player {
+	line-height: 1.6;
+}
+
+/* Prevent layout issues with scaled text */
+[data-font-size] pie-player {
+	overflow-wrap: break-word;
+	word-wrap: break-word;
+	hyphens: auto;
+}

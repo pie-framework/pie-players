@@ -69,10 +69,10 @@
 		align-items: center;
 		gap: 0.5rem;
 		padding: 0.5rem 1rem;
-		background: var(--tool-button-bg, #ffffff);
-		border: 1px solid var(--tool-button-border, #d1d5db);
+		background: var(--pie-button-bg, #ffffff);
+		border: 1px solid var(--pie-button-border, #d1d5db);
 		border-radius: 0.375rem;
-		color: var(--tool-button-color, #374151);
+		color: var(--pie-button-color, #374151);
 		font-size: 0.875rem;
 		font-weight: 500;
 		cursor: pointer;
@@ -81,18 +81,18 @@
 	}
 
 	.tool-button:hover:not(:disabled) {
-		background: var(--tool-button-hover-bg, #f9fafb);
-		border-color: var(--tool-button-hover-border, #9ca3af);
-		color: var(--tool-button-hover-color, #111827);
+		background: var(--pie-button-hover-bg, #f9fafb);
+		border-color: var(--pie-button-hover-border, #9ca3af);
+		color: var(--pie-button-hover-color, #111827);
 	}
 
 	.tool-button:active:not(:disabled) {
-		background: var(--tool-button-active-bg, #f3f4f6);
+		background: var(--pie-button-active-bg, #f3f4f6);
 		transform: translateY(1px);
 	}
 
 	.tool-button:focus-visible {
-		outline: 2px solid var(--tool-button-focus-outline, #3b82f6);
+		outline: 2px solid var(--pie-button-focus-outline, #3b82f6);
 		outline-offset: 2px;
 	}
 

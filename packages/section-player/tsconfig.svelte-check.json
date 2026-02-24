@@ -3,7 +3,16 @@
 	"compilerOptions": {
 		"noUnusedLocals": false,
 		"noUnusedParameters": false,
-		"moduleResolution": "NodeNext"
+		"moduleResolution": "NodeNext",
+		"baseUrl": ".",
+		"paths": {
+			"@pie-players/pie-players-shared/loaders": [
+				"../players-shared/dist/loaders/index.d.ts"
+			],
+			"@pie-players/pie-players-shared/types": [
+				"../players-shared/dist/types/index.d.ts"
+			]
+		}
 	},
 	"include": [
 		"src/**/*.ts",

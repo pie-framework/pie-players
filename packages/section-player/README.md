@@ -159,9 +159,20 @@ These are automatically resolved when using the section player as a library depe
 
 <PieSectionPlayer
   {section}
-  mode="gather"
+  env={{ mode: 'gather', role: 'student' }}
   view="candidate"
-  bundleHost="https://cdn.pie.org"
+  player="iife"
+  pageLayout="split-panel"
+  playerDefinitions={{
+    iife: {
+      tagName: 'pie-iife-player',
+      attributes: { 'bundle-host': 'https://proxy.pie-api.com/bundles/' }
+    },
+    esm: {
+      tagName: 'pie-esm-player',
+      attributes: { 'esm-cdn-url': 'https://esm.sh' }
+    }
+  }}
 />
 ```
 
@@ -189,12 +200,17 @@ function AssessmentSection({ section }) {
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
 | `section` | `QtiAssessmentSection` | `null` | Section data with passages and items |
-| `mode` | `'gather' \| 'view' \| 'evaluate' \| 'author'` | `'gather'` | Player mode |
+| `env` | `{ mode, role }` | `{ mode: 'gather', role: 'student' }` | Runtime environment |
 | `view` | `'candidate' \| 'scorer' \| 'author' \| ...` | `'candidate'` | Current view (filters rubricBlocks) |
+| `player` | `string` | `'iife'` | Selected player definition key |
+| `page-layout` | `string` | `'split-panel'` | Selected page-mode layout definition key |
+| `playerDefinitions` | `Record<string, ComponentDefinition>` | built-ins | Host player web-component definitions |
+| `layoutDefinitions` | `Record<string, ComponentDefinition>` | built-ins | Host page-layout web-component definitions |
 | `item-sessions` | `Record<string, any>` | `{}` | Item sessions for restoration |
-| `bundle-host` | `string` | `''` | CDN host for PIE bundles |
-| `esm-cdn-url` | `string` | `'https://esm.sh'` | ESM CDN URL |
-| `custom-classname` | `string` | `''` | Custom CSS class |
+| `test-attempt-session` | `TestAttemptSession \| null` | `null` | Canonical attempt runtime state consumed by section player |
+| `activity-definition` | `Record<string, any> \| null` | `null` | Pie backend activity definition (`../../kds/pie-api-aws`) |
+| `activity-session` | `Record<string, any> \| null` | `null` | Pie backend activity session (`../../kds/pie-api-aws`) |
+| `custom-class-name` | `string` | `''` | Custom CSS class |
 | `debug` | `string \| boolean` | `''` | Debug mode |
 
 ## Events
@@ -239,6 +255,19 @@ Fired when all items in the section are completed.
 ### `player-error`
 
 Fired when an error occurs.
+
+### `session-changed`
+
+Fired when an item session changes. Includes the current canonical `testAttemptSession` snapshot so hosts can decide when/how to persist to pie backend.
+
+```javascript
+player.addEventListener("session-changed", (e) => {
+  const { itemId, session, testAttemptSession } = e.detail;
+
+  // Host decides persistence strategy to ../../kds/pie-api-aws
+  // (immediate, debounced, checkpoint, submit).
+});
+```
 
 ## Performance Optimization
 
@@ -354,6 +383,8 @@ Passages are automatically deduplicated by ID.
 ## Assessment Toolkit Integration
 
 The section player integrates with the [PIE Assessment Toolkit](../assessment-toolkit/) for centralized service management via **ToolkitCoordinator**.
+
+The section player remains backend-agnostic by design. Hosts load `activityDefinition`/`activitySession` (pie backend), pass state into the player, then listen to `session-changed` and persist updates using host-owned API logic.
 
 ### Using ToolkitCoordinator (Recommended)
 
@@ -547,12 +578,12 @@ The web component uses Shadow DOM mode `'none'`, so you can style it with global
   margin: 0 auto;
 }
 
-.pie-section-player .section-passages {
+.pie-section-player .pie-section-player__passages-section {
   background: #f5f5f5;
   padding: 1rem;
 }
 
-.pie-section-player .item-container {
+.pie-section-player .pie-section-player__item-content {
   border: 1px solid #ddd;
   margin-bottom: 1rem;
 }

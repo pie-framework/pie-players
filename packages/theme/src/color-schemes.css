@@ -1,0 +1,333 @@
+/* PIE Color Scheme System - Learnosity-compatible industry standards for K-12 assessments
+ *
+ * These color schemes are based on Learnosity's WCAG 2.1 Level AA audited palettes,
+ * widely used in educational assessment platforms.
+ *
+ * All schemes meet WCAG contrast requirements:
+ * - Normal text: 4.5:1 minimum
+ * - Large text: 3:1 minimum
+ * - UI components: 3:1 minimum
+ *
+ * Usage: Apply data-color-scheme attribute to document root or pie-player element
+ * Example: <html data-color-scheme="white-on-black">
+ */
+
+/* Default color scheme */
+:root {
+	/* Base colors */
+	--pie-text: black;
+	--pie-disabled: grey;
+	--pie-disabled-secondary: #ababab;
+
+	/* Feedback colors */
+	--pie-correct: #4caf50;
+	--pie-correct-secondary: #e8f5e9;
+	--pie-correct-tertiary: #0ea449;
+	--pie-correct-icon: #087d38;
+	--pie-incorrect: #ff9800;
+	--pie-incorrect-secondary: #ffebee;
+	--pie-incorrect-icon: #bf0d00;
+	--pie-missing: #d32f2f;
+	--pie-missing-icon: #6a78a1;
+
+	/* Primary colors */
+	--pie-primary: #3f51b5;
+	--pie-primary-light: #9fa8da;
+	--pie-primary-dark: #283593;
+	--pie-faded-primary: #dcdafb;
+
+	/* Secondary colors */
+	--pie-secondary: #f50057;
+	--pie-secondary-light: #f48fb1;
+	--pie-secondary-dark: #880e4f;
+
+	/* Tertiary colors */
+	--pie-tertiary: #146eb3;
+	--pie-tertiary-light: #d0e2f0;
+
+	/* Background colors */
+	--pie-background: rgba(255, 255, 255, 0);
+	--pie-background-dark: #ecedf1;
+	--pie-secondary-background: rgba(241, 241, 241, 1);
+	--pie-dropdown-background: #e0e1e6;
+
+	/* Border colors */
+	--pie-border: #9a9a9a;
+	--pie-border-light: #d1d1d1;
+	--pie-border-dark: #646464;
+	--pie-border-gray: #7e8494;
+
+	/* Absolute colors */
+	--pie-black: #000000;
+	--pie-white: #ffffff;
+
+	/* Focus colors (accessibility) */
+	--pie-focus-checked: #bbdefb;
+	--pie-focus-checked-border: #1565c0;
+	--pie-focus-unchecked: #e0e0e0;
+	--pie-focus-unchecked-border: #757575;
+
+	/* Blue grey colors (tokens) */
+	--pie-blue-grey-100: #f3f5f7;
+	--pie-blue-grey-300: #c0c3cf;
+	--pie-blue-grey-600: #7e8494;
+	--pie-blue-grey-900: #152452;
+}
+
+/* Black on White - Learnosity standard */
+[data-color-scheme="black-on-white"] {
+	--pie-text: #000000;
+	--pie-disabled: #666666;
+	--pie-disabled-secondary: #888888;
+	--pie-correct: #006600;
+	--pie-correct-secondary: #ccffcc;
+	--pie-correct-tertiary: #008800;
+	--pie-correct-icon: #004400;
+	--pie-incorrect: #cc0000;
+	--pie-incorrect-secondary: #ffcccc;
+	--pie-incorrect-icon: #990000;
+	--pie-missing: #cc0000;
+	--pie-missing-icon: #000099;
+	--pie-primary: #0000cc;
+	--pie-primary-light: #6666ff;
+	--pie-primary-dark: #000088;
+	--pie-faded-primary: #ccccff;
+	--pie-secondary: #cc0066;
+	--pie-secondary-light: #ff99cc;
+	--pie-secondary-dark: #990044;
+	--pie-tertiary: #006699;
+	--pie-tertiary-light: #99ccff;
+	--pie-background: #ffffff;
+	--pie-background-dark: #f5f5f5;
+	--pie-secondary-background: #eeeeee;
+	--pie-dropdown-background: #e0e0e0;
+	--pie-border: #000000;
+	--pie-border-light: #666666;
+	--pie-border-dark: #000000;
+	--pie-border-gray: #555555;
+	--pie-black: #000000;
+	--pie-white: #ffffff;
+	--pie-focus-checked: #0066ff;
+	--pie-focus-checked-border: #0000cc;
+	--pie-focus-unchecked: #cccccc;
+	--pie-focus-unchecked-border: #000000;
+	--pie-blue-grey-100: #f5f5f5;
+	--pie-blue-grey-300: #cccccc;
+	--pie-blue-grey-600: #666666;
+	--pie-blue-grey-900: #000000;
+}
+
+/* White on Black - Learnosity standard */
+[data-color-scheme="white-on-black"] {
+	--pie-text: #ffffff;
+	--pie-disabled: #999999;
+	--pie-disabled-secondary: #777777;
+	--pie-correct: #00ff00;
+	--pie-correct-secondary: #003300;
+	--pie-correct-tertiary: #00cc00;
+	--pie-correct-icon: #00ff00;
+	--pie-incorrect: #ff3333;
+	--pie-incorrect-secondary: #330000;
+	--pie-incorrect-icon: #ff0000;
+	--pie-missing: #ff6666;
+	--pie-missing-icon: #6666ff;
+	--pie-primary: #ffff00;
+	--pie-primary-light: #ffff99;
+	--pie-primary-dark: #cccc00;
+	--pie-faded-primary: #666600;
+	--pie-secondary: #ff00ff;
+	--pie-secondary-light: #ff99ff;
+	--pie-secondary-dark: #cc00cc;
+	--pie-tertiary: #00ffff;
+	--pie-tertiary-light: #99ffff;
+	--pie-background: #000000;
+	--pie-background-dark: #1a1a1a;
+	--pie-secondary-background: #222222;
+	--pie-dropdown-background: #2a2a2a;
+	--pie-border: #ffffff;
+	--pie-border-light: #cccccc;
+	--pie-border-dark: #ffffff;
+	--pie-border-gray: #aaaaaa;
+	--pie-black: #ffffff;
+	--pie-white: #000000;
+	--pie-focus-checked: #ffff00;
+	--pie-focus-checked-border: #ffff00;
+	--pie-focus-unchecked: #666666;
+	--pie-focus-unchecked-border: #ffffff;
+	--pie-blue-grey-100: #2a2a2a;
+	--pie-blue-grey-300: #555555;
+	--pie-blue-grey-600: #999999;
+	--pie-blue-grey-900: #ffffff;
+}
+
+/* Rose on Green - Learnosity standard (protanopia/deuteranopia friendly) */
+[data-color-scheme="rose-on-green"] {
+	--pie-text: #3d0022;
+	--pie-disabled: #996677;
+	--pie-disabled-secondary: #bb8899;
+	--pie-correct: #004400;
+	--pie-correct-secondary: #aaffaa;
+	--pie-correct-tertiary: #006600;
+	--pie-correct-icon: #003300;
+	--pie-incorrect: #aa0044;
+	--pie-incorrect-secondary: #ffccdd;
+	--pie-incorrect-icon: #880033;
+	--pie-missing: #aa0044;
+	--pie-missing-icon: #440044;
+	--pie-primary: #660044;
+	--pie-primary-light: #cc6699;
+	--pie-primary-dark: #440033;
+	--pie-faded-primary: #ddbbcc;
+	--pie-secondary: #880055;
+	--pie-secondary-light: #dd99bb;
+	--pie-secondary-dark: #550033;
+	--pie-tertiary: #770044;
+	--pie-tertiary-light: #dd99bb;
+	--pie-background: #ccffcc;
+	--pie-background-dark: #aaeedd;
+	--pie-secondary-background: #99ddbb;
+	--pie-dropdown-background: #88cc99;
+	--pie-border: #3d0022;
+	--pie-border-light: #663344;
+	--pie-border-dark: #220011;
+	--pie-border-gray: #664455;
+	--pie-black: #000000;
+	--pie-white: #ccffcc;
+	--pie-focus-checked: #880055;
+	--pie-focus-checked-border: #660044;
+	--pie-focus-unchecked: #aaddbb;
+	--pie-focus-unchecked-border: #3d0022;
+	--pie-blue-grey-100: #ccffdd;
+	--pie-blue-grey-300: #99ddbb;
+	--pie-blue-grey-600: #668877;
+	--pie-blue-grey-900: #3d0022;
+}
+
+/* Yellow on Blue - Learnosity standard */
+[data-color-scheme="yellow-on-blue"] {
+	--pie-text: #ffff00;
+	--pie-disabled: #9999aa;
+	--pie-disabled-secondary: #aaaacc;
+	--pie-correct: #00ff00;
+	--pie-correct-secondary: #003333;
+	--pie-correct-tertiary: #00cc00;
+	--pie-correct-icon: #00ff00;
+	--pie-incorrect: #ff6666;
+	--pie-incorrect-secondary: #331111;
+	--pie-incorrect-icon: #ff3333;
+	--pie-missing: #ff6666;
+	--pie-missing-icon: #99ff99;
+	--pie-primary: #ffff66;
+	--pie-primary-light: #ffffaa;
+	--pie-primary-dark: #cccc00;
+	--pie-faded-primary: #666633;
+	--pie-secondary: #ffaa00;
+	--pie-secondary-light: #ffcc66;
+	--pie-secondary-dark: #cc8800;
+	--pie-tertiary: #ffee00;
+	--pie-tertiary-light: #ffff99;
+	--pie-background: #000066;
+	--pie-background-dark: #000055;
+	--pie-secondary-background: #000044;
+	--pie-dropdown-background: #000033;
+	--pie-border: #ffff00;
+	--pie-border-light: #aaaa66;
+	--pie-border-dark: #cccc00;
+	--pie-border-gray: #8888aa;
+	--pie-black: #ffff00;
+	--pie-white: #000066;
+	--pie-focus-checked: #ffff00;
+	--pie-focus-checked-border: #cccc00;
+	--pie-focus-unchecked: #333366;
+	--pie-focus-unchecked-border: #ffff00;
+	--pie-blue-grey-100: #000055;
+	--pie-blue-grey-300: #333377;
+	--pie-blue-grey-600: #6666aa;
+	--pie-blue-grey-900: #ffff00;
+}
+
+/* Black on Rose - Learnosity standard */
+[data-color-scheme="black-on-rose"] {
+	--pie-text: #000000;
+	--pie-disabled: #666666;
+	--pie-disabled-secondary: #888888;
+	--pie-correct: #006600;
+	--pie-correct-secondary: #ccffcc;
+	--pie-correct-tertiary: #008800;
+	--pie-correct-icon: #004400;
+	--pie-incorrect: #990000;
+	--pie-incorrect-secondary: #ffdddd;
+	--pie-incorrect-icon: #770000;
+	--pie-missing: #990000;
+	--pie-missing-icon: #000099;
+	--pie-primary: #880044;
+	--pie-primary-light: #dd6699;
+	--pie-primary-dark: #550033;
+	--pie-faded-primary: #ffccdd;
+	--pie-secondary: #aa0055;
+	--pie-secondary-light: #ff99cc;
+	--pie-secondary-dark: #770033;
+	--pie-tertiary: #990044;
+	--pie-tertiary-light: #ffaacc;
+	--pie-background: #ffccdd;
+	--pie-background-dark: #ffb3cc;
+	--pie-secondary-background: #ff99bb;
+	--pie-dropdown-background: #ff88aa;
+	--pie-border: #000000;
+	--pie-border-light: #555555;
+	--pie-border-dark: #000000;
+	--pie-border-gray: #444444;
+	--pie-black: #000000;
+	--pie-white: #ffccdd;
+	--pie-focus-checked: #880044;
+	--pie-focus-checked-border: #550033;
+	--pie-focus-unchecked: #ffddee;
+	--pie-focus-unchecked-border: #000000;
+	--pie-blue-grey-100: #ffeef5;
+	--pie-blue-grey-300: #ffccdd;
+	--pie-blue-grey-600: #cc6688;
+	--pie-blue-grey-900: #000000;
+}
+
+/* Light Gray on Dark Gray - Learnosity standard */
+[data-color-scheme="light-gray-on-dark-gray"] {
+	--pie-text: #e0e0e0;
+	--pie-disabled: #999999;
+	--pie-disabled-secondary: #888888;
+	--pie-correct: #00cc00;
+	--pie-correct-secondary: #003300;
+	--pie-correct-tertiary: #00aa00;
+	--pie-correct-icon: #00ff00;
+	--pie-incorrect: #ff4444;
+	--pie-incorrect-secondary: #331111;
+	--pie-incorrect-icon: #ff0000;
+	--pie-missing: #ff6666;
+	--pie-missing-icon: #6666ff;
+	--pie-primary: #aaaaaa;
+	--pie-primary-light: #cccccc;
+	--pie-primary-dark: #888888;
+	--pie-faded-primary: #555555;
+	--pie-secondary: #bbbbbb;
+	--pie-secondary-light: #dddddd;
+	--pie-secondary-dark: #999999;
+	--pie-tertiary: #cccccc;
+	--pie-tertiary-light: #eeeeee;
+	--pie-background: #333333;
+	--pie-background-dark: #2a2a2a;
+	--pie-secondary-background: #222222;
+	--pie-dropdown-background: #1a1a1a;
+	--pie-border: #e0e0e0;
+	--pie-border-light: #cccccc;
+	--pie-border-dark: #ffffff;
+	--pie-border-gray: #aaaaaa;
+	--pie-black: #e0e0e0;
+	--pie-white: #333333;
+	--pie-focus-checked: #cccccc;
+	--pie-focus-checked-border: #aaaaaa;
+	--pie-focus-unchecked: #555555;
+	--pie-focus-unchecked-border: #e0e0e0;
+	--pie-blue-grey-100: #2a2a2a;
+	--pie-blue-grey-300: #555555;
+	--pie-blue-grey-600: #999999;
+	--pie-blue-grey-900: #e0e0e0;
+}

@@ -167,7 +167,7 @@ async function start() {
 
 		console.log("\n📝 Next steps:");
 		console.log("   Publish packages: bun run registry:publish");
-		console.log("   Run demos: bun run dev:demo assessment-player");
+		console.log("   Run package server demos: bun run dev:demo");
 	} else {
 		console.error("\n❌ Verdaccio started but is not responding");
 		console.error("📝 Check logs: bun run registry:logs");

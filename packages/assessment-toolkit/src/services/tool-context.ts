@@ -202,27 +202,107 @@ export function isElementContext(
  */
 export function extractTextContent(context: ToolContext): string {
 	if (isElementContext(context)) {
-		// Extract text from specific element in the config
 		const config = context.item.config;
 		if (!config) return "";
+		const textChunks: string[] = [];
+		const stripHtml = (value: string) => value.replace(/<[^>]*>/g, " ").trim();
 
-		// Try to find element markup
+		// Try to find element markup by element id.
 		const elementMarkup = config.elements?.[context.elementId];
 		if (elementMarkup) {
-			// Strip HTML tags for text analysis
-			return elementMarkup.replace(/<[^>]*>/g, " ").trim();
+			if (typeof elementMarkup === "string") {
+				textChunks.push(stripHtml(elementMarkup));
+			}
 		}
-		return "";
+
+		// Also inspect model data keyed by this element id.
+		// In many items, math appears in model.prompt/labels rather than elements[elementId].
+		const modelsRaw = config.models;
+		const models = Array.isArray(modelsRaw)
+			? modelsRaw
+			: modelsRaw && typeof modelsRaw === "object"
+				? Object.values(modelsRaw as Record<string, unknown>)
+				: [];
+		const model = models.find(
+			(m: any) => m && typeof m === "object" && m.id === context.elementId,
+		) as Record<string, unknown> | undefined;
+		if (model) {
+			for (const value of Object.values(model)) {
+				if (typeof value === "string") {
+					textChunks.push(stripHtml(value));
+				}
+				if (Array.isArray(value)) {
+					for (const entry of value) {
+						if (entry && typeof entry === "object") {
+							for (const nested of Object.values(
+								entry as Record<string, unknown>,
+							)) {
+								if (typeof nested === "string") {
+									textChunks.push(stripHtml(nested));
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+		return textChunks.filter(Boolean).join(" ").trim();
 	}
 
 	if (isItemContext(context)) {
 		const item = context.item;
 		if (!item?.config) return "";
 
-		// Extract all markup from config
-		const markup = item.config.markup || "";
-		// Strip HTML tags
-		return markup.replace(/<[^>]*>/g, " ").trim();
+		const config = item.config as Record<string, unknown>;
+		const textChunks: string[] = [];
+		const stripHtml = (value: string) => value.replace(/<[^>]*>/g, " ").trim();
+
+		// Primary item markup
+		if (typeof config.markup === "string") {
+			textChunks.push(stripHtml(config.markup));
+		}
+
+		// Element markup snippets
+		const elements = config.elements as Record<string, unknown> | undefined;
+		if (elements && typeof elements === "object") {
+			for (const elementMarkup of Object.values(elements)) {
+				if (typeof elementMarkup === "string") {
+					textChunks.push(stripHtml(elementMarkup));
+				}
+			}
+		}
+
+		// Model-level text (prompts, labels, etc.)
+		const modelsRaw = config.models;
+		const models = Array.isArray(modelsRaw)
+			? modelsRaw
+			: modelsRaw && typeof modelsRaw === "object"
+				? Object.values(modelsRaw as Record<string, unknown>)
+				: [];
+		for (const model of models) {
+			if (!model || typeof model !== "object") continue;
+			for (const value of Object.values(model as Record<string, unknown>)) {
+				if (typeof value === "string") {
+					textChunks.push(stripHtml(value));
+				}
+				if (Array.isArray(value)) {
+					for (const entry of value) {
+						if (entry && typeof entry === "object") {
+							for (const nested of Object.values(
+								entry as Record<string, unknown>,
+							)) {
+								if (typeof nested === "string") {
+									textChunks.push(stripHtml(nested));
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+		return textChunks.filter(Boolean).join(" ").trim();
 	}
 
 	if (isPassageContext(context)) {
@@ -275,29 +355,46 @@ export function hasMathContent(context: ToolContext): boolean {
  * Helper to check if context contains choice-based interactions
  */
 export function hasChoiceInteraction(context: ToolContext): boolean {
+	const interactionTypes = [
+		"pie-multiple-choice",
+		"pie-inline-choice",
+		"pie-select-text",
+		"multiple-choice",
+		"inline-choice",
+		"select-text",
+	];
+
 	if (isElementContext(context)) {
 		const config = context.item.config;
 		if (!config?.models) return false;
 
 		// Find model for this element
-		const model = config.models.find((m) => m.id === context.elementId);
+		const models = Array.isArray(config.models)
+			? config.models
+			: Object.values(config.models as Record<string, unknown>);
+		const model = models.find(
+			(m: any) => m && typeof m === "object" && m.id === context.elementId,
+		);
 		if (!model) return false;
 
-		const type = model.element || "";
-		return [
-			"pie-multiple-choice",
-			"pie-inline-choice",
-			"pie-select-text",
-		].includes(type);
+		const type = (model as any).element || "";
+		return interactionTypes.includes(type);
 	}
 
 	if (isItemContext(context)) {
-		const models = context.item.config?.models || [];
-		return models.some((m) =>
-			["pie-multiple-choice", "pie-inline-choice", "pie-select-text"].includes(
-				m.element || "",
-			),
-		);
+		const modelsRaw = context.item.config?.models;
+		const models = Array.isArray(modelsRaw)
+			? modelsRaw
+			: modelsRaw && typeof modelsRaw === "object"
+				? Object.values(modelsRaw as Record<string, unknown>)
+				: [];
+		return models.some((m: any) => {
+			if (!m || typeof m !== "object") return false;
+			const type = m.element || "";
+			if (interactionTypes.includes(type)) return true;
+			// Fallback for configs that don't provide canonical element names.
+			return Array.isArray(m.choices) && m.choices.length > 0;
+		});
 	}
 
 	return false;

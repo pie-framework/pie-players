@@ -138,9 +138,11 @@
 			root.setAttribute('data-color-scheme', schemeId);
 		}
 
-		// Also apply to pie-player elements
-		const piePlayers = document.querySelectorAll('pie-player');
-		piePlayers.forEach(player => {
+		// Also mirror on all player host elements
+		const piePlayers = document.querySelectorAll(
+			'pie-player, pie-inline-player, pie-iife-player, pie-fixed-player, pie-esm-player, pie-section-player',
+		);
+		piePlayers.forEach((player) => {
 			if (schemeId === 'default') {
 				player.removeAttribute('data-color-scheme');
 			} else {
@@ -187,7 +189,7 @@
 		} else if (dropdownOpen && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
 			// Handle arrow key navigation in dropdown
 			e.preventDefault();
-			const options = containerEl?.querySelectorAll('.color-scheme-tool__option:not([disabled])') as NodeListOf<HTMLButtonElement>;
+			const options = containerEl?.querySelectorAll('.pie-tool-color-scheme__option:not([disabled])') as NodeListOf<HTMLButtonElement>;
 			if (!options || options.length === 0) return;
 
 			const currentIndex = Array.from(options).findIndex(opt => opt === document.activeElement);
@@ -231,8 +233,8 @@
 	onMount(() => {
 		// Load saved scheme from localStorage safely
 		if (browser) {
-			const saved = safeLocalStorageGet<string>('pie-color-scheme', 'default');
-			if (saved && saved !== 'default') {
+			const saved = safeLocalStorageGet('pie-color-scheme') ?? 'default';
+			if (saved !== 'default') {
 				currentScheme = saved;
 				// Use requestAnimationFrame to ensure DOM and styles are ready
 				requestAnimationFrame(() => {
@@ -245,7 +247,7 @@
 		function handleClickOutside(e: MouseEvent) {
 			if (!dropdownOpen) return;
 			const target = e.target as HTMLElement;
-			if (!target.closest('.color-scheme-tool')) {
+			if (!target.closest('.pie-tool-color-scheme')) {
 				dropdownOpen = false;
 			}
 		}
@@ -262,12 +264,12 @@
 </script>
 
 {#if visible}
-	<div bind:this={containerEl} class="color-scheme-tool" role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="color-scheme-title" onkeydown={handleKeyDown}>
-		<div class="color-scheme-tool__header">
-			<h3 id="color-scheme-title" class="color-scheme-tool__title">Color Scheme</h3>
+	<div bind:this={containerEl} class="pie-tool-color-scheme" role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="color-scheme-title" onkeydown={handleKeyDown}>
+		<div class="pie-tool-color-scheme__header">
+			<h3 id="color-scheme-title" class="pie-tool-color-scheme__title">Color Scheme</h3>
 			<button
 				type="button"
-				class="color-scheme-tool__close"
+				class="pie-tool-color-scheme__close"
 				onclick={handleClose}
 				aria-label="Close color scheme selector"
 			>
@@ -275,59 +277,59 @@
 			</button>
 		</div>
 
-		<div class="color-scheme-tool__content">
-			<p class="color-scheme-tool__description">
+		<div class="pie-tool-color-scheme__content">
+			<p class="pie-tool-color-scheme__description">
 				Select a color scheme to improve readability and reduce eye strain.
 			</p>
 
 			<button
 				type="button"
-				class="color-scheme-tool__dropdown-trigger"
+				class="pie-tool-color-scheme__dropdown-trigger"
 				aria-label="Select color scheme"
 				aria-expanded={dropdownOpen}
 				onclick={toggleDropdown}
 			>
-				<div class="color-scheme-tool__current">
-					<div class="color-scheme-tool__preview">
-						<div class="color-scheme-tool__preview-bg" style="background-color: {currentSchemeObj.preview.bg}">
-							<div class="color-scheme-tool__preview-text" style="color: {currentSchemeObj.preview.text}">A</div>
-							<div class="color-scheme-tool__preview-primary" style="background-color: {currentSchemeObj.preview.primary}"></div>
+				<div class="pie-tool-color-scheme__current">
+					<div class="pie-tool-color-scheme__preview">
+						<div class="pie-tool-color-scheme__preview-bg" style="background-color: {currentSchemeObj.preview.bg}">
+							<div class="pie-tool-color-scheme__preview-text" style="color: {currentSchemeObj.preview.text}">A</div>
+							<div class="pie-tool-color-scheme__preview-primary" style="background-color: {currentSchemeObj.preview.primary}"></div>
 						</div>
 					</div>
-					<div class="color-scheme-tool__current-info">
-						<div class="color-scheme-tool__current-name">{currentSchemeObj.name}</div>
-						<div class="color-scheme-tool__current-description">{currentSchemeObj.description}</div>
+					<div class="pie-tool-color-scheme__current-info">
+						<div class="pie-tool-color-scheme__current-name">{currentSchemeObj.name}</div>
+						<div class="pie-tool-color-scheme__current-description">{currentSchemeObj.description}</div>
 					</div>
-					<svg class="color-scheme-tool__dropdown-arrow" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+					<svg class="pie-tool-color-scheme__dropdown-arrow" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
 						<path d="M7,10L12,15L17,10H7Z"/>
 					</svg>
 				</div>
 			</button>
 
 			{#if dropdownOpen}
-				<div class="color-scheme-tool__dropdown" role="menu">
+				<div class="pie-tool-color-scheme__dropdown" role="menu">
 					{#each COLOR_SCHEMES as scheme (scheme.id)}
 						<button
 							type="button"
-							class="color-scheme-tool__option"
-							class:color-scheme-tool__option--active={currentScheme === scheme.id}
+							class="pie-tool-color-scheme__option"
+							class:pie-tool-color-scheme__option--active={currentScheme === scheme.id}
 							role="menuitem"
 							aria-label={scheme.name}
 							aria-current={currentScheme === scheme.id}
 							onclick={() => selectScheme(scheme.id)}
 						>
-							<div class="color-scheme-tool__preview">
-								<div class="color-scheme-tool__preview-bg" style="background-color: {scheme.preview.bg}">
-									<div class="color-scheme-tool__preview-text" style="color: {scheme.preview.text}">A</div>
-									<div class="color-scheme-tool__preview-primary" style="background-color: {scheme.preview.primary}"></div>
+							<div class="pie-tool-color-scheme__preview">
+								<div class="pie-tool-color-scheme__preview-bg" style="background-color: {scheme.preview.bg}">
+									<div class="pie-tool-color-scheme__preview-text" style="color: {scheme.preview.text}">A</div>
+									<div class="pie-tool-color-scheme__preview-primary" style="background-color: {scheme.preview.primary}"></div>
 								</div>
 							</div>
-							<div class="color-scheme-tool__info">
-								<div class="color-scheme-tool__name">{scheme.name}</div>
-								<div class="color-scheme-tool__description">{scheme.description}</div>
+							<div class="pie-tool-color-scheme__info">
+								<div class="pie-tool-color-scheme__name">{scheme.name}</div>
+								<div class="pie-tool-color-scheme__description">{scheme.description}</div>
 							</div>
 							{#if currentScheme === scheme.id}
-								<svg xmlns="http://www.w3.org/2000/svg" class="color-scheme-tool__check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+								<svg xmlns="http://www.w3.org/2000/svg" class="pie-tool-color-scheme__check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
 									<polyline points="20 6 9 17 4 12"/>
 								</svg>
 							{/if}
@@ -340,7 +342,7 @@
 {/if}
 
 <style>
-	.color-scheme-tool {
+	.pie-tool-color-scheme {
 		position: fixed;
 		top: 50%;
 		left: 50%;
@@ -355,7 +357,7 @@
 		flex-direction: column;
 	}
 
-	.color-scheme-tool__header {
+	.pie-tool-color-scheme__header {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
@@ -363,14 +365,14 @@
 		border-bottom: 2px solid var(--pie-border, #ccc);
 	}
 
-	.color-scheme-tool__title {
+	.pie-tool-color-scheme__title {
 		font-size: 1.25rem;
 		font-weight: 700;
 		color: var(--pie-text, black);
 		margin: 0;
 	}
 
-	.color-scheme-tool__close {
+	.pie-tool-color-scheme__close {
 		width: 2rem;
 		height: 2rem;
 		border: none;
@@ -382,11 +384,11 @@
 		border-radius: 0.25rem;
 	}
 
-	.color-scheme-tool__close:hover {
+	.pie-tool-color-scheme__close:hover {
 		background-color: var(--pie-secondary-background, #f0f0f0);
 	}
 
-	.color-scheme-tool__content {
+	.pie-tool-color-scheme__content {
 		padding: 1rem;
 		position: relative;
 		display: flex;
@@ -394,14 +396,14 @@
 		gap: 1rem;
 	}
 
-	.color-scheme-tool__description {
+	.pie-tool-color-scheme__description {
 		margin: 0 0 1rem 0;
 		color: var(--pie-text, black);
 		opacity: 0.7;
 		font-size: 0.875rem;
 	}
 
-	.color-scheme-tool__dropdown-trigger {
+	.pie-tool-color-scheme__dropdown-trigger {
 		width: 100%;
 		padding: 0.75rem;
 		border: 2px solid var(--pie-border, #ccc);
@@ -412,40 +414,40 @@
 		transition: all 0.15s ease;
 	}
 
-	.color-scheme-tool__dropdown-trigger:hover {
+	.pie-tool-color-scheme__dropdown-trigger:hover {
 		background-color: var(--pie-secondary-background, #f0f0f0);
 	}
 
-	.color-scheme-tool__current {
+	.pie-tool-color-scheme__current {
 		display: flex;
 		align-items: center;
 		gap: 0.75rem;
 	}
 
-	.color-scheme-tool__current-info {
+	.pie-tool-color-scheme__current-info {
 		flex: 1;
 		text-align: left;
 	}
 
-	.color-scheme-tool__current-name {
+	.pie-tool-color-scheme__current-name {
 		font-size: 0.875rem;
 		font-weight: 600;
 		color: var(--pie-text, black);
 	}
 
-	.color-scheme-tool__current-description {
+	.pie-tool-color-scheme__current-description {
 		font-size: 0.75rem;
 		color: var(--pie-text, black);
 		opacity: 0.6;
 	}
 
-	.color-scheme-tool__dropdown-arrow {
+	.pie-tool-color-scheme__dropdown-arrow {
 		width: 1.5rem;
 		height: 1.5rem;
 		flex-shrink: 0;
 	}
 
-	.color-scheme-tool__dropdown {
+	.pie-tool-color-scheme__dropdown {
 		position: relative;
 		width: 100%;
 		max-height: 24rem;
@@ -458,7 +460,7 @@
 		margin-top: 0.5rem;
 	}
 
-	.color-scheme-tool__option {
+	.pie-tool-color-scheme__option {
 		display: flex;
 		align-items: center;
 		gap: 0.75rem;
@@ -472,15 +474,15 @@
 		transition: background-color 0.15s ease;
 	}
 
-	.color-scheme-tool__option:hover {
+	.pie-tool-color-scheme__option:hover {
 		background-color: var(--pie-secondary-background, rgba(0, 0, 0, 0.05));
 	}
 
-	.color-scheme-tool__option--active {
+	.pie-tool-color-scheme__option--active {
 		background-color: var(--pie-primary-light, rgba(63, 81, 181, 0.1));
 	}
 
-	.color-scheme-tool__preview {
+	.pie-tool-color-scheme__preview {
 		flex-shrink: 0;
 		width: 2.5rem;
 		height: 2.5rem;
@@ -489,7 +491,7 @@
 		overflow: hidden;
 	}
 
-	.color-scheme-tool__preview-bg {
+	.pie-tool-color-scheme__preview-bg {
 		width: 100%;
 		height: 100%;
 		position: relative;
@@ -498,12 +500,12 @@
 		justify-content: center;
 	}
 
-	.color-scheme-tool__preview-text {
+	.pie-tool-color-scheme__preview-text {
 		font-weight: 700;
 		font-size: 1.25rem;
 	}
 
-	.color-scheme-tool__preview-primary {
+	.pie-tool-color-scheme__preview-primary {
 		position: absolute;
 		bottom: 0;
 		right: 0;
@@ -512,24 +514,24 @@
 		border-radius: 50%;
 	}
 
-	.color-scheme-tool__info {
+	.pie-tool-color-scheme__info {
 		flex: 1;
 	}
 
-	.color-scheme-tool__name {
+	.pie-tool-color-scheme__name {
 		font-size: 0.875rem;
 		font-weight: 600;
 		color: var(--pie-text, black);
 		line-height: 1.25;
 	}
 
-	.color-scheme-tool__description {
+	.pie-tool-color-scheme__description {
 		font-size: 0.75rem;
 		color: var(--pie-text, black);
 		opacity: 0.6;
 	}
 
-	.color-scheme-tool__check {
+	.pie-tool-color-scheme__check {
 		flex-shrink: 0;
 		width: 1rem;
 		height: 1rem;
@@ -537,9 +539,9 @@
 	}
 
 	/* Keyboard focus styling */
-	.color-scheme-tool__close:focus-visible,
-	.color-scheme-tool__dropdown-trigger:focus-visible,
-	.color-scheme-tool__option:focus-visible {
+	.pie-tool-color-scheme__close:focus-visible,
+	.pie-tool-color-scheme__dropdown-trigger:focus-visible,
+	.pie-tool-color-scheme__option:focus-visible {
 		outline: 2px solid var(--pie-primary, #3f51b5);
 		outline-offset: 2px;
 	}

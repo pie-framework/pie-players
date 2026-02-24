@@ -6,7 +6,8 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/pie-framework/pie-players.git"
+		"url": "git+https://github.com/pie-framework/pie-players.git",
+		"directory": "packages/esm-player"
 	},
 	"publishConfig": {
 		"access": "public"
@@ -47,5 +48,13 @@
 		"typescript": "^5.9.3",
 		"vite": "^7.3.1",
 		"vite-plugin-dts": "^4.5.4"
-	}
+	},
+	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/esm-player#readme",
+	"bugs": {
+		"url": "https://github.com/pie-framework/pie-players/issues"
+	},
+	"engines": {
+		"node": ">=18.0.0"
+	},
+	"sideEffects": true
 }

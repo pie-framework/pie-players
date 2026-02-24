@@ -95,7 +95,7 @@ const coordinator = new ToolCoordinator();
 The tool creates a deep clone of the content specified by `magnifyRootSelector` and:
 
 1. Preserves scroll positions of all scrollable elements
-2. Removes elements with `.magnifier-clone-ignore` class or `[data-magnifier-ignore]` attribute
+2. Removes elements with `.pie-tool-magnifier__clone-ignore` class or `[data-magnifier-ignore]` attribute
 3. Applies scaling and positioning transforms
 4. Updates on scroll events (debounced)
 
@@ -115,7 +115,7 @@ The tool uses PIE's ZIndexLayer system:
 
 ### Preventing Self-Magnification
 
-The tool adds `.magnifier-clone-ignore` class and `[data-magnifier-ignore]` attribute to its own frame to prevent recursive magnification.
+The tool adds `.pie-tool-magnifier__clone-ignore` class and `[data-magnifier-ignore]` attribute to its own frame to prevent recursive magnification.
 
 ## Browser Compatibility
 

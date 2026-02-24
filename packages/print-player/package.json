@@ -48,5 +48,13 @@
 	"license": "MIT",
 	"publishConfig": {
 		"access": "public"
-	}
+	},
+	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/print-player#readme",
+	"bugs": {
+		"url": "https://github.com/pie-framework/pie-players/issues"
+	},
+	"engines": {
+		"node": ">=18.0.0"
+	},
+	"sideEffects": true
 }

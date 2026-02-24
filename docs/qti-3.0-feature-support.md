@@ -345,7 +345,7 @@ class TTSService {
 - ✅ [Integration Guide](./accessibility-catalogs-integration-guide.md) - Complete implementation guide
 - ✅ [Quick Start](./accessibility-catalogs-quick-start.md) - Developer quick start
 - ✅ [Implementation Roadmap](./accessibility-catalogs-implementation-roadmap.md) - 6-8 week plan
-- ✅ [Examples](../apps/example/src/lib/accessibility-catalog-examples.ts) - Comprehensive examples
+- ✅ [Quick Start Examples](./accessibility-catalogs-quick-start.md) - Comprehensive examples
 
 ### Use Case Priority
 

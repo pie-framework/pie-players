@@ -97,18 +97,25 @@
 
 			// Find target container
 			// First check if button is in a header with a sibling content div
-			const header = containerEl?.closest('.passage-header, .item-header');
+			const header = containerEl?.closest(
+				'.pie-section-player__passage-header, .pie-section-player__item-header'
+			);
 			let targetContainer: Element | null = null;
 
 			if (header) {
 				// Look for sibling content div
 				const parent = header.parentElement;
-				targetContainer = parent?.querySelector('.passage-content, .item-content') || null;
+				targetContainer =
+					parent?.querySelector(
+						'.pie-section-player__passage-content, .pie-section-player__item-content'
+					) || null;
 			}
 
 			// Fallback: look up the parent chain
 			if (!targetContainer) {
-				targetContainer = containerEl?.closest('.passage-content, .item-content') || null;
+				targetContainer = containerEl?.closest(
+					'.pie-section-player__passage-content, .pie-section-player__item-content'
+				) || null;
 			}
 
 			if (!targetContainer) {
@@ -185,18 +192,18 @@
 
 	// Size classes
 	const sizeClass = $derived(
-		size === 'sm' ? 'tts-inline--sm' : size === 'lg' ? 'tts-inline--lg' : 'tts-inline--md'
+		size === 'sm' ? 'pie-tool-tts-inline__button--sm' : size === 'lg' ? 'pie-tool-tts-inline__button--lg' : 'pie-tool-tts-inline__button--md'
 	);
 </script>
 
 {#if isBrowser}
-	<div bind:this={containerEl} class="tts-inline-controls">
+	<div bind:this={containerEl} class="pie-tool-tts-inline">
 		<!-- Play/Pause Button -->
 		<button
 			type="button"
-			class="tts-inline {sizeClass}"
-			class:tts-inline--speaking={speaking}
-			class:tts-inline--paused={paused}
+			class="pie-tool-tts-inline__button {sizeClass}"
+			class:pie-tool-tts-inline__button--speaking={speaking}
+			class:pie-tool-tts-inline__button--paused={paused}
 			onclick={handlePlayPause}
 			aria-label={paused ? 'Resume reading' : speaking ? 'Pause reading' : 'Read aloud'}
 			aria-pressed={speaking || paused}
@@ -207,7 +214,7 @@
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
 					viewBox="0 0 24 24"
-					class="tts-inline__icon"
+					class="pie-tool-tts-inline__icon"
 					aria-hidden="true"
 				>
 					<path d="M8 5v14l11-7z" />
@@ -217,7 +224,7 @@
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
 					viewBox="0 0 24 24"
-					class="tts-inline__icon"
+					class="pie-tool-tts-inline__icon"
 					aria-hidden="true"
 				>
 					<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
@@ -227,7 +234,7 @@
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
 					viewBox="0 0 24 24"
-					class="tts-inline__icon"
+					class="pie-tool-tts-inline__icon"
 					aria-hidden="true"
 				>
 					<path
@@ -241,7 +248,7 @@
 		{#if speaking || paused}
 			<button
 				type="button"
-				class="tts-inline tts-inline--stop {sizeClass}"
+				class="pie-tool-tts-inline__button pie-tool-tts-inline__button--stop {sizeClass}"
 				onclick={handleStop}
 				aria-label="Stop reading"
 				disabled={!ttsService}
@@ -250,7 +257,7 @@
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
 					viewBox="0 0 24 24"
-					class="tts-inline__icon"
+					class="pie-tool-tts-inline__icon"
 					aria-hidden="true"
 				>
 					<path d="M6 6h12v12H6z" />
@@ -259,20 +266,20 @@
 		{/if}
 
 		<!-- Screen reader status announcements -->
-		<div class="sr-only" role="status" aria-live="polite" aria-atomic="true">
+		<div class="pie-sr-only" role="status" aria-live="polite" aria-atomic="true">
 			{statusMessage}
 		</div>
 	</div>
 {/if}
 
 <style>
-	.tts-inline-controls {
+	.pie-tool-tts-inline {
 		display: inline-flex;
 		align-items: center;
 		gap: 0.25rem;
 	}
 
-	.tts-inline {
+	.pie-tool-tts-inline__button {
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
@@ -289,96 +296,96 @@
 		position: relative;
 	}
 
-	.tts-inline:hover:not(:disabled) {
+	.pie-tool-tts-inline__button:hover:not(:disabled) {
 		background-color: var(--pie-secondary-background, #f5f5f5);
 		transform: translateY(-1px);
 		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 	}
 
-	.tts-inline:active:not(:disabled) {
+	.pie-tool-tts-inline__button:active:not(:disabled) {
 		transform: translateY(0);
 		box-shadow: none;
 	}
 
 	/* Focus indicator - WCAG 2.4.7, 2.4.13 */
-	.tts-inline:focus-visible {
+	.pie-tool-tts-inline__button:focus-visible {
 		outline: 2px solid #0066cc;
 		outline-offset: 2px;
 		box-shadow: 0 0 0 4px rgba(0, 102, 204, 0.2);
 		z-index: 1;
 	}
 
-	.tts-inline--speaking {
+	.pie-tool-tts-inline__button--speaking {
 		background-color: var(--pie-primary, #1976d2);
 		color: white;
 		border-color: var(--pie-primary, #1976d2);
 		animation: pulse 1.5s ease-in-out infinite;
 	}
 
-	.tts-inline--paused {
+	.pie-tool-tts-inline__button--paused {
 		background-color: rgba(255, 152, 0, 0.15);
 	}
 
-	.tts-inline--stop {
+	.pie-tool-tts-inline__button--stop {
 		background-color: transparent;
 	}
 
-	.tts-inline--stop:hover:not(:disabled) {
+	.pie-tool-tts-inline__button--stop:hover:not(:disabled) {
 		background-color: rgba(244, 67, 54, 0.1);
 	}
 
-	.tts-inline--stop .tts-inline__icon {
+	.pie-tool-tts-inline__button--stop .pie-tool-tts-inline__icon {
 		color: #c62828; /* Darker red for better contrast - WCAG 1.4.11 */
 	}
 
-	.tts-inline:disabled {
+	.pie-tool-tts-inline__button:disabled {
 		cursor: not-allowed;
 		opacity: 0.6;
 	}
 
 	/* Size variants */
-	.tts-inline--sm {
+	.pie-tool-tts-inline__button--sm {
 		width: 1.5rem;
 		height: 1.5rem;
 		/* Increase padding to meet 44px touch target - WCAG 2.5.2 */
 		padding: 0.625rem;
 	}
 
-	.tts-inline--sm .tts-inline__icon {
+	.pie-tool-tts-inline__button--sm .pie-tool-tts-inline__icon {
 		width: 1rem;
 		height: 1rem;
 	}
 
-	.tts-inline--md {
+	.pie-tool-tts-inline__button--md {
 		width: 2rem;
 		height: 2rem;
 	}
 
-	.tts-inline--md .tts-inline__icon {
+	.pie-tool-tts-inline__button--md .pie-tool-tts-inline__icon {
 		width: 1.25rem;
 		height: 1.25rem;
 	}
 
-	.tts-inline--lg {
+	.pie-tool-tts-inline__button--lg {
 		width: 2.5rem;
 		height: 2.5rem;
 	}
 
-	.tts-inline--lg .tts-inline__icon {
+	.pie-tool-tts-inline__button--lg .pie-tool-tts-inline__icon {
 		width: 1.5rem;
 		height: 1.5rem;
 	}
 
-	.tts-inline__icon {
+	.pie-tool-tts-inline__icon {
 		fill: currentColor;
 		color: #555;
 	}
 
-	.tts-inline:hover:not(:disabled) .tts-inline__icon {
+	.pie-tool-tts-inline__button:hover:not(:disabled) .pie-tool-tts-inline__icon {
 		color: #667eea;
 	}
 
-	.tts-inline--speaking .tts-inline__icon {
+	.pie-tool-tts-inline__button--speaking .pie-tool-tts-inline__icon {
 		color: #667eea;
 	}
 
@@ -393,7 +400,7 @@
 	}
 
 	/* Screen reader only content */
-	.sr-only {
+	.pie-sr-only {
 		position: absolute;
 		width: 1px;
 		height: 1px;
@@ -407,8 +414,8 @@
 
 	/* Accessibility */
 	@media (prefers-reduced-motion: reduce) {
-		.tts-inline,
-		.tts-inline--speaking {
+		.pie-tool-tts-inline__button,
+		.pie-tool-tts-inline__button--speaking {
 			animation: none !important;
 			transition: none !important;
 		}

@@ -22,11 +22,10 @@
 	},
 	"files": [],
 	"references": [
-		{ "path": "./apps/example" },
 		{ "path": "./apps/docs" },
 		{ "path": "./tools/cli" },
-		{ "path": "./packages/assessment-player" },
 		{ "path": "./packages/assessment-toolkit" },
+		{ "path": "./packages/default-tool-loaders" },
 		{ "path": "./packages/esm-player" },
 		{ "path": "./packages/fixed-player" },
 		{ "path": "./packages/iife-player" },

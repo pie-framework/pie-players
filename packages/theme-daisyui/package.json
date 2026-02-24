@@ -21,15 +21,14 @@
 			"types": "./dist/index.d.ts",
 			"import": "./dist/index.js"
 		},
-		"./bridge.css": "./src/bridge.css"
+		"./bridge.css": "./dist/bridge.css"
 	},
 	"files": [
 		"dist",
-		"src/*.css",
 		"README.md"
 	],
 	"scripts": {
-		"build": "tsc -p tsconfig.json",
+		"build": "tsc -p tsconfig.json && cp src/*.css dist/",
 		"dev": "tsc -p tsconfig.json --watch",
 		"typecheck": "tsc -p tsconfig.json --noEmit",
 		"lint": "biome check .",
@@ -47,6 +46,6 @@
 		"node": ">=18.0.0"
 	},
 	"sideEffects": [
-		"./src/*.css"
+		"./dist/*.css"
 	]
 }

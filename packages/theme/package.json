@@ -25,18 +25,17 @@
 			"types": "./dist/theme-element.d.ts",
 			"import": "./dist/theme-element.js"
 		},
-		"./tokens.css": "./src/tokens.css",
-		"./color-schemes.css": "./src/color-schemes.css",
-		"./font-sizes.css": "./src/font-sizes.css",
-		"./components.css": "./src/components.css"
+		"./tokens.css": "./dist/tokens.css",
+		"./color-schemes.css": "./dist/color-schemes.css",
+		"./font-sizes.css": "./dist/font-sizes.css",
+		"./components.css": "./dist/components.css"
 	},
 	"files": [
 		"dist",
-		"src/*.css",
 		"README.md"
 	],
 	"scripts": {
-		"build": "tsc -p tsconfig.json",
+		"build": "tsc -p tsconfig.json && cp src/*.css dist/",
 		"dev": "tsc -p tsconfig.json --watch",
 		"typecheck": "tsc -p tsconfig.json --noEmit",
 		"lint": "biome check .",
@@ -55,6 +54,6 @@
 	},
 	"sideEffects": [
 		"./dist/index.js",
-		"./src/*.css"
+		"./dist/*.css"
 	]
 }

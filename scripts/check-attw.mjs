@@ -13,6 +13,8 @@ const ATTW_EXCLUDED = new Set([
 	"@pie-players/pie-esm-player",
 	"@pie-players/pie-players-shared",
 	"@pie-players/pie-section-player",
+	"@pie-players/pie-theme",
+	"@pie-players/pie-theme-daisyui",
 	"@pie-players/pie-tool-annotation-toolbar",
 	"@pie-players/pie-tool-tts-inline",
 ]);

@@ -327,7 +327,7 @@ The toolkit provides six core services that work together:
 **Architecture**: Maintains tool registry with visibility state and manages z-index layers:
 - 0-999: PIE content and player chrome
 - 1000-1999: Non-modal tools (ruler, protractor, line reader)
-- 2000-2999: Modal tools (calculator, dictionary)
+- 2000-2999: Modal tools (calculator)
 - 3000-3999: Tool control handles (drag, resize)
 - 4000-4999: Highlight infrastructure (TTS, annotations)
 - 5000+: Critical overlays (errors, notifications)

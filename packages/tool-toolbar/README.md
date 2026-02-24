@@ -32,16 +32,11 @@ That's it! This gives you all tools with default configuration.
 ```svelte
 <script>
   import ToolToolbar from '$lib/tags/tool-toolbar';
-
-  function handleDictionary(detail) {
-    console.log('Dictionary lookup:', detail.text);
-  }
 </script>
 
 <ToolToolbar
   tools="protractor,ruler,lineReader,graph,periodicTable"
   position="right"
-  ondictionarylookup={handleDictionary}
 />
 ```
 
@@ -58,9 +53,7 @@ The toolbar automatically manages these tools:
 
 ### Tier 2 Tools (Text Annotation)
 - **Annotation Toolbar** - Appears on text selection
-  - Dictionary lookup
   - Translation request
-  - Picture dictionary
 
 ## Props
 
@@ -75,9 +68,7 @@ The toolbar automatically manages these tools:
 
 | Callback | Type | Description |
 |----------|------|-------------|
-| `ondictionarylookup` | `(detail: {text}) => void` | Fired when user selects dictionary |
 | `ontranslationrequest` | `(detail: {text}) => void` | Fired when user requests translation |
-| `onpicturedictionarylookup` | `(detail: {text}) => void` | Fired for picture dictionary |
 
 ## Available Tools
 
@@ -159,14 +150,6 @@ The toolbar uses CSS custom properties:
 <!-- Assessment Player -->
 <script>
   import ToolToolbar from '$lib/tags/tool-toolbar';
-
-  let showDictionaryModal = false;
-  let selectedText = '';
-
-  function openDictionary(detail) {
-    selectedText = detail.text;
-    showDictionaryModal = true;
-  }
 </script>
 
 <div class="assessment-layout">
@@ -176,13 +159,8 @@ The toolbar uses CSS custom properties:
 
   <ToolToolbar
     tools="protractor,ruler,graph"
-    ondictionarylookup={openDictionary}
   />
 </div>
-
-{#if showDictionaryModal}
-  <DictionaryModal {selectedText} />
-{/if}
 ```
 
 ## Browser-Only

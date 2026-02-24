@@ -8,9 +8,7 @@ A text selection toolbar for highlighting and annotating text in the PIEoneer as
 - **Underline Annotation**: Underline selected text
 - **Persistent Annotations**: Saved to sessionStorage and restored on page load
 - **Clear Annotations**: Remove annotations from selected text or clear all
-- **Dictionary Lookup**: Look up selected words in dictionary
 - **Translation**: Translate selected text
-- **Picture Dictionary**: Visual dictionary for selected words
 - **Text-to-Speech (Read Aloud)**: Read selected text aloud with word-level highlighting
 - **Modern CSS Custom Highlight API**:
   - Zero DOM mutation (no `<span>` wrappers)
@@ -43,11 +41,7 @@ This component doesn't take props - it automatically shows when text is selected
 
 ## Events
 
-- `dictionarylookup`: Dispatched when dictionary button is clicked
-  - `detail: { text: string }` - The selected text
 - `translationrequest`: Dispatched when translation button is clicked
-  - `detail: { text: string }` - The selected text
-- `picturedictionarylookup`: Dispatched when picture dictionary button is clicked
   - `detail: { text: string }` - The selected text
 
 **Note**: Text-to-Speech (Read Aloud) button does not emit an event - it directly uses the TTS service to read the selected text.
@@ -98,7 +92,7 @@ The annotation toolbar includes a "Read" button that uses the TTS service to rea
 ### How It Works
 
 1. **User selects text** in the assessment content
-2. **Annotation toolbar appears** with highlight, dictionary, translate, and read buttons
+2. **Annotation toolbar appears** with highlight, translate, and read buttons
 3. **User clicks "Read"** button (speaker icon)
 4. **TTS service speaks the selected text** using Web Speech API
 5. **Words are highlighted** in sync with speech using CSS Custom Highlight API

@@ -15,7 +15,6 @@
 			highlightCoordinator: { type: 'Object', attribute: 'highlight-coordinator' },
 
 			// Optional callbacks (passed as JS properties)
-			ondictionarylookup: { type: 'Object', attribute: 'ondictionarylookup' },
 			ontranslationrequest: { type: 'Object', attribute: 'ontranslationrequest' }
 		}
 	}}
@@ -69,15 +68,14 @@
 		showLabels = false,
 		className = '',
 		organizationId = undefined as string | undefined, // For JWT token generation (can be set at runtime)
-		baseUrl = 'http://localhost:5200', // Picture Dictionary API base URL
+		baseUrl = 'http://localhost:5200',
 		answerEliminatorButtonAlignment = 'right' as 'left' | 'right' | 'inline', // Answer Eliminator button placement
 
 		// Coordinators from assessment toolkit
 		toolCoordinator = undefined as ToolCoordinator | null | undefined,
 		highlightCoordinator = undefined as HighlightCoordinator | null | undefined,
 
-		// Event callbacks for annotation toolbar (dictionary/translation not yet implemented)
-		ondictionarylookup = undefined as ((detail: { text: string }) => void) | undefined,
+		// Event callbacks for annotation toolbar
 		ontranslationrequest = undefined as ((detail: { text: string }) => void) | undefined
 	} = $props();
 
@@ -86,7 +84,6 @@
 		void organizationId;
 		void baseUrl;
 		void highlightCoordinator;
-		void ondictionarylookup;
 		void ontranslationrequest;
 	});
 
@@ -120,10 +117,6 @@
 		showMagnifier = toolCoordinator.isToolVisible('magnifier');
 		log('Updated visibility - calculator:', showCalculator, 'answerEliminator:', showAnswerEliminator);
 	}
-
-	// Picture Dictionary Modal state
-
-	// Handle picture dictionary lookup from annotation toolbar
 
 	// Handle arrow key navigation between toolbar buttons
 	function handleKeyDown(e: KeyboardEvent) {

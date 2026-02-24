@@ -1,7 +1,7 @@
 /**
  * Annotation Toolbar Configuration
  *
- * Configures backend API endpoints for dictionary, picture dictionary, and translation features.
+ * Configures backend API endpoints for annotation toolbar features.
  * These can be pointed to different backends in different environments:
  * - Development: Local stub routes in section-demos
  * - Production: pie-api-aws endpoints with authentication
@@ -13,20 +13,6 @@
  * Configuration for annotation toolbar backend services
  */
 export interface AnnotationToolbarConfig {
-	/**
-	 * Dictionary API endpoint
-	 * @example '/api/dictionary' (local dev)
-	 * @example 'https://api.pie.org/api/dictionary' (production)
-	 */
-	dictionaryEndpoint?: string;
-
-	/**
-	 * Picture Dictionary API endpoint
-	 * @example '/api/picture-dictionary' (local dev)
-	 * @example 'https://api.pie.org/api/picture-dictionary' (production)
-	 */
-	pictureDictionaryEndpoint?: string;
-
 	/**
 	 * Translation API endpoint
 	 * @example '/api/translation' (local dev)
@@ -46,7 +32,7 @@ export interface AnnotationToolbarConfig {
 	organizationId?: string;
 
 	/**
-	 * Default language code for dictionary/translation requests
+	 * Default language code for requests
 	 * @default 'en-us'
 	 */
 	defaultLanguage?: string;
@@ -55,45 +41,6 @@ export interface AnnotationToolbarConfig {
 	 * Custom headers to send with API requests
 	 */
 	headers?: Record<string, string>;
-}
-
-/**
- * Dictionary lookup request parameters
- */
-export interface DictionaryLookupRequest {
-	keyword: string;
-	language?: string;
-}
-
-/**
- * Dictionary lookup response
- */
-export interface DictionaryLookupResponse {
-	keyword: string;
-	language: string;
-	definitions: Array<{
-		partOfSpeech: string;
-		definition: string;
-		example?: string;
-	}>;
-}
-
-/**
- * Picture dictionary lookup request parameters
- */
-export interface PictureDictionaryLookupRequest {
-	keyword: string;
-	language?: string;
-	max?: number;
-}
-
-/**
- * Picture dictionary lookup response
- */
-export interface PictureDictionaryLookupResponse {
-	images: Array<{
-		image: string;
-	}>;
 }
 
 /**
@@ -118,60 +65,11 @@ export interface TranslationResponse {
 /**
  * Annotation Toolbar API Client
  *
- * Handles API calls to backend services for dictionary, picture dictionary, and translation.
+ * Handles API calls to backend services for annotation toolbar features.
  * Automatically adds authentication and custom headers based on configuration.
  */
 export class AnnotationToolbarAPIClient {
 	constructor(private config: AnnotationToolbarConfig) {}
-
-	/**
-	 * Look up a word in the dictionary
-	 */
-	async lookupDictionary(
-		keyword: string,
-		language?: string,
-	): Promise<DictionaryLookupResponse> {
-		if (!this.config.dictionaryEndpoint) {
-			throw new Error(
-				"Dictionary endpoint not configured. Set dictionaryEndpoint in AnnotationToolbarConfig.",
-			);
-		}
-
-		const body: DictionaryLookupRequest = {
-			keyword,
-			language: language || this.config.defaultLanguage || "en-us",
-		};
-
-		const response = await this.fetch(this.config.dictionaryEndpoint, body);
-		return response.json();
-	}
-
-	/**
-	 * Look up images in the picture dictionary
-	 */
-	async lookupPictureDictionary(
-		keyword: string,
-		language?: string,
-		max?: number,
-	): Promise<PictureDictionaryLookupResponse> {
-		if (!this.config.pictureDictionaryEndpoint) {
-			throw new Error(
-				"Picture dictionary endpoint not configured. Set pictureDictionaryEndpoint in AnnotationToolbarConfig.",
-			);
-		}
-
-		const body: PictureDictionaryLookupRequest = {
-			keyword,
-			language: language || this.config.defaultLanguage || "en-us",
-			max,
-		};
-
-		const response = await this.fetch(
-			this.config.pictureDictionaryEndpoint,
-			body,
-		);
-		return response.json();
-	}
 
 	/**
 	 * Translate text

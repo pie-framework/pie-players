@@ -69,7 +69,6 @@ export const PNP_TO_PIE_TOOL_MAP: Record<string, string> = {
   'magnifier': 'pie-tool-magnifier',
   'colorContrast': 'pie-theme-contrast',
   'answerMasking': 'pie-tool-answer-eliminator',
-  'dictionaryLookup': 'pie-tool-dictionary',
 };
 
 // Usage
@@ -401,7 +400,6 @@ const tools = resolver.resolveTools(assessment, itemRef);
 | `magnifier` | `pie-tool-magnifier` | `{ zoomLevel: 2 }` |
 | `colorContrast` | `pie-theme-contrast` | `{ scheme: 'high-contrast' }` |
 | `answerMasking` | `pie-tool-answer-eliminator` | `{ strategy: 'strikethrough' }` |
-| `dictionaryLookup` | `pie-tool-dictionary` | `{}` |
 
 ---
 

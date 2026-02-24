@@ -73,7 +73,7 @@ export class ToolConfigResolver {
 	 *
 	 * Hierarchy (highest to lowest priority):
 	 * 1. Item level: Item requires scientific calculator → must provide
-	 * 2. Roster level: Test blocks dictionary → blocked regardless of accommodation
+	 * 2. Roster level: Test blocks a tool → blocked regardless of accommodation
 	 * 3. Student level: IEP requires TTS → enabled unless blocked above
 	 *
 	 * @param toolId Tool identifier

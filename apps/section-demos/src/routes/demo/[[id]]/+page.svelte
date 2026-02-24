@@ -88,40 +88,13 @@
 
 	let ttsConfig = $state<TTSConfig>(getDefaultTTSConfig());
 
-	// Annotation Toolbar API Client (for dictionary/translation features)
+	// Annotation Toolbar API Client (for translation features)
 	const annotationAPIClient = browser ? new AnnotationToolbarAPIClient({
-		dictionaryEndpoint: '/api/dictionary',
-		pictureDictionaryEndpoint: '/api/picture-dictionary',
 		translationEndpoint: '/api/translation',
 		defaultLanguage: 'en-us'
 	}) : null;
 
-	// Dialog state for dictionary/translation features
-	let dictionaryDialog = $state<{
-		open: boolean;
-		keyword: string;
-		language: string;
-		definitions: Array<{
-			partOfSpeech: string;
-			definition: string;
-			example?: string;
-		}>;
-	}>({
-		open: false,
-		keyword: '',
-		language: '',
-		definitions: []
-	});
-
-	let pictureDictionaryDialog = $state<{
-		open: boolean;
-		keyword: string;
-		images: Array<{ image: string }>;
-	}>({
-		open: false,
-		keyword: '',
-		images: []
-	});
+	// Dialog state for translation features
 
 	let translationDialog = $state<{
 		open: boolean;
@@ -919,23 +892,6 @@
 		enabled={true}
 		ttsService={toolkitCoordinator.ttsService}
 		highlightCoordinator={toolkitCoordinator.highlightCoordinator}
-		ondictionarylookup={async (detail: { text: string }) => {
-			console.log('Dictionary lookup:', detail.text);
-			if (!annotationAPIClient) return;
-			try {
-				const result = await annotationAPIClient.lookupDictionary(detail.text);
-				console.log('Dictionary result:', result);
-				dictionaryDialog = {
-					open: true,
-					keyword: result.keyword,
-					language: result.language,
-					definitions: result.definitions
-				};
-			} catch (error) {
-				console.error('Dictionary lookup failed:', error);
-				alert(`Dictionary lookup failed: ${error}`);
-			}
-		}}
 		ontranslationrequest={async (detail: { text: string }) => {
 			console.log('Translation request:', detail.text);
 			if (!annotationAPIClient) return;
@@ -952,22 +908,6 @@
 			} catch (error) {
 				console.error('Translation failed:', error);
 				alert(`Translation failed: ${error}`);
-			}
-		}}
-		onpicturedictionarylookup={async (detail: { text: string }) => {
-			console.log('Picture dictionary lookup:', detail.text);
-			if (!annotationAPIClient) return;
-			try {
-				const result = await annotationAPIClient.lookupPictureDictionary(detail.text, undefined, 10);
-				console.log('Picture dictionary result:', result);
-				pictureDictionaryDialog = {
-					open: true,
-					keyword: detail.text,
-					images: result.images
-				};
-			} catch (error) {
-				console.error('Picture dictionary lookup failed:', error);
-				alert(`Picture dictionary lookup failed: ${error}`);
 			}
 		}}
 	></pie-tool-annotation-toolbar>
@@ -1257,113 +1197,6 @@
 			</div>
 		{/if}
 	</div>
-{/if}
-
-<!-- Dictionary Dialog -->
-{#if dictionaryDialog.open}
-	<dialog class="modal modal-open">
-		<div class="modal-box max-w-2xl">
-			<form method="dialog">
-				<button
-					class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
-					onclick={() => dictionaryDialog = { ...dictionaryDialog, open: false }}
-				>✕</button>
-			</form>
-			<h3 class="font-bold text-lg mb-4 flex items-center gap-2">
-				<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-				</svg>
-				Dictionary: <span class="text-primary">{dictionaryDialog.keyword}</span>
-			</h3>
-
-			<div class="space-y-4">
-				{#each dictionaryDialog.definitions as definition, i}
-					<div class="card bg-base-200">
-						<div class="card-body p-4">
-							<div class="badge badge-primary badge-sm mb-2">{definition.partOfSpeech}</div>
-							<p class="text-base">{definition.definition}</p>
-							{#if definition.example}
-								<div class="mt-2 pl-4 border-l-2 border-primary/30">
-									<p class="text-sm text-base-content/70 italic">
-										Example: "{definition.example}"
-									</p>
-								</div>
-							{/if}
-						</div>
-					</div>
-				{/each}
-			</div>
-
-			<div class="modal-action">
-				<button
-					class="btn btn-primary"
-					onclick={() => dictionaryDialog = { ...dictionaryDialog, open: false }}
-				>Close</button>
-			</div>
-		</div>
-		<form method="dialog" class="modal-backdrop">
-			<button onclick={() => dictionaryDialog = { ...dictionaryDialog, open: false }}>close</button>
-		</form>
-	</dialog>
-{/if}
-
-<!-- Picture Dictionary Dialog -->
-{#if pictureDictionaryDialog.open}
-	<dialog class="modal modal-open">
-		<div class="modal-box max-w-4xl">
-			<form method="dialog">
-				<button
-					class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
-					onclick={() => pictureDictionaryDialog = { ...pictureDictionaryDialog, open: false }}
-				>✕</button>
-			</form>
-			<h3 class="font-bold text-lg mb-4 flex items-center gap-2">
-				<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-				</svg>
-				Picture Dictionary: <span class="text-primary">{pictureDictionaryDialog.keyword}</span>
-			</h3>
-
-			{#if pictureDictionaryDialog.images.length === 0}
-				<div class="alert alert-info">
-					<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-					</svg>
-					<span>No images found for "{pictureDictionaryDialog.keyword}"</span>
-				</div>
-			{:else}
-				<div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-					{#each pictureDictionaryDialog.images as img, i}
-						<div class="card bg-base-200 shadow-xl">
-							<figure class="px-4 pt-4">
-								<img
-									src={img.image}
-									alt="{pictureDictionaryDialog.keyword} - Image {i + 1}"
-									class="rounded-xl w-full h-48 object-cover"
-									onerror={(e) => {
-										const target = e.currentTarget as HTMLImageElement | null;
-										if (target) {
-											target.src = "https://via.placeholder.com/200x200/cccccc/666666?text=Image+Not+Found";
-										}
-									}}
-								/>
-							</figure>
-						</div>
-					{/each}
-				</div>
-			{/if}
-
-			<div class="modal-action">
-				<button
-					class="btn btn-primary"
-					onclick={() => pictureDictionaryDialog = { ...pictureDictionaryDialog, open: false }}
-				>Close</button>
-			</div>
-		</div>
-		<form method="dialog" class="modal-backdrop">
-			<button onclick={() => pictureDictionaryDialog = { ...pictureDictionaryDialog, open: false }}>close</button>
-		</form>
-	</dialog>
 {/if}
 
 <!-- Translation Dialog -->

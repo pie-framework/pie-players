@@ -22,18 +22,14 @@
 		enabled?: boolean;
 		highlightCoordinator?: HighlightCoordinator | null;
 		ttsService?: ITTSService | null;
-		ondictionarylookup?: (detail: { text: string }) => void;
 		ontranslationrequest?: (detail: { text: string }) => void;
-		onpicturedictionarylookup?: (detail: { text: string }) => void;
 	}
 
 	let {
 		enabled = true,
 		highlightCoordinator = null,
 		ttsService = null,
-		ondictionarylookup,
-		ontranslationrequest,
-		onpicturedictionarylookup
+		ontranslationrequest
 	}: Props = $props();
 
 	const isBrowser = typeof window !== 'undefined';
@@ -300,29 +296,11 @@
 	}
 
 	/**
-	 * Dictionary lookup
-	 */
-	function handleDictionaryClick() {
-		if (!toolbarState.selectedText) return;
-		ondictionarylookup?.({ text: toolbarState.selectedText });
-		hideToolbar();
-	}
-
-	/**
 	 * Translation request
 	 */
 	function handleTranslationClick() {
 		if (!toolbarState.selectedText) return;
 		ontranslationrequest?.({ text: toolbarState.selectedText });
-		hideToolbar();
-	}
-
-	/**
-	 * Picture dictionary lookup
-	 */
-	function handlePictureDictionaryClick() {
-		if (!toolbarState.selectedText) return;
-		onpicturedictionarylookup?.({ text: toolbarState.selectedText });
 		hideToolbar();
 	}
 
@@ -475,50 +453,6 @@
 				>
 					<path
 						d="M14,3.23V5.29C16.89,6.15 19,8.83 19,12C19,15.17 16.89,17.84 14,18.7V20.77C18,19.86 21,16.28 21,12C21,7.72 18,4.14 14,3.23M16.5,12C16.5,10.23 15.5,8.71 14,7.97V16C15.5,15.29 16.5,13.76 16.5,12M3,9V15H7L12,20V4L7,9H3Z"
-					/>
-				</svg>
-			</button>
-		{/if}
-
-		<!-- Dictionary -->
-		{#if ondictionarylookup}
-			<button
-				class="btn btn-sm btn-square"
-				onclick={handleDictionaryClick}
-				aria-label="Look up selected text in dictionary"
-				title="Dictionary"
-			>
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					viewBox="0 0 24 24"
-					width="18"
-					height="18"
-					fill="currentColor"
-					aria-hidden="true"
-				>
-					<path d="M18,22A2,2 0 0,0 20,20V4C20,2.89 19.1,2 18,2H12V9L9.5,7.5L7,9V2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18Z" />
-				</svg>
-			</button>
-		{/if}
-
-		<!-- Picture Dictionary -->
-		{#if onpicturedictionarylookup}
-			<button
-				class="btn btn-sm btn-square"
-				onclick={handlePictureDictionaryClick}
-				aria-label="Look up selected text in picture dictionary"
-				title="Picture Dictionary"
-			>
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					viewBox="0 0 24 24"
-					width="18"
-					height="18"
-					fill="currentColor"
-					aria-hidden="true"
-				>
-					<path
-						d="M8.5,13.5L11,16.5L14.5,12L19,18H5M21,19V5C21,3.89 20.1,3 19,3H5A2,2 0 0,0 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19Z"
 					/>
 				</svg>
 			</button>

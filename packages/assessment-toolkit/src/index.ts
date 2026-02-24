@@ -64,10 +64,6 @@ export { RangeSerializer } from "./services/RangeSerializer.js";
 // Annotation Toolbar Configuration (Backend API endpoints)
 export type {
 	AnnotationToolbarConfig,
-	DictionaryLookupRequest,
-	DictionaryLookupResponse,
-	PictureDictionaryLookupRequest,
-	PictureDictionaryLookupResponse,
 	TranslationRequest,
 	TranslationResponse,
 } from "./services/AnnotationToolbarConfig.js";

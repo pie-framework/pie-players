@@ -318,7 +318,7 @@ const roster: RosterToolConfiguration = {
   rosterId: 'roster-456',
   toolAllowances: {
     calculator: '1', // allowed
-    dictionary: '0', // blocked
+    lineReader: '0', // blocked
   },
 };
 
@@ -330,7 +330,7 @@ const item: ItemToolConfig = {
 
 // Resolve final tools
 const resolved = accommodationResolver.resolveToolsForItem(student, roster, item);
-// Returns: [calculator, highlighter, protractor] (graphing-calculator blocked, dictionary blocked)
+// Returns: [calculator, highlighter, protractor] (graphing-calculator blocked, lineReader blocked)
 
 // Check specific tool
 const result = accommodationResolver.isToolAllowed('calculator', student, roster, item);

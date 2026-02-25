@@ -155,7 +155,8 @@
 
   function getFallbackSectionId(): string {
     if (!fallbackSectionId) {
-      fallbackSectionId = `section_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+      // Use deterministic fallback so host widgets can resolve the same controller key.
+      fallbackSectionId = `section-${assessmentId || "default"}`;
     }
     return fallbackSectionId;
   }

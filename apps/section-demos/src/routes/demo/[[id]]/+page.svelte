@@ -1,20 +1,9 @@
 <script lang="ts">
-	
 	import {
 		createDefaultPersonalNeedsProfile,
 		ToolkitCoordinator,
 		type ToolkitCoordinatorHooks
 	} from '@pie-players/pie-assessment-toolkit';
-
-	// Load the web component
-	onMount(async () => {
-		await Promise.all([
-			import('@pie-players/pie-section-player'),
-			import('@pie-players/pie-tool-annotation-toolbar'),
-			import('@pie-players/pie-section-player-tools-session-debugger'),
-			import('@pie-players/pie-section-player-tools-pnp-debugger')
-		]);
-	});
 	import { onDestroy, onMount, untrack } from 'svelte';
 	import { browser } from '$app/environment';
 	import type { PageData } from './$types';
@@ -22,30 +11,34 @@
 
 	let { data }: { data: PageData } = $props();
 
-	function getInitialLayoutType(): 'vertical' | 'split-panel' {
-		if (browser) {
-			const urlLayoutType = new URLSearchParams(window.location.search).get('layout');
-			if (urlLayoutType && ['vertical', 'split-panel'].includes(urlLayoutType)) {
-				return urlLayoutType as 'vertical' | 'split-panel';
-			}
-		}
-		return 'split-panel';
+	const LAYOUT_OPTIONS = ['vertical', 'split-panel'] as const;
+	const MODE_OPTIONS = ['candidate', 'scorer'] as const;
+	const TOOLBAR_POSITIONS = ['top', 'right', 'bottom', 'left'] as const;
+
+	function getUrlEnumParam<T extends string>(
+		key: string,
+		options: readonly T[],
+		fallback: T
+	): T {
+		if (!browser) return fallback;
+		const value = new URLSearchParams(window.location.search).get(key);
+		return value && options.includes(value as T) ? (value as T) : fallback;
 	}
 
-	function getInitialMode(): 'candidate' | 'scorer' {
-		if (browser) {
-			const urlMode = new URLSearchParams(window.location.search).get('mode');
-			if (urlMode && ['candidate', 'scorer'].includes(urlMode)) {
-				return urlMode as 'candidate' | 'scorer';
-			}
-		}
-		return 'candidate';
+	function isToolbarPosition(value: unknown): value is 'top' | 'right' | 'bottom' | 'left' {
+		return (
+			typeof value === 'string' &&
+			(TOOLBAR_POSITIONS as readonly string[]).includes(value)
+		);
 	}
 
-	let layoutType = $state<'vertical' | 'split-panel'>(getInitialLayoutType());
-	let roleType = $state<'candidate' | 'scorer'>(getInitialMode());
+	let layoutType = $state<'vertical' | 'split-panel'>(
+		getUrlEnumParam('layout', LAYOUT_OPTIONS, 'split-panel')
+	);
+	let roleType = $state<'candidate' | 'scorer'>(
+		getUrlEnumParam('mode', MODE_OPTIONS, 'candidate')
+	);
 	let toolbarPosition = $state<'top' | 'right' | 'bottom' | 'left'>('right');
-	let layoutConfig = $state({ toolbarPosition: 'right' as 'top' | 'right' | 'bottom' | 'left' });
 	let showSessionPanel = $state(false);
 	let showSourcePanel = $state(false);
 	let showPnpPanel = $state(false);
@@ -121,7 +114,6 @@
 			// Switching demos - clear tool state to prevent leakage
 			if (previousDemoId && toolkitCoordinator) {
 				toolkitCoordinator.elementToolStateStore.clearAll();
-				console.log('[Demo] Cleared tool state when switching demos');
 			}
 
 			previousDemoId = currentDemoId;
@@ -138,16 +130,11 @@
 			onError: (error, context) => {
 				console.error('[Demo] Toolkit hook error:', context, error);
 			},
-			onTelemetry: (eventName, payload) => {
-				console.log('[Demo] Toolkit telemetry:', eventName, payload);
-			},
 			loadToolState: () => {
 				try {
 					const saved = localStorage.getItem(TOOL_STATE_STORAGE_KEY);
 					if (!saved) return null;
-					const parsed = JSON.parse(saved);
-					console.log('[Demo] Loaded tool state from localStorage');
-					return parsed;
+					return JSON.parse(saved);
 				} catch (e) {
 					console.warn('[Demo] Failed to load tool state:', e);
 					return null;
@@ -209,82 +196,69 @@
 					config.highlightStyle.opacity
 				);
 			}
-
-			console.log('[Demo] Toolkit TTS configured successfully');
 		} catch (e) {
 			console.error('[Demo] Failed to initialize TTS services:', e);
 		}
 	}
 
-	// Initialize window positions on mount
 	onMount(async () => {
-		if (browser) {
-			const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(value, max));
-			const viewportWidth = window.innerWidth;
-			const viewportHeight = window.innerHeight;
+		await Promise.all([
+			import('@pie-players/pie-section-player'),
+			import('@pie-players/pie-tool-annotation-toolbar'),
+			import('@pie-players/pie-section-player-tools-session-debugger'),
+			import('@pie-players/pie-section-player-tools-pnp-debugger')
+		]);
 
-			editedSourceJson = formatJsonForSourceView(data.section);
+		editedSourceJson = formatJsonForSourceView(data.section);
 
-			// Load persisted TTS config
-			try {
-				const storedConfig = localStorage.getItem(TTS_CONFIG_STORAGE_KEY);
-				if (storedConfig) {
-					const parsedConfig = JSON.parse(storedConfig);
-					ttsConfig = {
-						...getDefaultTTSConfig(),
-						...parsedConfig,
-						highlightStyle: {
-							...getDefaultTTSConfig().highlightStyle,
-							...(parsedConfig?.highlightStyle || {})
-						}
-					};
-					console.log(
-						'[Demo] Loaded TTS config from localStorage:',
-						$state.snapshot(ttsConfig)
-					);
-				}
-			} catch (e) {
-				console.error('Failed to load persisted TTS config:', e);
+		// Load persisted TTS config
+		try {
+			const storedConfig = localStorage.getItem(TTS_CONFIG_STORAGE_KEY);
+			if (storedConfig) {
+				const parsedConfig = JSON.parse(storedConfig);
+				const defaultConfig = getDefaultTTSConfig();
+				ttsConfig = {
+					...defaultConfig,
+					...parsedConfig,
+					highlightStyle: {
+						...defaultConfig.highlightStyle,
+						...(parsedConfig?.highlightStyle || {})
+					}
+				};
 			}
-
-			// Load persisted layout config
-			try {
-				const storedLayoutConfig = localStorage.getItem(LAYOUT_CONFIG_STORAGE_KEY);
-				if (storedLayoutConfig) {
-					const parsed = JSON.parse(storedLayoutConfig);
-					layoutConfig = parsed;
-					toolbarPosition = parsed.toolbarPosition;
-					console.log(
-						'[Demo] Loaded layout config from localStorage:',
-						$state.snapshot(layoutConfig)
-					);
-				}
-			} catch (e) {
-				console.error('Failed to load persisted layout config:', e);
-			}
-
-			// Outer scrollbar: show only while the user is scrolling
-			function markOuterScrolling() {
-				document.documentElement.classList.add('outer-scrolling');
-				document.body.classList.add('outer-scrolling');
-				if (outerScrollTimeoutId) clearTimeout(outerScrollTimeoutId);
-				outerScrollTimeoutId = setTimeout(() => {
-					document.documentElement.classList.remove('outer-scrolling');
-					document.body.classList.remove('outer-scrolling');
-					outerScrollTimeoutId = null;
-				}, 700);
-			}
-			window.addEventListener('scroll', markOuterScrolling, { passive: true });
-			removeOuterScrollListener = () => {
-				window.removeEventListener('scroll', markOuterScrolling);
-				if (outerScrollTimeoutId) clearTimeout(outerScrollTimeoutId);
-			};
+		} catch (e) {
+			console.error('Failed to load persisted TTS config:', e);
 		}
-	});
 
-	// Sync layoutConfig with toolbarPosition changes
-	$effect(() => {
-		layoutConfig = { toolbarPosition };
+		// Load persisted layout config
+		try {
+			const storedLayoutConfig = localStorage.getItem(LAYOUT_CONFIG_STORAGE_KEY);
+			if (storedLayoutConfig) {
+				const parsed = JSON.parse(storedLayoutConfig);
+				if (isToolbarPosition(parsed?.toolbarPosition)) {
+					toolbarPosition = parsed.toolbarPosition;
+				}
+			}
+		} catch (e) {
+			console.error('Failed to load persisted layout config:', e);
+		}
+
+		// Outer scrollbar: show only while the user is scrolling
+		function markOuterScrolling() {
+			document.documentElement.classList.add('outer-scrolling');
+			document.body.classList.add('outer-scrolling');
+			if (outerScrollTimeoutId) clearTimeout(outerScrollTimeoutId);
+			outerScrollTimeoutId = setTimeout(() => {
+				document.documentElement.classList.remove('outer-scrolling');
+				document.body.classList.remove('outer-scrolling');
+				outerScrollTimeoutId = null;
+			}, 700);
+		}
+		window.addEventListener('scroll', markOuterScrolling, { passive: true });
+		removeOuterScrollListener = () => {
+			window.removeEventListener('scroll', markOuterScrolling);
+			if (outerScrollTimeoutId) clearTimeout(outerScrollTimeoutId);
+		};
 	});
 
 	$effect(() => {
@@ -321,7 +295,6 @@
 		if (toolkitCoordinator) {
 			try {
 				toolkitCoordinator.ttsService.stop();
-				console.log('[Demo] Stopped TTS on component destroy');
 			} catch (e) {
 				console.error('[Demo] Failed to stop TTS on destroy:', e);
 			}
@@ -336,8 +309,19 @@
 		mode: roleType === 'candidate' ? 'gather' : 'evaluate',
 		role: roleType === 'candidate' ? 'student' : 'instructor'
 	});
-	let qtiView = $derived<string>(roleType); // Keep QTI view for rubric filtering
-	let sessionPanelSectionId = $derived(liveSection?.identifier || data?.section?.identifier || 'section');
+	let sessionPanelSectionId = $derived(
+		liveSection?.identifier ||
+			data?.section?.identifier ||
+			`section-${toolkitCoordinator?.assessmentId || data?.demo?.id || 'default'}`
+	);
+
+	function wireCloseListener(target: any, onClose: () => void) {
+		if (!target) return;
+		target.addEventListener('close', onClose as EventListener);
+		return () => {
+			target.removeEventListener('close', onClose as EventListener);
+		};
+	}
 
 	// Set complex properties imperatively on the web component
 	// (Web components can only receive simple values via attributes)
@@ -371,24 +355,16 @@
 
 	$effect(() => {
 		if (!sessionDebuggerElement) return;
-		const onClose = () => {
+		return wireCloseListener(sessionDebuggerElement, () => {
 			showSessionPanel = false;
-		};
-		sessionDebuggerElement.addEventListener('close', onClose as EventListener);
-		return () => {
-			sessionDebuggerElement.removeEventListener('close', onClose as EventListener);
-		};
+		});
 	});
 
 	$effect(() => {
 		if (!pnpDebuggerElement) return;
-		const onClose = () => {
+		return wireCloseListener(pnpDebuggerElement, () => {
 			showPnpPanel = false;
-		};
-		pnpDebuggerElement.addEventListener('close', onClose as EventListener);
-		return () => {
-			pnpDebuggerElement.removeEventListener('close', onClose as EventListener);
-		};
+		});
 	});
 
 	// Reset all sessions
@@ -555,7 +531,7 @@
 			class="block h-full min-h-0"
 			bind:this={sectionPlayer}
 			page-layout={layoutType}
-			view={qtiView}
+			view={roleType}
 		></pie-section-player>
 	</div>
 

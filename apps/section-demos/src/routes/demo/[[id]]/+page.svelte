@@ -1,6 +1,7 @@
 <script lang="ts">
 	
 	import {
+		createDefaultPersonalNeedsProfile,
 		ToolkitCoordinator,
 		type ToolkitCoordinatorHooks
 	} from '@pie-players/pie-assessment-toolkit';
@@ -10,7 +11,8 @@
 		await Promise.all([
 			import('@pie-players/pie-section-player'),
 			import('@pie-players/pie-tool-annotation-toolbar'),
-			import('@pie-players/pie-section-player-tools-session-debugger')
+			import('@pie-players/pie-section-player-tools-session-debugger'),
+			import('@pie-players/pie-section-player-tools-pnp-debugger')
 		]);
 	});
 	import { onDestroy, onMount, untrack } from 'svelte';
@@ -49,6 +51,7 @@
 	let showPnpPanel = $state(false);
 	let sectionPlayer: any = $state(null);
 	let sessionDebuggerElement: any = $state(null);
+	let pnpDebuggerElement: any = $state(null);
 
 	// Toolkit coordinator (owns all services)
 	let toolkitCoordinator: any = $state(createDemoToolkitCoordinator());
@@ -96,23 +99,6 @@
 	// Live section data (can be modified) - initialized in effect
 	let liveSection: any = $state.raw({} as any);
 	let previousDemoId = $state('');
-	const DEFAULT_DEMO_PNP_PROFILE = {
-		supports: [
-			'calculator',
-			'textToSpeech',
-			'lineReader',
-			'magnification',
-			'screenMagnifier',
-			'answerEliminator',
-			'periodicTable',
-			'protractor',
-			'ruler',
-			'graph'
-		],
-		prohibitedSupports: [],
-		activateAtInit: []
-	};
-
 	let resolvedSectionForPlayer = $derived.by(() => {
 		if (!liveSection) return liveSection;
 		const hasExplicitPnp = Boolean(
@@ -121,7 +107,7 @@
 		if (hasExplicitPnp) return liveSection;
 		return {
 			...liveSection,
-			personalNeedsProfile: structuredClone(DEFAULT_DEMO_PNP_PROFILE)
+			personalNeedsProfile: createDefaultPersonalNeedsProfile()
 		};
 	});
 
@@ -142,24 +128,6 @@
 			liveSection = structuredClone(currentSection);
 		}
 	});
-
-	let pnpWindowX = $state(80);
-	let pnpWindowY = $state(120);
-	let pnpWindowWidth = $state(460);
-	let pnpWindowHeight = $state(560);
-	let isPnpMinimized = $state(false);
-	let isPnpDragging = $state(false);
-	let isPnpResizing = $state(false);
-
-	// Shared drag/resize state
-	let dragStartX = 0;
-	let dragStartY = 0;
-	let dragStartWindowX = 0;
-	let dragStartWindowY = 0;
-	let resizeStartX = 0;
-	let resizeStartY = 0;
-	let resizeStartWidth = 0;
-	let resizeStartHeight = 0;
 
 	// Outer scrollbar: show only while scrolling (cleaned up in onDestroy)
 	let outerScrollTimeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -254,12 +222,6 @@
 			const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(value, max));
 			const viewportWidth = window.innerWidth;
 			const viewportHeight = window.innerHeight;
-
-			// PNP panel: medium size, centered
-			pnpWindowWidth = clamp(Math.round(viewportWidth * 0.62), 460, 1040);
-			pnpWindowHeight = clamp(Math.round(viewportHeight * 0.72), 360, 860);
-			pnpWindowX = Math.max(16, Math.round((viewportWidth - pnpWindowWidth) / 2));
-			pnpWindowY = Math.max(16, Math.round((viewportHeight - pnpWindowHeight) / 2));
 
 			editedSourceJson = formatJsonForSourceView(data.section);
 
@@ -399,6 +361,15 @@
 	});
 
 	$effect(() => {
+		if (!pnpDebuggerElement) return;
+		untrack(() => {
+			pnpDebuggerElement.sectionData = liveSection;
+			pnpDebuggerElement.roleType = roleType;
+			pnpDebuggerElement.toolkitCoordinator = toolkitCoordinator;
+		});
+	});
+
+	$effect(() => {
 		if (!sessionDebuggerElement) return;
 		const onClose = () => {
 			showSessionPanel = false;
@@ -406,6 +377,17 @@
 		sessionDebuggerElement.addEventListener('close', onClose as EventListener);
 		return () => {
 			sessionDebuggerElement.removeEventListener('close', onClose as EventListener);
+		};
+	});
+
+	$effect(() => {
+		if (!pnpDebuggerElement) return;
+		const onClose = () => {
+			showPnpPanel = false;
+		};
+		pnpDebuggerElement.addEventListener('close', onClose as EventListener);
+		return () => {
+			pnpDebuggerElement.removeEventListener('close', onClose as EventListener);
 		};
 	});
 
@@ -426,106 +408,6 @@
 			window.location.reload();
 		}
 	}
-
-	// PNP window dragging handlers
-	function startPnpDrag(e: MouseEvent) {
-		isPnpDragging = true;
-		dragStartX = e.clientX;
-		dragStartY = e.clientY;
-		dragStartWindowX = pnpWindowX;
-		dragStartWindowY = pnpWindowY;
-
-		document.addEventListener('mousemove', onPnpDrag);
-		document.addEventListener('mouseup', stopPnpDrag);
-	}
-
-	function onPnpDrag(e: MouseEvent) {
-		if (!isPnpDragging) return;
-
-		const deltaX = e.clientX - dragStartX;
-		const deltaY = e.clientY - dragStartY;
-
-		pnpWindowX = dragStartWindowX + deltaX;
-		pnpWindowY = dragStartWindowY + deltaY;
-
-		pnpWindowX = Math.max(0, Math.min(pnpWindowX, window.innerWidth - pnpWindowWidth));
-		pnpWindowY = Math.max(0, Math.min(pnpWindowY, window.innerHeight - 100));
-	}
-
-	function stopPnpDrag() {
-		isPnpDragging = false;
-		document.removeEventListener('mousemove', onPnpDrag);
-		document.removeEventListener('mouseup', stopPnpDrag);
-	}
-
-	// PNP window resize handlers
-	function startPnpResize(e: MouseEvent) {
-		isPnpResizing = true;
-		resizeStartX = e.clientX;
-		resizeStartY = e.clientY;
-		resizeStartWidth = pnpWindowWidth;
-		resizeStartHeight = pnpWindowHeight;
-
-		e.preventDefault();
-		e.stopPropagation();
-
-		document.addEventListener('mousemove', onPnpResize);
-		document.addEventListener('mouseup', stopPnpResize);
-	}
-
-	function onPnpResize(e: MouseEvent) {
-		if (!isPnpResizing) return;
-
-		const deltaX = e.clientX - resizeStartX;
-		const deltaY = e.clientY - resizeStartY;
-
-		pnpWindowWidth = Math.max(320, Math.min(resizeStartWidth + deltaX, window.innerWidth - pnpWindowX));
-		pnpWindowHeight = Math.max(220, Math.min(resizeStartHeight + deltaY, window.innerHeight - pnpWindowY));
-	}
-
-	function stopPnpResize() {
-		isPnpResizing = false;
-		document.removeEventListener('mousemove', onPnpResize);
-		document.removeEventListener('mouseup', stopPnpResize);
-	}
-
-	let pnpPanelData = $derived.by(() => {
-		const directProfile = liveSection?.personalNeedsProfile;
-		const settingsProfile = liveSection?.settings?.personalNeedsProfile;
-		const profile = directProfile || settingsProfile || DEFAULT_DEMO_PNP_PROFILE;
-		const source = directProfile
-			? 'section.personalNeedsProfile'
-			: settingsProfile
-				? 'section.settings.personalNeedsProfile'
-				: 'demo default profile (derived)';
-
-		const toolkitToolConfig = toolkitCoordinator?.config?.tools || null;
-		const floatingTools = toolkitCoordinator?.getFloatingTools?.() || toolkitToolConfig?.floatingTools?.enabledTools || [];
-		const hasCatalogResolver = Boolean(toolkitCoordinator?.catalogResolver);
-		const catalogStats = hasCatalogResolver ? toolkitCoordinator.catalogResolver.getStatistics?.() : null;
-
-		return {
-			pnpProfile: profile,
-			determination: {
-				source,
-				checked: [
-					'section.personalNeedsProfile',
-					'section.settings.personalNeedsProfile'
-				],
-				note: directProfile || settingsProfile
-					? 'Profile was taken directly from section payload.'
-					: 'No explicit PNP profile was found in section payload, so a demo default PNP profile is applied.',
-				runtimeContext: {
-					role: roleType,
-					floatingToolsEnabled: floatingTools,
-					hasCatalogResolver,
-					catalogCount: catalogStats?.totalCatalogs ?? 0,
-					assessmentCatalogCount: catalogStats?.assessmentCatalogs ?? 0,
-					itemCatalogCount: catalogStats?.itemCatalogs ?? 0
-				}
-			}
-		};
-	});
 
 	function decodeEscapedTextForDisplay(value: string): string {
 		return value
@@ -702,88 +584,7 @@
 
 <!-- Floating PNP Profile Window -->
 {#if showPnpPanel}
-	<div
-		class="fixed z-100 bg-base-100 rounded-lg shadow-2xl border-2 border-base-300"
-		style="left: {pnpWindowX}px; top: {pnpWindowY}px; width: {pnpWindowWidth}px; {isPnpMinimized ? 'height: auto;' : `height: ${pnpWindowHeight}px;`}"
-	>
-		<!-- Title Bar -->
-		<div
-			class="flex items-center justify-between px-4 py-2 bg-base-200 rounded-t-lg cursor-move select-none border-b border-base-300"
-			onmousedown={startPnpDrag}
-			role="button"
-			tabindex="0"
-			aria-label="Drag PNP profile panel"
-		>
-			<div class="flex items-center gap-2">
-				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-7 8h8a2 2 0 002-2V6a2 2 0 00-2-2H8a2 2 0 00-2 2v12a2 2 0 002 2zm1-12h4m-4 4h4m-4 4h4" />
-				</svg>
-				<h3 class="font-bold text-sm">PNP Profile</h3>
-			</div>
-			<div class="flex gap-1">
-				<button
-					class="btn btn-xs btn-ghost btn-circle"
-					onclick={() => isPnpMinimized = !isPnpMinimized}
-					title={isPnpMinimized ? 'Maximize' : 'Minimize'}
-				>
-					{#if isPnpMinimized}
-						<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-						</svg>
-					{:else}
-						<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-						</svg>
-					{/if}
-				</button>
-				<button
-					class="btn btn-xs btn-ghost btn-circle"
-					onclick={() => showPnpPanel = false}
-					title="Close"
-				>
-					<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-					</svg>
-				</button>
-			</div>
-		</div>
-
-		<!-- Content -->
-		{#if !isPnpMinimized}
-			<div class="p-4 overflow-y-auto" style="max-height: {pnpWindowHeight - 60}px;">
-				<div class="space-y-3">
-					<div class="bg-base-200 rounded p-3">
-						<div class="text-xs font-semibold mb-2">Determination (read-only)</div>
-						<pre class="bg-base-300 p-2 rounded text-xs overflow-auto max-h-56">{JSON.stringify(pnpPanelData.determination, null, 2)}</pre>
-					</div>
-					<div class="bg-base-200 rounded p-3">
-						<div class="text-xs font-semibold mb-2">PNP Profile (read-only)</div>
-						<pre class="bg-base-300 p-2 rounded text-xs overflow-auto max-h-72">{JSON.stringify(pnpPanelData.pnpProfile, null, 2)}</pre>
-					</div>
-				</div>
-			</div>
-		{/if}
-
-		<!-- Resize Handle -->
-		{#if !isPnpMinimized}
-			<div
-				class="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize"
-				onmousedown={startPnpResize}
-				role="button"
-				tabindex="0"
-				title="Resize window"
-			>
-				<svg
-					class="w-full h-full text-base-content/30"
-					viewBox="0 0 16 16"
-					fill="currentColor"
-				>
-					<path d="M16 16V14H14V16H16Z" />
-					<path d="M16 11V9H14V11H16Z" />
-					<path d="M13 16V14H11V16H13Z" />
-				</svg>
-			</div>
-		{/if}
-	</div>
+	<pie-section-player-tools-pnp-debugger bind:this={pnpDebuggerElement}>
+	</pie-section-player-tools-pnp-debugger>
 {/if}
 

@@ -6,3 +6,5 @@ pre-commit:
       run: bun run check
     check-deps:
       run: bun run check:deps
+    check-package-metadata:
+      run: bun run check:package-metadata

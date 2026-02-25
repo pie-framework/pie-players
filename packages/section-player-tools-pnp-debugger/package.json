@@ -1,0 +1,77 @@
+{
+	"name": "@pie-players/pie-section-player-tools-pnp-debugger",
+	"version": "0.1.0",
+	"type": "module",
+	"description": "PNP debugger panel for PIE section-player flows",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pie-framework/pie-players.git",
+		"directory": "packages/section-player-tools-pnp-debugger"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"keywords": [
+		"pie",
+		"assessment",
+		"section-player",
+		"pnp",
+		"debugger",
+		"web-component"
+	],
+	"svelte": "./PnpPanel.svelte",
+	"main": "./dist/section-player-tools-pnp-debugger.js",
+	"module": "./dist/section-player-tools-pnp-debugger.js",
+	"unpkg": "./dist/section-player-tools-pnp-debugger.js",
+	"jsdelivr": "./dist/section-player-tools-pnp-debugger.js",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/section-player-tools-pnp-debugger.js",
+			"svelte": "./PnpPanel.svelte"
+		},
+		"./PnpPanel.svelte": {
+			"svelte": "./PnpPanel.svelte",
+			"import": "./PnpPanel.svelte"
+		},
+		"./dist/section-player-tools-pnp-debugger.js": {
+			"import": "./dist/section-player-tools-pnp-debugger.js"
+		}
+	},
+	"files": [
+		"dist",
+		"PnpPanel.svelte",
+		"index.ts",
+		"package.json"
+	],
+	"peerDependencies": {
+		"svelte": "^5.51.0"
+	},
+	"license": "MIT",
+	"dependencies": {
+		"@pie-players/pie-assessment-toolkit": "workspace:*"
+	},
+	"types": "./dist/index.d.ts",
+	"scripts": {
+		"build": "vite build",
+		"dev": "vite build --watch",
+		"typecheck": "tsc --noEmit",
+		"lint": "biome check PnpPanel.svelte index.ts vite.config.ts package.json"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.3.10",
+		"@sveltejs/vite-plugin-svelte": "^6.1.4",
+		"svelte": "^5.51.3",
+		"typescript": "^5.7.0",
+		"vite": "^7.0.8",
+		"vite-plugin-dts": "^4.5.3"
+	},
+	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/section-player-tools-pnp-debugger#readme",
+	"bugs": {
+		"url": "https://github.com/pie-framework/pie-players/issues"
+	},
+	"engines": {
+		"node": ">=18.0.0"
+	},
+	"sideEffects": true
+}

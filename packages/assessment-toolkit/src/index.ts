@@ -106,6 +106,10 @@ export {
 	DEFAULT_TOOL_ORDER,
 } from "./services/createDefaultToolRegistry.js";
 export type { DefaultToolRegistryOptions } from "./services/createDefaultToolRegistry.js";
+export {
+	DEFAULT_PERSONAL_NEEDS_PROFILE,
+	createDefaultPersonalNeedsProfile,
+} from "./services/defaultPersonalNeedsProfile.js";
 export type {
 	ToolComponentFactory,
 	ToolComponentFactoryMap,

@@ -90,3 +90,11 @@ export interface NavigationResult {
 	};
 	testAttemptSession: TestAttemptSession;
 }
+
+export interface SectionNavigationState {
+	currentIndex: number;
+	totalItems: number;
+	canNext: boolean;
+	canPrevious: boolean;
+	isLoading: boolean;
+}

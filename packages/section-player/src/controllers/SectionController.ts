@@ -13,6 +13,7 @@ import type {
 	NavigationResult,
 	SectionAttemptSessionSlice,
 	SectionControllerInput,
+	SectionNavigationState,
 	SectionSessionState,
 	SectionViewModel,
 	SessionChangedResult,
@@ -123,6 +124,24 @@ export class SectionController implements SectionControllerHandle {
 		return this.state.viewModel;
 	}
 
+	public getInstructions() {
+		return this.state.viewModel.instructions;
+	}
+
+	public getSectionLoadedEventDetail(): {
+		sectionId: string;
+		itemCount: number;
+		passageCount: number;
+		isPageMode: boolean;
+	} {
+		return {
+			sectionId: this.state.input?.section?.identifier || this.state.input?.sectionId || "",
+			itemCount: this.state.viewModel.items.length,
+			passageCount: this.state.viewModel.passages.length,
+			isPageMode: this.state.viewModel.isPageMode,
+		};
+	}
+
 	public getResolvedItemSessions(): Record<string, any> {
 		if (!this.state.testAttemptSession) return {};
 		return toItemSessionsRecord(this.state.testAttemptSession) as Record<string, any>;
@@ -132,9 +151,66 @@ export class SectionController implements SectionControllerHandle {
 		return this.state.testAttemptSession;
 	}
 
+	public getCanonicalItemId(itemId: string): string {
+		if (!itemId) return itemId;
+		const adapterMatch = this.state.viewModel.adapterItemRefs.find(
+			(itemRef) => itemRef.item?.id === itemId,
+		);
+		return adapterMatch?.identifier || itemId;
+	}
+
+	public getItemSessionsByItemId(): Record<string, any> {
+		const resolvedItemSessions = this.getResolvedItemSessions();
+		const mapped = Object.fromEntries(
+			this.state.viewModel.adapterItemRefs
+				.map((itemRef) => {
+					const itemId = itemRef.item?.id;
+					if (!itemId) return null;
+					const canonicalId = itemRef.identifier || itemId;
+					return [
+						itemId,
+						resolvedItemSessions[canonicalId] ?? resolvedItemSessions[itemId],
+					] as const;
+				})
+				.filter(
+					(entry): entry is readonly [string, any] =>
+						!!entry && typeof entry[0] === "string" && !!entry[0],
+				),
+		) as Record<string, any>;
+		for (const [key, value] of Object.entries(resolvedItemSessions)) {
+			if (!(key in mapped)) {
+				mapped[key] = value;
+			}
+		}
+		return mapped;
+	}
+
 	public getSessionState(): SectionSessionState | null {
 		if (!this.state.testAttemptSession) return null;
 		return this.sessionService.toSessionState(this.state.testAttemptSession);
+	}
+
+	private getSessionStateSignature(state: SectionSessionState | null): string {
+		if (!state) return "null";
+		return JSON.stringify({
+			currentItemIndex: state.currentItemIndex ?? 0,
+			visitedItemIdentifiers: state.visitedItemIdentifiers || [],
+			itemSessions: state.itemSessions || {},
+		});
+	}
+
+	public reconcileHostSessionState(
+		previous: SectionSessionState | null,
+	): SectionSessionState | null {
+		const next = this.getSessionState();
+		if (!next) return previous;
+		if (
+			this.getSessionStateSignature(previous) ===
+			this.getSessionStateSignature(next)
+		) {
+			return previous;
+		}
+		return next;
 	}
 
 	private getSectionItemIdentifiers(): string[] {
@@ -183,6 +259,25 @@ export class SectionController implements SectionControllerHandle {
 	public getCurrentItem(): ItemEntity | null {
 		if (this.state.viewModel.isPageMode) return null;
 		return this.state.viewModel.items[this.state.viewModel.currentItemIndex] || null;
+	}
+
+	public getCurrentItemSession(): unknown {
+		const currentItem = this.getCurrentItem();
+		if (!currentItem?.id) return undefined;
+		return this.getItemSessionsByItemId()[currentItem.id];
+	}
+
+	public getNavigationState(isLoading = false): SectionNavigationState {
+		const currentIndex = this.state.viewModel.currentItemIndex;
+		const totalItems = this.state.viewModel.items.length;
+		const isPageMode = this.state.viewModel.isPageMode;
+		return {
+			currentIndex,
+			totalItems,
+			canNext: !isPageMode && currentIndex < totalItems - 1,
+			canPrevious: !isPageMode && currentIndex > 0,
+			isLoading,
+		};
 	}
 
 	public handleItemSessionChanged(

@@ -240,30 +240,16 @@
     dispatchEvent(event);
   }
 
-  function getSessionStateSignature(state: SectionSessionState | null): string {
-    if (!state) return "null";
-    return JSON.stringify({
-      currentItemIndex: state.currentItemIndex ?? 0,
-      visitedItemIdentifiers: state.visitedItemIdentifiers || [],
-      itemSessions: state.itemSessions || {},
-    });
-  }
-
-  function updateSessionStateIfChanged(next: SectionSessionState | null): void {
-    if (!next) return;
-    if (getSessionStateSignature(sessionState) === getSessionStateSignature(next)) {
-      return;
-    }
-    sessionState = next;
-  }
-
   function bumpControllerState(): void {
     sectionControllerVersion += 1;
   }
 
   function syncControllerState(): void {
     if (!sectionController) return;
-    updateSessionStateIfChanged(sectionController.getSessionState());
+    const nextSessionState = sectionController.reconcileHostSessionState(sessionState);
+    if (nextSessionState) {
+      sessionState = nextSessionState;
+    }
     bumpControllerState();
   }
 
@@ -312,50 +298,27 @@
   let currentItemIndex = $derived(controllerViewModel.currentItemIndex);
   let isPageMode = $derived(controllerViewModel.isPageMode);
   let currentItem = $derived(sectionController?.getCurrentItem() || null);
-  let canNavigateNext = $derived(
-    !isPageMode && currentItemIndex < items.length - 1,
-  );
-  let canNavigatePrevious = $derived(!isPageMode && currentItemIndex > 0);
+  const navigationState = $derived.by(() => {
+    sectionControllerVersion;
+    return (
+      sectionController?.getNavigationState(isLoading) || {
+        currentIndex: currentItemIndex,
+        totalItems: items.length,
+        canNext: !isPageMode && currentItemIndex < items.length - 1,
+        canPrevious: !isPageMode && currentItemIndex > 0,
+        isLoading,
+      }
+    );
+  });
+  let canNavigateNext = $derived(navigationState.canNext);
+  let canNavigatePrevious = $derived(navigationState.canPrevious);
   const resolvedTestAttemptSession = $derived.by(() => {
     sectionControllerVersion;
     return sectionController?.getResolvedTestAttemptSession() || null;
   });
-  const resolvedItemSessions = $derived.by(() => {
-    sectionControllerVersion;
-    return sectionController?.getResolvedItemSessions() || {};
-  });
-  const adapterItemRefs = $derived(controllerViewModel.adapterItemRefs || []);
-  const canonicalItemIdentifierByItemId = $derived.by(() => {
-    const entries = adapterItemRefs
-      .map((itemRef) => {
-        const itemId = itemRef.item?.id;
-        const canonicalId = itemRef.identifier || itemId;
-        if (!itemId || !canonicalId) return null;
-        return [itemId, canonicalId] as const;
-      })
-      .filter(
-        (
-          entry,
-        ): entry is readonly [string, string] =>
-          !!entry && !!entry[0] && !!entry[1],
-      );
-    return Object.fromEntries(entries) as Record<string, string>;
-  });
   const itemSessionsByItemId = $derived.by(() => {
-    const mapped = Object.fromEntries(
-      Object.entries(canonicalItemIdentifierByItemId).map(
-        ([itemId, canonicalId]) => [
-          itemId,
-          resolvedItemSessions[canonicalId] ?? resolvedItemSessions[itemId],
-        ],
-      ),
-    ) as Record<string, any>;
-    for (const [key, value] of Object.entries(resolvedItemSessions)) {
-      if (!(key in mapped)) {
-        mapped[key] = value;
-      }
-    }
-    return mapped;
+    sectionControllerVersion;
+    return sectionController?.getItemSessionsByItemId() || {};
   });
 
   // Navigate to item (item mode only)
@@ -382,13 +345,7 @@
   }
 
   export function getNavigationState() {
-    return {
-      currentIndex: currentItemIndex,
-      totalItems: items.length,
-      canNext: canNavigateNext,
-      canPrevious: canNavigatePrevious,
-      isLoading,
-    };
+    return navigationState;
   }
 
   // Lifecycle
@@ -482,12 +439,7 @@
       `${items.length}:${passages.length}:${isPageMode}`;
     if (signature === lastLoadedSignature) return;
     lastLoadedSignature = signature;
-    emitSectionEvent("section-loaded", {
-      sectionId: section?.identifier || "",
-      itemCount: items.length,
-      passageCount: passages.length,
-      isPageMode,
-    });
+    emitSectionEvent("section-loaded", sectionController.getSectionLoadedEventDetail());
   });
 
   // Ensure selected page-mode layout web component is registered.
@@ -604,15 +556,13 @@
     };
   });
 
-  // Get instructions
-  let instructions = $derived(
-    rubricBlocks.filter((rb) => rb.class === "instructions"),
-  );
+  // Get instructions from controller-owned content model.
+  let instructions = $derived(sectionController?.getInstructions() || []);
 
   // Handle session changes from items.
   function handleItemSessionChanged(itemId: string, sessionDetail: any): void {
     if (!sectionController) return;
-    const canonicalItemId = canonicalItemIdentifierByItemId[itemId] || itemId;
+    const canonicalItemId = sectionController.getCanonicalItemId(itemId);
     const result = sectionController.handleItemSessionChanged(
       canonicalItemId,
       sessionDetail,
@@ -633,10 +583,7 @@
 
   // Get current item session
   let currentItemSession = $derived(
-    currentItem
-      ? itemSessionsByItemId[currentItem.id || ""] ||
-          resolvedItemSessions[currentItem.id || ""]
-      : undefined,
+    sectionController?.getCurrentItemSession(),
   );
 
   let shouldRenderToolbar = $derived(showToolbar && toolbarPosition !== "none");

@@ -1,4 +1,4 @@
-import type { QtiAssessmentSection } from "@pie-players/pie-players-shared/types";
+import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
 
 /**
  * Demo 2: Single Question with Single Passage
@@ -12,7 +12,7 @@ import type { QtiAssessmentSection } from "@pie-players/pie-players-shared/types
  * - See the relationship between passage content and comprehension questions
  * - Learn about the Renaissance period and its cultural impact
  */
-export const demo2Section: QtiAssessmentSection = {
+export const demo2Section: AssessmentSection = {
 	identifier: "demo2-question-passage",
 	title: "Demo 2: Question with Passage",
 	keepTogether: true, // Page mode - all content visible

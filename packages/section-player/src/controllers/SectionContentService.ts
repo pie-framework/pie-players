@@ -1,9 +1,9 @@
-import type { PassageEntity, QtiAssessmentSection } from "@pie-players/pie-players-shared";
+import type { AssessmentSection, PassageEntity } from "@pie-players/pie-players-shared";
 import type { SectionContentModel, SectionView } from "./types.js";
 
 export class SectionContentService {
 	public build(
-		section: QtiAssessmentSection | null,
+		section: AssessmentSection | null,
 		view: SectionView,
 	): SectionContentModel {
 		if (!section) {

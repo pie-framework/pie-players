@@ -49,8 +49,22 @@
 	let isSessionMinimized = $state(false);
 	let isSourceMinimized = $state(false);
 	let sectionPlayer: any = $state(null);
-	let itemSessions = $state<Record<string, any>>({});
-	let testAttemptSessionData = $state<any | null>(null);
+	let sessionStateData = $state<any | null>(null);
+	let trackedItemSessions = $state<Record<string, unknown>>({});
+	let trackedSessionMeta = $state<{
+		itemId?: string;
+		updatedAt?: number;
+	}>({});
+	let sessionPanelSnapshot = $derived.by(() => ({
+		currentItemIndex:
+			typeof sessionStateData?.currentItemIndex === 'number'
+				? sessionStateData.currentItemIndex
+				: null,
+		visitedItemIdentifiers: sessionStateData?.visitedItemIdentifiers || [],
+		updatedAt: trackedSessionMeta.updatedAt || null,
+		lastChangedItemId: trackedSessionMeta.itemId || null,
+		itemSessions: trackedItemSessions
+	}));
 
 	// Toolkit coordinator (owns all services)
 	let toolkitCoordinator: any = $state(createDemoToolkitCoordinator());
@@ -92,6 +106,30 @@
 	let TOOL_STATE_STORAGE_KEY = $derived(`demo-tool-state:${data.demo.id}`);
 	let TTS_CONFIG_STORAGE_KEY = $derived(`pie-section-demo-tts-config-${data.demo.id}`);
 	let LAYOUT_CONFIG_STORAGE_KEY = $derived(`pie-section-demo-layout-config-${data.demo.id}`);
+
+	function isPersistedItemSessionsSnapshot(value: unknown): value is {
+		version: 2;
+		sessionState: {
+			currentItemIndex?: number;
+			visitedItemIdentifiers?: string[];
+			itemSessions: Record<string, unknown>;
+		};
+		meta?: {
+			itemId?: string;
+			updatedAt?: number;
+		};
+	} {
+		if (!value || typeof value !== 'object') return false;
+		const snapshot = value as Record<string, unknown>;
+		return (
+			snapshot.version === 2 &&
+			!!snapshot.sessionState &&
+			typeof snapshot.sessionState === 'object' &&
+			!!(snapshot.sessionState as { itemSessions?: unknown }).itemSessions &&
+			typeof (snapshot.sessionState as { itemSessions?: unknown }).itemSessions ===
+				'object'
+		);
+	}
 
 	// Source panel state (read-only JSON view)
 	let editedSourceJson = $state('');
@@ -147,9 +185,9 @@
 	});
 
 	// Session window position and state
-	let sessionWindowX = $state(0);
+	let sessionWindowX = $state(24);
 	let sessionWindowY = $state(100);
-	let sessionWindowWidth = $state(400);
+	let sessionWindowWidth = $state(220);
 	let sessionWindowHeight = $state(600);
 	let isSessionDragging = $state(false);
 	let isSessionResizing = $state(false);
@@ -274,10 +312,10 @@
 			const viewportWidth = window.innerWidth;
 			const viewportHeight = window.innerHeight;
 
-			// Session panel: centered and proportionally larger
-			sessionWindowWidth = clamp(Math.round(viewportWidth * 0.58), 420, 980);
+			// Session panel: narrower and left-positioned by default
+			sessionWindowWidth = clamp(Math.round(viewportWidth * 0.29), 280, 560);
 			sessionWindowHeight = clamp(Math.round(viewportHeight * 0.72), 360, 860);
-			sessionWindowX = Math.max(16, Math.round((viewportWidth - sessionWindowWidth) / 2));
+			sessionWindowX = Math.max(16, Math.round(viewportWidth * 0.08));
 			sessionWindowY = Math.max(16, Math.round((viewportHeight - sessionWindowHeight) / 2));
 
 			// Source panel: slightly larger than session for code editing
@@ -294,14 +332,25 @@
 
 			editedSourceJson = formatJsonForSourceView(data.section);
 
-			// Load persisted sessions from localStorage
+			// Load persisted flattened session snapshot from localStorage.
 			try {
 				const stored = localStorage.getItem(SESSION_STORAGE_KEY);
 				if (stored) {
-					itemSessions = JSON.parse(stored);
+					const parsed = JSON.parse(stored);
+					if (isPersistedItemSessionsSnapshot(parsed)) {
+						sessionStateData = cloneSessionSnapshot(parsed.sessionState);
+						trackedItemSessions = cloneSessionSnapshot(parsed.sessionState.itemSessions || {});
+						trackedSessionMeta = cloneSessionSnapshot(parsed.meta || {});
+					} else {
+						console.warn(
+							'[Demo] Ignoring unknown persisted session payload. Clearing stale storage key.',
+							parsed
+						);
+						localStorage.removeItem(SESSION_STORAGE_KEY);
+					}
 				}
 			} catch (e) {
-				console.error('Failed to load persisted sessions:', e);
+				console.error('Failed to load persisted test attempt session:', e);
 			}
 
 			// Load persisted TTS config
@@ -382,14 +431,25 @@
 		}
 	}
 
-	// Persist sessions to localStorage whenever they change
+	// Persist flattened session state only.
 	$effect(() => {
-		if (browser && Object.keys(itemSessions).length > 0) {
-			try {
-				localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(itemSessions));
-			} catch (e) {
-				console.error('Failed to persist sessions:', e);
-			}
+		if (!browser) return;
+		const itemSessionCount = Object.keys(trackedItemSessions || {}).length;
+		if (!sessionStateData && itemSessionCount === 0) {
+			localStorage.removeItem(SESSION_STORAGE_KEY);
+			return;
+		}
+		const payload = {
+			version: 2 as const,
+			sessionState: sessionStateData || {
+				itemSessions: trackedItemSessions
+			},
+			meta: trackedSessionMeta
+		};
+		try {
+			localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(payload));
+		} catch (e) {
+			console.error('Failed to persist item session snapshot:', e);
 		}
 	});
 
@@ -436,7 +496,7 @@
 				sectionPlayer.section = resolvedSectionForPlayer;
 				sectionPlayer.env = pieEnv;
 				sectionPlayer.toolkitCoordinator = toolkitCoordinator;
-				sectionPlayer.itemSessions = itemSessions;
+				sectionPlayer.sessionState = sessionStateData;
 				sectionPlayer.toolbarPosition = toolbarPosition;
 			});
 		}
@@ -453,26 +513,91 @@
 	});
 
 	// Handle session changes from items
+	function cloneSessionSnapshot<T>(value: T): T {
+		try {
+			return structuredClone(value);
+		} catch {
+			// Fallback for environments where structuredClone fails on unexpected shapes.
+			return JSON.parse(JSON.stringify(value)) as T;
+		}
+	}
+
 	function handleSessionChanged(event: CustomEvent) {
-		console.log('[Demo] Session changed event:', event.detail);
-		const { itemId, session, testAttemptSession } = event.detail;
-
-		if (testAttemptSession) {
-			testAttemptSessionData = testAttemptSession;
+		const detail = event.detail as {
+			sessionState?: any;
+			itemSessions?: Record<string, unknown>;
+			itemId?: string;
+			session?: unknown;
+			timestamp?: number;
+		};
+		console.debug('[SectionDemo][SessionTrace] session-changed received', {
+			detail,
+			detailKeys: detail && typeof detail === 'object' ? Object.keys(detail) : []
+		});
+		if (!detail || typeof detail !== 'object') {
+			console.debug('[SectionDemo][SessionTrace] ignoring non-canonical payload', {
+				reason: 'missing detail payload'
+			});
+			return;
 		}
 
-		if (itemId && session) {
-			console.log('[Demo] Updating itemSessions:', itemId, session);
-			itemSessions = { ...itemSessions, [itemId]: session };
-		} else {
-			console.warn('[Demo] Missing itemId or session in event:', event.detail);
+		const nextState = detail.sessionState;
+		if (!nextState || typeof nextState !== 'object') {
+			if (detail.itemId) {
+				const nextItemSessions = {
+					...trackedItemSessions,
+					[detail.itemId]: cloneSessionSnapshot(detail.session)
+				};
+				trackedItemSessions = nextItemSessions;
+				sessionStateData = {
+					...(sessionStateData || {}),
+					itemSessions: nextItemSessions
+				};
+				trackedSessionMeta = {
+					...trackedSessionMeta,
+					itemId: detail.itemId,
+					updatedAt: detail.timestamp || Date.now()
+				};
+			}
+			console.debug('[SectionDemo][SessionTrace] updated flat item session without canonical snapshot', {
+				itemId: detail.itemId
+			});
+			return;
 		}
+
+		const snapshot = cloneSessionSnapshot(nextState);
+		sessionStateData = snapshot;
+		trackedItemSessions = cloneSessionSnapshot(
+			(snapshot?.itemSessions || detail.itemSessions || {}) as Record<string, unknown>
+		);
+		const changedItemSessionEntry = (trackedItemSessions || {})[
+			(detail as any)?.itemId
+		] as any;
+		trackedSessionMeta = {
+			itemId: detail.itemId,
+			updatedAt: detail.timestamp || Date.now()
+		};
+	const logData = {
+		itemId: (detail as any)?.itemId,
+		eventSessionDataLength: Array.isArray((detail as any)?.session?.data)
+			? (detail as any).session.data.length
+			: null,
+		currentItemIndex: snapshot?.currentItemIndex,
+		itemSessionCount: Object.keys(trackedItemSessions || {}).length,
+		canonicalItemSessionDataLength: Array.isArray(
+			changedItemSessionEntry?.session?.data
+		)
+			? changedItemSessionEntry.session.data.length
+			: null
+	};
+	console.debug('[SectionDemo][SessionTrace] panel snapshot updated', JSON.stringify(logData, null, 2));
 	}
 
 	// Reset all sessions
 	function resetSessions() {
-		itemSessions = {};
-		testAttemptSessionData = null;
+		sessionStateData = null;
+		trackedItemSessions = {};
+		trackedSessionMeta = {};
 		if (browser) {
 			try {
 				localStorage.removeItem(SESSION_STORAGE_KEY);
@@ -922,7 +1047,7 @@
 						<div class="text-sm font-bold mb-2">PIE Session Data (Persistent)</div>
 					</div>
 
-					{#if !testAttemptSessionData && Object.keys(itemSessions).length === 0}
+					{#if Object.keys(trackedItemSessions || {}).length === 0}
 						<div class="alert alert-info">
 							<svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-5 w-5" fill="none" viewBox="0 0 24 24">
 								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -932,9 +1057,9 @@
 					{:else}
 						<div class="bg-base-200 rounded p-3 flex-1 min-h-0 flex flex-col">
 							<div class="text-xs font-semibold mb-2">
-								{testAttemptSessionData ? 'Test Attempt Session' : 'Item Sessions (Fallback)'}
+								Item Sessions Snapshot
 							</div>
-							<pre class="bg-base-300 p-2 rounded text-xs overflow-auto flex-1 min-h-0">{JSON.stringify(testAttemptSessionData || itemSessions, null, 2)}</pre>
+							<pre class="bg-base-300 p-2 rounded text-xs overflow-auto flex-1 min-h-0">{JSON.stringify(sessionPanelSnapshot, null, 2)}</pre>
 						</div>
 					{/if}
 				</div>

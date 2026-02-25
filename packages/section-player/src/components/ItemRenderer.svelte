@@ -47,16 +47,34 @@
   } = $props();
 
   function handlePlayerSessionChanged(event: CustomEvent) {
+    console.debug("[ItemRenderer][SessionTrace] handlePlayerSessionChanged", {
+      itemId: item?.id || null,
+      contentKind,
+      hasRuntimeReporter: !!runtimeContext?.reportSessionChanged,
+      hasOnSessionChangedProp: !!onsessionchanged,
+      detailKeys:
+        event?.detail && typeof event.detail === "object"
+          ? Object.keys(event.detail)
+          : [],
+    });
     // Section item sessions are reported through runtime context to avoid
     // callback prop-drilling across internal layout components.
     if (contentKind === "assessment-item") {
       const itemId = item.id || "";
       if (itemId && runtimeContext?.reportSessionChanged) {
+        console.debug("[ItemRenderer][SessionTrace] forwarding via runtimeContext", {
+          itemId,
+        });
+        event.stopPropagation();
         runtimeContext.reportSessionChanged(itemId, event.detail);
         return;
       }
     }
     if (onsessionchanged) {
+      console.debug("[ItemRenderer][SessionTrace] forwarding via onsessionchanged prop", {
+        itemId: item?.id || null,
+      });
+      event.stopPropagation();
       onsessionchanged(event);
     }
   }
@@ -175,7 +193,7 @@
   });
 </script>
 
-<div bind:this={contextHostElement}>
+<div bind:this={contextHostElement} data-item-id={item.id || ""}>
   {#if item.config}
     <ItemShell
       {item}

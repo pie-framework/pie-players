@@ -1,13 +1,13 @@
 import type { SvelteComponent } from "svelte";
 import type {
-	TestAttemptSession,
 	ToolkitCoordinator,
 } from "@pie-players/pie-assessment-toolkit";
-import type { QtiAssessmentSection } from "@pie-players/pie-players-shared";
+import type { AssessmentSection } from "@pie-players/pie-players-shared";
 import type { ComponentDefinition } from "./component-definitions.js";
+import type { SectionSessionState } from "./controllers/types.js";
 
 export interface PieSectionPlayerProps {
-	section?: QtiAssessmentSection | null;
+	section?: AssessmentSection | null;
 	env?: {
 		mode: "gather" | "view" | "evaluate" | "author";
 		role: "student" | "instructor";
@@ -19,10 +19,7 @@ export interface PieSectionPlayerProps {
 		| "proctor"
 		| "testConstructor"
 		| "tutor";
-	itemSessions?: Record<string, any>;
-	testAttemptSession?: TestAttemptSession | null;
-	activityDefinition?: Record<string, any> | null;
-	activitySession?: Record<string, any> | null;
+	sessionState?: SectionSessionState | null;
 	pageLayout?: string;
 	playerVersion?: string;
 	layoutDefinitions?: Partial<Record<string, ComponentDefinition>>;

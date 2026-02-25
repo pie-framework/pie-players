@@ -4,7 +4,7 @@ import type {
 import type {
 	ItemEntity,
 	PassageEntity,
-	QtiAssessmentSection,
+	AssessmentSection,
 	RubricBlock,
 } from "@pie-players/pie-players-shared";
 
@@ -31,14 +31,21 @@ export interface SectionContentModel {
 }
 
 export interface SectionControllerInput {
-	section: QtiAssessmentSection | null;
+	section: AssessmentSection | null;
 	view: SectionView;
 	assessmentId: string;
 	sectionId: string;
-	itemSessions?: Record<string, any>;
-	testAttemptSession?: TestAttemptSession | null;
-	activityDefinition?: Record<string, any> | null;
-	activitySession?: Record<string, any> | null;
+	/**
+	 * Minimal host-facing session model.
+	 * The section runtime adapts this into canonical TestAttemptSession internally.
+	 */
+	sessionState?: SectionSessionState | null;
+}
+
+export interface SectionSessionState {
+	currentItemIndex?: number;
+	visitedItemIdentifiers?: string[];
+	itemSessions: Record<string, unknown>;
 }
 
 export interface SectionViewModel extends SectionContentModel {
@@ -46,13 +53,25 @@ export interface SectionViewModel extends SectionContentModel {
 	isPageMode: boolean;
 }
 
+export interface SectionAttemptSessionSlice {
+	sectionId: string;
+	sectionIdentifier?: string;
+	currentItemIndex: number;
+	currentItemId: string;
+	itemIdentifiers: string[];
+	visitedItemIdentifiers: string[];
+	itemSessions: Record<string, unknown>;
+}
+
 export interface SessionChangedResult {
 	testAttemptSession: TestAttemptSession;
 	itemSessions: Record<string, any>;
+	sessionState: SectionSessionState;
 	eventDetail: {
 		itemId: string;
 		session: unknown;
-		testAttemptSession: TestAttemptSession;
+		sessionState: SectionSessionState;
+		itemSessions: Record<string, unknown>;
 		complete?: boolean;
 		component?: string;
 		timestamp: number;

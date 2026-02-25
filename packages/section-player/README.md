@@ -186,20 +186,44 @@ function AssessmentSection({ section }) {
 
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
-| `section` | `QtiAssessmentSection` | `null` | Section data with passages and items |
+| `section` | `AssessmentSection` | `null` | Section data with passages and items |
 | `env` | `{ mode, role }` | `{ mode: 'gather', role: 'student' }` | Runtime environment |
 | `view` | `'candidate' \| 'scorer' \| 'author' \| ...` | `'candidate'` | Current view (filters rubricBlocks) |
 | `page-layout` | `string` | `'split-panel'` | Selected page-mode layout definition key (`split-panel`, `split-panel-composed`, `vertical`, or custom) |
 | `layoutDefinitions` | `Record<string, ComponentDefinition>` | built-ins | Host page-layout web-component definitions |
-| `item-sessions` | `Record<string, any>` | `{}` | Item sessions for restoration |
-| `test-attempt-session` | `TestAttemptSession \| null` | `null` | Canonical attempt runtime state consumed by section player |
-| `activity-definition` | `Record<string, any> \| null` | `null` | Pie backend activity definition (`../../kds/pie-api-aws`) |
-| `activity-session` | `Record<string, any> \| null` | `null` | Pie backend activity session (`../../kds/pie-api-aws`) |
+| `session-state` | `{ currentItemIndex?, visitedItemIdentifiers?, itemSessions } \| null` | `null` | Host-facing session state used for section initialization and updates |
 | `toolkitCoordinator` | `ToolkitCoordinator \| null` | `null` | Runtime toolkit coordinator for context-provided tool services |
 | `custom-class-name` | `string` | `''` | Custom CSS class |
 | `debug` | `string \| boolean` | `''` | Debug mode |
 
 The section player currently renders items with the IIFE player by default.
+
+## Session Initialization Contract
+
+Section player accepts one session initialization input:
+
+1. `session-state` (`{ currentItemIndex?, visitedItemIdentifiers?, itemSessions }`)
+2. if omitted, section player starts from empty canonical attempt state
+
+Notes:
+
+- Backend-specific payload translation belongs to the host/integrator.
+- `session-changed` emits `sessionState` (plus `itemSessions`) for host persistence.
+
+## Host Integration Recipes
+
+### Initialize from session state
+
+```javascript
+const player = document.querySelector("pie-section-player");
+
+player.section = section;
+player.sessionState = {
+  currentItemIndex: 0,
+  visitedItemIdentifiers: [],
+  itemSessions: {},
+};
+```
 
 ## Events
 
@@ -246,11 +270,11 @@ Fired when an error occurs.
 
 ### `session-changed`
 
-Fired when an item session changes. Includes the current canonical `testAttemptSession` snapshot so hosts can decide when/how to persist to pie backend.
+Fired when an item session changes. Includes host-facing `sessionState` plus `itemSessions` so hosts can persist only the section state they care about.
 
 ```javascript
 player.addEventListener("session-changed", (e) => {
-  const { itemId, session, testAttemptSession } = e.detail;
+  const { itemId, session, sessionState, itemSessions } = e.detail;
 
   // Host decides persistence strategy to ../../kds/pie-api-aws
   // (immediate, debounced, checkpoint, submit).
@@ -329,7 +353,7 @@ section.keepTogether = false;
 
 ### `navigateNext()`
 
-Navigate to the next item (item mode only).
+Navigate to the next item in the current section (item mode only).
 
 ```javascript
 player.navigateNext();
@@ -337,7 +361,7 @@ player.navigateNext();
 
 ### `navigatePrevious()`
 
-Navigate to the previous item (item mode only).
+Navigate to the previous item in the current section (item mode only).
 
 ```javascript
 player.navigatePrevious();
@@ -371,7 +395,7 @@ Passages are automatically deduplicated by ID.
 
 The section player integrates with the [PIE Assessment Toolkit](../assessment-toolkit/) for centralized service management via **ToolkitCoordinator**.
 
-The section player remains backend-agnostic by design. Hosts load `activityDefinition`/`activitySession` (pie backend), pass state into the player, then listen to `session-changed` and persist updates using host-owned API logic.
+The section player remains backend-agnostic by design. Hosts translate backend payloads into canonical `TestAttemptSession`, pass that into section player, then listen to `session-changed` and persist updates using host-owned API logic.
 
 ### Using ToolkitCoordinator (Recommended)
 
@@ -551,10 +575,10 @@ The web component uses Shadow DOM mode `'none'`, so you can style it with global
 Full TypeScript support included:
 
 ```typescript
-import type { QtiAssessmentSection } from '@pie-players/pie-players-shared/types';
+import type { AssessmentSection } from '@pie-players/pie-players-shared/types';
 import PieSectionPlayer from '@pie-players/pie-section-player';
 
-const section: QtiAssessmentSection = {
+const section: AssessmentSection = {
   identifier: 'section-1',
   keepTogether: true,
   // ...

@@ -81,6 +81,16 @@
 		if (!playerElement || !onsessionchanged) return;
 
 		const handler = (event: Event) => {
+			const customEvent = event as CustomEvent;
+			console.debug('[ItemPlayerBridge][SessionTrace] session-changed received', {
+				itemId: item?.id || null,
+				envMode: env?.mode,
+				envRole: env?.role,
+				detailKeys:
+					customEvent?.detail && typeof customEvent.detail === 'object'
+						? Object.keys(customEvent.detail)
+						: []
+			});
 			onsessionchanged(event as CustomEvent);
 		};
 

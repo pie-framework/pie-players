@@ -32,11 +32,8 @@
       view: { attribute: "view", type: "String" },
       pageLayout: { attribute: "page-layout", type: "String" },
 
-      // Item sessions for restoration
-      itemSessions: { attribute: "item-sessions", type: "Object" },
-      testAttemptSession: { attribute: "test-attempt-session", type: "Object" },
-      activityDefinition: { attribute: "activity-definition", type: "Object" },
-      activitySession: { attribute: "activity-session", type: "Object" },
+      // Host-facing session state for restoration
+      sessionState: { attribute: "session-state", type: "Object" },
 
       playerVersion: { attribute: "player-version", type: "String" },
 
@@ -65,7 +62,6 @@
     setCurrentPosition,
     upsertVisitedItem,
     type AssessmentToolkitRuntimeContext,
-    type TestAttemptSession,
   } from "@pie-players/pie-assessment-toolkit";
   import { ContextProvider, ContextRoot } from "@pie-players/pie-context";
   import {
@@ -81,12 +77,13 @@
   import type {
     ItemEntity,
     PassageEntity,
-    QtiAssessmentSection,
+    AssessmentSection,
     RubricBlock,
   } from "@pie-players/pie-players-shared";
   import { onMount, untrack } from "svelte";
   import ItemModeLayout from "./components/ItemModeLayout.svelte";
   import { SectionSessionService } from "./controllers/SectionSessionService.js";
+  import type { SectionSessionState } from "./controllers/types.js";
 
   type SectionPlayerRuntimeContext = AssessmentToolkitRuntimeContext & {
     reportSessionChanged?: (itemId: string, detail: unknown) => void;
@@ -96,7 +93,7 @@
 
   // Props
   let {
-    section = null as QtiAssessmentSection | null,
+    section = null as AssessmentSection | null,
     env = { mode: "gather", role: "student" } as {
       mode: "gather" | "view" | "evaluate" | "author";
       role: "student" | "instructor";
@@ -109,10 +106,8 @@
       | "testConstructor"
       | "tutor",
     pageLayout = "split-panel",
-    itemSessions = {} as Record<string, any>,
-    testAttemptSession = null as TestAttemptSession | null,
-    activityDefinition = null as Record<string, any> | null,
-    activitySession = null as Record<string, any> | null,
+    // Host-facing minimal session model.
+    sessionState = null as SectionSessionState | null,
     playerVersion = "latest",
     customClassName = "",
     toolbarPosition = "right" as "top" | "right" | "bottom" | "left" | "none",
@@ -145,9 +140,6 @@
 
   const preferredAssessmentId = $derived.by(() => {
     if (section?.identifier) return section.identifier;
-    if (typeof activityDefinition?.id === "string" && activityDefinition.id) {
-      return activityDefinition.id;
-    }
     return null;
   });
 
@@ -206,6 +198,10 @@
     typeof assessmentToolkitRuntimeContext
   > | null = null;
   let runtimeContextRoot: ContextRoot | null = null;
+
+  function logSessionTrace(message: string, details?: unknown): void {
+    console.debug(`[PieSectionPlayer][SessionTrace] ${message}`, details);
+  }
 
   function getHostElement(): HTMLElement | null {
     if (!rootElement) return null;
@@ -291,10 +287,7 @@
       view,
       assessmentId,
       sectionId,
-      itemSessions,
-      testAttemptSession,
-      activityDefinition,
-      activitySession,
+      sessionState,
       adapterItemRefs,
     }),
   );
@@ -302,6 +295,38 @@
   // Canonical attempt runtime source of truth for section player integration.
   const resolvedTestAttemptSession = $derived(resolvedSessionState.testAttemptSession);
   const resolvedItemSessions = $derived(resolvedSessionState.itemSessions);
+  const canonicalItemIdentifierByItemId = $derived.by(() => {
+    const entries = adapterItemRefs
+      .map((itemRef) => {
+        const itemId = itemRef.item?.id;
+        const canonicalId = itemRef.identifier || itemId;
+        if (!itemId || !canonicalId) return null;
+        return [itemId, canonicalId] as const;
+      })
+      .filter(
+        (
+          entry,
+        ): entry is readonly [string, string] =>
+          !!entry && !!entry[0] && !!entry[1],
+      );
+    return Object.fromEntries(entries) as Record<string, string>;
+  });
+  const itemSessionsByItemId = $derived.by(() => {
+    const mapped = Object.fromEntries(
+      Object.entries(canonicalItemIdentifierByItemId).map(
+        ([itemId, canonicalId]) => [
+          itemId,
+          resolvedItemSessions[canonicalId] ?? resolvedItemSessions[itemId],
+        ],
+      ),
+    ) as Record<string, any>;
+    for (const [key, value] of Object.entries(resolvedItemSessions)) {
+      if (!(key in mapped)) {
+        mapped[key] = value;
+      }
+    }
+    return mapped;
+  });
 
   // Extract content from section
   function extractContent() {
@@ -370,14 +395,17 @@
     const previousItemId = currentItem?.id || "";
     currentItemIndex = index;
     const nextItemId = items[index]?.id || "";
+    const nextCanonicalItemId =
+      canonicalItemIdentifierByItemId[nextItemId] || nextItemId;
 
-    testAttemptSession = upsertVisitedItem(
+    const nextTestAttemptSession = upsertVisitedItem(
       setCurrentPosition(resolvedTestAttemptSession, {
         currentItemIndex: index,
         currentSectionIdentifier: section?.identifier,
       }),
-      nextItemId,
+      nextCanonicalItemId,
     );
+    sessionState = sectionSessionService.toSessionState(nextTestAttemptSession);
 
     // Dispatch event
     emitSectionEvent("item-changed", {
@@ -562,28 +590,58 @@
 
   // Handle session changes from items
   function handleSessionChanged(itemId: string, sessionDetail: any) {
-    const result = sectionSessionService.applyItemSessionChanged({
+    const canonicalItemId = canonicalItemIdentifierByItemId[itemId] || itemId;
+    logSessionTrace("handleSessionChanged:start", {
       itemId,
+      canonicalItemId,
+      hasSessionDetail: !!sessionDetail,
+      sessionDetailKeys:
+        sessionDetail && typeof sessionDetail === "object"
+          ? Object.keys(sessionDetail)
+          : [],
+      resolvedAttemptId:
+        (resolvedTestAttemptSession as any)?.testAttemptSessionIdentifier || null,
+    });
+    const result = sectionSessionService.applyItemSessionChanged({
+      itemId: canonicalItemId,
       sessionDetail,
       testAttemptSession: resolvedTestAttemptSession,
       itemSessions: resolvedItemSessions,
     });
-    testAttemptSession = result.testAttemptSession;
+    sessionState = result.sessionState;
     const eventDetail = result.eventDetail;
+    logSessionTrace("handleSessionChanged:applied", {
+      canonicalItemId,
+      updatedAttemptId:
+        (result.testAttemptSession as any)?.testAttemptSessionIdentifier || null,
+      navigationState: (result.testAttemptSession as any)?.navigationState,
+      itemSessionCount: Object.keys(result.itemSessions || {}).length,
+      eventDetail,
+    });
 
     // Call handler prop if provided (for component callback usage).
     // Keep this as raw detail to avoid double-wrapping CustomEvent.detail.
     if (onsessionchanged) {
+      logSessionTrace("handleSessionChanged:calling-onsessionchanged", {
+        hasCallback: true,
+      });
       onsessionchanged(eventDetail);
     }
 
     // Also dispatch event (for custom element usage)
+    logSessionTrace("handleSessionChanged:dispatching-event", {
+      eventName: "session-changed",
+      eventDetail,
+    });
     emitSectionEvent("session-changed", eventDetail);
   }
 
   // Get current item session
   let currentItemSession = $derived(
-    currentItem ? resolvedItemSessions[currentItem.id || ""] : undefined,
+    currentItem
+      ? itemSessionsByItemId[currentItem.id || ""] ||
+          resolvedItemSessions[currentItem.id || ""]
+      : undefined,
   );
 
   let shouldRenderToolbar = $derived(showToolbar && toolbarPosition !== "none");
@@ -629,12 +687,68 @@
     runtimeContextProvider.setValue(runtimeContextValue);
   });
 
+  // Normalize any internal/raw item session events at the section boundary so
+  // host integrations only need to handle canonical session-changed payloads.
+  $effect(() => {
+    if (!rootElement) return;
+    const root = rootElement;
+    const onRawSessionChanged = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const detail = customEvent?.detail;
+      logSessionTrace("raw-session-changed:received", {
+        detail,
+        detailKeys: detail && typeof detail === "object" ? Object.keys(detail) : [],
+      });
+      if (detail && typeof detail === "object" && "sessionState" in detail) {
+        logSessionTrace("raw-session-changed:already-canonical", {
+          reason: "detail already contains sessionState",
+        });
+        return;
+      }
+      customEvent.stopPropagation();
+      const path =
+        typeof customEvent.composedPath === "function"
+          ? customEvent.composedPath()
+          : [];
+      const itemHost = path.find(
+        (node) =>
+          node &&
+          typeof node === "object" &&
+          "dataset" in (node as HTMLElement) &&
+          (node as HTMLElement).dataset?.itemId,
+      ) as HTMLElement | undefined;
+      const itemId = itemHost?.dataset?.itemId || "";
+      if (!itemId) {
+        logSessionTrace("raw-session-changed:missing-item-id", {
+          reason: "no data-item-id found in composed path",
+        });
+        return;
+      }
+      logSessionTrace("raw-session-changed:forwarding", {
+        itemId,
+      });
+      handleSessionChanged(itemId, detail);
+    };
+    root.addEventListener(
+      "session-changed",
+      onRawSessionChanged as EventListener,
+      true,
+    );
+    return () => {
+      root.removeEventListener(
+        "session-changed",
+        onRawSessionChanged as EventListener,
+        true,
+      );
+    };
+  });
+
   // Bind page-mode layout custom element properties imperatively.
   $effect(() => {
     if (!pageLayoutElement || !isPageMode) return;
     (pageLayoutElement as any).passages = passages;
     (pageLayoutElement as any).items = items;
-    (pageLayoutElement as any).itemSessions = resolvedItemSessions;
+    (pageLayoutElement as any).itemSessions = itemSessionsByItemId;
     (pageLayoutElement as any).testAttemptSession = resolvedTestAttemptSession;
     (pageLayoutElement as any).env = env;
     (pageLayoutElement as any).playerVersion = playerVersion;

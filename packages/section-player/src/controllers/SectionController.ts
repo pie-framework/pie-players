@@ -1,6 +1,5 @@
-import type {
-	TestAttemptSession,
-} from "@pie-players/pie-assessment-toolkit";
+import type { TestAttemptSession } from "@pie-players/pie-assessment-toolkit";
+import { toItemSessionsRecord } from "@pie-players/pie-assessment-toolkit";
 import type {
 	SectionControllerContext,
 	SectionControllerHandle,
@@ -12,6 +11,7 @@ import { SectionItemNavigationService } from "./SectionItemNavigationService.js"
 import { SectionSessionService } from "./SectionSessionService.js";
 import type {
 	NavigationResult,
+	SectionAttemptSessionSlice,
 	SectionControllerInput,
 	SectionViewModel,
 	SessionChangedResult,
@@ -21,7 +21,6 @@ interface SectionControllerState {
 	input: SectionControllerInput | null;
 	viewModel: SectionViewModel;
 	testAttemptSession: TestAttemptSession | null;
-	itemSessions: Record<string, any>;
 }
 
 export class SectionController implements SectionControllerHandle {
@@ -42,7 +41,6 @@ export class SectionController implements SectionControllerHandle {
 			isPageMode: false,
 		},
 		testAttemptSession: null,
-		itemSessions: {},
 	};
 
 	public async initialize(input?: unknown): Promise<void> {
@@ -62,10 +60,12 @@ export class SectionController implements SectionControllerHandle {
 			viewModel: {
 				...content,
 				currentItemIndex,
-				isPageMode: typedInput.section?.keepTogether === true,
+				isPageMode:
+					!!typedInput.section &&
+					"keepTogether" in typedInput.section &&
+					typedInput.section.keepTogether === true,
 			},
 			testAttemptSession: sessionState.testAttemptSession,
-			itemSessions: sessionState.itemSessions,
 		};
 	}
 
@@ -96,13 +96,6 @@ export class SectionController implements SectionControllerHandle {
 		if (!snapshot) return;
 		if (snapshot.testAttemptSession) {
 			this.state.testAttemptSession = snapshot.testAttemptSession;
-			this.state.itemSessions = (this.state.testAttemptSession.itemSessions
-				? Object.fromEntries(
-						Object.entries(this.state.testAttemptSession.itemSessions).map(
-							([itemId, value]) => [itemId, value.session],
-						),
-					)
-				: {}) as Record<string, any>;
 		}
 		if (typeof snapshot.currentItemIndex === "number") {
 			this.state.viewModel.currentItemIndex = snapshot.currentItemIndex;
@@ -130,11 +123,55 @@ export class SectionController implements SectionControllerHandle {
 	}
 
 	public getResolvedItemSessions(): Record<string, any> {
-		return this.state.itemSessions;
+		if (!this.state.testAttemptSession) return {};
+		return toItemSessionsRecord(this.state.testAttemptSession) as Record<string, any>;
 	}
 
 	public getResolvedTestAttemptSession(): TestAttemptSession | null {
 		return this.state.testAttemptSession;
+	}
+
+	private getSectionItemIdentifiers(): string[] {
+		const fromRefs = this.state.viewModel.adapterItemRefs
+			.map((itemRef) => itemRef.identifier || itemRef.item?.id)
+			.filter((id): id is string => typeof id === "string" && !!id);
+		if (fromRefs.length > 0) return fromRefs;
+		return this.state.viewModel.items
+			.map((item) => item.id)
+			.filter((id): id is string => typeof id === "string" && !!id);
+	}
+
+	/**
+	 * Return the current section-relevant slice from canonical TestAttemptSession.
+	 * This keeps section runtime concerns scoped without exposing unrelated attempt data.
+	 */
+	public getCurrentSectionAttemptSlice(): SectionAttemptSessionSlice | null {
+		if (!this.state.testAttemptSession) return null;
+		const itemIdentifiers = this.getSectionItemIdentifiers();
+		const currentItemId =
+			itemIdentifiers[this.state.viewModel.currentItemIndex] || "";
+		const visitedSet = new Set(
+			this.state.testAttemptSession.navigationState.visitedItemIdentifiers || [],
+		);
+		const visitedItemIdentifiers = itemIdentifiers.filter((id) => visitedSet.has(id));
+		const itemSessions = Object.fromEntries(
+			itemIdentifiers
+				.map((id) => [id, this.state.testAttemptSession?.itemSessions?.[id]?.session])
+				.filter(([, session]) => !!session),
+		) as Record<string, unknown>;
+
+		return {
+			sectionId: this.state.input?.sectionId || "",
+			sectionIdentifier:
+				this.state.input?.section?.identifier ||
+				this.state.input?.sectionId ||
+				undefined,
+			currentItemIndex: this.state.viewModel.currentItemIndex,
+			currentItemId,
+			itemIdentifiers,
+			visitedItemIdentifiers,
+			itemSessions,
+		};
 	}
 
 	public getCurrentItem(): ItemEntity | null {
@@ -147,14 +184,28 @@ export class SectionController implements SectionControllerHandle {
 		sessionDetail: any,
 	): SessionChangedResult | null {
 		if (!this.state.testAttemptSession) return null;
+		console.debug("[SectionController][SessionTrace] handleItemSessionChanged:start", {
+			itemId,
+			sessionDetail,
+			testAttemptSessionIdentifier:
+				(this.state.testAttemptSession as any)?.testAttemptSessionIdentifier || null,
+		});
+		const itemSessions = this.getResolvedItemSessions();
 		const result = this.sessionService.applyItemSessionChanged({
 			itemId,
 			sessionDetail,
 			testAttemptSession: this.state.testAttemptSession,
-			itemSessions: this.state.itemSessions,
+			itemSessions,
 		});
 		this.state.testAttemptSession = result.testAttemptSession;
-		this.state.itemSessions = result.itemSessions;
+		console.debug("[SectionController][SessionTrace] handleItemSessionChanged:applied", {
+			itemId: result.eventDetail.itemId,
+			testAttemptSessionIdentifier:
+				(result.testAttemptSession as any)?.testAttemptSessionIdentifier || null,
+			itemSessionCount: Object.keys((result.testAttemptSession as any)?.itemSessions || {})
+				.length,
+			navigationState: (result.testAttemptSession as any)?.navigationState,
+		});
 		return result;
 	}
 
@@ -169,7 +220,8 @@ export class SectionController implements SectionControllerHandle {
 			isPageMode: this.state.viewModel.isPageMode,
 			items: this.state.viewModel.items,
 			currentItemIndex: this.state.viewModel.currentItemIndex,
-			sectionIdentifier: this.state.input?.section?.identifier,
+			sectionIdentifier:
+				this.state.input?.section?.identifier || this.state.input?.sectionId,
 			testAttemptSession: this.state.testAttemptSession,
 		});
 		if (!result) return null;

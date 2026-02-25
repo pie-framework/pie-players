@@ -101,7 +101,7 @@ The PIE Section Player is a **framework-agnostic web component** for rendering Q
   section='{"identifier":"sec-1","keepTogether":true,...}'
   mode="gather"
   view="candidate"
-  item-sessions='{"item-1":{"id":"s1","data":[]}}'
+  session-state='{"itemSessions":{}}'
   bundle-host="https://cdn.pie.org"
   esm-cdn-url="https://esm.sh"
 ></pie-section-player>
@@ -119,7 +119,7 @@ player.addEventListener('item-changed', (e) => {
 });
 
 player.addEventListener('session-changed', (e) => {
-  // { itemId, session, timestamp }
+  // { itemId, session, sessionState, itemSessions, timestamp }
 });
 ```
 
@@ -132,7 +132,6 @@ player.addEventListener('session-changed', (e) => {
   {items}              <!-- ItemEntity[] -->
   {itemSessions}       <!-- Record<string, any> -->
   {mode}               <!-- string -->
-  onsessionchanged={handleSessionChanged}  <!-- Function -->
 />
 ```
 
@@ -196,6 +195,13 @@ passages = Array.from(passageMap.values());
 
 ## Session Management
 
+### Initialization Contract
+
+Section player accepts host-facing `sessionState` as the only session input.
+When omitted, it initializes an empty canonical attempt state internally.
+
+Host/integrator persists `sessionState` directly (no canonical attempt payload required).
+
 ### Restoration
 
 ```svelte
@@ -208,15 +214,10 @@ passages = Array.from(passageMap.values());
 ### Updates
 
 ```svelte
-<ItemRenderer
-  onsessionchanged={(sessionDetail) => {
-    // Update local state
-    itemSessions[itemId] = sessionDetail;
-
-    // Notify parent
-    dispatchEvent(new CustomEvent('session-changed', { detail }));
-  }}
-/>
+// Internal session updates flow through runtime context:
+// ItemRenderer -> reportSessionChanged(itemId, detail) -> section-level canonical update.
+//
+// Section player then emits host-facing CustomEvent('session-changed', detail).
 ```
 
 ---

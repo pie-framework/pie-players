@@ -1,4 +1,4 @@
-import type { QtiAssessmentSection } from "@pie-players/pie-players-shared/types";
+import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
 
 /**
  * Demo 4: TTS with SSML Extraction
@@ -21,7 +21,7 @@ import type { QtiAssessmentSection } from "@pie-players/pie-players-shared/types
  * - Q3: Advanced AWS SSML tags (breaks, emphasis levels, parts of speech, spell-out)
  * - Content-level TTS buttons in headers
  */
-export const demo4Section: QtiAssessmentSection = {
+export const demo4Section: AssessmentSection = {
 	identifier: "demo4-tts-ssml",
 	title: "Demo 4: TTS with SSML Extraction",
 	keepTogether: true, // Page mode - all content visible

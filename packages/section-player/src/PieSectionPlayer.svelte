@@ -213,8 +213,6 @@
   // TTS error state
   let ttsError = $state<string | null>(null);
 
-  // Section tools toolbar element reference
-  let toolbarElement = $state<HTMLElement | null>(null);
   let pageLayoutElement = $state<HTMLElement | null>(null);
   let rootElement = $state<HTMLElement | null>(null);
   let runtimeContextProvider: ContextProvider<
@@ -568,21 +566,6 @@
     emitSectionEvent("session-changed", eventDetail);
   }
 
-  let shouldRenderToolbar = $derived(showToolbar && toolbarPosition !== "none");
-
-  // Keep toolbar placement attributes synced on the host element.
-  $effect(() => {
-    if (toolbarElement) {
-      // Set position property and attribute
-      (toolbarElement as any).position = toolbarPosition;
-      toolbarElement.setAttribute("position", toolbarPosition);
-      toolbarElement.setAttribute("data-position", toolbarPosition);
-      // Let section toolbar compute allowed tools from placement/context.
-      (toolbarElement as any).enabledTools = "";
-      toolbarElement.setAttribute("enabled-tools", "");
-    }
-  });
-
   // Establish runtime context provider at the section-player root.
   $effect(() => {
     if (!rootElement) return;
@@ -618,6 +601,8 @@
     sectionControllerVersion;
     (layoutElement as any).composition = compositionModel;
     (layoutElement as any).env = env;
+    (layoutElement as any).toolbarPosition = toolbarPosition;
+    (layoutElement as any).showToolbar = showToolbar;
     (layoutElement as any).onnext = navigateNext;
     (layoutElement as any).onprevious = navigatePrevious;
   });
@@ -712,15 +697,6 @@
         </div>
       {/if}
     </div>
-
-    <!-- Section-level floating tools toolbar -->
-    {#if shouldRenderToolbar}
-      <pie-section-tools-toolbar
-        bind:this={toolbarElement}
-        position={toolbarPosition}
-        enabled-tools=""
-      ></pie-section-tools-toolbar>
-    {/if}
   {:else}
     <div class="pie-section-player__loading">
       <p>Loading section...</p>
@@ -756,69 +732,6 @@
     overflow: hidden;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
       Ubuntu, Cantarell, sans-serif;
-  }
-
-  /* Layout direction based on toolbar position */
-  .pie-section-player:has(pie-section-tools-toolbar[position="top"]),
-  .pie-section-player:has(pie-section-tools-toolbar[position="bottom"]),
-  .pie-section-player:has(
-      :global(pie-section-tools-toolbar[data-position="top"])
-    ),
-  .pie-section-player:has(
-      :global(pie-section-tools-toolbar[data-position="bottom"])
-    ),
-  .pie-section-player:not(:has(pie-section-tools-toolbar[position])):not(
-      :has(pie-section-tools-toolbar[data-position])
-    ) {
-    flex-direction: column;
-  }
-
-  .pie-section-player:has(pie-section-tools-toolbar[position="left"]),
-  .pie-section-player:has(pie-section-tools-toolbar[position="right"]),
-  .pie-section-player:has(
-      :global(pie-section-tools-toolbar[data-position="left"])
-    ),
-  .pie-section-player:has(
-      :global(pie-section-tools-toolbar[data-position="right"])
-    ) {
-    flex-direction: row;
-  }
-
-  /* Toolbar ordering - control whether toolbar appears before or after content */
-  .pie-section-player:has(pie-section-tools-toolbar[position="top"])
-    .pie-section-player__content,
-  .pie-section-player:has(
-      :global(pie-section-tools-toolbar[data-position="top"])
-    )
-    .pie-section-player__content {
-    order: 2;
-  }
-
-  .pie-section-player:has(pie-section-tools-toolbar[position="top"])
-    pie-section-tools-toolbar,
-  .pie-section-player:has(
-      :global(pie-section-tools-toolbar[data-position="top"])
-    )
-    pie-section-tools-toolbar {
-    order: 1;
-  }
-
-  .pie-section-player:has(pie-section-tools-toolbar[position="left"])
-    .pie-section-player__content,
-  .pie-section-player:has(
-      :global(pie-section-tools-toolbar[data-position="left"])
-    )
-    .pie-section-player__content {
-    order: 2;
-  }
-
-  .pie-section-player:has(pie-section-tools-toolbar[position="left"])
-    pie-section-tools-toolbar,
-  .pie-section-player:has(
-      :global(pie-section-tools-toolbar[data-position="left"])
-    )
-    pie-section-tools-toolbar {
-    order: 1;
   }
 
   /* Main content area takes remaining space */

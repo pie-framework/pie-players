@@ -5,6 +5,8 @@
 		props: {
 			composition: { type: "Object" },
 			env: { type: "Object" },
+			toolbarPosition: { type: "String", attribute: "toolbar-position" },
+			showToolbar: { type: "Boolean", attribute: "show-toolbar" },
 			onnext: { type: "Object", reflect: false },
 			onprevious: { type: "Object", reflect: false },
 		},
@@ -18,6 +20,8 @@
 	let {
 		composition,
 		env = { mode: "gather", role: "student" },
+		toolbarPosition = "right",
+		showToolbar = true,
 		onnext = undefined as (() => void) | undefined,
 		onprevious = undefined as (() => void) | undefined,
 	}: {
@@ -26,6 +30,8 @@
 			mode: "gather" | "view" | "evaluate" | "author";
 			role: "student" | "instructor";
 		};
+		toolbarPosition?: "top" | "right" | "bottom" | "left" | "none";
+		showToolbar?: boolean;
 		onnext?: () => void;
 		onprevious?: () => void;
 	} = $props();
@@ -34,6 +40,8 @@
 <ItemModeLayout
 	composition={composition as SectionCompositionModel}
 	{env}
+	{toolbarPosition}
+	{showToolbar}
 	{onnext}
 	{onprevious}
 />

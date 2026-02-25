@@ -5,6 +5,8 @@
 		props: {
 			composition: { type: "Object" },
 			env: { type: "Object" },
+			toolbarPosition: { type: "String", attribute: "toolbar-position" },
+			showToolbar: { type: "Boolean", attribute: "show-toolbar" },
 		},
 	}}
 />
@@ -16,12 +18,16 @@
 	let {
 		composition,
 		env = { mode: "gather", role: "student" },
+		toolbarPosition = "right",
+		showToolbar = true,
 	}: {
 		composition: SectionCompositionModel;
 		env?: {
 			mode: "gather" | "view" | "evaluate" | "author";
 			role: "student" | "instructor";
 		};
+		toolbarPosition?: "top" | "right" | "bottom" | "left" | "none";
+		showToolbar?: boolean;
 	} = $props();
 </script>
 
@@ -30,4 +36,6 @@
 		composition as SectionCompositionModel
 	}
 	{env}
+	{toolbarPosition}
+	{showToolbar}
 />

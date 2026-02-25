@@ -9,7 +9,8 @@
 	onMount(async () => {
 		await Promise.all([
 			import('@pie-players/pie-section-player'),
-			import('@pie-players/pie-tool-annotation-toolbar')
+			import('@pie-players/pie-tool-annotation-toolbar'),
+			import('@pie-players/pie-section-player-tools-session-debugger')
 		]);
 	});
 	import { onDestroy, onMount, untrack } from 'svelte';
@@ -45,25 +46,9 @@
 	let showSessionPanel = $state(false);
 	let showSourcePanel = $state(false);
 	let showPnpPanel = $state(false);
-	let isSessionMinimized = $state(false);
 	let isSourceMinimized = $state(false);
 	let sectionPlayer: any = $state(null);
-	let sessionStateData = $state<any | null>(null);
-	let trackedItemSessions = $state<Record<string, unknown>>({});
-	let trackedSessionMeta = $state<{
-		itemId?: string;
-		updatedAt?: number;
-	}>({});
-	let sessionPanelSnapshot = $derived.by(() => ({
-		currentItemIndex:
-			typeof sessionStateData?.currentItemIndex === 'number'
-				? sessionStateData.currentItemIndex
-				: null,
-		visitedItemIdentifiers: sessionStateData?.visitedItemIdentifiers || [],
-		updatedAt: trackedSessionMeta.updatedAt || null,
-		lastChangedItemId: trackedSessionMeta.itemId || null,
-		itemSessions: trackedItemSessions
-	}));
+	let sessionDebuggerElement: any = $state(null);
 
 	// Toolkit coordinator (owns all services)
 	let toolkitCoordinator: any = $state(createDemoToolkitCoordinator());
@@ -157,14 +142,6 @@
 			liveSection = structuredClone(currentSection);
 		}
 	});
-
-	// Session window position and state
-	let sessionWindowX = $state(24);
-	let sessionWindowY = $state(100);
-	let sessionWindowWidth = $state(220);
-	let sessionWindowHeight = $state(600);
-	let isSessionDragging = $state(false);
-	let isSessionResizing = $state(false);
 
 	// Source window position and state
 	let sourceWindowX = $state(50);
@@ -285,12 +262,6 @@
 			const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(value, max));
 			const viewportWidth = window.innerWidth;
 			const viewportHeight = window.innerHeight;
-
-			// Session panel: narrower and left-positioned by default
-			sessionWindowWidth = clamp(Math.round(viewportWidth * 0.29), 280, 560);
-			sessionWindowHeight = clamp(Math.round(viewportHeight * 0.72), 360, 860);
-			sessionWindowX = Math.max(16, Math.round(viewportWidth * 0.08));
-			sessionWindowY = Math.max(16, Math.round((viewportHeight - sessionWindowHeight) / 2));
 
 			// Source panel: slightly larger than session for code editing
 			sourceWindowWidth = clamp(Math.round(viewportWidth * 0.72), 640, 1200);
@@ -418,6 +389,7 @@
 		role: roleType === 'candidate' ? 'student' : 'instructor'
 	});
 	let qtiView = $derived<string>(roleType); // Keep QTI view for rubric filtering
+	let sessionPanelSectionId = $derived(liveSection?.identifier || data?.section?.identifier || 'section');
 
 	// Set complex properties imperatively on the web component
 	// (Web components can only receive simple values via attributes)
@@ -427,75 +399,32 @@
 				sectionPlayer.section = resolvedSectionForPlayer;
 				sectionPlayer.env = pieEnv;
 				sectionPlayer.toolkitCoordinator = toolkitCoordinator;
-				sectionPlayer.sessionState = sessionStateData;
 				sectionPlayer.toolbarPosition = toolbarPosition;
 			});
 		}
 	});
 
-	// Explicitly bind custom-event listener on the web component host.
 	$effect(() => {
-		if (!sectionPlayer) return;
-		const listener = (event: Event) => handleSessionChanged(event as CustomEvent);
-		sectionPlayer.addEventListener('session-changed', listener as EventListener);
+		if (!sessionDebuggerElement) return;
+		untrack(() => {
+			sessionDebuggerElement.toolkitCoordinator = toolkitCoordinator;
+			sessionDebuggerElement.sectionId = sessionPanelSectionId;
+		});
+	});
+
+	$effect(() => {
+		if (!sessionDebuggerElement) return;
+		const onClose = () => {
+			showSessionPanel = false;
+		};
+		sessionDebuggerElement.addEventListener('close', onClose as EventListener);
 		return () => {
-			sectionPlayer.removeEventListener('session-changed', listener as EventListener);
+			sessionDebuggerElement.removeEventListener('close', onClose as EventListener);
 		};
 	});
 
-	// Handle session changes from items
-	function cloneSessionSnapshot<T>(value: T): T {
-		try {
-			return structuredClone(value);
-		} catch {
-			// Fallback for environments where structuredClone fails on unexpected shapes.
-			return JSON.parse(JSON.stringify(value)) as T;
-		}
-	}
-
-	function handleSessionChanged(event: CustomEvent) {
-		const detail = event.detail as {
-			sessionState?: {
-				currentItemIndex?: number;
-				visitedItemIdentifiers?: string[];
-				itemSessions?: Record<string, unknown>;
-			};
-			itemId?: string;
-			timestamp?: number;
-		};
-		if (!detail?.sessionState || typeof detail.sessionState !== 'object') {
-			console.warn('[SectionDemo] session-changed missing canonical sessionState');
-			return;
-		}
-
-		const snapshot = cloneSessionSnapshot(detail.sessionState);
-		sessionStateData = snapshot;
-		trackedItemSessions = cloneSessionSnapshot(snapshot?.itemSessions || {});
-		const changedItemSessionEntry = (trackedItemSessions || {})[
-			(detail as any)?.itemId
-		] as any;
-		trackedSessionMeta = {
-			itemId: detail.itemId,
-			updatedAt: detail.timestamp || Date.now()
-		};
-	const logData = {
-		itemId: (detail as any)?.itemId,
-		currentItemIndex: snapshot?.currentItemIndex,
-		itemSessionCount: Object.keys(trackedItemSessions || {}).length,
-		canonicalItemSessionDataLength: Array.isArray(
-			changedItemSessionEntry?.session?.data
-		)
-			? changedItemSessionEntry.session.data.length
-			: null
-	};
-	console.debug('[SectionDemo][SessionTrace] panel snapshot updated', JSON.stringify(logData, null, 2));
-	}
-
 	// Reset all sessions
 	async function resetSessions() {
-		sessionStateData = null;
-		trackedItemSessions = {};
-		trackedSessionMeta = {};
 		const resolvedSectionId = liveSection?.identifier || data?.section?.identifier || 'section';
 		try {
 			await toolkitCoordinator?.disposeSectionController?.({
@@ -510,37 +439,6 @@
 		if (browser) {
 			window.location.reload();
 		}
-	}
-
-	// Session window dragging handlers
-	function startSessionDrag(e: MouseEvent) {
-		isSessionDragging = true;
-		dragStartX = e.clientX;
-		dragStartY = e.clientY;
-		dragStartWindowX = sessionWindowX;
-		dragStartWindowY = sessionWindowY;
-
-		document.addEventListener('mousemove', onSessionDrag);
-		document.addEventListener('mouseup', stopSessionDrag);
-	}
-
-	function onSessionDrag(e: MouseEvent) {
-		if (!isSessionDragging) return;
-
-		const deltaX = e.clientX - dragStartX;
-		const deltaY = e.clientY - dragStartY;
-
-		sessionWindowX = dragStartWindowX + deltaX;
-		sessionWindowY = dragStartWindowY + deltaY;
-
-		sessionWindowX = Math.max(0, Math.min(sessionWindowX, window.innerWidth - sessionWindowWidth));
-		sessionWindowY = Math.max(0, Math.min(sessionWindowY, window.innerHeight - 100));
-	}
-
-	function stopSessionDrag() {
-		isSessionDragging = false;
-		document.removeEventListener('mousemove', onSessionDrag);
-		document.removeEventListener('mouseup', stopSessionDrag);
 	}
 
 	// Source window dragging handlers
@@ -603,35 +501,6 @@
 		isPnpDragging = false;
 		document.removeEventListener('mousemove', onPnpDrag);
 		document.removeEventListener('mouseup', stopPnpDrag);
-	}
-
-	// Session window resize handlers
-	function startSessionResize(e: MouseEvent) {
-		isSessionResizing = true;
-		resizeStartX = e.clientX;
-		resizeStartY = e.clientY;
-		resizeStartWidth = sessionWindowWidth;
-		resizeStartHeight = sessionWindowHeight;
-
-		document.addEventListener('mousemove', onSessionResize);
-		document.addEventListener('mouseup', stopSessionResize);
-		e.stopPropagation();
-	}
-
-	function onSessionResize(e: MouseEvent) {
-		if (!isSessionResizing) return;
-
-		const deltaX = e.clientX - resizeStartX;
-		const deltaY = e.clientY - resizeStartY;
-
-		sessionWindowWidth = Math.max(300, Math.min(resizeStartWidth + deltaX, window.innerWidth - sessionWindowX));
-		sessionWindowHeight = Math.max(200, Math.min(resizeStartHeight + deltaY, window.innerHeight - sessionWindowY));
-	}
-
-	function stopSessionResize() {
-		isSessionResizing = false;
-		document.removeEventListener('mousemove', onSessionResize);
-		document.removeEventListener('mouseup', stopSessionResize);
 	}
 
 	// Source window resize handlers
@@ -830,6 +699,14 @@
 
 		<div class="navbar-end gap-2">
 			<button
+				class="btn btn-sm btn-outline"
+				onclick={() => void resetSessions()}
+				title="Reset sessions and clear persisted section state"
+				aria-label="Reset sessions"
+			>
+				Reset
+			</button>
+			<button
 				class="btn btn-sm btn-outline btn-square"
 				class:btn-active={showSessionPanel}
 				onclick={() => showSessionPanel = !showSessionPanel}
@@ -893,101 +770,8 @@
 
 <!-- Floating Session Window -->
 {#if showSessionPanel}
-	<div
-		class="fixed z-100 bg-base-100 rounded-lg shadow-2xl border-2 border-base-300"
-		style="left: {sessionWindowX}px; top: {sessionWindowY}px; width: {sessionWindowWidth}px; {isSessionMinimized ? 'height: auto;' : `height: ${sessionWindowHeight}px;`}"
-	>
-		<!-- Title Bar -->
-		<div
-			class="flex items-center justify-between px-4 py-2 bg-base-200 rounded-t-lg cursor-move select-none border-b border-base-300"
-			onmousedown={startSessionDrag}
-			role="button"
-			tabindex="0"
-			aria-label="Drag session panel"
-		>
-			<div class="flex items-center gap-2">
-				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-				</svg>
-				<h3 class="font-bold text-sm">Session Data</h3>
-			</div>
-			<div class="flex gap-1">
-				<button
-					class="btn btn-xs btn-ghost btn-circle"
-					onclick={() => isSessionMinimized = !isSessionMinimized}
-					title={isSessionMinimized ? 'Maximize' : 'Minimize'}
-				>
-					{#if isSessionMinimized}
-						<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-						</svg>
-					{:else}
-						<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-						</svg>
-					{/if}
-				</button>
-				<button
-					class="btn btn-xs btn-ghost btn-circle"
-					onclick={() => showSessionPanel = false}
-					title="Close"
-				>
-					<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-					</svg>
-				</button>
-			</div>
-		</div>
-
-		<!-- Content -->
-		{#if !isSessionMinimized}
-			<div class="p-4 flex flex-col min-h-0 overflow-hidden" style="height: {sessionWindowHeight - 60}px;">
-				<div class="space-y-3 flex-1 min-h-0 flex flex-col">
-					<!-- Session Data (Persistent - sent to server) -->
-					<div class="mb-2">
-						<div class="text-sm font-bold mb-2">PIE Session Data (Persistent)</div>
-					</div>
-
-					{#if Object.keys(trackedItemSessions || {}).length === 0}
-						<div class="alert alert-info">
-							<svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-5 w-5" fill="none" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-							</svg>
-							<span class="text-xs">No session data yet. Interact with the questions to see updates.</span>
-						</div>
-					{:else}
-						<div class="bg-base-200 rounded p-3 flex-1 min-h-0 flex flex-col">
-							<div class="text-xs font-semibold mb-2">
-								Item Sessions Snapshot
-							</div>
-							<pre class="bg-base-300 p-2 rounded text-xs overflow-auto flex-1 min-h-0">{JSON.stringify(sessionPanelSnapshot, null, 2)}</pre>
-						</div>
-					{/if}
-				</div>
-			</div>
-		{/if}
-
-		<!-- Resize Handle -->
-		{#if !isSessionMinimized}
-			<div
-				class="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize"
-				onmousedown={startSessionResize}
-				role="button"
-				tabindex="0"
-				title="Resize window"
-			>
-				<svg
-					class="w-full h-full text-base-content/30"
-					viewBox="0 0 16 16"
-					fill="currentColor"
-				>
-					<path d="M16 16V14H14V16H16Z" />
-					<path d="M16 11V9H14V11H16Z" />
-					<path d="M13 16V14H11V16H13Z" />
-				</svg>
-			</div>
-		{/if}
-	</div>
+	<pie-section-player-tools-session-debugger bind:this={sessionDebuggerElement}>
+	</pie-section-player-tools-session-debugger>
 {/if}
 
 <!-- Floating Source Window -->

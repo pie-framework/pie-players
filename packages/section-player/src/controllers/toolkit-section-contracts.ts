@@ -24,6 +24,7 @@ export interface SectionControllerHandle {
 	hydrate?(): void | Promise<void>;
 	persist?(): void | Promise<void>;
 	dispose?(): void | Promise<void>;
+	subscribe?(listener: (event: unknown) => void): () => void;
 	getSnapshot?(): unknown;
 	getCurrentSectionAttemptSlice?(): unknown;
 	setPersistenceContext?(context: SectionControllerContext): void | Promise<void>;

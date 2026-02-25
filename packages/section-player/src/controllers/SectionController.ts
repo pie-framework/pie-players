@@ -11,6 +11,8 @@ import { SectionItemNavigationService } from "./SectionItemNavigationService.js"
 import { SectionSessionService } from "./SectionSessionService.js";
 import type {
 	NavigationResult,
+	SectionControllerChangeEvent,
+	SectionControllerChangeListener,
 	SectionAttemptSessionSlice,
 	SectionControllerInput,
 	SectionNavigationState,
@@ -44,6 +46,33 @@ export class SectionController implements SectionControllerHandle {
 		},
 		testAttemptSession: null,
 	};
+	private readonly listeners = new Set<SectionControllerChangeListener>();
+
+	private emitChange(
+		reason: SectionControllerChangeEvent["reason"],
+		partial: Partial<SectionControllerChangeEvent> = {},
+	): void {
+		const event: SectionControllerChangeEvent = {
+			reason,
+			itemId: partial.itemId,
+			currentItemIndex: this.state.viewModel.currentItemIndex ?? 0,
+			timestamp: partial.timestamp ?? Date.now(),
+		};
+		for (const listener of this.listeners) {
+			try {
+				listener(event);
+			} catch (error) {
+				console.warn("[SectionController] listener failed", error);
+			}
+		}
+	}
+
+	public subscribe(listener: SectionControllerChangeListener): () => void {
+		this.listeners.add(listener);
+		return () => {
+			this.listeners.delete(listener);
+		};
+	}
 
 	public async initialize(input?: unknown): Promise<void> {
 		const typedInput = input as SectionControllerInput | undefined;
@@ -69,6 +98,7 @@ export class SectionController implements SectionControllerHandle {
 			},
 			testAttemptSession: sessionState.testAttemptSession,
 		};
+		this.emitChange("initialize");
 	}
 
 	public async updateInput(input?: unknown): Promise<void> {
@@ -102,6 +132,7 @@ export class SectionController implements SectionControllerHandle {
 		if (typeof snapshot.currentItemIndex === "number") {
 			this.state.viewModel.currentItemIndex = snapshot.currentItemIndex;
 		}
+		this.emitChange("hydrate");
 	}
 
 	public async persist(): Promise<void> {
@@ -110,7 +141,7 @@ export class SectionController implements SectionControllerHandle {
 	}
 
 	public dispose(): void {
-		// no-op for now
+		this.listeners.clear();
 	}
 
 	public getSnapshot(): unknown {
@@ -307,6 +338,10 @@ export class SectionController implements SectionControllerHandle {
 				.length,
 			navigationState: (result.testAttemptSession as any)?.navigationState,
 		});
+		this.emitChange("session-change", {
+			itemId: result.eventDetail.itemId,
+			timestamp: result.eventDetail.timestamp,
+		});
 		return result;
 	}
 
@@ -329,6 +364,10 @@ export class SectionController implements SectionControllerHandle {
 
 		this.state.viewModel.currentItemIndex = result.nextIndex;
 		this.state.testAttemptSession = result.testAttemptSession;
+		this.emitChange("navigation-change", {
+			itemId: result.eventDetail.currentItemId,
+			timestamp: result.eventDetail.timestamp,
+		});
 		return result;
 	}
 }

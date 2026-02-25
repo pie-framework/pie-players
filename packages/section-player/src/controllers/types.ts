@@ -98,3 +98,14 @@ export interface SectionNavigationState {
 	canPrevious: boolean;
 	isLoading: boolean;
 }
+
+export interface SectionControllerChangeEvent {
+	reason: "initialize" | "hydrate" | "session-change" | "navigation-change";
+	itemId?: string;
+	currentItemIndex: number;
+	timestamp: number;
+}
+
+export type SectionControllerChangeListener = (
+	event: SectionControllerChangeEvent,
+) => void;

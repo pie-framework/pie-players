@@ -38,7 +38,6 @@
 		return 'candidate';
 	}
 
-	let showJson = $state(false);
 	let layoutType = $state<'vertical' | 'split-panel'>(getInitialLayoutType());
 	let roleType = $state<'candidate' | 'scorer'>(getInitialMode());
 	let toolbarPosition = $state<'top' | 'right' | 'bottom' | 'left'>('right');
@@ -102,34 +101,9 @@
 	let ttsConfig = $state<TTSConfig>(getDefaultTTSConfig());
 
 	// Storage keys
-	let SESSION_STORAGE_KEY = $derived(`pie-section-demo-sessions-${data.demo.id}`);
 	let TOOL_STATE_STORAGE_KEY = $derived(`demo-tool-state:${data.demo.id}`);
 	let TTS_CONFIG_STORAGE_KEY = $derived(`pie-section-demo-tts-config-${data.demo.id}`);
 	let LAYOUT_CONFIG_STORAGE_KEY = $derived(`pie-section-demo-layout-config-${data.demo.id}`);
-
-	function isPersistedItemSessionsSnapshot(value: unknown): value is {
-		version: 2;
-		sessionState: {
-			currentItemIndex?: number;
-			visitedItemIdentifiers?: string[];
-			itemSessions: Record<string, unknown>;
-		};
-		meta?: {
-			itemId?: string;
-			updatedAt?: number;
-		};
-	} {
-		if (!value || typeof value !== 'object') return false;
-		const snapshot = value as Record<string, unknown>;
-		return (
-			snapshot.version === 2 &&
-			!!snapshot.sessionState &&
-			typeof snapshot.sessionState === 'object' &&
-			!!(snapshot.sessionState as { itemSessions?: unknown }).itemSessions &&
-			typeof (snapshot.sessionState as { itemSessions?: unknown }).itemSessions ===
-				'object'
-		);
-	}
 
 	// Source panel state (read-only JSON view)
 	let editedSourceJson = $state('');
@@ -332,27 +306,6 @@
 
 			editedSourceJson = formatJsonForSourceView(data.section);
 
-			// Load persisted flattened session snapshot from localStorage.
-			try {
-				const stored = localStorage.getItem(SESSION_STORAGE_KEY);
-				if (stored) {
-					const parsed = JSON.parse(stored);
-					if (isPersistedItemSessionsSnapshot(parsed)) {
-						sessionStateData = cloneSessionSnapshot(parsed.sessionState);
-						trackedItemSessions = cloneSessionSnapshot(parsed.sessionState.itemSessions || {});
-						trackedSessionMeta = cloneSessionSnapshot(parsed.meta || {});
-					} else {
-						console.warn(
-							'[Demo] Ignoring unknown persisted session payload. Clearing stale storage key.',
-							parsed
-						);
-						localStorage.removeItem(SESSION_STORAGE_KEY);
-					}
-				}
-			} catch (e) {
-				console.error('Failed to load persisted test attempt session:', e);
-			}
-
 			// Load persisted TTS config
 			try {
 				const storedConfig = localStorage.getItem(TTS_CONFIG_STORAGE_KEY);
@@ -430,28 +383,6 @@
 			window.location.href = url.toString();
 		}
 	}
-
-	// Persist flattened session state only.
-	$effect(() => {
-		if (!browser) return;
-		const itemSessionCount = Object.keys(trackedItemSessions || {}).length;
-		if (!sessionStateData && itemSessionCount === 0) {
-			localStorage.removeItem(SESSION_STORAGE_KEY);
-			return;
-		}
-		const payload = {
-			version: 2 as const,
-			sessionState: sessionStateData || {
-				itemSessions: trackedItemSessions
-			},
-			meta: trackedSessionMeta
-		};
-		try {
-			localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(payload));
-		} catch (e) {
-			console.error('Failed to persist item session snapshot:', e);
-		}
-	});
 
 	// Keep read-only source view in sync with current section
 	$effect(() => {
@@ -561,16 +492,19 @@
 	}
 
 	// Reset all sessions
-	function resetSessions() {
+	async function resetSessions() {
 		sessionStateData = null;
 		trackedItemSessions = {};
 		trackedSessionMeta = {};
-		if (browser) {
-			try {
-				localStorage.removeItem(SESSION_STORAGE_KEY);
-			} catch (e) {
-				console.error('Failed to clear persisted sessions:', e);
-			}
+		const resolvedSectionId = liveSection?.identifier || data?.section?.identifier || 'section';
+		try {
+			await toolkitCoordinator?.disposeSectionController?.({
+				sectionId: resolvedSectionId,
+				clearPersistence: true,
+				persistBeforeDispose: false
+			});
+		} catch (e) {
+			console.warn('[Demo] Failed to clear section-controller persistence during reset:', e);
 		}
 		// Force page reload to reset player state
 		if (browser) {

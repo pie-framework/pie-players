@@ -452,15 +452,36 @@ export class ToolkitCoordinator {
 	}
 
 	private createDefaultSectionPersistence(): SectionControllerPersistenceStrategy {
-		return {
-			async load() {
+		const storage = (() => {
+			try {
+				if (typeof window === "undefined") return null;
+				return window.localStorage;
+			} catch {
 				return null;
+			}
+		})();
+		const getStorageKey = (context: SectionControllerContext): string => {
+			const { assessmentId, sectionId, attemptId } = context.key;
+			return `pie:section-controller:v1:${assessmentId}:${sectionId}:${attemptId || "default"}`;
+		};
+		return {
+			async load(context) {
+				if (!storage) return null;
+				const value = storage.getItem(getStorageKey(context));
+				if (!value) return null;
+				try {
+					return JSON.parse(value);
+				} catch {
+					return null;
+				}
 			},
-			async save() {
-				// no-op default
+			async save(context, snapshot) {
+				if (!storage) return;
+				storage.setItem(getStorageKey(context), JSON.stringify(snapshot));
 			},
-			async clear() {
-				// no-op default
+			async clear(context) {
+				if (!storage) return;
+				storage.removeItem(getStorageKey(context));
 			},
 		};
 	}

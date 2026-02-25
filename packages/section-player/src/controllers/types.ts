@@ -2,9 +2,10 @@ import type {
 	TestAttemptSession,
 } from "@pie-players/pie-assessment-toolkit";
 import type {
+	AssessmentItemRef,
+	AssessmentSection,
 	ItemEntity,
 	PassageEntity,
-	AssessmentSection,
 	RubricBlock,
 } from "@pie-players/pie-players-shared";
 
@@ -46,6 +47,20 @@ export interface SectionSessionState {
 export interface SectionViewModel extends SectionContentModel {
 	currentItemIndex: number;
 	isPageMode: boolean;
+}
+
+export interface SectionCompositionModel {
+	section: AssessmentSection | null;
+	assessmentItemRefs: AssessmentItemRef[];
+	passages: PassageEntity[];
+	items: ItemEntity[];
+	rubricBlocks: RubricBlock[];
+	instructions: RubricBlock[];
+	currentItemIndex: number;
+	currentItem: ItemEntity | null;
+	isPageMode: boolean;
+	itemSessionsByItemId: Record<string, unknown>;
+	testAttemptSession: TestAttemptSession | null;
 }
 
 export interface SectionAttemptSessionSlice {

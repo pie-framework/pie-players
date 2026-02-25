@@ -6,22 +6,19 @@
   Not exposed as a web component - used internally in PieSectionPlayer.
 -->
 <script lang="ts">
-	import type { ItemEntity, PassageEntity } from '@pie-players/pie-players-shared';
+	import type { SectionCompositionModel } from '../../controllers/types.js';
 	import ItemRenderer from '../ItemRenderer.svelte';
 
 	let {
-		passages,
-		items,
-		itemSessions = {},
-		env = { mode: 'gather', role: 'student' },
-		playerVersion = 'latest'
+		composition,
+		env = { mode: 'gather', role: 'student' }
 	}: {
-		passages: PassageEntity[];
-		items: ItemEntity[];
-		itemSessions?: Record<string, any>;
+		composition: SectionCompositionModel;
 		env?: { mode: 'gather' | 'view' | 'evaluate' | 'author'; role: 'student' | 'instructor' };
-		playerVersion?: string;
 	} = $props();
+	let passages = $derived(composition?.passages || []);
+	let items = $derived(composition?.items || []);
+	let itemSessionsByItemId = $derived(composition?.itemSessionsByItemId || {});
 
 	let isScrolling = $state(false);
 	let scrollTimer: ReturnType<typeof setTimeout> | null = null;
@@ -63,8 +60,7 @@
 					{item}
 					contentKind="assessment-item"
 					{env}
-					session={itemSessions[item.id || '']}
-					{playerVersion}
+					session={itemSessionsByItemId[item.id || '']}
 					customClassName="pie-section-player__item-content"
 				/>
 			</div>

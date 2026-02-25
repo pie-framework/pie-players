@@ -5,37 +5,31 @@
   Not exposed as a web component - used internally in PieSectionPlayer.
 -->
 <script lang="ts">
-	import type { ItemEntity, PassageEntity } from '@pie-players/pie-players-shared';
+	import type { SectionCompositionModel } from '../controllers/types.js';
 	import ItemNavigation from './ItemNavigation.svelte';
 	import ItemRenderer from './ItemRenderer.svelte';
 
 	let {
-		passages,
-		currentItem,
-		currentIndex,
-		totalItems,
-		canNext,
-		canPrevious,
-		itemSession,
+		composition,
 		env = { mode: 'gather', role: 'student' },
-		playerVersion = 'latest',
-
 		onprevious,
 		onnext
 	}: {
-		passages: PassageEntity[];
-		currentItem: ItemEntity | null;
-		currentIndex: number;
-		totalItems: number;
-		canNext: boolean;
-		canPrevious: boolean;
-		itemSession?: any;
+		composition: SectionCompositionModel;
 		env?: { mode: 'gather' | 'view' | 'evaluate' | 'author'; role: 'student' | 'instructor' };
-		playerVersion?: string;
-
 		onprevious?: () => void;
 		onnext?: () => void;
 	} = $props();
+
+	let passages = $derived(composition?.passages || []);
+	let items = $derived(composition?.items || []);
+	let currentIndex = $derived(composition?.currentItemIndex || 0);
+	let totalItems = $derived(items.length);
+	let currentItem = $derived(composition?.currentItem || items[currentIndex] || null);
+	let itemSessionsByItemId = $derived(composition?.itemSessionsByItemId || {});
+	let itemSession = $derived(currentItem?.id ? itemSessionsByItemId[currentItem.id] : undefined);
+	let canPrevious = $derived(currentIndex > 0);
+	let canNext = $derived(currentIndex < totalItems - 1);
 </script>
 
 <div class="pie-section-player__item-mode-layout">
@@ -63,7 +57,6 @@
 				contentKind="assessment-item"
 				{env}
 				session={itemSession}
-				{playerVersion}
 				customClassName="pie-section-player__item-content"
 			/>
 		</div>

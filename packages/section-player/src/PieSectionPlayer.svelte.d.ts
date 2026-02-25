@@ -18,8 +18,7 @@ export interface PieSectionPlayerProps {
 		| "proctor"
 		| "testConstructor"
 		| "tutor";
-	pageLayout?: string;
-	playerVersion?: string;
+	layout?: string;
 	layoutDefinitions?: Partial<Record<string, ComponentDefinition>>;
 	toolbarPosition?: "top" | "right" | "bottom" | "left" | "none";
 	showToolbar?: boolean;

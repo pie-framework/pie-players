@@ -1,11 +1,11 @@
 <script lang="ts">
 	interface Props {
-		layoutType: 'vertical' | 'split-panel';
+		layoutType: 'vertical' | 'split-panel' | 'item-mode';
 		roleType: 'candidate' | 'scorer';
 		showSessionPanel: boolean;
 		showSourcePanel: boolean;
 		showPnpPanel: boolean;
-		onSelectLayout: (layout: 'vertical' | 'split-panel') => void;
+		onSelectLayout: (layout: 'vertical' | 'split-panel' | 'item-mode') => void;
 		onSelectRole: (role: 'candidate' | 'scorer') => void;
 		onReset: () => void;
 		onToggleSessionPanel: () => void;
@@ -56,6 +56,17 @@
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
 				</svg>
 				Vertical
+			</button>
+			<button
+				class="btn btn-sm join-item"
+				class:btn-active={layoutType === 'item-mode'}
+				onclick={() => onSelectLayout('item-mode')}
+				title="Item mode layout - one item at a time"
+			>
+				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10M7 12h6m-6 5h10M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z" />
+				</svg>
+				Item
 			</button>
 		</div>
 

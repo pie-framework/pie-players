@@ -6,21 +6,15 @@
   Not exposed as a web component - used internally in PieSectionPlayer.
 -->
 <script lang="ts">
-	import type { ItemEntity, PassageEntity } from '@pie-players/pie-players-shared';
+	import type { SectionCompositionModel } from '../../controllers/types.js';
 	import ItemRenderer from '../ItemRenderer.svelte';
 
 	let {
-		passages,
-		items,
-		itemSessions = {},
-		env = { mode: 'gather', role: 'student' },
-		playerVersion = 'latest'
+		composition,
+		env = { mode: 'gather', role: 'student' }
 	}: {
-		passages: PassageEntity[];
-		items: ItemEntity[];
-		itemSessions?: Record<string, any>;
+		composition: SectionCompositionModel;
 		env?: { mode: 'gather' | 'view' | 'evaluate' | 'author'; role: 'student' | 'instructor' };
-		playerVersion?: string;
 	} = $props();
 
 	// Resizable panel state
@@ -102,6 +96,9 @@
 	});
 
 	// Check if we have passages to determine layout
+	let passages = $derived(composition?.passages || []);
+	let items = $derived(composition?.items || []);
+	let itemSessionsByItemId = $derived(composition?.itemSessionsByItemId || {});
 	let hasPassages = $derived(passages.length > 0);
 </script>
 
@@ -153,8 +150,7 @@
 					{item}
 					contentKind="assessment-item"
 					{env}
-					session={itemSessions[item.id || '']}
-					{playerVersion}
+					session={itemSessionsByItemId[item.id || '']}
 					customClassName="pie-section-player__item-content"
 				/>
 			</div>

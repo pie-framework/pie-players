@@ -31,6 +31,11 @@ export const DEFAULT_LAYOUT_DEFINITIONS: LayoutDefinitionMap = {
 		ensureDefined: () =>
 			import("./components/layout-elements/PieVerticalLayoutElement.svelte"),
 	},
+	"item-mode": {
+		tagName: "pie-item-mode-layout",
+		ensureDefined: () =>
+			import("./components/layout-elements/PieItemModeLayoutElement.svelte"),
+	},
 };
 
 export function mergeComponentDefinitions<T extends Record<string, ComponentDefinition>>(

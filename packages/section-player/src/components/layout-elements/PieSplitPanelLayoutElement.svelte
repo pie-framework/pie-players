@@ -3,37 +3,33 @@
 		tag: "pie-split-panel-layout",
 		shadow: "none",
 		props: {
-			passages: { type: "Object" },
-			items: { type: "Object" },
-			itemSessions: { type: "Object" },
+			composition: { type: "Object" },
 			env: { type: "Object" },
-			playerVersion: { type: "String", attribute: "player-version" },
 		},
 	}}
 />
 
 <script lang="ts">
-	import type { ItemEntity, PassageEntity } from "@pie-players/pie-players-shared";
+	import type { SectionCompositionModel } from "../../controllers/types.js";
 	import SplitPanelLayout from "../layouts/SplitPanelLayout.svelte";
 
 	let {
-		passages = [] as PassageEntity[],
-		items = [] as ItemEntity[],
-		itemSessions = {},
-		env = { mode: "gather", role: "student" } as {
+		composition,
+		env = { mode: "gather", role: "student" },
+	}: {
+		composition: SectionCompositionModel;
+		env?: {
 			mode: "gather" | "view" | "evaluate" | "author";
 			role: "student" | "instructor";
-		},
-		playerVersion = "latest",
+		};
 	} = $props();
 </script>
 
 <SplitPanelLayout
-	{passages}
-	{items}
-	{itemSessions}
+	composition={
+		composition as SectionCompositionModel
+	}
 	{env}
-	{playerVersion}
 />
 
 <style>

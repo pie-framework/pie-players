@@ -30,9 +30,7 @@
       section: { attribute: "section", type: "Object" },
       env: { attribute: "env", type: "Object" },
       view: { attribute: "view", type: "String" },
-      pageLayout: { attribute: "page-layout", type: "String" },
-
-      playerVersion: { attribute: "player-version", type: "String" },
+      layout: { attribute: "layout", type: "String" },
 
       // Styling
       customClassName: { attribute: "custom-class-name", type: "String" },
@@ -76,10 +74,9 @@
     RubricBlock,
   } from "@pie-players/pie-players-shared";
   import { onMount } from "svelte";
-  import ItemModeLayout from "./components/ItemModeLayout.svelte";
   import { SectionController } from "./controllers/SectionController.js";
   import { SectionToolkitService } from "./controllers/SectionToolkitService.js";
-  import type { SectionViewModel } from "./controllers/types.js";
+  import type { SectionCompositionModel, SectionViewModel } from "./controllers/types.js";
 
   type SectionPlayerRuntimeContext = AssessmentToolkitRuntimeContext & {
     reportSessionChanged?: (itemId: string, detail: unknown) => void;
@@ -101,8 +98,7 @@
       | "proctor"
       | "testConstructor"
       | "tutor",
-    pageLayout = "split-panel",
-    playerVersion = "latest",
+    layout = "split-panel",
     customClassName = "",
     toolbarPosition = "right" as "top" | "right" | "bottom" | "left" | "none",
     showToolbar = true,
@@ -128,6 +124,19 @@
     adapterItemRefs: [],
     currentItemIndex: 0,
     isPageMode: false,
+  };
+  const EMPTY_COMPOSITION_MODEL: SectionCompositionModel = {
+    section: null,
+    assessmentItemRefs: [],
+    passages: [],
+    items: [],
+    rubricBlocks: [],
+    instructions: [],
+    currentItemIndex: 0,
+    currentItem: null,
+    isPageMode: false,
+    itemSessionsByItemId: {},
+    testAttemptSession: null,
   };
 
   let ownedToolkitCoordinator = $state<ToolkitCoordinator | null>(null);
@@ -265,10 +274,10 @@
   let mergedLayoutDefinitions = $derived.by(() =>
     mergeComponentDefinitions(DEFAULT_LAYOUT_DEFINITIONS, layoutDefinitions),
   );
-  let resolvedPageLayout = $derived(pageLayout);
+  let resolvedLayout = $derived(layout);
   let resolvedLayoutDefinition = $derived.by(
     () =>
-      mergedLayoutDefinitions[resolvedPageLayout] ||
+      mergedLayoutDefinitions[resolvedLayout] ||
       mergedLayoutDefinitions["split-panel"],
   );
   let resolvedLayoutTag = $derived(
@@ -284,7 +293,10 @@
   let rubricBlocks = $derived(controllerViewModel.rubricBlocks);
   let currentItemIndex = $derived(controllerViewModel.currentItemIndex);
   let isPageMode = $derived(controllerViewModel.isPageMode);
-  let currentItem = $derived(sectionController?.getCurrentItem() || null);
+  let compositionModel = $derived.by(() => {
+    sectionControllerVersion;
+    return sectionController?.getCompositionModel() || EMPTY_COMPOSITION_MODEL;
+  });
   const navigationState = $derived.by(() => {
     sectionControllerVersion;
     return (
@@ -420,7 +432,6 @@
 
   // Ensure selected page-mode layout web component is registered.
   $effect(() => {
-    if (!isPageMode) return;
     resolvedLayoutDefinition?.ensureDefined?.().catch((err) => {
       console.error("[PieSectionPlayer] Failed to load layout component:", err);
     });
@@ -557,11 +568,6 @@
     emitSectionEvent("session-changed", eventDetail);
   }
 
-  // Get current item session
-  let currentItemSession = $derived(
-    sectionController?.getCurrentItemSession(),
-  );
-
   let shouldRenderToolbar = $derived(showToolbar && toolbarPosition !== "none");
 
   // Keep toolbar placement attributes synced on the host element.
@@ -605,19 +611,15 @@
     runtimeContextProvider.setValue(runtimeContextValue);
   });
 
-  // Bind page-mode layout custom element properties imperatively.
+  // Bind layout custom element properties imperatively.
   $effect(() => {
     const layoutElement = pageLayoutElement;
-    if (!layoutElement || !isPageMode) return;
+    if (!layoutElement) return;
     sectionControllerVersion;
-    (layoutElement as any).passages = passages;
-    (layoutElement as any).items = items;
-    (layoutElement as any).itemSessions =
-      sectionController?.getItemSessionsByItemId() || {};
-    (layoutElement as any).testAttemptSession =
-      sectionController?.getResolvedTestAttemptSession() || null;
+    (layoutElement as any).composition = compositionModel;
     (layoutElement as any).env = env;
-    (layoutElement as any).playerVersion = playerVersion;
+    (layoutElement as any).onnext = navigateNext;
+    (layoutElement as any).onprevious = navigatePrevious;
   });
 </script>
 
@@ -696,32 +698,14 @@
     <!-- Main content area -->
     <div class="pie-section-player__content">
       {#if elementsLoaded}
-        {#if isPageMode}
-          <!-- Page Mode: Choose layout based on layout prop -->
-          {#key resolvedLayoutTag}
-            <svelte:element
-              this={resolvedLayoutTag}
-              class="pie-section-player__page-layout"
-              bind:this={pageLayoutElement}
-            >
-            </svelte:element>
-          {/key}
-        {:else}
-          <!-- Item Mode: Use internal Svelte component -->
-          <ItemModeLayout
-            {passages}
-            {currentItem}
-            currentIndex={currentItemIndex}
-            totalItems={items.length}
-            canNext={canNavigateNext}
-            canPrevious={canNavigatePrevious}
-            itemSession={currentItemSession}
-            {env}
-            {playerVersion}
-            onprevious={navigatePrevious}
-            onnext={navigateNext}
-          />
-        {/if}
+        {#key resolvedLayoutTag}
+          <svelte:element
+            this={resolvedLayoutTag}
+            class="pie-section-player__page-layout"
+            bind:this={pageLayoutElement}
+          >
+          </svelte:element>
+        {/key}
       {:else}
         <div class="pie-section-player__loading">
           <p>Loading assessment elements...</p>

@@ -12,7 +12,7 @@
 
 	let { data }: { data: PageData } = $props();
 
-	const LAYOUT_OPTIONS = ['vertical', 'split-panel'] as const;
+	const LAYOUT_OPTIONS = ['vertical', 'split-panel', 'item-mode'] as const;
 	const MODE_OPTIONS = ['candidate', 'scorer'] as const;
 
 	function getUrlEnumParam<T extends string>(
@@ -25,7 +25,7 @@
 		return value && options.includes(value as T) ? (value as T) : fallback;
 	}
 
-	let layoutType = $state<'vertical' | 'split-panel'>(
+	let layoutType = $state<'vertical' | 'split-panel' | 'item-mode'>(
 		getUrlEnumParam('layout', LAYOUT_OPTIONS, 'split-panel')
 	);
 	let roleType = $state<'candidate' | 'scorer'>(
@@ -120,7 +120,10 @@
 	});
 
 	// Update URL and refresh page when layout or mode changes
-	function updateUrlAndRefresh(updates: { layout?: 'vertical' | 'split-panel'; mode?: 'candidate' | 'scorer' }) {
+	function updateUrlAndRefresh(updates: {
+		layout?: 'vertical' | 'split-panel' | 'item-mode';
+		mode?: 'candidate' | 'scorer';
+	}) {
 		if (browser) {
 			const url = new URL(window.location.href);
 			// Preserve current values and apply updates
@@ -239,7 +242,7 @@
 		<pie-section-player
 			class="block h-full min-h-0"
 			bind:this={sectionPlayer}
-			page-layout={layoutType}
+			layout={layoutType}
 			view={roleType}
 		></pie-section-player>
 	</div>

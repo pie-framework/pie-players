@@ -13,6 +13,7 @@ import type {
 	NavigationResult,
 	SectionControllerChangeEvent,
 	SectionControllerChangeListener,
+	SectionCompositionModel,
 	SectionAttemptSessionSlice,
 	SectionControllerInput,
 	SectionNavigationState,
@@ -153,6 +154,22 @@ export class SectionController implements SectionControllerHandle {
 
 	public getViewModel(): SectionViewModel {
 		return this.state.viewModel;
+	}
+
+	public getCompositionModel(): SectionCompositionModel {
+		return {
+			section: this.state.input?.section || null,
+			assessmentItemRefs: this.state.input?.section?.assessmentItemRefs || [],
+			passages: this.state.viewModel.passages,
+			items: this.state.viewModel.items,
+			rubricBlocks: this.state.viewModel.rubricBlocks,
+			instructions: this.state.viewModel.instructions,
+			currentItemIndex: this.state.viewModel.currentItemIndex,
+			currentItem: this.getCurrentItem(),
+			isPageMode: this.state.viewModel.isPageMode,
+			itemSessionsByItemId: this.getItemSessionsByItemId(),
+			testAttemptSession: this.getResolvedTestAttemptSession(),
+		};
 	}
 
 	public getInstructions() {

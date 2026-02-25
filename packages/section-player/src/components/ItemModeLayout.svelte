@@ -21,8 +21,7 @@
 		playerVersion = 'latest',
 
 		onprevious,
-		onnext,
-		onsessionchanged
+		onnext
 	}: {
 		passages: PassageEntity[];
 		currentItem: ItemEntity | null;
@@ -36,14 +35,7 @@
 
 		onprevious?: () => void;
 		onnext?: () => void;
-		onsessionchanged?: (session: any) => void;
 	} = $props();
-
-	function handleSessionChanged(event: CustomEvent) {
-		if (onsessionchanged) {
-			onsessionchanged(event.detail);
-		}
-	}
 </script>
 
 <div class="pie-section-player__item-mode-layout">
@@ -72,7 +64,6 @@
 				{env}
 				session={itemSession}
 				{playerVersion}
-				onsessionchanged={handleSessionChanged}
 				customClassName="pie-section-player__item-content"
 			/>
 		</div>

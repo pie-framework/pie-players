@@ -442,6 +442,16 @@
 		}
 	});
 
+	// Explicitly bind custom-event listener on the web component host.
+	$effect(() => {
+		if (!sectionPlayer) return;
+		const listener = (event: Event) => handleSessionChanged(event as CustomEvent);
+		sectionPlayer.addEventListener('session-changed', listener as EventListener);
+		return () => {
+			sectionPlayer.removeEventListener('session-changed', listener as EventListener);
+		};
+	});
+
 	// Handle session changes from items
 	function handleSessionChanged(event: CustomEvent) {
 		console.log('[Demo] Session changed event:', event.detail);
@@ -840,7 +850,6 @@
 			bind:this={sectionPlayer}
 			page-layout={layoutType}
 			view={qtiView}
-			onsession-changed={handleSessionChanged}
 		></pie-section-player>
 	</div>
 

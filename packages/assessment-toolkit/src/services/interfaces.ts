@@ -18,6 +18,7 @@ import type {
 } from "./AccessibilityCatalogResolver.js";
 import type { HighlightColor, HighlightType } from "./HighlightCoordinator.js";
 import type {
+	SectionControllerHandle,
 	ToolkitCoordinatorHooks,
 	ToolkitInitStatus,
 } from "./ToolkitCoordinator.js";
@@ -553,6 +554,37 @@ export interface IToolkitCoordinator {
 	 * Register or update lifecycle hooks at runtime.
 	 */
 	setHooks(hooks: ToolkitCoordinatorHooks): void;
+
+	/**
+	 * Return a section controller if already created.
+	 */
+	getSectionController(args: {
+		sectionId: string;
+		attemptId?: string;
+	}): SectionControllerHandle | undefined;
+
+	/**
+	 * Create or reuse a section controller with single-flight deduplication.
+	 */
+	getOrCreateSectionController(args: {
+		sectionId: string;
+		attemptId?: string;
+		input?: unknown;
+		updateExisting?: boolean;
+		createDefaultController: () =>
+			| SectionControllerHandle
+			| Promise<SectionControllerHandle>;
+	}): Promise<SectionControllerHandle>;
+
+	/**
+	 * Dispose an existing section controller.
+	 */
+	disposeSectionController(args: {
+		sectionId: string;
+		attemptId?: string;
+		persistBeforeDispose?: boolean;
+		clearPersistence?: boolean;
+	}): Promise<void>;
 }
 
 // II18nService is re-exported from @pie-players/pie-players-shared/i18n

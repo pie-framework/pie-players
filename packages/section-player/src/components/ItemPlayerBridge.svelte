@@ -81,11 +81,6 @@
 		if (!playerElement || !onsessionchanged) return;
 
 		const handler = (event: Event) => {
-			console.log("[ItemRenderer] Session changed event received:", event);
-			console.log(
-				"[ItemRenderer] Full event detail:",
-				(event as CustomEvent).detail,
-			);
 			onsessionchanged(event as CustomEvent);
 		};
 

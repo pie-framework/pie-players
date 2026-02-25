@@ -14,26 +14,14 @@
 		items,
 		itemSessions = {},
 		env = { mode: 'gather', role: 'student' },
-		playerVersion = 'latest',
-
-		onsessionchanged
+		playerVersion = 'latest'
 	}: {
 		passages: PassageEntity[];
 		items: ItemEntity[];
 		itemSessions?: Record<string, any>;
 		env?: { mode: 'gather' | 'view' | 'evaluate' | 'author'; role: 'student' | 'instructor' };
 		playerVersion?: string;
-
-		onsessionchanged?: (itemId: string, session: any) => void;
 	} = $props();
-
-	function handleItemSessionChanged(itemId: string) {
-		return (event: CustomEvent) => {
-			if (onsessionchanged) {
-				onsessionchanged(itemId, event.detail);
-			}
-		};
-	}
 
 	// Resizable panel state
 	let leftPanelWidth = $state(50); // percentage
@@ -167,7 +155,6 @@
 					{env}
 					session={itemSessions[item.id || '']}
 					{playerVersion}
-					onsessionchanged={handleItemSessionChanged(item.id || '')}
 					customClassName="pie-section-player__item-content"
 				/>
 			</div>

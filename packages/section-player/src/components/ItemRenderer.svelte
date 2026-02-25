@@ -20,6 +20,10 @@
   import type { ItemEntity, PassageEntity } from "@pie-players/pie-players-shared";
   import { onMount, untrack } from "svelte";
 
+  type SectionPlayerRuntimeContext = AssessmentToolkitRuntimeContext & {
+    reportSessionChanged?: (itemId: string, detail: unknown) => void;
+  };
+
   let {
     item,
     env = { mode: "gather", role: "student" },
@@ -42,11 +46,26 @@
     onsessionchanged?: (event: CustomEvent) => void;
   } = $props();
 
+  function handlePlayerSessionChanged(event: CustomEvent) {
+    // Section item sessions are reported through runtime context to avoid
+    // callback prop-drilling across internal layout components.
+    if (contentKind === "assessment-item") {
+      const itemId = item.id || "";
+      if (itemId && runtimeContext?.reportSessionChanged) {
+        runtimeContext.reportSessionChanged(itemId, event.detail);
+        return;
+      }
+    }
+    if (onsessionchanged) {
+      onsessionchanged(event);
+    }
+  }
+
   // Get the DOM element reference for service binding
   let contextHostElement: HTMLElement | null = $state(null);
   let itemContentElement: HTMLElement | null = $state(null);
   let questionToolbarElement: HTMLElement | null = $state(null);
-  let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+  let runtimeContext = $state<SectionPlayerRuntimeContext | null>(null);
   let runtimeContextConsumer: ContextConsumer<
     typeof assessmentToolkitRuntimeContext
   > | null = null;
@@ -67,7 +86,7 @@
       context: assessmentToolkitRuntimeContext,
       subscribe: true,
       onValue: (value: AssessmentToolkitRuntimeContext) => {
-        runtimeContext = value;
+        runtimeContext = value as SectionPlayerRuntimeContext;
       },
     });
     runtimeContextConsumer.connect();
@@ -183,7 +202,7 @@
           resolvedPlayerTag={resolvedPlayerTag}
           resolvedPlayerDefinition={resolvedPlayerDefinition}
           {skipElementLoading}
-          {onsessionchanged}
+          onsessionchanged={handlePlayerSessionChanged}
         />
       </div>
     </ItemShell>

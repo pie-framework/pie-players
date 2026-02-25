@@ -62,10 +62,7 @@
   import {
     assessmentToolkitRuntimeContext,
     ToolkitCoordinator,
-    mapActivityToTestAttemptSession,
     setCurrentPosition,
-    toItemSessionsRecord,
-    upsertItemSessionFromPieSessionChange,
     upsertVisitedItem,
     type AssessmentToolkitRuntimeContext,
     type TestAttemptSession,
@@ -89,6 +86,11 @@
   } from "@pie-players/pie-players-shared";
   import { onMount, untrack } from "svelte";
   import ItemModeLayout from "./components/ItemModeLayout.svelte";
+  import { SectionSessionService } from "./controllers/SectionSessionService.js";
+
+  type SectionPlayerRuntimeContext = AssessmentToolkitRuntimeContext & {
+    reportSessionChanged?: (itemId: string, detail: unknown) => void;
+  };
 
   const isBrowser = typeof window !== "undefined";
 
@@ -122,7 +124,7 @@
     layoutDefinitions = {} as Partial<Record<string, ComponentDefinition>>,
 
     // Event handlers
-    onsessionchanged = null as ((event: CustomEvent) => void) | null,
+    onsessionchanged = null as ((detail: any) => void) | null,
   } = $props();
 
   type ToolkitCoordinatorReadyDetail = {
@@ -132,6 +134,7 @@
   let ownedToolkitCoordinator = $state<ToolkitCoordinator | null>(null);
   let fallbackAssessmentId = $state<string | null>(null);
   let lastNotifiedCoordinator = $state<ToolkitCoordinator | null>(null);
+  const sectionSessionService = new SectionSessionService();
 
   function getFallbackAssessmentId(): string {
     if (!fallbackAssessmentId) {
@@ -168,12 +171,7 @@
     const detail: ToolkitCoordinatorReadyDetail = {
       toolkitCoordinator: coordinator,
     };
-    const event = new CustomEvent("toolkit-coordinator-ready", {
-      detail,
-      bubbles: true,
-      composed: true,
-    });
-    dispatchEvent(event);
+    emitSectionEvent("toolkit-coordinator-ready", detail);
   });
 
   // Extract services from coordinator
@@ -209,6 +207,29 @@
   > | null = null;
   let runtimeContextRoot: ContextRoot | null = null;
 
+  function getHostElement(): HTMLElement | null {
+    if (!rootElement) return null;
+    const rootNode = rootElement.getRootNode();
+    if (rootNode && "host" in rootNode) {
+      return (rootNode as ShadowRoot).host as HTMLElement;
+    }
+    return (rootElement.closest("pie-section-player") as HTMLElement | null) ?? null;
+  }
+
+  function emitSectionEvent(name: string, detail: unknown): void {
+    const event = new CustomEvent(name, {
+      detail,
+      bubbles: true,
+      composed: true,
+    });
+    const host = getHostElement();
+    if (host) {
+      host.dispatchEvent(event);
+      return;
+    }
+    dispatchEvent(event);
+  }
+
   // Computed
   let isPageMode = $derived(section?.keepTogether === true);
   let currentItem = $derived(
@@ -222,7 +243,7 @@
   // Extract mode from env for convenience
   let mode = $derived(env.mode);
   let runtimeContextValue = $derived.by(
-    (): AssessmentToolkitRuntimeContext => ({
+    (): SectionPlayerRuntimeContext => ({
       toolkitCoordinator: coordinator,
       toolCoordinator: coordinator.toolCoordinator,
       ttsService: services.ttsService,
@@ -231,6 +252,8 @@
       elementToolStateStore: services.elementToolStateStore,
       assessmentId,
       sectionId,
+      reportSessionChanged: (itemId: string, detail: unknown) =>
+        handleSessionChanged(itemId, detail),
     }),
   );
   let resolvedPlayerDefinition = $derived.by(
@@ -262,22 +285,23 @@
     })),
   );
 
-  // Canonical attempt runtime source of truth for section player integration.
-  const resolvedTestAttemptSession = $derived.by(
-    () =>
-      testAttemptSession ||
-      mapActivityToTestAttemptSession({
-        activityDefinition,
-        activitySession,
-        itemRefs: adapterItemRefs,
-        itemSessionsByItemIdentifier: itemSessions,
-        assessmentId,
-      }),
+  const resolvedSessionState = $derived.by(() =>
+    sectionSessionService.resolve({
+      section,
+      view,
+      assessmentId,
+      sectionId,
+      itemSessions,
+      testAttemptSession,
+      activityDefinition,
+      activitySession,
+      adapterItemRefs,
+    }),
   );
 
-  const resolvedItemSessions = $derived.by(
-    () => toItemSessionsRecord(resolvedTestAttemptSession) as Record<string, any>,
-  );
+  // Canonical attempt runtime source of truth for section player integration.
+  const resolvedTestAttemptSession = $derived(resolvedSessionState.testAttemptSession);
+  const resolvedItemSessions = $derived(resolvedSessionState.itemSessions);
 
   // Extract content from section
   function extractContent() {
@@ -356,19 +380,13 @@
     );
 
     // Dispatch event
-    dispatchEvent(
-      new CustomEvent("item-changed", {
-        detail: {
-          previousItemId,
-          currentItemId: currentItem?.id || "",
-          itemIndex: currentItemIndex,
-          totalItems: items.length,
-          timestamp: Date.now(),
-        },
-        bubbles: true,
-        composed: true,
-      }),
-    );
+    emitSectionEvent("item-changed", {
+      previousItemId,
+      currentItemId: currentItem?.id || "",
+      itemIndex: currentItemIndex,
+      totalItems: items.length,
+      timestamp: Date.now(),
+    });
   }
 
   // Public navigation methods (for item mode)
@@ -408,18 +426,12 @@
     extractContent();
 
     // Dispatch loaded event
-    dispatchEvent(
-      new CustomEvent("section-loaded", {
-        detail: {
-          sectionId: section?.identifier || "",
-          itemCount: items.length,
-          passageCount: passages.length,
-          isPageMode,
-        },
-        bubbles: true,
-        composed: true,
-      }),
-    );
+    emitSectionEvent("section-loaded", {
+      sectionId: section?.identifier || "",
+      itemCount: items.length,
+      passageCount: passages.length,
+      isPageMode,
+    });
   });
 
   // Ensure selected page-mode layout web component is registered.
@@ -549,60 +561,23 @@
 
   // Handle session changes from items
   function handleSessionChanged(itemId: string, sessionDetail: any) {
-    console.log(
-      "[PieSectionPlayer] handleSessionChanged called:",
+    const result = sectionSessionService.applyItemSessionChanged({
       itemId,
       sessionDetail,
-    );
+      testAttemptSession: resolvedTestAttemptSession,
+      itemSessions: resolvedItemSessions,
+    });
+    testAttemptSession = result.testAttemptSession;
+    const eventDetail = result.eventDetail;
 
-    // Extract the actual session data from the event detail
-    // The sessionDetail contains { complete, component, session }
-    // We want to store the session property
-    const actualSession = sessionDetail.session || sessionDetail;
-
-    // Only update itemSessions if we have valid session data structure
-    // The session should have an 'id' property and a 'data' array
-    // Skip metadata-only events that just have { complete, component }
-    if (actualSession && ("id" in actualSession || "data" in actualSession)) {
-      testAttemptSession = upsertItemSessionFromPieSessionChange(
-        resolvedTestAttemptSession,
-        {
-          itemIdentifier: itemId,
-          pieSessionId: String(actualSession.id || itemId),
-          isCompleted: Boolean(sessionDetail.complete),
-          session: actualSession,
-        },
-      );
-    }
-
-    // Create event detail with session and metadata kept separate
-    const eventDetail = {
-      itemId,
-      session: resolvedItemSessions[itemId] || actualSession,
-      testAttemptSession,
-      complete: sessionDetail.complete,
-      component: sessionDetail.component,
-      timestamp: Date.now(),
-    };
-
-    // Call handler prop if provided (for Svelte component usage)
+    // Call handler prop if provided (for component callback usage).
+    // Keep this as raw detail to avoid double-wrapping CustomEvent.detail.
     if (onsessionchanged) {
-      const customEvent = new CustomEvent("session-changed", {
-        detail: eventDetail,
-        bubbles: true,
-        composed: true,
-      });
-      onsessionchanged(customEvent);
+      onsessionchanged(eventDetail);
     }
 
     // Also dispatch event (for custom element usage)
-    dispatchEvent(
-      new CustomEvent("session-changed", {
-        detail: eventDetail,
-        bubbles: true,
-        composed: true,
-      }),
-    );
+    emitSectionEvent("session-changed", eventDetail);
   }
 
   // Get current item session
@@ -662,7 +637,6 @@
     (pageLayoutElement as any).testAttemptSession = resolvedTestAttemptSession;
     (pageLayoutElement as any).env = env;
     (pageLayoutElement as any).playerVersion = playerVersion;
-    (pageLayoutElement as any).onsessionchanged = handleSessionChanged;
   });
 </script>
 
@@ -765,8 +739,6 @@
             {playerVersion}
             onprevious={navigatePrevious}
             onnext={navigateNext}
-            onsessionchanged={(sessionDetail) =>
-              handleSessionChanged(currentItem?.id || "", sessionDetail)}
           />
         {/if}
       {:else}

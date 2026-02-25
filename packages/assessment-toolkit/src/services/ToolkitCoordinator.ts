@@ -35,6 +35,22 @@ import type {
 	TIToolProviderConfig,
 	TTSToolProviderConfig,
 } from "./tool-providers/index.js";
+import type {
+	SectionControllerContext,
+	SectionControllerFactoryDefaults,
+	SectionControllerHandle,
+	SectionControllerKey,
+	SectionControllerPersistenceStrategy,
+	SectionPersistenceFactoryDefaults,
+} from "./section-controller-types.js";
+export type {
+	SectionControllerContext,
+	SectionControllerFactoryDefaults,
+	SectionControllerHandle,
+	SectionControllerKey,
+	SectionControllerPersistenceStrategy,
+	SectionPersistenceFactoryDefaults,
+} from "./section-controller-types.js";
 
 /**
  * Generic tool configuration
@@ -150,7 +166,9 @@ export interface ToolkitErrorContext {
 		| "state-save"
 		| "provider-register"
 		| "provider-init"
-		| "tts-init";
+		| "tts-init"
+		| "section-controller-init"
+		| "section-controller-dispose";
 	providerId?: string;
 	details?: Record<string, unknown>;
 }
@@ -207,6 +225,28 @@ export interface ToolkitCoordinatorHooks {
 		| undefined;
 	saveToolState?: (
 		state: Record<string, Record<string, unknown>>,
+	) => void | Promise<void>;
+
+	createSectionController?: (
+		context: SectionControllerContext,
+		defaults: SectionControllerFactoryDefaults,
+	) => SectionControllerHandle | Promise<SectionControllerHandle>;
+
+	createSectionPersistence?: (
+		context: SectionControllerContext,
+		defaults: SectionPersistenceFactoryDefaults,
+	) =>
+		| SectionControllerPersistenceStrategy
+		| Promise<SectionControllerPersistenceStrategy>;
+
+	onSectionControllerReady?: (
+		context: SectionControllerContext,
+		controller: SectionControllerHandle,
+	) => void | Promise<void>;
+
+	onSectionControllerDispose?: (
+		context: SectionControllerContext,
+		controller: SectionControllerHandle,
 	) => void | Promise<void>;
 }
 
@@ -269,6 +309,15 @@ export class ToolkitCoordinator {
 	private coordinatorReadyPromise?: Promise<void>;
 	private coordinatorReadyNotified = false;
 	private readonly providerInitPromises = new Map<string, Promise<IToolProvider>>();
+	private readonly sectionControllers = new Map<string, SectionControllerHandle>();
+	private readonly sectionControllerInitPromises = new Map<
+		string,
+		Promise<SectionControllerHandle>
+	>();
+	private readonly sectionPersistenceStrategies = new Map<
+		string,
+		SectionControllerPersistenceStrategy
+	>();
 
 	/** Callback for floating tools changes */
 	private floatingToolsChangeCallback: ((toolIds: string[]) => void) | null =
@@ -396,6 +445,41 @@ export class ToolkitCoordinator {
 		} catch (hookError) {
 			console.warn("[ToolkitCoordinator] onError hook failed:", hookError);
 		}
+	}
+
+	private getSectionControllerMapKey(key: SectionControllerKey): string {
+		return `${key.assessmentId}::${key.sectionId}::${key.attemptId || ""}`;
+	}
+
+	private createDefaultSectionPersistence(): SectionControllerPersistenceStrategy {
+		return {
+			async load() {
+				return null;
+			},
+			async save() {
+				// no-op default
+			},
+			async clear() {
+				// no-op default
+			},
+		};
+	}
+
+	private async resolveSectionPersistence(
+		context: SectionControllerContext,
+	): Promise<SectionControllerPersistenceStrategy> {
+		const cacheKey = this.getSectionControllerMapKey(context.key);
+		const existing = this.sectionPersistenceStrategies.get(cacheKey);
+		if (existing) return existing;
+
+		const defaults: SectionPersistenceFactoryDefaults = {
+			createDefaultPersistence: () => this.createDefaultSectionPersistence(),
+		};
+		const strategy =
+			(await this.hooks.createSectionPersistence?.(context, defaults)) ??
+			(await defaults.createDefaultPersistence());
+		this.sectionPersistenceStrategies.set(cacheKey, strategy);
+		return strategy;
 	}
 
 	private setupStatePersistenceHooks(): void {
@@ -551,6 +635,137 @@ export class ToolkitCoordinator {
 			void Promise.resolve(hooks.onCoordinatorReady(this)).catch((err) => {
 				this.handleError(err, { phase: "coordinator-ready" });
 			});
+		}
+	}
+
+	public getSectionController(args: {
+		sectionId: string;
+		attemptId?: string;
+	}): SectionControllerHandle | undefined {
+		const key: SectionControllerKey = {
+			assessmentId: this.assessmentId,
+			sectionId: args.sectionId,
+			attemptId: args.attemptId,
+		};
+		return this.sectionControllers.get(this.getSectionControllerMapKey(key));
+	}
+
+	public async getOrCreateSectionController(args: {
+		sectionId: string;
+		attemptId?: string;
+		input?: unknown;
+		updateExisting?: boolean;
+		createDefaultController: () =>
+			| SectionControllerHandle
+			| Promise<SectionControllerHandle>;
+	}): Promise<SectionControllerHandle> {
+		const key: SectionControllerKey = {
+			assessmentId: this.assessmentId,
+			sectionId: args.sectionId,
+			attemptId: args.attemptId,
+		};
+		const mapKey = this.getSectionControllerMapKey(key);
+		const existingController = this.sectionControllers.get(mapKey);
+		if (existingController) {
+			if (args.updateExisting !== false) {
+				await existingController.updateInput?.(args.input);
+			}
+			return existingController;
+		}
+
+		const existingPromise = this.sectionControllerInitPromises.get(mapKey);
+		if (existingPromise) return existingPromise;
+
+		const initPromise = (async () => {
+			const context: SectionControllerContext = {
+				key,
+				coordinator: this,
+				input: args.input,
+			};
+			const persistence = await this.resolveSectionPersistence(context);
+			const defaults: SectionControllerFactoryDefaults = {
+				createDefaultController: args.createDefaultController,
+			};
+			const controller =
+				(await this.hooks.createSectionController?.(context, defaults)) ??
+				(await defaults.createDefaultController());
+
+			await controller.setPersistenceStrategy?.(persistence);
+			await controller.setPersistenceContext?.(context);
+			await controller.initialize?.(args.input);
+			await controller.hydrate?.();
+
+			this.sectionControllers.set(mapKey, controller);
+			await this.hooks.onSectionControllerReady?.(context, controller);
+			await this.emitTelemetry("section-controller-ready", {
+				assessmentId: key.assessmentId,
+				sectionId: key.sectionId,
+				attemptId: key.attemptId,
+			});
+			return controller;
+		})().catch((err) => {
+			this.handleError(err, {
+				phase: "section-controller-init",
+				details: {
+					sectionId: args.sectionId,
+					attemptId: args.attemptId,
+				},
+			});
+			throw err;
+		}).finally(() => {
+			this.sectionControllerInitPromises.delete(mapKey);
+		});
+
+		this.sectionControllerInitPromises.set(mapKey, initPromise);
+		return initPromise;
+	}
+
+	public async disposeSectionController(args: {
+		sectionId: string;
+		attemptId?: string;
+		persistBeforeDispose?: boolean;
+		clearPersistence?: boolean;
+	}): Promise<void> {
+		const key: SectionControllerKey = {
+			assessmentId: this.assessmentId,
+			sectionId: args.sectionId,
+			attemptId: args.attemptId,
+		};
+		const mapKey = this.getSectionControllerMapKey(key);
+		const controller = this.sectionControllers.get(mapKey);
+		if (!controller) return;
+
+		const context: SectionControllerContext = {
+			key,
+			coordinator: this,
+		};
+
+		try {
+			if (args.persistBeforeDispose !== false) {
+				await controller.persist?.();
+			}
+			await controller.dispose?.();
+			await this.hooks.onSectionControllerDispose?.(context, controller);
+			await this.emitTelemetry("section-controller-disposed", {
+				assessmentId: key.assessmentId,
+				sectionId: key.sectionId,
+				attemptId: key.attemptId,
+			});
+		} catch (err) {
+			this.handleError(err, {
+				phase: "section-controller-dispose",
+				details: {
+					sectionId: args.sectionId,
+					attemptId: args.attemptId,
+				},
+			});
+		} finally {
+			this.sectionControllers.delete(mapKey);
+			if (args.clearPersistence) {
+				const strategy = this.sectionPersistenceStrategies.get(mapKey);
+				await strategy?.clear?.(context);
+			}
+			this.sectionPersistenceStrategies.delete(mapKey);
 		}
 	}
 

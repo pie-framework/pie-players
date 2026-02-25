@@ -8,7 +8,6 @@
 			itemSessions: { type: "Object" },
 			env: { type: "Object" },
 			playerVersion: { type: "String", attribute: "player-version" },
-			onsessionchanged: { type: "Object", reflect: false },
 		},
 	}}
 />
@@ -26,7 +25,6 @@
 			role: "student" | "instructor";
 		},
 		playerVersion = "latest",
-		onsessionchanged = undefined as ((itemId: string, session: any) => void) | undefined,
 	} = $props();
 </script>
 
@@ -36,7 +34,6 @@
 	{itemSessions}
 	{env}
 	{playerVersion}
-	{onsessionchanged}
 />
 
 <style>

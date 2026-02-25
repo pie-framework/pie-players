@@ -17,6 +17,7 @@ export interface AssessmentToolkitRuntimeContext {
 	elementToolStateStore: IElementToolStateStore;
 	assessmentId: string;
 	sectionId: string;
+	reportSessionChanged?: (itemId: string, detail: unknown) => void;
 }
 
 export const assessmentToolkitRuntimeContext =

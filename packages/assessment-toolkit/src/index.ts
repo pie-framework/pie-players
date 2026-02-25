@@ -157,6 +157,12 @@ export { ToolCoordinator, ZIndexLayer } from "./services/ToolCoordinator.js";
 export type {
 	AnswerEliminatorToolConfig,
 	ProviderLifecycleContext,
+	SectionControllerContext,
+	SectionControllerFactoryDefaults,
+	SectionControllerHandle,
+	SectionControllerKey,
+	SectionControllerPersistenceStrategy,
+	SectionPersistenceFactoryDefaults,
 	ToolConfig,
 	ToolkitCoordinatorConfig,
 	ToolkitCoordinatorHooks,

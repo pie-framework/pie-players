@@ -4,7 +4,7 @@
 		ToolkitCoordinator,
 		type ToolkitCoordinatorHooks
 	} from '@pie-players/pie-assessment-toolkit';
-	import { onDestroy, onMount, untrack } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { browser } from '$app/environment';
 	import type { PageData } from './$types';
 	import SourcePanel from './SourcePanel.svelte';
@@ -13,7 +13,6 @@
 
 	const LAYOUT_OPTIONS = ['vertical', 'split-panel'] as const;
 	const MODE_OPTIONS = ['candidate', 'scorer'] as const;
-	const TOOLBAR_POSITIONS = ['top', 'right', 'bottom', 'left'] as const;
 
 	function getUrlEnumParam<T extends string>(
 		key: string,
@@ -23,13 +22,6 @@
 		if (!browser) return fallback;
 		const value = new URLSearchParams(window.location.search).get(key);
 		return value && options.includes(value as T) ? (value as T) : fallback;
-	}
-
-	function isToolbarPosition(value: unknown): value is 'top' | 'right' | 'bottom' | 'left' {
-		return (
-			typeof value === 'string' &&
-			(TOOLBAR_POSITIONS as readonly string[]).includes(value)
-		);
 	}
 
 	let layoutType = $state<'vertical' | 'split-panel'>(
@@ -49,81 +41,22 @@
 	// Toolkit coordinator (owns all services)
 	let toolkitCoordinator: any = $state(createDemoToolkitCoordinator());
 
-	// TTS Configuration
-	interface TTSHighlightStyle {
-		color: string;
-		opacity: number;
-	}
-
-	interface TTSConfig {
-		provider: 'polly' | 'browser' | 'google';
-		voice: string;
-		rate: number;
-		pitch: number;
-		pollyEngine?: 'neural' | 'standard';
-		pollySampleRate?: number;
-		googleVoiceType?: 'wavenet' | 'standard' | 'studio';
-		highlightStyle?: TTSHighlightStyle;
-	}
-
-	function getDefaultTTSConfig(): TTSConfig {
-		return {
-			provider: 'browser',
-			voice: '',
-			rate: 1.0,
-			pitch: 1.0,
-			highlightStyle: {
-				color: '#ffeb3b',
-				opacity: 0.4
-			}
-		};
-	}
-
-	let ttsConfig = $state<TTSConfig>(getDefaultTTSConfig());
-
 	// Storage keys
 	let TOOL_STATE_STORAGE_KEY = $derived(`demo-tool-state:${data.demo.id}`);
-	let TTS_CONFIG_STORAGE_KEY = $derived(`pie-section-demo-tts-config-${data.demo.id}`);
-	let LAYOUT_CONFIG_STORAGE_KEY = $derived(`pie-section-demo-layout-config-${data.demo.id}`);
-
-	// Source panel state (read-only JSON view)
-	let editedSourceJson = $state('');
-
-	// Live section data (can be modified) - initialized in effect
-	let liveSection: any = $state.raw({} as any);
-	let previousDemoId = $state('');
 	let resolvedSectionForPlayer = $derived.by(() => {
-		if (!liveSection) return liveSection;
+		const section = data.section;
+		if (!section) return section;
+		const sectionAny = section as any;
 		const hasExplicitPnp = Boolean(
-			liveSection?.personalNeedsProfile || liveSection?.settings?.personalNeedsProfile
+			sectionAny?.personalNeedsProfile || sectionAny?.settings?.personalNeedsProfile
 		);
-		if (hasExplicitPnp) return liveSection;
+		if (hasExplicitPnp) return section;
 		return {
-			...liveSection,
+			...section,
 			personalNeedsProfile: createDefaultPersonalNeedsProfile()
 		};
 	});
-
-	// Initialize and sync liveSection when data changes
-	$effect(() => {
-		const currentDemoId = data.demo.id;
-		const currentSection = data.section;
-
-		// Initialize on first run or update on navigation
-		if (!previousDemoId || currentDemoId !== previousDemoId) {
-			// Switching demos - clear tool state to prevent leakage
-			if (previousDemoId && toolkitCoordinator) {
-				toolkitCoordinator.elementToolStateStore.clearAll();
-			}
-
-			previousDemoId = currentDemoId;
-			liveSection = structuredClone(currentSection);
-		}
-	});
-
-	// Outer scrollbar: show only while scrolling (cleaned up in onDestroy)
-	let outerScrollTimeoutId: ReturnType<typeof setTimeout> | null = null;
-	let removeOuterScrollListener: (() => void) | null = null;
+	let sourcePanelJson = $derived(JSON.stringify(resolvedSectionForPlayer, null, 2));
 
 	function createDemoToolkitHooks(): ToolkitCoordinatorHooks {
 		return {
@@ -176,31 +109,6 @@
 		return coordinator;
 	}
 
-	async function applyTTSConfig(config: TTSConfig) {
-		if (!toolkitCoordinator) return;
-		try {
-			const backend = config.provider === 'browser' ? 'browser' : config.provider;
-			toolkitCoordinator.updateToolConfig('tts', {
-				enabled: true,
-				backend,
-				defaultVoice: config.voice || undefined,
-				rate: config.rate,
-				pitch: config.pitch,
-				apiEndpoint: backend === 'browser' ? undefined : '/api/tts',
-			});
-			await toolkitCoordinator.ensureTTSReady();
-
-			if (config.highlightStyle) {
-				toolkitCoordinator.highlightCoordinator.updateTTSHighlightStyle(
-					config.highlightStyle.color,
-					config.highlightStyle.opacity
-				);
-			}
-		} catch (e) {
-			console.error('[Demo] Failed to initialize TTS services:', e);
-		}
-	}
-
 	onMount(async () => {
 		await Promise.all([
 			import('@pie-players/pie-section-player'),
@@ -208,62 +116,6 @@
 			import('@pie-players/pie-section-player-tools-session-debugger'),
 			import('@pie-players/pie-section-player-tools-pnp-debugger')
 		]);
-
-		editedSourceJson = formatJsonForSourceView(data.section);
-
-		// Load persisted TTS config
-		try {
-			const storedConfig = localStorage.getItem(TTS_CONFIG_STORAGE_KEY);
-			if (storedConfig) {
-				const parsedConfig = JSON.parse(storedConfig);
-				const defaultConfig = getDefaultTTSConfig();
-				ttsConfig = {
-					...defaultConfig,
-					...parsedConfig,
-					highlightStyle: {
-						...defaultConfig.highlightStyle,
-						...(parsedConfig?.highlightStyle || {})
-					}
-				};
-			}
-		} catch (e) {
-			console.error('Failed to load persisted TTS config:', e);
-		}
-
-		// Load persisted layout config
-		try {
-			const storedLayoutConfig = localStorage.getItem(LAYOUT_CONFIG_STORAGE_KEY);
-			if (storedLayoutConfig) {
-				const parsed = JSON.parse(storedLayoutConfig);
-				if (isToolbarPosition(parsed?.toolbarPosition)) {
-					toolbarPosition = parsed.toolbarPosition;
-				}
-			}
-		} catch (e) {
-			console.error('Failed to load persisted layout config:', e);
-		}
-
-		// Outer scrollbar: show only while the user is scrolling
-		function markOuterScrolling() {
-			document.documentElement.classList.add('outer-scrolling');
-			document.body.classList.add('outer-scrolling');
-			if (outerScrollTimeoutId) clearTimeout(outerScrollTimeoutId);
-			outerScrollTimeoutId = setTimeout(() => {
-				document.documentElement.classList.remove('outer-scrolling');
-				document.body.classList.remove('outer-scrolling');
-				outerScrollTimeoutId = null;
-			}, 700);
-		}
-		window.addEventListener('scroll', markOuterScrolling, { passive: true });
-		removeOuterScrollListener = () => {
-			window.removeEventListener('scroll', markOuterScrolling);
-			if (outerScrollTimeoutId) clearTimeout(outerScrollTimeoutId);
-		};
-	});
-
-	$effect(() => {
-		if (!toolkitCoordinator) return;
-		void applyTTSConfig(ttsConfig);
 	});
 
 	// Update URL and refresh page when layout or mode changes
@@ -277,30 +129,6 @@
 		}
 	}
 
-	// Keep read-only source view in sync with current section
-	$effect(() => {
-		editedSourceJson = formatJsonForSourceView(liveSection);
-	});
-
-	onDestroy(() => {
-		// Remove outer scrollbar listener and class
-		if (removeOuterScrollListener) {
-			removeOuterScrollListener();
-			removeOuterScrollListener = null;
-		}
-		document.documentElement.classList.remove('outer-scrolling');
-		document.body.classList.remove('outer-scrolling');
-
-		// Stop TTS when component is destroyed (page navigation/refresh)
-		if (toolkitCoordinator) {
-			try {
-				toolkitCoordinator.ttsService.stop();
-			} catch (e) {
-				console.error('[Demo] Failed to stop TTS on destroy:', e);
-			}
-		}
-	});
-
 	// Compute player definitions for selected type/source
 	// Map role toggle to PIE environment
 	// candidate → gather mode + student role (interactive assessment)
@@ -310,8 +138,7 @@
 		role: roleType === 'candidate' ? 'student' : 'instructor'
 	});
 	let sessionPanelSectionId = $derived(
-		liveSection?.identifier ||
-			data?.section?.identifier ||
+		resolvedSectionForPlayer?.identifier ||
 			`section-${toolkitCoordinator?.assessmentId || data?.demo?.id || 'default'}`
 	);
 
@@ -326,7 +153,7 @@
 	// Set complex properties imperatively on the web component
 	// (Web components can only receive simple values via attributes)
 	$effect(() => {
-		if (sectionPlayer && liveSection) {
+		if (sectionPlayer && resolvedSectionForPlayer) {
 			untrack(() => {
 				sectionPlayer.section = resolvedSectionForPlayer;
 				sectionPlayer.env = pieEnv;
@@ -347,7 +174,7 @@
 	$effect(() => {
 		if (!pnpDebuggerElement) return;
 		untrack(() => {
-			pnpDebuggerElement.sectionData = liveSection;
+			pnpDebuggerElement.sectionData = resolvedSectionForPlayer;
 			pnpDebuggerElement.roleType = roleType;
 			pnpDebuggerElement.toolkitCoordinator = toolkitCoordinator;
 		});
@@ -369,10 +196,9 @@
 
 	// Reset all sessions
 	async function resetSessions() {
-		const resolvedSectionId = liveSection?.identifier || data?.section?.identifier || 'section';
 		try {
 			await toolkitCoordinator?.disposeSectionController?.({
-				sectionId: resolvedSectionId,
+				sectionId: sessionPanelSectionId,
 				clearPersistence: true,
 				persistBeforeDispose: false
 			});
@@ -383,35 +209,6 @@
 		if (browser) {
 			window.location.reload();
 		}
-	}
-
-	function decodeEscapedTextForDisplay(value: string): string {
-		return value
-			.replaceAll('\\r\\n', '\n')
-			.replaceAll('\\n', '\n')
-			.replaceAll('\\r', '\r')
-			.replaceAll('\\t', '\t');
-	}
-
-	function normalizeContentForSourceView(value: any): any {
-		if (typeof value === 'string') {
-			return decodeEscapedTextForDisplay(value);
-		}
-		if (Array.isArray(value)) {
-			return value.map(normalizeContentForSourceView);
-		}
-		if (value && typeof value === 'object') {
-			const normalized: Record<string, any> = {};
-			for (const [key, child] of Object.entries(value)) {
-				normalized[key] = normalizeContentForSourceView(child);
-			}
-			return normalized;
-		}
-		return value;
-	}
-
-	function formatJsonForSourceView(value: any): string {
-		return JSON.stringify(normalizeContentForSourceView(value), null, 2);
 	}
 
 </script>
@@ -555,7 +352,7 @@
 
 <!-- Floating Source Window -->
 {#if showSourcePanel}
-	<SourcePanel editedSourceJson={editedSourceJson} onClose={() => showSourcePanel = false} />
+	<SourcePanel editedSourceJson={sourcePanelJson} onClose={() => showSourcePanel = false} />
 {/if}
 
 <!-- Floating PNP Profile Window -->

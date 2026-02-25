@@ -26,6 +26,7 @@ export interface SectionControllerHandle {
 	dispose?(): void | Promise<void>;
 	subscribe?(listener: (event: unknown) => void): () => void;
 	getSnapshot?(): unknown;
+	// Runtime/debugger-oriented section slice (not host persistence shape).
 	getCurrentSectionAttemptSlice?(): unknown;
 	setPersistenceContext?(context: SectionControllerContext): void | Promise<void>;
 	setPersistenceStrategy?(

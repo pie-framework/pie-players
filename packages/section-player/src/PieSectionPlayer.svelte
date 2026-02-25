@@ -32,9 +32,6 @@
       view: { attribute: "view", type: "String" },
       pageLayout: { attribute: "page-layout", type: "String" },
 
-      // Host-facing session state for restoration
-      sessionState: { attribute: "session-state", type: "Object" },
-
       playerVersion: { attribute: "player-version", type: "String" },
 
       // Styling
@@ -82,7 +79,7 @@
   import ItemModeLayout from "./components/ItemModeLayout.svelte";
   import { SectionController } from "./controllers/SectionController.js";
   import { SectionToolkitService } from "./controllers/SectionToolkitService.js";
-  import type { SectionSessionState, SectionViewModel } from "./controllers/types.js";
+  import type { SectionViewModel } from "./controllers/types.js";
 
   type SectionPlayerRuntimeContext = AssessmentToolkitRuntimeContext & {
     reportSessionChanged?: (itemId: string, detail: unknown) => void;
@@ -105,8 +102,6 @@
       | "testConstructor"
       | "tutor",
     pageLayout = "split-panel",
-    // Host-facing minimal session model.
-    sessionState = null as SectionSessionState | null,
     playerVersion = "latest",
     customClassName = "",
     toolbarPosition = "right" as "top" | "right" | "bottom" | "left" | "none",
@@ -245,15 +240,6 @@
     sectionControllerVersion += 1;
   }
 
-  function syncControllerState(): void {
-    if (!sectionController) return;
-    const nextSessionState = sectionController.reconcileHostSessionState(sessionState);
-    if (nextSessionState) {
-      sessionState = nextSessionState;
-    }
-    bumpControllerState();
-  }
-
   // Extract mode from env for convenience
   let mode = $derived(env.mode);
   let runtimeContextValue = $derived.by(
@@ -313,21 +299,12 @@
   });
   let canNavigateNext = $derived(navigationState.canNext);
   let canNavigatePrevious = $derived(navigationState.canPrevious);
-  const resolvedTestAttemptSession = $derived.by(() => {
-    sectionControllerVersion;
-    return sectionController?.getResolvedTestAttemptSession() || null;
-  });
-  const itemSessionsByItemId = $derived.by(() => {
-    sectionControllerVersion;
-    return sectionController?.getItemSessionsByItemId() || {};
-  });
-
   // Navigate to item (item mode only)
   function navigateToItem(index: number): void {
     if (!sectionController) return;
     const result = sectionController.navigateToItem(index);
     if (!result) return;
-    syncControllerState();
+    bumpControllerState();
     emitSectionEvent("item-changed", result.eventDetail);
   }
 
@@ -367,7 +344,6 @@
     const inputView = view;
     const inputAssessmentId = assessmentId;
     const inputSectionId = sectionId;
-    const inputSessionState = sessionState;
 
     let cancelled = false;
     const inputKey = inputSection
@@ -400,7 +376,6 @@
           view: inputView,
           assessmentId: inputAssessmentId,
           sectionId: inputSectionId,
-          sessionState: inputSessionState,
         },
         createDefaultController: () => new SectionController(),
       })
@@ -409,7 +384,7 @@
         sectionController = controller;
         lastControllerInputKey = inputKey;
         lastControllerCoordinator = resolvedCoordinator;
-        syncControllerState();
+        bumpControllerState();
       })
       .catch((err) => {
         if (cancelled) return;
@@ -569,7 +544,7 @@
       sessionDetail,
     );
     if (!result) return;
-    syncControllerState();
+    bumpControllerState();
     const eventDetail = result.eventDetail;
 
     // Call handler prop if provided (for component callback usage).
@@ -634,10 +609,13 @@
   $effect(() => {
     const layoutElement = pageLayoutElement;
     if (!layoutElement || !isPageMode) return;
+    sectionControllerVersion;
     (layoutElement as any).passages = passages;
     (layoutElement as any).items = items;
-    (layoutElement as any).itemSessions = itemSessionsByItemId;
-    (layoutElement as any).testAttemptSession = resolvedTestAttemptSession;
+    (layoutElement as any).itemSessions =
+      sectionController?.getItemSessionsByItemId() || {};
+    (layoutElement as any).testAttemptSession =
+      sectionController?.getResolvedTestAttemptSession() || null;
     (layoutElement as any).env = env;
     (layoutElement as any).playerVersion = playerVersion;
   });

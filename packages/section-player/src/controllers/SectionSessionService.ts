@@ -1,8 +1,6 @@
 import {
 	createNewTestAttemptSession,
-	setCurrentPosition,
 	toItemSessionsRecord,
-	upsertVisitedItem,
 	upsertItemSessionFromPieSessionChange,
 	type TestAttemptSession,
 } from "@pie-players/pie-assessment-toolkit";
@@ -21,76 +19,6 @@ export class SectionSessionService {
 			seed: `${input.assessmentId}:${input.sectionId}`,
 			itemIdentifiers,
 		});
-	}
-
-	/**
-	 * Resolve canonical section attempt state.
-	 * Host/session storage uses SectionSessionState; we adapt it here.
-	 */
-	private resolveAttemptSession(
-		input: SectionControllerInput & { adapterItemRefs: any[] },
-	): TestAttemptSession {
-		if (input.sessionState) {
-			return this.fromSessionState(input);
-		}
-		return this.createEmptyCanonicalAttempt(input);
-	}
-
-	private fromSessionState(
-		input: SectionControllerInput & { adapterItemRefs: any[] },
-	): TestAttemptSession {
-		const base = this.createEmptyCanonicalAttempt(input);
-		const state = input.sessionState;
-		if (!state) return base;
-
-		const initialCurrentItemIndex =
-			typeof state.currentItemIndex === "number" && state.currentItemIndex >= 0
-				? state.currentItemIndex
-				: 0;
-		let nextAttempt = setCurrentPosition(base, {
-			currentItemIndex: initialCurrentItemIndex,
-			currentSectionIdentifier: input.section?.identifier || input.sectionId,
-		});
-
-		for (const visitedId of state.visitedItemIdentifiers || []) {
-			if (typeof visitedId === "string" && visitedId) {
-				nextAttempt = upsertVisitedItem(nextAttempt, visitedId);
-			}
-		}
-
-		for (const [itemIdentifier, rawEntry] of Object.entries(
-			state.itemSessions || {},
-		)) {
-			const sessionEntry = rawEntry as
-				| { session?: unknown; isCompleted?: boolean }
-				| unknown;
-			const rawSession =
-				sessionEntry &&
-				typeof sessionEntry === "object" &&
-				"session" in sessionEntry
-					? (sessionEntry as { session?: unknown }).session
-					: sessionEntry;
-			const normalized = this.normalizeToItemSession(
-				itemIdentifier,
-				rawSession,
-				null,
-			);
-			if (!normalized) continue;
-			nextAttempt = upsertItemSessionFromPieSessionChange(nextAttempt, {
-				itemIdentifier,
-				pieSessionId: String(normalized.id || itemIdentifier),
-				isCompleted: Boolean(
-					sessionEntry &&
-						typeof sessionEntry === "object" &&
-						"isCompleted" in sessionEntry
-						? (sessionEntry as { isCompleted?: boolean }).isCompleted
-						: false,
-				),
-				session: normalized,
-			});
-		}
-
-		return nextAttempt;
 	}
 
 	public toSessionState(testAttemptSession: TestAttemptSession): {
@@ -172,7 +100,7 @@ export class SectionSessionService {
 		testAttemptSession: TestAttemptSession;
 		itemSessions: Record<string, any>;
 	} {
-		const testAttemptSession = this.resolveAttemptSession(input);
+		const testAttemptSession = this.createEmptyCanonicalAttempt(input);
 
 		return {
 			testAttemptSession,

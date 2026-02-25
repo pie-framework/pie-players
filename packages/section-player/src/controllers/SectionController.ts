@@ -216,32 +216,14 @@ export class SectionController implements SectionControllerHandle {
 		return mapped;
 	}
 
+	/**
+	 * Host-facing persistence shape.
+	 * Use this for serializing/restoring section session state across reloads.
+	 * This is intentionally compact and not a full runtime diagnostics view.
+	 */
 	public getSessionState(): SectionSessionState | null {
 		if (!this.state.testAttemptSession) return null;
 		return this.sessionService.toSessionState(this.state.testAttemptSession);
-	}
-
-	private getSessionStateSignature(state: SectionSessionState | null): string {
-		if (!state) return "null";
-		return JSON.stringify({
-			currentItemIndex: state.currentItemIndex ?? 0,
-			visitedItemIdentifiers: state.visitedItemIdentifiers || [],
-			itemSessions: state.itemSessions || {},
-		});
-	}
-
-	public reconcileHostSessionState(
-		previous: SectionSessionState | null,
-	): SectionSessionState | null {
-		const next = this.getSessionState();
-		if (!next) return previous;
-		if (
-			this.getSessionStateSignature(previous) ===
-			this.getSessionStateSignature(next)
-		) {
-			return previous;
-		}
-		return next;
 	}
 
 	private getSectionItemIdentifiers(): string[] {
@@ -255,8 +237,9 @@ export class SectionController implements SectionControllerHandle {
 	}
 
 	/**
-	 * Return the current section-relevant slice from canonical TestAttemptSession.
-	 * This keeps section runtime concerns scoped without exposing unrelated attempt data.
+	 * Runtime/debugger shape scoped to the current section.
+	 * Use this for widgets that need a section-scoped live snapshot (debug panels, diagnostics).
+	 * Unlike getSessionState(), this is optimized for runtime introspection, not host persistence.
 	 */
 	public getCurrentSectionAttemptSlice(): SectionAttemptSessionSlice | null {
 		if (!this.state.testAttemptSession) return null;

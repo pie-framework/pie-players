@@ -35,11 +35,6 @@ export interface SectionControllerInput {
 	view: SectionView;
 	assessmentId: string;
 	sectionId: string;
-	/**
-	 * Minimal host-facing session model.
-	 * The section runtime adapts this into canonical TestAttemptSession internally.
-	 */
-	sessionState?: SectionSessionState | null;
 }
 
 export interface SectionSessionState {

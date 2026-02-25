@@ -18,15 +18,22 @@
 
 	type SessionPanelSnapshot = {
 		currentItemIndex: number | null;
+		currentItemId: string | null;
 		visitedItemIdentifiers: string[];
 		updatedAt: number | null;
 		lastChangedItemId: string | null;
 		itemSessions: Record<string, unknown>;
 	};
 
+	type SectionAttemptSliceLike = {
+		currentItemIndex?: number;
+		currentItemId?: string;
+		visitedItemIdentifiers?: string[];
+		itemSessions?: Record<string, unknown>;
+	};
+
 	type SectionControllerLike = {
-		getSessionState?: () => any;
-		getCurrentSectionAttemptSlice?: () => any;
+		getCurrentSectionAttemptSlice?: () => SectionAttemptSliceLike | null;
 		subscribe?: (listener: (event: { itemId?: string; timestamp?: number }) => void) => () => void;
 	};
 
@@ -63,6 +70,7 @@
 
 	let sessionPanelSnapshot = $state<SessionPanelSnapshot>({
 		currentItemIndex: null,
+		currentItemId: null,
 		visitedItemIdentifiers: [],
 		updatedAt: null,
 		lastChangedItemId: null,
@@ -84,17 +92,18 @@
 
 	function refreshFromController(meta?: { itemId?: string; updatedAt?: number }) {
 		const controller = getController();
-		const sessionState = controller?.getSessionState?.() || null;
 		const sectionSlice = controller?.getCurrentSectionAttemptSlice?.() || null;
-		const itemSessions = sessionState?.itemSessions || sectionSlice?.itemSessions || {};
-		const visitedItemIdentifiers = sessionState?.visitedItemIdentifiers || sectionSlice?.visitedItemIdentifiers || [];
 		sessionPanelSnapshot = {
 			currentItemIndex:
-				typeof sessionState?.currentItemIndex === 'number' ? sessionState.currentItemIndex : null,
-			visitedItemIdentifiers: cloneSessionSnapshot(visitedItemIdentifiers),
+				typeof sectionSlice?.currentItemIndex === 'number' ? sectionSlice.currentItemIndex : null,
+			currentItemId:
+				typeof sectionSlice?.currentItemId === 'string' && sectionSlice.currentItemId
+					? sectionSlice.currentItemId
+					: null,
+			visitedItemIdentifiers: cloneSessionSnapshot(sectionSlice?.visitedItemIdentifiers || []),
 			updatedAt: meta?.updatedAt || Date.now(),
 			lastChangedItemId: meta?.itemId || null,
-			itemSessions: cloneSessionSnapshot(itemSessions)
+			itemSessions: cloneSessionSnapshot(sectionSlice?.itemSessions || {})
 		};
 	}
 

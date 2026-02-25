@@ -4,7 +4,6 @@ import type {
 } from "@pie-players/pie-assessment-toolkit";
 import type { AssessmentSection } from "@pie-players/pie-players-shared";
 import type { ComponentDefinition } from "./component-definitions.js";
-import type { SectionSessionState } from "./controllers/types.js";
 
 export interface PieSectionPlayerProps {
 	section?: AssessmentSection | null;
@@ -19,7 +18,6 @@ export interface PieSectionPlayerProps {
 		| "proctor"
 		| "testConstructor"
 		| "tutor";
-	sessionState?: SectionSessionState | null;
 	pageLayout?: string;
 	playerVersion?: string;
 	layoutDefinitions?: Partial<Record<string, ComponentDefinition>>;

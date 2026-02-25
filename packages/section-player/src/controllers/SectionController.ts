@@ -13,6 +13,7 @@ import type {
 	NavigationResult,
 	SectionAttemptSessionSlice,
 	SectionControllerInput,
+	SectionSessionState,
 	SectionViewModel,
 	SessionChangedResult,
 } from "./types.js";
@@ -129,6 +130,11 @@ export class SectionController implements SectionControllerHandle {
 
 	public getResolvedTestAttemptSession(): TestAttemptSession | null {
 		return this.state.testAttemptSession;
+	}
+
+	public getSessionState(): SectionSessionState | null {
+		if (!this.state.testAttemptSession) return null;
+		return this.sessionService.toSessionState(this.state.testAttemptSession);
 	}
 
 	private getSectionItemIdentifiers(): string[] {

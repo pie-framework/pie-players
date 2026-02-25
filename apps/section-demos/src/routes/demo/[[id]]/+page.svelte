@@ -524,52 +524,22 @@
 
 	function handleSessionChanged(event: CustomEvent) {
 		const detail = event.detail as {
-			sessionState?: any;
-			itemSessions?: Record<string, unknown>;
+			sessionState?: {
+				currentItemIndex?: number;
+				visitedItemIdentifiers?: string[];
+				itemSessions?: Record<string, unknown>;
+			};
 			itemId?: string;
-			session?: unknown;
 			timestamp?: number;
 		};
-		console.debug('[SectionDemo][SessionTrace] session-changed received', {
-			detail,
-			detailKeys: detail && typeof detail === 'object' ? Object.keys(detail) : []
-		});
-		if (!detail || typeof detail !== 'object') {
-			console.debug('[SectionDemo][SessionTrace] ignoring non-canonical payload', {
-				reason: 'missing detail payload'
-			});
+		if (!detail?.sessionState || typeof detail.sessionState !== 'object') {
+			console.warn('[SectionDemo] session-changed missing canonical sessionState');
 			return;
 		}
 
-		const nextState = detail.sessionState;
-		if (!nextState || typeof nextState !== 'object') {
-			if (detail.itemId) {
-				const nextItemSessions = {
-					...trackedItemSessions,
-					[detail.itemId]: cloneSessionSnapshot(detail.session)
-				};
-				trackedItemSessions = nextItemSessions;
-				sessionStateData = {
-					...(sessionStateData || {}),
-					itemSessions: nextItemSessions
-				};
-				trackedSessionMeta = {
-					...trackedSessionMeta,
-					itemId: detail.itemId,
-					updatedAt: detail.timestamp || Date.now()
-				};
-			}
-			console.debug('[SectionDemo][SessionTrace] updated flat item session without canonical snapshot', {
-				itemId: detail.itemId
-			});
-			return;
-		}
-
-		const snapshot = cloneSessionSnapshot(nextState);
+		const snapshot = cloneSessionSnapshot(detail.sessionState);
 		sessionStateData = snapshot;
-		trackedItemSessions = cloneSessionSnapshot(
-			(snapshot?.itemSessions || detail.itemSessions || {}) as Record<string, unknown>
-		);
+		trackedItemSessions = cloneSessionSnapshot(snapshot?.itemSessions || {});
 		const changedItemSessionEntry = (trackedItemSessions || {})[
 			(detail as any)?.itemId
 		] as any;
@@ -579,9 +549,6 @@
 		};
 	const logData = {
 		itemId: (detail as any)?.itemId,
-		eventSessionDataLength: Array.isArray((detail as any)?.session?.data)
-			? (detail as any).session.data.length
-			: null,
 		currentItemIndex: snapshot?.currentItemIndex,
 		itemSessionCount: Object.keys(trackedItemSessions || {}).length,
 		canonicalItemSessionDataLength: Array.isArray(

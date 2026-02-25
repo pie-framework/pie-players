@@ -6,7 +6,7 @@ import {
 import type { ItemEntity } from "@pie-players/pie-players-shared";
 import type { NavigationResult } from "./types.js";
 
-export class SectionNavigationService {
+export class SectionItemNavigationService {
 	public navigate(args: {
 		index: number;
 		isPageMode: boolean;

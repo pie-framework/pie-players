@@ -8,7 +8,7 @@ import type {
 } from "./toolkit-section-contracts.js";
 import type { ItemEntity } from "@pie-players/pie-players-shared";
 import { SectionContentService } from "./SectionContentService.js";
-import { SectionNavigationService } from "./SectionNavigationService.js";
+import { SectionItemNavigationService } from "./SectionItemNavigationService.js";
 import { SectionSessionService } from "./SectionSessionService.js";
 import type {
 	NavigationResult,
@@ -27,7 +27,7 @@ interface SectionControllerState {
 export class SectionController implements SectionControllerHandle {
 	private readonly contentService = new SectionContentService();
 	private readonly sessionService = new SectionSessionService();
-	private readonly navigationService = new SectionNavigationService();
+	private readonly itemNavigationService = new SectionItemNavigationService();
 	private persistenceStrategy: SectionControllerPersistenceStrategy | null = null;
 	private persistenceContext: SectionControllerContext | null = null;
 	private state: SectionControllerState = {
@@ -158,9 +158,13 @@ export class SectionController implements SectionControllerHandle {
 		return result;
 	}
 
+	/**
+	 * Move between items inside the current section only.
+	 * Cross-section navigation belongs to the higher-level assessment player.
+	 */
 	public navigateToItem(index: number): NavigationResult | null {
 		if (!this.state.testAttemptSession) return null;
-		const result = this.navigationService.navigate({
+		const result = this.itemNavigationService.navigate({
 			index,
 			isPageMode: this.state.viewModel.isPageMode,
 			items: this.state.viewModel.items,

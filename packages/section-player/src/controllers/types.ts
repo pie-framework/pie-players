@@ -61,6 +61,7 @@ export interface SessionChangedResult {
 
 export interface NavigationResult {
 	nextIndex: number;
+	// Intra-section item navigation event detail (not section-to-section routing).
 	eventDetail: {
 		previousItemId: string;
 		currentItemId: string;

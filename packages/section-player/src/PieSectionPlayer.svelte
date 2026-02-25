@@ -389,7 +389,8 @@
     });
   }
 
-  // Public navigation methods (for item mode)
+  // Public navigation methods are intentionally intra-section (item mode only).
+  // Cross-section/page navigation belongs to the higher-level assessment player.
   export function navigateNext() {
     if (canNavigateNext) {
       navigateToItem(currentItemIndex + 1);

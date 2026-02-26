@@ -329,7 +329,6 @@ const coordinator = new ToolkitCoordinator({
     protractor: { enabled: true },
     ruler: { enabled: true },
     lineReader: { enabled: true },
-    magnifier: { enabled: true },
     colorScheme: { enabled: true }
   }
 });

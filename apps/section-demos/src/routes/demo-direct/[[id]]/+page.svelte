@@ -268,7 +268,7 @@
 
 	function wireToolbarScope(host: HTMLElement, key: string, entity: ItemEntity | PassageEntity) {
 		const toolbar = host.querySelector(
-			`pie-question-toolbar[data-toolbar-key="${key}"]`
+			`pie-item-toolbar[data-toolbar-key="${key}"]`
 		) as HTMLElement | null;
 		const content = host.querySelector(`[data-content-key="${key}"]`) as HTMLElement | null;
 		if (!toolbar) return;
@@ -279,11 +279,26 @@
 	}
 
 	onMount(async () => {
-		await Promise.all([
-			import('@pie-players/pie-iife-player'),
-			import('@pie-players/pie-section-tools-toolbar'),
-			import('@pie-players/pie-assessment-toolkit/components/QuestionToolBar.svelte?customElement')
-		]);
+		try {
+			await toolkitCoordinator.waitUntilReady();
+		} catch (error) {
+			console.error('[demo-direct] toolkit initialization failed:', error);
+		}
+
+		const imports: Promise<unknown>[] = [];
+		if (!customElements.get('pie-iife-player')) {
+			imports.push(import('@pie-players/pie-iife-player'));
+		}
+		if (!customElements.get('pie-section-tools-toolbar')) {
+			imports.push(import('@pie-players/pie-section-tools-toolbar'));
+		}
+		if (!customElements.get('pie-tool-calculator')) {
+			imports.push(import('@pie-players/pie-tool-calculator'));
+		}
+		if (!customElements.get('pie-item-toolbar')) {
+			imports.push(import('@pie-players/pie-assessment-toolkit/components/ItemToolBar.svelte?customElement'));
+		}
+		await Promise.all(imports);
 	});
 </script>
 
@@ -310,9 +325,9 @@
 					<aside class="passages-pane" aria-label="Passages">
 						{#each passages as passage, passageIndex (passage.id || passageIndex)}
 							<div class="content-card">
-								<div class="content-card-header">
+								<div class="content-card-header pie-section-player__passage-header">
 									<h2>Passage {passageIndex + 1}</h2>
-									<pie-question-toolbar
+									<pie-item-toolbar
 										data-toolbar-key={`passage-${passage.id}`}
 										item-id={passage.id}
 										catalog-id={passage.id}
@@ -320,9 +335,12 @@
 										content-kind="rubric-block-stimulus"
 										size="md"
 										language="en-US"
-									></pie-question-toolbar>
+									></pie-item-toolbar>
 								</div>
-								<div class="content-card-body" data-content-key={`passage-${passage.id}`}>
+								<div
+									class="content-card-body pie-section-player__passage-content"
+									data-content-key={`passage-${passage.id}`}
+								>
 									<pie-iife-player
 										config={JSON.stringify(passage.config || {})}
 										env={JSON.stringify({ mode: 'view', role: 'student' })}
@@ -348,9 +366,9 @@
 				<main class="items-pane" aria-label="Items">
 					{#each items as item, itemIndex (item.id || itemIndex)}
 						<div class="content-card">
-							<div class="content-card-header">
+							<div class="content-card-header pie-section-player__item-header">
 								<h2>Question {itemIndex + 1}</h2>
-								<pie-question-toolbar
+								<pie-item-toolbar
 									data-toolbar-key={`item-${item.id}`}
 									item-id={item.id}
 									catalog-id={item.id}
@@ -358,9 +376,12 @@
 									content-kind="assessment-item"
 									size="md"
 									language="en-US"
-								></pie-question-toolbar>
+								></pie-item-toolbar>
 							</div>
-							<div class="content-card-body" data-content-key={`item-${item.id}`}>
+							<div
+								class="content-card-body pie-section-player__item-content"
+								data-content-key={`item-${item.id}`}
+							>
 								<pie-iife-player
 									config={JSON.stringify(item.config || {})}
 									env={JSON.stringify({ mode: 'gather', role: 'student' })}
@@ -370,6 +391,10 @@
 										onPlayerSessionChanged(item.id || '', event)}
 								></pie-iife-player>
 							</div>
+							<pie-tool-calculator
+								visible={false}
+								tool-id={`calculator-${item.id}`}
+							></pie-tool-calculator>
 						</div>
 					{/each}
 				</main>

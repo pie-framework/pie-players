@@ -25,9 +25,13 @@
 			"types": "./dist/tools/client.d.ts",
 			"import": "./dist/tools/client.js"
 		},
-		"./components/QuestionToolBar.svelte": {
-			"svelte": "./src/components/QuestionToolBar.svelte",
-			"import": "./src/components/QuestionToolBar.svelte"
+		"./components/ItemToolBar.svelte": {
+			"types": "./dist/components/item-toolbar-element.d.ts",
+			"import": "./src/components/item-toolbar-element.ts"
+		},
+		"./components/item-toolbar-element": {
+			"types": "./dist/components/item-toolbar-element.d.ts",
+			"import": "./src/components/item-toolbar-element.ts"
 		},
 		"./components/PNPProvenanceViewer.svelte": {
 			"svelte": "./src/components/PNPProvenanceViewer.svelte",

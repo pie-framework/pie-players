@@ -439,7 +439,6 @@ ruler           → pie-tool-ruler
 protractor      → pie-tool-protractor
 highlighter     → pie-tool-annotation-toolbar
 lineReader      → pie-tool-line-reader
-magnifier       → pie-tool-magnifier
 colorContrast   → pie-theme-contrast
 answerMasking   → pie-tool-answer-eliminator
 ```
@@ -467,7 +466,6 @@ answerMasking   → pie-tool-answer-eliminator
      'protractor': 'pie-tool-protractor',
      'highlighter': 'pie-tool-annotation-toolbar',
      'lineReader': 'pie-tool-line-reader',
-     'magnifier': 'pie-tool-magnifier',
      'colorContrast': 'pie-tool-color-scheme',
      'eliminator': 'pie-tool-answer-eliminator',
    };

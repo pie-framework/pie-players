@@ -53,7 +53,6 @@
 	import '@pie-players/pie-tool-color-scheme';
 	import '@pie-players/pie-tool-graph';
 	import '@pie-players/pie-tool-line-reader';
-	import '@pie-players/pie-tool-magnifier';
 	import '@pie-players/pie-tool-periodic-table';
 	import '@pie-players/pie-tool-protractor';
 	import '@pie-players/pie-tool-ruler';
@@ -93,7 +92,6 @@
 	let showLineReader = $state(false);
 	let showGraph = $state(false);
 	let showPeriodicTable = $state(false);
-	let showMagnifier = $state(false);
 	let statusMessage = $state('');
 
 	// Update visibility state from coordinator
@@ -108,7 +106,6 @@
 		showLineReader = toolCoordinator.isToolVisible('lineReader');
 		showGraph = toolCoordinator.isToolVisible('graph');
 		showPeriodicTable = toolCoordinator.isToolVisible('periodicTable');
-		showMagnifier = toolCoordinator.isToolVisible('magnifier');
 		log('Updated visibility - calculator:', showCalculator, 'answerEliminator:', showAnswerEliminator);
 	}
 
@@ -226,14 +223,6 @@
 			toggle: () => toolCoordinator?.toggleTool('periodicTable'),
 			implemented: true
 		},
-		magnifier: {
-			id: 'magnifier',
-			name: 'Magnifier',
-			icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M15.5,14L20.5,19L19,20.5L14,15.5V14.71L13.73,14.43C12.59,15.41 11.11,16 9.5,16A6.5,6.5 0 0,1 3,9.5A6.5,6.5 0 0,1 9.5,3A6.5,6.5 0 0,1 16,9.5C16,11.11 15.41,12.59 14.43,13.73L14.71,14H15.5M9.5,14C12,14 14,12 14,9.5C14,7 12,5 9.5,5C7,5 5,7 5,9.5C5,12 7,14 9.5,14M12,10H10V12H9V10H7V9H9V7H10V9H12V10Z"/></svg>`,
-			getVisibility: () => showMagnifier,
-			toggle: () => toolCoordinator?.toggleTool('magnifier'),
-			implemented: true
-		},
 		highlighter: {
 			id: 'highlighter',
 			name: 'Highlighter',
@@ -246,7 +235,7 @@
 
 	// Build toolbar config from enabled tools
 	// Make this reactive to visibility changes by including them in the dependency
-	let toolbarConfig = $derived(browser && [showColorScheme, showAnswerEliminator, showCalculator, showProtractor, showRuler, showLineReader, showGraph, showPeriodicTable, showMagnifier]
+	let toolbarConfig = $derived(browser && [showColorScheme, showAnswerEliminator, showCalculator, showProtractor, showRuler, showLineReader, showGraph, showPeriodicTable]
 		? enabledToolIds
 				.map(id => TOOL_REGISTRY[id as keyof typeof TOOL_REGISTRY])
 				.filter((tool): tool is (typeof TOOL_REGISTRY)[keyof typeof TOOL_REGISTRY] => Boolean(tool))
@@ -297,7 +286,6 @@
 	let showLineReaderTool = $derived(enabledToolIds.includes('lineReader'));
 	let showGraphTool = $derived(enabledToolIds.includes('graph'));
 	let showPeriodicTableTool = $derived(enabledToolIds.includes('periodicTable'));
-	let showMagnifierTool = $derived(enabledToolIds.includes('magnifier'));
 </script>
 
 {#if browser}
@@ -376,9 +364,6 @@
 	{/if}
 	{#if showPeriodicTableTool}
 		<pie-tool-periodic-table visible={showPeriodicTable} tool-id="periodicTable" coordinator={toolCoordinator}></pie-tool-periodic-table>
-	{/if}
-	{#if showMagnifierTool}
-		<pie-tool-magnifier visible={showMagnifier} tool-id="magnifier" coordinator={toolCoordinator}></pie-tool-magnifier>
 	{/if}
 	<!-- Note: Annotation toolbar is intentionally not mounted here yet.
 	     It currently requires a ttsService prop that isn't exposed via its custom element API. -->

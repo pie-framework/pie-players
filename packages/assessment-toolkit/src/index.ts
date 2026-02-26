@@ -286,5 +286,5 @@ export type {
 // Shared Components
 // ============================================================================
 
-// QuestionToolBar is exported via package.json exports field
-// Import using: import QuestionToolBar from '@pie-players/pie-assessment-toolkit/components/QuestionToolBar.svelte';
+// ItemToolBar custom element registration helper is exported via package.json exports field
+// Import using: import '@pie-players/pie-assessment-toolkit/components/item-toolbar-element';

@@ -153,7 +153,6 @@ const DEFAULT_FLOATING_TOOLS: string[] = [
 	"protractor",
 	"ruler",
 	"lineReader",
-	"magnifier",
 	"screenMagnifier",
 	"textToSpeech",
 	"answerEliminator",

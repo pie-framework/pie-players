@@ -10,7 +10,6 @@ export const SECTION_TOOL_MODULE_LOADERS: Record<string, ToolModuleLoader> = {
 	ruler: () => import("@pie-players/pie-tool-ruler"),
 	protractor: () => import("@pie-players/pie-tool-protractor"),
 	lineReader: () => import("@pie-players/pie-tool-line-reader"),
-	magnifier: () => import("@pie-players/pie-tool-magnifier"),
 };
 
 export const ITEM_TOOL_MODULE_LOADERS: Record<string, ToolModuleLoader> = {

@@ -2,13 +2,12 @@
  * Accessibility Tools Registrations
  *
  * Registers tools for visual accessibility and reading support:
- * - Magnifier (zoom lens)
  * - Line Reader (reading guide)
  * - Color Scheme (theme/contrast)
  * - Annotation Toolbar (text highlighting)
  *
  * Maps to QTI 3.0 standard access features from:
- * - visual category: magnification, highContrastDisplay, colorContrast
+ * - visual category: highContrastDisplay, colorContrast
  * - reading category: readingMask, readingGuide, highlighting
  */
 
@@ -24,89 +23,6 @@ import {
 	createToolElement,
 	type ToolComponentOverrides,
 } from "../tool-tag-map.js";
-
-/**
- * Magnifier tool registration
- *
- * Provides a draggable zoom lens for visual accessibility.
- * Global tool that works across entire assessment.
- */
-export const magnifierToolRegistration: ToolRegistration = {
-	toolId: "magnifier",
-	name: "Magnifier",
-	description: "Zoom lens for visual accessibility",
-	icon: "magnifying-glass",
-
-	// Magnifier is assessment-wide (global)
-	supportedLevels: ["assessment", "section"],
-
-	// PNP support IDs
-	// Maps to QTI 3.0 standard features: magnification, screenMagnifier, zoomable
-	pnpSupportIds: [
-		"magnification", // QTI 3.0 standard (visual.magnification)
-		"screenMagnifier", // QTI 3.0 standard (visual.screenMagnifier)
-		"zoomable", // QTI 3.0 standard (visual.zoomable)
-		"magnifier", // Common variant
-		"zoom", // Common variant
-		"visualZoom", // Common variant
-	],
-
-	/**
-	 * Pass 2: Magnifier is always relevant when allowed
-	 */
-	isVisibleInContext(context: ToolContext): boolean {
-		return true; // Always show if allowed by orchestrator
-	},
-
-	createButton(
-		context: ToolContext,
-		options: ToolButtonOptions,
-	): ToolButtonDefinition {
-		return {
-			toolId: this.toolId,
-			label: this.name,
-			icon: typeof this.icon === "function" ? this.icon(context) : this.icon,
-			disabled: options.disabled || false,
-			ariaLabel: options.ariaLabel || "Magnifier - Zoom in on content",
-			tooltip: options.tooltip || "Magnifier",
-			onClick: options.onClick || (() => {}),
-			className: options.className,
-		};
-	},
-
-	createToolInstance(
-		context: ToolContext,
-		options: ToolInstanceOptions,
-	): HTMLElement {
-		const componentOverrides =
-			(options.config as ToolComponentOverrides | undefined) ?? {};
-		const magnifier = createToolElement(
-			this.toolId,
-			context,
-			options,
-			componentOverrides,
-		) as HTMLElement & {
-			visible: boolean;
-			toolkitCoordinator: unknown;
-		};
-
-		magnifier.visible = true;
-
-		const magnifierCoordinator = options.config?.toolkitCoordinator;
-		if (!magnifierCoordinator) {
-			throw new Error(
-				"[magnifierToolRegistration] toolkitCoordinator is required in ToolInstanceOptions.config",
-			);
-		}
-		magnifier.toolkitCoordinator = magnifierCoordinator;
-
-		if (options.onClose) {
-			magnifier.addEventListener("close", options.onClose);
-		}
-
-		return magnifier;
-	},
-};
 
 /**
  * Line Reader tool registration

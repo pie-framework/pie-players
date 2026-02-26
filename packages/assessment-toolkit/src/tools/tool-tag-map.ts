@@ -30,7 +30,6 @@ export const DEFAULT_TOOL_TAG_MAP: ToolTagMap = {
 	protractor: "pie-tool-protractor",
 	answerEliminator: "pie-tool-answer-eliminator",
 	highlighter: "pie-tool-annotation-toolbar",
-	magnifier: "pie-tool-magnifier",
 	lineReader: "pie-tool-line-reader",
 	colorScheme: "pie-tool-color-scheme",
 	annotationToolbar: "pie-tool-annotation-toolbar",

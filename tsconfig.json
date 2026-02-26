@@ -38,7 +38,6 @@
 		{ "path": "./packages/tool-color-scheme" },
 		{ "path": "./packages/tool-graph" },
 		{ "path": "./packages/tool-line-reader" },
-		{ "path": "./packages/tool-magnifier" },
 		{ "path": "./packages/tool-periodic-table" },
 		{ "path": "./packages/tool-protractor" },
 		{ "path": "./packages/tool-ruler" },

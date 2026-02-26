@@ -47,7 +47,7 @@ The Tool Registry replaces hardcoded tool lists with a flexible, extensible syst
                        ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                      UI LAYER                                │
-│  (ToolButtonGroup, QuestionToolBar)                         │
+│  (ToolButtonGroup, ItemToolBar)                             │
 │                                                              │
 │  Renders: Buttons for visible tools only                    │
 └─────────────────────────────────────────────────────────────┘
@@ -353,7 +353,7 @@ const pnpResolver = new PNPToolResolver(toolRegistry);
 
 // Get allowed tool IDs from QTI 3.0 PNP profile
 const allowedToolIds = pnpResolver.getAllowedToolIds(assessment, itemRef);
-// Returns: ["calculator", "textToSpeech", "magnifier", ...]
+// Returns: ["calculator", "textToSpeech", "colorScheme", ...]
 ```
 
 The `PNPToolResolver` reads QTI 3.0 `accessibilityInfo.accessFeature` arrays and maps them to tool IDs using the tool registry's PNP index.
@@ -436,27 +436,27 @@ Individual button component:
 <ToolButton {button} />
 ```
 
-### QuestionToolBar
+### ItemToolBar
 
-The `QuestionToolBar` component supports dual-mode operation:
+The `ItemToolBar` component supports dual-mode operation:
 
 **Registry Mode** (new architecture):
 ```html
-<pie-question-toolbar
+<pie-item-toolbar
   .toolRegistry={toolRegistry}
   .pnpResolver={pnpResolver}
   .assessment={assessment}
   .itemRef={itemRef}
   .item={item}
-></pie-question-toolbar>
+></pie-item-toolbar>
 ```
 
 **Legacy Mode** (hardcoded tools):
 ```html
-<pie-question-toolbar
+<pie-item-toolbar
   tools="calculator,tts,answerEliminator"
   item-id="question-1"
-></pie-question-toolbar>
+></pie-item-toolbar>
 ```
 
 ## Default Tool Placement
@@ -466,8 +466,8 @@ The toolkit provides recommended tool placement by context level:
 ```typescript
 import { DEFAULT_TOOL_PLACEMENT } from '@pie-players/pie-assessment-toolkit';
 
-DEFAULT_TOOL_PLACEMENT.assessment  // ["magnifier", "colorScheme"]
-DEFAULT_TOOL_PLACEMENT.section     // ["magnifier", "colorScheme", "calculator", "textToSpeech"]
+DEFAULT_TOOL_PLACEMENT.assessment  // ["colorScheme"]
+DEFAULT_TOOL_PLACEMENT.section     // ["colorScheme", "textToSpeech"]
 DEFAULT_TOOL_PLACEMENT.item        // ["calculator", "textToSpeech", "answerEliminator", ...]
 DEFAULT_TOOL_PLACEMENT.passage     // ["textToSpeech", "highlighter", "annotationToolbar", "lineReader"]
 DEFAULT_TOOL_PLACEMENT.rubric      // ["textToSpeech", "highlighter", "annotationToolbar", "lineReader"]

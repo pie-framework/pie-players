@@ -525,7 +525,7 @@ pie-section-player (provides runtime context)
   ↓
 layouts / item shells (explicit composition + item contracts)
   ↓
-pie-question-toolbar + tool components (consume context + explicit item scope)
+pie-item-toolbar + tool components (consume context + explicit item scope)
 ```
 
 This reduces prop-drilling through intermediate layout components while keeping

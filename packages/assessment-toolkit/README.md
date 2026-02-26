@@ -168,7 +168,6 @@ floatingTools: {
   protractor: { enabled: true },
   ruler: { enabled: true },
   lineReader: { enabled: true },
-  magnifier: { enabled: true },
   colorScheme: { enabled: true }
 }
 ```
@@ -234,7 +233,6 @@ const coordinator = new ToolkitCoordinator({
     protractor: { enabled: true },
     ruler: { enabled: true },
     lineReader: { enabled: true },
-    magnifier: { enabled: true },
     colorScheme: { enabled: true }
   },
   accessibility: {
@@ -262,7 +260,6 @@ const coordinator = new ToolkitCoordinator({
     protractor: { enabled: true },
     ruler: { enabled: true },
     lineReader: { enabled: true },
-    magnifier: { enabled: true },
     colorScheme: { enabled: true }
   }
 });

@@ -11,7 +11,7 @@
     type AssessmentToolkitRuntimeContext,
   } from "@pie-players/pie-assessment-toolkit";
   import { ContextConsumer } from "@pie-players/pie-context";
-  import "@pie-players/pie-assessment-toolkit/components/QuestionToolBar.svelte";
+  import "@pie-players/pie-assessment-toolkit/components/item-toolbar-element";
 	import {
 		DEFAULT_PLAYER_DEFINITIONS,
 	} from "../component-definitions.js";
@@ -82,7 +82,7 @@
   // Get the DOM element reference for service binding
   let contextHostElement: HTMLElement | null = $state(null);
   let itemContentElement: HTMLElement | null = $state(null);
-  let questionToolbarElement: HTMLElement | null = $state(null);
+  let itemToolbarElement: HTMLElement | null = $state(null);
   let runtimeContext = $state<SectionPlayerRuntimeContext | null>(null);
   let runtimeContextConsumer: ContextConsumer<
     typeof assessmentToolkitRuntimeContext
@@ -164,14 +164,14 @@
     }
   });
 
-  // Bind direct item contracts to question toolbar.
+  // Bind direct item contracts to item toolbar.
   $effect(() => {
-    if (!questionToolbarElement) return;
+    if (!itemToolbarElement) return;
     if (itemContentElement) {
-      (questionToolbarElement as any).scopeElement = itemContentElement;
+      (itemToolbarElement as any).scopeElement = itemContentElement;
     }
     if (item) {
-      (questionToolbarElement as any).item = item;
+      (itemToolbarElement as any).item = item;
     }
   });
 
@@ -200,16 +200,16 @@
       {contentKind}
       {customClassName}
     >
-      <pie-question-toolbar
+      <pie-item-toolbar
         slot="toolbar"
-        bind:this={questionToolbarElement}
+        bind:this={itemToolbarElement}
         item-id={item.id}
         catalog-id={item.id}
         tools="calculator,tts,answerEliminator"
         content-kind={contentKind}
         size="md"
         language="en-US"
-      ></pie-question-toolbar>
+      ></pie-item-toolbar>
 
       <div class="pie-section-player__item-content" bind:this={itemContentElement}>
         <ItemPlayerBridge

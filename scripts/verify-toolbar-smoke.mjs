@@ -30,14 +30,14 @@ page.on("pageerror", (err) => {
 try {
 	await page.goto(URL, { waitUntil: "networkidle", timeout: 60000 });
 
-	// Wait until at least one question toolbar appears.
-	await page.waitForSelector("pie-question-toolbar", { timeout: 30000 });
+	// Wait until at least one item toolbar appears.
+	await page.waitForSelector("pie-item-toolbar", { timeout: 30000 });
 
 	// Check core toolbar presence.
-	const questionToolbarCount = await page.locator("pie-question-toolbar").count();
+	const itemToolbarCount = await page.locator("pie-item-toolbar").count();
 	const sectionToolbarCount = await page.locator("pie-section-tools-toolbar").count();
-	if (questionToolbarCount < 1) {
-		throw new Error("No question toolbars rendered.");
+	if (itemToolbarCount < 1) {
+		throw new Error("No item toolbars rendered.");
 	}
 	if (sectionToolbarCount < 1) {
 		throw new Error("No section toolbar rendered.");
@@ -69,19 +69,10 @@ try {
 	}
 
 	const answerElimButton = page.locator(
-		"pie-question-toolbar .question-toolbar__button[aria-label='Answer Eliminator']",
+		"pie-item-toolbar .item-toolbar__button[aria-label='Answer Eliminator']",
 	);
 	if ((await answerElimButton.count()) > 0) {
 		await answerElimButton.first().click({ force: true });
-		await page.waitForTimeout(300);
-	}
-
-	// Attempt section-level magnifier click path (avoid graph overlay interception).
-	const magnifierButton = page.locator(
-		"pie-section-tools-toolbar .tool-button[aria-label*='Magnifier']",
-	);
-	if ((await magnifierButton.count()) > 0) {
-		await magnifierButton.first().click({ force: true });
 		await page.waitForTimeout(300);
 	}
 
@@ -97,7 +88,7 @@ try {
 	}
 
 	console.log("Toolbar smoke check passed.");
-	console.log(`- question toolbars: ${questionToolbarCount}`);
+	console.log(`- item toolbars: ${itemToolbarCount}`);
 	console.log(`- section toolbars: ${sectionToolbarCount}`);
 	console.log(`- section buttons: ${sectionButtonCount}`);
 } finally {

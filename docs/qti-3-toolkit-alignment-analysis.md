@@ -66,7 +66,6 @@ export const PNP_TO_PIE_TOOL_MAP: Record<string, string> = {
   'protractor': 'pie-tool-protractor',
   'highlighter': 'pie-tool-annotation-toolbar',
   'lineReader': 'pie-tool-line-reader',
-  'magnifier': 'pie-tool-magnifier',
   'colorContrast': 'pie-theme-contrast',
   'answerMasking': 'pie-tool-answer-eliminator',
 };
@@ -397,7 +396,6 @@ const tools = resolver.resolveTools(assessment, itemRef);
 | `protractor` | `pie-tool-protractor` | `{}` |
 | `highlighter` | `pie-tool-annotation-toolbar` | `{}` |
 | `lineReader` | `pie-tool-line-reader` | `{}` |
-| `magnifier` | `pie-tool-magnifier` | `{ zoomLevel: 2 }` |
 | `colorContrast` | `pie-theme-contrast` | `{ scheme: 'high-contrast' }` |
 | `answerMasking` | `pie-tool-answer-eliminator` | `{ strategy: 'strikethrough' }` |
 

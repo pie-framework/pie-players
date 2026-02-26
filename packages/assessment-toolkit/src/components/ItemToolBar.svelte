@@ -1,6 +1,6 @@
 <svelte:options
 	customElement={{
-		tag: 'pie-question-toolbar',
+		tag: 'pie-item-toolbar',
 		shadow: 'none',
 		props: {
 			itemId: { type: 'String', attribute: 'item-id' },
@@ -22,7 +22,7 @@
 />
 
 <!--
-  QuestionToolBar - Inline toolbar for question/passage headers
+  ItemToolBar - Inline toolbar for item/passage headers
 
   Button visibility is always registry-driven:
   - Pass 1: allowed tool IDs (PNP resolver when available, otherwise explicit tools prop)
@@ -32,16 +32,12 @@
 	import { ContextConsumer } from '@pie-players/pie-context';
 	import {
 		assessmentToolkitRuntimeContext,
-		type AssessmentToolkitRuntimeContext,
+		type AssessmentToolkitRuntimeContext
 	} from '../context/assessment-toolkit-context.js';
 	import type { ToolRegistry } from '../services/ToolRegistry.js';
 	import type { PNPToolResolver } from '../services/PNPToolResolver.js';
 	import { createDefaultToolRegistry } from '../services/createDefaultToolRegistry.js';
-	import type {
-		AssessmentEntity,
-		AssessmentItemRef,
-		ItemEntity,
-	} from '@pie-players/pie-players-shared/types';
+	import type { AssessmentEntity, AssessmentItemRef, ItemEntity } from '@pie-players/pie-players-shared/types';
 	import type { ElementToolContext, ItemToolContext } from '../services/tool-context.js';
 
 	const isBrowser = typeof window !== 'undefined';
@@ -88,9 +84,7 @@
 
 	let toolbarRootElement = $state<HTMLDivElement | null>(null);
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
-	let runtimeContextConsumer: ContextConsumer<
-		typeof assessmentToolkitRuntimeContext
-	> | null = null;
+	let runtimeContextConsumer: ContextConsumer<typeof assessmentToolkitRuntimeContext> | null = null;
 
 	$effect(() => {
 		if (!toolbarRootElement) return;
@@ -99,7 +93,7 @@
 			subscribe: true,
 			onValue: (value: AssessmentToolkitRuntimeContext) => {
 				runtimeContext = value;
-			},
+			}
 		});
 		runtimeContextConsumer.connect();
 		return () => {
@@ -122,7 +116,7 @@
 			effectiveAssessmentId,
 			effectiveSectionId,
 			itemId,
-			itemId,
+			itemId
 		);
 		// Note: Using itemId as elementId since toolbar is scoped to one item/element
 	});
@@ -136,7 +130,7 @@
 			.map((t) => t.trim())
 			.map(normalizeToolId)
 			.filter((toolId) => contentKind === 'assessment-item' || toolId !== 'calculator')
-			.filter(Boolean),
+			.filter(Boolean)
 	);
 
 	// Pass 1: determine allowed tools
@@ -157,7 +151,7 @@
 			level: 'item',
 			assessment: (assessment || {}) as AssessmentEntity,
 			itemRef: (itemRef || ({ id: itemId } as AssessmentItemRef)) as AssessmentItemRef,
-			item,
+			item
 		};
 	});
 
@@ -176,7 +170,7 @@
 				assessment: (assessment || {}) as AssessmentEntity,
 				itemRef: (itemRef || ({ id: itemId } as AssessmentItemRef)) as AssessmentItemRef,
 				item,
-				elementId: model.id as string,
+				elementId: model.id as string
 			}));
 	});
 
@@ -184,15 +178,11 @@
 	const visibleToolIds = $derived.by(() => {
 		const visible = new Set<string>();
 		if (toolContext) {
-			effectiveToolRegistry
-				.filterVisibleInContext(allowedToolIds, toolContext)
-				.forEach((tool) => visible.add(tool.toolId));
+			effectiveToolRegistry.filterVisibleInContext(allowedToolIds, toolContext).forEach((tool) => visible.add(tool.toolId));
 		}
 
 		for (const context of elementContexts) {
-			effectiveToolRegistry
-				.filterVisibleInContext(allowedToolIds, context)
-				.forEach((tool) => visible.add(tool.toolId));
+			effectiveToolRegistry.filterVisibleInContext(allowedToolIds, context).forEach((tool) => visible.add(tool.toolId));
 		}
 
 		return Array.from(visible);
@@ -200,10 +190,10 @@
 
 	// Handle tool click (activates tool)
 	async function handleToolClick(toolId: string) {
-		console.log('[QuestionToolBar] Tool clicked:', toolId);
+		console.log('[ItemToolBar] Tool clicked:', toolId);
 
 		if (!effectiveToolCoordinator) {
-			console.warn('[QuestionToolBar] No toolCoordinator available');
+			console.warn('[ItemToolBar] No toolCoordinator available');
 			return;
 		}
 
@@ -243,21 +233,11 @@
 	});
 
 	// Registry-driven per-tool visibility
-	let showTTS = $derived(
-		visibleToolIds.includes('textToSpeech') &&
-		effectiveTTSService &&
-		toolsLoaded
-	);
+	let showTTS = $derived(visibleToolIds.includes('textToSpeech') && effectiveTTSService && toolsLoaded);
 	let showAnswerEliminator = $derived(
-		visibleToolIds.includes('answerEliminator') &&
-		effectiveToolCoordinator &&
-		toolsLoaded
+		visibleToolIds.includes('answerEliminator') && effectiveToolCoordinator && toolsLoaded
 	);
-	let showCalculator = $derived(
-		visibleToolIds.includes('calculator') &&
-		effectiveToolCoordinator &&
-		toolsLoaded
-	);
+	let showCalculator = $derived(visibleToolIds.includes('calculator') && effectiveToolCoordinator && toolsLoaded);
 
 	// Track answer eliminator visibility state
 	let answerEliminatorVisible = $state(false);
@@ -267,15 +247,11 @@
 		if (!isBrowser || !effectiveToolCoordinator) return;
 
 		const unsubscribe = effectiveToolCoordinator.subscribe(() => {
-			answerEliminatorVisible = effectiveToolCoordinator.isToolVisible(
-				`answerEliminator-${itemId}`,
-			);
+			answerEliminatorVisible = effectiveToolCoordinator.isToolVisible(`answerEliminator-${itemId}`);
 		});
 
 		// Initial update
-		answerEliminatorVisible = effectiveToolCoordinator.isToolVisible(
-			`answerEliminator-${itemId}`,
-		);
+		answerEliminatorVisible = effectiveToolCoordinator.isToolVisible(`answerEliminator-${itemId}`);
 
 		return unsubscribe;
 	});
@@ -291,8 +267,7 @@
 				(answerEliminatorElement as any).scopeElement = scopeElement;
 			}
 			if (effectiveElementToolStateStore && globalElementId) {
-				(answerEliminatorElement as any).elementToolStateStore =
-					effectiveElementToolStateStore;
+				(answerEliminatorElement as any).elementToolStateStore = effectiveElementToolStateStore;
 				(answerEliminatorElement as any).globalElementId = globalElementId;
 			}
 			eliminatorBound = true;
@@ -310,7 +285,7 @@
 		const tool = effectiveToolRegistry.get('answerEliminator');
 		if (!tool) return null;
 		return tool.createButton(toolContext, {
-			onClick: toggleAnswerEliminator,
+			onClick: toggleAnswerEliminator
 		});
 	});
 
@@ -322,14 +297,10 @@
 		}
 		return '';
 	}
-
 </script>
 
 {#if isBrowser}
-	<div
-		class="question-toolbar {className} question-toolbar--{size}"
-		bind:this={toolbarRootElement}
-	>
+	<div class="item-toolbar {className} item-toolbar--{size}" bind:this={toolbarRootElement}>
 		<!-- Calculator Button (inline tool) -->
 		{#if showCalculator}
 			<pie-tool-calculator-inline
@@ -354,8 +325,8 @@
 		{#if showAnswerEliminator}
 			<button
 				type="button"
-				class="question-toolbar__button"
-				class:question-toolbar__button--active={answerEliminatorVisible}
+				class="item-toolbar__button"
+				class:item-toolbar__button--active={answerEliminatorVisible}
 				onclick={() => handleToolClick('answerEliminator')}
 				aria-label={answerEliminatorButtonMeta?.ariaLabel || 'Answer Eliminator'}
 				aria-pressed={answerEliminatorVisible}
@@ -378,13 +349,13 @@
 {/if}
 
 <style>
-	.question-toolbar {
+	.item-toolbar {
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
 	}
 
-	.question-toolbar__button {
+	.item-toolbar__button {
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -399,51 +370,48 @@
 		transition: all 0.15s ease;
 	}
 
-	.question-toolbar--sm .question-toolbar__button {
-		width: 2.75rem;  /* 44px - WCAG 2.5.2 Level A minimum */
+	.item-toolbar--sm .item-toolbar__button {
+		width: 2.75rem;
 		height: 2.75rem;
 	}
 
-	.question-toolbar--lg .question-toolbar__button {
+	.item-toolbar--lg .item-toolbar__button {
 		width: 2.5rem;
 		height: 2.5rem;
 	}
 
-	.question-toolbar__button:hover:not(:disabled) {
-		background-color: var(
-			--pie-secondary-background,
-			#f5f5f5
-		);
+	.item-toolbar__button:hover:not(:disabled) {
+		background-color: var(--pie-secondary-background, #f5f5f5);
 		transform: translateY(-1px);
 		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 	}
 
-	.question-toolbar__button:active:not(:disabled) {
+	.item-toolbar__button:active:not(:disabled) {
 		transform: translateY(0);
 		box-shadow: none;
 	}
 
-	.question-toolbar__button--active {
+	.item-toolbar__button--active {
 		background-color: var(--pie-primary, #1976d2);
 		color: white;
 		border-color: var(--pie-primary, #1976d2);
 	}
 
-	.question-toolbar__button--active:hover:not(:disabled) {
+	.item-toolbar__button--active:hover:not(:disabled) {
 		background-color: var(--pie-primary-dark, #1565c0);
 	}
 
-	.question-toolbar__button:focus-visible {
+	.item-toolbar__button:focus-visible {
 		outline: 2px solid var(--pie-primary, #1976d2);
 		outline-offset: 2px;
 	}
 
-	.question-toolbar__button:disabled {
+	.item-toolbar__button:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
 	}
 
-	.question-toolbar__button :global(svg) {
+	.item-toolbar__button :global(svg) {
 		width: 100%;
 		height: 100%;
 	}

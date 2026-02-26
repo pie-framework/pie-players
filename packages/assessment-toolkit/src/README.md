@@ -545,7 +545,6 @@ const tools = resolver.resolveTools(assessment, currentItemRef);
 'protractor'      → 'protractor'
 'highlighter'     → 'highlighter'
 'lineReader'      → 'lineReader'
-'magnifier'       → 'magnifier'
 'colorContrast'   → 'colorScheme'
 'answerMasking'   → 'answerEliminator'
 ```

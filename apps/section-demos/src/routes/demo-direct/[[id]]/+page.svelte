@@ -153,9 +153,6 @@
 		if (!customElements.get('pie-section-tools-toolbar')) {
 			imports.push(import('@pie-players/pie-section-tools-toolbar'));
 		}
-		if (!customElements.get('pie-tool-calculator')) {
-			imports.push(import('@pie-players/pie-tool-calculator'));
-		}
 		if (!customElements.get('pie-item-toolbar')) {
 			imports.push(import('@pie-players/pie-assessment-toolkit/components/item-toolbar-element'));
 		}

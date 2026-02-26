@@ -7,6 +7,14 @@ export {
 	type LayoutDefinitionMap,
 	type PlayerDefinitionMap,
 } from "./component-definitions.js";
+export { SectionController } from "./controllers/SectionController.js";
+export type {
+	SectionCompositionModel,
+	SectionControllerInput,
+	SectionViewModel,
+	SectionNavigationState,
+	SectionSessionState,
+} from "./controllers/types.js";
 
 // Make sure the web component is registered
 // This is what makes it available as <pie-section-player> in HTML

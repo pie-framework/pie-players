@@ -181,6 +181,7 @@
 			bind:this={toolkitElement}
 			assessment-id={data.demo?.id || 'section-demo-direct'}
 			section={resolvedSection}
+			player-type="iife"
 			view="candidate"
 			lazy-init={true}
 			tools={toolkitToolsConfig}

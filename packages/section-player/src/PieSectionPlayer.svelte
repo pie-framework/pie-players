@@ -259,6 +259,11 @@
       elementToolStateStore: services.elementToolStateStore,
       assessmentId,
       sectionId,
+      itemPlayer: {
+        type: "iife",
+        tagName: resolvedPlayerTag,
+        isDefault: true,
+      },
       reportSessionChanged: (itemId: string, detail: unknown) =>
         handleItemSessionChanged(itemId, detail),
     }),

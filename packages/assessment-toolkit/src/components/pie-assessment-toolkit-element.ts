@@ -1,3 +1,3 @@
-import "./PieAssessmentToolkit.svelte?customElement";
+import "./PieAssessmentToolkit.custom-element.js";
 
 export {};

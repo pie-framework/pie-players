@@ -1,3 +1,3 @@
-import "./ItemToolBar.svelte?customElement";
+import "./ItemToolBar.custom-element.js";
 
 export {};

@@ -12,6 +12,8 @@
 			lazyInit: { attribute: "lazy-init", type: "Boolean" },
 			tools: { attribute: "tools", type: "Object" },
 			accessibility: { attribute: "accessibility", type: "Object" },
+			player: { attribute: "player", type: "Object" },
+			playerType: { attribute: "player-type", type: "String" },
 			coordinator: { type: "Object", reflect: false },
 			createSectionController: { type: "Object", reflect: false },
 			isolation: { attribute: "isolation", type: "String" },
@@ -24,6 +26,8 @@
 	import {
 		assessmentToolkitRuntimeContext,
 		type AssessmentToolkitRuntimeContext,
+		type ItemPlayerConfig,
+		type ItemPlayerType,
 	} from "../context/assessment-toolkit-context.js";
 	import { ToolkitCoordinator } from "../services/ToolkitCoordinator.js";
 	import { findParentToolkitRuntime } from "../runtime/findParentToolkitRuntime.js";
@@ -54,8 +58,18 @@
 		eventDetail?: unknown;
 	};
 
+	type HostItemPlayerInput = Partial<
+		Pick<ItemPlayerConfig, "type" | "tagName" | "version" | "source">
+	> | null;
+
 	const runtimeId = createRuntimeId("toolkit");
 	const sectionEngine = new SectionRuntimeEngine();
+	const DEFAULT_ITEM_PLAYER_BY_TYPE: Record<ItemPlayerType, string> = {
+		iife: "pie-iife-player",
+		esm: "pie-esm-player",
+		fixed: "pie-fixed-player",
+		custom: "",
+	};
 
 	let {
 		assessmentId = "",
@@ -67,6 +81,8 @@
 		lazyInit = true,
 		tools = {},
 		accessibility = {},
+		player = null as HostItemPlayerInput,
+		playerType = "" as ItemPlayerType | "",
 		coordinator = null as ToolkitCoordinator | null,
 		createSectionController = null as null | (() => unknown),
 		isolation = "inherit",
@@ -98,6 +114,41 @@
 				composed: true,
 			}),
 		);
+	}
+
+	function isKnownPlayerType(value: unknown): value is ItemPlayerType {
+		return value === "iife" || value === "esm" || value === "fixed" || value === "custom";
+	}
+
+	function normalizeItemPlayerConfig(
+		hostPlayer: HostItemPlayerInput,
+		hostPlayerType: ItemPlayerType | "",
+	): ItemPlayerConfig {
+		const typeFromConfig = hostPlayer?.type;
+		const rawType = isKnownPlayerType(typeFromConfig)
+			? typeFromConfig
+			: isKnownPlayerType(hostPlayerType)
+				? hostPlayerType
+				: hostPlayer?.tagName
+					? "custom"
+					: "iife";
+		const requestedTagName = hostPlayer?.tagName?.trim();
+		if (rawType === "custom" && !requestedTagName) {
+			return {
+				type: "iife",
+				tagName: DEFAULT_ITEM_PLAYER_BY_TYPE.iife,
+				version: undefined,
+				source: undefined,
+				isDefault: true,
+			};
+		}
+		return {
+			type: rawType,
+			tagName: requestedTagName || DEFAULT_ITEM_PLAYER_BY_TYPE[rawType],
+			version: hostPlayer?.version,
+			source: hostPlayer?.source,
+			isDefault: !hostPlayer && !hostPlayerType,
+		};
 	}
 
 	async function createDefaultSectionController() {
@@ -153,6 +204,9 @@
 	const effectiveSectionId = $derived(
 		sectionId || (section as any)?.identifier || `section-${effectiveAssessmentId || "default"}`,
 	);
+	const effectiveItemPlayer = $derived.by(() =>
+		normalizeItemPlayerConfig(player, playerType),
+	);
 	const runtimeContextValue = $derived.by((): AssessmentToolkitRuntimeContext | null => {
 		if (!effectiveCoordinator) return null;
 		const services = effectiveCoordinator.getServiceBundle();
@@ -165,6 +219,7 @@
 			elementToolStateStore: services.elementToolStateStore,
 			assessmentId: effectiveAssessmentId,
 			sectionId: effectiveSectionId,
+			itemPlayer: effectiveItemPlayer,
 			reportSessionChanged: (itemId: string, detail: unknown) => {
 				const result = sectionEngine.handleItemSessionChanged(itemId, detail);
 				const normalized = (result as SessionChangedLike | null)?.eventDetail || detail;
@@ -255,6 +310,12 @@
 	});
 
 	$effect(() => {
+		if (!host) return;
+		host.setAttribute("data-item-player-type", effectiveItemPlayer.type);
+		host.setAttribute("data-item-player-tag", effectiveItemPlayer.tagName);
+	});
+
+	$effect(() => {
 		if (!host || !runtimeContextValue) return;
 		provider = new ContextProvider(host, {
 			context: assessmentToolkitRuntimeContext,
@@ -303,6 +364,7 @@
 					runtimeId,
 					assessmentId: effectiveAssessmentId,
 					sectionId: effectiveSectionId,
+					itemPlayer: effectiveItemPlayer,
 				});
 				emit("section-ready", {
 					sectionId: effectiveSectionId,
@@ -394,6 +456,10 @@
 
 	export function getCompositionModel(): unknown {
 		return sectionEngine.getCompositionModel();
+	}
+
+	export function getItemPlayerConfig(): ItemPlayerConfig {
+		return effectiveItemPlayer;
 	}
 
 	export async function persist(): Promise<void> {

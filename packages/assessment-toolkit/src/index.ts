@@ -14,6 +14,8 @@
 export { TypedEventBus } from "./core/TypedEventBus.js";
 export type {
 	AssessmentToolkitRuntimeContext,
+	ItemPlayerConfig,
+	ItemPlayerType,
 } from "./context/assessment-toolkit-context.js";
 export {
 	assessmentToolkitRuntimeContext,

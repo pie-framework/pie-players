@@ -25,17 +25,9 @@
 			"types": "./dist/tools/client.d.ts",
 			"import": "./dist/tools/client.js"
 		},
-		"./components/ItemToolBar.svelte": {
-			"types": "./dist/components/item-toolbar-element.d.ts",
-			"import": "./dist/components/item-toolbar-element.js"
-		},
 		"./components/item-toolbar-element": {
 			"types": "./dist/components/item-toolbar-element.d.ts",
 			"import": "./dist/components/item-toolbar-element.js"
-		},
-		"./components/PieAssessmentToolkit.svelte": {
-			"types": "./dist/components/pie-assessment-toolkit-element.d.ts",
-			"import": "./dist/components/pie-assessment-toolkit-element.js"
 		},
 		"./components/pie-assessment-toolkit-element": {
 			"types": "./dist/components/pie-assessment-toolkit-element.d.ts",
@@ -60,7 +52,7 @@
 		"README.md"
 	],
 	"scripts": {
-		"build": "tsc -p tsconfig.json && node ./scripts/copy-ce-sources.mjs",
+		"build": "tsc -p tsconfig.json && node ./scripts/build-ce-components.mjs",
 		"dev": "tsc -p tsconfig.json --watch",
 		"typecheck": "tsc -p tsconfig.json --noEmit",
 		"lint": "biome check .",

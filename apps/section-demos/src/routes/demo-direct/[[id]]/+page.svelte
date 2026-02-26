@@ -13,22 +13,6 @@
 
 	let { data }: { data: PageData } = $props();
 
-	interface CoordinatorWithSectionControllers extends ToolkitCoordinator {
-		getOrCreateSectionController(args: {
-			sectionId: string;
-			attemptId?: string;
-			input?: unknown;
-			updateExisting?: boolean;
-			createDefaultController: () => SectionController | Promise<SectionController>;
-		}): Promise<SectionController>;
-		disposeSectionController(args: {
-			sectionId: string;
-			attemptId?: string;
-			persistBeforeDispose?: boolean;
-			clearPersistence?: boolean;
-		}): Promise<void>;
-	}
-
 	const EMPTY_COMPOSITION: SectionCompositionModel = {
 		section: null,
 		assessmentItemRefs: [],
@@ -49,9 +33,9 @@
 		null
 	);
 	let runtimeContextRoot = $state<ContextRoot | null>(null);
-	let sectionController = $state<SectionController | null>(null);
 	let activeSectionId = $state('');
-	let compositionVersion = $state(0);
+	let activeSectionController = $state<SectionController | null>(null);
+	let compositionModel = $state<SectionCompositionModel>(EMPTY_COMPOSITION);
 	let errorMessage = $state<string | null>(null);
 	let leftPanelWidth = $state(50);
 	let isDragging = $state(false);
@@ -76,10 +60,6 @@
 	let sectionId = $derived(
 		activeSectionId || resolvedSection?.identifier || `section-${toolkitCoordinator.assessmentId}`
 	);
-	let compositionModel = $derived.by(() => {
-		compositionVersion;
-		return sectionController?.getCompositionModel() || EMPTY_COMPOSITION;
-	});
 	let passages = $derived(compositionModel.passages || []);
 	let items = $derived(compositionModel.items || []);
 	let itemSessionsByItemId = $derived(compositionModel.itemSessionsByItemId || {});
@@ -98,10 +78,6 @@
 			handleItemSessionChanged(itemId, detail);
 		}
 	}));
-
-	function bumpCompositionVersion() {
-		compositionVersion += 1;
-	}
 
 	function createDemoToolkitCoordinator() {
 		return new ToolkitCoordinator({
@@ -128,11 +104,13 @@
 	}
 
 	function handleItemSessionChanged(itemId: string, sessionDetail: unknown) {
-		if (!sectionController || !itemId) return;
-		const canonicalItemId = sectionController.getCanonicalItemId(itemId);
-		const result = sectionController.handleItemSessionChanged(canonicalItemId, sessionDetail);
+		if (!itemId) return;
+		const controller = activeSectionController;
+		if (!controller) return;
+		const canonicalItemId = controller.getCanonicalItemId(itemId);
+		const result = controller.handleItemSessionChanged(canonicalItemId, sessionDetail);
 		if (!result) return;
-		bumpCompositionVersion();
+		compositionModel = controller.getCompositionModel();
 	}
 
 	function onPlayerSessionChanged(itemId: string, event: Event) {
@@ -209,15 +187,15 @@
 
 	$effect(() => {
 		const section = resolvedSection;
-		const coordinator = toolkitCoordinator as CoordinatorWithSectionControllers;
+		const coordinator = toolkitCoordinator;
 		let cancelled = false;
 		let unsubscribeControllerChange: (() => void) | null = null;
 		let controllerSectionId = '';
 
 		if (!section) {
-			sectionController = null;
 			activeSectionId = '';
-			bumpCompositionVersion();
+			activeSectionController = null;
+			compositionModel = EMPTY_COMPOSITION;
 			return;
 		}
 
@@ -235,13 +213,14 @@
 			})
 			.then((controller) => {
 				if (cancelled) return;
-				sectionController = controller;
+				const typedController = controller as SectionController;
 				controllerSectionId = section.identifier || `section-${coordinator.assessmentId}`;
 				activeSectionId = controllerSectionId;
-				unsubscribeControllerChange = controller.subscribe(() => {
-					bumpCompositionVersion();
+				activeSectionController = typedController;
+				compositionModel = typedController.getCompositionModel();
+				unsubscribeControllerChange = typedController.subscribe(() => {
+					compositionModel = typedController.getCompositionModel();
 				});
-				bumpCompositionVersion();
 			})
 			.catch((error) => {
 				if (cancelled) return;
@@ -255,6 +234,10 @@
 				void coordinator.disposeSectionController({
 					sectionId: controllerSectionId
 				});
+			}
+			if (activeSectionId === controllerSectionId) {
+				activeSectionController = null;
+				compositionModel = EMPTY_COMPOSITION;
 			}
 		};
 	});
@@ -299,7 +282,7 @@
 		await Promise.all([
 			import('@pie-players/pie-iife-player'),
 			import('@pie-players/pie-section-tools-toolbar'),
-			import('@pie-players/pie-assessment-toolkit/components/QuestionToolBar.svelte')
+			import('@pie-players/pie-assessment-toolkit/components/QuestionToolBar.svelte?customElement')
 		]);
 	});
 </script>

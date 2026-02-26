@@ -38,7 +38,7 @@ for (const entry of entries) {
 	// are not valid in plain JS class setters and break svelte-check consumers.
 	const sanitizedCode = compiled.js.code.replace(
 		/set\s+([A-Za-z_$][\w$]*)\(\s*\$\$value\s*=\s*[^)]+\)/g,
-		"set $1($$value)",
+		(_, setterName) => `set ${setterName}($$value)`,
 	);
 
 	writeFileSync(entry.output, `// @ts-nocheck\n${sanitizedCode}`, "utf8");

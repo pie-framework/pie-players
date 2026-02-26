@@ -10,16 +10,11 @@
 
 import type {
 	ToolRegistration,
-	ToolButtonDefinition,
-	ToolButtonOptions,
-	ToolInstanceOptions,
+	ToolToolbarRenderResult,
+	ToolbarContext,
 } from "../../services/ToolRegistry.js";
 import type { ToolContext } from "../../services/tool-context.js";
 import { hasReadableText } from "../../services/tool-context.js";
-import {
-	createToolElement,
-	type ToolComponentOverrides,
-} from "../tool-tag-map.js";
 
 /**
  * Text-to-Speech tool registration
@@ -57,75 +52,40 @@ export const ttsToolRegistration: ToolRegistration = {
 		return hasReadableText(context);
 	},
 
-	/**
-	 * Create TTS button for toolbar
-	 */
-	createButton(
-		context: ToolContext,
-		options: ToolButtonOptions,
-	): ToolButtonDefinition {
-		const icon =
-			typeof this.icon === "function" ? this.icon(context) : this.icon;
+	renderToolbar(
+		_context: ToolContext,
+		toolbarContext: ToolbarContext,
+	): ToolToolbarRenderResult {
+		const inline = document.createElement("pie-tool-tts-inline") as HTMLElement & {
+			toolId?: string;
+			catalogId?: string;
+			language?: string;
+			size?: string;
+			ttsService?: unknown;
+		};
+		inline.setAttribute("tool-id", `tts-${toolbarContext.itemId}`);
+		inline.setAttribute("catalog-id", toolbarContext.catalogId || toolbarContext.itemId);
+		inline.setAttribute("language", toolbarContext.language);
+		inline.setAttribute("size", toolbarContext.ui?.size || "md");
 
+		let readyRequested = false;
 		return {
 			toolId: this.toolId,
-			label: this.name,
-			icon: icon,
-			disabled: options.disabled || false,
-			ariaLabel:
-				options.ariaLabel || "Read aloud - Press to activate text-to-speech",
-			tooltip: options.tooltip || "Read Aloud",
-			onClick: options.onClick || (() => {}),
-			className: options.className,
+			inlineElement: inline,
+			sync: () => {
+				inline.setAttribute("catalog-id", toolbarContext.catalogId || toolbarContext.itemId);
+				inline.setAttribute("language", toolbarContext.language);
+				inline.setAttribute("size", toolbarContext.ui?.size || "md");
+				if (toolbarContext.ttsService) {
+					inline.ttsService = toolbarContext.ttsService;
+				}
+				if (!readyRequested && toolbarContext.ensureTTSReady) {
+					readyRequested = true;
+					void toolbarContext.ensureTTSReady().catch((error: unknown) => {
+						console.error("[ttsToolRegistration] Failed to initialize TTS service:", error);
+					});
+				}
+			},
 		};
-	},
-
-	/**
-	 * Create TTS tool instance
-	 *
-	 * Creates a <pie-tool-tts> web component or activates TTS service.
-	 * Note: TTS often works as a service rather than a visible component.
-	 */
-	createToolInstance(
-		context: ToolContext,
-		options: ToolInstanceOptions,
-	): HTMLElement {
-		const componentOverrides =
-			(options.config as ToolComponentOverrides | undefined) ?? {};
-		const tts = createToolElement(
-			this.toolId,
-			context,
-			options,
-			componentOverrides,
-		) as HTMLElement & {
-			visible: boolean;
-			toolId: string;
-			coordinator?: unknown;
-			ttsService?: unknown;
-			contentElement?: HTMLElement;
-		};
-
-		tts.visible = true;
-		tts.toolId = this.toolId;
-
-		const toolkitCoordinator = options.config?.toolkitCoordinator;
-		if (!toolkitCoordinator) {
-			throw new Error(
-				"[ttsToolRegistration] toolkitCoordinator is required in ToolInstanceOptions.config",
-			);
-		}
-		tts.coordinator = toolkitCoordinator;
-		if (options.config?.ttsService) {
-			tts.ttsService = options.config.ttsService;
-		}
-		if (options.config?.contentElement) {
-			tts.contentElement = options.config.contentElement as HTMLElement;
-		}
-
-		if (options.onClose) {
-			tts.addEventListener("close", options.onClose);
-		}
-
-		return tts;
 	},
 };

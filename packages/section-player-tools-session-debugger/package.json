@@ -29,13 +29,6 @@
 			"types": "./dist/index.d.ts",
 			"import": "./dist/section-player-tools-session-debugger.js",
 			"svelte": "./SectionSessionPanel.svelte"
-		},
-		"./SectionSessionPanel.svelte": {
-			"svelte": "./SectionSessionPanel.svelte",
-			"import": "./SectionSessionPanel.svelte"
-		},
-		"./dist/section-player-tools-session-debugger.js": {
-			"import": "./dist/section-player-tools-session-debugger.js"
 		}
 	},
 	"files": [

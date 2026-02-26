@@ -29,13 +29,6 @@
 			"types": "./dist/index.d.ts",
 			"import": "./dist/section-player-tools-pnp-debugger.js",
 			"svelte": "./PnpPanel.svelte"
-		},
-		"./PnpPanel.svelte": {
-			"svelte": "./PnpPanel.svelte",
-			"import": "./PnpPanel.svelte"
-		},
-		"./dist/section-player-tools-pnp-debugger.js": {
-			"import": "./dist/section-player-tools-pnp-debugger.js"
 		}
 	},
 	"files": [

@@ -33,22 +33,19 @@
 		type AssessmentToolkitRuntimeContext
 	} from '../context/assessment-toolkit-context.js';
 	import { connectAssessmentToolkitRuntimeContext } from '../context/runtime-context-consumer.js';
-	import type { ToolRegistry } from '../services/ToolRegistry.js';
+	import type { ToolRegistry, ToolToolbarRenderResult, ToolbarContext } from '../services/ToolRegistry.js';
 	import type { PNPToolResolver } from '../services/PNPToolResolver.js';
 	import { createDefaultToolRegistry } from '../services/createDefaultToolRegistry.js';
+	import { DEFAULT_TOOL_MODULE_LOADERS } from '../tools/default-tool-module-loaders.js';
 	import type { AssessmentEntity, AssessmentItemRef, ItemEntity } from '@pie-players/pie-players-shared/types';
 	import type { ElementToolContext, ItemToolContext } from '../services/tool-context.js';
 
 	const isBrowser = typeof window !== 'undefined';
-	const fallbackToolRegistry = createDefaultToolRegistry();
+	const fallbackToolRegistry = createDefaultToolRegistry({
+		toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS
+	});
 
-	function normalizeToolId(toolId: string): string {
-		if (toolId === 'tts') return 'textToSpeech';
-		return toolId;
-	}
-
-	// Track if tools have been loaded
-	let toolsLoaded = $state(false);
+	let activeToolState = $state<Record<string, boolean>>({});
 
 	// Props
 	let {
@@ -83,22 +80,12 @@
 
 	let toolbarRootElement = $state<HTMLDivElement | null>(null);
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
-	let ttsReadyRequested = $state(false);
+	let moduleLoadVersion = $state(0);
 
 	$effect(() => {
 		if (!toolbarRootElement) return;
 		return connectAssessmentToolkitRuntimeContext(toolbarRootElement, (value) => {
 			runtimeContext = value;
-		});
-	});
-
-	$effect(() => {
-		if (!runtimeContext?.toolkitCoordinator) return;
-		if (!allowedToolIds.includes('textToSpeech')) return;
-		if (ttsReadyRequested) return;
-		ttsReadyRequested = true;
-		void runtimeContext.toolkitCoordinator.ensureTTSReady().catch((error: unknown) => {
-			console.error('[ItemToolBar] Failed to initialize TTS service:', error);
 		});
 	});
 
@@ -108,19 +95,6 @@
 	const effectiveAssessmentId = $derived(runtimeContext?.assessmentId ?? '');
 	const effectiveSectionId = $derived(runtimeContext?.sectionId ?? '');
 
-	// Generate globalElementId using store utility
-	let globalElementId = $derived.by(() => {
-		if (!effectiveElementToolStateStore || !effectiveAssessmentId || !effectiveSectionId || !itemId)
-			return null;
-		return effectiveElementToolStateStore.getGlobalElementId(
-			effectiveAssessmentId,
-			effectiveSectionId,
-			itemId,
-			itemId
-		);
-		// Note: Using itemId as elementId since toolbar is scoped to one item/element
-	});
-
 	// Effective registry for visibility and metadata ownership.
 	const effectiveToolRegistry = $derived(toolRegistry || fallbackToolRegistry);
 
@@ -128,8 +102,12 @@
 		tools
 			.split(',')
 			.map((t) => t.trim())
-			.map(normalizeToolId)
-			.filter((toolId) => contentKind === 'assessment-item' || toolId !== 'calculator')
+			.filter(Boolean)
+	);
+
+	const normalizedEnabledTools = $derived(
+		effectiveToolRegistry
+			.normalizeToolIds(enabledTools)
 			.filter(Boolean)
 	);
 
@@ -137,14 +115,19 @@
 	const allowedToolIds = $derived.by(() => {
 		if (pnpResolver && assessment && itemRef) {
 			const allowedByPnp = pnpResolver.getAllowedToolIds(assessment, itemRef);
-			if (enabledTools.length === 0) return allowedByPnp;
-			return allowedByPnp.filter((toolId) => enabledTools.includes(toolId));
+			if (normalizedEnabledTools.length === 0) return allowedByPnp;
+			return allowedByPnp.filter((toolId) => normalizedEnabledTools.includes(toolId));
 		}
-		return enabledTools;
+		return normalizedEnabledTools;
+	});
+
+	const contentReady = $derived.by(() => {
+		const config = (item as ItemEntity | null)?.config;
+		return !!(item && config && typeof config === 'object');
 	});
 
 	const toolContext = $derived.by((): ItemToolContext | null => {
-		if (!item) {
+		if (!contentReady || !item) {
 			return null;
 		}
 		return {
@@ -155,8 +138,18 @@
 		};
 	});
 
+	const renderContext = $derived.by((): ItemToolContext => {
+		if (toolContext) return toolContext;
+		return {
+			level: 'item',
+			assessment: (assessment || {}) as AssessmentEntity,
+			itemRef: (itemRef || ({ id: itemId } as AssessmentItemRef)) as AssessmentItemRef,
+			item: ((item as ItemEntity | null) || ({ id: itemId, config: {} } as ItemEntity)) as ItemEntity
+		};
+	});
+
 	const elementContexts = $derived.by((): ElementToolContext[] => {
-		if (!item) return [];
+		if (!contentReady || !item) return [];
 		const modelsRaw = (item as any)?.config?.models;
 		const models = Array.isArray(modelsRaw)
 			? modelsRaw
@@ -176,6 +169,10 @@
 
 	// Pass 2: tool-owned context filtering (item + element aggregation)
 	const visibleToolIds = $derived.by(() => {
+		if (!contentReady) {
+			// Stage 1: orchestrator-level allow-list only.
+			return allowedToolIds;
+		}
 		if (!toolContext && elementContexts.length === 0) {
 			return allowedToolIds;
 		}
@@ -191,95 +188,25 @@
 		return Array.from(visible);
 	});
 
-	// Handle tool click (activates tool)
-	async function handleToolClick(toolId: string) {
-		console.log('[ItemToolBar] Tool clicked:', toolId);
-
-		if (!effectiveToolCoordinator) {
-			console.warn('[ItemToolBar] No toolCoordinator available');
-			return;
-		}
-
-		// Registry-owned lazy module loading before tool activation.
-		if (effectiveToolRegistry) {
-			await effectiveToolRegistry.ensureToolModuleLoaded(toolId);
-		}
-
-		// Toggle tool visibility
-		const fullToolId = `${toolId}-${itemId}`;
-		effectiveToolCoordinator.toggleTool(fullToolId);
-	}
-
-	// Dynamically load tool components needed by visible toolbar tools
+	// Dynamically load whatever tools are currently visible.
+	// The registry owns module loader configuration by toolId.
 	$effect(() => {
-		if (!isBrowser || toolsLoaded) return;
-
-		(async () => {
-			const loadPromises = [];
-
-			if (allowedToolIds.includes('textToSpeech')) {
-				loadPromises.push(import('@pie-players/pie-tool-tts-inline'));
-			}
-			if (allowedToolIds.includes('answerEliminator')) {
-				loadPromises.push(import('@pie-players/pie-tool-answer-eliminator'));
-			}
-			if (allowedToolIds.includes('calculator')) {
-				loadPromises.push(
-					import('@pie-players/pie-tool-calculator-inline'),
-					import('@pie-players/pie-tool-calculator')
-				);
-			}
-
-			await Promise.all(loadPromises);
-			toolsLoaded = true;
-		})();
+		if (!isBrowser) return;
+		let cancelled = false;
+		void effectiveToolRegistry
+			.ensureToolModulesLoaded(visibleToolIds)
+			.then(() => {
+				if (!cancelled) moduleLoadVersion += 1;
+			})
+			.catch((error: unknown) => {
+				console.error('[ItemToolBar] Failed to load one or more tool modules:', error);
+			});
+		return () => {
+			cancelled = true;
+		};
 	});
 
-	// Registry-driven per-tool visibility
-	let showTTS = $derived(visibleToolIds.includes('textToSpeech') && effectiveTTSService && toolsLoaded);
-	let showAnswerEliminator = $derived(
-		visibleToolIds.includes('answerEliminator') && effectiveToolCoordinator && toolsLoaded
-	);
-	let showCalculator = $derived(visibleToolIds.includes('calculator') && effectiveToolCoordinator && toolsLoaded);
-
-	// Track answer eliminator visibility state
-	let calculatorVisible = $state(false);
-	let answerEliminatorVisible = $state(false);
-
-	// Subscribe to tool coordinator to update button state
-	$effect(() => {
-		if (!isBrowser || !effectiveToolCoordinator) return;
-
-		const unsubscribe = effectiveToolCoordinator.subscribe(() => {
-			const nextCalculatorVisible = effectiveToolCoordinator.isToolVisible(`calculator-${itemId}`);
-			const nextVisible = effectiveToolCoordinator.isToolVisible(`answerEliminator-${itemId}`);
-			if (nextCalculatorVisible !== calculatorVisible) {
-				calculatorVisible = nextCalculatorVisible;
-			}
-			if (nextVisible !== answerEliminatorVisible) {
-				answerEliminatorVisible = nextVisible;
-			}
-		});
-
-		// Initial update
-		const initialCalculatorVisible = effectiveToolCoordinator.isToolVisible(`calculator-${itemId}`);
-		const initialVisible = effectiveToolCoordinator.isToolVisible(`answerEliminator-${itemId}`);
-		if (initialCalculatorVisible !== calculatorVisible) {
-			calculatorVisible = initialCalculatorVisible;
-		}
-		if (initialVisible !== answerEliminatorVisible) {
-			answerEliminatorVisible = initialVisible;
-		}
-
-		return unsubscribe;
-	});
-
-	// Answer eliminator element reference for scope binding
-	let answerEliminatorElement = $state<HTMLElement | null>(null);
-	let boundScopeElement = $state<HTMLElement | null>(null);
-	let boundGlobalElementId = $state<string | null>(null);
-	let boundElementToolStore = $state<unknown>(null);
-	const effectiveScopeElement = $derived.by(() => {
+	function resolveScopeElement(): HTMLElement | null {
 		if (scopeElement) return scopeElement;
 		if (!toolbarRootElement) return null;
 		const shellRoot = toolbarRootElement.closest("[data-pie-shell-root]") as HTMLElement | null;
@@ -291,104 +218,172 @@
 			(shellRoot.querySelector('[data-pie-region="header"]') as HTMLElement | null) ||
 			shellRoot
 		);
-	});
-
-	// Bind scope, coordinator, store, and globalElementId to answer eliminator
-	$effect(() => {
-		if (answerEliminatorElement) {
-			if (effectiveScopeElement && boundScopeElement !== effectiveScopeElement) {
-				(answerEliminatorElement as any).scopeElement = effectiveScopeElement;
-				boundScopeElement = effectiveScopeElement;
-			}
-			if (
-				effectiveElementToolStateStore &&
-				globalElementId &&
-				(boundElementToolStore !== effectiveElementToolStateStore ||
-					boundGlobalElementId !== globalElementId)
-			) {
-				(answerEliminatorElement as any).elementToolStateStore = effectiveElementToolStateStore;
-				(answerEliminatorElement as any).globalElementId = globalElementId;
-				boundElementToolStore = effectiveElementToolStateStore;
-				boundGlobalElementId = globalElementId;
-			}
-		}
-	});
-
-	// Handle answer eliminator toggle
-	function toggleAnswerEliminator() {
-		if (!effectiveToolCoordinator) return;
-		effectiveToolCoordinator.toggleTool(`answerEliminator-${itemId}`);
 	}
 
-	const answerEliminatorButtonMeta = $derived.by(() => {
-		if (!toolContext) return null;
-		const tool = effectiveToolRegistry.get('answerEliminator');
-		if (!tool) return null;
-		return tool.createButton(toolContext, {
-			onClick: toggleAnswerEliminator
+	function resolveGlobalElementId(): string | null {
+		if (!effectiveElementToolStateStore || !effectiveAssessmentId || !effectiveSectionId || !itemId)
+			return null;
+		return effectiveElementToolStateStore.getGlobalElementId(
+			effectiveAssessmentId,
+			effectiveSectionId,
+			itemId,
+			itemId
+		);
+	}
+
+	const toolbarContext = $derived.by((): ToolbarContext => {
+		const toolkitCoordinator = runtimeContext?.toolkitCoordinator || null;
+		const toInstanceToolId = (toolId: string): string => {
+			const suffix = `-${itemId}`;
+			return toolId.endsWith(suffix) ? toolId : `${toolId}${suffix}`;
+		};
+		return {
+			itemId,
+			catalogId: catalogId || itemId,
+			language,
+			ui: {
+				size
+			},
+			getScopeElement: resolveScopeElement,
+			getGlobalElementId: resolveGlobalElementId,
+			toolCoordinator: effectiveToolCoordinator || null,
+			toolkitCoordinator,
+			ttsService: effectiveTTSService || null,
+			elementToolStateStore: effectiveElementToolStateStore || null,
+			toggleTool: (toolId: string) => {
+				if (!effectiveToolCoordinator) return;
+				effectiveToolCoordinator.toggleTool(toInstanceToolId(toolId));
+			},
+			isToolVisible: (toolId: string) => {
+				if (!effectiveToolCoordinator) return false;
+				return effectiveToolCoordinator.isToolVisible(toInstanceToolId(toolId));
+			},
+			subscribeVisibility: effectiveToolCoordinator
+				? (listener: () => void) => effectiveToolCoordinator.subscribe(listener)
+				: null,
+			ensureTTSReady: toolkitCoordinator ? () => toolkitCoordinator.ensureTTSReady() : null
+		};
+	});
+
+	let renderedTools = $derived.by((): ToolToolbarRenderResult[] => {
+		if (!isBrowser) return [];
+		moduleLoadVersion;
+
+		const rendered: ToolToolbarRenderResult[] = [];
+		for (const toolId of visibleToolIds) {
+			const result = effectiveToolRegistry.renderForToolbar(toolId, renderContext, toolbarContext);
+			if (result) {
+				rendered.push(result);
+			}
+		}
+		return rendered;
+	});
+
+	function syncRenderedToolsState() {
+		const nextActiveState: Record<string, boolean> = {};
+		for (const renderedTool of renderedTools) {
+			renderedTool.sync?.();
+			if (renderedTool.button) {
+				nextActiveState[renderedTool.toolId] = renderedTool.button.active ?? false;
+			}
+		}
+		activeToolState = nextActiveState;
+	}
+
+	$effect(() => {
+		const unsubs: Array<() => void> = [];
+		syncRenderedToolsState();
+		for (const renderedTool of renderedTools) {
+			if (renderedTool.subscribeActive) {
+				const unsubscribe = renderedTool.subscribeActive((active) => {
+					activeToolState = {
+						...activeToolState,
+						[renderedTool.toolId]: active
+					};
+					renderedTool.sync?.();
+				});
+				unsubs.push(unsubscribe);
+			}
+		}
+
+		return () => {
+			unsubs.forEach((unsub) => unsub());
+		};
+	});
+
+	$effect(() => {
+		if (!toolbarContext.subscribeVisibility) return;
+		return toolbarContext.subscribeVisibility(() => {
+			syncRenderedToolsState();
 		});
 	});
 
-	function resolveIconMarkup(icon: string | undefined): string {
-		if (!icon) return '';
-		if (icon.startsWith('<svg')) return icon;
-		if (icon === 'strikethrough') {
-			return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M19,3H16.3H7.7H5A2,2 0 0,0 3,5V7.7V16.4V19A2,2 0 0,0 5,21H7.7H16.4H19A2,2 0 0,0 21,19V16.3V7.7V5A2,2 0 0,0 19,3M15.6,17L12,13.4L8.4,17L7,15.6L10.6,12L7,8.4L8.4,7L12,10.6L15.6,7L17,8.4L13.4,12L17,15.6L15.6,17Z"/></svg>';
-		}
-		return '';
+	function mountElement(node: HTMLSpanElement, element: HTMLElement | null) {
+		let mountedElement: HTMLElement | null = null;
+		const updateMountedElement = (nextElement: HTMLElement | null) => {
+			if (mountedElement === nextElement) return;
+			if (mountedElement && mountedElement.parentNode === node) {
+				node.removeChild(mountedElement);
+			}
+			mountedElement = nextElement;
+			if (mountedElement) {
+				if (mountedElement.parentNode && mountedElement.parentNode !== node) {
+					mountedElement.parentNode.removeChild(mountedElement);
+				}
+				node.appendChild(mountedElement);
+			}
+		};
+		updateMountedElement(element);
+		return {
+			update(nextElement: HTMLElement | null) {
+				updateMountedElement(nextElement);
+			},
+			destroy() {
+				updateMountedElement(null);
+			}
+		};
 	}
 </script>
 
 {#if isBrowser}
-	<div class="item-toolbar {className} item-toolbar--{size}" bind:this={toolbarRootElement}>
-		<!-- Calculator Button (inline tool) -->
-		{#if showCalculator}
-			<pie-tool-calculator-inline
-				tool-id="calculator-inline-{itemId}"
-				calculator-type="scientific"
-				available-types="basic,scientific,graphing"
-				size={size}
-			></pie-tool-calculator-inline>
-			<pie-tool-calculator
-				visible={calculatorVisible}
-				tool-id="calculator-{itemId}"
-			></pie-tool-calculator>
-		{/if}
+	<div
+		class="item-toolbar {className} item-toolbar--{size}"
+		data-content-kind={contentKind}
+		bind:this={toolbarRootElement}
+	>
+		{#each renderedTools as renderedTool (renderedTool.toolId)}
+			{#if renderedTool.inlineElement}
+				<span class="item-toolbar__element-host" use:mountElement={renderedTool.inlineElement}></span>
+			{/if}
 
-		<!-- TTS Button (inline tool) -->
-		{#if showTTS}
-			<pie-tool-tts-inline
-				tool-id="tts-{itemId}"
-				catalog-id={catalogId || itemId}
-				language={language}
-				size={size}
-			></pie-tool-tts-inline>
-		{/if}
+			{#if renderedTool.button}
+				<button
+					type="button"
+					class="item-toolbar__button {renderedTool.button.className || ''}"
+					class:item-toolbar__button--active={activeToolState[renderedTool.toolId] ?? renderedTool.button.active ?? false}
+					onclick={() => {
+						renderedTool.button?.onClick();
+						syncRenderedToolsState();
+					}}
+					aria-label={renderedTool.button.ariaLabel || renderedTool.button.label}
+					aria-pressed={activeToolState[renderedTool.toolId] ?? renderedTool.button.active ?? false}
+					title={renderedTool.button.tooltip || renderedTool.button.label}
+					disabled={renderedTool.button.disabled}
+				>
+					{#if renderedTool.button.icon.startsWith('<svg')}
+						{@html renderedTool.button.icon}
+					{:else if renderedTool.button.icon.startsWith('http')}
+						<img class="item-toolbar__icon-image" src={renderedTool.button.icon} alt="" />
+					{:else}
+						<i class={`icon icon-${renderedTool.button.icon}`} aria-hidden="true"></i>
+					{/if}
+				</button>
+			{/if}
 
-		<!-- Answer Eliminator Toggle Button -->
-		{#if showAnswerEliminator}
-			<button
-				type="button"
-				class="item-toolbar__button"
-				class:item-toolbar__button--active={answerEliminatorVisible}
-				onclick={() => handleToolClick('answerEliminator')}
-				aria-label={answerEliminatorButtonMeta?.ariaLabel || 'Answer Eliminator'}
-				aria-pressed={answerEliminatorVisible}
-				title={answerEliminatorButtonMeta?.tooltip || answerEliminatorButtonMeta?.label || 'Answer Eliminator'}
-			>
-				{@html resolveIconMarkup(answerEliminatorButtonMeta?.icon || 'strikethrough')}
-			</button>
-
-			<!-- Answer Eliminator Tool Instance (hidden, manages state) -->
-			<pie-tool-answer-eliminator
-				bind:this={answerEliminatorElement}
-				visible={answerEliminatorVisible}
-				tool-id="answerEliminator-{itemId}"
-				strategy="strikethrough"
-				button-alignment="inline"
-				coordinator={effectiveToolCoordinator}
-			></pie-tool-answer-eliminator>
-		{/if}
+			{#if renderedTool.overlayElement}
+				<span class="item-toolbar__element-host" use:mountElement={renderedTool.overlayElement}></span>
+			{/if}
+		{/each}
 	</div>
 {/if}
 
@@ -412,6 +407,10 @@
 		color: var(--pie-text, #333);
 		cursor: pointer;
 		transition: all 0.15s ease;
+	}
+
+	.item-toolbar__element-host {
+		display: contents;
 	}
 
 	.item-toolbar--sm .item-toolbar__button {
@@ -458,5 +457,11 @@
 	.item-toolbar__button :global(svg) {
 		width: 100%;
 		height: 100%;
+	}
+
+	.item-toolbar__icon-image {
+		width: 100%;
+		height: 100%;
+		object-fit: contain;
 	}
 </style>

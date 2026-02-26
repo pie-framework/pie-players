@@ -13,9 +13,9 @@
 
 import type {
 	ToolRegistration,
-	ToolButtonDefinition,
-	ToolButtonOptions,
-	ToolInstanceOptions,
+	ToolToolbarButtonDefinition,
+	ToolToolbarRenderResult,
+	ToolbarContext,
 } from "../../services/ToolRegistry.js";
 import type { ToolContext } from "../../services/tool-context.js";
 import { hasMathContent, hasScienceContent } from "../../services/tool-context.js";
@@ -55,53 +55,53 @@ export const graphToolRegistration: ToolRegistration = {
 		return hasMathContent(context);
 	},
 
-	createButton(
+	renderToolbar(
 		context: ToolContext,
-		options: ToolButtonOptions,
-	): ToolButtonDefinition {
-		return {
+		toolbarContext: ToolbarContext,
+	): ToolToolbarRenderResult {
+		const fullToolId = `${this.toolId}-${toolbarContext.itemId}`;
+		const button: ToolToolbarButtonDefinition = {
 			toolId: this.toolId,
 			label: this.name,
 			icon: typeof this.icon === "function" ? this.icon(context) : this.icon,
-			disabled: options.disabled || false,
-			ariaLabel: options.ariaLabel || "Graph - Graphing calculator",
-			tooltip: options.tooltip || "Graph",
-			onClick: options.onClick || (() => {}),
-			className: options.className,
+			disabled: false,
+			ariaLabel: "Graph - Graphing calculator",
+			tooltip: "Graph",
+			onClick: () => toolbarContext.toggleTool(this.toolId),
+			active: toolbarContext.isToolVisible(fullToolId),
 		};
-	},
-
-	createToolInstance(
-		context: ToolContext,
-		options: ToolInstanceOptions,
-	): HTMLElement {
 		const componentOverrides =
-			(options.config as ToolComponentOverrides | undefined) ?? {};
-		const graph = createToolElement(
+			(toolbarContext.componentOverrides as ToolComponentOverrides | undefined) ?? {};
+		const overlay = createToolElement(
 			this.toolId,
 			context,
-			options,
+			toolbarContext,
 			componentOverrides,
 		) as HTMLElement & {
-			visible: boolean;
+			visible?: boolean;
+			toolId?: string;
 			toolkitCoordinator: unknown;
 		};
-
-		graph.visible = true;
-
-		const graphCoordinator = options.config?.toolkitCoordinator;
-		if (!graphCoordinator) {
-			throw new Error(
-				"[graphToolRegistration] toolkitCoordinator is required in ToolInstanceOptions.config",
-			);
-		}
-		graph.toolkitCoordinator = graphCoordinator;
-
-		if (options.onClose) {
-			graph.addEventListener("close", options.onClose);
-		}
-
-		return graph;
+		overlay.setAttribute("tool-id", fullToolId);
+		return {
+			toolId: this.toolId,
+			button,
+			overlayElement: overlay,
+			sync: () => {
+				const active = toolbarContext.isToolVisible(fullToolId);
+				button.active = active;
+				overlay.visible = active;
+				if (toolbarContext.toolkitCoordinator) {
+					overlay.toolkitCoordinator = toolbarContext.toolkitCoordinator;
+				}
+			},
+			subscribeActive: (callback: (active: boolean) => void) => {
+				if (!toolbarContext.subscribeVisibility) return () => {};
+				return toolbarContext.subscribeVisibility(() => {
+					callback(toolbarContext.isToolVisible(fullToolId));
+				});
+			},
+		};
 	},
 };
 
@@ -135,52 +135,52 @@ export const periodicTableToolRegistration: ToolRegistration = {
 		return hasScienceContent(context);
 	},
 
-	createButton(
+	renderToolbar(
 		context: ToolContext,
-		options: ToolButtonOptions,
-	): ToolButtonDefinition {
-		return {
+		toolbarContext: ToolbarContext,
+	): ToolToolbarRenderResult {
+		const fullToolId = `${this.toolId}-${toolbarContext.itemId}`;
+		const button: ToolToolbarButtonDefinition = {
 			toolId: this.toolId,
 			label: this.name,
 			icon: typeof this.icon === "function" ? this.icon(context) : this.icon,
-			disabled: options.disabled || false,
-			ariaLabel: options.ariaLabel || "Periodic table - Chemistry reference",
-			tooltip: options.tooltip || "Periodic Table",
-			onClick: options.onClick || (() => {}),
-			className: options.className,
+			disabled: false,
+			ariaLabel: "Periodic table - Chemistry reference",
+			tooltip: "Periodic Table",
+			onClick: () => toolbarContext.toggleTool(this.toolId),
+			active: toolbarContext.isToolVisible(fullToolId),
 		};
-	},
-
-	createToolInstance(
-		context: ToolContext,
-		options: ToolInstanceOptions,
-	): HTMLElement {
 		const componentOverrides =
-			(options.config as ToolComponentOverrides | undefined) ?? {};
-		const periodicTable = createToolElement(
+			(toolbarContext.componentOverrides as ToolComponentOverrides | undefined) ?? {};
+		const overlay = createToolElement(
 			this.toolId,
 			context,
-			options,
+			toolbarContext,
 			componentOverrides,
 		) as HTMLElement & {
-			visible: boolean;
+			visible?: boolean;
+			toolId?: string;
 			toolkitCoordinator: unknown;
 		};
-
-		periodicTable.visible = true;
-
-		const periodicTableCoordinator = options.config?.toolkitCoordinator;
-		if (!periodicTableCoordinator) {
-			throw new Error(
-				"[periodicTableToolRegistration] toolkitCoordinator is required in ToolInstanceOptions.config",
-			);
-		}
-		periodicTable.toolkitCoordinator = periodicTableCoordinator;
-
-		if (options.onClose) {
-			periodicTable.addEventListener("close", options.onClose);
-		}
-
-		return periodicTable;
+		overlay.setAttribute("tool-id", fullToolId);
+		return {
+			toolId: this.toolId,
+			button,
+			overlayElement: overlay,
+			sync: () => {
+				const active = toolbarContext.isToolVisible(fullToolId);
+				button.active = active;
+				overlay.visible = active;
+				if (toolbarContext.toolkitCoordinator) {
+					overlay.toolkitCoordinator = toolbarContext.toolkitCoordinator;
+				}
+			},
+			subscribeActive: (callback: (active: boolean) => void) => {
+				if (!toolbarContext.subscribeVisibility) return () => {};
+				return toolbarContext.subscribeVisibility(() => {
+					callback(toolbarContext.isToolVisible(fullToolId));
+				});
+			},
+		};
 	},
 };

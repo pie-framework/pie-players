@@ -241,15 +241,18 @@
 				.filter((tool): tool is (typeof TOOL_REGISTRY)[keyof typeof TOOL_REGISTRY] => Boolean(tool))
 				.map(tool => {
 					const registration = metadataRegistry.get(tool.id);
-					const buttonMeta = registration?.createButton(metadataContext, {});
+					const icon =
+						registration && typeof registration.icon === 'function'
+							? registration.icon(metadataContext)
+							: registration?.icon;
 					return {
 					id: tool.id,
-					name: buttonMeta?.label || tool.name,
-					ariaLabel: buttonMeta?.ariaLabel || tool.name,
-					tooltip: buttonMeta?.tooltip || buttonMeta?.label || tool.name,
+					name: registration?.name || tool.name,
+					ariaLabel: registration?.name || tool.name,
+					tooltip: registration?.name || tool.name,
 					enabled: tool.implemented,
 					isVisible: tool.getVisibility(),
-					icon: buttonMeta?.icon || tool.icon,
+					icon: icon || tool.icon,
 					toggle: tool.toggle
 					};
 				})

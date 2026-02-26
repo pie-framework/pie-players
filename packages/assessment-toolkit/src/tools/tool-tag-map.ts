@@ -1,6 +1,6 @@
 import { validateCustomElementTag } from "@pie-players/pie-players-shared/pie/tag-names";
 import type { ToolContext } from "../services/tool-context.js";
-import type { ToolInstanceOptions } from "../services/ToolRegistry.js";
+import type { ToolbarContext } from "../services/ToolRegistry.js";
 
 export type ToolTagMap = Record<string, string>;
 
@@ -8,7 +8,7 @@ export type ToolComponentFactory = (args: {
 	toolId: string;
 	tagName: string;
 	context: ToolContext;
-	options: ToolInstanceOptions;
+	toolbarContext: ToolbarContext;
 }) => HTMLElement;
 
 export type ToolComponentFactoryMap = Record<string, ToolComponentFactory>;
@@ -52,14 +52,14 @@ const createDefaultToolElement = (tagName: string): HTMLElement =>
 export const createToolElement = (
 	toolId: string,
 	context: ToolContext,
-	options: ToolInstanceOptions,
+	toolbarContext: ToolbarContext,
 	overrides?: ToolComponentOverrides,
 ): HTMLElement => {
 	const tagName = resolveToolTag(toolId, overrides);
 	const factoryForTool = overrides?.toolComponentFactories?.[toolId];
 	const factory = factoryForTool ?? overrides?.toolComponentFactory;
 	return factory
-		? factory({ toolId, tagName, context, options })
+		? factory({ toolId, tagName, context, toolbarContext })
 		: createDefaultToolElement(tagName);
 };
 

@@ -103,7 +103,7 @@ export function createDefaultToolRegistry(
 	registry.register(applyOverrides(graphToolRegistration));
 	registry.register(applyOverrides(periodicTableToolRegistration));
 
-	if (options.toolModuleLoaders) {
+	if (options.toolModuleLoaders && Object.keys(options.toolModuleLoaders).length > 0) {
 		registry.setToolModuleLoaders(options.toolModuleLoaders);
 	}
 

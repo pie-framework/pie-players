@@ -33,7 +33,6 @@
 	import type {
 		AssessmentToolkitRuntimeContext,
 		IToolCoordinator,
-		ToolButtonDefinition,
 		ToolContext,
 	} from '@pie-players/pie-assessment-toolkit';
 	import { ContextConsumer } from '@pie-players/pie-context';
@@ -102,6 +101,14 @@
 	let showRuler = $state(false);
 	let toolActiveById = $state<Record<string, boolean>>({});
 	let statusMessage = $state('');
+	type SectionButtonMeta = {
+		toolId: string;
+		label: string;
+		ariaLabel: string;
+		tooltip?: string;
+		icon: string;
+		onClick: () => void;
+	};
 
 	function resolveNearestToolCoordinator(): IToolCoordinator | null {
 		if (!toolbarRootElement) return null;
@@ -202,17 +209,23 @@
 		unsubscribe?.();
 	});
 
-	const visibleButtons = $derived.by((): ToolButtonDefinition[] => {
+	const visibleButtons = $derived.by((): SectionButtonMeta[] => {
 		return enabledToolsList
 			.map((toolId) => toolRegistry.get(toolId))
 			.filter((tool): tool is NonNullable<typeof tool> => Boolean(tool))
-			.map((tool) =>
-				tool.createButton(sectionToolContext, {
+			.map((tool) => {
+				const icon = typeof tool.icon === 'function' ? tool.icon(sectionToolContext) : tool.icon;
+				return {
+					toolId: tool.toolId,
+					label: tool.name,
+					ariaLabel: tool.name,
+					tooltip: tool.name,
+					icon,
 					onClick: () => {
 						void toggleTool(tool.toolId);
 					},
-				})
-			);
+				};
+			});
 	});
 
 	function resolveIconMarkup(icon: string): string {

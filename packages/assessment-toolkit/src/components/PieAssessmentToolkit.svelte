@@ -313,6 +313,8 @@
 		if (!host) return;
 		host.setAttribute("data-item-player-type", effectiveItemPlayer.type);
 		host.setAttribute("data-item-player-tag", effectiveItemPlayer.tagName);
+		host.setAttribute("data-env-mode", String((env as any)?.mode || ""));
+		host.setAttribute("data-env-role", String((env as any)?.role || ""));
 	});
 
 	$effect(() => {

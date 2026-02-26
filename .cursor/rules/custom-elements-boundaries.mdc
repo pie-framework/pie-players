@@ -10,6 +10,12 @@ alwaysApply: true
 - Do not use `?customElement` in cross-package imports.
 - Keep package `exports` runtime targets on built `dist` artifacts unless there is an explicit documented exception.
 - If a CE registration entry imports `*.svelte?customElement`, ensure that referenced `.svelte` files are available from publish/build output paths.
+- When a consumer app imports a package CE entrypoint from `exports` (for example `@pie-players/pie-section-player/components/...`), remember it resolves to built `dist` output. After changing package `src`, rebuild that package before validating in the consumer app.
+- For split-panel scrolling behavior, mirror the existing `packages/section-player/src/components/layouts/SplitPanelLayout.svelte` constraints unless intentionally redesigning:
+  - Parent layout containers must keep `height: 100%`, `max-height: 100%`, `min-height: 0`, `overflow: hidden`.
+  - Split grid should include `grid-template-rows: minmax(0, 1fr)` and remain height-constrained.
+  - Scrollable panes should use `overflow-y: auto`, `overflow-x: hidden`, `min-height: 0`, `min-width: 0`, `max-height: 100%`, `overscroll-behavior: contain`.
+  - Avoid broad responsive overrides that switch pane overflow to `visible`; if stacking on mobile is needed, scope narrowly and verify both passage and item scrolling.
 - Before finalizing CE-related changes, run:
   - `bun run check:source-exports`
   - `bun run check:consumer-boundaries`

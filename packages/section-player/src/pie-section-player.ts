@@ -15,7 +15,11 @@ export type {
 	SectionNavigationState,
 	SectionSessionState,
 } from "./controllers/types.js";
+export { default as PieItemShellElement } from "./components/ItemShellElement.svelte";
+export { default as PiePassageShellElement } from "./components/PassageShellElement.svelte";
 
 // Make sure the web component is registered
 // This is what makes it available as <pie-section-player> in HTML
 import "./PieSectionPlayer.svelte";
+import "./components/ItemShellElement.svelte";
+import "./components/PassageShellElement.svelte";

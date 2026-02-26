@@ -1,0 +1,16 @@
+---
+description: Enforce custom-element import and packaging boundaries
+alwaysApply: true
+---
+
+# Custom Element Import Boundaries
+
+- In consuming apps/packages, import custom-element registration entrypoints (for example `@pie-players/pie-assessment-toolkit/components/item-toolbar-element`) and avoid raw package `.svelte` imports.
+- Do not import workspace package source paths in consumers (`@pie-players/<pkg>/src/...`).
+- Do not use `?customElement` in cross-package imports.
+- Keep package `exports` runtime targets on built `dist` artifacts unless there is an explicit documented exception.
+- If a CE registration entry imports `*.svelte?customElement`, ensure that referenced `.svelte` files are available from publish/build output paths.
+- Before finalizing CE-related changes, run:
+  - `bun run check:source-exports`
+  - `bun run check:consumer-boundaries`
+  - `bun run check:custom-elements`

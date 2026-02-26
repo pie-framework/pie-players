@@ -27,15 +27,19 @@
 		},
 		"./components/ItemToolBar.svelte": {
 			"types": "./dist/components/item-toolbar-element.d.ts",
-			"import": "./src/components/item-toolbar-element.ts"
+			"import": "./dist/components/item-toolbar-element.js"
 		},
 		"./components/item-toolbar-element": {
 			"types": "./dist/components/item-toolbar-element.d.ts",
-			"import": "./src/components/item-toolbar-element.ts"
+			"import": "./dist/components/item-toolbar-element.js"
 		},
-		"./components/PNPProvenanceViewer.svelte": {
-			"svelte": "./src/components/PNPProvenanceViewer.svelte",
-			"import": "./src/components/PNPProvenanceViewer.svelte"
+		"./components/PieAssessmentToolkit.svelte": {
+			"types": "./dist/components/pie-assessment-toolkit-element.d.ts",
+			"import": "./dist/components/pie-assessment-toolkit-element.js"
+		},
+		"./components/pie-assessment-toolkit-element": {
+			"types": "./dist/components/pie-assessment-toolkit-element.d.ts",
+			"import": "./dist/components/pie-assessment-toolkit-element.js"
 		},
 		"./services/pnp-standard-features": {
 			"types": "./dist/services/pnp-standard-features.d.ts",
@@ -56,7 +60,7 @@
 		"README.md"
 	],
 	"scripts": {
-		"build": "tsc -p tsconfig.json",
+		"build": "tsc -p tsconfig.json && node ./scripts/copy-ce-sources.mjs",
 		"dev": "tsc -p tsconfig.json --watch",
 		"typecheck": "tsc -p tsconfig.json --noEmit",
 		"lint": "biome check .",

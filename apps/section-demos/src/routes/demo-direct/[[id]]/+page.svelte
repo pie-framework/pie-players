@@ -1,13 +1,9 @@
 <script lang="ts">
 	import {
-		assessmentToolkitRuntimeContext,
 		createDefaultPersonalNeedsProfile,
-		ToolkitCoordinator,
-		type AssessmentToolkitRuntimeContext
 	} from '@pie-players/pie-assessment-toolkit';
-	import { ContextProvider, ContextRoot } from '@pie-players/pie-context';
 	import { SectionController, type SectionCompositionModel } from '@pie-players/pie-section-player';
-	import type { AssessmentSection, ItemEntity, PassageEntity } from '@pie-players/pie-players-shared/types';
+	import type { AssessmentSection, ItemEntity } from '@pie-players/pie-players-shared/types';
 	import { onMount } from 'svelte';
 	import type { PageData } from './$types';
 
@@ -28,22 +24,16 @@
 	};
 	const IIFE_BUNDLE_HOST = 'https://proxy.pie-api.com/bundles';
 
-	let rootElement = $state<HTMLElement | null>(null);
-	let runtimeContextProvider = $state<ContextProvider<typeof assessmentToolkitRuntimeContext> | null>(
-		null
-	);
-	let runtimeContextRoot = $state<ContextRoot | null>(null);
-	let activeSectionId = $state('');
-	let activeSectionController = $state<SectionController | null>(null);
+	let toolkitElement = $state<any>(null);
+	let layoutRootElement = $state<HTMLDivElement | null>(null);
 	let compositionModel = $state<SectionCompositionModel>(EMPTY_COMPOSITION);
+	let lastCompositionSignature = $state('');
 	let errorMessage = $state<string | null>(null);
 	let leftPanelWidth = $state(50);
 	let isDragging = $state(false);
 	let splitContainerElement = $state<HTMLDivElement | null>(null);
 
-	let toolkitCoordinator = $state(createDemoToolkitCoordinator());
-
-	let resolvedSection = $derived.by<AssessmentSection | null>(() => {
+	const resolvedSection: AssessmentSection | null = (() => {
 		const section = data.section;
 		if (!section) return null;
 		const sectionAny = section as any;
@@ -55,44 +45,20 @@
 			...section,
 			personalNeedsProfile: createDefaultPersonalNeedsProfile()
 		};
-	});
+	})();
 
-	let sectionId = $derived(
-		activeSectionId || resolvedSection?.identifier || `section-${toolkitCoordinator.assessmentId}`
-	);
 	let passages = $derived(compositionModel.passages || []);
 	let items = $derived(compositionModel.items || []);
 	let itemSessionsByItemId = $derived(compositionModel.itemSessionsByItemId || {});
 	let hasPassages = $derived(passages.length > 0);
-
-	let runtimeContextValue = $derived.by<AssessmentToolkitRuntimeContext>(() => ({
-		toolkitCoordinator,
-		toolCoordinator: toolkitCoordinator.toolCoordinator,
-		ttsService: toolkitCoordinator.ttsService,
-		highlightCoordinator: toolkitCoordinator.highlightCoordinator,
-		catalogResolver: toolkitCoordinator.catalogResolver,
-		elementToolStateStore: toolkitCoordinator.elementToolStateStore,
-		assessmentId: toolkitCoordinator.assessmentId,
-		sectionId,
-		reportSessionChanged: (itemId: string, detail: unknown) => {
-			handleItemSessionChanged(itemId, detail);
-		}
-	}));
-
-	function createDemoToolkitCoordinator() {
-		return new ToolkitCoordinator({
-			assessmentId: data.demo?.id || 'section-demo-direct',
-			lazyInit: true,
-			tools: {
-				floatingTools: {
-					calculator: {
-						provider: 'desmos',
-						authFetcher: fetchDesmosAuthConfig
-					}
-				}
+	const toolkitToolsConfig = {
+		floatingTools: {
+			calculator: {
+				provider: 'desmos',
+				authFetcher: fetchDesmosAuthConfig
 			}
-		});
-	}
+		}
+	};
 
 	async function fetchDesmosAuthConfig() {
 		const response = await fetch('/api/tools/desmos/auth');
@@ -103,19 +69,24 @@
 		return payload?.apiKey ? { apiKey: payload.apiKey } : {};
 	}
 
-	function handleItemSessionChanged(itemId: string, sessionDetail: unknown) {
-		if (!itemId) return;
-		const controller = activeSectionController;
-		if (!controller) return;
-		const canonicalItemId = controller.getCanonicalItemId(itemId);
-		const result = controller.handleItemSessionChanged(canonicalItemId, sessionDetail);
-		if (!result) return;
-		compositionModel = controller.getCompositionModel();
+	function getCompositionSignature(model: SectionCompositionModel | null | undefined): string {
+		if (!model) return '';
+		return JSON.stringify({
+			sectionId: model.section?.identifier || '',
+			currentItemIndex: model.currentItemIndex ?? -1,
+			itemIds: (model.items || []).map((item) => item?.id || ''),
+			passageIds: (model.passages || []).map((passage) => passage?.id || ''),
+			sessionKeys: Object.keys(model.itemSessionsByItemId || {}).sort()
+		});
 	}
 
-	function onPlayerSessionChanged(itemId: string, event: Event) {
-		const detail = (event as CustomEvent).detail;
-		handleItemSessionChanged(itemId, detail);
+	function handleCompositionChanged(event: Event) {
+		const detail = (event as CustomEvent<{ composition?: SectionCompositionModel }>).detail;
+		const nextComposition = detail?.composition || EMPTY_COMPOSITION;
+		const nextSignature = getCompositionSignature(nextComposition);
+		if (nextSignature === lastCompositionSignature) return;
+		lastCompositionSignature = nextSignature;
+		compositionModel = nextComposition;
 	}
 
 	function getSessionForItem(item: ItemEntity): unknown {
@@ -160,103 +131,6 @@
 	}
 
 	$effect(() => {
-		if (!rootElement) return;
-		const provider = new ContextProvider(rootElement, {
-			context: assessmentToolkitRuntimeContext,
-			initialValue: runtimeContextValue
-		});
-		provider.connect();
-		runtimeContextProvider = provider;
-
-		const root = new ContextRoot(rootElement);
-		root.attach();
-		runtimeContextRoot = root;
-
-		return () => {
-			runtimeContextRoot?.detach();
-			runtimeContextRoot = null;
-			runtimeContextProvider?.disconnect();
-			runtimeContextProvider = null;
-		};
-	});
-
-	$effect(() => {
-		if (!runtimeContextProvider) return;
-		runtimeContextProvider.setValue(runtimeContextValue);
-	});
-
-	$effect(() => {
-		const section = resolvedSection;
-		const coordinator = toolkitCoordinator;
-		let cancelled = false;
-		let unsubscribeControllerChange: (() => void) | null = null;
-		let controllerSectionId = '';
-
-		if (!section) {
-			activeSectionId = '';
-			activeSectionController = null;
-			compositionModel = EMPTY_COMPOSITION;
-			return;
-		}
-
-		void coordinator
-			.getOrCreateSectionController({
-				sectionId: section.identifier || `section-${coordinator.assessmentId}`,
-				input: {
-					section,
-					view: 'candidate',
-					assessmentId: coordinator.assessmentId,
-					sectionId: section.identifier || `section-${coordinator.assessmentId}`
-				},
-				updateExisting: true,
-				createDefaultController: () => new SectionController()
-			})
-			.then((controller) => {
-				if (cancelled) return;
-				const typedController = controller as SectionController;
-				controllerSectionId = section.identifier || `section-${coordinator.assessmentId}`;
-				activeSectionId = controllerSectionId;
-				activeSectionController = typedController;
-				compositionModel = typedController.getCompositionModel();
-				unsubscribeControllerChange = typedController.subscribe(() => {
-					compositionModel = typedController.getCompositionModel();
-				});
-			})
-			.catch((error) => {
-				if (cancelled) return;
-				errorMessage = String(error instanceof Error ? error.message : error);
-			});
-
-		return () => {
-			cancelled = true;
-			unsubscribeControllerChange?.();
-			if (controllerSectionId) {
-				void coordinator.disposeSectionController({
-					sectionId: controllerSectionId
-				});
-			}
-			if (activeSectionId === controllerSectionId) {
-				activeSectionController = null;
-				compositionModel = EMPTY_COMPOSITION;
-			}
-		};
-	});
-
-	$effect(() => {
-		const host = rootElement;
-		if (!host) return;
-		passages;
-		items;
-
-		for (const passage of passages) {
-			wireToolbarScope(host, `passage-${passage.id}`, passage);
-		}
-		for (const item of items) {
-			wireToolbarScope(host, `item-${item.id}`, item);
-		}
-	});
-
-	$effect(() => {
 		if (!isDragging) return;
 		window.addEventListener('mousemove', handleDividerMouseMove);
 		window.addEventListener('mouseup', handleDividerMouseUp);
@@ -266,25 +140,12 @@
 		};
 	});
 
-	function wireToolbarScope(host: HTMLElement, key: string, entity: ItemEntity | PassageEntity) {
-		const toolbar = host.querySelector(
-			`pie-item-toolbar[data-toolbar-key="${key}"]`
-		) as HTMLElement | null;
-		const content = host.querySelector(`[data-content-key="${key}"]`) as HTMLElement | null;
-		if (!toolbar) return;
-		(toolbar as any).item = entity;
-		if (content) {
-			(toolbar as any).scopeElement = content;
-		}
-	}
+	$effect(() => {
+		if (!toolkitElement) return;
+		toolkitElement.createSectionController = () => new SectionController();
+	});
 
 	onMount(async () => {
-		try {
-			await toolkitCoordinator.waitUntilReady();
-		} catch (error) {
-			console.error('[demo-direct] toolkit initialization failed:', error);
-		}
-
 		const imports: Promise<unknown>[] = [];
 		if (!customElements.get('pie-iife-player')) {
 			imports.push(import('@pie-players/pie-iife-player'));
@@ -296,7 +157,13 @@
 			imports.push(import('@pie-players/pie-tool-calculator'));
 		}
 		if (!customElements.get('pie-item-toolbar')) {
-			imports.push(import('@pie-players/pie-assessment-toolkit/components/ItemToolBar.svelte?customElement'));
+			imports.push(import('@pie-players/pie-assessment-toolkit/components/item-toolbar-element'));
+		}
+		if (!customElements.get('pie-assessment-toolkit')) {
+			imports.push(import('@pie-players/pie-assessment-toolkit/components/pie-assessment-toolkit-element'));
+		}
+		if (!customElements.get('pie-item-shell') || !customElements.get('pie-passage-shell')) {
+			imports.push(import('@pie-players/pie-section-player'));
 		}
 		await Promise.all(imports);
 	});
@@ -306,112 +173,142 @@
 	<title>{data.demo?.name || 'Demo'} - Direct Split Layout</title>
 </svelte:head>
 
-<div class="direct-layout" bind:this={rootElement}>
+<div class="direct-layout" bind:this={layoutRootElement}>
 	{#if errorMessage}
 		<div class="error-state">{errorMessage}</div>
 	{:else}
-		<div class="layout-header">
-			<h1>{data.demo?.name || 'Direct Split Layout Demo'}</h1>
-		</div>
-		<div class="layout-body">
-			<div
-				class={`split-content ${!hasPassages ? 'split-content--no-passages' : ''}`}
-				bind:this={splitContainerElement}
-				style={hasPassages
-					? `grid-template-columns: ${leftPanelWidth}% 0.5rem ${100 - leftPanelWidth - 0.5}%`
-					: 'grid-template-columns: 1fr'}
-			>
-				{#if hasPassages}
-					<aside class="passages-pane" aria-label="Passages">
-						{#each passages as passage, passageIndex (passage.id || passageIndex)}
-							<div class="content-card">
-								<div class="content-card-header pie-section-player__passage-header">
-									<h2>Passage {passageIndex + 1}</h2>
-									<pie-item-toolbar
-										data-toolbar-key={`passage-${passage.id}`}
-										item-id={passage.id}
-										catalog-id={passage.id}
-										tools="tts"
-										content-kind="rubric-block-stimulus"
-										size="md"
-										language="en-US"
-									></pie-item-toolbar>
-								</div>
-								<div
-									class="content-card-body pie-section-player__passage-content"
-									data-content-key={`passage-${passage.id}`}
-								>
-									<pie-iife-player
-										config={JSON.stringify(passage.config || {})}
-										env={JSON.stringify({ mode: 'view', role: 'student' })}
-										bundle-host={IIFE_BUNDLE_HOST}
-										skip-element-loading={true}
-									></pie-iife-player>
-								</div>
-							</div>
-						{/each}
-					</aside>
-
-					<button
-						type="button"
-						class={`split-divider ${isDragging ? 'split-divider--dragging' : ''}`}
-						onmousedown={handleDividerMouseDown}
-						onkeydown={handleDividerKeyDown}
-						aria-label="Resize panels"
-					>
-						<span class="split-divider-handle"></span>
-					</button>
-				{/if}
-
-				<main class="items-pane" aria-label="Items">
-					{#each items as item, itemIndex (item.id || itemIndex)}
-						<div class="content-card">
-							<div class="content-card-header pie-section-player__item-header">
-								<h2>Question {itemIndex + 1}</h2>
-								<pie-item-toolbar
-									data-toolbar-key={`item-${item.id}`}
-									item-id={item.id}
-									catalog-id={item.id}
-									tools="calculator,tts,answerEliminator"
-									content-kind="assessment-item"
-									size="md"
-									language="en-US"
-								></pie-item-toolbar>
-							</div>
-							<div
-								class="content-card-body pie-section-player__item-content"
-								data-content-key={`item-${item.id}`}
-							>
-								<pie-iife-player
-									config={JSON.stringify(item.config || {})}
-									env={JSON.stringify({ mode: 'gather', role: 'student' })}
-									session={JSON.stringify(getSessionForItem(item) || { id: '', data: [] })}
-									bundle-host={IIFE_BUNDLE_HOST}
-									onsessionchanged={(event: Event) =>
-										onPlayerSessionChanged(item.id || '', event)}
-								></pie-iife-player>
-							</div>
-							<pie-tool-calculator
-								visible={false}
-								tool-id={`calculator-${item.id}`}
-							></pie-tool-calculator>
-						</div>
-					{/each}
-				</main>
+		<pie-assessment-toolkit
+			bind:this={toolkitElement}
+			assessment-id={data.demo?.id || 'section-demo-direct'}
+			section={resolvedSection}
+			view="candidate"
+			lazy-init={true}
+			tools={toolkitToolsConfig}
+			oncomposition-changed={handleCompositionChanged}
+		>
+			<div class="layout-header">
+				<h1>{data.demo?.name || 'Direct Split Layout Demo'}</h1>
 			</div>
+			<div class="layout-body">
+				<div
+					class={`split-content ${!hasPassages ? 'split-content--no-passages' : ''}`}
+					bind:this={splitContainerElement}
+					style={hasPassages
+						? `grid-template-columns: ${leftPanelWidth}% 0.5rem ${100 - leftPanelWidth - 0.5}%`
+						: 'grid-template-columns: 1fr'}
+				>
+					{#if hasPassages}
+						<aside class="passages-pane" aria-label="Passages">
+							{#each passages as passage, passageIndex (passage.id || passageIndex)}
+								<pie-passage-shell
+									item-id={passage.id}
+									content-kind="rubric-block-stimulus"
+									item={passage}
+								>
+									<div class="content-card">
+										<div
+											class="content-card-header pie-section-player__passage-header"
+											data-region="header"
+										>
+											<h2>Passage {passageIndex + 1}</h2>
+											<pie-item-toolbar
+												item-id={passage.id}
+												catalog-id={passage.id}
+												tools="tts"
+												content-kind="rubric-block-stimulus"
+												size="md"
+												language="en-US"
+											></pie-item-toolbar>
+										</div>
+										<div
+											class="content-card-body pie-section-player__passage-content"
+											data-region="content"
+										>
+											<pie-iife-player
+												config={JSON.stringify(passage.config || {})}
+												env={JSON.stringify({ mode: 'view', role: 'student' })}
+												bundle-host={IIFE_BUNDLE_HOST}
+												skip-element-loading={true}
+											></pie-iife-player>
+										</div>
+									</div>
+								</pie-passage-shell>
+							{/each}
+						</aside>
 
-			<aside class="section-toolbar-pane" aria-label="Section tools">
-				<pie-section-tools-toolbar position="right" enabled-tools=""></pie-section-tools-toolbar>
-			</aside>
-		</div>
+						<button
+							type="button"
+							class={`split-divider ${isDragging ? 'split-divider--dragging' : ''}`}
+							onmousedown={handleDividerMouseDown}
+							onkeydown={handleDividerKeyDown}
+							aria-label="Resize panels"
+						>
+							<span class="split-divider-handle"></span>
+						</button>
+					{/if}
+
+					<main class="items-pane" aria-label="Items">
+						{#each items as item, itemIndex (item.id || itemIndex)}
+							<pie-item-shell
+								item-id={item.id}
+								content-kind="assessment-item"
+								item={item}
+							>
+								<div class="content-card">
+									<div class="content-card-header pie-section-player__item-header" data-region="header">
+										<h2>Question {itemIndex + 1}</h2>
+										<pie-item-toolbar
+											item-id={item.id}
+											catalog-id={item.id}
+											tools="calculator,tts,answerEliminator"
+											content-kind="assessment-item"
+											size="md"
+											language="en-US"
+										></pie-item-toolbar>
+									</div>
+									<div
+										class="content-card-body pie-section-player__item-content"
+										data-region="content"
+									>
+										<pie-iife-player
+											config={JSON.stringify(item.config || {})}
+											env={JSON.stringify({ mode: 'gather', role: 'student' })}
+											session={JSON.stringify(getSessionForItem(item) || { id: '', data: [] })}
+											bundle-host={IIFE_BUNDLE_HOST}
+										></pie-iife-player>
+									</div>
+									<div data-region="footer"></div>
+								</div>
+							</pie-item-shell>
+						{/each}
+					</main>
+				</div>
+
+				<aside class="section-toolbar-pane" aria-label="Section tools">
+					<pie-section-tools-toolbar
+						position="right"
+						enabled-tools="graph,periodicTable,protractor,lineReader,ruler"
+					></pie-section-tools-toolbar>
+				</aside>
+			</div>
+		</pie-assessment-toolkit>
 	{/if}
 </div>
 
 <style>
+	:global(pie-assessment-toolkit) {
+		display: flex;
+		flex-direction: column;
+		flex: 1;
+		height: 100%;
+		min-height: 0;
+		overflow: hidden;
+	}
+
 	.direct-layout {
 		display: flex;
 		flex-direction: column;
-		height: 100vh;
+		height: 100dvh;
 		min-height: 0;
 		overflow: hidden;
 		padding: 1rem;
@@ -428,8 +325,9 @@
 		display: grid;
 		grid-template-columns: minmax(0, 1fr) auto;
 		gap: 1rem;
+		flex: 1;
 		min-height: 0;
-		height: 100%;
+		overflow: hidden;
 	}
 
 	.split-content {
@@ -437,6 +335,7 @@
 		gap: 0;
 		min-height: 0;
 		height: 100%;
+		overflow: hidden;
 	}
 
 	.split-content--no-passages .items-pane {
@@ -445,6 +344,7 @@
 
 	.passages-pane,
 	.items-pane {
+		height: 100%;
 		min-height: 0;
 		overflow: auto;
 		display: flex;
@@ -455,6 +355,8 @@
 	.section-toolbar-pane {
 		border-left: 1px solid var(--pie-border-light, #e5e7eb);
 		padding-left: 0.5rem;
+		min-height: 0;
+		overflow: auto;
 	}
 
 	.split-divider {

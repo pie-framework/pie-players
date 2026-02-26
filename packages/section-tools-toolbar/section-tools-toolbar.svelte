@@ -4,7 +4,8 @@
 		shadow: 'none',
 		props: {
 			enabledTools: { type: 'String', attribute: 'enabled-tools' },
-			position: { type: 'String', attribute: 'position' }
+			position: { type: 'String', attribute: 'position' },
+			toolCoordinator: { type: 'Object', reflect: false }
 		}
 	}}
 />
@@ -46,18 +47,23 @@
 	// Props
 	let {
 		enabledTools = 'graph,periodicTable,protractor,lineReader,ruler',
-		position = 'bottom'
+		position = 'bottom',
+		toolCoordinator = null as IToolCoordinator | null
 	}: {
 		enabledTools?: string;
 		position?: 'top' | 'right' | 'bottom' | 'left' | 'none';
+		toolCoordinator?: IToolCoordinator | null;
 	} = $props();
 	let toolbarRootElement = $state<HTMLElement | null>(null);
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	let discoveredToolCoordinator = $state<IToolCoordinator | null>(null);
 	let runtimeContextConsumer: ContextConsumer<
 		typeof assessmentToolkitRuntimeContext
 	> | null = null;
 	const effectiveToolCoordinator = $derived(
-		runtimeContext?.toolCoordinator as IToolCoordinator | undefined,
+		(toolCoordinator as IToolCoordinator | null) ||
+			(runtimeContext?.toolCoordinator as IToolCoordinator | undefined) ||
+			discoveredToolCoordinator,
 	);
 
 	const defaultEnabledTools = [
@@ -96,8 +102,24 @@
 	let showRuler = $state(false);
 	let statusMessage = $state('');
 
+	function resolveNearestToolCoordinator(): IToolCoordinator | null {
+		if (!toolbarRootElement) return null;
+		const toolkitElement = toolbarRootElement.closest('pie-assessment-toolkit') as
+			| { getServiceBundle?: () => { toolCoordinator?: IToolCoordinator } }
+			| null;
+		if (!toolkitElement?.getServiceBundle) return null;
+		try {
+			return toolkitElement.getServiceBundle()?.toolCoordinator || null;
+		} catch {
+			return null;
+		}
+	}
+
 	// Update visibility state from coordinator
 	function updateToolVisibility() {
+		if (!effectiveToolCoordinator) {
+			discoveredToolCoordinator = resolveNearestToolCoordinator();
+		}
 		if (!effectiveToolCoordinator) return;
 		showGraph = effectiveToolCoordinator.isToolVisible('graph');
 		showPeriodicTable = effectiveToolCoordinator.isToolVisible('periodicTable');
@@ -108,6 +130,9 @@
 
 	// Toggle tool visibility
 	async function toggleTool(toolId: string) {
+		if (!effectiveToolCoordinator) {
+			discoveredToolCoordinator = resolveNearestToolCoordinator();
+		}
 		if (!effectiveToolCoordinator) return;
 		await toolRegistry.ensureToolModuleLoaded(toolId);
 		effectiveToolCoordinator.toggleTool(toolId);
@@ -125,6 +150,7 @@
 	let unsubscribe: (() => void) | null = null;
 
 	onMount(() => {
+		discoveredToolCoordinator = resolveNearestToolCoordinator();
 		updateToolVisibility();
 	});
 

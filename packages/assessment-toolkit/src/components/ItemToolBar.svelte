@@ -83,11 +83,22 @@
 
 	let toolbarRootElement = $state<HTMLDivElement | null>(null);
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	let ttsReadyRequested = $state(false);
 
 	$effect(() => {
 		if (!toolbarRootElement) return;
 		return connectAssessmentToolkitRuntimeContext(toolbarRootElement, (value) => {
 			runtimeContext = value;
+		});
+	});
+
+	$effect(() => {
+		if (!runtimeContext?.toolkitCoordinator) return;
+		if (!allowedToolIds.includes('textToSpeech')) return;
+		if (ttsReadyRequested) return;
+		ttsReadyRequested = true;
+		void runtimeContext.toolkitCoordinator.ensureTTSReady().catch((error: unknown) => {
+			console.error('[ItemToolBar] Failed to initialize TTS service:', error);
 		});
 	});
 
@@ -165,6 +176,9 @@
 
 	// Pass 2: tool-owned context filtering (item + element aggregation)
 	const visibleToolIds = $derived.by(() => {
+		if (!toolContext && elementContexts.length === 0) {
+			return allowedToolIds;
+		}
 		const visible = new Set<string>();
 		if (toolContext) {
 			effectiveToolRegistry.filterVisibleInContext(allowedToolIds, toolContext).forEach((tool) => visible.add(tool.toolId));
@@ -229,6 +243,7 @@
 	let showCalculator = $derived(visibleToolIds.includes('calculator') && effectiveToolCoordinator && toolsLoaded);
 
 	// Track answer eliminator visibility state
+	let calculatorVisible = $state(false);
 	let answerEliminatorVisible = $state(false);
 
 	// Subscribe to tool coordinator to update button state
@@ -236,30 +251,66 @@
 		if (!isBrowser || !effectiveToolCoordinator) return;
 
 		const unsubscribe = effectiveToolCoordinator.subscribe(() => {
-			answerEliminatorVisible = effectiveToolCoordinator.isToolVisible(`answerEliminator-${itemId}`);
+			const nextCalculatorVisible = effectiveToolCoordinator.isToolVisible(`calculator-${itemId}`);
+			const nextVisible = effectiveToolCoordinator.isToolVisible(`answerEliminator-${itemId}`);
+			if (nextCalculatorVisible !== calculatorVisible) {
+				calculatorVisible = nextCalculatorVisible;
+			}
+			if (nextVisible !== answerEliminatorVisible) {
+				answerEliminatorVisible = nextVisible;
+			}
 		});
 
 		// Initial update
-		answerEliminatorVisible = effectiveToolCoordinator.isToolVisible(`answerEliminator-${itemId}`);
+		const initialCalculatorVisible = effectiveToolCoordinator.isToolVisible(`calculator-${itemId}`);
+		const initialVisible = effectiveToolCoordinator.isToolVisible(`answerEliminator-${itemId}`);
+		if (initialCalculatorVisible !== calculatorVisible) {
+			calculatorVisible = initialCalculatorVisible;
+		}
+		if (initialVisible !== answerEliminatorVisible) {
+			answerEliminatorVisible = initialVisible;
+		}
 
 		return unsubscribe;
 	});
 
 	// Answer eliminator element reference for scope binding
 	let answerEliminatorElement = $state<HTMLElement | null>(null);
-	let eliminatorBound = $state(false);
+	let boundScopeElement = $state<HTMLElement | null>(null);
+	let boundGlobalElementId = $state<string | null>(null);
+	let boundElementToolStore = $state<unknown>(null);
+	const effectiveScopeElement = $derived.by(() => {
+		if (scopeElement) return scopeElement;
+		if (!toolbarRootElement) return null;
+		const shellRoot = toolbarRootElement.closest("[data-pie-shell-root]") as HTMLElement | null;
+		if (!shellRoot) return null;
+		return (
+			(shellRoot.querySelector('[data-region="content"]') as HTMLElement | null) ||
+			(shellRoot.querySelector('[data-pie-region="content"]') as HTMLElement | null) ||
+			(shellRoot.querySelector('[data-region="header"]') as HTMLElement | null) ||
+			(shellRoot.querySelector('[data-pie-region="header"]') as HTMLElement | null) ||
+			shellRoot
+		);
+	});
 
 	// Bind scope, coordinator, store, and globalElementId to answer eliminator
 	$effect(() => {
-		if (answerEliminatorElement && !eliminatorBound) {
-			if (scopeElement) {
-				(answerEliminatorElement as any).scopeElement = scopeElement;
+		if (answerEliminatorElement) {
+			if (effectiveScopeElement && boundScopeElement !== effectiveScopeElement) {
+				(answerEliminatorElement as any).scopeElement = effectiveScopeElement;
+				boundScopeElement = effectiveScopeElement;
 			}
-			if (effectiveElementToolStateStore && globalElementId) {
+			if (
+				effectiveElementToolStateStore &&
+				globalElementId &&
+				(boundElementToolStore !== effectiveElementToolStateStore ||
+					boundGlobalElementId !== globalElementId)
+			) {
 				(answerEliminatorElement as any).elementToolStateStore = effectiveElementToolStateStore;
 				(answerEliminatorElement as any).globalElementId = globalElementId;
+				boundElementToolStore = effectiveElementToolStateStore;
+				boundGlobalElementId = globalElementId;
 			}
-			eliminatorBound = true;
 		}
 	});
 
@@ -298,6 +349,10 @@
 				available-types="basic,scientific,graphing"
 				size={size}
 			></pie-tool-calculator-inline>
+			<pie-tool-calculator
+				visible={calculatorVisible}
+				tool-id="calculator-{itemId}"
+			></pie-tool-calculator>
 		{/if}
 
 		<!-- TTS Button (inline tool) -->

@@ -7,11 +7,9 @@ const ROOT = process.cwd();
 const ROOT_PACKAGE_JSON = path.join(ROOT, "package.json");
 
 const ALLOWED_SOURCE_EXPORT_PACKAGES = new Set([
-	"@pie-players/pie-assessment-toolkit",
 	"@pie-players/pie-calculator-mathjs",
 	"@pie-players/pie-players-shared",
 	"@pie-players/pie-print-player",
-	"@pie-players/pie-section-player",
 ]);
 
 const readJson = (filePath) => JSON.parse(readFileSync(filePath, "utf8"));

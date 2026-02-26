@@ -23,6 +23,23 @@ bun test         # Run tests
 bun format       # Format code
 ```
 
+## Consumer Import Rules
+
+When consuming PIE web components from apps or other packages:
+
+- Import custom-element registration entrypoints (for example `@pie-players/pie-assessment-toolkit/components/item-toolbar-element`), not raw package `.svelte` component files.
+- Do not import package source paths like `@pie-players/<pkg>/src/...` from consumers.
+- Do not use cross-package `?customElement` imports.
+- Keep runtime package exports pointing to built `dist` artifacts.
+
+Boundary checks:
+
+```bash
+bun run check:source-exports
+bun run check:consumer-boundaries
+bun run check:custom-elements
+```
+
 ## Releasing From Workspace
 
 This monorepo keeps internal dependencies as `workspace:*` during development.

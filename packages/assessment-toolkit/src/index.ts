@@ -19,6 +19,15 @@ export {
 	assessmentToolkitRuntimeContext,
 } from "./context/assessment-toolkit-context.js";
 export { connectAssessmentToolkitRuntimeContext } from "./context/runtime-context-consumer.js";
+export {
+	PIE_ITEM_SESSION_CHANGED_EVENT,
+	PIE_REGISTER_EVENT,
+	PIE_UNREGISTER_EVENT,
+	type ItemSessionChangedDetail,
+	type RuntimeRegistrationDetail,
+	type RuntimeRegistrationKind,
+} from "./runtime/registration-events.js";
+export { findParentToolkitRuntime } from "./runtime/findParentToolkitRuntime.js";
 
 // ============================================================================
 // Service Interfaces
@@ -289,3 +298,4 @@ export type {
 
 // ItemToolBar custom element registration helper is exported via package.json exports field
 // Import using: import '@pie-players/pie-assessment-toolkit/components/item-toolbar-element';
+// PieAssessmentToolkit custom element registration helper is exported via package.json exports field

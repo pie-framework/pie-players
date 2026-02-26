@@ -21,7 +21,14 @@
 			"types": "./dist/index.d.ts",
 			"import": "./dist/pie-section-player.js"
 		},
-		"./src/PieSectionPlayer.svelte": "./src/PieSectionPlayer.svelte"
+		"./components/ItemShellElement.svelte": {
+			"types": "./dist/pie-section-player.d.ts",
+			"import": "./dist/pie-section-player.js"
+		},
+		"./components/PassageShellElement.svelte": {
+			"types": "./dist/pie-section-player.d.ts",
+			"import": "./dist/pie-section-player.js"
+		}
 	},
 	"files": [
 		"dist",

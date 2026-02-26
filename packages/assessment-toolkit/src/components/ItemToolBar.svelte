@@ -376,7 +376,7 @@
 				aria-pressed={answerEliminatorVisible}
 				title={answerEliminatorButtonMeta?.tooltip || answerEliminatorButtonMeta?.label || 'Answer Eliminator'}
 			>
-				{@html resolveIconMarkup(answerEliminatorButtonMeta?.icon)}
+				{@html resolveIconMarkup(answerEliminatorButtonMeta?.icon || 'strikethrough')}
 			</button>
 
 			<!-- Answer Eliminator Tool Instance (hidden, manages state) -->

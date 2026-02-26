@@ -100,6 +100,7 @@
 	let showProtractor = $state(false);
 	let showLineReader = $state(false);
 	let showRuler = $state(false);
+	let toolActiveById = $state<Record<string, boolean>>({});
 	let statusMessage = $state('');
 
 	function resolveNearestToolCoordinator(): IToolCoordinator | null {
@@ -126,6 +127,17 @@
 		showProtractor = effectiveToolCoordinator.isToolVisible('protractor');
 		showLineReader = effectiveToolCoordinator.isToolVisible('lineReader');
 		showRuler = effectiveToolCoordinator.isToolVisible('ruler');
+		toolActiveById = {
+			graph: showGraph,
+			periodicTable: showPeriodicTable,
+			protractor: showProtractor,
+			lineReader: showLineReader,
+			ruler: showRuler
+		};
+	}
+
+	function isToolActive(toolId: string): boolean {
+		return toolActiveById[toolId] === true;
 	}
 
 	// Toggle tool visibility
@@ -234,11 +246,11 @@
 				<button
 					type="button"
 					class="tool-button"
-					class:active={effectiveToolCoordinator?.isToolVisible(button.toolId)}
+					class:active={isToolActive(button.toolId)}
 					onclick={button.onClick}
 					title={button.tooltip || button.label}
 					aria-label={button.ariaLabel}
-					aria-pressed={effectiveToolCoordinator?.isToolVisible(button.toolId)}
+					aria-pressed={isToolActive(button.toolId)}
 				>
 					{@html resolveIconMarkup(button.icon)}
 				</button>

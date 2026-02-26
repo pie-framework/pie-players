@@ -18,6 +18,7 @@ export type {
 export {
 	assessmentToolkitRuntimeContext,
 } from "./context/assessment-toolkit-context.js";
+export { connectAssessmentToolkitRuntimeContext } from "./context/runtime-context-consumer.js";
 
 // ============================================================================
 // Service Interfaces

@@ -29,11 +29,10 @@
   - Pass 2: tool-owned isVisibleInContext(context)
 -->
 <script lang="ts">
-	import { ContextConsumer } from '@pie-players/pie-context';
 	import {
-		assessmentToolkitRuntimeContext,
 		type AssessmentToolkitRuntimeContext
 	} from '../context/assessment-toolkit-context.js';
+	import { connectAssessmentToolkitRuntimeContext } from '../context/runtime-context-consumer.js';
 	import type { ToolRegistry } from '../services/ToolRegistry.js';
 	import type { PNPToolResolver } from '../services/PNPToolResolver.js';
 	import { createDefaultToolRegistry } from '../services/createDefaultToolRegistry.js';
@@ -84,22 +83,12 @@
 
 	let toolbarRootElement = $state<HTMLDivElement | null>(null);
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
-	let runtimeContextConsumer: ContextConsumer<typeof assessmentToolkitRuntimeContext> | null = null;
 
 	$effect(() => {
 		if (!toolbarRootElement) return;
-		runtimeContextConsumer = new ContextConsumer(toolbarRootElement, {
-			context: assessmentToolkitRuntimeContext,
-			subscribe: true,
-			onValue: (value: AssessmentToolkitRuntimeContext) => {
-				runtimeContext = value;
-			}
+		return connectAssessmentToolkitRuntimeContext(toolbarRootElement, (value) => {
+			runtimeContext = value;
 		});
-		runtimeContextConsumer.connect();
-		return () => {
-			runtimeContextConsumer?.disconnect();
-			runtimeContextConsumer = null;
-		};
 	});
 
 	const effectiveToolCoordinator = $derived(runtimeContext?.toolCoordinator);

@@ -543,6 +543,8 @@ export interface ResponseDiscoveryService {
 	getResponsesAccepting(format: ContentFormat): PIEResponseComponent[];
 	registerResponse(response: PIEResponseComponent): void;
 	unregisterResponse(responseId: string): void;
+	signalActive(responseId: string): void;
+	signalInactive(responseId: string): void;
 	onActiveResponseChanged(
 		listener: (response: PIEResponseComponent | null) => void,
 	): void;

@@ -9,6 +9,7 @@ export class MaskStrategy implements EliminationStrategy {
 
 	private highlights = new Map<string, Highlight>();
 	private ranges = new Map<string, Range>();
+	private fallbackContainers = new Map<string, HTMLElement>();
 
 	initialize(): void {
 		this.injectCSS();
@@ -55,6 +56,7 @@ export class MaskStrategy implements EliminationStrategy {
 
 		this.highlights.delete(choiceId);
 		this.ranges.delete(choiceId);
+		this.fallbackContainers.delete(choiceId);
 	}
 
 	isEliminated(choiceId: string): boolean {
@@ -65,6 +67,7 @@ export class MaskStrategy implements EliminationStrategy {
 		for (const choiceId of this.highlights.keys()) {
 			this.remove(choiceId);
 		}
+		this.fallbackContainers.clear();
 	}
 
 	getEliminatedIds(): string[] {
@@ -160,13 +163,12 @@ export class MaskStrategy implements EliminationStrategy {
 		container.classList.add("answer-masked-fallback");
 		container.setAttribute("data-eliminated", "true");
 		container.setAttribute("data-eliminated-id", choiceId);
+		this.fallbackContainers.set(choiceId, container);
 		this.addAriaAttributes(range);
 	}
 
 	private removeFallback(choiceId: string): void {
-		const container = document.querySelector(
-			`[data-eliminated-id="${choiceId}"]`,
-		);
+		const container = this.fallbackContainers.get(choiceId);
 		if (!container) return;
 
 		container.classList.remove("answer-masked-fallback");
@@ -176,5 +178,6 @@ export class MaskStrategy implements EliminationStrategy {
 		const range = document.createRange();
 		range.selectNodeContents(container);
 		this.removeAriaAttributes(range);
+		this.fallbackContainers.delete(choiceId);
 	}
 }

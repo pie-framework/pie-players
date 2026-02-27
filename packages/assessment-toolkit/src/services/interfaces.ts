@@ -214,7 +214,11 @@ export interface ITTSService {
 	 */
 	speak(
 		text: string,
-		options?: { catalogId?: string; language?: string },
+		options?: {
+			catalogId?: string;
+			language?: string;
+			contentElement?: Element;
+		},
 	): Promise<void>;
 
 	/**

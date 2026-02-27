@@ -15,8 +15,17 @@
 </svelte:head>
 
 <script lang="ts">
-	import type { HighlightCoordinator, ITTSService } from '@pie-players/pie-assessment-toolkit';
-	import { HighlightColor } from '@pie-players/pie-assessment-toolkit';
+	import type {
+		AssessmentToolkitRegionScopeContext,
+		AssessmentToolkitShellContext,
+		HighlightCoordinator,
+		ITTSService
+	} from '@pie-players/pie-assessment-toolkit';
+	import {
+		connectAssessmentToolkitRegionScopeContext,
+		connectAssessmentToolkitShellContext,
+		HighlightColor
+	} from '@pie-players/pie-assessment-toolkit';
 
 	interface Props {
 		enabled?: boolean;
@@ -57,6 +66,10 @@
 	];
 
 	// State - using Svelte 5 $state rune for reactive state
+	let contextHostElement = $state<HTMLElement | null>(null);
+	let toolbarElement = $state<HTMLElement | null>(null);
+	let shellContext = $state<AssessmentToolkitShellContext | null>(null);
+	let regionScopeContext = $state<AssessmentToolkitRegionScopeContext | null>(null);
 	let toolbarState = $state({
 		isVisible: false,
 		selectedText: '',
@@ -80,6 +93,19 @@
 	// Derived state
 	let hasAnnotations = $derived(annotationCount > 0);
 	let hasOverlappingAnnotation = $derived(overlappingAnnotationId !== null);
+	let effectiveScopeElement = $derived(
+		regionScopeContext?.scopeElement || shellContext?.scopeElement || null
+	);
+
+	function getEffectiveRoot(): HTMLElement {
+		const ownerDoc = contextHostElement?.ownerDocument;
+		return effectiveScopeElement || ownerDoc?.documentElement || document.documentElement;
+	}
+
+	function getStorageKey(): string {
+		const scopeKey = shellContext?.canonicalItemId || shellContext?.itemId || 'global';
+		return `${STORAGE_KEY}:${scopeKey}`;
+	}
 
 	/**
 	 * Find annotation that overlaps with the given range
@@ -133,6 +159,16 @@
 		});
 	}
 
+	function isWithinScope(range: Range): boolean {
+		if (!effectiveScopeElement) return true;
+		const ancestor = range.commonAncestorContainer;
+		const element =
+			ancestor.nodeType === Node.TEXT_NODE
+				? ancestor.parentElement
+				: (ancestor as Element);
+		return !!element && effectiveScopeElement.contains(element);
+	}
+
 	/**
 	 * Save annotations to sessionStorage.
 	 * Uses HighlightCoordinator's exportAnnotations for proper serialization.
@@ -141,9 +177,9 @@
 		if (!isBrowser || !highlightCoordinator) return;
 
 		try {
-			const root = document.body;
+			const root = getEffectiveRoot();
 			const serialized = highlightCoordinator.exportAnnotations(root);
-			sessionStorage.setItem(STORAGE_KEY, JSON.stringify(serialized));
+			sessionStorage.setItem(getStorageKey(), JSON.stringify(serialized));
 		} catch (error) {
 			console.error('[AnnotationToolbar] Failed to save annotations:', error);
 		}
@@ -157,11 +193,11 @@
 		if (!isBrowser || !highlightCoordinator) return;
 
 		try {
-			const json = sessionStorage.getItem(STORAGE_KEY);
+			const json = sessionStorage.getItem(getStorageKey());
 			if (!json) return;
 
 			const data = JSON.parse(json);
-			const root = document.body;
+			const root = getEffectiveRoot();
 			const restored = highlightCoordinator.importAnnotations(data, root);
 
 			console.log(`[AnnotationToolbar] Restored ${restored} annotations`);
@@ -184,7 +220,7 @@
 		const text = sel.toString().trim();
 
 		// Hide if empty or in disallowed area
-		if (!text || !isInAllowedArea(range.commonAncestorContainer)) {
+		if (!text || !isWithinScope(range) || !isInAllowedArea(range.commonAncestorContainer)) {
 			return hideToolbar();
 		}
 
@@ -284,7 +320,7 @@
 		const count = annotationCount;
 		highlightCoordinator?.clearAnnotations();
 		annotationCount = 0;
-		sessionStorage.removeItem(STORAGE_KEY);
+		sessionStorage.removeItem(getStorageKey());
 
 		// Announce to screen readers
 		positionAnnouncement = `${count} annotation${count === 1 ? '' : 's'} cleared`;
@@ -305,7 +341,9 @@
 
 			// Use speakRange for accurate word highlighting
 			// Note: TTS service should already be initialized by ToolkitCoordinator
-			await ttsService.speakRange(toolbarState.selectedRange);
+			await ttsService.speakRange(toolbarState.selectedRange, {
+				contentRoot: getEffectiveRoot()
+			});
 
 			console.log('[AnnotationToolbar] TTS completed successfully');
 		} catch (error) {
@@ -332,8 +370,7 @@
 	function handleDocumentClick(e: Event) {
 		if (!toolbarState.isVisible || justShown) return;
 
-		const toolbar = document.querySelector('.pie-tool-annotation-toolbar');
-		if (toolbar && !toolbar.contains(e.target as Node)) {
+		if (toolbarElement && !toolbarElement.contains(e.target as Node)) {
 			hideToolbar();
 		}
 	}
@@ -349,14 +386,11 @@
 			loadAnnotations();
 		}, 2000);
 
-		// Set up event listeners
-		// Mouse events
-		document.addEventListener('mouseup', handleSelectionChange);
-		document.addEventListener('click', handleDocumentClick);
-
-		// Touch events for mobile/tablet support
-		document.addEventListener('touchend', handleSelectionChange);
-		document.addEventListener('touchstart', handleDocumentClick);
+		const pointerEventTarget: HTMLElement | Document = effectiveScopeElement || document;
+		pointerEventTarget.addEventListener('mouseup', handleSelectionChange);
+		pointerEventTarget.addEventListener('click', handleDocumentClick);
+		pointerEventTarget.addEventListener('touchend', handleSelectionChange);
+		pointerEventTarget.addEventListener('touchstart', handleDocumentClick);
 
 		// Keyboard and scroll events
 		document.addEventListener('keydown', handleKeyDown);
@@ -365,23 +399,43 @@
 		return () => {
 			clearTimeout(loadTimer);
 
-			// Remove mouse events
-			document.removeEventListener('mouseup', handleSelectionChange);
-			document.removeEventListener('click', handleDocumentClick);
-
-			// Remove touch events
-			document.removeEventListener('touchend', handleSelectionChange);
-			document.removeEventListener('touchstart', handleDocumentClick);
+			pointerEventTarget.removeEventListener('mouseup', handleSelectionChange);
+			pointerEventTarget.removeEventListener('click', handleDocumentClick);
+			pointerEventTarget.removeEventListener('touchend', handleSelectionChange);
+			pointerEventTarget.removeEventListener('touchstart', handleDocumentClick);
 
 			// Remove keyboard and scroll events
 			document.removeEventListener('keydown', handleKeyDown);
 			window.removeEventListener('scroll', hideToolbar, true);
 		};
 	});
+
+	$effect(() => {
+		if (!contextHostElement) return;
+		const cleanupShell = connectAssessmentToolkitShellContext(
+			contextHostElement,
+			(value: AssessmentToolkitShellContext) => {
+				shellContext = value;
+			}
+		);
+		const cleanupRegion = connectAssessmentToolkitRegionScopeContext(
+			contextHostElement,
+			(value: AssessmentToolkitRegionScopeContext) => {
+				regionScopeContext = value;
+			}
+		);
+		return () => {
+			cleanupRegion();
+			cleanupShell();
+		};
+	});
 </script>
+
+<div bind:this={contextHostElement} style="display: none;" aria-hidden="true"></div>
 
 {#if toolbarState.isVisible}
 	<div
+		bind:this={toolbarElement}
 		class="pie-tool-annotation-toolbar notranslate fixed z-[4200] flex gap-1 bg-base-100 shadow-lg rounded-lg p-2 border border-base-300"
 		style={`left:${toolbarState.toolbarPosition.x}px; top:${toolbarState.toolbarPosition.y}px; transform: translate(-50%, -100%);`}
 		role="toolbar"

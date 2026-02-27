@@ -14,8 +14,12 @@
 <script lang="ts">
 	import { ContextConsumer } from '@pie-players/pie-context';
 	import {
+		connectAssessmentToolkitRegionScopeContext,
+		connectAssessmentToolkitShellContext,
 		assessmentToolkitRuntimeContext,
+		type AssessmentToolkitRegionScopeContext,
 		type AssessmentToolkitRuntimeContext,
+		type AssessmentToolkitShellContext,
 		type IHighlightCoordinator,
 		type IToolCoordinator,
 		type ITTSService,
@@ -42,12 +46,17 @@
 	let runtimeContextConsumer: ContextConsumer<
 		typeof assessmentToolkitRuntimeContext
 	> | null = null;
+	let shellContext = $state<AssessmentToolkitShellContext | null>(null);
+	let regionScopeContext = $state<AssessmentToolkitRegionScopeContext | null>(null);
 	const coordinator = $derived(
 		runtimeContext?.toolCoordinator as IToolCoordinator | undefined,
 	);
 	const ttsService = $derived(runtimeContext?.ttsService as ITTSService | undefined);
 	const highlightCoordinator = $derived(
 		runtimeContext?.highlightCoordinator as IHighlightCoordinator | undefined,
+	);
+	const targetContainer = $derived(
+		regionScopeContext?.scopeElement || shellContext?.scopeElement || null,
 	);
 	let registered = $state(false);
 	let speaking = $state(false);
@@ -67,6 +76,26 @@
 		return () => {
 			runtimeContextConsumer?.disconnect();
 			runtimeContextConsumer = null;
+		};
+	});
+
+	$effect(() => {
+		if (!containerEl) return;
+		const cleanupShell = connectAssessmentToolkitShellContext(
+			containerEl,
+			(value: AssessmentToolkitShellContext) => {
+				shellContext = value;
+			},
+		);
+		const cleanupRegion = connectAssessmentToolkitRegionScopeContext(
+			containerEl,
+			(value: AssessmentToolkitRegionScopeContext) => {
+				regionScopeContext = value;
+			},
+		);
+		return () => {
+			cleanupRegion();
+			cleanupShell();
 		};
 	});
 
@@ -113,31 +142,8 @@
 			paused = false;
 			statusMessage = 'Reading started';
 
-			// Find target container
-			// First check if button is in a header with a sibling content div
-			const header = containerEl?.closest(
-				'.pie-section-player__passage-header, .pie-section-player__item-header'
-			);
-			let targetContainer: Element | null = null;
-
-			if (header) {
-				// Look for sibling content div
-				const parent = header.parentElement;
-				targetContainer =
-					parent?.querySelector(
-						'.pie-section-player__passage-content, .pie-section-player__item-content'
-					) || null;
-			}
-
-			// Fallback: look up the parent chain
 			if (!targetContainer) {
-				targetContainer = containerEl?.closest(
-					'.pie-section-player__passage-content, .pie-section-player__item-content'
-				) || null;
-			}
-
-			if (!targetContainer) {
-				console.warn('[TTS Inline] No target container found');
+				console.warn('[TTS Inline] No target container found from shell scope context');
 				speaking = false;
 				return;
 			}
@@ -169,7 +175,7 @@
 			}
 
 			// Speak with catalog support and highlighting
-			await ttsService.speak(text, {
+			await (ttsService as any).speak(text, {
 				catalogId: catalogId || undefined,
 				language,
 				contentElement: targetContainer

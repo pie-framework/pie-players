@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-tool-calculator",
-	"version": "0.1.8",
+	"version": "0.1.9",
 	"type": "module",
 	"description": "Calculator tool for PIE assessment player (Math.js based)",
 	"repository": {

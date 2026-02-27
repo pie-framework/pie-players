@@ -18,8 +18,8 @@
 		createDefaultPersonalNeedsProfile,
 	} from "@pie-players/pie-assessment-toolkit";
 	import { createEventDispatcher, onMount } from "svelte";
-	import { SectionController } from "../../controllers/SectionController.js";
-	import type { SectionCompositionModel } from "../../controllers/types.js";
+	import { SectionController } from "../controllers/SectionController.js";
+	import type { SectionCompositionModel } from "../controllers/types.js";
 	import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
 
 	const EMPTY_COMPOSITION: SectionCompositionModel = {

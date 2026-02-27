@@ -1,3 +1,3 @@
-import "./layout-elements/PieSectionPlayerBaseElement.svelte";
+import "./PieSectionPlayerBaseElement.svelte";
 
 export {};

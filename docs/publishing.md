@@ -22,6 +22,7 @@ Policy and validator:
 
 - `scripts/publish-policy.json`
 - `scripts/check-package-metadata.mjs`
+- `docs/PUBLISHABLE_PACKAGES.md` (current package inventory)
 
 ## Local preflight before opening/merging a release
 

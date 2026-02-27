@@ -252,7 +252,7 @@
 				<aside class="section-toolbar-pane" aria-label="Section tools">
 					<pie-section-tools-toolbar
 						position="right"
-						enabled-tools="graph,periodicTable,protractor,lineReader,ruler"
+						enabled-tools="calculator,graph,periodicTable,protractor,lineReader,ruler"
 					></pie-section-tools-toolbar>
 				</aside>
 			</div>

@@ -50,6 +50,9 @@ jobs:
         run: |
           set -euo pipefail
 
+          # Prevent stale oclif metadata from shadowing current command flags.
+          rm -f tools/cli/oclif.manifest.json
+
           CONFIG_DIR="configs/fixed-player-static"
 
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
@@ -74,8 +77,8 @@ jobs:
             echo "============================================================"
             echo "Publishing for config: $file"
             echo "============================================================"
-            node tools/cli/bin/run.js pie-packages:fixed-player-build-package \
-              --elements-file "$file" \
+            bun run cli pie-packages:fixed-player-build-package \
+              -f "$file" \
               --publish
             echo ""
           done

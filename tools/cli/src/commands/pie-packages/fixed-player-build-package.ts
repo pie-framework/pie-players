@@ -12,7 +12,7 @@ export default class FixedPlayerBuildPackage extends Command {
 		"Build (and optionally publish) PIE fixed player static package";
 
 	static override examples = [
-		"$ bun run cli pie-packages:fixed-player-build-package --elements-file elements.json",
+		"$ bun run cli pie-packages:fixed-player-build-package -f elements.json",
 		'$ bun run cli pie-packages:fixed-player-build-package -e "@pie-element/calculator@1.0.0,@pie-element/ruler@2.0.0"',
 	];
 
@@ -60,10 +60,10 @@ export default class FixedPlayerBuildPackage extends Command {
 		const { flags } = await this.parse(FixedPlayerBuildPackage);
 
 		if (!flags.elementsFile && !flags.elements) {
-			this.error("Either --elements-file or --elements must be specified");
+			this.error("Either -f/--elementsFile or -e/--elements must be specified");
 		}
 		if (flags.dryRun && !flags.publish) {
-			this.error("--dry-run can only be used with --publish");
+			this.error("--dryRun can only be used with --publish");
 		}
 
 		const monorepoDir = process.cwd();

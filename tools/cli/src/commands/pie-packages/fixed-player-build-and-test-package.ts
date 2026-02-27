@@ -13,7 +13,7 @@ export default class FixedPlayerBuildAndTestPackage extends Command {
 		"Build a pie-fixed-player-static package (optionally publish) and optionally generate a browser test project";
 
 	static override examples = [
-		"$ bun run cli pie-packages:fixed-player-build-and-test-package --elements-file configs/fixed-player-static/example.json --generate-test-project",
+		"$ bun run cli pie-packages:fixed-player-build-and-test-package -f configs/fixed-player-static/example.json --generateTestProject",
 		'$ bun run cli pie-packages:fixed-player-build-and-test-package -e "@pie-element/multiple-choice@11.4.3" --publish --dry-run',
 	];
 
@@ -87,10 +87,10 @@ export default class FixedPlayerBuildAndTestPackage extends Command {
 		const { flags } = await this.parse(FixedPlayerBuildAndTestPackage);
 
 		if (!flags.elementsFile && !flags.elements) {
-			this.error("Either --elements-file or --elements must be specified");
+			this.error("Either -f/--elementsFile or -e/--elements must be specified");
 		}
 		if (flags.dryRun && !flags.publish) {
-			this.error("--dry-run can only be used with --publish");
+			this.error("--dryRun can only be used with --publish");
 		}
 
 		const monorepoDir = process.cwd();

@@ -30,10 +30,10 @@
 		"oclif.manifest.json"
 	],
 	"scripts": {
-		"build": "tsc",
+		"build": "tsc && oclif manifest",
 		"dev": "node --loader ts-node/esm --no-warnings=ExperimentalWarning ./bin/dev.js",
 		"clean": "rm -rf dist",
-		"prepack": "bun run build && oclif manifest"
+		"prepack": "bun run build"
 	},
 	"dependencies": {
 		"@oclif/core": "^4.0.0",

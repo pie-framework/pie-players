@@ -9,12 +9,19 @@ import type { ToolModuleLoader } from "../services/ToolRegistry.js";
 export const DEFAULT_TOOL_MODULE_LOADERS: Partial<
 	Record<string, ToolModuleLoader>
 > = {
-	textToSpeech: () => import("@pie-players/pie-tool-tts-inline"),
-	answerEliminator: () => import("@pie-players/pie-tool-answer-eliminator"),
+	textToSpeech: () => importToolModule("@pie-players/pie-tool-tts-inline"),
+	answerEliminator: () =>
+		importToolModule("@pie-players/pie-tool-answer-eliminator"),
 	calculator: async () => {
 		await Promise.all([
-			import("@pie-players/pie-tool-calculator-inline"),
-			import("@pie-players/pie-tool-calculator"),
+			importToolModule("@pie-players/pie-tool-calculator-inline"),
+			importToolModule("@pie-players/pie-tool-calculator"),
 		]);
 	},
 };
+
+function importToolModule(specifier: string): Promise<unknown> {
+	// Keep tool modules optional at toolkit build time; consumers decide which
+	// tool packages to install and register.
+	return import(/* @vite-ignore */ specifier);
+}

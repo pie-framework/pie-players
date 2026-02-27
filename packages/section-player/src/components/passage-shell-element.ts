@@ -1,0 +1,3 @@
+import "./PassageShellElement.svelte";
+
+export {};

@@ -247,15 +247,17 @@
 		const passageIds = Array.isArray(typed?.passages)
 			? typed.passages.map((item: any) => item?.id || "")
 			: [];
-		const sessionKeys = typed?.itemSessionsByItemId
-			? Object.keys(typed.itemSessionsByItemId).sort()
+		const sessionByItem = typed?.itemSessionsByItemId
+			? Object.entries(typed.itemSessionsByItemId)
+					.sort(([left], [right]) => left.localeCompare(right))
+					.map(([itemId, session]) => [itemId, JSON.stringify(session ?? null)])
 			: [];
 		return JSON.stringify({
 			sectionId: typed?.section?.identifier || typed?.sectionId || "",
 			currentItemIndex: typed?.currentItemIndex ?? -1,
 			itemIds,
 			passageIds,
-			sessionKeys,
+			sessionByItem,
 		});
 	}
 

@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-assessment-toolkit",
-	"version": "0.2.8",
+	"version": "0.2.9",
 	"type": "module",
 	"description": "PIE assessment toolkit: composable services + reference implementation for assessment players and tool coordination",
 	"license": "MIT",

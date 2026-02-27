@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-theme-daisyui",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"type": "module",
 	"description": "DaisyUI token bridge for PIE theme variables",
 	"license": "MIT",

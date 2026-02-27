@@ -3,8 +3,8 @@ import { calculatorToolRegistration } from "../src/tools/registrations/calculato
 import type { ToolContext } from "../src/services/tool-context";
 
 describe("calculator tool registration", () => {
-	test("supports only element level", () => {
-		expect(calculatorToolRegistration.supportedLevels).toEqual(["element"]);
+	test("supports only item level", () => {
+		expect(calculatorToolRegistration.supportedLevels).toEqual(["item"]);
 	});
 
 	test("is visible for element context with math content", () => {

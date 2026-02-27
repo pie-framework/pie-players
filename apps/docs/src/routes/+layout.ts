@@ -1,5 +1,5 @@
-// Enable prerendering for the docs site so adapter-static emits HTML pages for GitHub Pages.
+// Enable prerendering for the docs site so adapter-static emits HTML pages.
 export const prerender = true;
 
-// GitHub Pages serves directories with `index.html`; keeping trailing slashes avoids subtle path issues.
+// Keep trailing slashes for stable static route output.
 export const trailingSlash = "always";

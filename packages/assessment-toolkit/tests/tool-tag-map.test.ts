@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { createDefaultToolRegistry } from "../src/services/createDefaultToolRegistry";
 import type { ToolContext } from "../src/services/tool-context";
+import type { ToolbarContext } from "../src/services/ToolRegistry";
 import {
 	createToolElement,
 	DEFAULT_TOOL_TAG_MAP,
@@ -72,7 +73,7 @@ describe("tool-tag-map", () => {
 });
 
 describe("createDefaultToolRegistry component overrides", () => {
-	test("applies custom tool tag map during instance creation", () => {
+	test("applies custom tool tag map during toolbar render", () => {
 		const registry = createDefaultToolRegistry({
 			toolTagMap: {
 				...DEFAULT_TOOL_TAG_MAP,
@@ -80,9 +81,25 @@ describe("createDefaultToolRegistry component overrides", () => {
 			},
 		});
 
-		const el = withFakeDocument(() =>
-			registry.createToolInstance("calculator", itemContext, {}),
+		const toolbarContext: ToolbarContext = {
+			itemId: "item-1",
+			catalogId: "item-1",
+			language: "en",
+			toolCoordinator: null,
+			toolkitCoordinator: null,
+			ttsService: null,
+			elementToolStateStore: null,
+			toggleTool: () => {},
+			isToolVisible: () => false,
+			subscribeVisibility: null,
+			ensureTTSReady: null,
+		};
+
+		const renderResult = withFakeDocument(() =>
+			registry.renderForToolbar("calculator", itemContext, toolbarContext),
 		);
-		expect(el.tagName.toLowerCase()).toBe("custom-calculator");
+		expect(renderResult?.overlayElement?.tagName.toLowerCase()).toBe(
+			"custom-calculator",
+		);
 	});
 });

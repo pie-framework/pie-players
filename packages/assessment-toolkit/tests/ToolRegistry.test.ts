@@ -1,6 +1,7 @@
 import { describe, expect, test, beforeEach } from "bun:test";
 import { ToolRegistry } from "../src/services/ToolRegistry";
 import type { ToolRegistration } from "../src/services/ToolRegistry";
+import type { ToolbarContext } from "../src/services/ToolRegistry";
 import type { ToolContext } from "../src/services/tool-context";
 
 // Mock tool registration
@@ -15,17 +16,11 @@ const mockCalculatorTool: ToolRegistration = {
 		// Simple mock: always visible for testing
 		return true;
 	},
-	createButton: (context, options) => ({
-		toolId: "calculator",
-		label: "Calculator",
-		icon: "calculator-icon",
-		disabled: options.disabled || false,
-		ariaLabel: options.ariaLabel || "Open calculator",
-		onClick: options.onClick || (() => {}),
-		className: options.className,
-	}),
-	createToolInstance: (context, options) => {
-		return { className: "pie-tool-calculator" } as any;
+	renderToolbar: (_context, _toolbarContext) => {
+		return {
+			toolId: "calculator",
+			overlayElement: { className: "pie-tool-calculator" } as any,
+		};
 	},
 };
 
@@ -39,17 +34,11 @@ const mockTTSTool: ToolRegistration = {
 	isVisibleInContext: (context: ToolContext) => {
 		return true;
 	},
-	createButton: (context, options) => ({
-		toolId: "textToSpeech",
-		label: "Text to Speech",
-		icon: "speaker-icon",
-		disabled: options.disabled || false,
-		ariaLabel: options.ariaLabel || "Read aloud",
-		onClick: options.onClick || (() => {}),
-		className: options.className,
-	}),
-	createToolInstance: (context, options) => {
-		return { className: "tts-tool" } as any;
+	renderToolbar: (_context, _toolbarContext) => {
+		return {
+			toolId: "textToSpeech",
+			overlayElement: { className: "tts-tool" } as any,
+		};
 	},
 };
 
@@ -401,8 +390,22 @@ describe("ToolRegistry", () => {
 		});
 	});
 
-	describe("createToolInstance", () => {
-		test("creates instance for registered tool", () => {
+	describe("renderForToolbar", () => {
+		const toolbarContext: ToolbarContext = {
+			itemId: "item-1",
+			catalogId: "item-1",
+			language: "en",
+			toolCoordinator: null,
+			toolkitCoordinator: null,
+			ttsService: null,
+			elementToolStateStore: null,
+			toggleTool: () => {},
+			isToolVisible: () => false,
+			subscribeVisibility: null,
+			ensureTTSReady: null,
+		};
+
+		test("renders toolbar output for registered tool", () => {
 			registry.register(mockCalculatorTool);
 			const context: ToolContext = {
 				level: "item",
@@ -410,8 +413,12 @@ describe("ToolRegistry", () => {
 				itemRef: {} as any,
 				item: {} as any,
 			};
-			const el = registry.createToolInstance("calculator", context, {});
-			expect(el.className).toBe("pie-tool-calculator");
+			const renderResult = registry.renderForToolbar(
+				"calculator",
+				context,
+				toolbarContext,
+			);
+			expect(renderResult?.overlayElement?.className).toBe("pie-tool-calculator");
 		});
 
 		test("throws when tool is not registered", () => {
@@ -422,7 +429,7 @@ describe("ToolRegistry", () => {
 				item: {} as any,
 			};
 			expect(() =>
-				registry.createToolInstance("missing-tool", context, {}),
+				registry.renderForToolbar("missing-tool", context, toolbarContext),
 			).toThrow("Tool 'missing-tool' is not registered");
 		});
 	});

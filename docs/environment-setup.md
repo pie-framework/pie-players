@@ -18,7 +18,7 @@ This document explains how to configure environment variables for PIE Players de
 
 3. **Run a demo**:
    ```bash
-   bun run dev:example
+   bun run dev:section
    ```
 
 That's it! The demo scripts automatically load `.env` using `dotenvx`.

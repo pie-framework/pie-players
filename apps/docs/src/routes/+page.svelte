@@ -580,9 +580,7 @@ bun run dev:docs
 
 # Build for production
 bun run build
-
-# Preview GitHub Pages build
-bun run build:pages</code></pre>
+</code></pre>
 			</div>
 		</div>
 	</section>

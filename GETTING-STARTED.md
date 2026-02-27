@@ -42,7 +42,7 @@ bun run build
 ### 4. Run Demo
 
 ```bash
-bun run dev:example
+bun run dev:section
 ```
 
 Open http://localhost:5173
@@ -96,7 +96,7 @@ pie-players/
 ### Development
 
 ```bash
-bun run dev:example     # Run main demo
+bun run dev:section     # Run section demo
 bun run dev:docs        # Run documentation site
 bun run dev:demo        # Serve packages locally
 ```
@@ -113,8 +113,6 @@ bun run check          # Svelte check all packages
 
 ```bash
 bun run test           # Run all tests
-bun run test:e2e       # E2E tests
-bun run test:a11y      # Accessibility tests
 ```
 
 ### Linting
@@ -146,7 +144,7 @@ bun run build
 1. Stop dev server (Ctrl+C)
 2. Clean build artifacts: `bun run clean`
 3. Rebuild: `bun run build`
-4. Restart: `bun run dev:example`
+4. Restart: `bun run dev:section`
 
 ## Documentation
 

@@ -44,5 +44,4 @@ Current status: core runtime custom elements now run with shadow DOM enabled (`s
 - [`publishing.md`](./publishing.md)
 - [`publish-compatibility-matrix.md`](./publish-compatibility-matrix.md)
 - [`CDN_USAGE.md`](./CDN_USAGE.md)
-- [`GITHUB_PAGES_SETUP.md`](./GITHUB_PAGES_SETUP.md)
 - [`NPM_TOKEN_SETUP.md`](./NPM_TOKEN_SETUP.md)

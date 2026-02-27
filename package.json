@@ -38,7 +38,6 @@
 		"preview:section": "dotenvx run -- bun run --cwd apps/section-demos preview",
 		"dev:docs": "dotenvx run -- bun run --cwd apps/docs dev",
 		"preview:docs": "NODE_ENV=production bun run --cwd apps/docs build && dotenvx run -- bun run --cwd apps/docs preview",
-		"build:pages": "bun run build && NODE_ENV=production bun run --cwd apps/docs build",
 		"check-i18n": "bun run --cwd packages/players-shared check-i18n",
 		"scan-hardcoded": "bun run --cwd packages/players-shared scan-hardcoded",
 		"check:deps": "node ./scripts/check-deps.mjs",

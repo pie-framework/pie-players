@@ -103,7 +103,7 @@ AWS_SECRET_ACCESS_KEY=wJalr...your_secret_here
 Run a demo to verify TTS works:
 
 ```bash
-bun run dev:example
+bun run dev:section
 ```
 
 Visit the demo and try the TTS feature. Check the browser console for:

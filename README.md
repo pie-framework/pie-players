@@ -2,8 +2,8 @@
 
 PIE players and assessment toolkit with Bun + TypeScript + Svelte 5.
 
-**Docs**: <https://pie-framework.github.io/pie-players/>
-**Examples**: <https://pie-framework.github.io/pie-players/examples/>
+**Docs app**: `apps/docs`
+**Examples app**: `apps/section-demos`
 
 ## Quick Start
 
@@ -78,7 +78,6 @@ bun run release:label:push           # Create and push tag to origin
 - [Architecture](docs/ARCHITECTURE.md)
 - [Math Renderer Architecture](docs/MATH-RENDERER-ARCHITECTURE.md) - Pluggable math rendering system
 - [Authoring Mode](docs/AUTHORING_MODE.md)
-- [GitHub Pages Setup](docs/GITHUB_PAGES_SETUP.md)
 - [NPM Token Setup](docs/NPM_TOKEN_SETUP.md)
 - [Publishing Contract](docs/publishing.md)
 - [Docs Index](docs/README.md)

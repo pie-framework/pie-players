@@ -46,8 +46,8 @@
 <script lang="ts">
 	
 	import {
-		assessmentToolkitRuntimeContext,
-		connectAssessmentToolkitShellContext,
+		connectToolRuntimeContext,
+		connectToolShellContext,
 		ZIndexLayer,
 	} from '@pie-players/pie-assessment-toolkit';
 	import type {
@@ -55,7 +55,6 @@
 		AssessmentToolkitRuntimeContext,
 		IToolCoordinator,
 	} from '@pie-players/pie-assessment-toolkit';
-	import { ContextConsumer } from '@pie-players/pie-context';
 	import { onMount } from 'svelte';
 	import { AnswerEliminatorCore } from './answer-eliminator-core.js';
 
@@ -86,9 +85,6 @@
 	let contextHostElement = $state<HTMLElement | null>(null);
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
 	let shellContext = $state<AssessmentToolkitShellContext | null>(null);
-	let runtimeContextConsumer: ContextConsumer<
-		typeof assessmentToolkitRuntimeContext
-	> | null = null;
 	const coordinator = $derived(
 		runtimeContext?.toolCoordinator as IToolCoordinator | undefined,
 	);
@@ -103,23 +99,14 @@
 
 	$effect(() => {
 		if (!contextHostElement) return;
-		runtimeContextConsumer = new ContextConsumer(contextHostElement, {
-			context: assessmentToolkitRuntimeContext,
-			subscribe: true,
-			onValue: (value: AssessmentToolkitRuntimeContext) => {
-				runtimeContext = value;
-			},
+		return connectToolRuntimeContext(contextHostElement, (value: AssessmentToolkitRuntimeContext) => {
+			runtimeContext = value;
 		});
-		runtimeContextConsumer.connect();
-		return () => {
-			runtimeContextConsumer?.disconnect();
-			runtimeContextConsumer = null;
-		};
 	});
 
 	$effect(() => {
 		if (!contextHostElement) return;
-		return connectAssessmentToolkitShellContext(contextHostElement, (value: AssessmentToolkitShellContext) => {
+		return connectToolShellContext(contextHostElement, (value: AssessmentToolkitShellContext) => {
 			shellContext = value;
 		});
 	});

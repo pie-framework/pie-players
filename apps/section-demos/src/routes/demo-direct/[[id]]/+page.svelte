@@ -1,9 +1,6 @@
 <script lang="ts">
-	import {
-		createDefaultPersonalNeedsProfile,
-	} from '@pie-players/pie-assessment-toolkit';
-	import { SectionController, type SectionCompositionModel } from '@pie-players/pie-section-player';
-	import type { AssessmentSection, ItemEntity } from '@pie-players/pie-players-shared/types';
+	import type { SectionCompositionModel } from '@pie-players/pie-section-player';
+	import type { ItemEntity } from '@pie-players/pie-players-shared/types';
 	import { onMount } from 'svelte';
 	import type { PageData } from './$types';
 
@@ -24,28 +21,12 @@
 	};
 	const IIFE_BUNDLE_HOST = 'https://proxy.pie-api.com/bundles';
 
-	let toolkitElement = $state<any>(null);
 	let layoutRootElement = $state<HTMLDivElement | null>(null);
 	let compositionModel = $state<SectionCompositionModel>(EMPTY_COMPOSITION);
-	let lastCompositionSignature = $state('');
 	let errorMessage = $state<string | null>(null);
 	let leftPanelWidth = $state(50);
 	let isDragging = $state(false);
 	let splitContainerElement = $state<HTMLDivElement | null>(null);
-
-	const resolvedSection: AssessmentSection | null = (() => {
-		const section = data.section;
-		if (!section) return null;
-		const sectionAny = section as any;
-		const hasExplicitPnp = Boolean(
-			sectionAny?.personalNeedsProfile || sectionAny?.settings?.personalNeedsProfile
-		);
-		if (hasExplicitPnp) return section;
-		return {
-			...section,
-			personalNeedsProfile: createDefaultPersonalNeedsProfile()
-		};
-	})();
 
 	let passages = $derived(compositionModel.passages || []);
 	let items = $derived(compositionModel.items || []);
@@ -69,24 +50,9 @@
 		return payload?.apiKey ? { apiKey: payload.apiKey } : {};
 	}
 
-	function getCompositionSignature(model: SectionCompositionModel | null | undefined): string {
-		if (!model) return '';
-		return JSON.stringify({
-			sectionId: model.section?.identifier || '',
-			currentItemIndex: model.currentItemIndex ?? -1,
-			itemIds: (model.items || []).map((item) => item?.id || ''),
-			passageIds: (model.passages || []).map((passage) => passage?.id || ''),
-			sessionKeys: Object.keys(model.itemSessionsByItemId || {}).sort()
-		});
-	}
-
-	function handleCompositionChanged(event: Event) {
+	function handleBaseCompositionChanged(event: Event) {
 		const detail = (event as CustomEvent<{ composition?: SectionCompositionModel }>).detail;
-		const nextComposition = detail?.composition || EMPTY_COMPOSITION;
-		const nextSignature = getCompositionSignature(nextComposition);
-		if (nextSignature === lastCompositionSignature) return;
-		lastCompositionSignature = nextSignature;
-		compositionModel = nextComposition;
+		compositionModel = detail?.composition || EMPTY_COMPOSITION;
 	}
 
 	function getSessionForItem(item: ItemEntity): unknown {
@@ -140,13 +106,11 @@
 		};
 	});
 
-	$effect(() => {
-		if (!toolkitElement) return;
-		toolkitElement.createSectionController = () => new SectionController();
-	});
-
 	onMount(async () => {
 		const imports: Promise<unknown>[] = [];
+		if (!customElements.get('pie-section-player-base')) {
+			imports.push(import('@pie-players/pie-section-player/components/section-player-base-element'));
+		}
 		if (!customElements.get('pie-iife-player')) {
 			imports.push(import('@pie-players/pie-iife-player'));
 		}
@@ -155,9 +119,6 @@
 		}
 		if (!customElements.get('pie-item-toolbar')) {
 			imports.push(import('@pie-players/pie-assessment-toolkit/components/item-toolbar-element'));
-		}
-		if (!customElements.get('pie-assessment-toolkit')) {
-			imports.push(import('@pie-players/pie-assessment-toolkit/components/pie-assessment-toolkit-element'));
 		}
 		if (!customElements.get('pie-item-shell') || !customElements.get('pie-passage-shell')) {
 			imports.push(import('@pie-players/pie-section-player'));
@@ -174,15 +135,14 @@
 	{#if errorMessage}
 		<div class="error-state">{errorMessage}</div>
 	{:else}
-		<pie-assessment-toolkit
-			bind:this={toolkitElement}
+		<pie-section-player-base
 			assessment-id={data.demo?.id || 'section-demo-direct'}
-			section={resolvedSection}
+			section={data.section}
 			player-type="iife"
 			view="candidate"
 			lazy-init={true}
 			tools={toolkitToolsConfig}
-			oncomposition-changed={handleCompositionChanged}
+			oncomposition-changed={handleBaseCompositionChanged}
 		>
 			<div class="layout-header">
 				<h1>{data.demo?.name || 'Direct Split Layout Demo'}</h1>
@@ -289,11 +249,12 @@
 					></pie-section-tools-toolbar>
 				</aside>
 			</div>
-		</pie-assessment-toolkit>
+		</pie-section-player-base>
 	{/if}
 </div>
 
 <style>
+	:global(pie-section-player-base),
 	:global(pie-assessment-toolkit) {
 		display: flex;
 		flex-direction: column;

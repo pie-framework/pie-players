@@ -11,14 +11,13 @@
 
 <script lang="ts">
 	import {
-		assessmentToolkitRuntimeContext,
+		connectToolRuntimeContext,
 		ZIndexLayer,
 	} from '@pie-players/pie-assessment-toolkit';
 	import type {
 		AssessmentToolkitRuntimeContext,
 		IToolCoordinator,
 	} from '@pie-players/pie-assessment-toolkit';
-	import { ContextConsumer } from '@pie-players/pie-context';
 	import Moveable from 'moveable';
 	import { onMount } from 'svelte';
 	import protractorSvg from './protractor.svg';
@@ -32,9 +31,6 @@
 	// State
 	let containerEl = $state<HTMLDivElement | undefined>();
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
-	let runtimeContextConsumer: ContextConsumer<
-		typeof assessmentToolkitRuntimeContext
-	> | null = null;
 	const coordinator = $derived(
 		runtimeContext?.toolCoordinator as IToolCoordinator | undefined,
 	);
@@ -51,18 +47,9 @@
 
 	$effect(() => {
 		if (!containerEl) return;
-		runtimeContextConsumer = new ContextConsumer(containerEl, {
-			context: assessmentToolkitRuntimeContext,
-			subscribe: true,
-			onValue: (value: AssessmentToolkitRuntimeContext) => {
-				runtimeContext = value;
-			},
+		return connectToolRuntimeContext(containerEl, (value: AssessmentToolkitRuntimeContext) => {
+			runtimeContext = value;
 		});
-		runtimeContextConsumer.connect();
-		return () => {
-			runtimeContextConsumer?.disconnect();
-			runtimeContextConsumer = null;
-		};
 	});
 
 	function announce(message: string) {

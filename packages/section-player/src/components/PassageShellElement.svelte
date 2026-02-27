@@ -19,6 +19,7 @@
 		PIE_UNREGISTER_EVENT,
 		assessmentToolkitRegionScopeContext,
 		assessmentToolkitShellContext,
+		dispatchCrossBoundaryEvent,
 		type AssessmentToolkitRegionScopeContext,
 		type AssessmentToolkitShellContext,
 		type RuntimeRegistrationDetail,
@@ -47,6 +48,10 @@
 
 	function getHostElement(): HTMLElement | null {
 		if (!anchor) return null;
+		const rootNode = anchor.getRootNode();
+		if (rootNode && "host" in rootNode) {
+			return (rootNode as ShadowRoot).host as HTMLElement;
+		}
 		return anchor.parentElement as HTMLElement | null;
 	}
 	const host = $derived.by(() => getHostElement());
@@ -88,13 +93,7 @@
 			item,
 			element: host,
 		};
-		host.dispatchEvent(
-			new CustomEvent(eventName, {
-				detail,
-				bubbles: true,
-				composed: true,
-			}),
-		);
+		dispatchCrossBoundaryEvent(host, eventName, detail);
 	}
 
 	$effect(() => {

@@ -20,6 +20,7 @@
 		PIE_UNREGISTER_EVENT,
 		assessmentToolkitRegionScopeContext,
 		assessmentToolkitShellContext,
+		dispatchCrossBoundaryEvent,
 		type AssessmentToolkitRegionScopeContext,
 		type AssessmentToolkitShellContext,
 		type ItemSessionChangedDetail,
@@ -49,6 +50,10 @@
 
 	function getHostElement(): HTMLElement | null {
 		if (!anchor) return null;
+		const rootNode = anchor.getRootNode();
+		if (rootNode && "host" in rootNode) {
+			return (rootNode as ShadowRoot).host as HTMLElement;
+		}
 		return anchor.parentElement as HTMLElement | null;
 	}
 	const host = $derived.by(() => getHostElement());
@@ -90,13 +95,7 @@
 			item,
 			element: host,
 		};
-		host.dispatchEvent(
-			new CustomEvent(eventName, {
-				detail,
-				bubbles: true,
-				composed: true,
-			}),
-		);
+		dispatchCrossBoundaryEvent(host, eventName, detail);
 	}
 
 	function normalizeAndDispatchSession(event: Event): void {
@@ -107,20 +106,8 @@
 			canonicalItemId: canonicalItemId || itemId,
 			session: detail,
 		};
-		host.dispatchEvent(
-			new CustomEvent(PIE_ITEM_SESSION_CHANGED_EVENT, {
-				detail: payload,
-				bubbles: true,
-				composed: true,
-			}),
-		);
-		host.dispatchEvent(
-			new CustomEvent("item-session-changed", {
-				detail: payload,
-				bubbles: true,
-				composed: true,
-			}),
-		);
+		dispatchCrossBoundaryEvent(host, PIE_ITEM_SESSION_CHANGED_EVENT, payload);
+		dispatchCrossBoundaryEvent(host, "item-session-changed", payload);
 	}
 
 	$effect(() => {

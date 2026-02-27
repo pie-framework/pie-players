@@ -41,6 +41,14 @@ export {
 	type RuntimeRegistrationDetail,
 	type RuntimeRegistrationKind,
 } from "./runtime/registration-events.js";
+export {
+	connectToolRegionScopeContext,
+	connectToolRuntimeContext,
+	connectToolShellContext,
+	createCrossBoundaryEvent,
+	dispatchCrossBoundaryEvent,
+	isContextValueDefined,
+} from "./runtime/tool-host-contract.js";
 
 // ============================================================================
 // Service Interfaces

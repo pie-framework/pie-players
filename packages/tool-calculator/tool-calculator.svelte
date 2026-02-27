@@ -45,16 +45,15 @@
 <script lang="ts">
 	
 	import {
-		assessmentToolkitRuntimeContext,
+		connectToolRuntimeContext,
 		ZIndexLayer,
 	} from '@pie-players/pie-assessment-toolkit';
 	import type {
 		AssessmentToolkitRuntimeContext,
 		IToolCoordinator,
 	} from '@pie-players/pie-assessment-toolkit';
-	import { ContextConsumer } from '@pie-players/pie-context';
-		import type { Calculator, CalculatorProviderConfig, CalculatorType } from '@pie-players/pie-assessment-toolkit/tools/client';
-		import { DesmosCalculatorProvider, TICalculatorProvider } from '@pie-players/pie-assessment-toolkit/tools/client';
+	import type { Calculator, CalculatorProviderConfig, CalculatorType } from '@pie-players/pie-assessment-toolkit/tools/client';
+	import { DesmosCalculatorProvider, TICalculatorProvider } from '@pie-players/pie-assessment-toolkit/tools/client';
 	import { createFocusTrap } from '@pie-players/pie-players-shared';
 	import ToolSettingsButton from '@pie-players/pie-players-shared/components/ToolSettingsButton.svelte';
 import { onMount } from 'svelte';
@@ -97,9 +96,6 @@ import { onMount } from 'svelte';
 
 	let contextHostElement = $state<HTMLDivElement | null>(null);
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
-	let runtimeContextConsumer: ContextConsumer<
-		typeof assessmentToolkitRuntimeContext
-	> | null = null;
 	const effectiveToolkitCoordinator = $derived(runtimeContext?.toolkitCoordinator);
 	const coordinator = $derived(
 		effectiveToolkitCoordinator?.toolCoordinator as IToolCoordinator | undefined,
@@ -143,18 +139,12 @@ import { onMount } from 'svelte';
 
 	$effect(() => {
 		if (!contextHostElement) return;
-		runtimeContextConsumer = new ContextConsumer(contextHostElement, {
-			context: assessmentToolkitRuntimeContext,
-			subscribe: true,
-			onValue: (value: AssessmentToolkitRuntimeContext) => {
+		return connectToolRuntimeContext(
+			contextHostElement,
+			(value: AssessmentToolkitRuntimeContext) => {
 				runtimeContext = value;
 			},
-		});
-		runtimeContextConsumer.connect();
-		return () => {
-			runtimeContextConsumer?.disconnect();
-			runtimeContextConsumer = null;
-		};
+		);
 	});
 
 	// ============================================================================

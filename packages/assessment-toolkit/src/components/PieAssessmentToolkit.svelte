@@ -44,6 +44,7 @@
 		type ItemSessionChangedDetail,
 		type RuntimeRegistrationDetail,
 	} from "../runtime/registration-events.js";
+	import { dispatchCrossBoundaryEvent } from "../runtime/tool-host-contract.js";
 	import { SectionRuntimeEngine } from "../runtime/SectionRuntimeEngine.js";
 	import {
 		createRuntimeId,
@@ -101,19 +102,17 @@
 
 	function getHostElement(): HTMLElement | null {
 		if (!anchor) return null;
+		const rootNode = anchor.getRootNode();
+		if (rootNode && "host" in rootNode) {
+			return (rootNode as ShadowRoot).host as HTMLElement;
+		}
 		return anchor.parentElement as HTMLElement | null;
 	}
 	const host = $derived.by(() => getHostElement());
 
 	function emit(name: string, detail: unknown): void {
 		if (!host) return;
-		host.dispatchEvent(
-			new CustomEvent(name, {
-				detail,
-				bubbles: true,
-				composed: true,
-			}),
-		);
+		dispatchCrossBoundaryEvent(host, name, detail);
 	}
 
 	function isKnownPlayerType(value: unknown): value is ItemPlayerType {

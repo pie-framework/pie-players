@@ -12,11 +12,10 @@
 />
 
 <script lang="ts">
-	import { ContextConsumer } from '@pie-players/pie-context';
 	import {
-		connectAssessmentToolkitRegionScopeContext,
-		connectAssessmentToolkitShellContext,
-		assessmentToolkitRuntimeContext,
+		connectToolRegionScopeContext,
+		connectToolRuntimeContext,
+		connectToolShellContext,
 		type AssessmentToolkitRegionScopeContext,
 		type AssessmentToolkitRuntimeContext,
 		type AssessmentToolkitShellContext,
@@ -43,9 +42,6 @@
 	// State
 	let containerEl = $state<HTMLDivElement | undefined>();
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
-	let runtimeContextConsumer: ContextConsumer<
-		typeof assessmentToolkitRuntimeContext
-	> | null = null;
 	let shellContext = $state<AssessmentToolkitShellContext | null>(null);
 	let regionScopeContext = $state<AssessmentToolkitRegionScopeContext | null>(null);
 	const coordinator = $derived(
@@ -65,29 +61,20 @@
 
 	$effect(() => {
 		if (!containerEl) return;
-		runtimeContextConsumer = new ContextConsumer(containerEl, {
-			context: assessmentToolkitRuntimeContext,
-			subscribe: true,
-			onValue: (value: AssessmentToolkitRuntimeContext) => {
-				runtimeContext = value;
-			},
+		return connectToolRuntimeContext(containerEl, (value: AssessmentToolkitRuntimeContext) => {
+			runtimeContext = value;
 		});
-		runtimeContextConsumer.connect();
-		return () => {
-			runtimeContextConsumer?.disconnect();
-			runtimeContextConsumer = null;
-		};
 	});
 
 	$effect(() => {
 		if (!containerEl) return;
-		const cleanupShell = connectAssessmentToolkitShellContext(
+		const cleanupShell = connectToolShellContext(
 			containerEl,
 			(value: AssessmentToolkitShellContext) => {
 				shellContext = value;
 			},
 		);
-		const cleanupRegion = connectAssessmentToolkitRegionScopeContext(
+		const cleanupRegion = connectToolRegionScopeContext(
 			containerEl,
 			(value: AssessmentToolkitRegionScopeContext) => {
 				regionScopeContext = value;

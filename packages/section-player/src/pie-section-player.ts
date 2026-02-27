@@ -17,9 +17,11 @@ export type {
 } from "./controllers/types.js";
 export { default as PieItemShellElement } from "./components/ItemShellElement.svelte";
 export { default as PiePassageShellElement } from "./components/PassageShellElement.svelte";
+export { default as PieSectionPlayerBaseElement } from "./components/layout-elements/PieSectionPlayerBaseElement.svelte";
 
 // Make sure the web component is registered
 // This is what makes it available as <pie-section-player> in HTML
 import "./PieSectionPlayer.svelte";
 import "./components/ItemShellElement.svelte";
 import "./components/PassageShellElement.svelte";
+import "./components/section-player-base-element";

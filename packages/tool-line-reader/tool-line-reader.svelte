@@ -12,14 +12,13 @@
 <script lang="ts">
 	
 	import {
-		assessmentToolkitRuntimeContext,
+		connectToolRuntimeContext,
 		ZIndexLayer,
 	} from '@pie-players/pie-assessment-toolkit';
 	import type {
 		AssessmentToolkitRuntimeContext,
 		IToolCoordinator,
 	} from '@pie-players/pie-assessment-toolkit';
-	import { ContextConsumer } from '@pie-players/pie-context';
 	import ToolSettingsButton from '@pie-players/pie-players-shared/components/ToolSettingsButton.svelte';
 	import ToolSettingsPanel from '@pie-players/pie-players-shared/components/ToolSettingsPanel.svelte';
 import { onMount } from 'svelte';
@@ -33,9 +32,6 @@ import { onMount } from 'svelte';
 	// State
 	let containerEl = $state<HTMLDivElement | undefined>();
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
-	let runtimeContextConsumer: ContextConsumer<
-		typeof assessmentToolkitRuntimeContext
-	> | null = null;
 	const coordinator = $derived(
 		runtimeContext?.toolCoordinator as IToolCoordinator | undefined,
 	);
@@ -73,18 +69,9 @@ import { onMount } from 'svelte';
 
 	$effect(() => {
 		if (!containerEl) return;
-		runtimeContextConsumer = new ContextConsumer(containerEl, {
-			context: assessmentToolkitRuntimeContext,
-			subscribe: true,
-			onValue: (value: AssessmentToolkitRuntimeContext) => {
-				runtimeContext = value;
-			},
+		return connectToolRuntimeContext(containerEl, (value: AssessmentToolkitRuntimeContext) => {
+			runtimeContext = value;
 		});
-		runtimeContextConsumer.connect();
-		return () => {
-			runtimeContextConsumer?.disconnect();
-			runtimeContextConsumer = null;
-		};
 	});
 
 	function announce(message: string) {

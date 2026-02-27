@@ -12,8 +12,6 @@
 		"ruler_aria": "Open ruler",
 		"line_reader": "Line Reader",
 		"line_reader_aria": "Open line reader",
-		"magnifier": "Text Magnifier",
-		"magnifier_aria": "Open text magnifier",
 		"text_to_speech": "Text-to-Speech",
 		"text_to_speech_aria": "Open text-to-speech",
 		"color_scheme": "Color Scheme",
@@ -99,7 +97,6 @@
 		"blue_aria": "Blue highlight",
 		"green_aria": "Green highlight",
 		"read_selection": "Read selection",
-		"dictionary": "Dictionary lookup",
 		"translation": "Translation request",
 		"clear": "Clear highlights"
 	},

@@ -245,7 +245,7 @@ The **PIE Section Player** (`@pie-players/pie-section-player`) is the primary co
 
 **Integration Pattern**: Products initialize toolkit services and pass them as JavaScript properties to the section player. The player handles the rest automatically.
 
-See: [Section Player Integration](../packages/section-player/TTS-INTEGRATION.md) for complete integration guide.
+See: [TOOL_PROVIDER_SYSTEM](./TOOL_PROVIDER_SYSTEM.md) for integration details.
 
 ---
 
@@ -327,7 +327,7 @@ The toolkit provides six core services that work together:
 **Architecture**: Maintains tool registry with visibility state and manages z-index layers:
 - 0-999: PIE content and player chrome
 - 1000-1999: Non-modal tools (ruler, protractor, line reader)
-- 2000-2999: Modal tools (calculator, dictionary)
+- 2000-2999: Modal tools (calculator)
 - 3000-3999: Tool control handles (drag, resize)
 - 4000-4999: Highlight infrastructure (TTS, annotations)
 - 5000+: Critical overlays (errors, notifications)
@@ -500,7 +500,7 @@ Use section player with full assessment toolkit for complete section delivery wi
 **Complexity**: Medium
 **Use Case**: Production assessments with full accessibility support
 
-**See**: [Section Player Integration](../packages/section-player/TTS-INTEGRATION.md) for complete examples.
+**See**: [TOOL_HOST_CONTRACT](./TOOL_HOST_CONTRACT.md) for runtime host/tool examples.
 
 ---
 
@@ -520,14 +520,14 @@ Build your own assessment player using toolkit services for complete control ove
 
 - [Authoring Mode Guide](AUTHORING_MODE.md) - Complete authoring documentation
 - [Tools & Accommodations Architecture](tools-and-accomodations/architecture.md) - Tools system design
-- [Math Renderer Architecture](../MATH-RENDERER-ARCHITECTURE.md) - Pluggable math rendering
+- [Math Renderer Architecture](MATH-RENDERER-ARCHITECTURE.md) - Pluggable math rendering
 - [Question Layout Engine Architecture](question-layout-engine-architecture.md) - Layout system design
 
 ### Package Documentation
 
 - [Assessment Toolkit README](../packages/assessment-toolkit/src/README.md) - Toolkit usage and QTI 3.0 examples
 - [Section Player README](../packages/section-player/README.md) - Complete section player API
-- [TTS Integration Guide](../packages/section-player/TTS-INTEGRATION.md) - Service integration details
+- [Tool Provider System](./TOOL_PROVIDER_SYSTEM.md) - Service integration details
 - [Tools README](../packages/assessment-toolkit/src/tools/README.md) - Tool development guide
 
 ### Standards & Specifications

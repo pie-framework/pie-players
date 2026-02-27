@@ -13,7 +13,6 @@ Each tool has its own subdirectory:
 - `protractor/` - Angle measurement
 - `periodic-table/` - Element reference
 - `line-reader/` - Reading accommodation
-- `magnifier/` - Screen magnification
 - `answer-eliminator/` - Answer strikethrough
 - `annotation-toolbar/` - Drawing and markup tools
 - `color-scheme/` - Theme switching

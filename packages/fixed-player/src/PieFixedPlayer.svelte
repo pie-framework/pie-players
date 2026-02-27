@@ -14,7 +14,7 @@
       renderStimulus="true"
       allowedResize="false"
       showBottomBorder="false"
-      customClassname="my-class"
+      customClassName="my-class"
       containerClass="item-class"
       passageContainerClass="passage-class"
       externalStyleUrls="https://example.com/styles.css">
@@ -47,7 +47,7 @@
 		debug: { attribute: 'debug', type: 'String' },
 
 			// Styling props (match pie-player API)
-			customClassname: { attribute: 'custom-classname', type: 'String' },
+			customClassName: { attribute: 'custom-class-name', type: 'String' },
 			containerClass: { attribute: 'container-class', type: 'String' },
 			passageContainerClass: { attribute: 'passage-container-class', type: 'String' },
 			externalStyleUrls: { attribute: 'external-style-urls', type: 'String' },
@@ -68,7 +68,7 @@
 	import { PieItemPlayer, PieSpinner } from '@pie-players/pie-players-shared/components';
 	import { tick } from 'svelte';
 	// Import global component styles
-	import './components.css';
+	import "@pie-players/pie-theme/components.css";
 
 	type ItemSession = {
 		id: string;
@@ -94,7 +94,7 @@
 	debug = '' as string | boolean, // Can be string ("true"/"false") or boolean
 
 		// Styling props
-		customClassname = '',
+		customClassName = '',
 		containerClass = '',
 		passageContainerClass = '',
 		externalStyleUrls = '',
@@ -248,7 +248,7 @@
 	// Generate unique class name for scoping external styles
 	// Use deterministic hash to avoid SSR/hydration mismatches
 	const fallbackScopeClass = `pie-player-${Date.now().toString(36)}`;
-	const scopeClass = $derived((customClassname || fallbackScopeClass).trim());
+	const scopeClass = $derived((customClassName || fallbackScopeClass).trim());
 
 	// Parse config into item/passage configs (handle both simple and stimulus formats)
 	$effect(() => {
@@ -430,7 +430,7 @@
 			style="display: flex; width: 100%; {isResizing ? 'user-select: none;' : ''}"
 		>
 			<div
-				class="player-stimulus-container {resolvedPassageContainerClass}"
+				class="pie-player-stimulus-container {resolvedPassageContainerClass}"
 				style="flex: 0 0 {splitPct}%; min-width: 0;"
 			>
 				<PieItemPlayer
@@ -441,7 +441,7 @@
 						return parsedSession.data || [];
 					})()}
 					addCorrectResponse={false}
-					customClassname={scopeClass}
+					customClassName={scopeClass}
 					containerClass={resolvedPassageContainerClass}
 					bundleType={bundleType === 'client-player.js' ? BundleType.clientPlayer : BundleType.player}
 					{loaderConfig}
@@ -469,7 +469,7 @@
 			{/if}
 			
 			<div
-				class="player-item-container {resolvedContainerClass}"
+				class="pie-player-item-container {resolvedContainerClass}"
 				style="flex: 1 1 calc({100 - splitPct}%); min-width: 0;"
 			>
 				<PieItemPlayer
@@ -480,7 +480,7 @@
 						return parsedSession.data || [];
 					})()}
 					{addCorrectResponse}
-					customClassname={scopeClass}
+					customClassName={scopeClass}
 					containerClass={resolvedContainerClass}
 					bundleType={bundleType === 'client-player.js' ? BundleType.clientPlayer : BundleType.player}
 					{loaderConfig}
@@ -492,7 +492,7 @@
 		</div>
 	{:else}
 		<!-- Simple item or stimulus without passage rendering -->
-		<div class="player-item-container {resolvedContainerClass}">
+		<div class="pie-player-item-container {resolvedContainerClass}">
 			<PieItemPlayer
 				{itemConfig}
 				{passageConfig}
@@ -502,7 +502,7 @@
 					return parsedSession.data || [];
 				})()}
 				{addCorrectResponse}
-				customClassname={scopeClass}
+				customClassName={scopeClass}
 				passageContainerClass={resolvedPassageContainerClass}
 				containerClass={resolvedContainerClass}
 				bundleType={bundleType === 'client-player.js' ? BundleType.clientPlayer : BundleType.player}
@@ -524,8 +524,8 @@
 		width: 100%;
 	}
 
-	:global(.player-item-container),
-	:global(.player-stimulus-container) {
+	:global(.pie-player-item-container),
+	:global(.pie-player-stimulus-container) {
 		width: 100%;
 	}
 </style>

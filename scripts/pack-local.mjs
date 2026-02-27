@@ -28,7 +28,6 @@ const basePackagesToPack = [
 	// Assessment stack
 	"packages/assessment-toolkit",
 	"packages/iife-player",
-	"packages/assessment-player",
 ];
 
 const toolPackagesToPack = readdirSync(join(repoRoot, "packages"))

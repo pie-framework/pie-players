@@ -84,7 +84,7 @@ const allowedToolIds = resolver.resolveAllowedTools(assessment, currentItemRef);
 ```
 
 **Precedence Hierarchy** (highest to lowest priority):
-1. **District block** - Absolute veto (e.g., no dictionary on math tests)
+1. **District block** - Absolute veto (e.g., no calculator on math tests)
 2. **Test override** - Test admin blocks tool for this instance
 3. **Item restriction** - Item blocks tool (e.g., no calculator on mental math)
 4. **Item requirement** - Item REQUIRES tool (e.g., calculator needed for complex math)
@@ -544,7 +544,7 @@ const customPlacement = {
   questionHeader: ['textToSpeech'],  // Only TTS on questions
   passageHeader: ['textToSpeech', 'annotationToolbar'],
   sectionToolbar: ['calculator', 'graph'],  // Minimal section toolbar
-  customSidebar: ['dictionary', 'my-custom-tool']  // Custom placement
+  customSidebar: ['lineReader', 'my-custom-tool']  // Custom placement
 };
 
 <pie-section-player
@@ -567,6 +567,17 @@ const customPlacement = {
 ### 2. Tool Registry Customization (What Tools Are Available)
 
 Clients can use default PIE tools, add custom tools, or override tool behavior.
+
+**Bootstrap recommendation (lazy loading + cycle safety):**
+
+```typescript
+import { createDefaultToolRegistry } from '@pie-players/pie-assessment-toolkit';
+import { DEFAULT_TOOL_MODULE_LOADERS } from '@pie-players/pie-default-tool-loaders';
+
+const registry = createDefaultToolRegistry({
+  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS
+});
+```
 
 Why the default registrations exist:
 

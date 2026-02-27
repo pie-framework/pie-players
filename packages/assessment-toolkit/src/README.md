@@ -76,18 +76,13 @@ sectionPlayer.catalogResolver = catalogResolver;
 sectionPlayer.section = section;
 ```
 
-### ✅ Reference Implementation (Future)
+### ✅ Runtime Integration
 
-An optional **AssessmentPlayer** reference implementation may be provided for multi-section assessments. It would:
-
-- Manage navigation across sections
-- Coordinate section player instances
-- Provide assessment-level state management
-- But delegate to section players for rendering
+Use this toolkit package for shared services, section-player orchestration, and host-app integrations.
 
 ## Project Structure
 
-```
+```text
 assessment-toolkit/
 ├── core/
 │   └── TypedEventBus.ts                    # Event system
@@ -202,10 +197,10 @@ const studentProfile: StudentAccommodations = {
   accommodations: ['tts', 'calculator', 'extended-time']
 };
 
-// Test blocks dictionary but allows calculator
+// Test blocks lineReader but allows calculator
 const rosterConfig: RosterToolConfig = {
   calculator: "1",
-  dictionary: "0"
+  lineReader: "0"
 };
 
 // Current item requires scientific calculator
@@ -226,7 +221,7 @@ const resolved = resolver.resolveAll({
 // Result:
 // - calculator: enabled (scientific, required by item)
 // - tts: enabled (student accommodation)
-// - dictionary: disabled (blocked by roster)
+// - lineReader: disabled (blocked by roster)
 ```
 
 ## Integration Patterns
@@ -374,8 +369,6 @@ await ttsService.updateSettings({
 });
 ```
 
-**Unified Settings UI**: A pre-built settings component is available in `section-demos/src/lib/components/AssessmentToolkitSettings.svelte` that provides a tabbed interface for configuring TTS, highlighting, and other toolkit features. See the component's README for integration details.
-
 ### AccessibilityCatalogResolver
 
 Manages QTI 3.0 accessibility catalogs (SSML, sign language, braille, simplified language, etc.).
@@ -434,6 +427,7 @@ catalogResolver.addItemCatalogs(result.catalogs);
 ```
 
 **Example Input:**
+
 ```typescript
 {
   prompt: `<div>
@@ -444,6 +438,7 @@ catalogResolver.addItemCatalogs(result.catalogs);
 ```
 
 **Example Output:**
+
 ```typescript
 {
   // Cleaned config
@@ -513,7 +508,7 @@ The toolkit natively supports QTI 3.0 features for standards-compliant assessmen
 Student accommodations and IEP/504 support with automatic tool resolution:
 
 ```typescript
-import { AssessmentPlayer, PNPToolResolver } from '@pie-players/pie-assessment-toolkit';
+import { PNPToolResolver } from '@pie-players/pie-assessment-toolkit';
 
 // QTI 3.0 assessment with PNP
 const assessment = {
@@ -535,9 +530,6 @@ const assessment = {
   }
 };
 
-// Simple initialization - tools automatically resolved
-const player = new AssessmentPlayer({ assessment, loadItem });
-
 // Or use PNPToolResolver directly
 const resolver = new PNPToolResolver();
 const tools = resolver.resolveTools(assessment, currentItemRef);
@@ -553,7 +545,6 @@ const tools = resolver.resolveTools(assessment, currentItemRef);
 'protractor'      → 'protractor'
 'highlighter'     → 'highlighter'
 'lineReader'      → 'lineReader'
-'magnifier'       → 'magnifier'
 'colorContrast'   → 'colorScheme'
 'answerMasking'   → 'answerEliminator'
 ```
@@ -563,8 +554,11 @@ and can be overridden via `createDefaultToolRegistry(...)`:
 
 ```typescript
 import { createDefaultToolRegistry } from '@pie-players/pie-assessment-toolkit';
+import { DEFAULT_TOOL_MODULE_LOADERS } from '@pie-players/pie-default-tool-loaders';
 
 const toolRegistry = createDefaultToolRegistry({
+  // Lazy tool module loading (recommended)
+  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
   toolTagMap: {
     calculator: 'my-calculator-tool',
     textToSpeech: 'my-tts-tool'
@@ -577,7 +571,7 @@ const toolRegistry = createDefaultToolRegistry({
 Global variables shared across assessment items:
 
 ```typescript
-import { AssessmentPlayer, ContextVariableStore } from '@pie-players/pie-assessment-toolkit';
+import { ContextVariableStore } from '@pie-players/pie-assessment-toolkit';
 
 // Assessment with context declarations
 const assessment = {
@@ -597,17 +591,7 @@ const assessment = {
   ]
 };
 
-// Use with AssessmentPlayer
-const player = new AssessmentPlayer({ assessment, loadItem });
-
-const seed = player.getContextVariable('RANDOM_SEED');
-player.setContextVariable('DIFFICULTY_LEVEL', 'hard');
-
-// Pass to PIE elements
-const context = player.getContextVariables();
-await renderItem(item, session, context);
-
-// Or use ContextVariableStore directly
+// Use ContextVariableStore directly
 const store = new ContextVariableStore(assessment.contextDeclarations);
 store.set('RANDOM_SEED', 12345);
 const context = store.toObject();
@@ -624,7 +608,7 @@ const context = store.toObject();
 
 Tool resolution follows this precedence (highest to lowest):
 
-```
+```text
 1. District Block (absolute veto)
 2. Test Administration Override
 3. Item Restriction (per-item block)
@@ -636,5 +620,5 @@ Tool resolution follows this precedence (highest to lowest):
 ## Related Documentation
 
 - [Architecture Overview](../../../docs/ARCHITECTURE.md) - Complete system architecture
-- [Assessment Toolkit Architecture](../../../docs/tools-and-accomodations/assessment-player-architecture.md) - Toolkit design
+- [Assessment Toolkit Architecture](../../../docs/tools-and-accomodations/tools-high-level-architecture.md) - Toolkit design
 - [Tools Architecture](../../../docs/tools-and-accomodations/tools-high-level-architecture.md) - Tool coordination

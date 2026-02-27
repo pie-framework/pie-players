@@ -81,7 +81,7 @@ Same as `pie-inline-player`:
 - `session` - Session data array
 - `add-correct-response` - Show correct answers
 - `external-style-urls` - Additional CSS URLs
-- `custom-classname` - Custom CSS class
+- `custom-class-name` - Custom CSS class
 - `container-class` - Container CSS class
 - `passage-container-class` - Passage container CSS class
 - `track-page-actions` - Enable New Relic tracking

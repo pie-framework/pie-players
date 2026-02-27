@@ -6,47 +6,20 @@
   Not exposed as a web component - used internally in PieSectionPlayer.
 -->
 <script lang="ts">
-	import type { ItemEntity, PassageEntity } from '@pie-players/pie-players-shared/types';
+	import type { SectionCompositionModel } from '../../controllers/types.js';
 	import ItemRenderer from '../ItemRenderer.svelte';
-	import PassageRenderer from '../PassageRenderer.svelte';
 
 	let {
-		passages,
-		items,
-		itemSessions = {},
+		composition,
 		env = { mode: 'gather', role: 'student' },
-		bundleHost = '',
-		esmCdnUrl = 'https://esm.sh',
-		playerVersion = 'latest',
-		playerType = 'auto',
-		assessmentId = '',
-		sectionId = '',
-		toolkitCoordinator = null,
-
-		onsessionchanged
+		toolbarPosition = 'right',
+		showToolbar = true
 	}: {
-		passages: PassageEntity[];
-		items: ItemEntity[];
-		itemSessions?: Record<string, any>;
+		composition: SectionCompositionModel;
 		env?: { mode: 'gather' | 'view' | 'evaluate' | 'author'; role: 'student' | 'instructor' };
-		bundleHost?: string;
-		esmCdnUrl?: string;
-		playerVersion?: string;
-		playerType?: 'auto' | 'iife' | 'esm' | 'fixed' | 'inline';
-		assessmentId?: string;
-		sectionId?: string;
-		toolkitCoordinator?: any;
-
-		onsessionchanged?: (itemId: string, session: any) => void;
+		toolbarPosition?: 'top' | 'right' | 'bottom' | 'left' | 'none';
+		showToolbar?: boolean;
 	} = $props();
-
-	function handleItemSessionChanged(itemId: string) {
-		return (event: CustomEvent) => {
-			if (onsessionchanged) {
-				onsessionchanged(itemId, event.detail);
-			}
-		};
-	}
 
 	// Resizable panel state
 	let leftPanelWidth = $state(50); // percentage
@@ -127,113 +100,145 @@
 	});
 
 	// Check if we have passages to determine layout
+	let passages = $derived(composition?.passages || []);
+	let items = $derived(composition?.items || []);
+	let itemSessionsByItemId = $derived(composition?.itemSessionsByItemId || {});
 	let hasPassages = $derived(passages.length > 0);
+	let shouldRenderToolbar = $derived(showToolbar && toolbarPosition !== 'none');
+	let isToolbarBeforeContent = $derived(
+		toolbarPosition === 'top' || toolbarPosition === 'left'
+	);
 </script>
 
-<div
-	class="split-panel-layout"
-	class:no-passages={!hasPassages}
-	bind:this={containerElement}
-	style={hasPassages ? `grid-template-columns: ${leftPanelWidth}% 0.5rem ${100 - leftPanelWidth - 0.5}%` : 'grid-template-columns: 1fr'}
->
-	{#if hasPassages}
-		<!-- Left Panel: Passages -->
-		<aside
-			class="passages-panel"
-			class:is-scrolling={passagesScrolling}
-			aria-label="Reading passages"
-			onscroll={() => markScrolling('passages')}
-		>
-			{#each passages as passage (passage.id)}
-				<PassageRenderer
-					{passage}
-					{bundleHost}
-					{esmCdnUrl}
-					{assessmentId}
-					{sectionId}
-					{toolkitCoordinator}
-					class="passage-item"
-				/>
-			{/each}
-		</aside>
-
-		<!-- Draggable Divider: focusable resize handle, Arrow keys adjust panel width -->
-		<button
-			type="button"
-			class="divider"
-			class:dragging={isDragging}
-			onmousedown={handleMouseDown}
-			onkeydown={handleKeyDown}
-			aria-label="Resize panels"
-		>
-			<span class="divider-handle"></span>
-		</button>
+<div class={`pie-section-player__layout-shell pie-section-player__layout-shell--${toolbarPosition}`}>
+	{#if shouldRenderToolbar && isToolbarBeforeContent}
+		<pie-section-tools-toolbar
+			position={toolbarPosition}
+			enabled-tools=""
+		></pie-section-tools-toolbar>
 	{/if}
-
-	<!-- Items Panel -->
-	<main
-		class="items-panel"
-		class:is-scrolling={itemsScrolling}
-		aria-label="Assessment items"
-		onscroll={() => markScrolling('items')}
+	<div
+		class={`pie-section-player__split-panel-layout ${!hasPassages ? 'pie-section-player__split-panel-layout--no-passages' : ''}`}
+		bind:this={containerElement}
+		style={hasPassages ? `grid-template-columns: ${leftPanelWidth}% 0.5rem ${100 - leftPanelWidth - 0.5}%` : 'grid-template-columns: 1fr'}
 	>
-		{#each items as item, index (item.id || index)}
-			<div class="item-wrapper" data-item-index={index}>
-				<ItemRenderer
-					{item}
-					{env}
-					session={itemSessions[item.id || '']}
-					{bundleHost}
-					{esmCdnUrl}
-					{playerVersion}
-					{playerType}
-					{assessmentId}
-					{sectionId}
-					{toolkitCoordinator}
-					onsessionchanged={handleItemSessionChanged(item.id || '')}
-					class="item-content"
-				/>
-			</div>
-		{/each}
-	</main>
+		{#if hasPassages}
+			<!-- Left Panel: Passages -->
+			<aside
+				class={`pie-section-player__passages-panel ${passagesScrolling ? 'pie-section-player__panel--scrolling' : ''}`}
+				aria-label="Reading passages"
+				onscroll={() => markScrolling('passages')}
+			>
+				{#each passages as passage (passage.id)}
+					<div class="pie-section-player__passage-wrapper">
+						<ItemRenderer
+							item={passage}
+							contentKind="rubric-block-stimulus"
+							env={{ mode: 'view', role: env.role }}
+							customClassName="pie-section-player__passage-item"
+						/>
+					</div>
+				{/each}
+			</aside>
+
+			<!-- Draggable Divider: focusable resize handle, Arrow keys adjust panel width -->
+			<button
+				type="button"
+				class={`pie-section-player__split-divider ${isDragging ? 'pie-section-player__split-divider--dragging' : ''}`}
+				onmousedown={handleMouseDown}
+				onkeydown={handleKeyDown}
+				aria-label="Resize panels"
+			>
+				<span class="pie-section-player__split-divider-handle"></span>
+			</button>
+		{/if}
+
+		<!-- Items Panel -->
+		<main
+			class={`pie-section-player__items-panel ${itemsScrolling ? 'pie-section-player__panel--scrolling' : ''}`}
+			aria-label="Assessment items"
+			onscroll={() => markScrolling('items')}
+		>
+			{#each items as item, index (item.id || index)}
+				<div class="pie-section-player__item-wrapper" data-item-index={index}>
+					<ItemRenderer
+						{item}
+						contentKind="assessment-item"
+						{env}
+						session={itemSessionsByItemId[item.id || '']}
+						customClassName="pie-section-player__item-content"
+					/>
+				</div>
+			{/each}
+		</main>
+	</div>
+	{#if shouldRenderToolbar && !isToolbarBeforeContent}
+		<pie-section-tools-toolbar
+			position={toolbarPosition}
+			enabled-tools=""
+		></pie-section-tools-toolbar>
+	{/if}
 </div>
 
 <style>
-	.split-panel-layout {
+	.pie-section-player__layout-shell {
+		display: flex;
+		width: 100%;
+		height: 100%;
+		min-height: 0;
+		overflow: hidden;
+	}
+
+	.pie-section-player__layout-shell--top,
+	.pie-section-player__layout-shell--bottom,
+	.pie-section-player__layout-shell--none {
+		flex-direction: column;
+	}
+
+	.pie-section-player__layout-shell--left,
+	.pie-section-player__layout-shell--right {
+		flex-direction: row;
+	}
+
+	.pie-section-player__split-panel-layout {
 		display: grid;
-		grid-template-rows: 1fr;
+		grid-template-rows: minmax(0, 1fr);
 		padding: 1rem;
 		height: 100%;
+		flex: 1;
 		max-height: 100%;
 		min-height: 0;
+		overflow: hidden;
 		gap: 0;
 	}
 
-	.split-panel-layout.no-passages {
+	.pie-section-player__split-panel-layout--no-passages {
 		padding: 1rem;
 	}
 
-	.split-panel-layout.no-passages .items-panel {
+	.pie-section-player__split-panel-layout--no-passages .pie-section-player__items-panel {
 		padding: 0;
 	}
 
-	.passages-panel,
-	.items-panel {
+	.pie-section-player__passages-panel,
+	.pie-section-player__items-panel {
 		height: 100%;
+		max-height: 100%;
 		overflow-y: auto;
 		overflow-x: hidden;
+		overscroll-behavior: contain;
 		min-height: 0;
+		min-width: 0;
 		/* Firefox auto-hide scrollbar */
 		scrollbar-width: auto;
 		scrollbar-color: transparent transparent;
 	}
 
-	.passages-panel.is-scrolling,
-	.items-panel.is-scrolling {
-		scrollbar-color: #c1c1c1 #f1f1f1;
+	.pie-section-player__panel--scrolling {
+		scrollbar-color: var(--pie-blue-grey-300, #c1c1c1) var(--pie-secondary-background, #f1f1f1);
 	}
 
-	.divider {
+	.pie-section-player__split-divider {
 		/* Reset button defaults so it looks like a divider strip */
 		border: none;
 		padding: 0;
@@ -245,7 +250,7 @@
 		min-height: 0;
 		position: relative;
 		cursor: col-resize;
-		background: #f3f4f6;
+		background: var(--pie-secondary-background, #f3f4f6);
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -254,29 +259,29 @@
 		transition: background 0.2s ease;
 	}
 
-	.divider:hover {
-		background: #e5e7eb;
+	.pie-section-player__split-divider:hover {
+		background: var(--pie-border-light, #e5e7eb);
 	}
 
-	.divider:focus {
-		outline: 2px solid #1976d2;
+	.pie-section-player__split-divider:focus {
+		outline: 2px solid var(--pie-focus-checked-border, #1976d2);
 		outline-offset: -2px;
 	}
 
-	.divider-handle {
-		/* Absolutely centered in the divider button (button fills grid cell height) */
+	.pie-section-player__split-divider-handle {
+		/* Absolutely centered in the divider button (matches develop behavior) */
 		position: absolute;
 		inset: 0;
 		margin: auto;
 		width: 6px;
 		height: 60px;
-		background: #9ca3af;
+		background: var(--pie-blue-grey-600, #9ca3af);
 		border-radius: 3px;
 		transition: all 0.2s ease;
 		pointer-events: none;
 	}
 
-	.divider-handle::before {
+	.pie-section-player__split-divider-handle::before {
 		content: '';
 		position: absolute;
 		top: 50%;
@@ -284,91 +289,99 @@
 		transform: translate(-50%, -50%);
 		width: 2px;
 		height: 20px;
-		background: white;
+		background: var(--pie-white, white);
 		border-radius: 1px;
 		opacity: 0.8;
 	}
 
-	.divider:hover .divider-handle,
-	.divider:focus .divider-handle,
-	.divider.dragging .divider-handle {
-		background: #1976d2;
+	.pie-section-player__split-divider:hover .pie-section-player__split-divider-handle,
+	.pie-section-player__split-divider:focus .pie-section-player__split-divider-handle,
+	.pie-section-player__split-divider--dragging .pie-section-player__split-divider-handle {
+		background: var(--pie-primary, #1976d2);
 		height: 80px;
 		box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3);
 	}
 
-	.divider.dragging {
-		background: #dbeafe;
+	.pie-section-player__split-divider--dragging {
+		background: var(--pie-primary-light, #dbeafe);
 	}
 
-	.passages-panel {
+	.pie-section-player__passages-panel {
 		display: flex;
 		flex-direction: column;
 		gap: 1.5rem;
 	}
 
-	.items-panel {
+	.pie-section-player__items-panel {
 		display: flex;
 		flex-direction: column;
 		gap: 1.5rem;
 	}
 
-	.item-wrapper {
+	.pie-section-player__item-wrapper {
 		flex-shrink: 0;
+	}
+
+	.pie-section-player__passage-wrapper {
+		flex-shrink: 0;
+	}
+
+	.pie-section-player__item-wrapper,
+	.pie-section-player__passage-wrapper {
+		padding: 0.25rem;
+		background: var(--pie-white, white);
+		border: 1px solid var(--pie-border-light, #e5e7eb);
+		border-radius: 6px;
 	}
 
 	/* Mobile/Narrow: Fall back to vertical layout */
 	@media (max-width: 768px) {
-		.split-panel-layout {
+		.pie-section-player__split-panel-layout {
 			grid-template-columns: 1fr !important;
 			gap: 1rem;
 			min-height: auto;
 			padding: 0.5rem;
 		}
 
-		.divider {
+		.pie-section-player__split-divider {
 			display: none;
 		}
 
-		.passages-panel,
-		.items-panel {
+		.pie-section-player__passages-panel,
+		.pie-section-player__items-panel {
 			height: auto;
 			max-height: none;
 			overflow-y: visible;
 		}
 
-		.items-panel {
+		.pie-section-player__items-panel {
 			gap: 1rem;
 		}
 	}
 
 	/* Hide scrollbar by default - WebKit (Chrome, Safari, Edge) */
-	.passages-panel::-webkit-scrollbar,
-	.items-panel::-webkit-scrollbar {
+	.pie-section-player__passages-panel::-webkit-scrollbar,
+	.pie-section-player__items-panel::-webkit-scrollbar {
 		width: 0px;
 		background: transparent;
 	}
 
 	/* Show scrollbar while scrolling */
-	.passages-panel.is-scrolling::-webkit-scrollbar,
-	.items-panel.is-scrolling::-webkit-scrollbar {
+	.pie-section-player__panel--scrolling::-webkit-scrollbar {
 		width: 8px;
 	}
 
-	.passages-panel.is-scrolling::-webkit-scrollbar-track,
-	.items-panel.is-scrolling::-webkit-scrollbar-track {
-		background: #f1f1f1;
+	.pie-section-player__panel--scrolling::-webkit-scrollbar-track {
+		background: var(--pie-secondary-background, #f1f1f1);
 		border-radius: 4px;
 	}
 
-	.passages-panel.is-scrolling::-webkit-scrollbar-thumb,
-	.items-panel.is-scrolling::-webkit-scrollbar-thumb {
-		background: #c1c1c1;
+	.pie-section-player__panel--scrolling::-webkit-scrollbar-thumb {
+		background: var(--pie-blue-grey-300, #c1c1c1);
 		border-radius: 4px;
 	}
 
-	.passages-panel.is-scrolling::-webkit-scrollbar-thumb:hover,
-	.items-panel.is-scrolling::-webkit-scrollbar-thumb:hover {
-		background: #a1a1a1;
+	.pie-section-player__panel--scrolling::-webkit-scrollbar-thumb:hover {
+		background: var(--pie-blue-grey-600, #a1a1a1);
 	}
 </style>

@@ -7,15 +7,41 @@
 		"declarationMap": true,
 		"disableSourceOfProjectReferenceRedirect": true,
 		"noUnusedLocals": false,
-		"noUnusedParameters": false
+		"noUnusedParameters": false,
+		"moduleResolution": "NodeNext",
+		"baseUrl": ".",
+		"paths": {
+			"@pie-players/pie-assessment-toolkit": ["./src/index.ts"],
+			"@pie-players/pie-assessment-toolkit/*": ["./src/*"]
+		}
 	},
-	"include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.svelte"],
-	"exclude": ["dist", "node_modules"],
+	"include": [
+		"src/**/*.ts",
+		"src/**/*.d.ts",
+		"src/**/*.svelte"
+	],
+	"exclude": [
+		"dist",
+		"node_modules"
+	],
 	"references": [
-		{ "path": "../calculator" },
-		{ "path": "../calculator-desmos" },
-		{ "path": "../tts" },
-		{ "path": "../tts-client-server" },
-		{ "path": "../players-shared" }
+		{
+			"path": "../pie-context"
+		},
+		{
+			"path": "../calculator"
+		},
+		{
+			"path": "../calculator-desmos"
+		},
+		{
+			"path": "../tts"
+		},
+		{
+			"path": "../tts-client-server"
+		},
+		{
+			"path": "../players-shared"
+		}
 	]
 }

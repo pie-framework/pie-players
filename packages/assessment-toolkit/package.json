@@ -1,12 +1,13 @@
 {
 	"name": "@pie-players/pie-assessment-toolkit",
-	"version": "0.2.5",
+	"version": "0.2.8",
 	"type": "module",
 	"description": "PIE assessment toolkit: composable services + reference implementation for assessment players and tool coordination",
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/pie-framework/pie-players.git"
+		"url": "git+https://github.com/pie-framework/pie-players.git",
+		"directory": "packages/assessment-toolkit"
 	},
 	"publishConfig": {
 		"access": "public"
@@ -24,25 +25,13 @@
 			"types": "./dist/tools/client.d.ts",
 			"import": "./dist/tools/client.js"
 		},
-		"./assessment-player": {
-			"types": "./dist/player/index.d.ts",
-			"import": "./dist/player/index.js"
+		"./components/item-toolbar-element": {
+			"types": "./dist/components/item-toolbar-element.d.ts",
+			"import": "./dist/components/item-toolbar-element.js"
 		},
-		"./assessment-player/Layout.svelte": {
-			"svelte": "./src/player/AssessmentLayout.svelte",
-			"import": "./src/player/AssessmentLayout.svelte"
-		},
-		"./components/QuestionToolBar.svelte": {
-			"svelte": "./src/components/QuestionToolBar.svelte",
-			"import": "./src/components/QuestionToolBar.svelte"
-		},
-		"./components/PNPProvenanceViewer.svelte": {
-			"svelte": "./src/components/PNPProvenanceViewer.svelte",
-			"import": "./src/components/PNPProvenanceViewer.svelte"
-		},
-		"./components/PNPProfileTester.svelte": {
-			"svelte": "./src/components/PNPProfileTester.svelte",
-			"import": "./src/components/PNPProfileTester.svelte"
+		"./components/pie-assessment-toolkit-element": {
+			"types": "./dist/components/pie-assessment-toolkit-element.d.ts",
+			"import": "./dist/components/pie-assessment-toolkit-element.js"
 		},
 		"./services/pnp-standard-features": {
 			"types": "./dist/services/pnp-standard-features.d.ts",
@@ -63,7 +52,7 @@
 		"README.md"
 	],
 	"scripts": {
-		"build": "tsc -p tsconfig.json",
+		"build": "rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json && node ./scripts/build-ce-components.mjs",
 		"dev": "tsc -p tsconfig.json --watch",
 		"typecheck": "tsc -p tsconfig.json --noEmit",
 		"lint": "biome check .",
@@ -73,10 +62,10 @@
 	"dependencies": {
 		"@pie-players/pie-calculator": "workspace:*",
 		"@pie-players/pie-calculator-desmos": "workspace:*",
+		"@pie-players/pie-context": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*",
 		"@pie-players/pie-tts": "workspace:*",
 		"@pie-players/tts-client-server": "workspace:*",
-		"@sveltejs/kit": "^2.52.0",
 		"daisyui": "^5.5.18"
 	},
 	"peerDependencies": {
@@ -85,5 +74,13 @@
 	"devDependencies": {
 		"@biomejs/biome": "^2.3.10",
 		"typescript": "^5.9.3"
-	}
+	},
+	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/assessment-toolkit#readme",
+	"bugs": {
+		"url": "https://github.com/pie-framework/pie-players/issues"
+	},
+	"engines": {
+		"node": ">=18.0.0"
+	},
+	"sideEffects": true
 }

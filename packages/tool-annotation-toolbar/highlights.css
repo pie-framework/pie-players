@@ -213,7 +213,7 @@
    Screen Reader Only (accessibility helper class)
    ============================================================================ */
 
-.sr-only {
+.pie-sr-only {
 	position: absolute;
 	width: 1px;
 	height: 1px;
@@ -229,19 +229,19 @@
    Focus Indicators (for toolbar buttons)
    ============================================================================ */
 
-.annotation-toolbar button:focus-visible {
+.pie-tool-annotation-toolbar button:focus-visible {
 	outline: 2px solid #0066cc;
 	outline-offset: 2px;
 }
 
 @media (prefers-color-scheme: dark) {
-	.annotation-toolbar button:focus-visible {
+	.pie-tool-annotation-toolbar button:focus-visible {
 		outline-color: #4da6ff;
 	}
 }
 
 @media (prefers-contrast: high) {
-	.annotation-toolbar button:focus-visible {
+	.pie-tool-annotation-toolbar button:focus-visible {
 		outline-width: 3px;
 	}
 }

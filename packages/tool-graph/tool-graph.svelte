@@ -1,19 +1,24 @@
 <svelte:options
 	customElement={{
 		tag: 'pie-tool-graph',
-		shadow: 'none',
+		shadow: 'open',
 		props: {
 			visible: { type: 'Boolean', attribute: 'visible' },
-			toolId: { type: 'String', attribute: 'tool-id' },
-			coordinator: { type: 'Object' }
+			toolId: { type: 'String', attribute: 'tool-id' }
 		}
 	}}
 />
 
 <script lang="ts">
 	
-	import type { IToolCoordinator } from '@pie-players/pie-assessment-toolkit';
-	import { ZIndexLayer } from '@pie-players/pie-assessment-toolkit';
+	import {
+		connectToolRuntimeContext,
+		ZIndexLayer,
+	} from '@pie-players/pie-assessment-toolkit';
+	import type {
+		AssessmentToolkitRuntimeContext,
+		IToolCoordinator,
+	} from '@pie-players/pie-assessment-toolkit';
 	import ToolSettingsButton from '@pie-players/pie-players-shared/components/ToolSettingsButton.svelte';
 	import ToolSettingsPanel from '@pie-players/pie-players-shared/components/ToolSettingsPanel.svelte';
 import { onDestroy, onMount } from 'svelte';
@@ -21,12 +26,10 @@ import { onDestroy, onMount } from 'svelte';
 	// Props
 	let {
 		visible = false,
-		toolId = 'graph',
-		coordinator
+		toolId = 'graph'
 	}: {
 		visible?: boolean;
 		toolId?: string;
-		coordinator?: IToolCoordinator;
 	} = $props();
 
 	// Check if running in browser
@@ -55,6 +58,10 @@ import { onDestroy, onMount } from 'svelte';
 
 	// State
 	let containerEl = $state<HTMLDivElement | undefined>();
+	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	const coordinator = $derived(
+		runtimeContext?.toolCoordinator as IToolCoordinator | undefined,
+	);
 	let canvasWrapperEl = $state<HTMLDivElement | undefined>();
 	let svgCanvasEl = $state<SVGSVGElement | undefined>();
 	let settingsButtonEl = $state<HTMLButtonElement | undefined>();
@@ -88,6 +95,13 @@ import { onDestroy, onMount } from 'svelte';
 	// Container pixel dimensions (from ResizeObserver)
 	let containerPixelWidth = $state(0);
 	let containerPixelHeight = $state(0);
+
+	$effect(() => {
+		if (!containerEl) return;
+		return connectToolRuntimeContext(containerEl, (value: AssessmentToolkitRuntimeContext) => {
+			runtimeContext = value;
+		});
+	});
 
 	// Dynamic viewBox width (matching production implementation)
 	let viewBoxWidth = $derived.by(() => {
@@ -183,6 +197,34 @@ import { onDestroy, onMount } from 'svelte';
 
 	function isPointHighlighted(pointId: number): boolean {
 		return pointId === tempLineStartPointId || pointId === draggingPointId;
+	}
+
+	function activatePoint(pointId: number) {
+		if (currentTool === 'delete') {
+			points = points.filter((p) => p.id !== pointId);
+			lines = lines.filter((l) => l.p1Id !== pointId && l.p2Id !== pointId);
+			return;
+		}
+
+		if (currentTool === 'line') {
+			if (tempLineStartPointId === null) {
+				tempLineStartPointId = pointId;
+				return;
+			}
+
+			if (tempLineStartPointId !== pointId) {
+				const exists = lines.some(
+					(l) =>
+						(l.p1Id === tempLineStartPointId && l.p2Id === pointId) ||
+						(l.p1Id === pointId && l.p2Id === tempLineStartPointId)
+				);
+				if (!exists) {
+					lines = [...lines, { id: getUniqueId(), p1Id: tempLineStartPointId, p2Id: pointId }];
+				}
+			}
+			tempLineStartPointId = null;
+			currentPointerPos = null;
+		}
 	}
 
 	// Computed grid lines (matching production implementation)
@@ -350,7 +392,7 @@ import { onDestroy, onMount } from 'svelte';
 		const target = e.target as HTMLElement;
 
 		// Only start drag if clicking the header
-		if (!target.closest('.graph-header')) return;
+		if (!target.closest('.pie-tool-graph__header')) return;
 
 		// Don't drag if clicking settings button
 		if (target.closest('.tool-settings-button')) return;
@@ -452,7 +494,7 @@ import { onDestroy, onMount } from 'svelte';
 {#if visible}
 	<div
 		bind:this={containerEl}
-		class="graph-tool-container"
+		class="pie-tool-graph"
 		role="dialog"
 		tabindex="-1"
 		aria-label="Graph Tool - Draw points and lines on a coordinate grid"
@@ -460,9 +502,9 @@ import { onDestroy, onMount } from 'svelte';
 		onpointerdown={handlePointerDown}
 	>
 		<!-- Header (matching production implementation: dark teal) -->
-		<div class="graph-header">
-			<h3 id="graph-tool-title" class="graph-title">Graph Tool</h3>
-			<div class="header-controls">
+		<div class="pie-tool-graph__header">
+			<h3 id="graph-tool-title" class="pie-tool-graph__title">Graph Tool</h3>
+			<div class="pie-tool-graph__header-controls">
 				<ToolSettingsButton
 					bind:buttonEl={settingsButtonEl}
 					onClick={toggleSettings}
@@ -473,20 +515,20 @@ import { onDestroy, onMount } from 'svelte';
 		</div>
 
 		<!-- Toolbar (matching production implementation: lighter teal) -->
-		<div class="graph-toolbar">
+		<div class="pie-tool-graph__toolbar">
 			<!-- Tool buttons -->
-			<div class="tool-buttons">
+			<div class="pie-tool-graph__tool-buttons">
 				{#each tools as tool (tool.name)}
 					<button
 						type="button"
-						class="tool-button"
-						class:active={currentTool === tool.name}
+						class="pie-tool-graph__tool-button"
+						class:pie-tool-graph__tool-button--active={currentTool === tool.name}
 						onclick={() => setTool(tool.name)}
 						title={tool.title}
 						aria-label={tool.title}
 						aria-pressed={currentTool === tool.name}
 					>
-						<span class="tool-icon" aria-hidden="true">
+						<span class="pie-tool-graph__tool-icon" aria-hidden="true">
 							{#if tool.name === 'selector'}
 								<!-- Selector icon (swirling arrow) -->
 								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -515,13 +557,13 @@ import { onDestroy, onMount } from 'svelte';
 								</svg>
 							{/if}
 						</span>
-						<span class="tool-label">{tool.label}</span>
+						<span class="pie-tool-graph__tool-label">{tool.label}</span>
 					</button>
 				{/each}
 			</div>
 
 			<!-- Grid opacity slider (matching production implementation) -->
-			<div class="transparency-control">
+			<div class="pie-tool-graph__transparency-control">
 				<label for="grid-opacity">Grid:</label>
 				<input
 					type="range"
@@ -540,7 +582,7 @@ import { onDestroy, onMount } from 'svelte';
 		<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 		<div
 			bind:this={canvasWrapperEl}
-			class="graph-canvas-wrapper"
+			class="pie-tool-graph__canvas-wrapper"
 			role="img"
 			tabindex="0"
 			aria-label="Graph canvas - Use tools to add points and draw lines"
@@ -554,7 +596,7 @@ import { onDestroy, onMount } from 'svelte';
 		>
 			<svg
 				bind:this={svgCanvasEl}
-				class="graph-canvas"
+				class="pie-tool-graph__canvas"
 				viewBox="0 0 {viewBoxWidth} 100"
 				preserveAspectRatio="xMinYMin meet"
 				aria-hidden="true"
@@ -563,7 +605,7 @@ import { onDestroy, onMount } from 'svelte';
 				onpointerleave={handlePointerUp}
 			>
 				<!-- Grid Lines -->
-				<g class="grid-lines" style="opacity: {gridOpacity}" aria-hidden="true">
+				<g class="pie-tool-graph__grid-lines" style="opacity: {gridOpacity}" aria-hidden="true">
 					<!-- Minor Horizontal Lines -->
 					{#each gridLines.minorHorizontal as yPos, index (index)}
 						<line
@@ -571,7 +613,7 @@ import { onDestroy, onMount } from 'svelte';
 							y1={yPos}
 							x2={viewBoxWidth}
 							y2={yPos}
-							class="grid-line grid-line-minor"
+							class="pie-tool-graph__grid-line pie-tool-graph__grid-line--minor"
 						/>
 					{/each}
 					<!-- Major Horizontal Lines -->
@@ -581,7 +623,7 @@ import { onDestroy, onMount } from 'svelte';
 							y1={yPos}
 							x2={viewBoxWidth}
 							y2={yPos}
-							class="grid-line grid-line-major"
+							class="pie-tool-graph__grid-line pie-tool-graph__grid-line--major"
 						/>
 					{/each}
 
@@ -592,7 +634,7 @@ import { onDestroy, onMount } from 'svelte';
 							y1="0"
 							x2={xPos}
 							y2="100"
-							class="grid-line grid-line-minor"
+							class="pie-tool-graph__grid-line pie-tool-graph__grid-line--minor"
 						/>
 					{/each}
 					<!-- Major Vertical Lines -->
@@ -602,13 +644,13 @@ import { onDestroy, onMount } from 'svelte';
 							y1="0"
 							x2={xPos}
 							y2="100"
-							class="grid-line grid-line-major"
+							class="pie-tool-graph__grid-line pie-tool-graph__grid-line--major"
 						/>
 					{/each}
 				</g>
 
 				<!-- Lines -->
-				<g class="lines">
+				<g class="pie-tool-graph__lines">
 					{#each lines as line (line.id)}
 						{@const p1 = getPointById(line.p1Id)}
 						{@const p2 = getPointById(line.p2Id)}
@@ -618,25 +660,34 @@ import { onDestroy, onMount } from 'svelte';
 								y1={p1.y}
 								x2={p2.x}
 								y2={p2.y}
-								class="user-line"
+								class="pie-tool-graph__user-line"
 							/>
 						{/if}
 					{/each}
 				</g>
 
 				<!-- Points -->
-				<g class="points">
+				<g class="pie-tool-graph__points">
 					{#each points as point (point.id)}
 						<circle
 							cx={point.x}
 							cy={point.y}
 							r="2"
-							class="user-point"
-							class:highlight={isPointHighlighted(point.id)}
+							class="pie-tool-graph__user-point"
+							class:pie-tool-graph__user-point--highlight={isPointHighlighted(point.id)}
 							data-id={point.id}
+							role="button"
+							tabindex="0"
+							aria-label="Graph point {point.id}"
 							onpointerdown={(e) => {
 								e.stopPropagation();
 								handlePointPointerDown(point.id, e);
+							}}
+							onkeydown={(e) => {
+								if (e.key === 'Enter' || e.key === ' ') {
+									e.preventDefault();
+									activatePoint(point.id);
+								}
 							}}
 						/>
 					{/each}
@@ -651,7 +702,7 @@ import { onDestroy, onMount } from 'svelte';
 							y1={startPoint.y}
 							x2={currentPointerPos.x}
 							y2={currentPointerPos.y}
-							class="temp-line"
+							class="pie-tool-graph__temp-line"
 						/>
 					{/if}
 				{/if}
@@ -666,10 +717,10 @@ import { onDestroy, onMount } from 'svelte';
 		onClose={closeSettings}
 		anchorEl={settingsButtonEl}
 	>
-		<fieldset class="setting-group">
+		<fieldset class="pie-tool-graph__setting-group">
 			<legend>Canvas</legend>
 			<label>
-				<span class="setting-label">Grid Opacity</span>
+				<span class="pie-tool-graph__setting-label">Grid Opacity</span>
 				<input
 					type="range"
 					min="0"
@@ -684,7 +735,7 @@ import { onDestroy, onMount } from 'svelte';
 {/if}
 
 <style>
-	.graph-tool-container {
+	.pie-tool-graph {
 		position: fixed;
 		background: white;
 		box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
@@ -699,7 +750,7 @@ import { onDestroy, onMount } from 'svelte';
 	}
 
 	/* Header (matching production implementation: dark teal) */
-	.graph-header {
+	.pie-tool-graph__header {
 		padding: 12px 16px;
 		background: var(--pie-primary-dark, #2c3e50); /* Dark teal-like color */
 		color: var(--pie-white, white);
@@ -711,21 +762,21 @@ import { onDestroy, onMount } from 'svelte';
 		border-radius: 12px 12px 0 0;
 	}
 
-	.graph-title {
+	.pie-tool-graph__title {
 		font-weight: 600;
 		font-size: 16px;
 		color: var(--pie-white, white);
 		margin: 0;
 	}
 
-	.header-controls {
+	.pie-tool-graph__header-controls {
 		display: flex;
 		gap: 8px;
 		align-items: center;
 	}
 
 	/* Toolbar (matching production implementation: lighter teal) */
-	.graph-toolbar {
+	.pie-tool-graph__toolbar {
 		padding: 8px;
 		background: var(--pie-primary-light, #5a7fa3); /* Lighter teal-like color */
 		display: flex;
@@ -734,13 +785,13 @@ import { onDestroy, onMount } from 'svelte';
 		flex-wrap: wrap;
 	}
 
-	.tool-buttons {
+	.pie-tool-graph__tool-buttons {
 		display: flex;
 		gap: 4px;
 		flex: 1;
 	}
 
-	.tool-button {
+	.pie-tool-graph__tool-button {
 		flex: 1;
 		display: flex;
 		flex-direction: column;
@@ -756,17 +807,17 @@ import { onDestroy, onMount } from 'svelte';
 		transition: all 0.2s;
 	}
 
-	.tool-button:hover {
+	.pie-tool-graph__tool-button:hover {
 		background: rgba(255, 255, 255, 0.3);
 	}
 
-	.tool-button.active {
+	.pie-tool-graph__tool-button.pie-tool-graph__tool-button--active {
 		background: white;
 		color: var(--pie-primary-dark, #2c3e50);
 		border-color: var(--pie-primary-dark, #2c3e50);
 	}
 
-	.tool-icon {
+	.pie-tool-graph__tool-icon {
 		width: 20px;
 		height: 20px;
 		display: flex;
@@ -774,12 +825,12 @@ import { onDestroy, onMount } from 'svelte';
 		justify-content: center;
 	}
 
-	.tool-label {
+	.pie-tool-graph__tool-label {
 		font-size: 11px;
 		font-weight: 500;
 	}
 
-	.transparency-control {
+	.pie-tool-graph__transparency-control {
 		display: flex;
 		align-items: center;
 		gap: 8px;
@@ -788,17 +839,17 @@ import { onDestroy, onMount } from 'svelte';
 		padding-left: 8px;
 	}
 
-	.transparency-control label {
+	.pie-tool-graph__transparency-control label {
 		font-weight: 500;
 	}
 
-	.transparency-control input[type='range'] {
+	.pie-tool-graph__transparency-control input[type='range'] {
 		width: 100px;
 		cursor: pointer;
 	}
 
 	/* Canvas wrapper */
-	.graph-canvas-wrapper {
+	.pie-tool-graph__canvas-wrapper {
 		flex: 1;
 		background: white;
 		display: flex;
@@ -807,30 +858,30 @@ import { onDestroy, onMount } from 'svelte';
 		overflow: hidden;
 	}
 
-	.graph-canvas {
+	.pie-tool-graph__canvas {
 		display: block;
 		width: 100%;
 		height: 100%;
 	}
 
 	/* Grid lines (matching production implementation: dark gray) */
-	.grid-line {
+	.pie-tool-graph__grid-line {
 		stroke: var(--pie-primary-console, #666);
 		vector-effect: non-scaling-stroke;
 	}
 
-	.grid-line-major {
+	.pie-tool-graph__grid-line--major {
 		stroke: var(--pie-primary-dark-console, #333);
 		stroke-width: 0.75;
 	}
 
-	.grid-line-minor {
+	.pie-tool-graph__grid-line--minor {
 		stroke: var(--pie-primary-light-console, #ccc);
 		stroke-width: 0.5;
 	}
 
 	/* User drawing styles */
-	.user-point {
+	.pie-tool-graph__user-point {
 		cursor: pointer;
 		fill: var(--pie-primary, #3f51b5);
 		stroke: var(--pie-primary-dark, #2c3e50);
@@ -838,19 +889,19 @@ import { onDestroy, onMount } from 'svelte';
 		vector-effect: non-scaling-stroke;
 	}
 
-	.user-point.highlight {
+	.pie-tool-graph__user-point.pie-tool-graph__user-point--highlight {
 		fill: var(--pie-warning, #ffc107);
 		stroke: var(--pie-warning-dark, #ff9800);
 	}
 
-	.user-line {
+	.pie-tool-graph__user-line {
 		stroke: var(--pie-dark-gray, #333);
 		stroke-linecap: round;
 		stroke-width: 1;
 		vector-effect: non-scaling-stroke;
 	}
 
-	.temp-line {
+	.pie-tool-graph__temp-line {
 		pointer-events: none;
 		stroke: var(--pie-success, #4caf50);
 		stroke-dasharray: 2, 2;
@@ -858,19 +909,19 @@ import { onDestroy, onMount } from 'svelte';
 		vector-effect: non-scaling-stroke;
 	}
 
-	.setting-group {
+	.pie-tool-graph__setting-group {
 		border: 1px solid var(--pie-border, #ccc);
 		border-radius: 4px;
 		padding: 12px;
 		margin-bottom: 16px;
 	}
 
-	.setting-group legend {
+	.pie-tool-graph__setting-group legend {
 		font-weight: 600;
 		padding: 0 8px;
 	}
 
-	.setting-label {
+	.pie-tool-graph__setting-label {
 		display: block;
 		margin-bottom: 8px;
 		font-weight: 500;

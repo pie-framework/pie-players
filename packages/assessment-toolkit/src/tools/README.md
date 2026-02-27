@@ -139,10 +139,10 @@ src/lib/tags/tool-{name}/
 {#if visible}
   <div 
     bind:this={containerEl}
-    class="my-tool"
+    class="pie-tool-my-tool"
     on:mousedown={() => toolCoordinator.bringToFront(toolId)}
   >
-    <div class="tool-header">
+    <div class="pie-tool-my-tool__header">
       <span>My Tool</span>
       <button on:click={handleClose}>×</button>
     </div>
@@ -152,7 +152,7 @@ src/lib/tags/tool-{name}/
 {/if}
 
 <style>
-  .my-tool {
+  .pie-tool-my-tool {
     position: fixed;
     /* Tool-specific styles */
   }
@@ -257,6 +257,7 @@ Tools that require external API integration:
 6. **Make tools draggable** for better UX
 7. **Add close buttons** to all tools
 8. **Use consistent styling** (header, body, controls)
+9. **Use namespaced classes** (`pie-tool-{name}` and `pie-tool-{name}__*`)
 
 ## Architectural Enhancement Services
 
@@ -317,7 +318,7 @@ const roster: RosterToolConfiguration = {
   rosterId: 'roster-456',
   toolAllowances: {
     calculator: '1', // allowed
-    dictionary: '0', // blocked
+    lineReader: '0', // blocked
   },
 };
 
@@ -329,7 +330,7 @@ const item: ItemToolConfig = {
 
 // Resolve final tools
 const resolved = accommodationResolver.resolveToolsForItem(student, roster, item);
-// Returns: [calculator, highlighter, protractor] (graphing-calculator blocked, dictionary blocked)
+// Returns: [calculator, highlighter, protractor] (graphing-calculator blocked, lineReader blocked)
 
 // Check specific tool
 const result = accommodationResolver.isToolAllowed('calculator', student, roster, item);

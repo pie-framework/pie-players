@@ -13,9 +13,9 @@
 
 import type {
 	ToolRegistration,
-	ToolButtonDefinition,
-	ToolButtonOptions,
-	ToolInstanceOptions,
+	ToolToolbarButtonDefinition,
+	ToolToolbarRenderResult,
+	ToolbarContext,
 } from "../../services/ToolRegistry.js";
 import type { ToolContext } from "../../services/tool-context.js";
 import {
@@ -39,8 +39,8 @@ export const answerEliminatorToolRegistration: ToolRegistration = {
 	description: "Strike through answer choices",
 	icon: "strikethrough",
 
-	// Answer eliminator appears at item and element level
-	supportedLevels: ["item", "element"],
+	// Answer eliminator appears at item level only
+	supportedLevels: ["item"],
 
 	// PNP support IDs
 	// Maps to QTI 3.0 standard feature: answerMasking
@@ -58,61 +58,68 @@ export const answerEliminatorToolRegistration: ToolRegistration = {
 		return hasChoiceInteraction(context);
 	},
 
-	createButton(
+	renderToolbar(
 		context: ToolContext,
-		options: ToolButtonOptions,
-	): ToolButtonDefinition {
-		return {
-			toolId: this.toolId,
-			label: this.name,
-			icon: typeof this.icon === "function" ? this.icon(context) : this.icon,
-			disabled: options.disabled || false,
-			ariaLabel:
-				options.ariaLabel || "Answer eliminator - Strike through choices",
-			tooltip: options.tooltip || "Strike Through",
-			onClick: options.onClick || (() => {}),
-			className: options.className,
-		};
-	},
-
-	createToolInstance(
-		context: ToolContext,
-		options: ToolInstanceOptions,
-	): HTMLElement {
+		toolbarContext: ToolbarContext,
+	): ToolToolbarRenderResult {
+		const fullToolId = `${this.toolId}-${toolbarContext.itemId}`;
 		const componentOverrides =
-			(options.config as ToolComponentOverrides | undefined) ?? {};
-		const answerEliminator = createToolElement(
+			(toolbarContext.componentOverrides as ToolComponentOverrides | undefined) ?? {};
+		const overlay = createToolElement(
 			this.toolId,
 			context,
-			options,
+			toolbarContext,
 			componentOverrides,
 		) as HTMLElement & {
-			visible: boolean;
-			toolId: string;
+			visible?: boolean;
+			toolId?: string;
 			coordinator?: unknown;
 			elementToolStateStore?: unknown;
 			globalElementId?: string;
+			scopeElement?: HTMLElement | null;
+		};
+		overlay.setAttribute("tool-id", fullToolId);
+		overlay.setAttribute("strategy", "strikethrough");
+		overlay.setAttribute("button-alignment", "inline");
+
+		const button: ToolToolbarButtonDefinition = {
+			toolId: this.toolId,
+			label: this.name,
+			icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M19,3H16.3H7.7H5A2,2 0 0,0 3,5V7.7V16.4V19A2,2 0 0,0 5,21H7.7H16.4H19A2,2 0 0,0 21,19V16.3V7.7V5A2,2 0 0,0 19,3M15.6,17L12,13.4L8.4,17L7,15.6L10.6,12L7,8.4L8.4,7L12,10.6L15.6,7L17,8.4L13.4,12L17,15.6L15.6,17Z"/></svg>',
+			disabled: false,
+			ariaLabel: "Answer eliminator - Strike through choices",
+			tooltip: "Strike Through",
+			onClick: () => toolbarContext.toggleTool(this.toolId),
+			active: toolbarContext.isToolVisible(fullToolId),
 		};
 
-		answerEliminator.visible = true;
-		answerEliminator.toolId = this.toolId;
-
-		if (options.config?.toolkitCoordinator) {
-			answerEliminator.coordinator = options.config.toolkitCoordinator;
-		}
-		if (options.config?.elementToolStateStore) {
-			answerEliminator.elementToolStateStore =
-				options.config.elementToolStateStore;
-		}
-		if (typeof options.config?.globalElementId === "string") {
-			answerEliminator.globalElementId = options.config.globalElementId;
-		}
-
-		if (options.onClose) {
-			answerEliminator.addEventListener("close", options.onClose);
-		}
-
-		return answerEliminator;
+		return {
+			toolId: this.toolId,
+			button,
+			overlayElement: overlay,
+			sync: () => {
+				const active = toolbarContext.isToolVisible(fullToolId);
+				button.active = active;
+				overlay.visible = active;
+				if (toolbarContext.toolCoordinator) {
+					overlay.coordinator = toolbarContext.toolCoordinator;
+				}
+				overlay.scopeElement = toolbarContext.getScopeElement?.() || null;
+				if (toolbarContext.elementToolStateStore) {
+					overlay.elementToolStateStore = toolbarContext.elementToolStateStore;
+				}
+				const globalElementId = toolbarContext.getGlobalElementId?.();
+				if (globalElementId) {
+					overlay.globalElementId = globalElementId;
+				}
+			},
+			subscribeActive: (callback: (active: boolean) => void) => {
+				if (!toolbarContext.subscribeVisibility) return () => {};
+				return toolbarContext.subscribeVisibility(() => {
+					callback(toolbarContext.isToolVisible(fullToolId));
+				});
+			},
+		};
 	},
 };
 
@@ -141,51 +148,55 @@ export const highlighterToolRegistration: ToolRegistration = {
 		return hasReadableText(context);
 	},
 
-	createButton(
+	renderToolbar(
 		context: ToolContext,
-		options: ToolButtonOptions,
-	): ToolButtonDefinition {
-		return {
+		toolbarContext: ToolbarContext,
+	): ToolToolbarRenderResult {
+		const fullToolId = `${this.toolId}-${toolbarContext.itemId}`;
+		const button: ToolToolbarButtonDefinition = {
 			toolId: this.toolId,
 			label: this.name,
 			icon: typeof this.icon === "function" ? this.icon(context) : this.icon,
-			disabled: options.disabled || false,
-			ariaLabel: options.ariaLabel || "Highlighter - Highlight text",
-			tooltip: options.tooltip || "Highlight",
-			onClick: options.onClick || (() => {}),
-			className: options.className,
+			disabled: false,
+			ariaLabel: "Highlighter - Highlight text",
+			tooltip: "Highlight",
+			onClick: () => toolbarContext.toggleTool(this.toolId),
+			active: toolbarContext.isToolVisible(fullToolId),
 		};
-	},
-
-	createToolInstance(
-		context: ToolContext,
-		options: ToolInstanceOptions,
-	): HTMLElement {
 		const componentOverrides =
-			(options.config as ToolComponentOverrides | undefined) ?? {};
-		const highlighter = createToolElement(
+			(toolbarContext.componentOverrides as ToolComponentOverrides | undefined) ?? {};
+		const overlay = createToolElement(
 			this.toolId,
 			context,
-			options,
+			toolbarContext,
 			componentOverrides,
 		) as HTMLElement & {
-			enabled: boolean;
+			enabled?: boolean;
+			visible?: boolean;
+			toolId?: string;
 			highlightCoordinator?: unknown;
 			ttsService?: unknown;
 		};
-
-		highlighter.enabled = true;
-		if (options.config?.highlightCoordinator) {
-			highlighter.highlightCoordinator = options.config.highlightCoordinator;
-		}
-		if (options.config?.ttsService) {
-			highlighter.ttsService = options.config.ttsService;
-		}
-
-		if (options.onClose) {
-			highlighter.addEventListener("close", options.onClose);
-		}
-
-		return highlighter;
+		overlay.setAttribute("tool-id", fullToolId);
+		return {
+			toolId: this.toolId,
+			button,
+			overlayElement: overlay,
+			sync: () => {
+				const active = toolbarContext.isToolVisible(fullToolId);
+				button.active = active;
+				overlay.enabled = active;
+				overlay.visible = active;
+				if (toolbarContext.ttsService) {
+					overlay.ttsService = toolbarContext.ttsService;
+				}
+			},
+			subscribeActive: (callback: (active: boolean) => void) => {
+				if (!toolbarContext.subscribeVisibility) return () => {};
+				return toolbarContext.subscribeVisibility(() => {
+					callback(toolbarContext.isToolVisible(fullToolId));
+				});
+			},
+		};
 	},
 };

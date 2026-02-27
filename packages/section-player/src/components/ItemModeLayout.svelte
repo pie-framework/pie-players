@@ -5,150 +5,167 @@
   Not exposed as a web component - used internally in PieSectionPlayer.
 -->
 <script lang="ts">
-	import type { ItemEntity, PassageEntity } from '@pie-players/pie-players-shared/types';
+	import type { SectionCompositionModel } from '../controllers/types.js';
 	import ItemNavigation from './ItemNavigation.svelte';
 	import ItemRenderer from './ItemRenderer.svelte';
-	import PassageRenderer from './PassageRenderer.svelte';
 
 	let {
-		passages,
-		currentItem,
-		currentIndex,
-		totalItems,
-		canNext,
-		canPrevious,
-		itemSession,
+		composition,
 		env = { mode: 'gather', role: 'student' },
-		bundleHost = '',
-		esmCdnUrl = 'https://esm.sh',
-		playerVersion = 'latest',
-		playerType = 'auto',
-		assessmentId = '',
-		sectionId = '',
-		toolkitCoordinator = null,
-
+		toolbarPosition = 'right',
+		showToolbar = true,
 		onprevious,
-		onnext,
-		onsessionchanged
+		onnext
 	}: {
-		passages: PassageEntity[];
-		currentItem: ItemEntity | null;
-		currentIndex: number;
-		totalItems: number;
-		canNext: boolean;
-		canPrevious: boolean;
-		itemSession?: any;
+		composition: SectionCompositionModel;
 		env?: { mode: 'gather' | 'view' | 'evaluate' | 'author'; role: 'student' | 'instructor' };
-		bundleHost?: string;
-		esmCdnUrl?: string;
-		playerVersion?: string;
-		playerType?: 'auto' | 'iife' | 'esm' | 'fixed' | 'inline';
-		assessmentId?: string;
-		sectionId?: string;
-		toolkitCoordinator?: any;
-
+		toolbarPosition?: 'top' | 'right' | 'bottom' | 'left' | 'none';
+		showToolbar?: boolean;
 		onprevious?: () => void;
 		onnext?: () => void;
-		onsessionchanged?: (session: any) => void;
 	} = $props();
 
-	function handleSessionChanged(event: CustomEvent) {
-		if (onsessionchanged) {
-			onsessionchanged(event.detail);
-		}
-	}
+	let passages = $derived(composition?.passages || []);
+	let items = $derived(composition?.items || []);
+	let currentIndex = $derived(composition?.currentItemIndex || 0);
+	let totalItems = $derived(items.length);
+	let currentItem = $derived(composition?.currentItem || items[currentIndex] || null);
+	let itemSessionsByItemId = $derived(composition?.itemSessionsByItemId || {});
+	let itemSession = $derived(currentItem?.id ? itemSessionsByItemId[currentItem.id] : undefined);
+	let canPrevious = $derived(currentIndex > 0);
+	let canNext = $derived(currentIndex < totalItems - 1);
+	let shouldRenderToolbar = $derived(showToolbar && toolbarPosition !== 'none');
+	let isToolbarBeforeContent = $derived(
+		toolbarPosition === 'top' || toolbarPosition === 'left'
+	);
 </script>
 
-<div class="item-mode-layout">
-	<!-- Passages (visible for all items) -->
-	{#if passages.length > 0}
-		<div class="passages-section">
-			{#each passages as passage (passage.id)}
-				<PassageRenderer
-					{passage}
-					{bundleHost}
-					{esmCdnUrl}
-					{assessmentId}
-					{sectionId}
-					{toolkitCoordinator}
-					class="passage-item"
+<div class={`pie-section-player__layout-shell pie-section-player__layout-shell--${toolbarPosition}`}>
+	{#if shouldRenderToolbar && isToolbarBeforeContent}
+		<pie-section-tools-toolbar
+			position={toolbarPosition}
+			enabled-tools=""
+		></pie-section-tools-toolbar>
+	{/if}
+	<div class="pie-section-player__item-mode-layout">
+		<!-- Passages (visible for all items) -->
+		{#if passages.length > 0}
+			<div class="pie-section-player__passages-section">
+				{#each passages as passage (passage.id)}
+					<div class="pie-section-player__passage-wrapper">
+						<ItemRenderer
+							item={passage}
+							contentKind="rubric-block-stimulus"
+							env={{ mode: 'view', role: env.role }}
+							customClassName="pie-section-player__passage-item"
+						/>
+					</div>
+				{/each}
+			</div>
+		{/if}
+
+		<!-- Current Item -->
+		{#if currentItem}
+			<div class="pie-section-player__current-item-section">
+				<ItemRenderer
+					item={currentItem}
+					contentKind="assessment-item"
+					{env}
+					session={itemSession}
+					customClassName="pie-section-player__item-content"
 				/>
-			{/each}
-		</div>
-	{/if}
+			</div>
+		{:else}
+			<div class="pie-section-player__no-item">
+				<p>No item to display</p>
+			</div>
+		{/if}
 
-	<!-- Current Item -->
-	{#if currentItem}
-		<div class="current-item-section">
-			<ItemRenderer
-				item={currentItem}
-				{env}
-				session={itemSession}
-				{bundleHost}
-				{esmCdnUrl}
-				{playerVersion}
-				{playerType}
-				{assessmentId}
-				{sectionId}
-				{toolkitCoordinator}
-				onsessionchanged={handleSessionChanged}
-				class="item-content"
-			/>
-		</div>
-	{:else}
-		<div class="no-item">
-			<p>No item to display</p>
-		</div>
+		<!-- Navigation -->
+		<ItemNavigation
+			{currentIndex}
+			{totalItems}
+			{canNext}
+			{canPrevious}
+			{onprevious}
+			{onnext}
+		/>
+	</div>
+	{#if shouldRenderToolbar && !isToolbarBeforeContent}
+		<pie-section-tools-toolbar
+			position={toolbarPosition}
+			enabled-tools=""
+		></pie-section-tools-toolbar>
 	{/if}
-
-	<!-- Navigation -->
-	<ItemNavigation
-		{currentIndex}
-		{totalItems}
-		{canNext}
-		{canPrevious}
-		{onprevious}
-		{onnext}
-	/>
 </div>
 
 <style>
-	.item-mode-layout {
+	.pie-section-player__layout-shell {
+		display: flex;
+		width: 100%;
+		height: 100%;
+		min-height: 0;
+		overflow: hidden;
+	}
+
+	.pie-section-player__layout-shell--top,
+	.pie-section-player__layout-shell--bottom,
+	.pie-section-player__layout-shell--none {
+		flex-direction: column;
+	}
+
+	.pie-section-player__layout-shell--left,
+	.pie-section-player__layout-shell--right {
+		flex-direction: row;
+	}
+
+	.pie-section-player__item-mode-layout {
+		flex: 1;
 		display: flex;
 		flex-direction: column;
 		gap: 1.5rem;
+		padding: 1rem;
+		overflow-y: auto;
 	}
 
-	.passages-section {
+	.pie-section-player__passages-section {
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;
 	}
 
-	.passages-section :global(.passage-item) {
-		padding: 1rem;
-		background: #fafafa;
-		border: 1px solid #e0e0e0;
-		border-radius: 4px;
+	.pie-section-player__passages-section :global(.pie-section-player__passage-item) {
+		padding: 0;
+		background: transparent;
+		border: 0;
+		border-radius: 0;
 	}
 
-	.current-item-section {
-		padding: 1rem;
-		background: white;
-		border: 1px solid #e0e0e0;
-		border-radius: 4px;
+	.pie-section-player__passage-wrapper {
+		flex-shrink: 0;
+		padding: 0.25rem;
+		background: var(--pie-white, white);
+		border: 1px solid var(--pie-border-light, #e5e7eb);
+		border-radius: 6px;
+	}
+
+	.pie-section-player__current-item-section {
+		padding: 0.25rem;
+		background: var(--pie-white, white);
+		border: 1px solid var(--pie-border-light, #e5e7eb);
+		border-radius: 6px;
 		min-height: 300px;
 	}
 
-	.no-item {
+	.pie-section-player__no-item {
 		padding: 2rem;
 		text-align: center;
-		color: #999;
+		color: var(--pie-disabled-secondary, #999);
 	}
 
 	/* Responsive */
 	@media (max-width: 768px) {
-		.item-mode-layout {
+		.pie-section-player__item-mode-layout {
 			gap: 1rem;
 		}
 	}

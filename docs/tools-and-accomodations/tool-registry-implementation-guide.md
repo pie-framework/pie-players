@@ -945,7 +945,7 @@ describe('ToolButton integration', () => {
 
 2. **Tool Documentation**
    - [ ] Each tool README - Add registration section
-   - [ ] `docs/CALCULATOR_INLINE_TOOL.md` - Mark as deprecated
+   - [ ] `packages/tool-calculator-inline/README.md` - Keep aligned with registry patterns
 
 3. **Integration Guides**
    - [ ] `packages/assessment-toolkit/src/README.md` - Add registry examples

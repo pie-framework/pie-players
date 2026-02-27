@@ -6,20 +6,18 @@ export * from "./object/index.js";
 // Barrel export for PIE runtime utilities
 export * from "./pie/index.js";
 export type {
-	AssessmentAuthoringCallbacks,
 	AssessmentEntity,
 	AssessmentItemRef,
-	AssessmentMode,
 	AssessmentSection,
 	ConfigEntity,
 	Env,
 	ItemConfig,
 	ItemEntity,
+	LegacyAssessmentSection,
 	OutcomeResponse,
 	PassageEntity,
 	PieController,
 	PieModel,
-	QtiAssessmentSection,
 	QuestionEntity,
 	RubricBlock,
 	SectionQuestionRef,

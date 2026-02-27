@@ -1,45 +1,67 @@
 <svelte:options
 	customElement={{
 		tag: 'pie-tool-calculator-inline',
-		shadow: 'none',
+		shadow: 'open',
 		props: {
 			toolId: { type: 'String', attribute: 'tool-id' },
 			calculatorType: { type: 'String', attribute: 'calculator-type' },
 			availableTypes: { type: 'String', attribute: 'available-types' },
-			size: { type: 'String', attribute: 'size' },
-
-			// Services (passed as JS properties, not attributes)
-			coordinator: { type: 'Object', reflect: false }
+			size: { type: 'String', attribute: 'size' }
 		}
 	}}
 />
 
 <script lang="ts">
-	import type { IToolCoordinator } from '@pie-players/pie-assessment-toolkit';
-	import { ZIndexLayer } from '@pie-players/pie-assessment-toolkit';
-
+	import {
+		connectToolRuntimeContext,
+		ZIndexLayer,
+	} from '@pie-players/pie-assessment-toolkit';
+	import type {
+		AssessmentToolkitRuntimeContext,
+		IToolCoordinator,
+	} from '@pie-players/pie-assessment-toolkit';
 	// Props
 	let {
 		toolId = 'calculator-inline',
-		calculatorType = 'scientific',
+		calculatorType = 'basic',
 		availableTypes = 'basic,scientific,graphing',
-		size = 'md' as 'sm' | 'md' | 'lg',
-		coordinator
+		size = 'md' as 'sm' | 'md' | 'lg'
 	}: {
 		toolId?: string;
 		calculatorType?: string;
 		availableTypes?: string;
 		size?: 'sm' | 'md' | 'lg';
-		coordinator?: IToolCoordinator;
 	} = $props();
 
 	const isBrowser = typeof window !== 'undefined';
 
 	// State
 	let containerEl = $state<HTMLDivElement | undefined>();
+	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	const coordinator = $derived(
+		runtimeContext?.toolCoordinator as IToolCoordinator | undefined,
+	);
 	let registered = $state(false);
 	let calculatorVisible = $state(false);
 	let statusMessage = $state('');
+	const supportedCalculatorTypes = $derived(
+		new Set(
+			availableTypes
+				.split(',')
+				.map((type) => type.trim())
+				.filter(Boolean),
+		),
+	);
+	const effectiveCalculatorType = $derived(
+		supportedCalculatorTypes.has(calculatorType) ? calculatorType : 'basic',
+	);
+
+	$effect(() => {
+		if (!containerEl) return;
+		return connectToolRuntimeContext(containerEl, (value: AssessmentToolkitRuntimeContext) => {
+			runtimeContext = value;
+		});
+	});
 
 	// Register with coordinator
 	$effect(() => {
@@ -84,34 +106,39 @@
 		coordinator.toggleTool(calculatorToolId);
 
 		statusMessage = calculatorVisible
-			? 'Calculator closed'
-			: 'Calculator opened';
+			? `${effectiveCalculatorType} calculator closed`
+			: `${effectiveCalculatorType} calculator opened`;
 	}
 
 	// Size classes
 	const sizeClass = $derived(
-		size === 'sm' ? 'calculator-inline--sm' : size === 'lg' ? 'calculator-inline--lg' : 'calculator-inline--md'
+		size === 'sm'
+			? 'pie-tool-calculator-inline__button--sm'
+			: size === 'lg'
+				? 'pie-tool-calculator-inline__button--lg'
+				: 'pie-tool-calculator-inline__button--md'
 	);
 </script>
 
 {#if isBrowser}
-	<div bind:this={containerEl} class="calculator-inline-controls">
+	<div bind:this={containerEl} class="pie-tool-calculator-inline">
 		<!-- Calculator Toggle Button -->
 		<button
 			type="button"
-			class="calculator-inline {sizeClass}"
-			class:calculator-inline--active={calculatorVisible}
+			class="pie-tool-calculator-inline__button {sizeClass}"
+			class:pie-tool-calculator-inline__button--active={calculatorVisible}
 			onclick={handleToggle}
-			aria-label={calculatorVisible ? 'Close calculator' : 'Open calculator'}
+			aria-label={calculatorVisible ? `Close ${effectiveCalculatorType} calculator` : `Open ${effectiveCalculatorType} calculator`}
 			aria-pressed={calculatorVisible}
-			title={calculatorVisible ? 'Close calculator' : 'Open calculator'}
+			title={calculatorVisible ? `Close ${effectiveCalculatorType} calculator` : `Open ${effectiveCalculatorType} calculator`}
+			data-calculator-type={effectiveCalculatorType}
 			disabled={!coordinator}
 		>
 			<!-- Material Design Calculator Icon -->
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
 				viewBox="0 0 24 24"
-				class="calculator-inline__icon"
+				class="pie-tool-calculator-inline__icon"
 				aria-hidden="true"
 			>
 				<path
@@ -121,20 +148,20 @@
 		</button>
 
 		<!-- Screen reader status announcements -->
-		<div class="sr-only" role="status" aria-live="polite" aria-atomic="true">
+		<div class="pie-sr-only" role="status" aria-live="polite" aria-atomic="true">
 			{statusMessage}
 		</div>
 	</div>
 {/if}
 
 <style>
-	.calculator-inline-controls {
+	.pie-tool-calculator-inline {
 		display: inline-flex;
 		align-items: center;
 		gap: 0.25rem;
 	}
 
-	.calculator-inline {
+	.pie-tool-calculator-inline__button {
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
@@ -151,88 +178,88 @@
 		position: relative;
 	}
 
-	.calculator-inline:hover:not(:disabled) {
+	.pie-tool-calculator-inline__button:hover:not(:disabled) {
 		background-color: var(--pie-secondary-background, #f5f5f5);
 		transform: translateY(-1px);
 		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 	}
 
-	.calculator-inline:active:not(:disabled) {
+	.pie-tool-calculator-inline__button:active:not(:disabled) {
 		transform: translateY(0);
 		box-shadow: none;
 	}
 
 	/* Focus indicator - WCAG 2.4.7, 2.4.13 */
-	.calculator-inline:focus-visible {
+	.pie-tool-calculator-inline__button:focus-visible {
 		outline: 2px solid #0066cc;
 		outline-offset: 2px;
 		box-shadow: 0 0 0 4px rgba(0, 102, 204, 0.2);
 		z-index: 1;
 	}
 
-	.calculator-inline--active {
+	.pie-tool-calculator-inline__button--active {
 		background-color: var(--pie-primary, #1976d2);
 		color: white;
 		border-color: var(--pie-primary, #1976d2);
 	}
 
-	.calculator-inline--active:hover:not(:disabled) {
+	.pie-tool-calculator-inline__button--active:hover:not(:disabled) {
 		background-color: var(--pie-primary-dark, #1565c0);
 	}
 
-	.calculator-inline:disabled {
+	.pie-tool-calculator-inline__button:disabled {
 		cursor: not-allowed;
 		opacity: 0.6;
 	}
 
 	/* Size variants */
-	.calculator-inline--sm {
+	.pie-tool-calculator-inline__button--sm {
 		width: 1.5rem;
 		height: 1.5rem;
 		/* Increase padding to meet 44px touch target - WCAG 2.5.2 */
 		padding: 0.625rem;
 	}
 
-	.calculator-inline--sm .calculator-inline__icon {
+	.pie-tool-calculator-inline__button--sm .pie-tool-calculator-inline__icon {
 		width: 1rem;
 		height: 1rem;
 	}
 
-	.calculator-inline--md {
+	.pie-tool-calculator-inline__button--md {
 		width: 2rem;
 		height: 2rem;
 	}
 
-	.calculator-inline--md .calculator-inline__icon {
+	.pie-tool-calculator-inline__button--md .pie-tool-calculator-inline__icon {
 		width: 1.25rem;
 		height: 1.25rem;
 	}
 
-	.calculator-inline--lg {
+	.pie-tool-calculator-inline__button--lg {
 		width: 2.5rem;
 		height: 2.5rem;
 	}
 
-	.calculator-inline--lg .calculator-inline__icon {
+	.pie-tool-calculator-inline__button--lg .pie-tool-calculator-inline__icon {
 		width: 1.5rem;
 		height: 1.5rem;
 	}
 
-	.calculator-inline__icon {
+	.pie-tool-calculator-inline__icon {
 		fill: currentColor;
 		color: #555;
 	}
 
-	.calculator-inline:hover:not(:disabled) .calculator-inline__icon {
+	.pie-tool-calculator-inline__button:hover:not(:disabled) .pie-tool-calculator-inline__icon {
 		color: #667eea;
 	}
 
-	.calculator-inline--active .calculator-inline__icon {
+	.pie-tool-calculator-inline__button--active .pie-tool-calculator-inline__icon {
 		color: white;
 	}
 
 	/* Screen reader only content */
-	.sr-only {
+	.pie-sr-only {
 		position: absolute;
 		width: 1px;
 		height: 1px;
@@ -246,7 +273,7 @@
 
 	/* Accessibility */
 	@media (prefers-reduced-motion: reduce) {
-		.calculator-inline {
+		.pie-tool-calculator-inline__button {
 			animation: none !important;
 			transition: none !important;
 		}

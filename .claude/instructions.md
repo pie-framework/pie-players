@@ -2,7 +2,7 @@
 
 ## Project Context
 
-**PIE Players** is a comprehensive web component and assessment player framework for educational assessments. It provides multiple player implementations (IIFE, ESM, Fixed, Inline) and supports full assessment delivery with authoring mode, tools, and accommodations.
+**PIE Players** is a comprehensive web component framework for educational assessments. It provides multiple player implementations (IIFE, ESM, Fixed, Inline, Section) and supports authoring mode, tools, and accommodations.
 
 **Critical Requirements**:
 
@@ -30,13 +30,13 @@ pie-players/
 │   ├── pie-esm-player/         # ESM CDN player (esm.sh, jsDelivr)
 │   ├── pie-fixed-player/       # Pre-bundled monolithic player
 │   ├── pie-inline-player/      # Embedded player for existing systems
-│   ├── pie-assessment-player/  # Full assessment delivery player
 │   ├── assessment-toolkit/     # Core assessment services (framework-agnostic)
 │   ├── players-shared/         # Shared utilities & components
 │   └── pie-tool-*/             # 10+ assessment tools (calculator, graph, etc.)
 ├── apps/
-│   ├── example/                # Demo app (authoring + assessment)
-│   └── docs/                   # Documentation site
+│   ├── docs/                   # Documentation site
+│   ├── item-demos/             # Item demo host app
+│   └── section-demos/          # Section demo host app
 └── tools/cli/                  # oclif-based CLI
 ```
 
@@ -61,9 +61,7 @@ These checks ensure:
 1. TypeScript compilation passes: `bun run typecheck`
 2. Svelte components validated: `bun run check`
 3. All tests pass: `bun test`
-4. E2E tests pass: `bun run test:e2e`
-5. Accessibility tests pass (axe-core)
-6. Linting clean: `bun run lint` (Biome)
+4. Linting clean: `bun run lint` (Biome)
 
 ## Testing Strategy
 
@@ -90,6 +88,24 @@ These checks ensure:
 - **Custom elements**: Svelte compiled to native custom elements
 - **Event-driven**: PIE player events for communication
 - **Global registry**: Elements register in `window.pie.default`
+
+### Custom Element Boundaries (Required)
+
+- In consuming apps/packages, import CE registration entrypoints (for example `@pie-players/pie-assessment-toolkit/components/item-toolbar-element`), not raw package `.svelte` files.
+- Do not import workspace package source paths (`@pie-players/<pkg>/src/...`) from consumers.
+- Do not use `?customElement` in cross-package imports.
+- Keep package `exports` runtime targets on built artifacts in `dist` (not `src`), except for explicitly approved internal packages.
+- When adding a CE registration entry in a package, ensure any referenced `.svelte?customElement` files are resolvable from published output.
+- If a consumer app imports package CE entrypoints via `exports` (for example `@pie-players/pie-section-player/components/...`), it is using built `dist` artifacts. Rebuild the package after `src` edits before testing behavior in the consumer app.
+- For split-panel scrolling implementations, copy the current `packages/section-player/src/components/layouts/SplitPanelLayout.svelte` overflow/height model unless intentionally redesigning:
+  - Constrain parent containers with `height: 100%`, `max-height: 100%`, `min-height: 0`, and `overflow: hidden`.
+  - Keep split grid height-constrained (including `grid-template-rows: minmax(0, 1fr)` when applicable).
+  - Configure pane scrolling with `overflow-y: auto`, `overflow-x: hidden`, `min-height: 0`, `min-width: 0`, `max-height: 100%`, and `overscroll-behavior: contain`.
+  - Do not introduce broad media-query overrides that force pane overflow to `visible` without explicit verification of both passage and item scroll behavior.
+- Before finalizing CE-related changes, run:
+  - `bun run check:source-exports`
+  - `bun run check:consumer-boundaries`
+  - `bun run check:custom-elements`
 
 ### Web Components and Reactivity
 
@@ -175,7 +191,7 @@ bun run check          # Svelte component validation
 ├── pie-elements-ng/          # Sibling repo (REQUIRED for dev)
 │   └── apps/local-esm-cdn/   # Local ESM CDN server
 └── pie-players/              # This repo
-    └── apps/example/         # Dev server auto-detects sibling
+    └── apps/section-demos/   # Demo app can auto-detect sibling
 ```
 
 **Auto-detection**: When `../pie-elements-ng` exists:
@@ -196,7 +212,7 @@ bun run check          # Svelte component validation
 - Critical for developing new element types or fixing element bugs
 - Allows tight integration testing between players and elements
 
-**References**: apps/example/vite.config.ts, docs/CDN_USAGE.md
+**References**: apps/section-demos/vite.config.ts, docs/CDN_USAGE.md
 
 ## Current Work Focus
 

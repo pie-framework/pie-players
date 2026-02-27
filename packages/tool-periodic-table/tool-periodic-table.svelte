@@ -1,19 +1,24 @@
 <svelte:options
 	customElement={{
 		tag: 'pie-tool-periodic-table',
-		shadow: 'none',
+		shadow: 'open',
 		props: {
 			visible: { type: 'Boolean', attribute: 'visible' },
-			toolId: { type: 'String', attribute: 'tool-id' },
-			coordinator: { type: 'Object' }
+			toolId: { type: 'String', attribute: 'tool-id' }
 		}
 	}}
 />
 
 <script lang="ts">
 	
-	import type { IToolCoordinator } from '@pie-players/pie-assessment-toolkit';
-	import { ZIndexLayer } from '@pie-players/pie-assessment-toolkit';
+	import {
+		connectToolRuntimeContext,
+		ZIndexLayer,
+	} from '@pie-players/pie-assessment-toolkit';
+	import type {
+		AssessmentToolkitRuntimeContext,
+		IToolCoordinator,
+	} from '@pie-players/pie-assessment-toolkit';
 	import { createFocusTrap, safeLocalStorageGet, safeLocalStorageSet } from '@pie-players/pie-players-shared';
 import { onMount } from 'svelte';
 	import periodicTableData from './periodic-table-data.json';
@@ -36,12 +41,10 @@ import { onMount } from 'svelte';
 	// Props
 	let {
 		visible = false,
-		toolId = 'periodicTable',
-		coordinator
+		toolId = 'periodicTable'
 	}: {
 		visible?: boolean;
 		toolId?: string;
-		coordinator?: IToolCoordinator;
 	} = $props();
 
 	// Check if running in browser
@@ -49,6 +52,10 @@ import { onMount } from 'svelte';
 
 	// State
 	let containerEl = $state<HTMLDivElement | undefined>();
+	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	const coordinator = $derived(
+		runtimeContext?.toolCoordinator as IToolCoordinator | undefined,
+	);
 	let isDragging = $state(false);
 	let x = $state(isBrowser ? window.innerWidth / 2 : 400);
 	let y = $state(isBrowser ? window.innerHeight / 2 : 300);
@@ -66,6 +73,13 @@ import { onMount } from 'svelte';
 	// Tool state
 	let selectedElement = $state<Element | null>(allElements[0] || null); // Initialize with Hydrogen
 	let selectedCategory = $state<string>('All');
+
+	$effect(() => {
+		if (!containerEl) return;
+		return connectToolRuntimeContext(containerEl, (value: AssessmentToolkitRuntimeContext) => {
+			runtimeContext = value;
+		});
+	});
 
 	/**
 	 * Normalize category name (matching production implementation)
@@ -154,7 +168,7 @@ import { onMount } from 'svelte';
 		const target = e.target as HTMLElement;
 
 		// Only start drag if clicking the header
-		if (!target.closest('.periodic-table-header')) return;
+		if (!target.closest('.pie-tool-periodic-table__header')) return;
 
 		// Don't drag if clicking buttons
 		if (target.closest('button')) return;
@@ -228,7 +242,7 @@ import { onMount } from 'svelte';
 {#if visible}
 	<div
 		bind:this={containerEl}
-		class="periodic-table-container"
+		class="pie-tool-periodic-table"
 		role="dialog"
 		tabindex="-1"
 		aria-label="Periodic Table - Click elements to view details"
@@ -240,10 +254,10 @@ import { onMount } from 'svelte';
 		onkeydown={handleKeyDown}
 	>
 		<!-- Header (matching production implementation: dark teal) -->
-		<div class="periodic-table-header">
-			<h3 id="periodic-table-title" class="periodic-table-title">Periodic Table</h3>
-			<div class="header-controls">
-				<button class="close-btn" onclick={handleClose} aria-label="Close periodic table">
+		<div class="pie-tool-periodic-table__header">
+			<h3 id="periodic-table-title" class="pie-tool-periodic-table__title">Periodic Table</h3>
+			<div class="pie-tool-periodic-table__header-controls">
+				<button class="pie-tool-periodic-table__close-btn" onclick={handleClose} aria-label="Close periodic table">
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
 						class="h-5 w-5"
@@ -261,24 +275,24 @@ import { onMount } from 'svelte';
 		</div>
 
 		<!-- Content wrapper -->
-		<div class="periodic-table-content">
-			<div class="periodic-table-wrapper">
+		<div class="pie-tool-periodic-table__content">
+			<div class="pie-tool-periodic-table__wrapper">
 				<!-- Main grid -->
 				<div
-					class="periodic-table"
+					class="pie-tool-periodic-table__grid"
 					role="grid"
 					aria-labelledby="periodic-table-title"
 				>
 					<!-- Category filter badges in row 1 (matching production implementation) -->
 					<div
-						class="element-category-header category-badge-row"
+						class="pie-tool-periodic-table__category-header pie-tool-periodic-table__category-badge-row"
 						role="presentation"
 						style="grid-row: 1; grid-column: 2 / span 16;"
 					>
 						<!-- "All" category -->
 						<button
-							class="category-badge"
-							class:active={selectedCategory === 'All'}
+							class="pie-tool-periodic-table__category-badge"
+							class:pie-tool-periodic-table__category-badge--active={selectedCategory === 'All'}
 							onclick={() => setCategory('All')}
 							aria-label="Show all elements"
 							aria-pressed={selectedCategory === 'All'}
@@ -289,8 +303,8 @@ import { onMount } from 'svelte';
 						<!-- Each category badge -->
 						{#each uniqueCategories as category (category)}
 							<button
-								class="category-badge {category.replace(' ', '-').toLowerCase()}"
-								class:active={selectedCategory === category}
+								class="pie-tool-periodic-table__category-badge pie-tool-periodic-table__category--{category.replace(' ', '-').toLowerCase()}"
+								class:pie-tool-periodic-table__category-badge--active={selectedCategory === category}
 								onclick={() => setCategory(category)}
 								aria-label="Filter by {category}"
 								aria-pressed={selectedCategory === category}
@@ -303,41 +317,41 @@ import { onMount } from 'svelte';
 					<!-- Element overview section (rows 2-3, matching production implementation) -->
 					{#if selectedElement}
 						<div
-							class="element-overview"
+							class="pie-tool-periodic-table__element-overview"
 							style="grid-row: 2 / span 2; grid-column: 3 / span 10;"
 							aria-live="polite"
 						>
 							<div
-								class="selected-element-box grid-layout {normalizeCategory(selectedElement.category).replace(' ', '-').toLowerCase()}"
+								class="pie-tool-periodic-table__selected-element pie-tool-periodic-table__selected-grid pie-tool-periodic-table__category--{normalizeCategory(selectedElement.category).replace(' ', '-').toLowerCase()}"
 							>
 								<!-- LEFT COLUMN: Large Symbol & Element Name -->
-								<div class="left-col">
-									<div class="symbol-center">{selectedElement.symbol}</div>
-									<div class="element-name">{selectedElement.name}</div>
+								<div class="pie-tool-periodic-table__left-col">
+									<div class="pie-tool-periodic-table__symbol-center">{selectedElement.symbol}</div>
+									<div class="pie-tool-periodic-table__element-name">{selectedElement.name}</div>
 								</div>
 
 								<!-- RIGHT COLUMN: Two rows with additional info -->
-								<div class="right-col">
+								<div class="pie-tool-periodic-table__right-col">
 									<!-- TOP ROW: Atomic Mass, Atomic No -->
-									<div class="top-row">
-										<div class="info-block">
-											<div class="label">Atomic Mass</div>
-											<div class="value">{selectedElement.atomic_mass}</div>
+									<div class="pie-tool-periodic-table__top-row">
+										<div class="pie-tool-periodic-table__info-block">
+											<div class="pie-tool-periodic-table__label">Atomic Mass</div>
+											<div class="pie-tool-periodic-table__value">{selectedElement.atomic_mass}</div>
 										</div>
-										<div class="info-block">
-											<div class="label">Atomic No</div>
-											<div class="value">{selectedElement.number}</div>
+										<div class="pie-tool-periodic-table__info-block">
+											<div class="pie-tool-periodic-table__label">Atomic No</div>
+											<div class="pie-tool-periodic-table__value">{selectedElement.number}</div>
 										</div>
 									</div>
 									<!-- BOTTOM ROW: Electron Configuration, Phase -->
-									<div class="bottom-row">
-										<div class="info-block">
-											<div class="label">Electron Config</div>
-											<div class="value">{selectedElement.electron_configuration_semantic}</div>
+									<div class="pie-tool-periodic-table__bottom-row">
+										<div class="pie-tool-periodic-table__info-block">
+											<div class="pie-tool-periodic-table__label">Electron Config</div>
+											<div class="pie-tool-periodic-table__value">{selectedElement.electron_configuration_semantic}</div>
 										</div>
-										<div class="info-block">
-											<div class="label">Phase</div>
-											<div class="value">{selectedElement.phase}</div>
+										<div class="pie-tool-periodic-table__info-block">
+											<div class="pie-tool-periodic-table__label">Phase</div>
+											<div class="pie-tool-periodic-table__value">{selectedElement.phase}</div>
 										</div>
 									</div>
 								</div>
@@ -348,9 +362,9 @@ import { onMount } from 'svelte';
 					<!-- Periodic elements -->
 					{#each displayedElements as element (element.symbol)}
 						<button
-							class="element {normalizeCategory(element.category).replace(' ', '-').toLowerCase()}"
-							class:selected={selectedElement?.symbol === element.symbol}
-							class:dim={selectedCategory !== 'All' && normalizeCategory(element.category) !== selectedCategory}
+							class="pie-tool-periodic-table__element pie-tool-periodic-table__category--{normalizeCategory(element.category).replace(' ', '-').toLowerCase()}"
+							class:pie-tool-periodic-table__element--selected={selectedElement?.symbol === element.symbol}
+							class:pie-tool-periodic-table__element--dim={selectedCategory !== 'All' && normalizeCategory(element.category) !== selectedCategory}
 							style="grid-row: {element.ypos}; grid-column: {element.xpos};"
 							tabindex="0"
 								onclick={() => showElementDetails(element)}
@@ -363,19 +377,19 @@ import { onMount } from 'svelte';
 							title={element.name}
 							aria-label="{element.name}, Symbol: {element.symbol}, Atomic number: {element.number}, Atomic mass: {element.atomic_mass.toFixed(3)}, Category: {element.category}"
 						>
-							<div class="atomic-number">{element.number}</div>
-							<div class="symbol">{element.symbol}</div>
-							<div class="name">{element.name}</div>
-							<div class="atomic-mass">{element.atomic_mass.toFixed(3)}</div>
+							<div class="pie-tool-periodic-table__atomic-number">{element.number}</div>
+							<div class="pie-tool-periodic-table__symbol">{element.symbol}</div>
+							<div class="pie-tool-periodic-table__name">{element.name}</div>
+							<div class="pie-tool-periodic-table__atomic-mass">{element.atomic_mass.toFixed(3)}</div>
 						</button>
 					{/each}
 				</div>
 
 				<!-- Overlay for Group (Column) Labels -->
-				<div class="group-labels" aria-hidden="true">
+				<div class="pie-tool-periodic-table__group-labels" aria-hidden="true">
 					{#each Array(18) as _, i}
 						<div
-							class="group-label"
+							class="pie-tool-periodic-table__group-label"
 							style="left: {(i) * (100 / 18)}%; width: {100 / 18}%;"
 						>
 							{i + 1}
@@ -385,9 +399,9 @@ import { onMount } from 'svelte';
 
 				<!-- Overlay for Period (Row) Labels -->
 				<!-- Covers the 10 grid rows: rows 1-3 are UI (no labels), rows 4-8 are periods 1-5, rows 9-10 are periods 6-7 -->
-				<div class="period-labels" aria-hidden="true">
+				<div class="pie-tool-periodic-table__period-labels" aria-hidden="true">
 					{#each Array(10) as _, i}
-						<div class="period-label">
+						<div class="pie-tool-periodic-table__period-label">
 							{#if i < 3}
 								<!-- Rows 1-3: Category badges and overview (no period label) -->
 								
@@ -410,7 +424,7 @@ import { onMount } from 'svelte';
 {/if}
 
 <style>
-	.periodic-table-container {
+	.pie-tool-periodic-table {
 		position: fixed;
 		background: white;
 		box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
@@ -425,7 +439,7 @@ import { onMount } from 'svelte';
 	}
 
 	/* Header (matching production implementation: dark teal) */
-	.periodic-table-header {
+	.pie-tool-periodic-table__header {
 		padding: 12px 16px;
 		background: var(--pie-primary-dark, #2c3e50); /* Dark teal-like color */
 		color: var(--pie-white, white);
@@ -437,20 +451,20 @@ import { onMount } from 'svelte';
 		border-radius: 12px 12px 0 0;
 	}
 
-	.periodic-table-title {
+	.pie-tool-periodic-table__title {
 		font-weight: 600;
 		font-size: 16px;
 		color: var(--pie-white, white);
 		margin: 0;
 	}
 
-	.header-controls {
+	.pie-tool-periodic-table__header-controls {
 		display: flex;
 		gap: 8px;
 		align-items: center;
 	}
 
-	.close-btn {
+	.pie-tool-periodic-table__close-btn {
 		background: transparent;
 		border: none;
 		color: var(--pie-white, white);
@@ -463,17 +477,23 @@ import { onMount } from 'svelte';
 		transition: background-color 0.2s;
 	}
 
-	.close-btn:hover {
+	.pie-tool-periodic-table__close-btn:hover {
 		background: rgba(255, 255, 255, 0.1);
 	}
 
-	.close-btn:focus-visible {
+	.pie-tool-periodic-table__close-btn:focus-visible {
 		outline: 2px solid var(--pie-primary, #3f51b5);
 		outline-offset: 2px;
 	}
 
+	.pie-tool-periodic-table__close-btn svg {
+		width: 20px;
+		height: 20px;
+		display: block;
+	}
+
 	/* Content wrapper */
-	.periodic-table-content {
+	.pie-tool-periodic-table__content {
 		flex: 1;
 		display: flex;
 		flex-direction: column;
@@ -482,12 +502,12 @@ import { onMount } from 'svelte';
 	}
 
 	/* Wrapper needed for absolute positioning of overlays */
-	.periodic-table-wrapper {
+	.pie-tool-periodic-table__wrapper {
 		position: relative;
 	}
 
 	/* Main grid layout */
-	.periodic-table {
+	.pie-tool-periodic-table__grid {
 		display: grid;
 		grid-gap: 3px;
 		grid-template-columns: repeat(18, minmax(35px, 1fr));
@@ -497,7 +517,7 @@ import { onMount } from 'svelte';
 	}
 
 	/* Category badge row (matching production implementation) */
-	.element-category-header.category-badge-row {
+	.pie-tool-periodic-table__category-header.pie-tool-periodic-table__category-badge-row {
 		align-items: center;
 		background-color: transparent;
 		display: flex;
@@ -507,7 +527,7 @@ import { onMount } from 'svelte';
 		padding: 0.5rem;
 	}
 
-	.category-badge {
+	.pie-tool-periodic-table__category-badge {
 		border: 1px solid rgba(0, 0, 0, 0.1);
 		border-radius: 1rem;
 		cursor: pointer;
@@ -520,18 +540,18 @@ import { onMount } from 'svelte';
 		color: #333;
 	}
 
-	.category-badge:hover {
+	.pie-tool-periodic-table__category-badge:hover {
 		background: rgba(0, 0, 0, 0.05);
 	}
 
-	.category-badge.active {
+	.pie-tool-periodic-table__category-badge.pie-tool-periodic-table__category-badge--active {
 		background-color: var(--pie-primary-dark, #2c3e50);
 		border-color: var(--pie-primary-dark, #2c3e50);
 		color: #fff;
 	}
 
 	/* Element overview section (matching production implementation) */
-	.element-overview {
+	.pie-tool-periodic-table__element-overview {
 		align-items: center;
 		display: flex;
 		height: 100%;
@@ -540,7 +560,7 @@ import { onMount } from 'svelte';
 		z-index: 2;
 	}
 
-	.selected-element-box.grid-layout {
+	.pie-tool-periodic-table__selected-element.pie-tool-periodic-table__selected-grid {
 		align-items: center;
 		border: 2px solid #000;
 		border-radius: 8px;
@@ -551,21 +571,21 @@ import { onMount } from 'svelte';
 		background: white;
 	}
 
-	.left-col {
+	.pie-tool-periodic-table__left-col {
 		align-items: center;
 		display: flex;
 		flex-direction: column;
 		min-width: 0;
 	}
 
-	.symbol-center {
+	.pie-tool-periodic-table__symbol-center {
 		font-size: 2rem;
 		font-weight: bold;
 		line-height: 1.2;
 		margin-bottom: 4px;
 	}
 
-	.element-name {
+	.pie-tool-periodic-table__element-name {
 		color: #333;
 		font-size: 1rem;
 		font-weight: 500;
@@ -575,7 +595,7 @@ import { onMount } from 'svelte';
 		white-space: nowrap;
 	}
 
-	.right-col {
+	.pie-tool-periodic-table__right-col {
 		display: flex;
 		flex-direction: column;
 		gap: 8px;
@@ -583,29 +603,29 @@ import { onMount } from 'svelte';
 		min-width: 0;
 	}
 
-	.top-row,
-	.bottom-row {
+	.pie-tool-periodic-table__top-row,
+	.pie-tool-periodic-table__bottom-row {
 		display: flex;
 		gap: 8px;
 		justify-content: space-between;
 		min-width: 0;
 	}
 
-	.info-block {
+	.pie-tool-periodic-table__info-block {
 		display: flex;
 		flex-direction: column;
 		min-width: 0;
 		text-align: left;
 	}
 
-	.info-block .label {
+	.pie-tool-periodic-table__info-block .pie-tool-periodic-table__label {
 		color: #444;
 		font-size: 0.75rem;
 		font-weight: bold;
 		margin-bottom: 2px;
 	}
 
-	.info-block .value {
+	.pie-tool-periodic-table__info-block .pie-tool-periodic-table__value {
 		color: #000;
 		font-size: 0.85rem;
 		overflow: hidden;
@@ -614,7 +634,7 @@ import { onMount } from 'svelte';
 	}
 
 	/* Element styles */
-	.element {
+	.pie-tool-periodic-table__element {
 		background-color: white;
 		border: 1px solid rgba(0, 0, 0, 0.1);
 		border-radius: 4px;
@@ -628,45 +648,45 @@ import { onMount } from 'svelte';
 		transition: transform 0.1s ease-in-out;
 	}
 
-	.element:hover {
+	.pie-tool-periodic-table__element:hover {
 		border-color: var(--pie-primary-dark, #2c3e50);
 		transform: scale(1.03);
 		z-index: 10;
 	}
 
-	.element:focus {
+	.pie-tool-periodic-table__element:focus {
 		outline: 2px solid var(--pie-primary-dark, #2c3e50);
 		outline-offset: 2px;
 		z-index: 10;
 	}
 
-	.element.selected {
+	.pie-tool-periodic-table__element.pie-tool-periodic-table__element--selected {
 		border-color: var(--pie-primary-dark, #2c3e50);
 		box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
 		z-index: 11;
 	}
 
 	/* Dim out elements not in the selected category */
-	.element.dim {
+	.pie-tool-periodic-table__element.pie-tool-periodic-table__element--dim {
 		filter: grayscale(80%);
 		opacity: 0.4;
 	}
 
 	/* Text inside each element box */
-	.atomic-number {
+	.pie-tool-periodic-table__atomic-number {
 		font-size: 9px;
 		opacity: 0.8;
 		text-align: left;
 	}
 
-	.symbol {
+	.pie-tool-periodic-table__symbol {
 		font-size: 14px;
 		font-weight: bold;
 		margin: 2px 0;
 		text-align: center;
 	}
 
-	.name {
+	.pie-tool-periodic-table__name {
 		font-size: 8px;
 		opacity: 0.9;
 		overflow: hidden;
@@ -674,14 +694,14 @@ import { onMount } from 'svelte';
 		white-space: nowrap;
 	}
 
-	.atomic-mass {
+	.pie-tool-periodic-table__atomic-mass {
 		font-size: 9px;
 		opacity: 0.8;
 		text-align: right;
 	}
 
 	/* Overlay for Group (column) labels */
-	.group-labels {
+	.pie-tool-periodic-table__group-labels {
 		color: #333;
 		display: flex;
 		font-size: 0.65rem;
@@ -693,12 +713,12 @@ import { onMount } from 'svelte';
 		width: 100%;
 	}
 
-	.group-label {
+	.pie-tool-periodic-table__group-label {
 		text-align: center;
 	}
 
 	/* Overlay for Period (row) labels */
-	.period-labels {
+	.pie-tool-periodic-table__period-labels {
 		color: #333;
 		display: flex;
 		flex-direction: column;
@@ -712,65 +732,65 @@ import { onMount } from 'svelte';
 		top: 0;
 	}
 
-	.period-label {
+	.pie-tool-periodic-table__period-label {
 		padding-right: 0.2em;
 		text-align: right;
 	}
 
 	/* Category-based background colors (matching production implementation) */
-	.alkali-metal {
+	.pie-tool-periodic-table__category--alkali-metal {
 		background-color: #ff9e9e;
 	}
 
-	.alkaline-earth-metal {
+	.pie-tool-periodic-table__category--alkaline-earth-metal {
 		background-color: #ffdc8a;
 	}
 
-	.alkaline-earth {
+	.pie-tool-periodic-table__category--alkaline-earth {
 		background-color: #ffdc8a; /* Also handle without "-metal" suffix */
 	}
 
-	.lanthanide {
+	.pie-tool-periodic-table__category--lanthanide {
 		background-color: #f9a8d4;
 	}
 
-	.actinide {
+	.pie-tool-periodic-table__category--actinide {
 		background-color: #e0aaff;
 	}
 
-	.transition-metal {
+	.pie-tool-periodic-table__category--transition-metal {
 		background-color: #a3d8f4;
 	}
 
-	.post-transition-metal {
+	.pie-tool-periodic-table__category--post-transition-metal {
 		background-color: #b4f8c8;
 	}
 
-	.metalloid {
+	.pie-tool-periodic-table__category--metalloid {
 		background-color: #d9f99d;
 	}
 
-	.diatomic-nonmetal {
+	.pie-tool-periodic-table__category--diatomic-nonmetal {
 		background-color: #f5f5f5;
 	}
 
-	.noble-gas {
+	.pie-tool-periodic-table__category--noble-gas {
 		background-color: #c4b5fd;
 	}
 
-	.polyatomic-nonmetal {
+	.pie-tool-periodic-table__category--polyatomic-nonmetal {
 		background-color: #fbcfe8;
 	}
 
-	.nonmetal {
+	.pie-tool-periodic-table__category--nonmetal {
 		background-color: #f0f0f0; /* Production implementation also has this */
 	}
 
-	.halogen {
+	.pie-tool-periodic-table__category--halogen {
 		background-color: #8ef5d0; /* Production implementation has halogen color */
 	}
 
-	.unknown {
+	.pie-tool-periodic-table__category--unknown {
 		background-color: #f5f5f5;
 	}
 </style>

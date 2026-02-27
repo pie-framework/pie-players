@@ -1,9 +1,16 @@
 import type { SvelteComponent } from "svelte";
-import type { QtiAssessmentSection } from "@pie-players/pie-players-shared/types";
+import type {
+	ToolkitCoordinator,
+} from "@pie-players/pie-assessment-toolkit";
+import type { AssessmentSection } from "@pie-players/pie-players-shared";
+import type { ComponentDefinition } from "./component-definitions.js";
 
 export interface PieSectionPlayerProps {
-	section?: QtiAssessmentSection | null;
-	mode?: "gather" | "view" | "evaluate" | "author";
+	section?: AssessmentSection | null;
+	env?: {
+		mode: "gather" | "view" | "evaluate" | "author";
+		role: "student" | "instructor";
+	};
 	view?:
 		| "candidate"
 		| "scorer"
@@ -11,10 +18,12 @@ export interface PieSectionPlayerProps {
 		| "proctor"
 		| "testConstructor"
 		| "tutor";
-	itemSessions?: Record<string, any>;
-	bundleHost?: string;
-	esmCdnUrl?: string;
-	customClassname?: string;
+	layout?: string;
+	layoutDefinitions?: Partial<Record<string, ComponentDefinition>>;
+	toolbarPosition?: "top" | "right" | "bottom" | "left" | "none";
+	showToolbar?: boolean;
+	toolkitCoordinator?: ToolkitCoordinator | null;
+	customClassName?: string;
 	debug?: string | boolean;
 }
 

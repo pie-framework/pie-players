@@ -1,11 +1,31 @@
-import { svelte } from "@sveltejs/vite-plugin-svelte";
+import { svelte, vitePreprocess } from "@sveltejs/vite-plugin-svelte";
 import { resolve } from "path";
 import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
 
+const patchMathRenderingModuleEval = {
+	name: "patch-math-rendering-module-eval",
+	enforce: "pre" as const,
+	transform(code: string, id: string) {
+		if (!id.includes("@pie-lib/math-rendering-module/module/index.js")) {
+			return null;
+		}
+
+		return {
+			code: code.replace(
+				/return\s+eval\((["'])require\1\);/g,
+				"return commonjsRequire;",
+			),
+			map: null,
+		};
+	},
+};
+
 export default defineConfig({
 	plugins: [
+		patchMathRenderingModuleEval,
 		svelte({
+			preprocess: vitePreprocess(),
 			compilerOptions: {
 				customElement: true,
 			},
@@ -28,7 +48,7 @@ export default defineConfig({
 		emptyOutDir: true,
 		target: "es2020",
 		minify: "esbuild",
-		sourcemap: true,
+		sourcemap: false,
 		rollupOptions: {
 			external: [
 				"@datadog/browser-rum",
@@ -42,8 +62,7 @@ export default defineConfig({
 			],
 			output: {
 				format: "es",
-				inlineDynamicImports: true,
-			},
+							},
 		},
 	},
 });

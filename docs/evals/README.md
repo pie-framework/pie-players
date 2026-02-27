@@ -14,13 +14,13 @@ This repo uses **local-only** evals to validate `pie-iife-player`, `pie-esm-play
 
 ## Running locally
 
-From repo root (recommended):
+From repo root (recommended, if eval runner scripts are configured in your host app):
 
 ```bash
-bun run test:evals
+bun run --cwd apps/section-demos test:evals
 ```
 
-From `apps/example` (equivalent):
+From `apps/section-demos` (equivalent):
 
 ```bash
 bun run test:evals
@@ -227,7 +227,7 @@ evals:
 - **`spirit_checks`** (optional):
   - Validates semantic quality and tone beyond technical correctness.
   - Each check is a natural language statement about user experience.
-  - Inspired by [BarbellBee's eval system](./COMPARISON-WITH-BARBELLBEE.md).
+  - Inspired by external eval frameworks while remaining repo-specific.
 
 ### Supported actions (runner)
 
@@ -503,7 +503,7 @@ See templates:
 
 ### Test Runner
 
-The eval system is implemented in [apps/example/tests/evals/docs-evals.spec.ts](../../apps/example/tests/evals/docs-evals.spec.ts).
+The eval system is implemented in host-app eval specs (for example, under `apps/section-demos/tests/evals/`).
 
 **Key features:**
 - Recursively discovers all `evals.yaml` files in `docs/evals/`
@@ -722,6 +722,6 @@ bun run test:evals --grep "your-test-id"
 
 ## Related Documentation
 
-- [Comparison with BarbellBee eval system](./COMPARISON-WITH-BARBELLBEE.md) - Deep dive on spirit checks and best practices
+- Use this guide as the canonical evals reference for spirit checks and quality gates.
 
 

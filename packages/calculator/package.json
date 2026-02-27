@@ -1,7 +1,15 @@
 {
 	"name": "@pie-players/pie-calculator",
-	"version": "0.1.1",
+	"version": "0.1.3",
 	"author": "PIE Framework",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pie-framework/pie-players.git",
+		"directory": "packages/calculator"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
 	"main": "./dist/index.js",
 	"devDependencies": {
 		"typescript": "^5.7.2"
@@ -30,5 +38,13 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"type": "module",
-	"types": "./dist/index.d.ts"
+	"types": "./dist/index.d.ts",
+	"sideEffects": false,
+	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/calculator#readme",
+	"bugs": {
+		"url": "https://github.com/pie-framework/pie-players/issues"
+	},
+	"engines": {
+		"node": ">=18.0.0"
+	}
 }

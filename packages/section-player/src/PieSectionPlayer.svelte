@@ -11,719 +11,816 @@
       section='{"identifier":"section-1","keepTogether":true,...}'
       mode="gather"
       view="candidate"
-      player-type="esm"
-      bundle-host="https://cdn.pie.org"
-      esm-cdn-url="https://esm.sh">
+      bundle-host="https://cdn.pie.org">
     </pie-section-player>
-
-  Player Types (player-type attribute):
-    - "auto" (default): Automatically choose based on bundle-host/esm-cdn-url
-    - "iife": Use IIFE player (SystemJS bundles) - requires bundle-host
-    - "esm": Use ESM player (ESM CDN) - requires esm-cdn-url
-    - "fixed": Use fixed player (pre-bundled elements)
-    - "inline": Use inline player (single-request rendering)
 
   Events:
     - section-loaded: Fired when section is loaded and ready
     - item-changed: Fired when current item changes (item mode only)
     - section-complete: Fired when all items completed
     - player-error: Fired on errors
+    - toolkit-coordinator-ready: Fired when coordinator is resolved
 -->
 <svelte:options
-	customElement={{
-		tag: 'pie-section-player',
-		shadow: 'none',
-		props: {
-			// Core props
-			section: { attribute: 'section', type: 'Object' },
-			env: { attribute: 'env', type: 'Object' },
-			view: { attribute: 'view', type: 'String' },
-			layout: { attribute: 'layout', type: 'String' },
+  customElement={{
+    tag: "pie-section-player",
+    shadow: "open",
+    props: {
+      // Core props
+      section: { attribute: "section", type: "Object" },
+      env: { attribute: "env", type: "Object" },
+      view: { attribute: "view", type: "String" },
+      layout: { attribute: "layout", type: "String" },
 
-			// Item sessions for restoration
-			itemSessions: { attribute: 'item-sessions', type: 'Object' },
+      // Styling
+      customClassName: { attribute: "custom-class-name", type: "String" },
 
-			// Bundle/CDN configuration
-			bundleHost: { attribute: 'bundle-host', type: 'String' },
-			esmCdnUrl: { attribute: 'esm-cdn-url', type: 'String' },
-			playerVersion: { attribute: 'player-version', type: 'String' },
+      // Tools toolbar position
+      toolbarPosition: { attribute: "toolbar-position", type: "String" },
+      showToolbar: { attribute: "show-toolbar", type: "Boolean" },
 
-			// Styling
-			customClassname: { attribute: 'custom-classname', type: 'String' },
+      // Debug
+      debug: { attribute: "debug", type: "String" },
 
-			// Player type selection
-			playerType: { attribute: 'player-type', type: 'String' },
-
-			// Tools toolbar position
-			toolbarPosition: { attribute: 'toolbar-position', type: 'String' },
-
-			// Debug
-			debug: { attribute: 'debug', type: 'String' },
-
-			// Toolkit coordinator (JS property, not attribute)
-			toolkitCoordinator: { type: 'Object', reflect: false }
-		}
-	}}
+      // Toolkit coordinator (JS property, not attribute)
+      toolkitCoordinator: { type: "Object", reflect: false },
+      // Host-provided web component definitions
+      layoutDefinitions: { type: "Object", reflect: false },
+    },
+  }}
 />
 
 <script lang="ts">
+  import {
+    assessmentToolkitRuntimeContext,
+    ToolkitCoordinator,
+    type AssessmentToolkitRuntimeContext,
+  } from "@pie-players/pie-assessment-toolkit";
+  import { ContextProvider, ContextRoot } from "@pie-players/pie-context";
+  import {
+    DEFAULT_LAYOUT_DEFINITIONS,
+    DEFAULT_PLAYER_DEFINITIONS,
+    mergeComponentDefinitions,
+    type ComponentDefinition,
+  } from "./component-definitions.js";
+  import {
+    type ElementLoaderInterface,
+    IifeElementLoader,
+  } from "@pie-players/pie-players-shared";
+  import type {
+    ItemEntity,
+    PassageEntity,
+    AssessmentSection,
+    RubricBlock,
+  } from "@pie-players/pie-players-shared";
+  import { onMount } from "svelte";
+  import { SectionController } from "./controllers/SectionController.js";
+  import { SectionToolkitService } from "./controllers/SectionToolkitService.js";
+  import type { SectionCompositionModel, SectionViewModel } from "./controllers/types.js";
 
-	import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
-	import { type ElementLoaderInterface, EsmElementLoader, IifeElementLoader } from '@pie-players/pie-players-shared/loaders';
-import type {
-		ItemEntity,
-		PassageEntity,
-		QtiAssessmentSection,
-		RubricBlock
-	} from '@pie-players/pie-players-shared/types';
-	import { onMount, untrack } from 'svelte';
-	import ItemModeLayout from './components/ItemModeLayout.svelte';
-	import SplitPanelLayout from './components/layouts/SplitPanelLayout.svelte';
-	import VerticalLayout from './components/layouts/VerticalLayout.svelte';
+  type SectionPlayerRuntimeContext = AssessmentToolkitRuntimeContext & {
+    reportSessionChanged?: (itemId: string, detail: unknown) => void;
+  };
 
-	// Import section tools toolbar web component
-	import '@pie-players/pie-section-tools-toolbar';
+  const isBrowser = typeof window !== "undefined";
 
-	// Props
-	let {
-		section = null as QtiAssessmentSection | null,
-		env = { mode: 'gather', role: 'student' } as { mode: 'gather' | 'view' | 'evaluate' | 'author'; role: 'student' | 'instructor' },
-		view = 'candidate' as 'candidate' | 'scorer' | 'author' | 'proctor' | 'testConstructor' | 'tutor',
-		layout = 'split-panel' as 'vertical' | 'split-panel',
-		itemSessions = {} as Record<string, any>,
-		bundleHost = '',
-		esmCdnUrl = '',
-		playerVersion = 'latest',
-		playerType = 'auto' as 'auto' | 'iife' | 'esm' | 'fixed' | 'inline',
-		customClassname = '',
-		toolbarPosition = 'right' as 'top' | 'right' | 'bottom' | 'left',
-		debug = '' as string | boolean,
+  // Props
+  let {
+    section = null as AssessmentSection | null,
+    env = { mode: "gather", role: "student" } as {
+      mode: "gather" | "view" | "evaluate" | "author";
+      role: "student" | "instructor";
+    },
+    view = "candidate" as
+      | "candidate"
+      | "scorer"
+      | "author"
+      | "proctor"
+      | "testConstructor"
+      | "tutor",
+    layout = "split-panel",
+    customClassName = "",
+    toolbarPosition = "right" as "top" | "right" | "bottom" | "left" | "none",
+    showToolbar = true,
+    debug = "" as string | boolean,
 
-		// Toolkit coordinator (optional - creates default if not provided)
-		toolkitCoordinator = null as any,
+    // Toolkit coordinator (host may provide; section player creates one lazily if absent)
+    toolkitCoordinator = null as ToolkitCoordinator | null,
+    layoutDefinitions = {} as Partial<Record<string, ComponentDefinition>>,
 
-		// Event handlers
-		onsessionchanged = null as ((event: CustomEvent) => void) | null
-	} = $props();
+    // Event handlers
+    onsessionchanged = null as ((detail: any) => void) | null,
+  } = $props();
 
-	// Generate or use provided coordinator
-	const coordinator = $derived.by(() => {
-		if (toolkitCoordinator) return toolkitCoordinator;
+  type ToolkitCoordinatorReadyDetail = {
+    toolkitCoordinator: ToolkitCoordinator;
+  };
 
-		// Generate default assessmentId for standalone sections
-		const fallbackId = `anon_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+  const EMPTY_VIEW_MODEL: SectionViewModel = {
+    passages: [],
+    items: [],
+    rubricBlocks: [],
+    instructions: [],
+    adapterItemRefs: [],
+    currentItemIndex: 0,
+    isPageMode: false,
+  };
+  const EMPTY_COMPOSITION_MODEL: SectionCompositionModel = {
+    section: null,
+    assessmentItemRefs: [],
+    passages: [],
+    items: [],
+    rubricBlocks: [],
+    instructions: [],
+    currentItemIndex: 0,
+    currentItem: null,
+    isPageMode: false,
+    itemSessionsByItemId: {},
+    testAttemptSession: null,
+  };
 
-		return new ToolkitCoordinator({
-			assessmentId: fallbackId,
-			tools: {
-				tts: { enabled: true },
-				answerEliminator: { enabled: true }
-			}
-		});
-	});
+  let ownedToolkitCoordinator: ToolkitCoordinator | null = null;
+  let fallbackAssessmentId: string | null = null;
+  let fallbackSectionId: string | null = null;
+  let lastNotifiedCoordinator = $state<ToolkitCoordinator | null>(null);
+  let sectionController = $state<SectionController | null>(null);
+  let sectionControllerVersion = $state(0);
+  const sectionToolkitService = new SectionToolkitService();
+  let lastLoadedSignature = $state<string | null>(null);
+  let lastControllerInputKey = $state<string | null>(null);
+  let lastControllerCoordinator = $state<ToolkitCoordinator | null>(null);
 
-	// Extract services from coordinator
-	const services = $derived(coordinator.getServiceBundle());
-	const assessmentId = $derived(coordinator.assessmentId);
+  function getFallbackAssessmentId(): string {
+    if (!fallbackAssessmentId) {
+      fallbackAssessmentId = `anon_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+    }
+    return fallbackAssessmentId;
+  }
 
-	// Generate or extract sectionId
-	const sectionId = $derived.by(() => {
-		if (section?.identifier) return section.identifier;
-		return `section_${Date.now()}_${Math.random().toString(16).slice(2)}`;
-	});
+  function getFallbackSectionId(): string {
+    if (!fallbackSectionId) {
+      // Use deterministic fallback so host widgets can resolve the same controller key.
+      fallbackSectionId = `section-${assessmentId || "default"}`;
+    }
+    return fallbackSectionId;
+  }
 
-	// State
-	let passages = $state<PassageEntity[]>([]);
-	let items = $state<ItemEntity[]>([]);
-	let rubricBlocks = $state<RubricBlock[]>([]);
-	let currentItemIndex = $state(0);
-	let isLoading = $state(false);
-	let error = $state<string | null>(null);
+  const preferredAssessmentId = $derived.by(() => {
+    if (section?.identifier) return section.identifier;
+    return null;
+  });
 
-	// Element loading state
-	let elementsLoaded = $state(false);
+  function ensureOwnedCoordinator(): ToolkitCoordinator {
+    if (!ownedToolkitCoordinator) {
+      ownedToolkitCoordinator = new ToolkitCoordinator({
+        assessmentId: preferredAssessmentId ?? getFallbackAssessmentId(),
+        lazyInit: true,
+      });
+    }
+    return ownedToolkitCoordinator;
+  }
 
-	// TTS error state
-	let ttsError = $state<string | null>(null);
+  const coordinator = $derived.by(
+    () => (toolkitCoordinator as ToolkitCoordinator | null) ?? ensureOwnedCoordinator(),
+  );
 
-	// Section tools toolbar element reference
-	let toolbarElement = $state<HTMLElement | null>(null);
+  $effect(() => {
+    if (!coordinator || coordinator === lastNotifiedCoordinator) return;
+    lastNotifiedCoordinator = coordinator;
+    const detail: ToolkitCoordinatorReadyDetail = {
+      toolkitCoordinator: coordinator,
+    };
+    emitSectionEvent("toolkit-coordinator-ready", detail);
+  });
 
-	// Section toolbar enabled tools (reactive state)
-	let sectionToolsEnabled = $state<string[]>([]);
+  // Extract services from coordinator
+  const services = $derived.by(() => coordinator.getServiceBundle());
+  const assessmentId = $derived(coordinator.assessmentId);
 
-	// Subscribe to floating tools changes from coordinator
-	$effect(() => {
-		if (coordinator) {
-			const unsubscribe = coordinator.onFloatingToolsChange((toolIds: string[]) => {
-				sectionToolsEnabled = toolIds;
-			});
-			return unsubscribe;
-		}
-	});
+  // Generate or extract sectionId
+  const sectionId = $derived.by(() => {
+    if (section?.identifier) return section.identifier;
+    return getFallbackSectionId();
+  });
 
-	// Computed
-	let isPageMode = $derived(section?.keepTogether === true);
-	let currentItem = $derived(isPageMode ? null : items[currentItemIndex] || null);
-	let canNavigateNext = $derived(!isPageMode && currentItemIndex < items.length - 1);
-	let canNavigatePrevious = $derived(!isPageMode && currentItemIndex > 0);
+  // State
+  let isLoading = $state(false);
+  let error = $state<string | null>(null);
 
-	// Extract mode from env for convenience
-	let mode = $derived(env.mode);
+  // Element loading state
+  let elementsLoaded = $state(false);
 
-	// Extract content from section
-	function extractContent() {
-		if (!section) {
-			passages = [];
-			items = [];
-			rubricBlocks = [];
-			return;
-		}
+  // TTS error state
+  let ttsError = $state<string | null>(null);
 
-		const passageMap = new Map<string, PassageEntity>();
+  let pageLayoutElement = $state<HTMLElement | null>(null);
+  let rootElement = $state<HTMLElement | null>(null);
+  let runtimeContextProvider: ContextProvider<
+    typeof assessmentToolkitRuntimeContext
+  > | null = null;
+  let runtimeContextRoot: ContextRoot | null = null;
 
-		// Extract rubric blocks for current view
-		rubricBlocks = (section.rubricBlocks || []).filter(rb => rb.view === view);
+  function getHostElement(): HTMLElement | null {
+    if (!rootElement) return null;
+    const rootNode = rootElement.getRootNode();
+    if (rootNode && "host" in rootNode) {
+      return (rootNode as ShadowRoot).host as HTMLElement;
+    }
+    return rootElement.parentElement as HTMLElement | null;
+  }
 
-		// 1. Extract passages from rubricBlocks
-		// IMPORTANT: Always extract passages from 'candidate' view, regardless of current view
-		// Passages should be visible in both candidate and scorer modes
-		const allRubricBlocks = section.rubricBlocks || [];
-		for (const rb of allRubricBlocks) {
-			if (rb.class === 'stimulus' && rb.passage && rb.passage.id) {
-				// Include passages from candidate view (always shown) and current view
-				if (rb.view === 'candidate' || rb.view === view) {
-					passageMap.set(rb.passage.id, rb.passage);
-				}
-			}
-		}
+  function emitSectionEvent(name: string, detail: unknown): void {
+    const event = new CustomEvent(name, {
+      detail,
+      bubbles: true,
+      composed: true,
+    });
+    const host = getHostElement();
+    if (host) {
+      host.dispatchEvent(event);
+      return;
+    }
+    dispatchEvent(event);
+  }
 
-		// 2. Extract items and their linked passages
-		items = [];
-		for (const itemRef of section.assessmentItemRefs || []) {
-			if (itemRef.item) {
-				items.push(itemRef.item);
+  function bumpControllerState(): void {
+    sectionControllerVersion += 1;
+  }
 
-				// Item-linked passage (deduplicated)
-				if (itemRef.item.passage && typeof itemRef.item.passage === 'object' && itemRef.item.passage.id) {
-					if (!passageMap.has(itemRef.item.passage.id)) {
-						passageMap.set(itemRef.item.passage.id, itemRef.item.passage);
-					}
-				}
-			}
-		}
+  // Extract mode from env for convenience
+  let mode = $derived(env.mode);
+  let runtimeContextValue = $derived.by(
+    (): SectionPlayerRuntimeContext => ({
+      toolkitCoordinator: coordinator,
+      toolCoordinator: coordinator.toolCoordinator,
+      ttsService: services.ttsService,
+      highlightCoordinator: services.highlightCoordinator,
+      catalogResolver: services.catalogResolver,
+      elementToolStateStore: services.elementToolStateStore,
+      assessmentId,
+      sectionId,
+      itemPlayer: {
+        type: "iife",
+        tagName: resolvedPlayerTag,
+        isDefault: true,
+      },
+      reportSessionChanged: (itemId: string, detail: unknown) =>
+        handleItemSessionChanged(itemId, detail),
+    }),
+  );
+  let resolvedPlayerDefinition = $derived.by(
+    () => DEFAULT_PLAYER_DEFINITIONS["iife"],
+  );
+  let resolvedPlayerTag = $derived(
+    resolvedPlayerDefinition?.tagName || "pie-iife-player",
+  );
+  let mergedLayoutDefinitions = $derived.by(() =>
+    mergeComponentDefinitions(DEFAULT_LAYOUT_DEFINITIONS, layoutDefinitions),
+  );
+  let resolvedLayout = $derived(layout);
+  let resolvedLayoutDefinition = $derived.by(
+    () =>
+      mergedLayoutDefinitions[resolvedLayout] ||
+      mergedLayoutDefinitions["split-panel"],
+  );
+  let resolvedLayoutTag = $derived(
+    resolvedLayoutDefinition?.tagName || "pie-split-panel-layout",
+  );
 
-		passages = Array.from(passageMap.values());
-	}
+  const controllerViewModel = $derived.by(() => {
+    sectionControllerVersion;
+    return sectionController?.getViewModel() || EMPTY_VIEW_MODEL;
+  });
+  let passages = $derived(controllerViewModel.passages);
+  let items = $derived(controllerViewModel.items);
+  let rubricBlocks = $derived(controllerViewModel.rubricBlocks);
+  let currentItemIndex = $derived(controllerViewModel.currentItemIndex);
+  let isPageMode = $derived(controllerViewModel.isPageMode);
+  let compositionModel = $derived.by(() => {
+    sectionControllerVersion;
+    return sectionController?.getCompositionModel() || EMPTY_COMPOSITION_MODEL;
+  });
+  const navigationState = $derived.by(() => {
+    sectionControllerVersion;
+    return (
+      sectionController?.getNavigationState(isLoading) || {
+        currentIndex: currentItemIndex,
+        totalItems: items.length,
+        canNext: !isPageMode && currentItemIndex < items.length - 1,
+        canPrevious: !isPageMode && currentItemIndex > 0,
+        isLoading,
+      }
+    );
+  });
+  let canNavigateNext = $derived(navigationState.canNext);
+  let canNavigatePrevious = $derived(navigationState.canPrevious);
+  // Navigate to item (item mode only)
+  function navigateToItem(index: number): void {
+    if (!sectionController) return;
+    const result = sectionController.navigateToItem(index);
+    if (!result) return;
+    bumpControllerState();
+    emitSectionEvent("item-changed", result.eventDetail);
+  }
 
-	// Navigate to item (item mode only)
-	function navigateToItem(index: number) {
-		if (isPageMode) {
-			console.warn('[PieSectionPlayer] Navigation called in page mode - ignoring');
-			return;
-		}
+  // Public navigation methods are intentionally intra-section (item mode only).
+  // Cross-section/page navigation belongs to the higher-level assessment player.
+  export function navigateNext() {
+    if (canNavigateNext) {
+      navigateToItem(currentItemIndex + 1);
+    }
+  }
 
-		if (index < 0 || index >= items.length) {
-			return;
-		}
+  export function navigatePrevious() {
+    if (canNavigatePrevious) {
+      navigateToItem(currentItemIndex - 1);
+    }
+  }
 
-		const previousItemId = currentItem?.id || '';
-		currentItemIndex = index;
+  export function getNavigationState() {
+    return navigationState;
+  }
 
-		// Dispatch event
-		dispatchEvent(new CustomEvent('item-changed', {
-			detail: {
-				previousItemId,
-				currentItemId: currentItem?.id || '',
-				itemIndex: currentItemIndex,
-				totalItems: items.length,
-				timestamp: Date.now()
-			},
-			bubbles: true,
-			composed: true
-		}));
-	}
+  // Lifecycle
+  onMount(() => {
+    if (isBrowser) {
+      import("@pie-players/pie-section-tools-toolbar").catch((err) => {
+        console.error(
+          "[PieSectionPlayer] Failed to load section tools toolbar:",
+          err,
+        );
+      });
+    }
+  });
 
-	// Public navigation methods (for item mode)
-	export function navigateNext() {
-		if (canNavigateNext) {
-			navigateToItem(currentItemIndex + 1);
-		}
-	}
+  $effect(() => {
+    const resolvedCoordinator = coordinator;
+    const inputSection = section;
+    const inputView = view;
+    const inputAssessmentId = assessmentId;
+    const inputSectionId = sectionId;
 
-	export function navigatePrevious() {
-		if (canNavigatePrevious) {
-			navigateToItem(currentItemIndex - 1);
-		}
-	}
+    let cancelled = false;
+    const inputKey = inputSection
+      ? `${inputAssessmentId}:${inputSectionId}:${inputView}:${inputSection.identifier || ""}`
+      : null;
 
-	export function getNavigationState() {
-		return {
-			currentIndex: currentItemIndex,
-			totalItems: items.length,
-			canNext: canNavigateNext,
-			canPrevious: canNavigatePrevious,
-			isLoading
-		};
-	}
+    if (!inputSection) {
+      sectionController = null;
+      lastControllerInputKey = null;
+      lastControllerCoordinator = null;
+      bumpControllerState();
+      return;
+    }
 
-	// Lifecycle
-	onMount(() => {
-		extractContent();
+    if (
+      sectionController &&
+      inputKey &&
+      lastControllerInputKey === inputKey &&
+      lastControllerCoordinator === resolvedCoordinator
+    ) {
+      return;
+    }
 
-		// Dispatch loaded event
-		dispatchEvent(new CustomEvent('section-loaded', {
-			detail: {
-				sectionId: section?.identifier || '',
-				itemCount: items.length,
-				passageCount: passages.length,
-				isPageMode
-			},
-			bubbles: true,
-			composed: true
-		}));
-	});
+    void sectionToolkitService
+      .resolveSectionController<SectionController>({
+        coordinator: resolvedCoordinator,
+        sectionId: inputSectionId,
+        input: {
+          section: inputSection,
+          view: inputView,
+          assessmentId: inputAssessmentId,
+          sectionId: inputSectionId,
+        },
+        createDefaultController: () => new SectionController(),
+      })
+      .then((controller) => {
+        if (cancelled) return;
+        sectionController = controller;
+        lastControllerInputKey = inputKey;
+        lastControllerCoordinator = resolvedCoordinator;
+        bumpControllerState();
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        error = String(err instanceof Error ? err.message : err);
+        console.error("[PieSectionPlayer] Failed to resolve section controller:", err);
+      });
 
-	// React to section changes
-	$effect(() => {
-		// Track section to react to changes, but don't track the execution of extractContent
-		const currentSection = section;
-		if (currentSection) {
-			untrack(() => extractContent());
-		}
-	});
+    return () => {
+      cancelled = true;
+    };
+  });
 
-	// Element pre-loading effect (loads all unique elements before rendering items)
-	$effect(() => {
-		if (!section) {
-			elementsLoaded = false;
-			return;
-		}
+  $effect(() => {
+    const resolvedCoordinator = coordinator;
+    const resolvedSectionId = sectionId;
+    return () => {
+      void sectionToolkitService.disposeSectionController({
+        coordinator: resolvedCoordinator,
+        sectionId: resolvedSectionId,
+      });
+    };
+  });
 
-		// Collect all items (passages + questions) that need elements loaded
-		const allItems: ItemEntity[] = [
-			...passages,
-			...items
-		];
+  $effect(() => {
+    if (!section || !sectionController) return;
+    const signature =
+      `${assessmentId}:${sectionId}:${view}:` +
+      `${items.length}:${passages.length}:${isPageMode}`;
+    if (signature === lastLoadedSignature) return;
+    lastLoadedSignature = signature;
+    emitSectionEvent("section-loaded", sectionController.getSectionLoadedEventDetail());
+  });
 
-		if (allItems.length === 0) {
-			elementsLoaded = true;
-			return;
-		}
+  // Ensure selected page-mode layout web component is registered.
+  $effect(() => {
+    resolvedLayoutDefinition?.ensureDefined?.().catch((err) => {
+      console.error("[PieSectionPlayer] Failed to load layout component:", err);
+    });
+  });
 
-		// Create appropriate loader based on configuration
-		let loader: ElementLoaderInterface | null = null;
+  // Ensure selected player web component is registered.
+  $effect(() => {
+    resolvedPlayerDefinition?.ensureDefined?.().catch((err) => {
+      console.error("[PieSectionPlayer] Failed to load player component:", err);
+    });
+  });
 
-		if (esmCdnUrl) {
-			loader = new EsmElementLoader({
-				esmCdnUrl,
-				debugEnabled: () => !!debug
-			});
-		} else if (bundleHost) {
-			loader = new IifeElementLoader({
-				bundleHost,
-				debugEnabled: () => !!debug
-			});
-		} else {
-			console.warn('[PieSectionPlayer] No loader configuration provided (esmCdnUrl or bundleHost)');
-			elementsLoaded = true;
-			return;
-		}
+  // Element pre-loading effect (loads all unique elements before rendering items)
+  $effect(() => {
+    if (!section) {
+      elementsLoaded = false;
+      return;
+    }
 
-		// Load all elements upfront
-		loader.loadFromItems(allItems, {
-			view: mode === 'author' ? 'author' : 'delivery',
-			needsControllers: true
-		})
-			.then(() => {
-				elementsLoaded = true;
-				console.log(`[PieSectionPlayer] Loaded elements for ${allItems.length} items`);
-			})
-			.catch((err) => {
-				console.error('[PieSectionPlayer] Failed to load elements:', err);
-				// Still set loaded to true to allow rendering (items will handle their own errors)
-				elementsLoaded = true;
-			});
+    // Collect all renderables needing element preloading:
+    // - passages (stimulus rubric blocks / linked passages)
+    // - assessment items
+    // - rubric blocks with PIE passage configs (e.g. instructions/rubrics)
+    const additionalRubricPassages = (rubricBlocks || [])
+      .map((rb) => rb?.passage)
+      .filter((p): p is PassageEntity => !!p && !!p.config);
+    const allItems: ItemEntity[] = [...passages, ...items, ...additionalRubricPassages];
 
-		// Cleanup
-		return () => {
-			// Cleanup if needed
-		};
-	});
+    if (allItems.length === 0) {
+      elementsLoaded = true;
+      return;
+    }
 
-	// Listen for TTS errors
-	$effect(() => {
-		const ttsService = services.ttsService;
-		if (!ttsService) {
-			ttsError = null;
-			return;
-		}
+    // Ensure item renderers do not mount until required PIE bundles are available.
+    elementsLoaded = false;
 
-		const handleTTSStateChange = (state: any) => {
-			// PlaybackState.ERROR = "error"
-			if (state === 'error') {
-				const errorMsg = ttsService.getLastError?.() || 'Text-to-speech error occurred';
-				ttsError = errorMsg;
-				console.error('[PieSectionPlayer] TTS error:', errorMsg);
-			} else if (state === 'playing' || state === 'loading') {
-				// Clear error when successfully starting playback
-				ttsError = null;
-			}
-		};
+    const effectiveBundleHost = String(
+      resolvedPlayerDefinition?.attributes?.["bundle-host"] || "",
+    );
 
-		ttsService.onStateChange?.('section-player', handleTTSStateChange);
+    // Create the loader from the fixed IIFE player definition.
+    let loader: ElementLoaderInterface | null = null;
 
-		// Cleanup
-		return () => {
-			ttsService.offStateChange?.('section-player', handleTTSStateChange);
-		};
-	});
+    if (effectiveBundleHost) {
+      loader = new IifeElementLoader({
+        bundleHost: effectiveBundleHost,
+        debugEnabled: () => !!debug,
+      });
+    } else {
+      console.warn("[PieSectionPlayer] Missing bundle-host for IIFE element preloader.");
+      elementsLoaded = true;
+      return;
+    }
 
-	// Get instructions
-	let instructions = $derived(
-		rubricBlocks.filter(rb => rb.class === 'instructions')
-	);
+    // Load all elements upfront
+    loader
+      .loadFromItems(allItems, {
+        view: mode === "author" ? "author" : "delivery",
+        needsControllers: true,
+      })
+      .then(() => {
+        elementsLoaded = true;
+        console.log(
+          `[PieSectionPlayer] Loaded elements for ${allItems.length} items`,
+        );
+      })
+      .catch((err) => {
+        console.error("[PieSectionPlayer] Failed to load elements:", err);
+        // Still set loaded to true to allow rendering (items will handle their own errors)
+        elementsLoaded = true;
+      });
 
-	// Handle session changes from items
-	function handleSessionChanged(itemId: string, sessionDetail: any) {
-		console.log('[PieSectionPlayer] handleSessionChanged called:', itemId, sessionDetail);
+    // Cleanup
+    return () => {
+      // Cleanup if needed
+    };
+  });
 
-		// Extract the actual session data from the event detail
-		// The sessionDetail contains { complete, component, session }
-		// We want to store the session property
-		const actualSession = sessionDetail.session || sessionDetail;
+  // Listen for TTS errors
+  $effect(() => {
+    if (!showToolbar) return;
+    void coordinator.ensureTTSReady().catch((err: unknown) => {
+      console.error("[PieSectionPlayer] Failed to lazily initialize TTS:", err);
+    });
+  });
 
-		// Only update itemSessions if we have valid session data structure
-		// The session should have an 'id' property and a 'data' array
-		// Skip metadata-only events that just have { complete, component }
-		if (actualSession && ('id' in actualSession || 'data' in actualSession)) {
-			// Update local sessions with pure session data (no metadata mixed in)
-			itemSessions = {
-				...itemSessions,
-				[itemId]: actualSession
-			};
-		}
+  // Listen for TTS errors
+  $effect(() => {
+    const ttsService = services.ttsService;
 
-		// Create event detail with session and metadata kept separate
-		const eventDetail = {
-			itemId,
-			session: itemSessions[itemId] || actualSession,
-			complete: sessionDetail.complete,
-			component: sessionDetail.component,
-			timestamp: Date.now()
-		};
+    const handleTTSStateChange = (state: any) => {
+      // PlaybackState.ERROR = "error"
+      if (state === "error") {
+        const errorMsg =
+          ttsService.getLastError?.() || "Text-to-speech error occurred";
+        ttsError = errorMsg;
+        console.error("[PieSectionPlayer] TTS error:", errorMsg);
+      } else if (state === "playing" || state === "loading") {
+        // Clear error when successfully starting playback
+        ttsError = null;
+      }
+    };
 
-		// Call handler prop if provided (for Svelte component usage)
-		if (onsessionchanged) {
-			const customEvent = new CustomEvent('session-changed', {
-				detail: eventDetail,
-				bubbles: true,
-				composed: true
-			});
-			onsessionchanged(customEvent);
-		}
+    ttsService.onStateChange?.("section-player", handleTTSStateChange);
 
-		// Also dispatch event (for custom element usage)
-		dispatchEvent(new CustomEvent('session-changed', {
-			detail: eventDetail,
-			bubbles: true,
-			composed: true
-		}));
-	}
+    // Cleanup
+    return () => {
+      ttsService.offStateChange?.("section-player", handleTTSStateChange);
+    };
+  });
 
-	// Get current item session
-	let currentItemSession = $derived(
-		currentItem ? itemSessions[currentItem.id || ''] : undefined
-	);
+  // Get instructions from controller-owned content model.
+  let instructions = $derived(sectionController?.getInstructions() || []);
 
-	// Compute enabled tools string from reactive state
-	let enabledToolsString = $derived(sectionToolsEnabled.join(','));
+  // Handle session changes from items.
+  function handleItemSessionChanged(itemId: string, sessionDetail: any): void {
+    if (!sectionController) return;
+    const canonicalItemId = sectionController.getCanonicalItemId(itemId);
+    const result = sectionController.handleItemSessionChanged(
+      canonicalItemId,
+      sessionDetail,
+    );
+    if (!result) return;
+    bumpControllerState();
+    const eventDetail = result.eventDetail;
 
-	// Bind toolkitCoordinator, registry, position, and enabled tools to toolbar element
-	$effect(() => {
-		if (toolbarElement) {
-			if (coordinator) {
-				(toolbarElement as any).toolCoordinator = coordinator.toolCoordinator;
-				(toolbarElement as any).toolProviderRegistry = coordinator.toolProviderRegistry;
-			}
-			// Set position property and attribute
-			(toolbarElement as any).position = toolbarPosition;
-			toolbarElement.setAttribute('position', toolbarPosition);
-			toolbarElement.setAttribute('data-position', toolbarPosition);
-			// Set enabled tools
-			(toolbarElement as any).enabledTools = enabledToolsString;
-			toolbarElement.setAttribute('enabled-tools', enabledToolsString);
-		}
-	});
+    // Call handler prop if provided (for component callback usage).
+    // Keep this as raw detail to avoid double-wrapping CustomEvent.detail.
+    if (onsessionchanged) {
+      onsessionchanged(eventDetail);
+    }
+
+    // Also dispatch event (for custom element usage)
+    emitSectionEvent("session-changed", eventDetail);
+  }
+
+  // Establish runtime context provider at the section-player root.
+  $effect(() => {
+    if (!rootElement) return;
+    const provider = new ContextProvider(rootElement, {
+      context: assessmentToolkitRuntimeContext,
+      initialValue: runtimeContextValue,
+    });
+    provider.connect();
+    runtimeContextProvider = provider;
+
+    const root = new ContextRoot(rootElement);
+    root.attach();
+    runtimeContextRoot = root;
+
+    return () => {
+      runtimeContextRoot?.detach();
+      runtimeContextRoot = null;
+      runtimeContextProvider?.disconnect();
+      runtimeContextProvider = null;
+    };
+  });
+
+  // Push runtime value updates into the provider.
+  $effect(() => {
+    if (!runtimeContextProvider) return;
+    runtimeContextProvider.setValue(runtimeContextValue);
+  });
+
+  // Bind layout custom element properties imperatively.
+  $effect(() => {
+    const layoutElement = pageLayoutElement;
+    if (!layoutElement) return;
+    sectionControllerVersion;
+    (layoutElement as any).composition = compositionModel;
+    (layoutElement as any).env = env;
+    (layoutElement as any).toolbarPosition = toolbarPosition;
+    (layoutElement as any).showToolbar = showToolbar;
+    (layoutElement as any).onnext = navigateNext;
+    (layoutElement as any).onprevious = navigatePrevious;
+  });
 </script>
 
 <div
-	class="pie-section-player {customClassname}"
-	class:page-mode={isPageMode}
-	class:item-mode={!isPageMode}
-	data-assessment-id={assessmentId}
-	data-section-id={sectionId}
+  class={`pie-section-player ${customClassName} ${isPageMode ? "pie-section-player--page-mode" : "pie-section-player--item-mode"}`}
+  data-assessment-id={assessmentId}
+  data-section-id={sectionId}
+  bind:this={rootElement}
 >
-	{#if error}
-		<div class="error">
-			<p>Error loading section: {error}</p>
-		</div>
-	{:else if section}
-		<!-- Instructions -->
-		{#if instructions.length > 0}
-			<div class="section-instructions">
-				{#each instructions as rb}
-					{#if rb.passage && rb.passage.config}
-						<pie-esm-player
-							config={JSON.stringify(rb.passage.config)}
-							env={JSON.stringify({ mode: 'view' })}
-							bundle-host={bundleHost}
-							esm-cdn-url={esmCdnUrl}
-						></pie-esm-player>
-					{/if}
-				{/each}
-			</div>
-		{/if}
+  {#if error}
+    <div class="pie-section-player__error">
+      <p>Error loading section: {error}</p>
+    </div>
+  {:else if section}
+    <!-- Instructions -->
+    {#if instructions.length > 0}
+      <div class="pie-section-player__instructions">
+        {#each instructions as rb}
+          {#if rb.passage && rb.passage.config}
+            <svelte:element
+              this={resolvedPlayerTag}
+              {...({
+                config: JSON.stringify(rb.passage.config),
+                env: JSON.stringify({ mode: "view" }),
+                "skip-element-loading": true,
+                ...(resolvedPlayerDefinition?.attributes || {}),
+              } as any)}
+            ></svelte:element>
+          {/if}
+        {/each}
+      </div>
+    {/if}
 
-		<!-- TTS Error Banner -->
-		{#if ttsError}
-			<div class="tts-error-banner" role="alert">
-				<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-					<circle cx="12" cy="12" r="10"></circle>
-					<line x1="12" y1="8" x2="12" y2="12"></line>
-					<line x1="12" y1="16" x2="12.01" y2="16"></line>
-				</svg>
-				<span>Text-to-speech unavailable: {ttsError}</span>
-				<button
-					class="tts-error-dismiss"
-					onclick={() => ttsError = null}
-					aria-label="Dismiss error"
-				>
-					<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-						<line x1="18" y1="6" x2="6" y2="18"></line>
-						<line x1="6" y1="6" x2="18" y2="18"></line>
-					</svg>
-				</button>
-			</div>
-		{/if}
+    <!-- TTS Error Banner -->
+    {#if ttsError}
+      <div class="pie-section-player__tts-error-banner" role="alert">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+        <span>Text-to-speech unavailable: {ttsError}</span>
+        <button
+          class="pie-section-player__tts-error-dismiss"
+          onclick={() => (ttsError = null)}
+          aria-label="Dismiss error"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+    {/if}
 
-		<!-- Main content area -->
-		<div class="pie-section-player__content">
-			{#if elementsLoaded}
-				{#if isPageMode}
-					<!-- Page Mode: Choose layout based on layout prop -->
-					{#if layout === 'split-panel'}
-						<SplitPanelLayout
-							{passages}
-							{items}
-							{itemSessions}
-							{env}
-							{bundleHost}
-							{esmCdnUrl}
-							{playerVersion}
-							{playerType}
-							{assessmentId}
-							{sectionId}
-							toolkitCoordinator={coordinator}
-
-							onsessionchanged={handleSessionChanged}
-						/>
-					{:else}
-						<!-- Default: vertical layout -->
-						<VerticalLayout
-							{passages}
-							{items}
-							{itemSessions}
-							{env}
-							{bundleHost}
-							{esmCdnUrl}
-							{playerVersion}
-							{playerType}
-							{assessmentId}
-							{sectionId}
-							toolkitCoordinator={coordinator}
-
-							onsessionchanged={handleSessionChanged}
-						/>
-					{/if}
-				{:else}
-					<!-- Item Mode: Use internal Svelte component -->
-					<ItemModeLayout
-						{passages}
-						{currentItem}
-						currentIndex={currentItemIndex}
-						totalItems={items.length}
-						canNext={canNavigateNext}
-						canPrevious={canNavigatePrevious}
-						itemSession={currentItemSession}
-						{env}
-						{bundleHost}
-						{esmCdnUrl}
-						{playerVersion}
-						{playerType}
-						{assessmentId}
-						{sectionId}
-						toolkitCoordinator={coordinator}
-
-						onprevious={navigatePrevious}
-						onnext={navigateNext}
-						onsessionchanged={(sessionDetail) => handleSessionChanged(currentItem?.id || '', sessionDetail)}
-					/>
-				{/if}
-			{:else}
-				<div class="loading">
-					<p>Loading assessment elements...</p>
-				</div>
-			{/if}
-		</div>
-
-		<!-- Section-level floating tools toolbar -->
-		<pie-section-tools-toolbar
-			bind:this={toolbarElement}
-			position={toolbarPosition}
-			enabled-tools={enabledToolsString}
-		></pie-section-tools-toolbar>
-	{:else}
-		<div class="loading">
-			<p>Loading section...</p>
-		</div>
-	{/if}
+    <!-- Main content area -->
+    <div class="pie-section-player__content">
+      {#if elementsLoaded}
+        {#key resolvedLayoutTag}
+          <svelte:element
+            this={resolvedLayoutTag}
+            class="pie-section-player__page-layout"
+            bind:this={pageLayoutElement}
+          >
+          </svelte:element>
+        {/key}
+      {:else}
+        <div class="pie-section-player__loading">
+          <p>Loading assessment elements...</p>
+        </div>
+      {/if}
+    </div>
+  {:else}
+    <div class="pie-section-player__loading">
+      <p>Loading section...</p>
+    </div>
+  {/if}
 </div>
 
 <style>
-	:host {
-		display: block;
-		width: 100%;
-		height: 100%;
-		min-height: 0;
-		max-height: 100%;
-		overflow: hidden;
-	}
-	.pie-section-player {
-		display: flex;
-		width: 100%;
-		height: 100%;
-		min-height: 0;
-		max-height: 100%;
-		overflow: hidden;
-		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-	}
+  /* In no-shadow custom-element mode, enforce host-like sizing via global tag rule. */
+  :global(pie-section-player) {
+    display: block;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    max-height: 100%;
+    overflow: hidden;
+  }
 
-	/* Layout direction based on toolbar position */
-	.pie-section-player:has(pie-section-tools-toolbar[position="top"]),
-	.pie-section-player:has(pie-section-tools-toolbar[position="bottom"]),
-	.pie-section-player:has(:global(pie-section-tools-toolbar[data-position="top"])),
-	.pie-section-player:has(
-		:global(pie-section-tools-toolbar[data-position="bottom"])
-	),
-	.pie-section-player:not(:has(pie-section-tools-toolbar[position])):not(:has(pie-section-tools-toolbar[data-position])) {
-		flex-direction: column;
-	}
+  :host {
+    display: block;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    max-height: 100%;
+    overflow: hidden;
+  }
+  .pie-section-player {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    max-height: 100%;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+      Ubuntu, Cantarell, sans-serif;
+  }
 
-	.pie-section-player:has(pie-section-tools-toolbar[position="left"]),
-	.pie-section-player:has(pie-section-tools-toolbar[position="right"]),
-	.pie-section-player:has(:global(pie-section-tools-toolbar[data-position="left"])),
-	.pie-section-player:has(:global(pie-section-tools-toolbar[data-position="right"])) {
-		flex-direction: row;
-	}
+  /* Main content area takes remaining space */
+  .pie-section-player__content {
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
 
-	/* Toolbar ordering - control whether toolbar appears before or after content */
-	.pie-section-player:has(pie-section-tools-toolbar[position="top"]) .pie-section-player__content,
-	.pie-section-player:has(:global(pie-section-tools-toolbar[data-position="top"]))
-		.pie-section-player__content {
-		order: 2;
-	}
+  /* Ensure dynamic page-layout custom elements are height-constrained containers. */
+  .pie-section-player__page-layout {
+    display: block;
+    flex: 1;
+    height: 100%;
+    min-height: 0;
+    min-width: 0;
+    overflow: hidden;
+  }
 
-	.pie-section-player:has(pie-section-tools-toolbar[position="top"]) pie-section-tools-toolbar,
-	.pie-section-player:has(:global(pie-section-tools-toolbar[data-position="top"]))
-		pie-section-tools-toolbar {
-		order: 1;
-	}
+  .pie-section-player__error {
+    padding: 1rem;
+    background: var(--pie-incorrect-secondary, #fee);
+    border: 1px solid var(--pie-incorrect, #fcc);
+    border-radius: 4px;
+    color: var(--pie-incorrect-icon, #c00);
+  }
 
-	.pie-section-player:has(pie-section-tools-toolbar[position="left"]) .pie-section-player__content,
-	.pie-section-player:has(:global(pie-section-tools-toolbar[data-position="left"]))
-		.pie-section-player__content {
-		order: 2;
-	}
+  .pie-section-player__loading {
+    padding: 2rem;
+    text-align: center;
+    color: var(--pie-disabled, #666);
+  }
 
-	.pie-section-player:has(pie-section-tools-toolbar[position="left"]) pie-section-tools-toolbar,
-	.pie-section-player:has(:global(pie-section-tools-toolbar[data-position="left"]))
-		pie-section-tools-toolbar {
-		order: 1;
-	}
+  .pie-section-player__instructions {
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: var(--pie-secondary-background, #f5f5f5);
+    border-radius: 4px;
+  }
 
-	/* Main content area takes remaining space */
-	.pie-section-player__content {
-		flex: 1;
-		min-height: 0;
-		min-width: 0;
-		overflow: hidden;
-		display: flex;
-		flex-direction: column;
-	}
+  .pie-section-player__tts-error-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    margin-bottom: 1rem;
+    background: var(--pie-secondary-background, #fff3cd);
+    border: 1px solid var(--pie-missing, #ffc107);
+    border-radius: 4px;
+    color: var(--pie-text, #856404);
+    font-size: 0.875rem;
+    line-height: 1.4;
+  }
 
-	.error {
-		padding: 1rem;
-		background: #fee;
-		border: 1px solid #fcc;
-		border-radius: 4px;
-		color: #c00;
-	}
+  .pie-section-player__tts-error-banner svg {
+    flex-shrink: 0;
+  }
 
-	.loading {
-		padding: 2rem;
-		text-align: center;
-		color: #666;
-	}
+  .pie-section-player__tts-error-banner span {
+    flex: 1;
+  }
 
-	.section-instructions {
-		margin-bottom: 1.5rem;
-		padding: 1rem;
-		background: #f5f5f5;
-		border-radius: 4px;
-	}
+  .pie-section-player__tts-error-dismiss {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.25rem;
+    background: transparent;
+    border: none;
+    border-radius: 2px;
+    color: var(--pie-text, #856404);
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
 
-	.tts-error-banner {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-		padding: 0.875rem 1rem;
-		margin-bottom: 1rem;
-		background: #fff3cd;
-		border: 1px solid #ffc107;
-		border-radius: 4px;
-		color: #856404;
-		font-size: 0.875rem;
-		line-height: 1.4;
-	}
+  .pie-section-player__tts-error-dismiss:hover {
+    background: rgba(0, 0, 0, 0.1);
+  }
 
-	.tts-error-banner svg {
-		flex-shrink: 0;
-	}
-
-	.tts-error-banner span {
-		flex: 1;
-	}
-
-	.tts-error-dismiss {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		padding: 0.25rem;
-		background: transparent;
-		border: none;
-		border-radius: 2px;
-		color: #856404;
-		cursor: pointer;
-		transition: background-color 0.2s;
-	}
-
-	.tts-error-dismiss:hover {
-		background: rgba(0, 0, 0, 0.1);
-	}
-
-	.tts-error-dismiss:focus {
-		outline: 2px solid #856404;
-		outline-offset: 2px;
-	}
+  .pie-section-player__tts-error-dismiss:focus {
+    outline: 2px solid var(--pie-focus-checked-border, #856404);
+    outline-offset: 2px;
+  }
 </style>

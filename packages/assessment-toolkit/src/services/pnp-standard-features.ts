@@ -129,7 +129,6 @@ export const QTI_STANDARD_ACCESS_FEATURES = {
 
 		// Tools
 		calculator: "calculator",
-		dictionary: "dictionary",
 		thesaurus: "thesaurus",
 		spellingAssistance: "spellingAssistance",
 		grammarAssistance: "grammarAssistance",
@@ -296,7 +295,6 @@ export const EXAMPLE_PNP_CONFIGURATIONS = {
 			"lineSpacing",
 			"wordSpacing",
 			"simplifiedLanguage",
-			"dictionary",
 		],
 	},
 
@@ -344,7 +342,6 @@ export const EXAMPLE_PNP_CONFIGURATIONS = {
 			"textToSpeech",
 			"translatedText",
 			"glossary",
-			"dictionary",
 			"simplifiedLanguage",
 			"readAloud",
 			"highlighting",

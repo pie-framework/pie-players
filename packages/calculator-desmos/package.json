@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-calculator-desmos",
-	"version": "0.1.2",
+	"version": "0.1.4",
 	"description": "Desmos calculator provider for PIE Assessment Toolkit - High-quality graphing calculators",
 	"type": "module",
 	"main": "./dist/index.js",
@@ -29,6 +29,11 @@
 	],
 	"author": "PIE Framework",
 	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pie-framework/pie-players.git",
+		"directory": "packages/calculator-desmos"
+	},
 	"publishConfig": {
 		"access": "public"
 	},
@@ -37,5 +42,13 @@
 	},
 	"devDependencies": {
 		"typescript": "^5.7.2"
+	},
+	"sideEffects": false,
+	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/calculator-desmos#readme",
+	"bugs": {
+		"url": "https://github.com/pie-framework/pie-players/issues"
+	},
+	"engines": {
+		"node": ">=18.0.0"
 	}
 }

@@ -11,24 +11,20 @@
 
 import type {
 	ToolRegistration,
-	ToolButtonDefinition,
-	ToolButtonOptions,
-	ToolInstanceOptions,
+	ToolToolbarRenderResult,
+	ToolbarContext,
 } from "../../services/ToolRegistry.js";
 import type { ToolContext } from "../../services/tool-context.js";
 import { hasMathContent } from "../../services/tool-context.js";
-import {
-	createToolElement,
-	type ToolComponentOverrides,
-} from "../tool-tag-map.js";
+import { createToolElement } from "../tool-tag-map.js";
 
 /**
  * Calculator tool registration
  *
  * Supports:
  * - Basic, scientific, and graphing calculators via Desmos
- * - Context-aware visibility (shows when math content is detected)
- * - All levels except assessment (section, item, passage, rubric, element)
+ * - Context-aware visibility (shows only when math content is detected)
+ * - Item level only
  */
 export const calculatorToolRegistration: ToolRegistration = {
 	toolId: "calculator",
@@ -36,8 +32,8 @@ export const calculatorToolRegistration: ToolRegistration = {
 	description: "Multi-type calculator (basic, scientific, graphing)",
 	icon: "calculator",
 
-	// Calculator can appear at all levels except assessment
-	supportedLevels: ["section", "item", "passage", "rubric", "element"],
+	// Calculator is item-level in this player architecture.
+	supportedLevels: ["item"],
 
 	// PNP support IDs that enable this tool
 	// Maps to QTI 3.0 standard features: calculator, graphingCalculator
@@ -51,91 +47,52 @@ export const calculatorToolRegistration: ToolRegistration = {
 	/**
 	 * Pass 2: Determine if calculator is relevant in this context
 	 *
-	 * Calculator is relevant when:
-	 * - Context contains mathematical content (MathML, LaTeX, arithmetic)
-	 * - Section/item level (always show - student might need for any problem)
+	 * Calculator is relevant when context contains mathematical content
+	 * (MathML, LaTeX, arithmetic markers).
 	 */
 	isVisibleInContext(context: ToolContext): boolean {
-		// At section/item level, always show (student might need it)
-		if (context.level === "section" || context.level === "item") {
-			return true;
-		}
-
-		// At passage/rubric/element level, show if math content detected
+		// Show only when math is present in item content.
 		return hasMathContent(context);
 	},
 
-	/**
-	 * Create calculator button for toolbar
-	 */
-	createButton(
+	renderToolbar(
 		context: ToolContext,
-		options: ToolButtonOptions,
-	): ToolButtonDefinition {
-		const icon =
-			typeof this.icon === "function" ? this.icon(context) : this.icon;
+		toolbarContext: ToolbarContext,
+	): ToolToolbarRenderResult {
+		const fullToolId = `${this.toolId}-${toolbarContext.itemId}`;
+		const componentOverrides = toolbarContext.componentOverrides;
+		const overlay = createToolElement(
+			this.toolId,
+			context,
+			toolbarContext,
+			componentOverrides,
+		) as HTMLElement & {
+			visible?: boolean;
+			toolId?: string;
+		};
+		overlay.setAttribute("tool-id", fullToolId);
+
+		const inline = document.createElement("pie-tool-calculator-inline");
+		inline.setAttribute("tool-id", `calculator-inline-${toolbarContext.itemId}`);
+		inline.setAttribute("calculator-type", "scientific");
+		inline.setAttribute("available-types", "basic,scientific,graphing");
+		inline.setAttribute("size", toolbarContext.ui?.size || "md");
 
 		return {
 			toolId: this.toolId,
-			label: this.name,
-			icon: icon,
-			disabled: options.disabled || false,
-			ariaLabel:
-				options.ariaLabel ||
-				"Open calculator - Press to activate calculator tool",
-			tooltip: options.tooltip || "Calculator",
-			onClick: options.onClick || (() => {}),
-			className: options.className,
+			inlineElement: inline,
+			overlayElement: overlay,
+			button: null,
+			sync: () => {
+				const active = toolbarContext.isToolVisible(fullToolId);
+				overlay.visible = active;
+			},
+			subscribeActive: (callback: (active: boolean) => void) => {
+				if (!toolbarContext.subscribeVisibility) return () => {};
+				return toolbarContext.subscribeVisibility(() => {
+					callback(toolbarContext.isToolVisible(fullToolId));
+				});
+			},
 		};
-	},
-
-	/**
-	 * Create calculator tool instance
-	 *
-	 * Creates a <pie-tool-calculator> web component and initializes it.
-	 */
-	createToolInstance(
-		context: ToolContext,
-		options: ToolInstanceOptions,
-	): HTMLElement {
-		const componentOverrides =
-			(options.config as ToolComponentOverrides | undefined) ?? {};
-		const calculator = createToolElement(
-			this.toolId,
-			context,
-			options,
-			componentOverrides,
-		) as HTMLElement & {
-			visible: boolean;
-			calculatorType: string;
-			availableTypes: string[];
-			toolkitCoordinator: unknown;
-		};
-
-		// Set default calculator type (can be overridden via config)
-		const calculatorType =
-			(options.config?.calculatorType as string) || "scientific";
-		const availableTypes = (options.config?.availableTypes as string[]) || [
-			"basic",
-			"scientific",
-			"graphing",
-		];
-
-		// Configure calculator
-		calculator.visible = true;
-		calculator.calculatorType = calculatorType;
-		calculator.availableTypes = availableTypes;
-
-		// Pass toolkit coordinator if available from context
-		if (options.config?.toolkitCoordinator) {
-			calculator.toolkitCoordinator = options.config.toolkitCoordinator;
-		}
-
-		// Handle close callback
-		if (options.onClose) {
-			calculator.addEventListener("close", options.onClose);
-		}
-
-		return calculator;
 	},
 };

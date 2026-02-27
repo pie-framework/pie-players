@@ -1,11 +1,12 @@
 {
 	"name": "@pie-players/pie-section-tools-toolbar",
-	"version": "0.2.5",
+	"version": "0.2.9",
 	"type": "module",
 	"description": "Section-level tools toolbar for PIE assessment player",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/pie-framework/pie-players.git"
+		"url": "git+https://github.com/pie-framework/pie-players.git",
+		"directory": "packages/section-tools-toolbar"
 	},
 	"publishConfig": {
 		"access": "public"
@@ -41,15 +42,9 @@
 	"jsdelivr": "./dist/section-tools-toolbar.js",
 	"dependencies": {
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
+		"@pie-players/pie-context": "workspace:*",
+		"@pie-players/pie-default-tool-loaders": "workspace:*",
 		"@pie-players/pie-calculator-mathjs": "workspace:*",
-		"@pie-players/pie-players-shared": "workspace:*",
-		"@pie-players/pie-tool-graph": "workspace:*",
-		"@pie-players/pie-tool-line-reader": "workspace:*",
-		"@pie-players/pie-tool-magnifier": "workspace:*",
-		"@pie-players/pie-tool-periodic-table": "workspace:*",
-		"@pie-players/pie-tool-protractor": "workspace:*",
-		"@pie-players/pie-tool-ruler": "workspace:*",
-		"@sveltejs/kit": "^2.52.0",
 		"daisyui": "^5.5.18"
 	},
 	"types": "./dist/index.d.ts",
@@ -66,5 +61,13 @@
 		"typescript": "^5.7.0",
 		"vite": "^7.0.8",
 		"vite-plugin-dts": "^4.5.3"
-	}
+	},
+	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/section-tools-toolbar#readme",
+	"bugs": {
+		"url": "https://github.com/pie-framework/pie-players/issues"
+	},
+	"engines": {
+		"node": ">=18.0.0"
+	},
+	"sideEffects": true
 }

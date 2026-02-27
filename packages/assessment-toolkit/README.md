@@ -168,7 +168,6 @@ floatingTools: {
   protractor: { enabled: true },
   ruler: { enabled: true },
   lineReader: { enabled: true },
-  magnifier: { enabled: true },
   colorScheme: { enabled: true }
 }
 ```
@@ -234,7 +233,6 @@ const coordinator = new ToolkitCoordinator({
     protractor: { enabled: true },
     ruler: { enabled: true },
     lineReader: { enabled: true },
-    magnifier: { enabled: true },
     colorScheme: { enabled: true }
   },
   accessibility: {
@@ -262,13 +260,41 @@ const coordinator = new ToolkitCoordinator({
     protractor: { enabled: true },
     ruler: { enabled: true },
     lineReader: { enabled: true },
-    magnifier: { enabled: true },
     colorScheme: { enabled: true }
   }
 });
 ```
 
 The ToolkitCoordinator handles all internal complexity (service initialization, provider management, state coordination). The only special configuration is `authFetcher` for Desmos calculator (optional - falls back to local calculator if not provided).
+
+## Test Attempt Session Adapter (pie backend)
+
+The toolkit exposes a canonical `TestAttemptSession` runtime and a deterministic adapter for pie backend activity payloads from `../../kds/pie-api-aws`.
+
+```typescript
+import {
+  mapActivityToTestAttemptSession,
+  toItemSessionsRecord,
+  buildActivitySessionPatchFromTestAttemptSession
+} from "@pie-players/pie-assessment-toolkit";
+
+const testAttemptSession = mapActivityToTestAttemptSession({
+  activityDefinition,
+  activitySession
+});
+
+// Use in section-player handoff (same item session shape as item players expect)
+const itemSessions = toItemSessionsRecord(testAttemptSession);
+
+// Host-owned backend persistence payload
+const patch = buildActivitySessionPatchFromTestAttemptSession(testAttemptSession);
+```
+
+### Integration Boundary
+
+- `@pie-players/pie-section-player` stays backend-agnostic and emits session/state changes.
+- Host applications own backend I/O to pie backend (`../../kds/pie-api-aws`).
+- Hosts decide persistence policy (immediate, debounced, checkpoint, submit).
 
 ## Implementation Status
 
@@ -576,11 +602,40 @@ The section player provides automatic ToolkitCoordinator integration:
   // Player automatically:
   // - Extracts services from coordinator
   // - Generates section ID
-  // - Passes services to all child components
+  // - Provides runtime context to child components
   // - Manages SSML extraction
   // - Handles catalog lifecycle
 </script>
 ```
+
+### Runtime Context Contract
+
+The toolkit now exports a shared context key used by section-player and toolkit
+components:
+
+```typescript
+import {
+  assessmentToolkitRuntimeContext,
+  type AssessmentToolkitRuntimeContext
+} from "@pie-players/pie-assessment-toolkit";
+```
+
+`AssessmentToolkitRuntimeContext` carries ambient orchestration dependencies
+that should not be prop-drilled through intermediate components:
+
+- `toolkitCoordinator`
+- `toolCoordinator`
+- `ttsService`
+- `highlightCoordinator`
+- `catalogResolver`
+- `elementToolStateStore`
+- `assessmentId`
+- `sectionId`
+
+These runtime fields are expected to be present once the section-player
+provider is established (host-supplied coordinator or lazily created by
+section-player). Use explicit props/events for direct content contracts, and
+use runtime context for cross-cutting orchestration scope.
 
 ### Standalone Sections (No Coordinator Provided)
 

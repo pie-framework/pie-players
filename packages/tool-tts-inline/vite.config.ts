@@ -9,7 +9,7 @@ export default defineConfig({
 				customElement: true,
 			},
 		}),
-		dts({ rollupTypes: true }),
+		dts({ rollupTypes: false }),
 	],
 	build: {
 		lib: {

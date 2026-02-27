@@ -1,31 +1,40 @@
 <svelte:options
 	customElement={{
 		tag: 'pie-tool-line-reader',
-		shadow: 'none',
+		shadow: 'open',
 		props: {
 			visible: { type: 'Boolean', attribute: 'visible' },
-			toolId: { type: 'String', attribute: 'tool-id' },
-			coordinator: { type: 'Object' }
+			toolId: { type: 'String', attribute: 'tool-id' }
 		}
 	}}
 />
 
 <script lang="ts">
 	
-	import type { IToolCoordinator } from '@pie-players/pie-assessment-toolkit';
-	import { ZIndexLayer } from '@pie-players/pie-assessment-toolkit';
+	import {
+		connectToolRuntimeContext,
+		ZIndexLayer,
+	} from '@pie-players/pie-assessment-toolkit';
+	import type {
+		AssessmentToolkitRuntimeContext,
+		IToolCoordinator,
+	} from '@pie-players/pie-assessment-toolkit';
 	import ToolSettingsButton from '@pie-players/pie-players-shared/components/ToolSettingsButton.svelte';
 	import ToolSettingsPanel from '@pie-players/pie-players-shared/components/ToolSettingsPanel.svelte';
 import { onMount } from 'svelte';
 
 	// Props
-	let { visible = false, toolId = 'lineReader', coordinator }: { visible?: boolean; toolId?: string; coordinator?: IToolCoordinator } = $props();
+	let { visible = false, toolId = 'lineReader' }: { visible?: boolean; toolId?: string } = $props();
 
 	// Check if running in browser
 	const isBrowser = typeof window !== 'undefined';
 
 	// State
 	let containerEl = $state<HTMLDivElement | undefined>();
+	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	const coordinator = $derived(
+		runtimeContext?.toolCoordinator as IToolCoordinator | undefined,
+	);
 	let settingsButtonEl = $state<HTMLButtonElement | undefined>();
 	let isDragging = $state(false);
 	let isResizing = $state(false);
@@ -57,6 +66,13 @@ import { onMount } from 'svelte';
 	// Keyboard navigation constants
 	const MOVE_STEP = 10; // pixels
 	const RESIZE_STEP = 10; // pixels
+
+	$effect(() => {
+		if (!containerEl) return;
+		return connectToolRuntimeContext(containerEl, (value: AssessmentToolkitRuntimeContext) => {
+			runtimeContext = value;
+		});
+	});
 
 	function announce(message: string) {
 		announceText = message;
@@ -276,7 +292,7 @@ import { onMount } from 'svelte';
 
 {#if visible}
 	<!-- Screen reader announcements -->
-	<div class="sr-only" role="status" aria-live="polite" aria-atomic="true">
+	<div class="pie-sr-only" role="status" aria-live="polite" aria-atomic="true">
 		{announceText}
 	</div>
 
@@ -284,25 +300,25 @@ import { onMount } from 'svelte';
 	{#if maskingMode === 'obscure'}
 		<!-- Top mask - from top of viewport to top of line reader -->
 		<div
-			class="line-reader-mask line-reader-mask-top"
+			class="pie-tool-line-reader__mask pie-tool-line-reader__mask--top"
 			style="height: {Math.max(0, position.y - size.height / 2)}px;"
 			aria-hidden="true"
 		></div>
 		<!-- Bottom mask - from bottom of line reader to bottom of viewport -->
 		<div
-			class="line-reader-mask line-reader-mask-bottom"
+			class="pie-tool-line-reader__mask pie-tool-line-reader__mask--bottom"
 			style="top: {position.y + size.height / 2}px;"
 			aria-hidden="true"
 		></div>
 		<!-- Left mask - left side of line reader window -->
 		<div
-			class="line-reader-mask line-reader-mask-left"
+			class="pie-tool-line-reader__mask pie-tool-line-reader__mask--left"
 			style="top: {position.y - size.height / 2}px; height: {size.height}px; width: {Math.max(0, position.x - size.width / 2)}px;"
 			aria-hidden="true"
 		></div>
 		<!-- Right mask - right side of line reader window -->
 		<div
-			class="line-reader-mask line-reader-mask-right"
+			class="pie-tool-line-reader__mask pie-tool-line-reader__mask--right"
 			style="top: {position.y - size.height / 2}px; height: {size.height}px; left: {position.x + size.width / 2}px;"
 			aria-hidden="true"
 		></div>
@@ -312,8 +328,8 @@ import { onMount } from 'svelte';
 	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 	<div
 		bind:this={containerEl}
-		class="line-reader-frame"
-		class:masking-mode={maskingMode === 'obscure'}
+		class="pie-tool-line-reader"
+		class:pie-tool-line-reader--masking-mode={maskingMode === 'obscure'}
 		style="left: {position.x}px; top: {position.y}px; width: {size.width}px; height: {size.height}px;"
 		onpointerdown={handlePointerDown}
 		onkeydown={handleKeyDown}
@@ -322,7 +338,7 @@ import { onMount } from 'svelte';
 		aria-label="Line Reader tool. Mode: {maskingMode === 'highlight' ? 'Highlight' : 'Masking'}. Use arrow keys to move, +/- to resize height, C to change color, [ and ] to adjust opacity, M to toggle mode. Current color: {colors.find(c => c.value === currentColor)?.name}, Opacity: {Math.round(currentOpacity * 100)}%"
 		aria-roledescription="Draggable and resizable reading guide overlay"
 	>
-		<div class="line-reader-container" style="background-color: {backgroundColor};">
+		<div class="pie-tool-line-reader__container" style="background-color: {backgroundColor};">
 			<!-- Settings Button -->
 			<ToolSettingsButton
 				bind:buttonEl={settingsButtonEl}
@@ -334,7 +350,7 @@ import { onMount } from 'svelte';
 
 		<!-- Resize handle -->
 		<div
-			class="resize-handle resize-handle-bottom"
+			class="pie-tool-line-reader__resize-handle pie-tool-line-reader__resize-handle--bottom"
 			title="Drag to resize height"
 			role="button"
 			tabindex="-1"
@@ -346,7 +362,7 @@ import { onMount } from 'svelte';
 		</div>
 	</div>
 
-	<!-- Settings Panel - Rendered outside line-reader-frame to avoid height constraints -->
+	<!-- Settings Panel - Rendered outside pie-tool-line-reader to avoid height constraints -->
 	<ToolSettingsPanel
 		open={settingsOpen}
 		title="Line Reader Settings"
@@ -425,7 +441,7 @@ import { onMount } from 'svelte';
 {/if}
 
 <style>
-	.sr-only {
+	.pie-sr-only {
 		position: absolute;
 		width: 1px;
 		height: 1px;
@@ -437,7 +453,7 @@ import { onMount } from 'svelte';
 		border-width: 0;
 	}
 
-	.line-reader-frame {
+	.pie-tool-line-reader {
 		border: 2px solid rgba(76, 175, 80, 0.8);
 		cursor: move;
 		overflow: visible;
@@ -448,17 +464,17 @@ import { onMount } from 'svelte';
 		touch-action: none;
 	}
 
-	.line-reader-frame:focus {
+	.pie-tool-line-reader:focus {
 		outline: 3px solid #4A90E2;
 		outline-offset: 2px;
 	}
 
-	.line-reader-frame:focus-visible {
+	.pie-tool-line-reader:focus-visible {
 		outline: 3px solid #4A90E2;
 		outline-offset: 2px;
 	}
 
-	.line-reader-container {
+	.pie-tool-line-reader__container {
 		width: 100%;
 		height: 100%;
 		position: relative;
@@ -466,7 +482,7 @@ import { onMount } from 'svelte';
 	}
 
 
-	.resize-handle {
+	.pie-tool-line-reader__resize-handle {
 		position: absolute;
 		cursor: ns-resize;
 		z-index: 10;
@@ -475,7 +491,7 @@ import { onMount } from 'svelte';
 		justify-content: center;
 	}
 
-	.resize-handle-bottom {
+	.pie-tool-line-reader__resize-handle--bottom {
 		bottom: -10px;
 		left: 50%;
 		transform: translateX(-50%);
@@ -486,58 +502,58 @@ import { onMount } from 'svelte';
 		border: 2px solid #4CAF50;
 	}
 
-	.resize-handle:hover {
+	.pie-tool-line-reader__resize-handle:hover {
 		background-color: rgba(76, 175, 80, 0.2);
 	}
 
-	.resize-handle:active {
+	.pie-tool-line-reader__resize-handle:active {
 		cursor: ns-resize;
 	}
 
-	.line-reader-frame:active {
+	.pie-tool-line-reader:active {
 		cursor: grabbing;
 	}
 
 	/* Masking overlays for obscure mode - 4 rectangles covering all areas except line reader window */
-	.line-reader-mask {
+	.pie-tool-line-reader__mask {
 		position: fixed;
 		background: rgba(0, 0, 0, 0.85);
 		z-index: 999;
 		pointer-events: none;
 	}
 
-	.line-reader-mask-top {
+	.pie-tool-line-reader__mask--top {
 		top: 0;
 		left: 0;
 		right: 0;
 		/* Height set via inline style */
 	}
 
-	.line-reader-mask-bottom {
+	.pie-tool-line-reader__mask--bottom {
 		/* Top set via inline style */
 		left: 0;
 		right: 0;
 		bottom: 0;
 	}
 
-	.line-reader-mask-left {
+	.pie-tool-line-reader__mask--left {
 		/* Top, height, and width set via inline style */
 		left: 0;
 	}
 
-	.line-reader-mask-right {
+	.pie-tool-line-reader__mask--right {
 		/* Top, height, and left set via inline style */
 		right: 0;
 	}
 
 	/* In masking mode, change the window appearance */
-	.line-reader-frame.masking-mode {
+	.pie-tool-line-reader.pie-tool-line-reader--masking-mode {
 		border-color: rgba(76, 175, 80, 1);
 		box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.8), 0 0 20px rgba(76, 175, 80, 0.4);
 	}
 
 	/* In masking mode, the window should be transparent to show content underneath */
-	.line-reader-frame.masking-mode .line-reader-container {
+	.pie-tool-line-reader.pie-tool-line-reader--masking-mode .pie-tool-line-reader__container {
 		background-color: transparent !important;
 	}
 

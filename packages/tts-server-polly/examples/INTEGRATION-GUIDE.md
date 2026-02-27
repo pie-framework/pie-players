@@ -593,11 +593,11 @@ export const GET: RequestHandler = async () => {
 ## Complete Example
 
 See the section-player demo for a complete working example:
-- `packages/section-player/demo.html` - Client-side usage
+- `apps/section-demos` - Client-side usage
 - API routes would be added to a SvelteKit app
 
 ## Support
 
 For issues or questions:
-- Check the [TTS Server API Architecture](../../../docs/tts-server-api-architecture.md)
-- See [TTS Highlighting Implementation Plan](../../../docs/tts-highlighting-implementation-plan.md)
+- Check the [Tool Provider System](../../../docs/TOOL_PROVIDER_SYSTEM.md)
+- See [TTS Synchronization Best Practices](../../../docs/tts-synchronization-best-practices.md)

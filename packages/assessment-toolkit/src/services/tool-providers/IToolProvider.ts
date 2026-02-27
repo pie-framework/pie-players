@@ -4,8 +4,7 @@
  * Unified interface for all assessment tools that require
  * configuration, authentication, or external services.
  *
- * Examples: Desmos calculators, TI calculators, TTS services,
- * translation services, dictionary APIs, etc.
+ * Examples: Desmos calculators, TI calculators, and TTS services.
  *
  * Part of PIE Assessment Toolkit.
  */
@@ -17,7 +16,6 @@ export type ToolCategory =
 	| "calculator"
 	| "tts"
 	| "translation"
-	| "dictionary"
 	| "annotation"
 	| "accessibility"
 	| "other";

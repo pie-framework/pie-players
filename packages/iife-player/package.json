@@ -1,12 +1,13 @@
 {
 	"name": "@pie-players/pie-iife-player",
-	"version": "0.2.2",
+	"version": "0.2.5",
 	"type": "module",
 	"description": "IIFE-based web component for rendering PIE assessment items (bundle-hosted or embedded) with session management",
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/pie-framework/pie-players.git"
+		"url": "git+https://github.com/pie-framework/pie-players.git",
+		"directory": "packages/iife-player"
 	},
 	"publishConfig": {
 		"access": "public"
@@ -37,7 +38,7 @@
 	},
 	"dependencies": {
 		"@pie-players/pie-players-shared": "workspace:*",
-		"@sveltejs/kit": "^2.52.0",
+		"@pie-players/pie-theme": "workspace:*",
 		"daisyui": "^5.5.18"
 	},
 	"devDependencies": {
@@ -49,5 +50,13 @@
 		"typescript": "^5.7.0",
 		"vite": "^7.0.8",
 		"vite-plugin-dts": "^4.5.3"
-	}
+	},
+	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/iife-player#readme",
+	"bugs": {
+		"url": "https://github.com/pie-framework/pie-players/issues"
+	},
+	"engines": {
+		"node": ">=18.0.0"
+	},
+	"sideEffects": true
 }

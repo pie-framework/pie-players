@@ -277,10 +277,10 @@ calculator.clearHistory();
 {#if visible}
   <div
     bind:this={containerEl}
-    class="calculator-tool"
+    class="pie-tool-calculator"
     on:mousedown={() => toolCoordinator.bringToFront(toolId)}
   >
-    <div class="tool-header">
+    <div class="pie-tool-calculator__header">
       <span>Calculator</span>
       <button on:click={handleClose}>×</button>
     </div>
@@ -290,14 +290,14 @@ calculator.clearHistory();
 {/if}
 
 <style>
-  .calculator-tool {
+  .pie-tool-calculator {
     position: fixed;
     top: 100px;
     right: 50px;
     z-index: 1000;
   }
 
-  .tool-header {
+  .pie-tool-calculator__header {
     padding: 10px;
     background: #34495e;
     color: white;

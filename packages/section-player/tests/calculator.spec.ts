@@ -1,4 +1,8 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Locator } from "@playwright/test";
+import { fileURLToPath } from "node:url";
+
+const screenshotPath = (name: string) =>
+	fileURLToPath(new URL(`./screenshots/${name}`, import.meta.url));
 
 test("calculator functionality", async ({ page }) => {
 	const consoleMessages: string[] = [];
@@ -23,7 +27,7 @@ test("calculator functionality", async ({ page }) => {
 
 	// Take initial screenshot
 	await page.screenshot({
-		path: "/Users/eelco.hillenius/dev/prj/pie/pie-players/packages/section-player/tests/screenshots/01-initial-page.png",
+		path: screenshotPath("01-initial-page.png"),
 		fullPage: true,
 	});
 	console.log("✓ Screenshot saved: 01-initial-page.png");
@@ -71,7 +75,7 @@ test("calculator functionality", async ({ page }) => {
 
 	// Take screenshot after selecting demo
 	await page.screenshot({
-		path: "/Users/eelco.hillenius/dev/prj/pie/pie-players/packages/section-player/tests/screenshots/02-demo-selected.png",
+		path: screenshotPath("02-demo-selected.png"),
 		fullPage: true,
 	});
 	console.log("✓ Screenshot saved: 02-demo-selected.png");
@@ -89,7 +93,7 @@ test("calculator functionality", async ({ page }) => {
 		"#calculator-button",
 	];
 
-	let calculatorButton = null;
+	let calculatorButton: Locator | null = null;
 	for (const selector of calculatorSelectors) {
 		const button = page.locator(selector).first();
 		if ((await button.count()) > 0) {
@@ -136,7 +140,7 @@ test("calculator functionality", async ({ page }) => {
 
 	// Take screenshot before clicking calculator
 	await page.screenshot({
-		path: "/Users/eelco.hillenius/dev/prj/pie/pie-players/packages/section-player/tests/screenshots/03-before-calculator.png",
+		path: screenshotPath("03-before-calculator.png"),
 		fullPage: true,
 	});
 	console.log("✓ Screenshot saved: 03-before-calculator.png");
@@ -149,7 +153,7 @@ test("calculator functionality", async ({ page }) => {
 
 	// Take screenshot with calculator open
 	await page.screenshot({
-		path: "/Users/eelco.hillenius/dev/prj/pie/pie-players/packages/section-player/tests/screenshots/04-calculator-opened.png",
+		path: screenshotPath("04-calculator-opened.png"),
 		fullPage: true,
 	});
 	console.log("✓ Screenshot saved: 04-calculator-opened.png");
@@ -168,7 +172,7 @@ test("calculator functionality", async ({ page }) => {
 
 	// Take final screenshot
 	await page.screenshot({
-		path: "/Users/eelco.hillenius/dev/prj/pie/pie-players/packages/section-player/tests/screenshots/05-final-state.png",
+		path: screenshotPath("05-final-state.png"),
 		fullPage: true,
 	});
 	console.log("✓ Screenshot saved: 05-final-state.png");

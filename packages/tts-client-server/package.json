@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/tts-client-server",
-	"version": "0.2.1",
+	"version": "0.2.3",
 	"description": "Client-side TTS provider that calls server API for synthesis",
 	"type": "module",
 	"main": "./dist/index.js",
@@ -29,6 +29,11 @@
 	],
 	"author": "PIE Framework",
 	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pie-framework/pie-players.git",
+		"directory": "packages/tts-client-server"
+	},
 	"publishConfig": {
 		"access": "public"
 	},
@@ -38,5 +43,13 @@
 	"devDependencies": {
 		"typescript": "^5.3.3",
 		"vitest": "^1.0.4"
+	},
+	"sideEffects": false,
+	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/tts-client-server#readme",
+	"bugs": {
+		"url": "https://github.com/pie-framework/pie-players/issues"
+	},
+	"engines": {
+		"node": ">=18.0.0"
 	}
 }

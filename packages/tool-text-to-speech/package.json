@@ -1,11 +1,12 @@
 {
 	"name": "@pie-players/pie-tool-text-to-speech",
-	"version": "0.1.6",
+	"version": "0.1.8",
 	"type": "module",
 	"description": "Text-to-Speech tool for PIE assessment player with word-level highlighting",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/pie-framework/pie-players.git"
+		"url": "git+https://github.com/pie-framework/pie-players.git",
+		"directory": "packages/tool-text-to-speech"
 	},
 	"publishConfig": {
 		"access": "public"
@@ -43,7 +44,6 @@
 	"dependencies": {
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*",
-		"@sveltejs/kit": "^2.52.0",
 		"daisyui": "^5.5.18"
 	},
 	"types": "./dist/index.d.ts",
@@ -60,5 +60,13 @@
 		"typescript": "^5.7.0",
 		"vite": "^7.0.8",
 		"vite-plugin-dts": "^4.5.3"
-	}
+	},
+	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/tool-text-to-speech#readme",
+	"bugs": {
+		"url": "https://github.com/pie-framework/pie-players/issues"
+	},
+	"engines": {
+		"node": ">=18.0.0"
+	},
+	"sideEffects": true
 }

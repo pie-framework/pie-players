@@ -82,9 +82,30 @@ export class ResponseDiscoveryServiceImpl implements ResponseDiscoveryService {
 	}
 
 	/**
+	 * Explicitly signal that a registered response is active.
+	 */
+	signalActive(responseId: string): void {
+		if (!this.responses.has(responseId)) {
+			console.warn(
+				`[ResponseDiscovery] Cannot mark active: unknown response ${responseId}`,
+			);
+			return;
+		}
+		this.setActiveResponse(responseId);
+	}
+
+	/**
+	 * Explicitly signal that a response is no longer active.
+	 */
+	signalInactive(responseId: string): void {
+		if (this.activeResponseId !== responseId) return;
+		this.setActiveResponse(null);
+	}
+
+	/**
 	 * Set active response (internal use)
 	 */
-	setActiveResponse(responseId: string | null): void {
+	private setActiveResponse(responseId: string | null): void {
 		if (this.activeResponseId === responseId) return;
 
 		this.activeResponseId = responseId;
@@ -106,117 +127,21 @@ export class ResponseDiscoveryServiceImpl implements ResponseDiscoveryService {
 	}
 
 	/**
-	 * Auto-detect responses from DOM (helper method)
-	 * Scans for PIE response elements and registers them
+	 * @deprecated Use explicit component registration and signalActive/signalInactive.
 	 */
-	autoDiscoverResponses(rootElement: HTMLElement = document.body): void {
-		// Look for common PIE response element patterns
-		const responseSelectors = [
-			"[data-pie-response]",
-			"[data-response-id]",
-			'input[type="text"]',
-			"textarea",
-			'[contenteditable="true"]',
-			"pie-text-entry",
-			"pie-extended-text-entry",
-			"pie-math-inline",
-			"pie-numeric-entry",
-		];
-
-		const elements = rootElement.querySelectorAll(responseSelectors.join(", "));
-
-		for (const element of Array.from(elements)) {
-			// Check if element implements PIEResponseComponent interface
-			if (this._implementsPIEResponse(element)) {
-				this.registerResponse(element as unknown as PIEResponseComponent);
-			}
-		}
-	}
-
-	/**
-	 * Check if element implements PIEResponseComponent
-	 */
-	private _implementsPIEResponse(element: Element): boolean {
-		const component = element as any;
-
-		// Check for required methods
-		return (
-			typeof component.getCapabilities === "function" &&
-			typeof component.insertContent === "function" &&
-			typeof component.getContent === "function" &&
-			component.responseId !== undefined &&
-			component.responseType !== undefined
+	autoDiscoverResponses(_rootElement: HTMLElement = document.body): void {
+		console.warn(
+			"[ResponseDiscovery] autoDiscoverResponses is deprecated. Register responses explicitly.",
 		);
 	}
 
 	/**
-	 * Setup focus tracking for active response detection
-	 * Call this during initialization to automatically track active response
+	 * @deprecated Use explicit signalActive/signalInactive from response components.
 	 */
 	setupFocusTracking(): void {
-		// Track focus changes
-		document.addEventListener(
-			"focusin",
-			(event) => {
-				const target = event.target as HTMLElement;
-
-				// Check if focused element is a registered response
-				for (const [responseId, response] of this.responses.entries()) {
-					// Check if response element or child is focused
-					const responseElement =
-						(response as any).element || (response as any);
-					if (
-						responseElement === target ||
-						(responseElement instanceof HTMLElement &&
-							responseElement.contains(target))
-					) {
-						this.setActiveResponse(responseId);
-						return;
-					}
-				}
-			},
-			true,
-		); // Use capture phase
-
-		// Track focus loss
-		document.addEventListener(
-			"focusout",
-			(event) => {
-				const relatedTarget = (event as FocusEvent)
-					.relatedTarget as HTMLElement;
-
-				// If focus is not going to another response, clear active
-				if (!relatedTarget || !this._isResponseElement(relatedTarget)) {
-					// Delay to allow focus to move to another response
-					setTimeout(() => {
-						if (
-							document.activeElement &&
-							!this._isResponseElement(document.activeElement)
-						) {
-							this.setActiveResponse(null);
-						}
-					}, 10);
-				}
-			},
-			true,
+		console.warn(
+			"[ResponseDiscovery] setupFocusTracking is deprecated. Responses should call signalActive/signalInactive.",
 		);
-	}
-
-	/**
-	 * Check if element belongs to a response
-	 */
-	private _isResponseElement(element: Element): boolean {
-		for (const response of this.responses.values()) {
-			const responseElement = (response as any).element || (response as any);
-			if (
-				responseElement === element ||
-				(responseElement instanceof HTMLElement &&
-					responseElement.contains(element))
-			) {
-				return true;
-			}
-		}
-		return false;
 	}
 
 	/**

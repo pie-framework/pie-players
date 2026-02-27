@@ -7,6 +7,7 @@
 
 import { ToolRegistry } from "./ToolRegistry.js";
 import type { ToolRegistration } from "./ToolRegistry.js";
+import type { ToolModuleLoader } from "./ToolRegistry.js";
 import { calculatorToolRegistration } from "../tools/registrations/calculator.js";
 import { ttsToolRegistration } from "../tools/registrations/tts.js";
 import {
@@ -18,7 +19,6 @@ import {
 	highlighterToolRegistration,
 } from "../tools/registrations/interaction-tools.js";
 import {
-	magnifierToolRegistration,
 	lineReaderToolRegistration,
 	colorSchemeToolRegistration,
 	annotationToolbarRegistration,
@@ -49,6 +49,11 @@ export interface DefaultToolRegistryOptions {
 	 */
 	toolComponentFactory?: ToolComponentFactory;
 	toolComponentFactories?: Partial<ToolComponentFactoryMap>;
+	/**
+	 * Optional lazy module loaders keyed by toolId.
+	 * Hosts can inject default loaders from an external package.
+	 */
+	toolModuleLoaders?: Partial<Record<string, ToolModuleLoader>>;
 }
 
 /**
@@ -61,7 +66,6 @@ export interface DefaultToolRegistryOptions {
  * - Protractor
  * - Answer Eliminator
  * - Highlighter
- * - Magnifier
  * - Line Reader
  * - Color Scheme
  * - Annotation Toolbar
@@ -93,12 +97,15 @@ export function createDefaultToolRegistry(
 	registry.register(applyOverrides(protractorToolRegistration));
 	registry.register(applyOverrides(answerEliminatorToolRegistration));
 	registry.register(applyOverrides(highlighterToolRegistration));
-	registry.register(applyOverrides(magnifierToolRegistration));
 	registry.register(applyOverrides(lineReaderToolRegistration));
 	registry.register(applyOverrides(colorSchemeToolRegistration));
 	registry.register(applyOverrides(annotationToolbarRegistration));
 	registry.register(applyOverrides(graphToolRegistration));
 	registry.register(applyOverrides(periodicTableToolRegistration));
+
+	if (options.toolModuleLoaders && Object.keys(options.toolModuleLoaders).length > 0) {
+		registry.setToolModuleLoaders(options.toolModuleLoaders);
+	}
 
 	registry.setComponentOverrides(componentConfig);
 
@@ -112,7 +119,7 @@ export function createDefaultToolRegistry(
  * Integrators can override this configuration.
  *
  * Categories:
- * - Global tools: magnifier, colorScheme (assessment/section level)
+ * - Global tools: colorScheme (assessment/section level)
  * - Context-smart: calculator, graph, periodicTable (item/element, auto-detect)
  * - Reading aids: textToSpeech, lineReader, annotationToolbar (where text exists)
  * - Interaction-specific: answerEliminator (choice questions), highlighter (text)
@@ -121,21 +128,16 @@ export function createDefaultToolRegistry(
 export const DEFAULT_TOOL_PLACEMENT = {
 	assessment: [
 		// Global accessibility tools
-		"magnifier",
 		"colorScheme",
 	],
 	section: [
 		// Global accessibility + common tools
-		"magnifier",
 		"colorScheme",
-		"calculator",
 		"textToSpeech",
 	],
 	item: [
 		// Most common item-level tools
-		"calculator",
 		"textToSpeech",
-		"answerEliminator",
 		"highlighter",
 		"annotationToolbar",
 		"graph",
@@ -158,6 +160,7 @@ export const DEFAULT_TOOL_PLACEMENT = {
 	element: [
 		// Element-specific tools
 		"calculator",
+		"answerEliminator",
 		"textToSpeech",
 		"ruler",
 		"protractor",
@@ -174,7 +177,6 @@ export const DEFAULT_TOOL_PLACEMENT = {
  */
 export const DEFAULT_TOOL_ORDER = [
 	// Global accessibility first
-	"magnifier",
 	"colorScheme",
 	// Common tools
 	"calculator",

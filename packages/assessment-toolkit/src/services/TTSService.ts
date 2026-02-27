@@ -462,7 +462,10 @@ export class TTSService {
 	 *
 	 * @param range DOM Range to speak
 	 */
-	async speakRange(range: Range): Promise<void> {
+	async speakRange(
+		range: Range,
+		options?: { contentRoot?: Element | null },
+	): Promise<void> {
 		if (!this.provider) {
 			throw new Error("TTS service not initialized");
 		}
@@ -470,17 +473,18 @@ export class TTSService {
 		const text = range.toString().trim();
 		if (!text) return;
 
-		// Find the root content element (closest element with data-pie-content or body)
-		let root: Element | null = null;
-		let node: Node | null = range.commonAncestorContainer;
-		while (node && node.nodeType !== Node.ELEMENT_NODE) {
-			node = node.parentNode;
+		// Use explicit content root when provided; otherwise keep highlighting scoped
+		// to the selected range's nearest element ancestor.
+		const fromOptions = options?.contentRoot || null;
+		let root: Element | null = fromOptions;
+		if (!root) {
+			const ancestor = range.commonAncestorContainer;
+			root =
+				ancestor.nodeType === Node.ELEMENT_NODE
+					? (ancestor as Element)
+					: ancestor.parentElement;
 		}
-		if (node) {
-			root = (node as Element).closest("[data-pie-content]") || document.body;
-		} else {
-			root = document.body;
-		}
+		if (!root) return;
 
 		// Calculate the offset of the range start within the root element
 		const beforeRange = document.createRange();

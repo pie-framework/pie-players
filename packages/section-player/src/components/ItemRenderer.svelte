@@ -1,113 +1,132 @@
 <!--
   ItemRenderer - Internal Component
 
-  Renders a single item using pie-iife-player or pie-esm-player.
+  Renders a single item using the IIFE player.
   Handles SSML extraction, TTS service binding, and player lifecycle.
 -->
 <script lang="ts">
-  import { SSMLExtractor } from "@pie-players/pie-assessment-toolkit";
-  import "@pie-players/pie-assessment-toolkit/components/QuestionToolBar.svelte";
-  import type { ItemEntity } from "@pie-players/pie-players-shared/types";
+  import {
+    SSMLExtractor,
+    assessmentToolkitRuntimeContext,
+    type AssessmentToolkitRuntimeContext,
+  } from "@pie-players/pie-assessment-toolkit";
+  import { ContextConsumer } from "@pie-players/pie-context";
+  import "@pie-players/pie-assessment-toolkit/components/item-toolbar-element";
+	import {
+		DEFAULT_PLAYER_DEFINITIONS,
+	} from "../component-definitions.js";
+  import ItemPlayerBridge from "./ItemPlayerBridge.svelte";
+  import ItemShell, { type QtiContentKind } from "./ItemShell.svelte";
+  import type { ItemEntity, PassageEntity } from "@pie-players/pie-players-shared";
   import { onMount, untrack } from "svelte";
+
+  type SectionPlayerRuntimeContext = AssessmentToolkitRuntimeContext & {
+    reportSessionChanged?: (itemId: string, detail: unknown) => void;
+  };
 
   let {
     item,
     env = { mode: "gather", role: "student" },
     session = { id: "", data: [] },
-    bundleHost = "",
-    esmCdnUrl = "https://esm.sh",
-    playerType = "auto",
-    assessmentId = "",
-    sectionId = "",
-    toolkitCoordinator = null,
-
-    class: className = "",
+    contentKind = "assessment-item" as QtiContentKind,
+    skipElementLoading = true,
+    customClassName = "",
     onsessionchanged,
   }: {
-    item: ItemEntity;
+    item: ItemEntity | PassageEntity;
     env?: {
       mode: "gather" | "view" | "evaluate" | "author";
       role: "student" | "instructor";
     };
     session?: any;
-    bundleHost?: string;
-    esmCdnUrl?: string;
+    contentKind?: QtiContentKind;
+    skipElementLoading?: boolean;
     playerVersion?: string;
-    playerType?: "auto" | "iife" | "esm" | "fixed" | "inline";
-    assessmentId?: string;
-    sectionId?: string;
-    toolkitCoordinator?: any;
-
-    class?: string;
+    customClassName?: string;
     onsessionchanged?: (event: CustomEvent) => void;
   } = $props();
 
-  // Extract individual services from coordinator
-  const ttsService = $derived(toolkitCoordinator?.ttsService);
-  const toolCoordinator = $derived(toolkitCoordinator?.toolCoordinator);
-  const highlightCoordinator = $derived(toolkitCoordinator?.highlightCoordinator);
-  const catalogResolver = $derived(toolkitCoordinator?.catalogResolver);
-  const elementToolStateStore = $derived(toolkitCoordinator?.elementToolStateStore);
+  function handlePlayerSessionChanged(event: CustomEvent) {
+    console.debug("[ItemRenderer][SessionTrace] handlePlayerSessionChanged", {
+      itemId: item?.id || null,
+      contentKind,
+      hasRuntimeReporter: !!runtimeContext?.reportSessionChanged,
+      hasOnSessionChangedProp: !!onsessionchanged,
+      detailKeys:
+        event?.detail && typeof event.detail === "object"
+          ? Object.keys(event.detail)
+          : [],
+    });
+    // Section item sessions are reported through runtime context to avoid
+    // callback prop-drilling across internal layout components.
+    if (contentKind === "assessment-item") {
+      const itemId = item.id || "";
+      if (itemId && runtimeContext?.reportSessionChanged) {
+        console.debug("[ItemRenderer][SessionTrace] forwarding via runtimeContext", {
+          itemId,
+        });
+        event.stopPropagation();
+        runtimeContext.reportSessionChanged(itemId, event.detail);
+        return;
+      }
+    }
+    if (onsessionchanged) {
+      console.debug("[ItemRenderer][SessionTrace] forwarding via onsessionchanged prop", {
+        itemId: item?.id || null,
+      });
+      event.stopPropagation();
+      onsessionchanged(event);
+    }
+  }
 
   // Get the DOM element reference for service binding
-  let itemElement: HTMLElement | null = $state(null);
+  let contextHostElement: HTMLElement | null = $state(null);
   let itemContentElement: HTMLElement | null = $state(null);
-  let questionToolbarElement: HTMLElement | null = $state(null);
-  let playerElement: any = $state(null);
-  let calculatorElement: HTMLElement | null = $state(null);
+  let itemToolbarElement: HTMLElement | null = $state(null);
+  let runtimeContext = $state<SectionPlayerRuntimeContext | null>(null);
+  let runtimeContextConsumer: ContextConsumer<
+    typeof assessmentToolkitRuntimeContext
+  > | null = null;
 
-  // Set toolkitCoordinator on calculator element
+  // Runtime dependencies come from assessment toolkit context.
+  const effectiveToolkitCoordinator = $derived(runtimeContext?.toolkitCoordinator);
+  const toolCoordinator = $derived(
+    effectiveToolkitCoordinator?.toolCoordinator,
+  );
+  const catalogResolver = $derived(
+    effectiveToolkitCoordinator?.catalogResolver,
+  );
+
+  // Consume runtime context from the section-player provider tree.
   $effect(() => {
-    if (calculatorElement && toolkitCoordinator) {
-      (calculatorElement as any).toolkitCoordinator = toolkitCoordinator;
-    }
+    if (!contextHostElement) return;
+    runtimeContextConsumer = new ContextConsumer(contextHostElement, {
+      context: assessmentToolkitRuntimeContext,
+      subscribe: true,
+      onValue: (value: AssessmentToolkitRuntimeContext) => {
+        runtimeContext = value as SectionPlayerRuntimeContext;
+      },
+    });
+    runtimeContextConsumer.connect();
+    return () => {
+      runtimeContextConsumer?.disconnect();
+      runtimeContextConsumer = null;
+    };
   });
 
-  // Track if services have been bound
-  let toolbarServicesBound = $state(false);
   let calculatorVisible = $state(false);
 
-  // Track last values to avoid unnecessary updates
-  let lastConfig: any = null;
-  let lastEnv: any = null;
+  let hasElements = $derived(
+    !!(item?.config?.elements && Object.keys(item.config.elements).length > 0),
+  );
 
-  // Determine which player to use based on configuration
-  // If playerType is 'auto', determine based on available props
-  // Priority: IIFE (if bundleHost) > ESM (if esmCdnUrl) > IIFE fallback
-  let resolvedPlayerType = $derived.by(() => {
-    if (playerType !== "auto") return playerType;
-    if (bundleHost) return "iife";
-    if (esmCdnUrl) return "esm";
-    return "iife"; // fallback
-  });
+  let resolvedPlayerDefinition = $derived.by(
+    () => DEFAULT_PLAYER_DEFINITIONS["iife"],
+  );
+  let resolvedPlayerTag = $derived(resolvedPlayerDefinition?.tagName || "pie-iife-player");
 
-  // Import the appropriate player web component
   onMount(() => {
-    // Import components on client side only
-    (async () => {
-      // Import player based on resolved type
-      switch (resolvedPlayerType) {
-        case "iife":
-          await import("@pie-players/pie-iife-player");
-          break;
-        case "esm":
-          await import("@pie-players/pie-esm-player");
-          break;
-        case "fixed":
-          await import("@pie-players/pie-fixed-player");
-          break;
-        case "inline":
-          await import("@pie-players/pie-inline-player");
-          break;
-        default:
-          console.warn(
-            `[ItemRenderer] Unknown player type: ${resolvedPlayerType}, falling back to IIFE`,
-          );
-          await import("@pie-players/pie-iife-player");
-      }
-    })();
-
-    // Cleanup: Clear item catalogs on unmount
+    // Cleanup: clear this item's catalogs on unmount.
     return () => {
       if (catalogResolver) {
         catalogResolver.clearItemCatalogs();
@@ -145,60 +164,14 @@
     }
   });
 
-  // Set player properties imperatively when config or env changes
+  // Bind direct item contracts to item toolbar.
   $effect(() => {
-    const currentConfig = item.config;
-    const currentEnv = env;
-    const currentSession = session;
-
-    if (playerElement && currentConfig) {
-      // Check if config or env changed
-      const envChanged =
-        !lastEnv ||
-        lastEnv.mode !== currentEnv.mode ||
-        lastEnv.role !== currentEnv.role;
-
-      if (currentConfig !== lastConfig || envChanged) {
-        untrack(() => {
-          playerElement.config = currentConfig;
-          playerElement.session = currentSession;
-          playerElement.env = currentEnv;
-        });
-
-        lastConfig = currentConfig;
-        lastEnv = currentEnv;
-      }
+    if (!itemToolbarElement) return;
+    if (itemContentElement) {
+      (itemToolbarElement as any).scopeElement = itemContentElement;
     }
-  });
-
-  // Bind services, scope, and IDs to question toolbar (must be JS properties)
-  $effect(() => {
-    if (questionToolbarElement && !toolbarServicesBound) {
-      if (toolCoordinator) {
-        (questionToolbarElement as any).toolCoordinator = toolCoordinator;
-      }
-      if (ttsService) {
-        (questionToolbarElement as any).ttsService = ttsService;
-      }
-      if (highlightCoordinator) {
-        (questionToolbarElement as any).highlightCoordinator =
-          highlightCoordinator;
-      }
-      if (itemContentElement) {
-        (questionToolbarElement as any).scopeElement = itemContentElement;
-      }
-      if (elementToolStateStore) {
-        (questionToolbarElement as any).elementToolStateStore =
-          elementToolStateStore;
-      }
-      if (assessmentId) {
-        (questionToolbarElement as any).assessmentId = assessmentId;
-      }
-      if (sectionId) {
-        (questionToolbarElement as any).sectionId = sectionId;
-      }
-
-      toolbarServicesBound = true;
+    if (item) {
+      (itemToolbarElement as any).item = item;
     }
   });
 
@@ -218,98 +191,54 @@
 
     return unsubscribe;
   });
-
-  // Attach event listener to player element imperatively
-  $effect(() => {
-    if (playerElement && onsessionchanged) {
-      const handler = (event: Event) => {
-        console.log("[ItemRenderer] Session changed event received:", event);
-        console.log(
-          "[ItemRenderer] Full event detail:",
-          (event as CustomEvent).detail,
-        );
-        onsessionchanged(event as CustomEvent);
-      };
-
-      playerElement.addEventListener("session-changed", handler);
-
-      return () => {
-        playerElement.removeEventListener("session-changed", handler);
-      };
-    }
-    return undefined;
-  });
 </script>
 
-{#if item.config}
-  <div
-    class="item-renderer {className}"
-    bind:this={itemElement}
-    data-assessment-id={assessmentId}
-    data-section-id={sectionId}
-    data-item-id={item.id}
-  >
-    <div class="item-header">
-      <h4 class="item-title">{item.name || "Question"}</h4>
-      <pie-question-toolbar
-        bind:this={questionToolbarElement}
+<div bind:this={contextHostElement} data-item-id={item.id || ""}>
+  {#if item.config}
+    <ItemShell
+      {item}
+      {contentKind}
+      {customClassName}
+    >
+      <pie-item-toolbar
+        slot="toolbar"
+        bind:this={itemToolbarElement}
         item-id={item.id}
         catalog-id={item.id}
         tools="calculator,tts,answerEliminator"
+        content-kind={contentKind}
         size="md"
         language="en-US"
-      ></pie-question-toolbar>
-    </div>
+      ></pie-item-toolbar>
 
-    <div class="item-content" bind:this={itemContentElement}>
-      {#if resolvedPlayerType === "iife"}
-        <pie-iife-player bind:this={playerElement} bundle-host={bundleHost}
-        ></pie-iife-player>
-      {:else if resolvedPlayerType === "esm"}
-        <pie-esm-player bind:this={playerElement} esm-cdn-url={esmCdnUrl}
-        ></pie-esm-player>
-      {:else if resolvedPlayerType === "fixed"}
-        <pie-fixed-player bind:this={playerElement}></pie-fixed-player>
-      {:else if resolvedPlayerType === "inline"}
-        <pie-inline-player bind:this={playerElement}></pie-inline-player>
-      {/if}
-    </div>
-  </div>
+      <div class="pie-section-player__item-content" bind:this={itemContentElement}>
+        <ItemPlayerBridge
+          {item}
+          {env}
+          {session}
+          {hasElements}
+          resolvedPlayerTag={resolvedPlayerTag}
+          resolvedPlayerDefinition={resolvedPlayerDefinition}
+          {skipElementLoading}
+          onsessionchanged={handlePlayerSessionChanged}
+        />
+      </div>
+    </ItemShell>
 
-  <!-- Calculator Tool Instance (rendered outside panel for floating overlay) -->
-  {#if item}
-    <pie-tool-calculator
-      bind:this={calculatorElement}
-      visible={calculatorVisible}
-      tool-id="calculator-{item.id}"
-    ></pie-tool-calculator>
+    <!-- Calculator Tool Instance (rendered outside panel for floating overlay) -->
+    {#if item}
+      <pie-tool-calculator
+        visible={calculatorVisible}
+        tool-id="calculator-{item.id}"
+      ></pie-tool-calculator>
+    {/if}
   {/if}
-{/if}
+</div>
 
 <style>
-  .item-renderer {
-    display: block;
-    margin-bottom: 1rem;
-  }
-
-  .item-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0.75rem 0;
-    margin-bottom: 0.5rem;
-  }
-
-  .item-title {
-    margin: 0;
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: #1976d2;
-  }
-
-  .item-content {
+  .pie-section-player__item-content {
     padding: 1rem;
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--pie-border-light, #e5e7eb);
     border-radius: 4px;
   }
 </style>

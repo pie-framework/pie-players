@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/tts-server-google",
-	"version": "0.1.1",
+	"version": "0.1.3",
 	"description": "Google Cloud Text-to-Speech provider for server-side TTS with speech marks support",
 	"type": "module",
 	"main": "./dist/index.js",
@@ -30,6 +30,14 @@
 	],
 	"author": "PIE Framework",
 	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pie-framework/pie-players.git",
+		"directory": "packages/tts-server-google"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
 	"dependencies": {
 		"@google-cloud/text-to-speech": "^5.0.0",
 		"@pie-players/tts-server-core": "workspace:*"
@@ -37,5 +45,13 @@
 	"devDependencies": {
 		"typescript": "^5.3.3",
 		"vitest": "^1.0.4"
+	},
+	"sideEffects": false,
+	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/tts-server-google#readme",
+	"bugs": {
+		"url": "https://github.com/pie-framework/pie-players/issues"
+	},
+	"engines": {
+		"node": ">=18.0.0"
 	}
 }

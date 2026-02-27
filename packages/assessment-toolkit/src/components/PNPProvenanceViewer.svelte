@@ -1,9 +1,8 @@
 <script lang="ts">
-	import type { PNPResolutionProvenance } from '@pie-players/pie-assessment-toolkit/services/pnp-provenance';
+	import type { PNPResolutionProvenance } from '../services/pnp-provenance.js';
 
 	// PNP Provenance Viewer Component
 	// Visualizes how PNP resolution decisions were made.
-	// See PNP_TESTING.md for usage documentation.
 
 	interface Props {
 		provenance: PNPResolutionProvenance;
@@ -36,6 +35,17 @@
 			skip: '○'
 		};
 		return icons[action] || '?';
+	}
+
+	function getSourceName(source: unknown): string | undefined {
+		if (!source || typeof source !== 'object') return undefined;
+		if ('name' in source && typeof (source as any).name === 'string') {
+			return (source as any).name;
+		}
+		if ('title' in source && typeof (source as any).title === 'string') {
+			return (source as any).title;
+		}
+		return undefined;
 	}
 </script>
 
@@ -75,7 +85,7 @@
 						<div class="flex items-center gap-2">
 							<div class="badge badge-outline">{type}</div>
 							<div class="text-sm">
-								{source.name || source.id}
+								{getSourceName(source) || source.id}
 								<span class="text-xs text-base-content/50">({source.id})</span>
 							</div>
 						</div>
@@ -226,7 +236,7 @@
 										{decision.reason}
 									</div>
 									<div class="text-base-content/50 mt-1">
-										Source: {decision.source.name || decision.source.type}
+										Source: {getSourceName(decision.source) || decision.source.type}
 									</div>
 								</div>
 							</div>

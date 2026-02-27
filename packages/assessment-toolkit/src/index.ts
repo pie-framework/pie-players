@@ -12,6 +12,43 @@
 // ============================================================================
 
 export { TypedEventBus } from "./core/TypedEventBus.js";
+export type {
+	AssessmentToolkitHostRuntimeContext,
+	AssessmentToolkitRegionScopeContext,
+	AssessmentToolkitRuntimeContext,
+	AssessmentToolkitShellContext,
+	ItemPlayerConfig,
+	ItemPlayerType,
+	ShellContextKind,
+} from "./context/assessment-toolkit-context.js";
+export {
+	assessmentToolkitHostRuntimeContext,
+	assessmentToolkitRegionScopeContext,
+	assessmentToolkitRuntimeContext,
+	assessmentToolkitShellContext,
+} from "./context/assessment-toolkit-context.js";
+export {
+	connectAssessmentToolkitHostRuntimeContext,
+	connectAssessmentToolkitRegionScopeContext,
+	connectAssessmentToolkitRuntimeContext,
+	connectAssessmentToolkitShellContext,
+} from "./context/runtime-context-consumer.js";
+export {
+	PIE_ITEM_SESSION_CHANGED_EVENT,
+	PIE_REGISTER_EVENT,
+	PIE_UNREGISTER_EVENT,
+	type ItemSessionChangedDetail,
+	type RuntimeRegistrationDetail,
+	type RuntimeRegistrationKind,
+} from "./runtime/registration-events.js";
+export {
+	connectToolRegionScopeContext,
+	connectToolRuntimeContext,
+	connectToolShellContext,
+	createCrossBoundaryEvent,
+	dispatchCrossBoundaryEvent,
+	isContextValueDefined,
+} from "./runtime/tool-host-contract.js";
 
 // ============================================================================
 // Service Interfaces
@@ -41,7 +78,6 @@ export type {
 	ResolvedCatalog,
 } from "./services/AccessibilityCatalogResolver.js";
 export { AccessibilityCatalogResolver } from "./services/AccessibilityCatalogResolver.js";
-export { AssessmentAuthoringService } from "./services/AssessmentAuthoringService.js";
 // Context Variable Store (QTI 3.0 Context Declarations)
 export { ContextVariableStore } from "./services/ContextVariableStore.js";
 // Element Tool State Store (Element-level ephemeral tool state)
@@ -56,17 +92,6 @@ export {
 // Range Serializer (for annotation persistence)
 export type { SerializedRange } from "./services/RangeSerializer.js";
 export { RangeSerializer } from "./services/RangeSerializer.js";
-// Annotation Toolbar Configuration (Backend API endpoints)
-export type {
-	AnnotationToolbarConfig,
-	DictionaryLookupRequest,
-	DictionaryLookupResponse,
-	PictureDictionaryLookupRequest,
-	PictureDictionaryLookupResponse,
-	TranslationRequest,
-	TranslationResponse,
-} from "./services/AnnotationToolbarConfig.js";
-export { AnnotationToolbarAPIClient } from "./services/AnnotationToolbarConfig.js";
 // I18n Service
 export type {
 	I18nConfig,
@@ -76,9 +101,10 @@ export type {
 export { I18nService } from "./services/I18nService.js";
 // Tool Registry (Registry-based tool system)
 export type {
-	ToolButtonDefinition,
-	ToolButtonOptions,
-	ToolInstanceOptions,
+	ToolbarContext,
+	ToolModuleLoader,
+	ToolToolbarButtonDefinition,
+	ToolToolbarRenderResult,
 	ToolRegistration,
 } from "./services/ToolRegistry.js";
 export { ToolRegistry } from "./services/ToolRegistry.js";
@@ -111,6 +137,10 @@ export {
 	DEFAULT_TOOL_ORDER,
 } from "./services/createDefaultToolRegistry.js";
 export type { DefaultToolRegistryOptions } from "./services/createDefaultToolRegistry.js";
+export {
+	DEFAULT_PERSONAL_NEEDS_PROFILE,
+	createDefaultPersonalNeedsProfile,
+} from "./services/defaultPersonalNeedsProfile.js";
 export type {
 	ToolComponentFactory,
 	ToolComponentFactoryMap,
@@ -161,8 +191,18 @@ export { ToolCoordinator, ZIndexLayer } from "./services/ToolCoordinator.js";
 // Toolkit Coordinator (Centralized service management)
 export type {
 	AnswerEliminatorToolConfig,
+	ProviderLifecycleContext,
+	SectionControllerContext,
+	SectionControllerFactoryDefaults,
+	SectionControllerHandle,
+	SectionControllerKey,
+	SectionControllerPersistenceStrategy,
+	SectionPersistenceFactoryDefaults,
 	ToolConfig,
 	ToolkitCoordinatorConfig,
+	ToolkitCoordinatorHooks,
+	ToolkitErrorContext,
+	ToolkitInitStatus,
 	ToolkitServiceBundle,
 	TTSToolConfig,
 } from "./services/ToolkitCoordinator.js";
@@ -201,6 +241,44 @@ export {
 } from "./item-loader.js";
 
 // ============================================================================
+// Attempt Session
+// ============================================================================
+
+export type {
+	StorageLike,
+	TestAttemptItemSession,
+	TestAttemptSession,
+	TestAttemptSessionNavigationState,
+	TestAttemptSessionRealization,
+} from "./attempt/TestSession.js";
+export {
+	createMemoryStorage,
+	createTestAttemptSessionIdentifier,
+	createNewTestAttemptSession,
+	getBrowserLocalStorage,
+	getOrCreateAnonymousDeviceId,
+	getTestAttemptSessionStorageKey,
+	loadTestAttemptSession,
+	saveTestAttemptSession,
+	setCurrentPosition,
+	upsertItemSessionFromPieSessionChange,
+	upsertVisitedItem,
+} from "./attempt/TestSession.js";
+export type {
+	ActivitySessionPatchPayload,
+	MapActivityToTestAttemptSessionArgs,
+	PieBackendActivityDefinition,
+	PieBackendActivityItemRef,
+	PieBackendActivitySession,
+} from "./attempt/adapters/activity-to-test-attempt-session.js";
+export {
+	buildActivitySessionItemUpdate,
+	buildActivitySessionPatchFromTestAttemptSession,
+	mapActivityToTestAttemptSession,
+	toItemSessionsRecord,
+} from "./attempt/adapters/activity-to-test-attempt-session.js";
+
+// ============================================================================
 // Event Types (Standard Contracts)
 // ============================================================================
 
@@ -233,19 +311,12 @@ export type {
 	ToolStateChangedEvent,
 } from "./types/events.js";
 
-// ============================================================================
-// Players (Optional Reference Implementations)
-// ============================================================================
-
-// Assessment Player - Full assessment with navigation
-// Note: Assessment player is optional and not exported by default.
-// Products can import from './player/AssessmentPlayer' if desired.
-
-// Section Player - Use @pie-players/pie-section-player web component instead
+// Section Player - Use @pie-players/pie-section-player web component
 
 // ============================================================================
 // Shared Components
 // ============================================================================
 
-// QuestionToolBar is exported via package.json exports field
-// Import using: import QuestionToolBar from '@pie-players/pie-assessment-toolkit/components/QuestionToolBar.svelte';
+// ItemToolBar custom element registration helper is exported via package.json exports field
+// Import using: import '@pie-players/pie-assessment-toolkit/components/item-toolbar-element';
+// PieAssessmentToolkit custom element registration helper is exported via package.json exports field

@@ -73,7 +73,7 @@ All demo scripts are wrapped with `dotenvx run --`:
 ```json
 {
   "scripts": {
-    "dev:example": "dotenvx run -- bun run --cwd apps/example dev"
+    "dev:section": "dotenvx run -- bun run --cwd apps/section-demos dev"
   }
 }
 ```
@@ -116,10 +116,10 @@ These are all in `.gitignore`.
 
 ```bash
 # ✅ Good (from root)
-bun run dev:example
+bun run dev:section
 
 # ❌ Bad (from subdirectory)
-cd apps/example
+cd apps/section-demos
 bun run dev
 ```
 
@@ -171,7 +171,7 @@ docker restart <redis-container-id>
 
 ## Adding New Environment Variables
 
-1. Add to [.env.example](.env.example) with documentation
+1. Add to [.env.example](../.env.example) with documentation
 2. Add to this document
 3. Update relevant package docs if needed
 

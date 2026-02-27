@@ -29,13 +29,23 @@ export default defineConfig({
 		emptyOutDir: true,
 		target: "es2020",
 		minify: "esbuild",
-		sourcemap: true,
+		sourcemap: false,
 		rollupOptions: {
 			external: ["@datadog/browser-rum"],
+			onwarn(warning, warn) {
+				if (
+					typeof warning.message === "string" &&
+					warning.message.includes(
+						"contains an annotation that Rollup cannot interpret due to the position of the comment",
+					)
+				) {
+					return;
+				}
+				warn(warning);
+			},
 			output: {
 				format: "es",
-				inlineDynamicImports: true,
-			},
+							},
 		},
 	},
 });

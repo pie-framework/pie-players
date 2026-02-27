@@ -7,71 +7,54 @@
 
 import type { ToolContext, ToolLevel } from "./tool-context.js";
 import type { ToolComponentOverrides } from "../tools/tool-tag-map.js";
+import type {
+	IElementToolStateStore,
+	IToolCoordinator,
+	IToolkitCoordinator,
+	ITTSService,
+} from "./interfaces.js";
 
-/**
- * Options for creating a tool button
- */
-export interface ToolButtonOptions {
-	/** Whether the button should be disabled */
-	disabled?: boolean;
+export type ToolModuleLoader = () => Promise<unknown>;
 
-	/** Additional CSS classes */
-	className?: string;
-
-	/** Callback when button is clicked */
-	onClick?: () => void;
-
-	/** Aria label override */
-	ariaLabel?: string;
-
-	/** Custom icon override */
-	icon?: string;
-
-	/** Tooltip text */
-	tooltip?: string;
-}
-
-/**
- * Definition for a tool button component
- */
-export interface ToolButtonDefinition {
-	/** Tool ID */
+export interface ToolToolbarButtonDefinition {
 	toolId: string;
-
-	/** Display label */
 	label: string;
-
-	/** Icon (SVG string, icon name, or URL) */
 	icon: string;
-
-	/** Whether button is disabled */
-	disabled: boolean;
-
-	/** Aria label for accessibility */
 	ariaLabel: string;
-
-	/** Tooltip text */
 	tooltip?: string;
-
-	/** Click handler */
 	onClick: () => void;
-
-	/** Additional CSS classes */
 	className?: string;
+	disabled?: boolean;
+	active?: boolean;
 }
 
-/**
- * Options for creating a tool instance
- */
-export interface ToolInstanceOptions {
-	/** Initial state for the tool */
-	initialState?: unknown;
+export interface ToolbarContext {
+	itemId: string;
+	catalogId: string;
+	language: string;
+	ui?: {
+		size?: string;
+	};
+	getScopeElement?: () => HTMLElement | null;
+	getGlobalElementId?: () => string | null;
+	toolCoordinator: IToolCoordinator | null;
+	toolkitCoordinator: IToolkitCoordinator | null;
+	ttsService: ITTSService | null;
+	elementToolStateStore: IElementToolStateStore | null;
+	toggleTool: (toolId: string) => void;
+	isToolVisible: (toolId: string) => boolean;
+	subscribeVisibility: ((listener: () => void) => (() => void)) | null;
+	ensureTTSReady: (() => Promise<void>) | null;
+	componentOverrides?: ToolComponentOverrides;
+}
 
-	/** Callback when tool is closed/dismissed */
-	onClose?: () => void;
-
-	/** Custom configuration */
-	config?: Record<string, unknown>;
+export interface ToolToolbarRenderResult {
+	toolId: string;
+	inlineElement?: HTMLElement | null;
+	overlayElement?: HTMLElement | null;
+	button?: ToolToolbarButtonDefinition | null;
+	sync?: () => void;
+	subscribeActive?: (callback: (active: boolean) => void) => (() => void);
 }
 
 /**
@@ -109,29 +92,11 @@ export interface ToolRegistration {
 	 */
 	isVisibleInContext(context: ToolContext): boolean;
 
-	/**
-	 * Create a button definition for rendering in a toolbar
-	 *
-	 * @param context - Context where button will appear
-	 * @param options - Button options (click handler, disabled state, etc.)
-	 * @returns Button definition for rendering
-	 */
-	createButton(
+	/** Required toolbar-first render contract. */
+	renderToolbar(
 		context: ToolContext,
-		options: ToolButtonOptions,
-	): ToolButtonDefinition;
-
-	/**
-	 * Create the actual tool instance (e.g., calculator component)
-	 *
-	 * @param context - Context where tool is being used
-	 * @param options - Tool-specific options
-	 * @returns HTMLElement containing the tool
-	 */
-	createToolInstance(
-		context: ToolContext,
-		options: ToolInstanceOptions,
-	): HTMLElement;
+		toolbarContext: ToolbarContext,
+	): ToolToolbarRenderResult | null;
 }
 
 /**
@@ -143,6 +108,23 @@ export class ToolRegistry {
 	private tools = new Map<string, ToolRegistration>();
 	private pnpIndex = new Map<string, Set<string>>(); // pnpSupportId → Set<toolId>
 	private componentOverrides: ToolComponentOverrides = {};
+	private moduleLoaders = new Map<string, ToolModuleLoader>();
+	private loadedToolModules = new Set<string>();
+	private moduleLoadPromises = new Map<string, Promise<void>>();
+
+	/**
+	 * Normalize a single tool alias to canonical toolId.
+	 */
+	normalizeToolId(toolId: string): string {
+		return toolId === "tts" ? "textToSpeech" : toolId;
+	}
+
+	/**
+	 * Normalize a list of tool aliases to canonical toolIds.
+	 */
+	normalizeToolIds(toolIds: string[]): string[] {
+		return toolIds.map((toolId) => this.normalizeToolId(toolId));
+	}
 
 	/**
 	 * Register a tool
@@ -326,27 +308,6 @@ export class ToolRegistry {
 	}
 
 	/**
-	 * Create button definitions for visible tools
-	 *
-	 * @param allowedToolIds - Tool IDs that passed Pass 1
-	 * @param context - Context to evaluate
-	 * @param buttonOptions - Options for button creation
-	 * @returns Array of button definitions ready for rendering
-	 */
-	createButtons(
-		allowedToolIds: string[],
-		context: ToolContext,
-		buttonOptions: (toolId: string) => ToolButtonOptions,
-	): ToolButtonDefinition[] {
-		const visibleTools = this.filterVisibleInContext(allowedToolIds, context);
-
-		return visibleTools.map((tool) => {
-			const options = buttonOptions(tool.toolId);
-			return tool.createButton(context, options);
-		});
-	}
-
-	/**
 	 * Get tool metadata for building UIs
 	 * Useful for building PNP configuration interfaces
 	 *
@@ -406,26 +367,82 @@ export class ToolRegistry {
 	}
 
 	/**
-	 * Create a tool instance by tool ID using registered tool definition.
+	 * Register lazy module loaders by toolId.
+	 * Toolbars call ensureToolModuleLoaded(toolId) before instance creation.
 	 */
-	createToolInstance(
+	setToolModuleLoaders(
+		loaders: Partial<Record<string, ToolModuleLoader>>,
+	): void {
+		for (const [toolId, loader] of Object.entries(loaders)) {
+			if (!loader) continue;
+			this.moduleLoaders.set(toolId, loader);
+		}
+	}
+
+	/**
+	 * Ensure tool module side-effects are loaded exactly once.
+	 * Safe to call repeatedly; concurrent callers share the same promise.
+	 */
+	async ensureToolModuleLoaded(toolId: string): Promise<void> {
+		if (this.loadedToolModules.has(toolId)) return;
+
+		const existingPromise = this.moduleLoadPromises.get(toolId);
+		if (existingPromise) {
+			await existingPromise;
+			return;
+		}
+
+		const loader = this.moduleLoaders.get(toolId);
+		if (!loader) return;
+
+		const loadPromise = (async () => {
+			await loader();
+			this.loadedToolModules.add(toolId);
+		})();
+
+		this.moduleLoadPromises.set(toolId, loadPromise);
+		try {
+			await loadPromise;
+		} finally {
+			this.moduleLoadPromises.delete(toolId);
+		}
+	}
+
+	/**
+	 * Ensure a set of tool modules are loaded.
+	 */
+	async ensureToolModulesLoaded(toolIds: string[]): Promise<void> {
+		await Promise.all(toolIds.map((toolId) => this.ensureToolModuleLoaded(toolId)));
+	}
+
+	/**
+	 * Whether a tool module has already been loaded.
+	 */
+	isToolModuleLoaded(toolId: string): boolean {
+		return this.loadedToolModules.has(toolId);
+	}
+
+	/**
+	 * Render a tool for toolbar use with component overrides attached.
+	 */
+	renderForToolbar(
 		toolId: string,
 		context: ToolContext,
-		options: ToolInstanceOptions = {},
-	): HTMLElement {
+		toolbarContext: ToolbarContext,
+	): ToolToolbarRenderResult | null {
 		const tool = this.get(toolId);
 		if (!tool) {
 			throw new Error(`Tool '${toolId}' is not registered`);
 		}
 
-		const mergedOptions: ToolInstanceOptions = {
-			...options,
-			config: {
+		const mergedContext: ToolbarContext = {
+			...toolbarContext,
+			componentOverrides: {
 				...(this.componentOverrides || {}),
-				...(options.config || {}),
+				...(toolbarContext.componentOverrides || {}),
 			},
 		};
 
-		return tool.createToolInstance(context, mergedOptions);
+		return tool.renderToolbar(context, mergedContext);
 	}
 }

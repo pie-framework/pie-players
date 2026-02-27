@@ -25,7 +25,7 @@ const mockCalculatorTool: ToolRegistration = {
 		className: options.className,
 	}),
 	createToolInstance: (context, options) => {
-		return { className: "calculator-tool" } as any;
+		return { className: "pie-tool-calculator" } as any;
 	},
 };
 
@@ -411,7 +411,7 @@ describe("ToolRegistry", () => {
 				item: {} as any,
 			};
 			const el = registry.createToolInstance("calculator", context, {});
-			expect(el.className).toBe("calculator-tool");
+			expect(el.className).toBe("pie-tool-calculator");
 		});
 
 		test("throws when tool is not registered", () => {

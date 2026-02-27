@@ -13,7 +13,7 @@
       addCorrectResponse="false"
       showBottomBorder="false"
       bundleHost="https://proxy.pie-api.com/bundles/"
-      customClassname="my-class"
+      customClassName="my-class"
       containerClass="item-class"
       externalStyleUrls="https://example.com/styles.css">
     </pie-iife-player>
@@ -41,7 +41,7 @@
 			debug: { attribute: 'debug', type: 'String' },
 
 			// Styling props (match pie-player API)
-			customClassname: { attribute: 'custom-classname', type: 'String' },
+			customClassName: { attribute: 'custom-class-name', type: 'String' },
 			containerClass: { attribute: 'container-class', type: 'String' },
 			externalStyleUrls: { attribute: 'external-style-urls', type: 'String' },
 
@@ -65,8 +65,8 @@
 	import { BundleType, createPieLogger, DEFAULT_BUNDLE_HOST, DEFAULT_LOADER_CONFIG, IifePieLoader, isGlobalDebugEnabled, makeUniqueTags } from '@pie-players/pie-players-shared';
 	import { PieItemPlayer, PieSpinner } from '@pie-players/pie-players-shared/components';
 	import { tick, untrack } from 'svelte';
-	// Import global component styles 
-	import './components.css';
+	// Import global component styles
+	import "@pie-players/pie-theme/components.css";
 
 	type ItemSession = {
 		id: string;
@@ -91,7 +91,7 @@
 		debug = '' as string | boolean,
 
 		// Styling props
-		customClassname = '',
+		customClassName = '',
 		containerClass = '',
 		externalStyleUrls = '',
 
@@ -155,12 +155,12 @@
 	}
 
 	const fallbackScopeClass = $derived.by(() => {
-		if (customClassname) return customClassname;
+		if (customClassName) return customClassName;
 		const hash = stableHashBase36('/packages/pie-iife-player/src/PieIifePlayer.svelte').slice(0, 9);
 		return `pie-player-${hash}`;
 	});
 
-	const scopeClass = $derived(customClassname || fallbackScopeClass);
+	const scopeClass = $derived(customClassName || fallbackScopeClass);
 
 	// Parse config and load IIFE elements
 	let lastProcessedConfig: any = null;
@@ -168,6 +168,13 @@
 	let lastProcessedHosted: any = null;
 	let lastProcessedBundleHost: any = null;
 	let isProcessing = false;
+
+	function formatElementSummary(elements: Record<string, unknown> | undefined): string {
+		if (!elements || typeof elements !== 'object') return 'none';
+		const entries = Object.entries(elements);
+		if (entries.length === 0) return 'none';
+		return entries.map(([tag, pkg]) => `${tag} (${String(pkg)})`).join(', ');
+	}
 
 	// Use a function instead of $effect to avoid reactivity loops
 	async function loadConfig(currentConfig: any) {
@@ -203,6 +210,7 @@
 		error = null;
 
 		let stage = 'start';
+		let elementSummary = 'none';
 		try {
 			// Parse config if it's a string (from JSON.stringify)
 			stage = 'parse-config';
@@ -237,6 +245,7 @@
 			stage = 'makeUniqueTags';
 			const transformed = makeUniqueTags({ config: parsedConfig });
 			const transformedConfig = transformed.config;
+			elementSummary = formatElementSummary(transformedConfig?.elements);
 
 			// Check if elements need to be loaded or are already pre-loaded
 			if (!skipElementLoading) {
@@ -292,7 +301,7 @@
 
 		} catch (err: any) {
 			const message = err?.message || String(err);
-			const errorMsg = `Error loading IIFE elements (${stage}): ${message}`;
+			const errorMsg = `Error loading IIFE elements (${stage}) for: ${elementSummary}. ${message}`;
 			// Avoid logging potentially huge/cyclic objects by logging message + stack string.
 			logger.error('IIFE loading error:', message, err?.stack);
 			error = errorMsg;
@@ -460,7 +469,7 @@
 		<PieSpinner />
 	{:else}
 		<!-- Use PieItemPlayer for rendering - shared with all other players -->
-		<div class="player-item-container {containerClass}">
+		<div class="pie-player-item-container {containerClass}">
 			<PieItemPlayer
 				{itemConfig}
 				env={typeof env === 'string' ? JSON.parse(env) : env}
@@ -469,7 +478,7 @@
 					return parsedSession.data || [];
 				})()}
 				addCorrectResponse={addCorrectResponseBool}
-				customClassname={scopeClass}
+				customClassName={scopeClass}
 				bundleType={mode === 'author' ? BundleType.editor : (hosted ? BundleType.player : BundleType.clientPlayer)}
 				{loaderConfig}
 				{mode}
@@ -492,7 +501,7 @@
 		width: 100%;
 	}
 
-	:global(.player-item-container) {
+	:global(.pie-player-item-container) {
 		width: 100%;
 	}
 </style>

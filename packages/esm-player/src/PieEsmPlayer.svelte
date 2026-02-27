@@ -12,7 +12,7 @@
       env='{"mode":"gather","role":"student"}'
       addCorrectResponse="false"
       showBottomBorder="false"
-      customClassname="my-class"
+      customClassName="my-class"
       containerClass="item-class"
       externalStyleUrls="https://example.com/styles.css"
       esmCdnUrl="https://esm.sh">
@@ -39,7 +39,7 @@
 			debug: { attribute: 'debug', type: 'String' },
 
 			// Styling props (match pie-player API)
-			customClassname: { attribute: 'custom-classname', type: 'String' },
+			customClassName: { attribute: 'custom-class-name', type: 'String' },
 			containerClass: { attribute: 'container-class', type: 'String' },
 			externalStyleUrls: { attribute: 'external-style-urls', type: 'String' },
 
@@ -99,7 +99,7 @@
 		debug = '' as string | boolean,
 
 		// Styling props
-		customClassname = '',
+		customClassName = '',
 		containerClass = '',
 		externalStyleUrls = '',
 
@@ -155,7 +155,7 @@
 
 	// Generate unique class name for scoping external styles
 	const fallbackScopeClass = `pie-player-${Date.now().toString(36)}`;
-	const scopeClass = $derived((customClassname || fallbackScopeClass).trim());
+	const scopeClass = $derived((customClassName || fallbackScopeClass).trim());
 
 	// Parse config and load ESM elements
 	$effect(() => {
@@ -387,7 +387,7 @@
 		<PieSpinner />
 	{:else}
 		<!-- Use PieItemPlayer for rendering - shared with pie-fixed-player and pie-inline-player -->
-		<div class="player-item-container {containerClass}">
+		<div class="pie-player-item-container {containerClass}">
 			<PieItemPlayer
 				{itemConfig}
 				env={typeof env === 'string' ? JSON.parse(env) : env}
@@ -396,7 +396,7 @@
 					return parsedSession.data || [];
 				})()}
 				{addCorrectResponse}
-				customClassname={scopeClass}
+				customClassName={scopeClass}
 				bundleType={mode === 'author' ? BundleType.editor : BundleType.clientPlayer}
 				{loaderConfig}
 				{mode}
@@ -422,7 +422,7 @@
 		width: 100%;
 	}
 
-	:global(.player-item-container) {
+	:global(.pie-player-item-container) {
 		width: 100%;
 	}
 </style>

@@ -268,25 +268,9 @@ initializeConfiguresFromLoadedBundle(itemConfig, configuration, {
 });
 ```
 
-## Example Application
+## Example Usage
 
-See `/apps/example/src/routes/authoring/+page.svelte` for a complete working example.
-
-The example demonstrates:
-- Loading editor bundles
-- Switching between author and preview modes
-- Handling model updates
-- Configuration management
-- Real-time preview
-
-Run the example:
-
-```bash
-cd apps/example
-bun run dev
-```
-
-Visit `http://localhost:5200/authoring`
+Use the `PiePreviewLayout` and `PieItemPlayer` examples in this guide as the canonical integration pattern.
 
 ## API Reference
 
@@ -393,8 +377,6 @@ Or with Svelte:
 
 Planned for future releases:
 
-- Assessment-level authoring (add/remove/reorder items)
-- AssessmentAuthoringService for managing assessment structure
 - Item bank browser integration
 - Version history and undo/redo
 - Collaborative editing support
@@ -402,7 +384,6 @@ Planned for future releases:
 
 ## Resources
 
-- Example Application: `/apps/example/src/routes/authoring`
 - Type Definitions: `/packages/players-shared/src/pie/types.ts`
 - Configure Initialization: `/packages/players-shared/src/pie/configure-initialization.ts`
 - Asset Management: `/packages/players-shared/src/pie/asset-handler.ts`

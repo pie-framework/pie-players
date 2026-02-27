@@ -28,13 +28,12 @@ export default defineConfig({
 		emptyOutDir: true,
 		target: "es2020",
 		minify: "esbuild",
-		sourcemap: true,
+		sourcemap: false,
 		rollupOptions: {
 			external: ["@datadog/browser-rum"],
 			output: {
 				format: "es",
-				inlineDynamicImports: true,
-			},
+							},
 		},
 	},
 });

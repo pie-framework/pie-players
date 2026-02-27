@@ -47,7 +47,7 @@ The Tool Registry replaces hardcoded tool lists with a flexible, extensible syst
                        ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                      UI LAYER                                │
-│  (ToolButtonGroup, QuestionToolBar)                         │
+│  (ToolButtonGroup, ItemToolBar)                             │
 │                                                              │
 │  Renders: Buttons for visible tools only                    │
 └─────────────────────────────────────────────────────────────┘
@@ -61,6 +61,18 @@ Tools can **hide themselves** but cannot **override orchestrator's NO**:
 - ❌ Orchestrator says NO → Tool cannot say YES (tool not in `allowedToolIds`)
 
 This is enforced architecturally: `filterVisibleInContext()` only filters the `allowedToolIds` array.
+
+### Refresh / Init Contract
+
+Toolbar containers may remain mounted, but button visibility is re-evaluated on each
+init/render refresh:
+
+1. Resolve `allowedToolIds` (Pass 1).
+2. Rebuild the current `ToolContext`.
+3. Call `filterVisibleInContext(allowedToolIds, context)` (Pass 2).
+4. Render only the resulting buttons.
+
+This keeps visibility deterministic and context-driven for every refresh cycle.
 
 ## QTI 3.0 Standard Access Features
 
@@ -149,7 +161,7 @@ export const calculatorToolRegistration: ToolRegistration = {
   icon: "calculator",
 
   // Which context levels support this tool
-  supportedLevels: ["section", "item", "passage", "rubric", "element"],
+  supportedLevels: ["item", "element"],
 
   // QTI 3.0 PNP support IDs that enable this tool
   // Maps to standard features from pnp-standard-features.ts
@@ -162,12 +174,7 @@ export const calculatorToolRegistration: ToolRegistration = {
 
   // Pass 2: Is this tool relevant in the current context?
   isVisibleInContext(context: ToolContext): boolean {
-    // Show at section/item level (student might need it)
-    if (context.level === "section" || context.level === "item") {
-      return true;
-    }
-
-    // At element level, only show if math content detected
+    // Show only when math content is present
     return hasMathContent(context);
   },
 
@@ -274,12 +281,21 @@ isVisibleInContext(context: ToolContext): boolean {
 
 ```typescript
 import { createDefaultToolRegistry } from '@pie-players/pie-assessment-toolkit';
+import {
+  DEFAULT_TOOL_MODULE_LOADERS,
+} from '@pie-players/pie-default-tool-loaders';
 
 // Create registry with all 12 default PIE tools
 const toolRegistry = createDefaultToolRegistry();
 
+// Optional: wire lazy module loaders at bootstrap
+const lazyRegistry = createDefaultToolRegistry({
+  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS
+});
+
 // Optional: replace default tag mapping/factories for selected tools
 const customRegistry = createDefaultToolRegistry({
+  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
   toolTagMap: {
     calculator: 'my-calculator-tool'
   },
@@ -287,6 +303,12 @@ const customRegistry = createDefaultToolRegistry({
     calculator: ({ tagName }) => document.createElement(tagName)
   }
 });
+
+// Optional: provide only section-level default loaders
+import {
+  registerSectionToolModuleLoaders
+} from '@pie-players/pie-default-tool-loaders';
+registerSectionToolModuleLoaders(customRegistry);
 
 // Or create custom registry
 const selectiveRegistry = new ToolRegistry();
@@ -331,7 +353,7 @@ const pnpResolver = new PNPToolResolver(toolRegistry);
 
 // Get allowed tool IDs from QTI 3.0 PNP profile
 const allowedToolIds = pnpResolver.getAllowedToolIds(assessment, itemRef);
-// Returns: ["calculator", "textToSpeech", "magnifier", ...]
+// Returns: ["calculator", "textToSpeech", "colorScheme", ...]
 ```
 
 The `PNPToolResolver` reads QTI 3.0 `accessibilityInfo.accessFeature` arrays and maps them to tool IDs using the tool registry's PNP index.
@@ -414,27 +436,27 @@ Individual button component:
 <ToolButton {button} />
 ```
 
-### QuestionToolBar
+### ItemToolBar
 
-The `QuestionToolBar` component supports dual-mode operation:
+The `ItemToolBar` component supports dual-mode operation:
 
 **Registry Mode** (new architecture):
 ```html
-<pie-question-toolbar
+<pie-item-toolbar
   .toolRegistry={toolRegistry}
   .pnpResolver={pnpResolver}
   .assessment={assessment}
   .itemRef={itemRef}
   .item={item}
-></pie-question-toolbar>
+></pie-item-toolbar>
 ```
 
 **Legacy Mode** (hardcoded tools):
 ```html
-<pie-question-toolbar
+<pie-item-toolbar
   tools="calculator,tts,answerEliminator"
   item-id="question-1"
-></pie-question-toolbar>
+></pie-item-toolbar>
 ```
 
 ## Default Tool Placement
@@ -444,8 +466,8 @@ The toolkit provides recommended tool placement by context level:
 ```typescript
 import { DEFAULT_TOOL_PLACEMENT } from '@pie-players/pie-assessment-toolkit';
 
-DEFAULT_TOOL_PLACEMENT.assessment  // ["magnifier", "colorScheme"]
-DEFAULT_TOOL_PLACEMENT.section     // ["magnifier", "colorScheme", "calculator", "textToSpeech"]
+DEFAULT_TOOL_PLACEMENT.assessment  // ["colorScheme"]
+DEFAULT_TOOL_PLACEMENT.section     // ["colorScheme", "textToSpeech"]
 DEFAULT_TOOL_PLACEMENT.item        // ["calculator", "textToSpeech", "answerEliminator", ...]
 DEFAULT_TOOL_PLACEMENT.passage     // ["textToSpeech", "highlighter", "annotationToolbar", "lineReader"]
 DEFAULT_TOOL_PLACEMENT.rubric      // ["textToSpeech", "highlighter", "annotationToolbar", "lineReader"]

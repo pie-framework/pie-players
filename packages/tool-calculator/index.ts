@@ -7,8 +7,9 @@
  *   import '@pie-players/pie-tool-calculator';
  *   // <pie-tool-calculator visible="true" tool-id="calc"></pie-tool-calculator>
  *
- *   // Svelte component (from source)
- *   import { ToolCalculator } from '@pie-players/pie-tool-calculator/tool-calculator.svelte';
+ *   // Register once, then use as custom element
+ *   // import '@pie-players/pie-tool-calculator';
+ *   // <pie-tool-calculator visible="true" tool-id="calc"></pie-tool-calculator>
  */
 
 // Export TypeScript types (if any)

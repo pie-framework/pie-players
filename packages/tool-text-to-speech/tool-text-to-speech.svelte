@@ -1,7 +1,7 @@
 <svelte:options
 	customElement={{
 		tag: 'pie-tool-text-to-speech',
-		shadow: 'none',
+		shadow: 'open',
 		props: {
 			visible: { type: 'Boolean', attribute: 'visible' },
 			toolId: { type: 'String', attribute: 'tool-id' },
@@ -249,22 +249,23 @@ import { onDestroy, onMount } from 'svelte';
 {#if visible && isBrowser}
 	<div
 		bind:this={containerEl}
-		class="tool-tts"
+		class="pie-tool-text-to-speech"
 		style="left: {position.x}px; top: {position.y}px;"
 		onpointerdown={handlePointerDown}
 		role="dialog"
 		aria-label="Text-to-Speech Tool"
+		tabindex="-1"
 	>
 		<!-- Header -->
-		<div class="tool-header">
-			<div class="tool-header-left">
+		<div class="pie-tool-text-to-speech__header">
+			<div class="pie-tool-text-to-speech__header-left">
 				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.858 18.142a3 3 0 104.243-4.242L12 12.142 7.757 7.899a3 3 0 000 4.242z"/>
 				</svg>
-				<span class="tool-title">Text-to-Speech</span>
+				<span class="pie-tool-text-to-speech__title">Text-to-Speech</span>
 			</div>
 			<button
-				class="close-button"
+				class="pie-tool-text-to-speech__close-button"
 				onclick={handleClose}
 				aria-label="Close"
 				type="button"
@@ -274,23 +275,23 @@ import { onDestroy, onMount } from 'svelte';
 		</div>
 
 		<!-- Content -->
-		<div class="tool-content">
+		<div class="pie-tool-text-to-speech__content">
 			{#if initError}
-				<div class="error-message">
+				<div class="pie-tool-text-to-speech__error-message">
 					<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
 						<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
 					</svg>
 					<span>{initError}</span>
 				</div>
 			{:else if !isInitialized}
-				<div class="loading-message">
+				<div class="pie-tool-text-to-speech__loading-message">
 					<span>Initializing...</span>
 				</div>
 			{:else}
 				<!-- Instructions -->
-				<div class="instructions">
+				<div class="pie-tool-text-to-speech__instructions">
 					{#if hasSelection}
-						<div class="selection-info">
+						<div class="pie-tool-text-to-speech__selection-info">
 							<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
 							</svg>
@@ -302,7 +303,7 @@ import { onDestroy, onMount } from 'svelte';
 				</div>
 
 				<!-- Speed Control -->
-				<div class="control-group">
+				<div class="pie-tool-text-to-speech__control-group">
 					<label for="tts-speed">
 						<span>Speed:</span>
 						<strong>{rateLabel}</strong>
@@ -320,9 +321,9 @@ import { onDestroy, onMount } from 'svelte';
 				</div>
 
 				<!-- Playback Controls -->
-				<div class="playback-controls">
+				<div class="pie-tool-text-to-speech__playback-controls">
 					<button
-						class="btn-primary"
+						class="pie-tool-text-to-speech__button-primary"
 						onclick={speakSelection}
 						disabled={!hasSelection || isSpeaking}
 						aria-label="Play"
@@ -335,7 +336,7 @@ import { onDestroy, onMount } from 'svelte';
 					</button>
 
 					<button
-						class="btn-secondary"
+						class="pie-tool-text-to-speech__button-secondary"
 						onclick={togglePause}
 						disabled={!isSpeaking}
 						aria-label={isPaused ? 'Resume' : 'Pause'}
@@ -355,7 +356,7 @@ import { onDestroy, onMount } from 'svelte';
 					</button>
 
 					<button
-						class="btn-secondary"
+						class="pie-tool-text-to-speech__button-secondary"
 						onclick={stopSpeaking}
 						disabled={!isSpeaking}
 						aria-label="Stop"
@@ -370,12 +371,12 @@ import { onDestroy, onMount } from 'svelte';
 
 				<!-- Status indicator -->
 				{#if isSpeaking}
-					<div class="status-indicator" class:paused={isPaused}>
-						<div class="status-icon">
+					<div class="pie-tool-text-to-speech__status-indicator" class:pie-tool-text-to-speech__status-indicator--paused={isPaused}>
+						<div class="pie-tool-text-to-speech__status-icon">
 							{#if isPaused}
 								⏸
 							{:else}
-								<span class="pulse"></span>
+								<span class="pie-tool-text-to-speech__pulse"></span>
 							{/if}
 						</div>
 						<span>{isPaused ? 'Paused' : 'Speaking...'}</span>
@@ -387,7 +388,7 @@ import { onDestroy, onMount } from 'svelte';
 {/if}
 
 <style>
-	.tool-tts {
+	.pie-tool-text-to-speech {
 		position: fixed;
 		width: 300px;
 		background: white;
@@ -399,7 +400,7 @@ import { onDestroy, onMount } from 'svelte';
 		font-family: system-ui, -apple-system, sans-serif;
 	}
 
-	.tool-header {
+	.pie-tool-text-to-speech__header {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
@@ -410,18 +411,18 @@ import { onDestroy, onMount } from 'svelte';
 		cursor: move;
 	}
 
-	.tool-header-left {
+	.pie-tool-text-to-speech__header-left {
 		display: flex;
 		align-items: center;
 		gap: 8px;
 	}
 
-	.tool-title {
+	.pie-tool-text-to-speech__title {
 		font-weight: 600;
 		font-size: 14px;
 	}
 
-	.close-button {
+	.pie-tool-text-to-speech__close-button {
 		background: rgba(255, 255, 255, 0.2);
 		border: none;
 		color: white;
@@ -437,16 +438,16 @@ import { onDestroy, onMount } from 'svelte';
 		transition: background-color 0.2s;
 	}
 
-	.close-button:hover {
+	.pie-tool-text-to-speech__close-button:hover {
 		background: rgba(255, 255, 255, 0.3);
 	}
 
-	.tool-content {
+	.pie-tool-text-to-speech__content {
 		padding: 16px;
 	}
 
-	.error-message,
-	.loading-message {
+	.pie-tool-text-to-speech__error-message,
+	.pie-tool-text-to-speech__loading-message {
 		display: flex;
 		align-items: center;
 		gap: 8px;
@@ -455,30 +456,30 @@ import { onDestroy, onMount } from 'svelte';
 		font-size: 13px;
 	}
 
-	.error-message {
+	.pie-tool-text-to-speech__error-message {
 		background: #fee;
 		color: #c33;
 		border: 1px solid #fcc;
 	}
 
-	.loading-message {
+	.pie-tool-text-to-speech__loading-message {
 		background: #f0f4f8;
 		color: #4a5568;
 		justify-content: center;
 	}
 
-	.instructions {
+	.pie-tool-text-to-speech__instructions {
 		margin-bottom: 16px;
 		font-size: 13px;
 		color: #4a5568;
 	}
 
-	.instructions p {
+	.pie-tool-text-to-speech__instructions p {
 		margin: 0;
 		line-height: 1.5;
 	}
 
-	.selection-info {
+	.pie-tool-text-to-speech__selection-info {
 		display: flex;
 		align-items: center;
 		gap: 6px;
@@ -490,15 +491,15 @@ import { onDestroy, onMount } from 'svelte';
 		font-size: 12px;
 	}
 
-	.selection-info svg {
+	.pie-tool-text-to-speech__selection-info svg {
 		flex-shrink: 0;
 	}
 
-	.control-group {
+	.pie-tool-text-to-speech__control-group {
 		margin-bottom: 16px;
 	}
 
-	.control-group label {
+	.pie-tool-text-to-speech__control-group label {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
@@ -507,12 +508,12 @@ import { onDestroy, onMount } from 'svelte';
 		color: #4a5568;
 	}
 
-	.control-group label strong {
+	.pie-tool-text-to-speech__control-group label strong {
 		color: #667eea;
 		font-weight: 600;
 	}
 
-	.control-group input[type="range"] {
+	.pie-tool-text-to-speech__control-group input[type="range"] {
 		width: 100%;
 		height: 6px;
 		border-radius: 3px;
@@ -521,7 +522,7 @@ import { onDestroy, onMount } from 'svelte';
 		-webkit-appearance: none;
 	}
 
-	.control-group input[type="range"]::-webkit-slider-thumb {
+	.pie-tool-text-to-speech__control-group input[type="range"]::-webkit-slider-thumb {
 		-webkit-appearance: none;
 		width: 18px;
 		height: 18px;
@@ -531,23 +532,23 @@ import { onDestroy, onMount } from 'svelte';
 		transition: all 0.2s;
 	}
 
-	.control-group input[type="range"]::-webkit-slider-thumb:hover {
+	.pie-tool-text-to-speech__control-group input[type="range"]::-webkit-slider-thumb:hover {
 		background: #764ba2;
 		transform: scale(1.1);
 	}
 
-	.control-group input[type="range"]:disabled {
+	.pie-tool-text-to-speech__control-group input[type="range"]:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
 	}
 
-	.playback-controls {
+	.pie-tool-text-to-speech__playback-controls {
 		display: flex;
 		gap: 8px;
 		margin-bottom: 12px;
 	}
 
-	.playback-controls button {
+	.pie-tool-text-to-speech__playback-controls button {
 		flex: 1;
 		display: flex;
 		align-items: center;
@@ -562,37 +563,37 @@ import { onDestroy, onMount } from 'svelte';
 		transition: all 0.2s;
 	}
 
-	.playback-controls button svg {
+	.pie-tool-text-to-speech__playback-controls button svg {
 		flex-shrink: 0;
 	}
 
-	.btn-primary {
+	.pie-tool-text-to-speech__button-primary {
 		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 		color: white;
 	}
 
-	.btn-primary:hover:not(:disabled) {
+	.pie-tool-text-to-speech__button-primary:hover:not(:disabled) {
 		transform: translateY(-1px);
 		box-shadow: 0 4px 6px rgba(102, 126, 234, 0.3);
 	}
 
-	.btn-secondary {
+	.pie-tool-text-to-speech__button-secondary {
 		background: #f7fafc;
 		color: #4a5568;
 		border: 1px solid #e2e8f0;
 	}
 
-	.btn-secondary:hover:not(:disabled) {
+	.pie-tool-text-to-speech__button-secondary:hover:not(:disabled) {
 		background: #edf2f7;
 	}
 
-	.playback-controls button:disabled {
+	.pie-tool-text-to-speech__playback-controls button:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
 		transform: none !important;
 	}
 
-	.status-indicator {
+	.pie-tool-text-to-speech__status-indicator {
 		display: flex;
 		align-items: center;
 		gap: 8px;
@@ -605,19 +606,19 @@ import { onDestroy, onMount } from 'svelte';
 		animation: fadeIn 0.3s;
 	}
 
-	.status-indicator.paused {
+	.pie-tool-text-to-speech__status-indicator.pie-tool-text-to-speech__status-indicator--paused {
 		background: #fef3c7;
 		border-color: #fcd34d;
 		color: #92400e;
 	}
 
-	.status-icon {
+	.pie-tool-text-to-speech__status-icon {
 		display: flex;
 		align-items: center;
 		justify-content: center;
 	}
 
-	.pulse {
+	.pie-tool-text-to-speech__pulse {
 		width: 8px;
 		height: 8px;
 		background: #10b981;
@@ -649,10 +650,10 @@ import { onDestroy, onMount } from 'svelte';
 
 	/* Accessibility */
 	@media (prefers-reduced-motion: reduce) {
-		.pulse,
-		.status-indicator,
-		.playback-controls button,
-		.control-group input[type="range"]::-webkit-slider-thumb {
+		.pie-tool-text-to-speech__pulse,
+		.pie-tool-text-to-speech__status-indicator,
+		.pie-tool-text-to-speech__playback-controls button,
+		.pie-tool-text-to-speech__control-group input[type="range"]::-webkit-slider-thumb {
 			animation: none !important;
 			transition: none !important;
 		}

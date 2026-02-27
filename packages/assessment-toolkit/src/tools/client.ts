@@ -4,7 +4,8 @@
  * This entry point exports only browser-safe code for use in custom elements.
  * It excludes server-side services like accommodationResolver, variantResolver, etc.
  *
- * Tools should import from '$lib/assessment-toolkit/tools/client' instead of '$lib/assessment-toolkit/tools' to ensure
+ * Tools should import from '@pie-players/pie-assessment-toolkit/tools/client' instead of
+ * '@pie-players/pie-assessment-toolkit' to ensure
  * they don't accidentally pull in server-side dependencies.
  */
 

@@ -1,0 +1,9 @@
+{
+	"requiredPublishConfigAccess": "public",
+	"requiredFields": ["license", "homepage", "bugs", "files", "sideEffects"],
+	"requireRepositoryDirectory": true,
+	"requireExportsOrMainTypes": true,
+	"requireNodeEngine": true,
+	"defaultNodeEngine": ">=18.0.0",
+	"workspaceRoots": ["packages", "tools"]
+}

@@ -29,10 +29,10 @@ describe("ToolConfigResolver", () => {
 	test("roster blocks tool when allowance is '0'", () => {
 		const resolver = new ToolConfigResolver();
 		const out = resolver.resolveTool(
-			"dictionary",
+			"lineReader",
 			undefined,
-			{ dictionary: "0" },
-			{ accommodations: ["dictionary"] },
+			{ lineReader: "0" },
+			{ accommodations: ["lineReader"] },
 		);
 		expect(out).toBeNull();
 	});
@@ -60,7 +60,7 @@ describe("ToolConfigResolver", () => {
 		const resolver = new ToolConfigResolver();
 		const out = resolver.resolveAll({
 			itemConfig: { tts: { required: true } },
-			rosterConfig: { calculator: "1", dictionary: "0" },
+			rosterConfig: { calculator: "1", lineReader: "0" },
 			studentProfile: { accommodations: ["highlight"] },
 		});
 
@@ -69,6 +69,6 @@ describe("ToolConfigResolver", () => {
 			"highlight",
 			"tts",
 		]);
-		expect(out.get("dictionary")).toBeUndefined();
+		expect(out.get("lineReader")).toBeUndefined();
 	});
 });

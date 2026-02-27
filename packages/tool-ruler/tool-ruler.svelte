@@ -1,31 +1,40 @@
 <svelte:options
 	customElement={{
 		tag: 'pie-tool-ruler',
-		shadow: 'none',
+		shadow: 'open',
 		props: {
 			visible: { type: 'Boolean', attribute: 'visible' },
-			toolId: { type: 'String', attribute: 'tool-id' },
-			coordinator: { type: 'Object' }
+			toolId: { type: 'String', attribute: 'tool-id' }
 		}
 	}}
 />
 
 <script lang="ts">
-	import type { IToolCoordinator } from '@pie-players/pie-assessment-toolkit';
-	import { ZIndexLayer } from '@pie-players/pie-assessment-toolkit';
+	import {
+		connectToolRuntimeContext,
+		ZIndexLayer,
+	} from '@pie-players/pie-assessment-toolkit';
+	import type {
+		AssessmentToolkitRuntimeContext,
+		IToolCoordinator,
+	} from '@pie-players/pie-assessment-toolkit';
 	import Moveable from 'moveable';
 	import { onDestroy, onMount } from 'svelte';
 	import rulerCm from './ruler-cm.svg';
 	import rulerInches from './ruler-inches.svg';
 
 	// Props
-	let { visible = false, toolId = 'ruler', coordinator }: { visible?: boolean; toolId?: string; coordinator?: IToolCoordinator } = $props();
+	let { visible = false, toolId = 'ruler' }: { visible?: boolean; toolId?: string } = $props();
 
 	// Check if running in browser
 	const isBrowser = typeof window !== 'undefined';
 
 	// State
 	let containerEl = $state<HTMLDivElement | undefined>();
+	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	const coordinator = $derived(
+		runtimeContext?.toolCoordinator as IToolCoordinator | undefined,
+	);
 	let announceText = $state('');
 	let unit = $state<'inches' | 'cm'>('inches');
 	let moveable: Moveable | null = null;
@@ -37,6 +46,13 @@
 	const MOVE_STEP = 10; // pixels
 	const ROTATE_STEP = 5; // degrees
 	const FINE_ROTATE_STEP = 1; // degrees
+
+	$effect(() => {
+		if (!containerEl) return;
+		return connectToolRuntimeContext(containerEl, (value: AssessmentToolkitRuntimeContext) => {
+			runtimeContext = value;
+		});
+	});
 
 	let currentRuler = $derived(unit === 'inches' ? rulerInches : rulerCm);
 
@@ -247,7 +263,7 @@
 
 {#if visible && isBrowser}
 	<!-- Screen reader announcements -->
-	<div class="sr-only" role="status" aria-live="polite" aria-atomic="true">
+	<div class="pie-sr-only" role="status" aria-live="polite" aria-atomic="true">
 		{announceText}
 	</div>
 
@@ -255,7 +271,7 @@
 	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 	<div
 		bind:this={containerEl}
-		class="ruler-frame"
+		class="pie-tool-ruler"
 		data-moveablejs-tool-id={toolId}
 		onpointerdown={() => coordinator?.bringToFront(containerEl)}
 		onkeydown={handleKeyDown}
@@ -264,19 +280,24 @@
 		aria-label="Ruler tool. Use arrow keys to move, Shift+arrows to rotate, PageUp/PageDown for fine rotation, U to toggle units. Current unit: {unit}"
 		aria-roledescription="Draggable and rotatable ruler measurement tool"
 	>
-		<div class="ruler-container">
+		<div class="pie-tool-ruler__container">
 			<img
-				class="ruler"
+				class="pie-tool-ruler__image"
 				src={currentRuler}
 				alt="Ruler showing {unit}"
 				draggable="false"
 			/>
 
 			<!-- Unit toggle button group (matching production implementation style) -->
-			<div class="btn-group" onpointerdown={(e) => e.stopPropagation()}>
+			<div
+				class="pie-tool-ruler__unit-group"
+				role="group"
+				aria-label="Ruler unit selection"
+				onpointerdown={(e) => e.stopPropagation()}
+			>
 				<button
-					class="unit-btn"
-					class:active={unit === 'inches'}
+					class="pie-tool-ruler__unit-button"
+					class:pie-tool-ruler__unit-button--active={unit === 'inches'}
 					onclick={() => {
 						unit = 'inches';
 						announce('Switched to inches');
@@ -285,11 +306,11 @@
 					aria-label="Switch to inches"
 					aria-pressed={unit === 'inches'}
 				>
-					<span class="btn-label">Inches</span>
+					<span class="pie-tool-ruler__unit-label">Inches</span>
 				</button>
 				<button
-					class="unit-btn"
-					class:active={unit === 'cm'}
+					class="pie-tool-ruler__unit-button"
+					class:pie-tool-ruler__unit-button--active={unit === 'cm'}
 					onclick={() => {
 						unit = 'cm';
 						announce('Switched to centimeters');
@@ -298,7 +319,7 @@
 					aria-label="Switch to centimeters"
 					aria-pressed={unit === 'cm'}
 				>
-					<span class="btn-label">Centimeters</span>
+					<span class="pie-tool-ruler__unit-label">Centimeters</span>
 				</button>
 			</div>
 		</div>
@@ -306,7 +327,7 @@
 {/if}
 
 <style>
-	.sr-only {
+	.pie-sr-only {
 		position: absolute;
 		width: 1px;
 		height: 1px;
@@ -318,7 +339,7 @@
 		border-width: 0;
 	}
 
-	.ruler-frame {
+	.pie-tool-ruler {
 		border-left: 1px solid #000;
 		border-right: 1px solid #000;
 		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); /* Matching production implementation shadow */
@@ -333,35 +354,35 @@
 		width: 540px; /* Matching production implementation frame width */
 	}
 
-	.ruler-frame:focus {
+	.pie-tool-ruler:focus {
 		outline: 3px solid #4A90E2;
 		outline-offset: 2px;
 	}
 
-	.ruler-frame:focus-visible {
+	.pie-tool-ruler:focus-visible {
 		outline: 3px solid #4A90E2;
 		outline-offset: 2px;
 	}
 
-	.ruler-container {
+	.pie-tool-ruler__container {
 		background-color: rgb(255 255 255 / 90%); /* Matching production implementation semi-transparent white background */
 		position: relative;
 	}
 
-	.ruler-container,
-	.ruler {
+	.pie-tool-ruler__container,
+	.pie-tool-ruler__image {
 		height: 100px; /* Matching production implementation ruler height */
 		width: 864px; /* Matching production implementation ruler width */
 	}
 
-	.ruler {
+	.pie-tool-ruler__image {
 		position: relative;
 		z-index: 2;
 		display: block;
 	}
 
 	/* Unit toggle button group (matching production implementation style) */
-	.btn-group {
+	.pie-tool-ruler__unit-group {
 		border: 1px solid var(--pie-primary, #3f51b5); /* Matching production implementation primary color */
 		bottom: 0.5rem; /* Matching production implementation positioning */
 		left: 0.5rem; /* Matching production implementation positioning */
@@ -373,7 +394,7 @@
 		overflow: hidden;
 	}
 
-	.unit-btn {
+	.pie-tool-ruler__unit-button {
 		background: white;
 		border: none;
 		border-right: 1px solid var(--pie-primary, #3f51b5);
@@ -384,25 +405,25 @@
 		transition: background-color 0.2s, color 0.2s;
 	}
 
-	.unit-btn:last-child {
+	.pie-tool-ruler__unit-button:last-child {
 		border-right: none;
 	}
 
-	.unit-btn:hover {
+	.pie-tool-ruler__unit-button:hover {
 		background-color: rgba(63, 81, 181, 0.1);
 	}
 
-	.unit-btn.active {
+	.pie-tool-ruler__unit-button.pie-tool-ruler__unit-button--active {
 		background-color: var(--pie-primary, #3f51b5);
 		color: white;
 	}
 
-	.unit-btn:focus-visible {
+	.pie-tool-ruler__unit-button:focus-visible {
 		outline: 2px solid var(--pie-primary, #3f51b5);
 		outline-offset: 2px;
 	}
 
-	.btn-label {
+	.pie-tool-ruler__unit-label {
 		display: inline-block;
 		font-size: 12px;
 		line-height: 1.4;

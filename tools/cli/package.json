@@ -6,7 +6,8 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/pie-framework/pie-players.git"
+		"url": "git+https://github.com/pie-framework/pie-players.git",
+		"directory": "tools/cli"
 	},
 	"publishConfig": {
 		"access": "public"
@@ -14,8 +15,14 @@
 	"bin": {
 		"pie-players": "./bin/run.js"
 	},
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
 	"exports": {
-		".": "./dist/index.js"
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"default": "./dist/index.js"
+		}
 	},
 	"files": [
 		"bin",
@@ -46,5 +53,10 @@
 		"dirname": "pie-players",
 		"commands": "./dist/commands",
 		"topicSeparator": ":"
-	}
+	},
+	"homepage": "https://github.com/pie-framework/pie-players/tree/master/tools/cli#readme",
+	"bugs": {
+		"url": "https://github.com/pie-framework/pie-players/issues"
+	},
+	"sideEffects": true
 }

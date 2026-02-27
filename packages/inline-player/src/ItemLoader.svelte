@@ -22,7 +22,7 @@ import { onMount } from 'svelte';
     export let session: any[] = [];
     export let addCorrectResponse: boolean = false;
     export let externalStyleUrls: string = '';
-    export let customClassname: string = '';
+    export let customClassName: string = '';
     export let containerClass: string = '';
     export let passageContainerClass: string = '';
 
@@ -33,14 +33,14 @@ import { onMount } from 'svelte';
     let itemContainerClassAttr: string = '';
 
     $: passageContainerClassAttr = [
-        'passage-container',
-        customClassname || '',
+        'pie-player-passage-container',
+        customClassName || '',
         passageContainerClass || ''
     ].filter(Boolean).join(' ');
 
     $: itemContainerClassAttr = [
-        'item-container',
-        customClassname || '',
+        'pie-player-item-container',
+        customClassName || '',
         containerClass || ''
     ].filter(Boolean).join(' ');
 
@@ -176,7 +176,7 @@ import { onMount } from 'svelte';
             addCorrectResponse,
             session,
             externalStyleUrls,
-            customClassname,
+            customClassName,
             containerClass,
             passageContainerClass
         };
@@ -217,7 +217,7 @@ import { onMount } from 'svelte';
     {/if}
 
     <div class="{itemContainerClassAttr}">
-        <pie-player bind:this={playerEl} class={customClassname}></pie-player>
+        <pie-player bind:this={playerEl} class={customClassName}></pie-player>
     </div>
 {:catch error}
     <p style="color: red;">Error: {error.message}</p>

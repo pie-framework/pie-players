@@ -85,8 +85,6 @@ The PIE Assessment Tools system provides:
 
 ### System Boundary
 
-![Assessment Player Boundary](../img/assessment-player.png)
-
 **In Scope:**
 - Tool implementations (calculator, ruler, protractor, etc.)
 - Coordination services (z-index, highlighting, TTS)
@@ -135,7 +133,7 @@ The PIE Assessment Tools system provides:
 **Annotation Toolbar**
 - Text selection detection
 - Floating toolbar on selection
-- Gateway to dictionary, translation, TTS
+- Gateway to translation and TTS
 - Annotation creation (highlight/underline)
 
 ### Component Interactions
@@ -331,7 +329,6 @@ const coordinator = new ToolkitCoordinator({
     protractor: { enabled: true },
     ruler: { enabled: true },
     lineReader: { enabled: true },
-    magnifier: { enabled: true },
     colorScheme: { enabled: true }
   }
 });
@@ -432,7 +429,7 @@ This separation emerged from real-world assessment platform analysis and reflect
 ```
 0-999:     PIE content and player chrome
 1000-1999: Non-modal tools (ruler, protractor, line reader)
-2000-2999: Modal tools (calculator, dictionary)
+2000-2999: Modal tools (calculator)
 3000-3999: Tool control handles (drag, resize)
 4000-4999: Highlight infrastructure (TTS, annotations)
 5000+:     Critical overlays (errors, notifications)
@@ -765,7 +762,7 @@ Item Level (most specific):
   "This question requires scientific calculator"
       ↓
 Roster/Test Level:
-  "Calculator allowed, dictionary blocked"
+  "Calculator allowed, lineReader blocked"
       ↓
 Student Level:
   "Student has TTS accommodation per IEP"
@@ -902,7 +899,7 @@ CSS.highlights.set('annotation-yellow', highlight);
 **Rationale:**
 - **Tier 1:** Most tools are standalone (calculator, ruler, protractor)
 - **Tier 2:** Selection logic is complex—implement once, reuse for all text tools
-- **Tier 3:** Domain tools (dictionary, translation) focus on their function without selection code duplication
+- **Tier 3:** Domain tools (translation) focus on their function without selection code duplication
 
 **Benefits:**
 - Clear dependency boundaries

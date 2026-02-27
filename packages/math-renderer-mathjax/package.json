@@ -1,12 +1,13 @@
 {
 	"name": "@pie-players/math-renderer-mathjax",
-	"version": "0.1.1",
+	"version": "0.1.3",
 	"type": "module",
 	"description": "MathJax adapter for PIE math rendering",
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/pie-framework/pie-players.git"
+		"url": "git+https://github.com/pie-framework/pie-players.git",
+		"directory": "packages/math-renderer-mathjax"
 	},
 	"publishConfig": {
 		"access": "public"
@@ -42,5 +43,13 @@
 		"mathjax",
 		"rendering",
 		"latex"
-	]
+	],
+	"sideEffects": false,
+	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/math-renderer-mathjax#readme",
+	"bugs": {
+		"url": "https://github.com/pie-framework/pie-players/issues"
+	},
+	"engines": {
+		"node": ">=18.0.0"
+	}
 }

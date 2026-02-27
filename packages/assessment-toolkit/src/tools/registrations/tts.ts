@@ -10,16 +10,11 @@
 
 import type {
 	ToolRegistration,
-	ToolButtonDefinition,
-	ToolButtonOptions,
-	ToolInstanceOptions,
+	ToolToolbarRenderResult,
+	ToolbarContext,
 } from "../../services/ToolRegistry.js";
 import type { ToolContext } from "../../services/tool-context.js";
 import { hasReadableText } from "../../services/tool-context.js";
-import {
-	createToolElement,
-	type ToolComponentOverrides,
-} from "../tool-tag-map.js";
 
 /**
  * Text-to-Speech tool registration
@@ -27,7 +22,7 @@ import {
  * Supports:
  * - Reading content aloud using browser TTS or external providers
  * - Context-aware visibility (shows when readable text is available)
- * - All levels except assessment (section, item, passage, rubric, element)
+ * - All levels except assessment and element
  */
 export const ttsToolRegistration: ToolRegistration = {
 	toolId: "textToSpeech",
@@ -35,8 +30,8 @@ export const ttsToolRegistration: ToolRegistration = {
 	description: "Read content aloud",
 	icon: "volume-up",
 
-	// TTS can appear at all levels except assessment
-	supportedLevels: ["section", "item", "passage", "rubric", "element"],
+	// TTS can appear at all levels except assessment and element.
+	supportedLevels: ["section", "item", "passage", "rubric"],
 
 	// PNP support IDs that enable this tool
 	// Maps to QTI 3.0 standard features: textToSpeech, readAloud
@@ -57,71 +52,40 @@ export const ttsToolRegistration: ToolRegistration = {
 		return hasReadableText(context);
 	},
 
-	/**
-	 * Create TTS button for toolbar
-	 */
-	createButton(
-		context: ToolContext,
-		options: ToolButtonOptions,
-	): ToolButtonDefinition {
-		const icon =
-			typeof this.icon === "function" ? this.icon(context) : this.icon;
+	renderToolbar(
+		_context: ToolContext,
+		toolbarContext: ToolbarContext,
+	): ToolToolbarRenderResult {
+		const inline = document.createElement("pie-tool-tts-inline") as HTMLElement & {
+			toolId?: string;
+			catalogId?: string;
+			language?: string;
+			size?: string;
+			ttsService?: unknown;
+		};
+		inline.setAttribute("tool-id", `tts-${toolbarContext.itemId}`);
+		inline.setAttribute("catalog-id", toolbarContext.catalogId || toolbarContext.itemId);
+		inline.setAttribute("language", toolbarContext.language);
+		inline.setAttribute("size", toolbarContext.ui?.size || "md");
 
+		let readyRequested = false;
 		return {
 			toolId: this.toolId,
-			label: this.name,
-			icon: icon,
-			disabled: options.disabled || false,
-			ariaLabel:
-				options.ariaLabel || "Read aloud - Press to activate text-to-speech",
-			tooltip: options.tooltip || "Read Aloud",
-			onClick: options.onClick || (() => {}),
-			className: options.className,
+			inlineElement: inline,
+			sync: () => {
+				inline.setAttribute("catalog-id", toolbarContext.catalogId || toolbarContext.itemId);
+				inline.setAttribute("language", toolbarContext.language);
+				inline.setAttribute("size", toolbarContext.ui?.size || "md");
+				if (toolbarContext.ttsService) {
+					inline.ttsService = toolbarContext.ttsService;
+				}
+				if (!readyRequested && toolbarContext.ensureTTSReady) {
+					readyRequested = true;
+					void toolbarContext.ensureTTSReady().catch((error: unknown) => {
+						console.error("[ttsToolRegistration] Failed to initialize TTS service:", error);
+					});
+				}
+			},
 		};
-	},
-
-	/**
-	 * Create TTS tool instance
-	 *
-	 * Creates a <pie-tool-tts> web component or activates TTS service.
-	 * Note: TTS often works as a service rather than a visible component.
-	 */
-	createToolInstance(
-		context: ToolContext,
-		options: ToolInstanceOptions,
-	): HTMLElement {
-		const componentOverrides =
-			(options.config as ToolComponentOverrides | undefined) ?? {};
-		const tts = createToolElement(
-			this.toolId,
-			context,
-			options,
-			componentOverrides,
-		) as HTMLElement & {
-			visible: boolean;
-			toolId: string;
-			coordinator?: unknown;
-			ttsService?: unknown;
-			contentElement?: HTMLElement;
-		};
-
-		tts.visible = true;
-		tts.toolId = this.toolId;
-
-		if (options.config?.toolkitCoordinator) {
-			tts.coordinator = options.config.toolkitCoordinator;
-		}
-		if (options.config?.ttsService) {
-			tts.ttsService = options.config.ttsService;
-		}
-		if (options.config?.contentElement) {
-			tts.contentElement = options.config.contentElement as HTMLElement;
-		}
-
-		if (options.onClose) {
-			tts.addEventListener("close", options.onClose);
-		}
-
-		return tts;
 	},
 };

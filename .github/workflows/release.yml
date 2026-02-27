@@ -18,8 +18,16 @@ on:
       - ".github/workflows/release.yml"
   workflow_dispatch:
     inputs:
+      release_intent:
+        description: "What should this manual run do?"
+        required: true
+        type: choice
+        options:
+          - version-pr
+          - publish
+        default: version-pr
       version_type:
-        description: 'Version bump type (major/minor/patch)'
+        description: "Version bump type for version-pr intent"
         required: false
         type: choice
         options:
@@ -98,6 +106,25 @@ jobs:
             echo "has_version_bumps=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Validate manual release intent prerequisites
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          set -euo pipefail
+          intent="${{ inputs.release_intent }}"
+          has_changesets="${{ steps.detect.outputs.has_changesets }}"
+          has_version_bumps="${{ steps.detect.outputs.has_version_bumps }}"
+
+          if [ "$intent" = "version-pr" ] && [ "$has_changesets" != "true" ]; then
+            echo "Manual intent 'version-pr' requires at least one .changeset/*.md file in this commit."
+            exit 1
+          fi
+
+          if [ "$intent" = "publish" ] && [ "$has_version_bumps" != "true" ]; then
+            echo "Manual intent 'publish' requires package.json/CHANGELOG.md version bump changes."
+            exit 1
+          fi
+
       - name: Stop early (no changesets / no version bumps)
         if: github.event_name != 'workflow_dispatch' && steps.detect.outputs.has_changesets != 'true' && steps.detect.outputs.has_version_bumps != 'true'
         run: |
@@ -105,15 +132,23 @@ jobs:
           exit 0
 
       - name: Build packages (publish runs only)
-        if: github.event_name == 'workflow_dispatch' || steps.detect.outputs.has_version_bumps == 'true'
+        if: (github.event_name == 'workflow_dispatch' && inputs.release_intent == 'publish') || (github.event_name != 'workflow_dispatch' && steps.detect.outputs.has_version_bumps == 'true')
         run: bun run build
 
       - name: Run tests (publish runs only)
-        if: github.event_name == 'workflow_dispatch' || steps.detect.outputs.has_version_bumps == 'true'
+        if: (github.event_name == 'workflow_dispatch' && inputs.release_intent == 'publish') || (github.event_name != 'workflow_dispatch' && steps.detect.outputs.has_version_bumps == 'true')
         run: bun run test
 
+      - name: Check custom element package compliance (publish runs only)
+        if: (github.event_name == 'workflow_dispatch' && inputs.release_intent == 'publish') || (github.event_name != 'workflow_dispatch' && steps.detect.outputs.has_version_bumps == 'true')
+        run: bun run check:custom-elements
+
+      - name: Run publish preflight checks (publish runs only)
+        if: (github.event_name == 'workflow_dispatch' && inputs.release_intent == 'publish') || (github.event_name != 'workflow_dispatch' && steps.detect.outputs.has_version_bumps == 'true')
+        run: bun run verify:publish
+
       - name: Verify npm registry and auth
-        if: github.event_name == 'workflow_dispatch' || steps.detect.outputs.has_version_bumps == 'true'
+        if: (github.event_name == 'workflow_dispatch' && inputs.release_intent == 'publish') || (github.event_name != 'workflow_dispatch' && steps.detect.outputs.has_version_bumps == 'true')
         run: |
           set -euo pipefail
           REGISTRY="$(npm config get registry)"

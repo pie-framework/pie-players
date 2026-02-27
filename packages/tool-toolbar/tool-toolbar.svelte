@@ -1,7 +1,7 @@
 <svelte:options
 	customElement={{
 		tag: 'pie-tool-toolbar',
-		shadow: 'none',
+		shadow: 'open',
 		props: {
 			tools: { type: 'String', attribute: 'tools' },
 			disabled: { type: 'Boolean', attribute: 'disabled' },
@@ -14,9 +14,6 @@
 			toolCoordinator: { type: 'Object', attribute: 'tool-coordinator' },
 			highlightCoordinator: { type: 'Object', attribute: 'highlight-coordinator' },
 
-			// Optional callbacks (passed as JS properties)
-			ondictionarylookup: { type: 'Object', attribute: 'ondictionarylookup' },
-			ontranslationrequest: { type: 'Object', attribute: 'ontranslationrequest' }
 		}
 	}}
 />
@@ -33,12 +30,22 @@
 -->
 <script lang="ts">
 	
-	import type { HighlightCoordinator, ToolCoordinator } from '@pie-players/pie-assessment-toolkit';
-	import { ZIndexLayer } from '@pie-players/pie-assessment-toolkit';
-import { onMount } from 'svelte';
+	import {
+		createDefaultToolRegistry,
+		type HighlightCoordinator,
+		type ToolCoordinator,
+		type ToolContext,
+	} from '@pie-players/pie-assessment-toolkit';
 
 	const browser = typeof window !== 'undefined';
 	const log = (..._args: any[]) => {};
+	const metadataRegistry = createDefaultToolRegistry();
+	const metadataContext: ToolContext = {
+		level: 'item',
+		assessment: {} as any,
+		itemRef: {} as any,
+		item: { config: {} } as any,
+	};
 
 	// Tool packages define custom elements (side-effect imports).
 	import '@pie-players/pie-tool-answer-eliminator';
@@ -46,7 +53,6 @@ import { onMount } from 'svelte';
 	import '@pie-players/pie-tool-color-scheme';
 	import '@pie-players/pie-tool-graph';
 	import '@pie-players/pie-tool-line-reader';
-	import '@pie-players/pie-tool-magnifier';
 	import '@pie-players/pie-tool-periodic-table';
 	import '@pie-players/pie-tool-protractor';
 	import '@pie-players/pie-tool-ruler';
@@ -59,17 +65,20 @@ import { onMount } from 'svelte';
 		showLabels = false,
 		className = '',
 		organizationId = undefined as string | undefined, // For JWT token generation (can be set at runtime)
-		baseUrl = 'http://localhost:5200', // Picture Dictionary API base URL
+		baseUrl = 'http://localhost:5200',
 		answerEliminatorButtonAlignment = 'right' as 'left' | 'right' | 'inline', // Answer Eliminator button placement
 
 		// Coordinators from assessment toolkit
 		toolCoordinator = undefined as ToolCoordinator | null | undefined,
-		highlightCoordinator = undefined as HighlightCoordinator | null | undefined,
-
-		// Event callbacks for annotation toolbar (dictionary/translation not yet implemented)
-		ondictionarylookup = undefined as ((detail: { text: string }) => void) | undefined,
-		ontranslationrequest = undefined as ((detail: { text: string }) => void) | undefined
+		highlightCoordinator = undefined as HighlightCoordinator | null | undefined
 	} = $props();
+
+	// Keep these in the public custom element API even when not mounted yet.
+	$effect(() => {
+		void organizationId;
+		void baseUrl;
+		void highlightCoordinator;
+	});
 
 	// Parse enabled tools from prop
 	let enabledToolIds = $derived(tools.split(',').map(t => t.trim()).filter(Boolean));
@@ -83,7 +92,6 @@ import { onMount } from 'svelte';
 	let showLineReader = $state(false);
 	let showGraph = $state(false);
 	let showPeriodicTable = $state(false);
-	let showMagnifier = $state(false);
 	let statusMessage = $state('');
 
 	// Update visibility state from coordinator
@@ -98,13 +106,8 @@ import { onMount } from 'svelte';
 		showLineReader = toolCoordinator.isToolVisible('lineReader');
 		showGraph = toolCoordinator.isToolVisible('graph');
 		showPeriodicTable = toolCoordinator.isToolVisible('periodicTable');
-		showMagnifier = toolCoordinator.isToolVisible('magnifier');
 		log('Updated visibility - calculator:', showCalculator, 'answerEliminator:', showAnswerEliminator);
 	}
-
-	// Picture Dictionary Modal state
-
-	// Handle picture dictionary lookup from annotation toolbar
 
 	// Handle arrow key navigation between toolbar buttons
 	function handleKeyDown(e: KeyboardEvent) {
@@ -113,7 +116,7 @@ import { onMount } from 'svelte';
 		if (!allowed.includes(e.key)) return;
 
 		e.preventDefault();
-		const buttons = document.querySelectorAll('.tool-toolbar__button:not(:disabled)') as NodeListOf<HTMLButtonElement>;
+		const buttons = document.querySelectorAll('.pie-tool-toolbar__button:not(:disabled)') as NodeListOf<HTMLButtonElement>;
 		if (buttons.length === 0) return;
 
 		const currentIndex = Array.from(buttons).findIndex(btn => btn === document.activeElement);
@@ -220,14 +223,6 @@ import { onMount } from 'svelte';
 			toggle: () => toolCoordinator?.toggleTool('periodicTable'),
 			implemented: true
 		},
-		magnifier: {
-			id: 'magnifier',
-			name: 'Magnifier',
-			icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M15.5,14L20.5,19L19,20.5L14,15.5V14.71L13.73,14.43C12.59,15.41 11.11,16 9.5,16A6.5,6.5 0 0,1 3,9.5A6.5,6.5 0 0,1 9.5,3A6.5,6.5 0 0,1 16,9.5C16,11.11 15.41,12.59 14.43,13.73L14.71,14H15.5M9.5,14C12,14 14,12 14,9.5C14,7 12,5 9.5,5C7,5 5,7 5,9.5C5,12 7,14 9.5,14M12,10H10V12H9V10H7V9H9V7H10V9H12V10Z"/></svg>`,
-			getVisibility: () => showMagnifier,
-			toggle: () => toolCoordinator?.toggleTool('magnifier'),
-			implemented: true
-		},
 		highlighter: {
 			id: 'highlighter',
 			name: 'Highlighter',
@@ -240,18 +235,27 @@ import { onMount } from 'svelte';
 
 	// Build toolbar config from enabled tools
 	// Make this reactive to visibility changes by including them in the dependency
-	let toolbarConfig = $derived(browser && [showColorScheme, showAnswerEliminator, showCalculator, showProtractor, showRuler, showLineReader, showGraph, showPeriodicTable, showMagnifier]
+	let toolbarConfig = $derived(browser && [showColorScheme, showAnswerEliminator, showCalculator, showProtractor, showRuler, showLineReader, showGraph, showPeriodicTable]
 		? enabledToolIds
-				.map(id => TOOL_REGISTRY[id])
-				.filter(Boolean)
-				.map(tool => ({
+				.map(id => TOOL_REGISTRY[id as keyof typeof TOOL_REGISTRY])
+				.filter((tool): tool is (typeof TOOL_REGISTRY)[keyof typeof TOOL_REGISTRY] => Boolean(tool))
+				.map(tool => {
+					const registration = metadataRegistry.get(tool.id);
+					const icon =
+						registration && typeof registration.icon === 'function'
+							? registration.icon(metadataContext)
+							: registration?.icon;
+					return {
 					id: tool.id,
-					name: tool.name,
+					name: registration?.name || tool.name,
+					ariaLabel: registration?.name || tool.name,
+					tooltip: registration?.name || tool.name,
 					enabled: tool.implemented,
 					isVisible: tool.getVisibility(),
-					icon: tool.icon,
+					icon: icon || tool.icon,
 					toggle: tool.toggle
-				}))
+					};
+				})
 		: []);
 
 	// Handle tool toggle
@@ -264,7 +268,7 @@ import { onMount } from 'svelte';
 				const isVisible = toolCoordinator.isToolVisible(toolId);
 				log('Tool', toolId, 'is now visible:', isVisible);
 				// Get tool name from registry
-				const toolConfig = TOOL_REGISTRY[toolId];
+				const toolConfig = TOOL_REGISTRY[toolId as keyof typeof TOOL_REGISTRY];
 				if (toolConfig) {
 					statusMessage = `${toolConfig.name} ${isVisible ? 'opened' : 'closed'}`;
 				}
@@ -285,43 +289,42 @@ import { onMount } from 'svelte';
 	let showLineReaderTool = $derived(enabledToolIds.includes('lineReader'));
 	let showGraphTool = $derived(enabledToolIds.includes('graph'));
 	let showPeriodicTableTool = $derived(enabledToolIds.includes('periodicTable'));
-	let showMagnifierTool = $derived(enabledToolIds.includes('magnifier'));
 </script>
 
 {#if browser}
-	{@const _ = log('Rendering in browser, showColorSchemeTool:', showColorSchemeTool, 'enabledToolIds:', enabledToolIds)}
 	<!-- Toolbar UI -->
 	<div
-		class="tool-toolbar {className}"
-		class:tool-toolbar--left={position === 'left'}
-		class:tool-toolbar--right={position === 'right'}
-		class:tool-toolbar--top={position === 'top'}
-		class:tool-toolbar--bottom={position === 'bottom'}
+		class="pie-tool-toolbar {className}"
+		class:pie-tool-toolbar--left={position === 'left'}
+		class:pie-tool-toolbar--right={position === 'right'}
+		class:pie-tool-toolbar--top={position === 'top'}
+		class:pie-tool-toolbar--bottom={position === 'bottom'}
 		data-position={position}
 		role="toolbar"
 		aria-label="Assessment tools"
+		tabindex="0"
 		onkeydown={handleKeyDown}
 	>
-		<h2 class="tool-toolbar__title">Tools</h2>
+		<h2 class="pie-tool-toolbar__title">Tools</h2>
 
-		<div class="tool-toolbar__buttons">
+		<div class="pie-tool-toolbar__buttons">
 			{#each toolbarConfig as tool (tool.id)}
 				<button
 					type="button"
-					class="tool-toolbar__button"
-					class:tool-toolbar__button--active={tool.isVisible}
-					class:tool-toolbar__button--disabled={!tool.enabled}
-					title={tool.name}
-					aria-label={tool.name}
+					class="pie-tool-toolbar__button"
+					class:pie-tool-toolbar__button--active={tool.isVisible}
+					class:pie-tool-toolbar__button--disabled={!tool.enabled}
+					title={tool.tooltip}
+					aria-label={tool.ariaLabel}
 					aria-pressed={tool.isVisible}
 					disabled={disabled || !tool.enabled}
 					onclick={() => handleToolToggle(tool.id, tool.toggle)}
 				>
-					<span class="tool-toolbar__icon" aria-hidden="true">
+					<span class="pie-tool-toolbar__icon" aria-hidden="true">
 						{@html tool.icon}
 					</span>
 					{#if showLabels}
-						<span class="tool-toolbar__label">{tool.name}</span>
+						<span class="pie-tool-toolbar__label">{tool.name}</span>
 					{/if}
 				</button>
 			{/each}
@@ -365,21 +368,18 @@ import { onMount } from 'svelte';
 	{#if showPeriodicTableTool}
 		<pie-tool-periodic-table visible={showPeriodicTable} tool-id="periodicTable" coordinator={toolCoordinator}></pie-tool-periodic-table>
 	{/if}
-	{#if showMagnifierTool}
-		<pie-tool-magnifier visible={showMagnifier} tool-id="magnifier" coordinator={toolCoordinator}></pie-tool-magnifier>
-	{/if}
 	<!-- Note: Annotation toolbar is intentionally not mounted here yet.
 	     It currently requires a ttsService prop that isn't exposed via its custom element API. -->
 
 	<!-- Live region for status announcements -->
-	<div role="status" aria-live="polite" aria-atomic="true" class="sr-only">
+	<div role="status" aria-live="polite" aria-atomic="true" class="pie-sr-only">
 		{statusMessage}
 	</div>
 
 {/if}
 
 <style>
-	.tool-toolbar {
+	.pie-tool-toolbar {
 		display: flex;
 		flex-direction: column;
 		align-items: center;
@@ -393,18 +393,18 @@ import { onMount } from 'svelte';
 		z-index: var(--tool-toolbar-z, 5000);
 	}
 
-	.tool-toolbar--left {
+	.pie-tool-toolbar--left {
 		border-right: 1px solid var(--tool-toolbar-border, var(--pie-border, #ccc));
 		border-left: none;
 	}
 
-	.tool-toolbar--right {
+	.pie-tool-toolbar--right {
 		border-left: 1px solid var(--tool-toolbar-border, var(--pie-border, #ccc));
 		border-right: none;
 	}
 
-	.tool-toolbar--top,
-	.tool-toolbar--bottom {
+	.pie-tool-toolbar--top,
+	.pie-tool-toolbar--bottom {
 		flex-direction: row;
 		align-items: center;
 		justify-content: flex-start;
@@ -414,12 +414,12 @@ import { onMount } from 'svelte';
 		width: 100%;
 	}
 
-	.tool-toolbar--top .tool-toolbar__title,
-	.tool-toolbar--bottom .tool-toolbar__title {
+	.pie-tool-toolbar--top .pie-tool-toolbar__title,
+	.pie-tool-toolbar--bottom .pie-tool-toolbar__title {
 		display: none;
 	}
 
-	.tool-toolbar__title {
+	.pie-tool-toolbar__title {
 		font-size: 0.625rem;
 		font-weight: bold;
 		text-align: center;
@@ -430,7 +430,7 @@ import { onMount } from 'svelte';
 		color: var(--tool-toolbar-title-color, var(--pie-text, black));
 	}
 
-	.tool-toolbar__buttons {
+	.pie-tool-toolbar__buttons {
 		display: flex;
 		flex-direction: column;
 		align-items: center;
@@ -438,8 +438,8 @@ import { onMount } from 'svelte';
 		width: 100%;
 	}
 
-	.tool-toolbar--top .tool-toolbar__buttons,
-	.tool-toolbar--bottom .tool-toolbar__buttons {
+	.pie-tool-toolbar--top .pie-tool-toolbar__buttons,
+	.pie-tool-toolbar--bottom .pie-tool-toolbar__buttons {
 		flex-direction: row;
 		flex-wrap: wrap;
 		justify-content: flex-start;
@@ -447,7 +447,7 @@ import { onMount } from 'svelte';
 		width: 100%;
 	}
 
-	.tool-toolbar__button {
+	.pie-tool-toolbar__button {
 		display: flex;
 		flex-direction: column;
 		align-items: center;
@@ -465,8 +465,8 @@ import { onMount } from 'svelte';
 		position: relative;
 	}
 
-	.tool-toolbar--top .tool-toolbar__button,
-	.tool-toolbar--bottom .tool-toolbar__button {
+	.pie-tool-toolbar--top .pie-tool-toolbar__button,
+	.pie-tool-toolbar--bottom .pie-tool-toolbar__button {
 		flex-direction: row;
 		justify-content: flex-start;
 		width: auto;
@@ -476,47 +476,47 @@ import { onMount } from 'svelte';
 		border-radius: 0.25rem;
 	}
 
-	.tool-toolbar__button:hover:not(:disabled) {
+	.pie-tool-toolbar__button:hover:not(:disabled) {
 		background-color: var(--tool-toolbar-button-hover-bg, var(--pie-secondary-background, #f0f0f0));
 		transform: translateY(-1px);
 		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 	}
 
-	.tool-toolbar__button:active:not(:disabled) {
+	.pie-tool-toolbar__button:active:not(:disabled) {
 		transform: translateY(0);
 		box-shadow: none;
 	}
 
-	.tool-toolbar__button--active {
+	.pie-tool-toolbar__button--active {
 		background-color: var(--tool-toolbar-button-active-bg, var(--pie-primary, #3f51b5));
 		color: var(--tool-toolbar-button-active-color, white);
 		border-color: var(--tool-toolbar-button-active-border, var(--pie-primary, #3f51b5));
 	}
 
-	.tool-toolbar__button--active:hover:not(:disabled) {
+	.pie-tool-toolbar__button--active:hover:not(:disabled) {
 		background-color: var(--tool-toolbar-button-active-hover-bg, var(--pie-primary-dark, #303f9f));
 	}
 
-	.tool-toolbar__button--disabled,
-	.tool-toolbar__button:disabled {
+	.pie-tool-toolbar__button--disabled,
+	.pie-tool-toolbar__button:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
 	}
 
-	.tool-toolbar__icon {
+	.pie-tool-toolbar__icon {
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		flex-shrink: 0;
 	}
 
-	.tool-toolbar__icon :global(svg) {
+	.pie-tool-toolbar__icon :global(svg) {
 		width: 1.25rem;
 		height: 1.25rem;
 		fill: currentColor;
 	}
 
-	.tool-toolbar__label {
+	.pie-tool-toolbar__label {
 		font-size: 0.625rem;
 		font-weight: 500;
 		text-align: center;
@@ -529,19 +529,19 @@ import { onMount } from 'svelte';
 
 	/* Show labels on larger screens if enabled */
 	@media (min-width: 768px) {
-		.tool-toolbar__button {
+		.pie-tool-toolbar__button {
 			min-width: 4rem;
 		}
 	}
 
 	/* Keyboard focus styling */
-	.tool-toolbar__button:focus-visible {
+	.pie-tool-toolbar__button:focus-visible {
 		outline: 2px solid var(--tool-toolbar-focus-color, hsl(var(--p)));
 		outline-offset: 2px;
 	}
 
 	/* Screen reader only content */
-	.sr-only {
+	.pie-sr-only {
 		position: absolute;
 		width: 1px;
 		height: 1px;

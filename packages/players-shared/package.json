@@ -1,12 +1,13 @@
 {
 	"name": "@pie-players/pie-players-shared",
-	"version": "0.2.2",
+	"version": "0.2.4",
 	"type": "module",
 	"description": "Shared runtime + UI utilities for PIE players",
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/pie-framework/pie-players.git"
+		"url": "git+https://github.com/pie-framework/pie-players.git",
+		"directory": "packages/players-shared"
 	},
 	"publishConfig": {
 		"access": "public"
@@ -102,7 +103,6 @@
 	"dependencies": {
 		"@pie-players/math-renderer-core": "workspace:*",
 		"@pie-players/math-renderer-mathjax": "workspace:*",
-		"@sveltejs/kit": "^2.52.0",
 		"daisyui": "^5.5.18"
 	},
 	"scripts": {
@@ -121,6 +121,20 @@
 		"typescript": "^5.9.3"
 	},
 	"peerDependencies": {
+		"@datadog/browser-rum": "^6.23.0",
 		"svelte": "^5.51.3"
-	}
+	},
+	"peerDependenciesMeta": {
+		"@datadog/browser-rum": {
+			"optional": true
+		}
+	},
+	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/players-shared#readme",
+	"bugs": {
+		"url": "https://github.com/pie-framework/pie-players/issues"
+	},
+	"engines": {
+		"node": ">=18.0.0"
+	},
+	"sideEffects": true
 }

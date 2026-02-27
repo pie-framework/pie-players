@@ -8,7 +8,7 @@ export interface PiePlayerConfig {
 	addCorrectResponse: boolean;
 	session: any[];
 	externalStyleUrls?: string;
-	customClassname?: string;
+	customClassName?: string;
 	containerClass?: string;
 	passageContainerClass?: string;
 }
@@ -68,8 +68,8 @@ export async function initializePiePlayer(
 	if (config.externalStyleUrls) {
 		(playerEl as any).externalStyleUrls = config.externalStyleUrls;
 	}
-	if (config.customClassname) {
-		(playerEl as any).customClassname = config.customClassname;
+	if (config.customClassName) {
+		(playerEl as any).customClassName = config.customClassName;
 	}
 	if (config.containerClass) {
 		(playerEl as any).containerClass = config.containerClass;

@@ -587,7 +587,6 @@ const coordinator = new ToolkitCoordinator({
         'periodicTable',
         'protractor',
         'lineReader',
-        'magnifier',
         'ruler',
       ],
       calculator: {
@@ -661,7 +660,7 @@ The toolbar is automatically included in section player layouts when tools are e
 
 ```typescript
 <pie-section-player
-  enabled-tools="calculator,graph,periodicTable,protractor,lineReader,magnifier,ruler"
+  enabled-tools="calculator,graph,periodicTable,protractor,lineReader,ruler"
   {/* other props */}
 ></pie-section-player>
 ```
@@ -675,7 +674,6 @@ The toolbar is automatically included in section player layouts when tools are e
   - `@pie-players/pie-tool-periodic-table`
   - `@pie-players/pie-tool-protractor`
   - `@pie-players/pie-tool-line-reader`
-  - `@pie-players/pie-tool-magnifier`
   - `@pie-players/pie-tool-ruler`
 
 ### Implementation Files

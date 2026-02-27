@@ -18,7 +18,7 @@ export default defineConfig({
 			},
 		},
 		// Generate sourcemaps for debugging
-		sourcemap: true,
+		sourcemap: false,
 		// Target modern browsers
 		target: "es2020",
 		// Minify for production

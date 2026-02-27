@@ -1,20 +1,12 @@
 {
 	"$schema": "https://modelcontextprotocol.io/schema/servers.json",
 	"mcpServers": {
-		"browser-automation": {
-			"command": "npx",
-			"args": ["-y", "@playwright/mcp"],
-			"env": {
-				"PLAYWRIGHT_CONFIG": "./apps/example/playwright.config.ts",
-				"BASE_URL": "http://127.0.0.1:5200"
-			}
-		},
 		"npm-registry": {
 			"command": "bun",
 			"args": ["run", "@modelcontextprotocol/server-npm"],
 			"env": {
 				"NPM_REGISTRY": "https://registry.npmjs.org",
-				"WORKSPACE_ROOT": "/Users/eelco.hillenius/dev/prj/pie/pie-players"
+				"WORKSPACE_ROOT": "."
 			}
 		},
 		"filesystem": {
@@ -22,10 +14,10 @@
 			"args": [
 				"-y",
 				"@modelcontextprotocol/server-filesystem",
-				"/Users/eelco.hillenius/dev/prj/pie/pie-players"
+				"."
 			],
 			"env": {
-				"ALLOWED_DIRECTORIES": "/Users/eelco.hillenius/dev/prj/pie/pie-players"
+				"ALLOWED_DIRECTORIES": "."
 			}
 		},
 		"memory": {
@@ -41,7 +33,7 @@
 			"command": "bun",
 			"args": ["run", ".mcp-imagen/src/index.ts"],
 			"env": {
-				"OUTPUT_DIR": "/Users/eelco.hillenius/dev/prj/pie/pie-players/apps/docs/static/images/generated"
+				"OUTPUT_DIR": "./apps/docs/static/images/generated"
 			}
 		}
 	}

@@ -78,6 +78,7 @@ export class ThemeProvider implements IThemeProvider {
 	private currentTheme: Required<ThemeConfig> = { ...DEFAULT_THEME };
 	private styleElement: HTMLStyleElement | null = null;
 	private rootElement: HTMLElement | null;
+	private styleContainer: ShadowRoot | HTMLHeadElement | null = null;
 
 	constructor(
 		rootElement: HTMLElement | null = typeof document !== "undefined"
@@ -101,15 +102,28 @@ export class ThemeProvider implements IThemeProvider {
 	private initializeStyles(): void {
 		if (!this.rootElement) return;
 
-		// Create style element if it doesn't exist
-		this.styleElement = document.getElementById(
-			"pie-theme-styles",
-		) as HTMLStyleElement;
+		const rootNode = this.rootElement.getRootNode();
+		if (rootNode instanceof ShadowRoot) {
+			this.styleContainer = rootNode;
+			this.styleElement = rootNode.querySelector(
+				'style[data-pie-theme-styles="true"]',
+			) as HTMLStyleElement | null;
+		} else {
+			this.styleContainer = document.head;
+			this.styleElement = document.getElementById(
+				"pie-theme-styles",
+			) as HTMLStyleElement | null;
+		}
 
 		if (!this.styleElement) {
 			this.styleElement = document.createElement("style");
-			this.styleElement.id = "pie-theme-styles";
-			document.head.appendChild(this.styleElement);
+			if (this.styleContainer instanceof ShadowRoot) {
+				this.styleElement.setAttribute("data-pie-theme-styles", "true");
+				this.styleContainer.appendChild(this.styleElement);
+			} else {
+				this.styleElement.id = "pie-theme-styles";
+				document.head.appendChild(this.styleElement);
+			}
 		}
 
 		// Apply default theme
@@ -165,34 +179,35 @@ export class ThemeProvider implements IThemeProvider {
 		} = this.currentTheme;
 
 		// Font sizing
-		this.rootElement.style.setProperty(
-			"--pie-font-size-scale",
-			String(FONT_SIZE_SCALE[fontSize]),
-		);
-		this.rootElement.style.setProperty("--pie-font-size-base", "1rem");
+		this.rootElement.style.setProperty("--pie-font-scale", String(FONT_SIZE_SCALE[fontSize]));
 
-		// Colors
-		this.rootElement.style.setProperty("--pie-bg-color", backgroundColor);
-		this.rootElement.style.setProperty("--pie-fg-color", foregroundColor);
-		this.rootElement.style.setProperty("--pie-accent-color", accentColor);
-		this.rootElement.style.setProperty("--pie-link-color", linkColor);
-		this.rootElement.style.setProperty("--pie-error-color", errorColor);
-		this.rootElement.style.setProperty("--pie-success-color", successColor);
-		this.rootElement.style.setProperty("--pie-warning-color", warningColor);
+		// Canonical PIE variables
+		this.rootElement.style.setProperty("--pie-background", backgroundColor);
+		this.rootElement.style.setProperty("--pie-text", foregroundColor);
+		this.rootElement.style.setProperty("--pie-primary", accentColor);
+		this.rootElement.style.setProperty("--pie-tertiary", linkColor);
+		this.rootElement.style.setProperty("--pie-incorrect", errorColor);
+		this.rootElement.style.setProperty("--pie-correct", successColor);
+		this.rootElement.style.setProperty("--pie-missing", warningColor);
 
-		// Derived colors (with transparency)
-		this.rootElement.style.setProperty(
-			"--pie-bg-color-secondary",
-			this.adjustOpacity(backgroundColor, 0.95),
-		);
-		this.rootElement.style.setProperty(
-			"--pie-border-color",
-			this.adjustOpacity(foregroundColor, 0.2),
-		);
-		this.rootElement.style.setProperty(
-			"--pie-hover-color",
-			this.adjustOpacity(accentColor, 0.1),
-		);
+		// Derived surface tokens
+		this.rootElement.style.setProperty("--pie-background-dark", this.adjustOpacity(backgroundColor, 0.95));
+		this.rootElement.style.setProperty("--pie-secondary-background", this.adjustOpacity(backgroundColor, 0.92));
+		this.rootElement.style.setProperty("--pie-border", this.adjustOpacity(foregroundColor, 0.25));
+		this.rootElement.style.setProperty("--pie-border-light", this.adjustOpacity(foregroundColor, 0.16));
+		this.rootElement.style.setProperty("--pie-border-dark", this.adjustOpacity(foregroundColor, 0.4));
+		this.rootElement.style.setProperty("--pie-focus-checked", this.adjustOpacity(accentColor, 0.18));
+		this.rootElement.style.setProperty("--pie-focus-checked-border", accentColor);
+
+		// Button tokens used by toolkit controls
+		this.rootElement.style.setProperty("--pie-button-bg", backgroundColor);
+		this.rootElement.style.setProperty("--pie-button-border", this.adjustOpacity(foregroundColor, 0.2));
+		this.rootElement.style.setProperty("--pie-button-color", foregroundColor);
+		this.rootElement.style.setProperty("--pie-button-hover-bg", this.adjustOpacity(accentColor, 0.1));
+		this.rootElement.style.setProperty("--pie-button-hover-border", this.adjustOpacity(accentColor, 0.5));
+		this.rootElement.style.setProperty("--pie-button-hover-color", foregroundColor);
+		this.rootElement.style.setProperty("--pie-button-active-bg", this.adjustOpacity(accentColor, 0.16));
+		this.rootElement.style.setProperty("--pie-button-focus-outline", accentColor);
 	}
 
 	/**
@@ -222,26 +237,23 @@ export class ThemeProvider implements IThemeProvider {
 	private updateGlobalStyles(): void {
 		if (!this.styleElement) return;
 
-		const { fontSize } = this.currentTheme;
-		const scale = FONT_SIZE_SCALE[fontSize];
-
 		this.styleElement.textContent = `
       /* PIE Assessment Toolkit - Theme Styles */
 
       /* Font scaling */
       .pie-themed,
       .pie-themed * {
-        font-size: calc(var(--pie-font-size-base) * var(--pie-font-size-scale, 1));
+        font-size: calc(1rem * var(--pie-font-scale, 1));
       }
 
       /* Color theming */
       .pie-themed {
-        background-color: var(--pie-bg-color);
-        color: var(--pie-fg-color);
+        background-color: var(--pie-background);
+        color: var(--pie-text);
       }
 
       .pie-themed a {
-        color: var(--pie-link-color);
+        color: var(--pie-tertiary);
       }
 
       .pie-themed a:hover {
@@ -250,7 +262,7 @@ export class ThemeProvider implements IThemeProvider {
 
       /* High contrast mode */
       .pie-high-contrast .pie-themed {
-        border: 2px solid var(--pie-fg-color);
+        border: 2px solid var(--pie-text);
       }
 
       .pie-high-contrast .pie-themed a {
@@ -259,32 +271,32 @@ export class ThemeProvider implements IThemeProvider {
       }
 
       .pie-high-contrast .pie-themed button {
-        border: 2px solid var(--pie-fg-color);
-        background-color: var(--pie-bg-color);
-        color: var(--pie-fg-color);
+        border: 2px solid var(--pie-text);
+        background-color: var(--pie-background);
+        color: var(--pie-text);
       }
 
       .pie-high-contrast .pie-themed button:hover {
-        background-color: var(--pie-fg-color);
-        color: var(--pie-bg-color);
+        background-color: var(--pie-text);
+        color: var(--pie-background);
       }
 
       /* Error/Success/Warning states */
       .pie-themed .pie-error {
-        color: var(--pie-error-color);
+        color: var(--pie-incorrect);
       }
 
       .pie-themed .pie-success {
-        color: var(--pie-success-color);
+        color: var(--pie-correct);
       }
 
       .pie-themed .pie-warning {
-        color: var(--pie-warning-color);
+        color: var(--pie-missing);
       }
 
       /* Focus indicators (accessibility) */
       .pie-themed *:focus-visible {
-        outline: 3px solid var(--pie-accent-color);
+        outline: 3px solid var(--pie-focus-checked-border);
         outline-offset: 2px;
       }
 
@@ -366,6 +378,7 @@ export class ThemeProvider implements IThemeProvider {
 			this.styleElement.remove();
 			this.styleElement = null;
 		}
+		this.styleContainer = null;
 
 		if (!this.rootElement) return;
 
@@ -379,17 +392,28 @@ export class ThemeProvider implements IThemeProvider {
 		);
 
 		// Remove CSS custom properties
-		this.rootElement.style.removeProperty("--pie-font-size-scale");
-		this.rootElement.style.removeProperty("--pie-font-size-base");
-		this.rootElement.style.removeProperty("--pie-bg-color");
-		this.rootElement.style.removeProperty("--pie-fg-color");
-		this.rootElement.style.removeProperty("--pie-accent-color");
-		this.rootElement.style.removeProperty("--pie-link-color");
-		this.rootElement.style.removeProperty("--pie-error-color");
-		this.rootElement.style.removeProperty("--pie-success-color");
-		this.rootElement.style.removeProperty("--pie-warning-color");
-		this.rootElement.style.removeProperty("--pie-bg-color-secondary");
-		this.rootElement.style.removeProperty("--pie-border-color");
-		this.rootElement.style.removeProperty("--pie-hover-color");
+		this.rootElement.style.removeProperty("--pie-font-scale");
+		this.rootElement.style.removeProperty("--pie-background");
+		this.rootElement.style.removeProperty("--pie-text");
+		this.rootElement.style.removeProperty("--pie-primary");
+		this.rootElement.style.removeProperty("--pie-tertiary");
+		this.rootElement.style.removeProperty("--pie-incorrect");
+		this.rootElement.style.removeProperty("--pie-correct");
+		this.rootElement.style.removeProperty("--pie-missing");
+		this.rootElement.style.removeProperty("--pie-background-dark");
+		this.rootElement.style.removeProperty("--pie-secondary-background");
+		this.rootElement.style.removeProperty("--pie-border");
+		this.rootElement.style.removeProperty("--pie-border-light");
+		this.rootElement.style.removeProperty("--pie-border-dark");
+		this.rootElement.style.removeProperty("--pie-focus-checked");
+		this.rootElement.style.removeProperty("--pie-focus-checked-border");
+		this.rootElement.style.removeProperty("--pie-button-bg");
+		this.rootElement.style.removeProperty("--pie-button-border");
+		this.rootElement.style.removeProperty("--pie-button-color");
+		this.rootElement.style.removeProperty("--pie-button-hover-bg");
+		this.rootElement.style.removeProperty("--pie-button-hover-border");
+		this.rootElement.style.removeProperty("--pie-button-hover-color");
+		this.rootElement.style.removeProperty("--pie-button-active-bg");
+		this.rootElement.style.removeProperty("--pie-button-focus-outline");
 	}
 }

@@ -4,6 +4,7 @@
 		shadow: "open",
 		props: {
 			assessmentId: { attribute: "assessment-id", type: "String" },
+			runtime: { type: "Object", reflect: false },
 			section: { type: "Object", reflect: false },
 			sectionId: { attribute: "section-id", type: "String" },
 			attemptId: { attribute: "attempt-id", type: "String" },
@@ -44,22 +45,40 @@
 		itemSessionsByItemId: {},
 		testAttemptSession: null,
 	};
-
+	const DEFAULT_ASSESSMENT_ID = "section-demo-direct";
+	const DEFAULT_PLAYER_TYPE = "iife";
+	const DEFAULT_LAZY_INIT = true;
+	const DEFAULT_ISOLATION = "inherit";
+	const LEGACY_RUNTIME_WARNING_KEY = "pie-section-player-base:legacy-runtime-props";
+	const warnedKeys = new Set<string>();
+	type RuntimeConfig = {
+		assessmentId?: string;
+		playerType?: string;
+		player?: Record<string, unknown> | null;
+		lazyInit?: boolean;
+		tools?: Record<string, unknown> | null;
+		accessibility?: Record<string, unknown> | null;
+		coordinator?: unknown;
+		createSectionController?: unknown;
+		isolation?: string;
+		env?: Record<string, unknown>;
+	};
 	let {
-		assessmentId = "section-demo-direct",
+		assessmentId = DEFAULT_ASSESSMENT_ID,
+		runtime = null as RuntimeConfig | null,
 		section = null as AssessmentSection | null,
 		sectionId = "",
 		attemptId = "",
 		view = "candidate",
-		playerType = "iife",
+		playerType = DEFAULT_PLAYER_TYPE,
 		player = null as Record<string, unknown> | null,
-		lazyInit = true,
+		lazyInit = DEFAULT_LAZY_INIT,
 		tools = null as Record<string, unknown> | null,
 		accessibility = null as Record<string, unknown> | null,
 		coordinator = null as unknown,
 		createSectionController = null as unknown,
-		isolation = "inherit",
-		env = {} as Record<string, unknown>,
+		isolation = DEFAULT_ISOLATION,
+		env = null as Record<string, unknown> | null,
 	} = $props();
 
 	let toolkitElement = $state<any>(null);
@@ -74,6 +93,20 @@
 		"runtime-inherited": Record<string, unknown>;
 	};
 	const dispatch = createEventDispatcher<BaseSectionPlayerEvents>();
+	const effectiveAssessmentId = $derived.by(() => runtime?.assessmentId ?? assessmentId);
+	const effectivePlayerType = $derived.by(() => runtime?.playerType ?? playerType);
+	const effectivePlayer = $derived.by(() => runtime?.player ?? player);
+	const effectiveLazyInit = $derived.by(() => runtime?.lazyInit ?? lazyInit);
+	const effectiveTools = $derived.by(() => runtime?.tools ?? tools);
+	const effectiveAccessibility = $derived.by(
+		() => runtime?.accessibility ?? accessibility,
+	);
+	const effectiveCoordinator = $derived.by(() => runtime?.coordinator ?? coordinator);
+	const effectiveCreateSectionController = $derived.by(
+		() => runtime?.createSectionController ?? createSectionController,
+	);
+	const effectiveIsolation = $derived.by(() => runtime?.isolation ?? isolation);
+	const effectiveEnv = $derived.by(() => runtime?.env ?? env ?? {});
 	let resolvedSection = $derived.by(() => {
 		if (!section) return null;
 		const sectionAny = section as any;
@@ -131,27 +164,48 @@
 	$effect(() => {
 		if (!toolkitElement) return;
 		toolkitElement.createSectionController =
-			createSectionController || (() => new SectionController());
+			effectiveCreateSectionController || (() => new SectionController());
+	});
+
+	$effect(() => {
+		if (typeof window === "undefined" || runtime) return;
+		const usedLegacyProps: string[] = [];
+		if (assessmentId !== DEFAULT_ASSESSMENT_ID) usedLegacyProps.push("assessmentId");
+		if (playerType !== DEFAULT_PLAYER_TYPE) usedLegacyProps.push("playerType");
+		if (player !== null) usedLegacyProps.push("player");
+		if (lazyInit !== DEFAULT_LAZY_INIT) usedLegacyProps.push("lazyInit");
+		if (tools !== null) usedLegacyProps.push("tools");
+		if (accessibility !== null) usedLegacyProps.push("accessibility");
+		if (coordinator !== null) usedLegacyProps.push("coordinator");
+		if (createSectionController !== null) usedLegacyProps.push("createSectionController");
+		if (isolation !== DEFAULT_ISOLATION) usedLegacyProps.push("isolation");
+		if (env !== null) usedLegacyProps.push("env");
+		if (usedLegacyProps.length === 0) return;
+		const key = `${LEGACY_RUNTIME_WARNING_KEY}:${usedLegacyProps.sort().join(",")}`;
+		if (warnedKeys.has(key)) return;
+		warnedKeys.add(key);
+		console.warn(
+			`[pie-section-player-base] Runtime props (${usedLegacyProps.join(", ")}) are deprecated. Prefer the \`runtime\` object prop.`,
+		);
 	});
 
 </script>
 
 <pie-assessment-toolkit
 	bind:this={toolkitElement}
-	assessment-id={assessmentId}
+	assessment-id={effectiveAssessmentId}
 	section={resolvedSection}
 	section-id={sectionId}
 	attempt-id={attemptId}
-	player-type={playerType}
-	{player}
+	player-type={effectivePlayerType}
+	player={effectivePlayer}
 	{view}
-	{env}
-	lazy-init={lazyInit}
-	{tools}
-	{accessibility}
-	{coordinator}
-	create-section-controller={createSectionController}
-	{isolation}
+	env={effectiveEnv}
+	lazy-init={effectiveLazyInit}
+	tools={effectiveTools}
+	accessibility={effectiveAccessibility}
+	coordinator={effectiveCoordinator}
+	isolation={effectiveIsolation}
 	oncomposition-changed={handleCompositionChanged}
 	ontoolkit-ready={(event: Event) => handleToolkitEvent(event, "toolkit-ready")}
 	onsection-ready={(event: Event) => handleToolkitEvent(event, "section-ready")}

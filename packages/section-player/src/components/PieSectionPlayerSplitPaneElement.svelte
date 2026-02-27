@@ -5,6 +5,7 @@
 		shadow: "none",
 		props: {
 			assessmentId: { attribute: "assessment-id", type: "String" },
+			runtime: { type: "Object", reflect: false },
 			section: { type: "Object", reflect: false },
 			sectionId: { attribute: "section-id", type: "String" },
 			attemptId: { attribute: "attempt-id", type: "String" },
@@ -53,21 +54,40 @@
 		itemSessionsByItemId: {},
 		testAttemptSession: null,
 	};
+	const DEFAULT_ASSESSMENT_ID = "section-demo-direct";
+	const DEFAULT_PLAYER_TYPE = "iife";
+	const DEFAULT_LAZY_INIT = true;
+	const DEFAULT_ISOLATION = "inherit";
+	const LEGACY_RUNTIME_WARNING_KEY = "pie-section-player-splitpane:legacy-runtime-props";
+	const warnedKeys = new Set<string>();
+	type RuntimeConfig = {
+		assessmentId?: string;
+		playerType?: string;
+		player?: Record<string, unknown> | null;
+		lazyInit?: boolean;
+		tools?: Record<string, unknown> | null;
+		accessibility?: Record<string, unknown> | null;
+		coordinator?: unknown;
+		createSectionController?: unknown;
+		isolation?: string;
+		env?: Record<string, unknown>;
+	};
 
 	let {
-		assessmentId = "section-demo-direct",
+		assessmentId = DEFAULT_ASSESSMENT_ID,
+		runtime = null as RuntimeConfig | null,
 		section = null as AssessmentSection | null,
 		sectionId = "",
 		attemptId = "",
 		view = "candidate",
-		playerType = "iife",
+		playerType = DEFAULT_PLAYER_TYPE,
 		player = null as Record<string, unknown> | null,
-		lazyInit = true,
+		lazyInit = DEFAULT_LAZY_INIT,
 		tools = null as Record<string, unknown> | null,
 		accessibility = null as Record<string, unknown> | null,
 		coordinator = null as unknown,
 		createSectionController = null as unknown,
-		isolation = "inherit",
+		isolation = DEFAULT_ISOLATION,
 		env = { mode: "gather", role: "student" } as Record<string, unknown>,
 		iifeBundleHost = "https://proxy.pie-api.com/bundles",
 		showToolbar = true,
@@ -91,6 +111,19 @@
 		toolbarPosition === "top" || toolbarPosition === "left",
 	);
 	const toolbarInline = $derived(toolbarPosition === "left" || toolbarPosition === "right");
+	const effectiveRuntime = $derived.by(() => ({
+		assessmentId,
+		playerType,
+		player,
+		lazyInit,
+		tools,
+		accessibility,
+		coordinator,
+		createSectionController,
+		isolation,
+		env,
+		...(runtime || {}),
+	}));
 
 	function handleBaseCompositionChanged(event: Event) {
 		const detail = (event as CustomEvent<{ composition?: SectionCompositionModel }>).detail;
@@ -148,9 +181,30 @@
 		};
 	});
 
+	$effect(() => {
+		if (typeof window === "undefined" || runtime) return;
+		const usedLegacyProps: string[] = [];
+		if (assessmentId !== DEFAULT_ASSESSMENT_ID) usedLegacyProps.push("assessmentId");
+		if (playerType !== DEFAULT_PLAYER_TYPE) usedLegacyProps.push("playerType");
+		if (player !== null) usedLegacyProps.push("player");
+		if (lazyInit !== DEFAULT_LAZY_INIT) usedLegacyProps.push("lazyInit");
+		if (tools !== null) usedLegacyProps.push("tools");
+		if (accessibility !== null) usedLegacyProps.push("accessibility");
+		if (coordinator !== null) usedLegacyProps.push("coordinator");
+		if (createSectionController !== null) usedLegacyProps.push("createSectionController");
+		if (isolation !== DEFAULT_ISOLATION) usedLegacyProps.push("isolation");
+		const key = `${LEGACY_RUNTIME_WARNING_KEY}:${usedLegacyProps.sort().join(",")}`;
+		if (usedLegacyProps.length === 0 || warnedKeys.has(key)) return;
+		warnedKeys.add(key);
+		console.warn(
+			`[pie-section-player-splitpane] Runtime props (${usedLegacyProps.join(", ")}) are deprecated. Prefer the \`runtime\` object prop.`,
+		);
+	});
+
 </script>
 
 <pie-section-player-base
+	runtime={effectiveRuntime}
 	{assessmentId}
 	{section}
 	section-id={sectionId}

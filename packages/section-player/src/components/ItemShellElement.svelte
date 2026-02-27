@@ -17,9 +17,12 @@
 		PIE_ITEM_SESSION_CHANGED_EVENT,
 		PIE_REGISTER_EVENT,
 		PIE_UNREGISTER_EVENT,
+		assessmentToolkitShellContext,
+		type AssessmentToolkitShellContext,
 		type ItemSessionChangedDetail,
 		type RuntimeRegistrationDetail,
 	} from "@pie-players/pie-assessment-toolkit";
+	import { ContextProvider, ContextRoot } from "@pie-players/pie-context";
 
 	let {
 		itemId = "",
@@ -31,10 +34,15 @@
 
 	let anchor = $state<HTMLDivElement | null>(null);
 	let observer: MutationObserver | null = null;
+	let shellLayoutVersion = $state(0);
+	let shellContextProvider: ContextProvider<
+		typeof assessmentToolkitShellContext
+	> | null = null;
+	let shellContextRoot: ContextRoot | null = null;
 
 	function getHostElement(): HTMLElement | null {
 		if (!anchor) return null;
-		return anchor.closest("pie-item-shell");
+		return anchor.parentElement as HTMLElement | null;
 	}
 	const host = $derived.by(() => getHostElement());
 
@@ -50,21 +58,22 @@
 		return getRegion("content") || getRegion("header") || host;
 	}
 
-	function bindToolbarDefaults(): void {
-		if (!host) return;
-		host.setAttribute("data-pie-shell-root", "item");
-		host.setAttribute("data-region-policy", regionPolicy);
-		const toolbarNodes = Array.from(host.querySelectorAll("pie-item-toolbar"));
-		const scope = getContentScope();
-		for (const node of toolbarNodes) {
-			const toolbar = node as any;
-			if (!toolbar.itemId) toolbar.itemId = itemId;
-			if (!toolbar.catalogId) toolbar.catalogId = itemId;
-			if (!toolbar.contentKind) toolbar.contentKind = contentKind;
-			if (!toolbar.scopeElement && scope) toolbar.scopeElement = scope;
-			if (!toolbar.item && item) toolbar.item = item;
-		}
-	}
+	const shellContextValue = $derived.by(
+		(): AssessmentToolkitShellContext | null => {
+			shellLayoutVersion;
+			if (!host) return null;
+			const canonical = canonicalItemId || itemId;
+			return {
+				kind: "item",
+				itemId,
+				canonicalItemId: canonical,
+				contentKind,
+				regionPolicy,
+				scopeElement: getContentScope(),
+				item,
+			};
+		},
+	);
 
 	function dispatchRegistration(eventName: string): void {
 		if (!host || !itemId) return;
@@ -112,13 +121,12 @@
 	$effect(() => {
 		if (!host) return;
 		dispatchRegistration(PIE_REGISTER_EVENT);
-		bindToolbarDefaults();
 
 		const onSessionChanged = (event: Event) => normalizeAndDispatchSession(event);
 		host.addEventListener("sessionchanged", onSessionChanged);
 
 		observer = new MutationObserver(() => {
-			bindToolbarDefaults();
+			shellLayoutVersion += 1;
 		});
 		observer.observe(host, {
 			childList: true,
@@ -136,10 +144,34 @@
 	});
 
 	$effect(() => {
-		bindToolbarDefaults();
 		if (!host) return;
 		host.setAttribute("data-item-id", itemId);
 		host.setAttribute("data-canonical-item-id", canonicalItemId || itemId);
+		host.setAttribute("data-pie-shell-root", "item");
+		host.setAttribute("data-region-policy", regionPolicy);
+	});
+
+	$effect(() => {
+		if (!host || !shellContextValue) return;
+		shellContextProvider = new ContextProvider(host, {
+			context: assessmentToolkitShellContext,
+			initialValue: shellContextValue,
+		});
+		shellContextProvider.connect();
+		shellContextRoot = new ContextRoot(host);
+		shellContextRoot.attach();
+
+		return () => {
+			shellContextRoot?.detach();
+			shellContextRoot = null;
+			shellContextProvider?.disconnect();
+			shellContextProvider = null;
+		};
+	});
+
+	$effect(() => {
+		if (!shellContextValue) return;
+		shellContextProvider?.setValue(shellContextValue);
 	});
 </script>
 

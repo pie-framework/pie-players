@@ -13,14 +13,23 @@
 
 export { TypedEventBus } from "./core/TypedEventBus.js";
 export type {
+	AssessmentToolkitHostRuntimeContext,
 	AssessmentToolkitRuntimeContext,
+	AssessmentToolkitShellContext,
 	ItemPlayerConfig,
 	ItemPlayerType,
+	ShellContextKind,
 } from "./context/assessment-toolkit-context.js";
 export {
+	assessmentToolkitHostRuntimeContext,
 	assessmentToolkitRuntimeContext,
+	assessmentToolkitShellContext,
 } from "./context/assessment-toolkit-context.js";
-export { connectAssessmentToolkitRuntimeContext } from "./context/runtime-context-consumer.js";
+export {
+	connectAssessmentToolkitHostRuntimeContext,
+	connectAssessmentToolkitRuntimeContext,
+	connectAssessmentToolkitShellContext,
+} from "./context/runtime-context-consumer.js";
 export {
 	PIE_ITEM_SESSION_CHANGED_EVENT,
 	PIE_REGISTER_EVENT,
@@ -29,7 +38,6 @@ export {
 	type RuntimeRegistrationDetail,
 	type RuntimeRegistrationKind,
 } from "./runtime/registration-events.js";
-export { findParentToolkitRuntime } from "./runtime/findParentToolkitRuntime.js";
 
 // ============================================================================
 // Service Interfaces

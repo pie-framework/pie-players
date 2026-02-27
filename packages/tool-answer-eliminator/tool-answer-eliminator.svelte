@@ -47,14 +47,16 @@
 	
 	import {
 		assessmentToolkitRuntimeContext,
+		connectAssessmentToolkitShellContext,
 		ZIndexLayer,
 	} from '@pie-players/pie-assessment-toolkit';
 	import type {
+		AssessmentToolkitShellContext,
 		AssessmentToolkitRuntimeContext,
 		IToolCoordinator,
 	} from '@pie-players/pie-assessment-toolkit';
 	import { ContextConsumer } from '@pie-players/pie-context';
-import { onDestroy, onMount } from 'svelte';
+	import { onMount } from 'svelte';
 	import { AnswerEliminatorCore } from './answer-eliminator-core.js';
 
 	// Props
@@ -83,6 +85,7 @@ import { onDestroy, onMount } from 'svelte';
 	// State
 	let contextHostElement = $state<HTMLElement | null>(null);
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	let shellContext = $state<AssessmentToolkitShellContext | null>(null);
 	let runtimeContextConsumer: ContextConsumer<
 		typeof assessmentToolkitRuntimeContext
 	> | null = null;
@@ -90,8 +93,6 @@ import { onDestroy, onMount } from 'svelte';
 		runtimeContext?.toolCoordinator as IToolCoordinator | undefined,
 	);
 	let core = $state<AnswerEliminatorCore | null>(null);
-	let eliminatedCount = $state(0);
-	let mutationObserver = $state<MutationObserver | null>(null);
 
 	// Track registration state
 	let registered = $state(false);
@@ -115,87 +116,35 @@ import { onDestroy, onMount } from 'svelte';
 		};
 	});
 
+	$effect(() => {
+		if (!contextHostElement) return;
+		return connectAssessmentToolkitShellContext(contextHostElement, (value: AssessmentToolkitShellContext) => {
+			shellContext = value;
+		});
+	});
+
+	function resolveQuestionRoot(): HTMLElement | null {
+		return scopeElement || shellContext?.scopeElement || null;
+	}
+
 	function initializeForCurrentQuestion() {
 		if (!isActive || !core) return;
-
-		// Use scopeElement if provided (for multi-item pages), otherwise search globally
-		const searchRoot = scopeElement || document.body;
-
-		// Find the current question/item within the search scope
-		const questionRoot =
-			searchRoot.querySelector('pie-player') ||
-			searchRoot.querySelector('multiple-choice') ||
-			searchRoot.querySelector('ebsr') ||
-			searchRoot.querySelector('[data-pie-element]') ||
-			searchRoot;
+		const questionRoot = resolveQuestionRoot();
 
 		if (!questionRoot) {
-			console.warn('[AnswerEliminator] Could not find question root within scope');
+			console.warn('[AnswerEliminator] Missing shell scope context for question root');
 			return;
 		}
 
-		core.initializeForQuestion(questionRoot as HTMLElement);
-		updateEliminatedCount();
-	}
-
-	function waitForPIEElements(callback: () => void, timeout: number = 5000) {
-		// Use scopeElement if provided, otherwise search globally
-		const searchRoot = scopeElement || document.body;
-
-		// Check if PIE elements already exist
-		const checkElements = () => {
-			const questionRoot =
-				searchRoot.querySelector('pie-player') ||
-				searchRoot.querySelector('multiple-choice') ||
-				searchRoot.querySelector('ebsr') ||
-				searchRoot.querySelector('[data-pie-element]');
-
-			if (questionRoot) {
-				// Elements found, clean up observer and execute callback
-				if (mutationObserver) {
-					mutationObserver.disconnect();
-					mutationObserver = null;
-				}
-				callback();
-				return true;
-			}
-			return false;
-		};
-
-		// Try immediately first
-		if (checkElements()) return;
-
-		// Set up MutationObserver to watch for elements within scope
-		mutationObserver = new MutationObserver(() => {
-			checkElements();
-		});
-
-		// Observe the search root for added nodes
-		mutationObserver.observe(searchRoot, {
-			childList: true,
-			subtree: true
-		});
-
-		// Fallback timeout to prevent infinite observation
-		setTimeout(() => {
-			if (mutationObserver) {
-				mutationObserver.disconnect();
-				mutationObserver = null;
-				// Try one last time
-				checkElements();
-			}
-		}, timeout);
+		core.initializeForQuestion(questionRoot);
 	}
 
 	function handleItemChange() {
-		// Question changed, wait for PIE elements to be rendered using MutationObserver
-		waitForPIEElements(() => {
-			initializeForCurrentQuestion();
+		requestAnimationFrame(() => {
+			requestAnimationFrame(() => {
+				initializeForCurrentQuestion();
+			});
 		});
-	}
-
-	function updateEliminatedCount() {
-		eliminatedCount = core?.getEliminatedCount() || 0;
 	}
 
 	// Register with coordinator when it becomes available
@@ -225,36 +174,21 @@ import { onDestroy, onMount } from 'svelte';
 		// Listen for question changes (PIE player emits this)
 		document.addEventListener('pie-item-changed', handleItemChange);
 
-		// Listen for custom events from answer-eliminator-core when state changes
-		document.addEventListener('answer-eliminator-state-change', () => {
-			updateEliminatedCount();
-		});
-
 		// Initialize for current question if active, otherwise ensure clean state
 		if (isActive) {
-			// Wait for PIE elements to be mounted using MutationObserver
-			waitForPIEElements(() => {
-				initializeForCurrentQuestion();
-			});
+			initializeForCurrentQuestion();
 		} else {
 			// If not active on mount, clear any leftover visual eliminations
 			core.cleanup();
 		}
 
 		return () => {
-			// Clean up MutationObserver if still active
-			if (mutationObserver) {
-				mutationObserver.disconnect();
-				mutationObserver = null;
-			}
-
 			core?.destroy();
 			core = null;
 			if (coordinator && toolId) {
 				coordinator.unregisterTool(toolId);
 			}
 			document.removeEventListener('pie-item-changed', handleItemChange);
-			document.removeEventListener('answer-eliminator-state-change', updateEliminatedCount);
 		};
 	});
 

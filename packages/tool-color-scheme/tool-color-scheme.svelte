@@ -165,18 +165,6 @@
 			root.setAttribute('data-color-scheme', schemeId);
 		}
 
-		// Also mirror on all player host elements
-		const piePlayers = document.querySelectorAll(
-			'pie-player, pie-inline-player, pie-iife-player, pie-fixed-player, pie-esm-player, pie-section-player',
-		);
-		piePlayers.forEach((player) => {
-			if (schemeId === 'default') {
-				player.removeAttribute('data-color-scheme');
-			} else {
-				player.setAttribute('data-color-scheme', schemeId);
-			}
-		});
-
 		// Save to localStorage safely
 		safeLocalStorageSet('pie-color-scheme', schemeId);
 	}

@@ -35,3 +35,30 @@ export const assessmentToolkitRuntimeContext =
 	createContext<AssessmentToolkitRuntimeContext>(
 		Symbol.for("pie.assessmentToolkit.runtimeContext"),
 	);
+
+export interface AssessmentToolkitHostRuntimeContext {
+	runtimeId: string;
+	coordinator: IToolkitCoordinator;
+}
+
+export const assessmentToolkitHostRuntimeContext =
+	createContext<AssessmentToolkitHostRuntimeContext>(
+		Symbol.for("pie.assessmentToolkit.hostRuntimeContext"),
+	);
+
+export type ShellContextKind = "item" | "passage";
+
+export interface AssessmentToolkitShellContext {
+	kind: ShellContextKind;
+	itemId: string;
+	canonicalItemId: string;
+	contentKind: string;
+	regionPolicy: string;
+	scopeElement: HTMLElement | null;
+	item: unknown;
+}
+
+export const assessmentToolkitShellContext =
+	createContext<AssessmentToolkitShellContext>(
+		Symbol.for("pie.assessmentToolkit.shellContext"),
+	);

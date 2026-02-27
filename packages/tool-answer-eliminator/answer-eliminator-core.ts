@@ -14,6 +14,7 @@ export class AnswerEliminatorCore {
 	private eliminatedChoices = new Set<string>(); // Set<choiceId> for current element
 	private choiceElements = new Map<string, HTMLElement>(); // choiceId -> element
 	private choiceButtons = new Map<string, HTMLButtonElement>(); // choiceId -> button
+	private choiceAdapters = new Map<string, ChoiceAdapter>(); // choiceId -> adapter
 	private buttonAlignment: "left" | "right" | "inline" = "right";
 	private shouldRestoreState: boolean = true; // Whether to restore eliminations from state storage
 
@@ -73,6 +74,7 @@ export class AnswerEliminatorCore {
 
 		// Track element
 		this.choiceElements.set(choiceId, choice);
+		this.choiceAdapters.set(choiceId, adapter);
 
 		// Create elimination toggle button
 		const button = this.createToggleButton(choice, adapter);
@@ -315,8 +317,8 @@ export class AnswerEliminatorCore {
 				const choice = this.choiceElements.get(choiceId);
 				if (!choice) continue;
 
-				// Find adapter for this choice
-				const adapter = this.findAdapterForChoice(choice);
+				// Use the adapter captured during initialization
+				const adapter = this.choiceAdapters.get(choiceId);
 				if (!adapter) continue;
 
 				// Re-eliminate without saving (already in state)
@@ -345,22 +347,6 @@ export class AnswerEliminatorCore {
 	}
 
 	/**
-	 * Find adapter for a choice element
-	 */
-	private findAdapterForChoice(choice: HTMLElement): ChoiceAdapter | null {
-		// Walk up to find PIE element root
-		let element: HTMLElement | null = choice;
-
-		while (element && element !== document.body) {
-			const adapter = this.registry.findAdapter(element);
-			if (adapter) return adapter;
-			element = element.parentElement;
-		}
-
-		return null;
-	}
-
-	/**
 	 * Cleanup buttons from previous element
 	 */
 	private cleanupButtons(): void {
@@ -370,6 +356,7 @@ export class AnswerEliminatorCore {
 
 		this.choiceButtons.clear();
 		this.choiceElements.clear();
+		this.choiceAdapters.clear();
 	}
 
 	/**

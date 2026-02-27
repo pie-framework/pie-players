@@ -30,9 +30,13 @@
 -->
 <script lang="ts">
 	import {
+		type AssessmentToolkitShellContext,
 		type AssessmentToolkitRuntimeContext
 	} from '../context/assessment-toolkit-context.js';
-	import { connectAssessmentToolkitRuntimeContext } from '../context/runtime-context-consumer.js';
+	import {
+		connectAssessmentToolkitRuntimeContext,
+		connectAssessmentToolkitShellContext,
+	} from '../context/runtime-context-consumer.js';
 	import type { ToolRegistry, ToolToolbarRenderResult, ToolbarContext } from '../services/ToolRegistry.js';
 	import type { PNPToolResolver } from '../services/PNPToolResolver.js';
 	import { createDefaultToolRegistry } from '../services/createDefaultToolRegistry.js';
@@ -80,6 +84,7 @@
 
 	let toolbarRootElement = $state<HTMLDivElement | null>(null);
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	let shellContext = $state<AssessmentToolkitShellContext | null>(null);
 	let moduleLoadVersion = $state(0);
 
 	$effect(() => {
@@ -89,11 +94,23 @@
 		});
 	});
 
+	$effect(() => {
+		if (!toolbarRootElement) return;
+		return connectAssessmentToolkitShellContext(toolbarRootElement, (value) => {
+			shellContext = value;
+		});
+	});
+
 	const effectiveToolCoordinator = $derived(runtimeContext?.toolCoordinator);
 	const effectiveTTSService = $derived(runtimeContext?.ttsService);
 	const effectiveElementToolStateStore = $derived(runtimeContext?.elementToolStateStore);
 	const effectiveAssessmentId = $derived(runtimeContext?.assessmentId ?? '');
 	const effectiveSectionId = $derived(runtimeContext?.sectionId ?? '');
+	const effectiveItemId = $derived(itemId || shellContext?.itemId || '');
+	const effectiveCanonicalItemId = $derived(shellContext?.canonicalItemId || effectiveItemId);
+	const effectiveCatalogId = $derived(catalogId || effectiveItemId);
+	const effectiveContentKind = $derived(contentKind || shellContext?.contentKind || 'assessment-item');
+	const effectiveItem = $derived((item as ItemEntity | null) || (shellContext?.item as ItemEntity | null) || null);
 
 	// Effective registry for visibility and metadata ownership.
 	const effectiveToolRegistry = $derived(toolRegistry || fallbackToolRegistry);
@@ -122,19 +139,19 @@
 	});
 
 	const contentReady = $derived.by(() => {
-		const config = (item as ItemEntity | null)?.config;
-		return !!(item && config && typeof config === 'object');
+		const config = (effectiveItem as ItemEntity | null)?.config;
+		return !!(effectiveItem && config && typeof config === 'object');
 	});
 
 	const toolContext = $derived.by((): ItemToolContext | null => {
-		if (!contentReady || !item) {
+		if (!contentReady || !effectiveItem) {
 			return null;
 		}
 		return {
 			level: 'item',
 			assessment: (assessment || {}) as AssessmentEntity,
-			itemRef: (itemRef || ({ id: itemId } as AssessmentItemRef)) as AssessmentItemRef,
-			item
+			itemRef: (itemRef || ({ id: effectiveCanonicalItemId } as AssessmentItemRef)) as AssessmentItemRef,
+			item: effectiveItem as ItemEntity
 		};
 	});
 
@@ -143,14 +160,14 @@
 		return {
 			level: 'item',
 			assessment: (assessment || {}) as AssessmentEntity,
-			itemRef: (itemRef || ({ id: itemId } as AssessmentItemRef)) as AssessmentItemRef,
-			item: ((item as ItemEntity | null) || ({ id: itemId, config: {} } as ItemEntity)) as ItemEntity
+			itemRef: (itemRef || ({ id: effectiveCanonicalItemId } as AssessmentItemRef)) as AssessmentItemRef,
+			item: ((effectiveItem as ItemEntity | null) || ({ id: effectiveCanonicalItemId, config: {} } as ItemEntity)) as ItemEntity
 		};
 	});
 
 	const elementContexts = $derived.by((): ElementToolContext[] => {
-		if (!contentReady || !item) return [];
-		const modelsRaw = (item as any)?.config?.models;
+		if (!contentReady || !effectiveItem) return [];
+		const modelsRaw = (effectiveItem as any)?.config?.models;
 		const models = Array.isArray(modelsRaw)
 			? modelsRaw
 			: modelsRaw && typeof modelsRaw === 'object'
@@ -161,8 +178,8 @@
 			.map((model: any) => ({
 				level: 'element' as const,
 				assessment: (assessment || {}) as AssessmentEntity,
-				itemRef: (itemRef || ({ id: itemId } as AssessmentItemRef)) as AssessmentItemRef,
-				item,
+				itemRef: (itemRef || ({ id: effectiveCanonicalItemId } as AssessmentItemRef)) as AssessmentItemRef,
+				item: effectiveItem as ItemEntity,
 				elementId: model.id as string
 			}));
 	});
@@ -208,38 +225,29 @@
 
 	function resolveScopeElement(): HTMLElement | null {
 		if (scopeElement) return scopeElement;
-		if (!toolbarRootElement) return null;
-		const shellRoot = toolbarRootElement.closest("[data-pie-shell-root]") as HTMLElement | null;
-		if (!shellRoot) return null;
-		return (
-			(shellRoot.querySelector('[data-region="content"]') as HTMLElement | null) ||
-			(shellRoot.querySelector('[data-pie-region="content"]') as HTMLElement | null) ||
-			(shellRoot.querySelector('[data-region="header"]') as HTMLElement | null) ||
-			(shellRoot.querySelector('[data-pie-region="header"]') as HTMLElement | null) ||
-			shellRoot
-		);
+		return shellContext?.scopeElement || null;
 	}
 
 	function resolveGlobalElementId(): string | null {
-		if (!effectiveElementToolStateStore || !effectiveAssessmentId || !effectiveSectionId || !itemId)
+		if (!effectiveElementToolStateStore || !effectiveAssessmentId || !effectiveSectionId || !effectiveCanonicalItemId)
 			return null;
 		return effectiveElementToolStateStore.getGlobalElementId(
 			effectiveAssessmentId,
 			effectiveSectionId,
-			itemId,
-			itemId
+			effectiveCanonicalItemId,
+			effectiveCanonicalItemId
 		);
 	}
 
 	const toolbarContext = $derived.by((): ToolbarContext => {
 		const toolkitCoordinator = runtimeContext?.toolkitCoordinator || null;
 		const toInstanceToolId = (toolId: string): string => {
-			const suffix = `-${itemId}`;
+			const suffix = `-${effectiveCanonicalItemId}`;
 			return toolId.endsWith(suffix) ? toolId : `${toolId}${suffix}`;
 		};
 		return {
-			itemId,
-			catalogId: catalogId || itemId,
+			itemId: effectiveCanonicalItemId,
+			catalogId: effectiveCatalogId,
 			language,
 			ui: {
 				size
@@ -348,7 +356,7 @@
 {#if isBrowser}
 	<div
 		class="item-toolbar {className} item-toolbar--{size}"
-		data-content-kind={contentKind}
+		data-content-kind={effectiveContentKind}
 		bind:this={toolbarRootElement}
 	>
 		{#each renderedTools as renderedTool (renderedTool.toolId)}

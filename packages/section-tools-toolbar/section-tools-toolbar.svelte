@@ -27,7 +27,7 @@
 -->
 <script lang="ts">
 	import {
-		assessmentToolkitRuntimeContext,
+		connectAssessmentToolkitRuntimeContext,
 		createDefaultToolRegistry,
 	} from '@pie-players/pie-assessment-toolkit';
 	import type {
@@ -35,7 +35,6 @@
 		IToolCoordinator,
 		ToolContext,
 	} from '@pie-players/pie-assessment-toolkit';
-	import { ContextConsumer } from '@pie-players/pie-context';
 	import { registerSectionToolModuleLoaders } from '@pie-players/pie-default-tool-loaders';
 	import { onDestroy, onMount } from 'svelte';
 
@@ -55,14 +54,9 @@
 	} = $props();
 	let toolbarRootElement = $state<HTMLElement | null>(null);
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
-	let discoveredToolCoordinator = $state<IToolCoordinator | null>(null);
-	let runtimeContextConsumer: ContextConsumer<
-		typeof assessmentToolkitRuntimeContext
-	> | null = null;
 	const effectiveToolCoordinator = $derived(
 		(toolCoordinator as IToolCoordinator | null) ||
-			(runtimeContext?.toolCoordinator as IToolCoordinator | undefined) ||
-			discoveredToolCoordinator,
+			(runtimeContext?.toolCoordinator as IToolCoordinator | undefined),
 	);
 
 	const defaultEnabledTools = [
@@ -110,24 +104,8 @@
 		onClick: () => void;
 	};
 
-	function resolveNearestToolCoordinator(): IToolCoordinator | null {
-		if (!toolbarRootElement) return null;
-		const toolkitElement = toolbarRootElement.closest('pie-assessment-toolkit') as
-			| { getServiceBundle?: () => { toolCoordinator?: IToolCoordinator } }
-			| null;
-		if (!toolkitElement?.getServiceBundle) return null;
-		try {
-			return toolkitElement.getServiceBundle()?.toolCoordinator || null;
-		} catch {
-			return null;
-		}
-	}
-
 	// Update visibility state from coordinator
 	function updateToolVisibility() {
-		if (!effectiveToolCoordinator) {
-			discoveredToolCoordinator = resolveNearestToolCoordinator();
-		}
 		if (!effectiveToolCoordinator) return;
 		showGraph = effectiveToolCoordinator.isToolVisible('graph');
 		showPeriodicTable = effectiveToolCoordinator.isToolVisible('periodicTable');
@@ -149,9 +127,6 @@
 
 	// Toggle tool visibility
 	async function toggleTool(toolId: string) {
-		if (!effectiveToolCoordinator) {
-			discoveredToolCoordinator = resolveNearestToolCoordinator();
-		}
 		if (!effectiveToolCoordinator) return;
 		await toolRegistry.ensureToolModuleLoaded(toolId);
 		effectiveToolCoordinator.toggleTool(toolId);
@@ -169,24 +144,17 @@
 	let unsubscribe: (() => void) | null = null;
 
 	onMount(() => {
-		discoveredToolCoordinator = resolveNearestToolCoordinator();
 		updateToolVisibility();
 	});
 
 	$effect(() => {
 		if (!toolbarRootElement) return;
-		runtimeContextConsumer = new ContextConsumer(toolbarRootElement, {
-			context: assessmentToolkitRuntimeContext,
-			subscribe: true,
-			onValue: (value: AssessmentToolkitRuntimeContext) => {
+		return connectAssessmentToolkitRuntimeContext(
+			toolbarRootElement,
+			(value: AssessmentToolkitRuntimeContext) => {
 				runtimeContext = value;
 			},
-		});
-		runtimeContextConsumer.connect();
-		return () => {
-			runtimeContextConsumer?.disconnect();
-			runtimeContextConsumer = null;
-		};
+		);
 	});
 
 	$effect(() => {

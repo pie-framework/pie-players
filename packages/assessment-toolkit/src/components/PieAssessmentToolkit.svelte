@@ -24,13 +24,15 @@
 <script lang="ts">
 	import { ContextProvider, ContextRoot } from "@pie-players/pie-context";
 	import {
+		assessmentToolkitHostRuntimeContext,
 		assessmentToolkitRuntimeContext,
+		type AssessmentToolkitHostRuntimeContext,
 		type AssessmentToolkitRuntimeContext,
 		type ItemPlayerConfig,
 		type ItemPlayerType,
 	} from "../context/assessment-toolkit-context.js";
+	import { connectAssessmentToolkitHostRuntimeContext } from "../context/runtime-context-consumer.js";
 	import { ToolkitCoordinator } from "../services/ToolkitCoordinator.js";
-	import { findParentToolkitRuntime } from "../runtime/findParentToolkitRuntime.js";
 	import {
 		PIE_ITEM_SESSION_CHANGED_EVENT,
 		PIE_REGISTER_EVENT,
@@ -43,16 +45,6 @@
 		createRuntimeId,
 		shouldHandleBySourceRuntime,
 	} from "../runtime/runtime-event-guards.js";
-	import { clearCachedParentRuntime } from "../runtime/runtime-binding-cache.js";
-
-	type ToolkitRuntimeHandle = {
-		runtimeId: string;
-		coordinator: ToolkitCoordinator;
-	};
-
-	type RuntimeHostElement = HTMLElement & {
-		__pieToolkitRuntime?: ToolkitRuntimeHandle;
-	};
 
 	type SessionChangedLike = {
 		eventDetail?: unknown;
@@ -90,18 +82,22 @@
 
 	let anchor = $state<HTMLDivElement | null>(null);
 	let ownedCoordinator = $state<ToolkitCoordinator | null>(null);
-	let inheritedCoordinator = $state<ToolkitCoordinator | null>(null);
+	let inheritedRuntime = $state<AssessmentToolkitHostRuntimeContext | null>(null);
 	let lastOwnership = $state<"owned" | "inherited" | null>(null);
 	let provider: ContextProvider<typeof assessmentToolkitRuntimeContext> | null = null;
 	let contextRoot: ContextRoot | null = null;
+	let hostRuntimeProvider: ContextProvider<
+		typeof assessmentToolkitHostRuntimeContext
+	> | null = null;
+	let hostRuntimeRoot: ContextRoot | null = null;
 	let compositionVersion = $state(0);
 	let compositionModel = $state<unknown>(null);
 	let runtimeError = $state<unknown>(null);
 	let lastCompositionSignature = $state<string>("");
 
-	function getHostElement(): RuntimeHostElement | null {
+	function getHostElement(): HTMLElement | null {
 		if (!anchor) return null;
-		return (anchor.closest("pie-assessment-toolkit") as RuntimeHostElement | null) ?? null;
+		return anchor.parentElement as HTMLElement | null;
 	}
 	const host = $derived.by(() => getHostElement());
 
@@ -174,8 +170,8 @@
 	}
 
 	const effectiveCoordinator = $derived.by(() => {
-		if (isolation !== "force" && inheritedCoordinator) {
-			return inheritedCoordinator;
+		if (isolation !== "force" && inheritedRuntime?.coordinator) {
+			return inheritedRuntime.coordinator as ToolkitCoordinator;
 		}
 		return coordinator || ownedCoordinator;
 	});
@@ -187,7 +183,7 @@
 			}
 			return;
 		}
-		if (isolation !== "force" && inheritedCoordinator) {
+		if (isolation !== "force" && inheritedRuntime?.coordinator) {
 			if (ownedCoordinator) {
 				ownedCoordinator = null;
 			}
@@ -230,6 +226,15 @@
 			},
 		};
 	});
+	const hostRuntimeContextValue = $derived.by(
+		(): AssessmentToolkitHostRuntimeContext | null => {
+			if (!effectiveCoordinator) return null;
+			return {
+				runtimeId,
+				coordinator: effectiveCoordinator,
+			};
+		},
+	);
 
 	function getCompositionSignature(model: unknown): string {
 		const typed = model as any;
@@ -273,40 +278,52 @@
 
 	$effect(() => {
 		if (!host) return;
-		const localHost = host;
-		const parent = isolation === "force" ? null : findParentToolkitRuntime(localHost);
-		const inherited = (parent as RuntimeHostElement | null)?.__pieToolkitRuntime?.coordinator;
-		const nextInherited = inherited || null;
-		if (inheritedCoordinator !== nextInherited) {
-			inheritedCoordinator = nextInherited;
+		if (isolation === "force") {
+			inheritedRuntime = null;
+			return;
 		}
-		const ownership: "owned" | "inherited" =
-			nextInherited && isolation !== "force" ? "inherited" : "owned";
+		return connectAssessmentToolkitHostRuntimeContext(host, (value) => {
+			if (value.runtimeId === runtimeId) {
+				return;
+			}
+			inheritedRuntime = value;
+		});
+	});
+
+	$effect(() => {
+		const parentRuntimeId =
+			isolation !== "force" && inheritedRuntime ? inheritedRuntime.runtimeId : null;
+		const ownership: "owned" | "inherited" = parentRuntimeId ? "inherited" : "owned";
 		if (ownership !== lastOwnership) {
 			lastOwnership = ownership;
 			emit(ownership === "inherited" ? "runtime-inherited" : "runtime-owned", {
 				runtimeId,
-				parentRuntimeId:
-					(parent as RuntimeHostElement | null)?.__pieToolkitRuntime?.runtimeId || null,
+				parentRuntimeId,
 			});
 		}
+	});
+
+	$effect(() => {
+		if (!host || !hostRuntimeContextValue) return;
+		hostRuntimeProvider = new ContextProvider(host, {
+			context: assessmentToolkitHostRuntimeContext,
+			initialValue: hostRuntimeContextValue,
+		});
+		hostRuntimeProvider.connect();
+		hostRuntimeRoot = new ContextRoot(host);
+		hostRuntimeRoot.attach();
 
 		return () => {
-			clearCachedParentRuntime(localHost);
+			hostRuntimeRoot?.detach();
+			hostRuntimeRoot = null;
+			hostRuntimeProvider?.disconnect();
+			hostRuntimeProvider = null;
 		};
 	});
 
 	$effect(() => {
-		if (!host || !effectiveCoordinator) return;
-		const localHost = host;
-		localHost.__pieToolkitRuntime = {
-			runtimeId,
-			coordinator: effectiveCoordinator,
-		};
-
-		return () => {
-			delete localHost.__pieToolkitRuntime;
-		};
+		if (!hostRuntimeContextValue) return;
+		hostRuntimeProvider?.setValue(hostRuntimeContextValue);
 	});
 
 	$effect(() => {

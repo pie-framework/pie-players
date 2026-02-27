@@ -12,12 +12,12 @@
 			},
 		},
 	};
-const sectionPlayerRuntime = {
-	assessmentId: data.demo?.id || "section-demo-direct",
-	playerType: "iife",
-	lazyInit: true,
-	tools: toolkitToolsConfig,
-};
+	const sectionPlayerRuntime = $derived({
+		assessmentId: data.demo?.id || "section-demo-direct",
+		playerType: "iife",
+		lazyInit: true,
+		tools: toolkitToolsConfig,
+	});
 
 	async function fetchDesmosAuthConfig() {
 		const response = await fetch("/api/tools/desmos/auth");

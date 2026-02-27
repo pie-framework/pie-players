@@ -14,6 +14,7 @@
 export { TypedEventBus } from "./core/TypedEventBus.js";
 export type {
 	AssessmentToolkitHostRuntimeContext,
+	AssessmentToolkitRegionScopeContext,
 	AssessmentToolkitRuntimeContext,
 	AssessmentToolkitShellContext,
 	ItemPlayerConfig,
@@ -22,11 +23,13 @@ export type {
 } from "./context/assessment-toolkit-context.js";
 export {
 	assessmentToolkitHostRuntimeContext,
+	assessmentToolkitRegionScopeContext,
 	assessmentToolkitRuntimeContext,
 	assessmentToolkitShellContext,
 } from "./context/assessment-toolkit-context.js";
 export {
 	connectAssessmentToolkitHostRuntimeContext,
+	connectAssessmentToolkitRegionScopeContext,
 	connectAssessmentToolkitRuntimeContext,
 	connectAssessmentToolkitShellContext,
 } from "./context/runtime-context-consumer.js";

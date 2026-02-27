@@ -93,6 +93,7 @@
 		runtimeContext?.toolCoordinator as IToolCoordinator | undefined,
 	);
 	let core = $state<AnswerEliminatorCore | null>(null);
+	let lastShellContextVersion = $state<number | null>(null);
 
 	// Track registration state
 	let registered = $state(false);
@@ -171,9 +172,6 @@
 			core.setStoreIntegration(elementToolStateStore, globalElementId);
 		}
 
-		// Listen for question changes (PIE player emits this)
-		document.addEventListener('pie-item-changed', handleItemChange);
-
 		// Initialize for current question if active, otherwise ensure clean state
 		if (isActive) {
 			initializeForCurrentQuestion();
@@ -188,8 +186,19 @@
 			if (coordinator && toolId) {
 				coordinator.unregisterTool(toolId);
 			}
-			document.removeEventListener('pie-item-changed', handleItemChange);
 		};
+	});
+
+	$effect(() => {
+		const shellVersion = shellContext?.contextVersion ?? null;
+		if (shellVersion === null) return;
+		if (lastShellContextVersion === null) {
+			lastShellContextVersion = shellVersion;
+			return;
+		}
+		if (shellVersion === lastShellContextVersion) return;
+		lastShellContextVersion = shellVersion;
+		handleItemChange();
 	});
 
 	// Watch for visibility changes to show/hide elimination buttons

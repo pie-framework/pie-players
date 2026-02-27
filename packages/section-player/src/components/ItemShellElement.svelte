@@ -7,6 +7,7 @@
 			canonicalItemId: { attribute: "canonical-item-id", type: "String" },
 			contentKind: { attribute: "content-kind", type: "String" },
 			regionPolicy: { attribute: "region-policy", type: "String" },
+			scopeElement: { type: "Object", reflect: false },
 			item: { type: "Object", reflect: false },
 		},
 	}}
@@ -17,7 +18,9 @@
 		PIE_ITEM_SESSION_CHANGED_EVENT,
 		PIE_REGISTER_EVENT,
 		PIE_UNREGISTER_EVENT,
+		assessmentToolkitRegionScopeContext,
 		assessmentToolkitShellContext,
+		type AssessmentToolkitRegionScopeContext,
 		type AssessmentToolkitShellContext,
 		type ItemSessionChangedDetail,
 		type RuntimeRegistrationDetail,
@@ -29,34 +32,35 @@
 		canonicalItemId = "",
 		contentKind = "assessment-item",
 		regionPolicy = "default",
+		scopeElement = null as HTMLElement | null,
 		item = null as unknown,
 	} = $props();
 
 	let anchor = $state<HTMLDivElement | null>(null);
-	let observer: MutationObserver | null = null;
 	let shellLayoutVersion = $state(0);
 	let shellContextProvider: ContextProvider<
 		typeof assessmentToolkitShellContext
 	> | null = null;
 	let shellContextRoot: ContextRoot | null = null;
+	let regionScopeProvider: ContextProvider<
+		typeof assessmentToolkitRegionScopeContext
+	> | null = null;
+	let regionScopeRoot: ContextRoot | null = null;
 
 	function getHostElement(): HTMLElement | null {
 		if (!anchor) return null;
 		return anchor.parentElement as HTMLElement | null;
 	}
 	const host = $derived.by(() => getHostElement());
-
-	function getRegion(region: string): HTMLElement | null {
-		if (!host) return null;
-		return (
-			(host.querySelector(`[data-region="${region}"]`) as HTMLElement | null) ??
-			(host.querySelector(`[data-pie-region="${region}"]`) as HTMLElement | null)
-		);
-	}
-
-	function getContentScope(): HTMLElement | null {
-		return getRegion("content") || getRegion("header") || host;
-	}
+	const effectiveScopeElement = $derived(scopeElement || host || null);
+	const regionScopeValue = $derived.by(
+		(): AssessmentToolkitRegionScopeContext | null => {
+			if (!effectiveScopeElement) return null;
+			return {
+				scopeElement: effectiveScopeElement,
+			};
+		},
+	);
 
 	const shellContextValue = $derived.by(
 		(): AssessmentToolkitShellContext | null => {
@@ -69,8 +73,9 @@
 				canonicalItemId: canonical,
 				contentKind,
 				regionPolicy,
-				scopeElement: getContentScope(),
+				scopeElement: effectiveScopeElement,
 				item,
+				contextVersion: shellLayoutVersion,
 			};
 		},
 	);
@@ -121,24 +126,13 @@
 	$effect(() => {
 		if (!host) return;
 		dispatchRegistration(PIE_REGISTER_EVENT);
+		shellLayoutVersion += 1;
 
 		const onSessionChanged = (event: Event) => normalizeAndDispatchSession(event);
 		host.addEventListener("sessionchanged", onSessionChanged);
 
-		observer = new MutationObserver(() => {
-			shellLayoutVersion += 1;
-		});
-		observer.observe(host, {
-			childList: true,
-			subtree: true,
-			attributes: true,
-			attributeFilter: ["data-region", "data-pie-region"],
-		});
-
 		return () => {
 			host?.removeEventListener("sessionchanged", onSessionChanged);
-			observer?.disconnect();
-			observer = null;
 			dispatchRegistration(PIE_UNREGISTER_EVENT);
 		};
 	});
@@ -172,6 +166,28 @@
 	$effect(() => {
 		if (!shellContextValue) return;
 		shellContextProvider?.setValue(shellContextValue);
+	});
+
+	$effect(() => {
+		if (!host || !regionScopeValue) return;
+		regionScopeProvider = new ContextProvider(host, {
+			context: assessmentToolkitRegionScopeContext,
+			initialValue: regionScopeValue,
+		});
+		regionScopeProvider.connect();
+		regionScopeRoot = new ContextRoot(host);
+		regionScopeRoot.attach();
+		return () => {
+			regionScopeRoot?.detach();
+			regionScopeRoot = null;
+			regionScopeProvider?.disconnect();
+			regionScopeProvider = null;
+		};
+	});
+
+	$effect(() => {
+		if (!regionScopeValue) return;
+		regionScopeProvider?.setValue(regionScopeValue);
 	});
 </script>
 

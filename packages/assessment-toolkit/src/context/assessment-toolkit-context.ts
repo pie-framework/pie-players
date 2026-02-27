@@ -56,9 +56,19 @@ export interface AssessmentToolkitShellContext {
 	regionPolicy: string;
 	scopeElement: HTMLElement | null;
 	item: unknown;
+	contextVersion: number;
 }
 
 export const assessmentToolkitShellContext =
 	createContext<AssessmentToolkitShellContext>(
 		Symbol.for("pie.assessmentToolkit.shellContext"),
+	);
+
+export interface AssessmentToolkitRegionScopeContext {
+	scopeElement: HTMLElement | null;
+}
+
+export const assessmentToolkitRegionScopeContext =
+	createContext<AssessmentToolkitRegionScopeContext>(
+		Symbol.for("pie.assessmentToolkit.regionScopeContext"),
 	);

@@ -2,9 +2,11 @@ import { ContextConsumer } from "@pie-players/pie-context";
 import type { UnknownContext } from "@pie-players/pie-context";
 import {
 	assessmentToolkitHostRuntimeContext,
+	assessmentToolkitRegionScopeContext,
 	assessmentToolkitShellContext,
 	assessmentToolkitRuntimeContext,
 	type AssessmentToolkitHostRuntimeContext,
+	type AssessmentToolkitRegionScopeContext,
 	type AssessmentToolkitShellContext,
 	type AssessmentToolkitRuntimeContext,
 } from "./assessment-toolkit-context.js";
@@ -17,6 +19,9 @@ export type HostRuntimeContextListener = (
 ) => void;
 export type ShellContextListener = (
 	value: AssessmentToolkitShellContext,
+) => void;
+export type RegionScopeContextListener = (
+	value: AssessmentToolkitRegionScopeContext,
 ) => void;
 
 type ContextProviderLikeEvent = Event & {
@@ -96,6 +101,17 @@ export function connectAssessmentToolkitShellContext(
 	return connectConsumerWithProviderRetry(
 		host,
 		assessmentToolkitShellContext,
+		onValue as (value: unknown) => void,
+	);
+}
+
+export function connectAssessmentToolkitRegionScopeContext(
+	host: HTMLElement,
+	onValue: RegionScopeContextListener,
+): () => void {
+	return connectConsumerWithProviderRetry(
+		host,
+		assessmentToolkitRegionScopeContext,
 		onValue as (value: unknown) => void,
 	);
 }

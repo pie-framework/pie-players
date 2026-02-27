@@ -220,7 +220,10 @@ export interface ITTSService {
 	/**
 	 * Speak a text range
 	 */
-	speakRange(range: Range): Promise<void>;
+	speakRange(
+		range: Range,
+		options?: { contentRoot?: Element | null },
+	): Promise<void>;
 
 	/**
 	 * Pause playback

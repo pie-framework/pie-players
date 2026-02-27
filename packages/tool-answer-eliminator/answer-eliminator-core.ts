@@ -180,9 +180,6 @@ export class AnswerEliminatorCore {
 
 		// Save state
 		this.saveState();
-
-		// Emit state change event
-		this.emitStateChange();
 	}
 
 	/**
@@ -258,7 +255,6 @@ export class AnswerEliminatorCore {
 		// Clear state
 		this.eliminatedChoices.clear();
 		this.saveState();
-		this.emitStateChange();
 	}
 
 	/**
@@ -426,19 +422,6 @@ export class AnswerEliminatorCore {
 		// Clear all visual eliminations (strikethroughs)
 		// This removes the CSS highlights but keeps localStorage state
 		this.strategy.clearAll();
-	}
-
-	/**
-	 * Emit state change event for UI updates
-	 */
-	private emitStateChange(): void {
-		const event = new CustomEvent("answer-eliminator-state-change", {
-			detail: {
-				eliminatedCount: this.getEliminatedCount(),
-			},
-			bubbles: true,
-		});
-		document.dispatchEvent(event);
 	}
 
 	/**

@@ -226,7 +226,7 @@
     if (rootNode && "host" in rootNode) {
       return (rootNode as ShadowRoot).host as HTMLElement;
     }
-    return (rootElement.closest("pie-section-player") as HTMLElement | null) ?? null;
+    return rootElement.parentElement as HTMLElement | null;
   }
 
   function emitSectionEvent(name: string, detail: unknown): void {

@@ -22,7 +22,11 @@
 />
 
 <script lang="ts">
-	import { ContextProvider, ContextRoot } from "@pie-players/pie-context";
+	import {
+		ContextProvider,
+		ContextRoot,
+		requestContext,
+	} from "@pie-players/pie-context";
 	import {
 		assessmentToolkitHostRuntimeContext,
 		assessmentToolkitRuntimeContext,
@@ -272,8 +276,12 @@
 	}
 
 	function isLocalToCurrentRuntime(eventTarget: EventTarget | null): boolean {
-		if (!host || !(eventTarget instanceof HTMLElement)) return false;
-		return eventTarget.closest("pie-assessment-toolkit") === host;
+		if (!(eventTarget instanceof HTMLElement)) return false;
+		const sourceRuntime = requestContext(
+			eventTarget,
+			assessmentToolkitHostRuntimeContext,
+		);
+		return sourceRuntime?.runtimeId === runtimeId;
 	}
 
 	$effect(() => {

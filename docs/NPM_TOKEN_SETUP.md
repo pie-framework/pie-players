@@ -220,6 +220,20 @@ After configuring everything, the full workflow is:
 9. **Workflow publishes** to npm using `NPM_TOKEN`
 10. **Packages appear** on npmjs.com
 
+### Manual recovery publish
+
+If a publish run fails after the version PR was already merged, you can rerun publish
+without creating another version bump commit:
+
+1. Open **Actions → Release → Run workflow**
+2. Branch: `master`
+3. Set `release_intent=publish`
+4. Set `force_publish=true`
+5. Run workflow
+
+Use this only for recovery/rerun scenarios; normal releases should continue through
+the standard changeset → version PR → merge flow.
+
 You can verify by checking:
 - https://www.npmjs.com/package/@pie-framework/pie-iife-player
 - https://www.npmjs.com/package/@pie-framework/pie-esm-player

@@ -92,7 +92,8 @@
 	let lastShellContextVersion = $state<number | null>(null);
 
 	// Track registration state
-	let registered = $state(false);
+	let registeredToolId = $state<string | null>(null);
+	let registeredCoordinator = $state<IToolCoordinator | null>(null);
 
 	// Determine if tool should be active (either toggled on OR always-on mode)
 	let isActive = $derived(alwaysOn || visible);
@@ -137,9 +138,20 @@
 
 	// Register with coordinator when it becomes available
 	$effect(() => {
-		if (coordinator && toolId && !registered) {
+		if (!coordinator || !toolId) return;
+		if (
+			registeredCoordinator &&
+			registeredToolId &&
+			(registeredCoordinator !== coordinator || registeredToolId !== toolId)
+		) {
+			registeredCoordinator.unregisterTool(registeredToolId);
+			registeredCoordinator = null;
+			registeredToolId = null;
+		}
+		if (!registeredToolId) {
 			coordinator.registerTool(toolId, 'Answer Eliminator', undefined, ZIndexLayer.MODAL);
-			registered = true;
+			registeredCoordinator = coordinator;
+			registeredToolId = toolId;
 		}
 	});
 
@@ -170,8 +182,10 @@
 		return () => {
 			core?.destroy();
 			core = null;
-			if (coordinator && toolId) {
-				coordinator.unregisterTool(toolId);
+			if (registeredCoordinator && registeredToolId) {
+				registeredCoordinator.unregisterTool(registeredToolId);
+				registeredCoordinator = null;
+				registeredToolId = null;
 			}
 		};
 	});

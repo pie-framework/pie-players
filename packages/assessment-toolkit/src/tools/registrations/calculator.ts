@@ -16,6 +16,7 @@ import type {
 } from "../../services/ToolRegistry.js";
 import type { ToolContext } from "../../services/tool-context.js";
 import { hasMathContent } from "../../services/tool-context.js";
+import { createScopedToolId } from "../../services/tool-instance-id.js";
 import { createToolElement } from "../tool-tag-map.js";
 
 /**
@@ -59,7 +60,11 @@ export const calculatorToolRegistration: ToolRegistration = {
 		context: ToolContext,
 		toolbarContext: ToolbarContext,
 	): ToolToolbarRenderResult {
-		const fullToolId = `${this.toolId}-${toolbarContext.itemId}`;
+		const fullToolId = createScopedToolId(
+			this.toolId,
+			"item",
+			toolbarContext.itemId,
+		);
 		const componentOverrides = toolbarContext.componentOverrides;
 		const overlay = createToolElement(
 			this.toolId,
@@ -73,7 +78,11 @@ export const calculatorToolRegistration: ToolRegistration = {
 		overlay.setAttribute("tool-id", fullToolId);
 
 		const inline = document.createElement("pie-tool-calculator-inline");
-		inline.setAttribute("tool-id", `calculator-inline-${toolbarContext.itemId}`);
+		inline.setAttribute(
+			"tool-id",
+			createScopedToolId(this.toolId, "item", toolbarContext.itemId, "inline"),
+		);
+		inline.setAttribute("target-tool-id", fullToolId);
 		inline.setAttribute("calculator-type", "scientific");
 		inline.setAttribute("available-types", "basic,scientific,graphing");
 		inline.setAttribute("size", toolbarContext.ui?.size || "md");

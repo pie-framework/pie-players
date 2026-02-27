@@ -42,10 +42,12 @@ import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
 const coordinator = new ToolkitCoordinator({
   assessmentId: 'demo',
   tools: {
-    tts: {
-      enabled: true,
-      backend: 'browser', // Uses Web Speech API - no auth needed!
-    },
+    providers: {
+      tts: {
+        enabled: true,
+        backend: 'browser', // Uses Web Speech API - no auth needed!
+      },
+    }
   },
 });
 ```
@@ -56,7 +58,7 @@ const coordinator = new ToolkitCoordinator({
 const coordinator = new ToolkitCoordinator({
   assessmentId: 'demo',
   tools: {
-    floatingTools: {
+    providers: {
       calculator: {
         provider: 'desmos',
         authFetcher: async () => {
@@ -66,6 +68,11 @@ const coordinator = new ToolkitCoordinator({
         },
       },
     },
+    placement: {
+      section: ['calculator', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
+      item: ['calculator', 'textToSpeech', 'answerEliminator'],
+      passage: ['textToSpeech'],
+    }
   },
 });
 ```
@@ -76,14 +83,16 @@ const coordinator = new ToolkitCoordinator({
 const coordinator = new ToolkitCoordinator({
   assessmentId: 'demo',
   tools: {
-    tts: {
-      backend: 'google',
-      apiEndpoint: '/api/tts/synthesize',
-      authFetcher: async () => {
-        const res = await fetch('/api/tools/tts/google/token');
-        return res.json(); // { authToken: '...' }
+    providers: {
+      tts: {
+        backend: 'google',
+        apiEndpoint: '/api/tts/synthesize',
+        authFetcher: async () => {
+          const res = await fetch('/api/tools/tts/google/token');
+          return res.json(); // { authToken: '...' }
+        },
       },
-    },
+    }
   },
 });
 ```
@@ -268,10 +277,12 @@ import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
 const coordinator = new ToolkitCoordinator({
   assessmentId: 'demo-assessment',
   tools: {
-    tts: {
-      enabled: true,
-      backend: 'browser', // No auth needed
-    },
+    providers: {
+      tts: {
+        enabled: true,
+        backend: 'browser', // No auth needed
+      },
+    }
   },
 });
 ```
@@ -282,16 +293,18 @@ const coordinator = new ToolkitCoordinator({
 const coordinator = new ToolkitCoordinator({
   assessmentId: 'demo-assessment',
   tools: {
-    tts: {
-      enabled: true,
-      backend: 'google',
-      apiEndpoint: '/api/tts/synthesize',
-      authFetcher: async () => {
-        // Fetch credentials from backend
-        const response = await fetch('/api/tools/tts/google/token');
-        return response.json(); // { authToken: '...' }
+    providers: {
+      tts: {
+        enabled: true,
+        backend: 'google',
+        apiEndpoint: '/api/tts/synthesize',
+        authFetcher: async () => {
+          // Fetch credentials from backend
+          const response = await fetch('/api/tools/tts/google/token');
+          return response.json(); // { authToken: '...' }
+        },
       },
-    },
+    }
   },
 });
 ```
@@ -302,9 +315,7 @@ const coordinator = new ToolkitCoordinator({
 const coordinator = new ToolkitCoordinator({
   assessmentId: 'demo-assessment',
   tools: {
-    floatingTools: {
-      enabled: true,
-      enabledTools: ['calculator', 'graph', 'periodicTable'],
+    providers: {
       calculator: {
         enabled: true,
         provider: 'desmos',
@@ -314,6 +325,11 @@ const coordinator = new ToolkitCoordinator({
         },
       },
     },
+    placement: {
+      section: ['calculator', 'graph', 'periodicTable'],
+      item: ['calculator', 'textToSpeech', 'answerEliminator'],
+      passage: ['textToSpeech'],
+    }
   },
 });
 ```
@@ -368,17 +384,19 @@ interface TTSToolProviderConfig {
 **Example**:
 ```typescript
 tools: {
-  tts: {
-    enabled: true,
-    backend: 'google',
-    apiEndpoint: '/api/tts/synthesize',
-    defaultVoice: 'en-US-Neural2-A',
-    rate: 1.0,
-    authFetcher: async () => {
-      const res = await fetch('/api/tools/tts/google/token');
-      return res.json();
+  providers: {
+    tts: {
+      enabled: true,
+      backend: 'google',
+      apiEndpoint: '/api/tts/synthesize',
+      defaultVoice: 'en-US-Neural2-A',
+      rate: 1.0,
+      authFetcher: async () => {
+        const res = await fetch('/api/tools/tts/google/token');
+        return res.json();
+      },
     },
-  },
+  }
 }
 ```
 
@@ -405,21 +423,21 @@ interface DesmosToolProviderConfig {
 **Example (Development)**:
 ```typescript
 tools: {
-  floatingTools: {
+  providers: {
     calculator: {
       provider: 'desmos',
       authFetcher: async () => ({
         apiKey: 'your-dev-api-key', // Only for local testing!
       }),
     },
-  },
+  }
 }
 ```
 
 **Example (Production)**:
 ```typescript
 tools: {
-  floatingTools: {
+  providers: {
     calculator: {
       provider: 'desmos',
       authFetcher: async () => {
@@ -427,7 +445,7 @@ tools: {
         return res.json(); // { apiKey: '...' }
       },
     },
-  },
+  }
 }
 ```
 
@@ -454,12 +472,12 @@ interface TIToolProviderConfig {
 **Example**:
 ```typescript
 tools: {
-  floatingTools: {
+  providers: {
     calculator: {
       provider: 'ti',
       // No authFetcher needed - uses local libraries
     },
-  },
+  }
 }
 ```
 
@@ -557,38 +575,23 @@ import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
 const coordinator = new ToolkitCoordinator({
   assessmentId: 'my-assessment',
 
-  // TTS Configuration
   tools: {
-    tts: {
-      enabled: true,
-      backend: 'google', // 'browser' | 'polly' | 'google' | 'server'
-      apiEndpoint: '/api/tts/synthesize',
-      defaultVoice: 'en-US-Neural2-C',
-      rate: 1.0,
-      pitch: 1.0,
-      authFetcher: async () => {
-        const res = await fetch('/api/tools/tts/google/token');
-        return res.json();
+    providers: {
+      // TTS Configuration
+      tts: {
+        enabled: true,
+        backend: 'google', // 'browser' | 'polly' | 'google' | 'server'
+        apiEndpoint: '/api/tts/synthesize',
+        defaultVoice: 'en-US-Neural2-C',
+        rate: 1.0,
+        pitch: 1.0,
+        authFetcher: async () => {
+          const res = await fetch('/api/tools/tts/google/token');
+          return res.json();
+        },
       },
-    },
 
-    // Answer Eliminator (no auth needed)
-    answerEliminator: {
-      enabled: true,
-      strategy: 'strikethrough', // 'strikethrough' | 'hide'
-    },
-
-    // Floating Tools (Calculator, Graph, etc.)
-    floatingTools: {
-      enabled: true,
-      enabledTools: [
-        'calculator',
-        'graph',
-        'periodicTable',
-        'protractor',
-        'lineReader',
-        'ruler',
-      ],
+      // Calculator provider
       calculator: {
         enabled: true,
         provider: 'desmos', // 'desmos' | 'ti' | 'mathjs'
@@ -598,6 +601,21 @@ const coordinator = new ToolkitCoordinator({
         },
       },
     },
+    placement: {
+      section: [
+        'calculator',
+        'graph',
+        'periodicTable',
+        'protractor',
+        'lineReader',
+        'ruler',
+      ],
+      item: ['calculator', 'textToSpeech', 'answerEliminator'],
+      passage: ['textToSpeech'],
+    },
+    policy: {
+      blocked: [],
+    }
   },
 
   // Accessibility Configuration
@@ -659,10 +677,22 @@ The Section Tools Toolbar provides a SchoolCity-style visual interface for acces
 The toolbar is automatically included in section player layouts when tools are enabled:
 
 ```typescript
-<pie-section-player
-  enabled-tools="calculator,graph,periodicTable,protractor,lineReader,ruler"
-  {/* other props */}
-></pie-section-player>
+const coordinator = new ToolkitCoordinator({
+  assessmentId: 'demo-assessment',
+  tools: {
+    placement: {
+      section: ['calculator', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
+      item: ['calculator', 'textToSpeech', 'answerEliminator'],
+      passage: ['textToSpeech'],
+    },
+    providers: {
+      calculator: { provider: 'desmos' },
+      tts: { backend: 'browser' },
+    },
+  },
+});
+
+sectionPlayer.toolkitCoordinator = coordinator;
 ```
 
 ### Package Structure

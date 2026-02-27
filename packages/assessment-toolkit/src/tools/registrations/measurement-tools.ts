@@ -16,6 +16,7 @@ import type {
 } from "../../services/ToolRegistry.js";
 import type { ToolContext } from "../../services/tool-context.js";
 import { hasMathContent } from "../../services/tool-context.js";
+import { createScopedToolId } from "../../services/tool-instance-id.js";
 import {
 	createToolElement,
 	type ToolComponentOverrides,
@@ -54,7 +55,11 @@ export const rulerToolRegistration: ToolRegistration = {
 		context: ToolContext,
 		toolbarContext: ToolbarContext,
 	): ToolToolbarRenderResult {
-		const fullToolId = `${this.toolId}-${toolbarContext.itemId}`;
+		const fullToolId = createScopedToolId(
+			this.toolId,
+			"item",
+			toolbarContext.itemId,
+		);
 		const button: ToolToolbarButtonDefinition = {
 			toolId: this.toolId,
 			label: this.name,
@@ -133,7 +138,11 @@ export const protractorToolRegistration: ToolRegistration = {
 		context: ToolContext,
 		toolbarContext: ToolbarContext,
 	): ToolToolbarRenderResult {
-		const fullToolId = `${this.toolId}-${toolbarContext.itemId}`;
+		const fullToolId = createScopedToolId(
+			this.toolId,
+			"item",
+			toolbarContext.itemId,
+		);
 		const button: ToolToolbarButtonDefinition = {
 			toolId: this.toolId,
 			label: this.name,

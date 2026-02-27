@@ -15,6 +15,14 @@
  */
 
 import type { AccessibilityCatalog } from "@pie-players/pie-players-shared/types";
+import {
+	normalizeToolsConfig,
+	type CanonicalToolsConfig,
+	type ToolPlacementConfig,
+	type ToolPolicyConfig,
+	type ToolProvidersConfig,
+	resolveToolsForLevel,
+} from "./tools-config-normalizer.js";
 import { AccessibilityCatalogResolver } from "./AccessibilityCatalogResolver.js";
 import { ElementToolStateStore } from "./ElementToolStateStore.js";
 import { HighlightCoordinator } from "./HighlightCoordinator.js";
@@ -99,6 +107,15 @@ export interface FloatingToolsConfig extends ToolConfig {
 	calculator?: CalculatorToolConfig;
 }
 
+export interface ToolkitToolsConfig extends CanonicalToolsConfig {
+	policy: ToolPolicyConfig;
+	placement: Required<ToolPlacementConfig>;
+	providers: ToolProvidersConfig & {
+		tts?: TTSToolConfig;
+		calculator?: CalculatorToolConfig;
+	};
+}
+
 /**
  * Configuration for ToolkitCoordinator
  */
@@ -114,11 +131,9 @@ export interface ToolkitCoordinatorConfig {
 	 * Defaults: all tools enabled with default settings.
 	 */
 	tools?: {
-		tts?: TTSToolConfig;
-		answerEliminator?: AnswerEliminatorToolConfig;
-		highlighter?: ToolConfig;
-		flagging?: ToolConfig;
-		floatingTools?: FloatingToolsConfig;
+		policy?: ToolPolicyConfig;
+		placement?: ToolPlacementConfig;
+		providers?: ToolProvidersConfig;
 	};
 
 	/**
@@ -143,20 +158,6 @@ export interface ToolkitCoordinatorConfig {
 	 */
 	lazyInit?: boolean;
 }
-
-const DEFAULT_FLOATING_TOOLS: string[] = [
-	"calculator",
-	"calculatorScientific",
-	"calculatorGraphing",
-	"graph",
-	"periodicTable",
-	"protractor",
-	"ruler",
-	"lineReader",
-	"screenMagnifier",
-	"textToSpeech",
-	"answerEliminator",
-];
 
 export interface ToolkitErrorContext {
 	phase:
@@ -325,57 +326,25 @@ export class ToolkitCoordinator {
 	private static resolveConfig(
 		config: ToolkitCoordinatorConfig,
 	): ToolkitCoordinatorConfig {
-		const defaultTools = {
+		const normalized = normalizeToolsConfig(config.tools as any);
+		const defaultProviders: ToolkitToolsConfig["providers"] = {
 			tts: {
 				enabled: true,
-				backend: "browser" as const,
+				backend: "browser",
 			},
-			answerEliminator: {
+			calculator: {
 				enabled: true,
-			},
-			highlighter: {
-				enabled: true,
-			},
-			flagging: {
-				enabled: true,
-			},
-			floatingTools: {
-				enabledTools: [...DEFAULT_FLOATING_TOOLS],
-				calculator: {
-					enabled: true,
-					provider: "desmos" as const,
-				},
+				provider: "desmos",
 			},
 		};
 
 		return {
 			...config,
 			tools: {
-				...defaultTools,
-				...config.tools,
-				tts: {
-					...defaultTools.tts,
-					...config.tools?.tts,
-				},
-				answerEliminator: {
-					...defaultTools.answerEliminator,
-					...config.tools?.answerEliminator,
-				},
-				highlighter: {
-					...defaultTools.highlighter,
-					...config.tools?.highlighter,
-				},
-				flagging: {
-					...defaultTools.flagging,
-					...config.tools?.flagging,
-				},
-				floatingTools: {
-					...defaultTools.floatingTools,
-					...config.tools?.floatingTools,
-					calculator: {
-						...defaultTools.floatingTools.calculator,
-						...config.tools?.floatingTools?.calculator,
-					},
+				...normalized,
+				providers: {
+					...defaultProviders,
+					...normalized.providers,
 				},
 			},
 			accessibility: {
@@ -542,7 +511,9 @@ export class ToolkitCoordinator {
 	 */
 	private _registerToolProviders(): void {
 		// Register TTS provider
-		const ttsConfig = this.config.tools?.tts;
+		const ttsConfig = this.config.tools?.providers?.tts as
+			| TTSToolConfig
+			| undefined;
 		if (ttsConfig?.enabled !== false) {
 			const backend = ttsConfig?.backend || "browser";
 			void this.registerProvider("tts", {
@@ -560,8 +531,9 @@ export class ToolkitCoordinator {
 		}
 
 		// Register calculator providers
-		const floatingTools = this.config.tools?.floatingTools;
-		const calculatorConfig = floatingTools?.calculator;
+		const calculatorConfig = this.config.tools?.providers?.calculator as
+			| CalculatorToolConfig
+			| undefined;
 		if (calculatorConfig?.enabled !== false) {
 			const provider = calculatorConfig?.provider || "desmos";
 
@@ -810,7 +782,11 @@ export class ToolkitCoordinator {
 			},
 		});
 		await this.emitTelemetry("tts-init-start", {
-			backend: config?.backend ?? this.config.tools?.tts?.backend ?? "browser",
+			backend:
+				config?.backend ??
+				(this.config.tools?.providers?.tts as TTSToolConfig | undefined)
+					?.backend ??
+				"browser",
 		});
 
 		// Try to use TTS provider from registry if available
@@ -889,7 +865,9 @@ export class ToolkitCoordinator {
 		if (this.coordinatorReadyPromise) return this.coordinatorReadyPromise;
 		this.coordinatorReadyPromise = (async () => {
 			await this.ensureStateLoaded();
-			const ttsConfig = this.config.tools?.tts;
+			const ttsConfig = this.config.tools?.providers?.tts as
+				| TTSToolConfig
+				| undefined;
 			if (ttsConfig?.enabled !== false) {
 				await this.ensureTTSReady(ttsConfig);
 			}
@@ -920,7 +898,9 @@ export class ToolkitCoordinator {
 			stateLoaded: this.stateLoaded || !this.hooks.loadToolState,
 			coordinator:
 				(this.stateLoaded || !this.hooks.loadToolState) &&
-				(this.ttsInitialized || this.config.tools?.tts?.enabled === false),
+				(this.ttsInitialized ||
+					(this.config.tools?.providers?.tts as TTSToolConfig | undefined)
+						?.enabled === false),
 			providers,
 		};
 	}
@@ -933,7 +913,7 @@ export class ToolkitCoordinator {
 	 * @returns True if tool is enabled
 	 */
 	isToolEnabled(toolId: string): boolean {
-		const toolConfig = (this.config.tools as any)?.[toolId];
+		const toolConfig = (this.config.tools as any)?.providers?.[toolId];
 		// Enabled by default unless explicitly set to false
 		return toolConfig?.enabled !== false;
 	}
@@ -945,7 +925,7 @@ export class ToolkitCoordinator {
 	 * @returns Tool configuration or null if not configured
 	 */
 	getToolConfig(toolId: string): ToolConfig | null {
-		return (this.config.tools as any)?.[toolId] || null;
+		return ((this.config.tools as any)?.providers?.[toolId] as ToolConfig) || null;
 	}
 
 	/**
@@ -959,9 +939,12 @@ export class ToolkitCoordinator {
 		// Update config
 		const current = this.getToolConfig(toolId) || {};
 		if (!this.config.tools) {
-			this.config.tools = {};
+			this.config.tools = normalizeToolsConfig();
 		}
-		(this.config.tools as any)[toolId] = { ...current, ...updates };
+		if (!(this.config.tools as any).providers) {
+			(this.config.tools as any).providers = {};
+		}
+		(this.config.tools as any).providers[toolId] = { ...current, ...updates };
 
 		// Apply configuration changes to services
 		this._applyToolConfigChange(toolId, updates);
@@ -975,12 +958,12 @@ export class ToolkitCoordinator {
 	 */
 	updateFloatingTools(toolIds: string[]): void {
 		if (!this.config.tools) {
-			this.config.tools = {};
+			this.config.tools = normalizeToolsConfig();
 		}
-		if (!this.config.tools.floatingTools) {
-			this.config.tools.floatingTools = {};
+		if (!this.config.tools.placement) {
+			this.config.tools.placement = normalizeToolsConfig().placement;
 		}
-		this.config.tools.floatingTools.enabledTools = toolIds;
+		this.config.tools.placement.section = [...toolIds];
 
 		// Notify listener of change
 		if (this.floatingToolsChangeCallback) {
@@ -994,7 +977,8 @@ export class ToolkitCoordinator {
 	 * @returns Array of enabled tool IDs
 	 */
 	getFloatingTools(): string[] {
-		return this.config.tools?.floatingTools?.enabledTools || [];
+		if (!this.config.tools) return [];
+		return resolveToolsForLevel(this.config.tools as unknown as CanonicalToolsConfig, "section");
 	}
 
 	/**
@@ -1025,7 +1009,9 @@ export class ToolkitCoordinator {
 		switch (toolId) {
 			case "tts":
 				void this._reconfigureTTSProvider().then(async () => {
-					const ttsConfig = this.config.tools?.tts;
+					const ttsConfig = this.config.tools?.providers?.tts as
+						| TTSToolConfig
+						| undefined;
 					if (!this.lazyInit && ttsConfig?.enabled !== false) {
 						await this.ensureTTSReady(ttsConfig);
 					}
@@ -1053,7 +1039,9 @@ export class ToolkitCoordinator {
 			await this.toolProviderRegistry.unregister("tts");
 		}
 
-		const ttsConfig = this.config.tools?.tts;
+		const ttsConfig = this.config.tools?.providers?.tts as
+			| TTSToolConfig
+			| undefined;
 		if (ttsConfig?.enabled === false) return;
 
 		const backend = ttsConfig?.backend || "browser";

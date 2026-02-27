@@ -29,6 +29,11 @@
 	import {
 		connectAssessmentToolkitRuntimeContext,
 		createDefaultToolRegistry,
+		normalizeToolList,
+		normalizeToolsConfig,
+		parseToolList,
+		resolveToolsForLevel,
+		createScopedToolId,
 	} from '@pie-players/pie-assessment-toolkit';
 	import type {
 		AssessmentToolkitRuntimeContext,
@@ -44,7 +49,7 @@
 
 	// Props
 	let {
-		enabledTools = 'graph,periodicTable,protractor,lineReader,ruler',
+		enabledTools = '',
 		position = 'bottom',
 		toolCoordinator = null as IToolCoordinator | null
 	}: {
@@ -59,26 +64,19 @@
 			(runtimeContext?.toolCoordinator as IToolCoordinator | undefined),
 	);
 
-	const defaultEnabledTools = [
-		'graph',
-		'periodicTable',
-		'protractor',
-		'lineReader',
-		'ruler',
-	] as const;
-
-	// Parse enabled tools from comma-separated string.
-	// Empty string falls back to built-in defaults.
-	let requestedEnabledToolsList = $derived(
-		enabledTools
-			.split(',')
-			.map((t) => t.trim())
-			.filter(Boolean)
+	const effectiveSectionId = $derived(runtimeContext?.sectionId || 'default');
+	const requestedEnabledToolsList = $derived(parseToolList(enabledTools));
+	const effectiveToolsConfig = $derived.by(() => {
+		const coordinatorConfig = runtimeContext?.toolkitCoordinator?.config?.tools as any;
+		return normalizeToolsConfig(coordinatorConfig || {});
+	});
+	const placementTools = $derived.by(() =>
+		normalizeToolList(resolveToolsForLevel(effectiveToolsConfig, 'section'))
 	);
 	let enabledToolsList = $derived(
 		requestedEnabledToolsList.length > 0
 			? requestedEnabledToolsList
-			: [...defaultEnabledTools]
+			: placementTools
 	);
 	let hasEnabledTools = $derived(enabledToolsList.length > 0);
 	const sectionToolContext = $derived.by((): ToolContext => ({
@@ -105,15 +103,19 @@
 		onClick: () => void;
 	};
 
+	function toScopedToolId(toolId: string): string {
+		return createScopedToolId(toolId, 'section', effectiveSectionId);
+	}
+
 	// Update visibility state from coordinator
 	function updateToolVisibility() {
 		if (!effectiveToolCoordinator) return;
-		showCalculator = effectiveToolCoordinator.isToolVisible('calculator');
-		showGraph = effectiveToolCoordinator.isToolVisible('graph');
-		showPeriodicTable = effectiveToolCoordinator.isToolVisible('periodicTable');
-		showProtractor = effectiveToolCoordinator.isToolVisible('protractor');
-		showLineReader = effectiveToolCoordinator.isToolVisible('lineReader');
-		showRuler = effectiveToolCoordinator.isToolVisible('ruler');
+		showCalculator = effectiveToolCoordinator.isToolVisible(toScopedToolId('calculator'));
+		showGraph = effectiveToolCoordinator.isToolVisible(toScopedToolId('graph'));
+		showPeriodicTable = effectiveToolCoordinator.isToolVisible(toScopedToolId('periodicTable'));
+		showProtractor = effectiveToolCoordinator.isToolVisible(toScopedToolId('protractor'));
+		showLineReader = effectiveToolCoordinator.isToolVisible(toScopedToolId('lineReader'));
+		showRuler = effectiveToolCoordinator.isToolVisible(toScopedToolId('ruler'));
 		toolActiveById = {
 			calculator: showCalculator,
 			graph: showGraph,
@@ -132,13 +134,14 @@
 	async function toggleTool(toolId: string) {
 		if (!effectiveToolCoordinator) return;
 		await toolRegistry.ensureToolModuleLoaded(toolId);
-		effectiveToolCoordinator.toggleTool(toolId);
+		const scopedToolId = toScopedToolId(toolId);
+		effectiveToolCoordinator.toggleTool(scopedToolId);
 		updateToolVisibility();
 
 		// Get tool name for status message
 		const tool = visibleButtons.find((t) => t.toolId === toolId);
 		if (tool) {
-			const isVisible = effectiveToolCoordinator.isToolVisible(toolId);
+			const isVisible = effectiveToolCoordinator.isToolVisible(scopedToolId);
 			statusMessage = `${tool.ariaLabel} ${isVisible ? 'opened' : 'closed'}`;
 		}
 	}
@@ -182,8 +185,8 @@
 
 	const visibleButtons = $derived.by((): SectionButtonMeta[] => {
 		return enabledToolsList
-			.map((toolId) => toolRegistry.get(toolId))
-			.filter((tool): tool is NonNullable<typeof tool> => Boolean(tool))
+			.map((toolId: string) => toolRegistry.get(toolId))
+			.filter((tool): tool is NonNullable<ReturnType<typeof toolRegistry.get>> => Boolean(tool))
 			.map((tool) => {
 				const icon = typeof tool.icon === 'function' ? tool.icon(sectionToolContext) : tool.icon;
 				return {
@@ -249,14 +252,14 @@
 	{#if enabledToolsList.includes('graph')}
 		<pie-tool-graph
 			visible={showGraph}
-			tool-id="graph"
+			tool-id={toScopedToolId('graph')}
 		></pie-tool-graph>
 	{/if}
 
 	{#if enabledToolsList.includes('calculator')}
 		<pie-tool-calculator
 			visible={showCalculator}
-			tool-id="calculator"
+			tool-id={toScopedToolId('calculator')}
 			calculator-type="scientific"
 		></pie-tool-calculator>
 	{/if}
@@ -264,28 +267,28 @@
 	{#if enabledToolsList.includes('periodicTable')}
 		<pie-tool-periodic-table
 			visible={showPeriodicTable}
-			tool-id="periodicTable"
+			tool-id={toScopedToolId('periodicTable')}
 		></pie-tool-periodic-table>
 	{/if}
 
 	{#if enabledToolsList.includes('protractor')}
 		<pie-tool-protractor
 			visible={showProtractor}
-			tool-id="protractor"
+			tool-id={toScopedToolId('protractor')}
 		></pie-tool-protractor>
 	{/if}
 
 	{#if enabledToolsList.includes('lineReader')}
 		<pie-tool-line-reader
 			visible={showLineReader}
-			tool-id="lineReader"
+			tool-id={toScopedToolId('lineReader')}
 		></pie-tool-line-reader>
 	{/if}
 
 	{#if enabledToolsList.includes('ruler')}
 		<pie-tool-ruler
 			visible={showRuler}
-			tool-id="ruler"
+			tool-id={toScopedToolId('ruler')}
 		></pie-tool-ruler>
 	{/if}
 

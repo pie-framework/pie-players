@@ -98,12 +98,17 @@
 			assessmentId: data.demo?.id || 'section-demo',
 			lazyInit: true,
 			tools: {
-				floatingTools: {
+				providers: {
 					calculator: {
 						provider: 'desmos',
 						authFetcher: fetchDesmosAuthConfig
 					}
-				}
+				},
+				placement: {
+					section: ['calculator', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
+					item: ['calculator', 'textToSpeech', 'answerEliminator'],
+					passage: ['textToSpeech']
+				},
 			}
 		});
 		coordinator.setHooks?.(createDemoToolkitHooks());

@@ -69,7 +69,7 @@
 
 		const toolkitToolConfig = toolkitCoordinator?.config?.tools || null;
 		const floatingTools = toolkitCoordinator?.getFloatingTools?.() ||
-			toolkitToolConfig?.floatingTools?.enabledTools || [];
+			toolkitToolConfig?.placement?.section || [];
 		const hasCatalogResolver = Boolean(toolkitCoordinator?.catalogResolver);
 		const catalogStats = hasCatalogResolver ? toolkitCoordinator.catalogResolver.getStatistics?.() : null;
 

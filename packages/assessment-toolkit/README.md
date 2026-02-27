@@ -32,8 +32,15 @@ player.toolCoordinator = toolCoordinator;
 const toolkitCoordinator = new ToolkitCoordinator({
   assessmentId: 'my-assessment',
   tools: {
-    tts: { enabled: true },
-    answerEliminator: { enabled: true }
+    providers: {
+      tts: { enabled: true, backend: 'browser' },
+      calculator: { enabled: true, provider: 'desmos' }
+    },
+    placement: {
+      section: ['calculator', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
+      item: ['calculator', 'textToSpeech', 'answerEliminator'],
+      passage: ['textToSpeech']
+    }
   }
 });
 
@@ -76,8 +83,15 @@ import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
 const coordinator = new ToolkitCoordinator({
   assessmentId: 'demo-assessment',
   tools: {
-    tts: { enabled: true, defaultVoice: 'en-US' },
-    answerEliminator: { enabled: true }
+    providers: {
+      tts: { enabled: true, backend: 'browser', defaultVoice: 'en-US' },
+      calculator: { enabled: true, provider: 'desmos' }
+    },
+    placement: {
+      section: ['calculator', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
+      item: ['calculator', 'textToSpeech', 'answerEliminator'],
+      passage: ['textToSpeech']
+    }
   },
   accessibility: {
     catalogs: assessment.accessibilityCatalogs || [],
@@ -122,18 +136,61 @@ player.toolCoordinator = toolCoordinator;
 // ...
 ```
 
-## Tool Architecture: Item-Level vs Floating Tools
+## Tool Configuration Model
 
-The toolkit distinguishes between two fundamentally different categories of tools based on their scope and lifecycle:
+The toolkit uses one canonical `tools` model with three concerns:
 
-### Item-Level Tools (`tools` configuration)
+- `policy`: allow/block constraints (global gates)
+- `placement`: where tools appear (`assessment`, `section`, `item`, `passage`, `rubric`, plus custom registered levels)
+- `providers`: provider/runtime options (calculator, tts, etc.)
+
+Example:
+
+```typescript
+tools: {
+  policy: {
+    allowed: ['calculator', 'textToSpeech', 'answerEliminator', 'graph', 'periodicTable'],
+    blocked: ['graph']
+  },
+  placement: {
+    assessment: [],
+    section: ['calculator', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
+    item: ['calculator', 'textToSpeech', 'answerEliminator'],
+    passage: ['textToSpeech'],
+    rubric: []
+  },
+  providers: {
+    calculator: { provider: 'desmos', authFetcher: async () => ({ apiKey: '...' }) },
+    tts: { enabled: true, backend: 'browser', defaultVoice: 'en-US' }
+  }
+}
+```
+
+### Scope and Lifecycle
+
+The runtime still distinguishes between contextual (`item`/`passage`) and section-wide tools:
+
+Tool instances use structured IDs so scope is explicit:
+
+```text
+<toolId>:<scopeLevel>:<scopeId>[:inline]
+```
+
+Examples:
+- `calculator:section:section-1`
+- `calculator:item:item-42`
+- `textToSpeech:passage:passage-1`
+- `highlighter:rubric:rubric-3`
+
+### Item-Level Tools (`tools.placement.item`)
 
 Tools that operate **within the context of a specific question/item**:
 
 ```typescript
 tools: {
-  tts: { enabled: true },           // Reads this question's text
-  answerEliminator: { enabled: true } // Strikes through this item's choices
+  placement: {
+    item: ['calculator', 'textToSpeech', 'answerEliminator']
+  }
 }
 ```
 
@@ -152,23 +209,22 @@ tools: {
 **Example Use Case:**
 A student uses answer eliminator on Question 3 to cross out choices B and D. When they navigate to Question 4, they see fresh, uneliminated choices. When they return to Question 3, their eliminations are restored.
 
-### Section-Level Floating Tools (`floatingTools` configuration)
+### Section-Level Tools (`tools.placement.section`)
 
 Tools that **float above the entire assessment** and persist across questions:
 
 ```typescript
-floatingTools: {
-  calculator: {
-    enabled: true,
-    provider: 'desmos',
-    authFetcher: async () => { /* ... */ }
+tools: {
+  placement: {
+    section: ['calculator', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler', 'colorScheme']
   },
-  graph: { enabled: true },
-  periodicTable: { enabled: true },
-  protractor: { enabled: true },
-  ruler: { enabled: true },
-  lineReader: { enabled: true },
-  colorScheme: { enabled: true }
+  providers: {
+    calculator: {
+      enabled: true,
+      provider: 'desmos',
+      authFetcher: async () => { /* ... */ }
+    }
+  }
 }
 ```
 
@@ -214,26 +270,24 @@ Complete example showing both types:
 const coordinator = new ToolkitCoordinator({
   assessmentId: 'math-exam',
   tools: {
-    // Item-level: Different for each question
-    tts: { enabled: true },
-    answerEliminator: { enabled: true }
-  },
-  floatingTools: {
-    // Section-level: Shared across all questions
-    calculator: {
-      enabled: true,
-      provider: 'desmos',
-      authFetcher: async () => {
-        const response = await fetch('/api/tools/desmos/auth');
-        return response.json();
-      }
+    placement: {
+      // Contextual placement
+      item: ['calculator', 'textToSpeech', 'answerEliminator'],
+      passage: ['textToSpeech'],
+      // Section-level utilities
+      section: ['calculator', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler', 'colorScheme']
     },
-    graph: { enabled: true },
-    periodicTable: { enabled: true },
-    protractor: { enabled: true },
-    ruler: { enabled: true },
-    lineReader: { enabled: true },
-    colorScheme: { enabled: true }
+    providers: {
+      calculator: {
+        enabled: true,
+        provider: 'desmos',
+        authFetcher: async () => {
+          const response = await fetch('/api/tools/desmos/auth');
+          return response.json();
+        }
+      },
+      tts: { enabled: true, backend: 'browser' }
+    }
   },
   accessibility: {
     catalogs: [],
@@ -250,17 +304,15 @@ For most use cases, simply enable all available tools:
 const coordinator = new ToolkitCoordinator({
   assessmentId: 'my-assessment',
   tools: {
-    tts: { enabled: true },
-    answerEliminator: { enabled: true }
-  },
-  floatingTools: {
-    calculator: { enabled: true, provider: 'desmos' },
-    graph: { enabled: true },
-    periodicTable: { enabled: true },
-    protractor: { enabled: true },
-    ruler: { enabled: true },
-    lineReader: { enabled: true },
-    colorScheme: { enabled: true }
+    placement: {
+      section: ['calculator', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
+      item: ['calculator', 'textToSpeech', 'answerEliminator'],
+      passage: ['textToSpeech']
+    },
+    providers: {
+      calculator: { enabled: true, provider: 'desmos' },
+      tts: { enabled: true, backend: 'browser' }
+    }
   }
 });
 ```
@@ -341,18 +393,30 @@ The toolkit integrates seamlessly with the **PIE Section Player**:
 export interface ToolkitCoordinatorConfig {
   assessmentId: string;  // Required: unique assessment identifier
   tools?: {
-    tts?: {
-      enabled?: boolean;
-      defaultVoice?: string;
-      rate?: number;
-      provider?: 'browser' | 'server';
+    policy?: {
+      allowed?: string[];
+      blocked?: string[];
     };
-    answerEliminator?: {
-      enabled?: boolean;
-      strategy?: 'strikethrough' | 'hide';
+    placement?: {
+      assessment?: string[];
+      section?: string[];
+      item?: string[];
+      passage?: string[];
+      rubric?: string[];
     };
-    highlighter?: { enabled?: boolean };
-    // ... other tools
+    providers?: {
+      tts?: {
+        enabled?: boolean;
+        backend?: 'browser' | 'polly' | 'google' | 'server';
+        defaultVoice?: string;
+        rate?: number;
+      };
+      calculator?: {
+        enabled?: boolean;
+        provider?: 'desmos' | 'ti' | 'mathjs';
+        authFetcher?: () => Promise<Record<string, unknown>>;
+      };
+    };
   };
   accessibility?: {
     catalogs?: any[];
@@ -591,7 +655,14 @@ The section player provides automatic ToolkitCoordinator integration:
   // Create coordinator
   const coordinator = new ToolkitCoordinator({
     assessmentId: 'my-assessment',
-    tools: { tts: { enabled: true } }
+    tools: {
+      providers: { tts: { enabled: true, backend: 'browser' } },
+      placement: {
+        section: ['calculator', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
+        item: ['calculator', 'textToSpeech', 'answerEliminator'],
+        passage: ['textToSpeech']
+      }
+    }
   });
 
   // Pass to player
@@ -648,7 +719,14 @@ player.section = mySection;
 // Internally creates:
 // new ToolkitCoordinator({
 //   assessmentId: 'anon_...',  // auto-generated
-//   tools: { tts: { enabled: true }, answerEliminator: { enabled: true } }
+//   tools: {
+//     providers: { tts: { enabled: true, backend: 'browser' }, calculator: { enabled: true, provider: 'desmos' } },
+//     placement: {
+//       section: ['calculator', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
+//       item: ['calculator', 'textToSpeech', 'answerEliminator'],
+//       passage: ['textToSpeech']
+//     }
+//   }
 // })
 ```
 

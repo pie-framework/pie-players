@@ -8,6 +8,7 @@
   import {
     SSMLExtractor,
     assessmentToolkitRuntimeContext,
+    createScopedToolId,
     type AssessmentToolkitRuntimeContext,
   } from "@pie-players/pie-assessment-toolkit";
   import { ContextConsumer } from "@pie-players/pie-context";
@@ -179,15 +180,18 @@
   // Subscribe to calculator visibility changes
   $effect(() => {
     if (!toolCoordinator || !item) return;
+    const scopedCalculatorId = createScopedToolId(
+      "calculator",
+      "item",
+      item.id || "unknown-item",
+    );
 
     const unsubscribe = toolCoordinator.subscribe(() => {
-      calculatorVisible = toolCoordinator.isToolVisible(
-        `calculator-${item.id}`,
-      );
+      calculatorVisible = toolCoordinator.isToolVisible(scopedCalculatorId);
     });
 
     // Initial update
-    calculatorVisible = toolCoordinator.isToolVisible(`calculator-${item.id}`);
+    calculatorVisible = toolCoordinator.isToolVisible(scopedCalculatorId);
 
     return unsubscribe;
   });
@@ -229,7 +233,7 @@
     {#if item}
       <pie-tool-calculator
         visible={calculatorVisible}
-        tool-id="calculator-{item.id}"
+        tool-id={createScopedToolId("calculator", "item", item.id || "unknown-item")}
       ></pie-tool-calculator>
     {/if}
   {/if}

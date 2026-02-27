@@ -44,7 +44,6 @@
 	{#if shouldRenderToolbar && isToolbarBeforeContent}
 		<pie-section-tools-toolbar
 			position={toolbarPosition}
-			enabled-tools=""
 		></pie-section-tools-toolbar>
 	{/if}
 	<div
@@ -85,7 +84,6 @@
 	{#if shouldRenderToolbar && !isToolbarBeforeContent}
 		<pie-section-tools-toolbar
 			position={toolbarPosition}
-			enabled-tools=""
 		></pie-section-tools-toolbar>
 	{/if}
 </div>

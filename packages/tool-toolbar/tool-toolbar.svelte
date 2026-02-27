@@ -1,7 +1,7 @@
 <svelte:options
 	customElement={{
 		tag: 'pie-tool-toolbar',
-		shadow: 'none',
+		shadow: 'open',
 		props: {
 			tools: { type: 'String', attribute: 'tools' },
 			disabled: { type: 'Boolean', attribute: 'disabled' },

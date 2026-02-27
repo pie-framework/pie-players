@@ -1,7 +1,7 @@
 <svelte:options
 	customElement={{
 		tag: "pie-assessment-toolkit",
-		shadow: "none",
+		shadow: "open",
 		props: {
 			assessmentId: { attribute: "assessment-id", type: "String" },
 			section: { attribute: "section", type: "Object" },
@@ -506,6 +506,7 @@
 </script>
 
 <div bind:this={anchor} class="pie-assessment-toolkit-anchor" aria-hidden="true"></div>
+<slot></slot>
 
 <style>
 	.pie-assessment-toolkit-anchor {

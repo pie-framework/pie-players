@@ -82,15 +82,20 @@ export class LibraryLoaderImpl implements LibraryLoader {
 	/**
 	 * Load a stylesheet
 	 */
-	async loadStylesheet(url: string): Promise<void> {
+	async loadStylesheet(
+		url: string,
+		targetRoot?: Document | ShadowRoot,
+	): Promise<void> {
 		// SSR guard: Stylesheet loading should NEVER run on the server
 		if (typeof window === "undefined" || typeof document === "undefined") {
 			throw new Error("Stylesheet loader can only be used in the browser");
 		}
 
 		return new Promise((resolve, reject) => {
+			const root = targetRoot ?? document;
+
 			// Check if already loaded
-			const existing = document.querySelector(`link[href="${url}"]`);
+			const existing = root.querySelector(`link[href="${url}"]`);
 			if (existing) {
 				resolve();
 				return;
@@ -104,6 +109,10 @@ export class LibraryLoaderImpl implements LibraryLoader {
 			link.onerror = () =>
 				reject(new Error(`Failed to load stylesheet: ${url}`));
 
+			if (root instanceof ShadowRoot) {
+				root.appendChild(link);
+				return;
+			}
 			document.head.appendChild(link);
 		});
 	}

@@ -1,7 +1,7 @@
 <svelte:options
 	customElement={{
 		tag: 'pie-tool-calculator-inline',
-		shadow: 'none',
+		shadow: 'open',
 		props: {
 			toolId: { type: 'String', attribute: 'tool-id' },
 			calculatorType: { type: 'String', attribute: 'calculator-type' },

@@ -1,7 +1,7 @@
 <svelte:options
 	customElement={{
 		tag: 'pie-item-toolbar',
-		shadow: 'none',
+		shadow: 'open',
 		props: {
 			itemId: { type: 'String', attribute: 'item-id' },
 			catalogId: { type: 'String', attribute: 'catalog-id' },

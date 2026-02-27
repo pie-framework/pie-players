@@ -24,7 +24,7 @@
 <svelte:options
   customElement={{
     tag: "pie-section-player",
-    shadow: "none",
+    shadow: "open",
     props: {
       // Core props
       section: { attribute: "section", type: "Object" },
@@ -139,9 +139,9 @@
     testAttemptSession: null,
   };
 
-  let ownedToolkitCoordinator = $state<ToolkitCoordinator | null>(null);
-  let fallbackAssessmentId = $state<string | null>(null);
-  let fallbackSectionId = $state<string | null>(null);
+  let ownedToolkitCoordinator: ToolkitCoordinator | null = null;
+  let fallbackAssessmentId: string | null = null;
+  let fallbackSectionId: string | null = null;
   let lastNotifiedCoordinator = $state<ToolkitCoordinator | null>(null);
   let sectionController = $state<SectionController | null>(null);
   let sectionControllerVersion = $state(0);

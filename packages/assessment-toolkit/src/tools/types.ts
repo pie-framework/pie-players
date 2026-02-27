@@ -400,7 +400,7 @@ export interface LibraryLoader {
 	/**
 	 * Load a stylesheet
 	 */
-	loadStylesheet(url: string): Promise<void>;
+	loadStylesheet(url: string, targetRoot?: Document | ShadowRoot): Promise<void>;
 
 	/**
 	 * Check if a library is already loaded

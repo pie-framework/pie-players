@@ -1,7 +1,7 @@
 <svelte:options
 	customElement={{
 		tag: 'pie-tool-periodic-table',
-		shadow: 'none',
+		shadow: 'open',
 		props: {
 			visible: { type: 'Boolean', attribute: 'visible' },
 			toolId: { type: 'String', attribute: 'tool-id' }
@@ -168,7 +168,7 @@ import { onMount } from 'svelte';
 		const target = e.target as HTMLElement;
 
 		// Only start drag if clicking the header
-		if (!target.closest('.periodic-table-header')) return;
+		if (!target.closest('.pie-tool-periodic-table__header')) return;
 
 		// Don't drag if clicking buttons
 		if (target.closest('button')) return;
@@ -484,6 +484,12 @@ import { onMount } from 'svelte';
 	.pie-tool-periodic-table__close-btn:focus-visible {
 		outline: 2px solid var(--pie-primary, #3f51b5);
 		outline-offset: 2px;
+	}
+
+	.pie-tool-periodic-table__close-btn svg {
+		width: 20px;
+		height: 20px;
+		display: block;
 	}
 
 	/* Content wrapper */

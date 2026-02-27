@@ -1,7 +1,7 @@
 <svelte:options
 	customElement={{
 		tag: 'pie-tool-tts-inline',
-		shadow: 'none',
+		shadow: 'open',
 		props: {
 			toolId: { type: 'String', attribute: 'tool-id' },
 			catalogId: { type: 'String', attribute: 'catalog-id' },

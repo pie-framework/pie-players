@@ -1,7 +1,7 @@
 <svelte:options
 	customElement={{
 		tag: "pie-item-shell",
-		shadow: "none",
+		shadow: "open",
 		props: {
 			itemId: { attribute: "item-id", type: "String" },
 			canonicalItemId: { attribute: "canonical-item-id", type: "String" },
@@ -38,7 +38,7 @@
 	} = $props();
 
 	let anchor = $state<HTMLDivElement | null>(null);
-	let shellLayoutVersion = $state(0);
+	const shellContextVersion = Date.now();
 	let shellContextProvider: ContextProvider<
 		typeof assessmentToolkitShellContext
 	> | null = null;
@@ -69,7 +69,6 @@
 
 	const shellContextValue = $derived.by(
 		(): AssessmentToolkitShellContext | null => {
-			shellLayoutVersion;
 			if (!host) return null;
 			const canonical = canonicalItemId || itemId;
 			return {
@@ -80,7 +79,7 @@
 				regionPolicy,
 				scopeElement: effectiveScopeElement,
 				item,
-				contextVersion: shellLayoutVersion,
+				contextVersion: shellContextVersion,
 			};
 		},
 	);
@@ -113,7 +112,6 @@
 	$effect(() => {
 		if (!host) return;
 		dispatchRegistration(PIE_REGISTER_EVENT);
-		shellLayoutVersion += 1;
 
 		const onSessionChanged = (event: Event) => normalizeAndDispatchSession(event);
 		host.addEventListener("sessionchanged", onSessionChanged);
@@ -179,6 +177,7 @@
 </script>
 
 <div bind:this={anchor} class="pie-item-shell-anchor" aria-hidden="true"></div>
+<slot></slot>
 
 <style>
 	.pie-item-shell-anchor {

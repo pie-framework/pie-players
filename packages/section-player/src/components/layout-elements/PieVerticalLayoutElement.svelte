@@ -1,7 +1,7 @@
 <svelte:options
 	customElement={{
 		tag: "pie-vertical-layout",
-		shadow: "none",
+		shadow: "open",
 		props: {
 			composition: { type: "Object" },
 			env: { type: "Object" },

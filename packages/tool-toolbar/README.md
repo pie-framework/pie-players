@@ -163,6 +163,6 @@ This component requires browser APIs and will not render during SSR. It's wrappe
 
 `<pie-tool-toolbar>`
 
-- Compiled with `shadow: 'none'` for Light DOM rendering
+- Compiled with `shadow: 'open'` for Shadow DOM encapsulation
 - Works in any framework or vanilla JS
 - Manages all tool lifecycle internally

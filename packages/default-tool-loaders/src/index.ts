@@ -4,7 +4,19 @@ export interface ToolRegistryLike {
 	setToolModuleLoaders(loaders: Partial<Record<string, ToolModuleLoader>>): void;
 }
 
+function loadCalculatorModule(): Promise<unknown> {
+	if (
+		typeof globalThis !== "undefined" &&
+		"customElements" in globalThis &&
+		globalThis.customElements?.get("pie-tool-calculator")
+	) {
+		return Promise.resolve();
+	}
+	return import("@pie-players/pie-tool-calculator");
+}
+
 export const SECTION_TOOL_MODULE_LOADERS: Record<string, ToolModuleLoader> = {
+	calculator: loadCalculatorModule,
 	graph: () => import("@pie-players/pie-tool-graph"),
 	periodicTable: () => import("@pie-players/pie-tool-periodic-table"),
 	ruler: () => import("@pie-players/pie-tool-ruler"),
@@ -13,7 +25,7 @@ export const SECTION_TOOL_MODULE_LOADERS: Record<string, ToolModuleLoader> = {
 };
 
 export const ITEM_TOOL_MODULE_LOADERS: Record<string, ToolModuleLoader> = {
-	calculator: () => import("@pie-players/pie-tool-calculator"),
+	calculator: loadCalculatorModule,
 	textToSpeech: () => import("@pie-players/pie-tool-text-to-speech"),
 	answerEliminator: () => import("@pie-players/pie-tool-answer-eliminator"),
 	highlighter: () => import("@pie-players/pie-tool-annotation-toolbar"),

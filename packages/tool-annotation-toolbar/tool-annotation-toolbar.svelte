@@ -1,7 +1,7 @@
 <svelte:options
 	customElement={{
 		tag: 'pie-tool-annotation-toolbar',
-		shadow: 'none',
+		shadow: 'open',
 		props: {
 			enabled: { type: 'Boolean', attribute: 'enabled' },
 			highlightCoordinator: { type: 'Object' },

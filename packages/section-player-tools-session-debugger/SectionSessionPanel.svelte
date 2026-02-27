@@ -1,7 +1,7 @@
 <svelte:options
 	customElement={{
 		tag: 'pie-section-player-tools-session-debugger',
-		shadow: 'none',
+		shadow: 'open',
 		props: {
 			sectionId: { type: 'String', attribute: 'section-id' },
 			attemptId: { type: 'String', attribute: 'attempt-id' },

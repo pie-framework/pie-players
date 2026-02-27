@@ -59,4 +59,9 @@ Allowed root sources:
 
 - Prefer helper-based context connection over direct `ContextConsumer` setup.
 - Keep existing runtime behavior while adopting helper contracts.
-- Do not switch to shadow DOM until contract migration is stable.
+- Core runtime migration status:
+  - completed: toolkit-managed tools (`pie-tool-*`)
+  - completed: tool containers (`pie-section-tools-toolbar`, debugger panels)
+  - completed: section-player wrappers/layout shells and top-level section player
+  - completed: assessment toolkit host custom elements
+  - excluded for now: item player internals (`pie-inline-player`, `pie-iife-player`, `pie-esm-player`, `pie-fixed-player`, `pie-print-player`)

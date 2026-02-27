@@ -2,6 +2,8 @@
 
 This folder contains active technical docs. Historical one-off plans, completion notes, and fix logs have been removed to reduce drift and duplication.
 
+Current status: core runtime custom elements now run with shadow DOM enabled (`shadow: "open"`), while item player internals remain intentionally out of scope.
+
 ## Start Here
 
 - [`ARCHITECTURE.md`](./ARCHITECTURE.md) - System-level architecture

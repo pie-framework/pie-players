@@ -66,7 +66,7 @@ The PIE Section Player is a **framework-agnostic web component** for rendering Q
 
 **`PieSectionPlayer.svelte`**
 ```svelte
-<svelte:options customElement={{ tag: 'pie-section-player', shadow: 'none' }} />
+<svelte:options customElement={{ tag: 'pie-section-player', shadow: 'open' }} />
 
 <script>
   // Receives props via attributes

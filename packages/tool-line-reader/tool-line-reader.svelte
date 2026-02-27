@@ -1,7 +1,7 @@
 <svelte:options
 	customElement={{
 		tag: 'pie-tool-line-reader',
-		shadow: 'none',
+		shadow: 'open',
 		props: {
 			visible: { type: 'Boolean', attribute: 'visible' },
 			toolId: { type: 'String', attribute: 'tool-id' }

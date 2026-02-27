@@ -1,7 +1,7 @@
 <svelte:options
 	customElement={{
 		tag: 'pie-section-player-tools-pnp-debugger',
-		shadow: 'none',
+		shadow: 'open',
 		props: {
 			sectionData: { type: 'Object', attribute: 'section-data' },
 			roleType: { type: 'String', attribute: 'role-type' },

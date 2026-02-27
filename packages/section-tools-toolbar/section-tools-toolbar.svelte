@@ -44,7 +44,7 @@
 
 	// Props
 	let {
-		enabledTools = 'graph,periodicTable,protractor,lineReader,ruler',
+		enabledTools = 'calculator,graph,periodicTable,protractor,lineReader,ruler',
 		position = 'bottom',
 		toolCoordinator = null as IToolCoordinator | null
 	}: {
@@ -60,6 +60,7 @@
 	);
 
 	const defaultEnabledTools = [
+		'calculator',
 		'graph',
 		'periodicTable',
 		'protractor',
@@ -89,6 +90,7 @@
 
 	// Tool visibility state (reactive to coordinator changes)
 	let showGraph = $state(false);
+	let showCalculator = $state(false);
 	let showPeriodicTable = $state(false);
 	let showProtractor = $state(false);
 	let showLineReader = $state(false);
@@ -107,12 +109,14 @@
 	// Update visibility state from coordinator
 	function updateToolVisibility() {
 		if (!effectiveToolCoordinator) return;
+		showCalculator = effectiveToolCoordinator.isToolVisible('calculator');
 		showGraph = effectiveToolCoordinator.isToolVisible('graph');
 		showPeriodicTable = effectiveToolCoordinator.isToolVisible('periodicTable');
 		showProtractor = effectiveToolCoordinator.isToolVisible('protractor');
 		showLineReader = effectiveToolCoordinator.isToolVisible('lineReader');
 		showRuler = effectiveToolCoordinator.isToolVisible('ruler');
 		toolActiveById = {
+			calculator: showCalculator,
 			graph: showGraph,
 			periodicTable: showPeriodicTable,
 			protractor: showProtractor,
@@ -199,6 +203,7 @@
 	function resolveIconMarkup(icon: string): string {
 		if (icon.startsWith('<svg')) return icon;
 		const iconMap: Record<string, string> = {
+			calculator: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Zm0 4v3h10V6H7Zm2 6H7v2h2v-2Zm0 4H7v2h2v-2Zm4-4h-2v2h2v-2Zm0 4h-2v2h2v-2Zm4-4h-2v6h2v-6Z" fill="currentColor"/></svg>',
 			'chart-bar': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4.75 5a.76.76 0 0 1 .75.75v11c0 .438.313.75.75.75h13a.76.76 0 0 1 .696 1.039.74.74 0 0 1-.696.461h-13C5 19 4 18 4 16.75v-11A.74.74 0 0 1 4.75 5ZM8 8.25a.74.74 0 0 1 .75-.75h6.5a.76.76 0 0 1 .696 1.039.74.74 0 0 1-.696.461h-6.5A.722.722 0 0 1 8 8.25Zm.75 2.25h4.5a.76.76 0 0 1 .696 1.039.74.74 0 0 1-.696.461h-4.5a.723.723 0 0 1-.75-.75.74.74 0 0 1 .75-.75Zm0 3h8.5a.76.76 0 0 1 .696 1.039.74.74 0 0 1-.696.461h-8.5a.723.723 0 0 1-.75-.75.74.74 0 0 1 .75-.75Z" fill="currentColor"/></svg>',
 			beaker: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M5 21c-.85 0-1.454-.38-1.813-1.137-.358-.759-.27-1.463.263-2.113L9 11V5H8a.968.968 0 0 1-.713-.287A.968.968 0 0 1 7 4c0-.283.096-.52.287-.712A.968.968 0 0 1 8 3h8c.283 0 .52.096.712.288.192.191.288.429.288.712s-.096.52-.288.713A.968.968 0 0 1 16 5h-1v6l5.55 6.75c.533.65.62 1.354.262 2.113C20.454 20.62 19.85 21 19 21H5Zm2-3h10l-3.4-4h-3.2L7 18Zm-2 1h14l-6-7.3V5h-2v6.7L5 19Z" fill="currentColor"/></svg>',
 			protractor: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m6.75 21-.25-2.2 2.85-7.85a3.95 3.95 0 0 0 1.75.95l-2.75 7.55L6.75 21Zm10.5 0-1.6-1.55-2.75-7.55a3.948 3.948 0 0 0 1.75-.95l2.85 7.85-.25 2.2ZM12 11a2.893 2.893 0 0 1-2.125-.875A2.893 2.893 0 0 1 9 8c0-.65.188-1.23.563-1.737A2.935 2.935 0 0 1 11 5.2V3h2v2.2c.583.2 1.063.554 1.438 1.063C14.812 6.77 15 7.35 15 8c0 .833-.292 1.542-.875 2.125A2.893 2.893 0 0 1 12 11Zm0-2c.283 0 .52-.096.713-.287A.967.967 0 0 0 13 8a.967.967 0 0 0-.287-.713A.968.968 0 0 0 12 7a.968.968 0 0 0-.713.287A.967.967 0 0 0 11 8c0 .283.096.52.287.713.192.191.43.287.713.287Z" fill="currentColor"/></svg>',
@@ -247,6 +252,14 @@
 			visible={showGraph}
 			tool-id="graph"
 		></pie-tool-graph>
+	{/if}
+
+	{#if enabledToolsList.includes('calculator')}
+		<pie-tool-calculator
+			visible={showCalculator}
+			tool-id="calculator"
+			calculator-type="scientific"
+		></pie-tool-calculator>
 	{/if}
 
 	{#if enabledToolsList.includes('periodicTable')}

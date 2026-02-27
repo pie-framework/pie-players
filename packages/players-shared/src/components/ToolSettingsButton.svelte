@@ -15,7 +15,7 @@
 <button
 	bind:this={buttonEl}
 	type="button"
-	class="btn btn-ghost btn-sm btn-circle"
+	class="tool-settings-button btn btn-ghost btn-sm btn-circle"
 	aria-label={ariaLabel}
 	aria-pressed={active}
 	onclick={onClick}
@@ -29,3 +29,34 @@
 		<path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
 	</svg>
 </button>
+
+<style>
+	.tool-settings-button {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 2rem;
+		height: 2rem;
+		padding: 0.25rem;
+		border: none;
+		border-radius: 9999px;
+		background: transparent;
+		color: inherit;
+		cursor: pointer;
+	}
+
+	.tool-settings-button:hover {
+		background: rgba(255, 255, 255, 0.1);
+	}
+
+	.tool-settings-button:focus-visible {
+		outline: 2px solid currentColor;
+		outline-offset: 2px;
+	}
+
+	.tool-settings-button svg {
+		width: 20px;
+		height: 20px;
+		display: block;
+	}
+</style>

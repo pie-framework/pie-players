@@ -78,6 +78,7 @@ export class ThemeProvider implements IThemeProvider {
 	private currentTheme: Required<ThemeConfig> = { ...DEFAULT_THEME };
 	private styleElement: HTMLStyleElement | null = null;
 	private rootElement: HTMLElement | null;
+	private styleContainer: ShadowRoot | HTMLHeadElement | null = null;
 
 	constructor(
 		rootElement: HTMLElement | null = typeof document !== "undefined"
@@ -101,15 +102,28 @@ export class ThemeProvider implements IThemeProvider {
 	private initializeStyles(): void {
 		if (!this.rootElement) return;
 
-		// Create style element if it doesn't exist
-		this.styleElement = document.getElementById(
-			"pie-theme-styles",
-		) as HTMLStyleElement;
+		const rootNode = this.rootElement.getRootNode();
+		if (rootNode instanceof ShadowRoot) {
+			this.styleContainer = rootNode;
+			this.styleElement = rootNode.querySelector(
+				'style[data-pie-theme-styles="true"]',
+			) as HTMLStyleElement | null;
+		} else {
+			this.styleContainer = document.head;
+			this.styleElement = document.getElementById(
+				"pie-theme-styles",
+			) as HTMLStyleElement | null;
+		}
 
 		if (!this.styleElement) {
 			this.styleElement = document.createElement("style");
-			this.styleElement.id = "pie-theme-styles";
-			document.head.appendChild(this.styleElement);
+			if (this.styleContainer instanceof ShadowRoot) {
+				this.styleElement.setAttribute("data-pie-theme-styles", "true");
+				this.styleContainer.appendChild(this.styleElement);
+			} else {
+				this.styleElement.id = "pie-theme-styles";
+				document.head.appendChild(this.styleElement);
+			}
 		}
 
 		// Apply default theme
@@ -364,6 +378,7 @@ export class ThemeProvider implements IThemeProvider {
 			this.styleElement.remove();
 			this.styleElement = null;
 		}
+		this.styleContainer = null;
 
 		if (!this.rootElement) return;
 

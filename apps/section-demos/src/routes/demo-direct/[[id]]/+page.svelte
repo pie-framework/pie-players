@@ -5,12 +5,17 @@
 	let { data }: { data: PageData } = $props();
 
 	const toolkitToolsConfig = {
-		floatingTools: {
+	providers: {
 			calculator: {
 				provider: "desmos",
 				authFetcher: fetchDesmosAuthConfig,
 			},
 		},
+	placement: {
+		section: ["graph", "periodicTable", "protractor", "lineReader", "ruler"],
+		item: ["calculator", "textToSpeech", "answerEliminator"],
+		passage: ["textToSpeech"],
+	},
 	};
 	const sectionPlayerRuntime = $derived({
 		assessmentId: data.demo?.id || "section-demo-direct",
@@ -41,7 +46,6 @@
 		view="candidate"
 		toolbar-position="right"
 		show-toolbar={true}
-		enabled-tools="calculator,graph,periodicTable,protractor,lineReader,ruler"
 	></pie-section-player-splitpane>
 </div>
 

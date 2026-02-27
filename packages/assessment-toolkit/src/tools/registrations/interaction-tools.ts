@@ -22,6 +22,7 @@ import {
 	hasChoiceInteraction,
 	hasReadableText,
 } from "../../services/tool-context.js";
+import { createScopedToolId } from "../../services/tool-instance-id.js";
 import {
 	createToolElement,
 	type ToolComponentOverrides,
@@ -62,7 +63,11 @@ export const answerEliminatorToolRegistration: ToolRegistration = {
 		context: ToolContext,
 		toolbarContext: ToolbarContext,
 	): ToolToolbarRenderResult {
-		const fullToolId = `${this.toolId}-${toolbarContext.itemId}`;
+		const fullToolId = createScopedToolId(
+			this.toolId,
+			"item",
+			toolbarContext.itemId,
+		);
 		const componentOverrides =
 			(toolbarContext.componentOverrides as ToolComponentOverrides | undefined) ?? {};
 		const overlay = createToolElement(
@@ -152,7 +157,11 @@ export const highlighterToolRegistration: ToolRegistration = {
 		context: ToolContext,
 		toolbarContext: ToolbarContext,
 	): ToolToolbarRenderResult {
-		const fullToolId = `${this.toolId}-${toolbarContext.itemId}`;
+		const fullToolId = createScopedToolId(
+			this.toolId,
+			"item",
+			toolbarContext.itemId,
+		);
 		const button: ToolToolbarButtonDefinition = {
 			toolId: this.toolId,
 			label: this.name,

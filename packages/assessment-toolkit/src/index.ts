@@ -204,9 +204,34 @@ export type {
 	ToolkitErrorContext,
 	ToolkitInitStatus,
 	ToolkitServiceBundle,
+	ToolkitToolsConfig,
 	TTSToolConfig,
 } from "./services/ToolkitCoordinator.js";
 export { ToolkitCoordinator } from "./services/ToolkitCoordinator.js";
+export type {
+	CanonicalToolsConfig,
+	ToolPlacementConfig,
+	ToolPlacementLevel,
+	ToolPolicyConfig,
+	ToolProvidersConfig,
+} from "./services/tools-config-normalizer.js";
+export {
+	normalizeToolsConfig,
+	normalizeToolAlias,
+	normalizeToolList,
+	parseToolList,
+	resolveToolsForLevel,
+} from "./services/tools-config-normalizer.js";
+export type {
+	ParsedToolInstanceId,
+	ToolInstanceRole,
+	ToolScopeLevel,
+} from "./services/tool-instance-id.js";
+export {
+	createScopedToolId,
+	parseScopedToolId,
+	toOverlayToolId,
+} from "./services/tool-instance-id.js";
 // Text-to-Speech Service
 export type { TTSConfig } from "./services/TTSService.js";
 export { PlaybackState, TTSService } from "./services/TTSService.js";

@@ -54,7 +54,8 @@
 	const targetContainer = $derived(
 		regionScopeContext?.scopeElement || shellContext?.scopeElement || null,
 	);
-	let registered = $state(false);
+	let registeredToolId = $state<string | null>(null);
+	let registeredCoordinator = $state<IToolCoordinator | null>(null);
 	let speaking = $state(false);
 	let paused = $state(false);
 	let statusMessage = $state('');
@@ -88,17 +89,30 @@
 
 	// Register with coordinator (don't control visibility here - let parent handle it)
 	$effect(() => {
-		if (coordinator && toolId && containerEl && !registered) {
+		if (!coordinator || !toolId || !containerEl) return;
+		if (
+			registeredCoordinator &&
+			registeredToolId &&
+			(registeredCoordinator !== coordinator || registeredToolId !== toolId)
+		) {
+			registeredCoordinator.unregisterTool(registeredToolId);
+			registeredCoordinator = null;
+			registeredToolId = null;
+		}
+		if (!registeredToolId) {
 			coordinator.registerTool(toolId, 'TTS Inline', containerEl, ZIndexLayer.TOOL);
-			registered = true;
+			registeredCoordinator = coordinator;
+			registeredToolId = toolId;
 		}
 	});
 
 	// Cleanup when component unmounts
 	$effect(() => {
 		return () => {
-			if (coordinator && toolId) {
-				coordinator.unregisterTool(toolId);
+			if (registeredCoordinator && registeredToolId) {
+				registeredCoordinator.unregisterTool(registeredToolId);
+				registeredCoordinator = null;
+				registeredToolId = null;
 			}
 		};
 	});

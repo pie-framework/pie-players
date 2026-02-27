@@ -15,6 +15,7 @@ import type {
 } from "../../services/ToolRegistry.js";
 import type { ToolContext } from "../../services/tool-context.js";
 import { hasReadableText } from "../../services/tool-context.js";
+import { createScopedToolId } from "../../services/tool-instance-id.js";
 
 /**
  * Text-to-Speech tool registration
@@ -56,6 +57,12 @@ export const ttsToolRegistration: ToolRegistration = {
 		_context: ToolContext,
 		toolbarContext: ToolbarContext,
 	): ToolToolbarRenderResult {
+		const fullToolId = createScopedToolId(
+			this.toolId,
+			"item",
+			toolbarContext.itemId,
+			"inline",
+		);
 		const inline = document.createElement("pie-tool-tts-inline") as HTMLElement & {
 			toolId?: string;
 			catalogId?: string;
@@ -63,7 +70,7 @@ export const ttsToolRegistration: ToolRegistration = {
 			size?: string;
 			ttsService?: unknown;
 		};
-		inline.setAttribute("tool-id", `tts-${toolbarContext.itemId}`);
+		inline.setAttribute("tool-id", fullToolId);
 		inline.setAttribute("catalog-id", toolbarContext.catalogId || toolbarContext.itemId);
 		inline.setAttribute("language", toolbarContext.language);
 		inline.setAttribute("size", toolbarContext.ui?.size || "md");

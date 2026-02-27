@@ -38,6 +38,10 @@
 	import "@pie-players/pie-assessment-toolkit/components/item-toolbar-element";
 	import "@pie-players/pie-tool-calculator-inline";
 	import "@pie-players/pie-tool-calculator";
+	import {
+		normalizeToolsConfig,
+		parseToolList,
+	} from "@pie-players/pie-assessment-toolkit";
 	import { IifeElementLoader } from "@pie-players/pie-players-shared";
 	import type { SectionCompositionModel } from "../controllers/types.js";
 	import type { AssessmentSection, ItemEntity } from "@pie-players/pie-players-shared/types";
@@ -93,9 +97,9 @@
 		iifeBundleHost = "https://proxy.pie-api.com/bundles",
 		showToolbar = true,
 		toolbarPosition = "right",
-		enabledTools = "calculator,graph,periodicTable,protractor,lineReader,ruler",
-		itemToolbarTools = "calculator,tts,answerEliminator",
-		passageToolbarTools = "tts",
+		enabledTools = "",
+		itemToolbarTools = "",
+		passageToolbarTools = "",
 	} = $props();
 
 	let compositionModel = $state<SectionCompositionModel>(EMPTY_COMPOSITION);
@@ -117,18 +121,34 @@
 		...(passages as unknown as ItemEntity[]),
 		...(items as ItemEntity[]),
 	]);
+	const effectiveToolsConfig = $derived.by(() => {
+		const runtimeTools = ((runtime as RuntimeConfig | null)?.tools || tools || {}) as any;
+		const normalized = normalizeToolsConfig(runtimeTools);
+		const sectionTools = parseToolList(enabledTools);
+		const itemTools = parseToolList(itemToolbarTools);
+		const passageTools = parseToolList(passageToolbarTools);
+		return normalizeToolsConfig({
+			...normalized,
+			placement: {
+				...normalized.placement,
+				section: sectionTools.length > 0 ? sectionTools : normalized.placement.section,
+				item: itemTools.length > 0 ? itemTools : normalized.placement.item,
+				passage: passageTools.length > 0 ? passageTools : normalized.placement.passage,
+			},
+		});
+	});
 	const effectiveRuntime = $derived.by(() => ({
 		assessmentId,
 		playerType,
 		player,
 		lazyInit,
-		tools,
 		accessibility,
 		coordinator,
 		createSectionController,
 		isolation,
 		env,
 		...(runtime || {}),
+		tools: effectiveToolsConfig,
 	}));
 
 	function handleBaseCompositionChanged(event: Event) {

@@ -62,6 +62,68 @@ import { onMount } from 'svelte';
 	// ============================================================================
 
 	const DESMOS_CALCULATOR_TYPES: CalculatorType[] = ['basic', 'scientific', 'graphing'];
+	const GLOBAL_STYLE_ID = 'pie-tool-calculator-global-styles';
+	const GLOBAL_CALCULATOR_CSS = `
+		.pie-tool-calculator {
+			position: fixed;
+			background: white;
+			box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+			user-select: none;
+			touch-action: none;
+			border-radius: 12px;
+			overflow: hidden;
+			z-index: 2000;
+			min-width: 320px;
+			display: flex;
+			flex-direction: column;
+		}
+		.pie-tool-calculator__header {
+			padding: 12px 16px;
+			background: var(--pie-primary-dark, #2c3e50);
+			color: var(--pie-white, white);
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+		}
+		.pie-tool-calculator__container {
+			background: white;
+			width: 100%;
+			height: 100%;
+			min-width: 320px;
+			min-height: 400px;
+			position: relative;
+			overflow: hidden;
+		}
+		.pie-tool-calculator__loading {
+			position: absolute;
+			inset: 56px 0 0 0;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			background: rgba(255, 255, 255, 0.9);
+			color: #334155;
+			font-size: 0.9rem;
+			z-index: 2;
+		}
+		.pie-tool-calculator__loading--error {
+			color: #b91c1c;
+			flex-direction: column;
+			gap: 0.5rem;
+			padding: 0.75rem;
+			text-align: center;
+		}
+		.pie-tool-calculator__error-details {
+			font-size: 0.8rem;
+			line-height: 1.2;
+			color: #7f1d1d;
+			max-width: 95%;
+			word-break: break-word;
+		}
+		.pie-tool-calculator__container .dcg-container {
+			width: 100% !important;
+			height: 100% !important;
+		}
+	`;
 
 	const CALCULATOR_SIZES: Partial<Record<CalculatorType, { width: number; height: number }>> = {
 		'basic': { width: 700, height: 600 },
@@ -126,7 +188,8 @@ import { onMount } from 'svelte';
 	let lastInitializationError = $state<string | null>(null);
 	let hasMountedSurface = $state(false);
 	let cleanupFocusTrap = $state<(() => void) | null>(null);
-	let registered = $state(false);
+	let registeredToolId = $state<string | null>(null);
+	let registeredCoordinator = $state<IToolCoordinator | null>(null);
 	let tiCalculatedWidth = $state<number | undefined>(undefined);
 	let tiCalculatedHeight = $state<number | undefined>(undefined);
 	const CALCULATOR_MOUNT_SELECTOR =
@@ -157,8 +220,18 @@ import { onMount } from 'svelte';
 		return DESMOS_CALCULATOR_TYPES.includes(type);
 	}
 
+	function ensureGlobalCalculatorStyles(): void {
+		if (!isBrowser) return;
+		if (document.getElementById(GLOBAL_STYLE_ID)) return;
+		const styleEl = document.createElement('style');
+		styleEl.id = GLOBAL_STYLE_ID;
+		styleEl.textContent = GLOBAL_CALCULATOR_CSS;
+		document.head.appendChild(styleEl);
+	}
+
 	function getConfiguredProviderId(): 'calculator-desmos' | 'calculator-ti' | 'calculator-mathjs' {
-		const configuredProvider = effectiveToolkitCoordinator?.config?.tools?.floatingTools?.calculator?.provider;
+		const configuredProvider =
+			effectiveToolkitCoordinator?.config?.tools?.providers?.calculator?.provider;
 		if (configuredProvider === 'ti') {
 			return 'calculator-ti';
 		}
@@ -247,6 +320,20 @@ import { onMount } from 'svelte';
 			await new Promise<void>((resolve) => setTimeout(resolve, 100));
 		}
 		return hasCalculatorMount(container);
+	}
+
+	async function waitForBodyMountedContainer(
+		container: HTMLDivElement | null | undefined,
+		timeoutMs = 2000,
+	): Promise<boolean> {
+		if (!container) return false;
+		const startedAt = Date.now();
+		while (Date.now() - startedAt < timeoutMs) {
+			if (!container.isConnected) return false;
+			if (container.parentElement === document.body) return true;
+			await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+		}
+		return container.parentElement === document.body;
 	}
 
 	function scheduleTask(signal?: AbortSignal): Promise<void> {
@@ -468,6 +555,14 @@ import { onMount } from 'svelte';
 			if (!mountContainer || !mountContainer.isConnected) {
 				console.warn('[ToolCalculator] Calculator container unavailable before mount');
 				return;
+			}
+
+			if (isDesmosCalculator(currentCalculatorType)) {
+				const readyInBody = await waitForBodyMountedContainer(containerEl);
+				if (!readyInBody) {
+					console.warn('[ToolCalculator] Calculator panel not body-mounted before init');
+					return;
+				}
 			}
 
 			calculatorInstance = await calculatorProvider.createCalculator(
@@ -751,13 +846,25 @@ import { onMount } from 'svelte';
 	});
 
 	$effect(() => {
-		if (coordinator && toolId && !registered) {
+		if (!coordinator || !toolId) return;
+		if (
+			registeredCoordinator &&
+			registeredToolId &&
+			(registeredCoordinator !== coordinator || registeredToolId !== toolId)
+		) {
+			registeredCoordinator.unregisterTool(registeredToolId);
+			registeredCoordinator = null;
+			registeredToolId = null;
+		}
+		if (!registeredToolId) {
 			coordinator.registerTool(toolId, 'Calculator', containerEl, ZIndexLayer.MODAL);
-			registered = true;
+			registeredCoordinator = coordinator;
+			registeredToolId = toolId;
 		}
 	});
 
 	onMount(() => {
+		ensureGlobalCalculatorStyles();
 		if (visible) {
 			initCalculator();
 		}
@@ -765,8 +872,10 @@ import { onMount } from 'svelte';
 		return () => {
 			cleanupFocusTrap?.();
 			calculatorInstance?.destroy();
-			if (coordinator && toolId) {
-				coordinator.unregisterTool(toolId);
+			if (registeredCoordinator && registeredToolId) {
+				registeredCoordinator.unregisterTool(registeredToolId);
+				registeredCoordinator = null;
+				registeredToolId = null;
 			}
 		};
 	});
@@ -874,8 +983,8 @@ import { onMount } from 'svelte';
 	$effect(() => {
 		if (!isBrowser || !visible || !containerEl) return;
 
-		// Keep floating calculator mounted at document root to avoid shadow-root
-		// timing/layout races that can delay or prevent Desmos surface paint.
+		// Desmos does not reliably mount while nested in a toolbar shadow tree.
+		// Move only the floating panel to document body; runtime state still flows via context.
 		if (containerEl.parentElement !== document.body) {
 			document.body.appendChild(containerEl);
 		}
@@ -886,6 +995,7 @@ import { onMount } from 'svelte';
 			}
 		};
 	});
+
 </script>
 
 <div bind:this={contextHostElement}>

@@ -211,7 +211,7 @@ Tools are organized into three tiers based on their dependencies:
 
 ---
 
-## Tool Scope Architecture: Item-Level vs Floating
+## Tool Scope Architecture: Placement + Scoped IDs
 
 In addition to the three-tier dependency hierarchy, tools are categorized by their **scope and lifecycle** within an assessment:
 
@@ -309,30 +309,41 @@ calculatorState = {
 
 ### Configuration in ToolkitCoordinator
 
-The configuration structure reflects this scope distinction:
+The configuration structure reflects this scope distinction via `tools.placement` and `tools.providers`:
 
 ```typescript
 const coordinator = new ToolkitCoordinator({
   assessmentId: 'math-exam',
-
-  // Item-level tools: scoped to each question
   tools: {
-    tts: { enabled: true },
-    answerEliminator: { enabled: true }
-  },
-
-  // Floating tools: shared across all questions in section
-  floatingTools: {
-    calculator: { enabled: true, provider: 'desmos' },
-    graph: { enabled: true },
-    periodicTable: { enabled: true },
-    protractor: { enabled: true },
-    ruler: { enabled: true },
-    lineReader: { enabled: true },
-    colorScheme: { enabled: true }
+    placement: {
+      item: ['calculator', 'textToSpeech', 'answerEliminator'],
+      passage: ['textToSpeech'],
+      section: ['calculator', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler', 'colorScheme']
+    },
+    providers: {
+      calculator: { enabled: true, provider: 'desmos' },
+      tts: { enabled: true, backend: 'browser' }
+    }
   }
 });
 ```
+
+### Structured Tool Instance IDs
+
+Tool instances use a scoped ID format:
+
+```text
+<toolId>:<scopeLevel>:<scopeId>[:inline]
+```
+
+Examples:
+- `calculator:item:item-12`
+- `calculator:section:section-1`
+- `textToSpeech:passage:passage-2`
+- `highlighter:rubric:rb-5`
+
+Supported built-in levels include `assessment`, `section`, `item`, `passage`, and `rubric`.
+The runtime can register additional levels if your product needs custom scopes.
 
 ### Why This Separation Matters
 
@@ -363,10 +374,7 @@ const coordinator = new ToolkitCoordinator({
 
 ```svelte
 <!-- Section-level: One toolbar for all questions -->
-<section-tools-toolbar
-  toolCoordinator={coordinator.toolCoordinator}
-  enabledTools="calculator,graph,periodicTable,protractor,ruler"
-/>
+<section-tools-toolbar toolCoordinator={coordinator.toolCoordinator} />
 
 <!-- Item-level: New toolbar instance per question -->
 {#each items as item}

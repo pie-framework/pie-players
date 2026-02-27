@@ -41,6 +41,12 @@
 	import type { PNPToolResolver } from '../services/PNPToolResolver.js';
 	import { createDefaultToolRegistry } from '../services/createDefaultToolRegistry.js';
 	import { DEFAULT_TOOL_MODULE_LOADERS } from '../tools/default-tool-module-loaders.js';
+	import {
+		normalizeToolsConfig,
+		parseToolList,
+		resolveToolsForLevel,
+	} from '../services/tools-config-normalizer.js';
+	import { createScopedToolId, parseScopedToolId } from '../services/tool-instance-id.js';
 	import type { AssessmentEntity, AssessmentItemRef, ItemEntity } from '@pie-players/pie-players-shared/types';
 	import type { ElementToolContext, ItemToolContext } from '../services/tool-context.js';
 
@@ -115,27 +121,32 @@
 	// Effective registry for visibility and metadata ownership.
 	const effectiveToolRegistry = $derived(toolRegistry || fallbackToolRegistry);
 
-	const enabledTools = $derived(
-		tools
-			.split(',')
-			.map((t) => t.trim())
-			.filter(Boolean)
+	const explicitTools = $derived(parseToolList(tools));
+	const normalizedExplicitTools = $derived(
+		effectiveToolRegistry.normalizeToolIds(explicitTools).filter(Boolean)
 	);
-
-	const normalizedEnabledTools = $derived(
-		effectiveToolRegistry
-			.normalizeToolIds(enabledTools)
-			.filter(Boolean)
+	const effectiveToolsConfig = $derived.by(() => {
+		const coordinatorConfig = runtimeContext?.toolkitCoordinator?.config?.tools as any;
+		return normalizeToolsConfig(coordinatorConfig || {});
+	});
+	const placementLevel = $derived.by(() =>
+		effectiveContentKind === 'rubric-block-stimulus' ? 'passage' : 'item'
 	);
+	const placementAllowedToolIds = $derived.by(() => {
+		const resolved = resolveToolsForLevel(effectiveToolsConfig, placementLevel);
+		return effectiveToolRegistry.normalizeToolIds(resolved).filter(Boolean);
+	});
 
 	// Pass 1: determine allowed tools
 	const allowedToolIds = $derived.by(() => {
+		const configuredTools =
+			normalizedExplicitTools.length > 0 ? normalizedExplicitTools : placementAllowedToolIds;
 		if (pnpResolver && assessment && itemRef) {
 			const allowedByPnp = pnpResolver.getAllowedToolIds(assessment, itemRef);
-			if (normalizedEnabledTools.length === 0) return allowedByPnp;
-			return allowedByPnp.filter((toolId) => normalizedEnabledTools.includes(toolId));
+			if (configuredTools.length === 0) return allowedByPnp;
+			return allowedByPnp.filter((toolId) => configuredTools.includes(toolId));
 		}
-		return normalizedEnabledTools;
+		return configuredTools;
 	});
 
 	const contentReady = $derived.by(() => {
@@ -242,8 +253,11 @@
 	const toolbarContext = $derived.by((): ToolbarContext => {
 		const toolkitCoordinator = runtimeContext?.toolkitCoordinator || null;
 		const toInstanceToolId = (toolId: string): string => {
-			const suffix = `-${effectiveCanonicalItemId}`;
-			return toolId.endsWith(suffix) ? toolId : `${toolId}${suffix}`;
+			// Accept either base tool IDs (e.g. "calculator") or already-scoped IDs.
+			// This keeps toolbar contracts stable across mixed registration implementations.
+			return parseScopedToolId(toolId)
+				? toolId
+				: createScopedToolId(toolId, 'item', effectiveCanonicalItemId);
 		};
 		return {
 			itemId: effectiveCanonicalItemId,

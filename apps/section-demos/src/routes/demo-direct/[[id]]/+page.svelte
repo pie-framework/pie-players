@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from "svelte";
+	import "@pie-players/pie-section-player/components/section-player-splitpane-element";
 	import type { PageData } from "./$types";
 
 	let { data }: { data: PageData } = $props();
@@ -22,11 +22,6 @@
 		return payload?.apiKey ? { apiKey: payload.apiKey } : {};
 	}
 
-	onMount(async () => {
-		if (!customElements.get("pie-section-player-splitpane")) {
-			await import("@pie-players/pie-section-player/components/section-player-splitpane-element");
-		}
-	});
 </script>
 
 <svelte:head>

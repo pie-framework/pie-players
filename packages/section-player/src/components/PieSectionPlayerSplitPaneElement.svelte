@@ -29,7 +29,14 @@
 />
 
 <script lang="ts">
-	import { onMount } from "svelte";
+	import "./section-player-base-element.js";
+	import "./item-shell-element.js";
+	import "./passage-shell-element.js";
+	import "@pie-players/pie-iife-player";
+	import "@pie-players/pie-section-tools-toolbar";
+	import "@pie-players/pie-assessment-toolkit/components/item-toolbar-element";
+	import "@pie-players/pie-tool-calculator-inline";
+	import "@pie-players/pie-tool-calculator";
 	import type { SectionCompositionModel } from "../controllers/types.js";
 	import type { AssessmentSection, ItemEntity } from "@pie-players/pie-players-shared/types";
 
@@ -141,36 +148,6 @@
 		};
 	});
 
-	onMount(async () => {
-		const imports: Promise<unknown>[] = [];
-		if (!customElements.get("pie-section-player-base")) {
-			imports.push(import("./section-player-base-element.js"));
-		}
-		if (!customElements.get("pie-iife-player")) {
-			imports.push(import("@pie-players/pie-iife-player"));
-		}
-		if (!customElements.get("pie-section-tools-toolbar")) {
-			imports.push(import("@pie-players/pie-section-tools-toolbar"));
-		}
-		if (!customElements.get("pie-item-toolbar")) {
-			imports.push(
-				import("@pie-players/pie-assessment-toolkit/components/item-toolbar-element"),
-			);
-		}
-		if (!customElements.get("pie-tool-calculator-inline")) {
-			imports.push(import("@pie-players/pie-tool-calculator-inline"));
-		}
-		if (!customElements.get("pie-tool-calculator")) {
-			imports.push(import("@pie-players/pie-tool-calculator"));
-		}
-		if (!customElements.get("pie-item-shell")) {
-			imports.push(import("./item-shell-element.js"));
-		}
-		if (!customElements.get("pie-passage-shell")) {
-			imports.push(import("./passage-shell-element.js"));
-		}
-		await Promise.all(imports);
-	});
 </script>
 
 <pie-section-player-base

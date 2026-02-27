@@ -22,10 +22,11 @@
 />
 
 <script lang="ts">
+	import "@pie-players/pie-assessment-toolkit/components/pie-assessment-toolkit-element";
 	import {
 		createDefaultPersonalNeedsProfile,
 	} from "@pie-players/pie-assessment-toolkit";
-	import { createEventDispatcher, onMount } from "svelte";
+	import { createEventDispatcher } from "svelte";
 	import { SectionController } from "../controllers/SectionController.js";
 	import type { SectionCompositionModel } from "../controllers/types.js";
 	import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
@@ -133,17 +134,6 @@
 			createSectionController || (() => new SectionController());
 	});
 
-	onMount(async () => {
-		const imports: Promise<unknown>[] = [];
-		if (!customElements.get("pie-assessment-toolkit")) {
-			imports.push(
-				import(
-					"@pie-players/pie-assessment-toolkit/components/pie-assessment-toolkit-element"
-				),
-			);
-		}
-		await Promise.all(imports);
-	});
 </script>
 
 <pie-assessment-toolkit

@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-players-cli",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"description": "CLI tools for pie-players",
 	"type": "module",
 	"license": "MIT",

@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-section-player-tools-pnp-debugger",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"type": "module",
 	"description": "PNP debugger panel for PIE section-player flows",
 	"repository": {

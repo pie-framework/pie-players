@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-calculator-mathjs",
-	"version": "0.1.3",
+	"version": "0.1.4",
 	"description": "Math.js calculator provider for PIE Assessment Toolkit - Open-source, always-available fallback",
 	"type": "module",
 	"main": "./dist/index.js",

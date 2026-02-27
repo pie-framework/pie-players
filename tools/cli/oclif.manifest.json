@@ -29,7 +29,7 @@
       "args": {},
       "description": "Build a pie-fixed-player-static package (optionally publish) and optionally generate a browser test project",
       "examples": [
-        "$ bun run cli pie-packages:fixed-player-build-and-test-package --elements-file configs/fixed-player-static/example.json --generate-test-project",
+        "$ bun run cli pie-packages:fixed-player-build-and-test-package -f configs/fixed-player-static/example.json --generateTestProject",
         "$ bun run cli pie-packages:fixed-player-build-and-test-package -e \"@pie-element/multiple-choice@11.4.3\" --publish --dry-run"
       ],
       "flags": {
@@ -158,7 +158,7 @@
       "args": {},
       "description": "Build (and optionally publish) PIE fixed player static package",
       "examples": [
-        "$ bun run cli pie-packages:fixed-player-build-package --elements-file elements.json",
+        "$ bun run cli pie-packages:fixed-player-build-package -f elements.json",
         "$ bun run cli pie-packages:fixed-player-build-package -e \"@pie-element/calculator@1.0.0,@pie-element/ruler@2.0.0\""
       ],
       "flags": {

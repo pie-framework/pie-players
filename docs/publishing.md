@@ -51,7 +51,21 @@ The release workflow enforces explicit intent:
   - package/changelog version bumps for publish runs
 - Manual runs (`workflow_dispatch`) require `release_intent`:
   - `version-pr` (requires changesets)
-  - `publish` (requires version bump/changelog evidence)
+  - `publish` (requires version bump/changelog evidence by default)
+  - `publish` + `force_publish=true` (manual recovery mode for rerunning a failed publish from `master`)
+
+### Manual publish recovery
+
+If a publish failed for transient reasons (registry outage, webhook issue, etc.) and
+your fixes are already in `master`, rerun the release workflow manually:
+
+1. Open **Actions → Release → Run workflow**
+2. Branch: `master`
+3. `release_intent`: `publish`
+4. `force_publish`: `true`
+
+This bypasses version-bump detection checks for that manual run while keeping normal
+push-driven safety checks in place.
 
 Publish-path runs execute the full `bun run verify:publish` gate before
 `changesets/action` can publish.

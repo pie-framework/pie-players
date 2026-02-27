@@ -68,7 +68,7 @@ export async function generateFixedStaticTestProject(
 
 		if (!pkgDir) {
 			throw new Error(
-				"No local static package found. Build one first via: bun run cli pie-packages:fixed-player-build-package --elements-file <file>",
+				"No local static package found. Build one first via: bun run cli pie-packages:fixed-player-build-package -f <file>",
 			);
 		}
 

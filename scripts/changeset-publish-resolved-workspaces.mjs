@@ -81,7 +81,9 @@ const restoreWorkspaceRanges = () => {
 	}
 };
 
-const runChangesetPublish = () =>
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const runChangesetPublishOnce = () =>
 	new Promise((resolve, reject) => {
 		const child = spawn("bunx", ["changeset", "publish"], {
 			cwd: repoRoot,
@@ -95,6 +97,30 @@ const runChangesetPublish = () =>
 		});
 		child.on("error", reject);
 	});
+
+const runChangesetPublish = async () => {
+	// Retry once to recover from transient npm issues or partial publishes.
+	// On retry, Changesets skips versions that are already published.
+	const maxAttempts = 2;
+	let lastError;
+
+	for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+		try {
+			console.log(`[release] Running changeset publish (attempt ${attempt}/${maxAttempts})`);
+			await runChangesetPublishOnce();
+			return;
+		} catch (error) {
+			lastError = error;
+			if (attempt === maxAttempts) break;
+			console.warn(
+				`[release] changeset publish failed on attempt ${attempt}; retrying once in 5s...`,
+			);
+			await sleep(5000);
+		}
+	}
+
+	throw lastError;
+};
 
 try {
 	rewriteWorkspaceRanges();

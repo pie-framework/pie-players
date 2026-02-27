@@ -184,7 +184,7 @@ function validateUniqueCombinations(configPaths) {
 
 function publishConfig(elementsFile, { dryRun }) {
 	const rel = path.relative(ROOT, elementsFile);
-	const cmd = `bun run cli pie-packages:fixed-player-build-package --elements-file "${rel}" --publish`;
+	const cmd = `bun run cli pie-packages:fixed-player-build-package -f "${rel}" --publish`;
 	if (dryRun) {
 		// eslint-disable-next-line no-console
 		console.log(`[DRY RUN] ${cmd}`);

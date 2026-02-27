@@ -203,7 +203,7 @@ export interface SettingsMetaDataEntity {
 
 When no PNP configuration exists at any level, the Assessment Toolkit provides sensible K-12 defaults:
 
-- Basic accessibility tools enabled: TTS, magnifier, highlighter, answer eliminator
+- Basic accessibility tools enabled: TTS, highlighter, answer eliminator
 - Calculator enabled by default (unless content author explicitly restricts)
 - No district policy restrictions
 - No test administration overrides
@@ -452,7 +452,7 @@ If an integrator uses pie-api-aws and assessment-toolkit without configuring any
 - ✅ **Item** has no `settings.pnp` → No item-level restrictions, all defaults available
 - ✅ **Session** has no `pnpProfile` → Student gets system defaults
 
-**Result**: Basic accessibility tools (TTS, magnifier, highlighter, answer eliminator, calculator) work immediately.
+**Result**: Basic accessibility tools (TTS, highlighter, answer eliminator, calculator) work immediately.
 
 ### Progressive Enhancement
 

@@ -1,11 +1,10 @@
 <svelte:options
 	customElement={{
 		tag: 'pie-tool-color-scheme',
-		shadow: 'none',
+		shadow: 'open',
 		props: {
 			visible: { type: 'Boolean', attribute: 'visible' },
-			toolId: { type: 'String', attribute: 'tool-id' },
-			coordinator: { type: 'Object' }
+			toolId: { type: 'String', attribute: 'tool-id' }
 		}
 	}}
 />
@@ -24,25 +23,40 @@
 <script lang="ts">
 	const browser = typeof window !== "undefined";
 
-		import type { IToolCoordinator } from '@pie-players/pie-assessment-toolkit';
-	import { ZIndexLayer } from '@pie-players/pie-assessment-toolkit';
+	import {
+		connectToolRuntimeContext,
+		ZIndexLayer,
+	} from '@pie-players/pie-assessment-toolkit';
+	import type {
+		AssessmentToolkitRuntimeContext,
+		IToolCoordinator,
+	} from '@pie-players/pie-assessment-toolkit';
 	import { createFocusTrap, safeLocalStorageGet, safeLocalStorageSet } from '@pie-players/pie-players-shared';
 	import { onMount } from 'svelte';
 
 	let {
 		visible = false,
-		toolId = 'colorScheme',
-		coordinator
+		toolId = 'colorScheme'
 	}: {
 		visible?: boolean;
 		toolId?: string;
-		coordinator?: IToolCoordinator;
 	} = $props();
 
 	let containerEl = $state<HTMLDivElement | undefined>();
+	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	const coordinator = $derived(
+		runtimeContext?.toolCoordinator as IToolCoordinator | undefined,
+	);
 
 	// Track registration state
 	let registered = $state(false);
+
+	$effect(() => {
+		if (!containerEl) return;
+		return connectToolRuntimeContext(containerEl, (value: AssessmentToolkitRuntimeContext) => {
+			runtimeContext = value;
+		});
+	});
 
 	// Color scheme options (Learnosity-compatible industry standards)
 	const COLOR_SCHEMES = [
@@ -137,18 +151,6 @@
 		} else {
 			root.setAttribute('data-color-scheme', schemeId);
 		}
-
-		// Also mirror on all player host elements
-		const piePlayers = document.querySelectorAll(
-			'pie-player, pie-inline-player, pie-iife-player, pie-fixed-player, pie-esm-player, pie-section-player',
-		);
-		piePlayers.forEach((player) => {
-			if (schemeId === 'default') {
-				player.removeAttribute('data-color-scheme');
-			} else {
-				player.setAttribute('data-color-scheme', schemeId);
-			}
-		});
 
 		// Save to localStorage safely
 		safeLocalStorageSet('pie-color-scheme', schemeId);

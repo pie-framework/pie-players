@@ -49,7 +49,6 @@
 		"@pie-players/pie-tool-color-scheme": "workspace:*",
 		"@pie-players/pie-tool-graph": "workspace:*",
 		"@pie-players/pie-tool-line-reader": "workspace:*",
-		"@pie-players/pie-tool-magnifier": "workspace:*",
 		"@pie-players/pie-tool-periodic-table": "workspace:*",
 		"@pie-players/pie-tool-protractor": "workspace:*",
 		"@pie-players/pie-tool-ruler": "workspace:*",

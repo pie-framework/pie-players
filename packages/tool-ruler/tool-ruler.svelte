@@ -1,31 +1,40 @@
 <svelte:options
 	customElement={{
 		tag: 'pie-tool-ruler',
-		shadow: 'none',
+		shadow: 'open',
 		props: {
 			visible: { type: 'Boolean', attribute: 'visible' },
-			toolId: { type: 'String', attribute: 'tool-id' },
-			coordinator: { type: 'Object' }
+			toolId: { type: 'String', attribute: 'tool-id' }
 		}
 	}}
 />
 
 <script lang="ts">
-	import type { IToolCoordinator } from '@pie-players/pie-assessment-toolkit';
-	import { ZIndexLayer } from '@pie-players/pie-assessment-toolkit';
+	import {
+		connectToolRuntimeContext,
+		ZIndexLayer,
+	} from '@pie-players/pie-assessment-toolkit';
+	import type {
+		AssessmentToolkitRuntimeContext,
+		IToolCoordinator,
+	} from '@pie-players/pie-assessment-toolkit';
 	import Moveable from 'moveable';
 	import { onDestroy, onMount } from 'svelte';
 	import rulerCm from './ruler-cm.svg';
 	import rulerInches from './ruler-inches.svg';
 
 	// Props
-	let { visible = false, toolId = 'ruler', coordinator }: { visible?: boolean; toolId?: string; coordinator?: IToolCoordinator } = $props();
+	let { visible = false, toolId = 'ruler' }: { visible?: boolean; toolId?: string } = $props();
 
 	// Check if running in browser
 	const isBrowser = typeof window !== 'undefined';
 
 	// State
 	let containerEl = $state<HTMLDivElement | undefined>();
+	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	const coordinator = $derived(
+		runtimeContext?.toolCoordinator as IToolCoordinator | undefined,
+	);
 	let announceText = $state('');
 	let unit = $state<'inches' | 'cm'>('inches');
 	let moveable: Moveable | null = null;
@@ -37,6 +46,13 @@
 	const MOVE_STEP = 10; // pixels
 	const ROTATE_STEP = 5; // degrees
 	const FINE_ROTATE_STEP = 1; // degrees
+
+	$effect(() => {
+		if (!containerEl) return;
+		return connectToolRuntimeContext(containerEl, (value: AssessmentToolkitRuntimeContext) => {
+			runtimeContext = value;
+		});
+	});
 
 	let currentRuler = $derived(unit === 'inches' ? rulerInches : rulerCm);
 

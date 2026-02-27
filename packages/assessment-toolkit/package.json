@@ -25,13 +25,13 @@
 			"types": "./dist/tools/client.d.ts",
 			"import": "./dist/tools/client.js"
 		},
-		"./components/QuestionToolBar.svelte": {
-			"svelte": "./src/components/QuestionToolBar.svelte",
-			"import": "./src/components/QuestionToolBar.svelte"
+		"./components/item-toolbar-element": {
+			"types": "./dist/components/item-toolbar-element.d.ts",
+			"import": "./dist/components/item-toolbar-element.js"
 		},
-		"./components/PNPProvenanceViewer.svelte": {
-			"svelte": "./src/components/PNPProvenanceViewer.svelte",
-			"import": "./src/components/PNPProvenanceViewer.svelte"
+		"./components/pie-assessment-toolkit-element": {
+			"types": "./dist/components/pie-assessment-toolkit-element.d.ts",
+			"import": "./dist/components/pie-assessment-toolkit-element.js"
 		},
 		"./services/pnp-standard-features": {
 			"types": "./dist/services/pnp-standard-features.d.ts",
@@ -52,7 +52,7 @@
 		"README.md"
 	],
 	"scripts": {
-		"build": "tsc -p tsconfig.json",
+		"build": "rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json && node ./scripts/build-ce-components.mjs",
 		"dev": "tsc -p tsconfig.json --watch",
 		"typecheck": "tsc -p tsconfig.json --noEmit",
 		"lint": "biome check .",
@@ -62,6 +62,7 @@
 	"dependencies": {
 		"@pie-players/pie-calculator": "workspace:*",
 		"@pie-players/pie-calculator-desmos": "workspace:*",
+		"@pie-players/pie-context": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*",
 		"@pie-players/pie-tts": "workspace:*",
 		"@pie-players/tts-client-server": "workspace:*",

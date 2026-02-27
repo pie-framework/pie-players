@@ -1,0 +1,67 @@
+{
+	"name": "@pie-players/pie-section-player-tools-session-debugger",
+	"version": "0.1.0",
+	"type": "module",
+	"description": "Session debugger panel for PIE section-player flows",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pie-framework/pie-players.git",
+		"directory": "packages/section-player-tools-session-debugger"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"keywords": [
+		"pie",
+		"assessment",
+		"section-player",
+		"session",
+		"debugger",
+		"web-component"
+	],
+	"svelte": "./SectionSessionPanel.svelte",
+	"main": "./dist/section-player-tools-session-debugger.js",
+	"module": "./dist/section-player-tools-session-debugger.js",
+	"unpkg": "./dist/section-player-tools-session-debugger.js",
+	"jsdelivr": "./dist/section-player-tools-session-debugger.js",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/section-player-tools-session-debugger.js",
+			"svelte": "./SectionSessionPanel.svelte"
+		}
+	},
+	"files": [
+		"dist",
+		"SectionSessionPanel.svelte",
+		"index.ts",
+		"package.json"
+	],
+	"peerDependencies": {
+		"svelte": "^5.51.0"
+	},
+	"license": "MIT",
+	"types": "./dist/index.d.ts",
+	"scripts": {
+		"build": "vite build",
+		"dev": "vite build --watch",
+		"typecheck": "tsc --noEmit",
+		"lint": "biome check SectionSessionPanel.svelte index.ts vite.config.ts package.json"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.3.10",
+		"@sveltejs/vite-plugin-svelte": "^6.1.4",
+		"svelte": "^5.51.3",
+		"typescript": "^5.7.0",
+		"vite": "^7.0.8",
+		"vite-plugin-dts": "^4.5.3"
+	},
+	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/section-player-tools-session-debugger#readme",
+	"bugs": {
+		"url": "https://github.com/pie-framework/pie-players/issues"
+	},
+	"engines": {
+		"node": ">=18.0.0"
+	},
+	"sideEffects": true
+}

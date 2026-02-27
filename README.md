@@ -23,6 +23,23 @@ bun test         # Run tests
 bun format       # Format code
 ```
 
+## Consumer Import Rules
+
+When consuming PIE web components from apps or other packages:
+
+- Import custom-element registration entrypoints (for example `@pie-players/pie-assessment-toolkit/components/item-toolbar-element`), not raw package `.svelte` component files.
+- Do not import package source paths like `@pie-players/<pkg>/src/...` from consumers.
+- Do not use cross-package `?customElement` imports.
+- Keep runtime package exports pointing to built `dist` artifacts.
+
+Boundary checks:
+
+```bash
+bun run check:source-exports
+bun run check:consumer-boundaries
+bun run check:custom-elements
+```
+
 ## Releasing From Workspace
 
 This monorepo keeps internal dependencies as `workspace:*` during development.
@@ -52,7 +69,7 @@ bun run release:label:push           # Create and push tag to origin
 
 **Interactive Players**: pie-iife-player, pie-esm-player, pie-fixed-player, pie-inline-player
 **Print Player**: print-player - Item-level print rendering for production use
-**Tools**: calculator, graph, ruler, protractor, magnifier, annotation-toolbar, color-scheme, periodic-table
+**Tools**: calculator, graph, ruler, protractor, annotation-toolbar, color-scheme, periodic-table
 **Math Rendering**: math-renderer-core, math-renderer-mathjax, math-renderer-katex
 **Shared**: players-shared, assessment-toolkit
 
@@ -64,7 +81,7 @@ bun run release:label:push           # Create and push tag to origin
 - [GitHub Pages Setup](docs/GITHUB_PAGES_SETUP.md)
 - [NPM Token Setup](docs/NPM_TOKEN_SETUP.md)
 - [Publishing Contract](docs/publishing.md)
-- [Workflow Strategy](docs/WORKFLOW_STRATEGY.md)
+- [Docs Index](docs/README.md)
 
 ## License
 

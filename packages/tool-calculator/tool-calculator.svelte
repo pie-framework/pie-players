@@ -6,8 +6,7 @@
 			visible: { type: 'Boolean', attribute: 'visible' },
 			toolId: { type: 'String', attribute: 'tool-id' },
 			calculatorType: { type: 'String', attribute: 'calculator-type' },
-			availableTypes: { type: 'Array', attribute: 'available-types' },
-			toolkitCoordinator: { type: 'Object', reflect: false }
+			availableTypes: { type: 'Array', attribute: 'available-types' }
 		}
 	}}
 />
@@ -45,10 +44,15 @@
 
 <script lang="ts">
 	
-	import type { IToolCoordinator } from '@pie-players/pie-assessment-toolkit';
-	import { ZIndexLayer } from '@pie-players/pie-assessment-toolkit';
-		import type { Calculator, CalculatorProviderConfig, CalculatorType } from '@pie-players/pie-assessment-toolkit/tools/client';
-		import { DesmosCalculatorProvider, TICalculatorProvider } from '@pie-players/pie-assessment-toolkit/tools/client';
+	import {
+		connectToolRuntimeContext,
+		ZIndexLayer,
+	} from '@pie-players/pie-assessment-toolkit';
+	import type {
+		AssessmentToolkitRuntimeContext,
+		IToolCoordinator,
+	} from '@pie-players/pie-assessment-toolkit';
+	import type { Calculator, CalculatorProviderConfig, CalculatorType } from '@pie-players/pie-assessment-toolkit/tools/client';
 	import { createFocusTrap } from '@pie-players/pie-players-shared';
 	import ToolSettingsButton from '@pie-players/pie-players-shared/components/ToolSettingsButton.svelte';
 import { onMount } from 'svelte';
@@ -59,13 +63,13 @@ import { onMount } from 'svelte';
 
 	const DESMOS_CALCULATOR_TYPES: CalculatorType[] = ['basic', 'scientific', 'graphing'];
 
-	const CALCULATOR_SIZES: Record<CalculatorType, { width: number; height: number }> = {
+	const CALCULATOR_SIZES: Partial<Record<CalculatorType, { width: number; height: number }>> = {
 		'basic': { width: 700, height: 600 },
 		'scientific': { width: 700, height: 600 },
 		'graphing': { width: 700, height: 600 }
 	};
 
-	const CALCULATOR_TYPE_NAMES: Record<CalculatorType, string> = {
+	const CALCULATOR_TYPE_NAMES: Partial<Record<CalculatorType, string>> = {
 		'basic': 'Basic',
 		'scientific': 'Scientific',
 		'graphing': 'Graphing'
@@ -81,18 +85,20 @@ import { onMount } from 'svelte';
 		visible = false,
 		toolId = 'calculator',
 		calculatorType = 'scientific' as CalculatorType,
-		availableTypes: availableTypesInput = ['basic', 'scientific', 'graphing'] as CalculatorType[],
-		toolkitCoordinator = null
+		availableTypes: availableTypesInput = ['basic', 'scientific', 'graphing'] as CalculatorType[]
 	}: {
 		visible?: boolean;
 		toolId?: string;
 		calculatorType?: CalculatorType;
 		availableTypes?: CalculatorType[] | string;
-		toolkitCoordinator?: any;
 	} = $props();
 
-	// Extract services from toolkitCoordinator
-	const coordinator = $derived(toolkitCoordinator?.toolCoordinator as IToolCoordinator | undefined);
+	let contextHostElement = $state<HTMLDivElement | null>(null);
+	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	const effectiveToolkitCoordinator = $derived(runtimeContext?.toolkitCoordinator);
+	const coordinator = $derived(
+		effectiveToolkitCoordinator?.toolCoordinator as IToolCoordinator | undefined,
+	);
 
 	// ============================================================================
 	// Derived State
@@ -110,7 +116,6 @@ import { onMount } from 'svelte';
 
 	let containerEl = $state<HTMLDivElement | undefined>();
 	let calculatorContainerEl = $state<HTMLDivElement | undefined>();
-	let settingsButtonEl = $state<HTMLButtonElement | undefined>();
 	let calculatorInstance = $state<Calculator | null>(null);
 	let currentCalculatorType = $state<CalculatorType>('scientific');
 	let settingsOpen = $state(false);
@@ -118,10 +123,14 @@ import { onMount } from 'svelte';
 	let isInitializing = $state(false);
 	let isSwitching = $state(false);
 	let initializationFailed = $state(false);
+	let lastInitializationError = $state<string | null>(null);
+	let hasMountedSurface = $state(false);
 	let cleanupFocusTrap = $state<(() => void) | null>(null);
 	let registered = $state(false);
 	let tiCalculatedWidth = $state<number | undefined>(undefined);
 	let tiCalculatedHeight = $state<number | undefined>(undefined);
+	const CALCULATOR_MOUNT_SELECTOR =
+		'.dcg-container,.dcg-calculator-api-container,iframe,canvas';
 
 	// Drag state
 	let isDragging = $state(false);
@@ -129,6 +138,16 @@ import { onMount } from 'svelte';
 	let dragOffsetY = $state(0);
 	let positionX = $state<number | null>(null);
 	let positionY = $state<number | null>(null);
+
+	$effect(() => {
+		if (!contextHostElement) return;
+		return connectToolRuntimeContext(
+			contextHostElement,
+			(value: AssessmentToolkitRuntimeContext) => {
+				runtimeContext = value;
+			},
+		);
+	});
 
 	// ============================================================================
 	// Helper Functions
@@ -139,7 +158,7 @@ import { onMount } from 'svelte';
 	}
 
 	function getConfiguredProviderId(): 'calculator-desmos' | 'calculator-ti' | 'calculator-mathjs' {
-		const configuredProvider = toolkitCoordinator?.config?.tools?.floatingTools?.calculator?.provider;
+		const configuredProvider = effectiveToolkitCoordinator?.config?.tools?.floatingTools?.calculator?.provider;
 		if (configuredProvider === 'ti') {
 			return 'calculator-ti';
 		}
@@ -152,11 +171,11 @@ import { onMount } from 'svelte';
 	async function getProvider(type: CalculatorType) {
 		console.log('[ToolCalculator] getProvider called', {
 			type,
-			hasToolkitCoordinator: !!toolkitCoordinator,
-			hasRegistry: !!toolkitCoordinator?.toolProviderRegistry
+			hasToolkitCoordinator: !!effectiveToolkitCoordinator,
+			hasRegistry: !!effectiveToolkitCoordinator?.toolProviderRegistry
 		});
 
-		if (!toolkitCoordinator?.toolProviderRegistry) {
+		if (!effectiveToolkitCoordinator?.toolProviderRegistry) {
 			console.warn('[ToolCalculator] No toolkitCoordinator or registry available');
 			return null;
 		}
@@ -164,7 +183,7 @@ import { onMount } from 'svelte';
 		try {
 			const providerId = getConfiguredProviderId();
 			console.log(`[ToolCalculator] Requesting ${providerId} provider from registry`);
-			const provider = await toolkitCoordinator.toolProviderRegistry.getProvider(providerId);
+			const provider = await effectiveToolkitCoordinator.toolProviderRegistry.getProvider(providerId);
 			console.log('[ToolCalculator] Got provider from registry:', provider);
 			return provider;
 		} catch (error) {
@@ -175,6 +194,59 @@ import { onMount } from 'svelte';
 
 	function getCalculatorTypeName(type: CalculatorType): string {
 		return CALCULATOR_TYPE_NAMES[type] || type;
+	}
+
+	function hasCalculatorMount(container: HTMLDivElement | null | undefined): boolean {
+		if (!container) return false;
+		return (
+			container.childElementCount > 0 ||
+			Boolean(container.querySelector(CALCULATOR_MOUNT_SELECTOR))
+		);
+	}
+
+	function scheduleResizeNudges(instance: Calculator | null): void {
+		if (!instance) return;
+		const nudges = [60, 250, 1000, 2500];
+		for (const delay of nudges) {
+			setTimeout(() => {
+				try {
+					instance.resize?.();
+				} catch {
+					// Ignore if instance was destroyed in the meantime.
+				}
+			}, delay);
+		}
+	}
+
+	async function ensureCalculatorSurface(
+		container: HTMLDivElement | null | undefined,
+		instance: Calculator | null,
+		timeoutMs = 8000,
+	): Promise<boolean> {
+		if (!container) return false;
+		const mounted = await waitForCalculatorMount(container, timeoutMs);
+		if (!mounted) return false;
+		hasMountedSurface = true;
+		try {
+			instance?.resize?.();
+		} catch {
+			// Ignore resize errors here; consumer lifecycle guards handle teardown.
+		}
+		return true;
+	}
+
+	async function waitForCalculatorMount(
+		container: HTMLDivElement | null | undefined,
+		timeoutMs = 3000,
+	): Promise<boolean> {
+		if (!container) return false;
+		const startedAt = Date.now();
+		while (Date.now() - startedAt < timeoutMs) {
+			if (!container.isConnected) return false;
+			if (hasCalculatorMount(container)) return true;
+			await new Promise<void>((resolve) => setTimeout(resolve, 100));
+		}
+		return hasCalculatorMount(container);
 	}
 
 	function scheduleTask(signal?: AbortSignal): Promise<void> {
@@ -210,7 +282,7 @@ import { onMount } from 'svelte';
 	// Derived Values
 	// ============================================================================
 
-	let calculatorSize = $derived(CALCULATOR_SIZES[currentCalculatorType]);
+	let calculatorSize = $derived(CALCULATOR_SIZES[currentCalculatorType] ?? CALCULATOR_SIZES['scientific']!);
 	let width = $derived(false ? tiCalculatedWidth : calculatorSize.width);
 	let height = $derived(false ? tiCalculatedHeight : calculatorSize.height);
 
@@ -333,7 +405,7 @@ import { onMount } from 'svelte';
 		}
 
 		// Use fallback size
-		const fallbackSize = CALCULATOR_SIZES[currentCalculatorType];
+		const fallbackSize = CALCULATOR_SIZES[currentCalculatorType] ?? CALCULATOR_SIZES['scientific']!;
 		tiCalculatedWidth = fallbackSize.width;
 		tiCalculatedHeight = fallbackSize.height;
 		console.log(`[ToolCalculator] Using fallback TI calculator size: ${fallbackSize.width}x${fallbackSize.height}`);
@@ -346,8 +418,8 @@ import { onMount } from 'svelte';
 			hasCalculatorInstance: !!calculatorInstance,
 			hasContainerEl: !!calculatorContainerEl,
 			initializationFailed,
-			hasToolkitCoordinator: !!toolkitCoordinator,
-			hasRegistry: !!toolkitCoordinator?.toolProviderRegistry
+			hasToolkitCoordinator: !!effectiveToolkitCoordinator,
+			hasRegistry: !!effectiveToolkitCoordinator?.toolProviderRegistry
 		});
 
 		if (isInitializing || isSwitching || calculatorInstance || !calculatorContainerEl || initializationFailed) {
@@ -368,7 +440,7 @@ import { onMount } from 'svelte';
 			}
 
 			console.log('[ToolCalculator] Getting provider for type:', currentCalculatorType);
-			// Get tool provider from toolkitCoordinator registry
+			// Get tool provider from toolkit coordinator registry
 			const toolProvider = await getProvider(currentCalculatorType);
 			console.log('[ToolCalculator] Got tool provider:', toolProvider);
 
@@ -392,11 +464,31 @@ import { onMount } from 'svelte';
 				config: calculatorConfig
 			});
 
+			const mountContainer = calculatorContainerEl;
+			if (!mountContainer || !mountContainer.isConnected) {
+				console.warn('[ToolCalculator] Calculator container unavailable before mount');
+				return;
+			}
+
 			calculatorInstance = await calculatorProvider.createCalculator(
 				currentCalculatorType,
-				calculatorContainerEl,
+				mountContainer,
 				calculatorConfig
 			);
+
+			// Force a post-mount layout pass so Desmos paints reliably.
+			await waitForAnimationFrames(2);
+			calculatorInstance?.resize?.();
+			scheduleResizeNudges(calculatorInstance);
+			hasMountedSurface = false;
+
+			// Some environments paint calculator DOM late even after successful creation.
+			// Keep the same instance alive and monitor for mount rather than tearing down/recreating.
+			const mounted = await ensureCalculatorSurface(mountContainer, calculatorInstance, 4000);
+			if (!mounted) {
+				console.warn('[ToolCalculator] Calculator mount pending after init; keeping instance and monitoring');
+				void ensureCalculatorSurface(mountContainer, calculatorInstance, 12000);
+			}
 
 			console.log('[ToolCalculator] Calculator instance created:', calculatorInstance);
 
@@ -406,11 +498,15 @@ import { onMount } from 'svelte';
 			}
 
 			initializationFailed = false;
+			lastInitializationError = null;
+			hasMountedSurface = hasCalculatorMount(mountContainer);
 			console.log(`[ToolCalculator] ${currentCalculatorType} calculator initialized successfully`);
 		} catch (error) {
 			initializationFailed = true;
+			lastInitializationError = error instanceof Error ? error.message : String(error);
 			console.error('[ToolCalculator] Failed to initialize calculator:', error);
 			calculatorInstance = null;
+			hasMountedSurface = false;
 		} finally {
 			isInitializing = false;
 		}
@@ -696,6 +792,8 @@ import { onMount } from 'svelte';
 				}
 			}
 			initializationFailed = false;
+			lastInitializationError = null;
+			hasMountedSurface = false;
 			tiCalculatedWidth = undefined;
 			tiCalculatedHeight = undefined;
 			return;
@@ -759,6 +857,7 @@ import { onMount } from 'svelte';
 				resizeObserver = null;
 			}
 		}
+		return undefined;
 	});
 
 	$effect(() => {
@@ -771,8 +870,25 @@ import { onMount } from 'svelte';
 			cleanupFocusTrap = null;
 		}
 	});
+
+	$effect(() => {
+		if (!isBrowser || !visible || !containerEl) return;
+
+		// Keep floating calculator mounted at document root to avoid shadow-root
+		// timing/layout races that can delay or prevent Desmos surface paint.
+		if (containerEl.parentElement !== document.body) {
+			document.body.appendChild(containerEl);
+		}
+
+		return () => {
+			if (containerEl && containerEl.parentElement === document.body) {
+				containerEl.remove();
+			}
+		};
+	});
 </script>
 
+<div bind:this={contextHostElement}>
 {#if visible}
 	<div
 		bind:this={containerEl}
@@ -792,7 +908,6 @@ import { onMount } from 'svelte';
 			<span class="pie-tool-calculator__title">Calculator</span>
 			<div class="pie-tool-calculator__header-buttons">
 				<ToolSettingsButton
-					bind:buttonEl={settingsButtonEl}
 					onClick={toggleSettings}
 					ariaLabel="Calculator settings"
 					active={settingsOpen}
@@ -815,6 +930,17 @@ import { onMount } from 'svelte';
 		</div>
 
 		<div bind:this={calculatorContainerEl} class="pie-tool-calculator__container" data-calculator-type={currentCalculatorType}></div>
+		{#if isInitializing || isSwitching || (visible && !initializationFailed && !hasMountedSurface)}
+			<div class="pie-tool-calculator__loading">Loading calculator...</div>
+		{/if}
+		{#if initializationFailed}
+			<div class="pie-tool-calculator__loading pie-tool-calculator__loading--error">
+				Calculator failed to initialize.
+				{#if lastInitializationError}
+					<div class="pie-tool-calculator__error-details">{lastInitializationError}</div>
+				{/if}
+			</div>
+		{/if}
 
 		{#if settingsOpen}
 			<div class="pie-tool-calculator__settings-overlay">
@@ -1073,6 +1199,7 @@ import { onMount } from 'svelte';
 		{/if}
 	</div>
 {/if}
+</div>
 
 <style>
 	.pie-tool-calculator {
@@ -1157,6 +1284,34 @@ import { onMount } from 'svelte';
 		min-height: 400px;
 		position: relative;
 		overflow: hidden;
+	}
+
+	.pie-tool-calculator__loading {
+		position: absolute;
+		inset: 56px 0 0 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: rgba(255, 255, 255, 0.9);
+		color: #334155;
+		font-size: 0.9rem;
+		z-index: 2;
+	}
+
+	.pie-tool-calculator__loading--error {
+		color: #b91c1c;
+		flex-direction: column;
+		gap: 0.5rem;
+		padding: 0.75rem;
+		text-align: center;
+	}
+
+	.pie-tool-calculator__error-details {
+		font-size: 0.8rem;
+		line-height: 1.2;
+		color: #7f1d1d;
+		max-width: 95%;
+		word-break: break-word;
 	}
 
 	.pie-tool-calculator__container[data-calculator-type="ti-84"],

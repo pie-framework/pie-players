@@ -21,7 +21,30 @@
 			"types": "./dist/index.d.ts",
 			"import": "./dist/pie-section-player.js"
 		},
-		"./src/PieSectionPlayer.svelte": "./src/PieSectionPlayer.svelte"
+		"./components/ItemShellElement.svelte": {
+			"types": "./dist/pie-section-player.d.ts",
+			"import": "./dist/pie-section-player.js"
+		},
+		"./components/PassageShellElement.svelte": {
+			"types": "./dist/pie-section-player.d.ts",
+			"import": "./dist/pie-section-player.js"
+		},
+		"./components/section-player-base-element": {
+			"types": "./dist/pie-section-player.d.ts",
+			"import": "./dist/pie-section-player.js"
+		},
+		"./components/item-shell-element": {
+			"types": "./dist/pie-section-player.d.ts",
+			"import": "./dist/pie-section-player.js"
+		},
+		"./components/passage-shell-element": {
+			"types": "./dist/pie-section-player.d.ts",
+			"import": "./dist/pie-section-player.js"
+		},
+		"./components/section-player-splitpane-element": {
+			"types": "./dist/pie-section-player.d.ts",
+			"import": "./dist/pie-section-player.js"
+		}
 	},
 	"files": [
 		"dist",
@@ -43,6 +66,7 @@
 		"@pie-players/pie-fixed-player": "workspace:*",
 		"@pie-players/pie-iife-player": "workspace:*",
 		"@pie-players/pie-inline-player": "workspace:*",
+		"@pie-players/pie-context": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*",
 		"@pie-players/pie-section-tools-toolbar": "workspace:*",
 		"@pie-players/pie-tool-answer-eliminator": "workspace:*",

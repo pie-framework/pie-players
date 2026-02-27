@@ -10,9 +10,9 @@
 
 import type {
 	ToolRegistration,
-	ToolButtonDefinition,
-	ToolButtonOptions,
-	ToolInstanceOptions,
+	ToolToolbarButtonDefinition,
+	ToolToolbarRenderResult,
+	ToolbarContext,
 } from "../../services/ToolRegistry.js";
 import type { ToolContext } from "../../services/tool-context.js";
 import { hasMathContent } from "../../services/tool-context.js";
@@ -50,49 +50,53 @@ export const rulerToolRegistration: ToolRegistration = {
 		return hasMathContent(context);
 	},
 
-	createButton(
+	renderToolbar(
 		context: ToolContext,
-		options: ToolButtonOptions,
-	): ToolButtonDefinition {
-		return {
+		toolbarContext: ToolbarContext,
+	): ToolToolbarRenderResult {
+		const fullToolId = `${this.toolId}-${toolbarContext.itemId}`;
+		const button: ToolToolbarButtonDefinition = {
 			toolId: this.toolId,
 			label: this.name,
 			icon: typeof this.icon === "function" ? this.icon(context) : this.icon,
-			disabled: options.disabled || false,
-			ariaLabel: options.ariaLabel || "Open ruler tool",
-			tooltip: options.tooltip || "Ruler",
-			onClick: options.onClick || (() => {}),
-			className: options.className,
+			disabled: false,
+			ariaLabel: "Open ruler tool",
+			tooltip: "Ruler",
+			onClick: () => toolbarContext.toggleTool(this.toolId),
+			active: toolbarContext.isToolVisible(fullToolId),
 		};
-	},
-
-	createToolInstance(
-		context: ToolContext,
-		options: ToolInstanceOptions,
-	): HTMLElement {
 		const componentOverrides =
-			(options.config as ToolComponentOverrides | undefined) ?? {};
-		const ruler = createToolElement(
+			(toolbarContext.componentOverrides as ToolComponentOverrides | undefined) ?? {};
+		const overlay = createToolElement(
 			this.toolId,
 			context,
-			options,
+			toolbarContext,
 			componentOverrides,
 		) as HTMLElement & {
-			visible: boolean;
+			visible?: boolean;
+			toolId?: string;
 			toolkitCoordinator: unknown;
 		};
-
-		ruler.visible = true;
-
-		if (options.config?.toolkitCoordinator) {
-			ruler.toolkitCoordinator = options.config.toolkitCoordinator;
-		}
-
-		if (options.onClose) {
-			ruler.addEventListener("close", options.onClose);
-		}
-
-		return ruler;
+		overlay.setAttribute("tool-id", fullToolId);
+		return {
+			toolId: this.toolId,
+			button,
+			overlayElement: overlay,
+			sync: () => {
+				const active = toolbarContext.isToolVisible(fullToolId);
+				button.active = active;
+				overlay.visible = active;
+				if (toolbarContext.toolkitCoordinator) {
+					overlay.toolkitCoordinator = toolbarContext.toolkitCoordinator;
+				}
+			},
+			subscribeActive: (callback: (active: boolean) => void) => {
+				if (!toolbarContext.subscribeVisibility) return () => {};
+				return toolbarContext.subscribeVisibility(() => {
+					callback(toolbarContext.isToolVisible(fullToolId));
+				});
+			},
+		};
 	},
 };
 
@@ -125,48 +129,52 @@ export const protractorToolRegistration: ToolRegistration = {
 		return hasMathContent(context);
 	},
 
-	createButton(
+	renderToolbar(
 		context: ToolContext,
-		options: ToolButtonOptions,
-	): ToolButtonDefinition {
-		return {
+		toolbarContext: ToolbarContext,
+	): ToolToolbarRenderResult {
+		const fullToolId = `${this.toolId}-${toolbarContext.itemId}`;
+		const button: ToolToolbarButtonDefinition = {
 			toolId: this.toolId,
 			label: this.name,
 			icon: typeof this.icon === "function" ? this.icon(context) : this.icon,
-			disabled: options.disabled || false,
-			ariaLabel: options.ariaLabel || "Open protractor tool",
-			tooltip: options.tooltip || "Protractor",
-			onClick: options.onClick || (() => {}),
-			className: options.className,
+			disabled: false,
+			ariaLabel: "Open protractor tool",
+			tooltip: "Protractor",
+			onClick: () => toolbarContext.toggleTool(this.toolId),
+			active: toolbarContext.isToolVisible(fullToolId),
 		};
-	},
-
-	createToolInstance(
-		context: ToolContext,
-		options: ToolInstanceOptions,
-	): HTMLElement {
 		const componentOverrides =
-			(options.config as ToolComponentOverrides | undefined) ?? {};
-		const protractor = createToolElement(
+			(toolbarContext.componentOverrides as ToolComponentOverrides | undefined) ?? {};
+		const overlay = createToolElement(
 			this.toolId,
 			context,
-			options,
+			toolbarContext,
 			componentOverrides,
 		) as HTMLElement & {
-			visible: boolean;
+			visible?: boolean;
+			toolId?: string;
 			toolkitCoordinator: unknown;
 		};
-
-		protractor.visible = true;
-
-		if (options.config?.toolkitCoordinator) {
-			protractor.toolkitCoordinator = options.config.toolkitCoordinator;
-		}
-
-		if (options.onClose) {
-			protractor.addEventListener("close", options.onClose);
-		}
-
-		return protractor;
+		overlay.setAttribute("tool-id", fullToolId);
+		return {
+			toolId: this.toolId,
+			button,
+			overlayElement: overlay,
+			sync: () => {
+				const active = toolbarContext.isToolVisible(fullToolId);
+				button.active = active;
+				overlay.visible = active;
+				if (toolbarContext.toolkitCoordinator) {
+					overlay.toolkitCoordinator = toolbarContext.toolkitCoordinator;
+				}
+			},
+			subscribeActive: (callback: (active: boolean) => void) => {
+				if (!toolbarContext.subscribeVisibility) return () => {};
+				return toolbarContext.subscribeVisibility(() => {
+					callback(toolbarContext.isToolVisible(fullToolId));
+				});
+			},
+		};
 	},
 };

@@ -2,21 +2,20 @@
  * Accessibility Tools Registrations
  *
  * Registers tools for visual accessibility and reading support:
- * - Magnifier (zoom lens)
  * - Line Reader (reading guide)
  * - Color Scheme (theme/contrast)
  * - Annotation Toolbar (text highlighting)
  *
  * Maps to QTI 3.0 standard access features from:
- * - visual category: magnification, highContrastDisplay, colorContrast
+ * - visual category: highContrastDisplay, colorContrast
  * - reading category: readingMask, readingGuide, highlighting
  */
 
 import type {
 	ToolRegistration,
-	ToolButtonDefinition,
-	ToolButtonOptions,
-	ToolInstanceOptions,
+	ToolToolbarButtonDefinition,
+	ToolToolbarRenderResult,
+	ToolbarContext,
 } from "../../services/ToolRegistry.js";
 import type { ToolContext } from "../../services/tool-context.js";
 import { hasReadableText } from "../../services/tool-context.js";
@@ -24,85 +23,6 @@ import {
 	createToolElement,
 	type ToolComponentOverrides,
 } from "../tool-tag-map.js";
-
-/**
- * Magnifier tool registration
- *
- * Provides a draggable zoom lens for visual accessibility.
- * Global tool that works across entire assessment.
- */
-export const magnifierToolRegistration: ToolRegistration = {
-	toolId: "magnifier",
-	name: "Magnifier",
-	description: "Zoom lens for visual accessibility",
-	icon: "magnifying-glass",
-
-	// Magnifier is assessment-wide (global)
-	supportedLevels: ["assessment", "section"],
-
-	// PNP support IDs
-	// Maps to QTI 3.0 standard features: magnification, screenMagnifier, zoomable
-	pnpSupportIds: [
-		"magnification", // QTI 3.0 standard (visual.magnification)
-		"screenMagnifier", // QTI 3.0 standard (visual.screenMagnifier)
-		"zoomable", // QTI 3.0 standard (visual.zoomable)
-		"magnifier", // Common variant
-		"zoom", // Common variant
-		"visualZoom", // Common variant
-	],
-
-	/**
-	 * Pass 2: Magnifier is always relevant when allowed
-	 */
-	isVisibleInContext(context: ToolContext): boolean {
-		return true; // Always show if allowed by orchestrator
-	},
-
-	createButton(
-		context: ToolContext,
-		options: ToolButtonOptions,
-	): ToolButtonDefinition {
-		return {
-			toolId: this.toolId,
-			label: this.name,
-			icon: typeof this.icon === "function" ? this.icon(context) : this.icon,
-			disabled: options.disabled || false,
-			ariaLabel: options.ariaLabel || "Magnifier - Zoom in on content",
-			tooltip: options.tooltip || "Magnifier",
-			onClick: options.onClick || (() => {}),
-			className: options.className,
-		};
-	},
-
-	createToolInstance(
-		context: ToolContext,
-		options: ToolInstanceOptions,
-	): HTMLElement {
-		const componentOverrides =
-			(options.config as ToolComponentOverrides | undefined) ?? {};
-		const magnifier = createToolElement(
-			this.toolId,
-			context,
-			options,
-			componentOverrides,
-		) as HTMLElement & {
-			visible: boolean;
-			toolkitCoordinator: unknown;
-		};
-
-		magnifier.visible = true;
-
-		if (options.config?.toolkitCoordinator) {
-			magnifier.toolkitCoordinator = options.config.toolkitCoordinator;
-		}
-
-		if (options.onClose) {
-			magnifier.addEventListener("close", options.onClose);
-		}
-
-		return magnifier;
-	},
-};
 
 /**
  * Line Reader tool registration
@@ -136,49 +56,53 @@ export const lineReaderToolRegistration: ToolRegistration = {
 		return hasReadableText(context);
 	},
 
-	createButton(
+	renderToolbar(
 		context: ToolContext,
-		options: ToolButtonOptions,
-	): ToolButtonDefinition {
-		return {
+		toolbarContext: ToolbarContext,
+	): ToolToolbarRenderResult {
+		const fullToolId = `${this.toolId}-${toolbarContext.itemId}`;
+		const button: ToolToolbarButtonDefinition = {
 			toolId: this.toolId,
 			label: this.name,
 			icon: typeof this.icon === "function" ? this.icon(context) : this.icon,
-			disabled: options.disabled || false,
-			ariaLabel: options.ariaLabel || "Line reader - Reading guide",
-			tooltip: options.tooltip || "Line Reader",
-			onClick: options.onClick || (() => {}),
-			className: options.className,
+			disabled: false,
+			ariaLabel: "Line reader - Reading guide",
+			tooltip: "Line Reader",
+			onClick: () => toolbarContext.toggleTool(this.toolId),
+			active: toolbarContext.isToolVisible(fullToolId),
 		};
-	},
-
-	createToolInstance(
-		context: ToolContext,
-		options: ToolInstanceOptions,
-	): HTMLElement {
 		const componentOverrides =
-			(options.config as ToolComponentOverrides | undefined) ?? {};
-		const lineReader = createToolElement(
+			(toolbarContext.componentOverrides as ToolComponentOverrides | undefined) ?? {};
+		const overlay = createToolElement(
 			this.toolId,
 			context,
-			options,
+			toolbarContext,
 			componentOverrides,
 		) as HTMLElement & {
-			visible: boolean;
+			visible?: boolean;
+			toolId?: string;
 			toolkitCoordinator: unknown;
 		};
-
-		lineReader.visible = true;
-
-		if (options.config?.toolkitCoordinator) {
-			lineReader.toolkitCoordinator = options.config.toolkitCoordinator;
-		}
-
-		if (options.onClose) {
-			lineReader.addEventListener("close", options.onClose);
-		}
-
-		return lineReader;
+		overlay.setAttribute("tool-id", fullToolId);
+		return {
+			toolId: this.toolId,
+			button,
+			overlayElement: overlay,
+			sync: () => {
+				const active = toolbarContext.isToolVisible(fullToolId);
+				button.active = active;
+				overlay.visible = active;
+				if (toolbarContext.toolkitCoordinator) {
+					overlay.toolkitCoordinator = toolbarContext.toolkitCoordinator;
+				}
+			},
+			subscribeActive: (callback: (active: boolean) => void) => {
+				if (!toolbarContext.subscribeVisibility) return () => {};
+				return toolbarContext.subscribeVisibility(() => {
+					callback(toolbarContext.isToolVisible(fullToolId));
+				});
+			},
+		};
 	},
 };
 
@@ -215,50 +139,53 @@ export const colorSchemeToolRegistration: ToolRegistration = {
 		return true; // Always show if allowed by orchestrator
 	},
 
-	createButton(
+	renderToolbar(
 		context: ToolContext,
-		options: ToolButtonOptions,
-	): ToolButtonDefinition {
-		return {
+		toolbarContext: ToolbarContext,
+	): ToolToolbarRenderResult {
+		const fullToolId = `${this.toolId}-${toolbarContext.itemId}`;
+		const button: ToolToolbarButtonDefinition = {
 			toolId: this.toolId,
 			label: this.name,
 			icon: typeof this.icon === "function" ? this.icon(context) : this.icon,
-			disabled: options.disabled || false,
-			ariaLabel:
-				options.ariaLabel || "Color scheme - Change colors and contrast",
-			tooltip: options.tooltip || "Color Scheme",
-			onClick: options.onClick || (() => {}),
-			className: options.className,
+			disabled: false,
+			ariaLabel: "Color scheme - Change colors and contrast",
+			tooltip: "Color Scheme",
+			onClick: () => toolbarContext.toggleTool(this.toolId),
+			active: toolbarContext.isToolVisible(fullToolId),
 		};
-	},
-
-	createToolInstance(
-		context: ToolContext,
-		options: ToolInstanceOptions,
-	): HTMLElement {
 		const componentOverrides =
-			(options.config as ToolComponentOverrides | undefined) ?? {};
-		const colorScheme = createToolElement(
+			(toolbarContext.componentOverrides as ToolComponentOverrides | undefined) ?? {};
+		const overlay = createToolElement(
 			this.toolId,
 			context,
-			options,
+			toolbarContext,
 			componentOverrides,
 		) as HTMLElement & {
-			visible: boolean;
+			visible?: boolean;
+			toolId?: string;
 			toolkitCoordinator: unknown;
 		};
-
-		colorScheme.visible = true;
-
-		if (options.config?.toolkitCoordinator) {
-			colorScheme.toolkitCoordinator = options.config.toolkitCoordinator;
-		}
-
-		if (options.onClose) {
-			colorScheme.addEventListener("close", options.onClose);
-		}
-
-		return colorScheme;
+		overlay.setAttribute("tool-id", fullToolId);
+		return {
+			toolId: this.toolId,
+			button,
+			overlayElement: overlay,
+			sync: () => {
+				const active = toolbarContext.isToolVisible(fullToolId);
+				button.active = active;
+				overlay.visible = active;
+				if (toolbarContext.toolkitCoordinator) {
+					overlay.toolkitCoordinator = toolbarContext.toolkitCoordinator;
+				}
+			},
+			subscribeActive: (callback: (active: boolean) => void) => {
+				if (!toolbarContext.subscribeVisibility) return () => {};
+				return toolbarContext.subscribeVisibility(() => {
+					callback(toolbarContext.isToolVisible(fullToolId));
+				});
+			},
+		};
 	},
 };
 
@@ -294,48 +221,52 @@ export const annotationToolbarRegistration: ToolRegistration = {
 		return hasReadableText(context);
 	},
 
-	createButton(
+	renderToolbar(
 		context: ToolContext,
-		options: ToolButtonOptions,
-	): ToolButtonDefinition {
-		return {
+		toolbarContext: ToolbarContext,
+	): ToolToolbarRenderResult {
+		const fullToolId = `${this.toolId}-${toolbarContext.itemId}`;
+		const button: ToolToolbarButtonDefinition = {
 			toolId: this.toolId,
 			label: this.name,
 			icon: typeof this.icon === "function" ? this.icon(context) : this.icon,
-			disabled: options.disabled || false,
-			ariaLabel: options.ariaLabel || "Annotation toolbar - Highlight text",
-			tooltip: options.tooltip || "Highlight",
-			onClick: options.onClick || (() => {}),
-			className: options.className,
+			disabled: false,
+			ariaLabel: "Annotation toolbar - Highlight text",
+			tooltip: "Highlight",
+			onClick: () => toolbarContext.toggleTool(this.toolId),
+			active: toolbarContext.isToolVisible(fullToolId),
 		};
-	},
-
-	createToolInstance(
-		context: ToolContext,
-		options: ToolInstanceOptions,
-	): HTMLElement {
 		const componentOverrides =
-			(options.config as ToolComponentOverrides | undefined) ?? {};
-		const toolbar = createToolElement(
+			(toolbarContext.componentOverrides as ToolComponentOverrides | undefined) ?? {};
+		const overlay = createToolElement(
 			this.toolId,
 			context,
-			options,
+			toolbarContext,
 			componentOverrides,
 		) as HTMLElement & {
-			visible: boolean;
+			visible?: boolean;
+			toolId?: string;
 			toolkitCoordinator: unknown;
 		};
-
-		toolbar.visible = true;
-
-		if (options.config?.toolkitCoordinator) {
-			toolbar.toolkitCoordinator = options.config.toolkitCoordinator;
-		}
-
-		if (options.onClose) {
-			toolbar.addEventListener("close", options.onClose);
-		}
-
-		return toolbar;
+		overlay.setAttribute("tool-id", fullToolId);
+		return {
+			toolId: this.toolId,
+			button,
+			overlayElement: overlay,
+			sync: () => {
+				const active = toolbarContext.isToolVisible(fullToolId);
+				button.active = active;
+				overlay.visible = active;
+				if (toolbarContext.toolkitCoordinator) {
+					overlay.toolkitCoordinator = toolbarContext.toolkitCoordinator;
+				}
+			},
+			subscribeActive: (callback: (active: boolean) => void) => {
+				if (!toolbarContext.subscribeVisibility) return () => {};
+				return toolbarContext.subscribeVisibility(() => {
+					callback(toolbarContext.isToolVisible(fullToolId));
+				});
+			},
+		};
 	},
 };

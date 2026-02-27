@@ -197,10 +197,10 @@ const studentProfile: StudentAccommodations = {
   accommodations: ['tts', 'calculator', 'extended-time']
 };
 
-// Test blocks dictionary but allows calculator
+// Test blocks lineReader but allows calculator
 const rosterConfig: RosterToolConfig = {
   calculator: "1",
-  dictionary: "0"
+  lineReader: "0"
 };
 
 // Current item requires scientific calculator
@@ -221,7 +221,7 @@ const resolved = resolver.resolveAll({
 // Result:
 // - calculator: enabled (scientific, required by item)
 // - tts: enabled (student accommodation)
-// - dictionary: disabled (blocked by roster)
+// - lineReader: disabled (blocked by roster)
 ```
 
 ## Integration Patterns
@@ -545,7 +545,6 @@ const tools = resolver.resolveTools(assessment, currentItemRef);
 'protractor'      → 'protractor'
 'highlighter'     → 'highlighter'
 'lineReader'      → 'lineReader'
-'magnifier'       → 'magnifier'
 'colorContrast'   → 'colorScheme'
 'answerMasking'   → 'answerEliminator'
 ```

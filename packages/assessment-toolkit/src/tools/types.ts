@@ -400,7 +400,7 @@ export interface LibraryLoader {
 	/**
 	 * Load a stylesheet
 	 */
-	loadStylesheet(url: string): Promise<void>;
+	loadStylesheet(url: string, targetRoot?: Document | ShadowRoot): Promise<void>;
 
 	/**
 	 * Check if a library is already loaded
@@ -543,6 +543,8 @@ export interface ResponseDiscoveryService {
 	getResponsesAccepting(format: ContentFormat): PIEResponseComponent[];
 	registerResponse(response: PIEResponseComponent): void;
 	unregisterResponse(responseId: string): void;
+	signalActive(responseId: string): void;
+	signalInactive(responseId: string): void;
 	onActiveResponseChanged(
 		listener: (response: PIEResponseComponent | null) => void,
 	): void;

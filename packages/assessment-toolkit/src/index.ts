@@ -12,6 +12,43 @@
 // ============================================================================
 
 export { TypedEventBus } from "./core/TypedEventBus.js";
+export type {
+	AssessmentToolkitHostRuntimeContext,
+	AssessmentToolkitRegionScopeContext,
+	AssessmentToolkitRuntimeContext,
+	AssessmentToolkitShellContext,
+	ItemPlayerConfig,
+	ItemPlayerType,
+	ShellContextKind,
+} from "./context/assessment-toolkit-context.js";
+export {
+	assessmentToolkitHostRuntimeContext,
+	assessmentToolkitRegionScopeContext,
+	assessmentToolkitRuntimeContext,
+	assessmentToolkitShellContext,
+} from "./context/assessment-toolkit-context.js";
+export {
+	connectAssessmentToolkitHostRuntimeContext,
+	connectAssessmentToolkitRegionScopeContext,
+	connectAssessmentToolkitRuntimeContext,
+	connectAssessmentToolkitShellContext,
+} from "./context/runtime-context-consumer.js";
+export {
+	PIE_ITEM_SESSION_CHANGED_EVENT,
+	PIE_REGISTER_EVENT,
+	PIE_UNREGISTER_EVENT,
+	type ItemSessionChangedDetail,
+	type RuntimeRegistrationDetail,
+	type RuntimeRegistrationKind,
+} from "./runtime/registration-events.js";
+export {
+	connectToolRegionScopeContext,
+	connectToolRuntimeContext,
+	connectToolShellContext,
+	createCrossBoundaryEvent,
+	dispatchCrossBoundaryEvent,
+	isContextValueDefined,
+} from "./runtime/tool-host-contract.js";
 
 // ============================================================================
 // Service Interfaces
@@ -55,17 +92,6 @@ export {
 // Range Serializer (for annotation persistence)
 export type { SerializedRange } from "./services/RangeSerializer.js";
 export { RangeSerializer } from "./services/RangeSerializer.js";
-// Annotation Toolbar Configuration (Backend API endpoints)
-export type {
-	AnnotationToolbarConfig,
-	DictionaryLookupRequest,
-	DictionaryLookupResponse,
-	PictureDictionaryLookupRequest,
-	PictureDictionaryLookupResponse,
-	TranslationRequest,
-	TranslationResponse,
-} from "./services/AnnotationToolbarConfig.js";
-export { AnnotationToolbarAPIClient } from "./services/AnnotationToolbarConfig.js";
 // I18n Service
 export type {
 	I18nConfig,
@@ -75,10 +101,10 @@ export type {
 export { I18nService } from "./services/I18nService.js";
 // Tool Registry (Registry-based tool system)
 export type {
-	ToolButtonDefinition,
-	ToolButtonOptions,
+	ToolbarContext,
 	ToolModuleLoader,
-	ToolInstanceOptions,
+	ToolToolbarButtonDefinition,
+	ToolToolbarRenderResult,
 	ToolRegistration,
 } from "./services/ToolRegistry.js";
 export { ToolRegistry } from "./services/ToolRegistry.js";
@@ -111,6 +137,10 @@ export {
 	DEFAULT_TOOL_ORDER,
 } from "./services/createDefaultToolRegistry.js";
 export type { DefaultToolRegistryOptions } from "./services/createDefaultToolRegistry.js";
+export {
+	DEFAULT_PERSONAL_NEEDS_PROFILE,
+	createDefaultPersonalNeedsProfile,
+} from "./services/defaultPersonalNeedsProfile.js";
 export type {
 	ToolComponentFactory,
 	ToolComponentFactoryMap,
@@ -161,8 +191,18 @@ export { ToolCoordinator, ZIndexLayer } from "./services/ToolCoordinator.js";
 // Toolkit Coordinator (Centralized service management)
 export type {
 	AnswerEliminatorToolConfig,
+	ProviderLifecycleContext,
+	SectionControllerContext,
+	SectionControllerFactoryDefaults,
+	SectionControllerHandle,
+	SectionControllerKey,
+	SectionControllerPersistenceStrategy,
+	SectionPersistenceFactoryDefaults,
 	ToolConfig,
 	ToolkitCoordinatorConfig,
+	ToolkitCoordinatorHooks,
+	ToolkitErrorContext,
+	ToolkitInitStatus,
 	ToolkitServiceBundle,
 	TTSToolConfig,
 } from "./services/ToolkitCoordinator.js";
@@ -277,5 +317,6 @@ export type {
 // Shared Components
 // ============================================================================
 
-// QuestionToolBar is exported via package.json exports field
-// Import using: import QuestionToolBar from '@pie-players/pie-assessment-toolkit/components/QuestionToolBar.svelte';
+// ItemToolBar custom element registration helper is exported via package.json exports field
+// Import using: import '@pie-players/pie-assessment-toolkit/components/item-toolbar-element';
+// PieAssessmentToolkit custom element registration helper is exported via package.json exports field

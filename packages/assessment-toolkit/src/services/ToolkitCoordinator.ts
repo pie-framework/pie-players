@@ -28,12 +28,29 @@ import {
 	TIToolProvider,
 	TTSToolProvider,
 } from "./tool-providers/index.js";
+import type { IToolProvider } from "./tool-providers/IToolProvider.js";
 import type {
 	DesmosToolProviderConfig,
 	MathJsToolProviderConfig,
 	TIToolProviderConfig,
 	TTSToolProviderConfig,
 } from "./tool-providers/index.js";
+import type {
+	SectionControllerContext,
+	SectionControllerFactoryDefaults,
+	SectionControllerHandle,
+	SectionControllerKey,
+	SectionControllerPersistenceStrategy,
+	SectionPersistenceFactoryDefaults,
+} from "./section-controller-types.js";
+export type {
+	SectionControllerContext,
+	SectionControllerFactoryDefaults,
+	SectionControllerHandle,
+	SectionControllerKey,
+	SectionControllerPersistenceStrategy,
+	SectionPersistenceFactoryDefaults,
+} from "./section-controller-types.js";
 
 /**
  * Generic tool configuration
@@ -112,6 +129,124 @@ export interface ToolkitCoordinatorConfig {
 		catalogs?: AccessibilityCatalog[];
 		language?: string;
 	};
+
+	/**
+	 * Optional lifecycle and extension hooks for runtime customization.
+	 */
+	hooks?: ToolkitCoordinatorHooks;
+
+	/**
+	 * Lazy initialization mode.
+	 * When true, async service/provider initialization is deferred until ensure methods are called.
+	 *
+	 * @default false
+	 */
+	lazyInit?: boolean;
+}
+
+const DEFAULT_FLOATING_TOOLS: string[] = [
+	"calculator",
+	"calculatorScientific",
+	"calculatorGraphing",
+	"graph",
+	"periodicTable",
+	"protractor",
+	"ruler",
+	"lineReader",
+	"screenMagnifier",
+	"textToSpeech",
+	"answerEliminator",
+];
+
+export interface ToolkitErrorContext {
+	phase:
+		| "coordinator-ready"
+		| "state-load"
+		| "state-save"
+		| "provider-register"
+		| "provider-init"
+		| "tts-init"
+		| "section-controller-init"
+		| "section-controller-dispose";
+	providerId?: string;
+	details?: Record<string, unknown>;
+}
+
+export interface ProviderLifecycleContext {
+	providerId: string;
+	providerName?: string;
+}
+
+export interface ToolkitInitStatus {
+	tts: boolean;
+	stateLoaded: boolean;
+	coordinator: boolean;
+	providers: Record<string, boolean>;
+}
+
+export interface ToolkitCoordinatorHooks {
+	onError?: (error: Error, context: ToolkitErrorContext) => void;
+	onTTSError?: (error: Error, context: ToolkitErrorContext) => void;
+	onProviderError?: (
+		providerId: string,
+		error: Error,
+		context: ToolkitErrorContext,
+	) => void;
+
+	onBeforeTTSInit?: (context: ToolkitErrorContext) => void | Promise<void>;
+	onTTSReady?: () => void | Promise<void>;
+	onCoordinatorReady?: (
+		coordinator: ToolkitCoordinator,
+	) => void | Promise<void>;
+
+	onProviderRegistered?: (
+		providerId: string,
+		meta: ProviderLifecycleContext,
+	) => void | Promise<void>;
+	onProviderInitStart?: (
+		providerId: string,
+		meta: ProviderLifecycleContext,
+	) => void | Promise<void>;
+	onProviderReady?: (
+		providerId: string,
+		meta: ProviderLifecycleContext,
+	) => void | Promise<void>;
+
+	onTelemetry?: (
+		eventName: string,
+		payload?: Record<string, unknown>,
+	) => void | Promise<void>;
+
+	loadToolState?: () =>
+		| Record<string, Record<string, unknown>>
+		| Promise<Record<string, Record<string, unknown>> | null | undefined>
+		| null
+		| undefined;
+	saveToolState?: (
+		state: Record<string, Record<string, unknown>>,
+	) => void | Promise<void>;
+
+	createSectionController?: (
+		context: SectionControllerContext,
+		defaults: SectionControllerFactoryDefaults,
+	) => SectionControllerHandle | Promise<SectionControllerHandle>;
+
+	createSectionPersistence?: (
+		context: SectionControllerContext,
+		defaults: SectionPersistenceFactoryDefaults,
+	) =>
+		| SectionControllerPersistenceStrategy
+		| Promise<SectionControllerPersistenceStrategy>;
+
+	onSectionControllerReady?: (
+		context: SectionControllerContext,
+		controller: SectionControllerHandle,
+	) => void | Promise<void>;
+
+	onSectionControllerDispose?: (
+		context: SectionControllerContext,
+		controller: SectionControllerHandle,
+	) => void | Promise<void>;
 }
 
 /**
@@ -162,29 +297,114 @@ export class ToolkitCoordinator {
 	readonly elementToolStateStore: ElementToolStateStore;
 	readonly catalogResolver: AccessibilityCatalogResolver;
 	readonly toolProviderRegistry: ToolProviderRegistry;
+	readonly hooks: ToolkitCoordinatorHooks;
+	readonly lazyInit: boolean;
 
 	/** Track TTS initialization state */
 	private ttsInitialized = false;
+	private ttsInitPromise?: Promise<void>;
+	private stateLoaded = false;
+	private stateLoadPromise?: Promise<void>;
+	private coordinatorReadyPromise?: Promise<void>;
+	private coordinatorReadyNotified = false;
+	private readonly providerInitPromises = new Map<string, Promise<IToolProvider>>();
+	private readonly sectionControllers = new Map<string, SectionControllerHandle>();
+	private readonly sectionControllerInitPromises = new Map<
+		string,
+		Promise<SectionControllerHandle>
+	>();
+	private readonly sectionPersistenceStrategies = new Map<
+		string,
+		SectionControllerPersistenceStrategy
+	>();
 
 	/** Callback for floating tools changes */
 	private floatingToolsChangeCallback: ((toolIds: string[]) => void) | null =
 		null;
+
+	private static resolveConfig(
+		config: ToolkitCoordinatorConfig,
+	): ToolkitCoordinatorConfig {
+		const defaultTools = {
+			tts: {
+				enabled: true,
+				backend: "browser" as const,
+			},
+			answerEliminator: {
+				enabled: true,
+			},
+			highlighter: {
+				enabled: true,
+			},
+			flagging: {
+				enabled: true,
+			},
+			floatingTools: {
+				enabledTools: [...DEFAULT_FLOATING_TOOLS],
+				calculator: {
+					enabled: true,
+					provider: "desmos" as const,
+				},
+			},
+		};
+
+		return {
+			...config,
+			tools: {
+				...defaultTools,
+				...config.tools,
+				tts: {
+					...defaultTools.tts,
+					...config.tools?.tts,
+				},
+				answerEliminator: {
+					...defaultTools.answerEliminator,
+					...config.tools?.answerEliminator,
+				},
+				highlighter: {
+					...defaultTools.highlighter,
+					...config.tools?.highlighter,
+				},
+				flagging: {
+					...defaultTools.flagging,
+					...config.tools?.flagging,
+				},
+				floatingTools: {
+					...defaultTools.floatingTools,
+					...config.tools?.floatingTools,
+					calculator: {
+						...defaultTools.floatingTools.calculator,
+						...config.tools?.floatingTools?.calculator,
+					},
+				},
+			},
+			accessibility: {
+				language: "en-US",
+				...(config.accessibility ?? {}),
+				catalogs: config.accessibility?.catalogs ?? [],
+			},
+		};
+	}
 
 	constructor(config: ToolkitCoordinatorConfig) {
 		if (!config.assessmentId) {
 			throw new Error("ToolkitCoordinator requires assessmentId in config");
 		}
 
-		this.assessmentId = config.assessmentId;
-		this.config = config;
+		const resolvedConfig = ToolkitCoordinator.resolveConfig(config);
+
+		this.assessmentId = resolvedConfig.assessmentId;
+		this.config = resolvedConfig;
+		this.hooks = resolvedConfig.hooks ?? {};
+		this.lazyInit = config.lazyInit === true;
 
 		// Initialize all services
 		this.toolCoordinator = new ToolCoordinator();
 		this.highlightCoordinator = new HighlightCoordinator();
 		this.elementToolStateStore = new ElementToolStateStore();
 		this.catalogResolver = new AccessibilityCatalogResolver(
-			config.accessibility?.catalogs || [],
-			config.accessibility?.language || "en-US",
+			resolvedConfig.accessibility?.catalogs || [],
+			resolvedConfig.accessibility?.language || "en-US",
 		);
 
 		// Initialize tool provider registry
@@ -193,13 +413,128 @@ export class ToolkitCoordinator {
 
 		// Initialize TTS service based on config
 		this.ttsService = new TTSService();
-		const ttsConfig = config.tools?.tts;
-		if (ttsConfig?.enabled !== false) {
-			// Initialize async (fire and forget - service will become available when ready)
-			this._initializeTTS(ttsConfig).catch((err) => {
-				console.error("[ToolkitCoordinator] Failed to initialize TTS:", err);
+		this.setupStatePersistenceHooks();
+
+		if (!this.lazyInit) {
+			void this.waitUntilReady().catch((err) => {
+				console.error(
+					"[ToolkitCoordinator] Failed eager initialization:",
+					err,
+				);
+				this.handleError(err, { phase: "coordinator-ready" });
 			});
 		}
+	}
+
+	private async emitTelemetry(
+		eventName: string,
+		payload?: Record<string, unknown>,
+	): Promise<void> {
+		try {
+			await this.hooks.onTelemetry?.(eventName, payload);
+		} catch (err) {
+			console.warn("[ToolkitCoordinator] telemetry hook failed:", err);
+		}
+	}
+
+	private handleError(error: unknown, context: ToolkitErrorContext): void {
+		const normalized = error instanceof Error ? error : new Error(String(error));
+		try {
+			this.hooks.onError?.(normalized, context);
+		} catch (hookError) {
+			console.warn("[ToolkitCoordinator] onError hook failed:", hookError);
+		}
+	}
+
+	private getSectionControllerMapKey(key: SectionControllerKey): string {
+		return `${key.assessmentId}::${key.sectionId}::${key.attemptId || ""}`;
+	}
+
+	private createDefaultSectionPersistence(): SectionControllerPersistenceStrategy {
+		const storage = (() => {
+			try {
+				if (typeof window === "undefined") return null;
+				return window.localStorage;
+			} catch {
+				return null;
+			}
+		})();
+		const getStorageKey = (context: SectionControllerContext): string => {
+			const { assessmentId, sectionId, attemptId } = context.key;
+			return `pie:section-controller:v1:${assessmentId}:${sectionId}:${attemptId || "default"}`;
+		};
+		return {
+			async load(context) {
+				if (!storage) return null;
+				const value = storage.getItem(getStorageKey(context));
+				if (!value) return null;
+				try {
+					return JSON.parse(value);
+				} catch {
+					return null;
+				}
+			},
+			async save(context, snapshot) {
+				if (!storage) return;
+				storage.setItem(getStorageKey(context), JSON.stringify(snapshot));
+			},
+			async clear(context) {
+				if (!storage) return;
+				storage.removeItem(getStorageKey(context));
+			},
+		};
+	}
+
+	private async resolveSectionPersistence(
+		context: SectionControllerContext,
+	): Promise<SectionControllerPersistenceStrategy> {
+		const cacheKey = this.getSectionControllerMapKey(context.key);
+		const existing = this.sectionPersistenceStrategies.get(cacheKey);
+		if (existing) return existing;
+
+		const defaults: SectionPersistenceFactoryDefaults = {
+			createDefaultPersistence: () => this.createDefaultSectionPersistence(),
+		};
+		const strategy =
+			(await this.hooks.createSectionPersistence?.(context, defaults)) ??
+			(await defaults.createDefaultPersistence());
+		this.sectionPersistenceStrategies.set(cacheKey, strategy);
+		return strategy;
+	}
+
+	private setupStatePersistenceHooks(): void {
+		this.elementToolStateStore.setOnStateChange((state) => {
+			if (!this.hooks.saveToolState) return;
+			void Promise.resolve(this.hooks.saveToolState(state)).catch((err) => {
+				this.handleError(err, { phase: "state-save" });
+			});
+		});
+	}
+
+	private async ensureStateLoaded(): Promise<void> {
+		if (this.stateLoaded) return;
+		if (this.stateLoadPromise) return this.stateLoadPromise;
+		this.stateLoadPromise = (async () => {
+			const loader = this.hooks.loadToolState;
+			if (!loader) {
+				return;
+			}
+			try {
+				const state = await loader();
+				if (state && typeof state === "object") {
+					this.elementToolStateStore.loadState(state);
+				}
+				this.stateLoaded = true;
+				await this.emitTelemetry("tool-state-loaded", {
+					hasState: Boolean(state),
+				});
+			} catch (err) {
+				this.handleError(err, { phase: "state-load" });
+			}
+		})().finally(() => {
+			this.stateLoadPromise = undefined;
+		});
+		return this.stateLoadPromise;
 	}
 
 	/**
@@ -210,25 +545,18 @@ export class ToolkitCoordinator {
 		const ttsConfig = this.config.tools?.tts;
 		if (ttsConfig?.enabled !== false) {
 			const backend = ttsConfig?.backend || "browser";
-			try {
-				this.toolProviderRegistry.register("tts", {
-					provider: new TTSToolProvider(backend),
-					config: {
-						backend,
-						apiEndpoint: ttsConfig?.apiEndpoint,
-						voice: ttsConfig?.defaultVoice,
-						rate: ttsConfig?.rate,
-						pitch: ttsConfig?.pitch,
-					},
-					lazy: true,
-					authFetcher: ttsConfig?.authFetcher,
-				});
-			} catch (error) {
-				console.warn(
-					"[ToolkitCoordinator] Failed to register TTS provider:",
-					error,
-				);
-			}
+			void this.registerProvider("tts", {
+				provider: new TTSToolProvider(backend),
+				config: {
+					backend,
+					apiEndpoint: ttsConfig?.apiEndpoint,
+					voice: ttsConfig?.defaultVoice,
+					rate: ttsConfig?.rate,
+					pitch: ttsConfig?.pitch,
+				},
+				lazy: true,
+				authFetcher: ttsConfig?.authFetcher,
+			});
 		}
 
 		// Register calculator providers
@@ -238,63 +566,265 @@ export class ToolkitCoordinator {
 			const provider = calculatorConfig?.provider || "desmos";
 
 			if (provider === "desmos") {
-				try {
-					this.toolProviderRegistry.register("calculator-desmos", {
-						provider: new DesmosToolProvider(),
-						config: {},
-						lazy: true,
-						authFetcher: calculatorConfig?.authFetcher,
-					});
-				} catch (error) {
-					console.warn(
-						"[ToolkitCoordinator] Failed to register Desmos calculator provider:",
-						error,
-					);
-				}
+				void this.registerProvider("calculator-desmos", {
+					provider: new DesmosToolProvider(),
+					config: {},
+					lazy: true,
+					authFetcher: calculatorConfig?.authFetcher,
+				});
 			} else if (provider === "ti") {
-				try {
-					this.toolProviderRegistry.register("calculator-ti", {
-						provider: new TIToolProvider(),
-						config: {},
-						lazy: true,
-					});
-				} catch (error) {
-					console.warn(
-						"[ToolkitCoordinator] Failed to register TI calculator provider:",
-						error,
-					);
-				}
+				void this.registerProvider("calculator-ti", {
+					provider: new TIToolProvider(),
+					config: {},
+					lazy: true,
+				});
 			} else if (provider === "mathjs") {
-				try {
-					this.toolProviderRegistry.register("calculator-mathjs", {
-						provider: new MathJsToolProvider(),
-						config: {},
-						lazy: true,
-					});
-				} catch (error) {
-					console.warn(
-						"[ToolkitCoordinator] Failed to register Math.js calculator provider:",
-						error,
-					);
-				}
+				void this.registerProvider("calculator-mathjs", {
+					provider: new MathJsToolProvider(),
+					config: {},
+					lazy: true,
+				});
 			}
+		}
+	}
+
+	private async registerProvider(
+		providerId: string,
+		config: Parameters<ToolProviderRegistry["register"]>[1],
+	): Promise<void> {
+		try {
+			this.toolProviderRegistry.register(providerId, config);
+			const meta: ProviderLifecycleContext = {
+				providerId,
+				providerName: config.provider.providerName,
+			};
+			await this.hooks.onProviderRegistered?.(providerId, meta);
+			await this.emitTelemetry("provider-registered", {
+				providerId,
+				providerName: config.provider.providerName,
+			});
+		} catch (err) {
+			console.warn(
+				`[ToolkitCoordinator] Failed to register provider "${providerId}":`,
+				err,
+			);
+			this.handleError(err, { phase: "provider-register", providerId });
+			this.hooks.onProviderError?.(providerId, err as Error, {
+				phase: "provider-register",
+				providerId,
+			});
+		}
+	}
+
+	public async ensureProviderReady(providerId: string): Promise<IToolProvider> {
+		const existing = this.providerInitPromises.get(providerId);
+		if (existing) return existing;
+		const promise = (async () => {
+			const provider = await this.toolProviderRegistry.getProvider(providerId, false);
+			const meta: ProviderLifecycleContext = {
+				providerId,
+				providerName: provider.providerName,
+			};
+			try {
+				await this.hooks.onProviderInitStart?.(providerId, meta);
+				await this.toolProviderRegistry.initialize(providerId);
+				await this.hooks.onProviderReady?.(providerId, meta);
+				await this.emitTelemetry("provider-ready", { providerId });
+				return provider;
+			} catch (err) {
+				const error = err instanceof Error ? err : new Error(String(err));
+				this.hooks.onProviderError?.(providerId, error, {
+					phase: "provider-init",
+					providerId,
+				});
+				this.handleError(error, { phase: "provider-init", providerId });
+				throw error;
+			}
+		})().finally(() => {
+			this.providerInitPromises.delete(providerId);
+		});
+		this.providerInitPromises.set(providerId, promise);
+		return promise;
+	}
+
+	public setHooks(hooks: ToolkitCoordinatorHooks): void {
+		Object.assign(this.hooks, hooks);
+		this.setupStatePersistenceHooks();
+
+		if (hooks.onCoordinatorReady && this.isReady()) {
+			void Promise.resolve(hooks.onCoordinatorReady(this)).catch((err) => {
+				this.handleError(err, { phase: "coordinator-ready" });
+			});
+		}
+	}
+
+	public getSectionController(args: {
+		sectionId: string;
+		attemptId?: string;
+	}): SectionControllerHandle | undefined {
+		const key: SectionControllerKey = {
+			assessmentId: this.assessmentId,
+			sectionId: args.sectionId,
+			attemptId: args.attemptId,
+		};
+		return this.sectionControllers.get(this.getSectionControllerMapKey(key));
+	}
+
+	public async getOrCreateSectionController(args: {
+		sectionId: string;
+		attemptId?: string;
+		input?: unknown;
+		updateExisting?: boolean;
+		createDefaultController: () =>
+			| SectionControllerHandle
+			| Promise<SectionControllerHandle>;
+	}): Promise<SectionControllerHandle> {
+		const key: SectionControllerKey = {
+			assessmentId: this.assessmentId,
+			sectionId: args.sectionId,
+			attemptId: args.attemptId,
+		};
+		const mapKey = this.getSectionControllerMapKey(key);
+		const existingController = this.sectionControllers.get(mapKey);
+		if (existingController) {
+			if (args.updateExisting !== false) {
+				await existingController.updateInput?.(args.input);
+			}
+			return existingController;
+		}
+
+		const existingPromise = this.sectionControllerInitPromises.get(mapKey);
+		if (existingPromise) return existingPromise;
+
+		const initPromise = (async () => {
+			const context: SectionControllerContext = {
+				key,
+				coordinator: this,
+				input: args.input,
+			};
+			const persistence = await this.resolveSectionPersistence(context);
+			const defaults: SectionControllerFactoryDefaults = {
+				createDefaultController: args.createDefaultController,
+			};
+			const controller =
+				(await this.hooks.createSectionController?.(context, defaults)) ??
+				(await defaults.createDefaultController());
+
+			await controller.setPersistenceStrategy?.(persistence);
+			await controller.setPersistenceContext?.(context);
+			await controller.initialize?.(args.input);
+			await controller.hydrate?.();
+
+			this.sectionControllers.set(mapKey, controller);
+			await this.hooks.onSectionControllerReady?.(context, controller);
+			await this.emitTelemetry("section-controller-ready", {
+				assessmentId: key.assessmentId,
+				sectionId: key.sectionId,
+				attemptId: key.attemptId,
+			});
+			return controller;
+		})().catch((err) => {
+			this.handleError(err, {
+				phase: "section-controller-init",
+				details: {
+					sectionId: args.sectionId,
+					attemptId: args.attemptId,
+				},
+			});
+			throw err;
+		}).finally(() => {
+			this.sectionControllerInitPromises.delete(mapKey);
+		});
+
+		this.sectionControllerInitPromises.set(mapKey, initPromise);
+		return initPromise;
+	}
+
+	public async disposeSectionController(args: {
+		sectionId: string;
+		attemptId?: string;
+		persistBeforeDispose?: boolean;
+		clearPersistence?: boolean;
+	}): Promise<void> {
+		const key: SectionControllerKey = {
+			assessmentId: this.assessmentId,
+			sectionId: args.sectionId,
+			attemptId: args.attemptId,
+		};
+		const mapKey = this.getSectionControllerMapKey(key);
+		const controller = this.sectionControllers.get(mapKey);
+		if (!controller) return;
+
+		const context: SectionControllerContext = {
+			key,
+			coordinator: this,
+		};
+
+		try {
+			if (args.persistBeforeDispose !== false) {
+				await controller.persist?.();
+			}
+			await controller.dispose?.();
+			await this.hooks.onSectionControllerDispose?.(context, controller);
+			await this.emitTelemetry("section-controller-disposed", {
+				assessmentId: key.assessmentId,
+				sectionId: key.sectionId,
+				attemptId: key.attemptId,
+			});
+		} catch (err) {
+			this.handleError(err, {
+				phase: "section-controller-dispose",
+				details: {
+					sectionId: args.sectionId,
+					attemptId: args.attemptId,
+				},
+			});
+		} finally {
+			this.sectionControllers.delete(mapKey);
+			if (args.clearPersistence) {
+				const strategy = this.sectionPersistenceStrategies.get(mapKey);
+				await strategy?.clear?.(context);
+			}
+			this.sectionPersistenceStrategies.delete(mapKey);
 		}
 	}
 
 	/**
 	 * Initialize TTS service with provider
 	 */
+	public async ensureTTSReady(config?: TTSToolConfig): Promise<void> {
+		if (this.ttsInitialized) return;
+		if (this.ttsInitPromise) return this.ttsInitPromise;
+		this.ttsInitPromise = this._initializeTTS(config).finally(() => {
+			this.ttsInitPromise = undefined;
+		});
+		return this.ttsInitPromise;
+	}
+
 	private async _initializeTTS(config?: TTSToolConfig): Promise<void> {
 		if (this.ttsInitialized) return;
+		await this.hooks.onBeforeTTSInit?.({
+			phase: "tts-init",
+			details: {
+				backend: config?.backend,
+			},
+		});
+		await this.emitTelemetry("tts-init-start", {
+			backend: config?.backend ?? this.config.tools?.tts?.backend ?? "browser",
+		});
 
 		// Try to use TTS provider from registry if available
 		if (this.toolProviderRegistry.has("tts")) {
 			try {
-				const ttsProvider = await this.toolProviderRegistry.getProvider("tts");
+				const ttsProvider = await this.ensureProviderReady("tts");
 				const providerInstance = await ttsProvider.createInstance();
 				await this.ttsService.initialize(providerInstance);
 				this.ttsService.setCatalogResolver(this.catalogResolver);
 				this.ttsInitialized = true;
+				await this.hooks.onTTSReady?.();
+				await this.emitTelemetry("tts-init-success", {
+					provider: "registry",
+				});
 				console.log(
 					"[ToolkitCoordinator] TTS initialized via ToolProviderRegistry",
 				);
@@ -309,16 +839,24 @@ export class ToolkitCoordinator {
 
 		// Fallback to browser provider
 		const provider = new BrowserTTSProvider();
-		await this.ttsService.initialize(provider);
-		this.ttsService.setCatalogResolver(this.catalogResolver);
-
-		// Apply TTS-specific configuration
-		if (config) {
-			// Future: Apply voice, rate, pitch settings to provider
-			// For now, these are hints for UI (voice picker, rate slider)
+		try {
+			await this.ttsService.initialize(provider, config);
+			this.ttsService.setCatalogResolver(this.catalogResolver);
+			this.ttsInitialized = true;
+			await this.hooks.onTTSReady?.();
+			await this.emitTelemetry("tts-init-success", {
+				provider: "browser-fallback",
+			});
+		} catch (error) {
+			const normalized =
+				error instanceof Error ? error : new Error(String(error));
+			this.hooks.onTTSError?.(normalized, { phase: "tts-init" });
+			this.handleError(normalized, { phase: "tts-init" });
+			await this.emitTelemetry("tts-init-error", {
+				message: normalized.message,
+			});
+			throw normalized;
 		}
-
-		this.ttsInitialized = true;
 	}
 
 	/**
@@ -343,7 +881,48 @@ export class ToolkitCoordinator {
 	 * @returns Tool provider instance
 	 */
 	async getToolProvider(providerId: string) {
-		return this.toolProviderRegistry.getProvider(providerId);
+		return this.ensureProviderReady(providerId);
+	}
+
+	async waitUntilReady(): Promise<void> {
+		if (this.isReady()) return;
+		if (this.coordinatorReadyPromise) return this.coordinatorReadyPromise;
+		this.coordinatorReadyPromise = (async () => {
+			await this.ensureStateLoaded();
+			const ttsConfig = this.config.tools?.tts;
+			if (ttsConfig?.enabled !== false) {
+				await this.ensureTTSReady(ttsConfig);
+			}
+			if (!this.coordinatorReadyNotified) {
+				this.coordinatorReadyNotified = true;
+				await this.hooks.onCoordinatorReady?.(this);
+				await this.emitTelemetry("coordinator-ready", {
+					assessmentId: this.assessmentId,
+				});
+			}
+		})().finally(() => {
+			this.coordinatorReadyPromise = undefined;
+		});
+		return this.coordinatorReadyPromise;
+	}
+
+	isReady(): boolean {
+		return this.getInitStatus().coordinator;
+	}
+
+	getInitStatus(): ToolkitInitStatus {
+		const providers: Record<string, boolean> = {};
+		for (const providerId of this.toolProviderRegistry.getProviderIds()) {
+			providers[providerId] = this.toolProviderRegistry.isInitialized(providerId);
+		}
+		return {
+			tts: this.ttsInitialized,
+			stateLoaded: this.stateLoaded || !this.hooks.loadToolState,
+			coordinator:
+				(this.stateLoaded || !this.hooks.loadToolState) &&
+				(this.ttsInitialized || this.config.tools?.tts?.enabled === false),
+			providers,
+		};
 	}
 
 	/**
@@ -440,13 +1019,17 @@ export class ToolkitCoordinator {
 	 */
 	private _applyToolConfigChange(
 		toolId: string,
-		updates: Partial<ToolConfig>,
+		_updates: Partial<ToolConfig>,
 	): void {
 		// Apply configuration changes based on tool
 		switch (toolId) {
 			case "tts":
-				// Future: Update TTSService with voice/rate/pitch changes
-				// For now, config is used by UI widgets to show current settings
+				void this._reconfigureTTSProvider().then(async () => {
+					const ttsConfig = this.config.tools?.tts;
+					if (!this.lazyInit && ttsConfig?.enabled !== false) {
+						await this.ensureTTSReady(ttsConfig);
+					}
+				});
 				break;
 
 			case "answerEliminator":
@@ -455,5 +1038,36 @@ export class ToolkitCoordinator {
 
 			// Add cases for other tools as needed
 		}
+	}
+
+	private async _reconfigureTTSProvider(): Promise<void> {
+		this.ttsInitialized = false;
+		this.ttsInitPromise = undefined;
+		try {
+			this.ttsService.stop();
+		} catch {
+			// noop: stop best effort
+		}
+
+		if (this.toolProviderRegistry.has("tts")) {
+			await this.toolProviderRegistry.unregister("tts");
+		}
+
+		const ttsConfig = this.config.tools?.tts;
+		if (ttsConfig?.enabled === false) return;
+
+		const backend = ttsConfig?.backend || "browser";
+		await this.registerProvider("tts", {
+			provider: new TTSToolProvider(backend),
+			config: {
+				backend,
+				apiEndpoint: ttsConfig?.apiEndpoint,
+				voice: ttsConfig?.defaultVoice,
+				rate: ttsConfig?.rate,
+				pitch: ttsConfig?.pitch,
+			},
+			lazy: true,
+			authFetcher: ttsConfig?.authFetcher,
+		});
 	}
 }

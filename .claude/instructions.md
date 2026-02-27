@@ -89,6 +89,24 @@ These checks ensure:
 - **Event-driven**: PIE player events for communication
 - **Global registry**: Elements register in `window.pie.default`
 
+### Custom Element Boundaries (Required)
+
+- In consuming apps/packages, import CE registration entrypoints (for example `@pie-players/pie-assessment-toolkit/components/item-toolbar-element`), not raw package `.svelte` files.
+- Do not import workspace package source paths (`@pie-players/<pkg>/src/...`) from consumers.
+- Do not use `?customElement` in cross-package imports.
+- Keep package `exports` runtime targets on built artifacts in `dist` (not `src`), except for explicitly approved internal packages.
+- When adding a CE registration entry in a package, ensure any referenced `.svelte?customElement` files are resolvable from published output.
+- If a consumer app imports package CE entrypoints via `exports` (for example `@pie-players/pie-section-player/components/...`), it is using built `dist` artifacts. Rebuild the package after `src` edits before testing behavior in the consumer app.
+- For split-panel scrolling implementations, copy the current `packages/section-player/src/components/layouts/SplitPanelLayout.svelte` overflow/height model unless intentionally redesigning:
+  - Constrain parent containers with `height: 100%`, `max-height: 100%`, `min-height: 0`, and `overflow: hidden`.
+  - Keep split grid height-constrained (including `grid-template-rows: minmax(0, 1fr)` when applicable).
+  - Configure pane scrolling with `overflow-y: auto`, `overflow-x: hidden`, `min-height: 0`, `min-width: 0`, `max-height: 100%`, and `overscroll-behavior: contain`.
+  - Do not introduce broad media-query overrides that force pane overflow to `visible` without explicit verification of both passage and item scroll behavior.
+- Before finalizing CE-related changes, run:
+  - `bun run check:source-exports`
+  - `bun run check:consumer-boundaries`
+  - `bun run check:custom-elements`
+
 ### Web Components and Reactivity
 
 - Treat custom elements as imperative APIs: set properties, not attributes.

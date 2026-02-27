@@ -31,4 +31,19 @@
 			</a>
 		{/each}
 	</div>
+
+	<div class="mb-12">
+		<a
+			href="/demo-direct/three-questions"
+			class="card bg-base-100 shadow-xl hover:shadow-2xl transition-all duration-200 hover:-translate-y-1"
+		>
+			<div class="card-body">
+				<h2 class="card-title text-2xl mb-4">Direct Split Layout (No Section Player)</h2>
+				<p class="text-base-content/70">
+					Standalone route that renders passages, items, and toolbars directly from a section
+					controller.
+				</p>
+			</div>
+		</a>
+	</div>
 </div>

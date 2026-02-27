@@ -11,16 +11,12 @@
 
 import type {
 	ToolRegistration,
-	ToolButtonDefinition,
-	ToolButtonOptions,
-	ToolInstanceOptions,
+	ToolToolbarRenderResult,
+	ToolbarContext,
 } from "../../services/ToolRegistry.js";
 import type { ToolContext } from "../../services/tool-context.js";
 import { hasMathContent } from "../../services/tool-context.js";
-import {
-	createToolElement,
-	type ToolComponentOverrides,
-} from "../tool-tag-map.js";
+import { createToolElement } from "../tool-tag-map.js";
 
 /**
  * Calculator tool registration
@@ -59,77 +55,44 @@ export const calculatorToolRegistration: ToolRegistration = {
 		return hasMathContent(context);
 	},
 
-	/**
-	 * Create calculator button for toolbar
-	 */
-	createButton(
+	renderToolbar(
 		context: ToolContext,
-		options: ToolButtonOptions,
-	): ToolButtonDefinition {
-		const icon =
-			typeof this.icon === "function" ? this.icon(context) : this.icon;
+		toolbarContext: ToolbarContext,
+	): ToolToolbarRenderResult {
+		const fullToolId = `${this.toolId}-${toolbarContext.itemId}`;
+		const componentOverrides = toolbarContext.componentOverrides;
+		const overlay = createToolElement(
+			this.toolId,
+			context,
+			toolbarContext,
+			componentOverrides,
+		) as HTMLElement & {
+			visible?: boolean;
+			toolId?: string;
+		};
+		overlay.setAttribute("tool-id", fullToolId);
+
+		const inline = document.createElement("pie-tool-calculator-inline");
+		inline.setAttribute("tool-id", `calculator-inline-${toolbarContext.itemId}`);
+		inline.setAttribute("calculator-type", "scientific");
+		inline.setAttribute("available-types", "basic,scientific,graphing");
+		inline.setAttribute("size", toolbarContext.ui?.size || "md");
 
 		return {
 			toolId: this.toolId,
-			label: this.name,
-			icon: icon,
-			disabled: options.disabled || false,
-			ariaLabel:
-				options.ariaLabel ||
-				"Open calculator - Press to activate calculator tool",
-			tooltip: options.tooltip || "Calculator",
-			onClick: options.onClick || (() => {}),
-			className: options.className,
+			inlineElement: inline,
+			overlayElement: overlay,
+			button: null,
+			sync: () => {
+				const active = toolbarContext.isToolVisible(fullToolId);
+				overlay.visible = active;
+			},
+			subscribeActive: (callback: (active: boolean) => void) => {
+				if (!toolbarContext.subscribeVisibility) return () => {};
+				return toolbarContext.subscribeVisibility(() => {
+					callback(toolbarContext.isToolVisible(fullToolId));
+				});
+			},
 		};
-	},
-
-	/**
-	 * Create calculator tool instance
-	 *
-	 * Creates a <pie-tool-calculator> web component and initializes it.
-	 */
-	createToolInstance(
-		context: ToolContext,
-		options: ToolInstanceOptions,
-	): HTMLElement {
-		const componentOverrides =
-			(options.config as ToolComponentOverrides | undefined) ?? {};
-		const calculator = createToolElement(
-			this.toolId,
-			context,
-			options,
-			componentOverrides,
-		) as HTMLElement & {
-			visible: boolean;
-			calculatorType: string;
-			availableTypes: string[];
-			toolkitCoordinator: unknown;
-		};
-
-		// Set default calculator type (can be overridden via config)
-		const calculatorType =
-			(options.config?.calculatorType as string) || "scientific";
-		const availableTypes = (options.config?.availableTypes as string[]) || [
-			"basic",
-			"scientific",
-			"graphing",
-		];
-
-		// Configure calculator
-		calculator.visible = true;
-		calculator.calculatorType = calculatorType;
-		calculator.availableTypes = availableTypes;
-
-		// Pass toolkit coordinator if available from context
-		if (options.config?.toolkitCoordinator) {
-			calculator.toolkitCoordinator = options.config.toolkitCoordinator;
-		}
-
-		// Handle close callback
-		if (options.onClose) {
-			calculator.addEventListener("close", options.onClose);
-		}
-
-		return calculator;
 	},
 };

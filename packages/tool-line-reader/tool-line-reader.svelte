@@ -1,31 +1,40 @@
 <svelte:options
 	customElement={{
 		tag: 'pie-tool-line-reader',
-		shadow: 'none',
+		shadow: 'open',
 		props: {
 			visible: { type: 'Boolean', attribute: 'visible' },
-			toolId: { type: 'String', attribute: 'tool-id' },
-			coordinator: { type: 'Object' }
+			toolId: { type: 'String', attribute: 'tool-id' }
 		}
 	}}
 />
 
 <script lang="ts">
 	
-	import type { IToolCoordinator } from '@pie-players/pie-assessment-toolkit';
-	import { ZIndexLayer } from '@pie-players/pie-assessment-toolkit';
+	import {
+		connectToolRuntimeContext,
+		ZIndexLayer,
+	} from '@pie-players/pie-assessment-toolkit';
+	import type {
+		AssessmentToolkitRuntimeContext,
+		IToolCoordinator,
+	} from '@pie-players/pie-assessment-toolkit';
 	import ToolSettingsButton from '@pie-players/pie-players-shared/components/ToolSettingsButton.svelte';
 	import ToolSettingsPanel from '@pie-players/pie-players-shared/components/ToolSettingsPanel.svelte';
 import { onMount } from 'svelte';
 
 	// Props
-	let { visible = false, toolId = 'lineReader', coordinator }: { visible?: boolean; toolId?: string; coordinator?: IToolCoordinator } = $props();
+	let { visible = false, toolId = 'lineReader' }: { visible?: boolean; toolId?: string } = $props();
 
 	// Check if running in browser
 	const isBrowser = typeof window !== 'undefined';
 
 	// State
 	let containerEl = $state<HTMLDivElement | undefined>();
+	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	const coordinator = $derived(
+		runtimeContext?.toolCoordinator as IToolCoordinator | undefined,
+	);
 	let settingsButtonEl = $state<HTMLButtonElement | undefined>();
 	let isDragging = $state(false);
 	let isResizing = $state(false);
@@ -57,6 +66,13 @@ import { onMount } from 'svelte';
 	// Keyboard navigation constants
 	const MOVE_STEP = 10; // pixels
 	const RESIZE_STEP = 10; // pixels
+
+	$effect(() => {
+		if (!containerEl) return;
+		return connectToolRuntimeContext(containerEl, (value: AssessmentToolkitRuntimeContext) => {
+			runtimeContext = value;
+		});
+	});
 
 	function announce(message: string) {
 		announceText = message;

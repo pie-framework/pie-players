@@ -403,16 +403,15 @@ If you have old assessments with `content: string`:
 ## Status
 
 - ✅ Types updated in `packages/players-shared/src/types/index.ts`
-- ✅ Implementation plan created in `docs/SECTION-PLAYER-IMPLEMENTATION-PLAN.md`
-- ⏳ SectionPlayer implementation (to be done)
-- ⏳ Example data updated (to be done)
-- ⏳ Documentation updated (to be done)
+- ✅ Section-player implementation is active and iterating
+- ✅ Example data has moved into `apps/section-demos`
+- ✅ Documentation is maintained in canonical docs
 
 ---
 
 ## Related Documents
 
-- [Section Player Implementation Plan](./SECTION-PLAYER-IMPLEMENTATION-PLAN.md)
+- [Direct Demo Route](../apps/section-demos/src/routes/demo-direct/[[id]]/+page.svelte)
 - [QTI 3.0 Feature Support](./qti-3.0-feature-support.md)
 - [Paired Passages Design](./qti3-paired-passages-design.md)
 - [Architecture](./ARCHITECTURE.md)

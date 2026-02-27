@@ -17,7 +17,6 @@ Use this checklist before and after each incremental toolbar refactor step.
 - Question-level calculator activates without runtime errors.
 - Question-level answer eliminator activates without runtime errors.
 - Question-level TTS control activates without runtime errors.
-- Section-level magnifier activates without runtime errors.
 
 3. Console health
 - No unresolved import errors.

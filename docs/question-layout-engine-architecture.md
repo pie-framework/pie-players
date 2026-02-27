@@ -583,7 +583,7 @@ interface ThemeProvider {
 - Coordinated cleanup on navigation
 - Both global and item state
 
-**Examples**: Text-to-speech, highlighter/annotations, dictionary lookup
+**Examples**: Text-to-speech, highlighter/annotations, translation
 
 **Architecture**:
 
@@ -662,7 +662,7 @@ interface ResolvedToolConfig {
 enum ZIndexLayer {
   BASE = 0,           // PIE content
   TOOL = 1000,        // Non-modal tools (ruler, protractor)
-  MODAL = 2000,       // Modal tools (calculator, dictionary)
+  MODAL = 2000,       // Modal tools (calculator)
   CONTROL = 3000,     // Drag handles, resize controls
   HIGHLIGHT = 4000    // TTS and annotation highlights
 }

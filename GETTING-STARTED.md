@@ -156,7 +156,7 @@ bun run build
 
 ### Architecture
 - [TTS Architecture](docs/tts-architecture.md) - Text-to-Speech system
-- [TTS Integration Complete](docs/SECTION-TTS-INTEGRATION-COMPLETE.md) - Implementation details
+- [TTS Synchronization Best Practices](docs/tts-synchronization-best-practices.md) - Runtime behavior details
 
 ### Integration Guides
 - [TTS Server API Integration](packages/tts-server-polly/examples/INTEGRATION-GUIDE.md) - Server-side TTS
@@ -167,10 +167,6 @@ bun run build
 1. Check the [docs/](docs/) directory for guides
 2. Look for `README.md` files in each package
 3. Open an issue on GitHub
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines.
 
 ## License
 

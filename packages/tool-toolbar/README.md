@@ -5,10 +5,10 @@ A **self-contained** tool management component that handles everything: instanti
 ## Overview
 
 The Tool Toolbar is a complete tool orchestration system that:
+
 - **Instantiates** all configured tool components
 - **Manages** tool visibility via `toolCoordinator` store
 - **Renders** toolbar UI with buttons
-- **Handles** annotation toolbar (text selection tools)
 - **Coordinates** z-index and tool lifecycle
 
 ## Zero-Setup Usage
@@ -32,16 +32,11 @@ That's it! This gives you all tools with default configuration.
 ```svelte
 <script>
   import ToolToolbar from '$lib/tags/tool-toolbar';
-
-  function handleDictionary(detail) {
-    console.log('Dictionary lookup:', detail.text);
-  }
 </script>
 
 <ToolToolbar
   tools="protractor,ruler,lineReader,graph,periodicTable"
   position="right"
-  ondictionarylookup={handleDictionary}
 />
 ```
 
@@ -50,34 +45,21 @@ That's it! This gives you all tools with default configuration.
 The toolbar automatically manages these tools:
 
 ### Tier 1 Tools (Measurement & Visualization)
+
 - **Protractor** - Angle measurement
 - **Ruler** - Length measurement
 - **Line Reader** - Reading guide overlay
 - **Graph** - Coordinate plane with graphing
 - **Periodic Table** - Element reference
 
-### Tier 2 Tools (Text Annotation)
-- **Annotation Toolbar** - Appears on text selection
-  - Dictionary lookup
-  - Translation request
-  - Picture dictionary
-
 ## Props
 
 | Prop | Type | Default | Description |
-|------|------|---------|-------------|
+| ------ | ------ | ------- | ----------- |
 | `tools` | `String` | All tools | Comma-separated tool IDs to enable |
 | `disabled` | `Boolean` | `false` | Disables all buttons |
 | `position` | `'left' \| 'right'` | `'right'` | Toolbar placement |
 | `showLabels` | `Boolean` | `false` | Show text labels under icons |
-
-### Event Callbacks (Annotation Toolbar)
-
-| Callback | Type | Description |
-|----------|------|-------------|
-| `ondictionarylookup` | `(detail: {text}) => void` | Fired when user selects dictionary |
-| `ontranslationrequest` | `(detail: {text}) => void` | Fired when user requests translation |
-| `onpicturedictionarylookup` | `(detail: {text}) => void` | Fired for picture dictionary |
 
 ## Available Tools
 
@@ -95,7 +77,7 @@ Tool IDs you can use in the `tools` prop:
 
 ## Architecture
 
-```
+```text
 ┌──────────────────────────────────┐
 │ <pie-tool-toolbar>               │
 │  Self-Contained Component        │
@@ -124,6 +106,7 @@ Tool IDs you can use in the `tools` prop:
 ### No External Dependencies
 
 Unlike typical toolbars, **you don't need**:
+
 - ❌ Separate tool manager component
 - ❌ Manual tool instantiation
 - ❌ State management setup
@@ -151,7 +134,7 @@ The toolbar uses CSS custom properties:
 3. **Build button config** → Icons, names, toggle functions
 4. **Render toolbar UI** → Buttons with active states
 5. **Instantiate tools** → Only render visible tool components
-6. **Handle events** → Forward annotation toolbar events
+6. **Handle events** → Emit status updates for tool toggles
 
 ## Real-World Example
 
@@ -159,14 +142,6 @@ The toolbar uses CSS custom properties:
 <!-- Assessment Player -->
 <script>
   import ToolToolbar from '$lib/tags/tool-toolbar';
-
-  let showDictionaryModal = false;
-  let selectedText = '';
-
-  function openDictionary(detail) {
-    selectedText = detail.text;
-    showDictionaryModal = true;
-  }
 </script>
 
 <div class="assessment-layout">
@@ -176,13 +151,8 @@ The toolbar uses CSS custom properties:
 
   <ToolToolbar
     tools="protractor,ruler,graph"
-    ondictionarylookup={openDictionary}
   />
 </div>
-
-{#if showDictionaryModal}
-  <DictionaryModal {selectedText} />
-{/if}
 ```
 
 ## Browser-Only
@@ -193,6 +163,6 @@ This component requires browser APIs and will not render during SSR. It's wrappe
 
 `<pie-tool-toolbar>`
 
-- Compiled with `shadow: 'none'` for Light DOM rendering
+- Compiled with `shadow: 'open'` for Shadow DOM encapsulation
 - Works in any framework or vanilla JS
 - Manages all tool lifecycle internally

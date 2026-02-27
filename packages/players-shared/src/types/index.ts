@@ -275,7 +275,7 @@ export interface AssessmentItemRef extends SearchMetaDataEntity {
 	settings?: ItemSettings;
 }
 
-export interface QtiAssessmentSection
+export interface AssessmentSection
 	extends SearchMetaDataEntity,
 		SettingsMetaDataEntity {
 	id?: string;
@@ -285,7 +285,7 @@ export interface QtiAssessmentSection
 	required?: boolean;
 	keepTogether?: boolean;
 
-	sections?: QtiAssessmentSection[];
+	sections?: AssessmentSection[];
 
 	/**
 	 * QTI 3.0: Assessment item references (items in this section).
@@ -304,7 +304,7 @@ export interface TestPart {
 	identifier: string;
 	navigationMode: "linear" | "nonlinear";
 	submissionMode: "individual" | "simultaneous";
-	sections: QtiAssessmentSection[];
+	sections: AssessmentSection[];
 }
 
 // ============================================================================
@@ -371,7 +371,7 @@ export interface SectionQuestionRef {
 /**
  * Questions can optionally be grouped in sections (legacy).
  */
-export interface AssessmentSection
+export interface LegacyAssessmentSection
 	extends SearchMetaDataEntity,
 		SettingsMetaDataEntity {
 	id?: string;
@@ -405,7 +405,7 @@ export interface AssessmentEntity extends BaseEntity, SearchMetaDataEntity {
 	questions?: QuestionEntity[];
 
 	/** Legacy: Simple sections */
-	sections?: AssessmentSection[];
+	sections?: LegacyAssessmentSection[];
 
 	/**
 	 * QTI 3.0: testParts structure (authoritative for QTI format).

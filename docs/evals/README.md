@@ -227,7 +227,7 @@ evals:
 - **`spirit_checks`** (optional):
   - Validates semantic quality and tone beyond technical correctness.
   - Each check is a natural language statement about user experience.
-  - Inspired by [BarbellBee's eval system](./COMPARISON-WITH-BARBELLBEE.md).
+  - Inspired by external eval frameworks while remaining repo-specific.
 
 ### Supported actions (runner)
 
@@ -722,6 +722,6 @@ bun run test:evals --grep "your-test-id"
 
 ## Related Documentation
 
-- [Comparison with BarbellBee eval system](./COMPARISON-WITH-BARBELLBEE.md) - Deep dive on spirit checks and best practices
+- Use this guide as the canonical evals reference for spirit checks and quality gates.
 
 

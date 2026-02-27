@@ -1,7 +1,7 @@
 <svelte:options
 	customElement={{
 		tag: 'pie-tool-annotation-toolbar',
-		shadow: 'none',
+		shadow: 'open',
 		props: {
 			enabled: { type: 'Boolean', attribute: 'enabled' },
 			highlightCoordinator: { type: 'Object' },
@@ -15,25 +15,28 @@
 </svelte:head>
 
 <script lang="ts">
-	import type { HighlightCoordinator, ITTSService } from '@pie-players/pie-assessment-toolkit';
-	import { HighlightColor } from '@pie-players/pie-assessment-toolkit';
+	import type {
+		AssessmentToolkitRegionScopeContext,
+		AssessmentToolkitShellContext,
+		HighlightCoordinator,
+		ITTSService
+	} from '@pie-players/pie-assessment-toolkit';
+	import {
+		connectAssessmentToolkitRegionScopeContext,
+		connectAssessmentToolkitShellContext,
+		HighlightColor
+	} from '@pie-players/pie-assessment-toolkit';
 
 	interface Props {
 		enabled?: boolean;
 		highlightCoordinator?: HighlightCoordinator | null;
 		ttsService?: ITTSService | null;
-		ondictionarylookup?: (detail: { text: string }) => void;
-		ontranslationrequest?: (detail: { text: string }) => void;
-		onpicturedictionarylookup?: (detail: { text: string }) => void;
 	}
 
 	let {
 		enabled = true,
 		highlightCoordinator = null,
-		ttsService = null,
-		ondictionarylookup,
-		ontranslationrequest,
-		onpicturedictionarylookup
+		ttsService = null
 	}: Props = $props();
 
 	const isBrowser = typeof window !== 'undefined';
@@ -63,6 +66,10 @@
 	];
 
 	// State - using Svelte 5 $state rune for reactive state
+	let contextHostElement = $state<HTMLElement | null>(null);
+	let toolbarElement = $state<HTMLElement | null>(null);
+	let shellContext = $state<AssessmentToolkitShellContext | null>(null);
+	let regionScopeContext = $state<AssessmentToolkitRegionScopeContext | null>(null);
 	let toolbarState = $state({
 		isVisible: false,
 		selectedText: '',
@@ -86,6 +93,19 @@
 	// Derived state
 	let hasAnnotations = $derived(annotationCount > 0);
 	let hasOverlappingAnnotation = $derived(overlappingAnnotationId !== null);
+	let effectiveScopeElement = $derived(
+		regionScopeContext?.scopeElement || shellContext?.scopeElement || null
+	);
+
+	function getEffectiveRoot(): HTMLElement {
+		const ownerDoc = contextHostElement?.ownerDocument;
+		return effectiveScopeElement || ownerDoc?.documentElement || document.documentElement;
+	}
+
+	function getStorageKey(): string {
+		const scopeKey = shellContext?.canonicalItemId || shellContext?.itemId || 'global';
+		return `${STORAGE_KEY}:${scopeKey}`;
+	}
 
 	/**
 	 * Find annotation that overlaps with the given range
@@ -139,6 +159,16 @@
 		});
 	}
 
+	function isWithinScope(range: Range): boolean {
+		if (!effectiveScopeElement) return true;
+		const ancestor = range.commonAncestorContainer;
+		const element =
+			ancestor.nodeType === Node.TEXT_NODE
+				? ancestor.parentElement
+				: (ancestor as Element);
+		return !!element && effectiveScopeElement.contains(element);
+	}
+
 	/**
 	 * Save annotations to sessionStorage.
 	 * Uses HighlightCoordinator's exportAnnotations for proper serialization.
@@ -147,9 +177,9 @@
 		if (!isBrowser || !highlightCoordinator) return;
 
 		try {
-			const root = document.body;
+			const root = getEffectiveRoot();
 			const serialized = highlightCoordinator.exportAnnotations(root);
-			sessionStorage.setItem(STORAGE_KEY, JSON.stringify(serialized));
+			sessionStorage.setItem(getStorageKey(), JSON.stringify(serialized));
 		} catch (error) {
 			console.error('[AnnotationToolbar] Failed to save annotations:', error);
 		}
@@ -163,11 +193,11 @@
 		if (!isBrowser || !highlightCoordinator) return;
 
 		try {
-			const json = sessionStorage.getItem(STORAGE_KEY);
+			const json = sessionStorage.getItem(getStorageKey());
 			if (!json) return;
 
 			const data = JSON.parse(json);
-			const root = document.body;
+			const root = getEffectiveRoot();
 			const restored = highlightCoordinator.importAnnotations(data, root);
 
 			console.log(`[AnnotationToolbar] Restored ${restored} annotations`);
@@ -190,7 +220,7 @@
 		const text = sel.toString().trim();
 
 		// Hide if empty or in disallowed area
-		if (!text || !isInAllowedArea(range.commonAncestorContainer)) {
+		if (!text || !isWithinScope(range) || !isInAllowedArea(range.commonAncestorContainer)) {
 			return hideToolbar();
 		}
 
@@ -290,39 +320,12 @@
 		const count = annotationCount;
 		highlightCoordinator?.clearAnnotations();
 		annotationCount = 0;
-		sessionStorage.removeItem(STORAGE_KEY);
+		sessionStorage.removeItem(getStorageKey());
 
 		// Announce to screen readers
 		positionAnnouncement = `${count} annotation${count === 1 ? '' : 's'} cleared`;
 		setTimeout(() => { positionAnnouncement = ''; }, 3000);
 
-		hideToolbar();
-	}
-
-	/**
-	 * Dictionary lookup
-	 */
-	function handleDictionaryClick() {
-		if (!toolbarState.selectedText) return;
-		ondictionarylookup?.({ text: toolbarState.selectedText });
-		hideToolbar();
-	}
-
-	/**
-	 * Translation request
-	 */
-	function handleTranslationClick() {
-		if (!toolbarState.selectedText) return;
-		ontranslationrequest?.({ text: toolbarState.selectedText });
-		hideToolbar();
-	}
-
-	/**
-	 * Picture dictionary lookup
-	 */
-	function handlePictureDictionaryClick() {
-		if (!toolbarState.selectedText) return;
-		onpicturedictionarylookup?.({ text: toolbarState.selectedText });
 		hideToolbar();
 	}
 
@@ -338,7 +341,9 @@
 
 			// Use speakRange for accurate word highlighting
 			// Note: TTS service should already be initialized by ToolkitCoordinator
-			await ttsService.speakRange(toolbarState.selectedRange);
+			await ttsService.speakRange(toolbarState.selectedRange, {
+				contentRoot: getEffectiveRoot()
+			});
 
 			console.log('[AnnotationToolbar] TTS completed successfully');
 		} catch (error) {
@@ -365,8 +370,7 @@
 	function handleDocumentClick(e: Event) {
 		if (!toolbarState.isVisible || justShown) return;
 
-		const toolbar = document.querySelector('.pie-tool-annotation-toolbar');
-		if (toolbar && !toolbar.contains(e.target as Node)) {
+		if (toolbarElement && !toolbarElement.contains(e.target as Node)) {
 			hideToolbar();
 		}
 	}
@@ -382,14 +386,11 @@
 			loadAnnotations();
 		}, 2000);
 
-		// Set up event listeners
-		// Mouse events
-		document.addEventListener('mouseup', handleSelectionChange);
-		document.addEventListener('click', handleDocumentClick);
-
-		// Touch events for mobile/tablet support
-		document.addEventListener('touchend', handleSelectionChange);
-		document.addEventListener('touchstart', handleDocumentClick);
+		const pointerEventTarget: HTMLElement | Document = effectiveScopeElement || document;
+		pointerEventTarget.addEventListener('mouseup', handleSelectionChange);
+		pointerEventTarget.addEventListener('click', handleDocumentClick);
+		pointerEventTarget.addEventListener('touchend', handleSelectionChange);
+		pointerEventTarget.addEventListener('touchstart', handleDocumentClick);
 
 		// Keyboard and scroll events
 		document.addEventListener('keydown', handleKeyDown);
@@ -398,23 +399,43 @@
 		return () => {
 			clearTimeout(loadTimer);
 
-			// Remove mouse events
-			document.removeEventListener('mouseup', handleSelectionChange);
-			document.removeEventListener('click', handleDocumentClick);
-
-			// Remove touch events
-			document.removeEventListener('touchend', handleSelectionChange);
-			document.removeEventListener('touchstart', handleDocumentClick);
+			pointerEventTarget.removeEventListener('mouseup', handleSelectionChange);
+			pointerEventTarget.removeEventListener('click', handleDocumentClick);
+			pointerEventTarget.removeEventListener('touchend', handleSelectionChange);
+			pointerEventTarget.removeEventListener('touchstart', handleDocumentClick);
 
 			// Remove keyboard and scroll events
 			document.removeEventListener('keydown', handleKeyDown);
 			window.removeEventListener('scroll', hideToolbar, true);
 		};
 	});
+
+	$effect(() => {
+		if (!contextHostElement) return;
+		const cleanupShell = connectAssessmentToolkitShellContext(
+			contextHostElement,
+			(value: AssessmentToolkitShellContext) => {
+				shellContext = value;
+			}
+		);
+		const cleanupRegion = connectAssessmentToolkitRegionScopeContext(
+			contextHostElement,
+			(value: AssessmentToolkitRegionScopeContext) => {
+				regionScopeContext = value;
+			}
+		);
+		return () => {
+			cleanupRegion();
+			cleanupShell();
+		};
+	});
 </script>
+
+<div bind:this={contextHostElement} style="display: none;" aria-hidden="true"></div>
 
 {#if toolbarState.isVisible}
 	<div
+		bind:this={toolbarElement}
 		class="pie-tool-annotation-toolbar notranslate fixed z-[4200] flex gap-1 bg-base-100 shadow-lg rounded-lg p-2 border border-base-300"
 		style={`left:${toolbarState.toolbarPosition.x}px; top:${toolbarState.toolbarPosition.y}px; transform: translate(-50%, -100%);`}
 		role="toolbar"
@@ -475,73 +496,6 @@
 				>
 					<path
 						d="M14,3.23V5.29C16.89,6.15 19,8.83 19,12C19,15.17 16.89,17.84 14,18.7V20.77C18,19.86 21,16.28 21,12C21,7.72 18,4.14 14,3.23M16.5,12C16.5,10.23 15.5,8.71 14,7.97V16C15.5,15.29 16.5,13.76 16.5,12M3,9V15H7L12,20V4L7,9H3Z"
-					/>
-				</svg>
-			</button>
-		{/if}
-
-		<!-- Dictionary -->
-		{#if ondictionarylookup}
-			<button
-				class="btn btn-sm btn-square"
-				onclick={handleDictionaryClick}
-				aria-label="Look up selected text in dictionary"
-				title="Dictionary"
-			>
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					viewBox="0 0 24 24"
-					width="18"
-					height="18"
-					fill="currentColor"
-					aria-hidden="true"
-				>
-					<path d="M18,22A2,2 0 0,0 20,20V4C20,2.89 19.1,2 18,2H12V9L9.5,7.5L7,9V2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18Z" />
-				</svg>
-			</button>
-		{/if}
-
-		<!-- Picture Dictionary -->
-		{#if onpicturedictionarylookup}
-			<button
-				class="btn btn-sm btn-square"
-				onclick={handlePictureDictionaryClick}
-				aria-label="Look up selected text in picture dictionary"
-				title="Picture Dictionary"
-			>
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					viewBox="0 0 24 24"
-					width="18"
-					height="18"
-					fill="currentColor"
-					aria-hidden="true"
-				>
-					<path
-						d="M8.5,13.5L11,16.5L14.5,12L19,18H5M21,19V5C21,3.89 20.1,3 19,3H5A2,2 0 0,0 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19Z"
-					/>
-				</svg>
-			</button>
-		{/if}
-
-		<!-- Translation -->
-		{#if ontranslationrequest}
-			<button
-				class="btn btn-sm btn-square"
-				onclick={handleTranslationClick}
-				aria-label="Translate selected text"
-				title="Translation"
-			>
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					viewBox="0 0 24 24"
-					width="18"
-					height="18"
-					fill="currentColor"
-					aria-hidden="true"
-				>
-					<path
-						d="M12.87,15.07L10.33,12.56L10.36,12.53C12.1,10.59 13.34,8.36 14.07,6H17V4H10V2H8V4H1V6H12.17C11.5,7.92 10.44,9.75 9,11.35C8.07,10.32 7.3,9.19 6.69,8H4.69C5.42,9.63 6.42,11.17 7.67,12.56L2.58,17.58L4,19L9,14L12.11,17.11L12.87,15.07M18.5,10H16.5L12,22H14L15.12,19H19.87L21,22H23L18.5,10M15.88,17L17.5,12.67L19.12,17H15.88Z"
 					/>
 				</svg>
 			</button>

@@ -19,7 +19,6 @@ import {
 	highlighterToolRegistration,
 } from "../tools/registrations/interaction-tools.js";
 import {
-	magnifierToolRegistration,
 	lineReaderToolRegistration,
 	colorSchemeToolRegistration,
 	annotationToolbarRegistration,
@@ -67,7 +66,6 @@ export interface DefaultToolRegistryOptions {
  * - Protractor
  * - Answer Eliminator
  * - Highlighter
- * - Magnifier
  * - Line Reader
  * - Color Scheme
  * - Annotation Toolbar
@@ -99,14 +97,13 @@ export function createDefaultToolRegistry(
 	registry.register(applyOverrides(protractorToolRegistration));
 	registry.register(applyOverrides(answerEliminatorToolRegistration));
 	registry.register(applyOverrides(highlighterToolRegistration));
-	registry.register(applyOverrides(magnifierToolRegistration));
 	registry.register(applyOverrides(lineReaderToolRegistration));
 	registry.register(applyOverrides(colorSchemeToolRegistration));
 	registry.register(applyOverrides(annotationToolbarRegistration));
 	registry.register(applyOverrides(graphToolRegistration));
 	registry.register(applyOverrides(periodicTableToolRegistration));
 
-	if (options.toolModuleLoaders) {
+	if (options.toolModuleLoaders && Object.keys(options.toolModuleLoaders).length > 0) {
 		registry.setToolModuleLoaders(options.toolModuleLoaders);
 	}
 
@@ -122,7 +119,7 @@ export function createDefaultToolRegistry(
  * Integrators can override this configuration.
  *
  * Categories:
- * - Global tools: magnifier, colorScheme (assessment/section level)
+ * - Global tools: colorScheme (assessment/section level)
  * - Context-smart: calculator, graph, periodicTable (item/element, auto-detect)
  * - Reading aids: textToSpeech, lineReader, annotationToolbar (where text exists)
  * - Interaction-specific: answerEliminator (choice questions), highlighter (text)
@@ -131,12 +128,10 @@ export function createDefaultToolRegistry(
 export const DEFAULT_TOOL_PLACEMENT = {
 	assessment: [
 		// Global accessibility tools
-		"magnifier",
 		"colorScheme",
 	],
 	section: [
 		// Global accessibility + common tools
-		"magnifier",
 		"colorScheme",
 		"textToSpeech",
 	],
@@ -182,7 +177,6 @@ export const DEFAULT_TOOL_PLACEMENT = {
  */
 export const DEFAULT_TOOL_ORDER = [
 	// Global accessibility first
-	"magnifier",
 	"colorScheme",
 	// Common tools
 	"calculator",

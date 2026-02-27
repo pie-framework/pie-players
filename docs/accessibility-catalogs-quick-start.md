@@ -490,7 +490,7 @@ See the examples in this guide and in [accessibility-catalogs-integration-guide.
 
 1. **Read the full guide:** [Integration Guide](./accessibility-catalogs-integration-guide.md)
 2. **Review examples:** [Integration Guide](./accessibility-catalogs-integration-guide.md)
-3. **Check implementation plan:** [Roadmap](./accessibility-catalogs-implementation-roadmap.md)
+3. **Review feature coverage:** [QTI 3.0 Feature Support](./qti-3.0-feature-support.md)
 4. **Start coding!** The service is ready to use.
 
 ---

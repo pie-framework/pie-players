@@ -1,14 +1,13 @@
 <svelte:options
 	customElement={{
 		tag: 'pie-tool-answer-eliminator',
-		shadow: 'none',
+		shadow: 'open',
 		props: {
 			visible: { type: 'Boolean', attribute: 'visible' },
 			toolId: { type: 'String', attribute: 'tool-id' },
 			strategy: { type: 'String', attribute: 'strategy' },
 			alwaysOn: { type: 'Boolean', attribute: 'always-on' },
 			buttonAlignment: { type: 'String', attribute: 'button-alignment' },
-			coordinator: { type: 'Object' },
 			scopeElement: { type: 'Object', reflect: false },
 
 			// Store integration (JS properties only)
@@ -46,9 +45,17 @@
 
 <script lang="ts">
 	
-	import type { IToolCoordinator } from '@pie-players/pie-assessment-toolkit';
-	import { ZIndexLayer } from '@pie-players/pie-assessment-toolkit';
-import { onDestroy, onMount } from 'svelte';
+	import {
+		connectToolRuntimeContext,
+		connectToolShellContext,
+		ZIndexLayer,
+	} from '@pie-players/pie-assessment-toolkit';
+	import type {
+		AssessmentToolkitShellContext,
+		AssessmentToolkitRuntimeContext,
+		IToolCoordinator,
+	} from '@pie-players/pie-assessment-toolkit';
+	import { onMount } from 'svelte';
 	import { AnswerEliminatorCore } from './answer-eliminator-core.js';
 
 	// Props
@@ -58,7 +65,6 @@ import { onDestroy, onMount } from 'svelte';
 		strategy = 'strikethrough' as 'strikethrough' | 'mask' | 'gray',
 		alwaysOn = false, // Set true for profile-based accommodation
 		buttonAlignment = 'right' as 'left' | 'right' | 'inline', // Button placement: left, right, or inline with checkbox
-		coordinator,
 		scopeElement = null, // Container element to limit DOM queries (for multi-item pages)
 
 		// Store integration
@@ -70,16 +76,20 @@ import { onDestroy, onMount } from 'svelte';
 		strategy?: 'strikethrough' | 'mask' | 'gray';
 		alwaysOn?: boolean;
 		buttonAlignment?: 'left' | 'right' | 'inline';
-		coordinator?: IToolCoordinator;
 		scopeElement?: HTMLElement | null;
 		elementToolStateStore?: any;
 		globalElementId?: string;
 	} = $props();
 
 	// State
+	let contextHostElement = $state<HTMLElement | null>(null);
+	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	let shellContext = $state<AssessmentToolkitShellContext | null>(null);
+	const coordinator = $derived(
+		runtimeContext?.toolCoordinator as IToolCoordinator | undefined,
+	);
 	let core = $state<AnswerEliminatorCore | null>(null);
-	let eliminatedCount = $state(0);
-	let mutationObserver = $state<MutationObserver | null>(null);
+	let lastShellContextVersion = $state<number | null>(null);
 
 	// Track registration state
 	let registered = $state(false);
@@ -87,87 +97,42 @@ import { onDestroy, onMount } from 'svelte';
 	// Determine if tool should be active (either toggled on OR always-on mode)
 	let isActive = $derived(alwaysOn || visible);
 
+	$effect(() => {
+		if (!contextHostElement) return;
+		return connectToolRuntimeContext(contextHostElement, (value: AssessmentToolkitRuntimeContext) => {
+			runtimeContext = value;
+		});
+	});
+
+	$effect(() => {
+		if (!contextHostElement) return;
+		return connectToolShellContext(contextHostElement, (value: AssessmentToolkitShellContext) => {
+			shellContext = value;
+		});
+	});
+
+	function resolveQuestionRoot(): HTMLElement | null {
+		return scopeElement || shellContext?.scopeElement || null;
+	}
+
 	function initializeForCurrentQuestion() {
 		if (!isActive || !core) return;
-
-		// Use scopeElement if provided (for multi-item pages), otherwise search globally
-		const searchRoot = scopeElement || document.body;
-
-		// Find the current question/item within the search scope
-		const questionRoot =
-			searchRoot.querySelector('pie-player') ||
-			searchRoot.querySelector('multiple-choice') ||
-			searchRoot.querySelector('ebsr') ||
-			searchRoot.querySelector('[data-pie-element]') ||
-			searchRoot;
+		const questionRoot = resolveQuestionRoot();
 
 		if (!questionRoot) {
-			console.warn('[AnswerEliminator] Could not find question root within scope');
+			console.warn('[AnswerEliminator] Missing shell scope context for question root');
 			return;
 		}
 
-		core.initializeForQuestion(questionRoot as HTMLElement);
-		updateEliminatedCount();
-	}
-
-	function waitForPIEElements(callback: () => void, timeout: number = 5000) {
-		// Use scopeElement if provided, otherwise search globally
-		const searchRoot = scopeElement || document.body;
-
-		// Check if PIE elements already exist
-		const checkElements = () => {
-			const questionRoot =
-				searchRoot.querySelector('pie-player') ||
-				searchRoot.querySelector('multiple-choice') ||
-				searchRoot.querySelector('ebsr') ||
-				searchRoot.querySelector('[data-pie-element]');
-
-			if (questionRoot) {
-				// Elements found, clean up observer and execute callback
-				if (mutationObserver) {
-					mutationObserver.disconnect();
-					mutationObserver = null;
-				}
-				callback();
-				return true;
-			}
-			return false;
-		};
-
-		// Try immediately first
-		if (checkElements()) return;
-
-		// Set up MutationObserver to watch for elements within scope
-		mutationObserver = new MutationObserver(() => {
-			checkElements();
-		});
-
-		// Observe the search root for added nodes
-		mutationObserver.observe(searchRoot, {
-			childList: true,
-			subtree: true
-		});
-
-		// Fallback timeout to prevent infinite observation
-		setTimeout(() => {
-			if (mutationObserver) {
-				mutationObserver.disconnect();
-				mutationObserver = null;
-				// Try one last time
-				checkElements();
-			}
-		}, timeout);
+		core.initializeForQuestion(questionRoot);
 	}
 
 	function handleItemChange() {
-		// Question changed, wait for PIE elements to be rendered using MutationObserver
-		waitForPIEElements(() => {
-			initializeForCurrentQuestion();
+		requestAnimationFrame(() => {
+			requestAnimationFrame(() => {
+				initializeForCurrentQuestion();
+			});
 		});
-	}
-
-	function updateEliminatedCount() {
-		eliminatedCount = core?.getEliminatedCount() || 0;
 	}
 
 	// Register with coordinator when it becomes available
@@ -194,40 +159,33 @@ import { onDestroy, onMount } from 'svelte';
 			core.setStoreIntegration(elementToolStateStore, globalElementId);
 		}
 
-		// Listen for question changes (PIE player emits this)
-		document.addEventListener('pie-item-changed', handleItemChange);
-
-		// Listen for custom events from answer-eliminator-core when state changes
-		document.addEventListener('answer-eliminator-state-change', () => {
-			updateEliminatedCount();
-		});
-
 		// Initialize for current question if active, otherwise ensure clean state
 		if (isActive) {
-			// Wait for PIE elements to be mounted using MutationObserver
-			waitForPIEElements(() => {
-				initializeForCurrentQuestion();
-			});
+			initializeForCurrentQuestion();
 		} else {
 			// If not active on mount, clear any leftover visual eliminations
 			core.cleanup();
 		}
 
 		return () => {
-			// Clean up MutationObserver if still active
-			if (mutationObserver) {
-				mutationObserver.disconnect();
-				mutationObserver = null;
-			}
-
 			core?.destroy();
 			core = null;
 			if (coordinator && toolId) {
 				coordinator.unregisterTool(toolId);
 			}
-			document.removeEventListener('pie-item-changed', handleItemChange);
-			document.removeEventListener('answer-eliminator-state-change', updateEliminatedCount);
 		};
+	});
+
+	$effect(() => {
+		const shellVersion = shellContext?.contextVersion ?? null;
+		if (shellVersion === null) return;
+		if (lastShellContextVersion === null) {
+			lastShellContextVersion = shellVersion;
+			return;
+		}
+		if (shellVersion === lastShellContextVersion) return;
+		lastShellContextVersion = shellVersion;
+		handleItemChange();
 	});
 
 	// Watch for visibility changes to show/hide elimination buttons
@@ -248,3 +206,4 @@ import { onDestroy, onMount } from 'svelte';
 
 <!-- No visible UI - tool operates entirely through injected buttons next to choices -->
 <!-- The toolbar button visibility is managed by tool-toolbar.svelte -->
+<div bind:this={contextHostElement} style="display: none;" aria-hidden="true"></div>

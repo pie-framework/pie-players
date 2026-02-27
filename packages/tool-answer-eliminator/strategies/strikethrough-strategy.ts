@@ -12,6 +12,7 @@ export class StrikethroughStrategy implements EliminationStrategy {
 
 	private highlights = new Map<string, Highlight>();
 	private ranges = new Map<string, Range>();
+	private fallbackContainers = new Map<string, HTMLElement>();
 
 	initialize(): void {
 		// Check browser support
@@ -72,6 +73,7 @@ export class StrikethroughStrategy implements EliminationStrategy {
 
 		this.highlights.delete(choiceId);
 		this.ranges.delete(choiceId);
+		this.fallbackContainers.delete(choiceId);
 	}
 
 	isEliminated(choiceId: string): boolean {
@@ -83,6 +85,7 @@ export class StrikethroughStrategy implements EliminationStrategy {
 		for (const choiceId of this.highlights.keys()) {
 			this.remove(choiceId);
 		}
+		this.fallbackContainers.clear();
 	}
 
 	getEliminatedIds(): string[] {
@@ -218,13 +221,12 @@ export class StrikethroughStrategy implements EliminationStrategy {
 		container.classList.add("answer-eliminated-fallback");
 		container.setAttribute("data-eliminated", "true");
 		container.setAttribute("data-eliminated-id", choiceId);
+		this.fallbackContainers.set(choiceId, container);
 		this.addAriaAttributes(range);
 	}
 
 	private removeFallback(choiceId: string): void {
-		const container = document.querySelector(
-			`[data-eliminated-id="${choiceId}"]`,
-		);
+		const container = this.fallbackContainers.get(choiceId);
 		if (!container) return;
 
 		container.classList.remove("answer-eliminated-fallback");
@@ -235,5 +237,6 @@ export class StrikethroughStrategy implements EliminationStrategy {
 		const range = document.createRange();
 		range.selectNodeContents(container);
 		this.removeAriaAttributes(range);
+		this.fallbackContainers.delete(choiceId);
 	}
 }

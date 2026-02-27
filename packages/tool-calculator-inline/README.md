@@ -69,16 +69,16 @@ This package provides a calculator button component that can be embedded in ques
 ></pie-tool-calculator>
 ```
 
-### In QuestionToolBar
+### In ItemToolBar
 
-The component is designed to work with `pie-question-toolbar`:
+The component is designed to work with `pie-item-toolbar`:
 
 ```svelte
-<pie-question-toolbar
+<pie-item-toolbar
   item-id="question-1"
   tools="tts,answerEliminator,calculator"
   size="md"
-></pie-question-toolbar>
+></pie-item-toolbar>
 ```
 
 The toolbar will automatically:

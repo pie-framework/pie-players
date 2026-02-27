@@ -5,120 +5,127 @@
   Not exposed as a web component - used internally in PieSectionPlayer.
 -->
 <script lang="ts">
-	import type { ComponentDefinition } from '../component-definitions.js';
-	import type { ItemEntity, PassageEntity } from '@pie-players/pie-players-shared';
+	import type { SectionCompositionModel } from '../controllers/types.js';
 	import ItemNavigation from './ItemNavigation.svelte';
 	import ItemRenderer from './ItemRenderer.svelte';
 
 	let {
-		passages,
-		currentItem,
-		currentIndex,
-		totalItems,
-		canNext,
-		canPrevious,
-		itemSession,
-		player = '',
+		composition,
 		env = { mode: 'gather', role: 'student' },
-		playerVersion = 'latest',
-		assessmentId = '',
-		sectionId = '',
-		toolkitCoordinator = null,
-		playerDefinitions = {} as Partial<Record<string, ComponentDefinition>>,
-
+		toolbarPosition = 'right',
+		showToolbar = true,
 		onprevious,
-		onnext,
-		onsessionchanged
+		onnext
 	}: {
-		passages: PassageEntity[];
-		currentItem: ItemEntity | null;
-		currentIndex: number;
-		totalItems: number;
-		canNext: boolean;
-		canPrevious: boolean;
-		itemSession?: any;
-		player?: string;
+		composition: SectionCompositionModel;
 		env?: { mode: 'gather' | 'view' | 'evaluate' | 'author'; role: 'student' | 'instructor' };
-		playerVersion?: string;
-		assessmentId?: string;
-		sectionId?: string;
-		toolkitCoordinator?: any;
-		playerDefinitions?: Partial<Record<string, ComponentDefinition>>;
-
+		toolbarPosition?: 'top' | 'right' | 'bottom' | 'left' | 'none';
+		showToolbar?: boolean;
 		onprevious?: () => void;
 		onnext?: () => void;
-		onsessionchanged?: (session: any) => void;
 	} = $props();
 
-	function handleSessionChanged(event: CustomEvent) {
-		if (onsessionchanged) {
-			onsessionchanged(event.detail);
-		}
-	}
+	let passages = $derived(composition?.passages || []);
+	let items = $derived(composition?.items || []);
+	let currentIndex = $derived(composition?.currentItemIndex || 0);
+	let totalItems = $derived(items.length);
+	let currentItem = $derived(composition?.currentItem || items[currentIndex] || null);
+	let itemSessionsByItemId = $derived(composition?.itemSessionsByItemId || {});
+	let itemSession = $derived(currentItem?.id ? itemSessionsByItemId[currentItem.id] : undefined);
+	let canPrevious = $derived(currentIndex > 0);
+	let canNext = $derived(currentIndex < totalItems - 1);
+	let shouldRenderToolbar = $derived(showToolbar && toolbarPosition !== 'none');
+	let isToolbarBeforeContent = $derived(
+		toolbarPosition === 'top' || toolbarPosition === 'left'
+	);
 </script>
 
-<div class="pie-section-player__item-mode-layout">
-	<!-- Passages (visible for all items) -->
-	{#if passages.length > 0}
-		<div class="pie-section-player__passages-section">
-			{#each passages as passage (passage.id)}
-				<div class="pie-section-player__passage-wrapper">
-					<ItemRenderer
-						item={passage}
-						{player}
-						contentKind="rubric-block-stimulus"
-						env={{ mode: 'view', role: env.role }}
-						{assessmentId}
-						{sectionId}
-						{toolkitCoordinator}
-						{playerDefinitions}
-						customClassName="pie-section-player__passage-item"
-					/>
-				</div>
-			{/each}
-		</div>
+<div class={`pie-section-player__layout-shell pie-section-player__layout-shell--${toolbarPosition}`}>
+	{#if shouldRenderToolbar && isToolbarBeforeContent}
+		<pie-section-tools-toolbar
+			position={toolbarPosition}
+			enabled-tools=""
+		></pie-section-tools-toolbar>
 	{/if}
+	<div class="pie-section-player__item-mode-layout">
+		<!-- Passages (visible for all items) -->
+		{#if passages.length > 0}
+			<div class="pie-section-player__passages-section">
+				{#each passages as passage (passage.id)}
+					<div class="pie-section-player__passage-wrapper">
+						<ItemRenderer
+							item={passage}
+							contentKind="rubric-block-stimulus"
+							env={{ mode: 'view', role: env.role }}
+							customClassName="pie-section-player__passage-item"
+						/>
+					</div>
+				{/each}
+			</div>
+		{/if}
 
-	<!-- Current Item -->
-	{#if currentItem}
-		<div class="pie-section-player__current-item-section">
-			<ItemRenderer
-				item={currentItem}
-				{player}
-				contentKind="assessment-item"
-				{env}
-				session={itemSession}
-				{playerVersion}
-				{assessmentId}
-				{sectionId}
-				{toolkitCoordinator}
-				{playerDefinitions}
-				onsessionchanged={handleSessionChanged}
-				customClassName="pie-section-player__item-content"
-			/>
-		</div>
-	{:else}
-		<div class="pie-section-player__no-item">
-			<p>No item to display</p>
-		</div>
+		<!-- Current Item -->
+		{#if currentItem}
+			<div class="pie-section-player__current-item-section">
+				<ItemRenderer
+					item={currentItem}
+					contentKind="assessment-item"
+					{env}
+					session={itemSession}
+					customClassName="pie-section-player__item-content"
+				/>
+			</div>
+		{:else}
+			<div class="pie-section-player__no-item">
+				<p>No item to display</p>
+			</div>
+		{/if}
+
+		<!-- Navigation -->
+		<ItemNavigation
+			{currentIndex}
+			{totalItems}
+			{canNext}
+			{canPrevious}
+			{onprevious}
+			{onnext}
+		/>
+	</div>
+	{#if shouldRenderToolbar && !isToolbarBeforeContent}
+		<pie-section-tools-toolbar
+			position={toolbarPosition}
+			enabled-tools=""
+		></pie-section-tools-toolbar>
 	{/if}
-
-	<!-- Navigation -->
-	<ItemNavigation
-		{currentIndex}
-		{totalItems}
-		{canNext}
-		{canPrevious}
-		{onprevious}
-		{onnext}
-	/>
 </div>
 
 <style>
+	.pie-section-player__layout-shell {
+		display: flex;
+		width: 100%;
+		height: 100%;
+		min-height: 0;
+		overflow: hidden;
+	}
+
+	.pie-section-player__layout-shell--top,
+	.pie-section-player__layout-shell--bottom,
+	.pie-section-player__layout-shell--none {
+		flex-direction: column;
+	}
+
+	.pie-section-player__layout-shell--left,
+	.pie-section-player__layout-shell--right {
+		flex-direction: row;
+	}
+
 	.pie-section-player__item-mode-layout {
+		flex: 1;
 		display: flex;
 		flex-direction: column;
 		gap: 1.5rem;
+		padding: 1rem;
+		overflow-y: auto;
 	}
 
 	.pie-section-player__passages-section {

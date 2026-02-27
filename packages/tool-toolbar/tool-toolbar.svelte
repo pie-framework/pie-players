@@ -1,7 +1,7 @@
 <svelte:options
 	customElement={{
 		tag: 'pie-tool-toolbar',
-		shadow: 'none',
+		shadow: 'open',
 		props: {
 			tools: { type: 'String', attribute: 'tools' },
 			disabled: { type: 'Boolean', attribute: 'disabled' },
@@ -14,9 +14,6 @@
 			toolCoordinator: { type: 'Object', attribute: 'tool-coordinator' },
 			highlightCoordinator: { type: 'Object', attribute: 'highlight-coordinator' },
 
-			// Optional callbacks (passed as JS properties)
-			ondictionarylookup: { type: 'Object', attribute: 'ondictionarylookup' },
-			ontranslationrequest: { type: 'Object', attribute: 'ontranslationrequest' }
 		}
 	}}
 />
@@ -56,7 +53,6 @@
 	import '@pie-players/pie-tool-color-scheme';
 	import '@pie-players/pie-tool-graph';
 	import '@pie-players/pie-tool-line-reader';
-	import '@pie-players/pie-tool-magnifier';
 	import '@pie-players/pie-tool-periodic-table';
 	import '@pie-players/pie-tool-protractor';
 	import '@pie-players/pie-tool-ruler';
@@ -69,16 +65,12 @@
 		showLabels = false,
 		className = '',
 		organizationId = undefined as string | undefined, // For JWT token generation (can be set at runtime)
-		baseUrl = 'http://localhost:5200', // Picture Dictionary API base URL
+		baseUrl = 'http://localhost:5200',
 		answerEliminatorButtonAlignment = 'right' as 'left' | 'right' | 'inline', // Answer Eliminator button placement
 
 		// Coordinators from assessment toolkit
 		toolCoordinator = undefined as ToolCoordinator | null | undefined,
-		highlightCoordinator = undefined as HighlightCoordinator | null | undefined,
-
-		// Event callbacks for annotation toolbar (dictionary/translation not yet implemented)
-		ondictionarylookup = undefined as ((detail: { text: string }) => void) | undefined,
-		ontranslationrequest = undefined as ((detail: { text: string }) => void) | undefined
+		highlightCoordinator = undefined as HighlightCoordinator | null | undefined
 	} = $props();
 
 	// Keep these in the public custom element API even when not mounted yet.
@@ -86,8 +78,6 @@
 		void organizationId;
 		void baseUrl;
 		void highlightCoordinator;
-		void ondictionarylookup;
-		void ontranslationrequest;
 	});
 
 	// Parse enabled tools from prop
@@ -102,7 +92,6 @@
 	let showLineReader = $state(false);
 	let showGraph = $state(false);
 	let showPeriodicTable = $state(false);
-	let showMagnifier = $state(false);
 	let statusMessage = $state('');
 
 	// Update visibility state from coordinator
@@ -117,13 +106,8 @@
 		showLineReader = toolCoordinator.isToolVisible('lineReader');
 		showGraph = toolCoordinator.isToolVisible('graph');
 		showPeriodicTable = toolCoordinator.isToolVisible('periodicTable');
-		showMagnifier = toolCoordinator.isToolVisible('magnifier');
 		log('Updated visibility - calculator:', showCalculator, 'answerEliminator:', showAnswerEliminator);
 	}
-
-	// Picture Dictionary Modal state
-
-	// Handle picture dictionary lookup from annotation toolbar
 
 	// Handle arrow key navigation between toolbar buttons
 	function handleKeyDown(e: KeyboardEvent) {
@@ -239,14 +223,6 @@
 			toggle: () => toolCoordinator?.toggleTool('periodicTable'),
 			implemented: true
 		},
-		magnifier: {
-			id: 'magnifier',
-			name: 'Magnifier',
-			icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M15.5,14L20.5,19L19,20.5L14,15.5V14.71L13.73,14.43C12.59,15.41 11.11,16 9.5,16A6.5,6.5 0 0,1 3,9.5A6.5,6.5 0 0,1 9.5,3A6.5,6.5 0 0,1 16,9.5C16,11.11 15.41,12.59 14.43,13.73L14.71,14H15.5M9.5,14C12,14 14,12 14,9.5C14,7 12,5 9.5,5C7,5 5,7 5,9.5C5,12 7,14 9.5,14M12,10H10V12H9V10H7V9H9V7H10V9H12V10Z"/></svg>`,
-			getVisibility: () => showMagnifier,
-			toggle: () => toolCoordinator?.toggleTool('magnifier'),
-			implemented: true
-		},
 		highlighter: {
 			id: 'highlighter',
 			name: 'Highlighter',
@@ -259,21 +235,24 @@
 
 	// Build toolbar config from enabled tools
 	// Make this reactive to visibility changes by including them in the dependency
-	let toolbarConfig = $derived(browser && [showColorScheme, showAnswerEliminator, showCalculator, showProtractor, showRuler, showLineReader, showGraph, showPeriodicTable, showMagnifier]
+	let toolbarConfig = $derived(browser && [showColorScheme, showAnswerEliminator, showCalculator, showProtractor, showRuler, showLineReader, showGraph, showPeriodicTable]
 		? enabledToolIds
 				.map(id => TOOL_REGISTRY[id as keyof typeof TOOL_REGISTRY])
 				.filter((tool): tool is (typeof TOOL_REGISTRY)[keyof typeof TOOL_REGISTRY] => Boolean(tool))
 				.map(tool => {
 					const registration = metadataRegistry.get(tool.id);
-					const buttonMeta = registration?.createButton(metadataContext, {});
+					const icon =
+						registration && typeof registration.icon === 'function'
+							? registration.icon(metadataContext)
+							: registration?.icon;
 					return {
 					id: tool.id,
-					name: buttonMeta?.label || tool.name,
-					ariaLabel: buttonMeta?.ariaLabel || tool.name,
-					tooltip: buttonMeta?.tooltip || buttonMeta?.label || tool.name,
+					name: registration?.name || tool.name,
+					ariaLabel: registration?.name || tool.name,
+					tooltip: registration?.name || tool.name,
 					enabled: tool.implemented,
 					isVisible: tool.getVisibility(),
-					icon: buttonMeta?.icon || tool.icon,
+					icon: icon || tool.icon,
 					toggle: tool.toggle
 					};
 				})
@@ -310,7 +289,6 @@
 	let showLineReaderTool = $derived(enabledToolIds.includes('lineReader'));
 	let showGraphTool = $derived(enabledToolIds.includes('graph'));
 	let showPeriodicTableTool = $derived(enabledToolIds.includes('periodicTable'));
-	let showMagnifierTool = $derived(enabledToolIds.includes('magnifier'));
 </script>
 
 {#if browser}
@@ -389,9 +367,6 @@
 	{/if}
 	{#if showPeriodicTableTool}
 		<pie-tool-periodic-table visible={showPeriodicTable} tool-id="periodicTable" coordinator={toolCoordinator}></pie-tool-periodic-table>
-	{/if}
-	{#if showMagnifierTool}
-		<pie-tool-magnifier visible={showMagnifier} tool-id="magnifier" coordinator={toolCoordinator}></pie-tool-magnifier>
 	{/if}
 	<!-- Note: Annotation toolbar is intentionally not mounted here yet.
 	     It currently requires a ttsService prop that isn't exposed via its custom element API. -->

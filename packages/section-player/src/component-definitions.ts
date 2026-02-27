@@ -18,21 +18,6 @@ export const DEFAULT_PLAYER_DEFINITIONS: PlayerDefinitionMap = {
 			"bundle-host": "https://proxy.pie-api.com/bundles",
 		},
 	},
-	esm: {
-		tagName: "pie-esm-player",
-		ensureDefined: () => import("@pie-players/pie-esm-player"),
-		attributes: {
-			"esm-cdn-url": "https://esm.sh",
-		},
-	},
-	fixed: {
-		tagName: "pie-fixed-player",
-		ensureDefined: () => import("@pie-players/pie-fixed-player"),
-	},
-	inline: {
-		tagName: "pie-inline-player",
-		ensureDefined: () => import("@pie-players/pie-inline-player"),
-	},
 };
 
 export const DEFAULT_LAYOUT_DEFINITIONS: LayoutDefinitionMap = {
@@ -45,6 +30,11 @@ export const DEFAULT_LAYOUT_DEFINITIONS: LayoutDefinitionMap = {
 		tagName: "pie-vertical-layout",
 		ensureDefined: () =>
 			import("./components/layout-elements/PieVerticalLayoutElement.svelte"),
+	},
+	"item-mode": {
+		tagName: "pie-item-mode-layout",
+		ensureDefined: () =>
+			import("./components/layout-elements/PieItemModeLayoutElement.svelte"),
 	},
 };
 

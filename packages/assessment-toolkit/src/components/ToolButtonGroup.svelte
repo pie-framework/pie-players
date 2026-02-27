@@ -8,7 +8,11 @@
 	 * - Pass 2: Filters by tool relevance using ToolRegistry
 	 */
 
-	import type { ToolRegistry } from "../services/ToolRegistry.js";
+	import type {
+		ToolRegistry,
+		ToolToolbarButtonDefinition,
+		ToolbarContext,
+	} from "../services/ToolRegistry.js";
 	import type { ToolContext } from "../services/tool-context.js";
 	import ToolButton from "./ToolButton.svelte";
 
@@ -17,6 +21,7 @@
 		toolRegistry,
 		allowedToolIds,
 		context,
+		toolbarContext,
 		onToolClick,
 		orientation = "horizontal",
 		compact = false,
@@ -28,6 +33,8 @@
 		allowedToolIds: string[];
 		/** Context for visibility evaluation (Pass 2) */
 		context: ToolContext;
+		/** Context used for toolbar rendering contract */
+		toolbarContext: ToolbarContext;
 		/** Callback when tool button is clicked */
 		onToolClick?: (toolId: string) => void;
 		/** Layout orientation */
@@ -44,17 +51,26 @@
 		toolRegistry.filterVisibleInContext(allowedToolIds, context),
 	);
 
-	// Create button definitions for visible tools
-	const buttons = $derived(
-		visibleTools.map((tool) =>
-			tool.createButton(context, {
+	// Create button definitions for visible tools using the toolbar contract
+	const buttons = $derived.by((): ToolToolbarButtonDefinition[] => {
+		const rendered = visibleTools
+			.map((tool) => toolRegistry.renderForToolbar(tool.toolId, context, toolbarContext))
+			.filter((tool): tool is NonNullable<typeof tool> => Boolean(tool));
+
+		return rendered
+			.map((tool) => tool.button)
+			.filter((button): button is ToolToolbarButtonDefinition => Boolean(button))
+			.map((button) => ({
+				...button,
 				onClick: () => {
-					onToolClick?.(tool.toolId);
+					button.onClick();
+					onToolClick?.(button.toolId);
 				},
-				className: compact ? "tool-button--compact" : "",
-			}),
-		),
-	);
+				className: compact
+					? `${button.className ? `${button.className} ` : ""}tool-button--compact`
+					: button.className,
+			}));
+	});
 
 	// Derive container classes
 	const containerClasses = $derived(

@@ -1,56 +1,90 @@
 <svelte:options
 	customElement={{
 		tag: 'pie-tool-tts-inline',
-		shadow: 'none',
+		shadow: 'open',
 		props: {
 			toolId: { type: 'String', attribute: 'tool-id' },
 			catalogId: { type: 'String', attribute: 'catalog-id' },
 			language: { type: 'String', attribute: 'language' },
-			size: { type: 'String', attribute: 'size' },
-
-			// Services (passed as JS properties, not attributes)
-			coordinator: { type: 'Object', reflect: false },
-			ttsService: { type: 'Object', reflect: false },
-			highlightCoordinator: { type: 'Object', reflect: false }
+			size: { type: 'String', attribute: 'size' }
 		}
 	}}
 />
 
 <script lang="ts">
-	import type {
-		IHighlightCoordinator, 
-		IToolCoordinator,
-		ITTSService
+	import {
+		connectToolRegionScopeContext,
+		connectToolRuntimeContext,
+		connectToolShellContext,
+		type AssessmentToolkitRegionScopeContext,
+		type AssessmentToolkitRuntimeContext,
+		type AssessmentToolkitShellContext,
+		type IHighlightCoordinator,
+		type IToolCoordinator,
+		type ITTSService,
+		ZIndexLayer,
 	} from '@pie-players/pie-assessment-toolkit';
-	import { ZIndexLayer } from '@pie-players/pie-assessment-toolkit';
 
-	// Props
 	let {
 		toolId = 'tts-inline',
 		catalogId = '', // Explicit catalog ID
 		language = 'en-US',
-		size = 'md' as 'sm' | 'md' | 'lg',
-		coordinator,
-		ttsService,
-		highlightCoordinator
+		size = 'md' as 'sm' | 'md' | 'lg'
 	}: {
 		toolId?: string;
 		catalogId?: string;
 		language?: string;
 		size?: 'sm' | 'md' | 'lg';
-		coordinator?: IToolCoordinator;
-		ttsService?: ITTSService;
-		highlightCoordinator?: IHighlightCoordinator;
 	} = $props();
 
 	const isBrowser = typeof window !== 'undefined';
 
 	// State
 	let containerEl = $state<HTMLDivElement | undefined>();
+	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	let shellContext = $state<AssessmentToolkitShellContext | null>(null);
+	let regionScopeContext = $state<AssessmentToolkitRegionScopeContext | null>(null);
+	const coordinator = $derived(
+		runtimeContext?.toolCoordinator as IToolCoordinator | undefined,
+	);
+	const ttsService = $derived(runtimeContext?.ttsService as ITTSService | undefined);
+	const highlightCoordinator = $derived(
+		runtimeContext?.highlightCoordinator as IHighlightCoordinator | undefined,
+	);
+	const targetContainer = $derived(
+		regionScopeContext?.scopeElement || shellContext?.scopeElement || null,
+	);
 	let registered = $state(false);
 	let speaking = $state(false);
 	let paused = $state(false);
 	let statusMessage = $state('');
+
+	$effect(() => {
+		if (!containerEl) return;
+		return connectToolRuntimeContext(containerEl, (value: AssessmentToolkitRuntimeContext) => {
+			runtimeContext = value;
+		});
+	});
+
+	$effect(() => {
+		if (!containerEl) return;
+		const cleanupShell = connectToolShellContext(
+			containerEl,
+			(value: AssessmentToolkitShellContext) => {
+				shellContext = value;
+			},
+		);
+		const cleanupRegion = connectToolRegionScopeContext(
+			containerEl,
+			(value: AssessmentToolkitRegionScopeContext) => {
+				regionScopeContext = value;
+			},
+		);
+		return () => {
+			cleanupRegion();
+			cleanupShell();
+		};
+	});
 
 	// Register with coordinator (don't control visibility here - let parent handle it)
 	$effect(() => {
@@ -95,31 +129,8 @@
 			paused = false;
 			statusMessage = 'Reading started';
 
-			// Find target container
-			// First check if button is in a header with a sibling content div
-			const header = containerEl?.closest(
-				'.pie-section-player__passage-header, .pie-section-player__item-header'
-			);
-			let targetContainer: Element | null = null;
-
-			if (header) {
-				// Look for sibling content div
-				const parent = header.parentElement;
-				targetContainer =
-					parent?.querySelector(
-						'.pie-section-player__passage-content, .pie-section-player__item-content'
-					) || null;
-			}
-
-			// Fallback: look up the parent chain
 			if (!targetContainer) {
-				targetContainer = containerEl?.closest(
-					'.pie-section-player__passage-content, .pie-section-player__item-content'
-				) || null;
-			}
-
-			if (!targetContainer) {
-				console.warn('[TTS Inline] No target container found');
+				console.warn('[TTS Inline] No target container found from shell scope context');
 				speaking = false;
 				return;
 			}
@@ -151,7 +162,7 @@
 			}
 
 			// Speak with catalog support and highlighting
-			await ttsService.speak(text, {
+			await (ttsService as any).speak(text, {
 				catalogId: catalogId || undefined,
 				language,
 				contentElement: targetContainer

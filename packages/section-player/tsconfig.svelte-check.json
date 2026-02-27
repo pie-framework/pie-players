@@ -3,6 +3,7 @@
 	"compilerOptions": {
 		"noUnusedLocals": false,
 		"noUnusedParameters": false,
+		"checkJs": false,
 		"moduleResolution": "NodeNext",
 		"baseUrl": ".",
 		"paths": {

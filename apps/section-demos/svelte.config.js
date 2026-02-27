@@ -15,27 +15,10 @@ const config = {
 		}),
 	},
 
-	// Allow custom elements from packages that use them
-	compilerOptions: {
-		customElement: false,
-	},
-
-	// Configure vite-plugin-svelte to handle custom elements
 	vitePlugin: {
 		inspector: {
 			toggleKeyCombo: "meta-shift",
 			holdMode: true,
-		},
-		dynamicCompileOptions({ filename }) {
-			// Enable custom element compilation for PieSectionPlayer
-			if (filename.includes("pie-section-player/src/PieSectionPlayer.svelte")) {
-				return {
-					customElement: true,
-				};
-			}
-			return {
-				customElement: false,
-			};
 		},
 	},
 };

@@ -2,7 +2,19 @@ pre-commit:
   parallel: true
   commands:
     svelte-check:
-      glob: "*.{js,ts,svelte}"
+      glob: "**/*.{js,ts,svelte}"
       run: bun run check
     check-deps:
       run: bun run check:deps
+    check-package-metadata:
+      run: bun run check:package-metadata
+
+pre-push:
+  parallel: false
+  commands:
+    check-custom-elements:
+      run: bun run check:custom-elements
+    check-source-exports:
+      run: bun run check:source-exports
+    check-consumer-boundaries:
+      run: bun run check:consumer-boundaries

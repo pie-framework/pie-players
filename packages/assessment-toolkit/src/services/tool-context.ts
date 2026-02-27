@@ -8,9 +8,9 @@
 import type {
 	AssessmentEntity,
 	AssessmentItemRef,
+	AssessmentSection,
 	ItemEntity,
 	PassageEntity,
-	QtiAssessmentSection,
 	RubricBlock,
 } from "@pie-players/pie-players-shared/types";
 
@@ -36,7 +36,7 @@ export interface BaseToolContext {
 	assessment: AssessmentEntity;
 
 	/** Current section, if applicable */
-	section?: QtiAssessmentSection;
+	section?: AssessmentSection;
 
 	/** Reference to the current item (always available except at assessment level) */
 	itemRef?: AssessmentItemRef;
@@ -57,7 +57,7 @@ export interface AssessmentToolContext extends BaseToolContext {
  */
 export interface SectionToolContext extends BaseToolContext {
 	level: "section";
-	section: QtiAssessmentSection;
+	section: AssessmentSection;
 }
 
 /**
@@ -105,7 +105,7 @@ export interface RubricToolContext extends BaseToolContext {
 	rubricBlock: RubricBlock;
 
 	/** Section containing this rubric block */
-	section: QtiAssessmentSection;
+	section: AssessmentSection;
 
 	/** If rubric contains a passage (class="stimulus") */
 	passage?: PassageEntity;

@@ -3,17 +3,17 @@
 	 * ToolButton
 	 *
 	 * Generic button component for rendering tool buttons in toolbars.
-	 * Uses ToolButtonDefinition from ToolRegistry for consistent tool button rendering.
+	 * Uses ToolToolbarButtonDefinition from ToolRegistry for consistent rendering.
 	 */
 
-	import type { ToolButtonDefinition } from "../services/ToolRegistry.js";
+	import type { ToolToolbarButtonDefinition } from "../services/ToolRegistry.js";
 
 	// Props
 	let {
 		button,
 		class: className = "",
 	}: {
-		button: ToolButtonDefinition;
+		button: ToolToolbarButtonDefinition;
 		class?: string;
 	} = $props();
 

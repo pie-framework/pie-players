@@ -1,45 +1,67 @@
 <svelte:options
 	customElement={{
 		tag: 'pie-tool-calculator-inline',
-		shadow: 'none',
+		shadow: 'open',
 		props: {
 			toolId: { type: 'String', attribute: 'tool-id' },
 			calculatorType: { type: 'String', attribute: 'calculator-type' },
 			availableTypes: { type: 'String', attribute: 'available-types' },
-			size: { type: 'String', attribute: 'size' },
-
-			// Services (passed as JS properties, not attributes)
-			coordinator: { type: 'Object', reflect: false }
+			size: { type: 'String', attribute: 'size' }
 		}
 	}}
 />
 
 <script lang="ts">
-	import type { IToolCoordinator } from '@pie-players/pie-assessment-toolkit';
-	import { ZIndexLayer } from '@pie-players/pie-assessment-toolkit';
-
+	import {
+		connectToolRuntimeContext,
+		ZIndexLayer,
+	} from '@pie-players/pie-assessment-toolkit';
+	import type {
+		AssessmentToolkitRuntimeContext,
+		IToolCoordinator,
+	} from '@pie-players/pie-assessment-toolkit';
 	// Props
 	let {
 		toolId = 'calculator-inline',
-		calculatorType = 'scientific',
+		calculatorType = 'basic',
 		availableTypes = 'basic,scientific,graphing',
-		size = 'md' as 'sm' | 'md' | 'lg',
-		coordinator
+		size = 'md' as 'sm' | 'md' | 'lg'
 	}: {
 		toolId?: string;
 		calculatorType?: string;
 		availableTypes?: string;
 		size?: 'sm' | 'md' | 'lg';
-		coordinator?: IToolCoordinator;
 	} = $props();
 
 	const isBrowser = typeof window !== 'undefined';
 
 	// State
 	let containerEl = $state<HTMLDivElement | undefined>();
+	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	const coordinator = $derived(
+		runtimeContext?.toolCoordinator as IToolCoordinator | undefined,
+	);
 	let registered = $state(false);
 	let calculatorVisible = $state(false);
 	let statusMessage = $state('');
+	const supportedCalculatorTypes = $derived(
+		new Set(
+			availableTypes
+				.split(',')
+				.map((type) => type.trim())
+				.filter(Boolean),
+		),
+	);
+	const effectiveCalculatorType = $derived(
+		supportedCalculatorTypes.has(calculatorType) ? calculatorType : 'basic',
+	);
+
+	$effect(() => {
+		if (!containerEl) return;
+		return connectToolRuntimeContext(containerEl, (value: AssessmentToolkitRuntimeContext) => {
+			runtimeContext = value;
+		});
+	});
 
 	// Register with coordinator
 	$effect(() => {
@@ -84,8 +106,8 @@
 		coordinator.toggleTool(calculatorToolId);
 
 		statusMessage = calculatorVisible
-			? 'Calculator closed'
-			: 'Calculator opened';
+			? `${effectiveCalculatorType} calculator closed`
+			: `${effectiveCalculatorType} calculator opened`;
 	}
 
 	// Size classes
@@ -106,9 +128,10 @@
 			class="pie-tool-calculator-inline__button {sizeClass}"
 			class:pie-tool-calculator-inline__button--active={calculatorVisible}
 			onclick={handleToggle}
-			aria-label={calculatorVisible ? 'Close calculator' : 'Open calculator'}
+			aria-label={calculatorVisible ? `Close ${effectiveCalculatorType} calculator` : `Open ${effectiveCalculatorType} calculator`}
 			aria-pressed={calculatorVisible}
-			title={calculatorVisible ? 'Close calculator' : 'Open calculator'}
+			title={calculatorVisible ? `Close ${effectiveCalculatorType} calculator` : `Open ${effectiveCalculatorType} calculator`}
+			data-calculator-type={effectiveCalculatorType}
 			disabled={!coordinator}
 		>
 			<!-- Material Design Calculator Icon -->

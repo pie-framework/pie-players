@@ -1,19 +1,24 @@
 <svelte:options
 	customElement={{
 		tag: 'pie-tool-periodic-table',
-		shadow: 'none',
+		shadow: 'open',
 		props: {
 			visible: { type: 'Boolean', attribute: 'visible' },
-			toolId: { type: 'String', attribute: 'tool-id' },
-			coordinator: { type: 'Object' }
+			toolId: { type: 'String', attribute: 'tool-id' }
 		}
 	}}
 />
 
 <script lang="ts">
 	
-	import type { IToolCoordinator } from '@pie-players/pie-assessment-toolkit';
-	import { ZIndexLayer } from '@pie-players/pie-assessment-toolkit';
+	import {
+		connectToolRuntimeContext,
+		ZIndexLayer,
+	} from '@pie-players/pie-assessment-toolkit';
+	import type {
+		AssessmentToolkitRuntimeContext,
+		IToolCoordinator,
+	} from '@pie-players/pie-assessment-toolkit';
 	import { createFocusTrap, safeLocalStorageGet, safeLocalStorageSet } from '@pie-players/pie-players-shared';
 import { onMount } from 'svelte';
 	import periodicTableData from './periodic-table-data.json';
@@ -36,12 +41,10 @@ import { onMount } from 'svelte';
 	// Props
 	let {
 		visible = false,
-		toolId = 'periodicTable',
-		coordinator
+		toolId = 'periodicTable'
 	}: {
 		visible?: boolean;
 		toolId?: string;
-		coordinator?: IToolCoordinator;
 	} = $props();
 
 	// Check if running in browser
@@ -49,6 +52,10 @@ import { onMount } from 'svelte';
 
 	// State
 	let containerEl = $state<HTMLDivElement | undefined>();
+	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	const coordinator = $derived(
+		runtimeContext?.toolCoordinator as IToolCoordinator | undefined,
+	);
 	let isDragging = $state(false);
 	let x = $state(isBrowser ? window.innerWidth / 2 : 400);
 	let y = $state(isBrowser ? window.innerHeight / 2 : 300);
@@ -66,6 +73,13 @@ import { onMount } from 'svelte';
 	// Tool state
 	let selectedElement = $state<Element | null>(allElements[0] || null); // Initialize with Hydrogen
 	let selectedCategory = $state<string>('All');
+
+	$effect(() => {
+		if (!containerEl) return;
+		return connectToolRuntimeContext(containerEl, (value: AssessmentToolkitRuntimeContext) => {
+			runtimeContext = value;
+		});
+	});
 
 	/**
 	 * Normalize category name (matching production implementation)
@@ -154,7 +168,7 @@ import { onMount } from 'svelte';
 		const target = e.target as HTMLElement;
 
 		// Only start drag if clicking the header
-		if (!target.closest('.periodic-table-header')) return;
+		if (!target.closest('.pie-tool-periodic-table__header')) return;
 
 		// Don't drag if clicking buttons
 		if (target.closest('button')) return;
@@ -470,6 +484,12 @@ import { onMount } from 'svelte';
 	.pie-tool-periodic-table__close-btn:focus-visible {
 		outline: 2px solid var(--pie-primary, #3f51b5);
 		outline-offset: 2px;
+	}
+
+	.pie-tool-periodic-table__close-btn svg {
+		width: 20px;
+		height: 20px;
+		display: block;
 	}
 
 	/* Content wrapper */

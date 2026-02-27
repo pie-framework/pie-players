@@ -34,6 +34,14 @@ const walk = (dir, visitor) => {
 	}
 };
 
+const listFiles = (dir, predicate) => {
+	const files = [];
+	walk(dir, (filePath) => {
+		if (predicate(filePath)) files.push(filePath);
+	});
+	return files;
+};
+
 const getTagsFromSvelteFile = (filePath) => {
 	const src = readText(filePath);
 	const tagRegex = /tag:\s*["'`]([^"'`]+)["'`]/g;
@@ -120,6 +128,24 @@ const validatePackage = (pkgInfo) => {
 	const hasDistInFiles = files.some((f) => f === "dist" || f.startsWith("dist/"));
 	if (!hasDistInFiles) {
 		failures.push('"files" must include dist artifacts');
+	}
+
+	const distDir = path.join(pkgInfo.pkgDir, "dist");
+	if (existsSync(distDir)) {
+		const distJsFiles = listFiles(
+			distDir,
+			(filePath) => filePath.endsWith(".js") && !filePath.endsWith(".map"),
+		);
+		const ceSvelteImportViolations = distJsFiles
+			.filter((filePath) =>
+				readText(filePath).includes(".svelte?customElement"),
+			)
+			.map((filePath) => rel(filePath));
+		if (ceSvelteImportViolations.length > 0) {
+			failures.push(
+				`dist JS must not import ".svelte?customElement" (${ceSvelteImportViolations.join(", ")})`,
+			);
+		}
 	}
 
 	return { pkg, failures };

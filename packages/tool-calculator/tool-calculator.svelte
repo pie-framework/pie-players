@@ -196,7 +196,8 @@ import { onMount } from 'svelte';
 		return CALCULATOR_TYPE_NAMES[type] || type;
 	}
 
-	function hasCalculatorMount(container: HTMLDivElement): boolean {
+	function hasCalculatorMount(container: HTMLDivElement | null | undefined): boolean {
+		if (!container) return false;
 		return (
 			container.childElementCount > 0 ||
 			Boolean(container.querySelector(CALCULATOR_MOUNT_SELECTOR))
@@ -218,10 +219,11 @@ import { onMount } from 'svelte';
 	}
 
 	async function ensureCalculatorSurface(
-		container: HTMLDivElement,
+		container: HTMLDivElement | null | undefined,
 		instance: Calculator | null,
 		timeoutMs = 8000,
 	): Promise<boolean> {
+		if (!container) return false;
 		const mounted = await waitForCalculatorMount(container, timeoutMs);
 		if (!mounted) return false;
 		hasMountedSurface = true;
@@ -233,7 +235,11 @@ import { onMount } from 'svelte';
 		return true;
 	}
 
-	async function waitForCalculatorMount(container: HTMLDivElement, timeoutMs = 3000): Promise<boolean> {
+	async function waitForCalculatorMount(
+		container: HTMLDivElement | null | undefined,
+		timeoutMs = 3000,
+	): Promise<boolean> {
+		if (!container) return false;
 		const startedAt = Date.now();
 		while (Date.now() - startedAt < timeoutMs) {
 			if (!container.isConnected) return false;
@@ -458,9 +464,15 @@ import { onMount } from 'svelte';
 				config: calculatorConfig
 			});
 
+			const mountContainer = calculatorContainerEl;
+			if (!mountContainer || !mountContainer.isConnected) {
+				console.warn('[ToolCalculator] Calculator container unavailable before mount');
+				return;
+			}
+
 			calculatorInstance = await calculatorProvider.createCalculator(
 				currentCalculatorType,
-				calculatorContainerEl,
+				mountContainer,
 				calculatorConfig
 			);
 
@@ -472,10 +484,10 @@ import { onMount } from 'svelte';
 
 			// Some environments paint calculator DOM late even after successful creation.
 			// Keep the same instance alive and monitor for mount rather than tearing down/recreating.
-			const mounted = await ensureCalculatorSurface(calculatorContainerEl, calculatorInstance, 4000);
+			const mounted = await ensureCalculatorSurface(mountContainer, calculatorInstance, 4000);
 			if (!mounted) {
 				console.warn('[ToolCalculator] Calculator mount pending after init; keeping instance and monitoring');
-				void ensureCalculatorSurface(calculatorContainerEl, calculatorInstance, 12000);
+				void ensureCalculatorSurface(mountContainer, calculatorInstance, 12000);
 			}
 
 			console.log('[ToolCalculator] Calculator instance created:', calculatorInstance);
@@ -487,7 +499,7 @@ import { onMount } from 'svelte';
 
 			initializationFailed = false;
 			lastInitializationError = null;
-			hasMountedSurface = hasCalculatorMount(calculatorContainerEl);
+			hasMountedSurface = hasCalculatorMount(mountContainer);
 			console.log(`[ToolCalculator] ${currentCalculatorType} calculator initialized successfully`);
 		} catch (error) {
 			initializationFailed = true;

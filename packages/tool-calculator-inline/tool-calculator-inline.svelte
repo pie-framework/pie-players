@@ -23,7 +23,7 @@
 	// Props
 	let {
 		toolId = 'calculator-inline',
-		calculatorType = 'scientific',
+		calculatorType = 'basic',
 		availableTypes = 'basic,scientific,graphing',
 		size = 'md' as 'sm' | 'md' | 'lg'
 	}: {
@@ -44,6 +44,17 @@
 	let registered = $state(false);
 	let calculatorVisible = $state(false);
 	let statusMessage = $state('');
+	const supportedCalculatorTypes = $derived(
+		new Set(
+			availableTypes
+				.split(',')
+				.map((type) => type.trim())
+				.filter(Boolean),
+		),
+	);
+	const effectiveCalculatorType = $derived(
+		supportedCalculatorTypes.has(calculatorType) ? calculatorType : 'basic',
+	);
 
 	$effect(() => {
 		if (!containerEl) return;
@@ -95,8 +106,8 @@
 		coordinator.toggleTool(calculatorToolId);
 
 		statusMessage = calculatorVisible
-			? 'Calculator closed'
-			: 'Calculator opened';
+			? `${effectiveCalculatorType} calculator closed`
+			: `${effectiveCalculatorType} calculator opened`;
 	}
 
 	// Size classes
@@ -117,9 +128,10 @@
 			class="pie-tool-calculator-inline__button {sizeClass}"
 			class:pie-tool-calculator-inline__button--active={calculatorVisible}
 			onclick={handleToggle}
-			aria-label={calculatorVisible ? 'Close calculator' : 'Open calculator'}
+			aria-label={calculatorVisible ? `Close ${effectiveCalculatorType} calculator` : `Open ${effectiveCalculatorType} calculator`}
 			aria-pressed={calculatorVisible}
-			title={calculatorVisible ? 'Close calculator' : 'Open calculator'}
+			title={calculatorVisible ? `Close ${effectiveCalculatorType} calculator` : `Open ${effectiveCalculatorType} calculator`}
+			data-calculator-type={effectiveCalculatorType}
 			disabled={!coordinator}
 		>
 			<!-- Material Design Calculator Icon -->

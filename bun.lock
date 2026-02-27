@@ -127,6 +127,7 @@
         "@pie-players/pie-tool-annotation-toolbar": "workspace:*",
         "@pie-players/pie-tool-answer-eliminator": "workspace:*",
         "@pie-players/pie-tool-calculator": "workspace:*",
+        "@pie-players/pie-tool-calculator-inline": "workspace:*",
         "@pie-players/pie-tool-tts-inline": "workspace:*",
         "@pie-players/tts-client-server": "workspace:*",
         "@pie-players/tts-server-core": "workspace:*",

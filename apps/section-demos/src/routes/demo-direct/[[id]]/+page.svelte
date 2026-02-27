@@ -120,6 +120,13 @@
 		if (!customElements.get('pie-item-toolbar')) {
 			imports.push(import('@pie-players/pie-assessment-toolkit/components/item-toolbar-element'));
 		}
+		// Keep item-level calculator independent from section toolbar enabled-tools.
+		if (!customElements.get('pie-tool-calculator-inline')) {
+			imports.push(import('@pie-players/pie-tool-calculator-inline'));
+		}
+		if (!customElements.get('pie-tool-calculator')) {
+			imports.push(import('@pie-players/pie-tool-calculator'));
+		}
 		if (!customElements.get('pie-item-shell') || !customElements.get('pie-passage-shell')) {
 			imports.push(import('@pie-players/pie-section-player'));
 		}
@@ -245,7 +252,7 @@
 				<aside class="section-toolbar-pane" aria-label="Section tools">
 					<pie-section-tools-toolbar
 						position="right"
-						enabled-tools="calculator,graph,periodicTable,protractor,lineReader,ruler"
+						enabled-tools="graph,periodicTable,protractor,lineReader,ruler"
 					></pie-section-tools-toolbar>
 				</aside>
 			</div>

@@ -344,7 +344,6 @@ class TTSService {
 **Documentation:**
 - ✅ [Integration Guide](./accessibility-catalogs-integration-guide.md) - Complete implementation guide
 - ✅ [Quick Start](./accessibility-catalogs-quick-start.md) - Developer quick start
-- ✅ [Implementation Roadmap](./accessibility-catalogs-implementation-roadmap.md) - 6-8 week plan
 - ✅ [Quick Start Examples](./accessibility-catalogs-quick-start.md) - Comprehensive examples
 
 ### Use Case Priority
@@ -944,7 +943,7 @@ See [Accessibility Catalogs Integration Guide](accessibility-catalogs-integratio
 - [Architecture Overview](ARCHITECTURE.md) - Complete system architecture
 - [Assessment Toolkit README](../packages/assessment-toolkit/src/README.md) - Usage and examples
 - [QTI 3.0 Specification](https://www.imsglobal.org/spec/qti/v3p0) - IMS Global standard
-- [QTI 3.0 PNP Implementation](qti-3-toolkit-alignment-analysis.md) - Native implementation details
+- [TOOL_PROVIDER_SYSTEM](./TOOL_PROVIDER_SYSTEM.md) - Native tool provider and runtime details
 - [Accessibility Catalogs Integration Guide](accessibility-catalogs-integration-guide.md) - Phase 2 complete guide
 - [Accessibility Catalogs TTS Integration](accessibility-catalogs-tts-integration.md) - TTSService integration (Phase 2)
 - [Accessibility Catalogs Quick Start](accessibility-catalogs-quick-start.md) - Developer quick reference

@@ -411,7 +411,7 @@ Tool coordination from assessment-toolkit integrated:
 
 Services passed via JavaScript properties (not HTML attributes).
 
-See [TTS-INTEGRATION.md](./TTS-INTEGRATION.md) for complete details.
+See [TOOL_PROVIDER_SYSTEM](../../docs/TOOL_PROVIDER_SYSTEM.md) and [TOOL_HOST_CONTRACT](../../docs/TOOL_HOST_CONTRACT.md) for current integration details.
 
 ### Phase 4: Enhanced Layouts
 
@@ -430,6 +430,4 @@ Create new internal components:
 ## Related Documents
 
 - [README.md](./README.md) - Usage documentation
-- [demo.html](./demo.html) - Live demo
-- [SECTION-PLAYER-IMPLEMENTATION-PLAN.md](../../docs/SECTION-PLAYER-IMPLEMENTATION-PLAN.md) - Original plan
 - [SECTION-STRUCTURE-DESIGN.md](../../docs/SECTION-STRUCTURE-DESIGN.md) - Data model design

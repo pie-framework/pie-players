@@ -171,7 +171,7 @@ docker restart <redis-container-id>
 
 ## Adding New Environment Variables
 
-1. Add to [.env.example](.env.example) with documentation
+1. Add to [.env.example](../.env.example) with documentation
 2. Add to this document
 3. Update relevant package docs if needed
 

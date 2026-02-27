@@ -4,12 +4,7 @@ A web component for rendering QTI 3.0 assessment sections with passages and item
 
 ## Live Demos
 
-🎯 **[View Interactive Demos](./demos/)** - Working examples with full code
-
-- **[TTS Integration Demo](./demos/tts-integration-demo.html)** 🆕 - Assessment Toolkit TTS service integration
-- **[Paired Passages Demo](./demos/paired-passages-urban-gardens.html)** - Complete QTI 3.0 paired passages with PIE elements
-- **[Basic Demo](./demos/basic-demo.html)** - Simple introduction with one passage and three items
-- **[Original Demo](./demo.html)** - Proof-of-concept from initial development
+Use the SvelteKit demo app at `apps/section-demos` for active section-player examples.
 
 ## Installation
 
@@ -322,8 +317,8 @@ Element version conflict: pie-multiple-choice requires both
 ### Technical Details
 
 For implementation details and architecture, see:
-- [Element Loader Design](../../docs/architecture/ELEMENT_LOADER_DESIGN.md)
-- [Generalized Loader Architecture](../../docs/architecture/GENERALIZED_LOADER_ARCHITECTURE.md)
+- [ARCHITECTURE](../../docs/ARCHITECTURE.md)
+- [TOOL_PROVIDER_SYSTEM](../../docs/TOOL_PROVIDER_SYSTEM.md)
 
 ## Rendering Modes
 
@@ -497,7 +492,7 @@ At runtime, the section player:
 
 **Result:** TTS uses proper math pronunciation while visual display shows clean HTML.
 
-See [TTS-INTEGRATION.md](./TTS-INTEGRATION.md) for complete details.
+See [TOOL_PROVIDER_SYSTEM](../../docs/TOOL_PROVIDER_SYSTEM.md) and [TOOL_HOST_CONTRACT](../../docs/TOOL_HOST_CONTRACT.md) for complete details.
 
 ### Element-Level Tool State
 

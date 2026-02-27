@@ -151,7 +151,7 @@ This tool follows the PIE Assessment Toolkit tool pattern:
 
 ## Example
 
-See the complete working demo at `packages/section-player/demos/tts-integration-demo.html`.
+See active demos in `apps/section-demos`.
 
 ## License
 

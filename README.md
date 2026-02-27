@@ -81,7 +81,7 @@ bun run release:label:push           # Create and push tag to origin
 - [GitHub Pages Setup](docs/GITHUB_PAGES_SETUP.md)
 - [NPM Token Setup](docs/NPM_TOKEN_SETUP.md)
 - [Publishing Contract](docs/publishing.md)
-- [Workflow Strategy](docs/WORKFLOW_STRATEGY.md)
+- [Docs Index](docs/README.md)
 
 ## License
 

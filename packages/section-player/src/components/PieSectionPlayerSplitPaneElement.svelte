@@ -38,6 +38,7 @@
 	import "@pie-players/pie-assessment-toolkit/components/item-toolbar-element";
 	import "@pie-players/pie-tool-calculator-inline";
 	import "@pie-players/pie-tool-calculator";
+	import { IifeElementLoader } from "@pie-players/pie-players-shared";
 	import type { SectionCompositionModel } from "../controllers/types.js";
 	import type { AssessmentSection, ItemEntity } from "@pie-players/pie-players-shared/types";
 
@@ -101,6 +102,7 @@
 	let leftPanelWidth = $state(50);
 	let isDragging = $state(false);
 	let splitContainerElement = $state<HTMLDivElement | null>(null);
+	let elementsLoaded = $state(false);
 
 	const passages = $derived(compositionModel.passages || []);
 	const items = $derived(compositionModel.items || []);
@@ -111,6 +113,10 @@
 		toolbarPosition === "top" || toolbarPosition === "left",
 	);
 	const toolbarInline = $derived(toolbarPosition === "left" || toolbarPosition === "right");
+	const preloadedRenderables = $derived.by(() => [
+		...(passages as unknown as ItemEntity[]),
+		...(items as ItemEntity[]),
+	]);
 	const effectiveRuntime = $derived.by(() => ({
 		assessmentId,
 		playerType,
@@ -182,6 +188,51 @@
 	});
 
 	$effect(() => {
+		const renderables = preloadedRenderables;
+		if (renderables.length === 0) {
+			elementsLoaded = true;
+			return;
+		}
+
+		const bundleHost = String(iifeBundleHost || "").trim();
+		if (!bundleHost) {
+			console.warn(
+				"[pie-section-player-splitpane] Missing iifeBundleHost for element preloading; rendering without preload.",
+			);
+			elementsLoaded = true;
+			return;
+		}
+
+		let cancelled = false;
+		elementsLoaded = false;
+		const loader = new IifeElementLoader({
+			bundleHost,
+			debugEnabled: () => false,
+		});
+		const loaderView = (env as any)?.mode === "author" ? "author" : "delivery";
+
+		void loader
+			.loadFromItems(renderables, {
+				view: loaderView,
+				needsControllers: true,
+			})
+			.then(() => {
+				if (!cancelled) elementsLoaded = true;
+			})
+			.catch((error) => {
+				console.error(
+					"[pie-section-player-splitpane] Failed to preload PIE elements:",
+					error,
+				);
+				if (!cancelled) elementsLoaded = true;
+			});
+
+		return () => {
+			cancelled = true;
+		};
+	});
+
+	$effect(() => {
 		if (typeof window === "undefined" || runtime) return;
 		const usedLegacyProps: string[] = [];
 		if (assessmentId !== DEFAULT_ASSESSMENT_ID) usedLegacyProps.push("assessmentId");
@@ -239,41 +290,49 @@
 			>
 				{#if hasPassages}
 					<aside class="passages-pane" aria-label="Passages">
-						{#each passages as passage, passageIndex (passage.id || passageIndex)}
-							<pie-passage-shell
-								item-id={passage.id}
-								content-kind="rubric-block-stimulus"
-								item={passage}
-							>
-								<div class="content-card">
-									<div
-										class="content-card-header passage-header pie-section-player__passage-header"
-										data-region="header"
-									>
-										<h2>Passage {passageIndex + 1}</h2>
-										<pie-item-toolbar
-											item-id={passage.id}
-											catalog-id={passage.id}
-											tools={passageToolbarTools}
-											content-kind="rubric-block-stimulus"
-											size="md"
-											language="en-US"
-										></pie-item-toolbar>
-									</div>
-									<div
-										class="content-card-body passage-content pie-section-player__passage-content"
-										data-region="content"
-									>
-										<pie-iife-player
-											config={JSON.stringify(passage.config || {})}
-											env={JSON.stringify({ mode: "view", role: (env as any)?.role || "student" })}
-											bundle-host={iifeBundleHost}
-											skip-element-loading={true}
-										></pie-iife-player>
-									</div>
+						{#if !elementsLoaded}
+							<div class="content-card">
+								<div class="content-card-body passage-content pie-section-player__passage-content">
+									Loading passage content...
 								</div>
-							</pie-passage-shell>
-						{/each}
+							</div>
+						{:else}
+							{#each passages as passage, passageIndex (passage.id || passageIndex)}
+								<pie-passage-shell
+									item-id={passage.id}
+									content-kind="rubric-block-stimulus"
+									item={passage}
+								>
+									<div class="content-card">
+										<div
+											class="content-card-header passage-header pie-section-player__passage-header"
+											data-region="header"
+										>
+											<h2>Passage {passageIndex + 1}</h2>
+											<pie-item-toolbar
+												item-id={passage.id}
+												catalog-id={passage.id}
+												tools={passageToolbarTools}
+												content-kind="rubric-block-stimulus"
+												size="md"
+												language="en-US"
+											></pie-item-toolbar>
+										</div>
+										<div
+											class="content-card-body passage-content pie-section-player__passage-content"
+											data-region="content"
+										>
+											<pie-iife-player
+												config={JSON.stringify(passage.config || {})}
+												env={JSON.stringify({ mode: "view", role: (env as any)?.role || "student" })}
+												bundle-host={iifeBundleHost}
+												skip-element-loading={true}
+											></pie-iife-player>
+										</div>
+									</div>
+								</pie-passage-shell>
+							{/each}
+						{/if}
 					</aside>
 
 					<button
@@ -288,7 +347,14 @@
 				{/if}
 
 				<main class="items-pane" aria-label="Items">
-					{#each items as item, itemIndex (item.id || itemIndex)}
+					{#if !elementsLoaded}
+						<div class="content-card">
+							<div class="content-card-body item-content pie-section-player__item-content">
+								Loading section content...
+							</div>
+						</div>
+					{:else}
+						{#each items as item, itemIndex (item.id || itemIndex)}
 						<pie-item-shell item-id={item.id} content-kind="assessment-item" item={item}>
 							<div class="content-card">
 								<div
@@ -314,12 +380,14 @@
 										env={JSON.stringify(env)}
 										session={JSON.stringify(getSessionForItem(item) || { id: "", data: [] })}
 										bundle-host={iifeBundleHost}
+										skip-element-loading={true}
 									></pie-iife-player>
 								</div>
 								<div data-region="footer"></div>
 							</div>
 						</pie-item-shell>
-					{/each}
+						{/each}
+					{/if}
 				</main>
 			</div>
 

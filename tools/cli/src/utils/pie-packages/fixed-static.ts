@@ -32,13 +32,13 @@ async function resolveDefaultLoaderVersion(
 	monorepoDir: string,
 ): Promise<string> {
 	try {
-		const fixedPlayerPkgJsonPath = join(
+		const itemPlayerPkgJsonPath = join(
 			monorepoDir,
 			"packages",
-			"fixed-player",
+			"item-player",
 			"package.json",
 		);
-		const content = await readFile(fixedPlayerPkgJsonPath, "utf-8");
+		const content = await readFile(itemPlayerPkgJsonPath, "utf-8");
 		const pkg = JSON.parse(content);
 		if (typeof pkg?.version === "string" && pkg.version.length > 0)
 			return pkg.version;
@@ -173,7 +173,7 @@ function generatePackageJson(config: BuildStaticConfig, version: string): any {
 	const elementNames = Object.keys(elements)
 		.map((pkg) => pkg.replace("@pie-element/", ""))
 		.join(", ");
-	const description = `PIE fixed player static bundle containing: ${elementNames}. Production-ready, self-contained package with pre-bundled elements (hash: ${hash.substring(0, 7)}).`;
+	const description = `PIE preloaded item-player static bundle containing: ${elementNames}. Production-ready package with pre-bundled elements (hash: ${hash.substring(0, 7)}).`;
 	const elementKeywords = Object.keys(elements)
 		.map((pkg) => pkg.replace("@pie-element/", ""))
 		.slice(0, 10);
@@ -231,7 +231,7 @@ function generateIndex(
     // Math rendering not required by any elements in this bundle`;
 
 	return `// Auto-generated entry point for pie-fixed-player-static
-(async function initializePieFixedPlayer() {
+(async function initializePieItemPlayerStatic() {
   const importWithRetry = async (specifier, attempts = 3, baseDelayMs = 200) => {
     let lastError;
     for (let attempt = 1; attempt <= attempts; attempt++) {
@@ -251,7 +251,7 @@ function generateIndex(
   try {
 ${mathRenderingSetup}
     await importWithRetry('./${bundleFilename}', 4, 200);
-    await importWithRetry('./pie-fixed-player.js', 4, 200);
+    await importWithRetry('./pie-item-player.js', 4, 200);
   } catch (error) {
     try { console.error('[pie-fixed-player-static] Initialization failed'); } catch {}
   }
@@ -266,7 +266,7 @@ function generateTypes(): string {
   export {};
   global {
     interface HTMLElementTagNameMap {
-      'pie-fixed-player': HTMLElement;
+      'pie-item-player': HTMLElement;
     }
     interface Window {
       PIE_DEBUG?: boolean;
@@ -363,23 +363,23 @@ export async function buildFixedPlayerStaticPackage(
 		!!config.overwriteBundle,
 	);
 
-	// Build pie-fixed-player custom element from this monorepo
-	const fixedPlayerPkgDir = join(
+	// Build pie-item-player custom element from this monorepo
+	const itemPlayerPkgDir = join(
 		config.monorepoDir,
 		"packages",
-		"pie-fixed-player",
+		"item-player",
 	);
-	if (!existsSync(fixedPlayerPkgDir)) {
-		throw new Error(`pie-fixed-player package not found: ${fixedPlayerPkgDir}`);
+	if (!existsSync(itemPlayerPkgDir)) {
+		throw new Error(`pie-item-player package not found: ${itemPlayerPkgDir}`);
 	}
-	execSync("bun run build", { cwd: fixedPlayerPkgDir, stdio: "inherit" });
+	execSync("bun run build", { cwd: itemPlayerPkgDir, stdio: "inherit" });
 
 	const customElementSrc = join(
-		fixedPlayerPkgDir,
+		itemPlayerPkgDir,
 		"dist",
-		"pie-fixed-player.js",
+		"pie-item-player.js",
 	);
-	const customElementDest = join(outputDir, "dist", "pie-fixed-player.js");
+	const customElementDest = join(outputDir, "dist", "pie-item-player.js");
 	await copyFile(customElementSrc, customElementDest);
 
 	const bundleFilename = `pie-elements-bundle-${hash}.js`;
@@ -410,7 +410,7 @@ export async function buildFixedPlayerStaticPackage(
 	await writeFile(join(outputDir, "dist", "index.d.ts"), generateTypes());
 	await writeFile(
 		join(outputDir, "README.md"),
-		`# @pie-players/pie-fixed-player-static\n\nVersion: ${version}\n\nHash: ${hash}\n`,
+		`# @pie-players/pie-fixed-player-static\n\nVersion: ${version}\n\nHash: ${hash}\n\nUse with \`<pie-item-player strategy="preloaded">\`.\n`,
 	);
 
 	return { outputDir, version };

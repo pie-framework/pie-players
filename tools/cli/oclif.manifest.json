@@ -27,7 +27,7 @@
     "pie-packages:fixed-player-build-and-test-package": {
       "aliases": [],
       "args": {},
-      "description": "Build a pie-fixed-player-static package (optionally publish) and optionally generate a browser test project",
+      "description": "Build a preloaded static package (optionally publish) and optionally generate a browser test project",
       "examples": [
         "$ bun run cli pie-packages:fixed-player-build-and-test-package -f configs/fixed-player-static/example.json --generateTestProject",
         "$ bun run cli pie-packages:fixed-player-build-and-test-package -e \"@pie-element/multiple-choice@11.4.3\" --publish --dry-run"
@@ -64,7 +64,7 @@
           "type": "option"
         },
         "loaderVersion": {
-          "description": "Override loader version used in the static package version string (default: pie-fixed-player version in this repo)",
+          "description": "Override loader version used in the static package version string (default: pie-item-player version in this repo)",
           "name": "loaderVersion",
           "hasDynamicHelp": false,
           "multiple": false,
@@ -116,7 +116,7 @@
           "char": "n",
           "description": "Test project name (directory name)",
           "name": "name",
-          "default": "pie-fixed-player-static-test",
+          "default": "pie-item-player-preloaded-static-test",
           "hasDynamicHelp": false,
           "multiple": false,
           "type": "option"
@@ -156,7 +156,7 @@
     "pie-packages:fixed-player-build-package": {
       "aliases": [],
       "args": {},
-      "description": "Build (and optionally publish) PIE fixed player static package",
+      "description": "Build (and optionally publish) PIE preloaded static package for pie-item-player",
       "examples": [
         "$ bun run cli pie-packages:fixed-player-build-package -f elements.json",
         "$ bun run cli pie-packages:fixed-player-build-package -e \"@pie-element/calculator@1.0.0,@pie-element/ruler@2.0.0\""
@@ -193,7 +193,7 @@
           "type": "option"
         },
         "loaderVersion": {
-          "description": "Override loader version used in the static package version string (default: pie-fixed-player version in this repo)",
+          "description": "Override loader version used in the static package version string (default: pie-item-player version in this repo)",
           "name": "loaderVersion",
           "hasDynamicHelp": false,
           "multiple": false,
@@ -245,7 +245,7 @@
     "pie-packages:fixed-player-generate-test-project": {
       "aliases": [],
       "args": {},
-      "description": "Generate a simple browser test project for a pie-fixed-player-static build (local or published)",
+      "description": "Generate a simple browser test project for a preloaded static pie-item-player build",
       "examples": [
         "$ bun run cli pie-packages:fixed-player-generate-test-project --package-path ./local-builds/local",
         "$ bun run cli pie-packages:fixed-player-generate-test-project --published-version latest"
@@ -286,7 +286,7 @@
           "char": "n",
           "description": "Project name (directory name)",
           "name": "name",
-          "default": "pie-fixed-player-static-test",
+          "default": "pie-item-player-preloaded-static-test",
           "hasDynamicHelp": false,
           "multiple": false,
           "type": "option"
@@ -326,9 +326,9 @@
     "pie-packages:pie-player-build-tag": {
       "aliases": [],
       "args": {},
-      "description": "Build PIE player custom element tags (pie-fixed-player, pie-inline-player, pie-esm-player)",
+      "description": "Build PIE player custom element tags (pie-item-player, pie-inline-player)",
       "examples": [
-        "$ bun run cli pie-packages:pie-player-build-tag --tag pie-fixed-player",
+        "$ bun run cli pie-packages:pie-player-build-tag --tag pie-item-player",
         "$ bun run cli pie-packages:pie-player-build-tag -t all --clean"
       ],
       "flags": {
@@ -340,9 +340,8 @@
           "hasDynamicHelp": false,
           "multiple": false,
           "options": [
-            "pie-fixed-player",
+            "pie-item-player",
             "pie-inline-player",
-            "pie-esm-player",
             "all"
           ],
           "type": "option"
@@ -372,5 +371,5 @@
       ]
     }
   },
-  "version": "0.1.1"
+  "version": "0.1.2"
 }

@@ -1,10 +1,10 @@
-# Fixed player static build configs
+# Preloaded static build configs
 
 This folder contains **configuration files** used to build and publish variants of:
 
-- `@pie-framework/pie-fixed-player-static`
+- `@pie-players/pie-fixed-player-static`
 
-Each config represents a set of PIE elements (package + version) that should be bundled into a fixed-player static build.
+Each config represents a set of PIE elements (package + version) that should be bundled into a preloaded static build consumed by `pie-item-player`.
 
 ## File format
 
@@ -40,7 +40,7 @@ bun run cli pie-packages:fixed-player-build-package --elements-file configs/fixe
 
 - **CI/CD**: on `main`, the workflow `.github/workflows/publish-fixed-player-static.yml` publishes:
   - only configs changed in the pushed commit range, or
-  - **all configs** if `packages/pie-fixed-player/` or the CLI/build plumbing changed (to bump `.iteration` for the same element combinations).
+  - **all configs** if `packages/item-player/` or the CLI/build plumbing changed (to bump `.iteration` for the same element combinations).
 
 See `docs/fixed-player-static/README.md` for the full workflow, versioning rules, and how to add/change/remove configs.
 

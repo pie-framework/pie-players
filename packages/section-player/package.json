@@ -62,9 +62,7 @@
 	},
 	"dependencies": {
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
-		"@pie-players/pie-esm-player": "workspace:*",
-		"@pie-players/pie-fixed-player": "workspace:*",
-		"@pie-players/pie-iife-player": "workspace:*",
+		"@pie-players/pie-item-player": "workspace:*",
 		"@pie-players/pie-inline-player": "workspace:*",
 		"@pie-players/pie-context": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*",

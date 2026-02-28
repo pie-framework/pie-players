@@ -80,26 +80,28 @@ The `configuration` prop controls what authoring features are available:
 
 ## Using Authoring Mode
 
-### pie-iife-player
+### pie-item-player (`strategy="iife"`)
 
 ```html
-<pie-iife-player
+<pie-item-player
   config='{"elements": {...}, "models": [...], "markup": "..."}'
+  strategy="iife"
   mode="author"
   configuration='{"@pie-element/multiple-choice": {}}'
   onmodel-updated={(e) => console.log('Model updated:', e.detail)}
-></pie-iife-player>
+></pie-item-player>
 ```
 
-### pie-esm-player
+### pie-item-player (`strategy="esm"`)
 
 ```html
-<pie-esm-player
+<pie-item-player
   config='{"elements": {...}, "models": [...], "markup": "..."}'
+  strategy="esm"
   mode="author"
   configuration='{"@pie-element/multiple-choice": {}}'
   onmodel-updated={(e) => console.log('Model updated:', e.detail)}
-></pie-esm-player>
+></pie-item-player>
 ```
 
 ### PieItemPlayer (Svelte)
@@ -244,7 +246,7 @@ When `mode='author'`, markup is automatically transformed:
 ### Bundle Loading
 
 ```typescript
-// IIFE Loader
+// Strategy-aware loader (iife shown)
 const bundleType = mode === 'author'
   ? BundleType.editor
   : (hosted ? BundleType.player : BundleType.clientPlayer);
@@ -331,12 +333,13 @@ If you're migrating from `@pie-framework/pie-player-components`:
 ### After (pie-players)
 
 ```html
-<pie-iife-player
+<pie-item-player
   config={config}
+  strategy="iife"
   mode="author"
   configuration={configuration}
   onmodel-updated={handleUpdate}
-></pie-iife-player>
+></pie-item-player>
 ```
 
 Or with Svelte:

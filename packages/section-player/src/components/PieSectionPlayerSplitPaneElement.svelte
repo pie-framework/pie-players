@@ -33,7 +33,6 @@
 	import "./section-player-base-element.js";
 	import "./item-shell-element.js";
 	import "./passage-shell-element.js";
-	import "@pie-players/pie-iife-player";
 	import "@pie-players/pie-section-tools-toolbar";
 	import "@pie-players/pie-assessment-toolkit/components/item-toolbar-element";
 	import "@pie-players/pie-tool-calculator-inline";
@@ -42,7 +41,12 @@
 		normalizeToolsConfig,
 		parseToolList,
 	} from "@pie-players/pie-assessment-toolkit";
-	import { IifeElementLoader } from "@pie-players/pie-players-shared";
+	import {
+		EsmElementLoader,
+		IifeElementLoader,
+		normalizeItemPlayerStrategy,
+	} from "@pie-players/pie-players-shared";
+	import { DEFAULT_PLAYER_DEFINITIONS } from "../component-definitions.js";
 	import type { SectionCompositionModel } from "../controllers/types.js";
 	import type { AssessmentSection, ItemEntity } from "@pie-players/pie-players-shared/types";
 
@@ -53,6 +57,7 @@
 		items: [],
 		rubricBlocks: [],
 		instructions: [],
+		renderables: [],
 		currentItemIndex: 0,
 		currentItem: null,
 		isPageMode: false,
@@ -117,10 +122,9 @@
 		toolbarPosition === "top" || toolbarPosition === "left",
 	);
 	const toolbarInline = $derived(toolbarPosition === "left" || toolbarPosition === "right");
-	const preloadedRenderables = $derived.by(() => [
-		...(passages as unknown as ItemEntity[]),
-		...(items as ItemEntity[]),
-	]);
+	const preloadedRenderables = $derived.by(() =>
+		(compositionModel.renderables || []).map((entry) => entry.entity as ItemEntity),
+	);
 	const effectiveToolsConfig = $derived.by(() => {
 		const runtimeTools = ((runtime as RuntimeConfig | null)?.tools || tools || {}) as any;
 		const normalized = normalizeToolsConfig(runtimeTools);
@@ -150,6 +154,48 @@
 		...(runtime || {}),
 		tools: effectiveToolsConfig,
 	}));
+	const resolvedPlayerDefinition = $derived.by(
+		() => DEFAULT_PLAYER_DEFINITIONS[playerType] || DEFAULT_PLAYER_DEFINITIONS.iife,
+	);
+	const resolvedPlayerTag = $derived(resolvedPlayerDefinition?.tagName || "pie-item-player");
+	const resolvedPlayerAttributes = $derived(resolvedPlayerDefinition?.attributes || {});
+	const resolvedPlayerProps = $derived(resolvedPlayerDefinition?.props || {});
+
+	type SplitPanePlayerParams = {
+		config: Record<string, unknown>;
+		env: Record<string, unknown>;
+		session?: Record<string, unknown>;
+		attributes?: Record<string, string>;
+		props?: Record<string, unknown>;
+		skipElementLoading?: boolean;
+	};
+
+	function applySplitPanePlayerParams(node: HTMLElement, params: SplitPanePlayerParams) {
+		(node as any).config = params.config;
+		(node as any).env = params.env;
+		if (params.session !== undefined) {
+			(node as any).session = params.session;
+		}
+		for (const [name, value] of Object.entries(params.attributes || {})) {
+			node.setAttribute(name, String(value));
+		}
+		for (const [name, value] of Object.entries(params.props || {})) {
+			(node as any)[name] = value;
+		}
+		if (params.skipElementLoading) {
+			node.setAttribute("skip-element-loading", "true");
+			(node as any).skipElementLoading = true;
+		}
+	}
+
+	function splitPanePlayerAction(node: HTMLElement, params: SplitPanePlayerParams) {
+		applySplitPanePlayerParams(node, params);
+		return {
+			update(nextParams: SplitPanePlayerParams) {
+				applySplitPanePlayerParams(node, nextParams);
+			},
+		};
+	}
 
 	function handleBaseCompositionChanged(event: Event) {
 		const detail = (event as CustomEvent<{ composition?: SectionCompositionModel }>).detail;
@@ -208,27 +254,55 @@
 	});
 
 	$effect(() => {
+		resolvedPlayerDefinition?.ensureDefined?.().catch((error) => {
+			console.error("[pie-section-player-splitpane] Failed to load item player component:", error);
+		});
+	});
+
+	$effect(() => {
 		const renderables = preloadedRenderables;
 		if (renderables.length === 0) {
 			elementsLoaded = true;
 			return;
 		}
-
-		const bundleHost = String(iifeBundleHost || "").trim();
-		if (!bundleHost) {
-			console.warn(
-				"[pie-section-player-splitpane] Missing iifeBundleHost for element preloading; rendering without preload.",
-			);
-			elementsLoaded = true;
-			return;
-		}
+		const strategy = normalizeItemPlayerStrategy(
+			resolvedPlayerAttributes?.strategy || playerType,
+			"iife",
+		);
 
 		let cancelled = false;
 		elementsLoaded = false;
-		const loader = new IifeElementLoader({
-			bundleHost,
-			debugEnabled: () => false,
-		});
+		if (strategy === "preloaded") {
+			elementsLoaded = true;
+			return;
+		}
+		let loader: IifeElementLoader | EsmElementLoader | null = null;
+		if (strategy === "esm") {
+			const esmCdnUrl = String(
+				(resolvedPlayerProps as any)?.loaderOptions?.esmCdnUrl || "https://esm.sh",
+			);
+			loader = new EsmElementLoader({
+				esmCdnUrl,
+				debugEnabled: () => false,
+			});
+		} else {
+			const bundleHost = String(
+				(resolvedPlayerProps as any)?.loaderOptions?.bundleHost ||
+					iifeBundleHost ||
+					"",
+			).trim();
+			if (!bundleHost) {
+				console.warn(
+					"[pie-section-player-splitpane] Missing iifeBundleHost for element preloading; rendering without preload.",
+				);
+				elementsLoaded = true;
+				return;
+			}
+			loader = new IifeElementLoader({
+				bundleHost,
+				debugEnabled: () => false,
+			});
+		}
 		const loaderView = (env as any)?.mode === "author" ? "author" : "delivery";
 
 		void loader
@@ -342,12 +416,19 @@
 											class="content-card-body passage-content pie-section-player__passage-content"
 											data-region="content"
 										>
-											<pie-iife-player
-												config={JSON.stringify(passage.config || {})}
-												env={JSON.stringify({ mode: "view", role: (env as any)?.role || "student" })}
-												bundle-host={iifeBundleHost}
-												skip-element-loading={true}
-											></pie-iife-player>
+											<svelte:element
+												this={resolvedPlayerTag}
+												use:splitPanePlayerAction={{
+													config: passage.config || {},
+													env: {
+														mode: "view",
+														role: (env as any)?.role || "student",
+													},
+													attributes: resolvedPlayerAttributes || {},
+													props: resolvedPlayerProps || {},
+													skipElementLoading: true,
+												}}
+											></svelte:element>
 										</div>
 									</div>
 								</pie-passage-shell>
@@ -395,13 +476,20 @@
 									class="content-card-body item-content pie-section-player__item-content"
 									data-region="content"
 								>
-									<pie-iife-player
-										config={JSON.stringify(item.config || {})}
-										env={JSON.stringify(env)}
-										session={JSON.stringify(getSessionForItem(item) || { id: "", data: [] })}
-										bundle-host={iifeBundleHost}
-										skip-element-loading={true}
-									></pie-iife-player>
+									<svelte:element
+										this={resolvedPlayerTag}
+										use:splitPanePlayerAction={{
+											config: item.config || {},
+											env: env as Record<string, unknown>,
+											session: (getSessionForItem(item) || {
+												id: "",
+												data: [],
+											}) as Record<string, unknown>,
+											attributes: resolvedPlayerAttributes || {},
+											props: resolvedPlayerProps || {},
+											skipElementLoading: true,
+										}}
+									></svelte:element>
 								</div>
 								<div data-region="footer"></div>
 							</div>

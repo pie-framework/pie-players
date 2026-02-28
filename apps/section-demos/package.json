@@ -16,7 +16,6 @@
 	"dependencies": {
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
 		"@pie-players/pie-context": "workspace:*",
-		"@pie-players/pie-iife-player": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*",
 		"@pie-players/pie-section-player": "workspace:*",
 		"@pie-players/pie-section-player-tools-pnp-debugger": "workspace:*",

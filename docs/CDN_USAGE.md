@@ -2,36 +2,26 @@
 
 The player and tool packages in this repo compile to **custom elements** and can be loaded directly in the browser via an npm CDN such as **jsDelivr** or **unpkg**.
 
-## ESM players (recommended)
+## Item player (recommended)
 
-### `@pie-framework/pie-esm-player`
+### `@pie-players/pie-item-player` (`strategy="esm"`)
 
 ```html
 <script type="module">
-  import 'https://cdn.jsdelivr.net/npm/@pie-framework/pie-esm-player@1.0.0/dist/pie-esm-player.js';
+  import 'https://cdn.jsdelivr.net/npm/@pie-players/pie-item-player@0.1.0/dist/pie-item-player.js';
 </script>
 
-<pie-esm-player></pie-esm-player>
+<pie-item-player strategy="esm"></pie-item-player>
 ```
 
-### `@pie-framework/pie-iife-player`
+### `@pie-players/pie-item-player` (`strategy="iife"`)
 
 ```html
 <script type="module">
-  import 'https://cdn.jsdelivr.net/npm/@pie-framework/pie-iife-player@1.0.0/dist/pie-iife-player.js';
+  import 'https://cdn.jsdelivr.net/npm/@pie-players/pie-item-player@0.1.0/dist/pie-item-player.js';
 </script>
 
-<pie-iife-player></pie-iife-player>
-```
-
-### `@pie-framework/pie-fixed-player`
-
-```html
-<script type="module">
-  import 'https://cdn.jsdelivr.net/npm/@pie-framework/pie-fixed-player@1.0.1/dist/pie-fixed-player.js';
-</script>
-
-<pie-fixed-player></pie-fixed-player>
+<pie-item-player strategy="iife"></pie-item-player>
 ```
 
 ## Tools

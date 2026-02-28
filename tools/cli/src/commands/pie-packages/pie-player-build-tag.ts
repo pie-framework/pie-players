@@ -4,30 +4,24 @@ import { join } from "node:path";
 
 import { Command, Flags } from "@oclif/core";
 
-const TAGS = [
-	"pie-fixed-player",
-	"pie-inline-player",
-	"pie-esm-player",
-] as const;
+const TAGS = ["pie-item-player", "pie-inline-player"] as const;
 type TagName = (typeof TAGS)[number];
 
 function tagToPackageDir(tag: TagName): string {
 	switch (tag) {
-		case "pie-fixed-player":
-			return "packages/fixed-player";
+		case "pie-item-player":
+			return "packages/item-player";
 		case "pie-inline-player":
 			return "packages/inline-player";
-		case "pie-esm-player":
-			return "packages/esm-player";
 	}
 }
 
 export default class PiePlayerBuildTag extends Command {
 	static override description =
-		"Build PIE player custom element tags (pie-fixed-player, pie-inline-player, pie-esm-player)";
+		"Build PIE player custom element tags (pie-item-player, pie-inline-player)";
 
 	static override examples = [
-		"$ bun run cli pie-packages:pie-player-build-tag --tag pie-fixed-player",
+		"$ bun run cli pie-packages:pie-player-build-tag --tag pie-item-player",
 		"$ bun run cli pie-packages:pie-player-build-tag -t all --clean",
 	];
 

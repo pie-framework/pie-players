@@ -13,7 +13,7 @@
 	let lastEnv: any = null;
 
 	onMount(async () => {
-		await import('@pie-players/pie-iife-player');
+		await import('@pie-players/pie-item-player');
 	});
 
 	// Set properties imperatively when config or env changes
@@ -26,6 +26,7 @@
 				untrack(() => {
 					playerEl.config = currentConfig;
 					playerEl.env = currentEnv;
+					playerEl.loaderOptions = { bundleHost: 'https://proxy.pie-api.com/bundles/' };
 				});
 
 				lastConfig = currentConfig;
@@ -58,10 +59,10 @@
 	<div class="card bg-base-100 shadow-xl">
 		<div class="card-body">
 			{#key `${demoState.config.markup}-${demoState.env.mode}-${demoState.env.role}`}
-				<pie-iife-player
+				<pie-item-player
 					bind:this={playerEl}
-					bundle-host="https://proxy.pie-api.com/bundles/"
-				></pie-iife-player>
+					strategy="iife"
+				></pie-item-player>
 			{/key}
 		</div>
 	</div>

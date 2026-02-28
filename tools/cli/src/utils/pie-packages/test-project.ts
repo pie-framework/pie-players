@@ -91,23 +91,23 @@ export async function generateFixedStaticTestProject(
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>PIE Fixed Player Static Test</title>
+    <title>PIE Item Player Preloaded Static Test</title>
   </head>
   <body>
     <script type="module">
       import "${importUrlOrPath}";
     </script>
 
-    <h1>PIE Fixed Player Static Test</h1>
-    <p>If the import succeeded, <code>&lt;pie-fixed-player&gt;</code> should be defined.</p>
-    <pie-fixed-player></pie-fixed-player>
+    <h1>PIE Item Player Preloaded Static Test</h1>
+    <p>If the import succeeded, <code>&lt;pie-item-player&gt;</code> should be defined.</p>
+    <pie-item-player strategy="preloaded"></pie-item-player>
   </body>
 </html>
 `;
 
-	const readme = `# PIE fixed-player-static test project
+	const readme = `# PIE preloaded static test project
 
-This project loads a built \`@pie-players/pie-fixed-player-static\` bundle and renders a \`<pie-fixed-player>\` element.
+This project loads a built \`@pie-players/pie-fixed-player-static\` bundle and renders a \`<pie-item-player strategy="preloaded">\` element.
 
 ## Run
 

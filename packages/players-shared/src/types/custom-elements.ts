@@ -8,16 +8,16 @@
 import type { ItemConfig } from "./index.js";
 
 /**
- * PIE IIFE Player custom element interface
+ * PIE Item Player custom element interface
  *
  * @example
  * ```typescript
- * const player = document.querySelector('pie-iife-player') as PieIifePlayerElement;
+ * const player = document.querySelector('pie-item-player') as PieItemPlayerElement;
  * player.config = itemConfig;
  * player.session = { id: 'session-1', data: [] };
  * ```
  */
-export interface PieIifePlayerElement extends HTMLElement {
+export interface PieItemPlayerElement extends HTMLElement {
 	/** PIE item configuration */
 	config: ItemConfig;
 
@@ -49,40 +49,8 @@ export interface PieIifePlayerElement extends HTMLElement {
 
 	/** Debug mode flag */
 	debug?: boolean;
-}
-
-/**
- * PIE ESM Player custom element interface
- *
- * Mirrors the pie-iife-player contract, but loads PIE bundles via native ESM from an ESM CDN.
- */
-export interface PieEsmPlayerElement extends HTMLElement {
-	/** PIE item configuration */
-	config: ItemConfig;
-
-	/** Session state containing response data */
-	session: {
-		id: string;
-		data: any[];
-	};
-
-	/** Player environment (mode and role) */
-	env: {
-		mode: "gather" | "view" | "evaluate";
-		role: "student" | "instructor";
-	};
-
-	/** ESM CDN base URL (e.g. https://esm.sh) */
-	esmCdnUrl?: string;
-
-	/** Authoring mode toggle (separate from env.mode). */
-	mode?: "view" | "author";
-
-	/** Authoring configuration passed through to PIE elements. */
-	configuration?: Record<string, any>;
-
-	/** Debug mode flag */
-	debug?: boolean;
+	/** Runtime loading strategy */
+	strategy?: "iife" | "esm" | "preloaded";
 }
 
 /**
@@ -200,11 +168,11 @@ export interface ToolAnswerEliminatorElement extends BaseToolElement {
  *
  * @example
  * ```typescript
- * const player = document.querySelector('pie-iife-player') as CustomElementByTag<'pie-iife-player'>;
+ * const player = document.querySelector('pie-item-player') as CustomElementByTag<'pie-item-player'>;
  * ```
  */
-export type CustomElementByTag<T extends string> = T extends "pie-iife-player"
-	? PieIifePlayerElement
+export type CustomElementByTag<T extends string> = T extends "pie-item-player"
+	? PieItemPlayerElement
 	: T extends "pie-tool-toolbar"
 		? ToolToolbarElement
 		: T extends "pie-tool-calculator"
@@ -232,7 +200,7 @@ export type CustomElementByTag<T extends string> = T extends "pie-iife-player"
  */
 declare global {
 	interface HTMLElementTagNameMap {
-		"pie-iife-player": PieIifePlayerElement;
+		"pie-item-player": PieItemPlayerElement;
 		"pie-tool-toolbar": ToolToolbarElement;
 		"pie-tool-calculator": ToolCalculatorElement;
 		"pie-tool-color-scheme": ToolColorSchemeElement;

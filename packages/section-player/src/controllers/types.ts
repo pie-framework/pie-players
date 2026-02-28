@@ -8,6 +8,7 @@ import type {
 	PassageEntity,
 	RubricBlock,
 } from "@pie-players/pie-players-shared";
+import type { ConfigContainerEntity } from "@pie-players/pie-players-shared/types";
 
 export type SectionView =
 	| "candidate"
@@ -22,6 +23,7 @@ export interface SectionContentModel {
 	items: ItemEntity[];
 	rubricBlocks: RubricBlock[];
 	instructions: RubricBlock[];
+	renderables: SectionRenderable[];
 	adapterItemRefs: Array<{
 		identifier: string;
 		item: {
@@ -29,6 +31,13 @@ export interface SectionContentModel {
 			identifier?: string;
 		};
 	}>;
+}
+
+export type SectionRenderableFlavor = "item" | "passage" | "rubric";
+
+export interface SectionRenderable {
+	flavor: SectionRenderableFlavor;
+	entity: ConfigContainerEntity;
 }
 
 export interface SectionControllerInput {
@@ -56,6 +65,7 @@ export interface SectionCompositionModel {
 	items: ItemEntity[];
 	rubricBlocks: RubricBlock[];
 	instructions: RubricBlock[];
+	renderables: SectionRenderable[];
 	currentItemIndex: number;
 	currentItem: ItemEntity | null;
 	isPageMode: boolean;

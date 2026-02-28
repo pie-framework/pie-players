@@ -36,7 +36,7 @@ The PIE Section Player is a **framework-agnostic web component** for rendering Q
                  │
     ┌────────────▼────────────┐
     │  Leaf Web Components    │  ← Extensibility Points
-    │  <pie-esm-player>       │     Framework-agnostic leaves
+    │  <pie-item-player>      │     Framework-agnostic leaves
     └─────────────────────────┘
 ```
 
@@ -44,7 +44,7 @@ The PIE Section Player is a **framework-agnostic web component** for rendering Q
 
 **✅ Web Components at Boundaries:**
 - `<pie-section-player>` - Framework-agnostic external API
-- `<pie-esm-player>` - Reusable item/passage rendering
+- `<pie-item-player>` - Reusable item/passage rendering via `strategy` (`iife`/`esm`/`preloaded`)
 - Clients can use in React, Vue, Angular, vanilla JS
 
 **✅ Svelte Internally:**
@@ -79,8 +79,8 @@ The PIE Section Player is a **framework-agnostic web component** for rendering Q
 
 1. **`PageModeLayout.svelte`** - Renders all items + passages (keepTogether: true)
 2. **`ItemModeLayout.svelte`** - Renders one item at a time (keepTogether: false)
-3. **`PassageRenderer.svelte`** - Renders a single passage using `<pie-esm-player>`
-4. **`ItemRenderer.svelte`** - Renders a single item using `<pie-esm-player>`
+3. **`PassageRenderer.svelte`** - Renders a single passage using `<pie-item-player>`
+4. **`ItemRenderer.svelte`** - Renders a single item using `<pie-item-player>`
 5. **`ItemNavigation.svelte`** - Navigation controls for item mode
 
 ### Key Benefits
@@ -269,7 +269,7 @@ Host/integrator persists `sessionState` directly (no canonical attempt payload r
 
 ### Same Pattern as Existing Players
 
-**`@pie-players/pie-esm-player`**:
+**`@pie-players/pie-item-player`**:
 - Svelte component with `<svelte:options customElement>`
 - Uses internal Svelte components (`PieItemPlayer.svelte`)
 - Published as web component
@@ -281,7 +281,7 @@ Host/integrator persists `sessionState` directly (no canonical attempt payload r
 **`@pie-players/pie-section-player`** (NEW):
 - Pure Svelte components internally
 - Exposes web component externally
-- Uses `<pie-esm-player>` for item/passage rendering
+- Uses `<pie-item-player>` for item/passage rendering
 
 ---
 
@@ -378,7 +378,7 @@ Unlike `AssessmentPlayer` (which has a TS class + Svelte wrapper), the `SectionP
 
 ### 3. Reuse Existing Players ✅
 
-Uses `<pie-esm-player>` for all item and passage rendering:
+Uses `<pie-item-player>` for all item and passage rendering:
 - No reimplementation
 - Consistent rendering
 - Extensibility maintained

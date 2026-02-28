@@ -1,6 +1,6 @@
 # PIE Item Player Demos
 
-Educational demonstrations of the PIE Item Player (IIFE) showcasing individual PIE items with real K-12 content.
+Educational demonstrations of the unified PIE item player showcasing individual PIE items with real K-12 content.
 
 ## Demos
 
@@ -10,11 +10,11 @@ Educational demonstrations of the PIE Item Player (IIFE) showcasing individual P
 **Estimated Time:** ~5 minutes
 **Topic:** Solar System Science (8th grade)
 
-The simplest implementation - a single multiple-choice question. Shows the minimal item player setup using IIFE bundles.
+The simplest implementation - a single multiple-choice question. Shows the minimal item player setup using the `iife` strategy.
 
 **Learning Objectives:**
 - Understand the simplest item player implementation
-- See how a single PIE element renders with IIFE player
+- See how a single PIE element renders with the item player `iife` strategy
 - Learn about planetary science and our solar system
 
 ### Demo 2: Passage Item ⭐⭐☆
@@ -69,17 +69,17 @@ bun run preview
 
 - **Framework:** SvelteKit with static adapter
 - **Styling:** Tailwind CSS v4 + DaisyUI v5
-- **Player:** PIE IIFE Player
+- **Player:** PIE Item Player (`strategy="iife"`)
 - **Elements:** Loaded from PIE Bundle Service (`https://proxy.pie-api.com/bundles/`)
 
 ### Element Loading
 
-The demos use the IIFE-based PIE player that loads element bundles dynamically from the PIE bundle service. This approach:
+The demos use `pie-item-player` with `strategy="iife"` to load element bundles dynamically from the PIE bundle service. This approach:
 - Uses production-ready IIFE bundles
 - Works with `@latest` element versions
 - Loads complete element bundles with all dependencies
 - More stable than ESM loading (no CDN resolution issues)
-- Same API as the original `<pie-player>` component
+- Keeps runtime usage aligned with the unified player API
 
 ### Content Standards
 
@@ -145,24 +145,25 @@ To modify content, edit the files in `src/lib/content/`. Each file exports an `I
 - Config with elements registry, models, and markup
 - Model configurations specific to each element type
 
-### IIFE Player Configuration
+### Item Player Configuration (IIFE Strategy)
 
-The IIFE player accepts these key props:
+The item player accepts these key props:
 
 ```svelte
-<pie-iife-player
+<pie-item-player
   config={JSON.stringify(itemConfig)}
   session={JSON.stringify({ id: 'session-id', data: [] })}
   env={JSON.stringify({ mode: 'gather', role: 'student' })}
-  bundle-host="https://proxy.pie-api.com/bundles/"
-></pie-iife-player>
+  strategy="iife"
+></pie-item-player>
 ```
 
 **Props:**
 - `config` - Item configuration (elements, models, markup)
 - `session` - Session data for tracking student responses
 - `env` - Environment settings (mode: gather/view/evaluate, role: student/instructor)
-- `bundle-host` - PIE bundle service URL
+- `strategy` - Loading strategy (`iife`, `esm`, `preloaded`)
+- `loaderOptions.bundleHost` - PIE bundle service URL (for `iife`)
 
 **Modes:**
 - `gather` - Student taking assessment (can interact)
@@ -179,13 +180,13 @@ The IIFE player accepts these key props:
 
 ## Architecture Notes
 
-### Why IIFE Player?
+### Why `iife` Strategy?
 
 - ESM versions of PIE elements aren't published yet
 - IIFE bundles are production-tested and stable
 - Works with standard `@latest` element versions from npm
 - No CDN resolution issues
-- Same API as the legacy `<pie-player>` component
+- Runtime remains on a single player tag while preserving IIFE stability
 
 ### Why SvelteKit?
 

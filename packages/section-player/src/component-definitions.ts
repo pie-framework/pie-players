@@ -12,10 +12,34 @@ export type LayoutDefinitionMap = Record<string, ComponentDefinition>;
 
 export const DEFAULT_PLAYER_DEFINITIONS: PlayerDefinitionMap = {
 	iife: {
-		tagName: "pie-iife-player",
-		ensureDefined: () => import("@pie-players/pie-iife-player"),
+		tagName: "pie-item-player",
+		ensureDefined: () => import("@pie-players/pie-item-player"),
 		attributes: {
-			"bundle-host": "https://proxy.pie-api.com/bundles",
+			strategy: "iife",
+		},
+		props: {
+			loaderOptions: {
+				bundleHost: "https://proxy.pie-api.com/bundles",
+			},
+		},
+	},
+	esm: {
+		tagName: "pie-item-player",
+		ensureDefined: () => import("@pie-players/pie-item-player"),
+		attributes: {
+			strategy: "esm",
+		},
+		props: {
+			loaderOptions: {
+				esmCdnUrl: "https://esm.sh",
+			},
+		},
+	},
+	fixed: {
+		tagName: "pie-item-player",
+		ensureDefined: () => import("@pie-players/pie-item-player"),
+		attributes: {
+			strategy: "preloaded",
 		},
 	},
 };

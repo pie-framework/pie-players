@@ -1,8 +1,17 @@
 <script lang="ts">
 	import "@pie-players/pie-section-player/components/section-player-splitpane-element";
+	import { browser } from "$app/environment";
 	import type { PageData } from "./$types";
 
 	let { data }: { data: PageData } = $props();
+
+	const PLAYER_OPTIONS = ["iife", "esm", "fixed"] as const;
+	function getUrlEnumParam<T extends string>(key: string, options: readonly T[], fallback: T): T {
+		if (!browser) return fallback;
+		const value = new URLSearchParams(window.location.search).get(key);
+		return value && options.includes(value as T) ? (value as T) : fallback;
+	}
+	const selectedPlayerType = getUrlEnumParam("player", PLAYER_OPTIONS, "iife");
 
 	const toolkitToolsConfig = {
 	providers: {
@@ -19,7 +28,7 @@
 	};
 	const sectionPlayerRuntime = $derived({
 		assessmentId: data.demo?.id || "section-demo-direct",
-		playerType: "iife",
+		playerType: selectedPlayerType,
 		lazyInit: true,
 		tools: toolkitToolsConfig,
 	});

@@ -1,11 +1,11 @@
-name: Publish fixed-player static packages
+name: Publish preloaded static packages
 
 on:
   push:
     branches: [master]
     paths:
       - "configs/fixed-player-static/**"
-      - "packages/fixed-player/**"
+      - "packages/item-player/**"
       - "tools/cli/**"
       - "packages/players-shared/**"
       - "scripts/fixed-player-static/**"
@@ -48,7 +48,7 @@ jobs:
       - name: Build CLI
         run: bun run --cwd tools/cli build
 
-      - name: Publish fixed-player-static packages
+      - name: Publish preloaded static packages
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |

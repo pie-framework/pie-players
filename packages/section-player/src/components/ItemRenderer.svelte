@@ -122,9 +122,18 @@
   );
 
   let resolvedPlayerDefinition = $derived.by(
-    () => DEFAULT_PLAYER_DEFINITIONS["iife"],
+    () => {
+      const configuredType = runtimeContext?.itemPlayer?.type;
+      return (
+        (configuredType
+          ? DEFAULT_PLAYER_DEFINITIONS[configuredType]
+          : DEFAULT_PLAYER_DEFINITIONS["iife"]) || DEFAULT_PLAYER_DEFINITIONS["iife"]
+      );
+    },
   );
-  let resolvedPlayerTag = $derived(resolvedPlayerDefinition?.tagName || "pie-iife-player");
+  let resolvedPlayerTag = $derived(
+    runtimeContext?.itemPlayer?.tagName || resolvedPlayerDefinition?.tagName || "pie-item-player",
+  );
 
   onMount(() => {
     // Cleanup: clear this item's catalogs on unmount.

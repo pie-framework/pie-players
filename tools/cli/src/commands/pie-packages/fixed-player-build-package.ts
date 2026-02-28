@@ -9,7 +9,7 @@ import {
 
 export default class FixedPlayerBuildPackage extends Command {
 	static override description =
-		"Build (and optionally publish) PIE fixed player static package";
+		"Build (and optionally publish) PIE preloaded static package for pie-item-player";
 
 	static override examples = [
 		"$ bun run cli pie-packages:fixed-player-build-package -f elements.json",
@@ -34,7 +34,7 @@ export default class FixedPlayerBuildPackage extends Command {
 		}),
 		loaderVersion: Flags.string({
 			description:
-				"Override loader version used in the static package version string (default: pie-fixed-player version in this repo)",
+				"Override loader version used in the static package version string (default: pie-item-player version in this repo)",
 		}),
 		overwriteBundle: Flags.boolean({
 			description:

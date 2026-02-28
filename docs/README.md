@@ -13,6 +13,7 @@ Current status: core runtime custom elements now run with shadow DOM enabled (`s
 ## Section Player
 
 - [`SECTION-STRUCTURE-DESIGN.md`](./SECTION-STRUCTURE-DESIGN.md)
+- [`ITEM_PLAYER_STRATEGIES.md`](./ITEM_PLAYER_STRATEGIES.md)
 - [`qti3-paired-passages-design.md`](./qti3-paired-passages-design.md)
 - [`qti3-paired-passages-example.md`](./qti3-paired-passages-example.md)
 

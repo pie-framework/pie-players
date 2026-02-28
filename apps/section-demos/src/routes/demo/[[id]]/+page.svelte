@@ -14,6 +14,7 @@
 
 	const LAYOUT_OPTIONS = ['vertical', 'split-panel', 'item-mode'] as const;
 	const MODE_OPTIONS = ['candidate', 'scorer'] as const;
+	const PLAYER_OPTIONS = ['iife', 'esm', 'fixed'] as const;
 
 	function getUrlEnumParam<T extends string>(
 		key: string,
@@ -32,6 +33,9 @@
 		getUrlEnumParam('mode', MODE_OPTIONS, 'candidate')
 	);
 	let toolbarPosition = $state<'top' | 'right' | 'bottom' | 'left'>('right');
+	let itemPlayerType = $state<'iife' | 'esm' | 'fixed'>(
+		getUrlEnumParam('player', PLAYER_OPTIONS, 'iife')
+	);
 	let showSessionPanel = $state(false);
 	let showSourcePanel = $state(false);
 	let showPnpPanel = $state(false);
@@ -128,12 +132,14 @@
 	function updateUrlAndRefresh(updates: {
 		layout?: 'vertical' | 'split-panel' | 'item-mode';
 		mode?: 'candidate' | 'scorer';
+		player?: 'iife' | 'esm' | 'fixed';
 	}) {
 		if (browser) {
 			const url = new URL(window.location.href);
 			// Preserve current values and apply updates
 			url.searchParams.set('layout', updates.layout || layoutType);
 			url.searchParams.set('mode', updates.mode || roleType);
+			url.searchParams.set('player', updates.player || itemPlayerType);
 			window.location.href = url.toString();
 		}
 	}
@@ -168,6 +174,7 @@
 				sectionPlayer.env = pieEnv;
 				sectionPlayer.toolkitCoordinator = toolkitCoordinator;
 				sectionPlayer.toolbarPosition = toolbarPosition;
+				sectionPlayer.playerType = itemPlayerType;
 			});
 		}
 	});
@@ -249,6 +256,7 @@
 			bind:this={sectionPlayer}
 			layout={layoutType}
 			view={roleType}
+			player-type={itemPlayerType}
 		></pie-section-player>
 	</div>
 

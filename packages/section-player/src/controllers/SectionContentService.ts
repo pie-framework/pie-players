@@ -1,5 +1,9 @@
 import type { AssessmentSection, PassageEntity } from "@pie-players/pie-players-shared";
-import type { SectionContentModel, SectionView } from "./types.js";
+import type {
+	SectionContentModel,
+	SectionRenderable,
+	SectionView,
+} from "./types.js";
 
 export class SectionContentService {
 	public build(
@@ -12,6 +16,7 @@ export class SectionContentService {
 				items: [],
 				rubricBlocks: [],
 				instructions: [],
+				renderables: [],
 				adapterItemRefs: [],
 			};
 		}
@@ -50,11 +55,31 @@ export class SectionContentService {
 			},
 		}));
 
+		const renderables: SectionRenderable[] = [
+			...Array.from(passageMap.values()).map((entity) => ({
+				flavor: "passage" as const,
+				entity,
+			})),
+			...items.map((entity) => ({
+				flavor: "item" as const,
+				entity,
+			})),
+			...rubricBlocks
+				.filter((rb) => rb.class === "rubric")
+				.map((rb) => rb?.passage)
+				.filter((p): p is PassageEntity => !!p?.config)
+				.map((entity) => ({
+					flavor: "rubric" as const,
+					entity,
+				})),
+		];
+
 		return {
 			passages: Array.from(passageMap.values()),
 			items,
 			rubricBlocks,
 			instructions,
+			renderables,
 			adapterItemRefs,
 		};
 	}

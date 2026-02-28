@@ -3,7 +3,7 @@ version: 1
 component:
   area: item-players
   # What we’re validating at a high level (not necessarily a literal tag name)
-  underTest: "<pie-iife-player|pie-esm-player>"
+  underTest: "<pie-item-player strategy=iife|esm>"
 
 examplesApp:
   app: "@pie-framework/pie-players-example"

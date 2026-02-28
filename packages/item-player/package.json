@@ -1,25 +1,25 @@
 {
-	"name": "@pie-players/pie-iife-player",
-	"version": "0.2.6",
+	"name": "@pie-players/pie-item-player",
+	"version": "0.1.0",
 	"type": "module",
-	"description": "IIFE-based web component for rendering PIE assessment items (bundle-hosted or embedded) with session management",
+	"description": "Unified custom element for rendering PIE items with iife/esm/preloaded strategies",
 	"license": "MIT",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/pie-framework/pie-players.git",
-		"directory": "packages/iife-player"
+		"directory": "packages/item-player"
 	},
 	"publishConfig": {
 		"access": "public"
 	},
-	"unpkg": "./dist/pie-iife-player.js",
-	"jsdelivr": "./dist/pie-iife-player.js",
-	"main": "./dist/pie-iife-player.js",
+	"unpkg": "./dist/pie-item-player.js",
+	"jsdelivr": "./dist/pie-item-player.js",
+	"main": "./dist/pie-item-player.js",
 	"types": "./index.d.ts",
 	"exports": {
 		".": {
 			"types": "./index.d.ts",
-			"import": "./dist/pie-iife-player.js"
+			"import": "./dist/pie-item-player.js"
 		}
 	},
 	"files": [
@@ -42,16 +42,16 @@
 		"daisyui": "^5.5.18"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.3.10",
-		"@sveltejs/vite-plugin-svelte": "^6.1.4",
-		"@types/node": "^22.12.7",
+		"@biomejs/biome": "^2.3.13",
+		"@sveltejs/vite-plugin-svelte": "^6.2.4",
+		"@types/node": "^25.1.0",
 		"svelte": "^5.51.3",
-		"svelte-check": "^4.1.1",
-		"typescript": "^5.7.0",
-		"vite": "^7.0.8",
-		"vite-plugin-dts": "^4.5.3"
+		"svelte-check": "^4.3.5",
+		"typescript": "^5.9.3",
+		"vite": "^7.3.1",
+		"vite-plugin-dts": "^4.5.4"
 	},
-	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/iife-player#readme",
+	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/item-player#readme",
 	"bugs": {
 		"url": "https://github.com/pie-framework/pie-players/issues"
 	},

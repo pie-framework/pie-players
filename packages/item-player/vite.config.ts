@@ -38,9 +38,9 @@ export default defineConfig({
 	],
 	build: {
 		lib: {
-			entry: resolve(__dirname, "src/pie-iife-player.ts"),
-			name: "PieIifePlayer",
-			fileName: () => "pie-iife-player.js",
+			entry: resolve(__dirname, "src/pie-item-player.ts"),
+			name: "PieItemPlayerElement",
+			fileName: () => "pie-item-player.js",
 			formats: ["es"],
 		},
 		outDir: "dist",
@@ -52,7 +52,7 @@ export default defineConfig({
 			external: ["@datadog/browser-rum"],
 			output: {
 				format: "es",
-							},
+			},
 		},
 	},
 });

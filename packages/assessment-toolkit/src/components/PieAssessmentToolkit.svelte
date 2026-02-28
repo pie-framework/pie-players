@@ -62,9 +62,9 @@
 	const runtimeId = createRuntimeId("toolkit");
 	const sectionEngine = new SectionRuntimeEngine();
 	const DEFAULT_ITEM_PLAYER_BY_TYPE: Record<ItemPlayerType, string> = {
-		iife: "pie-iife-player",
-		esm: "pie-esm-player",
-		fixed: "pie-fixed-player",
+		iife: "pie-item-player",
+		esm: "pie-item-player",
+		fixed: "pie-item-player",
 		custom: "",
 	};
 

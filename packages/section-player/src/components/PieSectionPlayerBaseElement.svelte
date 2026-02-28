@@ -39,6 +39,7 @@
 		items: [],
 		rubricBlocks: [],
 		instructions: [],
+		renderables: [],
 		currentItemIndex: 0,
 		currentItem: null,
 		isPageMode: false,

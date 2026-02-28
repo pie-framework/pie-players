@@ -31,6 +31,7 @@
       env: { attribute: "env", type: "Object" },
       view: { attribute: "view", type: "String" },
       layout: { attribute: "layout", type: "String" },
+      playerType: { attribute: "player-type", type: "String" },
 
       // Styling
       customClassName: { attribute: "custom-class-name", type: "String" },
@@ -55,6 +56,7 @@
     assessmentToolkitRuntimeContext,
     ToolkitCoordinator,
     type AssessmentToolkitRuntimeContext,
+    type ItemPlayerType,
   } from "@pie-players/pie-assessment-toolkit";
   import { ContextProvider, ContextRoot } from "@pie-players/pie-context";
   import {
@@ -65,7 +67,9 @@
   } from "./component-definitions.js";
   import {
     type ElementLoaderInterface,
+    EsmElementLoader,
     IifeElementLoader,
+    normalizeItemPlayerStrategy,
   } from "@pie-players/pie-players-shared";
   import type {
     ItemEntity,
@@ -99,6 +103,7 @@
       | "testConstructor"
       | "tutor",
     layout = "split-panel",
+    playerType = "iife" as "iife" | "esm" | "fixed" | "custom",
     customClassName = "",
     toolbarPosition = "right" as "top" | "right" | "bottom" | "left" | "none",
     showToolbar = true,
@@ -121,6 +126,7 @@
     items: [],
     rubricBlocks: [],
     instructions: [],
+    renderables: [],
     adapterItemRefs: [],
     currentItemIndex: 0,
     isPageMode: false,
@@ -132,6 +138,7 @@
     items: [],
     rubricBlocks: [],
     instructions: [],
+    renderables: [],
     currentItemIndex: 0,
     currentItem: null,
     isPageMode: false,
@@ -249,6 +256,11 @@
 
   // Extract mode from env for convenience
   let mode = $derived(env.mode);
+  let runtimeItemPlayerType = $derived.by((): ItemPlayerType => {
+    const normalized = normalizeItemPlayerStrategy(playerType, "iife");
+    if (normalized === "preloaded") return "fixed";
+    return normalized as ItemPlayerType;
+  });
   let runtimeContextValue = $derived.by(
     (): SectionPlayerRuntimeContext => ({
       toolkitCoordinator: coordinator,
@@ -260,7 +272,7 @@
       assessmentId,
       sectionId,
       itemPlayer: {
-        type: "iife",
+        type: runtimeItemPlayerType,
         tagName: resolvedPlayerTag,
         isDefault: true,
       },
@@ -269,10 +281,10 @@
     }),
   );
   let resolvedPlayerDefinition = $derived.by(
-    () => DEFAULT_PLAYER_DEFINITIONS["iife"],
+    () => DEFAULT_PLAYER_DEFINITIONS[playerType] || DEFAULT_PLAYER_DEFINITIONS["iife"],
   );
   let resolvedPlayerTag = $derived(
-    resolvedPlayerDefinition?.tagName || "pie-iife-player",
+    resolvedPlayerDefinition?.tagName || "pie-item-player",
   );
   let mergedLayoutDefinitions = $derived.by(() =>
     mergeComponentDefinitions(DEFAULT_LAYOUT_DEFINITIONS, layoutDefinitions),
@@ -458,10 +470,9 @@
     // - passages (stimulus rubric blocks / linked passages)
     // - assessment items
     // - rubric blocks with PIE passage configs (e.g. instructions/rubrics)
-    const additionalRubricPassages = (rubricBlocks || [])
-      .map((rb) => rb?.passage)
-      .filter((p): p is PassageEntity => !!p && !!p.config);
-    const allItems: ItemEntity[] = [...passages, ...items, ...additionalRubricPassages];
+    const allItems: ItemEntity[] = (compositionModel.renderables || []).map(
+      (entry) => entry.entity as ItemEntity,
+    );
 
     if (allItems.length === 0) {
       elementsLoaded = true;
@@ -471,22 +482,39 @@
     // Ensure item renderers do not mount until required PIE bundles are available.
     elementsLoaded = false;
 
-    const effectiveBundleHost = String(
-      resolvedPlayerDefinition?.attributes?.["bundle-host"] || "",
+    const strategy = normalizeItemPlayerStrategy(
+      resolvedPlayerDefinition?.attributes?.strategy || playerType,
+      "iife",
     );
 
-    // Create the loader from the fixed IIFE player definition.
     let loader: ElementLoaderInterface | null = null;
-
-    if (effectiveBundleHost) {
+    if (strategy === "preloaded") {
+      elementsLoaded = true;
+      return;
+    }
+    if (strategy === "esm") {
+      const esmCdnUrl = String(
+        (resolvedPlayerDefinition?.props as any)?.loaderOptions?.esmCdnUrl || "https://esm.sh",
+      );
+      loader = new EsmElementLoader({
+        esmCdnUrl,
+        debugEnabled: () => !!debug,
+      });
+    } else {
+      const effectiveBundleHost = String(
+        (resolvedPlayerDefinition?.props as any)?.loaderOptions?.bundleHost ||
+          resolvedPlayerDefinition?.attributes?.["bundle-host"] ||
+          "",
+      );
+      if (!effectiveBundleHost) {
+        console.warn("[PieSectionPlayer] Missing bundle-host for IIFE element preloader.");
+        elementsLoaded = true;
+        return;
+      }
       loader = new IifeElementLoader({
         bundleHost: effectiveBundleHost,
         debugEnabled: () => !!debug,
       });
-    } else {
-      console.warn("[PieSectionPlayer] Missing bundle-host for IIFE element preloader.");
-      elementsLoaded = true;
-      return;
     }
 
     // Load all elements upfront
@@ -636,6 +664,7 @@
                 env: JSON.stringify({ mode: "view" }),
                 "skip-element-loading": true,
                 ...(resolvedPlayerDefinition?.attributes || {}),
+                ...(resolvedPlayerDefinition?.props || {}),
               } as any)}
             ></svelte:element>
           {/if}

@@ -1,6 +1,7 @@
 export * from "./config/profile.js";
 export * from "./instrumentation/index.js";
 export * from "./loader-config.js";
+export * from "./player-strategy.js";
 export * from "./loaders/index.js";
 export * from "./object/index.js";
 // Barrel export for PIE runtime utilities

@@ -1,14 +1,14 @@
-# Fixed player static packages (configs + CI/CD publishing)
+# Preloaded static packages (configs + CI/CD publishing)
 
-This repo supports publishing **pre-bundled fixed-player packages** from in-repo “element combination” configs.
+This repo supports publishing **pre-bundled static packages** from in-repo “element combination” configs.
 
-Each config in `configs/fixed-player-static/*.json` represents a fixed set of PIE elements (package + version). CI/CD publishes a corresponding `@pie-framework/pie-fixed-player-static` version for that combination.
+Each config in `configs/fixed-player-static/*.json` represents a fixed set of PIE elements (package + version). CI/CD publishes a corresponding `@pie-players/pie-fixed-player-static` version for that combination.
 
 ## What gets published
 
 Package name:
 
-- `@pie-framework/pie-fixed-player-static`
+- `@pie-players/pie-fixed-player-static`
 
 Version shape:
 
@@ -17,7 +17,7 @@ Version shape:
 
 Where:
 
-- `loaderVersion`: defaults to the current `packages/fixed-player/package.json` version (overrideable via CLI)
+- `loaderVersion`: defaults to the current `packages/item-player/package.json` version (overrideable via CLI)
 - `hash`: deterministic hash of the element combination (sorted list of `@pie-element/*@version`)
 - `iteration`: monotonic counter for **rebuilding the same element combination** (bugfix rebuilds, packaging fixes, etc.)
 
@@ -61,7 +61,7 @@ When you push/merge to `main`:
 1. **If config files changed** (`configs/fixed-player-static/*.json`):
    - CI publishes only those changed configs.
    - New/changed element combinations produce a new `<hash>` and publish with `.1` (first iteration).
-2. **If fixed-player/CLI/build plumbing changed** (e.g. `packages/fixed-player/`, `tools/cli/`, `packages/players-shared/`):
+2. **If preloaded pipeline/CLI/build plumbing changed** (e.g. `packages/item-player/`, `tools/cli/`, `packages/players-shared/`):
    - CI republishes **all configs**.
    - This triggers a **new `.iteration`** for each existing `<hash>` (bugfix rebuilds without changing the element combination).
 
@@ -75,7 +75,7 @@ This behavior is implemented by:
 
 1. Add a new file: `configs/fixed-player-static/<name>.json`
 2. Commit + merge to `main`
-3. CI publishes the corresponding `@pie-framework/pie-fixed-player-static@<loaderVersion>-<hash>.1`
+3. CI publishes the corresponding `@pie-players/pie-fixed-player-static@<loaderVersion>-<hash>.1`
 
 ### Change a configuration (element version changes)
 
@@ -95,5 +95,13 @@ Note: existing npm versions remain published (npm does not support “delete a v
 Publishing requires `NPM_TOKEN` in GitHub Actions secrets:
 
 - See `docs/NPM_TOKEN_SETUP.md`
+
+## Runtime usage
+
+Use published static bundles with the unified runtime element:
+
+```html
+<pie-item-player strategy="preloaded"></pie-item-player>
+```
 
 

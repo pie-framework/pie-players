@@ -235,8 +235,8 @@ Use this only for recovery/rerun scenarios; normal releases should continue thro
 the standard changeset → version PR → merge flow.
 
 You can verify by checking:
-- https://www.npmjs.com/package/@pie-framework/pie-iife-player
-- https://www.npmjs.com/package/@pie-framework/pie-esm-player
+- https://www.npmjs.com/package/@pie-players/pie-item-player
+- https://www.npmjs.com/package/@pie-players/pie-fixed-player-static
 
 ## Questions?
 

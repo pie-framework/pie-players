@@ -116,10 +116,10 @@ function gitDiffNameOnly(base, head) {
 }
 
 function shouldRebuildAll(changedFiles) {
-	// If player/CLI/build plumbing changes, we republish all configs so the same
+	// If item-player/CLI/build plumbing changes, we republish all configs so the same
 	// element combinations get a new ".iteration" (bugfix rebuild).
 	const triggers = [
-		"packages/fixed-player/",
+		"packages/item-player/",
 		"tools/cli/",
 		"packages/players-shared/",
 		"scripts/fixed-player-static/",
@@ -199,7 +199,7 @@ async function main() {
 
 	// eslint-disable-next-line no-console
 	console.log(
-		`fixed-player-static publish: reason=${targets.reason}, configs=${targets.configs.length}`,
+		`preloaded-static publish: reason=${targets.reason}, configs=${targets.configs.length}`,
 	);
 	for (const c of targets.configs) {
 		// eslint-disable-next-line no-console

@@ -10,7 +10,7 @@ import { generateFixedStaticTestProject } from "../../utils/pie-packages/test-pr
 
 export default class FixedPlayerBuildAndTestPackage extends Command {
 	static override description =
-		"Build a pie-fixed-player-static package (optionally publish) and optionally generate a browser test project";
+		"Build a preloaded static package (optionally publish) and optionally generate a browser test project";
 
 	static override examples = [
 		"$ bun run cli pie-packages:fixed-player-build-and-test-package -f configs/fixed-player-static/example.json --generateTestProject",
@@ -35,7 +35,7 @@ export default class FixedPlayerBuildAndTestPackage extends Command {
 		}),
 		loaderVersion: Flags.string({
 			description:
-				"Override loader version used in the static package version string (default: pie-fixed-player version in this repo)",
+				"Override loader version used in the static package version string (default: pie-item-player version in this repo)",
 		}),
 		overwriteBundle: Flags.boolean({
 			description:
@@ -69,7 +69,7 @@ export default class FixedPlayerBuildAndTestPackage extends Command {
 		name: Flags.string({
 			char: "n",
 			description: "Test project name (directory name)",
-			default: "pie-fixed-player-static-test",
+			default: "pie-item-player-preloaded-static-test",
 		}),
 		start: Flags.boolean({
 			char: "s",

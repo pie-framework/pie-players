@@ -4,7 +4,7 @@ import { generateFixedStaticTestProject } from "../../utils/pie-packages/test-pr
 
 export default class FixedPlayerGenerateTestProject extends Command {
 	static override description =
-		"Generate a simple browser test project for a pie-fixed-player-static build (local or published)";
+		"Generate a simple browser test project for a preloaded static pie-item-player build";
 
 	static override examples = [
 		"$ bun run cli pie-packages:fixed-player-generate-test-project --package-path ./local-builds/local",
@@ -32,7 +32,7 @@ export default class FixedPlayerGenerateTestProject extends Command {
 		name: Flags.string({
 			char: "n",
 			description: "Project name (directory name)",
-			default: "pie-fixed-player-static-test",
+			default: "pie-item-player-preloaded-static-test",
 		}),
 		start: Flags.boolean({
 			char: "s",

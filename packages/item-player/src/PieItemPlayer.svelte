@@ -35,8 +35,10 @@
 		DEFAULT_LOADER_CONFIG,
 		EsmPieLoader,
 		IifePieLoader,
+		ItemController,
 		isGlobalDebugEnabled,
 		makeUniqueTags,
+		normalizeItemSessionContainer,
 		normalizeItemPlayerStrategy,
 		resolveItemPlayerView,
 	} from "@pie-players/pie-players-shared";
@@ -114,6 +116,59 @@
 	let error: string | null = $state(null);
 	let itemConfig: ConfigEntity | null = $state(null);
 	let hostElement: HTMLElement | null = $state(null);
+	let sessionController: ItemController | null = $state(null);
+	let sessionControllerItemId = $state("pie-item-player");
+	let sessionSignature = $state("");
+	let sessionRevision = $state(0);
+
+	function parseSessionProp(input: unknown): unknown {
+		if (typeof input === "string") {
+			try {
+				return JSON.parse(input);
+			} catch {
+				return { id: "", data: [] };
+			}
+		}
+		return input;
+	}
+
+	function ensureSessionController(itemId: string, initialSession: unknown): ItemController {
+		if (!sessionController || sessionControllerItemId !== itemId) {
+			sessionController = new ItemController({
+				itemId,
+				initialSession,
+			});
+			sessionControllerItemId = itemId;
+			sessionSignature = JSON.stringify(sessionController.getSession());
+		}
+		return sessionController;
+	}
+
+	function syncControllerSession(
+		controller: ItemController,
+		input: unknown,
+		options: { allowMetadataOverwrite: boolean },
+	): boolean {
+		const next = controller.setSession(input, {
+			persist: false,
+			allowMetadataOverwrite: options.allowMetadataOverwrite,
+		});
+		const nextSignature = JSON.stringify(next);
+		if (nextSignature === sessionSignature) {
+			return false;
+		}
+		sessionSignature = nextSignature;
+		sessionRevision += 1;
+		return true;
+	}
+
+	const rendererSession = $derived.by(() => {
+		const _rev = sessionRevision;
+		if (!sessionController) {
+			return normalizeItemSessionContainer(parseSessionProp(session)).data;
+		}
+		return sessionController.getSession().data;
+	});
 
 	function stableHashBase36(input: string) {
 		let h = 5381;
@@ -253,6 +308,13 @@
 		});
 	});
 
+	$effect(() => {
+		const parsed = parseSessionProp(session);
+		const controllerItemId = itemConfig?.id || "pie-item-player";
+		const controller = ensureSessionController(controllerItemId, parsed);
+		syncControllerSession(controller, parsed, { allowMetadataOverwrite: true });
+	});
+
 	const loadScopedExternalStyle = async (url: string) => {
 		if (!isBrowser || !url || typeof url !== "string") return;
 		if (document.querySelector(`style[data-pie-style="${url}"]`)) return;
@@ -323,6 +385,28 @@
 		// Also dispatch on parent for compatibility with integrations that relied on this.
 		hostElement?.parentElement?.dispatchEvent(newEvent);
 	};
+
+	const handleSessionChanged = (detail: unknown) => {
+		const controllerItemId = itemConfig?.id || "pie-item-player";
+		const controller = ensureSessionController(controllerItemId, parseSessionProp(session));
+		const beforeSignature = sessionSignature;
+		const normalized = controller.updateFromEventDetail(detail, {
+			persist: false,
+			allowMetadataOverwrite: false,
+		});
+		const nextSignature = JSON.stringify(normalized);
+		if (nextSignature === beforeSignature) {
+			return;
+		}
+		sessionSignature = nextSignature;
+		sessionRevision += 1;
+		const detailObj =
+			detail && typeof detail === "object"
+				? ({ ...(detail as Record<string, unknown>) } as Record<string, unknown>)
+				: {};
+		detailObj.session = normalized;
+		handlePlayerEvent(new CustomEvent("session-changed", { detail: detailObj }));
+	};
 </script>
 
 <div class="pie-item-player {scopeClass}" bind:this={hostElement}>
@@ -349,10 +433,7 @@
 			<PieItemRenderer
 				{itemConfig}
 				env={typeof env === "string" ? JSON.parse(env) : env}
-				session={(() => {
-					const parsedSession = typeof session === "string" ? JSON.parse(session) : session;
-					return parsedSession.data || [];
-				})()}
+				session={rendererSession}
 				{addCorrectResponse}
 				customClassName={scopeClass}
 				bundleType={resolvedMode === "author" ? BundleType.editor : BundleType.clientPlayer}
@@ -368,8 +449,7 @@
 					handlePlayerEvent(new CustomEvent("load-complete", { detail }))}
 				onPlayerError={(detail: unknown) =>
 					handlePlayerEvent(new CustomEvent("player-error", { detail }))}
-				onSessionChanged={(detail: unknown) =>
-					handlePlayerEvent(new CustomEvent("session-changed", { detail }))}
+				onSessionChanged={(detail: unknown) => handleSessionChanged(detail)}
 				onModelUpdated={(detail: unknown) =>
 					handlePlayerEvent(new CustomEvent("model-updated", { detail }))}
 			/>

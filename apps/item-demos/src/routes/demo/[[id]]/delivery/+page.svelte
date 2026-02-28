@@ -23,25 +23,9 @@
 	let controlsForm: HTMLFormElement | null = $state(null);
 	let lastConfig: any = null;
 	let lastEnv: any = null;
-	let lastSessionSignature = '';
+	let lastSession: any = null;
 	let mode = $state<'gather' | 'view' | 'evaluate'>('gather');
 	let role = $state<'student' | 'instructor'>('student');
-
-	function normalizeSessionContainer(input: any): { id: string; data: any[] } {
-		if (input && typeof input === 'object' && Array.isArray(input.data)) {
-			return {
-				id: typeof input.id === 'string' ? input.id : '',
-				data: input.data,
-			};
-		}
-		if (Array.isArray(input)) {
-			return { id: '', data: input };
-		}
-		if (input && typeof input === 'object') {
-			return { id: '', data: [input] };
-		}
-		return { id: '', data: [] };
-	}
 
 	$effect(() => {
 		if (untrack(() => mode) !== $modeStore) {
@@ -77,14 +61,13 @@
 	$effect(() => {
 		const currentConfig = $configStore;
 		const currentEnv = $envStore;
-		const currentSession = normalizeSessionContainer($sessionStore);
-		const currentSessionSignature = JSON.stringify(currentSession);
+		const currentSession = $sessionStore;
 
 		if (playerEl && currentConfig && currentEnv && currentSession) {
 			if (
 				currentConfig !== lastConfig ||
 				currentEnv !== lastEnv ||
-				currentSessionSignature !== lastSessionSignature
+				currentSession !== lastSession
 			) {
 				untrack(() => {
 					playerEl.config = currentConfig;
@@ -95,7 +78,7 @@
 
 				lastConfig = currentConfig;
 				lastEnv = currentEnv;
-				lastSessionSignature = currentSessionSignature;
+				lastSession = currentSession;
 			}
 		}
 	});
@@ -105,9 +88,8 @@
 		if (playerEl) {
 			const handler = (e: CustomEvent) => {
 				const detail = e.detail ?? {};
-				// Use wrapper payload shape; ignore native events that don't include session container.
 				if (detail.session) {
-					updateSession(normalizeSessionContainer(detail.session));
+					updateSession(detail.session);
 				}
 				if (detail.score) {
 					updateScore(detail.score);

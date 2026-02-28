@@ -1,25 +1,57 @@
 <script lang="ts">
-	import { getContext, onMount, untrack } from 'svelte';
+	import { untrack } from 'svelte';
 	import ModeSelector from '$lib/components/ModeSelector.svelte';
 	import RoleSelector from '$lib/components/RoleSelector.svelte';
 	import ScoringPanel from '$lib/components/ScoringPanel.svelte';
 	import SessionPanel from '$lib/components/SessionPanel.svelte';
+	import '@pie-players/pie-item-player';
+	import {
+		config as configStore,
+		env as envStore,
+		mode as modeStore,
+		role as roleStore,
+		score as scoreStore,
+		session as sessionStore,
+		updateScore,
+		updateSession,
+	} from '$lib/stores/demo-state';
 
 	let { data } = $props();
-	const demoState: any = getContext('demo-state');
 
 	let playerEl: any = $state(null);
 	let lastConfig: any = null;
 	let lastEnv: any = null;
+	let mode = $state<'gather' | 'view' | 'evaluate'>('gather');
+	let role = $state<'student' | 'instructor'>('student');
 
-	onMount(async () => {
-		await import('@pie-players/pie-item-player');
+	$effect(() => {
+		if (mode !== $modeStore) {
+			mode = $modeStore;
+		}
+	});
+
+	$effect(() => {
+		if (role !== $roleStore) {
+			role = $roleStore;
+		}
+	});
+
+	$effect(() => {
+		if ($modeStore !== mode) {
+			modeStore.set(mode);
+		}
+	});
+
+	$effect(() => {
+		if ($roleStore !== role) {
+			roleStore.set(role);
+		}
 	});
 
 	// Set properties imperatively when config or env changes
 	$effect(() => {
-		const currentConfig = demoState.config;
-		const currentEnv = demoState.env;
+		const currentConfig = $configStore;
+		const currentEnv = $envStore;
 
 		if (playerEl && currentConfig && currentEnv) {
 			if (currentConfig !== lastConfig || currentEnv !== lastEnv) {
@@ -39,9 +71,9 @@
 	$effect(() => {
 		if (playerEl) {
 			const handler = (e: CustomEvent) => {
-				demoState.session = e.detail.session;
+				updateSession(e.detail.session);
 				if (e.detail.score) {
-					demoState.score = e.detail.score;
+					updateScore(e.detail.score);
 				}
 			};
 			playerEl.addEventListener('session-changed', handler);
@@ -58,12 +90,16 @@
 	<!-- Left: Player -->
 	<div class="card bg-base-100 shadow-xl">
 		<div class="card-body">
-			{#key `${demoState.config.markup}-${demoState.env.mode}-${demoState.env.role}`}
-				<pie-item-player
-					bind:this={playerEl}
-					strategy="iife"
-				></pie-item-player>
-			{/key}
+			{#if $configStore && $envStore}
+				{#key `${$configStore?.markup || ''}-${$envStore?.mode || 'gather'}-${$envStore?.role || 'student'}`}
+					<pie-item-player
+						bind:this={playerEl}
+						strategy="iife"
+					></pie-item-player>
+				{/key}
+			{:else}
+				<div class="text-base-content/60">Loading item configuration...</div>
+			{/if}
 		</div>
 	</div>
 
@@ -72,15 +108,15 @@
 		<div class="card bg-base-100 shadow-xl">
 			<div class="card-body">
 				<h3 class="card-title">Controls</h3>
-				<ModeSelector bind:mode={demoState.mode} />
-				<RoleSelector bind:role={demoState.role} />
+				<ModeSelector bind:mode />
+				<RoleSelector bind:role />
 			</div>
 		</div>
 
-		<SessionPanel session={demoState.session} />
+		<SessionPanel session={$sessionStore} />
 
-		{#if demoState.score}
-			<ScoringPanel score={demoState.score} />
+		{#if $scoreStore}
+			<ScoringPanel score={$scoreStore} />
 		{/if}
 	</div>
 </div>

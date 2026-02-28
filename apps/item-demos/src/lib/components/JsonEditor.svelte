@@ -20,6 +20,21 @@ import { onDestroy, onMount } from 'svelte';
 	let editor: Editor | null = null;
 	const lowlight = createLowlight(common);
 
+	function buildJsonDoc(text: string) {
+		return {
+			type: 'doc',
+			content: [
+				{
+					type: 'codeBlock',
+					attrs: {
+						language: 'json'
+					},
+					content: text ? [{ type: 'text', text }] : []
+				}
+			]
+		};
+	}
+
 	onMount(() => {
 		editor = new Editor({
 			element: editorElement,
@@ -32,7 +47,7 @@ import { onDestroy, onMount } from 'svelte';
 					defaultLanguage: 'json'
 				})
 			],
-			content: `<pre><code class="language-json">${value}</code></pre>`,
+			content: buildJsonDoc(value),
 			editorProps: {
 				attributes: {
 					class: 'prose prose-sm max-w-none focus:outline-none min-h-96'
@@ -52,7 +67,7 @@ import { onDestroy, onMount } from 'svelte';
 	// Update editor when value changes externally
 	$effect(() => {
 		if (editor && value !== editor.state.doc.textContent) {
-			editor.commands.setContent(`<pre><code class="language-json">${value}</code></pre>`);
+			editor.commands.setContent(buildJsonDoc(value));
 		}
 	});
 </script>

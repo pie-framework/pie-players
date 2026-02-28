@@ -434,13 +434,20 @@
             };
 
             if (rootElement) {
-              rootElement.addEventListener("model.updated", handleModelUpdated);
+              // Capture phase ensures we receive author updates even when the event
+              // does not bubble from nested configure editors.
+              rootElement.addEventListener(
+                "model.updated",
+                handleModelUpdated,
+                true
+              );
               sessionListenerAttached = true;
               detachSessionChangedListener = () => {
                 try {
                   rootElement?.removeEventListener(
                     "model.updated",
-                    handleModelUpdated
+                    handleModelUpdated,
+                    true
                   );
                 } catch {}
               };

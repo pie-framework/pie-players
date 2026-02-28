@@ -44,6 +44,10 @@
 		"./components/section-player-splitpane-element": {
 			"types": "./dist/pie-section-player.d.ts",
 			"import": "./dist/pie-section-player.js"
+		},
+		"./components/section-player-vertical-element": {
+			"types": "./dist/pie-section-player.d.ts",
+			"import": "./dist/pie-section-player.js"
 		}
 	},
 	"files": [

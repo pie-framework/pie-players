@@ -19,6 +19,7 @@ export { default as PieItemShellElement } from "./components/ItemShellElement.sv
 export { default as PiePassageShellElement } from "./components/PassageShellElement.svelte";
 export { default as PieSectionPlayerBaseElement } from "./components/PieSectionPlayerBaseElement.svelte";
 export { default as PieSectionPlayerSplitPaneElement } from "./components/PieSectionPlayerSplitPaneElement.svelte";
+export { default as PieSectionPlayerVerticalElement } from "./components/PieSectionPlayerVerticalElement.svelte";
 
 // Make sure the web component is registered
 // This is what makes it available as <pie-section-player> in HTML
@@ -29,3 +30,4 @@ import "./components/section-player-base-element";
 import "./components/item-shell-element";
 import "./components/passage-shell-element";
 import "./components/section-player-splitpane-element";
+import "./components/section-player-vertical-element";

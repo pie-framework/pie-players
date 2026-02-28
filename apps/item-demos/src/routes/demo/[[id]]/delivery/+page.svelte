@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { page } from '$app/stores';
 	import { untrack } from 'svelte';
 	import ModeSelector from '$lib/components/ModeSelector.svelte';
 	import RoleSelector from '$lib/components/RoleSelector.svelte';
@@ -19,50 +20,82 @@
 	let { data } = $props();
 
 	let playerEl: any = $state(null);
+	let controlsForm: HTMLFormElement | null = $state(null);
 	let lastConfig: any = null;
 	let lastEnv: any = null;
+	let lastSessionSignature = '';
 	let mode = $state<'gather' | 'view' | 'evaluate'>('gather');
 	let role = $state<'student' | 'instructor'>('student');
 
+	function normalizeSessionContainer(input: any): { id: string; data: any[] } {
+		if (input && typeof input === 'object' && Array.isArray(input.data)) {
+			return {
+				id: typeof input.id === 'string' ? input.id : '',
+				data: input.data,
+			};
+		}
+		if (Array.isArray(input)) {
+			return { id: '', data: input };
+		}
+		if (input && typeof input === 'object') {
+			return { id: '', data: [input] };
+		}
+		return { id: '', data: [] };
+	}
+
 	$effect(() => {
-		if (mode !== $modeStore) {
+		if (untrack(() => mode) !== $modeStore) {
 			mode = $modeStore;
 		}
 	});
 
 	$effect(() => {
-		if (role !== $roleStore) {
+		if (untrack(() => role) !== $roleStore) {
 			role = $roleStore;
 		}
 	});
 
-	$effect(() => {
-		if ($modeStore !== mode) {
-			modeStore.set(mode);
-		}
-	});
+	function submitControls() {
+		controlsForm?.requestSubmit();
+	}
 
-	$effect(() => {
-		if ($roleStore !== role) {
-			roleStore.set(role);
+	function handleModeChange(nextMode: 'gather' | 'view' | 'evaluate') {
+		mode = nextMode;
+		submitControls();
+	}
+
+	function handleRoleChange(nextRole: 'student' | 'instructor') {
+		role = nextRole;
+		// Evaluate mode is instructor-only.
+		if (role !== 'instructor' && mode === 'evaluate') {
+			mode = 'gather';
 		}
-	});
+		submitControls();
+	}
 
 	// Set properties imperatively when config or env changes
 	$effect(() => {
 		const currentConfig = $configStore;
 		const currentEnv = $envStore;
+		const currentSession = normalizeSessionContainer($sessionStore);
+		const currentSessionSignature = JSON.stringify(currentSession);
 
-		if (playerEl && currentConfig && currentEnv) {
-			if (currentConfig !== lastConfig || currentEnv !== lastEnv) {
+		if (playerEl && currentConfig && currentEnv && currentSession) {
+			if (
+				currentConfig !== lastConfig ||
+				currentEnv !== lastEnv ||
+				currentSessionSignature !== lastSessionSignature
+			) {
 				untrack(() => {
 					playerEl.config = currentConfig;
 					playerEl.env = currentEnv;
+					playerEl.session = currentSession;
 					playerEl.loaderOptions = { bundleHost: 'https://proxy.pie-api.com/bundles/' };
 				});
 
 				lastConfig = currentConfig;
 				lastEnv = currentEnv;
+				lastSessionSignature = currentSessionSignature;
 			}
 		}
 	});
@@ -71,9 +104,13 @@
 	$effect(() => {
 		if (playerEl) {
 			const handler = (e: CustomEvent) => {
-				updateSession(e.detail.session);
-				if (e.detail.score) {
-					updateScore(e.detail.score);
+				const detail = e.detail ?? {};
+				// Use wrapper payload shape; ignore native events that don't include session container.
+				if (detail.session) {
+					updateSession(normalizeSessionContainer(detail.session));
+				}
+				if (detail.score) {
+					updateScore(detail.score);
 				}
 			};
 			playerEl.addEventListener('session-changed', handler);
@@ -108,8 +145,16 @@
 		<div class="card bg-base-100 shadow-xl">
 			<div class="card-body">
 				<h3 class="card-title">Controls</h3>
-				<ModeSelector bind:mode />
-				<RoleSelector bind:role />
+				<form
+					bind:this={controlsForm}
+					method="GET"
+					action={$page.url.pathname}
+					data-sveltekit-reload
+					class="space-y-3"
+				>
+					<ModeSelector bind:mode {role} name="mode" onChange={handleModeChange} />
+					<RoleSelector bind:role name="role" onChange={handleRoleChange} />
+				</form>
 			</div>
 		</div>
 

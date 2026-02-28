@@ -30,7 +30,7 @@
 		"clean": "turbo clean && rm -rf node_modules",
 		"typecheck": "turbo typecheck",
 		"check": "turbo check",
-		"dev:item": "dotenvx run -- bun run --cwd apps/item-demos dev",
+		"dev:item": "dotenvx run -- bun scripts/dev-item.ts",
 		"preview:item": "dotenvx run -- bun run --cwd apps/item-demos preview",
 		"dev:section": "dotenvx run -- bun scripts/dev-section.ts",
 		"dev:section:cdn": "dotenvx run -- bun run --cwd apps/section-demos dev:cdn",

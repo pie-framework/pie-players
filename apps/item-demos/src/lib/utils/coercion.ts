@@ -1,6 +1,10 @@
 export function coerceMode(
 	value: string | null,
+	role: "student" | "instructor" = "student",
 ): "gather" | "view" | "evaluate" {
+	if (value === "evaluate" && role !== "instructor") {
+		return "gather";
+	}
 	if (value === "view" || value === "evaluate") return value;
 	return "gather";
 }

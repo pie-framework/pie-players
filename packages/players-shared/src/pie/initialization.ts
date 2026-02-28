@@ -141,6 +141,30 @@ const initializePieElement = (
 	}
 };
 
+const getEditorElementTagName = (elementTagName: string, pkg: string): string =>
+	validateCustomElementTag(
+		elementTagName + editorPostFix,
+		`editor element tag for ${pkg}`,
+	);
+
+const updateRegisteredElement = (
+	elementTagName: string,
+	config: ConfigEntity,
+	session: any[],
+	options: LoadPieElementsOptions,
+	omitEnv = false,
+): void => {
+	updatePieElement(elementTagName, {
+		config,
+		session,
+		...(omitEnv ? {} : { env: options.env }),
+		container: options.container,
+		...(options.eventListeners?.[elementTagName] && {
+			eventListeners: options.eventListeners[elementTagName],
+		}),
+	});
+};
+
 /**
  * Shared element registration logic
  * Extracted from initializePiesFromLoadedBundle and loadPieModule to eliminate ~200 lines of duplication
@@ -341,9 +365,9 @@ const registerPieElementsFromBundle = (
 				// Handle editor elements if needed
 				if (options.bundleType === BundleType.editor) {
 					if (isCustomElementConstructor(elementData.Configure)) {
-						const editorElName = validateCustomElementTag(
-							elementTagName + editorPostFix,
-							`editor element tag for ${String(pkg)}`,
+						const editorElName = getEditorElementTagName(
+							elementTagName,
+							String(pkg),
 						);
 						customElements.define(editorElName, elementData.Configure);
 						promises.push(
@@ -367,29 +391,20 @@ const registerPieElementsFromBundle = (
 			}
 		} else {
 			// Element already defined, just update it
-			updatePieElement(elementTagName, {
-				config,
-				session,
-				env: options.env,
-				container: options.container,
-				...(options.eventListeners?.[elementTagName] && {
-					eventListeners: options.eventListeners[elementTagName],
-				}),
-			});
+			updateRegisteredElement(elementTagName, config, session, options);
 
 			if (options.bundleType === BundleType.editor) {
-				const editorElName = validateCustomElementTag(
-					elementTagName + editorPostFix,
-					`editor element tag for ${String(pkg)}`,
+				const editorElName = getEditorElementTagName(
+					elementTagName,
+					String(pkg),
 				);
-				updatePieElement(editorElName, {
+				updateRegisteredElement(
+					editorElName,
 					config,
 					session,
-					container: options.container,
-					...(options.eventListeners?.[editorElName] && {
-						eventListeners: options.eventListeners[editorElName],
-					}),
-				});
+					options,
+					true,
+				);
 			}
 		}
 	});
@@ -493,31 +508,25 @@ export const loadPieModule = async (
  * For initialization, use initializePiesFromLoadedBundle after loading.
  */
 export const loadBundleFromString = async (bundleJs: string): Promise<void> => {
-	// Strip sourceMappingURL comment to prevent 404 errors for .map files
-	const cleanedJs = bundleJs.replace(/\/\/# sourceMappingURL=.*$/m, "");
+	await withBlobBundleUrl(
+		bundleJs,
+		{ stripSourceMapComment: true },
+		async (bundleUrl) => {
+			// Create a script tag to execute the bundle
+			const script = document.createElement("script");
+			script.src = bundleUrl;
+			script.type = "text/javascript"; // IIFE bundles are standard JS
 
-	// Create a blob URL for the bundle JavaScript
-	const blob = new Blob([cleanedJs], { type: "application/javascript" });
-	const bundleUrl = URL.createObjectURL(blob);
+			// Wait for script to load
+			await new Promise<void>((resolve, reject) => {
+				script.onload = () => resolve();
+				script.onerror = () => reject(new Error("Failed to load bundle"));
+				document.head.appendChild(script);
+			});
 
-	try {
-		// Create a script tag to execute the bundle
-		const script = document.createElement("script");
-		script.src = bundleUrl;
-		script.type = "text/javascript"; // IIFE bundles are standard JS
-
-		// Wait for script to load
-		await new Promise<void>((resolve, reject) => {
-			script.onload = () => resolve();
-			script.onerror = () => reject(new Error("Failed to load bundle"));
-			document.head.appendChild(script);
-		});
-
-		logger.debug("[loadBundleFromString] Bundle loaded into window.pie");
-	} finally {
-		// Clean up the blob URL
-		URL.revokeObjectURL(bundleUrl);
-	}
+			logger.debug("[loadBundleFromString] Bundle loaded into window.pie");
+		},
+	);
 };
 
 /**
@@ -530,15 +539,25 @@ export const loadPieModuleFromString = async (
 	session: any[],
 	opts: LoadPieElementsOptions = {},
 ): Promise<void> => {
-	// Create a blob URL for the bundle JavaScript
-	const blob = new Blob([bundleJs], { type: "application/javascript" });
-	const bundleUrl = URL.createObjectURL(blob);
-
-	try {
+	await withBlobBundleUrl(bundleJs, {}, async (bundleUrl) => {
 		// Use existing loadPieModule with the blob URL
 		await loadPieModule(config, session, { ...opts, bundleUrl });
+	});
+};
+
+const withBlobBundleUrl = async <T>(
+	bundleJs: string,
+	options: { stripSourceMapComment?: boolean },
+	run: (bundleUrl: string) => Promise<T>,
+): Promise<T> => {
+	const source = options.stripSourceMapComment
+		? bundleJs.replace(/\/\/# sourceMappingURL=.*$/m, "")
+		: bundleJs;
+	const blob = new Blob([source], { type: "application/javascript" });
+	const bundleUrl = URL.createObjectURL(blob);
+	try {
+		return await run(bundleUrl);
 	} finally {
-		// Always clean up the blob URL
 		URL.revokeObjectURL(bundleUrl);
 	}
 };

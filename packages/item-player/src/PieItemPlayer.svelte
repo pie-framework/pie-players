@@ -317,9 +317,11 @@
 			bubbles: true,
 			composed: true,
 		});
-		if (hostElement?.parentElement) {
-			hostElement.parentElement.dispatchEvent(newEvent);
-		}
+		// Dispatch from the custom element host so direct listeners on <pie-item-player>
+		// receive updates (item-demos attaches listeners on the element itself).
+		hostElement?.dispatchEvent(newEvent);
+		// Also dispatch on parent for compatibility with integrations that relied on this.
+		hostElement?.parentElement?.dispatchEvent(newEvent);
 	};
 </script>
 

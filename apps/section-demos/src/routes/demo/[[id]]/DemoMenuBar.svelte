@@ -1,12 +1,15 @@
 <script lang="ts">
 	interface Props {
 		roleType: 'candidate' | 'scorer';
+		layoutType: 'splitpane' | 'vertical';
 		candidateHref: string;
 		scorerHref: string;
 		showSessionPanel: boolean;
 		showSourcePanel: boolean;
 		showPnpPanel: boolean;
 		onReset: () => void;
+		onSetSplitpaneLayout: () => void;
+		onSetVerticalLayout: () => void;
 		onToggleSessionPanel: () => void;
 		onToggleSourcePanel: () => void;
 		onTogglePnpPanel: () => void;
@@ -14,12 +17,15 @@
 
 	let {
 		roleType,
+		layoutType,
 		candidateHref,
 		scorerHref,
 		showSessionPanel,
 		showSourcePanel,
 		showPnpPanel,
 		onReset,
+		onSetSplitpaneLayout,
+		onSetVerticalLayout,
 		onToggleSessionPanel,
 		onToggleSourcePanel,
 		onTogglePnpPanel
@@ -32,6 +38,28 @@
 	</div>
 
 	<div class="navbar-center flex gap-4 items-center">
+		<div class="join">
+			<button
+				class="btn btn-sm join-item"
+				class:btn-active={layoutType === 'splitpane'}
+				onclick={onSetSplitpaneLayout}
+				title="Splitpane layout"
+				aria-label="Use splitpane section player layout"
+				aria-pressed={layoutType === 'splitpane'}
+			>
+				Splitpane
+			</button>
+			<button
+				class="btn btn-sm join-item"
+				class:btn-active={layoutType === 'vertical'}
+				onclick={onSetVerticalLayout}
+				title="Vertical layout"
+				aria-label="Use vertical section player layout"
+				aria-pressed={layoutType === 'vertical'}
+			>
+				Vertical
+			</button>
+		</div>
 		<div class="join">
 			<a
 				class="btn btn-sm join-item"

@@ -4,6 +4,7 @@
 		type ToolkitCoordinatorHooks
 	} from '@pie-players/pie-assessment-toolkit';
 	import '@pie-players/pie-section-player/components/section-player-splitpane-element';
+	import '@pie-players/pie-section-player/components/section-player-vertical-element';
 	import '@pie-players/pie-section-player-tools-session-debugger';
 	import '@pie-players/pie-section-player-tools-pnp-debugger';
 	import { browser } from '$app/environment';
@@ -15,6 +16,7 @@
 
 	const PLAYER_OPTIONS = ['iife', 'esm', 'preloaded'] as const;
 	const MODE_OPTIONS = ['candidate', 'scorer'] as const;
+	const LAYOUT_OPTIONS = ['splitpane', 'vertical'] as const;
 	const DEMO_ASSESSMENT_ID = 'section-demos-assessment';
 	const ATTEMPT_QUERY_PARAM = 'attempt';
 	const ATTEMPT_STORAGE_KEY = 'pie:section-demos:attempt-id';
@@ -46,6 +48,9 @@
 
 	let selectedPlayerType = $state(getUrlEnumParam('player', PLAYER_OPTIONS, 'iife'));
 	let roleType = $state<'candidate' | 'scorer'>(getUrlEnumParam('mode', MODE_OPTIONS, 'candidate'));
+	let layoutType = $state<'splitpane' | 'vertical'>(
+		getUrlEnumParam('layout', LAYOUT_OPTIONS, 'splitpane')
+	);
 	let attemptId = $state(getOrCreateAttemptId());
 	let showSessionPanel = $state(false);
 	let showSourcePanel = $state(false);
@@ -114,6 +119,7 @@
 		const url = new URL(window.location.href);
 		url.searchParams.set('mode', targetMode);
 		url.searchParams.set('player', selectedPlayerType);
+		url.searchParams.set('layout', layoutType);
 		url.searchParams.set(ATTEMPT_QUERY_PARAM, attemptId);
 		return url.toString();
 	}
@@ -124,8 +130,11 @@
 	$effect(() => {
 		if (!browser || !attemptId) return;
 		const url = new URL(window.location.href);
-		if (url.searchParams.get(ATTEMPT_QUERY_PARAM) === attemptId) return;
+		const existingAttemptId = url.searchParams.get(ATTEMPT_QUERY_PARAM);
+		const existingLayout = url.searchParams.get('layout');
+		if (existingAttemptId === attemptId && existingLayout === layoutType) return;
 		url.searchParams.set(ATTEMPT_QUERY_PARAM, attemptId);
+		url.searchParams.set('layout', layoutType);
 		window.history.replaceState({}, '', url.toString());
 	});
 
@@ -226,36 +235,55 @@
 </script>
 
 <svelte:head>
-	<title>{data.demo?.name || 'Demo'} - Direct Split Layout</title>
+	<title>{data.demo?.name || 'Demo'} - Direct Layout</title>
 </svelte:head>
 
 <div class="direct-layout">
 	<DemoMenuBar
 		{roleType}
+		{layoutType}
 		{candidateHref}
 		{scorerHref}
 		{showSessionPanel}
 		{showSourcePanel}
 		{showPnpPanel}
 		onReset={() => void resetSessions()}
+		onSetSplitpaneLayout={() => (layoutType = 'splitpane')}
+		onSetVerticalLayout={() => (layoutType = 'vertical')}
 		onToggleSessionPanel={() => (showSessionPanel = !showSessionPanel)}
 		onToggleSourcePanel={() => (showSourcePanel = !showSourcePanel)}
 		onTogglePnpPanel={() => (showPnpPanel = !showPnpPanel)}
 	/>
 
-	<pie-section-player-splitpane
-		assessment-id={DEMO_ASSESSMENT_ID}
-		section-id={sessionPanelSectionId}
-		attempt-id={attemptId}
-		player-type={selectedPlayerType}
-		lazy-init={true}
-		tools={toolkitToolsConfig}
-		section={resolvedSectionForPlayer}
-		env={pieEnv}
-		toolbar-position="right"
-		show-toolbar={true}
-		ontoolkit-ready={handleToolkitReady}
-	></pie-section-player-splitpane>
+	{#if layoutType === 'vertical'}
+		<pie-section-player-vertical
+			assessment-id={DEMO_ASSESSMENT_ID}
+			section-id={sessionPanelSectionId}
+			attempt-id={attemptId}
+			player-type={selectedPlayerType}
+			lazy-init={true}
+			tools={toolkitToolsConfig}
+			section={resolvedSectionForPlayer}
+			env={pieEnv}
+			toolbar-position="right"
+			show-toolbar={true}
+			ontoolkit-ready={handleToolkitReady}
+		></pie-section-player-vertical>
+	{:else}
+		<pie-section-player-splitpane
+			assessment-id={DEMO_ASSESSMENT_ID}
+			section-id={sessionPanelSectionId}
+			attempt-id={attemptId}
+			player-type={selectedPlayerType}
+			lazy-init={true}
+			tools={toolkitToolsConfig}
+			section={resolvedSectionForPlayer}
+			env={pieEnv}
+			toolbar-position="right"
+			show-toolbar={true}
+			ontoolkit-ready={handleToolkitReady}
+		></pie-section-player-splitpane>
+	{/if}
 </div>
 
 <DemoOverlays
@@ -278,7 +306,8 @@
 		overflow: hidden;
 	}
 
-	:global(pie-section-player-splitpane) {
+	:global(pie-section-player-splitpane),
+	:global(pie-section-player-vertical) {
 		display: flex;
 		flex: 1;
 		height: 100%;

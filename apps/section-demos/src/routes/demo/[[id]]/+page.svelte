@@ -15,6 +15,9 @@
 
 	const PLAYER_OPTIONS = ['iife', 'esm', 'preloaded'] as const;
 	const MODE_OPTIONS = ['candidate', 'scorer'] as const;
+	const DEMO_ASSESSMENT_ID = 'section-demos-assessment';
+	const ATTEMPT_QUERY_PARAM = 'attempt';
+	const ATTEMPT_STORAGE_KEY = 'pie:section-demos:attempt-id';
 
 	function getUrlEnumParam<T extends string>(key: string, options: readonly T[], fallback: T): T {
 		if (!browser) return fallback;
@@ -22,8 +25,28 @@
 		return value && options.includes(value as T) ? (value as T) : fallback;
 	}
 
+	function createAttemptId() {
+		return `attempt-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+	}
+
+	function getOrCreateAttemptId(): string {
+		if (!browser) return 'attempt-ssr';
+		const params = new URLSearchParams(window.location.search);
+		const fromUrl = params.get(ATTEMPT_QUERY_PARAM);
+		if (fromUrl) {
+			window.localStorage.setItem(ATTEMPT_STORAGE_KEY, fromUrl);
+			return fromUrl;
+		}
+		const stored = window.localStorage.getItem(ATTEMPT_STORAGE_KEY);
+		if (stored) return stored;
+		const next = createAttemptId();
+		window.localStorage.setItem(ATTEMPT_STORAGE_KEY, next);
+		return next;
+	}
+
 	let selectedPlayerType = $state(getUrlEnumParam('player', PLAYER_OPTIONS, 'iife'));
 	let roleType = $state<'candidate' | 'scorer'>(getUrlEnumParam('mode', MODE_OPTIONS, 'candidate'));
+	let attemptId = $state(getOrCreateAttemptId());
 	let showSessionPanel = $state(false);
 	let showSourcePanel = $state(false);
 	let showPnpPanel = $state(false);
@@ -75,30 +98,36 @@
 		return payload?.apiKey ? { apiKey: payload.apiKey } : {};
 	}
 
-	function createDemoToolkitHooks(): ToolkitCoordinatorHooks {
-		return {
-			onError: (error, context) => {
-				console.error('[Demo] Toolkit hook error:', context, error);
-			}
-		};
-	}
-
 	function handleToolkitReady(event: Event) {
 		const detail = (event as CustomEvent<{ coordinator?: any }>).detail;
 		toolkitCoordinator = detail?.coordinator || null;
-		toolkitCoordinator?.setHooks?.(createDemoToolkitHooks());
+		// Demo: inline hooks show how toolkit behavior can be customized in code.
+		toolkitCoordinator?.setHooks?.({
+			onError: (error, context) => {
+				console.error('[Demo] Toolkit hook error:', context, error);
+			}
+		} satisfies ToolkitCoordinatorHooks);
 	}
 
-	function updateUrlAndRefresh(updates: {
-		mode?: 'candidate' | 'scorer';
-		player?: 'iife' | 'esm' | 'preloaded';
-	}) {
-		if (!browser) return;
+	function buildDemoHref(targetMode: 'candidate' | 'scorer') {
+		if (!browser) return '';
 		const url = new URL(window.location.href);
-		url.searchParams.set('mode', updates.mode || roleType);
-		url.searchParams.set('player', updates.player || selectedPlayerType);
-		window.location.href = url.toString();
+		url.searchParams.set('mode', targetMode);
+		url.searchParams.set('player', selectedPlayerType);
+		url.searchParams.set(ATTEMPT_QUERY_PARAM, attemptId);
+		return url.toString();
 	}
+
+	let candidateHref = $derived(buildDemoHref('candidate'));
+	let scorerHref = $derived(buildDemoHref('scorer'));
+
+	$effect(() => {
+		if (!browser || !attemptId) return;
+		const url = new URL(window.location.href);
+		if (url.searchParams.get(ATTEMPT_QUERY_PARAM) === attemptId) return;
+		url.searchParams.set(ATTEMPT_QUERY_PARAM, attemptId);
+		window.history.replaceState({}, '', url.toString());
+	});
 
 	function wireCloseListener(target: any, onClose: () => void) {
 		if (!target) return;
@@ -112,6 +141,7 @@
 		if (!sessionDebuggerElement) return;
 		sessionDebuggerElement.toolkitCoordinator = toolkitCoordinator;
 		sessionDebuggerElement.sectionId = sessionPanelSectionId;
+		sessionDebuggerElement.attemptId = attemptId;
 	});
 
 	$effect(() => {
@@ -119,8 +149,16 @@
 		const triggerSessionPanelRefresh = () => {
 			sessionDebuggerElement?.refreshFromHost?.();
 		};
+		const persistSectionSession = () => {
+			// Keep localStorage snapshots current so reload-based mode switches restore latest answers.
+			toolkitCoordinator
+				?.getSectionController?.({ sectionId: sessionPanelSectionId, attemptId })
+				?.persist?.();
+		};
 		document.addEventListener('item-session-changed', triggerSessionPanelRefresh as EventListener, true);
 		document.addEventListener('session-changed', triggerSessionPanelRefresh as EventListener, true);
+		document.addEventListener('item-session-changed', persistSectionSession as EventListener, true);
+		document.addEventListener('session-changed', persistSectionSession as EventListener, true);
 		return () => {
 			document.removeEventListener(
 				'item-session-changed',
@@ -130,6 +168,16 @@
 			document.removeEventListener(
 				'session-changed',
 				triggerSessionPanelRefresh as EventListener,
+				true
+			);
+			document.removeEventListener(
+				'item-session-changed',
+				persistSectionSession as EventListener,
+				true
+			);
+			document.removeEventListener(
+				'session-changed',
+				persistSectionSession as EventListener,
 				true
 			);
 		};
@@ -160,6 +208,7 @@
 		try {
 			await toolkitCoordinator?.disposeSectionController?.({
 				sectionId: sessionPanelSectionId,
+				attemptId,
 				clearPersistence: true,
 				persistBeforeDispose: false
 			});
@@ -167,6 +216,10 @@
 			console.warn('[Demo] Failed to clear section-controller persistence during reset:', e);
 		}
 		if (browser) {
+			// Start a new attempt namespace so persisted state does not bleed across resets.
+			const nextAttemptId = createAttemptId();
+			window.localStorage.setItem(ATTEMPT_STORAGE_KEY, nextAttemptId);
+			attemptId = nextAttemptId;
 			window.location.reload();
 		}
 	}
@@ -179,10 +232,11 @@
 <div class="direct-layout">
 	<DemoMenuBar
 		{roleType}
+		{candidateHref}
+		{scorerHref}
 		{showSessionPanel}
 		{showSourcePanel}
 		{showPnpPanel}
-		onSelectRole={(mode: 'candidate' | 'scorer') => updateUrlAndRefresh({ mode })}
 		onReset={() => void resetSessions()}
 		onToggleSessionPanel={() => (showSessionPanel = !showSessionPanel)}
 		onToggleSourcePanel={() => (showSourcePanel = !showSourcePanel)}
@@ -190,7 +244,9 @@
 	/>
 
 	<pie-section-player-splitpane
-		assessment-id={data.demo?.id || 'section-demo'}
+		assessment-id={DEMO_ASSESSMENT_ID}
+		section-id={sessionPanelSectionId}
+		attempt-id={attemptId}
 		player-type={selectedPlayerType}
 		lazy-init={true}
 		tools={toolkitToolsConfig}

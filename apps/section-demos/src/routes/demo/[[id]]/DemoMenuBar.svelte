@@ -1,10 +1,11 @@
 <script lang="ts">
 	interface Props {
 		roleType: 'candidate' | 'scorer';
+		candidateHref: string;
+		scorerHref: string;
 		showSessionPanel: boolean;
 		showSourcePanel: boolean;
 		showPnpPanel: boolean;
-		onSelectRole: (role: 'candidate' | 'scorer') => void;
 		onReset: () => void;
 		onToggleSessionPanel: () => void;
 		onToggleSourcePanel: () => void;
@@ -13,10 +14,11 @@
 
 	let {
 		roleType,
+		candidateHref,
+		scorerHref,
 		showSessionPanel,
 		showSourcePanel,
 		showPnpPanel,
-		onSelectRole,
 		onReset,
 		onToggleSessionPanel,
 		onToggleSourcePanel,
@@ -31,22 +33,24 @@
 
 	<div class="navbar-center flex gap-4 items-center">
 		<div class="join">
-			<button
+			<a
 				class="btn btn-sm join-item"
 				class:btn-active={roleType === 'candidate'}
-				onclick={() => onSelectRole('candidate')}
+				href={candidateHref}
+				data-sveltekit-reload
 				title="Candidate view - student taking assessment (gather mode)"
 			>
 				Student
-			</button>
-			<button
+			</a>
+			<a
 				class="btn btn-sm join-item"
 				class:btn-active={roleType === 'scorer'}
-				onclick={() => onSelectRole('scorer')}
+				href={scorerHref}
+				data-sveltekit-reload
 				title="Scorer view - instructor reviewing/scoring (evaluate mode)"
 			>
 				Scorer
-			</button>
+			</a>
 		</div>
 	</div>
 

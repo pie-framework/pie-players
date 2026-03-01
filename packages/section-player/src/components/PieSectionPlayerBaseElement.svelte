@@ -8,7 +8,6 @@
 			section: { type: "Object", reflect: false },
 			sectionId: { attribute: "section-id", type: "String" },
 			attemptId: { attribute: "attempt-id", type: "String" },
-			view: { type: "String" },
 			playerType: { attribute: "player-type", type: "String" },
 			player: { type: "Object", reflect: false },
 			lazyInit: { attribute: "lazy-init", type: "Boolean" },
@@ -50,7 +49,7 @@
 	const DEFAULT_PLAYER_TYPE = "iife";
 	const DEFAULT_LAZY_INIT = true;
 	const DEFAULT_ISOLATION = "inherit";
-const DEFAULT_ENV = { mode: "gather", role: "student" } as Record<string, unknown>;
+	const DEFAULT_ENV = { mode: "gather", role: "student" } as Record<string, unknown>;
 	const LEGACY_RUNTIME_WARNING_KEY = "pie-section-player-base:legacy-runtime-props";
 	const warnedKeys = new Set<string>();
 	type RuntimeConfig = {
@@ -71,7 +70,6 @@ const DEFAULT_ENV = { mode: "gather", role: "student" } as Record<string, unknow
 		section = null as AssessmentSection | null,
 		sectionId = "",
 		attemptId = "",
-		view = "candidate",
 		playerType = DEFAULT_PLAYER_TYPE,
 		player = null as Record<string, unknown> | null,
 		lazyInit = DEFAULT_LAZY_INIT,
@@ -108,7 +106,7 @@ const DEFAULT_ENV = { mode: "gather", role: "student" } as Record<string, unknow
 		() => runtime?.createSectionController ?? createSectionController,
 	);
 	const effectiveIsolation = $derived.by(() => runtime?.isolation ?? isolation);
-const effectiveEnv = $derived.by(() => runtime?.env ?? env ?? DEFAULT_ENV);
+	const effectiveEnv = $derived.by(() => runtime?.env ?? env ?? DEFAULT_ENV);
 	let resolvedSection = $derived.by(() => {
 		if (!section) return null;
 		const sectionAny = section as any;
@@ -192,7 +190,6 @@ const effectiveEnv = $derived.by(() => runtime?.env ?? env ?? DEFAULT_ENV);
 	attempt-id={attemptId}
 	player-type={effectivePlayerType}
 	player={effectivePlayer}
-	{view}
 	env={effectiveEnv}
 	lazy-init={effectiveLazyInit}
 	tools={effectiveTools}

@@ -9,7 +9,6 @@
 			section: { type: "Object", reflect: false },
 			sectionId: { attribute: "section-id", type: "String" },
 			attemptId: { attribute: "attempt-id", type: "String" },
-			view: { type: "String" },
 			playerType: { attribute: "player-type", type: "String" },
 			player: { type: "Object", reflect: false },
 			lazyInit: { attribute: "lazy-init", type: "Boolean" },
@@ -68,8 +67,8 @@
 	const DEFAULT_PLAYER_TYPE = "iife";
 	const DEFAULT_LAZY_INIT = true;
 	const DEFAULT_ISOLATION = "inherit";
-const DEFAULT_ENV = { mode: "gather", role: "student" } as Record<string, unknown>;
-const PRELOAD_TIMEOUT_MS = 15000;
+	const DEFAULT_ENV = { mode: "gather", role: "student" } as Record<string, unknown>;
+	const PRELOAD_TIMEOUT_MS = 15000;
 	const EMPTY_ITEM_SESSION = { id: "", data: [] } as Record<string, unknown>;
 	const LEGACY_RUNTIME_WARNING_KEY = "pie-section-player-splitpane:legacy-runtime-props";
 	const warnedKeys = new Set<string>();
@@ -92,7 +91,6 @@ const PRELOAD_TIMEOUT_MS = 15000;
 		section = null as AssessmentSection | null,
 		sectionId = "",
 		attemptId = "",
-		view = "candidate",
 		playerType = DEFAULT_PLAYER_TYPE,
 		player = null as Record<string, unknown> | null,
 		lazyInit = DEFAULT_LAZY_INIT,
@@ -474,7 +472,6 @@ const PRELOAD_TIMEOUT_MS = 15000;
 	{section}
 	section-id={sectionId}
 	attempt-id={attemptId}
-	{view}
 	oncomposition-changed={handleBaseCompositionChanged}
 >
 	<div class={`player-shell player-shell--${toolbarPosition}`}>

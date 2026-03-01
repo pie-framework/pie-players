@@ -53,6 +53,7 @@ declare global {
 			config: ConfigEntity;
 			session: any[];
 			env?: Env;
+			container?: Element | Document;
 		};
 	}
 }
@@ -70,6 +71,9 @@ const initializePieElement = (
 	},
 ): void => {
 	const { config, session, env, eventListeners } = options;
+	if ((element as any).__pieInitialized) {
+		return;
+	}
 	const tagName = element.tagName.toLowerCase();
 
 	logger.debug(`[initializePieElement] Initializing ${tagName}#${element.id}`);
@@ -93,6 +97,7 @@ const initializePieElement = (
 	// Set session (with element property for updateSession callback)
 	const elementSession = findOrAddSession(session, model.id, model.element);
 	element.session = elementSession;
+	(element as any).__pieInitialized = true;
 	logger.debug(
 		`[initializePieElement] Session set for ${tagName}#${element.id}:`,
 		elementSession,
@@ -178,6 +183,13 @@ const registerPieElementsFromBundle = (
 	options: LoadPieElementsOptions,
 ): Promise<void>[] => {
 	const promises: Promise<void>[] = [];
+	const isNodeWithinContainer = (
+		node: Node,
+		container?: Element | Document,
+	): boolean => {
+		if (!container || container === document) return true;
+		return node instanceof Node && container.contains(node);
+	};
 
 	logger.debug(
 		"[registerPieElementsFromBundle] Available packages in bundle:",
@@ -190,7 +202,12 @@ const registerPieElementsFromBundle = (
 
 	// Store latest config/session in window so MutationObserver can access current values
 	if (typeof window !== "undefined") {
-		window._pieCurrentContext = { config, session, env: options.env };
+		window._pieCurrentContext = {
+			config,
+			session,
+			env: options.env,
+			container: options.container,
+		};
 	}
 
 	Object.entries(config.elements).forEach(([elName, pkg]) => {
@@ -282,7 +299,8 @@ const registerPieElementsFromBundle = (
 				customElements.define(elementTagName, elementData.Element);
 
 				// Initialize existing elements
-				const elements = document.querySelectorAll(elementTagName);
+				const searchRoot = options.container || document;
+				const elements = searchRoot.querySelectorAll(elementTagName);
 				logger.debug(
 					`[registerPieElementsFromBundle] Found ${elements.length} elements for tag '${elementTagName}'`,
 				);
@@ -325,6 +343,14 @@ const registerPieElementsFromBundle = (
 							if (mutation.type === "childList") {
 								mutation.addedNodes.forEach((node) => {
 									if (node.nodeType === Node.ELEMENT_NODE) {
+										if (
+											!isNodeWithinContainer(
+												node,
+												context.container,
+											)
+										) {
+											return;
+										}
 										const tagName = (node as Element).tagName.toLowerCase();
 										if (registry[tagName]) {
 											initializePieElement(node as PieElement, {
@@ -339,6 +365,14 @@ const registerPieElementsFromBundle = (
 										(node as Element)
 											.querySelectorAll("*")
 											.forEach((childNode) => {
+												if (
+													!isNodeWithinContainer(
+														childNode,
+														context.container,
+													)
+												) {
+													return;
+												}
 												const childTagName = childNode.tagName.toLowerCase();
 												if (registry[childTagName]) {
 													initializePieElement(childNode as PieElement, {

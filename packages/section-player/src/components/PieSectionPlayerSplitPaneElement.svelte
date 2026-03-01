@@ -68,6 +68,7 @@
 	const DEFAULT_PLAYER_TYPE = "iife";
 	const DEFAULT_LAZY_INIT = true;
 	const DEFAULT_ISOLATION = "inherit";
+	const EMPTY_ITEM_SESSION = { id: "", data: [] } as Record<string, unknown>;
 	const LEGACY_RUNTIME_WARNING_KEY = "pie-section-player-splitpane:legacy-runtime-props";
 	const warnedKeys = new Set<string>();
 	type RuntimeConfig = {
@@ -160,6 +161,7 @@
 	const resolvedPlayerTag = $derived(resolvedPlayerDefinition?.tagName || "pie-item-player");
 	const resolvedPlayerAttributes = $derived(resolvedPlayerDefinition?.attributes || {});
 	const resolvedPlayerProps = $derived(resolvedPlayerDefinition?.props || {});
+	const resolvedPlayerEnv = $derived(env as Record<string, unknown>);
 
 	type SplitPanePlayerParams = {
 		config: Record<string, unknown>;
@@ -169,11 +171,23 @@
 		props?: Record<string, unknown>;
 		skipElementLoading?: boolean;
 	};
+	type AppliedSplitPaneParams = {
+		config?: Record<string, unknown>;
+		env?: Record<string, unknown>;
+		session?: Record<string, unknown>;
+		skipElementLoading?: boolean;
+	};
 
 	function applySplitPanePlayerParams(node: HTMLElement, params: SplitPanePlayerParams) {
-		(node as any).config = params.config;
-		(node as any).env = params.env;
-		if (params.session !== undefined) {
+		const state = ((node as any).__splitPaneAppliedParams ||
+			{}) as AppliedSplitPaneParams;
+		if (state.config !== params.config) {
+			(node as any).config = params.config;
+		}
+		if (state.env !== params.env) {
+			(node as any).env = params.env;
+		}
+		if (params.session !== undefined && state.session !== params.session) {
 			(node as any).session = params.session;
 		}
 		for (const [name, value] of Object.entries(params.attributes || {})) {
@@ -182,10 +196,16 @@
 		for (const [name, value] of Object.entries(params.props || {})) {
 			(node as any)[name] = value;
 		}
-		if (params.skipElementLoading) {
+		if (params.skipElementLoading && state.skipElementLoading !== true) {
 			node.setAttribute("skip-element-loading", "true");
 			(node as any).skipElementLoading = true;
 		}
+		(node as any).__splitPaneAppliedParams = {
+			config: params.config,
+			env: params.env,
+			session: params.session,
+			skipElementLoading: !!params.skipElementLoading,
+		} as AppliedSplitPaneParams;
 	}
 
 	function splitPanePlayerAction(node: HTMLElement, params: SplitPanePlayerParams) {
@@ -194,6 +214,28 @@
 			update(nextParams: SplitPanePlayerParams) {
 				applySplitPanePlayerParams(node, nextParams);
 			},
+		};
+	}
+	function getPassagePlayerParams(passage: any): SplitPanePlayerParams {
+		return {
+			config: passage.config || {},
+			env: {
+				mode: "view",
+				role: (env as any)?.role || "student",
+			},
+			attributes: resolvedPlayerAttributes || {},
+			props: resolvedPlayerProps || {},
+			skipElementLoading: true,
+		};
+	}
+	function getItemPlayerParams(item: ItemEntity): SplitPanePlayerParams {
+		return {
+			config: item.config || {},
+			env: resolvedPlayerEnv,
+			session: getSessionForItemOrEmpty(item),
+			attributes: resolvedPlayerAttributes || {},
+			props: resolvedPlayerProps || {},
+			skipElementLoading: true,
 		};
 	}
 
@@ -205,6 +247,9 @@
 	function getSessionForItem(item: ItemEntity): unknown {
 		const itemId = item.id || "";
 		return itemSessionsByItemId[itemId];
+	}
+	function getSessionForItemOrEmpty(item: ItemEntity): Record<string, unknown> {
+		return (getSessionForItem(item) || EMPTY_ITEM_SESSION) as Record<string, unknown>;
 	}
 
 	function handleDividerMouseDown(event: MouseEvent) {
@@ -418,16 +463,7 @@
 										>
 											<svelte:element
 												this={resolvedPlayerTag}
-												use:splitPanePlayerAction={{
-													config: passage.config || {},
-													env: {
-														mode: "view",
-														role: (env as any)?.role || "student",
-													},
-													attributes: resolvedPlayerAttributes || {},
-													props: resolvedPlayerProps || {},
-													skipElementLoading: true,
-												}}
+												use:splitPanePlayerAction={getPassagePlayerParams(passage)}
 											></svelte:element>
 										</div>
 									</div>
@@ -478,17 +514,7 @@
 								>
 									<svelte:element
 										this={resolvedPlayerTag}
-										use:splitPanePlayerAction={{
-											config: item.config || {},
-											env: env as Record<string, unknown>,
-											session: (getSessionForItem(item) || {
-												id: "",
-												data: [],
-											}) as Record<string, unknown>,
-											attributes: resolvedPlayerAttributes || {},
-											props: resolvedPlayerProps || {},
-											skipElementLoading: true,
-										}}
+										use:splitPanePlayerAction={getItemPlayerParams(item)}
 									></svelte:element>
 								</div>
 								<div data-region="footer"></div>

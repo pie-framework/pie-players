@@ -287,9 +287,18 @@
 
   // Flag to prevent infinite loop when re-dispatching events
   let isDispatching = $state(false);
+  let lastDispatchedSessionSignature = $state("");
 
   // Root element reference for resource monitor
   let rootElement: HTMLElement | null = $state(null);
+
+  function getSessionSignature(): string {
+    try {
+      return JSON.stringify(session ?? []);
+    } catch {
+      return String(session ?? "");
+    }
+  }
 
   // Resource monitor (handles initialization and cleanup automatically)
   const resourceMonitor = useResourceMonitor(
@@ -470,6 +479,13 @@
                 "[PieItemPlayer] session-changed event received from PIE element",
                 customEvent.detail
               );
+
+              // Ignore noisy lifecycle events that don't actually change session data.
+              const signature = getSessionSignature();
+              if (signature === lastDispatchedSessionSignature) {
+                return;
+              }
+              lastDispatchedSessionSignature = signature;
 
               // Set flag before dispatching
               isDispatching = true;

@@ -387,6 +387,16 @@
 	};
 
 	const handleSessionChanged = (detail: unknown) => {
+		const detailObj =
+			detail && typeof detail === "object"
+				? (detail as Record<string, unknown>)
+				: null;
+		// Ignore structural/heartbeat session events that do not carry actual session data.
+		// Some PIE elements emit "session-changed" during model/session assignment with
+		// metadata-only payloads, which can otherwise cause update loops.
+		if (!detailObj || !("session" in detailObj)) {
+			return;
+		}
 		const controllerItemId = itemConfig?.id || "pie-item-player";
 		const controller = ensureSessionController(controllerItemId, parseSessionProp(session));
 		const beforeSignature = sessionSignature;
@@ -400,12 +410,8 @@
 		}
 		sessionSignature = nextSignature;
 		sessionRevision += 1;
-		const detailObj =
-			detail && typeof detail === "object"
-				? ({ ...(detail as Record<string, unknown>) } as Record<string, unknown>)
-				: {};
-		detailObj.session = normalized;
-		handlePlayerEvent(new CustomEvent("session-changed", { detail: detailObj }));
+		const forwardedDetail = { ...detailObj, session: normalized };
+		handlePlayerEvent(new CustomEvent("session-changed", { detail: forwardedDetail }));
 	};
 </script>
 

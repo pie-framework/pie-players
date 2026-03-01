@@ -12,6 +12,10 @@ pre-commit:
 pre-push:
   parallel: false
   commands:
+    section-player-tts-ssml-e2e:
+      run: bun run test:e2e:section-player:tts-ssml
+    item-player-multiple-choice-e2e:
+      run: bun run test:e2e:item-player:multiple-choice
     check-custom-elements:
       run: bun run check:custom-elements
     check-source-exports:

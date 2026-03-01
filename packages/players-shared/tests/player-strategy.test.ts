@@ -12,7 +12,7 @@ describe("normalizeItemPlayerStrategy", () => {
 	});
 
 	test("falls back for invalid or missing strategy", () => {
-		expect(normalizeItemPlayerStrategy("fixed")).toBe("iife");
+		expect(normalizeItemPlayerStrategy("invalid")).toBe("iife");
 		expect(normalizeItemPlayerStrategy(undefined, "esm")).toBe("esm");
 		expect(normalizeItemPlayerStrategy(null, "preloaded")).toBe("preloaded");
 	});

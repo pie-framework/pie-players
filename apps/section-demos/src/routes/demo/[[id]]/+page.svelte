@@ -1,7 +1,6 @@
 <script lang="ts">
 	import {
 		createDefaultPersonalNeedsProfile,
-		ToolkitCoordinator,
 		type ToolkitCoordinatorHooks
 	} from '@pie-players/pie-assessment-toolkit';
 	import '@pie-players/pie-section-player/components/section-player-splitpane-element';
@@ -14,7 +13,7 @@
 
 	let { data }: { data: PageData } = $props();
 
-	const PLAYER_OPTIONS = ['iife', 'esm', 'fixed'] as const;
+	const PLAYER_OPTIONS = ['iife', 'esm', 'preloaded'] as const;
 	const MODE_OPTIONS = ['candidate', 'scorer'] as const;
 
 	function getUrlEnumParam<T extends string>(key: string, options: readonly T[], fallback: T): T {
@@ -28,6 +27,7 @@
 	let showSessionPanel = $state(false);
 	let showSourcePanel = $state(false);
 	let showPnpPanel = $state(false);
+	let toolkitCoordinator: any = $state(null);
 	let sessionDebuggerElement: any = $state(null);
 	let pnpDebuggerElement: any = $state(null);
 	const toolkitToolsConfig = {
@@ -57,23 +57,13 @@
 			personalNeedsProfile: createDefaultPersonalNeedsProfile()
 		};
 	});
-	let toolkitCoordinator: any = $state(createDemoToolkitCoordinator());
 	let sessionPanelSectionId = $derived(
-		resolvedSectionForPlayer?.identifier ||
-			`section-${toolkitCoordinator?.assessmentId || data?.demo?.id || 'default'}`
+		resolvedSectionForPlayer?.identifier || `section-${data?.demo?.id || 'default'}`
 	);
 	let sourcePanelJson = $derived(JSON.stringify(resolvedSectionForPlayer, null, 2));
 	let pieEnv = $derived<{ mode: 'gather' | 'view' | 'evaluate'; role: 'student' | 'instructor' }>({
 		mode: roleType === 'candidate' ? 'gather' : 'evaluate',
 		role: roleType === 'candidate' ? 'student' : 'instructor'
-	});
-
-	const sectionPlayerRuntime = $derived({
-		assessmentId: data.demo?.id || 'section-demo',
-		playerType: selectedPlayerType,
-		lazyInit: true,
-		tools: toolkitToolsConfig,
-		coordinator: toolkitCoordinator
 	});
 
 	async function fetchDesmosAuthConfig() {
@@ -93,19 +83,15 @@
 		};
 	}
 
-	function createDemoToolkitCoordinator() {
-		const coordinator = new ToolkitCoordinator({
-			assessmentId: data.demo?.id || 'section-demo',
-			lazyInit: true,
-			tools: toolkitToolsConfig
-		});
-		coordinator.setHooks?.(createDemoToolkitHooks());
-		return coordinator;
+	function handleToolkitReady(event: Event) {
+		const detail = (event as CustomEvent<{ coordinator?: any }>).detail;
+		toolkitCoordinator = detail?.coordinator || null;
+		toolkitCoordinator?.setHooks?.(createDemoToolkitHooks());
 	}
 
 	function updateUrlAndRefresh(updates: {
 		mode?: 'candidate' | 'scorer';
-		player?: 'iife' | 'esm' | 'fixed';
+		player?: 'iife' | 'esm' | 'preloaded';
 	}) {
 		if (!browser) return;
 		const url = new URL(window.location.href);
@@ -204,12 +190,15 @@
 	/>
 
 	<pie-section-player-splitpane
-		runtime={sectionPlayerRuntime}
+		assessment-id={data.demo?.id || 'section-demo'}
+		player-type={selectedPlayerType}
+		lazy-init={true}
+		tools={toolkitToolsConfig}
 		section={resolvedSectionForPlayer}
 		env={pieEnv}
-		view={roleType}
 		toolbar-position="right"
 		show-toolbar={true}
+		ontoolkit-ready={handleToolkitReady}
 	></pie-section-player-splitpane>
 </div>
 

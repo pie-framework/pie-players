@@ -35,7 +35,7 @@ Set complex values (`runtime`, `section`, `env`) as JS properties.
 - `runtime` (object): coordinator/tools/player runtime bundle
 - `section` (object): assessment section payload
 - `env` (object): `{ mode, role }`
-- `view` (string): candidate/scorer view mode
+- `view` (string): optional legacy section-view hint (section composition is derived from `env`)
 - `toolbar-position` (string): `top|right|bottom|left|none`
 - `show-toolbar` (boolean)
 

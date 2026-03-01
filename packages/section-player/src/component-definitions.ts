@@ -34,7 +34,7 @@ export const DEFAULT_PLAYER_DEFINITIONS: PlayerDefinitionMap = {
 			},
 		},
 	},
-	fixed: {
+	preloaded: {
 		tagName: "pie-item-player",
 		ensureDefined: () => import("@pie-players/pie-item-player"),
 		attributes: {

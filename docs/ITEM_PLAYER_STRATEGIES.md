@@ -64,7 +64,7 @@ player.loaderOptions = {
 
 - No element loading occurs in the player
 - Host is responsible for section/page-level preload
-- Useful for fixed/static and orchestrated section runtimes
+- Useful for preloaded/static and orchestrated section runtimes
 
 Use with `skip-element-loading` and host-side preload orchestration.
 
@@ -76,10 +76,10 @@ Use with `skip-element-loading` and host-side preload orchestration.
 
 - `iife` -> `pie-item-player` with `strategy="iife"`
 - `esm` -> `pie-item-player` with `strategy="esm"`
-- `fixed` -> `pie-item-player` with `strategy="preloaded"`
+- `preloaded` -> `pie-item-player` with `strategy="preloaded"`
 
 For demos, set query params:
 
 - `?player=iife`
 - `?player=esm`
-- `?player=fixed`
+- `?player=preloaded`

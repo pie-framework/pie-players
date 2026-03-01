@@ -61,10 +61,14 @@
 
 	const runtimeId = createRuntimeId("toolkit");
 	const sectionEngine = new SectionRuntimeEngine();
+const DEFAULT_ENV = {
+	mode: "gather",
+	role: "student",
+} as const;
 	const DEFAULT_ITEM_PLAYER_BY_TYPE: Record<ItemPlayerType, string> = {
 		iife: "pie-item-player",
 		esm: "pie-item-player",
-		fixed: "pie-item-player",
+	preloaded: "pie-item-player",
 		custom: "",
 	};
 
@@ -170,7 +174,7 @@
 	}
 
 	function isKnownPlayerType(value: unknown): value is ItemPlayerType {
-		return value === "iife" || value === "esm" || value === "fixed" || value === "custom";
+		return value === "iife" || value === "esm" || value === "preloaded" || value === "custom";
 	}
 
 	function normalizeItemPlayerConfig(
@@ -202,6 +206,26 @@
 			source: hostPlayer?.source,
 			isDefault: !hostPlayer && !hostPlayerType,
 		};
+	}
+
+	function normalizeEnv(input: unknown): { mode: string; role: string } {
+		const envValue = ((input || {}) as Record<string, unknown>) || {};
+		const mode =
+			typeof envValue.mode === "string" && envValue.mode.trim()
+				? envValue.mode.trim()
+				: DEFAULT_ENV.mode;
+		const role =
+			typeof envValue.role === "string" && envValue.role.trim()
+				? envValue.role.trim()
+				: DEFAULT_ENV.role;
+		return { mode, role };
+	}
+
+	function resolveSectionViewFromEnv(input: unknown): string {
+		const resolvedEnv = normalizeEnv(input);
+		if (resolvedEnv.mode === "author") return "author";
+		if (resolvedEnv.role === "instructor") return "scorer";
+		return "candidate";
 	}
 
 	async function createDefaultSectionController() {
@@ -257,6 +281,8 @@
 	const effectiveSectionId = $derived(
 		sectionId || (section as any)?.identifier || `section-${effectiveAssessmentId || "default"}`,
 	);
+	const effectiveEnv = $derived.by(() => normalizeEnv(env));
+	const effectiveSectionView = $derived.by(() => resolveSectionViewFromEnv(effectiveEnv));
 	const effectiveItemPlayer = $derived.by(() =>
 		normalizeItemPlayerConfig(player, playerType),
 	);
@@ -402,8 +428,8 @@
 		if (!host) return;
 		host.setAttribute("data-item-player-type", effectiveItemPlayer.type);
 		host.setAttribute("data-item-player-tag", effectiveItemPlayer.tagName);
-		host.setAttribute("data-env-mode", String((env as any)?.mode || ""));
-		host.setAttribute("data-env-role", String((env as any)?.role || ""));
+		host.setAttribute("data-env-mode", String((effectiveEnv as any)?.mode || ""));
+		host.setAttribute("data-env-role", String((effectiveEnv as any)?.role || ""));
 	});
 
 	$effect(() => {
@@ -441,7 +467,7 @@
 				sectionId: effectiveSectionId,
 				assessmentId: effectiveAssessmentId,
 				attemptId: attemptId || undefined,
-				view,
+				view: effectiveSectionView,
 				createDefaultController: createDefaultSectionController,
 				onCompositionChanged: (nextComposition) => {
 					if (cancelled) return;
@@ -455,6 +481,7 @@
 					assessmentId: effectiveAssessmentId,
 					sectionId: effectiveSectionId,
 					itemPlayer: effectiveItemPlayer,
+					coordinator: effectiveCoordinator,
 				});
 				emit("section-ready", {
 					sectionId: effectiveSectionId,

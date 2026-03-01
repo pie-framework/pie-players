@@ -50,6 +50,7 @@
 	const DEFAULT_PLAYER_TYPE = "iife";
 	const DEFAULT_LAZY_INIT = true;
 	const DEFAULT_ISOLATION = "inherit";
+const DEFAULT_ENV = { mode: "gather", role: "student" } as Record<string, unknown>;
 	const LEGACY_RUNTIME_WARNING_KEY = "pie-section-player-base:legacy-runtime-props";
 	const warnedKeys = new Set<string>();
 	type RuntimeConfig = {
@@ -107,7 +108,7 @@
 		() => runtime?.createSectionController ?? createSectionController,
 	);
 	const effectiveIsolation = $derived.by(() => runtime?.isolation ?? isolation);
-	const effectiveEnv = $derived.by(() => runtime?.env ?? env ?? {});
+const effectiveEnv = $derived.by(() => runtime?.env ?? env ?? DEFAULT_ENV);
 	let resolvedSection = $derived.by(() => {
 		if (!section) return null;
 		const sectionAny = section as any;

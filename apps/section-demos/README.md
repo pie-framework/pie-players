@@ -143,9 +143,9 @@ The `/demo/[id]` route renders `pie-section-player-splitpane`. To switch strateg
 
 - `?player=iife` (default)
 - `?player=esm`
-- `?player=fixed`
+- `?player=preloaded`
 
-Use `?mode=candidate` or `?mode=scorer` to switch environment role/mode.
+Use `?mode=candidate` or `?mode=scorer` to switch environment role/mode. The host translates these to item-compatible env values (`{ mode, role }`) and passes `env` to `pie-section-player-splitpane`.
 
 **Supported CDNs:**
 - **jsDelivr:** `https://cdn.jsdelivr.net/npm` (recommended, used in demos)

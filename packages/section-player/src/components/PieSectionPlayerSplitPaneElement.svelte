@@ -68,6 +68,7 @@
 	const DEFAULT_PLAYER_TYPE = "iife";
 	const DEFAULT_LAZY_INIT = true;
 	const DEFAULT_ISOLATION = "inherit";
+const DEFAULT_ENV = { mode: "gather", role: "student" } as Record<string, unknown>;
 const PRELOAD_TIMEOUT_MS = 15000;
 	const EMPTY_ITEM_SESSION = { id: "", data: [] } as Record<string, unknown>;
 	const LEGACY_RUNTIME_WARNING_KEY = "pie-section-player-splitpane:legacy-runtime-props";
@@ -100,7 +101,7 @@ const PRELOAD_TIMEOUT_MS = 15000;
 		coordinator = null as unknown,
 		createSectionController = null as unknown,
 		isolation = DEFAULT_ISOLATION,
-		env = { mode: "gather", role: "student" } as Record<string, unknown>,
+		env = null as Record<string, unknown> | null,
 		iifeBundleHost = "https://proxy.pie-api.com/bundles",
 		showToolbar = true,
 		toolbarPosition = "right",
@@ -170,8 +171,8 @@ const PRELOAD_TIMEOUT_MS = 15000;
 		coordinator,
 		createSectionController,
 		isolation,
-		env,
 		...(runtime || {}),
+		env: (runtime as RuntimeConfig | null)?.env ?? env ?? DEFAULT_ENV,
 		tools: effectiveToolsConfig,
 	}));
 	const effectivePlayerType = $derived.by(

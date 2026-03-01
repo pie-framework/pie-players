@@ -3,6 +3,10 @@ import {
 	type ItemSessionContainer,
 	type ItemSessionStorageStrategy,
 } from "./item-controller-storage.js";
+import {
+	hasResponseValue,
+	normalizeItemSessionContainer as normalizeSessionContainer,
+} from "./item-session-contract.js";
 
 export type ItemControllerOptions = {
 	itemId: string;
@@ -30,51 +34,6 @@ function cloneSession(session: ItemSessionContainer): ItemSessionContainer {
 	}
 }
 
-function toSessionContainer(
-	input: unknown,
-	fallbackSessionId: string = DEFAULT_SESSION_ID,
-): ItemSessionContainer {
-	if (input && typeof input === "object") {
-		const candidate = input as Record<string, unknown>;
-		if (Array.isArray(candidate.data)) {
-			return {
-				id:
-					typeof candidate.id === "string"
-						? candidate.id
-						: fallbackSessionId,
-				data: candidate.data,
-			};
-		}
-		if (Array.isArray(input)) {
-			return { id: fallbackSessionId, data: input };
-		}
-		return { id: fallbackSessionId, data: [input] };
-	}
-	if (Array.isArray(input)) {
-		return { id: fallbackSessionId, data: input };
-	}
-	return { id: fallbackSessionId, data: [] };
-}
-
-function hasResponseValue(value: unknown): boolean {
-	if (value == null) return false;
-	if (Array.isArray(value)) return value.some((entry) => hasResponseValue(entry));
-	if (typeof value !== "object") return false;
-	for (const [key, nested] of Object.entries(value as Record<string, unknown>)) {
-		if (
-			key === "value" &&
-			nested !== undefined &&
-			nested !== null &&
-			!(typeof nested === "string" && nested.trim() === "") &&
-			!(Array.isArray(nested) && nested.length === 0)
-		) {
-			return true;
-		}
-		if (hasResponseValue(nested)) return true;
-	}
-	return false;
-}
-
 export class ItemController {
 	private storage: ItemSessionStorageStrategy;
 	private session: ItemSessionContainer;
@@ -85,13 +44,13 @@ export class ItemController {
 		this.storage = options.storage ?? new MemoryItemSessionStorage();
 		this.storageKey = options.storageKey ?? `pie:item-controller:v1:${options.itemId}`;
 		this.sessionId = options.sessionId ?? DEFAULT_SESSION_ID;
-		this.session = toSessionContainer(options.initialSession, this.sessionId);
+		this.session = normalizeSessionContainer(options.initialSession, this.sessionId);
 	}
 
 	async hydrate(): Promise<ItemSessionContainer> {
 		const loaded = await this.storage.load(this.storageKey);
 		if (loaded) {
-			this.session = toSessionContainer(loaded, this.sessionId);
+			this.session = normalizeSessionContainer(loaded, this.sessionId);
 		}
 		return this.getSession();
 	}
@@ -109,7 +68,7 @@ export class ItemController {
 	}
 
 	setSession(input: unknown, options: SetSessionOptions = {}): ItemSessionContainer {
-		const next = toSessionContainer(input, this.sessionId);
+		const next = normalizeSessionContainer(input, this.sessionId);
 		const allowMetadataOverwrite = options.allowMetadataOverwrite ?? false;
 		if (
 			!allowMetadataOverwrite &&
@@ -134,4 +93,4 @@ export class ItemController {
 	}
 }
 
-export const normalizeItemSessionContainer = toSessionContainer;
+export const normalizeItemSessionContainer = normalizeSessionContainer;

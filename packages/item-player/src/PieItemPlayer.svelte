@@ -34,6 +34,7 @@
 		DEFAULT_BUNDLE_HOST,
 		DEFAULT_LOADER_CONFIG,
 		EsmPieLoader,
+		hasResponseValue,
 		IifePieLoader,
 		ItemController,
 		isGlobalDebugEnabled,
@@ -312,7 +313,8 @@
 		const parsed = parseSessionProp(session);
 		const controllerItemId = itemConfig?.id || "pie-item-player";
 		const controller = ensureSessionController(controllerItemId, parsed);
-		syncControllerSession(controller, parsed, { allowMetadataOverwrite: true });
+		// Do not let metadata-only prop churn wipe user responses already in the controller.
+		syncControllerSession(controller, parsed, { allowMetadataOverwrite: false });
 	});
 
 	const loadScopedExternalStyle = async (url: string) => {
@@ -394,7 +396,10 @@
 		// Ignore structural/heartbeat session events that do not carry actual session data.
 		// Some PIE elements emit "session-changed" during model/session assignment with
 		// metadata-only payloads, which can otherwise cause update loops.
-		if (!detailObj || !("session" in detailObj)) {
+		if (!detailObj) {
+			return;
+		}
+		if (!("session" in detailObj) && !hasResponseValue(detailObj)) {
 			return;
 		}
 		const controllerItemId = itemConfig?.id || "pie-item-player";

@@ -29,6 +29,8 @@ interface SectionControllerState {
 }
 
 export class SectionController implements SectionControllerHandle {
+	// SectionController intentionally owns aggregate section state only.
+	// Item-level controllers may share contracts, but are not composed here.
 	private readonly contentService = new SectionContentService();
 	private readonly sessionService = new SectionSessionService();
 	private readonly itemNavigationService = new SectionItemNavigationService();
@@ -269,11 +271,19 @@ export class SectionController implements SectionControllerHandle {
 			this.state.testAttemptSession.navigationState.visitedItemIdentifiers || [],
 		);
 		const visitedItemIdentifiers = itemIdentifiers.filter((id) => visitedSet.has(id));
-		const itemSessions = Object.fromEntries(
-			itemIdentifiers
-				.map((id) => [id, this.state.testAttemptSession?.itemSessions?.[id]?.session])
-				.filter(([, session]) => !!session),
-		) as Record<string, unknown>;
+		const itemSessions: Record<string, unknown> = {};
+		for (const itemRef of this.state.viewModel.adapterItemRefs) {
+			const canonicalId = itemRef.identifier || itemRef.item?.id;
+			const runtimeItemId = itemRef.item?.id;
+			if (!canonicalId) continue;
+			const sessionValue =
+				this.state.testAttemptSession?.itemSessions?.[canonicalId]?.session ??
+				(runtimeItemId
+					? this.state.testAttemptSession?.itemSessions?.[runtimeItemId]?.session
+					: undefined);
+			if (!sessionValue) continue;
+			itemSessions[canonicalId] = sessionValue;
+		}
 
 		return {
 			sectionId: this.state.input?.sectionId || "",
@@ -318,12 +328,6 @@ export class SectionController implements SectionControllerHandle {
 		sessionDetail: any,
 	): SessionChangedResult | null {
 		if (!this.state.testAttemptSession) return null;
-		console.debug("[SectionController][SessionTrace] handleItemSessionChanged:start", {
-			itemId,
-			sessionDetail,
-			testAttemptSessionIdentifier:
-				(this.state.testAttemptSession as any)?.testAttemptSessionIdentifier || null,
-		});
 		const itemSessions = this.getResolvedItemSessions();
 		const result = this.sessionService.applyItemSessionChanged({
 			itemId,
@@ -332,14 +336,6 @@ export class SectionController implements SectionControllerHandle {
 			itemSessions,
 		});
 		this.state.testAttemptSession = result.testAttemptSession;
-		console.debug("[SectionController][SessionTrace] handleItemSessionChanged:applied", {
-			itemId: result.eventDetail.itemId,
-			testAttemptSessionIdentifier:
-				(result.testAttemptSession as any)?.testAttemptSessionIdentifier || null,
-			itemSessionCount: Object.keys((result.testAttemptSession as any)?.itemSessions || {})
-				.length,
-			navigationState: (result.testAttemptSession as any)?.navigationState,
-		});
 		this.emitChange("session-change", {
 			itemId: result.eventDetail.itemId,
 			timestamp: result.eventDetail.timestamp,

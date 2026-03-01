@@ -287,7 +287,7 @@
 
   // Flag to prevent infinite loop when re-dispatching events
   let isDispatching = $state(false);
-  let lastDispatchedSessionSignature = $state("");
+  let lastDispatchedSessionDetailSignature = $state("");
 
   // Root element reference for resource monitor
   let rootElement: HTMLElement | null = $state(null);
@@ -480,23 +480,30 @@
                 customEvent.detail
               );
 
-              // Ignore noisy lifecycle events that don't actually change session data.
-              const signature = getSessionSignature();
-              if (signature === lastDispatchedSessionSignature) {
+              // Forward event detail with the latest in-memory session snapshot.
+              // PIE elements often emit metadata-only details, while the actual response
+              // array is mutated in-place on the `session` prop.
+              const forwardedDetail = {
+                ...(customEvent.detail || {}),
+                session: { id: "", data: session },
+              };
+
+              // Ignore duplicate payloads that can occur during model wiring.
+              let detailSignature = "";
+              try {
+                detailSignature = JSON.stringify(forwardedDetail);
+              } catch {
+                detailSignature = String(customEvent.detail);
+              }
+              if (detailSignature === lastDispatchedSessionDetailSignature) {
                 return;
               }
-              lastDispatchedSessionSignature = signature;
+              lastDispatchedSessionDetailSignature = detailSignature;
 
               // Set flag before dispatching
               isDispatching = true;
               try {
-                // Re-dispatch to parent with full session data (not just event detail)
-                // The event detail only contains metadata like {complete: boolean, component: string}
-                // The actual session data is in the session array prop (it's already the data array)
-                dispatch("session-changed", {
-                  ...customEvent.detail,
-                  session: { id: "", data: session },
-                });
+                dispatch("session-changed", forwardedDetail);
               } finally {
                 // Reset flag after dispatch (use setTimeout to ensure it happens after event propagation)
                 setTimeout(() => {

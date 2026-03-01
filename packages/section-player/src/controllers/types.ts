@@ -1,6 +1,7 @@
 import type {
 	TestAttemptSession,
 } from "@pie-players/pie-assessment-toolkit";
+import type { ItemSessionUpdateIntent } from "@pie-players/pie-players-shared";
 import type {
 	AssessmentItemRef,
 	AssessmentSection,
@@ -92,6 +93,7 @@ export interface SessionChangedResult {
 		session: unknown;
 		sessionState: SectionSessionState;
 		itemSessions: Record<string, unknown>;
+		intent?: ItemSessionUpdateIntent;
 		complete?: boolean;
 		component?: string;
 		timestamp: number;

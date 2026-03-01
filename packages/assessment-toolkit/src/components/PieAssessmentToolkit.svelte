@@ -98,7 +98,10 @@
 	let compositionVersion = $state(0);
 	let compositionModel = $state<unknown>(null);
 	let runtimeError = $state<unknown>(null);
-	let lastCompositionSignature = $state<string>("");
+	let lastCompositionRevisionKey = $state("");
+	let pendingCompositionModel: unknown = null;
+	let pendingCompositionEmit = false;
+	let compositionEmitRaf: number | null = null;
 
 	function getHostElement(): HTMLElement | null {
 		if (!anchor) return null;
@@ -113,6 +116,57 @@
 	function emit(name: string, detail: unknown): void {
 		if (!host) return;
 		dispatchCrossBoundaryEvent(host, name, detail);
+	}
+
+	function hashString(input: string): string {
+		let hash = 5381;
+		for (let index = 0; index < input.length; index += 1) {
+			hash = ((hash << 5) + hash) ^ input.charCodeAt(index);
+		}
+		return (hash >>> 0).toString(36);
+	}
+
+	function getCompositionRevisionKey(model: unknown): string {
+		const typed = (model || {}) as Record<string, unknown>;
+		const sectionId =
+			((typed.section as Record<string, unknown> | undefined)?.identifier as string) ||
+			(typed.sectionId as string) ||
+			"";
+		const currentItemIndex =
+			typeof typed.currentItemIndex === "number" ? typed.currentItemIndex : -1;
+		const renderables = Array.isArray(typed.renderables) ? typed.renderables : [];
+		const renderableSignature = renderables
+			.map((entry, index) => {
+				const row = (entry || {}) as Record<string, unknown>;
+				const entity = (row.entity || {}) as Record<string, unknown>;
+				const entityId =
+					(typeof entity.id === "string" && entity.id) || `renderable-${index}`;
+				const entityVersion =
+					(typeof entity.version === "string" && entity.version) ||
+					(typeof entity.version === "number" ? String(entity.version) : "") ||
+					(typeof (entity.config as Record<string, unknown> | undefined)?.version === "string"
+						? ((entity.config as Record<string, unknown>).version as string)
+						: "");
+				return `${entityId}:${entityVersion}`;
+			})
+			.join("|");
+		const sessionsByItem = (typed.itemSessionsByItemId || {}) as Record<string, unknown>;
+		const itemSessionSignature = Object.keys(sessionsByItem)
+			.sort((left, right) => left.localeCompare(right))
+			.map((itemId) => {
+				const session = sessionsByItem[itemId] as Record<string, unknown> | undefined;
+				const sessionId = (typeof session?.id === "string" && session.id) || "";
+				const dataPayload = Array.isArray(session?.data) ? session.data : [];
+				let payloadSignature = "";
+				try {
+					payloadSignature = hashString(JSON.stringify(dataPayload));
+				} catch {
+					payloadSignature = String(dataPayload.length);
+				}
+				return `${itemId}:${sessionId}:${payloadSignature}`;
+			})
+			.join("|");
+		return `${sectionId}|${currentItemIndex}|${renderableSignature}|${itemSessionSignature}`;
 	}
 
 	function isKnownPlayerType(value: unknown): value is ItemPlayerType {
@@ -221,10 +275,10 @@
 			itemPlayer: effectiveItemPlayer,
 			reportSessionChanged: (itemId: string, detail: unknown) => {
 				const result = sectionEngine.handleItemSessionChanged(itemId, detail);
-				const normalized = (result as SessionChangedLike | null)?.eventDetail || detail;
-				emit("session-changed", {
-					...(normalized as Record<string, unknown>),
-					sourceRuntimeId: runtimeId,
+				emitNormalizedSessionChanged({
+					itemId,
+					result,
+					fallbackSession: detail,
 				});
 			},
 		};
@@ -239,40 +293,49 @@
 		},
 	);
 
-	function getCompositionSignature(model: unknown): string {
-		const typed = model as any;
-		const itemIds = Array.isArray(typed?.items)
-			? typed.items.map((item: any) => item?.id || "")
-			: [];
-		const passageIds = Array.isArray(typed?.passages)
-			? typed.passages.map((item: any) => item?.id || "")
-			: [];
-		const sessionByItem = typed?.itemSessionsByItemId
-			? Object.entries(typed.itemSessionsByItemId)
-					.sort(([left], [right]) => left.localeCompare(right))
-					.map(([itemId, session]) => [itemId, JSON.stringify(session ?? null)])
-			: [];
-		return JSON.stringify({
-			sectionId: typed?.section?.identifier || typed?.sectionId || "",
-			currentItemIndex: typed?.currentItemIndex ?? -1,
-			itemIds,
-			passageIds,
-			sessionByItem,
-		});
-	}
-
-	function emitCompositionChanged() {
-		const nextModel = sectionEngine.getCompositionModel();
-		const signature = getCompositionSignature(nextModel);
-		if (signature === lastCompositionSignature) {
+	function flushCompositionChanged(nextModel: unknown) {
+		const nextRevisionKey = getCompositionRevisionKey(nextModel);
+		if (nextRevisionKey === lastCompositionRevisionKey) {
 			return;
 		}
-		lastCompositionSignature = signature;
+		lastCompositionRevisionKey = nextRevisionKey;
 		compositionVersion += 1;
 		compositionModel = nextModel;
 		emit("composition-changed", {
 			composition: compositionModel,
 			version: compositionVersion,
+		});
+	}
+
+	function emitCompositionChanged(nextModel?: unknown) {
+		pendingCompositionModel = nextModel ?? sectionEngine.getCompositionModel();
+		if (pendingCompositionEmit) return;
+		pendingCompositionEmit = true;
+		const flush = () => {
+			pendingCompositionEmit = false;
+			compositionEmitRaf = null;
+			flushCompositionChanged(pendingCompositionModel);
+		};
+		if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {
+			compositionEmitRaf = window.requestAnimationFrame(flush);
+			return;
+		}
+		queueMicrotask(flush);
+	}
+
+	function emitNormalizedSessionChanged(args: {
+		itemId: string;
+		canonicalItemId?: string;
+		result: unknown;
+		fallbackSession: unknown;
+	}) {
+		const normalized =
+			(args.result as SessionChangedLike | null)?.eventDetail || args.fallbackSession;
+		emit("session-changed", {
+			...(normalized as Record<string, unknown>),
+			itemId: args.itemId,
+			canonicalItemId: args.canonicalItemId || args.itemId,
+			sourceRuntimeId: runtimeId,
 		});
 	}
 
@@ -382,8 +445,7 @@
 				createDefaultController: createDefaultSectionController,
 				onCompositionChanged: (nextComposition) => {
 					if (cancelled) return;
-					compositionModel = nextComposition;
-					emitCompositionChanged();
+					emitCompositionChanged(nextComposition);
 				},
 			})
 			.then(() => {
@@ -438,12 +500,11 @@
 			if (!detail?.itemId) return;
 			if (!shouldHandleBySourceRuntime(detail.sourceRuntimeId, runtimeId)) return;
 			const result = sectionEngine.handleItemSessionChanged(detail.itemId, detail.session);
-			const normalized = (result as SessionChangedLike | null)?.eventDetail || detail.session;
-			emit("session-changed", {
-				...(normalized as Record<string, unknown>),
+			emitNormalizedSessionChanged({
 				itemId: detail.itemId,
-				canonicalItemId: detail.canonicalItemId || detail.itemId,
-				sourceRuntimeId: runtimeId,
+				canonicalItemId: detail.canonicalItemId,
+				result,
+				fallbackSession: detail.session,
 			});
 		};
 
@@ -500,6 +561,11 @@
 
 	$effect(() => {
 		return () => {
+			if (compositionEmitRaf !== null && typeof window !== "undefined") {
+				window.cancelAnimationFrame(compositionEmitRaf);
+				compositionEmitRaf = null;
+			}
+			pendingCompositionEmit = false;
 			void sectionEngine.dispose().catch((error) => {
 				runtimeError = error;
 			});

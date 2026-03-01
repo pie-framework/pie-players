@@ -37,6 +37,15 @@ export {
 export type { ItemControllerOptions } from "./item-controller.js";
 export { ItemController, normalizeItemSessionContainer } from "./item-controller.js";
 export type {
+	ItemSessionContainer as CanonicalItemSessionContainer,
+	ItemSessionUpdateIntent,
+	NormalizedItemSessionChange,
+} from "./item-session-contract.js";
+export {
+	hasResponseValue,
+	normalizeItemSessionChange,
+} from "./item-session-contract.js";
+export type {
 	ItemSessionContainer,
 	ItemSessionStorageStrategy,
 } from "./item-controller-storage.js";

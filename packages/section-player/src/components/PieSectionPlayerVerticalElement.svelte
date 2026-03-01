@@ -68,6 +68,7 @@
 	const DEFAULT_PLAYER_TYPE = "iife";
 	const DEFAULT_LAZY_INIT = true;
 	const DEFAULT_ISOLATION = "inherit";
+const PRELOAD_TIMEOUT_MS = 15000;
 	const LEGACY_RUNTIME_WARNING_KEY = "pie-section-player-vertical:legacy-runtime-props";
 	const warnedKeys = new Set<string>();
 	type RuntimeConfig = {
@@ -109,6 +110,8 @@
 
 	let compositionModel = $state<SectionCompositionModel>(EMPTY_COMPOSITION);
 	let elementsLoaded = $state(false);
+	let lastPreloadSignature = $state("");
+	let preloadRunToken = $state(0);
 
 	const passages = $derived(compositionModel.passages || []);
 	const items = $derived(compositionModel.items || []);
@@ -120,6 +123,22 @@
 	const toolbarInline = $derived(toolbarPosition === "left" || toolbarPosition === "right");
 	const preloadedRenderables = $derived.by(() =>
 		(compositionModel.renderables || []).map((entry) => entry.entity as ItemEntity),
+	);
+	const preloadedRenderablesSignature = $derived.by(() =>
+		(compositionModel.renderables || [])
+			.map((entry, index) => {
+				const entity = ((entry?.entity || {}) as unknown) as Record<string, unknown>;
+				const entityId =
+					(typeof entity.id === "string" && entity.id) || `renderable-${index}`;
+				const entityVersion =
+					(typeof entity.version === "string" && entity.version) ||
+					(typeof entity.version === "number" ? String(entity.version) : "") ||
+					(typeof (entity.config as Record<string, unknown> | undefined)?.version === "string"
+						? ((entity.config as Record<string, unknown>).version as string)
+						: "");
+				return `${entityId}:${entityVersion}`;
+			})
+			.join("|"),
 	);
 	const effectiveToolsConfig = $derived.by(() => {
 		const runtimeTools = ((runtime as RuntimeConfig | null)?.tools || tools || {}) as any;
@@ -150,12 +169,26 @@
 		...(runtime || {}),
 		tools: effectiveToolsConfig,
 	}));
+	const effectivePlayerType = $derived.by(
+		() =>
+			String(
+				((effectiveRuntime as unknown as { playerType?: unknown })?.playerType as string) ||
+					playerType ||
+					DEFAULT_PLAYER_TYPE,
+			),
+	);
 	const resolvedPlayerDefinition = $derived.by(
-		() => DEFAULT_PLAYER_DEFINITIONS[playerType] || DEFAULT_PLAYER_DEFINITIONS.iife,
+		() => DEFAULT_PLAYER_DEFINITIONS[effectivePlayerType] || DEFAULT_PLAYER_DEFINITIONS.iife,
 	);
 	const resolvedPlayerTag = $derived(resolvedPlayerDefinition?.tagName || "pie-item-player");
 	const resolvedPlayerAttributes = $derived(resolvedPlayerDefinition?.attributes || {});
 	const resolvedPlayerProps = $derived(resolvedPlayerDefinition?.props || {});
+	const resolvedPlayerEnv = $derived.by(
+		() =>
+			(((effectiveRuntime as unknown as { env?: Record<string, unknown> })?.env ||
+				env ||
+				{}) as Record<string, unknown>),
+	);
 
 	type VerticalPlayerParams = {
 		config: Record<string, unknown>;
@@ -166,10 +199,35 @@
 		skipElementLoading?: boolean;
 	};
 
+	type AppliedVerticalParams = {
+		config?: Record<string, unknown>;
+		env?: Record<string, unknown>;
+		sessionSignature?: string;
+		skipElementLoading?: boolean;
+	};
+
+	function getSessionSignature(session: Record<string, unknown> | undefined): string {
+		if (!session) return "";
+		try {
+			return JSON.stringify(session);
+		} catch {
+			return String((session as any)?.id || "");
+		}
+	}
+
 	function applyVerticalPlayerParams(node: HTMLElement, params: VerticalPlayerParams) {
-		(node as any).config = params.config;
-		(node as any).env = params.env;
-		if (params.session !== undefined) {
+		const state = ((node as any).__verticalAppliedParams || {}) as AppliedVerticalParams;
+		if (state.config !== params.config) {
+			(node as any).config = params.config;
+		}
+		if (state.env !== params.env) {
+			(node as any).env = params.env;
+		}
+		const nextSessionSignature = getSessionSignature(params.session);
+		if (
+			params.session !== undefined &&
+			state.sessionSignature !== nextSessionSignature
+		) {
 			(node as any).session = params.session;
 		}
 		for (const [name, value] of Object.entries(params.attributes || {})) {
@@ -182,6 +240,12 @@
 			node.setAttribute("skip-element-loading", "true");
 			(node as any).skipElementLoading = true;
 		}
+		(node as any).__verticalAppliedParams = {
+			config: params.config,
+			env: params.env,
+			sessionSignature: nextSessionSignature,
+			skipElementLoading: !!params.skipElementLoading,
+		} as AppliedVerticalParams;
 	}
 
 	function verticalPlayerAction(node: HTMLElement, params: VerticalPlayerParams) {
@@ -202,6 +266,19 @@
 		const itemId = item.id || "";
 		return itemSessionsByItemId[itemId];
 	}
+	function getCanonicalItemIdForItem(item: ItemEntity): string {
+		const itemId = item.id || "";
+		if (!itemId) return "";
+		const refs = compositionModel.assessmentItemRefs || [];
+		const match = refs.find((ref) => {
+			const refItem = (ref as unknown as { item?: { id?: string; identifier?: string } })?.item;
+			return refItem?.id === itemId || refItem?.identifier === itemId;
+		});
+		return (
+			(match as unknown as { identifier?: string })?.identifier ||
+			itemId
+		);
+	}
 
 	$effect(() => {
 		resolvedPlayerDefinition?.ensureDefined?.().catch((error) => {
@@ -211,16 +288,42 @@
 
 	$effect(() => {
 		const renderables = preloadedRenderables;
+		const renderablesSignature = preloadedRenderablesSignature;
+		const strategy = normalizeItemPlayerStrategy(
+			resolvedPlayerAttributes?.strategy || effectivePlayerType,
+			"iife",
+		);
+		const esmCdnUrl = String(
+			(resolvedPlayerProps as any)?.loaderOptions?.esmCdnUrl || "https://esm.sh",
+		);
+		const bundleHost = String(
+			(resolvedPlayerProps as any)?.loaderOptions?.bundleHost || iifeBundleHost || "",
+		).trim();
+		const loaderView = (resolvedPlayerEnv as any)?.mode === "author" ? "author" : "delivery";
+		const preloadSignature = [
+			strategy,
+			loaderView,
+			strategy === "esm" ? esmCdnUrl : bundleHost,
+			renderablesSignature,
+		].join("|");
+		if (preloadSignature === lastPreloadSignature) {
+			return;
+		}
+		lastPreloadSignature = preloadSignature;
 		if (renderables.length === 0) {
 			elementsLoaded = true;
 			return;
 		}
-		const strategy = normalizeItemPlayerStrategy(
-			resolvedPlayerAttributes?.strategy || playerType,
-			"iife",
-		);
 
-		let cancelled = false;
+		const runToken = preloadRunToken + 1;
+		preloadRunToken = runToken;
+		const timeoutHandle = window.setTimeout(() => {
+			if (runToken !== preloadRunToken) return;
+			console.warn(
+				"[pie-section-player-vertical] Element preloading timed out; continuing render without preload.",
+			);
+			elementsLoaded = true;
+		}, PRELOAD_TIMEOUT_MS);
 		elementsLoaded = false;
 		if (strategy === "preloaded") {
 			elementsLoaded = true;
@@ -228,19 +331,11 @@
 		}
 		let loader: IifeElementLoader | EsmElementLoader | null = null;
 		if (strategy === "esm") {
-			const esmCdnUrl = String(
-				(resolvedPlayerProps as any)?.loaderOptions?.esmCdnUrl || "https://esm.sh",
-			);
 			loader = new EsmElementLoader({
 				esmCdnUrl,
 				debugEnabled: () => false,
 			});
 		} else {
-			const bundleHost = String(
-				(resolvedPlayerProps as any)?.loaderOptions?.bundleHost ||
-					iifeBundleHost ||
-					"",
-			).trim();
 			if (!bundleHost) {
 				console.warn(
 					"[pie-section-player-vertical] Missing iifeBundleHost for element preloading; rendering without preload.",
@@ -253,7 +348,6 @@
 				debugEnabled: () => false,
 			});
 		}
-		const loaderView = (env as any)?.mode === "author" ? "author" : "delivery";
 
 		void loader
 			.loadFromItems(renderables, {
@@ -261,19 +355,17 @@
 				needsControllers: true,
 			})
 			.then(() => {
-				if (!cancelled) elementsLoaded = true;
+				window.clearTimeout(timeoutHandle);
+				if (runToken === preloadRunToken) elementsLoaded = true;
 			})
 			.catch((error) => {
+				window.clearTimeout(timeoutHandle);
 				console.error(
 					"[pie-section-player-vertical] Failed to preload PIE elements:",
 					error,
 				);
-				if (!cancelled) elementsLoaded = true;
+				if (runToken === preloadRunToken) elementsLoaded = true;
 			});
-
-		return () => {
-			cancelled = true;
-		};
 	});
 
 	$effect(() => {
@@ -299,19 +391,10 @@
 
 <pie-section-player-base
 	runtime={effectiveRuntime}
-	{assessmentId}
 	{section}
 	section-id={sectionId}
 	attempt-id={attemptId}
 	{view}
-	player-type={playerType}
-	{player}
-	lazy-init={lazyInit}
-	{tools}
-	{accessibility}
-	{coordinator}
-	create-section-controller={createSectionController}
-	{isolation}
 	oncomposition-changed={handleBaseCompositionChanged}
 >
 	<div class={`player-shell player-shell--${toolbarPosition}`}>
@@ -365,7 +448,7 @@
 													config: passage.config || {},
 													env: {
 														mode: "view",
-														role: (env as any)?.role || "student",
+														role: (resolvedPlayerEnv as any)?.role || "student",
 													},
 													attributes: resolvedPlayerAttributes || {},
 													props: resolvedPlayerProps || {},
@@ -381,7 +464,12 @@
 
 					<section class="items-section" aria-label="Items">
 						{#each items as item, itemIndex (item.id || itemIndex)}
-							<pie-item-shell item-id={item.id} content-kind="assessment-item" item={item}>
+							<pie-item-shell
+								item-id={item.id}
+								canonical-item-id={getCanonicalItemIdForItem(item)}
+								content-kind="assessment-item"
+								item={item}
+							>
 								<div class="content-card">
 									<div
 										class="content-card-header item-header pie-section-player__item-header"
@@ -405,7 +493,7 @@
 											this={resolvedPlayerTag}
 											use:verticalPlayerAction={{
 												config: item.config || {},
-												env: env as Record<string, unknown>,
+												env: resolvedPlayerEnv,
 												session: (getSessionForItem(item) || {
 													id: "",
 													data: [],

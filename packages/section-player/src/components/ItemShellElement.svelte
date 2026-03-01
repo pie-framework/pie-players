@@ -113,11 +113,20 @@
 		if (!host) return;
 		dispatchRegistration(PIE_REGISTER_EVENT);
 
-		const onSessionChanged = (event: Event) => normalizeAndDispatchSession(event);
+		const seenSessionEvents = new WeakSet<Event>();
+		const onSessionChanged = (event: Event) => {
+			// Some players emit `session-changed`, others emit `sessionchanged`.
+			// Guard against duplicate forwarding when both fire for the same original event.
+			if (seenSessionEvents.has(event)) return;
+			seenSessionEvents.add(event);
+			normalizeAndDispatchSession(event);
+		};
 		host.addEventListener("sessionchanged", onSessionChanged);
+		host.addEventListener("session-changed", onSessionChanged);
 
 		return () => {
 			host?.removeEventListener("sessionchanged", onSessionChanged);
+			host?.removeEventListener("session-changed", onSessionChanged);
 			dispatchRegistration(PIE_UNREGISTER_EVENT);
 		};
 	});

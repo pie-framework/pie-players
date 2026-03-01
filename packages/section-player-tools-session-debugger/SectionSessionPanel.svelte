@@ -1,7 +1,7 @@
 <svelte:options
 	customElement={{
 		tag: 'pie-section-player-tools-session-debugger',
-		shadow: 'open',
+		shadow: 'none',
 		props: {
 			sectionId: { type: 'String', attribute: 'section-id' },
 			attemptId: { type: 'String', attribute: 'attempt-id' },
@@ -39,6 +39,9 @@
 
 	type ToolkitCoordinatorLike = {
 		getSectionController?: (args: { sectionId: string; attemptId?: string }) => SectionControllerLike | undefined;
+	onSectionControllerLifecycle?: (
+		listener: (event: { type: 'ready' | 'disposed'; key?: { sectionId?: string; attemptId?: string } }) => void
+	) => () => void;
 	};
 
 	let {
@@ -76,6 +79,11 @@
 		lastChangedItemId: null,
 		itemSessions: {}
 	});
+	let activeController = $state<SectionControllerLike | null>(null);
+	let unsubscribeController: (() => void) | null = null;
+	let unsubscribeLifecycle: (() => void) | null = null;
+	let controllerAvailable = $state(false);
+	let liveRefreshHandle: number | null = null;
 
 	function cloneSessionSnapshot<T>(value: T): T {
 		try {
@@ -90,12 +98,18 @@
 		return toolkitCoordinator.getSectionController?.({ sectionId, attemptId });
 	}
 
-	function refreshFromController(meta?: { itemId?: string; updatedAt?: number }) {
-		const controller = getController();
+	function refreshFromController(
+		meta?: { itemId?: string; updatedAt?: number },
+		controllerOverride?: SectionControllerLike | null
+	) {
+		const controller = controllerOverride || getController();
 		const sectionSlice = controller?.getCurrentSectionAttemptSlice?.() || null;
+		controllerAvailable = Boolean(controller);
 		sessionPanelSnapshot = {
 			currentItemIndex:
-				typeof sectionSlice?.currentItemIndex === 'number' ? sectionSlice.currentItemIndex : null,
+				typeof sectionSlice?.currentItemIndex === 'number' && sectionSlice.currentItemIndex >= 0
+					? sectionSlice.currentItemIndex
+					: null,
 			currentItemId:
 				typeof sectionSlice?.currentItemId === 'string' && sectionSlice.currentItemId
 					? sectionSlice.currentItemId
@@ -107,18 +121,73 @@
 		};
 	}
 
+	function detachControllerSubscription() {
+		unsubscribeController?.();
+		unsubscribeController = null;
+		activeController = null;
+	}
+
+	function detachLifecycleSubscription() {
+		unsubscribeLifecycle?.();
+		unsubscribeLifecycle = null;
+	}
+
+	function ensureControllerSubscription() {
+		const controller = getController() || null;
+		if (!controller) {
+			detachControllerSubscription();
+			controllerAvailable = false;
+			sessionPanelSnapshot = {
+				currentItemIndex: null,
+				currentItemId: null,
+				visitedItemIdentifiers: [],
+				updatedAt: Date.now(),
+				lastChangedItemId: null,
+				itemSessions: {}
+			};
+			return;
+		}
+		if (controller === activeController) return;
+		detachControllerSubscription();
+		activeController = controller;
+		const subscribe = typeof controller.subscribe === 'function' ? controller.subscribe.bind(controller) : null;
+		unsubscribeController =
+			subscribe?.((detail) => {
+				refreshFromController(
+					{
+						itemId: detail?.itemId,
+						updatedAt: detail?.timestamp || Date.now()
+					},
+					controller
+				);
+			}) || null;
+		refreshFromController(undefined, controller);
+	}
+
+	export function refreshFromHost(): void {
+		ensureControllerSubscription();
+		refreshFromController({
+			updatedAt: Date.now()
+		});
+	}
+
 	$effect(() => {
 		if (!toolkitCoordinator || !sectionId) return;
-		refreshFromController();
-		const controller = getController();
-		const unsubscribe = controller?.subscribe?.((detail) => {
+		ensureControllerSubscription();
+		detachLifecycleSubscription();
+		unsubscribeLifecycle = toolkitCoordinator.onSectionControllerLifecycle?.((event) => {
+			const eventSectionId = event?.key?.sectionId || '';
+			const eventAttemptId = event?.key?.attemptId || undefined;
+			if (eventSectionId !== sectionId) return;
+			if ((eventAttemptId || undefined) !== (attemptId || undefined)) return;
+			ensureControllerSubscription();
 			refreshFromController({
-				itemId: detail?.itemId,
-				updatedAt: detail?.timestamp || Date.now()
+				updatedAt: Date.now()
 			});
-		});
+		}) || null;
 		return () => {
-			unsubscribe?.();
+			detachControllerSubscription();
+			detachLifecycleSubscription();
 		};
 	});
 
@@ -130,6 +199,27 @@
 		sessionWindowHeight = clamp(Math.round(viewportHeight * 0.72), 360, 860);
 		sessionWindowX = Math.max(16, Math.round(viewportWidth * 0.08));
 		sessionWindowY = Math.max(16, Math.round((viewportHeight - sessionWindowHeight) / 2));
+
+		const handleRuntimeSessionEvent = () => {
+			refreshFromController({
+				updatedAt: Date.now()
+			});
+		};
+		document.addEventListener('session-changed', handleRuntimeSessionEvent as EventListener, true);
+		document.addEventListener('item-session-changed', handleRuntimeSessionEvent as EventListener, true);
+		liveRefreshHandle = window.setInterval(() => {
+			refreshFromController({
+				updatedAt: Date.now()
+			});
+		}, 250);
+		return () => {
+			document.removeEventListener('session-changed', handleRuntimeSessionEvent as EventListener, true);
+			document.removeEventListener('item-session-changed', handleRuntimeSessionEvent as EventListener, true);
+			if (liveRefreshHandle != null) {
+				window.clearInterval(liveRefreshHandle);
+				liveRefreshHandle = null;
+			}
+		};
 	});
 
 	function startSessionDrag(e: MouseEvent) {
@@ -243,12 +333,19 @@
 					<div class="text-sm font-bold mb-2">PIE Session Data (Persistent)</div>
 				</div>
 
-				{#if Object.keys(sessionPanelSnapshot.itemSessions || {}).length === 0}
+				{#if !controllerAvailable}
+					<div class="alert alert-warning">
+						<svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-5 w-5" fill="none" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4c-.77-1.33-2.69-1.33-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z" />
+						</svg>
+						<span class="text-xs">Section controller not available for this section yet.</span>
+					</div>
+				{:else if Object.keys(sessionPanelSnapshot.itemSessions || {}).length === 0}
 					<div class="alert alert-info">
 						<svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-5 w-5" fill="none" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
 						</svg>
-						<span class="text-xs">No session data yet. Interact with the questions to see updates.</span>
+						<span class="text-xs">No section session data yet. Interact with the questions to see updates.</span>
 					</div>
 				{:else}
 					<div class="bg-base-200 rounded p-3 flex-1 min-h-0 flex flex-col">

@@ -185,6 +185,12 @@ export interface ToolkitInitStatus {
 	providers: Record<string, boolean>;
 }
 
+export interface SectionControllerLifecycleEvent {
+	type: "ready" | "disposed";
+	key: SectionControllerKey;
+	controller?: SectionControllerHandle;
+}
+
 export interface ToolkitCoordinatorHooks {
 	onError?: (error: Error, context: ToolkitErrorContext) => void;
 	onTTSError?: (error: Error, context: ToolkitErrorContext) => void;
@@ -227,6 +233,11 @@ export interface ToolkitCoordinatorHooks {
 		state: Record<string, Record<string, unknown>>,
 	) => void | Promise<void>;
 
+	/**
+	 * Provide section-level controller overrides only.
+	 * Avoid instantiating per-item controller graphs here unless item lifecycle
+	 * requirements explicitly demand it.
+	 */
 	createSectionController?: (
 		context: SectionControllerContext,
 		defaults: SectionControllerFactoryDefaults,
@@ -318,6 +329,9 @@ export class ToolkitCoordinator {
 		string,
 		SectionControllerPersistenceStrategy
 	>();
+	private readonly sectionControllerLifecycleListeners = new Set<
+		(event: SectionControllerLifecycleEvent) => void
+	>();
 
 	/** Callback for floating tools changes */
 	private floatingToolsChangeCallback: ((toolIds: string[]) => void) | null =
@@ -403,6 +417,19 @@ export class ToolkitCoordinator {
 			await this.hooks.onTelemetry?.(eventName, payload);
 		} catch (err) {
 			console.warn("[ToolkitCoordinator] telemetry hook failed:", err);
+		}
+	}
+
+	private emitSectionControllerLifecycle(event: SectionControllerLifecycleEvent): void {
+		for (const listener of this.sectionControllerLifecycleListeners) {
+			try {
+				listener(event);
+			} catch (error) {
+				console.warn(
+					"[ToolkitCoordinator] section controller lifecycle listener failed:",
+					error,
+				);
+			}
 		}
 	}
 
@@ -642,6 +669,15 @@ export class ToolkitCoordinator {
 		return this.sectionControllers.get(this.getSectionControllerMapKey(key));
 	}
 
+	public onSectionControllerLifecycle(
+		listener: (event: SectionControllerLifecycleEvent) => void,
+	): () => void {
+		this.sectionControllerLifecycleListeners.add(listener);
+		return () => {
+			this.sectionControllerLifecycleListeners.delete(listener);
+		};
+	}
+
 	public async getOrCreateSectionController(args: {
 		sectionId: string;
 		attemptId?: string;
@@ -688,6 +724,11 @@ export class ToolkitCoordinator {
 			await controller.hydrate?.();
 
 			this.sectionControllers.set(mapKey, controller);
+			this.emitSectionControllerLifecycle({
+				type: "ready",
+				key,
+				controller,
+			});
 			await this.hooks.onSectionControllerReady?.(context, controller);
 			await this.emitTelemetry("section-controller-ready", {
 				assessmentId: key.assessmentId,
@@ -753,6 +794,10 @@ export class ToolkitCoordinator {
 			});
 		} finally {
 			this.sectionControllers.delete(mapKey);
+			this.emitSectionControllerLifecycle({
+				type: "disposed",
+				key,
+			});
 			if (args.clearPersistence) {
 				const strategy = this.sectionPersistenceStrategies.get(mapKey);
 				await strategy?.clear?.(context);

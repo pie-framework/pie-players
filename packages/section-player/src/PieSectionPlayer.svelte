@@ -79,6 +79,7 @@
   } from "@pie-players/pie-players-shared";
   import { onMount } from "svelte";
   import { SectionController } from "./controllers/SectionController.js";
+  import { resolveSectionSessionChanged } from "./controllers/SectionControllerEventAdapter.js";
   import { SectionToolkitService } from "./controllers/SectionToolkitService.js";
   import type { SectionCompositionModel, SectionViewModel } from "./controllers/types.js";
 
@@ -579,12 +580,11 @@
 
   // Handle session changes from items.
   function handleItemSessionChanged(itemId: string, sessionDetail: any): void {
-    if (!sectionController) return;
-    const canonicalItemId = sectionController.getCanonicalItemId(itemId);
-    const result = sectionController.handleItemSessionChanged(
-      canonicalItemId,
+    const result = resolveSectionSessionChanged({
+      controller: sectionController,
+      itemId,
       sessionDetail,
-    );
+    });
     if (!result) return;
     bumpControllerState();
     const eventDetail = result.eventDetail;

@@ -83,7 +83,7 @@
 	} = $props();
 
 	let toolkitElement = $state<any>(null);
-	let lastCompositionSignature = $state("");
+	let lastCompositionVersion = $state(-1);
 	type BaseSectionPlayerEvents = {
 		"composition-changed": { composition: SectionCompositionModel };
 		"toolkit-ready": Record<string, unknown>;
@@ -128,27 +128,18 @@
 		dispatch(name, detail);
 	}
 
-	function getCompositionSignature(
-		model: SectionCompositionModel | null | undefined,
-	): string {
-		if (!model) return "";
-		return JSON.stringify({
-			sectionId: model.section?.identifier || "",
-			currentItemIndex: model.currentItemIndex ?? -1,
-			itemIds: (model.items || []).map((item) => item?.id || ""),
-			passageIds: (model.passages || []).map((passage) => passage?.id || ""),
-			sessionByItem: Object.entries(model.itemSessionsByItemId || {})
-				.sort(([left], [right]) => left.localeCompare(right))
-				.map(([itemId, session]) => [itemId, JSON.stringify(session ?? null)]),
-		});
-	}
-
 	function handleCompositionChanged(event: Event): void {
-		const detail = (event as CustomEvent<{ composition?: SectionCompositionModel }>).detail;
+		const detail = (event as CustomEvent<{
+			composition?: SectionCompositionModel;
+			version?: number;
+		}>).detail;
 		const nextComposition = detail?.composition || EMPTY_COMPOSITION;
-		const nextSignature = getCompositionSignature(nextComposition);
-		if (nextSignature === lastCompositionSignature) return;
-		lastCompositionSignature = nextSignature;
+		const nextVersion =
+			typeof detail?.version === "number"
+				? detail.version
+				: lastCompositionVersion + 1;
+		if (nextVersion === lastCompositionVersion) return;
+		lastCompositionVersion = nextVersion;
 		emit("composition-changed", {
 			composition: nextComposition,
 		});

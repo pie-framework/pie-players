@@ -1,7 +1,7 @@
 <svelte:options
 	customElement={{
 		tag: 'pie-section-player-tools-pnp-debugger',
-		shadow: 'open',
+		shadow: 'none',
 		props: {
 			sectionData: { type: 'Object', attribute: 'section-data' },
 			roleType: { type: 'String', attribute: 'role-type' },
@@ -50,6 +50,20 @@
 	let resizeStartHeight = 0;
 
 	const pnpResolver = new PNPToolResolver(createDefaultToolRegistry());
+	let floatingTools = $state<string[]>([]);
+
+	$effect(() => {
+		if (!toolkitCoordinator?.onFloatingToolsChange) {
+			floatingTools = toolkitCoordinator?.getFloatingTools?.() || [];
+			return;
+		}
+		const unsubscribe = toolkitCoordinator.onFloatingToolsChange((toolIds: string[]) => {
+			floatingTools = Array.isArray(toolIds) ? [...toolIds] : [];
+		});
+		return () => {
+			unsubscribe?.();
+		};
+	});
 
 	let pnpPanelData = $derived.by(() => {
 		const directProfile = sectionData?.personalNeedsProfile;
@@ -68,8 +82,9 @@
 		const resolution = pnpResolver.resolveToolsWithProvenance(resolverInput as any);
 
 		const toolkitToolConfig = toolkitCoordinator?.config?.tools || null;
-		const floatingTools = toolkitCoordinator?.getFloatingTools?.() ||
-			toolkitToolConfig?.placement?.section || [];
+		const effectiveFloatingTools = floatingTools.length > 0
+			? floatingTools
+			: (toolkitCoordinator?.getFloatingTools?.() || toolkitToolConfig?.placement?.section || []);
 		const hasCatalogResolver = Boolean(toolkitCoordinator?.catalogResolver);
 		const catalogStats = hasCatalogResolver ? toolkitCoordinator.catalogResolver.getStatistics?.() : null;
 
@@ -92,7 +107,7 @@
 					: 'No explicit PNP profile was found in section payload, so the toolkit default PNP profile is applied.',
 				runtimeContext: {
 					role: roleType,
-					floatingToolsEnabled: floatingTools,
+					floatingToolsEnabled: effectiveFloatingTools,
 					hasCatalogResolver,
 					catalogCount: catalogStats?.totalCatalogs ?? 0,
 					assessmentCatalogCount: catalogStats?.assessmentCatalogs ?? 0,
@@ -107,9 +122,10 @@
 		const viewportWidth = window.innerWidth;
 		const viewportHeight = window.innerHeight;
 
-		pnpWindowWidth = clamp(Math.round(viewportWidth * 0.62), 460, 1040);
+		// Keep the debugger docked left by default so it does not block item interactions.
+		pnpWindowWidth = clamp(Math.round(viewportWidth * 0.3), 360, 560);
 		pnpWindowHeight = clamp(Math.round(viewportHeight * 0.72), 360, 860);
-		pnpWindowX = Math.max(16, Math.round((viewportWidth - pnpWindowWidth) / 2));
+		pnpWindowX = 16;
 		pnpWindowY = Math.max(16, Math.round((viewportHeight - pnpWindowHeight) / 2));
 	});
 
@@ -172,14 +188,6 @@
 		document.removeEventListener('mouseup', stopPnpResize);
 	}
 
-	function onPanelContentWheel(e: WheelEvent) {
-		const container = e.currentTarget as HTMLElement | null;
-		if (!container) return;
-		// Keep wheel scrolling inside the floating panel instead of bubbling to page.
-		e.preventDefault();
-		e.stopPropagation();
-		container.scrollTop += e.deltaY;
-	}
 </script>
 
 <div
@@ -228,7 +236,6 @@
 			<div
 				class="space-y-3 flex-1 min-h-0"
 				style="height: 100%; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;"
-				onwheel={onPanelContentWheel}
 			>
 				<div class="bg-base-200 rounded p-3">
 					<div class="text-xs font-semibold mb-2">Determination (read-only)</div>

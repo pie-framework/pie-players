@@ -547,7 +547,7 @@ const customPlacement = {
   customSidebar: ['lineReader', 'my-custom-tool']  // Custom placement
 };
 
-<pie-section-player
+<pie-section-player-splitpane
   {assessment}
   {section}
   toolPlacementConfig={customPlacement}
@@ -699,7 +699,7 @@ const customPlacement = {
 };
 
 // 5. Use in section player
-<pie-section-player
+<pie-section-player-splitpane
   {assessment}
   {section}
   toolRegistry={registry}

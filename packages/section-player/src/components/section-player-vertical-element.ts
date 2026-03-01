@@ -1,3 +1,0 @@
-import "./PieSectionPlayerVerticalElement.svelte";
-
-export {};

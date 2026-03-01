@@ -129,6 +129,7 @@ Each demo has a TypeScript file defining the QTI 3.0 assessment section:
 - `demo1-single-question.ts` - Climate change MCQ
 - `demo2-question-passage.ts` - Renaissance passage + question
 - `demo3-three-questions.ts` - Photosynthesis passage + 3 questions
+- `demo4-tts-ssml.ts` - TTS + SSML coverage with multi-level catalogs
 
 ### Customizing Demos
 To modify content, edit the files in `src/lib/content/`. Each file exports an `AssessmentSection` object with:
@@ -137,28 +138,23 @@ To modify content, edit the files in `src/lib/content/`. Each file exports an `A
 - Rubric blocks (passages, instructions)
 - Item references (questions with PIE element configs)
 
-### Configuring Element CDN
-To use a different CDN, pass the `esmCdnUrl` prop to `PieSectionPlayer`:
+### Configuring Player Runtime
+The `/demo/[id]` route renders `pie-section-player-splitpane`. To switch strategies, use query params:
 
-```svelte
-<PieSectionPlayer
-  section={data.section}
-  mode="gather"
-  view="candidate"
-  esmCdnUrl="https://cdn.jsdelivr.net/npm"
-/>
-```
+- `?player=iife` (default)
+- `?player=esm`
+- `?player=fixed`
+
+Use `?mode=candidate` or `?mode=scorer` to switch environment role/mode.
 
 **Supported CDNs:**
 - **jsDelivr:** `https://cdn.jsdelivr.net/npm` (recommended, used in demos)
 - **esm.sh:** `https://esm.sh` (may have package resolution issues)
 
 ### Adding New Demos
-1. Create a new route in `src/routes/demo4/`
-2. Create content file in `src/lib/content/demo4-*.ts`
-3. Create `+page.ts` to load the content
-4. Create `+page.svelte` with the UI
-5. Add link to landing page (`src/routes/+page.svelte`)
+1. Create content file in `src/lib/content/demoX-*.ts`
+2. Register the demo in `src/lib/content/sections.ts`
+3. Confirm it appears on the landing page (`src/routes/+page.svelte`)
 
 ## Architecture Notes
 

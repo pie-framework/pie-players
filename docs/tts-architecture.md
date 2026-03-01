@@ -458,13 +458,12 @@ catalogResolver.addItemCatalogs(result.catalogs);
 ```
 
 **Integration Points:**
-- `PieSectionPlayer` - Primary interface for toolkit services
-- `ItemRenderer.svelte` - Extracts SSML from items automatically
-- `PassageRenderer.svelte` - Extracts SSML from passages automatically
+- `pie-section-player-splitpane` - Primary interface for toolkit services
+- `PieSectionPlayerSplitPaneElement.svelte` - Composes passages/items and runtime wiring
 - Runs transparently during render (no author action needed)
 
 **Usage Pattern:**
-The section player is the primary container for assessment toolkit integration. Simply pass services as JavaScript properties, and the player handles SSML extraction, catalog management, and TTS tool rendering automatically.
+The splitpane section player is the primary container for assessment toolkit integration. Pass services as JavaScript properties, and the player handles SSML extraction, catalog management, and TTS tool rendering automatically.
 
 See [Accessibility Catalogs Integration Guide](./accessibility-catalogs-integration-guide.md) for complete examples.
 

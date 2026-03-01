@@ -22,13 +22,8 @@
 	}
 }
 
-/* Custom styles for the section player */
-pie-section-player {
-	display: block;
-}
-
-/* Ensure pie-section-player web component respects parent height constraints */
-pie-section-player {
+/* Ensure splitpane web component respects parent height constraints */
+pie-section-player-splitpane {
 	display: block;
 	width: 100%;
 	height: 100%;

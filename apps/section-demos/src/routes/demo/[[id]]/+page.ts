@@ -2,8 +2,7 @@ import { error } from "@sveltejs/kit";
 import { getSectionDemoById } from "$lib/content/sections";
 import type { PageLoad } from "./$types";
 
-// Disable SSR because PieSectionPlayer is built as a custom element
-// which requires DOM APIs not available during SSR
+// Disable SSR because demo route custom elements require DOM APIs.
 export const ssr = false;
 
 export const load: PageLoad = ({ params }) => {

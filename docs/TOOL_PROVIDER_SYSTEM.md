@@ -710,9 +710,8 @@ sectionPlayer.toolkitCoordinator = coordinator;
 
 - **Toolbar Component**: `packages/section-tools-toolbar/section-tools-toolbar.svelte`
 - **Layout Integration**:
-  - `packages/section-player/src/components/layouts/SplitPanelLayout.svelte`
-  - `packages/section-player/src/components/layouts/VerticalLayout.svelte`
-- **Player Integration**: `packages/section-player/src/PieSectionPlayer.svelte`
+  - `packages/section-player/src/components/PieSectionPlayerSplitPaneElement.svelte`
+- **Player Integration**: `packages/section-player/src/components/PieSectionPlayerSplitPaneElement.svelte`
 - **Demo**: `apps/section-demos/src/routes/demo/[[id]]/+page.svelte`
 
 ### Implementation Status
@@ -724,7 +723,7 @@ sectionPlayer.toolkitCoordinator = coordinator;
 - ✅ ToolProviderRegistry with lazy loading
 - ✅ ToolkitCoordinator integration
 - ✅ Section tools toolbar component
-- ✅ Section layout updates
+- ✅ Section splitpane layout updates
 - ✅ Demo backend API
 - ✅ Demo frontend implementation
 - ✅ Documentation

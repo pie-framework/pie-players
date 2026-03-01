@@ -70,7 +70,7 @@ Use with `skip-element-loading` and host-side preload orchestration.
 
 ## Section player integration
 
-`pie-section-player` and `pie-section-player-splitpane` now resolve item rendering via `pie-item-player`.
+`pie-section-player-splitpane` resolves item rendering via `pie-item-player`.
 
 `player-type` controls strategy:
 

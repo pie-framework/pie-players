@@ -4,50 +4,45 @@
 		ToolkitCoordinator,
 		type ToolkitCoordinatorHooks
 	} from '@pie-players/pie-assessment-toolkit';
-	import { onMount, untrack } from 'svelte';
+	import '@pie-players/pie-section-player/components/section-player-splitpane-element';
 	import { browser } from '$app/environment';
+	import { onMount } from 'svelte';
 	import type { PageData } from './$types';
 	import DemoMenuBar from './DemoMenuBar.svelte';
 	import DemoOverlays from './DemoOverlays.svelte';
 
 	let { data }: { data: PageData } = $props();
 
-	const LAYOUT_OPTIONS = ['vertical', 'split-panel', 'item-mode'] as const;
-	const MODE_OPTIONS = ['candidate', 'scorer'] as const;
 	const PLAYER_OPTIONS = ['iife', 'esm', 'fixed'] as const;
+	const MODE_OPTIONS = ['candidate', 'scorer'] as const;
 
-	function getUrlEnumParam<T extends string>(
-		key: string,
-		options: readonly T[],
-		fallback: T
-	): T {
+	function getUrlEnumParam<T extends string>(key: string, options: readonly T[], fallback: T): T {
 		if (!browser) return fallback;
 		const value = new URLSearchParams(window.location.search).get(key);
 		return value && options.includes(value as T) ? (value as T) : fallback;
 	}
 
-	let layoutType = $state<'vertical' | 'split-panel' | 'item-mode'>(
-		getUrlEnumParam('layout', LAYOUT_OPTIONS, 'split-panel')
-	);
-	let roleType = $state<'candidate' | 'scorer'>(
-		getUrlEnumParam('mode', MODE_OPTIONS, 'candidate')
-	);
-	let toolbarPosition = $state<'top' | 'right' | 'bottom' | 'left'>('right');
-	let itemPlayerType = $state<'iife' | 'esm' | 'fixed'>(
-		getUrlEnumParam('player', PLAYER_OPTIONS, 'iife')
-	);
+	let selectedPlayerType = $state(getUrlEnumParam('player', PLAYER_OPTIONS, 'iife'));
+	let roleType = $state<'candidate' | 'scorer'>(getUrlEnumParam('mode', MODE_OPTIONS, 'candidate'));
 	let showSessionPanel = $state(false);
 	let showSourcePanel = $state(false);
 	let showPnpPanel = $state(false);
-	let sectionPlayer: any = $state(null);
 	let sessionDebuggerElement: any = $state(null);
 	let pnpDebuggerElement: any = $state(null);
+	const toolkitToolsConfig = {
+		providers: {
+			calculator: {
+				provider: 'desmos',
+				authFetcher: fetchDesmosAuthConfig
+			}
+		},
+		placement: {
+			section: ['graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
+			item: ['calculator', 'textToSpeech', 'answerEliminator'],
+			passage: ['textToSpeech']
+		}
+	};
 
-	// Toolkit coordinator (owns all services)
-	let toolkitCoordinator: any = $state(createDemoToolkitCoordinator());
-
-	// Storage keys
-	let TOOL_STATE_STORAGE_KEY = $derived(`demo-tool-state:${data.demo.id}`);
 	let resolvedSectionForPlayer = $derived.by(() => {
 		const section = data.section;
 		if (!section) return section;
@@ -61,32 +56,24 @@
 			personalNeedsProfile: createDefaultPersonalNeedsProfile()
 		};
 	});
+	let toolkitCoordinator: any = $state(createDemoToolkitCoordinator());
+	let sessionPanelSectionId = $derived(
+		resolvedSectionForPlayer?.identifier ||
+			`section-${toolkitCoordinator?.assessmentId || data?.demo?.id || 'default'}`
+	);
 	let sourcePanelJson = $derived(JSON.stringify(resolvedSectionForPlayer, null, 2));
+	let pieEnv = $derived<{ mode: 'gather' | 'view' | 'evaluate'; role: 'student' | 'instructor' }>({
+		mode: roleType === 'candidate' ? 'gather' : 'evaluate',
+		role: roleType === 'candidate' ? 'student' : 'instructor'
+	});
 
-	function createDemoToolkitHooks(): ToolkitCoordinatorHooks {
-		return {
-			onError: (error, context) => {
-				console.error('[Demo] Toolkit hook error:', context, error);
-			},
-			loadToolState: () => {
-				try {
-					const saved = localStorage.getItem(TOOL_STATE_STORAGE_KEY);
-					if (!saved) return null;
-					return JSON.parse(saved);
-				} catch (e) {
-					console.warn('[Demo] Failed to load tool state:', e);
-					return null;
-				}
-			},
-			saveToolState: (state) => {
-				try {
-					localStorage.setItem(TOOL_STATE_STORAGE_KEY, JSON.stringify(state));
-				} catch (e) {
-					console.warn('[Demo] Failed to persist tool state:', e);
-				}
-			}
-		};
-	}
+	const sectionPlayerRuntime = $derived({
+		assessmentId: data.demo?.id || 'section-demo',
+		playerType: selectedPlayerType,
+		lazyInit: true,
+		tools: toolkitToolsConfig,
+		coordinator: toolkitCoordinator
+	});
 
 	async function fetchDesmosAuthConfig() {
 		const response = await fetch('/api/tools/desmos/auth');
@@ -97,23 +84,19 @@
 		return payload?.apiKey ? { apiKey: payload.apiKey } : {};
 	}
 
+	function createDemoToolkitHooks(): ToolkitCoordinatorHooks {
+		return {
+			onError: (error, context) => {
+				console.error('[Demo] Toolkit hook error:', context, error);
+			}
+		};
+	}
+
 	function createDemoToolkitCoordinator() {
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: data.demo?.id || 'section-demo',
 			lazyInit: true,
-			tools: {
-				providers: {
-					calculator: {
-						provider: 'desmos',
-						authFetcher: fetchDesmosAuthConfig
-					}
-				},
-				placement: {
-					section: ['calculator', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
-					item: ['calculator', 'textToSpeech', 'answerEliminator'],
-					passage: ['textToSpeech']
-				},
-			}
+			tools: toolkitToolsConfig
 		});
 		coordinator.setHooks?.(createDemoToolkitHooks());
 		return coordinator;
@@ -121,41 +104,21 @@
 
 	onMount(async () => {
 		await Promise.all([
-			import('@pie-players/pie-section-player'),
-			import('@pie-players/pie-tool-annotation-toolbar'),
 			import('@pie-players/pie-section-player-tools-session-debugger'),
 			import('@pie-players/pie-section-player-tools-pnp-debugger')
 		]);
 	});
 
-	// Update URL and refresh page when layout or mode changes
 	function updateUrlAndRefresh(updates: {
-		layout?: 'vertical' | 'split-panel' | 'item-mode';
 		mode?: 'candidate' | 'scorer';
 		player?: 'iife' | 'esm' | 'fixed';
 	}) {
-		if (browser) {
-			const url = new URL(window.location.href);
-			// Preserve current values and apply updates
-			url.searchParams.set('layout', updates.layout || layoutType);
-			url.searchParams.set('mode', updates.mode || roleType);
-			url.searchParams.set('player', updates.player || itemPlayerType);
-			window.location.href = url.toString();
-		}
+		if (!browser) return;
+		const url = new URL(window.location.href);
+		url.searchParams.set('mode', updates.mode || roleType);
+		url.searchParams.set('player', updates.player || selectedPlayerType);
+		window.location.href = url.toString();
 	}
-
-	// Compute player definitions for selected type/source
-	// Map role toggle to PIE environment
-	// candidate → gather mode + student role (interactive assessment)
-	// scorer → evaluate mode + instructor role (scoring/review)
-	let pieEnv = $derived<{ mode: 'gather' | 'view' | 'evaluate'; role: 'student' | 'instructor' }>({
-		mode: roleType === 'candidate' ? 'gather' : 'evaluate',
-		role: roleType === 'candidate' ? 'student' : 'instructor'
-	});
-	let sessionPanelSectionId = $derived(
-		resolvedSectionForPlayer?.identifier ||
-			`section-${toolkitCoordinator?.assessmentId || data?.demo?.id || 'default'}`
-	);
 
 	function wireCloseListener(target: any, onClose: () => void) {
 		if (!target) return;
@@ -165,35 +128,38 @@
 		};
 	}
 
-	// Set complex properties imperatively on the web component
-	// (Web components can only receive simple values via attributes)
 	$effect(() => {
-		if (sectionPlayer && resolvedSectionForPlayer) {
-			untrack(() => {
-				sectionPlayer.section = resolvedSectionForPlayer;
-				sectionPlayer.env = pieEnv;
-				sectionPlayer.toolkitCoordinator = toolkitCoordinator;
-				sectionPlayer.toolbarPosition = toolbarPosition;
-				sectionPlayer.playerType = itemPlayerType;
-			});
-		}
+		if (!sessionDebuggerElement) return;
+		sessionDebuggerElement.toolkitCoordinator = toolkitCoordinator;
+		sessionDebuggerElement.sectionId = sessionPanelSectionId;
 	});
 
 	$effect(() => {
-		if (!sessionDebuggerElement) return;
-		untrack(() => {
-			sessionDebuggerElement.toolkitCoordinator = toolkitCoordinator;
-			sessionDebuggerElement.sectionId = sessionPanelSectionId;
-		});
+		if (!browser) return;
+		const triggerSessionPanelRefresh = () => {
+			sessionDebuggerElement?.refreshFromHost?.();
+		};
+		document.addEventListener('item-session-changed', triggerSessionPanelRefresh as EventListener, true);
+		document.addEventListener('session-changed', triggerSessionPanelRefresh as EventListener, true);
+		return () => {
+			document.removeEventListener(
+				'item-session-changed',
+				triggerSessionPanelRefresh as EventListener,
+				true
+			);
+			document.removeEventListener(
+				'session-changed',
+				triggerSessionPanelRefresh as EventListener,
+				true
+			);
+		};
 	});
 
 	$effect(() => {
 		if (!pnpDebuggerElement) return;
-		untrack(() => {
-			pnpDebuggerElement.sectionData = resolvedSectionForPlayer;
-			pnpDebuggerElement.roleType = roleType;
-			pnpDebuggerElement.toolkitCoordinator = toolkitCoordinator;
-		});
+		pnpDebuggerElement.sectionData = resolvedSectionForPlayer;
+		pnpDebuggerElement.roleType = roleType;
+		pnpDebuggerElement.toolkitCoordinator = toolkitCoordinator;
 	});
 
 	$effect(() => {
@@ -210,7 +176,6 @@
 		});
 	});
 
-	// Reset all sessions
 	async function resetSessions() {
 		try {
 			await toolkitCoordinator?.disposeSectionController?.({
@@ -221,45 +186,37 @@
 		} catch (e) {
 			console.warn('[Demo] Failed to clear section-controller persistence during reset:', e);
 		}
-		// Force page reload to reset player state
 		if (browser) {
 			window.location.reload();
 		}
 	}
-
 </script>
 
 <svelte:head>
-	<title>{data.demo?.name || 'Demo'} - PIE Section Player</title>
+	<title>{data.demo?.name || 'Demo'} - Direct Split Layout</title>
 </svelte:head>
 
-<div class="w-full h-screen min-h-0 overflow-hidden flex flex-col">
+<div class="direct-layout">
 	<DemoMenuBar
-		{layoutType}
 		{roleType}
 		{showSessionPanel}
 		{showSourcePanel}
 		{showPnpPanel}
-		onSelectLayout={(layout) => updateUrlAndRefresh({ layout })}
-		onSelectRole={(mode) => updateUrlAndRefresh({ mode })}
+		onSelectRole={(mode: 'candidate' | 'scorer') => updateUrlAndRefresh({ mode })}
 		onReset={() => void resetSessions()}
 		onToggleSessionPanel={() => (showSessionPanel = !showSessionPanel)}
 		onToggleSourcePanel={() => (showSourcePanel = !showSourcePanel)}
 		onTogglePnpPanel={() => (showPnpPanel = !showPnpPanel)}
 	/>
 
-	<div class="flex-1 min-h-0 overflow-hidden">
-		<!-- Use web component - set complex properties imperatively via $effect -->
-		<!-- svelte-ignore a11y_unknown_aria_attribute -->
-		<pie-section-player
-			class="block h-full min-h-0"
-			bind:this={sectionPlayer}
-			layout={layoutType}
-			view={roleType}
-			player-type={itemPlayerType}
-		></pie-section-player>
-	</div>
-
+	<pie-section-player-splitpane
+		runtime={sectionPlayerRuntime}
+		section={resolvedSectionForPlayer}
+		env={pieEnv}
+		view={roleType}
+		toolbar-position="right"
+		show-toolbar={true}
+	></pie-section-player-splitpane>
 </div>
 
 <DemoOverlays
@@ -273,3 +230,20 @@
 	bind:pnpDebuggerElement
 />
 
+<style>
+	.direct-layout {
+		display: flex;
+		flex-direction: column;
+		height: 100dvh;
+		min-height: 0;
+		overflow: hidden;
+	}
+
+	:global(pie-section-player-splitpane) {
+		display: flex;
+		flex: 1;
+		height: 100%;
+		min-height: 0;
+		overflow: hidden;
+	}
+</style>

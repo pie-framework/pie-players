@@ -712,7 +712,7 @@ export const DEFAULT_TOOL_PLACEMENT = {
 
 #### 5.1: Update Section Player Props
 
-**File**: `packages/section-player/src/PieSectionPlayer.svelte`
+**File**: `packages/section-player/src/components/PieSectionPlayerSplitPaneElement.svelte`
 
 **Add props**:
 ```typescript
@@ -968,7 +968,7 @@ describe('ToolButton integration', () => {
 // Use defaults
 const registry = createDefaultToolRegistry();
 
-<pie-section-player
+<pie-section-player-splitpane
   {assessment}
   {section}
   toolRegistry={registry}
@@ -990,7 +990,7 @@ const customPlacement = {
   sectionToolbar: ['pie-tool-calculator', 'pie-tool-graph']
 };
 
-<pie-section-player
+<pie-section-player-splitpane
   {assessment}
   {section}
   toolRegistry={registry}
@@ -1031,7 +1031,7 @@ const customPlacement = {
   sectionToolbar: ['my-periodic-table', 'pie-tool-calculator']
 };
 
-<pie-section-player
+<pie-section-player-splitpane
   {assessment}
   {section}
   toolRegistry={registry}
@@ -1062,7 +1062,7 @@ registry.register({
   }
 });
 
-<pie-section-player
+<pie-section-player-splitpane
   {assessment}
   {section}
   toolRegistry={registry}

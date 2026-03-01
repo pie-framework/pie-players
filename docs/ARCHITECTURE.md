@@ -232,9 +232,9 @@ The **Assessment Toolkit** provides composable services for coordinating tools, 
 5. **QTI 3.0 Native** - Uses QTI 3.0 Personal Needs Profile (PNP) directly for accessibility accommodations
 6. **Section Player Integration** - Toolkit services integrate seamlessly with the section player
 
-### Primary Interface: Section Player
+### Primary Interface: Section Splitpane Player
 
-The **PIE Section Player** (`@pie-players/pie-section-player`) is the primary container/interface for integrating assessment toolkit services. When services are passed to the section player, it automatically:
+The splitpane custom element from `@pie-players/pie-section-player` is the primary container/interface for integrating assessment toolkit services. When services are passed to the splitpane player, it automatically:
 
 - Extracts SSML from embedded `<speak>` tags in passages and items
 - Manages accessibility catalog lifecycle (add on load, clear on navigation)
@@ -243,7 +243,7 @@ The **PIE Section Player** (`@pie-players/pie-section-player`) is the primary co
 - Coordinates z-index layering for tools
 - Synchronizes text highlighting with TTS playback
 
-**Integration Pattern**: Products initialize toolkit services and pass them as JavaScript properties to the section player. The player handles the rest automatically.
+**Integration Pattern**: Products initialize toolkit services and pass them as JavaScript properties to `pie-section-player-splitpane`. The player handles the rest automatically.
 
 See: [TOOL_PROVIDER_SYSTEM](./TOOL_PROVIDER_SYSTEM.md) for integration details.
 

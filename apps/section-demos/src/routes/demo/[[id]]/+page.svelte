@@ -5,8 +5,9 @@
 		type ToolkitCoordinatorHooks
 	} from '@pie-players/pie-assessment-toolkit';
 	import '@pie-players/pie-section-player/components/section-player-splitpane-element';
+	import '@pie-players/pie-section-player-tools-session-debugger';
+	import '@pie-players/pie-section-player-tools-pnp-debugger';
 	import { browser } from '$app/environment';
-	import { onMount } from 'svelte';
 	import type { PageData } from './$types';
 	import DemoMenuBar from './DemoMenuBar.svelte';
 	import DemoOverlays from './DemoOverlays.svelte';
@@ -101,13 +102,6 @@
 		coordinator.setHooks?.(createDemoToolkitHooks());
 		return coordinator;
 	}
-
-	onMount(async () => {
-		await Promise.all([
-			import('@pie-players/pie-section-player-tools-session-debugger'),
-			import('@pie-players/pie-section-player-tools-pnp-debugger')
-		]);
-	});
 
 	function updateUrlAndRefresh(updates: {
 		mode?: 'candidate' | 'scorer';

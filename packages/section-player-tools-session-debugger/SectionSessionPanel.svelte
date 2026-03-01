@@ -79,17 +79,22 @@
 		lastChangedItemId: null,
 		itemSessions: {}
 	});
-	let activeController = $state<SectionControllerLike | null>(null);
+	let activeController: SectionControllerLike | null = null;
 	let unsubscribeController: (() => void) | null = null;
 	let unsubscribeLifecycle: (() => void) | null = null;
 	let controllerAvailable = $state(false);
-	let liveRefreshHandle: number | null = null;
+	let refreshQueued = false;
 
 	function cloneSessionSnapshot<T>(value: T): T {
 		try {
 			return structuredClone(value);
 		} catch {
-			return JSON.parse(JSON.stringify(value)) as T;
+			try {
+				return JSON.parse(JSON.stringify(value)) as T;
+			} catch {
+				// Keep debugger resilient if a session payload contains non-serializable values.
+				return value;
+			}
 		}
 	}
 
@@ -119,6 +124,20 @@
 			lastChangedItemId: meta?.itemId || null,
 			itemSessions: cloneSessionSnapshot(sectionSlice?.itemSessions || {})
 		};
+	}
+
+	function queueRefresh(meta?: { itemId?: string; updatedAt?: number }) {
+		if (refreshQueued) return;
+		refreshQueued = true;
+		queueMicrotask(() => {
+			refreshQueued = false;
+			ensureControllerSubscription();
+			refreshFromController(
+				meta || {
+					updatedAt: Date.now()
+				}
+			);
+		});
 	}
 
 	function detachControllerSubscription() {
@@ -165,8 +184,7 @@
 	}
 
 	export function refreshFromHost(): void {
-		ensureControllerSubscription();
-		refreshFromController({
+		queueRefresh({
 			updatedAt: Date.now()
 		});
 	}
@@ -201,24 +219,17 @@
 		sessionWindowY = Math.max(16, Math.round((viewportHeight - sessionWindowHeight) / 2));
 
 		const handleRuntimeSessionEvent = () => {
-			refreshFromController({
+			queueRefresh({
 				updatedAt: Date.now()
 			});
 		};
 		document.addEventListener('session-changed', handleRuntimeSessionEvent as EventListener, true);
 		document.addEventListener('item-session-changed', handleRuntimeSessionEvent as EventListener, true);
-		liveRefreshHandle = window.setInterval(() => {
-			refreshFromController({
-				updatedAt: Date.now()
-			});
-		}, 250);
+		document.addEventListener('composition-changed', handleRuntimeSessionEvent as EventListener, true);
 		return () => {
 			document.removeEventListener('session-changed', handleRuntimeSessionEvent as EventListener, true);
 			document.removeEventListener('item-session-changed', handleRuntimeSessionEvent as EventListener, true);
-			if (liveRefreshHandle != null) {
-				window.clearInterval(liveRefreshHandle);
-				liveRefreshHandle = null;
-			}
+			document.removeEventListener('composition-changed', handleRuntimeSessionEvent as EventListener, true);
 		};
 	});
 

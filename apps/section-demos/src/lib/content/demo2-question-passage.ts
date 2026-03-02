@@ -82,9 +82,7 @@ export const demo2Section: AssessmentSection = {
 						{
 							id: "q1",
 							element: "multiple-choice",
-							prompt: `<div>
-                <p><strong>According to the passage, what was the primary significance of Gutenberg's printing press during the Renaissance?</strong></p>
-              </div>`,
+							prompt: `According to the passage, what was the primary significance of Gutenberg's printing press during the Renaissance?`,
 							choiceMode: "radio",
 							choices: [
 								{

@@ -102,9 +102,7 @@ export const demo3Section: AssessmentSection = {
 						{
 							id: "q1",
 							element: "multiple-choice",
-							prompt: `<div>
-                <p><strong>Question 1: Based on the passage, what are the two main products of photosynthesis?</strong></p>
-              </div>`,
+							prompt: `Based on the passage, what are the two main products of photosynthesis?`,
 							choiceMode: "radio",
 							choices: [
 								{
@@ -150,9 +148,7 @@ export const demo3Section: AssessmentSection = {
 						{
 							id: "q2",
 							element: "multiple-choice",
-							prompt: `<div>
-                <p><strong>Question 2: According to the passage, where in plant cells does photosynthesis primarily occur?</strong></p>
-              </div>`,
+							prompt: `According to the passage, where in plant cells does photosynthesis primarily occur?`,
 							choiceMode: "radio",
 							choices: [
 								{
@@ -198,9 +194,7 @@ export const demo3Section: AssessmentSection = {
 						{
 							id: "q3",
 							element: "multiple-choice",
-							prompt: `<div>
-                <p><strong>Question 3: What role do forests and oceans play in addressing modern environmental challenges, according to the passage?</strong></p>
-              </div>`,
+							prompt: `What role do forests and oceans play in addressing modern environmental challenges, according to the passage?`,
 							choiceMode: "radio",
 							choices: [
 								{

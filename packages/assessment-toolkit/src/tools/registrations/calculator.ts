@@ -11,6 +11,7 @@
 
 import type {
 	ToolRegistration,
+	ToolToolbarButtonDefinition,
 	ToolToolbarRenderResult,
 	ToolbarContext,
 } from "../../services/ToolRegistry.js";
@@ -76,26 +77,28 @@ export const calculatorToolRegistration: ToolRegistration = {
 			toolId?: string;
 		};
 		overlay.setAttribute("tool-id", fullToolId);
-
-		const inline = document.createElement("pie-tool-calculator-inline");
-		inline.setAttribute(
-			"tool-id",
-			`${fullToolId}--launcher`,
-		);
-		inline.setAttribute("target-tool-id", fullToolId);
-		inline.setAttribute("calculator-type", "scientific");
-		inline.setAttribute("available-types", "basic,scientific,graphing");
-		inline.setAttribute("size", toolbarContext.ui?.size || "md");
+		const button: ToolToolbarButtonDefinition = {
+			toolId: this.toolId,
+			label: this.name,
+			icon: typeof this.icon === "function" ? this.icon(context) : this.icon,
+			disabled: false,
+			ariaLabel: "Open scientific calculator",
+			tooltip: "Calculator",
+			onClick: () => toolbarContext.toggleTool(this.toolId),
+			active: toolbarContext.isToolVisible(fullToolId),
+		};
 
 		return {
 			toolId: this.toolId,
-			elements: [
-				{ element: inline, mount: "before-buttons" },
-				{ element: overlay, mount: "after-buttons" },
-			],
-			button: null,
+			elements: [{ element: overlay, mount: "after-buttons" }],
+			button,
 			sync: () => {
 				const active = toolbarContext.isToolVisible(fullToolId);
+				button.active = active;
+				button.ariaLabel = active
+					? "Close scientific calculator"
+					: "Open scientific calculator";
+				button.tooltip = active ? "Close calculator" : "Calculator";
 				overlay.visible = active;
 			},
 			subscribeActive: (callback: (active: boolean) => void) => {

@@ -137,8 +137,7 @@ export const demo4Section: AssessmentSection = {
                   equals zero</prosody>?
                 </speak>
 
-                <p><strong>Based on the passage, which method should you use to solve x² - 5x + 6 = 0?</strong></p>
-              </div>`,
+                Based on the passage, which method should you use to solve x² - 5x + 6 = 0?`,
 							choiceMode: "radio",
 							choices: [
 								{
@@ -197,7 +196,7 @@ export const demo4Section: AssessmentSection = {
 							id: "q2",
 							element: "multiple-choice",
 							prompt: `<div>
-                <p><strong>What are the factors of the equation x² - 5x + 6 = 0?</strong></p>
+                <p>What are the factors of the equation x² - 5x + 6 = 0?</p>
                 <p style="font-size: 0.9rem; color: #6c757d; margin-top: 0.5rem;">
                   <em>Note: This question has no embedded SSML - demonstrating plain text TTS fallback.</em>
                 </p>
@@ -280,7 +279,7 @@ export const demo4Section: AssessmentSection = {
                   </p>
                 </div>
 
-                <p><strong>Write a detailed explanation of how to solve quadratic equations.</strong></p>
+                <p>Write a detailed explanation of how to solve quadratic equations.</p>
                 <p style="margin-top: 1rem; padding: 1rem; background: #f8f9fa; border-radius: 4px;">
                   In your response, <strong>be sure to</strong>:
                 </p>

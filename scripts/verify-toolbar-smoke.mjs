@@ -58,15 +58,17 @@ try {
 	}
 
 	// Attempt question-level click paths for known controls if present.
-	const calcInline = page.locator("pie-tool-calculator-inline");
-	if ((await calcInline.count()) > 0) {
-		await calcInline.first().click({ force: true });
+	const calculatorButton = page.getByRole("button", {
+		name: /open .* calculator/i,
+	});
+	if ((await calculatorButton.count()) > 0) {
+		await calculatorButton.first().click({ force: true });
 		await page.waitForTimeout(300);
 	}
 
-	const ttsInline = page.locator("pie-tool-tts-inline");
-	if ((await ttsInline.count()) > 0) {
-		await ttsInline.first().click({ force: true });
+	const ttsButton = page.getByRole("button", { name: "Read aloud" });
+	if ((await ttsButton.count()) > 0) {
+		await ttsButton.first().click({ force: true });
 		await page.waitForTimeout(300);
 	}
 

@@ -70,71 +70,148 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 	private config: TTSConfig | null = null;
 	private _isPlaying = false;
 	private _isPaused = false;
+	private speakRunId = 0;
 
 	constructor(config: TTSConfig) {
 		this.config = config;
 	}
 
 	async speak(text: string): Promise<void> {
+		if (!this.config) {
+			throw new Error("TTS not initialized");
+		}
+		// Invalidate any in-flight run and cancel current utterance.
+		this.stop();
+		const runId = this.speakRunId;
+
+		const chunks = this.splitIntoChunks(text);
+		for (const chunk of chunks) {
+			if (runId !== this.speakRunId) {
+				break;
+			}
+			const shouldContinue = await this.speakChunk(chunk.text, chunk.offset, runId);
+			if (!shouldContinue) {
+				break;
+			}
+		}
+	}
+
+	private splitIntoChunks(text: string): Array<{ text: string; offset: number }> {
+		const MAX_CHUNK_LENGTH = 260;
+		if (text.length <= MAX_CHUNK_LENGTH) {
+			return [{ text, offset: 0 }];
+		}
+
+		const sentenceRegex = /[^.!?]+(?:[.!?]+|$)/g;
+		const sentences = text.match(sentenceRegex) || [text];
+		const chunks: Array<{ text: string; offset: number }> = [];
+		let currentText = "";
+		let currentOffset = 0;
+		let processed = 0;
+
+		for (const sentence of sentences) {
+			const sentenceStart = text.indexOf(sentence, processed);
+			if (sentenceStart === -1) continue;
+			processed = sentenceStart + sentence.length;
+			const trimmed = sentence.trim();
+			if (!trimmed) continue;
+
+			if (!currentText) {
+				currentText = trimmed;
+				currentOffset = sentenceStart;
+				continue;
+			}
+
+			const candidate = `${currentText} ${trimmed}`;
+			if (candidate.length <= MAX_CHUNK_LENGTH) {
+				currentText = candidate;
+			} else {
+				chunks.push({ text: currentText, offset: currentOffset });
+				currentText = trimmed;
+				currentOffset = sentenceStart;
+			}
+		}
+
+		if (currentText) {
+			chunks.push({ text: currentText, offset: currentOffset });
+		}
+		return chunks.length ? chunks : [{ text, offset: 0 }];
+	}
+
+	private inferWordLength(text: string, index: number): number {
+		const slice = text.slice(index);
+		const match = slice.match(/^\s*([^\s]+)/);
+		return match?.[1]?.length || 1;
+	}
+
+	private async speakChunk(
+		chunkText: string,
+		chunkOffset: number,
+		runId: number,
+	): Promise<boolean> {
 		return new Promise((resolve, reject) => {
-			if (!this.config) {
-				reject(new Error("TTS not initialized"));
+			if (runId !== this.speakRunId) {
+				resolve(false);
 				return;
 			}
+			this.utterance = new SpeechSynthesisUtterance(chunkText);
 
-			this.stop(); // Stop any ongoing speech
-
-			this.utterance = new SpeechSynthesisUtterance(text);
-
-			// Track for word boundary fallback
+			// Track repeated boundary positions (some browsers emit broken events on long utterances)
 			let lastBoundaryIndex = -1;
-			let boundaryCount = 0;
+			let repeatedBoundaryCount = 0;
 
 			// Apply config
-			if (this.config.voice) {
+			if (this.config?.voice) {
 				const voices = speechSynthesis.getVoices();
 				const voice = voices.find((v) => v.name === this.config!.voice);
-				if (voice) this.utterance.voice = voice;
+				if (voice) this.utterance!.voice = voice;
 			}
 
-			if (this.config.rate) this.utterance.rate = this.config.rate;
-			if (this.config.pitch) this.utterance.pitch = this.config.pitch;
+			if (this.config?.rate) this.utterance.rate = this.config.rate;
+			if (this.config?.pitch) this.utterance.pitch = this.config.pitch;
 
-			// Set up event handlers
 			this.utterance.onstart = () => {
+				if (runId !== this.speakRunId) return;
 				this._isPlaying = true;
 				this._isPaused = false;
 			};
 
 			this.utterance.onend = () => {
+				if (runId !== this.speakRunId) {
+					resolve(false);
+					return;
+				}
 				this._isPlaying = false;
 				this._isPaused = false;
-				resolve();
+				resolve(true);
 			};
 
 			this.utterance.onerror = (event) => {
-				this._isPlaying = false;
-				this._isPaused = false;
-
-				// Ignore "interrupted" errors (expected when user stops TTS)
-				if (event.error === "interrupted" || event.error === "canceled") {
-					resolve(); // Treat interruption as successful completion
+				if (runId !== this.speakRunId) {
+					resolve(false);
 					return;
 				}
-
+				this._isPlaying = false;
+				this._isPaused = false;
+				if (event.error === "interrupted" || event.error === "canceled") {
+					resolve(false);
+					return;
+				}
 				reject(new Error(`Speech synthesis error: ${event.error}`));
 			};
 
 			this.utterance.onpause = () => {
+				if (runId !== this.speakRunId) return;
 				this._isPaused = true;
 			};
 
 			this.utterance.onresume = () => {
+				if (runId !== this.speakRunId) return;
 				this._isPaused = false;
 			};
 
-			// Word boundary events (if supported)
 			this.utterance.onboundary = (event) => {
+				if (runId !== this.speakRunId) return;
 				console.log(
 					"[BrowserProvider] Boundary event:",
 					event.name,
@@ -143,38 +220,45 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 					"charLength:",
 					event.charLength,
 				);
-				if (event.name === "word" && this.onWordBoundary) {
-					boundaryCount++;
+				if (event.name !== "word" || !this.onWordBoundary) return;
 
-					// Detect if browser word boundaries are broken (Safari bug)
-					// If we get multiple events at the same position, boundaries don't work
-					if (event.charIndex === lastBoundaryIndex && boundaryCount > 2) {
-						console.warn(
-							"[BrowserProvider] Browser word boundaries broken - disabling word highlighting",
-						);
-						if (this.utterance) {
-							this.utterance.onboundary = null; // Stop listening
-						}
-						return;
-					}
+				if (event.charIndex === lastBoundaryIndex) {
+					repeatedBoundaryCount += 1;
+				} else {
+					repeatedBoundaryCount = 0;
 					lastBoundaryIndex = event.charIndex;
-
-					// Extract word from text
-					const word = text.substring(
-						event.charIndex,
-						event.charIndex + (event.charLength || 0),
-					);
-					console.log(
-						"[BrowserProvider] Calling onWordBoundary with word:",
-						word,
-						"at position:",
-						event.charIndex,
-					);
-					this.onWordBoundary(word, event.charIndex);
 				}
+				if (repeatedBoundaryCount > 2) {
+					console.warn(
+						"[BrowserProvider] Browser word boundaries repeating at same index; suppressing duplicates",
+					);
+					return;
+				}
+
+				const charIndex = Math.max(
+					0,
+					Math.min(event.charIndex, Math.max(0, chunkText.length - 1)),
+				);
+				const reportedLength = Number(event.charLength || 0);
+				let wordLength =
+					Number.isFinite(reportedLength) && reportedLength > 0
+						? reportedLength
+						: this.inferWordLength(chunkText, charIndex);
+				if (wordLength > 80 || charIndex + wordLength > chunkText.length) {
+					wordLength = this.inferWordLength(chunkText, charIndex);
+				}
+				const word = chunkText
+					.substring(charIndex, Math.min(chunkText.length, charIndex + wordLength))
+					.trim();
+				console.log(
+					"[BrowserProvider] Calling onWordBoundary with word:",
+					word,
+					"at position:",
+					chunkOffset + charIndex,
+				);
+				this.onWordBoundary(word, chunkOffset + charIndex, wordLength);
 			};
 
-			// Start speaking
 			speechSynthesis.speak(this.utterance);
 		});
 	}
@@ -192,11 +276,12 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 	}
 
 	stop(): void {
+		this.speakRunId += 1;
 		if (this._isPlaying) {
 			speechSynthesis.cancel();
-			this._isPlaying = false;
-			this._isPaused = false;
 		}
+		this._isPlaying = false;
+		this._isPaused = false;
 	}
 
 	isPlaying(): boolean {
@@ -228,5 +313,5 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 		}
 	}
 
-	onWordBoundary?: (word: string, position: number) => void;
+	onWordBoundary?: (word: string, position: number, length?: number) => void;
 }

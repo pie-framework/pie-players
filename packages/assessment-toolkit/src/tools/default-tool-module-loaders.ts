@@ -9,13 +9,7 @@ import type { ToolModuleLoader } from "../services/ToolRegistry.js";
 export const DEFAULT_TOOL_MODULE_LOADERS: Partial<
 	Record<string, ToolModuleLoader>
 > = {
-	// Keep inline variants for toolbar-first UX in unified toolbars.
-	textToSpeech: () => import("@pie-players/pie-tool-tts-inline"),
+	textToSpeech: () => import("@pie-players/pie-tool-text-to-speech"),
 	answerEliminator: () => import("@pie-players/pie-tool-answer-eliminator"),
-	calculator: async () => {
-		await Promise.all([
-			import("@pie-players/pie-tool-calculator-inline"),
-			import("@pie-players/pie-tool-calculator"),
-		]);
-	},
+	calculator: () => import("@pie-players/pie-tool-calculator"),
 };

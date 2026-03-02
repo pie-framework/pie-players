@@ -34,7 +34,6 @@
 	import "./passage-shell-element.js";
 	import "@pie-players/pie-toolbars/components/section-toolbar-element";
 	import "@pie-players/pie-toolbars/components/item-toolbar-element";
-	import "@pie-players/pie-tool-calculator-inline";
 	import "@pie-players/pie-tool-calculator";
 	import "@pie-players/pie-tool-graph";
 	import "@pie-players/pie-tool-periodic-table";
@@ -323,6 +322,10 @@
 			itemId
 		);
 	}
+	function getEntityTitle(entity: unknown): string {
+		const title = (entity as { title?: unknown } | null)?.title;
+		return typeof title === "string" ? title.trim() : "";
+	}
 
 	function handleDividerMouseDown(event: MouseEvent) {
 		event.preventDefault();
@@ -524,7 +527,9 @@
 											class="content-card-header passage-header pie-section-player__passage-header"
 											data-region="header"
 										>
-											<h2>Passage {passageIndex + 1}</h2>
+											{#if getEntityTitle(passage)}
+												<h2>{getEntityTitle(passage)}</h2>
+											{/if}
 											<pie-item-toolbar
 												item-id={passage.id}
 												catalog-id={passage.id}
@@ -580,7 +585,9 @@
 									class="content-card-header item-header pie-section-player__item-header"
 									data-region="header"
 								>
-									<h2>Question {itemIndex + 1}</h2>
+									{#if getEntityTitle(item)}
+										<h2>{getEntityTitle(item)}</h2>
+									{/if}
 									<pie-item-toolbar
 										item-id={item.id}
 										catalog-id={item.id}
@@ -804,6 +811,10 @@
 		margin: 0;
 		font-size: 0.95rem;
 		font-weight: 600;
+	}
+
+	.content-card-header pie-item-toolbar {
+		margin-left: auto;
 	}
 
 	.content-card-body {

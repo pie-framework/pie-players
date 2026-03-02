@@ -14,7 +14,6 @@ const ATTW_EXCLUDED = new Set([
 	"@pie-players/pie-theme",
 	"@pie-players/pie-theme-daisyui",
 	"@pie-players/pie-tool-annotation-toolbar",
-	"@pie-players/pie-tool-tts-inline",
 ]);
 
 const readJson = (filePath) => JSON.parse(readFileSync(filePath, "utf8"));

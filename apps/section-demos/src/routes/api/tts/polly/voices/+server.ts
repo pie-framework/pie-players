@@ -20,17 +20,17 @@ async function getPollyProvider(): Promise<PollyServerProvider> {
 		console.log("[Polly API] Initializing AWS Polly provider...");
 		console.log(
 			"[Polly API] AWS_REGION:",
-			process.env.AWS_REGION ? "✓ Set" : "✗ Missing",
+			process.env.AWS_REGION ? "set" : "missing",
 		);
 		console.log(
 			"[Polly API] AWS_ACCESS_KEY_ID:",
 			process.env.AWS_ACCESS_KEY_ID
-				? `✓ Set (${process.env.AWS_ACCESS_KEY_ID.substring(0, 8)}...)`
-				: "✗ Missing",
+				? `set (${process.env.AWS_ACCESS_KEY_ID.substring(0, 8)}...)`
+				: "missing",
 		);
 		console.log(
 			"[Polly API] AWS_SECRET_ACCESS_KEY:",
-			process.env.AWS_SECRET_ACCESS_KEY ? "✓ Set (hidden)" : "✗ Missing",
+			process.env.AWS_SECRET_ACCESS_KEY ? "set (hidden)" : "missing",
 		);
 
 		if (

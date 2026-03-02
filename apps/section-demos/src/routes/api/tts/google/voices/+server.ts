@@ -27,16 +27,16 @@ async function getGoogleProvider(): Promise<GoogleCloudTTSProvider> {
 		console.log(
 			"[Google TTS API] GOOGLE_API_KEY:",
 			hasApiKey
-				? `✓ Set (${process.env.GOOGLE_API_KEY?.substring(0, 8)}...)`
-				: "✗ Missing",
+				? `set (${process.env.GOOGLE_API_KEY?.substring(0, 8)}...)`
+				: "missing",
 		);
 		console.log(
 			"[Google TTS API] GOOGLE_APPLICATION_CREDENTIALS:",
-			hasServiceAccount ? "✓ Set" : "✗ Missing",
+			hasServiceAccount ? "set" : "missing",
 		);
 		console.log(
 			"[Google TTS API] GOOGLE_CLOUD_PROJECT:",
-			process.env.GOOGLE_CLOUD_PROJECT ? "✓ Set" : "✗ Missing",
+			process.env.GOOGLE_CLOUD_PROJECT ? "set" : "missing",
 		);
 
 		// Require at least one authentication method

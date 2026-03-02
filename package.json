@@ -99,14 +99,6 @@
 	},
 	"dependencies": {
 		"@sveltejs/kit": "^2.52.0",
-		"@tiptap/core": "^3.19.0",
-		"@tiptap/extension-code-block-lowlight": "^3.19.0",
-		"@tiptap/extension-document": "^3.19.0",
-		"@tiptap/extension-history": "^3.19.0",
-		"@tiptap/extension-text": "^3.19.0",
-		"@tiptap/pm": "^3.19.0",
-		"daisyui": "^5.5.18",
-		"lowlight": "^3.3.0",
 		"svelte": "^5.51.3"
 	}
 }

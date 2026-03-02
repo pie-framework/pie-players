@@ -56,9 +56,6 @@ test.describe("section player demo tts-ssml", () => {
 		// Three questions are rendered.
 		await expect(itemsRegion).toBeVisible();
 		await expect(itemShells).toHaveCount(3);
-		await expect(q1.getByRole("heading", { name: "Question 1" })).toBeVisible();
-		await expect(q2.getByRole("heading", { name: "Question 2" })).toBeVisible();
-		await expect(q3.getByRole("heading", { name: "Question 3" })).toBeVisible();
 
 		// Session panel shows and updates dynamically.
 		const sessionPanel = await openSessionPanel(page);

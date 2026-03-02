@@ -9,7 +9,6 @@
 		"preview": "vite preview"
 	},
 	"dependencies": {
-		"@sveltejs/kit": "^2.52.0",
 		"mathjs": "^15.1.0",
 		"svelte": "^5.51.3"
 	},

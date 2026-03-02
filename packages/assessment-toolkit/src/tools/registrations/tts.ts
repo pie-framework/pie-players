@@ -104,6 +104,15 @@ export const ttsToolRegistration: ToolRegistration = {
 			button.disabled = !toolbarContext.ttsService;
 		};
 
+		const onPlaybackFinished = (state: string) => {
+			// Keep toolbar state aligned with TTS lifecycle:
+			// when playback naturally finishes (or errors), button should reset.
+			if ((state === "idle" || state === "error") && isReading()) {
+				toolbarContext.toggleTool(this.toolId);
+				syncButtonState();
+			}
+		};
+
 		const ensureReady = async () => {
 			if (!toolbarContext.ensureTTSReady) return;
 			if (!ensureReadyPromise) {
@@ -172,8 +181,8 @@ export const ttsToolRegistration: ToolRegistration = {
 			}
 			const scopeElement = resolveReadingRoot();
 			if (!scopeElement) return;
-			const text = (scopeElement.textContent || "").trim().replace(/\s+/g, " ");
-			if (!text) return;
+			const text = scopeElement.textContent || "";
+			if (!text.trim()) return;
 
 			try {
 				if (!isReading()) {
@@ -221,12 +230,37 @@ export const ttsToolRegistration: ToolRegistration = {
 				}
 			},
 			subscribeActive: (callback: (active: boolean) => void) => {
-				if (!toolbarContext.subscribeVisibility) return () => {};
-				return toolbarContext.subscribeVisibility(() => {
-					const active = isReading();
-					syncButtonState();
-					callback(active);
-				});
+				const unsubscribers: Array<() => void> = [];
+				if (toolbarContext.subscribeVisibility) {
+					const unsubscribeVisibility = toolbarContext.subscribeVisibility(() => {
+						const active = isReading();
+						syncButtonState();
+						callback(active);
+					});
+					unsubscribers.push(unsubscribeVisibility);
+				}
+				if (toolbarContext.ttsService) {
+					const stateListenerId = `tts-toolbar:${fullToolId}`;
+					const onStateChange = (state: unknown) => {
+						onPlaybackFinished(String(state || ""));
+						const active = isReading();
+						syncButtonState();
+						callback(active);
+					};
+					toolbarContext.ttsService.onStateChange(stateListenerId, onStateChange);
+					unsubscribers.push(() => {
+						toolbarContext.ttsService?.offStateChange(
+							stateListenerId,
+							onStateChange,
+						);
+					});
+				}
+				if (unsubscribers.length === 0) return () => {};
+				return () => {
+					for (const unsubscribe of unsubscribers) {
+						unsubscribe();
+					}
+				};
 			},
 		};
 	},

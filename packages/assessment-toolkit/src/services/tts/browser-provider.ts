@@ -15,6 +15,12 @@ import type {
 	TTSProviderCapabilities,
 } from "@pie-players/pie-tts";
 
+interface TTSSpeechSegment {
+	text: string;
+	startOffset: number;
+	pauseMsAfter?: number;
+}
+
 /**
  * Browser TTS Provider
  *
@@ -96,29 +102,58 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 		}
 	}
 
+	async speakSegments(segments: TTSSpeechSegment[]): Promise<void> {
+		if (!this.config) {
+			throw new Error("TTS not initialized");
+		}
+		this.stop();
+		const runId = this.speakRunId;
+		for (const segment of segments) {
+			if (runId !== this.speakRunId) break;
+			const chunks = this.splitIntoChunks(segment.text);
+			for (const chunk of chunks) {
+				if (runId !== this.speakRunId) break;
+				const shouldContinue = await this.speakChunk(
+					chunk.text,
+					segment.startOffset + chunk.offset,
+					runId,
+				);
+				if (!shouldContinue) break;
+			}
+			const pauseMsAfter = Math.max(0, Number(segment.pauseMsAfter || 0));
+			if (pauseMsAfter > 0 && runId === this.speakRunId) {
+				const shouldContinue = await this.waitForPause(pauseMsAfter, runId);
+				if (!shouldContinue) break;
+			}
+		}
+	}
+
+	private async waitForPause(pauseMs: number, runId: number): Promise<boolean> {
+		await new Promise((resolve) => setTimeout(resolve, pauseMs));
+		return runId === this.speakRunId;
+	}
+
 	private splitIntoChunks(text: string): Array<{ text: string; offset: number }> {
 		const MAX_CHUNK_LENGTH = 260;
 		if (text.length <= MAX_CHUNK_LENGTH) {
 			return [{ text, offset: 0 }];
 		}
 
-		const sentenceRegex = /[^.!?]+(?:[.!?]+|$)/g;
-		const sentences = text.match(sentenceRegex) || [text];
+		const sentences = this.segmentSentences(text);
 		const chunks: Array<{ text: string; offset: number }> = [];
 		let currentText = "";
 		let currentOffset = 0;
-		let processed = 0;
 
 		for (const sentence of sentences) {
-			const sentenceStart = text.indexOf(sentence, processed);
-			if (sentenceStart === -1) continue;
-			processed = sentenceStart + sentence.length;
-			const trimmed = sentence.trim();
+			const trimmed = sentence.text.trim();
 			if (!trimmed) continue;
+			const firstNonWhitespace = sentence.text.search(/\S/);
+			const trimmedStart =
+				sentence.offset + (firstNonWhitespace === -1 ? 0 : firstNonWhitespace);
 
 			if (!currentText) {
 				currentText = trimmed;
-				currentOffset = sentenceStart;
+				currentOffset = trimmedStart;
 				continue;
 			}
 
@@ -128,7 +163,7 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 			} else {
 				chunks.push({ text: currentText, offset: currentOffset });
 				currentText = trimmed;
-				currentOffset = sentenceStart;
+				currentOffset = trimmedStart;
 			}
 		}
 
@@ -138,8 +173,82 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 		return chunks.length ? chunks : [{ text, offset: 0 }];
 	}
 
+	private getHighlightMode(): "word" | "sentence" {
+		const providerOptions = (this.config?.providerOptions || {}) as Record<
+			string,
+			unknown
+		>;
+		return providerOptions.highlightMode === "word" ? "word" : "sentence";
+	}
+
+	private getSegmentationPolicy(): {
+		useSentenceSegmenter: boolean;
+		useWordSegmenter: boolean;
+		locale?: string;
+	} {
+		const providerOptions = (this.config?.providerOptions || {}) as Record<
+			string,
+			unknown
+		>;
+		const segmenter = (providerOptions.segmenter || {}) as Record<string, unknown>;
+		const mode = segmenter.mode;
+		const useSegmenter = mode !== "regexOnly";
+		const locale =
+			typeof segmenter.locale === "string" && segmenter.locale.trim().length > 0
+				? segmenter.locale
+				: typeof providerOptions.locale === "string" &&
+					  providerOptions.locale.trim().length > 0
+					? providerOptions.locale
+					: undefined;
+		return {
+			useSentenceSegmenter: useSegmenter,
+			useWordSegmenter: useSegmenter,
+			locale,
+		};
+	}
+
+	private segmentSentences(text: string): Array<{ text: string; offset: number }> {
+		try {
+			const policy = this.getSegmentationPolicy();
+			if (!policy.useSentenceSegmenter) {
+				throw new Error("Segmenter disabled by policy");
+			}
+			const Segmenter = globalThis.Intl?.Segmenter;
+			if (typeof Segmenter === "function") {
+				const segmenter = new Segmenter(policy.locale, {
+					granularity: "sentence",
+				});
+				const segments = Array.from(segmenter.segment(text));
+				const parsed = segments
+					.map((segment) => ({
+						text: segment.segment,
+						offset: segment.index,
+					}))
+					.filter((segment) => segment.text.trim().length > 0);
+				if (parsed.length > 0) {
+					return parsed;
+				}
+			}
+		} catch {
+			// Fallback below.
+		}
+
+		const sentenceRegex = /[^.!?]+(?:[.!?]+|$)/g;
+		const raw = text.match(sentenceRegex) || [text];
+		const parsed: Array<{ text: string; offset: number }> = [];
+		let processed = 0;
+		for (const sentence of raw) {
+			const offset = text.indexOf(sentence, processed);
+			if (offset === -1) continue;
+			parsed.push({ text: sentence, offset });
+			processed = offset + sentence.length;
+		}
+		return parsed.length > 0 ? parsed : [{ text, offset: 0 }];
+	}
+
 	private inferWordLength(text: string, index: number): number {
-		const slice = text.slice(index);
+		const safeIndex = Math.max(0, Math.min(index, Math.max(0, text.length - 1)));
+		const slice = text.slice(safeIndex);
 		const match = slice.match(/^\s*([^\s]+)/);
 		return match?.[1]?.length || 1;
 	}
@@ -155,10 +264,6 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 				return;
 			}
 			this.utterance = new SpeechSynthesisUtterance(chunkText);
-
-			// Track repeated boundary positions (some browsers emit broken events on long utterances)
-			let lastBoundaryIndex = -1;
-			let repeatedBoundaryCount = 0;
 
 			// Apply config
 			if (this.config?.voice) {
@@ -221,17 +326,7 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 					event.charLength,
 				);
 				if (event.name !== "word" || !this.onWordBoundary) return;
-
-				if (event.charIndex === lastBoundaryIndex) {
-					repeatedBoundaryCount += 1;
-				} else {
-					repeatedBoundaryCount = 0;
-					lastBoundaryIndex = event.charIndex;
-				}
-				if (repeatedBoundaryCount > 2) {
-					console.warn(
-						"[BrowserProvider] Browser word boundaries repeating at same index; suppressing duplicates",
-					);
+				if (this.getHighlightMode() === "sentence") {
 					return;
 				}
 
@@ -240,23 +335,25 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 					Math.min(event.charIndex, Math.max(0, chunkText.length - 1)),
 				);
 				const reportedLength = Number(event.charLength || 0);
-				let wordLength =
-					Number.isFinite(reportedLength) && reportedLength > 0
+				const inferredLength = this.inferWordLength(chunkText, charIndex);
+				const wordLength =
+					Number.isFinite(reportedLength) &&
+					reportedLength > 0 &&
+					reportedLength <= 80 &&
+					charIndex + reportedLength <= chunkText.length
 						? reportedLength
-						: this.inferWordLength(chunkText, charIndex);
-				if (wordLength > 80 || charIndex + wordLength > chunkText.length) {
-					wordLength = this.inferWordLength(chunkText, charIndex);
-				}
+						: inferredLength;
 				const word = chunkText
 					.substring(charIndex, Math.min(chunkText.length, charIndex + wordLength))
 					.trim();
+				const absoluteBoundaryStart = chunkOffset + charIndex;
 				console.log(
 					"[BrowserProvider] Calling onWordBoundary with word:",
 					word,
 					"at position:",
-					chunkOffset + charIndex,
+					absoluteBoundaryStart,
 				);
-				this.onWordBoundary(word, chunkOffset + charIndex, wordLength);
+				this.onWordBoundary(word, absoluteBoundaryStart, wordLength);
 			};
 
 			speechSynthesis.speak(this.utterance);
@@ -310,6 +407,12 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 		}
 		if (settings.voice !== undefined) {
 			this.config.voice = settings.voice;
+		}
+		if (settings.providerOptions !== undefined) {
+			this.config.providerOptions = {
+				...(this.config.providerOptions || {}),
+				...(settings.providerOptions || {}),
+			};
 		}
 	}
 

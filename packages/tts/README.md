@@ -90,7 +90,7 @@ export class MyTTSProvider implements ITTSProvider {
 ## Official Implementations
 
 - **Browser TTS** (in `@pie-players/pie-assessment-toolkit`) - Uses Web Speech API, always available as fallback
-- **AWS Polly** (`@pie-players/pie-tts-polly`) - High-quality neural voices with full SSML support
+- **Server TTS** (`@pie-players/tts-client-server`) - High-quality server-backed voices (Polly/Google/etc.) with speech marks
 
 ## Design Philosophy
 
@@ -108,4 +108,4 @@ MIT
 ## Related Packages
 
 - [@pie-players/pie-assessment-toolkit](../assessment-toolkit) - Includes TTSService and BrowserTTSProvider
-- [@pie-players/pie-tts-polly](../tts-polly) - AWS Polly TTS provider
+- [@pie-players/tts-client-server](../tts-client-server) - Server-backed TTS provider client

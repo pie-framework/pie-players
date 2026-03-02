@@ -9,7 +9,6 @@ import type { ToolModuleLoader } from "../services/ToolRegistry.js";
 export const DEFAULT_TOOL_MODULE_LOADERS: Partial<
 	Record<string, ToolModuleLoader>
 > = {
-	textToSpeech: () => import("@pie-players/pie-tool-text-to-speech"),
 	answerEliminator: () => import("@pie-players/pie-tool-answer-eliminator"),
 	calculator: () => import("@pie-players/pie-tool-calculator"),
 };

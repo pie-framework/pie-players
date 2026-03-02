@@ -62,8 +62,8 @@ export const calculatorToolRegistration: ToolRegistration = {
 	): ToolToolbarRenderResult {
 		const fullToolId = createScopedToolId(
 			this.toolId,
-			"item",
-			toolbarContext.itemId,
+			toolbarContext.scope.level,
+			toolbarContext.scope.scopeId,
 		);
 		const componentOverrides = toolbarContext.componentOverrides;
 		const overlay = createToolElement(
@@ -80,7 +80,7 @@ export const calculatorToolRegistration: ToolRegistration = {
 		const inline = document.createElement("pie-tool-calculator-inline");
 		inline.setAttribute(
 			"tool-id",
-			createScopedToolId(this.toolId, "item", toolbarContext.itemId, "inline"),
+			`${fullToolId}--launcher`,
 		);
 		inline.setAttribute("target-tool-id", fullToolId);
 		inline.setAttribute("calculator-type", "scientific");
@@ -89,8 +89,10 @@ export const calculatorToolRegistration: ToolRegistration = {
 
 		return {
 			toolId: this.toolId,
-			inlineElement: inline,
-			overlayElement: overlay,
+			elements: [
+				{ element: inline, mount: "before-buttons" },
+				{ element: overlay, mount: "after-buttons" },
+			],
 			button: null,
 			sync: () => {
 				const active = toolbarContext.isToolVisible(fullToolId);

@@ -63,8 +63,8 @@ export const lineReaderToolRegistration: ToolRegistration = {
 	): ToolToolbarRenderResult {
 		const fullToolId = createScopedToolId(
 			this.toolId,
-			"item",
-			toolbarContext.itemId,
+			toolbarContext.scope.level,
+			toolbarContext.scope.scopeId,
 		);
 		const button: ToolToolbarButtonDefinition = {
 			toolId: this.toolId,
@@ -92,7 +92,7 @@ export const lineReaderToolRegistration: ToolRegistration = {
 		return {
 			toolId: this.toolId,
 			button,
-			overlayElement: overlay,
+			elements: [{ element: overlay, mount: "after-buttons" }],
 			sync: () => {
 				const active = toolbarContext.isToolVisible(fullToolId);
 				button.active = active;
@@ -150,8 +150,8 @@ export const colorSchemeToolRegistration: ToolRegistration = {
 	): ToolToolbarRenderResult {
 		const fullToolId = createScopedToolId(
 			this.toolId,
-			"item",
-			toolbarContext.itemId,
+			toolbarContext.scope.level,
+			toolbarContext.scope.scopeId,
 		);
 		const button: ToolToolbarButtonDefinition = {
 			toolId: this.toolId,
@@ -179,7 +179,7 @@ export const colorSchemeToolRegistration: ToolRegistration = {
 		return {
 			toolId: this.toolId,
 			button,
-			overlayElement: overlay,
+			elements: [{ element: overlay, mount: "after-buttons" }],
 			sync: () => {
 				const active = toolbarContext.isToolVisible(fullToolId);
 				button.active = active;
@@ -236,8 +236,8 @@ export const annotationToolbarRegistration: ToolRegistration = {
 	): ToolToolbarRenderResult {
 		const fullToolId = createScopedToolId(
 			this.toolId,
-			"item",
-			toolbarContext.itemId,
+			toolbarContext.scope.level,
+			toolbarContext.scope.scopeId,
 		);
 		const button: ToolToolbarButtonDefinition = {
 			toolId: this.toolId,
@@ -265,7 +265,7 @@ export const annotationToolbarRegistration: ToolRegistration = {
 		return {
 			toolId: this.toolId,
 			button,
-			overlayElement: overlay,
+			elements: [{ element: overlay, mount: "after-buttons" }],
 			sync: () => {
 				const active = toolbarContext.isToolVisible(fullToolId);
 				button.active = active;

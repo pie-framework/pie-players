@@ -57,8 +57,8 @@ export const rulerToolRegistration: ToolRegistration = {
 	): ToolToolbarRenderResult {
 		const fullToolId = createScopedToolId(
 			this.toolId,
-			"item",
-			toolbarContext.itemId,
+			toolbarContext.scope.level,
+			toolbarContext.scope.scopeId,
 		);
 		const button: ToolToolbarButtonDefinition = {
 			toolId: this.toolId,
@@ -86,7 +86,7 @@ export const rulerToolRegistration: ToolRegistration = {
 		return {
 			toolId: this.toolId,
 			button,
-			overlayElement: overlay,
+			elements: [{ element: overlay, mount: "after-buttons" }],
 			sync: () => {
 				const active = toolbarContext.isToolVisible(fullToolId);
 				button.active = active;
@@ -140,8 +140,8 @@ export const protractorToolRegistration: ToolRegistration = {
 	): ToolToolbarRenderResult {
 		const fullToolId = createScopedToolId(
 			this.toolId,
-			"item",
-			toolbarContext.itemId,
+			toolbarContext.scope.level,
+			toolbarContext.scope.scopeId,
 		);
 		const button: ToolToolbarButtonDefinition = {
 			toolId: this.toolId,
@@ -169,7 +169,7 @@ export const protractorToolRegistration: ToolRegistration = {
 		return {
 			toolId: this.toolId,
 			button,
-			overlayElement: overlay,
+			elements: [{ element: overlay, mount: "after-buttons" }],
 			sync: () => {
 				const active = toolbarContext.isToolVisible(fullToolId);
 				button.active = active;

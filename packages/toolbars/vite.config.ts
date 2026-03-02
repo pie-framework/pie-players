@@ -43,6 +43,7 @@ export default defineConfig({
 				"@datadog/browser-rum",
 				"@pie-players/pie-assessment-toolkit",
 				"@pie-players/pie-assessment-toolkit/components/item-toolbar-element",
+				"@pie-players/pie-assessment-toolkit/components/section-toolbar-element",
 			],
 			output: {
 				format: "es",

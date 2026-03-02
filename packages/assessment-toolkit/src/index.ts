@@ -235,7 +235,6 @@ export {
 } from "./services/tools-config-normalizer.js";
 export type {
 	ParsedToolInstanceId,
-	ToolInstanceRole,
 	ToolScopeLevel,
 } from "./services/tool-instance-id.js";
 export {

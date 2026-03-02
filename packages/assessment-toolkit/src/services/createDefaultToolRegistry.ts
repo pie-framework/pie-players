@@ -33,6 +33,7 @@ import {
 	type ToolComponentFactoryMap,
 	type ToolTagMap,
 } from "../tools/tool-tag-map.js";
+import { DEFAULT_TOOL_PLACEMENT } from "./tool-config-defaults.js";
 
 export interface DefaultToolRegistryOptions {
 	/**
@@ -125,51 +126,7 @@ export function createDefaultToolRegistry(
  * - Interaction-specific: answerEliminator (choice questions), highlighter (text)
  * - Measurement: ruler, protractor (element level, diagram/geometry)
  */
-export const DEFAULT_TOOL_PLACEMENT = {
-	assessment: [
-		// Global accessibility tools
-		"colorScheme",
-	],
-	section: [
-		// Global accessibility + common tools
-		"colorScheme",
-		"textToSpeech",
-	],
-	item: [
-		// Most common item-level tools
-		"textToSpeech",
-		"highlighter",
-		"annotationToolbar",
-		"graph",
-		"periodicTable",
-	],
-	passage: [
-		// Reading-focused tools
-		"textToSpeech",
-		"highlighter",
-		"annotationToolbar",
-		"lineReader",
-	],
-	rubric: [
-		// Similar to passage
-		"textToSpeech",
-		"highlighter",
-		"annotationToolbar",
-		"lineReader",
-	],
-	element: [
-		// Element-specific tools
-		"calculator",
-		"answerEliminator",
-		"textToSpeech",
-		"ruler",
-		"protractor",
-		"highlighter",
-		"annotationToolbar",
-		"graph",
-		"periodicTable",
-	],
-} as const;
+export { DEFAULT_TOOL_PLACEMENT };
 
 /**
  * Tool priority order for rendering

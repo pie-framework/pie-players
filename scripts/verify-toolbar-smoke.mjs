@@ -48,7 +48,9 @@ try {
 		.locator("pie-section-toolbar")
 		.first()
 		.waitFor({ timeout: 45000 });
-	const sectionButtons = page.locator("pie-section-toolbar .tool-button");
+	const sectionButtons = page.locator(
+		"pie-section-toolbar .tool-button, pie-section-toolbar .item-toolbar__button",
+	);
 	await sectionButtons.first().waitFor({ timeout: 45000 });
 	const sectionButtonCount = await sectionButtons.count();
 	if (sectionButtonCount < 1) {

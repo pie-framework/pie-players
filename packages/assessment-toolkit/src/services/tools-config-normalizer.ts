@@ -1,3 +1,5 @@
+import { DEFAULT_TOOL_ALIAS_MAP, DEFAULT_TOOL_PLACEMENT } from "./tool-config-defaults.js";
+
 export type ToolPlacementLevel = "section" | "item" | "passage";
 
 export interface ToolPolicyConfig {
@@ -24,16 +26,15 @@ export interface CanonicalToolsConfig {
 }
 
 const DEFAULT_PLACEMENT: Required<ToolPlacementConfig> = {
-	section: ["graph", "periodicTable", "protractor", "lineReader", "ruler"],
-	item: ["calculator", "textToSpeech", "answerEliminator"],
-	passage: ["textToSpeech"],
+	section: [...DEFAULT_TOOL_PLACEMENT.section],
+	item: [...DEFAULT_TOOL_PLACEMENT.item],
+	passage: [...DEFAULT_TOOL_PLACEMENT.passage],
 };
 
 export function normalizeToolAlias(toolId: string): string {
 	const trimmed = toolId.trim();
 	if (!trimmed) return "";
-	if (trimmed === "tts") return "textToSpeech";
-	return trimmed;
+	return DEFAULT_TOOL_ALIAS_MAP[trimmed as keyof typeof DEFAULT_TOOL_ALIAS_MAP] || trimmed;
 }
 
 export function normalizeToolList(toolIds: string[] | undefined | null): string[] {

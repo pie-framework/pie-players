@@ -36,6 +36,11 @@
 	import "@pie-players/pie-toolbars/components/item-toolbar-element";
 	import "@pie-players/pie-tool-calculator-inline";
 	import "@pie-players/pie-tool-calculator";
+	import "@pie-players/pie-tool-graph";
+	import "@pie-players/pie-tool-periodic-table";
+	import "@pie-players/pie-tool-protractor";
+	import "@pie-players/pie-tool-line-reader";
+	import "@pie-players/pie-tool-ruler";
 	import {
 		normalizeToolsConfig,
 		parseToolList,

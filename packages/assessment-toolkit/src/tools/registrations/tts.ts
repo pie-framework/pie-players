@@ -59,9 +59,8 @@ export const ttsToolRegistration: ToolRegistration = {
 	): ToolToolbarRenderResult {
 		const fullToolId = createScopedToolId(
 			this.toolId,
-			"item",
-			toolbarContext.itemId,
-			"inline",
+			toolbarContext.scope.level,
+			toolbarContext.scope.scopeId,
 		);
 		const inline = document.createElement("pie-tool-tts-inline") as HTMLElement & {
 			toolId?: string;
@@ -78,7 +77,7 @@ export const ttsToolRegistration: ToolRegistration = {
 		let readyRequested = false;
 		return {
 			toolId: this.toolId,
-			inlineElement: inline,
+			elements: [{ element: inline, mount: "before-buttons" }],
 			sync: () => {
 				inline.setAttribute("catalog-id", toolbarContext.catalogId || toolbarContext.itemId);
 				inline.setAttribute("language", toolbarContext.language);

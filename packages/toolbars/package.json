@@ -37,7 +37,6 @@
 	"files": [
 		"dist",
 		"components",
-		"section-toolbar.svelte",
 		"index.ts",
 		"package.json"
 	],

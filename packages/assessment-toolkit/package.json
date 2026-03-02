@@ -33,6 +33,10 @@
 			"types": "./dist/components/pie-assessment-toolkit-element.d.ts",
 			"import": "./dist/components/pie-assessment-toolkit-element.js"
 		},
+		"./components/section-toolbar-element": {
+			"types": "./dist/components/section-toolbar-element.d.ts",
+			"import": "./dist/components/section-toolbar-element.js"
+		},
 		"./services/pnp-standard-features": {
 			"types": "./dist/services/pnp-standard-features.d.ts",
 			"import": "./dist/services/pnp-standard-features.js"

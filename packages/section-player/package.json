@@ -53,6 +53,11 @@
 		"@pie-players/pie-tool-answer-eliminator": "workspace:*",
 		"@pie-players/pie-tool-calculator": "workspace:*",
 		"@pie-players/pie-tool-calculator-inline": "workspace:*",
+		"@pie-players/pie-tool-graph": "workspace:*",
+		"@pie-players/pie-tool-line-reader": "workspace:*",
+		"@pie-players/pie-tool-periodic-table": "workspace:*",
+		"@pie-players/pie-tool-protractor": "workspace:*",
+		"@pie-players/pie-tool-ruler": "workspace:*",
 		"@pie-players/pie-tool-tts-inline": "workspace:*",
 		"@pie-players/tts-client-server": "workspace:*",
 		"daisyui": "^5.5.18"

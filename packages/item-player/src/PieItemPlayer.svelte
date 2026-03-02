@@ -18,16 +18,25 @@
 			skipElementLoading: { attribute: "skip-element-loading", type: "Boolean" },
 			mode: { attribute: "mode", type: "String" },
 			configuration: { attribute: "configuration", type: "Object" },
+			authoringBackend: { attribute: "authoring-backend", type: "String" },
 			loaderOptions: { type: "Object", reflect: false },
 			ttsService: { type: "Object", reflect: false },
 			toolCoordinator: { type: "Object", reflect: false },
 			highlightCoordinator: { type: "Object", reflect: false },
+			onInsertImage: { type: "Object", reflect: false },
+			onDeleteImage: { type: "Object", reflect: false },
+			onInsertSound: { type: "Object", reflect: false },
+			onDeleteSound: { type: "Object", reflect: false },
 		},
 	}}
 />
 
 <script lang="ts">
-	import type { ConfigEntity, Env, LoaderConfig } from "@pie-players/pie-players-shared";
+	import type {
+		ConfigEntity,
+		Env,
+		LoaderConfig,
+	} from "@pie-players/pie-players-shared";
 	import {
 		BundleType,
 		createPieLogger,
@@ -62,6 +71,19 @@
 		view?: string;
 		loadControllers?: boolean;
 	};
+	type ImageHandler = {
+		isPasted?: boolean;
+		cancel: () => void;
+		done: (err?: Error, src?: string) => void;
+		fileChosen: (file: File) => void;
+		progress: (percent: number, bytes: number, total: number) => void;
+	};
+	type SoundHandler = {
+		cancel: () => void;
+		done: (err?: Error, src?: string) => void;
+		fileChosen: File;
+		progress: (percent: number, bytes: number, total: number) => void;
+	};
 
 	let {
 		config = null as any,
@@ -79,10 +101,15 @@
 		skipElementLoading = false,
 		mode = "view" as "view" | "author",
 		configuration = {} as Record<string, any>,
+		authoringBackend = "demo" as "demo" | "required",
 		loaderOptions = {} as UnifiedLoaderOptions,
 		ttsService = null as any,
 		toolCoordinator = null as any,
 		highlightCoordinator = null as any,
+		onInsertImage = null as ((handler: ImageHandler) => void) | null,
+		onDeleteImage = null as ((src: string, done: (err?: Error) => void) => void) | null,
+		onInsertSound = null as ((handler: SoundHandler) => void) | null,
+		onDeleteSound = null as ((src: string, done: (err?: Error) => void) => void) | null,
 	} = $props();
 
 	const isBrowser = typeof window !== "undefined" && typeof document !== "undefined";
@@ -453,12 +480,17 @@
 				bundleType={resolvedMode === "author" ? BundleType.editor : BundleType.clientPlayer}
 				{loaderConfig}
 				mode={resolvedMode}
+				authoringBackend={authoringBackend}
 				configuration={typeof configuration === "string"
 					? JSON.parse(configuration)
 					: configuration}
 				{ttsService}
 				{toolCoordinator}
 				{highlightCoordinator}
+				onInsertImage={onInsertImage ?? undefined}
+				onDeleteImage={onDeleteImage ?? undefined}
+				onInsertSound={onInsertSound ?? undefined}
+				onDeleteSound={onDeleteSound ?? undefined}
 				onLoadComplete={(detail: unknown) =>
 					handlePlayerEvent(new CustomEvent("load-complete", { detail }))}
 				onPlayerError={(detail: unknown) =>

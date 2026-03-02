@@ -10,7 +10,13 @@
   import { onDestroy, tick, untrack } from "svelte";
   import type { LoaderConfig } from "../loader-config.js";
   import { DEFAULT_LOADER_CONFIG } from "../loader-config.js";
-  import { AssetEventManager } from "../pie/asset-handler.js";
+  import {
+    AssetEventManager,
+    createDefaultImageDeleteHandler,
+    createDefaultImageInsertHandler,
+    createDefaultSoundDeleteHandler,
+    createDefaultSoundInsertHandler,
+  } from "../pie/asset-handler.js";
   import { initializeConfiguresFromLoadedBundle } from "../pie/configure-initialization.js";
   import { initializePiesFromLoadedBundle } from "../pie/initialization.js";
   import { createPieLogger, isGlobalDebugEnabled } from "../pie/logger.js";
@@ -47,6 +53,7 @@
     // Authoring mode props
     mode = "view" as "view" | "author",
     configuration = {} as Record<string, any>,
+    authoringBackend = "demo" as "demo" | "required",
     // Toolkit service integration (optional)
     ttsService = null,
     toolCoordinator = null,
@@ -75,6 +82,7 @@
     // Authoring mode props
     mode?: "view" | "author";
     configuration?: Record<string, any>;
+    authoringBackend?: "demo" | "required";
     // Toolkit service integration
     ttsService?: any;
     toolCoordinator?: any;
@@ -96,6 +104,8 @@
 
   // Asset event manager for authoring mode
   let assetEventManager: AssetEventManager | null = $state(null);
+  let authoringBlockedError: string | null = $state(null);
+  let lastReportedAuthoringError: string | null = $state(null);
 
   // Transform markup for authoring mode (append -config suffix)
   function transformMarkupForAuthoring(
@@ -158,6 +168,75 @@
     });
     dispatchEvent(event);
   };
+
+  const requiredHandlerNames = [
+    "onInsertImage",
+    "onDeleteImage",
+    "onInsertSound",
+    "onDeleteSound",
+  ] as const;
+
+  function reportAuthoringErrorOnce(message: string) {
+    if (lastReportedAuthoringError === message) return;
+    lastReportedAuthoringError = message;
+    logger.error(`[PieItemPlayer] ${message}`);
+    dispatch("player-error", {
+      code: "AUTHORING_BACKEND_CONFIG_ERROR",
+      message,
+    });
+  }
+
+  function buildEffectiveAuthoringHandlers() {
+    if (authoringBackend === "required") {
+      const missing: string[] = [];
+      if (!onInsertImage) missing.push("onInsertImage");
+      if (!onDeleteImage) missing.push("onDeleteImage");
+      if (!onInsertSound) missing.push("onInsertSound");
+      if (!onDeleteSound) missing.push("onDeleteSound");
+
+      if (missing.length > 0) {
+        const message = `Authoring backend is required but missing handlers: ${missing.join(", ")}. Provide all ${requiredHandlerNames.join(", ")} callbacks.`;
+        authoringBlockedError = message;
+        reportAuthoringErrorOnce(message);
+        return null;
+      }
+
+      return {
+        onInsertImage: onInsertImage!,
+        onDeleteImage: onDeleteImage!,
+        onInsertSound: onInsertSound!,
+        onDeleteSound: onDeleteSound!,
+      };
+    }
+
+    if (
+      onInsertImage ||
+      onDeleteImage ||
+      onInsertSound ||
+      onDeleteSound
+    ) {
+      return {
+        onInsertImage,
+        onDeleteImage,
+        onInsertSound,
+        onDeleteSound,
+      };
+    }
+
+    logger.warn(
+      "[PieItemPlayer] Authoring backend mode is 'demo'. Using non-production media handlers.",
+    );
+    return {
+      onInsertImage: createDefaultImageInsertHandler((src) => {
+        logger.debug("[PieItemPlayer] Demo image insert completed:", src);
+      }),
+      onDeleteImage: createDefaultImageDeleteHandler(),
+      onInsertSound: createDefaultSoundInsertHandler((src) => {
+        logger.debug("[PieItemPlayer] Demo sound insert completed:", src);
+      }),
+      onDeleteSound: createDefaultSoundDeleteHandler(),
+    };
+  }
 
   // Populate session with correct responses when addCorrectResponse is true
   async function populateCorrectResponses(force = false) {
@@ -338,6 +417,12 @@
         if (mode === "author") {
           // AUTHORING MODE: Initialize configure elements
           logger.debug("[PieItemPlayer] Initializing in authoring mode");
+          authoringBlockedError = null;
+          const effectiveHandlers = buildEffectiveAuthoringHandlers();
+          if (authoringBlockedError || !effectiveHandlers) {
+            initialized = false;
+            return;
+          }
 
           const authoringEnv: AuthoringEnv = {
             ...env,
@@ -359,17 +444,65 @@
             );
           }
 
-          // Set up asset event manager if handlers provided
-          if (
-            rootElement &&
-            (onInsertImage || onDeleteImage || onInsertSound || onDeleteSound)
-          ) {
+          if (rootElement && effectiveHandlers) {
             assetEventManager = new AssetEventManager(
               rootElement,
-              onInsertImage,
-              onDeleteImage,
-              onInsertSound,
-              onDeleteSound
+              effectiveHandlers.onInsertImage
+                ? (handler) => {
+                    try {
+                      effectiveHandlers.onInsertImage!(handler);
+                    } catch (error: any) {
+                      const err =
+                        error instanceof Error
+                          ? error
+                          : new Error(String(error ?? "Unknown upload error"));
+                      logger.error("[PieItemPlayer] onInsertImage failed:", err);
+                      handler.done(err);
+                    }
+                  }
+                : undefined,
+              effectiveHandlers.onDeleteImage
+                ? (src, done) => {
+                    try {
+                      effectiveHandlers.onDeleteImage!(src, done);
+                    } catch (error: any) {
+                      const err =
+                        error instanceof Error
+                          ? error
+                          : new Error(String(error ?? "Unknown delete error"));
+                      logger.error("[PieItemPlayer] onDeleteImage failed:", err);
+                      done(err);
+                    }
+                  }
+                : undefined,
+              effectiveHandlers.onInsertSound
+                ? (handler) => {
+                    try {
+                      effectiveHandlers.onInsertSound!(handler);
+                    } catch (error: any) {
+                      const err =
+                        error instanceof Error
+                          ? error
+                          : new Error(String(error ?? "Unknown upload error"));
+                      logger.error("[PieItemPlayer] onInsertSound failed:", err);
+                      handler.done(err);
+                    }
+                  }
+                : undefined,
+              effectiveHandlers.onDeleteSound
+                ? (src, done) => {
+                    try {
+                      effectiveHandlers.onDeleteSound!(src, done);
+                    } catch (error: any) {
+                      const err =
+                        error instanceof Error
+                          ? error
+                          : new Error(String(error ?? "Unknown delete error"));
+                      logger.error("[PieItemPlayer] onDeleteSound failed:", err);
+                      done(err);
+                    }
+                  }
+                : undefined
             );
             assetEventManager.attach();
             logger.debug("[PieItemPlayer] Asset event manager attached");
@@ -611,13 +744,29 @@
 </script>
 
 <div class="pie-item-player" bind:this={rootElement}>
-  {#if passageMarkup}
+  {#if authoringBlockedError}
+    <div
+      class="pie-player-error"
+      style="
+        padding: 20px;
+        margin: 20px 0;
+        border: 2px solid #d32f2f;
+        border-radius: 4px;
+        background-color: #ffebee;
+        color: #c62828;
+        font-family: sans-serif;
+      "
+    >
+      <h3 style="margin: 0 0 10px 0">Authoring Backend Configuration Error</h3>
+      <p style="margin: 0">{authoringBlockedError}</p>
+    </div>
+  {:else if passageMarkup}
     <div class={passageContainerClassFinal}>
       {@html passageMarkup}
     </div>
   {/if}
 
-  {#if itemMarkup}
+  {#if !authoringBlockedError && itemMarkup}
     <div class={itemContainerClassFinal}>
       {@html itemMarkup}
     </div>

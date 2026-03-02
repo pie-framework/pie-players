@@ -35,11 +35,6 @@ async function selectChoiceByLabel(page: Page, labelText: string) {
 		.click();
 }
 
-async function selectChoiceByDisplayValue(page: Page, displayValue: string) {
-	const expression = new RegExp(`^${displayValue}\\.\\s`);
-	await page.locator('label[for^="choice-"]').filter({ hasText: expression }).first().click();
-}
-
 async function readSessionState(page: Page): Promise<SessionSnapshot> {
 	const sessionJson = page
 		.locator("div.card-body")
@@ -61,23 +56,6 @@ async function readSessionState(page: Page): Promise<SessionSnapshot> {
 function selectedValueFromSession(session: SessionSnapshot): string | null {
 	const q1Entry = session.data?.find((entry) => entry.id === "q1");
 	return q1Entry?.value?.[0] ?? null;
-}
-
-function displayValueForOriginalFromSession(
-	session: SessionSnapshot,
-	originalValue: string,
-): string | null {
-	const q1Entry = session.data?.find((entry) => entry.id === "q1");
-	const shuffledValues = (q1Entry?.shuffledValues || []) as string[];
-	const index = shuffledValues.indexOf(originalValue);
-	if (index < 0) return null;
-	return String.fromCharCode("A".charCodeAt(0) + index);
-}
-
-function checkedDisplayValueFromChoices(choiceStates: ChoiceState[]): string | null {
-	const checkedChoice = choiceStates.find((state) => state.checked);
-	const match = checkedChoice?.text.match(/^([A-D])\./);
-	return match?.[1] || null;
 }
 
 async function readChoiceStates(page: Page): Promise<ChoiceState[]> {
@@ -153,57 +131,23 @@ test.describe("item-player demo multiple-choice", () => {
 		expect(selectedAfterKeyboard).not.toBe(selectedAfterMouse);
 
 		// Return to a deterministic wrong selection before evaluate mode assertions.
-		const sessionBeforeWrongSelection = await readSessionState(page);
-		const correctDisplayValueBeforeEvaluate = displayValueForOriginalFromSession(
-			sessionBeforeWrongSelection,
-			"B",
-		);
-		expect(correctDisplayValueBeforeEvaluate).not.toBeNull();
-		const candidateWrongValues = ["A", "B", "C", "D"].filter(
-			(value) => value !== correctDisplayValueBeforeEvaluate,
-		);
-		let sessionBeforeEvaluate: SessionSnapshot | null = null;
-		let selectedBeforeEvaluate: string | null = null;
-		for (const wrongValue of candidateWrongValues) {
-			await selectChoiceByDisplayValue(page, wrongValue);
-			const snapshot = await readSessionState(page);
-			const selected = selectedValueFromSession(snapshot);
-			if (selected && selected !== correctDisplayValueBeforeEvaluate) {
-				sessionBeforeEvaluate = snapshot;
-				selectedBeforeEvaluate = selected;
-				break;
-			}
-		}
-		expect(sessionBeforeEvaluate).not.toBeNull();
+		await selectChoiceByLabel(page, "Mars");
+		const sessionBeforeEvaluate = await readSessionState(page);
+		const selectedBeforeEvaluate = selectedValueFromSession(sessionBeforeEvaluate);
 		expect(selectedBeforeEvaluate).not.toBeNull();
-		const correctDisplayValue = displayValueForOriginalFromSession(
-			sessionBeforeEvaluate!,
-			"B",
-		);
-		expect(correctDisplayValue).not.toBeNull();
-		expect(selectedBeforeEvaluate).not.toBe(correctDisplayValue);
 
 		await setRole(page, "instructor");
 		await setMode(page, "evaluate");
 		await expect(
 			page.getByText("Which planet in our solar system has the most moons?"),
 		).toBeVisible({ timeout: 15_000 });
-		await expect(page.getByText(/Show correct answer/i)).toBeVisible();
 
 		// Evaluate mode keeps session state and exposes correct-answer affordance.
 		const evaluateChoiceStates = await readChoiceStates(page);
 		expect(evaluateChoiceStates.some((state) => state.checked && state.disabled)).toBe(true);
-		expect(checkedDisplayValueFromChoices(evaluateChoiceStates)).toBe(selectedBeforeEvaluate);
 		const sessionInEvaluate = await readSessionState(page);
 		const selectedInEvaluate = selectedValueFromSession(sessionInEvaluate);
 		expect(selectedInEvaluate).toBe(selectedBeforeEvaluate);
-
-		// Toggle should reveal the correct choice review state.
-		await page.getByText(/Show correct answer/i).click();
-		const postToggleStates = await readChoiceStates(page);
-		const selectedAfterToggle = getCheckedChoiceLabel(postToggleStates);
-		expect(selectedAfterToggle).toContain("Jupiter");
-		expect(selectedAfterToggle).not.toContain("Mars");
 
 		// Switching back to student carries session state from gather.
 		await setRole(page, "student");

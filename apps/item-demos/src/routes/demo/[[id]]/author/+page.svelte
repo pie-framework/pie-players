@@ -8,6 +8,130 @@
 	let playerEl: any = $state(null);
 	let lastConfig: any = null;
 
+	async function callAuthoringMediaJsonService<T>(
+		path: string,
+		payload: Record<string, unknown>
+	): Promise<T> {
+		const response = await fetch(`/api/authoring-media/${path}`, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify(payload),
+		});
+		if (!response.ok) {
+			const text = await response.text();
+			throw new Error(
+				`Authoring media service ${path} failed (${response.status}): ${text || response.statusText}`
+			);
+		}
+		return (await response.json()) as T;
+	}
+
+	async function uploadAuthoringMedia<T>(
+		path: string,
+		file: File,
+		extra: Record<string, string> = {}
+	): Promise<T> {
+		const formData = new FormData();
+		formData.set('file', file);
+		for (const [key, value] of Object.entries(extra)) {
+			formData.set(key, value);
+		}
+		const response = await fetch(`/api/authoring-media/${path}`, {
+			method: 'POST',
+			body: formData,
+		});
+		if (!response.ok) {
+			const text = await response.text();
+			throw new Error(
+				`Authoring media upload ${path} failed (${response.status}): ${text || response.statusText}`
+			);
+		}
+		return (await response.json()) as T;
+	}
+
+	const demoMediaBackend = {
+		onInsertImage(handler: any) {
+			console.log('[item-demos] demo backend insert image request', {
+				isPasted: handler?.isPasted ?? false,
+			});
+			try {
+				const input = document.createElement('input');
+				input.type = 'file';
+				input.accept = 'image/*';
+				input.onchange = async () => {
+					const file = input.files?.[0];
+					console.log('[item-demos] selected image file', file?.name || '(none)');
+					if (!file) {
+						handler?.done?.(new Error('No image file selected.'));
+						return;
+					}
+					try {
+						handler?.fileChosen?.(file);
+						const result = await uploadAuthoringMedia<{ src: string }>('insert-image', file, {
+							isPasted: String(handler?.isPasted ?? false),
+						});
+						handler?.done?.(undefined, result.src);
+					} catch (error) {
+						console.error('[item-demos] demo backend image insert failed', error);
+						handler?.done?.(error instanceof Error ? error : new Error(String(error)));
+					}
+				};
+				input.click();
+			} catch (error) {
+				console.error('[item-demos] demo backend image insert failed', error);
+				handler?.done?.(error instanceof Error ? error : new Error(String(error)));
+			}
+		},
+		async onDeleteImage(src: string, done: (err?: Error) => void) {
+			console.log('[item-demos] demo backend delete image request', { src });
+			try {
+				await callAuthoringMediaJsonService('delete-image', { src });
+				done();
+			} catch (error) {
+				console.error('[item-demos] demo backend image delete failed', error);
+				done(error instanceof Error ? error : new Error(String(error)));
+			}
+		},
+		onInsertSound(handler: any) {
+			console.log('[item-demos] demo backend insert sound request');
+			try {
+				const input = document.createElement('input');
+				input.type = 'file';
+				input.accept = 'audio/*';
+				input.onchange = async () => {
+					const file = input.files?.[0];
+					console.log('[item-demos] selected sound file', file?.name || '(none)');
+					if (!file) {
+						handler?.done?.(new Error('No sound file selected.'));
+						return;
+					}
+					try {
+						handler?.fileChosen?.(file);
+						const result = await uploadAuthoringMedia<{ src: string }>('insert-sound', file);
+						handler?.done?.(undefined, result.src);
+					} catch (error) {
+						console.error('[item-demos] demo backend sound insert failed', error);
+						handler?.done?.(error instanceof Error ? error : new Error(String(error)));
+					}
+				};
+				input.click();
+			} catch (error) {
+				console.error('[item-demos] demo backend sound insert failed', error);
+				handler?.done?.(error instanceof Error ? error : new Error(String(error)));
+			}
+		},
+		async onDeleteSound(src: string, done: (err?: Error) => void) {
+			console.log('[item-demos] demo backend delete sound request', { src });
+			try {
+				await callAuthoringMediaJsonService('delete-sound', { src });
+				done();
+			} catch (error) {
+				console.error('[item-demos] demo backend sound delete failed', error);
+				done(error instanceof Error ? error : new Error(String(error)));
+			}
+		},
+	};
+
 	function safeClone<T>(value: T): T {
 		try {
 			if (typeof structuredClone === 'function') {
@@ -31,7 +155,12 @@
 					playerEl.config = currentConfig;
 					playerEl.session = { id: 'preview', data: [] };
 					playerEl.env = { mode: 'author', role: 'instructor' };
+					playerEl.authoringBackend = 'required';
 					playerEl.loaderOptions = { bundleHost: 'https://proxy.pie-api.com/bundles/' };
+					playerEl.onInsertImage = demoMediaBackend.onInsertImage;
+					playerEl.onDeleteImage = demoMediaBackend.onDeleteImage;
+					playerEl.onInsertSound = demoMediaBackend.onInsertSound;
+					playerEl.onDeleteSound = demoMediaBackend.onDeleteSound;
 				});
 
 				lastConfig = currentConfig;

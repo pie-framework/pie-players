@@ -16,7 +16,8 @@
 			pnpResolver: { type: 'Object', reflect: false },
 			assessment: { type: 'Object', reflect: false },
 			itemRef: { type: 'Object', reflect: false },
-			item: { type: 'Object', reflect: false }
+			item: { type: 'Object', reflect: false },
+			hostButtons: { type: 'Object', reflect: false }
 		}
 	}}
 />
@@ -38,6 +39,12 @@
 		connectAssessmentToolkitShellContext,
 	} from '../context/runtime-context-consumer.js';
 	import type { ToolRegistry, ToolToolbarRenderResult, ToolbarContext } from '../services/ToolRegistry.js';
+	import {
+		isExternalIconUrl,
+		isInlineSvgIcon,
+		isToolbarLinkItem,
+		type ToolbarItem
+	} from '../services/toolbar-items.js';
 	import type { PNPToolResolver } from '../services/PNPToolResolver.js';
 	import { createDefaultToolRegistry } from '../services/createDefaultToolRegistry.js';
 	import { DEFAULT_TOOL_MODULE_LOADERS } from '../tools/default-tool-module-loaders.js';
@@ -69,6 +76,7 @@
 		assessment = null,
 		itemRef = null,
 		item = null,
+		hostButtons = [] as ToolbarItem[],
 		class: className = '',
 		size = 'md' as 'sm' | 'md' | 'lg',
 		language = 'en-US'
@@ -83,6 +91,7 @@
 		assessment?: AssessmentEntity | null;
 		itemRef?: AssessmentItemRef | null;
 		item?: ItemEntity | null;
+		hostButtons?: ToolbarItem[];
 		class?: string;
 		size?: 'sm' | 'md' | 'lg';
 		language?: string;
@@ -300,6 +309,42 @@
 		}
 		return rendered;
 	});
+	const normalizedHostButtons = $derived.by((): ToolbarItem[] =>
+		Array.isArray(hostButtons)
+			? hostButtons.filter((item): item is ToolbarItem => !!item && typeof item.id === 'string')
+			: []
+	);
+	const nativeToolbarItems = $derived.by((): ToolbarItem[] =>
+		renderedTools
+			.filter((renderedTool) => !!renderedTool.button)
+			.map((renderedTool) => {
+				const button = renderedTool.button!;
+				return {
+					id: renderedTool.toolId,
+					label: button.label,
+					ariaLabel: button.ariaLabel || button.label,
+					icon: button.icon,
+					tooltip: button.tooltip || button.label,
+					disabled: button.disabled,
+					active: activeToolState[renderedTool.toolId] ?? button.active ?? false,
+					onClick: () => {
+						button.onClick();
+						syncRenderedToolsState();
+					},
+				} satisfies ToolbarItem;
+			})
+	);
+	const toolbarItems = $derived.by((): ToolbarItem[] => [
+		...nativeToolbarItems,
+		...normalizedHostButtons
+	]);
+
+	function isToolbarItemActive(item: ToolbarItem): boolean {
+		if (item.id in activeToolState) {
+			return activeToolState[item.id] === true;
+		}
+		return item.active === true;
+	}
 
 	function syncRenderedToolsState() {
 		const nextActiveState: Record<string, boolean> = {};
@@ -377,31 +422,60 @@
 			{#if renderedTool.inlineElement}
 				<span class="item-toolbar__element-host" use:mountElement={renderedTool.inlineElement}></span>
 			{/if}
+		{/each}
 
-			{#if renderedTool.button}
+		{#each toolbarItems as item (item.id)}
+			{#if isToolbarLinkItem(item)}
+				<a
+					class="item-toolbar__button"
+					class:item-toolbar__button--active={isToolbarItemActive(item)}
+					href={item.disabled ? undefined : item.href}
+					target={item.target}
+					rel={item.rel}
+					aria-label={item.ariaLabel || item.label}
+					title={item.tooltip || item.label}
+					aria-disabled={item.disabled ? 'true' : undefined}
+					onclick={(event) => {
+						if (item.disabled) {
+							event.preventDefault();
+						}
+					}}
+				>
+					{#if item.icon}
+						{#if isInlineSvgIcon(item.icon)}
+							{@html item.icon}
+						{:else if isExternalIconUrl(item.icon)}
+							<img class="item-toolbar__icon-image" src={item.icon} alt="" />
+						{:else}
+							<i class={`icon icon-${item.icon}`} aria-hidden="true"></i>
+						{/if}
+					{/if}
+				</a>
+			{:else}
 				<button
 					type="button"
-					class="item-toolbar__button {renderedTool.button.className || ''}"
-					class:item-toolbar__button--active={activeToolState[renderedTool.toolId] ?? renderedTool.button.active ?? false}
-					onclick={() => {
-						renderedTool.button?.onClick();
-						syncRenderedToolsState();
-					}}
-					aria-label={renderedTool.button.ariaLabel || renderedTool.button.label}
-					aria-pressed={activeToolState[renderedTool.toolId] ?? renderedTool.button.active ?? false}
-					title={renderedTool.button.tooltip || renderedTool.button.label}
-					disabled={renderedTool.button.disabled}
+					class="item-toolbar__button"
+					class:item-toolbar__button--active={isToolbarItemActive(item)}
+					onclick={item.onClick}
+					aria-label={item.ariaLabel || item.label}
+					aria-pressed={isToolbarItemActive(item)}
+					title={item.tooltip || item.label}
+					disabled={item.disabled}
 				>
-					{#if renderedTool.button.icon.startsWith('<svg')}
-						{@html renderedTool.button.icon}
-					{:else if renderedTool.button.icon.startsWith('http')}
-						<img class="item-toolbar__icon-image" src={renderedTool.button.icon} alt="" />
-					{:else}
-						<i class={`icon icon-${renderedTool.button.icon}`} aria-hidden="true"></i>
+					{#if item.icon}
+						{#if isInlineSvgIcon(item.icon)}
+							{@html item.icon}
+						{:else if isExternalIconUrl(item.icon)}
+							<img class="item-toolbar__icon-image" src={item.icon} alt="" />
+						{:else}
+							<i class={`icon icon-${item.icon}`} aria-hidden="true"></i>
+						{/if}
 					{/if}
 				</button>
 			{/if}
+		{/each}
 
+		{#each renderedTools as renderedTool (renderedTool.toolId)}
 			{#if renderedTool.overlayElement}
 				<span class="item-toolbar__element-host" use:mountElement={renderedTool.overlayElement}></span>
 			{/if}
@@ -429,6 +503,7 @@
 		color: var(--pie-text, #333);
 		cursor: pointer;
 		transition: all 0.15s ease;
+		text-decoration: none;
 	}
 
 	.item-toolbar__element-host {

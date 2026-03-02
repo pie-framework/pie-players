@@ -697,7 +697,7 @@ sectionPlayer.toolkitCoordinator = coordinator;
 
 ### Package Structure
 
-- **`@pie-players/pie-section-tools-toolbar`** - Main toolbar component
+- **`@pie-players/pie-toolbars`** - Main toolbar custom elements
 - **Individual tool packages**:
   - `@pie-players/pie-tool-calculator`
   - `@pie-players/pie-tool-graph`
@@ -708,7 +708,7 @@ sectionPlayer.toolkitCoordinator = coordinator;
 
 ### Implementation Files
 
-- **Toolbar Component**: `packages/section-tools-toolbar/section-tools-toolbar.svelte`
+- **Toolbar Component**: `packages/toolbars/section-toolbar.svelte`
 - **Layout Integration**:
   - `packages/section-player/src/components/PieSectionPlayerSplitPaneElement.svelte`
 - **Player Integration**: `packages/section-player/src/components/PieSectionPlayerSplitPaneElement.svelte`

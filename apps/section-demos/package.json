@@ -20,7 +20,7 @@
 		"@pie-players/pie-section-player": "workspace:*",
 		"@pie-players/pie-section-player-tools-pnp-debugger": "workspace:*",
 		"@pie-players/pie-section-player-tools-session-debugger": "workspace:*",
-		"@pie-players/pie-section-tools-toolbar": "workspace:*",
+		"@pie-players/pie-toolbars": "workspace:*",
 		"@pie-players/pie-tool-annotation-toolbar": "workspace:*",
 		"@pie-players/pie-tool-answer-eliminator": "workspace:*",
 		"@pie-players/pie-tool-calculator": "workspace:*",

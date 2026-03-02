@@ -61,7 +61,7 @@ Allowed root sources:
 - Keep existing runtime behavior while adopting helper contracts.
 - Core runtime migration status:
   - completed: toolkit-managed tools (`pie-tool-*`)
-  - completed: tool containers (`pie-section-tools-toolbar`, debugger panels)
+  - completed: tool containers (`pie-section-toolbar`, debugger panels)
   - completed: section-player wrappers/layout shells and top-level section player
   - completed: assessment toolkit host custom elements
 - excluded for now: item player internals (`pie-item-player`, `pie-print-player`)

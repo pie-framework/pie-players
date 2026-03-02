@@ -1,12 +1,12 @@
 {
-	"name": "@pie-players/pie-section-tools-toolbar",
-	"version": "0.2.10",
+	"name": "@pie-players/pie-toolbars",
+	"version": "0.1.0",
 	"type": "module",
-	"description": "Section-level tools toolbar for PIE assessment player",
+	"description": "Item and section toolbar custom elements for PIE players",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/pie-framework/pie-players.git",
-		"directory": "packages/section-tools-toolbar"
+		"directory": "packages/toolbars"
 	},
 	"publishConfig": {
 		"access": "public"
@@ -16,21 +16,28 @@
 		"assessment",
 		"tools",
 		"toolbar",
-		"calculator",
-		"accessibility"
+		"custom-elements"
 	],
-	"svelte": "./section-tools-toolbar.svelte",
-	"main": "./dist/section-tools-toolbar.js",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/section-tools-toolbar.js",
-			"svelte": "./section-tools-toolbar.svelte"
+			"import": "./dist/index.js"
+		},
+		"./components/item-toolbar-element": {
+			"types": "./dist/components/item-toolbar-element.d.ts",
+			"import": "./dist/components/item-toolbar-element.js"
+		},
+		"./components/section-toolbar-element": {
+			"types": "./dist/components/section-toolbar-element.d.ts",
+			"import": "./dist/components/section-toolbar-element.js"
 		}
 	},
 	"files": [
 		"dist",
-		"section-tools-toolbar.svelte",
+		"components",
+		"section-toolbar.svelte",
 		"index.ts",
 		"package.json"
 	],
@@ -38,16 +45,15 @@
 		"svelte": "^5.51.0"
 	},
 	"license": "MIT",
-	"unpkg": "./dist/section-tools-toolbar.js",
-	"jsdelivr": "./dist/section-tools-toolbar.js",
+	"unpkg": "./dist/index.js",
+	"jsdelivr": "./dist/index.js",
 	"dependencies": {
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
+		"@pie-players/pie-calculator-mathjs": "workspace:*",
 		"@pie-players/pie-context": "workspace:*",
 		"@pie-players/pie-default-tool-loaders": "workspace:*",
-		"@pie-players/pie-calculator-mathjs": "workspace:*",
 		"daisyui": "^5.5.18"
 	},
-	"types": "./dist/index.d.ts",
 	"scripts": {
 		"build": "vite build",
 		"dev": "vite build --watch",
@@ -58,11 +64,11 @@
 		"@biomejs/biome": "^2.3.10",
 		"@sveltejs/vite-plugin-svelte": "^6.1.4",
 		"svelte": "^5.51.3",
-		"typescript": "^5.7.0",
+		"typescript": "^5.9.3",
 		"vite": "^7.0.8",
 		"vite-plugin-dts": "^4.5.3"
 	},
-	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/section-tools-toolbar#readme",
+	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/toolbars#readme",
 	"bugs": {
 		"url": "https://github.com/pie-framework/pie-players/issues"
 	},

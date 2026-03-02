@@ -35,7 +35,7 @@ try {
 
 	// Check core toolbar presence.
 	const itemToolbarCount = await page.locator("pie-item-toolbar").count();
-	const sectionToolbarCount = await page.locator("pie-section-tools-toolbar").count();
+	const sectionToolbarCount = await page.locator("pie-section-toolbar").count();
 	if (itemToolbarCount < 1) {
 		throw new Error("No item toolbars rendered.");
 	}
@@ -45,10 +45,10 @@ try {
 
 	// Check section toolbar buttons.
 	await page
-		.locator("pie-section-tools-toolbar")
+		.locator("pie-section-toolbar")
 		.first()
 		.waitFor({ timeout: 45000 });
-	const sectionButtons = page.locator("pie-section-tools-toolbar .tool-button");
+	const sectionButtons = page.locator("pie-section-toolbar .tool-button");
 	await sectionButtons.first().waitFor({ timeout: 45000 });
 	const sectionButtonCount = await sectionButtons.count();
 	if (sectionButtonCount < 1) {

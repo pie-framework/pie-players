@@ -215,6 +215,17 @@ export type {
 	ToolPolicyConfig,
 	ToolProvidersConfig,
 } from "./services/tools-config-normalizer.js";
+export type {
+	ToolbarButtonItem,
+	ToolbarItem,
+	ToolbarItemBase,
+	ToolbarLinkItem,
+} from "./services/toolbar-items.js";
+export {
+	isExternalIconUrl,
+	isInlineSvgIcon,
+	isToolbarLinkItem,
+} from "./services/toolbar-items.js";
 export {
 	normalizeToolsConfig,
 	normalizeToolAlias,

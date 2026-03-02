@@ -32,8 +32,8 @@
 	import "./section-player-base-element.js";
 	import "./item-shell-element.js";
 	import "./passage-shell-element.js";
-	import "@pie-players/pie-section-tools-toolbar";
-	import "@pie-players/pie-assessment-toolkit/components/item-toolbar-element";
+	import "@pie-players/pie-toolbars/components/section-toolbar-element";
+	import "@pie-players/pie-toolbars/components/item-toolbar-element";
 	import "@pie-players/pie-tool-calculator-inline";
 	import "@pie-players/pie-tool-calculator";
 	import {
@@ -405,11 +405,11 @@
 >
 	<div class={`player-shell player-shell--${toolbarPosition}`}>
 		{#if shouldRenderToolbar && toolbarBeforeContent}
-			<pie-section-tools-toolbar
+			<pie-section-toolbar
 				class={`section-toolbar section-toolbar--${toolbarPosition}`}
 				position={toolbarPosition}
 				enabled-tools={enabledTools}
-			></pie-section-tools-toolbar>
+			></pie-section-toolbar>
 		{/if}
 
 		<div class={`layout-body ${toolbarInline ? "layout-body--inline" : ""}`}>
@@ -520,29 +520,29 @@
 
 			{#if shouldRenderToolbar && toolbarInline && toolbarPosition === "right"}
 				<aside class="section-toolbar-pane section-toolbar-pane--right" aria-label="Section tools">
-					<pie-section-tools-toolbar
+					<pie-section-toolbar
 						position="right"
 						enabled-tools={enabledTools}
-					></pie-section-tools-toolbar>
+					></pie-section-toolbar>
 				</aside>
 			{/if}
 
 			{#if shouldRenderToolbar && toolbarInline && toolbarPosition === "left"}
 				<aside class="section-toolbar-pane section-toolbar-pane--left" aria-label="Section tools">
-					<pie-section-tools-toolbar
+					<pie-section-toolbar
 						position="left"
 						enabled-tools={enabledTools}
-					></pie-section-tools-toolbar>
+					></pie-section-toolbar>
 				</aside>
 			{/if}
 		</div>
 
 		{#if shouldRenderToolbar && !toolbarBeforeContent && !toolbarInline}
-			<pie-section-tools-toolbar
+			<pie-section-toolbar
 				class={`section-toolbar section-toolbar--${toolbarPosition}`}
 				position={toolbarPosition}
 				enabled-tools={enabledTools}
-			></pie-section-tools-toolbar>
+			></pie-section-toolbar>
 		{/if}
 	</div>
 </pie-section-player-base>

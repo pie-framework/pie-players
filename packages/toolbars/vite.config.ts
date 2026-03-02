@@ -15,14 +15,22 @@ export default defineConfig({
 			tsconfigPath: resolve(__dirname, "tsconfig.json"),
 			outDir: "dist",
 			insertTypesEntry: true,
-			include: ["index.ts"],
+			include: ["index.ts", "components/**/*.ts"],
 		}),
 	],
 	build: {
 		lib: {
-			entry: resolve(__dirname, "section-tools-toolbar.svelte"),
-			name: "PieSectionToolsToolbar",
-			fileName: () => "section-tools-toolbar.js",
+			entry: {
+				index: resolve(__dirname, "index.ts"),
+				"components/item-toolbar-element": resolve(
+					__dirname,
+					"components/item-toolbar-element.ts",
+				),
+				"components/section-toolbar-element": resolve(
+					__dirname,
+					"components/section-toolbar-element.ts",
+				),
+			},
 			formats: ["es"],
 		},
 		outDir: "dist",
@@ -34,10 +42,12 @@ export default defineConfig({
 			external: [
 				"@datadog/browser-rum",
 				"@pie-players/pie-assessment-toolkit",
+				"@pie-players/pie-assessment-toolkit/components/item-toolbar-element",
 			],
 			output: {
 				format: "es",
-							},
+				entryFileNames: "[name].js",
+			},
 		},
 	},
 });

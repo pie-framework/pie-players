@@ -25,7 +25,7 @@ Publishable packages (36):
 - `@pie-players/pie-section-player`
 - `@pie-players/pie-section-player-tools-pnp-debugger`
 - `@pie-players/pie-section-player-tools-session-debugger`
-- `@pie-players/pie-section-tools-toolbar`
+- `@pie-players/pie-toolbars`
 - `@pie-players/pie-theme`
 - `@pie-players/pie-theme-daisyui`
 - `@pie-players/pie-tool-annotation-toolbar`

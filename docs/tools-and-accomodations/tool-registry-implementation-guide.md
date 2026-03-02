@@ -677,7 +677,7 @@ export const DEFAULT_TOOL_PLACEMENT = {
 
 #### 4.2: Refactor SectionToolsToolbar
 
-**File**: `packages/section-tools-toolbar/section-tools-toolbar.svelte`
+**File**: `packages/toolbars/section-toolbar.svelte`
 
 **Similar refactoring**:
 ```svelte
@@ -766,7 +766,7 @@ let allowedToolIds = $derived(
 {/each}
 
 <!-- Section toolbar -->
-<pie-section-tools-toolbar
+<pie-section-toolbar
   tool-ids={toolPlacementConfig.sectionToolbar}
   context={sectionContext}
   registry={toolRegistry}

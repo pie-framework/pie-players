@@ -10,6 +10,7 @@ const ATTW_EXCLUDED = new Set([
 	"@pie-players/pie-assessment-toolkit",
 	"@pie-players/pie-calculator-mathjs",
 	"@pie-players/pie-players-shared",
+	"@pie-players/pie-players-cli",
 	"@pie-players/pie-section-player",
 	"@pie-players/pie-theme",
 	"@pie-players/pie-theme-daisyui",

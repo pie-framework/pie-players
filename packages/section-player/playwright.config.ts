@@ -27,7 +27,7 @@ export default defineConfig({
 	webServer: {
 		command: webServerCommand,
 		url: baseURL,
-		reuseExistingServer: true,
+		reuseExistingServer: false,
 		timeout: 120_000,
 	},
 	projects: [

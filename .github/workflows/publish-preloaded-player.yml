@@ -1,17 +1,17 @@
-name: Publish preloaded static packages
+name: Publish preloaded packages
 
 on:
   push:
     branches: [master]
     paths:
-      - "configs/fixed-player-static/**"
+      - "configs/preloaded-player/**"
       - "packages/item-player/**"
       - "tools/cli/**"
       - "packages/players-shared/**"
-      - "scripts/fixed-player-static/**"
+      - "scripts/preloaded-player/**"
       - "package.json"
       - "bun.lock"
-      - ".github/workflows/publish-fixed-player-static.yml"
+      - ".github/workflows/publish-preloaded-player.yml"
   workflow_dispatch:
     inputs:
       publishAll:
@@ -48,14 +48,12 @@ jobs:
       - name: Build CLI
         run: bun run --cwd tools/cli build
 
-      - name: Publish preloaded static packages
+      - name: Publish preloaded packages
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.publishAll }}" = "true" ]; then
-            node scripts/fixed-player-static/publish-changed.mjs --all
+            node scripts/preloaded-player/publish-changed.mjs --all
           else
-            node scripts/fixed-player-static/publish-changed.mjs --base "${{ github.event.before }}" --head "${{ github.sha }}"
+            node scripts/preloaded-player/publish-changed.mjs --base "${{ github.event.before }}" --head "${{ github.sha }}"
           fi
-
-

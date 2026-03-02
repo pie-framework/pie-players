@@ -1,14 +1,14 @@
 import { Command, Flags } from "@oclif/core";
 
-import { generateFixedStaticTestProject } from "../../utils/pie-packages/test-project.js";
+import { generatePreloadedStaticTestProject } from "../../utils/pie-packages/test-project.js";
 
-export default class FixedPlayerGenerateTestProject extends Command {
+export default class PreloadedPlayerGenerateTestProject extends Command {
 	static override description =
 		"Generate a simple browser test project for a preloaded static pie-item-player build";
 
 	static override examples = [
-		"$ bun run cli pie-packages:fixed-player-generate-test-project --package-path ./local-builds/local",
-		"$ bun run cli pie-packages:fixed-player-generate-test-project --published-version latest",
+		"$ bun run cli pie-packages:preloaded-player-generate-test-project --package-path ./local-builds/local",
+		"$ bun run cli pie-packages:preloaded-player-generate-test-project --published-version latest",
 	];
 
 	static override flags = {
@@ -46,12 +46,18 @@ export default class FixedPlayerGenerateTestProject extends Command {
 		}),
 	};
 
+	protected async generateTestProject(
+		options: Parameters<typeof generatePreloadedStaticTestProject>[0],
+	): ReturnType<typeof generatePreloadedStaticTestProject> {
+		return generatePreloadedStaticTestProject(options);
+	}
+
 	public async run(): Promise<void> {
-		const { flags } = await this.parse(FixedPlayerGenerateTestProject);
+		const { flags } = await this.parse(PreloadedPlayerGenerateTestProject);
 
 		const monorepoDir = process.cwd();
 
-		const projectDir = await generateFixedStaticTestProject({
+		const projectDir = await this.generateTestProject({
 			monorepoDir,
 			outputDir: flags.outputDir,
 			name: flags.name,

@@ -173,7 +173,7 @@ logger.error('❌ Error', error);         // Always shown
 **Player tags** accept a `debug` prop:
 
 ```html
-<pie-fixed-player debug={true} config={...} />
+<pie-item-player strategy="preloaded" debug={true} config={...} />
 ```
 
 **Runtime debugging** via global flag:

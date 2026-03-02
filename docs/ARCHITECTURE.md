@@ -14,7 +14,7 @@ Built with Bun, TypeScript, and Svelte 5, the architecture leverages modern web 
 
 ### Key Capabilities
 
-- **Multiple Player Types**: IIFE (legacy compatible), ESM (modern), and Fixed (pre-bundled) players
+- **Multiple Player Strategies**: IIFE (legacy compatible), ESM (modern), and Preloaded static (pre-bundled) delivery
 - **Unified Authoring & Delivery**: Single players support both student/teacher delivery views and authoring/configuration modes
 - **Assessment Toolkit**: Composable services for full test delivery with navigation, tools, and accommodations
 - **Accessibility First**: WCAG 2.2 AA compliance, IEP/504 accommodation support
@@ -122,7 +122,7 @@ See: [packages/esm-player/src/README.md](../packages/esm-player/src/README.md)
 
 ---
 
-#### 3. Fixed Player (`<pie-fixed-player>`)
+#### 3. Preloaded Static Strategy (`<pie-item-player strategy="preloaded">`)
 
 **Purpose**: Pre-bundled player with fixed element combinations (performance optimized).
 
@@ -141,7 +141,7 @@ See: [packages/esm-player/src/README.md](../packages/esm-player/src/README.md)
 - Smaller API payload (data only, no bundles)
 - CI/CD publishing from in-repo configs
 
-See: [packages/fixed-player/src/README.md](../packages/fixed-player/src/README.md)
+See: [docs/preloaded-player/README.md](./preloaded-player/README.md)
 
 ---
 
@@ -167,7 +167,7 @@ See: [packages/print-player/README.md](../packages/print-player/README.md)
 
 ### Player Comparison
 
-| Feature             | IIFE Player   | ESM Player  | Fixed Player | Print Player |
+| Feature             | IIFE Player   | ESM Player  | Preloaded Static | Print Player |
 | ------------------- | ------------- | ----------- | ------------ | ------------ |
 | **Bundle Format**   | IIFE          | ESM         | Pre-bundled  | ESM          |
 | **Loading**         | Dynamic       | Dynamic     | Static       | Dynamic      |
@@ -472,7 +472,7 @@ The toolkit includes 15+ **accessibility accommodations** and **assessment tools
 
 Use a single item player for rendering individual questions. Suitable for embedding single questions in content management systems or learning platforms.
 
-**Players**: IIFE, ESM, or Fixed player
+**Players**: IIFE, ESM, or preloaded static strategy
 **Complexity**: Low
 **Use Case**: Single question rendering
 
@@ -550,7 +550,7 @@ Build your own assessment player using toolkit services for complete control ove
 
 The **PIE Players** architecture provides a comprehensive, modern foundation for rendering PIE assessment content. The system is organized into three major areas:
 
-1. **Item Players** - Multiple player types (IIFE, ESM, Fixed, Print) for different deployment scenarios
+1. **Item Players** - Multiple player strategies (IIFE, ESM, Preloaded Static, Print) for different deployment scenarios
 2. **Assessment Toolkit** - Composable services for full test delivery with tools and accommodations
 3. **Tools & Accommodations** - 15+ assessment tools with WCAG 2.2 AA compliance
 

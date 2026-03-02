@@ -279,6 +279,14 @@
 		);
 	}
 
+	function shouldSkipElementLoading(): boolean {
+		const strategy = normalizeItemPlayerStrategy(
+			resolvedPlayerAttributes?.strategy || effectivePlayerType,
+			"iife",
+		);
+		return strategy !== "preloaded";
+	}
+
 	$effect(() => {
 		resolvedPlayerDefinition?.ensureDefined?.().catch((error) => {
 			console.error("[pie-section-player-vertical] Failed to load item player component:", error);
@@ -450,7 +458,7 @@
 													},
 													attributes: resolvedPlayerAttributes || {},
 													props: resolvedPlayerProps || {},
-													skipElementLoading: true,
+													skipElementLoading: shouldSkipElementLoading(),
 												}}
 											></svelte:element>
 										</div>
@@ -498,7 +506,7 @@
 												}) as Record<string, unknown>,
 												attributes: resolvedPlayerAttributes || {},
 												props: resolvedPlayerProps || {},
-												skipElementLoading: true,
+												skipElementLoading: shouldSkipElementLoading(),
 											}}
 										></svelte:element>
 									</div>

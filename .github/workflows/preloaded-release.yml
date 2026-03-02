@@ -1,12 +1,12 @@
-name: Publish fixed-player-static (config-driven)
+name: Publish preloaded packages (config-driven)
 
 on:
   push:
     branches:
       - master
     paths:
-      - "configs/fixed-player-static/**"
-      - ".github/workflows/fixed-static-release.yml"
+      - "configs/preloaded-player/**"
+      - ".github/workflows/preloaded-release.yml"
   workflow_dispatch: {}
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
@@ -44,43 +44,22 @@ jobs:
           fi
           echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
 
-      - name: Build/publish static packages for changed configs
+      - name: Build/publish packages for changed configs
         env:
           NODE_ENV: production
         run: |
           set -euo pipefail
-
-          # Prevent stale oclif metadata from shadowing current command flags.
           rm -f tools/cli/oclif.manifest.json
-
-          CONFIG_DIR="configs/fixed-player-static"
-
+          CONFIG_DIR="configs/preloaded-player"
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             CHANGED_FILES=$(find "$CONFIG_DIR" -maxdepth 1 -type f -name "*.json" -print | sort || true)
           else
-            CHANGED_FILES=$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" -- "$CONFIG_DIR" \
-              | grep -E '\.json$' \
-              | sort \
-              || true)
+            CHANGED_FILES=$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" -- "$CONFIG_DIR" | grep -E '\.json$' | sort || true)
           fi
-
           if [ -z "$CHANGED_FILES" ]; then
             echo "No changed config JSON files detected."
             exit 0
           fi
-
-          echo "Configs to build/publish:"
-          echo "$CHANGED_FILES" | sed 's/^/- /'
-          echo ""
-
           for file in $CHANGED_FILES; do
-            echo "============================================================"
-            echo "Publishing for config: $file"
-            echo "============================================================"
-            bun run cli pie-packages:fixed-player-build-package \
-              -f "$file" \
-              --publish
-            echo ""
+            bun run cli pie-packages:preloaded-player-build-package -f "$file" --publish
           done
-
-

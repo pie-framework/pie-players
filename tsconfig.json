@@ -28,7 +28,6 @@
 		{ "path": "./packages/pie-context" },
 		{ "path": "./packages/default-tool-loaders" },
 		{ "path": "./packages/item-player" },
-		{ "path": "./packages/inline-player" },
 		{ "path": "./packages/players-shared" },
 		{ "path": "./packages/tool-annotation-toolbar" },
 		{ "path": "./packages/tool-answer-eliminator" },

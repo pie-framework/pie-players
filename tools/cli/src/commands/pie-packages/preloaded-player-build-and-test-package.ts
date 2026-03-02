@@ -3,18 +3,18 @@ import { execSync } from "node:child_process";
 import { Command, Flags } from "@oclif/core";
 
 import {
-	buildFixedPlayerStaticPackage,
+	buildPreloadedPlayerStaticPackage,
 	parseElementsInput,
 } from "../../utils/pie-packages/fixed-static.js";
-import { generateFixedStaticTestProject } from "../../utils/pie-packages/test-project.js";
+import { generatePreloadedStaticTestProject } from "../../utils/pie-packages/test-project.js";
 
-export default class FixedPlayerBuildAndTestPackage extends Command {
+export default class PreloadedPlayerBuildAndTestPackage extends Command {
 	static override description =
 		"Build a preloaded static package (optionally publish) and optionally generate a browser test project";
 
 	static override examples = [
-		"$ bun run cli pie-packages:fixed-player-build-and-test-package -f configs/fixed-player-static/example.json --generateTestProject",
-		'$ bun run cli pie-packages:fixed-player-build-and-test-package -e "@pie-element/multiple-choice@11.4.3" --publish --dry-run',
+		"$ bun run cli pie-packages:preloaded-player-build-and-test-package -f configs/preloaded-player/example.json --generateTestProject",
+		'$ bun run cli pie-packages:preloaded-player-build-and-test-package -e "@pie-element/multiple-choice@11.4.3" --publish --dry-run',
 	];
 
 	static override flags = {
@@ -83,8 +83,34 @@ export default class FixedPlayerBuildAndTestPackage extends Command {
 		}),
 	};
 
+	protected async parseElements(
+		elementsFile?: string,
+		elements?: string,
+	): ReturnType<typeof parseElementsInput> {
+		return parseElementsInput(elementsFile, elements);
+	}
+
+	protected async buildPackage(
+		options: Parameters<typeof buildPreloadedPlayerStaticPackage>[0],
+	): ReturnType<typeof buildPreloadedPlayerStaticPackage> {
+		return buildPreloadedPlayerStaticPackage(options);
+	}
+
+	protected async generateTestProject(
+		options: Parameters<typeof generatePreloadedStaticTestProject>[0],
+	): ReturnType<typeof generatePreloadedStaticTestProject> {
+		return generatePreloadedStaticTestProject(options);
+	}
+
+	protected publish(outputDir: string) {
+		const cmd =
+			"npm publish --access public --registry https://registry.npmjs.org/";
+		execSync(cmd, { cwd: outputDir, stdio: "inherit" });
+		return cmd;
+	}
+
 	public async run(): Promise<void> {
-		const { flags } = await this.parse(FixedPlayerBuildAndTestPackage);
+		const { flags } = await this.parse(PreloadedPlayerBuildAndTestPackage);
 
 		if (!flags.elementsFile && !flags.elements) {
 			this.error("Either -f/--elementsFile or -e/--elements must be specified");
@@ -95,19 +121,16 @@ export default class FixedPlayerBuildAndTestPackage extends Command {
 
 		const monorepoDir = process.cwd();
 
-		const elements = await parseElementsInput(
-			flags.elementsFile,
-			flags.elements,
-		);
+		const elements = await this.parseElements(flags.elementsFile, flags.elements);
 		const elementsArray = elements.map((e: any) => `${e.package}@${e.version}`);
 
 		if (flags.publish && !flags.iteration) {
-			process.env.PIE_FIXED_PLAYER_STATIC_AUTO_ITERATION = "true";
+			process.env.PIE_PRELOADED_PLAYER_AUTO_ITERATION = "true";
 		} else {
-			delete process.env.PIE_FIXED_PLAYER_STATIC_AUTO_ITERATION;
+			delete process.env.PIE_PRELOADED_PLAYER_AUTO_ITERATION;
 		}
 
-		const { outputDir, version } = await buildFixedPlayerStaticPackage({
+		const { outputDir, version } = await this.buildPackage({
 			elements: elementsArray,
 			iteration: flags.publish ? flags.iteration : undefined,
 			loaderVersion: flags.loaderVersion,
@@ -116,7 +139,7 @@ export default class FixedPlayerBuildAndTestPackage extends Command {
 			overwriteBundle: flags.overwriteBundle,
 		});
 
-		this.log(`\n✅ Built: @pie-players/pie-fixed-player-static@${version}`);
+		this.log(`\n✅ Built: @pie-players/pie-preloaded-player@${version}`);
 		this.log(`   Output: ${outputDir}\n`);
 
 		if (flags.publish) {
@@ -126,13 +149,13 @@ export default class FixedPlayerBuildAndTestPackage extends Command {
 				this.log(`[DRY RUN] Would run: ${cmd}`);
 				this.log(`[DRY RUN] In directory: ${outputDir}`);
 			} else {
-				execSync(cmd, { cwd: outputDir, stdio: "inherit" });
+				this.publish(outputDir);
 				this.log("\n✅ Published\n");
 			}
 		}
 
 		if (flags.generateTestProject) {
-			const projectDir = await generateFixedStaticTestProject({
+			const projectDir = await this.generateTestProject({
 				monorepoDir,
 				outputDir: flags.outputDir,
 				name: flags.name,

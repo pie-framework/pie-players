@@ -64,4 +64,4 @@ Allowed root sources:
   - completed: tool containers (`pie-section-tools-toolbar`, debugger panels)
   - completed: section-player wrappers/layout shells and top-level section player
   - completed: assessment toolkit host custom elements
-- excluded for now: item player internals (`pie-inline-player`, `pie-item-player`, `pie-print-player`)
+- excluded for now: item player internals (`pie-item-player`, `pie-print-player`)

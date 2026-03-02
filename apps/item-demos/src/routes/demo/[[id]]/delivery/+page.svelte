@@ -26,6 +26,10 @@
 	let lastSession: any = null;
 	let mode = $state<'gather' | 'view' | 'evaluate'>('gather');
 	let role = $state<'student' | 'instructor'>('student');
+	let selectedPlayerType = $state<'iife' | 'esm' | 'preloaded'>('iife');
+	let preloadedReady = $state(false);
+	let preloadedError = $state<string | null>(null);
+	let loadedPreloadedBundleKey = $state<string | null>(null);
 
 	$effect(() => {
 		if (untrack(() => mode) !== $modeStore) {
@@ -36,6 +40,15 @@
 	$effect(() => {
 		if (untrack(() => role) !== $roleStore) {
 			role = $roleStore;
+		}
+	});
+
+	$effect(() => {
+		const queryPlayer = $page.url.searchParams.get('player');
+		if (queryPlayer === 'iife' || queryPlayer === 'esm' || queryPlayer === 'preloaded') {
+			selectedPlayerType = queryPlayer;
+		} else {
+			selectedPlayerType = 'iife';
 		}
 	});
 
@@ -55,6 +68,22 @@
 			mode = 'gather';
 		}
 		submitControls();
+	}
+
+	async function fetchBundleWithRetry(bundleUrl: string) {
+		let attempt = 0;
+		const maxAttempts = 12;
+		while (attempt < maxAttempts) {
+			attempt += 1;
+			const response = await fetch(bundleUrl);
+			if (response.ok) return response;
+			if (response.status === 503) {
+				await new Promise((resolve) => setTimeout(resolve, 1000));
+				continue;
+			}
+			throw new Error(`Bundle preload failed: ${response.status}`);
+		}
+		throw new Error('Bundle preload timed out after retries');
 	}
 
 	// Set properties imperatively when config or env changes
@@ -83,6 +112,39 @@
 		}
 	});
 
+	$effect(() => {
+		preloadedReady = selectedPlayerType !== 'preloaded';
+		preloadedError = null;
+		if (selectedPlayerType !== 'preloaded') return;
+		const currentConfig = $configStore;
+		const elementPackages = Object.values(currentConfig?.elements || {}) as string[];
+		if (!elementPackages.length) {
+			preloadedError = 'No elements were found to preload';
+			return;
+		}
+		const bundleKey = elementPackages.join('+');
+		if (loadedPreloadedBundleKey === bundleKey) {
+			preloadedReady = true;
+			return;
+		}
+		preloadedReady = false;
+		void (async () => {
+			try {
+				const bundleUrl = `https://proxy.pie-api.com/bundles/${bundleKey}/player.js`;
+				const response = await fetchBundleWithRetry(bundleUrl);
+				const bundleJs = await response.text();
+				const script = document.createElement('script');
+				script.type = 'text/javascript';
+				script.text = bundleJs;
+				document.head.appendChild(script);
+				loadedPreloadedBundleKey = bundleKey;
+				preloadedReady = true;
+			} catch (error) {
+				preloadedError = error instanceof Error ? error.message : String(error);
+			}
+		})();
+	});
+
 	// Listen for session changes
 	$effect(() => {
 		if (playerEl) {
@@ -109,15 +171,21 @@
 	<!-- Left: Player -->
 	<div class="card bg-base-100 shadow-xl">
 		<div class="card-body">
-			{#if $configStore && $envStore}
-				{#key `${$configStore?.markup || ''}-${$envStore?.mode || 'gather'}-${$envStore?.role || 'student'}`}
+			{#if $configStore && $envStore && (selectedPlayerType !== 'preloaded' || preloadedReady)}
+				{#key `${$configStore?.markup || ''}-${$envStore?.mode || 'gather'}-${$envStore?.role || 'student'}-${selectedPlayerType}`}
 					<pie-item-player
 						bind:this={playerEl}
-						strategy="iife"
+						strategy={selectedPlayerType}
 					></pie-item-player>
 				{/key}
-			{:else}
+			{:else if !$configStore || !$envStore}
 				<div class="text-base-content/60">Loading item configuration...</div>
+			{/if}
+			{#if selectedPlayerType === 'preloaded' && !preloadedReady}
+				<div class="text-base-content/60 mt-2">Preloading item bundle...</div>
+			{/if}
+			{#if preloadedError}
+				<div class="text-error mt-2">Preloaded bundle failed: {preloadedError}</div>
 			{/if}
 		</div>
 	</div>
@@ -136,6 +204,7 @@
 				>
 					<ModeSelector bind:mode {role} name="mode" onChange={handleModeChange} />
 					<RoleSelector bind:role name="role" onChange={handleRoleChange} />
+					<input type="hidden" name="player" value={selectedPlayerType} />
 				</form>
 			</div>
 		</div>

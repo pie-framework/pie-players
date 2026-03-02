@@ -263,6 +263,10 @@
 		};
 	}
 	function getPassagePlayerParams(passage: any): SplitPanePlayerParams {
+		const strategy = normalizeItemPlayerStrategy(
+			resolvedPlayerAttributes?.strategy || effectivePlayerType,
+			"iife",
+		);
 		return {
 			config: passage.config || {},
 			env: {
@@ -271,17 +275,21 @@
 			},
 			attributes: resolvedPlayerAttributes || {},
 			props: resolvedPlayerProps || {},
-			skipElementLoading: true,
+			skipElementLoading: strategy !== "preloaded",
 		};
 	}
 	function getItemPlayerParams(item: ItemEntity): SplitPanePlayerParams {
+		const strategy = normalizeItemPlayerStrategy(
+			resolvedPlayerAttributes?.strategy || effectivePlayerType,
+			"iife",
+		);
 		return {
 			config: item.config || {},
 			env: resolvedPlayerEnv,
 			session: getSessionForItemOrEmpty(item),
 			attributes: resolvedPlayerAttributes || {},
 			props: resolvedPlayerProps || {},
-			skipElementLoading: true,
+			skipElementLoading: strategy !== "preloaded",
 		};
 	}
 

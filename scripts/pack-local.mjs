@@ -21,8 +21,6 @@ const basePackagesToPack = [
 	"packages/players-shared",
 
 	// Item players
-	"packages/inline-player",
-	"packages/fixed-player",
 	"packages/esm-player",
 
 	// Assessment stack

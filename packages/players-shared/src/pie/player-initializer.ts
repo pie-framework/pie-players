@@ -1,6 +1,6 @@
 /**
  * Shared PIE player initialization logic
- * Used by both pie-inline-player and pie-fixed-player
+ * Used by preloaded static player runtimes
  */
 
 export interface PiePlayerConfig {
@@ -31,7 +31,7 @@ export interface PiePlayerElements {
 
 /**
  * Initialize PIE player with item data
- * This is the SAME for both inline and fixed players
+ * Shared initialization for preloaded/static player entrypoints.
  */
 export async function initializePiePlayer(
 	itemData: ItemData,
@@ -144,7 +144,7 @@ export function buildEventListenersMap(
 
 /**
  * Build URL parameters for API request
- * SHARED by both inline and fixed players
+ * Shared by preloaded/static player entrypoints.
  */
 export function buildApiParams(
 	env: any,
@@ -161,7 +161,7 @@ export function buildApiParams(
 
 /**
  * Fetch item data from API
- * SHARED by both inline and fixed players
+ * Shared by preloaded/static player entrypoints.
  */
 export async function fetchItemData(
 	apiBaseUrl: string,

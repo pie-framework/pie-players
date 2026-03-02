@@ -233,11 +233,14 @@
 			const transformed = makeUniqueTags({ config: parsedConfig });
 			const transformedConfig = transformed.config;
 
-			if (skipElementLoading || normalizedStrategy === "preloaded") {
+			if (skipElementLoading) {
 				logger.debug(
 					"[pie-item-player] Skipping element loading; host is responsible for preload.",
 				);
-			} else if (normalizedStrategy === "iife") {
+			} else if (
+				normalizedStrategy === "iife" ||
+				normalizedStrategy === "preloaded"
+			) {
 				stage = "iife-load";
 				const iifeLoader = new IifePieLoader({
 					bundleHost: resolvedIifeBundleHost,

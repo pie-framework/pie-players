@@ -25,7 +25,7 @@ async function findLatestLocalStaticPackageDir(
 	const candidates = dirs
 		.filter(
 			(d) =>
-				d.includes("pie-fixed-player-static-") ||
+				d.includes("pie-preloaded-player-") ||
 				d.endsWith(join("local-builds", "local")),
 		)
 		.map((d) => resolve(d));
@@ -37,7 +37,7 @@ async function findLatestLocalStaticPackageDir(
 	return null;
 }
 
-export type GenerateFixedStaticTestProjectOptions = {
+export type GeneratePreloadedStaticTestProjectOptions = {
 	monorepoDir: string;
 	outputDir: string;
 	name: string;
@@ -47,8 +47,8 @@ export type GenerateFixedStaticTestProjectOptions = {
 	port?: number;
 };
 
-export async function generateFixedStaticTestProject(
-	opts: GenerateFixedStaticTestProjectOptions,
+export async function generatePreloadedStaticTestProject(
+	opts: GeneratePreloadedStaticTestProjectOptions,
 ): Promise<string> {
 	const outputDir = expandHome(opts.outputDir);
 	const projectDir = resolve(outputDir, opts.name);
@@ -60,7 +60,7 @@ export async function generateFixedStaticTestProject(
 	if (opts.publishedVersion) {
 		const v =
 			opts.publishedVersion === "latest" ? "latest" : opts.publishedVersion;
-		importUrlOrPath = `https://cdn.jsdelivr.net/npm/@pie-players/pie-fixed-player-static@${v}/dist/index.js`;
+		importUrlOrPath = `https://cdn.jsdelivr.net/npm/@pie-players/pie-preloaded-player@${v}/dist/index.js`;
 	} else {
 		const pkgDir = opts.packagePath
 			? resolve(expandHome(opts.packagePath))
@@ -68,7 +68,7 @@ export async function generateFixedStaticTestProject(
 
 		if (!pkgDir) {
 			throw new Error(
-				"No local static package found. Build one first via: bun run cli pie-packages:fixed-player-build-package -f <file>",
+				"No local static package found. Build one first via: bun run cli pie-packages:preloaded-player-build-package -f <file>",
 			);
 		}
 
@@ -107,7 +107,7 @@ export async function generateFixedStaticTestProject(
 
 	const readme = `# PIE preloaded static test project
 
-This project loads a built \`@pie-players/pie-fixed-player-static\` bundle and renders a \`<pie-item-player strategy="preloaded">\` element.
+This project loads a built \`@pie-players/pie-preloaded-player\` bundle and renders a \`<pie-item-player strategy="preloaded">\` element.
 
 ## Run
 

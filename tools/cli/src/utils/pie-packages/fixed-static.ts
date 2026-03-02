@@ -17,7 +17,7 @@ export interface BuildStaticConfig {
 }
 
 const DEFAULT_PITS_BASE_URL = "https://proxy.pie-api.com";
-const STATIC_PACKAGE_NAME = "@pie-players/pie-fixed-player-static";
+const STATIC_PACKAGE_NAME = "@pie-players/pie-preloaded-player";
 
 export function generateHash(elements: string[]): string {
 	const sorted = [...elements].sort();
@@ -230,7 +230,7 @@ function generateIndex(
 		: `
     // Math rendering not required by any elements in this bundle`;
 
-	return `// Auto-generated entry point for pie-fixed-player-static
+	return `// Auto-generated entry point for pie-preloaded-player
 (async function initializePieItemPlayerStatic() {
   const importWithRetry = async (specifier, attempts = 3, baseDelayMs = 200) => {
     let lastError;
@@ -253,7 +253,7 @@ ${mathRenderingSetup}
     await importWithRetry('./${bundleFilename}', 4, 200);
     await importWithRetry('./pie-item-player.js', 4, 200);
   } catch (error) {
-    try { console.error('[pie-fixed-player-static] Initialization failed'); } catch {}
+    try { console.error('[pie-preloaded-player] Initialization failed'); } catch {}
   }
 })();
 
@@ -262,7 +262,7 @@ export {};
 }
 
 function generateTypes(): string {
-	return `declare module '@pie-players/pie-fixed-player-static' {
+	return `declare module '@pie-players/pie-preloaded-player' {
   export {};
   global {
     interface HTMLElementTagNameMap {
@@ -315,7 +315,7 @@ export async function parseElementsInput(
 	throw new Error("Either elementsFile or elementsString must be provided");
 }
 
-export async function buildFixedPlayerStaticPackage(
+export async function buildPreloadedPlayerStaticPackage(
 	config: BuildStaticConfig,
 ): Promise<{ outputDir: string; version: string }> {
 	if (!config.loaderVersion) {
@@ -328,7 +328,7 @@ export async function buildFixedPlayerStaticPackage(
 	// For local-only builds (no iteration passed from the CLI), we keep the historical behavior (iteration=1, outputDir=local).
 	if (
 		!config.iteration &&
-		process.env.PIE_FIXED_PLAYER_STATIC_AUTO_ITERATION === "true"
+		process.env.PIE_PRELOADED_PLAYER_AUTO_ITERATION === "true"
 	) {
 		config.iteration = await fetchNextIterationFromNpm(
 			config.loaderVersion,
@@ -340,7 +340,7 @@ export async function buildFixedPlayerStaticPackage(
 	const hash = generateHash(config.elements);
 
 	const defaultDirName = config.iteration
-		? `pie-fixed-player-static-${version}`
+		? `pie-preloaded-player-${version}`
 		: "local";
 	const outputDir =
 		config.outputDir ||
@@ -410,7 +410,7 @@ export async function buildFixedPlayerStaticPackage(
 	await writeFile(join(outputDir, "dist", "index.d.ts"), generateTypes());
 	await writeFile(
 		join(outputDir, "README.md"),
-		`# @pie-players/pie-fixed-player-static\n\nVersion: ${version}\n\nHash: ${hash}\n\nUse with \`<pie-item-player strategy="preloaded">\`.\n`,
+		`# @pie-players/pie-preloaded-player\n\nVersion: ${version}\n\nHash: ${hash}\n\nUse with \`<pie-item-player strategy="preloaded">\`.\n`,
 	);
 
 	return { outputDir, version };

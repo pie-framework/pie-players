@@ -67,7 +67,7 @@ bun run release:label:push           # Create and push tag to origin
 
 ## Packages
 
-**Interactive Players**: pie-item-player, pie-inline-player
+**Interactive Players**: pie-item-player
 **Print Player**: print-player - Item-level print rendering for production use
 **Tools**: calculator, graph, ruler, protractor, annotation-toolbar, color-scheme, periodic-table
 **Math Rendering**: math-renderer-core, math-renderer-mathjax, math-renderer-katex

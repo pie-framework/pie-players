@@ -3,17 +3,17 @@ import { execSync } from "node:child_process";
 import { Command, Flags } from "@oclif/core";
 
 import {
-	buildFixedPlayerStaticPackage,
+	buildPreloadedPlayerStaticPackage,
 	parseElementsInput,
 } from "../../utils/pie-packages/fixed-static.js";
 
-export default class FixedPlayerBuildPackage extends Command {
+export default class PreloadedPlayerBuildPackage extends Command {
 	static override description =
 		"Build (and optionally publish) PIE preloaded static package for pie-item-player";
 
 	static override examples = [
-		"$ bun run cli pie-packages:fixed-player-build-package -f elements.json",
-		'$ bun run cli pie-packages:fixed-player-build-package -e "@pie-element/calculator@1.0.0,@pie-element/ruler@2.0.0"',
+		"$ bun run cli pie-packages:preloaded-player-build-package -f elements.json",
+		'$ bun run cli pie-packages:preloaded-player-build-package -e "@pie-element/calculator@1.0.0,@pie-element/ruler@2.0.0"',
 	];
 
 	static override flags = {
@@ -56,8 +56,28 @@ export default class FixedPlayerBuildPackage extends Command {
 		}),
 	};
 
+	protected async parseElements(
+		elementsFile?: string,
+		elements?: string,
+	): ReturnType<typeof parseElementsInput> {
+		return parseElementsInput(elementsFile, elements);
+	}
+
+	protected async buildPackage(
+		options: Parameters<typeof buildPreloadedPlayerStaticPackage>[0],
+	): ReturnType<typeof buildPreloadedPlayerStaticPackage> {
+		return buildPreloadedPlayerStaticPackage(options);
+	}
+
+	protected publish(outputDir: string) {
+		const cmd =
+			"npm publish --access public --registry https://registry.npmjs.org/";
+		execSync(cmd, { cwd: outputDir, stdio: "inherit" });
+		return cmd;
+	}
+
 	public async run(): Promise<void> {
-		const { flags } = await this.parse(FixedPlayerBuildPackage);
+		const { flags } = await this.parse(PreloadedPlayerBuildPackage);
 
 		if (!flags.elementsFile && !flags.elements) {
 			this.error("Either -f/--elementsFile or -e/--elements must be specified");
@@ -68,21 +88,18 @@ export default class FixedPlayerBuildPackage extends Command {
 
 		const monorepoDir = process.cwd();
 
-		const elements = await parseElementsInput(
-			flags.elementsFile,
-			flags.elements,
-		);
+		const elements = await this.parseElements(flags.elementsFile, flags.elements);
 		const elementsArray = elements.map((e: any) => `${e.package}@${e.version}`);
 
 		// Enable safe iteration selection inside the builder for publishing workflows.
 		// If iteration is explicitly set, the builder will use it as-is.
 		if (flags.publish && !flags.iteration) {
-			process.env.PIE_FIXED_PLAYER_STATIC_AUTO_ITERATION = "true";
+			process.env.PIE_PRELOADED_PLAYER_AUTO_ITERATION = "true";
 		} else {
-			delete process.env.PIE_FIXED_PLAYER_STATIC_AUTO_ITERATION;
+			delete process.env.PIE_PRELOADED_PLAYER_AUTO_ITERATION;
 		}
 
-		const { outputDir, version } = await buildFixedPlayerStaticPackage({
+		const { outputDir, version } = await this.buildPackage({
 			elements: elementsArray,
 			iteration: flags.publish ? flags.iteration : undefined,
 			loaderVersion: flags.loaderVersion,
@@ -91,7 +108,7 @@ export default class FixedPlayerBuildPackage extends Command {
 			overwriteBundle: flags.overwriteBundle,
 		});
 
-		this.log(`\n✅ Built: @pie-players/pie-fixed-player-static@${version}`);
+		this.log(`\n✅ Built: @pie-players/pie-preloaded-player@${version}`);
 		this.log(`   Output: ${outputDir}\n`);
 
 		if (flags.publish) {
@@ -102,7 +119,7 @@ export default class FixedPlayerBuildPackage extends Command {
 				this.log(`[DRY RUN] In directory: ${outputDir}`);
 				return;
 			}
-			execSync(cmd, { cwd: outputDir, stdio: "inherit" });
+			this.publish(outputDir);
 			this.log("\n✅ Published\n");
 		} else {
 			this.log("Install locally (example):");

@@ -58,6 +58,9 @@
 	let toolkitCoordinator: any = $state(null);
 	let sessionDebuggerElement: any = $state(null);
 	let pnpDebuggerElement: any = $state(null);
+	let preloadedReady = $state(false);
+	let preloadedError = $state<string | null>(null);
+	let loadedPreloadedBundleKey = $state<string | null>(null);
 	const toolkitToolsConfig = {
 		providers: {
 			calculator: {
@@ -127,6 +130,69 @@
 	let candidateHref = $derived(buildDemoHref('candidate'));
 	let scorerHref = $derived(buildDemoHref('scorer'));
 
+	function collectElementPackages(sectionData: unknown): string[] {
+		const packages = new Set<string>();
+		const seen = new WeakSet<object>();
+
+		function walk(value: unknown) {
+			if (!value || typeof value !== 'object') return;
+			if (seen.has(value as object)) return;
+			seen.add(value as object);
+
+			const valueAny = value as any;
+			const elements = valueAny?.config?.elements;
+			if (elements && typeof elements === 'object') {
+				for (const pkg of Object.values(elements)) {
+					if (typeof pkg === 'string' && pkg.length > 0) packages.add(pkg);
+				}
+			}
+
+			if (Array.isArray(valueAny)) {
+				for (const entry of valueAny) walk(entry);
+				return;
+			}
+
+			for (const nested of Object.values(valueAny)) {
+				walk(nested);
+			}
+		}
+
+		walk(sectionData);
+		return [...packages].sort();
+	}
+
+	$effect(() => {
+		preloadedReady = selectedPlayerType !== 'preloaded';
+		preloadedError = null;
+		if (selectedPlayerType !== 'preloaded') return;
+		const packages = collectElementPackages(resolvedSectionForPlayer);
+		if (!packages.length) {
+			preloadedError = 'No element packages were found to preload';
+			return;
+		}
+		const bundleKey = packages.join('+');
+		if (loadedPreloadedBundleKey === bundleKey) {
+			preloadedReady = true;
+			return;
+		}
+		preloadedReady = false;
+		void (async () => {
+			try {
+				const bundleUrl = `https://proxy.pie-api.com/bundles/${bundleKey}/player.js`;
+				const response = await fetchBundleWithRetry(bundleUrl);
+				const bundleJs = await response.text();
+				const script = document.createElement('script');
+				script.type = 'text/javascript';
+				script.text = bundleJs;
+				document.head.appendChild(script);
+				loadedPreloadedBundleKey = bundleKey;
+				preloadedReady = true;
+			} catch (error) {
+				preloadedError = error instanceof Error ? error.message : String(error);
+			}
+		})();
+	});
+
 	$effect(() => {
 		if (!browser || !attemptId) return;
 		const url = new URL(window.location.href);
@@ -137,6 +203,22 @@
 		url.searchParams.set('layout', layoutType);
 		window.history.replaceState({}, '', url.toString());
 	});
+
+	async function fetchBundleWithRetry(bundleUrl: string) {
+		let attempt = 0;
+		const maxAttempts = 12;
+		while (attempt < maxAttempts) {
+			attempt += 1;
+			const response = await fetch(bundleUrl);
+			if (response.ok) return response;
+			if (response.status === 503) {
+				await new Promise((resolve) => setTimeout(resolve, 1000));
+				continue;
+			}
+			throw new Error(`Bundle preload failed: ${response.status}`);
+		}
+		throw new Error('Bundle preload timed out after retries');
+	}
 
 	function wireCloseListener(target: any, onClose: () => void) {
 		if (!target) return;
@@ -255,7 +337,11 @@
 		onTogglePnpPanel={() => (showPnpPanel = !showPnpPanel)}
 	/>
 
-	{#if layoutType === 'vertical'}
+	{#if selectedPlayerType === 'preloaded' && !preloadedReady}
+		<div class="preload-status">Preloading section item bundles...</div>
+	{:else if preloadedError}
+		<div class="preload-status error">Preloaded bundle failed: {preloadedError}</div>
+	{:else if layoutType === 'vertical'}
 		<pie-section-player-vertical
 			assessment-id={DEMO_ASSESSMENT_ID}
 			section-id={sessionPanelSectionId}
@@ -313,5 +399,16 @@
 		height: 100%;
 		min-height: 0;
 		overflow: hidden;
+	}
+
+	.preload-status {
+		padding: 0.75rem 1rem;
+		color: var(--color-base-content);
+		opacity: 0.8;
+	}
+
+	.preload-status.error {
+		color: var(--color-error);
+		opacity: 1;
 	}
 </style>

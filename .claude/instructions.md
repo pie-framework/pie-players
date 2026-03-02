@@ -2,7 +2,7 @@
 
 ## Project Context
 
-**PIE Players** is a comprehensive web component framework for educational assessments. It provides multiple player implementations (IIFE, ESM, Fixed, Inline, Section) and supports authoring mode, tools, and accommodations.
+**PIE Players** is a comprehensive web component framework for educational assessments. It provides multiple player strategies (IIFE, ESM, Preloaded, Section) and supports authoring mode, tools, and accommodations.
 
 **Critical Requirements**:
 
@@ -28,8 +28,7 @@ pie-players/
 ├── packages/                    # 20 packages
 │   ├── pie-iife-player/        # IIFE bundle player (dynamic CDN loading)
 │   ├── pie-esm-player/         # ESM CDN player (esm.sh, jsDelivr)
-│   ├── pie-fixed-player/       # Pre-bundled monolithic player
-│   ├── pie-inline-player/      # Embedded player for existing systems
+│   ├── pie-preloaded-player/ # Pre-bundled preloaded package output
 │   ├── assessment-toolkit/     # Core assessment services (framework-agnostic)
 │   ├── players-shared/         # Shared utilities & components
 │   └── pie-tool-*/             # 10+ assessment tools (calculator, graph, etc.)
@@ -79,8 +78,7 @@ These checks ensure:
 
 1. **IIFE Player** - Dynamic bundle loading from CDN (most flexible)
 2. **ESM Player** - Native ES modules via CDN (modern browsers)
-3. **Fixed Player** - Pre-bundled with all elements (simplest deployment)
-4. **Inline Player** - Embedded in existing systems (tight integration)
+3. **Preloaded Strategy** - Pre-bundled with all elements (simplest deployment)
 
 ### Web Component Patterns
 

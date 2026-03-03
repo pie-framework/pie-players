@@ -7,6 +7,7 @@
 		showSessionPanel: boolean;
 		showSourcePanel: boolean;
 		showPnpPanel: boolean;
+		showTtsPanel: boolean;
 		selectedDaisyTheme: string;
 		daisyThemes: string[];
 		onReset: () => void;
@@ -15,6 +16,7 @@
 		onToggleSessionPanel: () => void;
 		onToggleSourcePanel: () => void;
 		onTogglePnpPanel: () => void;
+		onToggleTtsPanel: () => void;
 		onSelectDaisyTheme: (theme: string) => void;
 	}
 
@@ -26,6 +28,7 @@
 		showSessionPanel,
 		showSourcePanel,
 		showPnpPanel,
+		showTtsPanel,
 		selectedDaisyTheme,
 		daisyThemes,
 		onReset,
@@ -34,6 +37,7 @@
 		onToggleSessionPanel,
 		onToggleSourcePanel,
 		onTogglePnpPanel,
+		onToggleTtsPanel,
 		onSelectDaisyTheme
 	}: Props = $props();
 </script>
@@ -90,7 +94,7 @@
 
 	<div class="navbar-end gap-2">
 		<label class="flex items-center gap-2">
-			<span class="text-xs opacity-70">Theme</span>
+			<span class="text-xs opacity-70"></span>
 			<select
 				class="select select-sm select-bordered"
 				value={selectedDaisyTheme}
@@ -145,6 +149,20 @@
 		>
 			<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-7 8h8a2 2 0 002-2V6a2 2 0 00-2-2H8a2 2 0 00-2 2v12a2 2 0 002 2zm1-12h4m-4 4h4m-4 4h4" />
+			</svg>
+		</button>
+		<button
+			class="btn btn-sm btn-outline btn-square"
+			class:btn-active={showTtsPanel}
+			onclick={onToggleTtsPanel}
+			title="TTS settings"
+			aria-label="Toggle TTS settings panel"
+			aria-pressed={showTtsPanel}
+		>
+			<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5L6 9H3v6h3l5 4V5z" />
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 9.5a3.5 3.5 0 010 5" />
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.5 7a7 7 0 010 10" />
 			</svg>
 		</button>
 	</div>

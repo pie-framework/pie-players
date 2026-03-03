@@ -99,6 +99,7 @@ let isThemeSyncing = $state(false);
 	let showSessionPanel = $state(false);
 	let showSourcePanel = $state(false);
 	let showPnpPanel = $state(false);
+	let showTtsPanel = $state(false);
 	let toolkitCoordinator: any = $state(null);
 	let sessionDebuggerElement: any = $state(null);
 	let pnpDebuggerElement: any = $state(null);
@@ -436,6 +437,7 @@ function handleDaisyThemeSelection(theme: string) {
 			{showSessionPanel}
 			{showSourcePanel}
 			{showPnpPanel}
+			{showTtsPanel}
 			selectedDaisyTheme={selectedDaisyTheme}
 			daisyThemes={[...DAISY_DEFAULT_THEMES]}
 			onReset={() => void resetSessions()}
@@ -444,6 +446,7 @@ function handleDaisyThemeSelection(theme: string) {
 			onToggleSessionPanel={() => (showSessionPanel = !showSessionPanel)}
 			onToggleSourcePanel={() => (showSourcePanel = !showSourcePanel)}
 			onTogglePnpPanel={() => (showPnpPanel = !showPnpPanel)}
+			onToggleTtsPanel={() => (showTtsPanel = !showTtsPanel)}
 			onSelectDaisyTheme={handleDaisyThemeSelection}
 		/>
 
@@ -488,8 +491,10 @@ function handleDaisyThemeSelection(theme: string) {
 	{showSessionPanel}
 	{showSourcePanel}
 	{showPnpPanel}
+	{showTtsPanel}
 	{sourcePanelJson}
 	onCloseSourcePanel={() => (showSourcePanel = false)}
+	onCloseTtsPanel={() => (showTtsPanel = false)}
 	bind:sessionDebuggerElement
 	bind:pnpDebuggerElement
 />

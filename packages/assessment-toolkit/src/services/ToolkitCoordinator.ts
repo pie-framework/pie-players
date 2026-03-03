@@ -27,7 +27,7 @@ import { AccessibilityCatalogResolver } from "./AccessibilityCatalogResolver.js"
 import { ElementToolStateStore } from "./ElementToolStateStore.js";
 import { HighlightCoordinator } from "./HighlightCoordinator.js";
 import { ToolCoordinator } from "./ToolCoordinator.js";
-import { TTSService } from "./TTSService.js";
+import { TTSService, type TTSConfig } from "./TTSService.js";
 import { BrowserTTSProvider } from "./tts/browser-provider.js";
 import {
 	ToolProviderRegistry,
@@ -73,10 +73,13 @@ export interface ToolConfig {
  */
 export interface TTSToolConfig extends ToolConfig {
 	backend?: "browser" | "polly" | "google" | "server";
+	provider?: "polly" | "google";
+	serverProvider?: "polly" | "google";
 	defaultVoice?: string;
 	rate?: number;
 	pitch?: number;
 	apiEndpoint?: string;
+	language?: string;
 	authFetcher?: () => Promise<Partial<TTSToolProviderConfig>>;
 }
 
@@ -543,11 +546,16 @@ export class ToolkitCoordinator {
 			| undefined;
 		if (ttsConfig?.enabled !== false) {
 			const backend = ttsConfig?.backend || "browser";
+			const serverProvider =
+				ttsConfig?.serverProvider ||
+				ttsConfig?.provider ||
+				(backend === "polly" || backend === "google" ? backend : undefined);
 			void this.registerProvider("tts", {
 				provider: new TTSToolProvider(backend),
 				config: {
 					backend,
 					apiEndpoint: ttsConfig?.apiEndpoint,
+					serverProvider,
 					voice: ttsConfig?.defaultVoice,
 					rate: ttsConfig?.rate,
 					pitch: ttsConfig?.pitch,
@@ -833,13 +841,36 @@ export class ToolkitCoordinator {
 					?.backend ??
 				"browser",
 		});
+		const resolvedToolConfig =
+			config ||
+			((this.config.tools?.providers?.tts as TTSToolConfig | undefined) || {});
+		const resolvedBackend = resolvedToolConfig.backend || "browser";
+		const runtimeProvider =
+			resolvedToolConfig.serverProvider ||
+			resolvedToolConfig.provider ||
+			(resolvedBackend === "polly" || resolvedBackend === "google"
+				? resolvedBackend
+				: undefined);
+		const runtimeTTSConfig: Partial<TTSConfig> = {
+			voice: resolvedToolConfig.defaultVoice,
+			rate: resolvedToolConfig.rate,
+			pitch: resolvedToolConfig.pitch,
+			providerOptions: resolvedToolConfig.language
+				? {
+						locale: resolvedToolConfig.language,
+					}
+				: undefined,
+			apiEndpoint: resolvedToolConfig.apiEndpoint,
+			provider: runtimeProvider,
+			language: resolvedToolConfig.language,
+		} as Partial<TTSConfig>;
 
 		// Try to use TTS provider from registry if available
 		if (this.toolProviderRegistry.has("tts")) {
 			try {
 				const ttsProvider = await this.ensureProviderReady("tts");
 				const providerInstance = await ttsProvider.createInstance();
-				await this.ttsService.initialize(providerInstance);
+				await this.ttsService.initialize(providerInstance, runtimeTTSConfig);
 				this.ttsService.setCatalogResolver(this.catalogResolver);
 				this.ttsInitialized = true;
 				await this.hooks.onTTSReady?.();
@@ -861,7 +892,7 @@ export class ToolkitCoordinator {
 		// Fallback to browser provider
 		const provider = new BrowserTTSProvider();
 		try {
-			await this.ttsService.initialize(provider, config);
+			await this.ttsService.initialize(provider, runtimeTTSConfig);
 			this.ttsService.setCatalogResolver(this.catalogResolver);
 			this.ttsInitialized = true;
 			await this.hooks.onTTSReady?.();
@@ -1090,11 +1121,16 @@ export class ToolkitCoordinator {
 		if (ttsConfig?.enabled === false) return;
 
 		const backend = ttsConfig?.backend || "browser";
+		const serverProvider =
+			ttsConfig?.serverProvider ||
+			ttsConfig?.provider ||
+			(backend === "polly" || backend === "google" ? backend : undefined);
 		await this.registerProvider("tts", {
 			provider: new TTSToolProvider(backend),
 			config: {
 				backend,
 				apiEndpoint: ttsConfig?.apiEndpoint,
+				serverProvider,
 				voice: ttsConfig?.defaultVoice,
 				rate: ttsConfig?.rate,
 				pitch: ttsConfig?.pitch,

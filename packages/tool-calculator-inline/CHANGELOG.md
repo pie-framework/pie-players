@@ -1,5 +1,14 @@
 # @pie-players/pie-tool-calculator-inline
 
+## 0.1.7
+
+### Patch Changes
+
+- beffcc0: Release all publishable packages.
+- Updated dependencies [beffcc0]
+  - @pie-players/pie-assessment-toolkit@0.2.10
+  - @pie-players/pie-context@0.1.2
+
 ## 0.1.6
 
 ### Patch Changes

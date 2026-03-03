@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 
 	type BackendTab = 'browser' | 'polly' | 'google';
 
@@ -28,11 +28,24 @@
 	let { toolkitCoordinator, onClose = () => {} }: Props = $props();
 
 	const DEFAULT_API_ENDPOINT = '/api/tts';
+	const TTS_SETTINGS_STORAGE_KEY = 'pie:section-demos:tts-settings';
+
+	type PersistedTTSSettings = {
+		backend?: BackendTab;
+		apiEndpoint?: string;
+		defaultVoice?: string;
+		rate?: number;
+		pitch?: number;
+		language?: string;
+	};
 
 	let activeTab = $state<BackendTab>('browser');
 	let applyMessage = $state<string | null>(null);
 	let applyError = $state<string | null>(null);
 	let isApplying = $state(false);
+	let isPreviewing = $state(false);
+	let previewError = $state<string | null>(null);
+	let previewBackend = $state<BackendTab | null>(null);
 
 	let browserVoice = $state('');
 	let browserRate = $state(1);
@@ -76,6 +89,7 @@
 		detail: null,
 		voices: []
 	});
+	let currentPreviewAudio: HTMLAudioElement | null = null;
 
 	function normalizeRate(value: number): number {
 		const next = Number(value);
@@ -91,21 +105,23 @@
 
 	function initializeFromCoordinator() {
 		const existing = toolkitCoordinator?.getToolConfig?.('tts') || {};
-		const backend = existing?.backend;
+		const stored = readStoredSettings();
+		const source = stored ? { ...existing, ...stored } : existing;
+		const backend = source?.backend;
 		if (backend === 'browser' || backend === 'polly' || backend === 'google') {
 			activeTab = backend;
 		}
 
-		const defaultVoice = typeof existing?.defaultVoice === 'string' ? existing.defaultVoice : '';
-		const defaultRate = normalizeRate(Number(existing?.rate ?? 1));
-		const defaultPitch = normalizePitch(Number(existing?.pitch ?? 1));
+		const defaultVoice = typeof source?.defaultVoice === 'string' ? source.defaultVoice : '';
+		const defaultRate = normalizeRate(Number(source?.rate ?? 1));
+		const defaultPitch = normalizePitch(Number(source?.pitch ?? 1));
 		const defaultEndpoint =
-			typeof existing?.apiEndpoint === 'string' && existing.apiEndpoint.trim().length > 0
-				? existing.apiEndpoint
+			typeof source?.apiEndpoint === 'string' && source.apiEndpoint.trim().length > 0
+				? source.apiEndpoint
 				: DEFAULT_API_ENDPOINT;
 		const defaultLanguage =
-			typeof existing?.language === 'string' && existing.language.trim().length > 0
-				? existing.language
+			typeof source?.language === 'string' && source.language.trim().length > 0
+				? source.language
 				: 'en-US';
 
 		browserVoice = backend === 'browser' ? defaultVoice : '';
@@ -121,6 +137,28 @@
 		googleLanguage = defaultLanguage;
 		googleVoice = backend === 'google' ? defaultVoice : '';
 		googleRate = defaultRate;
+	}
+
+	function readStoredSettings(): PersistedTTSSettings | null {
+		if (typeof window === 'undefined') return null;
+		try {
+			const raw = window.localStorage.getItem(TTS_SETTINGS_STORAGE_KEY);
+			if (!raw) return null;
+			const parsed = JSON.parse(raw) as PersistedTTSSettings;
+			if (!parsed || typeof parsed !== 'object') return null;
+			return parsed;
+		} catch {
+			return null;
+		}
+	}
+
+	function persistSettings(settings: PersistedTTSSettings): void {
+		if (typeof window === 'undefined') return;
+		try {
+			window.localStorage.setItem(TTS_SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+		} catch {
+			// Ignore persistence errors (e.g., private mode or storage quota).
+		}
 	}
 
 	async function checkBrowserAvailability() {
@@ -331,6 +369,130 @@
 		return isKnown ? googleVoice : undefined;
 	}
 
+	function normalizeApiEndpoint(endpoint: string): string {
+		const trimmed = endpoint.trim();
+		if (!trimmed) return DEFAULT_API_ENDPOINT;
+		return trimmed.replace(/\/synthesize\/?$/i, '');
+	}
+
+	function getSampleText(tab: BackendTab): string {
+		if (tab === 'browser') return 'This is a browser voice sample.';
+		if (tab === 'polly') return 'This is an AWS Polly voice sample.';
+		return 'This is a Google Cloud TTS voice sample.';
+	}
+
+	function stopPreview() {
+		if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+			window.speechSynthesis.cancel();
+		}
+		if (currentPreviewAudio) {
+			currentPreviewAudio.pause();
+			currentPreviewAudio.src = '';
+			currentPreviewAudio = null;
+		}
+		isPreviewing = false;
+		previewBackend = null;
+	}
+
+	async function previewServerVoice(provider: 'polly' | 'google') {
+		const apiEndpoint = normalizeApiEndpoint(
+			provider === 'polly' ? pollyApiEndpoint : googleApiEndpoint
+		);
+		const requestBody: Record<string, unknown> = {
+			text: getSampleText(provider),
+			provider,
+			rate: normalizeRate(provider === 'polly' ? pollyRate : googleRate),
+			language: provider === 'polly' ? pollyLanguage || undefined : googleLanguage || undefined,
+			voice:
+				provider === 'polly'
+					? resolveVoiceForBackend('polly')
+					: resolveVoiceForBackend('google'),
+			includeSpeechMarks: false
+		};
+		const response = await fetch(`${apiEndpoint}/synthesize`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(requestBody)
+		});
+		const payload = await readJsonSafe(response);
+		if (!response.ok) {
+			throw new Error(
+				payload?.message || payload?.error || `Preview request failed (${response.status})`
+			);
+		}
+		const audioBase64 = payload?.audio;
+		const contentType = payload?.contentType || 'audio/mpeg';
+		if (!audioBase64 || typeof audioBase64 !== 'string') {
+			throw new Error('Preview response did not include audio content.');
+		}
+		const byteChars = atob(audioBase64);
+		const byteNumbers = new Array(byteChars.length);
+		for (let i = 0; i < byteChars.length; i += 1) {
+			byteNumbers[i] = byteChars.charCodeAt(i);
+		}
+		const blob = new Blob([new Uint8Array(byteNumbers)], { type: contentType });
+		const objectUrl = URL.createObjectURL(blob);
+		const audio = new Audio(objectUrl);
+		currentPreviewAudio = audio;
+		await new Promise<void>((resolve, reject) => {
+			audio.onended = () => {
+				URL.revokeObjectURL(objectUrl);
+				resolve();
+			};
+			audio.onerror = () => {
+				URL.revokeObjectURL(objectUrl);
+				reject(new Error('Failed to play preview audio.'));
+			};
+			void audio.play().catch(reject);
+		});
+		currentPreviewAudio = null;
+	}
+
+	async function previewBrowserVoice() {
+		if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+			throw new Error('Browser speech synthesis is unavailable.');
+		}
+		const synth = window.speechSynthesis;
+		const utterance = new SpeechSynthesisUtterance(getSampleText('browser'));
+		utterance.rate = normalizeRate(browserRate);
+		utterance.pitch = normalizePitch(browserPitch);
+		if (browserVoice) {
+			const voice = synth.getVoices().find((entry) => entry.name === browserVoice);
+			if (voice) utterance.voice = voice;
+		}
+		await new Promise<void>((resolve, reject) => {
+			utterance.onend = () => resolve();
+			utterance.onerror = () => reject(new Error('Failed to play browser voice preview.'));
+			synth.speak(utterance);
+		});
+	}
+
+	async function previewSelectedVoice() {
+		previewError = null;
+		const activeState = getActiveState();
+		if (!activeState.available) {
+			previewError = 'Cannot preview while this TTS service is unavailable.';
+			return;
+		}
+		stopPreview();
+		isPreviewing = true;
+		previewBackend = activeTab;
+		try {
+			if (activeTab === 'browser') {
+				await previewBrowserVoice();
+			} else if (activeTab === 'polly') {
+				await previewServerVoice('polly');
+			} else {
+				await previewServerVoice('google');
+			}
+		} catch (error) {
+			previewError = error instanceof Error ? error.message : String(error);
+		} finally {
+			isPreviewing = false;
+			previewBackend = null;
+		}
+	}
+
 	async function applySettings() {
 		applyMessage = null;
 		applyError = null;
@@ -347,31 +509,43 @@
 		isApplying = true;
 		try {
 			if (activeTab === 'browser') {
-				toolkitCoordinator.updateToolConfig('tts', {
-					enabled: true,
-					backend: 'browser',
+				const next = {
+					backend: 'browser' as const,
 					defaultVoice: resolveVoiceForBackend('browser'),
 					rate: normalizeRate(browserRate),
 					pitch: normalizePitch(browserPitch)
-				});
-			} else if (activeTab === 'polly') {
+				};
 				toolkitCoordinator.updateToolConfig('tts', {
 					enabled: true,
-					backend: 'polly',
-					apiEndpoint: pollyApiEndpoint || DEFAULT_API_ENDPOINT,
+					...next
+				});
+				persistSettings(next);
+			} else if (activeTab === 'polly') {
+				const next = {
+					backend: 'polly' as const,
+					apiEndpoint: normalizeApiEndpoint(pollyApiEndpoint),
 					defaultVoice: resolveVoiceForBackend('polly'),
 					rate: normalizeRate(pollyRate),
 					language: pollyLanguage || undefined
-				});
-			} else {
+				};
 				toolkitCoordinator.updateToolConfig('tts', {
 					enabled: true,
-					backend: 'google',
-					apiEndpoint: googleApiEndpoint || DEFAULT_API_ENDPOINT,
+					...next
+				});
+				persistSettings(next);
+			} else {
+				const next = {
+					backend: 'google' as const,
+					apiEndpoint: normalizeApiEndpoint(googleApiEndpoint),
 					defaultVoice: resolveVoiceForBackend('google'),
 					rate: normalizeRate(googleRate),
 					language: googleLanguage || undefined
+				};
+				toolkitCoordinator.updateToolConfig('tts', {
+					enabled: true,
+					...next
 				});
+				persistSettings(next);
 			}
 			await toolkitCoordinator?.ensureTTSReady?.(toolkitCoordinator?.getToolConfig?.('tts'));
 			applyMessage = `Applied ${activeTab} TTS settings.`;
@@ -386,6 +560,10 @@
 	onMount(() => {
 		initializeFromCoordinator();
 		void checkActiveTabAvailability();
+	});
+
+	onDestroy(() => {
+		stopPreview();
 	});
 </script>
 
@@ -540,9 +718,19 @@
 		{#if applyError}
 			<div class="alert alert-error text-xs"><span>{applyError}</span></div>
 		{/if}
+		{#if previewError}
+			<div class="alert alert-error text-xs"><span>{previewError}</span></div>
+		{/if}
 
 		<div class="pie-tts-actions">
 			<button class="btn btn-sm btn-outline" onclick={onClose}>Close</button>
+			<button
+				class="btn btn-sm btn-outline"
+				disabled={!getActiveState().available || isApplying}
+				onclick={() => void previewSelectedVoice()}
+			>
+				{isPreviewing && previewBackend === activeTab ? 'Previewing...' : 'Preview voice'}
+			</button>
 			<button class="btn btn-sm btn-primary" disabled={isApplying || !getActiveState().available} onclick={() => void applySettings()}>
 				{isApplying ? 'Applying...' : 'Apply'}
 			</button>

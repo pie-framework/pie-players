@@ -9,9 +9,7 @@
   - @pie-players/pie-assessment-toolkit@0.2.9
   - @pie-players/pie-context@0.1.1
   - @pie-players/pie-esm-player@0.2.6
-  - @pie-players/pie-fixed-player@0.2.5
   - @pie-players/pie-iife-player@0.2.6
-  - @pie-players/pie-inline-player@0.2.5
   - @pie-players/pie-players-shared@0.2.5
   - @pie-players/pie-section-tools-toolbar@0.2.10
   - @pie-players/pie-tool-answer-eliminator@0.2.9

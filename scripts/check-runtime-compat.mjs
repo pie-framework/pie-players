@@ -20,8 +20,7 @@ const NODE_SAFE_PACKAGES = [
 ];
 
 const BROWSER_ONLY_PACKAGES = [
-	"@pie-players/pie-iife-player",
-	"@pie-players/pie-author",
+	"@pie-players/pie-item-player",
 ];
 
 const readJson = (filePath) => JSON.parse(readFileSync(filePath, "utf8"));

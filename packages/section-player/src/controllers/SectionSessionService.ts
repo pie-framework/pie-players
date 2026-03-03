@@ -4,6 +4,10 @@ import {
 	upsertItemSessionFromPieSessionChange,
 	type TestAttemptSession,
 } from "@pie-players/pie-assessment-toolkit";
+import {
+	normalizeItemSessionChange,
+	type ItemSessionUpdateIntent,
+} from "@pie-players/pie-players-shared";
 import type { SectionControllerInput, SessionChangedResult } from "./types.js";
 
 export class SectionSessionService {
@@ -35,67 +39,6 @@ export class SectionSessionService {
 		};
 	}
 
-	private normalizeToItemSession(
-		itemId: string,
-		rawSession: any,
-		previousItemSession: any,
-		componentId?: string,
-	): { id: string; data: any[] } | null {
-		if (!rawSession || typeof rawSession !== "object") return null;
-
-		// Canonical PIE item session shape: { id, data: [...] }
-		if (Array.isArray(rawSession.data)) {
-			return {
-				id: String(rawSession.id || previousItemSession?.id || itemId),
-				data: rawSession.data,
-			};
-		}
-
-		// Element-level entry shape: { id: "<elementId>", ... }
-		if (typeof rawSession.id === "string" && rawSession.id) {
-			const base =
-				previousItemSession &&
-				typeof previousItemSession === "object" &&
-				Array.isArray(previousItemSession.data)
-					? {
-							id: String(previousItemSession.id || itemId),
-							data: [...previousItemSession.data],
-						}
-					: { id: itemId, data: [] as any[] };
-			const idx = base.data.findIndex((entry: any) => entry?.id === rawSession.id);
-			if (idx >= 0) {
-				base.data[idx] = { ...base.data[idx], ...rawSession };
-			} else {
-				base.data.push(rawSession);
-			}
-			return base;
-		}
-
-		// Generic object payload shape from session-changed events (no id/data keys).
-		// Coerce into an element-level entry so canonical attempt state still updates.
-		const inferredEntryId =
-			(typeof componentId === "string" && componentId) ||
-			(typeof rawSession.component === "string" && rawSession.component) ||
-			"response";
-		const base =
-			previousItemSession &&
-			typeof previousItemSession === "object" &&
-			Array.isArray(previousItemSession.data)
-				? {
-						id: String(previousItemSession.id || itemId),
-						data: [...previousItemSession.data],
-					}
-				: { id: itemId, data: [] as any[] };
-		const entry = { id: inferredEntryId, ...rawSession };
-		const idx = base.data.findIndex((existing: any) => existing?.id === inferredEntryId);
-		if (idx >= 0) {
-			base.data[idx] = { ...base.data[idx], ...entry };
-		} else {
-			base.data.push(entry);
-		}
-		return base;
-	}
-
 	public resolve(input: SectionControllerInput & { adapterItemRefs: any[] }): {
 		testAttemptSession: TestAttemptSession;
 		itemSessions: Record<string, any>;
@@ -114,23 +57,13 @@ export class SectionSessionService {
 		testAttemptSession: TestAttemptSession;
 		itemSessions: Record<string, any>;
 	}): SessionChangedResult {
-		const actualSession = args.sessionDetail?.session || args.sessionDetail;
-		const safeItemId =
-			typeof args.itemId === "string" && args.itemId
-				? args.itemId
-				: typeof actualSession?.id === "string"
-					? String(actualSession.id)
-					: "";
-		const normalizedSession = this.normalizeToItemSession(
-			safeItemId,
-			actualSession,
-			args.itemSessions[safeItemId],
-			args.sessionDetail?.component,
-		);
-		const beforeItemSession = args.itemSessions[safeItemId];
-		const beforeDataLength = Array.isArray(beforeItemSession?.data)
-			? beforeItemSession.data.length
-			: null;
+		const normalizedChange = normalizeItemSessionChange({
+			itemId: args.itemId,
+			sessionDetail: args.sessionDetail,
+			previousItemSession: args.itemSessions[args.itemId],
+		});
+		const safeItemId = normalizedChange.itemId;
+		const normalizedSession = normalizedChange.session;
 		let nextTestAttemptSession = args.testAttemptSession;
 
 		if (normalizedSession && safeItemId) {
@@ -139,7 +72,7 @@ export class SectionSessionService {
 				{
 					itemIdentifier: safeItemId,
 					pieSessionId: String(normalizedSession.id || safeItemId),
-					isCompleted: Boolean(args.sessionDetail?.complete),
+					isCompleted: Boolean(normalizedChange.complete),
 					session: normalizedSession,
 				},
 			);
@@ -148,29 +81,13 @@ export class SectionSessionService {
 		const nextItemSessions = toItemSessionsRecord(
 			nextTestAttemptSession,
 		) as Record<string, any>;
-		const afterItemSession = nextItemSessions[safeItemId];
-		const afterDataLength = Array.isArray(afterItemSession?.data)
-			? afterItemSession.data.length
-			: null;
-		const logData = {
-			safeItemId,
-			hasActualSession: !!actualSession,
-			normalized: !!normalizedSession,
-			beforeDataLength,
-			afterDataLength,
-			attemptReferenceChanged: nextTestAttemptSession !== args.testAttemptSession,
-			itemSessionReferenceChanged: afterItemSession !== beforeItemSession,
-		};
-		console.debug(
-			"[SectionSessionService][SessionTrace] applyItemSessionChanged",
-			logData,
-		);
 
 		const fallbackSession =
 			nextItemSessions[safeItemId] ||
 			normalizedSession ||
-			(actualSession && typeof actualSession === "object"
-				? actualSession
+			(args.sessionDetail && typeof args.sessionDetail === "object"
+				? ((args.sessionDetail as Record<string, unknown>).session ??
+					args.sessionDetail)
 				: { id: safeItemId, data: [] });
 
 		return {
@@ -183,8 +100,9 @@ export class SectionSessionService {
 				sessionState: this.toSessionState(nextTestAttemptSession),
 				itemSessions: (nextTestAttemptSession.itemSessions ||
 					{}) as Record<string, unknown>,
-				complete: args.sessionDetail?.complete,
-				component: args.sessionDetail?.component,
+				intent: normalizedChange.intent as ItemSessionUpdateIntent,
+				complete: normalizedChange.complete,
+				component: normalizedChange.component,
 				timestamp: Date.now(),
 			},
 		};

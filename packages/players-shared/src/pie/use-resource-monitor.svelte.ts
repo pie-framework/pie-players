@@ -17,7 +17,7 @@
  *     () => hostElement,
  *     () => loaderConfig,
  *     () => debugEnabled,
- *     'pie-fixed-player'
+ *     'pie-item-player'
  *   );
  * </script>
  * ```

@@ -82,6 +82,11 @@ describe("createDefaultToolRegistry component overrides", () => {
 		});
 
 		const toolbarContext: ToolbarContext = {
+			scope: {
+				level: "item",
+				scopeId: "item-1",
+				itemId: "item-1",
+			},
 			itemId: "item-1",
 			catalogId: "item-1",
 			language: "en",
@@ -98,7 +103,9 @@ describe("createDefaultToolRegistry component overrides", () => {
 		const renderResult = withFakeDocument(() =>
 			registry.renderForToolbar("calculator", itemContext, toolbarContext),
 		);
-		expect(renderResult?.overlayElement?.tagName.toLowerCase()).toBe(
+		expect(
+			renderResult?.elements?.find((entry) => entry.mount === "after-buttons")?.element?.tagName.toLowerCase(),
+		).toBe(
 			"custom-calculator",
 		);
 	});

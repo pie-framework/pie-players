@@ -29,7 +29,7 @@ import type { ToolProviderRegistry } from "./tool-providers/ToolProviderRegistry
 import type {
 	ITTSProvider,
 	TTSProviderCapabilities,
-} from "./tts/provider-interface.js";
+} from "@pie-players/pie-tts";
 
 // Re-export II18nService from players-shared
 export type { II18nService };

@@ -33,6 +33,26 @@ export {
 	loadPieModule,
 	loadPieModuleFromString,
 } from "./initialization.js";
+// Item controller
+export type { ItemControllerOptions } from "./item-controller.js";
+export { ItemController, normalizeItemSessionContainer } from "./item-controller.js";
+export type {
+	ItemSessionContainer as CanonicalItemSessionContainer,
+	ItemSessionUpdateIntent,
+	NormalizedItemSessionChange,
+} from "./item-session-contract.js";
+export {
+	hasResponseValue,
+	normalizeItemSessionChange,
+} from "./item-session-contract.js";
+export type {
+	ItemSessionContainer,
+	ItemSessionStorageStrategy,
+} from "./item-controller-storage.js";
+export {
+	MemoryItemSessionStorage,
+	SessionStorageItemSessionStorage,
+} from "./item-controller-storage.js";
 // Logging
 export type { PieLogger } from "./logger.js";
 export { createPieLogger, isGlobalDebugEnabled } from "./logger.js";

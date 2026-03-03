@@ -1,30 +1,44 @@
 <script lang="ts">
 	interface Props {
-		layoutType: 'vertical' | 'split-panel' | 'item-mode';
 		roleType: 'candidate' | 'scorer';
+		layoutType: 'splitpane' | 'vertical';
+		candidateHref: string;
+		scorerHref: string;
 		showSessionPanel: boolean;
 		showSourcePanel: boolean;
 		showPnpPanel: boolean;
-		onSelectLayout: (layout: 'vertical' | 'split-panel' | 'item-mode') => void;
-		onSelectRole: (role: 'candidate' | 'scorer') => void;
+		showTtsPanel: boolean;
+		selectedDaisyTheme: string;
+		daisyThemes: string[];
 		onReset: () => void;
+		onSetSplitpaneLayout: () => void;
+		onSetVerticalLayout: () => void;
 		onToggleSessionPanel: () => void;
 		onToggleSourcePanel: () => void;
 		onTogglePnpPanel: () => void;
+		onToggleTtsPanel: () => void;
+		onSelectDaisyTheme: (theme: string) => void;
 	}
 
 	let {
-		layoutType,
 		roleType,
+		layoutType,
+		candidateHref,
+		scorerHref,
 		showSessionPanel,
 		showSourcePanel,
 		showPnpPanel,
-		onSelectLayout,
-		onSelectRole,
+		showTtsPanel,
+		selectedDaisyTheme,
+		daisyThemes,
 		onReset,
+		onSetSplitpaneLayout,
+		onSetVerticalLayout,
 		onToggleSessionPanel,
 		onToggleSourcePanel,
-		onTogglePnpPanel
+		onTogglePnpPanel,
+		onToggleTtsPanel,
+		onSelectDaisyTheme
 	}: Props = $props();
 </script>
 
@@ -37,62 +51,62 @@
 		<div class="join">
 			<button
 				class="btn btn-sm join-item"
-				class:btn-active={layoutType === 'split-panel'}
-				onclick={() => onSelectLayout('split-panel')}
-				title="Split panel - passages left, items right"
+				class:btn-active={layoutType === 'splitpane'}
+				onclick={onSetSplitpaneLayout}
+				title="Splitpane layout"
+				aria-label="Use splitpane section player layout"
+				aria-pressed={layoutType === 'splitpane'}
 			>
-				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 4H5a2 2 0 00-2 2v12a2 2 0 002 2h4m0-16v16m0-16h10a2 2 0 012 2v12a2 2 0 01-2 2H9" />
-				</svg>
-				Split
+				Splitpane
 			</button>
 			<button
 				class="btn btn-sm join-item"
 				class:btn-active={layoutType === 'vertical'}
-				onclick={() => onSelectLayout('vertical')}
-				title="Vertical layout - passages first, then items"
+				onclick={onSetVerticalLayout}
+				title="Vertical layout"
+				aria-label="Use vertical section player layout"
+				aria-pressed={layoutType === 'vertical'}
 			>
-				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-				</svg>
 				Vertical
 			</button>
-			<button
-				class="btn btn-sm join-item"
-				class:btn-active={layoutType === 'item-mode'}
-				onclick={() => onSelectLayout('item-mode')}
-				title="Item mode layout - one item at a time"
-			>
-				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10M7 12h6m-6 5h10M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z" />
-				</svg>
-				Item
-			</button>
 		</div>
-
-		<div class="divider divider-horizontal"></div>
-
 		<div class="join">
-			<button
+			<a
 				class="btn btn-sm join-item"
 				class:btn-active={roleType === 'candidate'}
-				onclick={() => onSelectRole('candidate')}
+				href={candidateHref}
+				data-sveltekit-reload
 				title="Candidate view - student taking assessment (gather mode)"
 			>
 				Student
-			</button>
-			<button
+			</a>
+			<a
 				class="btn btn-sm join-item"
 				class:btn-active={roleType === 'scorer'}
-				onclick={() => onSelectRole('scorer')}
+				href={scorerHref}
+				data-sveltekit-reload
 				title="Scorer view - instructor reviewing/scoring (evaluate mode)"
 			>
 				Scorer
-			</button>
+			</a>
 		</div>
 	</div>
 
 	<div class="navbar-end gap-2">
+		<label class="flex items-center gap-2">
+			<span class="text-xs opacity-70"></span>
+			<select
+				class="select select-sm select-bordered"
+				value={selectedDaisyTheme}
+				onchange={(e) => onSelectDaisyTheme((e.currentTarget as HTMLSelectElement).value)}
+				aria-label="Select DaisyUI theme"
+				title="Select DaisyUI theme"
+			>
+				{#each daisyThemes as theme}
+					<option value={theme}>{theme}</option>
+				{/each}
+			</select>
+		</label>
 		<button
 			class="btn btn-sm btn-outline"
 			onclick={onReset}
@@ -135,6 +149,20 @@
 		>
 			<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-7 8h8a2 2 0 002-2V6a2 2 0 00-2-2H8a2 2 0 00-2 2v12a2 2 0 002 2zm1-12h4m-4 4h4m-4 4h4" />
+			</svg>
+		</button>
+		<button
+			class="btn btn-sm btn-outline btn-square"
+			class:btn-active={showTtsPanel}
+			onclick={onToggleTtsPanel}
+			title="TTS settings"
+			aria-label="Toggle TTS settings panel"
+			aria-pressed={showTtsPanel}
+		>
+			<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5L6 9H3v6h3l5 4V5z" />
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 9.5a3.5 3.5 0 010 5" />
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.5 7a7 7 0 010 10" />
 			</svg>
 		</button>
 	</div>

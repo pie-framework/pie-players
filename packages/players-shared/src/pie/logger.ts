@@ -7,7 +7,7 @@
  *
  * Usage:
  * ```typescript
- * const logger = createPieLogger('pie-fixed-player', debug);
+ * const logger = createPieLogger('pie-item-player', debug);
  * logger.debug('Detailed debug info', data);  // Only shown if debug=true
  * logger.info('Important production info');   // Always shown
  * logger.warn('Warning message');             // Always shown
@@ -44,7 +44,7 @@ export interface PieLogger {
 /**
  * Create a PIE logger instance
  *
- * @param namespace - Component name for log prefixing (e.g., 'pie-fixed-player')
+ * @param namespace - Component name for log prefixing (e.g., 'pie-item-player')
  * @param debugEnabledFn - Function that returns whether debug logs should be shown (checked dynamically on each call)
  * @returns Logger instance with debug, info, warn, error methods
  */

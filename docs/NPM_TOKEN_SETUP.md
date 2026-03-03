@@ -4,7 +4,7 @@ This guide explains how to safely configure the NPM authentication token for aut
 
 ## Overview
 
-GitHub Actions workflows in this repo need an NPM token to publish packages to the npm registry (including the fixed-player static publisher in `.github/workflows/publish-fixed-player-static.yml`). This token must be:
+GitHub Actions workflows in this repo need an NPM token to publish packages to the npm registry (including the preloaded-player publisher in `.github/workflows/publish-preloaded-player.yml`). This token must be:
 - An **Automation token** (not granular or classic)
 - Have **publish permissions** to the `@pie-framework` organization
 - Stored securely as a GitHub **repository secret**
@@ -235,8 +235,8 @@ Use this only for recovery/rerun scenarios; normal releases should continue thro
 the standard changeset → version PR → merge flow.
 
 You can verify by checking:
-- https://www.npmjs.com/package/@pie-framework/pie-iife-player
-- https://www.npmjs.com/package/@pie-framework/pie-esm-player
+- https://www.npmjs.com/package/@pie-players/pie-item-player
+- https://www.npmjs.com/package/@pie-players/pie-preloaded-player
 
 ## Questions?
 

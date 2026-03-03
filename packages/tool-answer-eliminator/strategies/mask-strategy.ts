@@ -5,6 +5,15 @@ import type { EliminationStrategy } from "./elimination-strategy.js";
  * Partially hides/grays eliminated choices
  */
 export class MaskStrategy implements EliminationStrategy {
+	private static readonly HIGHLIGHT_STYLE_PREFIX =
+		"pie-answer-eliminator-mask-highlight-";
+	private static readonly HIGHLIGHT_NAME_PREFIX = "pie-answer-masked-";
+	private static readonly FALLBACK_CLASS = "pie-answer-masked-fallback";
+	private static readonly CHOICE_HOOK_ATTR =
+		"data-pie-answer-eliminator-choice";
+	private static readonly ELIMINATED_ATTR = "data-pie-answer-eliminated";
+	private static readonly ELIMINATED_ID_ATTR = "data-pie-answer-eliminated-id";
+
 	readonly name = "mask";
 
 	private highlights = new Map<string, Highlight>();
@@ -12,12 +21,11 @@ export class MaskStrategy implements EliminationStrategy {
 	private fallbackContainers = new Map<string, HTMLElement>();
 
 	initialize(): void {
-		this.injectCSS();
+		// No-op: shared fallback styles are owned by @pie-players/pie-theme/components.css.
 	}
 
 	destroy(): void {
 		this.clearAll();
-		this.removeCSS();
 	}
 
 	apply(choiceId: string, range: Range): void {
@@ -30,7 +38,10 @@ export class MaskStrategy implements EliminationStrategy {
 		this.injectHighlightCSS(choiceId);
 
 		const highlight = new Highlight(range);
-		CSS.highlights.set(`answer-masked-${choiceId}`, highlight);
+		CSS.highlights.set(
+			`${MaskStrategy.HIGHLIGHT_NAME_PREFIX}${choiceId}`,
+			highlight,
+		);
 
 		this.highlights.set(choiceId, highlight);
 		this.ranges.set(choiceId, range);
@@ -44,7 +55,7 @@ export class MaskStrategy implements EliminationStrategy {
 			return;
 		}
 
-		CSS.highlights.delete(`answer-masked-${choiceId}`);
+		CSS.highlights.delete(`${MaskStrategy.HIGHLIGHT_NAME_PREFIX}${choiceId}`);
 
 		// Remove CSS for this specific highlight
 		this.removeHighlightCSS(choiceId);
@@ -78,33 +89,14 @@ export class MaskStrategy implements EliminationStrategy {
 		return typeof CSS !== "undefined" && "highlights" in CSS;
 	}
 
-	private injectCSS(): void {
-		const styleId = "answer-eliminator-mask-styles";
-		if (document.getElementById(styleId)) return;
-
-		const style = document.createElement("style");
-		style.id = styleId;
-		// CSS Custom Highlight API: Each registered highlight gets its own ::highlight() selector
-		// We inject choice-specific styles dynamically in injectHighlightCSS()
-		style.textContent = `
-      /* Fallback */
-      .answer-masked-fallback {
-        opacity: 0.2;
-        filter: blur(2px);
-      }
-    `;
-
-		document.head.appendChild(style);
-	}
-
 	private injectHighlightCSS(choiceId: string): void {
-		const styleId = `answer-eliminator-mask-highlight-${choiceId}`;
+		const styleId = `${MaskStrategy.HIGHLIGHT_STYLE_PREFIX}${choiceId}`;
 		if (document.getElementById(styleId)) return;
 
 		const style = document.createElement("style");
 		style.id = styleId;
 		style.textContent = `
-      ::highlight(answer-masked-${choiceId}) {
+      ::highlight(pie-answer-masked-${choiceId}) {
         opacity: 0.2;
         filter: blur(2px);
       }
@@ -114,19 +106,15 @@ export class MaskStrategy implements EliminationStrategy {
 
 	private removeHighlightCSS(choiceId: string): void {
 		document
-			.getElementById(`answer-eliminator-mask-highlight-${choiceId}`)
+			.getElementById(`${MaskStrategy.HIGHLIGHT_STYLE_PREFIX}${choiceId}`)
 			?.remove();
-	}
-
-	private removeCSS(): void {
-		document.getElementById("answer-eliminator-mask-styles")?.remove();
 	}
 
 	private addAriaAttributes(range: Range): void {
 		const container = this.findChoiceContainer(range);
 		if (!container) return;
 
-		container.setAttribute("data-eliminated", "true");
+		container.setAttribute(MaskStrategy.ELIMINATED_ATTR, "true");
 		container.setAttribute("aria-hidden", "true");
 	}
 
@@ -134,7 +122,7 @@ export class MaskStrategy implements EliminationStrategy {
 		const container = this.findChoiceContainer(range);
 		if (!container) return;
 
-		container.removeAttribute("data-eliminated");
+		container.removeAttribute(MaskStrategy.ELIMINATED_ATTR);
 		container.removeAttribute("aria-hidden");
 	}
 
@@ -147,7 +135,7 @@ export class MaskStrategy implements EliminationStrategy {
 		}
 
 		while (element && element !== document.body) {
-			if (element.classList?.contains("choice-input")) {
+			if (element.getAttribute(MaskStrategy.CHOICE_HOOK_ATTR) === "true") {
 				return element;
 			}
 			element = element.parentElement;
@@ -160,9 +148,9 @@ export class MaskStrategy implements EliminationStrategy {
 		const container = this.findChoiceContainer(range);
 		if (!container) return;
 
-		container.classList.add("answer-masked-fallback");
-		container.setAttribute("data-eliminated", "true");
-		container.setAttribute("data-eliminated-id", choiceId);
+		container.classList.add(MaskStrategy.FALLBACK_CLASS);
+		container.setAttribute(MaskStrategy.ELIMINATED_ATTR, "true");
+		container.setAttribute(MaskStrategy.ELIMINATED_ID_ATTR, choiceId);
 		this.fallbackContainers.set(choiceId, container);
 		this.addAriaAttributes(range);
 	}
@@ -171,9 +159,9 @@ export class MaskStrategy implements EliminationStrategy {
 		const container = this.fallbackContainers.get(choiceId);
 		if (!container) return;
 
-		container.classList.remove("answer-masked-fallback");
-		container.removeAttribute("data-eliminated");
-		container.removeAttribute("data-eliminated-id");
+		container.classList.remove(MaskStrategy.FALLBACK_CLASS);
+		container.removeAttribute(MaskStrategy.ELIMINATED_ATTR);
+		container.removeAttribute(MaskStrategy.ELIMINATED_ID_ATTR);
 
 		const range = document.createRange();
 		range.selectNodeContents(container);

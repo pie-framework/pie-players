@@ -9,6 +9,9 @@ import { StrikethroughStrategy } from "./strategies/strikethrough-strategy.js";
  * Coordinates adapters, strategies, and state management
  */
 export class AnswerEliminatorCore {
+	private static readonly TOGGLE_CLASS = "pie-answer-eliminator-toggle";
+	private static readonly TOGGLE_ACTIVE_CLASS =
+		"pie-answer-eliminator-toggle--active";
 	private registry: AdapterRegistry;
 	private strategy: EliminationStrategy;
 	private eliminatedChoices = new Set<string>(); // Set<choiceId> for current element
@@ -103,47 +106,13 @@ export class AnswerEliminatorCore {
 
 		const button = document.createElement("button");
 		button.type = "button";
-		button.className = "answer-eliminator-toggle";
+		button.className = AnswerEliminatorCore.TOGGLE_CLASS;
 		button.setAttribute("aria-label", `Toggle elimination for ${choiceLabel}`);
 		button.setAttribute("data-choice-id", choiceId);
 		button.textContent = "⊗"; // Cross mark (use textContent instead of innerHTML for better security)
 
 		// Apply positioning based on alignment configuration
 		this.applyButtonAlignment(button);
-
-		// Common button styling
-		Object.assign(button.style, {
-			width: "28px",
-			height: "28px",
-			padding: "0",
-			border: "1px solid #ccc",
-			borderRadius: "4px",
-			background: "white",
-			cursor: "pointer",
-			fontSize: "18px",
-			lineHeight: "1",
-			display: "flex",
-			alignItems: "center",
-			justifyContent: "center",
-			color: "#666",
-			transition: "all 0.2s ease",
-			zIndex: "10",
-		});
-
-		// Add hover effect
-		button.addEventListener("mouseenter", () => {
-			button.style.background = "#f0f0f0";
-			button.style.borderColor = "#999";
-			button.style.color = "#333";
-		});
-
-		button.addEventListener("mouseleave", () => {
-			if (!this.strategy.isEliminated(choiceId)) {
-				button.style.background = "white";
-				button.style.borderColor = "#ccc";
-				button.style.color = "#666";
-			}
-		});
 
 		button.addEventListener("click", (e) => {
 			e.preventDefault();
@@ -204,12 +173,8 @@ export class AnswerEliminatorCore {
 		// Update button appearance to show eliminated state
 		const button = this.choiceButtons.get(choiceId);
 		if (button) {
-			button.classList.add("active");
+			button.classList.add(AnswerEliminatorCore.TOGGLE_ACTIVE_CLASS);
 			button.setAttribute("aria-pressed", "true");
-			// Visual feedback: filled/highlighted when eliminated
-			button.style.background = "#ff9800";
-			button.style.borderColor = "#ff9800";
-			button.style.color = "white";
 		}
 
 		// Save to store
@@ -229,12 +194,8 @@ export class AnswerEliminatorCore {
 		// Reset button appearance to default state
 		const button = this.choiceButtons.get(choiceId);
 		if (button) {
-			button.classList.remove("active");
+			button.classList.remove(AnswerEliminatorCore.TOGGLE_ACTIVE_CLASS);
 			button.setAttribute("aria-pressed", "false");
-			// Reset to default styling
-			button.style.background = "white";
-			button.style.borderColor = "#ccc";
-			button.style.color = "#666";
 		}
 
 		// Save to store
@@ -328,12 +289,8 @@ export class AnswerEliminatorCore {
 					// Update button appearance to show eliminated state
 					const button = this.choiceButtons.get(choiceId);
 					if (button) {
-						button.classList.add("active");
+						button.classList.add(AnswerEliminatorCore.TOGGLE_ACTIVE_CLASS);
 						button.setAttribute("aria-pressed", "true");
-						// Apply eliminated styling
-						button.style.background = "#ff9800";
-						button.style.borderColor = "#ff9800";
-						button.style.color = "white";
 					}
 				}
 			}

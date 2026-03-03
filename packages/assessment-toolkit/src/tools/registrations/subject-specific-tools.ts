@@ -62,8 +62,8 @@ export const graphToolRegistration: ToolRegistration = {
 	): ToolToolbarRenderResult {
 		const fullToolId = createScopedToolId(
 			this.toolId,
-			"item",
-			toolbarContext.itemId,
+			toolbarContext.scope.level,
+			toolbarContext.scope.scopeId,
 		);
 		const button: ToolToolbarButtonDefinition = {
 			toolId: this.toolId,
@@ -91,7 +91,7 @@ export const graphToolRegistration: ToolRegistration = {
 		return {
 			toolId: this.toolId,
 			button,
-			overlayElement: overlay,
+			elements: [{ element: overlay, mount: "after-buttons" }],
 			sync: () => {
 				const active = toolbarContext.isToolVisible(fullToolId);
 				button.active = active;
@@ -146,8 +146,8 @@ export const periodicTableToolRegistration: ToolRegistration = {
 	): ToolToolbarRenderResult {
 		const fullToolId = createScopedToolId(
 			this.toolId,
-			"item",
-			toolbarContext.itemId,
+			toolbarContext.scope.level,
+			toolbarContext.scope.scopeId,
 		);
 		const button: ToolToolbarButtonDefinition = {
 			toolId: this.toolId,
@@ -175,7 +175,7 @@ export const periodicTableToolRegistration: ToolRegistration = {
 		return {
 			toolId: this.toolId,
 			button,
-			overlayElement: overlay,
+			elements: [{ element: overlay, mount: "after-buttons" }],
 			sync: () => {
 				const active = toolbarContext.isToolVisible(fullToolId);
 				button.active = active;

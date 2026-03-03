@@ -15,18 +15,20 @@ describe("tool-instance-id", () => {
 			baseToolId: "calculator",
 			scopeLevel: "item",
 			scopeId: "item-1",
-			role: "overlay",
 		});
 	});
 
-	test("creates and parses inline ids", () => {
-		const id = createScopedToolId("calculator", "item", "item-1", "inline");
-		expect(id).toBe("calculator:item:item-1:inline");
-		expect(parseScopedToolId(id)?.role).toBe("inline");
+	test("parses legacy inline ids", () => {
+		const id = "calculator:item:item-1:inline";
+		expect(parseScopedToolId(id)).toEqual({
+			baseToolId: "calculator",
+			scopeLevel: "item",
+			scopeId: "item-1",
+		});
 	});
 
 	test("converts inline id to overlay id", () => {
-		const inlineId = createScopedToolId("calculator", "item", "item-1", "inline");
+		const inlineId = "calculator:item:item-1:inline";
 		expect(toOverlayToolId(inlineId)).toBe("calculator:item:item-1");
 	});
 

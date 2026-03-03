@@ -22,6 +22,10 @@ const entries = [
 		source: path.join(srcComponents, "PieAssessmentToolkit.svelte"),
 		output: path.join(distComponents, "PieAssessmentToolkit.custom-element.js"),
 	},
+	{
+		source: path.join(srcComponents, "SectionToolBar.svelte"),
+		output: path.join(distComponents, "SectionToolBar.custom-element.js"),
+	},
 ];
 
 for (const entry of entries) {
@@ -45,7 +49,11 @@ for (const entry of entries) {
 }
 
 // Remove stale copied Svelte sources from older build strategy.
-for (const staleFile of ["ItemToolBar.svelte", "PieAssessmentToolkit.svelte"]) {
+for (const staleFile of [
+	"ItemToolBar.svelte",
+	"PieAssessmentToolkit.svelte",
+	"SectionToolBar.svelte",
+]) {
 	const stalePath = path.join(distComponents, staleFile);
 	if (existsSync(stalePath)) {
 		rmSync(stalePath);

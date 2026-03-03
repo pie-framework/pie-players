@@ -35,9 +35,7 @@ export const demo1Section: AssessmentSection = {
 						{
 							id: "q1",
 							element: "multiple-choice",
-							prompt: `<div>
-                <p><strong>Which greenhouse gas is most responsible for trapping heat in Earth's atmosphere?</strong></p>
-              </div>`,
+							prompt: `Which greenhouse gas is most responsible for trapping heat in Earth's atmosphere?`,
 							choiceMode: "radio",
 							choices: [
 								{

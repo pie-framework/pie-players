@@ -73,13 +73,9 @@ export default (async () => {
 					__dirname,
 					"../../packages/tool-calculator/dist/pie-tool-calculator.js",
 				),
-				"@pie-players/pie-tool-calculator-inline": resolve(
+				"@pie-players/pie-tool-text-to-speech": resolve(
 					__dirname,
-					"../../packages/tool-calculator-inline/dist/tool-calculator-inline.js",
-				),
-				"@pie-players/pie-tool-tts-inline": resolve(
-					__dirname,
-					"../../packages/tool-tts-inline/dist/tool-tts-inline.js",
+					"../../packages/tool-text-to-speech/dist/tool-text-to-speech.js",
 				),
 				"@pie-players/pie-tool-answer-eliminator": resolve(
 					__dirname,

@@ -1,10 +1,12 @@
 <svelte:options
 	customElement={{
-		tag: 'pie-tool-color-scheme',
+		tag: 'pie-tool-theme',
 		shadow: 'open',
 		props: {
 			visible: { type: 'Boolean', attribute: 'visible' },
-			toolId: { type: 'String', attribute: 'tool-id' }
+			toolId: { type: 'String', attribute: 'tool-id' },
+			schemes: { type: 'String', attribute: 'schemes' },
+			schemeCatalog: { type: 'Object', reflect: false }
 		}
 	}}
 />
@@ -27,6 +29,10 @@
 		connectToolRuntimeContext,
 		ZIndexLayer,
 	} from '@pie-players/pie-assessment-toolkit';
+	import {
+		listPieColorSchemes,
+		type PieColorSchemeDefinition,
+	} from '@pie-players/pie-theme';
 	import type {
 		AssessmentToolkitRuntimeContext,
 		IToolCoordinator,
@@ -36,10 +42,14 @@
 
 	let {
 		visible = false,
-		toolId = 'colorScheme'
+		toolId = 'theme',
+		schemes = '',
+		schemeCatalog = null
 	}: {
 		visible?: boolean;
 		toolId?: string;
+		schemes?: string;
+		schemeCatalog?: unknown;
 	} = $props();
 
 	let containerEl = $state<HTMLDivElement | undefined>();
@@ -58,8 +68,20 @@
 		});
 	});
 
-	// Color scheme options (Learnosity-compatible industry standards)
-	const COLOR_SCHEMES = [
+	type ToolSchemePreview = {
+		bg: string;
+		text: string;
+		primary: string;
+	};
+
+	type ToolColorSchemeOption = {
+		id: string;
+		name: string;
+		description: string;
+		preview: ToolSchemePreview;
+	};
+
+	const DEFAULT_COLOR_SCHEMES: ToolColorSchemeOption[] = [
 		{
 			id: 'default',
 			name: 'Default',
@@ -132,6 +154,101 @@
 		}
 	];
 
+	function previewFromVariables(
+		variables: Record<string, string> | undefined,
+		fallback: ToolSchemePreview
+	): ToolSchemePreview {
+		return {
+			bg: variables?.['--pie-background'] || variables?.['--pie-secondary-background'] || fallback.bg,
+			text: variables?.['--pie-text'] || fallback.text,
+			primary: variables?.['--pie-primary'] || fallback.primary
+		};
+	}
+
+	function normalizeSchemeCatalogEntry(entry: unknown): ToolColorSchemeOption | null {
+		if (!entry || typeof entry !== 'object') return null;
+		const value = entry as Record<string, unknown>;
+		const id = typeof value.id === 'string' ? value.id.trim() : '';
+		if (!id) return null;
+		const name = typeof value.name === 'string' && value.name.trim() ? value.name.trim() : id;
+		const description = typeof value.description === 'string' ? value.description : '';
+		const previewValue = value.preview;
+		const preview = (
+			previewValue &&
+			typeof previewValue === 'object' &&
+			typeof (previewValue as Record<string, unknown>).bg === 'string' &&
+			typeof (previewValue as Record<string, unknown>).text === 'string' &&
+			typeof (previewValue as Record<string, unknown>).primary === 'string'
+		)
+			? {
+				bg: (previewValue as Record<string, string>).bg,
+				text: (previewValue as Record<string, string>).text,
+				primary: (previewValue as Record<string, string>).primary
+			}
+			: previewFromVariables(
+				typeof value.variables === 'object' && value.variables
+					? (value.variables as Record<string, string>)
+					: undefined,
+				{ bg: '#ffffff', text: '#000000', primary: '#3f51b5' }
+			);
+		return { id, name, description, preview };
+	}
+
+	function parseSchemesFromAttribute(raw: string): ToolColorSchemeOption[] {
+		if (!raw?.trim()) return [];
+		try {
+			const parsed = JSON.parse(raw) as unknown;
+			return Array.isArray(parsed)
+				? parsed
+					.map((entry) => normalizeSchemeCatalogEntry(entry))
+					.filter((entry): entry is ToolColorSchemeOption => Boolean(entry))
+				: [];
+		} catch {
+			return [];
+		}
+	}
+
+	function resolveThemeHost(): HTMLElement | null {
+		const localHost = containerEl?.closest('pie-theme') as HTMLElement | null;
+		if (localHost) return localHost;
+		const scopedDocumentHost = document.querySelector('pie-theme[scope="document"]') as HTMLElement | null;
+		if (scopedDocumentHost) return scopedDocumentHost;
+		return document.querySelector('pie-theme') as HTMLElement | null;
+	}
+
+	function resolveThemeSchemes(): ToolColorSchemeOption[] {
+		const themeSchemes = listPieColorSchemes();
+		const fallbackById = new Map(DEFAULT_COLOR_SCHEMES.map((scheme) => [scheme.id, scheme]));
+		return themeSchemes.map((scheme: PieColorSchemeDefinition) => {
+			const fallback = fallbackById.get(scheme.id) || {
+				id: scheme.id,
+				name: scheme.name || scheme.id,
+				description: scheme.description || '',
+				preview: { bg: '#ffffff', text: '#000000', primary: '#3f51b5' }
+			};
+			return {
+				id: scheme.id,
+				name: scheme.name || fallback.name,
+				description: scheme.description || fallback.description || '',
+				preview: scheme.preview || previewFromVariables(scheme.variables, fallback.preview)
+			};
+		});
+	}
+
+	const availableSchemes = $derived.by(() => {
+		if (Array.isArray(schemeCatalog) && schemeCatalog.length > 0) {
+			const normalized = schemeCatalog
+				.map((entry) => normalizeSchemeCatalogEntry(entry))
+				.filter((entry): entry is ToolColorSchemeOption => Boolean(entry));
+			if (normalized.length > 0) return normalized;
+		}
+		const parsedFromAttribute = parseSchemesFromAttribute(schemes);
+		if (parsedFromAttribute.length > 0) return parsedFromAttribute;
+		const themeSchemes = resolveThemeSchemes();
+		if (themeSchemes.length > 0) return themeSchemes;
+		return DEFAULT_COLOR_SCHEMES;
+	});
+
 	// Current color scheme
 	let currentScheme = $state('default');
 
@@ -145,11 +262,16 @@
 	function applyColorScheme(schemeId: string) {
 		if (!browser) return;
 
-		const root = document.documentElement;
-		if (schemeId === 'default') {
-			root.removeAttribute('data-color-scheme');
+		const themeHost = resolveThemeHost();
+		if (themeHost) {
+			themeHost.setAttribute('scheme', schemeId || 'default');
 		} else {
-			root.setAttribute('data-color-scheme', schemeId);
+			const root = document.documentElement;
+			if (schemeId === 'default') {
+				root.removeAttribute('data-color-scheme');
+			} else {
+				root.setAttribute('data-color-scheme', schemeId);
+			}
 		}
 
 		// Save to localStorage safely
@@ -171,7 +293,17 @@
 	}
 
 	// Get current scheme object
-	let currentSchemeObj = $derived(COLOR_SCHEMES.find(s => s.id === currentScheme) || COLOR_SCHEMES[0]);
+	let currentSchemeObj = $derived(
+		availableSchemes.find(s => s.id === currentScheme) ||
+		availableSchemes[0] ||
+		DEFAULT_COLOR_SCHEMES[0]
+	);
+
+	$effect(() => {
+		if (!availableSchemes.find((scheme) => scheme.id === currentScheme)) {
+			currentScheme = availableSchemes[0]?.id || 'default';
+		}
+	});
 
 	function handleClose() {
 		dropdownOpen = false;
@@ -210,7 +342,7 @@
 	// Register with coordinator when it becomes available
 	$effect(() => {
 		if (coordinator && toolId && !registered) {
-			coordinator.registerTool(toolId, 'Color Scheme', undefined, ZIndexLayer.MODAL);
+			coordinator.registerTool(toolId, 'Theme', undefined, ZIndexLayer.MODAL);
 			registered = true;
 		}
 	});
@@ -235,10 +367,11 @@
 	onMount(() => {
 		// Load saved scheme from localStorage safely
 		if (browser) {
-			const saved = safeLocalStorageGet('pie-color-scheme') ?? 'default';
-			if (saved !== 'default') {
-				currentScheme = saved;
-				// Use requestAnimationFrame to ensure DOM and styles are ready
+			const themeHost = resolveThemeHost();
+			const hostScheme = themeHost?.getAttribute('scheme');
+			const saved = safeLocalStorageGet('pie-color-scheme') ?? hostScheme ?? 'default';
+			currentScheme = saved;
+			if (saved) {
 				requestAnimationFrame(() => {
 					applyColorScheme(saved);
 				});
@@ -248,8 +381,8 @@
 		// Click outside handler
 		function handleClickOutside(e: MouseEvent) {
 			if (!dropdownOpen) return;
-			const target = e.target as HTMLElement;
-			if (!target.closest('.pie-tool-color-scheme')) {
+			const clickPath = e.composedPath();
+			if (!containerEl || !clickPath.includes(containerEl)) {
 				dropdownOpen = false;
 			}
 		}
@@ -268,12 +401,12 @@
 {#if visible}
 	<div bind:this={containerEl} class="pie-tool-color-scheme" role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="color-scheme-title" onkeydown={handleKeyDown}>
 		<div class="pie-tool-color-scheme__header">
-			<h3 id="color-scheme-title" class="pie-tool-color-scheme__title">Color Scheme</h3>
+			<h3 id="color-scheme-title" class="pie-tool-color-scheme__title">Theme</h3>
 			<button
 				type="button"
 				class="pie-tool-color-scheme__close"
 				onclick={handleClose}
-				aria-label="Close color scheme selector"
+				aria-label="Close theme selector"
 			>
 				×
 			</button>
@@ -281,13 +414,13 @@
 
 		<div class="pie-tool-color-scheme__content">
 			<p class="pie-tool-color-scheme__description">
-				Select a color scheme to improve readability and reduce eye strain.
+				Select a theme to improve readability and reduce eye strain.
 			</p>
 
 			<button
 				type="button"
 				class="pie-tool-color-scheme__dropdown-trigger"
-				aria-label="Select color scheme"
+				aria-label="Select theme"
 				aria-expanded={dropdownOpen}
 				onclick={toggleDropdown}
 			>
@@ -310,7 +443,7 @@
 
 			{#if dropdownOpen}
 				<div class="pie-tool-color-scheme__dropdown" role="menu">
-					{#each COLOR_SCHEMES as scheme (scheme.id)}
+					{#each availableSchemes as scheme (scheme.id)}
 						<button
 							type="button"
 							class="pie-tool-color-scheme__option"

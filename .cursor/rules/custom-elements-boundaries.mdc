@@ -8,6 +8,8 @@ alwaysApply: true
 - In consuming apps/packages, import custom-element registration entrypoints (for example `@pie-players/pie-assessment-toolkit/components/item-toolbar-element`) and avoid raw package `.svelte` imports.
 - Do not import workspace package source paths in consumers (`@pie-players/<pkg>/src/...`).
 - Do not use `?customElement` in cross-package imports.
+- Use `pie-*` class naming for component DOM hooks and selectors, and avoid generic class names (`header`, `content`, `container`, `card`, `pane`, `toolbar`, `body`, `active`) in custom-element markup/styles.
+- For light-DOM custom elements (`shadow: "none"`), treat classes as public API: provide stable `pie-*` or `data-pie-*` hooks and avoid dependencies on host/global utility class names.
 - Keep package `exports` runtime targets on built `dist` artifacts unless there is an explicit documented exception.
 - If a CE registration entry imports `*.svelte?customElement`, ensure that referenced `.svelte` files are available from publish/build output paths.
 - When a consumer app imports a package CE entrypoint from `exports` (for example `@pie-players/pie-section-player/components/...`), remember it resolves to built `dist` output. After changing package `src`, rebuild that package before validating in the consumer app.

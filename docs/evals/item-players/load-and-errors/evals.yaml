@@ -2,7 +2,7 @@ version: 1
 
 component:
   area: item-players
-  underTest: "pie-iife-player|pie-esm-player"
+  underTest: "pie-item-player (strategy=iife|esm)"
 
 examplesApp:
   app: "@pie-framework/pie-players-example"

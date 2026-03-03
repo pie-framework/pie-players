@@ -19,7 +19,12 @@ const mockCalculatorTool: ToolRegistration = {
 	renderToolbar: (_context, _toolbarContext) => {
 		return {
 			toolId: "calculator",
-			overlayElement: { className: "pie-tool-calculator" } as any,
+			elements: [
+				{
+					element: { className: "pie-tool-calculator" } as any,
+					mount: "after-buttons" as const,
+				},
+			],
 		};
 	},
 };
@@ -37,7 +42,12 @@ const mockTTSTool: ToolRegistration = {
 	renderToolbar: (_context, _toolbarContext) => {
 		return {
 			toolId: "textToSpeech",
-			overlayElement: { className: "tts-tool" } as any,
+			elements: [
+				{
+					element: { className: "tts-tool" } as any,
+					mount: "after-buttons" as const,
+				},
+			],
 		};
 	},
 };
@@ -392,6 +402,11 @@ describe("ToolRegistry", () => {
 
 	describe("renderForToolbar", () => {
 		const toolbarContext: ToolbarContext = {
+		scope: {
+			level: "item",
+			scopeId: "item-1",
+			itemId: "item-1",
+		},
 			itemId: "item-1",
 			catalogId: "item-1",
 			language: "en",
@@ -418,7 +433,9 @@ describe("ToolRegistry", () => {
 				context,
 				toolbarContext,
 			);
-			expect(renderResult?.overlayElement?.className).toBe("pie-tool-calculator");
+			expect(renderResult?.elements?.[0]?.element?.className).toBe(
+				"pie-tool-calculator",
+			);
 		});
 
 		test("throws when tool is not registered", () => {

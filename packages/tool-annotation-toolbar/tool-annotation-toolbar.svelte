@@ -436,7 +436,7 @@
 {#if toolbarState.isVisible}
 	<div
 		bind:this={toolbarElement}
-		class="pie-tool-annotation-toolbar notranslate fixed z-[4200] flex gap-1 bg-base-100 shadow-lg rounded-lg p-2 border border-base-300"
+		class="pie-tool-annotation-toolbar notranslate"
 		style={`left:${toolbarState.toolbarPosition.x}px; top:${toolbarState.toolbarPosition.y}px; transform: translate(-50%, -100%);`}
 		role="toolbar"
 		aria-label="Text annotation toolbar"
@@ -457,7 +457,7 @@
 
 		<!-- Underline Button -->
 		<button
-			class="btn btn-sm btn-square"
+			class="pie-tool-annotation-toolbar__button pie-tool-annotation-toolbar__button--icon"
 			onclick={() => handleHighlight(HighlightColor.UNDERLINE)}
 			aria-label="Underline selected text"
 			title="Underline"
@@ -480,7 +480,7 @@
 		{#if ttsService}
 			<div class="divider divider-horizontal mx-0 w-px"></div>
 			<button
-				class="btn btn-sm btn-square"
+				class="pie-tool-annotation-toolbar__button pie-tool-annotation-toolbar__button--icon"
 				onclick={handleTTSClick}
 				disabled={ttsSpeaking}
 				aria-label="Read selected text aloud"
@@ -508,7 +508,7 @@
 			<!-- Remove This Annotation -->
 			{#if hasOverlappingAnnotation}
 				<button
-					class="btn btn-sm btn-ghost text-warning"
+					class="pie-tool-annotation-toolbar__button pie-tool-annotation-toolbar__button--warning"
 					onclick={handleRemoveAnnotation}
 					aria-label="Remove this annotation"
 					title="Remove"
@@ -531,7 +531,7 @@
 			<!-- Clear All Annotations -->
 			{#if hasAnnotations}
 				<button
-					class="btn btn-sm btn-ghost text-error"
+					class="pie-tool-annotation-toolbar__button pie-tool-annotation-toolbar__button--danger"
 					onclick={handleClearAnnotations}
 					aria-label="Clear all annotations from document"
 					title="Clear All"
@@ -550,13 +550,23 @@
 
 <style>
 	.pie-tool-annotation-toolbar {
+		position: fixed;
+		z-index: 4200;
+		display: flex;
+		gap: 0.25rem;
+		padding: 0.5rem;
+		border-radius: 0.5rem;
+		background: var(--pie-background, #fff);
+		color: var(--pie-text, #111827);
+		border: 1px solid var(--pie-border, #d1d5db);
+		box-shadow: 0 10px 25px -8px rgb(0 0 0 / 0.3);
 		user-select: none;
 	}
 
 	.pie-tool-annotation-toolbar__highlight-swatch {
 		width: 2.5rem;
 		height: 2rem;
-		border: 2px solid rgba(0, 0, 0, 0.2);
+		border: 2px solid color-mix(in srgb, var(--pie-border-dark, #111827) 20%, transparent);
 		border-radius: 0.375rem;
 		cursor: pointer;
 		transition: all 0.15s ease;
@@ -568,18 +578,19 @@
 
 	.pie-tool-annotation-toolbar__highlight-swatch:hover {
 		transform: scale(1.1);
-		border-color: rgba(0, 0, 0, 0.4);
-		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+		border-color: color-mix(in srgb, var(--pie-border-dark, #111827) 45%, transparent);
+		box-shadow: 0 2px 8px rgb(0 0 0 / 0.15);
 	}
 
 	.pie-tool-annotation-toolbar__highlight-swatch:focus-visible {
-		outline: 2px solid hsl(var(--p));
+		outline: 2px solid var(--pie-button-focus-outline, var(--pie-primary, #3f51b5));
 		outline-offset: 2px;
 	}
 
 	.pie-tool-annotation-toolbar .divider-horizontal {
 		height: auto;
-		background-color: hsl(var(--bc) / 0.2);
+		width: 1px;
+		background-color: color-mix(in srgb, var(--pie-border, #d1d5db) 70%, transparent);
 	}
 
 	/* Screen reader only content */
@@ -596,11 +607,50 @@
 	}
 
 	/* Button styling */
-	.pie-tool-annotation-toolbar .btn-square {
-		padding: 0.5rem;
+	.pie-tool-annotation-toolbar__button {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.35rem;
+		padding: 0.4rem 0.55rem;
+		border: 1px solid var(--pie-button-border, #d1d5db);
+		border-radius: 0.4rem;
+		background: var(--pie-button-bg, #fff);
+		color: var(--pie-button-color, var(--pie-text, #111827));
+		cursor: pointer;
 	}
 
-	.pie-tool-annotation-toolbar .btn-square svg {
+	.pie-tool-annotation-toolbar__button--icon {
+		min-width: 2rem;
+		min-height: 2rem;
+		padding: 0.45rem;
+	}
+
+	.pie-tool-annotation-toolbar__button:hover {
+		background: var(--pie-button-hover-bg, #f9fafb);
+		color: var(--pie-button-hover-color, var(--pie-text, #111827));
+		border-color: var(--pie-button-hover-border, #9ca3af);
+	}
+
+	.pie-tool-annotation-toolbar__button:focus-visible {
+		outline: 2px solid var(--pie-button-focus-outline, var(--pie-primary, #3f51b5));
+		outline-offset: 2px;
+	}
+
+	.pie-tool-annotation-toolbar__button:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+
+	.pie-tool-annotation-toolbar__button--warning {
+		color: var(--pie-missing-icon, #92400e);
+	}
+
+	.pie-tool-annotation-toolbar__button--danger {
+		color: var(--pie-incorrect-icon, #b91c1c);
+	}
+
+	.pie-tool-annotation-toolbar__button svg {
 		width: 18px;
 		height: 18px;
 	}

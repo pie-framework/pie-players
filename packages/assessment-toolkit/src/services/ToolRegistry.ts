@@ -13,6 +13,7 @@ import type {
 	IToolkitCoordinator,
 	ITTSService,
 } from "./interfaces.js";
+import { normalizeToolAlias } from "./tools-config-normalizer.js";
 
 export type ToolModuleLoader = () => Promise<unknown>;
 
@@ -29,6 +30,15 @@ export interface ToolToolbarButtonDefinition {
 }
 
 export interface ToolbarContext {
+	scope: {
+		level: ToolLevel;
+		scopeId: string;
+		assessmentId?: string;
+		sectionId?: string;
+		itemId?: string;
+		canonicalItemId?: string;
+		contentKind?: string;
+	};
 	itemId: string;
 	catalogId: string;
 	language: string;
@@ -48,10 +58,14 @@ export interface ToolbarContext {
 	componentOverrides?: ToolComponentOverrides;
 }
 
+export interface ToolRenderElement {
+	element: HTMLElement | null;
+	mount: "before-buttons" | "after-buttons";
+}
+
 export interface ToolToolbarRenderResult {
 	toolId: string;
-	inlineElement?: HTMLElement | null;
-	overlayElement?: HTMLElement | null;
+	elements?: ToolRenderElement[];
 	button?: ToolToolbarButtonDefinition | null;
 	sync?: () => void;
 	subscribeActive?: (callback: (active: boolean) => void) => (() => void);
@@ -116,7 +130,7 @@ export class ToolRegistry {
 	 * Normalize a single tool alias to canonical toolId.
 	 */
 	normalizeToolId(toolId: string): string {
-		return toolId === "tts" ? "textToSpeech" : toolId;
+		return normalizeToolAlias(toolId);
 	}
 
 	/**

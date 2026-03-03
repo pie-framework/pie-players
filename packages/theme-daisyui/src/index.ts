@@ -1,3 +1,9 @@
+import {
+	registerPieThemeProvider,
+	type ThemeProviderAdapter,
+	type ThemeVariables,
+} from "@pie-players/pie-theme";
+
 export type DaisyThemeTokens = {
 	base100?: string;
 	base200?: string;
@@ -189,4 +195,19 @@ export function readDaisyThemeTokensFromElement(
 	};
 
 	return tokens.base100 || tokens.primary || tokens.baseContent ? tokens : null;
+}
+
+export const daisyThemeProviderAdapter: ThemeProviderAdapter = {
+	id: "daisyui",
+	canRead(target: HTMLElement): boolean {
+		return Boolean(readDaisyThemeTokensFromElement(target));
+	},
+	read(target: HTMLElement): ThemeVariables {
+		const tokens = readDaisyThemeTokensFromElement(target);
+		return tokens ? mapResolvedDaisyThemeToPieVariables(tokens) : {};
+	},
+};
+
+export function registerDaisyThemeProvider(): void {
+	registerPieThemeProvider(daisyThemeProviderAdapter);
 }

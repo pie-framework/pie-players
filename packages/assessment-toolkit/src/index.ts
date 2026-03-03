@@ -215,6 +215,17 @@ export type {
 	ToolPolicyConfig,
 	ToolProvidersConfig,
 } from "./services/tools-config-normalizer.js";
+export type {
+	ToolbarButtonItem,
+	ToolbarItem,
+	ToolbarItemBase,
+	ToolbarLinkItem,
+} from "./services/toolbar-items.js";
+export {
+	isExternalIconUrl,
+	isInlineSvgIcon,
+	isToolbarLinkItem,
+} from "./services/toolbar-items.js";
 export {
 	normalizeToolsConfig,
 	normalizeToolAlias,
@@ -224,7 +235,6 @@ export {
 } from "./services/tools-config-normalizer.js";
 export type {
 	ParsedToolInstanceId,
-	ToolInstanceRole,
 	ToolScopeLevel,
 } from "./services/tool-instance-id.js";
 export {
@@ -240,14 +250,15 @@ export { BrowserTTSProvider } from "./services/tts/browser-provider.js";
 export type {
 	ITTSProvider,
 	ITTSProviderImplementation,
+	TTSSpeechSegment,
 	TTSFeature,
 	TTSProviderCapabilities,
-} from "./services/tts/provider-interface.js";
+} from "@pie-players/pie-tts";
 
 // Note: Removed deprecated exports:
 // - ttsService singleton (use: const service = new TTSService())
 // - IToolCoordinator (now in ./services/interfaces)
-// - ITTSProvider from TTSService (now in ./services/tts/provider-interface)
+// - ITTSProvider from TTSService (now in @pie-players/pie-tts)
 // - TTSProvider string type (use ITTSProvider instances instead)
 
 // ============================================================================

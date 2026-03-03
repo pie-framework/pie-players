@@ -309,9 +309,61 @@ export function extractTextContent(context: ToolContext): string {
 		const passage = context.passage;
 		if (!passage?.config) return "";
 
-		// Extract markup from passage
-		const markup = passage.config.markup || "";
-		return markup.replace(/<[^>]*>/g, " ").trim();
+		const config = passage.config as Record<string, unknown>;
+		const textChunks: string[] = [];
+		const stripHtml = (value: string) => value.replace(/<[^>]*>/g, " ").trim();
+
+		// Primary passage markup/content
+		if (typeof config.markup === "string") {
+			textChunks.push(stripHtml(config.markup));
+		}
+		if (typeof config.content === "string") {
+			textChunks.push(stripHtml(config.content));
+		}
+		if (typeof config.prompt === "string") {
+			textChunks.push(stripHtml(config.prompt));
+		}
+
+		// Element markup snippets
+		const elements = config.elements as Record<string, unknown> | undefined;
+		if (elements && typeof elements === "object") {
+			for (const elementMarkup of Object.values(elements)) {
+				if (typeof elementMarkup === "string") {
+					textChunks.push(stripHtml(elementMarkup));
+				}
+			}
+		}
+
+		// Model-level text (prompts, labels, etc.)
+		const modelsRaw = config.models;
+		const models = Array.isArray(modelsRaw)
+			? modelsRaw
+			: modelsRaw && typeof modelsRaw === "object"
+				? Object.values(modelsRaw as Record<string, unknown>)
+				: [];
+		for (const model of models) {
+			if (!model || typeof model !== "object") continue;
+			for (const value of Object.values(model as Record<string, unknown>)) {
+				if (typeof value === "string") {
+					textChunks.push(stripHtml(value));
+				}
+				if (Array.isArray(value)) {
+					for (const entry of value) {
+						if (entry && typeof entry === "object") {
+							for (const nested of Object.values(
+								entry as Record<string, unknown>,
+							)) {
+								if (typeof nested === "string") {
+									textChunks.push(stripHtml(nested));
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+		return textChunks.filter(Boolean).join(" ").trim();
 	}
 
 	if (isRubricContext(context)) {

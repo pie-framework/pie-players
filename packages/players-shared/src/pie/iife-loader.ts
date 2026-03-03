@@ -34,7 +34,7 @@ export interface IifeLoaderConfig {
 
 	/**
 	 * When true, retries a failed script load by appending a cache-busting query param.
-	 * Mirrors legacy `reFetchBundle` behavior used by `pie-author`.
+	 * Mirrors legacy `reFetchBundle` behavior from older loaders.
 	 */
 	reFetchBundle?: boolean;
 

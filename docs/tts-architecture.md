@@ -29,8 +29,9 @@ The PIE Players TTS (Text-to-Speech) system uses a clean, layered architecture w
 **Purpose:** Assessment runtime with built-in browser TTS fallback.
 
 **Contains:**
-- `TTSService` - Main TTS service with state management
-- `BrowserTTSProvider` - Web Speech API implementation (always available)
+- `TTSService` - Main TTS orchestrator (state + provider wiring)
+- `services/tts/text-processing.ts` - provider-agnostic visible-text extraction, normalization, and DOM mapping
+- `BrowserTTSProvider` - Web Speech API adapter (always available)
 - `AccessibilityCatalogResolver` - QTI 3.0 catalog management
 - `SSMLExtractor` - Automatic SSML extraction and catalog generation
 - Playback state management
@@ -123,10 +124,10 @@ See [Server-Side TTS Integration Guide](../packages/tts-server-polly/examples/IN
           ┌────────────────┴────────────────┐
           │                                  │
 ┌─────────┴─────────────────┐  ┌────────────┴───────────────┐
-│ assessment-toolkit        │  │ @pie-players/pie-tts-polly │
+│ assessment-toolkit        │  │ @pie-players/tts-client-server │
 │                           │  │                             │
-│ - TTSService              │  │ - PollyTTSProvider          │
-│ - BrowserTTSProvider      │  │ - AWS Polly integration     │
+│ - TTSService              │  │ - ServerTTSProvider         │
+│ - BrowserTTSProvider      │  │ - Server API integration    │
 │   (built-in fallback)     │  │ - Neural voices             │
 │ - Catalog integration     │  │ - Full SSML                 │
 │ - State management        │  │                             │
@@ -254,7 +255,7 @@ With normalization:
 
 #### Implementation in TTSService
 
-The `TTSService.buildPositionMap()` method:
+The `TTSService.buildPositionMap()` method delegates to text core helpers:
 
 1. Takes the spoken text (already normalized)
 2. Extracts DOM text with `range.toString()`
@@ -264,27 +265,12 @@ The `TTSService.buildPositionMap()` method:
 
 #### Implementation in TTS Tools
 
-TTS tools MUST normalize text before calling `speak()`:
-
-```typescript
-// ✅ CORRECT
-const range = document.createRange();
-range.selectNodeContents(targetContainer);
-const rawText = range.toString();
-const normalizedText = rawText.trim().replace(/\s+/g, ' ');
-
-await ttsService.speak(normalizedText, {
-  contentElement: targetContainer
-});
-
-// ❌ WRONG - Text mismatch causes highlighting issues
-const text = range.toString().trim(); // Only trims, doesn't collapse whitespace
-await ttsService.speak(text, { contentElement: targetContainer });
-```
+TTS tools should pass `contentElement` and let `TTSService` apply one shared normalization path.
+This keeps `speak()`, `speakRange()`, and toolbar-triggered flows aligned and avoids duplicate normalization logic.
 
 #### Common Pitfalls
 
-1. **Using `trim()` without `replace(/\s+/g, ' ')`** - Internal whitespace still misaligned
+1. **Bypassing `TTSService` normalization path** - custom pre-normalization can desync offsets
 2. **Extracting text from one element, highlighting in another** - Text content differs
 3. **Not rebuilding after TTSService changes** - Old code runs with bugs
 4. **Speech marks in wrong coordinate system** - Server returns trimmed positions, must match
@@ -298,6 +284,14 @@ When implementing TTS highlighting:
 3. Test with content containing lots of whitespace
 4. Verify words highlight at correct positions, not ahead/behind
 5. Check that highlighted text matches the spoken word
+
+## Segmenter + Fallback Policy
+
+- Browser adapter sentence chunking uses `Intl.Segmenter` (`granularity: "sentence"`) when available.
+- Browser highlighting defaults to sentence-level for stability.
+- Server-backed providers that return speech marks keep word-level highlighting.
+- Fallback behavior remains regex-based for environments without `Intl.Segmenter`.
+- Locale is threaded through TTS settings into both text-processing and browser segmentation.
 
 ## Creating Custom Providers
 
@@ -458,13 +452,12 @@ catalogResolver.addItemCatalogs(result.catalogs);
 ```
 
 **Integration Points:**
-- `PieSectionPlayer` - Primary interface for toolkit services
-- `ItemRenderer.svelte` - Extracts SSML from items automatically
-- `PassageRenderer.svelte` - Extracts SSML from passages automatically
+- `pie-section-player-splitpane` - Primary interface for toolkit services
+- `PieSectionPlayerSplitPaneElement.svelte` - Composes passages/items and runtime wiring
 - Runs transparently during render (no author action needed)
 
 **Usage Pattern:**
-The section player is the primary container for assessment toolkit integration. Simply pass services as JavaScript properties, and the player handles SSML extraction, catalog management, and TTS tool rendering automatically.
+The splitpane section player is the primary container for assessment toolkit integration. Pass services as JavaScript properties, and the player handles SSML extraction, catalog management, and TTS tool rendering automatically.
 
 See [Accessibility Catalogs Integration Guide](./accessibility-catalogs-integration-guide.md) for complete examples.
 

@@ -1,7 +1,7 @@
 <svelte:options
 	customElement={{
 		tag: 'pie-section-player-tools-pnp-debugger',
-		shadow: 'open',
+		shadow: 'none',
 		props: {
 			sectionData: { type: 'Object', attribute: 'section-data' },
 			roleType: { type: 'String', attribute: 'role-type' },
@@ -11,6 +11,7 @@
 />
 
 <script lang="ts">
+	import '@pie-players/pie-theme/components.css';
 	import { createEventDispatcher } from 'svelte';
 	import { onDestroy, onMount } from 'svelte';
 	import {
@@ -50,6 +51,20 @@
 	let resizeStartHeight = 0;
 
 	const pnpResolver = new PNPToolResolver(createDefaultToolRegistry());
+	let floatingTools = $state<string[]>([]);
+
+	$effect(() => {
+		if (!toolkitCoordinator?.onFloatingToolsChange) {
+			floatingTools = toolkitCoordinator?.getFloatingTools?.() || [];
+			return;
+		}
+		const unsubscribe = toolkitCoordinator.onFloatingToolsChange((toolIds: string[]) => {
+			floatingTools = Array.isArray(toolIds) ? [...toolIds] : [];
+		});
+		return () => {
+			unsubscribe?.();
+		};
+	});
 
 	let pnpPanelData = $derived.by(() => {
 		const directProfile = sectionData?.personalNeedsProfile;
@@ -68,8 +83,9 @@
 		const resolution = pnpResolver.resolveToolsWithProvenance(resolverInput as any);
 
 		const toolkitToolConfig = toolkitCoordinator?.config?.tools || null;
-		const floatingTools = toolkitCoordinator?.getFloatingTools?.() ||
-			toolkitToolConfig?.placement?.section || [];
+		const effectiveFloatingTools = floatingTools.length > 0
+			? floatingTools
+			: (toolkitCoordinator?.getFloatingTools?.() || toolkitToolConfig?.placement?.section || []);
 		const hasCatalogResolver = Boolean(toolkitCoordinator?.catalogResolver);
 		const catalogStats = hasCatalogResolver ? toolkitCoordinator.catalogResolver.getStatistics?.() : null;
 
@@ -92,7 +108,7 @@
 					: 'No explicit PNP profile was found in section payload, so the toolkit default PNP profile is applied.',
 				runtimeContext: {
 					role: roleType,
-					floatingToolsEnabled: floatingTools,
+					floatingToolsEnabled: effectiveFloatingTools,
 					hasCatalogResolver,
 					catalogCount: catalogStats?.totalCatalogs ?? 0,
 					assessmentCatalogCount: catalogStats?.assessmentCatalogs ?? 0,
@@ -107,9 +123,10 @@
 		const viewportWidth = window.innerWidth;
 		const viewportHeight = window.innerHeight;
 
-		pnpWindowWidth = clamp(Math.round(viewportWidth * 0.62), 460, 1040);
+		// Keep the debugger docked left by default so it does not block item interactions.
+		pnpWindowWidth = clamp(Math.round(viewportWidth * 0.3), 360, 560);
 		pnpWindowHeight = clamp(Math.round(viewportHeight * 0.72), 360, 860);
-		pnpWindowX = Math.max(16, Math.round((viewportWidth - pnpWindowWidth) / 2));
+		pnpWindowX = 16;
 		pnpWindowY = Math.max(16, Math.round((viewportHeight - pnpWindowHeight) / 2));
 	});
 
@@ -172,51 +189,67 @@
 		document.removeEventListener('mouseup', stopPnpResize);
 	}
 
-	function onPanelContentWheel(e: WheelEvent) {
-		const container = e.currentTarget as HTMLElement | null;
-		if (!container) return;
-		// Keep wheel scrolling inside the floating panel instead of bubbling to page.
-		e.preventDefault();
-		e.stopPropagation();
-		container.scrollTop += e.deltaY;
-	}
 </script>
 
 <div
-	class="fixed z-100 flex flex-col overflow-hidden bg-base-100 rounded-lg shadow-2xl border-2 border-base-300"
+	class="pie-section-player-tools-pnp-debugger"
 	style="left: {pnpWindowX}px; top: {pnpWindowY}px; width: {pnpWindowWidth}px; {isPnpMinimized ? 'height: auto;' : `height: ${pnpWindowHeight}px;`}"
 >
 	<div
-		class="flex items-center justify-between px-4 py-2 bg-base-200 rounded-t-lg cursor-move select-none border-b border-base-300"
+		class="pie-section-player-tools-pnp-debugger__header"
 		onmousedown={startPnpDrag}
 		role="button"
 		tabindex="0"
 		aria-label="Drag PNP profile panel"
 	>
-		<div class="flex items-center gap-2">
-			<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+		<div class="pie-section-player-tools-pnp-debugger__header-title">
+			<svg
+				xmlns="http://www.w3.org/2000/svg"
+				class="pie-section-player-tools-pnp-debugger__icon-sm"
+				fill="none"
+				viewBox="0 0 24 24"
+				stroke="currentColor"
+			>
 				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-7 8h8a2 2 0 002-2V6a2 2 0 00-2-2H8a2 2 0 00-2 2v12a2 2 0 002 2zm1-12h4m-4 4h4m-4 4h4" />
 			</svg>
-			<h3 class="font-bold text-sm">PNP Profile</h3>
+			<h3 class="pie-section-player-tools-pnp-debugger__title">PNP Profile</h3>
 		</div>
-		<div class="flex gap-1">
+		<div class="pie-section-player-tools-pnp-debugger__header-actions">
 			<button
-				class="btn btn-xs btn-ghost btn-circle"
+				class="pie-section-player-tools-pnp-debugger__icon-button"
 				onclick={() => isPnpMinimized = !isPnpMinimized}
 				title={isPnpMinimized ? 'Maximize' : 'Minimize'}
 			>
 				{#if isPnpMinimized}
-					<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						class="pie-section-player-tools-pnp-debugger__icon-xs"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+					>
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
 					</svg>
 				{:else}
-					<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						class="pie-section-player-tools-pnp-debugger__icon-xs"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+					>
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
 					</svg>
 				{/if}
 			</button>
-			<button class="btn btn-xs btn-ghost btn-circle" onclick={() => dispatch('close')} title="Close">
-				<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+			<button class="pie-section-player-tools-pnp-debugger__icon-button" onclick={() => dispatch('close')} title="Close">
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					class="pie-section-player-tools-pnp-debugger__icon-xs"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+				>
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
 				</svg>
 			</button>
@@ -224,27 +257,26 @@
 	</div>
 
 	{#if !isPnpMinimized}
-		<div class="p-4 flex flex-col min-h-0 overflow-hidden" style="height: {pnpWindowHeight - 60}px;">
+		<div class="pie-section-player-tools-pnp-debugger__content-shell" style="height: {pnpWindowHeight - 60}px;">
 			<div
-				class="space-y-3 flex-1 min-h-0"
+				class="pie-section-player-tools-pnp-debugger__content"
 				style="height: 100%; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;"
-				onwheel={onPanelContentWheel}
 			>
-				<div class="bg-base-200 rounded p-3">
-					<div class="text-xs font-semibold mb-2">Determination (read-only)</div>
-					<pre class="bg-base-300 p-2 rounded text-xs overflow-x-auto">{JSON.stringify(pnpPanelData.determination, null, 2)}</pre>
+				<div class="pie-section-player-tools-pnp-debugger__card">
+					<div class="pie-section-player-tools-pnp-debugger__card-title">Determination (read-only)</div>
+					<pre class="pie-section-player-tools-pnp-debugger__card-pre">{JSON.stringify(pnpPanelData.determination, null, 2)}</pre>
 				</div>
-				<div class="bg-base-200 rounded p-3">
-					<div class="text-xs font-semibold mb-2">Resolved Tools (toolkit)</div>
-					<pre class="bg-base-300 p-2 rounded text-xs overflow-x-auto">{JSON.stringify(pnpPanelData.resolvedTools, null, 2)}</pre>
+				<div class="pie-section-player-tools-pnp-debugger__card">
+					<div class="pie-section-player-tools-pnp-debugger__card-title">Resolved Tools (toolkit)</div>
+					<pre class="pie-section-player-tools-pnp-debugger__card-pre">{JSON.stringify(pnpPanelData.resolvedTools, null, 2)}</pre>
 				</div>
-				<div class="bg-base-200 rounded p-3">
-					<div class="text-xs font-semibold mb-2">Provenance Summary</div>
-					<pre class="bg-base-300 p-2 rounded text-xs overflow-x-auto">{JSON.stringify(pnpPanelData.provenance, null, 2)}</pre>
+				<div class="pie-section-player-tools-pnp-debugger__card">
+					<div class="pie-section-player-tools-pnp-debugger__card-title">Provenance Summary</div>
+					<pre class="pie-section-player-tools-pnp-debugger__card-pre">{JSON.stringify(pnpPanelData.provenance, null, 2)}</pre>
 				</div>
-				<div class="bg-base-200 rounded p-3">
-					<div class="text-xs font-semibold mb-2">PNP Profile (read-only)</div>
-					<pre class="bg-base-300 p-2 rounded text-xs overflow-x-auto">{JSON.stringify(pnpPanelData.pnpProfile, null, 2)}</pre>
+				<div class="pie-section-player-tools-pnp-debugger__card">
+					<div class="pie-section-player-tools-pnp-debugger__card-title">PNP Profile (read-only)</div>
+					<pre class="pie-section-player-tools-pnp-debugger__card-pre">{JSON.stringify(pnpPanelData.pnpProfile, null, 2)}</pre>
 				</div>
 			</div>
 		</div>
@@ -252,14 +284,14 @@
 
 	{#if !isPnpMinimized}
 		<div
-			class="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize"
+			class="pie-section-player-tools-pnp-debugger__resize-handle"
 			onmousedown={startPnpResize}
 			role="button"
 			tabindex="0"
 			title="Resize window"
 		>
 			<svg
-				class="w-full h-full text-base-content/30"
+				class="pie-section-player-tools-pnp-debugger__resize-icon"
 				viewBox="0 0 16 16"
 				fill="currentColor"
 			>

@@ -12,6 +12,8 @@ pre-commit:
 pre-push:
   parallel: false
   commands:
+    check-publint:
+      run: bun run check:publint
     section-player-tts-ssml-e2e:
       run: bun run test:e2e:section-player:tts-ssml
     item-player-multiple-choice-e2e:

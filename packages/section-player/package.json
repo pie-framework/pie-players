@@ -15,10 +15,10 @@
 	"unpkg": "./dist/pie-section-player.js",
 	"jsdelivr": "./dist/pie-section-player.js",
 	"main": "./dist/pie-section-player.js",
-	"types": "./dist/index.d.ts",
+	"types": "./dist/pie-section-player.d.ts",
 	"exports": {
 		".": {
-			"types": "./dist/index.d.ts",
+			"types": "./dist/pie-section-player.d.ts",
 			"import": "./dist/pie-section-player.js"
 		},
 		"./components/section-player-splitpane-element": {

@@ -1,5 +1,29 @@
 {
   "commands": {
+    "pack:local": {
+      "aliases": [],
+      "args": {},
+      "description": "Build and pack local installable artifacts for PIEOneer testing (no npm publish).",
+      "examples": [
+        "$ pie-players pack:local"
+      ],
+      "flags": {},
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "pack:local",
+      "pluginAlias": "@pie-players/pie-players-cli",
+      "pluginName": "@pie-players/pie-players-cli",
+      "pluginType": "core",
+      "strict": true,
+      "enableJsonFlag": false,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "pack",
+        "local.js"
+      ]
+    },
     "pie-packages:pie-player-build-tag": {
       "aliases": [],
       "args": {},

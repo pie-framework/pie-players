@@ -19,14 +19,15 @@
    ============================================================================ */
 
 ::highlight(tts-word) {
-	background-color: color-mix(in srgb, var(--pie-missing, #fde995) 60%, transparent);
-	text-decoration: underline 2px solid color-mix(in srgb, var(--pie-text, #111827) 40%, transparent);
-	text-shadow: 0 0 1px color-mix(in srgb, var(--pie-text, #111827) 20%, transparent);
+	background-color: var(--pie-tts-word-highlight, color-mix(in srgb, var(--pie-missing, #ffeb3b) 68%, transparent));
+	text-decoration: underline 2px solid var(--pie-tts-word-underline, color-mix(in srgb, var(--pie-text, #111827) 70%, transparent));
+	text-underline-offset: 2px;
+	text-shadow: 0 0 1px var(--pie-tts-word-shadow, color-mix(in srgb, var(--pie-text, #111827) 35%, transparent));
 	color: inherit;
 }
 
 ::highlight(tts-sentence) {
-	background-color: color-mix(in srgb, var(--pie-missing, #fde995) 30%, transparent);
+	background-color: var(--pie-tts-sentence-highlight, color-mix(in srgb, var(--pie-missing, #ffeb3b) 38%, transparent));
 	color: inherit;
 }
 
@@ -68,13 +69,13 @@
 @media (prefers-color-scheme: dark) {
 	/* TTS highlights - darker, more visible on dark backgrounds */
 	::highlight(tts-word) {
-		background-color: rgba(139, 117, 0, 0.7);
-		text-decoration: underline 2px solid rgba(255, 255, 255, 0.6);
-		text-shadow: 0 0 2px rgba(255, 255, 255, 0.3);
+		background-color: var(--pie-tts-word-highlight, color-mix(in srgb, var(--pie-missing, #ffeb3b) 72%, transparent));
+		text-decoration: underline 2px solid var(--pie-tts-word-underline, color-mix(in srgb, var(--pie-white, #fff) 70%, transparent));
+		text-shadow: 0 0 2px var(--pie-tts-word-shadow, color-mix(in srgb, var(--pie-white, #fff) 32%, transparent));
 	}
 
 	::highlight(tts-sentence) {
-		background-color: rgba(139, 117, 0, 0.4);
+		background-color: var(--pie-tts-sentence-highlight, color-mix(in srgb, var(--pie-missing, #ffeb3b) 42%, transparent));
 	}
 
 	/* Annotation highlights - adjusted for dark mode */
@@ -106,13 +107,14 @@
 @media (prefers-contrast: high) {
 	/* TTS highlights - thicker underlines, higher contrast */
 	::highlight(tts-word) {
-		background-color: rgba(255, 255, 0, 0.9);
+		background-color: var(--pie-tts-word-highlight, color-mix(in srgb, var(--pie-missing, #ffeb3b) 85%, transparent));
+		text-decoration-color: var(--pie-tts-word-underline, color-mix(in srgb, var(--pie-text, #111827) 85%, transparent));
 		text-decoration-thickness: 3px;
 		text-shadow: none;
 	}
 
 	::highlight(tts-sentence) {
-		background-color: rgba(255, 255, 0, 0.5);
+		background-color: var(--pie-tts-sentence-highlight, color-mix(in srgb, var(--pie-missing, #ffeb3b) 55%, transparent));
 	}
 
 	/* Annotation highlights - more saturated colors */
@@ -144,8 +146,8 @@
 
 @media (prefers-color-scheme: dark) and (prefers-contrast: high) {
 	::highlight(tts-word) {
-		background-color: rgba(255, 255, 0, 0.8);
-		text-decoration-color: rgba(255, 255, 255, 0.9);
+		background-color: var(--pie-tts-word-highlight, color-mix(in srgb, var(--pie-missing, #ffeb3b) 85%, transparent));
+		text-decoration-color: var(--pie-tts-word-underline, color-mix(in srgb, var(--pie-white, #fff) 88%, transparent));
 	}
 
 	::highlight(annotation-underline) {

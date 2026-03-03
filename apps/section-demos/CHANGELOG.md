@@ -1,5 +1,27 @@
 # @pie-players/section-demos
 
+## 0.1.13
+
+### Patch Changes
+
+- Updated dependencies [beffcc0]
+  - @pie-players/pie-assessment-toolkit@0.2.10
+  - @pie-players/pie-context@0.1.2
+  - @pie-players/pie-players-shared@0.2.6
+  - @pie-players/pie-section-player@0.2.13
+  - @pie-players/pie-section-player-tools-pnp-debugger@0.1.2
+  - @pie-players/pie-section-player-tools-session-debugger@0.1.2
+  - @pie-players/pie-theme@0.1.2
+  - @pie-players/pie-tool-annotation-toolbar@0.1.10
+  - @pie-players/pie-tool-answer-eliminator@0.2.10
+  - @pie-players/pie-tool-calculator@0.1.10
+  - @pie-players/pie-tool-text-to-speech@0.1.10
+  - @pie-players/pie-toolbars@0.1.1
+  - @pie-players/tts-client-server@0.2.5
+  - @pie-players/tts-server-core@0.1.5
+  - @pie-players/tts-server-google@0.1.5
+  - @pie-players/tts-server-polly@0.1.5
+
 ## 0.1.12
 
 ### Patch Changes

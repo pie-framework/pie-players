@@ -1,5 +1,11 @@
 # @pie-players/pie-players-cli
 
+## 0.1.3
+
+### Patch Changes
+
+- beffcc0: Release all publishable packages.
+
 ## 0.1.2
 
 ### Patch Changes

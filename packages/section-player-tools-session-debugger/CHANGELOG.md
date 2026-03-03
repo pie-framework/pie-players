@@ -1,5 +1,13 @@
 # @pie-players/pie-section-player-tools-session-debugger
 
+## 0.1.2
+
+### Patch Changes
+
+- beffcc0: Release all publishable packages.
+- Updated dependencies [beffcc0]
+  - @pie-players/pie-theme@0.1.2
+
 ## 0.1.1
 
 ### Patch Changes

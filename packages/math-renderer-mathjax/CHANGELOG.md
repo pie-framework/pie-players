@@ -1,5 +1,13 @@
 # @pie-players/math-renderer-mathjax
 
+## 0.1.5
+
+### Patch Changes
+
+- beffcc0: Release all publishable packages.
+- Updated dependencies [beffcc0]
+  - @pie-players/math-renderer-core@0.1.5
+
 ## 0.1.4
 
 ### Patch Changes

@@ -14,6 +14,7 @@
 	],
 	"scripts": {
 		"build": "turbo build --filter='!./apps/*' --filter='!./tools/*'",
+		"build:watch:section-tools": "turbo watch build --filter=@pie-players/pie-section-player --filter=@pie-players/pie-assessment-toolkit --filter=@pie-players/pie-tool-* --filter=@pie-players/pie-toolbars --filter=@pie-players/pie-section-player-tools-*",
 		"build:e2e:section-player": "turbo build --filter=@pie-players/pie-section-player...",
 		"build:e2e:item-player": "turbo build --filter=@pie-players/pie-item-player...",
 		"dev": "turbo dev --filter=section-demos",

@@ -39,9 +39,15 @@ export default defineConfig({
 	],
 	build: {
 		lib: {
-			entry: resolve(__dirname, "src/pie-section-player.ts"),
+			entry: {
+				"pie-section-player": resolve(__dirname, "src/pie-section-player.ts"),
+				"utils/player-preload": resolve(
+					__dirname,
+					"src/utils/player-preload.ts",
+				),
+			},
 			name: "PieSectionPlayer",
-			fileName: () => "pie-section-player.js",
+			fileName: (_format, entryName) => `${entryName}.js`,
 			formats: ["es"],
 		},
 		outDir: "dist",

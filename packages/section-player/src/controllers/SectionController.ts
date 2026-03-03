@@ -11,6 +11,9 @@ import { SectionItemNavigationService } from "./SectionItemNavigationService.js"
 import { SectionSessionService } from "./SectionSessionService.js";
 import type {
 	NavigationResult,
+	SectionCanonicalItemViewModel,
+	SectionCanonicalSectionViewModel,
+	SectionCanonicalSessionViewModel,
 	SectionControllerChangeEvent,
 	SectionControllerChangeListener,
 	SectionCompositionModel,
@@ -34,7 +37,8 @@ export class SectionController implements SectionControllerHandle {
 	private readonly contentService = new SectionContentService();
 	private readonly sessionService = new SectionSessionService();
 	private readonly itemNavigationService = new SectionItemNavigationService();
-	private persistenceStrategy: SectionControllerPersistenceStrategy | null = null;
+	private persistenceStrategy: SectionControllerPersistenceStrategy | null =
+		null;
 	private persistenceContext: SectionControllerContext | null = null;
 	private state: SectionControllerState = {
 		input: null,
@@ -82,7 +86,10 @@ export class SectionController implements SectionControllerHandle {
 		const typedInput = input as SectionControllerInput | undefined;
 		if (!typedInput) return;
 
-		const content = this.contentService.build(typedInput.section, typedInput.view);
+		const content = this.contentService.build(
+			typedInput.section,
+			typedInput.view,
+		);
 		const sessionState = this.sessionService.resolve({
 			...typedInput,
 			adapterItemRefs: content.adapterItemRefs,
@@ -123,12 +130,10 @@ export class SectionController implements SectionControllerHandle {
 		if (!this.persistenceStrategy || !this.persistenceContext) return;
 		const snapshot = (await this.persistenceStrategy.load(
 			this.persistenceContext,
-		)) as
-			| {
-					testAttemptSession?: TestAttemptSession;
-					currentItemIndex?: number;
-			  }
-			| null;
+		)) as {
+			testAttemptSession?: TestAttemptSession;
+			currentItemIndex?: number;
+		} | null;
 		if (!snapshot) return;
 		if (snapshot.testAttemptSession) {
 			this.state.testAttemptSession = snapshot.testAttemptSession;
@@ -141,7 +146,10 @@ export class SectionController implements SectionControllerHandle {
 
 	public async persist(): Promise<void> {
 		if (!this.persistenceStrategy || !this.persistenceContext) return;
-		await this.persistenceStrategy.save(this.persistenceContext, this.getSnapshot());
+		await this.persistenceStrategy.save(
+			this.persistenceContext,
+			this.getSnapshot(),
+		);
 	}
 
 	public dispose(): void {
@@ -160,6 +168,7 @@ export class SectionController implements SectionControllerHandle {
 	}
 
 	public getCompositionModel(): SectionCompositionModel {
+		const itemViewModels = this.getItemViewModels();
 		return {
 			section: this.state.input?.section || null,
 			assessmentItemRefs: this.state.input?.section?.assessmentItemRefs || [],
@@ -173,6 +182,46 @@ export class SectionController implements SectionControllerHandle {
 			isPageMode: this.state.viewModel.isPageMode,
 			itemSessionsByItemId: this.getItemSessionsByItemId(),
 			testAttemptSession: this.getResolvedTestAttemptSession(),
+			itemViewModels,
+		};
+	}
+
+	public getCanonicalItemViewModel(
+		itemId: string,
+	): SectionCanonicalItemViewModel | null {
+		if (!itemId) return null;
+		const itemViewModel = this.getItemViewModels().find((entry) => {
+			return entry.itemId === itemId || entry.canonicalItemId === itemId;
+		});
+		return itemViewModel || null;
+	}
+
+	public getCanonicalSectionViewModel(): SectionCanonicalSectionViewModel {
+		return {
+			sectionId: this.state.input?.sectionId || "",
+			currentItemIndex: this.state.viewModel.currentItemIndex,
+			items: this.getItemViewModels(),
+		};
+	}
+
+	public getCanonicalSessionViewModel(): SectionCanonicalSessionViewModel {
+		const currentItemIndex = this.state.viewModel.currentItemIndex;
+		const itemSessionsByCanonicalId = Object.fromEntries(
+			this.state.viewModel.adapterItemRefs
+				.map((itemRef) => {
+					const canonicalItemId = itemRef.identifier || itemRef.item?.id;
+					if (!canonicalItemId) return null;
+					const itemViewModel = this.getCanonicalItemViewModel(canonicalItemId);
+					return [canonicalItemId, itemViewModel?.session] as const;
+				})
+				.filter(
+					(entry): entry is readonly [string, unknown] =>
+						!!entry && typeof entry[0] === "string" && !!entry[0],
+				),
+		) as Record<string, unknown>;
+		return {
+			currentItemIndex,
+			itemSessionsByCanonicalId,
 		};
 	}
 
@@ -187,7 +236,10 @@ export class SectionController implements SectionControllerHandle {
 		isPageMode: boolean;
 	} {
 		return {
-			sectionId: this.state.input?.section?.identifier || this.state.input?.sectionId || "",
+			sectionId:
+				this.state.input?.section?.identifier ||
+				this.state.input?.sectionId ||
+				"",
 			itemCount: this.state.viewModel.items.length,
 			passageCount: this.state.viewModel.passages.length,
 			isPageMode: this.state.viewModel.isPageMode,
@@ -196,7 +248,10 @@ export class SectionController implements SectionControllerHandle {
 
 	public getResolvedItemSessions(): Record<string, any> {
 		if (!this.state.testAttemptSession) return {};
-		return toItemSessionsRecord(this.state.testAttemptSession) as Record<string, any>;
+		return toItemSessionsRecord(this.state.testAttemptSession) as Record<
+			string,
+			any
+		>;
 	}
 
 	public getResolvedTestAttemptSession(): TestAttemptSession | null {
@@ -209,6 +264,23 @@ export class SectionController implements SectionControllerHandle {
 			(itemRef) => itemRef.item?.id === itemId,
 		);
 		return adapterMatch?.identifier || itemId;
+	}
+
+	private getItemViewModels(): SectionCanonicalItemViewModel[] {
+		const itemSessionsByItemId = this.getItemSessionsByItemId();
+		return this.state.viewModel.items.map((item, index) => {
+			const itemId = item.id || "";
+			const canonicalItemId = this.getCanonicalItemId(itemId);
+			return {
+				item,
+				itemId,
+				canonicalItemId,
+				index,
+				isCurrent: index === this.state.viewModel.currentItemIndex,
+				session:
+					itemSessionsByItemId[itemId] ?? itemSessionsByItemId[canonicalItemId],
+			};
+		});
 	}
 
 	public getItemSessionsByItemId(): Record<string, any> {
@@ -268,9 +340,12 @@ export class SectionController implements SectionControllerHandle {
 		const currentItemId =
 			itemIdentifiers[this.state.viewModel.currentItemIndex] || "";
 		const visitedSet = new Set(
-			this.state.testAttemptSession.navigationState.visitedItemIdentifiers || [],
+			this.state.testAttemptSession.navigationState.visitedItemIdentifiers ||
+				[],
 		);
-		const visitedItemIdentifiers = itemIdentifiers.filter((id) => visitedSet.has(id));
+		const visitedItemIdentifiers = itemIdentifiers.filter((id) =>
+			visitedSet.has(id),
+		);
 		const itemSessions: Record<string, unknown> = {};
 		for (const itemRef of this.state.viewModel.adapterItemRefs) {
 			const canonicalId = itemRef.identifier || itemRef.item?.id;
@@ -279,7 +354,8 @@ export class SectionController implements SectionControllerHandle {
 			const sessionValue =
 				this.state.testAttemptSession?.itemSessions?.[canonicalId]?.session ??
 				(runtimeItemId
-					? this.state.testAttemptSession?.itemSessions?.[runtimeItemId]?.session
+					? this.state.testAttemptSession?.itemSessions?.[runtimeItemId]
+							?.session
 					: undefined);
 			if (!sessionValue) continue;
 			itemSessions[canonicalId] = sessionValue;
@@ -301,7 +377,9 @@ export class SectionController implements SectionControllerHandle {
 
 	public getCurrentItem(): ItemEntity | null {
 		if (this.state.viewModel.isPageMode) return null;
-		return this.state.viewModel.items[this.state.viewModel.currentItemIndex] || null;
+		return (
+			this.state.viewModel.items[this.state.viewModel.currentItemIndex] || null
+		);
 	}
 
 	public getCurrentItemSession(): unknown {

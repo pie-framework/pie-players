@@ -1,6 +1,4 @@
-import type {
-	TestAttemptSession,
-} from "@pie-players/pie-assessment-toolkit";
+import type { TestAttemptSession } from "@pie-players/pie-assessment-toolkit";
 import type { ItemSessionUpdateIntent } from "@pie-players/pie-players-shared";
 import type {
 	AssessmentItemRef,
@@ -72,6 +70,27 @@ export interface SectionCompositionModel {
 	isPageMode: boolean;
 	itemSessionsByItemId: Record<string, unknown>;
 	testAttemptSession: TestAttemptSession | null;
+	itemViewModels: SectionCanonicalItemViewModel[];
+}
+
+export interface SectionCanonicalItemViewModel {
+	item: ItemEntity;
+	itemId: string;
+	canonicalItemId: string;
+	index: number;
+	isCurrent: boolean;
+	session: unknown;
+}
+
+export interface SectionCanonicalSectionViewModel {
+	sectionId: string;
+	currentItemIndex: number;
+	items: SectionCanonicalItemViewModel[];
+}
+
+export interface SectionCanonicalSessionViewModel {
+	currentItemIndex: number;
+	itemSessionsByCanonicalId: Record<string, unknown>;
 }
 
 export interface SectionAttemptSessionSlice {

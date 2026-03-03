@@ -30,40 +30,15 @@
 	import { SectionController } from "../controllers/SectionController.js";
 	import type { SectionCompositionModel } from "../controllers/types.js";
 	import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
-
-	const EMPTY_COMPOSITION: SectionCompositionModel = {
-		section: null,
-		assessmentItemRefs: [],
-		passages: [],
-		items: [],
-		rubricBlocks: [],
-		instructions: [],
-		renderables: [],
-		currentItemIndex: 0,
-		currentItem: null,
-		isPageMode: false,
-		itemSessionsByItemId: {},
-		testAttemptSession: null,
-	};
-	const DEFAULT_ASSESSMENT_ID = "section-demo-direct";
-	const DEFAULT_PLAYER_TYPE = "iife";
-	const DEFAULT_LAZY_INIT = true;
-	const DEFAULT_ISOLATION = "inherit";
-	const DEFAULT_ENV = { mode: "gather", role: "student" } as Record<string, unknown>;
-	const LEGACY_RUNTIME_WARNING_KEY = "pie-section-player-base:legacy-runtime-props";
-	const warnedKeys = new Set<string>();
-	type RuntimeConfig = {
-		assessmentId?: string;
-		playerType?: string;
-		player?: Record<string, unknown> | null;
-		lazyInit?: boolean;
-		tools?: Record<string, unknown> | null;
-		accessibility?: Record<string, unknown> | null;
-		coordinator?: unknown;
-		createSectionController?: unknown;
-		isolation?: string;
-		env?: Record<string, unknown>;
-	};
+	import { EMPTY_COMPOSITION } from "./shared/composition.js";
+	import {
+		DEFAULT_ASSESSMENT_ID,
+		DEFAULT_ENV,
+		DEFAULT_ISOLATION,
+		DEFAULT_LAZY_INIT,
+		DEFAULT_PLAYER_TYPE,
+		type RuntimeConfig,
+	} from "./shared/section-player-runtime.js";
 	let {
 		assessmentId = DEFAULT_ASSESSMENT_ID,
 		runtime = null as RuntimeConfig | null,
@@ -156,28 +131,6 @@
 		if (!toolkitElement) return;
 		toolkitElement.createSectionController =
 			effectiveCreateSectionController || (() => new SectionController());
-	});
-
-	$effect(() => {
-		if (typeof window === "undefined" || runtime) return;
-		const usedLegacyProps: string[] = [];
-		if (assessmentId !== DEFAULT_ASSESSMENT_ID) usedLegacyProps.push("assessmentId");
-		if (playerType !== DEFAULT_PLAYER_TYPE) usedLegacyProps.push("playerType");
-		if (player !== null) usedLegacyProps.push("player");
-		if (lazyInit !== DEFAULT_LAZY_INIT) usedLegacyProps.push("lazyInit");
-		if (tools !== null) usedLegacyProps.push("tools");
-		if (accessibility !== null) usedLegacyProps.push("accessibility");
-		if (coordinator !== null) usedLegacyProps.push("coordinator");
-		if (createSectionController !== null) usedLegacyProps.push("createSectionController");
-		if (isolation !== DEFAULT_ISOLATION) usedLegacyProps.push("isolation");
-		if (env !== null) usedLegacyProps.push("env");
-		if (usedLegacyProps.length === 0) return;
-		const key = `${LEGACY_RUNTIME_WARNING_KEY}:${usedLegacyProps.sort().join(",")}`;
-		if (warnedKeys.has(key)) return;
-		warnedKeys.add(key);
-		console.warn(
-			`[pie-section-player-base] Runtime props (${usedLegacyProps.join(", ")}) are deprecated. Prefer the \`runtime\` object prop.`,
-		);
 	});
 
 </script>

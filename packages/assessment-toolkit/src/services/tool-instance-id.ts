@@ -8,13 +8,11 @@ export const DEFAULT_TOOL_SCOPE_LEVELS = [
 
 export type BuiltinToolScopeLevel = (typeof DEFAULT_TOOL_SCOPE_LEVELS)[number];
 export type ToolScopeLevel = BuiltinToolScopeLevel | (string & {});
-export type ToolInstanceRole = "overlay" | "inline";
 
 export interface ParsedToolInstanceId {
 	baseToolId: string;
 	scopeLevel: ToolScopeLevel;
 	scopeId: string;
-	role: ToolInstanceRole;
 }
 
 const registeredToolScopeLevels = new Set<string>(DEFAULT_TOOL_SCOPE_LEVELS);
@@ -41,7 +39,6 @@ export function createScopedToolId(
 	baseToolId: string,
 	scopeLevel: ToolScopeLevel,
 	scopeId: string,
-	role: ToolInstanceRole = "overlay",
 ): string {
 	const normalizedBase = baseToolId.trim();
 	const normalizedScopeId = scopeId.trim();
@@ -53,36 +50,26 @@ export function createScopedToolId(
 			`Unknown tool scope level '${scopeLevel}'. Register custom levels with registerToolScopeLevel().`,
 		);
 	}
-	return role === "inline"
-		? `${normalizedBase}:${scopeLevel}:${normalizedScopeId}:inline`
-		: `${normalizedBase}:${scopeLevel}:${normalizedScopeId}`;
+	return `${normalizedBase}:${scopeLevel}:${normalizedScopeId}`;
 }
 
 export function parseScopedToolId(id: string): ParsedToolInstanceId | null {
 	const parts = id.split(":");
 	if (parts.length !== 3 && parts.length !== 4) return null;
-	const [baseToolId, scopeLevelRaw, scopeId, roleRaw] = parts;
+	const [baseToolId, scopeLevelRaw, scopeId] = parts;
 	if (!baseToolId || !scopeId) return null;
 	if (!isRegisteredToolScopeLevel(scopeLevelRaw)) {
 		return null;
 	}
-	const role: ToolInstanceRole = roleRaw === "inline" ? "inline" : "overlay";
-	if (parts.length === 4 && roleRaw !== "inline") return null;
 	return {
 		baseToolId,
 		scopeLevel: scopeLevelRaw,
 		scopeId,
-		role,
 	};
 }
 
 export function toOverlayToolId(id: string): string {
 	const parsed = parseScopedToolId(id);
 	if (!parsed) return id;
-	return createScopedToolId(
-		parsed.baseToolId,
-		parsed.scopeLevel,
-		parsed.scopeId,
-		"overlay",
-	);
+	return createScopedToolId(parsed.baseToolId, parsed.scopeLevel, parsed.scopeId);
 }

@@ -27,7 +27,7 @@ import { AccessibilityCatalogResolver } from "./AccessibilityCatalogResolver.js"
 import { ElementToolStateStore } from "./ElementToolStateStore.js";
 import { HighlightCoordinator } from "./HighlightCoordinator.js";
 import { ToolCoordinator } from "./ToolCoordinator.js";
-import { TTSService } from "./TTSService.js";
+import { TTSService, type TTSConfig } from "./TTSService.js";
 import { BrowserTTSProvider } from "./tts/browser-provider.js";
 import {
 	ToolProviderRegistry,
@@ -73,10 +73,17 @@ export interface ToolConfig {
  */
 export interface TTSToolConfig extends ToolConfig {
 	backend?: "browser" | "polly" | "google" | "server";
+	provider?: "polly" | "google";
+	serverProvider?: "polly" | "google";
+	engine?: "standard" | "neural";
+	sampleRate?: number;
+	format?: "mp3" | "ogg" | "pcm";
+	speechMarksMode?: "word" | "word+sentence";
 	defaultVoice?: string;
 	rate?: number;
 	pitch?: number;
 	apiEndpoint?: string;
+	language?: string;
 	authFetcher?: () => Promise<Partial<TTSToolProviderConfig>>;
 }
 
@@ -185,6 +192,12 @@ export interface ToolkitInitStatus {
 	providers: Record<string, boolean>;
 }
 
+export interface SectionControllerLifecycleEvent {
+	type: "ready" | "disposed";
+	key: SectionControllerKey;
+	controller?: SectionControllerHandle;
+}
+
 export interface ToolkitCoordinatorHooks {
 	onError?: (error: Error, context: ToolkitErrorContext) => void;
 	onTTSError?: (error: Error, context: ToolkitErrorContext) => void;
@@ -227,6 +240,11 @@ export interface ToolkitCoordinatorHooks {
 		state: Record<string, Record<string, unknown>>,
 	) => void | Promise<void>;
 
+	/**
+	 * Provide section-level controller overrides only.
+	 * Avoid instantiating per-item controller graphs here unless item lifecycle
+	 * requirements explicitly demand it.
+	 */
 	createSectionController?: (
 		context: SectionControllerContext,
 		defaults: SectionControllerFactoryDefaults,
@@ -318,6 +336,9 @@ export class ToolkitCoordinator {
 		string,
 		SectionControllerPersistenceStrategy
 	>();
+	private readonly sectionControllerLifecycleListeners = new Set<
+		(event: SectionControllerLifecycleEvent) => void
+	>();
 
 	/** Callback for floating tools changes */
 	private floatingToolsChangeCallback: ((toolIds: string[]) => void) | null =
@@ -403,6 +424,19 @@ export class ToolkitCoordinator {
 			await this.hooks.onTelemetry?.(eventName, payload);
 		} catch (err) {
 			console.warn("[ToolkitCoordinator] telemetry hook failed:", err);
+		}
+	}
+
+	private emitSectionControllerLifecycle(event: SectionControllerLifecycleEvent): void {
+		for (const listener of this.sectionControllerLifecycleListeners) {
+			try {
+				listener(event);
+			} catch (error) {
+				console.warn(
+					"[ToolkitCoordinator] section controller lifecycle listener failed:",
+					error,
+				);
+			}
 		}
 	}
 
@@ -516,11 +550,30 @@ export class ToolkitCoordinator {
 			| undefined;
 		if (ttsConfig?.enabled !== false) {
 			const backend = ttsConfig?.backend || "browser";
+			const serverProvider =
+				ttsConfig?.serverProvider ||
+				ttsConfig?.provider ||
+				(backend === "polly" || backend === "google" ? backend : undefined);
 			void this.registerProvider("tts", {
 				provider: new TTSToolProvider(backend),
 				config: {
 					backend,
 					apiEndpoint: ttsConfig?.apiEndpoint,
+					serverProvider,
+					providerOptions:
+						backend === "polly"
+							? {
+									...(ttsConfig?.engine ? { engine: ttsConfig.engine } : {}),
+									...(typeof ttsConfig?.sampleRate === "number"
+										? { sampleRate: ttsConfig.sampleRate }
+										: {}),
+									...(ttsConfig?.format ? { format: ttsConfig.format } : {}),
+									speechMarkTypes:
+										ttsConfig?.speechMarksMode === "word+sentence"
+											? ["word", "sentence"]
+											: ["word"],
+								}
+							: undefined,
 					voice: ttsConfig?.defaultVoice,
 					rate: ttsConfig?.rate,
 					pitch: ttsConfig?.pitch,
@@ -642,6 +695,15 @@ export class ToolkitCoordinator {
 		return this.sectionControllers.get(this.getSectionControllerMapKey(key));
 	}
 
+	public onSectionControllerLifecycle(
+		listener: (event: SectionControllerLifecycleEvent) => void,
+	): () => void {
+		this.sectionControllerLifecycleListeners.add(listener);
+		return () => {
+			this.sectionControllerLifecycleListeners.delete(listener);
+		};
+	}
+
 	public async getOrCreateSectionController(args: {
 		sectionId: string;
 		attemptId?: string;
@@ -688,6 +750,11 @@ export class ToolkitCoordinator {
 			await controller.hydrate?.();
 
 			this.sectionControllers.set(mapKey, controller);
+			this.emitSectionControllerLifecycle({
+				type: "ready",
+				key,
+				controller,
+			});
 			await this.hooks.onSectionControllerReady?.(context, controller);
 			await this.emitTelemetry("section-controller-ready", {
 				assessmentId: key.assessmentId,
@@ -753,6 +820,10 @@ export class ToolkitCoordinator {
 			});
 		} finally {
 			this.sectionControllers.delete(mapKey);
+			this.emitSectionControllerLifecycle({
+				type: "disposed",
+				key,
+			});
 			if (args.clearPersistence) {
 				const strategy = this.sectionPersistenceStrategies.get(mapKey);
 				await strategy?.clear?.(context);
@@ -788,13 +859,62 @@ export class ToolkitCoordinator {
 					?.backend ??
 				"browser",
 		});
+		const resolvedToolConfig =
+			config ||
+			((this.config.tools?.providers?.tts as TTSToolConfig | undefined) || {});
+		const resolvedBackend = resolvedToolConfig.backend || "browser";
+		const runtimeProvider =
+			resolvedToolConfig.serverProvider ||
+			resolvedToolConfig.provider ||
+			(resolvedBackend === "polly" || resolvedBackend === "google"
+				? resolvedBackend
+				: undefined);
+		const runtimeTTSConfig: Partial<TTSConfig> = {
+			voice: resolvedToolConfig.defaultVoice,
+			rate: resolvedToolConfig.rate,
+			pitch: resolvedToolConfig.pitch,
+			providerOptions: {
+				...(resolvedToolConfig.language
+					? {
+							locale: resolvedToolConfig.language,
+						}
+					: {}),
+				...(resolvedBackend === "polly" && resolvedToolConfig.engine
+					? {
+							engine: resolvedToolConfig.engine,
+						}
+					: {}),
+				...(resolvedBackend === "polly" &&
+				typeof resolvedToolConfig.sampleRate === "number"
+					? {
+							sampleRate: resolvedToolConfig.sampleRate,
+						}
+					: {}),
+				...(resolvedBackend === "polly" && resolvedToolConfig.format
+					? {
+							format: resolvedToolConfig.format,
+						}
+					: {}),
+				...(resolvedBackend === "polly"
+					? {
+							speechMarkTypes:
+								resolvedToolConfig.speechMarksMode === "word+sentence"
+									? ["word", "sentence"]
+									: ["word"],
+						}
+					: {}),
+			},
+			apiEndpoint: resolvedToolConfig.apiEndpoint,
+			provider: runtimeProvider,
+			language: resolvedToolConfig.language,
+		} as Partial<TTSConfig>;
 
 		// Try to use TTS provider from registry if available
 		if (this.toolProviderRegistry.has("tts")) {
 			try {
 				const ttsProvider = await this.ensureProviderReady("tts");
 				const providerInstance = await ttsProvider.createInstance();
-				await this.ttsService.initialize(providerInstance);
+				await this.ttsService.initialize(providerInstance, runtimeTTSConfig);
 				this.ttsService.setCatalogResolver(this.catalogResolver);
 				this.ttsInitialized = true;
 				await this.hooks.onTTSReady?.();
@@ -816,7 +936,7 @@ export class ToolkitCoordinator {
 		// Fallback to browser provider
 		const provider = new BrowserTTSProvider();
 		try {
-			await this.ttsService.initialize(provider, config);
+			await this.ttsService.initialize(provider, runtimeTTSConfig);
 			this.ttsService.setCatalogResolver(this.catalogResolver);
 			this.ttsInitialized = true;
 			await this.hooks.onTTSReady?.();
@@ -1045,11 +1165,30 @@ export class ToolkitCoordinator {
 		if (ttsConfig?.enabled === false) return;
 
 		const backend = ttsConfig?.backend || "browser";
+		const serverProvider =
+			ttsConfig?.serverProvider ||
+			ttsConfig?.provider ||
+			(backend === "polly" || backend === "google" ? backend : undefined);
 		await this.registerProvider("tts", {
 			provider: new TTSToolProvider(backend),
 			config: {
 				backend,
 				apiEndpoint: ttsConfig?.apiEndpoint,
+				serverProvider,
+				providerOptions:
+					backend === "polly"
+						? {
+								...(ttsConfig?.engine ? { engine: ttsConfig.engine } : {}),
+								...(typeof ttsConfig?.sampleRate === "number"
+									? { sampleRate: ttsConfig.sampleRate }
+									: {}),
+								...(ttsConfig?.format ? { format: ttsConfig.format } : {}),
+								speechMarkTypes:
+									ttsConfig?.speechMarksMode === "word+sentence"
+										? ["word", "sentence"]
+										: ["word"],
+							}
+						: undefined,
 				voice: ttsConfig?.defaultVoice,
 				rate: ttsConfig?.rate,
 				pitch: ttsConfig?.pitch,

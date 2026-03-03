@@ -156,6 +156,14 @@ export interface ITTSProviderImplementation {
 	speak(text: string): Promise<void>;
 
 	/**
+	 * Speak pre-segmented text with optional pause metadata.
+	 *
+	 * Providers that support this can preserve segment boundaries
+	 * while still emitting word boundaries in global offsets.
+	 */
+	speakSegments?(segments: TTSSpeechSegment[]): Promise<void>;
+
+	/**
 	 * Pause playback
 	 */
 	pause(): void;
@@ -184,7 +192,16 @@ export interface ITTSProviderImplementation {
 	 * Word boundary callback (optional)
 	 * Called during speech for word highlighting
 	 */
-	onWordBoundary?: (word: string, position: number) => void;
+	onWordBoundary?: (word: string, position: number, length?: number) => void;
+}
+
+/**
+ * Pre-segmented speech unit with global offsets.
+ */
+export interface TTSSpeechSegment {
+	text: string;
+	startOffset: number;
+	pauseMsAfter?: number;
 }
 
 /**

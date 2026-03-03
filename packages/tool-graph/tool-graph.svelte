@@ -19,9 +19,7 @@
 		AssessmentToolkitRuntimeContext,
 		IToolCoordinator,
 	} from '@pie-players/pie-assessment-toolkit';
-	import ToolSettingsButton from '@pie-players/pie-players-shared/components/ToolSettingsButton.svelte';
-	import ToolSettingsPanel from '@pie-players/pie-players-shared/components/ToolSettingsPanel.svelte';
-import { onDestroy, onMount } from 'svelte';
+import { onMount } from 'svelte';
 
 	// Props
 	let {
@@ -64,8 +62,6 @@ import { onDestroy, onMount } from 'svelte';
 	);
 	let canvasWrapperEl = $state<HTMLDivElement | undefined>();
 	let svgCanvasEl = $state<SVGSVGElement | undefined>();
-	let settingsButtonEl = $state<HTMLButtonElement | undefined>();
-	let settingsOpen = $state(false);
 
 	// Position and size (matching production implementation defaults)
 	let x = $state(isBrowser ? window.innerWidth / 2 : 400);
@@ -380,22 +376,11 @@ import { onDestroy, onMount } from 'svelte';
 		coordinator?.hideTool(toolId);
 	}
 
-	function toggleSettings() {
-		settingsOpen = !settingsOpen;
-	}
-
-	function closeSettings() {
-		settingsOpen = false;
-	}
-
 	function handlePointerDown(e: PointerEvent) {
 		const target = e.target as HTMLElement;
 
 		// Only start drag if clicking the header
 		if (!target.closest('.pie-tool-graph__header')) return;
-
-		// Don't drag if clicking settings button
-		if (target.closest('.tool-settings-button')) return;
 
 		// Start dragging (we'll handle position updates)
 		if (containerEl) {
@@ -504,14 +489,6 @@ import { onDestroy, onMount } from 'svelte';
 		<!-- Header (matching production implementation: dark teal) -->
 		<div class="pie-tool-graph__header">
 			<h3 id="graph-tool-title" class="pie-tool-graph__title">Graph Tool</h3>
-			<div class="pie-tool-graph__header-controls">
-				<ToolSettingsButton
-					bind:buttonEl={settingsButtonEl}
-					onClick={toggleSettings}
-					ariaLabel="Graph tool settings"
-					active={settingsOpen}
-				/>
-			</div>
 		</div>
 
 		<!-- Toolbar (matching production implementation: lighter teal) -->
@@ -710,35 +687,15 @@ import { onDestroy, onMount } from 'svelte';
 		</div>
 	</div>
 
-	<!-- Settings Panel -->
-	<ToolSettingsPanel
-		open={settingsOpen}
-		title="Graph Tool Settings"
-		onClose={closeSettings}
-		anchorEl={settingsButtonEl}
-	>
-		<fieldset class="pie-tool-graph__setting-group">
-			<legend>Canvas</legend>
-			<label>
-				<span class="pie-tool-graph__setting-label">Grid Opacity</span>
-				<input
-					type="range"
-					min="0"
-					max="1"
-					step="0.1"
-					bind:value={gridOpacity}
-					aria-label="Grid opacity"
-				/>
-			</label>
-		</fieldset>
-	</ToolSettingsPanel>
 {/if}
 
 <style>
 	.pie-tool-graph {
 		position: fixed;
-		background: white;
-		box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+		background: var(--pie-background, #fff);
+		color: var(--pie-text, #111827);
+		border: 1px solid var(--pie-border-light, #d1d5db);
+		box-shadow: 0 10px 40px rgb(0 0 0 / 0.3);
 		user-select: none;
 		touch-action: none;
 		border-radius: 12px;
@@ -753,7 +710,7 @@ import { onDestroy, onMount } from 'svelte';
 	.pie-tool-graph__header {
 		padding: 12px 16px;
 		background: var(--pie-primary-dark, #2c3e50); /* Dark teal-like color */
-		color: var(--pie-white, white);
+		color: var(--pie-white, #fff);
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
@@ -765,14 +722,8 @@ import { onDestroy, onMount } from 'svelte';
 	.pie-tool-graph__title {
 		font-weight: 600;
 		font-size: 16px;
-		color: var(--pie-white, white);
+		color: var(--pie-white, #fff);
 		margin: 0;
-	}
-
-	.pie-tool-graph__header-controls {
-		display: flex;
-		gap: 8px;
-		align-items: center;
 	}
 
 	/* Toolbar (matching production implementation: lighter teal) */
@@ -798,21 +749,21 @@ import { onDestroy, onMount } from 'svelte';
 		align-items: center;
 		gap: 4px;
 		padding: 8px 12px;
-		background: rgba(255, 255, 255, 0.2);
+		background: color-mix(in srgb, var(--pie-white, #fff) 20%, transparent);
 		border: 2px solid transparent;
 		border-radius: 4px;
 		cursor: pointer;
-		color: white;
+		color: var(--pie-white, #fff);
 		font-size: 12px;
 		transition: all 0.2s;
 	}
 
 	.pie-tool-graph__tool-button:hover {
-		background: rgba(255, 255, 255, 0.3);
+		background: color-mix(in srgb, var(--pie-white, #fff) 30%, transparent);
 	}
 
 	.pie-tool-graph__tool-button.pie-tool-graph__tool-button--active {
-		background: white;
+		background: var(--pie-background, #fff);
 		color: var(--pie-primary-dark, #2c3e50);
 		border-color: var(--pie-primary-dark, #2c3e50);
 	}
@@ -834,7 +785,7 @@ import { onDestroy, onMount } from 'svelte';
 		display: flex;
 		align-items: center;
 		gap: 8px;
-		color: white;
+		color: var(--pie-white, #fff);
 		font-size: 12px;
 		padding-left: 8px;
 	}
@@ -851,7 +802,7 @@ import { onDestroy, onMount } from 'svelte';
 	/* Canvas wrapper */
 	.pie-tool-graph__canvas-wrapper {
 		flex: 1;
-		background: white;
+		background: var(--pie-background, #fff);
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -866,17 +817,17 @@ import { onDestroy, onMount } from 'svelte';
 
 	/* Grid lines (matching production implementation: dark gray) */
 	.pie-tool-graph__grid-line {
-		stroke: var(--pie-primary-console, #666);
+		stroke: var(--pie-border-dark, #666);
 		vector-effect: non-scaling-stroke;
 	}
 
 	.pie-tool-graph__grid-line--major {
-		stroke: var(--pie-primary-dark-console, #333);
+		stroke: var(--pie-border-dark, #333);
 		stroke-width: 0.75;
 	}
 
 	.pie-tool-graph__grid-line--minor {
-		stroke: var(--pie-primary-light-console, #ccc);
+		stroke: var(--pie-border-light, #ccc);
 		stroke-width: 0.5;
 	}
 
@@ -890,12 +841,12 @@ import { onDestroy, onMount } from 'svelte';
 	}
 
 	.pie-tool-graph__user-point.pie-tool-graph__user-point--highlight {
-		fill: var(--pie-warning, #ffc107);
-		stroke: var(--pie-warning-dark, #ff9800);
+		fill: var(--pie-missing, #ffc107);
+		stroke: var(--pie-missing-icon, #ff9800);
 	}
 
 	.pie-tool-graph__user-line {
-		stroke: var(--pie-dark-gray, #333);
+		stroke: var(--pie-text, #333);
 		stroke-linecap: round;
 		stroke-width: 1;
 		vector-effect: non-scaling-stroke;
@@ -903,27 +854,10 @@ import { onDestroy, onMount } from 'svelte';
 
 	.pie-tool-graph__temp-line {
 		pointer-events: none;
-		stroke: var(--pie-success, #4caf50);
+		stroke: var(--pie-correct, #4caf50);
 		stroke-dasharray: 2, 2;
 		stroke-width: 0.75;
 		vector-effect: non-scaling-stroke;
 	}
 
-	.pie-tool-graph__setting-group {
-		border: 1px solid var(--pie-border, #ccc);
-		border-radius: 4px;
-		padding: 12px;
-		margin-bottom: 16px;
-	}
-
-	.pie-tool-graph__setting-group legend {
-		font-weight: 600;
-		padding: 0 8px;
-	}
-
-	.pie-tool-graph__setting-label {
-		display: block;
-		margin-bottom: 8px;
-		font-weight: 500;
-	}
 </style>

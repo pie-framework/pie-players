@@ -1,7 +1,7 @@
 <svelte:options
 	customElement={{
 		tag: 'pie-section-player-tools-session-debugger',
-		shadow: 'open',
+		shadow: 'none',
 		props: {
 			sectionId: { type: 'String', attribute: 'section-id' },
 			attemptId: { type: 'String', attribute: 'attempt-id' },
@@ -11,6 +11,7 @@
 />
 
 <script lang="ts">
+	import '@pie-players/pie-theme/components.css';
 	import { createEventDispatcher } from 'svelte';
 	import { onMount } from 'svelte';
 	const dispatch = createEventDispatcher<{ close: undefined }>();
@@ -39,6 +40,9 @@
 
 	type ToolkitCoordinatorLike = {
 		getSectionController?: (args: { sectionId: string; attemptId?: string }) => SectionControllerLike | undefined;
+	onSectionControllerLifecycle?: (
+		listener: (event: { type: 'ready' | 'disposed'; key?: { sectionId?: string; attemptId?: string } }) => void
+	) => () => void;
 	};
 
 	let {
@@ -76,12 +80,22 @@
 		lastChangedItemId: null,
 		itemSessions: {}
 	});
+	let activeController: SectionControllerLike | null = null;
+	let unsubscribeController: (() => void) | null = null;
+	let unsubscribeLifecycle: (() => void) | null = null;
+	let controllerAvailable = $state(false);
+	let refreshQueued = false;
 
 	function cloneSessionSnapshot<T>(value: T): T {
 		try {
 			return structuredClone(value);
 		} catch {
-			return JSON.parse(JSON.stringify(value)) as T;
+			try {
+				return JSON.parse(JSON.stringify(value)) as T;
+			} catch {
+				// Keep debugger resilient if a session payload contains non-serializable values.
+				return value;
+			}
 		}
 	}
 
@@ -90,12 +104,18 @@
 		return toolkitCoordinator.getSectionController?.({ sectionId, attemptId });
 	}
 
-	function refreshFromController(meta?: { itemId?: string; updatedAt?: number }) {
-		const controller = getController();
+	function refreshFromController(
+		meta?: { itemId?: string; updatedAt?: number },
+		controllerOverride?: SectionControllerLike | null
+	) {
+		const controller = controllerOverride || getController();
 		const sectionSlice = controller?.getCurrentSectionAttemptSlice?.() || null;
+		controllerAvailable = Boolean(controller);
 		sessionPanelSnapshot = {
 			currentItemIndex:
-				typeof sectionSlice?.currentItemIndex === 'number' ? sectionSlice.currentItemIndex : null,
+				typeof sectionSlice?.currentItemIndex === 'number' && sectionSlice.currentItemIndex >= 0
+					? sectionSlice.currentItemIndex
+					: null,
 			currentItemId:
 				typeof sectionSlice?.currentItemId === 'string' && sectionSlice.currentItemId
 					? sectionSlice.currentItemId
@@ -107,18 +127,86 @@
 		};
 	}
 
+	function queueRefresh(meta?: { itemId?: string; updatedAt?: number }) {
+		if (refreshQueued) return;
+		refreshQueued = true;
+		queueMicrotask(() => {
+			refreshQueued = false;
+			ensureControllerSubscription();
+			refreshFromController(
+				meta || {
+					updatedAt: Date.now()
+				}
+			);
+		});
+	}
+
+	function detachControllerSubscription() {
+		unsubscribeController?.();
+		unsubscribeController = null;
+		activeController = null;
+	}
+
+	function detachLifecycleSubscription() {
+		unsubscribeLifecycle?.();
+		unsubscribeLifecycle = null;
+	}
+
+	function ensureControllerSubscription() {
+		const controller = getController() || null;
+		if (!controller) {
+			detachControllerSubscription();
+			controllerAvailable = false;
+			sessionPanelSnapshot = {
+				currentItemIndex: null,
+				currentItemId: null,
+				visitedItemIdentifiers: [],
+				updatedAt: Date.now(),
+				lastChangedItemId: null,
+				itemSessions: {}
+			};
+			return;
+		}
+		if (controller === activeController) return;
+		detachControllerSubscription();
+		activeController = controller;
+		const subscribe = typeof controller.subscribe === 'function' ? controller.subscribe.bind(controller) : null;
+		unsubscribeController =
+			subscribe?.((detail) => {
+				refreshFromController(
+					{
+						itemId: detail?.itemId,
+						updatedAt: detail?.timestamp || Date.now()
+					},
+					controller
+				);
+			}) || null;
+		refreshFromController(undefined, controller);
+	}
+
+	export function refreshFromHost(): void {
+		queueRefresh({
+			updatedAt: Date.now()
+		});
+	}
+
 	$effect(() => {
 		if (!toolkitCoordinator || !sectionId) return;
-		refreshFromController();
-		const controller = getController();
-		const unsubscribe = controller?.subscribe?.((detail) => {
+		ensureControllerSubscription();
+		detachLifecycleSubscription();
+		unsubscribeLifecycle = toolkitCoordinator.onSectionControllerLifecycle?.((event) => {
+			const eventSectionId = event?.key?.sectionId || '';
+			const eventAttemptId = event?.key?.attemptId || undefined;
+			if (eventSectionId !== sectionId) return;
+			if ((eventAttemptId || undefined) !== (attemptId || undefined)) return;
+			ensureControllerSubscription();
 			refreshFromController({
-				itemId: detail?.itemId,
-				updatedAt: detail?.timestamp || Date.now()
+				updatedAt: Date.now()
 			});
-		});
+		}) || null;
 		return () => {
-			unsubscribe?.();
+			detachControllerSubscription();
+			detachLifecycleSubscription();
 		};
 	});
 
@@ -130,6 +218,20 @@
 		sessionWindowHeight = clamp(Math.round(viewportHeight * 0.72), 360, 860);
 		sessionWindowX = Math.max(16, Math.round(viewportWidth * 0.08));
 		sessionWindowY = Math.max(16, Math.round((viewportHeight - sessionWindowHeight) / 2));
+
+		const handleRuntimeSessionEvent = () => {
+			queueRefresh({
+				updatedAt: Date.now()
+			});
+		};
+		document.addEventListener('session-changed', handleRuntimeSessionEvent as EventListener, true);
+		document.addEventListener('item-session-changed', handleRuntimeSessionEvent as EventListener, true);
+		document.addEventListener('composition-changed', handleRuntimeSessionEvent as EventListener, true);
+		return () => {
+			document.removeEventListener('session-changed', handleRuntimeSessionEvent as EventListener, true);
+			document.removeEventListener('item-session-changed', handleRuntimeSessionEvent as EventListener, true);
+			document.removeEventListener('composition-changed', handleRuntimeSessionEvent as EventListener, true);
+		};
 	});
 
 	function startSessionDrag(e: MouseEvent) {
@@ -196,40 +298,64 @@
 </script>
 
 <div
-	class="fixed z-100 bg-base-100 rounded-lg shadow-2xl border-2 border-base-300"
+	class="pie-section-player-tools-session-debugger"
 	style="left: {sessionWindowX}px; top: {sessionWindowY}px; width: {sessionWindowWidth}px; {isSessionMinimized ? 'height: auto;' : `height: ${sessionWindowHeight}px;`}"
 >
 	<div
-		class="flex items-center justify-between px-4 py-2 bg-base-200 rounded-t-lg cursor-move select-none border-b border-base-300"
+		class="pie-section-player-tools-session-debugger__header"
 		onmousedown={startSessionDrag}
 		role="button"
 		tabindex="0"
 		aria-label="Drag session panel"
 	>
-		<div class="flex items-center gap-2">
-			<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+		<div class="pie-section-player-tools-session-debugger__header-title">
+			<svg
+				xmlns="http://www.w3.org/2000/svg"
+				class="pie-section-player-tools-session-debugger__icon-sm"
+				fill="none"
+				viewBox="0 0 24 24"
+				stroke="currentColor"
+			>
 				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
 			</svg>
-			<h3 class="font-bold text-sm">Session Data</h3>
+			<h3 class="pie-section-player-tools-session-debugger__title">Session Data</h3>
 		</div>
-		<div class="flex gap-1">
+		<div class="pie-section-player-tools-session-debugger__header-actions">
 			<button
-				class="btn btn-xs btn-ghost btn-circle"
+				class="pie-section-player-tools-session-debugger__icon-button"
 				onclick={() => (isSessionMinimized = !isSessionMinimized)}
 				title={isSessionMinimized ? 'Maximize' : 'Minimize'}
 			>
 				{#if isSessionMinimized}
-					<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						class="pie-section-player-tools-session-debugger__icon-xs"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+					>
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
 					</svg>
 				{:else}
-					<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						class="pie-section-player-tools-session-debugger__icon-xs"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+					>
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
 					</svg>
 				{/if}
 			</button>
-			<button class="btn btn-xs btn-ghost btn-circle" onclick={() => dispatch('close')} title="Close">
-				<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+			<button class="pie-section-player-tools-session-debugger__icon-button" onclick={() => dispatch('close')} title="Close">
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					class="pie-section-player-tools-session-debugger__icon-xs"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+				>
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
 				</svg>
 			</button>
@@ -237,25 +363,42 @@
 	</div>
 
 	{#if !isSessionMinimized}
-		<div class="p-4 flex flex-col min-h-0 overflow-hidden" style="height: {sessionWindowHeight - 60}px;">
-			<div class="space-y-3 flex-1 min-h-0 flex flex-col">
-				<div class="mb-2">
-					<div class="text-sm font-bold mb-2">PIE Session Data (Persistent)</div>
+		<div class="pie-section-player-tools-session-debugger__content-shell" style="height: {sessionWindowHeight - 60}px;">
+			<div class="pie-section-player-tools-session-debugger__content">
+				<div class="pie-section-player-tools-session-debugger__section-intro">
+					<div class="pie-section-player-tools-session-debugger__heading">PIE Session Data (Persistent)</div>
 				</div>
 
-				{#if Object.keys(sessionPanelSnapshot.itemSessions || {}).length === 0}
-					<div class="alert alert-info">
-						<svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-5 w-5" fill="none" viewBox="0 0 24 24">
+				{#if !controllerAvailable}
+					<div class="pie-section-player-tools-session-debugger__alert pie-section-player-tools-session-debugger__alert--warning">
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="pie-section-player-tools-session-debugger__icon-md"
+							fill="none"
+							viewBox="0 0 24 24"
+						>
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4c-.77-1.33-2.69-1.33-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z" />
+						</svg>
+						<span class="pie-section-player-tools-session-debugger__text-xs">Section controller not available for this section yet.</span>
+					</div>
+				{:else if Object.keys(sessionPanelSnapshot.itemSessions || {}).length === 0}
+					<div class="pie-section-player-tools-session-debugger__alert pie-section-player-tools-session-debugger__alert--info">
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="pie-section-player-tools-session-debugger__icon-md"
+							fill="none"
+							viewBox="0 0 24 24"
+						>
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
 						</svg>
-						<span class="text-xs">No session data yet. Interact with the questions to see updates.</span>
+						<span class="pie-section-player-tools-session-debugger__text-xs">No section session data yet. Interact with the questions to see updates.</span>
 					</div>
 				{:else}
-					<div class="bg-base-200 rounded p-3 flex-1 min-h-0 flex flex-col">
-						<div class="text-xs font-semibold mb-2">
+					<div class="pie-section-player-tools-session-debugger__card">
+						<div class="pie-section-player-tools-session-debugger__card-title">
 							Item Sessions Snapshot
 						</div>
-						<pre class="bg-base-300 p-2 rounded text-xs overflow-auto flex-1 min-h-0">{JSON.stringify(sessionPanelSnapshot, null, 2)}</pre>
+						<pre class="pie-section-player-tools-session-debugger__card-pre">{JSON.stringify(sessionPanelSnapshot, null, 2)}</pre>
 					</div>
 				{/if}
 			</div>
@@ -264,13 +407,13 @@
 
 	{#if !isSessionMinimized}
 		<div
-			class="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize"
+			class="pie-section-player-tools-session-debugger__resize-handle"
 			onmousedown={startSessionResize}
 			role="button"
 			tabindex="0"
 			title="Resize window"
 		>
-			<svg class="w-full h-full text-base-content/30" viewBox="0 0 16 16" fill="currentColor">
+			<svg class="pie-section-player-tools-session-debugger__resize-icon" viewBox="0 0 16 16" fill="currentColor">
 				<path d="M16 16V14H14V16H16Z" />
 				<path d="M16 11V9H14V11H16Z" />
 				<path d="M13 16V14H11V16H13Z" />

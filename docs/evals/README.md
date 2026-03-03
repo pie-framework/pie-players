@@ -1,6 +1,6 @@
 # Local Evals (YAML-driven)
 
-This repo uses **local-only** evals to validate `pie-iife-player`, `pie-esm-player`, and the **intent** of `assessment-toolkit` (including accessibility intent).
+This repo uses **local-only** evals to validate `pie-item-player` strategies (`iife`, `esm`), and the **intent** of `assessment-toolkit` (including accessibility intent).
 
 - **Where**: `docs/evals/**/evals.yaml`
 - **How**: YAML case specs + a local Playwright YAML runner (opt-in command; not part of CI).
@@ -35,7 +35,7 @@ bun run test:evals:headed
 
 ## Directory layout
 
-- `docs/evals/item-players/` — iife + esm player behaviors (loading, events, env modes, authoring)
+- `docs/evals/item-players/` — `pie-item-player` strategy behaviors (`iife` + `esm`) for loading, events, env modes, and authoring
 - `docs/evals/assessment-toolkit/` — toolkit intent + contracts (events, tools, TTS, response discovery, a11y intent)
 - `docs/evals/tools/` — individual tool testing (color-scheme, calculator, graph, etc.)
 
@@ -46,34 +46,34 @@ Both IIFE and ESM players support the `hosted` property to control where PIE con
 ### Client-Side Processing (Default)
 
 ```typescript
-<pie-iife-player hosted={false} ... />  // Loads client-player.js with controllers
-<pie-esm-player hosted={false} ... />   // Loads element + controller modules
+<pie-item-player strategy="iife" hosted={false} ... /> // Loads client-player.js with controllers
+<pie-item-player strategy="esm" hosted={false} ... />  // Loads element + controller modules
 ```
 
 When `hosted={false}` (default):
 
-- **IIFE Player**: Loads `client-player.js` bundle containing elements + controllers
-- **ESM Player**: Dynamically imports both element modules and `/controller` subpath modules
+- **`strategy="iife"`**: Loads `client-player.js` bundle containing elements + controllers
+- **`strategy="esm"`**: Dynamically imports both element modules and `/controller` subpath modules
 - Controllers execute on the client to transform student responses into scored outcomes
 - Suitable for development, testing, and client-side deployments
 
 ### Server-Side Processing (Production)
 
 ```typescript
-<pie-iife-player hosted={true} ... />   // Loads player.js without controllers
-<pie-esm-player hosted={true} ... />    // Skips controller module loading
+<pie-item-player strategy="iife" hosted={true} ... /> // Loads player.js without controllers
+<pie-item-player strategy="esm" hosted={true} ... />  // Skips controller module loading
 ```
 
 When `hosted={true}`:
 
-- **IIFE Player**: Loads `player.js` bundle with elements only (no controllers)
-- **ESM Player**: Skips importing `/controller` subpath modules
+- **`strategy="iife"`**: Loads `player.js` bundle with elements only (no controllers)
+- **`strategy="esm"`**: Skips importing `/controller` subpath modules
 - Server must handle model transformation via `/player/load` and `/player/score` endpoints
 - Suitable for server-side deployments where controllers run on backend
 
 ### Bundle Type Decision Logic
 
-**IIFE Player** ([PieIifePlayer.svelte:222-225](../../packages/iife-player/src/PieIifePlayer.svelte#L222-L225)):
+**Item Player (`strategy="iife"`)** (`packages/item-player/src/PieItemPlayer.svelte`):
 
 ```typescript
 const bundleType = mode === 'author'
@@ -82,7 +82,7 @@ const bundleType = mode === 'author'
 const needsControllers = !hosted;
 ```
 
-**ESM Player** ([PieEsmPlayer.svelte:199-201](../../packages/esm-player/src/PieEsmPlayer.svelte#L199-L201)):
+**Item Player (`strategy="esm"`)** (`packages/item-player/src/PieItemPlayer.svelte`):
 
 ```typescript
 const needsControllers = !hosted;
@@ -194,7 +194,7 @@ version: 1
 
 component:
   area: item-players
-  underTest: pie-iife-player
+  underTest: pie-item-player
 
 examplesApp:
   app: "@pie-framework/pie-players-example"

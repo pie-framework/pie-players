@@ -9,6 +9,14 @@ import type { ChoiceAdapter } from "./choice-adapter.js";
 export class MultipleChoiceAdapter implements ChoiceAdapter {
 	readonly elementType = "multiple-choice";
 	readonly priority = 100;
+	private static readonly CHOICE_HOOK_ATTR =
+		"data-pie-answer-eliminator-choice";
+	private static readonly LABEL_HOOK_ATTR = "data-pie-answer-eliminator-label";
+	private static readonly ROOT_HOOK_ATTR = "data-pie-answer-eliminator-root";
+	private static readonly FEEDBACK_HOOK_ATTR =
+		"data-pie-answer-eliminator-feedback-tick";
+	private static readonly CHOICE_SELECTOR =
+		`[${MultipleChoiceAdapter.CHOICE_HOOK_ATTR}="true"], .corespring-checkbox, .corespring-radio-button`;
 
 	canHandle(element: HTMLElement): boolean {
 		return (
@@ -18,22 +26,21 @@ export class MultipleChoiceAdapter implements ChoiceAdapter {
 	}
 
 	findChoices(root: HTMLElement): HTMLElement[] {
-		// Find by PIE's corespring classes
-		return Array.from(
-			root.querySelectorAll<HTMLElement>(
-				".corespring-checkbox, .corespring-radio-button",
-			),
+		root.setAttribute(MultipleChoiceAdapter.ROOT_HOOK_ATTR, "true");
+		const choices = Array.from(
+			root.querySelectorAll<HTMLElement>(MultipleChoiceAdapter.CHOICE_SELECTOR),
 		);
+		for (const choice of choices) {
+			this.annotateChoice(choice);
+		}
+		this.annotateFeedbackTicks(root);
+		return choices;
 	}
 
 	createChoiceRange(choice: HTMLElement): Range | null {
 		// Create range covering the label content
 		// Try multiple possible selectors for the label
-		const labelElement =
-			choice.querySelector(".label") ||
-			choice.querySelector("label") ||
-			choice.querySelector('[class*="label"]') ||
-			choice.querySelector("span");
+		const labelElement = this.resolveLabelElement(choice);
 
 		if (!labelElement) {
 			return null;
@@ -57,7 +64,7 @@ export class MultipleChoiceAdapter implements ChoiceAdapter {
 	}
 
 	getChoiceLabel(choice: HTMLElement): string {
-		const label = choice.querySelector(".label");
+		const label = this.resolveLabelElement(choice);
 		return label?.textContent?.trim() || "Unlabeled choice";
 	}
 
@@ -75,7 +82,14 @@ export class MultipleChoiceAdapter implements ChoiceAdapter {
 		if ((input as HTMLInputElement).disabled) return false;
 
 		// 3. In evaluate/view mode (has feedback tick)
-		if (choice.closest(".multiple-choice")?.querySelector(".feedback-tick"))
+		const root =
+			choice.closest(`[${MultipleChoiceAdapter.ROOT_HOOK_ATTR}="true"]`) ||
+			choice.closest("multiple-choice");
+		if (
+			root?.querySelector(
+				`[${MultipleChoiceAdapter.FEEDBACK_HOOK_ATTR}="true"]`,
+			)
+		)
 			return false;
 
 		return true;
@@ -88,9 +102,43 @@ export class MultipleChoiceAdapter implements ChoiceAdapter {
 
 	private generateFallbackId(choice: HTMLElement): string {
 		// Generate stable ID based on choice position
-		const parent = choice.closest(".multiple-choice");
-		const choices = parent?.querySelectorAll(".choice-input") || [];
+		const parent =
+			choice.closest(`[${MultipleChoiceAdapter.ROOT_HOOK_ATTR}="true"]`) ||
+			choice.closest("multiple-choice");
+		const choices =
+			parent?.querySelectorAll(
+				`[${MultipleChoiceAdapter.CHOICE_HOOK_ATTR}="true"]`,
+			) || [];
 		const index = Array.from(choices).indexOf(choice);
 		return `choice-${index}`;
+	}
+
+	private annotateChoice(choice: HTMLElement): void {
+		choice.setAttribute(MultipleChoiceAdapter.CHOICE_HOOK_ATTR, "true");
+		const label = this.resolveLabelElement(choice);
+		if (label) {
+			label.setAttribute(MultipleChoiceAdapter.LABEL_HOOK_ATTR, "true");
+		}
+	}
+
+	private resolveLabelElement(choice: HTMLElement): HTMLElement | null {
+		return (
+			choice.querySelector<HTMLElement>(
+				`[${MultipleChoiceAdapter.LABEL_HOOK_ATTR}="true"]`,
+			) ||
+			choice.querySelector<HTMLElement>("label") ||
+			choice.querySelector<HTMLElement>("span")
+		);
+	}
+
+	private annotateFeedbackTicks(root: HTMLElement): void {
+		for (const feedbackTick of root.querySelectorAll<HTMLElement>(
+			".feedback-tick",
+		)) {
+			feedbackTick.setAttribute(
+				MultipleChoiceAdapter.FEEDBACK_HOOK_ATTR,
+				"true",
+			);
+		}
 	}
 }

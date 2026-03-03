@@ -74,13 +74,14 @@ const applyControllerToElement = async (
 	}
 };
 
-/**
- * Update a PIE element by ref (direct Element reference)
- */
-export const updatePieElementWithRef = (
-	el: Element,
+type ResolvedUpdateOptions = Pick<
+	UpdatePieElementOptions,
+	"config" | "session" | "env" | "eventListeners" | "invokeControllerForModel"
+>;
+
+const resolveAndValidateUpdateOptions = (
 	opts: UpdatePieElementOptions,
-): void => {
+): ResolvedUpdateOptions => {
 	const { config, session, env, eventListeners, invokeControllerForModel } =
 		mergeObjectsIgnoringNullUndefined(defaultPieElementOptions, opts);
 	if (!env) {
@@ -92,15 +93,25 @@ export const updatePieElementWithRef = (
 	if (!config) {
 		throw new Error("config is required");
 	}
-	const pieElement = el as PieElement;
-	const elName = pieElement.tagName.toLowerCase();
-	let model = opts?.config?.models?.find(
-		(m) => m.id === pieElement.id,
-	) as PieModel;
+	return { config, session, env, eventListeners, invokeControllerForModel };
+};
+
+const updateSinglePieElement = (
+	pieElement: PieElement,
+	controllerLookupTag: string,
+	options: ResolvedUpdateOptions,
+	logContext: string,
+): void => {
+	const { config, session, env, eventListeners, invokeControllerForModel } =
+		options;
+	const model = config.models?.find((m) => m.id === pieElement.id) as
+		| PieModel
+		| undefined;
 	if (!model) {
-		logger.error("model not found in", opts);
-		throw new Error(`model not found for ${elName}`);
+		logger.error(`${logContext} Model not found for`, controllerLookupTag);
+		throw new Error(`model not found for ${controllerLookupTag}`);
 	}
+
 	const elementSession = findOrAddSession(session, model.id, model.element);
 	pieElement.session = elementSession;
 
@@ -108,38 +119,67 @@ export const updatePieElementWithRef = (
 	if (eventListeners) {
 		Object.entries(eventListeners).forEach(([evt, fn]) => {
 			pieElement.addEventListener(evt as any, fn);
-			logger.debug("added event listener %s", evt);
 		});
 	}
 
 	if (env && invokeControllerForModel) {
-		const controller = findPieController(elName);
+		const controller = findPieController(controllerLookupTag);
 		if (!controller) {
 			logger.debug(
-				`[updatePieElementWithRef] ℹ️ No controller for ${elName}, using server-processed model`,
+				`${logContext} ℹ️ No controller for ${controllerLookupTag}, using server-processed model`,
 			);
 			pieElement.model = model;
-		} else {
-			// Add .catch() to handle promise rejection
-			applyControllerToElement(
-				pieElement,
-				model,
-				elementSession,
-				controller,
-				env,
-				`[updatePieElementWithRef(${elName}#${pieElement.id})]`,
-			).catch((err) => {
-				logger.error(
-					`[updatePieElementWithRef] Controller failed for ${elName}:`,
-					err,
-				);
-				// Fall back to raw model on controller error
-				pieElement.model = model;
-			});
+			return;
 		}
+
+		logger.debug(
+			`${logContext} Invoking controller for ${controllerLookupTag}#${pieElement.id}`,
+			{
+				mode: env.mode,
+				role: env.role,
+				hasCorrectResponse: "correctResponse" in model,
+			},
+		);
+
+		applyControllerToElement(
+			pieElement,
+			model,
+			elementSession,
+			controller,
+			env,
+			`${logContext}(${controllerLookupTag}#${pieElement.id})`,
+		).catch((err) => {
+			logger.error(
+				`${logContext} Controller failed for ${controllerLookupTag}#${pieElement.id}:`,
+				err,
+			);
+			// Fall back to raw model on controller error
+			pieElement.model = model;
+		});
 	} else {
+		logger.debug(
+			`${logContext} Direct model assignment for ${controllerLookupTag}#${pieElement.id} (no controller invocation requested)`,
+		);
 		pieElement.model = model;
 	}
+};
+
+/**
+ * Update a PIE element by ref (direct Element reference)
+ */
+export const updatePieElementWithRef = (
+	el: Element,
+	opts: UpdatePieElementOptions,
+): void => {
+	const options = resolveAndValidateUpdateOptions(opts);
+	const pieElement = el as PieElement;
+	const elName = pieElement.tagName.toLowerCase();
+	updateSinglePieElement(
+		pieElement,
+		elName,
+		options,
+		"[updatePieElementWithRef]",
+	);
 };
 
 /**
@@ -149,23 +189,11 @@ export const updatePieElement = (
 	elName: string,
 	opts: UpdatePieElementOptions,
 ): void => {
-	const {
-		config,
-		session,
-		env,
-		eventListeners,
-		invokeControllerForModel,
-		container,
-	} = mergeObjectsIgnoringNullUndefined(defaultPieElementOptions, opts);
-	if (!env) {
-		throw new Error("env is required");
-	}
-	if (!session) {
-		throw new Error("session is required");
-	}
-	if (!config) {
-		throw new Error("config is required");
-	}
+	const options = resolveAndValidateUpdateOptions(opts);
+	const { container } = mergeObjectsIgnoringNullUndefined(
+		defaultPieElementOptions,
+		opts,
+	);
 	// Use container for scoped query or fallback to document for global query
 	const searchRoot = container || document;
 	const pieElements = searchRoot.querySelectorAll(elName);
@@ -175,66 +203,7 @@ export const updatePieElement = (
 	}
 	pieElements.forEach((el) => {
 		const pieElement = el as PieElement;
-		// find by id should typically work if the markup is set properly
-		let model = opts?.config?.models?.find((m) => m.id === el.id) as PieModel;
-		if (!model) {
-			logger.error("[updatePieElement] Model not found for", elName, opts);
-			throw new Error(`model not found for ${elName}`);
-		}
-
-		logger.debug(`[updatePieElement] Updating ${elName}#${el.id}, env:`, env);
-		const elementSession = findOrAddSession(session, model.id, model.element);
-		pieElement.session = elementSession;
-
-		// Always attach event listeners (don't skip them for no-controller case)
-		if (eventListeners) {
-			Object.entries(eventListeners).forEach(([evt, fn]) => {
-				pieElement.addEventListener(evt as any, fn);
-			});
-		}
-
-		if (env && invokeControllerForModel) {
-			const controller = findPieController(elName);
-
-			// No controller - use server-processed model directly (player.js bundle)
-			if (!controller) {
-				logger.debug(
-					`[updatePieElement] ℹ️ No controller for ${elName}, using server-processed model`,
-				);
-				pieElement.model = model;
-			} else {
-				// Controller available - run client-side processing (client-player.js bundle)
-				logger.debug(
-					`[updatePieElement] Invoking controller for ${elName}#${el.id}`,
-					{
-						mode: env.mode,
-						role: env.role,
-						hasCorrectResponse: "correctResponse" in model,
-					},
-				);
-
-				applyControllerToElement(
-					pieElement,
-					model,
-					elementSession,
-					controller,
-					env,
-					`[updatePieElement(${elName}#${el.id})]`,
-				).catch((err) => {
-					logger.error(
-						`[updatePieElement] Controller failed for ${elName}#${el.id}:`,
-						err,
-					);
-					// Fall back to raw model on controller error
-					pieElement.model = model;
-				});
-			}
-		} else {
-			logger.debug(
-				`[updatePieElement] Direct model assignment for ${elName}#${el.id} (no controller invocation requested)`,
-			);
-			pieElement.model = model;
-		}
+		updateSinglePieElement(pieElement, elName, options, "[updatePieElement]");
 	});
 };
 

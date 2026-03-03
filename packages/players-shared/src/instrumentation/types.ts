@@ -222,7 +222,7 @@ export interface ErrorAttributes {
 	/**
 	 * Component that generated the error
 	 *
-	 * Examples: 'pie-fixed-player', 'pie-resource-monitor', 'pie-esm-player'
+	 * Examples: 'pie-item-player', 'pie-resource-monitor'
 	 */
 	component: string;
 

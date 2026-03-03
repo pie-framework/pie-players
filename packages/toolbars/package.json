@@ -1,0 +1,78 @@
+{
+	"name": "@pie-players/pie-toolbars",
+	"version": "0.1.0",
+	"type": "module",
+	"description": "Item and section toolbar custom elements for PIE players",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pie-framework/pie-players.git",
+		"directory": "packages/toolbars"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"keywords": [
+		"pie",
+		"assessment",
+		"tools",
+		"toolbar",
+		"custom-elements"
+	],
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		},
+		"./components/item-toolbar-element": {
+			"types": "./dist/components/item-toolbar-element.d.ts",
+			"import": "./dist/components/item-toolbar-element.js"
+		},
+		"./components/section-toolbar-element": {
+			"types": "./dist/components/section-toolbar-element.d.ts",
+			"import": "./dist/components/section-toolbar-element.js"
+		}
+	},
+	"files": [
+		"dist",
+		"components",
+		"index.ts",
+		"package.json"
+	],
+	"peerDependencies": {
+		"svelte": "^5.51.0"
+	},
+	"license": "MIT",
+	"unpkg": "./dist/index.js",
+	"jsdelivr": "./dist/index.js",
+	"dependencies": {
+		"@pie-players/pie-assessment-toolkit": "workspace:*",
+		"@pie-players/pie-calculator-mathjs": "workspace:*",
+		"@pie-players/pie-context": "workspace:*",
+		"@pie-players/pie-default-tool-loaders": "workspace:*",
+		"daisyui": "^5.5.18"
+	},
+	"scripts": {
+		"build": "vite build",
+		"dev": "vite build --watch",
+		"typecheck": "tsc --noEmit",
+		"lint": "biome check ."
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.3.10",
+		"@sveltejs/vite-plugin-svelte": "^6.1.4",
+		"svelte": "^5.51.3",
+		"typescript": "^5.9.3",
+		"vite": "^7.0.8",
+		"vite-plugin-dts": "^4.5.3"
+	},
+	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/toolbars#readme",
+	"bugs": {
+		"url": "https://github.com/pie-framework/pie-players/issues"
+	},
+	"engines": {
+		"node": ">=18.0.0"
+	},
+	"sideEffects": true
+}

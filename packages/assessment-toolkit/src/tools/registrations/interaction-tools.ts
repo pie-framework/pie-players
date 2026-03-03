@@ -65,8 +65,8 @@ export const answerEliminatorToolRegistration: ToolRegistration = {
 	): ToolToolbarRenderResult {
 		const fullToolId = createScopedToolId(
 			this.toolId,
-			"item",
-			toolbarContext.itemId,
+			toolbarContext.scope.level,
+			toolbarContext.scope.scopeId,
 		);
 		const componentOverrides =
 			(toolbarContext.componentOverrides as ToolComponentOverrides | undefined) ?? {};
@@ -101,7 +101,7 @@ export const answerEliminatorToolRegistration: ToolRegistration = {
 		return {
 			toolId: this.toolId,
 			button,
-			overlayElement: overlay,
+			elements: [{ element: overlay, mount: "after-buttons" }],
 			sync: () => {
 				const active = toolbarContext.isToolVisible(fullToolId);
 				button.active = active;
@@ -159,8 +159,8 @@ export const highlighterToolRegistration: ToolRegistration = {
 	): ToolToolbarRenderResult {
 		const fullToolId = createScopedToolId(
 			this.toolId,
-			"item",
-			toolbarContext.itemId,
+			toolbarContext.scope.level,
+			toolbarContext.scope.scopeId,
 		);
 		const button: ToolToolbarButtonDefinition = {
 			toolId: this.toolId,
@@ -190,7 +190,7 @@ export const highlighterToolRegistration: ToolRegistration = {
 		return {
 			toolId: this.toolId,
 			button,
-			overlayElement: overlay,
+			elements: [{ element: overlay, mount: "after-buttons" }],
 			sync: () => {
 				const active = toolbarContext.isToolVisible(fullToolId);
 				button.active = active;

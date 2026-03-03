@@ -8,15 +8,13 @@ const ROOT = process.cwd();
 const ROOT_PACKAGE_JSON = path.join(ROOT, "package.json");
 const ATTW_EXCLUDED = new Set([
 	"@pie-players/pie-assessment-toolkit",
-	"@pie-players/pie-author",
 	"@pie-players/pie-calculator-mathjs",
-	"@pie-players/pie-esm-player",
 	"@pie-players/pie-players-shared",
+	"@pie-players/pie-players-cli",
 	"@pie-players/pie-section-player",
 	"@pie-players/pie-theme",
 	"@pie-players/pie-theme-daisyui",
 	"@pie-players/pie-tool-annotation-toolbar",
-	"@pie-players/pie-tool-tts-inline",
 ]);
 
 const readJson = (filePath) => JSON.parse(readFileSync(filePath, "utf8"));

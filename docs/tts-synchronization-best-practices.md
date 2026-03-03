@@ -890,7 +890,7 @@ interface ITTSProvider {
   pause(): void;
   resume(): void;
   stop(): void;
-  onWordBoundary?: (word: string, position: number) => void;
+  onWordBoundary?: (word: string, position: number, length?: number) => void;
 }
 
 // Highlight interface
@@ -917,10 +917,10 @@ class TTSService {
     this.highlightCoordinator.highlightTTSSentence([range]);
 
     // Setup word boundary handler
-    this.provider.onWordBoundary = (word, charIndex) => {
+    this.provider.onWordBoundary = (word, charIndex, length) => {
       const location = this.textNodeMapper.findNodeAtPosition(
         charIndex,
-        word.length
+        length || word.length
       );
 
       if (location) {
@@ -1584,8 +1584,9 @@ packages/assessment-toolkit/
 │   ├── HighlightCoordinator.ts    # CSS Custom Highlight API
 │   ├── AccessibilityCatalogResolver.ts
 │   └── tts/
-│       ├── browser-provider.ts    # Web Speech API implementation
-│       └── provider-interface.ts  # ITTSProvider interface
+│       └── browser-provider.ts    # Web Speech API implementation
+packages/tts/
+└── src/provider-interface.ts      # Canonical ITTSProvider interfaces
 ```
 
 ### Key Features

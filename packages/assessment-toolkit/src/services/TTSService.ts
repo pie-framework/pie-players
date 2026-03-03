@@ -24,6 +24,19 @@ import type {
 } from "@pie-players/pie-tts";
 import type { AccessibilityCatalogResolver } from "./AccessibilityCatalogResolver.js";
 import type { IHighlightCoordinator } from "./interfaces.js";
+import {
+	type BoundarySpacingMode,
+	collectVisibleTextAndMap,
+	extractVisibleText as extractVisibleTextFromDOM,
+	isElementHiddenForTTS,
+	normalizeTextForSpeech,
+} from "./tts/text-processing.js";
+
+interface TTSSpeechSegment {
+	text: string;
+	startOffset: number;
+	pauseMsAfter?: number;
+}
 
 // Re-export core TTS types for convenience
 export type {
@@ -45,6 +58,17 @@ export enum PlaybackState {
 	ERROR = "error",
 }
 
+type StructuralPauseStrength = "minor" | "section" | "major";
+
+interface StructuralPauseProfile {
+	baseMs: number;
+	units: Record<StructuralPauseStrength, number>;
+	minMs: number;
+	maxMs: number;
+}
+
+type HighlightMode = "word" | "sentence";
+
 /**
  * TTSService
  *
@@ -57,12 +81,15 @@ export class TTSService {
 	private highlightCoordinator: IHighlightCoordinator | null = null;
 	private catalogResolver: AccessibilityCatalogResolver | null = null;
 	private state: PlaybackState = PlaybackState.IDLE;
+	private ttsConfig: Partial<TTSConfig> = {};
 	private currentText: string | null = null;
 	private currentContentElement: Element | null = null;
 	private normalizedToDOM: Map<number, { node: Text; offset: number }> =
 		new Map();
 	private listeners = new Map<string, Set<(state: PlaybackState) => void>>();
 	private lastError: string | null = null;
+	private speakRunId = 0;
+	private currentBoundaryOffset = 0;
 
 	constructor() {}
 
@@ -77,6 +104,7 @@ export class TTSService {
 		config: Partial<TTSConfig> = {},
 	): Promise<void> {
 		this.currentProvider = provider;
+		this.ttsConfig = { ...config };
 
 		// Initialize provider and get implementation
 		this.provider = await provider.initialize(config as TTSConfig);
@@ -101,6 +129,7 @@ export class TTSService {
 			typeof (this.provider as any).updateSettings === "function"
 		) {
 			await (this.provider as any).updateSettings(settings);
+			this.ttsConfig = { ...this.ttsConfig, ...settings };
 		} else {
 			// Fallback: Reinitialize with merged config
 			// This requires storing the original config, which we don't have
@@ -141,17 +170,42 @@ export class TTSService {
 	 * Build a character-by-character map from normalized text positions to DOM positions
 	 * This handles the complexity of whitespace normalization
 	 */
-	private buildPositionMap(element: Element, spokenText: string): void {
+	private getTextProcessingOptions(language?: string): {
+		locale?: string;
+		boundarySpacingMode?: BoundarySpacingMode;
+	} {
+		const providerOptions = (this.ttsConfig.providerOptions || {}) as Record<
+			string,
+			unknown
+		>;
+		const textNormalization = (providerOptions.textNormalization || {}) as Record<
+			string,
+			unknown
+		>;
+		const mode = textNormalization.boundarySpacingMode;
+		const boundarySpacingMode: BoundarySpacingMode | undefined =
+			mode === "none" || mode === "alnum" || mode === "segmenterPreferred"
+				? mode
+				: undefined;
+		const locale =
+			language ||
+			(typeof textNormalization.locale === "string"
+				? textNormalization.locale
+				: undefined);
+		return { locale, boundarySpacingMode };
+	}
+
+	private buildPositionMap(
+		element: Element,
+		spokenText: string,
+		language?: string,
+	): void {
 		this.normalizedToDOM.clear();
-
-		// Get the actual DOM text as it will be rendered
-		const range = document.createRange();
-		range.selectNodeContents(element);
-		const domText = range.toString();
-
-		// Normalize the DOM text the same way the spoken text is normalized
-		// (trim + collapse whitespace)
-		const normalizedDomText = domText.trim().replace(/\s+/g, " ");
+		const { text: normalizedDomText, map } = collectVisibleTextAndMap(
+			element,
+			this.getTextProcessingOptions(language),
+		);
+		this.normalizedToDOM = map;
 
 		console.log("[TTSService] Text comparison:", {
 			spokenLength: spokenText.length,
@@ -188,66 +242,6 @@ export class TTSService {
 						})(),
 		});
 
-		// Build map by walking through nodes and tracking normalized position
-		let normalizedPos = 0;
-		let inLeadingWhitespace = true;
-		let lastCharWasWhitespace = false;
-
-		const walk = (node: Node): void => {
-			if (node.nodeType === Node.TEXT_NODE) {
-				const textNode = node as Text;
-				const text = textNode.textContent || "";
-
-				for (let i = 0; i < text.length; i++) {
-					const char = text[i];
-					const isWhitespace = /\s/.test(char);
-
-					if (inLeadingWhitespace) {
-						// Skip leading whitespace entirely - don't map it
-						if (!isWhitespace) {
-							inLeadingWhitespace = false;
-							this.normalizedToDOM.set(normalizedPos, {
-								node: textNode,
-								offset: i,
-							});
-							normalizedPos++;
-							lastCharWasWhitespace = false;
-						}
-					} else {
-						// Past leading whitespace
-						if (isWhitespace) {
-							// Only map the first whitespace in a sequence (collapse multiple)
-							if (!lastCharWasWhitespace) {
-								this.normalizedToDOM.set(normalizedPos, {
-									node: textNode,
-									offset: i,
-								});
-								normalizedPos++;
-							}
-							lastCharWasWhitespace = true;
-						} else {
-							// Regular character - always map it
-							this.normalizedToDOM.set(normalizedPos, {
-								node: textNode,
-								offset: i,
-							});
-							normalizedPos++;
-							lastCharWasWhitespace = false;
-						}
-					}
-				}
-			} else if (node.nodeType === Node.ELEMENT_NODE) {
-				const element = node as Element;
-				if (element.tagName !== "SCRIPT" && element.tagName !== "STYLE") {
-					for (const child of Array.from(node.childNodes)) {
-						walk(child);
-					}
-				}
-			}
-		};
-
-		walk(element);
-
 		console.log("[TTSService] Position map built:", {
 			entries: this.normalizedToDOM.size,
 			spokenTextLength: spokenText.length,
@@ -262,6 +256,273 @@ export class TTSService {
 					expected: spokenText[pos],
 				})),
 		});
+	}
+
+	private getStructuralPauseProfile(): StructuralPauseProfile {
+		const providerOptions = (this.ttsConfig.providerOptions || {}) as Record<
+			string,
+			unknown
+		>;
+		const custom = (providerOptions.structuralPauses || {}) as Record<
+			string,
+			unknown
+		>;
+		const customUnits = (custom.units || {}) as Record<string, unknown>;
+		const toNumber = (value: unknown, fallback: number): number => {
+			if (typeof value === "number" && Number.isFinite(value)) return value;
+			if (typeof value === "string" && value.trim()) {
+				const parsed = Number(value);
+				return Number.isFinite(parsed) ? parsed : fallback;
+			}
+			return fallback;
+		};
+		return {
+			baseMs: toNumber(custom.baseMs, 280),
+			units: {
+				minor: toNumber(customUnits.minor, 0.65),
+				section: toNumber(customUnits.section, 1.0),
+				major: toNumber(customUnits.major, 1.35),
+			},
+			minMs: toNumber(custom.minMs, 120),
+			maxMs: toNumber(custom.maxMs, 900),
+		};
+	}
+
+	private resolvePauseMsFromUnits(units: number): number {
+		const profile = this.getStructuralPauseProfile();
+		const rate = Math.max(0.25, Math.min(4, Number(this.ttsConfig.rate || 1)));
+		const raw = (profile.baseMs * Math.max(0, units)) / rate;
+		return Math.max(profile.minMs, Math.min(profile.maxMs, Math.round(raw)));
+	}
+
+	private resolveHighlightMode(): HighlightMode {
+		const providerOptions = (this.ttsConfig.providerOptions || {}) as Record<
+			string,
+			unknown
+		>;
+		const configuredMode = providerOptions.highlightMode;
+		if (configuredMode === "word" || configuredMode === "sentence") {
+			return configuredMode;
+		}
+		const providerId = (this.currentProvider?.providerId || "").toLowerCase();
+		if (providerId === "browser") {
+			return "sentence";
+		}
+		const supportsWordBoundary =
+			this.currentProvider?.getCapabilities().supportsWordBoundary ?? false;
+		return supportsWordBoundary ? "word" : "sentence";
+	}
+
+	private hasExplicitBreakSemantics(text: string): boolean {
+		if (!text.includes("<")) return false;
+		return /<\s*break\b|<\s*speak\b|<\s*prosody\b|<\s*p\b|<\s*s\b/i.test(text);
+	}
+
+	private isElementHidden(element: Element): boolean {
+		return isElementHiddenForTTS(element);
+	}
+
+	private extractVisibleText(element: Element, language?: string): string {
+		return extractVisibleTextFromDOM(
+			element,
+			this.getTextProcessingOptions(language),
+		);
+	}
+
+	private getBoundaryStrength(element: Element): StructuralPauseStrength {
+		const explicitBreakMs = Number(element.getAttribute("data-tts-break-ms"));
+		if (Number.isFinite(explicitBreakMs) && explicitBreakMs > 0) return "major";
+		const tagName = element.tagName.toUpperCase();
+		if (tagName.match(/^H[1-6]$/)) return "major";
+		const role = (element.getAttribute("role") || "").toLowerCase();
+		if (role === "heading") return "major";
+		if (
+			role === "listitem" ||
+			role === "row" ||
+			role === "option" ||
+			role === "radio" ||
+			tagName === "LI"
+		) {
+			return "section";
+		}
+		if (typeof window !== "undefined") {
+			const display = window.getComputedStyle(element).display;
+			if (
+				display === "block" ||
+				display === "list-item" ||
+				display.startsWith("table") ||
+				display === "flex" ||
+				display === "grid"
+			) {
+				return "minor";
+			}
+		}
+		return "minor";
+	}
+
+	private getBoundaryAnchor(
+		textNode: Text,
+		root: Element,
+	): { anchor: Element; units: number } | null {
+		let current = textNode.parentElement;
+		let best: Element | null = null;
+		while (current && current !== root) {
+			if (this.isElementHidden(current)) return null;
+			const explicitBreakMs = Number(current.getAttribute("data-tts-break-ms"));
+			if (Number.isFinite(explicitBreakMs) && explicitBreakMs > 0) {
+				return {
+					anchor: current,
+					units: explicitBreakMs / this.getStructuralPauseProfile().baseMs,
+				};
+			}
+			const role = (current.getAttribute("role") || "").toLowerCase();
+			const tagName = current.tagName.toUpperCase();
+			if (tagName.match(/^H[1-6]$/) || role === "heading" || role === "listitem" || tagName === "LI") {
+				best = current;
+				break;
+			}
+			if (!best) {
+				if (typeof window !== "undefined") {
+					const display = window.getComputedStyle(current).display;
+					if (
+						display === "block" ||
+						display === "list-item" ||
+						display.startsWith("table") ||
+						display === "flex" ||
+						display === "grid"
+					) {
+						best = current;
+					}
+				}
+			}
+			current = current.parentElement;
+		}
+		if (!best) return null;
+		const strength = this.getBoundaryStrength(best);
+		return {
+			anchor: best,
+			units: this.getStructuralPauseProfile().units[strength],
+		};
+	}
+
+	private createSpeechPlan(
+		contentElement: Element,
+		normalizedText: string,
+	): TTSSpeechSegment[] {
+		const boundaries = new Map<number, number>();
+		let previousBoundaryAnchor: Element | null = null;
+		const { map } = collectVisibleTextAndMap(
+			contentElement,
+			this.getTextProcessingOptions(),
+		);
+		const nodeStartOffsets = new Map<Text, number>();
+		for (const [normalizedIndex, mapping] of map.entries()) {
+			if (!nodeStartOffsets.has(mapping.node)) {
+				nodeStartOffsets.set(mapping.node, normalizedIndex);
+			}
+		}
+
+		const walker = document.createTreeWalker(contentElement, NodeFilter.SHOW_TEXT);
+		let currentNode = walker.nextNode();
+		while (currentNode) {
+			const textNode = currentNode as Text;
+			const parent = textNode.parentElement;
+			if (parent && !this.isElementHidden(parent)) {
+				const boundary = this.getBoundaryAnchor(textNode, contentElement);
+				const boundaryPoint = nodeStartOffsets.get(textNode);
+				if (
+					boundary &&
+					boundaryPoint !== undefined &&
+					boundary.anchor !== previousBoundaryAnchor &&
+					boundaryPoint > 0
+				) {
+					boundaries.set(
+						boundaryPoint,
+						Math.max(boundaries.get(boundaryPoint) || 0, boundary.units),
+					);
+					previousBoundaryAnchor = boundary.anchor;
+				}
+			}
+			currentNode = walker.nextNode();
+		}
+
+		const points = Array.from(boundaries.keys())
+			.filter((point) => point > 0 && point < normalizedText.length)
+			.sort((a, b) => a - b);
+		const segments: TTSSpeechSegment[] = [];
+		let start = 0;
+		for (const point of points) {
+			const raw = normalizedText.substring(start, point);
+			const leading = raw.match(/^\s*/)?.[0].length || 0;
+			const trailing = raw.match(/\s*$/)?.[0].length || 0;
+			const segmentStart = start + leading;
+			const segmentEnd = point - trailing;
+			if (segmentEnd > segmentStart) {
+				const text = normalizedText.substring(segmentStart, segmentEnd);
+				segments.push({
+					text,
+					startOffset: segmentStart,
+					pauseMsAfter: this.resolvePauseMsFromUnits(boundaries.get(point) || 0),
+				});
+			}
+			start = point;
+		}
+		const tail = normalizedText.substring(start);
+		const tailLeading = tail.match(/^\s*/)?.[0].length || 0;
+		const tailStart = start + tailLeading;
+		if (tailStart < normalizedText.length) {
+			segments.push({
+				text: normalizedText.substring(tailStart).trimEnd(),
+				startOffset: tailStart,
+				pauseMsAfter: 0,
+			});
+		}
+		return segments.filter((segment) => segment.text.trim().length > 0);
+	}
+
+	private async speakWithPlan(
+		segments: TTSSpeechSegment[],
+		runId: number,
+		options?: { highlightMode?: HighlightMode },
+	): Promise<void> {
+		if (!this.provider || segments.length === 0) return;
+		const shouldTrackSentenceProgress = options?.highlightMode === "sentence";
+		const providerWithPlan = this.provider as ITTSProviderImplementation & {
+			speakSegments?: (segments: TTSSpeechSegment[]) => Promise<void>;
+		};
+		if (
+			!shouldTrackSentenceProgress &&
+			typeof providerWithPlan.speakSegments === "function"
+		) {
+			this.currentBoundaryOffset = 0;
+			await providerWithPlan.speakSegments(segments);
+			return;
+		}
+		for (const segment of segments) {
+			if (runId !== this.speakRunId) return;
+			this.currentBoundaryOffset = segment.startOffset;
+			if (shouldTrackSentenceProgress) {
+				this.highlightSentenceSegment(segment.startOffset, segment.text);
+			}
+			await this.provider.speak(segment.text);
+			const pauseMs = segment.pauseMsAfter ?? 0;
+			if (pauseMs > 0) {
+				await new Promise((resolve) => setTimeout(resolve, pauseMs));
+			}
+		}
+	}
+
+	private highlightSentenceSegment(startOffset: number, text: string): void {
+		if (!this.highlightCoordinator || typeof document === "undefined") return;
+		const length = text.trimEnd().length;
+		if (length <= 0) return;
+		const start = this.normalizedToDOM.get(startOffset);
+		const end = this.normalizedToDOM.get(startOffset + length - 1);
+		if (!start || !end) return;
+		const range = document.createRange();
+		range.setStart(start.node, start.offset);
+		range.setEnd(end.node, end.offset + 1);
+		this.highlightCoordinator.highlightTTSSentence([range]);
 	}
 
 	/**
@@ -340,18 +601,64 @@ export class TTSService {
 			catalogId?: string;
 			language?: string;
 			contentElement?: Element;
+			wordBoundaryOffset?: number;
+			highlightModeOverride?: HighlightMode;
 		},
 	): Promise<void> {
 		if (!this.provider) {
 			throw new Error("TTS service not initialized");
 		}
+		const runId = ++this.speakRunId;
+		if (options?.language) {
+			const providerOptions = (this.ttsConfig.providerOptions ||
+				{}) as Record<string, unknown>;
+			const textNormalization = (providerOptions.textNormalization ||
+				{}) as Record<string, unknown>;
+			const segmenter = (providerOptions.segmenter || {}) as Record<
+				string,
+				unknown
+			>;
+			const mergedProviderOptions = {
+				...providerOptions,
+				locale: options.language,
+				textNormalization: {
+					...textNormalization,
+					locale: options.language,
+				},
+				segmenter: {
+					...segmenter,
+					locale: options.language,
+				},
+			};
+			this.ttsConfig = {
+				...this.ttsConfig,
+				providerOptions: mergedProviderOptions,
+			};
+			if (
+				"updateSettings" in this.provider &&
+				typeof (this.provider as { updateSettings?: unknown }).updateSettings ===
+					"function"
+			) {
+				await (
+					this.provider as {
+						updateSettings: (settings: Partial<TTSConfig>) => Promise<void> | void;
+					}
+				).updateSettings({ providerOptions: mergedProviderOptions });
+			}
+		}
 
-		// Normalize the input text to ensure consistency
-		// This handles cases where the caller didn't normalize
-		const normalizedText = text.trim().replace(/\s+/g, " ");
+		// Normalize input text and prefer visible DOM-derived text when available.
+		// This keeps generated speech aligned to what learners can actually see.
+		const normalizedInputText = normalizeTextForSpeech(text);
+		const normalizedText = options?.contentElement
+			? this.extractVisibleText(options.contentElement, options.language) ||
+				normalizedInputText
+			: normalizedInputText;
 
 		// Try to resolve from accessibility catalog if catalogId provided
 		let contentToSpeak = normalizedText;
+		let usedCatalogSpoken = false;
+		let speechSource: "catalog-spoken" | "dom-or-input" = "dom-or-input";
 		if (options?.catalogId && this.catalogResolver) {
 			const catalogContent = this.catalogResolver.getAlternative(
 				options.catalogId,
@@ -365,6 +672,8 @@ export class TTSService {
 			if (catalogContent) {
 				// Use pre-authored spoken content from catalog
 				contentToSpeak = catalogContent.content;
+				usedCatalogSpoken = true;
+				speechSource = "catalog-spoken";
 				console.debug(
 					`[TTSService] Using catalog content for "${options.catalogId}" (${catalogContent.language})`,
 				);
@@ -375,33 +684,63 @@ export class TTSService {
 			}
 		}
 
+		const preview = contentToSpeak.replace(/\s+/g, " ").trim().slice(0, 200);
+		console.debug("[TTSService] Speak resolved content", {
+			source: speechSource,
+			catalogId: options?.catalogId || null,
+			length: contentToSpeak.length,
+			preview,
+		});
+
 		this.currentText = contentToSpeak;
 		this.currentContentElement = options?.contentElement || null;
 		this.lastError = null; // Clear previous error
+		this.currentBoundaryOffset = 0;
+		const highlightMode =
+			options?.highlightModeOverride || this.resolveHighlightMode();
+		const shouldUsePlan =
+			!!this.currentContentElement &&
+			!usedCatalogSpoken &&
+			!this.hasExplicitBreakSemantics(contentToSpeak);
 		this.setState(PlaybackState.LOADING);
 
 		// Build position map for highlighting if we have a content element
 		if (this.currentContentElement && this.highlightCoordinator) {
-			this.buildPositionMap(this.currentContentElement, contentToSpeak);
+			this.buildPositionMap(
+				this.currentContentElement,
+				contentToSpeak,
+				options?.language,
+			);
 
-			// Apply sentence-level highlighting as base layer
-			const range = document.createRange();
-			range.selectNodeContents(this.currentContentElement);
-			this.highlightCoordinator.highlightTTSSentence([range]);
-			console.log("[TTSService] Applied sentence-level highlighting");
+			// Fallback sentence-level highlight for non-planned flows.
+			// Planned sentence mode is updated progressively in speakWithPlan().
+			if (!(highlightMode === "sentence" && shouldUsePlan)) {
+				const range = document.createRange();
+				range.selectNodeContents(this.currentContentElement);
+				this.highlightCoordinator.highlightTTSSentence([range]);
+				console.log("[TTSService] Applied sentence-level highlighting");
+			}
 		}
 
 		try {
 			// Setup word boundary highlighting
-			if (this.highlightCoordinator && this.currentContentElement) {
+			if (
+				highlightMode === "word" &&
+				this.highlightCoordinator &&
+				this.currentContentElement
+			) {
 				this.provider.onWordBoundary = (
 					word: string,
 					charIndex: number,
 					length?: number,
 				) => {
 					const wordLength = length || word.length;
+					const globalIndex =
+						charIndex +
+						this.currentBoundaryOffset +
+						(options?.wordBoundaryOffset || 0);
 
-					const highlightRange = this.findHighlightRange(charIndex, wordLength);
+					const highlightRange = this.findHighlightRange(globalIndex, wordLength);
 					if (highlightRange && this.highlightCoordinator) {
 						const highlightText =
 							highlightRange.node.textContent?.substring(
@@ -409,7 +748,7 @@ export class TTSService {
 								highlightRange.end,
 							) || "";
 						console.log(
-							`[TTSService] Highlighting "${highlightText}" (word: "${word}") at position ${charIndex}`,
+							`[TTSService] Highlighting "${highlightText}" (word: "${word}") at position ${globalIndex}`,
 						);
 						this.highlightCoordinator.highlightTTSWord(
 							highlightRange.node,
@@ -418,14 +757,27 @@ export class TTSService {
 						);
 					} else {
 						console.warn(
-							`[TTSService] Could not find highlight range for position ${charIndex}, length ${wordLength}`,
+							`[TTSService] Could not find highlight range for position ${globalIndex}, length ${wordLength}`,
 						);
 					}
 				};
 			}
 
 			this.setState(PlaybackState.PLAYING);
-			await this.provider.speak(contentToSpeak);
+			if (shouldUsePlan && this.currentContentElement) {
+				const segments = this.createSpeechPlan(
+					this.currentContentElement,
+					normalizedText,
+				);
+				if (segments.length > 0) {
+					await this.speakWithPlan(segments, runId, { highlightMode });
+				} else {
+					await this.provider.speak(contentToSpeak);
+				}
+			} else {
+				await this.provider.speak(contentToSpeak);
+			}
+			if (runId !== this.speakRunId) return;
 			this.setState(PlaybackState.IDLE);
 
 			// Clear highlights when done
@@ -436,9 +788,11 @@ export class TTSService {
 			// Clear tracking
 			this.currentContentElement = null;
 			this.normalizedToDOM.clear();
+			this.currentBoundaryOffset = 0;
 		} catch (error) {
 			console.error("TTS error:", error);
 			this.lastError = error instanceof Error ? error.message : String(error);
+			if (runId !== this.speakRunId) return;
 			this.setState(PlaybackState.ERROR);
 
 			// Clear highlights on error
@@ -449,6 +803,7 @@ export class TTSService {
 			// Clear tracking
 			this.currentContentElement = null;
 			this.normalizedToDOM.clear();
+			this.currentBoundaryOffset = 0;
 
 			throw error;
 		}
@@ -491,7 +846,7 @@ export class TTSService {
 		beforeRange.selectNodeContents(root);
 		beforeRange.setEnd(range.startContainer, range.startOffset);
 		const textBeforeRange = beforeRange.toString();
-		const offset = textBeforeRange.trim().replace(/\s+/g, " ").length;
+		const offset = normalizeTextForSpeech(textBeforeRange).length;
 
 		console.log("[TTSService] speakRange offset calculation:", {
 			selectedText: text,
@@ -500,42 +855,11 @@ export class TTSService {
 			rootTag: root.tagName,
 		});
 
-		// Store the offset for word boundary calculations
-		const originalOnWordBoundary = this.provider.onWordBoundary;
-
-		// Wrap the onWordBoundary handler to adjust character indices
-		this.provider.onWordBoundary = (
-			word: string,
-			charIndex: number,
-			length?: number,
-		) => {
-			// Adjust the character index by the offset
-			const adjustedIndex = charIndex + offset;
-			// Call the handler from speak() method which will handle the highlighting
-			// Pass the adjusted index so highlighting aligns with the actual selection
-			if (this.highlightCoordinator && this.currentContentElement) {
-				const wordLength = length || word.length;
-				const highlightRange = this.findHighlightRange(
-					adjustedIndex,
-					wordLength,
-				);
-				if (highlightRange) {
-					this.highlightCoordinator.highlightTTSWord(
-						highlightRange.node,
-						highlightRange.start,
-						highlightRange.end,
-					);
-				}
-			}
-		};
-
-		try {
-			// Speak the text with the root element as context
-			await this.speak(text, { contentElement: root });
-		} finally {
-			// Restore original handler
-			this.provider.onWordBoundary = originalOnWordBoundary;
-		}
+		// Speak the text with the root element as context
+		await this.speak(text, {
+			contentElement: root,
+			wordBoundaryOffset: offset,
+		});
 	}
 
 	/**
@@ -567,7 +891,7 @@ export class TTSService {
 	 */
 	stop(): void {
 		if (!this.provider) return;
-
+		this.speakRunId += 1;
 		this.provider.stop();
 		this.setState(PlaybackState.IDLE);
 		this.currentText = null;
@@ -580,6 +904,7 @@ export class TTSService {
 		// Clear tracking
 		this.currentContentElement = null;
 		this.normalizedToDOM.clear();
+		this.currentBoundaryOffset = 0;
 	}
 
 	/**

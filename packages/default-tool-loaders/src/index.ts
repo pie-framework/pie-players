@@ -30,7 +30,8 @@ export const ITEM_TOOL_MODULE_LOADERS: Record<string, ToolModuleLoader> = {
 	answerEliminator: () => import("@pie-players/pie-tool-answer-eliminator"),
 	highlighter: () => import("@pie-players/pie-tool-annotation-toolbar"),
 	annotationToolbar: () => import("@pie-players/pie-tool-annotation-toolbar"),
-	colorScheme: () => import("@pie-players/pie-tool-color-scheme"),
+	theme: () => import("@pie-players/pie-tool-theme"),
+	colorScheme: () => import("@pie-players/pie-tool-theme"),
 };
 
 export const DEFAULT_TOOL_MODULE_LOADERS: Record<string, ToolModuleLoader> = {

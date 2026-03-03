@@ -9,6 +9,7 @@ export type {
 	ITTSProvider,
 	ITTSProviderImplementation,
 	StandardTTSConfig,
+	TTSSpeechSegment,
 	TTSConfig,
 	TTSConfigExtensions,
 	TTSFeature,

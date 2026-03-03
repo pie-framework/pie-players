@@ -33,6 +33,9 @@ export interface ServerTTSProviderConfig extends TTSConfig {
 	/** Language code */
 	language?: string;
 
+	/** Polly engine selection when provider is AWS Polly */
+	engine?: "standard" | "neural";
+
 	/** Volume level 0-1 */
 	volume?: number;
 
@@ -190,12 +193,42 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 			headers["Authorization"] = `Bearer ${this.config.authToken}`;
 		}
 
+		const providerOptions = (this.config.providerOptions ||
+			{}) as Record<string, unknown>;
+		const engine =
+			typeof this.config.engine === "string"
+				? this.config.engine
+				: typeof providerOptions.engine === "string"
+					? providerOptions.engine
+					: undefined;
+		const sampleRate =
+			typeof providerOptions.sampleRate === "number" &&
+			Number.isFinite(providerOptions.sampleRate)
+				? providerOptions.sampleRate
+				: undefined;
+		const format =
+			providerOptions.format === "mp3" ||
+			providerOptions.format === "ogg" ||
+			providerOptions.format === "pcm"
+				? providerOptions.format
+				: undefined;
+		const speechMarkTypes = Array.isArray(providerOptions.speechMarkTypes)
+			? providerOptions.speechMarkTypes.filter(
+					(entry): entry is "word" | "sentence" | "ssml" =>
+						entry === "word" || entry === "sentence" || entry === "ssml",
+				)
+			: undefined;
+
 		const requestBody = {
 			text,
 			provider: this.config.provider || "polly",
 			voice: this.config.voice,
 			language: this.config.language,
 			rate: this.config.rate,
+			engine,
+			sampleRate,
+			format,
+			speechMarkTypes,
 			includeSpeechMarks: true,
 		};
 

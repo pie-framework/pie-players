@@ -374,7 +374,7 @@ The runtime can register additional levels if your product needs custom scopes.
 
 ```svelte
 <!-- Section-level: One toolbar for all questions -->
-<section-tools-toolbar toolCoordinator={coordinator.toolCoordinator} />
+<pie-section-toolbar toolCoordinator={coordinator.toolCoordinator} />
 
 <!-- Item-level: New toolbar instance per question -->
 {#each items as item}

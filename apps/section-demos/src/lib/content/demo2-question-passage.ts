@@ -29,7 +29,7 @@ export const demo2Section: AssessmentSection = {
 				version: { major: 1, minor: 0, patch: 0 },
 				config: {
 					markup: `<div class="passage" style="padding: 1.5rem; line-height: 1.7;">
-            <h2 style="margin-top: 0; color: #2c3e50; font-size: 1.5rem; margin-bottom: 1rem;">
+            <h2 style="margin-top: 0; color: var(--pie-text, #111827); font-size: 1.5rem; margin-bottom: 1rem;">
               The Renaissance: A Cultural Rebirth
             </h2>
 
@@ -82,9 +82,7 @@ export const demo2Section: AssessmentSection = {
 						{
 							id: "q1",
 							element: "multiple-choice",
-							prompt: `<div>
-                <p><strong>According to the passage, what was the primary significance of Gutenberg's printing press during the Renaissance?</strong></p>
-              </div>`,
+							prompt: `According to the passage, what was the primary significance of Gutenberg's printing press during the Renaissance?`,
 							choiceMode: "radio",
 							choices: [
 								{

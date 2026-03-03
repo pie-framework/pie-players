@@ -4,7 +4,7 @@
 	"type": "module",
 	"license": "MIT",
 	"main": "./dist/tool-tts-inline.js",
-	"types": "./dist/index.d.ts",
+	"types": "./dist/tool-tts-inline.svelte.d.ts",
 	"unpkg": "./dist/tool-tts-inline.js",
 	"jsdelivr": "./dist/tool-tts-inline.js",
 	"publishConfig": {
@@ -17,7 +17,7 @@
 	},
 	"exports": {
 		".": {
-			"types": "./dist/index.d.ts",
+			"types": "./dist/tool-tts-inline.svelte.d.ts",
 			"import": "./dist/tool-tts-inline.js"
 		}
 	},

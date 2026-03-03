@@ -12,7 +12,10 @@ export interface SectionControllerContext {
 
 export interface SectionControllerPersistenceStrategy {
 	load(context: SectionControllerContext): unknown | Promise<unknown>;
-	save(context: SectionControllerContext, snapshot: unknown): void | Promise<void>;
+	save(
+		context: SectionControllerContext,
+		snapshot: unknown,
+	): void | Promise<void>;
 	clear?(context: SectionControllerContext): void | Promise<void>;
 }
 
@@ -22,11 +25,19 @@ export interface SectionControllerHandle {
 	hydrate?(): void | Promise<void>;
 	persist?(): void | Promise<void>;
 	dispose?(): void | Promise<void>;
+	subscribe?(listener: (event: unknown) => void): () => void;
 	getSnapshot?(): unknown;
-	setPersistenceContext?(context: SectionControllerContext): void | Promise<void>;
+	// Runtime/debugger-oriented section slice (not host persistence shape).
+	getCurrentSectionAttemptSlice?(): unknown;
+	setPersistenceContext?(
+		context: SectionControllerContext,
+	): void | Promise<void>;
 	setPersistenceStrategy?(
 		strategy: SectionControllerPersistenceStrategy,
 	): void | Promise<void>;
+	getCanonicalItemViewModel(itemId: string): unknown;
+	getCanonicalSectionViewModel(): unknown;
+	getCanonicalSessionViewModel(): unknown;
 }
 
 export interface SectionControllerFactoryDefaults {

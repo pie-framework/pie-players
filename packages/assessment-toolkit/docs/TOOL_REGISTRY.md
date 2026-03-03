@@ -459,6 +459,39 @@ The `ItemToolBar` component supports dual-mode operation:
 ></pie-item-toolbar>
 ```
 
+### Host-Provided Toolbar Buttons/Links
+
+Both `pie-item-toolbar` and `pie-section-toolbar` accept a `hostButtons` property.
+This is appended after native tool buttons and supports either clickable buttons or links.
+
+```ts
+type ToolbarItem = {
+  id: string;
+  label: string;
+  ariaLabel?: string;
+  icon?: string;      // inline SVG, URL, or icon key
+  tooltip?: string;
+  active?: boolean;
+  disabled?: boolean;
+} & (
+  | { onClick: () => void }                       // button mode
+  | { href: string; target?: string; rel?: string } // link mode
+);
+```
+
+Example:
+
+```html
+<pie-item-toolbar id="item-toolbar"></pie-item-toolbar>
+<script>
+  const toolbar = document.getElementById("item-toolbar");
+  toolbar.hostButtons = [
+    { id: "help", label: "Help", href: "/help/tools", target: "_blank", rel: "noopener" },
+    { id: "flag", label: "Flag", icon: "flag", onClick: () => console.log("flagged") }
+  ];
+</script>
+```
+
 ## Default Tool Placement
 
 The toolkit provides recommended tool placement by context level:

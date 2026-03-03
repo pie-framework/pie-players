@@ -2,7 +2,10 @@
 
 Bridge DaisyUI theme tokens to PIE `--pie-*` variables.
 
-When using `@pie-players/pie-theme`, Daisy token translation is applied automatically by the `pie-theme` element.
+When using `@pie-players/pie-theme`, Daisy token translation is applied automatically by the built-in Daisy provider in `pie-theme`.
+
+This package is token-focused: it maps DaisyUI CSS variables to PIE theme variables only.
+Shared `pie-*` component class styling (for example debugger overlays or answer-eliminator classes) belongs in `@pie-players/pie-theme/components.css`.
 
 ## Usage
 
@@ -16,11 +19,20 @@ Or apply variables with JavaScript:
 import { applyDaisyThemeToElement } from "@pie-players/pie-theme-daisyui";
 ```
 
+Register the explicit Daisy provider adapter (optional, mostly useful for custom bootstraps):
+
+```ts
+import { registerDaisyThemeProvider } from "@pie-players/pie-theme-daisyui";
+
+registerDaisyThemeProvider();
+```
+
 You can also read resolved Daisy tokens from an element and map them:
 
 ```ts
 import {
 	readDaisyThemeTokensFromElement,
-	mapResolvedDaisyThemeToPieVariables
+	mapResolvedDaisyThemeToPieVariables,
+	daisyThemeProviderAdapter
 } from "@pie-players/pie-theme-daisyui";
 ```

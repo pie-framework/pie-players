@@ -426,8 +426,10 @@ import { onMount } from 'svelte';
 <style>
 	.pie-tool-periodic-table {
 		position: fixed;
-		background: white;
-		box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+		background: var(--pie-background, #fff);
+		color: var(--pie-text, #111827);
+		border: 1px solid var(--pie-border-light, #d1d5db);
+		box-shadow: 0 10px 40px rgb(0 0 0 / 0.3);
 		user-select: none;
 		touch-action: none;
 		border-radius: 12px;
@@ -442,7 +444,7 @@ import { onMount } from 'svelte';
 	.pie-tool-periodic-table__header {
 		padding: 12px 16px;
 		background: var(--pie-primary-dark, #2c3e50); /* Dark teal-like color */
-		color: var(--pie-white, white);
+		color: var(--pie-white, #fff);
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
@@ -454,7 +456,7 @@ import { onMount } from 'svelte';
 	.pie-tool-periodic-table__title {
 		font-weight: 600;
 		font-size: 16px;
-		color: var(--pie-white, white);
+		color: var(--pie-white, #fff);
 		margin: 0;
 	}
 
@@ -467,7 +469,7 @@ import { onMount } from 'svelte';
 	.pie-tool-periodic-table__close-btn {
 		background: transparent;
 		border: none;
-		color: var(--pie-white, white);
+		color: var(--pie-white, #fff);
 		cursor: pointer;
 		padding: 4px;
 		display: flex;
@@ -478,7 +480,7 @@ import { onMount } from 'svelte';
 	}
 
 	.pie-tool-periodic-table__close-btn:hover {
-		background: rgba(255, 255, 255, 0.1);
+		background: color-mix(in srgb, var(--pie-white, #fff) 12%, transparent);
 	}
 
 	.pie-tool-periodic-table__close-btn:focus-visible {
@@ -528,7 +530,7 @@ import { onMount } from 'svelte';
 	}
 
 	.pie-tool-periodic-table__category-badge {
-		border: 1px solid rgba(0, 0, 0, 0.1);
+		border: 1px solid color-mix(in srgb, var(--pie-border-dark, #000) 12%, transparent);
 		border-radius: 1rem;
 		cursor: pointer;
 		font-size: 0.7rem;
@@ -536,18 +538,18 @@ import { onMount } from 'svelte';
 		padding: 4px 6px;
 		transition: background-color 0.2s ease, color 0.2s ease;
 		white-space: nowrap;
-		background: white;
-		color: #333;
+		background: var(--pie-button-bg, #fff);
+		color: var(--pie-button-color, var(--pie-text, #333));
 	}
 
 	.pie-tool-periodic-table__category-badge:hover {
-		background: rgba(0, 0, 0, 0.05);
+		background: var(--pie-button-hover-bg, #f3f4f6);
 	}
 
 	.pie-tool-periodic-table__category-badge.pie-tool-periodic-table__category-badge--active {
 		background-color: var(--pie-primary-dark, #2c3e50);
 		border-color: var(--pie-primary-dark, #2c3e50);
-		color: #fff;
+		color: var(--pie-white, #fff);
 	}
 
 	/* Element overview section (matching production implementation) */
@@ -562,13 +564,13 @@ import { onMount } from 'svelte';
 
 	.pie-tool-periodic-table__selected-element.pie-tool-periodic-table__selected-grid {
 		align-items: center;
-		border: 2px solid #000;
+		border: 2px solid var(--pie-border-dark, #000);
 		border-radius: 8px;
 		box-sizing: border-box;
 		display: flex;
 		gap: 16px;
 		padding: 12px;
-		background: white;
+		background: var(--pie-background, #fff);
 	}
 
 	.pie-tool-periodic-table__left-col {
@@ -586,7 +588,7 @@ import { onMount } from 'svelte';
 	}
 
 	.pie-tool-periodic-table__element-name {
-		color: #333;
+		color: var(--pie-text, #333);
 		font-size: 1rem;
 		font-weight: 500;
 		overflow: hidden;
@@ -619,14 +621,14 @@ import { onMount } from 'svelte';
 	}
 
 	.pie-tool-periodic-table__info-block .pie-tool-periodic-table__label {
-		color: #444;
+		color: var(--pie-text, #444);
 		font-size: 0.75rem;
 		font-weight: bold;
 		margin-bottom: 2px;
 	}
 
 	.pie-tool-periodic-table__info-block .pie-tool-periodic-table__value {
-		color: #000;
+		color: var(--pie-text, #000);
 		font-size: 0.85rem;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -635,8 +637,8 @@ import { onMount } from 'svelte';
 
 	/* Element styles */
 	.pie-tool-periodic-table__element {
-		background-color: white;
-		border: 1px solid rgba(0, 0, 0, 0.1);
+		background-color: var(--pie-background, #fff);
+		border: 1px solid color-mix(in srgb, var(--pie-border-dark, #000) 12%, transparent);
 		border-radius: 4px;
 		box-sizing: border-box;
 		cursor: pointer;
@@ -662,7 +664,7 @@ import { onMount } from 'svelte';
 
 	.pie-tool-periodic-table__element.pie-tool-periodic-table__element--selected {
 		border-color: var(--pie-primary-dark, #2c3e50);
-		box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+		box-shadow: 0 0 0 2px color-mix(in srgb, var(--pie-border-dark, #000) 12%, transparent);
 		z-index: 11;
 	}
 
@@ -702,7 +704,7 @@ import { onMount } from 'svelte';
 
 	/* Overlay for Group (column) labels */
 	.pie-tool-periodic-table__group-labels {
-		color: #333;
+		color: var(--pie-text, #333);
 		display: flex;
 		font-size: 0.65rem;
 		font-weight: bold;
@@ -719,7 +721,7 @@ import { onMount } from 'svelte';
 
 	/* Overlay for Period (row) labels */
 	.pie-tool-periodic-table__period-labels {
-		color: #333;
+		color: var(--pie-text, #333);
 		display: flex;
 		flex-direction: column;
 		font-size: 0.65rem;

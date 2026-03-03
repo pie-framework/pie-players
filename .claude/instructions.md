@@ -2,7 +2,7 @@
 
 ## Project Context
 
-**PIE Players** is a comprehensive web component framework for educational assessments. It provides multiple player implementations (IIFE, ESM, Fixed, Inline, Section) and supports authoring mode, tools, and accommodations.
+**PIE Players** is a comprehensive web component framework for educational assessments. It provides multiple player strategies (IIFE, ESM, Preloaded, Section) and supports authoring mode, tools, and accommodations.
 
 **Critical Requirements**:
 
@@ -28,8 +28,7 @@ pie-players/
 ├── packages/                    # 20 packages
 │   ├── pie-iife-player/        # IIFE bundle player (dynamic CDN loading)
 │   ├── pie-esm-player/         # ESM CDN player (esm.sh, jsDelivr)
-│   ├── pie-fixed-player/       # Pre-bundled monolithic player
-│   ├── pie-inline-player/      # Embedded player for existing systems
+│   ├── pie-preloaded-player/ # Pre-bundled preloaded package output
 │   ├── assessment-toolkit/     # Core assessment services (framework-agnostic)
 │   ├── players-shared/         # Shared utilities & components
 │   └── pie-tool-*/             # 10+ assessment tools (calculator, graph, etc.)
@@ -79,8 +78,7 @@ These checks ensure:
 
 1. **IIFE Player** - Dynamic bundle loading from CDN (most flexible)
 2. **ESM Player** - Native ES modules via CDN (modern browsers)
-3. **Fixed Player** - Pre-bundled with all elements (simplest deployment)
-4. **Inline Player** - Embedded in existing systems (tight integration)
+3. **Preloaded Strategy** - Pre-bundled with all elements (simplest deployment)
 
 ### Web Component Patterns
 
@@ -94,6 +92,8 @@ These checks ensure:
 - In consuming apps/packages, import CE registration entrypoints (for example `@pie-players/pie-assessment-toolkit/components/item-toolbar-element`), not raw package `.svelte` files.
 - Do not import workspace package source paths (`@pie-players/<pkg>/src/...`) from consumers.
 - Do not use `?customElement` in cross-package imports.
+- Use `pie-*` class naming for component DOM hooks and CSS selectors (for example `pie-section-player-*`, `pie-tool-*`) instead of generic names like `header`, `content`, `container`, `card`, `pane`, `toolbar`, `body`, or `active`.
+- For light-DOM custom elements (`shadow: "none"`), treat class names as public integration surface: prefer stable `pie-*` or `data-pie-*` hooks and avoid unscoped/global utility class dependencies.
 - Keep package `exports` runtime targets on built artifacts in `dist` (not `src`), except for explicitly approved internal packages.
 - When adding a CE registration entry in a package, ensure any referenced `.svelte?customElement` files are resolvable from published output.
 - If a consumer app imports package CE entrypoints via `exports` (for example `@pie-players/pie-section-player/components/...`), it is using built `dist` artifacts. Rebuild the package after `src` edits before testing behavior in the consumer app.

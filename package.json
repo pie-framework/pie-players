@@ -15,9 +15,17 @@
 	],
 	"scripts": {
 		"build": "turbo build --filter='!./apps/*' --filter='!./tools/*'",
+		"build:e2e:section-player": "turbo build --filter=@pie-players/pie-section-player...",
+		"build:e2e:item-player": "turbo build --filter=@pie-players/pie-item-player...",
 		"dev": "turbo dev --filter=section-demos",
 		"test": "turbo test --filter='!./apps/*' --filter='!./tools/*'",
 		"test:all": "bun run test",
+		"test:e2e:section-player": "export SECTION_DEMOS_PORT=$(node ./scripts/get-free-port.mjs 5300); bun run build:e2e:section-player && bunx playwright test --config packages/section-player/playwright.config.ts",
+		"test:e2e:section-player:tts-ssml": "export SECTION_DEMOS_PORT=$(node ./scripts/get-free-port.mjs 5300); bun run build:e2e:section-player && bunx playwright test packages/section-player/tests/section-player-tts-ssml.spec.ts --config packages/section-player/playwright.config.ts",
+		"test:e2e:item-player": "export ITEM_DEMOS_PORT=$(node ./scripts/get-free-port.mjs 5400); bun run build:e2e:item-player && bunx playwright test --config packages/item-player/playwright.config.ts",
+		"test:e2e:item-player:multiple-choice": "export ITEM_DEMOS_PORT=$(node ./scripts/get-free-port.mjs 5400); bun run build:e2e:item-player && bunx playwright test packages/item-player/tests/item-player-multiple-choice.spec.ts --config packages/item-player/playwright.config.ts",
+		"test:e2e:all": "bun run test:e2e:section-player && bun run test:e2e:item-player",
+		"test:local-esm-cdn": "bun run --cwd apps/local-esm-cdn test",
 		"cli": "bun --cwd tools/cli ./bin/run.js",
 		"local-esm-cdn": "bun run --cwd apps/local-esm-cdn dev",
 		"lint": "bun run lint:biome && bun run lint:svelte",
@@ -30,7 +38,7 @@
 		"clean": "turbo clean && rm -rf node_modules",
 		"typecheck": "turbo typecheck",
 		"check": "turbo check",
-		"dev:item": "dotenvx run -- bun run --cwd apps/item-demos dev",
+		"dev:item": "dotenvx run -- bun scripts/dev-item.ts",
 		"preview:item": "dotenvx run -- bun run --cwd apps/item-demos preview",
 		"dev:section": "dotenvx run -- bun scripts/dev-section.ts",
 		"dev:section:cdn": "dotenvx run -- bun run --cwd apps/section-demos dev:cdn",
@@ -71,6 +79,7 @@
 	},
 	"devDependencies": {
 		"@arethetypeswrong/cli": "^0.18.2",
+		"@axe-core/playwright": "^4.11.1",
 		"@biomejs/biome": "^2.3.11",
 		"@changesets/cli": "^2.29.8",
 		"@dotenvx/dotenvx": "^1.52.0",
@@ -81,7 +90,7 @@
 		"lefthook": "^2.1.1",
 		"playwright": "^1.58.2",
 		"publint": "^0.3.17",
-		"turbo": "^2.8.11",
+		"turbo": "^2.8.12",
 		"typescript": "^5.9.3"
 	},
 	"packageManager": "bun@1.3.5",
@@ -90,14 +99,6 @@
 	},
 	"dependencies": {
 		"@sveltejs/kit": "^2.52.0",
-		"@tiptap/core": "^3.19.0",
-		"@tiptap/extension-code-block-lowlight": "^3.19.0",
-		"@tiptap/extension-document": "^3.19.0",
-		"@tiptap/extension-history": "^3.19.0",
-		"@tiptap/extension-text": "^3.19.0",
-		"@tiptap/pm": "^3.19.0",
-		"daisyui": "^5.5.18",
-		"lowlight": "^3.3.0",
 		"svelte": "^5.51.3"
 	}
 }

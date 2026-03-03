@@ -8,7 +8,7 @@ import type {
 	ITTSService,
 } from "../services/interfaces.js";
 
-export type ItemPlayerType = "iife" | "esm" | "fixed" | "custom";
+export type ItemPlayerType = "iife" | "esm" | "preloaded" | "custom";
 
 export interface ItemPlayerConfig {
 	type: ItemPlayerType;

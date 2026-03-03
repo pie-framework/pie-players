@@ -167,7 +167,7 @@ const currentTime = audio.currentTime * 1000; // Convert to ms
 // Find words that should be highlighted
 for (const timing of wordTimings) {
   if (currentTime >= timing.time) {
-    onWordBoundary('', timing.charIndex);
+    onWordBoundary('', timing.charIndex, timing.length);
   }
 }
 ```

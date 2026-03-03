@@ -10,7 +10,7 @@ interface RuntimeController extends SectionControllerHandle {
 		itemId: string,
 		session: unknown,
 	) => { eventDetail?: unknown } | null;
-	subscribe?: (listener: () => void) => () => void;
+	subscribe?: (listener: (event: unknown) => void) => () => void;
 	navigateToItem?: (index: number) => unknown;
 }
 

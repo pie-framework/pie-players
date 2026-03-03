@@ -1,7 +1,7 @@
 /**
- * pie-tool-color-scheme - PIE Assessment Tool
+ * pie-tool-theme - PIE Assessment Tool
  *
- * This package exports a web component built from Svelte.
+ * This package exports the theme custom element used by toolkit toolbars.
  * Import the built version for CDN usage, or the .svelte source for Svelte projects.
  */
 

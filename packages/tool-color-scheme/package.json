@@ -1,8 +1,8 @@
 {
-	"name": "@pie-players/pie-tool-color-scheme",
+	"name": "@pie-players/pie-tool-theme",
 	"version": "0.1.9",
 	"type": "module",
-	"description": "Color scheme tool for PIE assessment player - provides Learnosity-standard accessible color schemes",
+	"description": "Theme tool for PIE assessment player - provides accessible themes and color schemes",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/pie-framework/pie-players.git",
@@ -15,6 +15,7 @@
 		"pie",
 		"assessment",
 		"tool",
+		"theme",
 		"color-scheme",
 		"accessibility",
 		"wcag",
@@ -45,6 +46,7 @@
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
 		"@pie-players/pie-context": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*",
+		"@pie-players/pie-theme": "workspace:*",
 		"daisyui": "^5.5.18"
 	},
 	"types": "./dist/index.d.ts",

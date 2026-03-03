@@ -72,6 +72,8 @@ export class HighlightCoordinator implements IHighlightCoordinator {
 	private nextAnnotationId = 1;
 	private supported = false;
 	private rangeSerializer: RangeSerializer;
+	private themeObserver: MutationObserver | null = null;
+	private explicitTTSColorOverride: { color: string; opacity: number } | null = null;
 
 	constructor(config: HighlightCoordinatorConfig = {}) {
 		this.config = config;
@@ -88,6 +90,226 @@ export class HighlightCoordinator implements IHighlightCoordinator {
 		this.supported = true;
 		this.initializeHighlights();
 		this.registerStyles();
+		this.applyAdaptiveTTSStyle();
+		this.setupThemeObservation();
+	}
+
+	private setupThemeObservation(): void {
+		if (typeof document === "undefined") return;
+		if (typeof MutationObserver === "undefined") return;
+
+		const refresh = () => this.applyAdaptiveTTSStyle();
+		this.themeObserver = new MutationObserver(refresh);
+
+		this.themeObserver.observe(document.documentElement, {
+			attributes: true,
+			attributeFilter: ["style", "data-theme", "data-color-scheme", "class"],
+		});
+
+		for (const host of document.querySelectorAll("pie-theme")) {
+			this.themeObserver.observe(host, {
+				attributes: true,
+				attributeFilter: [
+					"theme",
+					"scheme",
+					"provider",
+					"variables",
+					"style",
+					"data-theme",
+					"data-color-scheme",
+				],
+			});
+		}
+	}
+
+	private parseColor(input: string | null | undefined): [number, number, number] | null {
+		if (!input) return null;
+		const value = input.trim();
+		if (!value) return null;
+
+		const hexMatch = /^#([a-f\d]{3}|[a-f\d]{6})$/i.exec(value);
+		if (hexMatch) {
+			const hex = hexMatch[1];
+			if (hex.length === 3) {
+				return [
+					parseInt(hex[0] + hex[0], 16),
+					parseInt(hex[1] + hex[1], 16),
+					parseInt(hex[2] + hex[2], 16),
+				];
+			}
+			return [
+				parseInt(hex.slice(0, 2), 16),
+				parseInt(hex.slice(2, 4), 16),
+				parseInt(hex.slice(4, 6), 16),
+			];
+		}
+
+		const rgbMatch = /^rgba?\((.+)\)$/i.exec(value);
+		if (rgbMatch) {
+			const normalized = rgbMatch[1].replace(/\//g, ",");
+			const parts = normalized
+				.split(/[,\s]+/)
+				.map((part) => part.trim())
+				.filter(Boolean);
+			const r = Number(parts[0]);
+			const g = Number(parts[1]);
+			const b = Number(parts[2]);
+			if (Number.isFinite(r) && Number.isFinite(g) && Number.isFinite(b)) {
+				return [r, g, b];
+			}
+		}
+
+		// Browser parser fallback (covers formats like oklch()).
+		if (typeof document !== "undefined") {
+			const parserEl = document.createElement("span");
+			parserEl.style.color = value;
+			if (typeof parserEl.style.color === "string" && parserEl.style.color) {
+				document.body?.appendChild(parserEl);
+				const resolved =
+					typeof getComputedStyle === "function"
+						? getComputedStyle(parserEl).color
+						: "";
+				parserEl.remove();
+				const normalizedResolved = resolved.trim();
+				// Guard against recursive loops when computed style returns the same
+				// unresolved function syntax (observed with certain color formats).
+				if (normalizedResolved && normalizedResolved !== value) {
+					return this.parseColor(resolved);
+				}
+			}
+		}
+
+		return null;
+	}
+
+	private relativeLuminance([r, g, b]: [number, number, number]): number {
+		const toLinear = (channel: number) => {
+			const n = channel / 255;
+			return n <= 0.03928 ? n / 12.92 : ((n + 0.055) / 1.055) ** 2.4;
+		};
+		const lr = toLinear(r);
+		const lg = toLinear(g);
+		const lb = toLinear(b);
+		return 0.2126 * lr + 0.7152 * lg + 0.0722 * lb;
+	}
+
+	private contrastRatio(
+		a: [number, number, number],
+		b: [number, number, number],
+	): number {
+		const la = this.relativeLuminance(a);
+		const lb = this.relativeLuminance(b);
+		const lighter = Math.max(la, lb);
+		const darker = Math.min(la, lb);
+		return (lighter + 0.05) / (darker + 0.05);
+	}
+
+	private blend(
+		fg: [number, number, number],
+		bg: [number, number, number],
+		alpha: number,
+	): [number, number, number] {
+		return [
+			Math.round(fg[0] * alpha + bg[0] * (1 - alpha)),
+			Math.round(fg[1] * alpha + bg[1] * (1 - alpha)),
+			Math.round(fg[2] * alpha + bg[2] * (1 - alpha)),
+		];
+	}
+
+	private resolveAdaptiveTTSStyle(sourceEl?: Element | null): {
+		wordHighlight: string;
+		sentenceHighlight: string;
+		wordUnderline: string;
+		wordShadow: string;
+	} {
+		const fallbackMissing: [number, number, number] = [255, 235, 59];
+		const fallbackText: [number, number, number] = [17, 24, 39];
+		const fallbackBackground: [number, number, number] = [255, 255, 255];
+
+		const target =
+			sourceEl ||
+			(typeof document !== "undefined" ? document.documentElement : null);
+		const computed =
+			target && typeof getComputedStyle === "function"
+				? getComputedStyle(target)
+				: null;
+
+		const background =
+			this.parseColor(
+				computed?.getPropertyValue("--pie-background") || computed?.backgroundColor,
+			) || fallbackBackground;
+		const text =
+			this.parseColor(computed?.getPropertyValue("--pie-text")) || fallbackText;
+		const accent = this.explicitTTSColorOverride
+			? this.parseColor(this.explicitTTSColorOverride.color) || fallbackMissing
+			: this.parseColor(computed?.getPropertyValue("--pie-missing")) ||
+				fallbackMissing;
+
+		const opacityCandidates = this.explicitTTSColorOverride
+			? [Math.max(0.3, Math.min(0.95, this.explicitTTSColorOverride.opacity))]
+			: [0.8, 0.72, 0.68, 0.62, 0.56, 0.5];
+
+		let selectedOpacity = opacityCandidates[opacityCandidates.length - 1];
+		let bestScore = -Infinity;
+
+		for (const opacity of opacityCandidates) {
+			const blended = this.blend(accent, background, opacity);
+			const backgroundDelta = this.contrastRatio(blended, background);
+			const textContrast = this.contrastRatio(blended, text);
+			const score = backgroundDelta * 1.2 + textContrast * 0.8;
+			if (backgroundDelta >= 1.25 && textContrast >= 2.4) {
+				selectedOpacity = opacity;
+				break;
+			}
+			if (score > bestScore) {
+				bestScore = score;
+				selectedOpacity = opacity;
+			}
+		}
+
+		const sentenceOpacity = Math.max(0.24, Math.min(0.85, selectedOpacity * 0.55));
+		const underlineOpacity = Math.max(0.55, Math.min(0.95, selectedOpacity + 0.2));
+		const shadowOpacity = Math.max(0.22, Math.min(0.6, selectedOpacity * 0.45));
+
+		const underlineColor = text;
+		const underlineBlend = this.blend(underlineColor, background, underlineOpacity);
+		const underlineDelta = this.contrastRatio(underlineBlend, background);
+		const fallbackUnderline: [number, number, number] =
+			this.relativeLuminance(background) > 0.45 ? [0, 0, 0] : [255, 255, 255];
+		const finalUnderline = underlineDelta >= 1.35 ? underlineColor : fallbackUnderline;
+
+		const wordHighlight = `rgba(${accent[0]}, ${accent[1]}, ${accent[2]}, ${selectedOpacity})`;
+		const sentenceHighlight = `rgba(${accent[0]}, ${accent[1]}, ${accent[2]}, ${sentenceOpacity})`;
+		const wordUnderline = `rgba(${finalUnderline[0]}, ${finalUnderline[1]}, ${finalUnderline[2]}, ${underlineOpacity})`;
+		const wordShadow = `rgba(${finalUnderline[0]}, ${finalUnderline[1]}, ${finalUnderline[2]}, ${shadowOpacity})`;
+
+		return {
+			wordHighlight,
+			sentenceHighlight,
+			wordUnderline,
+			wordShadow,
+		};
+	}
+
+	private applyAdaptiveTTSStyle(sourceEl?: Element | null): void {
+		if (typeof document === "undefined") return;
+		const vars = this.resolveAdaptiveTTSStyle(sourceEl);
+		document.documentElement.style.setProperty(
+			"--pie-tts-word-highlight",
+			vars.wordHighlight,
+		);
+		document.documentElement.style.setProperty(
+			"--pie-tts-sentence-highlight",
+			vars.sentenceHighlight,
+		);
+		document.documentElement.style.setProperty(
+			"--pie-tts-word-underline",
+			vars.wordUnderline,
+		);
+		document.documentElement.style.setProperty(
+			"--pie-tts-word-shadow",
+			vars.wordShadow,
+		);
 	}
 
 	/**
@@ -127,44 +349,47 @@ export class HighlightCoordinator implements IHighlightCoordinator {
 		style.textContent = `
       /* TTS highlights - temporary */
       ::highlight(tts-word) {
-        background-color: rgba(255, 235, 59, 0.4);
+        background-color: var(--pie-tts-word-highlight, color-mix(in srgb, var(--pie-missing, #ffeb3b) 68%, transparent));
+        text-decoration: underline 2px solid var(--pie-tts-word-underline, color-mix(in srgb, var(--pie-text, #111827) 70%, transparent));
+        text-underline-offset: 2px;
+        text-shadow: 0 0 1px var(--pie-tts-word-shadow, color-mix(in srgb, var(--pie-text, #111827) 35%, transparent));
         color: inherit;
       }
 
       ::highlight(tts-sentence) {
-        background-color: rgba(173, 216, 230, 0.3);
+        background-color: var(--pie-tts-sentence-highlight, color-mix(in srgb, var(--pie-missing, #ffeb3b) 38%, transparent));
         color: inherit;
       }
 
       /* Annotation highlights - persistent */
       ::highlight(annotation-yellow) {
-        background-color: rgba(255, 255, 0, 0.3);
+        background-color: color-mix(in srgb, var(--pie-missing, #ffff00) 35%, transparent);
         color: inherit;
       }
 
       ::highlight(annotation-green) {
-        background-color: rgba(144, 238, 144, 0.3);
+        background-color: color-mix(in srgb, var(--pie-correct, #90ee90) 35%, transparent);
         color: inherit;
       }
 
       ::highlight(annotation-blue) {
-        background-color: rgba(173, 216, 230, 0.3);
+        background-color: color-mix(in srgb, var(--pie-tertiary, #add8e6) 35%, transparent);
         color: inherit;
       }
 
       ::highlight(annotation-pink) {
-        background-color: rgba(255, 182, 193, 0.3);
+        background-color: color-mix(in srgb, var(--pie-secondary-light, #ffb6c1) 35%, transparent);
         color: inherit;
       }
 
       ::highlight(annotation-orange) {
-        background-color: rgba(255, 165, 0, 0.3);
+        background-color: color-mix(in srgb, var(--pie-incorrect, #ffa500) 35%, transparent);
         color: inherit;
       }
 
       ::highlight(annotation-underline) {
         background-color: transparent;
-        text-decoration: underline 2px solid #0066cc;
+        text-decoration: underline 2px solid var(--pie-primary, #0066cc);
         text-underline-offset: 2px;
         color: inherit;
       }
@@ -185,6 +410,7 @@ export class HighlightCoordinator implements IHighlightCoordinator {
 		endOffset: number,
 	): void {
 		if (!this.ttsWordHighlight) return;
+		this.applyAdaptiveTTSStyle(textNode.parentElement);
 
 		// Clear previous word highlight
 		this.clearTTSWord();
@@ -205,6 +431,12 @@ export class HighlightCoordinator implements IHighlightCoordinator {
 	 */
 	highlightTTSSentence(ranges: Range[]): void {
 		if (!this.ttsSentenceHighlight) return;
+		const source = ranges[0]?.startContainer;
+		const sourceElement =
+			source?.nodeType === Node.ELEMENT_NODE
+				? (source as Element)
+				: source?.parentElement;
+		this.applyAdaptiveTTSStyle(sourceElement);
 
 		// Clear previous sentence highlight
 		this.clearTTSSentence();
@@ -517,54 +749,11 @@ export class HighlightCoordinator implements IHighlightCoordinator {
 		const rgb = hexToRgb(color);
 		if (!rgb) return;
 
-		const rgbaColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity})`;
-
-		// Update the style element
-		styleEl.textContent = `
-      /* TTS highlights - temporary */
-      ::highlight(tts-word) {
-        background-color: ${rgbaColor};
-        color: inherit;
-      }
-
-      ::highlight(tts-sentence) {
-        background-color: rgba(173, 216, 230, 0.3);
-        color: inherit;
-      }
-
-      /* Annotation highlights - persistent */
-      ::highlight(annotation-yellow) {
-        background-color: rgba(255, 255, 0, 0.3);
-        color: inherit;
-      }
-
-      ::highlight(annotation-green) {
-        background-color: rgba(144, 238, 144, 0.3);
-        color: inherit;
-      }
-
-      ::highlight(annotation-blue) {
-        background-color: rgba(173, 216, 230, 0.3);
-        color: inherit;
-      }
-
-      ::highlight(annotation-pink) {
-        background-color: rgba(255, 182, 193, 0.3);
-        color: inherit;
-      }
-
-      ::highlight(annotation-orange) {
-        background-color: rgba(255, 165, 0, 0.3);
-        color: inherit;
-      }
-
-      ::highlight(annotation-underline) {
-        background-color: transparent;
-        text-decoration: underline 2px solid #0066cc;
-        text-underline-offset: 2px;
-        color: inherit;
-      }
-    `;
+		this.explicitTTSColorOverride = {
+			color: `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`,
+			opacity: Math.max(0.2, Math.min(0.95, opacity)),
+		};
+		this.applyAdaptiveTTSStyle();
 	}
 
 	/**
@@ -583,5 +772,7 @@ export class HighlightCoordinator implements IHighlightCoordinator {
 				styleEl.remove();
 			}
 		}
+		this.themeObserver?.disconnect();
+		this.themeObserver = null;
 	}
 }

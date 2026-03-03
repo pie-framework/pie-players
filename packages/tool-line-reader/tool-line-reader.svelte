@@ -19,8 +19,6 @@
 		AssessmentToolkitRuntimeContext,
 		IToolCoordinator,
 	} from '@pie-players/pie-assessment-toolkit';
-	import ToolSettingsButton from '@pie-players/pie-players-shared/components/ToolSettingsButton.svelte';
-	import ToolSettingsPanel from '@pie-players/pie-players-shared/components/ToolSettingsPanel.svelte';
 import { onMount } from 'svelte';
 
 	// Props
@@ -35,7 +33,6 @@ import { onMount } from 'svelte';
 	const coordinator = $derived(
 		runtimeContext?.toolCoordinator as IToolCoordinator | undefined,
 	);
-	let settingsButtonEl = $state<HTMLButtonElement | undefined>();
 	let isDragging = $state(false);
 	let isResizing = $state(false);
 	let position = $state({
@@ -49,7 +46,6 @@ import { onMount } from 'svelte';
 	let currentColor = $state('#ffff00'); // Yellow
 	let currentOpacity = $state(0.3);
 	let maskingMode = $state<'highlight' | 'obscure'>('highlight');
-	let settingsOpen = $state(false);
 
 	// Track registration state
 	let registered = $state(false);
@@ -96,20 +92,6 @@ import { onMount } from 'svelte';
 		announce(`Mode changed to ${maskingMode === 'highlight' ? 'highlight' : 'masking'}`);
 	}
 
-	function toggleSettings() {
-		settingsOpen = !settingsOpen;
-	}
-
-	function closeSettings() {
-		settingsOpen = false;
-	}
-
-	function setColor(color: string) {
-		currentColor = color;
-		const colorName = colors.find(c => c.value === color)?.name || 'Unknown';
-		announce(`Color changed to ${colorName}`);
-	}
-
 	// Pointer event handlers (better for web components)
 	function handlePointerDown(e: PointerEvent) {
 		const target = e.target as HTMLElement;
@@ -117,9 +99,6 @@ import { onMount } from 'svelte';
 		// Check if clicking the resize handle
 		if (target.closest('.resize-handle')) {
 			startResizing(e);
-		} else if (target.closest('.tool-settings-button') || target.closest('.tool-settings-panel')) {
-			// Don't start dragging when clicking settings
-			return;
 		} else {
 			startDragging(e);
 		}
@@ -339,13 +318,6 @@ import { onMount } from 'svelte';
 		aria-roledescription="Draggable and resizable reading guide overlay"
 	>
 		<div class="pie-tool-line-reader__container" style="background-color: {backgroundColor};">
-			<!-- Settings Button -->
-			<ToolSettingsButton
-				bind:buttonEl={settingsButtonEl}
-				onClick={toggleSettings}
-				ariaLabel="Line reader settings"
-				active={settingsOpen}
-			/>
 		</div>
 
 		<!-- Resize handle -->
@@ -357,87 +329,11 @@ import { onMount } from 'svelte';
 			aria-label="Resize handle - drag to adjust height"
 		>
 			<svg width="20" height="8" viewBox="0 0 20 8" aria-hidden="true">
-				<rect x="8" y="3" width="4" height="2" fill="#4CAF50" rx="1"/>
+				<rect x="8" y="3" width="4" height="2" fill="var(--pie-primary, #4CAF50)" rx="1"/>
 			</svg>
 		</div>
 	</div>
 
-	<!-- Settings Panel - Rendered outside pie-tool-line-reader to avoid height constraints -->
-	<ToolSettingsPanel
-		open={settingsOpen}
-		title="Line Reader Settings"
-		onClose={closeSettings}
-		anchorEl={settingsButtonEl}
-	>
-		<!-- Mode Selection - First, as it determines what other settings are relevant -->
-		<fieldset class="setting-group">
-			<legend>Mode</legend>
-			<label>
-				<input
-					type="radio"
-					name="mode"
-					value="highlight"
-					checked={maskingMode === 'highlight'}
-					onchange={() => { maskingMode = 'highlight'; announce('Mode changed to highlight'); }}
-				/>
-				<span>Highlight</span>
-			</label>
-			<label>
-				<input
-					type="radio"
-					name="mode"
-					value="obscure"
-					checked={maskingMode === 'obscure'}
-					onchange={() => { maskingMode = 'obscure'; announce('Mode changed to masking'); }}
-				/>
-				<span>Masking</span>
-			</label>
-		</fieldset>
-
-		<!-- Color Selection - Only shown in Highlight mode -->
-		{#if maskingMode === 'highlight'}
-			<fieldset class="setting-group">
-				<legend>Color</legend>
-				{#each colors as color}
-					<label>
-						<input
-							type="radio"
-							name="color"
-							value={color.value}
-							checked={currentColor === color.value}
-							onchange={() => setColor(color.value)}
-						/>
-						<div class="color-swatch" style="background-color: {color.value};"></div>
-						<span>{color.name}</span>
-					</label>
-				{/each}
-			</fieldset>
-
-			<!-- Opacity Slider - Only shown in Highlight mode -->
-			<div class="setting-group">
-				<div class="setting-label">
-					<span>Opacity</span>
-					<span class="setting-value" aria-live="polite">{Math.round(currentOpacity * 100)}%</span>
-				</div>
-				<input
-					type="range"
-					min="10"
-					max="90"
-					step="5"
-					value={currentOpacity * 100}
-					oninput={(e) => {
-						currentOpacity = Number(e.currentTarget.value) / 100;
-						announce(`Opacity ${Math.round(currentOpacity * 100)}%`);
-					}}
-					aria-label="Opacity"
-					aria-valuemin="10"
-					aria-valuemax="90"
-					aria-valuenow={Math.round(currentOpacity * 100)}
-					aria-valuetext="{Math.round(currentOpacity * 100)} percent"
-				/>
-			</div>
-		{/if}
-	</ToolSettingsPanel>
 {/if}
 
 <style>
@@ -454,7 +350,7 @@ import { onMount } from 'svelte';
 	}
 
 	.pie-tool-line-reader {
-		border: 2px solid rgba(76, 175, 80, 0.8);
+		border: 2px solid color-mix(in srgb, var(--pie-primary, #4caf50) 80%, transparent);
 		cursor: move;
 		overflow: visible;
 		position: absolute;
@@ -465,12 +361,12 @@ import { onMount } from 'svelte';
 	}
 
 	.pie-tool-line-reader:focus {
-		outline: 3px solid #4A90E2;
+		outline: 3px solid var(--pie-button-focus-outline, var(--pie-primary, #4A90E2));
 		outline-offset: 2px;
 	}
 
 	.pie-tool-line-reader:focus-visible {
-		outline: 3px solid #4A90E2;
+		outline: 3px solid var(--pie-button-focus-outline, var(--pie-primary, #4A90E2));
 		outline-offset: 2px;
 	}
 
@@ -497,13 +393,13 @@ import { onMount } from 'svelte';
 		transform: translateX(-50%);
 		width: 40px;
 		height: 16px;
-		background-color: rgba(255, 255, 255, 0.9);
+		background-color: color-mix(in srgb, var(--pie-background, #fff) 90%, transparent);
 		border-radius: 8px;
-		border: 2px solid #4CAF50;
+		border: 2px solid var(--pie-primary, #4caf50);
 	}
 
 	.pie-tool-line-reader__resize-handle:hover {
-		background-color: rgba(76, 175, 80, 0.2);
+		background-color: color-mix(in srgb, var(--pie-primary, #4caf50) 20%, transparent);
 	}
 
 	.pie-tool-line-reader__resize-handle:active {
@@ -517,7 +413,7 @@ import { onMount } from 'svelte';
 	/* Masking overlays for obscure mode - 4 rectangles covering all areas except line reader window */
 	.pie-tool-line-reader__mask {
 		position: fixed;
-		background: rgba(0, 0, 0, 0.85);
+		background: color-mix(in srgb, var(--pie-text, #000) 85%, transparent);
 		z-index: 999;
 		pointer-events: none;
 	}
@@ -548,8 +444,10 @@ import { onMount } from 'svelte';
 
 	/* In masking mode, change the window appearance */
 	.pie-tool-line-reader.pie-tool-line-reader--masking-mode {
-		border-color: rgba(76, 175, 80, 1);
-		box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.8), 0 0 20px rgba(76, 175, 80, 0.4);
+		border-color: var(--pie-primary, #4caf50);
+		box-shadow:
+			0 0 0 3px color-mix(in srgb, var(--pie-primary, #4caf50) 80%, transparent),
+			0 0 20px color-mix(in srgb, var(--pie-primary, #4caf50) 40%, transparent);
 	}
 
 	/* In masking mode, the window should be transparent to show content underneath */

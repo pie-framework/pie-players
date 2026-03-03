@@ -159,5 +159,5 @@ function getContentType(filePath: string): string {
 console.log(`🚀 Package server running at http://localhost:${PORT}`);
 console.log(`   Serving files from workspace packages`);
 console.log(
-	`   Example: http://localhost:${PORT}/@pie-players/pie-iife-player/0.1.0/dist/index.js`,
+	`   Example: http://localhost:${PORT}/@pie-players/pie-item-player/0.1.0/dist/pie-item-player.js`,
 );

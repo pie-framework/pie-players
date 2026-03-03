@@ -29,3 +29,14 @@ import "@pie-players/pie-theme/font-sizes.css";
 
 - If DaisyUI tokens are present on the target scope, `pie-theme` uses them to derive PIE theme variables.
 - Override precedence is: base PIE theme -> DaisyUI-derived variables -> `variables` attribute overrides.
+
+## Style Ownership
+
+Use `@pie-players/pie-theme/components.css` for shared visual styles that are intentionally reused across multiple PIE custom elements.
+
+- Theme-owned shared `pie-*` class families include:
+  - `pie-section-player-tools-pnp-debugger*`
+  - `pie-section-player-tools-session-debugger*`
+  - `pie-answer-eliminator-*` and `pie-answer-masked-*`
+- Keep runtime behavior, DOM mutation logic, and element-specific layout mechanics in the owning package.
+- Prefer stable `pie-*` / `data-pie-*` hooks in component markup; avoid introducing new generic class contracts.

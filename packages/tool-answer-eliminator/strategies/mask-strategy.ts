@@ -5,7 +5,6 @@ import type { EliminationStrategy } from "./elimination-strategy.js";
  * Partially hides/grays eliminated choices
  */
 export class MaskStrategy implements EliminationStrategy {
-	private static readonly BASE_STYLE_ID = "pie-answer-eliminator-mask-styles";
 	private static readonly HIGHLIGHT_STYLE_PREFIX =
 		"pie-answer-eliminator-mask-highlight-";
 	private static readonly HIGHLIGHT_NAME_PREFIX = "pie-answer-masked-";
@@ -22,12 +21,11 @@ export class MaskStrategy implements EliminationStrategy {
 	private fallbackContainers = new Map<string, HTMLElement>();
 
 	initialize(): void {
-		this.injectCSS();
+		// No-op: shared fallback styles are owned by @pie-players/pie-theme/components.css.
 	}
 
 	destroy(): void {
 		this.clearAll();
-		this.removeCSS();
 	}
 
 	apply(choiceId: string, range: Range): void {
@@ -91,25 +89,6 @@ export class MaskStrategy implements EliminationStrategy {
 		return typeof CSS !== "undefined" && "highlights" in CSS;
 	}
 
-	private injectCSS(): void {
-		const styleId = MaskStrategy.BASE_STYLE_ID;
-		if (document.getElementById(styleId)) return;
-
-		const style = document.createElement("style");
-		style.id = styleId;
-		// CSS Custom Highlight API: Each registered highlight gets its own ::highlight() selector
-		// We inject choice-specific styles dynamically in injectHighlightCSS()
-		style.textContent = `
-      /* Fallback */
-      .pie-answer-masked-fallback {
-        opacity: 0.2;
-        filter: blur(2px);
-      }
-    `;
-
-		document.head.appendChild(style);
-	}
-
 	private injectHighlightCSS(choiceId: string): void {
 		const styleId = `${MaskStrategy.HIGHLIGHT_STYLE_PREFIX}${choiceId}`;
 		if (document.getElementById(styleId)) return;
@@ -129,10 +108,6 @@ export class MaskStrategy implements EliminationStrategy {
 		document
 			.getElementById(`${MaskStrategy.HIGHLIGHT_STYLE_PREFIX}${choiceId}`)
 			?.remove();
-	}
-
-	private removeCSS(): void {
-		document.getElementById(MaskStrategy.BASE_STYLE_ID)?.remove();
 	}
 
 	private addAriaAttributes(range: Range): void {

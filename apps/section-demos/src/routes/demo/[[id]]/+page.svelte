@@ -7,6 +7,7 @@
 	import '@pie-players/pie-section-player/components/section-player-vertical-element';
 	import '@pie-players/pie-section-player-tools-session-debugger';
 	import '@pie-players/pie-section-player-tools-pnp-debugger';
+	import '@pie-players/pie-theme/components.css';
 	import { browser } from '$app/environment';
 	import type { PageData } from './$types';
 	import DemoMenuBar from './DemoMenuBar.svelte';

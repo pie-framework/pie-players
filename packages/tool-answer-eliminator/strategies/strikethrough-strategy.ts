@@ -8,8 +8,6 @@ import type { EliminationStrategy } from "./elimination-strategy.js";
  * WCAG Compliance: Maintains info structure (1.3.1), no layout shift (2.4.3)
  */
 export class StrikethroughStrategy implements EliminationStrategy {
-	private static readonly BASE_STYLE_ID =
-		"pie-answer-eliminator-strikethrough-styles";
 	private static readonly HIGHLIGHT_STYLE_PREFIX =
 		"pie-answer-eliminator-highlight-";
 	private static readonly HIGHLIGHT_NAME_PREFIX = "pie-answer-eliminated-";
@@ -32,16 +30,11 @@ export class StrikethroughStrategy implements EliminationStrategy {
 		// Check browser support
 		if (!this.isSupported()) {
 			console.warn("CSS Custom Highlight API not supported, using fallback");
-			return;
 		}
-
-		// Inject CSS for highlight styling
-		this.injectCSS();
 	}
 
 	destroy(): void {
 		this.clearAll();
-		this.removeCSS();
 	}
 
 	apply(choiceId: string, range: Range): void {
@@ -115,40 +108,6 @@ export class StrikethroughStrategy implements EliminationStrategy {
 		return typeof CSS !== "undefined" && "highlights" in CSS;
 	}
 
-	private injectCSS(): void {
-		const styleId = StrikethroughStrategy.BASE_STYLE_ID;
-
-		// Don't inject if already exists
-		if (document.getElementById(styleId)) return;
-
-		const style = document.createElement("style");
-		style.id = styleId;
-		// CSS Custom Highlight API: Each registered highlight gets its own ::highlight() selector
-		// Since we register highlights with names like 'answer-eliminated-{choiceId}',
-		// we need to inject CSS for each one dynamically, OR use a shared attribute approach.
-		// For performance, we inject a base style and add choice-specific styles dynamically.
-		style.textContent = `
-      /* Fallback for browsers without CSS Highlight API */
-      .pie-answer-eliminator-eliminated-fallback {
-        text-decoration: line-through;
-        text-decoration-thickness: 2px;
-        text-decoration-color: var(--pie-incorrect, #ff9800);
-        opacity: 0.6;
-      }
-
-      /* Screen reader only text */
-      .pie-answer-eliminator-sr-announcement {
-        position: absolute;
-        left: -10000px;
-        width: 1px;
-        height: 1px;
-        overflow: hidden;
-      }
-    `;
-
-		document.head.appendChild(style);
-	}
-
 	private injectHighlightCSS(choiceId: string): void {
 		const styleId = `${StrikethroughStrategy.HIGHLIGHT_STYLE_PREFIX}${choiceId}`;
 		if (document.getElementById(styleId)) return;
@@ -172,11 +131,6 @@ export class StrikethroughStrategy implements EliminationStrategy {
 				`${StrikethroughStrategy.HIGHLIGHT_STYLE_PREFIX}${choiceId}`,
 			)
 			?.remove();
-	}
-
-	private removeCSS(): void {
-		const style = document.getElementById(StrikethroughStrategy.BASE_STYLE_ID);
-		style?.remove();
 	}
 
 	private addAriaAttributes(range: Range): void {

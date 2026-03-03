@@ -4,6 +4,9 @@ Bridge DaisyUI theme tokens to PIE `--pie-*` variables.
 
 When using `@pie-players/pie-theme`, Daisy token translation is applied automatically by the `pie-theme` element.
 
+This package is token-focused: it maps DaisyUI CSS variables to PIE theme variables only.
+Shared `pie-*` component class styling (for example debugger overlays or answer-eliminator classes) belongs in `@pie-players/pie-theme/components.css`.
+
 ## Usage
 
 ```ts

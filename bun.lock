@@ -113,6 +113,7 @@
         "@pie-players/pie-section-player": "workspace:*",
         "@pie-players/pie-section-player-tools-pnp-debugger": "workspace:*",
         "@pie-players/pie-section-player-tools-session-debugger": "workspace:*",
+        "@pie-players/pie-theme": "workspace:*",
         "@pie-players/pie-tool-annotation-toolbar": "workspace:*",
         "@pie-players/pie-tool-answer-eliminator": "workspace:*",
         "@pie-players/pie-tool-calculator": "workspace:*",
@@ -353,6 +354,7 @@
       "version": "0.1.1",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
+        "@pie-players/pie-theme": "workspace:*",
       },
       "devDependencies": {
         "@biomejs/biome": "^2.3.10",
@@ -369,6 +371,9 @@
     "packages/section-player-tools-session-debugger": {
       "name": "@pie-players/pie-section-player-tools-session-debugger",
       "version": "0.1.1",
+      "dependencies": {
+        "@pie-players/pie-theme": "workspace:*",
+      },
       "devDependencies": {
         "@biomejs/biome": "^2.3.10",
         "@sveltejs/vite-plugin-svelte": "^6.1.4",

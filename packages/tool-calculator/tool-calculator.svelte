@@ -54,7 +54,6 @@
 	} from '@pie-players/pie-assessment-toolkit';
 	import type { Calculator, CalculatorProviderConfig, CalculatorType } from '@pie-players/pie-assessment-toolkit/tools/client';
 	import { createFocusTrap } from '@pie-players/pie-players-shared';
-	import ToolSettingsButton from '@pie-players/pie-players-shared/components/ToolSettingsButton.svelte';
 import { onMount } from 'svelte';
 
 	// ============================================================================
@@ -131,12 +130,6 @@ import { onMount } from 'svelte';
 		'graphing': { width: 700, height: 600 }
 	};
 
-	const CALCULATOR_TYPE_NAMES: Partial<Record<CalculatorType, string>> = {
-		'basic': 'Basic',
-		'scientific': 'Scientific',
-		'graphing': 'Graphing'
-	};
-
 	const isBrowser = typeof window !== 'undefined';
 
 	// ============================================================================
@@ -146,7 +139,7 @@ import { onMount } from 'svelte';
 	let {
 		visible = false,
 		toolId = 'calculator',
-		calculatorType = 'scientific' as CalculatorType,
+		calculatorType = 'basic' as CalculatorType,
 		availableTypes: availableTypesInput = ['basic', 'scientific', 'graphing'] as CalculatorType[]
 	}: {
 		visible?: boolean;
@@ -179,9 +172,7 @@ import { onMount } from 'svelte';
 	let containerEl = $state<HTMLDivElement | undefined>();
 	let calculatorContainerEl = $state<HTMLDivElement | undefined>();
 	let calculatorInstance = $state<Calculator | null>(null);
-	let currentCalculatorType = $state<CalculatorType>('scientific');
-	let settingsOpen = $state(false);
-	let switchAbortController = $state<AbortController | null>(null);
+	let currentCalculatorType = $state<CalculatorType>('basic');
 	let isInitializing = $state(false);
 	let isSwitching = $state(false);
 	let initializationFailed = $state(false);
@@ -265,10 +256,6 @@ import { onMount } from 'svelte';
 		}
 	}
 
-	function getCalculatorTypeName(type: CalculatorType): string {
-		return CALCULATOR_TYPE_NAMES[type] || type;
-	}
-
 	function hasCalculatorMount(container: HTMLDivElement | null | undefined): boolean {
 		if (!container) return false;
 		return (
@@ -336,20 +323,6 @@ import { onMount } from 'svelte';
 		return container.parentElement === document.body;
 	}
 
-	function scheduleTask(signal?: AbortSignal): Promise<void> {
-		return new Promise<void>((resolve, reject) => {
-			if (signal?.aborted) {
-				reject(new DOMException('Operation aborted', 'AbortError'));
-				return;
-			}
-			if ('scheduler' in globalThis && 'postTask' in (globalThis as any).scheduler) {
-				(globalThis as any).scheduler.postTask(() => resolve(), { priority: 'user-blocking', signal });
-			} else {
-				requestAnimationFrame(() => resolve());
-			}
-		});
-	}
-
 	function waitForAnimationFrames(count: number, signal?: AbortSignal): Promise<void> {
 		return new Promise<void>((resolve) => {
 			let remaining = count;
@@ -369,7 +342,7 @@ import { onMount } from 'svelte';
 	// Derived Values
 	// ============================================================================
 
-	let calculatorSize = $derived(CALCULATOR_SIZES[currentCalculatorType] ?? CALCULATOR_SIZES['scientific']!);
+	let calculatorSize = $derived(CALCULATOR_SIZES[currentCalculatorType] ?? CALCULATOR_SIZES['basic']!);
 	let width = $derived(false ? tiCalculatedWidth : calculatorSize.width);
 	let height = $derived(false ? tiCalculatedHeight : calculatorSize.height);
 
@@ -447,7 +420,7 @@ import { onMount } from 'svelte';
 	}
 
 	let calculatorConfig = $state<CalculatorProviderConfig>(
-		getInitialConfig('scientific')
+		getInitialConfig('basic')
 	);
 
 	// ============================================================================
@@ -521,9 +494,9 @@ import { onMount } from 'svelte';
 				console.log('[ToolCalculator] Calculator type not available, using fallback', {
 					requested: currentCalculatorType,
 					availableTypes,
-					fallback: availableTypes[0] || 'scientific'
+					fallback: availableTypes[0] || 'basic'
 				});
-				currentCalculatorType = availableTypes[0] || 'scientific';
+				currentCalculatorType = availableTypes[0] || 'basic';
 			}
 
 			console.log('[ToolCalculator] Getting provider for type:', currentCalculatorType);
@@ -607,147 +580,6 @@ import { onMount } from 'svelte';
 		}
 	}
 
-	async function refreshContainer(signal?: AbortSignal) {
-		if (!calculatorContainerEl) return;
-
-		const needsFreshContainer = isDesmosCalculator(currentCalculatorType);
-
-		if (needsFreshContainer && calculatorContainerEl.parentElement) {
-			const parent = calculatorContainerEl.parentElement;
-			const oldContainer = calculatorContainerEl;
-			const newContainer = document.createElement('div');
-			newContainer.className = oldContainer.className || 'pie-tool-calculator__container';
-			parent.replaceChild(newContainer, oldContainer);
-			calculatorContainerEl = newContainer;
-
-			await scheduleTask(signal);
-
-			if (calculatorContainerEl !== newContainer || !calculatorContainerEl.isConnected) {
-				console.warn('[ToolCalculator] Container binding mismatch, using new container');
-				calculatorContainerEl = newContainer;
-			}
-		} else {
-			calculatorContainerEl.removeAttribute('data-desmos-id');
-		}
-
-		if (!calculatorContainerEl?.isConnected) {
-			throw new Error('Container was removed before initialization');
-		}
-	}
-
-	async function handleCalculatorTypeChange(newType: CalculatorType) {
-		if (newType === currentCalculatorType || !availableTypes.includes(newType)) return;
-
-		switchAbortController?.abort();
-		switchAbortController = new AbortController();
-		const signal = switchAbortController.signal;
-
-		closeSettings();
-		isSwitching = true;
-
-		try {
-			// Cleanup existing calculator
-			if (calculatorInstance) {
-				try {
-					calculatorInstance.destroy();
-					await waitForAnimationFrames(4, signal);
-				} catch (error) {
-					console.warn('[ToolCalculator] Error destroying calculator:', error);
-				} finally {
-					calculatorInstance = null;
-				}
-			}
-
-			if (signal.aborted) return;
-
-			// Refresh container if needed
-			await refreshContainer(signal);
-			if (signal.aborted) return;
-
-			// Update config
-			currentCalculatorType = newType;
-			const newConfig = structuredClone(getInitialConfig(newType));
-			if (calculatorConfig.restrictedMode) {
-				newConfig.restrictedMode = true;
-			}
-			calculatorConfig = newConfig;
-
-			if (signal.aborted) return;
-
-			// Create new calculator
-			const toolProvider = await getProvider(newType);
-			if (!toolProvider) {
-				throw new Error('Calculator tool provider not available');
-			}
-
-			// Get actual calculator provider from tool provider
-			const calculatorProvider = await toolProvider.createInstance();
-
-			if (signal.aborted) return;
-
-			if (!calculatorContainerEl?.isConnected) {
-				throw new Error('Container removed during provider initialization');
-			}
-
-			calculatorInstance = await calculatorProvider.createCalculator(
-				newType,
-				calculatorContainerEl,
-				calculatorConfig
-			);
-
-			// Measure TI calculator size
-			if (false) {
-				await waitForAnimationFrames(2);
-				measureTICalculatorSize();
-			} else {
-				tiCalculatedWidth = undefined;
-				tiCalculatedHeight = undefined;
-			}
-
-			if (signal.aborted) {
-				calculatorInstance?.destroy();
-				calculatorInstance = null;
-			}
-		} catch (error) {
-			if (error instanceof DOMException && error.name === 'AbortError') {
-				console.log('[ToolCalculator] Switch cancelled');
-				return;
-			}
-			console.error('[ToolCalculator] Failed to create calculator:', error);
-			calculatorInstance = null;
-		} finally {
-			isSwitching = false;
-		}
-	}
-
-	async function handleConfigChange() {
-		if (!calculatorInstance || !calculatorContainerEl) return;
-
-		switchAbortController?.abort();
-		const abortController = new AbortController();
-		switchAbortController = abortController;
-		const signal = abortController.signal;
-
-		try {
-			calculatorInstance.destroy();
-			calculatorInstance = null;
-
-			if (signal.aborted) return;
-
-			await refreshContainer(signal);
-			if (signal.aborted) return;
-
-			await initCalculator();
-		} catch (error) {
-			if (error instanceof DOMException && error.name === 'AbortError') {
-				console.log('[ToolCalculator] Config update cancelled');
-				return;
-			}
-			console.error('[ToolCalculator] Failed to update config:', error);
-			calculatorInstance = null;
-		}
-	}
-
 	// ============================================================================
 	// Event Handlers
 	// ============================================================================
@@ -764,14 +596,6 @@ import { onMount } from 'svelte';
 
 		calculatorContainerEl?.replaceChildren();
 		coordinator?.hideTool(toolId);
-	}
-
-	function toggleSettings() {
-		settingsOpen = !settingsOpen;
-	}
-
-	function closeSettings() {
-		settingsOpen = false;
 	}
 
 	function handleKeyDown(e: KeyboardEvent) {
@@ -1017,11 +841,6 @@ import { onMount } from 'svelte';
 		<div class="pie-tool-calculator__header">
 			<span class="pie-tool-calculator__title">Calculator</span>
 			<div class="pie-tool-calculator__header-buttons">
-				<ToolSettingsButton
-					onClick={toggleSettings}
-					ariaLabel="Calculator settings"
-					active={settingsOpen}
-				/>
 				<button class="pie-tool-calculator__close-btn" onclick={handleClose} aria-label="Close calculator">
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
@@ -1049,262 +868,6 @@ import { onMount } from 'svelte';
 				{#if lastInitializationError}
 					<div class="pie-tool-calculator__error-details">{lastInitializationError}</div>
 				{/if}
-			</div>
-		{/if}
-
-		{#if settingsOpen}
-			<div class="pie-tool-calculator__settings-overlay">
-				<div class="pie-tool-calculator__settings-panel">
-					<div class="pie-tool-calculator__settings-header">
-						<h2 class="pie-tool-calculator__settings-title">Calculator Settings</h2>
-						<button type="button" class="pie-tool-calculator__settings-close-btn" onclick={closeSettings} aria-label="Close settings">
-							<svg
-								xmlns="http://www.w3.org/2000/svg"
-								class="h-5 w-5"
-								viewBox="0 0 20 20"
-								fill="currentColor"
-							>
-								<path
-									fill-rule="evenodd"
-									d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-									clip-rule="evenodd"
-								/>
-							</svg>
-						</button>
-					</div>
-					<div class="pie-tool-calculator__settings-content">
-		<fieldset class="pie-tool-calculator__setting-group">
-			<legend>Calculator Type</legend>
-			{#each availableTypes as type (type)}
-				<label>
-					<input
-						type="radio"
-						name="calculator-type"
-						value={type}
-						checked={currentCalculatorType === type}
-						onchange={() => handleCalculatorTypeChange(type)}
-					/>
-					<span>{getCalculatorTypeName(type)}</span>
-				</label>
-			{/each}
-		</fieldset>
-
-		<fieldset class="pie-tool-calculator__setting-group">
-			<legend>Configuration</legend>
-			<p style="font-size: 0.75rem; color: #666; margin: 0 0 8px 0;">
-				These settings are useful for testing. They may be hidden or restricted for students in production.
-			</p>
-
-			<label>
-				<input
-					type="checkbox"
-					checked={calculatorConfig.restrictedMode ?? false}
-					onchange={(e) => {
-						calculatorConfig.restrictedMode = (e.target as HTMLInputElement).checked;
-						handleConfigChange();
-					}}
-				/>
-				<span>Restricted Mode (Test Mode)</span>
-			</label>
-
-			<label>
-				<span class="pie-tool-calculator__setting-label">
-					Angle Mode
-					<span class="pie-tool-calculator__setting-value">
-						{calculatorConfig.desmos?.degreeMode === false ? 'Radians' : 'Degrees'}
-					</span>
-				</span>
-				<select
-					value={calculatorConfig.desmos?.degreeMode === false ? 'radian' : 'degree'}
-					onchange={(e) => {
-						calculatorConfig.desmos = {
-							...calculatorConfig.desmos,
-							degreeMode: (e.target as HTMLSelectElement).value === 'degree',
-						};
-						handleConfigChange();
-					}}
-				>
-					<option value="degree">Degrees</option>
-					<option value="radian">Radians</option>
-				</select>
-			</label>
-
-			<label>
-				<input
-					type="checkbox"
-					checked={calculatorConfig.desmos?.qwertyKeyboard ?? false}
-					onchange={(e) => {
-						calculatorConfig.desmos = {
-							...calculatorConfig.desmos,
-							qwertyKeyboard: (e.target as HTMLInputElement).checked,
-						};
-						handleConfigChange();
-					}}
-				/>
-				<span>QWERTY Keyboard</span>
-			</label>
-
-			{#if false}
-				{#if currentCalculatorType === 'ti-84' || currentCalculatorType === 'ti-34-mv'}
-					<label>
-						<span class="pie-tool-calculator__setting-label">
-							Angle Mode
-							<span class="pie-tool-calculator__setting-value">
-								{calculatorConfig.ti?.AngleMode === 'DEG' ? 'Degrees' : 'Radians'}
-							</span>
-						</span>
-						<select
-							value={calculatorConfig.ti?.AngleMode || (currentCalculatorType === 'ti-84' ? 'RAD' : 'DEG')}
-							onchange={(e) => {
-								calculatorConfig.ti = {
-									...calculatorConfig.ti,
-									AngleMode: (e.target as HTMLSelectElement).value === 'degree' ? 'DEG' : 'RAD',
-								};
-								handleConfigChange();
-							}}
-						>
-							<option value="degree">Degrees</option>
-							<option value="radian">Radians</option>
-						</select>
-					</label>
-				{/if}
-
-				{#if currentCalculatorType === 'ti-84' || currentCalculatorType === 'ti-34-mv'}
-					<label>
-						<span class="pie-tool-calculator__setting-label">
-							Display Mode
-							<span class="pie-tool-calculator__setting-value">
-								{calculatorConfig.ti?.DisplayMode || 'CLASSIC'}
-							</span>
-						</span>
-						<select
-							value={calculatorConfig.ti?.DisplayMode || 'CLASSIC'}
-							onchange={(e) => {
-								calculatorConfig.ti = {
-									...calculatorConfig.ti,
-									DisplayMode: (e.target as HTMLSelectElement).value === 'MATHPRINT' ? 'MATHPRINT' : 'CLASSIC',
-								};
-								handleConfigChange();
-							}}
-						>
-							<option value="CLASSIC">Classic</option>
-							<option value="MATHPRINT">MathPrint</option>
-						</select>
-					</label>
-				{/if}
-
-				{#if currentCalculatorType === 'ti-84'}
-					<label>
-						<input
-							type="checkbox"
-							checked={calculatorConfig.ti?.setScreenReaderAria ?? true}
-							onchange={(e) => {
-								calculatorConfig.ti = {
-									...calculatorConfig.ti,
-									setScreenReaderAria: (e.target as HTMLInputElement).checked,
-								};
-								handleConfigChange();
-							}}
-						/>
-						<span>Screen Reader Support</span>
-					</label>
-
-					<label>
-						<input
-							type="checkbox"
-							checked={calculatorConfig.ti?.setAccessibleDisplay ?? true}
-							onchange={(e) => {
-								calculatorConfig.ti = {
-									...calculatorConfig.ti,
-									setAccessibleDisplay: (e.target as HTMLInputElement).checked,
-								};
-								handleConfigChange();
-							}}
-						/>
-						<span>Accessible Display</span>
-					</label>
-				{/if}
-			{/if}
-
-			{#if currentCalculatorType === 'graphing'}
-				<label>
-					<input
-						type="checkbox"
-						checked={calculatorConfig.desmos?.settingsMenu ?? true}
-						onchange={(e) => {
-							calculatorConfig.desmos = {
-								...calculatorConfig.desmos,
-								settingsMenu: (e.target as HTMLInputElement).checked,
-							};
-							handleConfigChange();
-						}}
-					/>
-					<span>Settings Menu</span>
-				</label>
-
-				<label>
-					<input
-						type="checkbox"
-						checked={calculatorConfig.desmos?.notes ?? true}
-						onchange={(e) => {
-							calculatorConfig.desmos = {
-								...calculatorConfig.desmos,
-								notes: (e.target as HTMLInputElement).checked,
-							};
-							handleConfigChange();
-						}}
-					/>
-					<span>Notes</span>
-				</label>
-
-				<label>
-					<input
-						type="checkbox"
-						checked={calculatorConfig.desmos?.folders ?? true}
-						onchange={(e) => {
-							calculatorConfig.desmos = {
-								...calculatorConfig.desmos,
-								folders: (e.target as HTMLInputElement).checked,
-							};
-							handleConfigChange();
-						}}
-					/>
-					<span>Folders</span>
-				</label>
-
-				<label>
-					<input
-						type="checkbox"
-						checked={calculatorConfig.desmos?.sliders ?? true}
-						onchange={(e) => {
-							calculatorConfig.desmos = {
-								...calculatorConfig.desmos,
-								sliders: (e.target as HTMLInputElement).checked,
-							};
-							handleConfigChange();
-						}}
-					/>
-					<span>Sliders</span>
-				</label>
-
-				<label>
-					<input
-						type="checkbox"
-						checked={calculatorConfig.desmos?.tables ?? true}
-						onchange={(e) => {
-							calculatorConfig.desmos = {
-								...calculatorConfig.desmos,
-								tables: (e.target as HTMLInputElement).checked,
-							};
-							handleConfigChange();
-						}}
-					/>
-					<span>Tables</span>
-				</label>
-			{/if}
-		</fieldset>
-					</div>
-				</div>
 			</div>
 		{/if}
 	</div>
@@ -1445,138 +1008,5 @@ import { onMount } from 'svelte';
 
 	:global(.pie-tool-calculator .mathjs-btn) {
 		pointer-events: auto;
-	}
-
-	/* Settings overlay and panel */
-	.pie-tool-calculator__settings-overlay {
-		position: absolute;
-		top: 0;
-		left: 0;
-		right: 0;
-		bottom: 0;
-		background: rgba(0, 0, 0, 0.5);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		z-index: 10;
-		pointer-events: auto;
-	}
-
-	.pie-tool-calculator__settings-panel {
-		background: white;
-		border-radius: 8px;
-		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-		width: 90%;
-		max-width: 400px;
-		max-height: 80%;
-		overflow: hidden;
-		display: flex;
-		flex-direction: column;
-	}
-
-	.pie-tool-calculator__settings-header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		padding: 12px 16px;
-		border-bottom: 1px solid #e0e0e0;
-		background: #f5f5f5;
-	}
-
-	.pie-tool-calculator__settings-title {
-		font-weight: 600;
-		font-size: 14px;
-		margin: 0;
-		color: #333;
-	}
-
-	.pie-tool-calculator__settings-close-btn {
-		background: transparent;
-		border: none;
-		color: #666;
-		cursor: pointer;
-		padding: 4px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		border-radius: 4px;
-		transition: background-color 0.2s;
-	}
-
-	.pie-tool-calculator__settings-close-btn:hover {
-		background: rgba(0, 0, 0, 0.05);
-		color: #333;
-	}
-
-	.pie-tool-calculator__settings-close-btn:active {
-		background: rgba(0, 0, 0, 0.1);
-	}
-
-	.pie-tool-calculator__settings-content {
-		padding: 16px;
-		overflow-y: auto;
-		font-size: 14px;
-	}
-
-	.pie-tool-calculator__settings-content :global(.pie-tool-calculator__setting-group) {
-		border: 1px solid #e0e0e0;
-		border-radius: 4px;
-		padding: 12px;
-		margin-bottom: 16px;
-	}
-
-	.pie-tool-calculator__settings-content :global(.pie-tool-calculator__setting-group:last-child) {
-		margin-bottom: 0;
-	}
-
-	.pie-tool-calculator__settings-content :global(legend) {
-		font-weight: 600;
-		font-size: 13px;
-		color: #333;
-		padding: 0 4px;
-	}
-
-	.pie-tool-calculator__settings-content :global(label) {
-		display: block;
-		margin-bottom: 8px;
-		cursor: pointer;
-		font-size: 13px;
-		color: #666;
-	}
-
-	.pie-tool-calculator__settings-content :global(label:last-child) {
-		margin-bottom: 0;
-	}
-
-	.pie-tool-calculator__settings-content :global(input[type="radio"]),
-	.pie-tool-calculator__settings-content :global(input[type="checkbox"]) {
-		margin-right: 8px;
-		cursor: pointer;
-	}
-
-	.pie-tool-calculator__settings-content :global(select) {
-		width: 100%;
-		padding: 6px;
-		border: 1px solid #ccc;
-		border-radius: 4px;
-		font-size: 13px;
-		margin-top: 4px;
-		background: white;
-		cursor: pointer;
-	}
-
-	.pie-tool-calculator__settings-content :global(.pie-tool-calculator__setting-label) {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		margin-bottom: 4px;
-		font-weight: 500;
-		color: #333;
-	}
-
-	.pie-tool-calculator__settings-content :global(.pie-tool-calculator__setting-value) {
-		font-weight: normal;
-		color: #666;
-		font-size: 12px;
 	}
 </style>

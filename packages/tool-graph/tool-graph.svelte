@@ -19,9 +19,7 @@
 		AssessmentToolkitRuntimeContext,
 		IToolCoordinator,
 	} from '@pie-players/pie-assessment-toolkit';
-	import ToolSettingsButton from '@pie-players/pie-players-shared/components/ToolSettingsButton.svelte';
-	import ToolSettingsPanel from '@pie-players/pie-players-shared/components/ToolSettingsPanel.svelte';
-import { onDestroy, onMount } from 'svelte';
+import { onMount } from 'svelte';
 
 	// Props
 	let {
@@ -64,8 +62,6 @@ import { onDestroy, onMount } from 'svelte';
 	);
 	let canvasWrapperEl = $state<HTMLDivElement | undefined>();
 	let svgCanvasEl = $state<SVGSVGElement | undefined>();
-	let settingsButtonEl = $state<HTMLButtonElement | undefined>();
-	let settingsOpen = $state(false);
 
 	// Position and size (matching production implementation defaults)
 	let x = $state(isBrowser ? window.innerWidth / 2 : 400);
@@ -380,22 +376,11 @@ import { onDestroy, onMount } from 'svelte';
 		coordinator?.hideTool(toolId);
 	}
 
-	function toggleSettings() {
-		settingsOpen = !settingsOpen;
-	}
-
-	function closeSettings() {
-		settingsOpen = false;
-	}
-
 	function handlePointerDown(e: PointerEvent) {
 		const target = e.target as HTMLElement;
 
 		// Only start drag if clicking the header
 		if (!target.closest('.pie-tool-graph__header')) return;
-
-		// Don't drag if clicking settings button
-		if (target.closest('.tool-settings-button')) return;
 
 		// Start dragging (we'll handle position updates)
 		if (containerEl) {
@@ -504,14 +489,6 @@ import { onDestroy, onMount } from 'svelte';
 		<!-- Header (matching production implementation: dark teal) -->
 		<div class="pie-tool-graph__header">
 			<h3 id="graph-tool-title" class="pie-tool-graph__title">Graph Tool</h3>
-			<div class="pie-tool-graph__header-controls">
-				<ToolSettingsButton
-					bind:buttonEl={settingsButtonEl}
-					onClick={toggleSettings}
-					ariaLabel="Graph tool settings"
-					active={settingsOpen}
-				/>
-			</div>
 		</div>
 
 		<!-- Toolbar (matching production implementation: lighter teal) -->
@@ -710,28 +687,6 @@ import { onDestroy, onMount } from 'svelte';
 		</div>
 	</div>
 
-	<!-- Settings Panel -->
-	<ToolSettingsPanel
-		open={settingsOpen}
-		title="Graph Tool Settings"
-		onClose={closeSettings}
-		anchorEl={settingsButtonEl}
-	>
-		<fieldset class="pie-tool-graph__setting-group">
-			<legend>Canvas</legend>
-			<label>
-				<span class="pie-tool-graph__setting-label">Grid Opacity</span>
-				<input
-					type="range"
-					min="0"
-					max="1"
-					step="0.1"
-					bind:value={gridOpacity}
-					aria-label="Grid opacity"
-				/>
-			</label>
-		</fieldset>
-	</ToolSettingsPanel>
 {/if}
 
 <style>
@@ -769,12 +724,6 @@ import { onDestroy, onMount } from 'svelte';
 		font-size: 16px;
 		color: var(--pie-white, #fff);
 		margin: 0;
-	}
-
-	.pie-tool-graph__header-controls {
-		display: flex;
-		gap: 8px;
-		align-items: center;
 	}
 
 	/* Toolbar (matching production implementation: lighter teal) */
@@ -911,21 +860,4 @@ import { onDestroy, onMount } from 'svelte';
 		vector-effect: non-scaling-stroke;
 	}
 
-	.pie-tool-graph__setting-group {
-		border: 1px solid var(--pie-border, #ccc);
-		border-radius: 4px;
-		padding: 12px;
-		margin-bottom: 16px;
-	}
-
-	.pie-tool-graph__setting-group legend {
-		font-weight: 600;
-		padding: 0 8px;
-	}
-
-	.pie-tool-graph__setting-label {
-		display: block;
-		margin-bottom: 8px;
-		font-weight: 500;
-	}
 </style>

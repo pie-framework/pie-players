@@ -67,18 +67,48 @@ const run = () => {
 	const packageDirs = getWorkspaceDirs();
 	const failures = [];
 	let checked = 0;
+	const targets = [];
 
 	for (const dir of packageDirs) {
 		const pkg = readJson(path.join(dir, "package.json"));
 		if (pkg.private) continue;
+		const relativeDir = path.relative(ROOT, dir);
+		const isToolWorkspace = relativeDir.startsWith("tools/");
+		const publishedTargets = getPublishedEntryTargets(pkg);
+		const missingTargets = publishedTargets.filter(
+			(target) => !existsSync(path.join(dir, target)),
+		);
+		targets.push({
+			dir,
+			relativeDir,
+			pkg,
+			isToolWorkspace,
+			publishedTargets,
+			missingTargets,
+		});
+	}
+
+	// In fresh CI checkouts, package dist outputs are often absent.
+	// Build non-tool workspaces once from root so package-level builds don't fail
+	// due to missing local workspace outputs.
+	const needsRootBuild = targets.some(
+		(target) => !target.isToolWorkspace && target.missingTargets.length > 0,
+	);
+	if (needsRootBuild) {
+		execSync("bun run build", {
+			cwd: ROOT,
+			stdio: "pipe",
+		});
+	}
+
+	for (const target of targets) {
+		const { dir, relativeDir, isToolWorkspace, pkg } = target;
 		checked += 1;
 		try {
 			const publishedTargets = getPublishedEntryTargets(pkg);
 			const missingTargets = publishedTargets.filter(
 				(target) => !existsSync(path.join(dir, target)),
 			);
-			const relativeDir = path.relative(ROOT, dir);
-			const isToolWorkspace = relativeDir.startsWith("tools/");
 			if ((missingTargets.length > 0 || isToolWorkspace) && pkg.scripts?.build) {
 				execSync("rm -rf dist tsconfig.tsbuildinfo && bun run build", {
 					cwd: dir,

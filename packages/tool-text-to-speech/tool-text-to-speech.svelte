@@ -390,10 +390,11 @@ import { onDestroy, onMount } from 'svelte';
 	.pie-tool-text-to-speech {
 		position: fixed;
 		width: 300px;
-		background: white;
-		border: 1px solid #cbd5e0;
+		background: var(--pie-background, #fff);
+		color: var(--pie-text, #111827);
+		border: 1px solid var(--pie-border-light, #cbd5e0);
 		border-radius: 8px;
-		box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+		box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.05);
 		cursor: move;
 		user-select: none;
 		font-family: system-ui, -apple-system, sans-serif;
@@ -404,8 +405,8 @@ import { onDestroy, onMount } from 'svelte';
 		justify-content: space-between;
 		align-items: center;
 		padding: 12px 16px;
-		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-		color: white;
+		background: var(--pie-primary-dark, #283593);
+		color: var(--pie-white, #fff);
 		border-radius: 8px 8px 0 0;
 		cursor: move;
 	}
@@ -422,9 +423,9 @@ import { onDestroy, onMount } from 'svelte';
 	}
 
 	.pie-tool-text-to-speech__close-button {
-		background: rgba(255, 255, 255, 0.2);
+		background: rgb(255 255 255 / 0.2);
 		border: none;
-		color: white;
+		color: var(--pie-white, #fff);
 		width: 24px;
 		height: 24px;
 		border-radius: 4px;
@@ -438,7 +439,7 @@ import { onDestroy, onMount } from 'svelte';
 	}
 
 	.pie-tool-text-to-speech__close-button:hover {
-		background: rgba(255, 255, 255, 0.3);
+		background: rgb(255 255 255 / 0.3);
 	}
 
 	.pie-tool-text-to-speech__content {
@@ -456,21 +457,21 @@ import { onDestroy, onMount } from 'svelte';
 	}
 
 	.pie-tool-text-to-speech__error-message {
-		background: #fee;
-		color: #c33;
-		border: 1px solid #fcc;
+		background: color-mix(in srgb, var(--pie-incorrect, #c33) 12%, transparent);
+		color: var(--pie-incorrect-icon, #c33);
+		border: 1px solid color-mix(in srgb, var(--pie-incorrect, #c33) 30%, transparent);
 	}
 
 	.pie-tool-text-to-speech__loading-message {
-		background: #f0f4f8;
-		color: #4a5568;
+		background: var(--pie-secondary-background, #f0f4f8);
+		color: var(--pie-text, #4a5568);
 		justify-content: center;
 	}
 
 	.pie-tool-text-to-speech__instructions {
 		margin-bottom: 16px;
 		font-size: 13px;
-		color: #4a5568;
+		color: var(--pie-text, #4a5568);
 	}
 
 	.pie-tool-text-to-speech__instructions p {
@@ -483,10 +484,10 @@ import { onDestroy, onMount } from 'svelte';
 		align-items: center;
 		gap: 6px;
 		padding: 8px 12px;
-		background: #e6fffa;
-		border: 1px solid #81e6d9;
+		background: color-mix(in srgb, var(--pie-correct, #10b981) 12%, transparent);
+		border: 1px solid color-mix(in srgb, var(--pie-correct, #10b981) 35%, transparent);
 		border-radius: 6px;
-		color: #234e52;
+		color: var(--pie-correct-icon, #234e52);
 		font-size: 12px;
 	}
 
@@ -504,11 +505,11 @@ import { onDestroy, onMount } from 'svelte';
 		align-items: center;
 		margin-bottom: 8px;
 		font-size: 13px;
-		color: #4a5568;
+		color: var(--pie-text, #4a5568);
 	}
 
 	.pie-tool-text-to-speech__control-group label strong {
-		color: #667eea;
+		color: var(--pie-primary, #667eea);
 		font-weight: 600;
 	}
 
@@ -516,7 +517,7 @@ import { onDestroy, onMount } from 'svelte';
 		width: 100%;
 		height: 6px;
 		border-radius: 3px;
-		background: #e2e8f0;
+		background: var(--pie-secondary-background, #e2e8f0);
 		outline: none;
 		-webkit-appearance: none;
 	}
@@ -526,13 +527,13 @@ import { onDestroy, onMount } from 'svelte';
 		width: 18px;
 		height: 18px;
 		border-radius: 50%;
-		background: #667eea;
+		background: var(--pie-primary, #667eea);
 		cursor: pointer;
 		transition: all 0.2s;
 	}
 
 	.pie-tool-text-to-speech__control-group input[type="range"]::-webkit-slider-thumb:hover {
-		background: #764ba2;
+		background: var(--pie-primary-dark, #764ba2);
 		transform: scale(1.1);
 	}
 
@@ -567,23 +568,23 @@ import { onDestroy, onMount } from 'svelte';
 	}
 
 	.pie-tool-text-to-speech__button-primary {
-		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-		color: white;
+		background: var(--pie-primary, #667eea);
+		color: var(--pie-white, #fff);
 	}
 
 	.pie-tool-text-to-speech__button-primary:hover:not(:disabled) {
 		transform: translateY(-1px);
-		box-shadow: 0 4px 6px rgba(102, 126, 234, 0.3);
+		box-shadow: 0 4px 6px color-mix(in srgb, var(--pie-primary, #667eea) 35%, transparent);
 	}
 
 	.pie-tool-text-to-speech__button-secondary {
-		background: #f7fafc;
-		color: #4a5568;
-		border: 1px solid #e2e8f0;
+		background: var(--pie-button-bg, #f7fafc);
+		color: var(--pie-button-color, #4a5568);
+		border: 1px solid var(--pie-button-border, #e2e8f0);
 	}
 
 	.pie-tool-text-to-speech__button-secondary:hover:not(:disabled) {
-		background: #edf2f7;
+		background: var(--pie-button-hover-bg, #edf2f7);
 	}
 
 	.pie-tool-text-to-speech__playback-controls button:disabled {
@@ -597,18 +598,18 @@ import { onDestroy, onMount } from 'svelte';
 		align-items: center;
 		gap: 8px;
 		padding: 8px 12px;
-		background: #f0fdf4;
-		border: 1px solid #86efac;
+		background: color-mix(in srgb, var(--pie-correct, #4caf50) 10%, transparent);
+		border: 1px solid color-mix(in srgb, var(--pie-correct, #4caf50) 30%, transparent);
 		border-radius: 6px;
 		font-size: 12px;
-		color: #166534;
+		color: var(--pie-correct-icon, #166534);
 		animation: fadeIn 0.3s;
 	}
 
 	.pie-tool-text-to-speech__status-indicator.pie-tool-text-to-speech__status-indicator--paused {
-		background: #fef3c7;
-		border-color: #fcd34d;
-		color: #92400e;
+		background: color-mix(in srgb, var(--pie-missing, #fcd34d) 18%, transparent);
+		border-color: color-mix(in srgb, var(--pie-missing, #fcd34d) 45%, transparent);
+		color: var(--pie-missing-icon, #92400e);
 	}
 
 	.pie-tool-text-to-speech__status-icon {
@@ -620,7 +621,7 @@ import { onDestroy, onMount } from 'svelte';
 	.pie-tool-text-to-speech__pulse {
 		width: 8px;
 		height: 8px;
-		background: #10b981;
+		background: var(--pie-correct, #10b981);
 		border-radius: 50%;
 		animation: pulse 1.5s ease-in-out infinite;
 	}

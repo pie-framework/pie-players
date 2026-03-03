@@ -737,8 +737,10 @@ import { onDestroy, onMount } from 'svelte';
 <style>
 	.pie-tool-graph {
 		position: fixed;
-		background: white;
-		box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+		background: var(--pie-background, #fff);
+		color: var(--pie-text, #111827);
+		border: 1px solid var(--pie-border-light, #d1d5db);
+		box-shadow: 0 10px 40px rgb(0 0 0 / 0.3);
 		user-select: none;
 		touch-action: none;
 		border-radius: 12px;
@@ -753,7 +755,7 @@ import { onDestroy, onMount } from 'svelte';
 	.pie-tool-graph__header {
 		padding: 12px 16px;
 		background: var(--pie-primary-dark, #2c3e50); /* Dark teal-like color */
-		color: var(--pie-white, white);
+		color: var(--pie-white, #fff);
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
@@ -765,7 +767,7 @@ import { onDestroy, onMount } from 'svelte';
 	.pie-tool-graph__title {
 		font-weight: 600;
 		font-size: 16px;
-		color: var(--pie-white, white);
+		color: var(--pie-white, #fff);
 		margin: 0;
 	}
 
@@ -798,21 +800,21 @@ import { onDestroy, onMount } from 'svelte';
 		align-items: center;
 		gap: 4px;
 		padding: 8px 12px;
-		background: rgba(255, 255, 255, 0.2);
+		background: color-mix(in srgb, var(--pie-white, #fff) 20%, transparent);
 		border: 2px solid transparent;
 		border-radius: 4px;
 		cursor: pointer;
-		color: white;
+		color: var(--pie-white, #fff);
 		font-size: 12px;
 		transition: all 0.2s;
 	}
 
 	.pie-tool-graph__tool-button:hover {
-		background: rgba(255, 255, 255, 0.3);
+		background: color-mix(in srgb, var(--pie-white, #fff) 30%, transparent);
 	}
 
 	.pie-tool-graph__tool-button.pie-tool-graph__tool-button--active {
-		background: white;
+		background: var(--pie-background, #fff);
 		color: var(--pie-primary-dark, #2c3e50);
 		border-color: var(--pie-primary-dark, #2c3e50);
 	}
@@ -834,7 +836,7 @@ import { onDestroy, onMount } from 'svelte';
 		display: flex;
 		align-items: center;
 		gap: 8px;
-		color: white;
+		color: var(--pie-white, #fff);
 		font-size: 12px;
 		padding-left: 8px;
 	}
@@ -851,7 +853,7 @@ import { onDestroy, onMount } from 'svelte';
 	/* Canvas wrapper */
 	.pie-tool-graph__canvas-wrapper {
 		flex: 1;
-		background: white;
+		background: var(--pie-background, #fff);
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -866,17 +868,17 @@ import { onDestroy, onMount } from 'svelte';
 
 	/* Grid lines (matching production implementation: dark gray) */
 	.pie-tool-graph__grid-line {
-		stroke: var(--pie-primary-console, #666);
+		stroke: var(--pie-border-dark, #666);
 		vector-effect: non-scaling-stroke;
 	}
 
 	.pie-tool-graph__grid-line--major {
-		stroke: var(--pie-primary-dark-console, #333);
+		stroke: var(--pie-border-dark, #333);
 		stroke-width: 0.75;
 	}
 
 	.pie-tool-graph__grid-line--minor {
-		stroke: var(--pie-primary-light-console, #ccc);
+		stroke: var(--pie-border-light, #ccc);
 		stroke-width: 0.5;
 	}
 
@@ -890,12 +892,12 @@ import { onDestroy, onMount } from 'svelte';
 	}
 
 	.pie-tool-graph__user-point.pie-tool-graph__user-point--highlight {
-		fill: var(--pie-warning, #ffc107);
-		stroke: var(--pie-warning-dark, #ff9800);
+		fill: var(--pie-missing, #ffc107);
+		stroke: var(--pie-missing-icon, #ff9800);
 	}
 
 	.pie-tool-graph__user-line {
-		stroke: var(--pie-dark-gray, #333);
+		stroke: var(--pie-text, #333);
 		stroke-linecap: round;
 		stroke-width: 1;
 		vector-effect: non-scaling-stroke;
@@ -903,7 +905,7 @@ import { onDestroy, onMount } from 'svelte';
 
 	.pie-tool-graph__temp-line {
 		pointer-events: none;
-		stroke: var(--pie-success, #4caf50);
+		stroke: var(--pie-correct, #4caf50);
 		stroke-dasharray: 2, 2;
 		stroke-width: 0.75;
 		vector-effect: non-scaling-stroke;

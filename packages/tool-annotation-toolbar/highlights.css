@@ -19,14 +19,14 @@
    ============================================================================ */
 
 ::highlight(tts-word) {
-	background-color: rgba(253, 233, 149, 0.6);
-	text-decoration: underline 2px solid rgba(0, 0, 0, 0.4);
-	text-shadow: 0 0 1px rgba(0, 0, 0, 0.2);
+	background-color: color-mix(in srgb, var(--pie-missing, #fde995) 60%, transparent);
+	text-decoration: underline 2px solid color-mix(in srgb, var(--pie-text, #111827) 40%, transparent);
+	text-shadow: 0 0 1px color-mix(in srgb, var(--pie-text, #111827) 20%, transparent);
 	color: inherit;
 }
 
 ::highlight(tts-sentence) {
-	background-color: rgba(253, 233, 149, 0.3);
+	background-color: color-mix(in srgb, var(--pie-missing, #fde995) 30%, transparent);
 	color: inherit;
 }
 
@@ -35,7 +35,7 @@
    ============================================================================ */
 
 ::highlight(annotation-yellow) {
-	background-color: rgba(253, 233, 149, 0.5);
+	background-color: color-mix(in srgb, var(--pie-missing, #fde995) 50%, transparent);
 	color: inherit;
 }
 
@@ -56,7 +56,7 @@
 
 ::highlight(annotation-underline) {
 	background-color: transparent;
-	text-decoration: underline 2px solid #0066cc;
+	text-decoration: underline 2px solid var(--pie-primary, #0066cc);
 	text-underline-offset: 2px;
 	color: inherit;
 }
@@ -230,7 +230,7 @@
    ============================================================================ */
 
 .pie-tool-annotation-toolbar button:focus-visible {
-	outline: 2px solid #0066cc;
+	outline: 2px solid var(--pie-button-focus-outline, var(--pie-primary, #0066cc));
 	outline-offset: 2px;
 }
 

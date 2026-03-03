@@ -334,9 +334,9 @@
 
 	/* Focus indicator - WCAG 2.4.7, 2.4.13 */
 	.pie-tool-tts-inline__button:focus-visible {
-		outline: 2px solid #0066cc;
+		outline: 2px solid var(--pie-button-focus-outline, var(--pie-primary, #0066cc));
 		outline-offset: 2px;
-		box-shadow: 0 0 0 4px rgba(0, 102, 204, 0.2);
+		box-shadow: 0 0 0 4px color-mix(in srgb, var(--pie-primary, #0066cc) 22%, transparent);
 		z-index: 1;
 	}
 
@@ -348,7 +348,7 @@
 	}
 
 	.pie-tool-tts-inline__button--paused {
-		background-color: rgba(255, 152, 0, 0.15);
+		background-color: color-mix(in srgb, var(--pie-missing, #ff9800) 18%, transparent);
 	}
 
 	.pie-tool-tts-inline__button--stop {
@@ -356,11 +356,11 @@
 	}
 
 	.pie-tool-tts-inline__button--stop:hover:not(:disabled) {
-		background-color: rgba(244, 67, 54, 0.1);
+		background-color: color-mix(in srgb, var(--pie-incorrect, #f44336) 12%, transparent);
 	}
 
 	.pie-tool-tts-inline__button--stop .pie-tool-tts-inline__icon {
-		color: #c62828; /* Darker red for better contrast - WCAG 1.4.11 */
+		color: var(--pie-incorrect-icon, #c62828);
 	}
 
 	.pie-tool-tts-inline__button:disabled {
@@ -403,15 +403,15 @@
 
 	.pie-tool-tts-inline__icon {
 		fill: currentColor;
-		color: #555;
+		color: var(--pie-button-color, var(--pie-text, #555));
 	}
 
 	.pie-tool-tts-inline__button:hover:not(:disabled) .pie-tool-tts-inline__icon {
-		color: #667eea;
+		color: var(--pie-primary, #667eea);
 	}
 
 	.pie-tool-tts-inline__button--speaking .pie-tool-tts-inline__icon {
-		color: #667eea;
+		color: var(--pie-white, #fff);
 	}
 
 	@keyframes pulse {

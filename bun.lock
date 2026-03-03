@@ -323,6 +323,7 @@
         "@pie-players/pie-players-shared": "workspace:*",
         "@pie-players/pie-tool-answer-eliminator": "workspace:*",
         "@pie-players/pie-tool-calculator": "workspace:*",
+        "@pie-players/pie-tool-color-scheme": "workspace:*",
         "@pie-players/pie-tool-graph": "workspace:*",
         "@pie-players/pie-tool-line-reader": "workspace:*",
         "@pie-players/pie-tool-periodic-table": "workspace:*",
@@ -397,6 +398,9 @@
     "packages/theme-daisyui": {
       "name": "@pie-players/pie-theme-daisyui",
       "version": "0.1.1",
+      "dependencies": {
+        "@pie-players/pie-theme": "workspace:*",
+      },
       "devDependencies": {
         "@biomejs/biome": "^2.3.10",
         "typescript": "^5.9.3",
@@ -491,6 +495,7 @@
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-context": "workspace:*",
         "@pie-players/pie-players-shared": "workspace:*",
+        "@pie-players/pie-theme": "workspace:*",
         "daisyui": "^5.5.18",
       },
       "devDependencies": {

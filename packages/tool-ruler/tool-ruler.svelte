@@ -340,9 +340,9 @@
 	}
 
 	.pie-tool-ruler {
-		border-left: 1px solid #000;
-		border-right: 1px solid #000;
-		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); /* Matching production implementation shadow */
+		border-left: 1px solid var(--pie-border-dark, #000);
+		border-right: 1px solid var(--pie-border-dark, #000);
+		box-shadow: 0 4px 12px rgb(0 0 0 / 0.15); /* Matching production implementation shadow */
 		cursor: move;
 		left: 50%;
 		overflow: hidden;
@@ -355,17 +355,17 @@
 	}
 
 	.pie-tool-ruler:focus {
-		outline: 3px solid #4A90E2;
+		outline: 3px solid var(--pie-button-focus-outline, var(--pie-primary, #4A90E2));
 		outline-offset: 2px;
 	}
 
 	.pie-tool-ruler:focus-visible {
-		outline: 3px solid #4A90E2;
+		outline: 3px solid var(--pie-button-focus-outline, var(--pie-primary, #4A90E2));
 		outline-offset: 2px;
 	}
 
 	.pie-tool-ruler__container {
-		background-color: rgb(255 255 255 / 90%); /* Matching production implementation semi-transparent white background */
+		background-color: color-mix(in srgb, var(--pie-background, #fff) 90%, transparent); /* Matching production implementation semi-transparent white background */
 		position: relative;
 	}
 
@@ -389,16 +389,16 @@
 		position: absolute;
 		display: flex;
 		z-index: 10;
-		background: white;
+		background: var(--pie-background, #fff);
 		border-radius: 4px;
 		overflow: hidden;
 	}
 
 	.pie-tool-ruler__unit-button {
-		background: white;
+		background: var(--pie-button-bg, #fff);
 		border: none;
 		border-right: 1px solid var(--pie-primary, #3f51b5);
-		color: var(--pie-primary, #3f51b5);
+		color: var(--pie-button-color, var(--pie-primary, #3f51b5));
 		cursor: pointer;
 		padding: 4px 8px;
 		font-size: 12px;
@@ -410,12 +410,12 @@
 	}
 
 	.pie-tool-ruler__unit-button:hover {
-		background-color: rgba(63, 81, 181, 0.1);
+		background-color: var(--pie-button-hover-bg, color-mix(in srgb, var(--pie-primary, #3f51b5) 10%, transparent));
 	}
 
 	.pie-tool-ruler__unit-button.pie-tool-ruler__unit-button--active {
 		background-color: var(--pie-primary, #3f51b5);
-		color: white;
+		color: var(--pie-white, #fff);
 	}
 
 	.pie-tool-ruler__unit-button:focus-visible {

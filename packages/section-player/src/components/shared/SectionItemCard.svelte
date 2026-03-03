@@ -59,6 +59,13 @@
 </pie-item-shell>
 
 <style>
+	.pie-section-player-content-card {
+		border: 1px solid var(--pie-border-light, #e5e7eb);
+		border-radius: 8px;
+		background: var(--pie-background, #fff);
+		color: var(--pie-text, #111827);
+	}
+
 	.pie-section-player-content-card-header {
 		display: flex;
 		align-items: center;
@@ -71,6 +78,7 @@
 		margin: 0;
 		font-size: 0.95rem;
 		font-weight: 600;
+		color: var(--pie-text, #111827);
 	}
 
 	.pie-section-player-content-card-header pie-item-toolbar {
@@ -79,5 +87,6 @@
 
 	.pie-section-player-content-card-body {
 		padding: 1rem;
+		color: var(--pie-text, #111827);
 	}
 </style>

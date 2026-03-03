@@ -357,7 +357,7 @@ import { onMount } from 'svelte';
 			aria-label="Resize handle - drag to adjust height"
 		>
 			<svg width="20" height="8" viewBox="0 0 20 8" aria-hidden="true">
-				<rect x="8" y="3" width="4" height="2" fill="#4CAF50" rx="1"/>
+				<rect x="8" y="3" width="4" height="2" fill="var(--pie-primary, #4CAF50)" rx="1"/>
 			</svg>
 		</div>
 	</div>
@@ -454,7 +454,7 @@ import { onMount } from 'svelte';
 	}
 
 	.pie-tool-line-reader {
-		border: 2px solid rgba(76, 175, 80, 0.8);
+		border: 2px solid color-mix(in srgb, var(--pie-primary, #4caf50) 80%, transparent);
 		cursor: move;
 		overflow: visible;
 		position: absolute;
@@ -465,12 +465,12 @@ import { onMount } from 'svelte';
 	}
 
 	.pie-tool-line-reader:focus {
-		outline: 3px solid #4A90E2;
+		outline: 3px solid var(--pie-button-focus-outline, var(--pie-primary, #4A90E2));
 		outline-offset: 2px;
 	}
 
 	.pie-tool-line-reader:focus-visible {
-		outline: 3px solid #4A90E2;
+		outline: 3px solid var(--pie-button-focus-outline, var(--pie-primary, #4A90E2));
 		outline-offset: 2px;
 	}
 
@@ -497,13 +497,13 @@ import { onMount } from 'svelte';
 		transform: translateX(-50%);
 		width: 40px;
 		height: 16px;
-		background-color: rgba(255, 255, 255, 0.9);
+		background-color: color-mix(in srgb, var(--pie-background, #fff) 90%, transparent);
 		border-radius: 8px;
-		border: 2px solid #4CAF50;
+		border: 2px solid var(--pie-primary, #4caf50);
 	}
 
 	.pie-tool-line-reader__resize-handle:hover {
-		background-color: rgba(76, 175, 80, 0.2);
+		background-color: color-mix(in srgb, var(--pie-primary, #4caf50) 20%, transparent);
 	}
 
 	.pie-tool-line-reader__resize-handle:active {
@@ -517,7 +517,7 @@ import { onMount } from 'svelte';
 	/* Masking overlays for obscure mode - 4 rectangles covering all areas except line reader window */
 	.pie-tool-line-reader__mask {
 		position: fixed;
-		background: rgba(0, 0, 0, 0.85);
+		background: color-mix(in srgb, var(--pie-text, #000) 85%, transparent);
 		z-index: 999;
 		pointer-events: none;
 	}
@@ -548,8 +548,10 @@ import { onMount } from 'svelte';
 
 	/* In masking mode, change the window appearance */
 	.pie-tool-line-reader.pie-tool-line-reader--masking-mode {
-		border-color: rgba(76, 175, 80, 1);
-		box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.8), 0 0 20px rgba(76, 175, 80, 0.4);
+		border-color: var(--pie-primary, #4caf50);
+		box-shadow:
+			0 0 0 3px color-mix(in srgb, var(--pie-primary, #4caf50) 80%, transparent),
+			0 0 20px color-mix(in srgb, var(--pie-primary, #4caf50) 40%, transparent);
 	}
 
 	/* In masking mode, the window should be transparent to show content underneath */

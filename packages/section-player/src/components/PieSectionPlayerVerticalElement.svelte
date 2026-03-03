@@ -39,6 +39,7 @@
 	import "@pie-players/pie-tool-protractor";
 	import "@pie-players/pie-tool-line-reader";
 	import "@pie-players/pie-tool-ruler";
+	import "@pie-players/pie-tool-color-scheme";
 	import type { Component } from "svelte";
 	import type { SectionCompositionModel } from "../controllers/types.js";
 	import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
@@ -309,6 +310,7 @@
 		height: 100%;
 		min-height: 0;
 		overflow: hidden;
+		background: var(--pie-background-dark, #ecedf1);
 	}
 
 	.pie-section-player-shell--left,
@@ -330,6 +332,7 @@
 		flex: 1;
 		min-height: 0;
 		overflow: hidden;
+		background: var(--pie-background-dark, #ecedf1);
 	}
 
 	.pie-section-player-layout-body--inline {
@@ -350,6 +353,7 @@
 		gap: 1rem;
 		padding: 0.5rem;
 		box-sizing: border-box;
+		background: var(--pie-background-dark, #ecedf1);
 	}
 
 	.pie-section-player-passages-section,
@@ -364,6 +368,7 @@
 		overflow: auto;
 		padding: 0.5rem;
 		box-sizing: border-box;
+		background: var(--pie-background-dark, #ecedf1);
 	}
 
 	.pie-section-player-toolbar-pane--right {
@@ -385,7 +390,7 @@
 	.pie-section-player-content-card {
 		border: 1px solid var(--pie-border-light, #e5e7eb);
 		border-radius: 8px;
-		background: var(--pie-white, #fff);
+		background: var(--pie-background, #fff);
 	}
 
 	.pie-section-player-content-card-header {

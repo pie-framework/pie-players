@@ -20,12 +20,11 @@ export function getPassagePlayerParams(args: {
 	resolvedPlayerProps: Record<string, unknown>;
 	playerStrategy: string;
 }): PlayerElementParams {
+	// Keep passage visuals aligned with item defaults by sharing the same
+	// runtime env shape; passage content remains non-response by content model.
 	return {
 		config: args.passage.config || {},
-		env: {
-			mode: "view",
-			role: args.resolvedPlayerEnv?.role || "student",
-		},
+		env: args.resolvedPlayerEnv,
 		attributes: args.resolvedPlayerAttributes || {},
 		props: args.resolvedPlayerProps || {},
 		skipElementLoading: args.playerStrategy !== "preloaded",

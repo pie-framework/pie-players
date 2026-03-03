@@ -127,44 +127,44 @@ export class HighlightCoordinator implements IHighlightCoordinator {
 		style.textContent = `
       /* TTS highlights - temporary */
       ::highlight(tts-word) {
-        background-color: rgba(255, 235, 59, 0.4);
+        background-color: var(--pie-tts-word-highlight, color-mix(in srgb, var(--pie-missing, #ffeb3b) 40%, transparent));
         color: inherit;
       }
 
       ::highlight(tts-sentence) {
-        background-color: rgba(173, 216, 230, 0.3);
+        background-color: var(--pie-tts-sentence-highlight, color-mix(in srgb, var(--pie-secondary-background, #add8e6) 45%, transparent));
         color: inherit;
       }
 
       /* Annotation highlights - persistent */
       ::highlight(annotation-yellow) {
-        background-color: rgba(255, 255, 0, 0.3);
+        background-color: color-mix(in srgb, var(--pie-missing, #ffff00) 35%, transparent);
         color: inherit;
       }
 
       ::highlight(annotation-green) {
-        background-color: rgba(144, 238, 144, 0.3);
+        background-color: color-mix(in srgb, var(--pie-correct, #90ee90) 35%, transparent);
         color: inherit;
       }
 
       ::highlight(annotation-blue) {
-        background-color: rgba(173, 216, 230, 0.3);
+        background-color: color-mix(in srgb, var(--pie-tertiary, #add8e6) 35%, transparent);
         color: inherit;
       }
 
       ::highlight(annotation-pink) {
-        background-color: rgba(255, 182, 193, 0.3);
+        background-color: color-mix(in srgb, var(--pie-secondary-light, #ffb6c1) 35%, transparent);
         color: inherit;
       }
 
       ::highlight(annotation-orange) {
-        background-color: rgba(255, 165, 0, 0.3);
+        background-color: color-mix(in srgb, var(--pie-incorrect, #ffa500) 35%, transparent);
         color: inherit;
       }
 
       ::highlight(annotation-underline) {
         background-color: transparent;
-        text-decoration: underline 2px solid #0066cc;
+        text-decoration: underline 2px solid var(--pie-primary, #0066cc);
         text-underline-offset: 2px;
         color: inherit;
       }
@@ -519,52 +519,8 @@ export class HighlightCoordinator implements IHighlightCoordinator {
 
 		const rgbaColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity})`;
 
-		// Update the style element
-		styleEl.textContent = `
-      /* TTS highlights - temporary */
-      ::highlight(tts-word) {
-        background-color: ${rgbaColor};
-        color: inherit;
-      }
-
-      ::highlight(tts-sentence) {
-        background-color: rgba(173, 216, 230, 0.3);
-        color: inherit;
-      }
-
-      /* Annotation highlights - persistent */
-      ::highlight(annotation-yellow) {
-        background-color: rgba(255, 255, 0, 0.3);
-        color: inherit;
-      }
-
-      ::highlight(annotation-green) {
-        background-color: rgba(144, 238, 144, 0.3);
-        color: inherit;
-      }
-
-      ::highlight(annotation-blue) {
-        background-color: rgba(173, 216, 230, 0.3);
-        color: inherit;
-      }
-
-      ::highlight(annotation-pink) {
-        background-color: rgba(255, 182, 193, 0.3);
-        color: inherit;
-      }
-
-      ::highlight(annotation-orange) {
-        background-color: rgba(255, 165, 0, 0.3);
-        color: inherit;
-      }
-
-      ::highlight(annotation-underline) {
-        background-color: transparent;
-        text-decoration: underline 2px solid #0066cc;
-        text-underline-offset: 2px;
-        color: inherit;
-      }
-    `;
+		// Preserve token-based stylesheet and update only TTS word color.
+		document.documentElement.style.setProperty("--pie-tts-word-highlight", rgbaColor);
 	}
 
 	/**

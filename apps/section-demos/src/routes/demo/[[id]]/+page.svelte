@@ -7,6 +7,7 @@
 	import '@pie-players/pie-section-player/components/section-player-vertical-element';
 	import '@pie-players/pie-section-player-tools-session-debugger';
 	import '@pie-players/pie-section-player-tools-pnp-debugger';
+	import '@pie-players/pie-theme';
 	import '@pie-players/pie-theme/components.css';
 	import { browser } from '$app/environment';
 	import type { PageData } from './$types';
@@ -70,7 +71,7 @@
 			}
 		},
 		placement: {
-			section: ['graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
+			section: ['colorScheme', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
 			item: ['calculator', 'textToSpeech', 'answerEliminator'],
 			passage: ['textToSpeech']
 		}
@@ -321,57 +322,60 @@
 	<title>{data.demo?.name || 'Demo'} - Direct Layout</title>
 </svelte:head>
 
-<div class="direct-layout">
-	<DemoMenuBar
-		{roleType}
-		{layoutType}
-		{candidateHref}
-		{scorerHref}
-		{showSessionPanel}
-		{showSourcePanel}
-		{showPnpPanel}
-		onReset={() => void resetSessions()}
-		onSetSplitpaneLayout={() => (layoutType = 'splitpane')}
-		onSetVerticalLayout={() => (layoutType = 'vertical')}
-		onToggleSessionPanel={() => (showSessionPanel = !showSessionPanel)}
-		onToggleSourcePanel={() => (showSourcePanel = !showSourcePanel)}
-		onTogglePnpPanel={() => (showPnpPanel = !showPnpPanel)}
-	/>
+<!-- svelte-ignore a11y_misplaced_scope -->
+<pie-theme scope="document" theme="light">
+	<div class="direct-layout">
+		<DemoMenuBar
+			{roleType}
+			{layoutType}
+			{candidateHref}
+			{scorerHref}
+			{showSessionPanel}
+			{showSourcePanel}
+			{showPnpPanel}
+			onReset={() => void resetSessions()}
+			onSetSplitpaneLayout={() => (layoutType = 'splitpane')}
+			onSetVerticalLayout={() => (layoutType = 'vertical')}
+			onToggleSessionPanel={() => (showSessionPanel = !showSessionPanel)}
+			onToggleSourcePanel={() => (showSourcePanel = !showSourcePanel)}
+			onTogglePnpPanel={() => (showPnpPanel = !showPnpPanel)}
+		/>
 
-	{#if selectedPlayerType === 'preloaded' && !preloadedReady}
-		<div class="preload-status">Preloading section item bundles...</div>
-	{:else if preloadedError}
-		<div class="preload-status error">Preloaded bundle failed: {preloadedError}</div>
-	{:else if layoutType === 'vertical'}
-		<pie-section-player-vertical
-			assessment-id={DEMO_ASSESSMENT_ID}
-			section-id={sessionPanelSectionId}
-			attempt-id={attemptId}
-			player-type={selectedPlayerType}
-			lazy-init={true}
-			tools={toolkitToolsConfig}
-			section={resolvedSectionForPlayer}
-			env={pieEnv}
-			toolbar-position="right"
-			show-toolbar={true}
-			ontoolkit-ready={handleToolkitReady}
-		></pie-section-player-vertical>
-	{:else}
-		<pie-section-player-splitpane
-			assessment-id={DEMO_ASSESSMENT_ID}
-			section-id={sessionPanelSectionId}
-			attempt-id={attemptId}
-			player-type={selectedPlayerType}
-			lazy-init={true}
-			tools={toolkitToolsConfig}
-			section={resolvedSectionForPlayer}
-			env={pieEnv}
-			toolbar-position="right"
-			show-toolbar={true}
-			ontoolkit-ready={handleToolkitReady}
-		></pie-section-player-splitpane>
-	{/if}
-</div>
+		{#if selectedPlayerType === 'preloaded' && !preloadedReady}
+			<div class="preload-status">Preloading section item bundles...</div>
+		{:else if preloadedError}
+			<div class="preload-status error">Preloaded bundle failed: {preloadedError}</div>
+		{:else if layoutType === 'vertical'}
+			<pie-section-player-vertical
+				assessment-id={DEMO_ASSESSMENT_ID}
+				section-id={sessionPanelSectionId}
+				attempt-id={attemptId}
+				player-type={selectedPlayerType}
+				lazy-init={true}
+				tools={toolkitToolsConfig}
+				section={resolvedSectionForPlayer}
+				env={pieEnv}
+				toolbar-position="right"
+				show-toolbar={true}
+				ontoolkit-ready={handleToolkitReady}
+			></pie-section-player-vertical>
+		{:else}
+			<pie-section-player-splitpane
+				assessment-id={DEMO_ASSESSMENT_ID}
+				section-id={sessionPanelSectionId}
+				attempt-id={attemptId}
+				player-type={selectedPlayerType}
+				lazy-init={true}
+				tools={toolkitToolsConfig}
+				section={resolvedSectionForPlayer}
+				env={pieEnv}
+				toolbar-position="right"
+				show-toolbar={true}
+				ontoolkit-ready={handleToolkitReady}
+			></pie-section-player-splitpane>
+		{/if}
+	</div>
+</pie-theme>
 
 <DemoOverlays
 	{toolkitCoordinator}
@@ -391,6 +395,7 @@
 		height: 100dvh;
 		min-height: 0;
 		overflow: hidden;
+		background: var(--pie-background-dark, #ecedf1);
 	}
 
 	:global(pie-section-player-splitpane),
@@ -400,6 +405,7 @@
 		height: 100%;
 		min-height: 0;
 		overflow: hidden;
+		background: var(--pie-background-dark, #ecedf1);
 	}
 
 	.preload-status {

@@ -39,7 +39,8 @@
 		"dev": "tsc -p tsconfig.json --watch",
 		"typecheck": "tsc -p tsconfig.json --noEmit",
 		"lint": "biome check .",
-		"check": "tsc -p tsconfig.json --noEmit"
+		"check": "tsc -p tsconfig.json --noEmit",
+		"test": "bun test --dom src"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.3.10",

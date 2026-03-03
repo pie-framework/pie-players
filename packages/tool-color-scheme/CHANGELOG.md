@@ -1,5 +1,16 @@
 # @pie-players/pie-tool-color-scheme
 
+## 0.1.10
+
+### Patch Changes
+
+- beffcc0: Release all publishable packages.
+- Updated dependencies [beffcc0]
+  - @pie-players/pie-assessment-toolkit@0.2.10
+  - @pie-players/pie-context@0.1.2
+  - @pie-players/pie-players-shared@0.2.6
+  - @pie-players/pie-theme@0.1.2
+
 ## 0.1.9
 
 ### Patch Changes

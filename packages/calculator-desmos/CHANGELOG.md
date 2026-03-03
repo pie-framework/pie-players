@@ -1,5 +1,13 @@
 # @pie-players/pie-calculator-desmos
 
+## 0.1.6
+
+### Patch Changes
+
+- beffcc0: Release all publishable packages.
+- Updated dependencies [beffcc0]
+  - @pie-players/pie-calculator@0.1.5
+
 ## 0.1.5
 
 ### Patch Changes

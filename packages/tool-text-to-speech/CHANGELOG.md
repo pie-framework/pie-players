@@ -1,5 +1,14 @@
 # @pie-players/pie-tool-text-to-speech
 
+## 0.1.10
+
+### Patch Changes
+
+- beffcc0: Release all publishable packages.
+- Updated dependencies [beffcc0]
+  - @pie-players/pie-assessment-toolkit@0.2.10
+  - @pie-players/pie-players-shared@0.2.6
+
 ## 0.1.9
 
 ### Patch Changes

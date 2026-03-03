@@ -1,5 +1,11 @@
 # @pie-players/pie-tts
 
+## 0.1.5
+
+### Patch Changes
+
+- beffcc0: Release all publishable packages.
+
 ## 0.1.4
 
 ### Patch Changes

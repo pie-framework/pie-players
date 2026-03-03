@@ -22,6 +22,46 @@
 	const DEMO_ASSESSMENT_ID = 'section-demos-assessment';
 	const ATTEMPT_QUERY_PARAM = 'attempt';
 	const ATTEMPT_STORAGE_KEY = 'pie:section-demos:attempt-id';
+const DAISY_THEME_STORAGE_KEY = 'pie:section-demos:daisy-theme';
+const TOOLKIT_SCHEME_STORAGE_KEY = 'pie-color-scheme';
+const DEFAULT_DAISY_THEME = 'light';
+const DAISY_DEFAULT_THEMES = [
+	'light',
+	'dark',
+	'cupcake',
+	'bumblebee',
+	'emerald',
+	'corporate',
+	'synthwave',
+	'retro',
+	'cyberpunk',
+	'valentine',
+	'halloween',
+	'garden',
+	'forest',
+	'aqua',
+	'lofi',
+	'pastel',
+	'fantasy',
+	'wireframe',
+	'black',
+	'luxury',
+	'dracula',
+	'cmyk',
+	'autumn',
+	'business',
+	'acid',
+	'lemonade',
+	'night',
+	'coffee',
+	'winter',
+	'dim',
+	'nord',
+	'sunset',
+	'caramellatte',
+	'abyss',
+	'silk'
+] as const;
 
 	function getUrlEnumParam<T extends string>(key: string, options: readonly T[], fallback: T): T {
 		if (!browser) return fallback;
@@ -53,6 +93,8 @@
 	let layoutType = $state<'splitpane' | 'vertical'>(
 		getUrlEnumParam('layout', LAYOUT_OPTIONS, 'splitpane')
 	);
+let selectedDaisyTheme = $state<string>(DEFAULT_DAISY_THEME);
+let isThemeSyncing = $state(false);
 	let attemptId = $state(getOrCreateAttemptId());
 	let showSessionPanel = $state(false);
 	let showSourcePanel = $state(false);
@@ -71,11 +113,64 @@
 			}
 		},
 		placement: {
-			section: ['colorScheme', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
+			section: ['theme', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
 			item: ['calculator', 'textToSpeech', 'answerEliminator'],
 			passage: ['textToSpeech']
 		}
 	};
+
+function resolvePieThemeHost(): HTMLElement | null {
+	if (!browser) return null;
+	return (
+		(document.querySelector('pie-theme[scope="document"]') as HTMLElement | null) ||
+		(document.querySelector('pie-theme') as HTMLElement | null)
+	);
+}
+
+function withThemeSyncGuard(run: () => void) {
+	isThemeSyncing = true;
+	try {
+		run();
+	} finally {
+		Promise.resolve().then(() => {
+			isThemeSyncing = false;
+		});
+	}
+}
+
+function applyDaisyTheme(theme: string) {
+	if (!browser) return;
+	const nextTheme = (theme || DEFAULT_DAISY_THEME).trim() || DEFAULT_DAISY_THEME;
+	const pieThemeHost = resolvePieThemeHost();
+	if (pieThemeHost) {
+		if (pieThemeHost.getAttribute('theme') !== nextTheme) {
+			pieThemeHost.setAttribute('theme', nextTheme);
+		}
+	} else {
+		document.documentElement.setAttribute('data-theme', nextTheme);
+	}
+	selectedDaisyTheme = nextTheme;
+	window.localStorage.setItem(DAISY_THEME_STORAGE_KEY, nextTheme);
+}
+
+function applyToolkitScheme(scheme: string) {
+	if (!browser) return;
+	const nextScheme = (scheme || 'default').trim() || 'default';
+	const pieThemeHost = resolvePieThemeHost();
+	if (pieThemeHost && pieThemeHost.getAttribute('scheme') !== nextScheme) {
+		pieThemeHost.setAttribute('scheme', nextScheme);
+	}
+	window.localStorage.setItem(TOOLKIT_SCHEME_STORAGE_KEY, nextScheme);
+}
+
+function handleDaisyThemeSelection(theme: string) {
+	if (!browser) return;
+	withThemeSyncGuard(() => {
+		applyDaisyTheme(theme);
+		// Route external-theme choice through canonical toolkit backend.
+		applyToolkitScheme('default');
+	});
+}
 
 	let resolvedSectionForPlayer = $derived.by(() => {
 		const section = data.section;
@@ -206,6 +301,14 @@
 		window.history.replaceState({}, '', url.toString());
 	});
 
+	$effect(() => {
+		if (!browser) return;
+
+		const storedDaisyTheme =
+			window.localStorage.getItem(DAISY_THEME_STORAGE_KEY) || DEFAULT_DAISY_THEME;
+		applyDaisyTheme(storedDaisyTheme);
+	});
+
 	async function fetchBundleWithRetry(bundleUrl: string) {
 		let attempt = 0;
 		const maxAttempts = 12;
@@ -333,12 +436,15 @@
 			{showSessionPanel}
 			{showSourcePanel}
 			{showPnpPanel}
+			selectedDaisyTheme={selectedDaisyTheme}
+			daisyThemes={[...DAISY_DEFAULT_THEMES]}
 			onReset={() => void resetSessions()}
 			onSetSplitpaneLayout={() => (layoutType = 'splitpane')}
 			onSetVerticalLayout={() => (layoutType = 'vertical')}
 			onToggleSessionPanel={() => (showSessionPanel = !showSessionPanel)}
 			onToggleSourcePanel={() => (showSourcePanel = !showSourcePanel)}
 			onTogglePnpPanel={() => (showPnpPanel = !showPnpPanel)}
+			onSelectDaisyTheme={handleDaisyThemeSelection}
 		/>
 
 		{#if selectedPlayerType === 'preloaded' && !preloadedReady}

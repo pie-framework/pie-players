@@ -149,9 +149,9 @@ export class PieThemeElement extends HTMLElementBase {
 			return;
 		}
 
-		const effectiveTheme = this.resolveEffectiveTheme();
+		const { effectiveTheme, dataTheme } = this.resolveThemeState();
 		const target = this.getTarget();
-		target.setAttribute("data-theme", effectiveTheme);
+		target.setAttribute("data-theme", dataTheme);
 		if (this.scheme && this.scheme !== "default") {
 			target.setAttribute("data-color-scheme", this.scheme);
 		} else {
@@ -179,14 +179,27 @@ export class PieThemeElement extends HTMLElementBase {
 		this.previousKeys = new Set(Object.keys(vars));
 	}
 
-	private resolveEffectiveTheme(): "light" | "dark" {
-		if (this.theme === "auto") {
+	private resolveThemeState(): {
+		effectiveTheme: "light" | "dark";
+		dataTheme: string;
+	} {
+		const rawTheme = this.getAttribute("theme")?.trim();
+		if (rawTheme === "auto") {
 			const prefersDark = window.matchMedia(
 				"(prefers-color-scheme: dark)",
 			).matches;
-			return prefersDark ? "dark" : "light";
+			const effectiveTheme = prefersDark ? "dark" : "light";
+			return { effectiveTheme, dataTheme: effectiveTheme };
 		}
-		return this.theme;
+		if (rawTheme === "dark" || rawTheme === "light") {
+			return { effectiveTheme: rawTheme, dataTheme: rawTheme };
+		}
+		// Non-standard theme ids (for example DaisyUI theme names) map to
+		// light base defaults while still driving provider resolution.
+		if (rawTheme) {
+			return { effectiveTheme: "light", dataTheme: rawTheme };
+		}
+		return { effectiveTheme: "light", dataTheme: "light" };
 	}
 
 	private clearPreviousKeys(target: HTMLElement) {
@@ -205,7 +218,7 @@ export class PieThemeElement extends HTMLElementBase {
 			this.mediaQuery = null;
 		}
 
-		if (this.theme === "auto") {
+		if (this.getAttribute("theme")?.trim() === "auto") {
 			this.mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
 			this.mediaQuery.addEventListener("change", this.onMediaChange);
 		}

@@ -1,6 +1,6 @@
 <svelte:options
 	customElement={{
-		tag: 'pie-tool-color-scheme',
+		tag: 'pie-tool-theme',
 		shadow: 'open',
 		props: {
 			visible: { type: 'Boolean', attribute: 'visible' },
@@ -42,7 +42,7 @@
 
 	let {
 		visible = false,
-		toolId = 'colorScheme',
+		toolId = 'theme',
 		schemes = '',
 		schemeCatalog = null
 	}: {
@@ -342,7 +342,7 @@
 	// Register with coordinator when it becomes available
 	$effect(() => {
 		if (coordinator && toolId && !registered) {
-			coordinator.registerTool(toolId, 'Color Scheme', undefined, ZIndexLayer.MODAL);
+			coordinator.registerTool(toolId, 'Theme', undefined, ZIndexLayer.MODAL);
 			registered = true;
 		}
 	});
@@ -401,12 +401,12 @@
 {#if visible}
 	<div bind:this={containerEl} class="pie-tool-color-scheme" role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="color-scheme-title" onkeydown={handleKeyDown}>
 		<div class="pie-tool-color-scheme__header">
-			<h3 id="color-scheme-title" class="pie-tool-color-scheme__title">Color Scheme</h3>
+			<h3 id="color-scheme-title" class="pie-tool-color-scheme__title">Theme</h3>
 			<button
 				type="button"
 				class="pie-tool-color-scheme__close"
 				onclick={handleClose}
-				aria-label="Close color scheme selector"
+				aria-label="Close theme selector"
 			>
 				×
 			</button>
@@ -414,13 +414,13 @@
 
 		<div class="pie-tool-color-scheme__content">
 			<p class="pie-tool-color-scheme__description">
-				Select a color scheme to improve readability and reduce eye strain.
+				Select a theme to improve readability and reduce eye strain.
 			</p>
 
 			<button
 				type="button"
 				class="pie-tool-color-scheme__dropdown-trigger"
-				aria-label="Select color scheme"
+				aria-label="Select theme"
 				aria-expanded={dropdownOpen}
 				onclick={toggleDropdown}
 			>

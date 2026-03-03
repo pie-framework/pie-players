@@ -68,7 +68,7 @@ export interface DefaultToolRegistryOptions {
  * - Answer Eliminator
  * - Highlighter
  * - Line Reader
- * - Color Scheme
+ * - Theme
  * - Annotation Toolbar
  * - Graph
  * - Periodic Table
@@ -120,7 +120,7 @@ export function createDefaultToolRegistry(
  * Integrators can override this configuration.
  *
  * Categories:
- * - Global tools: colorScheme (assessment/section level)
+ * - Global tools: theme (assessment/section level)
  * - Context-smart: calculator, graph, periodicTable (item/element, auto-detect)
  * - Reading aids: textToSpeech, lineReader, annotationToolbar (where text exists)
  * - Interaction-specific: answerEliminator (choice questions), highlighter (text)
@@ -134,7 +134,7 @@ export { DEFAULT_TOOL_PLACEMENT };
  */
 export const DEFAULT_TOOL_ORDER = [
 	// Global accessibility first
-	"colorScheme",
+	"theme",
 	// Common tools
 	"calculator",
 	"textToSpeech",

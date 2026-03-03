@@ -7,12 +7,15 @@
 		showSessionPanel: boolean;
 		showSourcePanel: boolean;
 		showPnpPanel: boolean;
+		selectedDaisyTheme: string;
+		daisyThemes: string[];
 		onReset: () => void;
 		onSetSplitpaneLayout: () => void;
 		onSetVerticalLayout: () => void;
 		onToggleSessionPanel: () => void;
 		onToggleSourcePanel: () => void;
 		onTogglePnpPanel: () => void;
+		onSelectDaisyTheme: (theme: string) => void;
 	}
 
 	let {
@@ -23,12 +26,15 @@
 		showSessionPanel,
 		showSourcePanel,
 		showPnpPanel,
+		selectedDaisyTheme,
+		daisyThemes,
 		onReset,
 		onSetSplitpaneLayout,
 		onSetVerticalLayout,
 		onToggleSessionPanel,
 		onToggleSourcePanel,
-		onTogglePnpPanel
+		onTogglePnpPanel,
+		onSelectDaisyTheme
 	}: Props = $props();
 </script>
 
@@ -83,6 +89,20 @@
 	</div>
 
 	<div class="navbar-end gap-2">
+		<label class="flex items-center gap-2">
+			<span class="text-xs opacity-70">Theme</span>
+			<select
+				class="select select-sm select-bordered"
+				value={selectedDaisyTheme}
+				onchange={(e) => onSelectDaisyTheme((e.currentTarget as HTMLSelectElement).value)}
+				aria-label="Select DaisyUI theme"
+				title="Select DaisyUI theme"
+			>
+				{#each daisyThemes as theme}
+					<option value={theme}>{theme}</option>
+				{/each}
+			</select>
+		</label>
 		<button
 			class="btn btn-sm btn-outline"
 			onclick={onReset}

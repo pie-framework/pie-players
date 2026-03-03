@@ -39,7 +39,7 @@
 	import "@pie-players/pie-tool-protractor";
 	import "@pie-players/pie-tool-line-reader";
 	import "@pie-players/pie-tool-ruler";
-	import "@pie-players/pie-tool-color-scheme";
+	import "@pie-players/pie-tool-theme";
 	import type { Component } from "svelte";
 	import type { SectionCompositionModel } from "../controllers/types.js";
 	import type { AssessmentSection } from "@pie-players/pie-players-shared/types";

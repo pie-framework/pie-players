@@ -112,15 +112,15 @@ export const lineReaderToolRegistration: ToolRegistration = {
 };
 
 /**
- * Color Scheme tool registration
+ * Theme tool registration
  *
- * Provides Learnosity-standard accessible color schemes and theme controls.
+ * Provides accessible theme and contrast controls.
  * Global tool that affects entire assessment.
  */
-export const colorSchemeToolRegistration: ToolRegistration = {
-	toolId: "colorScheme",
-	name: "Color Scheme",
-	description: "Accessible color themes and contrast",
+export const themeToolRegistration: ToolRegistration = {
+	toolId: "theme",
+	name: "Theme",
+	description: "Accessible themes and contrast",
 	icon: "swatch",
 
 	// Color scheme is assessment-wide
@@ -132,7 +132,8 @@ export const colorSchemeToolRegistration: ToolRegistration = {
 		"highContrastDisplay", // QTI 3.0 standard (visual.highContrastDisplay)
 		"colorContrast", // QTI 3.0 standard (visual.colorContrast)
 		"invertColors", // QTI 3.0 standard (visual.invertColors)
-		"colorScheme", // Common variant
+		"colorScheme", // Legacy alias
+		"theme", // Canonical id
 		"highContrast", // Common variant
 		"customColors", // Common variant
 	],
@@ -158,8 +159,8 @@ export const colorSchemeToolRegistration: ToolRegistration = {
 			label: this.name,
 			icon: typeof this.icon === "function" ? this.icon(context) : this.icon,
 			disabled: false,
-			ariaLabel: "Color scheme - Change colors and contrast",
-			tooltip: "Color Scheme",
+			ariaLabel: "Theme - Change colors and contrast",
+			tooltip: "Theme",
 			onClick: () => toolbarContext.toggleTool(this.toolId),
 			active: toolbarContext.isToolVisible(fullToolId),
 		};
@@ -197,6 +198,12 @@ export const colorSchemeToolRegistration: ToolRegistration = {
 		};
 	},
 };
+
+/**
+ * Backward-compatible export name used by existing imports.
+ * Canonical toolId is `theme`; `colorScheme` remains an alias at config level.
+ */
+export const colorSchemeToolRegistration = themeToolRegistration;
 
 /**
  * Annotation Toolbar registration

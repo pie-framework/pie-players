@@ -1,10 +1,11 @@
 export const DEFAULT_TOOL_ALIAS_MAP = {
 	tts: "textToSpeech",
+	colorScheme: "theme",
 } as const;
 
 export const DEFAULT_TOOL_PLACEMENT = {
-	assessment: ["colorScheme"],
-	section: ["colorScheme", "textToSpeech"],
+	assessment: ["theme"],
+	section: ["theme", "textToSpeech"],
 	item: ["textToSpeech", "highlighter", "annotationToolbar", "graph", "periodicTable"],
 	passage: ["textToSpeech", "highlighter", "annotationToolbar", "lineReader"],
 	rubric: ["textToSpeech", "highlighter", "annotationToolbar", "lineReader"],

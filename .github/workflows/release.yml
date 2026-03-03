@@ -233,6 +233,7 @@ jobs:
           NPM_TOKEN: ${{ env.PUBLISH_NPM_TOKEN }}
           NODE_AUTH_TOKEN: ${{ env.PUBLISH_NODE_AUTH_TOKEN }}
           NPM_CONFIG_REGISTRY: https://registry.npmjs.org/
+          LEFTHOOK: 0
 
       - name: Create GitHub Release
         if: steps.changesets.outputs.published == 'true'

@@ -297,40 +297,64 @@
 </script>
 
 <div
-	class="fixed z-100 bg-base-100 rounded-lg shadow-2xl border-2 border-base-300"
+	class="pie-section-player-tools-session-debugger"
 	style="left: {sessionWindowX}px; top: {sessionWindowY}px; width: {sessionWindowWidth}px; {isSessionMinimized ? 'height: auto;' : `height: ${sessionWindowHeight}px;`}"
 >
 	<div
-		class="flex items-center justify-between px-4 py-2 bg-base-200 rounded-t-lg cursor-move select-none border-b border-base-300"
+		class="pie-section-player-tools-session-debugger__header"
 		onmousedown={startSessionDrag}
 		role="button"
 		tabindex="0"
 		aria-label="Drag session panel"
 	>
-		<div class="flex items-center gap-2">
-			<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+		<div class="pie-section-player-tools-session-debugger__header-title">
+			<svg
+				xmlns="http://www.w3.org/2000/svg"
+				class="pie-section-player-tools-session-debugger__icon-sm"
+				fill="none"
+				viewBox="0 0 24 24"
+				stroke="currentColor"
+			>
 				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
 			</svg>
-			<h3 class="font-bold text-sm">Session Data</h3>
+			<h3 class="pie-section-player-tools-session-debugger__title">Session Data</h3>
 		</div>
-		<div class="flex gap-1">
+		<div class="pie-section-player-tools-session-debugger__header-actions">
 			<button
-				class="btn btn-xs btn-ghost btn-circle"
+				class="pie-section-player-tools-session-debugger__icon-button"
 				onclick={() => (isSessionMinimized = !isSessionMinimized)}
 				title={isSessionMinimized ? 'Maximize' : 'Minimize'}
 			>
 				{#if isSessionMinimized}
-					<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						class="pie-section-player-tools-session-debugger__icon-xs"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+					>
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
 					</svg>
 				{:else}
-					<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						class="pie-section-player-tools-session-debugger__icon-xs"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+					>
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
 					</svg>
 				{/if}
 			</button>
-			<button class="btn btn-xs btn-ghost btn-circle" onclick={() => dispatch('close')} title="Close">
-				<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+			<button class="pie-section-player-tools-session-debugger__icon-button" onclick={() => dispatch('close')} title="Close">
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					class="pie-section-player-tools-session-debugger__icon-xs"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+				>
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
 				</svg>
 			</button>
@@ -338,32 +362,42 @@
 	</div>
 
 	{#if !isSessionMinimized}
-		<div class="p-4 flex flex-col min-h-0 overflow-hidden" style="height: {sessionWindowHeight - 60}px;">
-			<div class="space-y-3 flex-1 min-h-0 flex flex-col">
-				<div class="mb-2">
-					<div class="text-sm font-bold mb-2">PIE Session Data (Persistent)</div>
+		<div class="pie-section-player-tools-session-debugger__content-shell" style="height: {sessionWindowHeight - 60}px;">
+			<div class="pie-section-player-tools-session-debugger__content">
+				<div class="pie-section-player-tools-session-debugger__section-intro">
+					<div class="pie-section-player-tools-session-debugger__heading">PIE Session Data (Persistent)</div>
 				</div>
 
 				{#if !controllerAvailable}
-					<div class="alert alert-warning">
-						<svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-5 w-5" fill="none" viewBox="0 0 24 24">
+					<div class="pie-section-player-tools-session-debugger__alert pie-section-player-tools-session-debugger__alert--warning">
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="pie-section-player-tools-session-debugger__icon-md"
+							fill="none"
+							viewBox="0 0 24 24"
+						>
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4c-.77-1.33-2.69-1.33-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z" />
 						</svg>
-						<span class="text-xs">Section controller not available for this section yet.</span>
+						<span class="pie-section-player-tools-session-debugger__text-xs">Section controller not available for this section yet.</span>
 					</div>
 				{:else if Object.keys(sessionPanelSnapshot.itemSessions || {}).length === 0}
-					<div class="alert alert-info">
-						<svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-5 w-5" fill="none" viewBox="0 0 24 24">
+					<div class="pie-section-player-tools-session-debugger__alert pie-section-player-tools-session-debugger__alert--info">
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="pie-section-player-tools-session-debugger__icon-md"
+							fill="none"
+							viewBox="0 0 24 24"
+						>
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
 						</svg>
-						<span class="text-xs">No section session data yet. Interact with the questions to see updates.</span>
+						<span class="pie-section-player-tools-session-debugger__text-xs">No section session data yet. Interact with the questions to see updates.</span>
 					</div>
 				{:else}
-					<div class="bg-base-200 rounded p-3 flex-1 min-h-0 flex flex-col">
-						<div class="text-xs font-semibold mb-2">
+					<div class="pie-section-player-tools-session-debugger__card">
+						<div class="pie-section-player-tools-session-debugger__card-title">
 							Item Sessions Snapshot
 						</div>
-						<pre class="bg-base-300 p-2 rounded text-xs overflow-auto flex-1 min-h-0">{JSON.stringify(sessionPanelSnapshot, null, 2)}</pre>
+						<pre class="pie-section-player-tools-session-debugger__card-pre">{JSON.stringify(sessionPanelSnapshot, null, 2)}</pre>
 					</div>
 				{/if}
 			</div>
@@ -372,13 +406,13 @@
 
 	{#if !isSessionMinimized}
 		<div
-			class="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize"
+			class="pie-section-player-tools-session-debugger__resize-handle"
 			onmousedown={startSessionResize}
 			role="button"
 			tabindex="0"
 			title="Resize window"
 		>
-			<svg class="w-full h-full text-base-content/30" viewBox="0 0 16 16" fill="currentColor">
+			<svg class="pie-section-player-tools-session-debugger__resize-icon" viewBox="0 0 16 16" fill="currentColor">
 				<path d="M16 16V14H14V16H16Z" />
 				<path d="M16 11V9H14V11H16Z" />
 				<path d="M13 16V14H11V16H13Z" />
@@ -386,3 +420,174 @@
 		</div>
 	{/if}
 </div>
+
+<style>
+	.pie-section-player-tools-session-debugger {
+		position: fixed;
+		z-index: 100;
+		background: var(--pie-white, #fff);
+		border-radius: 0.5rem;
+		box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+		border: 2px solid var(--pie-border-light, #d1d5db);
+		overflow: hidden;
+		color: var(--pie-text, #111827);
+	}
+
+	.pie-section-player-tools-session-debugger__header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 0.5rem 1rem;
+		background: var(--pie-secondary-background, #f3f4f6);
+		border-bottom: 1px solid var(--pie-border-light, #d1d5db);
+		cursor: move;
+		user-select: none;
+	}
+
+	.pie-section-player-tools-session-debugger__header-title {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.pie-section-player-tools-session-debugger__title {
+		margin: 0;
+		font-size: 0.875rem;
+		font-weight: 700;
+	}
+
+	.pie-section-player-tools-session-debugger__header-actions {
+		display: flex;
+		gap: 0.25rem;
+	}
+
+	.pie-section-player-tools-session-debugger__icon-button {
+		width: 1.5rem;
+		height: 1.5rem;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		border: none;
+		border-radius: 9999px;
+		background: transparent;
+		color: inherit;
+		cursor: pointer;
+	}
+
+	.pie-section-player-tools-session-debugger__icon-button:hover {
+		background: rgba(17, 24, 39, 0.08);
+	}
+
+	.pie-section-player-tools-session-debugger__icon-button:focus-visible {
+		outline: 2px solid var(--pie-focus-checked-border, #1976d2);
+		outline-offset: 1px;
+	}
+
+	.pie-section-player-tools-session-debugger__icon-sm {
+		width: 1rem;
+		height: 1rem;
+	}
+
+	.pie-section-player-tools-session-debugger__icon-xs {
+		width: 0.75rem;
+		height: 0.75rem;
+	}
+
+	.pie-section-player-tools-session-debugger__icon-md {
+		width: 1.25rem;
+		height: 1.25rem;
+		flex-shrink: 0;
+	}
+
+	.pie-section-player-tools-session-debugger__content-shell {
+		padding: 1rem;
+		display: flex;
+		flex-direction: column;
+		min-height: 0;
+		overflow: hidden;
+	}
+
+	.pie-section-player-tools-session-debugger__content {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+		flex: 1;
+		min-height: 0;
+	}
+
+	.pie-section-player-tools-session-debugger__section-intro {
+		margin-bottom: 0.25rem;
+	}
+
+	.pie-section-player-tools-session-debugger__heading {
+		font-size: 0.875rem;
+		font-weight: 700;
+	}
+
+	.pie-section-player-tools-session-debugger__text-xs {
+		font-size: 0.75rem;
+	}
+
+	.pie-section-player-tools-session-debugger__alert {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 0.5rem 0.75rem;
+		border-radius: 0.375rem;
+		border: 1px solid transparent;
+	}
+
+	.pie-section-player-tools-session-debugger__alert--warning {
+		background: #fef3c7;
+		border-color: #f59e0b;
+		color: #92400e;
+	}
+
+	.pie-section-player-tools-session-debugger__alert--info {
+		background: #e0f2fe;
+		border-color: #38bdf8;
+		color: #0c4a6e;
+	}
+
+	.pie-section-player-tools-session-debugger__card {
+		background: var(--pie-secondary-background, #f3f4f6);
+		border-radius: 0.375rem;
+		padding: 0.75rem;
+		display: flex;
+		flex-direction: column;
+		flex: 1;
+		min-height: 0;
+	}
+
+	.pie-section-player-tools-session-debugger__card-title {
+		font-size: 0.75rem;
+		font-weight: 600;
+		margin-bottom: 0.5rem;
+	}
+
+	.pie-section-player-tools-session-debugger__card-pre {
+		background: var(--pie-background, #e5e7eb);
+		padding: 0.5rem;
+		border-radius: 0.375rem;
+		font-size: 0.75rem;
+		overflow: auto;
+		flex: 1;
+		min-height: 0;
+		margin: 0;
+	}
+
+	.pie-section-player-tools-session-debugger__resize-handle {
+		position: absolute;
+		bottom: 0;
+		right: 0;
+		width: 1rem;
+		height: 1rem;
+		cursor: se-resize;
+	}
+
+	.pie-section-player-tools-session-debugger__resize-icon {
+		width: 100%;
+		height: 100%;
+		color: color-mix(in srgb, var(--pie-text, #111827) 30%, transparent);
+	}
+</style>

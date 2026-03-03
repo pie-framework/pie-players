@@ -9,6 +9,9 @@ import { StrikethroughStrategy } from "./strategies/strikethrough-strategy.js";
  * Coordinates adapters, strategies, and state management
  */
 export class AnswerEliminatorCore {
+	private static readonly TOGGLE_CLASS = "pie-answer-eliminator-toggle";
+	private static readonly TOGGLE_ACTIVE_CLASS =
+		"pie-answer-eliminator-toggle--active";
 	private registry: AdapterRegistry;
 	private strategy: EliminationStrategy;
 	private eliminatedChoices = new Set<string>(); // Set<choiceId> for current element
@@ -103,7 +106,7 @@ export class AnswerEliminatorCore {
 
 		const button = document.createElement("button");
 		button.type = "button";
-		button.className = "answer-eliminator-toggle";
+		button.className = AnswerEliminatorCore.TOGGLE_CLASS;
 		button.setAttribute("aria-label", `Toggle elimination for ${choiceLabel}`);
 		button.setAttribute("data-choice-id", choiceId);
 		button.textContent = "⊗"; // Cross mark (use textContent instead of innerHTML for better security)
@@ -204,7 +207,7 @@ export class AnswerEliminatorCore {
 		// Update button appearance to show eliminated state
 		const button = this.choiceButtons.get(choiceId);
 		if (button) {
-			button.classList.add("active");
+			button.classList.add(AnswerEliminatorCore.TOGGLE_ACTIVE_CLASS);
 			button.setAttribute("aria-pressed", "true");
 			// Visual feedback: filled/highlighted when eliminated
 			button.style.background = "#ff9800";
@@ -229,7 +232,7 @@ export class AnswerEliminatorCore {
 		// Reset button appearance to default state
 		const button = this.choiceButtons.get(choiceId);
 		if (button) {
-			button.classList.remove("active");
+			button.classList.remove(AnswerEliminatorCore.TOGGLE_ACTIVE_CLASS);
 			button.setAttribute("aria-pressed", "false");
 			// Reset to default styling
 			button.style.background = "white";
@@ -328,7 +331,7 @@ export class AnswerEliminatorCore {
 					// Update button appearance to show eliminated state
 					const button = this.choiceButtons.get(choiceId);
 					if (button) {
-						button.classList.add("active");
+						button.classList.add(AnswerEliminatorCore.TOGGLE_ACTIVE_CLASS);
 						button.setAttribute("aria-pressed", "true");
 						// Apply eliminated styling
 						button.style.background = "#ff9800";

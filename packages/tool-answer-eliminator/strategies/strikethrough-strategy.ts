@@ -8,6 +8,20 @@ import type { EliminationStrategy } from "./elimination-strategy.js";
  * WCAG Compliance: Maintains info structure (1.3.1), no layout shift (2.4.3)
  */
 export class StrikethroughStrategy implements EliminationStrategy {
+	private static readonly BASE_STYLE_ID =
+		"pie-answer-eliminator-strikethrough-styles";
+	private static readonly HIGHLIGHT_STYLE_PREFIX =
+		"pie-answer-eliminator-highlight-";
+	private static readonly HIGHLIGHT_NAME_PREFIX = "pie-answer-eliminated-";
+	private static readonly FALLBACK_CLASS =
+		"pie-answer-eliminator-eliminated-fallback";
+	private static readonly SR_CLASS = "pie-answer-eliminator-sr-announcement";
+	private static readonly CHOICE_HOOK_ATTR =
+		"data-pie-answer-eliminator-choice";
+	private static readonly LABEL_HOOK_ATTR = "data-pie-answer-eliminator-label";
+	private static readonly ELIMINATED_ATTR = "data-pie-answer-eliminated";
+	private static readonly ELIMINATED_ID_ATTR = "data-pie-answer-eliminated-id";
+
 	readonly name = "strikethrough";
 
 	private highlights = new Map<string, Highlight>();
@@ -43,7 +57,10 @@ export class StrikethroughStrategy implements EliminationStrategy {
 		const highlight = new Highlight(range);
 
 		// Register in CSS.highlights with unique name
-		CSS.highlights.set(`answer-eliminated-${choiceId}`, highlight);
+		CSS.highlights.set(
+			`${StrikethroughStrategy.HIGHLIGHT_NAME_PREFIX}${choiceId}`,
+			highlight,
+		);
 
 		// Track internally
 		this.highlights.set(choiceId, highlight);
@@ -60,7 +77,9 @@ export class StrikethroughStrategy implements EliminationStrategy {
 		}
 
 		// Remove from CSS.highlights
-		CSS.highlights.delete(`answer-eliminated-${choiceId}`);
+		CSS.highlights.delete(
+			`${StrikethroughStrategy.HIGHLIGHT_NAME_PREFIX}${choiceId}`,
+		);
 
 		// Remove CSS for this specific highlight
 		this.removeHighlightCSS(choiceId);
@@ -97,7 +116,7 @@ export class StrikethroughStrategy implements EliminationStrategy {
 	}
 
 	private injectCSS(): void {
-		const styleId = "answer-eliminator-strikethrough-styles";
+		const styleId = StrikethroughStrategy.BASE_STYLE_ID;
 
 		// Don't inject if already exists
 		if (document.getElementById(styleId)) return;
@@ -110,7 +129,7 @@ export class StrikethroughStrategy implements EliminationStrategy {
 		// For performance, we inject a base style and add choice-specific styles dynamically.
 		style.textContent = `
       /* Fallback for browsers without CSS Highlight API */
-      .answer-eliminated-fallback {
+      .pie-answer-eliminator-eliminated-fallback {
         text-decoration: line-through;
         text-decoration-thickness: 2px;
         text-decoration-color: var(--pie-incorrect, #ff9800);
@@ -118,7 +137,7 @@ export class StrikethroughStrategy implements EliminationStrategy {
       }
 
       /* Screen reader only text */
-      .sr-announcement {
+      .pie-answer-eliminator-sr-announcement {
         position: absolute;
         left: -10000px;
         width: 1px;
@@ -131,13 +150,13 @@ export class StrikethroughStrategy implements EliminationStrategy {
 	}
 
 	private injectHighlightCSS(choiceId: string): void {
-		const styleId = `answer-eliminator-highlight-${choiceId}`;
+		const styleId = `${StrikethroughStrategy.HIGHLIGHT_STYLE_PREFIX}${choiceId}`;
 		if (document.getElementById(styleId)) return;
 
 		const style = document.createElement("style");
 		style.id = styleId;
 		style.textContent = `
-      ::highlight(answer-eliminated-${choiceId}) {
+      ::highlight(pie-answer-eliminated-${choiceId}) {
         text-decoration: line-through;
         text-decoration-thickness: 2px;
         text-decoration-color: var(--pie-incorrect, #ff9800);
@@ -149,14 +168,14 @@ export class StrikethroughStrategy implements EliminationStrategy {
 
 	private removeHighlightCSS(choiceId: string): void {
 		document
-			.getElementById(`answer-eliminator-highlight-${choiceId}`)
+			.getElementById(
+				`${StrikethroughStrategy.HIGHLIGHT_STYLE_PREFIX}${choiceId}`,
+			)
 			?.remove();
 	}
 
 	private removeCSS(): void {
-		const style = document.getElementById(
-			"answer-eliminator-strikethrough-styles",
-		);
+		const style = document.getElementById(StrikethroughStrategy.BASE_STYLE_ID);
 		style?.remove();
 	}
 
@@ -165,14 +184,14 @@ export class StrikethroughStrategy implements EliminationStrategy {
 		const container = this.findChoiceContainer(range);
 		if (!container) return;
 
-		container.setAttribute("data-eliminated", "true");
+		container.setAttribute(StrikethroughStrategy.ELIMINATED_ATTR, "true");
 		container.setAttribute("aria-disabled", "true");
 
 		// Add screen reader announcement
-		const label = container.querySelector(".label");
-		if (label && !label.querySelector(".sr-announcement")) {
+		const label = this.resolveLabelElement(container);
+		if (label && !label.querySelector(`.${StrikethroughStrategy.SR_CLASS}`)) {
 			const announcement = document.createElement("span");
-			announcement.className = "sr-announcement";
+			announcement.className = StrikethroughStrategy.SR_CLASS;
 			announcement.textContent = " (eliminated)";
 			label.appendChild(announcement);
 		}
@@ -182,11 +201,13 @@ export class StrikethroughStrategy implements EliminationStrategy {
 		const container = this.findChoiceContainer(range);
 		if (!container) return;
 
-		container.removeAttribute("data-eliminated");
+		container.removeAttribute(StrikethroughStrategy.ELIMINATED_ATTR);
 		container.removeAttribute("aria-disabled");
 
 		// Remove screen reader announcement
-		const announcement = container.querySelector(".sr-announcement");
+		const announcement = container.querySelector(
+			`.${StrikethroughStrategy.SR_CLASS}`,
+		);
 		announcement?.remove();
 	}
 
@@ -201,9 +222,7 @@ export class StrikethroughStrategy implements EliminationStrategy {
 
 		while (element && element !== document.body) {
 			if (
-				element.classList?.contains("choice-input") ||
-				element.classList?.contains("corespring-checkbox") ||
-				element.classList?.contains("corespring-radio-button")
+				element.getAttribute(StrikethroughStrategy.CHOICE_HOOK_ATTR) === "true"
 			) {
 				return element;
 			}
@@ -218,9 +237,9 @@ export class StrikethroughStrategy implements EliminationStrategy {
 		const container = this.findChoiceContainer(range);
 		if (!container) return;
 
-		container.classList.add("answer-eliminated-fallback");
-		container.setAttribute("data-eliminated", "true");
-		container.setAttribute("data-eliminated-id", choiceId);
+		container.classList.add(StrikethroughStrategy.FALLBACK_CLASS);
+		container.setAttribute(StrikethroughStrategy.ELIMINATED_ATTR, "true");
+		container.setAttribute(StrikethroughStrategy.ELIMINATED_ID_ATTR, choiceId);
 		this.fallbackContainers.set(choiceId, container);
 		this.addAriaAttributes(range);
 	}
@@ -229,14 +248,22 @@ export class StrikethroughStrategy implements EliminationStrategy {
 		const container = this.fallbackContainers.get(choiceId);
 		if (!container) return;
 
-		container.classList.remove("answer-eliminated-fallback");
-		container.removeAttribute("data-eliminated");
-		container.removeAttribute("data-eliminated-id");
+		container.classList.remove(StrikethroughStrategy.FALLBACK_CLASS);
+		container.removeAttribute(StrikethroughStrategy.ELIMINATED_ATTR);
+		container.removeAttribute(StrikethroughStrategy.ELIMINATED_ID_ATTR);
 
 		// Create fake range for aria removal
 		const range = document.createRange();
 		range.selectNodeContents(container);
 		this.removeAriaAttributes(range);
 		this.fallbackContainers.delete(choiceId);
+	}
+
+	private resolveLabelElement(container: HTMLElement): HTMLElement | null {
+		return (
+			container.querySelector<HTMLElement>(
+				`[${StrikethroughStrategy.LABEL_HOOK_ATTR}="true"]`,
+			) || container.querySelector<HTMLElement>("label")
+		);
 	}
 }

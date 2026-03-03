@@ -2,21 +2,27 @@
  * AWS Polly Voices API Route
  *
  * Returns available TTS voices from AWS Polly.
- * Supports filtering by language, gender, and quality.
+ * Supports filtering by language, gender, and engine.
  */
 
 import { PollyServerProvider } from "@pie-players/tts-server-polly";
 import { error, json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
-// Use singleton
-let pollyProvider: PollyServerProvider | null = null;
+type PollyEngine = "neural" | "standard";
+const SUPPORTED_ENGINES: PollyEngine[] = ["neural", "standard"];
+
+// Keep one singleton per engine so switching is cheap.
+const pollyProviders = new Map<PollyEngine, PollyServerProvider>();
 
 /**
  * Get or initialize the Polly provider
  */
-async function getPollyProvider(): Promise<PollyServerProvider> {
-	if (!pollyProvider) {
+async function getPollyProvider(engine: PollyEngine): Promise<PollyServerProvider> {
+	const existing = pollyProviders.get(engine);
+	if (existing) return existing;
+
+	{
 		console.log("[Polly API] Initializing AWS Polly provider...");
 		console.log(
 			"[Polly API] AWS_REGION:",
@@ -44,7 +50,7 @@ async function getPollyProvider(): Promise<PollyServerProvider> {
 			throw new Error(errorMsg);
 		}
 
-		pollyProvider = new PollyServerProvider();
+		const provider = new PollyServerProvider();
 
 		// Build credentials object
 		const credentials: any = {
@@ -56,16 +62,17 @@ async function getPollyProvider(): Promise<PollyServerProvider> {
 			credentials.sessionToken = process.env.AWS_SESSION_TOKEN;
 		}
 
-		await pollyProvider.initialize({
+		await provider.initialize({
 			region: process.env.AWS_REGION || "us-east-1",
 			credentials,
-			engine: "neural",
+			engine,
 			defaultVoice: "Joanna",
 		});
 
-		console.log("[Polly API] Provider initialized successfully");
+		console.log(`[Polly API] Provider initialized successfully (${engine})`);
+		pollyProviders.set(engine, provider);
 	}
-	return pollyProvider;
+	return pollyProviders.get(engine)!;
 }
 
 /**
@@ -74,7 +81,8 @@ async function getPollyProvider(): Promise<PollyServerProvider> {
  * Query parameters:
  * - language: Filter by language code (e.g., 'en-US', 'es-ES')
  * - gender: Filter by gender ('male', 'female', 'neutral')
- * - quality: Filter by quality ('standard', 'neural', 'premium')
+ * - engine: Filter by Polly engine ('standard' | 'neural')
+ * - quality: Backward-compatible alias for engine
  */
 export const GET: RequestHandler = async ({ url }) => {
 	console.log("[Polly API] GET /api/tts/polly/voices");
@@ -91,16 +99,24 @@ export const GET: RequestHandler = async ({ url }) => {
 			| "neural"
 			| "premium"
 			| undefined;
+		const engineParam = url.searchParams.get("engine");
+		const engine = (engineParam || quality || "neural") as PollyEngine;
+		if (!SUPPORTED_ENGINES.includes(engine)) {
+			return json(
+				{ error: `Unsupported Polly engine "${engine}". Use "neural" or "standard".` },
+				{ status: 400 },
+			);
+		}
 
-		const polly = await getPollyProvider();
+		const polly = await getPollyProvider(engine);
 		const voices = await polly.getVoices({
 			language,
 			gender,
-			quality,
+			quality: engine,
 		});
 
 		console.log(
-			`[Polly API] Returned ${voices.length} voices (language=${language}, gender=${gender}, quality=${quality})`,
+			`[Polly API] Returned ${voices.length} voices (language=${language}, gender=${gender}, engine=${engine})`,
 		);
 
 		return json({ voices });

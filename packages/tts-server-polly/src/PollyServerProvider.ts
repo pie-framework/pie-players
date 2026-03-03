@@ -7,9 +7,7 @@ import {
 	DescribeVoicesCommand,
 	type DescribeVoicesCommandInput,
 	Engine,
-	OutputFormat,
 	PollyClient,
-	SpeechMarkType,
 	SynthesizeSpeechCommand,
 	VoiceId,
 } from "@aws-sdk/client-polly";
@@ -95,6 +93,44 @@ export class PollyServerProvider extends BaseTTSProvider {
 	private client!: PollyClient;
 	private engine: "neural" | "standard" = "neural";
 	private defaultVoice = "Joanna";
+
+	private resolveOutputFormat(
+		request: SynthesizeRequest,
+	): "mp3" | "ogg_vorbis" | "pcm" {
+		switch (request.format) {
+			case "ogg":
+				return "ogg_vorbis";
+			case "pcm":
+				return "pcm";
+			case "mp3":
+			case "wav":
+			default:
+				// Polly does not support wav output directly in this implementation.
+				return "mp3";
+		}
+	}
+
+	private resolveSpeechMarkTypes(request: SynthesizeRequest): Array<
+		"word" | "sentence" | "ssml"
+	> {
+		const providerOptions = (request.providerOptions || {}) as Record<string, unknown>;
+		const configured = providerOptions.speechMarkTypes;
+		if (!Array.isArray(configured) || configured.length === 0) {
+			return ["word"];
+		}
+
+		const resolved = configured
+			.map((entry) => {
+				if (entry === "word") return "word";
+				if (entry === "sentence") return "sentence";
+				if (entry === "ssml") return "ssml";
+				return null;
+			})
+			.filter((entry): entry is "word" | "sentence" | "ssml" => entry !== null);
+
+		if (resolved.length === 0) return ["word"];
+		return resolved;
+	}
 
 	/**
 	 * Initialize the AWS Polly provider.
@@ -211,7 +247,7 @@ export class PollyServerProvider extends BaseTTSProvider {
 
 		const command = new SynthesizeSpeechCommand({
 			Engine: this.engine === "neural" ? Engine.NEURAL : Engine.STANDARD,
-			OutputFormat: OutputFormat.MP3,
+			OutputFormat: this.resolveOutputFormat(request),
 			Text: request.text,
 			TextType: textType,
 			VoiceId: voice as VoiceId,
@@ -265,11 +301,11 @@ export class PollyServerProvider extends BaseTTSProvider {
 
 		const command = new SynthesizeSpeechCommand({
 			Engine: this.engine === "neural" ? Engine.NEURAL : Engine.STANDARD,
-			OutputFormat: OutputFormat.JSON,
+			OutputFormat: "json",
 			Text: request.text,
 			TextType: textType,
 			VoiceId: voice as VoiceId,
-			SpeechMarkTypes: [SpeechMarkType.WORD],
+			SpeechMarkTypes: this.resolveSpeechMarkTypes(request),
 		});
 
 		const response = await this.client.send(command);
@@ -300,9 +336,15 @@ export class PollyServerProvider extends BaseTTSProvider {
 			.filter((line) => line.trim())
 			.map((line) => {
 				const mark = JSON.parse(line);
+				const markType: SpeechMark["type"] =
+					mark.type === "sentence"
+						? "sentence"
+						: mark.type === "ssml"
+							? "ssml"
+							: "word";
 				return {
 					time: mark.time,
-					type: "word" as const,
+					type: markType,
 					start: mark.start,
 					end: mark.end,
 					value: mark.value,
@@ -397,13 +439,13 @@ export class PollyServerProvider extends BaseTTSProvider {
 			// Provider-specific extensions
 			extensions: {
 				supportsSpeechMarks: true, // ✅ Native WORD speech marks (millisecond precision)
-				supportedFormats: ["mp3"], // Currently MP3 only (could add ogg, pcm)
+				supportedFormats: ["mp3", "ogg", "pcm"],
 				supportsSampleRate: true, // ✅ Configurable sample rate
 
 				// AWS Polly-specific features
 				providerSpecific: {
 					engines: ["neural", "standard"], // Engine selection
-					supportedSpeechMarkTypes: ["word"], // Currently only WORD (could add sentence, ssml, viseme)
+					supportedSpeechMarkTypes: ["word", "sentence", "ssml"],
 					supportsLexicons: false, // Not yet implemented
 					awsSSMLExtensions: true, // <aws-break>, <aws-emphasis>, <aws-w>, etc.
 					neuralVoicesCount: 30, // ~30 neural voices available

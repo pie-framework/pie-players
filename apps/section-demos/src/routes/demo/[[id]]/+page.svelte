@@ -190,6 +190,10 @@ function handleDaisyThemeSelection(theme: string) {
 		resolvedSectionForPlayer?.identifier || `section-${data?.demo?.id || 'default'}`
 	);
 	let sourcePanelJson = $derived(JSON.stringify(resolvedSectionForPlayer, null, 2));
+let isTtsSsmlDemo = $derived(
+	(data?.demo?.id || '').toLowerCase() === 'tts-ssml' ||
+		(sessionPanelSectionId || '').toLowerCase().includes('tts-ssml')
+);
 	let pieEnv = $derived<{ mode: 'gather' | 'view' | 'evaluate'; role: 'student' | 'instructor' }>({
 		mode: roleType === 'candidate' ? 'gather' : 'evaluate',
 		role: roleType === 'candidate' ? 'student' : 'instructor'
@@ -450,6 +454,33 @@ function handleDaisyThemeSelection(theme: string) {
 			onSelectDaisyTheme={handleDaisyThemeSelection}
 		/>
 
+		{#if isTtsSsmlDemo}
+			<aside class="pie-demo-ssml-cues" aria-hidden="true" inert>
+				<h3 class="pie-demo-ssml-cues-title">SSML cues and tips</h3>
+				<ul class="pie-demo-ssml-cues-list">
+					<li>
+						<strong>Passage + Q1:</strong> includes SSML (`speak`, `break`, `prosody`, `emphasis`,
+						`phoneme`) with visible plain-text fallback.
+					</li>
+					<li>
+						<strong>Q2:</strong> intentionally plain text only to compare fallback behavior.
+					</li>
+					<li>
+						<strong>Q3:</strong> includes AWS-specific SSML tags (`aws-break`, `aws-emphasis`,
+						`aws-w`, `aws-say-as`) that are most meaningful with Polly.
+					</li>
+					<li>
+						Use the <strong>TTS settings</strong> button (top-right) to switch backends and compare
+						output.
+					</li>
+					<li>
+						Use the dialog <strong>Preview</strong> area to test plain text vs SSML directly before
+						reading full content.
+					</li>
+				</ul>
+			</aside>
+		{/if}
+
 		{#if selectedPlayerType === 'preloaded' && !preloadedReady}
 			<div class="preload-status">Preloading section item bundles...</div>
 		{:else if preloadedError}
@@ -528,5 +559,28 @@ function handleDaisyThemeSelection(theme: string) {
 	.preload-status.error {
 		color: var(--color-error);
 		opacity: 1;
+	}
+
+	.pie-demo-ssml-cues {
+		margin: 0.6rem 1rem 0;
+		padding: 0.7rem 0.85rem;
+		border: 1px solid color-mix(in srgb, var(--color-info) 40%, var(--color-base-300));
+		border-radius: 0.5rem;
+		background: color-mix(in srgb, var(--color-info) 10%, var(--color-base-100));
+		color: var(--color-base-content);
+		font-size: 0.82rem;
+	}
+
+	.pie-demo-ssml-cues-title {
+		margin: 0 0 0.35rem;
+		font-size: 0.84rem;
+		font-weight: 700;
+	}
+
+	.pie-demo-ssml-cues-list {
+		margin: 0;
+		padding-left: 1rem;
+		display: grid;
+		gap: 0.2rem;
 	}
 </style>

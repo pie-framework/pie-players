@@ -115,6 +115,20 @@ export class GoogleCloudTTSProvider extends BaseTTSProvider {
 	private audioEncoding: "MP3" | "LINEAR16" | "OGG_OPUS" = "MP3";
 	private enableLogging = false;
 
+	private isStudioVoice(voice: string): boolean {
+		return /studio/i.test(voice);
+	}
+
+	private isStudioMarkUnsupportedError(error: unknown): boolean {
+		const message =
+			error instanceof Error ? error.message : typeof error === "string" ? error : "";
+		return (
+			message.includes("<mark>") &&
+			message.toLowerCase().includes("not currently supported") &&
+			message.toLowerCase().includes("studio")
+		);
+	}
+
 	/**
 	 * Initialize the Google Cloud TTS provider.
 	 *
@@ -191,7 +205,7 @@ export class GoogleCloudTTSProvider extends BaseTTSProvider {
 
 		try {
 			// Check if speech marks are requested
-			if (request.includeSpeechMarks !== false) {
+			if (request.includeSpeechMarks !== false && !this.isStudioVoice(voice)) {
 				// Use SSML marks injection for precise word timing
 				const result = await this.synthesizeWithSpeechMarks(request, voice);
 				const duration = (Date.now() - startTime) / 1000;
@@ -229,6 +243,28 @@ export class GoogleCloudTTSProvider extends BaseTTSProvider {
 				};
 			}
 		} catch (error) {
+			// Studio voices do not support SSML <mark> tags used for timing extraction.
+			// Fall back to audio-only synthesis rather than failing the request.
+			if (
+				request.includeSpeechMarks !== false &&
+				this.isStudioMarkUnsupportedError(error)
+			) {
+				const result = await this.synthesizeAudio(request, voice);
+				const duration = (Date.now() - startTime) / 1000;
+				return {
+					audio: result.audio,
+					contentType: result.contentType,
+					speechMarks: [],
+					metadata: {
+						providerId: this.providerId,
+						voice,
+						duration,
+						charCount: request.text.length,
+						cached: false,
+						timestamp: new Date().toISOString(),
+					},
+				};
+			}
 			throw this.mapGoogleErrorToTTSError(error);
 		}
 	}

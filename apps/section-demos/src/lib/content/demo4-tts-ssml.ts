@@ -269,16 +269,6 @@ export const demo4Section: AssessmentSection = {
                   <aws-emphasis level='strong'>x squared</aws-emphasis>.
                 </speak>
 
-                <div style="padding: 1rem; background: #fff3cd; border-left: 4px solid #ffc107; margin-bottom: 1rem;">
-                  <p style="margin: 0 0 0.75rem 0; font-weight: 600; color: #856404;">
-                    AWS SSML Demo - Advanced TTS Features
-                  </p>
-                  <p style="margin: 0; font-size: 0.9rem; color: #856404;">
-                    This prompt demonstrates AWS-specific SSML tags including aws-break,
-                    aws-emphasis, aws-w (parts of speech), and aws-say-as (spell-out).
-                  </p>
-                </div>
-
                 <p>Write a detailed explanation of how to solve quadratic equations.</p>
                 <p style="margin-top: 1rem; padding: 1rem; background: #f8f9fa; border-radius: 4px;">
                   In your response, <strong>be sure to</strong>:

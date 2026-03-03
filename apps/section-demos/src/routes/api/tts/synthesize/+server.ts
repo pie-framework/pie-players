@@ -10,15 +10,22 @@ import { GoogleCloudTTSProvider } from "@pie-players/tts-server-google";
 import { error, json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
+type PollyEngine = "neural" | "standard";
+type PollyOutputFormat = "mp3" | "ogg" | "pcm";
+type PollySpeechMarkType = "word" | "sentence" | "ssml";
+
 // Singleton provider instances (reused across requests)
-let pollyProvider: PollyServerProvider | null = null;
+const pollyProviders = new Map<PollyEngine, PollyServerProvider>();
 let googleProvider: GoogleCloudTTSProvider | null = null;
 
 /**
  * Get or initialize the Polly provider
  */
-async function getPollyProvider(): Promise<PollyServerProvider> {
-	if (!pollyProvider) {
+async function getPollyProvider(engine: PollyEngine): Promise<PollyServerProvider> {
+	const existing = pollyProviders.get(engine);
+	if (existing) return existing;
+
+	{
 		// Debug logging
 		console.log("[TTS API] Checking environment variables...");
 		console.log(
@@ -47,7 +54,7 @@ async function getPollyProvider(): Promise<PollyServerProvider> {
 			);
 		}
 
-		pollyProvider = new PollyServerProvider();
+		const provider = new PollyServerProvider();
 
 		// Build credentials object, including session token if present (for temporary credentials)
 		const credentials: any = {
@@ -63,16 +70,17 @@ async function getPollyProvider(): Promise<PollyServerProvider> {
 			);
 		}
 
-		await pollyProvider.initialize({
+		await provider.initialize({
 			region: process.env.AWS_REGION || "us-east-1",
 			credentials,
-			engine: "neural",
+			engine,
 			defaultVoice: "Joanna",
 		});
 
-		console.log("[TTS API] Polly provider initialized successfully");
+		console.log(`[TTS API] Polly provider initialized successfully (${engine})`);
+		pollyProviders.set(engine, provider);
 	}
-	return pollyProvider;
+	return pollyProviders.get(engine)!;
 }
 
 /**
@@ -147,6 +155,10 @@ async function getGoogleProvider(): Promise<GoogleCloudTTSProvider> {
  *   rate?: number;
  *   includeSpeechMarks?: boolean;
  *   provider?: 'polly' | 'google';  // Defaults to 'polly'
+ *   engine?: 'standard' | 'neural'; // Polly-only
+ *   sampleRate?: number;            // Polly-only
+ *   format?: 'mp3'|'ogg'|'pcm';     // Polly-only
+ *   speechMarkTypes?: ('word'|'sentence'|'ssml')[]; // Polly-only
  * }
  *
  * Response:
@@ -173,10 +185,14 @@ export const POST: RequestHandler = async ({ request }) => {
 			rate,
 			includeSpeechMarks = true,
 			provider = "polly",
+			engine,
+			sampleRate,
+			format,
+			speechMarkTypes,
 		} = body;
 
 		console.log(
-			`[TTS API] Synthesis request: provider=${provider}, voice=${voice}, language=${language}`,
+			`[TTS API] Synthesis request: provider=${provider}, voice=${voice}, language=${language}, engine=${engine}, format=${format}, sampleRate=${sampleRate}`,
 		);
 
 		// Validate request
@@ -207,12 +223,32 @@ export const POST: RequestHandler = async ({ request }) => {
 					includeSpeechMarks,
 				});
 			} else {
-				const polly = await getPollyProvider();
+				const requestedEngine =
+					engine === "standard" || engine === "neural" ? engine : "neural";
+				const requestedFormat =
+					format === "ogg" || format === "pcm" || format === "mp3"
+						? (format as PollyOutputFormat)
+						: undefined;
+				const requestedSpeechMarkTypes = Array.isArray(speechMarkTypes)
+					? speechMarkTypes.filter((entry): entry is PollySpeechMarkType =>
+							entry === "word" || entry === "sentence" || entry === "ssml",
+						)
+					: undefined;
+				const polly = await getPollyProvider(requestedEngine);
 				result = await polly.synthesize({
 					text,
 					voice: voice || "Joanna",
 					language: language || "en-US",
 					rate,
+					sampleRate:
+						typeof sampleRate === "number" && Number.isFinite(sampleRate)
+							? sampleRate
+							: undefined,
+					format: requestedFormat,
+					providerOptions:
+						requestedSpeechMarkTypes && requestedSpeechMarkTypes.length > 0
+							? { speechMarkTypes: requestedSpeechMarkTypes }
+							: undefined,
 					includeSpeechMarks,
 				});
 			}

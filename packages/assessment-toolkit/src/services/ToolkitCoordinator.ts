@@ -75,6 +75,10 @@ export interface TTSToolConfig extends ToolConfig {
 	backend?: "browser" | "polly" | "google" | "server";
 	provider?: "polly" | "google";
 	serverProvider?: "polly" | "google";
+	engine?: "standard" | "neural";
+	sampleRate?: number;
+	format?: "mp3" | "ogg" | "pcm";
+	speechMarksMode?: "word" | "word+sentence";
 	defaultVoice?: string;
 	rate?: number;
 	pitch?: number;
@@ -556,6 +560,20 @@ export class ToolkitCoordinator {
 					backend,
 					apiEndpoint: ttsConfig?.apiEndpoint,
 					serverProvider,
+					providerOptions:
+						backend === "polly"
+							? {
+									...(ttsConfig?.engine ? { engine: ttsConfig.engine } : {}),
+									...(typeof ttsConfig?.sampleRate === "number"
+										? { sampleRate: ttsConfig.sampleRate }
+										: {}),
+									...(ttsConfig?.format ? { format: ttsConfig.format } : {}),
+									speechMarkTypes:
+										ttsConfig?.speechMarksMode === "word+sentence"
+											? ["word", "sentence"]
+											: ["word"],
+								}
+							: undefined,
 					voice: ttsConfig?.defaultVoice,
 					rate: ttsConfig?.rate,
 					pitch: ttsConfig?.pitch,
@@ -855,11 +873,37 @@ export class ToolkitCoordinator {
 			voice: resolvedToolConfig.defaultVoice,
 			rate: resolvedToolConfig.rate,
 			pitch: resolvedToolConfig.pitch,
-			providerOptions: resolvedToolConfig.language
-				? {
-						locale: resolvedToolConfig.language,
-					}
-				: undefined,
+			providerOptions: {
+				...(resolvedToolConfig.language
+					? {
+							locale: resolvedToolConfig.language,
+						}
+					: {}),
+				...(resolvedBackend === "polly" && resolvedToolConfig.engine
+					? {
+							engine: resolvedToolConfig.engine,
+						}
+					: {}),
+				...(resolvedBackend === "polly" &&
+				typeof resolvedToolConfig.sampleRate === "number"
+					? {
+							sampleRate: resolvedToolConfig.sampleRate,
+						}
+					: {}),
+				...(resolvedBackend === "polly" && resolvedToolConfig.format
+					? {
+							format: resolvedToolConfig.format,
+						}
+					: {}),
+				...(resolvedBackend === "polly"
+					? {
+							speechMarkTypes:
+								resolvedToolConfig.speechMarksMode === "word+sentence"
+									? ["word", "sentence"]
+									: ["word"],
+						}
+					: {}),
+			},
 			apiEndpoint: resolvedToolConfig.apiEndpoint,
 			provider: runtimeProvider,
 			language: resolvedToolConfig.language,
@@ -1131,6 +1175,20 @@ export class ToolkitCoordinator {
 				backend,
 				apiEndpoint: ttsConfig?.apiEndpoint,
 				serverProvider,
+				providerOptions:
+					backend === "polly"
+						? {
+								...(ttsConfig?.engine ? { engine: ttsConfig.engine } : {}),
+								...(typeof ttsConfig?.sampleRate === "number"
+									? { sampleRate: ttsConfig.sampleRate }
+									: {}),
+								...(ttsConfig?.format ? { format: ttsConfig.format } : {}),
+								speechMarkTypes:
+									ttsConfig?.speechMarksMode === "word+sentence"
+										? ["word", "sentence"]
+										: ["word"],
+							}
+						: undefined,
 				voice: ttsConfig?.defaultVoice,
 				rate: ttsConfig?.rate,
 				pitch: ttsConfig?.pitch,

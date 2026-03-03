@@ -28,9 +28,9 @@
 	content-kind="assessment-item"
 	item={item}
 >
-	<div class="content-card">
+	<div class="pie-section-player-content-card">
 		<div
-			class="content-card-header item-header pie-section-player__item-header"
+			class="pie-section-player-content-card-header pie-section-player-item-header pie-section-player__item-header"
 			data-region="header"
 		>
 			{#if getEntityTitle(item)}
@@ -46,7 +46,7 @@
 			></pie-item-toolbar>
 		</div>
 		<div
-			class="content-card-body item-content pie-section-player__item-content"
+			class="pie-section-player-content-card-body pie-section-player-item-content pie-section-player__item-content"
 			data-region="content"
 		>
 			<svelte:element
@@ -59,7 +59,7 @@
 </pie-item-shell>
 
 <style>
-	.content-card-header {
+	.pie-section-player-content-card-header {
 		display: flex;
 		align-items: center;
 		gap: 0.75rem;
@@ -67,17 +67,17 @@
 		border-bottom: 1px solid var(--pie-border-light, #e5e7eb);
 	}
 
-	.content-card-header h2 {
+	.pie-section-player-content-card-header h2 {
 		margin: 0;
 		font-size: 0.95rem;
 		font-weight: 600;
 	}
 
-	.content-card-header pie-item-toolbar {
+	.pie-section-player-content-card-header pie-item-toolbar {
 		margin-left: auto;
 	}
 
-	.content-card-body {
+	.pie-section-player-content-card-body {
 		padding: 1rem;
 	}
 </style>

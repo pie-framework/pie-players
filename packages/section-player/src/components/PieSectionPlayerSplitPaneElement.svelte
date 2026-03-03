@@ -245,28 +245,34 @@
 	attempt-id={attemptId}
 	oncomposition-changed={handleBaseCompositionChanged}
 >
-	<div class={`player-shell player-shell--${toolbarPosition}`}>
+	<div
+		class={`pie-section-player-shell pie-section-player-shell--${toolbarPosition}`}
+	>
 		{#if shouldRenderToolbar && toolbarBeforeContent}
 			<pie-section-toolbar
-				class={`section-toolbar section-toolbar--${toolbarPosition}`}
+				class={`pie-section-player-toolbar pie-section-player-toolbar--${toolbarPosition}`}
 				position={toolbarPosition}
 				enabled-tools={enabledTools}
 			></pie-section-toolbar>
 		{/if}
 
-		<div class={`layout-body ${toolbarInline ? "layout-body--inline" : ""}`}>
+		<div
+			class={`pie-section-player-layout-body ${toolbarInline ? "pie-section-player-layout-body--inline" : ""}`}
+		>
 			<div
-				class={`split-content ${!hasPassages ? "split-content--no-passages" : ""}`}
+				class={`pie-section-player-split-content ${!hasPassages ? "pie-section-player-split-content--no-passages" : ""}`}
 				bind:this={splitContainerElement}
 				style={hasPassages
 					? `grid-template-columns: ${leftPanelWidth}% 0.5rem ${100 - leftPanelWidth - 0.5}%`
 					: "grid-template-columns: 1fr"}
 			>
 				{#if hasPassages}
-					<aside class="passages-pane" aria-label="Passages">
+					<aside class="pie-section-player-passages-pane" aria-label="Passages">
 						{#if !elementsLoaded}
-							<div class="content-card">
-								<div class="content-card-body passage-content pie-section-player__passage-content">
+							<div class="pie-section-player-content-card">
+								<div
+									class="pie-section-player-content-card-body pie-section-player-passage-content pie-section-player__passage-content"
+								>
 									Loading passage content...
 								</div>
 							</div>
@@ -291,19 +297,21 @@
 
 					<button
 						type="button"
-						class={`split-divider ${isDragging ? "split-divider--dragging" : ""}`}
+						class={`pie-section-player-split-divider ${isDragging ? "pie-section-player-split-divider--dragging" : ""}`}
 						onmousedown={handleDividerMouseDown}
 						onkeydown={handleDividerKeyDown}
 						aria-label="Resize panels"
 					>
-						<span class="split-divider-handle"></span>
+						<span class="pie-section-player-split-divider-handle"></span>
 					</button>
 				{/if}
 
-				<main class="items-pane" aria-label="Items">
+				<main class="pie-section-player-items-pane" aria-label="Items">
 					{#if !elementsLoaded}
-						<div class="content-card">
-							<div class="content-card-body item-content pie-section-player__item-content">
+						<div class="pie-section-player-content-card">
+							<div
+								class="pie-section-player-content-card-body pie-section-player-item-content pie-section-player__item-content"
+							>
 								Loading section content...
 							</div>
 						</div>
@@ -330,7 +338,10 @@
 			</div>
 
 			{#if shouldRenderToolbar && toolbarInline && toolbarPosition === "right"}
-				<aside class="section-toolbar-pane section-toolbar-pane--right" aria-label="Section tools">
+				<aside
+					class="pie-section-player-toolbar-pane pie-section-player-toolbar-pane--right"
+					aria-label="Section tools"
+				>
 					<pie-section-toolbar
 						position="right"
 						enabled-tools={enabledTools}
@@ -339,7 +350,10 @@
 			{/if}
 
 			{#if shouldRenderToolbar && toolbarInline && toolbarPosition === "left"}
-				<aside class="section-toolbar-pane section-toolbar-pane--left" aria-label="Section tools">
+				<aside
+					class="pie-section-player-toolbar-pane pie-section-player-toolbar-pane--left"
+					aria-label="Section tools"
+				>
 					<pie-section-toolbar
 						position="left"
 						enabled-tools={enabledTools}
@@ -350,7 +364,7 @@
 
 		{#if shouldRenderToolbar && !toolbarBeforeContent && !toolbarInline}
 			<pie-section-toolbar
-				class={`section-toolbar section-toolbar--${toolbarPosition}`}
+				class={`pie-section-player-toolbar pie-section-player-toolbar--${toolbarPosition}`}
 				position={toolbarPosition}
 				enabled-tools={enabledTools}
 			></pie-section-toolbar>
@@ -368,7 +382,7 @@
 		overflow: hidden;
 	}
 
-	.player-shell {
+	.pie-section-player-shell {
 		display: flex;
 		flex-direction: column;
 		height: 100%;
@@ -376,20 +390,20 @@
 		overflow: hidden;
 	}
 
-	.player-shell--left,
-	.player-shell--right {
+	.pie-section-player-shell--left,
+	.pie-section-player-shell--right {
 		flex-direction: row;
 	}
 
-	.player-shell--left .layout-body--inline {
+	.pie-section-player-shell--left .pie-section-player-layout-body--inline {
 		order: 2;
 	}
 
-	.player-shell--left .section-toolbar-pane--left {
+	.pie-section-player-shell--left .pie-section-player-toolbar-pane--left {
 		order: 1;
 	}
 
-	.layout-body {
+	.pie-section-player-layout-body {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr);
 		flex: 1;
@@ -397,12 +411,12 @@
 		overflow: hidden;
 	}
 
-	.layout-body--inline {
+	.pie-section-player-layout-body--inline {
 		grid-template-columns: minmax(0, 1fr) auto;
 		gap: 1rem;
 	}
 
-	.split-content {
+	.pie-section-player-split-content {
 		display: grid;
 		gap: 0;
 		min-height: 0;
@@ -410,12 +424,12 @@
 		overflow: hidden;
 	}
 
-	.split-content--no-passages .items-pane {
+	.pie-section-player-split-content--no-passages .pie-section-player-items-pane {
 		padding-left: 0.5rem;
 	}
 
-	.passages-pane,
-	.items-pane {
+	.pie-section-player-passages-pane,
+	.pie-section-player-items-pane {
 		height: 100%;
 		max-height: 100%;
 		min-height: 0;
@@ -430,30 +444,30 @@
 		box-sizing: border-box;
 	}
 
-	.section-toolbar-pane {
+	.pie-section-player-toolbar-pane {
 		min-height: 0;
 		overflow: auto;
 		padding: 0.5rem;
 		box-sizing: border-box;
 	}
 
-	.section-toolbar-pane--right {
+	.pie-section-player-toolbar-pane--right {
 		border-left: 1px solid var(--pie-border-light, #e5e7eb);
 	}
 
-	.section-toolbar-pane--left {
+	.pie-section-player-toolbar-pane--left {
 		border-right: 1px solid var(--pie-border-light, #e5e7eb);
 	}
 
-	.section-toolbar {
+	.pie-section-player-toolbar {
 		margin: 0.5rem;
 	}
 
-	.section-toolbar-pane pie-section-toolbar {
+	.pie-section-player-toolbar-pane pie-section-toolbar {
 		margin: 0.5rem;
 	}
 
-	.split-divider {
+	.pie-section-player-split-divider {
 		border: none;
 		padding: 0;
 		margin: 0;
@@ -472,16 +486,16 @@
 		transition: background 0.2s ease;
 	}
 
-	.split-divider:hover {
+	.pie-section-player-split-divider:hover {
 		background: var(--pie-border-light, #e5e7eb);
 	}
 
-	.split-divider:focus {
+	.pie-section-player-split-divider:focus {
 		outline: 2px solid var(--pie-focus-checked-border, #1976d2);
 		outline-offset: -2px;
 	}
 
-	.split-divider-handle {
+	.pie-section-player-split-divider-handle {
 		position: absolute;
 		inset: 0;
 		margin: auto;
@@ -493,7 +507,7 @@
 		pointer-events: none;
 	}
 
-	.split-divider-handle::before {
+	.pie-section-player-split-divider-handle::before {
 		content: "";
 		position: absolute;
 		top: 50%;
@@ -506,25 +520,25 @@
 		opacity: 0.8;
 	}
 
-	.split-divider:hover .split-divider-handle,
-	.split-divider:focus .split-divider-handle,
-	.split-divider--dragging .split-divider-handle {
+	.pie-section-player-split-divider:hover .pie-section-player-split-divider-handle,
+	.pie-section-player-split-divider:focus .pie-section-player-split-divider-handle,
+	.pie-section-player-split-divider--dragging .pie-section-player-split-divider-handle {
 		background: var(--pie-primary, #1976d2);
 		height: 80px;
 		box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3);
 	}
 
-	.split-divider--dragging {
+	.pie-section-player-split-divider--dragging {
 		background: var(--pie-primary-light, #dbeafe);
 	}
 
-	.content-card {
+	.pie-section-player-content-card {
 		border: 1px solid var(--pie-border-light, #e5e7eb);
 		border-radius: 8px;
 		background: var(--pie-white, #fff);
 	}
 
-	.content-card-header {
+	.pie-section-player-content-card-header {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
@@ -532,30 +546,30 @@
 		border-bottom: 1px solid var(--pie-border-light, #e5e7eb);
 	}
 
-	.content-card-body {
+	.pie-section-player-content-card-body {
 		padding: 1rem;
 	}
 
 	@media (max-width: 1100px) {
-		.player-shell--left,
-		.player-shell--right {
+		.pie-section-player-shell--left,
+		.pie-section-player-shell--right {
 			flex-direction: column;
 		}
 
-		.layout-body--inline {
+		.pie-section-player-layout-body--inline {
 			grid-template-columns: 1fr;
 		}
 
-		.split-content {
+		.pie-section-player-split-content {
 			grid-template-columns: 1fr !important;
 		}
 
-		.split-divider {
+		.pie-section-player-split-divider {
 			display: none;
 		}
 
-		.section-toolbar-pane--left,
-		.section-toolbar-pane--right {
+		.pie-section-player-toolbar-pane--left,
+		.pie-section-player-toolbar-pane--right {
 			border: none;
 			padding: 0;
 		}

@@ -192,26 +192,32 @@
 	attempt-id={attemptId}
 	oncomposition-changed={handleBaseCompositionChanged}
 >
-	<div class={`player-shell player-shell--${toolbarPosition}`}>
+	<div
+		class={`pie-section-player-shell pie-section-player-shell--${toolbarPosition}`}
+	>
 		{#if shouldRenderToolbar && toolbarBeforeContent}
 			<pie-section-toolbar
-				class={`section-toolbar section-toolbar--${toolbarPosition}`}
+				class={`pie-section-player-toolbar pie-section-player-toolbar--${toolbarPosition}`}
 				position={toolbarPosition}
 				enabled-tools={enabledTools}
 			></pie-section-toolbar>
 		{/if}
 
-		<div class={`layout-body ${toolbarInline ? "layout-body--inline" : ""}`}>
-			<div class="vertical-content">
+		<div
+			class={`pie-section-player-layout-body ${toolbarInline ? "pie-section-player-layout-body--inline" : ""}`}
+		>
+			<div class="pie-section-player-vertical-content">
 				{#if !elementsLoaded}
-					<div class="content-card">
-						<div class="content-card-body item-content pie-section-player__item-content">
+					<div class="pie-section-player-content-card">
+						<div
+							class="pie-section-player-content-card-body pie-section-player-item-content pie-section-player__item-content"
+						>
 							Loading section content...
 						</div>
 					</div>
 				{:else}
 					{#if passages.length > 0}
-						<section class="passages-section" aria-label="Passages">
+						<section class="pie-section-player-passages-section" aria-label="Passages">
 							{#each passages as passage, passageIndex (passage.id || passageIndex)}
 								<SectionPassageCard
 									{passage}
@@ -230,7 +236,7 @@
 						</section>
 					{/if}
 
-					<section class="items-section" aria-label="Items">
+					<section class="pie-section-player-items-section" aria-label="Items">
 						{#each items as item, itemIndex (item.id || itemIndex)}
 							<SectionItemCard
 								{item}
@@ -253,7 +259,10 @@
 			</div>
 
 			{#if shouldRenderToolbar && toolbarInline && toolbarPosition === "right"}
-				<aside class="section-toolbar-pane section-toolbar-pane--right" aria-label="Section tools">
+				<aside
+					class="pie-section-player-toolbar-pane pie-section-player-toolbar-pane--right"
+					aria-label="Section tools"
+				>
 					<pie-section-toolbar
 						position="right"
 						enabled-tools={enabledTools}
@@ -262,7 +271,10 @@
 			{/if}
 
 			{#if shouldRenderToolbar && toolbarInline && toolbarPosition === "left"}
-				<aside class="section-toolbar-pane section-toolbar-pane--left" aria-label="Section tools">
+				<aside
+					class="pie-section-player-toolbar-pane pie-section-player-toolbar-pane--left"
+					aria-label="Section tools"
+				>
 					<pie-section-toolbar
 						position="left"
 						enabled-tools={enabledTools}
@@ -273,7 +285,7 @@
 
 		{#if shouldRenderToolbar && !toolbarBeforeContent && !toolbarInline}
 			<pie-section-toolbar
-				class={`section-toolbar section-toolbar--${toolbarPosition}`}
+				class={`pie-section-player-toolbar pie-section-player-toolbar--${toolbarPosition}`}
 				position={toolbarPosition}
 				enabled-tools={enabledTools}
 			></pie-section-toolbar>
@@ -291,7 +303,7 @@
 		overflow: hidden;
 	}
 
-	.player-shell {
+	.pie-section-player-shell {
 		display: flex;
 		flex-direction: column;
 		height: 100%;
@@ -299,20 +311,20 @@
 		overflow: hidden;
 	}
 
-	.player-shell--left,
-	.player-shell--right {
+	.pie-section-player-shell--left,
+	.pie-section-player-shell--right {
 		flex-direction: row;
 	}
 
-	.player-shell--left .layout-body--inline {
+	.pie-section-player-shell--left .pie-section-player-layout-body--inline {
 		order: 2;
 	}
 
-	.player-shell--left .section-toolbar-pane--left {
+	.pie-section-player-shell--left .pie-section-player-toolbar-pane--left {
 		order: 1;
 	}
 
-	.layout-body {
+	.pie-section-player-layout-body {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr);
 		flex: 1;
@@ -320,12 +332,12 @@
 		overflow: hidden;
 	}
 
-	.layout-body--inline {
+	.pie-section-player-layout-body--inline {
 		grid-template-columns: minmax(0, 1fr) auto;
 		gap: 1rem;
 	}
 
-	.vertical-content {
+	.pie-section-player-vertical-content {
 		height: 100%;
 		max-height: 100%;
 		min-height: 0;
@@ -340,43 +352,43 @@
 		box-sizing: border-box;
 	}
 
-	.passages-section,
-	.items-section {
+	.pie-section-player-passages-section,
+	.pie-section-player-items-section {
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;
 	}
 
-	.section-toolbar-pane {
+	.pie-section-player-toolbar-pane {
 		min-height: 0;
 		overflow: auto;
 		padding: 0.5rem;
 		box-sizing: border-box;
 	}
 
-	.section-toolbar-pane--right {
+	.pie-section-player-toolbar-pane--right {
 		border-left: 1px solid var(--pie-border-light, #e5e7eb);
 	}
 
-	.section-toolbar-pane--left {
+	.pie-section-player-toolbar-pane--left {
 		border-right: 1px solid var(--pie-border-light, #e5e7eb);
 	}
 
-	.section-toolbar {
+	.pie-section-player-toolbar {
 		margin: 0.5rem;
 	}
 
-	.section-toolbar-pane pie-section-toolbar {
+	.pie-section-player-toolbar-pane pie-section-toolbar {
 		margin: 0.5rem;
 	}
 
-	.content-card {
+	.pie-section-player-content-card {
 		border: 1px solid var(--pie-border-light, #e5e7eb);
 		border-radius: 8px;
 		background: var(--pie-white, #fff);
 	}
 
-	.content-card-header {
+	.pie-section-player-content-card-header {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
@@ -384,22 +396,22 @@
 		border-bottom: 1px solid var(--pie-border-light, #e5e7eb);
 	}
 
-	.content-card-body {
+	.pie-section-player-content-card-body {
 		padding: 1rem;
 	}
 
 	@media (max-width: 1100px) {
-		.player-shell--left,
-		.player-shell--right {
+		.pie-section-player-shell--left,
+		.pie-section-player-shell--right {
 			flex-direction: column;
 		}
 
-		.layout-body--inline {
+		.pie-section-player-layout-body--inline {
 			grid-template-columns: 1fr;
 		}
 
-		.section-toolbar-pane--left,
-		.section-toolbar-pane--right {
+		.pie-section-player-toolbar-pane--left,
+		.pie-section-player-toolbar-pane--right {
 			border: none;
 			padding: 0;
 		}

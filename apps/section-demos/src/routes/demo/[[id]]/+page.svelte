@@ -7,7 +7,6 @@
 	import '@pie-players/pie-section-player/components/section-player-vertical-element';
 	import '@pie-players/pie-section-player-tools-session-debugger';
 	import '@pie-players/pie-section-player-tools-pnp-debugger';
-	import '@pie-players/pie-tool-annotation-toolbar';
 	import '@pie-players/pie-theme';
 	import '@pie-players/pie-theme/components.css';
 	import { browser } from '$app/environment';
@@ -112,12 +111,15 @@ let isThemeSyncing = $state(false);
 			calculator: {
 				provider: 'desmos',
 				authFetcher: fetchDesmosAuthConfig
+			},
+			annotationToolbar: {
+				enabled: true
 			}
 		},
 		placement: {
 			section: ['theme', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
-			item: ['calculator', 'textToSpeech', 'answerEliminator'],
-			passage: ['textToSpeech']
+			item: ['calculator', 'textToSpeech', 'answerEliminator', 'annotationToolbar'],
+			passage: ['textToSpeech', 'annotationToolbar']
 		}
 	};
 
@@ -530,15 +532,6 @@ let isTtsSsmlDemo = $derived(
 	bind:sessionDebuggerElement
 	bind:pnpDebuggerElement
 />
-
-{#if toolkitCoordinator}
-	<!-- Single selection-driven annotation gateway (not a toolbar toggle). -->
-	<pie-tool-annotation-toolbar
-		enabled={roleType === 'candidate'}
-		ttsService={toolkitCoordinator.ttsService}
-		highlightCoordinator={toolkitCoordinator.highlightCoordinator}
-	></pie-tool-annotation-toolbar>
-{/if}
 
 <style>
 	.direct-layout {

@@ -52,6 +52,19 @@ const mockTTSTool: ToolRegistration = {
 	},
 };
 
+const mockSelectionGatewayTool: ToolRegistration = {
+	toolId: "annotationToolbar",
+	name: "Annotation Toolbar",
+	description: "Selection-driven text annotation gateway",
+	icon: "highlighter",
+	supportedLevels: ["item", "passage", "element"],
+	activation: "selection-gateway",
+	singletonScope: "section",
+	pnpSupportIds: ["annotations", "highlighting"],
+	isVisibleInContext: () => true,
+	renderToolbar: () => null,
+};
+
 describe("ToolRegistry", () => {
 	let registry: ToolRegistry;
 
@@ -350,7 +363,32 @@ describe("ToolRegistry", () => {
 					"scientificCalculator",
 				],
 				supportedLevels: ["item", "section", "element"],
+				activation: "toolbar-toggle",
+				singletonScope: null,
 			});
+		});
+	});
+
+	describe("activation metadata", () => {
+		test("defaults activation to toolbar-toggle", () => {
+			registry.register(mockCalculatorTool);
+			expect(registry.getToolActivation("calculator")).toBe("toolbar-toggle");
+		});
+
+		test("returns configured activation and singleton scope", () => {
+			registry.register(mockSelectionGatewayTool);
+			expect(registry.getToolActivation("annotationToolbar")).toBe("selection-gateway");
+			expect(registry.getToolSingletonScope("annotationToolbar")).toBe("section");
+		});
+
+		test("filters tool IDs by activation", () => {
+			registry.register(mockCalculatorTool);
+			registry.register(mockSelectionGatewayTool);
+			const gatewayTools = registry.filterToolIdsByActivation(
+				["calculator", "annotationToolbar"],
+				"selection-gateway",
+			);
+			expect(gatewayTools).toEqual(["annotationToolbar"]);
 		});
 	});
 

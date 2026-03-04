@@ -120,6 +120,7 @@ export interface ToolkitToolsConfig extends CanonicalToolsConfig {
 	providers: ToolProvidersConfig & {
 		tts?: TTSToolConfig;
 		calculator?: CalculatorToolConfig;
+		annotationToolbar?: ToolConfig;
 	};
 }
 
@@ -356,6 +357,9 @@ export class ToolkitCoordinator {
 			calculator: {
 				enabled: true,
 				provider: "desmos",
+			},
+			annotationToolbar: {
+				enabled: true,
 			},
 		};
 

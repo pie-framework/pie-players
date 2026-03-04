@@ -71,6 +71,9 @@ export interface ToolToolbarRenderResult {
 	subscribeActive?: (callback: (active: boolean) => void) => (() => void);
 }
 
+export type ToolActivation = "toolbar-toggle" | "selection-gateway";
+export type ToolSingletonScope = "section";
+
 /**
  * Tool registration interface
  */
@@ -89,6 +92,18 @@ export interface ToolRegistration {
 
 	/** Which levels this tool supports */
 	supportedLevels: ToolLevel[];
+
+	/**
+	 * Activation model for this tool.
+	 * - toolbar-toggle: rendered as a toolbar button (default)
+	 * - selection-gateway: rendered as a singleton selection-driven gateway
+	 */
+	activation?: ToolActivation;
+
+	/**
+	 * Optional singleton scope for activation models that mount exactly one instance.
+	 */
+	singletonScope?: ToolSingletonScope;
 
 	/**
 	 * PNP support IDs that enable this tool (optional)
@@ -278,6 +293,32 @@ export class ToolRegistry {
 	}
 
 	/**
+	 * Resolve tool activation with backward-compatible defaults.
+	 */
+	getToolActivation(toolId: string): ToolActivation {
+		return this.get(toolId)?.activation || "toolbar-toggle";
+	}
+
+	/**
+	 * Resolve singleton scope for a tool when present.
+	 */
+	getToolSingletonScope(toolId: string): ToolSingletonScope | null {
+		return this.get(toolId)?.singletonScope || null;
+	}
+
+	/**
+	 * Filter tool IDs by activation type.
+	 */
+	filterToolIdsByActivation(
+		toolIds: string[],
+		activation: ToolActivation,
+	): string[] {
+		return toolIds.filter(
+			(toolId) => this.getToolActivation(toolId) === activation,
+		);
+	}
+
+	/**
 	 * Filter tools by visibility in a given context
 	 *
 	 * Pass 2 of the two-pass model: Given a list of allowed tool IDs (from Pass 1),
@@ -333,6 +374,8 @@ export class ToolRegistry {
 		description: string;
 		pnpSupportIds: string[];
 		supportedLevels: ToolLevel[];
+		activation: ToolActivation;
+		singletonScope: ToolSingletonScope | null;
 	}> {
 		return this.getAllTools().map((tool) => ({
 			toolId: tool.toolId,
@@ -340,6 +383,8 @@ export class ToolRegistry {
 			description: tool.description,
 			pnpSupportIds: tool.pnpSupportIds || [],
 			supportedLevels: tool.supportedLevels,
+			activation: tool.activation || "toolbar-toggle",
+			singletonScope: tool.singletonScope || null,
 		}));
 	}
 

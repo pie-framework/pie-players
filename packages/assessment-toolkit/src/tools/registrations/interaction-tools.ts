@@ -139,6 +139,7 @@ export const highlighterToolRegistration: ToolRegistration = {
 	name: "Highlighter",
 	description: "Highlight text",
 	icon: "highlighter",
+	activation: "toolbar-toggle",
 
 	// Highlighter appears at passage, rubric, item, and element levels
 	supportedLevels: ["passage", "rubric", "item", "element"],

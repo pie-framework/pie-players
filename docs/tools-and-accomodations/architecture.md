@@ -583,6 +583,20 @@ Tool receives event and displays with data
 - Centralized accessibility handling
 - Easy to add new text-based tools
 
+### Selection-Gateway Runtime Model
+
+`annotationToolbar` is treated as a section-scoped singleton gateway, not a per-item toggle button:
+
+- Mounted once per section runtime
+- Activated by text selection events in content
+- Hosts action modules (highlight/underline now; dictionary/picture dictionary later)
+
+Enable/disable uses canonical tool config and follows standard precedence:
+
+1. Provider flag (`tools.providers.annotationToolbar.enabled !== false`)
+2. Placement/policy resolution (`tools.placement` + `tools.policy`)
+3. PNP allowance when applicable
+
 ### State Persistence Pattern
 
 Tools save state per item using player container's storage API:

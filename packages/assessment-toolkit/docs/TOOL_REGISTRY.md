@@ -525,8 +525,24 @@ Tools are organized by purpose:
 ### Reading Support
 - **Text-to-Speech** - Shows when readable text exists (10+ characters)
 - **Line Reader** - Shows when readable text exists
-- **Annotation Toolbar** - Shows when readable text exists
+- **Annotation Toolbar** - Singleton selection gateway (section-scoped)
 - **Highlighter** - Shows when readable text exists (legacy)
+
+## Activation Models
+
+Tool registration supports explicit activation semantics:
+
+- `toolbar-toggle` (default): rendered as a regular toolbar button and toggled by the coordinator.
+- `selection-gateway`: mounted as a singleton gateway that reacts to text selection and opens in-place actions.
+
+### Selection-Gateway Example
+
+`annotationToolbar` is registered as:
+
+- `activation: "selection-gateway"`
+- `singletonScope: "section"`
+
+This keeps one active annotation gateway per section runtime while still honoring canonical tool config (`policy`, `placement`, `providers`).
 
 ### Interaction-Specific
 - **Answer Eliminator** - Shows only on choice-based questions (MC, inline choice, select text)

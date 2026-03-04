@@ -26,3 +26,7 @@
 pie-section-player {
 	display: block;
 }
+
+.sveltekit-body {
+	display: contents;
+}

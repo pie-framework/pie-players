@@ -13,6 +13,17 @@ function trimCssVar(value: string): string | undefined {
 	return trimmed ? trimmed : undefined;
 }
 
+function mixResolvedColors(args: {
+	left?: string;
+	right?: string;
+	leftWeight: string;
+}): string | undefined {
+	if (!args.left || !args.right) {
+		return undefined;
+	}
+	return `color-mix(in srgb, ${args.left} ${args.leftWeight}, ${args.right})`;
+}
+
 function mapComputedDaisyVars(computed: CSSStyleDeclaration): ThemeVariables {
 	const value = (key: string) => trimCssVar(computed.getPropertyValue(key));
 	return normalizePieThemeVariables({
@@ -22,29 +33,66 @@ function mapComputedDaisyVars(computed: CSSStyleDeclaration): ThemeVariables {
 		"--pie-dropdown-background": value("--color-base-300"),
 		"--pie-text": value("--color-base-content"),
 		"--pie-primary": value("--color-primary"),
-		"--pie-primary-light": value("--color-primary"),
-		"--pie-primary-dark": value("--color-primary"),
+		"--pie-primary-light": mixResolvedColors({
+			left: value("--color-primary"),
+			right: value("--color-base-100"),
+			leftWeight: "60%",
+		}),
+		"--pie-primary-dark": mixResolvedColors({
+			left: value("--color-primary"),
+			right: value("--color-base-content"),
+			leftWeight: "75%",
+		}),
+		"--pie-faded-primary": mixResolvedColors({
+			left: value("--color-primary"),
+			right: value("--color-base-100"),
+			leftWeight: "20%",
+		}),
 		"--pie-secondary": value("--color-secondary"),
-		"--pie-secondary-light": value("--color-secondary"),
-		"--pie-secondary-dark": value("--color-secondary"),
+		"--pie-secondary-light": mixResolvedColors({
+			left: value("--color-secondary"),
+			right: value("--color-base-100"),
+			leftWeight: "60%",
+		}),
+		"--pie-secondary-dark": mixResolvedColors({
+			left: value("--color-secondary"),
+			right: value("--color-base-content"),
+			leftWeight: "75%",
+		}),
 		"--pie-tertiary": value("--color-accent"),
-		"--pie-tertiary-light": value("--color-accent"),
+		"--pie-tertiary-light": mixResolvedColors({
+			left: value("--color-accent"),
+			right: value("--color-base-100"),
+			leftWeight: "60%",
+		}),
 		"--pie-border": value("--color-base-300"),
 		"--pie-border-light": value("--color-base-200"),
 		"--pie-border-dark": value("--color-neutral"),
 		"--pie-border-gray": value("--color-base-300"),
 		"--pie-correct": value("--color-success"),
-		"--pie-correct-secondary": value("--color-success-content"),
+		"--pie-correct-secondary": mixResolvedColors({
+			left: value("--color-success"),
+			right: value("--color-base-100"),
+			leftWeight: "20%",
+		}),
 		"--pie-correct-tertiary": value("--color-success"),
 		"--pie-correct-icon": value("--color-success"),
 		"--pie-incorrect": value("--color-error"),
-		"--pie-incorrect-secondary": value("--color-error-content"),
+		"--pie-incorrect-secondary": mixResolvedColors({
+			left: value("--color-error"),
+			right: value("--color-base-100"),
+			leftWeight: "20%",
+		}),
 		"--pie-incorrect-icon": value("--color-error"),
-		"--pie-missing": value("--color-warning"),
-		"--pie-missing-icon": value("--color-warning"),
+		"--pie-missing": value("--color-error"),
+		"--pie-missing-icon": value("--color-error"),
 		"--pie-disabled": value("--color-base-300"),
 		"--pie-disabled-secondary": value("--color-base-200"),
-		"--pie-focus-checked": value("--color-primary"),
+		"--pie-focus-checked": mixResolvedColors({
+			left: value("--color-primary"),
+			right: value("--color-base-100"),
+			leftWeight: "20%",
+		}),
 		"--pie-focus-checked-border": value("--color-primary"),
 		"--pie-focus-unchecked": value("--color-base-200"),
 		"--pie-focus-unchecked-border": value("--color-base-300"),

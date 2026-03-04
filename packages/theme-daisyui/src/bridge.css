@@ -9,13 +9,38 @@
 
 	--pie-text: var(--color-base-content);
 	--pie-primary: var(--color-primary);
-	--pie-primary-light: var(--color-primary);
-	--pie-primary-dark: var(--color-primary);
+	--pie-primary-light: color-mix(
+		in srgb,
+		var(--color-primary) 60%,
+		var(--color-base-100)
+	);
+	--pie-primary-dark: color-mix(
+		in srgb,
+		var(--color-primary) 75%,
+		var(--color-base-content)
+	);
+	--pie-faded-primary: color-mix(
+		in srgb,
+		var(--color-primary) 20%,
+		var(--color-base-100)
+	);
 	--pie-secondary: var(--color-secondary);
-	--pie-secondary-light: var(--color-secondary);
-	--pie-secondary-dark: var(--color-secondary);
+	--pie-secondary-light: color-mix(
+		in srgb,
+		var(--color-secondary) 60%,
+		var(--color-base-100)
+	);
+	--pie-secondary-dark: color-mix(
+		in srgb,
+		var(--color-secondary) 75%,
+		var(--color-base-content)
+	);
 	--pie-tertiary: var(--color-accent);
-	--pie-tertiary-light: var(--color-accent);
+	--pie-tertiary-light: color-mix(
+		in srgb,
+		var(--color-accent) 60%,
+		var(--color-base-100)
+	);
 	--pie-border: var(--color-base-300);
 	--pie-border-light: var(--color-base-200);
 	--pie-border-dark: var(--color-neutral);
@@ -23,15 +48,27 @@
 	--pie-disabled: var(--color-base-300);
 	--pie-disabled-secondary: var(--color-base-200);
 	--pie-correct: var(--color-success);
-	--pie-correct-secondary: var(--color-success-content);
+	--pie-correct-secondary: color-mix(
+		in srgb,
+		var(--color-success) 20%,
+		var(--color-base-100)
+	);
 	--pie-correct-tertiary: var(--color-success);
 	--pie-correct-icon: var(--color-success);
 	--pie-incorrect: var(--color-error);
-	--pie-incorrect-secondary: var(--color-error-content);
+	--pie-incorrect-secondary: color-mix(
+		in srgb,
+		var(--color-error) 20%,
+		var(--color-base-100)
+	);
 	--pie-incorrect-icon: var(--color-error);
-	--pie-missing: var(--color-warning);
-	--pie-missing-icon: var(--color-warning);
-	--pie-focus-checked: var(--color-primary);
+	--pie-missing: var(--color-error);
+	--pie-missing-icon: var(--color-error);
+	--pie-focus-checked: color-mix(
+		in srgb,
+		var(--color-primary) 20%,
+		var(--color-base-100)
+	);
 	--pie-focus-checked-border: var(--color-primary);
 	--pie-focus-unchecked: var(--color-base-200);
 	--pie-focus-unchecked-border: var(--color-base-300);

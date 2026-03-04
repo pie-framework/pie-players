@@ -40,6 +40,29 @@ function definedEntries(
 	);
 }
 
+function mixCssColors(args: {
+	left?: string;
+	fallbackLeft: string;
+	right?: string;
+	fallbackRight: string;
+	leftWeight: string;
+}): string {
+	const left = args.left ?? args.fallbackLeft;
+	const right = args.right ?? args.fallbackRight;
+	return `color-mix(in srgb, ${left} ${args.leftWeight}, ${right})`;
+}
+
+function mixResolvedColors(args: {
+	left?: string;
+	right?: string;
+	leftWeight: string;
+}): string | undefined {
+	if (!args.left || !args.right) {
+		return undefined;
+	}
+	return `color-mix(in srgb, ${args.left} ${args.leftWeight}, ${args.right})`;
+}
+
 export function mapDaisyThemeToPieVariables(
 	tokens: DaisyThemeTokens,
 ): Record<string, string> {
@@ -50,31 +73,84 @@ export function mapDaisyThemeToPieVariables(
 		"--pie-dropdown-background": tokens.base300 ?? "var(--color-base-300)",
 		"--pie-text": tokens.baseContent ?? "var(--color-base-content)",
 		"--pie-primary": tokens.primary ?? "var(--color-primary)",
-		"--pie-primary-light": tokens.primary ?? "var(--color-primary)",
-		"--pie-primary-dark": tokens.primary ?? "var(--color-primary)",
+		"--pie-primary-light": mixCssColors({
+			left: tokens.primary,
+			fallbackLeft: "var(--color-primary)",
+			right: tokens.base100,
+			fallbackRight: "var(--color-base-100)",
+			leftWeight: "60%",
+		}),
+		"--pie-primary-dark": mixCssColors({
+			left: tokens.primary,
+			fallbackLeft: "var(--color-primary)",
+			right: tokens.baseContent,
+			fallbackRight: "var(--color-base-content)",
+			leftWeight: "75%",
+		}),
+		"--pie-faded-primary": mixCssColors({
+			left: tokens.primary,
+			fallbackLeft: "var(--color-primary)",
+			right: tokens.base100,
+			fallbackRight: "var(--color-base-100)",
+			leftWeight: "20%",
+		}),
 		"--pie-secondary": tokens.secondary ?? "var(--color-secondary)",
-		"--pie-secondary-light": tokens.secondary ?? "var(--color-secondary)",
-		"--pie-secondary-dark": tokens.secondary ?? "var(--color-secondary)",
+		"--pie-secondary-light": mixCssColors({
+			left: tokens.secondary,
+			fallbackLeft: "var(--color-secondary)",
+			right: tokens.base100,
+			fallbackRight: "var(--color-base-100)",
+			leftWeight: "60%",
+		}),
+		"--pie-secondary-dark": mixCssColors({
+			left: tokens.secondary,
+			fallbackLeft: "var(--color-secondary)",
+			right: tokens.baseContent,
+			fallbackRight: "var(--color-base-content)",
+			leftWeight: "75%",
+		}),
 		"--pie-tertiary": tokens.accent ?? "var(--color-accent)",
-		"--pie-tertiary-light": tokens.accent ?? "var(--color-accent)",
+		"--pie-tertiary-light": mixCssColors({
+			left: tokens.accent,
+			fallbackLeft: "var(--color-accent)",
+			right: tokens.base100,
+			fallbackRight: "var(--color-base-100)",
+			leftWeight: "60%",
+		}),
 		"--pie-border": tokens.base300 ?? "var(--color-base-300)",
 		"--pie-border-light": tokens.base200 ?? "var(--color-base-200)",
 		"--pie-border-dark": tokens.neutral ?? "var(--color-neutral)",
 		"--pie-border-gray": tokens.base300 ?? "var(--color-base-300)",
 		"--pie-correct": tokens.success ?? "var(--color-success)",
-		"--pie-correct-secondary":
-			tokens.successContent ?? "var(--color-success-content)",
+		"--pie-correct-secondary": mixCssColors({
+			left: tokens.success,
+			fallbackLeft: "var(--color-success)",
+			right: tokens.base100,
+			fallbackRight: "var(--color-base-100)",
+			leftWeight: "20%",
+		}),
 		"--pie-correct-tertiary": tokens.success ?? "var(--color-success)",
 		"--pie-correct-icon": tokens.success ?? "var(--color-success)",
 		"--pie-incorrect": tokens.error ?? "var(--color-error)",
-		"--pie-incorrect-secondary":
-			tokens.errorContent ?? "var(--color-error-content)",
+		"--pie-incorrect-secondary": mixCssColors({
+			left: tokens.error,
+			fallbackLeft: "var(--color-error)",
+			right: tokens.base100,
+			fallbackRight: "var(--color-base-100)",
+			leftWeight: "20%",
+		}),
 		"--pie-incorrect-icon": tokens.error ?? "var(--color-error)",
-		"--pie-missing": tokens.warning ?? "var(--color-warning)",
-		"--pie-missing-icon": tokens.warning ?? "var(--color-warning)",
+		"--pie-missing": tokens.error ?? "var(--color-error)",
+		"--pie-missing-icon": tokens.error ?? "var(--color-error)",
 		"--pie-disabled": tokens.base300 ?? "var(--color-base-300)",
 		"--pie-disabled-secondary": tokens.base200 ?? "var(--color-base-200)",
-		"--pie-focus-checked": tokens.primary ?? "var(--color-primary)",
+		"--pie-focus-checked": mixCssColors({
+			left: tokens.primary,
+			fallbackLeft: "var(--color-primary)",
+			right: tokens.base100,
+			fallbackRight: "var(--color-base-100)",
+			leftWeight: "20%",
+		}),
 		"--pie-focus-checked-border": tokens.primary ?? "var(--color-primary)",
 		"--pie-focus-unchecked": tokens.base200 ?? "var(--color-base-200)",
 		"--pie-focus-unchecked-border": tokens.base300 ?? "var(--color-base-300)",
@@ -116,29 +192,66 @@ export function mapResolvedDaisyThemeToPieVariables(
 		"--pie-dropdown-background": tokens.base300,
 		"--pie-text": tokens.baseContent,
 		"--pie-primary": tokens.primary,
-		"--pie-primary-light": tokens.primary,
-		"--pie-primary-dark": tokens.primary,
+		"--pie-primary-light": mixResolvedColors({
+			left: tokens.primary,
+			right: tokens.base100,
+			leftWeight: "60%",
+		}),
+		"--pie-primary-dark": mixResolvedColors({
+			left: tokens.primary,
+			right: tokens.baseContent,
+			leftWeight: "75%",
+		}),
+		"--pie-faded-primary": mixResolvedColors({
+			left: tokens.primary,
+			right: tokens.base100,
+			leftWeight: "20%",
+		}),
 		"--pie-secondary": tokens.secondary,
-		"--pie-secondary-light": tokens.secondary,
-		"--pie-secondary-dark": tokens.secondary,
+		"--pie-secondary-light": mixResolvedColors({
+			left: tokens.secondary,
+			right: tokens.base100,
+			leftWeight: "60%",
+		}),
+		"--pie-secondary-dark": mixResolvedColors({
+			left: tokens.secondary,
+			right: tokens.baseContent,
+			leftWeight: "75%",
+		}),
 		"--pie-tertiary": tokens.accent,
-		"--pie-tertiary-light": tokens.accent,
+		"--pie-tertiary-light": mixResolvedColors({
+			left: tokens.accent,
+			right: tokens.base100,
+			leftWeight: "60%",
+		}),
 		"--pie-border": tokens.base300,
 		"--pie-border-light": tokens.base200,
 		"--pie-border-dark": tokens.neutral,
 		"--pie-border-gray": tokens.base300,
 		"--pie-correct": tokens.success,
-		"--pie-correct-secondary": tokens.successContent,
+		"--pie-correct-secondary": mixResolvedColors({
+			left: tokens.success,
+			right: tokens.base100,
+			leftWeight: "20%",
+		}),
 		"--pie-correct-tertiary": tokens.success,
 		"--pie-correct-icon": tokens.success,
 		"--pie-incorrect": tokens.error,
-		"--pie-incorrect-secondary": tokens.errorContent,
+		"--pie-incorrect-secondary": mixResolvedColors({
+			left: tokens.error,
+			right: tokens.base100,
+			leftWeight: "20%",
+		}),
 		"--pie-incorrect-icon": tokens.error,
-		"--pie-missing": tokens.warning,
-		"--pie-missing-icon": tokens.warning,
+		"--pie-missing": tokens.error,
+		"--pie-missing-icon": tokens.error,
 		"--pie-disabled": tokens.base300,
 		"--pie-disabled-secondary": tokens.base200,
-		"--pie-focus-checked": tokens.primary,
+		"--pie-focus-checked": mixResolvedColors({
+			left: tokens.primary,
+			right: tokens.base100,
+			leftWeight: "20%",
+		}),
 		"--pie-focus-checked-border": tokens.primary,
 		"--pie-focus-unchecked": tokens.base200,
 		"--pie-focus-unchecked-border": tokens.base300,

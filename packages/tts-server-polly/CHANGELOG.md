@@ -1,5 +1,16 @@
 # @pie-players/tts-server-polly
 
+## 0.1.6
+
+### Patch Changes
+
+- 9385ce0: Release all publishable packages in the repository.
+
+  This intentionally triggers a full patch release sweep across all non-private workspace packages.
+
+- Updated dependencies [9385ce0]
+  - @pie-players/tts-server-core@0.1.6
+
 ## 0.1.5
 
 ### Patch Changes

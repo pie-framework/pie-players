@@ -1,5 +1,13 @@
 # @pie-players/pie-tts
 
+## 0.1.6
+
+### Patch Changes
+
+- 9385ce0: Release all publishable packages in the repository.
+
+  This intentionally triggers a full patch release sweep across all non-private workspace packages.
+
 ## 0.1.5
 
 ### Patch Changes

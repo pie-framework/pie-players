@@ -124,9 +124,10 @@ function validateUniqueCombinations(configPaths) {
 
 function publishConfig(elementsFile, { dryRun }) {
 	const rel = path.relative(ROOT, elementsFile);
-	const cmd = `bun run cli pie-packages:preloaded-player-build-package -f "${rel}" --publish`;
+	const abs = path.resolve(elementsFile);
+	const cmd = `bun run cli pie-packages:preloaded-player-build-package -f "${abs}" --publish`;
 	if (dryRun) {
-		console.log(`[DRY RUN] ${cmd}`);
+		console.log(`[DRY RUN] ${cmd} # from ${rel}`);
 		return;
 	}
 	execSync(cmd, { cwd: ROOT, stdio: "inherit" });

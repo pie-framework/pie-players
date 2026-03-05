@@ -372,7 +372,12 @@ export async function buildPreloadedPlayerStaticPackage(
 	if (!existsSync(itemPlayerPkgDir)) {
 		throw new Error(`pie-item-player package not found: ${itemPlayerPkgDir}`);
 	}
-	execSync("bun run build", { cwd: itemPlayerPkgDir, stdio: "inherit" });
+	// Build item-player through the root turbo pipeline so required workspace deps
+	// (for example @pie-players/pie-players-shared dist exports) are available.
+	execSync("bun run build:e2e:item-player", {
+		cwd: config.monorepoDir,
+		stdio: "inherit",
+	});
 
 	const customElementSrc = join(
 		itemPlayerPkgDir,

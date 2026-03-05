@@ -58,7 +58,7 @@ const getImportTarget = (pkg) => {
 
 const isLikelyBrowserGlobalError = (error) => {
 	const message = String(error?.message || "");
-	return /(customElements|window|document|HTMLElement|navigator|Class extends value undefined)/.test(
+	return /(customElements|window|document|HTMLElement|navigator|Class extends value undefined|superclass is not a constructor)/i.test(
 		message,
 	);
 };

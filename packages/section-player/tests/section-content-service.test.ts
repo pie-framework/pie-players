@@ -49,4 +49,44 @@ describe("SectionContentService renderables", () => {
 			"rubric:rb1",
 		]);
 	});
+
+	test("synthesizes ids when item and passage ids are missing", () => {
+		const itemWithoutId = {
+			name: "untitled-item",
+			passage: {
+				name: "passage-without-id",
+				config: {
+					elements: {},
+					models: [],
+					markup: "<div></div>",
+				},
+			},
+			config: {
+				elements: {},
+				models: [],
+				markup: "<div></div>",
+			},
+		} as unknown as ItemEntity;
+		const rubricWithoutId = {
+			name: "rubric-without-id",
+			config: {
+				elements: {},
+				models: [],
+				markup: "<div></div>",
+			},
+		} as unknown as PassageEntity;
+		const section = {
+			assessmentItemRefs: [{ item: itemWithoutId }],
+			rubricBlocks: [{ class: "rubric", view: "candidate", passage: rubricWithoutId }],
+		} as unknown as AssessmentSection;
+
+		const service = new SectionContentService();
+		const content = service.build(section, "candidate");
+
+		expect(content.items[0]?.id).toBeTruthy();
+		expect(content.adapterItemRefs[0]?.item?.id).toBe(content.items[0]?.id);
+		expect(content.adapterItemRefs[0]?.identifier).toBeTruthy();
+		expect(content.passages[0]?.id).toBeTruthy();
+		expect(content.renderables.every((r) => Boolean(r.entity.id))).toBe(true);
+	});
 });

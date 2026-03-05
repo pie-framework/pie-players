@@ -1,4 +1,6 @@
 import { execSync } from "node:child_process";
+import { existsSync } from "node:fs";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 
 import { Command, Flags } from "@oclif/core";
 
@@ -76,6 +78,54 @@ export default class PreloadedPlayerBuildPackage extends Command {
 		return cmd;
 	}
 
+	private findMonorepoRoot(startDir: string): string | undefined {
+		let dir = resolve(startDir);
+		while (true) {
+			const hasRootPackage = existsSync(join(dir, "package.json"));
+			const hasItemPlayer = existsSync(
+				join(dir, "packages", "item-player", "package.json"),
+			);
+			if (hasRootPackage && hasItemPlayer) return dir;
+			const parent = dirname(dir);
+			if (parent === dir) return undefined;
+			dir = parent;
+		}
+	}
+
+	private resolveMonorepoDir(elementsFile?: string): string {
+		const cwd = process.cwd();
+		const candidates: string[] = [cwd];
+		if (process.env.GITHUB_WORKSPACE) {
+			candidates.push(process.env.GITHUB_WORKSPACE);
+		}
+		if (elementsFile) {
+			const start = isAbsolute(elementsFile)
+				? dirname(elementsFile)
+				: resolve(cwd, dirname(elementsFile));
+			candidates.push(start);
+		}
+		try {
+			const gitRoot = execSync("git rev-parse --show-toplevel", {
+				cwd,
+				stdio: ["ignore", "pipe", "ignore"],
+			})
+				.toString("utf8")
+				.trim();
+			if (gitRoot) candidates.push(gitRoot);
+		} catch {
+			// ignore
+		}
+
+		for (const candidate of candidates) {
+			const root = this.findMonorepoRoot(candidate);
+			if (root) return root;
+		}
+
+		this.error(
+			`Unable to resolve monorepo root from cwd=${cwd}${elementsFile ? ` elementsFile=${elementsFile}` : ""}`,
+		);
+	}
+
 	public async run(): Promise<void> {
 		const { flags } = await this.parse(PreloadedPlayerBuildPackage);
 
@@ -86,9 +136,15 @@ export default class PreloadedPlayerBuildPackage extends Command {
 			this.error("--dryRun can only be used with --publish");
 		}
 
-		const monorepoDir = process.cwd();
-
-		const elements = await this.parseElements(flags.elementsFile, flags.elements);
+		const monorepoDir = this.resolveMonorepoDir(flags.elementsFile);
+		const elementsFile = flags.elementsFile
+			? isAbsolute(flags.elementsFile)
+				? flags.elementsFile
+				: existsSync(resolve(process.cwd(), flags.elementsFile))
+					? resolve(process.cwd(), flags.elementsFile)
+					: resolve(monorepoDir, flags.elementsFile)
+			: undefined;
+		const elements = await this.parseElements(elementsFile, flags.elements);
 		const elementsArray = elements.map((e: any) => `${e.package}@${e.version}`);
 
 		// Enable safe iteration selection inside the builder for publishing workflows.

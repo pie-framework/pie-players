@@ -1,5 +1,25 @@
 # @pie-players/pie-default-tool-loaders
 
+## 0.1.3
+
+### Patch Changes
+
+- 9385ce0: Release all publishable packages in the repository.
+
+  This intentionally triggers a full patch release sweep across all non-private workspace packages.
+
+- Updated dependencies [9385ce0]
+  - @pie-players/pie-tool-annotation-toolbar@0.1.11
+  - @pie-players/pie-tool-answer-eliminator@0.2.11
+  - @pie-players/pie-tool-calculator@0.1.11
+  - @pie-players/pie-tool-graph@0.1.11
+  - @pie-players/pie-tool-line-reader@0.1.11
+  - @pie-players/pie-tool-periodic-table@0.1.11
+  - @pie-players/pie-tool-protractor@0.1.11
+  - @pie-players/pie-tool-ruler@0.1.11
+  - @pie-players/pie-tool-text-to-speech@0.1.11
+  - @pie-players/pie-tool-theme@0.1.11
+
 ## 0.1.2
 
 ### Patch Changes

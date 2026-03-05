@@ -1,5 +1,21 @@
 # @pie-players/pie-assessment-toolkit
 
+## 0.2.11
+
+### Patch Changes
+
+- 9385ce0: Release all publishable packages in the repository.
+
+  This intentionally triggers a full patch release sweep across all non-private workspace packages.
+
+- Updated dependencies [9385ce0]
+  - @pie-players/pie-calculator@0.1.6
+  - @pie-players/pie-calculator-desmos@0.1.7
+  - @pie-players/pie-context@0.1.3
+  - @pie-players/pie-players-shared@0.2.7
+  - @pie-players/pie-tts@0.1.6
+  - @pie-players/tts-client-server@0.2.6
+
 ## 0.2.10
 
 ### Patch Changes

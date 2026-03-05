@@ -38,18 +38,26 @@
 	import { connectAssessmentToolkitHostRuntimeContext } from "../context/runtime-context-consumer.js";
 	import { ToolkitCoordinator } from "../services/ToolkitCoordinator.js";
 	import {
-		PIE_ITEM_SESSION_CHANGED_EVENT,
+		PIE_INTERNAL_CONTENT_LOADED_EVENT,
+		PIE_INTERNAL_ITEM_SESSION_CHANGED_EVENT,
+		PIE_INTERNAL_ITEM_PLAYER_ERROR_EVENT,
 		PIE_REGISTER_EVENT,
 		PIE_UNREGISTER_EVENT,
-		type ItemSessionChangedDetail,
+		type InternalContentLoadedDetail,
+		type InternalItemSessionChangedDetail,
+		type InternalItemPlayerErrorDetail,
 		type RuntimeRegistrationDetail,
 	} from "../runtime/registration-events.js";
 	import { dispatchCrossBoundaryEvent } from "../runtime/tool-host-contract.js";
 	import { SectionRuntimeEngine } from "../runtime/SectionRuntimeEngine.js";
 	import {
 		createRuntimeId,
-		shouldHandleBySourceRuntime,
 	} from "../runtime/runtime-event-guards.js";
+	import {
+		createSessionEmitPolicyState,
+		resetSessionEmitPolicyState,
+		shouldEmitCanonicalSessionEvent,
+	} from "../runtime/session-event-emitter-policy.js";
 
 	type SessionChangedLike = {
 		eventDetail?: unknown;
@@ -106,6 +114,7 @@ const DEFAULT_ENV = {
 	let pendingCompositionModel: unknown = null;
 	let pendingCompositionEmit = false;
 	let compositionEmitRaf: number | null = null;
+	const sessionEmitPolicyState = createSessionEmitPolicyState();
 
 	function getHostElement(): HTMLElement | null {
 		if (!anchor) return null;
@@ -357,12 +366,22 @@ const DEFAULT_ENV = {
 	}) {
 		const normalized =
 			(args.result as SessionChangedLike | null)?.eventDetail || args.fallbackSession;
-		emit("session-changed", {
+		const payload = {
 			...(normalized as Record<string, unknown>),
 			itemId: args.itemId,
 			canonicalItemId: args.canonicalItemId || args.itemId,
 			sourceRuntimeId: runtimeId,
-		});
+		} as Record<string, unknown>;
+		if (
+			!shouldEmitCanonicalSessionEvent({
+				state: sessionEmitPolicyState,
+				itemId: args.itemId,
+				payload,
+			})
+		) {
+			return;
+		}
+		emit("session-changed", payload);
 	}
 
 	function isLocalToCurrentRuntime(eventTarget: EventTarget | null): boolean {
@@ -399,6 +418,14 @@ const DEFAULT_ENV = {
 				parentRuntimeId,
 			});
 		}
+	});
+
+	$effect(() => {
+		const currentSectionId = effectiveSectionId;
+		const currentAttemptId = attemptId || "";
+		void currentSectionId;
+		void currentAttemptId;
+		resetSessionEmitPolicyState(sessionEmitPolicyState);
 	});
 
 	$effect(() => {
@@ -489,6 +516,11 @@ const DEFAULT_ENV = {
 			})
 			.catch((error) => {
 				runtimeError = error;
+				sectionEngine.reportSectionError({
+					source: "section-runtime",
+					error,
+					timestamp: Date.now(),
+				});
 				emit("runtime-error", {
 					runtimeId,
 					error,
@@ -509,39 +541,78 @@ const DEFAULT_ENV = {
 			const detail = (event as CustomEvent<RuntimeRegistrationDetail>).detail;
 			if (!detail?.element || !detail?.itemId) return;
 			const changed = sectionEngine.register(detail);
+			sectionEngine.handleContentRegistered(detail);
 			if (changed) emitCompositionChanged();
 		};
 
 		const onUnregister = (event: Event) => {
 			if (!isLocalToCurrentRuntime(event.target)) return;
 			const detail = (event as CustomEvent<RuntimeRegistrationDetail>).detail;
+			if (!detail?.itemId) return;
 			const changed = detail?.element
 				? sectionEngine.unregister(detail.element)
 				: false;
+			sectionEngine.handleContentUnregistered(detail);
 			if (changed) emitCompositionChanged();
 		};
 
 		const onItemSessionChanged = (event: Event) => {
 			if (!isLocalToCurrentRuntime(event.target)) return;
-			const detail = (event as CustomEvent<ItemSessionChangedDetail>).detail;
+			const detail = (event as CustomEvent<InternalItemSessionChangedDetail>).detail;
 			if (!detail?.itemId) return;
-			if (!shouldHandleBySourceRuntime(detail.sourceRuntimeId, runtimeId)) return;
 			const result = sectionEngine.handleItemSessionChanged(detail.itemId, detail.session);
 			emitNormalizedSessionChanged({
 				itemId: detail.itemId,
-				canonicalItemId: detail.canonicalItemId,
+				canonicalItemId: sectionEngine.getCanonicalItemId(detail.itemId),
 				result,
 				fallbackSession: detail.session,
+			});
+		};
+		const onContentLoaded = (event: Event) => {
+			if (!isLocalToCurrentRuntime(event.target)) return;
+			const detail = (event as CustomEvent<InternalContentLoadedDetail>).detail;
+			if (!detail?.itemId) return;
+			sectionEngine.handleContentLoaded({
+				itemId: detail.itemId,
+				canonicalItemId: detail.canonicalItemId,
+				contentKind: detail.contentKind,
+				detail: detail.detail,
+				timestamp: Date.now(),
+			});
+		};
+		const onItemPlayerError = (event: Event) => {
+			if (!isLocalToCurrentRuntime(event.target)) return;
+			const detail = (event as CustomEvent<InternalItemPlayerErrorDetail>).detail;
+			if (!detail?.itemId) return;
+			sectionEngine.handleItemPlayerError({
+				itemId: detail.itemId,
+				canonicalItemId: detail.canonicalItemId,
+				contentKind: detail.contentKind,
+				error: detail.error,
+				timestamp: Date.now(),
 			});
 		};
 
 		localHost.addEventListener(PIE_REGISTER_EVENT, onRegister);
 		localHost.addEventListener(PIE_UNREGISTER_EVENT, onUnregister);
-		localHost.addEventListener(PIE_ITEM_SESSION_CHANGED_EVENT, onItemSessionChanged);
+		localHost.addEventListener(PIE_INTERNAL_ITEM_SESSION_CHANGED_EVENT, onItemSessionChanged);
+		localHost.addEventListener(PIE_INTERNAL_CONTENT_LOADED_EVENT, onContentLoaded);
+		localHost.addEventListener(PIE_INTERNAL_ITEM_PLAYER_ERROR_EVENT, onItemPlayerError);
 		return () => {
 			localHost.removeEventListener(PIE_REGISTER_EVENT, onRegister);
 			localHost.removeEventListener(PIE_UNREGISTER_EVENT, onUnregister);
-			localHost.removeEventListener(PIE_ITEM_SESSION_CHANGED_EVENT, onItemSessionChanged);
+			localHost.removeEventListener(
+				PIE_INTERNAL_ITEM_SESSION_CHANGED_EVENT,
+				onItemSessionChanged,
+			);
+			localHost.removeEventListener(
+				PIE_INTERNAL_CONTENT_LOADED_EVENT,
+				onContentLoaded,
+			);
+			localHost.removeEventListener(
+				PIE_INTERNAL_ITEM_PLAYER_ERROR_EVENT,
+				onItemPlayerError,
+			);
 		};
 	});
 

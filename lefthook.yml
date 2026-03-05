@@ -12,6 +12,8 @@ pre-commit:
 pre-push:
   parallel: false
   commands:
+    check-deps:
+      run: bun run check:deps
     check-publint:
       run: bun run check:publint
     section-player-tts-ssml-e2e:

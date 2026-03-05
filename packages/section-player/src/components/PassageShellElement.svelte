@@ -26,6 +26,21 @@
 	} from "@pie-players/pie-assessment-toolkit";
 	import { ContextProvider, ContextRoot } from "@pie-players/pie-context";
 
+	const PIE_INTERNAL_CONTENT_LOADED_EVENT = "pie-content-loaded";
+	const PIE_INTERNAL_ITEM_PLAYER_ERROR_EVENT = "pie-item-player-error";
+	type InternalContentLoadedDetail = {
+		itemId: string;
+		canonicalItemId?: string;
+		contentKind?: string;
+		detail?: unknown;
+	};
+	type InternalItemPlayerErrorDetail = {
+		itemId: string;
+		canonicalItemId?: string;
+		contentKind?: string;
+		error: unknown;
+	};
+
 	let {
 		itemId = "",
 		canonicalItemId = "",
@@ -95,11 +110,45 @@
 		dispatchCrossBoundaryEvent(host, eventName, detail);
 	}
 
+	function dispatchLoaded(detail: unknown): void {
+		if (!host || !itemId) return;
+		const payload: InternalContentLoadedDetail = {
+			itemId,
+			canonicalItemId: canonicalItemId || itemId,
+			contentKind,
+			detail,
+		};
+		dispatchCrossBoundaryEvent(host, PIE_INTERNAL_CONTENT_LOADED_EVENT, payload);
+	}
+
+	function dispatchPlayerError(error: unknown): void {
+		if (!host || !itemId) return;
+		const payload: InternalItemPlayerErrorDetail = {
+			itemId,
+			canonicalItemId: canonicalItemId || itemId,
+			contentKind,
+			error,
+		};
+		dispatchCrossBoundaryEvent(host, PIE_INTERNAL_ITEM_PLAYER_ERROR_EVENT, payload);
+	}
+
 	$effect(() => {
 		if (!host) return;
 		dispatchRegistration(PIE_REGISTER_EVENT);
+		const onLoadComplete = (event: Event) => {
+			event.stopPropagation();
+			dispatchLoaded((event as CustomEvent).detail);
+		};
+		const onPlayerError = (event: Event) => {
+			event.stopPropagation();
+			dispatchPlayerError((event as CustomEvent).detail);
+		};
+		host.addEventListener("load-complete", onLoadComplete);
+		host.addEventListener("player-error", onPlayerError);
 
 		return () => {
+			host?.removeEventListener("load-complete", onLoadComplete);
+			host?.removeEventListener("player-error", onPlayerError);
 			dispatchRegistration(PIE_UNREGISTER_EVENT);
 		};
 	});

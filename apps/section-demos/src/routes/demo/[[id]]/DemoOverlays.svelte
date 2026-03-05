@@ -4,7 +4,10 @@
 
 	interface Props {
 		toolkitCoordinator: any;
+		sectionId: string;
+		attemptId: string;
 		showSessionPanel: boolean;
+		showEventPanel: boolean;
 		showSourcePanel: boolean;
 		showPnpPanel: boolean;
 		showTtsPanel: boolean;
@@ -12,12 +15,16 @@
 		onCloseSourcePanel: () => void;
 		onCloseTtsPanel: () => void;
 		sessionDebuggerElement?: any;
+		eventDebuggerElement?: any;
 		pnpDebuggerElement?: any;
 	}
 
 	let {
 		toolkitCoordinator,
+		sectionId,
+		attemptId,
 		showSessionPanel,
+		showEventPanel,
 		showSourcePanel,
 		showPnpPanel,
 		showTtsPanel,
@@ -25,13 +32,29 @@
 		onCloseSourcePanel,
 		onCloseTtsPanel,
 		sessionDebuggerElement = $bindable(null),
+		eventDebuggerElement = $bindable(null),
 		pnpDebuggerElement = $bindable(null)
 	}: Props = $props();
 </script>
 
 {#if showSessionPanel}
-	<pie-section-player-tools-session-debugger bind:this={sessionDebuggerElement}>
+	<pie-section-player-tools-session-debugger
+		bind:this={sessionDebuggerElement}
+		toolkitCoordinator={toolkitCoordinator}
+		sectionId={sectionId}
+		attemptId={attemptId}
+	>
 	</pie-section-player-tools-session-debugger>
+{/if}
+
+{#if showEventPanel}
+	<pie-section-player-tools-event-debugger
+		bind:this={eventDebuggerElement}
+		toolkitCoordinator={toolkitCoordinator}
+		sectionId={sectionId}
+		attemptId={attemptId}
+	>
+	</pie-section-player-tools-event-debugger>
 {/if}
 
 {#if showSourcePanel}

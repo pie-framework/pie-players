@@ -28,12 +28,12 @@ export const demo2Section: AssessmentSection = {
 				baseId: "passage-renaissance",
 				version: { major: 1, minor: 0, patch: 0 },
 				config: {
-					markup: `<div class="passage" style="padding: 1.5rem; line-height: 1.7;">
-            <h2 style="margin-top: 0; color: var(--pie-text, #111827); font-size: 1.5rem; margin-bottom: 1rem;">
+					markup: `<div class="passage">
+            <h2>
               The Renaissance: A Cultural Rebirth
             </h2>
 
-            <p style="margin-bottom: 1rem;">
+            <p>
               The Renaissance, spanning roughly from the 14th to 17th centuries, marked a profound
               transformation in European intellectual and artistic life. Beginning in Italy and spreading
               throughout Europe, this period witnessed a renewed interest in classical Greek and Roman
@@ -41,7 +41,7 @@ export const demo2Section: AssessmentSection = {
               the era's emphasis on rediscovering and building upon ancient wisdom.
             </p>
 
-            <p style="margin-bottom: 1rem;">
+            <p>
               During this time, wealthy merchant families like the Medici of Florence became patrons of
               the arts, supporting artists such as Leonardo da Vinci, Michelangelo, and Raphael. These
               artists developed new techniques like linear perspective, which created more realistic depth
@@ -50,7 +50,7 @@ export const demo2Section: AssessmentSection = {
               long-held beliefs about the universe, laying the groundwork for the Scientific Revolution.
             </p>
 
-            <p style="margin-bottom: 0;">
+            <p>
               The invention of the printing press by Johannes Gutenberg around 1440 accelerated the spread
               of Renaissance ideas. Books became more accessible, literacy rates increased, and new ideas
               could travel faster than ever before. This technological advancement democratized knowledge

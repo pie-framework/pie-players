@@ -216,6 +216,8 @@ export const annotationToolbarRegistration: ToolRegistration = {
 	name: "Highlighter",
 	description: "Highlight and annotate text",
 	icon: "highlighter",
+	activation: "selection-gateway",
+	singletonScope: "section",
 
 	// Annotation appears where there's text content
 	supportedLevels: ["passage", "rubric", "item", "element"],

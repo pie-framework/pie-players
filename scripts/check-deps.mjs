@@ -97,6 +97,7 @@ function isIgnoredSpecifier(specifier, aliasPrefixes) {
 	return (
 		specifier.startsWith("$") ||
 		specifier.startsWith("bun:") ||
+		specifier.startsWith("node:") ||
 		specifier.startsWith("virtual:") ||
 		specifier.startsWith("vite/") ||
 		BUILTIN_SPECIFIERS.has(specifier) ||

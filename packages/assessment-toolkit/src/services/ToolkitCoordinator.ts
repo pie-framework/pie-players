@@ -120,6 +120,7 @@ export interface ToolkitToolsConfig extends CanonicalToolsConfig {
 	providers: ToolProvidersConfig & {
 		tts?: TTSToolConfig;
 		calculator?: CalculatorToolConfig;
+		annotationToolbar?: ToolConfig;
 	};
 }
 
@@ -196,6 +197,13 @@ export interface SectionControllerLifecycleEvent {
 	type: "ready" | "disposed";
 	key: SectionControllerKey;
 	controller?: SectionControllerHandle;
+}
+
+export interface SectionEventSubscriptionArgs {
+	sectionId: string;
+	attemptId?: string;
+	listener: (event: unknown) => void;
+	eventTypes?: readonly string[];
 }
 
 export interface ToolkitCoordinatorHooks {
@@ -328,6 +336,7 @@ export class ToolkitCoordinator {
 	private coordinatorReadyNotified = false;
 	private readonly providerInitPromises = new Map<string, Promise<IToolProvider>>();
 	private readonly sectionControllers = new Map<string, SectionControllerHandle>();
+	private readonly sectionControllerKeys = new Map<string, SectionControllerKey>();
 	private readonly sectionControllerInitPromises = new Map<
 		string,
 		Promise<SectionControllerHandle>
@@ -339,6 +348,12 @@ export class ToolkitCoordinator {
 	private readonly sectionControllerLifecycleListeners = new Set<
 		(event: SectionControllerLifecycleEvent) => void
 	>();
+	private readonly sectionEventListenerIds = new WeakMap<
+		(event: unknown) => void,
+		number
+	>();
+	private readonly sectionEventSubscriptions = new Map<string, () => void>();
+	private nextSectionEventListenerId = 1;
 
 	/** Callback for floating tools changes */
 	private floatingToolsChangeCallback: ((toolIds: string[]) => void) | null =
@@ -356,6 +371,9 @@ export class ToolkitCoordinator {
 			calculator: {
 				enabled: true,
 				provider: "desmos",
+			},
+			annotationToolbar: {
+				enabled: true,
 			},
 		};
 
@@ -695,6 +713,102 @@ export class ToolkitCoordinator {
 		return this.sectionControllers.get(this.getSectionControllerMapKey(key));
 	}
 
+	public subscribeSectionEvents(args: SectionEventSubscriptionArgs): () => void {
+		const controllerEntry = this.resolveSectionControllerForSubscription({
+			sectionId: args.sectionId,
+			attemptId: args.attemptId,
+		});
+		const controller = controllerEntry?.controller;
+		const subscribe = controller?.subscribe;
+		if (!controller || !subscribe) {
+			return () => {};
+		}
+		const { mapKey } = controllerEntry;
+
+		let listenerId = this.sectionEventListenerIds.get(args.listener);
+		if (!listenerId) {
+			listenerId = this.nextSectionEventListenerId++;
+			this.sectionEventListenerIds.set(args.listener, listenerId);
+		}
+		const subscriptionKey = `${mapKey}::${listenerId}`;
+		const previousSubscription = this.sectionEventSubscriptions.get(
+			subscriptionKey,
+		);
+		previousSubscription?.();
+
+		const eventTypeFilter = args.eventTypes
+			? new Set(args.eventTypes)
+			: null;
+		const unsubscribeController = subscribe.call(controller, (event) => {
+			if (!eventTypeFilter) {
+				args.listener(event);
+				return;
+			}
+			const eventType =
+				typeof event === "object" &&
+				event !== null &&
+				"type" in event &&
+				typeof (event as { type?: unknown }).type === "string"
+					? (event as { type: string }).type
+					: null;
+			if (!eventType || !eventTypeFilter.has(eventType)) {
+				return;
+			}
+			args.listener(event);
+		});
+
+		const detach = () => {
+			const current = this.sectionEventSubscriptions.get(subscriptionKey);
+			if (current !== detach) {
+				return;
+			}
+			this.sectionEventSubscriptions.delete(subscriptionKey);
+			unsubscribeController();
+		};
+
+		this.sectionEventSubscriptions.set(subscriptionKey, detach);
+		return detach;
+	}
+
+	private resolveSectionControllerForSubscription(args: {
+		sectionId: string;
+		attemptId?: string;
+	}): { mapKey: string; controller: SectionControllerHandle } | null {
+		const explicitKey: SectionControllerKey = {
+			assessmentId: this.assessmentId,
+			sectionId: args.sectionId,
+			attemptId: args.attemptId,
+		};
+		const explicitMapKey = this.getSectionControllerMapKey(explicitKey);
+		const explicitController = this.sectionControllers.get(explicitMapKey);
+		if (explicitController) {
+			return { mapKey: explicitMapKey, controller: explicitController };
+		}
+
+		if (args.attemptId !== undefined) {
+			return null;
+		}
+
+		const matches: Array<{ mapKey: string; controller: SectionControllerHandle }> = [];
+		for (const [mapKey, key] of this.sectionControllerKeys.entries()) {
+			if (key.assessmentId !== this.assessmentId || key.sectionId !== args.sectionId) {
+				continue;
+			}
+			const controller = this.sectionControllers.get(mapKey);
+			if (!controller) continue;
+			matches.push({ mapKey, controller });
+		}
+		if (matches.length === 1) {
+			return matches[0];
+		}
+		if (matches.length > 1) {
+			console.warn(
+				`[ToolkitCoordinator] subscribeSectionEvents is ambiguous for section "${args.sectionId}" without attemptId; ${matches.length} controllers are active.`,
+			);
+		}
+		return null;
+	}
+
 	public onSectionControllerLifecycle(
 		listener: (event: SectionControllerLifecycleEvent) => void,
 	): () => void {
@@ -721,6 +835,7 @@ export class ToolkitCoordinator {
 		const mapKey = this.getSectionControllerMapKey(key);
 		const existingController = this.sectionControllers.get(mapKey);
 		if (existingController) {
+			this.sectionControllerKeys.set(mapKey, key);
 			if (args.updateExisting !== false) {
 				await existingController.updateInput?.(args.input);
 			}
@@ -750,6 +865,7 @@ export class ToolkitCoordinator {
 			await controller.hydrate?.();
 
 			this.sectionControllers.set(mapKey, controller);
+			this.sectionControllerKeys.set(mapKey, key);
 			this.emitSectionControllerLifecycle({
 				type: "ready",
 				key,
@@ -793,6 +909,13 @@ export class ToolkitCoordinator {
 		const mapKey = this.getSectionControllerMapKey(key);
 		const controller = this.sectionControllers.get(mapKey);
 		if (!controller) return;
+		const subscriptionPrefix = `${mapKey}::`;
+		for (const subscriptionKey of Array.from(
+			this.sectionEventSubscriptions.keys(),
+		)) {
+			if (!subscriptionKey.startsWith(subscriptionPrefix)) continue;
+			this.sectionEventSubscriptions.get(subscriptionKey)?.();
+		}
 
 		const context: SectionControllerContext = {
 			key,
@@ -820,6 +943,7 @@ export class ToolkitCoordinator {
 			});
 		} finally {
 			this.sectionControllers.delete(mapKey);
+			this.sectionControllerKeys.delete(mapKey);
 			this.emitSectionControllerLifecycle({
 				type: "disposed",
 				key,

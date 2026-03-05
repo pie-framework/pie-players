@@ -170,17 +170,30 @@
 		const resolved = resolveToolsForLevel(effectiveToolsConfig, placementLevel);
 		return effectiveToolRegistry.normalizeToolIds(resolved).filter(Boolean);
 	});
+	const providerConfig = $derived(
+		(effectiveToolsConfig?.providers || {}) as Record<
+			string,
+			{ enabled?: boolean } | undefined
+		>
+	);
+	const isProviderEnabled = (toolId: string): boolean =>
+		providerConfig[toolId]?.enabled !== false;
 
 	// Pass 1: determine allowed tools
 	const allowedToolIds = $derived.by(() => {
 		const configuredTools =
 			normalizedExplicitTools.length > 0 ? normalizedExplicitTools : placementAllowedToolIds;
+		const providerEnabledConfiguredTools = configuredTools.filter((toolId) =>
+			isProviderEnabled(toolId)
+		);
 		if (pnpResolver && assessment && itemRef) {
 			const allowedByPnp = pnpResolver.getAllowedToolIds(assessment, itemRef);
-			if (configuredTools.length === 0) return allowedByPnp;
-			return allowedByPnp.filter((toolId) => configuredTools.includes(toolId));
+			if (providerEnabledConfiguredTools.length === 0) return allowedByPnp;
+			return allowedByPnp.filter((toolId) =>
+				providerEnabledConfiguredTools.includes(toolId)
+			);
 		}
-		return configuredTools;
+		return providerEnabledConfiguredTools;
 	});
 
 	const contentReady = $derived.by(() => {
@@ -285,6 +298,9 @@
 
 		return Array.from(visible);
 	});
+	const toolbarVisibleToolIds = $derived.by(() =>
+		effectiveToolRegistry.filterToolIdsByActivation(visibleToolIds, 'toolbar-toggle')
+	);
 
 	// Dynamically load whatever tools are currently visible.
 	// The registry owns module loader configuration by toolId.
@@ -292,7 +308,7 @@
 		if (!isBrowser) return;
 		let cancelled = false;
 		void effectiveToolRegistry
-			.ensureToolModulesLoaded(visibleToolIds)
+			.ensureToolModulesLoaded(toolbarVisibleToolIds)
 			.then(() => {
 				if (!cancelled) moduleLoadVersion += 1;
 			})
@@ -377,7 +393,7 @@
 		moduleLoadVersion;
 
 		const rendered: ToolToolbarRenderResult[] = [];
-		for (const toolId of visibleToolIds) {
+		for (const toolId of toolbarVisibleToolIds) {
 			const result = effectiveToolRegistry.renderForToolbar(toolId, renderContext, toolbarContext);
 			if (result) {
 				rendered.push(result);

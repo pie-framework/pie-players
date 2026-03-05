@@ -19,7 +19,7 @@
 			isolation: { attribute: "isolation", type: "String" },
 			env: { type: "Object", reflect: false },
 			iifeBundleHost: { attribute: "iife-bundle-host", type: "String" },
-			showToolbar: { attribute: "show-toolbar", type: "Boolean" },
+			showToolbar: { attribute: "show-toolbar", type: "String" },
 			toolbarPosition: { attribute: "toolbar-position", type: "String" },
 			enabledTools: { attribute: "enabled-tools", type: "String" },
 			itemToolbarTools: { attribute: "item-toolbar-tools", type: "String" },
@@ -89,12 +89,32 @@
 		isolation,
 		env,
 		iifeBundleHost,
-		showToolbar = true,
+		showToolbar = "true" as boolean | string | null | undefined,
 		toolbarPosition = "right",
 		enabledTools = "",
 		itemToolbarTools = "",
 		passageToolbarTools = "",
 	} = $props();
+
+	function resolveToolbarVisibility(value: boolean | string | null | undefined): boolean {
+		if (typeof value === "boolean") {
+			return value;
+		}
+		if (value === null || value === undefined) {
+			return true;
+		}
+		const normalizedValue = String(value).trim().toLowerCase();
+		if (normalizedValue === "") {
+			return true;
+		}
+		if (["false", "0", "off", "no"].includes(normalizedValue)) {
+			return false;
+		}
+		if (["true", "1", "on", "yes"].includes(normalizedValue)) {
+			return true;
+		}
+		return Boolean(normalizedValue);
+	}
 
 	let compositionModel = $state<SectionCompositionModel>(EMPTY_COMPOSITION);
 	let elementsLoaded = $state(false);
@@ -103,7 +123,9 @@
 
 	const passages = $derived(compositionModel.passages || []);
 	const items = $derived(compositionModel.items || []);
-	const shouldRenderToolbar = $derived(showToolbar && toolbarPosition !== "none");
+	const shouldRenderToolbar = $derived(
+		resolveToolbarVisibility(showToolbar) && toolbarPosition !== "none",
+	);
 	const toolbarBeforeContent = $derived(
 		toolbarPosition === "top" || toolbarPosition === "left",
 	);
@@ -205,7 +227,7 @@
 		{/if}
 
 		<div
-			class={`pie-section-player-layout-body ${toolbarInline ? "pie-section-player-layout-body--inline" : ""}`}
+			class={`pie-section-player-layout-body ${shouldRenderToolbar && toolbarInline ? "pie-section-player-layout-body--inline" : ""}`}
 		>
 			<div class="pie-section-player-vertical-content">
 				{#if !elementsLoaded}

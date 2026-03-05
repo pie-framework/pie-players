@@ -19,7 +19,7 @@
 			isolation: { attribute: "isolation", type: "String" },
 			env: { type: "Object", reflect: false },
 			iifeBundleHost: { attribute: "iife-bundle-host", type: "String" },
-			showToolbar: { attribute: "show-toolbar", type: "Boolean" },
+			showToolbar: { attribute: "show-toolbar", type: "String" },
 			toolbarPosition: { attribute: "toolbar-position", type: "String" },
 			enabledTools: { attribute: "enabled-tools", type: "String" },
 			itemToolbarTools: { attribute: "item-toolbar-tools", type: "String" },
@@ -29,6 +29,7 @@
 />
 
 <script lang="ts">
+	import { onMount } from "svelte";
 	import "./section-player-base-element.js";
 	import * as SectionItemCardModule from "./shared/SectionItemCard.svelte";
 	import * as SectionPassageCardModule from "./shared/SectionPassageCard.svelte";
@@ -91,12 +92,35 @@
 		isolation,
 		env,
 		iifeBundleHost,
-		showToolbar = true,
+		showToolbar = "true" as boolean | string | null | undefined,
 		toolbarPosition = "right",
 		enabledTools = "",
 		itemToolbarTools = "",
 		passageToolbarTools = "",
 	} = $props();
+
+	function resolveToolbarVisibility(value: boolean | string | null | undefined): boolean {
+		if (typeof value === "boolean") {
+			return value;
+		}
+		if (value === null || value === undefined) {
+			return true;
+		}
+		const normalizedValue = String(value).trim().toLowerCase();
+		if (normalizedValue === "") {
+			return true;
+		}
+		if (["false", "0", "off", "no"].includes(normalizedValue)) {
+			return false;
+		}
+		if (["true", "1", "on", "yes"].includes(normalizedValue)) {
+			return true;
+		}
+		return Boolean(normalizedValue);
+	}
+
+	const MANAGED_OUTER_SCROLL_CLASS = "pie-outer-scrollbars-managed";
+	const ACTIVE_OUTER_SCROLL_CLASS = "pie-outer-scrolling";
 
 	let compositionModel = $state<SectionCompositionModel>(EMPTY_COMPOSITION);
 	let leftPanelWidth = $state(50);
@@ -109,7 +133,9 @@
 	const passages = $derived(compositionModel.passages || []);
 	const items = $derived(compositionModel.items || []);
 	const hasPassages = $derived(passages.length > 0);
-	const shouldRenderToolbar = $derived(showToolbar && toolbarPosition !== "none");
+	const shouldRenderToolbar = $derived(
+		resolveToolbarVisibility(showToolbar) && toolbarPosition !== "none",
+	);
 	const toolbarBeforeContent = $derived(
 		toolbarPosition === "top" || toolbarPosition === "left",
 	);
@@ -237,6 +263,39 @@
 		});
 	});
 
+	onMount(() => {
+		let scrollTimeout: ReturnType<typeof setTimeout> | null = null;
+		const html = document.documentElement;
+		const body = document.body;
+
+		html.classList.add(MANAGED_OUTER_SCROLL_CLASS);
+		body.classList.add(MANAGED_OUTER_SCROLL_CLASS);
+
+		const showOuterScrollbars = () => {
+			html.classList.add(ACTIVE_OUTER_SCROLL_CLASS);
+			body.classList.add(ACTIVE_OUTER_SCROLL_CLASS);
+			if (scrollTimeout) {
+				clearTimeout(scrollTimeout);
+			}
+			scrollTimeout = setTimeout(() => {
+				html.classList.remove(ACTIVE_OUTER_SCROLL_CLASS);
+				body.classList.remove(ACTIVE_OUTER_SCROLL_CLASS);
+			}, 900);
+		};
+
+		window.addEventListener("scroll", showOuterScrollbars, { passive: true });
+		return () => {
+			window.removeEventListener("scroll", showOuterScrollbars);
+			html.classList.remove(ACTIVE_OUTER_SCROLL_CLASS);
+			body.classList.remove(ACTIVE_OUTER_SCROLL_CLASS);
+			html.classList.remove(MANAGED_OUTER_SCROLL_CLASS);
+			body.classList.remove(MANAGED_OUTER_SCROLL_CLASS);
+			if (scrollTimeout) {
+				clearTimeout(scrollTimeout);
+			}
+		};
+	});
+
 </script>
 
 <pie-section-player-base
@@ -258,7 +317,7 @@
 		{/if}
 
 		<div
-			class={`pie-section-player-layout-body ${toolbarInline ? "pie-section-player-layout-body--inline" : ""}`}
+			class={`pie-section-player-layout-body ${shouldRenderToolbar && toolbarInline ? "pie-section-player-layout-body--inline" : ""}`}
 		>
 			<div
 				class={`pie-section-player-split-content ${!hasPassages ? "pie-section-player-split-content--no-passages" : ""}`}
@@ -553,6 +612,47 @@
 
 	.pie-section-player-content-card-body {
 		padding: 1rem;
+	}
+
+	:global(html.pie-outer-scrollbars-managed),
+	:global(body.pie-outer-scrollbars-managed) {
+		scrollbar-width: auto;
+		scrollbar-color: transparent transparent;
+	}
+
+	:global(html.pie-outer-scrollbars-managed.pie-outer-scrolling),
+	:global(body.pie-outer-scrollbars-managed.pie-outer-scrolling) {
+		scrollbar-color: #c1c1c1 #f1f1f1;
+	}
+
+	:global(html.pie-outer-scrollbars-managed::-webkit-scrollbar),
+	:global(body.pie-outer-scrollbars-managed::-webkit-scrollbar) {
+		width: 0;
+		height: 0;
+		background: transparent;
+	}
+
+	:global(html.pie-outer-scrollbars-managed.pie-outer-scrolling::-webkit-scrollbar),
+	:global(body.pie-outer-scrollbars-managed.pie-outer-scrolling::-webkit-scrollbar) {
+		width: 8px;
+		height: 8px;
+	}
+
+	:global(html.pie-outer-scrollbars-managed.pie-outer-scrolling::-webkit-scrollbar-track),
+	:global(body.pie-outer-scrollbars-managed.pie-outer-scrolling::-webkit-scrollbar-track) {
+		background: #f1f1f1;
+		border-radius: 4px;
+	}
+
+	:global(html.pie-outer-scrollbars-managed.pie-outer-scrolling::-webkit-scrollbar-thumb),
+	:global(body.pie-outer-scrollbars-managed.pie-outer-scrolling::-webkit-scrollbar-thumb) {
+		background: #c1c1c1;
+		border-radius: 4px;
+	}
+
+	:global(html.pie-outer-scrollbars-managed.pie-outer-scrolling::-webkit-scrollbar-thumb:hover),
+	:global(body.pie-outer-scrollbars-managed.pie-outer-scrolling::-webkit-scrollbar-thumb:hover) {
+		background: #a1a1a1;
 	}
 
 	@media (max-width: 1100px) {

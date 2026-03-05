@@ -110,8 +110,6 @@ export interface SessionChangedResult {
 	eventDetail: {
 		itemId: string;
 		session: unknown;
-		sessionState: SectionSessionState;
-		itemSessions: Record<string, unknown>;
 		intent?: ItemSessionUpdateIntent;
 		complete?: boolean;
 		component?: string;
@@ -140,12 +138,107 @@ export interface SectionNavigationState {
 	isLoading: boolean;
 }
 
-export interface SectionControllerChangeEvent {
-	reason: "initialize" | "hydrate" | "session-change" | "navigation-change";
-	itemId?: string;
+export type SectionContentKind = "item" | "passage" | "rubric" | "unknown";
+
+interface SectionControllerEventBase {
+	type:
+		| "item-session-data-changed"
+		| "item-session-meta-changed"
+		| "item-selected"
+		| "content-loaded"
+		| "item-player-error"
+		| "item-complete-changed"
+		| "section-loading-complete"
+		| "section-items-complete-changed"
+		| "section-error";
 	currentItemIndex: number;
 	timestamp: number;
+	replayed?: boolean;
 }
+
+export interface ItemSessionDataChangedEvent extends SectionControllerEventBase {
+	type: "item-session-data-changed";
+	itemId: string;
+	canonicalItemId: string;
+	session: unknown;
+	intent?: ItemSessionUpdateIntent;
+	complete?: boolean;
+	component?: string;
+}
+
+export interface ItemSessionMetaChangedEvent extends SectionControllerEventBase {
+	type: "item-session-meta-changed";
+	itemId: string;
+	canonicalItemId: string;
+	complete?: boolean;
+	component?: string;
+}
+
+export interface ItemSelectedEvent extends SectionControllerEventBase {
+	type: "item-selected";
+	previousItemId: string;
+	currentItemId: string;
+	itemIndex: number;
+	totalItems: number;
+}
+
+export interface ContentLoadedEvent extends SectionControllerEventBase {
+	type: "content-loaded";
+	contentKind: SectionContentKind;
+	itemId: string;
+	canonicalItemId: string;
+	detail?: unknown;
+}
+
+export interface ItemPlayerErrorEvent extends SectionControllerEventBase {
+	type: "item-player-error";
+	contentKind: SectionContentKind;
+	itemId: string;
+	canonicalItemId: string;
+	error: unknown;
+}
+
+export interface ItemCompleteChangedEvent extends SectionControllerEventBase {
+	type: "item-complete-changed";
+	itemId: string;
+	canonicalItemId: string;
+	complete: boolean;
+	previousComplete: boolean;
+}
+
+export interface SectionLoadingCompleteEvent extends SectionControllerEventBase {
+	type: "section-loading-complete";
+	totalRegistered: number;
+	totalLoaded: number;
+}
+
+export interface SectionItemsCompleteChangedEvent
+	extends SectionControllerEventBase {
+	type: "section-items-complete-changed";
+	complete: boolean;
+	completedCount: number;
+	totalItems: number;
+}
+
+export interface SectionErrorEvent extends SectionControllerEventBase {
+	type: "section-error";
+	source: "item-player" | "section-runtime" | "toolkit" | "controller";
+	error: unknown;
+	itemId?: string;
+	canonicalItemId?: string;
+	contentKind?: SectionContentKind;
+}
+
+export type SectionControllerChangeEvent =
+	| ItemSessionDataChangedEvent
+	| ItemSessionMetaChangedEvent
+	| ItemSelectedEvent
+	| ContentLoadedEvent
+	| ItemPlayerErrorEvent
+	| ItemCompleteChangedEvent
+	| SectionLoadingCompleteEvent
+	| SectionItemsCompleteChangedEvent
+	| SectionErrorEvent;
 
 export type SectionControllerChangeListener = (
 	event: SectionControllerChangeEvent,

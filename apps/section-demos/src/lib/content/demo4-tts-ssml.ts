@@ -37,8 +37,8 @@ export const demo4Section: AssessmentSection = {
 				baseId: "passage-quadratic",
 				version: { major: 1, minor: 0, patch: 0 },
 				config: {
-					markup: `<div class="passage" style="padding: 1.5rem; line-height: 1.7; background: #f8f9fa; border-radius: 8px;">
-            <h2 style="margin-top: 0; color: #2c3e50; font-size: 1.5rem; margin-bottom: 1rem;">
+					markup: `<div class="passage">
+            <h2>
               Understanding Quadratic Equations
             </h2>
 
@@ -61,20 +61,20 @@ export const demo4Section: AssessmentSection = {
                 </prosody>
               </speak>
 
-              <p style="margin-bottom: 1rem;">
+              <p>
                 A <strong>quadratic equation</strong> is a polynomial equation of the
                 second degree. The general form is ax² + bx + c = 0, where a ≠ 0.
               </p>
 
-              <p style="margin-bottom: 1rem;">
+              <p>
                 To solve quadratic equations, we can use three main methods:
                 <strong>factoring</strong>, <strong>completing the square</strong>,
                 or the <strong>quadratic formula</strong>.
               </p>
             </div>
 
-            <div class="subsection" style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #dee2e6;">
-              <h3 style="color: #495057; font-size: 1.25rem; margin-bottom: 0.75rem;">
+            <div class="subsection">
+              <h3>
                 The Quadratic Formula
               </h3>
 
@@ -92,10 +92,10 @@ export const demo4Section: AssessmentSection = {
                   even when factoring is difficult or impossible.
                 </speak>
 
-                <p style="margin-bottom: 0.5rem;">
+                <p>
                   The quadratic formula is:
                 </p>
-                <p style="font-size: 1.25rem; text-align: center; font-family: 'Times New Roman', serif; margin: 1rem 0;">
+                <p>
                   x = (-b ± √(b² - 4ac)) / 2a
                 </p>
                 <p>
@@ -197,7 +197,7 @@ export const demo4Section: AssessmentSection = {
 							element: "multiple-choice",
 							prompt: `<div>
                 <p>What are the factors of the equation x² - 5x + 6 = 0?</p>
-                <p style="font-size: 0.9rem; color: #6c757d; margin-top: 0.5rem;">
+                <p>
                   <em>Note: This question has no embedded SSML - demonstrating plain text TTS fallback.</em>
                 </p>
               </div>`,
@@ -270,17 +270,17 @@ export const demo4Section: AssessmentSection = {
                 </speak>
 
                 <p>Write a detailed explanation of how to solve quadratic equations.</p>
-                <p style="margin-top: 1rem; padding: 1rem; background: #f8f9fa; border-radius: 4px;">
+                <p>
                   In your response, <strong>be sure to</strong>:
                 </p>
-                <ul style="margin-top: 0.5rem; line-height: 1.8;">
+                <ul>
                   <li>Clearly <strong>state</strong> the three main methods</li>
                   <li>Organize your ideas in writing</li>
                   <li>Develop your ideas in detail</li>
                   <li>Use evidence from the passage in your response</li>
                   <li>Use correct spelling, capitalization, punctuation, and grammar</li>
                 </ul>
-                <p style="margin-top: 1rem; font-size: 0.9rem; color: #6c757d;">
+                <p>
                   <em>Note: For mathematical notation, spell out equations.
                   For example, write x² as "x squared".</em>
                 </p>

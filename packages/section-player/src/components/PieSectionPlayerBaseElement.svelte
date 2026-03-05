@@ -23,8 +23,13 @@
 
 <script lang="ts">
 	import "@pie-players/pie-assessment-toolkit/components/pie-assessment-toolkit-element";
+	import "@pie-players/pie-tool-annotation-toolbar";
 	import {
 		createDefaultPersonalNeedsProfile,
+	} from "@pie-players/pie-assessment-toolkit";
+	import {
+		normalizeToolsConfig,
+		resolveToolsForLevel,
 	} from "@pie-players/pie-assessment-toolkit";
 	import { createEventDispatcher } from "svelte";
 	import { SectionController } from "../controllers/SectionController.js";
@@ -57,6 +62,7 @@
 	} = $props();
 
 	let toolkitElement = $state<any>(null);
+	let activeToolkitCoordinator = $state<any>(null);
 	let lastCompositionVersion = $state(-1);
 	type BaseSectionPlayerEvents = {
 		"composition-changed": { composition: SectionCompositionModel };
@@ -124,8 +130,39 @@
 		eventName: Exclude<keyof BaseSectionPlayerEvents, "composition-changed">,
 	): void {
 		const detail = (event as CustomEvent).detail as Record<string, unknown>;
+		if (eventName === "toolkit-ready" && detail?.coordinator) {
+			activeToolkitCoordinator = detail.coordinator;
+		}
 		emit(eventName, detail || ({} as Record<string, unknown>));
 	}
+
+	const normalizedToolsConfig = $derived.by(() =>
+		normalizeToolsConfig((effectiveTools || {}) as any),
+	);
+	const annotationToolbarPlacementEnabled = $derived.by(() => {
+		const levels: Array<"section" | "item" | "passage"> = [
+			"section",
+			"item",
+			"passage",
+		];
+		return levels.some((level) =>
+			resolveToolsForLevel(normalizedToolsConfig as any, level).includes(
+				"annotationToolbar",
+			),
+		);
+	});
+	const annotationToolbarProviderEnabled = $derived.by(() =>
+		activeToolkitCoordinator?.isToolEnabled?.("annotationToolbar") ??
+		((normalizedToolsConfig as any)?.providers?.annotationToolbar?.enabled !==
+			false),
+	);
+	const shouldRenderAnnotationToolbar = $derived(
+		Boolean(
+			activeToolkitCoordinator &&
+				annotationToolbarPlacementEnabled &&
+				annotationToolbarProviderEnabled,
+		),
+	);
 
 	$effect(() => {
 		if (!toolkitElement) return;
@@ -157,6 +194,13 @@
 	onruntime-owned={(event: Event) => handleToolkitEvent(event, "runtime-owned")}
 	onruntime-inherited={(event: Event) => handleToolkitEvent(event, "runtime-inherited")}
 >
+	{#if shouldRenderAnnotationToolbar}
+		<pie-tool-annotation-toolbar
+			enabled={true}
+			ttsService={activeToolkitCoordinator.ttsService}
+			highlightCoordinator={activeToolkitCoordinator.highlightCoordinator}
+		></pie-tool-annotation-toolbar>
+	{/if}
 	<slot></slot>
 </pie-assessment-toolkit>
 

@@ -28,12 +28,12 @@ export const demo3Section: AssessmentSection = {
 				baseId: "passage-photosynthesis",
 				version: { major: 1, minor: 0, patch: 0 },
 				config: {
-					markup: `<div class="passage" style="padding: 1.5rem; line-height: 1.7;">
-            <h2 style="margin-top: 0; color: #2c3e50; font-size: 1.5rem; margin-bottom: 1rem;">
+					markup: `<div class="passage">
+            <h2>
               Photosynthesis: The Foundation of Life on Earth
             </h2>
 
-            <p style="margin-bottom: 1rem;">
+            <p>
               Photosynthesis is one of the most important biological processes on our planet, serving as
               the foundation for nearly all life. This remarkable process allows plants, algae, and certain
               bacteria to convert light energy from the sun into chemical energy stored in glucose molecules.
@@ -41,7 +41,7 @@ export const demo3Section: AssessmentSection = {
               perfectly describes what happens during this vital reaction.
             </p>
 
-            <p style="margin-bottom: 1rem;">
+            <p>
               The process occurs primarily in plant leaves, specifically in specialized cellular structures
               called <strong>chloroplasts</strong>. Inside these chloroplasts, a green pigment called
               chlorophyll captures light energy. The plant then uses this energy to combine carbon dioxide
@@ -51,7 +51,7 @@ export const demo3Section: AssessmentSection = {
               written as: 6CO₂ + 6H₂O + light energy → C₆H₁₂O₆ + 6O₂.
             </p>
 
-            <p style="margin-bottom: 1rem;">
+            <p>
               The glucose produced through photosynthesis serves multiple purposes. Plants use some glucose
               immediately for energy to fuel their own growth and reproduction. They convert the rest into
               more complex molecules like cellulose (which forms cell walls) or starch (which serves as
@@ -60,7 +60,7 @@ export const demo3Section: AssessmentSection = {
               forming the base of the food chain.
             </p>
 
-            <p style="margin-bottom: 1rem;">
+            <p>
               The oxygen released during photosynthesis is equally crucial for life on Earth. Nearly all the
               oxygen in our atmosphere—the gas we breathe to survive—comes from photosynthesis. Ancient
               photosynthetic bacteria and plants spent billions of years transforming Earth's early atmosphere,
@@ -68,7 +68,7 @@ export const demo3Section: AssessmentSection = {
               history of photosynthesis, complex animal life as we know it could never have evolved.
             </p>
 
-            <p style="margin-bottom: 0;">
+            <p>
               Understanding photosynthesis is essential for addressing modern environmental challenges. As
               human activities release more carbon dioxide into the atmosphere, <strong>forests and oceans</strong>
               (home to countless photosynthetic organisms) play a critical role in <strong>absorbing this

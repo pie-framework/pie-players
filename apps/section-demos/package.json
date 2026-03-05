@@ -18,6 +18,7 @@
 		"@pie-players/pie-context": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*",
 		"@pie-players/pie-section-player": "workspace:*",
+		"@pie-players/pie-section-player-tools-event-debugger": "workspace:*",
 		"@pie-players/pie-section-player-tools-pnp-debugger": "workspace:*",
 		"@pie-players/pie-section-player-tools-session-debugger": "workspace:*",
 		"@pie-players/pie-theme": "workspace:*",

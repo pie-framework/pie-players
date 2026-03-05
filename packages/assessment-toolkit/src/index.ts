@@ -34,9 +34,15 @@ export {
 	connectAssessmentToolkitShellContext,
 } from "./context/runtime-context-consumer.js";
 export {
+	PIE_INTERNAL_CONTENT_LOADED_EVENT,
+	PIE_INTERNAL_ITEM_SESSION_CHANGED_EVENT,
+	PIE_INTERNAL_ITEM_PLAYER_ERROR_EVENT,
 	PIE_ITEM_SESSION_CHANGED_EVENT,
 	PIE_REGISTER_EVENT,
 	PIE_UNREGISTER_EVENT,
+	type InternalContentLoadedDetail,
+	type InternalItemSessionChangedDetail,
+	type InternalItemPlayerErrorDetail,
 	type ItemSessionChangedDetail,
 	type RuntimeRegistrationDetail,
 	type RuntimeRegistrationKind,

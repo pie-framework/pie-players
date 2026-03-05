@@ -21,7 +21,7 @@
         "lefthook": "^2.1.1",
         "playwright": "^1.58.2",
         "publint": "^0.3.17",
-        "turbo": "^2.8.12",
+        "turbo": "^2.8.13",
         "typescript": "^5.9.3",
       },
     },
@@ -45,7 +45,7 @@
     },
     "apps/item-demos": {
       "name": "@pie-players/item-demos",
-      "version": "0.1.6",
+      "version": "0.1.7",
       "dependencies": {
         "@pie-players/pie-item-player": "workspace:*",
         "@pie-players/pie-players-shared": "workspace:*",
@@ -93,12 +93,13 @@
     },
     "apps/section-demos": {
       "name": "@pie-players/section-demos",
-      "version": "0.1.12",
+      "version": "0.1.13",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-context": "workspace:*",
         "@pie-players/pie-players-shared": "workspace:*",
         "@pie-players/pie-section-player": "workspace:*",
+        "@pie-players/pie-section-player-tools-event-debugger": "workspace:*",
         "@pie-players/pie-section-player-tools-pnp-debugger": "workspace:*",
         "@pie-players/pie-section-player-tools-session-debugger": "workspace:*",
         "@pie-players/pie-theme": "workspace:*",
@@ -128,7 +129,7 @@
     },
     "packages/assessment-toolkit": {
       "name": "@pie-players/pie-assessment-toolkit",
-      "version": "0.2.9",
+      "version": "0.2.10",
       "dependencies": {
         "@pie-players/pie-calculator": "workspace:*",
         "@pie-players/pie-calculator-desmos": "workspace:*",
@@ -148,14 +149,14 @@
     },
     "packages/calculator": {
       "name": "@pie-players/pie-calculator",
-      "version": "0.1.4",
+      "version": "0.1.5",
       "devDependencies": {
         "typescript": "^5.7.2",
       },
     },
     "packages/calculator-desmos": {
       "name": "@pie-players/pie-calculator-desmos",
-      "version": "0.1.5",
+      "version": "0.1.6",
       "dependencies": {
         "@pie-players/pie-calculator": "workspace:*",
       },
@@ -165,7 +166,7 @@
     },
     "packages/calculator-mathjs": {
       "name": "@pie-players/pie-calculator-mathjs",
-      "version": "0.1.4",
+      "version": "0.1.5",
       "dependencies": {
         "@pie-players/pie-calculator": "workspace:*",
         "daisyui": "^5.5.18",
@@ -185,7 +186,7 @@
     },
     "packages/default-tool-loaders": {
       "name": "@pie-players/pie-default-tool-loaders",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "dependencies": {
         "@pie-players/pie-tool-annotation-toolbar": "workspace:*",
         "@pie-players/pie-tool-answer-eliminator": "workspace:*",
@@ -205,7 +206,7 @@
     },
     "packages/item-player": {
       "name": "@pie-players/pie-item-player",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "dependencies": {
         "@pie-players/pie-players-shared": "workspace:*",
         "@pie-players/pie-theme": "workspace:*",
@@ -228,7 +229,7 @@
     },
     "packages/math-renderer-core": {
       "name": "@pie-players/math-renderer-core",
-      "version": "0.1.4",
+      "version": "0.1.5",
       "devDependencies": {
         "@biomejs/biome": "^2.3.10",
         "typescript": "^5.9.3",
@@ -236,7 +237,7 @@
     },
     "packages/math-renderer-katex": {
       "name": "@pie-players/math-renderer-katex",
-      "version": "0.1.4",
+      "version": "0.1.5",
       "dependencies": {
         "@pie-players/math-renderer-core": "workspace:*",
         "katex": "^0.16.27",
@@ -248,7 +249,7 @@
     },
     "packages/math-renderer-mathjax": {
       "name": "@pie-players/math-renderer-mathjax",
-      "version": "0.1.4",
+      "version": "0.1.5",
       "dependencies": {
         "@pie-lib/math-rendering-module": "3.1.5",
         "@pie-players/math-renderer-core": "workspace:*",
@@ -260,7 +261,7 @@
     },
     "packages/pie-context": {
       "name": "@pie-players/pie-context",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "devDependencies": {
         "@biomejs/biome": "^2.3.10",
         "typescript": "^5.9.3",
@@ -268,7 +269,7 @@
     },
     "packages/players-shared": {
       "name": "@pie-players/pie-players-shared",
-      "version": "0.2.5",
+      "version": "0.2.6",
       "dependencies": {
         "@pie-players/math-renderer-core": "workspace:*",
         "@pie-players/math-renderer-mathjax": "workspace:*",
@@ -289,7 +290,7 @@
     },
     "packages/print-player": {
       "name": "@pie-players/pie-print-player",
-      "version": "0.1.4",
+      "version": "0.1.5",
       "dependencies": {
         "daisyui": "^5.5.18",
         "lit": "^3.2.1",
@@ -303,12 +304,13 @@
     },
     "packages/section-player": {
       "name": "@pie-players/pie-section-player",
-      "version": "0.2.12",
+      "version": "0.2.13",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-context": "workspace:*",
         "@pie-players/pie-item-player": "workspace:*",
         "@pie-players/pie-players-shared": "workspace:*",
+        "@pie-players/pie-tool-annotation-toolbar": "workspace:*",
         "@pie-players/pie-tool-answer-eliminator": "workspace:*",
         "@pie-players/pie-tool-calculator": "workspace:*",
         "@pie-players/pie-tool-graph": "workspace:*",
@@ -338,9 +340,27 @@
         "svelte": "^5.51.0",
       },
     },
+    "packages/section-player-tools-event-debugger": {
+      "name": "@pie-players/pie-section-player-tools-event-debugger",
+      "version": "0.1.0",
+      "dependencies": {
+        "@pie-players/pie-theme": "workspace:*",
+      },
+      "devDependencies": {
+        "@biomejs/biome": "^2.3.10",
+        "@sveltejs/vite-plugin-svelte": "^6.1.4",
+        "svelte": "^5.51.3",
+        "typescript": "^5.7.0",
+        "vite": "^7.0.8",
+        "vite-plugin-dts": "^4.5.3",
+      },
+      "peerDependencies": {
+        "svelte": "^5.51.0",
+      },
+    },
     "packages/section-player-tools-pnp-debugger": {
       "name": "@pie-players/pie-section-player-tools-pnp-debugger",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-theme": "workspace:*",
@@ -359,7 +379,7 @@
     },
     "packages/section-player-tools-session-debugger": {
       "name": "@pie-players/pie-section-player-tools-session-debugger",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "dependencies": {
         "@pie-players/pie-theme": "workspace:*",
       },
@@ -377,7 +397,7 @@
     },
     "packages/theme": {
       "name": "@pie-players/pie-theme",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "devDependencies": {
         "@biomejs/biome": "^2.3.10",
         "typescript": "^5.9.3",
@@ -385,7 +405,7 @@
     },
     "packages/theme-daisyui": {
       "name": "@pie-players/pie-theme-daisyui",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "dependencies": {
         "@pie-players/pie-theme": "workspace:*",
       },
@@ -396,7 +416,7 @@
     },
     "packages/tool-annotation-toolbar": {
       "name": "@pie-players/pie-tool-annotation-toolbar",
-      "version": "0.1.9",
+      "version": "0.1.10",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-players-shared": "workspace:*",
@@ -416,7 +436,7 @@
     },
     "packages/tool-answer-eliminator": {
       "name": "@pie-players/pie-tool-answer-eliminator",
-      "version": "0.2.9",
+      "version": "0.2.10",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-context": "workspace:*",
@@ -437,7 +457,7 @@
     },
     "packages/tool-calculator": {
       "name": "@pie-players/pie-tool-calculator",
-      "version": "0.1.9",
+      "version": "0.1.10",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-context": "workspace:*",
@@ -458,7 +478,7 @@
     },
     "packages/tool-calculator-inline": {
       "name": "@pie-players/pie-tool-calculator-inline",
-      "version": "0.1.6",
+      "version": "0.1.7",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-context": "workspace:*",
@@ -478,7 +498,7 @@
     },
     "packages/tool-color-scheme": {
       "name": "@pie-players/pie-tool-theme",
-      "version": "0.1.9",
+      "version": "0.1.10",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-context": "workspace:*",
@@ -500,7 +520,7 @@
     },
     "packages/tool-graph": {
       "name": "@pie-players/pie-tool-graph",
-      "version": "0.1.9",
+      "version": "0.1.10",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-context": "workspace:*",
@@ -521,7 +541,7 @@
     },
     "packages/tool-line-reader": {
       "name": "@pie-players/pie-tool-line-reader",
-      "version": "0.1.9",
+      "version": "0.1.10",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-context": "workspace:*",
@@ -542,7 +562,7 @@
     },
     "packages/tool-periodic-table": {
       "name": "@pie-players/pie-tool-periodic-table",
-      "version": "0.1.9",
+      "version": "0.1.10",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-context": "workspace:*",
@@ -563,7 +583,7 @@
     },
     "packages/tool-protractor": {
       "name": "@pie-players/pie-tool-protractor",
-      "version": "0.1.9",
+      "version": "0.1.10",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-context": "workspace:*",
@@ -585,7 +605,7 @@
     },
     "packages/tool-ruler": {
       "name": "@pie-players/pie-tool-ruler",
-      "version": "0.1.9",
+      "version": "0.1.10",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-context": "workspace:*",
@@ -607,7 +627,7 @@
     },
     "packages/tool-text-to-speech": {
       "name": "@pie-players/pie-tool-text-to-speech",
-      "version": "0.1.9",
+      "version": "0.1.10",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-players-shared": "workspace:*",
@@ -627,7 +647,7 @@
     },
     "packages/tool-tts-inline": {
       "name": "@pie-players/pie-tool-tts-inline",
-      "version": "0.1.6",
+      "version": "0.1.7",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-context": "workspace:*",
@@ -644,7 +664,7 @@
     },
     "packages/toolbars": {
       "name": "@pie-players/pie-toolbars",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-calculator-mathjs": "workspace:*",
@@ -666,14 +686,14 @@
     },
     "packages/tts": {
       "name": "@pie-players/pie-tts",
-      "version": "0.1.4",
+      "version": "0.1.5",
       "devDependencies": {
         "typescript": "^5.7.2",
       },
     },
     "packages/tts-client-server": {
       "name": "@pie-players/tts-client-server",
-      "version": "0.2.4",
+      "version": "0.2.5",
       "dependencies": {
         "@pie-players/pie-tts": "workspace:*",
       },
@@ -684,7 +704,7 @@
     },
     "packages/tts-server-core": {
       "name": "@pie-players/tts-server-core",
-      "version": "0.1.4",
+      "version": "0.1.5",
       "devDependencies": {
         "typescript": "^5.3.3",
         "vitest": "^1.0.4",
@@ -692,7 +712,7 @@
     },
     "packages/tts-server-google": {
       "name": "@pie-players/tts-server-google",
-      "version": "0.1.4",
+      "version": "0.1.5",
       "dependencies": {
         "@google-cloud/text-to-speech": "^5.0.0",
         "@pie-players/tts-server-core": "workspace:*",
@@ -704,7 +724,7 @@
     },
     "packages/tts-server-polly": {
       "name": "@pie-players/tts-server-polly",
-      "version": "0.1.4",
+      "version": "0.1.5",
       "dependencies": {
         "@aws-sdk/client-polly": "^3.700.0",
         "@pie-players/tts-server-core": "workspace:*",
@@ -716,7 +736,7 @@
     },
     "tools/cli": {
       "name": "@pie-players/pie-players-cli",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "bin": {
         "pie-players": "./bin/run.js",
       },
@@ -1092,6 +1112,8 @@
     "@pie-players/pie-print-player": ["@pie-players/pie-print-player@workspace:packages/print-player"],
 
     "@pie-players/pie-section-player": ["@pie-players/pie-section-player@workspace:packages/section-player"],
+
+    "@pie-players/pie-section-player-tools-event-debugger": ["@pie-players/pie-section-player-tools-event-debugger@workspace:packages/section-player-tools-event-debugger"],
 
     "@pie-players/pie-section-player-tools-pnp-debugger": ["@pie-players/pie-section-player-tools-pnp-debugger@workspace:packages/section-player-tools-pnp-debugger"],
 
@@ -2385,19 +2407,19 @@
 
     "tunnel-agent": ["tunnel-agent@0.6.0", "", { "dependencies": { "safe-buffer": "^5.0.1" } }, "sha512-McnNiV1l8RYeY8tBgEpuodCC1mLUdbSN+CYBL7kJsJNInOP8UjDDEwdk6Mw60vdLLrr5NHKZhMAOSrR2NZuQ+w=="],
 
-    "turbo": ["turbo@2.8.12", "", { "optionalDependencies": { "turbo-darwin-64": "2.8.12", "turbo-darwin-arm64": "2.8.12", "turbo-linux-64": "2.8.12", "turbo-linux-arm64": "2.8.12", "turbo-windows-64": "2.8.12", "turbo-windows-arm64": "2.8.12" }, "bin": { "turbo": "bin/turbo" } }, "sha512-auUAMLmi0eJhxDhQrxzvuhfEbICnVt0CTiYQYY8WyRJ5nwCDZxD0JG8bCSxT4nusI2CwJzmZAay5BfF6LmK7Hw=="],
+    "turbo": ["turbo@2.8.13", "", { "optionalDependencies": { "turbo-darwin-64": "2.8.13", "turbo-darwin-arm64": "2.8.13", "turbo-linux-64": "2.8.13", "turbo-linux-arm64": "2.8.13", "turbo-windows-64": "2.8.13", "turbo-windows-arm64": "2.8.13" }, "bin": { "turbo": "bin/turbo" } }, "sha512-nyM99hwFB9/DHaFyKEqatdayGjsMNYsQ/XBNO6MITc7roncZetKb97MpHxWf3uiU+LB9c9HUlU3Jp2Ixei2k1A=="],
 
-    "turbo-darwin-64": ["turbo-darwin-64@2.8.12", "", { "os": "darwin", "cpu": "x64" }, "sha512-EiHJmW2MeQQx+21x8hjMHw/uPhXt9PIxvDrxzOtyVwrXzL0tQmsxtO4qHf2l7uA+K6PUJ4+TjY1MHZDuCvWXrw=="],
+    "turbo-darwin-64": ["turbo-darwin-64@2.8.13", "", { "os": "darwin", "cpu": "x64" }, "sha512-PmOvodQNiOj77+Zwoqku70vwVjKzL34RTNxxoARjp5RU5FOj/CGiC6vcDQhNtFPUOWSAaogHF5qIka9TBhX4XA=="],
 
-    "turbo-darwin-arm64": ["turbo-darwin-arm64@2.8.12", "", { "os": "darwin", "cpu": "arm64" }, "sha512-cbqqGN0vd7ly2TeuaM8k9AK9u1CABO4kBA5KPSqovTiLL3sORccn/mZzJSbvQf0EsYRfU34MgW5FotfwW3kx8Q=="],
+    "turbo-darwin-arm64": ["turbo-darwin-arm64@2.8.13", "", { "os": "darwin", "cpu": "arm64" }, "sha512-kI+anKcLIM4L8h+NsM7mtAUpElkCOxv5LgiQVQR8BASyDFfc8Efj5kCk3cqxuxOvIqx0sLfCX7atrHQ2kwuNJQ=="],
 
-    "turbo-linux-64": ["turbo-linux-64@2.8.12", "", { "os": "linux", "cpu": "x64" }, "sha512-jXKw9j4r4q6s0goSXuKI3aKbQK2qiNeP25lGGEnq018TM6SWRW1CCpPMxyG91aCKrub7wDm/K45sGNT4ZFBcFQ=="],
+    "turbo-linux-64": ["turbo-linux-64@2.8.13", "", { "os": "linux", "cpu": "x64" }, "sha512-j29KnQhHyzdzgCykBFeBqUPS4Wj7lWMnZ8CHqytlYDap4Jy70l4RNG46pOL9+lGu6DepK2s1rE86zQfo0IOdPw=="],
 
-    "turbo-linux-arm64": ["turbo-linux-arm64@2.8.12", "", { "os": "linux", "cpu": "arm64" }, "sha512-BRJCMdyXjyBoL0GYpvj9d2WNfMHwc3tKmJG5ATn2Efvil9LsiOsd/93/NxDqW0jACtHFNVOPnd/CBwXRPiRbwA=="],
+    "turbo-linux-arm64": ["turbo-linux-arm64@2.8.13", "", { "os": "linux", "cpu": "arm64" }, "sha512-OEl1YocXGZDRDh28doOUn49QwNe82kXljO1HXApjU0LapkDiGpfl3jkAlPKxEkGDSYWc8MH5Ll8S16Rf5tEBYg=="],
 
-    "turbo-windows-64": ["turbo-windows-64@2.8.12", "", { "os": "win32", "cpu": "x64" }, "sha512-vyFOlpFFzQFkikvSVhVkESEfzIopgs2J7J1rYvtSwSHQ4zmHxkC95Q8Kjkus8gg+8X2mZyP1GS5jirmaypGiPw=="],
+    "turbo-windows-64": ["turbo-windows-64@2.8.13", "", { "os": "win32", "cpu": "x64" }, "sha512-717bVk1+Pn2Jody7OmWludhEirEe0okoj1NpRbSm5kVZz/yNN/jfjbxWC6ilimXMz7xoMT3IDfQFJsFR3PMANA=="],
 
-    "turbo-windows-arm64": ["turbo-windows-arm64@2.8.12", "", { "os": "win32", "cpu": "arm64" }, "sha512-9nRnlw5DF0LkJClkIws1evaIF36dmmMEO84J5Uj4oQ8C0QTHwlH7DNe5Kq2Jdmu8GXESCNDNuUYG8Cx6W/vm3g=="],
+    "turbo-windows-arm64": ["turbo-windows-arm64@2.8.13", "", { "os": "win32", "cpu": "arm64" }, "sha512-R819HShLIT0Wj6zWVnIsYvSNtRNj1q9VIyaUz0P24SMcLCbQZIm1sV09F4SDbg+KCCumqD2lcaR2UViQ8SnUJA=="],
 
     "type-detect": ["type-detect@4.1.0", "", {}, "sha512-Acylog8/luQ8L7il+geoSxhEkazvkslg7PSNKOX59mbB9cOveP5aq9h74Y7YU8yDpJwetzQQrfIwtf4Wp4LKcw=="],
 
@@ -2790,6 +2812,8 @@
     "@pie-players/pie-print-player/vite": ["vite@6.4.1", "", { "dependencies": { "esbuild": "^0.25.0", "fdir": "^6.4.4", "picomatch": "^4.0.2", "postcss": "^8.5.3", "rollup": "^4.34.9", "tinyglobby": "^0.2.13" }, "optionalDependencies": { "fsevents": "~2.3.3" }, "peerDependencies": { "@types/node": "^18.0.0 || ^20.0.0 || >=22.0.0", "jiti": ">=1.21.0", "less": "*", "lightningcss": "^1.21.0", "sass": "*", "sass-embedded": "*", "stylus": "*", "sugarss": "*", "terser": "^5.16.0", "tsx": "^4.8.1", "yaml": "^2.4.2" }, "optionalPeers": ["@types/node", "jiti", "less", "lightningcss", "sass", "sass-embedded", "stylus", "sugarss", "terser", "tsx", "yaml"], "bin": { "vite": "bin/vite.js" } }, "sha512-+Oxm7q9hDoLMyJOYfUYBuHQo+dkAloi33apOPP56pzj+vsdJDzr+j1NISE5pyaAuKL4A3UD34qd0lx5+kfKp2g=="],
 
     "@pie-players/pie-section-player/@biomejs/biome": ["@biomejs/biome@2.3.13", "", { "optionalDependencies": { "@biomejs/cli-darwin-arm64": "2.3.13", "@biomejs/cli-darwin-x64": "2.3.13", "@biomejs/cli-linux-arm64": "2.3.13", "@biomejs/cli-linux-arm64-musl": "2.3.13", "@biomejs/cli-linux-x64": "2.3.13", "@biomejs/cli-linux-x64-musl": "2.3.13", "@biomejs/cli-win32-arm64": "2.3.13", "@biomejs/cli-win32-x64": "2.3.13" }, "bin": { "biome": "bin/biome" } }, "sha512-Fw7UsV0UAtWIBIm0M7g5CRerpu1eKyKAXIazzxhbXYUyMkwNrkX/KLkGI7b+uVDQ5cLUMfOC9vR60q9IDYDstA=="],
+
+    "@pie-players/pie-section-player-tools-event-debugger/@biomejs/biome": ["@biomejs/biome@2.3.13", "", { "optionalDependencies": { "@biomejs/cli-darwin-arm64": "2.3.13", "@biomejs/cli-darwin-x64": "2.3.13", "@biomejs/cli-linux-arm64": "2.3.13", "@biomejs/cli-linux-arm64-musl": "2.3.13", "@biomejs/cli-linux-x64": "2.3.13", "@biomejs/cli-linux-x64-musl": "2.3.13", "@biomejs/cli-win32-arm64": "2.3.13", "@biomejs/cli-win32-x64": "2.3.13" }, "bin": { "biome": "bin/biome" } }, "sha512-Fw7UsV0UAtWIBIm0M7g5CRerpu1eKyKAXIazzxhbXYUyMkwNrkX/KLkGI7b+uVDQ5cLUMfOC9vR60q9IDYDstA=="],
 
     "@pie-players/pie-section-player-tools-pnp-debugger/@biomejs/biome": ["@biomejs/biome@2.3.13", "", { "optionalDependencies": { "@biomejs/cli-darwin-arm64": "2.3.13", "@biomejs/cli-darwin-x64": "2.3.13", "@biomejs/cli-linux-arm64": "2.3.13", "@biomejs/cli-linux-arm64-musl": "2.3.13", "@biomejs/cli-linux-x64": "2.3.13", "@biomejs/cli-linux-x64-musl": "2.3.13", "@biomejs/cli-win32-arm64": "2.3.13", "@biomejs/cli-win32-x64": "2.3.13" }, "bin": { "biome": "bin/biome" } }, "sha512-Fw7UsV0UAtWIBIm0M7g5CRerpu1eKyKAXIazzxhbXYUyMkwNrkX/KLkGI7b+uVDQ5cLUMfOC9vR60q9IDYDstA=="],
 
@@ -3294,6 +3318,22 @@
     "@pie-players/pie-print-player/vite/fsevents": ["fsevents@2.3.3", "", { "os": "darwin" }, "sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw=="],
 
     "@pie-players/pie-print-player/vite/rollup": ["rollup@4.54.0", "", { "dependencies": { "@types/estree": "1.0.8" }, "optionalDependencies": { "@rollup/rollup-android-arm-eabi": "4.54.0", "@rollup/rollup-android-arm64": "4.54.0", "@rollup/rollup-darwin-arm64": "4.54.0", "@rollup/rollup-darwin-x64": "4.54.0", "@rollup/rollup-freebsd-arm64": "4.54.0", "@rollup/rollup-freebsd-x64": "4.54.0", "@rollup/rollup-linux-arm-gnueabihf": "4.54.0", "@rollup/rollup-linux-arm-musleabihf": "4.54.0", "@rollup/rollup-linux-arm64-gnu": "4.54.0", "@rollup/rollup-linux-arm64-musl": "4.54.0", "@rollup/rollup-linux-loong64-gnu": "4.54.0", "@rollup/rollup-linux-ppc64-gnu": "4.54.0", "@rollup/rollup-linux-riscv64-gnu": "4.54.0", "@rollup/rollup-linux-riscv64-musl": "4.54.0", "@rollup/rollup-linux-s390x-gnu": "4.54.0", "@rollup/rollup-linux-x64-gnu": "4.54.0", "@rollup/rollup-linux-x64-musl": "4.54.0", "@rollup/rollup-openharmony-arm64": "4.54.0", "@rollup/rollup-win32-arm64-msvc": "4.54.0", "@rollup/rollup-win32-ia32-msvc": "4.54.0", "@rollup/rollup-win32-x64-gnu": "4.54.0", "@rollup/rollup-win32-x64-msvc": "4.54.0", "fsevents": "~2.3.2" }, "bin": { "rollup": "dist/bin/rollup" } }, "sha512-3nk8Y3a9Ea8szgKhinMlGMhGMw89mqule3KWczxhIzqudyHdCIOHw8WJlj/r329fACjKLEh13ZSk7oE22kyeIw=="],
+
+    "@pie-players/pie-section-player-tools-event-debugger/@biomejs/biome/@biomejs/cli-darwin-arm64": ["@biomejs/cli-darwin-arm64@2.3.13", "", { "os": "darwin", "cpu": "arm64" }, "sha512-0OCwP0/BoKzyJHnFdaTk/i7hIP9JHH9oJJq6hrSCPmJPo8JWcJhprK4gQlhFzrwdTBAW4Bjt/RmCf3ZZe59gwQ=="],
+
+    "@pie-players/pie-section-player-tools-event-debugger/@biomejs/biome/@biomejs/cli-darwin-x64": ["@biomejs/cli-darwin-x64@2.3.13", "", { "os": "darwin", "cpu": "x64" }, "sha512-AGr8OoemT/ejynbIu56qeil2+F2WLkIjn2d8jGK1JkchxnMUhYOfnqc9sVzcRxpG9Ycvw4weQ5sprRvtb7Yhcw=="],
+
+    "@pie-players/pie-section-player-tools-event-debugger/@biomejs/biome/@biomejs/cli-linux-arm64": ["@biomejs/cli-linux-arm64@2.3.13", "", { "os": "linux", "cpu": "arm64" }, "sha512-xvOiFkrDNu607MPMBUQ6huHmBG1PZLOrqhtK6pXJW3GjfVqJg0Z/qpTdhXfcqWdSZHcT+Nct2fOgewZvytESkw=="],
+
+    "@pie-players/pie-section-player-tools-event-debugger/@biomejs/biome/@biomejs/cli-linux-arm64-musl": ["@biomejs/cli-linux-arm64-musl@2.3.13", "", { "os": "linux", "cpu": "arm64" }, "sha512-TUdDCSY+Eo/EHjhJz7P2GnWwfqet+lFxBZzGHldrvULr59AgahamLs/N85SC4+bdF86EhqDuuw9rYLvLFWWlXA=="],
+
+    "@pie-players/pie-section-player-tools-event-debugger/@biomejs/biome/@biomejs/cli-linux-x64": ["@biomejs/cli-linux-x64@2.3.13", "", { "os": "linux", "cpu": "x64" }, "sha512-s+YsZlgiXNq8XkgHs6xdvKDFOj/bwTEevqEY6rC2I3cBHbxXYU1LOZstH3Ffw9hE5tE1sqT7U23C00MzkXztMw=="],
+
+    "@pie-players/pie-section-player-tools-event-debugger/@biomejs/biome/@biomejs/cli-linux-x64-musl": ["@biomejs/cli-linux-x64-musl@2.3.13", "", { "os": "linux", "cpu": "x64" }, "sha512-0bdwFVSbbM//Sds6OjtnmQGp4eUjOTt6kHvR/1P0ieR9GcTUAlPNvPC3DiavTqq302W34Ae2T6u5VVNGuQtGlQ=="],
+
+    "@pie-players/pie-section-player-tools-event-debugger/@biomejs/biome/@biomejs/cli-win32-arm64": ["@biomejs/cli-win32-arm64@2.3.13", "", { "os": "win32", "cpu": "arm64" }, "sha512-QweDxY89fq0VvrxME+wS/BXKmqMrOTZlN9SqQ79kQSIc3FrEwvW/PvUegQF6XIVaekncDykB5dzPqjbwSKs9DA=="],
+
+    "@pie-players/pie-section-player-tools-event-debugger/@biomejs/biome/@biomejs/cli-win32-x64": ["@biomejs/cli-win32-x64@2.3.13", "", { "os": "win32", "cpu": "x64" }, "sha512-trDw2ogdM2lyav9WFQsdsfdVy1dvZALymRpgmWsvSez0BJzBjulhOT/t+wyKeh3pZWvwP3VMs1SoOKwO3wecMQ=="],
 
     "@pie-players/pie-section-player-tools-pnp-debugger/@biomejs/biome/@biomejs/cli-darwin-arm64": ["@biomejs/cli-darwin-arm64@2.3.13", "", { "os": "darwin", "cpu": "arm64" }, "sha512-0OCwP0/BoKzyJHnFdaTk/i7hIP9JHH9oJJq6hrSCPmJPo8JWcJhprK4gQlhFzrwdTBAW4Bjt/RmCf3ZZe59gwQ=="],
 

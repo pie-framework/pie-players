@@ -43,6 +43,7 @@ describe("SectionController canonical view models", () => {
 		expect(
 			controller.getCanonicalItemViewModel("runtime-item-1")?.canonicalItemId,
 		).toBe("canonical-item-1");
+		expect(controller.getCanonicalItemId("runtime-item-1")).toBe("canonical-item-1");
 	});
 
 	test("exposes canonical session view model", async () => {

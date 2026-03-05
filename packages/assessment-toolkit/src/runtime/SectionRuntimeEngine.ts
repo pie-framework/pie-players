@@ -6,6 +6,38 @@ import { RuntimeRegistry } from "./RuntimeRegistry.js";
 interface RuntimeController extends SectionControllerHandle {
 	getCompositionModel?: () => unknown;
 	getCanonicalItemId?: (itemId: string) => string;
+	handleContentLoaded?: (args: {
+		itemId: string;
+		canonicalItemId?: string;
+		contentKind?: string;
+		detail?: unknown;
+		timestamp?: number;
+	}) => void;
+	handleContentRegistered?: (args: {
+		itemId: string;
+		canonicalItemId?: string;
+		contentKind?: string;
+	}) => void;
+	handleContentUnregistered?: (args: {
+		itemId: string;
+		canonicalItemId?: string;
+		contentKind?: string;
+	}) => void;
+	handleItemPlayerError?: (args: {
+		itemId: string;
+		canonicalItemId?: string;
+		contentKind?: string;
+		error: unknown;
+		timestamp?: number;
+	}) => void;
+	reportSectionError?: (args: {
+		source: "item-player" | "section-runtime" | "toolkit" | "controller";
+		error: unknown;
+		itemId?: string;
+		canonicalItemId?: string;
+		contentKind?: string;
+		timestamp?: number;
+	}) => void;
 	handleItemSessionChanged?: (
 		itemId: string,
 		session: unknown,
@@ -78,6 +110,53 @@ export class SectionRuntimeEngine {
 	getCanonicalItemId(itemId: string): string {
 		const map = this.registry.getCanonicalIdMap();
 		return map[itemId] || this.controller?.getCanonicalItemId?.(itemId) || itemId;
+	}
+
+	handleContentRegistered(detail: RuntimeRegistrationDetail): void {
+		this.controller?.handleContentRegistered?.({
+			itemId: detail.itemId,
+			canonicalItemId: detail.canonicalItemId || detail.itemId,
+			contentKind: detail.contentKind || detail.kind,
+		});
+	}
+
+	handleContentUnregistered(detail: RuntimeRegistrationDetail): void {
+		this.controller?.handleContentUnregistered?.({
+			itemId: detail.itemId,
+			canonicalItemId: detail.canonicalItemId || detail.itemId,
+			contentKind: detail.contentKind || detail.kind,
+		});
+	}
+
+	handleContentLoaded(args: {
+		itemId: string;
+		canonicalItemId?: string;
+		contentKind?: string;
+		detail?: unknown;
+		timestamp?: number;
+	}): void {
+		this.controller?.handleContentLoaded?.(args);
+	}
+
+	handleItemPlayerError(args: {
+		itemId: string;
+		canonicalItemId?: string;
+		contentKind?: string;
+		error: unknown;
+		timestamp?: number;
+	}): void {
+		this.controller?.handleItemPlayerError?.(args);
+	}
+
+	reportSectionError(args: {
+		source: "item-player" | "section-runtime" | "toolkit" | "controller";
+		error: unknown;
+		itemId?: string;
+		canonicalItemId?: string;
+		contentKind?: string;
+		timestamp?: number;
+	}): void {
+		this.controller?.reportSectionError?.(args);
 	}
 
 	handleItemSessionChanged(itemId: string, session: unknown): unknown {

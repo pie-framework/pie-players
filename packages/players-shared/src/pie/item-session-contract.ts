@@ -18,6 +18,20 @@ export type NormalizedItemSessionChange = {
 
 const DEFAULT_SESSION_ID = "";
 
+function areSessionContainersEqual(
+	left: ItemSessionContainer | null,
+	right: ItemSessionContainer | null,
+): boolean {
+	if (!left && !right) return true;
+	if (!left || !right) return false;
+	if ((left.id || "") !== (right.id || "")) return false;
+	try {
+		return JSON.stringify(left.data || []) === JSON.stringify(right.data || []);
+	} catch {
+		return false;
+	}
+}
+
 export function normalizeItemSessionContainer(
 	input: unknown,
 	fallbackSessionId: string = DEFAULT_SESSION_ID,
@@ -122,9 +136,44 @@ export function normalizeItemSessionChange(args: {
 
 	const candidate = actualSession as Record<string, unknown>;
 	if (Array.isArray(candidate.data)) {
+		const normalizedCandidate = normalizeItemSessionContainer(candidate, safeItemId);
+		const previousNormalized =
+			args.previousItemSession !== undefined
+				? normalizeItemSessionContainer(args.previousItemSession, safeItemId)
+				: null;
+		const sessionDetailKeys = Object.keys(sessionDetail);
+		const metadataWithSessionOnly =
+			sessionDetailKeys.length > 0 &&
+			sessionDetailKeys.every(
+				(key) =>
+					key === "session" ||
+					key === "complete" ||
+					key === "component" ||
+					key === "timestamp" ||
+					key === "sourceRuntimeId",
+			);
+		if (
+			metadataWithSessionOnly &&
+			previousNormalized &&
+			areSessionContainersEqual(normalizedCandidate, previousNormalized)
+		) {
+			return {
+				itemId: safeItemId,
+				session: null,
+				intent: "metadata-only",
+				component:
+					typeof sessionDetail.component === "string"
+						? sessionDetail.component
+						: undefined,
+				complete:
+					typeof sessionDetail.complete === "boolean"
+						? sessionDetail.complete
+						: undefined,
+			};
+		}
 		return {
 			itemId: safeItemId,
-			session: normalizeItemSessionContainer(candidate, safeItemId),
+			session: normalizedCandidate,
 			intent: "replace-item-session",
 			component:
 				typeof sessionDetail.component === "string" ? sessionDetail.component : undefined,

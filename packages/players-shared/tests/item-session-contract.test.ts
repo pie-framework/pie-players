@@ -44,6 +44,24 @@ describe("normalizeItemSessionChange", () => {
 			data: [{ id: "el-1", value: "B", meta: true }],
 		});
 	});
+
+	test("treats unchanged wrapped session with metadata fields as metadata-only", () => {
+		const previousSession = {
+			id: "item-1",
+			data: [{ id: "choice", value: "A" }],
+		};
+		const out = normalizeItemSessionChange({
+			itemId: "item-1",
+			sessionDetail: {
+				session: previousSession,
+				complete: false,
+				component: "multiple-choice",
+			},
+			previousItemSession: previousSession,
+		});
+		expect(out.intent).toBe("metadata-only");
+		expect(out.session).toBeNull();
+	});
 });
 
 describe("hasResponseValue", () => {

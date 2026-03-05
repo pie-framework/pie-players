@@ -83,12 +83,14 @@ export class SectionSessionService {
 		) as Record<string, any>;
 
 		const fallbackSession =
-			nextItemSessions[safeItemId] ||
-			normalizedSession ||
-			(args.sessionDetail && typeof args.sessionDetail === "object"
-				? ((args.sessionDetail as Record<string, unknown>).session ??
-					args.sessionDetail)
-				: { id: safeItemId, data: [] });
+			normalizedChange.intent === "metadata-only"
+				? null
+				: nextItemSessions[safeItemId] ||
+					normalizedSession ||
+					(args.sessionDetail && typeof args.sessionDetail === "object"
+						? ((args.sessionDetail as Record<string, unknown>).session ??
+							args.sessionDetail)
+						: { id: safeItemId, data: [] });
 
 		return {
 			testAttemptSession: nextTestAttemptSession,
@@ -97,9 +99,6 @@ export class SectionSessionService {
 			eventDetail: {
 				itemId: safeItemId,
 				session: fallbackSession,
-				sessionState: this.toSessionState(nextTestAttemptSession),
-				itemSessions: (nextTestAttemptSession.itemSessions ||
-					{}) as Record<string, unknown>,
 				intent: normalizedChange.intent as ItemSessionUpdateIntent,
 				complete: normalizedChange.complete,
 				component: normalizedChange.component,

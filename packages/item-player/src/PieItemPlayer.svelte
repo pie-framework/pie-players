@@ -27,6 +27,7 @@
 			onDeleteImage: { type: "Object", reflect: false },
 			onInsertSound: { type: "Object", reflect: false },
 			onDeleteSound: { type: "Object", reflect: false },
+			dispatchOnParent: { attribute: "dispatch-on-parent", type: "Boolean" },
 		},
 	}}
 />
@@ -110,6 +111,7 @@
 		onDeleteImage = null as ((src: string, done: (err?: Error) => void) => void) | null,
 		onInsertSound = null as ((handler: SoundHandler) => void) | null,
 		onDeleteSound = null as ((src: string, done: (err?: Error) => void) => void) | null,
+		dispatchOnParent = false,
 	} = $props();
 
 	const isBrowser = typeof window !== "undefined" && typeof document !== "undefined";
@@ -414,8 +416,11 @@
 		// Dispatch from the custom element host so direct listeners on <pie-item-player>
 		// receive updates (item-demos attaches listeners on the element itself).
 		hostElement?.dispatchEvent(newEvent);
-		// Also dispatch on parent for compatibility with integrations that relied on this.
-		hostElement?.parentElement?.dispatchEvent(newEvent);
+		// Optional legacy compatibility mode for integrations that listened on parent
+		// instead of the custom element host.
+		if (dispatchOnParent) {
+			hostElement?.parentElement?.dispatchEvent(newEvent);
+		}
 	};
 
 	const handleSessionChanged = (detail: unknown) => {

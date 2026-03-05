@@ -5,6 +5,7 @@
 	} from '@pie-players/pie-assessment-toolkit';
 	import '@pie-players/pie-section-player/components/section-player-splitpane-element';
 	import '@pie-players/pie-section-player/components/section-player-vertical-element';
+	import '@pie-players/pie-section-player-tools-event-debugger';
 	import '@pie-players/pie-section-player-tools-session-debugger';
 	import '@pie-players/pie-section-player-tools-pnp-debugger';
 	import '@pie-players/pie-theme';
@@ -97,11 +98,13 @@ let selectedDaisyTheme = $state<string>(DEFAULT_DAISY_THEME);
 let isThemeSyncing = $state(false);
 	let attemptId = $state(getOrCreateAttemptId());
 	let showSessionPanel = $state(false);
+	let showEventPanel = $state(false);
 	let showSourcePanel = $state(false);
 	let showPnpPanel = $state(false);
 	let showTtsPanel = $state(false);
 	let toolkitCoordinator: any = $state(null);
 	let sessionDebuggerElement: any = $state(null);
+	let eventDebuggerElement: any = $state(null);
 	let pnpDebuggerElement: any = $state(null);
 	let preloadedReady = $state(false);
 	let preloadedError = $state<string | null>(null);
@@ -408,6 +411,13 @@ let isTtsSsmlDemo = $derived(
 		});
 	});
 
+	$effect(() => {
+		if (!eventDebuggerElement) return;
+		return wireCloseListener(eventDebuggerElement, () => {
+			showEventPanel = false;
+		});
+	});
+
 	async function resetSessions() {
 		try {
 			await toolkitCoordinator?.disposeSectionController?.({
@@ -442,6 +452,7 @@ let isTtsSsmlDemo = $derived(
 			{candidateHref}
 			{scorerHref}
 			{showSessionPanel}
+			{showEventPanel}
 			{showSourcePanel}
 			{showPnpPanel}
 			{showTtsPanel}
@@ -451,6 +462,7 @@ let isTtsSsmlDemo = $derived(
 			onSetSplitpaneLayout={() => (layoutType = 'splitpane')}
 			onSetVerticalLayout={() => (layoutType = 'vertical')}
 			onToggleSessionPanel={() => (showSessionPanel = !showSessionPanel)}
+			onToggleEventPanel={() => (showEventPanel = !showEventPanel)}
 			onToggleSourcePanel={() => (showSourcePanel = !showSourcePanel)}
 			onTogglePnpPanel={() => (showPnpPanel = !showPnpPanel)}
 			onToggleTtsPanel={() => (showTtsPanel = !showTtsPanel)}
@@ -522,7 +534,10 @@ let isTtsSsmlDemo = $derived(
 
 <DemoOverlays
 	{toolkitCoordinator}
+	sectionId={sessionPanelSectionId}
+	{attemptId}
 	{showSessionPanel}
+	{showEventPanel}
 	{showSourcePanel}
 	{showPnpPanel}
 	{showTtsPanel}
@@ -530,6 +545,7 @@ let isTtsSsmlDemo = $derived(
 	onCloseSourcePanel={() => (showSourcePanel = false)}
 	onCloseTtsPanel={() => (showTtsPanel = false)}
 	bind:sessionDebuggerElement
+	bind:eventDebuggerElement
 	bind:pnpDebuggerElement
 />
 

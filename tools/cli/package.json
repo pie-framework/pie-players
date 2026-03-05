@@ -1,6 +1,7 @@
 {
 	"name": "@pie-players/pie-players-cli",
 	"version": "0.1.3",
+	"private": true,
 	"description": "CLI tools for pie-players",
 	"type": "module",
 	"license": "MIT",
@@ -8,9 +9,6 @@
 		"type": "git",
 		"url": "git+https://github.com/pie-framework/pie-players.git",
 		"directory": "tools/cli"
-	},
-	"publishConfig": {
-		"access": "public"
 	},
 	"bin": {
 		"pie-players": "./bin/run.js"

@@ -20,8 +20,8 @@ function parseArgs(argv) {
 		else if (a === "--dry-run") args.dryRun = true;
 		else if (a === "--help" || a === "-h") {
 			console.log(`Usage:
-  node scripts/preloaded-player/publish-changed.mjs --base <sha> --head <sha>
-  node scripts/preloaded-player/publish-changed.mjs --all
+  bun scripts/preloaded-player/publish-changed.mjs --base <sha> --head <sha>
+  bun scripts/preloaded-player/publish-changed.mjs --all
 `);
 			process.exit(0);
 		}

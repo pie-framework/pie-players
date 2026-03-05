@@ -53,7 +53,7 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.publishAll }}" = "true" ]; then
-            node scripts/preloaded-player/publish-changed.mjs --all
+            bun scripts/preloaded-player/publish-changed.mjs --all
           else
-            node scripts/preloaded-player/publish-changed.mjs --base "${{ github.event.before }}" --head "${{ github.sha }}"
+            bun scripts/preloaded-player/publish-changed.mjs --base "${{ github.event.before }}" --head "${{ github.sha }}"
           fi

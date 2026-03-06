@@ -41,7 +41,7 @@
 		"package.json"
 	],
 	"peerDependencies": {
-		"svelte": "^5.51.0"
+		"svelte": ">=5 <6"
 	},
 	"license": "MIT",
 	"unpkg": "./dist/index.js",

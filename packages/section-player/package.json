@@ -47,7 +47,7 @@
 	},
 	"peerDependencies": {
 		"@pie-players/pie-tool-annotation-toolbar": "workspace:*",
-		"svelte": "^5.51.0"
+		"svelte": ">=5 <6"
 	},
 	"peerDependenciesMeta": {
 		"@pie-players/pie-tool-annotation-toolbar": {

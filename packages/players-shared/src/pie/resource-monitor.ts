@@ -32,12 +32,12 @@ export type ResourceMonitorConfig = {
 	 * The provider handles instrumentation gracefully - if New Relic is not available,
 	 * it will simply not track events (no errors thrown).
 	 *
-	 * To use a different provider (DataDog, Dynatrace, etc.), pass it here:
+	 * To use a different provider, pass it here:
 	 *
 	 * @example
 	 * ```typescript
-	 * const provider = new DataDogInstrumentationProvider();
-	 * await provider.initialize({ providerSettings: { ... } });
+	 * const provider = new ConsoleInstrumentationProvider();
+	 * await provider.initialize({ debug: true });
 	 *
 	 * const monitor = new ResourceMonitor({
 	 *   trackPageActions: true,

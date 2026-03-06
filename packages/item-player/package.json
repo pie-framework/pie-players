@@ -34,7 +34,7 @@
 		"lint": "biome check ."
 	},
 	"peerDependencies": {
-		"svelte": "^5.51.0"
+		"svelte": ">=5 <6"
 	},
 	"dependencies": {
 		"@pie-players/pie-players-shared": "workspace:*",

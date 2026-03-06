@@ -67,7 +67,7 @@ export default defineConfig({
 		minify: "esbuild",
 		sourcemap: false,
 		rollupOptions: {
-			external: ["@datadog/browser-rum"],
+			external: [],
 			output: {
 				format: "es",
 			},

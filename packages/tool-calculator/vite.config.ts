@@ -33,7 +33,6 @@ export default defineConfig({
 		sourcemap: false,
 		rollupOptions: {
 			external: [
-				"@datadog/browser-rum",
 				"@pie-players/pie-calculator-desmos",
 				"@pie-players/tts-client-server",
 				"@pie-players/pie-assessment-toolkit",

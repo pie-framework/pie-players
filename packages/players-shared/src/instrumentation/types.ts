@@ -2,7 +2,7 @@
  * Instrumentation Types
  *
  * Core interfaces and types for pluggable instrumentation system.
- * Abstracts vendor-specific APIs (New Relic, DataDog, Dynatrace, etc.)
+ * Abstracts vendor-specific APIs (New Relic and custom providers)
  * to enable clients to use any instrumentation provider.
  */
 
@@ -42,12 +42,12 @@
  */
 export interface InstrumentationProvider {
 	/**
-	 * Unique identifier for the provider (e.g., 'newrelic', 'datadog', 'console')
+	 * Unique identifier for the provider (e.g., 'newrelic', 'console')
 	 */
 	readonly providerId: string;
 
 	/**
-	 * Human-readable provider name (e.g., 'New Relic', 'DataDog RUM')
+	 * Human-readable provider name (e.g., 'New Relic')
 	 */
 	readonly providerName: string;
 
@@ -165,13 +165,10 @@ export interface InstrumentationConfig {
 	 * }
 	 * ```
 	 *
-	 * @example DataDog
+	 * @example Console provider
 	 * ```typescript
 	 * providerSettings: {
-	 *   applicationId: 'abc123',
-	 *   clientToken: 'pub_xyz',
-	 *   site: 'datadoghq.com',
-	 *   service: 'pie-players'
+	 *   useColors: true
 	 * }
 	 * ```
 	 */

@@ -28,25 +28,6 @@ export type LoaderConfig = {
 	 *   trackPageActions: true
 	 * };
 	 * ```
-	 *
-	 * @example Using DataDog
-	 * ```typescript
-	 * import { DataDogInstrumentationProvider } from '@pie-players/pie-players-shared';
-	 *
-	 * const provider = new DataDogInstrumentationProvider();
-	 * await provider.initialize({
-	 *   providerSettings: {
-	 *     applicationId: 'abc123',
-	 *     clientToken: 'pub_xyz'
-	 *   }
-	 * });
-	 *
-	 * const loaderConfig = {
-	 *   trackPageActions: true,
-	 *   instrumentationProvider: provider
-	 * };
-	 * ```
-	 *
 	 * @example Using Console provider (for development/debugging)
 	 * ```typescript
 	 * import { ConsoleInstrumentationProvider } from '@pie-players/pie-players-shared';

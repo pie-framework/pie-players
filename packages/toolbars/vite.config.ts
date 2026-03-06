@@ -40,7 +40,6 @@ export default defineConfig({
 		sourcemap: false,
 		rollupOptions: {
 			external: [
-				"@datadog/browser-rum",
 				"@pie-players/pie-assessment-toolkit",
 				"@pie-players/pie-assessment-toolkit/components/item-toolbar-element",
 				"@pie-players/pie-assessment-toolkit/components/section-toolbar-element",

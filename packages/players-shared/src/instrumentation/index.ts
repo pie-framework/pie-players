@@ -2,7 +2,7 @@
  * Instrumentation Module
  *
  * Provides pluggable instrumentation for PIE players.
- * Supports multiple providers (New Relic, DataDog, console logging, custom, etc.)
+ * Supports multiple providers (New Relic, console logging, custom, etc.)
  *
  * @example Using New Relic (default)
  * ```typescript
@@ -16,25 +16,6 @@
  *   instrumentationProvider: provider
  * });
  * ```
- *
- * @example Using DataDog
- * ```typescript
- * import { DataDogInstrumentationProvider } from '@pie-players/pie-players-shared';
- *
- * const provider = new DataDogInstrumentationProvider();
- * await provider.initialize({
- *   providerSettings: {
- *     applicationId: 'abc123',
- *     clientToken: 'pub_xyz'
- *   }
- * });
- *
- * const monitor = new ResourceMonitor({
- *   trackPageActions: true,
- *   instrumentationProvider: provider
- * });
- * ```
- *
  * @example Using console logger for development
  * ```typescript
  * import { ConsoleInstrumentationProvider } from '@pie-players/pie-players-shared';

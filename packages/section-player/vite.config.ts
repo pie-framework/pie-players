@@ -56,7 +56,6 @@ export default defineConfig({
 		sourcemap: false,
 		rollupOptions: {
 			external: [
-				"@datadog/browser-rum",
 				"@pie-players/pie-toolbars",
 				"@pie-players/pie-toolbars/components/item-toolbar-element",
 				"@pie-players/pie-toolbars/components/section-toolbar-element",

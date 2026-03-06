@@ -73,7 +73,7 @@
 	"peerDependencies": {
 		"@pie-players/pie-calculator-desmos": "workspace:*",
 		"@pie-players/tts-client-server": "workspace:*",
-		"svelte": "^5.51.3"
+		"svelte": ">=5 <6"
 	},
 	"peerDependenciesMeta": {
 		"@pie-players/pie-calculator-desmos": {

@@ -31,7 +31,7 @@ export default defineConfig({
 		minify: "esbuild",
 		sourcemap: false,
 		rollupOptions: {
-			external: ["@datadog/browser-rum"],
+			external: [],
 			onwarn(warning, warn) {
 				if (
 					typeof warning.message === "string" &&

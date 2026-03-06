@@ -75,6 +75,7 @@ describe("tool-tag-map", () => {
 describe("createDefaultToolRegistry component overrides", () => {
 	test("applies custom tool tag map during toolbar render", () => {
 		const registry = createDefaultToolRegistry({
+			includePackagedTools: true,
 			toolTagMap: {
 				...DEFAULT_TOOL_TAG_MAP,
 				calculator: "custom-calculator",

@@ -1,5 +1,12 @@
 # @pie-players/item-demos
 
+## 0.1.10
+
+### Patch Changes
+
+- @pie-players/pie-item-player@0.3.2
+- @pie-players/pie-players-shared@0.3.2
+
 ## 0.1.9
 
 ### Patch Changes

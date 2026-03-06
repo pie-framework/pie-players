@@ -1,5 +1,11 @@
 # @pie-players/tts-client-server
 
+## 0.3.2
+
+### Patch Changes
+
+- @pie-players/pie-tts@0.3.2
+
 ## 0.3.1
 
 ### Patch Changes

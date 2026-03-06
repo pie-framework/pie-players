@@ -1,5 +1,11 @@
 # @pie-players/math-renderer-katex
 
+## 0.3.2
+
+### Patch Changes
+
+- @pie-players/math-renderer-core@0.3.2
+
 ## 0.3.1
 
 ### Patch Changes

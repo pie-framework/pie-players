@@ -1,5 +1,11 @@
 # @pie-players/pie-theme-daisyui
 
+## 0.3.2
+
+### Patch Changes
+
+- @pie-players/pie-theme@0.3.2
+
 ## 0.3.1
 
 ### Patch Changes

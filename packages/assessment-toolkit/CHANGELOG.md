@@ -1,5 +1,17 @@
 # @pie-players/pie-assessment-toolkit
 
+## 0.3.2
+
+### Patch Changes
+
+- Finalize the opt-in tool-loading model and align section demo/tooling behavior with explicit tool registration, section-level placement changes, and stronger interaction coverage in section-player tests.
+  - @pie-players/pie-calculator@0.3.2
+  - @pie-players/pie-calculator-desmos@0.3.2
+  - @pie-players/pie-context@0.3.2
+  - @pie-players/pie-players-shared@0.3.2
+  - @pie-players/pie-tts@0.3.2
+  - @pie-players/tts-client-server@0.3.2
+
 ## 0.3.1
 
 ### Patch Changes

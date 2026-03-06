@@ -31,7 +31,7 @@ describe("tools-config-normalizer", () => {
 		]);
 	});
 
-	test("fills missing placement levels with defaults", () => {
+	test("fills missing placement levels with opt-in defaults", () => {
 		const config = normalizeToolsConfig({
 			placement: {
 				section: ["graph"],
@@ -39,7 +39,7 @@ describe("tools-config-normalizer", () => {
 		});
 
 		expect(config.placement.section).toEqual(["graph"]);
-		expect(config.placement.item.length).toBeGreaterThan(0);
-		expect(config.placement.passage.length).toBeGreaterThan(0);
+		expect(config.placement.item).toEqual([]);
+		expect(config.placement.passage).toEqual([]);
 	});
 });

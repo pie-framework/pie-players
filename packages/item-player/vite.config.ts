@@ -21,6 +21,23 @@ const patchMathRenderingModuleEval = {
 	},
 };
 
+const assertNoEvalRequireInOutput = {
+	name: "assert-no-eval-require-in-output",
+	generateBundle(_options: unknown, bundle: Record<string, any>) {
+		const evalRequirePattern = /eval\((["'])require\1\)/;
+		for (const output of Object.values(bundle)) {
+			if (output?.type !== "chunk" || typeof output.code !== "string") {
+				continue;
+			}
+			if (evalRequirePattern.test(output.code)) {
+				throw new Error(
+					`Unsafe dynamic require pattern found in output chunk: ${output.fileName}`,
+				);
+			}
+		}
+	},
+};
+
 export default defineConfig({
 	plugins: [
 		patchMathRenderingModuleEval,
@@ -35,6 +52,7 @@ export default defineConfig({
 			outDir: "dist",
 			insertTypesEntry: true,
 		}),
+		assertNoEvalRequireInOutput,
 	],
 	build: {
 		lib: {

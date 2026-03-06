@@ -12,7 +12,6 @@
  */
 
 import { createPieLogger } from "./logger.js";
-import { initializeMathRendering } from "./math-rendering.js";
 import { pieRegistry } from "./registry.js";
 import { validateCustomElementTag } from "./tag-names.js";
 import { isCustomElementConstructor, Status } from "./types.js";
@@ -376,10 +375,7 @@ export class EsmPieLoader {
 			BUILT_IN_VIEWS[options.view] ||
 			BUILT_IN_VIEWS.delivery;
 
-		// 0. Initialize math-rendering (required by PIE elements)
-		await initializeMathRendering();
-
-		// 1. Generate and inject import map (once per page)
+		// 0. Generate and inject import map (once per page)
 		if (!this.importMapInjected) {
 			logger.debug("Generating import map for view:", options.view);
 			const importMap = this.generateImportMap(contentConfig.elements, options);

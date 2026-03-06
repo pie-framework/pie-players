@@ -46,10 +46,7 @@
 		{ "path": "./packages/tts-client-server" },
 		{ "path": "./packages/calculator" },
 		{ "path": "./packages/calculator-mathjs" },
-		{ "path": "./packages/calculator-desmos" },
-		{ "path": "./packages/math-renderer-core" },
-		{ "path": "./packages/math-renderer-mathjax" },
-		{ "path": "./packages/math-renderer-katex" }
+		{ "path": "./packages/calculator-desmos" }
 	],
 	"exclude": ["node_modules", "dist", "build"]
 }

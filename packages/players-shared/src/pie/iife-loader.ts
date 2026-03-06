@@ -9,7 +9,6 @@
  */
 
 import { createPieLogger } from "./logger.js";
-import { initializeMathRendering } from "./math-rendering.js";
 import { pieRegistry } from "./registry.js";
 import { validateCustomElementTag } from "./tag-names.js";
 import { BundleType, isCustomElementConstructor, Status } from "./types.js";
@@ -307,10 +306,7 @@ export class IifePieLoader {
 			return;
 		}
 
-		// 0. Initialize math-rendering (required by PIE elements)
-		await initializeMathRendering();
-
-		// 1. Determine bundle URL
+		// 0. Determine bundle URL
 		const bundleUrl = this.getBundleUrl(
 			contentConfig.elements,
 			bundleType,

@@ -15,9 +15,6 @@ const NODE_SAFE_PACKAGES = [
 	"@pie-players/tts-server-core",
 	"@pie-players/tts-server-google",
 	"@pie-players/tts-server-polly",
-	"@pie-players/math-renderer-core",
-	"@pie-players/math-renderer-katex",
-	"@pie-players/math-renderer-mathjax",
 ];
 
 const BROWSER_ONLY_PACKAGES = [

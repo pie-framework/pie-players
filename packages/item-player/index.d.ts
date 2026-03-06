@@ -33,3 +33,4 @@ export interface PieItemPlayerElement extends HTMLElement {
 }
 
 export declare function definePieItemPlayer(tagName?: string): void;
+export declare function ensureItemPlayerMathRenderingReady(): Promise<void>;

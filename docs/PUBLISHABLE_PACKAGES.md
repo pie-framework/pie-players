@@ -7,11 +7,8 @@ Source of truth for publishability:
 - `scripts/check-pack-exports.mjs`
 - `scripts/check-pack-smoke.mjs`
 
-Publishable packages (37):
+Publishable packages (33):
 
-- `@pie-players/math-renderer-core`
-- `@pie-players/math-renderer-katex`
-- `@pie-players/math-renderer-mathjax`
 - `@pie-players/pie-assessment-toolkit`
 - `@pie-players/pie-calculator`
 - `@pie-players/pie-calculator-desmos`

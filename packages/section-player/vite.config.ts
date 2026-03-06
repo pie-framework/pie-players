@@ -3,27 +3,25 @@ import { resolve } from "path";
 import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
 
-const patchMathRenderingModuleEval = {
-	name: "patch-math-rendering-module-eval",
-	enforce: "pre" as const,
-	transform(code: string, id: string) {
-		if (!id.includes("@pie-lib/math-rendering-module/module/index.js")) {
-			return null;
+const assertNoEvalRequireInOutput = {
+	name: "assert-no-eval-require-in-output",
+	generateBundle(_options: unknown, bundle: Record<string, any>) {
+		const evalRequirePattern = /eval\((["'])require\1\)/;
+		for (const output of Object.values(bundle)) {
+			if (output?.type !== "chunk" || typeof output.code !== "string") {
+				continue;
+			}
+			if (evalRequirePattern.test(output.code)) {
+				throw new Error(
+					`Unsafe dynamic require pattern found in output chunk: ${output.fileName}`,
+				);
+			}
 		}
-
-		return {
-			code: code.replace(
-				/return\s+eval\((["'])require\1\);/g,
-				"return commonjsRequire;",
-			),
-			map: null,
-		};
 	},
 };
 
 export default defineConfig({
 	plugins: [
-		patchMathRenderingModuleEval,
 		svelte({
 			preprocess: vitePreprocess(),
 			compilerOptions: {
@@ -36,6 +34,7 @@ export default defineConfig({
 			outDir: "dist",
 			insertTypesEntry: true,
 		}),
+		assertNoEvalRequireInOutput,
 	],
 	build: {
 		lib: {

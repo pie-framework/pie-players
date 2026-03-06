@@ -101,13 +101,11 @@ bun run release:label:push           # Create and push tag to origin
 **Interactive Players**: pie-item-player
 **Print Player**: print-player - Item-level print rendering for production use
 **Tools**: calculator, graph, ruler, protractor, annotation-toolbar, color-scheme, periodic-table
-**Math Rendering**: math-renderer-core, math-renderer-mathjax, math-renderer-katex
 **Shared**: players-shared, assessment-toolkit
 
 ## Documentation
 
 - [Architecture](docs/ARCHITECTURE.md)
-- [Math Renderer Architecture](docs/MATH-RENDERER-ARCHITECTURE.md) - Pluggable math rendering system
 - [Authoring Mode](docs/AUTHORING_MODE.md)
 - [NPM Token Setup](docs/NPM_TOKEN_SETUP.md)
 - [Publishing Contract](docs/publishing.md)

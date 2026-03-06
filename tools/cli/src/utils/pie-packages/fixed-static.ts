@@ -2,6 +2,7 @@ import { execSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { copyFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { join } from "node:path";
 
 import type { ElementSpec } from "./types.js";
@@ -18,6 +19,7 @@ export interface BuildStaticConfig {
 
 const DEFAULT_PITS_BASE_URL = "https://proxy.pie-api.com";
 const STATIC_PACKAGE_NAME = "@pie-players/pie-preloaded-player";
+const EVAL_REQUIRE_PATTERN = /return\s+eval\((["'])require\1\);/g;
 
 export function generateHash(elements: string[]): string {
 	const sorted = [...elements].sort();
@@ -114,31 +116,6 @@ async function sleep(ms: number) {
 	await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function checkMathRenderingRequired(
-	elements: string[],
-): Promise<boolean> {
-	const parsed = parseElements(elements);
-	for (const [packageName, version] of Object.entries(parsed)) {
-		try {
-			const versionToFetch = version === "latest" ? "latest" : version;
-			const url = `https://registry.npmjs.org/${packageName}/${versionToFetch}`;
-			const response = await fetch(url);
-			if (!response.ok) return true;
-			const packageJson = await response.json();
-			const dependencies = packageJson.dependencies || {};
-			if (
-				dependencies["@pie-lib/math-rendering"] ||
-				dependencies["@pie-lib/math-rendering-accessible"]
-			) {
-				return true;
-			}
-		} catch {
-			return true;
-		}
-	}
-	return false;
-}
-
 async function fetchBundle(
 	elements: string[],
 	pitsBaseUrl: string,
@@ -165,6 +142,23 @@ async function fetchBundle(
 		);
 	}
 	throw new Error(`Failed to fetch bundle after ${maxRetries} attempts`);
+}
+
+function resolveMathRenderingModulePath(monorepoDir: string): string {
+	const playersSharedPkgJsonPath = join(
+		monorepoDir,
+		"packages",
+		"players-shared",
+		"package.json",
+	);
+	const requireFromPlayersShared = createRequire(playersSharedPkgJsonPath);
+	return requireFromPlayersShared.resolve(
+		"@pie-lib/math-rendering-module/module/index.js",
+	);
+}
+
+function patchMathRenderingModuleEval(code: string): string {
+	return code.replace(EVAL_REQUIRE_PATTERN, "return commonjsRequire;");
 }
 
 function generatePackageJson(config: BuildStaticConfig, version: string): any {
@@ -216,19 +210,13 @@ function generatePackageJson(config: BuildStaticConfig, version: string): any {
 	};
 }
 
-function generateIndex(
-	bundleFilename: string,
-	includeMathRendering: boolean,
-): string {
-	const mathRenderingSetup = includeMathRendering
-		? `
+function generateIndex(bundleFilename: string): string {
+	const mathRenderingSetup = `
     const mathRenderingModule = await importWithRetry('./math-rendering.js', 4, 200);
     if (typeof window !== 'undefined') {
       window['@pie-lib/math-rendering'] = mathRenderingModule._dll_pie_lib__math_rendering;
       window['_dll_pie_lib__math_rendering'] = mathRenderingModule._dll_pie_lib__math_rendering;
-    }`
-		: `
-    // Math rendering not required by any elements in this bundle`;
+    }`;
 
 	return `// Auto-generated entry point for pie-preloaded-player
 (async function initializePieItemPlayerStatic() {
@@ -349,10 +337,6 @@ export async function buildPreloadedPlayerStaticPackage(
 	await rm(outputDir, { recursive: true, force: true });
 	await mkdir(join(outputDir, "dist"), { recursive: true });
 
-	const mathRenderingRequired = await checkMathRenderingRequired(
-		config.elements,
-	);
-
 	let pitsBaseUrl =
 		config.pitsBaseUrl || process.env.BUNDLE_BASE_URL || DEFAULT_PITS_BASE_URL;
 	if (pitsBaseUrl.endsWith("/bundles")) pitsBaseUrl = pitsBaseUrl.slice(0, -8);
@@ -390,18 +374,16 @@ export async function buildPreloadedPlayerStaticPackage(
 	const bundleFilename = `pie-elements-bundle-${hash}.js`;
 	await writeFile(join(outputDir, "dist", bundleFilename), bundleJs);
 
-	if (mathRenderingRequired) {
-		const rootNodeModules = join(config.monorepoDir, "node_modules");
-		const mathModuleSrc = join(
-			rootNodeModules,
-			"@pie-lib",
-			"math-rendering-module",
-			"module",
-			"index.js",
+	const mathModuleSrc = resolveMathRenderingModulePath(config.monorepoDir);
+	const mathModuleDest = join(outputDir, "dist", "math-rendering.js");
+	const mathModuleCode = await readFile(mathModuleSrc, "utf-8");
+	const patchedMathModuleCode = patchMathRenderingModuleEval(mathModuleCode);
+	if (/eval\((["'])require\1\)/.test(patchedMathModuleCode)) {
+		throw new Error(
+			"math-rendering-module still contains eval(require) after patching",
 		);
-		const mathModuleDest = join(outputDir, "dist", "math-rendering.js");
-		await copyFile(mathModuleSrc, mathModuleDest);
 	}
+	await writeFile(mathModuleDest, patchedMathModuleCode);
 
 	const packageJson = generatePackageJson(config, version);
 	await writeFile(
@@ -410,7 +392,7 @@ export async function buildPreloadedPlayerStaticPackage(
 	);
 	await writeFile(
 		join(outputDir, "dist", "index.js"),
-		generateIndex(bundleFilename, mathRenderingRequired),
+		generateIndex(bundleFilename),
 	);
 	await writeFile(join(outputDir, "dist", "index.d.ts"), generateTypes());
 	await writeFile(

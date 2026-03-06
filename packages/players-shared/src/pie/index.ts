@@ -33,6 +33,11 @@ export {
 	loadPieModule,
 	loadPieModuleFromString,
 } from "./initialization.js";
+export {
+	initializeMathRendering,
+	renderMath,
+	setMathRenderer,
+} from "./math-rendering.js";
 // Item controller
 export type { ItemControllerOptions } from "./item-controller.js";
 export { ItemController, normalizeItemSessionContainer } from "./item-controller.js";

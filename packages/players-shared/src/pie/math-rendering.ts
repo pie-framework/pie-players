@@ -1,20 +1,39 @@
 /**
- * Pluggable math rendering for PIE players
+ * Math rendering bootstrap for PIE players
  *
  * PIE elements expect @pie-lib/math-rendering to be available on window.
- * This module provides a pluggable provider pattern that allows switching
- * between MathJax, KaTeX, or custom renderers.
- *
- * IMPORTANT: Uses dynamic import to avoid SSR issues - the module is browser-only.
+ * This module ensures the legacy globals are populated from the upstream
+ * @pie-lib/math-rendering-module package, and also supports overriding with
+ * a custom renderer object when needed.
  */
 
 /// <reference path="../shims.d.ts" />
 
-import {
-	type MathRenderingAPI,
-	mathRendererProvider,
-} from "@pie-players/math-renderer-core";
-import { createMathjaxRenderer } from "@pie-players/math-renderer-mathjax";
+export type MathRenderer = (element: HTMLElement) => void | Promise<void>;
+export interface MathRenderingAPI {
+	renderMath: MathRenderer;
+	wrapMath?: (latex: string) => string;
+	unWrapMath?: (wrapped: string) => string;
+	mmlToLatex?: (mathml: string) => string;
+}
+
+const GLOBAL_KEY = "@pie-lib/math-rendering";
+const GLOBAL_DLL_KEY = "_dll_pie_lib__math_rendering";
+let initPromise: Promise<void> | null = null;
+
+const getWindowRenderer = (): MathRenderingAPI | null => {
+	if (typeof window === "undefined") {
+		return null;
+	}
+	const renderer = (window as any)[GLOBAL_KEY] as MathRenderingAPI | undefined;
+	return renderer || null;
+};
+
+const setWindowRenderer = (renderer: MathRenderingAPI): void => {
+	if (typeof window === "undefined") return;
+	(window as any)[GLOBAL_KEY] = renderer;
+	(window as any)[GLOBAL_DLL_KEY] = renderer;
+};
 
 /**
  * Initialize math rendering with optional custom renderer
@@ -33,10 +52,9 @@ import { createMathjaxRenderer } from "@pie-players/math-renderer-mathjax";
  * // Default MathJax (backward compatible)
  * await initializeMathRendering();
  *
- * // Custom renderer
- * import { createKatexRenderer } from '@pie-players/math-renderer-katex';
- * const katexRenderer = await createKatexRenderer();
- * await initializeMathRendering(katexRenderer);
+ * // Custom renderer instance implementing MathRenderingAPI
+ * const customRenderer = await createCustomRenderer();
+ * await initializeMathRendering(customRenderer);
  *
  * // Or use setMathRenderer first
  * setMathRenderer(katexRenderer);
@@ -51,27 +69,43 @@ export async function initializeMathRendering(
 		return;
 	}
 
-	// Already initialized - skip
-	if (mathRendererProvider.isInitialized()) {
+	// Explicit override always wins.
+	if (customRenderer) {
+		setWindowRenderer(customRenderer);
 		return;
 	}
 
+	// Already initialized - skip.
+	if (getWindowRenderer()) {
+		return;
+	}
+	if (initPromise) {
+		await initPromise;
+		return;
+	}
+
+	initPromise = (async () => {
+		try {
+			const { _dll_pie_lib__math_rendering } = await import(
+				"@pie-lib/math-rendering-module/module"
+			);
+			setWindowRenderer(_dll_pie_lib__math_rendering as MathRenderingAPI);
+
+			console.log(
+				"[MathRendering] ✅ Math rendering module initialized (both globals set)",
+			);
+		} catch (error) {
+			console.error(
+				"[MathRendering] ❌ Failed to initialize math rendering:",
+				error,
+			);
+			throw error;
+		}
+	})();
 	try {
-		// Use custom renderer or default to MathJax for backward compatibility
-		const renderer = customRenderer ?? (await createMathjaxRenderer());
-
-		// Set in provider (automatically updates window globals)
-		mathRendererProvider.setRenderer(renderer);
-
-		console.log(
-			"[MathRendering] ✅ Math rendering module initialized (both globals set)",
-		);
-	} catch (error) {
-		console.error(
-			"[MathRendering] ❌ Failed to initialize math rendering:",
-			error,
-		);
-		throw error;
+		await initPromise;
+	} finally {
+		initPromise = null;
 	}
 }
 
@@ -85,18 +119,17 @@ export async function initializeMathRendering(
  *
  * @example
  * ```typescript
- * import { createKatexRenderer } from '@pie-players/math-renderer-katex';
  * import { setMathRenderer } from '@pie-players/pie-players-shared/pie';
  *
- * const katexRenderer = await createKatexRenderer({ throwOnError: false });
- * setMathRenderer(katexRenderer);
+ * const renderer = await createCustomRenderer();
+ * setMathRenderer(renderer);
  *
- * // Now load PIE elements - they'll use KaTeX
+ * // Now load PIE elements - they'll use your custom renderer
  * await loader.load(config, document, needsControllers);
  * ```
  */
 export function setMathRenderer(renderer: MathRenderingAPI): void {
-	mathRendererProvider.setRenderer(renderer);
+	setWindowRenderer(renderer);
 }
 
 /**
@@ -108,8 +141,7 @@ export function setMathRenderer(renderer: MathRenderingAPI): void {
  * @param element - The element to render math within
  */
 export function renderMath(element: HTMLElement): void {
-	const renderer = mathRendererProvider.getRenderer();
-
+	const renderer = getWindowRenderer();
 	if (renderer && typeof renderer.renderMath === "function") {
 		renderer.renderMath(element);
 	}

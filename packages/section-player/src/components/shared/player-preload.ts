@@ -3,6 +3,7 @@ import {
 	IifeElementLoader,
 	type ItemEntity,
 } from "@pie-players/pie-players-shared";
+import { ensureItemPlayerMathRenderingReady } from "@pie-players/pie-item-player";
 
 export const PRELOAD_TIMEOUT_MS = 15000;
 
@@ -80,6 +81,7 @@ export async function preloadPlayerElements(args: {
 		args.timeoutMs || PRELOAD_TIMEOUT_MS,
 	);
 	try {
+		await ensureItemPlayerMathRenderingReady();
 		await loader.loadFromItems(args.renderables, {
 			view: args.loaderView,
 			needsControllers: true,

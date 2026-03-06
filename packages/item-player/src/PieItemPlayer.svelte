@@ -48,6 +48,7 @@
 		IifePieLoader,
 		ItemController,
 		isGlobalDebugEnabled,
+		initializeMathRendering,
 		makeUniqueTags,
 		normalizeItemSessionContainer,
 		normalizeItemPlayerStrategy,
@@ -261,6 +262,9 @@
 			stage = "makeUniqueTags";
 			const transformed = makeUniqueTags({ config: parsedConfig });
 			const transformedConfig = transformed.config;
+
+			stage = "math-rendering-init";
+			await initializeMathRendering();
 
 			if (skipElementLoading) {
 				logger.debug(

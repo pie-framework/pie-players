@@ -101,8 +101,7 @@
 		"src/i18n"
 	],
 	"dependencies": {
-		"@pie-players/math-renderer-core": "workspace:*",
-		"@pie-players/math-renderer-mathjax": "workspace:*",
+		"@pie-lib/math-rendering-module": "4.0.7",
 		"daisyui": "^5.5.18"
 	},
 	"scripts": {

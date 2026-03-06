@@ -1,5 +1,17 @@
 # @pie-players/pie-assessment-toolkit
 
+## 0.3.1
+
+### Patch Changes
+
+- Patch release preparation for the fixed-version package group.
+  - @pie-players/pie-calculator@0.3.1
+  - @pie-players/pie-calculator-desmos@0.3.1
+  - @pie-players/pie-context@0.3.1
+  - @pie-players/pie-players-shared@0.3.1
+  - @pie-players/pie-tts@0.3.1
+  - @pie-players/tts-client-server@0.3.1
+
 ## 0.3.0
 
 ### Minor Changes

@@ -1,5 +1,11 @@
 # @pie-players/pie-calculator-mathjs
 
+## 0.3.1
+
+### Patch Changes
+
+- @pie-players/pie-calculator@0.3.1
+
 ## 0.3.0
 
 ### Minor Changes

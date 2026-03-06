@@ -1,5 +1,12 @@
 # @pie-players/pie-item-player
 
+## 0.3.1
+
+### Patch Changes
+
+- @pie-players/pie-players-shared@0.3.1
+- @pie-players/pie-theme@0.3.1
+
 ## 0.3.0
 
 ### Minor Changes

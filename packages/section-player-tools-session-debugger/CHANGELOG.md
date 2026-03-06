@@ -1,5 +1,11 @@
 # @pie-players/pie-section-player-tools-session-debugger
 
+## 0.3.1
+
+### Patch Changes
+
+- @pie-players/pie-theme@0.3.1
+
 ## 0.3.0
 
 ### Minor Changes

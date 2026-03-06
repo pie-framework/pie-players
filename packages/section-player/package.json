@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-section-player",
-	"version": "0.3.0",
+	"version": "0.3.1",
 	"type": "module",
 	"description": "Web component for rendering QTI 3.0 assessment sections with passages and items",
 	"license": "MIT",
@@ -46,7 +46,7 @@
 		"lint": "biome check ."
 	},
 	"peerDependencies": {
-		"@pie-players/pie-tool-annotation-toolbar": "^0.3.0",
+		"@pie-players/pie-tool-annotation-toolbar": "workspace:*",
 		"svelte": "^5.51.0"
 	},
 	"peerDependenciesMeta": {

@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-assessment-toolkit",
-	"version": "0.3.0",
+	"version": "0.3.1",
 	"type": "module",
 	"description": "PIE assessment toolkit: composable services + reference implementation for assessment players and tool coordination",
 	"license": "MIT",
@@ -71,8 +71,8 @@
 		"daisyui": "^5.5.18"
 	},
 	"peerDependencies": {
-		"@pie-players/pie-calculator-desmos": "^0.3.0",
-		"@pie-players/tts-client-server": "^0.3.0",
+		"@pie-players/pie-calculator-desmos": "workspace:*",
+		"@pie-players/tts-client-server": "workspace:*",
 		"svelte": "^5.51.3"
 	},
 	"peerDependenciesMeta": {

@@ -6,7 +6,7 @@ This guide explains how to safely configure the NPM authentication token for aut
 
 GitHub Actions workflows in this repo need an NPM token to publish packages to the npm registry (including the preloaded-player publisher in `.github/workflows/publish-preloaded-player.yml`). This token must be:
 - An **Automation token** (not granular or classic)
-- Have **publish permissions** to the `@pie-framework` organization
+- Have **publish permissions** to the `@pie-players` organization
 - Stored securely as a GitHub **repository secret**
 
 ## Step-by-Step Setup
@@ -15,7 +15,7 @@ GitHub Actions workflows in this repo need an NPM token to publish packages to t
 
 1. **Log in to npmjs.com**
    - Go to https://www.npmjs.com
-   - Sign in with your account that has publish access to `@pie-framework`
+   - Sign in with your account that has publish access to `@pie-players`
 
 2. **Navigate to Access Tokens**
    - Click your profile picture (top right) → "Access Tokens"
@@ -36,8 +36,8 @@ GitHub Actions workflows in this repo need an NPM token to publish packages to t
 Before adding the token, ensure your npm account has the right permissions:
 
 ```bash
-# Check your membership in @pie-framework
-npm org ls pie-framework
+# Check your membership in @pie-players
+npm org ls pie-players --registry=https://registry.npmjs.org/
 
 # You should see your username with "developer" or "owner" role
 # If not, contact the org owner to add you
@@ -145,10 +145,10 @@ NPM offers three token types:
 
 ### Error: "403 Forbidden - you do not have permission to publish"
 
-**Cause**: Your npm account lacks publish permissions to `@pie-framework`
+**Cause**: Your npm account lacks publish permissions to `@pie-players`
 
 **Solutions**:
-1. Check your org membership: `npm org ls pie-framework`
+1. Check your org membership: `npm org ls pie-players --registry=https://registry.npmjs.org/`
 2. Request "developer" or "owner" role from org admin
 3. Verify the org allows publishing (some orgs restrict this)
 
@@ -251,7 +251,7 @@ If you encounter issues:
 Before publishing for the first time:
 
 - [ ] Generate NPM Automation token
-- [ ] Verify npm org permissions (`npm org ls pie-framework`)
+- [ ] Verify npm org permissions (`npm org ls pie-players --registry=https://registry.npmjs.org/`)
 - [ ] Push repository to GitHub
 - [ ] Add `NPM_TOKEN` to GitHub repository secrets
 - [ ] Test CI runs on a feature branch

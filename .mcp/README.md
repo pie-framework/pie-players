@@ -54,7 +54,7 @@ Use this server for storing and retrieving project notes and decisions.
 
 ## Troubleshooting
 
-- Verify Node.js 18+ is installed.
+- Verify Node.js 20+ is installed.
 - Verify Bun is installed and available on PATH.
 - If a server fails to start, check command availability with `npx`/`bun`.
 - For permission issues, ensure paths in config point to this workspace.

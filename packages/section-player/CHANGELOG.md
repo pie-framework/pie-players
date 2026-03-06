@@ -1,5 +1,36 @@
 # @pie-players/pie-section-player
 
+## 0.3.0
+
+### Minor Changes
+
+- Adopt monorepo-wide fixed versioning and establish the first lockstep release train at 0.3.0.
+
+### Patch Changes
+
+- 9385ce0: Release all publishable packages in the repository.
+
+  This intentionally triggers a full patch release sweep across all non-private workspace packages.
+
+- Updated dependencies
+- Updated dependencies [9385ce0]
+  - @pie-players/pie-assessment-toolkit@0.3.0
+  - @pie-players/pie-context@0.3.0
+  - @pie-players/pie-item-player@0.3.0
+  - @pie-players/pie-players-shared@0.3.0
+  - @pie-players/pie-toolbars@0.3.0
+  - @pie-players/pie-tool-annotation-toolbar@0.3.0
+  - @pie-players/pie-tool-answer-eliminator@0.3.0
+  - @pie-players/pie-tool-calculator@0.3.0
+  - @pie-players/pie-tool-theme@0.3.0
+  - @pie-players/pie-tool-graph@0.3.0
+  - @pie-players/pie-tool-line-reader@0.3.0
+  - @pie-players/pie-tool-periodic-table@0.3.0
+  - @pie-players/pie-tool-protractor@0.3.0
+  - @pie-players/pie-tool-ruler@0.3.0
+  - @pie-players/pie-tool-text-to-speech@0.3.0
+  - @pie-players/tts-client-server@0.3.0
+
 ## 0.2.13
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-tool-text-to-speech",
-	"version": "0.1.10",
+	"version": "0.3.0",
 	"type": "module",
 	"description": "Text-to-Speech tool for PIE assessment player with word-level highlighting",
 	"repository": {
@@ -66,7 +66,7 @@
 		"url": "https://github.com/pie-framework/pie-players/issues"
 	},
 	"engines": {
-		"node": ">=18.0.0"
+		"node": ">=20.0.0"
 	},
 	"sideEffects": true
 }

@@ -34,13 +34,6 @@
 	import * as SectionItemCardModule from "./shared/SectionItemCard.svelte";
 	import * as SectionPassageCardModule from "./shared/SectionPassageCard.svelte";
 	import "@pie-players/pie-toolbars/components/section-toolbar-element";
-	import "@pie-players/pie-tool-calculator";
-	import "@pie-players/pie-tool-graph";
-	import "@pie-players/pie-tool-periodic-table";
-	import "@pie-players/pie-tool-protractor";
-	import "@pie-players/pie-tool-line-reader";
-	import "@pie-players/pie-tool-ruler";
-	import "@pie-players/pie-tool-theme";
 	import type { Component } from "svelte";
 	import type { SectionCompositionModel } from "../controllers/types.js";
 	import type { AssessmentSection } from "@pie-players/pie-players-shared/types";

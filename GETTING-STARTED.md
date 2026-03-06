@@ -5,7 +5,7 @@ Quick start guide for running the PIE Players demos with all features enabled.
 ## Prerequisites
 
 - [Bun](https://bun.sh) >= 1.1.0 (package manager)
-- Node.js >= 18 (for some dependencies)
+- Node.js >= 20 (for some dependencies)
 - (Optional) AWS account for Text-to-Speech
 - (Optional) Redis for TTS caching
 

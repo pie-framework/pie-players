@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-tool-tts-inline",
-	"version": "0.1.7",
+	"version": "0.3.0",
 	"type": "module",
 	"license": "MIT",
 	"main": "./dist/tool-tts-inline.js",
@@ -48,7 +48,7 @@
 		"url": "https://github.com/pie-framework/pie-players/issues"
 	},
 	"engines": {
-		"node": ">=18.0.0"
+		"node": ">=20.0.0"
 	},
 	"sideEffects": true
 }

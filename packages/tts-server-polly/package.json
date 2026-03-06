@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/tts-server-polly",
-	"version": "0.1.5",
+	"version": "0.3.0",
 	"description": "AWS Polly provider for server-side TTS with speech marks support",
 	"type": "module",
 	"main": "./dist/index.js",
@@ -51,6 +51,6 @@
 		"url": "https://github.com/pie-framework/pie-players/issues"
 	},
 	"engines": {
-		"node": ">=18.0.0"
+		"node": ">=20.0.0"
 	}
 }

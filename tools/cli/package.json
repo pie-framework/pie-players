@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-players-cli",
-	"version": "0.1.3",
+	"version": "0.3.0",
 	"private": true,
 	"description": "CLI tools for pie-players",
 	"type": "module",
@@ -44,7 +44,7 @@
 		"typescript": "^5.7.0"
 	},
 	"engines": {
-		"node": ">=18.0.0"
+		"node": ">=20.0.0"
 	},
 	"oclif": {
 		"bin": "pie-players",

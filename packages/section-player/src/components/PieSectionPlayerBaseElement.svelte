@@ -23,7 +23,6 @@
 
 <script lang="ts">
 	import "@pie-players/pie-assessment-toolkit/components/pie-assessment-toolkit-element";
-	import "@pie-players/pie-tool-annotation-toolbar";
 	import {
 		createDefaultPersonalNeedsProfile,
 	} from "@pie-players/pie-assessment-toolkit";
@@ -163,6 +162,28 @@
 				annotationToolbarProviderEnabled,
 		),
 	);
+	let annotationToolbarModuleLoaded = $state(false);
+
+	$effect(() => {
+		if (!shouldRenderAnnotationToolbar) return;
+		if (annotationToolbarModuleLoaded) return;
+		let cancelled = false;
+		void import("@pie-players/pie-tool-annotation-toolbar")
+			.then(() => {
+				if (!cancelled) {
+					annotationToolbarModuleLoaded = true;
+				}
+			})
+			.catch(() => {
+				// Keep rendering gated if the optional module is not installed.
+				if (!cancelled) {
+					annotationToolbarModuleLoaded = false;
+				}
+			});
+		return () => {
+			cancelled = true;
+		};
+	});
 
 	$effect(() => {
 		if (!toolkitElement) return;
@@ -194,7 +215,7 @@
 	onruntime-owned={(event: Event) => handleToolkitEvent(event, "runtime-owned")}
 	onruntime-inherited={(event: Event) => handleToolkitEvent(event, "runtime-inherited")}
 >
-	{#if shouldRenderAnnotationToolbar}
+	{#if shouldRenderAnnotationToolbar && annotationToolbarModuleLoaded}
 		<pie-tool-annotation-toolbar
 			enabled={true}
 			ttsService={activeToolkitCoordinator.ttsService}

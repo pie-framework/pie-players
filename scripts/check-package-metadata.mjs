@@ -56,7 +56,7 @@ const run = () => {
 	const rootPackage = readJson(ROOT_PACKAGE_JSON);
 	const workspaceDirs = getWorkspaceDirs(
 		rootPackage,
-		policy.workspaceRoots ?? ["packages", "tools"],
+		policy.workspaceRoots ?? ["packages"],
 	);
 
 	const failures = [];

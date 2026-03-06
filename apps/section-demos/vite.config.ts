@@ -81,6 +81,30 @@ export default (async () => {
 					__dirname,
 					"../../packages/tool-answer-eliminator/dist/tool-answer-eliminator.js",
 				),
+				"@pie-players/pie-tool-annotation-toolbar": resolve(
+					__dirname,
+					"../../packages/tool-annotation-toolbar/dist/tool-annotation-toolbar.js",
+				),
+				"@pie-players/pie-tool-theme": resolve(
+					__dirname,
+					"../../packages/tool-color-scheme/dist/tool-color-scheme.js",
+				),
+				"@pie-players/pie-tool-graph": resolve(
+					__dirname,
+					"../../packages/tool-graph/dist/tool-graph.js",
+				),
+				"@pie-players/pie-tool-periodic-table": resolve(
+					__dirname,
+					"../../packages/tool-periodic-table/dist/tool-periodic-table.js",
+				),
+				"@pie-players/pie-tool-protractor": resolve(
+					__dirname,
+					"../../packages/tool-protractor/dist/tool-protractor.js",
+				),
+				"@pie-players/pie-tool-line-reader": resolve(
+					__dirname,
+					"../../packages/tool-line-reader/dist/tool-line-reader.js",
+				),
 				"@pie-players/pie-tool-ruler": resolve(
 					__dirname,
 					"../../packages/tool-ruler/dist/tool-ruler.js",

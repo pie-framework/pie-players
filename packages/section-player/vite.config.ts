@@ -58,14 +58,9 @@ export default defineConfig({
 		rollupOptions: {
 			external: [
 				"@datadog/browser-rum",
-				"@pie-players/pie-calculator-desmos",
 				"@pie-players/pie-toolbars",
 				"@pie-players/pie-toolbars/components/item-toolbar-element",
 				"@pie-players/pie-toolbars/components/section-toolbar-element",
-				"@pie-players/pie-tool-answer-eliminator",
-				"@pie-players/pie-tool-calculator",
-				"@pie-players/pie-tool-text-to-speech",
-				"@pie-players/tts-client-server",
 			],
 			output: {
 				format: "es",

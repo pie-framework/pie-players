@@ -7,7 +7,7 @@ Source of truth for publishability:
 - `scripts/check-pack-exports.mjs`
 - `scripts/check-pack-smoke.mjs`
 
-Publishable packages (36):
+Publishable packages (37):
 
 - `@pie-players/math-renderer-core`
 - `@pie-players/math-renderer-katex`
@@ -23,6 +23,7 @@ Publishable packages (36):
 - `@pie-players/pie-players-shared`
 - `@pie-players/pie-print-player`
 - `@pie-players/pie-section-player`
+- `@pie-players/pie-section-player-tools-event-debugger`
 - `@pie-players/pie-section-player-tools-pnp-debugger`
 - `@pie-players/pie-section-player-tools-session-debugger`
 - `@pie-players/pie-toolbars`

@@ -554,11 +554,13 @@ and can be overridden via `createDefaultToolRegistry(...)`:
 
 ```typescript
 import { createDefaultToolRegistry } from '@pie-players/pie-assessment-toolkit';
-import { DEFAULT_TOOL_MODULE_LOADERS } from '@pie-players/pie-default-tool-loaders';
 
 const toolRegistry = createDefaultToolRegistry({
-  // Lazy tool module loading (recommended)
-  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
+  // Optional: override only the tools you want to customize.
+  // Built-in toolbar elements already provide lazy loading defaults.
+  toolModuleLoaders: {
+    calculator: () => import('@pie-players/pie-tool-calculator')
+  },
   toolTagMap: {
     calculator: 'my-calculator-tool',
     textToSpeech: 'my-tts-tool'

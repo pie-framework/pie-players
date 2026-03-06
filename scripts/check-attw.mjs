@@ -5,70 +5,125 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 const ROOT = process.cwd();
-const ROOT_PACKAGE_JSON = path.join(ROOT, "package.json");
-const ATTW_EXCLUDED = new Set([
-	"@pie-players/pie-assessment-toolkit",
-	"@pie-players/pie-calculator-mathjs",
-	"@pie-players/pie-players-shared",
-	"@pie-players/pie-players-cli",
-	"@pie-players/pie-section-player",
-	"@pie-players/pie-theme",
-	"@pie-players/pie-theme-daisyui",
-	"@pie-players/pie-tool-annotation-toolbar",
-]);
+const POLICY_PATH = path.join(ROOT, "scripts", "publish-policy.json");
 
 const readJson = (filePath) => JSON.parse(readFileSync(filePath, "utf8"));
+const policy = existsSync(POLICY_PATH) ? readJson(POLICY_PATH) : {};
+const WORKSPACE_ROOTS = Array.isArray(policy.workspaceRoots)
+	? policy.workspaceRoots
+	: ["packages"];
 
 const getWorkspaceDirs = () => {
-	const rootPkg = readJson(ROOT_PACKAGE_JSON);
-	const workspaces = Array.isArray(rootPkg.workspaces)
-		? rootPkg.workspaces
-		: [];
 	const dirs = new Set();
 
-	for (const workspace of workspaces) {
-		if (typeof workspace !== "string") continue;
-		if (!workspace.startsWith("packages/") && !workspace.startsWith("tools/")) {
-			continue;
-		}
-		if (workspace.endsWith("/*")) {
-			const parent = path.join(ROOT, workspace.slice(0, -2));
-			if (!existsSync(parent)) continue;
-			for (const entry of readdirSync(parent, { withFileTypes: true })) {
-				if (entry.isDirectory()) {
-					dirs.add(path.join(parent, entry.name));
-				}
+	for (const rootDir of WORKSPACE_ROOTS) {
+		const absRoot = path.join(ROOT, rootDir);
+		if (!existsSync(absRoot)) continue;
+		for (const entry of readdirSync(absRoot, { withFileTypes: true })) {
+			if (entry.isDirectory()) {
+				dirs.add(path.join(absRoot, entry.name));
 			}
-			continue;
 		}
-		dirs.add(path.join(ROOT, workspace));
 	}
 
 	return [...dirs].filter((dir) => existsSync(path.join(dir, "package.json")));
+};
+
+const runAttw = (dir) => {
+	const cmd = "bunx attw --pack --ignore-rules cjs-resolves-to-esm --format json -- .";
+	try {
+		return execSync(cmd, {
+			cwd: dir,
+			stdio: "pipe",
+			encoding: "utf8",
+		});
+	} catch (error) {
+		const stdout = error.stdout?.toString?.() ?? "";
+		if (!stdout.trim()) {
+			const stderr = error.stderr?.toString?.() ?? "";
+			throw new Error([stderr, error.message].filter(Boolean).join("\n"));
+		}
+		return stdout;
+	}
+};
+
+const flattenProblems = (problemsByKind) => {
+	const all = [];
+	for (const [kind, problems] of Object.entries(problemsByKind || {})) {
+		if (!Array.isArray(problems)) continue;
+		for (const problem of problems) {
+			all.push({ kind, ...problem });
+		}
+	}
+	return all;
+};
+
+const shouldSuppressProblem = (problem) => {
+	const entrypoint = typeof problem.entrypoint === "string" ? problem.entrypoint : "";
+	const resolutionKind =
+		typeof problem.resolutionKind === "string" ? problem.resolutionKind : "";
+	const moduleSpecifier =
+		typeof problem.moduleSpecifier === "string" ? problem.moduleSpecifier : "";
+
+	// Legacy CJS resolver warning is already intentionally ignored in existing policy.
+	if (problem.kind === "CJSResolvesToESM") return true;
+
+	if (problem.kind === "NoResolution") {
+		// Node10 is out of support for this repo (engines >=18 in publish policy checks).
+		if (resolutionKind === "node10") return true;
+		// ATTW cannot reliably model CSS-only and Svelte source entrypoints.
+		if (entrypoint.endsWith(".css") || entrypoint.endsWith(".svelte")) return true;
+	}
+
+	if (problem.kind === "InternalResolutionError") {
+		// Svelte source imports in declaration surfaces are a known ATTW limitation.
+		if (moduleSpecifier.endsWith(".svelte")) return true;
+	}
+
+	return false;
 };
 
 const run = () => {
 	const packageDirs = getWorkspaceDirs();
 	const failures = [];
 	let checked = 0;
+	const suppressedCounts = new Map();
 
 	for (const dir of packageDirs) {
 		const pkg = readJson(path.join(dir, "package.json"));
 		if (pkg.private) continue;
-		if (ATTW_EXCLUDED.has(pkg.name)) continue;
+		if (typeof pkg.name !== "string" || !pkg.name.startsWith("@pie-players/")) {
+			continue;
+		}
 		checked += 1;
 		try {
-			execSync("bunx attw --pack --ignore-rules cjs-resolves-to-esm -- .", {
-				cwd: dir,
-				stdio: "pipe",
-			});
+			const raw = runAttw(dir);
+			const report = JSON.parse(raw);
+			const problems = flattenProblems(report.problems);
+			const actionable = problems.filter((problem) => !shouldSuppressProblem(problem));
+
+			for (const problem of problems) {
+				if (!shouldSuppressProblem(problem)) continue;
+				const key = `${problem.kind}:${problem.entrypoint || problem.moduleSpecifier || "n/a"}:${problem.resolutionKind || problem.resolutionOption || "n/a"}`;
+				suppressedCounts.set(key, (suppressedCounts.get(key) || 0) + 1);
+			}
+
+			if (actionable.length > 0) {
+				failures.push({
+					name: pkg.name || path.basename(dir),
+					dir: path.relative(ROOT, dir),
+					error: actionable
+						.map((problem) =>
+							`${problem.kind} entrypoint=${problem.entrypoint || "n/a"} resolution=${problem.resolutionKind || problem.resolutionOption || "n/a"} module=${problem.moduleSpecifier || "n/a"}`,
+						)
+						.join("\n"),
+				});
+			}
 		} catch (error) {
-			const stdout = error.stdout?.toString()?.trim();
-			const stderr = error.stderr?.toString()?.trim();
 			failures.push({
 				name: pkg.name || path.basename(dir),
 				dir: path.relative(ROOT, dir),
-				error: [stdout, stderr, error.message].filter(Boolean).join("\n"),
+				error: [error.message].filter(Boolean).join("\n"),
 			});
 		}
 	}
@@ -85,9 +140,9 @@ const run = () => {
 	}
 
 	console.log(`[check-attw] OK: validated ${checked} publishable package(s)`);
-	if (ATTW_EXCLUDED.size > 0) {
+	if (suppressedCounts.size > 0) {
 		console.log(
-			`[check-attw] Skipped ${ATTW_EXCLUDED.size} package(s) with known ATTW false-positive/legacy type-surface gaps`,
+			`[check-attw] Suppressed ${[...suppressedCounts.values()].reduce((a, b) => a + b, 0)} known non-actionable ATTW diagnostic(s)`,
 		);
 	}
 };

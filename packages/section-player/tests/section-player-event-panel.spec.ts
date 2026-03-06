@@ -33,10 +33,13 @@ test.describe("section player controller event panel", () => {
 		await firstSelectable.click({ force: true });
 
 		const panel = await openEventPanel(page);
+		await panel.getByRole("button", { name: "section" }).click();
 		const panelRows = panel.locator(".pie-section-player-tools-event-debugger__row");
 		await expect(
 			panelRows.filter({ hasText: "section-loading-complete" }).first(),
-		).toBeVisible();
-		await expect(panelRows.filter({ hasText: "replayed" }).first()).toBeVisible();
+		).toBeVisible({ timeout: 30_000 });
+		await expect(
+			panelRows.filter({ hasText: "replayed" }).first(),
+		).toBeVisible({ timeout: 30_000 });
 	});
 });

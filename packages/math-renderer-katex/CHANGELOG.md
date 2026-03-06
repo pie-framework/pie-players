@@ -1,5 +1,21 @@
 # @pie-players/math-renderer-katex
 
+## 0.3.0
+
+### Minor Changes
+
+- Adopt monorepo-wide fixed versioning and establish the first lockstep release train at 0.3.0.
+
+### Patch Changes
+
+- 9385ce0: Release all publishable packages in the repository.
+
+  This intentionally triggers a full patch release sweep across all non-private workspace packages.
+
+- Updated dependencies
+- Updated dependencies [9385ce0]
+  - @pie-players/math-renderer-core@0.3.0
+
 ## 0.1.5
 
 ### Patch Changes

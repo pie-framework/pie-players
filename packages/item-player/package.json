@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-item-player",
-	"version": "0.1.1",
+	"version": "0.3.0",
 	"type": "module",
 	"description": "Unified custom element for rendering PIE items with iife/esm/preloaded strategies",
 	"license": "MIT",
@@ -57,7 +57,7 @@
 		"url": "https://github.com/pie-framework/pie-players/issues"
 	},
 	"engines": {
-		"node": ">=18.0.0"
+		"node": ">=20.0.0"
 	},
 	"sideEffects": true
 }

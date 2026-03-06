@@ -4,6 +4,6 @@
 	"requireRepositoryDirectory": true,
 	"requireExportsOrMainTypes": true,
 	"requireNodeEngine": true,
-	"defaultNodeEngine": ">=18.0.0",
-	"workspaceRoots": ["packages", "tools"]
+	"defaultNodeEngine": ">=20.0.0",
+	"workspaceRoots": ["packages"]
 }

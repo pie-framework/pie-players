@@ -1,5 +1,11 @@
 # @pie-players/pie-players-cli
 
+## 0.3.0
+
+### Minor Changes
+
+- Adopt monorepo-wide fixed versioning and establish the first lockstep release train at 0.3.0.
+
 ## 0.1.3
 
 ### Patch Changes

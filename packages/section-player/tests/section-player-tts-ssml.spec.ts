@@ -105,13 +105,20 @@ test.describe("section player demo tts-ssml", () => {
 		await expect(itemCalculatorButton).toBeVisible();
 
 		// Calculator opens and is minimally interactive.
+		const desmosAuthResponse = page.waitForResponse(
+			(response) =>
+				response.url().includes("/api/tools/desmos/auth") &&
+				response.request().method() === "GET",
+		);
 		await itemCalculatorButton.click();
+		await desmosAuthResponse;
 		const calculatorDialog = page.getByRole("dialog", {
 			name: "Calculator tool - Drag header to move, Escape to close",
 		});
 		await expect(calculatorDialog).toBeVisible({ timeout: 20_000 });
 		await calculatorDialog.click();
 		await expect(calculatorDialog.getByText("Calculator").first()).toBeVisible();
+		await expect(calculatorDialog.getByText(/failed to initialize/i)).toHaveCount(0);
 
 		// Switch to scorer mode and confirm evaluate-mode rendering path.
 		await page.getByRole("link", { name: "Scorer" }).click();

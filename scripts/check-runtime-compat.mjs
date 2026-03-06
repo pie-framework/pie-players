@@ -5,6 +5,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 const ROOT = process.cwd();
+const POLICY_PATH = path.join(ROOT, "scripts", "publish-policy.json");
 
 const NODE_SAFE_PACKAGES = [
 	"@pie-players/pie-calculator",
@@ -24,11 +25,15 @@ const BROWSER_ONLY_PACKAGES = [
 ];
 
 const readJson = (filePath) => JSON.parse(readFileSync(filePath, "utf8"));
+const policy = existsSync(POLICY_PATH) ? readJson(POLICY_PATH) : {};
+const WORKSPACE_ROOTS = Array.isArray(policy.workspaceRoots)
+	? policy.workspaceRoots
+	: ["packages"];
 
 const workspacePackageMap = () => {
 	const map = new Map();
-	// Use explicit directories to avoid glob dependencies in this script.
-	for (const rootDir of ["packages", "tools"]) {
+	// Use workspace roots from publish policy to scope publish checks.
+	for (const rootDir of WORKSPACE_ROOTS) {
 		const abs = path.join(ROOT, rootDir);
 		if (!existsSync(abs)) continue;
 		for (const dirent of readdirSync(abs, {

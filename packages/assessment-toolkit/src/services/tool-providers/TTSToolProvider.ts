@@ -10,6 +10,7 @@
  */
 
 import type { ITTSProvider, TTSConfig } from "@pie-players/pie-tts";
+import { ServerTTSProvider } from "@pie-players/tts-client-server";
 import { BrowserTTSProvider } from "../../services/tts/browser-provider.js";
 import type { IToolProvider, ToolProviderCapabilities } from "./IToolProvider.js";
 
@@ -180,27 +181,12 @@ export class TTSToolProvider
 			);
 		}
 
-		// Lazy-load ServerTTSProvider to avoid bundling if not needed
-		try {
-			const { ServerTTSProvider } = await import(
-				"@pie-players/tts-client-server"
-			);
+		// Create provider instance (no constructor args, will be initialized on first use)
+		this.ttsProvider = new ServerTTSProvider();
 
-			// Create provider instance (no constructor args, will be initialized on first use)
-			this.ttsProvider = new ServerTTSProvider();
-
-			console.log(
-				`[TTSToolProvider] Server TTS initialized (provider: ${config.serverProvider || config.backend})`,
-			);
-		} catch (error) {
-			console.error(
-				"[TTSToolProvider] Failed to load ServerTTSProvider:",
-				error,
-			);
-			throw new Error(
-				"Failed to load server TTS provider. Ensure @pie-players/tts-client-server is installed.",
-			);
-		}
+		console.log(
+			`[TTSToolProvider] Server TTS initialized (provider: ${config.serverProvider || config.backend})`,
+		);
 	}
 
 	/**

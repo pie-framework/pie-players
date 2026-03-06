@@ -4,9 +4,19 @@ This repository publishes multiple workspace packages to npm. To keep releases
 predictable for external consumers, publishing is gated by metadata and artifact
 validation checks.
 
+## Versioning model
+
+The monorepo uses Changesets **fixed versioning** for all publishable
+`@pie-players/*` packages:
+
+- all publishable packages move in a lockstep release train
+- all publishable packages share one version at publish time
+- source manifests keep internal references as `workspace:*`
+- publish rewrites workspace refs to concrete versions, then restores manifests
+
 ## Required package metadata (publishable workspaces)
 
-For every non-private workspace package in `packages/*` and `tools/*`:
+For every non-private workspace package in `packages/*`:
 
 - `publishConfig.access` must be `public`
 - `license` must be present
@@ -35,6 +45,7 @@ bun run verify:publish
 `verify:publish` executes:
 
 - package build
+- fixed-versioning invariants (`scripts/check-fixed-versioning.mjs`)
 - metadata policy validation
 - `publint` package surface checks
 - ATTW type-surface checks (`scripts/check-attw.mjs`)
@@ -70,6 +81,12 @@ push-driven safety checks in place.
 Publish-path runs execute the full `bun run verify:publish` gate before
 `changesets/action` can publish.
 
+After publish, CI also validates internal dependency closure in the registry:
+
+- `scripts/check-published-closure.mjs`
+- confirms published `@pie-players/*` packages only reference resolvable internal versions
+- fails if any `workspace:*` leak or unresolved internal dependency is detected
+
 ## Common remediation
 
 - Metadata failures: update package `package.json` fields listed in the error.
@@ -79,3 +96,35 @@ Publish-path runs execute the full `bun run verify:publish` gate before
   documented exclusion set with rationale until remediated.
 - Pack export/smoke failures: ensure all declared targets are included in `files`
   and produced by build output.
+- Fixed-versioning failures:
+  - ensure all publishable package versions are identical after `bun run version`
+  - ensure internal `@pie-players/*` deps remain `workspace:*` in source manifests
+
+## Manual publishing (local)
+
+Use the same gate as CI before publish:
+
+```bash
+bun run version
+bun run release:manual
+```
+
+`release:manual` now runs:
+
+1. `check:npm-auth` (fails fast if npm auth is missing/expired or `@pie-players` access is unavailable)
+2. `verify:publish`
+3. workspace tests
+4. release publish
+
+If you hit errors like:
+
+- `npm notice Access token expired or revoked`
+- `E404 Not Found - PUT https://registry.npmjs.org/@pie-players%2f...`
+
+re-auth locally and verify org access before retrying:
+
+```bash
+npm login --registry=https://registry.npmjs.org/
+npm whoami --registry=https://registry.npmjs.org/
+npm org ls pie-players --registry=https://registry.npmjs.org/
+```

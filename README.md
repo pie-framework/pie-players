@@ -44,6 +44,9 @@ bun run check:custom-elements
 
 This monorepo keeps internal dependencies as `workspace:*` during development.
 
+All publishable `@pie-players/*` packages follow a fixed lockstep version train.
+When a release wave is cut, every publishable package lands on the same version.
+
 On release, `bun run release` runs a publish wrapper that temporarily rewrites workspace
 ranges to concrete package versions, executes `changeset publish`, then restores the
 original workspace ranges. This avoids leaking `workspace:*` into npm metadata while
@@ -53,6 +56,34 @@ Before release merges/publishes, run:
 
 ```bash
 bun run verify:publish
+```
+
+Manual publish flow (matches CI gates):
+
+```bash
+bun run version
+bun run release:manual
+```
+
+`release:manual` executes publish preflight checks and tests before publish.
+
+### Registry switching (CodeArtifact vs npmjs)
+
+Use npmjs for publishing `@pie-players/*`, and switch back to CodeArtifact for
+private consumer installs when needed.
+
+```bash
+# one command on npmjs (preferred)
+NPM_CONFIG_REGISTRY=https://registry.npmjs.org npm whoami
+
+# publish path on npmjs
+NPM_CONFIG_REGISTRY=https://registry.npmjs.org bun run release
+
+# set current registry to npmjs
+npm config set registry https://registry.npmjs.org/
+
+# set current registry back to CodeArtifact
+npm config set registry https://renaissance-112784725199.d.codeartifact.us-east-1.amazonaws.com/npm/npm-rgp/
 ```
 
 ## Release Labels

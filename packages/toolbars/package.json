@@ -47,11 +47,7 @@
 	"unpkg": "./dist/index.js",
 	"jsdelivr": "./dist/index.js",
 	"dependencies": {
-		"@pie-players/pie-assessment-toolkit": "workspace:*",
-		"@pie-players/pie-calculator-mathjs": "workspace:*",
-		"@pie-players/pie-context": "workspace:*",
-		"@pie-players/pie-default-tool-loaders": "workspace:*",
-		"daisyui": "^5.5.18"
+		"@pie-players/pie-assessment-toolkit": "workspace:*"
 	},
 	"scripts": {
 		"build": "vite build",

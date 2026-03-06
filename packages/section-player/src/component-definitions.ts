@@ -1,3 +1,5 @@
+import "@pie-players/pie-item-player";
+
 export type ComponentModuleLoader = () => Promise<unknown>;
 
 export interface ComponentDefinition {
@@ -12,7 +14,7 @@ export type PlayerDefinitionMap = Record<string, ComponentDefinition>;
 export const DEFAULT_PLAYER_DEFINITIONS: PlayerDefinitionMap = {
 	iife: {
 		tagName: "pie-item-player",
-		ensureDefined: () => import("@pie-players/pie-item-player"),
+		ensureDefined: () => Promise.resolve(),
 		attributes: {
 			strategy: "iife",
 		},
@@ -24,7 +26,7 @@ export const DEFAULT_PLAYER_DEFINITIONS: PlayerDefinitionMap = {
 	},
 	esm: {
 		tagName: "pie-item-player",
-		ensureDefined: () => import("@pie-players/pie-item-player"),
+		ensureDefined: () => Promise.resolve(),
 		attributes: {
 			strategy: "esm",
 		},
@@ -36,7 +38,7 @@ export const DEFAULT_PLAYER_DEFINITIONS: PlayerDefinitionMap = {
 	},
 	preloaded: {
 		tagName: "pie-item-player",
-		ensureDefined: () => import("@pie-players/pie-item-player"),
+		ensureDefined: () => Promise.resolve(),
 		attributes: {
 			strategy: "preloaded",
 		},

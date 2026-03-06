@@ -10,7 +10,6 @@
  */
 
 import type { ITTSProvider, TTSConfig } from "@pie-players/pie-tts";
-import { ServerTTSProvider } from "@pie-players/tts-client-server";
 import { BrowserTTSProvider } from "../../services/tts/browser-provider.js";
 import type { IToolProvider, ToolProviderCapabilities } from "./IToolProvider.js";
 
@@ -181,8 +180,11 @@ export class TTSToolProvider
 			);
 		}
 
-		// Create provider instance (no constructor args, will be initialized on first use)
-		this.ttsProvider = new ServerTTSProvider();
+		// Server backends are optional; load implementation only when requested.
+		const serverModule = (await import("@pie-players/tts-client-server")) as {
+			ServerTTSProvider: new () => ITTSProvider;
+		};
+		this.ttsProvider = new serverModule.ServerTTSProvider();
 
 		console.log(
 			`[TTSToolProvider] Server TTS initialized (provider: ${config.serverProvider || config.backend})`,

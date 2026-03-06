@@ -88,6 +88,12 @@ import "@pie-players/pie-section-player/components/section-player-splitpane-elem
 `@pie-players/pie-section-player` no longer hard-bundles optional tool custom elements.
 Install the tool packages you actually enable in `tools.placement` / `tools.providers`.
 
+Import policy in this stack:
+
+- Core framework modules (`pie-assessment-toolkit`, `pie-section-player`, `pie-item-player`) are loaded statically.
+- Optional modules (tool elements and optional provider backends such as server TTS/Desmos provider) are loaded dynamically by toolkit/provider wiring.
+- Hosts install optional modules explicitly based on enabled tools/backends, so unused features are not forced into every integration.
+
 Minimal host dependencies for calculator + TTS support:
 
 ```ts

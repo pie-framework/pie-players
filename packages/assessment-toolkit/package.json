@@ -65,15 +65,23 @@
 	},
 	"dependencies": {
 		"@pie-players/pie-calculator": "workspace:*",
-		"@pie-players/pie-calculator-desmos": "workspace:*",
 		"@pie-players/pie-context": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*",
 		"@pie-players/pie-tts": "workspace:*",
-		"@pie-players/tts-client-server": "workspace:*",
 		"daisyui": "^5.5.18"
 	},
 	"peerDependencies": {
+		"@pie-players/pie-calculator-desmos": "^0.3.0",
+		"@pie-players/tts-client-server": "^0.3.0",
 		"svelte": "^5.51.3"
+	},
+	"peerDependenciesMeta": {
+		"@pie-players/pie-calculator-desmos": {
+			"optional": true
+		},
+		"@pie-players/tts-client-server": {
+			"optional": true
+		}
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.3.10",

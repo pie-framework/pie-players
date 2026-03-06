@@ -15,7 +15,6 @@ import type {
 	CalculatorProvider,
 	DesmosCalculatorConfig,
 } from "@pie-players/pie-calculator";
-import { DesmosCalculatorProvider } from "@pie-players/pie-calculator-desmos";
 import type { IToolProvider, ToolProviderCapabilities } from "./IToolProvider.js";
 
 /**
@@ -72,7 +71,14 @@ export class DesmosToolProvider
 	readonly version = "1.10";
 	readonly requiresAuth = true;
 
-	private desmosProvider: DesmosCalculatorProvider | null = null;
+	private desmosProvider:
+		| (CalculatorProvider & {
+				initialize(config: {
+					apiKey?: string;
+					proxyEndpoint?: string;
+				}): Promise<void>;
+		  })
+		| null = null;
 	private config: DesmosToolProviderConfig | null = null;
 
 	/**
@@ -92,7 +98,15 @@ export class DesmosToolProvider
 		}
 
 		this.config = config;
-		this.desmosProvider = new DesmosCalculatorProvider();
+		const desmosModule = (await import("@pie-players/pie-calculator-desmos")) as {
+			DesmosCalculatorProvider: new () => CalculatorProvider & {
+				initialize(config: {
+					apiKey?: string;
+					proxyEndpoint?: string;
+				}): Promise<void>;
+			};
+		};
+		this.desmosProvider = new desmosModule.DesmosCalculatorProvider();
 
 		// Initialize with API key or proxy
 		try {

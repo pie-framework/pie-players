@@ -46,7 +46,13 @@
 		"lint": "biome check ."
 	},
 	"peerDependencies": {
+		"@pie-players/pie-tool-annotation-toolbar": "^0.3.0",
 		"svelte": "^5.51.0"
+	},
+	"peerDependenciesMeta": {
+		"@pie-players/pie-tool-annotation-toolbar": {
+			"optional": true
+		}
 	},
 	"dependencies": {
 		"@pie-players/pie-assessment-toolkit": "workspace:*",

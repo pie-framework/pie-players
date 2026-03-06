@@ -1,5 +1,13 @@
 # @pie-players/item-demos
 
+## 0.1.11
+
+### Patch Changes
+
+- Updated dependencies
+  - @pie-players/pie-item-player@0.3.3
+  - @pie-players/pie-players-shared@0.3.3
+
 ## 0.1.10
 
 ### Patch Changes

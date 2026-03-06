@@ -1,5 +1,13 @@
 # @pie-players/pie-toolbars
 
+## 0.3.3
+
+### Patch Changes
+
+- Prepare a patch release for the latest framework fixes, math-rendering hardening, and packaging safety improvements.
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.3
+
 ## 0.3.2
 
 ### Patch Changes

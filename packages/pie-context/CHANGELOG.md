@@ -1,5 +1,11 @@
 # @pie-players/pie-context
 
+## 0.3.3
+
+### Patch Changes
+
+- Prepare a patch release for the latest framework fixes, math-rendering hardening, and packaging safety improvements.
+
 ## 0.3.2
 
 ## 0.3.1

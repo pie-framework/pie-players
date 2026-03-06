@@ -141,6 +141,9 @@ export {
 	createDefaultToolRegistry,
 	DEFAULT_TOOL_PLACEMENT,
 	DEFAULT_TOOL_ORDER,
+	createPackagedToolRegistry,
+	PACKAGED_TOOL_PLACEMENT,
+	registerPackagedTools,
 } from "./services/createDefaultToolRegistry.js";
 export type { DefaultToolRegistryOptions } from "./services/createDefaultToolRegistry.js";
 export {

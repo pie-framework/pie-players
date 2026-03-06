@@ -50,7 +50,7 @@
 		type ToolbarItem
 	} from '../services/toolbar-items.js';
 	import type { PNPToolResolver } from '../services/PNPToolResolver.js';
-	import { createDefaultToolRegistry } from '../services/createDefaultToolRegistry.js';
+	import { createPackagedToolRegistry } from '../services/createDefaultToolRegistry.js';
 	import { DEFAULT_TOOL_MODULE_LOADERS } from '../tools/default-tool-module-loaders.js';
 	import {
 		normalizeToolsConfig,
@@ -62,7 +62,7 @@
 	import type { ElementToolContext, ItemToolContext, ToolLevel, ToolContext } from '../services/tool-context.js';
 
 	const isBrowser = typeof window !== 'undefined';
-	const fallbackToolRegistry = createDefaultToolRegistry({
+	const fallbackToolRegistry = createPackagedToolRegistry({
 		toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS
 	});
 

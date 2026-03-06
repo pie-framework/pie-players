@@ -82,7 +82,7 @@
 		isolation,
 		env,
 		iifeBundleHost,
-		showToolbar = "true" as boolean | string | null | undefined,
+		showToolbar = "false" as boolean | string | null | undefined,
 		toolbarPosition = "right",
 		enabledTools = "",
 		itemToolbarTools = "",

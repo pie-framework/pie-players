@@ -8,6 +8,13 @@
 	import '@pie-players/pie-section-player-tools-event-debugger';
 	import '@pie-players/pie-section-player-tools-session-debugger';
 	import '@pie-players/pie-section-player-tools-pnp-debugger';
+	import '@pie-players/pie-tool-answer-eliminator';
+	import '@pie-players/pie-tool-graph';
+	import '@pie-players/pie-tool-line-reader';
+	import '@pie-players/pie-tool-periodic-table';
+	import '@pie-players/pie-tool-protractor';
+	import '@pie-players/pie-tool-ruler';
+	import '@pie-players/pie-tool-theme';
 	import '@pie-players/pie-theme';
 	import '@pie-players/pie-theme/components.css';
 	import { browser } from '$app/environment';
@@ -119,10 +126,11 @@ let isThemeSyncing = $state(false);
 				enabled: true
 			}
 		},
+		// Demo policy: only expose currently supported/working placements.
 		placement: {
 			section: ['theme', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
-			item: ['calculator', 'textToSpeech', 'answerEliminator', 'annotationToolbar'],
-			passage: ['textToSpeech', 'annotationToolbar']
+			item: ['calculator', 'textToSpeech', 'answerEliminator'],
+			passage: ['textToSpeech']
 		}
 	};
 
@@ -416,6 +424,48 @@ let isTtsSsmlDemo = $derived(
 		return wireCloseListener(eventDebuggerElement, () => {
 			showEventPanel = false;
 		});
+	});
+
+	// Measure toolbar dimensions for verification
+	$effect(() => {
+		if (!browser) return;
+		const measureTimer = setTimeout(() => {
+			const toolbars = document.querySelectorAll('pie-section-toolbar');
+			if (toolbars.length === 0) {
+				console.warn('[Toolbar Measurement] No pie-section-toolbar elements found');
+				return;
+			}
+
+			console.log(`[Toolbar Measurement] Found ${toolbars.length} pie-section-toolbar elements`);
+
+			toolbars.forEach((toolbar, index) => {
+				const rect = toolbar.getBoundingClientRect();
+				const paneContainer =
+					toolbar.closest('[class*="pane"], [class*="panel"], [class*="split"]') ||
+					toolbar.parentElement;
+
+				const paneRect = paneContainer ? paneContainer.getBoundingClientRect() : null;
+
+				console.log(`\n=== Toolbar ${index + 1} measurements ===`);
+				console.log(`pie-section-toolbar:`);
+				console.log(`  Width: ${rect.width}px`);
+				console.log(`  Height: ${rect.height}px`);
+				console.log(`  Top: ${rect.top}px`);
+				console.log(`  Left: ${rect.left}px`);
+
+				if (paneContainer && paneRect) {
+					console.log(`Parent pane (${paneContainer.tagName}):`);
+					console.log(`  Classes: ${paneContainer.className}`);
+					console.log(`  Width: ${paneRect.width}px`);
+					console.log(`  Height: ${paneRect.height}px`);
+				}
+
+				const isVisible = rect.width > 100 && rect.height > 30;
+				console.log(`Visual assessment: ${isVisible ? '✓ VISUALLY OBVIOUS (not a thin sliver)' : '✗ WARNING: May be too small (thin sliver)'}`);
+			});
+		}, 2000); // Wait 2 seconds for layout to stabilize
+
+		return () => clearTimeout(measureTimer);
 	});
 
 	async function resetSessions() {

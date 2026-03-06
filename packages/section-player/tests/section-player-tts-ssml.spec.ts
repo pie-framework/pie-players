@@ -90,7 +90,8 @@ test.describe("section player demo tts-ssml", () => {
 		// TTS controls exist for passage and items.
 		const passageTtsButton = passageRegion.getByRole("button", { name: "Read aloud" }).first();
 		await expect(passageTtsButton).toBeVisible();
-		await expect(q1.getByRole("button", { name: "Read aloud" })).toBeVisible();
+		const itemTtsButton = q1.getByRole("button", { name: "Read aloud" });
+		await expect(itemTtsButton).toBeVisible();
 
 		// TTS starts reading and can be stopped quickly.
 		await passageTtsButton.click();
@@ -98,6 +99,13 @@ test.describe("section player demo tts-ssml", () => {
 		await expect(ttsStopButton).toBeVisible({ timeout: 15_000 });
 		await ttsStopButton.click();
 		await expect(passageRegion.getByRole("button", { name: "Read aloud" }).first()).toBeVisible();
+
+		// Item-level TTS should also toggle its local UI state.
+		await itemTtsButton.click();
+		const itemTtsStopButton = q1.getByRole("button", { name: "Stop reading" });
+		await expect(itemTtsStopButton).toBeVisible({ timeout: 15_000 });
+		await itemTtsStopButton.click();
+		await expect(q1.getByRole("button", { name: "Read aloud" })).toBeVisible();
 
 		// Calculator is available in items, not in passage.
 		await expect(passageRegion.getByRole("button", { name: /calculator/i })).toHaveCount(0);
@@ -119,6 +127,17 @@ test.describe("section player demo tts-ssml", () => {
 		await calculatorDialog.click();
 		await expect(calculatorDialog.getByText("Calculator").first()).toBeVisible();
 		await expect(calculatorDialog.getByText(/failed to initialize/i)).toHaveCount(0);
+
+		// Answer eliminator is item-level and should render elimination controls when toggled on.
+		const answerEliminatorButton = q1.getByRole("button", {
+			name: /answer eliminator|strike through choices/i,
+		});
+		await expect(answerEliminatorButton).toBeVisible();
+		await answerEliminatorButton.click();
+		await expect(answerEliminatorButton).toHaveAttribute("aria-pressed", "true");
+		await expect(
+			q1.getByRole("button", { name: /toggle elimination for/i }).first(),
+		).toBeVisible();
 
 		// Switch to scorer mode and confirm evaluate-mode rendering path.
 		await page.getByRole("link", { name: "Scorer" }).click();

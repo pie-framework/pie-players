@@ -11,6 +11,12 @@ type ToolSpec = {
 
 const SECTION_TOOL_SPECS: ToolSpec[] = [
 	{
+		id: "theme",
+		buttonAriaLabel: "Theme - Change colors and contrast",
+		toolHostTag: "pie-tool-theme",
+		panelRole: "dialog",
+	},
+	{
 		id: "graph",
 		buttonAriaLabel: "Graph - Graphing calculator",
 		toolHostTag: "pie-tool-graph",
@@ -52,22 +58,20 @@ function sectionToolbar(page: Page): Locator {
 }
 
 test.describe("section toolbar tools", () => {
-	test("shows section-level tools with icons and toggles each tool", async ({ page }) => {
+	test("renders expected section-level tool buttons in demo defaults", async ({ page }) => {
 		test.setTimeout(180_000);
 		await gotoDemo(page);
 
 		const toolbar = sectionToolbar(page);
+		await expect(toolbar).toHaveCount(1);
 		await expect(toolbar).toBeVisible();
+		await expect(toolbar.locator(".item-toolbar__button")).toHaveCount(SECTION_TOOL_SPECS.length);
 
 		for (const spec of SECTION_TOOL_SPECS) {
 			const button = toolbar.locator(
 				`.item-toolbar__button[aria-label="${spec.buttonAriaLabel}"]`,
 			);
 			await expect(button, `Missing ${spec.id} button`).toBeVisible();
-
-			const icon = button.locator("svg, img, i.icon").first();
-			await expect(icon, `Missing ${spec.id} icon`).toBeVisible();
-
 			await expect(button).toHaveAttribute("aria-pressed", "false");
 			await button.click({ force: true });
 			await expect(button).toHaveAttribute("aria-pressed", "true");

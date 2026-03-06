@@ -33,7 +33,24 @@ import {
 	type ToolComponentFactoryMap,
 	type ToolTagMap,
 } from "../tools/tool-tag-map.js";
-import { DEFAULT_TOOL_PLACEMENT } from "./tool-config-defaults.js";
+import {
+	DEFAULT_TOOL_PLACEMENT,
+	PACKAGED_TOOL_PLACEMENT,
+} from "./tool-config-defaults.js";
+
+const PACKAGED_TOOL_REGISTRATIONS = [
+	calculatorToolRegistration,
+	ttsToolRegistration,
+	rulerToolRegistration,
+	protractorToolRegistration,
+	answerEliminatorToolRegistration,
+	highlighterToolRegistration,
+	lineReaderToolRegistration,
+	colorSchemeToolRegistration,
+	annotationToolbarRegistration,
+	graphToolRegistration,
+	periodicTableToolRegistration,
+] as const;
 
 export interface DefaultToolRegistryOptions {
 	/**
@@ -55,23 +72,25 @@ export interface DefaultToolRegistryOptions {
 	 * Hosts can inject default loaders from an external package.
 	 */
 	toolModuleLoaders?: Partial<Record<string, ToolModuleLoader>>;
+	/**
+	 * Register packaged PIE tools by default.
+	 *
+	 * @default false
+	 */
+	includePackagedTools?: boolean;
+	/**
+	 * Restrict registration to specific packaged tool IDs.
+	 * Ignored when includePackagedTools is false.
+	 */
+	toolIds?: string[];
 }
 
 /**
- * Create a tool registry with all default PIE tools registered
+ * Create a tool registry.
  *
- * Default tools include:
- * - Calculator (basic, scientific, graphing)
- * - Text-to-Speech (TTS)
- * - Ruler
- * - Protractor
- * - Answer Eliminator
- * - Highlighter
- * - Line Reader
- * - Theme
- * - Annotation Toolbar
- * - Graph
- * - Periodic Table
+ * By default, this creates an empty registry so hosts can explicitly opt in.
+ * For convenience, pass { includePackagedTools: true } to register all packaged tools,
+ * or use createPackagedToolRegistry().
  *
  * @returns ToolRegistry with all default tools
  */
@@ -91,18 +110,12 @@ export function createDefaultToolRegistry(
 	const applyOverrides = (registration: ToolRegistration): ToolRegistration =>
 		options.overrides?.[registration.toolId] || registration;
 
-	// Register all default PIE tools
-	registry.register(applyOverrides(calculatorToolRegistration));
-	registry.register(applyOverrides(ttsToolRegistration));
-	registry.register(applyOverrides(rulerToolRegistration));
-	registry.register(applyOverrides(protractorToolRegistration));
-	registry.register(applyOverrides(answerEliminatorToolRegistration));
-	registry.register(applyOverrides(highlighterToolRegistration));
-	registry.register(applyOverrides(lineReaderToolRegistration));
-	registry.register(applyOverrides(colorSchemeToolRegistration));
-	registry.register(applyOverrides(annotationToolbarRegistration));
-	registry.register(applyOverrides(graphToolRegistration));
-	registry.register(applyOverrides(periodicTableToolRegistration));
+	if (options.includePackagedTools) {
+		registerPackagedTools(registry, {
+			toolIds: options.toolIds,
+			applyOverrides,
+		});
+	}
 
 	if (options.toolModuleLoaders && Object.keys(options.toolModuleLoaders).length > 0) {
 		registry.setToolModuleLoaders(options.toolModuleLoaders);
@@ -111,6 +124,43 @@ export function createDefaultToolRegistry(
 	registry.setComponentOverrides(componentConfig);
 
 	return registry;
+}
+
+export interface RegisterPackagedToolsOptions {
+	toolIds?: string[];
+	applyOverrides?: (registration: ToolRegistration) => ToolRegistration;
+}
+
+/**
+ * Register packaged PIE tools onto an existing registry.
+ */
+export function registerPackagedTools(
+	registry: ToolRegistry,
+	options: RegisterPackagedToolsOptions = {},
+): void {
+	const selectedToolIds =
+		options.toolIds && options.toolIds.length > 0
+			? new Set(options.toolIds)
+			: null;
+	const applyOverrides = options.applyOverrides || ((registration: ToolRegistration) => registration);
+	for (const registration of PACKAGED_TOOL_REGISTRATIONS) {
+		if (selectedToolIds && !selectedToolIds.has(registration.toolId)) {
+			continue;
+		}
+		registry.register(applyOverrides(registration));
+	}
+}
+
+/**
+ * Convenience factory that registers all packaged PIE tools.
+ */
+export function createPackagedToolRegistry(
+	options: Omit<DefaultToolRegistryOptions, "includePackagedTools"> = {},
+): ToolRegistry {
+	return createDefaultToolRegistry({
+		...options,
+		includePackagedTools: true,
+	});
 }
 
 /**
@@ -127,6 +177,7 @@ export function createDefaultToolRegistry(
  * - Measurement: ruler, protractor (element level, diagram/geometry)
  */
 export { DEFAULT_TOOL_PLACEMENT };
+export { PACKAGED_TOOL_PLACEMENT };
 
 /**
  * Tool priority order for rendering

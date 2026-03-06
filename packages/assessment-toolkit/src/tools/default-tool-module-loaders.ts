@@ -18,18 +18,8 @@ function loadCalculatorModule(): Promise<unknown> {
 }
 
 export const DEFAULT_TOOL_MODULE_LOADERS: Record<string, ToolModuleLoader> = {
-	// Common tools
+	// Keep toolkit defaults limited to broadly expected modules.
+	// Hosts can register additional optional tool loaders as needed.
 	calculator: loadCalculatorModule,
 	textToSpeech: () => import("@pie-players/pie-tool-text-to-speech"),
-	answerEliminator: () => import("@pie-players/pie-tool-answer-eliminator"),
-	highlighter: () => import("@pie-players/pie-tool-annotation-toolbar"),
-	annotationToolbar: () => import("@pie-players/pie-tool-annotation-toolbar"),
-	theme: () => import("@pie-players/pie-tool-theme"),
-	colorScheme: () => import("@pie-players/pie-tool-theme"),
-	// Section/floating tools
-	graph: () => import("@pie-players/pie-tool-graph"),
-	periodicTable: () => import("@pie-players/pie-tool-periodic-table"),
-	ruler: () => import("@pie-players/pie-tool-ruler"),
-	protractor: () => import("@pie-players/pie-tool-protractor"),
-	lineReader: () => import("@pie-players/pie-tool-line-reader"),
 };

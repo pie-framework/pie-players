@@ -36,11 +36,17 @@ Set complex values (`runtime`, `section`, `env`) as JS properties.
 
 Both layout elements support:
 
-- `runtime` (object): coordinator/tools/player runtime bundle
+- `runtime` (object): primary coordinator/tools/player runtime bundle
 - `section` (object): assessment section payload
-- `env` (object): `{ mode, role }`
+- `env` (object): optional top-level override for `{ mode, role }`
 - `toolbar-position` (string): `top|right|bottom|left|none`
-- `show-toolbar` (boolean)
+- `show-toolbar` (boolean-like): accepts `true/false` and common string forms (`"true"`, `"false"`, `"1"`, `"0"`, `"yes"`, `"no"`)
+
+Runtime precedence is explicit:
+
+- `runtime` values are primary for runtime fields (`assessmentId`, `playerType`, `player`, `lazyInit`, `tools`, `accessibility`, `coordinator`, `createSectionController`, `isolation`, `env`).
+- Top-level runtime-like props are treated as compatibility/override inputs when a corresponding `runtime` field is absent.
+- Toolbar placement overrides (`enabled-tools`, `item-toolbar-tools`, `passage-toolbar-tools`) are normalized on top of the runtime tools config.
 
 See `apps/section-demos/src/routes/demo/[[id]]/+page.svelte` for an end-to-end host integration.
 

@@ -1,4 +1,9 @@
-import { ContextConsumer, createContext } from "@pie-players/pie-context";
+import {
+	ContextConsumer,
+	ContextProvider,
+	ContextRoot,
+	createContext,
+} from "@pie-players/pie-context";
 import type { UnknownContext } from "@pie-players/pie-context";
 import type { PlayerElementParams } from "./player-action.js";
 
@@ -10,6 +15,15 @@ export type SectionPlayerCardRenderContext = {
 export const sectionPlayerCardRenderContext = createContext<SectionPlayerCardRenderContext>(
 	Symbol.for("@pie-players/pie-section-player/card-render-context"),
 );
+
+export function getHostElementFromAnchor(anchor: HTMLElement | null): HTMLElement | null {
+	if (!anchor) return null;
+	const rootNode = anchor.getRootNode();
+	if (rootNode && "host" in rootNode) {
+		return (rootNode as ShadowRoot).host as HTMLElement;
+	}
+	return anchor.parentElement as HTMLElement | null;
+}
 
 type ContextProviderLikeEvent = Event & {
 	context?: unknown;
@@ -64,4 +78,24 @@ export function connectSectionPlayerCardRenderContext(
 		sectionPlayerCardRenderContext,
 		onValue as (value: unknown) => void,
 	);
+}
+
+export function createSectionPlayerCardRenderContextProvider(
+	host: HTMLElement,
+	initialValue: SectionPlayerCardRenderContext,
+) {
+	const provider = new ContextProvider(host, {
+		context: sectionPlayerCardRenderContext,
+		initialValue,
+	});
+	provider.connect();
+	const root = new ContextRoot(host);
+	root.attach();
+	return {
+		setValue: (value: SectionPlayerCardRenderContext) => provider.setValue(value),
+		disconnect: () => {
+			root.detach();
+			provider.disconnect();
+		},
+	};
 }

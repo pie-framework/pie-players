@@ -12,6 +12,7 @@
 
 <script lang="ts">
 	import "@pie-players/pie-toolbars/components/section-toolbar-element";
+	import { coerceBooleanLike } from "./shared/section-player-props.js";
 
 	let {
 		showToolbar = "false" as boolean | string | null | undefined,
@@ -23,28 +24,8 @@
 		enabledTools?: string;
 	}>();
 
-	function resolveToolbarVisibility(value: boolean | string | null | undefined): boolean {
-		if (typeof value === "boolean") {
-			return value;
-		}
-		if (value === null || value === undefined) {
-			return true;
-		}
-		const normalizedValue = String(value).trim().toLowerCase();
-		if (normalizedValue === "") {
-			return true;
-		}
-		if (["false", "0", "off", "no"].includes(normalizedValue)) {
-			return false;
-		}
-		if (["true", "1", "on", "yes"].includes(normalizedValue)) {
-			return true;
-		}
-		return Boolean(normalizedValue);
-	}
-
 	const shouldRenderToolbar = $derived(
-		resolveToolbarVisibility(showToolbar) && toolbarPosition !== "none",
+		coerceBooleanLike(showToolbar, false) && toolbarPosition !== "none",
 	);
 	const toolbarBeforeContent = $derived(toolbarPosition === "top");
 	const toolbarAfterContent = $derived(toolbarPosition === "bottom");

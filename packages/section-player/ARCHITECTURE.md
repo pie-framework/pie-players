@@ -46,6 +46,13 @@ This package exposes layout-specific section-player custom elements:
 
 This keeps runtime contracts stable while giving layout authors one clear composition primitive.
 
+## Runtime contract normalization
+
+- `runtime` is the primary input for runtime fields.
+- Top-level runtime-like props on layout elements are compatibility/override inputs used when the corresponding `runtime` field is absent.
+- Toolbar visibility is normalized through shared boolean-like coercion before reaching `pie-section-player-shell`.
+- Toolbar placement overrides are normalized in `resolveToolsConfig` so section/item/passage tool lists remain predictable.
+
 ## Creating a custom layout
 
 1. Create a new layout custom element in `src/components/`.

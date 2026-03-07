@@ -29,7 +29,6 @@
 />
 
 <script lang="ts">
-	import { ContextProvider, ContextRoot } from "@pie-players/pie-context";
 	import "./section-player-item-card-element.js";
 	import "./section-player-passage-card-element.js";
 	import * as SectionPlayerLayoutScaffoldModule from "./shared/SectionPlayerLayoutScaffold.svelte";
@@ -41,6 +40,7 @@
 	} from "./shared/composition.js";
 	import { createPlayerAction } from "./shared/player-action.js";
 	import {
+		createPlayerPreloadStateSetter,
 		getRenderablesSignature,
 		orchestratePlayerElementPreload,
 		type PlayerPreloadState,
@@ -57,9 +57,9 @@
 		type RuntimeConfig,
 	} from "./shared/section-player-runtime.js";
 	import {
-		sectionPlayerCardRenderContext,
 		type SectionPlayerCardRenderContext,
 	} from "./shared/section-player-card-context.js";
+	import { coerceBooleanLike } from "./shared/section-player-props.js";
 
 	const SectionPlayerLayoutScaffold = (
 		SectionPlayerLayoutScaffoldModule as unknown as {
@@ -91,14 +91,9 @@
 	} = $props();
 
 	let compositionModel = $state<SectionCompositionModel>(EMPTY_COMPOSITION);
-	let cardRenderContextAnchor = $state<HTMLDivElement | null>(null);
 	let elementsLoaded = $state(false);
 	let lastPreloadSignature = $state("");
 	let preloadRunToken = $state(0);
-	let cardRenderContextProvider: ContextProvider<
-		typeof sectionPlayerCardRenderContext
-	> | null = null;
-	let cardRenderContextRoot: ContextRoot | null = null;
 
 	const passages = $derived(compositionModel.passages || []);
 	const items = $derived(compositionModel.items || []);
@@ -138,23 +133,24 @@
 		stateKey: "__verticalAppliedParams",
 		includeSessionRefInState: false,
 	});
+	const setPreloadState = createPlayerPreloadStateSetter({
+		setLastPreloadSignature: (value) => {
+			lastPreloadSignature = value;
+		},
+		setPreloadRunToken: (value) => {
+			preloadRunToken = value;
+		},
+		setElementsLoaded: (value) => {
+			elementsLoaded = value;
+		},
+	});
 	const cardRenderContextValue = $derived.by(
 		(): SectionPlayerCardRenderContext => ({
 			resolvedPlayerTag,
 			playerAction: verticalPlayerAction,
 		}),
 	);
-
-	function getHostElement(): HTMLElement | null {
-		if (!cardRenderContextAnchor) return null;
-		const rootNode = cardRenderContextAnchor.getRootNode();
-		if (rootNode && "host" in rootNode) {
-			return (rootNode as ShadowRoot).host as HTMLElement;
-		}
-		return cardRenderContextAnchor.parentElement as HTMLElement | null;
-	}
-
-	const host = $derived.by(() => getHostElement());
+	const normalizedShowToolbar = $derived(coerceBooleanLike(showToolbar, false));
 
 	function handleBaseCompositionChanged(event: Event) {
 		compositionModel = getCompositionFromEvent(event);
@@ -181,39 +177,8 @@
 					preloadRunToken,
 					elementsLoaded,
 				}) as PlayerPreloadState,
-			setState: (next) => {
-				if (next.lastPreloadSignature !== undefined) {
-					lastPreloadSignature = next.lastPreloadSignature;
-				}
-				if (next.preloadRunToken !== undefined) {
-					preloadRunToken = next.preloadRunToken;
-				}
-				if (next.elementsLoaded !== undefined) {
-					elementsLoaded = next.elementsLoaded;
-				}
-			},
+			setState: setPreloadState,
 		});
-	});
-
-	$effect(() => {
-		if (!host) return;
-		cardRenderContextProvider = new ContextProvider(host, {
-			context: sectionPlayerCardRenderContext,
-			initialValue: cardRenderContextValue,
-		});
-		cardRenderContextProvider.connect();
-		cardRenderContextRoot = new ContextRoot(host);
-		cardRenderContextRoot.attach();
-		return () => {
-			cardRenderContextRoot?.detach();
-			cardRenderContextRoot = null;
-			cardRenderContextProvider?.disconnect();
-			cardRenderContextProvider = null;
-		};
-	});
-
-	$effect(() => {
-		cardRenderContextProvider?.setValue(cardRenderContextValue);
 	});
 
 </script>
@@ -224,15 +189,11 @@
 	sectionId={sectionId}
 	attemptId={attemptId}
 	onCompositionChanged={handleBaseCompositionChanged}
-	showToolbar={showToolbar}
+	showToolbar={normalizedShowToolbar}
 	toolbarPosition={toolbarPosition}
 	enabledTools={enabledTools}
+	cardRenderContext={cardRenderContextValue}
 >
-	<div
-		bind:this={cardRenderContextAnchor}
-		class="pie-section-player-card-context-anchor"
-		aria-hidden="true"
-	></div>
 	<div class="pie-section-player-vertical-content">
 		{#if !elementsLoaded}
 			<div class="pie-section-player-content-card">
@@ -306,10 +267,6 @@
 		padding: 0.5rem;
 		box-sizing: border-box;
 		background: var(--pie-background-dark, #ecedf1);
-	}
-
-	.pie-section-player-card-context-anchor {
-		display: none;
 	}
 
 	.pie-section-player-passages-section,

@@ -30,7 +30,6 @@
 
 <script lang="ts">
 	import { onMount } from "svelte";
-	import { ContextProvider, ContextRoot } from "@pie-players/pie-context";
 	import "./section-player-item-card-element.js";
 	import "./section-player-passage-card-element.js";
 	import * as SectionPlayerLayoutScaffoldModule from "./shared/SectionPlayerLayoutScaffold.svelte";
@@ -44,10 +43,12 @@
 		createPlayerAction,
 	} from "./shared/player-action.js";
 	import {
+		createPlayerPreloadStateSetter,
 		getRenderablesSignature,
 		orchestratePlayerElementPreload,
 		type PlayerPreloadState,
 	} from "./shared/player-preload.js";
+	import { manageOuterScrollbars } from "./shared/outer-scrollbars.js";
 	import {
 		getCanonicalItemId,
 		getCompositionFromEvent,
@@ -60,9 +61,9 @@
 		resolveSectionPlayerRuntimeState,
 	} from "./shared/section-player-runtime.js";
 	import {
-		sectionPlayerCardRenderContext,
 		type SectionPlayerCardRenderContext,
 	} from "./shared/section-player-card-context.js";
+	import { coerceBooleanLike } from "./shared/section-player-props.js";
 
 	const SectionPlayerLayoutScaffold = (
 		SectionPlayerLayoutScaffoldModule as unknown as {
@@ -93,21 +94,13 @@
 		passageToolbarTools = "",
 	} = $props();
 
-	const MANAGED_OUTER_SCROLL_CLASS = "pie-outer-scrollbars-managed";
-	const ACTIVE_OUTER_SCROLL_CLASS = "pie-outer-scrolling";
-
 	let compositionModel = $state<SectionCompositionModel>(EMPTY_COMPOSITION);
 	let leftPanelWidth = $state(50);
 	let isDragging = $state(false);
 	let splitContainerElement = $state<HTMLDivElement | null>(null);
-	let cardRenderContextAnchor = $state<HTMLDivElement | null>(null);
 	let elementsLoaded = $state(false);
 	let lastPreloadSignature = $state("");
 	let preloadRunToken = $state(0);
-	let cardRenderContextProvider: ContextProvider<
-		typeof sectionPlayerCardRenderContext
-	> | null = null;
-	let cardRenderContextRoot: ContextRoot | null = null;
 
 	const passages = $derived(compositionModel.passages || []);
 	const items = $derived(compositionModel.items || []);
@@ -149,23 +142,24 @@
 		setSkipElementLoadingOnce: true,
 		includeSessionRefInState: true,
 	});
+	const setPreloadState = createPlayerPreloadStateSetter({
+		setLastPreloadSignature: (value) => {
+			lastPreloadSignature = value;
+		},
+		setPreloadRunToken: (value) => {
+			preloadRunToken = value;
+		},
+		setElementsLoaded: (value) => {
+			elementsLoaded = value;
+		},
+	});
 	const cardRenderContextValue = $derived.by(
 		(): SectionPlayerCardRenderContext => ({
 			resolvedPlayerTag,
 			playerAction: splitPanePlayerAction,
 		}),
 	);
-
-	function getHostElement(): HTMLElement | null {
-		if (!cardRenderContextAnchor) return null;
-		const rootNode = cardRenderContextAnchor.getRootNode();
-		if (rootNode && "host" in rootNode) {
-			return (rootNode as ShadowRoot).host as HTMLElement;
-		}
-		return cardRenderContextAnchor.parentElement as HTMLElement | null;
-	}
-
-	const host = $derived.by(() => getHostElement());
+	const normalizedShowToolbar = $derived(coerceBooleanLike(showToolbar, false));
 
 	function handleBaseCompositionChanged(event: Event) {
 		compositionModel = getCompositionFromEvent(event);
@@ -238,72 +232,12 @@
 					preloadRunToken,
 					elementsLoaded,
 				}) as PlayerPreloadState,
-			setState: (next) => {
-				if (next.lastPreloadSignature !== undefined) {
-					lastPreloadSignature = next.lastPreloadSignature;
-				}
-				if (next.preloadRunToken !== undefined) {
-					preloadRunToken = next.preloadRunToken;
-				}
-				if (next.elementsLoaded !== undefined) {
-					elementsLoaded = next.elementsLoaded;
-				}
-			},
+			setState: setPreloadState,
 		});
-	});
-
-	$effect(() => {
-		if (!host) return;
-		cardRenderContextProvider = new ContextProvider(host, {
-			context: sectionPlayerCardRenderContext,
-			initialValue: cardRenderContextValue,
-		});
-		cardRenderContextProvider.connect();
-		cardRenderContextRoot = new ContextRoot(host);
-		cardRenderContextRoot.attach();
-		return () => {
-			cardRenderContextRoot?.detach();
-			cardRenderContextRoot = null;
-			cardRenderContextProvider?.disconnect();
-			cardRenderContextProvider = null;
-		};
-	});
-
-	$effect(() => {
-		cardRenderContextProvider?.setValue(cardRenderContextValue);
 	});
 
 	onMount(() => {
-		let scrollTimeout: ReturnType<typeof setTimeout> | null = null;
-		const html = document.documentElement;
-		const body = document.body;
-
-		html.classList.add(MANAGED_OUTER_SCROLL_CLASS);
-		body.classList.add(MANAGED_OUTER_SCROLL_CLASS);
-
-		const showOuterScrollbars = () => {
-			html.classList.add(ACTIVE_OUTER_SCROLL_CLASS);
-			body.classList.add(ACTIVE_OUTER_SCROLL_CLASS);
-			if (scrollTimeout) {
-				clearTimeout(scrollTimeout);
-			}
-			scrollTimeout = setTimeout(() => {
-				html.classList.remove(ACTIVE_OUTER_SCROLL_CLASS);
-				body.classList.remove(ACTIVE_OUTER_SCROLL_CLASS);
-			}, 900);
-		};
-
-		window.addEventListener("scroll", showOuterScrollbars, { passive: true });
-		return () => {
-			window.removeEventListener("scroll", showOuterScrollbars);
-			html.classList.remove(ACTIVE_OUTER_SCROLL_CLASS);
-			body.classList.remove(ACTIVE_OUTER_SCROLL_CLASS);
-			html.classList.remove(MANAGED_OUTER_SCROLL_CLASS);
-			body.classList.remove(MANAGED_OUTER_SCROLL_CLASS);
-			if (scrollTimeout) {
-				clearTimeout(scrollTimeout);
-			}
-		};
+		return manageOuterScrollbars();
 	});
 
 </script>
@@ -314,15 +248,11 @@
 	sectionId={sectionId}
 	attemptId={attemptId}
 	onCompositionChanged={handleBaseCompositionChanged}
-	showToolbar={showToolbar}
+	showToolbar={normalizedShowToolbar}
 	toolbarPosition={toolbarPosition}
 	enabledTools={enabledTools}
+	cardRenderContext={cardRenderContextValue}
 >
-	<div
-		bind:this={cardRenderContextAnchor}
-		class="pie-section-player-card-context-anchor"
-		aria-hidden="true"
-	></div>
 	<div
 		class={`pie-section-player-split-content ${!hasPassages ? "pie-section-player-split-content--no-passages" : ""}`}
 		bind:this={splitContainerElement}
@@ -414,10 +344,6 @@
 		min-height: 0;
 		height: 100%;
 		overflow: hidden;
-	}
-
-	.pie-section-player-card-context-anchor {
-		display: none;
 	}
 
 	.pie-section-player-passages-pane,

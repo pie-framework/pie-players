@@ -97,6 +97,24 @@ export type PlayerPreloadState = {
 	elementsLoaded: boolean;
 };
 
+export function createPlayerPreloadStateSetter(args: {
+	setLastPreloadSignature: (value: string) => void;
+	setPreloadRunToken: (value: number) => void;
+	setElementsLoaded: (value: boolean) => void;
+}) {
+	return (next: Partial<PlayerPreloadState>) => {
+		if (next.lastPreloadSignature !== undefined) {
+			args.setLastPreloadSignature(next.lastPreloadSignature);
+		}
+		if (next.preloadRunToken !== undefined) {
+			args.setPreloadRunToken(next.preloadRunToken);
+		}
+		if (next.elementsLoaded !== undefined) {
+			args.setElementsLoaded(next.elementsLoaded);
+		}
+	};
+}
+
 export function orchestratePlayerElementPreload(args: {
 	componentTag: string;
 	strategy: string;

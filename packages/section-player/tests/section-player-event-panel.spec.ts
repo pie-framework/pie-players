@@ -42,4 +42,53 @@ test.describe("section player controller event panel", () => {
 			panelRows.filter({ hasText: "replayed" }).first(),
 		).toBeVisible({ timeout: 30_000 });
 	});
+
+	test("keeps items pane scroll position when selecting a choice", async ({ page }) => {
+		await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
+
+		const itemsPane = page.locator("main.pie-section-player-items-pane");
+		await expect(itemsPane).toBeVisible();
+
+		const scrollMetrics = await itemsPane.evaluate((pane) => ({
+			maxScrollTop: Math.max(0, pane.scrollHeight - pane.clientHeight),
+			clientHeight: pane.clientHeight,
+			scrollHeight: pane.scrollHeight,
+		}));
+		expect(
+			scrollMetrics.maxScrollTop,
+			`Expected items pane to be scrollable (client=${scrollMetrics.clientHeight}, scroll=${scrollMetrics.scrollHeight})`,
+		).toBeGreaterThan(80);
+
+		const beforeSelectionScrollTop = await itemsPane.evaluate((pane) => {
+			const targetScrollTop = Math.max(
+				24,
+				Math.floor((pane.scrollHeight - pane.clientHeight) * 0.65),
+			);
+			pane.scrollTop = targetScrollTop;
+			return pane.scrollTop;
+		});
+		await page.waitForTimeout(150);
+
+		await itemsPane.evaluate((pane) => {
+			const paneRect = pane.getBoundingClientRect();
+			const inputs = Array.from(
+				pane.querySelectorAll<HTMLInputElement>('input[type="radio"], input[type="checkbox"]'),
+			);
+			const visibleInput = inputs.find((input) => {
+				const rect = input.getBoundingClientRect();
+				return rect.top >= paneRect.top && rect.bottom <= paneRect.bottom;
+			});
+			if (!visibleInput) {
+				throw new Error("No visible selectable input found in items pane.");
+			}
+			visibleInput.click();
+		});
+
+		await page.waitForTimeout(500);
+		const afterSelectionScrollTop = await itemsPane.evaluate((pane) => pane.scrollTop);
+		expect(
+			Math.abs(afterSelectionScrollTop - beforeSelectionScrollTop),
+			`Items pane scroll should remain stable after selection (before=${beforeSelectionScrollTop}, after=${afterSelectionScrollTop}).`,
+		).toBeLessThanOrEqual(24);
+	});
 });

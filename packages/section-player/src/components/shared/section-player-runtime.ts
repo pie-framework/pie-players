@@ -88,17 +88,19 @@ export function resolveRuntime(args: {
 	runtime: RuntimeConfig | null;
 	effectiveToolsConfig: unknown;
 }) {
+	const runtime = args.runtime || {};
 	return {
-		assessmentId: args.assessmentId,
-		playerType: args.playerType,
-		player: args.player,
-		lazyInit: args.lazyInit,
-		accessibility: args.accessibility,
-		coordinator: args.coordinator,
-		createSectionController: args.createSectionController,
-		isolation: args.isolation,
-		...(args.runtime || {}),
-		env: args.runtime?.env ?? args.env ?? DEFAULT_ENV,
+		...runtime,
+		assessmentId: runtime.assessmentId ?? args.assessmentId,
+		playerType: runtime.playerType ?? args.playerType,
+		player: runtime.player ?? args.player,
+		lazyInit: runtime.lazyInit ?? args.lazyInit,
+		accessibility: runtime.accessibility ?? args.accessibility,
+		coordinator: runtime.coordinator ?? args.coordinator,
+		createSectionController:
+			runtime.createSectionController ?? args.createSectionController,
+		isolation: runtime.isolation ?? args.isolation,
+		env: runtime.env ?? args.env ?? DEFAULT_ENV,
 		tools: args.effectiveToolsConfig,
 	};
 }

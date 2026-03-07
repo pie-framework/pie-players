@@ -21,6 +21,7 @@
 	import type { PlayerElementParams } from "./player-action.js";
 	import {
 		connectSectionPlayerCardRenderContext,
+		getHostElementFromAnchor,
 		type SectionPlayerCardRenderContext,
 	} from "./section-player-card-context.js";
 
@@ -46,15 +47,6 @@
 	const effectiveResolvedPlayerTag = $derived(contextResolvedPlayerTag || resolvedPlayerTag);
 	const effectivePlayerAction = $derived(contextPlayerAction || playerAction);
 
-	function getHostElement(): HTMLElement | null {
-		if (!contextAnchor) return null;
-		const rootNode = contextAnchor.getRootNode();
-		if (rootNode && "host" in rootNode) {
-			return (rootNode as ShadowRoot).host as HTMLElement;
-		}
-		return contextAnchor.parentElement as HTMLElement | null;
-	}
-
 	function applyCardRenderContext(value: SectionPlayerCardRenderContext): void {
 		if (!value || typeof value !== "object") return;
 		if (typeof value.resolvedPlayerTag === "string" && value.resolvedPlayerTag.trim()) {
@@ -66,7 +58,7 @@
 	}
 
 	onMount(() => {
-		const host = getHostElement();
+		const host = getHostElementFromAnchor(contextAnchor);
 		if (!host) return;
 		return connectSectionPlayerCardRenderContext(host, applyCardRenderContext);
 	});

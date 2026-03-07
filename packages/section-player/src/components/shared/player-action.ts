@@ -9,7 +9,9 @@ export type PlayerElementParams = {
 
 type AppliedPlayerParams = {
 	config?: Record<string, unknown>;
+	configSignature?: string;
 	env?: Record<string, unknown>;
+	envSignature?: string;
 	session?: Record<string, unknown>;
 	sessionSignature?: string;
 	skipElementLoading?: boolean;
@@ -32,6 +34,15 @@ function getSessionSignature(
 	}
 }
 
+function getObjectSignature(value: unknown): string {
+	if (value === null || value === undefined) return "";
+	try {
+		return JSON.stringify(value);
+	} catch {
+		return String(value);
+	}
+}
+
 export function createPlayerAction(options: PlayerActionOptions) {
 	return (node: HTMLElement, params: PlayerElementParams) => {
 		applyPlayerParams(node, params, options);
@@ -50,10 +61,12 @@ function applyPlayerParams(
 ) {
 	const nodeRecord = node as unknown as Record<string, unknown>;
 	const state = (nodeRecord[options.stateKey] || {}) as AppliedPlayerParams;
-	if (state.config !== params.config) {
+	const nextConfigSignature = getObjectSignature(params.config);
+	if (state.configSignature !== nextConfigSignature) {
 		nodeRecord.config = params.config;
 	}
-	if (state.env !== params.env) {
+	const nextEnvSignature = getObjectSignature(params.env);
+	if (state.envSignature !== nextEnvSignature) {
 		nodeRecord.env = params.env;
 	}
 	const nextSessionSignature = getSessionSignature(params.session);
@@ -80,7 +93,9 @@ function applyPlayerParams(
 	}
 	nodeRecord[options.stateKey] = {
 		config: params.config,
+		configSignature: nextConfigSignature,
 		env: params.env,
+		envSignature: nextEnvSignature,
 		session: options.includeSessionRefInState ? params.session : undefined,
 		sessionSignature: nextSessionSignature,
 		skipElementLoading: !!params.skipElementLoading,

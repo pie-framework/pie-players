@@ -2,6 +2,12 @@
 	import "../section-player-base-element.js";
 	import "../section-player-shell-element.js";
 	import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
+	import {
+		createSectionPlayerCardRenderContextProvider,
+		getHostElementFromAnchor,
+		type SectionPlayerCardRenderContext,
+	} from "./section-player-card-context.js";
+	import { coerceBooleanLike } from "./section-player-props.js";
 
 	let {
 		runtime = null as Record<string, unknown> | null,
@@ -11,6 +17,7 @@
 		showToolbar = "false" as boolean | string | null | undefined,
 		toolbarPosition = "right",
 		enabledTools = "",
+		cardRenderContext = null as SectionPlayerCardRenderContext | null,
 		onCompositionChanged,
 	} = $props<{
 		runtime?: Record<string, unknown> | null;
@@ -20,14 +27,40 @@
 		showToolbar?: boolean | string | null | undefined;
 		toolbarPosition?: string;
 		enabledTools?: string;
+		cardRenderContext?: SectionPlayerCardRenderContext | null;
 		onCompositionChanged?: (event: Event) => void;
 	}>();
+	let cardContextAnchor = $state<HTMLDivElement | null>(null);
+	let cardContextProvider = $state<{
+		setValue: (value: SectionPlayerCardRenderContext) => void;
+		disconnect: () => void;
+	} | null>(null);
+	const host = $derived.by(() => getHostElementFromAnchor(cardContextAnchor));
+	const normalizedShowToolbar = $derived(coerceBooleanLike(showToolbar, false));
 
 	function handleCompositionChanged(event: Event) {
 		onCompositionChanged?.(event);
 	}
+
+	$effect(() => {
+		if (!host || !cardRenderContext) return;
+		cardContextProvider = createSectionPlayerCardRenderContextProvider(
+			host,
+			cardRenderContext,
+		);
+		return () => {
+			cardContextProvider?.disconnect();
+			cardContextProvider = null;
+		};
+	});
+
+	$effect(() => {
+		if (!cardRenderContext) return;
+		cardContextProvider?.setValue(cardRenderContext);
+	});
 </script>
 
+<div bind:this={cardContextAnchor} class="pie-section-player-layout-scaffold-anchor" aria-hidden="true"></div>
 <pie-section-player-base
 	{runtime}
 	{section}
@@ -36,10 +69,16 @@
 	oncomposition-changed={handleCompositionChanged}
 >
 	<pie-section-player-shell
-		show-toolbar={showToolbar}
+		show-toolbar={normalizedShowToolbar}
 		toolbar-position={toolbarPosition}
 		enabled-tools={enabledTools}
 	>
 		<slot></slot>
 	</pie-section-player-shell>
 </pie-section-player-base>
+
+<style>
+	.pie-section-player-layout-scaffold-anchor {
+		display: none;
+	}
+</style>

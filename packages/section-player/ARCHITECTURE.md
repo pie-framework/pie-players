@@ -53,6 +53,44 @@ This keeps runtime contracts stable while giving layout authors one clear compos
 - Toolbar visibility is normalized through shared boolean-like coercion before reaching `pie-section-player-shell`.
 - Toolbar placement overrides are normalized in `resolveToolsConfig` so section/item/passage tool lists remain predictable.
 
+## Unidirectional flow invariants
+
+These invariants define the package architecture and should be preserved in new layout/runtime work:
+
+1. Single source of truth
+   - Toolkit/controller runtime state is authoritative for composition/session data.
+   - Layout components are render adapters for derived state, not independent state owners.
+2. Directional data flow
+   - Runtime input flows down from layout props/runtime object into base/toolkit/card/player render paths.
+   - Runtime updates flow up through events (`session-changed`, controller change events), never by mutating parent-owned state from child components.
+3. Non-structural updates are identity-stable
+   - Response/session updates, tool toggles, and TTS config changes must not remount item/passage shells when content identity is unchanged.
+4. Non-structural updates are scroll-stable
+   - Pane-local scroll positions should remain stable across session-only updates in splitpane and vertical layouts.
+5. Explicit precedence for shared card render wiring
+   - Card player render wiring has one canonical source (shared context from layout scaffolding) with prop fallback only when context is unavailable.
+
+### Non-structural update definition
+
+The following are considered non-structural updates and must preserve identity/scroll:
+
+- item response/session changes (`item-session-data-changed`, `item-session-meta-changed`)
+- tool state toggles/config changes without replacing the section content model
+- runtime setting tweaks that do not alter item/passage renderable identity
+
+If an update changes the section composition structure (add/remove/reorder/new IDs), remount behavior can be valid.
+
+## Verification matrix
+
+- Event and runtime replay behavior:
+  - `packages/section-player/tests/section-player-event-panel.spec.ts`
+- Splitpane scroll stability on response selection:
+  - `packages/section-player/tests/section-player-event-panel.spec.ts`
+- Vertical layout scroll stability on response selection:
+  - `packages/section-player/tests/section-player-event-panel.spec.ts`
+- Item shell identity stability on session-only updates:
+  - `packages/section-player/tests/section-player-event-panel.spec.ts`
+
 ## Creating a custom layout
 
 1. Create a new layout custom element in `src/components/`.

@@ -6,11 +6,40 @@ import {
 	EMPTY_COMPOSITION,
 } from "./composition.js";
 import type { PlayerElementParams } from "./player-action.js";
+import { getRenderablesSignature } from "./player-preload.js";
+import { mapRenderablesToItems } from "./section-player-runtime.js";
+
+export type LayoutCompositionSnapshot = {
+	compositionModel: SectionCompositionModel;
+	passages: SectionCompositionModel["passages"];
+	items: SectionCompositionModel["items"];
+	renderables: ItemEntity[];
+	renderablesSignature: string;
+};
 
 export function getCompositionFromEvent(event: Event): SectionCompositionModel {
 	const detail = (event as CustomEvent<{ composition?: SectionCompositionModel }>)
 		.detail;
 	return detail?.composition || EMPTY_COMPOSITION;
+}
+
+export function deriveLayoutCompositionSnapshot(
+	compositionModel: SectionCompositionModel,
+): LayoutCompositionSnapshot {
+	const renderables = mapRenderablesToItems(compositionModel.renderables || []);
+	return {
+		compositionModel,
+		passages: compositionModel.passages || [],
+		items: compositionModel.items || [],
+		renderables,
+		renderablesSignature: getRenderablesSignature(compositionModel.renderables || []),
+	};
+}
+
+export function getCompositionSnapshotFromEvent(
+	event: Event,
+): LayoutCompositionSnapshot {
+	return deriveLayoutCompositionSnapshot(getCompositionFromEvent(event));
 }
 
 export function getPassagePlayerParams(args: {

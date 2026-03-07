@@ -34,7 +34,6 @@
 	import "./section-player-passage-card-element.js";
 	import * as SectionPlayerLayoutScaffoldModule from "./shared/SectionPlayerLayoutScaffold.svelte";
 	import type { Component } from "svelte";
-	import type { SectionCompositionModel } from "../controllers/types.js";
 	import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
 	import {
 		EMPTY_COMPOSITION,
@@ -44,20 +43,20 @@
 	} from "./shared/player-action.js";
 	import {
 		createPlayerPreloadStateSetter,
-		getRenderablesSignature,
 		orchestratePlayerElementPreload,
 		type PlayerPreloadState,
 	} from "./shared/player-preload.js";
 	import { manageOuterScrollbars } from "./shared/outer-scrollbars.js";
 	import {
+		type LayoutCompositionSnapshot,
+		deriveLayoutCompositionSnapshot,
+		getCompositionSnapshotFromEvent,
 		getCanonicalItemId,
-		getCompositionFromEvent,
 		getItemPlayerParams,
 		getPassagePlayerParams,
 	} from "./shared/section-player-view-state.js";
 	import {
 		type RuntimeConfig,
-		mapRenderablesToItems,
 		resolveSectionPlayerRuntimeState,
 	} from "./shared/section-player-runtime.js";
 	import {
@@ -94,7 +93,9 @@
 		passageToolbarTools = "",
 	} = $props();
 
-	let compositionModel = $state<SectionCompositionModel>(EMPTY_COMPOSITION);
+	let compositionSnapshot = $state<LayoutCompositionSnapshot>(
+		deriveLayoutCompositionSnapshot(EMPTY_COMPOSITION),
+	);
 	let leftPanelWidth = $state(50);
 	let isDragging = $state(false);
 	let splitContainerElement = $state<HTMLDivElement | null>(null);
@@ -102,14 +103,13 @@
 	let lastPreloadSignature = $state("");
 	let preloadRunToken = $state(0);
 
-	const passages = $derived(compositionModel.passages || []);
-	const items = $derived(compositionModel.items || []);
+	const compositionModel = $derived(compositionSnapshot.compositionModel);
+	const passages = $derived(compositionSnapshot.passages);
+	const items = $derived(compositionSnapshot.items);
 	const hasPassages = $derived(passages.length > 0);
-	const preloadedRenderables = $derived.by(() =>
-		mapRenderablesToItems(compositionModel.renderables || []),
-	);
-	const preloadedRenderablesSignature = $derived.by(() =>
-		getRenderablesSignature(compositionModel.renderables || []),
+	const preloadedRenderables = $derived(compositionSnapshot.renderables);
+	const preloadedRenderablesSignature = $derived(
+		compositionSnapshot.renderablesSignature,
 	);
 	const runtimeState = $derived.by(() =>
 		resolveSectionPlayerRuntimeState({
@@ -162,7 +162,7 @@
 	const normalizedShowToolbar = $derived(coerceBooleanLike(showToolbar, false));
 
 	function handleBaseCompositionChanged(event: Event) {
-		compositionModel = getCompositionFromEvent(event);
+		compositionSnapshot = getCompositionSnapshotFromEvent(event);
 	}
 
 	function handleDividerMouseDown(event: MouseEvent) {

@@ -33,7 +33,6 @@
 	import "./section-player-passage-card-element.js";
 	import * as SectionPlayerLayoutScaffoldModule from "./shared/SectionPlayerLayoutScaffold.svelte";
 	import type { Component } from "svelte";
-	import type { SectionCompositionModel } from "../controllers/types.js";
 	import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
 	import {
 		EMPTY_COMPOSITION,
@@ -41,18 +40,18 @@
 	import { createPlayerAction } from "./shared/player-action.js";
 	import {
 		createPlayerPreloadStateSetter,
-		getRenderablesSignature,
 		orchestratePlayerElementPreload,
 		type PlayerPreloadState,
 	} from "./shared/player-preload.js";
 	import {
+		type LayoutCompositionSnapshot,
+		deriveLayoutCompositionSnapshot,
+		getCompositionSnapshotFromEvent,
 		getCanonicalItemId,
-		getCompositionFromEvent,
 		getItemPlayerParams,
 		getPassagePlayerParams,
 	} from "./shared/section-player-view-state.js";
 	import {
-		mapRenderablesToItems,
 		resolveSectionPlayerRuntimeState,
 		type RuntimeConfig,
 	} from "./shared/section-player-runtime.js";
@@ -90,18 +89,19 @@
 		passageToolbarTools = "",
 	} = $props();
 
-	let compositionModel = $state<SectionCompositionModel>(EMPTY_COMPOSITION);
+	let compositionSnapshot = $state<LayoutCompositionSnapshot>(
+		deriveLayoutCompositionSnapshot(EMPTY_COMPOSITION),
+	);
 	let elementsLoaded = $state(false);
 	let lastPreloadSignature = $state("");
 	let preloadRunToken = $state(0);
 
-	const passages = $derived(compositionModel.passages || []);
-	const items = $derived(compositionModel.items || []);
-	const preloadedRenderables = $derived.by(() =>
-		mapRenderablesToItems(compositionModel.renderables || []),
-	);
-	const preloadedRenderablesSignature = $derived.by(() =>
-		getRenderablesSignature(compositionModel.renderables || []),
+	const compositionModel = $derived(compositionSnapshot.compositionModel);
+	const passages = $derived(compositionSnapshot.passages);
+	const items = $derived(compositionSnapshot.items);
+	const preloadedRenderables = $derived(compositionSnapshot.renderables);
+	const preloadedRenderablesSignature = $derived(
+		compositionSnapshot.renderablesSignature,
 	);
 	const runtimeState = $derived.by(() =>
 		resolveSectionPlayerRuntimeState({
@@ -153,7 +153,7 @@
 	const normalizedShowToolbar = $derived(coerceBooleanLike(showToolbar, false));
 
 	function handleBaseCompositionChanged(event: Event) {
-		compositionModel = getCompositionFromEvent(event);
+		compositionSnapshot = getCompositionSnapshotFromEvent(event);
 	}
 
 	$effect(() => {

@@ -23,6 +23,11 @@ type PlayerActionOptions = {
 	includeSessionRefInState?: boolean;
 };
 
+const playerActionStateCache = new WeakMap<
+	HTMLElement,
+	Map<string, AppliedPlayerParams>
+>();
+
 function getSessionSignature(
 	session: Record<string, unknown> | undefined,
 ): string {
@@ -50,6 +55,9 @@ export function createPlayerAction(options: PlayerActionOptions) {
 			update(nextParams: PlayerElementParams) {
 				applyPlayerParams(node, nextParams, options);
 			},
+			destroy() {
+				clearNodeState(node, options.stateKey);
+			},
 		};
 	};
 }
@@ -60,7 +68,7 @@ function applyPlayerParams(
 	options: PlayerActionOptions,
 ) {
 	const nodeRecord = node as unknown as Record<string, unknown>;
-	const state = (nodeRecord[options.stateKey] || {}) as AppliedPlayerParams;
+	const state = getNodeState(node, options.stateKey);
 	const nextConfigSignature = getObjectSignature(params.config);
 	if (state.configSignature !== nextConfigSignature) {
 		nodeRecord.config = params.config;
@@ -88,10 +96,9 @@ function applyPlayerParams(
 			state.skipElementLoading !== true;
 		if (shouldSetSkip) {
 			node.setAttribute("skip-element-loading", "true");
-			nodeRecord.skipElementLoading = true;
 		}
 	}
-	nodeRecord[options.stateKey] = {
+	setNodeState(node, options.stateKey, {
 		config: params.config,
 		configSignature: nextConfigSignature,
 		env: params.env,
@@ -99,5 +106,28 @@ function applyPlayerParams(
 		session: options.includeSessionRefInState ? params.session : undefined,
 		sessionSignature: nextSessionSignature,
 		skipElementLoading: !!params.skipElementLoading,
-	} as AppliedPlayerParams;
+	} as AppliedPlayerParams);
+}
+
+function getNodeState(node: HTMLElement, stateKey: string): AppliedPlayerParams {
+	return playerActionStateCache.get(node)?.get(stateKey) || {};
+}
+
+function setNodeState(
+	node: HTMLElement,
+	stateKey: string,
+	state: AppliedPlayerParams,
+): void {
+	const byKey = playerActionStateCache.get(node) || new Map<string, AppliedPlayerParams>();
+	byKey.set(stateKey, state);
+	playerActionStateCache.set(node, byKey);
+}
+
+function clearNodeState(node: HTMLElement, stateKey: string): void {
+	const byKey = playerActionStateCache.get(node);
+	if (!byKey) return;
+	byKey.delete(stateKey);
+	if (byKey.size === 0) {
+		playerActionStateCache.delete(node);
+	}
 }

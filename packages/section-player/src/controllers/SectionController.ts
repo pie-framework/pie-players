@@ -184,13 +184,13 @@ export class SectionController implements SectionControllerHandle {
 
 	public getSnapshot(): unknown {
 		return {
-			testAttemptSession: this.state.testAttemptSession,
+			testAttemptSession: this.cloneForRead(this.state.testAttemptSession),
 			currentItemIndex: this.state.viewModel.currentItemIndex,
 		};
 	}
 
 	public getViewModel(): SectionViewModel {
-		return this.state.viewModel;
+		return this.cloneForRead(this.state.viewModel);
 	}
 
 	public getCompositionModel(): SectionCompositionModel {
@@ -252,7 +252,7 @@ export class SectionController implements SectionControllerHandle {
 	}
 
 	public getInstructions() {
-		return this.state.viewModel.instructions;
+		return this.cloneForRead(this.state.viewModel.instructions);
 	}
 
 	public getSectionLoadedEventDetail(): {
@@ -281,7 +281,7 @@ export class SectionController implements SectionControllerHandle {
 	}
 
 	public getResolvedTestAttemptSession(): TestAttemptSession | null {
-		return this.state.testAttemptSession;
+		return this.cloneForRead(this.state.testAttemptSession);
 	}
 
 	public getCanonicalItemId(itemId: string): string {
@@ -838,5 +838,18 @@ export class SectionController implements SectionControllerHandle {
 			});
 		}
 		return replayEvents;
+	}
+
+	private cloneForRead<T>(value: T): T {
+		if (value === null || value === undefined) return value;
+		try {
+			return structuredClone(value);
+		} catch {
+			try {
+				return JSON.parse(JSON.stringify(value)) as T;
+			} catch {
+				return value;
+			}
+		}
 	}
 }

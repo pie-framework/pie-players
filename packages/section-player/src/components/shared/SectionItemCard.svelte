@@ -47,8 +47,21 @@
 	let contextPlayerAction = $state<
 		((node: HTMLElement, params: PlayerElementParams) => unknown) | null
 	>(null);
-	const effectiveResolvedPlayerTag = $derived(contextResolvedPlayerTag || resolvedPlayerTag);
-	const effectivePlayerAction = $derived(contextPlayerAction || playerAction);
+	let contextConnected = $state(false);
+	// Context is the canonical source for shared render wiring while connected.
+	// Props are explicit fallback when context is unavailable.
+	const effectiveResolvedPlayerTag = $derived(
+		(contextConnected ? contextResolvedPlayerTag : null) || resolvedPlayerTag,
+	);
+	const effectivePlayerAction = $derived(
+		(contextConnected ? contextPlayerAction : null) || playerAction,
+	);
+
+	function resetContextOverrides(): void {
+		contextConnected = false;
+		contextResolvedPlayerTag = null;
+		contextPlayerAction = null;
+	}
 
 	function applyCardRenderContext(value: SectionPlayerCardRenderContext): void {
 		if (!value || typeof value !== "object") return;
@@ -63,7 +76,15 @@
 	onMount(() => {
 		const host = getHostElementFromAnchor(contextAnchor);
 		if (!host) return;
-		return connectSectionPlayerCardRenderContext(host, applyCardRenderContext);
+		contextConnected = true;
+		const disconnect = connectSectionPlayerCardRenderContext(
+			host,
+			applyCardRenderContext,
+		);
+		return () => {
+			disconnect();
+			resetContextOverrides();
+		};
 	});
 </script>
 

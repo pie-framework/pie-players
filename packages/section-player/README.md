@@ -50,6 +50,29 @@ Runtime precedence is explicit:
 
 See `apps/section-demos/src/routes/demo/[[id]]/+page.svelte` for an end-to-end host integration.
 
+## Data flow and stability guarantees
+
+Section-player follows a unidirectional flow model:
+
+- Inputs flow downward (`runtime`, `section`, `env`, toolbar options) into base/toolkit/layout/card render paths.
+- State updates flow upward as events (`runtime-*`, `session-changed`, controller change events) and are reconciled by runtime owners.
+- Layout/card components should not create competing sources of truth for composition/session.
+
+### Stability guarantees
+
+For non-structural updates, section-player guarantees behavior stability:
+
+- Item/passage shell identity remains stable (no remount churn for response-only updates).
+- Pane-local scroll position remains stable in splitpane and vertical layouts.
+
+Non-structural updates include:
+
+- response/session updates
+- tool toggles/config updates
+- runtime config changes that do not alter composition identity
+
+Structural composition changes (new/removed/reordered entities) may legitimately re-render/remount affected nodes.
+
 ## Custom layout authoring
 
 For section layout authors, `pie-section-player-shell` is the primary abstraction:

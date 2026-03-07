@@ -54,13 +54,40 @@ async function gotoDemo(page: Page) {
 }
 
 function sectionToolbar(page: Page): Locator {
-	return page.locator("pie-section-toolbar").first();
+	return page
+		.locator(".pie-section-player-toolbar-pane--right")
+		.first()
+		.locator("pie-section-toolbar")
+		.first();
 }
 
 test.describe("section toolbar tools", () => {
 	test("renders expected section-level tool buttons in demo defaults", async ({ page }) => {
 		test.setTimeout(180_000);
 		await gotoDemo(page);
+
+		const shell = page.locator("pie-section-player-shell").first();
+		await expect(shell).toBeVisible();
+		const shellUsesShadowDom = await shell.evaluate((element) =>
+			Boolean((element as HTMLElement).shadowRoot),
+		);
+		expect(shellUsesShadowDom).toBe(true);
+
+		const rightToolbarPane = page.locator(".pie-section-player-toolbar-pane--right").first();
+		await expect(rightToolbarPane).toBeVisible();
+		const layoutBody = page.locator(".pie-section-player-layout-body").first();
+		await expect(layoutBody).toHaveClass(/pie-section-player-layout-body--inline-right/);
+		const layoutBox = await layoutBody.boundingBox();
+		const rightPaneBox = await rightToolbarPane.boundingBox();
+		expect(layoutBox).not.toBeNull();
+		expect(rightPaneBox).not.toBeNull();
+		expect(Math.abs((rightPaneBox?.y || 0) - (layoutBox?.y || 0)) < 12).toBe(true);
+		expect((rightPaneBox?.x || 0) > (layoutBox?.x || 0) + (layoutBox?.width || 0) * 0.6).toBe(
+			true,
+		);
+		expect((rightPaneBox?.y || 0) < (layoutBox?.y || 0) + (layoutBox?.height || 0) - 8).toBe(
+			true,
+		);
 
 		const toolbar = sectionToolbar(page);
 		await expect(toolbar).toHaveCount(1);

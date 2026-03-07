@@ -132,6 +132,7 @@ let isThemeSyncing = $state(false);
 			passage: ['textToSpeech', 'annotationToolbar']
 		}
 	};
+	const sectionToolbarTools = 'theme,graph,periodicTable,protractor,lineReader,ruler';
 
 function resolvePieThemeHost(): HTMLElement | null {
 	if (!browser) return null;
@@ -561,6 +562,7 @@ let isTtsSsmlDemo = $derived(
 				env={pieEnv}
 				toolbar-position="right"
 				show-toolbar={true}
+				enabled-tools={sectionToolbarTools}
 				ontoolkit-ready={handleToolkitReady}
 			></pie-section-player-vertical>
 		{:else}
@@ -575,6 +577,7 @@ let isTtsSsmlDemo = $derived(
 				env={pieEnv}
 				toolbar-position="right"
 				show-toolbar={true}
+				enabled-tools={sectionToolbarTools}
 				ontoolkit-ready={handleToolkitReady}
 			></pie-section-player-splitpane>
 		{/if}

@@ -1,8 +1,9 @@
 # @pie-players/pie-section-player
 
-Section rendering package focused on the splitpane custom element:
+Section rendering package with layout custom elements:
 
 - `pie-section-player-splitpane`
+- `pie-section-player-vertical`
 
 The package no longer exposes the legacy `pie-section-player` layout orchestration API.
 
@@ -18,6 +19,7 @@ Import the custom-element registration entrypoint in consumers:
 
 ```ts
 import '@pie-players/pie-section-player/components/section-player-splitpane-element';
+import '@pie-players/pie-section-player/components/section-player-vertical-element';
 ```
 
 Render in HTML/Svelte/JSX:
@@ -30,7 +32,7 @@ Set complex values (`runtime`, `section`, `env`) as JS properties.
 
 ## Runtime Inputs
 
-`pie-section-player-splitpane` supports:
+Both layout elements support:
 
 - `runtime` (object): coordinator/tools/player runtime bundle
 - `section` (object): assessment section payload
@@ -46,6 +48,8 @@ Published exports are intentionally minimal:
 
 - `@pie-players/pie-section-player`
 - `@pie-players/pie-section-player/components/section-player-splitpane-element`
+- `@pie-players/pie-section-player/components/section-player-vertical-element`
+- `@pie-players/pie-section-player/components/section-player-shell-element`
 
 ## Development
 

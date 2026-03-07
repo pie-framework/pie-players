@@ -30,9 +30,9 @@
 
 <script lang="ts">
 	import "./section-player-base-element.js";
+	import "./section-player-shell-element.js";
 	import * as SectionItemCardModule from "./shared/SectionItemCard.svelte";
 	import * as SectionPassageCardModule from "./shared/SectionPassageCard.svelte";
-	import "@pie-players/pie-toolbars/components/section-toolbar-element";
 	import type { Component } from "svelte";
 	import type { SectionCompositionModel } from "../controllers/types.js";
 	import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
@@ -89,26 +89,6 @@
 		passageToolbarTools = "",
 	} = $props();
 
-	function resolveToolbarVisibility(value: boolean | string | null | undefined): boolean {
-		if (typeof value === "boolean") {
-			return value;
-		}
-		if (value === null || value === undefined) {
-			return true;
-		}
-		const normalizedValue = String(value).trim().toLowerCase();
-		if (normalizedValue === "") {
-			return true;
-		}
-		if (["false", "0", "off", "no"].includes(normalizedValue)) {
-			return false;
-		}
-		if (["true", "1", "on", "yes"].includes(normalizedValue)) {
-			return true;
-		}
-		return Boolean(normalizedValue);
-	}
-
 	let compositionModel = $state<SectionCompositionModel>(EMPTY_COMPOSITION);
 	let elementsLoaded = $state(false);
 	let lastPreloadSignature = $state("");
@@ -116,13 +96,6 @@
 
 	const passages = $derived(compositionModel.passages || []);
 	const items = $derived(compositionModel.items || []);
-	const shouldRenderToolbar = $derived(
-		resolveToolbarVisibility(showToolbar) && toolbarPosition !== "none",
-	);
-	const toolbarBeforeContent = $derived(
-		toolbarPosition === "top" || toolbarPosition === "left",
-	);
-	const toolbarInline = $derived(toolbarPosition === "left" || toolbarPosition === "right");
 	const preloadedRenderables = $derived.by(() =>
 		mapRenderablesToItems(compositionModel.renderables || []),
 	);
@@ -208,105 +181,63 @@
 	attempt-id={attemptId}
 	oncomposition-changed={handleBaseCompositionChanged}
 >
-	<div
-		class={`pie-section-player-shell pie-section-player-shell--${toolbarPosition}`}
+	<pie-section-player-shell
+		show-toolbar={showToolbar}
+		toolbar-position={toolbarPosition}
+		enabled-tools={enabledTools}
 	>
-		{#if shouldRenderToolbar && toolbarBeforeContent}
-			<pie-section-toolbar
-				class={`pie-section-player-toolbar pie-section-player-toolbar--${toolbarPosition}`}
-				position={toolbarPosition}
-				enabled-tools={enabledTools}
-			></pie-section-toolbar>
-		{/if}
-
-		<div
-			class={`pie-section-player-layout-body ${shouldRenderToolbar && toolbarInline ? "pie-section-player-layout-body--inline" : ""}`}
-		>
-			<div class="pie-section-player-vertical-content">
-				{#if !elementsLoaded}
-					<div class="pie-section-player-content-card">
-						<div
-							class="pie-section-player-content-card-body pie-section-player-item-content pie-section-player__item-content"
-						>
-							Loading section content...
-						</div>
+		<div class="pie-section-player-vertical-content">
+			{#if !elementsLoaded}
+				<div class="pie-section-player-content-card">
+					<div
+						class="pie-section-player-content-card-body pie-section-player-item-content pie-section-player__item-content"
+					>
+						Loading section content...
 					</div>
-				{:else}
-					{#if passages.length > 0}
-						<section class="pie-section-player-passages-section" aria-label="Passages">
-							{#each passages as passage, passageIndex (passage.id || passageIndex)}
-								<SectionPassageCard
-									{passage}
-									{resolvedPlayerTag}
-									playerAction={verticalPlayerAction}
-									playerParams={getPassagePlayerParams({
-										passage,
-										resolvedPlayerEnv,
-										resolvedPlayerAttributes,
-										resolvedPlayerProps,
-										playerStrategy,
-									})}
-									{passageToolbarTools}
-								/>
-							{/each}
-						</section>
-					{/if}
-
-					<section class="pie-section-player-items-section" aria-label="Items">
-						{#each items as item, itemIndex (item.id || itemIndex)}
-							<SectionItemCard
-								{item}
-								canonicalItemId={getCanonicalItemId({ compositionModel, item })}
+				</div>
+			{:else}
+				{#if passages.length > 0}
+					<section class="pie-section-player-passages-section" aria-label="Passages">
+						{#each passages as passage, passageIndex (passage.id || passageIndex)}
+							<SectionPassageCard
+								{passage}
 								{resolvedPlayerTag}
 								playerAction={verticalPlayerAction}
-								playerParams={getItemPlayerParams({
-									item,
-									compositionModel,
+								playerParams={getPassagePlayerParams({
+									passage,
 									resolvedPlayerEnv,
 									resolvedPlayerAttributes,
 									resolvedPlayerProps,
 									playerStrategy,
 								})}
-								{itemToolbarTools}
+								{passageToolbarTools}
 							/>
 						{/each}
 					</section>
 				{/if}
-			</div>
 
-			{#if shouldRenderToolbar && toolbarInline && toolbarPosition === "right"}
-				<aside
-					class="pie-section-player-toolbar-pane pie-section-player-toolbar-pane--right"
-					aria-label="Section tools"
-				>
-					<pie-section-toolbar
-						position="right"
-						enabled-tools={enabledTools}
-					></pie-section-toolbar>
-				</aside>
-			{/if}
-
-			{#if shouldRenderToolbar && toolbarInline && toolbarPosition === "left"}
-				<aside
-					class="pie-section-player-toolbar-pane pie-section-player-toolbar-pane--left"
-					aria-label="Section tools"
-				>
-					<pie-section-toolbar
-						position="left"
-						enabled-tools={enabledTools}
-					></pie-section-toolbar>
-				</aside>
+				<section class="pie-section-player-items-section" aria-label="Items">
+					{#each items as item, itemIndex (item.id || itemIndex)}
+						<SectionItemCard
+							{item}
+							canonicalItemId={getCanonicalItemId({ compositionModel, item })}
+							{resolvedPlayerTag}
+							playerAction={verticalPlayerAction}
+							playerParams={getItemPlayerParams({
+								item,
+								compositionModel,
+								resolvedPlayerEnv,
+								resolvedPlayerAttributes,
+								resolvedPlayerProps,
+								playerStrategy,
+							})}
+							{itemToolbarTools}
+						/>
+					{/each}
+				</section>
 			{/if}
 		</div>
-
-		{#if shouldRenderToolbar && !toolbarBeforeContent && !toolbarInline}
-			<pie-section-toolbar
-				class={`pie-section-player-toolbar pie-section-player-toolbar--${toolbarPosition}`}
-				position={toolbarPosition}
-				enabled-tools={enabledTools}
-			></pie-section-toolbar>
-		{/if}
-	</div>
+	</pie-section-player-shell>
 </pie-section-player-base>
 
 <style>
@@ -317,42 +248,6 @@
 		min-height: 0;
 		max-height: 100%;
 		overflow: hidden;
-	}
-
-	.pie-section-player-shell {
-		display: flex;
-		flex-direction: column;
-		height: 100%;
-		min-height: 0;
-		overflow: hidden;
-		background: var(--pie-background-dark, #ecedf1);
-	}
-
-	.pie-section-player-shell--left,
-	.pie-section-player-shell--right {
-		flex-direction: row;
-	}
-
-	.pie-section-player-shell--left .pie-section-player-layout-body--inline {
-		order: 2;
-	}
-
-	.pie-section-player-shell--left .pie-section-player-toolbar-pane--left {
-		order: 1;
-	}
-
-	.pie-section-player-layout-body {
-		display: grid;
-		grid-template-columns: minmax(0, 1fr);
-		flex: 1;
-		min-height: 0;
-		overflow: hidden;
-		background: var(--pie-background-dark, #ecedf1);
-	}
-
-	.pie-section-player-layout-body--inline {
-		grid-template-columns: minmax(0, 1fr) auto;
-		gap: 1rem;
 	}
 
 	.pie-section-player-vertical-content {
@@ -378,62 +273,14 @@
 		gap: 1rem;
 	}
 
-	.pie-section-player-toolbar-pane {
-		min-height: 0;
-		overflow: auto;
-		padding: 0.5rem;
-		box-sizing: border-box;
-		background: var(--pie-background-dark, #ecedf1);
-	}
-
-	.pie-section-player-toolbar-pane--right {
-		border-left: 1px solid var(--pie-border-light, #e5e7eb);
-	}
-
-	.pie-section-player-toolbar-pane--left {
-		border-right: 1px solid var(--pie-border-light, #e5e7eb);
-	}
-
-	.pie-section-player-toolbar {
-		margin: 0.5rem;
-	}
-
-	.pie-section-player-toolbar-pane pie-section-toolbar {
-		margin: 0.5rem;
-	}
-
 	.pie-section-player-content-card {
 		border: 1px solid var(--pie-border-light, #e5e7eb);
 		border-radius: 8px;
 		background: var(--pie-background, #fff);
 	}
 
-	.pie-section-player-content-card-header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		padding: 0.75rem 1rem;
-		border-bottom: 1px solid var(--pie-border-light, #e5e7eb);
-	}
-
 	.pie-section-player-content-card-body {
 		padding: 1rem;
 	}
 
-	@media (max-width: 1100px) {
-		.pie-section-player-shell--left,
-		.pie-section-player-shell--right {
-			flex-direction: column;
-		}
-
-		.pie-section-player-layout-body--inline {
-			grid-template-columns: 1fr;
-		}
-
-		.pie-section-player-toolbar-pane--left,
-		.pie-section-player-toolbar-pane--right {
-			border: none;
-			padding: 0;
-		}
-	}
 </style>

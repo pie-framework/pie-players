@@ -31,9 +31,9 @@
 <script lang="ts">
 	import { onMount } from "svelte";
 	import "./section-player-base-element.js";
+	import "./section-player-shell-element.js";
 	import * as SectionItemCardModule from "./shared/SectionItemCard.svelte";
 	import * as SectionPassageCardModule from "./shared/SectionPassageCard.svelte";
-	import "@pie-players/pie-toolbars/components/section-toolbar-element";
 	import type { Component } from "svelte";
 	import type { SectionCompositionModel } from "../controllers/types.js";
 	import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
@@ -92,26 +92,6 @@
 		passageToolbarTools = "",
 	} = $props();
 
-	function resolveToolbarVisibility(value: boolean | string | null | undefined): boolean {
-		if (typeof value === "boolean") {
-			return value;
-		}
-		if (value === null || value === undefined) {
-			return true;
-		}
-		const normalizedValue = String(value).trim().toLowerCase();
-		if (normalizedValue === "") {
-			return true;
-		}
-		if (["false", "0", "off", "no"].includes(normalizedValue)) {
-			return false;
-		}
-		if (["true", "1", "on", "yes"].includes(normalizedValue)) {
-			return true;
-		}
-		return Boolean(normalizedValue);
-	}
-
 	const MANAGED_OUTER_SCROLL_CLASS = "pie-outer-scrollbars-managed";
 	const ACTIVE_OUTER_SCROLL_CLASS = "pie-outer-scrolling";
 
@@ -126,13 +106,6 @@
 	const passages = $derived(compositionModel.passages || []);
 	const items = $derived(compositionModel.items || []);
 	const hasPassages = $derived(passages.length > 0);
-	const shouldRenderToolbar = $derived(
-		resolveToolbarVisibility(showToolbar) && toolbarPosition !== "none",
-	);
-	const toolbarBeforeContent = $derived(
-		toolbarPosition === "top" || toolbarPosition === "left",
-	);
-	const toolbarInline = $derived(toolbarPosition === "left" || toolbarPosition === "right");
 	const preloadedRenderables = $derived.by(() =>
 		mapRenderablesToItems(compositionModel.renderables || []),
 	);
@@ -298,78 +271,69 @@
 	attempt-id={attemptId}
 	oncomposition-changed={handleBaseCompositionChanged}
 >
-	<div
-		class={`pie-section-player-shell pie-section-player-shell--${toolbarPosition}`}
+	<pie-section-player-shell
+		show-toolbar={showToolbar}
+		toolbar-position={toolbarPosition}
+		enabled-tools={enabledTools}
 	>
-		{#if shouldRenderToolbar && toolbarBeforeContent}
-			<pie-section-toolbar
-				class={`pie-section-player-toolbar pie-section-player-toolbar--${toolbarPosition}`}
-				position={toolbarPosition}
-				enabled-tools={enabledTools}
-			></pie-section-toolbar>
-		{/if}
-
 		<div
-			class={`pie-section-player-layout-body ${shouldRenderToolbar && toolbarInline ? "pie-section-player-layout-body--inline" : ""}`}
+			class={`pie-section-player-split-content ${!hasPassages ? "pie-section-player-split-content--no-passages" : ""}`}
+			bind:this={splitContainerElement}
+			style={hasPassages
+				? `grid-template-columns: ${leftPanelWidth}% 0.5rem ${100 - leftPanelWidth - 0.5}%`
+				: "grid-template-columns: 1fr"}
 		>
-			<div
-				class={`pie-section-player-split-content ${!hasPassages ? "pie-section-player-split-content--no-passages" : ""}`}
-				bind:this={splitContainerElement}
-				style={hasPassages
-					? `grid-template-columns: ${leftPanelWidth}% 0.5rem ${100 - leftPanelWidth - 0.5}%`
-					: "grid-template-columns: 1fr"}
-			>
-				{#if hasPassages}
-					<aside class="pie-section-player-passages-pane" aria-label="Passages">
-						{#if !elementsLoaded}
-							<div class="pie-section-player-content-card">
-								<div
-									class="pie-section-player-content-card-body pie-section-player-passage-content pie-section-player__passage-content"
-								>
-									Loading passage content...
-								</div>
-							</div>
-						{:else}
-							{#each passages as passage, passageIndex (passage.id || passageIndex)}
-								<SectionPassageCard
-									{passage}
-									{resolvedPlayerTag}
-									playerAction={splitPanePlayerAction}
-									playerParams={getPassagePlayerParams({
-										passage,
-										resolvedPlayerEnv,
-										resolvedPlayerAttributes,
-										resolvedPlayerProps,
-										playerStrategy,
-									})}
-									{passageToolbarTools}
-								/>
-							{/each}
-						{/if}
-					</aside>
-
-					<button
-						type="button"
-						class={`pie-section-player-split-divider ${isDragging ? "pie-section-player-split-divider--dragging" : ""}`}
-						onmousedown={handleDividerMouseDown}
-						onkeydown={handleDividerKeyDown}
-						aria-label="Resize panels"
-					>
-						<span class="pie-section-player-split-divider-handle"></span>
-					</button>
-				{/if}
-
-				<main class="pie-section-player-items-pane" aria-label="Items">
+			{#if hasPassages}
+				<aside class="pie-section-player-passages-pane" aria-label="Passages">
 					{#if !elementsLoaded}
 						<div class="pie-section-player-content-card">
 							<div
-								class="pie-section-player-content-card-body pie-section-player-item-content pie-section-player__item-content"
+								class="pie-section-player-content-card-body pie-section-player-passage-content pie-section-player__passage-content"
 							>
-								Loading section content...
+								Loading passage content...
 							</div>
 						</div>
 					{:else}
-						{#each items as item, itemIndex (item.id || itemIndex)}
+						{#each passages as passage, passageIndex (passage.id || passageIndex)}
+							<SectionPassageCard
+								{passage}
+								{resolvedPlayerTag}
+								playerAction={splitPanePlayerAction}
+								playerParams={getPassagePlayerParams({
+									passage,
+									resolvedPlayerEnv,
+									resolvedPlayerAttributes,
+									resolvedPlayerProps,
+									playerStrategy,
+								})}
+								{passageToolbarTools}
+							/>
+						{/each}
+					{/if}
+				</aside>
+
+				<button
+					type="button"
+					class={`pie-section-player-split-divider ${isDragging ? "pie-section-player-split-divider--dragging" : ""}`}
+					onmousedown={handleDividerMouseDown}
+					onkeydown={handleDividerKeyDown}
+					aria-label="Resize panels"
+				>
+					<span class="pie-section-player-split-divider-handle"></span>
+				</button>
+			{/if}
+
+			<main class="pie-section-player-items-pane" aria-label="Items">
+				{#if !elementsLoaded}
+					<div class="pie-section-player-content-card">
+						<div
+							class="pie-section-player-content-card-body pie-section-player-item-content pie-section-player__item-content"
+						>
+							Loading section content...
+						</div>
+					</div>
+				{:else}
+					{#each items as item, itemIndex (item.id || itemIndex)}
 						<SectionItemCard
 							{item}
 							canonicalItemId={getCanonicalItemId({ compositionModel, item })}
@@ -385,44 +349,11 @@
 							})}
 							{itemToolbarTools}
 						/>
-						{/each}
-					{/if}
-				</main>
-			</div>
-
-			{#if shouldRenderToolbar && toolbarInline && toolbarPosition === "right"}
-				<aside
-					class="pie-section-player-toolbar-pane pie-section-player-toolbar-pane--right"
-					aria-label="Section tools"
-				>
-					<pie-section-toolbar
-						position="right"
-						enabled-tools={enabledTools}
-					></pie-section-toolbar>
-				</aside>
-			{/if}
-
-			{#if shouldRenderToolbar && toolbarInline && toolbarPosition === "left"}
-				<aside
-					class="pie-section-player-toolbar-pane pie-section-player-toolbar-pane--left"
-					aria-label="Section tools"
-				>
-					<pie-section-toolbar
-						position="left"
-						enabled-tools={enabledTools}
-					></pie-section-toolbar>
-				</aside>
-			{/if}
+					{/each}
+				{/if}
+			</main>
 		</div>
-
-		{#if shouldRenderToolbar && !toolbarBeforeContent && !toolbarInline}
-			<pie-section-toolbar
-				class={`pie-section-player-toolbar pie-section-player-toolbar--${toolbarPosition}`}
-				position={toolbarPosition}
-				enabled-tools={enabledTools}
-			></pie-section-toolbar>
-		{/if}
-	</div>
+	</pie-section-player-shell>
 </pie-section-player-base>
 
 <style>
@@ -435,52 +366,12 @@
 		overflow: hidden;
 	}
 
-	.pie-section-player-shell {
-		display: flex;
-		flex-direction: column;
-		height: 100%;
-		min-height: 0;
-		overflow: hidden;
-		background: var(--pie-background-dark, #ecedf1);
-	}
-
-	.pie-section-player-shell--left,
-	.pie-section-player-shell--right {
-		flex-direction: row;
-	}
-
-	.pie-section-player-shell--left .pie-section-player-layout-body--inline {
-		order: 2;
-	}
-
-	.pie-section-player-shell--left .pie-section-player-toolbar-pane--left {
-		order: 1;
-	}
-
-	.pie-section-player-layout-body {
-		display: grid;
-		grid-template-columns: minmax(0, 1fr);
-		flex: 1;
-		min-height: 0;
-		overflow: hidden;
-		background: var(--pie-background-dark, #ecedf1);
-	}
-
-	.pie-section-player-layout-body--inline {
-		grid-template-columns: minmax(0, 1fr) auto;
-		gap: 1rem;
-	}
-
 	.pie-section-player-split-content {
 		display: grid;
 		gap: 0;
 		min-height: 0;
 		height: 100%;
 		overflow: hidden;
-	}
-
-	.pie-section-player-split-content--no-passages .pie-section-player-items-pane {
-		padding-left: 0.5rem;
 	}
 
 	.pie-section-player-passages-pane,
@@ -498,30 +389,6 @@
 		padding: 0.5rem;
 		box-sizing: border-box;
 		background: var(--pie-background-dark, #ecedf1);
-	}
-
-	.pie-section-player-toolbar-pane {
-		min-height: 0;
-		overflow: auto;
-		padding: 0.5rem;
-		box-sizing: border-box;
-		background: var(--pie-background-dark, #ecedf1);
-	}
-
-	.pie-section-player-toolbar-pane--right {
-		border-left: 1px solid var(--pie-border-light, #e5e7eb);
-	}
-
-	.pie-section-player-toolbar-pane--left {
-		border-right: 1px solid var(--pie-border-light, #e5e7eb);
-	}
-
-	.pie-section-player-toolbar {
-		margin: 0.5rem;
-	}
-
-	.pie-section-player-toolbar-pane pie-section-toolbar {
-		margin: 0.5rem;
 	}
 
 	.pie-section-player-split-divider {
@@ -664,12 +531,6 @@
 
 		.pie-section-player-split-divider {
 			display: none;
-		}
-
-		.pie-section-player-toolbar-pane--left,
-		.pie-section-player-toolbar-pane--right {
-			border: none;
-			padding: 0;
 		}
 	}
 </style>

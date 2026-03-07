@@ -36,7 +36,6 @@ import {
 } from "./tool-providers/index.js";
 import type { IToolProvider } from "./tool-providers/IToolProvider.js";
 import type {
-	DesmosToolProviderConfig,
 	TTSToolProviderConfig,
 } from "./tool-providers/index.js";
 import type {
@@ -90,28 +89,11 @@ export interface AnswerEliminatorToolConfig extends ToolConfig {
 	strategy?: "strikethrough" | "hide";
 }
 
-/**
- * Calculator tool configuration
- */
-export interface CalculatorToolConfig extends ToolConfig {
-	provider?: "desmos";
-	authFetcher?: () => Promise<Partial<DesmosToolProviderConfig>>;
-}
-
-/**
- * Floating tools configuration (calculator, graph, etc.)
- */
-export interface FloatingToolsConfig extends ToolConfig {
-	enabledTools?: string[];
-	calculator?: CalculatorToolConfig;
-}
-
 export interface ToolkitToolsConfig extends CanonicalToolsConfig {
 	policy: ToolPolicyConfig;
 	placement: Required<ToolPlacementConfig>;
 	providers: ToolProvidersConfig & {
 		tts?: TTSToolConfig;
-		calculator?: CalculatorToolConfig;
 		annotationToolbar?: ToolConfig;
 	};
 }
@@ -360,10 +342,6 @@ export class ToolkitCoordinator {
 				enabled: true,
 				backend: "browser",
 			},
-			calculator: {
-				enabled: true,
-				provider: "desmos",
-			},
 			annotationToolbar: {
 				enabled: true,
 			},
@@ -593,16 +571,28 @@ export class ToolkitCoordinator {
 			});
 		}
 
-		// Register calculator providers
+		// Register calculator provider.
+		// Calculator-specific runtime settings should be encapsulated by the calculator tool package.
 		const calculatorConfig = this.config.tools?.providers?.calculator as
-			| CalculatorToolConfig
+			| ToolConfig
 			| undefined;
 		if (calculatorConfig?.enabled !== false) {
 			void this.registerProvider("calculator-desmos", {
 				provider: new DesmosToolProvider(),
 				config: {},
 				lazy: true,
-				authFetcher: calculatorConfig?.authFetcher,
+				authFetcher: async () => {
+					const response = await fetch("/api/tools/desmos/auth", {
+						method: "GET",
+						credentials: "same-origin",
+					});
+					if (!response.ok) {
+						throw new Error(
+							`Failed to fetch Desmos auth config (${response.status})`,
+						);
+					}
+					return (await response.json()) as Record<string, unknown>;
+				},
 			});
 		}
 	}

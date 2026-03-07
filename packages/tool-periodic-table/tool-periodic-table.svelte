@@ -10,17 +10,7 @@
 />
 
 <script lang="ts">
-	
-	import {
-		connectToolRuntimeContext,
-		ZIndexLayer,
-	} from '@pie-players/pie-assessment-toolkit';
-	import type {
-		AssessmentToolkitRuntimeContext,
-		IToolCoordinator,
-	} from '@pie-players/pie-assessment-toolkit';
-	import { createFocusTrap, safeLocalStorageGet, safeLocalStorageSet } from '@pie-players/pie-players-shared';
-import { onMount } from 'svelte';
+
 	import periodicTableData from './periodic-table-data.json';
 
 	// TypeScript interface matching production data structure
@@ -47,39 +37,12 @@ import { onMount } from 'svelte';
 		toolId?: string;
 	} = $props();
 
-	// Check if running in browser
-	const isBrowser = typeof window !== 'undefined';
-
-	// State
-	let containerEl = $state<HTMLDivElement | undefined>();
-	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
-	const coordinator = $derived(
-		runtimeContext?.toolCoordinator as IToolCoordinator | undefined,
-	);
-	let isDragging = $state(false);
-	let x = $state(isBrowser ? window.innerWidth / 2 : 400);
-	let y = $state(isBrowser ? window.innerHeight / 2 : 300);
-	let width = $state(1100); // Increased to show all 18 columns without horizontal scrolling
-	let height = $state(750); // Increased to show all 10 rows without vertical scrolling
-	let dragStartX = $state(0);
-	let dragStartY = $state(0);
-
-	// Track registration state
-	let registered = $state(false);
-
 	// Get all elements from production JSON data
 	const allElements: Element[] = (periodicTableData as any).elements;
 
 	// Tool state
 	let selectedElement = $state<Element | null>(allElements[0] || null); // Initialize with Hydrogen
 	let selectedCategory = $state<string>('All');
-
-	$effect(() => {
-		if (!containerEl) return;
-		return connectToolRuntimeContext(containerEl, (value: AssessmentToolkitRuntimeContext) => {
-			runtimeContext = value;
-		});
-	});
 
 	/**
 	 * Normalize category name (matching production implementation)
@@ -160,120 +123,16 @@ import { onMount } from 'svelte';
 		selectedCategory = category;
 	}
 
-	function handleClose() {
-		coordinator?.hideTool(toolId);
-	}
-
-	function handlePointerDown(e: PointerEvent) {
-		const target = e.target as HTMLElement;
-
-		// Only start drag if clicking the header
-		if (!target.closest('.pie-tool-periodic-table__header')) return;
-
-		// Don't drag if clicking buttons
-		if (target.closest('button')) return;
-
-		isDragging = true;
-		dragStartX = e.clientX - x;
-		dragStartY = e.clientY - y;
-
-		if (containerEl) {
-			containerEl.setPointerCapture(e.pointerId);
-			coordinator?.bringToFront(containerEl);
-		}
-	}
-
-	function handlePointerMove(e: PointerEvent) {
-		if (!isDragging) return;
-
-		let newX = e.clientX - dragStartX;
-		let newY = e.clientY - dragStartY;
-
-		// Keep calculator on screen
-		const halfWidth = (containerEl?.offsetWidth || width) / 2;
-		const halfHeight = (containerEl?.offsetHeight || height) / 2;
-
-		x = Math.max(halfWidth, Math.min(newX, window.innerWidth - halfWidth));
-		y = Math.max(halfHeight, Math.min(newY, window.innerHeight - halfHeight));
-	}
-
-	function handlePointerUp(e: PointerEvent) {
-		if (isDragging && containerEl) {
-			isDragging = false;
-			containerEl.releasePointerCapture(e.pointerId);
-		}
-	}
-
-	function handleKeyDown(e: KeyboardEvent) {
-		if (e.key === 'Escape') {
-			handleClose();
-		}
-	}
-
-	// Register with coordinator when it becomes available
-	$effect(() => {
-		if (coordinator && toolId && !registered) {
-			if (containerEl) {
-				coordinator.registerTool(toolId, 'Periodic Table', containerEl, ZIndexLayer.MODAL);
-			} else {
-				coordinator.registerTool(toolId, 'Periodic Table', undefined, ZIndexLayer.MODAL);
-			}
-			registered = true;
-		}
-	});
-
-	// Update element reference when container becomes available
-	$effect(() => {
-		if (coordinator && containerEl && toolId) {
-			coordinator.updateToolElement(toolId, containerEl);
-			coordinator.bringToFront(containerEl);
-		}
-	});
-
-	onMount(() => {
-		return () => {
-			if (coordinator && toolId) {
-				coordinator.unregisterTool(toolId);
-			}
-		};
-	});
 </script>
 
 {#if visible}
 	<div
-		bind:this={containerEl}
 		class="pie-tool-periodic-table"
 		role="dialog"
 		tabindex="-1"
 		aria-label="Periodic Table - Click elements to view details"
-		style="left: {x}px; top: {y}px; width: {width}px; height: {height}px; transform: translate(-50%, -50%);"
-		onpointerdown={handlePointerDown}
-		onpointermove={handlePointerMove}
-		onpointerup={handlePointerUp}
-		onlostpointercapture={handlePointerUp}
-		onkeydown={handleKeyDown}
+		data-tool-id={toolId}
 	>
-		<!-- Header (matching production implementation: dark teal) -->
-		<div class="pie-tool-periodic-table__header">
-			<h3 id="periodic-table-title" class="pie-tool-periodic-table__title">Periodic Table</h3>
-			<div class="pie-tool-periodic-table__header-controls">
-				<button class="pie-tool-periodic-table__close-btn" onclick={handleClose} aria-label="Close periodic table">
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						class="h-5 w-5"
-						viewBox="0 0 20 20"
-						fill="currentColor"
-					>
-						<path
-							fill-rule="evenodd"
-							d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-							clip-rule="evenodd"
-						/>
-					</svg>
-				</button>
-			</div>
-		</div>
-
 		<!-- Content wrapper -->
 		<div class="pie-tool-periodic-table__content">
 			<div class="pie-tool-periodic-table__wrapper">
@@ -281,7 +140,7 @@ import { onMount } from 'svelte';
 				<div
 					class="pie-tool-periodic-table__grid"
 					role="grid"
-					aria-labelledby="periodic-table-title"
+					aria-label="Periodic table elements"
 				>
 					<!-- Category filter badges in row 1 (matching production implementation) -->
 					<div
@@ -425,73 +284,15 @@ import { onMount } from 'svelte';
 
 <style>
 	.pie-tool-periodic-table {
-		position: fixed;
+		position: relative;
 		background: var(--pie-background, #fff);
 		color: var(--pie-text, #111827);
-		border: 1px solid var(--pie-border-light, #d1d5db);
-		box-shadow: 0 10px 40px rgb(0 0 0 / 0.3);
-		user-select: none;
-		touch-action: none;
-		border-radius: 12px;
-		overflow: visible; /* Changed from hidden to visible to show all content without clipping */
-		z-index: 2000; /* ZIndexLayer.MODAL */
-		min-width: 1100px; /* Match default width */
+		width: 100%;
+		height: 100%;
+		min-height: 0;
 		display: flex;
 		flex-direction: column;
-	}
-
-	/* Header (matching production implementation: dark teal) */
-	.pie-tool-periodic-table__header {
-		padding: 12px 16px;
-		background: var(--pie-primary-dark, #2c3e50); /* Dark teal-like color */
-		color: var(--pie-white, #fff);
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		cursor: move;
-		user-select: none;
-		border-radius: 12px 12px 0 0;
-	}
-
-	.pie-tool-periodic-table__title {
-		font-weight: 600;
-		font-size: 16px;
-		color: var(--pie-white, #fff);
-		margin: 0;
-	}
-
-	.pie-tool-periodic-table__header-controls {
-		display: flex;
-		gap: 8px;
-		align-items: center;
-	}
-
-	.pie-tool-periodic-table__close-btn {
-		background: transparent;
-		border: none;
-		color: var(--pie-white, #fff);
-		cursor: pointer;
-		padding: 4px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		border-radius: 4px;
-		transition: background-color 0.2s;
-	}
-
-	.pie-tool-periodic-table__close-btn:hover {
-		background: color-mix(in srgb, var(--pie-white, #fff) 12%, transparent);
-	}
-
-	.pie-tool-periodic-table__close-btn:focus-visible {
-		outline: 2px solid var(--pie-primary, #3f51b5);
-		outline-offset: 2px;
-	}
-
-	.pie-tool-periodic-table__close-btn svg {
-		width: 20px;
-		height: 20px;
-		display: block;
+		overflow: hidden;
 	}
 
 	/* Content wrapper */
@@ -499,8 +300,9 @@ import { onMount } from 'svelte';
 		flex: 1;
 		display: flex;
 		flex-direction: column;
-		overflow: visible; /* Changed from auto to visible - no scrolling needed */
-		padding: 10px 4px 0 16px; /* top | right | bottom | left */
+		min-height: 0;
+		overflow: auto;
+		padding: 10px 10px 0 16px; /* top | right | bottom | left */
 	}
 
 	/* Wrapper needed for absolute positioning of overlays */

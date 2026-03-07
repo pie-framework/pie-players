@@ -180,7 +180,22 @@ export const themeToolRegistration: ToolRegistration = {
 		return {
 			toolId: this.toolId,
 			button,
-			elements: [{ element: overlay, mount: "after-buttons" }],
+			elements: [
+				{
+					element: overlay,
+					mount: "after-buttons",
+					shell: {
+						title: this.name,
+						draggable: true,
+						resizable: false,
+						closeable: true,
+						initialWidth: 520,
+						initialHeight: 380,
+						minWidth: 420,
+						minHeight: 300,
+					},
+				},
+			],
 			sync: () => {
 				const active = toolbarContext.isToolVisible(fullToolId);
 				button.active = active;

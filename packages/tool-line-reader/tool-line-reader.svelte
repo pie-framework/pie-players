@@ -350,7 +350,7 @@ import { onMount } from 'svelte';
 	}
 
 	.pie-tool-line-reader {
-		border: 2px solid color-mix(in srgb, var(--pie-primary, #4caf50) 80%, transparent);
+		border: none;
 		cursor: move;
 		overflow: visible;
 		position: absolute;
@@ -444,10 +444,7 @@ import { onMount } from 'svelte';
 
 	/* In masking mode, change the window appearance */
 	.pie-tool-line-reader.pie-tool-line-reader--masking-mode {
-		border-color: var(--pie-primary, #4caf50);
-		box-shadow:
-			0 0 0 3px color-mix(in srgb, var(--pie-primary, #4caf50) 80%, transparent),
-			0 0 20px color-mix(in srgb, var(--pie-primary, #4caf50) 40%, transparent);
+		box-shadow: none;
 	}
 
 	/* In masking mode, the window should be transparent to show content underneath */

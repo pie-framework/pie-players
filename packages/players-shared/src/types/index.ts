@@ -439,11 +439,8 @@ export interface AssessmentSettings {
 
 	/** Tool-specific provider configurations */
 	toolConfigs?: {
-		calculator?: {
-			provider?: "desmos";
-			type?: "basic" | "scientific" | "graphing";
-			settings?: Record<string, any>;
-		};
+		// Calculator-specific options are owned by the calculator tool package.
+		calculator?: Record<string, any>;
 		/**
 		 * Text-to-speech configuration.
 		 *

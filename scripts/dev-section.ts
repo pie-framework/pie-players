@@ -8,6 +8,7 @@ type RunOptions = {
 };
 
 const sectionDemosDir = resolve(process.cwd(), "apps/section-demos");
+const workspaceRootDir = process.cwd();
 const svelteKitTsconfigPath = resolve(
 	sectionDemosDir,
 	".svelte-kit/tsconfig.json",
@@ -38,17 +39,30 @@ if (shouldRebuild) {
 	args.splice(rebuildIndex, 1);
 }
 
+const hasHostArg = args.some((arg) => {
+	if (arg === "--host") return true;
+	if (arg.startsWith("--host=")) return true;
+	return false;
+});
+
 if (shouldRebuild) {
 	console.log("[dev:section] --rebuild enabled");
 	console.log("[dev:section] Cleaning section demo caches...");
 
 	removeDirIfExists(resolve(sectionDemosDir, ".svelte-kit"));
+	removeDirIfExists(resolve(sectionDemosDir, ".vite"));
 	removeDirIfExists(
 		resolve(sectionDemosDir, "node_modules/.vite"),
 	);
+	removeDirIfExists(resolve(workspaceRootDir, "node_modules/.vite"));
 
 	console.log("[dev:section] Rebuilding workspace packages...");
 	await runCommand(["bun", "run", "build"]);
+
+	// Ensure Vite does a fresh dependency optimization pass after cache cleanup.
+	if (!args.includes("--force")) {
+		args.push("--force");
+	}
 }
 
 if (!existsSync(svelteKitTsconfigPath)) {
@@ -56,6 +70,12 @@ if (!existsSync(svelteKitTsconfigPath)) {
 	await runCommand(["bun", "x", "svelte-kit", "sync"], {
 		cwd: sectionDemosDir,
 	});
+}
+
+if (!hasHostArg) {
+	// Force deterministic IPv4 host so localhost DNS resolution cannot bounce
+	// between ::1 and 127.0.0.1 across concurrent dev servers.
+	args.push("--host", "127.0.0.1");
 }
 
 console.log("[dev:section] Starting section demo dev server...");

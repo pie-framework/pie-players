@@ -37,8 +37,8 @@ export const graphToolRegistration: ToolRegistration = {
 	description: "Graphing calculator and coordinate plane",
 	icon: "chart-bar",
 
-	// Graph appears at item and element level where graphing might be needed
-	supportedLevels: ["item", "element"],
+	// Graph is a section-level floating tool.
+	supportedLevels: ["section"],
 
 	// PNP support IDs
 	// Maps to QTI 3.0 standard features: graph, graphingCalculator
@@ -85,20 +85,31 @@ export const graphToolRegistration: ToolRegistration = {
 		) as HTMLElement & {
 			visible?: boolean;
 			toolId?: string;
-			toolkitCoordinator: unknown;
 		};
 		overlay.setAttribute("tool-id", fullToolId);
 		return {
 			toolId: this.toolId,
 			button,
-			elements: [{ element: overlay, mount: "after-buttons" }],
+			elements: [
+				{
+					element: overlay,
+					mount: "after-buttons",
+					shell: {
+						title: this.name,
+						draggable: true,
+						resizable: true,
+						closeable: true,
+						initialWidth: 920,
+						initialHeight: 680,
+						minWidth: 640,
+						minHeight: 500,
+					},
+				},
+			],
 			sync: () => {
 				const active = toolbarContext.isToolVisible(fullToolId);
 				button.active = active;
 				overlay.visible = active;
-				if (toolbarContext.toolkitCoordinator) {
-					overlay.toolkitCoordinator = toolbarContext.toolkitCoordinator;
-				}
 			},
 			subscribeActive: (callback: (active: boolean) => void) => {
 				if (!toolbarContext.subscribeVisibility) return () => {};
@@ -122,8 +133,8 @@ export const periodicTableToolRegistration: ToolRegistration = {
 	description: "Chemistry periodic table reference",
 	icon: "beaker",
 
-	// Periodic table appears at item and element level
-	supportedLevels: ["item", "element"],
+	// Periodic table is a section-level floating tool.
+	supportedLevels: ["section"],
 
 	// PNP support IDs
 	// Maps to QTI 3.0 standard feature: periodicTable
@@ -169,20 +180,31 @@ export const periodicTableToolRegistration: ToolRegistration = {
 		) as HTMLElement & {
 			visible?: boolean;
 			toolId?: string;
-			toolkitCoordinator: unknown;
 		};
 		overlay.setAttribute("tool-id", fullToolId);
 		return {
 			toolId: this.toolId,
 			button,
-			elements: [{ element: overlay, mount: "after-buttons" }],
+			elements: [
+				{
+					element: overlay,
+					mount: "after-buttons",
+					shell: {
+						title: this.name,
+						draggable: true,
+						resizable: true,
+						closeable: true,
+						initialWidth: 1160,
+						initialHeight: 760,
+						minWidth: 920,
+						minHeight: 620,
+					},
+				},
+			],
 			sync: () => {
 				const active = toolbarContext.isToolVisible(fullToolId);
 				button.active = active;
 				overlay.visible = active;
-				if (toolbarContext.toolkitCoordinator) {
-					overlay.toolkitCoordinator = toolbarContext.toolkitCoordinator;
-				}
 			},
 			subscribeActive: (callback: (active: boolean) => void) => {
 				if (!toolbarContext.subscribeVisibility) return () => {};

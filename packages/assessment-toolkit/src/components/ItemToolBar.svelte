@@ -42,7 +42,12 @@
 		connectAssessmentToolkitRuntimeContext,
 		connectAssessmentToolkitShellContext,
 	} from '../context/runtime-context-consumer.js';
-	import type { ToolRegistry, ToolToolbarRenderResult, ToolbarContext } from '../services/ToolRegistry.js';
+	import type {
+		ToolRegistry,
+		ToolRenderElement,
+		ToolToolbarRenderResult,
+		ToolbarContext
+	} from '../services/ToolRegistry.js';
 	import {
 		isExternalIconUrl,
 		isInlineSvgIcon,
@@ -430,20 +435,41 @@
 		...nativeToolbarItems,
 		...normalizedHostButtons
 	]);
-	const mountedElementsBeforeButtons = $derived.by(() =>
+	type MountedToolElement = {
+		key: string;
+		toolId: string;
+		entry: ToolRenderElement & { element: HTMLElement };
+	};
+	const renderedToolActiveById = $derived.by(() => {
+		const result: Record<string, boolean> = {};
+		for (const renderedTool of renderedTools) {
+			result[renderedTool.toolId] =
+				activeToolState[renderedTool.toolId] ?? renderedTool.button?.active ?? false;
+		}
+		return result;
+	});
+	const mountedElementsBeforeButtons = $derived.by((): MountedToolElement[] =>
 		renderedTools.flatMap((renderedTool) =>
 			(renderedTool.elements || [])
 				.filter((entry) => entry.mount === 'before-buttons')
-				.map((entry) => entry.element)
-				.filter((entry): entry is HTMLElement => Boolean(entry))
+				.filter((entry): entry is ToolRenderElement & { element: HTMLElement } => Boolean(entry.element))
+				.map((entry, index) => ({
+					key: `before-${renderedTool.toolId}-${index}`,
+					toolId: renderedTool.toolId,
+					entry
+				}))
 		)
 	);
-	const mountedElementsAfterButtons = $derived.by(() =>
+	const mountedElementsAfterButtons = $derived.by((): MountedToolElement[] =>
 		renderedTools.flatMap((renderedTool) =>
 			(renderedTool.elements || [])
 				.filter((entry) => entry.mount === 'after-buttons')
-				.map((entry) => entry.element)
-				.filter((entry): entry is HTMLElement => Boolean(entry))
+				.filter((entry): entry is ToolRenderElement & { element: HTMLElement } => Boolean(entry.element))
+				.map((entry, index) => ({
+					key: `after-${renderedTool.toolId}-${index}`,
+					toolId: renderedTool.toolId,
+					entry
+				}))
 		)
 	);
 
@@ -540,6 +566,311 @@
 			}
 		};
 	}
+
+	type ShellMountedArgs = {
+		mounted: MountedToolElement;
+		active: boolean;
+	};
+
+	function mountElementWithShell(node: HTMLSpanElement, args: ShellMountedArgs) {
+		let currentArgs = args;
+		let shellEl: HTMLDivElement | null = null;
+		let headerEl: HTMLDivElement | null = null;
+		let contentEl: HTMLDivElement | null = null;
+		let titleEl: HTMLSpanElement | null = null;
+		let closeButtonEl: HTMLButtonElement | null = null;
+		let resizeHandleEl: HTMLDivElement | null = null;
+		let mountedContentElement: HTMLElement | null = null;
+		let dragPointerId: number | null = null;
+		let resizePointerId: number | null = null;
+		let dragOffsetX = 0;
+		let dragOffsetY = 0;
+		let resizeStartWidth = 0;
+		let resizeStartHeight = 0;
+		let resizeStartX = 0;
+		let resizeStartY = 0;
+		let x = 0;
+		let y = 0;
+		let width = currentArgs.mounted.entry.shell?.initialWidth ?? 720;
+		let height = currentArgs.mounted.entry.shell?.initialHeight ?? 560;
+
+		const clamp = (value: number, min: number, max: number): number =>
+			Math.max(min, Math.min(value, max));
+
+		const applyShellStyle = () => {
+			if (!shellEl) return;
+			shellEl.style.left = `${x}px`;
+			shellEl.style.top = `${y}px`;
+			shellEl.style.width = `${width}px`;
+			shellEl.style.height = `${height}px`;
+			shellEl.style.display = currentArgs.active ? 'flex' : 'none';
+		};
+
+		const mountContent = () => {
+			if (!contentEl) return;
+			const element = currentArgs.mounted.entry.element;
+			element.style.display = 'block';
+			element.style.width = '100%';
+			element.style.height = '100%';
+			element.style.flex = '1 1 auto';
+			element.style.minHeight = '0';
+			if (mountedContentElement && mountedContentElement !== element) {
+				if (mountedContentElement.parentNode === contentEl) {
+					contentEl.removeChild(mountedContentElement);
+				}
+				mountedContentElement = null;
+			}
+			if (element.parentNode && element.parentNode !== contentEl) {
+				element.parentNode.removeChild(element);
+			}
+			if (element.parentNode !== contentEl) {
+				contentEl.appendChild(element);
+			}
+			mountedContentElement = element;
+		};
+
+		const bringToFront = () => {
+			if (effectiveToolCoordinator && shellEl) {
+				effectiveToolCoordinator.bringToFront(shellEl);
+			}
+		};
+
+		const centerShell = () => {
+			const viewportW = window.innerWidth;
+			const viewportH = window.innerHeight;
+			x = Math.max(0, Math.round((viewportW - width) / 2));
+			y = Math.max(0, Math.round((viewportH - height) / 2));
+		};
+
+		const closeShell = () => {
+			toolbarContext.toggleTool(currentArgs.mounted.toolId);
+			syncRenderedToolsState();
+		};
+
+		const onHeaderPointerDown = (event: PointerEvent) => {
+			if (!currentArgs.mounted.entry.shell?.draggable) return;
+			const target = event.target as HTMLElement;
+			if (target.closest('button')) return;
+			if (!shellEl) return;
+			dragPointerId = event.pointerId;
+			dragOffsetX = event.clientX - x;
+			dragOffsetY = event.clientY - y;
+			shellEl.setPointerCapture(event.pointerId);
+			bringToFront();
+		};
+
+		const onResizePointerDown = (event: PointerEvent) => {
+			if (!shellEl || !currentArgs.mounted.entry.shell?.resizable) return;
+			event.stopPropagation();
+			resizePointerId = event.pointerId;
+			resizeStartWidth = width;
+			resizeStartHeight = height;
+			resizeStartX = event.clientX;
+			resizeStartY = event.clientY;
+			shellEl.setPointerCapture(event.pointerId);
+			bringToFront();
+		};
+
+		const onShellPointerMove = (event: PointerEvent) => {
+			if (!shellEl) return;
+			if (dragPointerId === event.pointerId) {
+				const maxX = Math.max(0, window.innerWidth - width);
+				const maxY = Math.max(0, window.innerHeight - height);
+				x = clamp(event.clientX - dragOffsetX, 0, maxX);
+				y = clamp(event.clientY - dragOffsetY, 0, maxY);
+				applyShellStyle();
+				return;
+			}
+			if (resizePointerId === event.pointerId) {
+				const shellConfig = currentArgs.mounted.entry.shell;
+				const minWidth = shellConfig?.minWidth ?? 320;
+				const minHeight = shellConfig?.minHeight ?? 240;
+				const maxWidth = shellConfig?.maxWidth ?? window.innerWidth;
+				const maxHeight = shellConfig?.maxHeight ?? window.innerHeight;
+				width = clamp(
+					resizeStartWidth + (event.clientX - resizeStartX),
+					minWidth,
+					Math.max(minWidth, Math.min(maxWidth, window.innerWidth - x))
+				);
+				height = clamp(
+					resizeStartHeight + (event.clientY - resizeStartY),
+					minHeight,
+					Math.max(minHeight, Math.min(maxHeight, window.innerHeight - y))
+				);
+				applyShellStyle();
+			}
+		};
+
+		const onShellPointerUp = (event: PointerEvent) => {
+			if (!shellEl) return;
+			if (dragPointerId === event.pointerId) {
+				dragPointerId = null;
+				shellEl.releasePointerCapture(event.pointerId);
+			}
+			if (resizePointerId === event.pointerId) {
+				resizePointerId = null;
+				shellEl.releasePointerCapture(event.pointerId);
+			}
+		};
+
+		const onWindowResize = () => {
+			const maxX = Math.max(0, window.innerWidth - width);
+			const maxY = Math.max(0, window.innerHeight - height);
+			x = clamp(x, 0, maxX);
+			y = clamp(y, 0, maxY);
+			applyShellStyle();
+		};
+
+		if (isBrowser && currentArgs.mounted.entry.shell) {
+			shellEl = document.createElement('div');
+			shellEl.className = 'pie-tool-shell';
+			shellEl.setAttribute('data-pie-tool-shell', currentArgs.mounted.toolId);
+			shellEl.style.position = 'fixed';
+			shellEl.style.zIndex = '2000';
+			shellEl.style.background = 'var(--pie-background, #fff)';
+			shellEl.style.border = '1px solid var(--pie-border-light, #d1d5db)';
+			shellEl.style.borderRadius = '12px';
+			shellEl.style.boxShadow = '0 10px 40px rgb(0 0 0 / 0.25)';
+			shellEl.style.overflow = 'hidden';
+			shellEl.style.display = currentArgs.active ? 'flex' : 'none';
+			shellEl.style.flexDirection = 'column';
+
+			headerEl = document.createElement('div');
+			headerEl.className = 'pie-tool-shell__header';
+			headerEl.style.display = 'flex';
+			headerEl.style.alignItems = 'center';
+			headerEl.style.justifyContent = 'space-between';
+			headerEl.style.padding = '10px 12px';
+			headerEl.style.background = 'var(--pie-primary-dark, #2c3e50)';
+			headerEl.style.color = 'var(--pie-white, #fff)';
+			headerEl.style.cursor = currentArgs.mounted.entry.shell.draggable === false ? 'default' : 'move';
+			headerEl.style.flex = '0 0 auto';
+
+			titleEl = document.createElement('span');
+			titleEl.className = 'pie-tool-shell__title';
+			titleEl.textContent = currentArgs.mounted.entry.shell.title || currentArgs.mounted.toolId;
+			headerEl.appendChild(titleEl);
+
+			closeButtonEl = document.createElement('button');
+			closeButtonEl.type = 'button';
+			closeButtonEl.className = 'pie-tool-shell__close';
+			closeButtonEl.setAttribute('aria-label', 'Close tool');
+			closeButtonEl.innerHTML =
+				'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 3.5L12.5 12.5M12.5 3.5L3.5 12.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+			const closeIconEl = closeButtonEl.querySelector('svg');
+			if (closeIconEl) {
+				closeIconEl.style.width = '16px';
+				closeIconEl.style.height = '16px';
+				closeIconEl.style.display = 'block';
+				closeIconEl.style.flexShrink = '0';
+				closeIconEl.style.pointerEvents = 'none';
+			}
+			closeButtonEl.style.border = '1px solid transparent';
+			closeButtonEl.style.background =
+				'color-mix(in srgb, var(--pie-white, #fff) 8%, transparent)';
+			closeButtonEl.style.color = 'inherit';
+			closeButtonEl.style.cursor = 'pointer';
+			closeButtonEl.style.display = 'inline-flex';
+			closeButtonEl.style.alignItems = 'center';
+			closeButtonEl.style.justifyContent = 'center';
+			closeButtonEl.style.width = '28px';
+			closeButtonEl.style.height = '28px';
+			closeButtonEl.style.padding = '0';
+			closeButtonEl.style.borderRadius = '8px';
+			closeButtonEl.style.lineHeight = '0';
+			closeButtonEl.style.transition = 'background-color 0.15s ease, border-color 0.15s ease';
+			closeButtonEl.style.display =
+				currentArgs.mounted.entry.shell.closeable === false ? 'none' : 'inline-flex';
+			closeButtonEl.onmouseenter = () => {
+				closeButtonEl && (closeButtonEl.style.background =
+					'color-mix(in srgb, var(--pie-white, #fff) 18%, transparent)');
+			};
+			closeButtonEl.onmouseleave = () => {
+				closeButtonEl && (closeButtonEl.style.background =
+					'color-mix(in srgb, var(--pie-white, #fff) 8%, transparent)');
+			};
+			closeButtonEl.onfocus = () => {
+				closeButtonEl && (closeButtonEl.style.outline =
+					'2px solid var(--pie-button-focus-outline, var(--pie-primary, #4A90E2))');
+				closeButtonEl && (closeButtonEl.style.outlineOffset = '2px');
+			};
+			closeButtonEl.onblur = () => {
+				closeButtonEl && (closeButtonEl.style.outline = 'none');
+				closeButtonEl && (closeButtonEl.style.outlineOffset = '0');
+			};
+			closeButtonEl.onclick = closeShell;
+			headerEl.appendChild(closeButtonEl);
+
+			contentEl = document.createElement('div');
+			contentEl.className = 'pie-tool-shell__content';
+			contentEl.style.position = 'relative';
+			contentEl.style.width = '100%';
+			contentEl.style.flex = '1 1 auto';
+			contentEl.style.minHeight = '0';
+
+			shellEl.appendChild(headerEl);
+			shellEl.appendChild(contentEl);
+
+			if (currentArgs.mounted.entry.shell.resizable !== false) {
+				resizeHandleEl = document.createElement('div');
+				resizeHandleEl.className = 'pie-tool-shell__resize';
+				resizeHandleEl.style.position = 'absolute';
+				resizeHandleEl.style.right = '0';
+				resizeHandleEl.style.bottom = '0';
+				resizeHandleEl.style.width = '16px';
+				resizeHandleEl.style.height = '16px';
+				resizeHandleEl.style.cursor = 'nwse-resize';
+				resizeHandleEl.style.background =
+					'linear-gradient(135deg, transparent 0%, transparent 40%, rgba(0,0,0,0.35) 40%, rgba(0,0,0,0.35) 60%, transparent 60%, transparent 100%)';
+				shellEl.appendChild(resizeHandleEl);
+				resizeHandleEl.addEventListener('pointerdown', onResizePointerDown);
+			}
+
+			headerEl.addEventListener('pointerdown', onHeaderPointerDown);
+			shellEl.addEventListener('pointermove', onShellPointerMove);
+			shellEl.addEventListener('pointerup', onShellPointerUp);
+			shellEl.addEventListener('pointerdown', bringToFront);
+			window.addEventListener('resize', onWindowResize);
+			document.body.appendChild(shellEl);
+
+			centerShell();
+			applyShellStyle();
+			mountContent();
+		}
+
+		return {
+			update(nextArgs: ShellMountedArgs) {
+				currentArgs = nextArgs;
+				if (!shellEl || !contentEl || !titleEl || !closeButtonEl) return;
+				titleEl.textContent = currentArgs.mounted.entry.shell?.title || currentArgs.mounted.toolId;
+				closeButtonEl.style.display =
+					currentArgs.mounted.entry.shell?.closeable === false ? 'none' : 'inline-flex';
+				mountContent();
+				applyShellStyle();
+			},
+			destroy() {
+				if (resizeHandleEl) {
+					resizeHandleEl.removeEventListener('pointerdown', onResizePointerDown);
+				}
+				if (headerEl) {
+					headerEl.removeEventListener('pointerdown', onHeaderPointerDown);
+				}
+				if (shellEl) {
+					shellEl.removeEventListener('pointermove', onShellPointerMove);
+					shellEl.removeEventListener('pointerup', onShellPointerUp);
+					shellEl.removeEventListener('pointerdown', bringToFront);
+				}
+				window.removeEventListener('resize', onWindowResize);
+				if (mountedContentElement && contentEl && mountedContentElement.parentNode === contentEl) {
+					contentEl.removeChild(mountedContentElement);
+				}
+				mountedContentElement = null;
+				if (shellEl && shellEl.parentElement) {
+					shellEl.remove();
+				}
+			}
+		};
+	}
 </script>
 
 {#if isBrowser}
@@ -553,8 +884,18 @@
 		data-level={effectiveLevel}
 		bind:this={toolbarRootElement}
 	>
-		{#each mountedElementsBeforeButtons as mountedElement (`before-${mountedElement.tagName}-${mountedElement.getAttribute('tool-id') || ''}`)}
-			<span class="item-toolbar__element-host" use:mountElement={mountedElement}></span>
+		{#each mountedElementsBeforeButtons as mounted (mounted.key)}
+			{#if mounted.entry.shell}
+				<span
+					class="item-toolbar__element-host"
+					use:mountElementWithShell={{
+						mounted,
+						active: renderedToolActiveById[mounted.toolId] ?? false
+					}}
+				></span>
+			{:else}
+				<span class="item-toolbar__element-host" use:mountElement={mounted.entry.element}></span>
+			{/if}
 		{/each}
 
 		{#each toolbarItems as item (item.id)}
@@ -618,8 +959,18 @@
 			{/if}
 		{/each}
 
-		{#each mountedElementsAfterButtons as mountedElement (`after-${mountedElement.tagName}-${mountedElement.getAttribute('tool-id') || ''}`)}
-			<span class="item-toolbar__element-host" use:mountElement={mountedElement}></span>
+		{#each mountedElementsAfterButtons as mounted (mounted.key)}
+			{#if mounted.entry.shell}
+				<span
+					class="item-toolbar__element-host"
+					use:mountElementWithShell={{
+						mounted,
+						active: renderedToolActiveById[mounted.toolId] ?? false
+					}}
+				></span>
+			{:else}
+				<span class="item-toolbar__element-host" use:mountElement={mounted.entry.element}></span>
+			{/if}
 		{/each}
 	</div>
 {/if}

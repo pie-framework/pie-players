@@ -340,9 +340,9 @@
 	}
 
 	.pie-tool-ruler {
-		border-left: 1px solid var(--pie-border-dark, #000);
-		border-right: 1px solid var(--pie-border-dark, #000);
-		box-shadow: 0 4px 12px rgb(0 0 0 / 0.15); /* Matching production implementation shadow */
+		border-left: none;
+		border-right: none;
+		box-shadow: none;
 		cursor: move;
 		left: 50%;
 		overflow: hidden;

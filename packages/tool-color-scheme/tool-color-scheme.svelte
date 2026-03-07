@@ -305,20 +305,12 @@
 		}
 	});
 
-	function handleClose() {
-		dropdownOpen = false;
-		coordinator?.hideTool(toolId);
-	}
-
 	// Handle escape key
 	function handleKeyDown(e: KeyboardEvent) {
 		if (e.key === 'Escape') {
 			if (dropdownOpen) {
 				// Close dropdown first
 				dropdownOpen = false;
-			} else {
-				// Close the entire tool
-				handleClose();
 			}
 		} else if (dropdownOpen && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
 			// Handle arrow key navigation in dropdown
@@ -399,19 +391,14 @@
 </script>
 
 {#if visible}
-	<div bind:this={containerEl} class="pie-tool-color-scheme" role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="color-scheme-title" onkeydown={handleKeyDown}>
-		<div class="pie-tool-color-scheme__header">
-			<h3 id="color-scheme-title" class="pie-tool-color-scheme__title">Theme</h3>
-			<button
-				type="button"
-				class="pie-tool-color-scheme__close"
-				onclick={handleClose}
-				aria-label="Close theme selector"
-			>
-				×
-			</button>
-		</div>
-
+	<div
+		bind:this={containerEl}
+		class="pie-tool-color-scheme"
+		role="dialog"
+		tabindex="-1"
+		aria-label="Theme selector"
+		onkeydown={handleKeyDown}
+	>
 		<div class="pie-tool-color-scheme__content">
 			<p class="pie-tool-color-scheme__description">
 				Select a theme to improve readability and reduce eye strain.
@@ -478,49 +465,13 @@
 
 <style>
 	.pie-tool-color-scheme {
-		position: fixed;
-		top: 50%;
-		left: 50%;
-		transform: translate(-50%, -50%);
-		width: 90%;
-		max-width: 32rem;
+		position: relative;
+		width: 100%;
+		height: 100%;
+		min-height: 0;
 		background-color: var(--pie-background, white);
-		border: 2px solid var(--pie-border, #ccc);
-		border-radius: 0.5rem;
-		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 		display: flex;
 		flex-direction: column;
-	}
-
-	.pie-tool-color-scheme__header {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		padding: 1rem;
-		border-bottom: 2px solid var(--pie-border, #ccc);
-	}
-
-	.pie-tool-color-scheme__title {
-		font-size: 1.25rem;
-		font-weight: 700;
-		color: var(--pie-text, black);
-		margin: 0;
-	}
-
-	.pie-tool-color-scheme__close {
-		width: 2rem;
-		height: 2rem;
-		border: none;
-		background: transparent;
-		color: var(--pie-text, black);
-		font-size: 1.5rem;
-		line-height: 1;
-		cursor: pointer;
-		border-radius: 0.25rem;
-	}
-
-	.pie-tool-color-scheme__close:hover {
-		background-color: var(--pie-secondary-background, #f0f0f0);
 	}
 
 	.pie-tool-color-scheme__content {
@@ -529,6 +480,8 @@
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;
+		min-height: 0;
+		overflow: auto;
 	}
 
 	.pie-tool-color-scheme__description {
@@ -674,7 +627,6 @@
 	}
 
 	/* Keyboard focus styling */
-	.pie-tool-color-scheme__close:focus-visible,
 	.pie-tool-color-scheme__dropdown-trigger:focus-visible,
 	.pie-tool-color-scheme__option:focus-visible {
 		outline: 2px solid var(--pie-primary, #3f51b5);

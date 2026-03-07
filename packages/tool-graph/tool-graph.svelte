@@ -10,16 +10,7 @@
 />
 
 <script lang="ts">
-	
-	import {
-		connectToolRuntimeContext,
-		ZIndexLayer,
-	} from '@pie-players/pie-assessment-toolkit';
-	import type {
-		AssessmentToolkitRuntimeContext,
-		IToolCoordinator,
-	} from '@pie-players/pie-assessment-toolkit';
-import { onMount } from 'svelte';
+
 
 	// Props
 	let {
@@ -29,9 +20,6 @@ import { onMount } from 'svelte';
 		visible?: boolean;
 		toolId?: string;
 	} = $props();
-
-	// Check if running in browser
-	const isBrowser = typeof window !== 'undefined';
 
 	// Tool types (matching production implementation)
 	type Tool = 'selector' | 'point' | 'line' | 'delete';
@@ -55,19 +43,8 @@ import { onMount } from 'svelte';
 	}
 
 	// State
-	let containerEl = $state<HTMLDivElement | undefined>();
-	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
-	const coordinator = $derived(
-		runtimeContext?.toolCoordinator as IToolCoordinator | undefined,
-	);
 	let canvasWrapperEl = $state<HTMLDivElement | undefined>();
 	let svgCanvasEl = $state<SVGSVGElement | undefined>();
-
-	// Position and size (matching production implementation defaults)
-	let x = $state(isBrowser ? window.innerWidth / 2 : 400);
-	let y = $state(isBrowser ? window.innerHeight / 2 : 300);
-	let width = $state(700);
-	let height = $state(550); // Production implementation uses 550px height
 
 	// Tool state
 	let currentTool = $state<Tool>('selector');
@@ -79,9 +56,6 @@ import { onMount } from 'svelte';
 	let draggingPointId = $state<number | null>(null);
 	let currentPointerPos = $state<Coordinates | null>(null);
 
-	// Track registration state
-	let registered = $state(false);
-
 	// Grid configuration (matching production implementation)
 	const MAJOR_VERTICAL_DIVISIONS = 5; // Fixed number of rows
 	const SUBGRID_DIVISIONS = 5; // 5x5 minor grid
@@ -91,13 +65,6 @@ import { onMount } from 'svelte';
 	// Container pixel dimensions (from ResizeObserver)
 	let containerPixelWidth = $state(0);
 	let containerPixelHeight = $state(0);
-
-	$effect(() => {
-		if (!containerEl) return;
-		return connectToolRuntimeContext(containerEl, (value: AssessmentToolkitRuntimeContext) => {
-			runtimeContext = value;
-		});
-	});
 
 	// Dynamic viewBox width (matching production implementation)
 	let viewBoxWidth = $derived.by(() => {
@@ -372,48 +339,6 @@ import { onMount } from 'svelte';
 		}
 	}
 
-	function handleClose() {
-		coordinator?.hideTool(toolId);
-	}
-
-	function handlePointerDown(e: PointerEvent) {
-		const target = e.target as HTMLElement;
-
-		// Only start drag if clicking the header
-		if (!target.closest('.pie-tool-graph__header')) return;
-
-		// Start dragging (we'll handle position updates)
-		if (containerEl) {
-			containerEl.setPointerCapture(e.pointerId);
-			const startX = e.clientX - x;
-			const startY = e.clientY - y;
-
-			function onMove(e: PointerEvent) {
-				let newX = e.clientX - startX;
-				let newY = e.clientY - startY;
-
-				// Keep calculator on screen
-				const halfWidth = (containerEl?.offsetWidth || width) / 2;
-				const halfHeight = (containerEl?.offsetHeight || height) / 2;
-
-				x = Math.max(halfWidth, Math.min(newX, window.innerWidth - halfWidth));
-				y = Math.max(halfHeight, Math.min(newY, window.innerHeight - halfHeight));
-			}
-
-			function onUp() {
-				if (containerEl) {
-					containerEl.releasePointerCapture(e.pointerId);
-				}
-				containerEl?.removeEventListener('pointermove', onMove);
-				containerEl?.removeEventListener('pointerup', onUp);
-			}
-
-			containerEl.addEventListener('pointermove', onMove);
-			containerEl.addEventListener('pointerup', onUp);
-			coordinator?.bringToFront(containerEl);
-		}
-	}
-
 	// ResizeObserver for dynamic viewBox width (matching production implementation)
 	let resizeObserver: ResizeObserver | null = null;
 	$effect(() => {
@@ -443,54 +368,16 @@ import { onMount } from 'svelte';
 		}
 	});
 
-	// Register with coordinator when it becomes available
-	$effect(() => {
-		if (coordinator && toolId && !registered) {
-			if (containerEl) {
-				coordinator.registerTool(toolId, 'Graph Tool', containerEl, ZIndexLayer.MODAL);
-			} else {
-				coordinator.registerTool(toolId, 'Graph Tool', undefined, ZIndexLayer.MODAL);
-			}
-			registered = true;
-		}
-	});
-
-	// Update element reference when container becomes available
-	$effect(() => {
-		if (coordinator && containerEl && toolId) {
-			coordinator.updateToolElement(toolId, containerEl);
-			coordinator.bringToFront(containerEl);
-		}
-	});
-
-	onMount(() => {
-		return () => {
-			if (resizeObserver) {
-				resizeObserver.disconnect();
-				resizeObserver = null;
-			}
-			if (coordinator && toolId) {
-				coordinator.unregisterTool(toolId);
-			}
-		};
-	});
 </script>
 
 {#if visible}
 	<div
-		bind:this={containerEl}
 		class="pie-tool-graph"
 		role="dialog"
 		tabindex="-1"
 		aria-label="Graph Tool - Draw points and lines on a coordinate grid"
-		style="left: {x}px; top: {y}px; width: {width}px; height: {height}px; transform: translate(-50%, -50%);"
-		onpointerdown={handlePointerDown}
+		data-tool-id={toolId}
 	>
-		<!-- Header (matching production implementation: dark teal) -->
-		<div class="pie-tool-graph__header">
-			<h3 id="graph-tool-title" class="pie-tool-graph__title">Graph Tool</h3>
-		</div>
-
 		<!-- Toolbar (matching production implementation: lighter teal) -->
 		<div class="pie-tool-graph__toolbar">
 			<!-- Tool buttons -->
@@ -691,39 +578,15 @@ import { onMount } from 'svelte';
 
 <style>
 	.pie-tool-graph {
-		position: fixed;
+		position: relative;
 		background: var(--pie-background, #fff);
 		color: var(--pie-text, #111827);
-		border: 1px solid var(--pie-border-light, #d1d5db);
-		box-shadow: 0 10px 40px rgb(0 0 0 / 0.3);
-		user-select: none;
-		touch-action: none;
-		border-radius: 12px;
+		width: 100%;
+		height: 100%;
+		min-height: 0;
 		overflow: hidden;
-		z-index: 2000; /* ZIndexLayer.MODAL */
-		min-width: 500px;
 		display: flex;
 		flex-direction: column;
-	}
-
-	/* Header (matching production implementation: dark teal) */
-	.pie-tool-graph__header {
-		padding: 12px 16px;
-		background: var(--pie-primary-dark, #2c3e50); /* Dark teal-like color */
-		color: var(--pie-white, #fff);
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		cursor: move;
-		user-select: none;
-		border-radius: 12px 12px 0 0;
-	}
-
-	.pie-tool-graph__title {
-		font-weight: 600;
-		font-size: 16px;
-		color: var(--pie-white, #fff);
-		margin: 0;
 	}
 
 	/* Toolbar (matching production implementation: lighter teal) */

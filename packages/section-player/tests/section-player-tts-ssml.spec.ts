@@ -112,7 +112,7 @@ test.describe("section player demo tts-ssml", () => {
 		const itemCalculatorButton = q1.getByRole("button", { name: /open .* calculator/i });
 		await expect(itemCalculatorButton).toBeVisible();
 
-		// Calculator opens and is minimally interactive.
+		// Calculator opens and renders a real Desmos surface (not just a shell/loading state).
 		const desmosAuthResponse = page.waitForResponse(
 			(response) =>
 				response.url().includes("/api/tools/desmos/auth") &&
@@ -120,13 +120,19 @@ test.describe("section player demo tts-ssml", () => {
 		);
 		await itemCalculatorButton.click();
 		await desmosAuthResponse;
-		const calculatorDialog = page.getByRole("dialog", {
-			name: "Calculator tool - Drag header to move, Escape to close",
-		});
-		await expect(calculatorDialog).toBeVisible({ timeout: 20_000 });
-		await calculatorDialog.click();
-		await expect(calculatorDialog.getByText("Calculator").first()).toBeVisible();
-		await expect(calculatorDialog.getByText(/failed to initialize/i)).toHaveCount(0);
+		const calculatorHost = page.locator("pie-tool-calculator .pie-tool-calculator").last();
+		await expect(calculatorHost).toBeVisible({ timeout: 20_000 });
+		const calculatorSurface = calculatorHost.locator(
+			[
+				".pie-tool-calculator__container .dcg-container",
+				".pie-tool-calculator__container .dcg-calculator-api-container",
+				".pie-tool-calculator__container iframe",
+				".pie-tool-calculator__container canvas",
+			].join(","),
+		);
+		await expect(calculatorSurface.first()).toBeVisible({ timeout: 20_000 });
+		await expect(calculatorHost.getByText(/failed to initialize/i)).toHaveCount(0);
+		await expect(calculatorHost.locator(".pie-tool-calculator__loading")).toHaveCount(0);
 
 		// Answer eliminator is item-level and should render elimination controls when toggled on.
 		const answerEliminatorButton = q1.getByRole("button", {

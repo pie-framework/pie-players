@@ -326,7 +326,7 @@
 	.pie-tool-protractor__container::after {
 		background-color: var(--pie-background, #fff);
 		border-radius: 283px 283px 0 0;
-		box-shadow: 0 4px 12px rgb(0 0 0 / 0.15); /* Matching production implementation shadow */
+		box-shadow: none;
 		content: '';
 		display: block;
 		height: 283px;

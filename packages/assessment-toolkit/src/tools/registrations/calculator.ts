@@ -75,8 +75,10 @@ export const calculatorToolRegistration: ToolRegistration = {
 		) as HTMLElement & {
 			visible?: boolean;
 			toolId?: string;
+			toolkitCoordinator?: unknown;
 		};
 		overlay.setAttribute("tool-id", fullToolId);
+		overlay.toolkitCoordinator = toolbarContext.toolkitCoordinator;
 		const button: ToolToolbarButtonDefinition = {
 			toolId: this.toolId,
 			label: this.name,
@@ -87,10 +89,27 @@ export const calculatorToolRegistration: ToolRegistration = {
 			onClick: () => toolbarContext.toggleTool(this.toolId),
 			active: toolbarContext.isToolVisible(fullToolId),
 		};
+		let lastVisibleState: boolean | undefined = button.active;
+		overlay.visible = button.active;
 
 		return {
 			toolId: this.toolId,
-			elements: [{ element: overlay, mount: "after-buttons" }],
+			elements: [
+				{
+					element: overlay,
+					mount: "after-buttons",
+					shell: {
+						title: this.name,
+						draggable: true,
+						resizable: true,
+						closeable: true,
+						initialWidth: 720,
+						initialHeight: 620,
+						minWidth: 360,
+						minHeight: 420,
+					},
+				},
+			],
 			button,
 			sync: () => {
 				const active = toolbarContext.isToolVisible(fullToolId);
@@ -99,7 +118,13 @@ export const calculatorToolRegistration: ToolRegistration = {
 					? "Close scientific calculator"
 					: "Open scientific calculator";
 				button.tooltip = active ? "Close calculator" : "Calculator";
-				overlay.visible = active;
+				if (lastVisibleState !== active) {
+					overlay.visible = active;
+					lastVisibleState = active;
+				}
+				if (overlay.toolkitCoordinator !== toolbarContext.toolkitCoordinator) {
+					overlay.toolkitCoordinator = toolbarContext.toolkitCoordinator;
+				}
 			},
 			subscribeActive: (callback: (active: boolean) => void) => {
 				if (!toolbarContext.subscribeVisibility) return () => {};

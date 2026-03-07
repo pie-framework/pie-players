@@ -61,6 +61,29 @@ export interface ToolbarContext {
 export interface ToolRenderElement {
 	element: HTMLElement | null;
 	mount: "before-buttons" | "after-buttons";
+	shell?: ToolWindowShellConfig;
+}
+
+export interface ToolWindowShellAction {
+	id: string;
+	label: string;
+	ariaLabel?: string;
+	iconSvg?: string;
+	onClick: () => void;
+}
+
+export interface ToolWindowShellConfig {
+	title?: string;
+	draggable?: boolean;
+	resizable?: boolean;
+	closeable?: boolean;
+	initialWidth?: number;
+	initialHeight?: number;
+	minWidth?: number;
+	minHeight?: number;
+	maxWidth?: number;
+	maxHeight?: number;
+	actions?: ToolWindowShellAction[];
 }
 
 export interface ToolToolbarRenderResult {

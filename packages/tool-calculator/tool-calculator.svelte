@@ -6,7 +6,8 @@
 			visible: { type: 'Boolean', attribute: 'visible' },
 			toolId: { type: 'String', attribute: 'tool-id' },
 			calculatorType: { type: 'String', attribute: 'calculator-type' },
-			availableTypes: { type: 'Array', attribute: 'available-types' }
+			availableTypes: { type: 'Array', attribute: 'available-types' },
+			toolkitCoordinator: { type: 'Object' }
 		}
 	}}
 />
@@ -45,11 +46,9 @@
 	
 	import {
 		connectToolRuntimeContext,
-		ZIndexLayer,
 	} from '@pie-players/pie-assessment-toolkit';
 	import type {
 		AssessmentToolkitRuntimeContext,
-		IToolCoordinator,
 	} from '@pie-players/pie-assessment-toolkit';
 	import type { Calculator, CalculatorProviderConfig, CalculatorType } from '@pie-players/pie-assessment-toolkit/tools/client';
 	import { createFocusTrap } from '@pie-players/pie-players-shared';
@@ -59,78 +58,6 @@ import { onMount } from 'svelte';
 	// Constants
 	// ============================================================================
 
-	const DESMOS_CALCULATOR_TYPES: CalculatorType[] = ['basic', 'scientific', 'graphing'];
-	const GLOBAL_STYLE_ID = 'pie-tool-calculator-global-styles';
-	const GLOBAL_CALCULATOR_CSS = `
-		.pie-tool-calculator {
-			position: fixed;
-			background: white;
-			box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-			user-select: none;
-			touch-action: none;
-			border-radius: 12px;
-			overflow: hidden;
-			z-index: 2000;
-			min-width: 320px;
-			display: flex;
-			flex-direction: column;
-		}
-		.pie-tool-calculator__header {
-			padding: 12px 16px;
-			background: var(--pie-primary-dark, #2c3e50);
-			color: var(--pie-white, white);
-			display: flex;
-			justify-content: space-between;
-			align-items: center;
-		}
-		.pie-tool-calculator__container {
-			background: white;
-			width: 100%;
-			height: 100%;
-			min-width: 320px;
-			min-height: 400px;
-			position: relative;
-			overflow: hidden;
-		}
-		.pie-tool-calculator__loading {
-			position: absolute;
-			inset: 56px 0 0 0;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			background: rgba(255, 255, 255, 0.9);
-			color: #334155;
-			font-size: 0.9rem;
-			z-index: 2;
-		}
-		.pie-tool-calculator__loading--error {
-			color: #b91c1c;
-			flex-direction: column;
-			gap: 0.5rem;
-			padding: 0.75rem;
-			text-align: center;
-		}
-		.pie-tool-calculator__error-details {
-			font-size: 0.8rem;
-			line-height: 1.2;
-			color: #7f1d1d;
-			max-width: 95%;
-			word-break: break-word;
-		}
-		.pie-tool-calculator__container .dcg-container {
-			width: 100% !important;
-			height: 100% !important;
-		}
-	`;
-
-	const CALCULATOR_SIZES: Partial<Record<CalculatorType, { width: number; height: number }>> = {
-		'basic': { width: 700, height: 600 },
-		'scientific': { width: 700, height: 600 },
-		'graphing': { width: 700, height: 600 }
-	};
-
-	const isBrowser = typeof window !== 'undefined';
-
 	// ============================================================================
 	// Props
 	// ============================================================================
@@ -139,19 +66,20 @@ import { onMount } from 'svelte';
 		visible = false,
 		toolId = 'calculator',
 		calculatorType = 'basic' as CalculatorType,
-		availableTypes: availableTypesInput = ['basic', 'scientific', 'graphing'] as CalculatorType[]
+		availableTypes: availableTypesInput = ['basic', 'scientific', 'graphing'] as CalculatorType[],
+		toolkitCoordinator: explicitToolkitCoordinator = null
 	}: {
 		visible?: boolean;
 		toolId?: string;
 		calculatorType?: CalculatorType;
 		availableTypes?: CalculatorType[] | string;
+		toolkitCoordinator?: AssessmentToolkitRuntimeContext['toolkitCoordinator'] | null;
 	} = $props();
 
 	let contextHostElement = $state<HTMLDivElement | null>(null);
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
-	const effectiveToolkitCoordinator = $derived(runtimeContext?.toolkitCoordinator);
-	const coordinator = $derived(
-		effectiveToolkitCoordinator?.toolCoordinator as IToolCoordinator | undefined,
+	const effectiveToolkitCoordinator = $derived(
+		explicitToolkitCoordinator ?? runtimeContext?.toolkitCoordinator
 	);
 
 	// ============================================================================
@@ -178,17 +106,8 @@ import { onMount } from 'svelte';
 	let lastInitializationError = $state<string | null>(null);
 	let hasMountedSurface = $state(false);
 	let cleanupFocusTrap = $state<(() => void) | null>(null);
-	let registeredToolId = $state<string | null>(null);
-	let registeredCoordinator = $state<IToolCoordinator | null>(null);
 	const CALCULATOR_MOUNT_SELECTOR =
 		'.dcg-container,.dcg-calculator-api-container,iframe,canvas';
-
-	// Drag state
-	let isDragging = $state(false);
-	let dragOffsetX = $state(0);
-	let dragOffsetY = $state(0);
-	let positionX = $state<number | null>(null);
-	let positionY = $state<number | null>(null);
 
 	$effect(() => {
 		if (!contextHostElement) return;
@@ -203,19 +122,6 @@ import { onMount } from 'svelte';
 	// ============================================================================
 	// Helper Functions
 	// ============================================================================
-
-	function isDesmosCalculator(type: CalculatorType): boolean {
-		return DESMOS_CALCULATOR_TYPES.includes(type);
-	}
-
-	function ensureGlobalCalculatorStyles(): void {
-		if (!isBrowser) return;
-		if (document.getElementById(GLOBAL_STYLE_ID)) return;
-		const styleEl = document.createElement('style');
-		styleEl.id = GLOBAL_STYLE_ID;
-		styleEl.textContent = GLOBAL_CALCULATOR_CSS;
-		document.head.appendChild(styleEl);
-	}
 
 	function getConfiguredProviderId(): 'calculator-desmos' {
 		return 'calculator-desmos';
@@ -298,20 +204,6 @@ import { onMount } from 'svelte';
 		return hasCalculatorMount(container);
 	}
 
-	async function waitForBodyMountedContainer(
-		container: HTMLDivElement | null | undefined,
-		timeoutMs = 2000,
-	): Promise<boolean> {
-		if (!container) return false;
-		const startedAt = Date.now();
-		while (Date.now() - startedAt < timeoutMs) {
-			if (!container.isConnected) return false;
-			if (container.parentElement === document.body) return true;
-			await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-		}
-		return container.parentElement === document.body;
-	}
-
 	function waitForAnimationFrames(count: number, signal?: AbortSignal): Promise<void> {
 		return new Promise<void>((resolve) => {
 			let remaining = count;
@@ -326,28 +218,6 @@ import { onMount } from 'svelte';
 			next();
 		});
 	}
-
-	// ============================================================================
-	// Derived Values
-	// ============================================================================
-
-	let calculatorSize = $derived(CALCULATOR_SIZES[currentCalculatorType] ?? CALCULATOR_SIZES['basic']!);
-	let width = $derived(calculatorSize.width);
-	let height = $derived(calculatorSize.height);
-
-	let positionStyle = $derived.by(() => {
-		if (!isBrowser) {
-			return { left: '50%', top: '50%', transform: 'translate(-50%, -50%)' };
-		}
-
-		// Use dragged position if set (absolute positioning, no centering)
-		if (positionX !== null && positionY !== null) {
-			return { left: `${positionX}px`, top: `${positionY}px`, transform: '' };
-		}
-
-		// Default: centered
-		return { left: '50%', top: '50%', transform: 'translate(-50%, -50%)' };
-	});
 
 	// ============================================================================
 	// Configuration Management
@@ -438,12 +308,9 @@ import { onMount } from 'svelte';
 				return;
 			}
 
-			if (isDesmosCalculator(currentCalculatorType)) {
-				const readyInBody = await waitForBodyMountedContainer(containerEl);
-				if (!readyInBody) {
-					console.warn('[ToolCalculator] Calculator panel not body-mounted before init');
-					return;
-				}
+			if (!mountContainer.isConnected) {
+				console.warn('[ToolCalculator] Calculator container disconnected before init');
+				return;
 			}
 
 			calculatorInstance = await calculatorProvider.createCalculator(
@@ -487,82 +354,6 @@ import { onMount } from 'svelte';
 	// Event Handlers
 	// ============================================================================
 
-	function handleClose() {
-		if (calculatorInstance) {
-			try {
-				calculatorInstance.destroy();
-			} catch (error) {
-				console.warn('[ToolCalculator] Error destroying calculator on close:', error);
-			}
-			calculatorInstance = null;
-		}
-
-		calculatorContainerEl?.replaceChildren();
-		coordinator?.hideTool(toolId);
-	}
-
-	function handleKeyDown(e: KeyboardEvent) {
-		if (e.key === 'Escape') {
-			handleClose();
-		}
-	}
-
-	function handlePointerDown(e: PointerEvent) {
-		const target = e.target as HTMLElement;
-		if (target.closest('.pie-tool-calculator__header') && containerEl) {
-			coordinator?.bringToFront(containerEl);
-
-			// Start dragging if clicking on header (but not buttons)
-			if (!target.closest('button') && !target.closest('.pie-tool-calculator__header-buttons')) {
-				e.preventDefault();
-				isDragging = true;
-
-				// Calculate offset from pointer to element's current position
-				const rect = containerEl.getBoundingClientRect();
-				dragOffsetX = e.clientX - rect.left;
-				dragOffsetY = e.clientY - rect.top;
-
-				containerEl.setPointerCapture(e.pointerId);
-			}
-		}
-	}
-
-	function handlePointerMove(e: PointerEvent) {
-		if (!isDragging || !containerEl) return;
-
-		e.preventDefault();
-
-		// Update position - using left/top with transform cleared for smooth GPU-accelerated movement
-		const x = e.clientX - dragOffsetX;
-		const y = e.clientY - dragOffsetY;
-
-		// Set position directly on element for instant feedback
-		containerEl.style.left = `${x}px`;
-		containerEl.style.top = `${y}px`;
-		containerEl.style.transform = '';
-	}
-
-	function handlePointerUp(e: PointerEvent) {
-		if (isDragging && containerEl) {
-			isDragging = false;
-			containerEl.releasePointerCapture(e.pointerId);
-
-			// Commit the position to state
-			const left = parseFloat(containerEl.style.left);
-			const top = parseFloat(containerEl.style.top);
-
-			if (!isNaN(left) && !isNaN(top)) {
-				positionX = left;
-				positionY = top;
-			}
-
-			// Clear inline styles - will use positionStyle derived
-			containerEl.style.left = '';
-			containerEl.style.top = '';
-			containerEl.style.transform = '';
-		}
-	}
-
 	// ============================================================================
 	// Effects & Lifecycle
 	// ============================================================================
@@ -572,26 +363,7 @@ import { onMount } from 'svelte';
 		currentCalculatorType = calculatorType;
 	});
 
-	$effect(() => {
-		if (!coordinator || !toolId) return;
-		if (
-			registeredCoordinator &&
-			registeredToolId &&
-			(registeredCoordinator !== coordinator || registeredToolId !== toolId)
-		) {
-			registeredCoordinator.unregisterTool(registeredToolId);
-			registeredCoordinator = null;
-			registeredToolId = null;
-		}
-		if (!registeredToolId) {
-			coordinator.registerTool(toolId, 'Calculator', containerEl, ZIndexLayer.MODAL);
-			registeredCoordinator = coordinator;
-			registeredToolId = toolId;
-		}
-	});
-
 	onMount(() => {
-		ensureGlobalCalculatorStyles();
 		if (visible) {
 			initCalculator();
 		}
@@ -599,21 +371,7 @@ import { onMount } from 'svelte';
 		return () => {
 			cleanupFocusTrap?.();
 			calculatorInstance?.destroy();
-			if (registeredCoordinator && registeredToolId) {
-				registeredCoordinator.unregisterTool(registeredToolId);
-				registeredCoordinator = null;
-				registeredToolId = null;
-			}
 		};
-	});
-
-	$effect(() => {
-		if (coordinator && containerEl && toolId) {
-			coordinator.updateToolElement(toolId, containerEl);
-			if (!containerEl.style.zIndex) {
-				coordinator.bringToFront(containerEl);
-			}
-		}
 	});
 
 	$effect(() => {
@@ -701,60 +459,20 @@ import { onMount } from 'svelte';
 		}
 	});
 
-	$effect(() => {
-		if (!isBrowser || !visible || !containerEl) return;
-
-		// Desmos does not reliably mount while nested in a toolbar shadow tree.
-		// Move only the floating panel to document body; runtime state still flows via context.
-		if (containerEl.parentElement !== document.body) {
-			document.body.appendChild(containerEl);
-		}
-
-		return () => {
-			if (containerEl && containerEl.parentElement === document.body) {
-				containerEl.remove();
-			}
-		};
-	});
-
 </script>
 
-<div bind:this={contextHostElement}>
+<div bind:this={contextHostElement} class="pie-tool-calculator__context-host">
 {#if visible}
 	<div
 		bind:this={containerEl}
 		class="pie-tool-calculator notranslate"
-		class:pie-tool-calculator--dragging={isDragging}
-		role="dialog"
+		role="region"
+		data-tool-id={toolId}
 		tabindex="-1"
-		aria-label="Calculator tool - Drag header to move, Escape to close"
+		aria-label="Calculator tool"
 		translate="no"
-		style="left: {positionStyle.left}; top: {positionStyle.top}; {width !== undefined ? `width: ${width}px;` : ''} {height !== undefined ? `height: ${height}px;` : ''} transform: {positionStyle.transform};"
-		onpointerdown={handlePointerDown}
-		onpointermove={handlePointerMove}
-		onpointerup={handlePointerUp}
-		onkeydown={handleKeyDown}
+		style="width: 100%; height: 100%;"
 	>
-		<div class="pie-tool-calculator__header">
-			<span class="pie-tool-calculator__title">Calculator</span>
-			<div class="pie-tool-calculator__header-buttons">
-				<button class="pie-tool-calculator__close-btn" onclick={handleClose} aria-label="Close calculator">
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						class="h-5 w-5"
-						viewBox="0 0 20 20"
-						fill="currentColor"
-					>
-						<path
-							fill-rule="evenodd"
-							d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-							clip-rule="evenodd"
-						/>
-					</svg>
-				</button>
-			</div>
-		</div>
-
 		<div bind:this={calculatorContainerEl} class="pie-tool-calculator__container" data-calculator-type={currentCalculatorType}></div>
 		{#if isInitializing || isSwitching || (visible && !initializationFailed && !hasMountedSurface)}
 			<div class="pie-tool-calculator__loading">Loading calculator...</div>
@@ -772,93 +490,37 @@ import { onMount } from 'svelte';
 </div>
 
 <style>
+	.pie-tool-calculator__context-host {
+		width: 100%;
+		height: 100%;
+		display: flex;
+		min-height: 0;
+	}
+
 	.pie-tool-calculator {
-		position: fixed;
+		position: relative;
 		background: white;
-		box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-		user-select: none;
-		touch-action: none;
-		border-radius: 12px;
 		overflow: hidden;
-		z-index: 2000;
-		min-width: 320px;
+		min-width: 100%;
+		min-height: 0;
 		display: flex;
 		flex-direction: column;
-	}
-
-	.pie-tool-calculator.pie-tool-calculator--dragging {
-		cursor: move;
-		will-change: transform;
-	}
-
-	.pie-tool-calculator.pie-tool-calculator--dragging * {
-		cursor: move !important;
-		pointer-events: none; /* Prevent hover effects during drag */
-	}
-
-	.pie-tool-calculator__header {
-		padding: 12px 16px;
-		background: var(--pie-primary-dark, #2c3e50);
-		color: var(--pie-white, white);
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		cursor: move;
-		user-select: none;
-		border-radius: 12px 12px 0 0;
-	}
-
-	.pie-tool-calculator__title {
-		font-weight: 600;
-		font-size: 16px;
-		color: var(--pie-white, white);
-	}
-
-	.pie-tool-calculator__header-buttons {
-		display: flex;
-		gap: 8px;
-		align-items: center;
-	}
-
-	.pie-tool-calculator__close-btn {
-		background: transparent;
-		border: none;
-		color: var(--pie-white, white);
-		cursor: pointer;
-		padding: 4px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		border-radius: 4px;
-		transition: background-color 0.2s;
-	}
-
-	.pie-tool-calculator__close-btn:hover {
-		background: rgba(255, 255, 255, 0.1);
-	}
-
-	.pie-tool-calculator__close-btn:active {
-		background: rgba(255, 255, 255, 0.2);
-	}
-
-	.pie-tool-calculator__close-btn:focus-visible {
-		outline: 2px solid var(--pie-primary, #3f51b5);
-		outline-offset: 2px;
+		flex: 1 1 auto;
 	}
 
 	.pie-tool-calculator__container {
 		background: white;
 		width: 100%;
 		height: 100%;
-		min-width: 320px;
-		min-height: 400px;
+		min-width: 100%;
+		min-height: 100%;
 		position: relative;
 		overflow: hidden;
 	}
 
 	.pie-tool-calculator__loading {
 		position: absolute;
-		inset: 56px 0 0 0;
+		inset: 0;
 		display: flex;
 		align-items: center;
 		justify-content: center;

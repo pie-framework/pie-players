@@ -59,7 +59,6 @@ const coordinator = new ToolkitCoordinator({
   tools: {
     providers: {
       calculator: {
-        provider: 'desmos',
         authFetcher: async () => {
           // Fetch API key securely from your backend
           const res = await fetch('/api/tools/desmos/token');
@@ -159,8 +158,8 @@ The Tool Provider System provides a unified framework for managing assessment to
 │         │              │               │                 │
 │    ┌────▼────┐   ┌────▼────┐    ┌────▼────┐           │
 │    │Browser  │   │ Desmos  │    │ Google  │           │
-│    │ Polly   │   │   TI    │    │   ...   │           │
-│    │ Google  │   │   TI    │    │         │           │
+│    │ Polly   │   │(fixed)  │    │   ...   │           │
+│    │ Google  │   │         │    │         │           │
 │    └─────────┘   └─────────┘    └─────────┘           │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -317,7 +316,6 @@ const coordinator = new ToolkitCoordinator({
     providers: {
       calculator: {
         enabled: true,
-        provider: 'desmos',
         authFetcher: async () => {
           const response = await fetch('/api/tools/desmos/token');
           return response.json(); // { apiKey: '...' }
@@ -424,7 +422,6 @@ interface DesmosToolProviderConfig {
 tools: {
   providers: {
     calculator: {
-      provider: 'desmos',
       authFetcher: async () => ({
         apiKey: 'your-dev-api-key', // Only for local testing!
       }),
@@ -438,7 +435,6 @@ tools: {
 tools: {
   providers: {
     calculator: {
-      provider: 'desmos',
       authFetcher: async () => {
         const res = await fetch('/api/tools/desmos/token');
         return res.json(); // { apiKey: '...' }
@@ -556,10 +552,9 @@ const coordinator = new ToolkitCoordinator({
         },
       },
 
-      // Calculator provider
+      // Calculator (Desmos is implicit)
       calculator: {
         enabled: true,
-        provider: 'desmos',
         authFetcher: async () => {
           const res = await fetch('/api/tools/desmos/token');
           return res.json();
@@ -624,7 +619,7 @@ The Section Tools Toolbar provides a SchoolCity-style visual interface for acces
 ### Features
 
 - **7 Tools Available**:
-  - Calculator (provider-configured)
+  - Calculator (Desmos)
   - Graph (Interactive graphing tool with drawing)
   - Periodic Table (Full periodic table with element details)
   - Protractor (Angle measurement overlay)
@@ -651,7 +646,7 @@ const coordinator = new ToolkitCoordinator({
       passage: ['textToSpeech'],
     },
     providers: {
-      calculator: { provider: 'desmos' },
+      calculator: { enabled: true },
       tts: { backend: 'browser' },
     },
   },

@@ -321,7 +321,7 @@ const coordinator = new ToolkitCoordinator({
       section: ['calculator', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler', 'colorScheme']
     },
     providers: {
-      calculator: { enabled: true, provider: 'desmos' },
+      calculator: { enabled: true },
       tts: { enabled: true, backend: 'browser' }
     }
   }

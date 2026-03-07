@@ -132,7 +132,6 @@ player.tools = {
   },
   providers: {
     calculator: {
-      provider: "desmos",
       authFetcher: async () => {
         const res = await fetch("/api/tools/desmos/auth");
         if (!res.ok) throw new Error(`Desmos auth failed: ${res.status}`);

@@ -523,8 +523,7 @@ const assessment = {
     },
     toolConfigs: {
       calculator: {
-        type: 'scientific',
-        provider: 'desmos'
+        type: 'scientific'
       }
     }
   }

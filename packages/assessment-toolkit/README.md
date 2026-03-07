@@ -34,7 +34,7 @@ const toolkitCoordinator = new ToolkitCoordinator({
   tools: {
     providers: {
       tts: { enabled: true, backend: 'browser' },
-      calculator: { enabled: true, provider: 'desmos' }
+      calculator: { enabled: true }
     },
     placement: {
       section: ['calculator', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
@@ -85,7 +85,7 @@ const coordinator = new ToolkitCoordinator({
   tools: {
     providers: {
       tts: { enabled: true, backend: 'browser', defaultVoice: 'en-US' },
-      calculator: { enabled: true, provider: 'desmos' }
+      calculator: { enabled: true }
     },
     placement: {
       section: ['calculator', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
@@ -160,7 +160,7 @@ tools: {
     rubric: []
   },
   providers: {
-    calculator: { provider: 'desmos', authFetcher: async () => ({ apiKey: '...' }) },
+    calculator: { authFetcher: async () => ({ apiKey: '...' }) },
     tts: { enabled: true, backend: 'browser', defaultVoice: 'en-US' }
   }
 }
@@ -221,7 +221,6 @@ tools: {
   providers: {
     calculator: {
       enabled: true,
-      provider: 'desmos',
       authFetcher: async () => { /* ... */ }
     }
   }
@@ -280,7 +279,6 @@ const coordinator = new ToolkitCoordinator({
     providers: {
       calculator: {
         enabled: true,
-        provider: 'desmos',
         authFetcher: async () => {
           const response = await fetch('/api/tools/desmos/auth');
           return response.json();
@@ -310,7 +308,7 @@ const coordinator = new ToolkitCoordinator({
       passage: ['textToSpeech']
     },
     providers: {
-      calculator: { enabled: true, provider: 'desmos' },
+      calculator: { enabled: true },
       tts: { enabled: true, backend: 'browser' }
     }
   }
@@ -413,7 +411,6 @@ export interface ToolkitCoordinatorConfig {
       };
       calculator?: {
         enabled?: boolean;
-        provider?: 'desmos' | 'ti';
         authFetcher?: () => Promise<Record<string, unknown>>;
       };
     };
@@ -720,7 +717,7 @@ player.section = mySection;
 // new ToolkitCoordinator({
 //   assessmentId: 'anon_...',  // auto-generated
 //   tools: {
-//     providers: { tts: { enabled: true, backend: 'browser' }, calculator: { enabled: true, provider: 'desmos' } },
+//     providers: { tts: { enabled: true, backend: 'browser' }, calculator: { enabled: true } },
 //     placement: {
 //       section: ['calculator', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
 //       item: ['calculator', 'textToSpeech', 'answerEliminator'],

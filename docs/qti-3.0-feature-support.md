@@ -416,7 +416,7 @@ const assessment = {
       requiredTools: ['ruler']
     },
     toolConfigs: {
-      calculator: { type: 'scientific', provider: 'desmos' }
+      calculator: { type: 'scientific' }
     }
   }
 };

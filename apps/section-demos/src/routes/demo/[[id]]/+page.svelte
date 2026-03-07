@@ -119,7 +119,6 @@ let isThemeSyncing = $state(false);
 	const toolkitToolsConfig = {
 		providers: {
 			calculator: {
-				provider: 'desmos',
 				authFetcher: fetchDesmosAuthConfig
 			},
 			annotationToolbar: {

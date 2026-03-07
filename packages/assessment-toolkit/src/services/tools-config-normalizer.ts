@@ -13,10 +13,25 @@ export interface ToolPlacementConfig {
 	passage?: string[];
 }
 
+export interface TTSProviderConfig {
+	enabled?: boolean;
+	[key: string]: unknown;
+}
+
+export interface CalculatorProviderConfig {
+	enabled?: boolean;
+	authFetcher?: () => Promise<Record<string, unknown>>;
+	[key: string]: unknown;
+}
+
 export interface ToolProvidersConfig {
-	tts?: Record<string, unknown>;
-	calculator?: Record<string, unknown>;
-	[key: string]: Record<string, unknown> | undefined;
+	tts?: TTSProviderConfig;
+	calculator?: CalculatorProviderConfig;
+	[key: string]:
+		| TTSProviderConfig
+		| CalculatorProviderConfig
+		| Record<string, unknown>
+		| undefined;
 }
 
 export interface CanonicalToolsConfig {

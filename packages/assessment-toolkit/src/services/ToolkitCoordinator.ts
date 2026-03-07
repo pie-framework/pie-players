@@ -17,6 +17,7 @@
 import type { AccessibilityCatalog } from "@pie-players/pie-players-shared/types";
 import {
 	normalizeToolsConfig,
+	type CalculatorProviderConfig,
 	type CanonicalToolsConfig,
 	type ToolPlacementConfig,
 	type ToolPolicyConfig,
@@ -89,10 +90,19 @@ export interface AnswerEliminatorToolConfig extends ToolConfig {
 	strategy?: "strikethrough" | "hide";
 }
 
+/**
+ * Calculator tool runtime configuration.
+ * Desmos is the only supported calculator engine.
+ */
+export interface CalculatorToolConfig extends ToolConfig {
+	authFetcher?: () => Promise<Record<string, unknown>>;
+}
+
 export interface ToolkitToolsConfig extends CanonicalToolsConfig {
 	policy: ToolPolicyConfig;
 	placement: Required<ToolPlacementConfig>;
 	providers: ToolProvidersConfig & {
+		calculator?: CalculatorToolConfig;
 		tts?: TTSToolConfig;
 		annotationToolbar?: ToolConfig;
 	};
@@ -573,26 +583,27 @@ export class ToolkitCoordinator {
 
 		// Register calculator provider.
 		// Calculator-specific runtime settings should be encapsulated by the calculator tool package.
-		const calculatorConfig = this.config.tools?.providers?.calculator as
-			| ToolConfig
-			| undefined;
+		const calculatorConfig = this.config.tools?.providers
+			?.calculator as CalculatorProviderConfig | undefined;
 		if (calculatorConfig?.enabled !== false) {
 			void this.registerProvider("calculator-desmos", {
 				provider: new DesmosToolProvider(),
 				config: {},
 				lazy: true,
-				authFetcher: async () => {
-					const response = await fetch("/api/tools/desmos/auth", {
-						method: "GET",
-						credentials: "same-origin",
-					});
-					if (!response.ok) {
-						throw new Error(
-							`Failed to fetch Desmos auth config (${response.status})`,
-						);
-					}
-					return (await response.json()) as Record<string, unknown>;
-				},
+				authFetcher:
+					calculatorConfig?.authFetcher ??
+					(async () => {
+						const response = await fetch("/api/tools/desmos/auth", {
+							method: "GET",
+							credentials: "same-origin",
+						});
+						if (!response.ok) {
+							throw new Error(
+								`Failed to fetch Desmos auth config (${response.status})`,
+							);
+						}
+						return (await response.json()) as Record<string, unknown>;
+					}),
 			});
 		}
 	}

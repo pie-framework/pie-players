@@ -440,7 +440,7 @@ export interface AssessmentSettings {
 	/** Tool-specific provider configurations */
 	toolConfigs?: {
 		// Calculator-specific options are owned by the calculator tool package.
-		calculator?: Record<string, any>;
+		calculator?: AssessmentCalculatorConfig;
 		/**
 		 * Text-to-speech configuration.
 		 *
@@ -508,6 +508,15 @@ export interface AssessmentSettings {
 	};
 
 	/** Product-specific extensions */
+	[key: string]: any;
+}
+
+/**
+ * Calculator options exposed through assessment settings.
+ * The engine is implicit (Desmos).
+ */
+export interface AssessmentCalculatorConfig {
+	type?: "basic" | "scientific" | "graphing";
 	[key: string]: any;
 }
 

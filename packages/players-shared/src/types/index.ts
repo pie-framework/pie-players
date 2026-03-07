@@ -440,8 +440,8 @@ export interface AssessmentSettings {
 	/** Tool-specific provider configurations */
 	toolConfigs?: {
 		calculator?: {
-			provider?: "desmos" | "ti" | "mathjs";
-			type?: "basic" | "scientific" | "graphing" | "ti-84" | "ti-108";
+			provider?: "desmos";
+			type?: "basic" | "scientific" | "graphing";
 			settings?: Record<string, any>;
 		};
 		/**

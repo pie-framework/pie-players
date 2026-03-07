@@ -25,7 +25,6 @@ This package provides the foundational interfaces and types for building calcula
 - **`CalculatorState`** - State for persistence
 - **`CalculationHistoryEntry`** - History entry format
 - **`DesmosCalculatorConfig`** - Desmos-specific configuration
-- **`TICalculatorConfig`** - TI calculator-specific configuration
 
 ## Installation
 
@@ -107,9 +106,7 @@ export class MyCalculatorProvider implements CalculatorProvider {
 
 ## Official Implementations
 
-- **Math.js** (`@pie-players/pie-calculator-mathjs`) - Open-source, always available (built into toolkit)
 - **Desmos** (`@pie-players/pie-calculator-desmos`) - Requires API key, graphing support
-- **TI Emulators** (`@pie-players/pie-calculator-ti`) - Requires commercial license, TI-84/108/34
 
 ## Calculator Types
 
@@ -118,9 +115,6 @@ Supported calculator types:
 - `"basic"` - Four-function calculator (add, subtract, multiply, divide)
 - `"scientific"` - Scientific calculator with trigonometry, logarithms, etc.
 - `"graphing"` - Graphing calculator with coordinate plane
-- `"ti-84"` - Texas Instruments TI-84 Plus CE
-- `"ti-108"` - Texas Instruments TI-108
-- `"ti-34-mv"` - Texas Instruments TI-34 MultiView
 
 ## Design Philosophy
 
@@ -137,6 +131,4 @@ MIT
 
 ## Related Packages
 
-- [@pie-players/pie-calculator-mathjs](../calculator-mathjs) - Open-source Math.js provider (default)
 - [@pie-players/pie-calculator-desmos](../calculator-desmos) - Desmos graphing calculator provider
-- [@pie-players/pie-calculator-ti](../calculator-ti) - Texas Instruments emulator provider

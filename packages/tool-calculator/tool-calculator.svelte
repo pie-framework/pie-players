@@ -14,11 +14,10 @@
 <!--
 	Calculator Tool Component
 
-	Provides multi-provider calculator support with Math.js and Desmos providers.
+	Provides calculator support with the Desmos provider.
 
 	Calculator Types:
 	- basic, scientific, graphing: Desmos calculators (requires API key for production)
-	- ti-84, ti-108, ti-34-mv: TI emulators (stub implementation)
 
 	Desmos API Key (Required for Production):
 	The Desmos calculators (basic, scientific, graphing) require an API key for production use.
@@ -181,8 +180,6 @@ import { onMount } from 'svelte';
 	let cleanupFocusTrap = $state<(() => void) | null>(null);
 	let registeredToolId = $state<string | null>(null);
 	let registeredCoordinator = $state<IToolCoordinator | null>(null);
-	let tiCalculatedWidth = $state<number | undefined>(undefined);
-	let tiCalculatedHeight = $state<number | undefined>(undefined);
 	const CALCULATOR_MOUNT_SELECTOR =
 		'.dcg-container,.dcg-calculator-api-container,iframe,canvas';
 
@@ -220,15 +217,7 @@ import { onMount } from 'svelte';
 		document.head.appendChild(styleEl);
 	}
 
-	function getConfiguredProviderId(): 'calculator-desmos' | 'calculator-ti' | 'calculator-mathjs' {
-		const configuredProvider =
-			effectiveToolkitCoordinator?.config?.tools?.providers?.calculator?.provider;
-		if (configuredProvider === 'ti') {
-			return 'calculator-ti';
-		}
-		if (configuredProvider === 'mathjs') {
-			return 'calculator-mathjs';
-		}
+	function getConfiguredProviderId(): 'calculator-desmos' {
 		return 'calculator-desmos';
 	}
 
@@ -343,8 +332,8 @@ import { onMount } from 'svelte';
 	// ============================================================================
 
 	let calculatorSize = $derived(CALCULATOR_SIZES[currentCalculatorType] ?? CALCULATOR_SIZES['basic']!);
-	let width = $derived(false ? tiCalculatedWidth : calculatorSize.width);
-	let height = $derived(false ? tiCalculatedHeight : calculatorSize.height);
+	let width = $derived(calculatorSize.width);
+	let height = $derived(calculatorSize.height);
 
 	let positionStyle = $derived.by(() => {
 		if (!isBrowser) {
@@ -356,10 +345,6 @@ import { onMount } from 'svelte';
 			return { left: `${positionX}px`, top: `${positionY}px`, transform: '' };
 		}
 
-		if (false && window.innerHeight < 700) {
-			return { left: '50%', top: '1%', transform: 'translateX(-50%) translateY(0)' };
-		}
-
 		// Default: centered
 		return { left: '50%', top: '50%', transform: 'translate(-50%, -50%)' };
 	});
@@ -369,39 +354,6 @@ import { onMount } from 'svelte';
 	// ============================================================================
 
 	function getInitialConfig(type: CalculatorType): CalculatorProviderConfig {
-		if (false) {
-			const placeholderElementId = `ti-calculator-${type.replace(/-/g, '')}-placeholder`;
-			const baseConfig: CalculatorProviderConfig = {
-				theme: 'light',
-				restrictedMode: false,
-				ti: {
-					elementId: placeholderElementId,
-					KeyHistBufferLength: '10'
-				}
-			};
-
-			// Type-specific TI config
-			if (type === 'ti-84') {
-				baseConfig.ti = {
-					...baseConfig.ti,
-					DisplayMode: 'CLASSIC',
-					AngleMode: 'RAD',
-					setTabOrder: 0,
-					setScreenReaderAria: true,
-					setAccessibleDisplay: true,
-					setupAPIs: { resetEmulator: true }
-				};
-			} else if (type === 'ti-34-mv') {
-				baseConfig.ti = {
-					...baseConfig.ti,
-					DisplayMode: 'CLASSIC',
-					AngleMode: 'DEG'
-				};
-			}
-
-			return baseConfig;
-		}
-
 		// Desmos config
 		const isGraphing = type === 'graphing';
 		return {
@@ -426,50 +378,6 @@ import { onMount } from 'svelte';
 	// ============================================================================
 	// Calculator Lifecycle
 	// ============================================================================
-
-	function measureTICalculatorSize(): void {
-		if (!calculatorContainerEl || !false) return;
-
-		// Try calculator div
-		const calculatorDiv = calculatorContainerEl.querySelector('[id^="ti-calculator-"]') as HTMLElement;
-		if (calculatorDiv) {
-			const computedStyle = window.getComputedStyle(calculatorDiv);
-			const measuredWidth = calculatorDiv.offsetWidth || parseFloat(computedStyle.width) || calculatorDiv.style.width;
-			const measuredHeight = calculatorDiv.offsetHeight || parseFloat(computedStyle.height) || calculatorDiv.style.height;
-
-			if (measuredWidth && measuredHeight) {
-				const widthNum = typeof measuredWidth === 'string' ? parseFloat(measuredWidth) : measuredWidth;
-				const heightNum = typeof measuredHeight === 'string' ? parseFloat(measuredHeight) : measuredHeight;
-
-				if (widthNum > 0 && heightNum > 0) {
-					tiCalculatedWidth = widthNum;
-					tiCalculatedHeight = heightNum;
-					console.log(`[ToolCalculator] Measured TI calculator size: ${widthNum}x${heightNum}`);
-					return;
-				}
-			}
-		}
-
-		// Try SVG fallback
-		const svg = calculatorContainerEl.querySelector('svg[class*="TI"]') as SVGSVGElement;
-		if (svg) {
-			const svgWidth = svg.width?.baseVal?.value || parseFloat(svg.getAttribute('width') || '0');
-			const svgHeight = svg.height?.baseVal?.value || parseFloat(svg.getAttribute('height') || '0');
-
-			if (svgWidth > 0 && svgHeight > 0) {
-				tiCalculatedWidth = svgWidth;
-				tiCalculatedHeight = svgHeight;
-				console.log(`[ToolCalculator] Measured TI calculator size from SVG: ${svgWidth}x${svgHeight}`);
-				return;
-			}
-		}
-
-		// Use fallback size
-		const fallbackSize = CALCULATOR_SIZES[currentCalculatorType] ?? CALCULATOR_SIZES['scientific']!;
-		tiCalculatedWidth = fallbackSize.width;
-		tiCalculatedHeight = fallbackSize.height;
-		console.log(`[ToolCalculator] Using fallback TI calculator size: ${fallbackSize.width}x${fallbackSize.height}`);
-	}
 
 	async function initCalculator() {
 		console.log('[ToolCalculator] initCalculator called', {
@@ -559,11 +467,6 @@ import { onMount } from 'svelte';
 			}
 
 			console.log('[ToolCalculator] Calculator instance created:', calculatorInstance);
-
-			if (false) {
-				await waitForAnimationFrames(2);
-				measureTICalculatorSize();
-			}
 
 			initializationFailed = false;
 			lastInitializationError = null;
@@ -727,8 +630,6 @@ import { onMount } from 'svelte';
 			initializationFailed = false;
 			lastInitializationError = null;
 			hasMountedSurface = false;
-			tiCalculatedWidth = undefined;
-			tiCalculatedHeight = undefined;
 			return;
 		}
 
@@ -756,10 +657,6 @@ import { onMount } from 'svelte';
 							resizeObserver?.unobserve(entry.target);
 							return;
 						}
-					}
-
-					if (false) {
-						measureTICalculatorSize();
 					}
 
 					if (calculatorInstance?.resize && calculatorContainerEl?.isConnected && visible) {
@@ -987,26 +884,9 @@ import { onMount } from 'svelte';
 		word-break: break-word;
 	}
 
-	.pie-tool-calculator__container[data-calculator-type="ti-84"],
-	.pie-tool-calculator__container[data-calculator-type="ti-108"],
-	.pie-tool-calculator__container[data-calculator-type="ti-34-mv"] {
-		width: auto;
-		height: auto;
-		min-width: 0;
-		min-height: 0;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		padding: 0;
-		overflow: visible;
-	}
-
 	:global(.pie-tool-calculator__container .dcg-container) {
 		width: 100% !important;
 		height: 100% !important;
 	}
 
-	:global(.pie-tool-calculator .mathjs-btn) {
-		pointer-events: auto;
-	}
 </style>

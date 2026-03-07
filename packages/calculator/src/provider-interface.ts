@@ -13,19 +13,7 @@
 export type CalculatorType =
 	| "basic"
 	| "scientific"
-	| "graphing"
-	| "ti-84"
-	| "ti-108"
-	| "ti-34-mv";
-
-/**
- * TI-specific calculator configuration options
- */
-export interface TICalculatorConfig {
-	// TI Calculator configuration options
-	restrictedMode?: boolean;
-	[key: string]: any;
-}
+	| "graphing";
 
 /**
  * Desmos-specific calculator configuration options
@@ -86,8 +74,6 @@ export interface CalculatorProviderConfig {
 	theme?: "light" | "dark" | "auto";
 	// Desmos-specific configuration
 	desmos?: DesmosCalculatorConfig;
-	// TI-specific configuration
-	ti?: TICalculatorConfig;
 }
 
 /**

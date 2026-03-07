@@ -694,11 +694,6 @@ Tools query PIE content using data attributes:
 - Scientific calculator modes
 - LaTeX math expression support
 
-**TI Calculator API**
-- TI-84, TI-108, TI-34-MV emulators
-- Native calculator interfaces
-- Used for standardized testing
-
 ### Browser Support
 
 **Target:** Modern evergreen browsers (Chrome, Edge, Firefox, Safari)
@@ -767,7 +762,6 @@ The toolkit meets WCAG 2.2 Level AA requirements:
 
 **Calculation Support**
 - Basic, scientific, graphing calculators
-- TI calculator emulators
 - History and memory functions
 
 **Measurement Tools**
@@ -805,7 +799,7 @@ Final Configuration:
 ### Implemented & Production Ready
 
 ✅ **Calculator Tool**
-- Dual provider (Desmos + TI)
+- Desmos provider
 - Full featured with settings
 - Tested and deployed
 

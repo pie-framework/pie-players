@@ -32,15 +32,11 @@ import { BrowserTTSProvider } from "./tts/browser-provider.js";
 import {
 	ToolProviderRegistry,
 	DesmosToolProvider,
-	MathJsToolProvider,
-	TIToolProvider,
 	TTSToolProvider,
 } from "./tool-providers/index.js";
 import type { IToolProvider } from "./tool-providers/IToolProvider.js";
 import type {
 	DesmosToolProviderConfig,
-	MathJsToolProviderConfig,
-	TIToolProviderConfig,
 	TTSToolProviderConfig,
 } from "./tool-providers/index.js";
 import type {
@@ -98,12 +94,8 @@ export interface AnswerEliminatorToolConfig extends ToolConfig {
  * Calculator tool configuration
  */
 export interface CalculatorToolConfig extends ToolConfig {
-	provider?: "desmos" | "ti" | "mathjs";
-	authFetcher?: () => Promise<
-		Partial<
-			DesmosToolProviderConfig | TIToolProviderConfig | MathJsToolProviderConfig
-		>
-	>;
+	provider?: "desmos";
+	authFetcher?: () => Promise<Partial<DesmosToolProviderConfig>>;
 }
 
 /**
@@ -606,28 +598,12 @@ export class ToolkitCoordinator {
 			| CalculatorToolConfig
 			| undefined;
 		if (calculatorConfig?.enabled !== false) {
-			const provider = calculatorConfig?.provider || "desmos";
-
-			if (provider === "desmos") {
-				void this.registerProvider("calculator-desmos", {
-					provider: new DesmosToolProvider(),
-					config: {},
-					lazy: true,
-					authFetcher: calculatorConfig?.authFetcher,
-				});
-			} else if (provider === "ti") {
-				void this.registerProvider("calculator-ti", {
-					provider: new TIToolProvider(),
-					config: {},
-					lazy: true,
-				});
-			} else if (provider === "mathjs") {
-				void this.registerProvider("calculator-mathjs", {
-					provider: new MathJsToolProvider(),
-					config: {},
-					lazy: true,
-				});
-			}
+			void this.registerProvider("calculator-desmos", {
+				provider: new DesmosToolProvider(),
+				config: {},
+				lazy: true,
+				authFetcher: calculatorConfig?.authFetcher,
+			});
 		}
 	}
 

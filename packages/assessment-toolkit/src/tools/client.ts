@@ -16,13 +16,6 @@ export {
 	DesmosCalculatorProvider,
 	desmosProvider,
 } from "./calculators/desmos-provider.js";
-// @deprecated Instantiate providers directly instead
-export {
-	MathJsCalculatorProvider,
-	mathjsProvider,
-} from "./calculators/mathjs-provider.js";
-// @deprecated Instantiate providers directly instead
-export { TICalculatorProvider, tiProvider } from "./calculators/ti-provider.js";
 // Library loader (client-safe, has SSR guards)
 export {
 	COMMON_LIBRARIES,

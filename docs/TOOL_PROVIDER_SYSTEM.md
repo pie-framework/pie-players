@@ -26,7 +26,6 @@ This guide covers the unified Tool Provider System for managing assessment tools
 A unified framework for managing assessment tools with authentication:
 
 - ✅ **DesmosToolProvider** - Desmos calculators with secure API key handling
-- ✅ **TIToolProvider** - TI calculator emulators (TI-84, TI-108, TI-34 MV)
 - ✅ **TTSToolProvider** - Text-to-speech (Browser, AWS Polly, Google Cloud)
 - ✅ **ToolProviderRegistry** - Centralized provider management with lazy loading
 - ✅ **ToolkitCoordinator integration** - Seamless integration with existing toolkit
@@ -161,7 +160,7 @@ The Tool Provider System provides a unified framework for managing assessment to
 │    ┌────▼────┐   ┌────▼────┐    ┌────▼────┐           │
 │    │Browser  │   │ Desmos  │    │ Google  │           │
 │    │ Polly   │   │   TI    │    │   ...   │           │
-│    │ Google  │   │ Math.js │    │         │           │
+│    │ Google  │   │   TI    │    │         │           │
 │    └─────────┘   └─────────┘    └─────────┘           │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -449,40 +448,6 @@ tools: {
 }
 ```
 
-### 3. TIToolProvider
-
-**Category**: `calculator`
-**Requires Auth**: No (but requires licensed TI emulator libraries)
-**Location**: `packages/assessment-toolkit/src/services/tool-providers/TIToolProvider.ts`
-
-**Supported Calculators**:
-- TI-84 Plus CE
-- TI-108
-- TI-34 MultiView
-
-**Configuration**:
-```typescript
-interface TIToolProviderConfig {
-  libraryBaseUrl?: string; // Default: '/lib/ti'
-  version?: string; // Default: 'v2.8.0'
-  restrictedMode?: boolean; // Test mode
-}
-```
-
-**Example**:
-```typescript
-tools: {
-  providers: {
-    calculator: {
-      provider: 'ti',
-      // No authFetcher needed - uses local libraries
-    },
-  }
-}
-```
-
-**Note**: TI calculators require licensed emulator libraries hosted at `/lib/ti/{version}/`. Contact Texas Instruments for licensing.
-
 ---
 
 ## Backend Integration
@@ -594,7 +559,7 @@ const coordinator = new ToolkitCoordinator({
       // Calculator provider
       calculator: {
         enabled: true,
-        provider: 'desmos', // 'desmos' | 'ti' | 'mathjs'
+        provider: 'desmos',
         authFetcher: async () => {
           const res = await fetch('/api/tools/desmos/token');
           return res.json();
@@ -659,7 +624,7 @@ The Section Tools Toolbar provides a SchoolCity-style visual interface for acces
 ### Features
 
 - **7 Tools Available**:
-  - Calculator (Math.js-based, simple calculator)
+  - Calculator (provider-configured)
   - Graph (Interactive graphing tool with drawing)
   - Periodic Table (Full periodic table with element details)
   - Protractor (Angle measurement overlay)
@@ -718,7 +683,6 @@ sectionPlayer.toolkitCoordinator = coordinator;
 
 - ✅ Core tool provider system
 - ✅ DesmosToolProvider with auth
-- ✅ TIToolProvider
 - ✅ TTSToolProvider (Browser, Polly, Google)
 - ✅ ToolProviderRegistry with lazy loading
 - ✅ ToolkitCoordinator integration
@@ -822,7 +786,6 @@ interface IToolProvider<TConfig, TInstance> {
 - [PIE Assessment Toolkit](../packages/assessment-toolkit/)
 - [Tool Packages](../packages/)
 - [Desmos API Documentation](https://www.desmos.com/api)
-- [TI Calculator Libraries](https://education.ti.com/en/software/details/en/6633925F99D811E99C250ED5F7C4A6AC/ti-smartview-ce-emulator-software-for-the-ti-84-plus-graphing-family)
 - [Web Speech API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API)
 
 ---

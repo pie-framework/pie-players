@@ -263,7 +263,7 @@ export interface ToolAvailability {
  */
 export interface ToolSpecificConfig {
   // Calculator
-  calculatorType?: 'basic' | 'scientific' | 'graphing' | 'ti-84' | 'ti-108';
+  calculatorType?: 'basic' | 'scientific' | 'graphing';
   calculatorMode?: 'degree' | 'radian';
 
   // TTS

@@ -295,7 +295,6 @@ console.log(`Loaded: ${stats.loaded.length}, Failed: ${stats.failed.length}`);
 - `desmos` - Desmos calculator API
 - `mathjax` - Math rendering
 - `katex` - Fast math typesetting
-- `ti84`, `ti108`, `ti34mv` - TI calculator emulators (placeholders)
 
 ### 2. Accommodation Resolver Service
 
@@ -451,19 +450,13 @@ responseDiscovery.onActiveResponseChanged((response) => {
 
 ### 5. Calculator Provider System
 
-Multi-provider calculator architecture supporting Desmos, Math.js, and TI emulators.
+Calculator architecture using the Desmos provider.
 
 ```typescript
-import { desmosProvider, mathjsProvider, tiProvider } from '$lib/assessment-toolkit/tools';
+import { desmosProvider } from '$lib/assessment-toolkit/tools';
 import type { CalculatorType } from '$lib/assessment-toolkit/tools';
 
-// Option 1: Math.js (Open Source - Apache 2.0)
-// Perfect for testing without licensing requirements
-await mathjsProvider.initialize();
-const basicCalc = await mathjsProvider.createCalculator('basic', container);
-const scientificCalc = await mathjsProvider.createCalculator('scientific', container);
-
-// Option 2: Desmos (Requires License & API Key)
+// Option 1: Desmos (Requires License & API Key)
 // Professional graphing calculator
 // Obtain API key from https://www.desmos.com/api
 await desmosProvider.initialize({
@@ -486,9 +479,6 @@ localStorage.setItem('calculator-state', JSON.stringify(state));
 const savedState = JSON.parse(localStorage.getItem('calculator-state'));
 graphingCalc.importState(savedState);
 
-// Switch providers
-const tiCalculator = await tiProvider.createCalculator('ti-84', container);
-
 // Cleanup
 graphingCalc.destroy();
 ```
@@ -497,24 +487,10 @@ graphingCalc.destroy();
 
 | Provider | Basic | Scientific | Graphing | License | Status |
 |----------|-------|------------|----------|---------|--------|
-| **Math.js** | ✅ | ✅ | ❌ | Apache 2.0 (Free) | ✅ Production Ready |
 | **Desmos** | ✅ | ✅ | ✅ | Proprietary | ✅ Production Ready |
-| **TI** | ❌ | ❌ | ✅ (TI-84) | Proprietary | ⚠️ Stub Only |
-
-**Math.js Provider Features:**
-- ✅ **No licensing fees** - Apache 2.0 open source
-- ✅ **Full calculator UI** - Button-based interface included
-- ✅ **Scientific functions** - Trigonometry, logarithms, constants (π, e)
-- ✅ **Angle modes** - Degrees and radians
-- ✅ **History** - Calculation history tracking
-- ✅ **Keyboard support** - Full keyboard navigation
-- ✅ **State persistence** - Export/import calculator state
-- ✅ **Perfect for testing** - Works out of the box without external dependencies
 
 **When to Use Each Provider:**
-- **Math.js**: Testing, basic/scientific calculators, cost-effective solution
 - **Desmos**: Professional graphing, when graphing is required (requires API key for production)
-- **TI**: Future - when TI emulator licensing is available
 
 **Desmos API Key Configuration:**
 
@@ -610,7 +586,7 @@ if (calculatorAllowed) {
 - [ ] Multi-tool interactions
 - [x] Tool state serialization/restoration (via calculator providers)
 - [x] Library loading with fallbacks (via LibraryLoader)
-- [x] Multi-provider calculator support (Desmos + TI)
+- [x] Calculator provider support (Desmos)
 - [x] Tool-to-response integration (via ResponseDiscovery)
 - [x] Configuration merge resolution (via AccommodationResolver)
 - [x] Item variant support (via VariantResolver)

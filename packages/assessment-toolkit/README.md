@@ -413,7 +413,7 @@ export interface ToolkitCoordinatorConfig {
       };
       calculator?: {
         enabled?: boolean;
-        provider?: 'desmos' | 'ti' | 'mathjs';
+        provider?: 'desmos' | 'ti';
         authFetcher?: () => Promise<Record<string, unknown>>;
       };
     };

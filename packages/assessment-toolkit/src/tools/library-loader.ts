@@ -316,43 +316,4 @@ export const COMMON_LIBRARIES: Record<string, LibraryConfig> = {
 		globalVar: "katex",
 		timeout: 5000,
 	},
-
-	mathjs: {
-		id: "mathjs",
-		url: "https://cdn.jsdelivr.net/npm/mathjs@12.4.0/lib/browser/math.min.js",
-		fallbackUrls: [
-			"https://cdnjs.cloudflare.com/ajax/libs/mathjs/12.4.0/math.min.js",
-			"https://unpkg.com/mathjs@12.4.0/lib/browser/math.min.js",
-			"/static/lib/mathjs/math.min.js",
-		],
-		globalVar: "math",
-		timeout: 8000,
-		retry: { maxAttempts: 3, delay: 1000, backoffMultiplier: 2 },
-	},
-
-	// TI Calculator emulators (placeholder URLs - replace with actual)
-	ti84: {
-		id: "ti-84-emulator",
-		url: "https://example.com/ti-84-emulator.js", // Replace with actual URL
-		fallbackUrls: ["/static/lib/ti-84-emulator.js"],
-		globalVar: "TI84",
-		timeout: 15000,
-		retry: { maxAttempts: 3, delay: 2000, backoffMultiplier: 2 },
-	},
-
-	ti108: {
-		id: "ti-108-emulator",
-		url: "https://example.com/ti-108-emulator.js", // Replace with actual URL
-		fallbackUrls: ["/static/lib/ti-108-emulator.js"],
-		globalVar: "TI108",
-		timeout: 15000,
-	},
-
-	ti34mv: {
-		id: "ti-34mv-emulator",
-		url: "https://example.com/ti-34mv-emulator.js", // Replace with actual URL
-		fallbackUrls: ["/static/lib/ti-34mv-emulator.js"],
-		globalVar: "TI34MV",
-		timeout: 15000,
-	},
 };

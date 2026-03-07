@@ -170,7 +170,7 @@ export default async function handler(req, res) {
 **Important**: Even with a proxy, if the client loads the Desmos script, a determined user could still inspect network traffic and find the API key embedded in the script content. For true security:
 
 1. Consider if Desmos calculators are necessary for your use case
-2. Use alternative open-source calculator libraries (like Math.js) when possible
+2. Use provider-driven fallback strategies when a licensed graphing calculator is not required
 3. Contact Desmos at <partnerships@desmos.com> to discuss enterprise security options
 4. Implement rate limiting and usage monitoring to detect key misuse
 

@@ -128,8 +128,8 @@ let isThemeSyncing = $state(false);
 		// Demo policy: only expose currently supported/working placements.
 		placement: {
 			section: ['theme', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
-			item: ['calculator', 'textToSpeech', 'answerEliminator'],
-			passage: ['textToSpeech']
+			item: ['calculator', 'textToSpeech', 'answerEliminator', 'annotationToolbar'],
+			passage: ['textToSpeech', 'annotationToolbar']
 		}
 	};
 

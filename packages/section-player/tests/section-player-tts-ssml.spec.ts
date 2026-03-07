@@ -46,6 +46,28 @@ async function setRangeValue(page: Page, selector: string, value: number): Promi
 	);
 }
 
+async function selectPassageText(page: Page): Promise<void> {
+	await page.locator("pie-passage-shell [data-region='content'] p").first().evaluate((node) => {
+		const textNode = node.firstChild;
+		if (!textNode || textNode.nodeType !== Node.TEXT_NODE) {
+			throw new Error("Passage paragraph is missing direct text node for selection.");
+		}
+		const text = textNode.textContent || "";
+		const start = Math.min(5, Math.max(0, text.length - 2));
+		const end = Math.min(start + 40, text.length);
+		const selection = window.getSelection();
+		if (!selection) {
+			throw new Error("Selection API unavailable.");
+		}
+		const range = document.createRange();
+		range.setStart(textNode, start);
+		range.setEnd(textNode, end);
+		selection.removeAllRanges();
+		selection.addRange(range);
+		document.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+	});
+}
+
 test.describe("section player demo tts-ssml", () => {
 	test("covers passage, interactions, mode switching, and tools", async ({ page }) => {
 		test.setTimeout(180_000);
@@ -181,6 +203,18 @@ test.describe("section player demo tts-ssml", () => {
 		await expect(answerEliminatorButton).toHaveAttribute("aria-pressed", "true");
 		await expect(
 			q1.getByRole("button", { name: /toggle elimination for/i }).first(),
+		).toBeVisible();
+
+		// Annotation toolbar should be enabled in demo placement and appear on text selection.
+		await expect(page.locator("pie-tool-annotation-toolbar")).toHaveCount(1);
+		const annotationToolbar = page.locator(
+			"pie-tool-annotation-toolbar [role='toolbar'][aria-label='Text annotation toolbar']",
+		);
+		await expect(annotationToolbar).toHaveCount(0);
+		await selectPassageText(page);
+		await expect(annotationToolbar).toBeVisible({ timeout: 10_000 });
+		await expect(
+			annotationToolbar.getByRole("button", { name: "Yellow highlight" }),
 		).toBeVisible();
 
 		// Switch to scorer mode and confirm evaluate-mode rendering path.

@@ -1,10 +1,10 @@
-# @pie-players/pie-tool-calculator-inline
+# @pie-players/pie-tool-calculator-inline-desmos
 
 Inline calculator toggle button for PIE assessment player question headers.
 
 ## Overview
 
-This package provides a calculator button component that can be embedded in question headers. When clicked, it toggles the visibility of a full calculator tool instance (`@pie-players/pie-tool-calculator`).
+This package provides a calculator button component that can be embedded in question headers. When clicked, it toggles the visibility of a full calculator tool instance (`@pie-players/pie-tool-calculator-desmos`).
 
 ## Features
 
@@ -22,8 +22,8 @@ This package provides a calculator button component that can be embedded in ques
 ```svelte
 <!-- Import the component -->
 <script>
-  import '@pie-players/pie-tool-calculator-inline';
-  import '@pie-players/pie-tool-calculator';
+  import '@pie-players/pie-tool-calculator-inline-desmos';
+  import '@pie-players/pie-tool-calculator-desmos';
   import { ToolCoordinator } from '@pie-players/pie-assessment-toolkit';
 
   const coordinator = new ToolCoordinator();
@@ -107,7 +107,7 @@ element.coordinator = coordinatorInstance;
 
 ## Calculator Tool Integration
 
-This component works in tandem with `@pie-players/pie-tool-calculator`. The flow is:
+This component works in tandem with `@pie-players/pie-tool-calculator-desmos`. The flow is:
 
 1. **Button renders** - `pie-tool-calculator-inline` shows a toggle button
 2. **User clicks** - Button calls `coordinator.toggleTool('calculator')`

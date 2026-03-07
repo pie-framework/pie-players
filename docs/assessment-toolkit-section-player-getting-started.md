@@ -102,7 +102,7 @@ Minimal host dependencies for calculator + TTS support:
 "@pie-players/pie-section-player"
 
 // Optional tools used by this host
-"@pie-players/pie-tool-calculator"
+"@pie-players/pie-tool-calculator-desmos"
 "@pie-players/pie-tool-text-to-speech"
 ```
 

@@ -664,7 +664,7 @@ sectionPlayer.toolkitCoordinator = coordinator;
 
 - **`@pie-players/pie-toolbars`** - Main toolbar custom elements
 - **Individual tool packages**:
-  - `@pie-players/pie-tool-calculator`
+  - `@pie-players/pie-tool-calculator-desmos`
   - `@pie-players/pie-tool-graph`
   - `@pie-players/pie-tool-periodic-table`
   - `@pie-players/pie-tool-protractor`

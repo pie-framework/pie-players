@@ -248,7 +248,7 @@ Create registration files for all existing PIE tools.
 
 #### 2.1: Calculator Registration
 
-**New file**: `packages/tool-calculator/registration.ts`
+**New file**: `packages/tool-calculator-desmos/registration.ts`
 
 See full example in previous section.
 
@@ -780,7 +780,7 @@ let allowedToolIds = $derived(
 
 #### 6.1: Delete Inline Tool Components
 
-- [ ] Delete `packages/tool-calculator-inline/`
+- [ ] Delete `packages/tool-calculator-inline-desmos/`
 - [ ] Delete duplicate TTS inline logic (merge into registration)
 - [ ] Update package imports across codebase
 
@@ -945,7 +945,7 @@ describe('ToolButton integration', () => {
 
 2. **Tool Documentation**
    - [ ] Each tool README - Add registration section
-   - [ ] `packages/tool-calculator-inline/README.md` - Keep aligned with registry patterns
+   - [ ] `packages/tool-calculator-inline-desmos/README.md` - Keep aligned with registry patterns
 
 3. **Integration Guides**
    - [ ] `packages/assessment-toolkit/src/README.md` - Add registry examples

@@ -31,7 +31,7 @@
 		{ "path": "./packages/players-shared" },
 		{ "path": "./packages/tool-annotation-toolbar" },
 		{ "path": "./packages/tool-answer-eliminator" },
-		{ "path": "./packages/tool-calculator" },
+		{ "path": "./packages/tool-calculator-desmos" },
 		{ "path": "./packages/tool-color-scheme" },
 		{ "path": "./packages/tool-graph" },
 		{ "path": "./packages/tool-line-reader" },

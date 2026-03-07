@@ -768,7 +768,7 @@ function handleSelect(selectedTools) {
 ## Tool Registration Example: Calculator
 
 ```typescript
-// packages/tool-calculator/registration.ts
+// packages/tool-calculator-desmos/registration.ts
 
 export const calculatorRegistration: ToolRegistration = {
   toolId: 'calculator',

@@ -559,7 +559,7 @@ const toolRegistry = createDefaultToolRegistry({
   // Optional: override only the tools you want to customize.
   // Built-in toolbar elements already provide lazy loading defaults.
   toolModuleLoaders: {
-    calculator: () => import('@pie-players/pie-tool-calculator')
+    calculator: () => import('@pie-players/pie-tool-calculator-desmos')
   },
   toolTagMap: {
     calculator: 'my-calculator-tool',

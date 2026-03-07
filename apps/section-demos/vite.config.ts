@@ -69,9 +69,9 @@ export default (async () => {
 					__dirname,
 					"../../packages/calculator-desmos/dist/index.js",
 				),
-				"@pie-players/pie-tool-calculator": resolve(
+				"@pie-players/pie-tool-calculator-desmos": resolve(
 					__dirname,
-					"../../packages/tool-calculator/dist/pie-tool-calculator.js",
+					"../../packages/tool-calculator-desmos/dist/pie-tool-calculator.js",
 				),
 				"@pie-players/pie-tool-text-to-speech": resolve(
 					__dirname,

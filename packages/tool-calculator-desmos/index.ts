@@ -4,11 +4,11 @@
  *
  * Usage:
  *   // Web component (from built dist)
- *   import '@pie-players/pie-tool-calculator';
+ *   import '@pie-players/pie-tool-calculator-desmos';
  *   // <pie-tool-calculator visible="true" tool-id="calc"></pie-tool-calculator>
  *
  *   // Register once, then use as custom element
- *   // import '@pie-players/pie-tool-calculator';
+ *   // import '@pie-players/pie-tool-calculator-desmos';
  *   // <pie-tool-calculator visible="true" tool-id="calc"></pie-tool-calculator>
  */
 

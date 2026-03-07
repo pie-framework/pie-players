@@ -14,7 +14,7 @@ function loadCalculatorModule(): Promise<unknown> {
 	) {
 		return Promise.resolve();
 	}
-	return import("@pie-players/pie-tool-calculator");
+	return import("@pie-players/pie-tool-calculator-desmos");
 }
 
 export const DEFAULT_TOOL_MODULE_LOADERS: Record<string, ToolModuleLoader> = {

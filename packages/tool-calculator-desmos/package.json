@@ -1,12 +1,12 @@
 {
-	"name": "@pie-players/pie-tool-calculator",
+	"name": "@pie-players/pie-tool-calculator-desmos",
 	"version": "0.3.3",
 	"type": "module",
 	"description": "Calculator tool for PIE assessment player",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/pie-framework/pie-players.git",
-		"directory": "packages/tool-calculator"
+		"directory": "packages/tool-calculator-desmos"
 	},
 	"publishConfig": {
 		"access": "public"
@@ -51,7 +51,7 @@
 		"vite": "^7.3.1",
 		"vite-plugin-dts": "^4.5.4"
 	},
-	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/tool-calculator#readme",
+	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/tool-calculator-desmos#readme",
 	"bugs": {
 		"url": "https://github.com/pie-framework/pie-players/issues"
 	},

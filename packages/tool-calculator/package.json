@@ -2,7 +2,7 @@
 	"name": "@pie-players/pie-tool-calculator",
 	"version": "0.3.3",
 	"type": "module",
-	"description": "Calculator tool for PIE assessment player (Math.js based)",
+	"description": "Calculator tool for PIE assessment player",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/pie-framework/pie-players.git",
@@ -15,23 +15,18 @@
 		"pie",
 		"assessment",
 		"tool",
-		"calculator",
-		"mathjs"
+		"calculator"
 	],
 	"main": "./dist/pie-tool-calculator.js",
 	"types": "./dist/index.d.ts",
-	"svelte": "./tool-calculator.svelte",
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/pie-tool-calculator.js",
-			"svelte": "./tool-calculator.svelte"
+			"import": "./dist/pie-tool-calculator.js"
 		}
 	},
 	"files": [
 		"dist",
-		"tool-calculator.svelte",
-		"index.ts",
 		"README.md"
 	],
 	"scripts": {
@@ -40,25 +35,21 @@
 		"typecheck": "tsc --noEmit",
 		"lint": "biome check ."
 	},
-	"peerDependencies": {
-		"svelte": ">=5 <6"
-	},
 	"license": "MIT",
 	"unpkg": "./dist/pie-tool-calculator.js",
 	"jsdelivr": "./dist/pie-tool-calculator.js",
 	"dependencies": {
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
 		"@pie-players/pie-context": "workspace:*",
-		"@pie-players/pie-players-shared": "workspace:*",
-		"daisyui": "^5.5.18"
+		"@pie-players/pie-players-shared": "workspace:*"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.3.10",
-		"@sveltejs/vite-plugin-svelte": "^6.1.4",
-		"svelte": "^5.51.3",
-		"typescript": "^5.7.0",
-		"vite": "^7.0.8",
-		"vite-plugin-dts": "^4.5.3"
+		"@sveltejs/vite-plugin-svelte": "^6.2.4",
+		"svelte": "^5.53.7",
+		"typescript": "^5.9.3",
+		"vite": "^7.3.1",
+		"vite-plugin-dts": "^4.5.4"
 	},
 	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/tool-calculator#readme",
 	"bugs": {

@@ -7,12 +7,11 @@ Source of truth for publishability:
 - `scripts/check-pack-exports.mjs`
 - `scripts/check-pack-smoke.mjs`
 
-Publishable packages (33):
+Publishable packages (32):
 
 - `@pie-players/pie-assessment-toolkit`
 - `@pie-players/pie-calculator`
 - `@pie-players/pie-calculator-desmos`
-- `@pie-players/pie-calculator-mathjs`
 - `@pie-players/pie-context`
 - `@pie-players/pie-default-tool-loaders`
 - `@pie-players/pie-item-player`

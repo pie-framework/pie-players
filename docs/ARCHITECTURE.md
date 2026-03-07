@@ -417,7 +417,7 @@ The toolkit includes 15+ **accessibility accommodations** and **assessment tools
 
 **Tools Include**:
 - Text-to-Speech (TTS)
-- Calculator (Desmos, Math.js)
+- Calculator (Desmos, TI)
 - Ruler & Protractor
 - Line Reader
 - Answer Eliminator
@@ -456,7 +456,6 @@ The toolkit includes 15+ **accessibility accommodations** and **assessment tools
 
 - **Moveable.js** - Drag, rotate, resize functionality for ruler and protractor tools
 - **Desmos API** - Graphing and scientific calculator integration
-- **Math.js** - Open source calculator engine (Apache 2.0 license)
 
 ### Browser Support
 

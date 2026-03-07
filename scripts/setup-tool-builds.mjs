@@ -117,7 +117,7 @@ const devDeps = {
 	svelte: "^5.16.1",
 	typescript: "^5.7.0",
 	vite: "^6.0.11",
-	"vite-plugin-dts": "^4.5.3",
+	"vite-plugin-dts": "^4.5.4",
 };
 
 // Process each tool package

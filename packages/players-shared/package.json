@@ -102,7 +102,7 @@
 	],
 	"dependencies": {
 		"@pie-lib/math-rendering-module": "4.0.7",
-		"daisyui": "^5.5.18"
+		"svelte": "^5.53.7"
 	},
 	"scripts": {
 		"build": "tsc -p tsconfig.json",
@@ -118,9 +118,6 @@
 		"@biomejs/biome": "^2.3.10",
 		"glob": "^13.0.0",
 		"typescript": "^5.9.3"
-	},
-	"peerDependencies": {
-		"svelte": ">=5 <6"
 	},
 	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/players-shared#readme",
 	"bugs": {

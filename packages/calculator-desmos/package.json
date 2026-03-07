@@ -41,7 +41,7 @@
 		"@pie-players/pie-calculator": "workspace:*"
 	},
 	"devDependencies": {
-		"typescript": "^5.7.2"
+		"typescript": "^5.9.3"
 	},
 	"sideEffects": false,
 	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/calculator-desmos#readme",

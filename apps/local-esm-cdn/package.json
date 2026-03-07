@@ -39,11 +39,11 @@
 	},
 	"dependencies": {
 		"es-module-lexer": "^2.0.0",
-		"svelte": "^5.51.3"
+		"svelte": "^5.53.7"
 	},
 	"peerDependencies": {
 		"vite": "^5.0.0 || ^6.0.0 || ^7.0.0",
-		"@sveltejs/kit": "^2.52.0"
+		"@sveltejs/kit": "^2.53.4"
 	},
 	"peerDependenciesMeta": {
 		"vite": {

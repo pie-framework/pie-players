@@ -24,14 +24,13 @@
 		"serve": "bun x vite preview --port 8000"
 	},
 	"dependencies": {
-		"daisyui": "^5.5.18",
 		"lit": "^3.2.1",
-		"svelte": "^5.51.3"
+		"svelte": "^5.53.7"
 	},
 	"devDependencies": {
 		"@types/node": "^22.10.2",
 		"typescript": "^5.9.3",
-		"vite": "^6.0.7"
+		"vite": "^7.3.1"
 	},
 	"keywords": [
 		"pie",

@@ -52,7 +52,6 @@
 	},
 	"files": [
 		"dist",
-		"src/**/*.svelte",
 		"README.md"
 	],
 	"scripts": {
@@ -68,12 +67,11 @@
 		"@pie-players/pie-context": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*",
 		"@pie-players/pie-tts": "workspace:*",
-		"daisyui": "^5.5.18"
+		"svelte": "^5.53.7"
 	},
 	"peerDependencies": {
 		"@pie-players/pie-calculator-desmos": "workspace:*",
-		"@pie-players/tts-client-server": "workspace:*",
-		"svelte": ">=5 <6"
+		"@pie-players/tts-client-server": "workspace:*"
 	},
 	"peerDependenciesMeta": {
 		"@pie-players/pie-calculator-desmos": {

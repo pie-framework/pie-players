@@ -30,10 +30,10 @@
 
 <script lang="ts">
 	import { onMount } from "svelte";
-	import "./section-player-base-element.js";
-	import "./section-player-shell-element.js";
-	import * as SectionItemCardModule from "./shared/SectionItemCard.svelte";
-	import * as SectionPassageCardModule from "./shared/SectionPassageCard.svelte";
+	import { ContextProvider, ContextRoot } from "@pie-players/pie-context";
+	import "./section-player-item-card-element.js";
+	import "./section-player-passage-card-element.js";
+	import * as SectionPlayerLayoutScaffoldModule from "./shared/SectionPlayerLayoutScaffold.svelte";
 	import type { Component } from "svelte";
 	import type { SectionCompositionModel } from "../controllers/types.js";
 	import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
@@ -59,12 +59,13 @@
 		mapRenderablesToItems,
 		resolveSectionPlayerRuntimeState,
 	} from "./shared/section-player-runtime.js";
+	import {
+		sectionPlayerCardRenderContext,
+		type SectionPlayerCardRenderContext,
+	} from "./shared/section-player-card-context.js";
 
-	const SectionItemCard = (
-		SectionItemCardModule as unknown as { default: Component<any, any, any> }
-	).default;
-	const SectionPassageCard = (
-		SectionPassageCardModule as unknown as {
+	const SectionPlayerLayoutScaffold = (
+		SectionPlayerLayoutScaffoldModule as unknown as {
 			default: Component<any, any, any>;
 		}
 	).default;
@@ -99,9 +100,14 @@
 	let leftPanelWidth = $state(50);
 	let isDragging = $state(false);
 	let splitContainerElement = $state<HTMLDivElement | null>(null);
+	let cardRenderContextAnchor = $state<HTMLDivElement | null>(null);
 	let elementsLoaded = $state(false);
 	let lastPreloadSignature = $state("");
 	let preloadRunToken = $state(0);
+	let cardRenderContextProvider: ContextProvider<
+		typeof sectionPlayerCardRenderContext
+	> | null = null;
+	let cardRenderContextRoot: ContextRoot | null = null;
 
 	const passages = $derived(compositionModel.passages || []);
 	const items = $derived(compositionModel.items || []);
@@ -143,6 +149,23 @@
 		setSkipElementLoadingOnce: true,
 		includeSessionRefInState: true,
 	});
+	const cardRenderContextValue = $derived.by(
+		(): SectionPlayerCardRenderContext => ({
+			resolvedPlayerTag,
+			playerAction: splitPanePlayerAction,
+		}),
+	);
+
+	function getHostElement(): HTMLElement | null {
+		if (!cardRenderContextAnchor) return null;
+		const rootNode = cardRenderContextAnchor.getRootNode();
+		if (rootNode && "host" in rootNode) {
+			return (rootNode as ShadowRoot).host as HTMLElement;
+		}
+		return cardRenderContextAnchor.parentElement as HTMLElement | null;
+	}
+
+	const host = $derived.by(() => getHostElement());
 
 	function handleBaseCompositionChanged(event: Event) {
 		compositionModel = getCompositionFromEvent(event);
@@ -229,6 +252,27 @@
 		});
 	});
 
+	$effect(() => {
+		if (!host) return;
+		cardRenderContextProvider = new ContextProvider(host, {
+			context: sectionPlayerCardRenderContext,
+			initialValue: cardRenderContextValue,
+		});
+		cardRenderContextProvider.connect();
+		cardRenderContextRoot = new ContextRoot(host);
+		cardRenderContextRoot.attach();
+		return () => {
+			cardRenderContextRoot?.detach();
+			cardRenderContextRoot = null;
+			cardRenderContextProvider?.disconnect();
+			cardRenderContextProvider = null;
+		};
+	});
+
+	$effect(() => {
+		cardRenderContextProvider?.setValue(cardRenderContextValue);
+	});
+
 	onMount(() => {
 		let scrollTimeout: ReturnType<typeof setTimeout> | null = null;
 		const html = document.documentElement;
@@ -264,97 +308,95 @@
 
 </script>
 
-<pie-section-player-base
+<SectionPlayerLayoutScaffold
 	runtime={effectiveRuntime}
 	{section}
-	section-id={sectionId}
-	attempt-id={attemptId}
-	oncomposition-changed={handleBaseCompositionChanged}
+	sectionId={sectionId}
+	attemptId={attemptId}
+	onCompositionChanged={handleBaseCompositionChanged}
+	showToolbar={showToolbar}
+	toolbarPosition={toolbarPosition}
+	enabledTools={enabledTools}
 >
-	<pie-section-player-shell
-		show-toolbar={showToolbar}
-		toolbar-position={toolbarPosition}
-		enabled-tools={enabledTools}
+	<div
+		bind:this={cardRenderContextAnchor}
+		class="pie-section-player-card-context-anchor"
+		aria-hidden="true"
+	></div>
+	<div
+		class={`pie-section-player-split-content ${!hasPassages ? "pie-section-player-split-content--no-passages" : ""}`}
+		bind:this={splitContainerElement}
+		style={hasPassages
+			? `grid-template-columns: ${leftPanelWidth}% 0.5rem ${100 - leftPanelWidth - 0.5}%`
+			: "grid-template-columns: 1fr"}
 	>
-		<div
-			class={`pie-section-player-split-content ${!hasPassages ? "pie-section-player-split-content--no-passages" : ""}`}
-			bind:this={splitContainerElement}
-			style={hasPassages
-				? `grid-template-columns: ${leftPanelWidth}% 0.5rem ${100 - leftPanelWidth - 0.5}%`
-				: "grid-template-columns: 1fr"}
-		>
-			{#if hasPassages}
-				<aside class="pie-section-player-passages-pane" aria-label="Passages">
-					{#if !elementsLoaded}
-						<div class="pie-section-player-content-card">
-							<div
-								class="pie-section-player-content-card-body pie-section-player-passage-content pie-section-player__passage-content"
-							>
-								Loading passage content...
-							</div>
-						</div>
-					{:else}
-						{#each passages as passage, passageIndex (passage.id || passageIndex)}
-							<SectionPassageCard
-								{passage}
-								{resolvedPlayerTag}
-								playerAction={splitPanePlayerAction}
-								playerParams={getPassagePlayerParams({
-									passage,
-									resolvedPlayerEnv,
-									resolvedPlayerAttributes,
-									resolvedPlayerProps,
-									playerStrategy,
-								})}
-								{passageToolbarTools}
-							/>
-						{/each}
-					{/if}
-				</aside>
-
-				<button
-					type="button"
-					class={`pie-section-player-split-divider ${isDragging ? "pie-section-player-split-divider--dragging" : ""}`}
-					onmousedown={handleDividerMouseDown}
-					onkeydown={handleDividerKeyDown}
-					aria-label="Resize panels"
-				>
-					<span class="pie-section-player-split-divider-handle"></span>
-				</button>
-			{/if}
-
-			<main class="pie-section-player-items-pane" aria-label="Items">
+		{#if hasPassages}
+			<aside class="pie-section-player-passages-pane" aria-label="Passages">
 				{#if !elementsLoaded}
 					<div class="pie-section-player-content-card">
 						<div
-							class="pie-section-player-content-card-body pie-section-player-item-content pie-section-player__item-content"
+							class="pie-section-player-content-card-body pie-section-player-passage-content pie-section-player__passage-content"
 						>
-							Loading section content...
+							Loading passage content...
 						</div>
 					</div>
 				{:else}
-					{#each items as item, itemIndex (item.id || itemIndex)}
-						<SectionItemCard
-							{item}
-							canonicalItemId={getCanonicalItemId({ compositionModel, item })}
-							{resolvedPlayerTag}
-							playerAction={splitPanePlayerAction}
-							playerParams={getItemPlayerParams({
-								item,
-								compositionModel,
+					{#each passages as passage, passageIndex (passage.id || passageIndex)}
+						<pie-section-player-passage-card
+							{passage}
+							playerParams={getPassagePlayerParams({
+								passage,
 								resolvedPlayerEnv,
 								resolvedPlayerAttributes,
 								resolvedPlayerProps,
 								playerStrategy,
 							})}
-							{itemToolbarTools}
-						/>
+							passageToolbarTools={passageToolbarTools}
+						></pie-section-player-passage-card>
 					{/each}
 				{/if}
-			</main>
-		</div>
-	</pie-section-player-shell>
-</pie-section-player-base>
+			</aside>
+
+			<button
+				type="button"
+				class={`pie-section-player-split-divider ${isDragging ? "pie-section-player-split-divider--dragging" : ""}`}
+				onmousedown={handleDividerMouseDown}
+				onkeydown={handleDividerKeyDown}
+				aria-label="Resize panels"
+			>
+				<span class="pie-section-player-split-divider-handle"></span>
+			</button>
+		{/if}
+
+		<main class="pie-section-player-items-pane" aria-label="Items">
+			{#if !elementsLoaded}
+				<div class="pie-section-player-content-card">
+					<div
+						class="pie-section-player-content-card-body pie-section-player-item-content pie-section-player__item-content"
+					>
+						Loading section content...
+					</div>
+				</div>
+			{:else}
+				{#each items as item, itemIndex (item.id || itemIndex)}
+					<pie-section-player-item-card
+						{item}
+						canonicalItemId={getCanonicalItemId({ compositionModel, item })}
+						playerParams={getItemPlayerParams({
+							item,
+							compositionModel,
+							resolvedPlayerEnv,
+							resolvedPlayerAttributes,
+							resolvedPlayerProps,
+							playerStrategy,
+						})}
+						itemToolbarTools={itemToolbarTools}
+					></pie-section-player-item-card>
+				{/each}
+			{/if}
+		</main>
+	</div>
+</SectionPlayerLayoutScaffold>
 
 <style>
 	:host {
@@ -372,6 +414,10 @@
 		min-height: 0;
 		height: 100%;
 		overflow: hidden;
+	}
+
+	.pie-section-player-card-context-anchor {
+		display: none;
 	}
 
 	.pie-section-player-passages-pane,

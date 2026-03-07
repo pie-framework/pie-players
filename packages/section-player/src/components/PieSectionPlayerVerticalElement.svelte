@@ -29,10 +29,10 @@
 />
 
 <script lang="ts">
-	import "./section-player-base-element.js";
-	import "./section-player-shell-element.js";
-	import * as SectionItemCardModule from "./shared/SectionItemCard.svelte";
-	import * as SectionPassageCardModule from "./shared/SectionPassageCard.svelte";
+	import { ContextProvider, ContextRoot } from "@pie-players/pie-context";
+	import "./section-player-item-card-element.js";
+	import "./section-player-passage-card-element.js";
+	import * as SectionPlayerLayoutScaffoldModule from "./shared/SectionPlayerLayoutScaffold.svelte";
 	import type { Component } from "svelte";
 	import type { SectionCompositionModel } from "../controllers/types.js";
 	import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
@@ -56,12 +56,13 @@
 		resolveSectionPlayerRuntimeState,
 		type RuntimeConfig,
 	} from "./shared/section-player-runtime.js";
+	import {
+		sectionPlayerCardRenderContext,
+		type SectionPlayerCardRenderContext,
+	} from "./shared/section-player-card-context.js";
 
-	const SectionItemCard = (
-		SectionItemCardModule as unknown as { default: Component<any, any, any> }
-	).default;
-	const SectionPassageCard = (
-		SectionPassageCardModule as unknown as {
+	const SectionPlayerLayoutScaffold = (
+		SectionPlayerLayoutScaffoldModule as unknown as {
 			default: Component<any, any, any>;
 		}
 	).default;
@@ -90,9 +91,14 @@
 	} = $props();
 
 	let compositionModel = $state<SectionCompositionModel>(EMPTY_COMPOSITION);
+	let cardRenderContextAnchor = $state<HTMLDivElement | null>(null);
 	let elementsLoaded = $state(false);
 	let lastPreloadSignature = $state("");
 	let preloadRunToken = $state(0);
+	let cardRenderContextProvider: ContextProvider<
+		typeof sectionPlayerCardRenderContext
+	> | null = null;
+	let cardRenderContextRoot: ContextRoot | null = null;
 
 	const passages = $derived(compositionModel.passages || []);
 	const items = $derived(compositionModel.items || []);
@@ -132,6 +138,23 @@
 		stateKey: "__verticalAppliedParams",
 		includeSessionRefInState: false,
 	});
+	const cardRenderContextValue = $derived.by(
+		(): SectionPlayerCardRenderContext => ({
+			resolvedPlayerTag,
+			playerAction: verticalPlayerAction,
+		}),
+	);
+
+	function getHostElement(): HTMLElement | null {
+		if (!cardRenderContextAnchor) return null;
+		const rootNode = cardRenderContextAnchor.getRootNode();
+		if (rootNode && "host" in rootNode) {
+			return (rootNode as ShadowRoot).host as HTMLElement;
+		}
+		return cardRenderContextAnchor.parentElement as HTMLElement | null;
+	}
+
+	const host = $derived.by(() => getHostElement());
 
 	function handleBaseCompositionChanged(event: Event) {
 		compositionModel = getCompositionFromEvent(event);
@@ -172,73 +195,92 @@
 		});
 	});
 
+	$effect(() => {
+		if (!host) return;
+		cardRenderContextProvider = new ContextProvider(host, {
+			context: sectionPlayerCardRenderContext,
+			initialValue: cardRenderContextValue,
+		});
+		cardRenderContextProvider.connect();
+		cardRenderContextRoot = new ContextRoot(host);
+		cardRenderContextRoot.attach();
+		return () => {
+			cardRenderContextRoot?.detach();
+			cardRenderContextRoot = null;
+			cardRenderContextProvider?.disconnect();
+			cardRenderContextProvider = null;
+		};
+	});
+
+	$effect(() => {
+		cardRenderContextProvider?.setValue(cardRenderContextValue);
+	});
+
 </script>
 
-<pie-section-player-base
+<SectionPlayerLayoutScaffold
 	runtime={effectiveRuntime}
 	{section}
-	section-id={sectionId}
-	attempt-id={attemptId}
-	oncomposition-changed={handleBaseCompositionChanged}
+	sectionId={sectionId}
+	attemptId={attemptId}
+	onCompositionChanged={handleBaseCompositionChanged}
+	showToolbar={showToolbar}
+	toolbarPosition={toolbarPosition}
+	enabledTools={enabledTools}
 >
-	<pie-section-player-shell
-		show-toolbar={showToolbar}
-		toolbar-position={toolbarPosition}
-		enabled-tools={enabledTools}
-	>
-		<div class="pie-section-player-vertical-content">
-			{#if !elementsLoaded}
-				<div class="pie-section-player-content-card">
-					<div
-						class="pie-section-player-content-card-body pie-section-player-item-content pie-section-player__item-content"
-					>
-						Loading section content...
-					</div>
+	<div
+		bind:this={cardRenderContextAnchor}
+		class="pie-section-player-card-context-anchor"
+		aria-hidden="true"
+	></div>
+	<div class="pie-section-player-vertical-content">
+		{#if !elementsLoaded}
+			<div class="pie-section-player-content-card">
+				<div
+					class="pie-section-player-content-card-body pie-section-player-item-content pie-section-player__item-content"
+				>
+					Loading section content...
 				</div>
-			{:else}
-				{#if passages.length > 0}
-					<section class="pie-section-player-passages-section" aria-label="Passages">
-						{#each passages as passage, passageIndex (passage.id || passageIndex)}
-							<SectionPassageCard
-								{passage}
-								{resolvedPlayerTag}
-								playerAction={verticalPlayerAction}
-								playerParams={getPassagePlayerParams({
-									passage,
-									resolvedPlayerEnv,
-									resolvedPlayerAttributes,
-									resolvedPlayerProps,
-									playerStrategy,
-								})}
-								{passageToolbarTools}
-							/>
-						{/each}
-					</section>
-				{/if}
-
-				<section class="pie-section-player-items-section" aria-label="Items">
-					{#each items as item, itemIndex (item.id || itemIndex)}
-						<SectionItemCard
-							{item}
-							canonicalItemId={getCanonicalItemId({ compositionModel, item })}
-							{resolvedPlayerTag}
-							playerAction={verticalPlayerAction}
-							playerParams={getItemPlayerParams({
-								item,
-								compositionModel,
+			</div>
+		{:else}
+			{#if passages.length > 0}
+				<section class="pie-section-player-passages-section" aria-label="Passages">
+					{#each passages as passage, passageIndex (passage.id || passageIndex)}
+						<pie-section-player-passage-card
+							{passage}
+							playerParams={getPassagePlayerParams({
+								passage,
 								resolvedPlayerEnv,
 								resolvedPlayerAttributes,
 								resolvedPlayerProps,
 								playerStrategy,
 							})}
-							{itemToolbarTools}
-						/>
+							passageToolbarTools={passageToolbarTools}
+						></pie-section-player-passage-card>
 					{/each}
 				</section>
 			{/if}
-		</div>
-	</pie-section-player-shell>
-</pie-section-player-base>
+
+			<section class="pie-section-player-items-section" aria-label="Items">
+				{#each items as item, itemIndex (item.id || itemIndex)}
+					<pie-section-player-item-card
+						{item}
+						canonicalItemId={getCanonicalItemId({ compositionModel, item })}
+						playerParams={getItemPlayerParams({
+							item,
+							compositionModel,
+							resolvedPlayerEnv,
+							resolvedPlayerAttributes,
+							resolvedPlayerProps,
+							playerStrategy,
+						})}
+						itemToolbarTools={itemToolbarTools}
+					></pie-section-player-item-card>
+				{/each}
+			</section>
+		{/if}
+	</div>
+</SectionPlayerLayoutScaffold>
 
 <style>
 	:host {
@@ -264,6 +306,10 @@
 		padding: 0.5rem;
 		box-sizing: border-box;
 		background: var(--pie-background-dark, #ecedf1);
+	}
+
+	.pie-section-player-card-context-anchor {
+		display: none;
 	}
 
 	.pie-section-player-passages-section,

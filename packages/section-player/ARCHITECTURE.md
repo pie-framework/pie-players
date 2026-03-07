@@ -12,6 +12,8 @@ This package exposes layout-specific section-player custom elements:
 3. Layout element composes passages/items and delegates runtime wiring to:
    - `pie-section-player-base`
    - `SectionPlayerShell`
+   - `pie-section-player-item-card`
+   - `pie-section-player-passage-card`
    - `pie-item-shell`
    - `pie-passage-shell`
 4. Item rendering is resolved from `DEFAULT_PLAYER_DEFINITIONS` in `component-definitions.ts`.
@@ -22,34 +24,56 @@ This package exposes layout-specific section-player custom elements:
 - `src/components/PieSectionPlayerVerticalElement.svelte`
 - `src/components/PieSectionPlayerBaseElement.svelte`
 - `src/components/SectionPlayerShell.svelte`
+- `src/components/shared/SectionItemCard.svelte`
+- `src/components/shared/SectionPassageCard.svelte`
+- `src/components/shared/section-player-card-context.ts`
 - `src/components/ItemShellElement.svelte`
 - `src/components/PassageShellElement.svelte`
 - `src/component-definitions.ts`
 - `src/controllers/*`
 
-## Runtime vs layout responsibilities
+## Public vs internal contracts
 
-- `pie-section-player-base`: runtime/toolkit/session wiring and composition events.
-- `pie-section-player-shell`: shared layout shell custom element with section-toolbar placement (`top|right|bottom|left|none`).
-- Layout components (`splitpane`, `vertical`, custom): render passages/items and layout-specific UI.
+- Public author-facing contract: `pie-section-player-shell`.
+  - Use this to place the section toolbar (`top|right|bottom|left|none`) around your layout body.
+  - Layout authors should focus on rendering passages/items and layout-specific UI inside the shell slot.
+- Public card primitives: `pie-section-player-item-card` and `pie-section-player-passage-card`.
+  - Layouts pass per-entity values (`item`/`passage`, `playerParams`, toolbar tools).
+  - Layouts should prefer context for shared render plumbing (resolved player tag + player action).
+- Internal runtime contract: `pie-section-player-base`.
+  - Handles runtime/toolkit/session wiring and emits composition events used by layout elements.
+  - Consider this package-internal plumbing rather than the primary abstraction for layout authoring.
 
-This keeps runtime contracts stable while letting new layouts reuse the same toolbar+shell behavior.
+This keeps runtime contracts stable while giving layout authors one clear composition primitive.
 
 ## Creating a custom layout
 
 1. Create a new layout custom element in `src/components/`.
 2. Reuse `resolveSectionPlayerRuntimeState` from `src/components/shared/section-player-runtime.ts`.
-3. Wrap layout content with:
-   - `<pie-section-player-base runtime={effectiveRuntime} ...>`
-   - `<pie-section-player-shell show-toolbar={...} toolbar-position={...} enabled-tools={...}>...</pie-section-player-shell>`
-4. Render passages/items via shared cards (`SectionPassageCard`, `SectionItemCard`) or your own content components.
+3. Treat `pie-section-player-shell` as the main authoring primitive, and render your layout body in its slot.
+4. Keep runtime plumbing in `pie-section-player-base` around the shell.
+5. Render passages/items via card custom elements (`pie-section-player-passage-card`, `pie-section-player-item-card`) or your own content components.
 
 Minimal shape:
 
 ```svelte
 <pie-section-player-base runtime={effectiveRuntime} {section} section-id={sectionId} attempt-id={attemptId}>
-  <pie-section-player-shell show-toolbar={showToolbar} toolbar-position={toolbarPosition} enabled-tools={enabledTools}>
-    <!-- custom layout content -->
+  <pie-section-player-shell
+    show-toolbar={showToolbar}
+    toolbar-position={toolbarPosition}
+    enabled-tools={enabledTools}
+  >
+    <pie-section-player-passage-card
+      passage={passage}
+      playerParams={passagePlayerParams}
+      passageToolbarTools={passageToolbarTools}
+    ></pie-section-player-passage-card>
+    <pie-section-player-item-card
+      item={item}
+      canonicalItemId={canonicalItemId}
+      playerParams={itemPlayerParams}
+      itemToolbarTools={itemToolbarTools}
+    ></pie-section-player-item-card>
   </pie-section-player-shell>
 </pie-section-player-base>
 ```

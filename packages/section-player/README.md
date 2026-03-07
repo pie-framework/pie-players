@@ -20,6 +20,8 @@ Import the custom-element registration entrypoint in consumers:
 ```ts
 import '@pie-players/pie-section-player/components/section-player-splitpane-element';
 import '@pie-players/pie-section-player/components/section-player-vertical-element';
+import '@pie-players/pie-section-player/components/section-player-item-card-element';
+import '@pie-players/pie-section-player/components/section-player-passage-card-element';
 ```
 
 Render in HTML/Svelte/JSX:
@@ -42,6 +44,41 @@ Both layout elements support:
 
 See `apps/section-demos/src/routes/demo/[[id]]/+page.svelte` for an end-to-end host integration.
 
+## Custom layout authoring
+
+For section layout authors, `pie-section-player-shell` is the primary abstraction:
+
+- Use `pie-section-player-shell` to place the section toolbar around your layout body.
+- Keep your custom layout logic focused on passages/items and layout UI.
+- Treat `pie-section-player-base` as internal runtime plumbing that wraps the shell.
+- Use `pie-section-player-item-card` and `pie-section-player-passage-card` as reusable card primitives.
+- Prefer shared context for cross-cutting card render plumbing (resolved player tag/action) over repeated prop drilling.
+
+Minimal pattern for package layout components:
+
+```svelte
+<pie-section-player-base runtime={effectiveRuntime} {section} section-id={sectionId} attempt-id={attemptId}>
+  <pie-section-player-shell
+    show-toolbar={showToolbar}
+    toolbar-position={toolbarPosition}
+    enabled-tools={enabledTools}
+  >
+    <!-- layout-specific body -->
+    <pie-section-player-passage-card
+      passage={passage}
+      playerParams={passagePlayerParams}
+      passageToolbarTools={passageToolbarTools}
+    ></pie-section-player-passage-card>
+    <pie-section-player-item-card
+      item={item}
+      canonicalItemId={canonicalItemId}
+      playerParams={itemPlayerParams}
+      itemToolbarTools={itemToolbarTools}
+    ></pie-section-player-item-card>
+  </pie-section-player-shell>
+</pie-section-player-base>
+```
+
 ## Exports
 
 Published exports are intentionally minimal:
@@ -50,6 +87,8 @@ Published exports are intentionally minimal:
 - `@pie-players/pie-section-player/components/section-player-splitpane-element`
 - `@pie-players/pie-section-player/components/section-player-vertical-element`
 - `@pie-players/pie-section-player/components/section-player-shell-element`
+- `@pie-players/pie-section-player/components/section-player-item-card-element`
+- `@pie-players/pie-section-player/components/section-player-passage-card-element`
 
 ## Development
 

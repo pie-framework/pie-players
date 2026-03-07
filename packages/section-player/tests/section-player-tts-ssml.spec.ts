@@ -34,6 +34,18 @@ async function readSessionSnapshot(
 	throw new Error("Session snapshot did not become valid JSON in time");
 }
 
+async function setRangeValue(page: Page, selector: string, value: number): Promise<void> {
+	await page.locator(selector).evaluate(
+		(node, nextValue) => {
+			const input = node as HTMLInputElement;
+			input.value = String(nextValue);
+			input.dispatchEvent(new Event("input", { bubbles: true }));
+			input.dispatchEvent(new Event("change", { bubbles: true }));
+		},
+		value,
+	);
+}
+
 test.describe("section player demo tts-ssml", () => {
 	test("covers passage, interactions, mode switching, and tools", async ({ page }) => {
 		test.setTimeout(180_000);
@@ -106,6 +118,32 @@ test.describe("section player demo tts-ssml", () => {
 		await expect(itemTtsStopButton).toBeVisible({ timeout: 15_000 });
 		await itemTtsStopButton.click();
 		await expect(q1.getByRole("button", { name: "Read aloud" })).toBeVisible();
+
+		// TTS settings updates should apply to the active browser-backed runtime config.
+		const ttsSettingsToggle = page.getByRole("button", {
+			name: "Toggle TTS settings panel",
+		});
+		await ttsSettingsToggle.click();
+		const ttsDialog = page.locator(".pie-tts-dialog");
+		await expect(ttsDialog.getByRole("heading", { name: "TTS settings" })).toBeVisible();
+		await ttsDialog.getByRole("button", { name: "Browser" }).click();
+		await setRangeValue(page, "#tts-browser-rate", 1.35);
+		await setRangeValue(page, "#tts-browser-pitch", 1.1);
+		await ttsDialog.getByRole("button", { name: "Apply" }).click();
+		await expect(ttsDialog).toHaveCount(0);
+		const ttsRuntimeSnapshot = await page
+			.locator("pie-section-player-tools-session-debugger")
+			.evaluate((element) => {
+				const coordinator = (element as any).toolkitCoordinator;
+				const toolConfig = coordinator?.getToolConfig?.("tts") || null;
+				const serviceConfig = (coordinator?.ttsService as any)?.ttsConfig || null;
+				return { toolConfig, serviceConfig };
+			});
+		expect(ttsRuntimeSnapshot.toolConfig?.backend).toBe("browser");
+		expect(Number(ttsRuntimeSnapshot.toolConfig?.rate ?? 0)).toBeCloseTo(1.35, 2);
+		expect(Number(ttsRuntimeSnapshot.toolConfig?.pitch ?? 0)).toBeCloseTo(1.1, 2);
+		expect(Number(ttsRuntimeSnapshot.serviceConfig?.rate ?? 0)).toBeCloseTo(1.35, 2);
+		expect(Number(ttsRuntimeSnapshot.serviceConfig?.pitch ?? 0)).toBeCloseTo(1.1, 2);
 
 		// Calculator is available in items, not in passage.
 		await expect(passageRegion.getByRole("button", { name: /calculator/i })).toHaveCount(0);

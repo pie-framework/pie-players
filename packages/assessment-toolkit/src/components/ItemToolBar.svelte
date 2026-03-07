@@ -43,6 +43,7 @@
 		connectAssessmentToolkitShellContext,
 	} from '../context/runtime-context-consumer.js';
 	import type {
+		HostedToolContext,
 		ToolRegistry,
 		ToolRenderElement,
 		ToolToolbarRenderResult,
@@ -593,6 +594,33 @@
 		let y = 0;
 		let width = currentArgs.mounted.entry.shell?.initialWidth ?? 720;
 		let height = currentArgs.mounted.entry.shell?.initialHeight ?? 560;
+		const getHostedContext = (): HostedToolContext | null => {
+			const shellConfig = currentArgs.mounted.entry.shell;
+			if (!shellConfig) return null;
+			return {
+				toolId: currentArgs.mounted.toolId,
+				toolbarContext,
+				shellConfig
+			};
+		};
+		const notifyHostedMount = (element: HTMLElement) => {
+			const registration = effectiveToolRegistry.get(currentArgs.mounted.toolId);
+			const context = getHostedContext();
+			if (!registration?.onHostedMount || !context) return;
+			void registration.onHostedMount(element, context);
+		};
+		const notifyHostedResize = () => {
+			const registration = effectiveToolRegistry.get(currentArgs.mounted.toolId);
+			const context = getHostedContext();
+			if (!registration?.onHostedResize || !context) return;
+			void registration.onHostedResize({ width, height }, currentArgs.mounted.entry.element, context);
+		};
+		const notifyHostedUnmount = () => {
+			const registration = effectiveToolRegistry.get(currentArgs.mounted.toolId);
+			const context = getHostedContext();
+			if (!registration?.onHostedUnmount || !context) return;
+			void registration.onHostedUnmount(currentArgs.mounted.entry.element, context);
+		};
 
 		const clamp = (value: number, min: number, max: number): number =>
 			Math.max(min, Math.min(value, max));
@@ -627,6 +655,7 @@
 				contentEl.appendChild(element);
 			}
 			mountedContentElement = element;
+			notifyHostedMount(element);
 		};
 
 		const bringToFront = () => {
@@ -698,6 +727,7 @@
 					Math.max(minHeight, Math.min(maxHeight, window.innerHeight - y))
 				);
 				applyShellStyle();
+				notifyHostedResize();
 			}
 		};
 
@@ -836,6 +866,7 @@
 			centerShell();
 			applyShellStyle();
 			mountContent();
+			notifyHostedResize();
 		}
 
 		return {
@@ -847,8 +878,10 @@
 					currentArgs.mounted.entry.shell?.closeable === false ? 'none' : 'inline-flex';
 				mountContent();
 				applyShellStyle();
+				notifyHostedResize();
 			},
 			destroy() {
+				notifyHostedUnmount();
 				if (resizeHandleEl) {
 					resizeHandleEl.removeEventListener('pointerdown', onResizePointerDown);
 				}

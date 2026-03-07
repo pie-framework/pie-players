@@ -200,7 +200,6 @@ export { ToolCoordinator, ZIndexLayer } from "./services/ToolCoordinator.js";
 // Toolkit Coordinator (Centralized service management)
 export type {
 	AnswerEliminatorToolConfig,
-	CalculatorToolConfig,
 	ProviderLifecycleContext,
 	SectionControllerContext,
 	SectionControllerFactoryDefaults,

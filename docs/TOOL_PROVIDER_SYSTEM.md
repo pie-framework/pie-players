@@ -44,7 +44,9 @@ const coordinator = new ToolkitCoordinator({
     providers: {
       tts: {
         enabled: true,
-        backend: 'browser', // Uses Web Speech API - no auth needed!
+        settings: {
+          backend: 'browser', // Uses Web Speech API - no auth needed
+        },
       },
     }
   },
@@ -59,10 +61,25 @@ const coordinator = new ToolkitCoordinator({
   tools: {
     providers: {
       calculator: {
-        authFetcher: async () => {
-          // Fetch API key securely from your backend
-          const res = await fetch('/api/tools/desmos/token');
-          return res.json(); // { apiKey: '...' }
+        provider: {
+          // id is optional here; calculator registration defaults to calculator-desmos
+          runtime: {
+            authFetcher: async () => {
+              // Fetch credentials securely from your backend
+              const res = await fetch('/api/tools/desmos/token');
+              return res.json(); // { apiKey: '...' }
+            },
+            // Optional backend bridge for richer interactions
+            request: async ({ path, method = 'GET', body }) => {
+              const res = await fetch(path, {
+                method,
+                headers: { 'content-type': 'application/json' },
+                body: body ? JSON.stringify(body) : undefined,
+              });
+              return res.json();
+            },
+          },
+          init: {},
         },
       },
     },
@@ -83,11 +100,17 @@ const coordinator = new ToolkitCoordinator({
   tools: {
     providers: {
       tts: {
-        backend: 'google',
-        apiEndpoint: '/api/tts/synthesize',
-        authFetcher: async () => {
-          const res = await fetch('/api/tools/tts/google/token');
-          return res.json(); // { authToken: '...' }
+        settings: {
+          backend: 'google',
+          apiEndpoint: '/api/tts/synthesize',
+        },
+        provider: {
+          runtime: {
+            authFetcher: async () => {
+              const res = await fetch('/api/tools/tts/google/token');
+              return res.json(); // { authToken: '...' }
+            },
+          },
         },
       },
     }
@@ -134,6 +157,31 @@ The Tool Provider System provides a unified framework for managing assessment to
 ✅ **Unified pattern** - Consistent interface for all tools
 ✅ **Production-ready** - Clear separation between dev and prod modes
 ✅ **Pluggable** - Easy to add new providers
+
+### Generic Runtime Config Shape
+
+Every tool now uses the same `tools.providers[toolId]` contract:
+
+```typescript
+type ToolProviderConfig = {
+  enabled?: boolean;
+  provider?: {
+    id?: string;
+    init?: Record<string, unknown>;
+    runtime?: {
+      authFetcher?: () => Promise<Record<string, unknown>>;
+      request?: (request: ToolRuntimeBackendRequest) => Promise<unknown>;
+      emit?: (eventName: string, payload?: Record<string, unknown>) => void | Promise<void>;
+      subscribe?: (eventName: string, handler: (payload: unknown) => void) => (() => void) | void;
+    };
+  };
+  settings?: Record<string, unknown>;
+};
+```
+
+- Provider registration is descriptor-driven from tool registrations, not hardcoded in coordinator branches.
+- Calculator is treated as a normal tool registration (default provider id resolves via registration metadata).
+- Floating shell tools can opt into hosted lifecycle notifications: `onHostedMount`, `onHostedResize`, `onHostedUnmount`.
 
 ---
 
@@ -278,7 +326,9 @@ const coordinator = new ToolkitCoordinator({
     providers: {
       tts: {
         enabled: true,
-        backend: 'browser', // No auth needed
+        settings: {
+          backend: 'browser', // No auth needed
+        },
       },
     }
   },
@@ -294,12 +344,18 @@ const coordinator = new ToolkitCoordinator({
     providers: {
       tts: {
         enabled: true,
-        backend: 'google',
-        apiEndpoint: '/api/tts/synthesize',
-        authFetcher: async () => {
-          // Fetch credentials from backend
-          const response = await fetch('/api/tools/tts/google/token');
-          return response.json(); // { authToken: '...' }
+        settings: {
+          backend: 'google',
+          apiEndpoint: '/api/tts/synthesize',
+        },
+        provider: {
+          runtime: {
+            authFetcher: async () => {
+              // Fetch credentials from backend
+              const response = await fetch('/api/tools/tts/google/token');
+              return response.json(); // { authToken: '...' }
+            },
+          },
         },
       },
     }
@@ -316,9 +372,13 @@ const coordinator = new ToolkitCoordinator({
     providers: {
       calculator: {
         enabled: true,
-        authFetcher: async () => {
-          const response = await fetch('/api/tools/desmos/token');
-          return response.json(); // { apiKey: '...' }
+        provider: {
+          runtime: {
+            authFetcher: async () => {
+              const response = await fetch('/api/tools/desmos/token');
+              return response.json(); // { apiKey: '...' }
+            },
+          },
         },
       },
     },
@@ -541,23 +601,35 @@ const coordinator = new ToolkitCoordinator({
       // TTS Configuration
       tts: {
         enabled: true,
-        backend: 'google', // 'browser' | 'polly' | 'google' | 'server'
-        apiEndpoint: '/api/tts/synthesize',
-        defaultVoice: 'en-US-Neural2-C',
-        rate: 1.0,
-        pitch: 1.0,
-        authFetcher: async () => {
-          const res = await fetch('/api/tools/tts/google/token');
-          return res.json();
+        settings: {
+          backend: 'google', // 'browser' | 'polly' | 'google' | 'server'
+          apiEndpoint: '/api/tts/synthesize',
+          defaultVoice: 'en-US-Neural2-C',
+          rate: 1.0,
+          pitch: 1.0,
+        },
+        provider: {
+          runtime: {
+            authFetcher: async () => {
+              const res = await fetch('/api/tools/tts/google/token');
+              return res.json();
+            },
+          },
         },
       },
 
-      // Calculator (Desmos is implicit)
+      // Calculator (Desmos remains implicit via registration descriptor)
       calculator: {
         enabled: true,
-        authFetcher: async () => {
-          const res = await fetch('/api/tools/desmos/token');
-          return res.json();
+        provider: {
+          runtime: {
+            authFetcher: async () => {
+              const res = await fetch('/api/tools/desmos/token');
+              return res.json();
+            },
+          },
+          // Optional init payload consumed by provider
+          init: {},
         },
       },
     },
@@ -647,7 +719,7 @@ const coordinator = new ToolkitCoordinator({
     },
     providers: {
       calculator: { enabled: true },
-      tts: { backend: 'browser' },
+      tts: { settings: { backend: 'browser' } },
     },
   },
 });

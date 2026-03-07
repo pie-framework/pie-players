@@ -80,6 +80,49 @@ sectionPlayer.section = section;
 
 Use this toolkit package for shared services, section-player orchestration, and host-app integrations.
 
+### Generic Tool Runtime Config
+
+`ToolkitCoordinator` uses a generic per-tool runtime contract so any tool can define provider/runtime hooks (not just calculator or TTS):
+
+```typescript
+const coordinator = new ToolkitCoordinator({
+  assessmentId: 'demo-assessment',
+  tools: {
+    providers: {
+      textToSpeech: {
+        settings: {
+          backend: 'browser',
+        },
+      },
+      calculator: {
+        provider: {
+          runtime: {
+            authFetcher: async () => {
+              const res = await fetch('/api/tools/desmos/token');
+              return res.json();
+            },
+          },
+        },
+      },
+      graph: {
+        provider: {
+          runtime: {
+            request: ({ path, method = 'GET', body }) =>
+              fetch(path, {
+                method,
+                headers: { 'content-type': 'application/json' },
+                body: body ? JSON.stringify(body) : undefined,
+              }).then((r) => r.json()),
+          },
+        },
+      },
+    },
+  },
+});
+```
+
+Floating shell tools can also opt into hosted lifecycle callbacks (`onHostedMount`, `onHostedResize`, `onHostedUnmount`) through tool registrations while the shell keeps ownership of drag/resize/window chrome.
+
 ## Project Structure
 
 ```text

@@ -108,6 +108,7 @@
 	});
 	let currentPreviewAudio: HTMLAudioElement | null = null;
 	let previewPollingTimer: number | null = null;
+	let previewRunId = 0;
 
 	const DEFAULT_PREVIEW_TEXT: Record<BackendTab, string> = {
 		browser:
@@ -565,6 +566,9 @@ function refreshGoogleVoices() {
 
 	function stopPreview() {
 		clearPreviewTracking();
+		// Returning to idle should clear transient preview messaging.
+		previewError = null;
+		previewNote = null;
 		if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
 			window.speechSynthesis.cancel();
 		}
@@ -691,6 +695,11 @@ function refreshGoogleVoices() {
 			previewError = 'Cannot preview while this TTS service is unavailable.';
 			return;
 		}
+		if (isPreviewing && previewBackend === activeTab) {
+			previewRunId += 1;
+			stopPreview();
+			return;
+		}
 		if (!previewText.trim()) {
 			previewError = 'Enter preview text before starting playback.';
 			return;
@@ -700,6 +709,7 @@ function refreshGoogleVoices() {
 			return;
 		}
 		stopPreview();
+		const runId = ++previewRunId;
 		isPreviewing = true;
 		previewBackend = activeTab;
 		try {
@@ -719,10 +729,15 @@ function refreshGoogleVoices() {
 				await previewServerVoice('google');
 			}
 		} catch (error) {
-			previewError = error instanceof Error ? error.message : String(error);
+			// Ignore errors from intentionally cancelled previews.
+			if (runId === previewRunId) {
+				previewError = error instanceof Error ? error.message : String(error);
+			}
 		} finally {
-			isPreviewing = false;
-			previewBackend = null;
+			if (runId === previewRunId) {
+				isPreviewing = false;
+				previewBackend = null;
+			}
 		}
 	}
 
@@ -1084,7 +1099,7 @@ function refreshGoogleVoices() {
 				disabled={!getActiveState().available || isApplying}
 				onclick={() => void previewSelectedVoice()}
 			>
-				{isPreviewing && previewBackend === activeTab ? 'Previewing...' : 'Preview voice'}
+				{isPreviewing && previewBackend === activeTab ? 'Stop preview' : 'Preview voice'}
 			</button>
 			<button class="btn btn-sm btn-primary" disabled={isApplying || !getActiveState().available} onclick={() => void applySettings()}>
 				{isApplying ? 'Applying...' : 'Apply'}

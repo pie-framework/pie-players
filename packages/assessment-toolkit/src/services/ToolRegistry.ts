@@ -13,6 +13,8 @@ import type {
 	IToolkitCoordinator,
 	ITTSService,
 } from "./interfaces.js";
+import type { IToolProvider } from "./tool-providers/IToolProvider.js";
+import type { ToolProviderConfig as ToolRuntimeConfig } from "./tools-config-normalizer.js";
 import { normalizeToolAlias } from "./tools-config-normalizer.js";
 
 export type ToolModuleLoader = () => Promise<unknown>;
@@ -86,6 +88,27 @@ export interface ToolWindowShellConfig {
 	actions?: ToolWindowShellAction[];
 }
 
+export interface HostedToolContext {
+	toolId: string;
+	toolbarContext: ToolbarContext;
+	shellConfig: ToolWindowShellConfig;
+}
+
+export interface HostedToolSize {
+	width: number;
+	height: number;
+}
+
+export interface ToolProviderDescriptor {
+	getProviderId?: (config: ToolRuntimeConfig | undefined) => string;
+	createProvider: (config: ToolRuntimeConfig | undefined) => IToolProvider;
+	getInitConfig?: (config: ToolRuntimeConfig | undefined) => Record<string, unknown>;
+	getAuthFetcher?: (
+		config: ToolRuntimeConfig | undefined,
+	) => (() => Promise<Record<string, unknown>>) | undefined;
+	lazy?: boolean;
+}
+
 export interface ToolToolbarRenderResult {
 	toolId: string;
 	elements?: ToolRenderElement[];
@@ -134,6 +157,28 @@ export interface ToolRegistration {
 	 * Example: ['calculator', 'basic-calculator', 'scientific-calculator']
 	 */
 	pnpSupportIds?: string[];
+	/**
+	 * Optional provider registration metadata.
+	 * When present, ToolkitCoordinator can register provider(s) generically
+	 * without hardcoded tool-specific branches.
+	 */
+	provider?: ToolProviderDescriptor;
+	/**
+	 * Optional shell-host lifecycle hooks for hosted (floating) tools.
+	 */
+	onHostedMount?: (
+		element: HTMLElement,
+		context: HostedToolContext,
+	) => void | Promise<void>;
+	onHostedResize?: (
+		size: HostedToolSize,
+		element: HTMLElement,
+		context: HostedToolContext,
+	) => void | Promise<void>;
+	onHostedUnmount?: (
+		element: HTMLElement,
+		context: HostedToolContext,
+	) => void | Promise<void>;
 
 	/**
 	 * Pass 2: Tool decides if it's relevant in this context

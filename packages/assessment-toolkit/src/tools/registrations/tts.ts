@@ -14,9 +14,38 @@ import type {
 	ToolToolbarRenderResult,
 	ToolbarContext,
 } from "../../services/ToolRegistry.js";
+import type { ToolProviderConfig } from "../../services/tools-config-normalizer.js";
 import type { ToolContext } from "../../services/tool-context.js";
 import { hasReadableText } from "../../services/tool-context.js";
 import { createScopedToolId } from "../../services/tool-instance-id.js";
+import { TTSToolProvider } from "../../services/tool-providers/index.js";
+
+interface TTSProviderRuntimeSettings {
+	backend?: "browser" | "polly" | "google" | "server";
+	serverProvider?: "polly" | "google";
+	provider?: "polly" | "google";
+	engine?: "standard" | "neural";
+	sampleRate?: number;
+	format?: "mp3" | "ogg" | "pcm";
+	speechMarksMode?: "word" | "word+sentence";
+	defaultVoice?: string;
+	rate?: number;
+	pitch?: number;
+	apiEndpoint?: string;
+	language?: string;
+}
+
+const toRecord = (value: unknown): Record<string, unknown> =>
+	value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+
+const resolveTTSRuntimeSettings = (
+	config: ToolProviderConfig | undefined,
+): TTSProviderRuntimeSettings => {
+	const configRecord = toRecord(config);
+	const settingsRecord = toRecord(config?.settings);
+	const merged = { ...configRecord, ...settingsRecord };
+	return merged as TTSProviderRuntimeSettings;
+};
 
 /**
  * Text-to-Speech tool registration
@@ -31,6 +60,50 @@ export const ttsToolRegistration: ToolRegistration = {
 	name: "Text to Speech",
 	description: "Read content aloud",
 	icon: "volume-up",
+	provider: {
+		getProviderId: () => "tts",
+		createProvider: (config) => {
+			const settings = resolveTTSRuntimeSettings(config);
+			return new TTSToolProvider(settings.backend || "browser");
+		},
+		getInitConfig: (config) => {
+			const settings = resolveTTSRuntimeSettings(config);
+			const backend = settings.backend || "browser";
+			const serverProvider =
+				settings.serverProvider ||
+				settings.provider ||
+				(backend === "polly" || backend === "google" ? backend : undefined);
+			return {
+				backend,
+				apiEndpoint: settings.apiEndpoint,
+				serverProvider,
+				providerOptions:
+					backend === "polly"
+						? {
+								...(settings.engine ? { engine: settings.engine } : {}),
+								...(typeof settings.sampleRate === "number"
+									? { sampleRate: settings.sampleRate }
+									: {}),
+								...(settings.format ? { format: settings.format } : {}),
+								speechMarkTypes:
+									settings.speechMarksMode === "word+sentence"
+										? ["word", "sentence"]
+										: ["word"],
+							}
+						: undefined,
+				voice: settings.defaultVoice,
+				rate: settings.rate,
+				pitch: settings.pitch,
+			};
+		},
+		getAuthFetcher: (config) => {
+			const runtimeAuthFetcher = config?.provider?.runtime?.authFetcher;
+			return typeof runtimeAuthFetcher === "function"
+				? runtimeAuthFetcher
+				: undefined;
+		},
+		lazy: true,
+	},
 
 	// TTS can appear at all levels except assessment and element.
 	supportedLevels: ["section", "item", "passage", "rubric"],

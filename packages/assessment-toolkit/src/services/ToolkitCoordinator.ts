@@ -17,28 +17,27 @@
 import type { AccessibilityCatalog } from "@pie-players/pie-players-shared/types";
 import {
 	normalizeToolsConfig,
-	type CalculatorProviderConfig,
 	type CanonicalToolsConfig,
 	type ToolPlacementConfig,
 	type ToolPolicyConfig,
+	type ToolProviderConfig,
 	type ToolProvidersConfig,
 	resolveToolsForLevel,
 } from "./tools-config-normalizer.js";
+import { DEFAULT_TOOL_ALIAS_MAP } from "./tool-config-defaults.js";
 import { AccessibilityCatalogResolver } from "./AccessibilityCatalogResolver.js";
 import { ElementToolStateStore } from "./ElementToolStateStore.js";
 import { HighlightCoordinator } from "./HighlightCoordinator.js";
 import { ToolCoordinator } from "./ToolCoordinator.js";
 import { TTSService, type TTSConfig } from "./TTSService.js";
 import { BrowserTTSProvider } from "./tts/browser-provider.js";
-import {
-	ToolProviderRegistry,
-	DesmosToolProvider,
-	TTSToolProvider,
-} from "./tool-providers/index.js";
+import { ToolProviderRegistry } from "./tool-providers/index.js";
 import type { IToolProvider } from "./tool-providers/IToolProvider.js";
 import type {
 	TTSToolProviderConfig,
 } from "./tool-providers/index.js";
+import { createPackagedToolRegistry } from "./createDefaultToolRegistry.js";
+import type { ToolRegistration } from "./ToolRegistry.js";
 import type {
 	SectionControllerContext,
 	SectionControllerFactoryDefaults,
@@ -61,7 +60,9 @@ export type {
  */
 export interface ToolConfig {
 	enabled?: boolean;
-	[key: string]: any; // Tool-specific settings
+	provider?: unknown;
+	settings?: Record<string, unknown>;
+	[key: string]: unknown;
 }
 
 /**
@@ -90,22 +91,10 @@ export interface AnswerEliminatorToolConfig extends ToolConfig {
 	strategy?: "strikethrough" | "hide";
 }
 
-/**
- * Calculator tool runtime configuration.
- * Desmos is the only supported calculator engine.
- */
-export interface CalculatorToolConfig extends ToolConfig {
-	authFetcher?: () => Promise<Record<string, unknown>>;
-}
-
 export interface ToolkitToolsConfig extends CanonicalToolsConfig {
 	policy: ToolPolicyConfig;
 	placement: Required<ToolPlacementConfig>;
-	providers: ToolProvidersConfig & {
-		calculator?: CalculatorToolConfig;
-		tts?: TTSToolConfig;
-		annotationToolbar?: ToolConfig;
-	};
+	providers: ToolProvidersConfig;
 }
 
 /**
@@ -542,70 +531,39 @@ export class ToolkitCoordinator {
 	 * Register tool providers in the registry
 	 */
 	private _registerToolProviders(): void {
-		// Register TTS provider
-		const ttsConfig = this.config.tools?.providers?.tts as
-			| TTSToolConfig
-			| undefined;
-		if (ttsConfig?.enabled !== false) {
-			const backend = ttsConfig?.backend || "browser";
-			const serverProvider =
-				ttsConfig?.serverProvider ||
-				ttsConfig?.provider ||
-				(backend === "polly" || backend === "google" ? backend : undefined);
-			void this.registerProvider("tts", {
-				provider: new TTSToolProvider(backend),
-				config: {
-					backend,
-					apiEndpoint: ttsConfig?.apiEndpoint,
-					serverProvider,
-					providerOptions:
-						backend === "polly"
-							? {
-									...(ttsConfig?.engine ? { engine: ttsConfig.engine } : {}),
-									...(typeof ttsConfig?.sampleRate === "number"
-										? { sampleRate: ttsConfig.sampleRate }
-										: {}),
-									...(ttsConfig?.format ? { format: ttsConfig.format } : {}),
-									speechMarkTypes:
-										ttsConfig?.speechMarksMode === "word+sentence"
-											? ["word", "sentence"]
-											: ["word"],
-								}
-							: undefined,
-					voice: ttsConfig?.defaultVoice,
-					rate: ttsConfig?.rate,
-					pitch: ttsConfig?.pitch,
-				},
-				lazy: true,
-				authFetcher: ttsConfig?.authFetcher,
-			});
+		const descriptorTools = this.getProviderDescriptorTools();
+		for (const tool of descriptorTools) {
+			void this.registerProviderFromTool(tool);
 		}
+	}
 
-		// Register calculator provider.
-		// Calculator-specific runtime settings should be encapsulated by the calculator tool package.
-		const calculatorConfig = this.config.tools?.providers
-			?.calculator as CalculatorProviderConfig | undefined;
-		if (calculatorConfig?.enabled !== false) {
-			void this.registerProvider("calculator-desmos", {
-				provider: new DesmosToolProvider(),
-				config: {},
-				lazy: true,
-				authFetcher:
-					calculatorConfig?.authFetcher ??
-					(async () => {
-						const response = await fetch("/api/tools/desmos/auth", {
-							method: "GET",
-							credentials: "same-origin",
-						});
-						if (!response.ok) {
-							throw new Error(
-								`Failed to fetch Desmos auth config (${response.status})`,
-							);
-						}
-						return (await response.json()) as Record<string, unknown>;
-					}),
-			});
-		}
+	private getProviderDescriptorTools(): ToolRegistration[] {
+		const registry = createPackagedToolRegistry();
+		return registry.getAllTools().filter((tool) => !!tool.provider);
+	}
+
+	private async registerProviderFromTool(tool: ToolRegistration): Promise<void> {
+		const descriptor = tool.provider;
+		if (!descriptor) return;
+		const toolConfig = this.getToolConfig(tool.toolId) || undefined;
+		if (toolConfig?.enabled === false) return;
+		const providerId =
+			descriptor.getProviderId?.(toolConfig) ??
+			toolConfig?.provider?.id ??
+			tool.toolId;
+		if (this.toolProviderRegistry.has(providerId)) return;
+		const provider = descriptor.createProvider(toolConfig);
+		const initConfig =
+			descriptor.getInitConfig?.(toolConfig) ?? toolConfig?.provider?.init ?? {};
+		const authFetcher =
+			descriptor.getAuthFetcher?.(toolConfig) ??
+			toolConfig?.provider?.runtime?.authFetcher;
+		await this.registerProvider(providerId, {
+			provider,
+			config: initConfig,
+			lazy: descriptor.lazy ?? true,
+			authFetcher,
+		});
 	}
 
 	private async registerProvider(
@@ -1126,6 +1084,19 @@ export class ToolkitCoordinator {
 		};
 	}
 
+	private resolveProviderConfigKey(toolId: string): string {
+		const providers =
+			(this.config.tools as { providers?: Record<string, ToolProviderConfig | undefined> })
+				?.providers || {};
+		if (toolId in providers) return toolId;
+		for (const [alias, canonical] of Object.entries(DEFAULT_TOOL_ALIAS_MAP)) {
+			if (canonical === toolId && alias in providers) {
+				return alias;
+			}
+		}
+		return toolId;
+	}
+
 	/**
 	 * Check if a tool is enabled.
 	 * Tools are enabled by default unless explicitly disabled.
@@ -1134,7 +1105,8 @@ export class ToolkitCoordinator {
 	 * @returns True if tool is enabled
 	 */
 	isToolEnabled(toolId: string): boolean {
-		const toolConfig = (this.config.tools as any)?.providers?.[toolId];
+		const configKey = this.resolveProviderConfigKey(toolId);
+		const toolConfig = (this.config.tools as any)?.providers?.[configKey];
 		// Enabled by default unless explicitly set to false
 		return toolConfig?.enabled !== false;
 	}
@@ -1145,8 +1117,12 @@ export class ToolkitCoordinator {
 	 * @param toolId Tool identifier
 	 * @returns Tool configuration or null if not configured
 	 */
-	getToolConfig(toolId: string): ToolConfig | null {
-		return ((this.config.tools as any)?.providers?.[toolId] as ToolConfig) || null;
+	getToolConfig(toolId: string): ToolProviderConfig | null {
+		const configKey = this.resolveProviderConfigKey(toolId);
+		return (
+			((this.config.tools as { providers?: Record<string, ToolProviderConfig | undefined> })
+				?.providers?.[configKey] as ToolProviderConfig | undefined) || null
+		);
 	}
 
 	/**
@@ -1156,8 +1132,9 @@ export class ToolkitCoordinator {
 	 * @param toolId Tool identifier
 	 * @param updates Partial configuration updates
 	 */
-	updateToolConfig(toolId: string, updates: Partial<ToolConfig>): void {
+	updateToolConfig(toolId: string, updates: Partial<ToolProviderConfig>): void {
 		// Update config
+		const configKey = this.resolveProviderConfigKey(toolId);
 		const current = this.getToolConfig(toolId) || {};
 		if (!this.config.tools) {
 			this.config.tools = normalizeToolsConfig();
@@ -1165,10 +1142,10 @@ export class ToolkitCoordinator {
 		if (!(this.config.tools as any).providers) {
 			(this.config.tools as any).providers = {};
 		}
-		(this.config.tools as any).providers[toolId] = { ...current, ...updates };
+		(this.config.tools as any).providers[configKey] = { ...current, ...updates };
 
 		// Apply configuration changes to services
-		this._applyToolConfigChange(toolId, updates);
+		this._applyToolConfigChange(configKey, updates);
 	}
 
 	/**
@@ -1224,7 +1201,7 @@ export class ToolkitCoordinator {
 	 */
 	private _applyToolConfigChange(
 		toolId: string,
-		_updates: Partial<ToolConfig>,
+		_updates: Partial<ToolProviderConfig>,
 	): void {
 		// Apply configuration changes based on tool
 		switch (toolId) {
@@ -1259,43 +1236,10 @@ export class ToolkitCoordinator {
 		if (this.toolProviderRegistry.has("tts")) {
 			await this.toolProviderRegistry.unregister("tts");
 		}
-
-		const ttsConfig = this.config.tools?.providers?.tts as
-			| TTSToolConfig
-			| undefined;
-		if (ttsConfig?.enabled === false) return;
-
-		const backend = ttsConfig?.backend || "browser";
-		const serverProvider =
-			ttsConfig?.serverProvider ||
-			ttsConfig?.provider ||
-			(backend === "polly" || backend === "google" ? backend : undefined);
-		await this.registerProvider("tts", {
-			provider: new TTSToolProvider(backend),
-			config: {
-				backend,
-				apiEndpoint: ttsConfig?.apiEndpoint,
-				serverProvider,
-				providerOptions:
-					backend === "polly"
-						? {
-								...(ttsConfig?.engine ? { engine: ttsConfig.engine } : {}),
-								...(typeof ttsConfig?.sampleRate === "number"
-									? { sampleRate: ttsConfig.sampleRate }
-									: {}),
-								...(ttsConfig?.format ? { format: ttsConfig.format } : {}),
-								speechMarkTypes:
-									ttsConfig?.speechMarksMode === "word+sentence"
-										? ["word", "sentence"]
-										: ["word"],
-							}
-						: undefined,
-				voice: ttsConfig?.defaultVoice,
-				rate: ttsConfig?.rate,
-				pitch: ttsConfig?.pitch,
-			},
-			lazy: true,
-			authFetcher: ttsConfig?.authFetcher,
-		});
+		const ttsRegistration = this
+			.getProviderDescriptorTools()
+			.find((tool) => tool.toolId === "textToSpeech");
+		if (!ttsRegistration) return;
+		await this.registerProviderFromTool(ttsRegistration);
 	}
 }

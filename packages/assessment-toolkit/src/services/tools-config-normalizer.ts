@@ -13,25 +13,54 @@ export interface ToolPlacementConfig {
 	passage?: string[];
 }
 
-export interface TTSProviderConfig {
-	enabled?: boolean;
+export interface ToolRuntimeBackendRequest {
+	path: string;
+	method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+	headers?: Record<string, string>;
+	query?: Record<string, string | number | boolean>;
+	body?: unknown;
+}
+
+export interface ToolRuntimeProviderBridge {
+	/**
+	 * Optional auth fetch hook for provider initialization.
+	 * Useful for retrieving temporary credentials from a host backend.
+	 */
+	authFetcher?: () => Promise<Record<string, unknown>>;
+	/**
+	 * Optional backend request bridge for rich tool interactions
+	 * beyond one-time auth fetching.
+	 */
+	request?: (request: ToolRuntimeBackendRequest) => Promise<unknown>;
+	/**
+	 * Optional host event emitter.
+	 */
+	emit?: (eventName: string, payload?: Record<string, unknown>) => void | Promise<void>;
+	/**
+	 * Optional host event subscription bridge.
+	 */
+	subscribe?: (
+		eventName: string,
+		handler: (payload: unknown) => void,
+	) => (() => void) | void;
 	[key: string]: unknown;
 }
 
-export interface CalculatorProviderConfig {
+export interface ToolRuntimeProviderConfig {
+	id?: string;
+	init?: Record<string, unknown>;
+	runtime?: ToolRuntimeProviderBridge;
+}
+
+export interface ToolProviderConfig {
 	enabled?: boolean;
-	authFetcher?: () => Promise<Record<string, unknown>>;
+	provider?: ToolRuntimeProviderConfig;
+	settings?: Record<string, unknown>;
 	[key: string]: unknown;
 }
 
 export interface ToolProvidersConfig {
-	tts?: TTSProviderConfig;
-	calculator?: CalculatorProviderConfig;
-	[key: string]:
-		| TTSProviderConfig
-		| CalculatorProviderConfig
-		| Record<string, unknown>
-		| undefined;
+	[key: string]: ToolProviderConfig | undefined;
 }
 
 export interface CanonicalToolsConfig {

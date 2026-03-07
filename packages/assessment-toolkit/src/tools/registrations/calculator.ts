@@ -15,9 +15,11 @@ import type {
 	ToolToolbarRenderResult,
 	ToolbarContext,
 } from "../../services/ToolRegistry.js";
+import type { ToolProviderConfig } from "../../services/tools-config-normalizer.js";
 import type { ToolContext } from "../../services/tool-context.js";
 import { hasMathContent } from "../../services/tool-context.js";
 import { createScopedToolId } from "../../services/tool-instance-id.js";
+import { DesmosToolProvider } from "../../services/tool-providers/index.js";
 import { createToolElement } from "../tool-tag-map.js";
 
 /**
@@ -33,6 +35,32 @@ export const calculatorToolRegistration: ToolRegistration = {
 	name: "Calculator",
 	description: "Multi-type calculator (basic, scientific, graphing)",
 	icon: "calculator",
+	provider: {
+		getProviderId: (config: ToolProviderConfig | undefined) =>
+			typeof config?.provider?.id === "string" && config.provider.id.length > 0
+				? config.provider.id
+				: "calculator-desmos",
+		createProvider: () => new DesmosToolProvider(),
+		getInitConfig: (config: ToolProviderConfig | undefined) =>
+			config?.provider?.init ?? {},
+		getAuthFetcher: (config: ToolProviderConfig | undefined) => {
+			const runtimeAuthFetcher = config?.provider?.runtime?.authFetcher;
+			if (typeof runtimeAuthFetcher === "function") return runtimeAuthFetcher;
+			return async () => {
+				const response = await fetch("/api/tools/desmos/auth", {
+					method: "GET",
+					credentials: "same-origin",
+				});
+				if (!response.ok) {
+					throw new Error(
+						`Failed to fetch Desmos auth config (${response.status})`,
+					);
+				}
+				return (await response.json()) as Record<string, unknown>;
+			};
+		},
+		lazy: true,
+	},
 
 	// Calculator is item-level in this player architecture.
 	supportedLevels: ["item"],

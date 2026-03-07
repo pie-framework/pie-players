@@ -321,8 +321,21 @@ const coordinator = new ToolkitCoordinator({
       section: ['calculator', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler', 'colorScheme']
     },
     providers: {
-      calculator: { enabled: true },
-      tts: { enabled: true, backend: 'browser' }
+      calculator: {
+        enabled: true,
+        provider: {
+          runtime: {
+            authFetcher: async () => {
+              const res = await fetch('/api/tools/desmos/token');
+              return res.json();
+            }
+          }
+        }
+      },
+      tts: {
+        enabled: true,
+        settings: { backend: 'browser' }
+      }
     }
   }
 });
@@ -352,12 +365,13 @@ The runtime can register additional levels if your product needs custom scopes.
 - Floating tools initialized once, persist throughout section
 
 **2. Different Service Requirements**
-- Floating tools may need providers (Desmos API, auth tokens)
+- Any tool may declare provider/runtime hooks (auth, backend request bridge, host events)
 - Item tools typically use simpler built-in services
 
 **3. Different UI Patterns**
 - Item tools: compact inline buttons (limited space in question headers)
 - Floating tools: rich draggable panels (full-featured interfaces)
+- Floating shell host notifies optional tool hooks (`onHostedMount`, `onHostedResize`, `onHostedUnmount`)
 
 **4. Different State Models**
 - Item tools: state per-question (which answers eliminated for Q5)
@@ -519,6 +533,9 @@ CSS.highlights.set('highlight-name', highlight);
 The service uses a pluggable provider pattern:
 - **BrowserTTSProvider** - Uses Web Speech API (currently implemented)
 - **AWS Polly Provider** - Cloud-based neural voices; client provides integration
+- Provider registration is descriptor-driven from tool registrations.
+- `tools.providers[toolId]` is generic for every tool (`enabled`, `provider`, `settings`).
+- Runtime hooks (`provider.runtime`) support auth fetch, backend request bridging, and host event wiring.
 
 **Integration with Highlighting:**
 ```

@@ -32,6 +32,8 @@
 	import { onMount } from "svelte";
 	import "./section-player-item-card-element.js";
 	import "./section-player-passage-card-element.js";
+	import "./section-player-items-pane-element.js";
+	import "./section-player-passages-pane-element.js";
 	import * as SectionPlayerLayoutScaffoldModule from "./shared/SectionPlayerLayoutScaffold.svelte";
 	import type { Component } from "svelte";
 	import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
@@ -41,19 +43,11 @@
 	import {
 		createPlayerAction,
 	} from "./shared/player-action.js";
-	import {
-		createPlayerPreloadStateSetter,
-		orchestratePlayerElementPreload,
-		type PlayerPreloadState,
-	} from "./shared/player-preload.js";
 	import { manageOuterScrollbars } from "./shared/outer-scrollbars.js";
 	import {
 		type LayoutCompositionSnapshot,
 		deriveLayoutCompositionSnapshot,
 		getCompositionSnapshotFromEvent,
-		getCanonicalItemId,
-		getItemPlayerParams,
-		getPassagePlayerParams,
 	} from "./shared/section-player-view-state.js";
 	import {
 		type RuntimeConfig,
@@ -99,9 +93,7 @@
 	let leftPanelWidth = $state(50);
 	let isDragging = $state(false);
 	let splitContainerElement = $state<HTMLDivElement | null>(null);
-	let elementsLoaded = $state(false);
-	let lastPreloadSignature = $state("");
-	let preloadRunToken = $state(0);
+	let paneElementsLoaded = $state(false);
 
 	const compositionModel = $derived(compositionSnapshot.compositionModel);
 	const passages = $derived(compositionSnapshot.passages);
@@ -142,17 +134,6 @@
 		setSkipElementLoadingOnce: true,
 		includeSessionRefInState: true,
 	});
-	const setPreloadState = createPlayerPreloadStateSetter({
-		setLastPreloadSignature: (value) => {
-			lastPreloadSignature = value;
-		},
-		setPreloadRunToken: (value) => {
-			preloadRunToken = value;
-		},
-		setElementsLoaded: (value) => {
-			elementsLoaded = value;
-		},
-	});
 	const cardRenderContextValue = $derived.by(
 		(): SectionPlayerCardRenderContext => ({
 			resolvedPlayerTag,
@@ -163,6 +144,11 @@
 
 	function handleBaseCompositionChanged(event: Event) {
 		compositionSnapshot = getCompositionSnapshotFromEvent(event);
+	}
+
+	function handleItemsPaneElementsLoaded(event: Event) {
+		const detail = (event as CustomEvent<{ elementsLoaded?: unknown }>).detail;
+		paneElementsLoaded = detail?.elementsLoaded === true;
 	}
 
 	function handleDividerMouseDown(event: MouseEvent) {
@@ -217,25 +203,6 @@
 		});
 	});
 
-	$effect(() => {
-		orchestratePlayerElementPreload({
-			componentTag: "pie-section-player-splitpane",
-			strategy: playerStrategy,
-			renderables: preloadedRenderables,
-			renderablesSignature: preloadedRenderablesSignature,
-			resolvedPlayerProps: resolvedPlayerProps as Record<string, unknown>,
-			resolvedPlayerEnv: resolvedPlayerEnv as Record<string, unknown>,
-			iifeBundleHost,
-			getState: () =>
-				({
-					lastPreloadSignature,
-					preloadRunToken,
-					elementsLoaded,
-				}) as PlayerPreloadState,
-			setState: setPreloadState,
-		});
-	});
-
 	onMount(() => {
 		return manageOuterScrollbars();
 	});
@@ -262,29 +229,15 @@
 	>
 		{#if hasPassages}
 			<aside class="pie-section-player-passages-pane" aria-label="Passages">
-				{#if !elementsLoaded}
-					<div class="pie-section-player-content-card">
-						<div
-							class="pie-section-player-content-card-body pie-section-player-passage-content pie-section-player__passage-content"
-						>
-							Loading passage content...
-						</div>
-					</div>
-				{:else}
-					{#each passages as passage, passageIndex (passage.id || passageIndex)}
-						<pie-section-player-passage-card
-							{passage}
-							playerParams={getPassagePlayerParams({
-								passage,
-								resolvedPlayerEnv,
-								resolvedPlayerAttributes,
-								resolvedPlayerProps,
-								playerStrategy,
-							})}
-							passageToolbarTools={passageToolbarTools}
-						></pie-section-player-passage-card>
-					{/each}
-				{/if}
+				<pie-section-player-passages-pane
+					{passages}
+					elementsLoaded={paneElementsLoaded}
+					{resolvedPlayerEnv}
+					{resolvedPlayerAttributes}
+					{resolvedPlayerProps}
+					playerStrategy={playerStrategy}
+					passageToolbarTools={passageToolbarTools}
+				></pie-section-player-passages-pane>
 			</aside>
 
 			<button
@@ -299,31 +252,20 @@
 		{/if}
 
 		<main class="pie-section-player-items-pane" aria-label="Items">
-			{#if !elementsLoaded}
-				<div class="pie-section-player-content-card">
-					<div
-						class="pie-section-player-content-card-body pie-section-player-item-content pie-section-player__item-content"
-					>
-						Loading section content...
-					</div>
-				</div>
-			{:else}
-				{#each items as item, itemIndex (item.id || itemIndex)}
-					<pie-section-player-item-card
-						{item}
-						canonicalItemId={getCanonicalItemId({ compositionModel, item })}
-						playerParams={getItemPlayerParams({
-							item,
-							compositionModel,
-							resolvedPlayerEnv,
-							resolvedPlayerAttributes,
-							resolvedPlayerProps,
-							playerStrategy,
-						})}
-						itemToolbarTools={itemToolbarTools}
-					></pie-section-player-item-card>
-				{/each}
-			{/if}
+			<pie-section-player-items-pane
+				{items}
+				{compositionModel}
+				{resolvedPlayerEnv}
+				{resolvedPlayerAttributes}
+				{resolvedPlayerProps}
+				{playerStrategy}
+				itemToolbarTools={itemToolbarTools}
+				iifeBundleHost={iifeBundleHost}
+				preloadedRenderables={preloadedRenderables}
+				preloadedRenderablesSignature={preloadedRenderablesSignature}
+				preloadComponentTag="pie-section-player-splitpane"
+				onelements-loaded-change={handleItemsPaneElementsLoaded}
+			></pie-section-player-items-pane>
 		</main>
 	</div>
 </SectionPlayerLayoutScaffold>
@@ -355,9 +297,6 @@
 		overflow-y: auto;
 		overflow-x: hidden;
 		overscroll-behavior: contain;
-		display: flex;
-		flex-direction: column;
-		gap: 1rem;
 		padding: 0.5rem;
 		box-sizing: border-box;
 		background: var(--pie-background-dark, #ecedf1);
@@ -426,24 +365,6 @@
 
 	.pie-section-player-split-divider--dragging {
 		background: var(--pie-primary-light, #dbeafe);
-	}
-
-	.pie-section-player-content-card {
-		border: 1px solid var(--pie-border-light, #e5e7eb);
-		border-radius: 8px;
-		background: var(--pie-background, #fff);
-	}
-
-	.pie-section-player-content-card-header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		padding: 0.75rem 1rem;
-		border-bottom: 1px solid var(--pie-border-light, #e5e7eb);
-	}
-
-	.pie-section-player-content-card-body {
-		padding: 1rem;
 	}
 
 	:global(html.pie-outer-scrollbars-managed),

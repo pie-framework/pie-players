@@ -31,6 +31,8 @@
 <script lang="ts">
 	import "./section-player-item-card-element.js";
 	import "./section-player-passage-card-element.js";
+	import "./section-player-items-pane-element.js";
+	import "./section-player-passages-pane-element.js";
 	import * as SectionPlayerLayoutScaffoldModule from "./shared/SectionPlayerLayoutScaffold.svelte";
 	import type { Component } from "svelte";
 	import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
@@ -39,17 +41,9 @@
 	} from "./shared/composition.js";
 	import { createPlayerAction } from "./shared/player-action.js";
 	import {
-		createPlayerPreloadStateSetter,
-		orchestratePlayerElementPreload,
-		type PlayerPreloadState,
-	} from "./shared/player-preload.js";
-	import {
 		type LayoutCompositionSnapshot,
 		deriveLayoutCompositionSnapshot,
 		getCompositionSnapshotFromEvent,
-		getCanonicalItemId,
-		getItemPlayerParams,
-		getPassagePlayerParams,
 	} from "./shared/section-player-view-state.js";
 	import {
 		resolveSectionPlayerRuntimeState,
@@ -92,9 +86,7 @@
 	let compositionSnapshot = $state<LayoutCompositionSnapshot>(
 		deriveLayoutCompositionSnapshot(EMPTY_COMPOSITION),
 	);
-	let elementsLoaded = $state(false);
-	let lastPreloadSignature = $state("");
-	let preloadRunToken = $state(0);
+	let paneElementsLoaded = $state(false);
 
 	const compositionModel = $derived(compositionSnapshot.compositionModel);
 	const passages = $derived(compositionSnapshot.passages);
@@ -133,17 +125,6 @@
 		stateKey: "__verticalAppliedParams",
 		includeSessionRefInState: false,
 	});
-	const setPreloadState = createPlayerPreloadStateSetter({
-		setLastPreloadSignature: (value) => {
-			lastPreloadSignature = value;
-		},
-		setPreloadRunToken: (value) => {
-			preloadRunToken = value;
-		},
-		setElementsLoaded: (value) => {
-			elementsLoaded = value;
-		},
-	});
 	const cardRenderContextValue = $derived.by(
 		(): SectionPlayerCardRenderContext => ({
 			resolvedPlayerTag,
@@ -156,28 +137,14 @@
 		compositionSnapshot = getCompositionSnapshotFromEvent(event);
 	}
 
+	function handleItemsPaneElementsLoaded(event: Event) {
+		const detail = (event as CustomEvent<{ elementsLoaded?: unknown }>).detail;
+		paneElementsLoaded = detail?.elementsLoaded === true;
+	}
+
 	$effect(() => {
 		resolvedPlayerDefinition?.ensureDefined?.().catch((error) => {
 			console.error("[pie-section-player-vertical] Failed to load item player component:", error);
-		});
-	});
-
-	$effect(() => {
-		orchestratePlayerElementPreload({
-			componentTag: "pie-section-player-vertical",
-			strategy: playerStrategy,
-			renderables: preloadedRenderables,
-			renderablesSignature: preloadedRenderablesSignature,
-			resolvedPlayerProps: resolvedPlayerProps as Record<string, unknown>,
-			resolvedPlayerEnv: resolvedPlayerEnv as Record<string, unknown>,
-			iifeBundleHost,
-			getState: () =>
-				({
-					lastPreloadSignature,
-					preloadRunToken,
-					elementsLoaded,
-				}) as PlayerPreloadState,
-			setState: setPreloadState,
 		});
 	});
 
@@ -195,51 +162,36 @@
 	cardRenderContext={cardRenderContextValue}
 >
 	<div class="pie-section-player-vertical-content">
-		{#if !elementsLoaded}
-			<div class="pie-section-player-content-card">
-				<div
-					class="pie-section-player-content-card-body pie-section-player-item-content pie-section-player__item-content"
-				>
-					Loading section content...
-				</div>
-			</div>
-		{:else}
-			{#if passages.length > 0}
-				<section class="pie-section-player-passages-section" aria-label="Passages">
-					{#each passages as passage, passageIndex (passage.id || passageIndex)}
-						<pie-section-player-passage-card
-							{passage}
-							playerParams={getPassagePlayerParams({
-								passage,
-								resolvedPlayerEnv,
-								resolvedPlayerAttributes,
-								resolvedPlayerProps,
-								playerStrategy,
-							})}
-							passageToolbarTools={passageToolbarTools}
-						></pie-section-player-passage-card>
-					{/each}
-				</section>
-			{/if}
-
-			<section class="pie-section-player-items-section" aria-label="Items">
-				{#each items as item, itemIndex (item.id || itemIndex)}
-					<pie-section-player-item-card
-						{item}
-						canonicalItemId={getCanonicalItemId({ compositionModel, item })}
-						playerParams={getItemPlayerParams({
-							item,
-							compositionModel,
-							resolvedPlayerEnv,
-							resolvedPlayerAttributes,
-							resolvedPlayerProps,
-							playerStrategy,
-						})}
-						itemToolbarTools={itemToolbarTools}
-					></pie-section-player-item-card>
-				{/each}
+		{#if passages.length > 0 && paneElementsLoaded}
+			<section class="pie-section-player-passages-section" aria-label="Passages">
+				<pie-section-player-passages-pane
+					{passages}
+					elementsLoaded={paneElementsLoaded}
+					{resolvedPlayerEnv}
+					{resolvedPlayerAttributes}
+					{resolvedPlayerProps}
+					playerStrategy={playerStrategy}
+					passageToolbarTools={passageToolbarTools}
+				></pie-section-player-passages-pane>
 			</section>
 		{/if}
+
+		<section class="pie-section-player-items-section" aria-label="Items">
+			<pie-section-player-items-pane
+				{items}
+				{compositionModel}
+				{resolvedPlayerEnv}
+				{resolvedPlayerAttributes}
+				{resolvedPlayerProps}
+				{playerStrategy}
+				itemToolbarTools={itemToolbarTools}
+				iifeBundleHost={iifeBundleHost}
+				preloadedRenderables={preloadedRenderables}
+				preloadedRenderablesSignature={preloadedRenderablesSignature}
+				preloadComponentTag="pie-section-player-vertical"
+				onelements-loaded-change={handleItemsPaneElementsLoaded}
+			></pie-section-player-items-pane>
+		</section>
 	</div>
 </SectionPlayerLayoutScaffold>
 
@@ -271,19 +223,6 @@
 
 	.pie-section-player-passages-section,
 	.pie-section-player-items-section {
-		display: flex;
-		flex-direction: column;
-		gap: 1rem;
+		min-height: 0;
 	}
-
-	.pie-section-player-content-card {
-		border: 1px solid var(--pie-border-light, #e5e7eb);
-		border-radius: 8px;
-		background: var(--pie-background, #fff);
-	}
-
-	.pie-section-player-content-card-body {
-		padding: 1rem;
-	}
-
 </style>

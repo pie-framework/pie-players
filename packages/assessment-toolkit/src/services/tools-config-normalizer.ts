@@ -75,6 +75,101 @@ const DEFAULT_PLACEMENT: Required<ToolPlacementConfig> = {
 	passage: [...DEFAULT_TOOL_PLACEMENT.passage],
 };
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function assertStringArray(value: unknown, fieldPath: string): string[] {
+	if (value == null) return [];
+	if (!Array.isArray(value)) {
+		throw new Error(
+			`Invalid tools config at "${fieldPath}": expected an array of tool ids.`,
+		);
+	}
+	const invalidEntry = value.find((entry) => typeof entry !== "string");
+	if (invalidEntry !== undefined) {
+		throw new Error(
+			`Invalid tools config at "${fieldPath}": all entries must be strings.`,
+		);
+	}
+	return value as string[];
+}
+
+function assertPlacementConfig(value: unknown): ToolPlacementConfig | undefined {
+	if (value == null) return undefined;
+	if (!isPlainObject(value)) {
+		throw new Error(
+			'Invalid tools config at "placement": expected an object with section/item/passage arrays.',
+		);
+	}
+	return value as ToolPlacementConfig;
+}
+
+function assertPolicyConfig(value: unknown): ToolPolicyConfig | undefined {
+	if (value == null) return undefined;
+	if (!isPlainObject(value)) {
+		throw new Error(
+			'Invalid tools config at "policy": expected an object with allowed/blocked arrays.',
+		);
+	}
+	return value as ToolPolicyConfig;
+}
+
+function assertProviderConfig(
+	providerId: string,
+	value: unknown,
+): ToolProviderConfig | undefined {
+	if (value == null) return undefined;
+	if (!isPlainObject(value)) {
+		throw new Error(
+			`Invalid tools config at "providers.${providerId}": expected an object.`,
+		);
+	}
+	const config = value as ToolProviderConfig;
+	if (
+		"enabled" in config &&
+		config.enabled !== undefined &&
+		typeof config.enabled !== "boolean"
+	) {
+		throw new Error(
+			`Invalid tools config at "providers.${providerId}.enabled": expected a boolean.`,
+		);
+	}
+	if (
+		"settings" in config &&
+		config.settings !== undefined &&
+		!isPlainObject(config.settings)
+	) {
+		throw new Error(
+			`Invalid tools config at "providers.${providerId}.settings": expected an object.`,
+		);
+	}
+	if (
+		"provider" in config &&
+		config.provider !== undefined &&
+		!isPlainObject(config.provider)
+	) {
+		throw new Error(
+			`Invalid tools config at "providers.${providerId}.provider": expected an object.`,
+		);
+	}
+	return config;
+}
+
+function assertProvidersConfig(value: unknown): ToolProvidersConfig {
+	if (value == null) return {};
+	if (!isPlainObject(value)) {
+		throw new Error(
+			'Invalid tools config at "providers": expected an object keyed by tool id.',
+		);
+	}
+	const normalized: ToolProvidersConfig = {};
+	for (const [providerId, providerConfig] of Object.entries(value)) {
+		normalized[providerId] = assertProviderConfig(providerId, providerConfig);
+	}
+	return normalized;
+}
+
 export function normalizeToolAlias(toolId: string): string {
 	const trimmed = toolId.trim();
 	if (!trimmed) return "";
@@ -85,6 +180,11 @@ export function normalizeToolList(toolIds: string[] | undefined | null): string[
 	if (!toolIds || toolIds.length === 0) return [];
 	const deduped = new Set<string>();
 	for (const rawToolId of toolIds) {
+		if (typeof rawToolId !== "string") {
+			throw new Error(
+				"Invalid tools config: tool list entries must be strings.",
+			);
+		}
 		const normalized = normalizeToolAlias(rawToolId);
 		if (!normalized) continue;
 		deduped.add(normalized);
@@ -105,25 +205,37 @@ export function parseToolList(input: string | undefined | null): string[] {
 export function normalizeToolsConfig(
 	input?: Partial<CanonicalToolsConfig> | null,
 ): CanonicalToolsConfig {
+	if (input != null && !isPlainObject(input)) {
+		throw new Error(
+			'Invalid tools config: expected an object with "policy", "placement", and "providers".',
+		);
+	}
+	const policy = assertPolicyConfig(input?.policy);
+	const placement = assertPlacementConfig(input?.placement);
+	const providers = assertProvidersConfig(input?.providers);
+
 	return {
 		policy: {
-			allowed: normalizeToolList(input?.policy?.allowed),
-			blocked: normalizeToolList(input?.policy?.blocked),
+			allowed: normalizeToolList(assertStringArray(policy?.allowed, "policy.allowed")),
+			blocked: normalizeToolList(assertStringArray(policy?.blocked, "policy.blocked")),
 		},
 		placement: {
-			section: normalizeToolList(input?.placement?.section).length
-				? normalizeToolList(input?.placement?.section)
+			section: normalizeToolList(
+				assertStringArray(placement?.section, "placement.section"),
+			).length
+				? normalizeToolList(assertStringArray(placement?.section, "placement.section"))
 				: [...DEFAULT_PLACEMENT.section],
-			item: normalizeToolList(input?.placement?.item).length
-				? normalizeToolList(input?.placement?.item)
+			item: normalizeToolList(assertStringArray(placement?.item, "placement.item"))
+				.length
+				? normalizeToolList(assertStringArray(placement?.item, "placement.item"))
 				: [...DEFAULT_PLACEMENT.item],
-			passage: normalizeToolList(input?.placement?.passage).length
-				? normalizeToolList(input?.placement?.passage)
+			passage: normalizeToolList(
+				assertStringArray(placement?.passage, "placement.passage"),
+			).length
+				? normalizeToolList(assertStringArray(placement?.passage, "placement.passage"))
 				: [...DEFAULT_PLACEMENT.passage],
 		},
-		providers: {
-			...(input?.providers || {}),
-		},
+		providers,
 	};
 }
 

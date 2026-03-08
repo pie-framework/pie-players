@@ -23,7 +23,7 @@
 	import {
 		PNPToolResolver,
 		createDefaultPersonalNeedsProfile,
-		createDefaultToolRegistry
+		createPackagedToolRegistry
 	} from '@pie-players/pie-assessment-toolkit';
 	const dispatch = createEventDispatcher<{ close: undefined }>();
 
@@ -45,7 +45,7 @@
 	let pnpWindowHeight = $state(560);
 	let isPnpMinimized = $state(false);
 
-	const pnpResolver = new PNPToolResolver(createDefaultToolRegistry());
+	const pnpResolver = new PNPToolResolver(createPackagedToolRegistry());
 	let floatingTools = $state<string[]>([]);
 
 	$effect(() => {
@@ -146,7 +146,7 @@
 			width: pnpWindowWidth,
 			height: pnpWindowHeight
 		}),
-		setState: (next) => {
+		setState: (next: { x: number; y: number; width: number; height: number }) => {
 			pnpWindowX = next.x;
 			pnpWindowY = next.y;
 			pnpWindowWidth = next.width;

@@ -182,8 +182,17 @@
 			{ enabled?: boolean } | undefined
 		>
 	);
+	const normalizedProviderConfig = $derived.by(() => {
+		const normalized: Record<string, { enabled?: boolean } | undefined> = {};
+		for (const [toolId, config] of Object.entries(providerConfig)) {
+			const canonicalToolId = effectiveToolRegistry.normalizeToolId(toolId);
+			if (!canonicalToolId) continue;
+			normalized[canonicalToolId] = config;
+		}
+		return normalized;
+	});
 	const isProviderEnabled = (toolId: string): boolean =>
-		providerConfig[toolId]?.enabled !== false;
+		normalizedProviderConfig[toolId]?.enabled !== false;
 
 	// Pass 1: determine allowed tools
 	const allowedToolIds = $derived.by(() => {
@@ -192,14 +201,19 @@
 		const providerEnabledConfiguredTools = configuredTools.filter((toolId) =>
 			isProviderEnabled(toolId)
 		);
+		const dedupe = (toolIds: string[]): string[] => Array.from(new Set(toolIds));
 		if (pnpResolver && assessment && itemRef) {
-			const allowedByPnp = pnpResolver.getAllowedToolIds(assessment, itemRef);
+			const allowedByPnp = dedupe(
+				effectiveToolRegistry.normalizeToolIds(
+					pnpResolver.getAllowedToolIds(assessment, itemRef)
+				)
+			).filter(Boolean);
 			if (providerEnabledConfiguredTools.length === 0) return allowedByPnp;
-			return allowedByPnp.filter((toolId) =>
+			return dedupe(allowedByPnp.filter((toolId) =>
 				providerEnabledConfiguredTools.includes(toolId)
-			);
+			));
 		}
-		return providerEnabledConfiguredTools;
+		return dedupe(providerEnabledConfiguredTools);
 	});
 
 	const contentReady = $derived.by(() => {

@@ -19,11 +19,14 @@ import type {
 } from "../../services/ToolRegistry.js";
 import type { ToolContext } from "../../services/tool-context.js";
 import { hasMathContent, hasScienceContent } from "../../services/tool-context.js";
-import { createScopedToolId } from "../../services/tool-instance-id.js";
 import {
 	createToolElement,
 	type ToolComponentOverrides,
 } from "../tool-tag-map.js";
+import {
+	createScopedVisibilityBinding,
+	syncButtonAndOverlayVisibility,
+} from "./toolbar-registration-helpers.js";
 
 /**
  * Graph tool registration
@@ -60,11 +63,7 @@ export const graphToolRegistration: ToolRegistration = {
 		context: ToolContext,
 		toolbarContext: ToolbarContext,
 	): ToolToolbarRenderResult {
-		const fullToolId = createScopedToolId(
-			this.toolId,
-			toolbarContext.scope.level,
-			toolbarContext.scope.scopeId,
-		);
+		const visibility = createScopedVisibilityBinding(this.toolId, toolbarContext);
 		const button: ToolToolbarButtonDefinition = {
 			toolId: this.toolId,
 			label: this.name,
@@ -73,7 +72,7 @@ export const graphToolRegistration: ToolRegistration = {
 			ariaLabel: "Graph - Graphing calculator",
 			tooltip: "Graph",
 			onClick: () => toolbarContext.toggleTool(this.toolId),
-			active: toolbarContext.isToolVisible(fullToolId),
+			active: visibility.isActive(),
 		};
 		const componentOverrides =
 			(toolbarContext.componentOverrides as ToolComponentOverrides | undefined) ?? {};
@@ -86,7 +85,7 @@ export const graphToolRegistration: ToolRegistration = {
 			visible?: boolean;
 			toolId?: string;
 		};
-		overlay.setAttribute("tool-id", fullToolId);
+		overlay.setAttribute("tool-id", visibility.fullToolId);
 		return {
 			toolId: this.toolId,
 			button,
@@ -107,16 +106,13 @@ export const graphToolRegistration: ToolRegistration = {
 				},
 			],
 			sync: () => {
-				const active = toolbarContext.isToolVisible(fullToolId);
-				button.active = active;
-				overlay.visible = active;
-			},
-			subscribeActive: (callback: (active: boolean) => void) => {
-				if (!toolbarContext.subscribeVisibility) return () => {};
-				return toolbarContext.subscribeVisibility(() => {
-					callback(toolbarContext.isToolVisible(fullToolId));
+				syncButtonAndOverlayVisibility({
+					button,
+					overlay,
+					isActive: visibility.isActive,
 				});
 			},
+			subscribeActive: visibility.subscribeActive,
 		};
 	},
 };
@@ -155,11 +151,7 @@ export const periodicTableToolRegistration: ToolRegistration = {
 		context: ToolContext,
 		toolbarContext: ToolbarContext,
 	): ToolToolbarRenderResult {
-		const fullToolId = createScopedToolId(
-			this.toolId,
-			toolbarContext.scope.level,
-			toolbarContext.scope.scopeId,
-		);
+		const visibility = createScopedVisibilityBinding(this.toolId, toolbarContext);
 		const button: ToolToolbarButtonDefinition = {
 			toolId: this.toolId,
 			label: this.name,
@@ -168,7 +160,7 @@ export const periodicTableToolRegistration: ToolRegistration = {
 			ariaLabel: "Periodic table - Chemistry reference",
 			tooltip: "Periodic Table",
 			onClick: () => toolbarContext.toggleTool(this.toolId),
-			active: toolbarContext.isToolVisible(fullToolId),
+			active: visibility.isActive(),
 		};
 		const componentOverrides =
 			(toolbarContext.componentOverrides as ToolComponentOverrides | undefined) ?? {};
@@ -181,7 +173,7 @@ export const periodicTableToolRegistration: ToolRegistration = {
 			visible?: boolean;
 			toolId?: string;
 		};
-		overlay.setAttribute("tool-id", fullToolId);
+		overlay.setAttribute("tool-id", visibility.fullToolId);
 		return {
 			toolId: this.toolId,
 			button,
@@ -202,16 +194,13 @@ export const periodicTableToolRegistration: ToolRegistration = {
 				},
 			],
 			sync: () => {
-				const active = toolbarContext.isToolVisible(fullToolId);
-				button.active = active;
-				overlay.visible = active;
-			},
-			subscribeActive: (callback: (active: boolean) => void) => {
-				if (!toolbarContext.subscribeVisibility) return () => {};
-				return toolbarContext.subscribeVisibility(() => {
-					callback(toolbarContext.isToolVisible(fullToolId));
+				syncButtonAndOverlayVisibility({
+					button,
+					overlay,
+					isActive: visibility.isActive,
 				});
 			},
+			subscribeActive: visibility.subscribeActive,
 		};
 	},
 };

@@ -215,5 +215,12 @@
 	.pie-section-player-passages-section,
 	.pie-section-player-items-section {
 		min-height: 0;
+		/* Prevent flexbox from compressing content sections.
+		   Let the vertical container own scrolling instead. */
+		flex: 0 0 auto;
+	}
+
+	.pie-section-player-passages-section {
+		width: 100%;
 	}
 </style>

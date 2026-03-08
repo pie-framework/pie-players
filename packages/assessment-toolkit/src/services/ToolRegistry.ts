@@ -196,6 +196,98 @@ export interface ToolRegistration {
 	): ToolToolbarRenderResult | null;
 }
 
+const VALID_TOOL_LEVELS: ToolLevel[] = [
+	"assessment",
+	"section",
+	"item",
+	"passage",
+	"rubric",
+	"element",
+];
+
+function assertNonEmptyString(value: unknown, fieldName: string): asserts value is string {
+	if (typeof value !== "string" || value.trim().length === 0) {
+		throw new Error(`Invalid tool registration: "${fieldName}" must be a non-empty string.`);
+	}
+}
+
+function assertToolRegistrationShape(registration: ToolRegistration): void {
+	assertNonEmptyString(registration.toolId, "toolId");
+	assertNonEmptyString(registration.name, "name");
+	assertNonEmptyString(registration.description, "description");
+
+	if (
+		typeof registration.icon !== "string" &&
+		typeof registration.icon !== "function"
+	) {
+		throw new Error(
+			`Invalid tool registration "${registration.toolId}": "icon" must be a string or function.`,
+		);
+	}
+	if (
+		!Array.isArray(registration.supportedLevels) ||
+		registration.supportedLevels.length === 0
+	) {
+		throw new Error(
+			`Invalid tool registration "${registration.toolId}": "supportedLevels" must be a non-empty array.`,
+		);
+	}
+	const invalidLevel = registration.supportedLevels.find(
+		(level) => !VALID_TOOL_LEVELS.includes(level),
+	);
+	if (invalidLevel) {
+		throw new Error(
+			`Invalid tool registration "${registration.toolId}": unsupported level "${invalidLevel}".`,
+		);
+	}
+	if (
+		registration.activation !== undefined &&
+		registration.activation !== "toolbar-toggle" &&
+		registration.activation !== "selection-gateway"
+	) {
+		throw new Error(
+			`Invalid tool registration "${registration.toolId}": unsupported activation "${String(registration.activation)}".`,
+		);
+	}
+	if (
+		registration.singletonScope !== undefined &&
+		registration.singletonScope !== "section"
+	) {
+		throw new Error(
+			`Invalid tool registration "${registration.toolId}": unsupported singletonScope "${String(registration.singletonScope)}".`,
+		);
+	}
+	if (
+		registration.activation === "selection-gateway" &&
+		registration.singletonScope !== "section"
+	) {
+		throw new Error(
+			`Invalid tool registration "${registration.toolId}": selection-gateway tools must declare singletonScope "section".`,
+		);
+	}
+	if (
+		registration.pnpSupportIds !== undefined &&
+		(!Array.isArray(registration.pnpSupportIds) ||
+			registration.pnpSupportIds.some(
+				(pnpId) => typeof pnpId !== "string" || pnpId.trim().length === 0,
+			))
+	) {
+		throw new Error(
+			`Invalid tool registration "${registration.toolId}": "pnpSupportIds" must be an array of non-empty strings.`,
+		);
+	}
+	if (typeof registration.isVisibleInContext !== "function") {
+		throw new Error(
+			`Invalid tool registration "${registration.toolId}": "isVisibleInContext" must be a function.`,
+		);
+	}
+	if (typeof registration.renderToolbar !== "function") {
+		throw new Error(
+			`Invalid tool registration "${registration.toolId}": "renderToolbar" must be a function.`,
+		);
+	}
+}
+
 /**
  * Tool Registry
  *
@@ -230,6 +322,7 @@ export class ToolRegistry {
 	 * @throws Error if toolId is already registered
 	 */
 	register(registration: ToolRegistration): void {
+		assertToolRegistrationShape(registration);
 		if (this.tools.has(registration.toolId)) {
 			throw new Error(`Tool '${registration.toolId}' is already registered`);
 		}
@@ -253,6 +346,7 @@ export class ToolRegistry {
 	 * @param registration - New tool registration (must have existing toolId)
 	 */
 	override(registration: ToolRegistration): void {
+		assertToolRegistrationShape(registration);
 		if (!this.tools.has(registration.toolId)) {
 			throw new Error(
 				`Cannot override non-existent tool '${registration.toolId}'`,
@@ -502,6 +596,12 @@ export class ToolRegistry {
 	): void {
 		for (const [toolId, loader] of Object.entries(loaders)) {
 			if (!loader) continue;
+			assertNonEmptyString(toolId, "tool module loader id");
+			if (typeof loader !== "function") {
+				throw new Error(
+					`Invalid tool module loader for "${toolId}": expected a function.`,
+				);
+			}
 			this.moduleLoaders.set(toolId, loader);
 		}
 	}

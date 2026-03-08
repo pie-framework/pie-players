@@ -26,6 +26,7 @@ import type {
 import type { FontSize, ThemeConfig } from "./ThemeProvider.js";
 import type { ZIndexLayer } from "./ToolCoordinator.js";
 import type { PlaybackState, TTSConfig } from "./TTSService.js";
+import type { ToolProviderConfig } from "./tools-config-normalizer.js";
 import type { ToolProviderRegistry } from "./tool-providers/ToolProviderRegistry.js";
 import type {
 	ITTSProvider,
@@ -474,7 +475,11 @@ export interface IToolkitCoordinator {
 	/**
 	 * Configuration
 	 */
-	readonly config: any;
+	readonly config: {
+		tools?: {
+			providers?: Record<string, ToolProviderConfig | undefined>;
+		};
+	};
 
 	/**
 	 * TTS service
@@ -551,12 +556,12 @@ export interface IToolkitCoordinator {
 	/**
 	 * Get tool configuration
 	 */
-	getToolConfig(toolId: string): any | null;
+	getToolConfig(toolId: string): ToolProviderConfig | null;
 
 	/**
 	 * Update tool configuration
 	 */
-	updateToolConfig(toolId: string, updates: any): void;
+	updateToolConfig(toolId: string, updates: Partial<ToolProviderConfig>): void;
 
 	/**
 	 * Register or update lifecycle hooks at runtime.

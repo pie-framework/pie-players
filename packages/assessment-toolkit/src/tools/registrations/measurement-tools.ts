@@ -16,11 +16,14 @@ import type {
 } from "../../services/ToolRegistry.js";
 import type { ToolContext } from "../../services/tool-context.js";
 import { hasMathContent } from "../../services/tool-context.js";
-import { createScopedToolId } from "../../services/tool-instance-id.js";
 import {
 	createToolElement,
 	type ToolComponentOverrides,
 } from "../tool-tag-map.js";
+import {
+	createScopedVisibilityBinding,
+	syncButtonAndOverlayVisibility,
+} from "./toolbar-registration-helpers.js";
 
 /**
  * Ruler tool registration
@@ -55,11 +58,7 @@ export const rulerToolRegistration: ToolRegistration = {
 		context: ToolContext,
 		toolbarContext: ToolbarContext,
 	): ToolToolbarRenderResult {
-		const fullToolId = createScopedToolId(
-			this.toolId,
-			toolbarContext.scope.level,
-			toolbarContext.scope.scopeId,
-		);
+		const visibility = createScopedVisibilityBinding(this.toolId, toolbarContext);
 		const button: ToolToolbarButtonDefinition = {
 			toolId: this.toolId,
 			label: this.name,
@@ -68,7 +67,7 @@ export const rulerToolRegistration: ToolRegistration = {
 			ariaLabel: "Open ruler tool",
 			tooltip: "Ruler",
 			onClick: () => toolbarContext.toggleTool(this.toolId),
-			active: toolbarContext.isToolVisible(fullToolId),
+			active: visibility.isActive(),
 		};
 		const componentOverrides =
 			(toolbarContext.componentOverrides as ToolComponentOverrides | undefined) ?? {};
@@ -82,25 +81,22 @@ export const rulerToolRegistration: ToolRegistration = {
 			toolId?: string;
 			toolkitCoordinator: unknown;
 		};
-		overlay.setAttribute("tool-id", fullToolId);
+		overlay.setAttribute("tool-id", visibility.fullToolId);
 		return {
 			toolId: this.toolId,
 			button,
 			elements: [{ element: overlay, mount: "after-buttons" }],
 			sync: () => {
-				const active = toolbarContext.isToolVisible(fullToolId);
-				button.active = active;
-				overlay.visible = active;
+				syncButtonAndOverlayVisibility({
+					button,
+					overlay,
+					isActive: visibility.isActive,
+				});
 				if (toolbarContext.toolkitCoordinator) {
 					overlay.toolkitCoordinator = toolbarContext.toolkitCoordinator;
 				}
 			},
-			subscribeActive: (callback: (active: boolean) => void) => {
-				if (!toolbarContext.subscribeVisibility) return () => {};
-				return toolbarContext.subscribeVisibility(() => {
-					callback(toolbarContext.isToolVisible(fullToolId));
-				});
-			},
+			subscribeActive: visibility.subscribeActive,
 		};
 	},
 };
@@ -138,11 +134,7 @@ export const protractorToolRegistration: ToolRegistration = {
 		context: ToolContext,
 		toolbarContext: ToolbarContext,
 	): ToolToolbarRenderResult {
-		const fullToolId = createScopedToolId(
-			this.toolId,
-			toolbarContext.scope.level,
-			toolbarContext.scope.scopeId,
-		);
+		const visibility = createScopedVisibilityBinding(this.toolId, toolbarContext);
 		const button: ToolToolbarButtonDefinition = {
 			toolId: this.toolId,
 			label: this.name,
@@ -151,7 +143,7 @@ export const protractorToolRegistration: ToolRegistration = {
 			ariaLabel: "Open protractor tool",
 			tooltip: "Protractor",
 			onClick: () => toolbarContext.toggleTool(this.toolId),
-			active: toolbarContext.isToolVisible(fullToolId),
+			active: visibility.isActive(),
 		};
 		const componentOverrides =
 			(toolbarContext.componentOverrides as ToolComponentOverrides | undefined) ?? {};
@@ -165,25 +157,22 @@ export const protractorToolRegistration: ToolRegistration = {
 			toolId?: string;
 			toolkitCoordinator: unknown;
 		};
-		overlay.setAttribute("tool-id", fullToolId);
+		overlay.setAttribute("tool-id", visibility.fullToolId);
 		return {
 			toolId: this.toolId,
 			button,
 			elements: [{ element: overlay, mount: "after-buttons" }],
 			sync: () => {
-				const active = toolbarContext.isToolVisible(fullToolId);
-				button.active = active;
-				overlay.visible = active;
+				syncButtonAndOverlayVisibility({
+					button,
+					overlay,
+					isActive: visibility.isActive,
+				});
 				if (toolbarContext.toolkitCoordinator) {
 					overlay.toolkitCoordinator = toolbarContext.toolkitCoordinator;
 				}
 			},
-			subscribeActive: (callback: (active: boolean) => void) => {
-				if (!toolbarContext.subscribeVisibility) return () => {};
-				return toolbarContext.subscribeVisibility(() => {
-					callback(toolbarContext.isToolVisible(fullToolId));
-				});
-			},
+			subscribeActive: visibility.subscribeActive,
 		};
 	},
 };

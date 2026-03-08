@@ -1,8 +1,8 @@
 import type { PersonalNeedsProfile } from "@pie-players/pie-players-shared/types";
-import { createDefaultToolRegistry } from "./createDefaultToolRegistry.js";
+import { createPackagedToolRegistry } from "./createDefaultToolRegistry.js";
 
 function computeDefaultSupports(): string[] {
-	const registry = createDefaultToolRegistry();
+	const registry = createPackagedToolRegistry();
 	const supports = new Set<string>();
 
 	for (const tool of registry.getAllTools()) {

@@ -308,6 +308,7 @@ export class ToolkitCoordinator {
 	private coordinatorReadyPromise?: Promise<void>;
 	private coordinatorReadyNotified = false;
 	private readonly providerInitPromises = new Map<string, Promise<IToolProvider>>();
+	private readonly packagedToolRegistry = createPackagedToolRegistry();
 	private readonly sectionControllers = new Map<string, SectionControllerHandle>();
 	private readonly sectionControllerKeys = new Map<string, SectionControllerKey>();
 	private readonly sectionControllerInitPromises = new Map<
@@ -538,8 +539,9 @@ export class ToolkitCoordinator {
 	}
 
 	private getProviderDescriptorTools(): ToolRegistration[] {
-		const registry = createPackagedToolRegistry();
-		return registry.getAllTools().filter((tool) => !!tool.provider);
+		return this.packagedToolRegistry
+			.getAllTools()
+			.filter((tool) => !!tool.provider);
 	}
 
 	private async registerProviderFromTool(tool: ToolRegistration): Promise<void> {

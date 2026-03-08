@@ -506,7 +506,14 @@ export class PNPToolResolver {
 		itemRef?: AssessmentItemRef,
 	): string[] {
 		const resolved = this.resolveTools(assessment, itemRef);
-		return resolved.filter((t) => t.enabled).map((t) => t.id);
+		return Array.from(
+			new Set(
+				resolved
+					.filter((t) => t.enabled)
+					.map((t) => this.toolRegistry.normalizeToolId(t.id))
+					.filter(Boolean),
+			),
+		);
 	}
 
 	/**

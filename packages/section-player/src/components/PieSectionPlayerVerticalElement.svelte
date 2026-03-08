@@ -33,32 +33,12 @@
 	import "./section-player-passage-card-element.js";
 	import "./section-player-items-pane-element.js";
 	import "./section-player-passages-pane-element.js";
-	import * as SectionPlayerLayoutScaffoldModule from "./shared/SectionPlayerLayoutScaffold.svelte";
-	import type { Component } from "svelte";
+	import SectionPlayerLayoutKernel from "./shared/SectionPlayerLayoutKernel.svelte";
+	import { createEventDispatcher } from "svelte";
 	import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
 	import {
-		EMPTY_COMPOSITION,
-	} from "./shared/composition.js";
-	import { createPlayerAction } from "./shared/player-action.js";
-	import {
-		type LayoutCompositionSnapshot,
-		deriveLayoutCompositionSnapshot,
-		getCompositionSnapshotFromEvent,
-	} from "./shared/section-player-view-state.js";
-	import {
-		resolveSectionPlayerRuntimeState,
 		type RuntimeConfig,
 	} from "./shared/section-player-runtime.js";
-	import {
-		type SectionPlayerCardRenderContext,
-	} from "./shared/section-player-card-context.js";
-	import { coerceBooleanLike } from "./shared/section-player-props.js";
-
-	const SectionPlayerLayoutScaffold = (
-		SectionPlayerLayoutScaffoldModule as unknown as {
-			default: Component<any, any, any>;
-		}
-	).default;
 
 	let {
 		assessmentId,
@@ -82,95 +62,104 @@
 		itemToolbarTools = "",
 		passageToolbarTools = "",
 	} = $props();
+	const dispatch = createEventDispatcher();
+	let kernelRef = $state<{
+		getSnapshot?: () => unknown;
+		selectComposition?: () => unknown;
+		selectNavigation?: () => unknown;
+		selectReadiness?: () => unknown;
+		navigateTo?: (index: number) => boolean;
+		navigateNext?: () => boolean;
+		navigatePrevious?: () => boolean;
+		preloadNow?: () => void;
+	} | null>(null);
 
-	let compositionSnapshot = $state<LayoutCompositionSnapshot>(
-		deriveLayoutCompositionSnapshot(EMPTY_COMPOSITION),
-	);
-	let paneElementsLoaded = $state(false);
-
-	const compositionModel = $derived(compositionSnapshot.compositionModel);
-	const passages = $derived(compositionSnapshot.passages);
-	const items = $derived(compositionSnapshot.items);
-	const preloadedRenderables = $derived(compositionSnapshot.renderables);
-	const preloadedRenderablesSignature = $derived(
-		compositionSnapshot.renderablesSignature,
-	);
-	const runtimeState = $derived.by(() =>
-		resolveSectionPlayerRuntimeState({
-			assessmentId,
-			playerType,
-			player,
-			lazyInit,
-			tools,
-			accessibility,
-			coordinator,
-			createSectionController,
-			isolation,
-			env,
-			runtime,
-			enabledTools,
-			itemToolbarTools,
-			passageToolbarTools,
-		}),
-	);
-	const effectiveRuntime = $derived(runtimeState.effectiveRuntime);
-	const playerRuntime = $derived(runtimeState.playerRuntime);
-	const resolvedPlayerDefinition = $derived(playerRuntime.resolvedPlayerDefinition);
-	const resolvedPlayerTag = $derived(playerRuntime.resolvedPlayerTag);
-	const resolvedPlayerAttributes = $derived(playerRuntime.resolvedPlayerAttributes);
-	const resolvedPlayerProps = $derived(playerRuntime.resolvedPlayerProps);
-	const resolvedPlayerEnv = $derived(playerRuntime.resolvedPlayerEnv);
-	const playerStrategy = $derived(playerRuntime.strategy);
-	const verticalPlayerAction = createPlayerAction({
-		stateKey: "__verticalAppliedParams",
-		includeSessionRefInState: false,
-	});
-	const cardRenderContextValue = $derived.by(
-		(): SectionPlayerCardRenderContext => ({
-			resolvedPlayerTag,
-			playerAction: verticalPlayerAction,
-		}),
-	);
-	const normalizedShowToolbar = $derived(coerceBooleanLike(showToolbar, false));
-
-	function handleBaseCompositionChanged(event: Event) {
-		compositionSnapshot = getCompositionSnapshotFromEvent(event);
+	function forward(event: Event) {
+		const customEvent = event as CustomEvent;
+		dispatch(customEvent.type, customEvent.detail);
 	}
 
-	function handleItemsPaneElementsLoaded(event: Event) {
-		const detail = (event as CustomEvent<{ elementsLoaded?: unknown }>).detail;
-		paneElementsLoaded = detail?.elementsLoaded === true;
+	export function getSnapshot(): unknown {
+		return kernelRef?.getSnapshot?.() ?? null;
 	}
 
-	$effect(() => {
-		resolvedPlayerDefinition?.ensureDefined?.().catch((error) => {
-			console.error("[pie-section-player-vertical] Failed to load item player component:", error);
-		});
-	});
+	export function selectComposition(): unknown {
+		return kernelRef?.selectComposition?.() ?? null;
+	}
+
+	export function selectNavigation(): unknown {
+		return kernelRef?.selectNavigation?.() ?? null;
+	}
+
+	export function selectReadiness(): unknown {
+		return kernelRef?.selectReadiness?.() ?? null;
+	}
+
+	export function navigateTo(index: number): boolean {
+		return kernelRef?.navigateTo?.(index) === true;
+	}
+
+	export function navigateNext(): boolean {
+		return kernelRef?.navigateNext?.() === true;
+	}
+
+	export function navigatePrevious(): boolean {
+		return kernelRef?.navigatePrevious?.() === true;
+	}
+
+	export function preloadNow(): void {
+		kernelRef?.preloadNow?.();
+	}
 
 </script>
 
-<SectionPlayerLayoutScaffold
-	runtime={effectiveRuntime}
+<SectionPlayerLayoutKernel
+	bind:this={kernelRef}
+	{assessmentId}
+	{runtime}
 	{section}
-	sectionId={sectionId}
-	attemptId={attemptId}
-	onCompositionChanged={handleBaseCompositionChanged}
-	showToolbar={normalizedShowToolbar}
-	toolbarPosition={toolbarPosition}
-	enabledTools={enabledTools}
-	cardRenderContext={cardRenderContextValue}
+	{sectionId}
+	{attemptId}
+	{playerType}
+	{player}
+	{lazyInit}
+	{tools}
+	{accessibility}
+	{coordinator}
+	{createSectionController}
+	{isolation}
+	{env}
+	{iifeBundleHost}
+	{showToolbar}
+	{toolbarPosition}
+	{enabledTools}
+	{itemToolbarTools}
+	{passageToolbarTools}
+	playerActionConfig={{
+		stateKey: "__verticalAppliedParams",
+		includeSessionRefInState: false,
+	}}
+	on:readiness-change={forward}
+	on:interaction-ready={forward}
+	on:ready={forward}
+	on:runtime-error={forward}
+	on:runtime-owned={forward}
+	on:runtime-inherited={forward}
+	on:session-changed={forward}
+	on:composition-changed={forward}
+	on:navigation-change={forward}
+	let:layoutModel
 >
 	<div class="pie-section-player-vertical-content">
-		{#if passages.length > 0 && paneElementsLoaded}
+		{#if layoutModel.passages.length > 0 && layoutModel.paneElementsLoaded}
 			<section class="pie-section-player-passages-section" aria-label="Passages">
 				<pie-section-player-passages-pane
-					{passages}
-					elementsLoaded={paneElementsLoaded}
-					{resolvedPlayerEnv}
-					{resolvedPlayerAttributes}
-					{resolvedPlayerProps}
-					playerStrategy={playerStrategy}
+					passages={layoutModel.passages}
+					elementsLoaded={layoutModel.paneElementsLoaded}
+					resolvedPlayerEnv={layoutModel.resolvedPlayerEnv}
+					resolvedPlayerAttributes={layoutModel.resolvedPlayerAttributes}
+					resolvedPlayerProps={layoutModel.resolvedPlayerProps}
+					playerStrategy={layoutModel.playerStrategy}
 					passageToolbarTools={passageToolbarTools}
 				></pie-section-player-passages-pane>
 			</section>
@@ -178,22 +167,22 @@
 
 		<section class="pie-section-player-items-section" aria-label="Items">
 			<pie-section-player-items-pane
-				{items}
-				{compositionModel}
-				{resolvedPlayerEnv}
-				{resolvedPlayerAttributes}
-				{resolvedPlayerProps}
-				{playerStrategy}
+				items={layoutModel.items}
+				compositionModel={layoutModel.compositionModel}
+				resolvedPlayerEnv={layoutModel.resolvedPlayerEnv}
+				resolvedPlayerAttributes={layoutModel.resolvedPlayerAttributes}
+				resolvedPlayerProps={layoutModel.resolvedPlayerProps}
+				playerStrategy={layoutModel.playerStrategy}
 				itemToolbarTools={itemToolbarTools}
 				iifeBundleHost={iifeBundleHost}
-				preloadedRenderables={preloadedRenderables}
-				preloadedRenderablesSignature={preloadedRenderablesSignature}
+				preloadedRenderables={layoutModel.preloadedRenderables}
+				preloadedRenderablesSignature={layoutModel.preloadedRenderablesSignature}
 				preloadComponentTag="pie-section-player-vertical"
-				onelements-loaded-change={handleItemsPaneElementsLoaded}
+				onelements-loaded-change={layoutModel.onItemsPaneElementsLoaded}
 			></pie-section-player-items-pane>
 		</section>
 	</div>
-</SectionPlayerLayoutScaffold>
+</SectionPlayerLayoutKernel>
 
 <style>
 	:host {

@@ -1,0 +1,3 @@
+import "./PieSectionPlayerKernelHostElement.svelte";
+
+export {};

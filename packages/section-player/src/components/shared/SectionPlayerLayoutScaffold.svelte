@@ -19,6 +19,11 @@
 		enabledTools = "",
 		cardRenderContext = null as SectionPlayerCardRenderContext | null,
 		onCompositionChanged,
+		onSectionReady,
+		onRuntimeError,
+		onSessionChanged,
+		onRuntimeOwned,
+		onRuntimeInherited,
 	} = $props<{
 		runtime?: Record<string, unknown> | null;
 		section?: AssessmentSection | null;
@@ -29,8 +34,24 @@
 		enabledTools?: string;
 		cardRenderContext?: SectionPlayerCardRenderContext | null;
 		onCompositionChanged?: (event: Event) => void;
+		onSectionReady?: (event: Event) => void;
+		onRuntimeError?: (event: Event) => void;
+		onSessionChanged?: (event: Event) => void;
+		onRuntimeOwned?: (event: Event) => void;
+		onRuntimeInherited?: (event: Event) => void;
 	}>();
 	let cardContextAnchor = $state<HTMLDivElement | null>(null);
+	let baseElement = $state<{
+		navigateToItem?: (index: number) => unknown;
+		getCompositionModelSnapshot?: () => unknown;
+		getNavigationStateSnapshot?: () => {
+			currentIndex: number;
+			totalItems: number;
+			canNext: boolean;
+			canPrevious: boolean;
+			currentItemId?: string;
+		};
+	} | null>(null);
 	let cardContextProvider = $state<{
 		setValue: (value: SectionPlayerCardRenderContext) => void;
 		disconnect: () => void;
@@ -40,6 +61,57 @@
 
 	function handleCompositionChanged(event: Event) {
 		onCompositionChanged?.(event);
+	}
+
+	function handleSectionReady(event: Event) {
+		onSectionReady?.(event);
+	}
+
+	function handleRuntimeError(event: Event) {
+		onRuntimeError?.(event);
+	}
+
+	function handleSessionChanged(event: Event) {
+		onSessionChanged?.(event);
+	}
+
+	function handleRuntimeOwned(event: Event) {
+		onRuntimeOwned?.(event);
+	}
+
+	function handleRuntimeInherited(event: Event) {
+		onRuntimeInherited?.(event);
+	}
+
+	export function navigateToItem(index: number): boolean {
+		if (typeof index !== "number" || !Number.isFinite(index)) return false;
+		if (!baseElement?.navigateToItem) return false;
+		const before = getNavigationStateSnapshot();
+		const result = baseElement.navigateToItem(index);
+		const after = getNavigationStateSnapshot();
+		if (after.currentIndex !== before.currentIndex) return true;
+		return result !== null && result !== undefined && result !== false;
+	}
+
+	export function getCompositionModelSnapshot(): unknown {
+		return baseElement?.getCompositionModelSnapshot?.() ?? null;
+	}
+
+	export function getNavigationStateSnapshot(): {
+		currentIndex: number;
+		totalItems: number;
+		canNext: boolean;
+		canPrevious: boolean;
+		currentItemId?: string;
+	} {
+		return (
+			baseElement?.getNavigationStateSnapshot?.() || {
+				currentIndex: 0,
+				totalItems: 0,
+				canNext: false,
+				canPrevious: false,
+			}
+		);
 	}
 
 	$effect(() => {
@@ -62,11 +134,17 @@
 
 <div bind:this={cardContextAnchor} class="pie-section-player-layout-scaffold-anchor" aria-hidden="true"></div>
 <pie-section-player-base
+	bind:this={baseElement}
 	{runtime}
 	{section}
 	section-id={sectionId}
 	attempt-id={attemptId}
 	oncomposition-changed={handleCompositionChanged}
+	onsection-ready={handleSectionReady}
+	onruntime-error={handleRuntimeError}
+	onsession-changed={handleSessionChanged}
+	onruntime-owned={handleRuntimeOwned}
+	onruntime-inherited={handleRuntimeInherited}
 >
 	<pie-section-player-shell
 		show-toolbar={normalizedShowToolbar}

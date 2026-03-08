@@ -49,6 +49,30 @@
 			"types": "./dist/pie-section-player.d.ts",
 			"import": "./dist/pie-section-player.js"
 		},
+		"./components/section-player-kernel-host-element": {
+			"types": "./dist/pie-section-player.d.ts",
+			"import": "./dist/pie-section-player.js"
+		},
+		"./contracts/layout-contract": {
+			"types": "./dist/pie-section-player.d.ts",
+			"import": "./dist/pie-section-player.js"
+		},
+		"./contracts/public-events": {
+			"types": "./dist/pie-section-player.d.ts",
+			"import": "./dist/pie-section-player.js"
+		},
+		"./contracts/runtime-host-contract": {
+			"types": "./dist/pie-section-player.d.ts",
+			"import": "./dist/pie-section-player.js"
+		},
+		"./contracts/layout-parity-metadata": {
+			"types": "./dist/pie-section-player.d.ts",
+			"import": "./dist/pie-section-player.js"
+		},
+		"./policies": {
+			"types": "./dist/pie-section-player.d.ts",
+			"import": "./dist/pie-section-player.js"
+		},
 		"./utils/player-preload": {
 			"types": "./dist/utils/player-preload.d.ts",
 			"import": "./dist/utils/player-preload.js"

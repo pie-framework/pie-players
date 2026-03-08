@@ -191,6 +191,52 @@
 			effectiveCreateSectionController || (() => new SectionController());
 	});
 
+	type BaseNavigationState = {
+		currentIndex: number;
+		totalItems: number;
+		canNext: boolean;
+		canPrevious: boolean;
+		currentItemId?: string;
+	};
+
+	export function navigateToItem(index: number): unknown {
+		if (!toolkitElement?.navigateToItem) return null;
+		return toolkitElement.navigateToItem(index);
+	}
+
+	export function getCompositionModelSnapshot(): unknown {
+		if (!toolkitElement?.getCompositionModel) return null;
+		return toolkitElement.getCompositionModel();
+	}
+
+	export function getNavigationStateSnapshot(): BaseNavigationState {
+		const compositionModel = getCompositionModelSnapshot() as
+			| {
+					currentItemIndex?: number;
+					items?: Array<{ id?: string }>;
+					isPageMode?: boolean;
+			  }
+			| null;
+		const items = compositionModel?.items || [];
+		const isPageMode = compositionModel?.isPageMode === true;
+		const currentIndex = Math.max(
+			0,
+			Math.min(
+				typeof compositionModel?.currentItemIndex === "number"
+					? compositionModel.currentItemIndex
+					: 0,
+				Math.max(0, items.length - 1),
+			),
+		);
+		return {
+			currentIndex,
+			totalItems: items.length,
+			canNext: !isPageMode && currentIndex < items.length - 1,
+			canPrevious: !isPageMode && currentIndex > 0,
+			currentItemId: items[currentIndex]?.id || undefined,
+		};
+	}
+
 </script>
 
 <pie-assessment-toolkit

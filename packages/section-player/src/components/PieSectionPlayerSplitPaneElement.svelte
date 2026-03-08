@@ -116,10 +116,6 @@
 		return kernelRef?.navigatePrevious?.() === true;
 	}
 
-	export function preloadNow(): void {
-		kernelRef?.preloadNow?.();
-	}
-
 	export function getSectionController() {
 		return kernelRef?.getSectionController?.() || null;
 	}

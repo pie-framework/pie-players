@@ -47,7 +47,6 @@ export type SectionPlayerLayoutCommandName =
 	| "navigateTo"
 	| "navigateNext"
 	| "navigatePrevious"
-	| "preloadNow"
 	| "getSectionController"
 	| "waitForSectionController";
 

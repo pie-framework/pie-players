@@ -28,7 +28,6 @@ export interface SectionPlayerRuntimeHostContract {
 	navigateTo(index: number): boolean;
 	navigateNext(): boolean;
 	navigatePrevious(): boolean;
-	preloadNow(): void;
 	getSectionController(): SectionControllerHandle | null;
 	waitForSectionController(
 		timeoutMs?: number,

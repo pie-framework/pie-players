@@ -250,10 +250,6 @@
 		return navigateTo(navigation.currentIndex - 1);
 	}
 
-	export function preloadNow(): void {
-		// Items pane preload is signature-driven; this hook remains explicit.
-	}
-
 	export function getSectionController(): SectionControllerHandle | null {
 		const controller = scaffoldRef?.getSectionController?.() || null;
 		if (controller && !sectionControllerReadyDispatched) {

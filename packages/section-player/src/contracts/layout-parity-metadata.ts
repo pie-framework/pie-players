@@ -52,7 +52,6 @@ const SHARED_COMMANDS = [
 	"navigateTo",
 	"navigateNext",
 	"navigatePrevious",
-	"preloadNow",
 	"getSectionController",
 	"waitForSectionController",
 ] as const;

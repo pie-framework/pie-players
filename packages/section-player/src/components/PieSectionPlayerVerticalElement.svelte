@@ -72,6 +72,8 @@
 		navigateNext?: () => boolean;
 		navigatePrevious?: () => boolean;
 		preloadNow?: () => void;
+		getSectionController?: () => unknown | null;
+		waitForSectionController?: (timeoutMs?: number) => Promise<unknown | null>;
 	} | null>(null);
 
 	function forward(event: Event) {
@@ -111,6 +113,17 @@
 		kernelRef?.preloadNow?.();
 	}
 
+	export function getSectionController(): unknown | null {
+		return kernelRef?.getSectionController?.() || null;
+	}
+
+	export async function waitForSectionController(
+		timeoutMs = 5000,
+	): Promise<unknown | null> {
+		const controller = await kernelRef?.waitForSectionController?.(timeoutMs);
+		return controller || null;
+	}
+
 </script>
 
 <SectionPlayerLayoutKernel
@@ -145,6 +158,7 @@
 	on:runtime-error={forward}
 	on:runtime-owned={forward}
 	on:runtime-inherited={forward}
+	on:section-controller-ready={forward}
 	on:session-changed={forward}
 	on:composition-changed={forward}
 	on:navigation-change={forward}

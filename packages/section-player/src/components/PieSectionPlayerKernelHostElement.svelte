@@ -69,6 +69,8 @@
 		navigateNext?: () => boolean;
 		navigatePrevious?: () => boolean;
 		preloadNow?: () => void;
+		getSectionController?: () => unknown | null;
+		waitForSectionController?: (timeoutMs?: number) => Promise<unknown | null>;
 	} | null>(null);
 	let snapshot = $state<SectionPlayerSnapshot>({
 		readiness: {
@@ -120,6 +122,17 @@
 		kernelRef?.preloadNow?.();
 	}
 
+	export function getSectionController(): unknown | null {
+		return kernelRef?.getSectionController?.() || null;
+	}
+
+	export async function waitForSectionController(
+		timeoutMs = 5000,
+	): Promise<unknown | null> {
+		const controller = await kernelRef?.waitForSectionController?.(timeoutMs);
+		return controller || null;
+	}
+
 	function reemit(event: Event) {
 		const customEvent = event as CustomEvent;
 		dispatch(customEvent.type, customEvent.detail);
@@ -159,6 +172,7 @@
 	on:runtime-error={reemit}
 	on:runtime-owned={reemit}
 	on:runtime-inherited={reemit}
+	on:section-controller-ready={reemit}
 	on:session-changed={reemit}
 	on:composition-changed={(event: CustomEvent) => {
 		const detail = (event as CustomEvent).detail as {

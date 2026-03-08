@@ -41,6 +41,11 @@
 			itemIndex?: number;
 			totalItems?: number;
 		};
+		"section-controller-ready": {
+			sectionId: string;
+			attemptId?: string;
+			controller: unknown;
+		};
 	};
 
 	let {
@@ -79,6 +84,8 @@
 	let scaffoldRef = $state<{
 		navigateToItem?: (index: number) => boolean;
 		getCompositionModelSnapshot?: () => unknown;
+		getSectionController?: () => unknown | null;
+		waitForSectionController?: (timeoutMs?: number) => Promise<unknown | null>;
 		getNavigationStateSnapshot?: () => {
 			currentIndex: number;
 			totalItems: number;
@@ -91,6 +98,7 @@
 	let interactionReadyDispatched = $state(false);
 	let finalReadyDispatched = $state(false);
 	let runtimeErrorState = $state(false);
+	let sectionControllerReadyDispatched = $state(false);
 	let previousNavigationState = $state<{
 		currentIndex: number;
 		totalItems: number;
@@ -204,6 +212,22 @@
 		dispatch("runtime-inherited", (event as CustomEvent<Record<string, unknown>>).detail || {});
 	}
 
+	async function emitSectionControllerReadyIfNeeded() {
+		if (sectionControllerReadyDispatched) return;
+		const controller = await scaffoldRef?.waitForSectionController?.(2500);
+		if (!controller) return;
+		sectionControllerReadyDispatched = true;
+		dispatch("section-controller-ready", {
+			sectionId,
+			attemptId: attemptId || undefined,
+			controller,
+		});
+	}
+
+	function handleToolkitReady(_event: Event) {
+		void emitSectionControllerReadyIfNeeded();
+	}
+
 	function getNavigationState() {
 		return (
 			scaffoldRef?.getNavigationStateSnapshot?.() || {
@@ -262,6 +286,34 @@
 		// Items pane preload is signature-driven; this hook remains explicit.
 	}
 
+	export function getSectionController(): unknown | null {
+		const controller = scaffoldRef?.getSectionController?.() || null;
+		if (controller && !sectionControllerReadyDispatched) {
+			sectionControllerReadyDispatched = true;
+			dispatch("section-controller-ready", {
+				sectionId,
+				attemptId: attemptId || undefined,
+				controller,
+			});
+		}
+		return controller;
+	}
+
+	export async function waitForSectionController(
+		timeoutMs = 5000,
+	): Promise<unknown | null> {
+		const controller = await scaffoldRef?.waitForSectionController?.(timeoutMs);
+		if (controller && !sectionControllerReadyDispatched) {
+			sectionControllerReadyDispatched = true;
+			dispatch("section-controller-ready", {
+				sectionId,
+				attemptId: attemptId || undefined,
+				controller,
+			});
+		}
+		return controller || null;
+	}
+
 	$effect(() => {
 		resolvedPlayerDefinition?.ensureDefined?.().catch((error: unknown) => {
 			console.error("[section-player-layout-kernel] Failed to load item player component:", error);
@@ -293,6 +345,7 @@
 	onSessionChanged={handleSessionChanged}
 	onRuntimeOwned={handleRuntimeOwned}
 	onRuntimeInherited={handleRuntimeInherited}
+	onToolkitReady={handleToolkitReady}
 	showToolbar={normalizedShowToolbar}
 	toolbarPosition={toolbarPosition}
 	enabledTools={enabledTools}

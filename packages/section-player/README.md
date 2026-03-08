@@ -42,6 +42,20 @@ Both layout elements support:
 - `toolbar-position` (string): `top|right|bottom|left|none`
 - `show-toolbar` (boolean-like): accepts `true/false` and common string forms (`"true"`, `"false"`, `"1"`, `"0"`, `"yes"`, `"no"`)
 
+### API direction: CE defaults first, JS customization for advanced cases
+
+The intended usage model is:
+
+- **CE props for default/standard flows (roughly 90% use cases)**:
+  - `assessment-id`, `section`, `section-id`, `attempt-id`
+  - `show-toolbar`, `toolbar-position`, `enabled-tools`, `item-toolbar-tools`, `passage-toolbar-tools`
+- **JS API for advanced customization**:
+  - Get the controller handle via `getSectionController()` or `waitForSectionController()`
+  - Listen to `section-controller-ready`
+  - Apply custom policy/gating in host code (for example, domain-specific `canNext` based on controller events like `section-items-complete-changed`)
+
+Advanced CE props are still supported as escape hatches (`runtime`, `coordinator`, `createSectionController`, etc.), but hosts should prefer JS/controller composition for non-standard behavior.
+
 Runtime precedence is explicit:
 
 - `runtime` values are primary for runtime fields (`assessmentId`, `playerType`, `player`, `lazyInit`, `tools`, `accessibility`, `coordinator`, `createSectionController`, `isolation`, `env`).
@@ -106,6 +120,25 @@ Minimal pattern for package layout components:
     ></pie-section-player-item-card>
   </pie-section-player-shell>
 </pie-section-player-base>
+```
+
+### JS API example for advanced host policy
+
+```ts
+const host = document.querySelector("pie-section-player-splitpane") as any;
+const controller = await host.waitForSectionController?.(5000);
+let sectionComplete = false;
+
+const unsubscribe = controller?.subscribe?.((event: any) => {
+  if (event?.type === "section-items-complete-changed") {
+    sectionComplete = event.complete === true;
+  }
+});
+
+function canAdvance() {
+  const nav = host.selectNavigation?.();
+  return Boolean(nav?.canNext && sectionComplete);
+}
 ```
 
 ## Exports

@@ -32,4 +32,6 @@ export interface SectionPlayerRuntimeHostContract {
 	navigateNext(): boolean;
 	navigatePrevious(): boolean;
 	preloadNow(): void;
+	getSectionController(): unknown | null;
+	waitForSectionController(timeoutMs?: number): Promise<unknown | null>;
 }

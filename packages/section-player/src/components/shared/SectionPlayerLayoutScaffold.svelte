@@ -7,6 +7,7 @@
 		getHostElementFromAnchor,
 		type SectionPlayerCardRenderContext,
 	} from "./section-player-card-context.js";
+	import type { SectionControllerHandle } from "@pie-players/pie-assessment-toolkit";
 	import { coerceBooleanLike } from "./section-player-props.js";
 
 	let {
@@ -24,6 +25,7 @@
 		onSessionChanged,
 		onRuntimeOwned,
 		onRuntimeInherited,
+		onToolkitReady,
 	} = $props<{
 		runtime?: Record<string, unknown> | null;
 		section?: AssessmentSection | null;
@@ -39,11 +41,16 @@
 		onSessionChanged?: (event: Event) => void;
 		onRuntimeOwned?: (event: Event) => void;
 		onRuntimeInherited?: (event: Event) => void;
+		onToolkitReady?: (event: Event) => void;
 	}>();
 	let cardContextAnchor = $state<HTMLDivElement | null>(null);
 	let baseElement = $state<{
 		navigateToItem?: (index: number) => unknown;
 		getCompositionModelSnapshot?: () => unknown;
+		getSectionController?: () => SectionControllerHandle | null;
+		waitForSectionController?: (
+			timeoutMs?: number,
+		) => Promise<SectionControllerHandle | null>;
 		getNavigationStateSnapshot?: () => {
 			currentIndex: number;
 			totalItems: number;
@@ -83,6 +90,10 @@
 		onRuntimeInherited?.(event);
 	}
 
+	function handleToolkitReady(event: Event) {
+		onToolkitReady?.(event);
+	}
+
 	export function navigateToItem(index: number): boolean {
 		if (typeof index !== "number" || !Number.isFinite(index)) return false;
 		if (!baseElement?.navigateToItem) return false;
@@ -112,6 +123,17 @@
 				canPrevious: false,
 			}
 		);
+	}
+
+	export function getSectionController(): SectionControllerHandle | null {
+		return baseElement?.getSectionController?.() ?? null;
+	}
+
+	export async function waitForSectionController(
+		timeoutMs = 5000,
+	): Promise<SectionControllerHandle | null> {
+		if (!baseElement?.waitForSectionController) return null;
+		return baseElement.waitForSectionController(timeoutMs);
 	}
 
 	$effect(() => {
@@ -145,6 +167,7 @@
 	onsession-changed={handleSessionChanged}
 	onruntime-owned={handleRuntimeOwned}
 	onruntime-inherited={handleRuntimeInherited}
+	ontoolkit-ready={handleToolkitReady}
 >
 	<pie-section-player-shell
 		show-toolbar={normalizedShowToolbar}

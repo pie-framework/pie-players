@@ -11,6 +11,8 @@ export type {
 	SectionPlayerLayoutContract,
 	SectionPlayerLayoutName,
 	SectionPlayerLayoutCapability,
+	SectionPlayerBasicPropName,
+	SectionPlayerAdvancedPropName,
 	SectionPlayerLayoutPropName,
 	SectionPlayerLayoutCommandName,
 } from "./contracts/layout-contract.js";

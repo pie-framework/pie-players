@@ -30,6 +30,7 @@
 		normalizeToolsConfig,
 		resolveToolsForLevel,
 	} from "@pie-players/pie-assessment-toolkit";
+	import type { SectionControllerHandle } from "@pie-players/pie-assessment-toolkit";
 	import { createEventDispatcher } from "svelte";
 	import { SectionController } from "../controllers/SectionController.js";
 	import type { SectionCompositionModel } from "../controllers/types.js";
@@ -87,6 +88,9 @@
 	);
 	const effectiveIsolation = $derived.by(() => runtime?.isolation ?? isolation);
 	const effectiveEnv = $derived.by(() => runtime?.env ?? env ?? DEFAULT_ENV);
+	const effectiveSectionId = $derived.by(
+		() => sectionId || (resolvedSection as any)?.identifier || "",
+	);
 	let resolvedSection = $derived.by(() => {
 		if (!section) return null;
 		const sectionAny = section as any;
@@ -235,6 +239,43 @@
 			canPrevious: !isPageMode && currentIndex > 0,
 			currentItemId: items[currentIndex]?.id || undefined,
 		};
+	}
+
+	function resolveSectionController(): SectionControllerHandle | null {
+		const targetSectionId = effectiveSectionId;
+		if (!targetSectionId) return null;
+		const resolvedAttemptId = attemptId || undefined;
+		const coordinator =
+			activeToolkitCoordinator ||
+			(effectiveCoordinator as {
+				getSectionController?: (args: {
+					sectionId: string;
+					attemptId?: string;
+				}) => SectionControllerHandle | undefined;
+			} | null);
+		if (!coordinator?.getSectionController) return null;
+		return (
+			coordinator.getSectionController({
+				sectionId: targetSectionId,
+				attemptId: resolvedAttemptId,
+			}) || null
+		);
+	}
+
+	export function getSectionController(): SectionControllerHandle | null {
+		return resolveSectionController();
+	}
+
+	export async function waitForSectionController(
+		timeoutMs = 5000,
+	): Promise<SectionControllerHandle | null> {
+		const start = Date.now();
+		while (Date.now() - start < timeoutMs) {
+			const controller = resolveSectionController();
+			if (controller) return controller;
+			await new Promise((resolve) => setTimeout(resolve, 25));
+		}
+		return null;
 	}
 
 </script>

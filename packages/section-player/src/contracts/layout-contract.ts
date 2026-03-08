@@ -11,12 +11,19 @@ export type SectionPlayerLayoutCapability =
 	| "readiness-events"
 	| "navigation-events";
 
-export type SectionPlayerLayoutPropName =
+export type SectionPlayerBasicPropName =
 	| "assessmentId"
-	| "runtime"
 	| "section"
 	| "sectionId"
 	| "attemptId"
+	| "showToolbar"
+	| "toolbarPosition"
+	| "enabledTools"
+	| "itemToolbarTools"
+	| "passageToolbarTools";
+
+export type SectionPlayerAdvancedPropName =
+	| "runtime"
 	| "playerType"
 	| "player"
 	| "lazyInit"
@@ -26,12 +33,11 @@ export type SectionPlayerLayoutPropName =
 	| "createSectionController"
 	| "isolation"
 	| "env"
-	| "iifeBundleHost"
-	| "showToolbar"
-	| "toolbarPosition"
-	| "enabledTools"
-	| "itemToolbarTools"
-	| "passageToolbarTools";
+	| "iifeBundleHost";
+
+export type SectionPlayerLayoutPropName =
+	| SectionPlayerBasicPropName
+	| SectionPlayerAdvancedPropName;
 
 export type SectionPlayerLayoutCommandName =
 	| "getSnapshot"
@@ -41,12 +47,16 @@ export type SectionPlayerLayoutCommandName =
 	| "navigateTo"
 	| "navigateNext"
 	| "navigatePrevious"
-	| "preloadNow";
+	| "preloadNow"
+	| "getSectionController"
+	| "waitForSectionController";
 
 export type SectionPlayerLayoutContract = {
 	version: 1;
 	layout: SectionPlayerLayoutName;
 	props: readonly SectionPlayerLayoutPropName[];
+	recommendedBasicProps: readonly SectionPlayerBasicPropName[];
+	advancedEscapeHatchProps: readonly SectionPlayerAdvancedPropName[];
 	events: readonly SectionPlayerPublicEventName[];
 	commands: readonly SectionPlayerLayoutCommandName[];
 	capabilities: readonly SectionPlayerLayoutCapability[];

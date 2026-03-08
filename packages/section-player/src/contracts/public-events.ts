@@ -5,6 +5,7 @@ export const SECTION_PLAYER_PUBLIC_EVENTS = {
 	compositionChanged: "composition-changed",
 	sessionChanged: "session-changed",
 	navigationChange: "navigation-change",
+	sectionControllerReady: "section-controller-ready",
 	readinessChange: "readiness-change",
 	interactionReady: "interaction-ready",
 	ready: "ready",
@@ -32,4 +33,10 @@ export type SectionPlayerNavigationChangeDetail = {
 	currentItemId?: string;
 	itemIndex?: number;
 	totalItems?: number;
+};
+
+export type SectionPlayerControllerReadyDetail = {
+	sectionId: string;
+	attemptId?: string;
+	controller: unknown;
 };

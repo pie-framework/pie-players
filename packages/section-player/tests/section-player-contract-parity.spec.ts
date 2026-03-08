@@ -11,6 +11,12 @@ import { assertPublicEventName } from "../src/policies/guards.js";
 test.describe("section player contract parity", () => {
 	test("splitpane and vertical expose the same semantic contract surface", async () => {
 		expect(SPLITPANE_LAYOUT_CONTRACT.props).toEqual(VERTICAL_LAYOUT_CONTRACT.props);
+		expect(SPLITPANE_LAYOUT_CONTRACT.recommendedBasicProps).toEqual(
+			VERTICAL_LAYOUT_CONTRACT.recommendedBasicProps,
+		);
+		expect(SPLITPANE_LAYOUT_CONTRACT.advancedEscapeHatchProps).toEqual(
+			VERTICAL_LAYOUT_CONTRACT.advancedEscapeHatchProps,
+		);
 		expect(SPLITPANE_LAYOUT_CONTRACT.events).toEqual(
 			VERTICAL_LAYOUT_CONTRACT.events,
 		);
@@ -20,6 +26,15 @@ test.describe("section player contract parity", () => {
 		expect(SPLITPANE_LAYOUT_CONTRACT.capabilities).toEqual(
 			VERTICAL_LAYOUT_CONTRACT.capabilities,
 		);
+	});
+
+	test("basic and advanced prop groups are disjoint and cover full prop surface", async () => {
+		const basic = SPLITPANE_LAYOUT_CONTRACT.recommendedBasicProps;
+		const advanced = SPLITPANE_LAYOUT_CONTRACT.advancedEscapeHatchProps;
+		const all = SPLITPANE_LAYOUT_CONTRACT.props;
+		const overlap = basic.filter((prop) => advanced.includes(prop as never));
+		expect(overlap).toEqual([]);
+		expect(new Set([...basic, ...advanced])).toEqual(new Set(all));
 	});
 
 	test("all public event names are accepted by policy guards", async () => {

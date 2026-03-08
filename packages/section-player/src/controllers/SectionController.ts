@@ -24,6 +24,7 @@ import type {
 	SectionControllerChangeEvent,
 	SectionControllerChangeListener,
 	SectionCompositionModel,
+	SectionNavigationChangeEvent,
 	SectionAttemptSessionSlice,
 	SectionControllerInput,
 	SectionNavigationState,
@@ -78,6 +79,7 @@ export class SectionController implements SectionControllerHandle {
 	private sectionLoadingSnapshot: SectionLoadingCompleteEvent | null = null;
 	private sectionItemsCompleteSnapshot: SectionItemsCompleteChangedEvent | null =
 		null;
+	private sectionNavigationSnapshot: SectionNavigationChangeEvent | null = null;
 	private lastItemSelectionSnapshot: ItemSelectedEvent | null = null;
 	private lastSectionErrorSnapshot: SectionErrorEvent | null = null;
 
@@ -109,6 +111,8 @@ export class SectionController implements SectionControllerHandle {
 	public async initialize(input?: unknown): Promise<void> {
 		const typedInput = input as SectionControllerInput | undefined;
 		if (!typedInput) return;
+		const previousSectionId =
+			this.state.input?.section?.identifier || this.state.input?.sectionId || undefined;
 
 		const content = this.contentService.build(
 			typedInput.section,
@@ -135,6 +139,18 @@ export class SectionController implements SectionControllerHandle {
 		};
 		this.resetLifecycleTracking();
 		this.bootstrapCompletionFromSessions();
+		const currentSectionId =
+			typedInput.section?.identifier || typedInput.sectionId || undefined;
+		if (previousSectionId !== currentSectionId) {
+			const sectionNavigationEvent: SectionNavigationChangeEvent = {
+				type: "section-navigation-change",
+				previousSectionId,
+				currentSectionId,
+				reason: "input-change",
+				timestamp: Date.now(),
+			};
+			this.emitChange(sectionNavigationEvent);
+		}
 	}
 
 	public async updateInput(input?: unknown): Promise<void> {
@@ -637,6 +653,7 @@ export class SectionController implements SectionControllerHandle {
 		this.sectionLoadingComplete = false;
 		this.sectionLoadingSnapshot = null;
 		this.sectionItemsCompleteSnapshot = null;
+		this.sectionNavigationSnapshot = null;
 		this.lastItemSelectionSnapshot = null;
 		this.lastSectionErrorSnapshot = null;
 	}
@@ -756,6 +773,9 @@ export class SectionController implements SectionControllerHandle {
 		if (event.type === "section-items-complete-changed") {
 			this.sectionItemsCompleteSnapshot = event;
 		}
+		if (event.type === "section-navigation-change") {
+			this.sectionNavigationSnapshot = event;
+		}
 		if (event.type === "item-selected") {
 			this.lastItemSelectionSnapshot = event;
 		}
@@ -826,6 +846,13 @@ export class SectionController implements SectionControllerHandle {
 		if (this.sectionItemsCompleteSnapshot) {
 			replayEvents.push({
 				...this.sectionItemsCompleteSnapshot,
+				timestamp: replayedAt,
+				replayed: true,
+			});
+		}
+		if (this.sectionNavigationSnapshot) {
+			replayEvents.push({
+				...this.sectionNavigationSnapshot,
 				timestamp: replayedAt,
 				replayed: true,
 			});

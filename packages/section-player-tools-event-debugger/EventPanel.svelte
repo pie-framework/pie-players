@@ -37,6 +37,7 @@
 		| "item-session-data-changed"
 		| "item-session-meta-changed"
 		| "item-selected"
+		| "section-navigation-change"
 		| "content-loaded"
 		| "item-player-error"
 		| "item-complete-changed"
@@ -137,6 +138,7 @@
 			value === "item-session-data-changed" ||
 			value === "item-session-meta-changed" ||
 			value === "item-selected" ||
+			value === "section-navigation-change" ||
 			value === "content-loaded" ||
 			value === "item-player-error" ||
 			value === "item-complete-changed" ||
@@ -151,6 +153,7 @@
 
 	function getEventLevel(type: EventType): EventLevel {
 		if (
+			type === "section-navigation-change" ||
 			type === "section-loading-complete" ||
 			type === "section-items-complete-changed" ||
 			type === "section-error"
@@ -250,7 +253,12 @@
 			width: panelWidth,
 			height: panelHeight,
 		}),
-		setState: (next) => {
+		setState: (next: {
+			x: number;
+			y: number;
+			width: number;
+			height: number;
+		}) => {
 			panelX = next.x;
 			panelY = next.y;
 			panelWidth = next.width;
@@ -680,10 +688,6 @@
 		padding: 12px;
 		font-size: 0.8rem;
 		opacity: 0.8;
-	}
-
-	.pie-section-player-tools-event-debugger__resize-handle {
-		user-select: none;
 	}
 
 </style>

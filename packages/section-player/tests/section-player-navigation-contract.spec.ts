@@ -12,11 +12,33 @@ async function validateNavigationContract(args: {
 	await page.goto(path, { waitUntil: "networkidle" });
 	await expect(page.locator(selector)).toBeVisible();
 
-	const result = await page.evaluate((hostSelector) => {
+	const result = await page.evaluate(async (hostSelector) => {
 		const host = document.querySelector(hostSelector) as
 			| (HTMLElement & {
 					navigateNext?: () => boolean;
 					navigatePrevious?: () => boolean;
+					getSectionController?: () => {
+						subscribe?: (
+							listener: (event: {
+								type?: string;
+								itemIndex?: number;
+								currentItemId?: string;
+								totalItems?: number;
+							}) => void,
+						) => () => void;
+					} | null;
+					waitForSectionController?: (
+						timeoutMs?: number,
+					) => Promise<{
+						subscribe?: (
+							listener: (event: {
+								type?: string;
+								itemIndex?: number;
+								currentItemId?: string;
+								totalItems?: number;
+							}) => void,
+						) => () => void;
+					} | null>;
 					selectNavigation?: () => {
 						currentIndex: number;
 						totalItems: number;
@@ -30,26 +52,31 @@ async function validateNavigationContract(args: {
 			return { ok: false, reason: "missing-host" };
 		}
 
-		const events: Array<{
-			previousItemId?: string;
+		const itemSelectedEvents: Array<{
 			currentItemId?: string;
 			itemIndex?: number;
 			totalItems?: number;
 		}> = [];
-
-		const onNavigationChange = (event: Event) => {
-			events.push((event as CustomEvent).detail || {});
-		};
-		host.addEventListener("navigation-change", onNavigationChange);
+		const controller =
+			host.getSectionController?.() ||
+			(await host.waitForSectionController?.(5000)) ||
+			null;
+		const unsubscribe = controller?.subscribe?.((event) => {
+			if (event?.type !== "item-selected") return;
+			itemSelectedEvents.push({
+				currentItemId: event.currentItemId,
+				itemIndex: event.itemIndex,
+				totalItems: event.totalItems,
+			});
+		});
 
 		const before = host.selectNavigation?.();
 		const nextResult = host.navigateNext?.() === true;
 		const afterNext = host.selectNavigation?.();
 		const prevResult = host.navigatePrevious?.() === true;
 		const afterPrev = host.selectNavigation?.();
-
-		host.removeEventListener("navigation-change", onNavigationChange);
-
+		await new Promise<void>((resolve) => setTimeout(resolve, 50));
+		unsubscribe?.();
 		return {
 			ok: true,
 			before,
@@ -57,7 +84,7 @@ async function validateNavigationContract(args: {
 			afterNext,
 			prevResult,
 			afterPrev,
-			events,
+			itemSelectedEvents,
 		};
 	}, selector);
 
@@ -72,8 +99,10 @@ async function validateNavigationContract(args: {
 		expect(result.afterNext?.currentIndex).toBeGreaterThan(
 			result.before?.currentIndex ?? 0,
 		);
-		expect(result.events.length).toBeGreaterThanOrEqual(1);
-		expect(result.events[0]?.itemIndex).toBe(result.afterNext?.currentIndex);
+		expect(result.itemSelectedEvents.length).toBeGreaterThanOrEqual(1);
+		expect(result.itemSelectedEvents[0]?.itemIndex).toBe(
+			result.afterNext?.currentIndex,
+		);
 	} else {
 		expect(result.nextResult).toBe(false);
 		expect(result.afterNext?.currentIndex).toBe(result.before?.currentIndex);
@@ -89,7 +118,7 @@ async function validateNavigationContract(args: {
 }
 
 test.describe("section player navigation contract", () => {
-	test("splitpane exposes working navigation commands and emits navigation-change", async ({
+	test("splitpane exposes working navigation commands and emits controller item-selected", async ({
 		page,
 	}) => {
 		await validateNavigationContract({
@@ -99,7 +128,7 @@ test.describe("section player navigation contract", () => {
 		});
 	});
 
-	test("vertical exposes working navigation commands and emits navigation-change", async ({
+	test("vertical exposes working navigation commands and emits controller item-selected", async ({
 		page,
 	}) => {
 		await validateNavigationContract({

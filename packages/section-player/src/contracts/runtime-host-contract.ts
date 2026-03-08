@@ -1,6 +1,15 @@
 import type {
 	SectionPlayerReadinessChangeDetail,
 } from "./public-events.js";
+import type { SectionControllerHandle } from "@pie-players/pie-assessment-toolkit";
+
+export type SectionPlayerNavigationSnapshot = {
+	currentIndex: number;
+	totalItems: number;
+	canNext: boolean;
+	canPrevious: boolean;
+	currentItemId?: string;
+};
 
 export type SectionPlayerSnapshot = {
 	readiness: SectionPlayerReadinessChangeDetail;
@@ -8,30 +17,20 @@ export type SectionPlayerSnapshot = {
 		itemsCount: number;
 		passagesCount: number;
 	};
-	navigation: {
-		currentIndex: number;
-		totalItems: number;
-		canNext: boolean;
-		canPrevious: boolean;
-		currentItemId?: string;
-	};
+	navigation: SectionPlayerNavigationSnapshot;
 };
 
 export interface SectionPlayerRuntimeHostContract {
 	getSnapshot(): SectionPlayerSnapshot;
 	selectComposition(): SectionPlayerSnapshot["composition"];
-	selectNavigation(): {
-		currentIndex: number;
-		totalItems: number;
-		canNext: boolean;
-		canPrevious: boolean;
-		currentItemId?: string;
-	};
+	selectNavigation(): SectionPlayerNavigationSnapshot;
 	selectReadiness(): SectionPlayerReadinessChangeDetail;
 	navigateTo(index: number): boolean;
 	navigateNext(): boolean;
 	navigatePrevious(): boolean;
 	preloadNow(): void;
-	getSectionController(): unknown | null;
-	waitForSectionController(timeoutMs?: number): Promise<unknown | null>;
+	getSectionController(): SectionControllerHandle | null;
+	waitForSectionController(
+		timeoutMs?: number,
+	): Promise<SectionControllerHandle | null>;
 }

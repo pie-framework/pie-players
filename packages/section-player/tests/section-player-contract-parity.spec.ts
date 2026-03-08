@@ -43,4 +43,13 @@ test.describe("section player contract parity", () => {
 		}
 		expect(() => assertPublicEventName("not-a-public-event")).toThrow();
 	});
+
+	test("runtime command surface keeps controller bridge and avoids duplicate gating commands", async () => {
+		const commands = SPLITPANE_LAYOUT_CONTRACT.commands;
+		expect(commands).toContain("getSectionController");
+		expect(commands).toContain("waitForSectionController");
+		expect(commands).not.toContain("canNavigateForward" as never);
+		expect(commands).not.toContain("canNavigateBackward" as never);
+		expect(commands).not.toContain("setNavigationPolicy" as never);
+	});
 });

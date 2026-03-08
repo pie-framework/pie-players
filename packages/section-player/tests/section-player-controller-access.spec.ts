@@ -17,6 +17,12 @@ async function validateControllerAccess(args: {
 			| (HTMLElement & {
 					getSectionController?: () => unknown | null;
 					waitForSectionController?: (timeoutMs?: number) => Promise<unknown | null>;
+					selectNavigation?: () => { canNext?: boolean; canPrevious?: boolean };
+					navigateNext?: () => boolean;
+					navigatePrevious?: () => boolean;
+					canNavigateForward?: () => boolean;
+					canNavigateBackward?: () => boolean;
+					setNavigationPolicy?: (...args: unknown[]) => unknown;
 			  })
 			| null;
 		if (!host) return { ok: false, reason: "missing-host" };
@@ -44,6 +50,12 @@ async function validateControllerAccess(args: {
 		const hasSubscribe =
 			typeof (awaited as { subscribe?: unknown } | null)?.subscribe ===
 			"function";
+		let sectionComplete = false;
+		const navBefore = host.selectNavigation?.();
+		const canAdvanceBefore = Boolean(navBefore?.canNext && sectionComplete);
+		sectionComplete = true;
+		const navAfter = host.selectNavigation?.();
+		const canAdvanceAfter = Boolean(navAfter?.canNext && sectionComplete);
 
 		return {
 			ok: true,
@@ -52,6 +64,11 @@ async function validateControllerAccess(args: {
 			hasAfterWait: Boolean(afterWait),
 			hasCanonicalSectionViewModel,
 			hasSubscribe,
+			canAdvanceBefore,
+			canAdvanceAfter,
+			hasCanNavigateForwardApi: typeof host.canNavigateForward === "function",
+			hasCanNavigateBackwardApi: typeof host.canNavigateBackward === "function",
+			hasSetNavigationPolicyApi: typeof host.setNavigationPolicy === "function",
 			readyEventCount,
 			readyEventControllerSeen,
 		};
@@ -63,6 +80,11 @@ async function validateControllerAccess(args: {
 	expect(result.hasAfterWait).toBe(true);
 	expect(result.hasCanonicalSectionViewModel).toBe(true);
 	expect(result.hasSubscribe).toBe(true);
+	expect(result.canAdvanceBefore).toBe(false);
+	expect(typeof result.canAdvanceAfter).toBe("boolean");
+	expect(result.hasCanNavigateForwardApi).toBe(false);
+	expect(result.hasCanNavigateBackwardApi).toBe(false);
+	expect(result.hasSetNavigationPolicyApi).toBe(false);
 	if (result.readyEventCount > 0) {
 		expect(result.readyEventControllerSeen).toBe(true);
 	}

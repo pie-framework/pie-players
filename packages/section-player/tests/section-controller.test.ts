@@ -71,4 +71,61 @@ describe("SectionController canonical view models", () => {
 			data: [{ value: "x" }],
 		});
 	});
+
+	test("broadcasts section-navigation-change from controller stream on input transitions", async () => {
+		const controller = new SectionController();
+		const events: Array<{
+			previousSectionId?: string;
+			currentSectionId?: string;
+			reason?: string;
+		}> = [];
+		const unsubscribe = controller.subscribe((event) => {
+			if (event.type !== "section-navigation-change") return;
+			events.push({
+				previousSectionId: event.previousSectionId,
+				currentSectionId: event.currentSectionId,
+				reason: event.reason,
+			});
+		});
+		const sectionOne = {
+			identifier: "section-1",
+			assessmentItemRefs: [{ identifier: "canonical-item-1", item: makeItem("runtime-item-1") }],
+			rubricBlocks: [],
+		} as unknown as AssessmentSection;
+		const sectionTwo = {
+			identifier: "section-2",
+			assessmentItemRefs: [{ identifier: "canonical-item-2", item: makeItem("runtime-item-2") }],
+			rubricBlocks: [],
+		} as unknown as AssessmentSection;
+
+		await controller.initialize({
+			section: sectionOne,
+			sectionId: "section-1",
+			assessmentId: "assessment-1",
+			view: "candidate",
+		});
+		await controller.updateInput({
+			section: sectionTwo,
+			sectionId: "section-2",
+			assessmentId: "assessment-1",
+			view: "candidate",
+		});
+		unsubscribe();
+
+		expect(events.length).toBeGreaterThanOrEqual(2);
+		expect(events[0]).toEqual(
+			expect.objectContaining({
+				previousSectionId: undefined,
+				currentSectionId: "section-1",
+				reason: "input-change",
+			}),
+		);
+		expect(events.at(-1)).toEqual(
+			expect.objectContaining({
+				previousSectionId: "section-1",
+				currentSectionId: "section-2",
+				reason: "input-change",
+			}),
+		);
+	});
 });

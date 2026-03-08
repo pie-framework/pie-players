@@ -145,18 +145,23 @@ interface SectionControllerEventBase {
 		| "item-session-data-changed"
 		| "item-session-meta-changed"
 		| "item-selected"
+		| "section-navigation-change"
 		| "content-loaded"
 		| "item-player-error"
 		| "item-complete-changed"
 		| "section-loading-complete"
 		| "section-items-complete-changed"
 		| "section-error";
-	currentItemIndex: number;
 	timestamp: number;
 	replayed?: boolean;
 }
 
-export interface ItemSessionDataChangedEvent extends SectionControllerEventBase {
+interface ItemScopedControllerEventBase extends SectionControllerEventBase {
+	currentItemIndex: number;
+}
+
+export interface ItemSessionDataChangedEvent
+	extends ItemScopedControllerEventBase {
 	type: "item-session-data-changed";
 	itemId: string;
 	canonicalItemId: string;
@@ -166,7 +171,8 @@ export interface ItemSessionDataChangedEvent extends SectionControllerEventBase 
 	component?: string;
 }
 
-export interface ItemSessionMetaChangedEvent extends SectionControllerEventBase {
+export interface ItemSessionMetaChangedEvent
+	extends ItemScopedControllerEventBase {
 	type: "item-session-meta-changed";
 	itemId: string;
 	canonicalItemId: string;
@@ -174,7 +180,7 @@ export interface ItemSessionMetaChangedEvent extends SectionControllerEventBase 
 	component?: string;
 }
 
-export interface ItemSelectedEvent extends SectionControllerEventBase {
+export interface ItemSelectedEvent extends ItemScopedControllerEventBase {
 	type: "item-selected";
 	previousItemId: string;
 	currentItemId: string;
@@ -182,7 +188,15 @@ export interface ItemSelectedEvent extends SectionControllerEventBase {
 	totalItems: number;
 }
 
-export interface ContentLoadedEvent extends SectionControllerEventBase {
+export interface SectionNavigationChangeEvent extends SectionControllerEventBase {
+	type: "section-navigation-change";
+	previousSectionId?: string;
+	currentSectionId?: string;
+	attemptId?: string;
+	reason?: "input-change" | "runtime-transition";
+}
+
+export interface ContentLoadedEvent extends ItemScopedControllerEventBase {
 	type: "content-loaded";
 	contentKind: SectionContentKind;
 	itemId: string;
@@ -190,7 +204,7 @@ export interface ContentLoadedEvent extends SectionControllerEventBase {
 	detail?: unknown;
 }
 
-export interface ItemPlayerErrorEvent extends SectionControllerEventBase {
+export interface ItemPlayerErrorEvent extends ItemScopedControllerEventBase {
 	type: "item-player-error";
 	contentKind: SectionContentKind;
 	itemId: string;
@@ -198,7 +212,7 @@ export interface ItemPlayerErrorEvent extends SectionControllerEventBase {
 	error: unknown;
 }
 
-export interface ItemCompleteChangedEvent extends SectionControllerEventBase {
+export interface ItemCompleteChangedEvent extends ItemScopedControllerEventBase {
 	type: "item-complete-changed";
 	itemId: string;
 	canonicalItemId: string;
@@ -206,21 +220,21 @@ export interface ItemCompleteChangedEvent extends SectionControllerEventBase {
 	previousComplete: boolean;
 }
 
-export interface SectionLoadingCompleteEvent extends SectionControllerEventBase {
+export interface SectionLoadingCompleteEvent extends ItemScopedControllerEventBase {
 	type: "section-loading-complete";
 	totalRegistered: number;
 	totalLoaded: number;
 }
 
 export interface SectionItemsCompleteChangedEvent
-	extends SectionControllerEventBase {
+	extends ItemScopedControllerEventBase {
 	type: "section-items-complete-changed";
 	complete: boolean;
 	completedCount: number;
 	totalItems: number;
 }
 
-export interface SectionErrorEvent extends SectionControllerEventBase {
+export interface SectionErrorEvent extends ItemScopedControllerEventBase {
 	type: "section-error";
 	source: "item-player" | "section-runtime" | "toolkit" | "controller";
 	error: unknown;
@@ -233,6 +247,7 @@ export type SectionControllerChangeEvent =
 	| ItemSessionDataChangedEvent
 	| ItemSessionMetaChangedEvent
 	| ItemSelectedEvent
+	| SectionNavigationChangeEvent
 	| ContentLoadedEvent
 	| ItemPlayerErrorEvent
 	| ItemCompleteChangedEvent

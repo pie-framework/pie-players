@@ -42,6 +42,10 @@
 	import {
 		type RuntimeConfig,
 	} from "./shared/section-player-runtime.js";
+	import type {
+		SectionPlayerRuntimeHostContract,
+		SectionPlayerSnapshot,
+	} from "../contracts/runtime-host-contract.js";
 
 	let {
 		assessmentId,
@@ -68,18 +72,7 @@
 
 	let leftPanelWidth = $state(50);
 	let splitContainerElement = $state<HTMLDivElement | null>(null);
-	let kernelRef = $state<{
-		getSnapshot?: () => unknown;
-		selectComposition?: () => unknown;
-		selectNavigation?: () => unknown;
-		selectReadiness?: () => unknown;
-		navigateTo?: (index: number) => boolean;
-		navigateNext?: () => boolean;
-		navigatePrevious?: () => boolean;
-		preloadNow?: () => void;
-		getSectionController?: () => unknown | null;
-		waitForSectionController?: (timeoutMs?: number) => Promise<unknown | null>;
-	} | null>(null);
+	let kernelRef = $state<SectionPlayerRuntimeHostContract | null>(null);
 	const dispatch = createEventDispatcher();
 
 	function forward(event: Event) {
@@ -95,19 +88,19 @@
 		leftPanelWidth = Math.max(20, Math.min(80, next));
 	}
 
-	export function getSnapshot(): unknown {
+	export function getSnapshot(): SectionPlayerSnapshot | null {
 		return kernelRef?.getSnapshot?.() ?? null;
 	}
 
-	export function selectComposition(): unknown {
+	export function selectComposition(): SectionPlayerSnapshot["composition"] | null {
 		return kernelRef?.selectComposition?.() ?? null;
 	}
 
-	export function selectNavigation(): unknown {
+	export function selectNavigation(): SectionPlayerSnapshot["navigation"] | null {
 		return kernelRef?.selectNavigation?.() ?? null;
 	}
 
-	export function selectReadiness(): unknown {
+	export function selectReadiness(): SectionPlayerSnapshot["readiness"] | null {
 		return kernelRef?.selectReadiness?.() ?? null;
 	}
 
@@ -127,13 +120,13 @@
 		kernelRef?.preloadNow?.();
 	}
 
-	export function getSectionController(): unknown | null {
+	export function getSectionController() {
 		return kernelRef?.getSectionController?.() || null;
 	}
 
 	export async function waitForSectionController(
 		timeoutMs = 5000,
-	): Promise<unknown | null> {
+	) {
 		const controller = await kernelRef?.waitForSectionController?.(timeoutMs);
 		return controller || null;
 	}
@@ -180,7 +173,6 @@
 	on:section-controller-ready={forward}
 	on:session-changed={forward}
 	on:composition-changed={forward}
-	on:navigation-change={forward}
 	let:layoutModel
 >
 	<div

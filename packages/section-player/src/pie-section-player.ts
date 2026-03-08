@@ -20,10 +20,12 @@ export type {
 	SectionPlayerPublicEventName,
 	SectionPlayerReadinessPhase,
 	SectionPlayerReadinessChangeDetail,
-	SectionPlayerNavigationChangeDetail,
+	SectionPlayerControllerReadyDetail,
 } from "./contracts/public-events.js";
+export { SECTION_PLAYER_PUBLIC_EVENTS } from "./contracts/public-events.js";
 export type {
 	SectionPlayerRuntimeHostContract,
+	SectionPlayerNavigationSnapshot,
 	SectionPlayerSnapshot,
 } from "./contracts/runtime-host-contract.js";
 export {

@@ -33,7 +33,10 @@
 	import "./section-player-items-pane-element.js";
 	import "./section-player-passages-pane-element.js";
 	import SectionPlayerLayoutKernel from "./shared/SectionPlayerLayoutKernel.svelte";
-	import type { SectionPlayerSnapshot } from "../contracts/runtime-host-contract.js";
+	import type {
+		SectionPlayerRuntimeHostContract,
+		SectionPlayerSnapshot,
+	} from "../contracts/runtime-host-contract.js";
 
 	let {
 		assessmentId,
@@ -60,18 +63,7 @@
 	} = $props();
 
 	const dispatch = createEventDispatcher();
-	let kernelRef = $state<{
-		getSnapshot?: () => SectionPlayerSnapshot;
-		selectComposition?: () => SectionPlayerSnapshot["composition"];
-		selectNavigation?: () => SectionPlayerSnapshot["navigation"];
-		selectReadiness?: () => SectionPlayerSnapshot["readiness"];
-		navigateTo?: (index: number) => boolean;
-		navigateNext?: () => boolean;
-		navigatePrevious?: () => boolean;
-		preloadNow?: () => void;
-		getSectionController?: () => unknown | null;
-		waitForSectionController?: (timeoutMs?: number) => Promise<unknown | null>;
-	} | null>(null);
+	let kernelRef = $state<SectionPlayerRuntimeHostContract | null>(null);
 	let snapshot = $state<SectionPlayerSnapshot>({
 		readiness: {
 			phase: "bootstrapping",
@@ -98,11 +90,11 @@
 		return snapshot.composition;
 	}
 
-	export function selectNavigation() {
+	export function selectNavigation(): SectionPlayerSnapshot["navigation"] {
 		return kernelRef?.selectNavigation?.() || snapshot.navigation;
 	}
 
-	export function selectReadiness() {
+	export function selectReadiness(): SectionPlayerSnapshot["readiness"] {
 		return snapshot.readiness;
 	}
 
@@ -122,13 +114,13 @@
 		kernelRef?.preloadNow?.();
 	}
 
-	export function getSectionController(): unknown | null {
+	export function getSectionController() {
 		return kernelRef?.getSectionController?.() || null;
 	}
 
 	export async function waitForSectionController(
 		timeoutMs = 5000,
-	): Promise<unknown | null> {
+	) {
 		const controller = await kernelRef?.waitForSectionController?.(timeoutMs);
 		return controller || null;
 	}
@@ -136,6 +128,13 @@
 	function reemit(event: Event) {
 		const customEvent = event as CustomEvent;
 		dispatch(customEvent.type, customEvent.detail);
+	}
+
+	function syncNavigationSnapshot() {
+		snapshot = {
+			...snapshot,
+			navigation: kernelRef?.selectNavigation?.() || snapshot.navigation,
+		};
 	}
 </script>
 
@@ -187,29 +186,7 @@
 				passagesCount: passages.length,
 			},
 		};
-		reemit(event);
-	}}
-	on:navigation-change={(event: CustomEvent) => {
-		const detail = (event as CustomEvent).detail as {
-			itemIndex?: number;
-			totalItems?: number;
-			currentItemId?: string;
-		};
-		const currentIndex = Math.max(0, Number(detail?.itemIndex || 0));
-		const totalItems = Math.max(
-			Number(snapshot.composition.itemsCount || 0),
-			Number(detail?.totalItems || 0),
-		);
-		snapshot = {
-			...snapshot,
-			navigation: {
-				currentIndex,
-				totalItems,
-				canNext: currentIndex < totalItems - 1,
-				canPrevious: currentIndex > 0,
-				currentItemId: detail?.currentItemId,
-			},
-		};
+		syncNavigationSnapshot();
 		reemit(event);
 	}}
 	let:items

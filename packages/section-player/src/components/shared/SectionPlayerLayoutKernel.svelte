@@ -1,7 +1,12 @@
 <script lang="ts">
 	import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
+	import type { SectionControllerHandle } from "@pie-players/pie-assessment-toolkit";
 	import { createEventDispatcher } from "svelte";
 	import type { SectionPlayerReadinessChangeDetail } from "../../contracts/public-events.js";
+	import type {
+		SectionPlayerNavigationSnapshot,
+		SectionPlayerSnapshot,
+	} from "../../contracts/runtime-host-contract.js";
 	import { DEFAULT_SECTION_PLAYER_POLICIES } from "../../policies/index.js";
 	import type { SectionPlayerPolicies } from "../../policies/types.js";
 	import { createPlayerAction } from "./player-action.js";
@@ -35,12 +40,6 @@
 		"runtime-inherited": Record<string, unknown>;
 		"session-changed": Record<string, unknown>;
 		"composition-changed": { composition: unknown };
-		"navigation-change": {
-			previousItemId?: string;
-			currentItemId?: string;
-			itemIndex?: number;
-			totalItems?: number;
-		};
 		"section-controller-ready": {
 			sectionId: string;
 			attemptId?: string;
@@ -84,34 +83,17 @@
 	let scaffoldRef = $state<{
 		navigateToItem?: (index: number) => boolean;
 		getCompositionModelSnapshot?: () => unknown;
-		getSectionController?: () => unknown | null;
-		waitForSectionController?: (timeoutMs?: number) => Promise<unknown | null>;
-		getNavigationStateSnapshot?: () => {
-			currentIndex: number;
-			totalItems: number;
-			canNext: boolean;
-			canPrevious: boolean;
-			currentItemId?: string;
-		};
+		getSectionController?: () => SectionControllerHandle | null;
+		waitForSectionController?: (
+			timeoutMs?: number,
+		) => Promise<SectionControllerHandle | null>;
+		getNavigationStateSnapshot?: () => SectionPlayerNavigationSnapshot;
 	} | null>(null);
 	let sectionReady = $state(false);
 	let interactionReadyDispatched = $state(false);
 	let finalReadyDispatched = $state(false);
 	let runtimeErrorState = $state(false);
 	let sectionControllerReadyDispatched = $state(false);
-	let previousNavigationState = $state<{
-		currentIndex: number;
-		totalItems: number;
-		canNext: boolean;
-		canPrevious: boolean;
-		currentItemId?: string;
-	}>({
-		currentIndex: 0,
-		totalItems: 0,
-		canNext: false,
-		canPrevious: false,
-		currentItemId: undefined,
-	});
 
 	const compositionModel = $derived(compositionSnapshot.compositionModel);
 	const passages = $derived(compositionSnapshot.passages);
@@ -170,20 +152,6 @@
 	function handleBaseCompositionChanged(event: Event) {
 		compositionSnapshot = getCompositionSnapshotFromEvent(event);
 		dispatch("composition-changed", (event as CustomEvent<{ composition: unknown }>).detail);
-		const nextNavigationState = getNavigationState();
-		if (
-			nextNavigationState.currentIndex !== previousNavigationState.currentIndex ||
-			nextNavigationState.totalItems !== previousNavigationState.totalItems ||
-			nextNavigationState.currentItemId !== previousNavigationState.currentItemId
-		) {
-			dispatch("navigation-change", {
-				previousItemId: previousNavigationState.currentItemId,
-				currentItemId: nextNavigationState.currentItemId,
-				itemIndex: nextNavigationState.currentIndex,
-				totalItems: nextNavigationState.totalItems,
-			});
-			previousNavigationState = nextNavigationState;
-		}
 	}
 
 	function handleItemsPaneElementsLoaded(event: Event) {
@@ -228,7 +196,7 @@
 		void emitSectionControllerReadyIfNeeded();
 	}
 
-	function getNavigationState() {
+	function getNavigationState(): SectionPlayerNavigationSnapshot {
 		return (
 			scaffoldRef?.getNavigationStateSnapshot?.() || {
 				currentIndex: 0,
@@ -240,7 +208,7 @@
 		);
 	}
 
-	export function getSnapshot() {
+	export function getSnapshot(): SectionPlayerSnapshot {
 		return {
 			readiness: readinessDetail,
 			composition: {
@@ -251,14 +219,14 @@
 		};
 	}
 
-	export function selectComposition() {
+	export function selectComposition(): SectionPlayerSnapshot["composition"] {
 		return {
 			itemsCount: items.length,
 			passagesCount: passages.length,
 		};
 	}
 
-	export function selectNavigation() {
+	export function selectNavigation(): SectionPlayerNavigationSnapshot {
 		return getNavigationState();
 	}
 
@@ -286,7 +254,7 @@
 		// Items pane preload is signature-driven; this hook remains explicit.
 	}
 
-	export function getSectionController(): unknown | null {
+	export function getSectionController(): SectionControllerHandle | null {
 		const controller = scaffoldRef?.getSectionController?.() || null;
 		if (controller && !sectionControllerReadyDispatched) {
 			sectionControllerReadyDispatched = true;
@@ -301,7 +269,7 @@
 
 	export async function waitForSectionController(
 		timeoutMs = 5000,
-	): Promise<unknown | null> {
+	): Promise<SectionControllerHandle | null> {
 		const controller = await scaffoldRef?.waitForSectionController?.(timeoutMs);
 		if (controller && !sectionControllerReadyDispatched) {
 			sectionControllerReadyDispatched = true;

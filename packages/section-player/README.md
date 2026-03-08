@@ -53,8 +53,14 @@ The intended usage model is:
   - Get the controller handle via `getSectionController()` or `waitForSectionController()`
   - Listen to `section-controller-ready`
   - Apply custom policy/gating in host code (for example, domain-specific `canNext` based on controller events like `section-items-complete-changed`)
+  - Compose forward/backward eligibility in host code using `selectNavigation()` + host state; there is intentionally no separate parallel CE gating API for this
 
 Advanced CE props are still supported as escape hatches (`runtime`, `coordinator`, `createSectionController`, etc.), but hosts should prefer JS/controller composition for non-standard behavior.
+
+### Navigation signals
+
+- `item-selected`: item-level navigation change within the current section in the `SectionController` broadcast stream (`itemIndex`, `currentItemId`, `totalItems`).
+- `section-navigation-change`: section-level navigation/selection change in the `SectionController` broadcast stream (`previousSectionId`, `currentSectionId`, `reason`).
 
 Runtime precedence is explicit:
 
@@ -148,9 +154,15 @@ Published exports are intentionally minimal:
 - `@pie-players/pie-section-player`
 - `@pie-players/pie-section-player/components/section-player-splitpane-element`
 - `@pie-players/pie-section-player/components/section-player-vertical-element`
+- `@pie-players/pie-section-player/components/section-player-kernel-host-element`
 - `@pie-players/pie-section-player/components/section-player-shell-element`
 - `@pie-players/pie-section-player/components/section-player-item-card-element`
 - `@pie-players/pie-section-player/components/section-player-passage-card-element`
+- `@pie-players/pie-section-player/contracts/layout-contract`
+- `@pie-players/pie-section-player/contracts/public-events`
+- `@pie-players/pie-section-player/contracts/runtime-host-contract`
+- `@pie-players/pie-section-player/contracts/layout-parity-metadata`
+- `@pie-players/pie-section-player/policies`
 
 ## Development
 

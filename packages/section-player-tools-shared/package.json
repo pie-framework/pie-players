@@ -1,0 +1,71 @@
+{
+	"name": "@pie-players/pie-section-player-tools-shared",
+	"version": "0.1.0",
+	"type": "module",
+	"description": "Shared UI and helpers for PIE section-player debug tools",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pie-framework/pie-players.git",
+		"directory": "packages/section-player-tools-shared"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"keywords": [
+		"pie",
+		"section-player",
+		"debugger",
+		"shared",
+		"web-component"
+	],
+	"main": "./dist/index.js",
+	"module": "./dist/index.js",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"svelte": "./index.ts"
+		},
+		"./PanelWindowControls.svelte": {
+			"types": "./dist/PanelWindowControls.svelte.d.ts",
+			"svelte": "./PanelWindowControls.svelte"
+		},
+		"./PanelResizeHandle.svelte": {
+			"types": "./dist/PanelResizeHandle.svelte.d.ts",
+			"svelte": "./PanelResizeHandle.svelte"
+		}
+	},
+	"files": [
+		"dist",
+		"*.svelte",
+		"*.ts",
+		"package.json"
+	],
+	"license": "MIT",
+	"dependencies": {
+		"@pie-players/pie-theme": "workspace:*"
+	},
+	"types": "./dist/index.d.ts",
+	"scripts": {
+		"build": "vite build",
+		"dev": "vite build --watch",
+		"typecheck": "tsc --noEmit",
+		"lint": "biome check PanelWindowControls.svelte floating-panel.ts section-controller.ts index.ts vite.config.ts package.json"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.3.10",
+		"@sveltejs/vite-plugin-svelte": "^6.2.4",
+		"svelte": "^5.53.7",
+		"typescript": "^5.9.3",
+		"vite": "^7.3.1",
+		"vite-plugin-dts": "^4.5.4"
+	},
+	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/section-player-tools-shared#readme",
+	"bugs": {
+		"url": "https://github.com/pie-framework/pie-players/issues"
+	},
+	"engines": {
+		"node": ">=20.0.0"
+	},
+	"sideEffects": false
+}

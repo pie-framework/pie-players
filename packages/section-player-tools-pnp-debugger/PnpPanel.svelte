@@ -12,6 +12,12 @@
 
 <script lang="ts">
 	import '@pie-players/pie-theme/components.css';
+	import PanelResizeHandle from '@pie-players/pie-section-player-tools-shared/PanelResizeHandle.svelte';
+	import PanelWindowControls from '@pie-players/pie-section-player-tools-shared/PanelWindowControls.svelte';
+	import {
+		computePanelSizeFromViewport,
+		createFloatingPanelPointerController
+	} from '@pie-players/pie-section-player-tools-shared';
 	import { createEventDispatcher } from 'svelte';
 	import { onDestroy, onMount } from 'svelte';
 	import {
@@ -38,17 +44,6 @@
 	let pnpWindowWidth = $state(460);
 	let pnpWindowHeight = $state(560);
 	let isPnpMinimized = $state(false);
-	let isPnpDragging = $state(false);
-	let isPnpResizing = $state(false);
-
-	let dragStartX = 0;
-	let dragStartY = 0;
-	let dragStartWindowX = 0;
-	let dragStartWindowY = 0;
-	let resizeStartX = 0;
-	let resizeStartY = 0;
-	let resizeStartWidth = 0;
-	let resizeStartHeight = 0;
 
 	const pnpResolver = new PNPToolResolver(createDefaultToolRegistry());
 	let floatingTools = $state<string[]>([]);
@@ -119,75 +114,47 @@
 	});
 
 	onMount(() => {
-		const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(value, max));
-		const viewportWidth = window.innerWidth;
-		const viewportHeight = window.innerHeight;
-
-		// Keep the debugger docked left by default so it does not block item interactions.
-		pnpWindowWidth = clamp(Math.round(viewportWidth * 0.3), 360, 560);
-		pnpWindowHeight = clamp(Math.round(viewportHeight * 0.72), 360, 860);
-		pnpWindowX = 16;
-		pnpWindowY = Math.max(16, Math.round((viewportHeight - pnpWindowHeight) / 2));
+		const initial = computePanelSizeFromViewport(
+			{ width: window.innerWidth, height: window.innerHeight },
+			{
+				widthRatio: 0.3,
+				heightRatio: 0.72,
+				minWidth: 360,
+				maxWidth: 560,
+				minHeight: 360,
+				maxHeight: 860,
+				alignX: 'left',
+				alignY: 'center',
+				paddingX: 16,
+				paddingY: 16
+			}
+		);
+		pnpWindowX = initial.x;
+		pnpWindowY = initial.y;
+		pnpWindowWidth = initial.width;
+		pnpWindowHeight = initial.height;
 	});
 
 	onDestroy(() => {
-		document.removeEventListener('mousemove', onPnpDrag);
-		document.removeEventListener('mouseup', stopPnpDrag);
-		document.removeEventListener('mousemove', onPnpResize);
-		document.removeEventListener('mouseup', stopPnpResize);
+		pointerController.stop();
 	});
 
-	function startPnpDrag(e: MouseEvent) {
-		isPnpDragging = true;
-		dragStartX = e.clientX;
-		dragStartY = e.clientY;
-		dragStartWindowX = pnpWindowX;
-		dragStartWindowY = pnpWindowY;
-		document.addEventListener('mousemove', onPnpDrag);
-		document.addEventListener('mouseup', stopPnpDrag);
-	}
-
-	function onPnpDrag(e: MouseEvent) {
-		if (!isPnpDragging) return;
-		const deltaX = e.clientX - dragStartX;
-		const deltaY = e.clientY - dragStartY;
-		pnpWindowX = dragStartWindowX + deltaX;
-		pnpWindowY = dragStartWindowY + deltaY;
-		pnpWindowX = Math.max(0, Math.min(pnpWindowX, window.innerWidth - pnpWindowWidth));
-		pnpWindowY = Math.max(0, Math.min(pnpWindowY, window.innerHeight - 100));
-	}
-
-	function stopPnpDrag() {
-		isPnpDragging = false;
-		document.removeEventListener('mousemove', onPnpDrag);
-		document.removeEventListener('mouseup', stopPnpDrag);
-	}
-
-	function startPnpResize(e: MouseEvent) {
-		isPnpResizing = true;
-		resizeStartX = e.clientX;
-		resizeStartY = e.clientY;
-		resizeStartWidth = pnpWindowWidth;
-		resizeStartHeight = pnpWindowHeight;
-		e.preventDefault();
-		e.stopPropagation();
-		document.addEventListener('mousemove', onPnpResize);
-		document.addEventListener('mouseup', stopPnpResize);
-	}
-
-	function onPnpResize(e: MouseEvent) {
-		if (!isPnpResizing) return;
-		const deltaX = e.clientX - resizeStartX;
-		const deltaY = e.clientY - resizeStartY;
-		pnpWindowWidth = Math.max(320, Math.min(resizeStartWidth + deltaX, window.innerWidth - pnpWindowX));
-		pnpWindowHeight = Math.max(220, Math.min(resizeStartHeight + deltaY, window.innerHeight - pnpWindowY));
-	}
-
-	function stopPnpResize() {
-		isPnpResizing = false;
-		document.removeEventListener('mousemove', onPnpResize);
-		document.removeEventListener('mouseup', stopPnpResize);
-	}
+	const pointerController = createFloatingPanelPointerController({
+		getState: () => ({
+			x: pnpWindowX,
+			y: pnpWindowY,
+			width: pnpWindowWidth,
+			height: pnpWindowHeight
+		}),
+		setState: (next) => {
+			pnpWindowX = next.x;
+			pnpWindowY = next.y;
+			pnpWindowWidth = next.width;
+			pnpWindowHeight = next.height;
+		},
+		minWidth: 320,
+		minHeight: 220
+	});
 
 </script>
 
@@ -197,7 +164,7 @@
 >
 	<div
 		class="pie-section-player-tools-pnp-debugger__header"
-		onmousedown={startPnpDrag}
+		onmousedown={(event: MouseEvent) => pointerController.startDrag(event)}
 		role="button"
 		tabindex="0"
 		aria-label="Drag PNP profile panel"
@@ -215,49 +182,16 @@
 			<h3 class="pie-section-player-tools-pnp-debugger__title">PNP Profile</h3>
 		</div>
 		<div class="pie-section-player-tools-pnp-debugger__header-actions">
-			<button
-				class="pie-section-player-tools-pnp-debugger__icon-button"
-				onclick={() => isPnpMinimized = !isPnpMinimized}
-				title={isPnpMinimized ? 'Maximize' : 'Minimize'}
-			>
-				{#if isPnpMinimized}
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						class="pie-section-player-tools-pnp-debugger__icon-xs"
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke="currentColor"
-					>
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-					</svg>
-				{:else}
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						class="pie-section-player-tools-pnp-debugger__icon-xs"
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke="currentColor"
-					>
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-					</svg>
-				{/if}
-			</button>
-			<button class="pie-section-player-tools-pnp-debugger__icon-button" onclick={() => dispatch('close')} title="Close">
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					class="pie-section-player-tools-pnp-debugger__icon-xs"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke="currentColor"
-				>
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-				</svg>
-			</button>
+			<PanelWindowControls
+				minimized={isPnpMinimized}
+				onToggle={() => (isPnpMinimized = !isPnpMinimized)}
+				onClose={() => dispatch('close')}
+			/>
 		</div>
 	</div>
 
 	{#if !isPnpMinimized}
-		<div class="pie-section-player-tools-pnp-debugger__content-shell" style="height: {pnpWindowHeight - 60}px;">
+		<div class="pie-section-player-tools-pnp-debugger__content-shell" style="height: {pnpWindowHeight - 50}px;">
 			<div
 				class="pie-section-player-tools-pnp-debugger__content"
 				style="height: 100%; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;"
@@ -283,22 +217,64 @@
 	{/if}
 
 	{#if !isPnpMinimized}
-		<div
-			class="pie-section-player-tools-pnp-debugger__resize-handle"
-			onmousedown={startPnpResize}
-			role="button"
-			tabindex="0"
-			title="Resize window"
-		>
-			<svg
-				class="pie-section-player-tools-pnp-debugger__resize-icon"
-				viewBox="0 0 16 16"
-				fill="currentColor"
-			>
-				<path d="M16 16V14H14V16H16Z" />
-				<path d="M16 11V9H14V11H16Z" />
-				<path d="M13 16V14H11V16H13Z" />
-			</svg>
-		</div>
+		<PanelResizeHandle onPointerDown={(event: MouseEvent) => pointerController.startResize(event)} />
 	{/if}
 </div>
+
+<style>
+	.pie-section-player-tools-pnp-debugger {
+		position: fixed;
+		z-index: 9999;
+		background: var(--color-base-100, #fff);
+		color: var(--color-base-content, #1f2937);
+		border: 2px solid var(--color-base-300, #d1d5db);
+		border-radius: 8px;
+		box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+		overflow: hidden;
+		font-family: var(--pie-font-family, Inter, system-ui, sans-serif);
+	}
+
+	.pie-section-player-tools-pnp-debugger__header {
+		padding: 8px 16px;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		background: var(--color-base-200, #f3f4f6);
+		cursor: move;
+		user-select: none;
+		border-bottom: 1px solid var(--color-base-300, #d1d5db);
+	}
+
+	.pie-section-player-tools-pnp-debugger__header-title {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+
+	.pie-section-player-tools-pnp-debugger__icon-sm {
+		width: 1rem;
+		height: 1rem;
+	}
+
+	.pie-section-player-tools-pnp-debugger__title {
+		margin: 0;
+		font-size: 0.95rem;
+		font-weight: 700;
+	}
+
+	.pie-section-player-tools-pnp-debugger__header-actions {
+		display: flex;
+		gap: 4px;
+	}
+
+	.pie-section-player-tools-pnp-debugger__content-shell {
+		display: flex;
+		flex-direction: column;
+		min-height: 0;
+	}
+
+	.pie-section-player-tools-pnp-debugger__resize-handle {
+		user-select: none;
+	}
+
+</style>

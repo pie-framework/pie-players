@@ -12,6 +12,14 @@
 
 <script lang="ts">
 	import '@pie-players/pie-theme/components.css';
+	import PanelResizeHandle from '@pie-players/pie-section-player-tools-shared/PanelResizeHandle.svelte';
+	import PanelWindowControls from '@pie-players/pie-section-player-tools-shared/PanelWindowControls.svelte';
+	import {
+		computePanelSizeFromViewport,
+		createFloatingPanelPointerController,
+		getSectionControllerFromCoordinator,
+		isMatchingSectionControllerLifecycleEvent
+	} from '@pie-players/pie-section-player-tools-shared';
 	import { createEventDispatcher } from 'svelte';
 	import { onMount } from 'svelte';
 	const dispatch = createEventDispatcher<{ close: undefined }>();
@@ -60,17 +68,6 @@
 	let sessionWindowY = $state(100);
 	let sessionWindowWidth = $state(220);
 	let sessionWindowHeight = $state(600);
-	let isSessionDragging = $state(false);
-	let isSessionResizing = $state(false);
-
-	let dragStartX = 0;
-	let dragStartY = 0;
-	let dragStartWindowX = 0;
-	let dragStartWindowY = 0;
-	let resizeStartX = 0;
-	let resizeStartY = 0;
-	let resizeStartWidth = 0;
-	let resizeStartHeight = 0;
 
 	let sessionPanelSnapshot = $state<SessionPanelSnapshot>({
 		currentItemIndex: null,
@@ -100,8 +97,13 @@
 	}
 
 	function getController(): SectionControllerLike | undefined {
-		if (!toolkitCoordinator || !sectionId) return undefined;
-		return toolkitCoordinator.getSectionController?.({ sectionId, attemptId });
+		return (
+			getSectionControllerFromCoordinator(
+				toolkitCoordinator,
+				sectionId,
+				attemptId
+			) || undefined
+		);
 	}
 
 	function refreshFromController(
@@ -195,10 +197,7 @@
 		ensureControllerSubscription();
 		detachLifecycleSubscription();
 		unsubscribeLifecycle = toolkitCoordinator.onSectionControllerLifecycle?.((event) => {
-			const eventSectionId = event?.key?.sectionId || '';
-			const eventAttemptId = event?.key?.attemptId || undefined;
-			if (eventSectionId !== sectionId) return;
-			if ((eventAttemptId || undefined) !== (attemptId || undefined)) return;
+			if (!isMatchingSectionControllerLifecycleEvent(event, sectionId, attemptId)) return;
 			ensureControllerSubscription();
 			refreshFromController({
 				updatedAt: Date.now()
@@ -211,13 +210,25 @@
 	});
 
 	onMount(() => {
-		const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(value, max));
-		const viewportWidth = window.innerWidth;
-		const viewportHeight = window.innerHeight;
-		sessionWindowWidth = clamp(Math.round(viewportWidth * 0.29), 280, 560);
-		sessionWindowHeight = clamp(Math.round(viewportHeight * 0.72), 360, 860);
-		sessionWindowX = Math.max(16, Math.round(viewportWidth * 0.08));
-		sessionWindowY = Math.max(16, Math.round((viewportHeight - sessionWindowHeight) / 2));
+		const initial = computePanelSizeFromViewport(
+			{ width: window.innerWidth, height: window.innerHeight },
+			{
+				widthRatio: 0.29,
+				heightRatio: 0.72,
+				minWidth: 280,
+				maxWidth: 560,
+				minHeight: 360,
+				maxHeight: 860,
+				alignX: 'left',
+				alignY: 'center',
+				paddingX: 16,
+				paddingY: 16
+			}
+		);
+		sessionWindowX = initial.x;
+		sessionWindowY = initial.y;
+		sessionWindowWidth = initial.width;
+		sessionWindowHeight = initial.height;
 
 		const handleRuntimeSessionEvent = () => {
 			queueRefresh({
@@ -234,65 +245,26 @@
 		};
 	});
 
-	function startSessionDrag(e: MouseEvent) {
-		isSessionDragging = true;
-		dragStartX = e.clientX;
-		dragStartY = e.clientY;
-		dragStartWindowX = sessionWindowX;
-		dragStartWindowY = sessionWindowY;
-
-		document.addEventListener('mousemove', onSessionDrag);
-		document.addEventListener('mouseup', stopSessionDrag);
-	}
-
-	function onSessionDrag(e: MouseEvent) {
-		if (!isSessionDragging) return;
-		const deltaX = e.clientX - dragStartX;
-		const deltaY = e.clientY - dragStartY;
-		sessionWindowX = dragStartWindowX + deltaX;
-		sessionWindowY = dragStartWindowY + deltaY;
-		sessionWindowX = Math.max(0, Math.min(sessionWindowX, window.innerWidth - sessionWindowWidth));
-		sessionWindowY = Math.max(0, Math.min(sessionWindowY, window.innerHeight - 100));
-	}
-
-	function stopSessionDrag() {
-		isSessionDragging = false;
-		document.removeEventListener('mousemove', onSessionDrag);
-		document.removeEventListener('mouseup', stopSessionDrag);
-	}
-
-	function startSessionResize(e: MouseEvent) {
-		isSessionResizing = true;
-		resizeStartX = e.clientX;
-		resizeStartY = e.clientY;
-		resizeStartWidth = sessionWindowWidth;
-		resizeStartHeight = sessionWindowHeight;
-		document.addEventListener('mousemove', onSessionResize);
-		document.addEventListener('mouseup', stopSessionResize);
-		e.stopPropagation();
-	}
-
-	function onSessionResize(e: MouseEvent) {
-		if (!isSessionResizing) return;
-		const deltaX = e.clientX - resizeStartX;
-		const deltaY = e.clientY - resizeStartY;
-		sessionWindowWidth = Math.max(300, Math.min(resizeStartWidth + deltaX, window.innerWidth - sessionWindowX));
-		sessionWindowHeight = Math.max(
-			200,
-			Math.min(resizeStartHeight + deltaY, window.innerHeight - sessionWindowY)
-		);
-	}
-
-	function stopSessionResize() {
-		isSessionResizing = false;
-		document.removeEventListener('mousemove', onSessionResize);
-		document.removeEventListener('mouseup', stopSessionResize);
-	}
+	const pointerController = createFloatingPanelPointerController({
+		getState: () => ({
+			x: sessionWindowX,
+			y: sessionWindowY,
+			width: sessionWindowWidth,
+			height: sessionWindowHeight
+		}),
+		setState: (next) => {
+			sessionWindowX = next.x;
+			sessionWindowY = next.y;
+			sessionWindowWidth = next.width;
+			sessionWindowHeight = next.height;
+		},
+		minWidth: 300,
+		minHeight: 200
+	});
 
 	$effect(() => {
 		return () => {
-			stopSessionDrag();
-			stopSessionResize();
+			pointerController.stop();
 		};
 	});
 </script>
@@ -303,7 +275,7 @@
 >
 	<div
 		class="pie-section-player-tools-session-debugger__header"
-		onmousedown={startSessionDrag}
+		onmousedown={(event: MouseEvent) => pointerController.startDrag(event)}
 		role="button"
 		tabindex="0"
 		aria-label="Drag session panel"
@@ -321,49 +293,16 @@
 			<h3 class="pie-section-player-tools-session-debugger__title">Session Data</h3>
 		</div>
 		<div class="pie-section-player-tools-session-debugger__header-actions">
-			<button
-				class="pie-section-player-tools-session-debugger__icon-button"
-				onclick={() => (isSessionMinimized = !isSessionMinimized)}
-				title={isSessionMinimized ? 'Maximize' : 'Minimize'}
-			>
-				{#if isSessionMinimized}
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						class="pie-section-player-tools-session-debugger__icon-xs"
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke="currentColor"
-					>
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-					</svg>
-				{:else}
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						class="pie-section-player-tools-session-debugger__icon-xs"
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke="currentColor"
-					>
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-					</svg>
-				{/if}
-			</button>
-			<button class="pie-section-player-tools-session-debugger__icon-button" onclick={() => dispatch('close')} title="Close">
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					class="pie-section-player-tools-session-debugger__icon-xs"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke="currentColor"
-				>
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-				</svg>
-			</button>
+			<PanelWindowControls
+				minimized={isSessionMinimized}
+				onToggle={() => (isSessionMinimized = !isSessionMinimized)}
+				onClose={() => dispatch('close')}
+			/>
 		</div>
 	</div>
 
 	{#if !isSessionMinimized}
-		<div class="pie-section-player-tools-session-debugger__content-shell" style="height: {sessionWindowHeight - 60}px;">
+		<div class="pie-section-player-tools-session-debugger__content-shell" style="height: {sessionWindowHeight - 50}px;">
 			<div class="pie-section-player-tools-session-debugger__content">
 				<div class="pie-section-player-tools-session-debugger__section-intro">
 					<div class="pie-section-player-tools-session-debugger__heading">PIE Session Data (Persistent)</div>
@@ -406,18 +345,64 @@
 	{/if}
 
 	{#if !isSessionMinimized}
-		<div
-			class="pie-section-player-tools-session-debugger__resize-handle"
-			onmousedown={startSessionResize}
-			role="button"
-			tabindex="0"
-			title="Resize window"
-		>
-			<svg class="pie-section-player-tools-session-debugger__resize-icon" viewBox="0 0 16 16" fill="currentColor">
-				<path d="M16 16V14H14V16H16Z" />
-				<path d="M16 11V9H14V11H16Z" />
-				<path d="M13 16V14H11V16H13Z" />
-			</svg>
-		</div>
+		<PanelResizeHandle onPointerDown={(event: MouseEvent) => pointerController.startResize(event)} />
 	{/if}
 </div>
+
+<style>
+	.pie-section-player-tools-session-debugger {
+		position: fixed;
+		z-index: 9999;
+		background: var(--color-base-100, #fff);
+		color: var(--color-base-content, #1f2937);
+		border: 2px solid var(--color-base-300, #d1d5db);
+		border-radius: 8px;
+		box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+		overflow: hidden;
+		font-family: var(--pie-font-family, Inter, system-ui, sans-serif);
+	}
+
+	.pie-section-player-tools-session-debugger__header {
+		padding: 8px 16px;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		background: var(--color-base-200, #f3f4f6);
+		cursor: move;
+		user-select: none;
+		border-bottom: 1px solid var(--color-base-300, #d1d5db);
+	}
+
+	.pie-section-player-tools-session-debugger__header-title {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+
+	.pie-section-player-tools-session-debugger__icon-sm {
+		width: 1rem;
+		height: 1rem;
+	}
+
+	.pie-section-player-tools-session-debugger__title {
+		margin: 0;
+		font-size: 0.95rem;
+		font-weight: 700;
+	}
+
+	.pie-section-player-tools-session-debugger__header-actions {
+		display: flex;
+		gap: 4px;
+	}
+
+	.pie-section-player-tools-session-debugger__content-shell {
+		display: flex;
+		flex-direction: column;
+		min-height: 0;
+	}
+
+	.pie-section-player-tools-session-debugger__resize-handle {
+		user-select: none;
+	}
+
+</style>

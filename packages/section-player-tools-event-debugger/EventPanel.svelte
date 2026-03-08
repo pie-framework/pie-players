@@ -13,6 +13,14 @@
 
 <script lang="ts">
 	import "@pie-players/pie-theme/components.css";
+	import PanelResizeHandle from "@pie-players/pie-section-player-tools-shared/PanelResizeHandle.svelte";
+	import PanelWindowControls from "@pie-players/pie-section-player-tools-shared/PanelWindowControls.svelte";
+	import {
+		computePanelSizeFromViewport,
+		createFloatingPanelPointerController,
+		getSectionControllerFromCoordinator,
+		isMatchingSectionControllerLifecycleEvent,
+	} from "@pie-players/pie-section-player-tools-shared";
 	import { createEventDispatcher, onDestroy, onMount } from "svelte";
 
 	type ControllerEvent = {
@@ -76,16 +84,6 @@
 	let records = $state<EventRecord[]>([]);
 	let controllerAvailable = $state(false);
 
-	let isDragging = false;
-	let isResizing = false;
-	let dragStartX = 0;
-	let dragStartY = 0;
-	let dragStartPanelX = 0;
-	let dragStartPanelY = 0;
-	let resizeStartX = 0;
-	let resizeStartY = 0;
-	let resizeStartWidth = 0;
-	let resizeStartHeight = 0;
 	let nextRecordId = 1;
 	let activeController: {
 		subscribe?: (listener: (event: ControllerEvent) => void) => () => void;
@@ -211,12 +209,10 @@
 	}
 
 	function getController(): any | null {
-		if (!toolkitCoordinator || !sectionId) return null;
-		return (
-			toolkitCoordinator.getSectionController?.({
-				sectionId,
-				attemptId,
-			}) || null
+		return getSectionControllerFromCoordinator(
+			toolkitCoordinator,
+			sectionId,
+			attemptId,
 		);
 	}
 
@@ -247,55 +243,22 @@
 			}) || null;
 	}
 
-	function startDrag(event: MouseEvent) {
-		isDragging = true;
-		dragStartX = event.clientX;
-		dragStartY = event.clientY;
-		dragStartPanelX = panelX;
-		dragStartPanelY = panelY;
-		document.addEventListener("mousemove", onDrag);
-		document.addEventListener("mouseup", stopDrag);
-	}
-
-	function onDrag(event: MouseEvent) {
-		if (!isDragging) return;
-		const deltaX = event.clientX - dragStartX;
-		const deltaY = event.clientY - dragStartY;
-		panelX = Math.max(0, Math.min(dragStartPanelX + deltaX, window.innerWidth - panelWidth));
-		panelY = Math.max(0, Math.min(dragStartPanelY + deltaY, window.innerHeight - 100));
-	}
-
-	function stopDrag() {
-		isDragging = false;
-		document.removeEventListener("mousemove", onDrag);
-		document.removeEventListener("mouseup", stopDrag);
-	}
-
-	function startResize(event: MouseEvent) {
-		isResizing = true;
-		resizeStartX = event.clientX;
-		resizeStartY = event.clientY;
-		resizeStartWidth = panelWidth;
-		resizeStartHeight = panelHeight;
-		document.addEventListener("mousemove", onResize);
-		document.addEventListener("mouseup", stopResize);
-		event.preventDefault();
-		event.stopPropagation();
-	}
-
-	function onResize(event: MouseEvent) {
-		if (!isResizing) return;
-		const deltaX = event.clientX - resizeStartX;
-		const deltaY = event.clientY - resizeStartY;
-		panelWidth = Math.max(340, Math.min(resizeStartWidth + deltaX, window.innerWidth - panelX));
-		panelHeight = Math.max(260, Math.min(resizeStartHeight + deltaY, window.innerHeight - panelY));
-	}
-
-	function stopResize() {
-		isResizing = false;
-		document.removeEventListener("mousemove", onResize);
-		document.removeEventListener("mouseup", stopResize);
-	}
+	const pointerController = createFloatingPanelPointerController({
+		getState: () => ({
+			x: panelX,
+			y: panelY,
+			width: panelWidth,
+			height: panelHeight,
+		}),
+		setState: (next) => {
+			panelX = next.x;
+			panelY = next.y;
+			panelWidth = next.width;
+			panelHeight = next.height;
+		},
+		minWidth: 340,
+		minHeight: 260,
+	});
 
 	function clearRecords() {
 		records = [];
@@ -326,20 +289,32 @@
 	);
 
 	onMount(() => {
-		const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(value, max));
-		const viewportWidth = window.innerWidth;
-		const viewportHeight = window.innerHeight;
-		panelWidth = clamp(Math.round(viewportWidth * 0.34), 380, 720);
-		panelHeight = clamp(Math.round(viewportHeight * 0.74), 360, 860);
-		panelX = Math.max(16, Math.round(viewportWidth * 0.58));
-		panelY = Math.max(16, Math.round((viewportHeight - panelHeight) / 2));
+		const initial = computePanelSizeFromViewport(
+			{ width: window.innerWidth, height: window.innerHeight },
+			{
+				widthRatio: 0.34,
+				heightRatio: 0.74,
+				minWidth: 380,
+				maxWidth: 720,
+				minHeight: 360,
+				maxHeight: 860,
+				alignX: "right",
+				alignY: "center",
+				paddingX: 16,
+				paddingY: 16,
+			},
+		);
+		panelX = initial.x;
+		panelY = initial.y;
+		panelWidth = initial.width;
+		panelHeight = initial.height;
 		ensureControllerSubscription();
 		unsubscribeLifecycle = toolkitCoordinator?.onSectionControllerLifecycle?.(
 			(event: { key?: { sectionId?: string; attemptId?: string } }) => {
-				const eventSectionId = event?.key?.sectionId || "";
-				const eventAttemptId = event?.key?.attemptId || undefined;
-				if (eventSectionId !== sectionId) return;
-				if ((eventAttemptId || undefined) !== (attemptId || undefined)) return;
+				if (
+					!isMatchingSectionControllerLifecycleEvent(event, sectionId, attemptId)
+				)
+					return;
 				ensureControllerSubscription();
 			},
 		);
@@ -358,10 +333,10 @@
 		detachLifecycleSubscription();
 		unsubscribeLifecycle = toolkitCoordinator?.onSectionControllerLifecycle?.(
 			(event: { key?: { sectionId?: string; attemptId?: string } }) => {
-				const eventSectionId = event?.key?.sectionId || "";
-				const eventAttemptId = event?.key?.attemptId || undefined;
-				if (eventSectionId !== sectionId) return;
-				if ((eventAttemptId || undefined) !== (attemptId || undefined)) return;
+				if (
+					!isMatchingSectionControllerLifecycleEvent(event, sectionId, attemptId)
+				)
+					return;
 				ensureControllerSubscription();
 			},
 		);
@@ -371,8 +346,7 @@
 	});
 
 	onDestroy(() => {
-		stopDrag();
-		stopResize();
+		pointerController.stop();
 		detachControllerSubscription();
 		detachLifecycleSubscription();
 	});
@@ -384,35 +358,34 @@
 >
 	<div
 		class="pie-section-player-tools-event-debugger__header"
-		onmousedown={startDrag}
+		onmousedown={(event: MouseEvent) => pointerController.startDrag(event)}
 		role="button"
 		tabindex="0"
 		aria-label="Drag event debugger panel"
 	>
 		<div class="pie-section-player-tools-event-debugger__header-title">
+			<svg
+				xmlns="http://www.w3.org/2000/svg"
+				class="pie-section-player-tools-event-debugger__icon-sm"
+				fill="none"
+				viewBox="0 0 24 24"
+				stroke="currentColor"
+			>
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h8M8 14h5m-7 7h12a2 2 0 002-2V5a2 2 0 00-2-2H6a2 2 0 00-2 2v14a2 2 0 002 2z" />
+			</svg>
 			<h3 class="pie-section-player-tools-event-debugger__title">Session Broadcasts</h3>
-			<span class="pie-section-player-tools-event-debugger__counter">{records.length}</span>
 		</div>
 		<div class="pie-section-player-tools-event-debugger__header-actions">
-			<button
-				class="pie-section-player-tools-event-debugger__icon-button"
-				onclick={() => (isMinimized = !isMinimized)}
-				title={isMinimized ? "Maximize" : "Minimize"}
-			>
-				{isMinimized ? "▴" : "▾"}
-			</button>
-			<button
-				class="pie-section-player-tools-event-debugger__icon-button"
-				onclick={() => dispatch("close")}
-				title="Close"
-			>
-				✕
-			</button>
+			<PanelWindowControls
+				minimized={isMinimized}
+				onToggle={() => (isMinimized = !isMinimized)}
+				onClose={() => dispatch("close")}
+			/>
 		</div>
 	</div>
 
 	{#if !isMinimized}
-		<div class="pie-section-player-tools-event-debugger__content-shell" style="height: {panelHeight - 56}px;">
+		<div class="pie-section-player-tools-event-debugger__content-shell" style="height: {panelHeight - 50}px;">
 			<div class="pie-section-player-tools-event-debugger__toolbar">
 				<div
 					class="pie-section-player-tools-event-debugger__toggle-group"
@@ -525,15 +498,7 @@
 	{/if}
 
 	{#if !isMinimized}
-		<div
-			class="pie-section-player-tools-event-debugger__resize-handle"
-			onmousedown={startResize}
-			role="button"
-			tabindex="0"
-			title="Resize window"
-		>
-			◢
-		</div>
+		<PanelResizeHandle onPointerDown={(event: MouseEvent) => pointerController.startResize(event)} />
 	{/if}
 </div>
 
@@ -543,22 +508,22 @@
 		z-index: 9999;
 		background: var(--color-base-100, #fff);
 		color: var(--color-base-content, #1f2937);
-		border: 1px solid var(--color-base-300, #d1d5db);
+		border: 2px solid var(--color-base-300, #d1d5db);
 		border-radius: 8px;
-		box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+		box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
 		overflow: hidden;
 		font-family: var(--pie-font-family, Inter, system-ui, sans-serif);
 	}
 
 	.pie-section-player-tools-event-debugger__header {
-		height: 56px;
-		padding: 0 12px;
+		padding: 8px 16px;
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		background: var(--color-base-200, #f3f4f6);
 		cursor: move;
 		user-select: none;
+		border-bottom: 1px solid var(--color-base-300, #d1d5db);
 	}
 
 	.pie-section-player-tools-event-debugger__header-title {
@@ -567,32 +532,20 @@
 		gap: 8px;
 	}
 
+	.pie-section-player-tools-event-debugger__icon-sm {
+		width: 1rem;
+		height: 1rem;
+	}
+
 	.pie-section-player-tools-event-debugger__title {
 		margin: 0;
 		font-size: 0.95rem;
 		font-weight: 700;
 	}
 
-	.pie-section-player-tools-event-debugger__counter {
-		font-size: 0.75rem;
-		padding: 2px 7px;
-		border-radius: 999px;
-		background: var(--color-primary, #2563eb);
-		color: white;
-	}
-
 	.pie-section-player-tools-event-debugger__header-actions {
 		display: flex;
-		gap: 6px;
-	}
-
-	.pie-section-player-tools-event-debugger__icon-button {
-		border: 1px solid var(--color-base-300, #d1d5db);
-		background: var(--color-base-100, #fff);
-		border-radius: 6px;
-		font-size: 0.8rem;
-		padding: 4px 7px;
-		cursor: pointer;
+		gap: 4px;
 	}
 
 	.pie-section-player-tools-event-debugger__content-shell {
@@ -730,12 +683,7 @@
 	}
 
 	.pie-section-player-tools-event-debugger__resize-handle {
-		position: absolute;
-		right: 6px;
-		bottom: 4px;
-		cursor: nwse-resize;
 		user-select: none;
-		font-size: 0.9rem;
-		opacity: 0.7;
 	}
+
 </style>

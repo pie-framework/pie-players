@@ -40,6 +40,7 @@
 	],
 	"license": "MIT",
 	"dependencies": {
+		"@pie-players/pie-section-player-tools-shared": "workspace:*",
 		"@pie-players/pie-theme": "workspace:*"
 	},
 	"types": "./dist/index.d.ts",

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import PanelResizeHandle from '@pie-players/pie-section-player-tools-shared/PanelResizeHandle.svelte';
+	import PanelWindowControls from '@pie-players/pie-section-player-tools-shared/PanelWindowControls.svelte';
 	import { onDestroy, onMount } from 'svelte';
 
 	interface Props {
@@ -126,30 +128,11 @@
 			<h3 class="font-bold text-sm">Source</h3>
 		</div>
 		<div class="flex gap-1">
-			<button
-				class="btn btn-xs btn-ghost btn-circle"
-				onclick={() => isSourceMinimized = !isSourceMinimized}
-				title={isSourceMinimized ? 'Maximize' : 'Minimize'}
-			>
-				{#if isSourceMinimized}
-					<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-					</svg>
-				{:else}
-					<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-					</svg>
-				{/if}
-			</button>
-			<button
-				class="btn btn-xs btn-ghost btn-circle"
-				onclick={onClose}
-				title="Close"
-			>
-				<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-				</svg>
-			</button>
+			<PanelWindowControls
+				minimized={isSourceMinimized}
+				onToggle={() => (isSourceMinimized = !isSourceMinimized)}
+				onClose={onClose}
+			/>
 		</div>
 	</div>
 
@@ -180,22 +163,6 @@
 	{/if}
 
 	{#if !isSourceMinimized}
-		<div
-			class="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize"
-			onmousedown={startSourceResize}
-			role="button"
-			tabindex="0"
-			title="Resize window"
-		>
-			<svg
-				class="w-full h-full text-base-content/30"
-				viewBox="0 0 16 16"
-				fill="currentColor"
-			>
-				<path d="M16 16V14H14V16H16Z" />
-				<path d="M16 11V9H14V11H16Z" />
-				<path d="M13 16V14H11V16H13Z" />
-			</svg>
-		</div>
+		<PanelResizeHandle onPointerDown={startSourceResize} />
 	{/if}
 </div>

@@ -65,7 +65,7 @@
 		"changeset": "changeset",
 		"version": "changeset version",
 		"release:manual": "bun run restore:workspace-ranges && bun run check:npm-auth && bun run verify:publish && bun run test && bun run release",
-		"release:with-version": "bun run version && bun run release:manual",
+		"release:with-version": "bun run version && bun run release:manual && bun run restore:workspace-ranges",
 		"release": "turbo build --filter='!./apps/*' --filter='!./tools/*' && bun ./scripts/changeset-publish-resolved-workspaces.mjs",
 		"release:label": "bun ./scripts/create-release-label.mjs",
 		"release:label:push": "bun ./scripts/create-release-label.mjs --push",

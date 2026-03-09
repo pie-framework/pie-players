@@ -1,7 +1,7 @@
 <svelte:options
 	customElement={{
 		tag: "pie-section-player-tools-event-debugger",
-		shadow: "none",
+		shadow: "open",
 		props: {
 			maxEvents: { type: "Number", attribute: "max-events" },
 			toolkitCoordinator: { type: "Object", attribute: "toolkit-coordinator" },

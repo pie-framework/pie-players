@@ -1,6 +1,7 @@
 <svelte:options
 	customElement={{
 		tag: "pie-section-player-passage-card",
+		// Keep light DOM so hosted passage-player output can inherit runtime/page styles.
 		shadow: "none",
 		props: {
 			passage: { type: "Object", reflect: false },

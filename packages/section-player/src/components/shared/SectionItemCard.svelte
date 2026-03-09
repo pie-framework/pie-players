@@ -1,6 +1,7 @@
 <svelte:options
 	customElement={{
 		tag: "pie-section-player-item-card",
+		// Keep light DOM so hosted item-player output can inherit runtime/page styles.
 		shadow: "none",
 		props: {
 			item: { type: "Object", reflect: false },

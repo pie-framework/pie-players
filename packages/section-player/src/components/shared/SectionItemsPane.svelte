@@ -1,6 +1,7 @@
 <svelte:options
 	customElement={{
 		tag: "pie-section-player-items-pane",
+		// Keep light DOM so rendered item content can inherit assessment/runtime styles.
 		shadow: "none",
 		props: {
 			items: { type: "Object", reflect: false },

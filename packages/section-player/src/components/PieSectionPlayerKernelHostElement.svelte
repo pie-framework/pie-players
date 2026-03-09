@@ -1,6 +1,7 @@
 <svelte:options
 	customElement={{
 		tag: "pie-section-player-kernel-host",
+		// Keep light DOM so item/passage runtime content can inherit host/page styles.
 		shadow: "none",
 		props: {
 			assessmentId: { attribute: "assessment-id", type: "String" },

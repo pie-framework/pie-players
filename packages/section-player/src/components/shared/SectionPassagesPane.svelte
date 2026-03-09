@@ -1,6 +1,7 @@
 <svelte:options
 	customElement={{
 		tag: "pie-section-player-passages-pane",
+		// Keep light DOM so rendered passage content can inherit assessment/runtime styles.
 		shadow: "none",
 		props: {
 			passages: { type: "Object", reflect: false },

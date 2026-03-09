@@ -1,6 +1,7 @@
 <svelte:options
 	customElement={{
 		tag: "pie-item-player",
+		// Keep light DOM so rendered assessment content can inherit required host/runtime styles.
 		shadow: "none",
 		props: {
 			config: { attribute: "config", type: "Object" },

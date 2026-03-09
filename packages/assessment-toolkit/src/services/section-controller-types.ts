@@ -27,6 +27,12 @@ export interface SectionControllerRuntimeState {
 	itemIdentifiers: string[];
 	visitedItemIdentifiers: string[];
 	itemSessions: Record<string, unknown>;
+	loadingComplete: boolean;
+	totalRegistered: number;
+	totalLoaded: number;
+	itemsComplete: boolean;
+	completedCount: number;
+	totalItems: number;
 }
 
 export interface SectionControllerSessionState {
@@ -37,7 +43,6 @@ export interface SectionControllerSessionState {
 
 type SectionControllerEventBase = {
 	timestamp: number;
-	replayed?: boolean;
 };
 
 export type SectionControllerItemSessionDataChangedEvent =

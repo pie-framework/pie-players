@@ -21,7 +21,7 @@
 		getSectionControllerFromCoordinator,
 		isMatchingSectionControllerLifecycleEvent,
 	} from "@pie-players/pie-section-player-tools-shared";
-	import { createEventDispatcher, onDestroy, onMount } from "svelte";
+	import { createEventDispatcher, onDestroy, onMount, untrack } from "svelte";
 
 	type ControllerEvent = {
 		type?: string;
@@ -29,9 +29,16 @@
 		itemId?: string;
 		canonicalItemId?: string;
 		intent?: string;
-		replayed?: boolean;
 		[key: string]: unknown;
 	};
+	type ControllerRuntimeState = {
+		loadingComplete?: boolean;
+		totalRegistered?: number;
+		totalLoaded?: number;
+		itemsComplete?: boolean;
+		completedCount?: number;
+		totalItems?: number;
+	} | null;
 	type ToolkitCoordinatorLike = {
 		subscribeSectionEvents: (args: {
 			sectionId: string;
@@ -70,7 +77,6 @@
 		itemId: string | null;
 		canonicalItemId: string | null;
 		intent: string | null;
-		replayed: boolean;
 		duplicateCount: number;
 		payload: unknown;
 		fingerprint: string;
@@ -102,8 +108,18 @@
 	let controllerAvailable = $state(false);
 
 	let nextRecordId = 1;
-	let unsubscribeController: (() => void) | null = null;
-	let unsubscribeLifecycle: (() => void) | null = null;
+	let resubscribeQueued = false;
+	const subscriptions: {
+		controller: (() => void) | null;
+		lifecycle: (() => void) | null;
+		activeSectionId: string;
+		activeAttemptId?: string;
+	} = {
+		controller: null,
+		lifecycle: null,
+		activeSectionId: "",
+		activeAttemptId: undefined,
+	};
 
 	function safeClone<T>(value: T): T {
 		try {
@@ -192,7 +208,6 @@
 			itemId: getValueAsString(detail?.itemId),
 			canonicalItemId: getValueAsString(detail?.canonicalItemId),
 			intent: getValueAsString(detail?.intent),
-			replayed: detail?.replayed === true,
 			duplicateCount: 1,
 			payload,
 			fingerprint,
@@ -236,14 +251,50 @@
 		);
 	}
 
+	function seedFromRuntimeState(controller: {
+		getRuntimeState?: () => ControllerRuntimeState;
+	}): void {
+		const runtimeState = controller?.getRuntimeState?.();
+		if (!runtimeState || typeof runtimeState !== "object") return;
+		const totalItems =
+			typeof runtimeState.totalItems === "number" ? runtimeState.totalItems : 0;
+		const now = Date.now();
+		pushRecord({
+			type: "section-items-complete-changed",
+			complete: runtimeState.itemsComplete === true,
+			completedCount:
+				typeof runtimeState.completedCount === "number"
+					? runtimeState.completedCount
+					: 0,
+			totalItems,
+			timestamp: now,
+		});
+		if (runtimeState.loadingComplete === true) {
+			pushRecord({
+				type: "section-loading-complete",
+				totalRegistered:
+					typeof runtimeState.totalRegistered === "number"
+						? runtimeState.totalRegistered
+						: 0,
+				totalLoaded:
+					typeof runtimeState.totalLoaded === "number"
+						? runtimeState.totalLoaded
+						: 0,
+				timestamp: now,
+			});
+		}
+	}
+
 	function detachControllerSubscription() {
-		unsubscribeController?.();
-		unsubscribeController = null;
+		subscriptions.controller?.();
+		subscriptions.controller = null;
+		subscriptions.activeSectionId = "";
+		subscriptions.activeAttemptId = undefined;
 	}
 
 	function detachLifecycleSubscription() {
-		unsubscribeLifecycle?.();
-		unsubscribeLifecycle = null;
+		subscriptions.lifecycle?.();
+		subscriptions.lifecycle = null;
 	}
 
 	function ensureControllerSubscription() {
@@ -253,13 +304,34 @@
 			detachControllerSubscription();
 			return;
 		}
+
+		const nextAttemptId = attemptId || undefined;
+		const isSameTarget =
+			subscriptions.activeSectionId === sectionId &&
+			subscriptions.activeAttemptId === nextAttemptId;
+		if (isSameTarget && subscriptions.controller) {
+			return;
+		}
+
 		detachControllerSubscription();
-		unsubscribeController =
+		subscriptions.controller =
 			toolkitCoordinator?.subscribeSectionEvents({
 				sectionId,
 				attemptId,
 				listener: handleControllerEvent,
 			}) || null;
+		subscriptions.activeSectionId = sectionId;
+		subscriptions.activeAttemptId = nextAttemptId;
+		seedFromRuntimeState(controller);
+	}
+
+	function queueEnsureControllerSubscription(): void {
+		if (resubscribeQueued) return;
+		resubscribeQueued = true;
+		queueMicrotask(() => {
+			resubscribeQueued = false;
+			ensureControllerSubscription();
+		});
 	}
 
 	const pointerController = createFloatingPanelPointerController({
@@ -338,17 +410,35 @@
 		void toolkitCoordinator;
 		void sectionId;
 		void attemptId;
-		ensureControllerSubscription();
-		detachLifecycleSubscription();
-		unsubscribeLifecycle = toolkitCoordinator?.onSectionControllerLifecycle?.(
-			(event: { key?: { sectionId?: string; attemptId?: string } }) => {
-				if (
-					!isMatchingSectionControllerLifecycleEvent(event, sectionId, attemptId)
-				)
-					return;
-				ensureControllerSubscription();
-			},
-		) || null;
+		untrack(() => {
+			ensureControllerSubscription();
+			detachLifecycleSubscription();
+			subscriptions.lifecycle = toolkitCoordinator?.onSectionControllerLifecycle?.(
+				(event: {
+					type?: "ready" | "disposed";
+					key?: { sectionId?: string; attemptId?: string };
+				}) => {
+					if (
+						!isMatchingSectionControllerLifecycleEvent(event, sectionId, attemptId)
+					)
+						return;
+					if (event?.type === "disposed") {
+						detachControllerSubscription();
+						queueEnsureControllerSubscription();
+						return;
+					}
+					const nextAttemptId = attemptId || undefined;
+					if (
+						subscriptions.controller &&
+						subscriptions.activeSectionId === sectionId &&
+						subscriptions.activeAttemptId === nextAttemptId
+					) {
+						return;
+					}
+					queueEnsureControllerSubscription();
+				},
+			) || null;
+		});
 		return () => {
 			detachControllerSubscription();
 			detachLifecycleSubscription();
@@ -458,9 +548,6 @@
 									{#if record.itemId}
 										<span>item: {record.itemId}</span>
 									{/if}
-									{#if record.replayed}
-										<span>replayed</span>
-									{/if}
 									{#if record.intent}
 										<span>intent: {record.intent}</span>
 									{/if}
@@ -484,7 +571,6 @@
 							<div><strong>Target:</strong> {selectedRecord.targetTag || "unknown"}</div>
 							<div><strong>Item:</strong> {selectedRecord.itemId || "n/a"}</div>
 							<div><strong>Canonical:</strong> {selectedRecord.canonicalItemId || "n/a"}</div>
-							<div><strong>Replayed:</strong> {selectedRecord.replayed ? "yes" : "no"}</div>
 							<div><strong>Intent:</strong> {selectedRecord.intent || "n/a"}</div>
 							<div><strong>Duplicates:</strong> {selectedRecord.duplicateCount}</div>
 							<div>

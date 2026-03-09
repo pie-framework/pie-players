@@ -8,4 +8,4 @@
 // Re-export everything from client.ts (client-safe code)
 export * from "./client.js";
 // Variant resolver
-export { VariantResolverImpl, variantResolver } from "./variant-resolver.js";
+export { VariantResolverImpl } from "./variant-resolver.js";

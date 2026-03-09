@@ -113,9 +113,7 @@ export class PNPToolResolver {
 	 *
 	 * @param assessment QTI 3.0 assessment with personalNeedsProfile
 	 * @param currentItemRef Current item for item-specific requirements (optional)
-	 * @returns Array of resolved tool configurations (for backward compatibility)
-	 *
-	 * @deprecated Use resolveToolsWithProvenance() to get provenance tracking
+	 * @returns Array of resolved tool configurations
 	 *
 	 * @example
 	 * const resolver = new PNPToolResolver(registry);

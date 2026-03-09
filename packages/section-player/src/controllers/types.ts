@@ -101,6 +101,12 @@ export interface SectionAttemptSessionSlice {
 	itemIdentifiers: string[];
 	visitedItemIdentifiers: string[];
 	itemSessions: Record<string, unknown>;
+	loadingComplete: boolean;
+	totalRegistered: number;
+	totalLoaded: number;
+	itemsComplete: boolean;
+	completedCount: number;
+	totalItems: number;
 }
 
 export interface SessionChangedResult {
@@ -153,7 +159,6 @@ interface SectionControllerEventBase {
 		| "section-items-complete-changed"
 		| "section-error";
 	timestamp: number;
-	replayed?: boolean;
 }
 
 interface ItemScopedControllerEventBase extends SectionControllerEventBase {

@@ -127,24 +127,6 @@ export class ResponseDiscoveryServiceImpl implements ResponseDiscoveryService {
 	}
 
 	/**
-	 * @deprecated Use explicit component registration and signalActive/signalInactive.
-	 */
-	autoDiscoverResponses(_rootElement: HTMLElement = document.body): void {
-		console.warn(
-			"[ResponseDiscovery] autoDiscoverResponses is deprecated. Register responses explicitly.",
-		);
-	}
-
-	/**
-	 * @deprecated Use explicit signalActive/signalInactive from response components.
-	 */
-	setupFocusTracking(): void {
-		console.warn(
-			"[ResponseDiscovery] setupFocusTracking is deprecated. Responses should call signalActive/signalInactive.",
-		);
-	}
-
-	/**
 	 * Clear all responses (for cleanup)
 	 */
 	clear(): void {

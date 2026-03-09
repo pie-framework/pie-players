@@ -41,6 +41,12 @@ describe("SectionController external contract", () => {
 		expect(runtimeState?.currentItemIndex).toBe(-1);
 		expect(runtimeState?.itemIdentifiers).toEqual(["canonical-item-1"]);
 		expect(runtimeState?.currentItemId).toBe("");
+		expect(runtimeState?.loadingComplete).toBe(false);
+		expect(runtimeState?.totalRegistered).toBe(0);
+		expect(runtimeState?.totalLoaded).toBe(0);
+		expect(runtimeState?.itemsComplete).toBe(false);
+		expect(runtimeState?.completedCount).toBe(0);
+		expect(runtimeState?.totalItems).toBe(1);
 	});
 
 	test("exposes persistence session state", async () => {
@@ -133,7 +139,7 @@ describe("SectionController external contract", () => {
 		);
 	});
 
-	test("replays stable baseline events to new subscribers", async () => {
+	test("does not replay historical events to late subscribers", async () => {
 		const controller = new SectionController();
 		const section = {
 			identifier: "section-3",
@@ -146,16 +152,33 @@ describe("SectionController external contract", () => {
 			assessmentId: "assessment-3",
 			view: "candidate",
 		});
-		controller.navigateToItem(0);
-
-		const replayedTypes: string[] = [];
-		const unsubscribe = controller.subscribe((event) => {
-			if (event.replayed !== true) return;
-			replayedTypes.push(event.type);
+		controller.handleContentRegistered({
+			itemId: "runtime-item-3",
+			canonicalItemId: "canonical-item-3",
+			contentKind: "item",
 		});
+		controller.handleContentLoaded({
+			itemId: "runtime-item-3",
+			canonicalItemId: "canonical-item-3",
+			contentKind: "item",
+		});
+
+		const seenTypes: string[] = [];
+		const unsubscribe = controller.subscribe((event) => {
+			seenTypes.push(event.type);
+		});
+		expect(seenTypes).toEqual([]);
+		controller.navigateToItem(0);
 		unsubscribe();
 
-		expect(replayedTypes).toContain("item-complete-changed");
-		expect(replayedTypes).toContain("item-selected");
+		expect(seenTypes).toEqual(["item-selected"]);
+		const runtimeState = controller.getRuntimeState();
+		expect(runtimeState).toEqual(
+			expect.objectContaining({
+				loadingComplete: true,
+				totalRegistered: 1,
+				totalLoaded: 1,
+			}),
+		);
 	});
 });

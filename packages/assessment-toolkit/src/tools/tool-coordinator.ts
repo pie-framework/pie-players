@@ -133,7 +133,7 @@ export function bringToFront(idOrElement: ToolId | HTMLElement): void {
 			return state;
 		}
 
-		// Otherwise, treat as tool ID (legacy behavior)
+		// Otherwise, treat as tool ID
 		const id = idOrElement;
 		const tool = state.tools.get(id);
 		if (tool && tool.isVisible) {
@@ -229,7 +229,3 @@ export const toolCoordinatorStore: ToolCoordinator & {
 	getToolState,
 	isToolVisible,
 };
-
-// Backward compatibility alias (deprecated - use toolCoordinatorStore)
-/** @deprecated Use toolCoordinatorStore instead */
-export const toolCoordinator = toolCoordinatorStore;

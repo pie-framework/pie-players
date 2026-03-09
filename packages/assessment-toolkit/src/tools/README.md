@@ -352,8 +352,10 @@ const trace = accommodationResolver.getResolutionTrace('calculator', student, ro
 Resolves item configuration considering variants for A/B testing and scaffolding.
 
 ```typescript
-import { variantResolver } from '$lib/assessment-toolkit/tools';
+import { VariantResolverImpl } from '$lib/assessment-toolkit/tools';
 import type { ItemToolConfig, VariantContext } from '$lib/assessment-toolkit/tools';
+
+const variantResolver = new VariantResolverImpl();
 
 const itemConfig: ItemToolConfig = {
   itemId: 'item-001',
@@ -404,8 +406,8 @@ Finds and manages PIE response components for tool-to-response integration.
 import { responseDiscovery } from '$lib/assessment-toolkit/tools';
 
 // Setup (in player initialization)
-responseDiscovery.setupFocusTracking(); // Auto-track active response
-responseDiscovery.autoDiscoverResponses(); // Find all response elements
+responseDiscovery.registerResponse(responseComponent);
+responseDiscovery.signalActive(responseComponent.responseId);
 
 // In calculator tool
 async function insertIntoResponse() {
@@ -453,8 +455,10 @@ responseDiscovery.onActiveResponseChanged((response) => {
 Calculator architecture using the Desmos provider.
 
 ```typescript
-import { desmosProvider } from '$lib/assessment-toolkit/tools';
+import { DesmosCalculatorProvider } from '$lib/assessment-toolkit/tools';
 import type { CalculatorType } from '$lib/assessment-toolkit/tools';
+
+const desmosProvider = new DesmosCalculatorProvider();
 
 // Option 1: Desmos (Requires License & API Key)
 // Professional graphing calculator
@@ -531,13 +535,16 @@ Complete example showing all services working together:
 import {
   libraryLoader,
   accommodationResolver,
-  variantResolver,
+  VariantResolverImpl,
   responseDiscovery,
-  desmosProvider,
+  DesmosCalculatorProvider,
   type AccommodationProfile,
   type RosterToolConfiguration,
   type ItemToolConfig,
 } from '$lib/assessment-toolkit/tools';
+
+const variantResolver = new VariantResolverImpl();
+const desmosProvider = new DesmosCalculatorProvider();
 
 // 1. Load required library
 await libraryLoader.loadScript(COMMON_LIBRARIES.desmos);
@@ -561,10 +568,7 @@ if (calculatorAllowed) {
     resolvedItem.toolParameters.calculator?.finalConfig
   );
 
-  // 5. Setup response integration
-  responseDiscovery.setupFocusTracking();
-
-  // Insert calculator result into active response
+  // 5. Insert calculator result into active response
   calculator.insertIntoResponse = async () => {
     const response = responseDiscovery.getActiveResponse();
     if (response) {

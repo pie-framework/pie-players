@@ -267,12 +267,6 @@ export type {
 	TTSProviderCapabilities,
 } from "@pie-players/pie-tts";
 
-// Note: Removed deprecated exports:
-// - ttsService singleton (use: const service = new TTSService())
-// - IToolCoordinator (now in ./services/interfaces)
-// - ITTSProvider from TTSService (now in @pie-players/pie-tts)
-// - TTSProvider string type (use ITTSProvider instances instead)
-
 // ============================================================================
 // Item loading (client-resolvable default; optional backend hook)
 // ============================================================================

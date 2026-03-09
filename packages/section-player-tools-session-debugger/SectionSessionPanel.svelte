@@ -29,6 +29,12 @@
 		currentItemIndex: number | null;
 		currentItemId: string | null;
 		visitedItemIdentifiers: string[];
+		loadingComplete: boolean;
+		totalRegistered: number;
+		totalLoaded: number;
+		itemsComplete: boolean;
+		completedCount: number;
+		totalItems: number;
 		updatedAt: number | null;
 		lastChangedItemId: string | null;
 		itemSessions: Record<string, unknown>;
@@ -39,10 +45,21 @@
 		currentItemId?: string;
 		visitedItemIdentifiers?: string[];
 		itemSessions?: Record<string, unknown>;
+		loadingComplete?: boolean;
+		totalRegistered?: number;
+		totalLoaded?: number;
+		itemsComplete?: boolean;
+		completedCount?: number;
+		totalItems?: number;
+	};
+
+	type SectionSessionStateLike = {
+		itemSessions?: Record<string, unknown>;
 	};
 
 	type SectionControllerLike = {
 		getRuntimeState?: () => SectionAttemptSliceLike | null;
+		getSessionState?: () => SectionSessionStateLike | null;
 		subscribe?: (listener: (event: { itemId?: string; timestamp?: number }) => void) => () => void;
 	};
 
@@ -78,6 +95,12 @@
 		currentItemIndex: null,
 		currentItemId: null,
 		visitedItemIdentifiers: [],
+		loadingComplete: false,
+		totalRegistered: 0,
+		totalLoaded: 0,
+		itemsComplete: false,
+		completedCount: 0,
+		totalItems: 0,
 		updatedAt: null,
 		lastChangedItemId: null,
 		itemSessions: {}
@@ -85,6 +108,16 @@
 	let unsubscribeController: (() => void) | null = null;
 	let unsubscribeLifecycle: (() => void) | null = null;
 	let controllerAvailable = $state(false);
+	let resubscribeQueued = false;
+	const subscriptionTarget: {
+		controller: SectionControllerLike | null;
+		sectionId: string;
+		attemptId?: string;
+	} = {
+		controller: null,
+		sectionId: '',
+		attemptId: undefined
+	};
 
 	function cloneSessionSnapshot<T>(value: T): T {
 		try {
@@ -115,6 +148,7 @@
 	) {
 		const controller = controllerOverride || getController();
 		const sectionSlice = controller?.getRuntimeState?.() || null;
+		const persistedSlice = controller?.getSessionState?.() || null;
 		controllerAvailable = Boolean(controller);
 		sessionPanelSnapshot = {
 			currentItemIndex:
@@ -126,15 +160,26 @@
 					? sectionSlice.currentItemId
 					: null,
 			visitedItemIdentifiers: cloneSessionSnapshot(sectionSlice?.visitedItemIdentifiers || []),
+			loadingComplete: sectionSlice?.loadingComplete === true,
+			totalRegistered: typeof sectionSlice?.totalRegistered === 'number' ? sectionSlice.totalRegistered : 0,
+			totalLoaded: typeof sectionSlice?.totalLoaded === 'number' ? sectionSlice.totalLoaded : 0,
+			itemsComplete: sectionSlice?.itemsComplete === true,
+			completedCount: typeof sectionSlice?.completedCount === 'number' ? sectionSlice.completedCount : 0,
+			totalItems: typeof sectionSlice?.totalItems === 'number' ? sectionSlice.totalItems : 0,
 			updatedAt: meta?.updatedAt || Date.now(),
 			lastChangedItemId: meta?.itemId || null,
-			itemSessions: cloneSessionSnapshot(sectionSlice?.itemSessions || {})
+			itemSessions: cloneSessionSnapshot(
+				sectionSlice?.itemSessions || persistedSlice?.itemSessions || {}
+			)
 		};
 	}
 
 	function detachControllerSubscription() {
 		unsubscribeController?.();
 		unsubscribeController = null;
+		subscriptionTarget.controller = null;
+		subscriptionTarget.sectionId = '';
+		subscriptionTarget.attemptId = undefined;
 	}
 
 	function detachLifecycleSubscription() {
@@ -158,10 +203,25 @@
 				currentItemIndex: null,
 				currentItemId: null,
 				visitedItemIdentifiers: [],
+				loadingComplete: false,
+				totalRegistered: 0,
+				totalLoaded: 0,
+				itemsComplete: false,
+				completedCount: 0,
+				totalItems: 0,
 				updatedAt: Date.now(),
 				lastChangedItemId: null,
 				itemSessions: {}
 			};
+			return;
+		}
+		const nextAttemptId = attemptId || undefined;
+		const isSameTarget =
+			subscriptionTarget.controller === controller &&
+			subscriptionTarget.sectionId === sectionId &&
+			subscriptionTarget.attemptId === nextAttemptId;
+		if (isSameTarget && unsubscribeController) {
+			refreshFromController(undefined, controller);
 			return;
 		}
 		detachControllerSubscription();
@@ -170,7 +230,19 @@
 			attemptId,
 			listener: handleControllerEvent
 		}) || null;
+		subscriptionTarget.controller = controller;
+		subscriptionTarget.sectionId = sectionId;
+		subscriptionTarget.attemptId = nextAttemptId;
 		refreshFromController(undefined, controller);
+	}
+
+	function queueEnsureControllerSubscription(): void {
+		if (resubscribeQueued) return;
+		resubscribeQueued = true;
+		queueMicrotask(() => {
+			resubscribeQueued = false;
+			ensureControllerSubscription();
+		});
 	}
 
 	$effect(() => {
@@ -179,7 +251,7 @@
 		detachLifecycleSubscription();
 		unsubscribeLifecycle = toolkitCoordinator.onSectionControllerLifecycle?.((event) => {
 			if (!isMatchingSectionControllerLifecycleEvent(event, sectionId, attemptId)) return;
-			ensureControllerSubscription();
+			queueEnsureControllerSubscription();
 			refreshFromController({
 				updatedAt: Date.now()
 			});

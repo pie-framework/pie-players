@@ -87,7 +87,7 @@ export class ToolCoordinator implements IToolCoordinator {
 	 *
 	 * @param id Unique tool identifier
 	 * @param name Display name
-	 * @param element DOM element for the tool (optional for backward compatibility)
+	 * @param element DOM element for the tool (optional)
 	 * @param layer Z-index layer (defaults to MODAL)
 	 */
 	registerTool(
@@ -303,7 +303,7 @@ export class ToolCoordinator implements IToolCoordinator {
 	}
 
 	/**
-	 * Update tool element reference (backward compatibility)
+	 * Update tool element reference
 	 *
 	 * @param id Tool identifier
 	 * @param element New DOM element
@@ -338,7 +338,7 @@ export class ToolCoordinator implements IToolCoordinator {
 	}
 
 	/**
-	 * Hide all tools (backward compatibility)
+	 * Hide all tools
 	 */
 	hideAllTools(): void {
 		for (const id of this.tools.keys()) {

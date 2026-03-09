@@ -8,7 +8,7 @@
 
 - **WCAG 2.2 Level AA compliance**: Mandatory for all UI components
 - **Bun runtime**: Node.js is NOT used - Bun 1.3.5+ required
-- **No shadow DOM**: Web components use Svelte compiled to custom elements without shadow DOM for better host page integration
+- **Mixed shadow strategy**: This repo intentionally uses both `shadow: "open"` and `shadow: "none"` depending on integration/runtime needs
 - **Svelte 5 with runes**: Modern reactive patterns required
 - **ES2022 target**: Modern JavaScript required
 
@@ -82,7 +82,9 @@ These checks ensure:
 
 ### Web Component Patterns
 
-- **No shadow DOM**: Better CSS integration with host pages
+- **Mixed shadow mode**:
+  - Prefer `shadow: "open"` for encapsulated tool/runtime components
+  - Use `shadow: "none"` where host/page styles must cascade into rendered assessment content or layout wrappers
 - **Custom elements**: Svelte compiled to native custom elements
 - **Event-driven**: PIE player events for communication
 - **Global registry**: Elements register in `window.pie.default`
@@ -113,6 +115,31 @@ These checks ensure:
 - Do not assume attribute updates are reactive for object data.
 - For model/session updates, reassign new objects when needed to trigger updates.
 - When using controller-based elements, rebuild and re-set the element model on mode/session changes.
+
+### Svelte Effect and Subscription Safety
+
+- Keep `$effect` bodies focused on wiring (subscribe/unsubscribe, setup/teardown), not UI state mutation.
+- If setup logic must read/write reactive state (for example seeding debugger rows), run setup inside `untrack(() => { ... })` to avoid accidental effect dependencies.
+- Make subscriptions idempotent: if the target (`sectionId` + `attemptId`) is unchanged and a subscription exists, return early.
+- Prefer stable key checks (`sectionId`, `attemptId`) over controller object identity for resubscribe decisions.
+- For lifecycle-driven resubscribe, queue work with `queueMicrotask` to avoid synchronous re-entrant update chains.
+- On lifecycle `"disposed"` events, detach the current subscription before queueing a rebind.
+
+### Debugger Panel Contract
+
+- Debugger panels are consumers, not state owners: they should render controller state reads (`getRuntimeState` / `getSessionState`) plus forward controller events.
+- Do not rely on event replay for baseline panel state; use explicit state reads for initialization.
+
+### DOM Usage Rules
+
+- Scope DOM listeners to the nearest host/container element; avoid `document`/`window` listeners for internal coordination unless no scoped alternative exists.
+- Always clean up listeners, observers, and timers in effect teardown.
+- Treat DOM events as boundary signals, not primary internal state storage.
+- Use controller/context values as source of truth and derive DOM from state.
+- Use typed/documented `CustomEvent` payloads; prefer `bubbles: true` and `composed: true` for host-boundary events.
+- In light-DOM custom elements, prefer stable `pie-*` or `data-pie-*` selectors; avoid fragile generic class hooks.
+- Prefer host-scoped queries over broad document-wide queries.
+- When normalizing low-level player events into canonical runtime events, add dedupe/intent guards.
 
 ### Demo UI Preferences
 

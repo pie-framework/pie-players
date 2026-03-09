@@ -77,15 +77,13 @@ export class SectionController implements SectionControllerHandle {
 	private readonly loadedRenderableKeys = new Set<string>();
 	private readonly itemCompletionByCanonicalId = new Map<string, boolean>();
 	private sectionLoadingComplete = false;
-	private sectionLoadingSnapshot: SectionLoadingCompleteEvent | null = null;
-	private sectionItemsCompleteSnapshot: SectionItemsCompleteChangedEvent | null =
-		null;
-	private sectionNavigationSnapshot: SectionNavigationChangeEvent | null = null;
-	private lastItemSelectionSnapshot: ItemSelectedEvent | null = null;
-	private lastSectionErrorSnapshot: SectionErrorEvent | null = null;
+	private totalRegistered = 0;
+	private totalLoaded = 0;
+	private sectionItemsComplete = false;
+	private completedCount = 0;
+	private totalItems = 0;
 
 	private emitChange(event: SectionControllerChangeEvent): void {
-		this.captureReplaySnapshot(event);
 		for (const listener of this.listeners) {
 			try {
 				listener(event);
@@ -97,13 +95,6 @@ export class SectionController implements SectionControllerHandle {
 
 	public subscribe(listener: SectionControllerChangeListener): () => void {
 		this.listeners.add(listener);
-		for (const event of this.buildReplayEvents()) {
-			try {
-				listener(event);
-			} catch (error) {
-				console.warn("[SectionController] replay listener failed", error);
-			}
-		}
 		return () => {
 			this.listeners.delete(listener);
 		};
@@ -377,6 +368,12 @@ export class SectionController implements SectionControllerHandle {
 			itemIdentifiers,
 			visitedItemIdentifiers,
 			itemSessions,
+			loadingComplete: this.sectionLoadingComplete,
+			totalRegistered: this.totalRegistered,
+			totalLoaded: this.totalLoaded,
+			itemsComplete: this.sectionItemsComplete,
+			completedCount: this.completedCount,
+			totalItems: this.totalItems,
 		};
 		return runtimeState;
 	}
@@ -615,11 +612,11 @@ export class SectionController implements SectionControllerHandle {
 		this.loadedRenderableKeys.clear();
 		this.itemCompletionByCanonicalId.clear();
 		this.sectionLoadingComplete = false;
-		this.sectionLoadingSnapshot = null;
-		this.sectionItemsCompleteSnapshot = null;
-		this.sectionNavigationSnapshot = null;
-		this.lastItemSelectionSnapshot = null;
-		this.lastSectionErrorSnapshot = null;
+		this.totalRegistered = 0;
+		this.totalLoaded = 0;
+		this.sectionItemsComplete = false;
+		this.completedCount = 0;
+		this.totalItems = 0;
 	}
 
 	private toSectionContentKind(raw?: string): SectionContentKind {
@@ -685,7 +682,12 @@ export class SectionController implements SectionControllerHandle {
 	private emitSectionItemsCompleteIfChanged(timestamp: number): void {
 		const itemViewModels = this.getItemViewModels();
 		const totalItems = itemViewModels.length;
-		if (totalItems === 0) return;
+		this.totalItems = totalItems;
+		if (totalItems === 0) {
+			this.completedCount = 0;
+			this.sectionItemsComplete = false;
+			return;
+		}
 		let completedCount = 0;
 		for (const item of itemViewModels) {
 			const complete = this.itemCompletionByCanonicalId.get(item.canonicalItemId);
@@ -694,14 +696,13 @@ export class SectionController implements SectionControllerHandle {
 			}
 		}
 		const complete = completedCount === totalItems;
+		this.completedCount = completedCount;
 		// Emit only when aggregate completion state flips (false<->true), not
 		// for intermediate count changes while state remains the same.
-		if (
-			this.sectionItemsCompleteSnapshot &&
-			this.sectionItemsCompleteSnapshot.complete === complete
-		) {
+		if (this.sectionItemsComplete === complete) {
 			return;
 		}
+		this.sectionItemsComplete = complete;
 		const event: SectionItemsCompleteChangedEvent = {
 			type: "section-items-complete-changed",
 			complete,
@@ -716,6 +717,8 @@ export class SectionController implements SectionControllerHandle {
 	private evaluateSectionLoadingState(timestamp: number): void {
 		const totalRegistered = this.trackedRenderables.size;
 		const totalLoaded = this.loadedRenderableKeys.size;
+		this.totalRegistered = totalRegistered;
+		this.totalLoaded = totalLoaded;
 		const nextLoaded = totalRegistered > 0 && totalLoaded >= totalRegistered;
 		if (nextLoaded === this.sectionLoadingComplete) return;
 		this.sectionLoadingComplete = nextLoaded;
@@ -728,107 +731,6 @@ export class SectionController implements SectionControllerHandle {
 			timestamp,
 		};
 		this.emitChange(event);
-	}
-
-	private captureReplaySnapshot(event: SectionControllerChangeEvent): void {
-		if (event.type === "section-loading-complete") {
-			this.sectionLoadingSnapshot = event;
-		}
-		if (event.type === "section-items-complete-changed") {
-			this.sectionItemsCompleteSnapshot = event;
-		}
-		if (event.type === "section-navigation-change") {
-			this.sectionNavigationSnapshot = event;
-		}
-		if (event.type === "item-selected") {
-			this.lastItemSelectionSnapshot = event;
-		}
-		if (event.type === "section-error") {
-			this.lastSectionErrorSnapshot = event;
-		}
-	}
-
-	private buildReplayEvents(): SectionControllerChangeEvent[] {
-		const replayedAt = Date.now();
-		const replayEvents: SectionControllerChangeEvent[] = [];
-		for (const loadedKey of this.loadedRenderableKeys) {
-			const tracked = this.trackedRenderables.get(loadedKey);
-			if (!tracked) continue;
-			replayEvents.push({
-				type: "content-loaded",
-				contentKind: tracked.contentKind,
-				itemId: tracked.itemId,
-				canonicalItemId: tracked.canonicalItemId,
-				detail: undefined,
-				currentItemIndex: this.state.viewModel.currentItemIndex ?? 0,
-				timestamp: replayedAt,
-				replayed: true,
-			});
-		}
-		for (const item of this.getItemViewModels()) {
-			const complete =
-				this.itemCompletionByCanonicalId.get(item.canonicalItemId) ?? false;
-			replayEvents.push({
-				type: "item-complete-changed",
-				itemId: item.itemId,
-				canonicalItemId: item.canonicalItemId,
-				complete,
-				previousComplete: complete,
-				currentItemIndex: this.state.viewModel.currentItemIndex ?? 0,
-				timestamp: replayedAt,
-				replayed: true,
-			});
-		}
-		if (this.lastItemSelectionSnapshot) {
-			replayEvents.push({
-				...this.lastItemSelectionSnapshot,
-				timestamp: replayedAt,
-				replayed: true,
-			});
-		} else {
-			const currentItem = this.getCurrentItem();
-			if (currentItem?.id) {
-				replayEvents.push({
-					type: "item-selected",
-					previousItemId: currentItem.id,
-					currentItemId: currentItem.id,
-					itemIndex: this.state.viewModel.currentItemIndex ?? 0,
-					totalItems: this.state.viewModel.items.length,
-					currentItemIndex: this.state.viewModel.currentItemIndex ?? 0,
-					timestamp: replayedAt,
-					replayed: true,
-				});
-			}
-		}
-		if (this.sectionLoadingSnapshot) {
-			replayEvents.push({
-				...this.sectionLoadingSnapshot,
-				timestamp: replayedAt,
-				replayed: true,
-			});
-		}
-		if (this.sectionItemsCompleteSnapshot) {
-			replayEvents.push({
-				...this.sectionItemsCompleteSnapshot,
-				timestamp: replayedAt,
-				replayed: true,
-			});
-		}
-		if (this.sectionNavigationSnapshot) {
-			replayEvents.push({
-				...this.sectionNavigationSnapshot,
-				timestamp: replayedAt,
-				replayed: true,
-			});
-		}
-		if (this.lastSectionErrorSnapshot) {
-			replayEvents.push({
-				...this.lastSectionErrorSnapshot,
-				timestamp: replayedAt,
-				replayed: true,
-			});
-		}
-		return replayEvents;
 	}
 
 	private cloneForRead<T>(value: T): T {

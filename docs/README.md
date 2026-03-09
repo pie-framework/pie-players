@@ -7,6 +7,7 @@ Current status: core runtime custom elements now run with shadow DOM enabled (`s
 ## Start Here
 
 - [`ARCHITECTURE.md`](./ARCHITECTURE.md) - System-level architecture
+- [`DEVELOPER_PATTERNS.md`](./DEVELOPER_PATTERNS.md) - Project code style and implementation patterns
 - [`TOOL_PROVIDER_SYSTEM.md`](./TOOL_PROVIDER_SYSTEM.md) - Tool registry/provider system
 - [`TOOL_HOST_CONTRACT.md`](./TOOL_HOST_CONTRACT.md) - Host/tool runtime integration contract
 

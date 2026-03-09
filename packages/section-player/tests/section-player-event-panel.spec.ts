@@ -106,17 +106,27 @@ test.describe("section player controller event panel", () => {
 		await expect(panelRows.first()).toBeVisible();
 	});
 
-	test("replays critical lifecycle state when opened late", async ({ page }) => {
+	test("does not rely on replay when opened late", async ({ page }) => {
 		await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
 
 		const firstSelectable = page.locator('input[type="radio"], input[type="checkbox"]').first();
 		await firstSelectable.click({ force: true });
 
 		const panel = await openEventPanel(page);
-		await panel.getByRole("button", { name: "section" }).click();
+		await expect(
+			panel.locator(".pie-section-player-tools-event-debugger__row").filter({
+				hasText: /replayed/i,
+			}),
+		).toHaveCount(0);
+		const secondSelectable = page
+			.locator('input[type="radio"], input[type="checkbox"]')
+			.nth(1);
+		await secondSelectable.click({ force: true });
 		const panelRows = panel.locator(".pie-section-player-tools-event-debugger__row");
 		await expect(
-			panelRows.filter({ hasText: "replayed" }).first(),
+			panelRows
+				.filter({ hasText: /item-session-data-changed|item-complete-changed/i })
+				.first(),
 		).toBeVisible({ timeout: 30_000 });
 	});
 

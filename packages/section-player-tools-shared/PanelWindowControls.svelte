@@ -11,7 +11,9 @@
 		buttonClass?: string;
 	}>();
 
-	const resolvedButtonClass = (buttonClass || "").trim() || "pie-window-controls__button";
+	const resolvedButtonClass = $derived.by(
+		() => (buttonClass || "").trim() || "pie-window-controls__button",
+	);
 </script>
 
 <button

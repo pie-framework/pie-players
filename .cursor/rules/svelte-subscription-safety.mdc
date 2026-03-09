@@ -1,0 +1,33 @@
+---
+description: Avoid Svelte reactive loops in debug/tooling panels
+alwaysApply: true
+---
+
+# Svelte Subscription Safety
+
+- Treat `$effect` as wiring-only: setup/teardown subscriptions and observers, but avoid directly mutating reactive UI state inside tracked effect bodies.
+- If setup must call logic that reads/writes reactive state (for example seeding records), wrap that setup in `untrack(() => { ... })`.
+- Make subscription setup idempotent: if `sectionId`/`attemptId` target did not change and a subscription exists, return early.
+- Prefer stable key comparison (`sectionId`, `attemptId`) over object identity when checking whether to resubscribe.
+- For lifecycle-triggered resubscribe, queue with `queueMicrotask` to prevent synchronous re-entrant update chains.
+- On `"disposed"` lifecycle events, explicitly detach current subscription before queueing a rebind.
+
+## Custom-Element Package Workflow
+
+- Consumer apps import package `dist` exports, not package `src`.
+- After changing a custom-element package source file, rebuild that package before validating in a consumer app.
+- If runtime behavior appears unchanged after source edits, suspect stale `dist` output first.
+
+## Quick Pattern
+
+```ts
+$effect(() => {
+  void sectionId;
+  void attemptId;
+  untrack(() => {
+    ensureSubscription();
+    setupLifecycleListener();
+  });
+  return () => teardownAll();
+});
+```

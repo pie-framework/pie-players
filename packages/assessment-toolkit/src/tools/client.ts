@@ -10,12 +10,7 @@
  */
 
 // Calculator providers (client-safe, have SSR guards)
-// Deprecated singleton exports (kept for backward compatibility)
-// @deprecated Instantiate providers directly instead
-export {
-	DesmosCalculatorProvider,
-	desmosProvider,
-} from "./calculators/desmos-provider.js";
+export { DesmosCalculatorProvider } from "./calculators/desmos-provider.js";
 // Library loader (client-safe, has SSR guards)
 export {
 	COMMON_LIBRARIES,

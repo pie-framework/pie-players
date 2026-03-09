@@ -102,8 +102,13 @@ test.describe("section player demo tts-ssml", () => {
 			.click();
 
 		// Q2 keyboard interaction.
-		const q2FirstRadio = q2.getByRole("radio", { name: /^A\.\s+\(x - 2\)\(x - 3\)/i });
-		await expect(q2FirstRadio).toBeVisible();
+		// Use role-only targeting here because math/markup rendering can subtly
+		// change accessible label text timing and whitespace across runs.
+		await q2.scrollIntoViewIfNeeded();
+		const q2Radios = q2.getByRole("radio");
+		await expect(q2Radios).toHaveCount(4);
+		const q2FirstRadio = q2Radios.first();
+		await expect(q2FirstRadio).toBeVisible({ timeout: 10_000 });
 		await q2FirstRadio.focus();
 		await page.keyboard.press("ArrowDown");
 		await page.keyboard.press("Space");

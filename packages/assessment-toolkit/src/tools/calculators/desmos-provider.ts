@@ -298,7 +298,6 @@ class DesmosCalculator implements Calculator {
 
 	/**
 	 * Map provider config to Desmos options
-	 * Legacy mapping for backwards compatibility
 	 */
 	private _mapConfigToDesmos(config?: CalculatorProviderConfig): any {
 		if (!config) return {};
@@ -463,10 +462,3 @@ class DesmosCalculator implements Calculator {
 	}
 }
 
-/**
- * Singleton provider instance (deprecated)
- * @deprecated Instantiate DesmosCalculatorProvider directly instead:
- *   const provider = new DesmosCalculatorProvider();
- *   await provider.initialize();
- */
-export const desmosProvider = new DesmosCalculatorProvider();

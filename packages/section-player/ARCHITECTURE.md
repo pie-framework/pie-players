@@ -82,7 +82,7 @@ If an update changes the section composition structure (add/remove/reorder/new I
 
 ## Verification matrix
 
-- Event and runtime replay behavior:
+- Forward-only controller events + runtime state bootstrap:
   - `packages/section-player/tests/section-player-event-panel.spec.ts`
 - Splitpane scroll stability on response selection:
   - `packages/section-player/tests/section-player-event-panel.spec.ts`

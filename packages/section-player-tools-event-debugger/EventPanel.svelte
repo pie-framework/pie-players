@@ -32,6 +32,22 @@
 		replayed?: boolean;
 		[key: string]: unknown;
 	};
+	type ToolkitCoordinatorLike = {
+		subscribeSectionEvents: (args: {
+			sectionId: string;
+			attemptId?: string;
+			listener: (event: ControllerEvent) => void;
+		}) => () => void;
+		getSectionController?: (args: {
+			sectionId: string;
+			attemptId?: string;
+		}) => unknown;
+		onSectionControllerLifecycle?: (
+			listener: (event: {
+				key?: { sectionId?: string; attemptId?: string };
+			}) => void,
+		) => () => void;
+	};
 
 	type EventType =
 		| "item-session-data-changed"
@@ -70,7 +86,7 @@
 		attemptId = undefined,
 	}: {
 		maxEvents?: number;
-		toolkitCoordinator?: any;
+		toolkitCoordinator?: ToolkitCoordinatorLike | null;
 		sectionId?: string;
 		attemptId?: string;
 	} = $props();
@@ -86,9 +102,6 @@
 	let controllerAvailable = $state(false);
 
 	let nextRecordId = 1;
-	let activeController: {
-		subscribe?: (listener: (event: ControllerEvent) => void) => () => void;
-	} | null = null;
 	let unsubscribeController: (() => void) | null = null;
 	let unsubscribeLifecycle: (() => void) | null = null;
 
@@ -211,6 +224,10 @@
 		}
 	}
 
+	function handleControllerEvent(event: ControllerEvent): void {
+		pushRecord(event || {});
+	}
+
 	function getController(): any | null {
 		return getSectionControllerFromCoordinator(
 			toolkitCoordinator,
@@ -222,7 +239,6 @@
 	function detachControllerSubscription() {
 		unsubscribeController?.();
 		unsubscribeController = null;
-		activeController = null;
 	}
 
 	function detachLifecycleSubscription() {
@@ -237,12 +253,12 @@
 			detachControllerSubscription();
 			return;
 		}
-		if (controller === activeController) return;
 		detachControllerSubscription();
-		activeController = controller;
 		unsubscribeController =
-			controller.subscribe?.((event: ControllerEvent) => {
-				pushRecord(event || {});
+			toolkitCoordinator?.subscribeSectionEvents({
+				sectionId,
+				attemptId,
+				listener: handleControllerEvent,
 			}) || null;
 	}
 
@@ -316,21 +332,6 @@
 		panelY = initial.y;
 		panelWidth = initial.width;
 		panelHeight = initial.height;
-		ensureControllerSubscription();
-		unsubscribeLifecycle = toolkitCoordinator?.onSectionControllerLifecycle?.(
-			(event: { key?: { sectionId?: string; attemptId?: string } }) => {
-				if (
-					!isMatchingSectionControllerLifecycleEvent(event, sectionId, attemptId)
-				)
-					return;
-				ensureControllerSubscription();
-			},
-		);
-
-		return () => {
-			detachControllerSubscription();
-			detachLifecycleSubscription();
-		};
 	});
 
 	$effect(() => {
@@ -347,8 +348,9 @@
 					return;
 				ensureControllerSubscription();
 			},
-		);
+		) || null;
 		return () => {
+			detachControllerSubscription();
 			detachLifecycleSubscription();
 		};
 	});
@@ -381,7 +383,7 @@
 			>
 				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h8M8 14h5m-7 7h12a2 2 0 002-2V5a2 2 0 00-2-2H6a2 2 0 00-2 2v14a2 2 0 002 2z" />
 			</svg>
-			<h3 class="pie-section-player-tools-event-debugger__title">Session Broadcasts</h3>
+			<h3 class="pie-section-player-tools-event-debugger__title">Controller Events</h3>
 		</div>
 		<div class="pie-section-player-tools-event-debugger__header-actions">
 			<PanelWindowControls
@@ -436,7 +438,7 @@
 				<div class="pie-section-player-tools-event-debugger__list">
 					{#if visibleRecords.length === 0}
 						<div class="pie-section-player-tools-event-debugger__empty">
-							No matching events yet. Interact with an item to capture broadcasts.
+							No matching events yet. Interact with an item to capture controller events.
 						</div>
 					{:else}
 						{#each visibleRecords as record (record.id)}

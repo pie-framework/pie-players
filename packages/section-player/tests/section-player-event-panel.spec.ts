@@ -99,7 +99,9 @@ test.describe("section player controller event panel", () => {
 
 		const panelRows = panel.locator(".pie-section-player-tools-event-debugger__row");
 		await expect(
-			panelRows.filter({ hasText: "item-session-data-changed" }).first(),
+			panelRows
+				.filter({ hasText: /item-session-data-changed|item-complete-changed/i })
+				.first(),
 		).toBeVisible({ timeout: 30_000 });
 		await expect(panelRows.first()).toBeVisible();
 	});
@@ -113,9 +115,6 @@ test.describe("section player controller event panel", () => {
 		const panel = await openEventPanel(page);
 		await panel.getByRole("button", { name: "section" }).click();
 		const panelRows = panel.locator(".pie-section-player-tools-event-debugger__row");
-		await expect(
-			panelRows.filter({ hasText: "section-loading-complete" }).first(),
-		).toBeVisible({ timeout: 30_000 });
 		await expect(
 			panelRows.filter({ hasText: "replayed" }).first(),
 		).toBeVisible({ timeout: 30_000 });

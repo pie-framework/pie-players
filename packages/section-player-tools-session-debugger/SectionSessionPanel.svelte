@@ -42,12 +42,17 @@
 	};
 
 	type SectionControllerLike = {
-		getCurrentSectionAttemptSlice?: () => SectionAttemptSliceLike | null;
+		getRuntimeState?: () => SectionAttemptSliceLike | null;
 		subscribe?: (listener: (event: { itemId?: string; timestamp?: number }) => void) => () => void;
 	};
 
 	type ToolkitCoordinatorLike = {
 		getSectionController?: (args: { sectionId: string; attemptId?: string }) => SectionControllerLike | undefined;
+		subscribeSectionEvents: (args: {
+			sectionId: string;
+			attemptId?: string;
+			listener: (event: { itemId?: string; timestamp?: number }) => void;
+		}) => () => void;
 	onSectionControllerLifecycle?: (
 		listener: (event: { type: 'ready' | 'disposed'; key?: { sectionId?: string; attemptId?: string } }) => void
 	) => () => void;
@@ -77,11 +82,9 @@
 		lastChangedItemId: null,
 		itemSessions: {}
 	});
-	let activeController: SectionControllerLike | null = null;
 	let unsubscribeController: (() => void) | null = null;
 	let unsubscribeLifecycle: (() => void) | null = null;
 	let controllerAvailable = $state(false);
-	let refreshQueued = false;
 
 	function cloneSessionSnapshot<T>(value: T): T {
 		try {
@@ -111,7 +114,7 @@
 		controllerOverride?: SectionControllerLike | null
 	) {
 		const controller = controllerOverride || getController();
-		const sectionSlice = controller?.getCurrentSectionAttemptSlice?.() || null;
+		const sectionSlice = controller?.getRuntimeState?.() || null;
 		controllerAvailable = Boolean(controller);
 		sessionPanelSnapshot = {
 			currentItemIndex:
@@ -129,29 +132,21 @@
 		};
 	}
 
-	function queueRefresh(meta?: { itemId?: string; updatedAt?: number }) {
-		if (refreshQueued) return;
-		refreshQueued = true;
-		queueMicrotask(() => {
-			refreshQueued = false;
-			ensureControllerSubscription();
-			refreshFromController(
-				meta || {
-					updatedAt: Date.now()
-				}
-			);
-		});
-	}
-
 	function detachControllerSubscription() {
 		unsubscribeController?.();
 		unsubscribeController = null;
-		activeController = null;
 	}
 
 	function detachLifecycleSubscription() {
 		unsubscribeLifecycle?.();
 		unsubscribeLifecycle = null;
+	}
+
+	function handleControllerEvent(detail: { itemId?: string; timestamp?: number }): void {
+		refreshFromController({
+			itemId: detail?.itemId,
+			updatedAt: detail?.timestamp || Date.now()
+		});
 	}
 
 	function ensureControllerSubscription() {
@@ -169,27 +164,13 @@
 			};
 			return;
 		}
-		if (controller === activeController) return;
 		detachControllerSubscription();
-		activeController = controller;
-		const subscribe = typeof controller.subscribe === 'function' ? controller.subscribe.bind(controller) : null;
-		unsubscribeController =
-			subscribe?.((detail) => {
-				refreshFromController(
-					{
-						itemId: detail?.itemId,
-						updatedAt: detail?.timestamp || Date.now()
-					},
-					controller
-				);
-			}) || null;
+		unsubscribeController = toolkitCoordinator?.subscribeSectionEvents({
+			sectionId,
+			attemptId,
+			listener: handleControllerEvent
+		}) || null;
 		refreshFromController(undefined, controller);
-	}
-
-	export function refreshFromHost(): void {
-		queueRefresh({
-			updatedAt: Date.now()
-		});
 	}
 
 	$effect(() => {
@@ -229,20 +210,6 @@
 		sessionWindowY = initial.y;
 		sessionWindowWidth = initial.width;
 		sessionWindowHeight = initial.height;
-
-		const handleRuntimeSessionEvent = () => {
-			queueRefresh({
-				updatedAt: Date.now()
-			});
-		};
-		document.addEventListener('session-changed', handleRuntimeSessionEvent as EventListener, true);
-		document.addEventListener('item-session-changed', handleRuntimeSessionEvent as EventListener, true);
-		document.addEventListener('composition-changed', handleRuntimeSessionEvent as EventListener, true);
-		return () => {
-			document.removeEventListener('session-changed', handleRuntimeSessionEvent as EventListener, true);
-			document.removeEventListener('item-session-changed', handleRuntimeSessionEvent as EventListener, true);
-			document.removeEventListener('composition-changed', handleRuntimeSessionEvent as EventListener, true);
-		};
 	});
 
 	const pointerController = createFloatingPanelPointerController({
@@ -320,19 +287,20 @@
 						</svg>
 						<span class="pie-section-player-tools-session-debugger__text-xs">Section controller not available for this section yet.</span>
 					</div>
-				{:else if Object.keys(sessionPanelSnapshot.itemSessions || {}).length === 0}
-					<div class="pie-section-player-tools-session-debugger__alert pie-section-player-tools-session-debugger__alert--info">
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							class="pie-section-player-tools-session-debugger__icon-md"
-							fill="none"
-							viewBox="0 0 24 24"
-						>
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-						</svg>
-						<span class="pie-section-player-tools-session-debugger__text-xs">No section session data yet. Interact with the questions to see updates.</span>
-					</div>
 				{:else}
+					{#if Object.keys(sessionPanelSnapshot.itemSessions || {}).length === 0}
+						<div class="pie-section-player-tools-session-debugger__alert pie-section-player-tools-session-debugger__alert--info">
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								class="pie-section-player-tools-session-debugger__icon-md"
+								fill="none"
+								viewBox="0 0 24 24"
+							>
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+							</svg>
+							<span class="pie-section-player-tools-session-debugger__text-xs">No section session data yet. Interact with the questions to see updates.</span>
+						</div>
+					{/if}
 					<div class="pie-section-player-tools-session-debugger__card">
 						<div class="pie-section-player-tools-session-debugger__card-title">
 							Item Sessions Snapshot
@@ -399,10 +367,6 @@
 		display: flex;
 		flex-direction: column;
 		min-height: 0;
-	}
-
-	.pie-section-player-tools-session-debugger__resize-handle {
-		user-select: none;
 	}
 
 </style>

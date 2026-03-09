@@ -44,9 +44,12 @@ async function validateControllerAccess(args: {
 
 		host.removeEventListener("section-controller-ready", onControllerReady);
 
-		const hasCanonicalSectionViewModel =
-			typeof (awaited as { getCanonicalSectionViewModel?: unknown } | null)
-				?.getCanonicalSectionViewModel === "function";
+		const hasRuntimeState =
+			typeof (awaited as { getRuntimeState?: unknown } | null)
+				?.getRuntimeState === "function";
+		const hasSessionState =
+			typeof (awaited as { getSessionState?: unknown } | null)
+				?.getSessionState === "function";
 		const hasSubscribe =
 			typeof (awaited as { subscribe?: unknown } | null)?.subscribe ===
 			"function";
@@ -62,7 +65,8 @@ async function validateControllerAccess(args: {
 			hasImmediate: Boolean(immediate),
 			hasAwaited: Boolean(awaited),
 			hasAfterWait: Boolean(afterWait),
-			hasCanonicalSectionViewModel,
+			hasRuntimeState,
+			hasSessionState,
 			hasSubscribe,
 			canAdvanceBefore,
 			canAdvanceAfter,
@@ -78,7 +82,8 @@ async function validateControllerAccess(args: {
 	if (!result.ok) return;
 	expect(result.hasAwaited).toBe(true);
 	expect(result.hasAfterWait).toBe(true);
-	expect(result.hasCanonicalSectionViewModel).toBe(true);
+	expect(result.hasRuntimeState).toBe(true);
+	expect(result.hasSessionState).toBe(true);
 	expect(result.hasSubscribe).toBe(true);
 	expect(result.canAdvanceBefore).toBe(false);
 	expect(typeof result.canAdvanceAfter).toBe("boolean");

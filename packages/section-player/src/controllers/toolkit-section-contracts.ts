@@ -2,9 +2,13 @@ import type { ToolkitCoordinator } from "@pie-players/pie-assessment-toolkit";
 import type { SectionControllerHandle } from "@pie-players/pie-assessment-toolkit";
 export type {
 	SectionControllerContext,
+	SectionControllerEvent,
+	SectionControllerEventType,
 	SectionControllerHandle,
 	SectionControllerKey,
 	SectionControllerPersistenceStrategy,
+	SectionControllerRuntimeState,
+	SectionControllerSessionState,
 } from "@pie-players/pie-assessment-toolkit";
 
 export type CoordinatorWithSectionControllers = ToolkitCoordinator & {

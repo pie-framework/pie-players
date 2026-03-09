@@ -40,6 +40,8 @@ import { createPackagedToolRegistry } from "./createDefaultToolRegistry.js";
 import type { ToolRegistration } from "./ToolRegistry.js";
 import type {
 	SectionControllerContext,
+	SectionControllerEvent,
+	SectionControllerEventType,
 	SectionControllerFactoryDefaults,
 	SectionControllerHandle,
 	SectionControllerKey,
@@ -48,10 +50,14 @@ import type {
 } from "./section-controller-types.js";
 export type {
 	SectionControllerContext,
+	SectionControllerEvent,
+	SectionControllerEventType,
 	SectionControllerFactoryDefaults,
 	SectionControllerHandle,
 	SectionControllerKey,
 	SectionControllerPersistenceStrategy,
+	SectionControllerRuntimeState,
+	SectionControllerSessionState,
 	SectionPersistenceFactoryDefaults,
 } from "./section-controller-types.js";
 
@@ -175,8 +181,9 @@ export interface SectionControllerLifecycleEvent {
 export interface SectionEventSubscriptionArgs {
 	sectionId: string;
 	attemptId?: string;
-	listener: (event: unknown) => void;
-	eventTypes?: readonly string[];
+	listener: (event: SectionControllerEvent) => void;
+	eventTypes?: readonly SectionControllerEventType[];
+	itemIds?: readonly string[];
 }
 
 export interface ToolkitCoordinatorHooks {
@@ -323,7 +330,7 @@ export class ToolkitCoordinator {
 		(event: SectionControllerLifecycleEvent) => void
 	>();
 	private readonly sectionEventListenerIds = new WeakMap<
-		(event: unknown) => void,
+		(event: SectionControllerEvent) => void,
 		number
 	>();
 	private readonly sectionEventSubscriptions = new Map<string, () => void>();
@@ -676,20 +683,43 @@ export class ToolkitCoordinator {
 		const eventTypeFilter = args.eventTypes
 			? new Set(args.eventTypes)
 			: null;
+		const itemIdFilter = args.itemIds ? new Set(args.itemIds) : null;
 		const unsubscribeController = subscribe.call(controller, (event) => {
-			if (!eventTypeFilter) {
-				args.listener(event);
-				return;
-			}
-			const eventType =
-				typeof event === "object" &&
-				event !== null &&
-				"type" in event &&
-				typeof (event as { type?: unknown }).type === "string"
-					? (event as { type: string }).type
-					: null;
-			if (!eventType || !eventTypeFilter.has(eventType)) {
-				return;
+			if (eventTypeFilter || itemIdFilter) {
+				const eventType = event?.type || null;
+				if (eventTypeFilter && (!eventType || !eventTypeFilter.has(eventType))) {
+					return;
+				}
+				if (itemIdFilter) {
+					const eventItemCandidates = new Set<string>();
+					if ("itemId" in event && typeof event.itemId === "string") {
+						eventItemCandidates.add(event.itemId);
+					}
+					if (
+						"canonicalItemId" in event &&
+						typeof event.canonicalItemId === "string"
+					) {
+						eventItemCandidates.add(event.canonicalItemId);
+					}
+					if (
+						"currentItemId" in event &&
+						typeof event.currentItemId === "string"
+					) {
+						eventItemCandidates.add(event.currentItemId);
+					}
+					if (
+						"previousItemId" in event &&
+						typeof event.previousItemId === "string"
+					) {
+						eventItemCandidates.add(event.previousItemId);
+					}
+					const hasMatchingItem = Array.from(eventItemCandidates).some((itemId) =>
+						itemIdFilter.has(itemId),
+					);
+					if (!hasMatchingItem) {
+						return;
+					}
+				}
 			}
 			args.listener(event);
 		});

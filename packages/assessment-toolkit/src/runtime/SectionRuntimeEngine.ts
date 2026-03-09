@@ -1,5 +1,8 @@
 import type { ToolkitCoordinator } from "../services/ToolkitCoordinator.js";
-import type { SectionControllerHandle } from "../services/section-controller-types.js";
+import type {
+	SectionControllerEvent,
+	SectionControllerHandle,
+} from "../services/section-controller-types.js";
 import type { RuntimeRegistrationDetail } from "./registration-events.js";
 import { RuntimeRegistry } from "./RuntimeRegistry.js";
 
@@ -42,7 +45,7 @@ interface RuntimeController extends SectionControllerHandle {
 		itemId: string,
 		session: unknown,
 	) => { eventDetail?: unknown } | null;
-	subscribe?: (listener: (event: unknown) => void) => () => void;
+	subscribe?: (listener: (event: SectionControllerEvent) => void) => () => void;
 	navigateToItem?: (index: number) => unknown;
 }
 

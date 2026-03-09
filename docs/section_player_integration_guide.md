@@ -130,8 +130,8 @@ const player = document.querySelector('pie-section-player-splitpane');
 player.section = assessmentSectionObject;
 
 player.env = {
-  mode: 'gather',   // 'gather' | 'view' | 'evaluate'
-  role: 'student'    // 'student' | 'instructor'
+  mode: 'gather',    // host/runtime mode string (default is gather)
+  role: 'student'    // host/runtime role string (default is student)
 };
 
 player.tools = {
@@ -142,9 +142,13 @@ player.tools = {
   },
   providers: {
     calculator: {
-      authFetcher: async () => {
-        const res = await fetch('/api/tools/desmos/auth');
-        return res.json();
+      provider: {
+        runtime: {
+          authFetcher: async () => {
+            const res = await fetch('/api/tools/desmos/auth');
+            return res.json();
+          }
+        }
       }
     },
     tts: { enabled: true, backend: 'browser' }
@@ -170,12 +174,12 @@ All configuration can be passed as individual props **or** bundled into a single
 | `tools` | `object` | Tool config (JS property, see below) |
 | `player-type` | `string` | `"iife"` (default), `"esm"`, or `"preloaded"` |
 | `lazy-init` | `boolean` | Defer async service init until needed (default `true`) |
-| `show-toolbar` | `string` | `"true"` or `"false"` |
+| `show-toolbar` | `boolean \| string` | Boolean-like value (`true/false/1/0/on/off/yes/no`) |
 | `toolbar-position` | `string` | `"top"`, `"right"`, `"bottom"`, `"left"`, `"none"` |
 | `enabled-tools` | `string` | Comma-separated section-level tool IDs |
 | `item-toolbar-tools` | `string` | Comma-separated item-level tool IDs |
 | `passage-toolbar-tools` | `string` | Comma-separated passage-level tool IDs |
-| `coordinator` | `object` | Pre-created `ToolkitCoordinator` (advanced) |
+| `coordinator` | `object` | Pre-created `ToolkitCoordinator` (advanced, JS property) |
 | `isolation` | `string` | `"inherit"` (default) or `"force"` |
 
 ### Bundled `runtime` object
@@ -231,13 +235,13 @@ tools: {
 | `calculator` | item | Desmos calculator (basic/scientific/graphing) |
 | `textToSpeech` | section, item, passage | Text-to-speech read-aloud |
 | `graph` | section | Graphing tool |
-| `answerEliminator` | element | Strike through answer choices |
+| `answerEliminator` | item | Strike through answer choices |
 | `annotationToolbar` | item, passage | Highlighting and annotation |
 | `lineReader` | passage | Reading mask / guide |
 | `theme` | section | Color scheme and font size controls |
 | `periodicTable` | section | Chemistry periodic table reference |
-| `ruler` | element | On-screen ruler |
-| `protractor` | element | On-screen protractor |
+| `ruler` | item | On-screen ruler |
+| `protractor` | item | On-screen protractor |
 
 Aliases: `tts` → `textToSpeech`, `colorScheme` → `theme`.
 
@@ -263,9 +267,13 @@ providers: {
     language: 'en-US',
 
     // Auth for server providers
-    authFetcher: async () => {
-      const res = await fetch('/api/tools/tts/credentials');
-      return res.json();
+    provider: {
+      runtime: {
+        authFetcher: async () => {
+          const res = await fetch('/api/tools/tts/credentials');
+          return res.json();
+        }
+      }
     }
   }
 }
@@ -282,10 +290,14 @@ providers: {
 providers: {
   calculator: {
     enabled: true,
-    authFetcher: async () => {
-      const res = await fetch('/api/tools/desmos/auth');
-      if (!res.ok) throw new Error(`Desmos auth failed: ${res.status}`);
-      return res.json(); // { apiKey: '...' }
+    provider: {
+      runtime: {
+        authFetcher: async () => {
+          const res = await fetch('/api/tools/desmos/auth');
+          if (!res.ok) throw new Error(`Desmos auth failed: ${res.status}`);
+          return res.json(); // { apiKey: '...' }
+        }
+      }
     }
   }
 }
@@ -399,7 +411,13 @@ unsubscribe();
 
 #### Via ToolkitCoordinator (with optional filtering)
 
-`subscribeSectionEvents` supports event type and item ID filtering and handles subscription replacement automatically:
+`subscribeSectionEvents` supports event type and item ID filtering and handles subscription replacement automatically.
+
+**Target resolution rules (fail-hard):**
+- Prefer passing explicit `sectionId` (and `attemptId` when relevant).
+- `sectionId` may be omitted only when exactly one active section controller exists for the coordinator.
+- `attemptId` without `sectionId` is invalid and throws.
+- If no controller matches, or resolution is ambiguous, `subscribeSectionEvents` throws an `Error` (it does not silently no-op).
 
 ```ts
 player.addEventListener('toolkit-ready', (e) => {
@@ -441,7 +459,7 @@ player.addEventListener('toolkit-ready', (e) => {
 | `item-player-error` | An item player reported an error | `itemId`, `error`, `contentKind` |
 | `section-error` | Section-level error | `source`, `error`, `itemId?` |
 
-All events include `type`, `timestamp`, and `currentItemIndex`.
+All controller events include `type` and `timestamp`. Most item-scoped events include `currentItemIndex`; `section-navigation-change` is section-scoped and does not.
 
 ### Pulling State
 
@@ -496,12 +514,15 @@ const sessions = controller.getItemSessionsByItemId();
 
 ## Custom Element Events
 
-The section player custom element also emits DOM events that bubble. These are useful when you don't need the full controller API:
+The section player custom element emits a documented public event surface (contract-level) and forwards some toolkit runtime events. These events bubble/cross boundaries and are useful when you don't need the full controller API.
+
+**Integration guidance:** treat DOM events as host-bridge/lifecycle signals. For product/client logic (answer processing, progress rules, analytics, persistence), prefer `SectionController`/`ToolkitCoordinator` event APIs. Whether an update was emitted directly or forwarded through DOM should be considered an implementation detail of the web-component layer.
+
+### Section player public events (contract-level)
 
 | Event | Detail | Description |
 |---|---|---|
 | `session-changed` | `{ itemId, canonicalItemId, session, timestamp, ... }` | Normalized session update from the runtime |
-| `toolkit-ready` | `{ coordinator, runtimeId, assessmentId, sectionId }` | ToolkitCoordinator is initialized |
 | `section-controller-ready` | `{ sectionId, attemptId, controller }` | SectionController is ready |
 | `composition-changed` | `{ composition }` | Section composition model changed |
 | `readiness-change` | `{ phase, interactionReady, allLoadingComplete, reason? }` | Player readiness phase changed |
@@ -511,7 +532,54 @@ The section player custom element also emits DOM events that bubble. These are u
 | `runtime-owned` | `{ runtimeId }` | This element owns its runtime |
 | `runtime-inherited` | `{ runtimeId, parentRuntimeId }` | Runtime inherited from parent |
 
-**`session-changed` vs. controller events:** The `session-changed` DOM event is a convenience surface — it contains the same answer data as `item-session-data-changed` from the controller. For fine-grained control, type filtering, and item-scoped subscriptions, prefer the controller event stream.
+### Forwarded toolkit runtime events (available in practice)
+
+| Event | Detail | Description |
+|---|---|---|
+| `toolkit-ready` | `{ coordinator, runtimeId, assessmentId, sectionId }` | ToolkitCoordinator is initialized |
+| `section-ready` | `{ sectionId }` | Toolkit section runtime initialization completed |
+
+**`session-changed` vs. controller events:** The `session-changed` DOM event is a convenience surface — it contains the same answer data as `item-session-data-changed` from the controller. For stable client integrations, type filtering, and item-scoped subscriptions, prefer the controller/coordinator event stream.
+
+### Recommended integration pattern
+
+```ts
+const player = document.querySelector('pie-section-player-splitpane');
+let unsubscribe = null;
+
+// Use DOM event only for bootstrap/handshake.
+player.addEventListener('toolkit-ready', (e) => {
+  const coordinator = e.detail?.coordinator;
+  if (!coordinator) return;
+
+  // Use coordinator/controller events for ongoing client logic.
+  unsubscribe?.();
+  unsubscribe = coordinator.subscribeSectionEvents({
+    // Preferred: explicit IDs for deterministic targeting.
+    sectionId: 'section-1',
+    attemptId: 'attempt-abc',
+    eventTypes: ['item-session-data-changed', 'section-items-complete-changed'],
+    listener: (event) => {
+      if (event.type === 'item-session-data-changed') {
+        persistAnswer(event.canonicalItemId, event.session);
+      }
+    },
+  });
+});
+```
+
+If your host guarantees a single active controller, `sectionId` can be omitted intentionally:
+
+```ts
+unsubscribe = coordinator.subscribeSectionEvents({
+  eventTypes: ['item-session-data-changed'],
+  listener: (event) => {
+    if (event.type === 'item-session-data-changed') {
+      persistAnswer(event.canonicalItemId, event.session);
+    }
+  },
+});
+```
 
 ---
 
@@ -711,9 +779,13 @@ export class AssessmentPageComponent implements OnDestroy {
     tools: {
       providers: {
         calculator: {
-          authFetcher: async () => {
-            const res = await fetch('/api/tools/desmos/auth');
-            return res.json();
+          provider: {
+            runtime: {
+              authFetcher: async () => {
+                const res = await fetch('/api/tools/desmos/auth');
+                return res.json();
+              }
+            }
           }
         },
         tts: { backend: 'browser' }
@@ -782,10 +854,14 @@ SvelteKit apps can bind to CE properties directly and use Svelte 5 reactivity fo
   const toolsConfig = {
     providers: {
       calculator: {
-        authFetcher: async () => {
-          const res = await fetch('/api/tools/desmos/auth');
-          if (!res.ok) throw new Error(`Desmos auth failed: ${res.status}`);
-          return res.json();
+        provider: {
+          runtime: {
+            authFetcher: async () => {
+              const res = await fetch('/api/tools/desmos/auth');
+              if (!res.ok) throw new Error(`Desmos auth failed: ${res.status}`);
+              return res.json();
+            }
+          }
         }
       },
       tts: { enabled: true, backend: 'browser' }
@@ -1000,7 +1076,11 @@ export function GET() {
       providers: {
         tts: { enabled: true, backend: 'browser' },
         calculator: {
-          authFetcher: () => fetch('/api/tools/desmos/auth').then(r => r.json())
+          provider: {
+            runtime: {
+              authFetcher: () => fetch('/api/tools/desmos/auth').then(r => r.json())
+            }
+          }
         }
       }
     };
@@ -1086,7 +1166,7 @@ For split-pane scrolling to work correctly:
 
 ### Session events not firing
 
-1. Make sure `env.mode` is `'gather'` (view/evaluate modes don't capture student input).
+1. Make sure your runtime is using a delivery-style session flow (`env.mode` and role aligned with your product integration), and confirm your item player emits session updates.
 2. Check that `section-id` and `attempt-id` match between the player and your subscription call.
 3. Use the debug tools during development:
    ```ts

@@ -179,7 +179,7 @@ export interface SectionControllerLifecycleEvent {
 }
 
 export interface SectionEventSubscriptionArgs {
-	sectionId: string;
+	sectionId?: string;
 	attemptId?: string;
 	listener: (event: SectionControllerEvent) => void;
 	eventTypes?: readonly SectionControllerEventType[];
@@ -662,10 +662,15 @@ export class ToolkitCoordinator {
 			sectionId: args.sectionId,
 			attemptId: args.attemptId,
 		});
-		const controller = controllerEntry?.controller;
-		const subscribe = controller?.subscribe;
-		if (!controller || !subscribe) {
-			return () => {};
+		const controller = controllerEntry.controller;
+		const subscribe = controller.subscribe;
+		if (!subscribe) {
+			const resolvedKey = this.sectionControllerKeys.get(controllerEntry.mapKey);
+			const sectionLabel = resolvedKey?.sectionId || args.sectionId || "<unknown>";
+			const attemptLabel = resolvedKey?.attemptId || args.attemptId || "<default>";
+			throw new Error(
+				`[ToolkitCoordinator] subscribeSectionEvents could not subscribe: resolved controller for section "${sectionLabel}" attempt "${attemptLabel}" does not expose subscribe().`,
+			);
 		}
 		const { mapKey } = controllerEntry;
 
@@ -738,42 +743,76 @@ export class ToolkitCoordinator {
 	}
 
 	private resolveSectionControllerForSubscription(args: {
-		sectionId: string;
+		sectionId?: string;
 		attemptId?: string;
-	}): { mapKey: string; controller: SectionControllerHandle } | null {
-		const explicitKey: SectionControllerKey = {
-			assessmentId: this.assessmentId,
-			sectionId: args.sectionId,
-			attemptId: args.attemptId,
-		};
-		const explicitMapKey = this.getSectionControllerMapKey(explicitKey);
-		const explicitController = this.sectionControllers.get(explicitMapKey);
-		if (explicitController) {
-			return { mapKey: explicitMapKey, controller: explicitController };
+	}): { mapKey: string; controller: SectionControllerHandle } {
+		if (args.sectionId) {
+			const explicitKey: SectionControllerKey = {
+				assessmentId: this.assessmentId,
+				sectionId: args.sectionId,
+				attemptId: args.attemptId,
+			};
+			const explicitMapKey = this.getSectionControllerMapKey(explicitKey);
+			const explicitController = this.sectionControllers.get(explicitMapKey);
+			if (explicitController) {
+				return { mapKey: explicitMapKey, controller: explicitController };
+			}
+
+			if (args.attemptId !== undefined) {
+				throw new Error(
+					`[ToolkitCoordinator] subscribeSectionEvents could not resolve controller for section "${args.sectionId}" and attempt "${args.attemptId}".`,
+				);
+			}
+
+			const sectionMatches: Array<{
+				mapKey: string;
+				controller: SectionControllerHandle;
+			}> = [];
+			for (const [mapKey, key] of this.sectionControllerKeys.entries()) {
+				if (key.assessmentId !== this.assessmentId || key.sectionId !== args.sectionId) {
+					continue;
+				}
+				const controller = this.sectionControllers.get(mapKey);
+				if (!controller) continue;
+				sectionMatches.push({ mapKey, controller });
+			}
+			if (sectionMatches.length === 1) {
+				return sectionMatches[0];
+			}
+			if (sectionMatches.length === 0) {
+				throw new Error(
+					`[ToolkitCoordinator] subscribeSectionEvents found no active controller for section "${args.sectionId}".`,
+				);
+			}
+			throw new Error(
+				`[ToolkitCoordinator] subscribeSectionEvents is ambiguous for section "${args.sectionId}" without attemptId; ${sectionMatches.length} controllers are active.`,
+			);
 		}
 
 		if (args.attemptId !== undefined) {
-			return null;
-		}
-
-		const matches: Array<{ mapKey: string; controller: SectionControllerHandle }> = [];
-		for (const [mapKey, key] of this.sectionControllerKeys.entries()) {
-			if (key.assessmentId !== this.assessmentId || key.sectionId !== args.sectionId) {
-				continue;
-			}
-			const controller = this.sectionControllers.get(mapKey);
-			if (!controller) continue;
-			matches.push({ mapKey, controller });
-		}
-		if (matches.length === 1) {
-			return matches[0];
-		}
-		if (matches.length > 1) {
-			console.warn(
-				`[ToolkitCoordinator] subscribeSectionEvents is ambiguous for section "${args.sectionId}" without attemptId; ${matches.length} controllers are active.`,
+			throw new Error(
+				`[ToolkitCoordinator] subscribeSectionEvents requires sectionId when attemptId is provided ("${args.attemptId}").`,
 			);
 		}
-		return null;
+
+		const allMatches: Array<{ mapKey: string; controller: SectionControllerHandle }> = [];
+		for (const [mapKey, key] of this.sectionControllerKeys.entries()) {
+			if (key.assessmentId !== this.assessmentId) continue;
+			const controller = this.sectionControllers.get(mapKey);
+			if (!controller) continue;
+			allMatches.push({ mapKey, controller });
+		}
+		if (allMatches.length === 1) {
+			return allMatches[0];
+		}
+		if (allMatches.length === 0) {
+			throw new Error(
+				"[ToolkitCoordinator] subscribeSectionEvents found no active controllers; provide sectionId or initialize a section controller first.",
+			);
+		}
+		throw new Error(
+			`[ToolkitCoordinator] subscribeSectionEvents is ambiguous without sectionId; ${allMatches.length} active controllers are registered.`,
+		);
 	}
 
 	public onSectionControllerLifecycle(

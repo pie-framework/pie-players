@@ -258,7 +258,7 @@ The Reference Layout component should:
 
 - `packages/players-shared/src/types/index.ts` - Core type definitions
 - `apps/section-demos/src/routes/demo/[[id]]/+page.svelte` - Demo integration
-- `docs/SECTION-STRUCTURE-DESIGN.md` - Design rationale
+- `docs/section-structure-design.md` - Design rationale
 - `docs/qti3-paired-passages-design.md` - This document
 
 ## Next Steps

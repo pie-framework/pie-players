@@ -39,7 +39,7 @@
 
 	For more information, see:
 	- packages/assessment-toolkit/src/tools/calculators/README.md
-	- docs/ARCHITECTURE.md (Calculator Provider System section)
+	- docs/architecture.md (Calculator Provider System section)
 -->
 
 <script lang="ts">

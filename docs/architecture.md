@@ -245,7 +245,7 @@ The splitpane custom element from `@pie-players/pie-section-player` is the prima
 
 **Integration Pattern**: Products initialize toolkit services and pass them as JavaScript properties to `pie-section-player-splitpane`. The player handles the rest automatically.
 
-See: [TOOL_PROVIDER_SYSTEM](./TOOL_PROVIDER_SYSTEM.md) for integration details.
+See: [TOOL_PROVIDER_SYSTEM](./tool_provider_system.md) for integration details.
 
 ---
 
@@ -499,7 +499,7 @@ Use section player with full assessment toolkit for complete section delivery wi
 **Complexity**: Medium
 **Use Case**: Production assessments with full accessibility support
 
-**See**: [TOOL_HOST_CONTRACT](./TOOL_HOST_CONTRACT.md) for runtime host/tool examples.
+**See**: [TOOL_HOST_CONTRACT](./tool_host_contract.md) for runtime host/tool examples.
 
 ---
 
@@ -526,7 +526,7 @@ Build your own assessment player using toolkit services for complete control ove
 
 - [Assessment Toolkit README](../packages/assessment-toolkit/src/README.md) - Toolkit usage and QTI 3.0 examples
 - [Section Player README](../packages/section-player/README.md) - Complete section player API
-- [Tool Provider System](./TOOL_PROVIDER_SYSTEM.md) - Service integration details
+- [Tool Provider System](./tool_provider_system.md) - Service integration details
 - [Tools README](../packages/assessment-toolkit/src/tools/README.md) - Tool development guide
 
 ### Standards & Specifications

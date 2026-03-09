@@ -6,15 +6,15 @@ Current status: core runtime custom elements now run with shadow DOM enabled (`s
 
 ## Start Here
 
-- [`ARCHITECTURE.md`](./ARCHITECTURE.md) - System-level architecture
-- [`DEVELOPER_PATTERNS.md`](./DEVELOPER_PATTERNS.md) - Project code style and implementation patterns
-- [`TOOL_PROVIDER_SYSTEM.md`](./TOOL_PROVIDER_SYSTEM.md) - Tool registry/provider system
-- [`TOOL_HOST_CONTRACT.md`](./TOOL_HOST_CONTRACT.md) - Host/tool runtime integration contract
+- [`architecture.md`](./architecture.md) - System-level architecture
+- [`developer_patterns.md`](./developer_patterns.md) - Project code style and implementation patterns
+- [`tool_provider_system.md`](./tool_provider_system.md) - Tool registry/provider system
+- [`tool_host_contract.md`](./tool_host_contract.md) - Host/tool runtime integration contract
 
 ## Section Player
 
-- [`SECTION-STRUCTURE-DESIGN.md`](./SECTION-STRUCTURE-DESIGN.md)
-- [`ITEM_PLAYER_STRATEGIES.md`](./ITEM_PLAYER_STRATEGIES.md)
+- [`section-structure-design.md`](./section-structure-design.md)
+- [`item_player_strategies.md`](./item_player_strategies.md)
 - [`qti3-paired-passages-design.md`](./qti3-paired-passages-design.md)
 - [`qti3-paired-passages-example.md`](./qti3-paired-passages-example.md)
 
@@ -45,5 +45,5 @@ Current status: core runtime custom elements now run with shadow DOM enabled (`s
 - [`environment-setup.md`](./environment-setup.md)
 - [`publishing.md`](./publishing.md)
 - [`publish-compatibility-matrix.md`](./publish-compatibility-matrix.md)
-- [`CDN_USAGE.md`](./CDN_USAGE.md)
-- [`NPM_TOKEN_SETUP.md`](./NPM_TOKEN_SETUP.md)
+- [`cdn_usage.md`](./cdn_usage.md)
+- [`npm_token_setup.md`](./npm_token_setup.md)

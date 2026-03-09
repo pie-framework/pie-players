@@ -248,7 +248,7 @@ bun run check          # Svelte component validation
 - Critical for developing new element types or fixing element bugs
 - Allows tight integration testing between players and elements
 
-**References**: apps/section-demos/vite.config.ts, docs/CDN_USAGE.md
+**References**: apps/section-demos/vite.config.ts, docs/cdn_usage.md
 
 ## Current Work Focus
 

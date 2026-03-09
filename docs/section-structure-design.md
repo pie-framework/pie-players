@@ -414,4 +414,4 @@ If you have old assessments with `content: string`:
 - [Demo Route](../apps/section-demos/src/routes/demo/[[id]]/+page.svelte)
 - [QTI 3.0 Feature Support](./qti-3.0-feature-support.md)
 - [Paired Passages Design](./qti3-paired-passages-design.md)
-- [Architecture](./ARCHITECTURE.md)
+- [Architecture](./architecture.md)

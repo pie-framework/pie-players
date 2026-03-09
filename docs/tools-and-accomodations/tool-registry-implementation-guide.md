@@ -940,7 +940,7 @@ describe('ToolButton integration', () => {
 ### Files to Update
 
 1. **Main Architecture**
-   - [ ] `docs/ARCHITECTURE.md` - Add tool registry section
+   - [ ] `docs/architecture.md` - Add tool registry section
    - [ ] `docs/tools-and-accomodations/architecture.md` - Update with two-pass model
 
 2. **Tool Documentation**

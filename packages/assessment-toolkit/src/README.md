@@ -663,6 +663,6 @@ Tool resolution follows this precedence (highest to lowest):
 
 ## Related Documentation
 
-- [Architecture Overview](../../../docs/ARCHITECTURE.md) - Complete system architecture
+- [Architecture Overview](../../../docs/architecture.md) - Complete system architecture
 - [Assessment Toolkit Architecture](../../../docs/tools-and-accomodations/tools-high-level-architecture.md) - Toolkit design
 - [Tools Architecture](../../../docs/tools-and-accomodations/tools-high-level-architecture.md) - Tool coordination

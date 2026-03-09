@@ -599,5 +599,5 @@ See the section-player demo for a complete working example:
 ## Support
 
 For issues or questions:
-- Check the [Tool Provider System](../../../docs/TOOL_PROVIDER_SYSTEM.md)
+- Check the [Tool Provider System](../../../docs/tool_provider_system.md)
 - See [TTS Synchronization Best Practices](../../../docs/tts-synchronization-best-practices.md)

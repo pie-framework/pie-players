@@ -940,10 +940,10 @@ See [Accessibility Catalogs Integration Guide](accessibility-catalogs-integratio
 
 ## References
 
-- [Architecture Overview](ARCHITECTURE.md) - Complete system architecture
+- [Architecture Overview](architecture.md) - Complete system architecture
 - [Assessment Toolkit README](../packages/assessment-toolkit/src/README.md) - Usage and examples
 - [QTI 3.0 Specification](https://www.imsglobal.org/spec/qti/v3p0) - IMS Global standard
-- [TOOL_PROVIDER_SYSTEM](./TOOL_PROVIDER_SYSTEM.md) - Native tool provider and runtime details
+- [TOOL_PROVIDER_SYSTEM](./tool_provider_system.md) - Native tool provider and runtime details
 - [Accessibility Catalogs Integration Guide](accessibility-catalogs-integration-guide.md) - Phase 2 complete guide
 - [Accessibility Catalogs TTS Integration](accessibility-catalogs-tts-integration.md) - TTSService integration (Phase 2)
 - [Accessibility Catalogs Quick Start](accessibility-catalogs-quick-start.md) - Developer quick reference

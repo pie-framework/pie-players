@@ -1,5 +1,18 @@
 # @pie-players/pie-section-player
 
+## 0.3.4
+
+### Patch Changes
+
+- Patch release for the lockstep package train with toolkit architecture hardening, stricter runtime validation, and a section-player vertical layout regression fix covered by e2e.
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.4
+  - @pie-players/pie-tool-annotation-toolbar@0.3.4
+  - @pie-players/pie-toolbars@0.3.4
+  - @pie-players/pie-context@0.3.4
+  - @pie-players/pie-item-player@0.3.4
+  - @pie-players/pie-players-shared@0.3.4
+
 ## 0.3.3
 
 ### Patch Changes

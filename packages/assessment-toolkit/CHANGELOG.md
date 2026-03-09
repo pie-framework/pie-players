@@ -1,5 +1,17 @@
 # @pie-players/pie-assessment-toolkit
 
+## 0.3.4
+
+### Patch Changes
+
+- Patch release for the lockstep package train with toolkit architecture hardening, stricter runtime validation, and a section-player vertical layout regression fix covered by e2e.
+  - @pie-players/pie-calculator@0.3.4
+  - @pie-players/pie-calculator-desmos@0.3.4
+  - @pie-players/pie-context@0.3.4
+  - @pie-players/pie-players-shared@0.3.4
+  - @pie-players/pie-tts@0.3.4
+  - @pie-players/tts-client-server@0.3.4
+
 ## 0.3.3
 
 ### Patch Changes

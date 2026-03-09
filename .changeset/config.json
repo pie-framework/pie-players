@@ -16,6 +16,7 @@
 			"@pie-players/pie-section-player-tools-event-debugger",
 			"@pie-players/pie-section-player-tools-pnp-debugger",
 			"@pie-players/pie-section-player-tools-session-debugger",
+			"@pie-players/pie-section-player-tools-shared",
 			"@pie-players/pie-toolbars",
 			"@pie-players/pie-theme",
 			"@pie-players/pie-theme-daisyui",

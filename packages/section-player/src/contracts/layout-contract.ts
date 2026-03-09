@@ -18,6 +18,7 @@ export type SectionPlayerBasicPropName =
 	| "attemptId"
 	| "showToolbar"
 	| "toolbarPosition"
+	| "narrowLayoutBreakpoint"
 	| "enabledTools"
 	| "itemToolbarTools"
 	| "passageToolbarTools";

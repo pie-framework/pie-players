@@ -24,6 +24,7 @@
 			enabledTools: { attribute: "enabled-tools", type: "String" },
 			itemToolbarTools: { attribute: "item-toolbar-tools", type: "String" },
 			passageToolbarTools: { attribute: "passage-toolbar-tools", type: "String" },
+			narrowLayoutBreakpoint: { attribute: "narrow-layout-breakpoint", type: "Number" },
 		},
 	}}
 />
@@ -47,6 +48,10 @@
 		SectionPlayerSnapshot,
 	} from "../contracts/runtime-host-contract.js";
 
+	const DEFAULT_NARROW_BREAKPOINT_PX = 1100;
+	const NARROW_BREAKPOINT_MIN_PX = 400;
+	const NARROW_BREAKPOINT_MAX_PX = 2000;
+
 	let {
 		assessmentId,
 		runtime = null as RuntimeConfig | null,
@@ -68,12 +73,36 @@
 		enabledTools = "",
 		itemToolbarTools = "",
 		passageToolbarTools = "",
+		narrowLayoutBreakpoint = undefined as number | undefined,
 	} = $props();
+
+	const clampedBreakpoint = $derived.by(() => {
+		const n = narrowLayoutBreakpoint ?? DEFAULT_NARROW_BREAKPOINT_PX;
+		const num = typeof n === "number" ? n : Number(n);
+		const value = Number.isFinite(num) ? num : DEFAULT_NARROW_BREAKPOINT_PX;
+		return Math.max(
+			NARROW_BREAKPOINT_MIN_PX,
+			Math.min(NARROW_BREAKPOINT_MAX_PX, value),
+		);
+	});
 
 	let leftPanelWidth = $state(50);
 	let splitContainerElement = $state<HTMLDivElement | null>(null);
 	let kernelRef = $state<SectionPlayerRuntimeHostContract | null>(null);
+	let isStacked = $state(false);
 	const dispatch = createEventDispatcher();
+
+	$effect(() => {
+		const bp = clampedBreakpoint;
+		if (typeof window === "undefined") return;
+		const query: MediaQueryList = window.matchMedia(`(max-width: ${bp}px)`);
+		function update() {
+			isStacked = query.matches;
+		}
+		update();
+		query.addEventListener("change", update);
+		return () => query.removeEventListener("change", update);
+	});
 
 	function forward(event: Event) {
 		const customEvent = event as CustomEvent;
@@ -151,7 +180,7 @@
 	{env}
 	{iifeBundleHost}
 	{showToolbar}
-	{toolbarPosition}
+	toolbarPosition={isStacked ? "top" : toolbarPosition}
 	{enabledTools}
 	{itemToolbarTools}
 	{passageToolbarTools}
@@ -172,11 +201,13 @@
 	let:layoutModel
 >
 	<div
-		class={`pie-section-player-split-content ${layoutModel.passages.length === 0 ? "pie-section-player-split-content--no-passages" : ""}`}
+		class={`pie-section-player-split-content ${layoutModel.passages.length === 0 ? "pie-section-player-split-content--no-passages" : ""} ${isStacked ? "pie-section-player-split-content--stacked" : ""}`}
 		bind:this={splitContainerElement}
-		style={layoutModel.passages.length > 0
-			? `grid-template-columns: ${leftPanelWidth}% 0.5rem ${100 - leftPanelWidth - 0.5}%`
-			: "grid-template-columns: 1fr"}
+		style={layoutModel.passages.length === 0
+			? "grid-template-columns: 1fr"
+			: !isStacked
+				? `grid-template-columns: ${leftPanelWidth}% 0.5rem ${100 - leftPanelWidth - 0.5}%`
+				: ""}
 	>
 		{#if layoutModel.passages.length > 0}
 			<aside class="pie-section-player-passages-pane" aria-label="Passages">
@@ -191,11 +222,13 @@
 				></pie-section-player-passages-pane>
 			</aside>
 
-			<SectionSplitDivider
-				value={leftPanelWidth}
-				on:resize-preview={handleSplitResizePreview}
-				on:resize-commit={handleSplitResizePreview}
-			/>
+			{#if !isStacked}
+				<SectionSplitDivider
+					value={leftPanelWidth}
+					on:resize-preview={handleSplitResizePreview}
+					on:resize-commit={handleSplitResizePreview}
+				/>
+			{/if}
 		{/if}
 
 		<main class="pie-section-player-items-pane" aria-label="Items">
@@ -233,6 +266,25 @@
 		min-height: 0;
 		height: 100%;
 		overflow: hidden;
+	}
+
+	/* Collapsed/stacked: single column, passage(s) then items, no separator (mirrors vertical player) */
+	.pie-section-player-split-content--stacked {
+		display: flex;
+		flex-direction: column;
+		overflow-y: auto;
+		overflow-x: hidden;
+		overscroll-behavior: contain;
+		gap: 1rem;
+	}
+
+	.pie-section-player-split-content--stacked .pie-section-player-passages-pane,
+	.pie-section-player-split-content--stacked .pie-section-player-items-pane {
+		flex: 0 0 auto;
+		height: auto;
+		max-height: none;
+		min-height: 0;
+		overflow: visible;
 	}
 
 	.pie-section-player-passages-pane,
@@ -288,15 +340,5 @@
 	:global(html.pie-outer-scrollbars-managed.pie-outer-scrolling::-webkit-scrollbar-thumb:hover),
 	:global(body.pie-outer-scrollbars-managed.pie-outer-scrolling::-webkit-scrollbar-thumb:hover) {
 		background: #a1a1a1;
-	}
-
-	@media (max-width: 1100px) {
-		.pie-section-player-split-content {
-			grid-template-columns: 1fr !important;
-		}
-
-		:global(.pie-section-player-split-divider) {
-			display: none;
-		}
 	}
 </style>

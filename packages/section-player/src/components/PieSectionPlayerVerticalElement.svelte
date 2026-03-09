@@ -24,6 +24,7 @@
 			enabledTools: { attribute: "enabled-tools", type: "String" },
 			itemToolbarTools: { attribute: "item-toolbar-tools", type: "String" },
 			passageToolbarTools: { attribute: "passage-toolbar-tools", type: "String" },
+			narrowLayoutBreakpoint: { attribute: "narrow-layout-breakpoint", type: "Number" },
 		},
 	}}
 />
@@ -43,6 +44,10 @@
 		SectionPlayerRuntimeHostContract,
 		SectionPlayerSnapshot,
 	} from "../contracts/runtime-host-contract.js";
+
+	const DEFAULT_NARROW_BREAKPOINT_PX = 1100;
+	const NARROW_BREAKPOINT_MIN_PX = 400;
+	const NARROW_BREAKPOINT_MAX_PX = 2000;
 
 	let {
 		assessmentId,
@@ -65,9 +70,35 @@
 		enabledTools = "",
 		itemToolbarTools = "",
 		passageToolbarTools = "",
+		narrowLayoutBreakpoint = undefined as number | undefined,
 	} = $props();
 	const dispatch = createEventDispatcher();
 	let kernelRef = $state<SectionPlayerRuntimeHostContract | null>(null);
+	let isNarrow = $state(false);
+
+	const clampedBreakpoint = $derived.by(() => {
+		const n = narrowLayoutBreakpoint ?? DEFAULT_NARROW_BREAKPOINT_PX;
+		const num = typeof n === "number" ? n : Number(n);
+		const value = Number.isFinite(num) ? num : DEFAULT_NARROW_BREAKPOINT_PX;
+		return Math.max(
+			NARROW_BREAKPOINT_MIN_PX,
+			Math.min(NARROW_BREAKPOINT_MAX_PX, value),
+		);
+	});
+
+	$effect(() => {
+		const bp = clampedBreakpoint;
+		if (typeof window === "undefined") return;
+		const query: MediaQueryList = window.matchMedia(`(max-width: ${bp}px)`);
+		function update() {
+			isNarrow = query.matches;
+		}
+		update();
+		query.addEventListener("change", update);
+		return () => query.removeEventListener("change", update);
+	});
+
+	const effectiveToolbarPosition = $derived(isNarrow ? "top" : toolbarPosition);
 
 	function forward(event: Event) {
 		const customEvent = event as CustomEvent;
@@ -112,7 +143,6 @@
 		const controller = await kernelRef?.waitForSectionController?.(timeoutMs);
 		return controller || null;
 	}
-
 </script>
 
 <SectionPlayerLayoutKernel
@@ -133,7 +163,7 @@
 	{env}
 	{iifeBundleHost}
 	{showToolbar}
-	{toolbarPosition}
+	toolbarPosition={effectiveToolbarPosition}
 	{enabledTools}
 	{itemToolbarTools}
 	{passageToolbarTools}

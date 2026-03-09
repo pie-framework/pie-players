@@ -8,6 +8,7 @@ const RECOMMENDED_BASIC_PROPS = [
 	"attemptId",
 	"showToolbar",
 	"toolbarPosition",
+	"narrowLayoutBreakpoint",
 	"enabledTools",
 	"itemToolbarTools",
 	"passageToolbarTools",

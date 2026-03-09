@@ -40,6 +40,7 @@ Both layout elements support:
 - `section` (object): assessment section payload
 - `env` (object): optional top-level override for `{ mode, role }`
 - `toolbar-position` (string): `top|right|bottom|left|none`
+- `narrow-layout-breakpoint` (number, optional): viewport width in px below which the layout collapses (split pane: single column; vertical: toolbar moves to top). Clamped to 400–2000; default 1100.
 - `show-toolbar` (boolean-like): accepts `true/false` and common string forms (`"true"`, `"false"`, `"1"`, `"0"`, `"yes"`, `"no"`)
 
 ### API direction: CE defaults first, JS customization for advanced cases
@@ -48,7 +49,7 @@ The intended usage model is:
 
 - **CE props for default/standard flows (roughly 90% use cases)**:
   - `assessment-id`, `section`, `section-id`, `attempt-id`
-  - `show-toolbar`, `toolbar-position`, `enabled-tools`, `item-toolbar-tools`, `passage-toolbar-tools`
+  - `show-toolbar`, `toolbar-position`, `narrow-layout-breakpoint`, `enabled-tools`, `item-toolbar-tools`, `passage-toolbar-tools`
 - **JS API for advanced customization**:
   - Get the controller handle via `getSectionController()` or `waitForSectionController()`
   - Listen to `section-controller-ready`

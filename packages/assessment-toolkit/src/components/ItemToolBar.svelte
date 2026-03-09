@@ -774,7 +774,8 @@
 			shellEl.style.background = 'var(--pie-background, #fff)';
 			shellEl.style.border = '1px solid var(--pie-border-light, #d1d5db)';
 			shellEl.style.borderRadius = '12px';
-			shellEl.style.boxShadow = '0 10px 40px rgb(0 0 0 / 0.25)';
+			shellEl.style.boxShadow =
+				'0 10px 40px color-mix(in srgb, var(--pie-black, #000) 25%, transparent)';
 			shellEl.style.overflow = 'hidden';
 			shellEl.style.display = currentArgs.active ? 'flex' : 'none';
 			shellEl.style.flexDirection = 'column';
@@ -827,11 +828,11 @@
 				currentArgs.mounted.entry.shell.closeable === false ? 'none' : 'inline-flex';
 			closeButtonEl.onmouseenter = () => {
 				closeButtonEl && (closeButtonEl.style.background =
-					'color-mix(in srgb, var(--pie-white, #fff) 18%, transparent)');
+					'var(--pie-button-hover-bg, color-mix(in srgb, var(--pie-white, #fff) 18%, transparent))');
 			};
 			closeButtonEl.onmouseleave = () => {
 				closeButtonEl && (closeButtonEl.style.background =
-					'color-mix(in srgb, var(--pie-white, #fff) 8%, transparent)');
+					'var(--pie-button-bg, color-mix(in srgb, var(--pie-white, #fff) 8%, transparent))');
 			};
 			closeButtonEl.onfocus = () => {
 				closeButtonEl && (closeButtonEl.style.outline =
@@ -1048,10 +1049,10 @@
 		width: 2rem;
 		height: 2rem;
 		padding: 0.25rem;
-		border: 1px solid var(--pie-border, #ccc);
+		border: 1px solid var(--pie-button-border, var(--pie-border, #ccc));
 		border-radius: 0.25rem;
-		background-color: var(--pie-background, white);
-		color: var(--pie-text, #333);
+		background-color: var(--pie-button-bg, var(--pie-background, white));
+		color: var(--pie-button-color, var(--pie-text, #333));
 		cursor: pointer;
 		transition: all 0.15s ease;
 		text-decoration: none;
@@ -1072,9 +1073,11 @@
 	}
 
 	.item-toolbar__button:hover:not(:disabled) {
-		background-color: var(--pie-secondary-background, #f5f5f5);
+		background-color: var(--pie-button-hover-bg, var(--pie-secondary-background, #f5f5f5));
+		border-color: var(--pie-button-hover-border, var(--pie-button-border, var(--pie-border, #ccc)));
+		color: var(--pie-button-hover-color, var(--pie-button-color, var(--pie-text, #333)));
 		transform: translateY(-1px);
-		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+		box-shadow: 0 2px 4px color-mix(in srgb, var(--pie-black, #000) 10%, transparent);
 	}
 
 	.item-toolbar__button:active:not(:disabled) {
@@ -1084,7 +1087,7 @@
 
 	.item-toolbar__button--active {
 		background-color: var(--pie-primary, #1976d2);
-		color: white;
+		color: var(--pie-white, #fff);
 		border-color: var(--pie-primary, #1976d2);
 	}
 
@@ -1093,7 +1096,7 @@
 	}
 
 	.item-toolbar__button:focus-visible {
-		outline: 2px solid var(--pie-primary, #1976d2);
+		outline: 2px solid var(--pie-button-focus-outline, var(--pie-primary, #1976d2));
 		outline-offset: 2px;
 	}
 

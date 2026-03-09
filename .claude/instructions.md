@@ -130,6 +130,15 @@ These checks ensure:
 - Debugger panels are consumers, not state owners: they should render controller state reads (`getRuntimeState` / `getSessionState`) plus forward controller events.
 - Do not rely on event replay for baseline panel state; use explicit state reads for initialization.
 
+### Theming Contract (Shadow-Safe)
+
+- Use `--pie-*` CSS variables as the stable theming contract across both `shadow: "open"` and `shadow: "none"` CEs.
+- Keep canonical defaults/schemes in `@pie-players/pie-theme`; consumer tools/components should use exported scheme APIs (for example `listPieColorSchemes`) instead of duplicating catalogs.
+- Preserve theme merge order: base theme (`light`/`dark`/`auto`) -> provider variables -> color-scheme variables -> explicit overrides.
+- Prefer token-driven styles for interactive states (`hover`, `active`, `focus`) using `--pie-button-*` and `--pie-focus-*`; avoid hardcoded color literals in component styles.
+- For shadow components, treat internal selectors as private and expose only documented host-level customization hooks (tokens and explicit parts/attributes where required).
+- Validate theme switching with runtime tests that assert existing light+shadow nodes update without remount.
+
 ### DOM Usage Rules
 
 - Scope DOM listeners to the nearest host/container element; avoid `document`/`window` listeners for internal coordination unless no scoped alternative exists.

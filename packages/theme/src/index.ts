@@ -20,6 +20,7 @@ export {
 } from "./theme-types.js";
 export { DARK_THEME_VARS, LIGHT_THEME_VARS } from "./theme-defaults.js";
 export {
+	BUILTIN_PIE_COLOR_SCHEMES,
 	getPieColorScheme,
 	listPieColorSchemes,
 	registerPieColorSchemes,

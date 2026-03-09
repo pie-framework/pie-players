@@ -17,21 +17,30 @@ async function openSessionPanel(page: Page) {
 }
 
 async function readSessionSnapshot(
-	page: Page,
 	sessionPanel: ReturnType<Page["locator"]>,
 ): Promise<{ itemSessions?: Record<string, unknown> }> {
 	const snapshotPre = sessionPanel.locator("pre").first();
 	await expect(snapshotPre).toBeVisible();
-	for (let attempt = 0; attempt < 25; attempt += 1) {
-		const text = (await snapshotPre.textContent()) || "";
-		try {
-			const parsed = JSON.parse(text) as { itemSessions?: Record<string, unknown> };
-			return parsed;
-		} catch {
-			await page.waitForTimeout(200);
-		}
-	}
-	throw new Error("Session snapshot did not become valid JSON in time");
+	let snapshot: { itemSessions?: Record<string, unknown> } | null = null;
+	await expect
+		.poll(
+			async () => {
+				const text = (await snapshotPre.textContent()) || "";
+				try {
+					snapshot = JSON.parse(text) as { itemSessions?: Record<string, unknown> };
+					return true;
+				} catch {
+					snapshot = null;
+					return false;
+				}
+			},
+			{
+				message: "Session snapshot did not become valid JSON in time",
+				timeout: 10_000,
+			},
+		)
+		.toBe(true);
+	return snapshot || {};
 }
 
 async function setRangeValue(page: Page, selector: string, value: number): Promise<void> {
@@ -123,7 +132,7 @@ test.describe("section player demo tts-ssml", () => {
 		await q3.getByRole("button", { name: "Done", exact: true }).click();
 
 		// Session panel reflects interactions.
-		const snapshotCandidate = await readSessionSnapshot(page, sessionPanel);
+		const snapshotCandidate = await readSessionSnapshot(sessionPanel);
 		expect(Object.keys(snapshotCandidate.itemSessions || {}).length).toBeGreaterThanOrEqual(2);
 
 		// TTS controls exist for passage and items.
@@ -241,7 +250,7 @@ test.describe("section player demo tts-ssml", () => {
 				name: /^A\.\s+The quadratic formula, because it works for all equations/i,
 			}),
 		).toHaveAttribute("checked", "");
-		const snapshotScorer = await readSessionSnapshot(page, await openSessionPanel(page));
+		const snapshotScorer = await readSessionSnapshot(await openSessionPanel(page));
 		expect(Object.keys(snapshotScorer.itemSessions || {})).toEqual(
 			expect.arrayContaining(Object.keys(snapshotCandidate.itemSessions || {})),
 		);

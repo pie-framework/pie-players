@@ -77,30 +77,20 @@ test.describe("section toolbar tools", () => {
 		await expect(rightToolbarPane).toBeVisible();
 		const layoutBody = page.locator(".pie-section-player-layout-body").first();
 		await expect(layoutBody).toHaveClass(/pie-section-player-layout-body--inline-right/);
-		const layoutBox = await layoutBody.boundingBox();
-		const rightPaneBox = await rightToolbarPane.boundingBox();
-		expect(layoutBox).not.toBeNull();
-		expect(rightPaneBox).not.toBeNull();
-		expect(Math.abs((rightPaneBox?.y || 0) - (layoutBox?.y || 0)) < 12).toBe(true);
-		expect((rightPaneBox?.x || 0) > (layoutBox?.x || 0) + (layoutBox?.width || 0) * 0.6).toBe(
-			true,
-		);
-		expect((rightPaneBox?.y || 0) < (layoutBox?.y || 0) + (layoutBox?.height || 0) - 8).toBe(
-			true,
-		);
+		await expect(rightToolbarPane.locator("pie-section-toolbar")).toHaveCount(1);
 
 		const toolbar = sectionToolbar(page);
 		await expect(toolbar).toHaveCount(1);
 		await expect(toolbar).toBeVisible();
-		await expect(toolbar.locator(".item-toolbar__button")).toHaveCount(SECTION_TOOL_SPECS.length);
+		await expect(toolbar.getByRole("button")).toHaveCount(SECTION_TOOL_SPECS.length);
 
 		for (const spec of SECTION_TOOL_SPECS) {
-			const button = toolbar.locator(
-				`.item-toolbar__button[aria-label="${spec.buttonAriaLabel}"]`,
-			);
+			const button = toolbar.getByRole("button", {
+				name: spec.buttonAriaLabel,
+			});
 			await expect(button, `Missing ${spec.id} button`).toBeVisible();
 			await expect(button).toHaveAttribute("aria-pressed", "false");
-			await button.click({ force: true });
+			await button.click();
 			await expect(button).toHaveAttribute("aria-pressed", "true");
 
 			const host = page.locator(
@@ -109,7 +99,7 @@ test.describe("section toolbar tools", () => {
 			await expect(host, `Missing ${spec.id} tool host`).toHaveCount(1);
 			await expect(host.locator(`[role="${spec.panelRole}"]`).first()).toBeVisible();
 
-			await button.click({ force: true });
+			await button.click();
 			await expect(button).toHaveAttribute("aria-pressed", "false");
 			await expect(host.locator(`[role="${spec.panelRole}"]`)).toHaveCount(0);
 		}

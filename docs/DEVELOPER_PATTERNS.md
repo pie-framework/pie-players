@@ -131,6 +131,16 @@ element.dispatchEvent(
 - For late-provider timing, prefer `ContextRoot` + subscribe/retry patterns from `@pie-players/pie-context` consumers.
 - Keep context values typed and versioned when needed to avoid stale payload assumptions.
 
+## Theming Contract (Shadow-Safe)
+
+- Treat `--pie-*` CSS variables as the stable public theming API for both light-DOM and shadow-DOM CEs.
+- Keep a single source of truth in `@pie-players/pie-theme` for defaults and built-in color schemes; consumers should read from `listPieColorSchemes()` instead of duplicating scheme catalogs.
+- Resolve theme values in this order: base theme (`light`/`dark`/`auto`) -> provider variables -> color-scheme variables -> explicit `variables` overrides.
+- In shadow-DOM CEs, style internals from `:host` tokens and expose host customization via documented `::part(...)`/attributes only when needed.
+- In light-DOM CEs, avoid depending on host app utility classes; still consume the same `--pie-*` variables so migration to `shadow: "open"` stays incremental.
+- Include interaction/accessibility tokens (`--pie-focus-*`, `--pie-button-*`) in component styles; avoid hardcoded color literals for focus/active/hover states.
+- Theme switching must update existing nodes (light and shadow) without remounts; keep E2E coverage for live scheme switching.
+
 ## DOM Usage Rules
 
 - Keep DOM listeners scoped to the nearest host/container element; avoid `document`/`window` listeners for internal coordination unless there is no scoped alternative.

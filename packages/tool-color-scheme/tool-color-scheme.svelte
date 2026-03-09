@@ -80,79 +80,11 @@
 		description: string;
 		preview: ToolSchemePreview;
 	};
-
-	const DEFAULT_COLOR_SCHEMES: ToolColorSchemeOption[] = [
-		{
-			id: 'default',
-			name: 'Default',
-			description: 'Standard PIE colors',
-			preview: {
-				bg: '#ffffff',
-				text: '#000000',
-				primary: '#3f51b5'
-			}
-		},
-		{
-			id: 'black-on-white',
-			name: 'Black on White',
-			description: 'High contrast for readability',
-			preview: {
-				bg: '#ffffff',
-				text: '#000000',
-				primary: '#0000cc'
-			}
-		},
-		{
-			id: 'white-on-black',
-			name: 'White on Black',
-			description: 'Inverse high contrast',
-			preview: {
-				bg: '#000000',
-				text: '#ffffff',
-				primary: '#ffff00'
-			}
-		},
-		{
-			id: 'rose-on-green',
-			name: 'Rose on Green',
-			description: 'Color blind friendly (protanopia/deuteranopia)',
-			preview: {
-				bg: '#ccffcc',
-				text: '#3d0022',
-				primary: '#660044'
-			}
-		},
-		{
-			id: 'yellow-on-blue',
-			name: 'Yellow on Blue',
-			description: 'Strong contrast scheme',
-			preview: {
-				bg: '#000066',
-				text: '#ffff00',
-				primary: '#ffff66'
-			}
-		},
-		{
-			id: 'black-on-rose',
-			name: 'Black on Rose',
-			description: 'Warm tinted background',
-			preview: {
-				bg: '#ffccdd',
-				text: '#000000',
-				primary: '#880044'
-			}
-		},
-		{
-			id: 'light-gray-on-dark-gray',
-			name: 'Light Gray on Dark Gray',
-			description: 'Reduced brightness for light sensitivity',
-			preview: {
-				bg: '#333333',
-				text: '#e0e0e0',
-				primary: '#aaaaaa'
-			}
-		}
-	];
+	const FALLBACK_PREVIEW: ToolSchemePreview = {
+		bg: '#ffffff',
+		text: '#000000',
+		primary: '#3f51b5'
+	};
 
 	function previewFromVariables(
 		variables: Record<string, string> | undefined,
@@ -189,7 +121,7 @@
 				typeof value.variables === 'object' && value.variables
 					? (value.variables as Record<string, string>)
 					: undefined,
-				{ bg: '#ffffff', text: '#000000', primary: '#3f51b5' }
+				FALLBACK_PREVIEW
 			);
 		return { id, name, description, preview };
 	}
@@ -218,19 +150,12 @@
 
 	function resolveThemeSchemes(): ToolColorSchemeOption[] {
 		const themeSchemes = listPieColorSchemes();
-		const fallbackById = new Map(DEFAULT_COLOR_SCHEMES.map((scheme) => [scheme.id, scheme]));
 		return themeSchemes.map((scheme: PieColorSchemeDefinition) => {
-			const fallback = fallbackById.get(scheme.id) || {
+			return {
 				id: scheme.id,
 				name: scheme.name || scheme.id,
 				description: scheme.description || '',
-				preview: { bg: '#ffffff', text: '#000000', primary: '#3f51b5' }
-			};
-			return {
-				id: scheme.id,
-				name: scheme.name || fallback.name,
-				description: scheme.description || fallback.description || '',
-				preview: scheme.preview || previewFromVariables(scheme.variables, fallback.preview)
+				preview: scheme.preview || previewFromVariables(scheme.variables, FALLBACK_PREVIEW)
 			};
 		});
 	}
@@ -246,7 +171,7 @@
 		if (parsedFromAttribute.length > 0) return parsedFromAttribute;
 		const themeSchemes = resolveThemeSchemes();
 		if (themeSchemes.length > 0) return themeSchemes;
-		return DEFAULT_COLOR_SCHEMES;
+		return [{ id: 'default', name: 'Default', description: '', preview: FALLBACK_PREVIEW }];
 	});
 
 	// Current color scheme
@@ -296,7 +221,7 @@
 	let currentSchemeObj = $derived(
 		availableSchemes.find(s => s.id === currentScheme) ||
 		availableSchemes[0] ||
-		DEFAULT_COLOR_SCHEMES[0]
+		{ id: 'default', name: 'Default', description: '', preview: FALLBACK_PREVIEW }
 	);
 
 	$effect(() => {

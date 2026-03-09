@@ -4,9 +4,12 @@ const DEMO_PATH = "/demo/tts-ssml?mode=candidate&layout=splitpane";
 const VERTICAL_DEMO_PATH = "/demo/tts-ssml?mode=candidate&layout=vertical";
 
 async function openEventPanel(page: import("@playwright/test").Page) {
-	await page
-		.getByRole("button", { name: "Toggle event broadcast panel" })
-		.click({ force: true });
+	const toggleButton = page.getByRole("button", {
+		name: "Toggle event broadcast panel",
+	});
+	await expect(toggleButton).toBeVisible();
+	await expect(toggleButton).toBeEnabled();
+	await toggleButton.click();
 	const panel = page.locator("pie-section-player-tools-event-debugger");
 	await expect(panel.locator(".pie-section-player-tools-event-debugger")).toBeVisible();
 	return panel;
@@ -38,7 +41,9 @@ async function assertChoiceSelectionKeepsPaneScroll(args: {
 		node.scrollTop = targetScrollTop;
 		return node.scrollTop;
 	});
-	await page.waitForTimeout(150);
+	await expect.poll(async () => pane.evaluate((node) => node.scrollTop)).toBe(
+		beforeSelectionScrollTop,
+	);
 
 	await pane.evaluate((node) => {
 		const paneRect = node.getBoundingClientRect();
@@ -55,12 +60,12 @@ async function assertChoiceSelectionKeepsPaneScroll(args: {
 		visibleInput.click();
 	});
 
-	await page.waitForTimeout(500);
-	const afterSelectionScrollTop = await pane.evaluate((node) => node.scrollTop);
-	expect(
-		Math.abs(afterSelectionScrollTop - beforeSelectionScrollTop),
-		`Pane scroll should remain stable after selection (before=${beforeSelectionScrollTop}, after=${afterSelectionScrollTop}).`,
-	).toBeLessThanOrEqual(24);
+	await expect
+		.poll(async () => {
+			const afterSelectionScrollTop = await pane.evaluate((node) => node.scrollTop);
+			return Math.abs(afterSelectionScrollTop - beforeSelectionScrollTop);
+		})
+		.toBeLessThanOrEqual(24);
 }
 
 async function getItemShellIdentityTokens(page: import("@playwright/test").Page) {
@@ -94,8 +99,11 @@ test.describe("section player controller event panel", () => {
 		await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
 		const panel = await openEventPanel(page);
 
-		const firstSelectable = page.locator('input[type="radio"], input[type="checkbox"]').first();
-		await firstSelectable.click({ force: true });
+		const firstSelectable = page
+			.locator("main.pie-section-player-items-pane")
+			.locator('input[type="radio"], input[type="checkbox"]')
+			.first();
+		await firstSelectable.click();
 
 		const panelRows = panel.locator(".pie-section-player-tools-event-debugger__row");
 		await expect(
@@ -109,8 +117,11 @@ test.describe("section player controller event panel", () => {
 	test("does not rely on replay when opened late", async ({ page }) => {
 		await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
 
-		const firstSelectable = page.locator('input[type="radio"], input[type="checkbox"]').first();
-		await firstSelectable.click({ force: true });
+		const firstSelectable = page
+			.locator("main.pie-section-player-items-pane")
+			.locator('input[type="radio"], input[type="checkbox"]')
+			.first();
+		await firstSelectable.click();
 
 		const panel = await openEventPanel(page);
 		await expect(
@@ -119,9 +130,10 @@ test.describe("section player controller event panel", () => {
 			}),
 		).toHaveCount(0);
 		const secondSelectable = page
+			.locator("main.pie-section-player-items-pane")
 			.locator('input[type="radio"], input[type="checkbox"]')
 			.nth(1);
-		await secondSelectable.click({ force: true });
+		await secondSelectable.click();
 		const panelRows = panel.locator(".pie-section-player-tools-event-debugger__row");
 		await expect(
 			panelRows
@@ -154,12 +166,14 @@ test.describe("section player controller event panel", () => {
 		await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
 		const beforeTokens = await getItemShellIdentityTokens(page);
 
-		const firstSelectable = page.locator('input[type="radio"], input[type="checkbox"]').first();
-		await firstSelectable.click({ force: true });
-		await page.waitForTimeout(400);
-
-		const afterTokens = await getItemShellIdentityTokens(page);
-		expect(afterTokens).toEqual(beforeTokens);
+		const firstSelectable = page
+			.locator("main.pie-section-player-items-pane")
+			.locator('input[type="radio"], input[type="checkbox"]')
+			.first();
+		await firstSelectable.click();
+		await expect
+			.poll(async () => await getItemShellIdentityTokens(page))
+			.toEqual(beforeTokens);
 	});
 
 	test("emits runtime and composition events in expected directions", async ({
@@ -189,16 +203,26 @@ test.describe("section player controller event panel", () => {
 		});
 		await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
 
-		const firstSelectable = page.locator('input[type="radio"], input[type="checkbox"]').first();
-		await firstSelectable.click({ force: true });
-		await page.waitForTimeout(500);
-
-		const eventHistory = await page.evaluate(() => {
-			return [
-				...((window as unknown as { __pieEventHistory?: string[] })
-					.__pieEventHistory || []),
-			];
-		});
+		const firstSelectable = page
+			.locator("main.pie-section-player-items-pane")
+			.locator('input[type="radio"], input[type="checkbox"]')
+			.first();
+		await firstSelectable.click();
+		let eventHistory: string[] = [];
+		await expect
+			.poll(async () => {
+				eventHistory = await page.evaluate(() => {
+					return [
+						...((window as unknown as { __pieEventHistory?: string[] })
+							.__pieEventHistory || []),
+					];
+				});
+				return (
+					eventHistory.includes("session-changed") &&
+					eventHistory.includes("composition-changed")
+				);
+			})
+			.toBe(true);
 		expect(eventHistory).toContain("session-changed");
 		expect(eventHistory).toContain("composition-changed");
 		const runtimeDirectionEvents = eventHistory.filter(

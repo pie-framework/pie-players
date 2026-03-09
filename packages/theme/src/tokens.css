@@ -94,4 +94,15 @@ pie-theme[theme="dark"] {
 	--pie-blue-grey-300: #555555;
 	--pie-blue-grey-600: #999999;
 	--pie-blue-grey-900: #ffffff;
+	--pie-font-scale: 1;
+
+	/* Toolkit/tool primitives */
+	--pie-button-bg: #1f2937;
+	--pie-button-border: #4b5563;
+	--pie-button-color: #f9fafb;
+	--pie-button-hover-bg: #374151;
+	--pie-button-hover-border: #6b7280;
+	--pie-button-hover-color: #ffffff;
+	--pie-button-active-bg: #4b5563;
+	--pie-button-focus-outline: #93c5fd;
 }

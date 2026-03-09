@@ -53,12 +53,12 @@ const DEFAULT_THEME: Required<ThemeConfig> = {
 	highContrast: false,
 	fontSize: "normal",
 	backgroundColor: "#ffffff",
-	foregroundColor: "#333333",
-	accentColor: "#007bff",
-	linkColor: "#007bff",
-	errorColor: "#dc3545",
-	successColor: "#28a745",
-	warningColor: "#ffc107",
+	foregroundColor: "#000000",
+	accentColor: "#3f51b5",
+	linkColor: "#146eb3",
+	errorColor: "#ff9800",
+	successColor: "#4caf50",
+	warningColor: "#d32f2f",
 };
 
 /**
@@ -308,7 +308,7 @@ export class ThemeProvider implements IThemeProvider {
       @media (max-width: 768px) {
         .pie-themed,
         .pie-themed * {
-          font-size: calc(var(--pie-font-size-base) * var(--pie-font-size-scale, 1) * 0.9);
+          font-size: calc(1rem * var(--pie-font-scale, 1) * 0.9);
         }
       }
     `;

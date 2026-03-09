@@ -17,7 +17,7 @@ export type PieColorSchemeDefinition = {
 	preview?: PieColorSchemePreview;
 };
 
-const BUILTIN_SCHEMES: PieColorSchemeDefinition[] = [
+export const BUILTIN_PIE_COLOR_SCHEMES: PieColorSchemeDefinition[] = [
 	{
 		id: "default",
 		name: "Default",
@@ -214,7 +214,7 @@ const BUILTIN_SCHEMES: PieColorSchemeDefinition[] = [
 ];
 
 const builtInSchemeMap = new Map(
-	BUILTIN_SCHEMES.map((scheme) => [scheme.id, scheme]),
+	BUILTIN_PIE_COLOR_SCHEMES.map((scheme) => [scheme.id, scheme]),
 );
 const customSchemeMap = new Map<string, PieColorSchemeDefinition>();
 

@@ -215,6 +215,8 @@ bun run check          # Svelte component validation
 - **MIT license**: All packages public
 - **npm publishing**: Public access
 - **Local packaging**: `pack:local` for offline builds
+- **Release prep policy (required)**: Always prepare release changesets so the release includes **all publishable packages**, keeping versions globally aligned across the monorepo.
+- **Do not scope release bumps to only changed packages** unless there is an explicit maintainer exception documented for that release.
 
 ## Sibling Repository Dependency
 

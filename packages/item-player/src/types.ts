@@ -31,3 +31,12 @@ export interface PieItemPlayerElement extends HTMLElement {
 	onDeleteSound?: (src: string, done: DeleteDone) => void;
 	loaderOptions?: Record<string, unknown>;
 }
+
+export interface PieItemSessionDebuggerElement extends HTMLElement {
+	itemName?: string;
+	itemId?: string;
+	config?: unknown;
+	session?: unknown;
+	env?: unknown;
+	score?: unknown;
+}

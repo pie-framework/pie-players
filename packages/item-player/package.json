@@ -15,16 +15,19 @@
 	"unpkg": "./dist/pie-item-player.js",
 	"jsdelivr": "./dist/pie-item-player.js",
 	"main": "./dist/pie-item-player.js",
-	"types": "./index.d.ts",
+	"types": "./dist/pie-item-player.d.ts",
 	"exports": {
 		".": {
-			"types": "./index.d.ts",
+			"types": "./dist/pie-item-player.d.ts",
 			"import": "./dist/pie-item-player.js"
+		},
+		"./components/item-session-debugger-element": {
+			"types": "./dist/components/item-session-debugger-element.d.ts",
+			"import": "./dist/components/item-session-debugger-element.js"
 		}
 	},
 	"files": [
-		"dist",
-		"index.d.ts"
+		"dist"
 	],
 	"scripts": {
 		"build": "vite build",

@@ -1,16 +1,11 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { untrack } from 'svelte';
-	import ModeSelector from '$lib/components/ModeSelector.svelte';
-	import RoleSelector from '$lib/components/RoleSelector.svelte';
 	import ScoringPanel from '$lib/components/ScoringPanel.svelte';
-	import SessionPanel from '$lib/components/SessionPanel.svelte';
 	import '@pie-players/pie-item-player';
 	import {
 		config as configStore,
 		env as envStore,
-		mode as modeStore,
-		role as roleStore,
 		score as scoreStore,
 		session as sessionStore,
 		updateScore,
@@ -20,28 +15,13 @@
 	let { data } = $props();
 
 	let playerEl: any = $state(null);
-	let controlsForm: HTMLFormElement | null = $state(null);
 	let lastConfig: any = null;
 	let lastEnv: any = null;
 	let lastSession: any = null;
-	let mode = $state<'gather' | 'view' | 'evaluate'>('gather');
-	let role = $state<'student' | 'instructor'>('student');
 	let selectedPlayerType = $state<'iife' | 'esm' | 'preloaded'>('iife');
 	let preloadedReady = $state(false);
 	let preloadedError = $state<string | null>(null);
 	let loadedPreloadedBundleKey = $state<string | null>(null);
-
-	$effect(() => {
-		if (untrack(() => mode) !== $modeStore) {
-			mode = $modeStore;
-		}
-	});
-
-	$effect(() => {
-		if (untrack(() => role) !== $roleStore) {
-			role = $roleStore;
-		}
-	});
 
 	$effect(() => {
 		const queryPlayer = $page.url.searchParams.get('player');
@@ -51,24 +31,6 @@
 			selectedPlayerType = 'iife';
 		}
 	});
-
-	function submitControls() {
-		controlsForm?.requestSubmit();
-	}
-
-	function handleModeChange(nextMode: 'gather' | 'view' | 'evaluate') {
-		mode = nextMode;
-		submitControls();
-	}
-
-	function handleRoleChange(nextRole: 'student' | 'instructor') {
-		role = nextRole;
-		// Evaluate mode is instructor-only.
-		if (role !== 'instructor' && mode === 'evaluate') {
-			mode = 'gather';
-		}
-		submitControls();
-	}
 
 	async function fetchBundleWithRetry(bundleUrl: string) {
 		let attempt = 0;
@@ -167,8 +129,7 @@
 	<title>{data.demo?.name || 'Demo'} - Delivery</title>
 </svelte:head>
 
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-	<!-- Left: Player -->
+<div class="space-y-6">
 	<div class="card bg-base-100 shadow-xl">
 		<div class="card-body">
 			{#if $configStore && $envStore && (selectedPlayerType !== 'preloaded' || preloadedReady)}
@@ -190,29 +151,7 @@
 		</div>
 	</div>
 
-	<!-- Right: Controls -->
-	<div class="space-y-4">
-		<div class="card bg-base-100 shadow-xl">
-			<div class="card-body">
-				<h3 class="card-title">Controls</h3>
-				<form
-					bind:this={controlsForm}
-					method="GET"
-					action={$page.url.pathname}
-					data-sveltekit-reload
-					class="space-y-3"
-				>
-					<ModeSelector bind:mode {role} name="mode" onChange={handleModeChange} />
-					<RoleSelector bind:role name="role" onChange={handleRoleChange} />
-					<input type="hidden" name="player" value={selectedPlayerType} />
-				</form>
-			</div>
-		</div>
-
-		<SessionPanel session={$sessionStore} />
-
-		{#if $scoreStore}
-			<ScoringPanel score={$scoreStore} />
-		{/if}
-	</div>
+	{#if $scoreStore}
+		<ScoringPanel score={$scoreStore} />
+	{/if}
 </div>

@@ -2,6 +2,7 @@ import {
 	ItemController,
 	SessionStorageItemSessionStorage,
 	type ItemSessionContainer,
+	normalizeItemSessionContainer,
 } from '@pie-players/pie-players-shared';
 import { derived, writable } from 'svelte/store';
 
@@ -36,12 +37,16 @@ function getSessionStorageKey(demoId: string): string {
 	return `${SESSION_STORAGE_PREFIX}${demoId}`;
 }
 
-export function initializeDemoState(demoId: string, nextConfig: any) {
+export function initializeDemoState(
+	demoId: string,
+	nextConfig: any,
+	nextInitialSession?: unknown,
+) {
 	sessionController = new ItemController({
 		itemId: demoId,
 		storage: new SessionStorageItemSessionStorage(),
 		storageKey: getSessionStorageKey(demoId),
-		initialSession: { id: `${demoId}-session`, data: [] },
+		initialSession: normalizeItemSessionContainer(nextInitialSession, `${demoId}-session`),
 	});
 	session.set(cloneValue(sessionController.getSession()));
 	void sessionController.hydrate().then((hydrated: ItemSessionContainer) => {

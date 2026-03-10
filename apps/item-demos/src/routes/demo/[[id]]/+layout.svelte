@@ -1,24 +1,33 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import type { PieItemSessionDebuggerElement } from '@pie-players/pie-item-player/components/item-session-debugger-element';
 	import { untrack } from 'svelte';
 	import { page } from '$app/stores';
 	import { coerceMode, coerceRole } from '$lib/utils/coercion';
+	import { env as envStore, score as scoreStore, session as sessionStore } from '$lib/stores/demo-state';
 	import {
 		initializeDemoState,
 		mode as modeStore,
 		role as roleStore,
 	} from '$lib/stores/demo-state';
+	import DemoMenuBar from './DemoMenuBar.svelte';
+	import DemoOverlays from './DemoOverlays.svelte';
 
 	let { data, children } = $props();
 
 	// State
 	let initializedDemoId = $state<string | null>(null);
+	let showSessionPanel = $state(false);
+	let sessionDebuggerElement: PieItemSessionDebuggerElement | null = $state(null);
 
 	// Initialize state only when switching to a different demo id.
 	$effect(() => {
 		const demoId = data?.demoId ?? null;
 		if (demoId && initializedDemoId !== demoId) {
-			initializeDemoState(demoId, data?.demo?.item?.config ?? null);
+			initializeDemoState(
+				demoId,
+				data?.demo?.item?.config ?? null,
+				data?.demo?.initialSession ?? null,
+			);
 			initializedDemoId = demoId;
 		}
 	});
@@ -37,57 +46,94 @@
 		return `/demo/${data.demoId}/${view}?${$page.url.searchParams}`;
 	}
 
-	async function navigateTab(event: MouseEvent, view: 'delivery' | 'author' | 'source') {
-		event.preventDefault();
-		// Commit active editor control before route switch (author text editors finalize on blur).
-		const active = document.activeElement;
-		if (active && active instanceof HTMLElement) {
-			active.blur();
+	function modeHref(viewMode: 'student' | 'scorer') {
+		const url = new URL($page.url);
+		if (viewMode === 'scorer') {
+			url.searchParams.set('mode', 'evaluate');
+			url.searchParams.set('role', 'instructor');
+		} else {
+			url.searchParams.set('mode', 'gather');
+			url.searchParams.set('role', 'student');
 		}
-		await new Promise((resolve) => setTimeout(resolve, 40));
-		await goto(tabHref(view), {
-			noScroll: true,
-			keepFocus: true,
-		});
+		return `${url.pathname}?${url.searchParams}`;
 	}
 
+	function wireCloseListener(target: PieItemSessionDebuggerElement | null, onClose: () => void) {
+		if (!target || !('addEventListener' in target)) return;
+		target.addEventListener('close', onClose as EventListener);
+		return () => {
+			target.removeEventListener('close', onClose as EventListener);
+		};
+	}
+
+	const activeView = $derived.by(() => {
+		const path = $page.url.pathname;
+		if (path.includes('/author')) return 'author';
+		if (path.includes('/source')) return 'source';
+		return 'delivery';
+	});
+
+	const viewMode = $derived.by(() => {
+		const role = $roleStore;
+		const mode = $modeStore;
+		return role === 'instructor' && mode === 'evaluate' ? 'scorer' : 'student';
+	});
+
+	$effect(() => {
+		if (!sessionDebuggerElement) return;
+		return wireCloseListener(sessionDebuggerElement, () => {
+			showSessionPanel = false;
+		});
+	});
+
+	$effect(() => {
+		if (activeView !== 'delivery' && showSessionPanel) {
+			showSessionPanel = false;
+		}
+	});
 </script>
 
-<div class="container mx-auto px-4 py-8 max-w-7xl">
-	<div class="mb-6">
-		<a href="/" class="btn btn-ghost btn-sm">← Back to Demos</a>
+<div class="pie-demo-layout">
+	<DemoMenuBar
+		demoName={data.demo?.name || 'Demo'}
+		demoPackage={data.demo?.sourcePackage || 'unknown-package'}
+		{activeView}
+		deliveryHref={tabHref('delivery')}
+		authorHref={tabHref('author')}
+		sourceHref={tabHref('source')}
+		studentHref={modeHref('student')}
+		scorerHref={modeHref('scorer')}
+		{viewMode}
+		{showSessionPanel}
+		showSessionToggle={activeView === 'delivery'}
+		onToggleSessionPanel={() => (showSessionPanel = !showSessionPanel)}
+	/>
+
+	<div class="container mx-auto max-w-7xl px-4 py-6">
+		<div class="mb-5">
+			<h1 class="text-3xl font-bold">{data.demo?.name || 'Demo'}</h1>
+			{#if data.demo?.description}
+				<p class="mt-2 text-base-content/70">{data.demo.description}</p>
+			{/if}
+		</div>
+
+		{@render children()}
 	</div>
-
-	<h1 class="text-4xl font-bold mb-6">{data.demo?.name || 'Demo'}</h1>
-	<p class="text-base-content/70 mb-6">{data.demo?.description || ''}</p>
-
-	<!-- Tab Navigation -->
-	<div class="tabs tabs-boxed mb-6">
-		<a
-			href={tabHref('delivery')}
-			onclick={(event) => navigateTab(event, 'delivery')}
-			class="tab"
-			class:tab-active={$page.url.pathname.includes('/delivery')}
-		>
-			Delivery
-		</a>
-		<a
-			href={tabHref('author')}
-			onclick={(event) => navigateTab(event, 'author')}
-			class="tab"
-			class:tab-active={$page.url.pathname.includes('/author')}
-		>
-			Author
-		</a>
-		<a
-			href={tabHref('source')}
-			onclick={(event) => navigateTab(event, 'source')}
-			class="tab"
-			class:tab-active={$page.url.pathname.includes('/source')}
-		>
-			Source
-		</a>
-	</div>
-
-	{@render children()}
 </div>
+
+<DemoOverlays
+	demoName={data.demo?.name || 'Demo'}
+	demoId={data.demoId || ''}
+	config={data.demo?.item?.config ?? null}
+	{showSessionPanel}
+	session={$sessionStore}
+	env={$envStore}
+	score={$scoreStore}
+	bind:sessionDebuggerElement
+/>
+
+<style>
+	.pie-demo-layout {
+		min-height: 100dvh;
+	}
+</style>

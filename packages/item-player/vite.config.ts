@@ -56,9 +56,13 @@ export default defineConfig({
 	],
 	build: {
 		lib: {
-			entry: resolve(__dirname, "src/pie-item-player.ts"),
-			name: "PieItemPlayerElement",
-			fileName: () => "pie-item-player.js",
+			entry: {
+				"pie-item-player": resolve(__dirname, "src/pie-item-player.ts"),
+				"components/item-session-debugger-element": resolve(
+					__dirname,
+					"src/components/item-session-debugger-element.ts",
+				),
+			},
 			formats: ["es"],
 		},
 		outDir: "dist",
@@ -70,6 +74,7 @@ export default defineConfig({
 			external: [],
 			output: {
 				format: "es",
+				entryFileNames: "[name].js",
 			},
 		},
 	},

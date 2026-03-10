@@ -68,6 +68,7 @@ const applyControllerToElement = async (
 		});
 
 		element.model = filteredModel;
+		element.session = elementSession;
 	} catch (err) {
 		logger.error(`${logPrefix} ❌ Controller error:`, err);
 		throw err; // Re-throw - controller errors are fatal
@@ -113,7 +114,6 @@ const updateSinglePieElement = (
 	}
 
 	const elementSession = findOrAddSession(session, model.id, model.element);
-	pieElement.session = elementSession;
 
 	// Always attach event listeners (don't skip them for no-controller case)
 	if (eventListeners) {
@@ -129,6 +129,7 @@ const updateSinglePieElement = (
 				`${logContext} ℹ️ No controller for ${controllerLookupTag}, using server-processed model`,
 			);
 			pieElement.model = model;
+			pieElement.session = elementSession;
 			return;
 		}
 
@@ -155,12 +156,14 @@ const updateSinglePieElement = (
 			);
 			// Fall back to raw model on controller error
 			pieElement.model = model;
+			pieElement.session = elementSession;
 		});
 	} else {
 		logger.debug(
 			`${logContext} Direct model assignment for ${controllerLookupTag}#${pieElement.id} (no controller invocation requested)`,
 		);
 		pieElement.model = model;
+		pieElement.session = elementSession;
 	}
 };
 

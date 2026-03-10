@@ -1,5 +1,13 @@
 # @pie-players/tts-client-server
 
+## 0.3.5
+
+### Patch Changes
+
+- Publish a patch release for all publishable pie-players packages.
+- Updated dependencies
+  - @pie-players/pie-tts@0.3.5
+
 ## 0.3.4
 
 ### Patch Changes

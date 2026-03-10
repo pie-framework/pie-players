@@ -1,5 +1,14 @@
 # @pie-players/pie-item-player
 
+## 0.3.5
+
+### Patch Changes
+
+- Publish a patch release for all publishable pie-players packages.
+- Updated dependencies
+  - @pie-players/pie-players-shared@0.3.5
+  - @pie-players/pie-theme@0.3.5
+
 ## 0.3.4
 
 ### Patch Changes

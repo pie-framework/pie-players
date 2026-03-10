@@ -1,5 +1,13 @@
 # @pie-players/tts-server-polly
 
+## 0.3.5
+
+### Patch Changes
+
+- Publish a patch release for all publishable pie-players packages.
+- Updated dependencies
+  - @pie-players/tts-server-core@0.3.5
+
 ## 0.3.4
 
 ### Patch Changes

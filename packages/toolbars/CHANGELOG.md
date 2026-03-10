@@ -1,5 +1,13 @@
 # @pie-players/pie-toolbars
 
+## 0.3.5
+
+### Patch Changes
+
+- Publish a patch release for all publishable pie-players packages.
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.5
+
 ## 0.3.4
 
 ### Patch Changes

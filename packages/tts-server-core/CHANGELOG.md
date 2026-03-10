@@ -1,5 +1,11 @@
 # @pie-players/tts-server-core
 
+## 0.3.5
+
+### Patch Changes
+
+- Publish a patch release for all publishable pie-players packages.
+
 ## 0.3.4
 
 ## 0.3.3

@@ -1,5 +1,22 @@
 # @pie-players/pie-default-tool-loaders
 
+## 0.3.5
+
+### Patch Changes
+
+- Publish a patch release for all publishable pie-players packages.
+- Updated dependencies
+  - @pie-players/pie-tool-annotation-toolbar@0.3.5
+  - @pie-players/pie-tool-answer-eliminator@0.3.5
+  - @pie-players/pie-tool-calculator-desmos@0.3.5
+  - @pie-players/pie-tool-theme@0.3.5
+  - @pie-players/pie-tool-graph@0.3.5
+  - @pie-players/pie-tool-line-reader@0.3.5
+  - @pie-players/pie-tool-periodic-table@0.3.5
+  - @pie-players/pie-tool-protractor@0.3.5
+  - @pie-players/pie-tool-ruler@0.3.5
+  - @pie-players/pie-tool-text-to-speech@0.3.5
+
 ## 0.3.4
 
 ### Patch Changes

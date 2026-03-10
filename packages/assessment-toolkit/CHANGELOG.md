@@ -1,5 +1,18 @@
 # @pie-players/pie-assessment-toolkit
 
+## 0.3.5
+
+### Patch Changes
+
+- Publish a patch release for all publishable pie-players packages.
+- Updated dependencies
+  - @pie-players/pie-calculator@0.3.5
+  - @pie-players/pie-calculator-desmos@0.3.5
+  - @pie-players/pie-context@0.3.5
+  - @pie-players/pie-players-shared@0.3.5
+  - @pie-players/pie-tts@0.3.5
+  - @pie-players/tts-client-server@0.3.5
+
 ## 0.3.4
 
 ### Patch Changes

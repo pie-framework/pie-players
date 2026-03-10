@@ -658,10 +658,24 @@ export class ToolkitCoordinator {
 	}
 
 	public subscribeSectionEvents(args: SectionEventSubscriptionArgs): () => void {
-		const controllerEntry = this.resolveSectionControllerForSubscription({
-			sectionId: args.sectionId,
-			attemptId: args.attemptId,
-		});
+		let controllerEntry: { mapKey: string; controller: SectionControllerHandle };
+		try {
+			controllerEntry = this.resolveSectionControllerForSubscription({
+				sectionId: args.sectionId,
+				attemptId: args.attemptId,
+			});
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			const isAmbiguousSectionWithoutAttempt =
+				args.sectionId !== undefined &&
+				args.attemptId === undefined &&
+				message.includes("subscribeSectionEvents is ambiguous for section");
+			if (isAmbiguousSectionWithoutAttempt) {
+				console.warn(message);
+				return () => {};
+			}
+			throw error;
+		}
 		const controller = controllerEntry.controller;
 		const subscribe = controller.subscribe;
 		if (!subscribe) {

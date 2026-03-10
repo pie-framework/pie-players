@@ -219,16 +219,10 @@ In addition to the three-tier dependency hierarchy, tools are categorized by the
 
 Tools that operate within the context of a specific question/item:
 
+![Lifecycle comparison of item-level tools versus section-level floating tools](../img/tool-scope-lifecycle-item-vs-section-1-1773125405780.jpg)
+
 **Lifecycle:**
-```
-Section loaded
-  ↓
-Question 1 displayed → Item-level tools created (TTS, Answer Eliminator for Q1)
-  ↓
-User navigates to Question 2 → Q1 tools destroyed, Q2 tools created
-  ↓
-User returns to Question 1 → Q1 tools recreated, state restored from ElementToolStateStore
-```
+- See diagram above for creation, teardown, and state-restore flow.
 
 **Characteristics:**
 - **Instance per item**: Each question has its own tool instances
@@ -261,19 +255,7 @@ const state = elementToolStateStore.getState('assessment:section-1:question-5:mc
 Tools that float above the entire assessment and persist across navigation:
 
 **Lifecycle:**
-```
-Section loaded → All floating tools initialized (calculator, graph, protractor, etc.)
-  ↓
-Question 1 displayed → Floating tools available
-  ↓
-User opens calculator, computes 45 × 12
-  ↓
-User navigates to Question 2 → Calculator remains open, history preserved
-  ↓
-User navigates to Question 7 → Calculator still shows previous computations
-  ↓
-Section complete → Floating tools destroyed
-```
+- See diagram above for persistent section-level lifecycle behavior.
 
 **Characteristics:**
 - **Single instance per section**: One calculator, one graph, etc. for entire section

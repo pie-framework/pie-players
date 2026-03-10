@@ -1,12 +1,12 @@
-# QTI 3.0 Paired Passages Design
+# QTI-Inspired Paired Passages Design
 
 ## Overview
 
-This document describes how PIE Assessment Toolkit models paired passages and page-level rendering using QTI 3.0-aligned structures with PIE entities.
+This document describes how PIE Assessment Toolkit models paired passages and page-level rendering using QTI 3.0-inspired structures with PIE entities.
 
 ## Key Principles
 
-1. **QTI-aligned structure**: Use `rubricBlocks` and `assessmentItemRefs` from QTI 3.0
+1. **QTI-inspired structure**: Use `rubricBlocks` and `assessmentItemRefs` from QTI 3.0
 2. **PIE-native entities**: Store `PassageEntity` and `ItemEntity` (not HTML strings or external references)
 3. **Page = Section**: `QtiAssessmentSection` with `keepTogether: true` represents a page
 4. **No loading logic**: Player receives fully resolved entities
@@ -244,9 +244,9 @@ The Reference Layout component should:
 - **Stacked**: Display passages vertically stacked
 - **Collapsible**: Mobile-friendly accordion view
 
-## Standards Compliance
+## QTI-Inspired Design Notes
 
-This design is **QTI 3.0-aligned** where practical:
+This design is **QTI 3.0-inspired** where practical:
 
 - ✅ Uses QTI 3.0 structure (`QtiAssessmentSection`, `rubricBlocks`, `assessmentItemRefs`)
 - ✅ Uses QTI 3.0 semantics (`keepTogether`, `view`, `use`)

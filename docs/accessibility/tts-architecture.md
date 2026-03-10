@@ -1,5 +1,7 @@
 # TTS Architecture
 
+<!-- markdownlint-disable MD022 MD031 MD032 MD036 MD040 -->
+
 ## Overview
 
 The PIE Players TTS (Text-to-Speech) system uses a clean, layered architecture with pluggable providers and zero UI framework dependencies in the core.
@@ -342,7 +344,7 @@ export class MyTTSProvider implements ITTSProvider {
 }
 ```
 
-## QTI 3.0 Integration with Section Player
+## QTI-Inspired Integration with Section Player
 
 The TTS system integrates seamlessly with QTI 3.0 accessibility catalogs through the **PIE Section Player**:
 

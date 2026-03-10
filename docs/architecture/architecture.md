@@ -1,5 +1,7 @@
 # PIE Players - High-Level Architecture
 
+<!-- markdownlint-disable MD012 MD032 MD060 -->
+
 ---
 
 ## Executive Summary
@@ -53,6 +55,8 @@ The PIE Players architecture consists of three major areas organized into logica
 Item players are Web Components that render individual PIE assessment items. They handle element loading, model transformation, and session management.
 
 ### Player Types
+
+![Comparison of PIE item player strategies and runtime loading patterns](../img/item-player-strategies-overview-1-1773125329480.jpg)
 
 #### 1. IIFE Strategy (`<pie-item-player strategy="iife">`)
 
@@ -219,7 +223,7 @@ The **Assessment Toolkit** provides composable services for coordinating tools, 
 2. **No Framework Lock-in** - Works with any JavaScript framework
 3. **Product Control** - Products control navigation, persistence, layout, backend
 4. **Standard Contracts** - Well-defined event types for component communication
-5. **QTI 3.0 Native** - Uses QTI 3.0 Personal Needs Profile (PNP) directly for accessibility accommodations
+5. **QTI-Inspired Patterns** - Reuses QTI 3.0 Personal Needs Profile (PNP) concepts for accessibility accommodations
 6. **Section Player Integration** - Toolkit services integrate seamlessly with the section player
 
 ### Primary Interface: Section Splitpane Player
@@ -239,9 +243,14 @@ See: [TOOL_PROVIDER_SYSTEM](../tools-and-accomodations/tool_provider_system.md) 
 
 ---
 
-### QTI 3.0 Support
+### QTI-Inspired Features
 
-The toolkit natively supports **QTI 3.0** features for industry-standard assessment delivery.
+The toolkit uses **QTI-inspired** patterns for industry-standard assessment delivery workflows.
+
+This approach is intentional:
+- It avoids reinventing established assessment patterns.
+- It is easier to understand for teams already familiar with QTI concepts.
+- It makes PIE↔QTI conversion easier (for example via `pie-qti`).
 
 #### Implemented Features
 
@@ -265,9 +274,9 @@ Enables:
 
 #### Benefits
 
-- **Standards Compliant**: Uses QTI 3.0 directly (no custom abstractions)
+- **QTI-Inspired Model**: Reuses QTI 3.0 concepts while remaining PIE-oriented
 - **Simpler Code**: 72% reduction in abstraction complexity
-- **Easy Integration**: One-line initialization for full QTI 3.0 support
+- **Easy Integration**: One-line initialization for QTI-inspired toolkit services
 - **Third-Party Friendly**: All services work independently
 
 ---
@@ -275,6 +284,8 @@ Enables:
 ### ToolkitCoordinator: Centralized Service Management
 
 The **ToolkitCoordinator** is a centralized orchestrator for all PIE Assessment Toolkit services, providing a single entry point for initialization, configuration, and service management.
+
+![ToolkitCoordinator orchestration of toolkit services and section player integration](../img/toolkit-coordinator-orchestration-1-1773125329715.jpg)
 
 **Problem Solved**: Before ToolkitCoordinator, applications had to manage multiple independent services (TTSService, ToolCoordinator, HighlightCoordinator, AccessibilityCatalogResolver, ElementToolStateStore), wire them together, and pass all separately to the player.
 
@@ -453,7 +464,7 @@ Add individual assessment tools to item player without full toolkit integration.
 
 ### Pattern 3: Section Player with Toolkit
 
-Use section player with full assessment toolkit for complete section delivery with QTI 3.0 support. This is the recommended pattern for production assessments.
+Use section player with full assessment toolkit for complete section delivery using QTI-inspired structures. This is the recommended pattern for production assessments.
 
 **Architecture**:
 1. Initialize toolkit services (TTSService, catalogResolver, coordinators)

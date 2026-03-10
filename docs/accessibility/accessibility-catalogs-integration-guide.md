@@ -1,4 +1,6 @@
-# QTI 3.0 Accessibility Catalogs - Integration Guide
+# QTI-Inspired Accessibility Catalogs - Integration Guide
+
+<!-- markdownlint-disable MD012 MD031 MD032 MD040 MD060 -->
 
 ---
 
@@ -771,7 +773,7 @@ const german = resolver.getAlternative('welcome-message', {
 
 ## References
 
-- [QTI 3.0 Feature Support](./qti-3.0-feature-support.md)
+- [QTI-Inspired Feature Support](./qti-3.0-feature-support.md)
 - [APIP Specification](https://www.imsglobal.org/apip) - IMS Global APIP standard
 - [WCAG 2.2 Guidelines](https://www.w3.org/WAI/WCAG22/quickref/)
 - [Web Speech API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API)

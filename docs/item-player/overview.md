@@ -19,27 +19,7 @@ For the full attribute/property/event reference, see the [package README](../../
 
 ## Internal structure
 
-```
-┌─────────────────────────────────────────────────────┐
-│  <pie-item-player>                                  │
-│                                                     │
-│  ┌───────────────┐  ┌────────────────────────────┐  │
-│  │ Strategy      │  │ ItemController             │  │
-│  │ resolution    │  │ (session state management) │  │
-│  └──────┬────────┘  └────────────┬───────────────┘  │
-│         │                        │                  │
-│  ┌──────▼────────────────────────▼───────────────┐  │
-│  │ PieItemRenderer                               │  │
-│  │ (renders markup, wires models + sessions to   │  │
-│  │  PIE custom elements, forwards events)        │  │
-│  └───────────────────────────────────────────────┘  │
-│                                                     │
-│  ┌────────────────┐  ┌───────────────────────────┐  │
-│  │ IifePieLoader  │  │ EsmPieLoader              │  │
-│  │ (IIFE bundles) │  │ (ESM import maps)         │  │
-│  └────────────────┘  └───────────────────────────┘  │
-└─────────────────────────────────────────────────────┘
-```
+![pie-item-player internal component structure with loaders, controller, and renderer](../img/item-player-internal-structure-1-1773125366199.jpg)
 
 ### Key components
 
@@ -65,6 +45,8 @@ The `mode` attribute on the custom element accepts `"view"` or `"author"`:
 ## Session management
 
 The player manages session state through `ItemController`:
+
+![Session change flow through pie-item-player and ItemController deduplication pipeline](../img/item-player-session-management-flow-1-1773125364182.jpg)
 
 1. When `config` is set, the player creates (or reuses) an `ItemController` for the item.
 2. The session prop is normalized into `{ id: string, data: Array<{ id, element, ... }> }`.

@@ -1,14 +1,21 @@
-# QTI 3.0 Feature Support in PIE Assessment Toolkit
+# QTI-Inspired Feature Support in PIE Assessment Toolkit
+
+<!-- markdownlint-disable MD012 MD024 MD031 MD032 MD040 MD060 -->
 
 ---
 
 ## Executive Summary
 
-The PIE Assessment Toolkit natively supports QTI 3.0 features for standards-compliant assessment delivery. The toolkit uses QTI 3.0 directly (no custom abstractions) and provides composable services that work independently or with AssessmentPlayer.
+The PIE Assessment Toolkit uses QTI-inspired features for assessment delivery. It borrows proven QTI 3.0 concepts and provides composable services that work independently or with AssessmentPlayer.
+
+Why QTI-inspired:
+1. We avoid reinventing the wheel.
+2. The model is easier to understand for teams already familiar with QTI (common among PIE users).
+3. It is easier to convert between PIE and QTI (for example via `pie-qti`).
 
 **Implementation Status:**
 
-- ✅ **Personal Needs Profile (PNP)** - Implemented (native QTI 3.0)
+- ✅ **Personal Needs Profile (PNP)** - Implemented (QTI-inspired mapping)
 - ✅ **Context Declarations** - Implemented (global variables)
 - ✅ **Accessibility Catalogs** - Core service implemented, TTS integration in progress
 - ❌ **Stimulus References** - Not implemented
@@ -205,6 +212,8 @@ interface ItemEntity {
 
 ### Implementation (Complete)
 
+![Accessibility catalog resolution flow from item content to TTS with fallback behavior](../img/qti-accessibility-catalog-resolution-flow-1-1773125404595.jpg)
+
 #### 1. AccessibilityCatalogResolver Service
 
 ```typescript
@@ -318,7 +327,7 @@ class TTSService {
 
 Personal Needs Profiles (PNP 3.0) define standardized accessibility accommodations for students (IEP/504 support).
 
-**Native QTI 3.0 Support:** The toolkit uses PNP directly (no custom profile abstractions), resulting in 72% code reduction.
+**QTI-Inspired PNP Support:** The toolkit adopts QTI 3.0 PNP concepts directly (without extra profile abstraction layers), resulting in 72% code reduction.
 
 ### Data Model
 
@@ -343,6 +352,8 @@ interface AssessmentEntity {
 - `PNPToolResolver` - Resolves tool availability with precedence hierarchy
 
 **Tool Resolution Precedence** (highest to lowest):
+
+![PNP tool resolution precedence showing override priority from district block to student supports](../img/qti-pnp-tool-resolution-precedence-1-1773125365737.jpg)
 
 1. District Block (absolute veto)
 2. Test Administration Override
@@ -395,7 +406,7 @@ answerMasking   → pie-tool-answer-eliminator
 
 **Features:**
 
-- ✅ Native QTI 3.0 (no custom abstractions)
+- ✅ QTI-inspired model (no extra abstraction layers)
 - ✅ District policy support
 - ✅ Item-level requirements
 - ✅ Test administration overrides
@@ -454,20 +465,20 @@ Stimulus references are defined in the data model but are not supported by the c
 
 ## Summary
 
-The PIE Assessment Toolkit provides **native QTI 3.0 support** through composable services that work independently or with AssessmentPlayer.
+The PIE Assessment Toolkit provides **QTI-inspired support** through composable services that work independently or with AssessmentPlayer.
 
 ### Implementation Status
 
 | Feature | Status | Service | Notes |
 |---------|--------|---------|-------|
-| **Personal Needs Profile** | ✅ Implemented | PNPToolResolver, PNPMapper | Native QTI 3.0, 72% code reduction |
+| **Personal Needs Profile** | ✅ Implemented | PNPToolResolver, PNPMapper | QTI-inspired mapping, 72% code reduction |
 | **Context Declarations** | ✅ Implemented | ContextVariableStore | Session persistence, type-safe |
 | **Accessibility Catalogs** | ✅ Core Implemented | AccessibilityCatalogResolver | TTS integration in progress |
 | **Stimulus References** | ❌ Not Implemented | N/A | Runtime support not available |
 
 ### Key Benefits
 
-- **Standards Compliant**: Uses QTI 3.0 directly (no custom abstractions)
+- **QTI-Inspired**: Reuses QTI 3.0 concepts while keeping a PIE-first runtime model
 - **Third-Party Friendly**: All services work independently of AssessmentPlayer
 - **Composable**: Import only what you need
 - **Framework Agnostic**: Works with any JavaScript framework
@@ -482,7 +493,7 @@ Current work is focused on completing TTS integration for accessibility catalogs
 - [Architecture Overview](../architecture/architecture.md) - Complete system architecture
 - [Assessment Toolkit README](../../packages/assessment-toolkit/README.md) - Usage and examples
 - [QTI 3.0 Specification](https://www.imsglobal.org/spec/qti/v3p0) - IMS Global standard
-- [TOOL_PROVIDER_SYSTEM](../tools-and-accomodations/tool_provider_system.md) - Native tool provider and runtime details
+- [TOOL_PROVIDER_SYSTEM](../tools-and-accomodations/tool_provider_system.md) - Tool provider and runtime details
 - [Accessibility Catalogs Integration Guide](../accessibility/accessibility-catalogs-integration-guide.md) - Detailed integration guide
 - [Accessibility Catalogs TTS Integration](../accessibility/accessibility-catalogs-tts-integration.md) - TTSService integration details
 - [Accessibility Catalogs Quick Start](../accessibility/accessibility-catalogs-quick-start.md) - Developer quick reference

@@ -1,5 +1,7 @@
 # Section Player Integration Guide
 
+<!-- markdownlint-disable MD031 MD032 MD040 MD060 -->
+
 A comprehensive guide for developers integrating the PIE section player into a host application. Covers installation, configuration, tools (TTS, calculator), the section controller, events, and state management.
 
 For a quick-start walkthrough with data layout and theming, see [assessment-toolkit-section-player-getting-started.md](./assessment-toolkit-section-player-getting-started.md).
@@ -38,7 +40,7 @@ For a quick-start walkthrough with data layout and theming, see [assessment-tool
 
 ## Overview
 
-The PIE section player renders a QTI-aligned assessment section (passages + items) inside a web component. It orchestrates item rendering, tool services (TTS, calculators, highlighters, etc.), and session state through a central `ToolkitCoordinator` and per-section `SectionController`.
+The PIE section player renders a QTI-inspired assessment section (passages + items) inside a web component. It orchestrates item rendering, tool services (TTS, calculators, highlighters, etc.), and session state through a central `ToolkitCoordinator` and per-section `SectionController`.
 
 **Architecture at a glance:**
 

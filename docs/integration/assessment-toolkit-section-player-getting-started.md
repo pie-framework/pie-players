@@ -29,7 +29,7 @@ At runtime, your host app passes section content + runtime config to `pie-sectio
 
 ### Data layout
 
-The splitpane expects a QTI-aligned `AssessmentSection` object with:
+The splitpane expects a QTI-inspired `AssessmentSection` object with:
 
 - `identifier`, `title`, optional metadata
 - `rubricBlocks` (often where passages/stimuli live)

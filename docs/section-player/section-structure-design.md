@@ -4,11 +4,11 @@
 
 ## Summary
 
-We've designed a **QTI-aligned section structure using PIE entities** that balances QTI 3.0 concepts with PIE's native approach.
+We've designed a **QTI-inspired section structure using PIE entities** that balances QTI 3.0 concepts with PIE's native approach.
 
 ### Key Principles
 
-1. **QTI-aligned structure** - Use `rubricBlocks` and `assessmentItemRefs`
+1. **QTI-inspired structure** - Use `rubricBlocks` and `assessmentItemRefs`
 2. **PIE-native entities** - Store `PassageEntity` and `ItemEntity`, not HTML strings
 3. **No loading logic** - Player receives fully resolved entities (client handles loading)
 4. **Simplified** - Removed unused fields (`stimulusRef`, `href`, etc.)
@@ -277,7 +277,7 @@ class SectionPlayer {
 
 ## Benefits of This Design
 
-✅ **QTI-aligned** - Uses `rubricBlocks` and `assessmentItemRefs` structure
+✅ **QTI-inspired** - Uses `rubricBlocks` and `assessmentItemRefs` structure
 ✅ **PIE-native** - Stores `PassageEntity` and `ItemEntity` with PIE configs
 ✅ **Semantic** - QTI's `view` and `class` attributes preserved
 ✅ **Uniform rendering** - Passages and items both use ItemPlayer
@@ -291,6 +291,6 @@ class SectionPlayer {
 ## Related Documents
 
 - [Demo Route](../../apps/section-demos/src/routes/demo/[[id]]/+page.svelte)
-- [QTI 3.0 Feature Support](./qti-3.0-feature-support.md)
+- [QTI-Inspired Feature Support](./qti-3.0-feature-support.md)
 - [Paired Passages Design](./qti3-paired-passages-design.md)
 - [Architecture](../architecture/architecture.md)

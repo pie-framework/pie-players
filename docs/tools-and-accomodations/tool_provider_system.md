@@ -213,31 +213,7 @@ type ToolProviderConfig = {
 
 ### Flow Diagram
 
-```
-User Configuration
-       │
-       ▼
-ToolkitCoordinator
-       │
-       ├─→ ToolProviderRegistry.register()
-       │   ├─→ Store provider + config
-       │   └─→ Mark as lazy (or initialize immediately)
-       │
-       ▼
-First Tool Use
-       │
-       ├─→ ToolProviderRegistry.getProvider()
-       │   ├─→ Check if initialized
-       │   ├─→ If not: call authFetcher() [if needed]
-       │   ├─→ provider.initialize(config)
-       │   └─→ Mark as initialized
-       │
-       ▼
-provider.createInstance()
-       │
-       ▼
-Tool Ready for Use
-```
+![Provider authentication and initialization flow from browser tool use to backend token retrieval](../img/provider-auth-token-sequence-1-1773125406282.jpg)
 
 ---
 

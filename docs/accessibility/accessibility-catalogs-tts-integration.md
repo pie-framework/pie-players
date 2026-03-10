@@ -1,5 +1,7 @@
 # Accessibility Catalogs - TTS Integration
 
+<!-- markdownlint-disable MD032 MD040 MD060 -->
+
 ---
 
 ## Overview
@@ -532,5 +534,5 @@ const item = {
 
 - [Accessibility Catalogs Integration Guide](accessibility-catalogs-integration-guide.md) - Complete integration patterns
 - [Accessibility Catalogs Quick Start](accessibility-catalogs-quick-start.md) - Developer quick reference
-- [QTI 3.0 Feature Support](qti-3.0-feature-support.md) - Overall QTI 3.0 implementation status
+- [QTI-Inspired Feature Support](qti-3.0-feature-support.md) - Overall QTI-inspired implementation status
 - [QTI 3.0 Specification](https://www.imsglobal.org/spec/qti/v3p0) - IMS Global standard

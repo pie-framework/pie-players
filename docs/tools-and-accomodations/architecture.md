@@ -240,7 +240,7 @@ User returns to Question 1 → Q1 tools recreated, state restored from ElementTo
 **Examples:**
 - **TTS (tool-tts-inline)**: Reads this question's text (not other questions)
 - **Answer Eliminator**: Strikes through choices for this item only
-- **Highlighter** (future): Highlights within this item's text
+- **Highlighter**: Highlights within this item's text
 
 **State Management:**
 ```typescript
@@ -867,23 +867,6 @@ Final Configuration:
 - Basic path-based export implemented
 - Complex restoration needs enhancement
 - Works for simple cases
-
-### Future Enhancements
-
-✅ **Accommodation Resolver** (now `PNPToolResolver`)
-- Three-tier merge logic
-- Implemented in `PNPToolResolver`
-- Manual configuration also works
-
-🔮 **Response Integration**
-- Calculator-to-response insertion
-- Capability-based discovery
-- Manual copy/paste works
-
-✅ **Library Loader** (now `library-loader.ts`)
-- Dynamic dependency loading
-- Retry logic with fallbacks
-- Implemented in `library-loader.ts`
 
 ---
 

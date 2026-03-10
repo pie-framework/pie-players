@@ -927,30 +927,6 @@ function getToolInstanceId(context: ToolContext): string {
 
 ---
 
-## Migration from Current Architecture
-
-### What Changes
-- ❌ Delete separate inline tool components (`tool-calculator-inline`, `tool-tts-inline`)
-- ❌ Remove hardcoded tool lists from toolbars
-- ❌ Remove hardcoded PNPMapper
-- ➕ Add ToolRegistry
-- ➕ Add tool registrations
-- ➕ Add generic ToolButton component
-- ➕ Update toolbars to use registry
-
-### What Stays the Same
-- ✅ ToolCoordinator (unchanged)
-- ✅ PNP precedence hierarchy (unchanged)
-- ✅ Tool web components (minimal changes)
-- ✅ All other services (unchanged)
-
-### Backward Compatibility
-- Phase 1: Add new system alongside old (both work)
-- Phase 2: Deprecate old inline components
-- Phase 3: Remove old components (major version bump)
-
----
-
 ## Conclusion
 
 This architecture provides a clean, flexible, and secure model for tool visibility:

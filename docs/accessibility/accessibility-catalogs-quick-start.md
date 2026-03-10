@@ -185,70 +185,9 @@ const german = resolver.getAlternative('greeting', {
 
 ---
 
-## Integration with AssessmentPlayer
-
-> **Note:** `AssessmentPlayer` does not exist as a class. Integration is through the section player custom elements (`pie-section-player-splitpane`) and `ToolkitCoordinator`. The examples below are conceptual pseudocode illustrating the pattern.
-
-### Basic Setup
-
-```typescript
-import { AssessmentPlayer, AccessibilityCatalogResolver } from '@pie-players/pie-assessment-toolkit';
-
-class MyPlayer extends AssessmentPlayer {
-  private catalogResolver: AccessibilityCatalogResolver;
-
-  constructor(config) {
-    super(config);
-
-    // Initialize resolver with assessment catalogs
-    this.catalogResolver = new AccessibilityCatalogResolver(
-      config.assessment.accessibilityCatalogs,
-      config.locale || 'en'
-    );
-
-    // Pass to TTS service
-    this.services.ttsService.setCatalogResolver(this.catalogResolver);
-  }
-
-  protected async loadItemContent(itemRef) {
-    const item = await super.loadItemContent(itemRef);
-
-    // Add item-level catalogs
-    if (item.accessibilityCatalogs) {
-      this.catalogResolver.addItemCatalogs(item.accessibilityCatalogs);
-    }
-
-    return item;
-  }
-
-  protected async navigateToItem(index) {
-    // Clear previous item's catalogs
-    this.catalogResolver.clearItemCatalogs();
-
-    // Navigate (will load new item with its catalogs)
-    await super.navigateToItem(index);
-  }
-}
-```
-
-### Expose to PIE Elements
-
-```typescript
-async render(container: HTMLElement) {
-  const pieContext = {
-    ...this.getPieContext(),
-    catalogResolver: this.catalogResolver  // Add resolver to context
-  };
-
-  await piePlayer.render({ item, session, context: pieContext });
-}
-```
-
----
-
 ## Integration with TTSService
 
-### Phase 2 Implementation (Coming Soon)
+Use `TTSService` with an `AccessibilityCatalogResolver` to prefer authored spoken content when available.
 
 ```typescript
 import { TTSService } from '@pie-players/pie-assessment-toolkit';
@@ -497,15 +436,6 @@ See the examples in this guide and in [accessibility-catalogs-integration-guide.
 
 ---
 
-## Next Steps
-
-1. **Read the full guide:** [Integration Guide](./accessibility-catalogs-integration-guide.md)
-2. **Review examples:** [Integration Guide](./accessibility-catalogs-integration-guide.md)
-3. **Review feature coverage:** [QTI 3.0 Feature Support](./qti-3.0-feature-support.md)
-4. **Start coding!** The service is ready to use.
-
----
-
 ## Common Questions
 
 ### Q: Do I need to provide all catalog types?
@@ -548,6 +478,3 @@ See the examples in this guide and in [accessibility-catalogs-integration-guide.
 - **Integration Guide:** [accessibility-catalogs-integration-guide.md](./accessibility-catalogs-integration-guide.md)
 - **Examples:** [accessibility-catalogs-integration-guide.md](./accessibility-catalogs-integration-guide.md)
 
----
-
-**Happy coding! 🎉**

@@ -68,15 +68,7 @@ docker run -d -p 6379:6379 redis:alpine
 
 We use `@dotenvx/dotenvx` to load environment variables from `.env` in the monorepo root.
 
-All demo scripts are wrapped with `dotenvx run --`:
-
-```json
-{
-  "scripts": {
-    "dev:section": "dotenvx run -- bun run --cwd apps/section-demos dev"
-  }
-}
-```
+Demo entrypoints run through `dotenvx run --` so local `.env` values are available during startup.
 
 ### Why dotenvx?
 

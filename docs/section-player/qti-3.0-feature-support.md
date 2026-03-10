@@ -12,10 +12,10 @@ The PIE Assessment Toolkit natively supports QTI 3.0 features for standards-comp
 
 **Implementation Status:**
 
-- ✅ **Personal Needs Profile (PNP)** - Fully implemented (native QTI 3.0)
-- ✅ **Context Declarations** - Fully implemented (global variables)
-- ✅ **Accessibility Catalogs** - Core service complete (Phase 2) - TTS integration in progress
-- 📋 **Stimulus References** - Planned (Phase 3)
+- ✅ **Personal Needs Profile (PNP)** - Implemented (native QTI 3.0)
+- ✅ **Context Declarations** - Implemented (global variables)
+- ✅ **Accessibility Catalogs** - Core service implemented, TTS integration in progress
+- ❌ **Stimulus References** - Not implemented
 
 This document provides an overview of QTI 3.0 features and their implementation status in the toolkit.
 
@@ -27,8 +27,6 @@ This document provides an overview of QTI 3.0 features and their implementation 
 2. [Accessibility Catalogs (APIP Integration)](#2-accessibility-catalogs-apip-integration)
 3. [Personal Needs Profiles (PNP 3.0)](#3-personal-needs-profiles-pnp-30)
 4. [Stimulus References (Shared Passages)](#4-stimulus-references-shared-passages)
-5. [Implementation Strategy](#5-implementation-strategy)
-6. [Priority Recommendations](#6-priority-recommendations)
 
 ---
 
@@ -163,22 +161,6 @@ store.fromObject(savedSession.contextVariables);
 4. **Debugging:** Hidden dependencies between items harder to trace
 5. **Breaking Change:** Would require PIE element API updates
 
-### Implementation Effort
-
-- **Backend (AssessmentPlayer):** 2-3 days
-- **PIE Element Updates:** Varies per element (opt-in feature)
-- **Testing:** 1-2 days
-- **Documentation:** 1 day
-
-**Total:** ~1 week for core implementation
-
-### Use Case Priority
-
-**Medium-High** - Valuable for advanced assessments with:
-- Item randomization needs
-- Adaptive testing
-- Multi-item scenarios with shared context
-
 ---
 
 ## 2. Accessibility Catalogs (APIP Integration)
@@ -193,7 +175,7 @@ Accessibility catalogs provide alternative representations of content for assist
 - **Simplified language:** Plain language alternatives
 - **Tactile graphics:** Descriptions for tactile diagrams
 
-### Current Status: ✅ Core Service Implemented (Phase 2)
+### Current Status: ✅ Core Service Implemented
 
 **Data Model:** ✅ Complete
 ```typescript
@@ -270,7 +252,7 @@ Content references catalogs using `data-catalog-id` attributes:
 </pie-choices>
 ```
 
-#### 3. TTS Integration (In Progress - Phase 2)
+#### 3. TTS Integration (In Progress)
 
 ```typescript
 class TTSService {
@@ -320,44 +302,17 @@ class TTSService {
 
 ### Implementation Status
 
-**Phase 1: Core Infrastructure** ✅ **COMPLETE**
 - ✅ `AccessibilityCatalogResolver` service implemented
 - ✅ Assessment-level and item-level catalog support
 - ✅ Multi-language resolution with fallback strategies
 - ✅ All catalog types supported (spoken, sign-language, braille, simplified-language, tactile, etc.)
-- ✅ Comprehensive examples created
 - ✅ Service exported from toolkit
-- ✅ Demo integrated into example site
-
-**Phase 2: TTS Integration** ⚠️ **IN PROGRESS**
-- ✅ Interface updated (ITTSService)
-- ⏸️ TTSService implementation (pending)
-- ⏸️ AssessmentPlayer integration (pending)
-- ⏸️ Auto-detect catalog IDs from DOM (pending)
-
-**Phase 3: Extended Catalog Types** 📋 **PLANNED**
-- 📋 Sign language video player
-- 📋 Braille renderer
-- 📋 Simplified language transformer
-- 📋 UI indicators for available alternatives
+- ⚠️ TTSService integration is still in progress
 
 **Documentation:**
 - ✅ [Integration Guide](../accessibility/accessibility-catalogs-integration-guide.md) - Complete implementation guide
 - ✅ [Quick Start](../accessibility/accessibility-catalogs-quick-start.md) - Developer quick start
 - ✅ [Quick Start Examples](../accessibility/accessibility-catalogs-quick-start.md) - Comprehensive examples
-
-### Use Case Priority
-
-**High** - Critical for:
-- Section 508 compliance
-- WCAG AAA accessibility
-- State/federal assessment contracts
-- International markets requiring multi-language accessibility
-
-**Recommended Implementation Order:**
-1. TTS catalog integration (highest ROI)
-2. Sign language video (regulatory requirement in some markets)
-3. Braille (specialized need, smaller market)
 
 ---
 
@@ -452,100 +407,6 @@ answerMasking   → pie-tool-answer-eliminator
 - ✅ Custom extension support
 - ✅ Third-party friendly (composable)
 
-### Reference: How It Could Work
-
-> **Clarification:** The PNP feature is marked "Implemented" above. The core services (`PNPMapper`, `PNPToolResolver`, tool resolution precedence, standard PNP support ID mapping) are implemented and usable. The sections below are **aspirational design notes** showing how the implementation could be extended further (e.g., richer context-profile merging, extended PNP supports for font/spacing/contrast). They do not reflect the current shipped API.
-
-#### Implementation Approach
-
-1. **Map PNP supports to PIE tools:**
-   ```typescript
-   const PNP_TO_PIE_TOOL_MAPPING: Record<string, string> = {
-     'textToSpeech': 'pie-tool-text-to-speech',
-     'calculator': 'pie-tool-calculator',
-     'ruler': 'pie-tool-ruler',
-     'protractor': 'pie-tool-protractor',
-     'highlighter': 'pie-tool-annotation-toolbar',
-     'lineReader': 'pie-tool-line-reader',
-     'colorContrast': 'pie-tool-color-scheme',
-     'eliminator': 'pie-tool-answer-eliminator',
-   };
-   ```
-
-2. **Apply PNP during player initialization:**
-   ```typescript
-   class AssessmentPlayer {
-     private applyPersonalNeedsProfile(profile: PersonalNeedsProfile) {
-       // Enable required supports
-       for (const support of profile.supports) {
-         const toolId = PNP_TO_PIE_TOOL_MAPPING[support];
-         if (toolId) {
-           this.toolCoordinator.enableTool(toolId, { required: true });
-         }
-       }
-
-       // Disable prohibited supports
-       for (const prohibited of profile.prohibitedSupports ?? []) {
-         const toolId = PNP_TO_PIE_TOOL_MAPPING[prohibited];
-         if (toolId) {
-           this.toolCoordinator.disableTool(toolId, { locked: true });
-         }
-       }
-
-       // Auto-activate specified supports
-       for (const activate of profile.activateAtInit ?? []) {
-         const toolId = PNP_TO_PIE_TOOL_MAPPING[activate];
-         if (toolId) {
-           this.toolCoordinator.activateTool(toolId);
-         }
-       }
-     }
-   }
-   ```
-
-3. **Merge with context profile system:**
-   ```typescript
-   function resolveToolAvailability(
-     assessment: AssessmentEntity,
-     contextProfile: AssessmentContextProfile
-   ): ToolAvailability[] {
-     const pnp = assessment.personalNeedsProfile;
-     const baseTools = contextProfile.tools;
-
-     // PNP takes precedence over context profile
-     return baseTools.map(tool => {
-       const support = getPNPSupportForTool(tool.toolId);
-
-       if (pnp?.supports.includes(support)) {
-         return { ...tool, enabled: true, required: true };
-       }
-       if (pnp?.prohibitedSupports?.includes(support)) {
-         return { ...tool, enabled: false, restricted: true };
-       }
-
-       return tool;
-     });
-   }
-   ```
-
-4. **Extend PNP beyond standard PIE tools:**
-   ```typescript
-   const EXTENDED_PNP_SUPPORTS = {
-     'fontSize': (value: string) => {
-       document.documentElement.style.fontSize = value;
-     },
-     'lineSpacing': (value: number) => {
-       document.documentElement.style.lineHeight = String(value);
-     },
-     'colorContrast': (value: 'high' | 'low' | 'inverted') => {
-       this.themeProvider.setContrastMode(value);
-     },
-     'readingMask': () => {
-       this.toolCoordinator.activateTool('pie-tool-line-reader');
-     },
-   };
-   ```
-
 ### Benefits
 
 1. **Standardization:** Single format for student accommodations
@@ -565,38 +426,6 @@ answerMasking   → pie-tool-answer-eliminator
 5. **Privacy Concerns:** PNP contains student accommodation data (PII)
 6. **Granularity Mismatch:** PNP is boolean (on/off), PIE tools have rich config
 7. **Version Skew:** PNP 3.0 may add new supports not yet in PIE
-
-### Implementation Effort
-
-**Phase 1: Core PNP Support** (1 week)
-- Map PNP supports to existing PIE tools
-- Apply on assessment load
-- Override tool availability based on PNP
-
-**Phase 2: Advanced Configuration** (1-2 weeks)
-- Support PNP parameters (not just boolean)
-- Handle conflicts between PNP and context profile
-- Add prohibitedSupports enforcement
-
-**Phase 3: Extended PNP Features** (1 week)
-- Theme adjustments (font size, line spacing, contrast)
-- Auto-activation logic for activateAtInit
-- Session logging of applied accommodations
-
-**Total:** 3-4 weeks
-
-### Use Case Priority
-
-**High** - Essential for:
-- K-12 assessments (IEP/504 compliance)
-- State/federal contracts
-- Accessibility-first organizations
-- Districts with high accommodation rates
-
-**Recommended Approach:**
-1. Start with PNP → PIE tool mapping (80% of use cases)
-2. Add extended theme/font adjustments
-3. Build admin UI for PNP management (separate from player)
 
 ---
 
@@ -623,277 +452,7 @@ interface AssessmentEntity {
 
 **Runtime Support:** ❌ Not implemented
 
-### How It Could Work
-
-#### Implementation Approach
-
-1. **Load stimuli during assessment initialization:**
-   ```typescript
-   class AssessmentPlayer {
-     private stimulusCache: Map<string, StimulusContent> = new Map();
-
-     private async loadStimuli(assessment: AssessmentEntity) {
-       for (const ref of assessment.stimulusRefs ?? []) {
-         const content = await this.fetchStimulus(ref.href);
-         this.stimulusCache.set(ref.identifier, content);
-       }
-     }
-
-     private async fetchStimulus(href: string): Promise<StimulusContent> {
-       // Could be:
-       // - HTML content
-       // - Image/diagram
-       // - Video/audio
-       // - Embedded data table
-       const response = await fetch(href);
-       return { html: await response.text() };
-     }
-   }
-   ```
-
-2. **Inject stimulus into item context:**
-   ```typescript
-   private async renderItem(itemId: string) {
-     const item = await this.loadItem(itemId);
-
-     // Check if item references a stimulus
-     const stimulusId = this.getItemStimulusReference(item);
-     const stimulus = stimulusId ? this.stimulusCache.get(stimulusId) : null;
-
-     await piePlayer.render({
-       item,
-       session,
-       stimulus  // Inject shared stimulus
-     });
-   }
-   ```
-
-3. **Add UI component for stimulus display:**
-   ```svelte
-   <script lang="ts">
-     export let stimulus: StimulusContent | null;
-     export let position: 'left' | 'right' | 'top' = 'left';
-   </script>
-
-   {#if stimulus}
-     <aside class="stimulus-panel {position}">
-       {@html stimulus.html}
-     </aside>
-   {/if}
-   ```
-
-4. **Support split-screen layout:**
-   ```typescript
-   class AssessmentPlayer {
-     private layoutMode: 'single' | 'split' = 'single';
-
-     private determineLayo(item: ItemEntity) {
-       const hasStimulus = this.getItemStimulusReference(item);
-       return hasStimulus ? 'split' : 'single';
-     }
-   }
-   ```
-
-### Benefits
-
-1. **Performance:** Load passage once, use across multiple items
-2. **Consistency:** All items see identical stimulus content
-3. **Cache Efficiency:** Browser caches stimulus separately
-4. **Bandwidth Savings:** Don't send same passage in every item
-5. **Easier Authoring:** Update passage in one place
-6. **Better UX:** Keep passage visible while navigating items
-7. **Standardized Layout:** QTI defines where stimulus appears
-
-### Drawbacks
-
-1. **Layout Complexity:** Split-screen UI is complex to implement well
-2. **Responsive Design:** Mobile devices have limited screen space
-3. **PIE Element Changes:** Items need to know they reference stimuli
-4. **Loader Logic:** Need smart pre-loading of stimuli
-5. **Navigation Coupling:** Stimulus must persist across item transitions
-6. **Print Mode:** How to handle stimuli in print layouts?
-7. **Accessibility:** Screen reader handling of persistent stimulus
-
-### Implementation Effort
-
-**Phase 1: Basic Stimulus Support** (2 weeks)
-- Fetch and cache stimuli during load
-- Inject into item context
-- Simple "above item" layout
-
-**Phase 2: Split-Screen UI** (2-3 weeks)
-- Responsive split layout
-- User-resizable panels
-- Mobile-friendly collapsible stimulus
-
-**Phase 3: Advanced Features** (1-2 weeks)
-- Pre-load next item's stimulus
-- Smooth transitions between items
-- Print-friendly layouts
-- Accessibility improvements
-
-**Total:** 5-7 weeks
-
-### Use Case Priority
-
-**Medium-High** - Valuable for:
-- Reading comprehension assessments (ELA)
-- Science assessments with data tables/diagrams
-- Any assessment with multi-item passages
-- Performance optimization for large passages
-
-**Recommended Approach:**
-1. Start with simple "above item" layout
-2. Add split-screen for desktop users
-3. Use collapsible panels on mobile
-
----
-
-## 5. Implementation Strategy
-
-### Phased Rollout
-
-#### Phase 1: Foundation (2-3 weeks)
-**Goal:** Runtime support for most impactful features
-
-1. **Context Declarations** - Basic implementation
-   - Initialize context variables
-   - Pass to items (no-op for PIE elements that don't use it)
-   - Persist in TestSession
-
-2. **PNP Tool Mapping** - Core functionality
-   - Map PNP supports to PIE tools
-   - Apply on assessment load
-   - Override tool availability
-
-**Deliverables:**
-- Context system working
-- PNP applied automatically
-- No breaking changes to existing assessments
-
-#### Phase 2: Accessibility (4-6 weeks)
-**Goal:** Full accessibility catalog support
-
-1. **TTS Catalog Integration**
-   - Extend TTSService to use catalogs
-   - Auto-detect spoken content
-   - Fallback to generated TTS
-
-2. **Sign Language Video** (if needed)
-   - Video player integration
-   - UI toggle for sign language
-
-**Deliverables:**
-- Assessment-level TTS catalogs working
-- Sign language support (optional)
-- Improved accessibility compliance
-
-#### Phase 3: Advanced Features (4-6 weeks)
-**Goal:** Stimulus references and advanced PNP
-
-1. **Stimulus References**
-   - Fetch and cache stimuli
-   - Split-screen UI
-   - Mobile-friendly layout
-
-2. **Extended PNP**
-   - Theme adjustments
-   - Font/spacing controls
-   - prohibitedSupports enforcement
-
-**Deliverables:**
-- Shared passages working
-- Full PNP feature set
-- Production-ready QTI 3.0 player
-
-### Backward Compatibility
-
-**Strategy:** All QTI 3.0 features are opt-in
-
-- Assessments without QTI 3.0 fields work unchanged
-- Legacy flat format continues to work
-- New features activate only when data present
-
-**No breaking changes** - Existing assessments unaffected
-
-### Testing Strategy
-
-1. **Unit Tests**
-   - Test each feature in isolation
-   - Mock QTI 3.0 data structures
-   - Verify fallback behavior
-
-2. **Integration Tests**
-   - End-to-end assessment with QTI 3.0 features
-   - Test feature interactions
-   - Performance testing with large catalogs
-
-3. **Accessibility Testing**
-   - Screen reader compatibility
-   - Keyboard navigation
-   - WCAG compliance verification
-
-4. **Cross-Browser Testing**
-   - Chrome, Firefox, Safari, Edge
-   - Mobile browsers (iOS Safari, Chrome Mobile)
-   - Assistive technology compatibility
-
----
-
-## 6. Priority Recommendations
-
-### Must-Have (High ROI, Low Risk)
-
-1. **Personal Needs Profiles** - Phase 1 implementation
-   - **Why:** Immediate compliance value, maps to existing tools
-   - **Effort:** 1 week
-   - **Risk:** Low (graceful fallback)
-
-2. **TTS Catalog Integration** - Phase 2
-   - **Why:** Improves accessibility with minimal effort
-   - **Effort:** 1-2 weeks
-   - **Risk:** Low (extends existing TTS system)
-
-### Should-Have (High Value, Medium Effort)
-
-3. **Stimulus References** - Phase 3
-   - **Why:** Performance gains, better UX for passage-based assessments
-   - **Effort:** 5-7 weeks
-   - **Risk:** Medium (UI complexity)
-
-4. **Context Declarations** - Phase 1
-   - **Why:** Enables advanced assessment patterns
-   - **Effort:** 1 week
-   - **Risk:** Low (PIE elements can ignore if not needed)
-
-### Nice-to-Have (Specialized Use Cases)
-
-5. **Sign Language Catalogs** - Phase 2 (optional)
-   - **Why:** Required in some markets, but specialized
-   - **Effort:** 2 weeks
-   - **Risk:** Medium (video hosting/streaming)
-
-6. **Braille Catalogs** - Phase 2 (optional)
-   - **Why:** Specialized need, smaller market
-   - **Effort:** 2-3 weeks
-   - **Risk:** High (hardware dependencies)
-
-### Recommended Timeline
-
-**Q1 2026:** Phase 1 (Foundation)
-- ✅ Data model complete (done)
-- PNP tool mapping
-- Context declarations
-
-**Q2 2026:** Phase 2 (Accessibility)
-- TTS catalog integration
-- Sign language (if needed)
-- Extended PNP features
-
-**Q3 2026:** Phase 3 (Advanced)
-- Stimulus references
-- Performance optimization
-- Production hardening
+Stimulus references are defined in the data model but are not supported by the current runtime.
 
 ---
 
@@ -907,8 +466,8 @@ The PIE Assessment Toolkit provides **native QTI 3.0 support** through composabl
 |---------|--------|---------|-------|
 | **Personal Needs Profile** | ✅ Implemented | PNPToolResolver, PNPMapper | Native QTI 3.0, 72% code reduction |
 | **Context Declarations** | ✅ Implemented | ContextVariableStore | Session persistence, type-safe |
-| **Accessibility Catalogs** | ✅ Core Complete | AccessibilityCatalogResolver | Phase 2, TTS integration in progress |
-| **Stimulus References** | 📋 Planned | StimulusManager | Phase 3, layout integration |
+| **Accessibility Catalogs** | ✅ Core Implemented | AccessibilityCatalogResolver | TTS integration in progress |
+| **Stimulus References** | ❌ Not Implemented | N/A | Runtime support not available |
 
 ### Key Benefits
 
@@ -918,25 +477,7 @@ The PIE Assessment Toolkit provides **native QTI 3.0 support** through composabl
 - **Framework Agnostic**: Works with any JavaScript framework
 - **Backward Compatible**: Optional enhancements, existing code unaffected
 
-### Next Steps
-
-**Phase 2:** Accessibility Catalogs - Core Complete ✅
-
-- ✅ Core service (AccessibilityCatalogResolver) implemented
-- ✅ All catalog types supported (spoken, braille, sign-language, simplified-language, tactile, etc.)
-- ✅ Two-level system (assessment + item catalogs)
-- ✅ Comprehensive examples and documentation
-- 🚧 **In Progress:** TTSService integration for automatic catalog playback
-- 📋 **Planned:** PIE authoring tools for catalog creation
-
-See [Accessibility Catalogs Integration Guide](../accessibility/accessibility-catalogs-integration-guide.md) for details.
-
-**Phase 3:** Stimulus References (shared passages/stimuli)
-
-- Reading comprehension passages
-- Shared diagrams/images
-- Split-view layouts
-- Extends existing layout system
+Current work is focused on completing TTS integration for accessibility catalogs.
 
 ---
 
@@ -946,8 +487,8 @@ See [Accessibility Catalogs Integration Guide](../accessibility/accessibility-ca
 - [Assessment Toolkit README](../../packages/assessment-toolkit/README.md) - Usage and examples
 - [QTI 3.0 Specification](https://www.imsglobal.org/spec/qti/v3p0) - IMS Global standard
 - [TOOL_PROVIDER_SYSTEM](../tools-and-accomodations/tool_provider_system.md) - Native tool provider and runtime details
-- [Accessibility Catalogs Integration Guide](../accessibility/accessibility-catalogs-integration-guide.md) - Phase 2 complete guide
-- [Accessibility Catalogs TTS Integration](../accessibility/accessibility-catalogs-tts-integration.md) - TTSService integration (Phase 2)
+- [Accessibility Catalogs Integration Guide](../accessibility/accessibility-catalogs-integration-guide.md) - Detailed integration guide
+- [Accessibility Catalogs TTS Integration](../accessibility/accessibility-catalogs-tts-integration.md) - TTSService integration details
 - [Accessibility Catalogs Quick Start](../accessibility/accessibility-catalogs-quick-start.md) - Developer quick reference
 - [PNP Third-Party Integration Guide](pnp-third-party-integration-guide.md) - Integrate PNP in any platform
 

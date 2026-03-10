@@ -59,11 +59,6 @@ export interface RubricBlock {
 }
 ```
 
-**Changes from before:**
-- ✅ Kept `content?: string` (HTML string)
-- ❌ Removed `stimulusRef?: StimulusRef` (external reference)
-- ✅ Added `passage?: PassageEntity` (embedded PIE entity)
-
 ### AssessmentItemRef (Simplified)
 
 ```typescript
@@ -84,13 +79,6 @@ export interface AssessmentItemRef {
   settings?: ItemSettings;
 }
 ```
-
-**Changes from before:**
-- ✅ Kept `itemVId?: string` (backend-specific)
-- ❌ Removed `href?: string` (external reference)
-- ❌ Removed `fixed?: boolean` (unused)
-- ❌ Removed `weight?: number` (scoring logic, not rendering)
-- ✅ Kept `item?: ItemEntity` (embedded PIE entity)
 
 ---
 
@@ -234,47 +222,6 @@ export interface AssessmentItemRef {
 
 ---
 
-## Example: Single Item with Passage (Legacy)
-
-```json
-{
-  "identifier": "section-1",
-  "keepTogether": false,
-
-  "assessmentItemRefs": [
-    {
-      "identifier": "q1",
-      "title": "Reading Comprehension",
-      "required": true,
-      "item": {
-        "id": "item-001",
-        "name": "Reading Comprehension",
-        "passage": {
-          "id": "passage-001",
-          "name": "The Solar System",
-          "config": {
-            "markup": "<reading-passage id='p'></reading-passage>",
-            "elements": {
-              "reading-passage": "@pie-element/reading-passage@latest"
-            },
-            "models": [{ "..." }]
-          }
-        },
-        "config": {
-          "markup": "<multiple-choice id='q'></multiple-choice>",
-          "elements": {
-            "multiple-choice": "@pie-element/multiple-choice@latest"
-          },
-          "models": [{ "..." }]
-        }
-      }
-    }
-  ]
-}
-```
-
----
-
 ## SectionPlayer Usage
 
 ```typescript
@@ -341,72 +288,6 @@ class SectionPlayer {
 ✅ **Simplified** - Removed unused/external reference fields
 ✅ **Flexible** - Supports section-level passages AND item-linked passages
 ✅ **Exportable** - Can map back to QTI XML if needed
-
----
-
-## Comparison: Before vs After
-
-| Aspect | Before | After |
-|--------|--------|-------|
-| Passage storage | `content: string` (HTML) | `passage: PassageEntity` (PIE config) |
-| External refs | `stimulusRef` supported | Removed - always embed |
-| Item refs | `itemVId`, `href`, etc. | Simplified - just `identifier` + `item` |
-| Rendering | Parse HTML string | Use ItemPlayer |
-| Loading | IDs → fetch → resolve | Client resolves, player renders |
-| QTI alignment | Structure only | Structure + semantics |
-
----
-
-## Migration Path
-
-### From Old Format
-
-If you have old assessments with `content: string`:
-
-```typescript
-// Old format (HTML string)
-{
-  rubricBlocks: [
-    {
-      view: 'candidate',
-      class: 'stimulus',
-      content: '<div><h2>Title</h2><p>Content...</p></div>'
-    }
-  ]
-}
-
-// New format (PassageEntity)
-{
-  rubricBlocks: [
-    {
-      view: 'candidate',
-      class: 'stimulus',
-      passage: {
-        id: 'passage-001',
-        name: 'Title',
-        config: {
-          markup: '<reading-passage id="p"></reading-passage>',
-          elements: { 'reading-passage': '@pie-element/reading-passage@latest' },
-          models: [{
-            id: 'p',
-            element: 'reading-passage',
-            content: '<div><h2>Title</h2><p>Content...</p></div>'
-          }]
-        }
-      }
-    }
-  ]
-}
-```
-
----
-
-## Status
-
-- ✅ Types updated in `packages/players-shared/src/types/index.ts`
-- ✅ Section-player implementation is active and iterating
-- ✅ Example data has moved into `apps/section-demos`
-- ✅ Documentation is maintained in canonical docs
 
 ---
 

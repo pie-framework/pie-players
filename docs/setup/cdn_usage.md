@@ -61,11 +61,9 @@ See the repo root README for the full workflow and the `bun run local-esm-cdn` c
 
 Tip: if you run the local server on a different port, set `LOCAL_ESM_CDN_PORT=...` and update your app to use that base URL (for the example app: `?localEsmCdnUrl=http://localhost:PORT`).
 
-## Recent Enhancements (2026)
+## Automatic HMR File Watching
 
-### Automatic HMR File Watching
-
-As of commit `914ca87` (Jan 21, 2026), the Vite plugin automatically watches pie-elements-ng dist files and triggers full-reload HMR when changes are detected.
+The Vite plugin watches `pie-elements-ng` dist files and triggers full-reload HMR when changes are detected.
 
 **Watched directories**:
 

@@ -267,19 +267,6 @@ Enables:
 - Shared configuration (currency symbols, measurement units)
 - Item dependencies
 
-#### Planned Features
-
-**3. Accessibility Catalogs** (Phase 2) - Alternative content representations
-- Pre-recorded TTS audio files
-- Sign language videos
-- Braille representations
-- Simplified language versions
-
-**4. Stimulus References** (Phase 3) - Shared passages/stimuli
-- Reading comprehension passages
-- Shared diagrams/images
-- Split-view layouts
-
 #### Benefits
 
 - **Standards Compliant**: Uses QTI 3.0 directly (no custom abstractions)
@@ -389,19 +376,6 @@ The toolkit provides six core services that work together:
 **Purpose**: QTI 3.0 Personal Needs Profile (PNP) tool resolution with precedence hierarchy.
 
 **Architecture**: Resolves tool availability following QTI 3.0 PNP precedence rules, mapping QTI support IDs to PIE tool IDs.
-
----
-
-### Assessment Player (Future Reference Implementation)
-
-A reference **Assessment Player** may be provided as an optional higher-level abstraction for multi-section assessments. It would:
-
-- Manage navigation across multiple sections
-- Coordinate section player instances
-- Provide assessment-level state management
-- Delegate to section players for rendering and toolkit integration
-
-**Current Status**: The section player is the primary interface. An AssessmentPlayer would be a convenience wrapper.
 
 ---
 

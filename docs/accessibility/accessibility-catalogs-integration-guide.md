@@ -1,6 +1,6 @@
 # QTI 3.0 Accessibility Catalogs - Integration Guide
 
-**Status:** Phase 2 Implementation
+**Status:** Implemented (core) with ongoing runtime integration work
 **Date:** January 2026
 **Version:** 1.0.0
 
@@ -15,8 +15,7 @@
 5. [Section Player Integration](#section-player-integration)
 6. [PIE Element Authoring](#pie-element-authoring)
 7. [Usage Examples](#usage-examples)
-8. [Implementation Phases](#implementation-phases)
-9. [Best Practices](#best-practices)
+8. [Best Practices](#best-practices)
 
 ---
 
@@ -395,7 +394,7 @@ const item = {
 
 ## TTSService Integration
 
-### Phase 1: Catalog-Aware TTS
+### Catalog-Aware TTS
 
 Extend `TTSService` to use accessibility catalogs for spoken content:
 
@@ -696,192 +695,6 @@ const german = resolver.getAlternative('welcome-message', {
 });
 ```
 
-### Example 3: Sign Language Video Integration
-
-> **Note:** Sign language and braille integration (Phases 4-5) are aspirational and not yet implemented. The code examples below illustrate the intended future API design.
-
-```typescript
-// Custom sign language video player service
-class SignLanguagePlayer {
-  private catalogResolver: AccessibilityCatalogResolver;
-  private videoElement: HTMLVideoElement;
-
-  async showSignLanguage(catalogId: string, language: string = 'en-US'): Promise<void> {
-    const alternative = this.catalogResolver.getAlternative(catalogId, {
-      type: 'sign-language',
-      language
-    });
-
-    if (alternative) {
-      this.videoElement.src = alternative.content; // URL to video
-      this.videoElement.play();
-    }
-  }
-}
-
-// Conceptual integration — AssessmentPlayer does not exist as a class;
-// actual integration uses ToolkitCoordinator + section player custom elements.
-class AssessmentPlayer {
-  private signLanguagePlayer: SignLanguagePlayer;
-
-  private initializeAccessibilityServices() {
-    this.signLanguagePlayer.setCatalogResolver(this.catalogResolver);
-
-    // Add UI toggle for sign language
-    if (this.hasSignLanguageCatalogs()) {
-      this.addSignLanguageToggle();
-    }
-  }
-
-  private hasSignLanguageCatalogs(): boolean {
-    const stats = this.catalogResolver.getStatistics();
-    return stats.availableTypes.has('sign-language');
-  }
-}
-```
-
-### Example 4: Braille Integration
-
-```typescript
-// Braille renderer service
-class BrailleRenderer {
-  private catalogResolver: AccessibilityCatalogResolver;
-  private brailleDisplay: BrailleDisplayDevice; // Hardware interface
-
-  async renderBraille(catalogId: string): Promise<void> {
-    const alternative = this.catalogResolver.getAlternative(catalogId, {
-      type: 'braille',
-      language: 'en' // Braille typically doesn't need regional variants
-    });
-
-    if (alternative) {
-      // Send to refreshable braille display
-      await this.brailleDisplay.write(alternative.content);
-    }
-  }
-
-  async exportBraille(catalogId: string): Promise<string> {
-    const alternative = this.catalogResolver.getAlternative(catalogId, {
-      type: 'braille'
-    });
-
-    return alternative?.content || '';
-  }
-}
-```
-
-### Example 5: Simplified Language for Cognitive Accessibility
-
-```typescript
-// Content transformer service
-class ContentTransformer {
-  private catalogResolver: AccessibilityCatalogResolver;
-
-  /**
-   * Transform content to simplified language based on user preference
-   */
-  transformForUser(element: HTMLElement, userProfile: PersonalNeedsProfile): void {
-    // Check if user needs simplified language
-    const needsSimplified = userProfile.supports.includes('simplifiedLanguage');
-
-    if (!needsSimplified) return;
-
-    // Find all elements with catalog IDs
-    const catalogElements = element.querySelectorAll('[data-catalog-id]');
-
-    catalogElements.forEach(el => {
-      const catalogId = el.getAttribute('data-catalog-id');
-      if (!catalogId) return;
-
-      // Try to get simplified version
-      const simplified = this.catalogResolver.getAlternative(catalogId, {
-        type: 'simplified-language',
-        useFallback: false
-      });
-
-      if (simplified) {
-        // Replace content with simplified version
-        el.innerHTML = simplified.content;
-        el.setAttribute('data-transformed', 'simplified');
-      }
-    });
-  }
-}
-```
-
----
-
-## Implementation Phases
-
-### Phase 1: Core Infrastructure (Weeks 1-2)
-
-**Goals:**
-- ✅ Create `AccessibilityCatalogResolver` service
-- ✅ Define catalog types and interfaces
-- ✅ Implement catalog indexing and lookup
-- ✅ Add assessment-level and item-level support
-
-**Deliverables:**
-- `AccessibilityCatalogResolver.ts`
-- Comprehensive examples file
-- Unit tests for resolver
-
-### Phase 2: TTS Integration (Weeks 2-3)
-
-**Goals:**
-- Extend `TTSService` with catalog support
-- Auto-detect `data-catalog-id` in content
-- Integrate with `speakRange()` for element-level TTS
-- Add fallback to generated TTS if no catalog
-
-**Deliverables:**
-- Enhanced `TTSService.ts`
-- Integration tests with catalog examples
-- Documentation for TTS + catalogs
-
-### Phase 3: AssessmentPlayer Integration (Week 3)
-
-**Goals:**
-- Initialize resolver in `AssessmentPlayer`
-- Load item-level catalogs on navigation
-- Clear catalogs when leaving items
-- Expose resolver to PIE elements via context
-
-**Deliverables:**
-- Updated `AssessmentPlayer.ts`
-- PIE context enhancement
-- End-to-end demo
-
-### Phase 4: Extended Catalog Types (Weeks 4-5)
-
-**Goals:**
-- Sign language video player integration
-- Braille renderer (basic output)
-- Simplified language content transformer
-- UI indicators for available alternatives
-
-**Deliverables:**
-- `SignLanguagePlayer` service
-- `BrailleRenderer` utility
-- `ContentTransformer` service
-- Accessibility indicators in UI
-
-### Phase 5: Authoring Support (Week 6)
-
-**Goals:**
-- PIE element guidelines for catalogs
-- Authoring tools/helpers
-- Validation utilities
-- Documentation for content authors
-
-**Deliverables:**
-- PIE element integration guide
-- Catalog validation tool
-- Authoring examples
-- Best practices guide
-
----
-
 ## Best Practices
 
 ### Content Authoring
@@ -957,16 +770,6 @@ class ContentTransformer {
    - Validate SSML markup
    - Check braille output with users
    - Test video captions and transcripts
-
----
-
-## Next Steps
-
-1. **Implement Phase 1** (Core Infrastructure) - See [AccessibilityCatalogResolver.ts](../packages/assessment-toolkit/src/services/AccessibilityCatalogResolver.ts)
-2. **Review Examples** - Use the examples in [accessibility-catalogs-quick-start.md](./accessibility-catalogs-quick-start.md)
-3. **Integrate with TTSService** - Phase 2 task
-4. **Update AssessmentPlayer** - Phase 3 task
-5. **Build Extended Services** - Phase 4-5 tasks
 
 ---
 

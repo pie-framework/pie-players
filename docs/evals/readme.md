@@ -16,7 +16,7 @@ This repo uses **local-only** evals to validate `pie-item-player` strategies (`i
 
 These commands are only valid when your chosen host app wires the YAML eval runner scripts.
 
-At the time of writing, the committed `apps/section-demos` package in this repo does not define `test:evals` scripts, so treat the commands below as example host-app entrypoints rather than guaranteed repo commands.
+Treat the commands below as host-app entrypoints that require your selected app to define the corresponding `test:evals*` scripts.
 
 From repo root (when your host app is wired for eval execution):
 

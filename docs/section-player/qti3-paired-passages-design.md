@@ -246,29 +246,6 @@ The Reference Layout component should:
 - **Stacked**: Display passages vertically stacked
 - **Collapsible**: Mobile-friendly accordion view
 
-## Changes Made
-
-1. ✅ Replaced `RubricBlock.content` (HTML string) with `passage: PassageEntity` (PIE entity)
-2. ✅ Removed `stimulusRef` - always embed passages directly
-3. ✅ Simplified `AssessmentItemRef` - removed backend-specific fields
-4. ✅ Added `RubricBlockSettings` for paired passage metadata
-5. ✅ Updated documentation to reflect PIE-native approach
-
-## Files Modified
-
-- `packages/players-shared/src/types/index.ts` - Core type definitions
-- `apps/section-demos/src/routes/demo/[[id]]/+page.svelte` - Demo integration
-- `docs/section-player/section-structure-design.md` - Design rationale
-- `docs/qti3-paired-passages-design.md` - This document
-
-## Next Steps
-
-1. Implement SectionPlayer with passage extraction from rubricBlocks
-2. Implement layout engine for paired passages (tabs, side-by-side, stacked)
-3. Add support for `pairedPassage` settings (grouping, ordering)
-4. Update example assessments to use new structure
-5. Add tests for passage rendering and deduplication
-
 ## Standards Compliance
 
 This design is **QTI 3.0-aligned** where practical:

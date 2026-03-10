@@ -95,6 +95,25 @@ async function getItemShellIdentityTokens(page: import("@playwright/test").Page)
 }
 
 test.describe("section player controller event panel", () => {
+	test("shows section-loading-complete in section-level event panel", async ({
+		page,
+	}) => {
+		// Open the panel early so we observe the live section loading transition.
+		await page.goto(DEMO_PATH, { waitUntil: "domcontentloaded" });
+		const panel = await openEventPanel(page);
+		await panel
+			.locator(".pie-section-player-tools-event-debugger__toggle-button", {
+				hasText: "section",
+			})
+			.click();
+		await expect(
+			panel
+				.locator(".pie-section-player-tools-event-debugger__row")
+				.filter({ hasText: /section-loading-complete/i })
+				.first(),
+		).toBeVisible({ timeout: 30_000 });
+	});
+
 	test("captures controller events and renders them", async ({ page }) => {
 		await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
 		const panel = await openEventPanel(page);

@@ -1,7 +1,0 @@
-{
-	"command": "bun",
-	"args": ["run", ".mcp-imagen/src/index.ts"],
-	"env": {
-		"OUTPUT_DIR": "./apps/docs/static/images/generated"
-	}
-}

@@ -1,7 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 
+const DEMO_ID = "multiple-choice-radio-simple";
 const PRELOADED_DELIVERY_PATH =
-	"/demo/multiple-choice/delivery?mode=gather&role=student&player=preloaded";
+	`/demo/${DEMO_ID}/delivery?mode=gather&role=student&player=preloaded`;
+const DELIVERY_PROMPT = "Which is the largest planet in our solar system?";
+const SESSION_ENTRY_ID = "2";
 
 type SessionSnapshot = {
 	data?: Array<{
@@ -11,9 +14,16 @@ type SessionSnapshot = {
 };
 
 async function readSessionState(page: Page): Promise<SessionSnapshot> {
-	const sessionJson = page
-		.locator("div.card-body")
-		.filter({ has: page.getByRole("heading", { name: "Session State" }) })
+	const panel = page.locator("pie-item-player-session-debugger");
+	const sessionTab = page.getByRole("tab", { name: "Session" });
+	if (!(await sessionTab.isVisible().catch(() => false))) {
+		await page.getByRole("button", { name: "Toggle item session panel" }).click();
+	}
+	await expect(sessionTab).toBeVisible();
+	await sessionTab.click();
+	const sessionJson = panel
+		.locator(".pie-item-player-session-debugger__card")
+		.filter({ hasText: "Session Data" })
 		.locator("pre")
 		.first();
 	await expect(sessionJson).toBeVisible();
@@ -40,9 +50,7 @@ test.describe("item-player preloaded strategy", () => {
 
 		await page.goto(PRELOADED_DELIVERY_PATH, { waitUntil: "networkidle" });
 
-		await expect(
-			page.getByText("Which planet in our solar system has the most moons?"),
-		).toBeVisible({ timeout: 20_000 });
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({ timeout: 20_000 });
 
 		await page
 			.locator('label[for^="choice-"]')
@@ -51,8 +59,8 @@ test.describe("item-player preloaded strategy", () => {
 			.click();
 
 		const session = await readSessionState(page);
-		const q1 = session.data?.find((entry) => entry.id === "q1");
-		expect(q1?.value?.[0]).toBeTruthy();
+		const entry = session.data?.find((item) => item.id === SESSION_ENTRY_ID);
+		expect(entry?.value?.[0]).toBeTruthy();
 		expect(bundleRequests.length).toBeGreaterThan(0);
 		expect(esmRequests.length).toBe(0);
 	});

@@ -1,9 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
-const DELIVERY_PATH = "/demo/multiple-choice/delivery?mode=gather&role=student";
-const AUTHOR_PATH = "/demo/multiple-choice/author?mode=gather&role=student";
-const SOURCE_PATH = "/demo/multiple-choice/source?mode=gather&role=student";
+const DEMO_ID = "multiple-choice-radio-simple";
+const DELIVERY_PATH = `/demo/${DEMO_ID}/delivery?mode=gather&role=student`;
+const AUTHOR_PATH = `/demo/${DEMO_ID}/author?mode=gather&role=student`;
+const SOURCE_PATH = `/demo/${DEMO_ID}/source?mode=gather&role=student`;
+const DELIVERY_PROMPT = "Which is the largest planet in our solar system?";
+const SESSION_ENTRY_ID = "2";
 const KNOWN_DELIVERY_ITEM_DEBT = new Set(["aria-allowed-attr"]);
 
 type SessionSnapshot = {
@@ -29,6 +32,17 @@ async function gotoRoute(page: Page, path: string) {
 	await expect(page.getByRole("link", { name: "Delivery" })).toBeVisible();
 }
 
+async function openSessionPanel(page: Page) {
+	const panel = page.locator("pie-item-player-session-debugger");
+	const sessionTab = page.getByRole("tab", { name: "Session" });
+	if (await sessionTab.isVisible().catch(() => false)) {
+		return panel;
+	}
+	await page.getByRole("button", { name: "Toggle item session panel" }).click();
+	await expect(sessionTab).toBeVisible();
+	return panel;
+}
+
 async function selectChoiceByLabel(page: Page, labelText: string) {
 	await page
 		.locator('label[for^="choice-"]')
@@ -38,9 +52,11 @@ async function selectChoiceByLabel(page: Page, labelText: string) {
 }
 
 async function readSessionState(page: Page): Promise<SessionSnapshot> {
-	const sessionJson = page
-		.locator("div.card-body")
-		.filter({ has: page.getByRole("heading", { name: "Session State" }) })
+	const panel = await openSessionPanel(page);
+	await panel.getByRole("tab", { name: "Session" }).click();
+	const sessionJson = panel
+		.locator(".pie-item-player-session-debugger__card")
+		.filter({ hasText: "Session Data" })
 		.locator("pre")
 		.first();
 	await expect(sessionJson).toBeVisible();
@@ -56,8 +72,9 @@ async function readSessionState(page: Page): Promise<SessionSnapshot> {
 }
 
 function selectedValueFromSession(session: SessionSnapshot): string | null {
-	const q1Entry = session.data?.find((entry) => entry.id === "q1");
-	return q1Entry?.value?.[0] ?? null;
+	const entry = session.data?.find((item) => item.id === SESSION_ENTRY_ID);
+	const value = entry?.value;
+	return Array.isArray(value) ? value[0] ?? null : null;
 }
 
 async function readChoiceStates(page: Page): Promise<ChoiceState[]> {
@@ -77,18 +94,25 @@ async function readChoiceStates(page: Page): Promise<ChoiceState[]> {
 	});
 }
 
-async function setRole(page: Page, role: "student" | "instructor") {
-	await page.getByLabel("Role").selectOption(role);
-	await expect(page).toHaveURL(new RegExp(`role=${role}`));
-}
-
-async function setMode(page: Page, mode: "gather" | "view" | "evaluate") {
-	await page.getByLabel("Mode").selectOption(mode);
-	await expect(page).toHaveURL(new RegExp(`mode=${mode}`));
+async function setDemoPerspective(page: Page, perspective: "student" | "scorer") {
+	await page
+		.getByRole("link", { name: perspective === "student" ? "Student" : "Scorer" })
+		.click();
+	if (perspective === "student") {
+		await expect(page).toHaveURL(/mode=gather/);
+		await expect(page).toHaveURL(/role=student/);
+		return;
+	}
+	await expect(page).toHaveURL(/mode=evaluate/);
+	await expect(page).toHaveURL(/role=instructor/);
 }
 
 function getCheckedChoiceLabel(choiceStates: ChoiceState[]): string | null {
 	return choiceStates.find((state) => state.checked)?.text || null;
+}
+
+function promptEditor(page: Page) {
+	return page.getByRole("textbox").nth(1);
 }
 
 async function replaceSourcePrompt(page: Page, nextPrompt: string) {
@@ -112,9 +136,7 @@ test.describe("item-player demo multiple-choice", () => {
 		page,
 	}) => {
 		await gotoRoute(page, DELIVERY_PATH);
-		await expect(
-			page.getByText("Which planet in our solar system has the most moons?"),
-		).toBeVisible();
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible();
 
 		// Gather mode supports mouse selection.
 		await selectChoiceByLabel(page, "Mars");
@@ -138,11 +160,8 @@ test.describe("item-player demo multiple-choice", () => {
 		const selectedBeforeEvaluate = selectedValueFromSession(sessionBeforeEvaluate);
 		expect(selectedBeforeEvaluate).not.toBeNull();
 
-		await setRole(page, "instructor");
-		await setMode(page, "evaluate");
-		await expect(
-			page.getByText("Which planet in our solar system has the most moons?"),
-		).toBeVisible({ timeout: 15_000 });
+		await setDemoPerspective(page, "scorer");
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({ timeout: 15_000 });
 
 		// Evaluate mode keeps session state and exposes correct-answer affordance.
 		const evaluateChoiceStates = await readChoiceStates(page);
@@ -152,14 +171,8 @@ test.describe("item-player demo multiple-choice", () => {
 		expect(selectedInEvaluate).toBe(selectedBeforeEvaluate);
 
 		// Switching back to student carries session state from gather.
-		await setRole(page, "student");
-		if (page.url().includes("mode=evaluate")) {
-			await setMode(page, "gather");
-		}
-		await expect(page).toHaveURL(/mode=gather/);
-		await expect(
-			page.getByText("Which planet in our solar system has the most moons?"),
-		).toBeVisible({ timeout: 15_000 });
+		await setDemoPerspective(page, "student");
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({ timeout: 15_000 });
 		await expect
 			.poll(async () => {
 				const states = await readChoiceStates(page);
@@ -179,7 +192,7 @@ test.describe("item-player demo multiple-choice", () => {
 		await gotoRoute(page, AUTHOR_PATH);
 		await expect(page).toHaveURL(/\/author/);
 
-		const authorPromptEditor = page.getByRole("textbox").first();
+		const authorPromptEditor = promptEditor(page);
 		await authorPromptEditor.click();
 		await page.keyboard.press(process.platform === "darwin" ? "Meta+A" : "Control+A");
 		await page.keyboard.type(authorPrompt);
@@ -210,7 +223,7 @@ test.describe("item-player demo multiple-choice", () => {
 
 		await page.getByRole("link", { name: "Author" }).click();
 		await expect(page).toHaveURL(/\/author/);
-		await expect(page.getByRole("textbox").first()).toContainText(sourcePrompt);
+		await expect(promptEditor(page)).toContainText(sourcePrompt);
 
 		await page.getByRole("link", { name: "Source" }).click();
 		await expect(page).toHaveURL(/\/source/);

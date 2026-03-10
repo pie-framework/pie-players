@@ -1,8 +1,5 @@
 # PIE Section Structure Design
 
-**Date**: 2026-02-05
-**Status**: Final Design
-
 ---
 
 ## Summary

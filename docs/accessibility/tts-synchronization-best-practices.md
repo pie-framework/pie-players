@@ -1,7 +1,5 @@
 # TTS Synchronization Best Practices: Visual Word Highlighting in Web Applications
 
-**Date:** February 6, 2026
-**Status:** Research & Implementation Guide
 
 ---
 
@@ -1625,6 +1623,4 @@ See [TTS Architecture Documentation](tts-architecture.md) for complete details.
 
 ---
 
-**Document Version:** 1.0
-**Last Updated:** February 6, 2026
 **Author:** PIE Players Team

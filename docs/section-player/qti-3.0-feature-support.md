@@ -1,9 +1,5 @@
 # QTI 3.0 Feature Support in PIE Assessment Toolkit
 
-**Status:** Personal Needs Profile ✅ | Context Declarations ✅ | Accessibility Catalogs ✅ (Core)
-**Date:** January 28, 2026
-**Version:** 1.1.0
-
 ---
 
 ## Executive Summary
@@ -492,6 +488,3 @@ Current work is focused on completing TTS integration for accessibility catalogs
 - [Accessibility Catalogs Quick Start](../accessibility/accessibility-catalogs-quick-start.md) - Developer quick reference
 - [PNP Third-Party Integration Guide](pnp-third-party-integration-guide.md) - Integrate PNP in any platform
 
----
-
-**Last Updated:** January 28, 2026

@@ -1,9 +1,5 @@
 # PIE Players - High-Level Architecture
 
-**Version**: 2.0
-**Date**: 2026-02-08
-**Status**: Architecture Specification
-
 ---
 
 ## Executive Summary
@@ -523,8 +519,3 @@ By leveraging modern web standards (Web Components, CSS Custom Highlight API) an
 
 The toolkit approach (vs framework) gives products maximum flexibility while providing battle-tested reference implementations for common scenarios. The section player serves as the primary interface, automatically handling SSML extraction, catalog lifecycle, and service coordination.
 
----
-
-**Document Version**: 2.0
-**Last Updated**: 2026-02-08
-**Maintainers**: PIE Framework Team

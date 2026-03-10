@@ -1,8 +1,5 @@
 # Accessibility Catalogs - TTS Integration
 
-**Status:** ✅ Implemented
-**Date:** January 28, 2026
-
 ---
 
 ## Overview

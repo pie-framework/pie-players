@@ -1,9 +1,5 @@
 # QTI 3.0 Accessibility Catalogs - Integration Guide
 
-**Status:** Implemented (core) with ongoing runtime integration work
-**Date:** January 2026
-**Version:** 1.0.0
-
 ---
 
 ## Table of Contents
@@ -781,6 +777,3 @@ const german = resolver.getAlternative('welcome-message', {
 - [Web Speech API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API)
 - [Nemeth Braille Code](http://www.brailleauthority.org/nemeth/nemeth.pdf)
 
----
-
-**Last Updated:** January 28, 2026

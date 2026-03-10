@@ -2,8 +2,6 @@
 
 > **Note:** For the authoritative and up-to-date tool registry reference, see `packages/assessment-toolkit/docs/TOOL_REGISTRY.md`.
 
-**Date**: 2026-02-13
-**Status**: Approved Design
 **Purpose**: Define the two-pass tool visibility model with registry-based configuration
 
 ---

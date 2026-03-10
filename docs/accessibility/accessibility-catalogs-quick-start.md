@@ -1,9 +1,5 @@
 # Accessibility Catalogs - Quick Start Guide
 
-**For:** Developers integrating QTI 3.0 accessibility catalogs
-**Time to read:** 5 minutes
-**Date:** January 2026
-
 ---
 
 See also:

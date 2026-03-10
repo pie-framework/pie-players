@@ -1,7 +1,6 @@
 # TTS Authoring Guide: Using SSML for Better Prosody
 
 **Audience:** Content authors, item developers
-**Date:** February 6, 2026
 
 ---
 
@@ -651,6 +650,4 @@ If you're unsure whether to add SSML:
 
 ---
 
-**Document Version:** 1.0
-**Last Updated:** February 6, 2026
 **Author:** PIE Players Team

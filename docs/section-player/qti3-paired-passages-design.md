@@ -1,7 +1,5 @@
 # QTI 3.0 Paired Passages Design
 
-**Last Updated**: 2026-02-05
-
 ## Overview
 
 This document describes how PIE Assessment Toolkit models paired passages and page-level rendering using QTI 3.0-aligned structures with PIE entities.

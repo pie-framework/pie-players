@@ -4,8 +4,11 @@ import { createNpmAuthEnvironment } from "./npm-auth-env.mjs";
 const REGISTRY = "https://registry.npmjs.org/";
 const SCOPE = "pie-players";
 const INTERACTIVE_TTY = Boolean(process.stdin.isTTY && process.stdout.isTTY);
+const TOKEN_FROM_ENV = String(process.env.NPM_TOKEN || process.env.NODE_AUTH_TOKEN || "").trim();
+const HAS_TOKEN_FROM_ENV = TOKEN_FROM_ENV.length > 0;
 const AUTO_LOGIN_ENABLED =
 	INTERACTIVE_TTY &&
+	!HAS_TOKEN_FROM_ENV &&
 	process.env.CI !== "true" &&
 	process.env.PIE_SKIP_AUTO_NPM_LOGIN !== "1";
 
@@ -57,6 +60,12 @@ const runWithAuthRecovery = (runner, failureMessage) => {
 		return runner();
 	} catch (error) {
 		const details = getErrorDetails(error);
+		if (HAS_TOKEN_FROM_ENV && isAuthError(details)) {
+			fail(
+				`${failureMessage} (NPM_TOKEN/NODE_AUTH_TOKEN was provided but rejected by npm).`,
+				details,
+			);
+		}
 		if (AUTO_LOGIN_ENABLED && isAuthError(details)) {
 			const loginWorked = tryInteractiveLogin();
 			if (loginWorked) {

@@ -1,5 +1,25 @@
 # @pie-players/pie-tool-graph
 
+## 0.3.7
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.7
+  - @pie-players/pie-context@0.3.7
+  - @pie-players/pie-players-shared@0.3.7
+
+## 0.3.6
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.6
+  - @pie-players/pie-context@0.3.6
+  - @pie-players/pie-players-shared@0.3.6
+
 ## 0.3.5
 
 ### Patch Changes

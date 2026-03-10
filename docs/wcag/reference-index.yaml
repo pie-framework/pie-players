@@ -1,0 +1,243 @@
+version: 1
+
+library:
+  area: wcag
+  purpose: "Compact machine-readable index for WCAG 2.2 AA guidance used by pie-players."
+
+sources:
+  - id: wcag22
+    title: "Web Content Accessibility Guidelines (WCAG) 2.2"
+    type: normative
+    url: "https://www.w3.org/TR/wcag22/"
+  - id: quickref
+    title: "How to Meet WCAG 2.2 (Quick Reference)"
+    type: supporting
+    url: "https://www.w3.org/WAI/WCAG22/quickref/"
+  - id: understanding
+    title: "Understanding WCAG 2.2"
+    type: supporting
+    url: "https://www.w3.org/WAI/WCAG22/Understanding/"
+  - id: techniques
+    title: "Techniques for WCAG 2.2"
+    type: supporting
+    url: "https://www.w3.org/WAI/WCAG22/Techniques"
+  - id: evaluate-overview
+    title: "Evaluating Web Accessibility Overview"
+    type: supporting
+    url: "https://www.w3.org/WAI/test-evaluate/"
+  - id: easy-checks
+    title: "Easy Checks - A First Review of Web Accessibility"
+    type: supporting
+    url: "https://www.w3.org/WAI/test-evaluate/preliminary/"
+  - id: wcag-em
+    title: "WCAG-EM Overview"
+    type: supporting
+    url: "https://www.w3.org/WAI/test-evaluate/conformance/wcag-em/"
+  - id: act-rules
+    title: "About ACT Rules"
+    type: supporting
+    url: "https://www.w3.org/WAI/standards-guidelines/act/rules/about/"
+  - id: apg
+    title: "ARIA Authoring Practices Guide"
+    type: supporting
+    url: "https://www.w3.org/TR/wai-aria-practices-1.2/"
+  - id: apg-dialog-modal
+    title: "Dialog (Modal) Pattern"
+    type: supporting
+    url: "https://www.w3.org/WAI/ARIA/apg/patterns/dialogmodal/"
+  - id: apg-toolbar
+    title: "Toolbar Pattern"
+    type: supporting
+    url: "https://www.w3.org/WAI/ARIA/apg/patterns/toolbar/"
+  - id: apg-window-splitter
+    title: "Window Splitter Pattern"
+    type: supporting
+    url: "https://www.w3.org/WAI/ARIA/apg/patterns/windowsplitter/"
+  - id: apg-slider
+    title: "Slider Pattern"
+    type: supporting
+    url: "https://www.w3.org/WAI/ARIA/apg/patterns/slider/"
+  - id: apg-landmarks
+    title: "Landmark Regions"
+    type: supporting
+    url: "https://www.w3.org/WAI/ARIA/apg/practices/landmark-regions/"
+  - id: apg-names
+    title: "Names and Descriptions"
+    type: supporting
+    url: "https://www.w3.org/WAI/ARIA/apg/practices/names-and-descriptions/"
+  - id: apg-keyboard
+    title: "Developing a Keyboard Interface"
+    type: supporting
+    url: "https://www.w3.org/WAI/ARIA/apg/practices/keyboard-interface/"
+
+criteria:
+  - id: "1.1.1"
+    title: "Non-text Content"
+    level: A
+    url: "https://www.w3.org/WAI/WCAG22/Understanding/non-text-content"
+    tags: [images, icons, diagrams, math, media]
+  - id: "1.3.1"
+    title: "Info and Relationships"
+    level: A
+    url: "https://www.w3.org/WAI/WCAG22/Understanding/info-and-relationships"
+    tags: [headings, landmarks, forms, structure, custom-elements]
+  - id: "1.3.2"
+    title: "Meaningful Sequence"
+    level: A
+    url: "https://www.w3.org/WAI/WCAG22/Understanding/meaningful-sequence"
+    tags: [reading-order, shadow-dom, dynamic-content]
+  - id: "1.4.3"
+    title: "Contrast (Minimum)"
+    level: AA
+    url: "https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum"
+    tags: [text, theme, chrome]
+  - id: "1.4.10"
+    title: "Reflow"
+    level: AA
+    url: "https://www.w3.org/WAI/WCAG22/Understanding/reflow"
+    tags: [responsive, zoom, narrow-width]
+  - id: "1.4.11"
+    title: "Non-text Contrast"
+    level: AA
+    url: "https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast"
+    tags: [icons, borders, separators, handles, focus]
+  - id: "2.1.1"
+    title: "Keyboard"
+    level: A
+    url: "https://www.w3.org/WAI/WCAG22/Understanding/keyboard"
+    tags: [keyboard, focus, custom-widgets]
+  - id: "2.1.2"
+    title: "No Keyboard Trap"
+    level: A
+    url: "https://www.w3.org/WAI/WCAG22/Understanding/no-keyboard-trap"
+    tags: [dialogs, overlays, tool-shells]
+  - id: "2.4.1"
+    title: "Bypass Blocks"
+    level: A
+    url: "https://www.w3.org/WAI/WCAG22/Understanding/bypass-blocks"
+    tags: [skip-links, landmarks, repeated-chrome]
+  - id: "2.4.3"
+    title: "Focus Order"
+    level: A
+    url: "https://www.w3.org/WAI/WCAG22/Understanding/focus-order"
+    tags: [focus, overlays, panes, injected-controls]
+  - id: "2.4.7"
+    title: "Focus Visible"
+    level: AA
+    url: "https://www.w3.org/WAI/WCAG22/Understanding/focus-visible"
+    tags: [focus-ring, keyboard]
+  - id: "2.4.11"
+    title: "Focus Not Obscured (Minimum)"
+    level: AA
+    url: "https://www.w3.org/WAI/WCAG22/Understanding/focus-not-obscured-minimum"
+    tags: [sticky-ui, overlays, masking]
+  - id: "2.4.13"
+    title: "Focus Appearance"
+    level: AA
+    url: "https://www.w3.org/WAI/WCAG22/Understanding/focus-appearance"
+    tags: [focus-ring, non-text-contrast]
+  - id: "2.5.3"
+    title: "Label in Name"
+    level: A
+    url: "https://www.w3.org/WAI/WCAG22/Understanding/label-in-name"
+    tags: [controls, icon-buttons, voice]
+  - id: "2.5.7"
+    title: "Dragging Movements"
+    level: AA
+    url: "https://www.w3.org/WAI/WCAG22/Understanding/dragging-movements"
+    tags: [dragging, resizing, movable-tools]
+  - id: "2.5.8"
+    title: "Target Size (Minimum)"
+    level: AA
+    url: "https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum"
+    tags: [target-size, icon-buttons, resize-handles]
+  - id: "3.1.1"
+    title: "Language of Page"
+    level: A
+    url: "https://www.w3.org/WAI/WCAG22/Understanding/language-of-page"
+    tags: [language, tts, pronunciation]
+  - id: "3.1.2"
+    title: "Language of Parts"
+    level: AA
+    url: "https://www.w3.org/WAI/WCAG22/Understanding/language-of-parts"
+    tags: [mixed-language, tts, pronunciation]
+  - id: "3.2.1"
+    title: "On Focus"
+    level: A
+    url: "https://www.w3.org/WAI/WCAG22/Understanding/on-focus"
+    tags: [surprising-change, focus, navigation]
+  - id: "3.2.2"
+    title: "On Input"
+    level: A
+    url: "https://www.w3.org/WAI/WCAG22/Understanding/on-input"
+    tags: [settings, selection, context-change]
+  - id: "3.3.1"
+    title: "Error Identification"
+    level: A
+    url: "https://www.w3.org/WAI/WCAG22/Understanding/error-identification"
+    tags: [validation, errors]
+  - id: "3.3.2"
+    title: "Labels or Instructions"
+    level: A
+    url: "https://www.w3.org/WAI/WCAG22/Understanding/labels-or-instructions"
+    tags: [guidance, controls, tasks]
+  - id: "4.1.2"
+    title: "Name, Role, Value"
+    level: A
+    url: "https://www.w3.org/WAI/WCAG22/Understanding/name-role-value"
+    tags: [aria, custom-elements, widgets]
+  - id: "4.1.3"
+    title: "Status Messages"
+    level: AA
+    url: "https://www.w3.org/WAI/WCAG22/Understanding/status-messages"
+    tags: [live-region, announcements, status]
+
+patterns:
+  - id: dialog-modal
+    title: "Dialog (Modal)"
+    url: "https://www.w3.org/WAI/ARIA/apg/patterns/dialogmodal/"
+    tags: [dialog, modal, overlay, settings]
+  - id: toolbar
+    title: "Toolbar"
+    url: "https://www.w3.org/WAI/ARIA/apg/patterns/toolbar/"
+    tags: [toolbar, grouped-controls, roving-focus]
+  - id: window-splitter
+    title: "Window Splitter"
+    url: "https://www.w3.org/WAI/ARIA/apg/patterns/windowsplitter/"
+    tags: [split-pane, separator, resizing]
+  - id: slider
+    title: "Slider"
+    url: "https://www.w3.org/WAI/ARIA/apg/patterns/slider/"
+    tags: [range, value, thumb]
+  - id: landmarks
+    title: "Landmark Regions"
+    url: "https://www.w3.org/WAI/ARIA/apg/practices/landmark-regions/"
+    tags: [main, navigation, complementary, region]
+  - id: names-and-descriptions
+    title: "Names and Descriptions"
+    url: "https://www.w3.org/WAI/ARIA/apg/practices/names-and-descriptions/"
+    tags: [accessible-name, label, description]
+  - id: keyboard-interface
+    title: "Developing a Keyboard Interface"
+    url: "https://www.w3.org/WAI/ARIA/apg/practices/keyboard-interface/"
+    tags: [keyboard, focus, navigation]
+
+project-surfaces:
+  - id: assessment-toolkit
+    tags: [toolbar, floating-tools, coordination]
+    docs:
+      - "./project-surface-map.md"
+      - "../tool_provider_system.md"
+      - "../tool_host_contract.md"
+  - id: section-player
+    tags: [landmarks, layout, split-pane, repeated-cards]
+    docs:
+      - "./project-surface-map.md"
+      - "../section_player_integration_guide.md"
+      - "../assessment-toolkit-section-player-getting-started.md"
+  - id: tools
+    tags: [tts, line-reader, annotation, calculator, ruler, protractor, graph, periodic-table]
+    docs:
+      - "./project-surface-map.md"
+      - "../tools-and-accomodations/architecture.md"
+      - "../evals/readme.md"

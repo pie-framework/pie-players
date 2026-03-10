@@ -6,7 +6,7 @@ type ToolSpec = {
 	id: string;
 	buttonAriaLabel: string;
 	toolHostTag: string;
-	panelRole: "dialog" | "application";
+	panelRole: "dialog" | "application" | "group";
 };
 
 const SECTION_TOOL_SPECS: ToolSpec[] = [
@@ -38,7 +38,7 @@ const SECTION_TOOL_SPECS: ToolSpec[] = [
 		id: "lineReader",
 		buttonAriaLabel: "Line reader - Reading guide",
 		toolHostTag: "pie-tool-line-reader",
-		panelRole: "application",
+		panelRole: "group",
 	},
 	{
 		id: "ruler",
@@ -97,11 +97,50 @@ test.describe("section toolbar tools", () => {
 				`${spec.toolHostTag}[tool-id^="${spec.id}:section:"]`,
 			);
 			await expect(host, `Missing ${spec.id} tool host`).toHaveCount(1);
-			await expect(host.locator(`[role="${spec.panelRole}"]`).first()).toBeVisible();
+			if (spec.panelRole === "group") {
+				await expect
+					.poll(async () =>
+						host.first().evaluate((element) => {
+							const panel = element.shadowRoot?.querySelector(".pie-tool-line-reader");
+							return panel?.getAttribute("role") || null;
+						}),
+					)
+					.toBe("group");
+			} else {
+				await expect(host.locator(`[role="${spec.panelRole}"]`).first()).toBeVisible();
+			}
 
 			await button.click();
 			await expect(button).toHaveAttribute("aria-pressed", "false");
 			await expect(host.locator(`[role="${spec.panelRole}"]`)).toHaveCount(0);
 		}
+	});
+
+	test("exposes split divider semantics and keyboard resizing in splitpane layout", async ({
+		page,
+	}) => {
+		await gotoDemo(page);
+
+		const divider = page.getByRole("separator", {
+			name: "Resize passages and items panels",
+		});
+		await expect(divider).toBeVisible();
+		await expect(divider).toHaveAttribute("aria-orientation", "vertical");
+		await expect(divider).toHaveAttribute("aria-valuemin", "20");
+		await expect(divider).toHaveAttribute("aria-valuemax", "80");
+
+		const controlledPaneId = await divider.getAttribute("aria-controls");
+		expect(controlledPaneId).toBeTruthy();
+		await expect(page.locator(`#${controlledPaneId}`)).toBeVisible();
+
+		await divider.focus();
+		await expect(divider).toBeFocused();
+		await expect(divider).toHaveAttribute("aria-valuenow", "50");
+		await page.keyboard.press("ArrowRight");
+		await expect(divider).toHaveAttribute("aria-valuenow", "55");
+		await page.keyboard.press("End");
+		await expect(divider).toHaveAttribute("aria-valuenow", "80");
+		await page.keyboard.press("Home");
+		await expect(divider).toHaveAttribute("aria-valuenow", "20");
 	});
 });

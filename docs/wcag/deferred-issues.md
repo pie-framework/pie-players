@@ -1,0 +1,36 @@
+# Deferred Accessibility Issues
+
+This document tracks confirmed accessibility issues and evidence gaps that were intentionally deferred from the current low-risk fix pass.
+
+## Source Classification
+
+- **Normative standard**: [WCAG 2.2](https://www.w3.org/TR/wcag22/)
+- **Official supporting guidance**:
+  - [Understanding WCAG 2.2](https://www.w3.org/WAI/WCAG22/Understanding/)
+  - [Dialog (Modal) Pattern](https://www.w3.org/WAI/ARIA/apg/patterns/dialogmodal/)
+  - [Window Splitter Pattern](https://www.w3.org/WAI/ARIA/apg/patterns/windowsplitter/)
+  - [Evaluating Web Accessibility Overview](https://www.w3.org/WAI/test-evaluate/)
+- **Project guidance**: the rest of this document
+
+## Deferred Product Issues
+
+| ID | Surface | WCAG | Severity | Current behavior / evidence | Why deferred | Suggested fix direction | Intended automation target | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `a11y-001` | Shared floating dialogs and settings panels | [2.4.3 Focus Order](https://www.w3.org/WAI/WCAG22/Understanding/focus-order), [2.1.2 No Keyboard Trap](https://www.w3.org/WAI/WCAG22/Understanding/no-keyboard-trap), [4.1.2 Name, Role, Value](https://www.w3.org/WAI/WCAG22/Understanding/name-role-value) | High | `packages/players-shared/src/ui/focus-trap.ts` only saves/restores focus. `packages/players-shared/src/components/ToolSettingsPanel.svelte` and `packages/tool-text-to-speech/tool-text-to-speech.svelte` do not implement a full shared dialog focus contract. The live `tts-ssml` route left focus on the trigger when the settings panel opened, and `Escape` did not dismiss it. | Fixing this cleanly requires a shared dialog model across multiple packages, including consumers outside the immediate fix set. | Define one reusable focus contract for initial focus, tab containment, `Escape`, and focus return, then adopt it consistently across settings panels and floating dialogs. | Extend `packages/section-player/tests/section-player-tts-ssml.spec.ts` with explicit focus-entry, `Escape`, tab-loop, and focus-return checks. | Deferred |
+| `a11y-002` | Hosted floating tool shells | [2.1.1 Keyboard](https://www.w3.org/WAI/WCAG22/Understanding/keyboard), [2.5.7 Dragging Movements](https://www.w3.org/WAI/WCAG22/Understanding/dragging-movements), [2.5.8 Target Size (Minimum)](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum) | High | `packages/assessment-toolkit/src/components/ItemToolBar.svelte` shells still rely on pointer drag and pointer resize. This pass only increased the resize handle size; it did not add keyboard or single-pointer alternatives for move/resize. | A full fix needs shell interaction design, discoverable controls, and test coverage beyond a styling tweak. | Add explicit move/resize controls or a keyboard interaction mode, document the interaction, and expose the shell behavior as a stable contract. | Add a dedicated hosted-shell Playwright spec instead of relying on broad demo smoke tests. | Deferred |
+| `a11y-003` | Splitpane narrow-width layout | [1.4.10 Reflow](https://www.w3.org/WAI/WCAG22/Understanding/reflow) | High | In the live `question-passage` splitpane demo at `320px`, the passage remained visible while the item pane was pushed off-screen into horizontal overflow. | This looks like a broader layout/design issue across splitpane stacking, pane sizing, and toolbar layout rather than a small isolated patch. | Rework splitpane breakpoint behavior across `packages/section-player/src/components/PieSectionPlayerSplitPaneElement.svelte` and `packages/section-player/src/components/SectionPlayerShell.svelte` so narrow widths stack or otherwise avoid two-dimensional scrolling. | Add a focused narrow-viewport Playwright test for `question-passage` and `tts-ssml` splitpane routes. | Deferred |
+| `a11y-006` | Item-player delivery baseline blocked upstream | [4.1.2 Name, Role, Value](https://www.w3.org/WAI/WCAG22/Understanding/name-role-value) | Medium | The delivery-item axe baseline for `pie-item-player` still needs a known blocker for `aria-allowed-attr` on the rendered multiple-choice surface. The underlying issue originates in `pie-elements-ng`, not in `pie-players`. | This round cannot modify `../pie-elements-ng`, and `packages/item-player/src/PieItemPlayer.svelte` must remain a generic host instead of gaining element-specific logic. | Fix the invalid ARIA at the PIE element source, then remove the `aria-allowed-attr` allowlist from the player-scoped baseline. | Keep `packages/item-player/tests/item-player-multiple-choice.spec.ts` scoped to `pie-item-player` and retire the allowlist once the upstream fix lands. | Deferred |
+| `a11y-007` | Item-demos delivery route chrome outside item-player scope | [1.4.3 Contrast (Minimum)](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum), [2.1.1 Keyboard](https://www.w3.org/WAI/WCAG22/Understanding/keyboard) | Low | Route-level axe runs on the multiple-choice delivery demo also surface `color-contrast` from non-delivery tabs and `scrollable-region-focusable` from the session/debug panel. Those issues live in the item-demos harness, not in the generic item-player host. | The current pass is intentionally scoped to the delivery item surface rather than demo-route chrome. | Fix the demo-harness tabs and debug/session panels in a separate pass if full route accessibility becomes in scope. | If route-level accessibility becomes a goal, add a separate item-demos a11y spec instead of folding those concerns into the player-scoped baseline. | Deferred |
+
+## Deferred Evidence And Tooling Gaps
+
+| ID | Surface | Type | Current behavior / evidence | Why deferred | Suggested fix direction | Intended automation target | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `a11y-004` | `docs/evals` runner wiring | Supporting evidence gap | `docs/evals/readme.md` described `apps/section-demos` runner commands that are not currently wired in the committed `apps/section-demos/package.json`. This pass corrected the docs but did not implement a full runner. | Runner work is broader than the current safe accessibility fix scope. | Either wire a real YAML eval runner into a host app or keep `docs/evals` explicitly positioned as intent/spec documentation. | Add a host-app eval runner only when the repo is ready to maintain it. | Deferred |
+| `a11y-005` | Manual assistive technology validation | Supporting evidence gap | Current evidence is strong for code review and Playwright coverage, but VoiceOver/NVDA/JAWS validation is still missing for live announcements, dialog behavior, and reading mode interactions. | Real AT validation cannot be replaced by code changes alone and was outside this implementation pass. | Run a manual AT pass using `docs/wcag/evaluation-method.md` after the next round of UI fixes lands. | Manual pass first; automate only the parts that can be checked reliably in browser tests. | Deferred |
+
+## Notes
+
+- This file is a planning/status artifact, not a claim that the deferred issues are the only remaining accessibility concerns.
+- Use [`evaluation-method.md`](./evaluation-method.md) and [`project-surface-map.md`](./project-surface-map.md) when deciding what to tackle next.
+- Treat `docs/evals` as supporting evidence and intent capture, not as proof of conformance on its own.

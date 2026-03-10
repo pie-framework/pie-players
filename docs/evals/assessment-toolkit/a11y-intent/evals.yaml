@@ -14,6 +14,10 @@ evals:
     subject: "general"
     severity: warn
     intent: "Harness UI should have no WCAG 2.2 AA axe violations (local-only, intent-first)."
+    notes:
+      - "This is a shallow root-level axe smoke check only."
+      - "It does not open tools or verify focus return, dialog behavior, keyboard paths, or status announcements."
+      - "Use section-player Playwright specs and docs/wcag for stronger integrated accessibility evidence."
     steps:
       - action: navigate
         path: "/evals/assessment-toolkit"

@@ -862,8 +862,8 @@
 				resizeHandleEl.style.position = 'absolute';
 				resizeHandleEl.style.right = '0';
 				resizeHandleEl.style.bottom = '0';
-				resizeHandleEl.style.width = '16px';
-				resizeHandleEl.style.height = '16px';
+				resizeHandleEl.style.width = '24px';
+				resizeHandleEl.style.height = '24px';
 				resizeHandleEl.style.cursor = 'nwse-resize';
 				resizeHandleEl.style.background =
 					'linear-gradient(135deg, transparent 0%, transparent 40%, rgba(0,0,0,0.35) 40%, rgba(0,0,0,0.35) 60%, transparent 60%, transparent 100%)';

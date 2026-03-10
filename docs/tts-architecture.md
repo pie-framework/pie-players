@@ -4,6 +4,12 @@
 
 The PIE Players TTS (Text-to-Speech) system uses a clean, layered architecture with pluggable providers and zero UI framework dependencies in the core.
 
+See also:
+
+- [`./wcag/readme.md`](./wcag/readme.md) for the WCAG reference library
+- [`./wcag/wcag-2.2-aa-baseline.md`](./wcag/wcag-2.2-aa-baseline.md) for the criteria most likely to affect TTS work
+- [`./wcag/evaluation-method.md`](./wcag/evaluation-method.md) for evaluation guidance
+
 ## Package Structure
 
 ### 1. @pie-players/pie-tts

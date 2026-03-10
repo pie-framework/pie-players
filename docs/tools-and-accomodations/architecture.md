@@ -8,6 +8,12 @@ This document describes the architecture of the PIE assessment tools and accommo
 
 The architecture leverages modern web standards (CSS Custom Highlight API, Web Components) to provide a framework-agnostic solution that integrates seamlessly with PIE-based assessment platforms.
 
+See also:
+
+- [`../wcag/readme.md`](../wcag/readme.md) for the WCAG reference library
+- [`../wcag/patterns-and-widgets.md`](../wcag/patterns-and-widgets.md) for widget guidance
+- [`../wcag/evaluation-method.md`](../wcag/evaluation-method.md) for review methodology
+
 ---
 
 ## Table of Contents

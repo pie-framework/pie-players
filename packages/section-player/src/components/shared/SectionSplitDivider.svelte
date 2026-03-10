@@ -8,6 +8,8 @@
 		step = 5,
 		disabled = false,
 		ariaLabel = "Resize panels",
+		ariaControls = "",
+		ariaValueText = "",
 	} = $props<{
 		value?: number;
 		min?: number;
@@ -15,6 +17,8 @@
 		step?: number;
 		disabled?: boolean;
 		ariaLabel?: string;
+		ariaControls?: string;
+		ariaValueText?: string;
 	}>();
 
 	const dispatch = createEventDispatcher<{
@@ -57,7 +61,13 @@
 
 	function onKeyDown(event: KeyboardEvent) {
 		if (disabled) return;
-		if (event.key !== "ArrowLeft" && event.key !== "ArrowRight" && event.key !== "Escape") {
+		if (
+			event.key !== "ArrowLeft" &&
+			event.key !== "ArrowRight" &&
+			event.key !== "Escape" &&
+			event.key !== "Home" &&
+			event.key !== "End"
+		) {
 			return;
 		}
 		event.preventDefault();
@@ -65,8 +75,15 @@
 			dispatch("resize-cancel", { value });
 			return;
 		}
-		const delta = event.key === "ArrowLeft" ? -step : step;
-		const next = clamp(value + delta);
+		let next = value;
+		if (event.key === "Home") {
+			next = min;
+		} else if (event.key === "End") {
+			next = max;
+		} else {
+			const delta = event.key === "ArrowLeft" ? -step : step;
+			next = clamp(value + delta);
+		}
 		dispatch("resize-preview", { value: next, input: "keyboard" });
 		dispatch("resize-commit", { value: next, input: "keyboard" });
 	}
@@ -82,16 +99,25 @@
 	});
 </script>
 
-<button
-	type="button"
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+<div
 	class={`pie-section-player-split-divider ${dragging ? "pie-section-player-split-divider--dragging" : ""}`}
+	role="separator"
+	aria-orientation="vertical"
+	aria-label={ariaLabel}
+	aria-controls={ariaControls || undefined}
+	aria-valuemin={min}
+	aria-valuemax={max}
+	aria-valuenow={Math.round(value)}
+	aria-valuetext={ariaValueText || undefined}
+	aria-disabled={disabled ? "true" : undefined}
+	tabindex={disabled ? undefined : 0}
 	onmousedown={startDrag}
 	onkeydown={onKeyDown}
-	disabled={disabled}
-	aria-label={ariaLabel}
 >
 	<span class="pie-section-player-split-divider-handle"></span>
-</button>
+</div>
 
 <style>
 	.pie-section-player-split-divider {

@@ -31,6 +31,15 @@ Current status: core runtime custom elements now run with shadow DOM enabled (`s
 - [`tts-authoring-guide.md`](./tts-authoring-guide.md)
 - [`tts-synchronization-best-practices.md`](./tts-synchronization-best-practices.md)
 
+## WCAG / Accessibility Review
+
+- [`wcag/readme.md`](./wcag/readme.md) - Entry point for the WCAG reference library
+- [`wcag/official-sources.md`](./wcag/official-sources.md) - Verified W3C/WAI sources and when to use them
+- [`wcag/wcag-2.2-aa-baseline.md`](./wcag/wcag-2.2-aa-baseline.md) - High-signal criteria for this repo
+- [`wcag/evaluation-method.md`](./wcag/evaluation-method.md) - Repo evaluation workflow grounded in WAI guidance
+- [`wcag/patterns-and-widgets.md`](./wcag/patterns-and-widgets.md) - Widget and interaction guidance for implementation work
+- [`wcag/project-surface-map.md`](./wcag/project-surface-map.md) - Surface-to-criteria map across the project
+
 ## Tools & Accommodations
 
 - [`tools-and-accomodations/architecture.md`](./tools-and-accomodations/architecture.md)

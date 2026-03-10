@@ -312,7 +312,7 @@ import { onMount } from 'svelte';
 		style="left: {position.x}px; top: {position.y}px; width: {size.width}px; height: {size.height}px;"
 		onpointerdown={handlePointerDown}
 		onkeydown={handleKeyDown}
-		role="application"
+		role="group"
 		tabindex="0"
 		aria-label="Line Reader tool. Mode: {maskingMode === 'highlight' ? 'Highlight' : 'Masking'}. Use arrow keys to move, +/- to resize height, C to change color, [ and ] to adjust opacity, M to toggle mode. Current color: {colors.find(c => c.value === currentColor)?.name}, Opacity: {Math.round(currentOpacity * 100)}%"
 		aria-roledescription="Draggable and resizable reading guide overlay"
@@ -388,13 +388,13 @@ import { onMount } from 'svelte';
 	}
 
 	.pie-tool-line-reader__resize-handle--bottom {
-		bottom: -10px;
+		bottom: -12px;
 		left: 50%;
 		transform: translateX(-50%);
-		width: 40px;
-		height: 16px;
+		width: 44px;
+		height: 24px;
 		background-color: color-mix(in srgb, var(--pie-background, #fff) 90%, transparent);
-		border-radius: 8px;
+		border-radius: 12px;
 		border: 2px solid var(--pie-primary, #4caf50);
 	}
 

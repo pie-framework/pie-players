@@ -1,8 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
 
 const DELIVERY_PATH = "/demo/multiple-choice/delivery?mode=gather&role=student";
 const AUTHOR_PATH = "/demo/multiple-choice/author?mode=gather&role=student";
 const SOURCE_PATH = "/demo/multiple-choice/source?mode=gather&role=student";
+const KNOWN_DELIVERY_ITEM_DEBT = new Set(["aria-allowed-attr"]);
 
 type SessionSnapshot = {
 	id?: string;
@@ -213,5 +215,36 @@ test.describe("item-player demo multiple-choice", () => {
 		await page.getByRole("link", { name: "Source" }).click();
 		await expect(page).toHaveURL(/\/source/);
 		await expect(page.locator(".ProseMirror").first()).toContainText(sourcePrompt);
+	});
+
+	test("keeps baseline a11y regressions in check", async ({ page }) => {
+		await gotoRoute(page, DELIVERY_PATH);
+
+		// Scope the automated check to the rendered player surface so the baseline
+		// stays generic to pie-item-player and does not conflate demo-route chrome
+		// with delivery-item accessibility debt.
+		const axeResults = await new AxeBuilder({ page })
+			.include("pie-item-player")
+			.disableRules(["region"])
+			.analyze();
+		const seriousOrCritical = axeResults.violations.filter((violation) =>
+			["serious", "critical"].includes(violation.impact || ""),
+		);
+		const unexpectedSeriousOrCritical = seriousOrCritical.filter(
+			(violation) => !KNOWN_DELIVERY_ITEM_DEBT.has(violation.id),
+		);
+
+		expect(
+			unexpectedSeriousOrCritical,
+			`Unexpected delivery-item axe serious/critical violations in pie-item-player: ${JSON.stringify(
+				unexpectedSeriousOrCritical,
+				null,
+				2,
+			)}\nKnown delivery-item blockers (currently upstream, not fixed in pie-players): ${JSON.stringify(
+				seriousOrCritical,
+				null,
+				2,
+			)}`,
+		).toEqual([]);
 	});
 });

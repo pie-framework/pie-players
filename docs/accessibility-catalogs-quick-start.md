@@ -6,6 +6,12 @@
 
 ---
 
+See also:
+
+- [`./wcag/readme.md`](./wcag/readme.md) for the WCAG reference library
+- [`./wcag/wcag-2.2-aa-baseline.md`](./wcag/wcag-2.2-aa-baseline.md) for the criteria most likely to affect alternative content and TTS flows
+- [`./wcag/project-surface-map.md`](./wcag/project-surface-map.md) for where these flows fit in the broader accessibility review surface
+
 ## What Are Accessibility Catalogs?
 
 QTI 3.0 accessibility catalogs provide alternative representations of content for assistive technologies:

@@ -91,6 +91,12 @@
 	let kernelRef = $state<SectionPlayerRuntimeHostContract | null>(null);
 	let isStacked = $state(false);
 	const dispatch = createEventDispatcher();
+	const paneIdBase = $derived.by(() =>
+		`pie-section-player-splitpane-${(sectionId || attemptId || "default").replace(/[^a-zA-Z0-9_-]/g, "-")}`
+	);
+	const passagesPaneId = $derived(`${paneIdBase}-passages`);
+	const itemsPaneId = $derived(`${paneIdBase}-items`);
+	const splitDividerValueText = $derived(`${Math.round(leftPanelWidth)}% passages width`);
 
 	$effect(() => {
 		const bp = clampedBreakpoint;
@@ -210,7 +216,11 @@
 				: ""}
 	>
 		{#if layoutModel.passages.length > 0}
-			<aside class="pie-section-player-passages-pane" aria-label="Passages">
+			<aside
+				id={passagesPaneId}
+				class="pie-section-player-passages-pane"
+				aria-label="Passages"
+			>
 				<pie-section-player-passages-pane
 					passages={layoutModel.passages}
 					elementsLoaded={layoutModel.paneElementsLoaded}
@@ -225,13 +235,16 @@
 			{#if !isStacked}
 				<SectionSplitDivider
 					value={leftPanelWidth}
+					ariaLabel="Resize passages and items panels"
+					ariaControls={passagesPaneId}
+					ariaValueText={splitDividerValueText}
 					on:resize-preview={handleSplitResizePreview}
 					on:resize-commit={handleSplitResizePreview}
 				/>
 			{/if}
 		{/if}
 
-		<main class="pie-section-player-items-pane" aria-label="Items">
+		<main id={itemsPaneId} class="pie-section-player-items-pane" aria-label="Items">
 			<pie-section-player-items-pane
 				items={layoutModel.items}
 				compositionModel={layoutModel.compositionModel}

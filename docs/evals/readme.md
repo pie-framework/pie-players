@@ -14,13 +14,17 @@ This repo uses **local-only** evals to validate `pie-item-player` strategies (`i
 
 ## Running locally
 
-From repo root (recommended, if eval runner scripts are configured in your host app):
+These commands are only valid when your chosen host app wires the YAML eval runner scripts.
+
+At the time of writing, the committed `apps/section-demos` package in this repo does not define `test:evals` scripts, so treat the commands below as example host-app entrypoints rather than guaranteed repo commands.
+
+From repo root (when your host app is wired for eval execution):
 
 ```bash
 bun run --cwd apps/section-demos test:evals
 ```
 
-From `apps/section-demos` (equivalent):
+From `apps/section-demos` (equivalent, when those scripts exist in the host app):
 
 ```bash
 bun run test:evals
@@ -503,7 +507,7 @@ See templates:
 
 ### Test Runner
 
-The eval system is implemented in host-app eval specs (for example, under `apps/section-demos/tests/evals/`).
+The eval system is implemented in host-app eval specs when a host app wires the runner (for example, under `apps/section-demos/tests/evals/`).
 
 **Key features:**
 - Recursively discovers all `evals.yaml` files in `docs/evals/`

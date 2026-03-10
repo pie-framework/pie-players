@@ -113,11 +113,12 @@ apps/item-demos/
 │   ├── routes/
 │   │   ├── +page.svelte           # Landing page
 │   │   ├── +layout.svelte         # Shared layout
-│   │   ├── demo1/
-│   │   │   ├── +page.ts           # Load demo1 data
-│   │   │   └── +page.svelte       # Demo1 UI
-│   │   ├── demo2/                 # Passage demo
-│   │   └── demo3/                 # Math demo
+│   │   └── demo/[[id]]/           # Parameterized demo route
+│   │       ├── +page.ts           # Load demo data by id
+│   │       ├── +page.svelte       # Demo UI
+│   │       ├── delivery/          # Delivery sub-route
+│   │       ├── author/            # Author sub-route
+│   │       └── source/            # Source sub-route
 │   ├── lib/
 │   │   └── content/               # Demo content data
 │   │       ├── demo1-multiple-choice.ts

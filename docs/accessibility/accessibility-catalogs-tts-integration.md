@@ -21,6 +21,11 @@ This integration enables:
 
 ### 1. Initialize Services and Section Player
 
+> **Note:** `ToolkitCoordinator` is now the primary entry point for integrating the assessment toolkit.
+> It wraps and manages `ToolCoordinator`, `HighlightCoordinator`, `TTSService`, `AccessibilityCatalogResolver`,
+> and other services. You can still use the individual services directly (as shown below), but for new
+> integrations prefer `ToolkitCoordinator` which sets up and coordinates all services automatically.
+
 ```javascript
 import {
   TTSService,

@@ -23,7 +23,10 @@ This package exposes layout-specific section-player custom elements:
 - `src/components/PieSectionPlayerSplitPaneElement.svelte`
 - `src/components/PieSectionPlayerVerticalElement.svelte`
 - `src/components/PieSectionPlayerBaseElement.svelte`
+- `src/components/PieSectionPlayerKernelHostElement.svelte`
 - `src/components/SectionPlayerShell.svelte`
+- `src/components/SectionPlayerLayoutKernel.svelte`
+- `src/components/SectionPlayerLayoutScaffold.svelte`
 - `src/components/shared/SectionItemCard.svelte`
 - `src/components/shared/SectionPassageCard.svelte`
 - `src/components/shared/section-player-card-context.ts`

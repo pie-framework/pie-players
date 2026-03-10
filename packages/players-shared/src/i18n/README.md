@@ -10,7 +10,7 @@ Use `useI18nStandalone()` when building standalone components (tools, players) t
 
 ```svelte
 <script lang="ts">
-  import { useI18nStandalone } from '@pie-framework/pie-players-shared/i18n';
+  import { useI18nStandalone } from '@pie-players/pie-players-shared/i18n';
 
   // Simple setup - no service injection needed
   const i18n = useI18nStandalone({
@@ -41,7 +41,7 @@ Use `useI18n()` when working within the full assessment toolkit where centralize
 
 ```svelte
 <script lang="ts">
-  import { useI18n } from '@pie-framework/pie-players-shared/i18n';
+  import { useI18n } from '@pie-players/pie-players-shared/i18n';
 
   // Receive service from parent/context
   let { player } = $props();
@@ -65,7 +65,7 @@ Use `useI18n()` when working within the full assessment toolkit where centralize
 For non-Svelte contexts or advanced use cases:
 
 ```typescript
-import { SimpleI18n, BUNDLED_TRANSLATIONS, loadTranslations } from '@pie-framework/pie-players-shared/i18n';
+import { SimpleI18n, BUNDLED_TRANSLATIONS, loadTranslations } from '@pie-players/pie-players-shared/i18n';
 
 const i18n = new SimpleI18n({
   locale: 'en',

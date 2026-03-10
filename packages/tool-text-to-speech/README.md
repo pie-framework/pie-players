@@ -27,13 +27,13 @@ A draggable, floating tool that reads selected text aloud with word-level highli
 
 ```svelte
 <script>
-  import { ToolTextToSpeech } from '$lib/tags/tool-text-to-speech';
-  import { toolCoordinator } from '$lib/assessment-toolkit/tools';
+  import '@pie-players/pie-tool-text-to-speech/components/tool-text-to-speech-element';
+  import { toolCoordinator } from '@pie-players/pie-assessment-toolkit';
 
-  let visible = false;
+  let visible = $state(false);
 </script>
 
-<ToolTextToSpeech
+<pie-tool-text-to-speech
   {visible}
   toolId="textToSpeech"
   coordinator={toolCoordinator}
@@ -67,10 +67,10 @@ The TTS tool is automatically included when using `<pie-tool-toolbar>`:
 
 ## TTS Service Integration
 
-The tool uses the shared `TTSService` from `$lib/services/tts`:
+The tool uses the shared `TTSService` from `@pie-players/pie-assessment-toolkit`:
 
 ```typescript
-import { ttsService } from '$lib/services/tts';
+import { ttsService } from '@pie-players/pie-assessment-toolkit';
 
 // Initialize
 await ttsService.initialize();
@@ -155,22 +155,16 @@ The tool handles these error scenarios:
 
 ```svelte
 <script>
-  import { ToolTextToSpeech } from '$lib/tags/tool-text-to-speech';
-  import { toolCoordinator } from '$lib/assessment-toolkit/tools';
-  import { onMount } from 'svelte';
+  import '@pie-players/pie-tool-text-to-speech/components/tool-text-to-speech-element';
+  import { toolCoordinator } from '@pie-players/pie-assessment-toolkit';
 
-  let showTTS = false;
+  let showTTS = $derived(
+    toolCoordinator.getToolState('textToSpeech')?.isVisible ?? false
+  );
 
-  onMount(() => {
-    // Register tool
+  $effect(() => {
     toolCoordinator.registerTool('textToSpeech', 'Text-to-Speech');
   });
-
-  // Subscribe to tool visibility
-  $: {
-    const state = toolCoordinator.getToolState('textToSpeech');
-    showTTS = state?.isVisible ?? false;
-  }
 </script>
 
 <!-- Assessment content -->
@@ -179,12 +173,12 @@ The tool handles these error scenarios:
 </div>
 
 <!-- TTS button -->
-<button on:click={() => toolCoordinator.toggleTool('textToSpeech')}>
+<button onclick={() => toolCoordinator.toggleTool('textToSpeech')}>
   🔊 Text-to-Speech
 </button>
 
 <!-- TTS tool -->
-<ToolTextToSpeech
+<pie-tool-text-to-speech
   visible={showTTS}
   toolId="textToSpeech"
   coordinator={toolCoordinator}
@@ -199,11 +193,11 @@ The tool handles these error scenarios:
 - [ ] Read entire page/section
 - [ ] Keyboard shortcuts
 - [ ] Multiple language support
-- [ ] AWS Polly integration (premium voices)
+- [x] AWS Polly integration (premium voices) — available via `@pie-players/tts-server-polly`
 
 ## Related
 
-- [TTSService](../../services/tts/README.md) - Core TTS service
-- [Highlight Infrastructure](../../services/highlight/README.md) - Word highlighting system
-- [Tool Toolbar](../tool-toolbar/README.md) - Tool management
-- [Tool Coordinator](../../tools/README.md) - Tool lifecycle
+- [TTS Architecture](../../../docs/accessibility/tts-architecture.md) - TTS system overview
+- [TTS Server Polly](../../tts-server-polly/README.md) - AWS Polly server provider
+- [TTS Client Server](../../tts-client-server/README.md) - Server-backed client provider
+- [Tool Toolbar](../../toolbars/README.md) - Tool management

@@ -30,7 +30,7 @@ export interface QtiAssessmentSection {
   rubricBlocks?: RubricBlock[];
 
   // Items on this page
-  questionRefs?: AssessmentItemRef[];
+  assessmentItemRefs?: AssessmentItemRef[];
 
   // Optional settings for layout hints (PIE extension)
   settings?: {
@@ -237,7 +237,7 @@ The Reference Layout component should:
 2. **Group by ID**: Group passages with same `data-group` value
 3. **Sort by Order**: Use `data-order` attribute for display sequence
 4. **Apply Display Mode**: Use `data-display` or section settings for layout
-5. **Render Items**: Display all items in `questionRefs` with passages visible
+5. **Render Items**: Display all items in `assessmentItemRefs` with passages visible
 
 ### Layout Options
 
@@ -258,7 +258,7 @@ The Reference Layout component should:
 
 - `packages/players-shared/src/types/index.ts` - Core type definitions
 - `apps/section-demos/src/routes/demo/[[id]]/+page.svelte` - Demo integration
-- `docs/section-structure-design.md` - Design rationale
+- `docs/section-player/section-structure-design.md` - Design rationale
 - `docs/qti3-paired-passages-design.md` - This document
 
 ## Next Steps

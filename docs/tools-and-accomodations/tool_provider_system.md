@@ -740,7 +740,10 @@ sectionPlayer.toolkitCoordinator = coordinator;
 
 ### Implementation Files
 
-- **Toolbar Component**: `packages/toolbars/section-toolbar.svelte`
+- **Toolbar CE Registration Entrypoints**:
+  - `packages/assessment-toolkit/src/components/section-toolbar-element.ts`
+  - `packages/assessment-toolkit/src/components/item-toolbar-element.ts`
+- **Toolbar Svelte Components**: `packages/assessment-toolkit/src/components/` (internal implementation)
 - **Layout Integration**:
   - `packages/section-player/src/components/PieSectionPlayerSplitPaneElement.svelte`
 - **Player Integration**: `packages/section-player/src/components/PieSectionPlayerSplitPaneElement.svelte`

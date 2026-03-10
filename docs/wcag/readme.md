@@ -56,11 +56,11 @@ This library does not replace the existing accessibility and tool-specific docs 
 
 Use those docs for implementation architecture and product-specific behavior:
 
-- [`../accessibility-catalogs-quick-start.md`](../accessibility-catalogs-quick-start.md)
-- [`../accessibility-catalogs-integration-guide.md`](../accessibility-catalogs-integration-guide.md)
-- [`../accessibility-catalogs-tts-integration.md`](../accessibility-catalogs-tts-integration.md)
-- [`../tts-architecture.md`](../tts-architecture.md)
-- [`../tts-authoring-guide.md`](../tts-authoring-guide.md)
+- [`../accessibility/accessibility-catalogs-quick-start.md`](../accessibility/accessibility-catalogs-quick-start.md)
+- [`../accessibility/accessibility-catalogs-integration-guide.md`](../accessibility/accessibility-catalogs-integration-guide.md)
+- [`../accessibility/accessibility-catalogs-tts-integration.md`](../accessibility/accessibility-catalogs-tts-integration.md)
+- [`../accessibility/tts-architecture.md`](../accessibility/tts-architecture.md)
+- [`../accessibility/tts-authoring-guide.md`](../accessibility/tts-authoring-guide.md)
 - [`../tools-and-accomodations/architecture.md`](../tools-and-accomodations/architecture.md)
 
 Use `docs/evals/` for executable local checks and supporting evidence, not as the WCAG source of truth:

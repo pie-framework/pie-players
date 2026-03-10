@@ -38,6 +38,19 @@ await ttsService.initialize(provider, {
   voiceId: 'Joanna',
   language: 'en-US',
 });
+
+// Note: `apiEndpoint`, `provider`, and `voiceId` are server-provider-specific
+// options. When using TTSConfig, pass these inside `providerOptions` rather
+// than as top-level fields:
+//
+//   const config: TTSConfig = {
+//     providerOptions: {
+//       apiEndpoint: '/api/tts',
+//       provider: 'polly',
+//       voiceId: 'Joanna',
+//     },
+//     language: 'en-US',
+//   };
 ```
 
 ### With Authentication
@@ -117,7 +130,7 @@ The server API must implement two endpoints:
 
 ## SvelteKit Implementation Example
 
-See the implementation guide in [tts-server-api-architecture.md](../../docs/tts-server-api-architecture.md).
+See the implementation guide in [tts-architecture.md](../../docs/accessibility/tts-architecture.md).
 
 Example route structure:
 ```

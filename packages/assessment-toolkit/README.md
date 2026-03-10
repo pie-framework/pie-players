@@ -801,7 +801,7 @@ import type {
 - **[PNP Configuration Guide](docs/PNP_CONFIGURATION.md)** - ⭐ NEW - How to configure student profiles, district policies, and governance rules
 - [ToolkitCoordinator Architecture](../../docs/architecture/TOOLKIT_COORDINATOR.md) - Design decisions and patterns
 - [Section Player README](../section-player/README.md) - Section player integration
-- [Architecture Overview](../../docs/architecture.md) - Complete system architecture
+- [Architecture Overview](../../docs/architecture/architecture.md) - Complete system architecture
 
 ## License
 

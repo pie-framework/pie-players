@@ -4,32 +4,33 @@ This folder contains active technical docs. Historical one-off plans, completion
 
 Current status: core runtime custom elements now run with shadow DOM enabled (`shadow: "open"`), while item player internals remain intentionally out of scope.
 
-## Start Here
+## Architecture
 
-- [`architecture.md`](./architecture.md) - System-level architecture
-- [`developer_patterns.md`](./developer_patterns.md) - Project code style and implementation patterns
-- [`tool_provider_system.md`](./tool_provider_system.md) - Tool registry/provider system
-- [`tool_host_contract.md`](./tool_host_contract.md) - Host/tool runtime integration contract
+- [`architecture/architecture.md`](./architecture/architecture.md) - System-level architecture
+- [`architecture/developer_patterns.md`](./architecture/developer_patterns.md) - Project code style and implementation patterns
+
+## Item Player
+
+- [`item-player/overview.md`](./item-player/overview.md) - Architecture and standalone usage
+- [`item-player/loading-strategies.md`](./item-player/loading-strategies.md) - IIFE, ESM, and preloaded loading strategies
+- [`item-player/migration-from-pie-player-components.md`](./item-player/migration-from-pie-player-components.md) - Upgrade guide from `@pie-framework/pie-player-components`
 
 ## Section Player
 
-- [`section-structure-design.md`](./section-structure-design.md)
-- [`item_player_strategies.md`](./item_player_strategies.md)
-- [`qti3-paired-passages-design.md`](./qti3-paired-passages-design.md)
-- [`qti3-paired-passages-example.md`](./qti3-paired-passages-example.md)
-
-## QTI / Features
-
-- [`qti-3.0-feature-support.md`](./qti-3.0-feature-support.md)
+- [`section-player/section-structure-design.md`](./section-player/section-structure-design.md)
+- [`section-player/qti3-paired-passages-design.md`](./section-player/qti3-paired-passages-design.md)
+- [`section-player/qti-3.0-feature-support.md`](./section-player/qti-3.0-feature-support.md)
 
 ## Accessibility / TTS
 
-- [`accessibility-catalogs-quick-start.md`](./accessibility-catalogs-quick-start.md)
-- [`accessibility-catalogs-integration-guide.md`](./accessibility-catalogs-integration-guide.md)
-- [`accessibility-catalogs-tts-integration.md`](./accessibility-catalogs-tts-integration.md)
-- [`tts-architecture.md`](./tts-architecture.md)
-- [`tts-authoring-guide.md`](./tts-authoring-guide.md)
-- [`tts-synchronization-best-practices.md`](./tts-synchronization-best-practices.md)
+- [`accessibility/accessibility-catalogs-quick-start.md`](./accessibility/accessibility-catalogs-quick-start.md)
+- [`accessibility/accessibility-catalogs-integration-guide.md`](./accessibility/accessibility-catalogs-integration-guide.md)
+- [`accessibility/accessibility-catalogs-tts-integration.md`](./accessibility/accessibility-catalogs-tts-integration.md)
+- [`accessibility/tts-architecture.md`](./accessibility/tts-architecture.md)
+- [`accessibility/tts-authoring-guide.md`](./accessibility/tts-authoring-guide.md)
+- [`accessibility/tts-synchronization-best-practices.md`](./accessibility/tts-synchronization-best-practices.md)
+- [`accessibility/aws-polly-setup-guide.md`](./accessibility/aws-polly-setup-guide.md)
+- [`accessibility/aws-ssml-tags-reference.md`](./accessibility/aws-ssml-tags-reference.md)
 
 ## WCAG / Accessibility Review
 
@@ -42,17 +43,22 @@ Current status: core runtime custom elements now run with shadow DOM enabled (`s
 
 ## Tools & Accommodations
 
+- [`tools-and-accomodations/tool_provider_system.md`](./tools-and-accomodations/tool_provider_system.md) - Tool registry/provider system
+- [`tools-and-accomodations/tool_host_contract.md`](./tools-and-accomodations/tool_host_contract.md) - Host/tool runtime integration contract
 - [`tools-and-accomodations/architecture.md`](./tools-and-accomodations/architecture.md)
 - [`tools-and-accomodations/tool-registry-architecture.md`](./tools-and-accomodations/tool-registry-architecture.md)
-- [`tools-and-accomodations/tool-registry-implementation-guide.md`](./tools-and-accomodations/tool-registry-implementation-guide.md)
-- [`tools-and-accomodations/profile-usage-guide.md`](./tools-and-accomodations/profile-usage-guide.md)
-- [`tools-and-accomodations/assessment-context-profile-design.md`](./tools-and-accomodations/assessment-context-profile-design.md)
 - [`tools-and-accomodations/toolbar-verification-checklist.md`](./tools-and-accomodations/toolbar-verification-checklist.md)
+
+## Integration
+
+- [`integration/section_player_integration_guide.md`](./integration/section_player_integration_guide.md) - Section player CE API, events, and integration
+- [`integration/assessment-toolkit-section-player-getting-started.md`](./integration/assessment-toolkit-section-player-getting-started.md) - Getting started with assessment toolkit + section player
 
 ## Setup / Publishing
 
-- [`environment-setup.md`](./environment-setup.md)
-- [`publishing.md`](./publishing.md)
-- [`publish-compatibility-matrix.md`](./publish-compatibility-matrix.md)
-- [`cdn_usage.md`](./cdn_usage.md)
-- [`npm_token_setup.md`](./npm_token_setup.md)
+- [`setup/environment-setup.md`](./setup/environment-setup.md)
+- [`setup/publishing.md`](./setup/publishing.md)
+- [`setup/publishable_packages.md`](./setup/publishable_packages.md)
+- [`setup/cdn_usage.md`](./setup/cdn_usage.md)
+- [`setup/npm_token_setup.md`](./setup/npm_token_setup.md)
+- [`setup/demo_system.md`](./setup/demo_system.md)

@@ -298,7 +298,7 @@ class TTSService {
 }
 ```
 
-**For detailed integration guide, see:** [Accessibility Catalogs Integration Guide](./accessibility-catalogs-integration-guide.md)
+**For detailed integration guide, see:** [Accessibility Catalogs Integration Guide](../accessibility/accessibility-catalogs-integration-guide.md)
 
 ### Benefits
 
@@ -342,9 +342,9 @@ class TTSService {
 - 📋 UI indicators for available alternatives
 
 **Documentation:**
-- ✅ [Integration Guide](./accessibility-catalogs-integration-guide.md) - Complete implementation guide
-- ✅ [Quick Start](./accessibility-catalogs-quick-start.md) - Developer quick start
-- ✅ [Quick Start Examples](./accessibility-catalogs-quick-start.md) - Comprehensive examples
+- ✅ [Integration Guide](../accessibility/accessibility-catalogs-integration-guide.md) - Complete implementation guide
+- ✅ [Quick Start](../accessibility/accessibility-catalogs-quick-start.md) - Developer quick start
+- ✅ [Quick Start Examples](../accessibility/accessibility-catalogs-quick-start.md) - Comprehensive examples
 
 ### Use Case Priority
 
@@ -452,7 +452,9 @@ answerMasking   → pie-tool-answer-eliminator
 - ✅ Custom extension support
 - ✅ Third-party friendly (composable)
 
-### How It Could Work
+### Reference: How It Could Work
+
+> **Clarification:** The PNP feature is marked "Implemented" above. The core services (`PNPMapper`, `PNPToolResolver`, tool resolution precedence, standard PNP support ID mapping) are implemented and usable. The sections below are **aspirational design notes** showing how the implementation could be extended further (e.g., richer context-profile merging, extended PNP supports for font/spacing/contrast). They do not reflect the current shipped API.
 
 #### Implementation Approach
 
@@ -927,7 +929,7 @@ The PIE Assessment Toolkit provides **native QTI 3.0 support** through composabl
 - 🚧 **In Progress:** TTSService integration for automatic catalog playback
 - 📋 **Planned:** PIE authoring tools for catalog creation
 
-See [Accessibility Catalogs Integration Guide](accessibility-catalogs-integration-guide.md) for details.
+See [Accessibility Catalogs Integration Guide](../accessibility/accessibility-catalogs-integration-guide.md) for details.
 
 **Phase 3:** Stimulus References (shared passages/stimuli)
 
@@ -940,13 +942,13 @@ See [Accessibility Catalogs Integration Guide](accessibility-catalogs-integratio
 
 ## References
 
-- [Architecture Overview](architecture.md) - Complete system architecture
-- [Assessment Toolkit README](../packages/assessment-toolkit/src/README.md) - Usage and examples
+- [Architecture Overview](../architecture/architecture.md) - Complete system architecture
+- [Assessment Toolkit README](../../packages/assessment-toolkit/README.md) - Usage and examples
 - [QTI 3.0 Specification](https://www.imsglobal.org/spec/qti/v3p0) - IMS Global standard
-- [TOOL_PROVIDER_SYSTEM](./tool_provider_system.md) - Native tool provider and runtime details
-- [Accessibility Catalogs Integration Guide](accessibility-catalogs-integration-guide.md) - Phase 2 complete guide
-- [Accessibility Catalogs TTS Integration](accessibility-catalogs-tts-integration.md) - TTSService integration (Phase 2)
-- [Accessibility Catalogs Quick Start](accessibility-catalogs-quick-start.md) - Developer quick reference
+- [TOOL_PROVIDER_SYSTEM](../tools-and-accomodations/tool_provider_system.md) - Native tool provider and runtime details
+- [Accessibility Catalogs Integration Guide](../accessibility/accessibility-catalogs-integration-guide.md) - Phase 2 complete guide
+- [Accessibility Catalogs TTS Integration](../accessibility/accessibility-catalogs-tts-integration.md) - TTSService integration (Phase 2)
+- [Accessibility Catalogs Quick Start](../accessibility/accessibility-catalogs-quick-start.md) - Developer quick reference
 - [PNP Third-Party Integration Guide](pnp-third-party-integration-guide.md) - Integrate PNP in any platform
 
 ---

@@ -106,11 +106,9 @@ apps/section-demos/
 │   ├── routes/
 │   │   ├── +page.svelte           # Landing page
 │   │   ├── +layout.svelte         # Shared layout
-│   │   ├── demo1/
-│   │   │   ├── +page.ts           # Load demo1 data
-│   │   │   └── +page.svelte       # Demo1 UI
-│   │   ├── demo2/                 # Question + passage demo
-│   │   └── demo3/                 # Three questions demo
+│   │   └── demo/[[id]]/           # Parameterized demo route
+│   │       ├── +page.ts           # Load demo data by id
+│   │       └── +page.svelte       # Demo UI
 │   ├── lib/
 │   │   └── content/               # Demo content data
 │   │       ├── demo1-single-question.ts

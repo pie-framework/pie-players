@@ -14,16 +14,16 @@ We've designed a **QTI-aligned section structure using PIE entities** that balan
 1. **QTI-aligned structure** - Use `rubricBlocks` and `assessmentItemRefs`
 2. **PIE-native entities** - Store `PassageEntity` and `ItemEntity`, not HTML strings
 3. **No loading logic** - Player receives fully resolved entities (client handles loading)
-4. **Simplified** - Removed unused fields (`stimulusRef`, `href`, `itemVId`, etc.)
+4. **Simplified** - Removed unused fields (`stimulusRef`, `href`, etc.)
 
 ---
 
 ## Core Types
 
-### QtiAssessmentSection
+### AssessmentSection
 
 ```typescript
-export interface QtiAssessmentSection {
+export interface AssessmentSection {
   identifier: string;
   title?: string;
   keepTogether?: boolean;  // true = page mode, false = item mode
@@ -35,7 +35,7 @@ export interface QtiAssessmentSection {
   assessmentItemRefs?: AssessmentItemRef[];
 
   // Nested sections (QTI 3.0 supports recursive sections)
-  sections?: QtiAssessmentSection[];
+  sections?: AssessmentSection[];
 
   // PIE settings
   settings?: SettingsMetaData;
@@ -46,9 +46,9 @@ export interface QtiAssessmentSection {
 
 ```typescript
 export interface RubricBlock {
-  id?: string;
+  identifier?: string;
   view: 'candidate' | 'scorer' | 'author' | 'proctor' | 'testConstructor' | 'tutor';
-  use?: 'instructions' | 'passage' | 'rubric';
+  class?: 'stimulus' | 'instructions' | 'rubric';
 
   /**
    * Embedded passage entity (PIE-native).
@@ -60,7 +60,7 @@ export interface RubricBlock {
 ```
 
 **Changes from before:**
-- ❌ Removed `content?: string` (HTML string)
+- ✅ Kept `content?: string` (HTML string)
 - ❌ Removed `stimulusRef?: StimulusRef` (external reference)
 - ✅ Added `passage?: PassageEntity` (embedded PIE entity)
 
@@ -70,6 +70,7 @@ export interface RubricBlock {
 export interface AssessmentItemRef {
   id?: string;
   identifier: string;
+  itemVId?: string;
   title?: string;
   required?: boolean;
 
@@ -85,7 +86,7 @@ export interface AssessmentItemRef {
 ```
 
 **Changes from before:**
-- ❌ Removed `itemVId: string` (backend-specific)
+- ✅ Kept `itemVId?: string` (backend-specific)
 - ❌ Removed `href?: string` (external reference)
 - ❌ Removed `fixed?: boolean` (unused)
 - ❌ Removed `weight?: number` (scoring logic, not rendering)
@@ -103,9 +104,9 @@ export interface AssessmentItemRef {
 
   "rubricBlocks": [
     {
-      "id": "rb-instructions",
+      "identifier": "rb-instructions",
       "view": "candidate",
-      "use": "instructions",
+      "class": "instructions",
       "passage": {
         "id": "instructions-001",
         "name": "Directions",
@@ -125,9 +126,9 @@ export interface AssessmentItemRef {
       }
     },
     {
-      "id": "rb-passage-benefits",
+      "identifier": "rb-passage-benefits",
       "view": "candidate",
-      "use": "passage",
+      "class": "stimulus",
       "passage": {
         "id": "passage-benefits",
         "name": "The Benefits of Urban Gardening",
@@ -148,9 +149,9 @@ export interface AssessmentItemRef {
       }
     },
     {
-      "id": "rb-passage-challenges",
+      "identifier": "rb-passage-challenges",
       "view": "candidate",
-      "use": "passage",
+      "class": "stimulus",
       "passage": {
         "id": "passage-challenges",
         "name": "Urban Gardens: Challenges and Limitations",
@@ -334,7 +335,7 @@ class SectionPlayer {
 
 ✅ **QTI-aligned** - Uses `rubricBlocks` and `assessmentItemRefs` structure
 ✅ **PIE-native** - Stores `PassageEntity` and `ItemEntity` with PIE configs
-✅ **Semantic** - QTI's `view` and `use` attributes preserved
+✅ **Semantic** - QTI's `view` and `class` attributes preserved
 ✅ **Uniform rendering** - Passages and items both use ItemPlayer
 ✅ **No loading** - Client resolves entities, player just renders
 ✅ **Simplified** - Removed unused/external reference fields
@@ -368,7 +369,7 @@ If you have old assessments with `content: string`:
   rubricBlocks: [
     {
       view: 'candidate',
-      use: 'passage',
+      class: 'stimulus',
       content: '<div><h2>Title</h2><p>Content...</p></div>'
     }
   ]
@@ -379,7 +380,7 @@ If you have old assessments with `content: string`:
   rubricBlocks: [
     {
       view: 'candidate',
-      use: 'passage',
+      class: 'stimulus',
       passage: {
         id: 'passage-001',
         name: 'Title',
@@ -411,7 +412,7 @@ If you have old assessments with `content: string`:
 
 ## Related Documents
 
-- [Demo Route](../apps/section-demos/src/routes/demo/[[id]]/+page.svelte)
+- [Demo Route](../../apps/section-demos/src/routes/demo/[[id]]/+page.svelte)
 - [QTI 3.0 Feature Support](./qti-3.0-feature-support.md)
 - [Paired Passages Design](./qti3-paired-passages-design.md)
-- [Architecture](./architecture.md)
+- [Architecture](../architecture/architecture.md)

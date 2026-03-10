@@ -9,9 +9,9 @@ Calculator providers for PIE assessment tools.
 Best for graphing and production calculator experiences.
 
 ```typescript
-import { DesmosCalculatorProvider } from "$lib/assessment-toolkit/tools";
+import { DesmosToolProvider } from "@pie-players/pie-assessment-toolkit";
 
-const provider = new DesmosCalculatorProvider();
+const provider = new DesmosToolProvider();
 
 await provider.initialize({
   apiKey: "your_desmos_api_key_here",

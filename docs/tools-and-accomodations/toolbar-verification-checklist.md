@@ -25,6 +25,8 @@ Use this checklist before and after each incremental toolbar refactor step.
 
 ## Optional Scripted Smoke Check
 
+> **Note:** The script `scripts/verify-toolbar-smoke.mjs` does not exist yet and needs to be created before this section is usable.
+
 - Run: `node scripts/verify-toolbar-smoke.mjs`
 - Override URL with: `TOOLBAR_SMOKE_URL=<url> node scripts/verify-toolbar-smoke.mjs`
 

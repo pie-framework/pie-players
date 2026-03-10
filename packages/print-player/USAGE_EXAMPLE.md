@@ -322,7 +322,7 @@ The new print player maintains the same API:
 
 ```diff
 - <script type="module" src="https://cdn.jsdelivr.net/npm/@pie-framework/pie-print@2.7.0/lib/pie-print.js"></script>
-+ <script type="module" src="https://cdn.jsdelivr.net/npm/@pie-element/print-player@1.0.0/dist/print-player.js"></script>
++ <script type="module" src="https://cdn.jsdelivr.net/npm/@pie-players/pie-print-player@1.0.0/dist/print-player.js"></script>
 ```
 
 The only change needed is the URL resolution for newer packages:

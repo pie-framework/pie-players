@@ -467,13 +467,11 @@ The splitpane section player is the primary container for assessment toolkit int
 
 See [Accessibility Catalogs Integration Guide](./accessibility-catalogs-integration-guide.md) for complete examples.
 
-## Future Providers
+## Additional Server-Side TTS Providers
 
-Potential additional server-side TTS providers:
-
-- **@pie-players/tts-server-google** - Google Cloud Text-to-Speech
-- **@pie-players/tts-server-azure** - Azure Cognitive Services TTS
-- **@pie-players/tts-server-elevenlabs** - ElevenLabs high-fidelity voices
+- **@pie-players/tts-server-google** - Google Cloud Text-to-Speech (implemented)
+- **@pie-players/tts-server-azure** - Azure Cognitive Services TTS (future)
+- **@pie-players/tts-server-elevenlabs** - ElevenLabs high-fidelity voices (future)
 
 All server providers follow the same pattern:
 

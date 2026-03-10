@@ -27,11 +27,12 @@ A text selection toolbar for highlighting and annotating text in the PIEoneer as
 
 ```svelte
 <script>
-  import ToolAnnotationToolbar from '$lib/tags/tool-annotation-toolbar/tool-annotation-toolbar.svelte';
+  // Consumers should import the CE entrypoint from the package exports:
+  import '@pie-players/pie-tool-annotation-toolbar/components/tool-annotation-toolbar-element';
 </script>
 
 <!-- Toolbar appears automatically when text is selected -->
-<ToolAnnotationToolbar />
+<pie-tool-annotation-toolbar />
 ```
 
 ## Props

@@ -58,7 +58,7 @@ Item players are Web Components that render individual PIE assessment items. The
 
 ### Player Types
 
-#### 1. IIFE Player (`<pie-iife-player>`)
+#### 1. IIFE Strategy (`<pie-item-player strategy="iife">`)
 
 **Purpose**: Load PIE elements dynamically from IIFE bundles (legacy format).
 
@@ -78,11 +78,9 @@ Item players are Web Components that render individual PIE assessment items. The
 - CDN support with bundle hash
 - Hosted mode (server-side vs client-side controllers)
 
-See: [packages/iife-player/src/README.md](../packages/iife-player/src/README.md)
-
 ---
 
-#### 2. ESM Player (`<pie-esm-player>`)
+#### 2. ESM Strategy (`<pie-item-player strategy="esm">`)
 
 **Purpose**: Load PIE elements from modern ESM packages with view-based architecture.
 
@@ -118,8 +116,6 @@ The ESM player supports loading different views/variants of elements through ESM
 - Easy maintenance with single business logic codebase
 - Graceful degradation with automatic fallback
 
-See: [packages/esm-player/src/README.md](../packages/esm-player/src/README.md)
-
 ---
 
 #### 3. Preloaded Static Strategy (`<pie-item-player strategy="preloaded">`)
@@ -141,7 +137,7 @@ See: [packages/esm-player/src/README.md](../packages/esm-player/src/README.md)
 - Smaller API payload (data only, no bundles)
 - CI/CD publishing from in-repo configs
 
-See: [docs/preloaded-player/README.md](./preloaded-player/README.md)
+See: [docs/preloaded-player/readme.md](../preloaded-player/readme.md)
 
 ---
 
@@ -161,13 +157,13 @@ See: [docs/preloaded-player/README.md](./preloaded-player/README.md)
 - PDF exports for archival/compliance
 - Print previews in content authoring systems
 
-See: [packages/print-player/README.md](../packages/print-player/README.md)
+See: [packages/print-player/README.md](../../packages/print-player/README.md)
 
 ---
 
 ### Player Comparison
 
-| Feature             | IIFE Player   | ESM Player  | Preloaded Static | Print Player |
+| Feature             | IIFE Strategy | ESM Strategy | Preloaded Static | Print Player |
 | ------------------- | ------------- | ----------- | ------------ | ------------ |
 | **Bundle Format**   | IIFE          | ESM         | Pre-bundled  | ESM          |
 | **Loading**         | Dynamic       | Dynamic     | Static       | Dynamic      |
@@ -215,8 +211,6 @@ See: `@pie-players/pie-players-shared/loaders` for implementation details.
 
 **Mode Switching**: Players accept a `mode` attribute/property that switches between delivery and authoring views, loading the appropriate element view variant.
 
-See: [docs/AUTHORING_MODE.md](AUTHORING_MODE.md)
-
 ---
 
 ## Assessment Toolkit
@@ -245,7 +239,7 @@ The splitpane custom element from `@pie-players/pie-section-player` is the prima
 
 **Integration Pattern**: Products initialize toolkit services and pass them as JavaScript properties to `pie-section-player-splitpane`. The player handles the rest automatically.
 
-See: [TOOL_PROVIDER_SYSTEM](./tool_provider_system.md) for integration details.
+See: [TOOL_PROVIDER_SYSTEM](../tools-and-accomodations/tool_provider_system.md) for integration details.
 
 ---
 
@@ -312,7 +306,7 @@ The **ToolkitCoordinator** is a centralized orchestrator for all PIE Assessment 
 
 **Architecture**: The coordinator manages five core services and provides convenience methods for tool configuration and state management.
 
-See: [packages/assessment-toolkit/src/README.md](../packages/assessment-toolkit/src/README.md) for API details.
+See: [packages/assessment-toolkit/README.md](../../packages/assessment-toolkit/README.md) for API details.
 
 ---
 
@@ -429,9 +423,9 @@ The toolkit includes 15+ **accessibility accommodations** and **assessment tools
 **Coordination**: Tools register with ToolCoordinator for z-index management, use HighlightCoordinator for text highlighting, and integrate with TTSService for read-aloud functionality.
 
 **Canonical Documentation**:
-- [Tools & Accommodations Architecture](tools-and-accomodations/architecture.md)
-- [Tool Development & Integration](../packages/assessment-toolkit/src/tools/README.md)
-- [Calculator Providers](../packages/assessment-toolkit/src/tools/calculators/README.md)
+- [Tools & Accommodations Architecture](../tools-and-accomodations/architecture.md)
+- [Tool Development & Integration](../../packages/assessment-toolkit/docs/TOOL_REGISTRY.md)
+- [Calculator Providers](../../packages/assessment-toolkit/src/tools/calculators/README.md)
 
 ---
 
@@ -499,7 +493,7 @@ Use section player with full assessment toolkit for complete section delivery wi
 **Complexity**: Medium
 **Use Case**: Production assessments with full accessibility support
 
-**See**: [TOOL_HOST_CONTRACT](./tool_host_contract.md) for runtime host/tool examples.
+**See**: [TOOL_HOST_CONTRACT](../tools-and-accomodations/tool_host_contract.md) for runtime host/tool examples.
 
 ---
 
@@ -517,17 +511,15 @@ Build your own assessment player using toolkit services for complete control ove
 
 ### Architecture Documentation
 
-- [Authoring Mode Guide](AUTHORING_MODE.md) - Complete authoring documentation
-- [Tools & Accommodations Architecture](tools-and-accomodations/architecture.md) - Tools system design
-- [Math Renderer Architecture](MATH-RENDERER-ARCHITECTURE.md) - Pluggable math rendering
+- [Tools & Accommodations Architecture](../tools-and-accomodations/architecture.md) - Tools system design
 - [Question Layout Engine Architecture](question-layout-engine-architecture.md) - Layout system design
 
 ### Package Documentation
 
-- [Assessment Toolkit README](../packages/assessment-toolkit/src/README.md) - Toolkit usage and QTI 3.0 examples
-- [Section Player README](../packages/section-player/README.md) - Complete section player API
-- [Tool Provider System](./tool_provider_system.md) - Service integration details
-- [Tools README](../packages/assessment-toolkit/src/tools/README.md) - Tool development guide
+- [Assessment Toolkit README](../../packages/assessment-toolkit/README.md) - Toolkit usage and QTI 3.0 examples
+- [Section Player README](../../packages/section-player/README.md) - Complete section player API
+- [Tool Provider System](../tools-and-accomodations/tool_provider_system.md) - Service integration details
+- [Tools README](../../packages/assessment-toolkit/docs/TOOL_REGISTRY.md) - Tool development guide
 
 ### Standards & Specifications
 

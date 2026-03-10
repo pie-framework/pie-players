@@ -71,6 +71,8 @@ mkdir -p src/routes/api/tts/voices
 
 Copy the example to: **`src/routes/api/tts/synthesize/+server.ts`**
 
+> **Note:** In SvelteKit, use `import { env } from '$env/static/private'` instead of `process.env` for server-side environment variables. The examples below use `process.env` for framework-agnostic readability.
+
 ```typescript
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
@@ -232,7 +234,7 @@ await ttsService.speak('Hello world, this is a test.', {
   <p>Hello world, this is a test of text to speech.</p>
 </div>
 
-<button on:click={handleSpeak}>Speak</button>
+<button onclick={handleSpeak}>Speak</button>
 ```
 
 ## Step 5: Add Redis Caching (Optional)
@@ -599,5 +601,5 @@ See the section-player demo for a complete working example:
 ## Support
 
 For issues or questions:
-- Check the [Tool Provider System](../../../docs/tool_provider_system.md)
-- See [TTS Synchronization Best Practices](../../../docs/tts-synchronization-best-practices.md)
+- Check the [Tool Provider System](../../../docs/tools-and-accomodations/tool_provider_system.md)
+- See [TTS Synchronization Best Practices](../../../docs/accessibility/tts-synchronization-best-practices.md)

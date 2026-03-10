@@ -18,22 +18,19 @@ A draggable and rotatable protractor overlay tool for geometry and measurement q
 
 ```svelte
 <script>
-  import { ToolProtractor } from '$lib/tags/tool-protractor';
-  import { toolCoordinator } from '$lib/assessment-toolkit/tools';
-  
-  let showProtractor = false;
-  
-  $: {
-    const state = toolCoordinator.getToolState('protractor');
-    showProtractor = state?.isVisible ?? false;
-  }
+  import '@pie-players/pie-tool-protractor/components/tool-protractor-element';
+  import { toolCoordinator } from '@pie-players/pie-assessment-toolkit';
+
+  let showProtractor = $derived(
+    toolCoordinator.getToolState('protractor')?.isVisible ?? false
+  );
 </script>
 
-<button on:click={() => toolCoordinator.toggleTool('protractor')}>
+<button onclick={() => toolCoordinator.toggleTool('protractor')}>
   Toggle Protractor
 </button>
 
-<ToolProtractor visible={showProtractor} toolId="protractor" />
+<pie-tool-protractor visible={showProtractor} toolId="protractor" />
 ```
 
 ## Props

@@ -7,7 +7,7 @@ Source of truth for publishability:
 - `scripts/check-pack-exports.mjs`
 - `scripts/check-pack-smoke.mjs`
 
-Publishable packages (32):
+Publishable packages (34):
 
 - `@pie-players/pie-assessment-toolkit`
 - `@pie-players/pie-calculator`
@@ -19,6 +19,7 @@ Publishable packages (32):
 - `@pie-players/pie-players-shared`
 - `@pie-players/pie-print-player`
 - `@pie-players/pie-section-player`
+- `@pie-players/pie-section-player-tools-shared`
 - `@pie-players/pie-section-player-tools-event-debugger`
 - `@pie-players/pie-section-player-tools-pnp-debugger`
 - `@pie-players/pie-section-player-tools-session-debugger`

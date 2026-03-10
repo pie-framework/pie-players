@@ -1,5 +1,7 @@
 # Tool Registry Architecture
 
+> **Note:** For the authoritative and up-to-date tool registry reference, see `packages/assessment-toolkit/docs/TOOL_REGISTRY.md`.
+
 **Date**: 2026-02-13
 **Status**: Approved Design
 **Purpose**: Define the two-pass tool visibility model with registry-based configuration
@@ -583,7 +585,7 @@ Why the default registrations exist:
 
 - They are the canonical contracts for built-in tools (semantic `toolId`, PNP mappings, visibility logic, and instance creation).
 - They keep orchestration and rendering decoupled: policies resolve `toolId`s, registrations decide UI behavior.
-- They provide safe defaults while still allowing integrators to replace behavior via `registry.override(...)`,
+- They provide safe defaults while still allowing integrators to replace behavior via `registry.register(...)` (re-registering a `toolId` overwrites the previous registration),
   `toolTagMap`, and `toolComponentFactories`.
 
 ```typescript
@@ -617,9 +619,9 @@ registry.register({
   createToolInstance: (ctx, opts) => { /* ... */ }
 });
 
-// Override calculator visibility logic
+// Override calculator visibility logic (re-registering overwrites)
 const calcReg = registry.get('calculator');
-registry.override({
+registry.register({
   ...calcReg,
   isVisibleInContext: (ctx) => {
     // Use MY advanced math detection
@@ -635,9 +637,9 @@ Clients can override how tools detect relevant content:
 ```typescript
 const registry = createDefaultToolRegistry();
 
-// Override calculator's math detection
+// Override calculator's math detection (re-registering overwrites)
 const calcReg = registry.get('calculator');
-registry.override({
+registry.register({
   ...calcReg,
   isVisibleInContext: (ctx) => {
     if (ctx.level === 'element') {
@@ -685,9 +687,9 @@ registry.register({
   createToolInstance: (ctx, opts) => { /* ... */ }
 });
 
-// 3. Override calculator visibility
+// 3. Override calculator visibility (re-registering overwrites)
 const calcReg = registry.get('calculator');
-registry.override({
+registry.register({
   ...calcReg,
   isVisibleInContext: (ctx) => myCustomMathDetection(ctx)
 });

@@ -187,6 +187,8 @@ const german = resolver.getAlternative('greeting', {
 
 ## Integration with AssessmentPlayer
 
+> **Note:** `AssessmentPlayer` does not exist as a class. Integration is through the section player custom elements (`pie-section-player-splitpane`) and `ToolkitCoordinator`. The examples below are conceptual pseudocode illustrating the pattern.
+
 ### Basic Setup
 
 ```typescript
@@ -265,9 +267,12 @@ await ttsService.speak('Hello world', {
 // If catalog not found: Falls back to generated TTS
 
 // Auto-detect from DOM element
+// Note: the actual method signature is ttsService.speak(text, { catalogId, contentElement }),
+// not ttsService.speakElement(). Example:
 const element = document.querySelector('[data-catalog-id]');
-await ttsService.speakElement(element);
-// Automatically uses catalog if data-catalog-id present
+const catalogId = element.getAttribute('data-catalog-id');
+await ttsService.speak(element.textContent, { catalogId, contentElement: element });
+// Automatically uses catalog if catalogId resolves
 ```
 
 ---

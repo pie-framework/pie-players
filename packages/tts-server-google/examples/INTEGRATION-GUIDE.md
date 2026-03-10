@@ -68,6 +68,8 @@ npm install @pie-players/tts-server-google
 
 **File: `src/routes/api/tts/synthesize/+server.ts`**
 
+> **Note:** In SvelteKit, use `import { env } from '$env/static/private'` instead of `process.env` for server-side environment variables. The examples below use `process.env` for framework-agnostic readability.
+
 ```typescript
 import { GoogleCloudTTSProvider } from '@pie-players/tts-server-google';
 import { json } from '@sveltejs/kit';
@@ -293,7 +295,7 @@ export async function getVoices(language?: string) {
       </select>
     </label>
 
-    <button on:click={handleSpeak} disabled={isPlaying}>
+    <button onclick={handleSpeak} disabled={isPlaying}>
       {isPlaying ? 'Speaking...' : 'Speak'}
     </button>
   </div>

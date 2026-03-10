@@ -18,12 +18,13 @@ A draggable and rotatable ruler measurement tool for the PIEoneer assessment pla
 
 ```svelte
 <script>
-  import ToolRuler from '$lib/tags/tool-ruler/tool-ruler.svelte';
+  // Consumers should import the CE entrypoint from the package exports:
+  import '@pie-players/pie-tool-ruler/components/tool-ruler-element';
 
-  let showRuler = false;
+  let showRuler = $state(false);
 </script>
 
-<ToolRuler visible={showRuler} toolId="ruler" />
+<pie-tool-ruler visible={showRuler} toolId="ruler" />
 ```
 
 ## Props

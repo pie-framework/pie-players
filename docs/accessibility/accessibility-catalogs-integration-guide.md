@@ -461,8 +461,10 @@ export class TTSService implements ITTSService {
 
 ### Integration with PNP
 
+> **Note:** `AssessmentPlayer` does not exist as a class. Integration is through the section player custom elements (`pie-section-player-splitpane`) and `ToolkitCoordinator`. The example below is conceptual pseudocode illustrating the pattern.
+
 ```typescript
-// When PNP activates TTS, automatically use catalogs
+// Conceptual example — actual integration uses ToolkitCoordinator + section player custom elements
 class AssessmentPlayer {
   private initializeTTS() {
     this.services.ttsService.setCatalogResolver(this.catalogResolver);
@@ -625,6 +627,8 @@ export const AccessiblePrompt: React.FC<{ content: string; catalogId?: string }>
 
 ### Example 1: Basic TTS with Catalogs
 
+> **Note:** `AssessmentPlayer` does not exist as a class. Integration is through the section player custom elements and `ToolkitCoordinator`. This example is conceptual pseudocode.
+
 ```typescript
 import { AssessmentPlayer } from '@pie-players/pie-assessment-toolkit';
 
@@ -694,6 +698,8 @@ const german = resolver.getAlternative('welcome-message', {
 
 ### Example 3: Sign Language Video Integration
 
+> **Note:** Sign language and braille integration (Phases 4-5) are aspirational and not yet implemented. The code examples below illustrate the intended future API design.
+
 ```typescript
 // Custom sign language video player service
 class SignLanguagePlayer {
@@ -713,7 +719,8 @@ class SignLanguagePlayer {
   }
 }
 
-// Integration with player
+// Conceptual integration — AssessmentPlayer does not exist as a class;
+// actual integration uses ToolkitCoordinator + section player custom elements.
 class AssessmentPlayer {
   private signLanguagePlayer: SignLanguagePlayer;
 

@@ -30,8 +30,8 @@ Example:
 
 ```html
 <script type="module">
-  import 'https://cdn.jsdelivr.net/npm/@pie-framework/pie-tool-toolbar@1.0.0/dist/tool-toolbar.js';
-  import { ToolCoordinator } from 'https://cdn.jsdelivr.net/npm/@pie-framework/pie-assessment-toolkit@0.1.0/dist/index.js';
+  import 'https://cdn.jsdelivr.net/npm/@pie-players/pie-toolbars@1.0.0/dist/tool-toolbar.js';
+  import { ToolCoordinator } from 'https://cdn.jsdelivr.net/npm/@pie-players/pie-assessment-toolkit@0.1.0/dist/index.js';
 
   // `pie-tool-toolbar` renders buttons without a coordinator, but the buttons won't do anything.
   // Wire a ToolCoordinator so tools can actually open/close.
@@ -51,7 +51,7 @@ Example:
 - CDN imports require the package to publish its built file under `dist/` and register the custom element tag (this repo’s player/tool packages do).
 - Tool coordination is done via **JS properties** (e.g. `toolbar.toolCoordinator = new ToolCoordinator()`), not HTML attributes.
 - Pin versions in production (`@x.y.z`) to avoid breaking changes.
-- For package compatibility tiers and source-export policy, see `docs/publish-compatibility-matrix.md`.
+- For the full list of publishable packages, see `docs/setup/publishable_packages.md`.
 
 ## Local ESM CDN (development, no publishing)
 

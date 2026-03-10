@@ -8,6 +8,8 @@ This document describes the architecture of the PIE assessment tools and accommo
 
 The architecture leverages modern web standards (CSS Custom Highlight API, Web Components) to provide a framework-agnostic solution that integrates seamlessly with PIE-based assessment platforms.
 
+> **Note:** For the authoritative tool registry reference, see `packages/assessment-toolkit/docs/TOOL_REGISTRY.md`.
+
 See also:
 
 - [`../wcag/readme.md`](../wcag/readme.md) for the WCAG reference library
@@ -107,8 +109,6 @@ The PIE Assessment Tools system provides:
 
 ## Component Architecture
 
-![Assessment Toolkit Components](../img/assessment-toolkit-components.png)
-
 ### High-Level Components
 
 **Section Player Container** (Primary Interface)
@@ -142,15 +142,9 @@ The PIE Assessment Tools system provides:
 - Gateway to translation and TTS
 - Annotation creation (highlight/underline)
 
-### Component Interactions
-
-![Component Interactions](../img/assessment-tk-component-interactions.png)
-
 ---
 
 ## Tool Hierarchy
-
-![Tool Tiers](../img/assessment-tool-tiers.png)
 
 ### Three-Tier Architecture
 
@@ -400,7 +394,7 @@ The runtime can register additional levels if your product needs custom scopes.
 {#each items as item}
   <div class="item-container">
     <!-- Question header with item-scoped tools -->
-    <question-toolbar
+    <pie-item-toolbar
       itemId={item.id}
       tools="tts,answerEliminator"
       toolCoordinator={coordinator.toolCoordinator}
@@ -876,20 +870,20 @@ Final Configuration:
 
 ### Future Enhancements
 
-🔮 **Accommodation Resolver**
+✅ **Accommodation Resolver** (now `PNPToolResolver`)
 - Three-tier merge logic
-- Currently conceptual
-- Manual configuration works
+- Implemented in `PNPToolResolver`
+- Manual configuration also works
 
 🔮 **Response Integration**
 - Calculator-to-response insertion
 - Capability-based discovery
 - Manual copy/paste works
 
-🔮 **Library Loader**
+✅ **Library Loader** (now `library-loader.ts`)
 - Dynamic dependency loading
 - Retry logic with fallbacks
-- Static imports work
+- Implemented in `library-loader.ts`
 
 ---
 

@@ -31,7 +31,7 @@ cp .env.example .env
 # AWS_SECRET_ACCESS_KEY=wJalr...
 ```
 
-**Setup guide**: [docs/aws-polly-setup-guide.md](docs/aws-polly-setup-guide.md)
+**Setup guide**: [docs/accessibility/aws-polly-setup-guide.md](docs/accessibility/aws-polly-setup-guide.md)
 
 ### 3. Build Packages
 
@@ -79,7 +79,7 @@ Browse all PIE element types with various accessibility profiles:
 ```
 pie-players/
 ├── apps/
-│   ├── example/          # Main demo application
+│   ├── item-demos/       # Item player demos
 │   ├── section-demos/    # Section player demos
 │   └── docs/            # Documentation site
 ├── packages/
@@ -127,7 +127,7 @@ bun run format         # Format code
 
 ### "AWS credentials not configured"
 
-**Solution**: Add AWS credentials to `.env`. See [AWS Polly Setup Guide](docs/aws-polly-setup-guide.md).
+**Solution**: Add AWS credentials to `.env`. See [AWS Polly Setup Guide](docs/accessibility/aws-polly-setup-guide.md).
 
 **Workaround**: Use Browser TTS (no credentials needed).
 
@@ -149,16 +149,16 @@ bun run build
 ## Documentation
 
 ### Quick References
-- [Environment Setup](docs/environment-setup.md) - Environment variables
-- [AWS Polly Setup](docs/aws-polly-setup-guide.md) - TTS credentials
+- [Environment Setup](docs/setup/environment-setup.md) - Environment variables
+- [AWS Polly Setup](docs/accessibility/aws-polly-setup-guide.md) - TTS credentials
 
 ### Architecture
-- [TTS Architecture](docs/tts-architecture.md) - Text-to-Speech system
-- [TTS Synchronization Best Practices](docs/tts-synchronization-best-practices.md) - Runtime behavior details
+- [TTS Architecture](docs/accessibility/tts-architecture.md) - Text-to-Speech system
+- [TTS Synchronization Best Practices](docs/accessibility/tts-synchronization-best-practices.md) - Runtime behavior details
 
 ### Integration Guides
 - [TTS Server API Integration](packages/tts-server-polly/examples/INTEGRATION-GUIDE.md) - Server-side TTS
-- [Accessibility Catalogs](docs/accessibility-catalogs-integration-guide.md) - QTI 3.0 catalogs
+- [Accessibility Catalogs](docs/accessibility/accessibility-catalogs-integration-guide.md) - QTI 3.0 catalogs
 
 ## Need Help?
 

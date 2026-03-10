@@ -41,9 +41,9 @@ interface RuntimeController extends SectionControllerHandle {
 		contentKind?: string;
 		timestamp?: number;
 	}) => void;
-	handleItemSessionChanged?: (
+	updateItemSession?: (
 		itemId: string,
-		session: unknown,
+		sessionDetail: unknown,
 	) => { eventDetail?: unknown } | null;
 	subscribe?: (listener: (event: SectionControllerEvent) => void) => () => void;
 	navigateToItem?: (index: number) => unknown;
@@ -162,9 +162,9 @@ export class SectionRuntimeEngine {
 		this.controller?.reportSectionError?.(args);
 	}
 
-	handleItemSessionChanged(itemId: string, session: unknown): unknown {
+	updateItemSession(itemId: string, session: unknown): unknown {
 		const canonicalId = this.getCanonicalItemId(itemId);
-		return this.controller?.handleItemSessionChanged?.(canonicalId, session) ?? null;
+		return this.controller?.updateItemSession?.(canonicalId, session) ?? null;
 	}
 
 	navigateToItem(index: number): unknown {

@@ -64,11 +64,11 @@ describe("SectionController external contract", () => {
 			assessmentId: "assessment-2",
 			view: "candidate",
 		});
-		controller.handleItemSessionChanged("canonical-item-2", {
+		controller.updateItemSession("canonical-item-2", {
 			session: { id: "session-2", data: [{ value: "x" }] },
 		});
 
-		const sessionState = controller.getSessionState();
+		const sessionState = controller.getSession();
 		expect(sessionState).not.toBeNull();
 		expect(sessionState?.currentItemIndex).toBe(0);
 		expect(sessionState?.itemSessions["canonical-item-2"]).toEqual(
@@ -77,6 +77,47 @@ describe("SectionController external contract", () => {
 				session: {
 					id: "session-2",
 					data: [{ value: "x" }],
+				},
+			}),
+		);
+	});
+
+	test("preserves item sessions across updateInput for existing controller", async () => {
+		const controller = new SectionController();
+		const item = makeItem("runtime-item-4");
+		const section = {
+			identifier: "section-4",
+			assessmentItemRefs: [{ identifier: "canonical-item-4", item }],
+			rubricBlocks: [],
+		} as unknown as AssessmentSection;
+
+		await controller.initialize({
+			section,
+			sectionId: "section-4",
+			assessmentId: "assessment-4",
+			view: "candidate",
+		});
+		controller.updateItemSession("canonical-item-4", {
+			session: { id: "session-4", data: [{ value: "persisted" }] },
+		});
+
+		await controller.updateInput({
+			section: {
+				...section,
+				title: "Section 4 updated",
+			},
+			sectionId: "section-4",
+			assessmentId: "assessment-4",
+			view: "candidate",
+		});
+
+		const session = controller.getSession();
+		expect(session?.itemSessions["canonical-item-4"]).toEqual(
+			expect.objectContaining({
+				itemIdentifier: "canonical-item-4",
+				session: {
+					id: "session-4",
+					data: [{ value: "persisted" }],
 				},
 			}),
 		);

@@ -8,7 +8,12 @@ export interface SectionDemoInfo {
 	id: string;
 	name: string;
 	description: string;
-	section: AssessmentSection;
+	section?: AssessmentSection;
+	sections?: Array<{
+		id: string;
+		name: string;
+		section: AssessmentSection;
+	}>;
 }
 
 export const sectionDemos: Record<string, SectionDemoInfo> = {
@@ -36,6 +41,24 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		description:
 			"Three items with passage - demonstrates SSML extraction, AWS SSML tags, and multi-level TTS",
 		section: demo4Section,
+	},
+	"session-persistence": {
+		id: "session-persistence",
+		name: "Session Persistence Across Sections",
+		description:
+			"Switch between section pages and keep each section's item sessions via section persistence strategy",
+		sections: [
+			{
+				id: "algebra-basics",
+				name: "Algebra Basics",
+				section: demo1Section,
+			},
+			{
+				id: "reading-with-passage",
+				name: "Reading with Passage",
+				section: demo2Section,
+			},
+		],
 	},
 };
 

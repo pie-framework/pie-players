@@ -45,7 +45,8 @@ import type {
 	SectionControllerFactoryDefaults,
 	SectionControllerHandle,
 	SectionControllerKey,
-	SectionControllerPersistenceStrategy,
+	SectionSessionPersistenceConfig,
+	SectionSessionPersistenceStrategy,
 	SectionPersistenceFactoryDefaults,
 } from "./section-controller-types.js";
 export type {
@@ -55,7 +56,8 @@ export type {
 	SectionControllerFactoryDefaults,
 	SectionControllerHandle,
 	SectionControllerKey,
-	SectionControllerPersistenceStrategy,
+	SectionSessionPersistenceConfig,
+	SectionSessionPersistenceStrategy,
 	SectionControllerRuntimeState,
 	SectionControllerSessionState,
 	SectionPersistenceFactoryDefaults,
@@ -186,6 +188,63 @@ export interface SectionEventSubscriptionArgs {
 	itemIds?: readonly string[];
 }
 
+export type SectionItemEventType = Exclude<
+	SectionControllerEventType,
+	| "section-navigation-change"
+	| "section-loading-complete"
+	| "section-items-complete-changed"
+	| "section-error"
+>;
+
+export type SectionScopedEventType = Extract<
+	SectionControllerEventType,
+	| "section-navigation-change"
+	| "section-loading-complete"
+	| "section-items-complete-changed"
+	| "section-error"
+>;
+
+export type SectionItemEvent = Extract<
+	SectionControllerEvent,
+	{ type: SectionItemEventType }
+>;
+
+export type SectionScopedEvent = Extract<
+	SectionControllerEvent,
+	{ type: SectionScopedEventType }
+>;
+
+export interface SectionItemEventSubscriptionArgs {
+	sectionId?: string;
+	attemptId?: string;
+	listener: (event: SectionItemEvent) => void;
+	eventTypes?: readonly SectionItemEventType[];
+	itemIds?: readonly string[];
+}
+
+export interface SectionScopedEventSubscriptionArgs {
+	sectionId?: string;
+	attemptId?: string;
+	listener: (event: SectionScopedEvent) => void;
+	eventTypes?: readonly SectionScopedEventType[];
+}
+
+const SECTION_ITEM_EVENT_TYPES: readonly SectionItemEventType[] = [
+	"item-selected",
+	"item-session-data-changed",
+	"item-session-meta-changed",
+	"item-complete-changed",
+	"content-loaded",
+	"item-player-error",
+];
+
+const SECTION_SCOPED_EVENT_TYPES: readonly SectionScopedEventType[] = [
+	"section-navigation-change",
+	"section-loading-complete",
+	"section-items-complete-changed",
+	"section-error",
+];
+
 export interface ToolkitCoordinatorHooks {
 	onError?: (error: Error, context: ToolkitErrorContext) => void;
 	onTTSError?: (error: Error, context: ToolkitErrorContext) => void;
@@ -238,12 +297,12 @@ export interface ToolkitCoordinatorHooks {
 		defaults: SectionControllerFactoryDefaults,
 	) => SectionControllerHandle | Promise<SectionControllerHandle>;
 
-	createSectionPersistence?: (
+	createSectionSessionPersistence?: (
 		context: SectionControllerContext,
 		defaults: SectionPersistenceFactoryDefaults,
 	) =>
-		| SectionControllerPersistenceStrategy
-		| Promise<SectionControllerPersistenceStrategy>;
+		| SectionSessionPersistenceStrategy
+		| Promise<SectionSessionPersistenceStrategy>;
 
 	onSectionControllerReady?: (
 		context: SectionControllerContext,
@@ -324,7 +383,7 @@ export class ToolkitCoordinator {
 	>();
 	private readonly sectionPersistenceStrategies = new Map<
 		string,
-		SectionControllerPersistenceStrategy
+		SectionSessionPersistenceStrategy
 	>();
 	private readonly sectionControllerLifecycleListeners = new Set<
 		(event: SectionControllerLifecycleEvent) => void
@@ -448,7 +507,7 @@ export class ToolkitCoordinator {
 		return `${key.assessmentId}::${key.sectionId}::${key.attemptId || ""}`;
 	}
 
-	private createDefaultSectionPersistence(): SectionControllerPersistenceStrategy {
+	private createDefaultSectionPersistence(): SectionSessionPersistenceStrategy {
 		const storage = (() => {
 			try {
 				if (typeof window === "undefined") return null;
@@ -462,7 +521,7 @@ export class ToolkitCoordinator {
 			return `pie:section-controller:v1:${assessmentId}:${sectionId}:${attemptId || "default"}`;
 		};
 		return {
-			async load(context) {
+			async loadSession(context) {
 				if (!storage) return null;
 				const value = storage.getItem(getStorageKey(context));
 				if (!value) return null;
@@ -472,11 +531,11 @@ export class ToolkitCoordinator {
 					return null;
 				}
 			},
-			async save(context, snapshot) {
+			async saveSession(context, session) {
 				if (!storage) return;
-				storage.setItem(getStorageKey(context), JSON.stringify(snapshot));
+				storage.setItem(getStorageKey(context), JSON.stringify(session));
 			},
-			async clear(context) {
+			async clearSession(context) {
 				if (!storage) return;
 				storage.removeItem(getStorageKey(context));
 			},
@@ -485,7 +544,7 @@ export class ToolkitCoordinator {
 
 	private async resolveSectionPersistence(
 		context: SectionControllerContext,
-	): Promise<SectionControllerPersistenceStrategy> {
+	): Promise<SectionSessionPersistenceStrategy> {
 		const cacheKey = this.getSectionControllerMapKey(context.key);
 		const existing = this.sectionPersistenceStrategies.get(cacheKey);
 		if (existing) return existing;
@@ -494,7 +553,7 @@ export class ToolkitCoordinator {
 			createDefaultPersistence: () => this.createDefaultSectionPersistence(),
 		};
 		const strategy =
-			(await this.hooks.createSectionPersistence?.(context, defaults)) ??
+			(await this.hooks.createSectionSessionPersistence?.(context, defaults)) ??
 			(await defaults.createDefaultPersistence());
 		this.sectionPersistenceStrategies.set(cacheKey, strategy);
 		return strategy;
@@ -703,11 +762,11 @@ export class ToolkitCoordinator {
 			? new Set(args.eventTypes)
 			: null;
 		const itemIdFilter = args.itemIds ? new Set(args.itemIds) : null;
-		const unsubscribeController = subscribe.call(controller, (event) => {
+		const shouldDeliverEvent = (event: SectionControllerEvent): boolean => {
 			if (eventTypeFilter || itemIdFilter) {
 				const eventType = event?.type || null;
 				if (eventTypeFilter && (!eventType || !eventTypeFilter.has(eventType))) {
-					return;
+					return false;
 				}
 				if (itemIdFilter) {
 					const eventItemCandidates = new Set<string>();
@@ -736,12 +795,34 @@ export class ToolkitCoordinator {
 						itemIdFilter.has(itemId),
 					);
 					if (!hasMatchingItem) {
-						return;
+						return false;
 					}
 				}
 			}
+			return true;
+		};
+		const unsubscribeController = subscribe.call(controller, (event) => {
+			if (!shouldDeliverEvent(event)) return;
 			args.listener(event);
 		});
+
+		const runtimeState = controller.getRuntimeState?.();
+		if (
+			runtimeState?.loadingComplete &&
+			runtimeState.totalRegistered > 0 &&
+			runtimeState.totalLoaded >= runtimeState.totalRegistered
+		) {
+			const loadingCompleteEvent: SectionControllerEvent = {
+				type: "section-loading-complete",
+				totalRegistered: runtimeState.totalRegistered,
+				totalLoaded: runtimeState.totalLoaded,
+				currentItemIndex: runtimeState.currentItemIndex,
+				timestamp: Date.now(),
+			};
+			if (shouldDeliverEvent(loadingCompleteEvent)) {
+				args.listener(loadingCompleteEvent);
+			}
+		}
 
 		const detach = () => {
 			const current = this.sectionEventSubscriptions.get(subscriptionKey);
@@ -754,6 +835,41 @@ export class ToolkitCoordinator {
 
 		this.sectionEventSubscriptions.set(subscriptionKey, detach);
 		return detach;
+	}
+
+	/**
+	 * Subscribe to item-scoped controller events.
+	 *
+	 * Prefer this helper for answer/session/navigation events tied to item IDs.
+	 * Use `subscribeSectionEvents` directly only when you need mixed item+section
+	 * filtering behavior.
+	 */
+	public subscribeItemEvents(args: SectionItemEventSubscriptionArgs): () => void {
+		return this.subscribeSectionEvents({
+			sectionId: args.sectionId,
+			attemptId: args.attemptId,
+			eventTypes: args.eventTypes || SECTION_ITEM_EVENT_TYPES,
+			itemIds: args.itemIds,
+			listener: args.listener as (event: SectionControllerEvent) => void,
+		});
+	}
+
+	/**
+	 * Subscribe to section-scoped controller events.
+	 *
+	 * Prefer this helper for section lifecycle/loading/completion/error state.
+	 * Section-scoped events do not carry item identifiers, so this helper
+	 * intentionally does not expose `itemIds` filtering.
+	 */
+	public subscribeSectionLifecycleEvents(
+		args: SectionScopedEventSubscriptionArgs,
+	): () => void {
+		return this.subscribeSectionEvents({
+			sectionId: args.sectionId,
+			attemptId: args.attemptId,
+			eventTypes: args.eventTypes || SECTION_SCOPED_EVENT_TYPES,
+			listener: args.listener as (event: SectionControllerEvent) => void,
+		});
 	}
 
 	private resolveSectionControllerForSubscription(args: {
@@ -857,6 +973,9 @@ export class ToolkitCoordinator {
 		if (existingController) {
 			this.sectionControllerKeys.set(mapKey, key);
 			if (args.updateExisting !== false) {
+				// Existing controllers keep their in-memory session state across
+				// input refresh; updateInput should rebuild composition/runtime view
+				// without resetting responses.
 				await existingController.updateInput?.(args.input);
 			}
 			return existingController;
@@ -879,8 +998,10 @@ export class ToolkitCoordinator {
 				(await this.hooks.createSectionController?.(context, defaults)) ??
 				(await defaults.createDefaultController());
 
-			await controller.setPersistenceStrategy?.(persistence);
-			await controller.setPersistenceContext?.(context);
+			await controller.configureSessionPersistence?.({
+				strategy: persistence,
+				context,
+			});
 			await controller.initialize?.(args.input);
 			await controller.hydrate?.();
 
@@ -970,7 +1091,7 @@ export class ToolkitCoordinator {
 			});
 			if (args.clearPersistence) {
 				const strategy = this.sectionPersistenceStrategies.get(mapKey);
-				await strategy?.clear?.(context);
+				await strategy?.clearSession?.(context);
 			}
 			this.sectionPersistenceStrategies.delete(mapKey);
 		}

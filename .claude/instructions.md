@@ -127,7 +127,7 @@ These checks ensure:
 
 ### Debugger Panel Contract
 
-- Debugger panels are consumers, not state owners: they should render controller state reads (`getRuntimeState` / `getSessionState`) plus forward controller events.
+- Debugger panels are consumers, not state owners: they should render controller state reads (`getRuntimeState` / `getSession`) plus forward controller events.
 - Do not rely on event replay for baseline panel state; use explicit state reads for initialization.
 
 ### Theming Contract (Shadow-Safe)

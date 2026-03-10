@@ -14,27 +14,31 @@ For a quick-start walkthrough with data layout and theming, see [assessment-tool
 2. [Installation](#installation)
 3. [Custom Elements](#custom-elements)
 4. [Basic Setup](#basic-setup)
-5. [Runtime Configuration](#runtime-configuration)
-6. [Tool Configuration](#tool-configuration)
+5. [Section Data Shape](#section-data-shape)
+6. [Runtime Configuration](#runtime-configuration)
+7. [Tool Configuration](#tool-configuration)
    - [Tool Placement and Policy](#tool-placement-and-policy)
    - [TTS (Text-to-Speech)](#tts-text-to-speech)
    - [Calculator (Desmos)](#calculator-desmos)
+   - [Theme (Color Scheme and Accessibility)](#theme-color-scheme-and-accessibility)
    - [Other Tools](#other-tools)
-7. [The Section Controller](#the-section-controller)
+8. [The Section Controller](#the-section-controller)
    - [What It Is](#what-it-is)
    - [Obtaining a Controller Handle](#obtaining-a-controller-handle)
    - [Subscribing to Events](#subscribing-to-events)
    - [Controller Event Types](#controller-event-types)
    - [Pulling State](#pulling-state)
-8. [Custom Element Events](#custom-element-events)
-9. [Navigation](#navigation)
-10. [Session Persistence](#session-persistence)
-11. [Lifecycle Hooks](#lifecycle-hooks)
-12. [Angular Integration Example](#angular-integration-example)
-13. [SvelteKit Integration Example](#sveltekit-integration-example)
-14. [Vanilla JS / Framework-Agnostic Example](#vanilla-js--framework-agnostic-example)
-15. [CSS / Layout Requirements](#css--layout-requirements)
-16. [Troubleshooting](#troubleshooting)
+9. [Custom Element Events](#custom-element-events)
+10. [Readiness Lifecycle](#readiness-lifecycle)
+11. [Navigation](#navigation)
+12. [Multi-Section Assessments](#multi-section-assessments)
+13. [Session Persistence](#session-persistence)
+14. [Lifecycle Hooks](#lifecycle-hooks)
+15. [Angular Integration Example](#angular-integration-example)
+16. [SvelteKit Integration Example](#sveltekit-integration-example)
+17. [Vanilla JS / Framework-Agnostic Example](#vanilla-js--framework-agnostic-example)
+18. [CSS / Layout Requirements](#css--layout-requirements)
+19. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -160,6 +164,130 @@ player.tools = {
 
 ---
 
+## Section Data Shape
+
+The `section` property accepts an `AssessmentSection` object. This is the data contract your backend must produce.
+
+### AssessmentSection
+
+| Field | Required | Description |
+|---|---|---|
+| `identifier` | **Yes** | Unique section identifier (used for session keys and navigation) |
+| `title` | No | Display title |
+| `keepTogether` | No | `true` = page mode (all items visible at once), `false` or omitted = item-by-item navigation |
+| `assessmentItemRefs` | No | Array of item references (defaults to `[]`) |
+| `rubricBlocks` | No | Passages, instructions, and rubrics (defaults to `[]`) |
+
+### AssessmentItemRef (each item in the section)
+
+| Field | Required | Description |
+|---|---|---|
+| `identifier` | **Yes** | Unique item identifier within the section |
+| `item` | **Yes** (to render) | Resolved `ItemEntity` with its PIE config — refs without `item` are skipped |
+| `title` | No | Display title |
+| `required` | No | Whether the item is required |
+| `settings` | No | Item-level tool settings |
+
+### ItemEntity / PassageEntity
+
+Both items and passages carry a `config` object with the PIE rendering payload:
+
+| Field | Required | Description |
+|---|---|---|
+| `config.markup` | **Yes** | HTML markup with PIE element tags (e.g. `<multiple-choice id="q1">`) |
+| `config.elements` | **Yes** | Map of element tag names to PIE element packages |
+| `config.models` | **Yes** | Array of model objects that configure each element |
+| `id` | No | Entity identifier (synthesized if missing) |
+| `name` | No | Human-readable name |
+
+### RubricBlock (passages and instructions)
+
+| Field | Required | Description |
+|---|---|---|
+| `view` | **Yes** | Must match the player view — typically `"candidate"` for student-facing content |
+| `class` | No | `"stimulus"` for passages, `"instructions"` for instructions, `"rubric"` for rubrics |
+| `passage` | No | `PassageEntity` with a PIE config (for rich passage content) |
+| `content` | No | Simple HTML string (alternative to `passage`) |
+| `identifier` | No | Block identifier |
+
+### Minimal example: one item
+
+```ts
+player.section = {
+  identifier: 'section-1',
+  assessmentItemRefs: [
+    {
+      identifier: 'item-1',
+      item: {
+        id: 'item-1',
+        config: {
+          markup: '<multiple-choice id="q1"></multiple-choice>',
+          elements: {
+            'multiple-choice': '@pie-element/multiple-choice@latest',
+          },
+          models: [
+            {
+              id: 'q1',
+              element: 'multiple-choice',
+              prompt: 'Which planet is closest to the Sun?',
+              choiceMode: 'radio',
+              choices: [
+                { label: 'Mercury', value: 'A' },
+                { label: 'Venus', value: 'B' },
+                { label: 'Earth', value: 'C' },
+              ],
+            },
+          ],
+        },
+      },
+    },
+  ],
+};
+```
+
+### Example with passage and item
+
+```ts
+player.section = {
+  identifier: 'reading-section',
+  title: 'Reading Comprehension',
+  keepTogether: true,
+  rubricBlocks: [
+    {
+      identifier: 'passage-1',
+      view: 'candidate',
+      class: 'stimulus',
+      passage: {
+        id: 'passage-1',
+        name: 'The Water Cycle',
+        config: {
+          markup: '<div class="passage-content"><h2>The Water Cycle</h2><p>Water evaporates...</p></div>',
+          elements: {},
+          models: [],
+        },
+      },
+    },
+  ],
+  assessmentItemRefs: [
+    {
+      identifier: 'item-1',
+      item: {
+        id: 'item-1',
+        config: {
+          markup: '<multiple-choice id="q1"></multiple-choice>',
+          elements: { 'multiple-choice': '@pie-element/multiple-choice@latest' },
+          models: [{ id: 'q1', element: 'multiple-choice', prompt: '...' }],
+        },
+      },
+    },
+  ],
+};
+```
+
+For a full walkthrough of data layout, see the [getting-started guide](./assessment-toolkit-section-player-getting-started.md).
+
+---
+
 ## Runtime Configuration
 
 All configuration can be passed as individual props **or** bundled into a single `runtime` object. When `runtime` is set, its fields take precedence over individual props.
@@ -172,7 +300,7 @@ All configuration can be passed as individual props **or** bundled into a single
 | `section-id` | `string` | Section identifier |
 | `attempt-id` | `string` | Attempt identifier (optional, enables multi-attempt isolation) |
 | `section` | `object` | `AssessmentSection` payload (JS property) |
-| `env` | `object` | `{ mode, role }` (JS property) |
+| `env` | `object` | `{ mode, role }` — controls rendering behavior (JS property, see below) |
 | `tools` | `object` | Tool config (JS property, see below) |
 | `player-type` | `string` | `"iife"` (default), `"esm"`, or `"preloaded"` |
 | `lazy-init` | `boolean` | Defer async service init until needed (default `true`) |
@@ -195,6 +323,45 @@ player.runtime = {
   accessibility: { catalogs: [], language: 'en-US' },
   env: { mode: 'gather', role: 'student' },
 };
+```
+
+### Environment: mode and role
+
+The `env` object controls how items are rendered and what features are available.
+
+**`mode`** — determines the rendering mode for item players:
+
+| Value | Description |
+|---|---|
+| `"gather"` | Default. Student answers items interactively. |
+| `"view"` | Read-only review of submitted answers. |
+| `"evaluate"` | Scored view showing correctness feedback. |
+| `"browse"` | Browse-only preview (no session changes recorded). |
+| `"author"` | Authoring mode (switches to authoring-specific UI). |
+
+**`role`** — determines the viewer's role:
+
+| Value | Description |
+|---|---|
+| `"student"` | Default. Standard student/candidate view. |
+| `"instructor"` | Enables correct response display and switches to scorer view. |
+
+**Behavioral effects:**
+
+- `mode` + `role` determine the section view: `"candidate"` (student), `"scorer"` (instructor), or `"author"`.
+- `mode === "author"` switches item players to their authoring view.
+- `role === "instructor"` resolves the section view to `"scorer"`, which individual PIE element controllers may use to enable correct response display.
+- `mode === "evaluate"` enables scored feedback UI on items.
+
+```ts
+// Student taking a test (default)
+player.env = { mode: 'gather', role: 'student' };
+
+// Teacher reviewing student answers with correct responses shown
+player.env = { mode: 'view', role: 'instructor' };
+
+// Scored review
+player.env = { mode: 'evaluate', role: 'student' };
 ```
 
 ---
@@ -318,6 +485,53 @@ app.get('/api/tools/desmos/auth', (req, res) => {
 
 If no `authFetcher` is provided, the toolkit attempts `GET /api/tools/desmos/auth` by default.
 
+### Theme (Color Scheme and Accessibility)
+
+The theme tool provides an accessibility-focused color scheme picker (WCAG 2.1 Level AA) and font size scaling.
+
+**Host setup:** Wrap the section player with a `<pie-theme>` element and import the theme CSS:
+
+```ts
+import '@pie-players/pie-theme';
+import '@pie-players/pie-theme/tokens.css';
+import '@pie-players/pie-theme/color-schemes.css';
+import '@pie-players/pie-theme/font-sizes.css';
+```
+
+```html
+<pie-theme scope="document" theme="auto" scheme="default">
+  <pie-section-player-splitpane ...></pie-section-player-splitpane>
+</pie-theme>
+```
+
+The `<pie-theme>` element resolves `--pie-*` CSS custom properties in order: base theme (`"light"`, `"dark"`, `"auto"`), provider adapter, selected scheme, then explicit `variables` overrides.
+
+**Built-in color schemes:** Black on White, White on Black, Rose on Green, Yellow on Blue, and other high-contrast options. The student selects a scheme from the tool dropdown; the selection persists in `localStorage`.
+
+**Font size scaling:** Set the `data-font-size` attribute on any ancestor element (e.g. `<pie-theme>`, the document root, or a wrapper div) to `"normal"`, `"large"`, `"xlarge"`, or `"xxlarge"`. The theme CSS uses `[data-font-size]` selectors to adjust `--pie-font-scale` (1, 1.25, 1.5, 1.75).
+
+**Custom color schemes:**
+
+```ts
+import { registerPieColorSchemes } from '@pie-players/pie-theme';
+
+registerPieColorSchemes([
+  {
+    id: 'corporate-dark',
+    name: 'Corporate Dark',
+    variables: {
+      '--pie-background': '#1a1a2e',
+      '--pie-text': '#e0e0e0',
+      '--pie-primary': '#0f3460',
+    },
+  },
+]);
+```
+
+**DaisyUI bridge:** If your host app uses DaisyUI, install `@pie-players/pie-theme-daisyui` to automatically map DaisyUI tokens to `--pie-*` variables.
+
+**Key CSS custom properties:** `--pie-text`, `--pie-background`, `--pie-primary`, `--pie-border`, `--pie-correct`, `--pie-incorrect`, `--pie-font-scale`, and many more. See the `tokens.css` file for the full list.
+
 ### Other Tools
 
 Most other tools (annotation toolbar, answer eliminator, line reader, ruler, protractor) work out of the box with just placement configuration — no provider config needed. Simply include them in the relevant `placement` array and install any required packages.
@@ -411,40 +625,50 @@ const unsubscribe = controller.subscribe((event) => {
 unsubscribe();
 ```
 
-#### Via ToolkitCoordinator (with optional filtering)
+#### Via ToolkitCoordinator (helper-first pattern)
 
-`subscribeSectionEvents` supports event type and item ID filtering and handles subscription replacement automatically.
+Use helper subscriptions for the common cases:
+
+- `subscribeItemEvents(...)` for item-scoped events (`item-selected`, session changes, item completion, content loaded, item player errors)
+- `subscribeSectionLifecycleEvents(...)` for section-scoped events (`section-loading-complete`, `section-items-complete-changed`, `section-navigation-change`, `section-error`)
+
+Use `subscribeSectionEvents(...)` only for advanced/custom filtering mixes.
 
 **Target resolution rules (fail-hard):**
 - Prefer passing explicit `sectionId` (and `attemptId` when relevant).
 - `sectionId` may be omitted only when exactly one active section controller exists for the coordinator.
 - `attemptId` without `sectionId` is invalid and throws.
-- If no controller matches, or resolution is ambiguous, `subscribeSectionEvents` throws an `Error` (it does not silently no-op).
+- If no controller matches, or resolution is ambiguous, the subscription helpers throw an `Error` (they do not silently no-op).
 
 ```ts
 player.addEventListener('toolkit-ready', (e) => {
   const coordinator = e.detail.coordinator;
 
-  const unsubscribe = coordinator.subscribeSectionEvents({
+  const unsubscribeItem = coordinator.subscribeItemEvents({
     sectionId: 'section-1',
     attemptId: 'attempt-abc',
-
-    // Only receive these event types (omit for all)
-    eventTypes: [
-      'item-session-data-changed',
-      'section-items-complete-changed',
-      'section-loading-complete'
-    ],
-
-    // Only events for these items (omit for all)
     itemIds: ['item-1', 'item-2'],
-
     listener: (event) => {
-      handleControllerEvent(event);
+      handleItemEvent(event);
     }
   });
+
+  const unsubscribeSection = coordinator.subscribeSectionLifecycleEvents({
+    sectionId: 'section-1',
+    attemptId: 'attempt-abc',
+    listener: (event) => {
+      handleSectionLifecycleEvent(event);
+    }
+  });
+
+  const unsubscribe = () => {
+    unsubscribeItem?.();
+    unsubscribeSection?.();
+  };
 });
 ```
+
+> `itemIds` filtering is item-scoped only. Section-scoped events like `section-loading-complete` should be subscribed through `subscribeSectionLifecycleEvents(...)` (or a generic subscription without `itemIds`).
 
 ### Controller Event Types
 
@@ -490,7 +714,7 @@ const state = controller.getRuntimeState();
 #### Session state (for persistence)
 
 ```ts
-const session = controller.getSessionState();
+const session = controller.getSession();
 // {
 //   currentItemIndex: 2,
 //   visitedItemIdentifiers: ['item-1', 'item-2', 'item-3'],
@@ -554,32 +778,104 @@ player.addEventListener('toolkit-ready', (e) => {
   const coordinator = e.detail?.coordinator;
   if (!coordinator) return;
 
-  // Use coordinator/controller events for ongoing client logic.
+  // Use coordinator/controller helper subscriptions for ongoing client logic.
   unsubscribe?.();
-  unsubscribe = coordinator.subscribeSectionEvents({
-    // Preferred: explicit IDs for deterministic targeting.
+  const unsubscribeItem = coordinator.subscribeItemEvents({
     sectionId: 'section-1',
     attemptId: 'attempt-abc',
-    eventTypes: ['item-session-data-changed', 'section-items-complete-changed'],
+    eventTypes: ['item-session-data-changed'],
     listener: (event) => {
-      if (event.type === 'item-session-data-changed') {
-        persistAnswer(event.canonicalItemId, event.session);
-      }
+      persistAnswer(event.canonicalItemId, event.session);
     },
   });
+  const unsubscribeSection = coordinator.subscribeSectionLifecycleEvents({
+    sectionId: 'section-1',
+    attemptId: 'attempt-abc',
+    eventTypes: ['section-items-complete-changed'],
+    listener: (event) => {
+      updateCompletion(event.complete, event.completedCount, event.totalItems);
+    },
+  });
+  unsubscribe = () => {
+    unsubscribeItem?.();
+    unsubscribeSection?.();
+  };
 });
 ```
 
-If your host guarantees a single active controller, `sectionId` can be omitted intentionally:
+If your host guarantees a single active controller, `sectionId` can be omitted intentionally for helpers as well:
 
 ```ts
-unsubscribe = coordinator.subscribeSectionEvents({
+unsubscribe = coordinator.subscribeItemEvents({
   eventTypes: ['item-session-data-changed'],
   listener: (event) => {
-    if (event.type === 'item-session-data-changed') {
-      persistAnswer(event.canonicalItemId, event.session);
-    }
+    persistAnswer(event.canonicalItemId, event.session);
   },
+});
+```
+
+---
+
+## Readiness Lifecycle
+
+The section player goes through a sequence of readiness phases as it initializes. Understanding this sequence helps you decide when to show loading indicators, enable interaction, or start recording analytics.
+
+![Host initialization and readiness sequence](../img/host-init-readiness-sequence-1-1773167157913.jpg)
+
+### Phases
+
+| Phase | Meaning |
+|---|---|
+| `bootstrapping` | Custom element mounted, waiting for toolkit initialization |
+| `loading` | Toolkit and section runtime initialized, item elements loading |
+| `interaction-ready` | Section runtime ready — safe for student interaction |
+| `ready` | All item elements fully loaded — safe for analytics and complete rendering |
+| `error` | A runtime error occurred |
+
+### Events
+
+| Event | Fires | Use for |
+|---|---|---|
+| `readiness-change` | Every phase transition | Driving a loading indicator or progress bar |
+| `interaction-ready` | Once, when the section runtime is initialized | Hiding a loading spinner, enabling the student UI |
+| `ready` | Once, when all item elements have loaded | Starting analytics, recording "assessment started" |
+
+### Startup event order
+
+When the player initializes, events fire in this order:
+
+1. `toolkit-ready` — `ToolkitCoordinator` is available; capture it here
+2. `section-ready` — section runtime initialized, controller created
+3. `section-controller-ready` — `SectionControllerHandle` available
+4. `readiness-change` (phase: `loading` -> `interaction-ready`)
+5. `interaction-ready` — safe for student interaction
+6. `readiness-change` (phase: `interaction-ready` -> `ready`)
+7. `ready` — all content loaded
+
+### Readiness modes
+
+The player supports two readiness policies:
+
+- **Progressive** (default): `interaction-ready` fires as soon as the section runtime is initialized, before all item elements have loaded. Students can start interacting while remaining items load in the background.
+- **Strict**: `interaction-ready` is held until all item elements have loaded — both `interaction-ready` and `ready` fire together.
+
+### Example: loading state management
+
+```ts
+const player = document.querySelector('pie-section-player-splitpane');
+
+player.addEventListener('readiness-change', (e) => {
+  const { phase, interactionReady, allLoadingComplete } = e.detail;
+  updateLoadingUI(phase);
+});
+
+player.addEventListener('interaction-ready', () => {
+  hideLoadingSpinner();
+  enableStudentControls();
+});
+
+player.addEventListener('ready', () => {
+  analytics.track('assessment-started');
 });
 ```
 
@@ -636,9 +932,67 @@ function canAdvance() {
 
 ---
 
+## Multi-Section Assessments
+
+When an assessment has multiple sections (e.g. a math section followed by a reading section), the host switches sections by updating props on the same player element — no destroy/recreate needed.
+
+### Switching sections
+
+Update `section-id` and `section` on the player. The framework handles the rest:
+
+```ts
+const player = document.querySelector('pie-section-player-splitpane');
+
+async function loadSection(sectionId) {
+  const sectionData = await fetch(`/api/sections/${sectionId}`).then(r => r.json());
+
+  player.setAttribute('section-id', sectionId);
+  player.section = sectionData;
+}
+
+// Navigate between sections
+document.getElementById('next-section').onclick = () => loadSection('section-2');
+document.getElementById('prev-section').onclick = () => loadSection('section-1');
+```
+
+### How it works internally
+
+The `ToolkitCoordinator` caches controllers by `(assessmentId, sectionId, attemptId)`:
+
+- **First visit to a section:** a new `SectionController` is created and cached.
+- **Revisiting a section:** the cached controller is returned with its in-memory session intact. `updateInput()` is called to refresh the section content but preserves existing item answers and navigation state.
+- **Disposal:** controllers stay cached until the player unmounts or you explicitly call `coordinator.disposeSectionController()`. Normal section switching does not require disposal.
+
+### Resetting a section
+
+To clear a section's controller and its persisted state (e.g. a "start over" button):
+
+```ts
+await coordinator.disposeSectionController({
+  sectionId: 'section-1',
+  attemptId: 'attempt-abc',
+  clearPersistence: true,
+  persistBeforeDispose: false,
+});
+```
+
+---
+
 ## Session Persistence
 
-The framework provides local persistence (localStorage) by default for development. For production, supply your own persistence strategy:
+The framework provides local persistence (localStorage) by default for development. For production, supply your own persistence strategy.
+
+### How session persistence works
+
+The `SectionController` holds all session state in memory — item answers, visited items, and the current navigation index. A pluggable persistence strategy connects this in-memory state to durable storage (localStorage by default, or your own backend). The controller's `persist()` and `hydrate()` methods delegate to the strategy's `saveSession()` and `loadSession()` calls.
+
+![Session persistence lifecycle](../img/session-persistence-lifecycle-1-1773165727331.jpg)
+
+### Session API at a glance
+
+The controller exposes a focused set of public methods for reading and writing session state. Use `getSession()` to snapshot the current state, `applySession()` to restore or patch it, and `updateItemSession()` for targeted single-item updates. The `persist()`/`hydrate()` pair bridges to the configured storage strategy.
+
+![Controller session API surface](../img/controller-session-api-1-1773165015170.jpg)
 
 ### Option 1: Listen to events and persist in your backend
 
@@ -650,18 +1004,49 @@ player.addEventListener('session-changed', (e) => {
 
 ### Option 2: Custom persistence strategy via hooks
 
+The framework defines a `SectionSessionPersistenceStrategy` interface that any client can implement:
+
+```ts
+interface SectionSessionPersistenceStrategy {
+  loadSession(context): SectionControllerSessionState | null | Promise<...>;
+  saveSession(context, session): void | Promise<void>;
+  clearSession?(context): void | Promise<void>;   // optional
+}
+```
+
+The `context` carries a `key` with `assessmentId`, `sectionId`, and `attemptId` so your implementation can scope storage however it needs to. The session data flowing through these methods has this shape:
+
+```ts
+interface SectionControllerSessionState {
+  currentItemIndex?: number;
+  visitedItemIdentifiers?: string[];
+  itemSessions: Record<string, unknown>;
+}
+```
+
+Provide your implementation via the `createSectionSessionPersistence` coordinator hook. The hook receives a `defaults` parameter with `createDefaultPersistence()` in case you want to fall back to the built-in localStorage strategy for some cases.
+
 ```ts
 coordinator.setHooks({
-  // Called when the toolkit needs to save section state
-  createSectionPersistence: (context, defaults) => ({
-    async load(ctx) {
-      return await fetchSessionFromBackend(ctx.key);
+  createSectionSessionPersistence: (context, defaults) => ({
+    async loadSession(ctx) {
+      const { sectionId, attemptId } = ctx.key;
+      const res = await fetch(`/api/sessions/${sectionId}/${attemptId}`);
+      return res.ok ? res.json() : null;
     },
-    async save(ctx, snapshot) {
-      await saveSessionToBackend(ctx.key, snapshot);
+    async saveSession(ctx, session) {
+      const { sectionId, attemptId } = ctx.key;
+      await fetch(`/api/sessions/${sectionId}/${attemptId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(session),
+      });
     },
-    async clear(ctx) {
-      await clearSessionInBackend(ctx.key);
+    async clearSession(ctx) {
+      const { sectionId, attemptId } = ctx.key;
+      await fetch(`/api/sessions/${sectionId}/${attemptId}`, {
+        method: 'DELETE',
+      });
     }
   })
 });
@@ -673,6 +1058,74 @@ coordinator.setHooks({
 // Trigger a persist to the active strategy
 await controller.persist();
 ```
+
+Note: when the same section controller instance is reused (`sectionId` + `attemptId`), `updateInput()` preserves existing in-memory item sessions and navigation state.
+
+### Option 4: Direct section session updates
+
+Two methods cover different scopes:
+
+- **`applySession(snapshot, options)`** — operates on the entire section. Pass a full `SectionControllerSessionState` to replace or merge all item sessions, visited items, and the current navigation index at once. Use this for resuming a saved session or bulk-seeding answers.
+- **`updateItemSession(itemId, detail)`** — operates on a single item. Pass one item ID and its session detail for a targeted, incremental change. Use this for programmatically setting or correcting one answer.
+
+Both trigger a reactive UI update — PIE item players immediately reflect the new state.
+
+```ts
+// Replace whole section snapshot (resume)
+await controller.applySession(snapshotFromBackend, { mode: "replace" });
+
+// Merge partial snapshot (adds/overwrites only provided fields)
+await controller.applySession({ itemSessions: patch }, { mode: "merge" });
+
+// Update one item session directly
+await controller.updateItemSession("item-1", {
+  session: {
+    id: "item-1-session",
+    data: [{ id: "response", value: "A" }]
+  },
+  complete: true
+});
+```
+
+### Resuming a student session
+
+When a student returns to a partially-completed assessment (page reload, new browser session, or navigating back from another page), load the saved session from your backend and apply it once the controller is ready:
+
+```ts
+const player = document.querySelector('pie-section-player-splitpane');
+
+player.addEventListener('section-controller-ready', async (e) => {
+  const controller = e.detail.controller;
+
+  // Load saved session from your backend
+  const savedSession = await fetch(
+    `/api/sessions/${e.detail.sectionId}/${e.detail.attemptId}`
+  ).then(r => r.ok ? r.json() : null);
+
+  if (savedSession) {
+    // Restore answers, navigation position, and visited items
+    await controller.applySession(savedSession, { mode: 'replace' });
+    // PIE elements automatically reflect the restored answers
+  }
+});
+```
+
+If you use a custom persistence strategy (Option 2), `hydrate()` handles this automatically — the controller calls your strategy's `loadSession()` during initialization.
+
+### Cross-section navigation
+
+When an assessment has multiple sections, the persistence strategy preserves student progress as they navigate between them. The typical pattern is to call `persist()` on every `session-changed` event so that storage is always current. When navigating back to a previously visited section, `hydrate()` restores the saved state from storage.
+
+![Cross-section persistence flow](../img/cross-section-persistence-flow-1-1773165773966.jpg)
+
+### Integration style guide
+
+Use whichever style matches your host ownership model:
+
+- **Persistence-strategy-led**: rely on `persist()`/`hydrate()` and a strategy hook for load/save orchestration.
+- **Host-managed direct updates**: treat controller session APIs (`getSession`/`applySession`/`updateItemSession`) as the source of truth and push session updates from host workflows.
+
+See demo route `/demo/session-persistence` for both patterns in one flow, including host-side session controls that update rendered items without direct item interaction events.
 
 ---
 
@@ -804,19 +1257,28 @@ export class AssessmentPageComponent implements OnDestroy {
     if (!coordinator) return;
 
     this.controllerUnsubscribe?.();
-    this.controllerUnsubscribe = coordinator.subscribeSectionEvents({
+    const unsubscribeItem = coordinator.subscribeItemEvents({
       sectionId: this.sectionId,
       attemptId: this.attemptId,
-      eventTypes: [
-        'item-session-data-changed',
-        'section-items-complete-changed',
-        'section-loading-complete'
-      ],
+      eventTypes: ['item-session-data-changed'],
       listener: (event: unknown) => {
         const typed = event as { type?: string };
         console.log('[assessment] controller event:', typed.type, event);
       }
     }) || undefined;
+    const unsubscribeSection = coordinator.subscribeSectionLifecycleEvents({
+      sectionId: this.sectionId,
+      attemptId: this.attemptId,
+      eventTypes: ['section-items-complete-changed', 'section-loading-complete'],
+      listener: (event: unknown) => {
+        const typed = event as { type?: string };
+        console.log('[assessment] controller event:', typed.type, event);
+      }
+    }) || undefined;
+    this.controllerUnsubscribe = () => {
+      unsubscribeItem?.();
+      unsubscribeSection?.();
+    };
   }
 
   handleSessionChanged(event: Event): void {
@@ -896,21 +1358,22 @@ SvelteKit apps can bind to CE properties directly and use Svelte 5 reactivity fo
       }
     } satisfies ToolkitCoordinatorHooks);
 
-    // Subscribe to controller events via the coordinator
+    // Subscribe to controller events via coordinator helpers
     controllerUnsubscribe?.();
-    controllerUnsubscribe = coordinator?.subscribeSectionEvents?.({
+    const unsubscribeItem = coordinator?.subscribeItemEvents?.({
       sectionId: SECTION_ID,
       attemptId: ATTEMPT_ID,
-      eventTypes: [
-        'item-session-data-changed',
-        'section-items-complete-changed',
-        'section-loading-complete'
-      ],
+      eventTypes: ['item-session-data-changed'],
+      listener: (event: any) => {
+        persistAnswer(event.canonicalItemId, event.session);
+      }
+    }) ?? null;
+    const unsubscribeSection = coordinator?.subscribeSectionLifecycleEvents?.({
+      sectionId: SECTION_ID,
+      attemptId: ATTEMPT_ID,
+      eventTypes: ['section-items-complete-changed', 'section-loading-complete'],
       listener: (event: any) => {
         switch (event.type) {
-          case 'item-session-data-changed':
-            persistAnswer(event.canonicalItemId, event.session);
-            break;
           case 'section-items-complete-changed':
             sectionComplete = event.complete === true;
             completionProgress = {
@@ -924,6 +1387,10 @@ SvelteKit apps can bind to CE properties directly and use Svelte 5 reactivity fo
         }
       }
     }) ?? null;
+    controllerUnsubscribe = () => {
+      unsubscribeItem?.();
+      unsubscribeSection?.();
+    };
   }
 
   async function persistAnswer(itemId: string, session: unknown) {

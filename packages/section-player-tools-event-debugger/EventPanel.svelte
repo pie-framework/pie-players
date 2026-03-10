@@ -40,7 +40,12 @@
 		totalItems?: number;
 	} | null;
 	type ToolkitCoordinatorLike = {
-		subscribeSectionEvents: (args: {
+		subscribeItemEvents?: (args: {
+			sectionId: string;
+			attemptId?: string;
+			listener: (event: ControllerEvent) => void;
+		}) => () => void;
+		subscribeSectionLifecycleEvents?: (args: {
 			sectionId: string;
 			attemptId?: string;
 			listener: (event: ControllerEvent) => void;
@@ -314,12 +319,22 @@
 		}
 
 		detachControllerSubscription();
-		subscriptions.controller =
-			toolkitCoordinator?.subscribeSectionEvents({
+		const unsubscribeItem =
+			toolkitCoordinator?.subscribeItemEvents?.({
 				sectionId,
 				attemptId,
 				listener: handleControllerEvent,
 			}) || null;
+		const unsubscribeSection =
+			toolkitCoordinator?.subscribeSectionLifecycleEvents?.({
+				sectionId,
+				attemptId,
+				listener: handleControllerEvent,
+			}) || null;
+		subscriptions.controller = () => {
+			unsubscribeItem?.();
+			unsubscribeSection?.();
+		};
 		subscriptions.activeSectionId = sectionId;
 		subscriptions.activeAttemptId = nextAttemptId;
 		seedFromRuntimeState(controller);

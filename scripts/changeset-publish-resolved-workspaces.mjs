@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { createNpmAuthEnvironment } from "./npm-auth-env.mjs";
 
 const repoRoot = process.cwd();
 const workspaceRoots = ["packages", "tools", "apps"];
@@ -13,6 +14,7 @@ const depSections = [
 
 const localPackages = new Map();
 const packageJsonPaths = [];
+const { env: npmEnv, cleanup: cleanupNpmEnv } = createNpmAuthEnvironment();
 
 const readJson = (path) => JSON.parse(readFileSync(path, "utf8"));
 
@@ -88,7 +90,7 @@ const runChangesetPublishOnce = () =>
 		const child = spawn("bunx", ["changeset", "publish"], {
 			cwd: repoRoot,
 			stdio: "inherit",
-			env: process.env,
+			env: npmEnv,
 		});
 
 		child.on("close", (code) => {
@@ -132,6 +134,7 @@ try {
 	await runChangesetPublish();
 } finally {
 	restoreWorkspaceRanges();
+	cleanupNpmEnv();
 	if (changedFiles.length > 0) {
 		console.log("[release] Restored workspace ranges after publish");
 	}

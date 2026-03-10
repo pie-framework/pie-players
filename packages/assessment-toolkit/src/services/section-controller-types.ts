@@ -10,13 +10,24 @@ export interface SectionControllerContext {
 	input?: unknown;
 }
 
-export interface SectionControllerPersistenceStrategy {
-	load(context: SectionControllerContext): unknown | Promise<unknown>;
-	save(
+export interface SectionSessionPersistenceStrategy {
+	loadSession(
 		context: SectionControllerContext,
-		snapshot: unknown,
+	): SectionControllerSessionState | null | Promise<SectionControllerSessionState | null>;
+	saveSession(
+		context: SectionControllerContext,
+		session: SectionControllerSessionState | null,
 	): void | Promise<void>;
-	clear?(context: SectionControllerContext): void | Promise<void>;
+	clearSession?(context: SectionControllerContext): void | Promise<void>;
+}
+
+export interface SectionSessionPersistenceConfig {
+	context: SectionControllerContext;
+	strategy: SectionSessionPersistenceStrategy;
+}
+
+export interface SectionControllerApplySessionOptions {
+	mode?: "replace" | "merge";
 }
 
 export interface SectionControllerRuntimeState {
@@ -162,12 +173,17 @@ export interface SectionControllerHandle {
 	dispose?(): void | Promise<void>;
 	subscribe?(listener: (event: SectionControllerEvent) => void): () => void;
 	getRuntimeState?(): SectionControllerRuntimeState | null;
-	getSessionState?(): SectionControllerSessionState | null;
-	setPersistenceContext?(
-		context: SectionControllerContext,
+	getSession?(): SectionControllerSessionState | null;
+	applySession?(
+		session: SectionControllerSessionState | null,
+		options?: SectionControllerApplySessionOptions,
 	): void | Promise<void>;
-	setPersistenceStrategy?(
-		strategy: SectionControllerPersistenceStrategy,
+	updateItemSession?(
+		itemId: string,
+		sessionDetail: unknown,
+	): unknown | Promise<unknown>;
+	configureSessionPersistence?(
+		config: SectionSessionPersistenceConfig,
 	): void | Promise<void>;
 }
 
@@ -179,6 +195,6 @@ export interface SectionControllerFactoryDefaults {
 
 export interface SectionPersistenceFactoryDefaults {
 	createDefaultPersistence: () =>
-		| SectionControllerPersistenceStrategy
-		| Promise<SectionControllerPersistenceStrategy>;
+		| SectionSessionPersistenceStrategy
+		| Promise<SectionSessionPersistenceStrategy>;
 }

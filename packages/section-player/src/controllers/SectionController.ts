@@ -1,9 +1,8 @@
 import type { TestAttemptSession } from "@pie-players/pie-assessment-toolkit";
 import { toItemSessionsRecord } from "@pie-players/pie-assessment-toolkit";
 import type {
-	SectionControllerContext,
 	SectionControllerHandle,
-	SectionControllerPersistenceStrategy,
+	SectionSessionPersistenceConfig,
 } from "./toolkit-section-contracts.js";
 import type { ItemEntity } from "@pie-players/pie-players-shared";
 import { SectionContentService } from "./SectionContentService.js";
@@ -55,9 +54,7 @@ export class SectionController implements SectionControllerHandle {
 	private readonly contentService = new SectionContentService();
 	private readonly sessionService = new SectionSessionService();
 	private readonly itemNavigationService = new SectionItemNavigationService();
-	private persistenceStrategy: SectionControllerPersistenceStrategy | null =
-		null;
-	private persistenceContext: SectionControllerContext | null = null;
+	private sessionPersistence: SectionSessionPersistenceConfig | null = null;
 	private state: SectionControllerState = {
 		input: null,
 		viewModel: {
@@ -146,50 +143,33 @@ export class SectionController implements SectionControllerHandle {
 	}
 
 	public async updateInput(input?: unknown): Promise<void> {
+		const previousSession = this.getSession();
 		await this.initialize(input);
+		if (previousSession) {
+			await this.applySession(previousSession, { mode: "replace" });
+		}
 	}
 
-	public async setPersistenceStrategy(
-		strategy: SectionControllerPersistenceStrategy,
-	): Promise<void> {
-		this.persistenceStrategy = strategy;
-	}
-
-	public setPersistenceContext(context: SectionControllerContext): void {
-		this.persistenceContext = context;
+	public configureSessionPersistence(
+		config: SectionSessionPersistenceConfig,
+	): void {
+		this.sessionPersistence = config;
 	}
 
 	public async hydrate(): Promise<void> {
-		if (!this.persistenceStrategy || !this.persistenceContext) return;
-		const snapshot = (await this.persistenceStrategy.load(
-			this.persistenceContext,
-		)) as SectionControllerSessionState | null;
+		if (!this.sessionPersistence) return;
+		const snapshot = await this.sessionPersistence.strategy.loadSession(
+			this.sessionPersistence.context,
+		);
 		if (!snapshot) return;
-		if (!this.state.testAttemptSession) return;
-		if (snapshot.itemSessions && typeof snapshot.itemSessions === "object") {
-			this.state.testAttemptSession.itemSessions = snapshot.itemSessions as
-				TestAttemptSession["itemSessions"];
-		}
-		const visited = Array.isArray(snapshot.visitedItemIdentifiers)
-			? snapshot.visitedItemIdentifiers.filter(
-					(id: unknown): id is string => typeof id === "string" && !!id,
-				)
-			: [];
-		this.state.testAttemptSession.navigationState.visitedItemIdentifiers = visited;
-		const nextIndex =
-			typeof snapshot.currentItemIndex === "number" && snapshot.currentItemIndex >= 0
-				? snapshot.currentItemIndex
-				: 0;
-		this.state.testAttemptSession.navigationState.currentItemIndex = nextIndex;
-		this.state.viewModel.currentItemIndex = nextIndex;
-		this.bootstrapCompletionFromSessions();
+		await this.applySession(snapshot, { mode: "replace" });
 	}
 
 	public async persist(): Promise<void> {
-		if (!this.persistenceStrategy || !this.persistenceContext) return;
-		await this.persistenceStrategy.save(
-			this.persistenceContext,
-			this.getSessionState(),
+		if (!this.sessionPersistence) return;
+		await this.sessionPersistence.strategy.saveSession(
+			this.sessionPersistence.context,
+			this.getSession(),
 		);
 	}
 
@@ -310,7 +290,7 @@ export class SectionController implements SectionControllerHandle {
 	 * Use this for serializing/restoring section session state across reloads.
 	 * This is intentionally compact and not a full runtime diagnostics view.
 	 */
-	public getSessionState(): SectionControllerSessionState | null {
+	public getSession(): SectionControllerSessionState | null {
 		if (!this.state.testAttemptSession) return null;
 		return this.sessionService.toSessionState(this.state.testAttemptSession);
 	}
@@ -328,7 +308,7 @@ export class SectionController implements SectionControllerHandle {
 	/**
 	 * Runtime/debugger shape scoped to the current section.
 	 * Use this for widgets that need a section-scoped live snapshot (debug panels, diagnostics).
-	 * Unlike getSessionState(), this is optimized for runtime introspection, not host persistence.
+	 * Unlike getSession(), this is optimized for runtime introspection, not host persistence.
 	 */
 	public getRuntimeState(): SectionControllerRuntimeState | null {
 		if (!this.state.testAttemptSession) return null;
@@ -404,7 +384,7 @@ export class SectionController implements SectionControllerHandle {
 		};
 	}
 
-	public handleItemSessionChanged(
+	public updateItemSession(
 		itemId: string,
 		sessionDetail: any,
 	): SessionChangedResult | null {
@@ -460,6 +440,43 @@ export class SectionController implements SectionControllerHandle {
 			});
 		}
 		return result;
+	}
+
+	public async applySession(
+		session: SectionControllerSessionState | null,
+		options?: { mode?: "replace" | "merge" },
+	): Promise<void> {
+		if (!this.state.testAttemptSession || !session) return;
+		const mode = options?.mode || "replace";
+		const nextItemSessions =
+			session.itemSessions && typeof session.itemSessions === "object"
+				? (session.itemSessions as TestAttemptSession["itemSessions"])
+				: {};
+		if (mode === "merge") {
+			this.state.testAttemptSession.itemSessions = {
+				...this.state.testAttemptSession.itemSessions,
+				...nextItemSessions,
+			};
+		} else {
+			this.state.testAttemptSession.itemSessions = nextItemSessions;
+		}
+		if (Array.isArray(session.visitedItemIdentifiers)) {
+			const visited = session.visitedItemIdentifiers.filter(
+				(id: unknown): id is string => typeof id === "string" && !!id,
+			);
+			this.state.testAttemptSession.navigationState.visitedItemIdentifiers = visited;
+		} else if (mode === "replace") {
+			this.state.testAttemptSession.navigationState.visitedItemIdentifiers = [];
+		}
+		if (typeof session.currentItemIndex === "number" && session.currentItemIndex >= 0) {
+			this.state.testAttemptSession.navigationState.currentItemIndex =
+				session.currentItemIndex;
+			this.state.viewModel.currentItemIndex = session.currentItemIndex;
+		} else if (mode === "replace") {
+			this.state.testAttemptSession.navigationState.currentItemIndex = 0;
+			this.state.viewModel.currentItemIndex = 0;
+		}
+		this.bootstrapCompletionFromSessions();
 	}
 
 	/**

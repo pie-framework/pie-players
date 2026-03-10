@@ -59,13 +59,18 @@
 
 	type SectionControllerLike = {
 		getRuntimeState?: () => SectionAttemptSliceLike | null;
-		getSessionState?: () => SectionSessionStateLike | null;
+		getSession?: () => SectionSessionStateLike | null;
 		subscribe?: (listener: (event: { itemId?: string; timestamp?: number }) => void) => () => void;
 	};
 
 	type ToolkitCoordinatorLike = {
 		getSectionController?: (args: { sectionId: string; attemptId?: string }) => SectionControllerLike | undefined;
-		subscribeSectionEvents: (args: {
+		subscribeItemEvents?: (args: {
+			sectionId: string;
+			attemptId?: string;
+			listener: (event: { itemId?: string; timestamp?: number }) => void;
+		}) => () => void;
+		subscribeSectionLifecycleEvents?: (args: {
 			sectionId: string;
 			attemptId?: string;
 			listener: (event: { itemId?: string; timestamp?: number }) => void;
@@ -148,7 +153,7 @@
 	) {
 		const controller = controllerOverride || getController();
 		const sectionSlice = controller?.getRuntimeState?.() || null;
-		const persistedSlice = controller?.getSessionState?.() || null;
+		const persistedSlice = controller?.getSession?.() || null;
 		controllerAvailable = Boolean(controller);
 		sessionPanelSnapshot = {
 			currentItemIndex:
@@ -225,11 +230,20 @@
 			return;
 		}
 		detachControllerSubscription();
-		unsubscribeController = toolkitCoordinator?.subscribeSectionEvents({
+		const unsubscribeItem = toolkitCoordinator?.subscribeItemEvents?.({
 			sectionId,
 			attemptId,
 			listener: handleControllerEvent
 		}) || null;
+		const unsubscribeSection = toolkitCoordinator?.subscribeSectionLifecycleEvents?.({
+			sectionId,
+			attemptId,
+			listener: handleControllerEvent
+		}) || null;
+		unsubscribeController = () => {
+			unsubscribeItem?.();
+			unsubscribeSection?.();
+		};
 		subscriptionTarget.controller = controller;
 		subscriptionTarget.sectionId = sectionId;
 		subscriptionTarget.attemptId = nextAttemptId;

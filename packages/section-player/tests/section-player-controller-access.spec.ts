@@ -48,8 +48,8 @@ async function validateControllerAccess(args: {
 			typeof (awaited as { getRuntimeState?: unknown } | null)
 				?.getRuntimeState === "function";
 		const hasSessionState =
-			typeof (awaited as { getSessionState?: unknown } | null)
-				?.getSessionState === "function";
+			typeof (awaited as { getSession?: unknown } | null)?.getSession ===
+			"function";
 		const hasSubscribe =
 			typeof (awaited as { subscribe?: unknown } | null)?.subscribe ===
 			"function";

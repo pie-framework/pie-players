@@ -309,7 +309,7 @@ const DEFAULT_ENV = {
 			sectionId: effectiveSectionId,
 			itemPlayer: effectiveItemPlayer,
 			reportSessionChanged: (itemId: string, detail: unknown) => {
-				const result = sectionEngine.handleItemSessionChanged(itemId, detail);
+				const result = sectionEngine.updateItemSession(itemId, detail);
 				emitNormalizedSessionChanged({
 					itemId,
 					result,
@@ -560,7 +560,7 @@ const DEFAULT_ENV = {
 			if (!isLocalToCurrentRuntime(event.target)) return;
 			const detail = (event as CustomEvent<InternalItemSessionChangedDetail>).detail;
 			if (!detail?.itemId) return;
-			const result = sectionEngine.handleItemSessionChanged(detail.itemId, detail.session);
+			const result = sectionEngine.updateItemSession(detail.itemId, detail.session);
 			emitNormalizedSessionChanged({
 				itemId: detail.itemId,
 				canonicalItemId: sectionEngine.getCanonicalItemId(detail.itemId),

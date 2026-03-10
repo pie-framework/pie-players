@@ -19,6 +19,8 @@ import type {
 import type { HighlightColor, HighlightType } from "./HighlightCoordinator.js";
 import type {
 	SectionControllerHandle,
+	SectionItemEventSubscriptionArgs,
+	SectionScopedEventSubscriptionArgs,
 	SectionEventSubscriptionArgs,
 	ToolkitCoordinatorHooks,
 	ToolkitInitStatus,
@@ -581,6 +583,18 @@ export interface IToolkitCoordinator {
 	 * for repeated subscriptions using the same listener and section key.
 	 */
 	subscribeSectionEvents(args: SectionEventSubscriptionArgs): () => void;
+
+	/**
+	 * Subscribe to item-scoped section controller events.
+	 */
+	subscribeItemEvents(args: SectionItemEventSubscriptionArgs): () => void;
+
+	/**
+	 * Subscribe to section-scoped lifecycle/loading/completion/error events.
+	 */
+	subscribeSectionLifecycleEvents(
+		args: SectionScopedEventSubscriptionArgs,
+	): () => void;
 
 	/**
 	 * Create or reuse a section controller with single-flight deduplication.

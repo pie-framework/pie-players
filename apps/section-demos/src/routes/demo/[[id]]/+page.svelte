@@ -22,7 +22,13 @@
 	import DemoMenuBar from './DemoMenuBar.svelte';
 	import DemoOverlays from './DemoOverlays.svelte';
 
-	let { data }: { data: PageData } = $props();
+	type DemoPage = { id: string; name: string };
+	type DemoPageData = PageData & {
+		demoPages?: DemoPage[];
+		activeDemoPageId?: string;
+	};
+
+	let { data }: { data: DemoPageData } = $props();
 
 	const PLAYER_OPTIONS = ['iife', 'esm', 'preloaded'] as const;
 	const MODE_OPTIONS = ['candidate', 'scorer'] as const;
@@ -30,6 +36,7 @@
 	const DEMO_ASSESSMENT_ID = 'section-demos-assessment';
 	const ATTEMPT_QUERY_PARAM = 'attempt';
 	const ATTEMPT_STORAGE_KEY = 'pie:section-demos:attempt-id';
+	const DEMO_PERSISTENCE_STORAGE_PREFIX = `pie:section-controller:v1:${DEMO_ASSESSMENT_ID}:`;
 const DAISY_THEME_STORAGE_KEY = 'pie:section-demos:daisy-theme';
 const TOOLKIT_SCHEME_STORAGE_KEY = 'pie-color-scheme';
 const DEFAULT_DAISY_THEME = 'light';
@@ -105,6 +112,7 @@ let selectedDaisyTheme = $state<string>(DEFAULT_DAISY_THEME);
 let isThemeSyncing = $state(false);
 	let attemptId = $state(getOrCreateAttemptId());
 	let showSessionPanel = $state(false);
+	let showSessionControlsPanel = $state(false);
 	let showEventPanel = $state(false);
 	let showSourcePanel = $state(false);
 	let showPnpPanel = $state(false);
@@ -116,6 +124,13 @@ let isThemeSyncing = $state(false);
 	let preloadedReady = $state(false);
 	let preloadedError = $state<string | null>(null);
 	let loadedPreloadedBundleKey = $state<string | null>(null);
+	let hostSessionSnapshot = $state<Record<string, unknown> | null>(null);
+	let persistenceStorageKey = $state<string | null>(null);
+	let persistenceStoragePresent = $state(false);
+	let lastSessionSavedAt = $state<number | null>(null);
+	let lastSessionRestoredAt = $state<number | null>(null);
+	let lastHostSessionUpdateAt = $state<number | null>(null);
+	let lastSessionRefreshAt = $state<number | null>(null);
 	const toolkitToolsConfig = {
 		providers: {
 			calculator: {
@@ -208,6 +223,15 @@ let isTtsSsmlDemo = $derived(
 	(data?.demo?.id || '').toLowerCase() === 'tts-ssml' ||
 		(sessionPanelSectionId || '').toLowerCase().includes('tts-ssml')
 );
+	let isSessionPersistenceDemo = $derived(
+		(data?.demo?.id || '').toLowerCase() === 'session-persistence'
+	);
+	let sessionControlItemIds = $derived.by(() => {
+		const refs = (resolvedSectionForPlayer as any)?.assessmentItemRefs || [];
+		return refs
+			.map((ref: any) => ref?.identifier || ref?.item?.id || '')
+			.filter((id: string) => typeof id === 'string' && id.length > 0);
+	});
 	let pieEnv = $derived<{ mode: 'gather' | 'view' | 'evaluate'; role: 'student' | 'instructor' }>({
 		mode: roleType === 'candidate' ? 'gather' : 'evaluate',
 		role: roleType === 'candidate' ? 'student' : 'instructor'
@@ -231,6 +255,93 @@ let isTtsSsmlDemo = $derived(
 				console.error('[Demo] Toolkit hook error:', context, error);
 			}
 		} satisfies ToolkitCoordinatorHooks);
+		void refreshHostSessionSnapshot();
+	}
+
+	function getActiveSectionController() {
+		return toolkitCoordinator?.getSectionController?.({
+			sectionId: sessionPanelSectionId,
+			attemptId
+		});
+	}
+
+	function computeDefaultPersistenceStorageKey(): string {
+		return `pie:section-controller:v1:${DEMO_ASSESSMENT_ID}:${sessionPanelSectionId}:${attemptId || 'default'}`;
+	}
+
+	async function refreshHostSessionSnapshot(): Promise<void> {
+		const controller = getActiveSectionController();
+		hostSessionSnapshot = (controller?.getSession?.() || null) as Record<string, unknown> | null;
+		persistenceStorageKey = computeDefaultPersistenceStorageKey();
+		if (browser) {
+			const key = persistenceStorageKey;
+			persistenceStoragePresent = Boolean(key && window.localStorage.getItem(key || '') !== null);
+		}
+		lastSessionRefreshAt = Date.now();
+	}
+
+	async function persistHostSession(): Promise<void> {
+		const controller = getActiveSectionController();
+		await controller?.persist?.();
+		lastSessionSavedAt = Date.now();
+		await refreshHostSessionSnapshot();
+	}
+
+	async function hydrateHostSession(): Promise<void> {
+		const controller = getActiveSectionController();
+		await controller?.hydrate?.();
+		lastSessionRestoredAt = Date.now();
+		await refreshHostSessionSnapshot();
+	}
+
+	async function applyHostSessionSnapshot(
+		snapshot: Record<string, unknown>,
+		mode: 'replace' | 'merge'
+	): Promise<void> {
+		const controller = getActiveSectionController();
+		await controller?.applySession?.(snapshot, { mode });
+		lastHostSessionUpdateAt = Date.now();
+		await refreshHostSessionSnapshot();
+	}
+
+	async function updateHostItemSession(
+		itemId: string,
+		detail: Record<string, unknown>
+	): Promise<void> {
+		const controller = getActiveSectionController();
+		const currentItemSessions =
+			((controller?.getSession?.() as { itemSessions?: Record<string, unknown> } | null)
+				?.itemSessions || {}) as Record<string, unknown>;
+		const existingEntry = (currentItemSessions[itemId] ||
+			currentItemSessions[
+				sessionControlItemIds.find((id: string) => id === itemId) || itemId
+			]) as
+			| {
+					session?: { id?: string; data?: Array<Record<string, unknown>> };
+			  }
+			| undefined;
+		const nextChoiceValue =
+			typeof detail.choiceValue === 'string' && detail.choiceValue
+				? detail.choiceValue
+				: 'a';
+		const existingData = Array.isArray(existingEntry?.session?.data)
+			? existingEntry?.session?.data
+			: [];
+		const nextData = existingData.length
+			? existingData.map((entry, index) =>
+					index === 0 ? { ...entry, value: nextChoiceValue } : entry
+			  )
+			: [{ id: 'q1', value: nextChoiceValue }];
+		await controller?.updateItemSession?.(itemId, {
+			component: 'demo-host-controls',
+			complete: true,
+			session: {
+				id: existingEntry?.session?.id || `${itemId}-host-session`,
+				data: nextData
+			}
+		});
+		lastHostSessionUpdateAt = Date.now();
+		await refreshHostSessionSnapshot();
 	}
 
 	function buildDemoHref(targetMode: 'candidate' | 'scorer') {
@@ -240,6 +351,20 @@ let isTtsSsmlDemo = $derived(
 		url.searchParams.set('player', selectedPlayerType);
 		url.searchParams.set('layout', layoutType);
 		url.searchParams.set(ATTEMPT_QUERY_PARAM, attemptId);
+		if (data.activeDemoPageId) {
+			url.searchParams.set('page', data.activeDemoPageId);
+		}
+		return url.toString();
+	}
+
+	function buildSectionPageHref(targetPageId: string): string {
+		if (!browser) return '';
+		const url = new URL(window.location.href);
+		url.searchParams.set('mode', roleType);
+		url.searchParams.set('player', selectedPlayerType);
+		url.searchParams.set('layout', layoutType);
+		url.searchParams.set(ATTEMPT_QUERY_PARAM, attemptId);
+		url.searchParams.set('page', targetPageId);
 		return url.toString();
 	}
 
@@ -369,6 +494,7 @@ let isTtsSsmlDemo = $derived(
 			toolkitCoordinator
 				?.getSectionController?.({ sectionId: sessionPanelSectionId, attemptId })
 				?.persist?.();
+			lastSessionSavedAt = Date.now();
 		};
 		document.addEventListener('item-session-changed', triggerSessionPanelRefresh as EventListener, true);
 		document.addEventListener('session-changed', triggerSessionPanelRefresh as EventListener, true);
@@ -396,6 +522,20 @@ let isTtsSsmlDemo = $derived(
 				true
 			);
 		};
+	});
+
+	$effect(() => {
+		if (isSessionPersistenceDemo && !showSessionControlsPanel) {
+			showSessionControlsPanel = true;
+		}
+	});
+
+	$effect(() => {
+		void toolkitCoordinator;
+		void sessionPanelSectionId;
+		void attemptId;
+		if (!toolkitCoordinator) return;
+		void refreshHostSessionSnapshot();
 	});
 
 	$effect(() => {
@@ -480,6 +620,20 @@ let isTtsSsmlDemo = $derived(
 			console.warn('[Demo] Failed to clear section-controller persistence during reset:', e);
 		}
 		if (browser) {
+			// Clear all route-level section-controller snapshots, including non-active section pages.
+			const keysToRemove: string[] = [];
+			for (let index = 0; index < window.localStorage.length; index += 1) {
+				const key = window.localStorage.key(index);
+				if (!key) continue;
+				if (key.startsWith(DEMO_PERSISTENCE_STORAGE_PREFIX)) {
+					keysToRemove.push(key);
+				}
+			}
+			for (const key of keysToRemove) {
+				window.localStorage.removeItem(key);
+			}
+			window.localStorage.removeItem(ATTEMPT_STORAGE_KEY);
+
 			// Start a new attempt namespace so persisted state does not bleed across resets.
 			const nextAttemptId = createAttemptId();
 			window.localStorage.setItem(ATTEMPT_STORAGE_KEY, nextAttemptId);
@@ -502,6 +656,7 @@ let isTtsSsmlDemo = $derived(
 			{candidateHref}
 			{scorerHref}
 			{showSessionPanel}
+			{showSessionControlsPanel}
 			{showEventPanel}
 			{showSourcePanel}
 			{showPnpPanel}
@@ -512,12 +667,27 @@ let isTtsSsmlDemo = $derived(
 			onSetSplitpaneLayout={() => (layoutType = 'splitpane')}
 			onSetVerticalLayout={() => (layoutType = 'vertical')}
 			onToggleSessionPanel={() => (showSessionPanel = !showSessionPanel)}
+			onToggleSessionControlsPanel={() =>
+				(showSessionControlsPanel = !showSessionControlsPanel)}
 			onToggleEventPanel={() => (showEventPanel = !showEventPanel)}
 			onToggleSourcePanel={() => (showSourcePanel = !showSourcePanel)}
 			onTogglePnpPanel={() => (showPnpPanel = !showPnpPanel)}
 			onToggleTtsPanel={() => (showTtsPanel = !showTtsPanel)}
 			onSelectDaisyTheme={handleDaisyThemeSelection}
 		/>
+
+		{#if (data.demoPages || []).length > 1}
+			<nav class="pie-demo-section-pages" aria-label="Section pages">
+				{#each data.demoPages as page}
+					<a
+						class={`pie-demo-section-pages__link ${data.activeDemoPageId === page.id ? 'pie-demo-section-pages__link--active' : ''}`}
+						href={buildSectionPageHref(page.id)}
+					>
+						{page.name}
+					</a>
+				{/each}
+			</nav>
+		{/if}
 
 		{#if isTtsSsmlDemo}
 			<aside class="pie-demo-ssml-cues" aria-hidden="true" inert>
@@ -589,11 +759,26 @@ let isTtsSsmlDemo = $derived(
 	sectionId={sessionPanelSectionId}
 	{attemptId}
 	{showSessionPanel}
+	{showSessionControlsPanel}
 	{showEventPanel}
 	{showSourcePanel}
 	{showPnpPanel}
 	{showTtsPanel}
 	{sourcePanelJson}
+	hostSessionSnapshot={hostSessionSnapshot}
+	sessionControlItemIds={sessionControlItemIds}
+	persistenceStorageKey={persistenceStorageKey}
+	persistenceStoragePresent={persistenceStoragePresent}
+	lastSessionSavedAt={lastSessionSavedAt}
+	lastSessionRestoredAt={lastSessionRestoredAt}
+	lastHostSessionUpdateAt={lastHostSessionUpdateAt}
+	lastSessionRefreshAt={lastSessionRefreshAt}
+	onRefreshHostSession={() => refreshHostSessionSnapshot()}
+	onPersistHostSession={() => persistHostSession()}
+	onHydrateHostSession={() => hydrateHostSession()}
+	onApplyHostSessionSnapshot={(snapshot, mode) => applyHostSessionSnapshot(snapshot, mode)}
+	onUpdateHostItemSession={(itemId, detail) => updateHostItemSession(itemId, detail)}
+	onCloseSessionControlsPanel={() => (showSessionControlsPanel = false)}
 	onCloseSourcePanel={() => (showSourcePanel = false)}
 	onCloseTtsPanel={() => (showTtsPanel = false)}
 	bind:sessionDebuggerElement
@@ -653,5 +838,29 @@ let isTtsSsmlDemo = $derived(
 		padding-left: 1rem;
 		display: grid;
 		gap: 0.2rem;
+	}
+
+	.pie-demo-section-pages {
+		display: flex;
+		gap: 0.5rem;
+		padding: 0.5rem 1rem 0;
+	}
+
+	.pie-demo-section-pages__link {
+		display: inline-flex;
+		align-items: center;
+		padding: 0.35rem 0.6rem;
+		border-radius: 0.35rem;
+		border: 1px solid color-mix(in srgb, var(--color-base-content) 20%, transparent);
+		background: var(--color-base-100);
+		color: var(--color-base-content);
+		text-decoration: none;
+		font-size: 0.8rem;
+		font-weight: 600;
+	}
+
+	.pie-demo-section-pages__link--active {
+		background: color-mix(in srgb, var(--color-primary) 15%, var(--color-base-100));
+		border-color: color-mix(in srgb, var(--color-primary) 40%, var(--color-base-300));
 	}
 </style>

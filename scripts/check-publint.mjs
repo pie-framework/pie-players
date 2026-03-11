@@ -2,10 +2,33 @@
 
 import { execSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { builtinModules } from "node:module";
 import path from "node:path";
 
 const ROOT = process.cwd();
 const ROOT_PACKAGE_JSON = path.join(ROOT, "package.json");
+const POLICY_PATH = path.join(ROOT, "scripts", "publish-policy.json");
+const BUNDLED_IMPORT_PROTOCOLS = ["node:", "bun:", "virtual:", "vite/"];
+const BUILTIN_SPECIFIERS = new Set(
+	builtinModules
+		.flatMap((mod) => [
+			mod,
+			mod.replace(/^node:/, ""),
+			`node:${mod.replace(/^node:/, "")}`,
+		])
+		.filter(Boolean),
+);
+const policy = existsSync(POLICY_PATH)
+	? JSON.parse(readFileSync(POLICY_PATH, "utf8"))
+	: {};
+const allowedUndeclaredRuntimeImportsByPackage = new Map(
+	Object.entries(policy.allowedUndeclaredRuntimeImports || {}).map(
+		([packageName, imports]) => [
+			packageName,
+			new Set(Array.isArray(imports) ? imports : []),
+		],
+	),
+);
 
 const readJson = (filePath) => JSON.parse(readFileSync(filePath, "utf8"));
 
@@ -50,6 +73,112 @@ const collectTargets = (value, out) => {
 	if (typeof value === "object") {
 		for (const entry of Object.values(value)) collectTargets(entry, out);
 	}
+};
+
+const toPackageName = (specifier) => {
+	if (specifier.startsWith("@")) {
+		const [scope, name] = specifier.split("/");
+		return scope && name ? `${scope}/${name}` : specifier;
+	}
+	return specifier.split("/")[0];
+};
+
+const isExternalSpecifier = (specifier) =>
+	typeof specifier === "string" &&
+	specifier.length > 0 &&
+	!specifier.startsWith(".") &&
+	!specifier.startsWith("/");
+
+const isIgnoredSpecifier = (specifier) => {
+	if (BUILTIN_SPECIFIERS.has(specifier)) return true;
+	return BUNDLED_IMPORT_PROTOCOLS.some(
+		(prefix) => specifier === prefix || specifier.startsWith(prefix),
+	);
+};
+
+const collectRuntimeImportSpecifiers = (content) => {
+	const out = new Set();
+	const patterns = [
+		/import\s+[^'"`]*?\sfrom\s*['"]([^'"]+)['"]/g,
+		/import\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
+		/export\s+[^'"`]*?\sfrom\s*['"]([^'"]+)['"]/g,
+		/require\(\s*['"]([^'"]+)['"]\s*\)/g,
+	];
+	for (const pattern of patterns) {
+		let match;
+		while ((match = pattern.exec(content))) {
+			out.add(match[1]);
+		}
+	}
+	return out;
+};
+
+const resolveRelativeImport = (fromFile, specifier) => {
+	const fromDir = path.dirname(fromFile);
+	const base = path.resolve(fromDir, specifier);
+	const candidates = [base, `${base}.js`, path.join(base, "index.js")];
+	for (const candidate of candidates) {
+		if (existsSync(candidate)) return candidate;
+	}
+	return null;
+};
+
+const getPublishedRuntimeEntryTargets = (pkg) => {
+	const targets = new Set();
+	collectTargets(pkg.exports, targets);
+	collectTargets(pkg.main, targets);
+	collectTargets(pkg.module, targets);
+	collectTargets(pkg.unpkg, targets);
+	collectTargets(pkg.jsdelivr, targets);
+	return [...targets]
+		.filter((target) => typeof target === "string" && target.startsWith("./"))
+		.filter((target) => !target.includes("*"))
+		.filter((target) => target.endsWith(".js"));
+};
+
+const validateRuntimeImportClosure = (dir, pkg) => {
+	const entryTargets = getPublishedRuntimeEntryTargets(pkg);
+	const startFiles = entryTargets
+		.map((target) => path.join(dir, target))
+		.filter((target) => existsSync(target));
+	if (startFiles.length === 0) return [];
+
+	const declaredRuntimePackages = new Set([
+		...Object.keys(pkg.dependencies || {}),
+		...Object.keys(pkg.peerDependencies || {}),
+		...Object.keys(pkg.optionalDependencies || {}),
+	]);
+	const allowedUndeclaredImports =
+		allowedUndeclaredRuntimeImportsByPackage.get(pkg.name) || new Set();
+	const visited = new Set();
+	const queue = [...startFiles];
+	const failures = [];
+	while (queue.length > 0) {
+		const jsFile = queue.shift();
+		if (!jsFile || visited.has(jsFile)) continue;
+		visited.add(jsFile);
+
+		const content = readFileSync(jsFile, "utf8");
+		const specifiers = collectRuntimeImportSpecifiers(content);
+		for (const specifier of specifiers) {
+			if (!isExternalSpecifier(specifier)) {
+				const relativeTarget = resolveRelativeImport(jsFile, specifier);
+				if (relativeTarget && !visited.has(relativeTarget)) {
+					queue.push(relativeTarget);
+				}
+				continue;
+			}
+			if (isIgnoredSpecifier(specifier)) continue;
+			const packageName = toPackageName(specifier);
+			if (packageName === pkg.name) continue;
+			if (declaredRuntimePackages.has(packageName)) continue;
+			if (allowedUndeclaredImports.has(packageName)) continue;
+			failures.push(
+				`${path.relative(ROOT, jsFile)} imports "${specifier}" but "${packageName}" is not declared in dependencies/peerDependencies/optionalDependencies`,
+			);
+		}
+	}
+	return failures;
 };
 
 const getPublishedEntryTargets = (pkg) => {
@@ -114,6 +243,15 @@ const run = () => {
 					cwd: dir,
 					stdio: "pipe",
 				});
+			}
+
+			const runtimeImportFailures = validateRuntimeImportClosure(dir, pkg);
+			if (runtimeImportFailures.length > 0) {
+				throw new Error(
+					`Runtime import closure check failed:\n${runtimeImportFailures
+						.map((entry) => `- ${entry}`)
+						.join("\n")}`,
+				);
 			}
 
 			execSync("bunx publint .", {

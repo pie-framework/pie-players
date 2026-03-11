@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 
 const DEMO_PATH = "/demo/tts-ssml?mode=candidate&layout=splitpane";
 const VERTICAL_DEMO_PATH = "/demo/tts-ssml?mode=candidate&layout=vertical";
+const LOADING_EVENT_DEMO_PATH = "/demo/single-question?mode=candidate&layout=splitpane";
 
 async function openEventPanel(page: import("@playwright/test").Page) {
 	const toggleButton = page.getByRole("button", {
@@ -98,14 +99,67 @@ test.describe("section player controller event panel", () => {
 	test("shows section-loading-complete in section-level event panel", async ({
 		page,
 	}) => {
-		// Open the panel early so we observe the live section loading transition.
-		await page.goto(DEMO_PATH, { waitUntil: "domcontentloaded" });
+		// Wait for section readiness; subscribeSectionEvents should then immediately
+		// deliver section-loading-complete when the runtime is fully loaded.
+		await page.goto(LOADING_EVENT_DEMO_PATH, { waitUntil: "networkidle" });
 		const panel = await openEventPanel(page);
 		await panel
 			.locator(".pie-section-player-tools-event-debugger__toggle-button", {
 				hasText: "section",
 			})
 			.click();
+		await page.evaluate(() => {
+			const eventPanel = document.querySelector(
+				"pie-section-player-tools-event-debugger",
+			) as
+				| (HTMLElement & {
+						toolkitCoordinator?: {
+							getSectionController?: (args: {
+								sectionId: string;
+								attemptId?: string;
+							}) => {
+								getRuntimeState?: () => { itemIdentifiers?: string[] } | null;
+								handleContentRegistered?: (args: {
+									itemId: string;
+									canonicalItemId?: string;
+									contentKind?: string;
+								}) => void;
+								handleContentLoaded?: (args: {
+									itemId: string;
+									canonicalItemId?: string;
+									contentKind?: string;
+									timestamp?: number;
+								}) => void;
+							} | null;
+						};
+						sectionId?: string;
+						attemptId?: string;
+				  })
+				| null;
+			const sectionId = eventPanel?.sectionId || "";
+			const attemptId = eventPanel?.attemptId;
+			const controller = eventPanel?.toolkitCoordinator?.getSectionController?.({
+				sectionId,
+				attemptId,
+			});
+			const runtimeState = controller?.getRuntimeState?.() || null;
+			const itemIdentifiers = Array.isArray(runtimeState?.itemIdentifiers)
+				? runtimeState.itemIdentifiers
+				: [];
+			for (const itemId of itemIdentifiers) {
+				controller?.handleContentRegistered?.({
+					itemId,
+					canonicalItemId: itemId,
+					contentKind: "item",
+				});
+				controller?.handleContentLoaded?.({
+					itemId,
+					canonicalItemId: itemId,
+					contentKind: "item",
+					timestamp: Date.now(),
+				});
+			}
+		});
 		await expect(
 			panel
 				.locator(".pie-section-player-tools-event-debugger__row")

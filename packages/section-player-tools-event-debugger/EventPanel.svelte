@@ -248,6 +248,14 @@
 		pushRecord(event || {});
 	}
 
+	function handleItemControllerEvent(event: ControllerEvent): void {
+		handleControllerEvent(event);
+	}
+
+	function handleSectionControllerEvent(event: ControllerEvent): void {
+		handleControllerEvent(event);
+	}
+
 	function getController(): any | null {
 		return getSectionControllerFromCoordinator(
 			toolkitCoordinator,
@@ -323,13 +331,13 @@
 			toolkitCoordinator?.subscribeItemEvents?.({
 				sectionId,
 				attemptId,
-				listener: handleControllerEvent,
+				listener: handleItemControllerEvent,
 			}) || null;
 		const unsubscribeSection =
 			toolkitCoordinator?.subscribeSectionLifecycleEvents?.({
 				sectionId,
 				attemptId,
-				listener: handleControllerEvent,
+				listener: handleSectionControllerEvent,
 			}) || null;
 		subscriptions.controller = () => {
 			unsubscribeItem?.();

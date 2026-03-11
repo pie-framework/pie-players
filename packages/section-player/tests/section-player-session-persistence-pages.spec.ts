@@ -3,6 +3,38 @@ import { expect, test } from "@playwright/test";
 const DEMO_PATH =
 	"/demo/session-persistence?mode=candidate&layout=splitpane&page=algebra-basics";
 
+async function openSessionPanel(page: import("@playwright/test").Page) {
+	const toggleButton = page.getByRole("button", {
+		name: "Toggle session panel",
+	});
+	await expect(toggleButton).toBeVisible();
+	await toggleButton.click();
+	const panel = page.locator("pie-section-player-tools-session-debugger");
+	await expect(panel.locator(".pie-section-player-tools-session-debugger")).toBeVisible();
+	return panel;
+}
+
+async function readSessionPanelSnapshot(panel: import("@playwright/test").Locator): Promise<{
+	itemSessions?: Record<string, unknown>;
+}> {
+	const snapshotPre = panel.locator("pre").first();
+	await expect(snapshotPre).toBeVisible();
+	let parsed: { itemSessions?: Record<string, unknown> } | null = null;
+	await expect
+		.poll(async () => {
+			const text = (await snapshotPre.textContent()) || "";
+			try {
+				parsed = JSON.parse(text) as { itemSessions?: Record<string, unknown> };
+				return true;
+			} catch {
+				parsed = null;
+				return false;
+			}
+		})
+		.toBe(true);
+	return parsed || {};
+}
+
 test.describe("section player session persistence across section pages", () => {
 	test("remembers each section page responses with persistence strategy", async ({
 		page,
@@ -22,7 +54,6 @@ test.describe("section player session persistence across section pages", () => {
 				exact: false,
 			}),
 		).toBeVisible();
-
 		const algebraItem = page.locator(
 			'pie-item-shell[data-item-id="climate-q1"]',
 		);
@@ -49,6 +80,27 @@ test.describe("section player session persistence across section pages", () => {
 		await expect(algebraItem.getByRole("radio").nth(0)).toBeChecked();
 		await algebraChoice.click();
 		await expect(algebraChoice).toBeChecked();
+		const sessionPanel = await openSessionPanel(page);
+		const snapshotAfterThirdChoice = await readSessionPanelSnapshot(sessionPanel);
+		expect(
+			Object.keys(snapshotAfterThirdChoice.itemSessions || {}).length,
+		).toBeGreaterThan(0);
+		const snapshotTextBeforeChange =
+			(await sessionPanel.locator("pre").first().textContent()) || "";
+		expect(snapshotTextBeforeChange).toContain("itemSessions");
+
+		const firstChoice = algebraItem.getByRole("radio").nth(0);
+		await firstChoice.evaluate((node) => {
+			(node as HTMLInputElement).click();
+		});
+		await expect(firstChoice).toBeChecked();
+		await expect
+			.poll(async () => {
+				const snapshotTextAfterChange =
+					(await sessionPanel.locator("pre").first().textContent()) || "";
+				return snapshotTextAfterChange !== snapshotTextBeforeChange;
+			})
+			.toBe(true);
 
 		await readingLink.click();
 		await expect(page).toHaveURL(/page=reading-with-passage/);
@@ -65,7 +117,7 @@ test.describe("section player session persistence across section pages", () => {
 		const restoredAlgebraChoice = page
 			.locator('pie-item-shell[data-item-id="climate-q1"]')
 			.getByRole("radio")
-			.nth(2);
+			.nth(0);
 		await expect
 			.poll(async () => {
 				return await restoredAlgebraChoice.isChecked();

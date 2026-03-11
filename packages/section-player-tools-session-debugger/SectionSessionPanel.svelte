@@ -199,6 +199,14 @@
 		});
 	}
 
+	function handleItemControllerEvent(detail: { itemId?: string; timestamp?: number }): void {
+		handleControllerEvent(detail);
+	}
+
+	function handleSectionControllerEvent(detail: { itemId?: string; timestamp?: number }): void {
+		handleControllerEvent(detail);
+	}
+
 	function ensureControllerSubscription() {
 		const controller = getController() || null;
 		if (!controller) {
@@ -233,12 +241,12 @@
 		const unsubscribeItem = toolkitCoordinator?.subscribeItemEvents?.({
 			sectionId,
 			attemptId,
-			listener: handleControllerEvent
+			listener: handleItemControllerEvent
 		}) || null;
 		const unsubscribeSection = toolkitCoordinator?.subscribeSectionLifecycleEvents?.({
 			sectionId,
 			attemptId,
-			listener: handleControllerEvent
+			listener: handleSectionControllerEvent
 		}) || null;
 		unsubscribeController = () => {
 			unsubscribeItem?.();

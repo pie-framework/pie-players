@@ -40,6 +40,34 @@ export interface ServerTTSProviderConfig extends TTSConfig {
 	volume?: number;
 
 	/**
+	 * Transport mode determines request/response translation strategy.
+	 * - pie: POST {apiEndpoint}/synthesize, expects inline base64 audio + speech marks
+	 * - custom: POST root endpoint, expects audioContent URL + JSONL speech mark URL
+	 */
+	transportMode?: "pie" | "custom";
+
+	/**
+	 * Endpoint mode for synthesis requests.
+	 * - synthesizePath: append /synthesize to apiEndpoint
+	 * - rootPost: POST directly to apiEndpoint
+	 */
+	endpointMode?: "synthesizePath" | "rootPost";
+
+	/**
+	 * Endpoint validation mode used during initialize(validateEndpoint=true).
+	 * - voices: probe {apiEndpoint}/voices
+	 * - endpoint: probe resolved synthesis endpoint
+	 * - none: skip endpoint probe
+	 */
+	endpointValidationMode?: "voices" | "endpoint" | "none";
+
+	/**
+	 * Include auth headers when fetching custom-transport speech marks and audio URLs.
+	 * Defaults to false for compatibility.
+	 */
+	includeAuthOnAssetFetch?: boolean;
+
+	/**
 	 * Validate API endpoint availability during initialization (slower but safer)
 	 *
 	 * @extension Performance vs safety tradeoff
@@ -81,16 +109,260 @@ interface SynthesizeAPIResponse {
 	};
 }
 
+interface CustomTransportResponse {
+	audioContent: string;
+	word?: string;
+}
+
+type NormalizedAudioSource =
+	| {
+			kind: "base64";
+			data: string;
+			contentType: string;
+	  }
+	| {
+			kind: "url";
+			url: string;
+	  };
+
+interface NormalizedSynthesisResult {
+	audio: NormalizedAudioSource;
+	speechMarks: Array<{
+		time: number;
+		type: string;
+		start: number;
+		end: number;
+		value: string;
+	}>;
+}
+
+interface TransportAdapter {
+	id: "pie" | "custom";
+	resolveSynthesisUrl: (config: ServerTTSProviderConfig) => string;
+	buildRequestBody: (text: string, config: ServerTTSProviderConfig) => unknown;
+	parseResponse: (
+		response: Response,
+		config: ServerTTSProviderConfig,
+		headers: Record<string, string>,
+		signal: AbortSignal,
+	) => Promise<NormalizedSynthesisResult>;
+}
+
+const MAX_TEXT_LENGTH_BY_MODE: Record<TransportAdapter["id"], number> = {
+	pie: 3000,
+	custom: 3000,
+};
+
+const trimTrailingSlash = (value: string): string => value.replace(/\/+$/, "");
+
+const resolveTransportMode = (
+	config: ServerTTSProviderConfig,
+): TransportAdapter["id"] => {
+	if (config.transportMode === "custom") return "custom";
+	if (config.transportMode === "pie") return "pie";
+	return config.provider === "custom" ? "custom" : "pie";
+};
+
+const resolveEndpointMode = (
+	config: ServerTTSProviderConfig,
+	mode: TransportAdapter["id"],
+): NonNullable<ServerTTSProviderConfig["endpointMode"]> => {
+	if (config.endpointMode) return config.endpointMode;
+	return mode === "custom" ? "rootPost" : "synthesizePath";
+};
+
+const resolveValidationMode = (
+	config: ServerTTSProviderConfig,
+	mode: TransportAdapter["id"],
+): NonNullable<ServerTTSProviderConfig["endpointValidationMode"]> => {
+	if (config.endpointValidationMode) return config.endpointValidationMode;
+	return mode === "custom" ? "none" : "voices";
+};
+
+const resolveSpeedRate = (config: ServerTTSProviderConfig): string => {
+	const providerOptions = (config.providerOptions || {}) as Record<string, unknown>;
+	if (typeof providerOptions.speedRate === "string") {
+		return providerOptions.speedRate;
+	}
+	const rate = Number(config.rate ?? 1);
+	if (!Number.isFinite(rate) || rate <= 0.95) return "slow";
+	if (rate >= 1.5) return "fast";
+	return "medium";
+};
+
+const parseJSONLSpeechMarks = (raw: string): NormalizedSynthesisResult["speechMarks"] => {
+	const marks: NormalizedSynthesisResult["speechMarks"] = [];
+	let fallbackIndex = 0;
+	const lines = raw
+		.split("\n")
+		.map((line) => line.trim())
+		.filter(Boolean);
+	for (const line of lines) {
+		try {
+			const parsed = JSON.parse(line) as Record<string, unknown>;
+			const type = typeof parsed.type === "string" ? parsed.type : "word";
+			const time =
+				typeof parsed.time === "number" && Number.isFinite(parsed.time)
+					? parsed.time
+					: 0;
+			const value = typeof parsed.value === "string" ? parsed.value : "";
+			const explicitStart =
+				typeof parsed.start === "number" && Number.isFinite(parsed.start)
+					? parsed.start
+					: null;
+			const explicitEnd =
+				typeof parsed.end === "number" && Number.isFinite(parsed.end)
+					? parsed.end
+					: null;
+			const start = explicitStart ?? fallbackIndex;
+			const computedEnd =
+				explicitEnd ??
+				(start + Math.max(1, value.length || String(parsed.value || "").length));
+			fallbackIndex = Math.max(computedEnd + 1, fallbackIndex);
+			marks.push({
+				time,
+				type,
+				start,
+				end: computedEnd,
+				value,
+			});
+		} catch {
+			// Ignore malformed lines and keep parsing valid marks.
+		}
+	}
+	return marks;
+};
+
+const pieAdapter: TransportAdapter = {
+	id: "pie",
+	resolveSynthesisUrl: (config) => {
+		const endpointMode = resolveEndpointMode(config, "pie");
+		const base = trimTrailingSlash(config.apiEndpoint);
+		return endpointMode === "rootPost" ? base : `${base}/synthesize`;
+	},
+	buildRequestBody: (text, config) => {
+		const providerOptions = (config.providerOptions ||
+			{}) as Record<string, unknown>;
+		const engine =
+			typeof config.engine === "string"
+				? config.engine
+				: typeof providerOptions.engine === "string"
+					? providerOptions.engine
+					: undefined;
+		const sampleRate =
+			typeof providerOptions.sampleRate === "number" &&
+			Number.isFinite(providerOptions.sampleRate)
+				? providerOptions.sampleRate
+				: undefined;
+		const format =
+			providerOptions.format === "mp3" ||
+			providerOptions.format === "ogg" ||
+			providerOptions.format === "pcm"
+				? providerOptions.format
+				: undefined;
+		const speechMarkTypes = Array.isArray(providerOptions.speechMarkTypes)
+			? providerOptions.speechMarkTypes.filter(
+					(entry): entry is "word" | "sentence" | "ssml" =>
+						entry === "word" || entry === "sentence" || entry === "ssml",
+				)
+			: undefined;
+		return {
+			text,
+			provider: config.provider || "polly",
+			voice: config.voice,
+			language: config.language,
+			rate: config.rate,
+			engine,
+			sampleRate,
+			format,
+			speechMarkTypes,
+			includeSpeechMarks: true,
+		};
+	},
+	parseResponse: async (response) => {
+		const data: SynthesizeAPIResponse = await response.json();
+		return {
+			audio: {
+				kind: "base64",
+				data: data.audio,
+				contentType: data.contentType,
+			},
+			speechMarks: Array.isArray(data.speechMarks) ? data.speechMarks : [],
+		};
+	},
+};
+
+const customAdapter: TransportAdapter = {
+	id: "custom",
+	resolveSynthesisUrl: (config) => {
+		const endpointMode = resolveEndpointMode(config, "custom");
+		const base = trimTrailingSlash(config.apiEndpoint);
+		return endpointMode === "synthesizePath" ? `${base}/synthesize` : base;
+	},
+	buildRequestBody: (text, config) => {
+		const providerOptions = (config.providerOptions || {}) as Record<string, unknown>;
+		const langId =
+			typeof providerOptions.lang_id === "string"
+				? providerOptions.lang_id
+				: config.language || "en-US";
+		const cache =
+			typeof providerOptions.cache === "boolean" ? providerOptions.cache : true;
+		return {
+			text,
+			speedRate: resolveSpeedRate(config),
+			lang_id: langId,
+			cache,
+		};
+	},
+	parseResponse: async (response, config, headers, signal) => {
+		const data: CustomTransportResponse = await response.json();
+		const marksHeaders: Record<string, string> = {};
+		if (config.includeAuthOnAssetFetch) {
+			for (const [key, value] of Object.entries(headers)) {
+				if (key.toLowerCase() === "authorization") {
+					marksHeaders[key] = value;
+				}
+			}
+		}
+		let speechMarks: NormalizedSynthesisResult["speechMarks"] = [];
+		if (typeof data.word === "string" && data.word.length > 0) {
+			const marksResponse = await fetch(data.word, {
+				headers: marksHeaders,
+				signal,
+			});
+			if (marksResponse.ok) {
+				const marksRaw = await marksResponse.text();
+				speechMarks = parseJSONLSpeechMarks(marksRaw);
+			}
+		}
+		return {
+			audio: {
+				kind: "url",
+				url: data.audioContent,
+			},
+			speechMarks,
+		};
+	},
+};
+
+const ADAPTERS: Record<TransportAdapter["id"], TransportAdapter> = {
+	pie: pieAdapter,
+	custom: customAdapter,
+};
+
 /**
  * Provider implementation that handles audio playback
  */
 class ServerTTSProviderImpl implements ITTSProviderImplementation {
 	private config: ServerTTSProviderConfig;
+	private adapter: TransportAdapter;
 	private currentAudio: HTMLAudioElement | null = null;
 	private pausedState = false;
 	private wordTimings: WordTiming[] = [];
 	private highlightInterval: number | null = null;
 	private intentionallyStopped = false;
+	private activeSynthesisController: AbortController | null = null;
+	private synthesisRunId = 0;
 
 	public onWordBoundary?: (
 		word: string,
@@ -98,8 +370,9 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 		length?: number,
 	) => void;
 
-	constructor(config: ServerTTSProviderConfig) {
+	constructor(config: ServerTTSProviderConfig, adapter: TransportAdapter) {
 		this.config = config;
+		this.adapter = adapter;
 	}
 
 	async speak(text: string): Promise<void> {
@@ -108,9 +381,20 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 
 		// Reset intentionally stopped flag for new playback
 		this.intentionallyStopped = false;
+		const runId = ++this.synthesisRunId;
+		const synthesisController = new AbortController();
+		this.activeSynthesisController = synthesisController;
 
 		// Call server API to synthesize speech
-		const { audioUrl, wordTimings } = await this.synthesizeSpeech(text);
+		const { audioUrl, wordTimings } = await this.synthesizeSpeech(
+			text,
+			synthesisController.signal,
+			runId,
+		);
+		if (runId !== this.synthesisRunId) {
+			URL.revokeObjectURL(audioUrl);
+			return;
+		}
 
 		// Adjust word timing for playback rate
 		// Speech marks are at 1.0x speed, so we need to scale them
@@ -158,6 +442,7 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 				URL.revokeObjectURL(audioUrl);
 				this.currentAudio = null;
 				this.wordTimings = [];
+				void event;
 				// Only reject if this wasn't an intentional stop
 				if (!this.intentionallyStopped) {
 					reject(new Error("Failed to play audio from server"));
@@ -182,6 +467,8 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 	 */
 	private async synthesizeSpeech(
 		text: string,
+		signal: AbortSignal,
+		runId: number,
 	): Promise<{ audioUrl: string; wordTimings: WordTiming[] }> {
 		const headers: Record<string, string> = {
 			"Content-Type": "application/json",
@@ -193,49 +480,13 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 			headers["Authorization"] = `Bearer ${this.config.authToken}`;
 		}
 
-		const providerOptions = (this.config.providerOptions ||
-			{}) as Record<string, unknown>;
-		const engine =
-			typeof this.config.engine === "string"
-				? this.config.engine
-				: typeof providerOptions.engine === "string"
-					? providerOptions.engine
-					: undefined;
-		const sampleRate =
-			typeof providerOptions.sampleRate === "number" &&
-			Number.isFinite(providerOptions.sampleRate)
-				? providerOptions.sampleRate
-				: undefined;
-		const format =
-			providerOptions.format === "mp3" ||
-			providerOptions.format === "ogg" ||
-			providerOptions.format === "pcm"
-				? providerOptions.format
-				: undefined;
-		const speechMarkTypes = Array.isArray(providerOptions.speechMarkTypes)
-			? providerOptions.speechMarkTypes.filter(
-					(entry): entry is "word" | "sentence" | "ssml" =>
-						entry === "word" || entry === "sentence" || entry === "ssml",
-				)
-			: undefined;
-
-		const requestBody = {
-			text,
-			provider: this.config.provider || "polly",
-			voice: this.config.voice,
-			language: this.config.language,
-			rate: this.config.rate,
-			engine,
-			sampleRate,
-			format,
-			speechMarkTypes,
-			includeSpeechMarks: true,
-		};
-
-		const response = await fetch(`${this.config.apiEndpoint}/synthesize`, {
+		const synthUrl = this.adapter.resolveSynthesisUrl(this.config);
+		const requestBody = this.adapter.buildRequestBody(text, this.config);
+		const response = await fetch(synthUrl, {
 			method: "POST",
 			headers,
 			body: JSON.stringify(requestBody),
+			signal,
 		});
 
 		if (!response.ok) {
@@ -247,14 +498,44 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 			throw new Error(errorMessage);
 		}
 
-		const data: SynthesizeAPIResponse = await response.json();
+		const normalized = await this.adapter.parseResponse(
+			response,
+			this.config,
+			headers,
+			signal,
+		);
+		if (runId !== this.synthesisRunId || signal.aborted) {
+			throw new Error("Synthesis superseded by a newer request");
+		}
 
-		// Convert base64 audio to blob URL
-		const audioBlob = this.base64ToBlob(data.audio, data.contentType);
+		let audioBlob: Blob;
+		if (normalized.audio.kind === "base64") {
+			audioBlob = this.base64ToBlob(
+				normalized.audio.data,
+				normalized.audio.contentType,
+			);
+		} else {
+			const assetHeaders: Record<string, string> = {};
+			if (this.config.includeAuthOnAssetFetch) {
+				if (this.config.authToken) {
+					assetHeaders["Authorization"] = `Bearer ${this.config.authToken}`;
+				}
+			}
+			const audioResponse = await fetch(normalized.audio.url, {
+				headers: assetHeaders,
+				signal,
+			});
+			if (!audioResponse.ok) {
+				throw new Error(
+					`Failed to download synthesized audio (${audioResponse.status})`,
+				);
+			}
+			audioBlob = await audioResponse.blob();
+		}
 		const audioUrl = URL.createObjectURL(audioBlob);
 
 		// Convert speech marks to word timings
-		const wordTimings = this.parseSpeechMarks(data.speechMarks);
+		const wordTimings = this.parseSpeechMarks(normalized.speechMarks);
 
 		return { audioUrl, wordTimings };
 	}
@@ -393,6 +674,11 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 	}
 
 	stop(): void {
+		this.synthesisRunId += 1;
+		if (this.activeSynthesisController) {
+			this.activeSynthesisController.abort();
+			this.activeSynthesisController = null;
+		}
 		this.stopWordHighlighting();
 
 		if (this.currentAudio) {
@@ -458,6 +744,7 @@ export class ServerTTSProvider implements ITTSProvider {
 	readonly version = "1.0.0";
 
 	private config: ServerTTSProviderConfig | null = null;
+	private adapter: TransportAdapter | null = null;
 
 	/**
 	 * Initialize the server TTS provider.
@@ -475,6 +762,8 @@ export class ServerTTSProvider implements ITTSProvider {
 		}
 
 		this.config = serverConfig;
+		const transportMode = resolveTransportMode(serverConfig);
+		this.adapter = ADAPTERS[transportMode];
 
 		// Only test API availability if explicitly requested (slower but safer)
 		if (serverConfig.validateEndpoint) {
@@ -486,7 +775,7 @@ export class ServerTTSProvider implements ITTSProvider {
 			}
 		}
 
-		return new ServerTTSProviderImpl(serverConfig);
+		return new ServerTTSProviderImpl(serverConfig, this.adapter);
 	}
 
 	/**
@@ -495,7 +784,7 @@ export class ServerTTSProvider implements ITTSProvider {
 	 * @performance 100-500ms depending on network
 	 */
 	private async testAPIAvailability(): Promise<boolean> {
-		if (!this.config) return false;
+		if (!this.config || !this.adapter) return false;
 
 		try {
 			const headers: Record<string, string> = { ...this.config.headers };
@@ -508,18 +797,28 @@ export class ServerTTSProvider implements ITTSProvider {
 			const controller = new AbortController();
 			const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
 
+			const mode = resolveValidationMode(this.config, this.adapter.id);
+			if (mode === "none") {
+				clearTimeout(timeoutId);
+				return true;
+			}
+			const base = trimTrailingSlash(this.config.apiEndpoint);
+			const validationUrl =
+				mode === "voices"
+					? `${base}/voices`
+					: this.adapter.resolveSynthesisUrl(this.config);
+			const method = mode === "voices" ? "GET" : "OPTIONS";
 			try {
-				// Try to fetch voices to test API
-				const response = await fetch(`${this.config.apiEndpoint}/voices`, {
+				const response = await fetch(validationUrl, {
+					method,
 					headers,
 					signal: controller.signal,
 				});
-
 				clearTimeout(timeoutId);
-				return response.ok;
-			} catch (fetchError) {
+				// Some endpoints may not accept OPTIONS; treat 405 as reachable.
+				return response.ok || response.status === 405;
+			} catch {
 				clearTimeout(timeoutId);
-				// If aborted due to timeout or network error, consider API unavailable
 				return false;
 			}
 		} catch {
@@ -544,6 +843,7 @@ export class ServerTTSProvider implements ITTSProvider {
 	}
 
 	getCapabilities(): TTSProviderCapabilities {
+		const mode = this.config ? resolveTransportMode(this.config) : "pie";
 		return {
 			supportsPause: true,
 			supportsResume: true,
@@ -551,11 +851,12 @@ export class ServerTTSProvider implements ITTSProvider {
 			supportsVoiceSelection: true,
 			supportsRateControl: true,
 			supportsPitchControl: false, // Depends on server provider
-			maxTextLength: 3000, // Conservative estimate
+			maxTextLength: MAX_TEXT_LENGTH_BY_MODE[mode],
 		};
 	}
 
 	destroy(): void {
 		this.config = null;
+		this.adapter = null;
 	}
 }

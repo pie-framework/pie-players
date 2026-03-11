@@ -16,7 +16,11 @@ import type { IToolProvider, ToolProviderCapabilities } from "./IToolProvider.js
 /**
  * TTS backend type
  */
-export type TTSBackend = "browser" | "polly" | "google" | "server";
+export type TTSBackend =
+	| "browser"
+	| "polly"
+	| "google"
+	| "server";
 
 /**
  * TTS tool provider configuration
@@ -38,7 +42,27 @@ export interface TTSToolProviderConfig extends Partial<TTSConfig> {
 	 * Provider to use on server ('polly', 'google')
 	 * Only used when backend is 'server', 'polly', or 'google'
 	 */
-	serverProvider?: "polly" | "google";
+	serverProvider?: "polly" | "google" | "custom";
+
+	/**
+	 * Explicit transport mode for server provider payload translation.
+	 */
+	transportMode?: "pie" | "custom";
+
+	/**
+	 * Endpoint style used by the server-backed provider.
+	 */
+	endpointMode?: "synthesizePath" | "rootPost";
+
+	/**
+	 * Endpoint validation strategy when validateEndpoint=true.
+	 */
+	endpointValidationMode?: "voices" | "endpoint" | "none";
+
+	/**
+	 * Include auth header when fetching remote audio/speech-mark assets.
+	 */
+	includeAuthOnAssetFetch?: boolean;
 
 	/**
 	 * Auth token (if required)

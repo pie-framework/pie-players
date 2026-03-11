@@ -22,8 +22,8 @@ import { TTSToolProvider } from "../../services/tool-providers/index.js";
 
 interface TTSProviderRuntimeSettings {
 	backend?: "browser" | "polly" | "google" | "server";
-	serverProvider?: "polly" | "google";
-	provider?: "polly" | "google";
+	serverProvider?: "polly" | "google" | "custom";
+	provider?: "polly" | "google" | "custom";
 	engine?: "standard" | "neural";
 	sampleRate?: number;
 	format?: "mp3" | "ogg" | "pcm";
@@ -33,6 +33,14 @@ interface TTSProviderRuntimeSettings {
 	pitch?: number;
 	apiEndpoint?: string;
 	language?: string;
+	transportMode?: "pie" | "custom";
+	endpointMode?: "synthesizePath" | "rootPost";
+	endpointValidationMode?: "voices" | "endpoint" | "none";
+	includeAuthOnAssetFetch?: boolean;
+	validateEndpoint?: boolean;
+	cache?: boolean;
+	speedRate?: "slow" | "medium" | "fast";
+	lang_id?: string;
 }
 
 const toRecord = (value: unknown): Record<string, unknown> =>
@@ -72,28 +80,59 @@ export const ttsToolRegistration: ToolRegistration = {
 			const serverProvider =
 				settings.serverProvider ||
 				settings.provider ||
-				(backend === "polly" || backend === "google" ? backend : undefined);
+				(backend === "polly" || backend === "google"
+					? backend
+					: undefined);
+			const transportMode =
+				settings.transportMode ||
+				(serverProvider === "custom"
+					? "custom"
+					: "pie");
 			return {
 				backend,
 				apiEndpoint: settings.apiEndpoint,
 				serverProvider,
 				providerOptions:
-					backend === "polly"
+					backend === "polly" || transportMode === "custom"
 						? {
-								...(settings.engine ? { engine: settings.engine } : {}),
-								...(typeof settings.sampleRate === "number"
+								...(backend === "polly" && settings.engine
+									? { engine: settings.engine }
+									: {}),
+								...(backend === "polly" &&
+								typeof settings.sampleRate === "number"
 									? { sampleRate: settings.sampleRate }
 									: {}),
-								...(settings.format ? { format: settings.format } : {}),
-								speechMarkTypes:
-									settings.speechMarksMode === "word+sentence"
-										? ["word", "sentence"]
-										: ["word"],
+								...(backend === "polly" && settings.format
+									? { format: settings.format }
+									: {}),
+								...(backend === "polly"
+									? {
+											speechMarkTypes:
+												settings.speechMarksMode === "word+sentence"
+													? ["word", "sentence"]
+													: ["word"],
+										}
+									: {}),
+								...(transportMode === "custom" &&
+								typeof settings.cache === "boolean"
+									? { cache: settings.cache }
+									: {}),
+								...(transportMode === "custom" && settings.speedRate
+									? { speedRate: settings.speedRate }
+									: {}),
+								...(transportMode === "custom" && settings.lang_id
+									? { lang_id: settings.lang_id }
+									: {}),
 							}
 						: undefined,
 				voice: settings.defaultVoice,
 				rate: settings.rate,
 				pitch: settings.pitch,
+				transportMode,
+				endpointMode: settings.endpointMode,
+				endpointValidationMode: settings.endpointValidationMode,
+				includeAuthOnAssetFetch: settings.includeAuthOnAssetFetch,
+				validateEndpoint: settings.validateEndpoint,
 			};
 		},
 		getAuthFetcher: (config) => {

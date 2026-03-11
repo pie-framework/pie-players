@@ -13,6 +13,10 @@ This directory contains SvelteKit API routes used by section demos for developme
 - `GET /api/tts/polly/voices` - Get AWS Polly voices
 - `GET /api/tts/google/voices` - Get Google Cloud TTS voices
 
+`/api/tts/*` routes in section-demos implement the PIE transport contract. Custom URL-based
+integrations are expected to run through backend translation using `transportMode: "custom"`
+at the client provider boundary.
+
 ### Desmos Calculator Auth
 
 **Route**: `GET /api/tools/desmos/auth`

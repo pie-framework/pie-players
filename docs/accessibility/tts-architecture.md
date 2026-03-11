@@ -77,7 +77,8 @@ The new architecture splits TTS into server-side and client-side components for 
 
 **@pie-players/tts-client-server**
 - Calls server API for synthesis
-- Receives audio + speech marks
+- Supports transport adapters (`pie`, `custom`)
+- Receives inline audio/marks or URL-based assets, then normalizes playback
 - 50ms polling-based highlighting
 - HTMLAudioElement playback
 
@@ -86,6 +87,11 @@ The new architecture splits TTS into server-side and client-side components for 
 SvelteKit API routes connect the pieces:
 ```
 Browser → ServerTTSProvider → /api/tts/synthesize → PollyServerProvider → AWS Polly
+```
+
+Custom backend integrations can use:
+```
+Browser → ServerTTSProvider (custom transport) → Custom root POST API
 ```
 
 ### 4. Server-Side TTS Providers (Recommended)
@@ -114,6 +120,7 @@ Browser → ServerTTSProvider → /api/tts/synthesize → PollyServerProvider �
 ```
 
 See [Server-Side TTS Integration Guide](../packages/tts-server-polly/examples/INTEGRATION-GUIDE.md) for setup instructions.
+See [TTS Transport Migration](./tts-transport-migration.md) for config migration notes.
 
 ## Architecture Diagram
 

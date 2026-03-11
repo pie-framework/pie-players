@@ -40,6 +40,9 @@
 		rate?: number;
 		pitch?: number;
 		language?: string;
+		transportMode?: 'pie' | 'custom';
+		endpointMode?: 'synthesizePath' | 'rootPost';
+		endpointValidationMode?: 'voices' | 'endpoint' | 'none';
 		engine?: 'standard' | 'neural';
 		sampleRate?: number;
 		format?: PollyFormat;
@@ -761,7 +764,8 @@ function refreshGoogleVoices() {
 					backend: 'browser' as const,
 					defaultVoice: resolveVoiceForBackend('browser'),
 					rate: normalizeRate(browserRate),
-					pitch: normalizePitch(browserPitch)
+					pitch: normalizePitch(browserPitch),
+					transportMode: 'pie' as const
 				};
 				toolkitCoordinator.updateToolConfig('tts', {
 					enabled: true,
@@ -772,6 +776,9 @@ function refreshGoogleVoices() {
 				const next = {
 					backend: 'polly' as const,
 					apiEndpoint: normalizeApiEndpoint(pollyApiEndpoint),
+					transportMode: 'pie' as const,
+					endpointMode: 'synthesizePath' as const,
+					endpointValidationMode: 'voices' as const,
 					defaultVoice: resolveVoiceForBackend('polly'),
 					rate: normalizeRate(pollyRate),
 					language: pollyLanguage || undefined,
@@ -795,6 +802,9 @@ function refreshGoogleVoices() {
 				const next = {
 					backend: 'google' as const,
 					apiEndpoint: normalizeApiEndpoint(googleApiEndpoint),
+					transportMode: 'pie' as const,
+					endpointMode: 'synthesizePath' as const,
+					endpointValidationMode: 'voices' as const,
 					defaultVoice: resolveVoiceForBackend('google'),
 					rate: normalizeRate(googleRate),
 					language: googleLanguage || undefined,

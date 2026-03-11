@@ -73,11 +73,14 @@ await ttsService.speak('Hello world, this is a test.', {
 });
 ```
 
-## API Requirements
+## Transport Modes
 
-The server API must implement two endpoints:
+`ServerTTSProvider` now supports two transport modes:
 
-### POST `/api/tts/synthesize`
+- `pie` (default): POST `${apiEndpoint}/synthesize`, inline base64 audio + inline speech marks
+- `custom`: POST to root endpoint, then fetch `audioContent` and JSONL marks URLs
+
+### PIE mode request
 
 **Request:**
 ```json
@@ -110,23 +113,43 @@ The server API must implement two endpoints:
 }
 ```
 
-### GET `/api/tts/voices`
+### PIE mode response
 
-**Response:**
 ```json
 {
-  "voices": [
-    {
-      "id": "Joanna",
-      "name": "Joanna",
-      "language": "English",
-      "languageCode": "en-US",
-      "gender": "female",
-      "quality": "neural"
-    }
+  "audio": "base64-encoded-audio",
+  "contentType": "audio/mpeg",
+  "speechMarks": [
+    { "time": 0, "type": "word", "start": 0, "end": 5, "value": "Hello" }
   ]
 }
 ```
+
+### Custom mode request
+
+```json
+{
+  "text": "Hello world",
+  "speedRate": "medium",
+  "lang_id": "en-US",
+  "cache": true
+}
+```
+
+### Custom mode response
+
+```json
+{
+  "audioContent": "https://cdn.example.com/audio.mp3",
+  "word": "https://cdn.example.com/marks.jsonl"
+}
+```
+
+Speech marks are fetched from the `word` URL and parsed as JSONL.
+
+### Optional voices endpoint
+
+`GET ${apiEndpoint}/voices` remains optional and is only used when endpoint validation is configured with `endpointValidationMode: "voices"`.
 
 ## SvelteKit Implementation Example
 
@@ -147,7 +170,11 @@ apps/<host-app>/src/routes/api/tts/
 interface ServerTTSProviderConfig {
   apiEndpoint: string;        // API base URL (required)
   provider?: string;          // Server provider ('polly', 'google', etc.)
+  transportMode?: 'pie' | 'custom';
+  endpointMode?: 'synthesizePath' | 'rootPost';
+  endpointValidationMode?: 'voices' | 'endpoint' | 'none';
   authToken?: string;         // JWT or API key
+  includeAuthOnAssetFetch?: boolean;
   organizationId?: string;    // For multi-tenant setups
   headers?: Record<string, string>;  // Custom headers
   voiceId?: string;           // Voice ID
@@ -160,10 +187,10 @@ interface ServerTTSProviderConfig {
 ## How It Works
 
 1. **Client calls** `speak(text)`
-2. **Provider POSTs** to `/api/tts/synthesize` with text
-3. **Server synthesizes** using provider (Polly, Google, etc.)
-4. **Server returns** base64 audio + speech marks
-5. **Client converts** base64 to Blob URL
+2. **Adapter builds** backend-specific request payload
+3. **Provider POSTs** to resolved synthesis endpoint (`/synthesize` or root POST)
+4. **Adapter normalizes** response into audio + speech marks
+5. **Client loads** audio as Blob URL
 6. **Client plays** audio via HTMLAudioElement
 7. **Client polls** audio time every 50ms
 8. **Client fires** word boundary callbacks at correct times

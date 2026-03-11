@@ -78,8 +78,8 @@ export interface ToolConfig {
  */
 export interface TTSToolConfig extends ToolConfig {
 	backend?: "browser" | "polly" | "google" | "server";
-	provider?: "polly" | "google";
-	serverProvider?: "polly" | "google";
+	provider?: "polly" | "google" | "custom";
+	serverProvider?: "polly" | "google" | "custom";
 	engine?: "standard" | "neural";
 	sampleRate?: number;
 	format?: "mp3" | "ogg" | "pcm";
@@ -89,6 +89,14 @@ export interface TTSToolConfig extends ToolConfig {
 	pitch?: number;
 	apiEndpoint?: string;
 	language?: string;
+	transportMode?: "pie" | "custom";
+	endpointMode?: "synthesizePath" | "rootPost";
+	endpointValidationMode?: "voices" | "endpoint" | "none";
+	includeAuthOnAssetFetch?: boolean;
+	validateEndpoint?: boolean;
+	cache?: boolean;
+	speedRate?: "slow" | "medium" | "fast";
+	lang_id?: string;
 	authFetcher?: () => Promise<Partial<TTSToolProviderConfig>>;
 }
 
@@ -1134,6 +1142,11 @@ export class ToolkitCoordinator {
 			(resolvedBackend === "polly" || resolvedBackend === "google"
 				? resolvedBackend
 				: undefined);
+		const transportMode =
+			resolvedToolConfig.transportMode ||
+			(runtimeProvider === "custom"
+				? "custom"
+				: "pie");
 		const runtimeTTSConfig: Partial<TTSConfig> = {
 			voice: resolvedToolConfig.defaultVoice,
 			rate: resolvedToolConfig.rate,
@@ -1168,10 +1181,25 @@ export class ToolkitCoordinator {
 									: ["word"],
 						}
 					: {}),
+				...(transportMode === "custom" &&
+				typeof resolvedToolConfig.cache === "boolean"
+					? { cache: resolvedToolConfig.cache }
+					: {}),
+				...(transportMode === "custom" && resolvedToolConfig.speedRate
+					? { speedRate: resolvedToolConfig.speedRate }
+					: {}),
+				...(transportMode === "custom" && resolvedToolConfig.lang_id
+					? { lang_id: resolvedToolConfig.lang_id }
+					: {}),
 			},
 			apiEndpoint: resolvedToolConfig.apiEndpoint,
 			provider: runtimeProvider,
 			language: resolvedToolConfig.language,
+			transportMode,
+			endpointMode: resolvedToolConfig.endpointMode,
+			endpointValidationMode: resolvedToolConfig.endpointValidationMode,
+			includeAuthOnAssetFetch: resolvedToolConfig.includeAuthOnAssetFetch,
+			validateEndpoint: resolvedToolConfig.validateEndpoint,
 		} as Partial<TTSConfig>;
 
 		// Try to use TTS provider from registry if available

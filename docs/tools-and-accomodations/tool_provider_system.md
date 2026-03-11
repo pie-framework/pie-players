@@ -661,7 +661,7 @@ NODE_ENV=production
 
 ## Section Tools Toolbar
 
-The Section Tools Toolbar provides a SchoolCity-style visual interface for accessing assessment tools. It's implemented as a web component that integrates with the Tool Provider System.
+The Section Tools Toolbar provides a familiar assessment-style visual interface for accessing assessment tools. It's implemented as a web component that integrates with the Tool Provider System.
 
 ### Features
 
@@ -674,7 +674,7 @@ The Section Tools Toolbar provides a SchoolCity-style visual interface for acces
   - Magnifier (Text magnification tool)
   - Ruler (Measurement ruler)
 
-- **SchoolCity Pattern**: Bottom toolbar, independent of passage/question panels
+- **Toolbar Pattern**: Bottom toolbar, independent of passage/question panels
 - **Floating Overlays**: Tools appear as draggable floating windows
 - **Z-Index Management**: ToolCoordinator manages layering (toolbar: 100, tools: 1000-1999, modals: 2000-2999)
 - **State Management**: Integrated with assessment toolkit

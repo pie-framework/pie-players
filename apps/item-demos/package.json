@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/item-demos",
-	"version": "0.1.16",
+	"version": "0.1.17",
 	"description": "Progressive demos for PIE Item Player",
 	"type": "module",
 	"private": true,

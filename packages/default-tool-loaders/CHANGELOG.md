@@ -1,5 +1,22 @@
 # @pie-players/pie-default-tool-loaders
 
+## 0.3.10
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-tool-annotation-toolbar@0.3.10
+  - @pie-players/pie-tool-answer-eliminator@0.3.10
+  - @pie-players/pie-tool-calculator-desmos@0.3.10
+  - @pie-players/pie-tool-graph@0.3.10
+  - @pie-players/pie-tool-line-reader@0.3.10
+  - @pie-players/pie-tool-periodic-table@0.3.10
+  - @pie-players/pie-tool-protractor@0.3.10
+  - @pie-players/pie-tool-ruler@0.3.10
+  - @pie-players/pie-tool-text-to-speech@0.3.10
+  - @pie-players/pie-tool-theme@0.3.10
+
 ## 0.3.9
 
 ### Patch Changes

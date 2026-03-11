@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-tool-ruler",
-	"version": "0.3.9",
+	"version": "0.3.10",
 	"type": "module",
 	"description": "Ruler measurement tool for PIE assessment player",
 	"repository": {

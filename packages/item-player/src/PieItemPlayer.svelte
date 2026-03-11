@@ -340,11 +340,11 @@
 
 	$effect(() => {
 		const currentConfig = config;
-		const _strategy = normalizedStrategy;
-		const _mode = resolvedMode;
-		const _skip = skipElementLoading;
-		const _iifeHost = resolvedIifeBundleHost;
-		const _esmCdn = resolvedEsmCdnUrl;
+		void normalizedStrategy;
+		void resolvedMode;
+		void skipElementLoading;
+		void resolvedIifeBundleHost;
+		void resolvedEsmCdnUrl;
 		queueMicrotask(() => {
 			untrack(() => {
 				loadConfig(currentConfig);

@@ -222,4 +222,42 @@ describe("SectionController external contract", () => {
 			}),
 		);
 	});
+
+	test("emits item-session-data-changed when response is explicitly cleared", async () => {
+		const controller = new SectionController();
+		const section = {
+			identifier: "section-clear",
+			assessmentItemRefs: [{ identifier: "canonical-item-clear", item: makeItem("runtime-item-clear") }],
+			rubricBlocks: [],
+		} as unknown as AssessmentSection;
+		await controller.initialize({
+			section,
+			sectionId: "section-clear",
+			assessmentId: "assessment-clear",
+			view: "candidate",
+		});
+
+		const events: Array<{ type: string; session?: unknown }> = [];
+		const unsubscribe = controller.subscribe((event) => {
+			if (
+				event.type === "item-session-data-changed" ||
+				event.type === "item-session-meta-changed"
+			) {
+				events.push({ type: event.type, session: (event as any).session });
+			}
+		});
+
+		controller.updateItemSession("canonical-item-clear", {
+			session: { id: "sess-clear", data: [{ id: "q1", value: ["A", "B"] }] },
+		});
+		controller.updateItemSession("canonical-item-clear", {
+			session: { id: "sess-clear", data: [{ id: "q1", value: [] }] },
+		});
+		unsubscribe();
+
+		expect(events).toHaveLength(2);
+		expect(events[0]?.type).toBe("item-session-data-changed");
+		expect(events[1]?.type).toBe("item-session-data-changed");
+		expect((events[1]?.session as any)?.data?.[0]?.value).toEqual([]);
+	});
 });

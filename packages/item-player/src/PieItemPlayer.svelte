@@ -39,6 +39,12 @@
 		Env,
 		LoaderConfig,
 	} from "@pie-players/pie-players-shared";
+	import type {
+		AuthoringBackendMode,
+		DeleteDone,
+		ImageHandler,
+		SoundHandler,
+	} from "./types.js";
 	import {
 		BundleType,
 		createPieLogger,
@@ -74,19 +80,6 @@
 		view?: string;
 		loadControllers?: boolean;
 	};
-	type ImageHandler = {
-		isPasted?: boolean;
-		cancel: () => void;
-		done: (err?: Error, src?: string) => void;
-		fileChosen: (file: File) => void;
-		progress: (percent: number, bytes: number, total: number) => void;
-	};
-	type SoundHandler = {
-		cancel: () => void;
-		done: (err?: Error, src?: string) => void;
-		fileChosen: File;
-		progress: (percent: number, bytes: number, total: number) => void;
-	};
 
 	let {
 		config = null as any,
@@ -104,15 +97,15 @@
 		skipElementLoading = false,
 		mode = "view" as "view" | "author",
 		configuration = {} as Record<string, any>,
-		authoringBackend = "demo" as "demo" | "required",
+		authoringBackend = "demo" as AuthoringBackendMode,
 		loaderOptions = {} as UnifiedLoaderOptions,
 		ttsService = null as any,
 		toolCoordinator = null as any,
 		highlightCoordinator = null as any,
 		onInsertImage = null as ((handler: ImageHandler) => void) | null,
-		onDeleteImage = null as ((src: string, done: (err?: Error) => void) => void) | null,
+		onDeleteImage = null as ((src: string, done: DeleteDone) => void) | null,
 		onInsertSound = null as ((handler: SoundHandler) => void) | null,
-		onDeleteSound = null as ((src: string, done: (err?: Error) => void) => void) | null,
+		onDeleteSound = null as ((src: string, done: DeleteDone) => void) | null,
 		dispatchOnParent = false,
 	} = $props();
 
@@ -162,6 +155,19 @@
 			}
 		}
 		return input;
+	}
+
+	function hasExplicitResponseField(value: unknown): boolean {
+		if (value == null) return false;
+		if (Array.isArray(value)) {
+			return value.some((entry) => hasExplicitResponseField(entry));
+		}
+		if (typeof value !== "object") return false;
+		for (const [key, nested] of Object.entries(value as Record<string, unknown>)) {
+			if (key === "value") return true;
+			if (hasExplicitResponseField(nested)) return true;
+		}
+		return false;
 	}
 
 	function ensureSessionController(itemId: string, initialSession: unknown): ItemController {
@@ -439,7 +445,11 @@
 		if (!detailObj) {
 			return;
 		}
-		if (!("session" in detailObj) && !hasResponseValue(detailObj)) {
+		if (
+			!("session" in detailObj) &&
+			!hasResponseValue(detailObj) &&
+			!hasExplicitResponseField(detailObj)
+		) {
 			return;
 		}
 		const controllerItemId = itemConfig?.id || "pie-item-player";

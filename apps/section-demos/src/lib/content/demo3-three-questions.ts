@@ -103,7 +103,7 @@ export const demo3Section: AssessmentSection = {
 							id: "q1",
 							element: "multiple-choice",
 							prompt: `Based on the passage, what are the two main products of photosynthesis?`,
-							choiceMode: "radio",
+							choiceMode: "checkbox",
 							choices: [
 								{
 									value: "a",
@@ -123,7 +123,7 @@ export const demo3Section: AssessmentSection = {
 								{
 									value: "d",
 									label: "Cellulose and starch",
-									correct: false,
+									correct: true,
 								},
 							],
 						},

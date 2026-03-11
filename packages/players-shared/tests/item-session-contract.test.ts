@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+	hasResponseField,
 	hasResponseValue,
 	normalizeItemSessionChange,
 } from "../src/pie/item-session-contract";
@@ -72,5 +73,13 @@ describe("hasResponseValue", () => {
 			}),
 		).toBe(true);
 		expect(hasResponseValue({ data: [{ id: "el", meta: "x" }] })).toBe(false);
+	});
+});
+
+describe("hasResponseField", () => {
+	test("detects explicit response key even when value is empty", () => {
+		expect(hasResponseField({ data: [{ id: "el", value: [] }] })).toBe(true);
+		expect(hasResponseField({ data: [{ id: "el", value: "" }] })).toBe(true);
+		expect(hasResponseField({ data: [{ id: "el", meta: "x" }] })).toBe(false);
 	});
 });

@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-tool-line-reader",
-	"version": "0.3.10",
+	"version": "0.3.11",
 	"type": "module",
 	"description": "Reading guide overlay tool for PIE assessment player",
 	"repository": {

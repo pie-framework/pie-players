@@ -5,6 +5,10 @@ import path from "node:path";
 
 const ROOT = process.cwd();
 const ROOT_PACKAGE_JSON = path.join(ROOT, "package.json");
+const ASSESSMENT_TOOLKIT_TYPES_DIR = path.join(
+	ROOT,
+	"packages/assessment-toolkit/src/types",
+);
 
 const ALLOWED_SOURCE_EXPORT_PACKAGES = new Set([
 	"@pie-players/pie-players-shared",
@@ -51,6 +55,21 @@ const collectTargets = (value, out) => {
 	}
 };
 
+const collectFilesByExtension = (dir, extension, out = []) => {
+	if (!existsSync(dir)) return out;
+	for (const entry of readdirSync(dir, { withFileTypes: true })) {
+		const fullPath = path.join(dir, entry.name);
+		if (entry.isDirectory()) {
+			collectFilesByExtension(fullPath, extension, out);
+			continue;
+		}
+		if (entry.isFile() && fullPath.endsWith(extension)) {
+			out.push(fullPath);
+		}
+	}
+	return out;
+};
+
 const violations = [];
 let checked = 0;
 
@@ -77,6 +96,21 @@ for (const dir of getWorkspaceDirs()) {
 	});
 }
 
+const forbiddenAmbientModules = [];
+const dtsFiles = collectFilesByExtension(ASSESSMENT_TOOLKIT_TYPES_DIR, ".d.ts");
+const ambientModulePattern = /declare\s+module\s+["']@pie-players\/(pie-tool-|pie-calculator-desmos|tts-client-server)/g;
+for (const file of dtsFiles) {
+	const content = readFileSync(file, "utf8");
+	const matches = [...content.matchAll(ambientModulePattern)].map(
+		(match) => match[0],
+	);
+	if (matches.length === 0) continue;
+	forbiddenAmbientModules.push({
+		file,
+		declarations: matches,
+	});
+}
+
 if (violations.length > 0) {
 	console.error(
 		`[check-source-exports] Found ${violations.length} package(s) with unexpected source exports`,
@@ -85,6 +119,19 @@ if (violations.length > 0) {
 		console.error(`\n- ${violation.name} (${violation.dir})`);
 		for (const target of violation.sourceTargets) {
 			console.error(`  - ${target}`);
+		}
+	}
+	process.exit(1);
+}
+
+if (forbiddenAmbientModules.length > 0) {
+	console.error(
+		`[check-source-exports] Found ${forbiddenAmbientModules.length} file(s) with forbidden ambient tool module declarations`,
+	);
+	for (const violation of forbiddenAmbientModules) {
+		console.error(`\n- ${violation.file}`);
+		for (const declaration of violation.declarations) {
+			console.error(`  - ${declaration}`);
 		}
 	}
 	process.exit(1);

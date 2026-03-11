@@ -136,8 +136,8 @@ test.describe("section player demo tts-ssml", () => {
 		expect(Object.keys(snapshotCandidate.itemSessions || {}).length).toBeGreaterThanOrEqual(2);
 
 		// TTS controls exist for passage and items (toolbar button or inline expanded controls).
-		const passageInlineTts = passageRegion.locator("pie-tool-tts-inline");
-		const itemInlineTts = q1.locator("pie-tool-tts-inline");
+		const passageInlineTts = passageRegion.locator("pie-tool-tts-inline:visible");
+		const itemInlineTts = q1.locator("pie-tool-tts-inline:visible");
 		const hasInlineTts = (await passageInlineTts.count()) > 0;
 		if (hasInlineTts) {
 			await expect(passageInlineTts.first()).toBeVisible();

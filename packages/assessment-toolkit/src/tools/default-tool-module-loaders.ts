@@ -4,11 +4,6 @@ const loadSideEffectModule = (
 	load: () => Promise<unknown>,
 ): Promise<void> => load().then(() => undefined);
 
-const CALCULATOR_TOOL_MODULE_ID: string =
-	"@pie-players/pie-tool-calculator-desmos";
-const TTS_TOOL_MODULE_ID: string = "@pie-players/pie-tool-text-to-speech";
-const TTS_INLINE_TOOL_MODULE_ID: string = "@pie-players/pie-tool-tts-inline";
-
 /**
  * Default lazy module loaders for built-in tools.
  *
@@ -23,7 +18,7 @@ function loadCalculatorModule(): Promise<unknown> {
 	) {
 		return Promise.resolve();
 	}
-	return loadSideEffectModule(() => import(CALCULATOR_TOOL_MODULE_ID));
+	return loadSideEffectModule(() => import("@pie-players/pie-tool-calculator-desmos"));
 }
 
 export const DEFAULT_TOOL_MODULE_LOADERS: Record<string, ToolModuleLoader> = {
@@ -32,7 +27,7 @@ export const DEFAULT_TOOL_MODULE_LOADERS: Record<string, ToolModuleLoader> = {
 	calculator: loadCalculatorModule,
 	textToSpeech: () =>
 		Promise.all([
-			loadSideEffectModule(() => import(TTS_TOOL_MODULE_ID)),
-			loadSideEffectModule(() => import(TTS_INLINE_TOOL_MODULE_ID)),
+			loadSideEffectModule(() => import("@pie-players/pie-tool-text-to-speech")),
+			loadSideEffectModule(() => import("@pie-players/pie-tool-tts-inline")),
 		]).then(() => undefined),
 };

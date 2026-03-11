@@ -12,7 +12,16 @@
 		"baseUrl": ".",
 		"paths": {
 			"@pie-players/pie-assessment-toolkit": ["./src/index.ts"],
-			"@pie-players/pie-assessment-toolkit/*": ["./src/*"]
+			"@pie-players/pie-assessment-toolkit/*": ["./src/*"],
+			"@pie-players/pie-tool-calculator-desmos": [
+				"../tool-calculator-desmos/dist/index.d.ts"
+			],
+			"@pie-players/pie-tool-text-to-speech": [
+				"../tool-text-to-speech/dist/index.d.ts"
+			],
+			"@pie-players/pie-tool-tts-inline": [
+				"../tool-tts-inline/dist/tool-tts-inline.svelte.d.ts"
+			]
 		}
 	},
 	"include": [

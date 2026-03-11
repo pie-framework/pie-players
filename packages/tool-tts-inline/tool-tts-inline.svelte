@@ -3,7 +3,6 @@
 		tag: 'pie-tool-tts-inline',
 		shadow: 'open',
 		props: {
-			toolId: { type: 'String', attribute: 'tool-id' },
 			catalogId: { type: 'String', attribute: 'catalog-id' },
 			language: { type: 'String', attribute: 'language' },
 			size: { type: 'String', attribute: 'size' },
@@ -21,19 +20,15 @@
 		type AssessmentToolkitRuntimeContext,
 		type AssessmentToolkitShellContext,
 		type IHighlightCoordinator,
-		type IToolCoordinator,
 		type ITTSService,
-		ZIndexLayer,
 	} from '@pie-players/pie-assessment-toolkit';
 
 	let {
-		toolId = 'tts-inline',
 		catalogId = '', // Explicit catalog ID
 		language = 'en-US',
 		size = 'md' as 'sm' | 'md' | 'lg',
 		speedOptions = [1.5, 2] as number[]
 	}: {
-		toolId?: string;
 		catalogId?: string;
 		language?: string;
 		size?: 'sm' | 'md' | 'lg';
@@ -47,9 +42,6 @@
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
 	let shellContext = $state<AssessmentToolkitShellContext | null>(null);
 	let regionScopeContext = $state<AssessmentToolkitRegionScopeContext | null>(null);
-	const coordinator = $derived(
-		runtimeContext?.toolCoordinator as IToolCoordinator | undefined,
-	);
 	const ttsService = $derived(runtimeContext?.ttsService as ITTSService | undefined);
 	const highlightCoordinator = $derived(
 		runtimeContext?.highlightCoordinator as IHighlightCoordinator | undefined,
@@ -57,8 +49,6 @@
 	const targetContainer = $derived(
 		regionScopeContext?.scopeElement || shellContext?.scopeElement || null,
 	);
-	let registeredToolId = $state<string | null>(null);
-	let registeredCoordinator = $state<IToolCoordinator | null>(null);
 	let panelOpen = $state(false);
 	let speaking = $state(false);
 	let paused = $state(false);
@@ -105,36 +95,6 @@
 		return () => {
 			cleanupRegion();
 			cleanupShell();
-		};
-	});
-
-	// Register with coordinator (don't control visibility here - let parent handle it)
-	$effect(() => {
-		if (!coordinator || !toolId || !containerEl) return;
-		if (
-			registeredCoordinator &&
-			registeredToolId &&
-			(registeredCoordinator !== coordinator || registeredToolId !== toolId)
-		) {
-			registeredCoordinator.unregisterTool(registeredToolId);
-			registeredCoordinator = null;
-			registeredToolId = null;
-		}
-		if (!registeredToolId) {
-			coordinator.registerTool(toolId, 'TTS Inline', containerEl, ZIndexLayer.TOOL);
-			registeredCoordinator = coordinator;
-			registeredToolId = toolId;
-		}
-	});
-
-	// Cleanup when component unmounts
-	$effect(() => {
-		return () => {
-			if (registeredCoordinator && registeredToolId) {
-				registeredCoordinator.unregisterTool(registeredToolId);
-				registeredCoordinator = null;
-				registeredToolId = null;
-			}
 		};
 	});
 

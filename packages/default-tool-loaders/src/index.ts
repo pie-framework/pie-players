@@ -16,9 +16,7 @@ function loadCalculatorModule(): Promise<unknown> {
 	) {
 		return Promise.resolve();
 	}
-	return loadSideEffectModule(() =>
-		import("@pie-players/pie-tool-calculator-desmos"),
-	);
+	return loadSideEffectModule(() => import("@pie-players/pie-tool-calculator-desmos"));
 }
 
 export const SECTION_TOOL_MODULE_LOADERS: Record<string, ToolModuleLoader> = {

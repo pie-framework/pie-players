@@ -14,7 +14,7 @@
  * Part of PIE Assessment Toolkit.
  */
 
-import type { IThemeProvider } from "./interfaces.js";
+import type { ThemeProviderApi } from "./interfaces.js";
 
 /**
  * Font size options
@@ -74,7 +74,7 @@ const HIGH_CONTRAST_THEME: Partial<ThemeConfig> = {
 	warningColor: "#ffff00",
 };
 
-export class ThemeProvider implements IThemeProvider {
+export class ThemeProvider implements ThemeProviderApi {
 	private currentTheme: Required<ThemeConfig> = { ...DEFAULT_THEME };
 	private styleElement: HTMLStyleElement | null = null;
 	private rootElement: HTMLElement | null;

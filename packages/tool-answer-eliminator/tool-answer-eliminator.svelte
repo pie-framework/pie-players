@@ -53,7 +53,7 @@
 	import type {
 		AssessmentToolkitShellContext,
 		AssessmentToolkitRuntimeContext,
-		IToolCoordinator,
+		ToolCoordinatorApi,
 	} from '@pie-players/pie-assessment-toolkit';
 	import { onMount } from 'svelte';
 	import { AnswerEliminatorCore } from './answer-eliminator-core.js';
@@ -86,14 +86,14 @@
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
 	let shellContext = $state<AssessmentToolkitShellContext | null>(null);
 	const coordinator = $derived(
-		runtimeContext?.toolCoordinator as IToolCoordinator | undefined,
+		runtimeContext?.toolCoordinator as ToolCoordinatorApi | undefined,
 	);
 	let core = $state<AnswerEliminatorCore | null>(null);
 	let lastShellContextVersion = $state<number | null>(null);
 
 	// Track registration state
 	let registeredToolId = $state<string | null>(null);
-	let registeredCoordinator = $state<IToolCoordinator | null>(null);
+	let registeredCoordinator = $state<ToolCoordinatorApi | null>(null);
 
 	// Determine if tool should be active (either toggled on OR always-on mode)
 	let isActive = $derived(alwaysOn || visible);

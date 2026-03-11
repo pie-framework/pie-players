@@ -36,7 +36,7 @@ import {
 	resolveTTSBackend,
 } from "./tts-runtime-config.js";
 import { ToolProviderRegistry } from "./tool-providers/index.js";
-import type { IToolProvider } from "./tool-providers/IToolProvider.js";
+import type { ToolProviderApi } from "./tool-providers/ToolProviderApi.js";
 import type {
 	TTSToolProviderConfig,
 } from "./tool-providers/index.js";
@@ -385,7 +385,7 @@ export class ToolkitCoordinator {
 	private stateLoadPromise?: Promise<void>;
 	private coordinatorReadyPromise?: Promise<void>;
 	private coordinatorReadyNotified = false;
-	private readonly providerInitPromises = new Map<string, Promise<IToolProvider>>();
+	private readonly providerInitPromises = new Map<string, Promise<ToolProviderApi>>();
 	private readonly packagedToolRegistry = createPackagedToolRegistry();
 	private readonly sectionControllers = new Map<string, SectionControllerHandle>();
 	private readonly sectionControllerKeys = new Map<string, SectionControllerKey>();
@@ -674,7 +674,7 @@ export class ToolkitCoordinator {
 		}
 	}
 
-	public async ensureProviderReady(providerId: string): Promise<IToolProvider> {
+	public async ensureProviderReady(providerId: string): Promise<ToolProviderApi> {
 		const existing = this.providerInitPromises.get(providerId);
 		if (existing) return existing;
 		const promise = (async () => {

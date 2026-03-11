@@ -19,8 +19,8 @@
 		type AssessmentToolkitRegionScopeContext,
 		type AssessmentToolkitRuntimeContext,
 		type AssessmentToolkitShellContext,
-		type IHighlightCoordinator,
-		type ITTSService,
+		type HighlightCoordinatorApi,
+		type TtsServiceApi,
 	} from '@pie-players/pie-assessment-toolkit';
 
 	let {
@@ -42,9 +42,9 @@
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
 	let shellContext = $state<AssessmentToolkitShellContext | null>(null);
 	let regionScopeContext = $state<AssessmentToolkitRegionScopeContext | null>(null);
-	const ttsService = $derived(runtimeContext?.ttsService as ITTSService | undefined);
+	const ttsService = $derived(runtimeContext?.ttsService as TtsServiceApi | undefined);
 	const highlightCoordinator = $derived(
-		runtimeContext?.highlightCoordinator as IHighlightCoordinator | undefined,
+		runtimeContext?.highlightCoordinator as HighlightCoordinatorApi | undefined,
 	);
 	const targetContainer = $derived(
 		regionScopeContext?.scopeElement || shellContext?.scopeElement || null,

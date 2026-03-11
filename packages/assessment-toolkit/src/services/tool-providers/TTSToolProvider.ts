@@ -11,7 +11,7 @@
 
 import type { ITTSProvider, TTSConfig } from "@pie-players/pie-tts";
 import { BrowserTTSProvider } from "../../services/tts/browser-provider.js";
-import type { IToolProvider, ToolProviderCapabilities } from "./IToolProvider.js";
+import type { ToolProviderApi, ToolProviderCapabilities } from "./ToolProviderApi.js";
 
 /**
  * TTS backend type
@@ -95,7 +95,7 @@ export interface TTSToolProviderConfig extends Partial<TTSConfig> {
 /**
  * TTS Tool Provider
  *
- * Wraps TTS providers (Browser, Polly, Google) with the IToolProvider interface
+ * Wraps TTS providers (Browser, Polly, Google) with the ToolProviderApi interface
  * for use in the ToolProviderRegistry.
  *
  * @example Browser TTS (no auth)
@@ -117,7 +117,7 @@ export interface TTSToolProviderConfig extends Partial<TTSConfig> {
  * ```
  */
 export class TTSToolProvider
-	implements IToolProvider<TTSToolProviderConfig, ITTSProvider>
+	implements ToolProviderApi<TTSToolProviderConfig, ITTSProvider>
 {
 	readonly providerId = "tts-service";
 	readonly providerName = "Text-to-Speech";

@@ -20,7 +20,7 @@
  * ```
  */
 
-import type { II18nService } from "./types.js";
+import type { I18nServiceApi } from "./types.js";
 
 /**
  * Svelte 5 composable for internationalization
@@ -28,7 +28,7 @@ import type { II18nService } from "./types.js";
  * @param getService - Function that returns the I18nService instance (reactive)
  * @returns Object with reactive locale, direction, and translation functions
  */
-export function useI18n(getService: () => II18nService | undefined) {
+export function useI18n(getService: () => I18nServiceApi | undefined) {
 	let locale = $state<string>("en");
 	let direction = $state<"ltr" | "rtl">("ltr");
 	let isLoading = $state(false);

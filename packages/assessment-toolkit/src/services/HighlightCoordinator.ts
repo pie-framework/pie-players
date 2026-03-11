@@ -21,7 +21,7 @@
  * @see https://developer.mozilla.org/en-US/docs/Web/API/CSS_Custom_Highlight_API
  */
 
-import type { IHighlightCoordinator } from "./interfaces.js";
+import type { HighlightCoordinatorApi } from "./interfaces.js";
 import { RangeSerializer, type SerializedRange } from "./RangeSerializer.js";
 
 /**
@@ -62,7 +62,7 @@ export interface Annotation {
  */
 export type HighlightCoordinatorConfig = Record<string, never>;
 
-export class HighlightCoordinator implements IHighlightCoordinator {
+export class HighlightCoordinator implements HighlightCoordinatorApi {
 	private config: HighlightCoordinatorConfig;
 	private ttsWordHighlight: Highlight | null = null;
 	private ttsSentenceHighlight: Highlight | null = null;
@@ -649,7 +649,7 @@ export class HighlightCoordinator implements IHighlightCoordinator {
 	}
 
 	// ============================================================================
-	// IHighlightCoordinator Interface Implementation
+	// HighlightCoordinatorApi interface implementation
 	// ============================================================================
 
 	/**

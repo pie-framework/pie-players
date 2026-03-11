@@ -55,7 +55,7 @@
 		isToolbarLinkItem,
 		type ToolbarItem
 	} from '../services/toolbar-items.js';
-	import type { PNPToolResolver } from '../services/PNPToolResolver.js';
+	import type { PnpToolResolver } from '../services/PNPToolResolver.js';
 	import { createPackagedToolRegistry } from '../services/createDefaultToolRegistry.js';
 	import { DEFAULT_TOOL_MODULE_LOADERS } from '../tools/default-tool-module-loaders.js';
 	import {
@@ -105,7 +105,7 @@
 		position?: 'top' | 'right' | 'bottom' | 'left' | 'none';
 		scopeElement?: HTMLElement | null;
 		toolRegistry?: ToolRegistry | null;
-		pnpResolver?: PNPToolResolver | null;
+		pnpResolver?: PnpToolResolver | null;
 		assessment?: AssessmentEntity | null;
 		itemRef?: AssessmentItemRef | null;
 		item?: ItemEntity | null;

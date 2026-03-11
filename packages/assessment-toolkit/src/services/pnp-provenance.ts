@@ -88,7 +88,7 @@ export interface FeatureResolutionTrail {
 /**
  * Complete provenance for an entire PNP resolution
  */
-export interface PNPResolutionProvenance {
+export interface PnpResolutionProvenance {
 	/** Session or resolution context ID */
 	contextId: string;
 
@@ -143,8 +143,8 @@ export interface PNPResolutionProvenance {
 /**
  * Provenance builder for tracking PNP resolution
  */
-export class PNPProvenanceBuilder {
-	private provenance: PNPResolutionProvenance;
+export class PnpProvenanceBuilder {
+	private provenance: PnpResolutionProvenance;
 	private stepCounter = 0;
 
 	constructor(contextId: string) {
@@ -252,7 +252,7 @@ export class PNPProvenanceBuilder {
 	/**
 	 * Build final provenance with explanations
 	 */
-	build(): PNPResolutionProvenance {
+	build(): PnpResolutionProvenance {
 		// Generate explanations for each feature
 		for (const [featureId, trail] of this.provenance.features.entries()) {
 			trail.explanation = this.generateExplanation(trail);
@@ -329,7 +329,7 @@ export class PNPProvenanceBuilder {
 	/**
 	 * Get current provenance (without explanations)
 	 */
-	getCurrent(): PNPResolutionProvenance {
+	getCurrent(): PnpResolutionProvenance {
 		return this.provenance;
 	}
 }
@@ -338,7 +338,7 @@ export class PNPProvenanceBuilder {
  * Format provenance as markdown for display
  */
 export function formatProvenanceAsMarkdown(
-	provenance: PNPResolutionProvenance,
+	provenance: PnpResolutionProvenance,
 ): string {
 	let md = `# PNP Resolution Report\n\n`;
 	md += `**Context**: ${provenance.contextId}\n`;
@@ -385,7 +385,7 @@ export function formatProvenanceAsMarkdown(
  * Format provenance as JSON (for APIs)
  */
 export function formatProvenanceAsJSON(
-	provenance: PNPResolutionProvenance,
+	provenance: PnpResolutionProvenance,
 ): string {
 	// Convert Map to object for JSON serialization
 	const serializable = {
@@ -401,7 +401,7 @@ export function formatProvenanceAsJSON(
  * Get simple explanation for a specific feature
  */
 export function getFeatureExplanation(
-	provenance: PNPResolutionProvenance,
+	provenance: PnpResolutionProvenance,
 	featureId: string,
 ): string | null {
 	const trail = provenance.features.get(featureId);

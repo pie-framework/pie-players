@@ -8,12 +8,12 @@
 import type { ToolContext, ToolLevel } from "./tool-context.js";
 import type { ToolComponentOverrides } from "../tools/tool-tag-map.js";
 import type {
-	IElementToolStateStore,
-	IToolCoordinator,
-	IToolkitCoordinator,
-	ITTSService,
+	ElementToolStateStoreApi,
+	ToolCoordinatorApi,
+	ToolkitCoordinatorApi,
+	TtsServiceApi,
 } from "./interfaces.js";
-import type { IToolProvider } from "./tool-providers/IToolProvider.js";
+import type { ToolProviderApi } from "./tool-providers/ToolProviderApi.js";
 import type { ToolProviderConfig as ToolRuntimeConfig } from "./tools-config-normalizer.js";
 import { normalizeToolAlias } from "./tools-config-normalizer.js";
 
@@ -49,10 +49,10 @@ export interface ToolbarContext {
 	};
 	getScopeElement?: () => HTMLElement | null;
 	getGlobalElementId?: () => string | null;
-	toolCoordinator: IToolCoordinator | null;
-	toolkitCoordinator: IToolkitCoordinator | null;
-	ttsService: ITTSService | null;
-	elementToolStateStore: IElementToolStateStore | null;
+	toolCoordinator: ToolCoordinatorApi | null;
+	toolkitCoordinator: ToolkitCoordinatorApi | null;
+	ttsService: TtsServiceApi | null;
+	elementToolStateStore: ElementToolStateStoreApi | null;
 	toggleTool: (toolId: string) => void;
 	isToolVisible: (toolId: string) => boolean;
 	subscribeVisibility: ((listener: () => void) => (() => void)) | null;
@@ -101,7 +101,7 @@ export interface HostedToolSize {
 
 export interface ToolProviderDescriptor {
 	getProviderId?: (config: ToolRuntimeConfig | undefined) => string;
-	createProvider: (config: ToolRuntimeConfig | undefined) => IToolProvider;
+	createProvider: (config: ToolRuntimeConfig | undefined) => ToolProviderApi;
 	getInitConfig?: (config: ToolRuntimeConfig | undefined) => Record<string, unknown>;
 	getAuthFetcher?: (
 		config: ToolRuntimeConfig | undefined,

@@ -23,7 +23,7 @@ import type {
 	TTSProviderCapabilities,
 } from "@pie-players/pie-tts";
 import type { AccessibilityCatalogResolver } from "./AccessibilityCatalogResolver.js";
-import type { IHighlightCoordinator } from "./interfaces.js";
+import type { HighlightCoordinatorApi } from "./interfaces.js";
 import {
 	type BoundarySpacingMode,
 	collectVisibleTextAndMap,
@@ -97,7 +97,7 @@ interface ResolvedSpeechContent {
 export class TTSService {
 	private currentProvider: ITTSProvider | null = null;
 	private provider: ITTSProviderImplementation | null = null;
-	private highlightCoordinator: IHighlightCoordinator | null = null;
+	private highlightCoordinator: HighlightCoordinatorApi | null = null;
 	private catalogResolver: AccessibilityCatalogResolver | null = null;
 	private state: PlaybackState = PlaybackState.IDLE;
 	private ttsConfig: Partial<TTSConfig> = {};
@@ -165,7 +165,7 @@ export class TTSService {
 	/**
 	 * Set highlight coordinator for word highlighting
 	 */
-	setHighlightCoordinator(coordinator: IHighlightCoordinator): void {
+	setHighlightCoordinator(coordinator: HighlightCoordinatorApi): void {
 		this.highlightCoordinator = coordinator;
 	}
 

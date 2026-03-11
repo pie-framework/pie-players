@@ -52,8 +52,8 @@ import type {
 } from "@pie-players/pie-players-shared/types";
 import type { ToolRegistry } from "./ToolRegistry.js";
 import {
-	PNPProvenanceBuilder,
-	type PNPResolutionProvenance,
+	PnpProvenanceBuilder,
+	type PnpResolutionProvenance,
 } from "./pnp-provenance.js";
 
 /**
@@ -76,7 +76,7 @@ export interface ToolResolutionResult {
 	tools: ResolvedToolConfig[];
 
 	/** Complete provenance trail (for debugging/display) */
-	provenance: PNPResolutionProvenance;
+	provenance: PnpResolutionProvenance;
 }
 
 /**
@@ -93,12 +93,12 @@ interface ResolutionContext {
 /**
  * Resolves tool availability from QTI 3.0 assessment structure
  */
-export class PNPToolResolver {
+export class PnpToolResolver {
 	private toolRegistry: ToolRegistry;
 	private enableProvenance: boolean;
 
 	/**
-	 * Create a PNPToolResolver
+	 * Create a PnpToolResolver
 	 *
 	 * @param toolRegistry Tool registry for PNP support mapping
 	 * @param enableProvenance Enable detailed provenance tracking (default: true)
@@ -116,7 +116,7 @@ export class PNPToolResolver {
 	 * @returns Array of resolved tool configurations
 	 *
 	 * @example
-	 * const resolver = new PNPToolResolver(registry);
+	 * const resolver = new PnpToolResolver(registry);
 	 * const tools = resolver.resolveTools(assessment, itemRef);
 	 * tools.forEach(tool => {
 	 *   console.log(`${tool.id}: ${tool.enabled ? 'enabled' : 'disabled'}`);
@@ -144,7 +144,7 @@ export class PNPToolResolver {
 	 * @returns Resolution result with tools and provenance
 	 *
 	 * @example
-	 * const resolver = new PNPToolResolver(registry);
+	 * const resolver = new PnpToolResolver(registry);
 	 * const result = resolver.resolveToolsWithProvenance(assessment, itemRef);
 	 *
 	 * // Use resolved tools
@@ -167,7 +167,7 @@ export class PNPToolResolver {
 		// Initialize provenance builder
 		const contextId = `assessment-${assessment.id || "unknown"}${currentItemRef ? `-item-${currentItemRef.identifier}` : ""}`;
 		const provenanceBuilder = this.enableProvenance
-			? new PNPProvenanceBuilder(contextId)
+			? new PnpProvenanceBuilder(contextId)
 			: null;
 
 		// Record configuration sources
@@ -243,7 +243,7 @@ export class PNPToolResolver {
 	private resolveSupport(
 		supportId: string,
 		context: ResolutionContext,
-		provenanceBuilder: PNPProvenanceBuilder | null,
+		provenanceBuilder: PnpProvenanceBuilder | null,
 	): ResolvedToolConfig | null {
 		// Precedence (highest to lowest):
 
@@ -373,7 +373,7 @@ export class PNPToolResolver {
 	/**
 	 * Create empty provenance when tracking is disabled
 	 */
-	private createEmptyProvenance(contextId: string): PNPResolutionProvenance {
+	private createEmptyProvenance(contextId: string): PnpResolutionProvenance {
 		return {
 			contextId,
 			resolvedAt: new Date(),
@@ -606,7 +606,7 @@ export class PNPToolResolver {
 	getAllowedToolIdsWithProvenance(
 		assessment: AssessmentEntity,
 		itemRef?: AssessmentItemRef,
-	): { toolIds: string[]; provenance: PNPResolutionProvenance } {
+	): { toolIds: string[]; provenance: PnpResolutionProvenance } {
 		const result = this.resolveToolsWithProvenance(assessment, itemRef);
 		return {
 			toolIds: result.tools.map((t) => t.id),

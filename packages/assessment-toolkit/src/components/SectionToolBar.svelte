@@ -21,7 +21,7 @@
 <script lang="ts">
 	import "./item-toolbar-element.js";
 	import type { ToolRegistry } from "../services/ToolRegistry.js";
-	import type { PNPToolResolver } from "../services/PNPToolResolver.js";
+	import type { PnpToolResolver } from "../services/PNPToolResolver.js";
 	import type { AssessmentEntity, AssessmentItemRef, ItemEntity } from "@pie-players/pie-players-shared/types";
 	import type { ToolbarItem } from "../services/toolbar-items.js";
 
@@ -32,7 +32,7 @@
 		size = "md" as "sm" | "md" | "lg",
 		language = "en-US",
 		toolRegistry = null as ToolRegistry | null,
-		pnpResolver = null as PNPToolResolver | null,
+		pnpResolver = null as PnpToolResolver | null,
 		assessment = null as AssessmentEntity | null,
 		itemRef = null as AssessmentItemRef | null,
 		item = null as ItemEntity | null,

@@ -21,7 +21,7 @@
 	import { createEventDispatcher } from 'svelte';
 	import { onDestroy, onMount } from 'svelte';
 	import {
-		PNPToolResolver,
+		PnpToolResolver,
 		createDefaultPersonalNeedsProfile,
 		createPackagedToolRegistry
 	} from '@pie-players/pie-assessment-toolkit';
@@ -45,7 +45,7 @@
 	let pnpWindowHeight = $state(560);
 	let isPnpMinimized = $state(false);
 
-	const pnpResolver = new PNPToolResolver(createPackagedToolRegistry());
+	const pnpResolver = new PnpToolResolver(createPackagedToolRegistry());
 	let floatingTools = $state<string[]>([]);
 
 	$effect(() => {

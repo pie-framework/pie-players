@@ -9,10 +9,10 @@
 
 // Core interfaces
 export type {
-	IToolProvider,
+	ToolProviderApi,
 	ToolCategory,
 	ToolProviderCapabilities,
-} from "./IToolProvider.js";
+} from "./ToolProviderApi.js";
 
 // Registry
 export { ToolProviderRegistry } from "./ToolProviderRegistry.js";

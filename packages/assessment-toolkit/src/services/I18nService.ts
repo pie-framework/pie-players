@@ -18,7 +18,7 @@
 
 import type {
 	I18nConfig,
-	II18nService,
+	I18nServiceApi,
 	PluralTranslation,
 	TranslationBundle,
 } from "@pie-players/pie-players-shared/i18n";
@@ -27,14 +27,14 @@ import { createLogger } from "../utils/logger.js";
 const log = createLogger("I18nService");
 
 // Re-export types for convenience
-export type { I18nConfig, II18nService, PluralTranslation, TranslationBundle };
+export type { I18nConfig, I18nServiceApi, PluralTranslation, TranslationBundle };
 
 /**
  * I18nService
  *
  * Manages internationalization with reactive state updates.
  */
-export class I18nService implements II18nService {
+export class I18nService implements I18nServiceApi {
 	private locale: string = "en";
 	private fallbackLocale: string = "en";
 	private direction: "ltr" | "rtl" = "ltr";

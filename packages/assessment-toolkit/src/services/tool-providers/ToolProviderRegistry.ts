@@ -7,7 +7,7 @@
  * Part of PIE Assessment Toolkit.
  */
 
-import type { IToolProvider, ToolCategory } from "./IToolProvider.js";
+import type { ToolProviderApi, ToolCategory } from "./ToolProviderApi.js";
 
 /**
  * Configuration for registering a tool provider
@@ -16,7 +16,7 @@ export interface ToolProviderConfig<TConfig = any> {
 	/**
 	 * Provider instance to register
 	 */
-	provider: IToolProvider<TConfig>;
+	provider: ToolProviderApi<TConfig>;
 
 	/**
 	 * Configuration for this provider
@@ -78,7 +78,7 @@ export interface ToolProviderConfig<TConfig = any> {
  * ```
  */
 export class ToolProviderRegistry {
-	private providers = new Map<string, IToolProvider>();
+	private providers = new Map<string, ToolProviderApi>();
 	private configs = new Map<string, ToolProviderConfig>();
 	private initialized = new Map<string, boolean>();
 	private initializationPromises = new Map<string, Promise<void>>();
@@ -214,7 +214,7 @@ export class ToolProviderRegistry {
 	 * @returns Provider instance
 	 * @throws Error if provider not registered
 	 */
-	async getProvider<T extends IToolProvider = IToolProvider>(
+	async getProvider<T extends ToolProviderApi = ToolProviderApi>(
 		providerId: string,
 		autoInitialize = true,
 	): Promise<T> {

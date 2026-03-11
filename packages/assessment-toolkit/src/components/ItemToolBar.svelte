@@ -558,10 +558,22 @@
 
 	function mountElement(node: HTMLSpanElement, element: HTMLElement | null) {
 		let mountedElement: HTMLElement | null = null;
+		const invokeElementUnmount = (value: HTMLElement | null) => {
+			if (!value) return;
+			const callback = (value as unknown as { [key: string]: unknown })[
+				'__pieToolElementUnmount'
+			];
+			if (typeof callback === 'function') {
+				(callback as () => void)();
+			}
+		};
 		const updateMountedElement = (nextElement: HTMLElement | null) => {
 			if (mountedElement === nextElement) return;
-			if (mountedElement && mountedElement.parentNode === node) {
-				node.removeChild(mountedElement);
+			if (mountedElement) {
+				invokeElementUnmount(mountedElement);
+				if (mountedElement.parentNode === node) {
+					node.removeChild(mountedElement);
+				}
 			}
 			mountedElement = nextElement;
 			if (mountedElement) {
@@ -608,6 +620,15 @@
 		let y = 0;
 		let width = currentArgs.mounted.entry.shell?.initialWidth ?? 720;
 		let height = currentArgs.mounted.entry.shell?.initialHeight ?? 560;
+		const invokeElementUnmount = (value: HTMLElement | null) => {
+			if (!value) return;
+			const callback = (value as unknown as { [key: string]: unknown })[
+				'__pieToolElementUnmount'
+			];
+			if (typeof callback === 'function') {
+				(callback as () => void)();
+			}
+		};
 		const getHostedContext = (): HostedToolContext | null => {
 			const shellConfig = currentArgs.mounted.entry.shell;
 			if (!shellConfig) return null;
@@ -658,6 +679,7 @@
 			element.style.minHeight = '0';
 			if (mountedContentElement && mountedContentElement !== element) {
 				if (mountedContentElement.parentNode === contentEl) {
+					invokeElementUnmount(mountedContentElement);
 					contentEl.removeChild(mountedContentElement);
 				}
 				mountedContentElement = null;
@@ -910,6 +932,7 @@
 				}
 				window.removeEventListener('resize', onWindowResize);
 				if (mountedContentElement && contentEl && mountedContentElement.parentNode === contentEl) {
+					invokeElementUnmount(mountedContentElement);
 					contentEl.removeChild(mountedContentElement);
 				}
 				mountedContentElement = null;

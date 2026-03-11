@@ -8,5 +8,6 @@ declare module "@pie-players/pie-tool-periodic-table";
 declare module "@pie-players/pie-tool-protractor";
 declare module "@pie-players/pie-tool-ruler";
 declare module "@pie-players/pie-tool-text-to-speech";
+declare module "@pie-players/pie-tool-tts-inline";
 declare module "@pie-players/pie-tool-theme";
 declare module "@pie-players/tts-client-server";

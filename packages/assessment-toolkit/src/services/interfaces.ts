@@ -249,6 +249,16 @@ export interface ITTSService {
 	stop(): void;
 
 	/**
+	 * Seek forward by sentence units
+	 */
+	seekForward(units?: number): Promise<void>;
+
+	/**
+	 * Seek backward by sentence units
+	 */
+	seekBackward(units?: number): Promise<void>;
+
+	/**
 	 * Check if currently playing
 	 */
 	isPlaying(): boolean;

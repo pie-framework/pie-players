@@ -38,6 +38,11 @@ interface TTSSpeechSegment {
 	pauseMsAfter?: number;
 }
 
+interface SentenceSegment {
+	text: string;
+	offset: number;
+}
+
 // Re-export core TTS types for convenience
 export type {
 	ITTSProvider,
@@ -90,6 +95,9 @@ export class TTSService {
 	private lastError: string | null = null;
 	private speakRunId = 0;
 	private currentBoundaryOffset = 0;
+	private seekSegments: TTSSpeechSegment[] = [];
+	private currentSeekSegmentIndex = 0;
+	private activeHighlightMode: HighlightMode = "word";
 
 	constructor() {}
 
@@ -480,6 +488,68 @@ export class TTSService {
 		return segments.filter((segment) => segment.text.trim().length > 0);
 	}
 
+	private segmentSentences(text: string): SentenceSegment[] {
+		try {
+			const Segmenter = globalThis.Intl?.Segmenter;
+			if (typeof Segmenter === "function") {
+				const locale =
+					((this.ttsConfig.providerOptions as Record<string, unknown> | undefined)
+						?.locale as string | undefined) || undefined;
+				const segmenter = new Segmenter(locale, {
+					granularity: "sentence",
+				});
+				const segments = Array.from(segmenter.segment(text))
+					.map((segment) => ({
+						text: segment.segment,
+						offset: segment.index,
+					}))
+					.filter((segment) => segment.text.trim().length > 0);
+				if (segments.length > 0) return segments;
+			}
+		} catch {
+			// Fall through to regex segmentation.
+		}
+
+		const sentenceRegex = /[^.!?]+(?:[.!?]+|$)/g;
+		const raw = text.match(sentenceRegex) || [text];
+		const parsed: SentenceSegment[] = [];
+		let processed = 0;
+		for (const sentence of raw) {
+			const offset = text.indexOf(sentence, processed);
+			if (offset === -1) continue;
+			parsed.push({ text: sentence, offset });
+			processed = offset + sentence.length;
+		}
+		return parsed.length > 0 ? parsed : [{ text, offset: 0 }];
+	}
+
+	private createSeekSegmentsFromText(text: string): TTSSpeechSegment[] {
+		return this.segmentSentences(text)
+			.map((segment) => {
+				const leadingWhitespace = segment.text.match(/^\s*/)?.[0].length || 0;
+				const trimmed = segment.text.trim();
+				return {
+					text: trimmed,
+					startOffset: segment.offset + leadingWhitespace,
+					pauseMsAfter: 0,
+				};
+			})
+			.filter((segment) => segment.text.length > 0);
+	}
+
+	private getCurrentSeekSegmentIndex(): number {
+		if (this.seekSegments.length === 0) return 0;
+		let index = 0;
+		for (let i = 0; i < this.seekSegments.length; i++) {
+			if (this.seekSegments[i].startOffset <= this.currentBoundaryOffset) {
+				index = i;
+			} else {
+				break;
+			}
+		}
+		return index;
+	}
+
 	private async speakWithPlan(
 		segments: TTSSpeechSegment[],
 		runId: number,
@@ -495,11 +565,33 @@ export class TTSService {
 			typeof providerWithPlan.speakSegments === "function"
 		) {
 			this.currentBoundaryOffset = 0;
-			await providerWithPlan.speakSegments(segments);
+			const originalOnWordBoundary = this.provider.onWordBoundary;
+			this.provider.onWordBoundary = (
+				word: string,
+				position: number,
+				length?: number,
+			) => {
+				if (Number.isFinite(position)) {
+					this.currentBoundaryOffset = position;
+					this.currentSeekSegmentIndex = this.getCurrentSeekSegmentIndex();
+				}
+				originalOnWordBoundary?.(word, position, length);
+			};
+			try {
+				await providerWithPlan.speakSegments(segments);
+			} finally {
+				this.provider.onWordBoundary = originalOnWordBoundary;
+			}
 			return;
 		}
 		for (const segment of segments) {
 			if (runId !== this.speakRunId) return;
+			const seekIndex = this.seekSegments.findIndex(
+				(candidate) => candidate.startOffset === segment.startOffset,
+			);
+			if (seekIndex >= 0) {
+				this.currentSeekSegmentIndex = seekIndex;
+			}
 			this.currentBoundaryOffset = segment.startOffset;
 			if (shouldTrackSentenceProgress) {
 				this.highlightSentenceSegment(segment.startOffset, segment.text);
@@ -696,12 +788,19 @@ export class TTSService {
 		this.currentContentElement = options?.contentElement || null;
 		this.lastError = null; // Clear previous error
 		this.currentBoundaryOffset = 0;
+		this.currentSeekSegmentIndex = 0;
 		const highlightMode =
 			options?.highlightModeOverride || this.resolveHighlightMode();
+		this.activeHighlightMode = highlightMode;
 		const shouldUsePlan =
 			!!this.currentContentElement &&
 			!usedCatalogSpoken &&
 			!this.hasExplicitBreakSemantics(contentToSpeak);
+		this.seekSegments = this.hasExplicitBreakSemantics(contentToSpeak)
+			? []
+			: shouldUsePlan && this.currentContentElement
+				? this.createSpeechPlan(this.currentContentElement, normalizedText)
+				: this.createSeekSegmentsFromText(contentToSpeak);
 		this.setState(PlaybackState.LOADING);
 
 		// Build position map for highlighting if we have a content element
@@ -765,10 +864,7 @@ export class TTSService {
 
 			this.setState(PlaybackState.PLAYING);
 			if (shouldUsePlan && this.currentContentElement) {
-				const segments = this.createSpeechPlan(
-					this.currentContentElement,
-					normalizedText,
-				);
+				const segments = this.seekSegments;
 				if (segments.length > 0) {
 					await this.speakWithPlan(segments, runId, { highlightMode });
 				} else {
@@ -789,6 +885,8 @@ export class TTSService {
 			this.currentContentElement = null;
 			this.normalizedToDOM.clear();
 			this.currentBoundaryOffset = 0;
+			this.seekSegments = [];
+			this.currentSeekSegmentIndex = 0;
 		} catch (error) {
 			console.error("TTS error:", error);
 			this.lastError = error instanceof Error ? error.message : String(error);
@@ -804,6 +902,8 @@ export class TTSService {
 			this.currentContentElement = null;
 			this.normalizedToDOM.clear();
 			this.currentBoundaryOffset = 0;
+			this.seekSegments = [];
+			this.currentSeekSegmentIndex = 0;
 
 			throw error;
 		}
@@ -886,6 +986,71 @@ export class TTSService {
 		}
 	}
 
+	private async seekBy(units: number): Promise<void> {
+		if (!this.provider || !this.currentText) return;
+		if (this.state !== PlaybackState.PLAYING && this.state !== PlaybackState.PAUSED) {
+			return;
+		}
+		if (this.hasExplicitBreakSemantics(this.currentText)) return;
+		if (this.seekSegments.length === 0) return;
+
+		const delta = Number.isFinite(units) ? Math.trunc(units) : 0;
+		if (delta === 0) return;
+
+		const currentIndex = this.getCurrentSeekSegmentIndex();
+		const targetIndex = Math.max(
+			0,
+			Math.min(this.seekSegments.length - 1, currentIndex + delta),
+		);
+		if (targetIndex === currentIndex) return;
+
+		this.speakRunId += 1;
+		this.provider.stop();
+		this.currentSeekSegmentIndex = targetIndex;
+		const runId = ++this.speakRunId;
+		const restartSegments = this.seekSegments.slice(targetIndex);
+
+		this.setState(PlaybackState.PLAYING);
+		try {
+			await this.speakWithPlan(restartSegments, runId, {
+				highlightMode: this.activeHighlightMode,
+			});
+			if (runId !== this.speakRunId) return;
+			this.setState(PlaybackState.IDLE);
+			if (this.highlightCoordinator) {
+				this.highlightCoordinator.clearTTS();
+			}
+			this.currentContentElement = null;
+			this.normalizedToDOM.clear();
+			this.currentBoundaryOffset = 0;
+			this.seekSegments = [];
+			this.currentSeekSegmentIndex = 0;
+		} catch (error) {
+			if (runId !== this.speakRunId) return;
+			this.lastError = error instanceof Error ? error.message : String(error);
+			this.setState(PlaybackState.ERROR);
+			if (this.highlightCoordinator) {
+				this.highlightCoordinator.clearTTS();
+			}
+			this.currentContentElement = null;
+			this.normalizedToDOM.clear();
+			this.currentBoundaryOffset = 0;
+			this.seekSegments = [];
+			this.currentSeekSegmentIndex = 0;
+			throw error;
+		}
+	}
+
+	async seekForward(units = 1): Promise<void> {
+		const step = Number.isFinite(units) ? Math.max(1, Math.trunc(units)) : 1;
+		await this.seekBy(step);
+	}
+
+	async seekBackward(units = 1): Promise<void> {
+		const step = Number.isFinite(units) ? Math.max(1, Math.trunc(units)) : 1;
+		await this.seekBy(-step);
+	}
+
 	/**
 	 * Stop playback
 	 */
@@ -905,6 +1070,8 @@ export class TTSService {
 		this.currentContentElement = null;
 		this.normalizedToDOM.clear();
 		this.currentBoundaryOffset = 0;
+		this.seekSegments = [];
+		this.currentSeekSegmentIndex = 0;
 	}
 
 	/**

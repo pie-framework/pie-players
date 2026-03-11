@@ -10,7 +10,6 @@
 
 import type {
 	ToolRegistration,
-	ToolToolbarButtonDefinition,
 	ToolToolbarRenderResult,
 	ToolbarContext,
 } from "../../services/ToolRegistry.js";
@@ -19,6 +18,9 @@ import type { ToolContext } from "../../services/tool-context.js";
 import { hasReadableText } from "../../services/tool-context.js";
 import { createScopedToolId } from "../../services/tool-instance-id.js";
 import { TTSToolProvider } from "../../services/tool-providers/index.js";
+
+const inlineTTSControls = new Map<string, HTMLElement>();
+export const TOOL_ELEMENT_UNMOUNT_CALLBACK_PROP = "__pieToolElementUnmount";
 
 interface TTSProviderRuntimeSettings {
 	backend?: "browser" | "polly" | "google" | "server";
@@ -41,6 +43,7 @@ interface TTSProviderRuntimeSettings {
 	cache?: boolean;
 	speedRate?: "slow" | "medium" | "fast";
 	lang_id?: string;
+	speedOptions?: number[];
 }
 
 const toRecord = (value: unknown): Record<string, unknown> =>
@@ -53,6 +56,20 @@ const resolveTTSRuntimeSettings = (
 	const settingsRecord = toRecord(config?.settings);
 	const merged = { ...configRecord, ...settingsRecord };
 	return merged as TTSProviderRuntimeSettings;
+};
+
+const DEFAULT_SPEED_OPTIONS = Object.freeze([1.5, 2]);
+
+const resolveSpeedOptions = (value: unknown): number[] => {
+	if (!Array.isArray(value)) return [...DEFAULT_SPEED_OPTIONS];
+	const deduped = new Set<number>();
+	for (const entry of value) {
+		if (typeof entry !== "number" || !Number.isFinite(entry) || entry <= 0) continue;
+		const rounded = Math.round(entry * 100) / 100;
+		if (rounded === 1) continue;
+		deduped.add(rounded);
+	}
+	return deduped.size ? Array.from(deduped) : [...DEFAULT_SPEED_OPTIONS];
 };
 
 /**
@@ -170,209 +187,78 @@ export const ttsToolRegistration: ToolRegistration = {
 		_context: ToolContext,
 		toolbarContext: ToolbarContext,
 	): ToolToolbarRenderResult {
-		let ensureReadyPromise: Promise<void> | null = null;
-		const ttsService = toolbarContext.ttsService as
-			| {
-					speak?: (
-						text: string,
-						options?: {
-							catalogId?: string;
-							language?: string;
-							contentElement?: Element;
-						},
-					) => Promise<void>;
-					stop?: () => void;
-					setHighlightCoordinator?: (coordinator: unknown) => void;
-					setRootElement?: (element: HTMLElement) => void;
-			  }
-			| null;
+		const resolveElementSpeedOptions = (): number[] => {
+			const runtimeSettings = resolveTTSRuntimeSettings(
+				toolbarContext.toolkitCoordinator?.getToolConfig(this.toolId) || undefined,
+			);
+			return resolveSpeedOptions(runtimeSettings.speedOptions);
+		};
 		const fullToolId = createScopedToolId(
 			this.toolId,
 			toolbarContext.scope.level,
 			toolbarContext.scope.scopeId,
 		);
-		const isReading = (): boolean => {
-			return toolbarContext.isToolVisible(fullToolId);
+		const resolveControlSize = (): "sm" | "md" | "lg" => {
+			const raw = toolbarContext.ui?.size;
+			return raw === "sm" || raw === "lg" ? raw : "md";
 		};
-		const button: ToolToolbarButtonDefinition = {
-			toolId: this.toolId,
-			label: "Read aloud",
-			icon: typeof this.icon === "function" ? this.icon(_context) : this.icon,
-			ariaLabel: "Read aloud",
-			tooltip: "Read aloud",
-			onClick: () => {
-				void toggleReadAloud();
-			},
-			disabled: false,
-			active: false,
-		};
-
-		const syncButtonState = () => {
-			const label = isReading() ? "Stop reading" : "Read aloud";
-			button.label = label;
-			button.ariaLabel = label;
-			button.tooltip = label;
-			button.active = isReading();
-			button.disabled = !toolbarContext.ttsService;
-		};
-
-		const onPlaybackFinished = (state: string) => {
-			// Keep toolbar state aligned with TTS lifecycle:
-			// when playback naturally finishes (or errors), button should reset.
-			if ((state === "idle" || state === "error") && isReading()) {
-				toolbarContext.toggleTool(this.toolId);
-				syncButtonState();
+		const ensureElement = (): HTMLElement => {
+			let element = inlineTTSControls.get(fullToolId);
+			if (
+				element &&
+				typeof (element as { isConnected?: boolean }).isConnected === "boolean" &&
+				!(element as { isConnected?: boolean }).isConnected
+			) {
+				inlineTTSControls.delete(fullToolId);
+				element = undefined;
 			}
-		};
-
-		const ensureReady = async () => {
-			if (!toolbarContext.ensureTTSReady) return;
-			if (!ensureReadyPromise) {
-				ensureReadyPromise = (async () => {
-					await toolbarContext.ensureTTSReady?.();
-					if (toolbarContext.toolkitCoordinator?.highlightCoordinator) {
-						ttsService?.setHighlightCoordinator?.(
-							toolbarContext.toolkitCoordinator.highlightCoordinator,
-						);
+			if (!element) {
+				element = document.createElement("pie-tool-tts-inline");
+				(
+					element as HTMLElement & {
+						[key: string]: unknown;
 					}
-				})();
+				)[TOOL_ELEMENT_UNMOUNT_CALLBACK_PROP] = () => {
+					if (inlineTTSControls.get(fullToolId) === element) {
+						inlineTTSControls.delete(fullToolId);
+					}
+				};
+				inlineTTSControls.set(fullToolId, element);
 			}
-			await ensureReadyPromise;
-		};
-
-		const stopReading = () => {
-			ttsService?.stop?.();
-			if (isReading()) {
-				toolbarContext.toggleTool(this.toolId);
-			}
-			syncButtonState();
-		};
-
-		const resolveReadingRoot = (): HTMLElement | null => {
-			const scoped = toolbarContext.getScopeElement?.();
-			if (scoped) return scoped;
-
-			const cssEscape = (value: string) => {
-				if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
-					return CSS.escape(value);
-				}
-				return value.replace(/"/g, '\\"');
-			};
-			const candidateIds = [
-				toolbarContext.catalogId,
-				toolbarContext.scope.itemId,
-				toolbarContext.scope.canonicalItemId,
-			].filter((id): id is string => typeof id === "string" && id.length > 0);
-
-			const selectors: string[] = [];
-			for (const id of candidateIds) {
-				const escapedId = cssEscape(id);
-				if (toolbarContext.scope.level === "passage") {
-					selectors.push(
-						`pie-passage-shell[item-id="${escapedId}"] [data-region="content"]`,
-					);
-				}
-				selectors.push(`pie-item-shell[item-id="${escapedId}"] [data-region="content"]`);
-			}
-			selectors.push("[data-region='content']");
-
-			for (const selector of selectors) {
-				const element = document.querySelector(selector);
-				if (element instanceof HTMLElement) {
-					return element;
-				}
-			}
-			return null;
-		};
-
-		const toggleReadAloud = async () => {
-			if (!ttsService?.speak || !toolbarContext.ttsService) return;
-			if (isReading()) {
-				stopReading();
-				return;
-			}
-			const scopeElement = resolveReadingRoot();
-			if (!scopeElement) return;
-			const text = scopeElement.textContent || "";
-			if (!text.trim()) return;
-
-			try {
-				if (!isReading()) {
-					toolbarContext.toggleTool(this.toolId);
-				}
-				syncButtonState();
-				await ensureReady();
-				ttsService.setRootElement?.(scopeElement);
-				void ttsService.speak(
-					text,
-					{
-						// For passage-level TTS, use rendered DOM text as the source of truth.
-						// Catalog/SSML content can diverge from rendered text and break
-						// word-boundary-to-DOM mapping for progressive yellow highlighting.
-						catalogId:
-							toolbarContext.scope.level === "passage"
-								? undefined
-								: (toolbarContext.catalogId || toolbarContext.itemId),
-						language: toolbarContext.language,
-						contentElement: scopeElement,
-					},
-				).catch((error: unknown) => {
-					console.error("[ttsToolRegistration] Failed to start reading:", error);
-					syncButtonState();
-				});
-				syncButtonState();
-			} catch (error: unknown) {
-				syncButtonState();
-				console.error("[ttsToolRegistration] Failed to start reading:", error);
-			}
+			element.setAttribute("tool-id", fullToolId);
+			element.setAttribute("catalog-id", toolbarContext.catalogId || toolbarContext.itemId);
+			element.setAttribute("language", toolbarContext.language || "en-US");
+			element.setAttribute("size", resolveControlSize());
+			(element as HTMLElement & { speedOptions?: number[] }).speedOptions =
+				resolveElementSpeedOptions();
+			return element;
 		};
 
 		return {
 			toolId: this.toolId,
-			button,
+			button: null,
+			elements: [
+				{
+					element: ensureElement(),
+					mount: "before-buttons",
+				},
+			],
 			sync: () => {
-				syncButtonState();
+				const element = ensureElement();
+				element.setAttribute("tool-id", fullToolId);
+				element.setAttribute("catalog-id", toolbarContext.catalogId || toolbarContext.itemId);
+				element.setAttribute("language", toolbarContext.language || "en-US");
+				element.setAttribute("size", resolveControlSize());
+				(element as HTMLElement & { speedOptions?: number[] }).speedOptions =
+					resolveElementSpeedOptions();
 				if (toolbarContext.ensureTTSReady) {
-					void ensureReady().catch((error: unknown) => {
+					void toolbarContext.ensureTTSReady().catch((error: unknown) => {
 						console.error(
 							"[ttsToolRegistration] Failed to initialize TTS service:",
 							error,
 						);
 					});
 				}
-			},
-			subscribeActive: (callback: (active: boolean) => void) => {
-				const unsubscribers: Array<() => void> = [];
-				if (toolbarContext.subscribeVisibility) {
-					const unsubscribeVisibility = toolbarContext.subscribeVisibility(() => {
-						const active = isReading();
-						syncButtonState();
-						callback(active);
-					});
-					unsubscribers.push(unsubscribeVisibility);
-				}
-				if (toolbarContext.ttsService) {
-					const stateListenerId = `tts-toolbar:${fullToolId}`;
-					const onStateChange = (state: unknown) => {
-						onPlaybackFinished(String(state || ""));
-						const active = isReading();
-						syncButtonState();
-						callback(active);
-					};
-					toolbarContext.ttsService.onStateChange(stateListenerId, onStateChange);
-					unsubscribers.push(() => {
-						toolbarContext.ttsService?.offStateChange(
-							stateListenerId,
-							onStateChange,
-						);
-					});
-				}
-				if (unsubscribers.length === 0) return () => {};
-				return () => {
-					for (const unsubscribe of unsubscribers) {
-						unsubscribe();
-					}
-				};
 			},
 		};
 	},

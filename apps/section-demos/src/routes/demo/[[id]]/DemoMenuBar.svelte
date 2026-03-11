@@ -124,14 +124,16 @@
 			Reset
 		</button>
 		<button
-			class="btn btn-sm btn-outline"
+			class="btn btn-sm btn-outline btn-square"
 			class:btn-active={showSessionControlsPanel}
 			onclick={onToggleSessionControlsPanel}
 			title="Host session controls"
 			aria-label="Toggle host session controls panel"
 			aria-pressed={showSessionControlsPanel}
 		>
-			Session Controls
+			<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M8 6v4m8-4v8M4 12h16M12 12v6M4 18h16" />
+			</svg>
 		</button>
 		<button
 			class="btn btn-sm btn-outline btn-square"

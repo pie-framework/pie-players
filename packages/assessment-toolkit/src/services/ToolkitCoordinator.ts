@@ -97,6 +97,7 @@ export interface TTSToolConfig extends ToolConfig {
 	cache?: boolean;
 	speedRate?: "slow" | "medium" | "fast";
 	lang_id?: string;
+	speedOptions?: number[];
 	authFetcher?: () => Promise<Partial<TTSToolProviderConfig>>;
 }
 

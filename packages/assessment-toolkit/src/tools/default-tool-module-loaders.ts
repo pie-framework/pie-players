@@ -21,5 +21,9 @@ export const DEFAULT_TOOL_MODULE_LOADERS: Record<string, ToolModuleLoader> = {
 	// Keep toolkit defaults limited to broadly expected modules.
 	// Hosts can register additional optional tool loaders as needed.
 	calculator: loadCalculatorModule,
-	textToSpeech: () => import("@pie-players/pie-tool-text-to-speech"),
+	textToSpeech: () =>
+		Promise.all([
+			import("@pie-players/pie-tool-text-to-speech"),
+			import("@pie-players/pie-tool-tts-inline"),
+		]),
 };

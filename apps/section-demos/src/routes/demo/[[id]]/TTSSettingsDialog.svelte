@@ -1122,7 +1122,8 @@ function refreshGoogleVoices() {
 	.pie-tts-dialog-backdrop {
 		position: fixed;
 		inset: 0;
-		z-index: 120;
+		/* Keep settings dialog above tool overlays managed by ToolCoordinator layers. */
+		z-index: 4500;
 		background: color-mix(in srgb, #000 30%, transparent);
 		display: flex;
 		align-items: center;

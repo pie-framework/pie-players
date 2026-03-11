@@ -137,6 +137,11 @@ unsubscribeSection?.();
 
 Use `subscribeSectionEvents(...)` when you need advanced/custom filtering mixes.  
 Note that section-scoped events do not carry item IDs, so pairing them with `itemIds` filters will not match.
+For late subscribers, `subscribeSectionLifecycleEvents(...)` immediately replays
+`section-loading-complete` when the target controller runtime is already in a
+loaded state.
+For deterministic targeting in multi-attempt hosts, pass both `sectionId` and
+`attemptId` to helper subscriptions.
 
 ### Option 2: Create Services Manually (Advanced)
 

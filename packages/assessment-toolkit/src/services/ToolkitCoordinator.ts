@@ -29,8 +29,12 @@ import { AccessibilityCatalogResolver } from "./AccessibilityCatalogResolver.js"
 import { ElementToolStateStore } from "./ElementToolStateStore.js";
 import { HighlightCoordinator } from "./HighlightCoordinator.js";
 import { ToolCoordinator } from "./ToolCoordinator.js";
-import { TTSService, type TTSConfig } from "./TTSService.js";
+import { TTSService, type ITTSProvider, type TTSConfig } from "./TTSService.js";
 import { BrowserTTSProvider } from "./tts/browser-provider.js";
+import {
+	buildRuntimeTTSConfig,
+	resolveTTSBackend,
+} from "./tts-runtime-config.js";
 import { ToolProviderRegistry } from "./tool-providers/index.js";
 import type { IToolProvider } from "./tool-providers/IToolProvider.js";
 import type {
@@ -45,7 +49,6 @@ import type {
 	SectionControllerFactoryDefaults,
 	SectionControllerHandle,
 	SectionControllerKey,
-	SectionSessionPersistenceConfig,
 	SectionSessionPersistenceStrategy,
 	SectionPersistenceFactoryDefaults,
 } from "./section-controller-types.js";
@@ -726,9 +729,50 @@ export class ToolkitCoordinator {
 	}
 
 	public subscribeSectionEvents(args: SectionEventSubscriptionArgs): () => void {
-		let controllerEntry: { mapKey: string; controller: SectionControllerHandle };
+		const controllerEntry = this.resolveSectionSubscriptionEntry(args);
+		if (!controllerEntry) return () => {};
+		const { mapKey, controller } = controllerEntry;
+		const subscribe = controller.subscribe;
+		if (!subscribe) {
+			const resolvedKey = this.sectionControllerKeys.get(mapKey);
+			const sectionLabel = resolvedKey?.sectionId || args.sectionId || "<unknown>";
+			const attemptLabel = resolvedKey?.attemptId || args.attemptId || "<default>";
+			throw new Error(
+				`[ToolkitCoordinator] subscribeSectionEvents could not subscribe: resolved controller for section "${sectionLabel}" attempt "${attemptLabel}" does not expose subscribe().`,
+			);
+		}
+		const listenerId = this.getOrCreateSectionEventListenerId(args.listener);
+		const subscriptionKey = `${mapKey}::${listenerId}`;
+		const previousSubscription = this.sectionEventSubscriptions.get(
+			subscriptionKey,
+		);
+		previousSubscription?.();
+
+		const shouldDeliverEvent = this.buildSectionEventPredicate(args);
+		const unsubscribeController = subscribe.call(controller, (event) => {
+			if (!shouldDeliverEvent(event)) return;
+			args.listener(event);
+		});
+
+		const replayEvent = this.buildLoadingCompleteReplayEvent(controller);
+		if (replayEvent && shouldDeliverEvent(replayEvent)) {
+			args.listener(replayEvent);
+		}
+
+		const detach = this.createSectionEventDetachHandler(
+			subscriptionKey,
+			unsubscribeController,
+		);
+
+		this.sectionEventSubscriptions.set(subscriptionKey, detach);
+		return detach;
+	}
+
+	private resolveSectionSubscriptionEntry(
+		args: Pick<SectionEventSubscriptionArgs, "sectionId" | "attemptId">,
+	): { mapKey: string; controller: SectionControllerHandle } | null {
 		try {
-			controllerEntry = this.resolveSectionControllerForSubscription({
+			return this.resolveSectionControllerForSubscription({
 				sectionId: args.sectionId,
 				attemptId: args.attemptId,
 			});
@@ -740,69 +784,38 @@ export class ToolkitCoordinator {
 				message.includes("subscribeSectionEvents is ambiguous for section");
 			if (isAmbiguousSectionWithoutAttempt) {
 				console.warn(message);
-				return () => {};
+				return null;
 			}
 			throw error;
 		}
-		const controller = controllerEntry.controller;
-		const subscribe = controller.subscribe;
-		if (!subscribe) {
-			const resolvedKey = this.sectionControllerKeys.get(controllerEntry.mapKey);
-			const sectionLabel = resolvedKey?.sectionId || args.sectionId || "<unknown>";
-			const attemptLabel = resolvedKey?.attemptId || args.attemptId || "<default>";
-			throw new Error(
-				`[ToolkitCoordinator] subscribeSectionEvents could not subscribe: resolved controller for section "${sectionLabel}" attempt "${attemptLabel}" does not expose subscribe().`,
-			);
-		}
-		const { mapKey } = controllerEntry;
+	}
 
-		let listenerId = this.sectionEventListenerIds.get(args.listener);
+	private getOrCreateSectionEventListenerId(
+		listener: (event: SectionControllerEvent) => void,
+	): number {
+		let listenerId = this.sectionEventListenerIds.get(listener);
 		if (!listenerId) {
 			listenerId = this.nextSectionEventListenerId++;
-			this.sectionEventListenerIds.set(args.listener, listenerId);
+			this.sectionEventListenerIds.set(listener, listenerId);
 		}
-		const subscriptionKey = `${mapKey}::${listenerId}`;
-		const previousSubscription = this.sectionEventSubscriptions.get(
-			subscriptionKey,
-		);
-		previousSubscription?.();
+		return listenerId;
+	}
 
-		const eventTypeFilter = args.eventTypes
-			? new Set(args.eventTypes)
-			: null;
+	private buildSectionEventPredicate(
+		args: Pick<SectionEventSubscriptionArgs, "eventTypes" | "itemIds">,
+	): (event: SectionControllerEvent) => boolean {
+		const eventTypeFilter = args.eventTypes ? new Set(args.eventTypes) : null;
 		const itemIdFilter = args.itemIds ? new Set(args.itemIds) : null;
-		const shouldDeliverEvent = (event: SectionControllerEvent): boolean => {
+		return (event: SectionControllerEvent): boolean => {
 			if (eventTypeFilter || itemIdFilter) {
 				const eventType = event?.type || null;
 				if (eventTypeFilter && (!eventType || !eventTypeFilter.has(eventType))) {
 					return false;
 				}
 				if (itemIdFilter) {
-					const eventItemCandidates = new Set<string>();
-					if ("itemId" in event && typeof event.itemId === "string") {
-						eventItemCandidates.add(event.itemId);
-					}
-					if (
-						"canonicalItemId" in event &&
-						typeof event.canonicalItemId === "string"
-					) {
-						eventItemCandidates.add(event.canonicalItemId);
-					}
-					if (
-						"currentItemId" in event &&
-						typeof event.currentItemId === "string"
-					) {
-						eventItemCandidates.add(event.currentItemId);
-					}
-					if (
-						"previousItemId" in event &&
-						typeof event.previousItemId === "string"
-					) {
-						eventItemCandidates.add(event.previousItemId);
-					}
-					const hasMatchingItem = Array.from(eventItemCandidates).some((itemId) =>
-						itemIdFilter.has(itemId),
-					);
+					const hasMatchingItem = Array.from(
+						this.collectEventItemIds(event),
+					).some((itemId) => itemIdFilter.has(itemId));
 					if (!hasMatchingItem) {
 						return false;
 					}
@@ -810,29 +823,53 @@ export class ToolkitCoordinator {
 			}
 			return true;
 		};
-		const unsubscribeController = subscribe.call(controller, (event) => {
-			if (!shouldDeliverEvent(event)) return;
-			args.listener(event);
-		});
+	}
 
-		const runtimeState = controller.getRuntimeState?.();
-		if (
-			runtimeState?.loadingComplete &&
-			runtimeState.totalRegistered > 0 &&
-			runtimeState.totalLoaded >= runtimeState.totalRegistered
-		) {
-			const loadingCompleteEvent: SectionControllerEvent = {
-				type: "section-loading-complete",
-				totalRegistered: runtimeState.totalRegistered,
-				totalLoaded: runtimeState.totalLoaded,
-				currentItemIndex: runtimeState.currentItemIndex,
-				timestamp: Date.now(),
-			};
-			if (shouldDeliverEvent(loadingCompleteEvent)) {
-				args.listener(loadingCompleteEvent);
-			}
+	private collectEventItemIds(event: SectionControllerEvent): Set<string> {
+		const itemIds = new Set<string>();
+		if ("itemId" in event && typeof event.itemId === "string") {
+			itemIds.add(event.itemId);
 		}
+		if ("canonicalItemId" in event && typeof event.canonicalItemId === "string") {
+			itemIds.add(event.canonicalItemId);
+		}
+		if ("currentItemId" in event && typeof event.currentItemId === "string") {
+			itemIds.add(event.currentItemId);
+		}
+		if ("previousItemId" in event && typeof event.previousItemId === "string") {
+			itemIds.add(event.previousItemId);
+		}
+		return itemIds;
+	}
 
+	private buildLoadingCompleteReplayEvent(
+		controller: SectionControllerHandle,
+	): SectionControllerEvent | null {
+		const runtimeState = controller.getRuntimeState?.();
+		if (runtimeState?.loadingComplete !== true) return null;
+		const totalRegistered =
+			typeof runtimeState.totalRegistered === "number" &&
+			Number.isFinite(runtimeState.totalRegistered)
+				? Math.max(0, runtimeState.totalRegistered)
+				: 0;
+		const totalLoaded =
+			typeof runtimeState.totalLoaded === "number" &&
+			Number.isFinite(runtimeState.totalLoaded)
+				? Math.max(0, runtimeState.totalLoaded)
+				: totalRegistered;
+		return {
+			type: "section-loading-complete",
+			totalRegistered,
+			totalLoaded,
+			currentItemIndex: runtimeState.currentItemIndex,
+			timestamp: Date.now(),
+		};
+	}
+
+	private createSectionEventDetachHandler(
+		subscriptionKey: string,
+		unsubscribeController: () => void,
+	): () => void {
 		const detach = () => {
 			const current = this.sectionEventSubscriptions.get(subscriptionKey);
 			if (current !== detach) {
@@ -841,8 +878,6 @@ export class ToolkitCoordinator {
 			this.sectionEventSubscriptions.delete(subscriptionKey);
 			unsubscribeController();
 		};
-
-		this.sectionEventSubscriptions.set(subscriptionKey, detach);
 		return detach;
 	}
 
@@ -978,71 +1013,133 @@ export class ToolkitCoordinator {
 			attemptId: args.attemptId,
 		};
 		const mapKey = this.getSectionControllerMapKey(key);
-		const existingController = this.sectionControllers.get(mapKey);
-		if (existingController) {
-			this.sectionControllerKeys.set(mapKey, key);
-			if (args.updateExisting !== false) {
-				// Existing controllers keep their in-memory session state across
-				// input refresh; updateInput should rebuild composition/runtime view
-				// without resetting responses.
-				await existingController.updateInput?.(args.input);
-			}
-			return existingController;
-		}
+		const existingController = await this.resolveExistingSectionController({
+			mapKey,
+			key,
+			input: args.input,
+			updateExisting: args.updateExisting,
+		});
+		if (existingController) return existingController;
 
 		const existingPromise = this.sectionControllerInitPromises.get(mapKey);
 		if (existingPromise) return existingPromise;
 
-		const initPromise = (async () => {
-			const context: SectionControllerContext = {
-				key,
-				coordinator: this,
-				input: args.input,
-			};
-			const persistence = await this.resolveSectionPersistence(context);
-			const defaults: SectionControllerFactoryDefaults = {
-				createDefaultController: args.createDefaultController,
-			};
-			const controller =
-				(await this.hooks.createSectionController?.(context, defaults)) ??
-				(await defaults.createDefaultController());
-
-			await controller.configureSessionPersistence?.({
-				strategy: persistence,
-				context,
+		const initPromise = this.initializeNewSectionController({
+			args,
+			key,
+			mapKey,
+		})
+			.catch((err) => {
+				this.handleSectionControllerInitError(err, args);
+				throw err;
+			})
+			.finally(() => {
+				this.sectionControllerInitPromises.delete(mapKey);
 			});
-			await controller.initialize?.(args.input);
-			await controller.hydrate?.();
-
-			this.sectionControllers.set(mapKey, controller);
-			this.sectionControllerKeys.set(mapKey, key);
-			this.emitSectionControllerLifecycle({
-				type: "ready",
-				key,
-				controller,
-			});
-			await this.hooks.onSectionControllerReady?.(context, controller);
-			await this.emitTelemetry("section-controller-ready", {
-				assessmentId: key.assessmentId,
-				sectionId: key.sectionId,
-				attemptId: key.attemptId,
-			});
-			return controller;
-		})().catch((err) => {
-			this.handleError(err, {
-				phase: "section-controller-init",
-				details: {
-					sectionId: args.sectionId,
-					attemptId: args.attemptId,
-				},
-			});
-			throw err;
-		}).finally(() => {
-			this.sectionControllerInitPromises.delete(mapKey);
-		});
 
 		this.sectionControllerInitPromises.set(mapKey, initPromise);
 		return initPromise;
+	}
+
+	private async resolveExistingSectionController(args: {
+		mapKey: string;
+		key: SectionControllerKey;
+		input: unknown;
+		updateExisting?: boolean;
+	}): Promise<SectionControllerHandle | undefined> {
+		const existingController = this.sectionControllers.get(args.mapKey);
+		if (!existingController) return undefined;
+		this.sectionControllerKeys.set(args.mapKey, args.key);
+		if (args.updateExisting !== false) {
+			// Existing controllers keep their in-memory session state across
+			// input refresh; updateInput should rebuild composition/runtime view
+			// without resetting responses.
+			await existingController.updateInput?.(args.input);
+		}
+		return existingController;
+	}
+
+	private createSectionControllerContext(args: {
+		key: SectionControllerKey;
+		input: unknown;
+	}): SectionControllerContext {
+		return {
+			key: args.key,
+			coordinator: this,
+			input: args.input,
+		};
+	}
+
+	private async initializeNewSectionController(args: {
+		args: {
+			sectionId: string;
+			attemptId?: string;
+			input?: unknown;
+			createDefaultController: () =>
+				| SectionControllerHandle
+				| Promise<SectionControllerHandle>;
+		};
+		key: SectionControllerKey;
+		mapKey: string;
+	}): Promise<SectionControllerHandle> {
+		const context = this.createSectionControllerContext({
+			key: args.key,
+			input: args.args.input,
+		});
+		const persistence = await this.resolveSectionPersistence(context);
+		const defaults: SectionControllerFactoryDefaults = {
+			createDefaultController: args.args.createDefaultController,
+		};
+		const controller =
+			(await this.hooks.createSectionController?.(context, defaults)) ??
+			(await defaults.createDefaultController());
+		await controller.configureSessionPersistence?.({
+			strategy: persistence,
+			context,
+		});
+		await controller.initialize?.(args.args.input);
+		await controller.hydrate?.();
+		await this.finalizeSectionControllerReady({
+			mapKey: args.mapKey,
+			key: args.key,
+			context,
+			controller,
+		});
+		return controller;
+	}
+
+	private async finalizeSectionControllerReady(args: {
+		mapKey: string;
+		key: SectionControllerKey;
+		context: SectionControllerContext;
+		controller: SectionControllerHandle;
+	}): Promise<void> {
+		this.sectionControllers.set(args.mapKey, args.controller);
+		this.sectionControllerKeys.set(args.mapKey, args.key);
+		this.emitSectionControllerLifecycle({
+			type: "ready",
+			key: args.key,
+			controller: args.controller,
+		});
+		await this.hooks.onSectionControllerReady?.(args.context, args.controller);
+		await this.emitTelemetry("section-controller-ready", {
+			assessmentId: args.key.assessmentId,
+			sectionId: args.key.sectionId,
+			attemptId: args.key.attemptId,
+		});
+	}
+
+	private handleSectionControllerInitError(
+		err: unknown,
+		args: { sectionId: string; attemptId?: string },
+	): void {
+		this.handleError(err, {
+			phase: "section-controller-init",
+			details: {
+				sectionId: args.sectionId,
+				attemptId: args.attemptId,
+			},
+		});
 	}
 
 	public async disposeSectionController(args: {
@@ -1059,29 +1156,19 @@ export class ToolkitCoordinator {
 		const mapKey = this.getSectionControllerMapKey(key);
 		const controller = this.sectionControllers.get(mapKey);
 		if (!controller) return;
-		const subscriptionPrefix = `${mapKey}::`;
-		for (const subscriptionKey of Array.from(
-			this.sectionEventSubscriptions.keys(),
-		)) {
-			if (!subscriptionKey.startsWith(subscriptionPrefix)) continue;
-			this.sectionEventSubscriptions.get(subscriptionKey)?.();
-		}
+		this.detachSectionEventSubscriptionsForMapKey(mapKey);
 
-		const context: SectionControllerContext = {
+		const context = this.createSectionControllerContext({
 			key,
-			coordinator: this,
-		};
+			input: undefined,
+		});
 
 		try {
-			if (args.persistBeforeDispose !== false) {
-				await controller.persist?.();
-			}
-			await controller.dispose?.();
-			await this.hooks.onSectionControllerDispose?.(context, controller);
-			await this.emitTelemetry("section-controller-disposed", {
-				assessmentId: key.assessmentId,
-				sectionId: key.sectionId,
-				attemptId: key.attemptId,
+			await this.runSectionControllerDisposePipeline({
+				key,
+				context,
+				controller,
+				persistBeforeDispose: args.persistBeforeDispose,
 			});
 		} catch (err) {
 			this.handleError(err, {
@@ -1092,18 +1179,60 @@ export class ToolkitCoordinator {
 				},
 			});
 		} finally {
-			this.sectionControllers.delete(mapKey);
-			this.sectionControllerKeys.delete(mapKey);
-			this.emitSectionControllerLifecycle({
-				type: "disposed",
+			await this.finalizeSectionControllerDispose({
+				mapKey,
 				key,
+				context,
+				clearPersistence: args.clearPersistence,
 			});
-			if (args.clearPersistence) {
-				const strategy = this.sectionPersistenceStrategies.get(mapKey);
-				await strategy?.clearSession?.(context);
-			}
-			this.sectionPersistenceStrategies.delete(mapKey);
 		}
+	}
+
+	private detachSectionEventSubscriptionsForMapKey(mapKey: string): void {
+		const subscriptionPrefix = `${mapKey}::`;
+		for (const subscriptionKey of Array.from(
+			this.sectionEventSubscriptions.keys(),
+		)) {
+			if (!subscriptionKey.startsWith(subscriptionPrefix)) continue;
+			this.sectionEventSubscriptions.get(subscriptionKey)?.();
+		}
+	}
+
+	private async runSectionControllerDisposePipeline(args: {
+		key: SectionControllerKey;
+		context: SectionControllerContext;
+		controller: SectionControllerHandle;
+		persistBeforeDispose?: boolean;
+	}): Promise<void> {
+		if (args.persistBeforeDispose !== false) {
+			await args.controller.persist?.();
+		}
+		await args.controller.dispose?.();
+		await this.hooks.onSectionControllerDispose?.(args.context, args.controller);
+		await this.emitTelemetry("section-controller-disposed", {
+			assessmentId: args.key.assessmentId,
+			sectionId: args.key.sectionId,
+			attemptId: args.key.attemptId,
+		});
+	}
+
+	private async finalizeSectionControllerDispose(args: {
+		mapKey: string;
+		key: SectionControllerKey;
+		context: SectionControllerContext;
+		clearPersistence?: boolean;
+	}): Promise<void> {
+		this.sectionControllers.delete(args.mapKey);
+		this.sectionControllerKeys.delete(args.mapKey);
+		this.emitSectionControllerLifecycle({
+			type: "disposed",
+			key: args.key,
+		});
+		if (args.clearPersistence) {
+			const strategy = this.sectionPersistenceStrategies.get(args.mapKey);
+			await strategy?.clearSession?.(args.context);
+		}
+		this.sectionPersistenceStrategies.delete(args.mapKey);
 	}
 
 	/**
@@ -1120,98 +1249,25 @@ export class ToolkitCoordinator {
 
 	private async _initializeTTS(config?: TTSToolConfig): Promise<void> {
 		if (this.ttsInitialized) return;
+		const resolvedToolConfig = this.resolveTTSToolConfig(config);
+		const resolvedBackend = resolveTTSBackend(resolvedToolConfig);
+		const runtimeTTSConfig = buildRuntimeTTSConfig(resolvedToolConfig);
 		await this.hooks.onBeforeTTSInit?.({
 			phase: "tts-init",
 			details: {
-				backend: config?.backend,
+				backend: resolvedBackend,
 			},
 		});
 		await this.emitTelemetry("tts-init-start", {
-			backend:
-				config?.backend ??
-				(this.config.tools?.providers?.tts as TTSToolConfig | undefined)
-					?.backend ??
-				"browser",
+			backend: resolvedBackend,
 		});
-		const resolvedToolConfig =
-			config ||
-			((this.config.tools?.providers?.tts as TTSToolConfig | undefined) || {});
-		const resolvedBackend = resolvedToolConfig.backend || "browser";
-		const runtimeProvider =
-			resolvedToolConfig.serverProvider ||
-			resolvedToolConfig.provider ||
-			(resolvedBackend === "polly" || resolvedBackend === "google"
-				? resolvedBackend
-				: undefined);
-		const transportMode =
-			resolvedToolConfig.transportMode ||
-			(runtimeProvider === "custom"
-				? "custom"
-				: "pie");
-		const runtimeTTSConfig: Partial<TTSConfig> = {
-			voice: resolvedToolConfig.defaultVoice,
-			rate: resolvedToolConfig.rate,
-			pitch: resolvedToolConfig.pitch,
-			providerOptions: {
-				...(resolvedToolConfig.language
-					? {
-							locale: resolvedToolConfig.language,
-						}
-					: {}),
-				...(resolvedBackend === "polly" && resolvedToolConfig.engine
-					? {
-							engine: resolvedToolConfig.engine,
-						}
-					: {}),
-				...(resolvedBackend === "polly" &&
-				typeof resolvedToolConfig.sampleRate === "number"
-					? {
-							sampleRate: resolvedToolConfig.sampleRate,
-						}
-					: {}),
-				...(resolvedBackend === "polly" && resolvedToolConfig.format
-					? {
-							format: resolvedToolConfig.format,
-						}
-					: {}),
-				...(resolvedBackend === "polly"
-					? {
-							speechMarkTypes:
-								resolvedToolConfig.speechMarksMode === "word+sentence"
-									? ["word", "sentence"]
-									: ["word"],
-						}
-					: {}),
-				...(transportMode === "custom" &&
-				typeof resolvedToolConfig.cache === "boolean"
-					? { cache: resolvedToolConfig.cache }
-					: {}),
-				...(transportMode === "custom" && resolvedToolConfig.speedRate
-					? { speedRate: resolvedToolConfig.speedRate }
-					: {}),
-				...(transportMode === "custom" && resolvedToolConfig.lang_id
-					? { lang_id: resolvedToolConfig.lang_id }
-					: {}),
-			},
-			apiEndpoint: resolvedToolConfig.apiEndpoint,
-			provider: runtimeProvider,
-			language: resolvedToolConfig.language,
-			transportMode,
-			endpointMode: resolvedToolConfig.endpointMode,
-			endpointValidationMode: resolvedToolConfig.endpointValidationMode,
-			includeAuthOnAssetFetch: resolvedToolConfig.includeAuthOnAssetFetch,
-			validateEndpoint: resolvedToolConfig.validateEndpoint,
-		} as Partial<TTSConfig>;
 
 		// Try to use TTS provider from registry if available
 		if (this.toolProviderRegistry.has("tts")) {
 			try {
 				const ttsProvider = await this.ensureProviderReady("tts");
 				const providerInstance = await ttsProvider.createInstance();
-				await this.ttsService.initialize(providerInstance, runtimeTTSConfig);
-				this.ttsService.setCatalogResolver(this.catalogResolver);
-				this.ttsInitialized = true;
-				await this.hooks.onTTSReady?.();
+				await this.initializeTTSService(providerInstance, runtimeTTSConfig);
 				await this.emitTelemetry("tts-init-success", {
 					provider: "registry",
 				});
@@ -1230,10 +1286,7 @@ export class ToolkitCoordinator {
 		// Fallback to browser provider
 		const provider = new BrowserTTSProvider();
 		try {
-			await this.ttsService.initialize(provider, runtimeTTSConfig);
-			this.ttsService.setCatalogResolver(this.catalogResolver);
-			this.ttsInitialized = true;
-			await this.hooks.onTTSReady?.();
+			await this.initializeTTSService(provider, runtimeTTSConfig);
 			await this.emitTelemetry("tts-init-success", {
 				provider: "browser-fallback",
 			});
@@ -1247,6 +1300,23 @@ export class ToolkitCoordinator {
 			});
 			throw normalized;
 		}
+	}
+
+	private resolveTTSToolConfig(config?: TTSToolConfig): TTSToolConfig {
+		return (
+			config ||
+			((this.config.tools?.providers?.tts as TTSToolConfig | undefined) || {})
+		);
+	}
+
+	private async initializeTTSService(
+		provider: ITTSProvider,
+		config: Partial<TTSConfig>,
+	): Promise<void> {
+		await this.ttsService.initialize(provider, config);
+		this.ttsService.setCatalogResolver(this.catalogResolver);
+		this.ttsInitialized = true;
+		await this.hooks.onTTSReady?.();
 	}
 
 	/**

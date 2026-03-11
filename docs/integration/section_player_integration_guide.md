@@ -639,6 +639,7 @@ Use `subscribeSectionEvents(...)` only for advanced/custom filtering mixes.
 - `sectionId` may be omitted only when exactly one active section controller exists for the coordinator.
 - `attemptId` without `sectionId` is invalid and throws.
 - If no controller matches, or resolution is ambiguous, the subscription helpers throw an `Error` (they do not silently no-op).
+- Late `subscribeSectionLifecycleEvents(...)` subscribers receive an immediate synthetic `section-loading-complete` event when the resolved controller runtime already reports `loadingComplete: true`.
 
 ```ts
 player.addEventListener('toolkit-ready', (e) => {
@@ -668,7 +669,8 @@ player.addEventListener('toolkit-ready', (e) => {
 });
 ```
 
-> `itemIds` filtering is item-scoped only. Section-scoped events like `section-loading-complete` should be subscribed through `subscribeSectionLifecycleEvents(...)` (or a generic subscription without `itemIds`).
+> `itemIds` filtering is item-scoped only. Section-scoped events like `section-loading-complete` should be subscribed through `subscribeSectionLifecycleEvents(...)` (or a generic subscription without `itemIds`).  
+> For deterministic behavior in multi-attempt hosts, pass both `sectionId` and `attemptId` when subscribing.
 
 ### Controller Event Types
 

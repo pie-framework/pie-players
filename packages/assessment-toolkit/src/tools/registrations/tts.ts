@@ -13,50 +13,20 @@ import type {
 	ToolToolbarRenderResult,
 	ToolbarContext,
 } from "../../services/ToolRegistry.js";
-import type { ToolProviderConfig } from "../../services/tools-config-normalizer.js";
 import type { ToolContext } from "../../services/tool-context.js";
 import { hasReadableText } from "../../services/tool-context.js";
 import { createScopedToolId } from "../../services/tool-instance-id.js";
+import {
+	buildRuntimeTTSConfig,
+	resolveTTSBackend,
+	resolveTTSRuntimeSettings,
+	resolveRuntimeProvider,
+	resolveTransportMode,
+} from "../../services/tts-runtime-config.js";
 import { TTSToolProvider } from "../../services/tool-providers/index.js";
 
 const inlineTTSControls = new Map<string, HTMLElement>();
 export const TOOL_ELEMENT_UNMOUNT_CALLBACK_PROP = "__pieToolElementUnmount";
-
-interface TTSProviderRuntimeSettings {
-	backend?: "browser" | "polly" | "google" | "server";
-	serverProvider?: "polly" | "google" | "custom";
-	provider?: "polly" | "google" | "custom";
-	engine?: "standard" | "neural";
-	sampleRate?: number;
-	format?: "mp3" | "ogg" | "pcm";
-	speechMarksMode?: "word" | "word+sentence";
-	defaultVoice?: string;
-	rate?: number;
-	pitch?: number;
-	apiEndpoint?: string;
-	language?: string;
-	transportMode?: "pie" | "custom";
-	endpointMode?: "synthesizePath" | "rootPost";
-	endpointValidationMode?: "voices" | "endpoint" | "none";
-	includeAuthOnAssetFetch?: boolean;
-	validateEndpoint?: boolean;
-	cache?: boolean;
-	speedRate?: "slow" | "medium" | "fast";
-	lang_id?: string;
-	speedOptions?: number[];
-}
-
-const toRecord = (value: unknown): Record<string, unknown> =>
-	value && typeof value === "object" ? (value as Record<string, unknown>) : {};
-
-const resolveTTSRuntimeSettings = (
-	config: ToolProviderConfig | undefined,
-): TTSProviderRuntimeSettings => {
-	const configRecord = toRecord(config);
-	const settingsRecord = toRecord(config?.settings);
-	const merged = { ...configRecord, ...settingsRecord };
-	return merged as TTSProviderRuntimeSettings;
-};
 
 const DEFAULT_SPEED_OPTIONS = Object.freeze([1.5, 2]);
 
@@ -89,67 +59,18 @@ export const ttsToolRegistration: ToolRegistration = {
 		getProviderId: () => "tts",
 		createProvider: (config) => {
 			const settings = resolveTTSRuntimeSettings(config);
-			return new TTSToolProvider(settings.backend || "browser");
+			return new TTSToolProvider(resolveTTSBackend(settings));
 		},
 		getInitConfig: (config) => {
 			const settings = resolveTTSRuntimeSettings(config);
-			const backend = settings.backend || "browser";
-			const serverProvider =
-				settings.serverProvider ||
-				settings.provider ||
-				(backend === "polly" || backend === "google"
-					? backend
-					: undefined);
-			const transportMode =
-				settings.transportMode ||
-				(serverProvider === "custom"
-					? "custom"
-					: "pie");
+			const backend = resolveTTSBackend(settings);
+			const serverProvider = resolveRuntimeProvider(settings, backend);
+			const transportMode = resolveTransportMode(settings, serverProvider);
 			return {
 				backend,
-				apiEndpoint: settings.apiEndpoint,
 				serverProvider,
-				providerOptions:
-					backend === "polly" || transportMode === "custom"
-						? {
-								...(backend === "polly" && settings.engine
-									? { engine: settings.engine }
-									: {}),
-								...(backend === "polly" &&
-								typeof settings.sampleRate === "number"
-									? { sampleRate: settings.sampleRate }
-									: {}),
-								...(backend === "polly" && settings.format
-									? { format: settings.format }
-									: {}),
-								...(backend === "polly"
-									? {
-											speechMarkTypes:
-												settings.speechMarksMode === "word+sentence"
-													? ["word", "sentence"]
-													: ["word"],
-										}
-									: {}),
-								...(transportMode === "custom" &&
-								typeof settings.cache === "boolean"
-									? { cache: settings.cache }
-									: {}),
-								...(transportMode === "custom" && settings.speedRate
-									? { speedRate: settings.speedRate }
-									: {}),
-								...(transportMode === "custom" && settings.lang_id
-									? { lang_id: settings.lang_id }
-									: {}),
-							}
-						: undefined,
-				voice: settings.defaultVoice,
-				rate: settings.rate,
-				pitch: settings.pitch,
 				transportMode,
-				endpointMode: settings.endpointMode,
-				endpointValidationMode: settings.endpointValidationMode,
-				includeAuthOnAssetFetch: settings.includeAuthOnAssetFetch,
-				validateEndpoint: settings.validateEndpoint,
+				...buildRuntimeTTSConfig(settings),
 			};
 		},
 		getAuthFetcher: (config) => {

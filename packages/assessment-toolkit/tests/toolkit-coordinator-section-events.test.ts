@@ -109,6 +109,122 @@ describe("ToolkitCoordinator section event subscriptions", () => {
 		unsubscribe();
 	});
 
+	test("replays section-loading-complete when runtime reports complete without totals", async () => {
+		const controller = createTestController({
+			sectionId: "section-1",
+			currentItemIndex: 0,
+			currentItemId: "item-1",
+			itemIdentifiers: ["item-1"],
+			visitedItemIdentifiers: ["item-1"],
+			itemSessions: {},
+			loadingComplete: true,
+			totalRegistered: 0,
+			totalLoaded: 0,
+			itemsComplete: false,
+			completedCount: 0,
+			totalItems: 1,
+		});
+		const coordinator = new ToolkitCoordinator({
+			assessmentId: "assessment-late-subscriber-no-totals",
+			lazyInit: true,
+		});
+		await coordinator.getOrCreateSectionController({
+			sectionId: "section-1",
+			attemptId: "attempt-1",
+			createDefaultController: () => controller.handle,
+		});
+
+		const received: SectionControllerEvent[] = [];
+		const unsubscribe = coordinator.subscribeSectionLifecycleEvents({
+			sectionId: "section-1",
+			attemptId: "attempt-1",
+			listener: (event) => received.push(event),
+		});
+
+		expect(received).toHaveLength(1);
+		expect(received[0]).toEqual(
+			expect.objectContaining({
+				type: "section-loading-complete",
+				totalRegistered: 0,
+				totalLoaded: 0,
+			}),
+		);
+		unsubscribe();
+	});
+
+	test("does not replay section-loading-complete for item-scoped helper", async () => {
+		const controller = createTestController({
+			sectionId: "section-1",
+			currentItemIndex: 0,
+			currentItemId: "item-1",
+			itemIdentifiers: ["item-1"],
+			visitedItemIdentifiers: ["item-1"],
+			itemSessions: {},
+			loadingComplete: true,
+			totalRegistered: 2,
+			totalLoaded: 2,
+			itemsComplete: false,
+			completedCount: 0,
+			totalItems: 1,
+		});
+		const coordinator = new ToolkitCoordinator({
+			assessmentId: "assessment-item-no-replay",
+			lazyInit: true,
+		});
+		await coordinator.getOrCreateSectionController({
+			sectionId: "section-1",
+			attemptId: "attempt-1",
+			createDefaultController: () => controller.handle,
+		});
+
+		const received: SectionControllerEvent[] = [];
+		const unsubscribe = coordinator.subscribeItemEvents({
+			sectionId: "section-1",
+			attemptId: "attempt-1",
+			listener: (event) => received.push(event),
+		});
+
+		expect(received).toHaveLength(0);
+		unsubscribe();
+	});
+
+	test("replay still respects section lifecycle event type filters", async () => {
+		const controller = createTestController({
+			sectionId: "section-1",
+			currentItemIndex: 0,
+			currentItemId: "item-1",
+			itemIdentifiers: ["item-1"],
+			visitedItemIdentifiers: ["item-1"],
+			itemSessions: {},
+			loadingComplete: true,
+			totalRegistered: 2,
+			totalLoaded: 2,
+			itemsComplete: false,
+			completedCount: 0,
+			totalItems: 1,
+		});
+		const coordinator = new ToolkitCoordinator({
+			assessmentId: "assessment-replay-filter",
+			lazyInit: true,
+		});
+		await coordinator.getOrCreateSectionController({
+			sectionId: "section-1",
+			attemptId: "attempt-1",
+			createDefaultController: () => controller.handle,
+		});
+
+		const received: SectionControllerEvent[] = [];
+		const unsubscribe = coordinator.subscribeSectionLifecycleEvents({
+			sectionId: "section-1",
+			attemptId: "attempt-1",
+			eventTypes: ["section-error"],
+			listener: (event) => received.push(event),
+		});
+
+		expect(received).toHaveLength(0);
+		unsubscribe();
+	});
+
 	test("filters item helper subscriptions by event type and item id", async () => {
 		const controller = createTestController();
 		const coordinator = new ToolkitCoordinator({

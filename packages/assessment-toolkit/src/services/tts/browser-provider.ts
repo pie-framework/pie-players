@@ -14,6 +14,9 @@ import type {
 	TTSFeature,
 	TTSProviderCapabilities,
 } from "@pie-players/pie-tts";
+import {
+	segmentSentences as segmentTextToSentences,
+} from "./text-segmentation.js";
 
 interface TTSSpeechSegment {
 	text: string;
@@ -208,42 +211,11 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 	}
 
 	private segmentSentences(text: string): Array<{ text: string; offset: number }> {
-		try {
-			const policy = this.getSegmentationPolicy();
-			if (!policy.useSentenceSegmenter) {
-				throw new Error("Segmenter disabled by policy");
-			}
-			const Segmenter = globalThis.Intl?.Segmenter;
-			if (typeof Segmenter === "function") {
-				const segmenter = new Segmenter(policy.locale, {
-					granularity: "sentence",
-				});
-				const segments = Array.from(segmenter.segment(text));
-				const parsed = segments
-					.map((segment) => ({
-						text: segment.segment,
-						offset: segment.index,
-					}))
-					.filter((segment) => segment.text.trim().length > 0);
-				if (parsed.length > 0) {
-					return parsed;
-				}
-			}
-		} catch {
-			// Fallback below.
-		}
-
-		const sentenceRegex = /[^.!?]+(?:[.!?]+|$)/g;
-		const raw = text.match(sentenceRegex) || [text];
-		const parsed: Array<{ text: string; offset: number }> = [];
-		let processed = 0;
-		for (const sentence of raw) {
-			const offset = text.indexOf(sentence, processed);
-			if (offset === -1) continue;
-			parsed.push({ text: sentence, offset });
-			processed = offset + sentence.length;
-		}
-		return parsed.length > 0 ? parsed : [{ text, offset: 0 }];
+		const policy = this.getSegmentationPolicy();
+		return segmentTextToSentences(text, {
+			locale: policy.locale,
+			useSentenceSegmenter: policy.useSentenceSegmenter,
+		});
 	}
 
 	private inferWordLength(text: string, index: number): number {

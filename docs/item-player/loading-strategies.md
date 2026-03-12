@@ -36,7 +36,8 @@ Strategy-specific options are set via the `loaderOptions` property (not attribut
 const player = document.querySelector("pie-item-player");
 player.loaderOptions = {
   bundleHost: "https://proxy.pie-api.com/bundles",
-  esmCdnUrl: "https://esm.sh",
+  esmCdnUrl: "https://cdn.jsdelivr.net/npm",
+  moduleResolution: "url",
   view: "delivery",
   loadControllers: true,
 };
@@ -45,7 +46,8 @@ player.loaderOptions = {
 | Option | Used by | Default | Description |
 |--------|---------|---------|-------------|
 | `bundleHost` | `iife`, `preloaded` | `https://proxy.pie-api.com/bundles/` | Base URL for IIFE bundle downloads |
-| `esmCdnUrl` | `esm` | `https://esm.sh` | Base URL for ESM module resolution |
+| `esmCdnUrl` | `esm` | `https://cdn.jsdelivr.net/npm` | Base URL for ESM module resolution |
+| `moduleResolution` | `esm` | `"url"` | Module resolution mode: `"url"` (fully-qualified CDN imports) or `"import-map"` |
 | `view` | `esm` | resolved from `env.mode` | ESM view: `"delivery"`, `"author"`, or `"print"` |
 | `loadControllers` | `esm` | `true` | Whether to load PIE controllers alongside elements |
 
@@ -70,12 +72,13 @@ player.loaderOptions = {
 
 ### `strategy="esm"`
 
-Loads ESM modules from a CDN using dynamically injected import maps and `import()`. Each PIE element is resolved to a CDN URL with a view-specific subpath (`/delivery`, `/author`, `/print`).
+Loads ESM modules from a CDN with dynamic `import()`. By default, the player imports fully-qualified CDN URLs (`moduleResolution: "url"`), which avoids one-time import-map staleness across repeated loads. You can still opt into import-map mode with `moduleResolution: "import-map"`.
 
 ```ts
 player.strategy = "esm";
 player.loaderOptions = {
-  esmCdnUrl: "https://esm.sh",
+  esmCdnUrl: "https://cdn.jsdelivr.net/npm",
+  moduleResolution: "url",
   view: "delivery",
   loadControllers: true,
 };

@@ -149,6 +149,8 @@ Use `?mode=candidate` or `?mode=scorer` to switch environment role/mode. The hos
 - **jsDelivr:** `https://cdn.jsdelivr.net/npm` (recommended, used in demos)
 - **esm.sh:** `https://esm.sh` (may have package resolution issues)
 
+The ESM player defaults to jsDelivr and URL-based module resolution (`moduleResolution: "url"`). Override `loaderOptions.esmCdnUrl` to use a different CDN, or set `moduleResolution: "import-map"` when import-map behavior is needed.
+
 ### Adding New Demos
 1. Create content file in `src/lib/content/demoX-*.ts`
 2. Register the demo in `src/lib/content/sections.ts`

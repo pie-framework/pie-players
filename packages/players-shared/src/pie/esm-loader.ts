@@ -22,6 +22,12 @@ let logger: ReturnType<typeof createPieLogger>;
 export interface EsmLoaderConfig {
 	cdnBaseUrl: string;
 	debugEnabled?: () => boolean;
+	/**
+	 * Module resolution mode.
+	 * - "url" (default): load using fully-qualified CDN URLs
+	 * - "import-map": load using bare specifiers resolved by injected import maps
+	 */
+	moduleResolution?: "url" | "import-map";
 }
 
 /**
@@ -79,10 +85,12 @@ export const BUILT_IN_VIEWS: Record<string, ViewConfig> = {
 
 export class EsmPieLoader {
 	private cdnBaseUrl: string;
+	private moduleResolution: "url" | "import-map";
 	private importMapInjected = false;
 
 	constructor(config: EsmLoaderConfig) {
-		this.cdnBaseUrl = config.cdnBaseUrl;
+		this.cdnBaseUrl = config.cdnBaseUrl.replace(/\/+$/, "");
+		this.moduleResolution = config.moduleResolution || "url";
 		// Initialize logger with debug function
 		logger = createPieLogger(
 			"esm-loader",
@@ -177,6 +185,94 @@ export class EsmPieLoader {
 		doc.head.appendChild(script);
 	}
 
+	private assertRuntimeSupport(doc: Document): void {
+		if (!doc?.head) {
+			throw new Error(
+				`ESM loader requires a browser document with a <head> to load modules (moduleResolution=${this.moduleResolution}).`,
+			);
+		}
+
+		if (typeof customElements === "undefined") {
+			throw new Error(
+				`ESM loader requires Custom Elements support in this environment (moduleResolution=${this.moduleResolution}).`,
+			);
+		}
+
+		if (this.moduleResolution === "import-map") {
+			const htmlScriptElement = HTMLScriptElement as typeof HTMLScriptElement & {
+				supports?: (type: string) => boolean;
+			};
+			const supportsImportMap =
+				typeof HTMLScriptElement !== "undefined" &&
+				typeof htmlScriptElement.supports === "function" &&
+				htmlScriptElement.supports("importmap");
+
+			if (!supportsImportMap) {
+				throw new Error(
+					'This browser does not support import maps. Use moduleResolution="url" or switch to iife/preloaded strategy.',
+				);
+			}
+		}
+	}
+
+	private normalizeImportError(
+		err: unknown,
+		specifier: string,
+		context: "element" | "controller",
+	): Error {
+		const message = err instanceof Error ? err.message : String(err);
+		const lower = message.toLowerCase();
+		const likelyCspOrPolicy =
+			lower.includes("refused") ||
+			lower.includes("content security policy") ||
+			lower.includes("failed to fetch dynamically imported module") ||
+			lower.includes("blocked");
+		const likelyResolutionIssue =
+			lower.includes("failed to resolve module specifier") ||
+			lower.includes("cannot find module");
+
+		const hints: string[] = [];
+		if (this.moduleResolution === "import-map" && likelyResolutionIssue) {
+			hints.push(
+				"Import-map resolution failed. Ensure the import map contains this specifier, or use moduleResolution=\"url\".",
+			);
+		}
+		if (likelyCspOrPolicy) {
+			hints.push(
+				`Check CSP allows module loading from ${this.cdnBaseUrl} (script-src/connect-src) and allows import maps if moduleResolution="import-map".`,
+			);
+		}
+
+		const prefix = `Failed to load ${context} module: ${specifier}`;
+		if (hints.length === 0) {
+			return new Error(`${prefix}. ${message}`);
+		}
+		return new Error(`${prefix}. ${message} Hints: ${hints.join(" ")}`);
+	}
+
+	private resolveElementSpecifier(
+		packageName: string,
+		packageVersion: string,
+		viewConfig: ViewConfig,
+	): string {
+		if (this.moduleResolution === "import-map") {
+			return viewConfig.subpath ? `${packageName}${viewConfig.subpath}` : packageName;
+		}
+		return viewConfig.subpath
+			? this.resolveSubpathUrl(packageVersion, viewConfig.subpath)
+			: this.resolvePackageUrl(packageVersion);
+	}
+
+	private resolveControllerSpecifier(
+		packageName: string,
+		packageVersion: string,
+	): string {
+		if (this.moduleResolution === "import-map") {
+			return `${packageName}/controller`;
+		}
+		return this.resolveControllerUrl(packageVersion);
+	}
+
 	private async loadElement(
 		tag: string,
 		packageVersion: string,
@@ -200,17 +296,19 @@ export class EsmPieLoader {
 			);
 			logger.debug(`View: ${options.view}, subpath: ${viewConfig.subpath}`);
 
-			// Determine import path based on view
-			const importPath = viewConfig.subpath
-				? `${packageName}${viewConfig.subpath}`
-				: packageName;
+			// Determine import specifier based on resolution mode and view
+			const importSpecifier = this.resolveElementSpecifier(
+				packageName,
+				packageVersion,
+				viewConfig,
+			);
 
 			let module: any;
 			let ElementClass: any;
 
 			try {
-				// @vite-ignore - Dynamic import from CDN via import maps (runtime resolution)
-				module = await import(/* @vite-ignore */ importPath);
+				// @vite-ignore - Dynamic import from runtime specifier (URL or import-map bare path)
+				module = await import(/* @vite-ignore */ importSpecifier);
 				logger.debug(`Module loaded for ${actualTag}:`, module);
 				logger.debug(`Module exports:`, Object.keys(module));
 
@@ -226,40 +324,40 @@ export class EsmPieLoader {
 				// If loading fails and there's a fallback, try the fallback
 				if (viewConfig.fallback) {
 					logger.warn(
-						`Failed to load ${importPath}, trying fallback: ${viewConfig.fallback}`,
+						`Failed to load ${importSpecifier}, trying fallback: ${viewConfig.fallback}`,
 					);
 					const fallbackConfig = BUILT_IN_VIEWS[viewConfig.fallback];
-					// Construct fallback path
-					let fallbackPath: string;
-					if (fallbackConfig.subpath) {
-						fallbackPath = `${packageName}${fallbackConfig.subpath}`;
-					} else {
-						fallbackPath = packageName;
-					}
+					const fallbackSpecifier = this.resolveElementSpecifier(
+						packageName,
+						packageVersion,
+						fallbackConfig || BUILT_IN_VIEWS.delivery,
+					);
 
-					// @vite-ignore - Dynamic import from CDN via import maps (runtime resolution)
-					module = await import(/* @vite-ignore */ fallbackPath);
+					// @vite-ignore - Dynamic import from runtime specifier (URL or import-map bare path)
+					module = await import(/* @vite-ignore */ fallbackSpecifier);
 					ElementClass = module.default || module.Element;
 					logger.debug(`Loaded fallback view for ${actualTag}`);
 				} else {
-					throw err;
+					throw this.normalizeImportError(err, importSpecifier, "element");
 				}
 			}
 
 			if (!ElementClass) {
 				throw new Error(
-					`No suitable element class found in ${importPath} for view ${options.view}`,
+					`No suitable element class found in ${importSpecifier} for view ${options.view}`,
 				);
 			}
 
 			// Load controller separately if needed
 			let controller = null;
 			if (options.loadControllers) {
+				const controllerSpecifier = this.resolveControllerSpecifier(
+					packageName,
+					packageVersion,
+				);
 				try {
-					// @vite-ignore - Dynamic import from CDN via import maps (runtime resolution)
-					const controllerModule = await import(
-						/* @vite-ignore */ `${packageName}/controller`
-					);
+					// @vite-ignore - Dynamic import from runtime specifier (URL or import-map bare path)
+					const controllerModule = await import(/* @vite-ignore */ controllerSpecifier);
 					logger.debug(
 						`Controller module loaded for ${actualTag}:`,
 						controllerModule,
@@ -274,7 +372,10 @@ export class EsmPieLoader {
 						logger.warn(`No controller export found for ${actualTag}`);
 					}
 				} catch (err) {
-					logger.warn(`Failed to load controller for ${actualTag}:`, err);
+					logger.warn(
+						`Failed to load controller for ${actualTag}:`,
+						this.normalizeImportError(err, controllerSpecifier, "controller"),
+					);
 				}
 			}
 
@@ -369,22 +470,29 @@ export class EsmPieLoader {
 			logger.warn("No elements in config");
 			return;
 		}
+		this.assertRuntimeSupport(doc);
 
 		const viewConfig =
 			options.viewConfig ||
 			BUILT_IN_VIEWS[options.view] ||
 			BUILT_IN_VIEWS.delivery;
 
-		// 0. Generate and inject import map (once per page)
-		if (!this.importMapInjected) {
-			logger.debug("Generating import map for view:", options.view);
-			const importMap = this.generateImportMap(contentConfig.elements, options);
-			logger.debug("Import map:", importMap);
-			this.injectImportMap(importMap, doc);
-			this.importMapInjected = true;
-			logger.debug("Import map injected");
+		// 0. Generate and inject import map when import-map mode is enabled
+		if (this.moduleResolution === "import-map") {
+			if (!this.importMapInjected) {
+				logger.debug("Generating import map for view:", options.view);
+				const importMap = this.generateImportMap(contentConfig.elements, options);
+				logger.debug("Import map:", importMap);
+				this.injectImportMap(importMap, doc);
+				this.importMapInjected = true;
+				logger.debug("Import map injected");
+			} else {
+				logger.debug("Import map already injected, skipping");
+			}
 		} else {
-			logger.debug("Import map already injected, skipping");
+			logger.debug(
+				`Skipping import map injection (moduleResolution=${this.moduleResolution})`,
+			);
 		}
 
 		// 2. Dynamically import and register each element

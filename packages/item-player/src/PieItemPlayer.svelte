@@ -115,7 +115,9 @@
 	const resolvedIifeBundleHost = $derived(
 		loaderOptions?.bundleHost || DEFAULT_BUNDLE_HOST,
 	);
-	const resolvedEsmCdnUrl = $derived(loaderOptions?.esmCdnUrl || "https://esm.sh");
+	const resolvedEsmCdnUrl = $derived(
+		loaderOptions?.esmCdnUrl || "https://cdn.jsdelivr.net/npm",
+	);
 
 	const debugEnabled = $derived.by(() => {
 		if (debug !== undefined && debug !== null) {
@@ -307,10 +309,16 @@
 				await iifeLoader.elementsHaveLoaded(elements);
 			} else {
 				stage = "esm-load";
+				const moduleResolution =
+					(loaderOptions as Record<string, unknown> | undefined)
+						?.moduleResolution === "import-map"
+						? "import-map"
+						: "url";
 				const esmLoader = new EsmPieLoader({
 					cdnBaseUrl: resolvedEsmCdnUrl,
 					debugEnabled: () => debugEnabled,
-				});
+					moduleResolution,
+				} as any);
 				const view =
 					loaderOptions?.view || resolveItemPlayerView(env?.mode, "delivery");
 				await esmLoader.load(transformedConfig, document, {

@@ -38,13 +38,16 @@ export function buildPreloadSignature(args: {
 	strategy: string;
 	loaderView: string;
 	esmCdnUrl: string;
+	moduleResolution: "url" | "import-map";
 	bundleHost: string;
 	renderablesSignature: string;
 }) {
 	return [
 		args.strategy,
 		args.loaderView,
-		args.strategy === "esm" ? args.esmCdnUrl : args.bundleHost,
+		args.strategy === "esm"
+			? `${args.esmCdnUrl}|${args.moduleResolution}`
+			: args.bundleHost,
 		args.renderablesSignature,
 	].join("|");
 }
@@ -54,6 +57,7 @@ export async function preloadPlayerElements(args: {
 	renderables: ItemEntity[];
 	loaderView: "author" | "delivery";
 	esmCdnUrl: string;
+	moduleResolution: "url" | "import-map";
 	bundleHost: string;
 	onTimeout: () => void;
 	timeoutMs?: number;
@@ -65,8 +69,9 @@ export async function preloadPlayerElements(args: {
 	if (args.strategy === "esm") {
 		loader = new EsmElementLoader({
 			esmCdnUrl: args.esmCdnUrl,
+			moduleResolution: args.moduleResolution,
 			debugEnabled: () => false,
-		});
+		} as any);
 	} else {
 		if (!args.bundleHost) {
 			throw new Error("Missing iife bundleHost");
@@ -128,7 +133,7 @@ export function orchestratePlayerElementPreload(args: {
 }) {
 	const esmCdnUrl = String(
 		(args.resolvedPlayerProps?.loaderOptions as Record<string, unknown> | undefined)
-			?.esmCdnUrl || "https://esm.sh",
+			?.esmCdnUrl || "https://cdn.jsdelivr.net/npm",
 	);
 	const bundleHost = String(
 		(args.resolvedPlayerProps?.loaderOptions as Record<string, unknown> | undefined)
@@ -136,11 +141,17 @@ export function orchestratePlayerElementPreload(args: {
 			args.iifeBundleHost ||
 			"",
 	).trim();
+	const moduleResolution =
+		(args.resolvedPlayerProps?.loaderOptions as Record<string, unknown> | undefined)
+			?.moduleResolution === "import-map"
+			? "import-map"
+			: "url";
 	const loaderView = getLoaderView(args.resolvedPlayerEnv);
 	const preloadSignature = buildPreloadSignature({
 		strategy: args.strategy,
 		loaderView,
 		esmCdnUrl,
+		moduleResolution,
 		bundleHost,
 		renderablesSignature: args.renderablesSignature,
 	});
@@ -175,6 +186,7 @@ export function orchestratePlayerElementPreload(args: {
 		renderables: args.renderables,
 		loaderView,
 		esmCdnUrl,
+		moduleResolution,
 		bundleHost,
 		onTimeout: () => {
 			if (runToken !== args.getState().preloadRunToken) return;

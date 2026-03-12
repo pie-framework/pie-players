@@ -21,6 +21,9 @@ export interface EsmElementLoaderConfig {
 	/** Base URL for ESM CDN (e.g., "https://esm.sh") */
 	esmCdnUrl: string;
 
+	/** Module resolution mode (default: "url") */
+	moduleResolution?: "url" | "import-map";
+
 	/** Optional function to check if debug mode is enabled */
 	debugEnabled?: () => boolean;
 }
@@ -59,6 +62,7 @@ export class EsmElementLoader implements ElementLoaderInterface {
 	constructor(config: EsmElementLoaderConfig) {
 		this.loader = new EsmPieLoader({
 			cdnBaseUrl: config.esmCdnUrl,
+			moduleResolution: config.moduleResolution,
 			debugEnabled: config.debugEnabled,
 		});
 	}

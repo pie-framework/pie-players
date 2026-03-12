@@ -32,7 +32,7 @@ export const DEFAULT_PLAYER_DEFINITIONS: PlayerDefinitionMap = {
 		},
 		props: {
 			loaderOptions: {
-				esmCdnUrl: "https://esm.sh",
+				esmCdnUrl: "https://cdn.jsdelivr.net/npm",
 			},
 		},
 	},

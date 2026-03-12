@@ -47,6 +47,10 @@ export interface SectionControllerInput {
 }
 
 export interface SectionSessionState {
+	/**
+	 * Persistence payload for section controller host APIs.
+	 * This shape is produced by getSession() and should be preferred for applySession().
+	 */
 	currentItemIndex?: number;
 	visitedItemIdentifiers?: string[];
 	itemSessions: Record<string, unknown>;
@@ -152,6 +156,7 @@ interface SectionControllerEventBase {
 		| "item-session-meta-changed"
 		| "item-selected"
 		| "section-navigation-change"
+		| "section-session-applied"
 		| "content-loaded"
 		| "item-player-error"
 		| "item-complete-changed"
@@ -199,6 +204,14 @@ export interface SectionNavigationChangeEvent extends SectionControllerEventBase
 	currentSectionId?: string;
 	attemptId?: string;
 	reason?: "input-change" | "runtime-transition";
+}
+
+export interface SectionSessionAppliedEvent extends SectionControllerEventBase {
+	type: "section-session-applied";
+	mode: "replace" | "merge";
+	itemSessionCount: number;
+	replay: boolean;
+	currentItemIndex: number;
 }
 
 export interface ContentLoadedEvent extends ItemScopedControllerEventBase {
@@ -253,6 +266,7 @@ export type SectionControllerChangeEvent =
 	| ItemSessionMetaChangedEvent
 	| ItemSelectedEvent
 	| SectionNavigationChangeEvent
+	| SectionSessionAppliedEvent
 	| ContentLoadedEvent
 	| ItemPlayerErrorEvent
 	| ItemCompleteChangedEvent

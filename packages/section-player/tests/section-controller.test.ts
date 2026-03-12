@@ -17,6 +17,20 @@ function makeItem(id: string): ItemEntity {
 	} as unknown as ItemEntity;
 }
 
+function makeSectionWithItems(
+	sectionId: string,
+	itemIds: string[],
+): AssessmentSection {
+	return {
+		identifier: sectionId,
+		assessmentItemRefs: itemIds.map((itemId, index) => ({
+			identifier: `canonical-${index + 1}`,
+			item: makeItem(itemId),
+		})),
+		rubricBlocks: [],
+	} as unknown as AssessmentSection;
+}
+
 describe("SectionController external contract", () => {
 	test("exposes runtime state for current section snapshot", async () => {
 		const controller = new SectionController();
@@ -259,5 +273,192 @@ describe("SectionController external contract", () => {
 		expect(events[0]?.type).toBe("item-session-data-changed");
 		expect(events[1]?.type).toBe("item-session-data-changed");
 		expect((events[1]?.session as any)?.data?.[0]?.value).toEqual([]);
+	});
+
+	test("applySession restores all item sessions for multi-item section", async () => {
+		const controller = new SectionController();
+		const section = makeSectionWithItems("section-multi-restore", [
+			"runtime-item-a",
+			"runtime-item-b",
+			"runtime-item-c",
+		]);
+		await controller.initialize({
+			section,
+			sectionId: "section-multi-restore",
+			assessmentId: "assessment-multi-restore",
+			view: "candidate",
+		});
+		await controller.applySession(
+			{
+				currentItemIndex: 1,
+				visitedItemIdentifiers: ["canonical-1", "canonical-2"],
+				itemSessions: {
+					"canonical-1": {
+						itemIdentifier: "canonical-1",
+						isCompleted: true,
+						session: { id: "s-a", data: [{ id: "q1", value: "a" }], complete: true },
+					},
+					"canonical-2": {
+						itemIdentifier: "canonical-2",
+						isCompleted: true,
+						session: { id: "s-b", data: [{ id: "q2", value: "b" }], complete: true },
+					},
+					"canonical-3": {
+						itemIdentifier: "canonical-3",
+						isCompleted: false,
+						session: { id: "s-c", data: [] },
+					},
+				},
+			},
+			{ mode: "replace" },
+		);
+		const session = controller.getSession();
+		expect(Object.keys(session?.itemSessions || {})).toEqual([
+			"canonical-1",
+			"canonical-2",
+			"canonical-3",
+		]);
+		expect(session?.itemSessions["canonical-2"]).toEqual(
+			expect.objectContaining({
+				itemIdentifier: "canonical-2",
+				session: expect.objectContaining({
+					id: "s-b",
+				}),
+			}),
+		);
+		expect(session?.currentItemIndex).toBe(1);
+	});
+
+	test("applySession normalizes mixed canonical and raw session entries", async () => {
+		const controller = new SectionController();
+		const section = makeSectionWithItems("section-mixed-shapes", [
+			"runtime-item-a",
+			"runtime-item-b",
+		]);
+		await controller.initialize({
+			section,
+			sectionId: "section-mixed-shapes",
+			assessmentId: "assessment-mixed-shapes",
+			view: "candidate",
+		});
+		await controller.applySession(
+			{
+				itemSessions: {
+					"canonical-1": {
+						itemIdentifier: "canonical-1",
+						isCompleted: true,
+						session: { id: "already-canonical", data: [{ value: "a" }] },
+					},
+					"runtime-item-b": {
+						id: "raw-shape",
+						data: [{ value: "c" }],
+						complete: true,
+					},
+					"unknown-item": {
+						id: "skip-me",
+						data: [{ value: "z" }],
+					},
+				},
+			},
+			{ mode: "replace" },
+		);
+		const session = controller.getSession();
+		expect(Object.keys(session?.itemSessions || {})).toEqual(["canonical-1", "canonical-2"]);
+		expect(session?.itemSessions["canonical-2"]).toEqual(
+			expect.objectContaining({
+				itemIdentifier: "canonical-2",
+				session: expect.objectContaining({
+					id: "raw-shape",
+				}),
+			}),
+		);
+	});
+
+	test("applySession clamps out-of-range currentItemIndex", async () => {
+		const controller = new SectionController();
+		const section = makeSectionWithItems("section-index-clamp", [
+			"runtime-item-a",
+			"runtime-item-b",
+		]);
+		await controller.initialize({
+			section,
+			sectionId: "section-index-clamp",
+			assessmentId: "assessment-index-clamp",
+			view: "candidate",
+		});
+		await controller.applySession(
+			{
+				currentItemIndex: 99,
+				itemSessions: {},
+			},
+			{ mode: "replace" },
+		);
+		expect(controller.getSession()?.currentItemIndex).toBe(1);
+		await controller.applySession(
+			{
+				currentItemIndex: -5,
+				itemSessions: {},
+			},
+			{ mode: "replace" },
+		);
+		expect(controller.getSession()?.currentItemIndex).toBe(0);
+	});
+
+	test("replays applied session once after section-loading-complete", async () => {
+		const controller = new SectionController();
+		const section = makeSectionWithItems("section-replay", [
+			"runtime-item-a",
+			"runtime-item-b",
+		]);
+		await controller.initialize({
+			section,
+			sectionId: "section-replay",
+			assessmentId: "assessment-replay",
+			view: "candidate",
+		});
+		const appliedEvents: Array<{ replay: boolean; itemSessionCount: number }> = [];
+		controller.subscribe((event) => {
+			if (event.type !== "section-session-applied") return;
+			appliedEvents.push({
+				replay: event.replay,
+				itemSessionCount: event.itemSessionCount,
+			});
+		});
+		await controller.applySession(
+			{
+				itemSessions: {
+					"canonical-1": {
+						itemIdentifier: "canonical-1",
+						isCompleted: true,
+						session: { id: "sess-a", data: [{ value: "a" }], complete: true },
+					},
+				},
+			},
+			{ mode: "replace" },
+		);
+		controller.handleContentRegistered({
+			itemId: "runtime-item-a",
+			canonicalItemId: "canonical-1",
+			contentKind: "item",
+		});
+		controller.handleContentRegistered({
+			itemId: "runtime-item-b",
+			canonicalItemId: "canonical-2",
+			contentKind: "item",
+		});
+		controller.handleContentLoaded({
+			itemId: "runtime-item-a",
+			canonicalItemId: "canonical-1",
+			contentKind: "item",
+		});
+		controller.handleContentLoaded({
+			itemId: "runtime-item-b",
+			canonicalItemId: "canonical-2",
+			contentKind: "item",
+		});
+		expect(appliedEvents).toEqual([
+			{ replay: false, itemSessionCount: 1 },
+			{ replay: true, itemSessionCount: 1 },
+		]);
 	});
 });

@@ -203,6 +203,7 @@ export interface SectionEventSubscriptionArgs {
 export type SectionItemEventType = Exclude<
 	SectionControllerEventType,
 	| "section-navigation-change"
+	| "section-session-applied"
 	| "section-loading-complete"
 	| "section-items-complete-changed"
 	| "section-error"
@@ -211,6 +212,7 @@ export type SectionItemEventType = Exclude<
 export type SectionScopedEventType = Extract<
 	SectionControllerEventType,
 	| "section-navigation-change"
+	| "section-session-applied"
 	| "section-loading-complete"
 	| "section-items-complete-changed"
 	| "section-error"
@@ -252,6 +254,7 @@ const SECTION_ITEM_EVENT_TYPES: readonly SectionItemEventType[] = [
 
 const SECTION_SCOPED_EVENT_TYPES: readonly SectionScopedEventType[] = [
 	"section-navigation-change",
+	"section-session-applied",
 	"section-loading-complete",
 	"section-items-complete-changed",
 	"section-error",

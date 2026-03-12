@@ -490,10 +490,35 @@ let isTtsSsmlDemo = $derived(
 			sessionDebuggerElement?.refreshFromHost?.();
 		};
 		const persistSectionSession = () => {
+			const controller = toolkitCoordinator?.getSectionController?.({
+				sectionId: sessionPanelSectionId,
+				attemptId
+			});
+			if (!controller?.persist) return;
+			const snapshot = controller.getSession?.() as
+				| { itemSessions?: Record<string, unknown> }
+				| null
+				| undefined;
+			const nextItemSessionCount = Object.keys(snapshot?.itemSessions || {}).length;
+			// Avoid wiping an existing persisted snapshot when startup/session bootstrap
+			// briefly emits an empty session-changed event during page transitions.
+			if (isSessionPersistenceDemo && nextItemSessionCount === 0) {
+				const key = computeDefaultPersistenceStorageKey();
+				const existingRaw = window.localStorage.getItem(key);
+				if (existingRaw) {
+					try {
+						const existing = JSON.parse(existingRaw) as {
+							itemSessions?: Record<string, unknown>;
+						};
+						const existingCount = Object.keys(existing?.itemSessions || {}).length;
+						if (existingCount > 0) return;
+					} catch {
+						// Ignore parse errors and continue with best-effort persist.
+					}
+				}
+			}
 			// Keep localStorage snapshots current so reload-based mode switches restore latest answers.
-			toolkitCoordinator
-				?.getSectionController?.({ sectionId: sessionPanelSectionId, attemptId })
-				?.persist?.();
+			void controller.persist();
 			lastSessionSavedAt = Date.now();
 		};
 		document.addEventListener('item-session-changed', triggerSessionPanelRefresh as EventListener, true);

@@ -27,6 +27,13 @@ export interface SectionSessionPersistenceConfig {
 }
 
 export interface SectionControllerApplySessionOptions {
+	/**
+	 * applySession contract:
+	 * - Preferred input is the output of getSession().
+	 * - itemSessions may contain canonical attempt entries
+	 *   ({ itemIdentifier, session, isCompleted }) or raw session payloads
+	 *   ({ id, data, ... }); controller normalizes these before applying.
+	 */
 	mode?: "replace" | "merge";
 }
 
@@ -96,6 +103,15 @@ export type SectionControllerSectionNavigationChangedEvent =
 		reason?: "input-change" | "runtime-transition";
 	};
 
+export type SectionControllerSectionSessionAppliedEvent =
+	SectionControllerEventBase & {
+		type: "section-session-applied";
+		mode: "replace" | "merge";
+		itemSessionCount: number;
+		replay: boolean;
+		currentItemIndex: number;
+	};
+
 export type SectionControllerContentLoadedEvent = SectionControllerEventBase & {
 	type: "content-loaded";
 	contentKind: "item" | "passage" | "rubric" | "unknown";
@@ -156,6 +172,7 @@ export type SectionControllerEvent =
 	| SectionControllerItemSessionMetaChangedEvent
 	| SectionControllerItemSelectedEvent
 	| SectionControllerSectionNavigationChangedEvent
+	| SectionControllerSectionSessionAppliedEvent
 	| SectionControllerContentLoadedEvent
 	| SectionControllerItemPlayerErrorEvent
 	| SectionControllerItemCompleteChangedEvent

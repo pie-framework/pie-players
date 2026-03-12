@@ -28,6 +28,7 @@ import type {
 	SectionErrorEvent,
 	SectionItemsCompleteChangedEvent,
 	SectionLoadingCompleteEvent,
+	SectionSessionAppliedEvent,
 	SectionViewModel,
 	SessionChangedResult,
 } from "./types.js";
@@ -46,6 +47,19 @@ interface TrackedRenderable {
 	itemId: string;
 	canonicalItemId: string;
 	contentKind: SectionContentKind;
+}
+
+interface PendingApplyReplay {
+	revision: number;
+	mode: "replace" | "merge";
+	session: SectionControllerSessionState;
+}
+
+interface NormalizedApplySession {
+	currentItemIndex?: number;
+	visitedItemIdentifiers?: string[];
+	itemSessions: TestAttemptSession["itemSessions"];
+	itemSessionCount: number;
 }
 
 export class SectionController implements SectionControllerHandle {
@@ -79,6 +93,9 @@ export class SectionController implements SectionControllerHandle {
 	private sectionItemsComplete = false;
 	private completedCount = 0;
 	private totalItems = 0;
+	private nextApplyRevision = 0;
+	private lastReplayedApplyRevision = 0;
+	private pendingApplyReplay: PendingApplyReplay | null = null;
 
 	private emitChange(event: SectionControllerChangeEvent): void {
 		for (const listener of this.listeners) {
@@ -176,6 +193,9 @@ export class SectionController implements SectionControllerHandle {
 	public dispose(): void {
 		this.listeners.clear();
 		this.resetLifecycleTracking();
+		this.pendingApplyReplay = null;
+		this.nextApplyRevision = 0;
+		this.lastReplayedApplyRevision = 0;
 	}
 
 	public getViewModel(): SectionViewModel {
@@ -448,35 +468,26 @@ export class SectionController implements SectionControllerHandle {
 	): Promise<void> {
 		if (!this.state.testAttemptSession || !session) return;
 		const mode = options?.mode || "replace";
-		const nextItemSessions =
-			session.itemSessions && typeof session.itemSessions === "object"
-				? (session.itemSessions as TestAttemptSession["itemSessions"])
-				: {};
-		if (mode === "merge") {
-			this.state.testAttemptSession.itemSessions = {
-				...this.state.testAttemptSession.itemSessions,
-				...nextItemSessions,
-			};
-		} else {
-			this.state.testAttemptSession.itemSessions = nextItemSessions;
-		}
-		if (Array.isArray(session.visitedItemIdentifiers)) {
-			const visited = session.visitedItemIdentifiers.filter(
-				(id: unknown): id is string => typeof id === "string" && !!id,
-			);
-			this.state.testAttemptSession.navigationState.visitedItemIdentifiers = visited;
-		} else if (mode === "replace") {
-			this.state.testAttemptSession.navigationState.visitedItemIdentifiers = [];
-		}
-		if (typeof session.currentItemIndex === "number" && session.currentItemIndex >= 0) {
-			this.state.testAttemptSession.navigationState.currentItemIndex =
-				session.currentItemIndex;
-			this.state.viewModel.currentItemIndex = session.currentItemIndex;
-		} else if (mode === "replace") {
-			this.state.testAttemptSession.navigationState.currentItemIndex = 0;
-			this.state.viewModel.currentItemIndex = 0;
-		}
+		const normalized = this.normalizeApplySession(session);
+		this.applyNormalizedSessionToState(normalized, mode);
 		this.bootstrapCompletionFromSessions();
+		const applyRevision = ++this.nextApplyRevision;
+		if (!this.sectionLoadingComplete) {
+			this.pendingApplyReplay = {
+				revision: applyRevision,
+				mode,
+				session: this.cloneForRead(session),
+			};
+		}
+		const event: SectionSessionAppliedEvent = {
+			type: "section-session-applied",
+			mode,
+			itemSessionCount: normalized.itemSessionCount,
+			replay: false,
+			currentItemIndex: this.state.viewModel.currentItemIndex ?? 0,
+			timestamp: Date.now(),
+		};
+		this.emitChange(event);
 	}
 
 	/**
@@ -748,6 +759,148 @@ export class SectionController implements SectionControllerHandle {
 			timestamp,
 		};
 		this.emitChange(event);
+		void this.replayPendingAppliedSession();
+	}
+
+	private async replayPendingAppliedSession(): Promise<void> {
+		const pending = this.pendingApplyReplay;
+		if (!pending) return;
+		if (pending.revision <= this.lastReplayedApplyRevision) return;
+		if (!this.sectionLoadingComplete) return;
+		const normalized = this.normalizeApplySession(pending.session);
+		if (!this.state.testAttemptSession) return;
+		this.applyNormalizedSessionToState(normalized, pending.mode);
+		this.bootstrapCompletionFromSessions();
+		this.lastReplayedApplyRevision = pending.revision;
+		const replayEvent: SectionSessionAppliedEvent = {
+			type: "section-session-applied",
+			mode: pending.mode,
+			itemSessionCount: normalized.itemSessionCount,
+			replay: true,
+			currentItemIndex: this.state.viewModel.currentItemIndex ?? 0,
+			timestamp: Date.now(),
+		};
+		this.emitChange(replayEvent);
+	}
+
+	private normalizeApplySession(
+		session: SectionControllerSessionState,
+	): NormalizedApplySession {
+		const nextItemSessionsInput =
+			session.itemSessions && typeof session.itemSessions === "object"
+				? (session.itemSessions as Record<string, unknown>)
+				: {};
+		const allowedCanonicalIds = new Set<string>(
+			this.state.viewModel.adapterItemRefs
+				.map((itemRef) => this.getCanonicalItemId(itemRef.identifier || itemRef.item?.id || ""))
+				.filter((id): id is string => typeof id === "string" && !!id),
+		);
+		const normalizedItemSessions: TestAttemptSession["itemSessions"] = {};
+		for (const [rawItemId, rawEntry] of Object.entries(nextItemSessionsInput)) {
+			const canonicalItemId = this.getCanonicalItemId(rawItemId);
+			if (!allowedCanonicalIds.has(canonicalItemId)) {
+				continue;
+			}
+			const normalizedEntry = this.normalizeItemSessionEntry(
+				canonicalItemId,
+				rawEntry,
+			);
+			if (!normalizedEntry) continue;
+			normalizedItemSessions[canonicalItemId] = normalizedEntry;
+		}
+		const visited = Array.isArray(session.visitedItemIdentifiers)
+			? Array.from(
+					new Set(
+						session.visitedItemIdentifiers
+							.map((id) => this.getCanonicalItemId(id))
+							.filter((id): id is string => allowedCanonicalIds.has(id)),
+					),
+			  )
+			: undefined;
+		const maxIndex = Math.max(0, this.state.viewModel.items.length - 1);
+		const nextCurrentItemIndex =
+			typeof session.currentItemIndex === "number" &&
+			Number.isFinite(session.currentItemIndex)
+				? Math.min(Math.max(0, session.currentItemIndex), maxIndex)
+				: undefined;
+		return {
+			currentItemIndex: nextCurrentItemIndex,
+			visitedItemIdentifiers: visited,
+			itemSessions: normalizedItemSessions,
+			itemSessionCount: Object.keys(normalizedItemSessions).length,
+		};
+	}
+
+	private normalizeItemSessionEntry(
+		itemIdentifier: string,
+		entry: unknown,
+	): TestAttemptSession["itemSessions"][string] | null {
+		if (!entry || typeof entry !== "object") return null;
+		const candidate = entry as Record<string, unknown>;
+		const typedCandidate = candidate as {
+			itemIdentifier?: unknown;
+			attemptCount?: unknown;
+			isCompleted?: unknown;
+			session?: unknown;
+			complete?: unknown;
+		};
+		const hasCanonicalShape =
+			typeof typedCandidate.itemIdentifier === "string" &&
+			typedCandidate.session &&
+			typeof typedCandidate.session === "object";
+		if (hasCanonicalShape) {
+			return {
+				itemIdentifier,
+				attemptCount:
+					typeof typedCandidate.attemptCount === "number" &&
+					Number.isFinite(typedCandidate.attemptCount)
+						? typedCandidate.attemptCount
+						: 1,
+				isCompleted: Boolean(typedCandidate.isCompleted),
+				session: typedCandidate.session as Record<string, unknown>,
+			};
+		}
+		const rawSession = typedCandidate.session && typeof typedCandidate.session === "object"
+			? (typedCandidate.session as Record<string, unknown>)
+			: candidate;
+		return {
+			itemIdentifier,
+			attemptCount: 1,
+			isCompleted:
+				typeof typedCandidate.complete === "boolean"
+					? typedCandidate.complete
+					: Boolean((rawSession as { complete?: unknown }).complete),
+			session: rawSession,
+		};
+	}
+
+	private applyNormalizedSessionToState(
+		normalized: NormalizedApplySession,
+		mode: "replace" | "merge",
+	): void {
+		if (!this.state.testAttemptSession) return;
+		if (mode === "merge") {
+			this.state.testAttemptSession.itemSessions = {
+				...this.state.testAttemptSession.itemSessions,
+				...normalized.itemSessions,
+			};
+		} else {
+			this.state.testAttemptSession.itemSessions = normalized.itemSessions;
+		}
+		if (Array.isArray(normalized.visitedItemIdentifiers)) {
+			this.state.testAttemptSession.navigationState.visitedItemIdentifiers =
+				normalized.visitedItemIdentifiers;
+		} else if (mode === "replace") {
+			this.state.testAttemptSession.navigationState.visitedItemIdentifiers = [];
+		}
+		if (typeof normalized.currentItemIndex === "number") {
+			this.state.testAttemptSession.navigationState.currentItemIndex =
+				normalized.currentItemIndex;
+			this.state.viewModel.currentItemIndex = normalized.currentItemIndex;
+		} else if (mode === "replace") {
+			this.state.testAttemptSession.navigationState.currentItemIndex = 0;
+			this.state.viewModel.currentItemIndex = 0;
+		}
 	}
 
 	private cloneForRead<T>(value: T): T {

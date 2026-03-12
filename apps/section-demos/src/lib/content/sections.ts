@@ -18,9 +18,43 @@ export interface SectionDemoInfo {
 
 const sessionPersistencePageOne: AssessmentSection = {
 	identifier: "session-persistence-page-one",
-	title: "Session Persistence Page One",
+	title: "Dutch Golden Age: Trade and Cities",
 	keepTogether: true,
-	rubricBlocks: [],
+	rubricBlocks: [
+		{
+			identifier: "sp1-passage-dutch-trade",
+			view: "candidate",
+			class: "stimulus",
+			passage: {
+				id: "sp1-passage-dutch-trade",
+				name: "The Dutch Republic and Maritime Trade",
+				baseId: "sp1-passage-dutch-trade",
+				version: { major: 1, minor: 0, patch: 0 },
+				config: {
+					markup: `<div class="passage">
+            <h2>The Dutch Republic and Maritime Trade</h2>
+            <p>
+              In the 1600s, the Dutch Republic became one of the most commercially powerful regions in Europe.
+              Its merchants built large shipping networks that connected the Baltic, Atlantic, and Indian Ocean worlds.
+              Amsterdam's harbor and financial institutions helped merchants invest in long-distance voyages with lower risk.
+            </p>
+            <p>
+              A major institution in this period was the Dutch East India Company (VOC), chartered in 1602. The VOC could
+              make treaties, maintain military forces, and establish fortified trading posts. Through these powers, the company
+              gained strong control over the spice trade in parts of Southeast Asia and generated large profits for investors.
+            </p>
+            <p>
+              Dutch success depended not only on overseas trade, but also on efficient domestic systems. Canals, warehouses,
+              insurance markets, and shipbuilding yards supported a steady movement of goods and information. Historians often
+              describe this as an early form of global capitalism, where trade, finance, and state policy worked closely together.
+            </p>
+          </div>`,
+					elements: {},
+					models: [],
+				},
+			},
+		},
+	],
 	assessmentItemRefs: [
 		{
 			identifier: "sp1-q1",
@@ -39,11 +73,18 @@ const sessionPersistencePageOne: AssessmentSection = {
 						{
 							id: "sp1q1",
 							element: "multiple-choice",
-							prompt: "Page 1 / Item 1",
+							prompt:
+								"According to the passage, which institution helped Amsterdam merchants reduce the risk of long-distance voyages?",
 							choiceMode: "radio",
 							choices: [
-								{ value: "a", label: "Alpha", correct: false },
-								{ value: "b", label: "Bravo", correct: true },
+								{ value: "a", label: "City guild courts", correct: false },
+								{
+									value: "b",
+									label: "Harbor and financial institutions in Amsterdam",
+									correct: true,
+								},
+								{ value: "c", label: "Local church councils", correct: false },
+								{ value: "d", label: "Spanish tax offices", correct: false },
 							],
 						},
 					],
@@ -67,11 +108,78 @@ const sessionPersistencePageOne: AssessmentSection = {
 						{
 							id: "sp1q2",
 							element: "multiple-choice",
-							prompt: "Page 1 / Item 2",
+							prompt:
+								"What was one important power granted to the VOC, based on the passage?",
 							choiceMode: "radio",
 							choices: [
-								{ value: "a", label: "Charlie", correct: false },
-								{ value: "b", label: "Delta", correct: true },
+								{
+									value: "a",
+									label: "It could establish fortified trading posts",
+									correct: true,
+								},
+								{
+									value: "b",
+									label: "It could appoint the Holy Roman Emperor",
+									correct: false,
+								},
+								{
+									value: "c",
+									label: "It could ban all private merchants in Europe",
+									correct: false,
+								},
+								{
+									value: "d",
+									label: "It could mint coins for all kingdoms",
+									correct: false,
+								},
+							],
+						},
+					],
+				},
+			},
+		},
+		{
+			identifier: "sp1-q3",
+			required: true,
+			item: {
+				id: "sp1-item-3",
+				baseId: "sp1-item-3",
+				version: { major: 1, minor: 0, patch: 0 },
+				name: "Page 1 Item 3",
+				config: {
+					markup: '<multiple-choice id="sp1q3"></multiple-choice>',
+					elements: {
+						"multiple-choice": "@pie-element/multiple-choice@latest",
+					},
+					models: [
+						{
+							id: "sp1q3",
+							element: "multiple-choice",
+							prompt:
+								"Which statement best summarizes the passage's explanation of Dutch commercial success?",
+							choiceMode: "radio",
+							choices: [
+								{
+									value: "a",
+									label: "It depended only on military conquest in Europe",
+									correct: false,
+								},
+								{
+									value: "b",
+									label:
+										"It combined overseas trade with strong domestic logistics and finance",
+									correct: true,
+								},
+								{
+									value: "c",
+									label: "It was mostly caused by agricultural reforms",
+									correct: false,
+								},
+								{
+									value: "d",
+									label: "It relied on support from the Spanish crown",
+									correct: false,
+								},
 							],
 						},
 					],
@@ -83,9 +191,45 @@ const sessionPersistencePageOne: AssessmentSection = {
 
 const sessionPersistencePageTwo: AssessmentSection = {
 	identifier: "session-persistence-page-two",
-	title: "Session Persistence Page Two",
+	title: "Dutch Golden Age: Art, Society, and Power",
 	keepTogether: true,
-	rubricBlocks: [],
+	rubricBlocks: [
+		{
+			identifier: "sp2-passage-dutch-art",
+			view: "candidate",
+			class: "stimulus",
+			passage: {
+				id: "sp2-passage-dutch-art",
+				name: "Art and Society in the Dutch Golden Age",
+				baseId: "sp2-passage-dutch-art",
+				version: { major: 1, minor: 0, patch: 0 },
+				config: {
+					markup: `<div class="passage">
+            <h2>Art and Society in the Dutch Golden Age</h2>
+            <p>
+              The Dutch Golden Age was not only an era of trade, but also a period of remarkable artistic production.
+              Painters such as Rembrandt van Rijn, Johannes Vermeer, and Frans Hals became known for realistic portraits,
+              domestic interiors, and scenes of everyday life. Their works reflected urban culture in the Dutch Republic,
+              where a prosperous middle class purchased art for private homes.
+            </p>
+            <p>
+              Unlike courts in some other European states, the Dutch Republic had no single royal patron directing most artistic
+              commissions. Instead, artists often worked for an open market. This encouraged variety in subject matter: group
+              portraits, landscapes, still lifes, and genre scenes all became popular. Paintings frequently communicated values
+              such as thrift, diligence, and civic responsibility.
+            </p>
+            <p>
+              At the same time, the wealth that supported cultural life was connected to global commercial networks, including
+              colonial expansion and coercive labor systems. Historians therefore study the Dutch Golden Age as both a creative
+              cultural moment and a period shaped by unequal power relationships across regions.
+            </p>
+          </div>`,
+					elements: {},
+					models: [],
+				},
+			},
+		},
+	],
 	assessmentItemRefs: [
 		{
 			identifier: "sp2-q1",
@@ -104,11 +248,31 @@ const sessionPersistencePageTwo: AssessmentSection = {
 						{
 							id: "sp2q1",
 							element: "multiple-choice",
-							prompt: "Page 2 / Item 1",
+							prompt:
+								"According to the passage, what distinguished the Dutch art market from court-centered systems in other states?",
 							choiceMode: "radio",
 							choices: [
-								{ value: "a", label: "Echo", correct: false },
-								{ value: "b", label: "Foxtrot", correct: true },
+								{
+									value: "a",
+									label:
+										"Artists sold to a broader market rather than mainly to one royal patron",
+									correct: true,
+								},
+								{
+									value: "b",
+									label: "Only religious institutions were allowed to buy paintings",
+									correct: false,
+								},
+								{
+									value: "c",
+									label: "The state banned landscapes and still lifes",
+									correct: false,
+								},
+								{
+									value: "d",
+									label: "Artists were required to paint military victories only",
+									correct: false,
+								},
 							],
 						},
 					],
@@ -132,11 +296,68 @@ const sessionPersistencePageTwo: AssessmentSection = {
 						{
 							id: "sp2q2",
 							element: "multiple-choice",
-							prompt: "Page 2 / Item 2",
+							prompt:
+								"Which interpretation best matches the final paragraph of the passage?",
 							choiceMode: "radio",
 							choices: [
-								{ value: "a", label: "Golf", correct: false },
-								{ value: "b", label: "Hotel", correct: true },
+								{
+									value: "a",
+									label:
+										"The period should be seen only as a neutral artistic movement",
+									correct: false,
+								},
+								{
+									value: "b",
+									label:
+										"Cultural achievements and global inequalities are both necessary to understanding the era",
+									correct: true,
+								},
+								{
+									value: "c",
+									label:
+										"Art in the Dutch Republic was disconnected from economic systems",
+									correct: false,
+								},
+								{
+									value: "d",
+									label: "Colonial expansion ended before artistic growth began",
+									correct: false,
+								},
+							],
+						},
+					],
+				},
+			},
+		},
+		{
+			identifier: "sp2-q3",
+			required: true,
+			item: {
+				id: "sp2-item-3",
+				baseId: "sp2-item-3",
+				version: { major: 1, minor: 0, patch: 0 },
+				name: "Page 2 Item 3",
+				config: {
+					markup: '<multiple-choice id="sp2q3"></multiple-choice>',
+					elements: {
+						"multiple-choice": "@pie-element/multiple-choice@latest",
+					},
+					models: [
+						{
+							id: "sp2q3",
+							element: "multiple-choice",
+							prompt:
+								"Which pair of artists is explicitly identified in the passage as associated with Dutch Golden Age painting?",
+							choiceMode: "radio",
+							choices: [
+								{
+									value: "a",
+									label: "Rembrandt van Rijn and Johannes Vermeer",
+									correct: true,
+								},
+								{ value: "b", label: "Raphael and Michelangelo", correct: false },
+								{ value: "c", label: "El Greco and Caravaggio", correct: false },
+								{ value: "d", label: "Titian and Botticelli", correct: false },
 							],
 						},
 					],
@@ -177,6 +398,24 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		name: "Session Persistence Across Sections",
 		description:
 			"Switch between multi-item section pages and keep each section's sessions via section persistence strategy",
+		sections: [
+			{
+				id: "session-page-one",
+				name: "Session Page One",
+				section: sessionPersistencePageOne,
+			},
+			{
+				id: "session-page-two",
+				name: "Session Page Two",
+				section: sessionPersistencePageTwo,
+			},
+		],
+	},
+	"session-hydrate-db": {
+		id: "session-hydrate-db",
+		name: "Session Hydration (Server DB)",
+		description:
+			"Starts empty, hydrates from server-side seeded session data, then streams updates back to the backend database",
 		sections: [
 			{
 				id: "session-page-one",

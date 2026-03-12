@@ -67,7 +67,7 @@
 	let panelX = $state(0);
 	let panelY = $state(0);
 	let panelWidth = $state(560);
-	let panelHeight = $state(680);
+	let panelHeight = $state(820);
 	let sessionControlsZIndex = $state(claimNextFloatingPanelZIndex());
 
 	function formatTimestamp(value: number | null): string {
@@ -158,10 +158,10 @@
 			{ width: window.innerWidth, height: window.innerHeight },
 			{
 				widthRatio: 0.34,
-				heightRatio: 0.8,
+				heightRatio: 0.9,
 				minWidth: 420,
 				maxWidth: 760,
-				minHeight: 360,
+				minHeight: 540,
 				maxHeight: 900,
 				alignX: "right",
 				alignY: "bottom",
@@ -381,7 +381,7 @@
 
 	.pie-demo-session-controls__snapshot {
 		width: 100%;
-		min-height: 9rem;
+		min-height: clamp(22rem, 70vh, 56rem);
 		resize: vertical;
 		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 		font-size: 0.75rem;

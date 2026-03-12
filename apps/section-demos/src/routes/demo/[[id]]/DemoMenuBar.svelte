@@ -10,6 +10,8 @@
 		showSourcePanel: boolean;
 		showPnpPanel: boolean;
 		showTtsPanel: boolean;
+		showDbPanel: boolean;
+		isSessionHydrateDbDemo: boolean;
 		selectedDaisyTheme: string;
 		daisyThemes: string[];
 		onReset: () => void;
@@ -21,6 +23,7 @@
 		onToggleSourcePanel: () => void;
 		onTogglePnpPanel: () => void;
 		onToggleTtsPanel: () => void;
+		onToggleDbPanel: () => void;
 		onSelectDaisyTheme: (theme: string) => void;
 	}
 
@@ -35,6 +38,8 @@
 		showSourcePanel,
 		showPnpPanel,
 		showTtsPanel,
+		showDbPanel,
+		isSessionHydrateDbDemo,
 		selectedDaisyTheme,
 		daisyThemes,
 		onReset,
@@ -46,6 +51,7 @@
 		onToggleSourcePanel,
 		onTogglePnpPanel,
 		onToggleTtsPanel,
+		onToggleDbPanel,
 		onSelectDaisyTheme
 	}: Props = $props();
 </script>
@@ -197,5 +203,20 @@
 				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.5 7a7 7 0 010 10" />
 			</svg>
 		</button>
+		{#if isSessionHydrateDbDemo}
+			<button
+				class="btn btn-sm btn-outline btn-square"
+				class:btn-active={showDbPanel}
+				onclick={onToggleDbPanel}
+				title="Database state"
+				aria-label="Toggle database state panel"
+				aria-pressed={showDbPanel}
+			>
+				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+					<ellipse cx="12" cy="5" rx="7" ry="3" stroke-width="2"></ellipse>
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5v7c0 1.66 3.13 3 7 3s7-1.34 7-3V5M5 12v7c0 1.66 3.13 3 7 3s7-1.34 7-3v-7"></path>
+				</svg>
+			</button>
+		{/if}
 	</div>
 </div>

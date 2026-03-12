@@ -23,6 +23,18 @@ at the client provider boundary.
 
 Returns Desmos API key for calculator tool authentication.
 
+### Session Hydration Demo DB
+
+**Routes**:
+
+- `POST /api/session-demo/bootstrap` - Clear+seed (or clear-only) normalized session tables
+- `GET /api/session-demo/state` - Return DB tables and reconstructed section snapshots
+- `GET /api/session-demo/snapshot` - Return one section snapshot (`assessmentId`, `sectionId`, `attemptId`)
+- `PUT /api/session-demo/snapshot` - Upsert one section snapshot
+- `DELETE /api/session-demo/snapshot` - Delete one section snapshot
+
+These endpoints back the `session-hydrate-db` demo and are intentionally lightweight for local use.
+
 ## Notes
 
 - Translation, dictionary, and picture dictionary demo APIs have been removed.

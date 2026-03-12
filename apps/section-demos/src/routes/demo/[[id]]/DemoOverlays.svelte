@@ -1,6 +1,7 @@
 <script lang="ts">
 	import SourcePanel from './SourcePanel.svelte';
 	import SessionControlsPanel from './SessionControlsPanel.svelte';
+	import SessionDbPanel from './SessionDbPanel.svelte';
 	import TTSSettingsDialog from './TTSSettingsDialog.svelte';
 
 	interface Props {
@@ -13,7 +14,9 @@
 		showSourcePanel: boolean;
 		showPnpPanel: boolean;
 		showTtsPanel: boolean;
+		showSessionDbPanel: boolean;
 		sourcePanelJson: string;
+		isSessionHydrateDbDemo: boolean;
 		hostSessionSnapshot: {
 			currentItemIndex?: number;
 			visitedItemIdentifiers?: string[];
@@ -40,6 +43,8 @@
 		onCloseSessionControlsPanel: () => void;
 		onCloseSourcePanel: () => void;
 		onCloseTtsPanel: () => void;
+		onCloseSessionDbPanel: () => void;
+		onResetDb: () => void | Promise<void>;
 		sessionDebuggerElement?: any;
 		eventDebuggerElement?: any;
 		pnpDebuggerElement?: any;
@@ -55,7 +60,9 @@
 		showSourcePanel,
 		showPnpPanel,
 		showTtsPanel,
+		showSessionDbPanel,
 		sourcePanelJson,
+		isSessionHydrateDbDemo,
 		hostSessionSnapshot,
 		sessionControlItemIds,
 		persistenceStorageKey,
@@ -72,6 +79,8 @@
 		onCloseSessionControlsPanel,
 		onCloseSourcePanel,
 		onCloseTtsPanel,
+		onCloseSessionDbPanel,
+		onResetDb,
 		sessionDebuggerElement = $bindable(null),
 		eventDebuggerElement = $bindable(null),
 		pnpDebuggerElement = $bindable(null)
@@ -130,4 +139,14 @@
 
 {#if showTtsPanel}
 	<TTSSettingsDialog {toolkitCoordinator} onClose={onCloseTtsPanel} />
+{/if}
+
+{#if isSessionHydrateDbDemo && showSessionDbPanel}
+	<SessionDbPanel
+		assessmentId="section-demos-assessment"
+		{sectionId}
+		{attemptId}
+		{onResetDb}
+		onClose={onCloseSessionDbPanel}
+	/>
 {/if}

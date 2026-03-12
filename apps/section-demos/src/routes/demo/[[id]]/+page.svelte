@@ -1,6 +1,7 @@
 <script lang="ts">
 	import {
 		createDefaultPersonalNeedsProfile,
+		ToolkitCoordinator,
 		type ToolkitCoordinatorHooks
 	} from '@pie-players/pie-assessment-toolkit';
 	import '@pie-players/pie-section-player/components/section-player-splitpane-element';
@@ -21,6 +22,32 @@
 	import type { PageData } from './$types';
 	import DemoMenuBar from './DemoMenuBar.svelte';
 	import DemoOverlays from './DemoOverlays.svelte';
+	import {
+		applyDaisyTheme,
+		applyToolkitScheme,
+		ATTEMPT_QUERY_PARAM,
+		ATTEMPT_STORAGE_KEY,
+		buildDemoHref,
+		buildSectionPageHref,
+		createAttemptId,
+		DAISY_DEFAULT_THEMES,
+		DAISY_THEME_STORAGE_KEY,
+		DEMO_ASSESSMENT_ID,
+		DEFAULT_DAISY_THEME,
+		getOrCreateAttemptId,
+		getUrlEnumParam,
+		LAYOUT_OPTIONS,
+		MODE_OPTIONS,
+		PLAYER_OPTIONS
+	} from './demo-page-helpers';
+	import { collectElementPackages, fetchBundleWithRetry } from './preload-utils';
+	import {
+		deleteSnapshotFromSessionDb as deleteSnapshotFromSessionDbRequest,
+		loadSessionDemoActivity as loadSessionDemoActivityRequest,
+		loadSnapshotFromSessionDb as loadSnapshotFromSessionDbRequest,
+		saveSnapshotToSessionDb as saveSnapshotToSessionDbRequest,
+		type SectionSessionSnapshot
+	} from './session-demo-db-client';
 
 	type DemoPage = { id: string; name: string };
 	type DemoPageData = PageData & {
@@ -30,86 +57,14 @@
 
 	let { data }: { data: DemoPageData } = $props();
 
-	const PLAYER_OPTIONS = ['iife', 'esm', 'preloaded'] as const;
-	const MODE_OPTIONS = ['candidate', 'scorer'] as const;
-	const LAYOUT_OPTIONS = ['splitpane', 'vertical'] as const;
-	const DEMO_ASSESSMENT_ID = 'section-demos-assessment';
-	const ATTEMPT_QUERY_PARAM = 'attempt';
-	const ATTEMPT_STORAGE_KEY = 'pie:section-demos:attempt-id';
 	const DEMO_PERSISTENCE_STORAGE_PREFIX = `pie:section-controller:v1:${DEMO_ASSESSMENT_ID}:`;
-const DAISY_THEME_STORAGE_KEY = 'pie:section-demos:daisy-theme';
-const TOOLKIT_SCHEME_STORAGE_KEY = 'pie-color-scheme';
-const DEFAULT_DAISY_THEME = 'light';
-const DAISY_DEFAULT_THEMES = [
-	'light',
-	'dark',
-	'cupcake',
-	'bumblebee',
-	'emerald',
-	'corporate',
-	'synthwave',
-	'retro',
-	'cyberpunk',
-	'valentine',
-	'halloween',
-	'garden',
-	'forest',
-	'aqua',
-	'lofi',
-	'pastel',
-	'fantasy',
-	'wireframe',
-	'black',
-	'luxury',
-	'dracula',
-	'cmyk',
-	'autumn',
-	'business',
-	'acid',
-	'lemonade',
-	'night',
-	'coffee',
-	'winter',
-	'dim',
-	'nord',
-	'sunset',
-	'caramellatte',
-	'abyss',
-	'silk'
-] as const;
-
-	function getUrlEnumParam<T extends string>(key: string, options: readonly T[], fallback: T): T {
-		if (!browser) return fallback;
-		const value = new URLSearchParams(window.location.search).get(key);
-		return value && options.includes(value as T) ? (value as T) : fallback;
-	}
-
-	function createAttemptId() {
-		return `attempt-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-	}
-
-	function getOrCreateAttemptId(): string {
-		if (!browser) return 'attempt-ssr';
-		const params = new URLSearchParams(window.location.search);
-		const fromUrl = params.get(ATTEMPT_QUERY_PARAM);
-		if (fromUrl) {
-			window.localStorage.setItem(ATTEMPT_STORAGE_KEY, fromUrl);
-			return fromUrl;
-		}
-		const stored = window.localStorage.getItem(ATTEMPT_STORAGE_KEY);
-		if (stored) return stored;
-		const next = createAttemptId();
-		window.localStorage.setItem(ATTEMPT_STORAGE_KEY, next);
-		return next;
-	}
 
 	let selectedPlayerType = $state(getUrlEnumParam('player', PLAYER_OPTIONS, 'iife'));
 	let roleType = $state<'candidate' | 'scorer'>(getUrlEnumParam('mode', MODE_OPTIONS, 'candidate'));
 	let layoutType = $state<'splitpane' | 'vertical'>(
 		getUrlEnumParam('layout', LAYOUT_OPTIONS, 'splitpane')
 	);
-let selectedDaisyTheme = $state<string>(DEFAULT_DAISY_THEME);
-let isThemeSyncing = $state(false);
+	let selectedDaisyTheme = $state<string>(DEFAULT_DAISY_THEME);
 	let attemptId = $state(getOrCreateAttemptId());
 	let showSessionPanel = $state(false);
 	let showSessionControlsPanel = $state(false);
@@ -117,10 +72,14 @@ let isThemeSyncing = $state(false);
 	let showSourcePanel = $state(false);
 	let showPnpPanel = $state(false);
 	let showTtsPanel = $state(false);
+	let showSessionDbPanel = $state(false);
+	let autoOpenedSessionDbPanel = $state(false);
 	let toolkitCoordinator: any = $state(null);
+	let demoPersistenceCoordinator = $state<any>(null);
 	let sessionDebuggerElement: any = $state(null);
 	let eventDebuggerElement: any = $state(null);
 	let pnpDebuggerElement: any = $state(null);
+	let playerInstanceKey = $state(0);
 	let preloadedReady = $state(false);
 	let preloadedError = $state<string | null>(null);
 	let loadedPreloadedBundleKey = $state<string | null>(null);
@@ -131,6 +90,12 @@ let isThemeSyncing = $state(false);
 	let lastSessionRestoredAt = $state<number | null>(null);
 	let lastHostSessionUpdateAt = $state<number | null>(null);
 	let lastSessionRefreshAt = $state<number | null>(null);
+	let dbHydrateEnabled = $state(false);
+	let dbBootstrapAt = $state<number | null>(null);
+	let dbErrorMessage = $state<string | null>(null);
+let suppressDemoDbAutoPersist = $state(false);
+let lastPersistedSnapshotFingerprint = $state<string | null>(null);
+let serverLoadedSection = $state<any>(null);
 	const toolkitToolsConfig = {
 		providers: {
 			calculator: {
@@ -149,61 +114,27 @@ let isThemeSyncing = $state(false);
 	};
 	const sectionToolbarTools = 'theme,graph,periodicTable,protractor,lineReader,ruler';
 
-function resolvePieThemeHost(): HTMLElement | null {
-	if (!browser) return null;
-	return (
-		(document.querySelector('pie-theme[scope="document"]') as HTMLElement | null) ||
-		(document.querySelector('pie-theme') as HTMLElement | null)
-	);
-}
-
-function withThemeSyncGuard(run: () => void) {
-	isThemeSyncing = true;
-	try {
-		run();
-	} finally {
-		Promise.resolve().then(() => {
-			isThemeSyncing = false;
-		});
-	}
-}
-
-function applyDaisyTheme(theme: string) {
-	if (!browser) return;
-	const nextTheme = (theme || DEFAULT_DAISY_THEME).trim() || DEFAULT_DAISY_THEME;
-	const pieThemeHost = resolvePieThemeHost();
-	if (pieThemeHost) {
-		if (pieThemeHost.getAttribute('theme') !== nextTheme) {
-			pieThemeHost.setAttribute('theme', nextTheme);
-		}
-	} else {
-		document.documentElement.setAttribute('data-theme', nextTheme);
-	}
-	selectedDaisyTheme = nextTheme;
-	window.localStorage.setItem(DAISY_THEME_STORAGE_KEY, nextTheme);
-}
-
-function applyToolkitScheme(scheme: string) {
-	if (!browser) return;
-	const nextScheme = (scheme || 'default').trim() || 'default';
-	const pieThemeHost = resolvePieThemeHost();
-	if (pieThemeHost && pieThemeHost.getAttribute('scheme') !== nextScheme) {
-		pieThemeHost.setAttribute('scheme', nextScheme);
-	}
-	window.localStorage.setItem(TOOLKIT_SCHEME_STORAGE_KEY, nextScheme);
-}
-
 function handleDaisyThemeSelection(theme: string) {
 	if (!browser) return;
-	withThemeSyncGuard(() => {
-		applyDaisyTheme(theme);
-		// Route external-theme choice through canonical toolkit backend.
-		applyToolkitScheme('default');
+	applyDaisyTheme(theme, (nextTheme) => {
+		selectedDaisyTheme = nextTheme;
 	});
+	// Route external-theme choice through canonical toolkit backend.
+	applyToolkitScheme('default');
 }
 
 	let resolvedSectionForPlayer = $derived.by(() => {
-		const section = data.section;
+		const shouldUseServerSection =
+			String((data?.demo as any)?.id || '').toLowerCase() === 'session-hydrate-db';
+		const routeSection = data.section as any;
+		const routeSectionId = String(routeSection?.identifier || routeSection?.id || '');
+		const serverSectionId = String(serverLoadedSection?.identifier || serverLoadedSection?.id || '');
+		const canUseServerSection =
+			shouldUseServerSection &&
+			Boolean(serverLoadedSection) &&
+			Boolean(routeSectionId) &&
+			serverSectionId === routeSectionId;
+		const section = (canUseServerSection ? serverLoadedSection : routeSection) || routeSection;
 		if (!section) return section;
 		const sectionAny = section as any;
 		const hasExplicitPnp = Boolean(
@@ -216,15 +147,27 @@ function handleDaisyThemeSelection(theme: string) {
 		};
 	});
 	let sessionPanelSectionId = $derived(
-		resolvedSectionForPlayer?.identifier || `section-${data?.demo?.id || 'default'}`
+		String(
+			(resolvedSectionForPlayer as any)?.identifier ||
+				`section-${String((data?.demo as any)?.id || 'default')}`
+		)
+	);
+	let routeSectionId = $derived(
+		String((data.section as any)?.identifier || (data.section as any)?.id || '')
 	);
 	let sourcePanelJson = $derived(JSON.stringify(resolvedSectionForPlayer, null, 2));
 let isTtsSsmlDemo = $derived(
-	(data?.demo?.id || '').toLowerCase() === 'tts-ssml' ||
+	String((data?.demo as any)?.id || '').toLowerCase() === 'tts-ssml' ||
 		(sessionPanelSectionId || '').toLowerCase().includes('tts-ssml')
 );
 	let isSessionPersistenceDemo = $derived(
-		(data?.demo?.id || '').toLowerCase() === 'session-persistence'
+		String((data?.demo as any)?.id || '').toLowerCase() === 'session-persistence'
+	);
+	let isSessionHydrateDbDemo = $derived(
+		String((data?.demo as any)?.id || '').toLowerCase() === 'session-hydrate-db'
+	);
+	let effectiveCoordinator = $derived(
+		isSessionHydrateDbDemo ? demoPersistenceCoordinator : null
 	);
 	let sessionControlItemIds = $derived.by(() => {
 		const refs = (resolvedSectionForPlayer as any)?.assessmentItemRefs || [];
@@ -244,6 +187,45 @@ let isTtsSsmlDemo = $derived(
 		}
 		const payload = await response.json();
 		return payload?.apiKey ? { apiKey: payload.apiKey } : {};
+	}
+
+	async function bootstrapSessionDemoDb() {
+		const response = await loadSessionDemoActivityRequest({
+			assessmentId: DEMO_ASSESSMENT_ID,
+			attemptId,
+			sectionId: routeSectionId || String(sessionPanelSectionId),
+			reset: false
+		});
+		serverLoadedSection = response.section || data.section;
+		dbBootstrapAt = Date.now();
+	}
+
+	async function loadSnapshotFromSessionDb(sectionId: string) {
+		return await loadSnapshotFromSessionDbRequest({
+			assessmentId: DEMO_ASSESSMENT_ID,
+			sectionId,
+			attemptId
+		});
+	}
+
+	async function saveSnapshotToSessionDb(
+		sectionId: string,
+		snapshot: SectionSessionSnapshot | null
+	) {
+		await saveSnapshotToSessionDbRequest({
+			assessmentId: DEMO_ASSESSMENT_ID,
+			sectionId,
+			attemptId,
+			snapshot
+		});
+	}
+
+	async function deleteSnapshotFromSessionDb(sectionId: string) {
+		await deleteSnapshotFromSessionDbRequest({
+			assessmentId: DEMO_ASSESSMENT_ID,
+			sectionId,
+			attemptId
+		});
 	}
 
 	function handleToolkitReady(event: Event) {
@@ -266,6 +248,9 @@ let isTtsSsmlDemo = $derived(
 	}
 
 	function computeDefaultPersistenceStorageKey(): string {
+		if (isSessionHydrateDbDemo) {
+			return `${DEMO_ASSESSMENT_ID}:${sessionPanelSectionId}:${attemptId}`;
+		}
 		return `pie:section-controller:v1:${DEMO_ASSESSMENT_ID}:${sessionPanelSectionId}:${attemptId || 'default'}`;
 	}
 
@@ -273,12 +258,22 @@ let isTtsSsmlDemo = $derived(
 		const controller = getActiveSectionController();
 		hostSessionSnapshot = (controller?.getSession?.() || null) as Record<string, unknown> | null;
 		persistenceStorageKey = computeDefaultPersistenceStorageKey();
-		if (browser) {
+		if (browser && !isSessionHydrateDbDemo) {
 			const key = persistenceStorageKey;
 			persistenceStoragePresent = Boolean(key && window.localStorage.getItem(key || '') !== null);
+		} else if (isSessionHydrateDbDemo) {
+			persistenceStoragePresent = dbHydrateEnabled;
 		}
 		lastSessionRefreshAt = Date.now();
 	}
+
+function buildSnapshotFingerprint(snapshot: unknown): string {
+	try {
+		return JSON.stringify(snapshot || {});
+	} catch {
+		return String(Date.now());
+	}
+}
 
 	async function persistHostSession(): Promise<void> {
 		const controller = getActiveSectionController();
@@ -344,63 +339,24 @@ let isTtsSsmlDemo = $derived(
 		await refreshHostSessionSnapshot();
 	}
 
-	function buildDemoHref(targetMode: 'candidate' | 'scorer') {
-		if (!browser) return '';
-		const url = new URL(window.location.href);
-		url.searchParams.set('mode', targetMode);
-		url.searchParams.set('player', selectedPlayerType);
-		url.searchParams.set('layout', layoutType);
-		url.searchParams.set(ATTEMPT_QUERY_PARAM, attemptId);
-		if (data.activeDemoPageId) {
-			url.searchParams.set('page', data.activeDemoPageId);
-		}
-		return url.toString();
-	}
-
-	function buildSectionPageHref(targetPageId: string): string {
-		if (!browser) return '';
-		const url = new URL(window.location.href);
-		url.searchParams.set('mode', roleType);
-		url.searchParams.set('player', selectedPlayerType);
-		url.searchParams.set('layout', layoutType);
-		url.searchParams.set(ATTEMPT_QUERY_PARAM, attemptId);
-		url.searchParams.set('page', targetPageId);
-		return url.toString();
-	}
-
-	let candidateHref = $derived(buildDemoHref('candidate'));
-	let scorerHref = $derived(buildDemoHref('scorer'));
-
-	function collectElementPackages(sectionData: unknown): string[] {
-		const packages = new Set<string>();
-		const seen = new WeakSet<object>();
-
-		function walk(value: unknown) {
-			if (!value || typeof value !== 'object') return;
-			if (seen.has(value as object)) return;
-			seen.add(value as object);
-
-			const valueAny = value as any;
-			const elements = valueAny?.config?.elements;
-			if (elements && typeof elements === 'object') {
-				for (const pkg of Object.values(elements)) {
-					if (typeof pkg === 'string' && pkg.length > 0) packages.add(pkg);
-				}
-			}
-
-			if (Array.isArray(valueAny)) {
-				for (const entry of valueAny) walk(entry);
-				return;
-			}
-
-			for (const nested of Object.values(valueAny)) {
-				walk(nested);
-			}
-		}
-
-		walk(sectionData);
-		return [...packages].sort();
-	}
+	let candidateHref = $derived(
+		buildDemoHref({
+			targetMode: 'candidate',
+			selectedPlayerType,
+			layoutType,
+			attemptId,
+			activeDemoPageId: data.activeDemoPageId
+		})
+	);
+	let scorerHref = $derived(
+		buildDemoHref({
+			targetMode: 'scorer',
+			selectedPlayerType,
+			layoutType,
+			attemptId,
+			activeDemoPageId: data.activeDemoPageId
+		})
+	);
 
 	$effect(() => {
 		preloadedReady = selectedPlayerType !== 'preloaded';
@@ -435,6 +391,57 @@ let isTtsSsmlDemo = $derived(
 	});
 
 	$effect(() => {
+		void attemptId;
+		void isSessionHydrateDbDemo;
+		void routeSectionId;
+		if (!browser || !isSessionHydrateDbDemo) {
+			demoPersistenceCoordinator = null;
+			dbHydrateEnabled = false;
+			dbErrorMessage = null;
+			return;
+		}
+		dbHydrateEnabled = true;
+		dbErrorMessage = null;
+		const coordinator = new ToolkitCoordinator({
+			assessmentId: DEMO_ASSESSMENT_ID,
+			tools: toolkitToolsConfig,
+			hooks: {
+				async createSectionSessionPersistence(context) {
+					const targetSectionId = context.key.sectionId;
+					return {
+						async loadSession() {
+							if (!dbHydrateEnabled) return null;
+							const snapshot = await loadSnapshotFromSessionDb(targetSectionId);
+							return snapshot;
+						},
+						async saveSession(_ctx, session) {
+							if (!dbHydrateEnabled) return;
+							await saveSnapshotToSessionDb(
+								targetSectionId,
+								(session || { itemSessions: {} }) as SectionSessionSnapshot
+							);
+							lastSessionSavedAt = Date.now();
+						},
+						async clearSession() {
+							await deleteSnapshotFromSessionDb(targetSectionId);
+						}
+					};
+				}
+			}
+		});
+		demoPersistenceCoordinator = coordinator;
+		let cancelled = false;
+		void bootstrapSessionDemoDb().catch((error) => {
+			if (cancelled) return;
+			dbErrorMessage = error instanceof Error ? error.message : String(error);
+		});
+		return () => {
+			cancelled = true;
+			demoPersistenceCoordinator = null;
+		};
+	});
+
+	$effect(() => {
 		if (!browser || !attemptId) return;
 		const url = new URL(window.location.href);
 		const existingAttemptId = url.searchParams.get(ATTEMPT_QUERY_PARAM);
@@ -450,24 +457,10 @@ let isTtsSsmlDemo = $derived(
 
 		const storedDaisyTheme =
 			window.localStorage.getItem(DAISY_THEME_STORAGE_KEY) || DEFAULT_DAISY_THEME;
-		applyDaisyTheme(storedDaisyTheme);
+		applyDaisyTheme(storedDaisyTheme, (nextTheme) => {
+			selectedDaisyTheme = nextTheme;
+		});
 	});
-
-	async function fetchBundleWithRetry(bundleUrl: string) {
-		let attempt = 0;
-		const maxAttempts = 12;
-		while (attempt < maxAttempts) {
-			attempt += 1;
-			const response = await fetch(bundleUrl);
-			if (response.ok) return response;
-			if (response.status === 503) {
-				await new Promise((resolve) => setTimeout(resolve, 1000));
-				continue;
-			}
-			throw new Error(`Bundle preload failed: ${response.status}`);
-		}
-		throw new Error('Bundle preload timed out after retries');
-	}
 
 	function wireCloseListener(target: any, onClose: () => void) {
 		if (!target) return;
@@ -487,39 +480,49 @@ let isTtsSsmlDemo = $derived(
 	$effect(() => {
 		if (!browser) return;
 		const triggerSessionPanelRefresh = () => {
-			sessionDebuggerElement?.refreshFromHost?.();
+			queueMicrotask(() => {
+				sessionDebuggerElement?.refreshFromHost?.();
+			});
 		};
 		const persistSectionSession = () => {
-			const controller = toolkitCoordinator?.getSectionController?.({
-				sectionId: sessionPanelSectionId,
-				attemptId
-			});
-			if (!controller?.persist) return;
-			const snapshot = controller.getSession?.() as
-				| { itemSessions?: Record<string, unknown> }
-				| null
-				| undefined;
-			const nextItemSessionCount = Object.keys(snapshot?.itemSessions || {}).length;
-			// Avoid wiping an existing persisted snapshot when startup/session bootstrap
-			// briefly emits an empty session-changed event during page transitions.
-			if (isSessionPersistenceDemo && nextItemSessionCount === 0) {
-				const key = computeDefaultPersistenceStorageKey();
-				const existingRaw = window.localStorage.getItem(key);
-				if (existingRaw) {
-					try {
-						const existing = JSON.parse(existingRaw) as {
-							itemSessions?: Record<string, unknown>;
-						};
-						const existingCount = Object.keys(existing?.itemSessions || {}).length;
-						if (existingCount > 0) return;
-					} catch {
-						// Ignore parse errors and continue with best-effort persist.
+			queueMicrotask(() => {
+				if (isSessionHydrateDbDemo && suppressDemoDbAutoPersist) return;
+				const controller = toolkitCoordinator?.getSectionController?.({
+					sectionId: sessionPanelSectionId,
+					attemptId
+				});
+				if (!controller?.persist) return;
+				const snapshot = controller.getSession?.() as
+					| { itemSessions?: Record<string, unknown> }
+					| null
+					| undefined;
+				const nextFingerprint = buildSnapshotFingerprint(snapshot);
+				if (isSessionHydrateDbDemo && nextFingerprint === lastPersistedSnapshotFingerprint) {
+					return;
+				}
+				const nextItemSessionCount = Object.keys(snapshot?.itemSessions || {}).length;
+				// Avoid wiping an existing persisted snapshot when startup/session bootstrap
+				// briefly emits an empty session-changed event during page transitions.
+				if (isSessionPersistenceDemo && nextItemSessionCount === 0) {
+					const key = computeDefaultPersistenceStorageKey();
+					const existingRaw = window.localStorage.getItem(key);
+					if (existingRaw) {
+						try {
+							const existing = JSON.parse(existingRaw) as {
+								itemSessions?: Record<string, unknown>;
+							};
+							const existingCount = Object.keys(existing?.itemSessions || {}).length;
+							if (existingCount > 0) return;
+						} catch {
+							// Ignore parse errors and continue with best-effort persist.
+						}
 					}
 				}
-			}
-			// Keep localStorage snapshots current so reload-based mode switches restore latest answers.
-			void controller.persist();
-			lastSessionSavedAt = Date.now();
+				// Keep localStorage snapshots current so reload-based mode switches restore latest answers.
+				void controller.persist();
+				lastPersistedSnapshotFingerprint = nextFingerprint;
+				lastSessionSavedAt = Date.now();
+			});
 		};
 		document.addEventListener('item-session-changed', triggerSessionPanelRefresh as EventListener, true);
 		document.addEventListener('session-changed', triggerSessionPanelRefresh as EventListener, true);
@@ -553,6 +556,17 @@ let isTtsSsmlDemo = $derived(
 		if (isSessionPersistenceDemo && !showSessionControlsPanel) {
 			showSessionControlsPanel = true;
 		}
+	});
+
+	$effect(() => {
+		void isSessionHydrateDbDemo;
+		if (!isSessionHydrateDbDemo) {
+			autoOpenedSessionDbPanel = false;
+			return;
+		}
+		if (autoOpenedSessionDbPanel) return;
+		showSessionDbPanel = true;
+		autoOpenedSessionDbPanel = true;
 	});
 
 	$effect(() => {
@@ -591,48 +605,6 @@ let isTtsSsmlDemo = $derived(
 		});
 	});
 
-	// Measure toolbar dimensions for verification
-	$effect(() => {
-		if (!browser) return;
-		const measureTimer = setTimeout(() => {
-			const toolbars = document.querySelectorAll('pie-section-toolbar');
-			if (toolbars.length === 0) {
-				console.warn('[Toolbar Measurement] No pie-section-toolbar elements found');
-				return;
-			}
-
-			console.log(`[Toolbar Measurement] Found ${toolbars.length} pie-section-toolbar elements`);
-
-			toolbars.forEach((toolbar, index) => {
-				const rect = toolbar.getBoundingClientRect();
-				const paneContainer =
-					toolbar.closest('[class*="pane"], [class*="panel"], [class*="split"]') ||
-					toolbar.parentElement;
-
-				const paneRect = paneContainer ? paneContainer.getBoundingClientRect() : null;
-
-				console.log(`\n=== Toolbar ${index + 1} measurements ===`);
-				console.log(`pie-section-toolbar:`);
-				console.log(`  Width: ${rect.width}px`);
-				console.log(`  Height: ${rect.height}px`);
-				console.log(`  Top: ${rect.top}px`);
-				console.log(`  Left: ${rect.left}px`);
-
-				if (paneContainer && paneRect) {
-					console.log(`Parent pane (${paneContainer.tagName}):`);
-					console.log(`  Classes: ${paneContainer.className}`);
-					console.log(`  Width: ${paneRect.width}px`);
-					console.log(`  Height: ${paneRect.height}px`);
-				}
-
-				const isVisible = rect.width > 100 && rect.height > 30;
-				console.log(`Visual assessment: ${isVisible ? '✓ VISUALLY OBVIOUS (not a thin sliver)' : '✗ WARNING: May be too small (thin sliver)'}`);
-			});
-		}, 2000); // Wait 2 seconds for layout to stabilize
-
-		return () => clearTimeout(measureTimer);
-	});
-
 	async function resetSessions() {
 		try {
 			await toolkitCoordinator?.disposeSectionController?.({
@@ -666,6 +638,32 @@ let isTtsSsmlDemo = $derived(
 			window.location.reload();
 		}
 	}
+
+	async function resetServerDb() {
+		dbErrorMessage = null;
+	suppressDemoDbAutoPersist = true;
+		try {
+			const response = await loadSessionDemoActivityRequest({
+				assessmentId: DEMO_ASSESSMENT_ID,
+				attemptId,
+				sectionId: routeSectionId || String(sessionPanelSectionId),
+				reset: true
+			});
+			serverLoadedSection = response.section || data.section;
+			dbBootstrapAt = Date.now();
+			hostSessionSnapshot = null;
+		lastPersistedSnapshotFingerprint = null;
+			playerInstanceKey += 1;
+			await refreshHostSessionSnapshot();
+			sessionDebuggerElement?.refreshFromHost?.();
+		} catch (error) {
+			dbErrorMessage = error instanceof Error ? error.message : String(error);
+	} finally {
+		queueMicrotask(() => {
+			suppressDemoDbAutoPersist = false;
+		});
+		}
+	}
 </script>
 
 <svelte:head>
@@ -686,6 +684,8 @@ let isTtsSsmlDemo = $derived(
 			{showSourcePanel}
 			{showPnpPanel}
 			{showTtsPanel}
+			showDbPanel={showSessionDbPanel}
+			isSessionHydrateDbDemo={isSessionHydrateDbDemo}
 			selectedDaisyTheme={selectedDaisyTheme}
 			daisyThemes={[...DAISY_DEFAULT_THEMES]}
 			onReset={() => void resetSessions()}
@@ -698,6 +698,7 @@ let isTtsSsmlDemo = $derived(
 			onToggleSourcePanel={() => (showSourcePanel = !showSourcePanel)}
 			onTogglePnpPanel={() => (showPnpPanel = !showPnpPanel)}
 			onToggleTtsPanel={() => (showTtsPanel = !showTtsPanel)}
+			onToggleDbPanel={() => (showSessionDbPanel = !showSessionDbPanel)}
 			onSelectDaisyTheme={handleDaisyThemeSelection}
 		/>
 
@@ -706,12 +707,22 @@ let isTtsSsmlDemo = $derived(
 				{#each data.demoPages as page}
 					<a
 						class={`pie-demo-section-pages__link ${data.activeDemoPageId === page.id ? 'pie-demo-section-pages__link--active' : ''}`}
-						href={buildSectionPageHref(page.id)}
+						href={buildSectionPageHref({
+							targetPageId: page.id,
+							roleType,
+							selectedPlayerType,
+							layoutType,
+							attemptId
+						})}
 					>
 						{page.name}
 					</a>
 				{/each}
 			</nav>
+		{/if}
+
+		{#if isSessionHydrateDbDemo && dbErrorMessage}
+			<div class="preload-status error">Session DB error: {dbErrorMessage}</div>
 		{/if}
 
 		{#if isTtsSsmlDemo}
@@ -741,41 +752,45 @@ let isTtsSsmlDemo = $derived(
 			</aside>
 		{/if}
 
-		{#if selectedPlayerType === 'preloaded' && !preloadedReady}
-			<div class="preload-status">Preloading section item bundles...</div>
-		{:else if preloadedError}
-			<div class="preload-status error">Preloaded bundle failed: {preloadedError}</div>
-		{:else if layoutType === 'vertical'}
-			<pie-section-player-vertical
-				assessment-id={DEMO_ASSESSMENT_ID}
-				section-id={sessionPanelSectionId}
-				attempt-id={attemptId}
-				player-type={selectedPlayerType}
-				lazy-init={true}
-				tools={toolkitToolsConfig}
-				section={resolvedSectionForPlayer}
-				env={pieEnv}
-				toolbar-position="right"
-				show-toolbar={true}
-				enabled-tools={sectionToolbarTools}
-				ontoolkit-ready={handleToolkitReady}
-			></pie-section-player-vertical>
-		{:else}
-			<pie-section-player-splitpane
-				assessment-id={DEMO_ASSESSMENT_ID}
-				section-id={sessionPanelSectionId}
-				attempt-id={attemptId}
-				player-type={selectedPlayerType}
-				lazy-init={true}
-				tools={toolkitToolsConfig}
-				section={resolvedSectionForPlayer}
-				env={pieEnv}
-				toolbar-position="right"
-				show-toolbar={true}
-				enabled-tools={sectionToolbarTools}
-				ontoolkit-ready={handleToolkitReady}
-			></pie-section-player-splitpane>
-		{/if}
+		{#key `${sessionPanelSectionId}:${attemptId}:${playerInstanceKey}`}
+			{#if selectedPlayerType === 'preloaded' && !preloadedReady}
+				<div class="preload-status">Preloading section item bundles...</div>
+			{:else if preloadedError}
+				<div class="preload-status error">Preloaded bundle failed: {preloadedError}</div>
+			{:else if layoutType === 'vertical'}
+				<pie-section-player-vertical
+					assessment-id={DEMO_ASSESSMENT_ID}
+					section-id={sessionPanelSectionId}
+					attempt-id={attemptId}
+					player-type={selectedPlayerType}
+					lazy-init={true}
+					tools={toolkitToolsConfig}
+					section={resolvedSectionForPlayer}
+					env={pieEnv}
+					coordinator={effectiveCoordinator}
+					toolbar-position="right"
+					show-toolbar={true}
+					enabled-tools={sectionToolbarTools}
+					ontoolkit-ready={handleToolkitReady}
+				></pie-section-player-vertical>
+			{:else}
+				<pie-section-player-splitpane
+					assessment-id={DEMO_ASSESSMENT_ID}
+					section-id={sessionPanelSectionId}
+					attempt-id={attemptId}
+					player-type={selectedPlayerType}
+					lazy-init={true}
+					tools={toolkitToolsConfig}
+					section={resolvedSectionForPlayer}
+					env={pieEnv}
+					coordinator={effectiveCoordinator}
+					toolbar-position="right"
+					show-toolbar={true}
+					enabled-tools={sectionToolbarTools}
+					ontoolkit-ready={handleToolkitReady}
+				></pie-section-player-splitpane>
+			{/if}
+		{/key}
 	</div>
 </pie-theme>
 
@@ -789,7 +804,9 @@ let isTtsSsmlDemo = $derived(
 	{showSourcePanel}
 	{showPnpPanel}
 	{showTtsPanel}
+	showSessionDbPanel={showSessionDbPanel}
 	{sourcePanelJson}
+	isSessionHydrateDbDemo={isSessionHydrateDbDemo}
 	hostSessionSnapshot={hostSessionSnapshot}
 	sessionControlItemIds={sessionControlItemIds}
 	persistenceStorageKey={persistenceStorageKey}
@@ -806,6 +823,8 @@ let isTtsSsmlDemo = $derived(
 	onCloseSessionControlsPanel={() => (showSessionControlsPanel = false)}
 	onCloseSourcePanel={() => (showSourcePanel = false)}
 	onCloseTtsPanel={() => (showTtsPanel = false)}
+	onCloseSessionDbPanel={() => (showSessionDbPanel = false)}
+	onResetDb={() => void resetServerDb()}
 	bind:sessionDebuggerElement
 	bind:eventDebuggerElement
 	bind:pnpDebuggerElement

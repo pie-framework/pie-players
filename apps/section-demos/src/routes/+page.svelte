@@ -19,7 +19,7 @@
 	<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
 		{#each demos as demo}
 			<a
-				href="/demo/{demo.id}"
+				href="/{demo.id}"
 				class="card bg-base-100 shadow-xl hover:shadow-2xl transition-all duration-200 hover:-translate-y-1"
 			>
 				<div class="card-body">

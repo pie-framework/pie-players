@@ -15,6 +15,7 @@
 	import PanelResizeHandle from '@pie-players/pie-section-player-tools-shared/PanelResizeHandle.svelte';
 	import PanelWindowControls from '@pie-players/pie-section-player-tools-shared/PanelWindowControls.svelte';
 	import {
+		claimNextFloatingPanelZIndex,
 		computePanelSizeFromViewport,
 		createFloatingPanelPointerController,
 		getSectionControllerFromCoordinator,
@@ -95,6 +96,7 @@
 	let sessionWindowY = $state(100);
 	let sessionWindowWidth = $state(220);
 	let sessionWindowHeight = $state(600);
+	let sessionPanelZIndex = $state(claimNextFloatingPanelZIndex());
 
 	let sessionPanelSnapshot = $state<SessionPanelSnapshot>({
 		currentItemIndex: null,
@@ -306,6 +308,10 @@
 		sessionWindowHeight = initial.height;
 	});
 
+	function bringSessionPanelToFront(): void {
+		sessionPanelZIndex = claimNextFloatingPanelZIndex();
+	}
+
 	const pointerController = createFloatingPanelPointerController({
 		getState: () => ({
 			x: sessionWindowX,
@@ -320,7 +326,8 @@
 			sessionWindowHeight = next.height;
 		},
 		minWidth: 300,
-		minHeight: 200
+		minHeight: 200,
+		onFocus: bringSessionPanelToFront
 	});
 
 	$effect(() => {
@@ -332,7 +339,7 @@
 
 <div
 	class="pie-section-player-tools-session-debugger"
-	style="left: {sessionWindowX}px; top: {sessionWindowY}px; width: {sessionWindowWidth}px; {isSessionMinimized ? 'height: auto;' : `height: ${sessionWindowHeight}px;`}"
+	style="left: {sessionWindowX}px; top: {sessionWindowY}px; width: {sessionWindowWidth}px; z-index: {sessionPanelZIndex}; {isSessionMinimized ? 'height: auto;' : `height: ${sessionWindowHeight}px;`}"
 >
 	<div
 		class="pie-section-player-tools-session-debugger__header"

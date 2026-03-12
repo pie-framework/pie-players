@@ -15,6 +15,7 @@
 	import PanelResizeHandle from '@pie-players/pie-section-player-tools-shared/PanelResizeHandle.svelte';
 	import PanelWindowControls from '@pie-players/pie-section-player-tools-shared/PanelWindowControls.svelte';
 	import {
+		claimNextFloatingPanelZIndex,
 		computePanelSizeFromViewport,
 		createFloatingPanelPointerController
 	} from '@pie-players/pie-section-player-tools-shared';
@@ -43,6 +44,7 @@
 	let pnpWindowY = $state(120);
 	let pnpWindowWidth = $state(460);
 	let pnpWindowHeight = $state(560);
+	let pnpPanelZIndex = $state(claimNextFloatingPanelZIndex());
 	let isPnpMinimized = $state(false);
 
 	const pnpResolver = new PnpToolResolver(createPackagedToolRegistry());
@@ -153,14 +155,17 @@
 			pnpWindowHeight = next.height;
 		},
 		minWidth: 320,
-		minHeight: 220
+		minHeight: 220,
+		onFocus: () => {
+			pnpPanelZIndex = claimNextFloatingPanelZIndex();
+		}
 	});
 
 </script>
 
 <div
 	class="pie-section-player-tools-pnp-debugger"
-	style="left: {pnpWindowX}px; top: {pnpWindowY}px; width: {pnpWindowWidth}px; {isPnpMinimized ? 'height: auto;' : `height: ${pnpWindowHeight}px;`}"
+	style="left: {pnpWindowX}px; top: {pnpWindowY}px; width: {pnpWindowWidth}px; z-index: {pnpPanelZIndex}; {isPnpMinimized ? 'height: auto;' : `height: ${pnpWindowHeight}px;`}"
 >
 	<div
 		class="pie-section-player-tools-pnp-debugger__header"

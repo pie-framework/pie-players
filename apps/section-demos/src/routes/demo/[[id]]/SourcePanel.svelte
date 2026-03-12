@@ -1,6 +1,11 @@
 <script lang="ts">
 	import PanelResizeHandle from '@pie-players/pie-section-player-tools-shared/PanelResizeHandle.svelte';
 	import PanelWindowControls from '@pie-players/pie-section-player-tools-shared/PanelWindowControls.svelte';
+	import {
+		claimNextFloatingPanelZIndex,
+		computePanelSizeFromViewport,
+		createFloatingPanelPointerController
+	} from '@pie-players/pie-section-player-tools-shared';
 	import { onDestroy, onMount } from 'svelte';
 
 	interface Props {
@@ -14,96 +19,58 @@
 	let sourceWindowY = $state(50);
 	let sourceWindowWidth = $state(800);
 	let sourceWindowHeight = $state(700);
+	let sourcePanelZIndex = $state(claimNextFloatingPanelZIndex());
 	let isSourceMinimized = $state(false);
-	let isSourceDragging = $state(false);
-	let isSourceResizing = $state(false);
 
-	let dragStartX = 0;
-	let dragStartY = 0;
-	let dragStartWindowX = 0;
-	let dragStartWindowY = 0;
-	let resizeStartX = 0;
-	let resizeStartY = 0;
-	let resizeStartWidth = 0;
-	let resizeStartHeight = 0;
+	function bringSourcePanelToFront(): void {
+		sourcePanelZIndex = claimNextFloatingPanelZIndex();
+	}
 
 	onMount(() => {
-		const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(value, max));
-		const viewportWidth = window.innerWidth;
-		const viewportHeight = window.innerHeight;
+		const initial = computePanelSizeFromViewport(
+			{ width: window.innerWidth, height: window.innerHeight },
+			{
+				widthRatio: 0.72,
+				heightRatio: 0.78,
+				minWidth: 640,
+				maxWidth: 1200,
+				minHeight: 420,
+				maxHeight: 940,
+				alignX: 'center',
+				alignY: 'center',
+				paddingX: 16,
+				paddingY: 16
+			}
+		);
+		sourceWindowX = initial.x;
+		sourceWindowY = initial.y;
+		sourceWindowWidth = initial.width;
+		sourceWindowHeight = initial.height;
+	});
 
-		sourceWindowWidth = clamp(Math.round(viewportWidth * 0.72), 640, 1200);
-		sourceWindowHeight = clamp(Math.round(viewportHeight * 0.78), 420, 940);
-		sourceWindowX = Math.max(16, Math.round((viewportWidth - sourceWindowWidth) / 2));
-		sourceWindowY = Math.max(16, Math.round((viewportHeight - sourceWindowHeight) / 2));
+	const pointerController = createFloatingPanelPointerController({
+		getState: () => ({
+			x: sourceWindowX,
+			y: sourceWindowY,
+			width: sourceWindowWidth,
+			height: sourceWindowHeight
+		}),
+		setState: (next: { x: number; y: number; width: number; height: number }) => {
+			sourceWindowX = next.x;
+			sourceWindowY = next.y;
+			sourceWindowWidth = next.width;
+			sourceWindowHeight = next.height;
+		},
+		minWidth: 400,
+		minHeight: 300,
+		onFocus: bringSourcePanelToFront
 	});
 
 	onDestroy(() => {
-		document.removeEventListener('mousemove', onSourceDrag);
-		document.removeEventListener('mouseup', stopSourceDrag);
-		document.removeEventListener('mousemove', onSourceResize);
-		document.removeEventListener('mouseup', stopSourceResize);
+		pointerController.stop();
 	});
 
-	function startSourceDrag(e: MouseEvent) {
-		isSourceDragging = true;
-		dragStartX = e.clientX;
-		dragStartY = e.clientY;
-		dragStartWindowX = sourceWindowX;
-		dragStartWindowY = sourceWindowY;
-
-		document.addEventListener('mousemove', onSourceDrag);
-		document.addEventListener('mouseup', stopSourceDrag);
-	}
-
-	function onSourceDrag(e: MouseEvent) {
-		if (!isSourceDragging) return;
-
-		const deltaX = e.clientX - dragStartX;
-		const deltaY = e.clientY - dragStartY;
-
-		sourceWindowX = dragStartWindowX + deltaX;
-		sourceWindowY = dragStartWindowY + deltaY;
-
-		sourceWindowX = Math.max(0, Math.min(sourceWindowX, window.innerWidth - sourceWindowWidth));
-		sourceWindowY = Math.max(0, Math.min(sourceWindowY, window.innerHeight - 100));
-	}
-
-	function stopSourceDrag() {
-		isSourceDragging = false;
-		document.removeEventListener('mousemove', onSourceDrag);
-		document.removeEventListener('mouseup', stopSourceDrag);
-	}
-
-	function startSourceResize(e: MouseEvent) {
-		isSourceResizing = true;
-		resizeStartX = e.clientX;
-		resizeStartY = e.clientY;
-		resizeStartWidth = sourceWindowWidth;
-		resizeStartHeight = sourceWindowHeight;
-
-		document.addEventListener('mousemove', onSourceResize);
-		document.addEventListener('mouseup', stopSourceResize);
-		e.stopPropagation();
-	}
-
-	function onSourceResize(e: MouseEvent) {
-		if (!isSourceResizing) return;
-
-		const deltaX = e.clientX - resizeStartX;
-		const deltaY = e.clientY - resizeStartY;
-
-		sourceWindowWidth = Math.max(400, Math.min(resizeStartWidth + deltaX, window.innerWidth - sourceWindowX));
-		sourceWindowHeight = Math.max(300, Math.min(resizeStartHeight + deltaY, window.innerHeight - sourceWindowY));
-	}
-
-	function stopSourceResize() {
-		isSourceResizing = false;
-		document.removeEventListener('mousemove', onSourceResize);
-		document.removeEventListener('mouseup', stopSourceResize);
-	}
-
-	function copyJson() {
+	function copyJson(): void {
 		if (typeof navigator !== 'undefined') {
 			void navigator.clipboard.writeText(editedSourceJson);
 		}
@@ -111,23 +78,29 @@
 </script>
 
 <div
-	class="fixed z-100 bg-base-100 rounded-lg shadow-2xl border-2 border-base-300"
-	style="left: {sourceWindowX}px; top: {sourceWindowY}px; width: {sourceWindowWidth}px; {isSourceMinimized ? 'height: auto;' : `height: ${sourceWindowHeight}px;`}"
+	class="pie-section-player-tools-source-panel"
+	style="left: {sourceWindowX}px; top: {sourceWindowY}px; width: {sourceWindowWidth}px; z-index: {sourcePanelZIndex}; {isSourceMinimized ? 'height: auto;' : `height: ${sourceWindowHeight}px;`}"
 >
 	<div
-		class="flex items-center justify-between px-4 py-2 bg-base-200 rounded-t-lg cursor-move select-none border-b border-base-300"
-		onmousedown={startSourceDrag}
+		class="pie-section-player-tools-source-panel__header"
+		onmousedown={(event: MouseEvent) => pointerController.startDrag(event)}
 		role="button"
 		tabindex="0"
 		aria-label="Drag source panel"
 	>
-		<div class="flex items-center gap-2">
-			<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+		<div class="pie-section-player-tools-source-panel__header-title">
+			<svg
+				xmlns="http://www.w3.org/2000/svg"
+				class="pie-section-player-tools-source-panel__icon-sm"
+				fill="none"
+				viewBox="0 0 24 24"
+				stroke="currentColor"
+			>
 				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
 			</svg>
-			<h3 class="font-bold text-sm">Source</h3>
+			<h3 class="pie-section-player-tools-source-panel__title">Source</h3>
 		</div>
-		<div class="flex gap-1">
+		<div class="pie-section-player-tools-source-panel__header-actions">
 			<PanelWindowControls
 				minimized={isSourceMinimized}
 				onToggle={() => (isSourceMinimized = !isSourceMinimized)}
@@ -137,32 +110,131 @@
 	</div>
 
 	{#if !isSourceMinimized}
-		<div class="flex flex-col overflow-hidden" style="height: {sourceWindowHeight - 50}px;">
-			<div class="flex items-center justify-between px-4 py-2 bg-base-200/50 border-b border-base-300">
-				<div class="text-xs text-base-content/70">
-					Read-only formatted JSON
-				</div>
-				<div class="flex gap-2">
-					<button
-						class="btn btn-xs btn-ghost"
-						onclick={copyJson}
-						title="Copy to clipboard"
-					>
-						<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-						</svg>
-						Copy
-					</button>
-				</div>
+		<div class="pie-section-player-tools-source-panel__content-shell" style="height: {sourceWindowHeight - 50}px;">
+			<div class="pie-section-player-tools-source-panel__content-toolbar">
+				<div class="pie-section-player-tools-source-panel__content-caption">Read-only formatted JSON</div>
+				<button
+					type="button"
+					class="pie-section-player-tools-source-panel__copy-button"
+					onclick={copyJson}
+					title="Copy to clipboard"
+				>
+					<svg xmlns="http://www.w3.org/2000/svg" class="pie-section-player-tools-source-panel__copy-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+					</svg>
+					Copy
+				</button>
 			</div>
 
-			<div class="flex-1 min-h-0 overflow-auto">
-				<pre class="h-full w-full m-0 p-4 bg-base-300 text-xs font-mono overflow-auto whitespace-pre-wrap">{editedSourceJson}</pre>
+			<div class="pie-section-player-tools-source-panel__content-scroll">
+				<pre class="pie-section-player-tools-source-panel__pre">{editedSourceJson}</pre>
 			</div>
 		</div>
 	{/if}
 
 	{#if !isSourceMinimized}
-		<PanelResizeHandle onPointerDown={startSourceResize} />
+		<PanelResizeHandle onPointerDown={(event: MouseEvent) => pointerController.startResize(event)} />
 	{/if}
 </div>
+
+<style>
+	.pie-section-player-tools-source-panel {
+		position: fixed;
+		background: var(--color-base-100, #fff);
+		color: var(--color-base-content, #1f2937);
+		border: 2px solid var(--color-base-300, #d1d5db);
+		border-radius: 8px;
+		box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+		overflow: hidden;
+		font-family: var(--pie-font-family, Inter, system-ui, sans-serif);
+	}
+
+	.pie-section-player-tools-source-panel__header {
+		padding: 8px 16px;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		background: var(--color-base-200, #f3f4f6);
+		cursor: move;
+		user-select: none;
+		border-bottom: 1px solid var(--color-base-300, #d1d5db);
+	}
+
+	.pie-section-player-tools-source-panel__header-title {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+
+	.pie-section-player-tools-source-panel__icon-sm {
+		width: 1rem;
+		height: 1rem;
+	}
+
+	.pie-section-player-tools-source-panel__title {
+		margin: 0;
+		font-size: 0.95rem;
+		font-weight: 700;
+	}
+
+	.pie-section-player-tools-source-panel__header-actions {
+		display: flex;
+		gap: 4px;
+	}
+
+	.pie-section-player-tools-source-panel__content-shell {
+		display: flex;
+		flex-direction: column;
+		min-height: 0;
+	}
+
+	.pie-section-player-tools-source-panel__content-toolbar {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 8px;
+		padding: 8px 12px;
+		border-bottom: 1px solid var(--color-base-300, #d1d5db);
+		background: color-mix(in srgb, var(--color-base-200, #f3f4f6) 60%, transparent);
+	}
+
+	.pie-section-player-tools-source-panel__content-caption {
+		font-size: 0.75rem;
+		opacity: 0.75;
+	}
+
+	.pie-section-player-tools-source-panel__copy-button {
+		border: 1px solid var(--color-base-300, #d1d5db);
+		background: var(--color-base-100, #fff);
+		color: inherit;
+		border-radius: 6px;
+		font-size: 0.75rem;
+		padding: 4px 8px;
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		cursor: pointer;
+	}
+
+	.pie-section-player-tools-source-panel__copy-icon {
+		width: 0.75rem;
+		height: 0.75rem;
+	}
+
+	.pie-section-player-tools-source-panel__content-scroll {
+		flex: 1;
+		min-height: 0;
+		overflow: auto;
+	}
+
+	.pie-section-player-tools-source-panel__pre {
+		margin: 0;
+		padding: 12px;
+		font-size: 0.74rem;
+		line-height: 1.35;
+		white-space: pre-wrap;
+		word-break: break-word;
+		font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+		background: color-mix(in srgb, var(--color-base-200, #f3f4f6) 45%, transparent);
+	}
+</style>

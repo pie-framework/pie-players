@@ -16,6 +16,7 @@
 	import PanelResizeHandle from "@pie-players/pie-section-player-tools-shared/PanelResizeHandle.svelte";
 	import PanelWindowControls from "@pie-players/pie-section-player-tools-shared/PanelWindowControls.svelte";
 	import {
+		claimNextFloatingPanelZIndex,
 		computePanelSizeFromViewport,
 		createFloatingPanelPointerController,
 		getSectionControllerFromCoordinator,
@@ -105,6 +106,7 @@
 	let panelY = $state(100);
 	let panelWidth = $state(500);
 	let panelHeight = $state(620);
+	let panelZIndex = $state(claimNextFloatingPanelZIndex());
 	let isMinimized = $state(false);
 	let isPaused = $state(false);
 	let selectedLevel = $state<EventLevel>("item");
@@ -377,6 +379,9 @@
 		},
 		minWidth: 340,
 		minHeight: 260,
+		onFocus: () => {
+			panelZIndex = claimNextFloatingPanelZIndex();
+		},
 	});
 
 	function clearRecords() {
@@ -477,7 +482,7 @@
 
 <div
 	class="pie-section-player-tools-event-debugger"
-	style="left: {panelX}px; top: {panelY}px; width: {panelWidth}px; {isMinimized ? 'height: auto;' : `height: ${panelHeight}px;`}"
+	style="left: {panelX}px; top: {panelY}px; width: {panelWidth}px; z-index: {panelZIndex}; {isMinimized ? 'height: auto;' : `height: ${panelHeight}px;`}"
 >
 	<div
 		class="pie-section-player-tools-event-debugger__header"

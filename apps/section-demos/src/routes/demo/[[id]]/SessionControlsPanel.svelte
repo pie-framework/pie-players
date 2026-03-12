@@ -1,4 +1,13 @@
 <script lang="ts">
+	import PanelResizeHandle from '@pie-players/pie-section-player-tools-shared/PanelResizeHandle.svelte';
+	import PanelWindowControls from '@pie-players/pie-section-player-tools-shared/PanelWindowControls.svelte';
+	import {
+		claimNextFloatingPanelZIndex,
+		computePanelSizeFromViewport,
+		createFloatingPanelPointerController
+	} from '@pie-players/pie-section-player-tools-shared';
+	import { onMount } from 'svelte';
+
 	type SectionSessionStateLike = {
 		currentItemIndex?: number;
 		visitedItemIdentifiers?: string[];
@@ -54,6 +63,12 @@
 	let selectedChoiceValue = $state("a");
 	let statusMessage = $state("");
 	let statusLevel = $state<"info" | "error">("info");
+	let isPanelMinimized = $state(false);
+	let panelX = $state(0);
+	let panelY = $state(0);
+	let panelWidth = $state(560);
+	let panelHeight = $state(680);
+	let sessionControlsZIndex = $state(claimNextFloatingPanelZIndex());
 
 	function formatTimestamp(value: number | null): string {
 		if (!value) return "n/a";
@@ -64,6 +79,28 @@
 		statusMessage = message;
 		statusLevel = level;
 	}
+
+	function bringSessionControlsToFront(): void {
+		sessionControlsZIndex = claimNextFloatingPanelZIndex();
+	}
+
+	const pointerController = createFloatingPanelPointerController({
+		getState: () => ({
+			x: panelX,
+			y: panelY,
+			width: panelWidth,
+			height: panelHeight,
+		}),
+		setState: (next) => {
+			panelX = next.x;
+			panelY = next.y;
+			panelWidth = next.width;
+			panelHeight = next.height;
+		},
+		minWidth: 420,
+		minHeight: 320,
+		onFocus: bringSessionControlsToFront,
+	});
 
 	async function runWithStatus(
 		message: string,
@@ -109,145 +146,198 @@
 	$effect(() => {
 		sessionSnapshotDraft = JSON.stringify(sessionSnapshot || { itemSessions: {} }, null, 2);
 	});
+
+	$effect(() => {
+		return () => {
+			pointerController.stop();
+		};
+	});
+
+	onMount(() => {
+		const initial = computePanelSizeFromViewport(
+			{ width: window.innerWidth, height: window.innerHeight },
+			{
+				widthRatio: 0.34,
+				heightRatio: 0.8,
+				minWidth: 420,
+				maxWidth: 760,
+				minHeight: 360,
+				maxHeight: 900,
+				alignX: "right",
+				alignY: "bottom",
+				paddingX: 16,
+				paddingY: 16,
+			},
+		);
+		panelX = initial.x;
+		panelY = initial.y;
+		panelWidth = initial.width;
+		panelHeight = initial.height;
+	});
 </script>
 
-<aside class="pie-demo-session-controls" aria-label="Session controls panel">
+<aside
+	class="pie-demo-session-controls"
+	aria-label="Session controls panel"
+	style="left: {panelX}px; top: {panelY}px; width: {panelWidth}px; z-index: {sessionControlsZIndex}; {isPanelMinimized ? 'height: auto;' : `height: ${panelHeight}px;`}"
+>
 	<div class="pie-demo-session-controls__header">
-		<h3 class="pie-demo-session-controls__title">Session Controls</h3>
-		<button
-			type="button"
-			class="pie-demo-session-controls__close"
-			onclick={onClose}
-			aria-label="Close session controls panel"
-		>
-			✕
-		</button>
-	</div>
-
-	<p class="pie-demo-session-controls__intro">
-		Host-owned session controls: mutate section session outside PIE item elements and watch item UI update automatically.
-	</p>
-
-	<div class="pie-demo-session-controls__meta">
-		<div><strong>sectionId:</strong> <code>{sectionId}</code></div>
-		<div><strong>attemptId:</strong> <code>{attemptId}</code></div>
-		<div><strong>persist key:</strong> <code>{persistenceStorageKey || "n/a"}</code></div>
-		<div><strong>persist key present:</strong> {persistenceStoragePresent ? "yes" : "no"}</div>
-		<div><strong>last saved:</strong> {formatTimestamp(lastSavedAt)}</div>
-		<div><strong>last restored:</strong> {formatTimestamp(lastRestoredAt)}</div>
-		<div><strong>last host update:</strong> {formatTimestamp(lastHostUpdateAt)}</div>
-		<div><strong>last refresh:</strong> {formatTimestamp(lastRefreshAt)}</div>
-	</div>
-
-	<div class="pie-demo-session-controls__actions">
-		<button type="button" class="pie-demo-session-controls__button" onclick={() => runWithStatus("Refreshed controller session.", onRefresh)}>Refresh</button>
-		<button type="button" class="pie-demo-session-controls__button" onclick={() => runWithStatus("Persisted session via strategy.", onPersistNow)}>Persist</button>
-		<button type="button" class="pie-demo-session-controls__button" onclick={() => runWithStatus("Hydrated session via strategy.", onHydrateNow)}>Hydrate</button>
-	</div>
-
-	<label class="pie-demo-session-controls__label" for="pie-demo-session-snapshot">
-		Session snapshot JSON
-	</label>
-	<textarea
-		id="pie-demo-session-snapshot"
-		class="pie-demo-session-controls__snapshot"
-		bind:value={sessionSnapshotDraft}
-		spellcheck="false"
-	></textarea>
-
-	<div class="pie-demo-session-controls__actions">
-		<button type="button" class="pie-demo-session-controls__button" onclick={() => applySnapshot("replace")}>Apply replace</button>
-		<button type="button" class="pie-demo-session-controls__button" onclick={() => applySnapshot("merge")}>Apply merge</button>
-	</div>
-
-	<div class="pie-demo-session-controls__row">
-		<label class="pie-demo-session-controls__label" for="pie-demo-session-item-id">Item</label>
-		<select
-			id="pie-demo-session-item-id"
-			class="pie-demo-session-controls__select"
-			bind:value={selectedItemId}
-		>
-			{#each itemIds as itemId}
-				<option value={itemId}>{itemId}</option>
-			{/each}
-		</select>
-	</div>
-
-	<div class="pie-demo-session-controls__row">
-		<label class="pie-demo-session-controls__label" for="pie-demo-session-choice">Choice value</label>
-		<select
-			id="pie-demo-session-choice"
-			class="pie-demo-session-controls__select"
-			bind:value={selectedChoiceValue}
-		>
-			<option value="a">a</option>
-			<option value="b">b</option>
-			<option value="c">c</option>
-			<option value="d">d</option>
-		</select>
-	</div>
-
-	<button
-		type="button"
-		class="pie-demo-session-controls__button pie-demo-session-controls__button--primary"
-		onclick={applyHostItemUpdate}
-	>
-		Update item session from host
-	</button>
-
-	{#if statusMessage}
 		<div
-			class={`pie-demo-session-controls__status ${
-				statusLevel === "error"
-					? "pie-demo-session-controls__status--error"
-					: "pie-demo-session-controls__status--info"
-			}`}
+			class="pie-demo-session-controls__header-title-wrap"
+			onmousedown={(event: MouseEvent) => pointerController.startDrag(event)}
+			role="button"
+			tabindex="0"
+			aria-label="Drag session controls panel"
 		>
-			{statusMessage}
+			<h3 class="pie-demo-session-controls__title">Session Controls</h3>
 		</div>
+		<PanelWindowControls
+			minimized={isPanelMinimized}
+			onToggle={() => (isPanelMinimized = !isPanelMinimized)}
+			onClose={onClose}
+		/>
+	</div>
+
+	{#if !isPanelMinimized}
+		<div class="pie-demo-session-controls__content-shell" style="height: {panelHeight - 50}px;">
+			<div class="pie-demo-session-controls__content">
+				<p class="pie-demo-session-controls__intro">
+					Host-owned session controls: mutate section session outside PIE item elements and watch item UI update automatically.
+				</p>
+
+				<div class="pie-demo-session-controls__meta">
+					<div><strong>sectionId:</strong> <code>{sectionId}</code></div>
+					<div><strong>attemptId:</strong> <code>{attemptId}</code></div>
+					<div><strong>persist key:</strong> <code>{persistenceStorageKey || "n/a"}</code></div>
+					<div><strong>persist key present:</strong> {persistenceStoragePresent ? "yes" : "no"}</div>
+					<div><strong>last saved:</strong> {formatTimestamp(lastSavedAt)}</div>
+					<div><strong>last restored:</strong> {formatTimestamp(lastRestoredAt)}</div>
+					<div><strong>last host update:</strong> {formatTimestamp(lastHostUpdateAt)}</div>
+					<div><strong>last refresh:</strong> {formatTimestamp(lastRefreshAt)}</div>
+				</div>
+
+				<div class="pie-demo-session-controls__actions">
+					<button type="button" class="pie-demo-session-controls__button" onclick={() => runWithStatus("Refreshed controller session.", onRefresh)}>Refresh</button>
+					<button type="button" class="pie-demo-session-controls__button" onclick={() => runWithStatus("Persisted session via strategy.", onPersistNow)}>Persist</button>
+					<button type="button" class="pie-demo-session-controls__button" onclick={() => runWithStatus("Hydrated session via strategy.", onHydrateNow)}>Hydrate</button>
+				</div>
+
+				<label class="pie-demo-session-controls__label" for="pie-demo-session-snapshot">
+					Session snapshot JSON
+				</label>
+				<textarea
+					id="pie-demo-session-snapshot"
+					class="pie-demo-session-controls__snapshot"
+					bind:value={sessionSnapshotDraft}
+					spellcheck="false"
+				></textarea>
+
+				<div class="pie-demo-session-controls__actions">
+					<button type="button" class="pie-demo-session-controls__button" onclick={() => applySnapshot("replace")}>Apply replace</button>
+					<button type="button" class="pie-demo-session-controls__button" onclick={() => applySnapshot("merge")}>Apply merge</button>
+				</div>
+
+				<div class="pie-demo-session-controls__row">
+					<label class="pie-demo-session-controls__label" for="pie-demo-session-item-id">Item</label>
+					<select
+						id="pie-demo-session-item-id"
+						class="pie-demo-session-controls__select"
+						bind:value={selectedItemId}
+					>
+						{#each itemIds as itemId}
+							<option value={itemId}>{itemId}</option>
+						{/each}
+					</select>
+				</div>
+
+				<div class="pie-demo-session-controls__row">
+					<label class="pie-demo-session-controls__label" for="pie-demo-session-choice">Choice value</label>
+					<select
+						id="pie-demo-session-choice"
+						class="pie-demo-session-controls__select"
+						bind:value={selectedChoiceValue}
+					>
+						<option value="a">a</option>
+						<option value="b">b</option>
+						<option value="c">c</option>
+						<option value="d">d</option>
+					</select>
+				</div>
+
+				<button
+					type="button"
+					class="pie-demo-session-controls__button pie-demo-session-controls__button--primary"
+					onclick={applyHostItemUpdate}
+				>
+					Update item session from host
+				</button>
+
+				{#if statusMessage}
+					<div
+						class={`pie-demo-session-controls__status ${
+							statusLevel === "error"
+								? "pie-demo-session-controls__status--error"
+								: "pie-demo-session-controls__status--info"
+						}`}
+					>
+						{statusMessage}
+					</div>
+				{/if}
+			</div>
+		</div>
+		<PanelResizeHandle onPointerDown={(event: MouseEvent) => pointerController.startResize(event)} />
 	{/if}
 </aside>
 
 <style>
 	.pie-demo-session-controls {
 		position: fixed;
-		right: 1rem;
-		bottom: 1rem;
-		width: min(32rem, calc(100vw - 2rem));
-		max-height: min(80vh, 48rem);
-		overflow: auto;
 		background: var(--color-base-100);
 		color: var(--color-base-content);
-		border: 1px solid color-mix(in srgb, var(--color-base-content) 25%, transparent);
-		border-radius: 0.5rem;
-		padding: 0.85rem;
-		box-shadow: 0 0.75rem 2rem color-mix(in srgb, black 25%, transparent);
-		z-index: 9998;
+		border: 2px solid var(--color-base-300, #d1d5db);
+		border-radius: 8px;
+		box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+		overflow: hidden;
+		font-family: var(--pie-font-family, Inter, system-ui, sans-serif);
 		font-size: 0.82rem;
 	}
 
 	.pie-demo-session-controls__header {
+		padding: 8px 16px;
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		gap: 0.75rem;
-		margin-bottom: 0.5rem;
+		background: var(--color-base-200, #f3f4f6);
+		border-bottom: 1px solid var(--color-base-300, #d1d5db);
+	}
+
+	.pie-demo-session-controls__header-title-wrap {
+		display: flex;
+		align-items: center;
+		flex: 1;
+		min-width: 0;
+		cursor: move;
+		user-select: none;
 	}
 
 	.pie-demo-session-controls__title {
 		margin: 0;
-		font-size: 0.92rem;
+		font-size: 0.95rem;
 		font-weight: 700;
 	}
 
-	.pie-demo-session-controls__close {
-		border: 1px solid color-mix(in srgb, var(--color-base-content) 25%, transparent);
-		background: var(--color-base-100);
-		color: var(--color-base-content);
-		border-radius: 0.25rem;
-		cursor: pointer;
-		line-height: 1;
-		padding: 0.2rem 0.35rem;
+	.pie-demo-session-controls__content-shell {
+		display: flex;
+		flex-direction: column;
+		min-height: 0;
+	}
+
+	.pie-demo-session-controls__content {
+		flex: 1;
+		min-height: 0;
+		overflow-y: auto;
+		overflow-x: hidden;
+		padding: 12px;
 	}
 
 	.pie-demo-session-controls__intro {
@@ -269,11 +359,12 @@
 	}
 
 	.pie-demo-session-controls__button {
-		border: 1px solid color-mix(in srgb, var(--color-base-content) 25%, transparent);
-		background: var(--color-base-100);
+		border: 1px solid var(--color-base-300, #d1d5db);
+		background: var(--color-base-100, #fff);
 		color: var(--color-base-content);
-		border-radius: 0.3rem;
-		padding: 0.3rem 0.55rem;
+		border-radius: 6px;
+		padding: 6px 8px;
+		font-size: 0.78rem;
 		cursor: pointer;
 	}
 

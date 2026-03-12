@@ -113,6 +113,8 @@
 	let previewPollingTimer: number | null = null;
 	let previewRunId = 0;
 
+	const TTS_MODAL_Z_INDEX = 200000;
+
 	const DEFAULT_PREVIEW_TEXT: Record<BackendTab, string> = {
 		browser:
 			'This is a browser voice sample. You should hear clear playback and see tracking updates.',
@@ -837,7 +839,10 @@ function refreshGoogleVoices() {
 	});
 </script>
 
-<div class="pie-tts-dialog-backdrop">
+<div
+	class="pie-tts-dialog-backdrop"
+	style="z-index: {TTS_MODAL_Z_INDEX};"
+>
 	<div class="pie-tts-dialog">
 		<div class="pie-tts-dialog-header">
 			<h3 class="pie-tts-dialog-title">TTS settings</h3>
@@ -1122,8 +1127,6 @@ function refreshGoogleVoices() {
 	.pie-tts-dialog-backdrop {
 		position: fixed;
 		inset: 0;
-		/* Keep settings dialog above tool overlays managed by ToolCoordinator layers. */
-		z-index: 4500;
 		background: color-mix(in srgb, #000 30%, transparent);
 		display: flex;
 		align-items: center;

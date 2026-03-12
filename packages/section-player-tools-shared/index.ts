@@ -3,6 +3,7 @@ export { default as PanelResizeHandle } from "./PanelResizeHandle.svelte";
 export {
 	createFloatingPanelPointerController,
 	computePanelSizeFromViewport,
+	claimNextFloatingPanelZIndex,
 	type FloatingPanelPointerController,
 	type FloatingPanelState,
 	type FloatingPanelViewportSizing,

@@ -68,7 +68,6 @@
 	let selectedDaisyTheme = $state<string>(DEFAULT_DAISY_THEME);
 	let attemptId = $state(getOrCreateAttemptId());
 	let showSessionPanel = $state(false);
-	let showSessionControlsPanel = $state(false);
 	let showEventPanel = $state(false);
 	let showSourcePanel = $state(false);
 	let showPnpPanel = $state(false);
@@ -85,19 +84,14 @@
 	let preloadedReady = $state(false);
 	let preloadedError = $state<string | null>(null);
 	let loadedPreloadedBundleKey = $state<string | null>(null);
-	let hostSessionSnapshot = $state<Record<string, unknown> | null>(null);
-	let persistenceStorageKey = $state<string | null>(null);
-	let persistenceStoragePresent = $state(false);
-	let lastSessionSavedAt = $state<number | null>(null);
-	let lastSessionRestoredAt = $state<number | null>(null);
-	let lastHostSessionUpdateAt = $state<number | null>(null);
-	let lastSessionRefreshAt = $state<number | null>(null);
 	let dbHydrateEnabled = $state(false);
 	let dbBootstrapAt = $state<number | null>(null);
 	let dbErrorMessage = $state<string | null>(null);
 let suppressDemoDbAutoPersist = $state(false);
+let suppressDemoDbAutoPersistUntilMs = $state(0);
 let lastPersistedSnapshotFingerprint = $state<string | null>(null);
 let serverLoadedSection = $state<any>(null);
+let bootstrappedSessionDbAttemptId = $state<string | null>(null);
 	const toolkitToolsConfig = {
 		providers: {
 			calculator: {
@@ -162,9 +156,6 @@ let isTtsSsmlDemo = $derived(
 	String((data?.demo as any)?.id || '').toLowerCase() === 'tts-ssml' ||
 		(sessionPanelSectionId || '').toLowerCase().includes('tts-ssml')
 );
-	let isSessionPersistenceDemo = $derived(
-		String((data?.demo as any)?.id || '').toLowerCase() === 'session-persistence'
-	);
 	let isSessionHydrateDbDemo = $derived(
 		String((data?.demo as any)?.id || '').toLowerCase() === 'session-hydrate-db'
 	);
@@ -179,12 +170,6 @@ let isTtsSsmlDemo = $derived(
 	let effectiveCoordinator = $derived(
 		isSessionHydrateDbDemo ? demoPersistenceCoordinator : null
 	);
-	let sessionControlItemIds = $derived.by(() => {
-		const refs = (resolvedSectionForPlayer as any)?.assessmentItemRefs || [];
-		return refs
-			.map((ref: any) => ref?.identifier || ref?.item?.id || '')
-			.filter((id: string) => typeof id === 'string' && id.length > 0);
-	});
 	let pieEnv = $derived<{ mode: 'gather' | 'view' | 'evaluate'; role: 'student' | 'instructor' }>({
 		mode: roleType === 'candidate' ? 'gather' : 'evaluate',
 		role: roleType === 'candidate' ? 'student' : 'instructor'
@@ -199,12 +184,12 @@ let isTtsSsmlDemo = $derived(
 		return payload?.apiKey ? { apiKey: payload.apiKey } : {};
 	}
 
-	async function bootstrapSessionDemoDb() {
+	async function bootstrapSessionDemoDb(reset = true) {
 		const response = await loadSessionDemoActivityRequest({
 			assessmentId: DEMO_ASSESSMENT_ID,
 			attemptId,
 			sectionId: routeSectionId || String(sessionPanelSectionId),
-			reset: false
+			reset
 		});
 		serverLoadedSection = response.section || data.section;
 		dbBootstrapAt = Date.now();
@@ -238,6 +223,20 @@ let isTtsSsmlDemo = $derived(
 		});
 	}
 
+async function disposeActiveSectionControllerForDbReset() {
+	try {
+		await toolkitCoordinator?.disposeSectionController?.({
+			sectionId: sessionPanelSectionId,
+			attemptId,
+			// Prevent stale in-memory session state from being persisted during reset.
+			persistBeforeDispose: false,
+			clearPersistence: true
+		});
+	} catch (error) {
+		console.warn('[Demo] Failed to dispose section controller before DB reset:', error);
+	}
+}
+
 	function handleToolkitReady(event: Event) {
 		const detail = (event as CustomEvent<{ coordinator?: any }>).detail;
 		toolkitCoordinator = detail?.coordinator || null;
@@ -247,7 +246,6 @@ let isTtsSsmlDemo = $derived(
 				console.error('[Demo] Toolkit hook error:', context, error);
 			}
 		} satisfies ToolkitCoordinatorHooks);
-		void refreshHostSessionSnapshot();
 	}
 
 	function getActiveSectionController() {
@@ -255,26 +253,6 @@ let isTtsSsmlDemo = $derived(
 			sectionId: sessionPanelSectionId,
 			attemptId
 		});
-	}
-
-	function computeDefaultPersistenceStorageKey(): string {
-		if (isSessionHydrateDbDemo) {
-			return `${DEMO_ASSESSMENT_ID}:${sessionPanelSectionId}:${attemptId}`;
-		}
-		return `pie:section-controller:v1:${DEMO_ASSESSMENT_ID}:${sessionPanelSectionId}:${attemptId || 'default'}`;
-	}
-
-	async function refreshHostSessionSnapshot(): Promise<void> {
-		const controller = getActiveSectionController();
-		hostSessionSnapshot = (controller?.getSession?.() || null) as Record<string, unknown> | null;
-		persistenceStorageKey = computeDefaultPersistenceStorageKey();
-		if (browser && !isSessionHydrateDbDemo) {
-			const key = persistenceStorageKey;
-			persistenceStoragePresent = Boolean(key && window.localStorage.getItem(key || '') !== null);
-		} else if (isSessionHydrateDbDemo) {
-			persistenceStoragePresent = dbHydrateEnabled;
-		}
-		lastSessionRefreshAt = Date.now();
 	}
 
 function buildSnapshotFingerprint(snapshot: unknown): string {
@@ -285,69 +263,10 @@ function buildSnapshotFingerprint(snapshot: unknown): string {
 	}
 }
 
-	async function persistHostSession(): Promise<void> {
-		const controller = getActiveSectionController();
-		await controller?.persist?.();
-		lastSessionSavedAt = Date.now();
-		await refreshHostSessionSnapshot();
-	}
+function isDemoDbAutoPersistSuppressed(): boolean {
+	return suppressDemoDbAutoPersist || Date.now() < suppressDemoDbAutoPersistUntilMs;
+}
 
-	async function hydrateHostSession(): Promise<void> {
-		const controller = getActiveSectionController();
-		await controller?.hydrate?.();
-		lastSessionRestoredAt = Date.now();
-		await refreshHostSessionSnapshot();
-	}
-
-	async function applyHostSessionSnapshot(
-		snapshot: Record<string, unknown>,
-		mode: 'replace' | 'merge'
-	): Promise<void> {
-		const controller = getActiveSectionController();
-		await controller?.applySession?.(snapshot, { mode });
-		lastHostSessionUpdateAt = Date.now();
-		await refreshHostSessionSnapshot();
-	}
-
-	async function updateHostItemSession(
-		itemId: string,
-		detail: Record<string, unknown>
-	): Promise<void> {
-		const controller = getActiveSectionController();
-		const currentItemSessions =
-			((controller?.getSession?.() as { itemSessions?: Record<string, unknown> } | null)
-				?.itemSessions || {}) as Record<string, unknown>;
-		const existingEntry = (currentItemSessions[itemId] ||
-			currentItemSessions[
-				sessionControlItemIds.find((id: string) => id === itemId) || itemId
-			]) as
-			| {
-					session?: { id?: string; data?: Array<Record<string, unknown>> };
-			  }
-			| undefined;
-		const nextChoiceValue =
-			typeof detail.choiceValue === 'string' && detail.choiceValue
-				? detail.choiceValue
-				: 'a';
-		const existingData = Array.isArray(existingEntry?.session?.data)
-			? existingEntry?.session?.data
-			: [];
-		const nextData = existingData.length
-			? existingData.map((entry, index) =>
-					index === 0 ? { ...entry, value: nextChoiceValue } : entry
-			  )
-			: [{ id: 'q1', value: nextChoiceValue }];
-		await controller?.updateItemSession?.(itemId, {
-			component: 'demo-host-controls',
-			complete: true,
-			session: {
-				id: existingEntry?.session?.id || `${itemId}-host-session`,
-				data: nextData
-			}
-		});
-		lastHostSessionUpdateAt = Date.now();
-		await refreshHostSessionSnapshot();
-	}
 
 	let candidateHref = $derived(
 		buildDemoHref({
@@ -425,12 +344,11 @@ function buildSnapshotFingerprint(snapshot: unknown): string {
 							return snapshot;
 						},
 						async saveSession(_ctx, session) {
-							if (!dbHydrateEnabled) return;
+							if (!dbHydrateEnabled || isDemoDbAutoPersistSuppressed()) return;
 							await saveSnapshotToSessionDb(
 								targetSectionId,
 								(session || { itemSessions: {} }) as SectionSessionSnapshot
 							);
-							lastSessionSavedAt = Date.now();
 						},
 						async clearSession() {
 							await deleteSnapshotFromSessionDb(targetSectionId);
@@ -441,10 +359,16 @@ function buildSnapshotFingerprint(snapshot: unknown): string {
 		});
 		demoPersistenceCoordinator = coordinator;
 		let cancelled = false;
-		void bootstrapSessionDemoDb().catch((error) => {
-			if (cancelled) return;
-			dbErrorMessage = error instanceof Error ? error.message : String(error);
-		});
+		const shouldResetOnBootstrap = bootstrappedSessionDbAttemptId !== attemptId;
+		void bootstrapSessionDemoDb(shouldResetOnBootstrap)
+			.then(() => {
+				if (cancelled) return;
+				bootstrappedSessionDbAttemptId = attemptId;
+			})
+			.catch((error) => {
+				if (cancelled) return;
+				dbErrorMessage = error instanceof Error ? error.message : String(error);
+			});
 		return () => {
 			cancelled = true;
 			demoPersistenceCoordinator = null;
@@ -496,7 +420,9 @@ function buildSnapshotFingerprint(snapshot: unknown): string {
 		};
 		const persistSectionSession = () => {
 			queueMicrotask(() => {
-				if (isSessionHydrateDbDemo && suppressDemoDbAutoPersist) return;
+				if (isSessionHydrateDbDemo && isDemoDbAutoPersistSuppressed()) {
+					return;
+				}
 				const controller = toolkitCoordinator?.getSectionController?.({
 					sectionId: sessionPanelSectionId,
 					attemptId
@@ -510,28 +436,9 @@ function buildSnapshotFingerprint(snapshot: unknown): string {
 				if (isSessionHydrateDbDemo && nextFingerprint === lastPersistedSnapshotFingerprint) {
 					return;
 				}
-				const nextItemSessionCount = Object.keys(snapshot?.itemSessions || {}).length;
-				// Avoid wiping an existing persisted snapshot when startup/session bootstrap
-				// briefly emits an empty session-changed event during page transitions.
-				if (isSessionPersistenceDemo && nextItemSessionCount === 0) {
-					const key = computeDefaultPersistenceStorageKey();
-					const existingRaw = window.localStorage.getItem(key);
-					if (existingRaw) {
-						try {
-							const existing = JSON.parse(existingRaw) as {
-								itemSessions?: Record<string, unknown>;
-							};
-							const existingCount = Object.keys(existing?.itemSessions || {}).length;
-							if (existingCount > 0) return;
-						} catch {
-							// Ignore parse errors and continue with best-effort persist.
-						}
-					}
-				}
 				// Keep localStorage snapshots current so reload-based mode switches restore latest answers.
 				void controller.persist();
 				lastPersistedSnapshotFingerprint = nextFingerprint;
-				lastSessionSavedAt = Date.now();
 			});
 		};
 		document.addEventListener('item-session-changed', triggerSessionPanelRefresh as EventListener, true);
@@ -563,12 +470,6 @@ function buildSnapshotFingerprint(snapshot: unknown): string {
 	});
 
 	$effect(() => {
-		if (isSessionPersistenceDemo && !showSessionControlsPanel) {
-			showSessionControlsPanel = true;
-		}
-	});
-
-	$effect(() => {
 		void isSessionHydrateDbDemo;
 		if (!isSessionHydrateDbDemo) {
 			autoOpenedSessionDbPanel = false;
@@ -577,14 +478,6 @@ function buildSnapshotFingerprint(snapshot: unknown): string {
 		if (autoOpenedSessionDbPanel) return;
 		showSessionDbPanel = true;
 		autoOpenedSessionDbPanel = true;
-	});
-
-	$effect(() => {
-		void toolkitCoordinator;
-		void sessionPanelSectionId;
-		void attemptId;
-		if (!toolkitCoordinator) return;
-		void refreshHostSessionSnapshot();
 	});
 
 	$effect(() => {
@@ -651,27 +544,21 @@ function buildSnapshotFingerprint(snapshot: unknown): string {
 
 	async function resetServerDb() {
 		dbErrorMessage = null;
-	suppressDemoDbAutoPersist = true;
+		suppressDemoDbAutoPersist = true;
+		// Guard against stale session-changed events re-persisting pre-reset data.
+		suppressDemoDbAutoPersistUntilMs = Date.now() + 1200;
 		try {
-			const response = await loadSessionDemoActivityRequest({
-				assessmentId: DEMO_ASSESSMENT_ID,
-				attemptId,
-				sectionId: routeSectionId || String(sessionPanelSectionId),
-				reset: true
-			});
-			serverLoadedSection = response.section || data.section;
-			dbBootstrapAt = Date.now();
-			hostSessionSnapshot = null;
-		lastPersistedSnapshotFingerprint = null;
+		await disposeActiveSectionControllerForDbReset();
+			await bootstrapSessionDemoDb(true);
+			lastPersistedSnapshotFingerprint = null;
 			playerInstanceKey += 1;
-			await refreshHostSessionSnapshot();
 			sessionDebuggerElement?.refreshFromHost?.();
 		} catch (error) {
 			dbErrorMessage = error instanceof Error ? error.message : String(error);
-	} finally {
-		queueMicrotask(() => {
-			suppressDemoDbAutoPersist = false;
-		});
+		} finally {
+			setTimeout(() => {
+				suppressDemoDbAutoPersist = false;
+			}, 1250);
 		}
 	}
 </script>
@@ -689,7 +576,6 @@ function buildSnapshotFingerprint(snapshot: unknown): string {
 			{candidateHref}
 			{scorerHref}
 			{showSessionPanel}
-			{showSessionControlsPanel}
 			{showEventPanel}
 			{showSourcePanel}
 			{showPnpPanel}
@@ -703,8 +589,6 @@ function buildSnapshotFingerprint(snapshot: unknown): string {
 			onSetSplitpaneLayout={() => (layoutType = 'splitpane')}
 			onSetVerticalLayout={() => (layoutType = 'vertical')}
 			onToggleSessionPanel={() => (showSessionPanel = !showSessionPanel)}
-			onToggleSessionControlsPanel={() =>
-				(showSessionControlsPanel = !showSessionControlsPanel)}
 			onToggleEventPanel={() => (showEventPanel = !showEventPanel)}
 			onToggleSourcePanel={() => (showSourcePanel = !showSourcePanel)}
 			onTogglePnpPanel={() => (showPnpPanel = !showPnpPanel)}
@@ -820,7 +704,6 @@ function buildSnapshotFingerprint(snapshot: unknown): string {
 	sectionId={sessionPanelSectionId}
 	{attemptId}
 	{showSessionPanel}
-	{showSessionControlsPanel}
 	{showEventPanel}
 	{showSourcePanel}
 	{showPnpPanel}
@@ -828,20 +711,6 @@ function buildSnapshotFingerprint(snapshot: unknown): string {
 	showSessionDbPanel={showSessionDbPanel}
 	{sourcePanelJson}
 	isSessionHydrateDbDemo={isSessionHydrateDbDemo}
-	hostSessionSnapshot={hostSessionSnapshot}
-	sessionControlItemIds={sessionControlItemIds}
-	persistenceStorageKey={persistenceStorageKey}
-	persistenceStoragePresent={persistenceStoragePresent}
-	lastSessionSavedAt={lastSessionSavedAt}
-	lastSessionRestoredAt={lastSessionRestoredAt}
-	lastHostSessionUpdateAt={lastHostSessionUpdateAt}
-	lastSessionRefreshAt={lastSessionRefreshAt}
-	onRefreshHostSession={() => refreshHostSessionSnapshot()}
-	onPersistHostSession={() => persistHostSession()}
-	onHydrateHostSession={() => hydrateHostSession()}
-	onApplyHostSessionSnapshot={(snapshot, mode) => applyHostSessionSnapshot(snapshot, mode)}
-	onUpdateHostItemSession={(itemId, detail) => updateHostItemSession(itemId, detail)}
-	onCloseSessionControlsPanel={() => (showSessionControlsPanel = false)}
 	onCloseSourcePanel={() => (showSourcePanel = false)}
 	onCloseTtsPanel={() => (showTtsPanel = false)}
 	onCloseSessionDbPanel={() => (showSessionDbPanel = false)}

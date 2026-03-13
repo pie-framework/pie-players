@@ -33,6 +33,10 @@
 		"./PanelResizeHandle.svelte": {
 			"types": "./dist/PanelResizeHandle.svelte.d.ts",
 			"svelte": "./PanelResizeHandle.svelte"
+		},
+		"./SharedFloatingPanel.svelte": {
+			"types": "./dist/SharedFloatingPanel.svelte.d.ts",
+			"svelte": "./SharedFloatingPanel.svelte"
 		}
 	},
 	"files": [
@@ -50,7 +54,7 @@
 		"build": "vite build",
 		"dev": "vite build --watch",
 		"typecheck": "tsc --noEmit",
-		"lint": "biome check PanelWindowControls.svelte floating-panel.ts section-controller.ts index.ts vite.config.ts package.json"
+		"lint": "biome check PanelWindowControls.svelte PanelResizeHandle.svelte SharedFloatingPanel.svelte floating-panel.ts section-controller.ts index.ts vite.config.ts package.json"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.3.10",

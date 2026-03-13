@@ -1,11 +1,5 @@
 <script lang="ts">
-	import PanelResizeHandle from '@pie-players/pie-section-player-tools-shared/PanelResizeHandle.svelte';
-	import PanelWindowControls from '@pie-players/pie-section-player-tools-shared/PanelWindowControls.svelte';
-	import {
-		claimNextFloatingPanelZIndex,
-		computePanelSizeFromViewport,
-		createFloatingPanelPointerController
-	} from '@pie-players/pie-section-player-tools-shared';
+	import SharedFloatingPanel from '@pie-players/pie-section-player-tools-shared/SharedFloatingPanel.svelte';
 	import { onMount } from 'svelte';
 
 	interface Props {
@@ -24,12 +18,6 @@
 		onClose
 	}: Props = $props();
 
-	let isPanelMinimized = $state(false);
-	let panelX = $state(0);
-	let panelY = $state(0);
-	let panelWidth = $state(640);
-	let panelHeight = $state(640);
-	let dbPanelZIndex = $state(claimNextFloatingPanelZIndex());
 	let pollError = $state<string | null>(null);
 	let activeView = $state<'raw-tables' | 'reconstructed' | 'section-request'>('raw-tables');
 	let latestState = $state<Record<string, unknown> | null>(null);
@@ -46,28 +34,6 @@
 	let sectionRequestError = $state<string | null>(null);
 	let isLoadingSectionRequest = $state(false);
 	const POLL_TIMEOUT_MS = 4500;
-
-	function bringToFront(): void {
-		dbPanelZIndex = claimNextFloatingPanelZIndex();
-	}
-
-	const pointerController = createFloatingPanelPointerController({
-		getState: () => ({
-			x: panelX,
-			y: panelY,
-			width: panelWidth,
-			height: panelHeight
-		}),
-		setState: (next) => {
-			panelX = next.x;
-			panelY = next.y;
-			panelWidth = next.width;
-			panelHeight = next.height;
-		},
-		minWidth: 420,
-		minHeight: 320,
-		onFocus: bringToFront
-	});
 
 	function collectColumns(rows: Array<Record<string, unknown>>): string[] {
 		const seen = new Set<string>();
@@ -246,12 +212,6 @@
 	}
 
 	$effect(() => {
-		return () => {
-			pointerController.stop();
-		};
-	});
-
-	$effect(() => {
 		if (typeof EventSource === 'undefined') {
 			pollError = 'Live updates are not supported in this browser';
 			void fetchDbStateOnce();
@@ -289,246 +249,180 @@
 	});
 
 	onMount(() => {
-		const initial = computePanelSizeFromViewport(
-			{ width: window.innerWidth, height: window.innerHeight },
-			{
-				widthRatio: 0.38,
-				heightRatio: 0.78,
-				minWidth: 440,
-				maxWidth: 900,
-				minHeight: 380,
-				maxHeight: 900,
-				alignX: 'right',
-				alignY: 'bottom',
-				paddingX: 18,
-				paddingY: 18
-			}
-		);
-		panelX = initial.x;
-		panelY = initial.y;
-		panelWidth = initial.width;
-		panelHeight = initial.height;
+		void fetchDbStateOnce();
 	});
 </script>
 
-<aside
-	class="pie-demo-session-db-panel"
-	aria-label="Session database state panel"
-	style="left: {panelX}px; top: {panelY}px; width: {panelWidth}px; z-index: {dbPanelZIndex}; {isPanelMinimized ? 'height: auto;' : `height: ${panelHeight}px;`}"
+<SharedFloatingPanel
+	title="Session DB (Server)"
+	ariaLabel="Drag session DB panel"
+	minWidth={420}
+	minHeight={320}
+	initialSizing={{
+		widthRatio: 0.38,
+		heightRatio: 0.78,
+		minWidth: 440,
+		maxWidth: 900,
+		minHeight: 380,
+		maxHeight: 900,
+		alignX: 'right',
+		alignY: 'bottom',
+		paddingX: 18,
+		paddingY: 18
+	}}
+	className="pie-demo-session-db-panel"
+	bodyClass="pie-demo-session-db-panel__content-shell"
+	onClose={onClose}
 >
-	<div class="pie-demo-session-db-panel__header">
-		<div
-			class="pie-demo-session-db-panel__title-wrap"
-			onmousedown={(event: MouseEvent) => pointerController.startDrag(event)}
-			role="button"
-			tabindex="0"
-			aria-label="Drag session DB panel"
-		>
-			<h3 class="pie-demo-session-db-panel__title">Session DB (Server)</h3>
+	<div class="pie-demo-session-db-panel__content">
+		<div class="pie-demo-session-db-panel__meta">
+			<div><strong>assessmentId:</strong> <code>{assessmentId}</code></div>
+			<div><strong>sectionId:</strong> <code>{sectionId}</code></div>
+			<div><strong>attemptId:</strong> <code>{attemptId}</code></div>
 		</div>
-		<PanelWindowControls
-			minimized={isPanelMinimized}
-			onToggle={() => (isPanelMinimized = !isPanelMinimized)}
-			onClose={onClose}
-		/>
-	</div>
 
-	{#if !isPanelMinimized}
-		<div class="pie-demo-session-db-panel__content-shell" style="height: {panelHeight - 50}px;">
-			<div class="pie-demo-session-db-panel__content">
-				<div class="pie-demo-session-db-panel__meta">
-					<div><strong>assessmentId:</strong> <code>{assessmentId}</code></div>
-					<div><strong>sectionId:</strong> <code>{sectionId}</code></div>
-					<div><strong>attemptId:</strong> <code>{attemptId}</code></div>
-				</div>
+		<div class="pie-demo-session-db-panel__actions">
+			<button
+				type="button"
+				class="pie-demo-session-db-panel__button"
+				onclick={() => void handleResetDb()}
+				disabled={isResettingDb}
+				aria-busy={isResettingDb}
+			>
+				{isResettingDb ? 'Resetting to baseline...' : 'Reset DB to baseline'}
+			</button>
+			<button
+				type="button"
+				class="pie-demo-session-db-panel__button"
+				onclick={() => (activeView = 'raw-tables')}
+				aria-pressed={activeView === 'raw-tables'}
+			>
+				Show raw tables
+			</button>
+			<button
+				type="button"
+				class="pie-demo-session-db-panel__button"
+				onclick={() => (activeView = 'reconstructed')}
+				aria-pressed={activeView === 'reconstructed'}
+			>
+				Show reconstructed snapshots
+			</button>
+			<button
+				type="button"
+				class="pie-demo-session-db-panel__button"
+				onclick={() => (activeView = 'section-request')}
+				aria-pressed={activeView === 'section-request'}
+			>
+				Show section request
+			</button>
+		</div>
 
-				<div class="pie-demo-session-db-panel__actions">
-					<button
-						type="button"
-						class="pie-demo-session-db-panel__button"
-						onclick={() => void handleResetDb()}
-						disabled={isResettingDb}
-						aria-busy={isResettingDb}
-					>
-						{isResettingDb ? 'Resetting to baseline...' : 'Reset DB to baseline'}
-					</button>
-					<button
-						type="button"
-						class="pie-demo-session-db-panel__button"
-						onclick={() => (activeView = 'raw-tables')}
-						aria-pressed={activeView === 'raw-tables'}
-					>
-						Show raw tables
-					</button>
-					<button
-						type="button"
-						class="pie-demo-session-db-panel__button"
-						onclick={() => (activeView = 'reconstructed')}
-						aria-pressed={activeView === 'reconstructed'}
-					>
-						Show reconstructed snapshots
-					</button>
-					<button
-						type="button"
-						class="pie-demo-session-db-panel__button"
-						onclick={() => (activeView = 'section-request')}
-						aria-pressed={activeView === 'section-request'}
-					>
-						Show section request
-					</button>
-				</div>
+		{#if pollError}
+			<div class="pie-demo-session-db-panel__error">{pollError}</div>
+		{/if}
 
-				{#if pollError}
-					<div class="pie-demo-session-db-panel__error">{pollError}</div>
-				{/if}
-
-				{#if activeView === 'raw-tables'}
-					<div class="pie-demo-session-db-panel__tables">
-						<h4 class="pie-demo-session-db-panel__table-title">attempt_sessions</h4>
-						<div class="pie-demo-session-db-panel__table-wrap">
-							<table class="pie-demo-session-db-panel__table">
-								<thead>
+		{#if activeView === 'raw-tables'}
+			<div class="pie-demo-session-db-panel__tables">
+				<h4 class="pie-demo-session-db-panel__table-title">attempt_sessions</h4>
+				<div class="pie-demo-session-db-panel__table-wrap">
+					<table class="pie-demo-session-db-panel__table">
+						<thead>
+							<tr>
+								{#each attemptColumns as column}
+									<th title={column}>{abbreviateColumnName(column)}</th>
+								{/each}
+							</tr>
+						</thead>
+						<tbody>
+							{#if scopedAttemptRows.length === 0}
+								<tr><td colspan={Math.max(attemptColumns.length, 1)}>No rows</td></tr>
+							{:else}
+								{#each scopedAttemptRows as row}
 									<tr>
 										{#each attemptColumns as column}
-											<th title={column}>{abbreviateColumnName(column)}</th>
+											<td>{formatCellValue(row[column])}</td>
 										{/each}
 									</tr>
-								</thead>
-								<tbody>
-									{#if scopedAttemptRows.length === 0}
-										<tr><td colspan={Math.max(attemptColumns.length, 1)}>No rows</td></tr>
-									{:else}
-										{#each scopedAttemptRows as row}
-											<tr>
-												{#each attemptColumns as column}
-													<td>{formatCellValue(row[column])}</td>
-												{/each}
-											</tr>
-										{/each}
-									{/if}
-								</tbody>
-							</table>
-						</div>
+								{/each}
+							{/if}
+						</tbody>
+					</table>
+				</div>
 
-						<h4 class="pie-demo-session-db-panel__table-title">section_sessions</h4>
-						<div class="pie-demo-session-db-panel__table-wrap">
-							<table class="pie-demo-session-db-panel__table">
-								<thead>
+				<h4 class="pie-demo-session-db-panel__table-title">section_sessions</h4>
+				<div class="pie-demo-session-db-panel__table-wrap">
+					<table class="pie-demo-session-db-panel__table">
+						<thead>
+							<tr>
+								{#each sectionColumns as column}
+									<th title={column}>{abbreviateColumnName(column)}</th>
+								{/each}
+							</tr>
+						</thead>
+						<tbody>
+							{#if scopedSectionRows.length === 0}
+								<tr><td colspan={Math.max(sectionColumns.length, 1)}>No rows</td></tr>
+							{:else}
+								{#each scopedSectionRows as row}
 									<tr>
 										{#each sectionColumns as column}
-											<th title={column}>{abbreviateColumnName(column)}</th>
+											<td>{formatCellValue(row[column])}</td>
 										{/each}
 									</tr>
-								</thead>
-								<tbody>
-									{#if scopedSectionRows.length === 0}
-										<tr><td colspan={Math.max(sectionColumns.length, 1)}>No rows</td></tr>
-									{:else}
-										{#each scopedSectionRows as row}
-											<tr>
-												{#each sectionColumns as column}
-													<td>{formatCellValue(row[column])}</td>
-												{/each}
-											</tr>
-										{/each}
-									{/if}
-								</tbody>
-							</table>
-						</div>
+								{/each}
+							{/if}
+						</tbody>
+					</table>
+				</div>
 
-						<h4 class="pie-demo-session-db-panel__table-title">item_sessions</h4>
-						<div class="pie-demo-session-db-panel__table-wrap">
-							<table class="pie-demo-session-db-panel__table">
-								<thead>
+				<h4 class="pie-demo-session-db-panel__table-title">item_sessions</h4>
+				<div class="pie-demo-session-db-panel__table-wrap">
+					<table class="pie-demo-session-db-panel__table">
+						<thead>
+							<tr>
+								{#each itemColumns as column}
+									<th title={column}>{abbreviateColumnName(column)}</th>
+								{/each}
+							</tr>
+						</thead>
+						<tbody>
+							{#if scopedItemRows.length === 0}
+								<tr><td colspan={Math.max(itemColumns.length, 1)}>No rows</td></tr>
+							{:else}
+								{#each scopedItemRows as row}
 									<tr>
 										{#each itemColumns as column}
-											<th title={column}>{abbreviateColumnName(column)}</th>
+											<td>{formatCellValue(row[column])}</td>
 										{/each}
 									</tr>
-								</thead>
-								<tbody>
-									{#if scopedItemRows.length === 0}
-										<tr><td colspan={Math.max(itemColumns.length, 1)}>No rows</td></tr>
-									{:else}
-										{#each scopedItemRows as row}
-											<tr>
-												{#each itemColumns as column}
-													<td>{formatCellValue(row[column])}</td>
-												{/each}
-											</tr>
-										{/each}
-									{/if}
-								</tbody>
-							</table>
-						</div>
-					</div>
-				{:else if activeView === 'reconstructed'}
-					<textarea
-						class="pie-demo-session-db-panel__json"
-						readonly
-						value={reconstructedSnapshotJson}
-						spellcheck="false"
-					></textarea>
-				{:else}
-					{#if sectionRequestError}
-						<div class="pie-demo-session-db-panel__error">{sectionRequestError}</div>
-					{/if}
-					<textarea
-						class="pie-demo-session-db-panel__json"
-						readonly
-						value={isLoadingSectionRequest ? 'Loading section request...' : sectionRequestJson}
-						spellcheck="false"
-					></textarea>
-				{/if}
+								{/each}
+							{/if}
+						</tbody>
+					</table>
+				</div>
 			</div>
-		</div>
-		<PanelResizeHandle onPointerDown={(event: MouseEvent) => pointerController.startResize(event)} />
-	{/if}
-</aside>
+		{:else if activeView === 'reconstructed'}
+			<textarea
+				class="pie-demo-session-db-panel__json"
+				readonly
+				value={reconstructedSnapshotJson}
+				spellcheck="false"
+			></textarea>
+		{:else}
+			{#if sectionRequestError}
+				<div class="pie-demo-session-db-panel__error">{sectionRequestError}</div>
+			{/if}
+			<textarea
+				class="pie-demo-session-db-panel__json"
+				readonly
+				value={isLoadingSectionRequest ? 'Loading section request...' : sectionRequestJson}
+				spellcheck="false"
+			></textarea>
+		{/if}
+	</div>
+</SharedFloatingPanel>
 
 <style>
-	.pie-demo-session-db-panel {
-		position: fixed;
-		background: var(--color-base-100);
-		color: var(--color-base-content);
-		border: 2px solid var(--color-base-300, #d1d5db);
-		border-radius: 8px;
-		box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-		overflow: hidden;
-		font-family: var(--pie-font-family, Inter, system-ui, sans-serif);
-		font-size: 0.82rem;
-	}
-
-	.pie-demo-session-db-panel__header {
-		padding: 8px 16px;
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		background: var(--color-base-200, #f3f4f6);
-		border-bottom: 1px solid var(--color-base-300, #d1d5db);
-	}
-
-	.pie-demo-session-db-panel__title-wrap {
-		display: flex;
-		align-items: center;
-		flex: 1;
-		min-width: 0;
-		cursor: move;
-		user-select: none;
-	}
-
-	.pie-demo-session-db-panel__title {
-		margin: 0;
-		font-size: 0.95rem;
-		font-weight: 700;
-	}
-
-	.pie-demo-session-db-panel__content-shell {
-		display: flex;
-		flex-direction: column;
-		min-height: 0;
-	}
-
 	.pie-demo-session-db-panel__content {
 		display: flex;
 		flex-direction: column;
@@ -538,12 +432,14 @@
 		overflow-y: hidden;
 		overflow-x: hidden;
 		padding: 12px;
+		font-size: 0.8rem;
 	}
 
 	.pie-demo-session-db-panel__meta {
 		display: grid;
 		gap: 0.2rem;
 		margin-bottom: 0.55rem;
+		font-size: 0.78rem;
 	}
 
 	.pie-demo-session-db-panel__actions {
@@ -560,22 +456,15 @@
 		padding: 6px 8px;
 		font-size: 0.78rem;
 		cursor: pointer;
-		transition: background-color 120ms ease, border-color 120ms ease,
-			transform 80ms ease;
 	}
 
 	.pie-demo-session-db-panel__button:hover {
-		background: color-mix(in srgb, var(--color-primary) 12%, var(--color-base-100));
-		border-color: color-mix(in srgb, var(--color-primary) 35%, var(--color-base-300));
+		background: color-mix(in srgb, var(--color-base-200) 65%, white);
 	}
 
 	.pie-demo-session-db-panel__button[aria-pressed='true'] {
-		background: color-mix(in srgb, var(--color-primary) 15%, var(--color-base-100));
-		border-color: color-mix(in srgb, var(--color-primary) 45%, var(--color-base-300));
-	}
-
-	.pie-demo-session-db-panel__button:active {
-		transform: translateY(1px);
+		background: color-mix(in srgb, var(--color-primary, #2563eb) 18%, transparent);
+		font-weight: 600;
 	}
 
 	.pie-demo-session-db-panel__button:disabled {
@@ -618,7 +507,7 @@
 	.pie-demo-session-db-panel__table {
 		width: 100%;
 		border-collapse: collapse;
-		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+		font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 		font-size: 0.72rem;
 	}
 
@@ -643,6 +532,11 @@
 
 	.pie-demo-session-db-panel__table td {
 		white-space: nowrap;
+	}
+
+	.pie-demo-session-db-panel__meta code,
+	.pie-demo-session-db-panel__json {
+		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 	}
 
 	.pie-demo-session-db-panel__json {

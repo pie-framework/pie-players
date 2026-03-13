@@ -1,5 +1,6 @@
 export { default as PanelWindowControls } from "./PanelWindowControls.svelte";
 export { default as PanelResizeHandle } from "./PanelResizeHandle.svelte";
+export { default as SharedFloatingPanel } from "./SharedFloatingPanel.svelte";
 export {
 	createFloatingPanelPointerController,
 	computePanelSizeFromViewport,

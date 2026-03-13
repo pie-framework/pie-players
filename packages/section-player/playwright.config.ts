@@ -3,13 +3,13 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const configDir = dirname(fileURLToPath(import.meta.url));
-const sectionDemosCwd = resolve(configDir, "../../apps/section-demos");
+const workspaceRootCwd = resolve(configDir, "../..");
 const sectionDemosHost = process.env.SECTION_DEMOS_HOST || "127.0.0.1";
 const sectionDemosPort = Number(process.env.SECTION_DEMOS_PORT || "5300");
 const defaultBaseUrl = `http://${sectionDemosHost}:${sectionDemosPort}`;
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || defaultBaseUrl;
 const parsedBaseUrl = new URL(baseURL);
-const webServerCommand = `bun --bun run --cwd "${sectionDemosCwd}" dev -- --host ${parsedBaseUrl.hostname} --port ${parsedBaseUrl.port || "80"}`;
+const webServerCommand = `bun run --cwd "${workspaceRootCwd}" dev:section -- --host ${parsedBaseUrl.hostname} --port ${parsedBaseUrl.port || "80"}`;
 
 export default defineConfig({
 	testDir: "./tests",

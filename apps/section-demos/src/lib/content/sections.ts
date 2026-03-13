@@ -423,31 +423,6 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		],
 		section: demo4Section,
 	},
-	"session-persistence": {
-		id: "session-persistence",
-		name: "Session Persistence Across Sections",
-		description:
-			"Switch between multi-item section pages and keep each section's sessions via section persistence strategy",
-		focus:
-			"Shows persistence across section pages so answers survive route/page switching within the same attempt.",
-		whatMakesItTick: [
-			"Multi-page demo uses `sections[]` with page-specific `section` payloads.",
-			"Section controller persistence keys are attempt- and section-scoped.",
-			"Session controls expose persist/hydrate/apply flows for direct inspection."
-		],
-		sections: [
-			{
-				id: "session-page-one",
-				name: "Session Page One",
-				section: sessionPersistencePageOne,
-			},
-			{
-				id: "session-page-two",
-				name: "Session Page Two",
-				section: sessionPersistencePageTwo,
-			},
-		],
-	},
 	"session-hydrate-db": {
 		id: "session-hydrate-db",
 		name: "Session Hydration (Server DB)",

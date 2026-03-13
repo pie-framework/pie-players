@@ -40,22 +40,6 @@ async function openSourcePanel(page: import("@playwright/test").Page) {
 	return panel;
 }
 
-async function openSessionControlsPanel(page: import("@playwright/test").Page) {
-	const panel = page.getByRole("complementary", {
-		name: "Session controls panel",
-	});
-	if (!(await panel.isVisible())) {
-		const toggleButton = page.getByRole("button", {
-			name: "Toggle host session controls panel",
-		});
-		await expect(toggleButton).toBeVisible();
-		await expect(toggleButton).toBeEnabled();
-		await toggleButton.click();
-	}
-	await expect(panel).toBeVisible();
-	return panel;
-}
-
 async function openTTSSettingsPanel(page: import("@playwright/test").Page) {
 	const panel = page.locator(".pie-tts-dialog-backdrop");
 	if (!(await panel.isVisible())) {
@@ -95,19 +79,6 @@ async function focusPanelByHeader(args: {
 	await page.mouse.move(pointerX, pointerY);
 	await page.mouse.down();
 	await page.mouse.up();
-}
-
-async function triggerMouseDown(locator: import("@playwright/test").Locator) {
-	await locator.evaluate((node) => {
-		node.dispatchEvent(
-			new MouseEvent("mousedown", {
-				bubbles: true,
-				cancelable: true,
-				clientX: 2,
-				clientY: 2,
-			}),
-		);
-	});
 }
 
 async function assertChoiceSelectionKeepsPaneScroll(args: {
@@ -286,10 +257,9 @@ test.describe("section player controller event panel", () => {
 		const sessionPanel = await openSessionPanel(page);
 		const eventPanel = await openEventPanel(page);
 		const sourcePanel = await openSourcePanel(page);
-		const sessionControlsPanel = await openSessionControlsPanel(page);
-		const sessionHeader = sessionPanel.locator(
-			".pie-section-player-tools-session-debugger__header",
-		);
+		const sessionHeader = page.getByRole("button", {
+			name: "Drag session panel",
+		});
 		const sourceHeader = page.getByRole("button", {
 			name: "Drag source panel",
 		});
@@ -322,29 +292,10 @@ test.describe("section player controller event panel", () => {
 			})
 			.toBe(true);
 
-		const sessionControlsHeader = page.getByRole("button", {
-			name: "Drag session controls panel",
-		});
-		await triggerMouseDown(sessionControlsHeader);
-		await expect
-			.poll(async () => {
-				const controlsZ = await getLocatorZIndex(sessionControlsPanel);
-				const sourceZ = await getLocatorZIndex(sourcePanel);
-				const sessionZ = await getLocatorZIndex(
-					sessionPanel.locator(".pie-section-player-tools-session-debugger"),
-				);
-				const eventZ = await getLocatorZIndex(
-					eventPanel.locator(".pie-section-player-tools-event-debugger"),
-				);
-				return controlsZ > sourceZ && controlsZ > sessionZ && controlsZ > eventZ;
-			})
-			.toBe(true);
-
 		const ttsPanel = await openTTSSettingsPanel(page);
 		await expect
 			.poll(async () => {
 				const ttsZ = await getLocatorZIndex(ttsPanel);
-				const controlsZ = await getLocatorZIndex(sessionControlsPanel);
 				const sourceZ = await getLocatorZIndex(sourcePanel);
 				const sessionZ = await getLocatorZIndex(
 					sessionPanel.locator(".pie-section-player-tools-session-debugger"),
@@ -353,7 +304,6 @@ test.describe("section player controller event panel", () => {
 					eventPanel.locator(".pie-section-player-tools-event-debugger"),
 				);
 				return (
-					ttsZ > controlsZ &&
 					ttsZ > sourceZ &&
 					ttsZ > sessionZ &&
 					ttsZ > eventZ

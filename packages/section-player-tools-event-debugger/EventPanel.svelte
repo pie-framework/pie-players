@@ -13,16 +13,12 @@
 
 <script lang="ts">
 	import "@pie-players/pie-theme/components.css";
-	import PanelResizeHandle from "@pie-players/pie-section-player-tools-shared/PanelResizeHandle.svelte";
-	import PanelWindowControls from "@pie-players/pie-section-player-tools-shared/PanelWindowControls.svelte";
+	import SharedFloatingPanel from "@pie-players/pie-section-player-tools-shared/SharedFloatingPanel.svelte";
 	import {
-		claimNextFloatingPanelZIndex,
-		computePanelSizeFromViewport,
-		createFloatingPanelPointerController,
 		getSectionControllerFromCoordinator,
 		isMatchingSectionControllerLifecycleEvent,
 	} from "@pie-players/pie-section-player-tools-shared";
-	import { createEventDispatcher, onDestroy, onMount, untrack } from "svelte";
+	import { createEventDispatcher, onDestroy, untrack } from "svelte";
 
 	type ControllerEvent = {
 		type?: string;
@@ -102,12 +98,6 @@
 		sectionId?: string;
 		attemptId?: string;
 	} = $props();
-	let panelX = $state(380);
-	let panelY = $state(100);
-	let panelWidth = $state(500);
-	let panelHeight = $state(620);
-	let panelZIndex = $state(claimNextFloatingPanelZIndex());
-	let isMinimized = $state(false);
 	let isPaused = $state(false);
 	let selectedLevel = $state<EventLevel>("item");
 	let selectedRecordId = $state<number | null>(null);
@@ -359,31 +349,6 @@
 		});
 	}
 
-	const pointerController = createFloatingPanelPointerController({
-		getState: () => ({
-			x: panelX,
-			y: panelY,
-			width: panelWidth,
-			height: panelHeight,
-		}),
-		setState: (next: {
-			x: number;
-			y: number;
-			width: number;
-			height: number;
-		}) => {
-			panelX = next.x;
-			panelY = next.y;
-			panelWidth = next.width;
-			panelHeight = next.height;
-		},
-		minWidth: 340,
-		minHeight: 260,
-		onFocus: () => {
-			panelZIndex = claimNextFloatingPanelZIndex();
-		},
-	});
-
 	function clearRecords() {
 		records = [];
 		selectedRecordId = null;
@@ -411,28 +376,6 @@
 	const selectedRecord = $derived.by(
 		() => visibleRecords.find((record) => record.id === selectedRecordId) || visibleRecords[0] || null,
 	);
-
-	onMount(() => {
-		const initial = computePanelSizeFromViewport(
-			{ width: window.innerWidth, height: window.innerHeight },
-			{
-				widthRatio: 0.34,
-				heightRatio: 0.74,
-				minWidth: 380,
-				maxWidth: 720,
-				minHeight: 360,
-				maxHeight: 860,
-				alignX: "right",
-				alignY: "center",
-				paddingX: 16,
-				paddingY: 16,
-			},
-		);
-		panelX = initial.x;
-		panelY = initial.y;
-		panelWidth = initial.width;
-		panelHeight = initial.height;
-	});
 
 	$effect(() => {
 		void toolkitCoordinator;
@@ -474,24 +417,33 @@
 	});
 
 	onDestroy(() => {
-		pointerController.stop();
 		detachControllerSubscription();
 		detachLifecycleSubscription();
 	});
 </script>
 
-<div
-	class="pie-section-player-tools-event-debugger"
-	style="left: {panelX}px; top: {panelY}px; width: {panelWidth}px; z-index: {panelZIndex}; {isMinimized ? 'height: auto;' : `height: ${panelHeight}px;`}"
+<SharedFloatingPanel
+	title="Controller Events"
+	ariaLabel="Drag event debugger panel"
+	minWidth={360}
+	minHeight={280}
+	initialSizing={{
+		widthRatio: 0.34,
+		heightRatio: 0.74,
+		minWidth: 380,
+		maxWidth: 720,
+		minHeight: 360,
+		maxHeight: 860,
+		alignX: "right",
+		alignY: "center",
+		paddingX: 16,
+		paddingY: 16,
+	}}
+	className="pie-section-player-tools-event-debugger"
+	bodyClass="pie-section-player-tools-event-debugger__content-shell"
+	onClose={() => dispatch("close")}
 >
-	<div
-		class="pie-section-player-tools-event-debugger__header"
-		onmousedown={(event: MouseEvent) => pointerController.startDrag(event)}
-		role="button"
-		tabindex="0"
-		aria-label="Drag event debugger panel"
-	>
-		<div class="pie-section-player-tools-event-debugger__header-title">
+	<svelte:fragment slot="icon">
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
 				class="pie-section-player-tools-event-debugger__icon-sm"
@@ -501,181 +453,118 @@
 			>
 				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h8M8 14h5m-7 7h12a2 2 0 002-2V5a2 2 0 00-2-2H6a2 2 0 00-2 2v14a2 2 0 002 2z" />
 			</svg>
-			<h3 class="pie-section-player-tools-event-debugger__title">Controller Events</h3>
+	</svelte:fragment>
+
+	<div class="pie-section-player-tools-event-debugger__toolbar">
+		<div
+			class="pie-section-player-tools-event-debugger__toggle-group"
+			role="group"
+			aria-label="Event level filter"
+		>
+			<button
+				class="pie-section-player-tools-event-debugger__toggle-button"
+				class:pie-section-player-tools-event-debugger__toggle-button--active={selectedLevel ===
+					"item"}
+				onclick={() => (selectedLevel = "item")}
+				aria-pressed={selectedLevel === "item"}
+			>
+				item
+			</button>
+			<button
+				class="pie-section-player-tools-event-debugger__toggle-button"
+				class:pie-section-player-tools-event-debugger__toggle-button--active={selectedLevel ===
+					"section"}
+				onclick={() => (selectedLevel = "section")}
+				aria-pressed={selectedLevel === "section"}
+			>
+				section
+			</button>
 		</div>
-		<div class="pie-section-player-tools-event-debugger__header-actions">
-			<PanelWindowControls
-				minimized={isMinimized}
-				onToggle={() => (isMinimized = !isMinimized)}
-				onClose={() => dispatch("close")}
-			/>
-		</div>
+		<button class="pie-section-player-tools-event-debugger__button" onclick={() => (isPaused = !isPaused)}>
+			{isPaused ? "resume" : "pause"}
+		</button>
+		<button class="pie-section-player-tools-event-debugger__button" onclick={clearRecords}>
+			clear
+		</button>
+		{#if !controllerAvailable}
+			<span class="pie-section-player-tools-event-debugger__status">
+				controller unavailable
+			</span>
+		{/if}
 	</div>
 
-	{#if !isMinimized}
-		<div class="pie-section-player-tools-event-debugger__content-shell" style="height: {panelHeight - 50}px;">
-			<div class="pie-section-player-tools-event-debugger__toolbar">
-				<div
-					class="pie-section-player-tools-event-debugger__toggle-group"
-					role="group"
-					aria-label="Event level filter"
-				>
+	<div class="pie-section-player-tools-event-debugger__grid">
+		<div class="pie-section-player-tools-event-debugger__list">
+			{#if visibleRecords.length === 0}
+				<div class="pie-section-player-tools-event-debugger__empty">
+					No matching events yet. Interact with an item to capture controller events.
+				</div>
+			{:else}
+				{#each visibleRecords as record (record.id)}
 					<button
-						class="pie-section-player-tools-event-debugger__toggle-button"
-						class:pie-section-player-tools-event-debugger__toggle-button--active={selectedLevel ===
-							"item"}
-						onclick={() => (selectedLevel = "item")}
-						aria-pressed={selectedLevel === "item"}
+						class="pie-section-player-tools-event-debugger__row"
+						class:pie-section-player-tools-event-debugger__row--active={selectedRecord?.id ===
+							record.id}
+						onclick={() => (selectedRecordId = record.id)}
 					>
-						item
+						<div class="pie-section-player-tools-event-debugger__row-top">
+							<span class="pie-section-player-tools-event-debugger__event-type">{record.type}</span>
+							<span class="pie-section-player-tools-event-debugger__event-time">
+								{formatTimestamp(record.timestamp)}
+							</span>
+						</div>
+						<div class="pie-section-player-tools-event-debugger__row-meta">
+							{#if record.itemId}
+								<span>item: {record.itemId}</span>
+							{/if}
+							{#if record.intent}
+								<span>intent: {record.intent}</span>
+							{/if}
+							{#if (semanticCounts.get(record.semanticFingerprint) || 0) > record.duplicateCount}
+								<span>
+									semantic repeats: {semanticCounts.get(record.semanticFingerprint)}
+								</span>
+							{/if}
+							{#if record.duplicateCount > 1}
+								<span>dupes: {record.duplicateCount}</span>
+							{/if}
+						</div>
 					</button>
-					<button
-						class="pie-section-player-tools-event-debugger__toggle-button"
-						class:pie-section-player-tools-event-debugger__toggle-button--active={selectedLevel ===
-							"section"}
-						onclick={() => (selectedLevel = "section")}
-						aria-pressed={selectedLevel === "section"}
-					>
-						section
-					</button>
-				</div>
-				<button class="pie-section-player-tools-event-debugger__button" onclick={() => (isPaused = !isPaused)}>
-					{isPaused ? "resume" : "pause"}
-				</button>
-				<button class="pie-section-player-tools-event-debugger__button" onclick={clearRecords}>
-					clear
-				</button>
-				{#if !controllerAvailable}
-					<span class="pie-section-player-tools-event-debugger__status">
-						controller unavailable
-					</span>
-				{/if}
-			</div>
-
-			<div class="pie-section-player-tools-event-debugger__grid">
-				<div class="pie-section-player-tools-event-debugger__list">
-					{#if visibleRecords.length === 0}
-						<div class="pie-section-player-tools-event-debugger__empty">
-							No matching events yet. Interact with an item to capture controller events.
-						</div>
-					{:else}
-						{#each visibleRecords as record (record.id)}
-							<button
-								class="pie-section-player-tools-event-debugger__row"
-								class:pie-section-player-tools-event-debugger__row--active={selectedRecord?.id ===
-									record.id}
-								onclick={() => (selectedRecordId = record.id)}
-							>
-								<div class="pie-section-player-tools-event-debugger__row-top">
-									<span class="pie-section-player-tools-event-debugger__event-type">{record.type}</span>
-									<span class="pie-section-player-tools-event-debugger__event-time">
-										{formatTimestamp(record.timestamp)}
-									</span>
-								</div>
-								<div class="pie-section-player-tools-event-debugger__row-meta">
-									{#if record.itemId}
-										<span>item: {record.itemId}</span>
-									{/if}
-									{#if record.intent}
-										<span>intent: {record.intent}</span>
-									{/if}
-									{#if (semanticCounts.get(record.semanticFingerprint) || 0) > record.duplicateCount}
-										<span>
-											semantic repeats: {semanticCounts.get(record.semanticFingerprint)}
-										</span>
-									{/if}
-									{#if record.duplicateCount > 1}
-										<span>dupes: {record.duplicateCount}</span>
-									{/if}
-								</div>
-							</button>
-						{/each}
-					{/if}
-				</div>
-				<div class="pie-section-player-tools-event-debugger__detail">
-					{#if selectedRecord}
-						<div class="pie-section-player-tools-event-debugger__detail-meta">
-							<div><strong>Type:</strong> {selectedRecord.type}</div>
-							<div><strong>Target:</strong> {selectedRecord.targetTag || "unknown"}</div>
-							<div><strong>Item:</strong> {selectedRecord.itemId || "n/a"}</div>
-							<div><strong>Canonical:</strong> {selectedRecord.canonicalItemId || "n/a"}</div>
-							<div><strong>Intent:</strong> {selectedRecord.intent || "n/a"}</div>
-							<div><strong>Duplicates:</strong> {selectedRecord.duplicateCount}</div>
-							<div>
-								<strong>Semantic Repeats:</strong>
-								{semanticCounts.get(selectedRecord.semanticFingerprint) || selectedRecord.duplicateCount}
-							</div>
-						</div>
-						<pre class="pie-section-player-tools-event-debugger__pre">{JSON.stringify(
-							selectedRecord.payload,
-							null,
-							2,
-						)}</pre>
-					{:else}
-						<div class="pie-section-player-tools-event-debugger__empty">
-							Select an event to inspect payload details.
-						</div>
-					{/if}
-				</div>
-			</div>
+				{/each}
+			{/if}
 		</div>
-	{/if}
-
-	{#if !isMinimized}
-		<PanelResizeHandle onPointerDown={(event: MouseEvent) => pointerController.startResize(event)} />
-	{/if}
-</div>
+		<div class="pie-section-player-tools-event-debugger__detail">
+			{#if selectedRecord}
+				<div class="pie-section-player-tools-event-debugger__detail-meta">
+					<div><strong>Type:</strong> {selectedRecord.type}</div>
+					<div><strong>Target:</strong> {selectedRecord.targetTag || "unknown"}</div>
+					<div><strong>Item:</strong> {selectedRecord.itemId || "n/a"}</div>
+					<div><strong>Canonical:</strong> {selectedRecord.canonicalItemId || "n/a"}</div>
+					<div><strong>Intent:</strong> {selectedRecord.intent || "n/a"}</div>
+					<div><strong>Duplicates:</strong> {selectedRecord.duplicateCount}</div>
+					<div>
+						<strong>Semantic Repeats:</strong>
+						{semanticCounts.get(selectedRecord.semanticFingerprint) || selectedRecord.duplicateCount}
+					</div>
+				</div>
+				<pre class="pie-section-player-tools-event-debugger__pre">{JSON.stringify(
+					selectedRecord.payload,
+					null,
+					2,
+				)}</pre>
+			{:else}
+				<div class="pie-section-player-tools-event-debugger__empty">
+					Select an event to inspect payload details.
+				</div>
+			{/if}
+		</div>
+	</div>
+</SharedFloatingPanel>
 
 <style>
-	.pie-section-player-tools-event-debugger {
-		position: fixed;
-		z-index: 9999;
-		background: var(--color-base-100, #fff);
-		color: var(--color-base-content, #1f2937);
-		border: 2px solid var(--color-base-300, #d1d5db);
-		border-radius: 8px;
-		box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-		overflow: hidden;
-		font-family: var(--pie-font-family, Inter, system-ui, sans-serif);
-	}
-
-	.pie-section-player-tools-event-debugger__header {
-		padding: 8px 16px;
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		background: var(--color-base-200, #f3f4f6);
-		cursor: move;
-		user-select: none;
-		border-bottom: 1px solid var(--color-base-300, #d1d5db);
-	}
-
-	.pie-section-player-tools-event-debugger__header-title {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-	}
-
 	.pie-section-player-tools-event-debugger__icon-sm {
 		width: 1rem;
 		height: 1rem;
-	}
-
-	.pie-section-player-tools-event-debugger__title {
-		margin: 0;
-		font-size: 0.95rem;
-		font-weight: 700;
-	}
-
-	.pie-section-player-tools-event-debugger__header-actions {
-		display: flex;
-		gap: 4px;
-	}
-
-	.pie-section-player-tools-event-debugger__content-shell {
-		display: flex;
-		flex-direction: column;
-		min-height: 0;
 	}
 
 	.pie-section-player-tools-event-debugger__toolbar {

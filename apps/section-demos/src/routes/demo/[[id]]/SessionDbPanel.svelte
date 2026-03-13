@@ -94,6 +94,35 @@
 		return String(value);
 	}
 
+	const COLUMN_HEADER_LABELS: Record<string, string> = {
+		id: 'id',
+		assessment_id: 'asm_id',
+		attempt_id: 'att_id',
+		demo_user_id: 'demo_uid',
+		created_at: 'created',
+		updated_at: 'updated',
+		attempt_session_id: 'att_sess_id',
+		section_id: 'sec_id',
+		current_item_identifier: 'curr_item_id',
+		visited_item_identifiers: 'visited_item_ids',
+		section_session_id: 'sec_sess_id',
+		item_identifier: 'item_id',
+		canonical_item_id: 'canon_item_id',
+		session_payload: 'payload'
+	};
+
+	function abbreviateColumnName(column: string): string {
+		const explicit = COLUMN_HEADER_LABELS[column];
+		if (explicit) return explicit;
+		if (column.length <= 14) return column;
+		const parts = column.split('_').filter(Boolean);
+		if (parts.length <= 1) return column.slice(0, 14);
+		const abbreviated = parts
+			.map((part, index) => (index === parts.length - 1 ? part.slice(0, 4) : part.slice(0, 3)))
+			.join('_');
+		return abbreviated.slice(0, 18);
+	}
+
 	function applyStatePayload(payload: unknown): void {
 		const state = (payload as { state?: Record<string, unknown> } | null)?.state || {};
 		latestState = state;
@@ -361,7 +390,7 @@
 								<thead>
 									<tr>
 										{#each attemptColumns as column}
-											<th>{column}</th>
+											<th title={column}>{abbreviateColumnName(column)}</th>
 										{/each}
 									</tr>
 								</thead>
@@ -387,7 +416,7 @@
 								<thead>
 									<tr>
 										{#each sectionColumns as column}
-											<th>{column}</th>
+											<th title={column}>{abbreviateColumnName(column)}</th>
 										{/each}
 									</tr>
 								</thead>
@@ -413,7 +442,7 @@
 								<thead>
 									<tr>
 										{#each itemColumns as column}
-											<th>{column}</th>
+											<th title={column}>{abbreviateColumnName(column)}</th>
 										{/each}
 									</tr>
 								</thead>
@@ -599,7 +628,6 @@
 		border-bottom: 1px solid color-mix(in srgb, var(--color-base-content) 14%, transparent);
 		vertical-align: top;
 		text-align: left;
-		white-space: nowrap;
 	}
 
 	.pie-demo-session-db-panel__table th {
@@ -607,6 +635,14 @@
 		top: 0;
 		background: color-mix(in srgb, var(--color-base-200) 85%, white);
 		font-weight: 700;
+		font-size: 0.66rem;
+		line-height: 1.15;
+		padding: 0.18rem 0.3rem;
+		white-space: nowrap;
+	}
+
+	.pie-demo-session-db-panel__table td {
+		white-space: nowrap;
 	}
 
 	.pie-demo-session-db-panel__json {

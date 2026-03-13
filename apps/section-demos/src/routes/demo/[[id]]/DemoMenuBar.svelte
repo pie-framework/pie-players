@@ -11,6 +11,7 @@
 		showPnpPanel: boolean;
 		showTtsPanel: boolean;
 		showDbPanel: boolean;
+		showInfoDialog: boolean;
 		isSessionHydrateDbDemo: boolean;
 		selectedDaisyTheme: string;
 		daisyThemes: string[];
@@ -24,6 +25,7 @@
 		onTogglePnpPanel: () => void;
 		onToggleTtsPanel: () => void;
 		onToggleDbPanel: () => void;
+		onToggleInfoDialog: () => void;
 		onSelectDaisyTheme: (theme: string) => void;
 	}
 
@@ -39,6 +41,7 @@
 		showPnpPanel,
 		showTtsPanel,
 		showDbPanel,
+		showInfoDialog,
 		isSessionHydrateDbDemo,
 		selectedDaisyTheme,
 		daisyThemes,
@@ -52,6 +55,7 @@
 		onTogglePnpPanel,
 		onToggleTtsPanel,
 		onToggleDbPanel,
+		onToggleInfoDialog,
 		onSelectDaisyTheme
 	}: Props = $props();
 </script>
@@ -187,6 +191,20 @@
 		>
 			<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-7 8h8a2 2 0 002-2V6a2 2 0 00-2-2H8a2 2 0 00-2 2v12a2 2 0 002 2zm1-12h4m-4 4h4m-4 4h4" />
+			</svg>
+		</button>
+		<button
+			class="btn btn-sm btn-outline btn-square"
+			class:btn-active={showInfoDialog}
+			onclick={onToggleInfoDialog}
+			title="Demo info"
+			aria-label="Toggle demo info dialog"
+			aria-pressed={showInfoDialog}
+		>
+			<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+				<circle cx="12" cy="12" r="9" stroke-width="2"></circle>
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10.5v6"></path>
+				<circle cx="12" cy="7.5" r="1" fill="currentColor" stroke="none"></circle>
 			</svg>
 		</button>
 		<button

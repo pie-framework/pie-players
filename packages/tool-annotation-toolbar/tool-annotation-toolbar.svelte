@@ -10,11 +10,8 @@
 	}}
 />
 
-<svelte:head>
-	<link rel="stylesheet" href="./highlights.css">
-</svelte:head>
-
 <script lang="ts">
+	import "./highlights.css";
 	import type {
 		AssessmentToolkitRegionScopeContext,
 		AssessmentToolkitShellContext,

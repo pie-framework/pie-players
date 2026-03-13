@@ -8,6 +8,8 @@ export interface SectionDemoInfo {
 	id: string;
 	name: string;
 	description: string;
+	focus?: string;
+	whatMakesItTick?: string[];
 	section?: AssessmentSection;
 	sections?: Array<{
 		id: string;
@@ -372,18 +374,39 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		id: "single-question",
 		name: "Single Question",
 		description: "Section with one multiple choice question",
+		focus:
+			"The smallest section-player setup: one item in one section, useful for verifying baseline rendering and session wiring.",
+		whatMakesItTick: [
+			"Single `assessmentItemRefs` entry keeps section composition minimal.",
+			"Standard multiple-choice PIE element mapping (`@pie-element/multiple-choice@latest`).",
+			"Uses shared route controls (mode/layout/player) without extra persistence complexity."
+		],
 		section: demo1Section,
 	},
 	"question-passage": {
 		id: "question-passage",
 		name: "Question with Passage",
 		description: "Section with passage and related question",
+		focus:
+			"Shows how a stimulus passage and an associated item are authored and rendered together in one section.",
+		whatMakesItTick: [
+			"Passage content is supplied through `rubricBlocks` as a stimulus block.",
+			"Item and passage coexist in section JSON so layout and reading flow can be tested.",
+			"Shared demo host allows switching between student/scorer and splitpane/vertical layouts."
+		],
 		section: demo2Section,
 	},
 	"three-questions": {
 		id: "three-questions",
 		name: "Three Questions",
 		description: "Section with multiple questions in sequence",
+		focus:
+			"Exercises multi-item sequencing and navigation behavior within a single section attempt.",
+		whatMakesItTick: [
+			"Three distinct item refs in one section validate progression and state accumulation.",
+			"Same host toolchain as other demos enables easy side-by-side behavior comparison.",
+			"Useful baseline before testing advanced persistence or server-hydration flows."
+		],
 		section: demo3Section,
 	},
 	"tts-ssml": {
@@ -391,6 +414,13 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		name: "TTS with SSML",
 		description:
 			"Three items with passage - demonstrates SSML extraction, AWS SSML tags, and multi-level TTS",
+		focus:
+			"Demonstrates text-to-speech behavior across plain text, authored SSML, and backend-specific SSML handling.",
+		whatMakesItTick: [
+			"TTS settings panel lets you switch browser, Polly, and Google providers at runtime.",
+			"Section content intentionally mixes plain text and SSML-rich prompts/passages for comparison.",
+			"Toolkit tool config enables `textToSpeech` in item and passage placements."
+		],
 		section: demo4Section,
 	},
 	"session-persistence": {
@@ -398,6 +428,13 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		name: "Session Persistence Across Sections",
 		description:
 			"Switch between multi-item section pages and keep each section's sessions via section persistence strategy",
+		focus:
+			"Shows persistence across section pages so answers survive route/page switching within the same attempt.",
+		whatMakesItTick: [
+			"Multi-page demo uses `sections[]` with page-specific `section` payloads.",
+			"Section controller persistence keys are attempt- and section-scoped.",
+			"Session controls expose persist/hydrate/apply flows for direct inspection."
+		],
 		sections: [
 			{
 				id: "session-page-one",
@@ -416,6 +453,13 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		name: "Session Hydration (Server DB)",
 		description:
 			"Starts empty, hydrates from server-side seeded session data, then streams updates back to the backend database",
+		focus:
+			"Demonstrates server-backed session lifecycle: bootstrap, hydrate, live persist, and DB state inspection.",
+		whatMakesItTick: [
+			"`ToolkitCoordinator` hook `createSectionSessionPersistence` routes load/save/clear to API endpoints.",
+			"Server bootstrap endpoint seeds section data before player hydration.",
+			"DB panel streams state updates and exposes raw/reconstructed/session-request views."
+		],
 		sections: [
 			{
 				id: "session-page-one",

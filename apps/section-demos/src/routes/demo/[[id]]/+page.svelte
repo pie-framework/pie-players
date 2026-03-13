@@ -20,6 +20,7 @@
 	import '@pie-players/pie-theme/components.css';
 	import { browser } from '$app/environment';
 	import type { PageData } from './$types';
+	import DemoInfoDialog from './DemoInfoDialog.svelte';
 	import DemoMenuBar from './DemoMenuBar.svelte';
 	import DemoOverlays from './DemoOverlays.svelte';
 	import {
@@ -73,6 +74,7 @@
 	let showPnpPanel = $state(false);
 	let showTtsPanel = $state(false);
 	let showSessionDbPanel = $state(false);
+	let showDemoInfoDialog = $state(false);
 	let autoOpenedSessionDbPanel = $state(false);
 	let toolkitCoordinator: any = $state(null);
 	let demoPersistenceCoordinator = $state<any>(null);
@@ -166,6 +168,14 @@ let isTtsSsmlDemo = $derived(
 	let isSessionHydrateDbDemo = $derived(
 		String((data?.demo as any)?.id || '').toLowerCase() === 'session-hydrate-db'
 	);
+	let demoInfoFocus = $derived(
+		typeof (data?.demo as any)?.focus === 'string' ? (data?.demo as any)?.focus : ''
+	);
+	let demoInfoWhatMakesItTick = $derived.by(() => {
+		const points = (data?.demo as any)?.whatMakesItTick;
+		if (!Array.isArray(points)) return [];
+		return points.filter((entry: unknown) => typeof entry === 'string' && entry.trim().length > 0);
+	});
 	let effectiveCoordinator = $derived(
 		isSessionHydrateDbDemo ? demoPersistenceCoordinator : null
 	);
@@ -685,6 +695,7 @@ function buildSnapshotFingerprint(snapshot: unknown): string {
 			{showPnpPanel}
 			{showTtsPanel}
 			showDbPanel={showSessionDbPanel}
+			showInfoDialog={showDemoInfoDialog}
 			isSessionHydrateDbDemo={isSessionHydrateDbDemo}
 			selectedDaisyTheme={selectedDaisyTheme}
 			daisyThemes={[...DAISY_DEFAULT_THEMES]}
@@ -699,6 +710,7 @@ function buildSnapshotFingerprint(snapshot: unknown): string {
 			onTogglePnpPanel={() => (showPnpPanel = !showPnpPanel)}
 			onToggleTtsPanel={() => (showTtsPanel = !showTtsPanel)}
 			onToggleDbPanel={() => (showSessionDbPanel = !showSessionDbPanel)}
+			onToggleInfoDialog={() => (showDemoInfoDialog = !showDemoInfoDialog)}
 			onSelectDaisyTheme={handleDaisyThemeSelection}
 		/>
 
@@ -793,6 +805,15 @@ function buildSnapshotFingerprint(snapshot: unknown): string {
 		{/key}
 	</div>
 </pie-theme>
+
+<DemoInfoDialog
+	open={showDemoInfoDialog}
+	demoName={String((data?.demo as any)?.name || 'Demo')}
+	description={String((data?.demo as any)?.description || '')}
+	focus={demoInfoFocus}
+	whatMakesItTick={demoInfoWhatMakesItTick}
+	onClose={() => (showDemoInfoDialog = false)}
+/>
 
 <DemoOverlays
 	{toolkitCoordinator}

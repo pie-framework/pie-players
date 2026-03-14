@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-theme",
-	"version": "0.3.12",
+	"version": "0.3.13",
 	"type": "module",
 	"description": "Shared PIE theme tokens, css variables, and theme custom element",
 	"license": "MIT",

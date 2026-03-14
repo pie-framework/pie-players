@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-tool-text-to-speech",
-	"version": "0.3.12",
+	"version": "0.3.13",
 	"type": "module",
 	"description": "Text-to-Speech tool for PIE assessment player with word-level highlighting",
 	"repository": {

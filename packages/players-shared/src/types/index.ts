@@ -219,15 +219,18 @@ export interface QuestionEntity
 // QTI-aligned assessment model (QTI 2.x compatible shape)
 // ============================================================================
 
+export type RubricBlockView =
+	| "author"
+	| "candidate"
+	| "proctor"
+	| "scorer"
+	| "testConstructor"
+	| "tutor";
+
 export interface RubricBlock {
 	identifier?: string;
-	view:
-		| "author"
-		| "candidate"
-		| "proctor"
-		| "scorer"
-		| "testConstructor"
-		| "tutor";
+	/** QTI spec: space-separated list of roles; stored as an array */
+	view: RubricBlockView[];
 	class?: "stimulus" | "instructions" | "rubric";
 
 	/**

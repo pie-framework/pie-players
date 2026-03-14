@@ -20,7 +20,7 @@ export const demo3Section: AssessmentSection = {
 	rubricBlocks: [
 		{
 			identifier: "passage-photosynthesis",
-			view: "candidate",
+			view: ["candidate"],
 			class: "stimulus",
 			passage: {
 				id: "passage-photosynthesis-001",

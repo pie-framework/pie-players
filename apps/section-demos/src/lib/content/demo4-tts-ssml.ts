@@ -29,7 +29,7 @@ export const demo4Section: AssessmentSection = {
 	rubricBlocks: [
 		{
 			identifier: "passage-quadratic-equations",
-			view: "candidate",
+			view: ["candidate"],
 			class: "stimulus",
 			passage: {
 				id: "passage-quadratic-001",

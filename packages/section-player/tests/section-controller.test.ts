@@ -45,7 +45,7 @@ describe("SectionController external contract", () => {
 			section,
 			sectionId: "section-1",
 			assessmentId: "assessment-1",
-			view: "candidate",
+			view: ["candidate"],
 		});
 
 		const runtimeState = controller.getRuntimeState();
@@ -76,7 +76,7 @@ describe("SectionController external contract", () => {
 			section,
 			sectionId: "section-2",
 			assessmentId: "assessment-2",
-			view: "candidate",
+			view: ["candidate"],
 		});
 		controller.updateItemSession("canonical-item-2", {
 			session: { id: "session-2", data: [{ value: "x" }] },
@@ -109,7 +109,7 @@ describe("SectionController external contract", () => {
 			section,
 			sectionId: "section-4",
 			assessmentId: "assessment-4",
-			view: "candidate",
+			view: ["candidate"],
 		});
 		controller.updateItemSession("canonical-item-4", {
 			session: { id: "session-4", data: [{ value: "persisted" }] },
@@ -122,7 +122,7 @@ describe("SectionController external contract", () => {
 			},
 			sectionId: "section-4",
 			assessmentId: "assessment-4",
-			view: "candidate",
+			view: ["candidate"],
 		});
 
 		const session = controller.getSession();
@@ -167,13 +167,13 @@ describe("SectionController external contract", () => {
 			section: sectionOne,
 			sectionId: "section-1",
 			assessmentId: "assessment-1",
-			view: "candidate",
+			view: ["candidate"],
 		});
 		await controller.updateInput({
 			section: sectionTwo,
 			sectionId: "section-2",
 			assessmentId: "assessment-1",
-			view: "candidate",
+			view: ["candidate"],
 		});
 		unsubscribe();
 
@@ -205,7 +205,7 @@ describe("SectionController external contract", () => {
 			section,
 			sectionId: "section-3",
 			assessmentId: "assessment-3",
-			view: "candidate",
+			view: ["candidate"],
 		});
 		controller.handleContentRegistered({
 			itemId: "runtime-item-3",
@@ -248,7 +248,7 @@ describe("SectionController external contract", () => {
 			section,
 			sectionId: "section-clear",
 			assessmentId: "assessment-clear",
-			view: "candidate",
+			view: ["candidate"],
 		});
 
 		const events: Array<{ type: string; session?: unknown }> = [];
@@ -286,7 +286,7 @@ describe("SectionController external contract", () => {
 			section,
 			sectionId: "section-multi-restore",
 			assessmentId: "assessment-multi-restore",
-			view: "candidate",
+			view: ["candidate"],
 		});
 		await controller.applySession(
 			{
@@ -339,7 +339,7 @@ describe("SectionController external contract", () => {
 			section,
 			sectionId: "section-mixed-shapes",
 			assessmentId: "assessment-mixed-shapes",
-			view: "candidate",
+			view: ["candidate"],
 		});
 		await controller.applySession(
 			{
@@ -384,7 +384,7 @@ describe("SectionController external contract", () => {
 			section,
 			sectionId: "section-index-clamp",
 			assessmentId: "assessment-index-clamp",
-			view: "candidate",
+			view: ["candidate"],
 		});
 		await controller.applySession(
 			{
@@ -414,7 +414,7 @@ describe("SectionController external contract", () => {
 			section,
 			sectionId: "section-replay",
 			assessmentId: "assessment-replay",
-			view: "candidate",
+			view: ["candidate"],
 		});
 		const appliedEvents: Array<{ replay: boolean; itemSessionCount: number }> = [];
 		controller.subscribe((event) => {

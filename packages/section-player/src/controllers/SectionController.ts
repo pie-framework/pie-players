@@ -515,6 +515,7 @@ export class SectionController implements SectionControllerHandle {
 			currentItemId: result.eventDetail.currentItemId,
 			itemIndex: result.eventDetail.itemIndex,
 			totalItems: result.eventDetail.totalItems,
+			itemLabel: result.eventDetail.itemLabel,
 			currentItemIndex: this.state.viewModel.currentItemIndex ?? 0,
 			timestamp: result.eventDetail.timestamp,
 		};

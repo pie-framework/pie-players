@@ -19,7 +19,12 @@ export class SectionItemNavigationService {
 		if (args.index < 0 || args.index >= args.items.length) return null;
 
 		const previousItemId = args.items[args.currentItemIndex]?.id || "";
-		const currentItemId = args.items[args.index]?.id || "";
+		const destinationItem = args.items[args.index];
+		const currentItemId = destinationItem?.id || "";
+		const itemLabel =
+			typeof (destinationItem as unknown as { title?: unknown })?.title === "string"
+				? ((destinationItem as unknown as { title: string }).title.trim() || undefined)
+				: undefined;
 		const nextTestAttemptSession = upsertVisitedItem(
 			setCurrentPosition(args.testAttemptSession, {
 				currentItemIndex: args.index,
@@ -37,6 +42,7 @@ export class SectionItemNavigationService {
 				itemIndex: args.index,
 				totalItems: args.items.length,
 				timestamp: Date.now(),
+				itemLabel,
 			},
 		};
 	}

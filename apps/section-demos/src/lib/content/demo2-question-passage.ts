@@ -20,7 +20,7 @@ export const demo2Section: AssessmentSection = {
 	rubricBlocks: [
 		{
 			identifier: "passage-renaissance",
-			view: "candidate",
+			view: ["candidate"],
 			class: "stimulus",
 			passage: {
 				id: "passage-renaissance-001",

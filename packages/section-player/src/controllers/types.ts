@@ -136,6 +136,8 @@ export interface NavigationResult {
 		itemIndex: number;
 		totalItems: number;
 		timestamp: number;
+		/** Human-readable label for the destination item, derived from item.title. Used by aria-live announcements and host focus policies. */
+		itemLabel?: string;
 	};
 	testAttemptSession: TestAttemptSession;
 }
@@ -196,6 +198,8 @@ export interface ItemSelectedEvent extends ItemScopedControllerEventBase {
 	currentItemId: string;
 	itemIndex: number;
 	totalItems: number;
+	/** Human-readable label for the destination item, derived from item.title. Used by aria-live announcements and host focus policies. */
+	itemLabel?: string;
 }
 
 export interface SectionNavigationChangeEvent extends SectionControllerEventBase {

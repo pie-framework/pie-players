@@ -27,7 +27,7 @@ const sessionPersistencePageOne: AssessmentSection = {
 	rubricBlocks: [
 		{
 			identifier: "sp1-passage-dutch-trade",
-			view: "candidate",
+			view: ["candidate"],
 			class: "stimulus",
 			passage: {
 				id: "sp1-passage-dutch-trade",
@@ -200,7 +200,7 @@ const sessionPersistencePageTwo: AssessmentSection = {
 	rubricBlocks: [
 		{
 			identifier: "sp2-passage-dutch-art",
-			view: "candidate",
+			view: ["candidate"],
 			class: "stimulus",
 			passage: {
 				id: "sp2-passage-dutch-art",

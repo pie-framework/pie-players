@@ -24,6 +24,7 @@ async function validateNavigationContract(args: {
 								itemIndex?: number;
 								currentItemId?: string;
 								totalItems?: number;
+								itemLabel?: string;
 							}) => void,
 						) => () => void;
 					} | null;
@@ -36,6 +37,7 @@ async function validateNavigationContract(args: {
 								itemIndex?: number;
 								currentItemId?: string;
 								totalItems?: number;
+								itemLabel?: string;
 							}) => void,
 						) => () => void;
 					} | null>;
@@ -56,6 +58,7 @@ async function validateNavigationContract(args: {
 			currentItemId?: string;
 			itemIndex?: number;
 			totalItems?: number;
+			itemLabel?: string;
 		}> = [];
 		const controller =
 			host.getSectionController?.() ||
@@ -67,6 +70,7 @@ async function validateNavigationContract(args: {
 				currentItemId: event.currentItemId,
 				itemIndex: event.itemIndex,
 				totalItems: event.totalItems,
+				itemLabel: event.itemLabel,
 			});
 		});
 
@@ -77,6 +81,12 @@ async function validateNavigationContract(args: {
 		const afterPrev = host.selectNavigation?.();
 		await new Promise<void>((resolve) => setTimeout(resolve, 50));
 		unsubscribe?.();
+
+		// Capture the aria-live status region text after navigation.
+		// The region is rendered inside the layout scaffold's light DOM or closest ancestor.
+		const statusEl = document.querySelector(".pie-section-player-nav-status");
+		const navStatusText = statusEl ? statusEl.textContent?.trim() ?? "" : null;
+
 		return {
 			ok: true,
 			before,
@@ -85,6 +95,7 @@ async function validateNavigationContract(args: {
 			prevResult,
 			afterPrev,
 			itemSelectedEvents,
+			navStatusText,
 		};
 	}, selector);
 
@@ -93,6 +104,10 @@ async function validateNavigationContract(args: {
 	expect(result.before).toBeTruthy();
 	expect(result.afterNext).toBeTruthy();
 	expect(result.afterPrev).toBeTruthy();
+
+	// aria-live region must be present in the DOM (WCAG 4.1.3).
+	expect(result.navStatusText).not.toBeNull();
+
 	const canNext = result.before?.canNext === true;
 	if (canNext) {
 		expect(result.nextResult).toBe(true);
@@ -103,6 +118,16 @@ async function validateNavigationContract(args: {
 		expect(result.itemSelectedEvents[0]?.itemIndex).toBe(
 			result.afterNext?.currentIndex,
 		);
+
+		// itemLabel is optional (items without titles omit it) but must be a string when present.
+		const firstLabel = result.itemSelectedEvents[0]?.itemLabel;
+		if (firstLabel !== undefined) {
+			expect(typeof firstLabel).toBe("string");
+		}
+
+		// aria-live region must contain a non-empty navigation announcement after navigation.
+		expect(result.navStatusText).toBeTruthy();
+		expect(result.navStatusText).toMatch(/question\s+\d+\s+of\s+\d+/i);
 	} else {
 		expect(result.nextResult).toBe(false);
 		expect(result.afterNext?.currentIndex).toBe(result.before?.currentIndex);

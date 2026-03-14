@@ -1,6 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
-const DEMO_PATH = "/demo/tts-ssml?mode=candidate&layout=splitpane";
+const DEMO_PATH = "/tts-ssml?mode=candidate&layout=splitpane";
 
 type ToolSpec = {
 	id: string;

@@ -8,6 +8,8 @@ export interface SectionDemoInfo {
 	id: string;
 	name: string;
 	description: string;
+	integrationLevel?: number;
+	integrationTheme?: string;
 	focus?: string;
 	whatMakesItTick?: string[];
 	section?: AssessmentSection;
@@ -374,6 +376,8 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		id: "single-question",
 		name: "Single Question",
 		description: "Section with one multiple choice question",
+		integrationLevel: 1,
+		integrationTheme: "CE defaults",
 		focus:
 			"The smallest section-player setup: one item in one section, useful for verifying baseline rendering and session wiring.",
 		whatMakesItTick: [
@@ -387,6 +391,8 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		id: "question-passage",
 		name: "Question with Passage",
 		description: "Section with passage and related question",
+		integrationLevel: 2,
+		integrationTheme: "CE tool configuration",
 		focus:
 			"Shows how a stimulus passage and an associated item are authored and rendered together in one section.",
 		whatMakesItTick: [
@@ -400,6 +406,8 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		id: "three-questions",
 		name: "Three Questions",
 		description: "Section with multiple questions in sequence",
+		integrationLevel: 3,
+		integrationTheme: "Host coordinator wiring",
 		focus:
 			"Exercises multi-item sequencing and navigation behavior within a single section attempt.",
 		whatMakesItTick: [
@@ -414,6 +422,8 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		name: "TTS with SSML",
 		description:
 			"Three items with passage - demonstrates SSML extraction, AWS SSML tags, and multi-level TTS",
+		integrationLevel: 4,
+		integrationTheme: "JS API customization",
 		focus:
 			"Demonstrates text-to-speech behavior across plain text, authored SSML, and backend-specific SSML handling.",
 		whatMakesItTick: [
@@ -428,6 +438,8 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		name: "Session Hydration (Server DB)",
 		description:
 			"Starts empty, hydrates from server-side seeded session data, then streams updates back to the backend database",
+		integrationLevel: 5,
+		integrationTheme: "Persistence strategy hooks",
 		focus:
 			"Demonstrates server-backed session lifecycle: bootstrap, hydrate, live persist, and DB state inspection.",
 		whatMakesItTick: [

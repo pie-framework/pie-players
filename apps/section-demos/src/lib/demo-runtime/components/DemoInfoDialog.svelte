@@ -11,8 +11,8 @@
 	let {
 		open,
 		demoName,
-		description = "",
-		focus = "",
+		description = '',
+		focus = '',
 		whatMakesItTick = [],
 		onClose
 	}: Props = $props();
@@ -20,11 +20,11 @@
 	let closeButton = $state<HTMLButtonElement | null>(null);
 
 	let resolvedFocus = $derived(
-		focus.trim() || description.trim() || "This demo highlights key section player behavior."
+		focus.trim() || description.trim() || 'This demo highlights key section player behavior.'
 	);
 	let resolvedTickList = $derived(
 		Array.isArray(whatMakesItTick)
-			? whatMakesItTick.filter((entry) => typeof entry === "string" && entry.trim().length > 0)
+			? whatMakesItTick.filter((entry) => typeof entry === 'string' && entry.trim().length > 0)
 			: []
 	);
 
@@ -32,13 +32,13 @@
 		if (!open) return;
 		queueMicrotask(() => closeButton?.focus());
 		const handleKeydown = (event: KeyboardEvent) => {
-			if (event.key !== "Escape") return;
+			if (event.key !== 'Escape') return;
 			event.preventDefault();
 			onClose();
 		};
-		window.addEventListener("keydown", handleKeydown);
+		window.addEventListener('keydown', handleKeydown);
 		return () => {
-			window.removeEventListener("keydown", handleKeydown);
+			window.removeEventListener('keydown', handleKeydown);
 		};
 	});
 </script>

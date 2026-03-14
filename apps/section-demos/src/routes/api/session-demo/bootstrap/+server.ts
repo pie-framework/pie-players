@@ -1,4 +1,5 @@
 import { json } from "@sveltejs/kit";
+import { createSessionDemoSeedPayload } from "$lib/demo-runtime/session-demo-db-client";
 import {
 	clearAllSessionDemoData,
 	getSessionDemoState,
@@ -6,77 +7,10 @@ import {
 } from "../db";
 import type { RequestHandler } from "./$types";
 
-export const defaultSeedSections = [
-	{
-		sectionId: "session-persistence-page-one",
-		snapshot: {
-			currentItemIndex: 2,
-			visitedItemIdentifiers: ["sp1-q1", "sp1-q2", "sp1-q3"],
-			itemSessions: {
-				"sp1-q1": {
-					itemIdentifier: "sp1-q1",
-					attemptCount: 1,
-					isCompleted: true,
-					session: {
-						id: "sp1-q1-seeded",
-						complete: true,
-						data: [{ id: "sp1q1", value: "b" }],
-					},
-				},
-				"sp1-q2": {
-					itemIdentifier: "sp1-q2",
-					attemptCount: 1,
-					isCompleted: false,
-					session: {
-						id: "sp1-q2-seeded",
-						complete: false,
-						data: [{ id: "sp1q2", value: "a" }],
-					},
-				},
-				"sp1-q3": {
-					itemIdentifier: "sp1-q3",
-					attemptCount: 1,
-					isCompleted: true,
-					session: {
-						id: "sp1-q3-seeded",
-						complete: true,
-						data: [{ id: "sp1q3", value: "b" }],
-					},
-				},
-			},
-		},
-	},
-	{
-		sectionId: "session-persistence-page-two",
-		snapshot: {
-			currentItemIndex: 0,
-			visitedItemIdentifiers: ["sp2-q1", "sp2-q2"],
-			itemSessions: {
-				"sp2-q1": {
-					itemIdentifier: "sp2-q1",
-					attemptCount: 1,
-					isCompleted: true,
-					session: {
-						id: "sp2-q1-seeded",
-						complete: true,
-						data: [{ id: "sp2q1", value: "b" }],
-					},
-				},
-				"sp2-q2": {
-					itemIdentifier: "sp2-q2",
-					attemptCount: 1,
-					isCompleted: false,
-					persistWhenEmpty: true,
-					session: {
-						id: "sp2-q2-seeded",
-						complete: false,
-						data: [],
-					},
-				},
-			},
-		},
-	},
-];
+export const defaultSeedSections = createSessionDemoSeedPayload(
+	"section-demos-assessment",
+	"baseline-seed",
+).sections;
 
 export const POST: RequestHandler = async ({ request }) => {
 	const body = (await request.json().catch(() => ({}))) as {

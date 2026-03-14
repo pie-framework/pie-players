@@ -18,6 +18,10 @@
     createDefaultSoundInsertHandler,
   } from "../pie/asset-handler.js";
   import { initializeConfiguresFromLoadedBundle } from "../pie/configure-initialization.js";
+  import {
+    canPopulateCorrectResponses,
+    getCorrectResponseEnv,
+  } from "../pie/correct-response-env.js";
   import { initializePiesFromLoadedBundle } from "../pie/initialization.js";
   import { createPieLogger, isGlobalDebugEnabled } from "../pie/logger.js";
   import { findPieController } from "../pie/scoring.js";
@@ -244,15 +248,16 @@
     if (!addCorrectResponse || !itemConfig || (correctResponsesAdded && !force))
       return;
 
-    // CRITICAL: Only populate if env has instructor role (required for createCorrectResponseSession)
-    if (env.role !== "instructor" || env.mode === "evaluate") {
+    // Keep evaluate mode behavior unchanged, but preserve legacy compatibility by
+    // forcing instructor role internally when generating correct responses.
+    if (!canPopulateCorrectResponses(env)) {
       logger.debug(
-        "[PieItemPlayer] Skipping populateCorrectResponses - env not suitable (role=%s, mode=%s)",
-        env.role,
+        "[PieItemPlayer] Skipping populateCorrectResponses - env not suitable (mode=%s)",
         env.mode
       );
       return;
     }
+    const correctResponseEnv = getCorrectResponseEnv(env);
     const newSession: any[] = [];
 
     for (const model of itemConfig.models) {
@@ -267,14 +272,17 @@
       if (controller && controller.createCorrectResponseSession) {
         try {
           const correctResponse =
-            (await controller.createCorrectResponseSession(model, env)) as any;
+            (await controller.createCorrectResponseSession(
+              model,
+              correctResponseEnv
+            )) as any;
 
           // Check if we got a valid response
           if (!correctResponse) {
             logger.debug(
               "[PieItemPlayer] createCorrectResponseSession returned null for %s (env=%j)",
               model.element,
-              env
+              correctResponseEnv
             );
             continue;
           }
@@ -697,7 +705,8 @@
 
     if (addCorrectResponse && !correctResponsesAdded) {
       // Need to populate correct responses
-      // populateCorrectResponses will check if env is suitable (role === 'instructor')
+      // populateCorrectResponses preserves legacy compatibility by forcing
+      // instructor role internally for createCorrectResponseSession.
       untrack(async () => {
         await populateCorrectResponses();
         // Elements will be updated by the env/session effect below

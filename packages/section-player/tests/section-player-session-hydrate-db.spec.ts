@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 const DEMO_PATH =
-	"/demo/session-hydrate-db?mode=candidate&layout=splitpane&page=session-page-one";
+	"/session-hydrate-db?mode=candidate&layout=splitpane&page=session-page-one";
 const ASSESSMENT_ID = "section-demos-assessment";
 const SECTION_PAGE_ONE = "session-persistence-page-one";
 const SECTION_PAGE_TWO = "session-persistence-page-two";

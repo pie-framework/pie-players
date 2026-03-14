@@ -431,15 +431,15 @@
 		await checkGoogleAvailability();
 	}
 
-function refreshPollyVoices() {
-	if (activeTab !== 'polly') return;
-	void checkPollyAvailability();
-}
+	function refreshPollyVoices() {
+		if (activeTab !== 'polly') return;
+		void checkPollyAvailability();
+	}
 
-function refreshGoogleVoices() {
-	if (activeTab !== 'google') return;
-	void checkGoogleAvailability();
-}
+	function refreshGoogleVoices() {
+		if (activeTab !== 'google') return;
+		void checkGoogleAvailability();
+	}
 
 	function setActiveTab(nextTab: BackendTab) {
 		if (activeTab === nextTab) return;
@@ -571,7 +571,6 @@ function refreshGoogleVoices() {
 
 	function stopPreview() {
 		clearPreviewTracking();
-		// Returning to idle should clear transient preview messaging.
 		previewError = null;
 		previewNote = null;
 		if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
@@ -734,7 +733,6 @@ function refreshGoogleVoices() {
 				await previewServerVoice('google');
 			}
 		} catch (error) {
-			// Ignore errors from intentionally cancelled previews.
 			if (runId === previewRunId) {
 				previewError = error instanceof Error ? error.message : String(error);
 			}

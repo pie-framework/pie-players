@@ -81,7 +81,7 @@ export function applyDaisyTheme(
 	if (typeof window === "undefined") return;
 	const nextTheme = (theme || DEFAULT_DAISY_THEME).trim() || DEFAULT_DAISY_THEME;
 	const pieThemeHost =
-		(document.querySelector("pie-theme[scope=\"document\"]") as HTMLElement | null) ||
+		(document.querySelector('pie-theme[scope="document"]') as HTMLElement | null) ||
 		(document.querySelector("pie-theme") as HTMLElement | null);
 	if (pieThemeHost) {
 		if (pieThemeHost.getAttribute("theme") !== nextTheme) {
@@ -98,7 +98,7 @@ export function applyToolkitScheme(scheme: string): void {
 	if (typeof window === "undefined") return;
 	const nextScheme = (scheme || "default").trim() || "default";
 	const pieThemeHost =
-		(document.querySelector("pie-theme[scope=\"document\"]") as HTMLElement | null) ||
+		(document.querySelector('pie-theme[scope="document"]') as HTMLElement | null) ||
 		(document.querySelector("pie-theme") as HTMLElement | null);
 	if (pieThemeHost && pieThemeHost.getAttribute("scheme") !== nextScheme) {
 		pieThemeHost.setAttribute("scheme", nextScheme);

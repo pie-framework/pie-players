@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
 
-const DEMO_PATH = "/demo/tts-ssml?mode=candidate&layout=splitpane";
-const VERTICAL_DEMO_PATH = "/demo/tts-ssml?mode=candidate&layout=vertical";
-const LOADING_EVENT_DEMO_PATH = "/demo/single-question?mode=candidate&layout=splitpane";
+const DEMO_PATH = "/tts-ssml?mode=candidate&layout=splitpane";
+const VERTICAL_DEMO_PATH = "/tts-ssml?mode=candidate&layout=vertical";
+const LOADING_EVENT_DEMO_PATH = "/single-question?mode=candidate&layout=splitpane";
 
 async function openEventPanel(page: import("@playwright/test").Page) {
 	const toggleButton = page.getByRole("button", {

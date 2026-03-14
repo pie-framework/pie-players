@@ -69,7 +69,7 @@ Runtime precedence is explicit:
 - Top-level runtime-like props are treated as compatibility/override inputs when a corresponding `runtime` field is absent.
 - Toolbar placement overrides (`enabled-tools`, `item-toolbar-tools`, `passage-toolbar-tools`) are normalized on top of the runtime tools config.
 
-See `apps/section-demos/src/routes/demo/[[id]]/+page.svelte` for an end-to-end host integration.
+See the progressive demo routes in `apps/section-demos/src/routes/(demos)` (for example `single-question/+page.svelte` and `session-hydrate-db/+page.svelte`) for end-to-end host integrations.
 
 ## Data flow and stability guarantees
 

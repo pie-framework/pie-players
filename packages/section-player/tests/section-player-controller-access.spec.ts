@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
-const SPLIT_DEMO = "/demo/tts-ssml?mode=candidate&layout=splitpane";
-const VERTICAL_DEMO = "/demo/tts-ssml?mode=candidate&layout=vertical";
+const SPLIT_DEMO = "/tts-ssml?mode=candidate&layout=splitpane";
+const VERTICAL_DEMO = "/tts-ssml?mode=candidate&layout=vertical";
 
 async function validateControllerAccess(args: {
 	page: import("@playwright/test").Page;

@@ -61,6 +61,10 @@ function sectionToolbar(page: Page): Locator {
 		.first();
 }
 
+async function getComputedBackgroundColor(locator: Locator): Promise<string> {
+	return await locator.evaluate((element) => getComputedStyle(element as HTMLElement).backgroundColor);
+}
+
 test.describe("section toolbar tools", () => {
 	test("renders expected section-level tool buttons in demo defaults", async ({ page }) => {
 		test.setTimeout(180_000);
@@ -114,6 +118,34 @@ test.describe("section toolbar tools", () => {
 			await expect(button).toHaveAttribute("aria-pressed", "false");
 			await expect(host.locator(`[role="${spec.panelRole}"]`)).toHaveCount(0);
 		}
+	});
+
+	test("restores hosted shell close button background after hover", async ({ page }) => {
+		await gotoDemo(page);
+
+		const toolbar = sectionToolbar(page);
+		const graphButton = toolbar.getByRole("button", {
+			name: "Graph - Graphing calculator",
+		});
+		await expect(graphButton).toBeVisible();
+		await graphButton.click();
+		await expect(graphButton).toHaveAttribute("aria-pressed", "true");
+
+		const graphShell = page.locator('[data-pie-tool-shell="graph"]').first();
+		await expect(graphShell).toBeVisible();
+		const closeButton = graphShell.getByRole("button", { name: "Close tool" });
+		await expect(closeButton).toBeVisible();
+
+		const baseBackground = await getComputedBackgroundColor(closeButton);
+		await closeButton.hover();
+		await expect
+			.poll(async () => await getComputedBackgroundColor(closeButton))
+			.not.toBe(baseBackground);
+
+		await page.mouse.move(0, 0);
+		await expect
+			.poll(async () => await getComputedBackgroundColor(closeButton))
+			.toBe(baseBackground);
 	});
 
 	test("exposes split divider semantics and keyboard resizing in splitpane layout", async ({

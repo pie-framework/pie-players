@@ -20,6 +20,7 @@ Current status: core runtime custom elements now run with shadow DOM enabled (`s
 - [`section-player/section-structure-design.md`](./section-player/section-structure-design.md)
 - [`section-player/qti3-paired-passages-design.md`](./section-player/qti3-paired-passages-design.md)
 - [`section-player/qti-3.0-feature-support.md`](./section-player/qti-3.0-feature-support.md)
+- [`section-player/client-architecture-tutorial.md`](./section-player/client-architecture-tutorial.md) - Production-focused client integration and SectionController patterns
 
 ## Accessibility / TTS
 

@@ -1,10 +1,36 @@
 # Section Player & Assessment Toolkit — Client Integration Guide
 
-This guide is for development teams integrating the section player into production systems. It covers the architectural model, both CE-first and full JS API integration patterns, tool configuration, and the complete lifecycle around content loading and session persistence. It is not a getting-started guide — it assumes you understand web components, TypeScript, and async patterns in browser environments.
+This guide is for development teams integrating the section player into production systems. It covers the architectural model, both CE-first and full JS API integration patterns, tool configuration, and the complete lifecycle around content loading and session persistence. The focus is on mechanisms and architecture — how the pieces fit together and why. For exhaustive API details (full method signatures, option types, event payloads), refer to the TypeScript interfaces in `@pie-players/pie-assessment-toolkit` and the package-level READMEs.
+
+This is not a getting-started guide — it assumes you understand web components, TypeScript, and async patterns in browser environments.
 
 ---
 
-## 1. Architectural Model
+## 1. Why a Section Player?
+
+PIE elements and the item player are the foundation of PIE's rendering stack. They handle individual assessment items — a multiple-choice question, a drag-and-drop interaction, a constructed response — and they're used directly by several production systems at Renaissance. Many integrations need nothing more: they embed item players, wire their own session handling, and build whatever composition layer their product requires. PIE is designed to be adopted incrementally, not consumed as a monolith.
+
+But step back and look at what a real assessment screen looks like in practice:
+
+![A section as students see it — passage, items, tools, accommodations, and navigation composed into a single view](../img/schoolcity-1.png)
+
+There's a reading passage on the left paired with questions on the right. There are page-level navigation controls. Each item has its own controls — text-to-speech playback, flagging, notes. A toolbar at the bottom offers section-wide tools: calculator, graph, periodic table, protractor, line reader, ruler. Accommodation controls at the top manage audio, translation, contrast, and fullscreen mode. All of this needs coordination, shared state, and a coherent lifecycle.
+
+Every team that builds beyond the item player level ends up rebuilding some version of this composition. The section player and assessment toolkit exist to provide that layer as a ready-made, well-tested foundation — so integration teams can focus on their product's unique concerns rather than re-solving passage-item layout, tool coordination, session persistence, and accessibility plumbing.
+
+The key insight behind the section player's design is that **a section maps to a page, and a page is how we render things in a browser**. A section is the natural rendering unit for an assessment — it groups related content (a passage with its items, or a set of standalone items) into a single view with shared tools, shared session state, and a coherent navigation scope. One section fills one browser page. The section player bridges these two concepts.
+
+![PIE's layered architecture — from item rendering through section composition to assessment orchestration](../img/sp-pie-layers-overview-1-1773508771504.jpg)
+
+Tools and accommodations belong at the section level. A calculator isn't scoped to a single question — it's available across the section. Text-to-speech needs to coordinate playback across items and passages. Highlights need to persist within the section scope. The section player is the natural home for all of this coordination.
+
+In assessment terminology, "tools" (calculator, ruler, graph) and "accommodations" (text-to-speech, contrast modes, translation) are often treated as separate categories — tools are enabled per-assessment based on content requirements, while accommodations are assigned per-student based on accessibility needs. In practice the boundary is blurry: text-to-speech is an accommodation for a student with a reading disability but a general tool when enabled for all students; a line reader aids focus for students with attention difficulties and is also just a useful reading aid. The assessment toolkit treats all of these uniformly as tools at the framework level — same placement model, same provider configuration, same lifecycle. The *policy* distinction (which student sees which tools) is the host application's responsibility, not the player's. This keeps the framework simple and flexible: the toolkit doesn't need to know why a tool is enabled, only that it is.
+
+Above the section layer, a full assessment or test player coordinates sections — navigation between them, timing, submission, progress tracking — but it is primarily an orchestrator. It routes between pages; it doesn't render them. The section player remains the rendering workhorse. This guide covers that rendering layer: how to integrate the section player and assessment toolkit into a host application.
+
+---
+
+## 2. Architectural Model
 
 The system is built around three distinct layers with well-defined responsibilities. Getting these boundaries right is the most important architectural decision your integration has to make.
 
@@ -23,7 +49,7 @@ The rule is: player/toolkit handle runtime mechanics, the host handles durable d
 
 ---
 
-## 2. Integration Modes
+## 3. Integration Modes
 
 There are two ways to integrate the section player. They produce identical runtime behaviour; the difference is where the `ToolkitCoordinator` is constructed.
 
@@ -53,11 +79,11 @@ Key props you'll set via attributes:
 | `attempt-id` | `string` | Identifies the attempt (host-owned) |
 | `section` | `object` | Section content/composition model |
 | `env` | `object` | `{ mode: 'gather'/'view'/'evaluate', role: 'student'/'instructor' }` |
-| `tools` | `object` | Tool placement/provider config (see §4) |
+| `tools` | `object` | Tool placement/provider config (see §5) |
 | `show-toolbar` | `boolean` | Whether to render the section toolbar |
 | `enabled-tools` | `string` | Comma-separated list of tool IDs for the toolbar |
-| `player-type` | `string` | `'iife'` (default) or `'esm'` |
-| `lazy-init` | `boolean` | Defer internal initialization until visible |
+| `player-type` | `string` | `'iife'` (default), `'esm'`, or `'preloaded'` |
+| `lazy-init` | `boolean` | Defer toolkit initialization (default: `true`) |
 
 To obtain the coordinator and attach any hooks:
 
@@ -72,7 +98,7 @@ playerEl.addEventListener('toolkit-ready', (e: CustomEvent) => {
 
 ### JS API (full control)
 
-For any production system with its own session infrastructure, construct `ToolkitCoordinator` yourself and pass it to the element. This is the baseline integration path when your host already owns auth context, a session API, and an event model — CE-first is a shortcut for standalone deployments, not the starting point for embedded integrations.
+When your host application needs to own the coordinator lifecycle — because it manages auth context, session infrastructure, or cross-section state — construct `ToolkitCoordinator` yourself and pass it to the element. This gives you full control over initialization order, hook wiring, and service access before the player mounts.
 
 ```ts
 import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
@@ -92,7 +118,7 @@ const coordinator = new ToolkitCoordinator({
   hooks: {
     onError: (error, context) => reportError(error, context),
     async createSectionSessionPersistence(context) {
-      // See §6 for full treatment
+      // See §8 for full treatment
       return buildPersistenceStrategy(context);
     },
   },
@@ -106,7 +132,7 @@ The `coordinator` prop takes precedence over CE-generated coordinators. When you
 
 ---
 
-## 3. Content Loading
+## 4. Content Loading
 
 The section player expects a `section` object describing the composition — items, passages, and their relationships. You set this as the `section` property on the element.
 
@@ -124,7 +150,11 @@ The player tracks loading through `totalRegistered` and `totalLoaded` counters (
 
 ---
 
-## 4. Tool Configuration
+## 5. Tool Configuration
+
+Tools are placed at three levels — section, item, and passage — each with its own toolbar scope. The `ToolkitCoordinator` drives which tools appear where based on the placement configuration.
+
+![Tool placement levels — section toolbar, per-item toolbars, and per-passage toolbars driven by the ToolkitCoordinator](../img/sp-tool-placement-levels-1-1773512461444.jpg)
 
 Tool configuration flows through the `tools` property on `ToolkitCoordinator` (or directly on the element in CE-first mode). The structure normalizes to a `CanonicalToolsConfig` with three top-level keys:
 
@@ -185,22 +215,69 @@ const tools = {
 
 Tools are placed at the level specified in `placement`. A tool in `item` gets a toolbar button rendered inside each item card; a tool in `section` goes to the shared section toolbar. Tools not listed in any placement array are not visible but may still be registered internally if they have providers.
 
-The `ToolkitCoordinator` also exposes its managed services directly for host code that needs to interact with them outside the player (e.g., wiring a standalone TTS control panel or annotation toolbar):
+The `ToolkitCoordinator` also exposes its managed services directly for host code that needs to interact with them outside the player — for instance, wiring a standalone TTS control panel or annotation toolbar that your host renders separately from the player:
 
 ```ts
-coordinator.ttsService           // TTSService instance
-coordinator.highlightCoordinator // HighlightCoordinator
+coordinator.ttsService           // TTSService — playback lifecycle, provider abstraction
+coordinator.highlightCoordinator // HighlightCoordinator — TTS + annotation highlight layers
 coordinator.elementToolStateStore // ephemeral per-element tool state
 coordinator.catalogResolver      // QTI 3.0 accessibility catalog resolution
 ```
 
-**`TTSService`** manages text-to-speech playback across the section. It uses a pluggable provider architecture — the default is the browser's Web Speech API, with AWS Polly and Google TTS available as built-in server-backed alternatives. You can also implement the `ITTSProvider` interface to wire in your own backend. The service handles full playback lifecycle (play, pause, resume, stop), prevents conflicts when multiple regions try to speak simultaneously, and drives word- and sentence-level highlight tracking as audio plays. It also supports QTI 3.0 accessibility catalogs: if an item contains pre-authored spoken-content entries (SSML or plain text), the service reads those rather than synthesizing from visible DOM text.
-
-**`HighlightCoordinator`** manages two independent highlight layers using the browser's [CSS Custom Highlight API](https://developer.mozilla.org/en-US/docs/Web/API/CSS_Custom_Highlight_API) — zero DOM mutation, so the accessibility tree and screen readers always see the original text. The TTS layer marks the word or sentence currently being spoken and is cleared automatically when playback stops or advances. The annotation layer holds student-created highlights from the annotation toolbar, persisting independently so they are never cleared by TTS activity. Annotations support multiple colors (yellow, green, blue, pink, orange, underline) and their ranges are serializable via `RangeSerializer` for backend persistence.
+The TTS service uses a pluggable provider architecture (browser Web Speech API by default, with AWS Polly and Google TTS as built-in alternatives, or implement `ITTSProvider` for your own backend). The highlight coordinator manages two independent layers — TTS word/sentence tracking and student-created annotations — using the browser's CSS Custom Highlight API for zero DOM mutation. See the `@pie-players/tts` and assessment toolkit package documentation for the full service APIs.
 
 ---
 
-## 5. The SectionController Handle
+## 6. Theming
+
+PIE item elements and toolkit UI components use a shared set of CSS custom properties (`--pie-*`) for all colors, contrast states, and font scaling. You control those variables through the `<pie-theme>` custom element from `@pie-players/pie-theme`.
+
+### Basic usage
+
+Wrap the section player (and any toolkit UI) in a `<pie-theme>` element:
+
+```html
+<!-- Light theme, scoped to the element and its descendants -->
+<pie-theme theme="light">
+  <pie-section-player-splitpane ...></pie-section-player-splitpane>
+</pie-theme>
+
+<!-- Dark theme -->
+<pie-theme theme="dark">...</pie-theme>
+
+<!-- Follow the OS preference -->
+<pie-theme theme="auto">...</pie-theme>
+```
+
+To apply the theme to the entire document rather than a subtree:
+
+```html
+<pie-theme theme="light" scope="document"></pie-theme>
+```
+
+### Attributes
+
+| Attribute | Values | Purpose |
+| --- | --- | --- |
+| `theme` | `light` / `dark` / `auto` / named | Base theme. `auto` tracks `prefers-color-scheme`. Named values (e.g. DaisyUI theme names) use light base defaults while still driving provider resolution. |
+| `scope` | `self` (default) / `document` | `self` applies variables to the element itself; `document` applies them to `<html>`. |
+| `provider` | `auto` (default) / `daisyui` / custom id | How to read variables from an existing design system. `auto` tries all registered providers. |
+| `scheme` | `default` / color scheme id | Applies a color scheme overlay on top of the base theme (see color schemes below). |
+| `variables` | `Record<string, string>` | Direct CSS custom property overrides, applied last — highest specificity. |
+
+### Adapting to an existing design system
+
+The theme system uses a provider adapter model to read variables from an existing design system and map them to `--pie-*` properties. A DaisyUI adapter is built in — set `provider="daisyui"` (or leave it as `auto`) and the section player inherits your host's DaisyUI theme automatically. For other design systems, implement the `ThemeProviderAdapter` interface (`canRead`, `read`) and register it via `registerPieThemeProvider()` before mounting. For direct overrides, the `variables` property accepts a `Record<string, string>` of CSS custom properties applied with highest specificity.
+
+### Color schemes and the theme tool
+
+Color schemes are overlays on top of the base theme — sets of `--pie-*` variable overrides designed for accessibility needs like high contrast or inverted colors. PIE ships several built-in schemes and supports custom scheme registration via `registerPieColorSchemes()`. The `colorScheme` toolbar tool lets students pick their preferred scheme at runtime; the selection is stored in tool state managed by the coordinator.
+
+Separately, the `theme` toolbar tool is a student-facing control for switching between light and dark mode. This is distinct from the `<pie-theme>` element, which is developer-controlled and set at integration time. Both layers compose: your baseline sets the default, the student's runtime selection overrides it.
+
+---
+
+## 7. The SectionController Handle
 
 The `SectionControllerHandle` is the primary programmatic interface between your host and the section runtime. It lives inside the coordinator and is accessible once the player has bootstrapped.
 
@@ -227,7 +304,7 @@ if (!controller) throw new Error('Section controller did not become ready');
 
 ```ts
 // Serialization-safe snapshot — suitable as the persistence payload
-// (use via the persistence strategy described in §6, not direct saves)
+// (use via the persistence strategy described in §8, not direct saves)
 const session = controller.getSession();
 // { currentItemIndex, visitedItemIdentifiers, itemSessions: Record<string, unknown> }
 
@@ -237,7 +314,7 @@ const runtime = controller.getRuntimeState();
 //   itemIdentifiers, itemSessions, itemsComplete, completedCount, totalItems, ... }
 ```
 
-**Critical distinction**: `getSession()` produces the only serialization-safe snapshot — it is what the persistence strategy (§6) passes to your backend. `getRuntimeState()` contains derived and ephemeral fields and is not a stability-guaranteed payload; use it only for diagnostics and observability.
+**Critical distinction**: `getSession()` produces the only serialization-safe snapshot — it is what the persistence strategy (§8) passes to your backend. `getRuntimeState()` contains derived and ephemeral fields and is not a stability-guaranteed payload; use it only for diagnostics and observability.
 
 ### Mutating session state
 
@@ -275,7 +352,7 @@ await coordinator.disposeSectionController({
 
 ---
 
-## 6. Session Persistence
+## 8. Session Persistence
 
 Session persistence is wired through the `createSectionSessionPersistence` hook on `ToolkitCoordinator`. This hook is called once per `(assessmentId, sectionId, attemptId)` tuple — the return value is cached for the lifetime of that controller.
 
@@ -288,16 +365,16 @@ const coordinator = new ToolkitCoordinator({
   assessmentId,
   tools,
   hooks: {
-    async createSectionSessionPersistence(context) {
+    async createSectionSessionPersistence(context, defaults) {
       const { assessmentId, sectionId, attemptId } = context.key;
 
       return {
-        async loadSession() {
+        async loadSession(ctx) {
           const snapshot = await api.sessions.load({ assessmentId, sectionId, attemptId });
           return snapshot ?? null;
         },
 
-        async saveSession(_ctx, session) {
+        async saveSession(ctx, session) {
           await api.sessions.save({
             assessmentId,
             sectionId,
@@ -306,7 +383,7 @@ const coordinator = new ToolkitCoordinator({
           });
         },
 
-        async clearSession() {
+        async clearSession(ctx) {
           await api.sessions.delete({ assessmentId, sectionId, attemptId });
         },
       };
@@ -314,6 +391,8 @@ const coordinator = new ToolkitCoordinator({
   },
 });
 ```
+
+The hook receives two arguments: `context` (containing the `(assessmentId, sectionId, attemptId)` key) and `defaults`, which provides a `createDefaultPersistence()` factory. You can use this to wrap or fall back to the built-in localStorage strategy rather than replacing it entirely — useful for offline-first integrations that want localStorage as a local cache with a remote backend as the source of truth.
 
 The default strategy (when the hook is not provided) uses `localStorage` keyed as `pie:section-controller:v1:{assessmentId}:{sectionId}:{attemptId}`. For production, always supply your own strategy backed by a real backend.
 
@@ -344,7 +423,7 @@ coordinator.subscribeItemEvents({
 });
 ```
 
-You can also subscribe directly on the controller handle (see §7) and react to `item-session-data-changed` events — the approach is equivalent, but the coordinator helper handles scoping automatically.
+You can also subscribe directly on the controller handle (see §9) and react to `item-session-data-changed` events — the approach is equivalent, but the coordinator helper handles scoping automatically.
 
 ### The hydration sequence
 
@@ -382,7 +461,7 @@ coordinator.subscribeSectionLifecycleEvents({
 
 ---
 
-## 7. Events and Subscriptions
+## 9. Events and Subscriptions
 
 The coordinator exposes two focused subscription helpers that filter the underlying controller event stream.
 
@@ -407,6 +486,9 @@ const unsub = coordinator.subscribeItemEvents({
         break;
       case 'content-loaded':
         // event.itemId, event.contentKind ('item'|'passage'|'rubric')
+        break;
+      case 'item-session-meta-changed':
+        // event.itemId — metadata (e.g. flagged state) changed
         break;
       case 'item-player-error':
         // event.itemId, event.error
@@ -450,6 +532,9 @@ const unsub = coordinator.subscribeSectionLifecycleEvents({
       case 'section-session-applied':
         // event.mode, event.replay, event.itemSessionCount
         break;
+      case 'section-navigation-change':
+        // event.currentIndex, event.previousIndex
+        break;
       case 'section-error':
         // event.source, event.error
         break;
@@ -475,9 +560,9 @@ In multi-attempt or multi-section layouts, subscriptions without an explicit `at
 
 ---
 
-## 8. Player Element Lifecycle Events
+## 10. Player Element Lifecycle Events
 
-For session data, loading state, and completion tracking, use the coordinator subscription API (§7) — not DOM events. The coordinator gives you typed, scoped, properly filtered access to the controller event stream and is the recommended integration surface for anything involving session state.
+For session data, loading state, and completion tracking, use the coordinator subscription API (§9) — not DOM events. The coordinator gives you typed, scoped, properly filtered access to the controller event stream and is the recommended integration surface for anything involving session state.
 
 The player element does dispatch a small set of DOM `CustomEvent`s that are genuinely host-facing, because they have no coordinator equivalent:
 
@@ -495,7 +580,7 @@ Other DOM events the element dispatches (`session-changed`, `composition-changed
 
 ---
 
-## 9. Reset Flow
+## 11. Reset Flow
 
 In most production deployments, attempt lifecycle is managed server-side. The host navigates the student to a new attempt URL with a backend-minted `attemptId`, and the player mounts fresh — no client-side reset needed.
 
@@ -530,7 +615,7 @@ Key rules:
 
 ---
 
-## 10. Production Guardrails
+## 12. Production Guardrails
 
 **One coordinator per assessment context.** Create one `ToolkitCoordinator` per page/route, not one per section. Pass the same instance to all section player elements and debug/observability tools. Dual coordinator references drift in lifecycle timing and produce ambiguous event streams.
 
@@ -538,7 +623,7 @@ Key rules:
 
 **Persist `getSession()`, never `getRuntimeState()`.** The runtime state contains ephemeral fields and computed values. Only the session snapshot from `getSession()` is a stable persistence payload.
 
-**Fingerprint before saving.** Use content-based deduplication before calling `persist()` on every event to avoid redundant backend writes. See the fingerprint pattern in §6.
+**Fingerprint before saving.** Use content-based deduplication before calling `persist()` on every event to avoid redundant backend writes. See the fingerprint pattern in §8.
 
 **Handle the replay.** `section-session-applied` fires twice in a normal hydration flow. Any autosave, analytics, or derived state that triggers on this event must check `event.replay` to avoid double-firing.
 

@@ -832,9 +832,12 @@
 				closeIconEl.style.flexShrink = '0';
 				closeIconEl.style.pointerEvents = 'none';
 			}
-			closeButtonEl.style.border = '1px solid transparent';
-			closeButtonEl.style.background =
+			const closeButtonBaseBackground =
 				'color-mix(in srgb, var(--pie-white, #fff) 8%, transparent)';
+			const closeButtonHoverBackground =
+				'color-mix(in srgb, var(--pie-white, #fff) 18%, transparent)';
+			closeButtonEl.style.border = '1px solid transparent';
+			closeButtonEl.style.background = closeButtonBaseBackground;
 			closeButtonEl.style.color = 'inherit';
 			closeButtonEl.style.cursor = 'pointer';
 			closeButtonEl.style.display = 'inline-flex';
@@ -849,12 +852,10 @@
 			closeButtonEl.style.display =
 				currentArgs.mounted.entry.shell.closeable === false ? 'none' : 'inline-flex';
 			closeButtonEl.onmouseenter = () => {
-				closeButtonEl && (closeButtonEl.style.background =
-					'var(--pie-button-hover-bg, color-mix(in srgb, var(--pie-white, #fff) 18%, transparent))');
+				closeButtonEl && (closeButtonEl.style.background = closeButtonHoverBackground);
 			};
 			closeButtonEl.onmouseleave = () => {
-				closeButtonEl && (closeButtonEl.style.background =
-					'var(--pie-button-bg, color-mix(in srgb, var(--pie-white, #fff) 8%, transparent))');
+				closeButtonEl && (closeButtonEl.style.background = closeButtonBaseBackground);
 			};
 			closeButtonEl.onfocus = () => {
 				closeButtonEl && (closeButtonEl.style.outline =

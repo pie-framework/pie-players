@@ -66,6 +66,31 @@
 		saveSnapshot: saveSnapshotToSessionDb,
 		deleteSnapshot: deleteSnapshotFromSessionDb
 	};
+	const coordinator = new ToolkitCoordinator({
+		assessmentId: DEMO_ASSESSMENT_ID,
+		tools: toolkitToolsConfig,
+		hooks: {
+			onError: (error, context) => {
+				console.error('[Demo] Toolkit hook error:', context, error);
+			},
+			async createSectionSessionPersistence(context) {
+				const targetSectionId = context.key.sectionId;
+				return {
+					async loadSession() {
+						if (!dbHydrateEnabled) return null;
+						return await loadSnapshotFromDb(targetSectionId);
+					},
+					async saveSession(_ctx, session) {
+						if (!dbHydrateEnabled || isDemoDbAutoPersistSuppressed()) return;
+						await saveSnapshotToDb(targetSectionId, (session || { itemSessions: {} }) as any);
+					},
+					async clearSession() {
+						await deleteSnapshotFromDb(targetSectionId);
+					}
+				};
+			}
+		}
+	});
 
 	let selectedPlayerType = $state(getUrlEnumParam('player', PLAYER_OPTIONS, 'iife'));
 	let roleType = $state<'candidate' | 'scorer'>(getUrlEnumParam('mode', MODE_OPTIONS, 'candidate'));
@@ -78,7 +103,6 @@
 	let preloadedReady = $state(false);
 	let preloadedError = $state<string | null>(null);
 	let loadedPreloadedBundleKey = $state<string | null>(null);
-	let coordinator: any = $state(null);
 	let playerHostElement: HTMLElement | null = $state(null);
 
 	let showSessionPanel = $state(false);
@@ -248,32 +272,6 @@
 		void routeSectionId;
 		dbHydrateEnabled = true;
 		dbErrorMessage = null;
-		const nextCoordinator = new ToolkitCoordinator({
-			assessmentId: DEMO_ASSESSMENT_ID,
-			tools: toolkitToolsConfig,
-			hooks: {
-				onError: (error, context) => {
-					console.error('[Demo] Toolkit hook error:', context, error);
-				},
-				async createSectionSessionPersistence(context) {
-					const targetSectionId = context.key.sectionId;
-					return {
-						async loadSession() {
-							if (!dbHydrateEnabled) return null;
-							return await loadSnapshotFromDb(targetSectionId);
-						},
-						async saveSession(_ctx, session) {
-							if (!dbHydrateEnabled || isDemoDbAutoPersistSuppressed()) return;
-							await saveSnapshotToDb(targetSectionId, (session || { itemSessions: {} }) as any);
-						},
-						async clearSession() {
-							await deleteSnapshotFromDb(targetSectionId);
-						}
-					};
-				}
-			}
-		});
-		coordinator = nextCoordinator;
 		let cancelled = false;
 		const shouldResetOnBootstrap = bootstrappedSessionDbAttemptId !== attemptId;
 		void bootstrapSessionDemoDb(shouldResetOnBootstrap)
@@ -287,9 +285,6 @@
 			});
 		return () => {
 			cancelled = true;
-			if (coordinator === nextCoordinator) {
-				coordinator = null;
-			}
 		};
 	});
 
@@ -395,12 +390,6 @@
 			);
 			document.removeEventListener('session-changed', persistSectionSession as EventListener, true);
 		};
-	});
-
-	$effect(() => {
-		if (autoOpenedSessionDbPanel) return;
-		showSessionDbPanel = true;
-		autoOpenedSessionDbPanel = true;
 	});
 
 	async function fetchDesmosAuthConfig() {

@@ -58,10 +58,6 @@
     mode = "view" as "view" | "author",
     configuration = {} as Record<string, any>,
     authoringBackend = "demo" as "demo" | "required",
-    // Toolkit service integration (optional)
-    ttsService = null,
-    toolCoordinator = null,
-    highlightCoordinator = null,
     // Asset handler callbacks
     onInsertImage,
     onDeleteImage,
@@ -87,10 +83,6 @@
     mode?: "view" | "author";
     configuration?: Record<string, any>;
     authoringBackend?: "demo" | "required";
-    // Toolkit service integration
-    ttsService?: any;
-    toolCoordinator?: any;
-    highlightCoordinator?: any;
     // Asset handlers
     onInsertImage?: (handler: ImageHandler) => void;
     onDeleteImage?: (src: string, done: (err?: Error) => void) => void;

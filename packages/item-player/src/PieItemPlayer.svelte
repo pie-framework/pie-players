@@ -21,14 +21,10 @@
 			configuration: { attribute: "configuration", type: "Object" },
 			authoringBackend: { attribute: "authoring-backend", type: "String" },
 			loaderOptions: { type: "Object", reflect: false },
-			ttsService: { type: "Object", reflect: false },
-			toolCoordinator: { type: "Object", reflect: false },
-			highlightCoordinator: { type: "Object", reflect: false },
 			onInsertImage: { type: "Object", reflect: false },
 			onDeleteImage: { type: "Object", reflect: false },
 			onInsertSound: { type: "Object", reflect: false },
 			onDeleteSound: { type: "Object", reflect: false },
-			dispatchOnParent: { attribute: "dispatch-on-parent", type: "Boolean" },
 		},
 	}}
 />
@@ -99,14 +95,10 @@
 		configuration = {} as Record<string, any>,
 		authoringBackend = "demo" as AuthoringBackendMode,
 		loaderOptions = {} as UnifiedLoaderOptions,
-		ttsService = null as any,
-		toolCoordinator = null as any,
-		highlightCoordinator = null as any,
 		onInsertImage = null as ((handler: ImageHandler) => void) | null,
 		onDeleteImage = null as ((src: string, done: DeleteDone) => void) | null,
 		onInsertSound = null as ((handler: SoundHandler) => void) | null,
 		onDeleteSound = null as ((src: string, done: DeleteDone) => void) | null,
-		dispatchOnParent = false,
 	} = $props();
 
 	const isBrowser = typeof window !== "undefined" && typeof document !== "undefined";
@@ -435,11 +427,6 @@
 		// Dispatch from the custom element host so direct listeners on <pie-item-player>
 		// receive updates (item-demos attaches listeners on the element itself).
 		hostElement?.dispatchEvent(newEvent);
-		// Optional legacy compatibility mode for integrations that listened on parent
-		// instead of the custom element host.
-		if (dispatchOnParent) {
-			hostElement?.parentElement?.dispatchEvent(newEvent);
-		}
 	};
 
 	const handleSessionChanged = (detail: unknown) => {
@@ -512,9 +499,6 @@
 				configuration={typeof configuration === "string"
 					? JSON.parse(configuration)
 					: configuration}
-				{ttsService}
-				{toolCoordinator}
-				{highlightCoordinator}
 				onInsertImage={onInsertImage ?? undefined}
 				onDeleteImage={onDeleteImage ?? undefined}
 				onInsertSound={onInsertSound ?? undefined}

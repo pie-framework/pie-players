@@ -1,11 +1,11 @@
 import { createContext } from "@pie-players/pie-context";
 import type {
-	IAccessibilityCatalogResolver,
-	IElementToolStateStore,
-	IHighlightCoordinator,
-	IToolCoordinator,
-	IToolkitCoordinator,
-	ITTSService,
+	AccessibilityCatalogResolverApi,
+	ElementToolStateStoreApi,
+	HighlightCoordinatorApi,
+	ToolCoordinatorApi,
+	ToolkitCoordinatorApi,
+	TtsServiceApi,
 } from "../services/interfaces.js";
 
 export type ItemPlayerType = "iife" | "esm" | "preloaded" | "custom";
@@ -19,12 +19,12 @@ export interface ItemPlayerConfig {
 }
 
 export interface AssessmentToolkitRuntimeContext {
-	toolkitCoordinator: IToolkitCoordinator;
-	toolCoordinator: IToolCoordinator;
-	ttsService: ITTSService;
-	highlightCoordinator: IHighlightCoordinator;
-	catalogResolver: IAccessibilityCatalogResolver;
-	elementToolStateStore: IElementToolStateStore;
+	toolkitCoordinator: ToolkitCoordinatorApi;
+	toolCoordinator: ToolCoordinatorApi;
+	ttsService: TtsServiceApi;
+	highlightCoordinator: HighlightCoordinatorApi;
+	catalogResolver: AccessibilityCatalogResolverApi;
+	elementToolStateStore: ElementToolStateStoreApi;
 	assessmentId: string;
 	sectionId: string;
 	itemPlayer: ItemPlayerConfig;
@@ -38,7 +38,7 @@ export const assessmentToolkitRuntimeContext =
 
 export interface AssessmentToolkitHostRuntimeContext {
 	runtimeId: string;
-	coordinator: IToolkitCoordinator;
+	coordinator: ToolkitCoordinatorApi;
 }
 
 export const assessmentToolkitHostRuntimeContext =

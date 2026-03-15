@@ -234,5 +234,5 @@ AWS_REGION=us-east-1
 
 For issues with:
 - **PIE TTS integration**: See [TTS Architecture](./tts-architecture.md)
-- **Server-side setup**: See [TTS Integration Guide](../packages/tts-server-polly/examples/INTEGRATION-GUIDE.md)
+- **Server-side setup**: See [TTS Integration Guide](../../packages/tts-server-polly/examples/INTEGRATION-GUIDE.md)
 - **AWS account issues**: Contact AWS Support

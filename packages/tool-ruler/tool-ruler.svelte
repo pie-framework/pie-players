@@ -16,7 +16,7 @@
 	} from '@pie-players/pie-assessment-toolkit';
 	import type {
 		AssessmentToolkitRuntimeContext,
-		IToolCoordinator,
+		ToolCoordinatorApi,
 	} from '@pie-players/pie-assessment-toolkit';
 	import Moveable from 'moveable';
 	import { onDestroy, onMount } from 'svelte';
@@ -33,7 +33,7 @@
 	let containerEl = $state<HTMLDivElement | undefined>();
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
 	const coordinator = $derived(
-		runtimeContext?.toolCoordinator as IToolCoordinator | undefined,
+		runtimeContext?.toolCoordinator as ToolCoordinatorApi | undefined,
 	);
 	let announceText = $state('');
 	let unit = $state<'inches' | 'cm'>('inches');

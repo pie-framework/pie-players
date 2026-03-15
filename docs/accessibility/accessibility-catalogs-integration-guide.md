@@ -458,21 +458,29 @@ export class TTSService implements ITTSService {
 
 ### Integration with PNP
 
-> **Note:** `AssessmentPlayer` does not exist as a class. Integration is through the section player custom elements (`pie-section-player-splitpane`) and `ToolkitCoordinator`. The example below is conceptual pseudocode illustrating the pattern.
-
 ```typescript
-// Conceptual example — actual integration uses ToolkitCoordinator + section player custom elements
-class AssessmentPlayer {
-  private initializeTTS() {
-    this.services.ttsService.setCatalogResolver(this.catalogResolver);
-  }
+import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
 
-  private applyPersonalNeedsProfile(profile: PersonalNeedsProfile) {
-    if (profile.supports.includes('textToSpeech')) {
-      // TTS is now catalog-aware automatically
-      this.services.ttsService.initialize(new BrowserTTSProvider());
-    }
-  }
+function createCoordinatorForProfile(profile: PersonalNeedsProfile) {
+  const supportsTts = profile.supports.includes('textToSpeech');
+
+  return new ToolkitCoordinator({
+    assessmentId: 'assessment-1',
+    tools: {
+      placement: {
+        section: ['lineReader', 'ruler'],
+        item: supportsTts ? ['textToSpeech'] : [],
+        passage: supportsTts ? ['textToSpeech'] : [],
+      },
+      providers: supportsTts
+        ? {
+            textToSpeech: {
+              settings: { backend: 'browser' },
+            },
+          }
+        : {},
+    },
+  });
 }
 ```
 
@@ -486,55 +494,47 @@ The **PIE Section Player** is the primary interface for integrating accessibilit
 
 ```javascript
 import {
-  TTSService,
-  BrowserTTSProvider,
-  AccessibilityCatalogResolver,
-  ToolCoordinator,
-  HighlightCoordinator
+  ToolkitCoordinator
 } from '@pie-players/pie-assessment-toolkit';
 
-// Initialize services
-const ttsService = new TTSService();
-const toolCoordinator = new ToolCoordinator();
-const highlightCoordinator = new HighlightCoordinator();
+// Create a single runtime coordinator for the assessment surface.
+const coordinator = new ToolkitCoordinator({
+  assessmentId: assessment.id,
+  tools: {
+    placement: {
+      item: ['textToSpeech'],
+      passage: ['textToSpeech'],
+      section: ['lineReader', 'ruler'],
+    },
+    providers: {
+      textToSpeech: {
+        settings: { backend: 'browser' },
+      },
+    },
+  },
+});
 
-// Initialize catalog resolver with assessment-level catalogs
-const catalogResolver = new AccessibilityCatalogResolver(
-  assessment.accessibilityCatalogs || [],
-  'en-US'
-);
-
-// Initialize TTS with a provider
-await ttsService.initialize(new BrowserTTSProvider());
-ttsService.setCatalogResolver(catalogResolver);
-ttsService.setHighlightCoordinator(highlightCoordinator);
-
-// Pass services to section player (JavaScript properties, NOT HTML attributes)
+// Pass the coordinator to the section player via a JS property.
 const sectionPlayer = document.getElementById('section-player');
-sectionPlayer.ttsService = ttsService;
-sectionPlayer.toolCoordinator = toolCoordinator;
-sectionPlayer.highlightCoordinator = highlightCoordinator;
-sectionPlayer.catalogResolver = catalogResolver;
+sectionPlayer.coordinator = coordinator;
 
 // Set section data
 sectionPlayer.section = section;
 
 // The section player now automatically:
-// - Extracts SSML from embedded <speak> tags
-// - Generates catalog entries with unique IDs
-// - Manages item-level catalog lifecycle (add on load, clear on navigation)
-// - Renders TTS tools inline in passage/item headers
-// - Resolves catalogs with priority: extracted > item > assessment
+// - renders passage/item TTS tools from the coordinator config
+// - wires section-level runtime services through the shared toolkit boundary
+// - coordinates catalog-aware TTS behavior for the active section
 ```
 
 ### What Happens Automatically
 
-When you pass the `catalogResolver` to the section player:
+When you configure catalog-aware TTS through the section player runtime:
 
 1. **SSML Extraction**: The section player scans passages and items for embedded `<speak>` tags
 2. **Catalog Generation**: Auto-generates QTI 3.0 catalog entries with IDs like `auto-prompt-q1-0`
 3. **Lifecycle Management**: Adds item catalogs on load, clears them on navigation
-4. **TTS Tool Rendering**: Shows inline TTS buttons when `ttsService` is provided
+4. **TTS Tool Rendering**: Shows inline TTS buttons when the coordinator enables `textToSpeech`
 5. **Catalog Resolution**: Uses extracted catalogs first, then item catalogs, then assessment catalogs
 
 **You don't need to manually manage catalog lifecycle** - the section player handles it.
@@ -624,36 +624,30 @@ export const AccessiblePrompt: React.FC<{ content: string; catalogId?: string }>
 
 ### Example 1: Basic TTS with Catalogs
 
-> **Note:** `AssessmentPlayer` does not exist as a class. Integration is through the section player custom elements and `ToolkitCoordinator`. This example is conceptual pseudocode.
-
 ```typescript
-import { AssessmentPlayer } from '@pie-players/pie-assessment-toolkit';
+import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
 
-const player = new AssessmentPlayer({
-  assessment: {
-    // Assessment has spoken catalogs
-    accessibilityCatalogs: [
-      {
-        identifier: 'intro-passage',
-        cards: [
-          {
-            catalog: 'spoken',
-            language: 'en-US',
-            content: '<speak><prosody rate="medium">Welcome to the test...</prosody></speak>'
-          }
-        ]
-      }
-    ],
-    personalNeedsProfile: {
-      supports: ['textToSpeech'],
-      activateAtInit: ['textToSpeech']
-    }
+const coordinator = new ToolkitCoordinator({
+  assessmentId: 'demo-assessment',
+  tools: {
+    placement: {
+      item: ['textToSpeech'],
+      passage: ['textToSpeech'],
+      section: [],
+    },
+    providers: {
+      textToSpeech: {
+        settings: { backend: 'browser' },
+      },
+    },
   },
-  loadItem: async (id) => fetchItem(id)
 });
 
-// TTS automatically uses catalog when speaking elements with data-catalog-id
-await player.render(container);
+const player = document.querySelector('pie-section-player-splitpane');
+player.coordinator = coordinator;
+player.section = sectionWithAccessibilityCatalogs;
+
+// TTS uses authored alternatives when the rendered content exposes matching data-catalog-id values.
 ```
 
 ### Example 2: Multi-Language Support
@@ -773,7 +767,7 @@ const german = resolver.getAlternative('welcome-message', {
 
 ## References
 
-- [QTI-Inspired Feature Support](./qti-3.0-feature-support.md)
+- [Section Player Client Guide](../section-player/client-architecture-tutorial.md)
 - [APIP Specification](https://www.imsglobal.org/apip) - IMS Global APIP standard
 - [WCAG 2.2 Guidelines](https://www.w3.org/WAI/WCAG22/quickref/)
 - [Web Speech API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API)

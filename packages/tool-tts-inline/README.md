@@ -4,16 +4,19 @@ Inline TTS (Text-to-Speech) tool component for PIE Players Assessment Toolkit.
 
 ## Overview
 
-`pie-tool-tts-inline` is a web component that renders a Material Design speaker icon button for triggering TTS playback. Unlike floating modal tools, this component renders inline at its natural position in the DOM (typically in headers).
+`pie-tool-tts-inline` is a web component that renders an inline speaker trigger with an expanded floating control panel for reading controls. Unlike floating modal tools, this component renders at its natural position in the DOM (typically in passage/item headers).
 
 ## Features
 
-- Material Design speaker icon (🔊)
+- Speaker trigger that toggles an expanded panel
+- Expanded controls: Play/Pause, Stop, Fast-forward, Rewind, configurable Speed options
+- Play button switches to Pause while reading
+- Panel remains open while reading and closes on Stop
+- Arrow-key navigation within the controls toolbar
 - Registers with `ToolCoordinator` for lifecycle management
 - Integrates with `TTSService` for QTI 3.0 catalog-based TTS
 - Size variants: `sm`, `md`, `lg`
-- Visual feedback during speaking (pulse animation)
-- Full accessibility support (ARIA labels, keyboard navigation)
+- Full accessibility support (ARIA labels, `role="toolbar"`, live status updates)
 - Coordinator-controlled visibility via CSS `display` property
 
 ## Installation
@@ -87,6 +90,7 @@ toolCoordinator.showTool('tts-passage-1');
 - `catalog-id` - QTI 3.0 accessibility catalog ID for SSML lookup (default: `''`)
 - `language` - Language code for TTS (default: `'en-US'`)
 - `size` - Icon size: `'sm'` (1.5rem), `'md'` (2rem), or `'lg'` (2.5rem) (default: `'md'`)
+- `speed-options` - Optional speed options array for inline speed buttons (default: `[1.5, 2]`)
 
 ### JavaScript Properties
 
@@ -103,8 +107,16 @@ toolCoordinator.showTool('tts-passage-1');
    - **Item-level catalogs** (manually authored)
    - **Assessment-level catalogs** (manually authored)
    - **Plain text fallback** (browser TTS)
-5. **Visual Feedback**: Pulse animation while speaking, disabled state
-6. **Cleanup**: Unregisters from coordinator on unmount
+5. **Expanded Controls**:
+   - Trigger button opens/closes the panel
+   - Play/Pause toggles based on playback state
+   - Stop halts playback and closes the panel
+   - Fast-forward/Rewind invoke sentence-jump seek on `ITTSService`
+   - Speed buttons call `ttsService.updateSettings({ rate })`
+   - Selecting another speed switches active state to that option
+   - Clicking the currently active speed resets back to `1x`
+6. **Keyboard Interaction**: Arrow keys move between controls; Tab enters/leaves the toolbar
+7. **Cleanup**: Unregisters from coordinator on unmount
 
 ## SSML Extraction Integration
 
@@ -133,11 +145,11 @@ When used with the section player, this tool automatically benefits from SSML ex
 
 ## Styling
 
-The component uses inline styles and doesn't require external CSS. The button is transparent by default with hover effects:
+The component uses scoped styles and doesn't require external CSS. Styling uses `--pie-*` token variables:
 
-- **Normal**: Gray icon, transparent background
-- **Hover**: Purple icon, light gray background
-- **Speaking**: Purple icon, blue tinted background with pulse animation
+- **Trigger**: Circular speaker button that indicates panel open state
+- **Panel**: Floating card with vertically stacked controls
+- **Speed state**: Active speed button receives distinct token-driven styling
 - **Disabled**: Reduced opacity, no pointer
 
 ## Architecture

@@ -16,7 +16,7 @@
 	} from '@pie-players/pie-assessment-toolkit';
 	import type {
 		AssessmentToolkitRuntimeContext,
-		IToolCoordinator,
+		ToolCoordinatorApi,
 	} from '@pie-players/pie-assessment-toolkit';
 	import Moveable from 'moveable';
 	import { onMount } from 'svelte';
@@ -32,7 +32,7 @@
 	let containerEl = $state<HTMLDivElement | undefined>();
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
 	const coordinator = $derived(
-		runtimeContext?.toolCoordinator as IToolCoordinator | undefined,
+		runtimeContext?.toolCoordinator as ToolCoordinatorApi | undefined,
 	);
 	let announceText = $state('');
 	let moveable: Moveable | null = null;

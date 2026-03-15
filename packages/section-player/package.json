@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-section-player",
-	"version": "0.3.5",
+	"version": "0.3.13",
 	"type": "module",
 	"description": "Web component for rendering QTI 3.0 assessment sections with passages and items",
 	"license": "MIT",
@@ -101,6 +101,9 @@
 		"@pie-players/pie-item-player": "workspace:*",
 		"@pie-players/pie-context": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*",
+		"@pie-players/pie-tool-calculator-desmos": "workspace:*",
+		"@pie-players/pie-tool-text-to-speech": "workspace:*",
+		"@pie-players/pie-tool-tts-inline": "workspace:*",
 		"@pie-players/pie-toolbars": "workspace:*"
 	},
 	"devDependencies": {

@@ -8,7 +8,7 @@
  * Part of PIE Assessment Toolkit.
  */
 
-import type { II18nService } from "@pie-players/pie-players-shared/i18n";
+import type { I18nServiceApi } from "@pie-players/pie-players-shared/i18n";
 import type {
 	AccessibilityCatalogResolver,
 	CatalogLookupOptions,
@@ -19,6 +19,8 @@ import type {
 import type { HighlightColor, HighlightType } from "./HighlightCoordinator.js";
 import type {
 	SectionControllerHandle,
+	SectionItemEventSubscriptionArgs,
+	SectionScopedEventSubscriptionArgs,
 	SectionEventSubscriptionArgs,
 	ToolkitCoordinatorHooks,
 	ToolkitInitStatus,
@@ -33,15 +35,15 @@ import type {
 	TTSProviderCapabilities,
 } from "@pie-players/pie-tts";
 
-// Re-export II18nService from players-shared
-export type { II18nService };
+// Re-export I18nServiceApi from players-shared
+export type { I18nServiceApi };
 
 /**
  * Theme provider interface
  *
  * Applies consistent accessibility theming across items and tools.
  */
-export interface IThemeProvider {
+export interface ThemeProviderApi {
 	/**
 	 * Apply theme configuration
 	 */
@@ -68,7 +70,7 @@ export interface IThemeProvider {
  *
  * Manages content highlighting for TTS, annotations, and selections.
  */
-export interface IHighlightCoordinator {
+export interface HighlightCoordinatorApi {
 	/**
 	 * Highlight a text range
 	 */
@@ -134,7 +136,7 @@ export interface ToolState {
  *
  * Manages z-index layering and visibility for floating tools.
  */
-export interface IToolCoordinator {
+export interface ToolCoordinatorApi {
 	/**
 	 * Register a tool with the coordinator
 	 */
@@ -202,7 +204,7 @@ export interface IToolCoordinator {
  * Provides text-to-speech functionality with provider-based architecture.
  * Supports QTI 3.0 accessibility catalogs for pre-authored spoken content.
  */
-export interface ITTSService {
+export interface TtsServiceApi {
 	/**
 	 * Initialize TTS with a provider
 	 */
@@ -247,6 +249,16 @@ export interface ITTSService {
 	stop(): void;
 
 	/**
+	 * Seek forward by sentence units
+	 */
+	seekForward(units?: number): Promise<void>;
+
+	/**
+	 * Seek backward by sentence units
+	 */
+	seekBackward(units?: number): Promise<void>;
+
+	/**
 	 * Check if currently playing
 	 */
 	isPlaying(): boolean;
@@ -289,7 +301,7 @@ export interface ITTSService {
 	/**
 	 * Set highlight coordinator for word highlighting
 	 */
-	setHighlightCoordinator(coordinator: IHighlightCoordinator): void;
+	setHighlightCoordinator(coordinator: HighlightCoordinatorApi): void;
 
 	/**
 	 * Set accessibility catalog resolver for spoken content
@@ -303,7 +315,7 @@ export interface ITTSService {
  * Manages QTI 3.0 accessibility catalogs at assessment and item levels.
  * Provides lookup and resolution services for alternative content representations.
  */
-export interface IAccessibilityCatalogResolver {
+export interface AccessibilityCatalogResolverApi {
 	/**
 	 * Set the default language for fallback resolution
 	 */
@@ -379,7 +391,7 @@ export interface IAccessibilityCatalogResolver {
  * Manages element-level ephemeral tool state using composite keys for global uniqueness.
  * Tool state is client-only and separate from PIE session data (which is sent to server for scoring).
  */
-export interface IElementToolStateStore {
+export interface ElementToolStateStoreApi {
 	/**
 	 * Generate a globally unique element ID from components
 	 */
@@ -466,7 +478,7 @@ export interface IElementToolStateStore {
  * Orchestrates all toolkit services (TTS, tools, accessibility, state management) from a single entry point.
  * Provides centralized configuration for tool availability and settings.
  */
-export interface IToolkitCoordinator {
+export interface ToolkitCoordinatorApi {
 	/**
 	 * Assessment identifier
 	 */
@@ -484,27 +496,27 @@ export interface IToolkitCoordinator {
 	/**
 	 * TTS service
 	 */
-	readonly ttsService: ITTSService;
+	readonly ttsService: TtsServiceApi;
 
 	/**
 	 * Tool coordinator
 	 */
-	readonly toolCoordinator: IToolCoordinator;
+	readonly toolCoordinator: ToolCoordinatorApi;
 
 	/**
 	 * Highlight coordinator
 	 */
-	readonly highlightCoordinator: IHighlightCoordinator;
+	readonly highlightCoordinator: HighlightCoordinatorApi;
 
 	/**
 	 * Element tool state store
 	 */
-	readonly elementToolStateStore: IElementToolStateStore;
+	readonly elementToolStateStore: ElementToolStateStoreApi;
 
 	/**
 	 * Catalog resolver
 	 */
-	readonly catalogResolver: IAccessibilityCatalogResolver;
+	readonly catalogResolver: AccessibilityCatalogResolverApi;
 
 	/**
 	 * Tool provider registry
@@ -515,11 +527,11 @@ export interface IToolkitCoordinator {
 	 * Get all services as a bundle
 	 */
 	getServiceBundle(): {
-		ttsService: ITTSService;
-		toolCoordinator: IToolCoordinator;
-		highlightCoordinator: IHighlightCoordinator;
-		elementToolStateStore: IElementToolStateStore;
-		catalogResolver: IAccessibilityCatalogResolver;
+		ttsService: TtsServiceApi;
+		toolCoordinator: ToolCoordinatorApi;
+		highlightCoordinator: HighlightCoordinatorApi;
+		elementToolStateStore: ElementToolStateStoreApi;
+		catalogResolver: AccessibilityCatalogResolverApi;
 		toolProviderRegistry: ToolProviderRegistry;
 	};
 
@@ -583,6 +595,18 @@ export interface IToolkitCoordinator {
 	subscribeSectionEvents(args: SectionEventSubscriptionArgs): () => void;
 
 	/**
+	 * Subscribe to item-scoped section controller events.
+	 */
+	subscribeItemEvents(args: SectionItemEventSubscriptionArgs): () => void;
+
+	/**
+	 * Subscribe to section-scoped lifecycle/loading/completion/error events.
+	 */
+	subscribeSectionLifecycleEvents(
+		args: SectionScopedEventSubscriptionArgs,
+	): () => void;
+
+	/**
 	 * Create or reuse a section controller with single-flight deduplication.
 	 */
 	getOrCreateSectionController(args: {
@@ -606,4 +630,4 @@ export interface IToolkitCoordinator {
 	}): Promise<void>;
 }
 
-// II18nService is re-exported from @pie-players/pie-players-shared/i18n
+// I18nServiceApi is re-exported from @pie-players/pie-players-shared/i18n

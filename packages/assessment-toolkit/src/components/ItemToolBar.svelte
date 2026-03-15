@@ -55,7 +55,7 @@
 		isToolbarLinkItem,
 		type ToolbarItem
 	} from '../services/toolbar-items.js';
-	import type { PNPToolResolver } from '../services/PNPToolResolver.js';
+	import type { PnpToolResolver } from '../services/PNPToolResolver.js';
 	import { createPackagedToolRegistry } from '../services/createDefaultToolRegistry.js';
 	import { DEFAULT_TOOL_MODULE_LOADERS } from '../tools/default-tool-module-loaders.js';
 	import {
@@ -105,7 +105,7 @@
 		position?: 'top' | 'right' | 'bottom' | 'left' | 'none';
 		scopeElement?: HTMLElement | null;
 		toolRegistry?: ToolRegistry | null;
-		pnpResolver?: PNPToolResolver | null;
+		pnpResolver?: PnpToolResolver | null;
 		assessment?: AssessmentEntity | null;
 		itemRef?: AssessmentItemRef | null;
 		item?: ItemEntity | null;
@@ -558,10 +558,22 @@
 
 	function mountElement(node: HTMLSpanElement, element: HTMLElement | null) {
 		let mountedElement: HTMLElement | null = null;
+		const invokeElementUnmount = (value: HTMLElement | null) => {
+			if (!value) return;
+			const callback = (value as unknown as { [key: string]: unknown })[
+				'__pieToolElementUnmount'
+			];
+			if (typeof callback === 'function') {
+				(callback as () => void)();
+			}
+		};
 		const updateMountedElement = (nextElement: HTMLElement | null) => {
 			if (mountedElement === nextElement) return;
-			if (mountedElement && mountedElement.parentNode === node) {
-				node.removeChild(mountedElement);
+			if (mountedElement) {
+				invokeElementUnmount(mountedElement);
+				if (mountedElement.parentNode === node) {
+					node.removeChild(mountedElement);
+				}
 			}
 			mountedElement = nextElement;
 			if (mountedElement) {
@@ -608,6 +620,15 @@
 		let y = 0;
 		let width = currentArgs.mounted.entry.shell?.initialWidth ?? 720;
 		let height = currentArgs.mounted.entry.shell?.initialHeight ?? 560;
+		const invokeElementUnmount = (value: HTMLElement | null) => {
+			if (!value) return;
+			const callback = (value as unknown as { [key: string]: unknown })[
+				'__pieToolElementUnmount'
+			];
+			if (typeof callback === 'function') {
+				(callback as () => void)();
+			}
+		};
 		const getHostedContext = (): HostedToolContext | null => {
 			const shellConfig = currentArgs.mounted.entry.shell;
 			if (!shellConfig) return null;
@@ -658,6 +679,7 @@
 			element.style.minHeight = '0';
 			if (mountedContentElement && mountedContentElement !== element) {
 				if (mountedContentElement.parentNode === contentEl) {
+					invokeElementUnmount(mountedContentElement);
 					contentEl.removeChild(mountedContentElement);
 				}
 				mountedContentElement = null;
@@ -810,9 +832,12 @@
 				closeIconEl.style.flexShrink = '0';
 				closeIconEl.style.pointerEvents = 'none';
 			}
-			closeButtonEl.style.border = '1px solid transparent';
-			closeButtonEl.style.background =
+			const closeButtonBaseBackground =
 				'color-mix(in srgb, var(--pie-white, #fff) 8%, transparent)';
+			const closeButtonHoverBackground =
+				'color-mix(in srgb, var(--pie-white, #fff) 18%, transparent)';
+			closeButtonEl.style.border = '1px solid transparent';
+			closeButtonEl.style.background = closeButtonBaseBackground;
 			closeButtonEl.style.color = 'inherit';
 			closeButtonEl.style.cursor = 'pointer';
 			closeButtonEl.style.display = 'inline-flex';
@@ -827,12 +852,10 @@
 			closeButtonEl.style.display =
 				currentArgs.mounted.entry.shell.closeable === false ? 'none' : 'inline-flex';
 			closeButtonEl.onmouseenter = () => {
-				closeButtonEl && (closeButtonEl.style.background =
-					'var(--pie-button-hover-bg, color-mix(in srgb, var(--pie-white, #fff) 18%, transparent))');
+				closeButtonEl && (closeButtonEl.style.background = closeButtonHoverBackground);
 			};
 			closeButtonEl.onmouseleave = () => {
-				closeButtonEl && (closeButtonEl.style.background =
-					'var(--pie-button-bg, color-mix(in srgb, var(--pie-white, #fff) 8%, transparent))');
+				closeButtonEl && (closeButtonEl.style.background = closeButtonBaseBackground);
 			};
 			closeButtonEl.onfocus = () => {
 				closeButtonEl && (closeButtonEl.style.outline =
@@ -910,6 +933,7 @@
 				}
 				window.removeEventListener('resize', onWindowResize);
 				if (mountedContentElement && contentEl && mountedContentElement.parentNode === contentEl) {
+					invokeElementUnmount(mountedContentElement);
 					contentEl.removeChild(mountedContentElement);
 				}
 				mountedContentElement = null;

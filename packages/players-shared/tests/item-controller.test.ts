@@ -81,6 +81,20 @@ describe("ItemController", () => {
 		expect(out).toEqual({ id: "", data: [{ id: "q1", value: ["A"] }] });
 	});
 
+	test("allows explicit response clear updates", () => {
+		const controller = new ItemController({
+			itemId: "item-1",
+			initialSession: { id: "", data: [{ id: "q1", value: ["A", "B"] }] },
+			storage: new FakeStorage(),
+		});
+
+		const out = controller.setSession(
+			{ id: "", data: [{ id: "q1", value: [] }] },
+			{ persist: false, allowMetadataOverwrite: false },
+		);
+		expect(out).toEqual({ id: "", data: [{ id: "q1", value: [] }] });
+	});
+
 	test("updates from event detail.session payload", () => {
 		const controller = new ItemController({
 			itemId: "item-1",

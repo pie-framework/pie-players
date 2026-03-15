@@ -77,6 +77,19 @@ export function hasResponseValue(value: unknown): boolean {
 	return false;
 }
 
+export function hasResponseField(value: unknown): boolean {
+	if (value == null) return false;
+	if (Array.isArray(value)) return value.some((entry) => hasResponseField(entry));
+	if (typeof value !== "object") return false;
+	for (const [key, nested] of Object.entries(value as Record<string, unknown>)) {
+		if (key === "value") {
+			return true;
+		}
+		if (hasResponseField(nested)) return true;
+	}
+	return false;
+}
+
 function mergeElementIntoSession(
 	itemId: string,
 	previousItemSession: unknown,

@@ -50,9 +50,9 @@ export interface I18nConfig {
 }
 
 /**
- * I18nService interface
+ * I18nService API contract
  */
-export interface II18nService {
+export interface I18nServiceApi {
 	initialize(config: I18nConfig): Promise<void>;
 	t(key: string, params?: Record<string, any>): string;
 	tn(key: string, count: number, params?: Record<string, any>): string;

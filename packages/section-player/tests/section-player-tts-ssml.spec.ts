@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
-const DEMO_PATH = "/demo/tts-ssml?mode=candidate&layout=splitpane";
+const DEMO_PATH = "/tts-ssml?mode=candidate&layout=splitpane";
 const KNOWN_A11Y_BASELINE_DEBT = new Set(["aria-allowed-attr", "aria-roles", "tabindex"]);
 
 async function gotoDemo(page: Page) {
@@ -135,25 +135,86 @@ test.describe("section player demo tts-ssml", () => {
 		const snapshotCandidate = await readSessionSnapshot(sessionPanel);
 		expect(Object.keys(snapshotCandidate.itemSessions || {}).length).toBeGreaterThanOrEqual(2);
 
-		// TTS controls exist for passage and items.
-		const passageTtsButton = passageRegion.getByRole("button", { name: "Read aloud" }).first();
-		await expect(passageTtsButton).toBeVisible();
-		const itemTtsButton = q1.getByRole("button", { name: "Read aloud" });
-		await expect(itemTtsButton).toBeVisible();
+		// TTS controls exist for passage and items (toolbar button or inline expanded controls).
+		const passageInlineTts = passageRegion.locator("pie-tool-tts-inline:visible");
+		const itemInlineTts = q1.locator("pie-tool-tts-inline:visible");
+		const hasInlineTts = (await passageInlineTts.count()) > 0;
+		if (hasInlineTts) {
+			await expect(passageInlineTts.first()).toBeVisible();
+			await expect(itemInlineTts.first()).toBeVisible();
 
-		// TTS starts reading and can be stopped quickly.
-		await passageTtsButton.click();
-		const ttsStopButton = passageRegion.getByRole("button", { name: "Stop reading" });
-		await expect(ttsStopButton).toBeVisible({ timeout: 15_000 });
-		await ttsStopButton.click();
-		await expect(passageRegion.getByRole("button", { name: "Read aloud" }).first()).toBeVisible();
+			// Expanded panel flow: open controls, read, then stop.
+			const passageTrigger = passageInlineTts
+				.getByRole("button", { name: "Open reading controls" })
+				.first();
+			await passageTrigger.click();
+			const passagePanel = passageInlineTts.locator(
+				'[role="toolbar"][aria-label="Reading controls"]',
+			);
+			await expect(passagePanel).toBeVisible();
+			const passageSpeed15 = passagePanel.getByRole("button", { name: "Speed 1.5x" });
+			const passageSpeed2 = passagePanel.getByRole("button", { name: "Speed 2x" });
+			await expect(passageSpeed15).toHaveAttribute("aria-pressed", "false");
+			await expect(passageSpeed2).toHaveAttribute("aria-pressed", "false");
+			await passageSpeed15.click();
+			await expect(passageSpeed15).toHaveAttribute("aria-pressed", "true");
+			await expect(passageSpeed2).toHaveAttribute("aria-pressed", "false");
+			await passageSpeed2.click();
+			await expect(passageSpeed15).toHaveAttribute("aria-pressed", "false");
+			await expect(passageSpeed2).toHaveAttribute("aria-pressed", "true");
+			await passageSpeed2.click();
+			await expect(passageSpeed15).toHaveAttribute("aria-pressed", "false");
+			await expect(passageSpeed2).toHaveAttribute("aria-pressed", "false");
+			await passagePanel.getByRole("button", { name: "Read aloud" }).click();
+			await expect(
+				passagePanel.getByRole("button", { name: /Pause reading|Resume reading/ }),
+			).toBeVisible({ timeout: 15_000 });
+			await passagePanel.getByRole("button", { name: "Stop reading" }).click();
+			await expect(passagePanel).toHaveCount(0);
 
-		// Item-level TTS should also toggle its local UI state.
-		await itemTtsButton.click();
-		const itemTtsStopButton = q1.getByRole("button", { name: "Stop reading" });
-		await expect(itemTtsStopButton).toBeVisible({ timeout: 15_000 });
-		await itemTtsStopButton.click();
-		await expect(q1.getByRole("button", { name: "Read aloud" })).toBeVisible();
+			// Item-level inline flow.
+			const itemTrigger = itemInlineTts
+				.getByRole("button", { name: "Open reading controls" })
+				.first();
+			await itemTrigger.click();
+			const itemPanel = itemInlineTts.locator('[role="toolbar"][aria-label="Reading controls"]');
+			await expect(itemPanel).toBeVisible();
+			await itemPanel.getByRole("button", { name: "Read aloud" }).click();
+			await expect(
+				itemPanel.getByRole("button", { name: /Pause reading|Resume reading/ }),
+			).toBeVisible({ timeout: 15_000 });
+			await itemPanel.getByRole("button", { name: "Stop reading" }).click();
+			await expect(itemPanel).toHaveCount(0);
+
+			// Keyboard operability inside expanded controls.
+			await passageTrigger.click();
+			await expect(passagePanel).toBeVisible();
+			await passagePanel.getByRole("button", { name: "Read aloud" }).click();
+			const pauseOrResume = passagePanel.getByRole("button", {
+				name: /Pause reading|Resume reading/,
+			});
+			await expect(pauseOrResume).toBeVisible({ timeout: 15_000 });
+			await pauseOrResume.focus();
+			await page.keyboard.press("ArrowDown");
+			await expect(passagePanel.getByRole("button", { name: "Stop reading" })).toBeFocused();
+			await passagePanel.getByRole("button", { name: "Stop reading" }).click();
+			await expect(passagePanel).toHaveCount(0);
+		} else {
+			const passageTtsButton = passageRegion
+				.getByRole("button", { name: "Read aloud" })
+				.first();
+			await expect(passageTtsButton).toBeVisible();
+			const itemTtsButton = q1.getByRole("button", { name: "Read aloud" });
+			await expect(itemTtsButton).toBeVisible();
+			await passageTtsButton.click();
+			const ttsStopButton = passageRegion.getByRole("button", { name: "Stop reading" });
+			await expect(ttsStopButton).toBeVisible({ timeout: 15_000 });
+			await ttsStopButton.click();
+			await itemTtsButton.click();
+			const itemTtsStopButton = q1.getByRole("button", { name: "Stop reading" });
+			await expect(itemTtsStopButton).toBeVisible({ timeout: 15_000 });
+			await itemTtsStopButton.click();
+		}
 
 		// TTS settings updates should apply to the active browser-backed runtime config.
 		const ttsSettingsToggle = page.getByRole("button", {

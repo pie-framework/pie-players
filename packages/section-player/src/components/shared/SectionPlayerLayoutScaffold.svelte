@@ -9,6 +9,7 @@
 	} from "./section-player-card-context.js";
 	import type { SectionControllerHandle } from "@pie-players/pie-assessment-toolkit";
 	import { coerceBooleanLike } from "./section-player-props.js";
+	import { onDestroy } from "svelte";
 
 	let {
 		runtime = null as Record<string, unknown> | null,
@@ -44,6 +45,35 @@
 		onToolkitReady?: (event: Event) => void;
 	}>();
 	let cardContextAnchor = $state<HTMLDivElement | null>(null);
+	let navigationStatusMessage = $state("");
+	let unsubscribeNavigationStatus: (() => void) | null = null;
+
+	function buildStatusMessage(event: { itemIndex?: number; totalItems?: number; itemLabel?: string }): string {
+		const position = typeof event.itemIndex === "number" ? event.itemIndex + 1 : null;
+		const total = typeof event.totalItems === "number" ? event.totalItems : null;
+		if (event.itemLabel && position !== null && total !== null) {
+			return `${event.itemLabel}, question ${position} of ${total}`;
+		}
+		if (position !== null && total !== null) {
+			return `Question ${position} of ${total}`;
+		}
+		return "";
+	}
+
+	function subscribeNavigationStatus(controller: SectionControllerHandle | null): void {
+		unsubscribeNavigationStatus?.();
+		unsubscribeNavigationStatus = null;
+		if (!controller?.subscribe) return;
+		unsubscribeNavigationStatus = controller.subscribe((event: any) => {
+			if (event?.type !== "item-selected") return;
+			navigationStatusMessage = buildStatusMessage(event);
+		});
+	}
+
+	onDestroy(() => {
+		unsubscribeNavigationStatus?.();
+	});
+
 	let baseElement = $state<{
 		navigateToItem?: (index: number) => unknown;
 		getCompositionModelSnapshot?: () => unknown;
@@ -92,6 +122,9 @@
 
 	function handleToolkitReady(event: Event) {
 		onToolkitReady?.(event);
+		// Subscribe for navigation announcements as soon as the controller is available.
+		const controller = baseElement?.getSectionController?.() ?? null;
+		subscribeNavigationStatus(controller);
 	}
 
 	export function navigateToItem(index: number): boolean {
@@ -155,6 +188,12 @@
 </script>
 
 <div bind:this={cardContextAnchor} class="pie-section-player-layout-scaffold-anchor" aria-hidden="true"></div>
+<div
+	class="pie-section-player-nav-status"
+	role="status"
+	aria-live="polite"
+	aria-atomic="true"
+>{navigationStatusMessage}</div>
 <pie-section-player-base
 	bind:this={baseElement}
 	{runtime}
@@ -181,5 +220,18 @@
 <style>
 	.pie-section-player-layout-scaffold-anchor {
 		display: none;
+	}
+
+	/* Visually hidden but available to screen readers (WCAG 4.1.3). */
+	.pie-section-player-nav-status {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
 	}
 </style>

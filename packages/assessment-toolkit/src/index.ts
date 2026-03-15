@@ -61,14 +61,14 @@ export {
 // ============================================================================
 
 export type {
-	IAccessibilityCatalogResolver,
-	IElementToolStateStore,
-	IHighlightCoordinator,
-	II18nService,
-	IThemeProvider,
-	IToolCoordinator,
-	IToolkitCoordinator,
-	ITTSService,
+	AccessibilityCatalogResolverApi,
+	ElementToolStateStoreApi,
+	HighlightCoordinatorApi,
+	I18nServiceApi,
+	ThemeProviderApi,
+	ToolCoordinatorApi,
+	ToolkitCoordinatorApi,
+	TtsServiceApi,
 	ToolState,
 } from "./services/interfaces.js";
 
@@ -165,18 +165,18 @@ export type {
 	ResolvedToolConfig,
 	ToolResolutionResult,
 } from "./services/PNPToolResolver.js";
-export { PNPToolResolver } from "./services/PNPToolResolver.js";
+export { PnpToolResolver } from "./services/PNPToolResolver.js";
 // PNP Provenance Tracking
 export type {
 	FeatureResolutionTrail,
-	PNPResolutionProvenance,
+	PnpResolutionProvenance,
 	ResolutionDecision,
 } from "./services/pnp-provenance.js";
 export {
 	formatProvenanceAsJSON,
 	formatProvenanceAsMarkdown,
 	getFeatureExplanation,
-	PNPProvenanceBuilder,
+	PnpProvenanceBuilder,
 } from "./services/pnp-provenance.js";
 // QTI 3.0 Standard Access Features
 export {
@@ -202,11 +202,18 @@ export type {
 	SectionControllerContext,
 	SectionControllerEvent,
 	SectionControllerEventType,
+	SectionItemEvent,
+	SectionItemEventType,
 	SectionControllerFactoryDefaults,
 	SectionControllerHandle,
 	SectionControllerKey,
+	SectionScopedEvent,
+	SectionScopedEventType,
+	SectionSessionPersistenceConfig,
+	SectionItemEventSubscriptionArgs,
+	SectionScopedEventSubscriptionArgs,
 	SectionEventSubscriptionArgs,
-	SectionControllerPersistenceStrategy,
+	SectionSessionPersistenceStrategy,
 	SectionControllerRuntimeState,
 	SectionControllerSessionState,
 	SectionPersistenceFactoryDefaults,
@@ -306,6 +313,20 @@ export {
 	upsertItemSessionFromPieSessionChange,
 	upsertVisitedItem,
 } from "./attempt/TestSession.js";
+export type {
+	AssessmentSession,
+	AssessmentSectionSessionState,
+	AssessmentSessionNavigationState,
+	AssessmentSessionRealization,
+} from "./attempt/AssessmentSession.js";
+export {
+	createNewAssessmentSession,
+	getAssessmentSessionStorageKey,
+	loadAssessmentSession,
+	saveAssessmentSession,
+	setCurrentSectionPosition,
+	upsertSectionSession,
+} from "./attempt/AssessmentSession.js";
 export type {
 	ActivitySessionPatchPayload,
 	MapActivityToTestAttemptSessionArgs,

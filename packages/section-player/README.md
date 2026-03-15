@@ -69,7 +69,7 @@ Runtime precedence is explicit:
 - Top-level runtime-like props are treated as compatibility/override inputs when a corresponding `runtime` field is absent.
 - Toolbar placement overrides (`enabled-tools`, `item-toolbar-tools`, `passage-toolbar-tools`) are normalized on top of the runtime tools config.
 
-See `apps/section-demos/src/routes/demo/[[id]]/+page.svelte` for an end-to-end host integration.
+See the progressive demo routes in `apps/section-demos/src/routes/(demos)` (for example `single-question/+page.svelte` and `session-hydrate-db/+page.svelte`) for end-to-end host integrations.
 
 ## Data flow and stability guarantees
 
@@ -147,6 +147,62 @@ function canAdvance() {
   return Boolean(nav?.canNext && sectionComplete);
 }
 ```
+
+If you already have a `ToolkitCoordinator` from `toolkit-ready`, prefer helper subscriptions for host logic:
+
+```ts
+const unsubscribeItem = coordinator.subscribeItemEvents({
+  sectionId,
+  attemptId,
+  listener: (event: any) => {
+    // item-scoped stream
+  },
+});
+
+const unsubscribeSection = coordinator.subscribeSectionLifecycleEvents({
+  sectionId,
+  attemptId,
+  listener: (event: any) => {
+    // section-loading-complete / section-items-complete-changed / section-error / section-navigation-change
+  },
+});
+```
+
+Use `subscribeSectionEvents(...)` only for advanced mixed filtering requirements.
+
+### Item session management
+
+Section session data can be managed either through persistence hooks or directly through the controller API.
+
+```ts
+const host = document.querySelector("pie-section-player-splitpane") as any;
+const controller = await host.waitForSectionController?.(5000);
+
+// Read current section session snapshot.
+const currentSession = controller?.getSession?.();
+
+// Replace section session state (resume from backend snapshot).
+await controller?.applySession?.({
+  currentItemIndex: 0,
+  visitedItemIdentifiers: ["q1"],
+  itemSessions: {
+    q1: {
+      itemIdentifier: "q1",
+      pieSessionId: "q1-session",
+      session: { id: "q1-session", data: [{ id: "choice", value: "a" }] }
+    }
+  }
+}, { mode: "replace" });
+
+// Update a single item session directly.
+await controller?.updateItemSession?.("q1", {
+  session: { id: "q1-session", data: [{ id: "choice", value: "b" }] },
+  complete: true,
+});
+```
+
+The same controller snapshot is what the persistence strategy saves/loads.
+When a controller is reused for the same `sectionId`/`attemptId`, `updateInput()` refreshes composition input while preserving in-memory section session data.
 
 ## Exports
 

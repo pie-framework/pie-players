@@ -4,6 +4,8 @@ import type {
 	ITTSProviderImplementation,
 	TTSSpeechSegment,
 } from "@pie-players/pie-tts";
+import type { TtsServiceApi } from "../src/services/interfaces";
+import { TTSService } from "../src/services/TTSService";
 import { BrowserTTSProvider } from "../src/services/tts/browser-provider";
 import { ServerTTSProvider } from "@pie-players/tts-client-server";
 
@@ -70,5 +72,11 @@ describe("TTS contract compatibility", () => {
 		await withoutSegments.speak("two");
 		expect(typeof withSegments.speakSegments).toBe("function");
 		expect(withoutSegments.speakSegments).toBeUndefined();
+	});
+
+test("TTSService satisfies seek-capable TtsServiceApi contract", () => {
+		const service: TtsServiceApi = new TTSService();
+		expect(typeof service.seekForward).toBe("function");
+		expect(typeof service.seekBackward).toBe("function");
 	});
 });

@@ -10,16 +10,13 @@
 	}}
 />
 
-<svelte:head>
-	<link rel="stylesheet" href="./highlights.css">
-</svelte:head>
-
 <script lang="ts">
+	import "./highlights.css";
 	import type {
 		AssessmentToolkitRegionScopeContext,
 		AssessmentToolkitShellContext,
 		HighlightCoordinator,
-		ITTSService
+		TtsServiceApi
 	} from '@pie-players/pie-assessment-toolkit';
 	import {
 		connectAssessmentToolkitRegionScopeContext,
@@ -30,7 +27,7 @@
 	interface Props {
 		enabled?: boolean;
 		highlightCoordinator?: HighlightCoordinator | null;
-		ttsService?: ITTSService | null;
+		ttsService?: TtsServiceApi | null;
 	}
 
 	let {

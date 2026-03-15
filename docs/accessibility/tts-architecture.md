@@ -8,9 +8,9 @@ The PIE Players TTS (Text-to-Speech) system uses a clean, layered architecture w
 
 See also:
 
-- [`./wcag/readme.md`](./wcag/readme.md) for the WCAG reference library
-- [`./wcag/wcag-2.2-aa-baseline.md`](./wcag/wcag-2.2-aa-baseline.md) for the criteria most likely to affect TTS work
-- [`./wcag/evaluation-method.md`](./wcag/evaluation-method.md) for evaluation guidance
+- [`../wcag/readme.md`](../wcag/readme.md) for the WCAG reference library
+- [`../wcag/wcag-2.2-aa-baseline.md`](../wcag/wcag-2.2-aa-baseline.md) for the criteria most likely to affect TTS work
+- [`../wcag/evaluation-method.md`](../wcag/evaluation-method.md) for evaluation guidance
 
 ## Package Structure
 
@@ -77,7 +77,8 @@ The new architecture splits TTS into server-side and client-side components for 
 
 **@pie-players/tts-client-server**
 - Calls server API for synthesis
-- Receives audio + speech marks
+- Supports transport adapters (`pie`, `custom`)
+- Receives inline audio/marks or URL-based assets, then normalizes playback
 - 50ms polling-based highlighting
 - HTMLAudioElement playback
 
@@ -86,6 +87,11 @@ The new architecture splits TTS into server-side and client-side components for 
 SvelteKit API routes connect the pieces:
 ```
 Browser → ServerTTSProvider → /api/tts/synthesize → PollyServerProvider → AWS Polly
+```
+
+Custom backend integrations can use:
+```
+Browser → ServerTTSProvider (custom transport) → Custom root POST API
 ```
 
 ### 4. Server-Side TTS Providers (Recommended)
@@ -113,7 +119,7 @@ Browser → ServerTTSProvider → /api/tts/synthesize → PollyServerProvider �
 Browser → ServerTTSProvider → /api/tts/synthesize → PollyServerProvider → AWS Polly
 ```
 
-See [Server-Side TTS Integration Guide](../packages/tts-server-polly/examples/INTEGRATION-GUIDE.md) for setup instructions.
+See [Server-Side TTS Integration Guide](../../packages/tts-server-polly/examples/INTEGRATION-GUIDE.md) for setup instructions.
 
 ## Architecture Diagram
 

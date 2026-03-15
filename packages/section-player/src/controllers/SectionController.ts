@@ -1,9 +1,8 @@
 import type { TestAttemptSession } from "@pie-players/pie-assessment-toolkit";
 import { toItemSessionsRecord } from "@pie-players/pie-assessment-toolkit";
 import type {
-	SectionControllerContext,
 	SectionControllerHandle,
-	SectionControllerPersistenceStrategy,
+	SectionSessionPersistenceConfig,
 } from "./toolkit-section-contracts.js";
 import type { ItemEntity } from "@pie-players/pie-players-shared";
 import { SectionContentService } from "./SectionContentService.js";
@@ -29,6 +28,7 @@ import type {
 	SectionErrorEvent,
 	SectionItemsCompleteChangedEvent,
 	SectionLoadingCompleteEvent,
+	SectionSessionAppliedEvent,
 	SectionViewModel,
 	SessionChangedResult,
 } from "./types.js";
@@ -49,15 +49,26 @@ interface TrackedRenderable {
 	contentKind: SectionContentKind;
 }
 
+interface PendingApplyReplay {
+	revision: number;
+	mode: "replace" | "merge";
+	session: SectionControllerSessionState;
+}
+
+interface NormalizedApplySession {
+	currentItemIndex?: number;
+	visitedItemIdentifiers?: string[];
+	itemSessions: TestAttemptSession["itemSessions"];
+	itemSessionCount: number;
+}
+
 export class SectionController implements SectionControllerHandle {
 	// SectionController intentionally owns aggregate section state only.
 	// Item-level controllers may share contracts, but are not composed here.
 	private readonly contentService = new SectionContentService();
 	private readonly sessionService = new SectionSessionService();
 	private readonly itemNavigationService = new SectionItemNavigationService();
-	private persistenceStrategy: SectionControllerPersistenceStrategy | null =
-		null;
-	private persistenceContext: SectionControllerContext | null = null;
+	private sessionPersistence: SectionSessionPersistenceConfig | null = null;
 	private state: SectionControllerState = {
 		input: null,
 		viewModel: {
@@ -82,6 +93,9 @@ export class SectionController implements SectionControllerHandle {
 	private sectionItemsComplete = false;
 	private completedCount = 0;
 	private totalItems = 0;
+	private nextApplyRevision = 0;
+	private lastReplayedApplyRevision = 0;
+	private pendingApplyReplay: PendingApplyReplay | null = null;
 
 	private emitChange(event: SectionControllerChangeEvent): void {
 		for (const listener of this.listeners) {
@@ -146,56 +160,42 @@ export class SectionController implements SectionControllerHandle {
 	}
 
 	public async updateInput(input?: unknown): Promise<void> {
+		const previousSession = this.getSession();
 		await this.initialize(input);
+		if (previousSession) {
+			await this.applySession(previousSession, { mode: "replace" });
+		}
 	}
 
-	public async setPersistenceStrategy(
-		strategy: SectionControllerPersistenceStrategy,
-	): Promise<void> {
-		this.persistenceStrategy = strategy;
-	}
-
-	public setPersistenceContext(context: SectionControllerContext): void {
-		this.persistenceContext = context;
+	public configureSessionPersistence(
+		config: SectionSessionPersistenceConfig,
+	): void {
+		this.sessionPersistence = config;
 	}
 
 	public async hydrate(): Promise<void> {
-		if (!this.persistenceStrategy || !this.persistenceContext) return;
-		const snapshot = (await this.persistenceStrategy.load(
-			this.persistenceContext,
-		)) as SectionControllerSessionState | null;
+		if (!this.sessionPersistence) return;
+		const snapshot = await this.sessionPersistence.strategy.loadSession(
+			this.sessionPersistence.context,
+		);
 		if (!snapshot) return;
-		if (!this.state.testAttemptSession) return;
-		if (snapshot.itemSessions && typeof snapshot.itemSessions === "object") {
-			this.state.testAttemptSession.itemSessions = snapshot.itemSessions as
-				TestAttemptSession["itemSessions"];
-		}
-		const visited = Array.isArray(snapshot.visitedItemIdentifiers)
-			? snapshot.visitedItemIdentifiers.filter(
-					(id: unknown): id is string => typeof id === "string" && !!id,
-				)
-			: [];
-		this.state.testAttemptSession.navigationState.visitedItemIdentifiers = visited;
-		const nextIndex =
-			typeof snapshot.currentItemIndex === "number" && snapshot.currentItemIndex >= 0
-				? snapshot.currentItemIndex
-				: 0;
-		this.state.testAttemptSession.navigationState.currentItemIndex = nextIndex;
-		this.state.viewModel.currentItemIndex = nextIndex;
-		this.bootstrapCompletionFromSessions();
+		await this.applySession(snapshot, { mode: "replace" });
 	}
 
 	public async persist(): Promise<void> {
-		if (!this.persistenceStrategy || !this.persistenceContext) return;
-		await this.persistenceStrategy.save(
-			this.persistenceContext,
-			this.getSessionState(),
+		if (!this.sessionPersistence) return;
+		await this.sessionPersistence.strategy.saveSession(
+			this.sessionPersistence.context,
+			this.getSession(),
 		);
 	}
 
 	public dispose(): void {
 		this.listeners.clear();
 		this.resetLifecycleTracking();
+		this.pendingApplyReplay = null;
+		this.nextApplyRevision = 0;
+		this.lastReplayedApplyRevision = 0;
 	}
 
 	public getViewModel(): SectionViewModel {
@@ -310,7 +310,7 @@ export class SectionController implements SectionControllerHandle {
 	 * Use this for serializing/restoring section session state across reloads.
 	 * This is intentionally compact and not a full runtime diagnostics view.
 	 */
-	public getSessionState(): SectionControllerSessionState | null {
+	public getSession(): SectionControllerSessionState | null {
 		if (!this.state.testAttemptSession) return null;
 		return this.sessionService.toSessionState(this.state.testAttemptSession);
 	}
@@ -328,7 +328,7 @@ export class SectionController implements SectionControllerHandle {
 	/**
 	 * Runtime/debugger shape scoped to the current section.
 	 * Use this for widgets that need a section-scoped live snapshot (debug panels, diagnostics).
-	 * Unlike getSessionState(), this is optimized for runtime introspection, not host persistence.
+	 * Unlike getSession(), this is optimized for runtime introspection, not host persistence.
 	 */
 	public getRuntimeState(): SectionControllerRuntimeState | null {
 		if (!this.state.testAttemptSession) return null;
@@ -404,7 +404,7 @@ export class SectionController implements SectionControllerHandle {
 		};
 	}
 
-	public handleItemSessionChanged(
+	public updateItemSession(
 		itemId: string,
 		sessionDetail: any,
 	): SessionChangedResult | null {
@@ -462,6 +462,34 @@ export class SectionController implements SectionControllerHandle {
 		return result;
 	}
 
+	public async applySession(
+		session: SectionControllerSessionState | null,
+		options?: { mode?: "replace" | "merge" },
+	): Promise<void> {
+		if (!this.state.testAttemptSession || !session) return;
+		const mode = options?.mode || "replace";
+		const normalized = this.normalizeApplySession(session);
+		this.applyNormalizedSessionToState(normalized, mode);
+		this.bootstrapCompletionFromSessions();
+		const applyRevision = ++this.nextApplyRevision;
+		if (!this.sectionLoadingComplete) {
+			this.pendingApplyReplay = {
+				revision: applyRevision,
+				mode,
+				session: this.cloneForRead(session),
+			};
+		}
+		const event: SectionSessionAppliedEvent = {
+			type: "section-session-applied",
+			mode,
+			itemSessionCount: normalized.itemSessionCount,
+			replay: false,
+			currentItemIndex: this.state.viewModel.currentItemIndex ?? 0,
+			timestamp: Date.now(),
+		};
+		this.emitChange(event);
+	}
+
 	/**
 	 * Move between items inside the current section only.
 	 * Cross-section navigation belongs to the higher-level assessment player.
@@ -487,6 +515,7 @@ export class SectionController implements SectionControllerHandle {
 			currentItemId: result.eventDetail.currentItemId,
 			itemIndex: result.eventDetail.itemIndex,
 			totalItems: result.eventDetail.totalItems,
+			itemLabel: result.eventDetail.itemLabel,
 			currentItemIndex: this.state.viewModel.currentItemIndex ?? 0,
 			timestamp: result.eventDetail.timestamp,
 		};
@@ -731,6 +760,148 @@ export class SectionController implements SectionControllerHandle {
 			timestamp,
 		};
 		this.emitChange(event);
+		void this.replayPendingAppliedSession();
+	}
+
+	private async replayPendingAppliedSession(): Promise<void> {
+		const pending = this.pendingApplyReplay;
+		if (!pending) return;
+		if (pending.revision <= this.lastReplayedApplyRevision) return;
+		if (!this.sectionLoadingComplete) return;
+		const normalized = this.normalizeApplySession(pending.session);
+		if (!this.state.testAttemptSession) return;
+		this.applyNormalizedSessionToState(normalized, pending.mode);
+		this.bootstrapCompletionFromSessions();
+		this.lastReplayedApplyRevision = pending.revision;
+		const replayEvent: SectionSessionAppliedEvent = {
+			type: "section-session-applied",
+			mode: pending.mode,
+			itemSessionCount: normalized.itemSessionCount,
+			replay: true,
+			currentItemIndex: this.state.viewModel.currentItemIndex ?? 0,
+			timestamp: Date.now(),
+		};
+		this.emitChange(replayEvent);
+	}
+
+	private normalizeApplySession(
+		session: SectionControllerSessionState,
+	): NormalizedApplySession {
+		const nextItemSessionsInput =
+			session.itemSessions && typeof session.itemSessions === "object"
+				? (session.itemSessions as Record<string, unknown>)
+				: {};
+		const allowedCanonicalIds = new Set<string>(
+			this.state.viewModel.adapterItemRefs
+				.map((itemRef) => this.getCanonicalItemId(itemRef.identifier || itemRef.item?.id || ""))
+				.filter((id): id is string => typeof id === "string" && !!id),
+		);
+		const normalizedItemSessions: TestAttemptSession["itemSessions"] = {};
+		for (const [rawItemId, rawEntry] of Object.entries(nextItemSessionsInput)) {
+			const canonicalItemId = this.getCanonicalItemId(rawItemId);
+			if (!allowedCanonicalIds.has(canonicalItemId)) {
+				continue;
+			}
+			const normalizedEntry = this.normalizeItemSessionEntry(
+				canonicalItemId,
+				rawEntry,
+			);
+			if (!normalizedEntry) continue;
+			normalizedItemSessions[canonicalItemId] = normalizedEntry;
+		}
+		const visited = Array.isArray(session.visitedItemIdentifiers)
+			? Array.from(
+					new Set(
+						session.visitedItemIdentifiers
+							.map((id) => this.getCanonicalItemId(id))
+							.filter((id): id is string => allowedCanonicalIds.has(id)),
+					),
+			  )
+			: undefined;
+		const maxIndex = Math.max(0, this.state.viewModel.items.length - 1);
+		const nextCurrentItemIndex =
+			typeof session.currentItemIndex === "number" &&
+			Number.isFinite(session.currentItemIndex)
+				? Math.min(Math.max(0, session.currentItemIndex), maxIndex)
+				: undefined;
+		return {
+			currentItemIndex: nextCurrentItemIndex,
+			visitedItemIdentifiers: visited,
+			itemSessions: normalizedItemSessions,
+			itemSessionCount: Object.keys(normalizedItemSessions).length,
+		};
+	}
+
+	private normalizeItemSessionEntry(
+		itemIdentifier: string,
+		entry: unknown,
+	): TestAttemptSession["itemSessions"][string] | null {
+		if (!entry || typeof entry !== "object") return null;
+		const candidate = entry as Record<string, unknown>;
+		const typedCandidate = candidate as {
+			itemIdentifier?: unknown;
+			attemptCount?: unknown;
+			isCompleted?: unknown;
+			session?: unknown;
+			complete?: unknown;
+		};
+		const hasCanonicalShape =
+			typeof typedCandidate.itemIdentifier === "string" &&
+			typedCandidate.session &&
+			typeof typedCandidate.session === "object";
+		if (hasCanonicalShape) {
+			return {
+				itemIdentifier,
+				attemptCount:
+					typeof typedCandidate.attemptCount === "number" &&
+					Number.isFinite(typedCandidate.attemptCount)
+						? typedCandidate.attemptCount
+						: 1,
+				isCompleted: Boolean(typedCandidate.isCompleted),
+				session: typedCandidate.session as Record<string, unknown>,
+			};
+		}
+		const rawSession = typedCandidate.session && typeof typedCandidate.session === "object"
+			? (typedCandidate.session as Record<string, unknown>)
+			: candidate;
+		return {
+			itemIdentifier,
+			attemptCount: 1,
+			isCompleted:
+				typeof typedCandidate.complete === "boolean"
+					? typedCandidate.complete
+					: Boolean((rawSession as { complete?: unknown }).complete),
+			session: rawSession,
+		};
+	}
+
+	private applyNormalizedSessionToState(
+		normalized: NormalizedApplySession,
+		mode: "replace" | "merge",
+	): void {
+		if (!this.state.testAttemptSession) return;
+		if (mode === "merge") {
+			this.state.testAttemptSession.itemSessions = {
+				...this.state.testAttemptSession.itemSessions,
+				...normalized.itemSessions,
+			};
+		} else {
+			this.state.testAttemptSession.itemSessions = normalized.itemSessions;
+		}
+		if (Array.isArray(normalized.visitedItemIdentifiers)) {
+			this.state.testAttemptSession.navigationState.visitedItemIdentifiers =
+				normalized.visitedItemIdentifiers;
+		} else if (mode === "replace") {
+			this.state.testAttemptSession.navigationState.visitedItemIdentifiers = [];
+		}
+		if (typeof normalized.currentItemIndex === "number") {
+			this.state.testAttemptSession.navigationState.currentItemIndex =
+				normalized.currentItemIndex;
+			this.state.viewModel.currentItemIndex = normalized.currentItemIndex;
+		} else if (mode === "replace") {
+			this.state.testAttemptSession.navigationState.currentItemIndex = 0;
+			this.state.viewModel.currentItemIndex = 0;
+		}
 	}
 
 	private cloneForRead<T>(value: T): T {

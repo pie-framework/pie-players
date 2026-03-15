@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
-const SPLIT_DEMO = "/demo/tts-ssml?mode=candidate&layout=splitpane";
-const VERTICAL_DEMO = "/demo/tts-ssml?mode=candidate&layout=vertical";
+const SPLIT_DEMO = "/tts-ssml?mode=candidate&layout=splitpane";
+const VERTICAL_DEMO = "/tts-ssml?mode=candidate&layout=vertical";
 
 async function validateControllerAccess(args: {
 	page: import("@playwright/test").Page;
@@ -48,8 +48,8 @@ async function validateControllerAccess(args: {
 			typeof (awaited as { getRuntimeState?: unknown } | null)
 				?.getRuntimeState === "function";
 		const hasSessionState =
-			typeof (awaited as { getSessionState?: unknown } | null)
-				?.getSessionState === "function";
+			typeof (awaited as { getSession?: unknown } | null)?.getSession ===
+			"function";
 		const hasSubscribe =
 			typeof (awaited as { subscribe?: unknown } | null)?.subscribe ===
 			"function";

@@ -11,12 +11,16 @@
 
 import type { ITTSProvider, TTSConfig } from "@pie-players/pie-tts";
 import { BrowserTTSProvider } from "../../services/tts/browser-provider.js";
-import type { IToolProvider, ToolProviderCapabilities } from "./IToolProvider.js";
+import type { ToolProviderApi, ToolProviderCapabilities } from "./ToolProviderApi.js";
 
 /**
  * TTS backend type
  */
-export type TTSBackend = "browser" | "polly" | "google" | "server";
+export type TTSBackend =
+	| "browser"
+	| "polly"
+	| "google"
+	| "server";
 
 /**
  * TTS tool provider configuration
@@ -38,7 +42,27 @@ export interface TTSToolProviderConfig extends Partial<TTSConfig> {
 	 * Provider to use on server ('polly', 'google')
 	 * Only used when backend is 'server', 'polly', or 'google'
 	 */
-	serverProvider?: "polly" | "google";
+	serverProvider?: "polly" | "google" | "custom";
+
+	/**
+	 * Explicit transport mode for server provider payload translation.
+	 */
+	transportMode?: "pie" | "custom";
+
+	/**
+	 * Endpoint style used by the server-backed provider.
+	 */
+	endpointMode?: "synthesizePath" | "rootPost";
+
+	/**
+	 * Endpoint validation strategy when validateEndpoint=true.
+	 */
+	endpointValidationMode?: "voices" | "endpoint" | "none";
+
+	/**
+	 * Include auth header when fetching remote audio/speech-mark assets.
+	 */
+	includeAuthOnAssetFetch?: boolean;
 
 	/**
 	 * Auth token (if required)
@@ -71,7 +95,7 @@ export interface TTSToolProviderConfig extends Partial<TTSConfig> {
 /**
  * TTS Tool Provider
  *
- * Wraps TTS providers (Browser, Polly, Google) with the IToolProvider interface
+ * Wraps TTS providers (Browser, Polly, Google) with the ToolProviderApi interface
  * for use in the ToolProviderRegistry.
  *
  * @example Browser TTS (no auth)
@@ -93,7 +117,7 @@ export interface TTSToolProviderConfig extends Partial<TTSConfig> {
  * ```
  */
 export class TTSToolProvider
-	implements IToolProvider<TTSToolProviderConfig, ITTSProvider>
+	implements ToolProviderApi<TTSToolProviderConfig, ITTSProvider>
 {
 	readonly providerId = "tts-service";
 	readonly providerName = "Text-to-Speech";

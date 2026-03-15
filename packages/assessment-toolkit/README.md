@@ -108,6 +108,41 @@ const ttsService = coordinator.ttsService;
 const toolState = coordinator.elementToolStateStore.getAllState();
 ```
 
+### Controller Event Subscriptions (Helper First)
+
+For host-side session/progress logic, prefer helper subscriptions over the generic filter API:
+
+```typescript
+const unsubscribeItem = coordinator.subscribeItemEvents({
+  sectionId: 'section-1',
+  attemptId: 'attempt-1',
+  itemIds: ['item-1', 'item-2'],
+  listener: (event) => {
+    // item-selected, item-session-data-changed, item-complete-changed, ...
+  }
+});
+
+const unsubscribeSection = coordinator.subscribeSectionLifecycleEvents({
+  sectionId: 'section-1',
+  attemptId: 'attempt-1',
+  listener: (event) => {
+    // section-loading-complete, section-items-complete-changed, section-error, ...
+  }
+});
+
+// cleanup
+unsubscribeItem?.();
+unsubscribeSection?.();
+```
+
+Use `subscribeSectionEvents(...)` when you need advanced/custom filtering mixes.  
+Note that section-scoped events do not carry item IDs, so pairing them with `itemIds` filters will not match.
+For late subscribers, `subscribeSectionLifecycleEvents(...)` immediately replays
+`section-loading-complete` when the target controller runtime is already in a
+loaded state.
+For deterministic targeting in multi-attempt hosts, pass both `sectionId` and
+`attemptId` to helper subscriptions.
+
 ### Option 2: Create Services Manually (Advanced)
 
 ```typescript
@@ -345,6 +380,15 @@ const patch = buildActivitySessionPatchFromTestAttemptSession(testAttemptSession
 - `@pie-players/pie-section-player` stays backend-agnostic and emits session/state changes.
 - Host applications own backend I/O to pie backend (`../../kds/pie-api-aws`).
 - Hosts decide persistence policy (immediate, debounced, checkpoint, submit).
+
+### Section session API (controller + persistence)
+
+For section-level session flows, the toolkit supports two complementary APIs:
+
+- Persistence hook: `createSectionSessionPersistence(context, defaults)` for load/save/clear orchestration
+- Direct controller API: `getSession()`, `applySession(session, { mode })`, `updateItemSession(itemId, detail)`
+
+The persistence strategy works with the same `SectionControllerSessionState` shape exposed by the controller, so hosts can choose bulk restore (`applySession`) and fine-grained updates (`updateItemSession`) without internal runtime coupling.
 
 ## Implementation Status
 

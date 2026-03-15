@@ -1,0 +1,10 @@
+---
+description: Keep release versions globally aligned across all packages
+alwaysApply: true
+---
+
+# Release Version Alignment
+
+- When preparing a release, always include **all publishable packages** in release/versioning steps so versions stay globally aligned across the monorepo.
+- Do not prepare release bumps for only a subset of changed packages unless there is an explicit maintainer-approved exception for that release.
+- If a release is requested and package selection is ambiguous, default to full publishable-package coverage.

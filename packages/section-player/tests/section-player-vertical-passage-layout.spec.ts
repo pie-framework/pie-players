@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-const VERTICAL_DEMO_PATH = "/demo/three-questions?mode=candidate&layout=vertical";
+const VERTICAL_DEMO_PATH = "/three-questions?mode=candidate&layout=vertical";
 
 test.describe("section player vertical passage layout", () => {
 	test("renders full passage content without clipping", async ({ page }) => {

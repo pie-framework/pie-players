@@ -58,7 +58,6 @@ The script self-registers the `<pie-item-player>` custom element.
 | `external-style-urls` | `String` | `""` | Comma-separated CSS URLs loaded and scoped to the player |
 | `loader-config` | `Object` | (default) | Loader instrumentation config |
 | `configuration` | `Object` | `{}` | Authoring configuration settings |
-| `dispatch-on-parent` | `Boolean` | `false` | Also dispatch events on the parent element (legacy compat) |
 
 ## Properties (JS only)
 
@@ -67,9 +66,6 @@ These are set via JavaScript, not HTML attributes.
 | Property | Type | Description |
 |----------|------|-------------|
 | `loaderOptions` | `{ bundleHost?: string, esmCdnUrl?: string, view?: string, loadControllers?: boolean }` | Strategy-specific loader options |
-| `ttsService` | `object` | Text-to-speech service instance |
-| `toolCoordinator` | `object` | Tool coordinator for assessment tools |
-| `highlightCoordinator` | `object` | Highlight coordinator |
 
 ## Events
 

@@ -35,8 +35,8 @@ describe("SectionContentService renderables", () => {
 		const section = {
 			assessmentItemRefs: [{ identifier: "i1-ref", item }],
 			rubricBlocks: [
-				{ class: "stimulus", view: "candidate", passage: sharedPassage },
-				{ class: "rubric", view: "candidate", passage: rubricPassage },
+				{ class: "stimulus", view: ["candidate"], passage: sharedPassage },
+				{ class: "rubric", view: ["candidate"], passage: rubricPassage },
 			],
 		} as unknown as AssessmentSection;
 
@@ -77,7 +77,7 @@ describe("SectionContentService renderables", () => {
 		} as unknown as PassageEntity;
 		const section = {
 			assessmentItemRefs: [{ item: itemWithoutId }],
-			rubricBlocks: [{ class: "rubric", view: "candidate", passage: rubricWithoutId }],
+			rubricBlocks: [{ class: "rubric", view: ["candidate"], passage: rubricWithoutId }],
 		} as unknown as AssessmentSection;
 
 		const service = new SectionContentService();

@@ -47,6 +47,10 @@ export interface SectionControllerInput {
 }
 
 export interface SectionSessionState {
+	/**
+	 * Persistence payload for section controller host APIs.
+	 * This shape is produced by getSession() and should be preferred for applySession().
+	 */
 	currentItemIndex?: number;
 	visitedItemIdentifiers?: string[];
 	itemSessions: Record<string, unknown>;
@@ -132,6 +136,8 @@ export interface NavigationResult {
 		itemIndex: number;
 		totalItems: number;
 		timestamp: number;
+		/** Human-readable label for the destination item, derived from item.title. Used by aria-live announcements and host focus policies. */
+		itemLabel?: string;
 	};
 	testAttemptSession: TestAttemptSession;
 }
@@ -152,6 +158,7 @@ interface SectionControllerEventBase {
 		| "item-session-meta-changed"
 		| "item-selected"
 		| "section-navigation-change"
+		| "section-session-applied"
 		| "content-loaded"
 		| "item-player-error"
 		| "item-complete-changed"
@@ -191,6 +198,8 @@ export interface ItemSelectedEvent extends ItemScopedControllerEventBase {
 	currentItemId: string;
 	itemIndex: number;
 	totalItems: number;
+	/** Human-readable label for the destination item, derived from item.title. Used by aria-live announcements and host focus policies. */
+	itemLabel?: string;
 }
 
 export interface SectionNavigationChangeEvent extends SectionControllerEventBase {
@@ -199,6 +208,14 @@ export interface SectionNavigationChangeEvent extends SectionControllerEventBase
 	currentSectionId?: string;
 	attemptId?: string;
 	reason?: "input-change" | "runtime-transition";
+}
+
+export interface SectionSessionAppliedEvent extends SectionControllerEventBase {
+	type: "section-session-applied";
+	mode: "replace" | "merge";
+	itemSessionCount: number;
+	replay: boolean;
+	currentItemIndex: number;
 }
 
 export interface ContentLoadedEvent extends ItemScopedControllerEventBase {
@@ -253,6 +270,7 @@ export type SectionControllerChangeEvent =
 	| ItemSessionMetaChangedEvent
 	| ItemSelectedEvent
 	| SectionNavigationChangeEvent
+	| SectionSessionAppliedEvent
 	| ContentLoadedEvent
 	| ItemPlayerErrorEvent
 	| ItemCompleteChangedEvent

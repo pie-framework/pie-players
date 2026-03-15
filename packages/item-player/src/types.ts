@@ -1,21 +1,12 @@
 export type AuthoringBackendMode = "demo" | "required";
 
-export type DeleteDone = (err?: Error) => void;
+import type {
+	DeleteDone,
+	ImageHandler,
+	SoundHandler,
+} from "@pie-players/pie-players-shared/types";
 
-export interface ImageHandler {
-	isPasted?: boolean;
-	cancel: () => void;
-	done: (err?: Error, src?: string) => void;
-	fileChosen: (file: File) => void;
-	progress: (percent: number, bytes: number, total: number) => void;
-}
-
-export interface SoundHandler {
-	cancel: () => void;
-	done: (err?: Error, src?: string) => void;
-	fileChosen: File;
-	progress: (percent: number, bytes: number, total: number) => void;
-}
+export type { DeleteDone, ImageHandler, SoundHandler };
 
 export interface PieItemPlayerElement extends HTMLElement {
 	config: unknown;

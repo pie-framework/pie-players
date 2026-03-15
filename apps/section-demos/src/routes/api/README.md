@@ -13,11 +13,27 @@ This directory contains SvelteKit API routes used by section demos for developme
 - `GET /api/tts/polly/voices` - Get AWS Polly voices
 - `GET /api/tts/google/voices` - Get Google Cloud TTS voices
 
+`/api/tts/*` routes in section-demos implement the PIE transport contract. Custom URL-based
+integrations are expected to run through backend translation using `transportMode: "custom"`
+at the client provider boundary.
+
 ### Desmos Calculator Auth
 
 **Route**: `GET /api/tools/desmos/auth`
 
 Returns Desmos API key for calculator tool authentication.
+
+### Session Hydration Demo DB
+
+**Routes**:
+
+- `POST /api/session-demo/bootstrap` - Clear+seed (or clear-only) normalized session tables
+- `GET /api/session-demo/state` - Return DB tables and reconstructed section snapshots
+- `GET /api/session-demo/snapshot` - Return one section snapshot (`assessmentId`, `sectionId`, `attemptId`)
+- `PUT /api/session-demo/snapshot` - Upsert one section snapshot
+- `DELETE /api/session-demo/snapshot` - Delete one section snapshot
+
+These endpoints back the `session-hydrate-db` demo and are intentionally lightweight for local use.
 
 ## Notes
 

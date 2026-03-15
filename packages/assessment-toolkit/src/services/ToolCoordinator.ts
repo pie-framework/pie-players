@@ -14,7 +14,7 @@
  */
 
 import { createLogger } from "../utils/logger.js";
-import type { IToolCoordinator, ToolState } from "./interfaces.js";
+import type { ToolCoordinatorApi, ToolState } from "./interfaces.js";
 
 const log = createLogger("ToolCoordinator");
 
@@ -48,7 +48,7 @@ interface ToolRegistration {
  */
 export type ToolCoordinatorConfig = Record<string, never>;
 
-export class ToolCoordinator implements IToolCoordinator {
+export class ToolCoordinator implements ToolCoordinatorApi {
 	private config: ToolCoordinatorConfig;
 	private tools = new Map<string, ToolRegistration>();
 	private layerCounters = new Map<ZIndexLayer, number>();

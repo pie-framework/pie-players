@@ -5,5 +5,12 @@
 	"requireExportsOrMainTypes": true,
 	"requireNodeEngine": true,
 	"defaultNodeEngine": ">=20.0.0",
-	"workspaceRoots": ["packages"]
+	"workspaceRoots": ["packages"],
+	"allowedUndeclaredRuntimeImports": {
+		"@pie-players/pie-assessment-toolkit": [
+			"@pie-players/pie-tool-calculator-desmos",
+			"@pie-players/pie-tool-text-to-speech",
+			"@pie-players/pie-tool-tts-inline"
+		]
+	}
 }

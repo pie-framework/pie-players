@@ -35,7 +35,7 @@
 	} from '@pie-players/pie-theme';
 	import type {
 		AssessmentToolkitRuntimeContext,
-		IToolCoordinator,
+		ToolCoordinatorApi,
 	} from '@pie-players/pie-assessment-toolkit';
 	import { createFocusTrap, safeLocalStorageGet, safeLocalStorageSet } from '@pie-players/pie-players-shared';
 	import { onMount } from 'svelte';
@@ -55,7 +55,7 @@
 	let containerEl = $state<HTMLDivElement | undefined>();
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
 	const coordinator = $derived(
-		runtimeContext?.toolCoordinator as IToolCoordinator | undefined,
+		runtimeContext?.toolCoordinator as ToolCoordinatorApi | undefined,
 	);
 
 	// Track registration state

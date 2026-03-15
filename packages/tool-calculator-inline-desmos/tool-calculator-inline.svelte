@@ -20,7 +20,7 @@
 	} from '@pie-players/pie-assessment-toolkit';
 	import type {
 		AssessmentToolkitRuntimeContext,
-		IToolCoordinator,
+		ToolCoordinatorApi,
 	} from '@pie-players/pie-assessment-toolkit';
 	// Props
 	let {
@@ -43,7 +43,7 @@
 	let containerEl = $state<HTMLDivElement | undefined>();
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
 	const coordinator = $derived(
-		runtimeContext?.toolCoordinator as IToolCoordinator | undefined,
+		runtimeContext?.toolCoordinator as ToolCoordinatorApi | undefined,
 	);
 	let registered = $state(false);
 	let calculatorVisible = $state(false);

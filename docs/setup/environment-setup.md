@@ -171,4 +171,4 @@ docker restart <redis-container-id>
 
 - [AWS Polly Setup Guide](./aws-polly-setup-guide.md) - Detailed AWS configuration
 - [TTS Architecture](./tts-architecture.md) - How TTS works
-- [TTS Integration Guide](../packages/tts-server-polly/examples/INTEGRATION-GUIDE.md) - Server implementation
+- [TTS Integration Guide](../../packages/tts-server-polly/examples/INTEGRATION-GUIDE.md) - Server implementation

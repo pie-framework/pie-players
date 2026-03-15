@@ -4,6 +4,7 @@ import {
 	type ItemSessionStorageStrategy,
 } from "./item-controller-storage.js";
 import {
+	hasResponseField,
 	hasResponseValue,
 	normalizeItemSessionContainer as normalizeSessionContainer,
 } from "./item-session-contract.js";
@@ -73,7 +74,8 @@ export class ItemController {
 		if (
 			!allowMetadataOverwrite &&
 			hasResponseValue(this.session) &&
-			!hasResponseValue(next)
+			!hasResponseValue(next) &&
+			!hasResponseField(next)
 		) {
 			return this.getSession();
 		}

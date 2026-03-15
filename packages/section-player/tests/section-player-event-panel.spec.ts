@@ -1,7 +1,8 @@
 import { expect, test } from "@playwright/test";
 
-const DEMO_PATH = "/demo/tts-ssml?mode=candidate&layout=splitpane";
-const VERTICAL_DEMO_PATH = "/demo/tts-ssml?mode=candidate&layout=vertical";
+const DEMO_PATH = "/tts-ssml?mode=candidate&layout=splitpane";
+const VERTICAL_DEMO_PATH = "/tts-ssml?mode=candidate&layout=vertical";
+const LOADING_EVENT_DEMO_PATH = "/single-question?mode=candidate&layout=splitpane";
 
 async function openEventPanel(page: import("@playwright/test").Page) {
 	const toggleButton = page.getByRole("button", {
@@ -13,6 +14,71 @@ async function openEventPanel(page: import("@playwright/test").Page) {
 	const panel = page.locator("pie-section-player-tools-event-debugger");
 	await expect(panel.locator(".pie-section-player-tools-event-debugger")).toBeVisible();
 	return panel;
+}
+
+async function openSessionPanel(page: import("@playwright/test").Page) {
+	const toggleButton = page.getByRole("button", {
+		name: "Toggle session panel",
+	});
+	await expect(toggleButton).toBeVisible();
+	await expect(toggleButton).toBeEnabled();
+	await toggleButton.click();
+	const panel = page.locator("pie-section-player-tools-session-debugger");
+	await expect(panel.locator(".pie-section-player-tools-session-debugger")).toBeVisible();
+	return panel;
+}
+
+async function openSourcePanel(page: import("@playwright/test").Page) {
+	const toggleButton = page.getByRole("button", {
+		name: "Toggle source panel",
+	});
+	await expect(toggleButton).toBeVisible();
+	await expect(toggleButton).toBeEnabled();
+	await toggleButton.click();
+	const panel = page.locator(".pie-section-player-tools-source-panel");
+	await expect(panel).toBeVisible();
+	return panel;
+}
+
+async function openTTSSettingsPanel(page: import("@playwright/test").Page) {
+	const panel = page.locator(".pie-tts-dialog-backdrop");
+	if (!(await panel.isVisible())) {
+		const toggleButton = page.getByRole("button", {
+			name: "Toggle TTS settings panel",
+		});
+		await expect(toggleButton).toBeVisible();
+		await expect(toggleButton).toBeEnabled();
+		await toggleButton.click();
+	}
+	await expect(panel).toBeVisible();
+	return panel;
+}
+
+async function getLocatorZIndex(
+	locator: import("@playwright/test").Locator,
+): Promise<number> {
+	return locator.evaluate((node) => {
+		const zIndex = window.getComputedStyle(node).zIndex;
+		const parsed = Number.parseInt(zIndex || "", 10);
+		return Number.isFinite(parsed) ? parsed : 0;
+	});
+}
+
+async function focusPanelByHeader(args: {
+	page: import("@playwright/test").Page;
+	header: import("@playwright/test").Locator;
+}) {
+	const { page, header } = args;
+	await header.scrollIntoViewIfNeeded();
+	const box = await header.boundingBox();
+	if (!box) {
+		throw new Error("Panel header is not visible for focus interaction.");
+	}
+	const pointerX = box.x + Math.min(Math.max(12, box.width * 0.25), box.width - 8);
+	const pointerY = box.y + Math.min(Math.max(8, box.height * 0.5), box.height - 4);
+	await page.mouse.move(pointerX, pointerY);
+	await page.mouse.down();
+	await page.mouse.up();
 }
 
 async function assertChoiceSelectionKeepsPaneScroll(args: {
@@ -95,6 +161,78 @@ async function getItemShellIdentityTokens(page: import("@playwright/test").Page)
 }
 
 test.describe("section player controller event panel", () => {
+	test("shows section-loading-complete in section-level event panel", async ({
+		page,
+	}) => {
+		// Wait for section readiness; subscribeSectionEvents should then immediately
+		// deliver section-loading-complete when the runtime is fully loaded.
+		await page.goto(LOADING_EVENT_DEMO_PATH, { waitUntil: "networkidle" });
+		const panel = await openEventPanel(page);
+		await panel
+			.locator(".pie-section-player-tools-event-debugger__toggle-button", {
+				hasText: "section",
+			})
+			.click();
+		await page.evaluate(() => {
+			const eventPanel = document.querySelector(
+				"pie-section-player-tools-event-debugger",
+			) as
+				| (HTMLElement & {
+						toolkitCoordinator?: {
+							getSectionController?: (args: {
+								sectionId: string;
+								attemptId?: string;
+							}) => {
+								getRuntimeState?: () => { itemIdentifiers?: string[] } | null;
+								handleContentRegistered?: (args: {
+									itemId: string;
+									canonicalItemId?: string;
+									contentKind?: string;
+								}) => void;
+								handleContentLoaded?: (args: {
+									itemId: string;
+									canonicalItemId?: string;
+									contentKind?: string;
+									timestamp?: number;
+								}) => void;
+							} | null;
+						};
+						sectionId?: string;
+						attemptId?: string;
+				  })
+				| null;
+			const sectionId = eventPanel?.sectionId || "";
+			const attemptId = eventPanel?.attemptId;
+			const controller = eventPanel?.toolkitCoordinator?.getSectionController?.({
+				sectionId,
+				attemptId,
+			});
+			const runtimeState = controller?.getRuntimeState?.() || null;
+			const itemIdentifiers = Array.isArray(runtimeState?.itemIdentifiers)
+				? runtimeState.itemIdentifiers
+				: [];
+			for (const itemId of itemIdentifiers) {
+				controller?.handleContentRegistered?.({
+					itemId,
+					canonicalItemId: itemId,
+					contentKind: "item",
+				});
+				controller?.handleContentLoaded?.({
+					itemId,
+					canonicalItemId: itemId,
+					contentKind: "item",
+					timestamp: Date.now(),
+				});
+			}
+		});
+		await expect(
+			panel
+				.locator(".pie-section-player-tools-event-debugger__row")
+				.filter({ hasText: /section-loading-complete/i })
+				.first(),
+		).toBeVisible({ timeout: 30_000 });
+	});
+
 	test("captures controller events and renders them", async ({ page }) => {
 		await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
 		const panel = await openEventPanel(page);
@@ -112,6 +250,66 @@ test.describe("section player controller event panel", () => {
 				.first(),
 		).toBeVisible({ timeout: 30_000 });
 		await expect(panelRows.first()).toBeVisible();
+	});
+
+	test("brings selected debug window to foreground", async ({ page }) => {
+		await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
+		const sessionPanel = await openSessionPanel(page);
+		const eventPanel = await openEventPanel(page);
+		const sourcePanel = await openSourcePanel(page);
+		const sessionHeader = page.getByRole("button", {
+			name: "Drag session panel",
+		});
+		const sourceHeader = page.getByRole("button", {
+			name: "Drag source panel",
+		});
+
+		await focusPanelByHeader({ page, header: sourceHeader });
+		await expect
+			.poll(async () => {
+				const sourceZ = await getLocatorZIndex(sourcePanel);
+				const sessionZ = await getLocatorZIndex(
+					sessionPanel.locator(".pie-section-player-tools-session-debugger"),
+				);
+				const eventZ = await getLocatorZIndex(
+					eventPanel.locator(".pie-section-player-tools-event-debugger"),
+				);
+				return sourceZ > sessionZ && sourceZ > eventZ;
+			})
+			.toBe(true);
+
+		await focusPanelByHeader({ page, header: sessionHeader });
+		await expect
+			.poll(async () => {
+				const sourceZ = await getLocatorZIndex(sourcePanel);
+				const sessionZ = await getLocatorZIndex(
+					sessionPanel.locator(".pie-section-player-tools-session-debugger"),
+				);
+				const eventZ = await getLocatorZIndex(
+					eventPanel.locator(".pie-section-player-tools-event-debugger"),
+				);
+				return sessionZ > sourceZ && sessionZ > eventZ;
+			})
+			.toBe(true);
+
+		const ttsPanel = await openTTSSettingsPanel(page);
+		await expect
+			.poll(async () => {
+				const ttsZ = await getLocatorZIndex(ttsPanel);
+				const sourceZ = await getLocatorZIndex(sourcePanel);
+				const sessionZ = await getLocatorZIndex(
+					sessionPanel.locator(".pie-section-player-tools-session-debugger"),
+				);
+				const eventZ = await getLocatorZIndex(
+					eventPanel.locator(".pie-section-player-tools-event-debugger"),
+				);
+				return (
+					ttsZ > sourceZ &&
+					ttsZ > sessionZ &&
+					ttsZ > eventZ
+				);
+			})
+			.toBe(true);
 	});
 
 	test("does not rely on replay when opened late", async ({ page }) => {

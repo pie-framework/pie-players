@@ -1,9 +1,9 @@
 import { expect, test } from "@playwright/test";
 
 const SPLITPANE_PRELOADED_PATH =
-	"/demo/tts-ssml?mode=candidate&layout=splitpane&player=preloaded";
+	"/tts-ssml?mode=candidate&layout=splitpane&player=preloaded";
 const VERTICAL_PRELOADED_PATH =
-	"/demo/tts-ssml?mode=candidate&layout=vertical&player=preloaded";
+	"/tts-ssml?mode=candidate&layout=vertical&player=preloaded";
 
 test.describe("section player preloaded strategy", () => {
 	test("splitpane renders item shells with preloaded strategy", async ({ page }) => {

@@ -89,8 +89,8 @@ For package- and feature-level work, scope is usually centered on:
 Use project docs and demos to pick the right review surface:
 
 - [`../tools-and-accomodations/architecture.md`](../tools-and-accomodations/architecture.md)
-- [`../integration/section_player_integration_guide.md`](../integration/section_player_integration_guide.md)
-- [`../integration/assessment-toolkit-section-player-getting-started.md`](../integration/assessment-toolkit-section-player-getting-started.md)
+- [`../section-player/client-architecture-tutorial.md`](../section-player/client-architecture-tutorial.md)
+- [`../../packages/section-player/README.md`](../../packages/section-player/README.md)
 
 Use demo apps to exercise integrated behavior:
 

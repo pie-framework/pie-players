@@ -3,9 +3,10 @@ import {
 	ToolkitCoordinator,
 	type SectionControllerEvent,
 	type SectionControllerHandle,
+	type SectionControllerRuntimeState,
 } from "../src/index.js";
 
-function createTestController() {
+function createTestController(runtimeState?: SectionControllerRuntimeState | null) {
 	const listeners = new Set<(event: SectionControllerEvent) => void>();
 	const handle: SectionControllerHandle = {
 		subscribe(listener) {
@@ -15,9 +16,9 @@ function createTestController() {
 			};
 		},
 		getRuntimeState() {
-			return null;
+			return runtimeState ?? null;
 		},
-		getSessionState() {
+		getSession() {
 			return { itemSessions: {} };
 		},
 	};
@@ -54,8 +55,177 @@ function sectionErrorEvent(): SectionControllerEvent {
 	};
 }
 
+function sectionLoadingCompleteEvent(): SectionControllerEvent {
+	return {
+		type: "section-loading-complete",
+		totalRegistered: 2,
+		totalLoaded: 2,
+		currentItemIndex: 0,
+		timestamp: Date.now(),
+	};
+}
+
 describe("ToolkitCoordinator section event subscriptions", () => {
-	test("filters subscriptions by event type and item id", async () => {
+	test("re-emits section-loading-complete for late subscribers", async () => {
+		const controller = createTestController({
+			sectionId: "section-1",
+			currentItemIndex: 0,
+			currentItemId: "item-1",
+			itemIdentifiers: ["item-1"],
+			visitedItemIdentifiers: ["item-1"],
+			itemSessions: {},
+			loadingComplete: true,
+			totalRegistered: 2,
+			totalLoaded: 2,
+			itemsComplete: false,
+			completedCount: 0,
+			totalItems: 1,
+		});
+		const coordinator = new ToolkitCoordinator({
+			assessmentId: "assessment-late-subscriber",
+			lazyInit: true,
+		});
+		await coordinator.getOrCreateSectionController({
+			sectionId: "section-1",
+			attemptId: "attempt-1",
+			createDefaultController: () => controller.handle,
+		});
+
+		const received: SectionControllerEvent[] = [];
+		const unsubscribe = coordinator.subscribeSectionLifecycleEvents({
+			sectionId: "section-1",
+			attemptId: "attempt-1",
+			listener: (event) => received.push(event),
+		});
+
+		expect(received).toHaveLength(1);
+		expect(received[0]).toEqual(
+			expect.objectContaining({
+				type: "section-loading-complete",
+				totalRegistered: 2,
+				totalLoaded: 2,
+			}),
+		);
+		unsubscribe();
+	});
+
+	test("replays section-loading-complete when runtime reports complete without totals", async () => {
+		const controller = createTestController({
+			sectionId: "section-1",
+			currentItemIndex: 0,
+			currentItemId: "item-1",
+			itemIdentifiers: ["item-1"],
+			visitedItemIdentifiers: ["item-1"],
+			itemSessions: {},
+			loadingComplete: true,
+			totalRegistered: 0,
+			totalLoaded: 0,
+			itemsComplete: false,
+			completedCount: 0,
+			totalItems: 1,
+		});
+		const coordinator = new ToolkitCoordinator({
+			assessmentId: "assessment-late-subscriber-no-totals",
+			lazyInit: true,
+		});
+		await coordinator.getOrCreateSectionController({
+			sectionId: "section-1",
+			attemptId: "attempt-1",
+			createDefaultController: () => controller.handle,
+		});
+
+		const received: SectionControllerEvent[] = [];
+		const unsubscribe = coordinator.subscribeSectionLifecycleEvents({
+			sectionId: "section-1",
+			attemptId: "attempt-1",
+			listener: (event) => received.push(event),
+		});
+
+		expect(received).toHaveLength(1);
+		expect(received[0]).toEqual(
+			expect.objectContaining({
+				type: "section-loading-complete",
+				totalRegistered: 0,
+				totalLoaded: 0,
+			}),
+		);
+		unsubscribe();
+	});
+
+	test("does not replay section-loading-complete for item-scoped helper", async () => {
+		const controller = createTestController({
+			sectionId: "section-1",
+			currentItemIndex: 0,
+			currentItemId: "item-1",
+			itemIdentifiers: ["item-1"],
+			visitedItemIdentifiers: ["item-1"],
+			itemSessions: {},
+			loadingComplete: true,
+			totalRegistered: 2,
+			totalLoaded: 2,
+			itemsComplete: false,
+			completedCount: 0,
+			totalItems: 1,
+		});
+		const coordinator = new ToolkitCoordinator({
+			assessmentId: "assessment-item-no-replay",
+			lazyInit: true,
+		});
+		await coordinator.getOrCreateSectionController({
+			sectionId: "section-1",
+			attemptId: "attempt-1",
+			createDefaultController: () => controller.handle,
+		});
+
+		const received: SectionControllerEvent[] = [];
+		const unsubscribe = coordinator.subscribeItemEvents({
+			sectionId: "section-1",
+			attemptId: "attempt-1",
+			listener: (event) => received.push(event),
+		});
+
+		expect(received).toHaveLength(0);
+		unsubscribe();
+	});
+
+	test("replay still respects section lifecycle event type filters", async () => {
+		const controller = createTestController({
+			sectionId: "section-1",
+			currentItemIndex: 0,
+			currentItemId: "item-1",
+			itemIdentifiers: ["item-1"],
+			visitedItemIdentifiers: ["item-1"],
+			itemSessions: {},
+			loadingComplete: true,
+			totalRegistered: 2,
+			totalLoaded: 2,
+			itemsComplete: false,
+			completedCount: 0,
+			totalItems: 1,
+		});
+		const coordinator = new ToolkitCoordinator({
+			assessmentId: "assessment-replay-filter",
+			lazyInit: true,
+		});
+		await coordinator.getOrCreateSectionController({
+			sectionId: "section-1",
+			attemptId: "attempt-1",
+			createDefaultController: () => controller.handle,
+		});
+
+		const received: SectionControllerEvent[] = [];
+		const unsubscribe = coordinator.subscribeSectionLifecycleEvents({
+			sectionId: "section-1",
+			attemptId: "attempt-1",
+			eventTypes: ["section-error"],
+			listener: (event) => received.push(event),
+		});
+
+		expect(received).toHaveLength(0);
+		unsubscribe();
+	});
+
+	test("filters item helper subscriptions by event type and item id", async () => {
 		const controller = createTestController();
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: "assessment-events",
@@ -68,7 +238,7 @@ describe("ToolkitCoordinator section event subscriptions", () => {
 		});
 
 		const received: SectionControllerEvent[] = [];
-		const unsubscribe = coordinator.subscribeSectionEvents({
+		const unsubscribe = coordinator.subscribeItemEvents({
 			sectionId: "section-1",
 			attemptId: "attempt-1",
 			eventTypes: ["item-selected"],
@@ -90,6 +260,69 @@ describe("ToolkitCoordinator section event subscriptions", () => {
 		unsubscribe();
 	});
 
+	test("subscribeItemEvents receives item-scoped events only", async () => {
+		const controller = createTestController();
+		const coordinator = new ToolkitCoordinator({
+			assessmentId: "assessment-item-helper",
+			lazyInit: true,
+		});
+		await coordinator.getOrCreateSectionController({
+			sectionId: "section-1",
+			attemptId: "attempt-1",
+			createDefaultController: () => controller.handle,
+		});
+
+		const received: SectionControllerEvent[] = [];
+		const unsubscribe = coordinator.subscribeItemEvents({
+			sectionId: "section-1",
+			attemptId: "attempt-1",
+			itemIds: ["item-b"],
+			listener: (event) => received.push(event),
+		});
+
+		controller.emit(itemSelectedEvent("item-a"));
+		controller.emit(sectionLoadingCompleteEvent());
+		controller.emit(itemSelectedEvent("item-b"));
+
+		expect(received).toHaveLength(1);
+		expect(received[0]).toEqual(
+			expect.objectContaining({
+				type: "item-selected",
+				currentItemId: "item-b",
+			}),
+		);
+		unsubscribe();
+	});
+
+	test("subscribeSectionLifecycleEvents receives section-scoped events", async () => {
+		const controller = createTestController();
+		const coordinator = new ToolkitCoordinator({
+			assessmentId: "assessment-section-helper",
+			lazyInit: true,
+		});
+		await coordinator.getOrCreateSectionController({
+			sectionId: "section-1",
+			attemptId: "attempt-1",
+			createDefaultController: () => controller.handle,
+		});
+
+		const received: SectionControllerEvent[] = [];
+		const unsubscribe = coordinator.subscribeSectionLifecycleEvents({
+			sectionId: "section-1",
+			attemptId: "attempt-1",
+			listener: (event) => received.push(event),
+		});
+
+		controller.emit(itemSelectedEvent("item-a"));
+		controller.emit(sectionLoadingCompleteEvent());
+		controller.emit(sectionErrorEvent());
+
+		expect(received).toHaveLength(2);
+		expect(received[0]?.type).toBe("section-loading-complete");
+		expect(received[1]?.type).toBe("section-error");
+		unsubscribe();
+	});
+
 	test("replaces existing subscription for the same listener and section key", async () => {
 		const controller = createTestController();
 		const coordinator = new ToolkitCoordinator({
@@ -104,13 +337,13 @@ describe("ToolkitCoordinator section event subscriptions", () => {
 
 		const received: SectionControllerEvent[] = [];
 		const listener = (event: SectionControllerEvent) => received.push(event);
-		const unsubscribeFirst = coordinator.subscribeSectionEvents({
+		const unsubscribeFirst = coordinator.subscribeItemEvents({
 			sectionId: "section-1",
 			attemptId: "attempt-1",
 			itemIds: ["item-a"],
 			listener,
 		});
-		const unsubscribeSecond = coordinator.subscribeSectionEvents({
+		const unsubscribeSecond = coordinator.subscribeItemEvents({
 			sectionId: "section-1",
 			attemptId: "attempt-1",
 			itemIds: ["item-b"],
@@ -156,7 +389,7 @@ describe("ToolkitCoordinator section event subscriptions", () => {
 
 		try {
 			const received: SectionControllerEvent[] = [];
-			const unsubscribe = coordinator.subscribeSectionEvents({
+			const unsubscribe = coordinator.subscribeItemEvents({
 				sectionId: "section-1",
 				listener: (event) => received.push(event),
 			});

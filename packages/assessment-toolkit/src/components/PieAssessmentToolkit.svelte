@@ -62,6 +62,32 @@
 	type SessionChangedLike = {
 		eventDetail?: unknown;
 	};
+	type UnknownRecord = Record<string, unknown>;
+	type HostRuntimeEventName =
+		| typeof PIE_REGISTER_EVENT
+		| typeof PIE_UNREGISTER_EVENT
+		| typeof PIE_INTERNAL_ITEM_SESSION_CHANGED_EVENT
+		| typeof PIE_INTERNAL_CONTENT_LOADED_EVENT
+		| typeof PIE_INTERNAL_ITEM_PLAYER_ERROR_EVENT;
+	type HostRuntimeEventHandler = (event: Event) => void;
+
+	interface CompositionSnapshot {
+		sectionId: string;
+		currentItemIndex: number;
+		renderableSignature: string;
+		itemSessionSignature: string;
+	}
+
+	interface CompositionRenderableSnapshot {
+		id: string;
+		version: string;
+	}
+
+	interface CompositionSessionSnapshot {
+		itemId: string;
+		sessionId: string;
+		payloadSignature: string;
+	}
 
 	type HostItemPlayerInput = Partial<
 		Pick<ItemPlayerConfig, "type" | "tagName" | "version" | "source">
@@ -139,47 +165,82 @@ const DEFAULT_ENV = {
 		return (hash >>> 0).toString(36);
 	}
 
-	function getCompositionRevisionKey(model: unknown): string {
-		const typed = (model || {}) as Record<string, unknown>;
-		const sectionId =
-			((typed.section as Record<string, unknown> | undefined)?.identifier as string) ||
-			(typed.sectionId as string) ||
-			"";
-		const currentItemIndex =
-			typeof typed.currentItemIndex === "number" ? typed.currentItemIndex : -1;
-		const renderables = Array.isArray(typed.renderables) ? typed.renderables : [];
-		const renderableSignature = renderables
-			.map((entry, index) => {
-				const row = (entry || {}) as Record<string, unknown>;
-				const entity = (row.entity || {}) as Record<string, unknown>;
-				const entityId =
-					(typeof entity.id === "string" && entity.id) || `renderable-${index}`;
-				const entityVersion =
-					(typeof entity.version === "string" && entity.version) ||
-					(typeof entity.version === "number" ? String(entity.version) : "") ||
-					(typeof (entity.config as Record<string, unknown> | undefined)?.version === "string"
-						? ((entity.config as Record<string, unknown>).version as string)
-						: "");
-				return `${entityId}:${entityVersion}`;
-			})
-			.join("|");
-		const sessionsByItem = (typed.itemSessionsByItemId || {}) as Record<string, unknown>;
-		const itemSessionSignature = Object.keys(sessionsByItem)
+	function asRecord(value: unknown): UnknownRecord {
+		return value && typeof value === "object" ? (value as UnknownRecord) : {};
+	}
+
+	function toSectionId(model: UnknownRecord): string {
+		const section = asRecord(model.section);
+		const sectionIdentifier =
+			typeof section.identifier === "string" ? section.identifier : "";
+		const sectionIdValue = typeof model.sectionId === "string" ? model.sectionId : "";
+		return sectionIdentifier || sectionIdValue;
+	}
+
+	function toCurrentItemIndex(model: UnknownRecord): number {
+		return typeof model.currentItemIndex === "number" ? model.currentItemIndex : -1;
+	}
+
+	function toRenderableSnapshots(model: UnknownRecord): CompositionRenderableSnapshot[] {
+		const renderables = Array.isArray(model.renderables) ? model.renderables : [];
+		return renderables.map((entry, index) => {
+			const row = asRecord(entry);
+			const entity = asRecord(row.entity);
+			const entityId =
+				(typeof entity.id === "string" && entity.id) || `renderable-${index}`;
+			const entityConfig = asRecord(entity.config);
+			const entityVersion =
+				(typeof entity.version === "string" && entity.version) ||
+				(typeof entity.version === "number" ? String(entity.version) : "") ||
+				(typeof entityConfig.version === "string" ? entityConfig.version : "");
+			return {
+				id: entityId,
+				version: entityVersion,
+			};
+		});
+	}
+
+	function toSessionSnapshots(model: UnknownRecord): CompositionSessionSnapshot[] {
+		const sessionsByItem = asRecord(model.itemSessionsByItemId);
+		return Object.keys(sessionsByItem)
 			.sort((left, right) => left.localeCompare(right))
 			.map((itemId) => {
-				const session = sessionsByItem[itemId] as Record<string, unknown> | undefined;
-				const sessionId = (typeof session?.id === "string" && session.id) || "";
-				const dataPayload = Array.isArray(session?.data) ? session.data : [];
+				const session = asRecord(sessionsByItem[itemId]);
+				const sessionId = typeof session.id === "string" ? session.id : "";
+				const dataPayload = Array.isArray(session.data) ? session.data : [];
 				let payloadSignature = "";
 				try {
 					payloadSignature = hashString(JSON.stringify(dataPayload));
 				} catch {
 					payloadSignature = String(dataPayload.length);
 				}
-				return `${itemId}:${sessionId}:${payloadSignature}`;
-			})
+				return {
+					itemId,
+					sessionId,
+					payloadSignature,
+				};
+			});
+	}
+
+	function toCompositionSnapshot(model: unknown): CompositionSnapshot {
+		const typed = asRecord(model);
+		const renderableSignature = toRenderableSnapshots(typed)
+			.map((entry) => `${entry.id}:${entry.version}`)
 			.join("|");
-		return `${sectionId}|${currentItemIndex}|${renderableSignature}|${itemSessionSignature}`;
+		const itemSessionSignature = toSessionSnapshots(typed)
+			.map((entry) => `${entry.itemId}:${entry.sessionId}:${entry.payloadSignature}`)
+			.join("|");
+		return {
+			sectionId: toSectionId(typed),
+			currentItemIndex: toCurrentItemIndex(typed),
+			renderableSignature,
+			itemSessionSignature,
+		};
+	}
+
+	function getCompositionRevisionKey(model: unknown): string {
+		const snapshot = toCompositionSnapshot(model);
+		return `${snapshot.sectionId}|${snapshot.currentItemIndex}|${snapshot.renderableSignature}|${snapshot.itemSessionSignature}`;
 	}
 
 	function isKnownPlayerType(value: unknown): value is ItemPlayerType {
@@ -309,7 +370,7 @@ const DEFAULT_ENV = {
 			sectionId: effectiveSectionId,
 			itemPlayer: effectiveItemPlayer,
 			reportSessionChanged: (itemId: string, detail: unknown) => {
-				const result = sectionEngine.handleItemSessionChanged(itemId, detail);
+				const result = sectionEngine.updateItemSession(itemId, detail);
 				emitNormalizedSessionChanged({
 					itemId,
 					result,
@@ -391,6 +452,28 @@ const DEFAULT_ENV = {
 			assessmentToolkitHostRuntimeContext,
 		);
 		return sourceRuntime?.runtimeId === runtimeId;
+	}
+
+	function getEventDetail<T>(event: Event): T | null {
+		const detail = (event as CustomEvent<T>).detail;
+		return detail ?? null;
+	}
+
+	function registerHostRuntimeListeners(
+		hostElement: HTMLElement,
+		bindings: Array<{
+			name: HostRuntimeEventName;
+			handler: HostRuntimeEventHandler;
+		}>,
+	): () => void {
+		for (const binding of bindings) {
+			hostElement.addEventListener(binding.name, binding.handler);
+		}
+		return () => {
+			for (const binding of bindings) {
+				hostElement.removeEventListener(binding.name, binding.handler);
+			}
+		};
 	}
 
 	$effect(() => {
@@ -535,85 +618,83 @@ const DEFAULT_ENV = {
 	$effect(() => {
 		if (!host) return;
 		const localHost = host;
-
-		const onRegister = (event: Event) => {
-			if (!isLocalToCurrentRuntime(event.target)) return;
-			const detail = (event as CustomEvent<RuntimeRegistrationDetail>).detail;
-			if (!detail?.element || !detail?.itemId) return;
-			const changed = sectionEngine.register(detail);
-			sectionEngine.handleContentRegistered(detail);
-			if (changed) emitCompositionChanged();
-		};
-
-		const onUnregister = (event: Event) => {
-			if (!isLocalToCurrentRuntime(event.target)) return;
-			const detail = (event as CustomEvent<RuntimeRegistrationDetail>).detail;
-			if (!detail?.itemId) return;
-			const changed = detail?.element
-				? sectionEngine.unregister(detail.element)
-				: false;
-			sectionEngine.handleContentUnregistered(detail);
-			if (changed) emitCompositionChanged();
-		};
-
-		const onItemSessionChanged = (event: Event) => {
-			if (!isLocalToCurrentRuntime(event.target)) return;
-			const detail = (event as CustomEvent<InternalItemSessionChangedDetail>).detail;
-			if (!detail?.itemId) return;
-			const result = sectionEngine.handleItemSessionChanged(detail.itemId, detail.session);
-			emitNormalizedSessionChanged({
-				itemId: detail.itemId,
-				canonicalItemId: sectionEngine.getCanonicalItemId(detail.itemId),
-				result,
-				fallbackSession: detail.session,
-			});
-		};
-		const onContentLoaded = (event: Event) => {
-			if (!isLocalToCurrentRuntime(event.target)) return;
-			const detail = (event as CustomEvent<InternalContentLoadedDetail>).detail;
-			if (!detail?.itemId) return;
-			sectionEngine.handleContentLoaded({
-				itemId: detail.itemId,
-				canonicalItemId: detail.canonicalItemId,
-				contentKind: detail.contentKind,
-				detail: detail.detail,
-				timestamp: Date.now(),
-			});
-		};
-		const onItemPlayerError = (event: Event) => {
-			if (!isLocalToCurrentRuntime(event.target)) return;
-			const detail = (event as CustomEvent<InternalItemPlayerErrorDetail>).detail;
-			if (!detail?.itemId) return;
-			sectionEngine.handleItemPlayerError({
-				itemId: detail.itemId,
-				canonicalItemId: detail.canonicalItemId,
-				contentKind: detail.contentKind,
-				error: detail.error,
-				timestamp: Date.now(),
-			});
-		};
-
-		localHost.addEventListener(PIE_REGISTER_EVENT, onRegister);
-		localHost.addEventListener(PIE_UNREGISTER_EVENT, onUnregister);
-		localHost.addEventListener(PIE_INTERNAL_ITEM_SESSION_CHANGED_EVENT, onItemSessionChanged);
-		localHost.addEventListener(PIE_INTERNAL_CONTENT_LOADED_EVENT, onContentLoaded);
-		localHost.addEventListener(PIE_INTERNAL_ITEM_PLAYER_ERROR_EVENT, onItemPlayerError);
-		return () => {
-			localHost.removeEventListener(PIE_REGISTER_EVENT, onRegister);
-			localHost.removeEventListener(PIE_UNREGISTER_EVENT, onUnregister);
-			localHost.removeEventListener(
-				PIE_INTERNAL_ITEM_SESSION_CHANGED_EVENT,
-				onItemSessionChanged,
-			);
-			localHost.removeEventListener(
-				PIE_INTERNAL_CONTENT_LOADED_EVENT,
-				onContentLoaded,
-			);
-			localHost.removeEventListener(
-				PIE_INTERNAL_ITEM_PLAYER_ERROR_EVENT,
-				onItemPlayerError,
-			);
-		};
+		const guardLocalRuntime = (event: Event): boolean =>
+			isLocalToCurrentRuntime(event.target);
+		const bindings: Array<{
+			name: HostRuntimeEventName;
+			handler: HostRuntimeEventHandler;
+		}> = [
+			{
+				name: PIE_REGISTER_EVENT,
+				handler: (event: Event) => {
+					if (!guardLocalRuntime(event)) return;
+					const detail = getEventDetail<RuntimeRegistrationDetail>(event);
+					if (!detail?.element || !detail?.itemId) return;
+					const changed = sectionEngine.register(detail);
+					sectionEngine.handleContentRegistered(detail);
+					if (changed) emitCompositionChanged();
+				},
+			},
+			{
+				name: PIE_UNREGISTER_EVENT,
+				handler: (event: Event) => {
+					if (!guardLocalRuntime(event)) return;
+					const detail = getEventDetail<RuntimeRegistrationDetail>(event);
+					if (!detail?.itemId) return;
+					const changed = detail?.element
+						? sectionEngine.unregister(detail.element)
+						: false;
+					sectionEngine.handleContentUnregistered(detail);
+					if (changed) emitCompositionChanged();
+				},
+			},
+			{
+				name: PIE_INTERNAL_ITEM_SESSION_CHANGED_EVENT,
+				handler: (event: Event) => {
+					if (!guardLocalRuntime(event)) return;
+					const detail = getEventDetail<InternalItemSessionChangedDetail>(event);
+					if (!detail?.itemId) return;
+					const result = sectionEngine.updateItemSession(detail.itemId, detail.session);
+					emitNormalizedSessionChanged({
+						itemId: detail.itemId,
+						canonicalItemId: sectionEngine.getCanonicalItemId(detail.itemId),
+						result,
+						fallbackSession: detail.session,
+					});
+				},
+			},
+			{
+				name: PIE_INTERNAL_CONTENT_LOADED_EVENT,
+				handler: (event: Event) => {
+					if (!guardLocalRuntime(event)) return;
+					const detail = getEventDetail<InternalContentLoadedDetail>(event);
+					if (!detail?.itemId) return;
+					sectionEngine.handleContentLoaded({
+						itemId: detail.itemId,
+						canonicalItemId: detail.canonicalItemId,
+						contentKind: detail.contentKind,
+						detail: detail.detail,
+						timestamp: Date.now(),
+					});
+				},
+			},
+			{
+				name: PIE_INTERNAL_ITEM_PLAYER_ERROR_EVENT,
+				handler: (event: Event) => {
+					if (!guardLocalRuntime(event)) return;
+					const detail = getEventDetail<InternalItemPlayerErrorDetail>(event);
+					if (!detail?.itemId) return;
+					sectionEngine.handleItemPlayerError({
+						itemId: detail.itemId,
+						canonicalItemId: detail.canonicalItemId,
+						contentKind: detail.contentKind,
+						error: detail.error,
+						timestamp: Date.now(),
+					});
+				},
+			},
+		];
+		return registerHostRuntimeListeners(localHost, bindings);
 	});
 
 	export async function waitUntilReady(): Promise<void> {

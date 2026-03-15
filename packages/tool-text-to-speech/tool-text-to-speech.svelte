@@ -11,7 +11,7 @@
 />
 
 <script lang="ts">
-	import type { IToolCoordinator, ITTSService } from '@pie-players/pie-assessment-toolkit';
+	import type { ToolCoordinatorApi, TtsServiceApi } from '@pie-players/pie-assessment-toolkit';
 	import { BrowserTTSProvider, ZIndexLayer } from '@pie-players/pie-assessment-toolkit';
 import { onDestroy, onMount } from 'svelte';
 
@@ -24,8 +24,8 @@ import { onDestroy, onMount } from 'svelte';
 	}: {
 		visible?: boolean;
 		toolId?: string;
-		coordinator?: IToolCoordinator;
-		ttsService: ITTSService;
+		coordinator?: ToolCoordinatorApi;
+		ttsService: TtsServiceApi;
 	} = $props();
 
 	// Check if running in browser

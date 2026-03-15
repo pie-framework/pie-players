@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-tool-answer-eliminator",
-	"version": "0.3.5",
+	"version": "0.3.13",
 	"type": "module",
 	"description": "Answer eliminator tool for PIE assessment player - supports process-of-elimination test-taking strategy",
 	"repository": {
@@ -29,8 +29,8 @@
 			"svelte": "./tool-answer-eliminator.svelte"
 		},
 		"./adapters/adapter-registry": {
-			"types": "./adapters/adapter-registry.ts",
-			"import": "./adapters/adapter-registry.ts"
+			"types": "./dist/adapters/adapter-registry.d.ts",
+			"import": "./dist/adapters/adapter-registry.js"
 		}
 	},
 	"files": [
@@ -52,7 +52,7 @@
 	},
 	"types": "./dist/index.d.ts",
 	"scripts": {
-		"build": "vite build",
+		"build": "vite build && tsc -p tsconfig.adapters.json",
 		"dev": "vite build --watch",
 		"typecheck": "tsc --noEmit",
 		"lint": "biome check ."

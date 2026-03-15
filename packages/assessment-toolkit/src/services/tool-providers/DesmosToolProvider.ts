@@ -15,7 +15,7 @@ import type {
 	CalculatorProvider,
 	DesmosCalculatorConfig,
 } from "@pie-players/pie-calculator";
-import type { IToolProvider, ToolProviderCapabilities } from "./IToolProvider.js";
+import type { ToolProviderApi, ToolProviderCapabilities } from "./ToolProviderApi.js";
 
 /**
  * Desmos tool provider configuration
@@ -47,7 +47,7 @@ export interface DesmosToolProviderConfig {
 /**
  * Desmos Calculator Tool Provider
  *
- * Wraps DesmosCalculatorProvider with the IToolProvider interface
+ * Wraps DesmosCalculatorProvider with the ToolProviderApi interface
  * for use in the ToolProviderRegistry.
  *
  * @example
@@ -63,7 +63,7 @@ export interface DesmosToolProviderConfig {
  * ```
  */
 export class DesmosToolProvider
-	implements IToolProvider<DesmosToolProviderConfig, CalculatorProvider>
+	implements ToolProviderApi<DesmosToolProviderConfig, CalculatorProvider>
 {
 	readonly providerId = "desmos-calculator";
 	readonly providerName = "Desmos Calculator";

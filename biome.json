@@ -39,7 +39,7 @@
 			},
 			"style": {
 				"useFilenamingConvention": "off",
-				"useImportType": "off",
+				"useImportType": "warn",
 				"useNamingConvention": "off"
 			}
 		}

@@ -17,7 +17,7 @@ Use this as practical guidance when adding features or fixing bugs.
 
 - Treat controller events as a forward-only stream.
 - Do not depend on event replay for baseline state.
-- Read current truth from explicit controller APIs (`getRuntimeState`, `getSessionState`), then apply future events.
+- Read current truth from explicit controller APIs (`getRuntimeState`, `getSession`), then apply future events.
 - Keep debugger tools as consumers of controller state/events, not alternate state owners.
 
 ## Custom Element Boundaries
@@ -33,7 +33,7 @@ Use this as practical guidance when adding features or fixing bugs.
 
 - Default to `@pie-players/pie-context` (Lit-style context-request protocol) for CE runtime dependency sharing.
 - Use Svelte `setContext/getContext` only for strictly local component-tree coordination that does not cross CE/runtime boundaries.
-- Use explicit controller/toolkit APIs for section-level runtime state and event streams (`getRuntimeState`, `getSessionState`, `subscribeSectionEvents`).
+- Use explicit controller/toolkit APIs for section-level runtime state and event streams (`getRuntimeState`, `getSession`, `subscribeItemEvents`, `subscribeSectionLifecycleEvents`).
 - Use custom DOM events for host integration boundaries, not as a primary internal state bus.
 - Keep event direction explicit:
   - child-to-parent intent via component callbacks/context methods
@@ -99,16 +99,26 @@ const localCardConfig = getContext<{ density: "compact" | "comfortable" }>(
 #### 2) Runtime-wide state/events via controller API
 
 ```ts
-const unsubscribe = toolkitCoordinator.subscribeSectionEvents({
+const unsubscribeItem = coordinator.subscribeItemEvents({
   sectionId,
   attemptId,
   listener: (event) => {
-    // forward-only event stream
-    handleControllerEvent(event);
+    handleItemEvent(event);
   },
 });
+const unsubscribeSection = coordinator.subscribeSectionLifecycleEvents({
+  sectionId,
+  attemptId,
+  listener: (event) => {
+    handleSectionEvent(event);
+  },
+});
+const unsubscribe = () => {
+  unsubscribeItem?.();
+  unsubscribeSection?.();
+};
 
-const runtimeState = toolkitCoordinator
+const runtimeState = coordinator
   .getSectionController?.({ sectionId, attemptId })
   ?.getRuntimeState?.();
 ```
@@ -160,6 +170,13 @@ element.dispatchEvent(
   - `bun run check:source-exports`
   - `bun run check:consumer-boundaries`
   - `bun run check:custom-elements`
+
+## Types and Utilities Ownership
+
+- Use the canonical contract map in `docs/architecture/types-and-utilities-contract.md` when adding or changing shared type/utility symbols.
+- Use canonical API names from `@pie-players/pie-assessment-toolkit` (`ToolCoordinatorApi`, `ToolkitCoordinatorApi`, `TtsServiceApi`, `ToolProviderApi`) and avoid legacy `I*` contracts.
+- Re-export shared contracts instead of re-defining near-identical shapes in multiple packages.
+- For cross-package constants (for example layering/z-index enums), import from the canonical package owner and re-export locally only when needed for compatibility.
 
 ## E2E Test Stability
 

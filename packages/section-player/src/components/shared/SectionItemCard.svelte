@@ -96,7 +96,7 @@
 	content-kind="assessment-item"
 	item={item}
 >
-	<div class="pie-section-player-content-card">
+	<div class="pie-section-player-content-card" tabindex="-1" data-section-item-card>
 		<div
 			class="pie-section-player-content-card-header pie-section-player-item-header pie-section-player__item-header"
 			data-region="header"

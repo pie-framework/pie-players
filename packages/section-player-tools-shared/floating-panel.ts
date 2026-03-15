@@ -5,6 +5,25 @@ export type FloatingPanelState = {
 	height: number;
 };
 
+const FLOATING_PANEL_BASE_Z_INDEX = 9999;
+const FLOATING_PANEL_Z_INDEX_KEY = "__pieFloatingPanelZIndex";
+
+type FloatingPanelZIndexGlobal = typeof globalThis & {
+	[FLOATING_PANEL_Z_INDEX_KEY]?: number;
+};
+
+export function claimNextFloatingPanelZIndex(): number {
+	const runtime = globalThis as FloatingPanelZIndexGlobal;
+	const currentValue = runtime[FLOATING_PANEL_Z_INDEX_KEY];
+	const normalizedCurrent =
+		typeof currentValue === "number" && Number.isFinite(currentValue)
+			? currentValue
+			: FLOATING_PANEL_BASE_Z_INDEX;
+	const nextValue = normalizedCurrent + 1;
+	runtime[FLOATING_PANEL_Z_INDEX_KEY] = nextValue;
+	return nextValue;
+}
+
 export type FloatingPanelViewportSizing = {
 	widthRatio: number;
 	heightRatio: number;
@@ -59,6 +78,7 @@ type PointerControllerArgs = {
 	minWidth: number;
 	minHeight: number;
 	padding?: number;
+	onFocus?: () => void;
 };
 
 export type FloatingPanelPointerController = {
@@ -136,6 +156,7 @@ export function createFloatingPanelPointerController(
 
 	return {
 		startDrag(event: MouseEvent) {
+			args.onFocus?.();
 			isDragging = true;
 			dragStartX = event.clientX;
 			dragStartY = event.clientY;
@@ -146,6 +167,7 @@ export function createFloatingPanelPointerController(
 			document.addEventListener("mouseup", stopDrag);
 		},
 		startResize(event: MouseEvent) {
+			args.onFocus?.();
 			isResizing = true;
 			resizeStartX = event.clientX;
 			resizeStartY = event.clientY;

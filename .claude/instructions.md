@@ -127,7 +127,7 @@ These checks ensure:
 
 ### Debugger Panel Contract
 
-- Debugger panels are consumers, not state owners: they should render controller state reads (`getRuntimeState` / `getSessionState`) plus forward controller events.
+- Debugger panels are consumers, not state owners: they should render controller state reads (`getRuntimeState` / `getSession`) plus forward controller events.
 - Do not rely on event replay for baseline panel state; use explicit state reads for initialization.
 
 ### Theming Contract (Shadow-Safe)
@@ -215,6 +215,8 @@ bun run check          # Svelte component validation
 - **MIT license**: All packages public
 - **npm publishing**: Public access
 - **Local packaging**: `pack:local` for offline builds
+- **Release prep policy (required)**: Always prepare release changesets so the release includes **all publishable packages**, keeping versions globally aligned across the monorepo.
+- **Do not scope release bumps to only changed packages** unless there is an explicit maintainer exception documented for that release.
 
 ## Sibling Repository Dependency
 

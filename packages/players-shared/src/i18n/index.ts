@@ -15,7 +15,7 @@ export {
 export { SimpleI18n } from "./simple-i18n.js";
 export type {
 	I18nConfig,
-	II18nService,
+	I18nServiceApi,
 	PluralTranslation,
 	TranslationBundle,
 } from "./types.js";

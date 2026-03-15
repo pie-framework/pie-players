@@ -1,11 +1,5 @@
 /**
- * Z-index layers for assessment components
- * Copied from assessment-toolkit to avoid build dependency
+ * Canonical z-index layering is defined in assessment-toolkit.
+ * Re-export locally so section-player consumers keep a stable import path.
  */
-export enum ZIndexLayer {
-	BASE = 0, // PIE content, player chrome (0-999)
-	TOOL = 1000, // Non-modal tools (ruler, protractor) (1000-1999)
-	MODAL = 2000, // Modal tools (calculator) (2000-2999)
-	CONTROL = 3000, // Drag handles, resize controls (3000-3999)
-	HIGHLIGHT = 4000, // TTS and annotation highlights (4000-4999)
-}
+export { ZIndexLayer } from "@pie-players/pie-assessment-toolkit";

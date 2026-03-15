@@ -1,837 +1,241 @@
 # Tool Provider System
 
+This guide describes the current tool-provider integration model for `pie-players`.
 
-This guide covers the unified Tool Provider System for managing assessment tools with authentication, configuration, and lifecycle management.
-
-## Table of Contents
-
-- [Quick Start](#quick-start)
-- [Architecture](#architecture)
-- [Core Components](#core-components)
-- [Usage Examples](#usage-examples)
-- [Implemented Providers](#implemented-providers)
-- [Backend Integration](#backend-integration)
-- [Configuration Guide](#configuration-guide)
-- [Section Tools Toolbar](#section-tools-toolbar)
-- [API Reference](#api-reference)
-- [Troubleshooting](#troubleshooting)
-
----
-
-## Quick Start
-
-### What We Built
-
-A unified framework for managing assessment tools with authentication:
-
-- ✅ **DesmosToolProvider** - Desmos calculators with secure API key handling
-- ✅ **TTSToolProvider** - Text-to-speech (Browser, AWS Polly, Google Cloud)
-- ✅ **ToolProviderRegistry** - Centralized provider management with lazy loading
-- ✅ **ToolkitCoordinator integration** - Seamless integration with existing toolkit
-- ✅ **Section Tools Toolbar** - Visual toolbar for section player with 7 tools
-
-### Quick Examples
-
-#### Example 1: Browser TTS (No Auth)
-
-```typescript
-import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
-
-const coordinator = new ToolkitCoordinator({
-  assessmentId: 'demo',
-  tools: {
-    providers: {
-      tts: {
-        enabled: true,
-        settings: {
-          backend: 'browser', // Uses Web Speech API - no auth needed
-        },
-      },
-    }
-  },
-});
-```
-
-#### Example 2: Desmos Calculator (With Auth)
-
-```typescript
-const coordinator = new ToolkitCoordinator({
-  assessmentId: 'demo',
-  tools: {
-    providers: {
-      calculator: {
-        provider: {
-          // id is optional here; calculator registration defaults to calculator-desmos
-          runtime: {
-            authFetcher: async () => {
-              // Fetch credentials securely from your backend
-              const res = await fetch('/api/tools/desmos/token');
-              return res.json(); // { apiKey: '...' }
-            },
-            // Optional backend bridge for richer interactions
-            request: async ({ path, method = 'GET', body }) => {
-              const res = await fetch(path, {
-                method,
-                headers: { 'content-type': 'application/json' },
-                body: body ? JSON.stringify(body) : undefined,
-              });
-              return res.json();
-            },
-          },
-          init: {},
-        },
-      },
-    },
-    placement: {
-      section: ['calculator', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
-      item: ['calculator', 'textToSpeech', 'answerEliminator'],
-      passage: ['textToSpeech'],
-    }
-  },
-});
-```
-
-#### Example 3: Google TTS (With Auth)
-
-```typescript
-const coordinator = new ToolkitCoordinator({
-  assessmentId: 'demo',
-  tools: {
-    providers: {
-      tts: {
-        settings: {
-          backend: 'google',
-          apiEndpoint: '/api/tts/synthesize',
-        },
-        provider: {
-          runtime: {
-            authFetcher: async () => {
-              const res = await fetch('/api/tools/tts/google/token');
-              return res.json(); // { authToken: '...' }
-            },
-          },
-        },
-      },
-    }
-  },
-});
-```
-
-### Backend Setup
-
-Create API endpoints to provide auth credentials:
-
-```typescript
-// Express.js example
-app.get('/api/tools/desmos/token', requireAuth, (req, res) => {
-  res.json({
-    apiKey: process.env.DESMOS_API_KEY,
-    expiresIn: 3600,
-  });
-});
-
-app.get('/api/tools/tts/google/token', requireAuth, (req, res) => {
-  res.json({
-    authToken: generateGoogleToken(), // Your implementation
-    apiEndpoint: process.env.GOOGLE_TTS_ENDPOINT,
-  });
-});
-```
-
----
+For the authoritative registry details, see `packages/assessment-toolkit/docs/TOOL_REGISTRY.md`.
 
 ## Overview
 
-The Tool Provider System provides a unified framework for managing assessment tools that require:
+The tool-provider system is centered on `ToolkitCoordinator`.
 
-- **Authentication/API keys** (Desmos, AWS Polly, Google TTS)
-- **External services** (TTS, calculators, translation APIs)
-- **Lifecycle management** (initialization, lazy loading, cleanup)
-- **Configuration** (per-provider settings)
+- The host creates one `ToolkitCoordinator` for the assessment surface.
+- Tool placement lives under `tools.placement`.
+- Tool-specific runtime config lives under `tools.providers`.
+- The section player receives the coordinator through the `coordinator` property.
+- Item- and passage-level tool rendering is derived from the section-player runtime, not wired manually per card.
 
-### Key Benefits
+Use this document together with:
 
-✅ **Secure by default** - API keys fetched from backend, never exposed client-side
-✅ **Lazy initialization** - Providers only load when needed
-✅ **Unified pattern** - Consistent interface for all tools
-✅ **Production-ready** - Clear separation between dev and prod modes
-✅ **Pluggable** - Easy to add new providers
+- [`../architecture/architecture.md`](../architecture/architecture.md)
+- [`../section-player/client-architecture-tutorial.md`](../section-player/client-architecture-tutorial.md)
+- [`./tool_host_contract.md`](./tool_host_contract.md)
 
-### Generic Runtime Config Shape
+## Core Model
 
-Every tool now uses the same `tools.providers[toolId]` contract:
-
-```typescript
-type ToolProviderConfig = {
-  enabled?: boolean;
-  provider?: {
-    id?: string;
-    init?: Record<string, unknown>;
-    runtime?: {
-      authFetcher?: () => Promise<Record<string, unknown>>;
-      request?: (request: ToolRuntimeBackendRequest) => Promise<unknown>;
-      emit?: (eventName: string, payload?: Record<string, unknown>) => void | Promise<void>;
-      subscribe?: (eventName: string, handler: (payload: unknown) => void) => (() => void) | void;
-    };
+```ts
+type CanonicalToolsConfig = {
+  placement: {
+    section?: string[];
+    item?: string[];
+    passage?: string[];
   };
-  settings?: Record<string, unknown>;
+  providers?: Record<
+    string,
+    {
+      enabled?: boolean;
+      settings?: Record<string, unknown>;
+      provider?: {
+        id?: string;
+        init?: Record<string, unknown>;
+        runtime?: {
+          authFetcher?: () => Promise<Record<string, unknown>>;
+          request?: (request: unknown) => Promise<unknown>;
+          emit?: (eventName: string, payload?: Record<string, unknown>) => void | Promise<void>;
+          subscribe?: (
+            eventName: string,
+            handler: (payload: unknown) => void,
+          ) => (() => void) | void;
+        };
+      };
+    }
+  >;
+  policy?: {
+    allowed?: string[];
+    blocked?: string[];
+  };
 };
 ```
 
-- Provider registration is descriptor-driven from tool registrations, not hardcoded in coordinator branches.
-- Calculator is treated as a normal tool registration (default provider id resolves via registration metadata).
-- Floating shell tools can opt into hosted lifecycle notifications: `onHostedMount`, `onHostedResize`, `onHostedUnmount`.
+### Canonical tool IDs
 
----
+Use the current semantic tool IDs in docs and examples:
 
-## Architecture
+- `textToSpeech`
+- `calculator`
+- `annotationToolbar`
+- `answerEliminator`
+- `lineReader`
+- `ruler`
+- `graph`
+- `periodicTable`
+- `protractor`
+- `theme`
+- `colorScheme`
 
-```
-┌─────────────────────────────────────────────────────────┐
-│              ToolkitCoordinator                          │
-│  ┌───────────────────────────────────────────────────┐  │
-│  │           ToolProviderRegistry                    │  │
-│  │  - Manages all tool providers                     │  │
-│  │  - Handles auth/config                            │  │
-│  │  - Lazy initialization                            │  │
-│  └───────────────────────────────────────────────────┘  │
-│                        │                                 │
-│         ┌──────────────┼──────────────┐                 │
-│         │              │               │                 │
-│    ┌────▼────┐   ┌────▼────┐    ┌────▼────┐           │
-│    │  TTS    │   │Calculator│    │  Other  │           │
-│    │Provider │   │ Provider │    │Providers│           │
-│    └─────────┘   └──────────┘    └─────────┘           │
-│         │              │               │                 │
-│    ┌────▼────┐   ┌────▼────┐    ┌────▼────┐           │
-│    │Browser  │   │ Desmos  │    │ Google  │           │
-│    │ Polly   │   │(fixed)  │    │   ...   │           │
-│    │ Google  │   │         │    │         │           │
-│    └─────────┘   └─────────┘    └─────────┘           │
-└─────────────────────────────────────────────────────────┘
-```
+## Basic Integration
 
-### Flow Diagram
-
-![Provider authentication and initialization flow from browser tool use to backend token retrieval](../img/provider-auth-token-sequence-1-1773125406282.jpg)
-
----
-
-## Core Components
-
-### 1. IToolProvider Interface
-
-**Location**: `packages/assessment-toolkit/src/services/tool-providers/IToolProvider.ts`
-
-Base interface for all tool providers:
-
-```typescript
-interface IToolProvider<TConfig, TInstance> {
-  readonly providerId: string;
-  readonly providerName: string;
-  readonly category: ToolCategory;
-  readonly version: string;
-  readonly requiresAuth: boolean;
-
-  initialize(config: TConfig): Promise<void>;
-  createInstance(config?: Partial<TConfig>): Promise<TInstance>;
-  getCapabilities(): ToolProviderCapabilities;
-  isReady(): boolean;
-  destroy(): void;
-}
-```
-
-**Key Features**:
-- Generic types for config and instance
-- Auth flag for secure credential handling
-- Lifecycle methods (initialize, destroy)
-- Capabilities descriptor
-
-### 2. ToolProviderRegistry
-
-**Location**: `packages/assessment-toolkit/src/services/tool-providers/ToolProviderRegistry.ts`
-
-Centralized registry for managing providers:
-
-```typescript
-class ToolProviderRegistry {
-  register(providerId: string, config: ToolProviderConfig): void;
-  async getProvider<T>(providerId: string): Promise<T>;
-  has(providerId: string): boolean;
-  isInitialized(providerId: string): boolean;
-  async destroy(): Promise<void>;
-}
-```
-
-**Key Features**:
-- Lazy initialization
-- Auth fetching via `authFetcher` callback
-- Concurrent initialization protection
-- Category-based lookup
-
-### 3. ToolkitCoordinator Integration
-
-**Location**: `packages/assessment-toolkit/src/services/ToolkitCoordinator.ts`
-
-The coordinator now includes `ToolProviderRegistry` in its service bundle:
-
-```typescript
-interface ToolkitServiceBundle {
-  ttsService: TTSService;
-  toolCoordinator: ToolCoordinator;
-  highlightCoordinator: HighlightCoordinator;
-  elementToolStateStore: ElementToolStateStore;
-  catalogResolver: AccessibilityCatalogResolver;
-  toolProviderRegistry: ToolProviderRegistry; // NEW
-}
-```
-
----
-
-## Usage Examples
-
-### Basic Setup (Browser TTS - No Auth)
-
-```typescript
-import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
+```ts
+import { ToolkitCoordinator } from "@pie-players/pie-assessment-toolkit";
 
 const coordinator = new ToolkitCoordinator({
-  assessmentId: 'demo-assessment',
+  assessmentId: "demo-assessment",
   tools: {
+    placement: {
+      section: ["theme", "graph", "periodicTable", "lineReader", "ruler"],
+      item: ["calculator", "textToSpeech", "answerEliminator"],
+      passage: ["textToSpeech"],
+    },
     providers: {
-      tts: {
-        enabled: true,
-        settings: {
-          backend: 'browser', // No auth needed
-        },
+      textToSpeech: {
+        settings: { backend: "browser" },
       },
-    }
-  },
-});
-```
-
-### Advanced Setup (Google TTS with Auth)
-
-```typescript
-const coordinator = new ToolkitCoordinator({
-  assessmentId: 'demo-assessment',
-  tools: {
-    providers: {
-      tts: {
-        enabled: true,
-        settings: {
-          backend: 'google',
-          apiEndpoint: '/api/tts/synthesize',
-        },
-        provider: {
-          runtime: {
-            authFetcher: async () => {
-              // Fetch credentials from backend
-              const response = await fetch('/api/tools/tts/google/token');
-              return response.json(); // { authToken: '...' }
-            },
-          },
-        },
-      },
-    }
-  },
-});
-```
-
-### Desmos Calculator with Proxy
-
-```typescript
-const coordinator = new ToolkitCoordinator({
-  assessmentId: 'demo-assessment',
-  tools: {
-    providers: {
       calculator: {
         enabled: true,
-        provider: {
-          runtime: {
-            authFetcher: async () => {
-              const response = await fetch('/api/tools/desmos/token');
-              return response.json(); // { apiKey: '...' }
-            },
-          },
+      },
+    },
+  },
+});
+
+const sectionPlayer = document.querySelector(
+  "pie-section-player-splitpane",
+) as any;
+
+sectionPlayer.coordinator = coordinator;
+sectionPlayer.section = section;
+```
+
+The same coordinator can be reused across section-player instances for a shared assessment scope when that matches the host architecture.
+
+## Placement Rules
+
+- `section` tools render in the shared section toolbar.
+- `item` tools render in each item card.
+- `passage` tools render in each passage card.
+- Tools omitted from placement are not shown, even if provider config exists.
+- Placement overrides from layout props are normalized on top of the runtime config.
+
+## Provider Configuration
+
+### Browser TTS
+
+```ts
+const coordinator = new ToolkitCoordinator({
+  assessmentId: "demo",
+  tools: {
+    placement: {
+      item: ["textToSpeech"],
+      passage: ["textToSpeech"],
+    },
+    providers: {
+      textToSpeech: {
+        settings: {
+          backend: "browser",
+          defaultVoice: "en-US",
         },
       },
     },
-    placement: {
-      section: ['calculator', 'graph', 'periodicTable'],
-      item: ['calculator', 'textToSpeech', 'answerEliminator'],
-      passage: ['textToSpeech'],
-    }
   },
 });
 ```
 
-### Accessing Providers Directly
+### Calculator With Host Auth
 
-```typescript
-// Get TTS provider
-const ttsProvider = await coordinator.getToolProvider('tts');
-const ttsInstance = await ttsProvider.createInstance();
-
-// Get Desmos calculator provider
-const desmosProvider = await coordinator.getToolProvider('calculator-desmos');
-const calculatorProvider = await desmosProvider.createInstance();
-
-// Create a calculator
-const container = document.getElementById('calculator-container');
-const calculator = await calculatorProvider.createCalculator(
-  'scientific',
-  container
-);
-```
-
----
-
-## Implemented Providers
-
-### 1. TTSToolProvider
-
-**Category**: `tts`
-**Requires Auth**: Browser=No, Polly/Google=Yes
-**Location**: `packages/assessment-toolkit/src/services/tool-providers/TTSToolProvider.ts`
-
-**Supported Backends**:
-- `browser` - Web Speech API (no auth)
-- `polly` - AWS Polly (requires auth)
-- `google` - Google Cloud TTS (requires auth)
-- `server` - Generic server backend
-
-**Configuration**:
-```typescript
-interface TTSToolProviderConfig {
-  backend: 'browser' | 'polly' | 'google' | 'server';
-  apiEndpoint?: string; // For server backends
-  authToken?: string; // Fetched via authFetcher
-  voice?: string;
-  rate?: number; // 0.25 to 4.0
-  pitch?: number; // 0 to 2 (browser only)
-}
-```
-
-**Example**:
-```typescript
-tools: {
-  providers: {
-    tts: {
-      enabled: true,
-      backend: 'google',
-      apiEndpoint: '/api/tts/synthesize',
-      defaultVoice: 'en-US-Neural2-A',
-      rate: 1.0,
-      authFetcher: async () => {
-        const res = await fetch('/api/tools/tts/google/token');
-        return res.json();
-      },
-    },
-  }
-}
-```
-
-### 2. DesmosToolProvider
-
-**Category**: `calculator`
-**Requires Auth**: Yes
-**Location**: `packages/assessment-toolkit/src/services/tool-providers/DesmosToolProvider.ts`
-
-**Supported Calculators**:
-- Basic (four-function)
-- Scientific
-- Graphing
-
-**Configuration**:
-```typescript
-interface DesmosToolProviderConfig {
-  apiKey?: string; // DEVELOPMENT ONLY - never expose in production!
-  proxyEndpoint?: string; // PRODUCTION - backend handles API key
-  defaultConfig?: DesmosCalculatorConfig;
-}
-```
-
-**Example (Development)**:
-```typescript
-tools: {
-  providers: {
-    calculator: {
-      authFetcher: async () => ({
-        apiKey: 'your-dev-api-key', // Only for local testing!
-      }),
-    },
-  }
-}
-```
-
-**Example (Production)**:
-```typescript
-tools: {
-  providers: {
-    calculator: {
-      authFetcher: async () => {
-        const res = await fetch('/api/tools/desmos/token');
-        return res.json(); // { apiKey: '...' }
-      },
-    },
-  }
-}
-```
-
----
-
-## Backend Integration
-
-The tool provider system requires backend API endpoints to securely provide authentication credentials.
-
-### API Endpoint Structure
-
-```
-/api/tools/
-  ├── desmos/token       # Desmos API key
-  ├── tts/
-  │   ├── polly/token    # AWS Polly credentials
-  │   └── google/token   # Google TTS credentials
-  └── ...
-```
-
-### Example: Desmos Token Endpoint
-
-```typescript
-// Express.js example
-app.get('/api/tools/desmos/token', requireAuth, async (req, res) => {
-  try {
-    // Get API key from environment variable
-    const apiKey = process.env.DESMOS_API_KEY;
-
-    if (!apiKey) {
-      return res.status(500).json({
-        error: 'Desmos API key not configured'
-      });
-    }
-
-    res.json({
-      apiKey,
-      expiresIn: 3600, // Optional: token expiration in seconds
-    });
-  } catch (error) {
-    console.error('Failed to generate Desmos token:', error);
-    res.status(500).json({ error: 'Failed to generate token' });
-  }
-});
-```
-
-### Example: Google TTS Token Endpoint
-
-```typescript
-app.get('/api/tools/tts/google/token', requireAuth, async (req, res) => {
-  try {
-    // Generate temporary credentials or signed URL
-    const authToken = await generateGoogleTTSToken();
-
-    res.json({
-      authToken,
-      apiEndpoint: process.env.GOOGLE_TTS_ENDPOINT,
-      expiresIn: 3600,
-    });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to generate TTS token' });
-  }
-});
-```
-
-### Security Best Practices
-
-1. **Never expose API keys in client code**
-   - Use `authFetcher` to retrieve from backend
-   - Store keys in environment variables or secrets manager
-
-2. **Require authentication**
-   - Only authenticated users should access token endpoints
-   - Implement rate limiting
-
-3. **Use short-lived tokens**
-   - Return `expiresIn` with token
-   - Implement token refresh logic
-
-4. **Log access**
-   - Track which users request which tools
-   - Monitor for abuse
-
----
-
-## Configuration Guide
-
-### Full Configuration Example
-
-```typescript
-import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
-
+```ts
 const coordinator = new ToolkitCoordinator({
-  assessmentId: 'my-assessment',
-
+  assessmentId: "demo",
   tools: {
+    placement: {
+      section: ["calculator"],
+      item: ["calculator"],
+    },
     providers: {
-      // TTS Configuration
-      tts: {
-        enabled: true,
-        settings: {
-          backend: 'google', // 'browser' | 'polly' | 'google' | 'server'
-          apiEndpoint: '/api/tts/synthesize',
-          defaultVoice: 'en-US-Neural2-C',
-          rate: 1.0,
-          pitch: 1.0,
-        },
+      calculator: {
         provider: {
           runtime: {
             authFetcher: async () => {
-              const res = await fetch('/api/tools/tts/google/token');
+              const res = await fetch("/api/tools/desmos/token");
               return res.json();
             },
           },
         },
       },
-
-      // Calculator (Desmos remains implicit via registration descriptor)
-      calculator: {
-        enabled: true,
-        provider: {
-          runtime: {
-            authFetcher: async () => {
-              const res = await fetch('/api/tools/desmos/token');
-              return res.json();
-            },
-          },
-          // Optional init payload consumed by provider
-          init: {},
-        },
-      },
-    },
-    placement: {
-      section: [
-        'calculator',
-        'graph',
-        'periodicTable',
-        'protractor',
-        'lineReader',
-        'ruler',
-      ],
-      item: ['calculator', 'textToSpeech', 'answerEliminator'],
-      passage: ['textToSpeech'],
-    },
-    policy: {
-      blocked: [],
-    }
-  },
-
-  // Accessibility Configuration
-  accessibility: {
-    catalogs: [], // QTI 3.0 accessibility catalogs
-    language: 'en-US',
-  },
-});
-
-// Use in section player
-sectionPlayer.toolkitCoordinator = coordinator;
-```
-
-### Environment Variables
-
-Recommended environment variables for backend:
-
-```bash
-# Desmos Calculator
-DESMOS_API_KEY=your-desmos-api-key
-
-# AWS Polly TTS
-AWS_ACCESS_KEY_ID=your-aws-access-key
-AWS_SECRET_ACCESS_KEY=your-aws-secret-key
-AWS_REGION=us-east-1
-
-# Google Cloud TTS
-GOOGLE_APPLICATION_CREDENTIALS=/path/to/credentials.json
-GOOGLE_TTS_ENDPOINT=https://texttospeech.googleapis.com/v1
-
-# Application
-NODE_ENV=production
-```
-
----
-
-## Section Tools Toolbar
-
-The Section Tools Toolbar provides a SchoolCity-style visual interface for accessing assessment tools. It's implemented as a web component that integrates with the Tool Provider System.
-
-### Features
-
-- **7 Tools Available**:
-  - Calculator (Desmos)
-  - Graph (Interactive graphing tool with drawing)
-  - Periodic Table (Full periodic table with element details)
-  - Protractor (Angle measurement overlay)
-  - Line Reader (Reading guide overlay)
-  - Magnifier (Text magnification tool)
-  - Ruler (Measurement ruler)
-
-- **SchoolCity Pattern**: Bottom toolbar, independent of passage/question panels
-- **Floating Overlays**: Tools appear as draggable floating windows
-- **Z-Index Management**: ToolCoordinator manages layering (toolbar: 100, tools: 1000-1999, modals: 2000-2999)
-- **State Management**: Integrated with assessment toolkit
-
-### Setup
-
-The toolbar is automatically included in section player layouts when tools are enabled:
-
-```typescript
-const coordinator = new ToolkitCoordinator({
-  assessmentId: 'demo-assessment',
-  tools: {
-    placement: {
-      section: ['calculator', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
-      item: ['calculator', 'textToSpeech', 'answerEliminator'],
-      passage: ['textToSpeech'],
-    },
-    providers: {
-      calculator: { enabled: true },
-      tts: { settings: { backend: 'browser' } },
     },
   },
 });
-
-sectionPlayer.toolkitCoordinator = coordinator;
 ```
 
-### Package Structure
+## Host Responsibilities
 
-- **`@pie-players/pie-toolbars`** - Main toolbar custom elements
-- **Individual tool packages**:
-  - `@pie-players/pie-tool-calculator-desmos`
-  - `@pie-players/pie-tool-graph`
-  - `@pie-players/pie-tool-periodic-table`
-  - `@pie-players/pie-tool-protractor`
-  - `@pie-players/pie-tool-line-reader`
-  - `@pie-players/pie-tool-ruler`
+The host owns:
 
-### Implementation Files
+- `assessmentId`, `sectionId`, and `attemptId`
+- authentication for external tool services
+- persistence policy
+- any product-specific rules that affect whether users may advance, resume, or submit
 
-- **Toolbar CE Registration Entrypoints**:
-  - `packages/assessment-toolkit/src/components/section-toolbar-element.ts`
-  - `packages/assessment-toolkit/src/components/item-toolbar-element.ts`
-- **Toolbar Svelte Components**: `packages/assessment-toolkit/src/components/` (internal implementation)
-- **Layout Integration**:
-  - `packages/section-player/src/components/PieSectionPlayerSplitPaneElement.svelte`
-- **Player Integration**: `packages/section-player/src/components/PieSectionPlayerSplitPaneElement.svelte`
-- **Demo**: `apps/section-demos/src/routes/demo/[[id]]/+page.svelte`
+The toolkit and section-player runtime own:
 
-### Implementation Status
+- tool placement normalization
+- tool provider lifecycle
+- section-level runtime wiring
+- controller and event streams for the active section
 
-- ✅ Core tool provider system
-- ✅ DesmosToolProvider with auth
-- ✅ TTSToolProvider (Browser, Polly, Google)
-- ✅ ToolProviderRegistry with lazy loading
-- ✅ ToolkitCoordinator integration
-- ✅ Section tools toolbar component
-- ✅ Section splitpane layout updates
-- ✅ Demo backend API
-- ✅ Demo frontend implementation
-- ✅ Documentation
+## Section-Player Boundary
 
----
+The modern host boundary is:
 
-## API Reference
-
-### ToolkitCoordinator
-
-```typescript
-class ToolkitCoordinator {
-  readonly toolProviderRegistry: ToolProviderRegistry;
-
-  constructor(config: ToolkitCoordinatorConfig);
-
-  getServiceBundle(): ToolkitServiceBundle;
-  async getToolProvider(providerId: string): Promise<IToolProvider>;
-  isToolEnabled(toolId: string): boolean;
-}
+```ts
+sectionPlayer.coordinator = coordinator;
 ```
 
-### ToolProviderRegistry
+Do not use older docs that assign the coordinator through the removed legacy property name.
 
-```typescript
-class ToolProviderRegistry {
-  register(providerId: string, config: ToolProviderConfig): void;
-  async getProvider<T>(providerId: string): Promise<T>;
-  async initialize(providerId: string): Promise<void>;
+The public layout custom elements are:
 
-  has(providerId: string): boolean;
-  isInitialized(providerId: string): boolean;
-  isInitializing(providerId: string): boolean;
+- `pie-section-player-splitpane`
+- `pie-section-player-vertical`
 
-  getProviderIds(): string[];
-  getProvidersByCategory(category: ToolCategory): string[];
+Prefer those elements and the `coordinator` property over older orchestration patterns.
 
-  async unregister(providerId: string): Promise<void>;
-  async destroy(): Promise<void>;
-}
+## Advanced Host Access
+
+Hosts that need direct access to runtime events or controller state should subscribe through the coordinator or section controller rather than coupling to internal component details.
+
+```ts
+const unsubscribeItem = coordinator.subscribeItemEvents({
+  sectionId,
+  attemptId,
+  listener: (event) => {
+    console.log("item event", event);
+  },
+});
+
+const unsubscribeSection = coordinator.subscribeSectionLifecycleEvents({
+  sectionId,
+  attemptId,
+  listener: (event) => {
+    console.log("section event", event);
+  },
+});
 ```
 
-### IToolProvider
+See [`../section-player/client-architecture-tutorial.md`](../section-player/client-architecture-tutorial.md) for the current controller and host-integration patterns.
 
-```typescript
-interface IToolProvider<TConfig, TInstance> {
-  readonly providerId: string;
-  readonly providerName: string;
-  readonly category: ToolCategory;
-  readonly version: string;
-  readonly requiresAuth: boolean;
+## Backend Notes
 
-  initialize(config: TConfig): Promise<void>;
-  createInstance(config?: Partial<TConfig>): Promise<TInstance>;
-  getCapabilities(): ToolProviderCapabilities;
-  isReady(): boolean;
-  destroy(): void;
-}
-```
+Provider runtime hooks are where hosts bridge tool packages to authenticated backend services.
 
----
+Typical examples:
 
-## Troubleshooting
+- `/api/tools/desmos/token`
+- `/api/tts/synthesize`
+- `/api/tools/tts/google/token`
 
-### Provider Not Initializing
+Those endpoint names are host-owned. The tool system only requires that the configured provider runtime functions return the data the provider expects.
 
-**Problem**: Provider remains uninitialized after calling `getProvider()`
+## Related Docs
 
-**Solution**:
-- Check that `authFetcher` is provided if `requiresAuth: true`
-- Verify backend endpoint is accessible
-- Check browser console for initialization errors
-
-### API Key Errors
-
-**Problem**: "API key not found" or "Unauthorized"
-
-**Solution**:
-- Verify environment variables are set on backend
-- Check that backend endpoint returns correct JSON structure
-- Ensure user is authenticated before calling token endpoints
-
-### Type Errors
-
-**Problem**: TypeScript errors about missing packages
-
-**Solution**:
-- Build all packages: `bun run build`
-- Install missing dependencies
-- Check package.json for correct versions
-
----
-
-## Resources
-
-- [PIE Assessment Toolkit](../packages/assessment-toolkit/)
-- [Tool Packages](../packages/)
-- [Desmos API Documentation](https://www.desmos.com/api)
-- [Web Speech API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API)
-
----
-
+- [`./architecture.md`](./architecture.md)
+- [`./tool_host_contract.md`](./tool_host_contract.md)
+- [`../section-player/client-architecture-tutorial.md`](../section-player/client-architecture-tutorial.md)
+- [`../../packages/section-player/README.md`](../../packages/section-player/README.md)

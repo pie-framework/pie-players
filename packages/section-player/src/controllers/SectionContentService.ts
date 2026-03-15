@@ -68,12 +68,12 @@ export class SectionContentService {
 		const passageMap = new Map<string, PassageEntity>();
 		const usedPassageIds = new Set<string>();
 		const usedItemIds = new Set<string>();
-		const rubricBlocks = (section.rubricBlocks || []).filter((rb) => rb.view === view);
+		const rubricBlocks = (section.rubricBlocks || []).filter((rb) => rb.view.includes(view));
 		const instructions = rubricBlocks.filter((rb) => rb.class === "instructions");
 
 		for (const [rubricIndex, rb] of (section.rubricBlocks || []).entries()) {
 			if (rb.class === "stimulus" && rb.passage) {
-				if (rb.view === "candidate" || rb.view === view) {
+				if (rb.view.includes("candidate") || rb.view.includes(view)) {
 					const normalizedPassage = this.normalizePassageEntity(
 						rb.passage,
 						usedPassageIds,

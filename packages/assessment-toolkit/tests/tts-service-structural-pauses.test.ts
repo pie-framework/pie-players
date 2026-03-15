@@ -14,6 +14,7 @@ import type {
 class MockTTSImpl implements ITTSProviderImplementation {
 	public speakCalls: string[] = [];
 	public segmentCalls: TTSSpeechSegment[][] = [];
+	public stopCalls = 0;
 	public onWordBoundary?: (word: string, position: number, length?: number) => void;
 
 	constructor(private supportsSegments = true) {}
@@ -36,7 +37,9 @@ class MockTTSImpl implements ITTSProviderImplementation {
 
 	pause(): void {}
 	resume(): void {}
-	stop(): void {}
+	stop(): void {
+		this.stopCalls += 1;
+	}
 	isPlaying(): boolean {
 		return false;
 	}
@@ -328,5 +331,108 @@ describe("TTSService structural pauses", () => {
 		expect(impl.segmentCalls).toHaveLength(0);
 		expect(impl.speakCalls).toEqual(["First segment", "Second segment"]);
 		expect(sentenceCalls).toHaveLength(2);
+	});
+
+	test("seekForward restarts playback from the next sentence segment", async () => {
+		const impl = new MockTTSImpl(true);
+		const service = new TTSService();
+		await service.initialize(new MockTTSProvider(impl));
+
+		(service as any).state = "playing";
+		(service as any).currentText = "First sentence. Second sentence.";
+		(service as any).seekSegments = [
+			{ text: "First sentence.", startOffset: 0, pauseMsAfter: 0 },
+			{ text: "Second sentence.", startOffset: 16, pauseMsAfter: 0 },
+		] as TTSSpeechSegment[];
+		(service as any).currentBoundaryOffset = 0;
+		let restartedSegments: TTSSpeechSegment[] = [];
+		(service as any).speakWithPlan = async (segments: TTSSpeechSegment[]) => {
+			restartedSegments = segments;
+		};
+
+		await service.seekForward();
+
+		expect(impl.stopCalls).toBe(1);
+		expect(restartedSegments).toEqual([
+			{ text: "Second sentence.", startOffset: 16, pauseMsAfter: 0 },
+		]);
+	});
+
+	test("tracks seek offset and segment index from speakSegments boundary callbacks", async () => {
+		const impl = new MockTTSImpl(true);
+		impl.speakSegments = async (segments: TTSSpeechSegment[]) => {
+			impl.segmentCalls.push(segments);
+			const second = segments[1];
+			if (second) {
+				impl.onWordBoundary?.("word", second.startOffset, 4);
+			}
+		};
+		const service = new TTSService();
+		await service.initialize(new MockTTSProvider(impl));
+		(service as any).seekSegments = [
+			{ text: "First sentence.", startOffset: 0, pauseMsAfter: 0 },
+			{ text: "Second sentence.", startOffset: 16, pauseMsAfter: 0 },
+			{ text: "Third sentence.", startOffset: 33, pauseMsAfter: 0 },
+		] as TTSSpeechSegment[];
+
+		await (service as any).speakWithPlan((service as any).seekSegments, 1, {
+			highlightMode: "word",
+		});
+
+		expect((service as any).currentBoundaryOffset).toBe(16);
+		expect((service as any).currentSeekSegmentIndex).toBe(1);
+	});
+
+	test("seekForward uses boundary-updated position after segmented playback", async () => {
+		const impl = new MockTTSImpl(true);
+		impl.speakSegments = async (segments: TTSSpeechSegment[]) => {
+			impl.segmentCalls.push(segments);
+			const second = segments[1];
+			if (second) {
+				impl.onWordBoundary?.("word", second.startOffset, 4);
+			}
+		};
+		const service = new TTSService();
+		await service.initialize(new MockTTSProvider(impl));
+		(service as any).state = "playing";
+		(service as any).currentText = "First sentence. Second sentence. Third sentence.";
+		(service as any).seekSegments = [
+			{ text: "First sentence.", startOffset: 0, pauseMsAfter: 0 },
+			{ text: "Second sentence.", startOffset: 16, pauseMsAfter: 0 },
+			{ text: "Third sentence.", startOffset: 33, pauseMsAfter: 0 },
+		] as TTSSpeechSegment[];
+
+		await (service as any).speakWithPlan((service as any).seekSegments, 1, {
+			highlightMode: "word",
+		});
+
+		let restartedSegments: TTSSpeechSegment[] = [];
+		(service as any).speakWithPlan = async (segments: TTSSpeechSegment[]) => {
+			restartedSegments = segments;
+		};
+
+		await service.seekForward();
+
+		expect(impl.stopCalls).toBe(1);
+		expect(restartedSegments).toEqual([
+			{ text: "Third sentence.", startOffset: 33, pauseMsAfter: 0 },
+		]);
+	});
+
+	test("seekBackward is a no-op at first sentence boundary", async () => {
+		const impl = new MockTTSImpl(true);
+		const service = new TTSService();
+		await service.initialize(new MockTTSProvider(impl));
+
+		(service as any).state = "playing";
+		(service as any).currentText = "Only sentence.";
+		(service as any).seekSegments = [
+			{ text: "Only sentence.", startOffset: 0, pauseMsAfter: 0 },
+		] as TTSSpeechSegment[];
+		(service as any).currentBoundaryOffset = 0;
+
+		await service.seekBackward();
+
+		expect(impl.stopCalls).toBe(0);
 	});
 });

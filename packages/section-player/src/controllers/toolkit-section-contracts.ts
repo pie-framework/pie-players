@@ -6,7 +6,8 @@ export type {
 	SectionControllerEventType,
 	SectionControllerHandle,
 	SectionControllerKey,
-	SectionControllerPersistenceStrategy,
+	SectionSessionPersistenceConfig,
+	SectionSessionPersistenceStrategy,
 	SectionControllerRuntimeState,
 	SectionControllerSessionState,
 } from "@pie-players/pie-assessment-toolkit";

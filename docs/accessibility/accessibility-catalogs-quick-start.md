@@ -4,9 +4,9 @@
 
 See also:
 
-- [`./wcag/readme.md`](./wcag/readme.md) for the WCAG reference library
-- [`./wcag/wcag-2.2-aa-baseline.md`](./wcag/wcag-2.2-aa-baseline.md) for the criteria most likely to affect alternative content and TTS flows
-- [`./wcag/project-surface-map.md`](./wcag/project-surface-map.md) for where these flows fit in the broader accessibility review surface
+- [`../wcag/readme.md`](../wcag/readme.md) for the WCAG reference library
+- [`../wcag/wcag-2.2-aa-baseline.md`](../wcag/wcag-2.2-aa-baseline.md) for the criteria most likely to affect alternative content and TTS flows
+- [`../wcag/project-surface-map.md`](../wcag/project-surface-map.md) for where these flows fit in the broader accessibility review surface
 
 ## What Are Accessibility Catalogs?
 
@@ -369,6 +369,7 @@ console.log(result.source);  // 'item'
 ```
 
 **Resources:**
+
 - [Nemeth Code](http://www.brailleauthority.org/nemeth/nemeth.pdf)
 - [UEB Guidelines](http://www.brailleauthority.org/ueb.html)
 
@@ -449,6 +450,7 @@ See the examples in this guide and in [accessibility-catalogs-integration-guide.
 ### Q: How do I handle video URLs for sign language?
 
 **A:** Store the URL in `content` field:
+
 ```typescript
 { catalog: 'sign-language', language: 'en-US', content: 'https://cdn.example.com/video.mp4' }
 ```
@@ -470,7 +472,6 @@ See the examples in this guide and in [accessibility-catalogs-integration-guide.
 
 ## Get Help
 
-- **API Docs:** See [AccessibilityCatalogResolver.ts](../packages/assessment-toolkit/src/services/AccessibilityCatalogResolver.ts)
+- **API Docs:** See [AccessibilityCatalogResolver.ts](../../packages/assessment-toolkit/src/services/AccessibilityCatalogResolver.ts)
 - **Integration Guide:** [accessibility-catalogs-integration-guide.md](./accessibility-catalogs-integration-guide.md)
 - **Examples:** [accessibility-catalogs-integration-guide.md](./accessibility-catalogs-integration-guide.md)
-

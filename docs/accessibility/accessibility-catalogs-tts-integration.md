@@ -519,20 +519,18 @@ const item = {
 3. Counter resets per extraction session
 4. Item-level catalogs cleared on navigation
 
-## Integration Status
+## Current Runtime Behavior
 
-### Completed ✅
-
-- ✅ **SSML Extraction**: Automatic extraction from embedded `<speak>` tags
-- ✅ **TTS Tool Integration**: Inline TTS tools in passage/item headers
-- ✅ **Section Player Integration**: Primary interface for toolkit services
-- ✅ **Catalog Management**: Automatic lifecycle management (add/clear on navigation)
-- ✅ **HTML Content Detection**: Catalog ID detection from DOM elements
-- ✅ **Server-Side TTS**: AWS Polly with speech marks for precise highlighting
+- **SSML Extraction**: Embedded `<speak>` tags are converted into catalog-backed alternatives
+- **TTS Tool Integration**: TTS controls render inline in passage and item headers when enabled
+- **Section Player Integration**: Section-player is the primary runtime surface for these flows
+- **Catalog Management**: Item-level catalogs are added and cleared as section content changes
+- **HTML Content Detection**: Catalog IDs are discovered from rendered DOM content
+- **Server-Side TTS Support**: Server-backed providers such as AWS Polly can supply precise highlighting data
 
 ## References
 
 - [Accessibility Catalogs Integration Guide](accessibility-catalogs-integration-guide.md) - Complete integration patterns
 - [Accessibility Catalogs Quick Start](accessibility-catalogs-quick-start.md) - Developer quick reference
-- [QTI-Inspired Feature Support](qti-3.0-feature-support.md) - Overall QTI-inspired implementation status
+- [Section Player Client Guide](../section-player/client-architecture-tutorial.md) - Current runtime integration surface for section delivery
 - [QTI 3.0 Specification](https://www.imsglobal.org/spec/qti/v3p0) - IMS Global standard

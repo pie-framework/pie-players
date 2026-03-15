@@ -99,14 +99,14 @@ const localCardConfig = getContext<{ density: "compact" | "comfortable" }>(
 #### 2) Runtime-wide state/events via controller API
 
 ```ts
-const unsubscribeItem = toolkitCoordinator.subscribeItemEvents({
+const unsubscribeItem = coordinator.subscribeItemEvents({
   sectionId,
   attemptId,
   listener: (event) => {
     handleItemEvent(event);
   },
 });
-const unsubscribeSection = toolkitCoordinator.subscribeSectionLifecycleEvents({
+const unsubscribeSection = coordinator.subscribeSectionLifecycleEvents({
   sectionId,
   attemptId,
   listener: (event) => {
@@ -118,7 +118,7 @@ const unsubscribe = () => {
   unsubscribeSection?.();
 };
 
-const runtimeState = toolkitCoordinator
+const runtimeState = coordinator
   .getSectionController?.({ sectionId, attemptId })
   ?.getRuntimeState?.();
 ```

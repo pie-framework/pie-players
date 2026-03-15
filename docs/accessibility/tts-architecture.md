@@ -8,9 +8,9 @@ The PIE Players TTS (Text-to-Speech) system uses a clean, layered architecture w
 
 See also:
 
-- [`./wcag/readme.md`](./wcag/readme.md) for the WCAG reference library
-- [`./wcag/wcag-2.2-aa-baseline.md`](./wcag/wcag-2.2-aa-baseline.md) for the criteria most likely to affect TTS work
-- [`./wcag/evaluation-method.md`](./wcag/evaluation-method.md) for evaluation guidance
+- [`../wcag/readme.md`](../wcag/readme.md) for the WCAG reference library
+- [`../wcag/wcag-2.2-aa-baseline.md`](../wcag/wcag-2.2-aa-baseline.md) for the criteria most likely to affect TTS work
+- [`../wcag/evaluation-method.md`](../wcag/evaluation-method.md) for evaluation guidance
 
 ## Package Structure
 
@@ -119,8 +119,7 @@ Browser → ServerTTSProvider (custom transport) → Custom root POST API
 Browser → ServerTTSProvider → /api/tts/synthesize → PollyServerProvider → AWS Polly
 ```
 
-See [Server-Side TTS Integration Guide](../packages/tts-server-polly/examples/INTEGRATION-GUIDE.md) for setup instructions.
-See [TTS Transport Migration](./tts-transport-migration.md) for config migration notes.
+See [Server-Side TTS Integration Guide](../../packages/tts-server-polly/examples/INTEGRATION-GUIDE.md) for setup instructions.
 
 ## Architecture Diagram
 

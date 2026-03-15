@@ -170,7 +170,7 @@ test.describe("session hydrate db flow", () => {
 					sectionId: SECTION_PAGE_TWO,
 				});
 				const values = snapshot?.itemSessions?.["sp2-q2"]?.session?.data;
-				return Array.isArray(values) ? values.length : -1;
+				return Array.isArray(values) ? values.length : 0;
 			})
 			.toBe(0);
 

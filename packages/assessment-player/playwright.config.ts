@@ -1,0 +1,39 @@
+import { defineConfig, devices } from "@playwright/test";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const configDir = dirname(fileURLToPath(import.meta.url));
+const workspaceRootCwd = resolve(configDir, "../..");
+const assessmentDemosHost = process.env.ASSESSMENT_DEMOS_HOST || "127.0.0.1";
+const assessmentDemosPort = Number(process.env.ASSESSMENT_DEMOS_PORT || "5500");
+const defaultBaseUrl = `http://${assessmentDemosHost}:${assessmentDemosPort}`;
+const baseURL = process.env.PLAYWRIGHT_BASE_URL || defaultBaseUrl;
+const parsedBaseUrl = new URL(baseURL);
+const webServerCommand = `bun run --cwd "${workspaceRootCwd}" dev:assessment -- --host ${parsedBaseUrl.hostname} --port ${parsedBaseUrl.port || "80"}`;
+
+export default defineConfig({
+	testDir: "./tests",
+	testMatch: /.*\.spec\.ts/,
+	fullyParallel: false,
+	forbidOnly: false,
+	retries: 0,
+	workers: 1,
+	reporter: "list",
+	use: {
+		baseURL,
+		screenshot: "on",
+		video: "retain-on-failure",
+	},
+	webServer: {
+		command: webServerCommand,
+		url: baseURL,
+		reuseExistingServer: false,
+		timeout: 120_000,
+	},
+	projects: [
+		{
+			name: "chromium",
+			use: { ...devices["Desktop Chrome"] },
+		},
+	],
+});

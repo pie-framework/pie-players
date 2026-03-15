@@ -1,0 +1,26 @@
+@import "tailwindcss";
+@import "daisyui/daisyui.css";
+@import "daisyui/themes.css";
+
+@layer theme {
+	:root[data-theme="light"] {
+		--p: 26 93 71;
+		--pc: 0 0 100;
+		--s: 217 55 37;
+		--sc: 0 0 100;
+	}
+
+	:root[data-theme="dark"] {
+		--p: 10 79 62;
+		--pc: 0 0 100;
+		--s: 217 91 72;
+		--sc: 0 0 100;
+	}
+}
+
+html,
+body {
+	margin: 0;
+	padding: 0;
+	height: 100%;
+}

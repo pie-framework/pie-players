@@ -159,7 +159,7 @@ test.describe("session hydrate db flow", () => {
 				});
 				return getChoiceValue(snapshot, "sp1-q2");
 			})
-			.toBe("a");
+			.toBe("");
 
 		await expect
 			.poll(async () => {

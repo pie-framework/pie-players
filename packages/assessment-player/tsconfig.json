@@ -1,0 +1,29 @@
+{
+	"extends": "../../tsconfig.base.json",
+	"compilerOptions": {
+		"target": "ES2020",
+		"module": "NodeNext",
+		"lib": ["ES2020", "DOM", "DOM.Iterable"],
+		"moduleResolution": "NodeNext",
+		"baseUrl": ".",
+		"paths": {
+			"@pie-players/pie-players-shared/types": [
+				"../players-shared/dist/types/index.d.ts"
+			]
+		},
+		"resolveJsonModule": true,
+		"allowJs": true,
+		"checkJs": true,
+		"isolatedModules": true,
+		"sourceMap": true,
+		"outDir": "./dist",
+		"rootDir": "./src",
+		"declaration": true,
+		"declarationMap": true,
+		"esModuleInterop": true,
+		"skipLibCheck": true,
+		"forceConsistentCasingInFileNames": true
+	},
+	"include": ["src/**/*.ts", "src/**/*.d.ts"],
+	"exclude": ["node_modules", "dist"]
+}

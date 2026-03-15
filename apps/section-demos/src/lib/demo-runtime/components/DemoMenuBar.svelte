@@ -1,4 +1,6 @@
 <script lang="ts">
+	import DebugPanelToggles from '@pie-players/pie-section-player-tools-shared/DebugPanelToggles.svelte';
+
 	interface Props {
 		roleType: 'candidate' | 'scorer';
 		layoutType: 'splitpane' | 'vertical';
@@ -129,30 +131,14 @@
 		>
 			Reset
 		</button>
-		<button
-			class="btn btn-sm btn-outline btn-square"
-			class:btn-active={showSessionPanel}
-			onclick={onToggleSessionPanel}
-			title="Session"
-			aria-label="Toggle session panel"
-			aria-pressed={showSessionPanel}
-		>
-			<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-			</svg>
-		</button>
-		<button
-			class="btn btn-sm btn-outline btn-square"
-			class:btn-active={showEventPanel}
-			onclick={onToggleEventPanel}
-			title="Events"
-			aria-label="Toggle event broadcast panel"
-			aria-pressed={showEventPanel}
-		>
-			<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0l-3-3m3 3l-3 3M3 17h8m0 0l-3-3m3 3l-3 3M3 7h5m8 10h5" />
-			</svg>
-		</button>
+		<DebugPanelToggles
+			{showSessionPanel}
+			{showEventPanel}
+			showDbPanel={isSessionHydrateDbDemo ? showDbPanel : false}
+			{onToggleSessionPanel}
+			{onToggleEventPanel}
+			onToggleDbPanel={isSessionHydrateDbDemo ? onToggleDbPanel : undefined}
+		/>
 		<button
 			class="btn btn-sm btn-outline btn-square"
 			class:btn-active={showSourcePanel}
@@ -205,20 +191,5 @@
 				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.5 7a7 7 0 010 10" />
 			</svg>
 		</button>
-		{#if isSessionHydrateDbDemo}
-			<button
-				class="btn btn-sm btn-outline btn-square"
-				class:btn-active={showDbPanel}
-				onclick={onToggleDbPanel}
-				title="Database state"
-				aria-label="Toggle database state panel"
-				aria-pressed={showDbPanel}
-			>
-				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-					<ellipse cx="12" cy="5" rx="7" ry="3" stroke-width="2"></ellipse>
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5v7c0 1.66 3.13 3 7 3s7-1.34 7-3V5M5 12v7c0 1.66 3.13 3 7 3s7-1.34 7-3v-7"></path>
-				</svg>
-			</button>
-		{/if}
 	</div>
 </div>

@@ -314,6 +314,20 @@ export {
 	upsertVisitedItem,
 } from "./attempt/TestSession.js";
 export type {
+	AssessmentSession,
+	AssessmentSectionSessionState,
+	AssessmentSessionNavigationState,
+	AssessmentSessionRealization,
+} from "./attempt/AssessmentSession.js";
+export {
+	createNewAssessmentSession,
+	getAssessmentSessionStorageKey,
+	loadAssessmentSession,
+	saveAssessmentSession,
+	setCurrentSectionPosition,
+	upsertSectionSession,
+} from "./attempt/AssessmentSession.js";
+export type {
 	ActivitySessionPatchPayload,
 	MapActivityToTestAttemptSessionArgs,
 	PieBackendActivityDefinition,

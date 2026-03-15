@@ -7,7 +7,7 @@ import {
 } from "../db";
 import type { RequestHandler } from "./$types";
 
-export const defaultSeedSections = createSessionDemoSeedPayload(
+export const _defaultSeedSections = createSessionDemoSeedPayload(
 	"section-demos-assessment",
 	"baseline-seed",
 ).sections;
@@ -33,7 +33,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		const sections =
 			Array.isArray(body.sections) && body.sections.length > 0
 				? body.sections
-				: defaultSeedSections;
+				: _defaultSeedSections;
 		seedSessionDemoData({
 			assessmentId,
 			attemptId,

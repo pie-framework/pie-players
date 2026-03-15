@@ -20,6 +20,33 @@
         "typescript": "^5.9.3",
       },
     },
+    "apps/assessment-demos": {
+      "name": "@pie-players/assessment-demos",
+      "version": "0.1.0",
+      "dependencies": {
+        "@pie-players/pie-assessment-player": "workspace:*",
+        "@pie-players/pie-assessment-toolkit": "workspace:*",
+        "@pie-players/pie-players-shared": "workspace:*",
+        "@pie-players/pie-section-player-tools-event-debugger": "workspace:*",
+        "@pie-players/pie-section-player-tools-session-debugger": "workspace:*",
+        "@pie-players/pie-section-player-tools-shared": "workspace:*",
+        "@pie-players/pie-tool-text-to-speech": "workspace:*",
+        "@pie-players/tts-server-google": "workspace:*",
+        "@pie-players/tts-server-polly": "workspace:*",
+      },
+      "devDependencies": {
+        "@sveltejs/adapter-node": "5.5.4",
+        "@sveltejs/kit": "^2.53.4",
+        "@sveltejs/vite-plugin-svelte": "^6.2.4",
+        "@tailwindcss/vite": "^4.2.1",
+        "daisyui": "^5.5.19",
+        "svelte": "^5.53.7",
+        "svelte-check": "^4.4.4",
+        "tailwindcss": "^4.2.1",
+        "typescript": "^5.9.3",
+        "vite": "^7.3.1",
+      },
+    },
     "apps/docs": {
       "name": "@pie-players/pie-players-docs",
       "version": "0.1.0",
@@ -121,6 +148,22 @@
         "tailwindcss": "^4.2.1",
         "typescript": "^5.9.3",
         "vite": "^7.3.1",
+      },
+    },
+    "packages/assessment-player": {
+      "name": "@pie-players/pie-assessment-player",
+      "version": "0.1.0",
+      "dependencies": {
+        "@pie-players/pie-assessment-toolkit": "workspace:*",
+        "@pie-players/pie-players-shared": "workspace:*",
+        "@pie-players/pie-section-player": "workspace:*",
+      },
+      "devDependencies": {
+        "@biomejs/biome": "^2.3.13",
+        "@playwright/test": "^1.58.2",
+        "typescript": "^5.9.3",
+        "vite": "^7.3.1",
+        "vite-plugin-dts": "^4.5.4",
       },
     },
     "packages/assessment-toolkit": {
@@ -959,9 +1002,13 @@
 
     "@pie-lib/math-rendering-module": ["@pie-lib/math-rendering-module@4.0.7", "", {}, "sha512-KvpffEzQj5IqJ5PLF7NZSKFvsiVNM6BbW072A1EgNJndJMZA6hoIgcf3nOch4LwPFKiTUi9YQEaqziSa8880eA=="],
 
+    "@pie-players/assessment-demos": ["@pie-players/assessment-demos@workspace:apps/assessment-demos"],
+
     "@pie-players/item-demos": ["@pie-players/item-demos@workspace:apps/item-demos"],
 
     "@pie-players/local-esm-cdn": ["@pie-players/local-esm-cdn@workspace:apps/local-esm-cdn"],
+
+    "@pie-players/pie-assessment-player": ["@pie-players/pie-assessment-player@workspace:packages/assessment-player"],
 
     "@pie-players/pie-assessment-toolkit": ["@pie-players/pie-assessment-toolkit@workspace:packages/assessment-toolkit"],
 

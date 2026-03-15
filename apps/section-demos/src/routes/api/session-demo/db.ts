@@ -1,8 +1,8 @@
-import { mkdirSync, readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { mkdirSync } from "node:fs";
+import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
+import schemaSql from "./schema.sql?raw";
 
 export const DEMO_USER_ID = "demo-user-1";
 
@@ -65,13 +65,9 @@ const clampIndex = (value: unknown): number => {
 	return value < 0 ? 0 : Math.floor(value);
 };
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 const dbDirectory = join(tmpdir(), "pie-section-demos");
 const dbPath = join(dbDirectory, "session-hydrate-demo.sqlite");
 mkdirSync(dbDirectory, { recursive: true });
-
-const schemaSql = readFileSync(join(__dirname, "schema.sql"), "utf8");
 const db = new DatabaseSync(dbPath);
 db.exec(schemaSql);
 

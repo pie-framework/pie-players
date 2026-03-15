@@ -1,0 +1,38 @@
+{
+	"name": "@pie-players/assessment-demos",
+	"version": "0.1.0",
+	"description": "Progressive demos for PIE Assessment Player",
+	"type": "module",
+	"private": true,
+	"scripts": {
+		"dev": "vite dev",
+		"build": "svelte-kit sync && vite build",
+		"preview": "vite preview",
+		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@pie-players/pie-assessment-toolkit": "workspace:*",
+		"@pie-players/pie-assessment-player": "workspace:*",
+		"@pie-players/pie-players-shared": "workspace:*",
+		"@pie-players/pie-section-player-tools-event-debugger": "workspace:*",
+		"@pie-players/pie-section-player-tools-session-debugger": "workspace:*",
+		"@pie-players/pie-section-player-tools-shared": "workspace:*",
+		"@pie-players/pie-tool-text-to-speech": "workspace:*",
+		"@pie-players/tts-server-google": "workspace:*",
+		"@pie-players/tts-server-polly": "workspace:*"
+	},
+	"devDependencies": {
+		"@sveltejs/adapter-node": "5.5.4",
+		"@sveltejs/kit": "^2.53.4",
+		"@sveltejs/vite-plugin-svelte": "^6.2.4",
+		"@tailwindcss/vite": "^4.2.1",
+		"daisyui": "^5.5.19",
+		"svelte": "^5.53.7",
+		"svelte-check": "^4.4.4",
+		"tailwindcss": "^4.2.1",
+		"typescript": "^5.9.3",
+		"vite": "^7.3.1"
+	},
+	"license": "MIT"
+}

@@ -1,6 +1,6 @@
 import { getSectionDemoById } from "$lib/content/sections";
 import { json } from "@sveltejs/kit";
-import { defaultSeedSections } from "../../bootstrap/+server";
+import { _defaultSeedSections } from "../../bootstrap/+server";
 import {
 	getSectionSnapshot,
 	seedSessionDemoData,
@@ -29,7 +29,7 @@ function cloneSnapshot(snapshot: SessionDemoSnapshot | null): SessionDemoSnapsho
 
 function seedIfNeeded(assessmentId: string, attemptId: string, reset: boolean): void {
 	if (!reset) {
-		const hasAllSections = defaultSeedSections.every((entry) =>
+		const hasAllSections = _defaultSeedSections.every((entry) =>
 			Boolean(
 				getSectionSnapshot({
 					assessmentId,
@@ -43,7 +43,7 @@ function seedIfNeeded(assessmentId: string, attemptId: string, reset: boolean): 
 	seedSessionDemoData({
 		assessmentId,
 		attemptId,
-		sections: defaultSeedSections.map((entry) => ({
+		sections: _defaultSeedSections.map((entry) => ({
 			sectionId: entry.sectionId,
 			snapshot: {
 				currentItemIndex: entry.snapshot.currentItemIndex,

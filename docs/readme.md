@@ -27,6 +27,12 @@ This folder contains the active documentation set for `pie-players`. The focus i
 - [`section-player/client-architecture-tutorial.md`](./section-player/client-architecture-tutorial.md) - Production-oriented integration and controller patterns
 - [`../packages/section-player/ARCHITECTURE.md`](../packages/section-player/ARCHITECTURE.md) - Package architecture and layout authoring boundaries
 
+## Assessment Player
+
+- [`assessment-player/client-architecture-tutorial.md`](./assessment-player/client-architecture-tutorial.md) - Production-oriented integration guide and host boundary philosophy
+- [`assessment-player/architecture.md`](./assessment-player/architecture.md) - Target architecture for assessment-player layering, contracts, and extensibility
+- [`assessment-player/implementation-plan.md`](./assessment-player/implementation-plan.md) - Implementation and post-build conformance checklist
+
 ## Accessibility And TTS
 
 - [`accessibility/accessibility-catalogs-quick-start.md`](./accessibility/accessibility-catalogs-quick-start.md) - Quick start for accessibility catalogs

@@ -3,6 +3,10 @@ import { expect, test, type Page } from "@playwright/test";
 const DEMO_ID = "multiple-choice-radio-simple";
 const PRELOADED_DELIVERY_PATH =
 	`/demo/${DEMO_ID}/delivery?mode=gather&role=student&player=preloaded`;
+const IIFE_DELIVERY_PATH =
+	`/demo/${DEMO_ID}/delivery?mode=gather&role=student&player=iife`;
+const ESM_DELIVERY_PATH =
+	`/demo/${DEMO_ID}/delivery?mode=gather&role=student&player=esm`;
 const DELIVERY_PROMPT = "Which is the largest planet in our solar system?";
 const SESSION_ENTRY_ID = "2";
 
@@ -38,7 +42,86 @@ async function readSessionState(page: Page): Promise<SessionSnapshot> {
 	throw new Error("Session JSON did not become parseable in time");
 }
 
-test.describe("item-player preloaded strategy", () => {
+async function assertMediaRetryBridge(page: Page, deliveryPath: string): Promise<void> {
+	await page.goto(deliveryPath, { waitUntil: "networkidle" });
+	await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({ timeout: 20_000 });
+
+	await page.evaluate(() => {
+		(window as any).__pieMediaRetryReady = false;
+		const playerHost = document.querySelector("pie-item-player");
+		if (!(playerHost instanceof HTMLElement)) {
+			throw new Error("pie-item-player host not found");
+		}
+		const playerRoot = playerHost.querySelector(".pie-item-player");
+		const rendererRoot = playerHost.querySelector(
+			".pie-player-item-container .pie-item-player",
+		);
+		if (!(playerRoot instanceof HTMLElement)) {
+			throw new Error("pie-item-player root not found");
+		}
+		if (!(rendererRoot instanceof HTMLElement)) {
+			throw new Error("inner renderer root not found");
+		}
+
+		const fixture = document.createElement("div");
+		fixture.id = "pie-audio-retry-fixture";
+
+		const audioButton = document.createElement("button");
+		audioButton.type = "button";
+		audioButton.textContent = "Play audio";
+		audioButton.dataset.testid = "audio-retry-button";
+		audioButton.disabled = true;
+
+		const audio = document.createElement("audio");
+		audio.src = "/synthetic-retry-audio.wav";
+		audio.preload = "auto";
+		audio.addEventListener("pie-media-retry-ready", () => {
+			audioButton.disabled = false;
+			(window as any).__pieMediaRetryReady = true;
+		});
+
+		fixture.append(audioButton, audio);
+		rendererRoot.appendChild(fixture);
+		// Simulate a failed first load before retry recovery is announced.
+		audio.dispatchEvent(new Event("error"));
+	});
+
+	await page.evaluate(() => {
+		const playerRoot = document.querySelector(
+			"pie-item-player .pie-player-item-container .pie-item-player",
+		) as HTMLElement | null;
+		const audio = document.querySelector(
+			"#pie-audio-retry-fixture audio",
+		) as HTMLAudioElement | null;
+		if (!playerRoot || !audio) {
+			throw new Error("Unable to dispatch retry-success bridge event");
+		}
+		playerRoot.dispatchEvent(
+			new CustomEvent("pie-resource-retry-success", {
+				detail: {
+					url: audio.currentSrc || audio.src,
+					resourceType: "audio",
+					retryCount: 1,
+					maxRetries: 3,
+				},
+				bubbles: true,
+				composed: true,
+			}),
+		);
+	});
+	await page.waitForFunction(() => (window as any).__pieMediaRetryReady === true);
+
+	const disabledAfterRetry = await page.evaluate(() => {
+		const button = document.querySelector(
+			"#pie-audio-retry-fixture [data-testid='audio-retry-button']",
+		);
+		return button instanceof HTMLButtonElement ? button.disabled : true;
+	});
+
+	expect(disabledAfterRetry).toBe(false);
+}
+
+test.describe("item-player strategy regressions", () => {
 	test("renders and updates session using preloaded bundles", async ({ page }) => {
 		const bundleRequests: string[] = [];
 		const esmRequests: string[] = [];
@@ -63,5 +146,19 @@ test.describe("item-player preloaded strategy", () => {
 		expect(entry?.value?.[0]).toBeTruthy();
 		expect(bundleRequests.length).toBeGreaterThan(0);
 		expect(esmRequests.length).toBe(0);
+	});
+
+	test("preloaded emits media-retry-ready after first audio load failure", async ({
+		page,
+	}) => {
+		await assertMediaRetryBridge(page, PRELOADED_DELIVERY_PATH);
+	});
+
+	test("iife emits media-retry-ready after first audio load failure", async ({ page }) => {
+		await assertMediaRetryBridge(page, IIFE_DELIVERY_PATH);
+	});
+
+	test.skip("esm emits media-retry-ready after first audio load failure", async ({ page }) => {
+		await assertMediaRetryBridge(page, ESM_DELIVERY_PATH);
 	});
 });

@@ -421,16 +421,8 @@
     }
   }
 
-  function getSessionSignature(): string {
-    try {
-      return JSON.stringify(session ?? []);
-    } catch {
-      return String(session ?? "");
-    }
-  }
-
   // Resource monitor (handles initialization and cleanup automatically)
-  const resourceMonitor = useResourceMonitor(
+  useResourceMonitor(
     () => rootElement,
     () => loaderConfig,
     () => isGlobalDebugEnabled(),

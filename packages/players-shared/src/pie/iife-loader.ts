@@ -305,10 +305,23 @@ export class IifePieLoader {
 			logger.warn("No elements in config");
 			return;
 		}
+		const elements = Object.fromEntries(
+			Object.entries(contentConfig.elements as Record<string, unknown>).filter(
+				([tagName, packageVersion]) =>
+					typeof tagName === "string" &&
+					tagName.trim().length > 0 &&
+					typeof packageVersion === "string" &&
+					packageVersion.trim().length > 0,
+			),
+		) as Record<string, string>;
+		if (Object.keys(elements).length === 0) {
+			logger.debug("No valid element package versions found; skipping bundle load");
+			return;
+		}
 
 		// 0. Determine bundle URL
 		const bundleUrl = this.getBundleUrl(
-			contentConfig.elements,
+			elements,
 			bundleType,
 			contentConfig.bundle, // May contain { hash, url }
 		);
@@ -336,7 +349,7 @@ export class IifePieLoader {
 		if (existingScript && window.pie && window.pie.default) {
 			logger.debug("Exact bundle already loaded, registering elements");
 			await this.registerElementsFromBundle(
-				contentConfig.elements,
+				elements,
 				needsControllers,
 				bundleType,
 			);
@@ -353,7 +366,7 @@ export class IifePieLoader {
 			await window.pieHelpers.loadingPromises[bundleUrl];
 			logger.debug("Existing bundle load completed, registering elements");
 			await this.registerElementsFromBundle(
-				contentConfig.elements,
+				elements,
 				needsControllers,
 				bundleType,
 			);
@@ -392,7 +405,7 @@ export class IifePieLoader {
 				// Register elements from the loaded bundle
 				logger.debug("Registering elements from loaded bundle");
 				await this.registerElementsFromBundle(
-					contentConfig.elements,
+					elements,
 					needsControllers,
 					bundleType,
 				);

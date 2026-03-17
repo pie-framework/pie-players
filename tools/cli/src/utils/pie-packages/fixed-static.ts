@@ -310,7 +310,7 @@ Version: \`${version}\`
 
 Pre-bundled PIE item-player package with static element versions for production use.
 
-**Note:** This package is intended for production with a predefined set of PIE elements. It assumes preloaded strategy at runtime and does not fetch PIE element bundles dynamically.
+**Note:** This package is intended for production with a predefined set of PIE elements. It assumes preloaded strategy at runtime. The player skips runtime loading when required elements are already registered, and falls back to runtime loading for any missing elements.
 
 ## Included PIE elements
 
@@ -346,7 +346,7 @@ npm install @pie-players/pie-preloaded-player@${version}
 ></pie-item-player>
 \`\`\`
 
-The preloaded bundle is already included by this package import. With \`strategy="preloaded"\`, the player automatically skips runtime element bundle loading. The player also normalizes \`config.elements\` to the bundled versions exposed by this package.
+The preloaded bundle is already included by this package import. With \`strategy="preloaded"\`, the player skips runtime loading when required elements are already registered and falls back to runtime loading when they are not. The player also normalizes \`config.elements\` to the bundled versions exposed by this package.
 
 ## Attributes
 

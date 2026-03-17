@@ -222,28 +222,17 @@
 	let lastProcessedMode = "";
 	let isProcessing = false;
 
-	function hasBundledPreloadedElements(): boolean {
-		if (!isBrowser) return false;
-		const preloadedElements = (window as any).PIE_PRELOADED_ELEMENTS;
-		return (
-			!!preloadedElements &&
-			typeof preloadedElements === "object" &&
-			Object.keys(preloadedElements).length > 0
-		);
-	}
-
 	function shouldAutoSkipElementLoading(configEntity: any): boolean {
 		if (normalizedStrategy !== "preloaded") return false;
 		if (!isBrowser) return false;
 
-		const registeredByTag =
+		return (
 			!!configEntity?.elements &&
 			Object.keys(configEntity.elements).length > 0 &&
 			Object.keys(configEntity.elements).every((tagName) =>
 				typeof customElements.get(tagName) === "function",
-			);
-
-		return registeredByTag || hasBundledPreloadedElements();
+			)
+		);
 	}
 
 	function normalizePreloadedElementVersions(configEntity: any): any {

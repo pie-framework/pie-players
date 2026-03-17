@@ -208,6 +208,26 @@ test.describe("item-player strategy regressions", () => {
 		});
 	});
 
+	test("preloaded falls back to runtime loading when preloaded metadata is present but tags are missing", async ({
+		page,
+	}) => {
+		const bundleRequests: string[] = [];
+		page.on("request", (request) => {
+			const url = request.url();
+			if (url.includes("/bundles/")) bundleRequests.push(url);
+		});
+
+		await page.addInitScript(() => {
+			(window as any).PIE_PRELOADED_ELEMENTS = {
+				"@pie-element/unrelated": "@pie-element/unrelated@1.0.0",
+			};
+		});
+
+		await page.goto(PRELOADED_DELIVERY_PATH, { waitUntil: "networkidle" });
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({ timeout: 20_000 });
+		expect(bundleRequests.length).toBeGreaterThan(0);
+	});
+
 	test("iife emits media-retry-ready after first audio load failure", async ({ page }) => {
 		await assertMediaRetryBridge(page, IIFE_DELIVERY_PATH);
 	});

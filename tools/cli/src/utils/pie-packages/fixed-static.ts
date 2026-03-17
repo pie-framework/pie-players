@@ -14,6 +14,7 @@ export interface BuildStaticConfig {
 	pitsBaseUrl?: string;
 	outputDir?: string;
 	overwriteBundle?: boolean;
+	publish?: boolean;
 	monorepoDir: string;
 }
 
@@ -210,7 +211,11 @@ function generatePackageJson(config: BuildStaticConfig, version: string): any {
 	};
 }
 
-function generateIndex(bundleFilename: string): string {
+function generateIndex(
+	bundleFilename: string,
+	preloadedElements: Record<string, string>,
+): string {
+	const preloadedElementsJson = JSON.stringify(preloadedElements, null, 2);
 	const mathRenderingSetup = `
     const mathRenderingModule = await importWithRetry('./math-rendering.js', 4, 200);
     if (typeof window !== 'undefined') {
@@ -220,6 +225,12 @@ function generateIndex(bundleFilename: string): string {
 
 	return `// Auto-generated entry point for pie-preloaded-player
 (async function initializePieItemPlayerStatic() {
+  const preloadedElements = ${preloadedElementsJson};
+  if (typeof window !== 'undefined') {
+    const existing = window.PIE_PRELOADED_ELEMENTS || {};
+    window.PIE_PRELOADED_ELEMENTS = { ...existing, ...preloadedElements };
+  }
+
   const importWithRetry = async (specifier, attempts = 3, baseDelayMs = 200) => {
     let lastError;
     for (let attempt = 1; attempt <= attempts; attempt++) {
@@ -263,6 +274,7 @@ function generateTypes(): string {
         maxResourceRetries?: number;
         resourceRetryDelay?: number;
       };
+      PIE_PRELOADED_ELEMENTS?: Record<string, string>;
       newrelic?: {
         addPageAction(name: string, attributes?: Record<string, any>): void;
         noticeError(error: Error, attributes?: Record<string, any>): void;
@@ -270,6 +282,133 @@ function generateTypes(): string {
     }
   }
 }
+`;
+}
+
+function generateReadme(config: BuildStaticConfig, version: string, hash: string): string {
+	const parsedElements = parseElements(config.elements);
+	const sortedElements = Object.entries(parsedElements).sort(([a], [b]) =>
+		a.localeCompare(b),
+	);
+	const rows = sortedElements
+		.sort(([a], [b]) => a.localeCompare(b))
+		.map(([pkg, pkgVersion]) => `| \`${pkg}\` | \`${pkgVersion}\` |`)
+		.join("\n");
+	const loaderVersion = config.loaderVersion || "1.0.0";
+	const iteration = config.iteration || 1;
+	const [examplePkgName, examplePkgVersion] = sortedElements[0] || [
+		"@pie-element/multiple-choice",
+		"11.4.3",
+	];
+	const examplePkgSpec = `${examplePkgName}@${examplePkgVersion}`;
+	const exampleBaseName = examplePkgName.split("/").pop() || "multiple-choice";
+	const exampleTag = `pie-${exampleBaseName}`;
+
+	return `# @pie-players/pie-preloaded-player
+
+Version: \`${version}\`
+
+Pre-bundled PIE item-player package with static element versions for production use.
+
+**Note:** This package is intended for production with a predefined set of PIE elements. It assumes preloaded strategy at runtime and does not fetch PIE element bundles dynamically.
+
+## Included PIE elements
+
+| Package | Version |
+| --- | --- |
+${rows}
+
+## Package metadata
+
+- Version: \`${version}\`
+- Bundle hash: \`${hash}\`
+- Loader version: \`${loaderVersion}\`
+- Iteration: \`${iteration}\`
+
+## Installation
+
+\`\`\`bash
+npm install @pie-players/pie-preloaded-player@${version}
+\`\`\`
+
+## Usage
+
+\`\`\`html
+<script type="module">
+  import "@pie-players/pie-preloaded-player";
+</script>
+
+<pie-item-player
+  strategy="preloaded"
+  config='{"elements":{"${exampleTag}":"${examplePkgSpec}"},"models":[{"id":"1","element":"${exampleTag}"}],"markup":"<${exampleTag} id=\\"1\\"></${exampleTag}>"}'
+  env='{"mode":"gather","role":"student"}'
+  session='{"id":"session-1","data":[]}'
+></pie-item-player>
+\`\`\`
+
+The preloaded bundle is already included by this package import. With \`strategy="preloaded"\`, the player automatically skips runtime element bundle loading. The player also normalizes \`config.elements\` to the bundled versions exposed by this package.
+
+## Attributes
+
+- \`config\` - Item config containing \`elements\`, \`models\`, and \`markup\`
+- \`session\` - Session container with attempt data
+- \`env\` - Runtime environment (mode and role)
+- \`strategy\` - Must be \`"preloaded"\` for this package
+- \`add-correct-response\` - Show correct response values on models
+- \`external-style-urls\` - Comma-separated CSS URLs scoped to player content
+- \`loader-config\` - Loader/retry/instrumentation config (JSON string)
+- \`debug\` - Enables debug logging (also reads \`window.PIE_DEBUG\`)
+- \`custom-class-name\` / \`container-class\` - Styling hooks for host apps
+
+## Loader configuration
+
+Control resource loading behavior and instrumentation via the \`loader-config\` attribute:
+
+\`\`\`html
+<pie-item-player
+  strategy="preloaded"
+  loader-config='{"trackPageActions": true, "maxResourceRetries": 3, "resourceRetryDelay": 500}'>
+</pie-item-player>
+\`\`\`
+
+Options:
+
+- \`trackPageActions\` (boolean, default: \`false\`) - Enable instrumentation for resource/module loading
+- \`maxResourceRetries\` (number, default: \`3\`) - Maximum retry attempts for failed resources
+- \`resourceRetryDelay\` (number, default: \`500\`) - Initial retry delay in milliseconds
+
+Global alternative:
+
+\`\`\`html
+<script>
+  window.PIE_LOADER_CONFIG = {
+    trackPageActions: true,
+    maxResourceRetries: 3,
+    resourceRetryDelay: 500
+  };
+</script>
+<script type="module">
+  import "@pie-players/pie-preloaded-player";
+</script>
+\`\`\`
+
+## Resilient loading
+
+This package includes retry behavior for:
+
+- Module imports (math-rendering, preloaded bundle, player module): up to 4 attempts with exponential backoff
+- Runtime resources (images/audio/video): configurable retries via \`loader-config\`
+
+## Events
+
+- \`load-complete\` - Fired when the player has completed loading
+- \`session-changed\` - Fired when session data updates from interaction
+- \`player-error\` - Fired when the player encounters runtime errors
+- \`model-updated\` - Fired when a PIE model is updated
+
+## License
+
+MIT
 `;
 }
 
@@ -347,7 +486,9 @@ export async function buildPreloadedPlayerStaticPackage(
 		!!config.overwriteBundle,
 	);
 
-	// Build pie-item-player custom element from this monorepo
+	// Build required workspace outputs from this monorepo.
+	// For publish flows we do a full package rebuild, matching regular publish expectations.
+	// For local package generation we keep a narrower build for speed.
 	const itemPlayerPkgDir = join(
 		config.monorepoDir,
 		"packages",
@@ -356,9 +497,8 @@ export async function buildPreloadedPlayerStaticPackage(
 	if (!existsSync(itemPlayerPkgDir)) {
 		throw new Error(`pie-item-player package not found: ${itemPlayerPkgDir}`);
 	}
-	// Build item-player through the root turbo pipeline so required workspace deps
-	// (for example @pie-players/pie-players-shared dist exports) are available.
-	execSync("bun run build:e2e:item-player", {
+	const buildCommand = config.publish ? "bun run build" : "bun run build:e2e:item-player";
+	execSync(buildCommand, {
 		cwd: config.monorepoDir,
 		stdio: "inherit",
 	});
@@ -392,12 +532,12 @@ export async function buildPreloadedPlayerStaticPackage(
 	);
 	await writeFile(
 		join(outputDir, "dist", "index.js"),
-		generateIndex(bundleFilename),
+		generateIndex(bundleFilename, parseElements(config.elements)),
 	);
 	await writeFile(join(outputDir, "dist", "index.d.ts"), generateTypes());
 	await writeFile(
 		join(outputDir, "README.md"),
-		`# @pie-players/pie-preloaded-player\n\nVersion: ${version}\n\nHash: ${hash}\n\nUse with \`<pie-item-player strategy="preloaded">\`.\n`,
+		generateReadme(config, version, hash),
 	);
 
 	return { outputDir, version };

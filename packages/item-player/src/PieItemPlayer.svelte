@@ -16,7 +16,6 @@
 			externalStyleUrls: { attribute: "external-style-urls", type: "String" },
 			loaderConfig: { attribute: "loader-config", type: "Object" },
 			strategy: { attribute: "strategy", type: "String" },
-			skipElementLoading: { attribute: "skip-element-loading", type: "Boolean" },
 			mode: { attribute: "mode", type: "String" },
 			configuration: { attribute: "configuration", type: "Object" },
 			authoringBackend: { attribute: "authoring-backend", type: "String" },
@@ -55,6 +54,7 @@
 		makeUniqueTags,
 		normalizeItemSessionContainer,
 		normalizeItemPlayerStrategy,
+		parsePackageName,
 		resolveItemPlayerView,
 	} from "@pie-players/pie-players-shared";
 	import { PieItemPlayer as PieItemRenderer, PieSpinner } from "@pie-players/pie-players-shared/components";
@@ -90,7 +90,6 @@
 		externalStyleUrls = "",
 		loaderConfig = DEFAULT_LOADER_CONFIG as LoaderConfig,
 		strategy = "iife",
-		skipElementLoading = false,
 		mode = "view" as "view" | "author",
 		configuration = {} as Record<string, any>,
 		authoringBackend = "demo" as AuthoringBackendMode,
@@ -221,16 +220,81 @@
 	let lastProcessedConfig: any = null;
 	let lastProcessedStrategy = "";
 	let lastProcessedMode = "";
-	let lastProcessedSkip = false;
 	let isProcessing = false;
+
+	function hasBundledPreloadedElements(): boolean {
+		if (!isBrowser) return false;
+		const preloadedElements = (window as any).PIE_PRELOADED_ELEMENTS;
+		return (
+			!!preloadedElements &&
+			typeof preloadedElements === "object" &&
+			Object.keys(preloadedElements).length > 0
+		);
+	}
+
+	function shouldAutoSkipElementLoading(configEntity: any): boolean {
+		if (normalizedStrategy !== "preloaded") return false;
+		if (!isBrowser) return false;
+
+		const registeredByTag =
+			!!configEntity?.elements &&
+			Object.keys(configEntity.elements).length > 0 &&
+			Object.keys(configEntity.elements).every((tagName) =>
+				typeof customElements.get(tagName) === "function",
+			);
+
+		return registeredByTag || hasBundledPreloadedElements();
+	}
+
+	function normalizePreloadedElementVersions(configEntity: any): any {
+		if (!isBrowser || normalizedStrategy !== "preloaded") return configEntity;
+		if (!configEntity?.elements || typeof configEntity.elements !== "object") {
+			return configEntity;
+		}
+		const preloadedElements = (window as any).PIE_PRELOADED_ELEMENTS;
+		if (!preloadedElements || typeof preloadedElements !== "object") {
+			return configEntity;
+		}
+
+		let changed = false;
+		const normalizedElements = Object.entries(configEntity.elements).reduce(
+			(acc, [tagName, packageSpec]) => {
+				const packageSpecStr = String(packageSpec);
+				try {
+					const packageName = parsePackageName(packageSpecStr).name;
+					const bundledSpec = preloadedElements[packageName];
+					if (typeof bundledSpec === "string" && bundledSpec.length > 0) {
+						acc[tagName] = bundledSpec;
+						if (bundledSpec !== packageSpecStr) {
+							changed = true;
+						}
+						return acc;
+					}
+				} catch {
+					// Keep original packageSpec when parsing fails.
+				}
+				acc[tagName] = packageSpecStr;
+				return acc;
+			},
+			{} as Record<string, string>,
+		);
+
+		if (!changed) return configEntity;
+		logger.debug(
+			"[pie-item-player] Normalized preloaded config.elements to bundled versions",
+		);
+		return {
+			...configEntity,
+			elements: normalizedElements,
+		};
+	}
 
 	async function loadConfig(currentConfig: any) {
 		if (
 			isProcessing ||
 			(currentConfig === lastProcessedConfig &&
 				normalizedStrategy === lastProcessedStrategy &&
-				resolvedMode === lastProcessedMode &&
-				skipElementLoading === lastProcessedSkip)
+				resolvedMode === lastProcessedMode)
 		) {
 			return;
 		}
@@ -245,7 +309,6 @@
 		lastProcessedConfig = currentConfig;
 		lastProcessedStrategy = normalizedStrategy;
 		lastProcessedMode = resolvedMode;
-		lastProcessedSkip = skipElementLoading;
 		loading = true;
 		error = null;
 
@@ -260,16 +323,21 @@
 				throw new Error("Invalid config: must contain elements, models, and markup");
 			}
 
+			stage = "normalize-preloaded-elements";
+			const normalizedConfig = normalizePreloadedElementVersions(parsedConfig);
+
 			stage = "makeUniqueTags";
-			const transformed = makeUniqueTags({ config: parsedConfig });
+			const transformed = makeUniqueTags({ config: normalizedConfig });
 			const transformedConfig = transformed.config;
+			const shouldSkipElementLoading =
+				shouldAutoSkipElementLoading(transformedConfig);
 
 			stage = "math-rendering-init";
 			await initializeMathRendering();
 
-			if (skipElementLoading) {
+			if (shouldSkipElementLoading) {
 				logger.debug(
-					"[pie-item-player] Skipping element loading; host is responsible for preload.",
+					"[pie-item-player] Skipping element loading for preloaded flow.",
 				);
 			} else if (
 				normalizedStrategy === "iife" ||
@@ -342,7 +410,6 @@
 		const currentConfig = config;
 		void normalizedStrategy;
 		void resolvedMode;
-		void skipElementLoading;
 		void resolvedIifeBundleHost;
 		void resolvedEsmCdnUrl;
 		queueMicrotask(() => {

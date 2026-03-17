@@ -4,7 +4,6 @@ export type PlayerElementParams = {
 	session?: Record<string, unknown>;
 	attributes?: Record<string, string>;
 	props?: Record<string, unknown>;
-	skipElementLoading?: boolean;
 };
 
 type AppliedPlayerParams = {
@@ -14,12 +13,10 @@ type AppliedPlayerParams = {
 	envSignature?: string;
 	session?: Record<string, unknown>;
 	sessionSignature?: string;
-	skipElementLoading?: boolean;
 };
 
 type PlayerActionOptions = {
 	stateKey: string;
-	setSkipElementLoadingOnce?: boolean;
 	includeSessionRefInState?: boolean;
 };
 
@@ -90,14 +87,6 @@ function applyPlayerParams(
 	for (const [name, value] of Object.entries(params.props || {})) {
 		nodeRecord[name] = value;
 	}
-	if (params.skipElementLoading) {
-		const shouldSetSkip =
-			options.setSkipElementLoadingOnce !== true ||
-			state.skipElementLoading !== true;
-		if (shouldSetSkip) {
-			node.setAttribute("skip-element-loading", "true");
-		}
-	}
 	setNodeState(node, options.stateKey, {
 		config: params.config,
 		configSignature: nextConfigSignature,
@@ -105,7 +94,6 @@ function applyPlayerParams(
 		envSignature: nextEnvSignature,
 		session: options.includeSessionRefInState ? params.session : undefined,
 		sessionSignature: nextSessionSignature,
-		skipElementLoading: !!params.skipElementLoading,
 	} as AppliedPlayerParams);
 }
 

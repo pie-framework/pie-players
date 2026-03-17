@@ -56,7 +56,6 @@ export function getPassagePlayerParams(args: {
 		env: args.resolvedPlayerEnv,
 		attributes: args.resolvedPlayerAttributes || {},
 		props: args.resolvedPlayerProps || {},
-		skipElementLoading: args.playerStrategy !== "preloaded",
 	};
 }
 
@@ -74,7 +73,6 @@ export function getItemPlayerParams(args: {
 		session: getSessionForItemOrEmpty(args.compositionModel, args.item),
 		attributes: args.resolvedPlayerAttributes || {},
 		props: args.resolvedPlayerProps || {},
-		skipElementLoading: args.playerStrategy !== "preloaded",
 	};
 }
 

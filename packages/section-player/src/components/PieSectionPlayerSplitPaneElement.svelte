@@ -192,7 +192,6 @@
 	{passageToolbarTools}
 	playerActionConfig={{
 		stateKey: "__splitPaneAppliedParams",
-		setSkipElementLoadingOnce: true,
 		includeSessionRefInState: true,
 	}}
 	on:readiness-change={forward}

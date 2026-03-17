@@ -154,6 +154,60 @@ test.describe("item-player strategy regressions", () => {
 		await assertMediaRetryBridge(page, PRELOADED_DELIVERY_PATH);
 	});
 
+	test("preloaded rewrites stale content element versions to bundled versions", async ({
+		page,
+	}) => {
+		await page.goto(PRELOADED_DELIVERY_PATH, { waitUntil: "networkidle" });
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({ timeout: 20_000 });
+
+		await page.evaluate(() => {
+			(window as any).PIE_PRELOADED_ELEMENTS = {
+				"@pie-element/multiple-choice": "@pie-element/multiple-choice@11.4.3",
+			};
+			const fixture = document.createElement("div");
+			fixture.id = "pie-preloaded-version-normalization-fixture";
+			document.body.appendChild(fixture);
+
+			const player = document.createElement("pie-item-player") as any;
+			player.strategy = "preloaded";
+			player.env = { mode: "gather", role: "student" };
+			player.session = { id: "normalize-test", data: [] };
+			player.config = {
+				elements: {
+					"pie-multiple-choice": "@pie-element/multiple-choice@0.0.1",
+				},
+				models: [
+					{
+						id: "normalize-mc",
+						element: "pie-multiple-choice",
+						prompt: "Normalization prompt",
+						choiceMode: "radio",
+						choices: [
+							{ value: "a", label: "A", correct: false },
+							{ value: "b", label: "B", correct: true },
+						],
+					},
+				],
+				markup: '<pie-multiple-choice id="normalize-mc"></pie-multiple-choice>',
+			};
+			fixture.appendChild(player);
+		});
+
+		await page.waitForFunction(() => {
+			const fixture = document.getElementById(
+				"pie-preloaded-version-normalization-fixture",
+			);
+			if (!fixture) return false;
+			const hasBundledVersionTag = !!fixture.querySelector(
+				"pie-multiple-choice--version-11-4-3",
+			);
+			const hasStaleVersionTag = !!fixture.querySelector(
+				"pie-multiple-choice--version-0-0-1",
+			);
+			return hasBundledVersionTag && !hasStaleVersionTag;
+		});
+	});
+
 	test("iife emits media-retry-ready after first audio load failure", async ({ page }) => {
 		await assertMediaRetryBridge(page, IIFE_DELIVERY_PATH);
 	});

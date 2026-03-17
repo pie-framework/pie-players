@@ -1,5 +1,37 @@
 # @pie-players/item-demos
 
+## 0.1.24
+
+### Patch Changes
+
+- Updated dependencies
+  - @pie-players/pie-item-player@0.3.17
+  - @pie-players/pie-players-shared@0.3.17
+
+## 0.1.23
+
+### Patch Changes
+
+- Updated dependencies
+  - @pie-players/pie-item-player@0.3.16
+  - @pie-players/pie-players-shared@0.3.16
+
+## 0.1.22
+
+### Patch Changes
+
+- Updated dependencies
+  - @pie-players/pie-item-player@0.3.15
+  - @pie-players/pie-players-shared@0.3.15
+
+## 0.1.21
+
+### Patch Changes
+
+- Updated dependencies
+  - @pie-players/pie-item-player@0.3.14
+  - @pie-players/pie-players-shared@0.3.14
+
 ## 0.1.20
 
 ### Patch Changes

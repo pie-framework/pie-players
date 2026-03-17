@@ -142,6 +142,13 @@
           "multiple": false,
           "type": "option"
         },
+        "publishTag": {
+          "description": "npm dist-tag for publish. Defaults to 'next' for prerelease versions and npm default for stable versions.",
+          "name": "publishTag",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
         "generateTestProject": {
           "char": "g",
           "description": "Generate a browser test project after building",
@@ -267,6 +274,13 @@
         "pitsBaseUrl": {
           "description": "Bundle builder base URL (default: https://proxy.pie-api.com)",
           "name": "pitsBaseUrl",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "publishTag": {
+          "description": "npm dist-tag for publish. Defaults to 'next' for prerelease versions and npm default for stable versions.",
+          "name": "publishTag",
           "hasDynamicHelp": false,
           "multiple": false,
           "type": "option"

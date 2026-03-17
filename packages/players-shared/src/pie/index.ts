@@ -61,7 +61,7 @@ export {
 // Logging
 export type { PieLogger } from "./logger.js";
 export { createPieLogger, isGlobalDebugEnabled } from "./logger.js";
-// Player bootstrap helpers (used by inline/fixed players)
+// Player bootstrap helpers (used by inline/preloaded players)
 export type {
 	ItemData,
 	PiePlayerConfig,

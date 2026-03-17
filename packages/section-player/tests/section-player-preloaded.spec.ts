@@ -24,15 +24,11 @@ test.describe("section player preloaded strategy", () => {
 		const playerAttrs = await page.locator("pie-item-player").evaluateAll((els) =>
 			els.map((el) => ({
 				strategy: el.getAttribute("strategy"),
-				skipElementLoading:
-					el.hasAttribute("skip-element-loading") ||
-					el.getAttribute("skip-element-loading"),
 			})),
 		);
 		expect(playerAttrs.length).toBeGreaterThan(0);
 		for (const attrs of playerAttrs) {
 			expect(attrs.strategy).toBe("preloaded");
-			expect(Boolean(attrs.skipElementLoading)).toBe(false);
 		}
 
 		expect(bundleRequests.length).toBeGreaterThan(0);

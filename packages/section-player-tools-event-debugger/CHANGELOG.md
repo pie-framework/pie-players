@@ -1,5 +1,41 @@
 # @pie-players/pie-section-player-tools-event-debugger
 
+## 0.3.17
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-section-player-tools-shared@0.3.17
+  - @pie-players/pie-theme@0.3.17
+
+## 0.3.16
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-section-player-tools-shared@0.3.16
+  - @pie-players/pie-theme@0.3.16
+
+## 0.3.15
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-section-player-tools-shared@0.3.15
+  - @pie-players/pie-theme@0.3.15
+
+## 0.3.14
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-section-player-tools-shared@0.3.14
+  - @pie-players/pie-theme@0.3.14
+
 ## 0.3.13
 
 ### Patch Changes

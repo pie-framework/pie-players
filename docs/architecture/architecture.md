@@ -120,7 +120,7 @@ The ESM player supports loading different views/variants of elements through ESM
 
 #### 3. Preloaded Static Strategy (`<pie-item-player strategy="preloaded">`)
 
-**Purpose**: Pre-bundled player with fixed element combinations (performance optimized).
+**Purpose**: Pre-bundled player with predefined element combinations (performance optimized).
 
 **Architecture**:
 - All elements pre-bundled at build time
@@ -129,7 +129,7 @@ The ESM player supports loading different views/variants of elements through ESM
 
 **Use Cases**:
 - Performance-critical deployments
-- Fixed question type sets
+- Predefined question type sets
 - Reduced runtime overhead
 
 **Key Features**:

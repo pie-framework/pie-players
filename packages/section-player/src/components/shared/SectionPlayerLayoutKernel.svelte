@@ -27,7 +27,6 @@
 
 	type PlayerActionConfig = {
 		stateKey: string;
-		setSkipElementLoadingOnce?: boolean;
 		includeSessionRefInState?: boolean;
 	};
 

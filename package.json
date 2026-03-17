@@ -70,7 +70,7 @@
 		"changeset": "changeset",
 		"version": "changeset version",
 		"release:with-version": "bun ./scripts/create-temporary-release-changeset.mjs && bun run version && bun run restore:workspace-ranges && bun run check:npm-auth && bun run verify:publish && bun run test && bun run release && bun run restore:workspace-ranges",
-		"release": "dotenvx run -f .env -- sh -c \"turbo build --filter='!./apps/*' --filter='!./tools/*' && bun ./scripts/changeset-publish-resolved-workspaces.mjs\"",
+		"release": "dotenvx run -f .env -- sh -c \"turbo build --filter='!./apps/*' --filter='!./tools/*' && bun ./scripts/changeset-publish-resolved-workspaces.mjs && bun scripts/preloaded-player/publish-changed.mjs --all\"",
 		"release:label": "bun ./scripts/create-release-label.mjs",
 		"release:label:push": "bun ./scripts/create-release-label.mjs --push",
 		"pack:local": "turbo build && bun ./scripts/pack-local.mjs",

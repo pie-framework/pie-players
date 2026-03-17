@@ -51,7 +51,6 @@ The script self-registers the `<pie-item-player>` custom element.
 | `hosted` | `Boolean` | `false` | Whether running in hosted mode (affects IIFE bundle type) |
 | `add-correct-response` | `Boolean` | `false` | Populate correct responses on models |
 | `show-bottom-border` | `Boolean` | `false` | Add bottom border in evaluate mode |
-| `skip-element-loading` | `Boolean` | `false` | Skip loader; host is responsible for preloading elements |
 | `debug` | `String` | `""` | Enable debug logging (also reads `window.PIE_DEBUG`) |
 | `custom-class-name` | `String` | `""` | CSS scope class applied to the player container |
 | `container-class` | `String` | `""` | Extra class on the inner item container |

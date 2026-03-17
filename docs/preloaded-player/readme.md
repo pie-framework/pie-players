@@ -2,7 +2,7 @@
 
 This repo supports publishing pre-bundled packages from in-repo element-combination configs.
 
-Each config in `configs/preloaded-player/*.json` represents a fixed set of PIE elements. CI/CD publishes a corresponding `@pie-players/pie-preloaded-player` version for that combination.
+Each config in `configs/preloaded-player/*.json` represents a predefined set of PIE elements. CI/CD publishes a corresponding `@pie-players/pie-preloaded-player` version for that combination.
 
 ## Package
 
@@ -30,3 +30,7 @@ Workflow:
 Publisher script:
 
 - `scripts/preloaded-player/publish-changed.mjs`
+
+Monorepo release integration:
+
+- `bun run release` and `bun run release:with-version` now invoke `scripts/preloaded-player/publish-changed.mjs --all` after the standard package publish step, so all preloaded configs are published as part of a full project release.

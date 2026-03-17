@@ -147,6 +147,8 @@ Key attributes/properties on `pie-assessment-player-default`:
 | `hooks` | `object` | Assessment player hooks (see §7) |
 | `env` | `object` | `{ mode: 'gather'/'view'/'evaluate', role: 'student'/'instructor' }` |
 | `coordinator` | `ToolkitCoordinator` | Pass-through coordinator for tools/TTS/accessibility |
+| `sectionPlayerRuntime` | `object` | Optional pass-through runtime object applied to each mounted section-player |
+| `sectionPlayerPlayer` | `object` | Optional pass-through player overrides applied to each mounted section-player |
 
 To obtain the controller after bootstrap:
 
@@ -191,6 +193,39 @@ playerEl.coordinator = coordinator;
 
 This keeps one coordinator per assessment context — the same instance drives TTS, highlights, tool state, and section controller lifecycle across all sections. Creating multiple coordinators for the same assessment is a bug.
 
+### Item-level observability through assessment-player
+
+When using `pie-assessment-player-default`, pass section-level player observability overrides
+through `sectionPlayerRuntime` and/or `sectionPlayerPlayer`:
+
+```ts
+import { ConsoleInstrumentationProvider } from '@pie-players/pie-players-shared';
+
+const provider = new ConsoleInstrumentationProvider({ useColors: true });
+await provider.initialize({ debug: true });
+
+playerEl.sectionPlayerRuntime = {
+  player: {
+    loaderConfig: {
+      trackPageActions: true,
+      instrumentationProvider: provider,
+      maxResourceRetries: 3,
+      resourceRetryDelay: 500,
+    },
+  },
+};
+
+// Optional direct section-player player override path:
+playerEl.sectionPlayerPlayer = {
+  loaderOptions: { esmCdnUrl: 'https://cdn.jsdelivr.net/npm' },
+};
+```
+
+Notes:
+
+- `sectionPlayerRuntime` and `sectionPlayerPlayer` are JS properties, not serialized attributes.
+- For observability providers, prefer object property assignment to preserve provider instance references.
+
 ---
 
 ## 5. Content and Loading
@@ -213,7 +248,7 @@ const assessment = {
 playerEl.assessment = assessment;
 ```
 
-Each section is passed to a `pie-section-player-splitpane` or `pie-section-player-vertical` element when it becomes active. Item element loading (IIFE/ESM/preloaded), bundle resolution, and registration tracking all happen at the section player level — the assessment player controls `player-type` pass-through but otherwise stays out of the loading path. See the [section player integration guide](../section-player/client-architecture-tutorial.md) §4 for full coverage of content loading strategies.
+Each section is passed to a `pie-section-player-splitpane` or `pie-section-player-vertical` element when it becomes active. Item element loading (IIFE/ESM/preloaded), bundle resolution, and registration tracking all happen at the section player level — assessment-player forwards `player-type` plus optional `sectionPlayerRuntime` / `sectionPlayerPlayer` pass-through overrides. See the [section player integration guide](../section-player/client-architecture-tutorial.md) §4 for full coverage of content loading strategies.
 
 ---
 

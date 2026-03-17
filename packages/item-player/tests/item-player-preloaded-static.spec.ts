@@ -232,7 +232,7 @@ test.describe("item-player strategy regressions", () => {
 		await assertMediaRetryBridge(page, IIFE_DELIVERY_PATH);
 	});
 
-	test.skip("esm emits media-retry-ready after first audio load failure", async ({ page }) => {
+test.skip("esm emits media-retry-ready after first audio load failure", async ({ page }) => {
 		await assertMediaRetryBridge(page, ESM_DELIVERY_PATH);
 	});
 });

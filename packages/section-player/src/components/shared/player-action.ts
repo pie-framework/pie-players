@@ -13,6 +13,8 @@ type AppliedPlayerParams = {
 	envSignature?: string;
 	session?: Record<string, unknown>;
 	sessionSignature?: string;
+	attributeKeys?: string[];
+	propKeys?: string[];
 };
 
 type PlayerActionOptions = {
@@ -66,6 +68,20 @@ function applyPlayerParams(
 ) {
 	const nodeRecord = node as unknown as Record<string, unknown>;
 	const state = getNodeState(node, options.stateKey);
+	const nextAttributeKeys = Object.keys(params.attributes || {});
+	const nextPropKeys = Object.keys(params.props || {});
+	const previousAttributeKeys = state.attributeKeys || [];
+	const previousPropKeys = state.propKeys || [];
+	for (const name of previousAttributeKeys) {
+		if (!nextAttributeKeys.includes(name)) {
+			node.removeAttribute(name);
+		}
+	}
+	for (const name of previousPropKeys) {
+		if (!nextPropKeys.includes(name)) {
+			delete nodeRecord[name];
+		}
+	}
 	const nextConfigSignature = getObjectSignature(params.config);
 	if (state.configSignature !== nextConfigSignature) {
 		nodeRecord.config = params.config;
@@ -94,6 +110,8 @@ function applyPlayerParams(
 		envSignature: nextEnvSignature,
 		session: options.includeSessionRefInState ? params.session : undefined,
 		sessionSignature: nextSessionSignature,
+		attributeKeys: nextAttributeKeys,
+		propKeys: nextPropKeys,
 	} as AppliedPlayerParams);
 }
 

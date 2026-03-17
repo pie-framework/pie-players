@@ -15,7 +15,11 @@ import type {
 	AssessmentPlayerRuntimeHostContract,
 	AssessmentPlayerSnapshot,
 } from "../contracts/runtime-host-contract.js";
-import type { AssessmentDefinition, AssessmentPlayerHooks } from "../types.js";
+import type {
+	AssessmentDefinition,
+	AssessmentPlayerHooks,
+	AssessmentPlayerRuntimeConfig,
+} from "../types.js";
 
 interface SectionControllerHandle {
 	getSession?: () => unknown;
@@ -55,6 +59,8 @@ export class AssessmentPlayerDefaultElement
 	env: Env | null = null;
 	coordinator: unknown = null;
 	hooks: AssessmentPlayerHooks | null = null;
+	sectionPlayerRuntime: AssessmentPlayerRuntimeConfig["sectionPlayerRuntime"] = null;
+	sectionPlayerPlayer: AssessmentPlayerRuntimeConfig["sectionPlayerPlayer"] = null;
 	showNavigation: boolean | string | null | undefined = true;
 	sectionPlayerLayout: "splitpane" | "vertical" = "splitpane";
 	playerType: "iife" | "esm" | "preloaded" = "iife";
@@ -334,6 +340,12 @@ export class AssessmentPlayerDefaultElement
 			(sectionEl as any).section = currentSection.section;
 			if (this.env) (sectionEl as any).env = this.env;
 			if (this.coordinator) (sectionEl as any).coordinator = this.coordinator;
+			if (this.sectionPlayerRuntime) {
+				(sectionEl as any).runtime = this.sectionPlayerRuntime;
+			}
+			if (this.sectionPlayerPlayer) {
+				(sectionEl as any).player = this.sectionPlayerPlayer;
+			}
 			this.attachSectionControllerReadyListener(
 				sectionEl,
 				currentSection.sectionIdentifier,

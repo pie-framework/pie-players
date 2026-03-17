@@ -89,11 +89,27 @@ export function resolveRuntime(args: {
 	effectiveToolsConfig: unknown;
 }) {
 	const runtime = args.runtime || {};
+	const topLevelPlayer = (args.player || {}) as Record<string, unknown>;
+	const runtimePlayer = (runtime.player || {}) as Record<string, unknown>;
+	const mergedPlayerCandidate = {
+		...topLevelPlayer,
+		...runtimePlayer,
+		loaderOptions: {
+			...((topLevelPlayer.loaderOptions || {}) as Record<string, unknown>),
+			...((runtimePlayer.loaderOptions || {}) as Record<string, unknown>),
+		},
+		loaderConfig: {
+			...((topLevelPlayer.loaderConfig || {}) as Record<string, unknown>),
+			...((runtimePlayer.loaderConfig || {}) as Record<string, unknown>),
+		},
+	};
+	const mergedPlayer =
+		Object.keys(mergedPlayerCandidate).length > 0 ? mergedPlayerCandidate : null;
 	return {
 		...runtime,
 		assessmentId: runtime.assessmentId ?? args.assessmentId,
 		playerType: runtime.playerType ?? args.playerType,
-		player: runtime.player ?? args.player,
+		player: mergedPlayer,
 		lazyInit: runtime.lazyInit ?? args.lazyInit,
 		accessibility: runtime.accessibility ?? args.accessibility,
 		coordinator: runtime.coordinator ?? args.coordinator,
@@ -121,7 +137,27 @@ export function resolvePlayerRuntime(args: {
 	const resolvedPlayerTag =
 		resolvedPlayerDefinition?.tagName || "pie-item-player";
 	const resolvedPlayerAttributes = resolvedPlayerDefinition?.attributes || {};
-	const resolvedPlayerProps = resolvedPlayerDefinition?.props || {};
+	const definitionProps = (resolvedPlayerDefinition?.props || {}) as Record<
+		string,
+		unknown
+	>;
+	const runtimePlayerOverrides = ((args.effectiveRuntime?.player as Record<
+		string,
+		unknown
+	>) ||
+		{}) as Record<string, unknown>;
+	const definitionLoaderOptions = (definitionProps.loaderOptions ||
+		{}) as Record<string, unknown>;
+	const runtimeLoaderOptions = (runtimePlayerOverrides.loaderOptions ||
+		{}) as Record<string, unknown>;
+	const resolvedPlayerProps = {
+		...definitionProps,
+		...runtimePlayerOverrides,
+		loaderOptions: {
+			...definitionLoaderOptions,
+			...runtimeLoaderOptions,
+		},
+	};
 	const resolvedPlayerEnv = ((args.effectiveRuntime?.env as Record<
 		string,
 		unknown

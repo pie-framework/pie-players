@@ -146,6 +146,43 @@ Content items are rendered via `<pie-item-player>` elements. The `player-type` a
 
 For `loaderOptions` (custom bundle host URL, ESM CDN URL, import-map mode, etc.) see [docs/item-player/loading-strategies.md](../item-player/loading-strategies.md).
 
+### Item-level observability wiring
+
+Item-level resource observability is configured at the embedded `pie-item-player` level through
+`loaderConfig`. In section-player integrations, the canonical path is:
+
+- `runtime.player.loaderConfig.trackPageActions`
+- `runtime.player.loaderConfig.instrumentationProvider`
+
+Example:
+
+```ts
+import { ConsoleInstrumentationProvider } from '@pie-players/pie-players-shared';
+
+const provider = new ConsoleInstrumentationProvider({ useColors: true });
+await provider.initialize({ debug: true });
+
+sectionPlayerEl.runtime = {
+  playerType: 'esm',
+  player: {
+    loaderConfig: {
+      trackPageActions: true,
+      instrumentationProvider: provider,
+      maxResourceRetries: 3,
+      resourceRetryDelay: 500,
+    },
+    loaderOptions: {
+      esmCdnUrl: 'https://cdn.jsdelivr.net/npm',
+    },
+  },
+};
+```
+
+Notes:
+
+- `loaderOptions` and `loaderConfig` are different concerns: loading strategy vs observability/retry behavior.
+- For custom providers, pass object references as JS properties (`runtime`), not serialized string attributes.
+
 The player tracks loading through `totalRegistered` and `totalLoaded` counters (accessible via `getRuntimeState()`) and emits `section-loading-complete` when all registered items have loaded. The `readiness-change` event gives you the current phase (`bootstrapping` → `interaction-ready` → `loading` → `ready`).
 
 ---

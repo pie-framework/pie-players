@@ -66,7 +66,7 @@ Advanced CE props are still supported as escape hatches (`runtime`, `coordinator
 Runtime precedence is explicit:
 
 - `runtime` values are primary for runtime fields (`assessmentId`, `playerType`, `player`, `lazyInit`, `tools`, `accessibility`, `coordinator`, `createSectionController`, `isolation`, `env`).
-- Top-level runtime-like props are treated as compatibility/override inputs when a corresponding `runtime` field is absent.
+- Top-level runtime-like props remain compatibility inputs and are merged with `runtime` values. For `player`, top-level values are merged first, then `runtime.player` overrides. Nested `loaderOptions` and `loaderConfig` are also merged with the same precedence.
 - Toolbar placement overrides (`enabled-tools`, `item-toolbar-tools`, `passage-toolbar-tools`) are normalized on top of the runtime tools config.
 
 See the progressive demo routes in `apps/section-demos/src/routes/(demos)` (for example `single-question/+page.svelte` and `session-hydrate-db/+page.svelte`) for end-to-end host integrations.
@@ -169,6 +169,38 @@ const unsubscribeSection = coordinator.subscribeSectionLifecycleEvents({
 ```
 
 Use `subscribeSectionEvents(...)` only for advanced mixed filtering requirements.
+
+### Item-level observability configuration
+
+Item-level resource observability is configured on the embedded `pie-item-player` via
+`loaderConfig`. In section-player integrations, pass this through `runtime.player.loaderConfig`.
+
+```ts
+import { ConsoleInstrumentationProvider } from "@pie-players/pie-players-shared";
+
+const provider = new ConsoleInstrumentationProvider({ useColors: true });
+await provider.initialize({ debug: true });
+
+sectionPlayerEl.runtime = {
+  playerType: "esm",
+  player: {
+    loaderConfig: {
+      trackPageActions: true,
+      instrumentationProvider: provider,
+      maxResourceRetries: 3,
+      resourceRetryDelay: 500,
+    },
+    loaderOptions: {
+      esmCdnUrl: "https://cdn.jsdelivr.net/npm",
+    },
+  },
+};
+```
+
+Important:
+
+- `loaderOptions` controls bundle loading. `loaderConfig` controls runtime resource monitoring.
+- Custom providers (functions/instances) must be passed as JS properties (`runtime` object), not serialized string attributes.
 
 ### Item session management
 

@@ -48,6 +48,14 @@ export type ResourceMonitorConfig = {
 	instrumentationProvider?: InstrumentationProvider;
 
 	/**
+	 * Whether ResourceMonitor should initialize/destroy the instrumentation provider.
+	 *
+	 * Defaults to `true` when ResourceMonitor creates the provider internally, and
+	 * `false` when a provider is injected by the host.
+	 */
+	manageProviderLifecycle?: boolean;
+
+	/**
 	 * Maximum number of retry attempts for failed resources
 	 * Default: 3
 	 */
@@ -74,6 +82,7 @@ export type ResourceMonitorConfig = {
 const DEFAULT_CONFIG = {
 	trackPageActions: false as const,
 	instrumentationProvider: undefined as InstrumentationProvider | undefined,
+	manageProviderLifecycle: undefined as boolean | undefined,
 	maxRetries: 3 as number,
 	initialRetryDelay: 500 as number,
 	maxRetryDelay: 5000 as number,
@@ -148,14 +157,21 @@ export class ResourceMonitor {
 	private isBrowser: boolean;
 	private containerResources = new Set<string>(); // Track resources within our container
 	private provider: InstrumentationProvider;
+	private readonly ownsProvider: boolean;
+	private readonly manageProviderLifecycle: boolean;
+	private started = false;
 
 	constructor(config: ResourceMonitorConfig = {}) {
+		const hasInjectedProvider = !!config.instrumentationProvider;
+		const manageProviderLifecycle =
+			config.manageProviderLifecycle ?? !hasInjectedProvider;
 		this.config = {
 			trackPageActions:
 				config.trackPageActions ?? DEFAULT_CONFIG.trackPageActions,
 			instrumentationProvider:
 				config.instrumentationProvider ??
 				DEFAULT_CONFIG.instrumentationProvider,
+			manageProviderLifecycle,
 			maxRetries: config.maxRetries ?? DEFAULT_CONFIG.maxRetries,
 			initialRetryDelay:
 				config.initialRetryDelay ?? DEFAULT_CONFIG.initialRetryDelay,
@@ -164,19 +180,27 @@ export class ResourceMonitor {
 		};
 
 		// Always use a provider - default to NewRelic if not specified
+		this.ownsProvider = !this.config.instrumentationProvider;
 		this.provider =
 			this.config.instrumentationProvider ??
 			new NewRelicInstrumentationProvider();
+		this.manageProviderLifecycle = this.config.manageProviderLifecycle;
 
 		// Initialize the provider (async, but don't block constructor)
-		this.provider.initialize().catch((err) => {
-			if (this.config.debug) {
-				console.warn(
-					"[ResourceMonitor] Failed to initialize instrumentation provider:",
-					err,
-				);
-			}
-		});
+		if (this.manageProviderLifecycle) {
+			this.provider.initialize().catch((err) => {
+				if (this.config.debug) {
+					console.warn(
+						"[ResourceMonitor] Failed to initialize instrumentation provider:",
+						err,
+					);
+				}
+			});
+		} else if (this.config.debug) {
+			console.debug(
+				"[ResourceMonitor] Skipping provider lifecycle management for injected provider",
+			);
+		}
 
 		this.logger = createPieLogger("resource-monitor", () =>
 			this.isDebugEnabled(),
@@ -338,6 +362,13 @@ export class ResourceMonitor {
 	 * Start monitoring resources in the given container
 	 */
 	public start(container: HTMLElement): void {
+		if (this.started) {
+			if (this.container === container) {
+				return;
+			}
+			this.stop();
+		}
+
 		if (!this.isBrowser) {
 			this.logger.debug(
 				"Not in browser environment, skipping resource monitoring",
@@ -351,6 +382,7 @@ export class ResourceMonitor {
 		this.scanContainerResources(); // Initial scan of existing resources
 		this.setupPerformanceObserver();
 		this.setupErrorHandler();
+		this.started = true;
 
 		this.logger.info("✅ Resource monitoring started");
 	}
@@ -359,6 +391,8 @@ export class ResourceMonitor {
 	 * Stop monitoring and clean up
 	 */
 	public stop(): void {
+		if (!this.started) return;
+
 		if (this.observer) {
 			this.observer.disconnect();
 			this.observer = null;
@@ -378,6 +412,17 @@ export class ResourceMonitor {
 		this.retryTargets.clear();
 		this.containerResources.clear();
 		this.container = null;
+		this.started = false;
+
+		if (this.manageProviderLifecycle) {
+			try {
+				this.provider.destroy();
+			} catch (error) {
+				if (this.isDebugEnabled()) {
+					this.logger.warn("Failed to destroy instrumentation provider:", error);
+				}
+			}
+		}
 
 		this.logger.info("Resource monitoring stopped");
 	}

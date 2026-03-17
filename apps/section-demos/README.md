@@ -172,6 +172,25 @@ Use `?mode=candidate` or `?mode=scorer` to switch environment role/mode. The hos
 
 The ESM player defaults to jsDelivr and URL-based module resolution (`moduleResolution: "url"`). Override `loaderOptions.esmCdnUrl` to use a different CDN, or set `moduleResolution: "import-map"` when import-map behavior is needed.
 
+### Item-level observability in demos/hosts
+
+To configure item-level resource observability for section-player hosts, pass `loaderConfig` through
+`runtime.player` (or top-level `player`) as a JS property object:
+
+```ts
+host.runtime = {
+  playerType: "esm",
+  player: {
+    loaderConfig: {
+      trackPageActions: true,
+      instrumentationProvider: customProvider,
+    },
+  },
+};
+```
+
+Use `loaderOptions` only for module/bundle loading behavior. Use `loaderConfig` for resource monitor observability/retry behavior.
+
 ### Adding New Demos
 1. Create content file in `src/lib/content/demoX-*.ts`
 2. Register the demo in `src/lib/content/sections.ts`

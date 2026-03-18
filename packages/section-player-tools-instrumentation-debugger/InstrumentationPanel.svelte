@@ -4,6 +4,12 @@
 		shadow: "open",
 		props: {
 			maxRecords: { type: "Number", attribute: "max-records" },
+			maxRecordsByKind: {
+				type: "Object",
+				attribute: "max-records-by-kind",
+			},
+			persistenceScope: { type: "String", attribute: "persistence-scope" },
+			persistencePanelId: { type: "String", attribute: "persistence-panel-id" },
 		},
 	}}
 />
@@ -26,18 +32,88 @@
 		"user-context",
 		"global-attributes",
 	]);
+	type RecordKind = InstrumentationDebugRecord["kind"];
+	type RecordLimitOverrides = Partial<Record<RecordKind, number>>;
 
-	let { maxRecords = 250 }: { maxRecords?: number } = $props();
+	let {
+		maxRecords = 250,
+		maxRecordsByKind = {},
+		persistenceScope = "",
+		persistencePanelId = "instrumentation-events",
+	}: {
+		maxRecords?: number;
+		maxRecordsByKind?: RecordLimitOverrides;
+		persistenceScope?: string;
+		persistencePanelId?: string;
+	} = $props();
 	let isPaused = $state(false);
 	let selectedKind = $state<InstrumentationDebugRecord["kind"] | "all">("all");
 	let selectedRecordId = $state<number | null>(null);
 	let records = $state<InstrumentationDebugRecord[]>([]);
 
+	function resolveCap(rawCap: unknown, fallback: number): number {
+		const parsed = Number(rawCap);
+		if (!Number.isFinite(parsed)) return Math.max(20, Math.min(2000, fallback));
+		return Math.max(20, Math.min(2000, parsed));
+	}
+
+	function getCapForKind(kind: RecordKind): number {
+		const globalCap = resolveCap(maxRecords || 250, 250);
+		const override = maxRecordsByKind?.[kind];
+		return resolveCap(override, globalCap);
+	}
+
+	function toTimestampValue(timestamp: string): number {
+		const parsed = Date.parse(timestamp);
+		return Number.isNaN(parsed) ? 0 : parsed;
+	}
+
+	function pruneAndSortRecords(
+		nextRecords: InstrumentationDebugRecord[],
+	): InstrumentationDebugRecord[] {
+		const sorted = [...nextRecords].sort((left, right) => {
+			const leftTs = toTimestampValue(left.timestamp);
+			const rightTs = toTimestampValue(right.timestamp);
+			if (leftTs === rightTs) {
+				return right.id - left.id;
+			}
+			return rightTs - leftTs;
+		});
+		const nextByKind: Record<RecordKind, number> = {
+			event: 0,
+			error: 0,
+			metric: 0,
+			"user-context": 0,
+			"global-attributes": 0,
+		};
+		const pruned: InstrumentationDebugRecord[] = [];
+		for (const record of sorted) {
+			const kindCap = getCapForKind(record.kind);
+			if (nextByKind[record.kind] >= kindCap) continue;
+			pruned.push(record);
+			nextByKind[record.kind] += 1;
+		}
+		return pruned;
+	}
+
+	function reconcileRecordsWithLimits(): void {
+		const nextRecords = pruneAndSortRecords(records);
+		if (nextRecords.length !== records.length) {
+			records = nextRecords;
+			return;
+		}
+		for (let index = 0; index < nextRecords.length; index += 1) {
+			if (nextRecords[index]?.id !== records[index]?.id) {
+				records = nextRecords;
+				return;
+			}
+		}
+	}
+
 	const unsubscribe = subscribeInstrumentationDebugRecords({
 		listener: (record) => {
 			if (isPaused) return;
-			const cappedMaxRecords = Math.max(20, Math.min(2000, maxRecords || 250));
-			records = [record, ...records].slice(0, cappedMaxRecords);
+			records = pruneAndSortRecords([record, ...records]);
 			if (selectedRecordId == null) selectedRecordId = record.id;
 		},
 		replayBuffered: true,
@@ -69,6 +145,12 @@
 		clearBufferedInstrumentationDebugRecords();
 	}
 
+	$effect(() => {
+		void maxRecords;
+		void maxRecordsByKind;
+		reconcileRecordsWithLimits();
+	});
+
 	const visibleRecords = $derived.by(() =>
 		records.filter(
 			(record) => selectedKind === "all" || record.kind === selectedKind,
@@ -87,6 +169,8 @@
 	ariaLabel="Drag instrumentation panel"
 	minWidth={360}
 	minHeight={320}
+	{persistenceScope}
+	{persistencePanelId}
 	initialSizing={{
 		widthRatio: 0.35,
 		heightRatio: 0.74,

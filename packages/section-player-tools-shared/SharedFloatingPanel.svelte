@@ -17,6 +17,8 @@
 		minWidth = 320,
 		minHeight = 260,
 		defaultMinimized = false,
+		persistenceScope = "",
+		persistencePanelId = "",
 		onClose,
 		className = "",
 		bodyClass = "",
@@ -31,6 +33,8 @@
 		minWidth?: number;
 		minHeight?: number;
 		defaultMinimized?: boolean;
+		persistenceScope?: string;
+		persistencePanelId?: string;
 		onClose?: () => void;
 		className?: string;
 		bodyClass?: string;
@@ -46,6 +50,9 @@
 	let panelHeight = $state(480);
 	let panelZIndex = $state(claimNextFloatingPanelZIndex());
 	let isMinimized = $state(untrack(() => defaultMinimized));
+	let hasMounted = $state(false);
+
+	const STORAGE_KEY_PREFIX = "pie:debug-panels:v1";
 
 	const pointerController = createFloatingPanelPointerController({
 		getState: () => ({
@@ -71,15 +78,94 @@
 		panelZIndex = claimNextFloatingPanelZIndex();
 	}
 
+	function getPersistenceKey(): string | null {
+		const scope = String(persistenceScope || "").trim();
+		const panelId = String(persistencePanelId || "").trim();
+		if (!scope || !panelId) return null;
+		return `${STORAGE_KEY_PREFIX}:${scope}:${panelId}:layout`;
+	}
+
+	function clampPanelStateToViewport(state: {
+		x: number;
+		y: number;
+		width: number;
+		height: number;
+		minimized: boolean;
+	}): {
+		x: number;
+		y: number;
+		width: number;
+		height: number;
+		minimized: boolean;
+	} {
+		const viewportWidth = window.innerWidth;
+		const viewportHeight = window.innerHeight;
+		const width = Math.max(minWidth, Math.min(viewportWidth, state.width));
+		const height = Math.max(minHeight, Math.min(viewportHeight, state.height));
+		const maxX = Math.max(0, viewportWidth - width);
+		// Keep restore bounds aligned with drag bounds in floating-panel pointer controller.
+		const maxY = Math.max(0, viewportHeight - 100);
+		return {
+			x: Math.max(0, Math.min(maxX, state.x)),
+			y: Math.max(0, Math.min(maxY, state.y)),
+			width,
+			height,
+			minimized: Boolean(state.minimized),
+		};
+	}
+
+	function restorePersistedLayout(): boolean {
+		const key = getPersistenceKey();
+		if (!key) return false;
+		if (typeof localStorage === "undefined") return false;
+		try {
+			const raw = localStorage.getItem(key);
+			if (!raw) return false;
+			const parsed = JSON.parse(raw) as {
+				x?: number;
+				y?: number;
+				width?: number;
+				height?: number;
+				minimized?: boolean;
+			};
+			if (
+				typeof parsed.x !== "number" ||
+				typeof parsed.y !== "number" ||
+				typeof parsed.width !== "number" ||
+				typeof parsed.height !== "number"
+			) {
+				return false;
+			}
+			const clamped = clampPanelStateToViewport({
+				x: parsed.x,
+				y: parsed.y,
+				width: parsed.width,
+				height: parsed.height,
+				minimized: Boolean(parsed.minimized),
+			});
+			panelX = clamped.x;
+			panelY = clamped.y;
+			panelWidth = clamped.width;
+			panelHeight = clamped.height;
+			isMinimized = clamped.minimized;
+			return true;
+		} catch {
+			return false;
+		}
+	}
+
 	onMount(() => {
-		const initial = computePanelSizeFromViewport(
-			{ width: window.innerWidth, height: window.innerHeight },
-			initialSizing,
-		);
-		panelX = initial.x;
-		panelY = initial.y;
-		panelWidth = initial.width;
-		panelHeight = initial.height;
+		if (!restorePersistedLayout()) {
+			const initial = computePanelSizeFromViewport(
+				{ width: window.innerWidth, height: window.innerHeight },
+				initialSizing,
+			);
+			panelX = initial.x;
+			panelY = initial.y;
+			panelWidth = initial.width;
+			panelHeight = initial.height;
+		}
+		hasMounted = true;
 	});
 
 	onDestroy(() => {
@@ -95,6 +181,27 @@
 	const resolvedHeaderClass = $derived.by(() =>
 		["pie-shared-floating-panel__header", headerClass || ""].join(" ").trim(),
 	);
+
+	$effect(() => {
+		if (!hasMounted) return;
+		const key = getPersistenceKey();
+		if (!key) return;
+		if (typeof localStorage === "undefined") return;
+		try {
+			localStorage.setItem(
+				key,
+				JSON.stringify({
+					x: panelX,
+					y: panelY,
+					width: panelWidth,
+					height: panelHeight,
+					minimized: isMinimized,
+				}),
+			);
+		} catch {
+			// ignore storage write failures
+		}
+	});
 </script>
 
 <section

@@ -96,6 +96,38 @@ async function focusPanelByHeader(args: {
 	await page.mouse.up();
 }
 
+async function dragPanelBy(args: {
+	page: import("@playwright/test").Page;
+	header: import("@playwright/test").Locator;
+	deltaX: number;
+	deltaY: number;
+}) {
+	const { page, header, deltaX, deltaY } = args;
+	await header.scrollIntoViewIfNeeded();
+	const box = await header.boundingBox();
+	if (!box) {
+		throw new Error("Panel header is not visible for drag interaction.");
+	}
+	const startX = box.x + Math.min(Math.max(20, box.width * 0.35), box.width - 10);
+	const startY = box.y + Math.min(Math.max(10, box.height * 0.5), box.height - 4);
+	await page.mouse.move(startX, startY);
+	await page.mouse.down();
+	await page.mouse.move(startX + deltaX, startY + deltaY, { steps: 10 });
+	await page.mouse.up();
+}
+
+async function getPanelPosition(
+	panelLocator: import("@playwright/test").Locator,
+): Promise<{ left: number; top: number }> {
+	return panelLocator.evaluate((node) => {
+		const style = window.getComputedStyle(node);
+		return {
+			left: Number.parseFloat(style.left || "0"),
+			top: Number.parseFloat(style.top || "0"),
+		};
+	});
+}
+
 async function assertChoiceSelectionKeepsPaneScroll(args: {
 	page: import("@playwright/test").Page;
 	paneSelector: string;
@@ -265,6 +297,103 @@ test.describe("section player controller event panel", () => {
 				.first(),
 		).toBeVisible({ timeout: 30_000 });
 		await expect(panelRows.first()).toBeVisible();
+	});
+
+	test("restores event panel position after page refresh", async ({ page }) => {
+		await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
+		const eventPanel = await openEventPanel(page);
+		const panelChrome = eventPanel.locator(".pie-section-player-tools-event-debugger");
+		const panelHeader = page.getByRole("button", {
+			name: "Drag event debugger panel",
+		});
+
+		const beforePosition = await getPanelPosition(panelChrome);
+		await dragPanelBy({
+			page,
+			header: panelHeader,
+			deltaX: -140,
+			deltaY: -80,
+		});
+		await expect
+			.poll(async () => {
+				const afterDrag = await getPanelPosition(panelChrome);
+				return (
+					Math.abs(afterDrag.left - beforePosition.left) > 20 &&
+					Math.abs(afterDrag.top - beforePosition.top) > 20
+				);
+			})
+			.toBe(true);
+
+		const savedPosition = await getPanelPosition(panelChrome);
+		await page.reload({ waitUntil: "networkidle" });
+		const restoredPanel = page
+			.locator("pie-section-player-tools-event-debugger")
+			.locator(".pie-section-player-tools-event-debugger");
+		await expect(restoredPanel).toBeVisible();
+
+		await expect
+			.poll(async () => {
+				const restoredPosition = await getPanelPosition(restoredPanel);
+				return Math.max(
+					Math.abs(restoredPosition.left - savedPosition.left),
+					Math.abs(restoredPosition.top - savedPosition.top),
+				);
+			})
+			.toBeLessThanOrEqual(16);
+
+		const restoredPosition = await getPanelPosition(restoredPanel);
+		expect(Math.abs(restoredPosition.left - savedPosition.left)).toBeLessThanOrEqual(
+			16,
+		);
+		expect(Math.abs(restoredPosition.top - savedPosition.top)).toBeLessThanOrEqual(
+			16,
+		);
+	});
+
+	test("restores instrumentation panel position after page refresh", async ({
+		page,
+	}) => {
+		await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
+		const instrumentationPanel = await openInstrumentationPanel(page);
+		const panelChrome = instrumentationPanel.locator(
+			".pie-section-player-tools-instrumentation-debugger",
+		);
+		const panelHeader = page.getByRole("button", {
+			name: "Drag instrumentation panel",
+		});
+
+		const beforePosition = await getPanelPosition(panelChrome);
+		await dragPanelBy({
+			page,
+			header: panelHeader,
+			deltaX: -120,
+			deltaY: -70,
+		});
+		await expect
+			.poll(async () => {
+				const afterDrag = await getPanelPosition(panelChrome);
+				return (
+					Math.abs(afterDrag.left - beforePosition.left) > 20 &&
+					Math.abs(afterDrag.top - beforePosition.top) > 20
+				);
+			})
+			.toBe(true);
+
+		const savedPosition = await getPanelPosition(panelChrome);
+		await page.reload({ waitUntil: "networkidle" });
+		const restoredPanel = page
+			.locator("pie-section-player-tools-instrumentation-debugger")
+			.locator(".pie-section-player-tools-instrumentation-debugger");
+		await expect(restoredPanel).toBeVisible();
+		await expect
+			.poll(async () => {
+				const restoredPosition = await getPanelPosition(restoredPanel);
+				return Math.max(
+					Math.abs(restoredPosition.left - savedPosition.left),
+					Math.abs(restoredPosition.top - savedPosition.top),
+				);
+			})
+			.toBeLessThanOrEqual(16);
 	});
 
 	test("brings selected debug window to foreground", async ({ page }) => {

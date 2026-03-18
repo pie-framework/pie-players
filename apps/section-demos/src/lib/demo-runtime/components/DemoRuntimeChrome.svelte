@@ -1,7 +1,8 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import type { Snippet } from 'svelte';
 	import '@pie-players/pie-section-player-tools-event-debugger';
-import '@pie-players/pie-section-player-tools-instrumentation-debugger';
+	import '@pie-players/pie-section-player-tools-instrumentation-debugger';
 	import '@pie-players/pie-section-player-tools-session-debugger';
 	import '@pie-players/pie-section-player-tools-pnp-debugger';
 	import '@pie-players/pie-theme';
@@ -46,6 +47,12 @@ import '@pie-players/pie-section-player-tools-instrumentation-debugger';
 		eventDebuggerElement?: any;
 		instrumentationDebuggerElement?: any;
 		pnpDebuggerElement?: any;
+		eventPanelMaxEvents?: number;
+		eventPanelMaxEventsByLevel?: Partial<Record<'item' | 'section', number>>;
+		instrumentationPanelMaxRecords?: number;
+		instrumentationPanelMaxRecordsByKind?: Partial<
+			Record<'event' | 'error' | 'metric' | 'user-context' | 'global-attributes', number>
+		>;
 	}
 
 	let {
@@ -78,10 +85,70 @@ import '@pie-players/pie-section-player-tools-instrumentation-debugger';
 		sessionDebuggerElement = $bindable(null),
 		eventDebuggerElement = $bindable(null),
 		instrumentationDebuggerElement = $bindable(null),
-		pnpDebuggerElement = $bindable(null)
+		pnpDebuggerElement = $bindable(null),
+		eventPanelMaxEvents = 200,
+		eventPanelMaxEventsByLevel = {},
+		instrumentationPanelMaxRecords = 250,
+		instrumentationPanelMaxRecordsByKind = {}
 	}: Props = $props();
 
 	let showDemoInfoDialog = $state(false);
+	let hasHydratedPanelVisibility = $state(false);
+
+	type RuntimePanelVisibilityState = {
+		session?: boolean;
+		event?: boolean;
+		instrumentation?: boolean;
+		source?: boolean;
+		pnp?: boolean;
+		tts?: boolean;
+		sessionDb?: boolean;
+	};
+
+	const DEBUG_PANEL_STORAGE_PREFIX = 'pie:debug-panels:v1';
+
+	function createDebugPanelStorageKey(args: {
+		scope: string;
+		panelId: string;
+		aspect?: string;
+	}): string {
+		const scope = String(args.scope || 'default').trim() || 'default';
+		const panelId = String(args.panelId || 'panel').trim() || 'panel';
+		const aspect = String(args.aspect || 'state').trim() || 'state';
+		return `${DEBUG_PANEL_STORAGE_PREFIX}:${scope}:${panelId}:${aspect}`;
+	}
+
+	function readDebugPanelState<T>(key: string): T | null {
+		try {
+			if (!browser) return null;
+			const raw = window.localStorage.getItem(key);
+			return raw ? (JSON.parse(raw) as T) : null;
+		} catch {
+			return null;
+		}
+	}
+
+	function writeDebugPanelState<T>(key: string, value: T): void {
+		try {
+			if (!browser) return;
+			window.localStorage.setItem(key, JSON.stringify(value));
+		} catch {
+			// ignore storage write failures
+		}
+	}
+
+	const panelPersistenceScope = $derived.by(() => {
+		const section = String(sectionId || 'unknown-section');
+		const attempt = String(attemptId || 'default-attempt');
+		return `section-demos:${section}:${attempt}`;
+	});
+	const panelVisibilityStorageKey = $derived.by(() =>
+		createDebugPanelStorageKey({
+			scope: panelPersistenceScope,
+			panelId: 'runtime-panels',
+			aspect: 'visibility'
+		})
+	);
 
 	let candidateHref = $derived(
 		buildDemoHref({
@@ -108,6 +175,38 @@ import '@pie-players/pie-section-player-tools-instrumentation-debugger';
 		const points = (data?.demo as any)?.whatMakesItTick;
 		if (!Array.isArray(points)) return [];
 		return points.filter((entry: unknown) => typeof entry === 'string' && entry.trim().length > 0);
+	});
+
+	$effect(() => {
+		if (!browser) return;
+		if (hasHydratedPanelVisibility) return;
+		const persisted = readDebugPanelState<RuntimePanelVisibilityState>(
+			panelVisibilityStorageKey
+		);
+		if (persisted) {
+			showSessionPanel = persisted.session === true;
+			showEventPanel = persisted.event === true;
+			showInstrumentationPanel = persisted.instrumentation === true;
+			showSourcePanel = persisted.source === true;
+			showPnpPanel = persisted.pnp === true;
+			showTtsPanel = persisted.tts === true;
+			showSessionDbPanel = persisted.sessionDb === true;
+		}
+		hasHydratedPanelVisibility = true;
+	});
+
+	$effect(() => {
+		if (!browser) return;
+		if (!hasHydratedPanelVisibility) return;
+		writeDebugPanelState<RuntimePanelVisibilityState>(panelVisibilityStorageKey, {
+			session: showSessionPanel,
+			event: showEventPanel,
+			instrumentation: showInstrumentationPanel,
+			source: showSourcePanel,
+			pnp: showPnpPanel,
+			tts: showTtsPanel,
+			sessionDb: showSessionDbPanel
+		});
 	});
 </script>
 
@@ -186,9 +285,16 @@ import '@pie-players/pie-section-player-tools-instrumentation-debugger';
 	{toolkitCoordinator}
 	{sectionId}
 	{attemptId}
+	panelPersistenceScope={panelPersistenceScope}
+	eventPanelPersistenceId="controller-events"
+	instrumentationPanelPersistenceId="instrumentation-events"
 	{showSessionPanel}
 	{showEventPanel}
 	{showInstrumentationPanel}
+	{eventPanelMaxEvents}
+	{eventPanelMaxEventsByLevel}
+	instrumentationPanelMaxRecords={instrumentationPanelMaxRecords}
+	instrumentationPanelMaxRecordsByKind={instrumentationPanelMaxRecordsByKind}
 	{showSourcePanel}
 	{showPnpPanel}
 	{showTtsPanel}

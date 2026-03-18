@@ -20,6 +20,15 @@
 		onCloseTtsPanel: () => void;
 		onCloseSessionDbPanel: () => void;
 		onResetDb: () => void | Promise<void>;
+		panelPersistenceScope?: string;
+		eventPanelPersistenceId?: string;
+		instrumentationPanelPersistenceId?: string;
+		eventPanelMaxEvents?: number;
+		eventPanelMaxEventsByLevel?: Partial<Record<"item" | "section", number>>;
+		instrumentationPanelMaxRecords?: number;
+		instrumentationPanelMaxRecordsByKind?: Partial<
+			Record<"event" | "error" | "metric" | "user-context" | "global-attributes", number>
+		>;
 		sessionDebuggerElement?: any;
 		eventDebuggerElement?: any;
 		instrumentationDebuggerElement?: any;
@@ -43,6 +52,13 @@
 		onCloseTtsPanel,
 		onCloseSessionDbPanel,
 		onResetDb,
+		panelPersistenceScope = "",
+		eventPanelPersistenceId = "controller-events",
+		instrumentationPanelPersistenceId = "instrumentation-events",
+		eventPanelMaxEvents = 200,
+		eventPanelMaxEventsByLevel = {},
+		instrumentationPanelMaxRecords = 250,
+		instrumentationPanelMaxRecordsByKind = {},
 		sessionDebuggerElement = $bindable(null),
 		eventDebuggerElement = $bindable(null),
 		instrumentationDebuggerElement = $bindable(null),
@@ -66,6 +82,10 @@
 		toolkitCoordinator={toolkitCoordinator}
 		sectionId={sectionId}
 		attemptId={attemptId}
+		maxEvents={eventPanelMaxEvents}
+		maxEventsByLevel={eventPanelMaxEventsByLevel}
+		persistenceScope={panelPersistenceScope}
+		persistencePanelId={eventPanelPersistenceId}
 	>
 	</pie-section-player-tools-event-debugger>
 {/if}
@@ -73,6 +93,10 @@
 {#if showInstrumentationPanel}
 	<pie-section-player-tools-instrumentation-debugger
 		bind:this={instrumentationDebuggerElement}
+		maxRecords={instrumentationPanelMaxRecords}
+		maxRecordsByKind={instrumentationPanelMaxRecordsByKind}
+		persistenceScope={panelPersistenceScope}
+		persistencePanelId={instrumentationPanelPersistenceId}
 	>
 	</pie-section-player-tools-instrumentation-debugger>
 {/if}

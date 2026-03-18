@@ -2,7 +2,7 @@
  * Math rendering bootstrap for PIE players
  *
  * PIE elements expect @pie-lib/math-rendering to be available on window.
- * This module ensures the legacy globals are populated from the upstream
+ * This module ensures required globals are populated from the upstream
  * @pie-lib/math-rendering-module package, and also supports overriding with
  * a custom renderer object when needed.
  */
@@ -38,7 +38,7 @@ const setWindowRenderer = (renderer: MathRenderingAPI): void => {
 /**
  * Initialize math rendering with optional custom renderer
  *
- * If no custom renderer is provided, defaults to MathJax for backward compatibility.
+ * If no custom renderer is provided, defaults to MathJax.
  * For custom renderers, use setMathRenderer() before calling this function.
  *
  * Sets TWO window globals that PIE elements expect:
@@ -49,7 +49,7 @@ const setWindowRenderer = (renderer: MathRenderingAPI): void => {
  *
  * @example
  * ```typescript
- * // Default MathJax (backward compatible)
+ * // Default MathJax
  * await initializeMathRendering();
  *
  * // Custom renderer instance implementing MathRenderingAPI

@@ -20,7 +20,7 @@ import {
 } from "../tools/registrations/interaction-tools.js";
 import {
 	lineReaderToolRegistration,
-	colorSchemeToolRegistration,
+	themeToolRegistration,
 	annotationToolbarRegistration,
 } from "../tools/registrations/accessibility-tools.js";
 import {
@@ -46,7 +46,7 @@ const PACKAGED_TOOL_REGISTRATIONS = [
 	answerEliminatorToolRegistration,
 	highlighterToolRegistration,
 	lineReaderToolRegistration,
-	colorSchemeToolRegistration,
+	themeToolRegistration,
 	annotationToolbarRegistration,
 	graphToolRegistration,
 	periodicTableToolRegistration,

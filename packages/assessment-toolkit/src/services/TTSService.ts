@@ -112,8 +112,22 @@ export class TTSService {
 	private seekSegments: TTSSpeechSegment[] = [];
 	private currentSeekSegmentIndex = 0;
 	private activeHighlightMode: HighlightMode = "word";
+	private telemetryReporter:
+		| ((eventName: string, payload?: Record<string, unknown>) => void | Promise<void>)
+		| null = null;
 
 	constructor() {}
+
+	private async emitTelemetry(
+		eventName: string,
+		payload?: Record<string, unknown>,
+	): Promise<void> {
+		try {
+			await this.telemetryReporter?.(eventName, payload);
+		} catch (error) {
+			console.warn("[TTSService] telemetry callback failed:", error);
+		}
+	}
 
 	/**
 	 * Initialize TTS service with a provider
@@ -127,6 +141,17 @@ export class TTSService {
 	): Promise<void> {
 		this.currentProvider = provider;
 		this.ttsConfig = { ...config };
+		const providerOptions =
+			config.providerOptions && typeof config.providerOptions === "object"
+				? (config.providerOptions as Record<string, unknown>)
+				: {};
+		this.telemetryReporter =
+			typeof providerOptions.__pieTelemetry === "function"
+				? (providerOptions.__pieTelemetry as (
+						eventName: string,
+						payload?: Record<string, unknown>,
+				  ) => void | Promise<void>)
+				: null;
 
 		// Initialize provider and get implementation
 		this.provider = await provider.initialize(config as TTSConfig);
@@ -1173,6 +1198,7 @@ export class TTSService {
 	private setState(newState: PlaybackState): void {
 		if (this.state === newState) return;
 
+		const previousState = this.state;
 		this.state = newState;
 
 		// Notify all listeners
@@ -1180,6 +1206,62 @@ export class TTSService {
 			for (const callback of callbacks) {
 				callback(newState);
 			}
+		}
+
+		void this.emitTelemetry("pie-tool-playback-state-changed", {
+			toolId: "textToSpeech",
+			providerId: "tts",
+			previousState,
+			state: newState,
+		});
+
+		if (newState === PlaybackState.PLAYING) {
+			const eventName =
+				previousState === PlaybackState.PAUSED
+					? "pie-tool-playback-resume"
+					: "pie-tool-playback-start";
+			void this.emitTelemetry(eventName, {
+				toolId: "textToSpeech",
+				providerId: "tts",
+				previousState,
+				state: newState,
+			});
+			return;
+		}
+
+		if (newState === PlaybackState.PAUSED) {
+			void this.emitTelemetry("pie-tool-playback-pause", {
+				toolId: "textToSpeech",
+				providerId: "tts",
+				previousState,
+				state: newState,
+			});
+			return;
+		}
+
+		if (newState === PlaybackState.ERROR) {
+			void this.emitTelemetry("pie-tool-playback-error", {
+				toolId: "textToSpeech",
+				providerId: "tts",
+				previousState,
+				state: newState,
+				message: this.lastError || undefined,
+			});
+			return;
+		}
+
+		if (
+			newState === PlaybackState.IDLE &&
+			(previousState === PlaybackState.PLAYING ||
+				previousState === PlaybackState.PAUSED ||
+				previousState === PlaybackState.LOADING)
+		) {
+			void this.emitTelemetry("pie-tool-playback-stop", {
+				toolId: "textToSpeech",
+				providerId: "tts",
+				previousState,
+				state: newState,
+			});
 		}
 	}
 }

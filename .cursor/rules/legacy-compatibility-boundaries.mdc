@@ -1,0 +1,15 @@
+---
+description: Disallow legacy compatibility paths except pie-item client contract
+alwaysApply: true
+---
+
+# Legacy Compatibility Boundaries
+
+- Do not add legacy/backward-compatibility shims outside the `pie-item` client contract surface.
+- Treat the following as legacy compatibility and disallow by default: alias maps for old IDs, dual event names, deprecated config bridges, fallback payload normalizers, and duplicate dispatch paths kept only for older consumers.
+- The only allowed exception is preserving externally consumed `pie-item` client contract behavior.
+- For every allowed compatibility exception, add an explicit inline comment: `pie-item contract compatibility: <reason>`.
+- For every allowed compatibility exception, add or update tests that prove the contract-preserving behavior is required.
+- Do not add compatibility layers for internal toolkit, telemetry, config, or demo-only APIs unless there is explicit maintainer-approved exception documented in the same change.
+- When compatibility can be removed without breaking the `pie-item` client contract, prefer canonical single-path implementations and delete the compatibility branch.
+- If uncertainty exists, default to removing legacy behavior and request maintainer clarification only for potential `pie-item` contract impact.

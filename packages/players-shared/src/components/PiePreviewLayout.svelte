@@ -28,9 +28,6 @@
 		customClassName = '',
 		passageContainerClass = '',
 		containerClass = '',
-		// Legacy: authoring uses editor.js, preview uses player/client-player.
-		// For backwards-compat, keep `bundleType` but allow per-mode overrides.
-		bundleType = BundleType.player,
 		bundleTypeAuthor = BundleType.editor,
 		bundleTypePreview = BundleType.player,
 		loaderConfig = DEFAULT_LOADER_CONFIG as LoaderConfig,
@@ -55,7 +52,6 @@
 		customClassName?: string;
 		passageContainerClass?: string;
 		containerClass?: string;
-		bundleType?: BundleType;
 		bundleTypeAuthor?: BundleType;
 		bundleTypePreview?: BundleType;
 		loaderConfig?: LoaderConfig;
@@ -87,10 +83,9 @@
 	});
 
 	// Derive bundle type from current mode (author vs preview).
-	// Prefer per-mode overrides; fall back to `bundleType` for older callers.
 	const effectiveBundleType = $derived.by(() => {
-		if (currentMode === 'preview') return bundleTypePreview ?? bundleType;
-		return bundleTypeAuthor ?? BundleType.editor;
+		if (currentMode === 'preview') return bundleTypePreview;
+		return bundleTypeAuthor;
 	});
 
 	// Key to force re-mount when switching modes

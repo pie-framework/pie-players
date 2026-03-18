@@ -151,6 +151,11 @@ describe("ServerTTSProvider", () => {
 		const fetchMock = vi.fn(
 			async (_input: RequestInfo | URL, init?: RequestInit): Promise<Response> =>
 				new Promise((_resolve, reject) => {
+					if (init?.signal?.aborted) {
+						aborted = true;
+						reject(new DOMException("Aborted", "AbortError"));
+						return;
+					}
 					init?.signal?.addEventListener("abort", () => {
 						aborted = true;
 						reject(new DOMException("Aborted", "AbortError"));

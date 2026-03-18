@@ -10,9 +10,13 @@ async function gotoDemo(page: Page) {
 }
 
 async function openSessionPanel(page: Page) {
-	await page.getByRole("button", { name: "Toggle session panel" }).click();
+	const toggle = page.getByRole("button", { name: "Toggle session panel" });
 	const panel = page.locator("pie-section-player-tools-session-debugger");
-	await expect(panel.getByRole("heading", { name: "Session Data" })).toBeVisible();
+	const heading = panel.getByRole("heading", { name: "Session Data" });
+	if (!(await heading.isVisible())) {
+		await toggle.click();
+	}
+	await expect(heading).toBeVisible();
 	return panel;
 }
 

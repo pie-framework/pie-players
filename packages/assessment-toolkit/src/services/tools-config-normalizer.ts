@@ -1,4 +1,4 @@
-import { DEFAULT_TOOL_ALIAS_MAP, DEFAULT_TOOL_PLACEMENT } from "./tool-config-defaults.js";
+import { DEFAULT_TOOL_PLACEMENT } from "./tool-config-defaults.js";
 
 export type ToolPlacementLevel = "section" | "item" | "passage";
 
@@ -173,7 +173,7 @@ function assertProvidersConfig(value: unknown): ToolProvidersConfig {
 export function normalizeToolAlias(toolId: string): string {
 	const trimmed = toolId.trim();
 	if (!trimmed) return "";
-	return DEFAULT_TOOL_ALIAS_MAP[trimmed as keyof typeof DEFAULT_TOOL_ALIAS_MAP] || trimmed;
+	return trimmed;
 }
 
 export function normalizeToolList(toolIds: string[] | undefined | null): string[] {

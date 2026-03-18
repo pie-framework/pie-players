@@ -204,12 +204,6 @@ export const themeToolRegistration: ToolRegistration = {
 };
 
 /**
- * Backward-compatible export name used by existing imports.
- * Canonical toolId is `theme`; `colorScheme` remains an alias at config level.
- */
-export const colorSchemeToolRegistration = themeToolRegistration;
-
-/**
  * Annotation Toolbar registration
  *
  * Text highlighting with CSS Custom Highlight API.

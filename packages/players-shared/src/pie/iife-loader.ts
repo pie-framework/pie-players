@@ -32,14 +32,8 @@ export interface IifeLoaderConfig {
 	debugEnabled?: () => boolean;
 
 	/**
-	 * When true, retries a failed script load by appending a cache-busting query param.
-	 * Mirrors legacy `reFetchBundle` behavior from older loaders.
-	 */
-	reFetchBundle?: boolean;
-
-	/**
 	 * Timeout (ms) for `customElements.whenDefined(...)` waiting.
-	 * Prevents infinite loading hangs; mirrors legacy loader behavior.
+	 * Prevents infinite loading hangs.
 	 */
 	whenDefinedTimeoutMs?: number;
 }
@@ -145,7 +139,7 @@ export class IifePieLoader {
 
 	private createEmptyConfigure(): CustomElementConstructor {
 		// Minimal configure element to avoid hard failures when a package lacks Configure export.
-		// Matches legacy behavior (empty-configure) but intentionally does not emit model updates.
+		// Intentionally does not emit model updates.
 		return class EmptyConfigureElement extends HTMLElement {
 			private _model: any;
 			private _configuration: any;
@@ -208,7 +202,7 @@ export class IifePieLoader {
 				}
 
 				// For editor bundles, look for Configure class; otherwise use Element class.
-				// If Configure is missing, fall back to an empty configure element (legacy parity).
+				// If Configure is missing, fall back to an empty configure element.
 				const ElementClass = isEditorBundle
 					? elementData.Configure || this.createEmptyConfigure()
 					: elementData.Element;
@@ -384,23 +378,7 @@ export class IifePieLoader {
 			try {
 				// Load the IIFE bundle
 				logger.debug("Loading IIFE bundle from:", bundleUrl);
-				try {
-					await this.loadBundleScript(bundleUrl, doc);
-				} catch (e) {
-					if (this.config.reFetchBundle) {
-						const retryUrl =
-							bundleUrl +
-							(bundleUrl.includes("?") ? "&" : "?") +
-							`t=${Date.now()}`;
-						logger.warn(
-							"[IifePieLoader] Initial bundle load failed, retrying with cache bust:",
-							retryUrl,
-						);
-						await this.loadBundleScript(retryUrl, doc);
-					} else {
-						throw e;
-					}
-				}
+				await this.loadBundleScript(bundleUrl, doc);
 
 				// Register elements from the loaded bundle
 				logger.debug("Registering elements from loaded bundle");

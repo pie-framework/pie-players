@@ -1,8 +1,3 @@
-export const DEFAULT_TOOL_ALIAS_MAP = {
-	tts: "textToSpeech",
-	colorScheme: "theme",
-} as const;
-
 export const DEFAULT_TOOL_PLACEMENT = {
 	assessment: [],
 	section: [],
@@ -34,5 +29,3 @@ export const PACKAGED_TOOL_PLACEMENT = {
 		"periodicTable",
 	],
 } as const;
-
-export type CanonicalToolIdAlias = keyof typeof DEFAULT_TOOL_ALIAS_MAP;

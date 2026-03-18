@@ -42,6 +42,14 @@ export interface DesmosToolProviderConfig {
 	 * Default calculator configuration applied to all instances
 	 */
 	defaultConfig?: DesmosCalculatorConfig;
+
+	/**
+	 * Optional telemetry callback for tool/backend instrumentation.
+	 */
+	onTelemetry?: (
+		eventName: string,
+		payload?: Record<string, unknown>,
+	) => void | Promise<void>;
 }
 
 /**
@@ -76,10 +84,25 @@ export class DesmosToolProvider
 				initialize(config: {
 					apiKey?: string;
 					proxyEndpoint?: string;
+					onTelemetry?: (
+						eventName: string,
+						payload?: Record<string, unknown>,
+					) => void | Promise<void>;
 				}): Promise<void>;
 		  })
 		| null = null;
 	private config: DesmosToolProviderConfig | null = null;
+
+	private async emitTelemetry(
+		eventName: string,
+		payload?: Record<string, unknown>,
+	): Promise<void> {
+		try {
+			await this.config?.onTelemetry?.(eventName, payload);
+		} catch (error) {
+			console.warn("[DesmosToolProvider] telemetry callback failed:", error);
+		}
+	}
 
 	/**
 	 * Initialize Desmos calculator provider
@@ -98,14 +121,45 @@ export class DesmosToolProvider
 		}
 
 		this.config = config;
-		const desmosModule = (await import("@pie-players/pie-calculator-desmos")) as {
-			DesmosCalculatorProvider: new () => CalculatorProvider & {
-				initialize(config: {
-					apiKey?: string;
-					proxyEndpoint?: string;
-				}): Promise<void>;
-			};
-		};
+		const moduleLoadStartedAt = Date.now();
+		await this.emitTelemetry("pie-tool-library-load-start", {
+			toolId: "calculator",
+			operation: "desmos-provider-module-import",
+			backend: "desmos",
+		});
+		const desmosModule = await (async () => {
+			try {
+				const loaded = (await import("@pie-players/pie-calculator-desmos")) as {
+					DesmosCalculatorProvider: new () => CalculatorProvider & {
+						initialize(config: {
+							apiKey?: string;
+							proxyEndpoint?: string;
+							onTelemetry?: (
+								eventName: string,
+								payload?: Record<string, unknown>,
+							) => void | Promise<void>;
+						}): Promise<void>;
+					};
+				};
+				await this.emitTelemetry("pie-tool-library-load-success", {
+					toolId: "calculator",
+					operation: "desmos-provider-module-import",
+					backend: "desmos",
+					duration: Date.now() - moduleLoadStartedAt,
+				});
+				return loaded;
+			} catch (error) {
+				await this.emitTelemetry("pie-tool-library-load-error", {
+					toolId: "calculator",
+					operation: "desmos-provider-module-import",
+					backend: "desmos",
+					duration: Date.now() - moduleLoadStartedAt,
+					errorType: "ToolLibraryLoadError",
+					message: error instanceof Error ? error.message : String(error),
+				});
+				throw error;
+			}
+		})();
 		this.desmosProvider = new desmosModule.DesmosCalculatorProvider();
 
 		// Initialize with API key or proxy
@@ -113,6 +167,7 @@ export class DesmosToolProvider
 			await this.desmosProvider.initialize({
 				apiKey: config.apiKey,
 				proxyEndpoint: config.proxyEndpoint,
+				onTelemetry: config.onTelemetry,
 			});
 
 			console.log(

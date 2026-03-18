@@ -25,28 +25,13 @@
 
 import { onDestroy } from "svelte";
 import type { LoaderConfig } from "../loader-config.js";
+import { isInstrumentationProvider } from "../instrumentation/provider-guards.js";
 import { DEFAULT_LOADER_CONFIG } from "../loader-config.js";
 import { createPieLogger } from "./logger.js";
 import { ResourceMonitor } from "./resource-monitor.js";
 
 // Default maximum retry delay (matches ResourceMonitor default)
 const DEFAULT_MAX_RETRY_DELAY = 5000;
-
-function isInstrumentationProviderLike(
-	value: unknown,
-): value is NonNullable<LoaderConfig["instrumentationProvider"]> {
-	if (!value || typeof value !== "object") return false;
-	const candidate = value as Record<string, unknown>;
-	return (
-		typeof candidate.providerId === "string" &&
-		typeof candidate.providerName === "string" &&
-		typeof candidate.initialize === "function" &&
-		typeof candidate.trackError === "function" &&
-		typeof candidate.trackEvent === "function" &&
-		typeof candidate.destroy === "function" &&
-		typeof candidate.isReady === "function"
-	);
-}
 
 /**
  * Svelte 5 composable for resource monitoring
@@ -85,7 +70,7 @@ export function useResourceMonitor(
 		const resolvedRetryDelay =
 			loaderConfig?.resourceRetryDelay ??
 			DEFAULT_LOADER_CONFIG.resourceRetryDelay;
-		const resolvedInstrumentationProvider = isInstrumentationProviderLike(
+		const resolvedInstrumentationProvider = isInstrumentationProvider(
 			loaderConfig?.instrumentationProvider,
 		)
 			? loaderConfig?.instrumentationProvider

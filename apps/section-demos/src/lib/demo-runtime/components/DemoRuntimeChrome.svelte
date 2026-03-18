@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import '@pie-players/pie-section-player-tools-event-debugger';
+import '@pie-players/pie-section-player-tools-instrumentation-debugger';
 	import '@pie-players/pie-section-player-tools-session-debugger';
 	import '@pie-players/pie-section-player-tools-pnp-debugger';
 	import '@pie-players/pie-theme';
@@ -36,12 +37,14 @@
 		children?: Snippet;
 		showSessionPanel?: boolean;
 		showEventPanel?: boolean;
+		showInstrumentationPanel?: boolean;
 		showSourcePanel?: boolean;
 		showPnpPanel?: boolean;
 		showTtsPanel?: boolean;
 		showSessionDbPanel?: boolean;
 		sessionDebuggerElement?: any;
 		eventDebuggerElement?: any;
+		instrumentationDebuggerElement?: any;
 		pnpDebuggerElement?: any;
 	}
 
@@ -67,12 +70,14 @@
 		children,
 		showSessionPanel = $bindable(false),
 		showEventPanel = $bindable(false),
+		showInstrumentationPanel = $bindable(false),
 		showSourcePanel = $bindable(false),
 		showPnpPanel = $bindable(false),
 		showTtsPanel = $bindable(false),
 		showSessionDbPanel = $bindable(false),
 		sessionDebuggerElement = $bindable(null),
 		eventDebuggerElement = $bindable(null),
+		instrumentationDebuggerElement = $bindable(null),
 		pnpDebuggerElement = $bindable(null)
 	}: Props = $props();
 
@@ -116,6 +121,7 @@
 			{scorerHref}
 			{showSessionPanel}
 			{showEventPanel}
+			{showInstrumentationPanel}
 			{showSourcePanel}
 			{showPnpPanel}
 			{showTtsPanel}
@@ -129,6 +135,8 @@
 			{onSetVerticalLayout}
 			onToggleSessionPanel={() => (showSessionPanel = !showSessionPanel)}
 			onToggleEventPanel={() => (showEventPanel = !showEventPanel)}
+			onToggleInstrumentationPanel={() =>
+				(showInstrumentationPanel = !showInstrumentationPanel)}
 			onToggleSourcePanel={() => (showSourcePanel = !showSourcePanel)}
 			onTogglePnpPanel={() => (showPnpPanel = !showPnpPanel)}
 			onToggleTtsPanel={() => (showTtsPanel = !showTtsPanel)}
@@ -180,6 +188,7 @@
 	{attemptId}
 	{showSessionPanel}
 	{showEventPanel}
+	{showInstrumentationPanel}
 	{showSourcePanel}
 	{showPnpPanel}
 	{showTtsPanel}
@@ -192,6 +201,7 @@
 	onResetDb={onResetDb}
 	bind:sessionDebuggerElement
 	bind:eventDebuggerElement
+	bind:instrumentationDebuggerElement
 	bind:pnpDebuggerElement
 />
 

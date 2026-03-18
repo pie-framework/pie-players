@@ -202,6 +202,40 @@ Important:
 - `loaderOptions` controls bundle loading. `loaderConfig` controls runtime resource monitoring.
 - Custom providers (functions/instances) must be passed as JS properties (`runtime` object), not serialized string attributes.
 
+### Instrumentation ownership and semantics
+
+Section-player instrumentation is provider-agnostic and uses the shared
+`InstrumentationProvider` contract.
+
+- Canonical provider path: `runtime.player.loaderConfig.instrumentationProvider`
+- With `trackPageActions: true`, missing/`undefined` providers use the default New Relic provider path.
+- `instrumentationProvider: null` explicitly disables instrumentation.
+- Invalid provider objects are ignored (optional debug warning), also no-op.
+- Existing `item-player` behavior is preserved.
+- For local debug overlays, compose providers (for example `NewRelicInstrumentationProvider` + `DebugPanelInstrumentationProvider`) through `CompositeInstrumentationProvider`.
+- Toolkit telemetry forwarding uses the same provider path, so tool/backend
+  operational events are visible alongside section events when toolkit is mounted.
+
+Section-player owned canonical stream:
+
+- `pie-section-readiness-change`
+- `pie-section-interaction-ready`
+- `pie-section-ready`
+- `pie-section-controller-ready`
+- `pie-section-session-changed`
+- `pie-section-composition-changed`
+- `pie-section-runtime-error`
+
+If toolkit is mounted, toolkit lifecycle events are emitted on a separate
+`pie-toolkit-*` stream. This separation avoids semantic overlap; bridge dedupe
+is a defensive safety net only.
+
+Toolkit tool/backend operational stream:
+
+- `pie-tool-init-start|success|error`
+- `pie-tool-backend-call-start|success|error`
+- `pie-tool-library-load-start|success|error`
+
 ### Item session management
 
 Section session data can be managed either through persistence hooks or directly through the controller API.

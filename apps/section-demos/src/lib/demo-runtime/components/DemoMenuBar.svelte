@@ -8,6 +8,7 @@
 		scorerHref: string;
 		showSessionPanel: boolean;
 		showEventPanel: boolean;
+		showInstrumentationPanel: boolean;
 		showSourcePanel: boolean;
 		showPnpPanel: boolean;
 		showTtsPanel: boolean;
@@ -21,6 +22,7 @@
 		onSetVerticalLayout: () => void;
 		onToggleSessionPanel: () => void;
 		onToggleEventPanel: () => void;
+		onToggleInstrumentationPanel: () => void;
 		onToggleSourcePanel: () => void;
 		onTogglePnpPanel: () => void;
 		onToggleTtsPanel: () => void;
@@ -36,6 +38,7 @@
 		scorerHref,
 		showSessionPanel,
 		showEventPanel,
+		showInstrumentationPanel,
 		showSourcePanel,
 		showPnpPanel,
 		showTtsPanel,
@@ -49,6 +52,7 @@
 		onSetVerticalLayout,
 		onToggleSessionPanel,
 		onToggleEventPanel,
+		onToggleInstrumentationPanel,
 		onToggleSourcePanel,
 		onTogglePnpPanel,
 		onToggleTtsPanel,
@@ -134,9 +138,11 @@
 		<DebugPanelToggles
 			{showSessionPanel}
 			{showEventPanel}
+			{showInstrumentationPanel}
 			showDbPanel={isSessionHydrateDbDemo ? showDbPanel : false}
 			{onToggleSessionPanel}
 			{onToggleEventPanel}
+			{onToggleInstrumentationPanel}
 			onToggleDbPanel={isSessionHydrateDbDemo ? onToggleDbPanel : undefined}
 		/>
 		<button

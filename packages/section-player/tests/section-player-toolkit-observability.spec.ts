@@ -61,17 +61,21 @@ test.describe("assessment toolkit observability integration", () => {
 
 		await page.waitForFunction(() => {
 			const events = (window as any).__toolkitEventHistory || [];
-			const hasRuntimeDirection = events.some(
+			const runtimeDirectionCount = events.filter(
 				(entry: { name?: string }) =>
 					entry.name === "runtime-owned" || entry.name === "runtime-inherited",
-			);
-			const hasCompositionChanged = events.some(
+			).length;
+			const compositionChangedCount = events.filter(
 				(entry: { name?: string }) => entry.name === "composition-changed",
-			);
-			const hasSessionChanged = events.some(
+			).length;
+			const sessionChangedCount = events.filter(
 				(entry: { name?: string }) => entry.name === "session-changed",
+			).length;
+			return (
+				runtimeDirectionCount === 1 &&
+				compositionChangedCount >= 1 &&
+				sessionChangedCount >= 1
 			);
-			return hasRuntimeDirection && hasCompositionChanged && hasSessionChanged;
 		});
 
 		const toolkitEvents = await page.evaluate(() => {
@@ -124,12 +128,14 @@ test.describe("assessment toolkit observability integration", () => {
 
 		await page.waitForFunction(() => {
 			const entries = (window as any).__toolkitSessionEvents || [];
-			return entries.some(
+			const canonicalEvents = entries.filter(
 				(entry: { detail?: Record<string, unknown> }) =>
 					typeof entry.detail?.itemId === "string" &&
 					typeof entry.detail?.canonicalItemId === "string" &&
 					typeof entry.detail?.sourceRuntimeId === "string",
 			);
+			return canonicalEvents.length >= 1;
 		});
 	});
+
 });

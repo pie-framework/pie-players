@@ -182,8 +182,59 @@ Notes:
 
 - `loaderOptions` and `loaderConfig` are different concerns: loading strategy vs observability/retry behavior.
 - For custom providers, pass object references as JS properties (`runtime`), not serialized string attributes.
+- Higher-level section/toolkit instrumentation is also provider-generic. Section-player emits runtime/public events (for example `readiness-change`, `session-changed`, `composition-changed`) and those can be bridged to `InstrumentationProvider.trackEvent(...)` without coupling to New Relic-specific APIs.
+- New Relic remains one provider implementation option; it is not the player contract.
+- With `trackPageActions: true`, missing/`undefined` `instrumentationProvider` uses the default New Relic provider path.
+- `instrumentationProvider: null` is an explicit no-op opt-out.
+- Ownership model: section-player instrumentation owns section runtime/public events; toolkit instrumentation covers toolkit lifecycle events. This avoids semantic overlap and duplicate telemetry.
 
 The player tracks loading through `totalRegistered` and `totalLoaded` counters (accessible via `getRuntimeState()`) and emits `section-loading-complete` when all registered items have loaded. The `readiness-change` event gives you the current phase (`bootstrapping` → `interaction-ready` → `loading` → `ready`).
+
+### Instrumentation (dedicated)
+
+Section player instrumentation is provider-agnostic and layered:
+
+- **Item-level resource instrumentation**: forwarded to embedded `pie-item-player` via `runtime.player.loaderConfig`.
+- **Section-level event instrumentation**: emitted from section-player runtime/public events and bridged to `InstrumentationProvider.trackEvent(...)`.
+- **Toolkit-level event instrumentation** (when toolkit is mounted): emitted by toolkit-owned lifecycle events.
+- **Toolkit tool/backend telemetry**: forwarded from toolkit runtime telemetry to provider events (for example TTS init/synthesize and calculator auth/script-load operations).
+
+Canonical provider injection path:
+
+- `runtime.player.loaderConfig.instrumentationProvider`
+
+Provider semantics:
+
+- With `trackPageActions: true`, missing/`undefined` provider values use the default New Relic provider path.
+- `provider: null` explicitly disables instrumentation.
+- Invalid provider objects are ignored (optional debug warning), also no-op.
+- Existing `item-player` behavior remains the compatibility anchor.
+
+Section-player owned canonical event stream:
+
+- `pie-section-readiness-change`
+- `pie-section-interaction-ready`
+- `pie-section-ready`
+- `pie-section-controller-ready`
+- `pie-section-session-changed`
+- `pie-section-composition-changed`
+- `pie-section-runtime-error`
+
+Toolkit-owned canonical stream (when present) is separate and intentionally non-overlapping:
+
+- `pie-toolkit-runtime-owned`
+- `pie-toolkit-runtime-inherited`
+- `pie-toolkit-ready`
+- `pie-toolkit-section-ready`
+- `pie-toolkit-runtime-error`
+
+Toolkit tool/backend operational stream (forwarded through the same provider path):
+
+- `pie-tool-init-start|success|error`
+- `pie-tool-backend-call-start|success|error`
+- `pie-tool-library-load-start|success|error`
+
+Ownership rule: section semantics stay in section streams, toolkit semantics stay in toolkit streams. Dedupe in the bridge is a safety net, not the primary correctness mechanism.
 
 ---
 
@@ -667,4 +718,3 @@ Key rules:
 **Dispose intentionally.** On route unmount, call `coordinator.disposeSectionController()` with explicit `persistBeforeDispose`/`clearPersistence` flags. Don't let controllers garbage-collect silently.
 
 **`attemptId` is owned by the host.** In standalone deployments, reflect `attemptId` in the URL so page refresh and back-navigation restore the correct attempt context. In embedded integrations where an outer player manages routing, the outer layer owns `attemptId` persistence — the section player should receive it as a prop rather than derive or store it independently.
-

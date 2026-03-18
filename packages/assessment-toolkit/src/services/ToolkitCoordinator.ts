@@ -330,6 +330,11 @@ export interface ToolkitCoordinatorHooks {
 	) => void | Promise<void>;
 }
 
+export type ToolkitTelemetryListener = (args: {
+	eventName: string;
+	payload?: Record<string, unknown>;
+}) => void;
+
 /**
  * Service bundle returned by getServiceBundle()
  */
@@ -408,6 +413,7 @@ export class ToolkitCoordinator {
 		number
 	>();
 	private readonly sectionEventSubscriptions = new Map<string, () => void>();
+	private readonly telemetryListeners = new Set<ToolkitTelemetryListener>();
 	private nextSectionEventListenerId = 1;
 
 	/** Callback for floating tools changes */
@@ -493,6 +499,17 @@ export class ToolkitCoordinator {
 			await this.hooks.onTelemetry?.(eventName, payload);
 		} catch (err) {
 			console.warn("[ToolkitCoordinator] telemetry hook failed:", err);
+		}
+		const nextPayload = payload ? { ...payload } : undefined;
+		for (const listener of this.telemetryListeners) {
+			try {
+				listener({
+					eventName,
+					payload: nextPayload ? { ...nextPayload } : undefined,
+				});
+			} catch (err) {
+				console.warn("[ToolkitCoordinator] telemetry listener failed:", err);
+			}
 		}
 	}
 
@@ -638,15 +655,52 @@ export class ToolkitCoordinator {
 		const provider = descriptor.createProvider(toolConfig);
 		const initConfig =
 			descriptor.getInitConfig?.(toolConfig) ?? toolConfig?.provider?.init ?? {};
+		const initConfigWithTelemetry = this.addToolTelemetryReporter({
+			toolId: tool.toolId,
+			providerId,
+			initConfig,
+		});
 		const authFetcher =
 			descriptor.getAuthFetcher?.(toolConfig) ??
 			toolConfig?.provider?.runtime?.authFetcher;
 		await this.registerProvider(providerId, {
 			provider,
-			config: initConfig,
+			config: initConfigWithTelemetry,
 			lazy: descriptor.lazy ?? true,
 			authFetcher,
 		});
+	}
+
+	private addToolTelemetryReporter(args: {
+		toolId: string;
+		providerId: string;
+		initConfig: unknown;
+	}): Record<string, unknown> {
+		const configObject =
+			args.initConfig && typeof args.initConfig === "object"
+				? { ...(args.initConfig as Record<string, unknown>) }
+				: {};
+		const existingReporter =
+			typeof configObject.onTelemetry === "function"
+				? (configObject.onTelemetry as (
+						eventName: string,
+						payload?: Record<string, unknown>,
+				  ) => void | Promise<void>)
+				: null;
+		configObject.onTelemetry = async (
+			eventName: string,
+			payload?: Record<string, unknown>,
+		) => {
+			if (existingReporter) {
+				await existingReporter(eventName, payload);
+			}
+			await this.emitTelemetry(eventName, {
+				...(payload || {}),
+				toolId: args.toolId,
+				providerId: args.providerId,
+			});
+		};
+		return configObject;
 	}
 
 	private async registerProvider(
@@ -717,6 +771,13 @@ export class ToolkitCoordinator {
 				this.handleError(err, { phase: "coordinator-ready" });
 			});
 		}
+	}
+
+	public subscribeTelemetry(listener: ToolkitTelemetryListener): () => void {
+		this.telemetryListeners.add(listener);
+		return () => {
+			this.telemetryListeners.delete(listener);
+		};
 	}
 
 	public getSectionController(args: {
@@ -1264,6 +1325,11 @@ export class ToolkitCoordinator {
 		await this.emitTelemetry("tts-init-start", {
 			backend: resolvedBackend,
 		});
+		await this.emitTelemetry("pie-tool-init-start", {
+			toolId: "tts",
+			operation: "tts-init",
+			backend: resolvedBackend,
+		});
 
 		// Try to use TTS provider from registry if available
 		if (this.toolProviderRegistry.has("tts")) {
@@ -1272,6 +1338,12 @@ export class ToolkitCoordinator {
 				const providerInstance = await ttsProvider.createInstance();
 				await this.initializeTTSService(providerInstance, runtimeTTSConfig);
 				await this.emitTelemetry("tts-init-success", {
+					provider: "registry",
+				});
+				await this.emitTelemetry("pie-tool-init-success", {
+					toolId: "tts",
+					operation: "tts-init",
+					backend: resolvedBackend,
 					provider: "registry",
 				});
 				console.log(
@@ -1293,12 +1365,25 @@ export class ToolkitCoordinator {
 			await this.emitTelemetry("tts-init-success", {
 				provider: "browser-fallback",
 			});
+			await this.emitTelemetry("pie-tool-init-success", {
+				toolId: "tts",
+				operation: "tts-init",
+				backend: resolvedBackend,
+				provider: "browser-fallback",
+			});
 		} catch (error) {
 			const normalized =
 				error instanceof Error ? error : new Error(String(error));
 			this.hooks.onTTSError?.(normalized, { phase: "tts-init" });
 			this.handleError(normalized, { phase: "tts-init" });
 			await this.emitTelemetry("tts-init-error", {
+				message: normalized.message,
+			});
+			await this.emitTelemetry("pie-tool-init-error", {
+				toolId: "tts",
+				operation: "tts-init",
+				backend: resolvedBackend,
+				errorType: "TTSInitError",
 				message: normalized.message,
 			});
 			throw normalized;
@@ -1316,7 +1401,23 @@ export class ToolkitCoordinator {
 		provider: ITTSProvider,
 		config: Partial<TTSConfig>,
 	): Promise<void> {
-		await this.ttsService.initialize(provider, config);
+		const nextProviderOptions = {
+			...(((config.providerOptions || {}) as Record<string, unknown>) || {}),
+			__pieTelemetry: async (
+				eventName: string,
+				payload?: Record<string, unknown>,
+			) => {
+				await this.emitTelemetry(eventName, {
+					toolId: "tts",
+					...(payload || {}),
+				});
+			},
+		};
+		const nextConfig = {
+			...config,
+			providerOptions: nextProviderOptions,
+		} as Partial<TTSConfig>;
+		await this.ttsService.initialize(provider, nextConfig);
 		this.ttsService.setCatalogResolver(this.catalogResolver);
 		this.ttsInitialized = true;
 		await this.hooks.onTTSReady?.();

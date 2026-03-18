@@ -98,7 +98,7 @@ describe("useResourceMonitor wiring contract", () => {
 		);
 		const source = readFileSync(useResourceMonitorPath, "utf8");
 
-		expect(source).toContain("isInstrumentationProviderLike");
+		expect(source).toContain("isInstrumentationProvider");
 		expect(source).toContain(
 			"instrumentationProvider: resolvedInstrumentationProvider",
 		);

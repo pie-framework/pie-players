@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 const DEMO_PATH = "/tts-ssml?mode=candidate&layout=splitpane";
 const VERTICAL_DEMO_PATH = "/tts-ssml?mode=candidate&layout=vertical";
 const LOADING_EVENT_DEMO_PATH = "/single-question?mode=candidate&layout=splitpane";
+const RESOURCE_DEMO_PATH = "/resource-observability?mode=candidate&layout=splitpane";
 
 async function openEventPanel(page: import("@playwright/test").Page) {
 	const toggleButton = page.getByRole("button", {
@@ -25,6 +26,20 @@ async function openSessionPanel(page: import("@playwright/test").Page) {
 	await toggleButton.click();
 	const panel = page.locator("pie-section-player-tools-session-debugger");
 	await expect(panel.locator(".pie-section-player-tools-session-debugger")).toBeVisible();
+	return panel;
+}
+
+async function openInstrumentationPanel(page: import("@playwright/test").Page) {
+	const toggleButton = page.getByRole("button", {
+		name: "Toggle instrumentation panel",
+	});
+	await expect(toggleButton).toBeVisible();
+	await expect(toggleButton).toBeEnabled();
+	await toggleButton.click();
+	const panel = page.locator("pie-section-player-tools-instrumentation-debugger");
+	await expect(
+		panel.locator(".pie-section-player-tools-instrumentation-debugger"),
+	).toBeVisible();
 	return panel;
 }
 
@@ -431,5 +446,77 @@ test.describe("section player controller event panel", () => {
 			runtimeDirectionEvents.length,
 			`Expected runtime ownership direction events, received: ${JSON.stringify(eventHistory)}`,
 		).toBeGreaterThan(0);
+	});
+
+	test("renders instrumentation records in instrumentation panel", async ({
+		page,
+	}) => {
+		await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
+		const panel = await openInstrumentationPanel(page);
+		const firstSelectable = page
+			.locator("main.pie-section-player-items-pane")
+			.locator('input[type="radio"], input[type="checkbox"]')
+			.first();
+		await firstSelectable.click();
+		await expect(
+			panel.locator(
+				".pie-section-player-tools-instrumentation-debugger__row",
+			).first(),
+		).toBeVisible({ timeout: 30_000 });
+	});
+
+	test("captures resource-loading instrumentation in instrumentation panel", async ({
+		page,
+	}) => {
+		await page.goto(RESOURCE_DEMO_PATH, { waitUntil: "networkidle" });
+		await expect(
+			page.getByText("How instruments extend human perception"),
+		).toBeVisible();
+
+		const passageRegion = page.getByRole("complementary", { name: "Passages" });
+		const firstItemShell = page
+			.locator('pie-item-shell[data-pie-shell-root="item"]')
+			.first();
+		const passageTtsControls = passageRegion.getByRole("button", {
+			name: /Read aloud|Open reading controls/i,
+		});
+		const itemTtsControls = firstItemShell.getByRole("button", {
+			name: /Read aloud|Open reading controls/i,
+		});
+		await expect(passageTtsControls.first()).toBeVisible();
+		await expect(itemTtsControls.first()).toBeVisible();
+
+		const panel = await openInstrumentationPanel(page);
+
+		// Force a deterministic reload of demo media so resource-monitor emits fresh events.
+		await page.evaluate(() => {
+			const cacheBust = `cb=${Date.now()}`;
+			for (const img of Array.from(
+				document.querySelectorAll<HTMLImageElement>(
+					'img[src*="spectrum-observer.svg"]',
+				),
+			)) {
+				const url = new URL(img.src, window.location.origin);
+				url.searchParams.set("cb", cacheBust);
+				img.src = url.toString();
+			}
+			for (const audio of Array.from(
+				document.querySelectorAll<HTMLAudioElement>(
+					'audio[src*="signal-chime.wav"]',
+				),
+			)) {
+				const url = new URL(audio.src, window.location.origin);
+				url.searchParams.set("cb", cacheBust);
+				audio.src = url.toString();
+				audio.load();
+			}
+		});
+
+		await expect(
+			panel
+				.locator(".pie-section-player-tools-instrumentation-debugger__row")
+				.filter({ hasText: /pie-resource-load/i })
+				.first(),
+		).toBeVisible({ timeout: 30_000 });
 	});
 });

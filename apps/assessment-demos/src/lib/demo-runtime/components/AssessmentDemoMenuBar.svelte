@@ -5,12 +5,14 @@
 		sectionLayout: "splitpane" | "vertical";
 		showSessionPanel: boolean;
 		showEventPanel: boolean;
+		showInstrumentationPanel?: boolean;
 		showDbPanel?: boolean;
 		onSetSplitpaneLayout: () => void;
 		onSetVerticalLayout: () => void;
 		onResetAttempt?: () => void;
 		onToggleSessionPanel: () => void;
 		onToggleEventPanel: () => void;
+		onToggleInstrumentationPanel?: () => void;
 		onToggleDbPanel?: () => void;
 	}
 
@@ -18,12 +20,14 @@
 		sectionLayout,
 		showSessionPanel,
 		showEventPanel,
+		showInstrumentationPanel = false,
 		showDbPanel = false,
 		onSetSplitpaneLayout,
 		onSetVerticalLayout,
 		onResetAttempt,
 		onToggleSessionPanel,
 		onToggleEventPanel,
+		onToggleInstrumentationPanel,
 		onToggleDbPanel,
 	}: Props = $props();
 </script>
@@ -75,9 +79,11 @@
 		<DebugPanelToggles
 			{showSessionPanel}
 			{showEventPanel}
+			{showInstrumentationPanel}
 			{showDbPanel}
 			{onToggleSessionPanel}
 			{onToggleEventPanel}
+			{onToggleInstrumentationPanel}
 			{onToggleDbPanel}
 		/>
 	</div>

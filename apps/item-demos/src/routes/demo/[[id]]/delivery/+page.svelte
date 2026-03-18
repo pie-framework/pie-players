@@ -1,6 +1,11 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { untrack } from 'svelte';
+	import {
+		CompositeInstrumentationProvider,
+		DebugPanelInstrumentationProvider,
+		NewRelicInstrumentationProvider
+	} from '@pie-players/pie-players-shared';
 	import ScoringPanel from '$lib/components/ScoringPanel.svelte';
 	import '@pie-players/pie-item-player';
 	import {
@@ -22,6 +27,20 @@
 	let preloadedReady = $state(false);
 	let preloadedError = $state<string | null>(null);
 	let loadedPreloadedBundleKey = $state<string | null>(null);
+	const instrumentationProvider = new CompositeInstrumentationProvider([
+		new NewRelicInstrumentationProvider(),
+		new DebugPanelInstrumentationProvider()
+	]);
+	void instrumentationProvider
+		.initialize()
+		.then(() => {
+			instrumentationProvider.trackMetric('demo.instrumentation.bootstrap', 1, {
+				app: 'item-demos',
+				demo: 'delivery',
+				category: 'demo'
+			});
+		})
+		.catch(() => {});
 
 	$effect(() => {
 		const queryPlayer = $page.url.searchParams.get('player');
@@ -65,6 +84,10 @@
 					playerEl.env = currentEnv;
 					playerEl.session = currentSession;
 					playerEl.loaderOptions = { bundleHost: 'https://proxy.pie-api.com/bundles/' };
+					playerEl.loaderConfig = {
+						trackPageActions: true,
+						instrumentationProvider
+					};
 				});
 
 				lastConfig = currentConfig;

@@ -10,8 +10,10 @@
 		scorerHref: string;
 		viewMode: 'student' | 'scorer';
 		showSessionPanel: boolean;
+		showInstrumentationPanel: boolean;
 		showSessionToggle: boolean;
 		onToggleSessionPanel: () => void;
+		onToggleInstrumentationPanel: () => void;
 	}
 
 	let {
@@ -25,8 +27,10 @@
 		scorerHref,
 		viewMode,
 		showSessionPanel,
+		showInstrumentationPanel,
 		showSessionToggle,
 		onToggleSessionPanel,
+		onToggleInstrumentationPanel,
 	}: Props = $props();
 </script>
 
@@ -110,6 +114,26 @@
 						stroke-width="2"
 						d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
 					/>
+				</svg>
+			</button>
+		{/if}
+		{#if showSessionToggle}
+			<button
+				class="btn btn-sm btn-outline btn-square"
+				class:btn-active={showInstrumentationPanel}
+				onclick={onToggleInstrumentationPanel}
+				title="Instrumentation"
+				aria-label="Toggle instrumentation panel"
+				aria-pressed={showInstrumentationPanel}
+			>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					class="h-4 w-4"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+				>
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 13h4l2 6 4-14 2 8h4" />
 				</svg>
 			</button>
 		{/if}

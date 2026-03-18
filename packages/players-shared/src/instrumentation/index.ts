@@ -32,6 +32,14 @@
 
 // Providers
 export * from "./providers/index.js";
+export { isInstrumentationProvider } from "./provider-guards.js";
+export {
+	clearBufferedInstrumentationDebugRecords,
+	getBufferedInstrumentationDebugRecords,
+	INSTRUMENTATION_DEBUG_EVENT_NAME,
+	subscribeInstrumentationDebugRecords,
+} from "./debug-panel-stream.js";
+export type { InstrumentationDebugRecord } from "./debug-panel-stream.js";
 // Core types
 export type {
 	ErrorAttributes,

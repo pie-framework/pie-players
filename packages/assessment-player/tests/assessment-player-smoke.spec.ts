@@ -240,4 +240,136 @@ test.describe("assessment player smoke", () => {
 			);
 		});
 	});
+
+	test("tracks assessment-level instrumentation events through generic provider", async ({
+		page,
+	}) => {
+		await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
+		const host = page.locator("pie-assessment-player-default");
+		await expect(host).toBeVisible();
+
+		await page.evaluate(() => {
+			(window as any).__assessmentProvider = {
+				providerId: "assessment-provider",
+				providerName: "Assessment Provider",
+				events: [] as string[],
+				initialize: async () => {},
+				trackError: () => {},
+				trackEvent: (eventName: string) => {
+					(window as any).__assessmentProvider.events.push(eventName);
+				},
+				destroy: () => {},
+				isReady: () => true,
+			};
+
+			const assessmentHost = document.querySelector(
+				"pie-assessment-player-default",
+			) as HTMLElement & { sectionPlayerRuntime?: Record<string, unknown> };
+			if (!assessmentHost) {
+				throw new Error("assessment player host not found");
+			}
+			assessmentHost.sectionPlayerRuntime = {
+				player: {
+					loaderConfig: {
+						instrumentationProvider: (window as any).__assessmentProvider,
+					},
+				},
+			};
+		});
+
+		await host.getByRole("button", { name: "Next" }).click();
+		await expect(host.locator(".pie-assessment-player-current-position")).toHaveText(
+			"Section 2 of 3",
+		);
+		await host.getByRole("button", { name: "Back" }).click();
+		await expect(host.locator(".pie-assessment-player-current-position")).toHaveText(
+			"Section 1 of 3",
+		);
+		await page.evaluate(() => {
+			const assessmentHost = document.querySelector(
+				"pie-assessment-player-default",
+			) as HTMLElement | null;
+			assessmentHost?.dispatchEvent(
+				new CustomEvent("assessment-error", {
+					bubbles: true,
+					composed: true,
+					detail: { reason: "manual-test-dispatch" },
+				}),
+			);
+		});
+
+		await page.waitForFunction(() => {
+			const events = ((window as any).__assessmentProvider?.events || []) as string[];
+			const navigationRequestedCount = events.filter(
+				(name) => name === "pie-assessment-navigation-requested",
+			).length;
+			const routeChangedCount = events.filter(
+				(name) => name === "pie-assessment-route-changed",
+			).length;
+			const assessmentErrorCount = events.filter(
+				(name) => name === "pie-assessment-error",
+			).length;
+			return (
+				navigationRequestedCount === 2 &&
+				routeChangedCount === 2 &&
+				assessmentErrorCount === 1
+			);
+		});
+	});
+
+	test("renders instrumentation records in instrumentation panel", async ({
+		page,
+	}) => {
+		await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
+		const host = page.locator("pie-assessment-player-default");
+		await host.getByRole("button", { name: "Next" }).click();
+		await page.getByRole("button", { name: "Toggle instrumentation panel" }).click();
+		const panel = page.locator("pie-section-player-tools-instrumentation-debugger");
+		await expect(
+			panel.locator(".pie-section-player-tools-instrumentation-debugger"),
+		).toBeVisible();
+		await expect(
+			panel.locator(
+				".pie-section-player-tools-instrumentation-debugger__row",
+			).first(),
+		).toBeVisible({ timeout: 30_000 });
+	});
+
+	test("shows toolkit backend telemetry in instrumentation panel", async ({
+		page,
+	}) => {
+		await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
+		const host = page.locator("pie-assessment-player-default");
+		await expect(host).toBeVisible();
+
+		await page.getByRole("button", { name: "Toggle instrumentation panel" }).click();
+		const panel = page.locator("pie-section-player-tools-instrumentation-debugger");
+		await expect(
+			panel.locator(".pie-section-player-tools-instrumentation-debugger"),
+		).toBeVisible();
+
+		await page.evaluate(async () => {
+			const assessmentHost = document.querySelector(
+				"pie-assessment-player-default",
+			) as HTMLElement & { coordinator?: { emitTelemetry?: Function } };
+			if (!assessmentHost?.coordinator?.emitTelemetry) {
+				throw new Error("assessment coordinator telemetry emitter not available");
+			}
+			await assessmentHost.coordinator.emitTelemetry(
+				"pie-tool-backend-call-success",
+				{
+					toolId: "tts",
+					operation: "synthesize-speech",
+					backend: "polly",
+					duration: 123,
+				},
+			);
+		});
+
+		await expect(
+			panel.locator(".pie-section-player-tools-instrumentation-debugger__row", {
+				hasText: "pie-tool-backend-call-success",
+			}),
+		).toBeVisible({ timeout: 30_000 });
+	});
 });

@@ -38,6 +38,15 @@ export {
 	renderMath,
 	setMathRenderer,
 } from "./math-rendering.js";
+export { attachInstrumentationEventBridge } from "./instrumentation-event-bridge.js";
+export type { AttachInstrumentationEventBridgeArgs } from "./instrumentation-event-bridge.js";
+export { resolveInstrumentationProvider } from "./instrumentation-provider-resolution.js";
+export {
+	ASSESSMENT_INSTRUMENTATION_EVENT_MAP,
+	SECTION_INSTRUMENTATION_EVENT_MAP,
+	TOOLKIT_INSTRUMENTATION_EVENT_MAP,
+} from "./instrumentation-event-map.js";
+export type { InstrumentationEventMapping } from "./instrumentation-event-map.js";
 // Item controller
 export type { ItemControllerOptions } from "./item-controller.js";
 export { ItemController, normalizeItemSessionContainer } from "./item-controller.js";

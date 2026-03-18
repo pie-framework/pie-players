@@ -28,6 +28,12 @@
 		requestContext,
 	} from "@pie-players/pie-context";
 	import {
+		attachInstrumentationEventBridge,
+		resolveInstrumentationProvider,
+		TOOLKIT_INSTRUMENTATION_EVENT_MAP,
+	} from "@pie-players/pie-players-shared/pie";
+	import { isInstrumentationProvider } from "@pie-players/pie-players-shared";
+	import {
 		assessmentToolkitHostRuntimeContext,
 		assessmentToolkitRuntimeContext,
 		type AssessmentToolkitHostRuntimeContext,
@@ -361,6 +367,13 @@ const DEFAULT_ENV = {
 	const effectiveItemPlayer = $derived.by(() =>
 		normalizeItemPlayerConfig(player, playerType),
 	);
+	const instrumentationProvider = $derived.by(
+		() =>
+			resolveInstrumentationProvider({
+				player: effectiveItemPlayer,
+				component: "pie-assessment-toolkit",
+			}),
+	);
 	const runtimeContextValue = $derived.by((): AssessmentToolkitRuntimeContext | null => {
 		if (!effectiveCoordinator) return null;
 		const services = effectiveCoordinator.getServiceBundle();
@@ -569,6 +582,59 @@ const DEFAULT_ENV = {
 		if (runtimeContextValue) {
 			provider?.setValue(runtimeContextValue);
 		}
+	});
+
+	$effect(() => {
+		if (!host) return;
+		return attachInstrumentationEventBridge({
+			host,
+			instrumentationProvider,
+			component: "pie-assessment-toolkit",
+			eventMap: TOOLKIT_INSTRUMENTATION_EVENT_MAP,
+			staticAttributes: {
+				instrumentationLayer: "toolkit",
+				assessmentId: effectiveAssessmentId,
+				sectionId: effectiveSectionId,
+				attemptId: attemptId || undefined,
+			},
+		});
+	});
+
+	$effect(() => {
+		if (!effectiveCoordinator) return;
+		return effectiveCoordinator.subscribeTelemetry(({ eventName, payload }) => {
+			if (!isInstrumentationProvider(instrumentationProvider)) return;
+			if (!instrumentationProvider.isReady()) return;
+			const instrumentationEventName = eventName.startsWith("pie-")
+				? eventName
+				: `pie-toolkit-${eventName}`;
+			const timestamp = new Date().toISOString();
+			const attributes = {
+				...(payload || {}),
+				instrumentationLayer: "toolkit",
+				assessmentId: effectiveAssessmentId,
+				sectionId: effectiveSectionId,
+				attemptId: attemptId || undefined,
+				component: "pie-assessment-toolkit",
+				sourceEventName: eventName,
+				timestamp,
+			} as Record<string, unknown>;
+			instrumentationProvider.trackEvent(instrumentationEventName, attributes);
+			const payloadErrorType =
+				payload && typeof payload.errorType === "string"
+					? payload.errorType
+					: undefined;
+			if (!eventName.endsWith("-error") && !payloadErrorType) return;
+			const message =
+				payload && typeof payload.message === "string"
+					? payload.message
+					: `Toolkit telemetry error: ${eventName}`;
+			instrumentationProvider.trackError(new Error(message), {
+				component: "pie-assessment-toolkit",
+				errorType: payloadErrorType || "ToolkitTelemetryError",
+				...attributes,
+			});
+		});
 	});
 
 	$effect(() => {

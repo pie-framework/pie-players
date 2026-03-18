@@ -9,6 +9,7 @@
 		attemptId: string;
 		showSessionPanel: boolean;
 		showEventPanel: boolean;
+		showInstrumentationPanel: boolean;
 		showSourcePanel: boolean;
 		showPnpPanel: boolean;
 		showTtsPanel: boolean;
@@ -21,6 +22,7 @@
 		onResetDb: () => void | Promise<void>;
 		sessionDebuggerElement?: any;
 		eventDebuggerElement?: any;
+		instrumentationDebuggerElement?: any;
 		pnpDebuggerElement?: any;
 	}
 
@@ -30,6 +32,7 @@
 		attemptId,
 		showSessionPanel,
 		showEventPanel,
+		showInstrumentationPanel,
 		showSourcePanel,
 		showPnpPanel,
 		showTtsPanel,
@@ -42,6 +45,7 @@
 		onResetDb,
 		sessionDebuggerElement = $bindable(null),
 		eventDebuggerElement = $bindable(null),
+		instrumentationDebuggerElement = $bindable(null),
 		pnpDebuggerElement = $bindable(null)
 	}: Props = $props();
 </script>
@@ -64,6 +68,13 @@
 		attemptId={attemptId}
 	>
 	</pie-section-player-tools-event-debugger>
+{/if}
+
+{#if showInstrumentationPanel}
+	<pie-section-player-tools-instrumentation-debugger
+		bind:this={instrumentationDebuggerElement}
+	>
+	</pie-section-player-tools-instrumentation-debugger>
 {/if}
 
 {#if showSourcePanel}

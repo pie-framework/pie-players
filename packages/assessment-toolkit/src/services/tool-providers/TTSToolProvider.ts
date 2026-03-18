@@ -90,6 +90,14 @@ export interface TTSToolProviderConfig extends Partial<TTSConfig> {
 	 * Note: Only browser backend supports pitch
 	 */
 	pitch?: number;
+
+	/**
+	 * Optional telemetry callback for tool/backend instrumentation.
+	 */
+	onTelemetry?: (
+		eventName: string,
+		payload?: Record<string, unknown>,
+	) => void | Promise<void>;
 }
 
 /**
@@ -127,6 +135,17 @@ export class TTSToolProvider
 
 	private ttsProvider: ITTSProvider | null = null;
 	private config: TTSToolProviderConfig | null = null;
+
+	private async emitTelemetry(
+		eventName: string,
+		payload?: Record<string, unknown>,
+	): Promise<void> {
+		try {
+			await this.config?.onTelemetry?.(eventName, payload);
+		} catch (error) {
+			console.warn("[TTSToolProvider] telemetry callback failed:", error);
+		}
+	}
 
 	/**
 	 * Create TTS tool provider
@@ -205,9 +224,36 @@ export class TTSToolProvider
 		}
 
 		// Server backends are optional; load implementation only when requested.
-		const serverModule = (await import("@pie-players/tts-client-server")) as {
-			ServerTTSProvider: new () => ITTSProvider;
-		};
+		const moduleLoadStartedAt = Date.now();
+		await this.emitTelemetry("pie-tool-library-load-start", {
+			toolId: "tts",
+			operation: "server-provider-module-import",
+			backend: config.serverProvider || config.backend,
+		});
+		const serverModule = await (async () => {
+			try {
+				const loaded = (await import("@pie-players/tts-client-server")) as {
+					ServerTTSProvider: new () => ITTSProvider;
+				};
+				await this.emitTelemetry("pie-tool-library-load-success", {
+					toolId: "tts",
+					operation: "server-provider-module-import",
+					backend: config.serverProvider || config.backend,
+					duration: Date.now() - moduleLoadStartedAt,
+				});
+				return loaded;
+			} catch (error) {
+				await this.emitTelemetry("pie-tool-library-load-error", {
+					toolId: "tts",
+					operation: "server-provider-module-import",
+					backend: config.serverProvider || config.backend,
+					duration: Date.now() - moduleLoadStartedAt,
+					errorType: "ToolLibraryLoadError",
+					message: error instanceof Error ? error.message : String(error),
+				});
+				throw error;
+			}
+		})();
 		this.ttsProvider = new serverModule.ServerTTSProvider();
 
 		console.log(

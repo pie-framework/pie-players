@@ -3,6 +3,7 @@ import { demo1Section } from "./demo1-single-question";
 import { demo2Section } from "./demo2-question-passage";
 import { demo3Section } from "./demo3-three-questions";
 import { demo4Section } from "./demo4-tts-ssml";
+import { demo5Section } from "./demo5-resource-observability";
 
 export interface SectionDemoInfo {
 	id: string;
@@ -432,6 +433,22 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 			"Toolkit tool config enables `textToSpeech` in item and passage placements."
 		],
 		section: demo4Section,
+	},
+	"resource-observability": {
+		id: "resource-observability",
+		name: "Resource Observability",
+		description:
+			"Passage + items that load image/audio resources to validate resource-monitor instrumentation",
+		integrationLevel: 5,
+		integrationTheme: "Resource instrumentation",
+		focus:
+			"Demonstrates resource loading telemetry for media embedded in passage and item content.",
+		whatMakesItTick: [
+			"Passage includes image and audio assets served from local demo static files.",
+			"Items also embed media in prompt content to exercise item-level resource monitoring.",
+			"Instrumentation panel should show resource events such as `pie-resource-load`."
+		],
+		section: demo5Section,
 	},
 	"session-hydrate-db": {
 		id: "session-hydrate-db",

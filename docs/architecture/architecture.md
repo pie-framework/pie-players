@@ -28,7 +28,8 @@ Built with Bun, TypeScript, and Svelte 5, the architecture leverages modern web 
 4. [Tools & Accommodations](#tools--accommodations)
 5. [Technology Stack](#technology-stack)
 6. [Integration Patterns](#integration-patterns)
-7. [References](#references)
+7. [Instrumentation & Observability](#instrumentation--observability)
+8. [References](#references)
 
 ---
 
@@ -485,6 +486,38 @@ Build your own assessment player using toolkit services for complete control ove
 **Architecture**: Use toolkit services directly with custom player logic
 **Complexity**: High
 **Use Case**: Custom assessment experiences with specific requirements
+
+---
+
+## Instrumentation & Observability
+
+Instrumentation across players is intentionally provider-agnostic and built on
+`InstrumentationProvider` contracts rather than backend-specific APIs.
+
+### Provider Semantics
+
+- With tracking enabled, missing/`undefined` provider values use the default New Relic provider path.
+- `instrumentationProvider: null` explicitly disables instrumentation.
+- Invalid provider objects are ignored (optional debug warning), also no-op.
+- Existing `item-player` behavior is the compatibility anchor.
+- For local debugging, you can compose providers (for example New Relic + debug panel) by using a fan-out provider rather than replacing production telemetry.
+- Debug panel parity rule: production-bound events are preserved as events (same filtering/sampling pipeline), and debug-only metric rows are additive.
+
+### Ownership Model (No Semantic Overlap)
+
+- **Toolkit layer** owns toolkit lifecycle stream (for example `pie-toolkit-*`).
+- **Section layer** owns section runtime/public stream (for example `pie-section-*`).
+- **Assessment layer** owns assessment orchestration stream (for example `pie-assessment-*`).
+- **Tool/backend layer** (via toolkit telemetry forwarding) owns operational stream for tool init/backend/library calls (for example `pie-tool-init-*`, `pie-tool-backend-call-*`, `pie-tool-library-load-*`).
+
+Bridge dedupe exists as a safety net for accidental duplicate dispatch paths,
+but correctness is ownership-first by design.
+
+### Detailed Integration Guides
+
+- [Section Player Client Architecture](../section-player/client-architecture-tutorial.md)
+- [Assessment Player Client Architecture](../assessment-player/client-architecture-tutorial.md)
+- [Assessment Toolkit README](../../packages/assessment-toolkit/README.md)
 
 ---
 

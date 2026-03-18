@@ -1,5 +1,10 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
+	import {
+		CompositeInstrumentationProvider,
+		DebugPanelInstrumentationProvider,
+		NewRelicInstrumentationProvider
+	} from '@pie-players/pie-players-shared';
 	import { onDestroy } from 'svelte';
 	import {
 		createDefaultPersonalNeedsProfile,
@@ -57,6 +62,26 @@
 	};
 	const sectionToolbarTools =
 		'theme,graph,periodicTable,protractor,lineReader,ruler,annotationToolbar';
+	const sectionInstrumentationProvider = new CompositeInstrumentationProvider([
+		new NewRelicInstrumentationProvider(),
+		new DebugPanelInstrumentationProvider()
+	]);
+	void sectionInstrumentationProvider
+		.initialize()
+		.then(() => {
+			sectionInstrumentationProvider.trackMetric('demo.instrumentation.bootstrap', 1, {
+				app: 'section-demos',
+				demo: 'tts-ssml',
+				category: 'demo'
+			});
+		})
+		.catch(() => {});
+	const sectionPlayerConfig = {
+		loaderConfig: {
+			trackPageActions: true,
+			instrumentationProvider: sectionInstrumentationProvider
+		}
+	};
 	const coordinator = new ToolkitCoordinator({
 		assessmentId: DEMO_ASSESSMENT_ID,
 		tools: toolkitToolsConfig
@@ -79,12 +104,14 @@
 
 	let showSessionPanel = $state(false);
 	let showEventPanel = $state(false);
+	let showInstrumentationPanel = $state(false);
 	let showSourcePanel = $state(false);
 	let showPnpPanel = $state(false);
 	let showTtsPanel = $state(false);
 	let showSessionDbPanel = $state(false);
 	let sessionDebuggerElement: any = $state(null);
 	let eventDebuggerElement: any = $state(null);
+	let instrumentationDebuggerElement: any = $state(null);
 	let pnpDebuggerElement: any = $state(null);
 
 	const DEMO_PERSISTENCE_STORAGE_PREFIX = `pie:section-controller:v1:${DEMO_ASSESSMENT_ID}:`;
@@ -250,6 +277,13 @@
 	});
 
 	$effect(() => {
+		if (!instrumentationDebuggerElement) return;
+		return wireCloseListener(instrumentationDebuggerElement, () => {
+			showInstrumentationPanel = false;
+		});
+	});
+
+	$effect(() => {
 		if (!browser) return;
 		const triggerSessionPanelRefresh = () => {
 			queueMicrotask(() => {
@@ -351,12 +385,14 @@
 	onSelectDaisyTheme={handleDaisyThemeSelection}
 	bind:showSessionPanel
 	bind:showEventPanel
+	bind:showInstrumentationPanel
 	bind:showSourcePanel
 	bind:showPnpPanel
 	bind:showTtsPanel
 	bind:showSessionDbPanel
 	bind:sessionDebuggerElement
 	bind:eventDebuggerElement
+	bind:instrumentationDebuggerElement
 	bind:pnpDebuggerElement
 >
 	{#snippet beforePlayer()}
@@ -404,6 +440,7 @@
 				player-type={selectedPlayerType}
 				lazy-init={true}
 				tools={toolkitToolsConfig}
+				player={sectionPlayerConfig}
 				section={resolvedSectionForPlayer}
 				env={pieEnv}
 				coordinator={coordinator}
@@ -421,6 +458,7 @@
 				player-type={selectedPlayerType}
 				lazy-init={true}
 				tools={toolkitToolsConfig}
+				player={sectionPlayerConfig}
 				section={resolvedSectionForPlayer}
 				env={pieEnv}
 				coordinator={coordinator}

@@ -14,6 +14,7 @@
 	"dependencies": {
 		"@pie-players/pie-item-player": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*",
+		"@pie-players/pie-section-player-tools-instrumentation-debugger": "workspace:*",
 		"@tiptap/core": "^3.19.0",
 		"@tiptap/extension-code-block-lowlight": "^3.19.0",
 		"@tiptap/extension-document": "^3.19.0",

@@ -31,6 +31,11 @@
 
 <script lang="ts">
 	import { createEventDispatcher } from "svelte";
+	import {
+		attachInstrumentationEventBridge,
+		resolveInstrumentationProvider,
+		SECTION_INSTRUMENTATION_EVENT_MAP,
+	} from "@pie-players/pie-players-shared/pie";
 	import "./section-player-items-pane-element.js";
 	import "./section-player-passages-pane-element.js";
 	import SectionPlayerLayoutKernel from "./shared/SectionPlayerLayoutKernel.svelte";
@@ -38,15 +43,16 @@
 		SectionPlayerRuntimeHostContract,
 		SectionPlayerSnapshot,
 	} from "../contracts/runtime-host-contract.js";
+	import type { RuntimeConfig } from "./shared/section-player-runtime.js";
 
 	let {
 		assessmentId,
-		runtime = null,
+		runtime = null as RuntimeConfig | null,
 		section = null,
 		sectionId = "",
 		attemptId = "",
 		playerType,
-		player,
+		player = null as Record<string, unknown> | null,
 		lazyInit,
 		tools,
 		accessibility,
@@ -64,6 +70,7 @@
 	} = $props();
 
 	const dispatch = createEventDispatcher();
+	let anchor = $state<HTMLDivElement | null>(null);
 	let kernelRef = $state<SectionPlayerRuntimeHostContract | null>(null);
 	let snapshot = $state<SectionPlayerSnapshot>({
 		readiness: {
@@ -82,6 +89,23 @@
 			canPrevious: false,
 		},
 	});
+	const instrumentationProvider = $derived.by(() =>
+		resolveInstrumentationProvider({
+			runtimePlayer: runtime?.player,
+			player,
+			component: "pie-section-player-kernel-host",
+		}),
+	);
+
+	function getHostElement(): HTMLElement | null {
+		if (!anchor) return null;
+		const rootNode = anchor.getRootNode();
+		if (rootNode && "host" in rootNode) {
+			return (rootNode as ShadowRoot).host as HTMLElement;
+		}
+		return anchor.parentElement as HTMLElement | null;
+	}
+	const hostElement = $derived.by(() => getHostElement());
 
 	export function getSnapshot(): SectionPlayerSnapshot {
 		return snapshot;
@@ -133,8 +157,28 @@
 			navigation: kernelRef?.selectNavigation?.() || snapshot.navigation,
 		};
 	}
+
+	$effect(() => {
+		if (!hostElement) return;
+		const localHost = hostElement;
+		return attachInstrumentationEventBridge({
+			host: localHost,
+			instrumentationProvider,
+			component: "pie-section-player-kernel-host",
+			eventMap: SECTION_INSTRUMENTATION_EVENT_MAP,
+			staticAttributes: {
+				instrumentationLayer: "section",
+				assessmentId,
+				sectionId,
+				attemptId: attemptId || undefined,
+			},
+			shouldTrackEvent: (event: Event) => event.target === localHost,
+			dedupeWindowMs: 100,
+		});
+	});
 </script>
 
+<div bind:this={anchor} class="pie-section-player-observability-anchor" aria-hidden="true"></div>
 <SectionPlayerLayoutKernel
 	bind:this={kernelRef}
 	{assessmentId}
@@ -243,5 +287,9 @@
 		height: 100%;
 		padding: 0.5rem;
 		box-sizing: border-box;
+	}
+
+	.pie-section-player-observability-anchor {
+		display: none;
 	}
 </style>

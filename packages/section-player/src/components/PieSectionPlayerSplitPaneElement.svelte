@@ -31,6 +31,11 @@
 
 <script lang="ts">
 	import { onMount } from "svelte";
+	import {
+		attachInstrumentationEventBridge,
+		resolveInstrumentationProvider,
+		SECTION_INSTRUMENTATION_EVENT_MAP,
+	} from "@pie-players/pie-players-shared/pie";
 	import "./section-player-item-card-element.js";
 	import "./section-player-passage-card-element.js";
 	import "./section-player-items-pane-element.js";
@@ -88,6 +93,7 @@
 
 	let leftPanelWidth = $state(50);
 	let splitContainerElement = $state<HTMLDivElement | null>(null);
+	let anchor = $state<HTMLDivElement | null>(null);
 	let kernelRef = $state<SectionPlayerRuntimeHostContract | null>(null);
 	let isStacked = $state(false);
 	const dispatch = createEventDispatcher();
@@ -97,6 +103,23 @@
 	const passagesPaneId = $derived(`${paneIdBase}-passages`);
 	const itemsPaneId = $derived(`${paneIdBase}-items`);
 	const splitDividerValueText = $derived(`${Math.round(leftPanelWidth)}% passages width`);
+	const instrumentationProvider = $derived.by(() =>
+		resolveInstrumentationProvider({
+			runtimePlayer: runtime?.player,
+			player,
+			component: "pie-section-player-splitpane",
+		}),
+	);
+
+	function getHostElement(): HTMLElement | null {
+		if (!anchor) return null;
+		const rootNode = anchor.getRootNode();
+		if (rootNode && "host" in rootNode) {
+			return (rootNode as ShadowRoot).host as HTMLElement;
+		}
+		return anchor.parentElement as HTMLElement | null;
+	}
+	const hostElement = $derived.by(() => getHostElement());
 
 	$effect(() => {
 		const bp = clampedBreakpoint;
@@ -166,8 +189,28 @@
 		return manageOuterScrollbars();
 	});
 
+	$effect(() => {
+		if (!hostElement) return;
+		const localHost = hostElement;
+		return attachInstrumentationEventBridge({
+			host: localHost,
+			instrumentationProvider,
+			component: "pie-section-player-splitpane",
+			eventMap: SECTION_INSTRUMENTATION_EVENT_MAP,
+			staticAttributes: {
+				instrumentationLayer: "section",
+				assessmentId,
+				sectionId,
+				attemptId: attemptId || undefined,
+			},
+			shouldTrackEvent: (event: Event) => event.target === localHost,
+			dedupeWindowMs: 100,
+		});
+	});
+
 </script>
 
+<div bind:this={anchor} class="pie-section-player-observability-anchor" aria-hidden="true"></div>
 <SectionPlayerLayoutKernel
 	bind:this={kernelRef}
 	{assessmentId}
@@ -311,6 +354,10 @@
 		padding: 0.5rem;
 		box-sizing: border-box;
 		background: var(--pie-background-dark, #ecedf1);
+	}
+
+	.pie-section-player-observability-anchor {
+		display: none;
 	}
 
 	:global(html.pie-outer-scrollbars-managed),

@@ -19,6 +19,7 @@
 		"@pie-players/pie-players-shared": "workspace:*",
 		"@pie-players/pie-section-player": "workspace:*",
 		"@pie-players/pie-section-player-tools-event-debugger": "workspace:*",
+		"@pie-players/pie-section-player-tools-instrumentation-debugger": "workspace:*",
 		"@pie-players/pie-section-player-tools-pnp-debugger": "workspace:*",
 		"@pie-players/pie-section-player-tools-shared": "workspace:*",
 		"@pie-players/pie-section-player-tools-session-debugger": "workspace:*",

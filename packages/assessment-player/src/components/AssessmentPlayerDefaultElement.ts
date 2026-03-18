@@ -1,5 +1,10 @@
 import "@pie-players/pie-section-player/components/section-player-splitpane-element";
 import "@pie-players/pie-section-player/components/section-player-vertical-element";
+import {
+	ASSESSMENT_INSTRUMENTATION_EVENT_MAP,
+	attachInstrumentationEventBridge,
+	resolveInstrumentationProvider,
+} from "@pie-players/pie-players-shared/pie";
 import type { Env } from "@pie-players/pie-players-shared/types";
 import { AssessmentController } from "../controller/AssessmentController.js";
 import type { AssessmentControllerHandle } from "../controller/AssessmentController.js";
@@ -59,8 +64,6 @@ export class AssessmentPlayerDefaultElement
 	env: Env | null = null;
 	coordinator: unknown = null;
 	hooks: AssessmentPlayerHooks | null = null;
-	sectionPlayerRuntime: AssessmentPlayerRuntimeConfig["sectionPlayerRuntime"] = null;
-	sectionPlayerPlayer: AssessmentPlayerRuntimeConfig["sectionPlayerPlayer"] = null;
 	showNavigation: boolean | string | null | undefined = true;
 	sectionPlayerLayout: "splitpane" | "vertical" = "splitpane";
 	playerType: "iife" | "esm" | "preloaded" = "iife";
@@ -73,6 +76,11 @@ export class AssessmentPlayerDefaultElement
 	private sectionHost: HTMLElement | null = null;
 	private sectionControllerRef: SectionControllerHandle | null = null;
 	private unsubscribeController?: () => void;
+	private detachInstrumentationBridge?: () => void;
+	private _sectionPlayerRuntime: AssessmentPlayerRuntimeConfig["sectionPlayerRuntime"] =
+		null;
+	private _sectionPlayerPlayer: AssessmentPlayerRuntimeConfig["sectionPlayerPlayer"] =
+		null;
 	private readiness: AssessmentPlayerSnapshot["readiness"] = {
 		phase: "bootstrapping",
 	};
@@ -99,6 +107,28 @@ export class AssessmentPlayerDefaultElement
 		}
 	}
 
+	get sectionPlayerRuntime(): AssessmentPlayerRuntimeConfig["sectionPlayerRuntime"] {
+		return this._sectionPlayerRuntime;
+	}
+
+	set sectionPlayerRuntime(value: AssessmentPlayerRuntimeConfig["sectionPlayerRuntime"]) {
+		this._sectionPlayerRuntime = value;
+		if (this.isConnected) {
+			this.attachInstrumentationBridge();
+		}
+	}
+
+	get sectionPlayerPlayer(): AssessmentPlayerRuntimeConfig["sectionPlayerPlayer"] {
+		return this._sectionPlayerPlayer;
+	}
+
+	set sectionPlayerPlayer(value: AssessmentPlayerRuntimeConfig["sectionPlayerPlayer"]) {
+		this._sectionPlayerPlayer = value;
+		if (this.isConnected) {
+			this.attachInstrumentationBridge();
+		}
+	}
+
 	connectedCallback() {
 		if (!this.assessmentId) {
 			this.assessmentId = this.getAttribute("assessment-id") || "";
@@ -113,11 +143,14 @@ export class AssessmentPlayerDefaultElement
 			layout === "vertical" ? "vertical" : this.sectionPlayerLayout;
 		const playerType = this.getAttribute("player-type");
 		if (playerType) this.playerType = playerType as typeof this.playerType;
+		this.attachInstrumentationBridge();
 		void this.bootstrapController();
 	}
 
 	disconnectedCallback() {
 		this.unsubscribeController?.();
+		this.detachInstrumentationBridge?.();
+		this.detachInstrumentationBridge = undefined;
 		this.hooks?.onAssessmentControllerDispose?.(this.controller || undefined);
 	}
 
@@ -178,14 +211,45 @@ export class AssessmentPlayerDefaultElement
 			}
 		});
 
-		await controller.initialize();
-		this.readiness = { phase: "ready" };
-		this.controllerReadyResolve?.(controller);
-		this.dispatch(ASSESSMENT_PLAYER_PUBLIC_EVENTS.controllerReady, {
-			controller,
+		try {
+			await controller.initialize();
+			this.readiness = { phase: "ready" };
+			this.controllerReadyResolve?.(controller);
+			this.dispatch(ASSESSMENT_PLAYER_PUBLIC_EVENTS.controllerReady, {
+				controller,
+			});
+			this.hooks?.onAssessmentControllerReady?.(controller);
+			this.render();
+		} catch (error) {
+			this.readiness = { phase: "error" };
+			this.dispatch(ASSESSMENT_PLAYER_PUBLIC_EVENTS.error, {
+				error,
+			});
+			this.renderEmptyState("Failed to initialize assessment player");
+		}
+	}
+
+	private resolveInstrumentationProvider(): unknown {
+		return resolveInstrumentationProvider({
+			runtimePlayer: this.sectionPlayerRuntime?.player,
+			player: this.sectionPlayerPlayer,
+			component: "pie-assessment-player-default",
 		});
-		this.hooks?.onAssessmentControllerReady?.(controller);
-		this.render();
+	}
+
+	private attachInstrumentationBridge(): void {
+		this.detachInstrumentationBridge?.();
+		this.detachInstrumentationBridge = attachInstrumentationEventBridge({
+			host: this,
+			instrumentationProvider: this.resolveInstrumentationProvider(),
+			component: "pie-assessment-player-default",
+			eventMap: ASSESSMENT_INSTRUMENTATION_EVENT_MAP,
+			staticAttributes: {
+				instrumentationLayer: "assessment",
+				assessmentId: this.assessmentId,
+				attemptId: this.attemptId || undefined,
+			},
+		});
 	}
 
 	private renderEmptyState(message: string) {
@@ -240,6 +304,7 @@ export class AssessmentPlayerDefaultElement
 
 	private render() {
 		const controller = this.controller;
+		this.attachInstrumentationBridge();
 		this.innerHTML = "";
 		const container = document.createElement("div");
 		container.className = "pie-assessment-player-default";

@@ -12,6 +12,7 @@
  */
 
 import { NewRelicInstrumentationProvider } from "../instrumentation/providers/NewRelicInstrumentationProvider.js";
+import { isInstrumentationProvider } from "../instrumentation/provider-guards.js";
 import type { InstrumentationProvider } from "../instrumentation/types.js";
 import type { ComponentContext } from "./component-context.js";
 import { getCurrentComponentContext } from "./component-context.js";
@@ -99,22 +100,6 @@ type ResourceElement =
 	| HTMLVideoElement
 	| HTMLLinkElement
 	| HTMLSourceElement;
-
-function isInstrumentationProvider(
-	value: unknown,
-): value is InstrumentationProvider {
-	if (!value || typeof value !== "object") return false;
-	const candidate = value as Record<string, unknown>;
-	return (
-		typeof candidate.providerId === "string" &&
-		typeof candidate.providerName === "string" &&
-		typeof candidate.initialize === "function" &&
-		typeof candidate.trackError === "function" &&
-		typeof candidate.trackEvent === "function" &&
-		typeof candidate.destroy === "function" &&
-		typeof candidate.isReady === "function"
-	);
-}
 
 /**
  * Event detail for resource monitoring events

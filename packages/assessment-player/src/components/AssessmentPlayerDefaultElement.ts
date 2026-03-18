@@ -55,6 +55,7 @@ export class AssessmentPlayerDefaultElement
 			"show-navigation",
 			"section-player-layout",
 			"player-type",
+			"debug",
 		];
 	}
 
@@ -67,6 +68,7 @@ export class AssessmentPlayerDefaultElement
 	showNavigation: boolean | string | null | undefined = true;
 	sectionPlayerLayout: "splitpane" | "vertical" = "splitpane";
 	playerType: "iife" | "esm" | "preloaded" = "iife";
+	private _debug: boolean | string | null | undefined = undefined;
 
 	private controller: AssessmentControllerHandle | null = null;
 	private controllerReadyPromise: Promise<AssessmentControllerHandle | null> | null =
@@ -102,9 +104,21 @@ export class AssessmentPlayerDefaultElement
 		if (name === "player-type") {
 			this.playerType = (value as typeof this.playerType) || "iife";
 		}
+		if (name === "debug") {
+			this.debug = value;
+		}
 		if (this.isConnected) {
 			void this.bootstrapController();
 		}
+	}
+
+	get debug(): boolean | string | null | undefined {
+		return this._debug;
+	}
+
+	set debug(value: boolean | string | null | undefined) {
+		this._debug = value;
+		this.applyDebugFlag();
 	}
 
 	get sectionPlayerRuntime(): AssessmentPlayerRuntimeConfig["sectionPlayerRuntime"] {
@@ -143,6 +157,7 @@ export class AssessmentPlayerDefaultElement
 			layout === "vertical" ? "vertical" : this.sectionPlayerLayout;
 		const playerType = this.getAttribute("player-type");
 		if (playerType) this.playerType = playerType as typeof this.playerType;
+		this.debug = this.getAttribute("debug") ?? this.debug;
 		this.attachInstrumentationBridge();
 		void this.bootstrapController();
 	}
@@ -402,6 +417,11 @@ export class AssessmentPlayerDefaultElement
 			sectionEl.setAttribute("section-id", currentSection.sectionIdentifier);
 			if (this.attemptId) sectionEl.setAttribute("attempt-id", this.attemptId);
 			sectionEl.setAttribute("player-type", this.playerType);
+			if (this.debug !== undefined && this.debug !== null) {
+				const debugValue =
+					typeof this.debug === "boolean" ? String(this.debug) : this.debug;
+				sectionEl.setAttribute("debug", debugValue);
+			}
 			(sectionEl as any).section = currentSection.section;
 			if (this.env) (sectionEl as any).env = this.env;
 			if (this.coordinator) (sectionEl as any).coordinator = this.coordinator;
@@ -420,6 +440,20 @@ export class AssessmentPlayerDefaultElement
 
 		container.appendChild(sectionHost);
 		this.appendChild(container);
+	}
+
+	private applyDebugFlag(): void {
+		if (this.debug === undefined || this.debug === null) return;
+		if (typeof window === "undefined") return;
+		const debugStr = String(this.debug);
+		const debugValue = !(
+			debugStr.toLowerCase() === "false" ||
+			debugStr === "0" ||
+			debugStr === ""
+		);
+		try {
+			(window as any).PIE_DEBUG = debugValue;
+		} catch {}
 	}
 
 	getSnapshot(): AssessmentPlayerSnapshot {

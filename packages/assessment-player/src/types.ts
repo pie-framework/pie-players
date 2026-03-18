@@ -150,6 +150,7 @@ export interface AssessmentPlayerRuntimeConfig {
 	attemptId?: string;
 	assessment?: AssessmentDefinition | null;
 	env?: Env;
+	debug?: boolean | string;
 	/**
 	 * Optional section-player runtime overrides passed through by assessment-player.
 	 * Useful for advanced configuration such as runtime.player.loaderConfig observability wiring.

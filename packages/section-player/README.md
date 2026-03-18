@@ -39,6 +39,7 @@ Both layout elements support:
 - `runtime` (object): primary coordinator/tools/player runtime bundle
 - `section` (object): assessment section payload
 - `env` (object): optional top-level override for `{ mode, role }`
+- `debug` (boolean-like): verbose debug logging control (`"true"` enables, `"false"`/`"0"` disables)
 - `toolbar-position` (string): `top|right|bottom|left|none`
 - `narrow-layout-breakpoint` (number, optional): viewport width in px below which the layout collapses (split pane: single column; vertical: toolbar moves to top). Clamped to 400–2000; default 1100.
 - `show-toolbar` (boolean-like): accepts `true/false` and common string forms (`"true"`, `"false"`, `"1"`, `"0"`, `"yes"`, `"no"`)
@@ -48,7 +49,7 @@ Both layout elements support:
 The intended usage model is:
 
 - **CE props for default/standard flows (roughly 90% use cases)**:
-  - `assessment-id`, `section`, `section-id`, `attempt-id`
+  - `assessment-id`, `section`, `section-id`, `attempt-id`, `debug`
   - `show-toolbar`, `toolbar-position`, `narrow-layout-breakpoint`, `enabled-tools`, `item-toolbar-tools`, `passage-toolbar-tools`
 - **JS API for advanced customization**:
   - Get the controller handle via `getSectionController()` or `waitForSectionController()`
@@ -68,6 +69,13 @@ Runtime precedence is explicit:
 - `runtime` values are primary for runtime fields (`assessmentId`, `playerType`, `player`, `lazyInit`, `tools`, `accessibility`, `coordinator`, `createSectionController`, `isolation`, `env`).
 - Top-level runtime-like props remain compatibility inputs and are merged with `runtime` values. For `player`, top-level values are merged first, then `runtime.player` overrides. Nested `loaderOptions` and `loaderConfig` are also merged with the same precedence.
 - Toolbar placement overrides (`enabled-tools`, `item-toolbar-tools`, `passage-toolbar-tools`) are normalized on top of the runtime tools config.
+
+Debug logging can be controlled per section-player host:
+
+- Enable: `<pie-section-player-splitpane debug="true">`
+- Disable: `<pie-section-player-splitpane debug="false">` (or `debug="0"`)
+
+You can also disable globally via `window.PIE_DEBUG = false`.
 
 See the progressive demo routes in `apps/section-demos/src/routes/(demos)` (for example `single-question/+page.svelte` and `session-hydrate-db/+page.svelte`) for end-to-end host integrations.
 

@@ -19,6 +19,7 @@
 			isolation: { attribute: "isolation", type: "String" },
 			env: { type: "Object", reflect: false },
 			iifeBundleHost: { attribute: "iife-bundle-host", type: "String" },
+			debug: { attribute: "debug", type: "String" },
 			showToolbar: { attribute: "show-toolbar", type: "String" },
 			toolbarPosition: { attribute: "toolbar-position", type: "String" },
 			enabledTools: { attribute: "enabled-tools", type: "String" },
@@ -61,6 +62,7 @@
 		isolation,
 		env,
 		iifeBundleHost,
+		debug = undefined as string | boolean | undefined,
 		showToolbar = "false",
 		toolbarPosition = "right",
 		enabledTools = "",
@@ -196,6 +198,7 @@
 	{isolation}
 	{env}
 	{iifeBundleHost}
+	{debug}
 	{showToolbar}
 	{toolbarPosition}
 	{enabledTools}

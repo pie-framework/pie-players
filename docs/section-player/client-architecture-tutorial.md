@@ -80,6 +80,7 @@ Key props you'll set via attributes:
 | `section` | `object` | Section content/composition model |
 | `env` | `object` | `{ mode: 'gather'/'view'/'evaluate', role: 'student'/'instructor' }` |
 | `tools` | `object` | Tool placement/provider config (see §5) |
+| `debug` | `boolean` | Verbose logging control (`true` to enable, `false`/`0` to disable) |
 | `show-toolbar` | `boolean` | Whether to render the section toolbar |
 | `enabled-tools` | `string` | Comma-separated list of tool IDs for the toolbar |
 | `player-type` | `string` | `'iife'` (default), `'esm'`, or `'preloaded'` |

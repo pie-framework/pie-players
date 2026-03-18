@@ -71,6 +71,7 @@
 		enabledTools = "",
 		itemToolbarTools = "",
 		passageToolbarTools = "",
+		debug = undefined as string | boolean | undefined,
 		playerActionConfig = {
 			stateKey: "__sectionPlayerAppliedParams",
 			includeSessionRefInState: false,
@@ -79,9 +80,25 @@
 	} = $props();
 
 	const dispatch = createEventDispatcher<KernelEvents>();
-	const logger = createPieLogger("section-player-layout-kernel", () =>
-		isGlobalDebugEnabled(),
-	);
+	const isBrowser = typeof window !== "undefined" && typeof document !== "undefined";
+	const debugEnabled = $derived.by(() => {
+		if (debug !== undefined && debug !== null) {
+			const debugStr = String(debug);
+			const debugValue = !(
+				debugStr.toLowerCase() === "false" ||
+				debugStr === "0" ||
+				debugStr === ""
+			);
+			if (isBrowser) {
+				try {
+					(window as any).PIE_DEBUG = debugValue;
+				} catch {}
+			}
+			return debugValue;
+		}
+		return isGlobalDebugEnabled();
+	});
+	const logger = createPieLogger("section-player-layout-kernel", () => debugEnabled);
 	let compositionSnapshot = $state<LayoutCompositionSnapshot>(
 		deriveLayoutCompositionSnapshot(EMPTY_COMPOSITION),
 	);
@@ -132,6 +149,13 @@
 	const resolvedPlayerTag = $derived(playerRuntime.resolvedPlayerTag);
 	const resolvedPlayerAttributes = $derived(playerRuntime.resolvedPlayerAttributes);
 	const resolvedPlayerProps = $derived(playerRuntime.resolvedPlayerProps);
+	const effectiveResolvedPlayerProps = $derived.by(() => {
+		if (debug === undefined || debug === null) return resolvedPlayerProps;
+		return {
+			...(resolvedPlayerProps || {}),
+			debug,
+		};
+	});
 	const resolvedPlayerEnv = $derived(playerRuntime.resolvedPlayerEnv);
 	const playerStrategy = $derived(playerRuntime.strategy);
 	const playerAction = $derived.by(() => createPlayerAction(playerActionConfig));
@@ -330,7 +354,7 @@
 			preloadedRenderablesSignature,
 			resolvedPlayerEnv,
 			resolvedPlayerAttributes,
-			resolvedPlayerProps,
+			resolvedPlayerProps: effectiveResolvedPlayerProps,
 			playerStrategy,
 			iifeBundleHost,
 			paneElementsLoaded,
@@ -344,7 +368,7 @@
 		{preloadedRenderablesSignature}
 		{resolvedPlayerEnv}
 		{resolvedPlayerAttributes}
-		{resolvedPlayerProps}
+		resolvedPlayerProps={effectiveResolvedPlayerProps}
 		{playerStrategy}
 		{iifeBundleHost}
 		{paneElementsLoaded}

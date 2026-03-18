@@ -142,6 +142,7 @@ Key attributes/properties on `pie-assessment-player-default`:
 | `attempt-id` | `string` | Identifies the attempt (host-owned) |
 | `section-player-layout` | `'splitpane' \| 'vertical'` | Which section player layout to use |
 | `show-navigation` | `boolean` | Whether to render built-in Back/Next navigation |
+| `debug` | `boolean` | Verbose logging control (`true` to enable, `false`/`0` to disable) |
 | `player-type` | `'iife' \| 'esm' \| 'preloaded'` | Item element loading strategy |
 | `assessment` | `object` | Assessment definition (sections, test parts) |
 | `hooks` | `object` | Assessment player hooks (see §7) |

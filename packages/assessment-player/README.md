@@ -8,6 +8,16 @@ Primary entrypoint:
 
 - `@pie-players/pie-assessment-player`
 
+## Debug logging
+
+Assessment-player now exposes a `debug` option on `pie-assessment-player-default`.
+
+- Enable verbose debug logs: `<pie-assessment-player-default debug="true">`
+- Disable verbose debug logs: `<pie-assessment-player-default debug="false">` (or `debug="0"`)
+
+The setting is forwarded to the rendered section-player instance and also applies
+the global flag (`window.PIE_DEBUG`) for shared runtime logging behavior.
+
 Component registration entrypoints:
 
 - `@pie-players/pie-assessment-player/components/assessment-player-default-element`

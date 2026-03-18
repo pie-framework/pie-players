@@ -42,4 +42,49 @@ test.describe("section player preloaded strategy", () => {
 			page.locator('pie-item-shell[data-pie-shell-root="item"]'),
 		).toHaveCount(3, { timeout: 30_000 });
 	});
+
+	test("forwards runtime.player.loaderConfig to embedded item players", async ({
+		page,
+	}) => {
+		await page.goto("/tts-ssml?mode=candidate&layout=splitpane&player=iife", {
+			waitUntil: "networkidle",
+		});
+		await expect(page.getByRole("main", { name: "Items" })).toBeVisible();
+		await expect(page.locator("pie-item-player").first()).toBeVisible({
+			timeout: 30_000,
+		});
+
+		await page.evaluate(() => {
+			const sectionPlayer = document.querySelector(
+				"pie-section-player-splitpane",
+			) as HTMLElement & { runtime?: Record<string, unknown> };
+			if (!sectionPlayer) {
+				throw new Error("section player host not found");
+			}
+			sectionPlayer.runtime = {
+				player: {
+					loaderConfig: {
+						trackPageActions: true,
+						maxResourceRetries: 7,
+						resourceRetryDelay: 321,
+					},
+				},
+			};
+		});
+
+		await page.waitForFunction(() => {
+			const players = Array.from(document.querySelectorAll("pie-item-player")) as Array<
+				HTMLElement & { loaderConfig?: Record<string, unknown> }
+			>;
+			if (!players.length) return false;
+			return players.every((player) => {
+				const cfg = player.loaderConfig;
+				return (
+					cfg?.trackPageActions === true &&
+					cfg?.maxResourceRetries === 7 &&
+					cfg?.resourceRetryDelay === 321
+				);
+			});
+		});
+	});
 });

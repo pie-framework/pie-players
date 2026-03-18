@@ -170,6 +170,12 @@ The item player accepts these key props:
 - `gather` - Student taking assessment (can interact)
 - `view` - View-only mode (no interaction)
 - `evaluate` - Show correct answers and feedback
+- `browse` - Legacy compatibility input that is normalized to `view` in item-demos routes
+
+**Route query compatibility:**
+- `?mode=browse&role=student` normalizes to the same runtime behavior as `mode=view`
+- `?mode=evaluate&role=student` is safety-coerced to `mode=gather`
+- `?mode=evaluate&role=instructor` stays in scorer/evaluate behavior
 
 ### Adding New Demos
 

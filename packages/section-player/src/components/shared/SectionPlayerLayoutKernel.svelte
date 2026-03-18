@@ -1,4 +1,8 @@
 <script lang="ts">
+	import {
+		createPieLogger,
+		isGlobalDebugEnabled,
+	} from "@pie-players/pie-players-shared";
 	import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
 	import type { SectionControllerHandle } from "@pie-players/pie-assessment-toolkit";
 	import { createEventDispatcher } from "svelte";
@@ -75,6 +79,9 @@
 	} = $props();
 
 	const dispatch = createEventDispatcher<KernelEvents>();
+	const logger = createPieLogger("section-player-layout-kernel", () =>
+		isGlobalDebugEnabled(),
+	);
 	let compositionSnapshot = $state<LayoutCompositionSnapshot>(
 		deriveLayoutCompositionSnapshot(EMPTY_COMPOSITION),
 	);
@@ -279,7 +286,7 @@
 
 	$effect(() => {
 		resolvedPlayerDefinition?.ensureDefined?.().catch((error: unknown) => {
-			console.error("[section-player-layout-kernel] Failed to load item player component:", error);
+			logger.error("Failed to load item player component:", error);
 		});
 	});
 

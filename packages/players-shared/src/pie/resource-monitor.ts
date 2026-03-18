@@ -16,7 +16,7 @@ import { isInstrumentationProvider } from "../instrumentation/provider-guards.js
 import type { InstrumentationProvider } from "../instrumentation/types.js";
 import type { ComponentContext } from "./component-context.js";
 import { getCurrentComponentContext } from "./component-context.js";
-import { createPieLogger } from "./logger.js";
+import { createPieLogger, isGlobalDebugEnabled } from "./logger.js";
 
 export type ResourceMonitorConfig = {
 	/**
@@ -168,11 +168,6 @@ export class ResourceMonitor {
 		)
 			? config.instrumentationProvider
 			: undefined;
-		if (config.instrumentationProvider && !validInjectedProvider && config.debug) {
-			console.warn(
-				"[ResourceMonitor] Ignoring invalid instrumentation provider; expected InstrumentationProvider shape",
-			);
-		}
 		const hasInjectedProvider = !!validInjectedProvider;
 		const manageProviderLifecycle =
 			config.manageProviderLifecycle ?? !hasInjectedProvider;
@@ -187,6 +182,16 @@ export class ResourceMonitor {
 			maxRetryDelay: config.maxRetryDelay ?? DEFAULT_CONFIG.maxRetryDelay,
 			debug: config.debug ?? DEFAULT_CONFIG.debug,
 		};
+		this.logger = createPieLogger("resource-monitor", () =>
+			this.isDebugEnabled(),
+		);
+		if (config.instrumentationProvider && !validInjectedProvider) {
+			if (this.isDebugEnabled()) {
+				this.logger.warn(
+					"Ignoring invalid instrumentation provider; expected InstrumentationProvider shape",
+				);
+			}
+		}
 
 		// Always use a provider - default to NewRelic if not specified
 		this.ownsProvider = !this.config.instrumentationProvider;
@@ -198,22 +203,15 @@ export class ResourceMonitor {
 		// Initialize the provider (async, but don't block constructor)
 		if (this.manageProviderLifecycle) {
 			this.provider.initialize().catch((err) => {
-				if (this.config.debug) {
-					console.warn(
-						"[ResourceMonitor] Failed to initialize instrumentation provider:",
-						err,
-					);
+				if (this.isDebugEnabled()) {
+					this.logger.warn("Failed to initialize instrumentation provider:", err);
 				}
 			});
-		} else if (this.config.debug) {
-			console.debug(
-				"[ResourceMonitor] Skipping provider lifecycle management for injected provider",
+		} else if (this.isDebugEnabled()) {
+			this.logger.debug(
+				"Skipping provider lifecycle management for injected provider",
 			);
 		}
-
-		this.logger = createPieLogger("resource-monitor", () =>
-			this.isDebugEnabled(),
-		);
 		this.isBrowser =
 			typeof window !== "undefined" && typeof document !== "undefined";
 	}
@@ -222,10 +220,7 @@ export class ResourceMonitor {
 	 * Check if debug logging is enabled (dynamically checks window.PIE_DEBUG)
 	 */
 	private isDebugEnabled(): boolean {
-		return (
-			this.config.debug ||
-			(typeof window !== "undefined" && (window as any).PIE_DEBUG === true)
-		);
+		return this.config.debug || isGlobalDebugEnabled();
 	}
 
 	/**

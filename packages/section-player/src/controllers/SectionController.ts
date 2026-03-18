@@ -1,5 +1,9 @@
 import type { TestAttemptSession } from "@pie-players/pie-assessment-toolkit";
 import { toItemSessionsRecord } from "@pie-players/pie-assessment-toolkit";
+import {
+	createPieLogger,
+	isGlobalDebugEnabled,
+} from "@pie-players/pie-players-shared";
 import type {
 	SectionControllerHandle,
 	SectionSessionPersistenceConfig,
@@ -62,6 +66,8 @@ interface NormalizedApplySession {
 	itemSessionCount: number;
 }
 
+const logger = createPieLogger("section-controller", () => isGlobalDebugEnabled());
+
 export class SectionController implements SectionControllerHandle {
 	// SectionController intentionally owns aggregate section state only.
 	// Item-level controllers may share contracts, but are not composed here.
@@ -102,7 +108,7 @@ export class SectionController implements SectionControllerHandle {
 			try {
 				listener(event);
 			} catch (error) {
-				console.warn("[SectionController] listener failed", error);
+				logger.warn("listener failed", error);
 			}
 		}
 	}

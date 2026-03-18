@@ -1,5 +1,6 @@
 import { isInstrumentationProvider } from "../instrumentation/provider-guards.js";
 import { NewRelicInstrumentationProvider } from "../instrumentation/providers/NewRelicInstrumentationProvider.js";
+import { createPieLogger, isGlobalDebugEnabled } from "./logger.js";
 
 type UnknownRecord = Record<string, unknown>;
 type ProviderCandidate =
@@ -46,6 +47,9 @@ function selectProviderCandidate(
 }
 
 let defaultProvider: NewRelicInstrumentationProvider | undefined;
+const logger = createPieLogger("instrumentation-provider-resolution", () =>
+	isGlobalDebugEnabled(),
+);
 
 function getDefaultInstrumentationProvider(): NewRelicInstrumentationProvider {
 	if (!defaultProvider) {
@@ -83,7 +87,7 @@ export function resolveInstrumentationProvider(args: {
 	}
 	if (args.debug) {
 		const prefix = args.component ? `[${args.component}] ` : "";
-		console.warn(
+		logger.warn(
 			`${prefix}Ignoring invalid instrumentation provider; expected InstrumentationProvider contract`,
 		);
 	}

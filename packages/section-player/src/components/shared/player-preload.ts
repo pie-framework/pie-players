@@ -2,10 +2,16 @@ import {
 	EsmElementLoader,
 	IifeElementLoader,
 	type ItemEntity,
+	createPieLogger,
+	isGlobalDebugEnabled,
 } from "@pie-players/pie-players-shared";
 import { ensureItemPlayerMathRenderingReady } from "@pie-players/pie-item-player";
 
 export const PRELOAD_TIMEOUT_MS = 15000;
+
+function getPreloadLogger(componentTag: string) {
+	return createPieLogger(componentTag, () => isGlobalDebugEnabled());
+}
 
 export function getRenderablesSignature(renderables: unknown[]): string {
 	return renderables
@@ -131,6 +137,7 @@ export function orchestratePlayerElementPreload(args: {
 	getState: () => PlayerPreloadState;
 	setState: (next: Partial<PlayerPreloadState>) => void;
 }) {
+	const logger = getPreloadLogger(args.componentTag);
 	const esmCdnUrl = String(
 		(args.resolvedPlayerProps?.loaderOptions as Record<string, unknown> | undefined)
 			?.esmCdnUrl || "https://cdn.jsdelivr.net/npm",
@@ -175,8 +182,8 @@ export function orchestratePlayerElementPreload(args: {
 		return;
 	}
 	if (args.strategy !== "esm" && !bundleHost) {
-		console.warn(
-			`[${args.componentTag}] Missing iifeBundleHost for element preloading; rendering without preload.`,
+		logger.warn(
+			"Missing iifeBundleHost for element preloading; rendering without preload.",
 		);
 		args.setState({ elementsLoaded: true });
 		return;
@@ -190,9 +197,7 @@ export function orchestratePlayerElementPreload(args: {
 		bundleHost,
 		onTimeout: () => {
 			if (runToken !== args.getState().preloadRunToken) return;
-			console.warn(
-				`[${args.componentTag}] Element preloading timed out; continuing render without preload.`,
-			);
+			logger.warn("Element preloading timed out; continuing render without preload.");
 			args.setState({ elementsLoaded: true });
 		},
 	})
@@ -202,7 +207,7 @@ export function orchestratePlayerElementPreload(args: {
 			}
 		})
 		.catch((error) => {
-			console.error(`[${args.componentTag}] Failed to preload PIE elements:`, error);
+			logger.error("Failed to preload PIE elements:", error);
 			if (runToken === args.getState().preloadRunToken) {
 				args.setState({ elementsLoaded: true });
 			}

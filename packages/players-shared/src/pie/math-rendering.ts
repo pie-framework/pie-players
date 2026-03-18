@@ -8,6 +8,7 @@
  */
 
 /// <reference path="../shims.d.ts" />
+import { createPieLogger, isGlobalDebugEnabled } from "./logger.js";
 
 export type MathRenderer = (element: HTMLElement) => void | Promise<void>;
 export interface MathRenderingAPI {
@@ -20,6 +21,7 @@ export interface MathRenderingAPI {
 const GLOBAL_KEY = "@pie-lib/math-rendering";
 const GLOBAL_DLL_KEY = "_dll_pie_lib__math_rendering";
 let initPromise: Promise<void> | null = null;
+const logger = createPieLogger("math-rendering", () => isGlobalDebugEnabled());
 
 const getWindowRenderer = (): MathRenderingAPI | null => {
 	if (typeof window === "undefined") {
@@ -91,14 +93,11 @@ export async function initializeMathRendering(
 			);
 			setWindowRenderer(_dll_pie_lib__math_rendering as MathRenderingAPI);
 
-			console.log(
-				"[MathRendering] ✅ Math rendering module initialized (both globals set)",
+			logger.debug(
+				"Math rendering module initialized (both globals set)",
 			);
 		} catch (error) {
-			console.error(
-				"[MathRendering] ❌ Failed to initialize math rendering:",
-				error,
-			);
+			logger.error("Failed to initialize math rendering:", error);
 			throw error;
 		}
 	})();

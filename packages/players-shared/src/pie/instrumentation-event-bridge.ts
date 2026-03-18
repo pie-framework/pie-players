@@ -1,6 +1,11 @@
 import { isInstrumentationProvider } from "../instrumentation/provider-guards.js";
 import type { InstrumentationProvider } from "../instrumentation/types.js";
 import type { InstrumentationEventMapping } from "./instrumentation-event-map.js";
+import { createPieLogger, isGlobalDebugEnabled } from "./logger.js";
+
+const logger = createPieLogger("instrumentation-event-bridge", () =>
+	isGlobalDebugEnabled(),
+);
 
 export type AttachInstrumentationEventBridgeArgs = {
 	host: EventTarget | null | undefined;
@@ -24,7 +29,7 @@ function normalizeEventDetail(detail: unknown): Record<string, unknown> {
 }
 
 function warnInvalidProvider(component: string): void {
-	console.warn(
+	logger.warn(
 		`[InstrumentationEventBridge:${component}] Ignoring invalid instrumentation provider; expected InstrumentationProvider contract`,
 	);
 }

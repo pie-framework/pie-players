@@ -182,6 +182,18 @@ logger.error('❌ Error', error);         // Always shown
 window.PIE_DEBUG = true;  // In browser console
 ```
 
+Disable runtime debug logging:
+
+```javascript
+window.PIE_DEBUG = false;
+```
+
+For `pie-item-player`, you can also disable per instance with:
+
+```html
+<pie-item-player debug="false" />
+```
+
 ## Common Tasks
 
 ### Load PIE Bundle from URL

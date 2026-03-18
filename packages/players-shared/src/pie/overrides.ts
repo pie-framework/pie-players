@@ -8,9 +8,11 @@
  */
 
 import { cloneDeep } from "../object/index.js";
+import { createPieLogger, isGlobalDebugEnabled } from "./logger.js";
 import { parsePackageName } from "./utils.js";
 
 export type ElementOverrides = Record<string, string>;
+const logger = createPieLogger("pie-overrides", () => isGlobalDebugEnabled());
 
 /**
  * Apply element overrides to a PIE config
@@ -52,8 +54,8 @@ export function applyElementOverrides(
 			try {
 				basePackageName = parsePackageName(elementPackageStr).name;
 			} catch {
-				console.warn(
-					`[pie/overrides] Couldn't parse element package value: ${elementPackageStr}`,
+				logger.debug(
+					`Couldn't parse element package value: ${elementPackageStr}`,
 				);
 				continue;
 			}
@@ -86,9 +88,7 @@ export function applyElementOverrides(
 		}
 
 		if (!matched) {
-			console.debug(
-				`[pie/overrides] No matching element found for package ${packageName}`,
-			);
+			logger.debug(`No matching element found for package ${packageName}`);
 		}
 	}
 

@@ -87,4 +87,85 @@ test.describe("section player preloaded strategy", () => {
 			});
 		});
 	});
+
+	test("reconfigures runtime loaderConfig and updates embedded item players", async ({
+		page,
+	}) => {
+		await page.goto("/tts-ssml?mode=candidate&layout=splitpane&player=iife", {
+			waitUntil: "networkidle",
+		});
+		await expect(page.locator("pie-item-player").first()).toBeVisible({
+			timeout: 30_000,
+		});
+
+		await page.evaluate(() => {
+			const sectionPlayer = document.querySelector(
+				"pie-section-player-splitpane",
+			) as HTMLElement & { runtime?: Record<string, unknown> };
+			if (!sectionPlayer) {
+				throw new Error("section player host not found");
+			}
+			sectionPlayer.runtime = {
+				player: {
+					loaderConfig: {
+						trackPageActions: true,
+						maxResourceRetries: 1,
+						resourceRetryDelay: 10,
+					},
+				},
+			};
+		});
+
+		await page.waitForFunction(() => {
+			const players = Array.from(document.querySelectorAll("pie-item-player")) as Array<
+				HTMLElement & {
+					loaderConfig?: {
+						maxResourceRetries?: number;
+						resourceRetryDelay?: number;
+					};
+				}
+			>;
+			if (players.length === 0) return false;
+			return players.every(
+				(player) =>
+					player.loaderConfig?.maxResourceRetries === 1 &&
+					player.loaderConfig?.resourceRetryDelay === 10,
+			);
+		});
+
+		await page.evaluate(() => {
+			const sectionPlayer = document.querySelector(
+				"pie-section-player-splitpane",
+			) as HTMLElement & { runtime?: Record<string, unknown> };
+			if (!sectionPlayer) {
+				throw new Error("section player host not found");
+			}
+			sectionPlayer.runtime = {
+				player: {
+					loaderConfig: {
+						trackPageActions: true,
+						maxResourceRetries: 2,
+						resourceRetryDelay: 25,
+					},
+				},
+			};
+		});
+
+		await page.waitForFunction(() => {
+			const players = Array.from(document.querySelectorAll("pie-item-player")) as Array<
+				HTMLElement & {
+					loaderConfig?: {
+						maxResourceRetries?: number;
+						resourceRetryDelay?: number;
+					};
+				}
+			>;
+			if (players.length === 0) return false;
+			return players.every(
+				(player) =>
+					player.loaderConfig?.maxResourceRetries === 2 &&
+					player.loaderConfig?.resourceRetryDelay === 25,
+			);
+		});
+	});
 });

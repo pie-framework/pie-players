@@ -90,7 +90,10 @@
 	}
 
 	type HostItemPlayerInput = Partial<
-		Pick<ItemPlayerConfig, "type" | "tagName" | "version" | "source">
+	Pick<
+		ItemPlayerConfig,
+		"type" | "tagName" | "version" | "source" | "loaderConfig" | "loaderOptions"
+	>
 	> | null;
 
 	const runtimeId = createRuntimeId("toolkit");
@@ -274,6 +277,8 @@ const DEFAULT_ENV = {
 			tagName: requestedTagName || DEFAULT_ITEM_PLAYER_BY_TYPE[rawType],
 			version: hostPlayer?.version,
 			source: hostPlayer?.source,
+			loaderConfig: hostPlayer?.loaderConfig,
+			loaderOptions: hostPlayer?.loaderOptions,
 			isDefault: !hostPlayer && !hostPlayerType,
 		};
 	}

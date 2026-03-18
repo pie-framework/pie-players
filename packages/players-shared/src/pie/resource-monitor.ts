@@ -100,6 +100,22 @@ type ResourceElement =
 	| HTMLLinkElement
 	| HTMLSourceElement;
 
+function isInstrumentationProvider(
+	value: unknown,
+): value is InstrumentationProvider {
+	if (!value || typeof value !== "object") return false;
+	const candidate = value as Record<string, unknown>;
+	return (
+		typeof candidate.providerId === "string" &&
+		typeof candidate.providerName === "string" &&
+		typeof candidate.initialize === "function" &&
+		typeof candidate.trackError === "function" &&
+		typeof candidate.trackEvent === "function" &&
+		typeof candidate.destroy === "function" &&
+		typeof candidate.isReady === "function"
+	);
+}
+
 /**
  * Event detail for resource monitoring events
  */
@@ -162,15 +178,23 @@ export class ResourceMonitor {
 	private started = false;
 
 	constructor(config: ResourceMonitorConfig = {}) {
-		const hasInjectedProvider = !!config.instrumentationProvider;
+		const validInjectedProvider = isInstrumentationProvider(
+			config.instrumentationProvider,
+		)
+			? config.instrumentationProvider
+			: undefined;
+		if (config.instrumentationProvider && !validInjectedProvider && config.debug) {
+			console.warn(
+				"[ResourceMonitor] Ignoring invalid instrumentation provider; expected InstrumentationProvider shape",
+			);
+		}
+		const hasInjectedProvider = !!validInjectedProvider;
 		const manageProviderLifecycle =
 			config.manageProviderLifecycle ?? !hasInjectedProvider;
 		this.config = {
 			trackPageActions:
 				config.trackPageActions ?? DEFAULT_CONFIG.trackPageActions,
-			instrumentationProvider:
-				config.instrumentationProvider ??
-				DEFAULT_CONFIG.instrumentationProvider,
+			instrumentationProvider: validInjectedProvider,
 			manageProviderLifecycle,
 			maxRetries: config.maxRetries ?? DEFAULT_CONFIG.maxRetries,
 			initialRetryDelay:

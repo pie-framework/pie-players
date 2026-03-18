@@ -1,4 +1,5 @@
 import { createContext } from "@pie-players/pie-context";
+import type { LoaderConfig } from "@pie-players/pie-players-shared/loader-config";
 import type {
 	AccessibilityCatalogResolverApi,
 	ElementToolStateStoreApi,
@@ -15,6 +16,8 @@ export interface ItemPlayerConfig {
 	tagName: string;
 	version?: string;
 	source?: string;
+	loaderConfig?: LoaderConfig;
+	loaderOptions?: Record<string, unknown>;
 	isDefault: boolean;
 }
 

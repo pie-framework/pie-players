@@ -6,6 +6,7 @@ import {
 	normalizeItemPlayerStrategy,
 	type ItemEntity,
 } from "@pie-players/pie-players-shared";
+import type { LoaderConfig } from "@pie-players/pie-players-shared/loader-config";
 import { DEFAULT_PLAYER_DEFINITIONS } from "../../component-definitions.js";
 
 export const DEFAULT_ASSESSMENT_ID = "section-demo-direct";
@@ -17,10 +18,16 @@ export const DEFAULT_ENV = { mode: "gather", role: "student" } as Record<
 	unknown
 >;
 
+type PlayerOverrides = {
+	loaderConfig?: LoaderConfig;
+	loaderOptions?: Record<string, unknown>;
+	[key: string]: unknown;
+};
+
 export type RuntimeConfig = {
 	assessmentId?: string;
 	playerType?: string;
-	player?: Record<string, unknown> | null;
+	player?: PlayerOverrides | null;
 	lazyInit?: boolean;
 	tools?: Record<string, unknown> | null;
 	accessibility?: Record<string, unknown> | null;
@@ -33,7 +40,7 @@ export type RuntimeConfig = {
 export type RuntimeInputs = {
 	assessmentId?: string;
 	playerType?: string;
-	player?: Record<string, unknown> | null;
+	player?: PlayerOverrides | null;
 	lazyInit?: boolean;
 	tools?: Record<string, unknown> | null;
 	accessibility?: Record<string, unknown> | null;
@@ -78,7 +85,7 @@ export function resolveToolsConfig(args: {
 export function resolveRuntime(args: {
 	assessmentId: string;
 	playerType: string;
-	player: Record<string, unknown> | null;
+	player: PlayerOverrides | null;
 	lazyInit: boolean;
 	accessibility: Record<string, unknown> | null;
 	coordinator: unknown;
@@ -89,8 +96,8 @@ export function resolveRuntime(args: {
 	effectiveToolsConfig: unknown;
 }) {
 	const runtime = args.runtime || {};
-	const topLevelPlayer = (args.player || {}) as Record<string, unknown>;
-	const runtimePlayer = (runtime.player || {}) as Record<string, unknown>;
+	const topLevelPlayer = (args.player || {}) as PlayerOverrides;
+	const runtimePlayer = (runtime.player || {}) as PlayerOverrides;
 	const mergedPlayerCandidate = {
 		...topLevelPlayer,
 		...runtimePlayer,
@@ -141,11 +148,8 @@ export function resolvePlayerRuntime(args: {
 		string,
 		unknown
 	>;
-	const runtimePlayerOverrides = ((args.effectiveRuntime?.player as Record<
-		string,
-		unknown
-	>) ||
-		{}) as Record<string, unknown>;
+	const runtimePlayerOverrides = ((args.effectiveRuntime
+		?.player as PlayerOverrides) || {}) as PlayerOverrides;
 	const definitionLoaderOptions = (definitionProps.loaderOptions ||
 		{}) as Record<string, unknown>;
 	const runtimeLoaderOptions = (runtimePlayerOverrides.loaderOptions ||

@@ -60,6 +60,21 @@ describe("ResourceMonitor instrumentation provider wiring", () => {
 		expect((monitor as any).provider).toBeInstanceOf(NewRelicInstrumentationProvider);
 	});
 
+	test("falls back to New Relic provider when custom provider is malformed", () => {
+		const malformedProvider = {
+			providerId: "broken",
+			providerName: "Broken",
+			trackEvent: () => {},
+		};
+		const monitor = new ResourceMonitor({
+			trackPageActions: true,
+			instrumentationProvider:
+				malformedProvider as unknown as InstrumentationProvider,
+		});
+
+		expect((monitor as any).provider).toBeInstanceOf(NewRelicInstrumentationProvider);
+	});
+
 	test("can manage lifecycle for injected provider when requested", () => {
 		const customProvider = new FakeInstrumentationProvider();
 		const monitor = new ResourceMonitor({
@@ -83,8 +98,9 @@ describe("useResourceMonitor wiring contract", () => {
 		);
 		const source = readFileSync(useResourceMonitorPath, "utf8");
 
+		expect(source).toContain("isInstrumentationProviderLike");
 		expect(source).toContain(
-			"instrumentationProvider: loaderConfig?.instrumentationProvider",
+			"instrumentationProvider: resolvedInstrumentationProvider",
 		);
 	});
 

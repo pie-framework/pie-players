@@ -32,6 +32,22 @@ import { ResourceMonitor } from "./resource-monitor.js";
 // Default maximum retry delay (matches ResourceMonitor default)
 const DEFAULT_MAX_RETRY_DELAY = 5000;
 
+function isInstrumentationProviderLike(
+	value: unknown,
+): value is NonNullable<LoaderConfig["instrumentationProvider"]> {
+	if (!value || typeof value !== "object") return false;
+	const candidate = value as Record<string, unknown>;
+	return (
+		typeof candidate.providerId === "string" &&
+		typeof candidate.providerName === "string" &&
+		typeof candidate.initialize === "function" &&
+		typeof candidate.trackError === "function" &&
+		typeof candidate.trackEvent === "function" &&
+		typeof candidate.destroy === "function" &&
+		typeof candidate.isReady === "function"
+	);
+}
+
 /**
  * Svelte 5 composable for resource monitoring
  *
@@ -69,13 +85,27 @@ export function useResourceMonitor(
 		const resolvedRetryDelay =
 			loaderConfig?.resourceRetryDelay ??
 			DEFAULT_LOADER_CONFIG.resourceRetryDelay;
+		const resolvedInstrumentationProvider = isInstrumentationProviderLike(
+			loaderConfig?.instrumentationProvider,
+		)
+			? loaderConfig?.instrumentationProvider
+			: undefined;
+		if (
+			debugEnabled &&
+			loaderConfig?.instrumentationProvider &&
+			!resolvedInstrumentationProvider
+		) {
+			logger.warn(
+				`Ignoring invalid instrumentation provider for ${componentName}; expected InstrumentationProvider contract`,
+			);
+		}
 		const nextConfigKey = JSON.stringify({
 			trackPageActions: resolvedTrackPageActions,
 			maxRetries: resolvedMaxRetries,
 			retryDelay: resolvedRetryDelay,
 			debugEnabled,
 		});
-		const providerChanged = activeProvider !== loaderConfig?.instrumentationProvider;
+		const providerChanged = activeProvider !== resolvedInstrumentationProvider;
 		const hostChanged = activeHostElement !== hostElement;
 		const configChanged = monitorConfigKey !== nextConfigKey;
 		const shouldReinitialize =
@@ -112,14 +142,14 @@ export function useResourceMonitor(
 				trackPageActions: resolvedTrackPageActions,
 				maxRetries: resolvedMaxRetries,
 				retryDelay: resolvedRetryDelay,
-				hasCustomProvider: !!loaderConfig?.instrumentationProvider,
+				hasCustomProvider: !!resolvedInstrumentationProvider,
 				hasContainer: !!hostElement,
 			});
 
 			// Create and start resource monitor with config from loaderConfig
 			monitor = new ResourceMonitor({
 				trackPageActions: resolvedTrackPageActions,
-				instrumentationProvider: loaderConfig?.instrumentationProvider,
+				instrumentationProvider: resolvedInstrumentationProvider,
 				maxRetries: resolvedMaxRetries,
 				initialRetryDelay: resolvedRetryDelay,
 				maxRetryDelay: DEFAULT_MAX_RETRY_DELAY,
@@ -129,12 +159,12 @@ export function useResourceMonitor(
 			monitor.start(hostElement);
 			isInitialized = true;
 			activeHostElement = hostElement;
-			activeProvider = loaderConfig?.instrumentationProvider;
+			activeProvider = resolvedInstrumentationProvider;
 			monitorConfigKey = nextConfigKey;
 			logger.info(
 				`✅ Resource monitoring enabled for ${componentName}` +
 					(resolvedTrackPageActions
-						? loaderConfig?.instrumentationProvider
+						? resolvedInstrumentationProvider
 							? " (with custom instrumentation provider)"
 							: " (with New Relic tracking)"
 						: " (retry only)"),

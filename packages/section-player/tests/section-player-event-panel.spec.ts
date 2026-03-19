@@ -607,10 +607,10 @@ test.describe("section player controller event panel", () => {
 			.locator('pie-item-shell[data-pie-shell-root="item"]')
 			.first();
 		const passageTtsControls = passageRegion.getByRole("button", {
-			name: /Read aloud|Open reading controls/i,
+			name: /Read aloud|Play reading|Pause reading|Resume reading|Open reading controls/i,
 		});
 		const itemTtsControls = firstItemShell.getByRole("button", {
-			name: /Read aloud|Open reading controls/i,
+			name: /Read aloud|Play reading|Pause reading|Resume reading|Open reading controls/i,
 		});
 		await expect(passageTtsControls.first()).toBeVisible();
 		await expect(itemTtsControls.first()).toBeVisible();

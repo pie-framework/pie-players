@@ -47,6 +47,22 @@
 	// Level 4: CE setup plus controller JS API subscriptions.
 	const toolkitToolsConfig = {
 		providers: {
+			tts: {
+				enabled: true,
+				backend: 'polly',
+				serverProvider: 'polly',
+				apiEndpoint: '/api/tts',
+				transportMode: 'pie',
+				endpointMode: 'synthesizePath',
+				endpointValidationMode: 'voices',
+				defaultVoice: 'Joanna',
+				language: 'en-US',
+				rate: 1,
+				engine: 'neural',
+				sampleRate: 24000,
+				format: 'mp3',
+				speechMarksMode: 'word'
+			},
 			calculator: {
 				authFetcher: fetchDesmosAuthConfig
 			},

@@ -56,7 +56,6 @@ export interface ToolbarContext {
 	toggleTool: (toolId: string) => void;
 	isToolVisible: (toolId: string) => boolean;
 	subscribeVisibility: ((listener: () => void) => (() => void)) | null;
-	ensureTTSReady: (() => Promise<void>) | null;
 	componentOverrides?: ToolComponentOverrides;
 }
 

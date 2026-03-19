@@ -455,7 +455,6 @@ describe("ToolRegistry", () => {
 			toggleTool: () => {},
 			isToolVisible: () => false,
 			subscribeVisibility: null,
-			ensureTTSReady: null,
 		};
 
 		test("renders toolbar output for registered tool", () => {

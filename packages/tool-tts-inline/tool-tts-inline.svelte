@@ -38,7 +38,7 @@
 	const isBrowser = typeof window !== 'undefined';
 
 	let containerEl = $state<HTMLDivElement | undefined>();
-	let panelEl = $state<HTMLDivElement | undefined>();
+	let toolbarEl = $state<HTMLDivElement | undefined>();
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
 	let shellContext = $state<AssessmentToolkitShellContext | null>(null);
 	let regionScopeContext = $state<AssessmentToolkitRegionScopeContext | null>(null);
@@ -49,14 +49,13 @@
 	const targetContainer = $derived(
 		regionScopeContext?.scopeElement || shellContext?.scopeElement || null,
 	);
-	let panelOpen = $state(false);
+	let controlsVisible = $state(false);
 	let speaking = $state(false);
 	let paused = $state(false);
 	let statusMessage = $state('');
 	let playbackRate = $state(1);
 	let focusedControlIndex = $state(0);
-	let ttsReady = $state(false);
-	const STATIC_CONTROL_COUNT = 4;
+	let playActionInFlight = $state(false);
 	const speedChoices = $derived.by(() => {
 		if (!Array.isArray(speedOptions)) return [1.5, 2];
 		const deduped = new Set<number>();
@@ -66,7 +65,7 @@
 			if (rounded === 1) continue;
 			deduped.add(rounded);
 		}
-		return deduped.size ? Array.from(deduped) : [1.5, 2];
+		return deduped.size ? Array.from(deduped).sort((a, b) => b - a) : [2, 1.5];
 	});
 
 	const listenerId = `pie-tts-inline-${Math.random().toString(36).slice(2)}`;
@@ -101,6 +100,13 @@
 	$effect(() => {
 		if (!ttsService) return;
 		const syncFromState = (state: string) => {
+			// Keep trigger state instance-scoped: only the instance with visible controls
+			// reflects the shared TTS service playback state.
+			if (!controlsVisible) {
+				speaking = false;
+				paused = false;
+				return;
+			}
 			speaking = state === 'playing' || state === 'paused';
 			paused = state === 'paused';
 		};
@@ -114,33 +120,21 @@
 		};
 	});
 
-	$effect(() => {
-		let cancelled = false;
-		const initializeTTS = async () => {
-			if (!runtimeContext?.toolkitCoordinator?.ensureTTSReady) {
-				ttsReady = !!ttsService;
-				return;
-			}
-			try {
-				await runtimeContext.toolkitCoordinator.ensureTTSReady();
-				if (!cancelled) ttsReady = true;
-			} catch (error) {
-				if (!cancelled) {
-					ttsReady = false;
-					console.error('[TTS Inline] Failed to initialize TTS:', error);
-				}
-			}
-		};
-		void initializeTTS();
-		return () => {
-			cancelled = true;
-		};
-	});
+	async function ensureTTSReady(): Promise<boolean> {
+		if (!ttsService) return false;
+		try {
+			await runtimeContext?.toolkitCoordinator?.ensureTTSReady?.();
+			return true;
+		} catch (error) {
+			console.error('[TTS Inline] Failed to initialize TTS:', error);
+			return false;
+		}
+	}
 
 	function getToolbarControls(): HTMLButtonElement[] {
-		if (!panelEl) return [];
+		if (!toolbarEl) return [];
 		return Array.from(
-			panelEl.querySelectorAll<HTMLButtonElement>('[data-pie-tts-control]'),
+			toolbarEl.querySelectorAll<HTMLButtonElement>('[data-pie-tts-control]'),
 		);
 	}
 
@@ -177,13 +171,6 @@
 		}
 	}
 
-	function togglePanel(): void {
-		panelOpen = !panelOpen;
-		if (panelOpen) {
-			queueMicrotask(() => focusToolbarControl(focusedControlIndex));
-		}
-	}
-
 	function resolveReadingTarget(): Element | null {
 		if (!targetContainer) return null;
 		const asElement = targetContainer as Element;
@@ -197,17 +184,13 @@
 
 	async function startSpeaking(): Promise<void> {
 		if (!ttsService) return;
-		if (!ttsReady) {
-			statusMessage = 'Text-to-speech is still initializing';
-			return;
-		}
 		const readingTarget = resolveReadingTarget();
 		if (!readingTarget) {
 			console.warn('[TTS Inline] No target container found from shell scope context');
 			return;
 		}
 		try {
-			panelOpen = true;
+			controlsVisible = true;
 			const text = (readingTarget as HTMLElement).textContent || '';
 			if (!text) {
 				console.warn('[TTS Inline] No text content found');
@@ -245,13 +228,27 @@
 			statusMessage = 'Reading paused';
 			return;
 		}
-		await startSpeaking();
+		if (playActionInFlight) return;
+		playActionInFlight = true;
+		try {
+			statusMessage = 'Initializing text-to-speech';
+			if (!(await ensureTTSReady())) {
+				statusMessage = 'Unable to initialize text-to-speech. Try again.';
+				return;
+			}
+			await startSpeaking();
+		} finally {
+			playActionInFlight = false;
+		}
 	}
 
 	function handleStop() {
 		if (!ttsService) return;
 		ttsService.stop();
-		panelOpen = false;
+		controlsVisible = false;
+		speaking = false;
+		paused = false;
+		focusedControlIndex = 0;
 		statusMessage = 'Reading stopped';
 		if (highlightCoordinator) {
 			highlightCoordinator.clearTTS();
@@ -305,64 +302,60 @@
 		<button
 			type="button"
 			class="pie-tool-tts-inline__trigger {sizeClass}"
-			class:pie-tool-tts-inline__trigger--active={panelOpen}
-			onclick={togglePanel}
-			aria-label={panelOpen ? 'Close reading controls' : 'Open reading controls'}
-			aria-expanded={panelOpen}
-			disabled={!ttsService || !ttsReady}
+			class:pie-tool-tts-inline__trigger--active={controlsVisible}
+			onclick={handlePlayPause}
+			aria-label={speaking && !paused ? 'Pause reading' : paused ? 'Resume reading' : 'Play reading'}
+			disabled={!ttsService || playActionInFlight}
 		>
-			<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="pie-tool-tts-inline__icon" aria-hidden="true">
-				<path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" />
-			</svg>
+			{#if speaking && !paused}
+				<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="pie-tool-tts-inline__icon" aria-hidden="true">
+					<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+				</svg>
+			{:else}
+				<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="pie-tool-tts-inline__icon" aria-hidden="true">
+					<path d="M8 5v14l11-7z" />
+				</svg>
+			{/if}
 		</button>
 
-		{#if panelOpen}
+		{#if controlsVisible}
 			<div
-				bind:this={panelEl}
+				bind:this={toolbarEl}
 				class="pie-tool-tts-inline__panel"
 				role="toolbar"
 				aria-label="Reading controls"
 				tabindex="-1"
 				onkeydown={handleToolbarKeydown}
 			>
-				<button
-					type="button"
-					data-pie-tts-control
-					class="pie-tool-tts-inline__control pie-tool-tts-inline__control--primary"
-					onclick={handlePlayPause}
-					onfocus={() => (focusedControlIndex = 0)}
-					tabindex={focusedControlIndex === 0 ? 0 : -1}
-					aria-label={paused ? 'Resume reading' : speaking ? 'Pause reading' : 'Read aloud'}
-					aria-pressed={speaking}
-					disabled={!ttsService || !ttsReady}
-				>
-					{#if paused}
-						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="pie-tool-tts-inline__icon" aria-hidden="true">
-							<path d="M8 5v14l11-7z" />
-						</svg>
-					{:else if speaking}
-						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="pie-tool-tts-inline__icon" aria-hidden="true">
-							<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
-						</svg>
-					{:else}
-						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="pie-tool-tts-inline__icon" aria-hidden="true">
-							<path d="M8 5v14l11-7z" />
-						</svg>
-					{/if}
-				</button>
+				{#each speedChoices as speed, speedIdx (speed)}
+					<button
+						type="button"
+						data-pie-tts-control
+						class="pie-tool-tts-inline__control pie-tool-tts-inline__control--speed"
+						class:pie-tool-tts-inline__control--speed-active={playbackRate === speed}
+						onclick={() => handlePlaybackRate(speed)}
+						onfocus={() => (focusedControlIndex = speedIdx)}
+						tabindex={focusedControlIndex === speedIdx ? 0 : -1}
+						aria-label={`Speed ${speed}x`}
+						aria-pressed={playbackRate === speed}
+						disabled={!ttsService}
+					>
+						<span aria-hidden="true">{speed}x</span>
+					</button>
+				{/each}
 
 				<button
 					type="button"
 					data-pie-tts-control
 					class="pie-tool-tts-inline__control"
-					onclick={handleStop}
-					onfocus={() => (focusedControlIndex = 1)}
-					tabindex={focusedControlIndex === 1 ? 0 : -1}
-					aria-label="Stop reading"
-					disabled={!ttsService || !ttsReady || (!speaking && !paused)}
+					onclick={handleSeekBackward}
+					onfocus={() => (focusedControlIndex = speedChoices.length)}
+					tabindex={focusedControlIndex === speedChoices.length ? 0 : -1}
+					aria-label="Rewind"
+					disabled={!ttsService || !speaking}
 				>
 					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="pie-tool-tts-inline__icon" aria-hidden="true">
-						<path d="M6 6h12v12H6z" />
+						<path d="M20 18V6l-8.5 6L20 18zM10.5 18V6L2 12l8.5 6z" />
 					</svg>
 				</button>
 
@@ -371,10 +364,10 @@
 					data-pie-tts-control
 					class="pie-tool-tts-inline__control"
 					onclick={handleSeekForward}
-					onfocus={() => (focusedControlIndex = 2)}
-					tabindex={focusedControlIndex === 2 ? 0 : -1}
+					onfocus={() => (focusedControlIndex = speedChoices.length + 1)}
+					tabindex={focusedControlIndex === speedChoices.length + 1 ? 0 : -1}
 					aria-label="Fast-forward"
-					disabled={!ttsService || !ttsReady || !speaking}
+					disabled={!ttsService || !speaking}
 				>
 					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="pie-tool-tts-inline__icon" aria-hidden="true">
 						<path d="M4 18l8.5-6L4 6v12zm9.5 0L22 12l-8.5-6v12z" />
@@ -385,33 +378,16 @@
 					type="button"
 					data-pie-tts-control
 					class="pie-tool-tts-inline__control"
-					onclick={handleSeekBackward}
-					onfocus={() => (focusedControlIndex = 3)}
-					tabindex={focusedControlIndex === 3 ? 0 : -1}
-					aria-label="Rewind"
-					disabled={!ttsService || !ttsReady || !speaking}
+					onclick={handleStop}
+					onfocus={() => (focusedControlIndex = speedChoices.length + 2)}
+					tabindex={focusedControlIndex === speedChoices.length + 2 ? 0 : -1}
+					aria-label="Stop reading"
+					disabled={!ttsService || (!speaking && !paused)}
 				>
 					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="pie-tool-tts-inline__icon" aria-hidden="true">
-						<path d="M20 18V6l-8.5 6L20 18zM10.5 18V6L2 12l8.5 6z" />
+						<path d="M6 6h12v12H6z" />
 					</svg>
 				</button>
-
-				{#each speedChoices as speed, speedIdx (speed)}
-					<button
-						type="button"
-						data-pie-tts-control
-						class="pie-tool-tts-inline__control pie-tool-tts-inline__control--speed"
-						class:pie-tool-tts-inline__control--speed-active={playbackRate === speed}
-						onclick={() => handlePlaybackRate(speed)}
-						onfocus={() => (focusedControlIndex = STATIC_CONTROL_COUNT + speedIdx)}
-						tabindex={focusedControlIndex === STATIC_CONTROL_COUNT + speedIdx ? 0 : -1}
-						aria-label={`Speed ${speed}x`}
-						aria-pressed={playbackRate === speed}
-						disabled={!ttsService || !ttsReady}
-					>
-						<span aria-hidden="true">{speed} x</span>
-					</button>
-				{/each}
 			</div>
 		{/if}
 
@@ -424,7 +400,8 @@
 <style>
 	.pie-tool-tts-inline {
 		position: relative;
-		display: inline-block;
+		display: inline-flex;
+		align-items: center;
 	}
 
 	.pie-tool-tts-inline__trigger {
@@ -469,20 +446,20 @@
 	.pie-tool-tts-inline__panel {
 		position: absolute;
 		z-index: 2;
-		top: calc(100% + 0.5rem);
+		top: 100%;
 		right: 0;
 		left: auto;
-		transform-origin: top right;
-		display: grid;
-		grid-auto-flow: row;
-		justify-items: center;
+		display: inline-flex;
+		flex-wrap: nowrap;
+		align-items: center;
+		justify-content: flex-end;
 		gap: 0.25rem;
-		padding: 0.5rem;
-		min-width: 3rem;
+		box-sizing: border-box;
+		height: var(--pie-tts-controls-row-height, 2.875rem);
+		padding: 0 0.5rem;
 		background: var(--pie-surface, var(--pie-background, #fff));
 		border: 1px solid var(--pie-border, #d0d0d0);
-		border-radius: 0.75rem;
-		box-shadow: 0 6px 18px color-mix(in srgb, var(--pie-shadow, #000) 18%, transparent);
+		border-radius: 0.5rem;
 	}
 
 	.pie-tool-tts-inline__control {

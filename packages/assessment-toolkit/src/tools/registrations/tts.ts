@@ -172,14 +172,6 @@ export const ttsToolRegistration: ToolRegistration = {
 				element.setAttribute("size", resolveControlSize());
 				(element as HTMLElement & { speedOptions?: number[] }).speedOptions =
 					resolveElementSpeedOptions();
-				if (toolbarContext.ensureTTSReady) {
-					void toolbarContext.ensureTTSReady().catch((error: unknown) => {
-						console.error(
-							"[ttsToolRegistration] Failed to initialize TTS service:",
-							error,
-						);
-					});
-				}
 			},
 		};
 	},

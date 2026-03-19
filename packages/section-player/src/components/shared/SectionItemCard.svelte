@@ -5,6 +5,8 @@
 		shadow: "none",
 		props: {
 			item: { type: "Object", reflect: false },
+			itemIndex: { attribute: "item-index", type: "Number" },
+			itemCount: { attribute: "item-count", type: "Number" },
 			canonicalItemId: { attribute: "canonical-item-id", type: "String" },
 			resolvedPlayerTag: { attribute: "resolved-player-tag", type: "String" },
 			playerAction: { type: "Object", reflect: false },
@@ -19,7 +21,6 @@
 	import "../item-shell-element.js";
 	import "@pie-players/pie-toolbars/components/item-toolbar-element";
 	import type { ItemEntity } from "@pie-players/pie-players-shared/types";
-	import { getEntityTitle } from "./composition.js";
 	import type { PlayerElementParams } from "./player-action.js";
 	import {
 		connectSectionPlayerCardRenderContext,
@@ -29,6 +30,8 @@
 
 	let {
 		item,
+		itemIndex = 0,
+		itemCount = 1,
 		canonicalItemId,
 		resolvedPlayerTag = "div",
 		playerAction = (_node: HTMLElement, _params: PlayerElementParams) => undefined,
@@ -36,6 +39,8 @@
 		itemToolbarTools,
 	} = $props<{
 		item: ItemEntity;
+		itemIndex?: number;
+		itemCount?: number;
 		canonicalItemId: string;
 		resolvedPlayerTag?: string;
 		playerAction?: (node: HTMLElement, params: PlayerElementParams) => unknown;
@@ -57,6 +62,11 @@
 	const effectivePlayerAction = $derived(
 		(contextConnected ? contextPlayerAction : null) || playerAction,
 	);
+	const itemPosition = $derived(
+		Number.isFinite(itemIndex) ? Math.max(0, Number(itemIndex)) + 1 : 1,
+	);
+	const totalItems = $derived(Number.isFinite(itemCount) ? Math.max(1, Number(itemCount)) : 1);
+	const headerTitle = $derived(totalItems > 1 ? `Question ${itemPosition}` : "Question");
 
 	function resetContextOverrides(): void {
 		contextConnected = false;
@@ -101,9 +111,7 @@
 			class="pie-section-player-content-card-header pie-section-player-item-header pie-section-player__item-header"
 			data-region="header"
 		>
-			{#if getEntityTitle(item)}
-				<h2>{getEntityTitle(item)}</h2>
-			{/if}
+			<h2>{headerTitle}</h2>
 			<pie-item-toolbar
 				item-id={item.id}
 				catalog-id={item.id}
@@ -140,7 +148,7 @@
 
 	.pie-section-player-content-card-header {
 		display: flex;
-		align-items: center;
+		align-items: flex-start;
 		gap: 0.75rem;
 		padding: 0.75rem 1rem;
 		border-bottom: 1px solid var(--pie-border-light, #e5e7eb);

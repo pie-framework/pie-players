@@ -17,7 +17,6 @@
 	import { onMount } from "svelte";
 	import "../passage-shell-element.js";
 	import "@pie-players/pie-toolbars/components/item-toolbar-element";
-	import { getEntityTitle } from "./composition.js";
 	import type { PassageEntity } from "@pie-players/pie-players-shared/types";
 	import type { PlayerElementParams } from "./player-action.js";
 	import {
@@ -97,9 +96,7 @@
 			class="pie-section-player-content-card-header pie-section-player-passage-header pie-section-player__passage-header"
 			data-region="header"
 		>
-			{#if getEntityTitle(passage)}
-				<h2>{getEntityTitle(passage)}</h2>
-			{/if}
+			<h2>Passage</h2>
 			<pie-item-toolbar
 				item-id={passage.id}
 				catalog-id={passage.id}
@@ -135,7 +132,7 @@
 
 	.pie-section-player-content-card-header {
 		display: flex;
-		align-items: center;
+		align-items: flex-start;
 		gap: 0.75rem;
 		padding: 0.75rem 1rem;
 		border-bottom: 1px solid var(--pie-border-light, #e5e7eb);

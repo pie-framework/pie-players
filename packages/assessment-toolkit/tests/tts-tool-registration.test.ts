@@ -59,7 +59,6 @@ describe("ttsToolRegistration speed options", () => {
 			toggleTool: () => {},
 			isToolVisible: () => false,
 			subscribeVisibility: null,
-			ensureTTSReady: null,
 		};
 
 		const renderResult = withFakeDocument(() =>
@@ -90,7 +89,6 @@ describe("ttsToolRegistration speed options", () => {
 			toggleTool: () => {},
 			isToolVisible: () => false,
 			subscribeVisibility: null,
-			ensureTTSReady: null,
 		};
 
 		const renderResult = withFakeDocument(() =>
@@ -119,7 +117,6 @@ describe("ttsToolRegistration speed options", () => {
 			toggleTool: () => {},
 			isToolVisible: () => false,
 			subscribeVisibility: null,
-			ensureTTSReady: null,
 		};
 
 		const firstRender = withFakeDocument(() =>
@@ -155,7 +152,6 @@ describe("ttsToolRegistration speed options", () => {
 			toggleTool: () => {},
 			isToolVisible: () => false,
 			subscribeVisibility: null,
-			ensureTTSReady: null,
 		};
 
 		const firstRender = withFakeDocument(() =>
@@ -171,5 +167,40 @@ describe("ttsToolRegistration speed options", () => {
 		);
 		const secondElement = secondRender?.elements?.[0]?.element;
 		expect(secondElement).not.toBe(firstElement as any);
+	});
+
+	test("sync remains pure and does not initialize TTS", () => {
+		let ensureCalls = 0;
+		const toolbarContext: ToolbarContext = {
+			scope: {
+				level: "item",
+				scopeId: "item-sync-pure",
+				itemId: "item-sync-pure",
+			},
+			itemId: "item-sync-pure",
+			catalogId: "item-sync-pure",
+			language: "en-US",
+			toolCoordinator: null,
+			toolkitCoordinator: {
+				getToolConfig: () => ({
+					settings: { speedOptions: [1.5, 2] },
+				}),
+				ensureTTSReady: async () => {
+					ensureCalls += 1;
+				},
+			} as any,
+			ttsService: null,
+			elementToolStateStore: null,
+			toggleTool: () => {},
+			isToolVisible: () => false,
+			subscribeVisibility: null,
+		};
+
+		const renderResult = withFakeDocument(() =>
+			ttsToolRegistration.renderToolbar(itemContext, toolbarContext),
+		);
+		expect(renderResult).not.toBeNull();
+		renderResult?.sync?.();
+		expect(ensureCalls).toBe(0);
 	});
 });

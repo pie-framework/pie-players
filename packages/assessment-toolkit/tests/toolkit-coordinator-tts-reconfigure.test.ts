@@ -132,4 +132,47 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 		expect(capturedConfig?.apiEndpoint).toBe("/api/tts");
 		expect(coordinator.getInitStatus().coordinator).toBe(true);
 	});
+
+	test("retries initialization after a failed ensureTTSReady attempt", async () => {
+		const coordinator = new ToolkitCoordinator({
+			assessmentId: "tts-retry-after-failure-test",
+			lazyInit: true,
+		});
+
+		const internals = coordinator as any;
+		let attempts = 0;
+		internals._initializeTTS = async () => {
+			attempts += 1;
+			if (attempts === 1) {
+				throw new Error("simulated init failure");
+			}
+			internals.ttsInitialized = true;
+		};
+
+		await expect(coordinator.ensureTTSReady()).rejects.toThrow("simulated init failure");
+		expect(internals.ttsInitialized).toBe(false);
+
+		await coordinator.ensureTTSReady();
+		expect(attempts).toBe(2);
+		expect(internals.ttsInitialized).toBe(true);
+	});
+
+	test("dedupes concurrent ensureTTSReady calls to a single initialization", async () => {
+		const coordinator = new ToolkitCoordinator({
+			assessmentId: "tts-concurrent-ensure-dedupe-test",
+			lazyInit: true,
+		});
+
+		const internals = coordinator as any;
+		let initCalls = 0;
+		internals._initializeTTS = async () => {
+			initCalls += 1;
+			await new Promise((resolve) => setTimeout(resolve, 10));
+			internals.ttsInitialized = true;
+		};
+
+		await Promise.all([coordinator.ensureTTSReady(), coordinator.ensureTTSReady()]);
+		expect(initCalls).toBe(1);
+		expect(internals.ttsInitialized).toBe(true);
+	});
 });

@@ -173,6 +173,17 @@ const MAX_TEXT_LENGTH_BY_MODE: Record<TransportAdapter["id"], number> = {
 
 const trimTrailingSlash = (value: string): string => value.replace(/\/+$/, "");
 
+const resolveVoicesValidationUrl = (
+	config: ServerTTSProviderConfig,
+): string => {
+	const base = trimTrailingSlash(config.apiEndpoint);
+	const provider = (config.provider || "").toLowerCase();
+	if (provider === "polly" || provider === "google") {
+		return `${base}/${provider}/voices`;
+	}
+	return `${base}/voices`;
+};
+
 const resolveTransportMode = (
 	config: ServerTTSProviderConfig,
 ): TransportAdapter["id"] => {
@@ -937,10 +948,9 @@ export class ServerTTSProvider implements ITTSProvider {
 				clearTimeout(timeoutId);
 				return true;
 			}
-			const base = trimTrailingSlash(this.config.apiEndpoint);
 			const validationUrl =
 				mode === "voices"
-					? `${base}/voices`
+					? resolveVoicesValidationUrl(this.config)
 					: this.adapter.resolveSynthesisUrl(this.config);
 			const method = mode === "voices" ? "GET" : "OPTIONS";
 			try {

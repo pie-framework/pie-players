@@ -47,6 +47,7 @@ const applyRuntimeDefaults = (
 		apiEndpoint: withDefault(config.apiEndpoint, "/api/tts"),
 		transportMode: withDefault(config.transportMode, "pie"),
 		endpointValidationMode: withDefault(config.endpointValidationMode, "voices"),
+		validateEndpoint: withDefault(config.validateEndpoint, true),
 		includeAuthOnAssetFetch: withDefault(config.includeAuthOnAssetFetch, false),
 		rate: withDefault(config.rate, 1.0),
 		language: withDefault(config.language, "en-US"),

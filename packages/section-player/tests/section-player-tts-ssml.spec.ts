@@ -381,6 +381,98 @@ test.describe("section player demo tts-ssml", () => {
 		await page.keyboard.press("Enter");
 	});
 
+	test("applies Polly backend and routes playback through server synthesis", async ({
+		page,
+	}) => {
+		await gotoDemo(page);
+		await openSessionPanel(page);
+
+		await page.route("**/api/tts/polly/voices**", async (route) => {
+			await route.fulfill({
+				status: 200,
+				contentType: "application/json",
+				body: JSON.stringify({
+					voices: [
+						{
+							id: "Joanna",
+							name: "Joanna",
+							languageCode: "en-US",
+							gender: "female",
+						},
+					],
+				}),
+			});
+		});
+
+		await page.route("**/api/tts/synthesize", async (route) => {
+			const request = route.request();
+			const payload = request.postDataJSON() as Record<string, unknown>;
+			expect(payload.provider).toBe("polly");
+			await route.fulfill({
+				status: 200,
+				contentType: "application/json",
+				body: JSON.stringify({
+					audio: "",
+					contentType: "audio/mpeg",
+					speechMarks: [],
+					metadata: {
+						providerId: "aws-polly",
+						voice: "Joanna",
+						duration: 0,
+						charCount: 12,
+						cached: false,
+					},
+				}),
+			});
+		});
+
+		const ttsSettingsToggle = page.getByRole("button", {
+			name: "Toggle TTS settings panel",
+		});
+		await ttsSettingsToggle.click();
+		const ttsDialog = page.locator(".pie-tts-dialog");
+		await expect(ttsDialog.getByRole("heading", { name: "TTS settings" })).toBeVisible();
+		await ttsDialog.getByRole("button", { name: "Polly" }).click();
+		await ttsDialog.getByRole("button", { name: "Recheck" }).click();
+		await expect(
+			ttsDialog.getByText(/AWS Polly available/i),
+		).toBeVisible({ timeout: 10_000 });
+		await ttsDialog.getByRole("button", { name: "Apply" }).click();
+		await expect(ttsDialog).toHaveCount(0);
+
+		const providerSnapshot = await page
+			.locator("pie-section-player-tools-session-debugger")
+			.evaluate((element) => {
+				const coordinator = (element as any).toolkitCoordinator;
+				return {
+					backend: coordinator?.getToolConfig?.("tts")?.backend || null,
+					providerId: coordinator?.ttsService?.currentProvider?.providerId || null,
+				};
+			});
+		expect(providerSnapshot.backend).toBe("polly");
+		expect(providerSnapshot.providerId).toBe("server-tts");
+
+		const passageInlineTts = page
+			.getByRole("complementary", { name: "Passages" })
+			.locator("pie-tool-tts-inline:visible")
+			.first();
+		await expect(passageInlineTts).toBeVisible();
+		await passageInlineTts
+			.getByRole("button", { name: "Open reading controls" })
+			.click();
+		const passagePanel = passageInlineTts.locator(
+			'[role="toolbar"][aria-label="Reading controls"]',
+		);
+		await expect(passagePanel).toBeVisible();
+		const synthRequest = page.waitForRequest(
+			(request) =>
+				request.url().includes("/api/tts/synthesize") &&
+				request.method() === "POST",
+		);
+		await passagePanel.getByRole("button", { name: "Read aloud" }).click();
+		await synthRequest;
+	});
+
 	test("keeps baseline a11y regressions in check", async ({ page }) => {
 		await gotoDemo(page);
 

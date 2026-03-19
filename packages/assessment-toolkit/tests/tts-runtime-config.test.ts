@@ -32,6 +32,7 @@ describe("tts-runtime-config defaults", () => {
 			language: "en-US",
 			transportMode: "pie",
 			endpointValidationMode: "voices",
+			validateEndpoint: true,
 			includeAuthOnAssetFetch: false,
 		});
 		expect(runtimeConfig.providerOptions).toMatchObject({
@@ -63,6 +64,7 @@ describe("tts-runtime-config defaults", () => {
 			language: "en-US",
 			transportMode: "pie",
 			endpointValidationMode: "voices",
+			validateEndpoint: true,
 			includeAuthOnAssetFetch: false,
 		});
 		expect(runtimeConfig.providerOptions).toMatchObject({
@@ -83,6 +85,7 @@ describe("tts-runtime-config defaults", () => {
 			speechMarksMode: "word",
 			transportMode: "custom",
 			endpointValidationMode: "none",
+			validateEndpoint: false,
 			includeAuthOnAssetFetch: true,
 		} as any);
 		const backend = resolveTTSBackend(settings);
@@ -98,6 +101,7 @@ describe("tts-runtime-config defaults", () => {
 			language: "es-ES",
 			transportMode: "custom",
 			endpointValidationMode: "none",
+			validateEndpoint: false,
 			includeAuthOnAssetFetch: true,
 		});
 		expect(runtimeConfig.providerOptions).toMatchObject({

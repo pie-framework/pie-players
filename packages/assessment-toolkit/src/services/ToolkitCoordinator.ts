@@ -388,6 +388,7 @@ export class ToolkitCoordinator {
 	/** Track TTS initialization state */
 	private ttsInitialized = false;
 	private ttsInitPromise?: Promise<void>;
+	private ttsReconfigurePromise?: Promise<void>;
 	private stateLoaded = false;
 	private stateLoadPromise?: Promise<void>;
 	private coordinatorReadyPromise?: Promise<void>;
@@ -1317,12 +1318,21 @@ export class ToolkitCoordinator {
 	 * Initialize TTS service with provider
 	 */
 	public async ensureTTSReady(config?: TTSToolConfig): Promise<void> {
+		await this.waitForPendingTTSReconfigure();
 		if (this.ttsInitialized) return;
 		if (this.ttsInitPromise) return this.ttsInitPromise;
 		this.ttsInitPromise = this._initializeTTS(config).finally(() => {
 			this.ttsInitPromise = undefined;
 		});
 		return this.ttsInitPromise;
+	}
+
+	private async waitForPendingTTSReconfigure(): Promise<void> {
+		let pending = this.ttsReconfigurePromise;
+		while (pending) {
+			await pending;
+			pending = this.ttsReconfigurePromise;
+		}
 	}
 
 	private async _initializeTTS(config?: TTSToolConfig): Promise<void> {
@@ -1425,10 +1435,7 @@ export class ToolkitCoordinator {
 	}
 
 	private resolveTTSToolConfig(config?: TTSToolConfig): TTSToolConfig {
-		return (
-			config ||
-			((this.config.tools?.providers?.tts as TTSToolConfig | undefined) || {})
-		);
+		return config || this.getTTSConfigFromProviders() || {};
 	}
 
 	private async initializeTTSService(
@@ -1487,9 +1494,7 @@ export class ToolkitCoordinator {
 		if (this.coordinatorReadyPromise) return this.coordinatorReadyPromise;
 		this.coordinatorReadyPromise = (async () => {
 			await this.ensureStateLoaded();
-			const ttsConfig = this.config.tools?.providers?.tts as
-				| TTSToolConfig
-				| undefined;
+			const ttsConfig = this.getTTSConfigFromProviders();
 			if (ttsConfig?.enabled !== false) {
 				await this.ensureTTSReady(ttsConfig);
 			}
@@ -1515,24 +1520,40 @@ export class ToolkitCoordinator {
 		for (const providerId of this.toolProviderRegistry.getProviderIds()) {
 			providers[providerId] = this.toolProviderRegistry.isInitialized(providerId);
 		}
+		const ttsConfig = this.getTTSConfigFromProviders();
 		return {
 			tts: this.ttsInitialized,
 			stateLoaded: this.stateLoaded || !this.hooks.loadToolState,
 			coordinator:
 				(this.stateLoaded || !this.hooks.loadToolState) &&
-				(this.ttsInitialized ||
-					(this.config.tools?.providers?.tts as TTSToolConfig | undefined)
-						?.enabled === false),
+				(this.ttsInitialized || ttsConfig?.enabled === false),
 			providers,
 		};
+	}
+
+	private getTTSConfigFromProviders(): TTSToolConfig | undefined {
+		const providers =
+			(this.config.tools as { providers?: Record<string, ToolProviderConfig | undefined> })
+				?.providers || {};
+		return (
+			(providers.textToSpeech as TTSToolConfig | undefined) ||
+			(providers.tts as TTSToolConfig | undefined)
+		);
 	}
 
 	private resolveProviderConfigKey(toolId: string): string {
 		const providers =
 			(this.config.tools as { providers?: Record<string, ToolProviderConfig | undefined> })
 				?.providers || {};
-		if (toolId in providers) return toolId;
-		return toolId;
+		const aliasCandidates: Record<string, string[]> = {
+			tts: ["textToSpeech", "tts"],
+			textToSpeech: ["textToSpeech", "tts"],
+		};
+		const candidates = aliasCandidates[toolId] || [toolId];
+		for (const candidate of candidates) {
+			if (candidate in providers) return candidate;
+		}
+		return candidates[0];
 	}
 
 	/**
@@ -1644,10 +1665,16 @@ export class ToolkitCoordinator {
 		// Apply configuration changes based on tool
 		switch (toolId) {
 			case "tts":
-				void this._reconfigureTTSProvider().then(async () => {
-					const ttsConfig = this.config.tools?.providers?.tts as
-						| TTSToolConfig
-						| undefined;
+			case "textToSpeech":
+				const reconfigurePromise = this._reconfigureTTSProvider();
+				this.ttsReconfigurePromise = reconfigurePromise;
+				void reconfigurePromise.finally(() => {
+					if (this.ttsReconfigurePromise === reconfigurePromise) {
+						this.ttsReconfigurePromise = undefined;
+					}
+				});
+				void reconfigurePromise.then(async () => {
+					const ttsConfig = this.getTTSConfigFromProviders();
 					if (!this.lazyInit && ttsConfig?.enabled !== false) {
 						await this.ensureTTSReady(ttsConfig);
 					}

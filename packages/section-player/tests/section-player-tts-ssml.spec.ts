@@ -193,18 +193,7 @@ test.describe("section player demo tts-ssml", () => {
 			await expect(passageSpeed15).toHaveAttribute("aria-pressed", "false");
 			await expect(passageSpeed2).toHaveAttribute("aria-pressed", "false");
 			await page.waitForTimeout(TTS_PREVIEW_MS);
-			await expect(
-				passageInlineTts.getByRole("button", { name: /Pause reading|Resume reading/ }),
-			).toBeVisible({ timeout: 15_000 });
-			await passageInlineTts.getByRole("button", { name: "Pause reading" }).click();
-			await expect(passageInlineTts.getByRole("button", { name: "Resume reading" })).toBeVisible({
-				timeout: 15_000,
-			});
 			await expect(passagePanel).toBeVisible();
-			await passageInlineTts.getByRole("button", { name: "Resume reading" }).click();
-			await expect(
-				passageInlineTts.getByRole("button", { name: /Pause reading|Resume reading/ }),
-			).toBeVisible({ timeout: 15_000 });
 			await passagePanel.getByRole("button", { name: "Stop reading" }).click();
 			await expect(passagePanel).toHaveCount(0);
 			const calcTopAfterStop = await itemCalculatorButton.evaluate((element) =>
@@ -216,17 +205,38 @@ test.describe("section player demo tts-ssml", () => {
 			expect(Math.abs(calcTopAfterStop - calcTopBefore)).toBeLessThanOrEqual(2);
 			expect(Math.abs(promptTopAfterStop - promptTopBefore)).toBeLessThanOrEqual(2);
 
-			// Item-level inline flow.
+			// Cross-instance inline flow: switching to another TTS trigger should close the current one first.
 			const itemTrigger = itemInlineTts.getByRole("button", { name: "Play reading" }).first();
-			await itemTrigger.click();
 			const itemPanel = itemInlineTts.locator('[role="toolbar"][aria-label="Reading controls"]');
-			await expect(itemPanel).toBeVisible();
+			await passageTrigger.click();
+			await expect(passagePanel).toBeVisible();
+			await page.waitForTimeout(TTS_PREVIEW_MS);
+			await itemTrigger.click();
+			await expect(itemPanel).toBeVisible({ timeout: 15_000 });
+			await expect(passagePanel).toHaveCount(0);
+
+			// Paused-owner handoff: paused session should also be closed before switching.
 			await page.waitForTimeout(TTS_PREVIEW_MS);
 			await expect(
 				itemInlineTts.getByRole("button", { name: /Pause reading|Resume reading/ }),
 			).toBeVisible({ timeout: 15_000 });
-			await itemPanel.getByRole("button", { name: "Stop reading" }).click();
-			await expect(itemPanel).toHaveCount(0);
+			const itemPauseButton = itemInlineTts.getByRole("button", { name: "Pause reading" });
+			const itemResumeButton = itemInlineTts.getByRole("button", { name: "Resume reading" });
+			if (await itemPauseButton.isVisible()) {
+				await itemPauseButton.click();
+				await passageTrigger.click();
+				await expect(passagePanel).toBeVisible({ timeout: 15_000 });
+				await expect(itemPanel).toHaveCount(0);
+			} else if (await itemResumeButton.isVisible()) {
+				await passageTrigger.click();
+				await expect(passagePanel).toBeVisible({ timeout: 15_000 });
+				await expect(itemPanel).toHaveCount(0);
+			}
+			await expect(
+				passageInlineTts.getByRole("button", { name: /Pause reading|Resume reading/ }),
+			).toBeVisible({ timeout: 15_000 });
+			await passagePanel.getByRole("button", { name: "Stop reading" }).click();
+			await expect(passagePanel).toHaveCount(0);
 
 			// Keyboard operability inside inline controls bar.
 			await passageTrigger.click();

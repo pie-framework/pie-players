@@ -36,6 +36,8 @@
 	} = $props();
 
 	const isBrowser = typeof window !== 'undefined';
+	const ACTIVE_OWNER_KEY = '__pie_tts_inline_active_owner__';
+	const OWNER_EVENT = 'pie-tts-inline-owner-change';
 
 	let containerEl = $state<HTMLDivElement | undefined>();
 	let toolbarEl = $state<HTMLDivElement | undefined>();
@@ -68,7 +70,51 @@
 		return deduped.size ? Array.from(deduped).sort((a, b) => b - a) : [2, 1.5];
 	});
 
+	const instanceId = `pie-tts-inline-instance-${Math.random().toString(36).slice(2)}`;
 	const listenerId = `pie-tts-inline-${Math.random().toString(36).slice(2)}`;
+
+	function getActiveOwnerId(): string | null {
+		if (!isBrowser) return null;
+		const value = (window as Window & { [ACTIVE_OWNER_KEY]?: unknown })[ACTIVE_OWNER_KEY];
+		return typeof value === 'string' ? value : null;
+	}
+
+	function isActiveOwner(): boolean {
+		return getActiveOwnerId() === instanceId;
+	}
+
+	function emitOwnerChange(ownerId: string | null, previousOwnerId: string | null): void {
+		if (!isBrowser) return;
+		window.dispatchEvent(
+			new CustomEvent(OWNER_EVENT, {
+				detail: { ownerId, previousOwnerId },
+			}),
+		);
+	}
+
+	function claimActiveOwner(): void {
+		if (!isBrowser) return;
+		const previousOwnerId = getActiveOwnerId();
+		if (previousOwnerId === instanceId) return;
+		(window as Window & { [ACTIVE_OWNER_KEY]?: unknown })[ACTIVE_OWNER_KEY] = instanceId;
+		emitOwnerChange(instanceId, previousOwnerId);
+	}
+
+	function releaseActiveOwner(): void {
+		if (!isBrowser) return;
+		const previousOwnerId = getActiveOwnerId();
+		if (previousOwnerId !== instanceId) return;
+		delete (window as Window & { [ACTIVE_OWNER_KEY]?: unknown })[ACTIVE_OWNER_KEY];
+		emitOwnerChange(null, instanceId);
+	}
+
+	function resetLocalPlaybackUi(status = '', keepControlsVisible = false): void {
+		speaking = false;
+		paused = false;
+		focusedControlIndex = 0;
+		controlsVisible = keepControlsVisible;
+		statusMessage = status;
+	}
 
 	$effect(() => {
 		if (!containerEl) return;
@@ -102,7 +148,7 @@
 		const syncFromState = (state: string) => {
 			// Keep trigger state instance-scoped: only the instance with visible controls
 			// reflects the shared TTS service playback state.
-			if (!controlsVisible) {
+			if (!controlsVisible || !isActiveOwner()) {
 				speaking = false;
 				paused = false;
 				return;
@@ -117,6 +163,30 @@
 		syncFromState(ttsService.getState() as unknown as string);
 		return () => {
 			ttsService.offStateChange(listenerId, stateListener as (state: any) => void);
+		};
+	});
+
+	$effect(() => {
+		if (!isBrowser) return;
+		const ownerListener = (event: Event) => {
+			const ownerChange = event as CustomEvent<{
+				ownerId?: string | null;
+				previousOwnerId?: string | null;
+			}>;
+			const { ownerId = null, previousOwnerId = null } = ownerChange.detail || {};
+			if (previousOwnerId === instanceId && ownerId !== instanceId) {
+				resetLocalPlaybackUi('Reading switched to another section');
+			}
+		};
+		window.addEventListener(OWNER_EVENT, ownerListener);
+		return () => {
+			window.removeEventListener(OWNER_EVENT, ownerListener);
+		};
+	});
+
+	$effect(() => {
+		return () => {
+			releaseActiveOwner();
 		};
 	});
 
@@ -218,12 +288,12 @@
 
 	async function handlePlayPause() {
 		if (!ttsService) return;
-		if (paused) {
+		if (isActiveOwner() && paused) {
 			ttsService.resume();
 			statusMessage = 'Reading resumed';
 			return;
 		}
-		if (speaking && !paused) {
+		if (isActiveOwner() && speaking && !paused) {
 			ttsService.pause();
 			statusMessage = 'Reading paused';
 			return;
@@ -236,6 +306,15 @@
 				statusMessage = 'Unable to initialize text-to-speech. Try again.';
 				return;
 			}
+			const currentState = String(ttsService.getState?.() || '');
+			const hasActivePlayback =
+				currentState === 'playing' ||
+				currentState === 'paused' ||
+				currentState === 'loading';
+			if (hasActivePlayback && !isActiveOwner()) {
+				ttsService.stop();
+			}
+			claimActiveOwner();
 			await startSpeaking();
 		} finally {
 			playActionInFlight = false;
@@ -245,11 +324,8 @@
 	function handleStop() {
 		if (!ttsService) return;
 		ttsService.stop();
-		controlsVisible = false;
-		speaking = false;
-		paused = false;
-		focusedControlIndex = 0;
-		statusMessage = 'Reading stopped';
+		releaseActiveOwner();
+		resetLocalPlaybackUi('Reading stopped');
 		if (highlightCoordinator) {
 			highlightCoordinator.clearTTS();
 		}

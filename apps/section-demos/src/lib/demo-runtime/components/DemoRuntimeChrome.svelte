@@ -5,6 +5,7 @@
 	import '@pie-players/pie-section-player-tools-instrumentation-debugger';
 	import '@pie-players/pie-section-player-tools-session-debugger';
 	import '@pie-players/pie-section-player-tools-pnp-debugger';
+	import '@pie-players/pie-section-player-tools-tts-settings';
 	import '@pie-players/pie-theme';
 	import '@pie-players/pie-theme/components.css';
 	import DemoInfoDialog from './DemoInfoDialog.svelte';

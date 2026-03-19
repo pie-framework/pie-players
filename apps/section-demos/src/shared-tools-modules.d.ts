@@ -4,3 +4,4 @@ declare module "@pie-players/pie-section-player-tools-shared/DebugPanelToggles.s
 }
 
 declare module "@pie-players/pie-section-player-tools-instrumentation-debugger";
+declare module "@pie-players/pie-section-player-tools-tts-settings";

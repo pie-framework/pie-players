@@ -1,7 +1,7 @@
 <script lang="ts">
+	import { onMount } from "svelte";
 	import SourcePanel from './SourcePanel.svelte';
 	import SessionDbPanel from './SessionDbPanel.svelte';
-	import TTSSettingsDialog from './TTSSettingsDialog.svelte';
 
 	interface Props {
 		toolkitCoordinator: any;
@@ -64,6 +64,52 @@
 		instrumentationDebuggerElement = $bindable(null),
 		pnpDebuggerElement = $bindable(null)
 	}: Props = $props();
+
+	const demoCustomTtsProviders = [
+		{
+			id: "demo-custom-provider",
+			label: "Demo Custom",
+			description: "Example custom provider tab wired through adapter mode.",
+			mode: "adapter",
+			initialState: {
+				voice: "demo-voice-a"
+			},
+			checkAvailability: () => ({
+				available: true,
+				message: "Demo custom provider available."
+			}),
+			buildApplyConfig: ({ apiEndpoint, state }: { apiEndpoint: string; state: Record<string, unknown> }) => ({
+				config: {
+					backend: "demo-custom-provider",
+					transportMode: "custom",
+					apiEndpoint,
+					defaultVoice: typeof state?.voice === "string" ? state.voice : undefined,
+					providerOptions: {
+						source: "section-demos",
+						...state
+					}
+				},
+				message: "Applied Demo Custom provider settings."
+			})
+		}
+	];
+
+	const legacyTtsStorageKey = "pie:section-demos:tts-settings";
+
+	function getScopedTtsStorageKey(): string {
+		return `pie:debug-panels:v1:${panelPersistenceScope}:tts-settings`;
+	}
+
+	onMount(() => {
+		if (typeof window === "undefined") return;
+		const scopedKey = getScopedTtsStorageKey();
+		if (scopedKey === legacyTtsStorageKey) return;
+		const scopedValue = window.localStorage.getItem(scopedKey);
+		if (scopedValue !== null) return;
+		const legacyValue = window.localStorage.getItem(legacyTtsStorageKey);
+		if (legacyValue === null) return;
+		window.localStorage.setItem(scopedKey, legacyValue);
+	});
 </script>
 
 {#if showSessionPanel}
@@ -111,7 +157,13 @@
 {/if}
 
 {#if showTtsPanel}
-	<TTSSettingsDialog {toolkitCoordinator} onClose={onCloseTtsPanel} />
+	<pie-section-player-tools-tts-settings
+		toolkitCoordinator={toolkitCoordinator}
+		storageKey={getScopedTtsStorageKey()}
+		customProviders={demoCustomTtsProviders}
+		onclose={onCloseTtsPanel}
+	>
+	</pie-section-player-tools-tts-settings>
 {/if}
 
 {#if isSessionHydrateDbDemo && showSessionDbPanel}

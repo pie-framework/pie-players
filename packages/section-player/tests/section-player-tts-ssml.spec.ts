@@ -231,6 +231,41 @@ test.describe("section player demo tts-ssml", () => {
 		await ttsSettingsToggle.click();
 		const ttsDialog = page.locator(".pie-tts-dialog");
 		await expect(ttsDialog.getByRole("heading", { name: "TTS settings" })).toBeVisible();
+
+		// Endpoint defaults + normalization path for server-backed tabs.
+		await ttsDialog.getByRole("button", { name: "Polly" }).click();
+		const pollyEndpointInput = ttsDialog.locator("#tts-polly-endpoint");
+		await expect(pollyEndpointInput).toHaveValue("/api/tts");
+		await pollyEndpointInput.evaluate((node) => {
+			const input = node as HTMLInputElement;
+			input.value = "/api/tts/synthesize";
+			input.dispatchEvent(new Event("input", { bubbles: true }));
+			input.dispatchEvent(new Event("change", { bubbles: true }));
+		});
+		const pollyCheckNormalizedResponse = page.waitForResponse(
+			(response) =>
+				response.url().includes("/api/tts/polly/voices") &&
+				response.request().method() === "GET",
+		);
+		await ttsDialog.getByRole("button", { name: "Recheck" }).click();
+		await pollyCheckNormalizedResponse;
+		await pollyEndpointInput.evaluate((node) => {
+			const input = node as HTMLInputElement;
+			input.value = "";
+			input.dispatchEvent(new Event("input", { bubbles: true }));
+			input.dispatchEvent(new Event("change", { bubbles: true }));
+		});
+		const pollyCheckFallbackResponse = page.waitForResponse(
+			(response) =>
+				response.url().includes("/api/tts/polly/voices") &&
+				response.request().method() === "GET",
+		);
+		await ttsDialog.getByRole("button", { name: "Recheck" }).click();
+		await pollyCheckFallbackResponse;
+
+		await ttsDialog.getByRole("button", { name: "Google" }).click();
+		await expect(ttsDialog.locator("#tts-google-endpoint")).toHaveValue("/api/tts");
+
 		await ttsDialog.getByRole("button", { name: "Browser" }).click();
 		await setRangeValue(page, "#tts-browser-rate", 1.35);
 		await setRangeValue(page, "#tts-browser-pitch", 1.1);

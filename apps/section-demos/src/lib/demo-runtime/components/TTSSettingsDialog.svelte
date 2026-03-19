@@ -26,9 +26,10 @@
 	interface Props {
 		toolkitCoordinator: any;
 		onClose?: () => void;
+		defaultApiEndpoint?: string;
 	}
 
-	let { toolkitCoordinator, onClose = () => {} }: Props = $props();
+	let { toolkitCoordinator, onClose = () => {}, defaultApiEndpoint = '/api/tts' }: Props = $props();
 
 	const DEFAULT_API_ENDPOINT = '/api/tts';
 	const TTS_SETTINGS_STORAGE_KEY = 'pie:section-demos:tts-settings';
@@ -68,7 +69,7 @@
 	let browserRate = $state(1);
 	let browserPitch = $state(1);
 
-	let pollyApiEndpoint = $state(DEFAULT_API_ENDPOINT);
+	let pollyApiEndpoint = $state('');
 	let pollyLanguage = $state('en-US');
 	let pollyGender = $state('');
 	let pollyEngine = $state<'standard' | 'neural'>('neural');
@@ -78,7 +79,7 @@
 	let pollyVoice = $state('');
 	let pollyRate = $state(1);
 
-	let googleApiEndpoint = $state(DEFAULT_API_ENDPOINT);
+	let googleApiEndpoint = $state('');
 	let googleLanguage = $state('en-US');
 	let googleGender = $state('');
 	let googleVoiceType = $state('wavenet');
@@ -157,6 +158,7 @@
 		const existing = toolkitCoordinator?.getToolConfig?.('tts') || {};
 		const stored = readStoredSettings();
 		const source = stored ? { ...existing, ...stored } : existing;
+		const resolvedDefaultApiEndpoint = getDefaultApiEndpoint();
 		const backend = source?.backend;
 		if (backend === 'browser' || backend === 'polly' || backend === 'google') {
 			activeTab = backend;
@@ -168,7 +170,7 @@
 		const defaultEndpoint =
 			typeof source?.apiEndpoint === 'string' && source.apiEndpoint.trim().length > 0
 				? source.apiEndpoint
-				: DEFAULT_API_ENDPOINT;
+			: resolvedDefaultApiEndpoint;
 		const defaultLanguage =
 			typeof source?.language === 'string' && source.language.trim().length > 0
 				? source.language
@@ -324,7 +326,12 @@
 	}
 
 	function buildPollyVoicesUrl() {
-		const url = new URL('/api/tts/polly/voices', window.location.origin);
+		const baseUrl = new URL(
+			normalizeApiEndpoint(pollyApiEndpoint, getDefaultApiEndpoint()),
+			window.location.origin
+		);
+		baseUrl.pathname = `${baseUrl.pathname.replace(/\/+$/, '')}/polly/voices`;
+		const url = baseUrl;
 		if (pollyLanguage) url.searchParams.set('language', pollyLanguage);
 		if (pollyGender) url.searchParams.set('gender', pollyGender);
 		if (pollyEngine) url.searchParams.set('engine', pollyEngine);
@@ -332,7 +339,10 @@
 	}
 
 	function buildGoogleVoicesUrl() {
-		const baseUrl = new URL(normalizeApiEndpoint(googleApiEndpoint), window.location.origin);
+		const baseUrl = new URL(
+			normalizeApiEndpoint(googleApiEndpoint, getDefaultApiEndpoint()),
+			window.location.origin
+		);
 		baseUrl.pathname = `${baseUrl.pathname.replace(/\/+$/, '')}/google/voices`;
 		const url = baseUrl;
 		if (googleLanguage) url.searchParams.set('language', googleLanguage);
@@ -476,10 +486,14 @@
 		return firstMatching ? firstMatching.id || firstMatching.name || undefined : undefined;
 	}
 
-	function normalizeApiEndpoint(endpoint: string): string {
+	function normalizeApiEndpoint(endpoint: string, fallback = DEFAULT_API_ENDPOINT): string {
 		const trimmed = endpoint.trim();
-		if (!trimmed) return DEFAULT_API_ENDPOINT;
+		if (!trimmed) return fallback;
 		return trimmed.replace(/\/synthesize\/?$/i, '');
+	}
+
+	function getDefaultApiEndpoint(): string {
+		return normalizeApiEndpoint(defaultApiEndpoint || DEFAULT_API_ENDPOINT);
 	}
 
 	function getSampleText(tab: BackendTab): string {
@@ -587,7 +601,8 @@
 
 	async function previewServerVoice(provider: 'polly' | 'google') {
 		const apiEndpoint = normalizeApiEndpoint(
-			provider === 'polly' ? pollyApiEndpoint : googleApiEndpoint
+			provider === 'polly' ? pollyApiEndpoint : googleApiEndpoint,
+			getDefaultApiEndpoint()
 		);
 		const includeSpeechMarks = !(provider === 'google' && previewMode === 'ssml');
 		const requestBody: Record<string, unknown> = {
@@ -775,7 +790,7 @@
 			} else if (activeTab === 'polly') {
 				const next = {
 					backend: 'polly' as const,
-					apiEndpoint: normalizeApiEndpoint(pollyApiEndpoint),
+					apiEndpoint: normalizeApiEndpoint(pollyApiEndpoint, getDefaultApiEndpoint()),
 					transportMode: 'pie' as const,
 					endpointMode: 'synthesizePath' as const,
 					endpointValidationMode: 'voices' as const,
@@ -801,7 +816,7 @@
 			} else {
 				const next = {
 					backend: 'google' as const,
-					apiEndpoint: normalizeApiEndpoint(googleApiEndpoint),
+					apiEndpoint: normalizeApiEndpoint(googleApiEndpoint, getDefaultApiEndpoint()),
 					transportMode: 'pie' as const,
 					endpointMode: 'synthesizePath' as const,
 					endpointValidationMode: 'voices' as const,

@@ -53,6 +53,10 @@ await ttsService.initialize(provider, {
 //   };
 ```
 
+`apiEndpoint` is required when using `ServerTTSProvider` directly. Toolkit-level
+`tools.providers.tts` integration may provide a default endpoint for
+server-backed backends, but direct client usage should pass this explicitly.
+
 ### With Authentication
 
 ```typescript
@@ -242,6 +246,7 @@ try {
 - ✅ Mobile browsers
 
 Requires:
+
 - `HTMLAudioElement` API
 - `fetch` API
 - `URL.createObjectURL`

@@ -28,12 +28,62 @@ export interface TTSRuntimeSettings {
 const toRecord = (value: unknown): Record<string, unknown> =>
 	value && typeof value === "object" ? (value as Record<string, unknown>) : {};
 
+const isServerBackend = (
+	backend: TTSRuntimeSettings["backend"],
+): backend is "polly" | "google" | "server" =>
+	backend === "polly" || backend === "google" || backend === "server";
+
+const withDefault = <T>(value: T | undefined, fallback: T): T =>
+	value === undefined ? fallback : value;
+
+const applyRuntimeDefaults = (
+	config: TTSRuntimeSettings,
+): TTSRuntimeSettings => {
+	const backend = config.backend || "browser";
+	if (!isServerBackend(backend)) return config;
+
+	const withServerDefaults: TTSRuntimeSettings = {
+		...config,
+		apiEndpoint: withDefault(config.apiEndpoint, "/api/tts"),
+		transportMode: withDefault(config.transportMode, "pie"),
+		endpointValidationMode: withDefault(config.endpointValidationMode, "voices"),
+		includeAuthOnAssetFetch: withDefault(config.includeAuthOnAssetFetch, false),
+		rate: withDefault(config.rate, 1.0),
+		language: withDefault(config.language, "en-US"),
+	};
+
+	if (backend === "polly") {
+		return {
+			...withServerDefaults,
+			defaultVoice: withDefault(withServerDefaults.defaultVoice, "Joanna"),
+			engine: withDefault(withServerDefaults.engine, "neural"),
+			format: withDefault(withServerDefaults.format, "mp3"),
+			speechMarksMode: withDefault(
+				withServerDefaults.speechMarksMode,
+				"word+sentence",
+			),
+		};
+	}
+
+	if (backend === "google") {
+		return {
+			...withServerDefaults,
+			defaultVoice: withDefault(withServerDefaults.defaultVoice, "en-US-Wavenet-A"),
+		};
+	}
+
+	return withServerDefaults;
+};
+
 export const resolveTTSRuntimeSettings = (
 	config: ToolProviderConfig | undefined,
 ): TTSRuntimeSettings => {
 	const configRecord = toRecord(config);
 	const settingsRecord = toRecord(config?.settings);
-	return { ...configRecord, ...settingsRecord } as TTSRuntimeSettings;
+	return applyRuntimeDefaults({
+		...configRecord,
+		...settingsRecord,
+	} as TTSRuntimeSettings);
 };
 
 export const resolveTTSBackend = (

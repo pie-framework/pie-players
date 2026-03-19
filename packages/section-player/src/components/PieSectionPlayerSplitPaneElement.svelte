@@ -148,6 +148,94 @@
 		leftPanelWidth = Math.max(20, Math.min(80, next));
 	}
 
+	function managePaneScrollbars(args: {
+		root: HTMLElement;
+		paneSelector?: string;
+		managedClass?: string;
+		activeClass?: string;
+		idleTimeoutMs?: number;
+	}): () => void {
+		const paneSelector =
+			args.paneSelector ??
+			".pie-section-player-passages-pane, .pie-section-player-items-pane";
+		const managedClass = args.managedClass ?? "pie-pane-scrollbars-managed";
+		const activeClass = args.activeClass ?? "pie-pane-scrolling";
+		const idleTimeoutMs = args.idleTimeoutMs ?? 900;
+		const paneTimers = new Map<HTMLElement, ReturnType<typeof setTimeout>>();
+		const trackedPanes = new Set<HTMLElement>();
+		const onScrollByPane = new Map<HTMLElement, () => void>();
+
+		const markPaneAsScrolling = (pane: HTMLElement) => {
+			pane.classList.add(activeClass);
+			const existingTimer = paneTimers.get(pane);
+			if (existingTimer) clearTimeout(existingTimer);
+			paneTimers.set(
+				pane,
+				setTimeout(() => {
+					pane.classList.remove(activeClass);
+					paneTimers.delete(pane);
+				}, idleTimeoutMs),
+			);
+		};
+
+		const attachPane = (pane: HTMLElement) => {
+			if (trackedPanes.has(pane)) return;
+			trackedPanes.add(pane);
+			pane.classList.add(managedClass);
+			const onScroll = () => markPaneAsScrolling(pane);
+			pane.addEventListener("scroll", onScroll, { passive: true });
+			onScrollByPane.set(pane, onScroll);
+		};
+
+		const detachPane = (pane: HTMLElement) => {
+			if (!trackedPanes.has(pane)) return;
+			trackedPanes.delete(pane);
+			const onScroll = onScrollByPane.get(pane);
+			if (onScroll) {
+				pane.removeEventListener("scroll", onScroll);
+				onScrollByPane.delete(pane);
+			}
+			pane.classList.remove(activeClass);
+			pane.classList.remove(managedClass);
+			const timer = paneTimers.get(pane);
+			if (timer) {
+				clearTimeout(timer);
+				paneTimers.delete(pane);
+			}
+		};
+
+		const syncPanes = () => {
+			const currentPanes = new Set(
+				Array.from(args.root.querySelectorAll<HTMLElement>(paneSelector)),
+			);
+			for (const pane of currentPanes) {
+				attachPane(pane);
+			}
+			for (const pane of trackedPanes) {
+				if (!currentPanes.has(pane)) {
+					detachPane(pane);
+				}
+			}
+		};
+
+		syncPanes();
+
+		const observer = new MutationObserver(() => {
+			syncPanes();
+		});
+		observer.observe(args.root, { childList: true, subtree: true });
+
+		return () => {
+			observer.disconnect();
+			for (const pane of trackedPanes) {
+				detachPane(pane);
+			}
+			onScrollByPane.clear();
+			trackedPanes.clear();
+			paneTimers.clear();
+		};
+	}
+
 	export function getSnapshot(): SectionPlayerSnapshot | null {
 		return kernelRef?.getSnapshot?.() ?? null;
 	}
@@ -189,6 +277,11 @@
 
 	onMount(() => {
 		return manageOuterScrollbars();
+	});
+
+	$effect(() => {
+		if (!splitContainerElement) return;
+		return managePaneScrollbars({ root: splitContainerElement });
 	});
 
 	$effect(() => {
@@ -289,7 +382,11 @@
 			{/if}
 		{/if}
 
-		<main id={itemsPaneId} class="pie-section-player-items-pane" aria-label="Items">
+		<main
+			id={itemsPaneId}
+			class="pie-section-player-items-pane"
+			aria-label="Items"
+		>
 			<pie-section-player-items-pane
 				items={layoutModel.items}
 				compositionModel={layoutModel.compositionModel}
@@ -357,6 +454,81 @@
 		padding: 0.5rem;
 		box-sizing: border-box;
 		background: var(--pie-background-dark, #ecedf1);
+		scrollbar-width: thin;
+		scrollbar-color: transparent transparent;
+	}
+
+	.pie-section-player-passages-pane:focus-visible,
+	.pie-section-player-items-pane:focus-visible {
+		outline: 2px solid var(--pie-focus-outline, #1d4ed8);
+		outline-offset: -2px;
+	}
+
+	.pie-section-player-passages-pane.pie-pane-scrollbars-managed.pie-pane-scrolling,
+	.pie-section-player-items-pane.pie-pane-scrollbars-managed.pie-pane-scrolling,
+	.pie-section-player-passages-pane.pie-pane-scrollbars-managed:hover,
+	.pie-section-player-items-pane.pie-pane-scrollbars-managed:hover,
+	.pie-section-player-passages-pane.pie-pane-scrollbars-managed:focus,
+	.pie-section-player-items-pane.pie-pane-scrollbars-managed:focus,
+	.pie-section-player-passages-pane.pie-pane-scrollbars-managed:focus-within,
+	.pie-section-player-items-pane.pie-pane-scrollbars-managed:focus-within {
+		scrollbar-color:
+			var(--pie-scrollbar-thumb, #6b7280) var(--pie-scrollbar-track, #d1d5db);
+	}
+
+	.pie-section-player-passages-pane.pie-pane-scrollbars-managed::-webkit-scrollbar,
+	.pie-section-player-items-pane.pie-pane-scrollbars-managed::-webkit-scrollbar {
+		width: 0;
+		height: 0;
+		background: transparent;
+	}
+
+	.pie-section-player-passages-pane.pie-pane-scrollbars-managed.pie-pane-scrolling::-webkit-scrollbar,
+	.pie-section-player-items-pane.pie-pane-scrollbars-managed.pie-pane-scrolling::-webkit-scrollbar,
+	.pie-section-player-passages-pane.pie-pane-scrollbars-managed:hover::-webkit-scrollbar,
+	.pie-section-player-items-pane.pie-pane-scrollbars-managed:hover::-webkit-scrollbar,
+	.pie-section-player-passages-pane.pie-pane-scrollbars-managed:focus::-webkit-scrollbar,
+	.pie-section-player-items-pane.pie-pane-scrollbars-managed:focus::-webkit-scrollbar,
+	.pie-section-player-passages-pane.pie-pane-scrollbars-managed:focus-within::-webkit-scrollbar,
+	.pie-section-player-items-pane.pie-pane-scrollbars-managed:focus-within::-webkit-scrollbar {
+		width: 0.75rem;
+		height: 0.75rem;
+	}
+
+	.pie-section-player-passages-pane.pie-pane-scrollbars-managed.pie-pane-scrolling::-webkit-scrollbar-track,
+	.pie-section-player-items-pane.pie-pane-scrollbars-managed.pie-pane-scrolling::-webkit-scrollbar-track,
+	.pie-section-player-passages-pane.pie-pane-scrollbars-managed:hover::-webkit-scrollbar-track,
+	.pie-section-player-items-pane.pie-pane-scrollbars-managed:hover::-webkit-scrollbar-track,
+	.pie-section-player-passages-pane.pie-pane-scrollbars-managed:focus::-webkit-scrollbar-track,
+	.pie-section-player-items-pane.pie-pane-scrollbars-managed:focus::-webkit-scrollbar-track,
+	.pie-section-player-passages-pane.pie-pane-scrollbars-managed:focus-within::-webkit-scrollbar-track,
+	.pie-section-player-items-pane.pie-pane-scrollbars-managed:focus-within::-webkit-scrollbar-track {
+		background: var(--pie-scrollbar-track, #d1d5db);
+		border-radius: 999px;
+	}
+
+	.pie-section-player-passages-pane.pie-pane-scrollbars-managed.pie-pane-scrolling::-webkit-scrollbar-thumb,
+	.pie-section-player-items-pane.pie-pane-scrollbars-managed.pie-pane-scrolling::-webkit-scrollbar-thumb,
+	.pie-section-player-passages-pane.pie-pane-scrollbars-managed:hover::-webkit-scrollbar-thumb,
+	.pie-section-player-items-pane.pie-pane-scrollbars-managed:hover::-webkit-scrollbar-thumb,
+	.pie-section-player-passages-pane.pie-pane-scrollbars-managed:focus::-webkit-scrollbar-thumb,
+	.pie-section-player-items-pane.pie-pane-scrollbars-managed:focus::-webkit-scrollbar-thumb,
+	.pie-section-player-passages-pane.pie-pane-scrollbars-managed:focus-within::-webkit-scrollbar-thumb,
+	.pie-section-player-items-pane.pie-pane-scrollbars-managed:focus-within::-webkit-scrollbar-thumb {
+		background: var(--pie-scrollbar-thumb, #6b7280);
+		border-radius: 999px;
+		border: 2px solid var(--pie-scrollbar-track, #d1d5db);
+	}
+
+	.pie-section-player-passages-pane.pie-pane-scrollbars-managed.pie-pane-scrolling::-webkit-scrollbar-thumb:hover,
+	.pie-section-player-items-pane.pie-pane-scrollbars-managed.pie-pane-scrolling::-webkit-scrollbar-thumb:hover,
+	.pie-section-player-passages-pane.pie-pane-scrollbars-managed:hover::-webkit-scrollbar-thumb:hover,
+	.pie-section-player-items-pane.pie-pane-scrollbars-managed:hover::-webkit-scrollbar-thumb:hover,
+	.pie-section-player-passages-pane.pie-pane-scrollbars-managed:focus::-webkit-scrollbar-thumb:hover,
+	.pie-section-player-items-pane.pie-pane-scrollbars-managed:focus::-webkit-scrollbar-thumb:hover,
+	.pie-section-player-passages-pane.pie-pane-scrollbars-managed:focus-within::-webkit-scrollbar-thumb:hover,
+	.pie-section-player-items-pane.pie-pane-scrollbars-managed:focus-within::-webkit-scrollbar-thumb:hover {
+		background: var(--pie-scrollbar-thumb-hover, #4b5563);
 	}
 
 	.pie-section-player-observability-anchor {

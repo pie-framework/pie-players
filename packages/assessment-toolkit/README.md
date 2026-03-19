@@ -394,6 +394,53 @@ const coordinator = new ToolkitCoordinator({
 
 The ToolkitCoordinator handles all internal complexity (service initialization, provider management, state coordination). The only special configuration is `authFetcher` for Desmos calculator (optional - falls back to local calculator if not provided).
 
+### Minimal Server-Backed TTS Config
+
+For Polly/Google server-backed TTS, the provider config supports a minimal form.
+Common options are defaulted so you can start with:
+
+```typescript
+tools: {
+  providers: {
+    tts: {
+      enabled: true,
+      backend: 'polly'
+    }
+  }
+}
+```
+
+By default, server-backed TTS resolves:
+
+- `apiEndpoint: '/api/tts'`
+- `transportMode: 'pie'`
+- `endpointValidationMode: 'voices'`
+
+You can still set `apiEndpoint` explicitly when your host route is not `/api/tts`.
+
+`provider.runtime.authFetcher` is optional. Add it only when your host environment
+requires runtime auth material for TTS requests:
+
+```typescript
+tools: {
+  providers: {
+    tts: {
+      enabled: true,
+      backend: 'polly',
+      apiEndpoint: '/api/tts',
+      provider: {
+        runtime: {
+          authFetcher: async () => {
+            const response = await fetch('/api/tts/auth');
+            return response.json();
+          }
+        }
+      }
+    }
+  }
+}
+```
+
 ## Test Attempt Session Adapter (pie backend)
 
 The toolkit exposes a canonical `TestAttemptSession` runtime and a deterministic adapter for pie backend activity payloads from `../../kds/pie-api-aws`.

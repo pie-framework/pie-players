@@ -16,12 +16,14 @@ bun run dev:section   # Section demos
 ## Development
 
 ```bash
-bun dev          # Watch all packages
-bun build        # Build all
-bun typecheck    # Type check
-bun test         # Run tests
-bun format       # Format code
+bun run dev      # Turbo dev for section-demos (see package.json "dev")
+bun run build    # Build publishable packages + tools (excludes apps)
+bun run typecheck
+bun run test
+bun run format   # Format (Biome)
 ```
+
+Demo apps resolve publishable packages through **`dist/`** (and section-demos uses explicit Vite aliases for many tools). See [Demo workspace resolution](docs/development/demo-workspace-resolution.md).
 
 ## Consumer Import Rules
 

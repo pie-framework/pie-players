@@ -39,6 +39,7 @@
 		MODE_OPTIONS,
 		PLAYER_OPTIONS
 	} from '$lib/demo-runtime/demo-page-helpers';
+	import { SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER } from '$lib/demo-runtime/section-demos-default-tts';
 	import { collectElementPackages, fetchBundleWithRetry } from '$lib/demo-runtime/preload-utils';
 	import type { PageData } from './$types';
 
@@ -47,22 +48,7 @@
 	// Level 4: CE setup plus controller JS API subscriptions.
 	const toolkitToolsConfig = {
 		providers: {
-			tts: {
-				enabled: true,
-				backend: 'polly',
-				serverProvider: 'polly',
-				apiEndpoint: '/api/tts',
-				transportMode: 'pie',
-				endpointMode: 'synthesizePath',
-				endpointValidationMode: 'voices',
-				defaultVoice: 'Joanna',
-				language: 'en-US',
-				rate: 1,
-				engine: 'neural',
-				sampleRate: 24000,
-				format: 'mp3',
-				speechMarksMode: 'word'
-			},
+			tts: SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER,
 			calculator: {
 				authFetcher: fetchDesmosAuthConfig
 			},

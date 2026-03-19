@@ -7,14 +7,14 @@
 **Critical Requirements**:
 
 - **WCAG 2.2 Level AA compliance**: Mandatory for all UI components
-- **Bun runtime**: Node.js is NOT used - Bun 1.3.5+ required
+- **Bun runtime**: Node.js is NOT used - Bun version must match root `package.json` `packageManager` / `engines.bun`
 - **Mixed shadow strategy**: This repo intentionally uses both `shadow: "open"` and `shadow: "none"` depending on integration/runtime needs
 - **Svelte 5 with runes**: Modern reactive patterns required
 - **ES2022 target**: Modern JavaScript required
 
 ## Technology Stack
 
-- **Runtime**: Bun 1.3.5+ (NOT Node.js)
+- **Runtime**: Bun (version pinned in root `packageManager`; NOT Node.js for repo scripts)
 - **UI Framework**: Svelte 5 with runes (compiled to web components)
 - **Build**: Vite 7.0+ with Turbo for monorepo orchestration
 - **Testing**: Bun:test (built-in) + Playwright for E2E

@@ -30,6 +30,7 @@
 		MODE_OPTIONS,
 		PLAYER_OPTIONS
 	} from '$lib/demo-runtime/demo-page-helpers';
+	import { SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER } from '$lib/demo-runtime/section-demos-default-tts';
 	import { collectElementPackages, fetchBundleWithRetry } from '$lib/demo-runtime/preload-utils';
 	import type { PageData } from './$types';
 
@@ -37,6 +38,9 @@
 
 	// Level 1: CE-first setup with direct custom-element props/attrs.
 	const toolkitToolsConfig = {
+		providers: {
+			tts: SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER
+		},
 		placement: {
 			section: ['theme', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
 			item: [],

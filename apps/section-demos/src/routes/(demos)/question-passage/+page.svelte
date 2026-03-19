@@ -29,6 +29,7 @@
 		MODE_OPTIONS,
 		PLAYER_OPTIONS
 	} from '$lib/demo-runtime/demo-page-helpers';
+	import { SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER } from '$lib/demo-runtime/section-demos-default-tts';
 	import { collectElementPackages, fetchBundleWithRetry } from '$lib/demo-runtime/preload-utils';
 	import type { PageData } from './$types';
 
@@ -37,6 +38,7 @@
 	// Level 2: keep CE usage but explicitly configure tool providers and placement.
 	const toolkitToolsConfig = {
 		providers: {
+			tts: SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER,
 			annotationToolbar: {
 				enabled: true
 			}

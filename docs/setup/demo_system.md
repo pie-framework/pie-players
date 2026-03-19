@@ -2,6 +2,8 @@
 
 This monorepo uses multiple focused demo hosts instead of a single combined example app.
 
+For how Vite resolves `@pie-players/*` in demos (`dist/` vs aliases), see [Demo workspace resolution](../development/demo-workspace-resolution.md).
+
 ## Available Demo Apps
 
 - `apps/item-demos` for item-player focused examples

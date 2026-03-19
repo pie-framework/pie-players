@@ -114,7 +114,16 @@ test.describe("section toolbar tools", () => {
 				await expect(host.locator(`[role="${spec.panelRole}"]`).first()).toBeVisible();
 			}
 
-			await button.click();
+			// Large dialog tools (e.g. graph) can cover the right toolbar; closing via the
+			// hosted shell matches real UX and avoids Playwright "intercepts pointer events".
+			// Inline tools (protractor, ruler, line reader) use toolbar toggle to close.
+			if (spec.panelRole === "dialog") {
+				const toolShell = page.locator(`[data-pie-tool-shell="${spec.id}"]`).first();
+				await expect(toolShell.getByRole("button", { name: "Close tool" })).toBeVisible();
+				await toolShell.getByRole("button", { name: "Close tool" }).click();
+			} else {
+				await button.click();
+			}
 			await expect(button).toHaveAttribute("aria-pressed", "false");
 			await expect(host.locator(`[role="${spec.panelRole}"]`)).toHaveCount(0);
 		}

@@ -1665,7 +1665,7 @@ export class ToolkitCoordinator {
 		// Apply configuration changes based on tool
 		switch (toolId) {
 			case "tts":
-			case "textToSpeech":
+			case "textToSpeech": {
 				const reconfigurePromise = this._reconfigureTTSProvider();
 				this.ttsReconfigurePromise = reconfigurePromise;
 				void reconfigurePromise.finally(() => {
@@ -1680,6 +1680,7 @@ export class ToolkitCoordinator {
 					}
 				});
 				break;
+			}
 
 			case "answerEliminator":
 				// Future: Could notify answer eliminator tools of strategy change

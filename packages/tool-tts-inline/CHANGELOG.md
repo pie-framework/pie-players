@@ -1,5 +1,23 @@
 # @pie-players/pie-tool-tts-inline
 
+## 0.3.19
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.19
+  - @pie-players/pie-context@0.3.19
+
+## 0.3.18
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.18
+  - @pie-players/pie-context@0.3.18
+
 ## 0.3.17
 
 ### Patch Changes

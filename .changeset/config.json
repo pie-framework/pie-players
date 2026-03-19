@@ -15,6 +15,7 @@
 			"@pie-players/pie-print-player",
 			"@pie-players/pie-section-player",
 			"@pie-players/pie-section-player-tools-event-debugger",
+			"@pie-players/pie-section-player-tools-instrumentation-debugger",
 			"@pie-players/pie-section-player-tools-pnp-debugger",
 			"@pie-players/pie-section-player-tools-session-debugger",
 			"@pie-players/pie-section-player-tools-shared",

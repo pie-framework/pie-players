@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-assessment-player",
-	"version": "0.3.17",
+	"version": "0.3.19",
 	"type": "module",
 	"description": "Assessment-level coordinator custom elements for orchestrating section-player instances",
 	"license": "MIT",

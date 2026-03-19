@@ -1,5 +1,21 @@
 # @pie-players/pie-calculator-desmos
 
+## 0.3.19
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-calculator@0.3.19
+
+## 0.3.18
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-calculator@0.3.18
+
 ## 0.3.17
 
 ### Patch Changes

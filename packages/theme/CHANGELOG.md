@@ -1,5 +1,11 @@
 # @pie-players/pie-theme
 
+## 0.3.20
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+
 ## 0.3.19
 
 ### Patch Changes

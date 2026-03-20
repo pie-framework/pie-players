@@ -100,6 +100,23 @@ After publish, CI also validates internal dependency closure in the registry:
   - ensure all publishable package versions are identical after `bun run version`
   - ensure internal `@pie-players/*` deps remain `workspace:*` in source manifests
 
+## Local release retry (without re-bumping versions)
+
+If `bun run release:with-version` fails after `bun run version` has already updated
+`package.json` and `CHANGELOG.md` files, do not rerun `release:with-version`.
+Rerunning it creates another temporary changeset and bumps versions again.
+
+Retry from the post-version steps instead:
+
+```bash
+bun run check:npm-auth && SKIP_NPM_VERSION_SEQUENCE_CHECK=1 bun run verify:publish && bun run test && bun run release && bun run restore:workspace-ranges
+```
+
+Use `SKIP_NPM_VERSION_SEQUENCE_CHECK=1` for recovery runs when
+`check-fixed-versioning` fails with npm `E404` for a package being published for
+the first time (for example `npm view @pie-players/<pkg> version` returning not
+found).
+
 ## Manual publishing (local)
 
 Use the same gate as CI before publish:

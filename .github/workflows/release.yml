@@ -31,15 +31,6 @@ on:
         required: false
         type: boolean
         default: false
-      version_type:
-        description: "Version bump type for version-pr intent"
-        required: false
-        type: choice
-        options:
-          - auto
-          - major
-          - minor
-          - patch
       publish_auth:
         description: "Publish auth mode for manual publish runs"
         required: false
@@ -144,11 +135,12 @@ jobs:
             exit 1
           fi
 
-      - name: Stop early (no changesets / no version bumps)
+      - name: Generate temporary patch changeset (master auto-release prep)
+        id: temp_changeset
         if: github.event_name != 'workflow_dispatch' && steps.detect.outputs.has_changesets != 'true' && steps.detect.outputs.has_version_bumps != 'true'
         run: |
-          echo "No .changeset files and no package version/changelog updates in this push. Skipping release."
-          exit 0
+          bun ./scripts/create-temporary-release-changeset.mjs
+          echo "created=true" >> "$GITHUB_OUTPUT"
 
       - name: Build packages (publish runs only)
         if: (github.event_name == 'workflow_dispatch' && inputs.release_intent == 'publish') || (github.event_name != 'workflow_dispatch' && steps.detect.outputs.has_version_bumps == 'true')
@@ -224,7 +216,7 @@ jobs:
           echo "PUBLISH_NODE_AUTH_TOKEN=" >> "$GITHUB_ENV"
 
       - name: Create Release Pull Request or Publish to NPM
-        if: github.event_name == 'workflow_dispatch' || steps.detect.outputs.has_changesets == 'true' || steps.detect.outputs.has_version_bumps == 'true'
+        if: github.event_name == 'workflow_dispatch' || steps.detect.outputs.has_changesets == 'true' || steps.detect.outputs.has_version_bumps == 'true' || steps.temp_changeset.outputs.created == 'true'
         id: changesets
         uses: changesets/action@v1
         with:

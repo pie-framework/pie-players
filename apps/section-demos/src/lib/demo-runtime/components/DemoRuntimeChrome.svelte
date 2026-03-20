@@ -344,7 +344,7 @@
 		align-items: center;
 		padding: 0.35rem 0.6rem;
 		border-radius: 0.35rem;
-		border: 1px solid color-mix(in srgb, var(--color-base-content) 20%, transparent);
+		border: 1px solid color-mix(in srgb, var(--color-base-content) 35%, transparent);
 		background: var(--color-base-100);
 		color: var(--color-base-content);
 		text-decoration: none;
@@ -353,7 +353,7 @@
 	}
 
 	.pie-demo-section-pages__link--active {
-		background: color-mix(in srgb, var(--color-primary) 15%, var(--color-base-100));
-		border-color: color-mix(in srgb, var(--color-primary) 40%, var(--color-base-300));
+		background: color-mix(in srgb, var(--color-primary) 22%, var(--color-base-100));
+		border-color: color-mix(in srgb, var(--color-primary) 60%, var(--color-base-300));
 	}
 </style>

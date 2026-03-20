@@ -5,6 +5,8 @@ import type {
 } from "../../services/ToolRegistry.js";
 import { createScopedToolId } from "../../services/tool-instance-id.js";
 
+export type ToolOverlaySurface = "default" | "frameless";
+
 export function createScopedVisibilityBinding(
 	toolId: string,
 	toolbarContext: ToolbarContext,
@@ -40,4 +42,11 @@ export function syncButtonAndOverlayVisibility(args: {
 	args.button.active = active;
 	args.overlay.visible = active;
 	args.onActiveChange?.(active);
+}
+
+export function applyOverlaySurface(
+	overlay: HTMLElement,
+	surface: ToolOverlaySurface,
+): void {
+	overlay.setAttribute("data-pie-tool-surface", surface);
 }

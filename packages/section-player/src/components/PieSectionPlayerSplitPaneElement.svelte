@@ -25,6 +25,7 @@
 			enabledTools: { attribute: "enabled-tools", type: "String" },
 			itemToolbarTools: { attribute: "item-toolbar-tools", type: "String" },
 			passageToolbarTools: { attribute: "passage-toolbar-tools", type: "String" },
+			policies: { type: "Object", reflect: false },
 			narrowLayoutBreakpoint: { attribute: "narrow-layout-breakpoint", type: "Number" },
 		},
 	}}
@@ -53,6 +54,7 @@
 		SectionPlayerRuntimeHostContract,
 		SectionPlayerSnapshot,
 	} from "../contracts/runtime-host-contract.js";
+import type { SectionPlayerPolicies } from "../policies/types.js";
 
 	const DEFAULT_NARROW_BREAKPOINT_PX = 1100;
 	const NARROW_BREAKPOINT_MIN_PX = 400;
@@ -80,6 +82,7 @@
 		enabledTools = "",
 		itemToolbarTools = "",
 		passageToolbarTools = "",
+		policies = undefined as SectionPlayerPolicies | undefined,
 		narrowLayoutBreakpoint = undefined as number | undefined,
 	} = $props();
 
@@ -329,6 +332,7 @@
 	{enabledTools}
 	{itemToolbarTools}
 	{passageToolbarTools}
+	{policies}
 	playerActionConfig={{
 		stateKey: "__splitPaneAppliedParams",
 		includeSessionRefInState: true,
@@ -437,9 +441,11 @@
 	.pie-section-player-split-content--stacked .pie-section-player-items-pane {
 		flex: 0 0 auto;
 		height: auto;
-		max-height: none;
+		max-height: 100%;
 		min-height: 0;
-		overflow: visible;
+		min-width: 0;
+		overflow-y: auto;
+		overflow-x: hidden;
 	}
 
 	.pie-section-player-passages-pane,

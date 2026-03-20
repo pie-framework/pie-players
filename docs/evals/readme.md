@@ -201,7 +201,7 @@ component:
   underTest: pie-item-player
 
 examplesApp:
-  app: "@pie-framework/pie-players-example"
+  app: "@pie-players/section-demos"
   routeTemplate: "/evals/item-player/{sampleId}?player={player}&mode={mode}&role={role}"
 
 evals:
@@ -653,7 +653,7 @@ component:
   underTest: "your-component"
 
 examplesApp:
-  app: "@pie-framework/pie-players-example"
+  app: "@pie-players/section-demos"
   routeTemplate: "/your/route/template"
 
 evals:

@@ -343,6 +343,7 @@
 	showToolbar={normalizedShowToolbar}
 	toolbarPosition={toolbarPosition}
 	enabledTools={enabledTools}
+	focusPolicy={policies.focus}
 	cardRenderContext={cardRenderContextValue}
 >
 	<slot

@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
 
 const DEMO_PATH = "/three-section-assessment";
+const KNOWN_A11Y_BASELINE_DEBT = new Set<string>(["aria-allowed-attr"]);
 
 test.describe("assessment player smoke", () => {
 	test("renders default layout and supports back/next section navigation", async ({
@@ -24,6 +26,14 @@ test.describe("assessment player smoke", () => {
 		await expect(position).toHaveText("Section 2 of 3");
 		await expect(backButton).toBeEnabled();
 		await expect(nextButton).toBeEnabled();
+
+		// Keep baseline keyboard/focus path healthy for core section navigation.
+		await backButton.focus();
+		await expect(backButton).toBeFocused();
+		await page.keyboard.press("Tab");
+		await expect(nextButton).toBeFocused();
+		await page.keyboard.press("Enter");
+		await expect(position).toHaveText("Section 3 of 3");
 	});
 
 	test("persists section route on refresh for same attempt", async ({ page }) => {
@@ -371,5 +381,34 @@ test.describe("assessment player smoke", () => {
 				hasText: "pie-tool-backend-call-success",
 			}),
 		).toBeVisible({ timeout: 30_000 });
+	});
+
+	test("keeps baseline a11y regressions in check", async ({ page }) => {
+		await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
+		await expect(page.locator("pie-assessment-player-default")).toBeVisible();
+
+		const axeResults = await new AxeBuilder({ page })
+			.include("pie-assessment-player-default")
+			.disableRules(["region"])
+			.analyze();
+		const seriousOrCritical = axeResults.violations.filter((violation) =>
+			["serious", "critical"].includes(violation.impact || ""),
+		);
+		const unexpectedSeriousOrCritical = seriousOrCritical.filter(
+			(violation) => !KNOWN_A11Y_BASELINE_DEBT.has(violation.id),
+		);
+
+		expect(
+			unexpectedSeriousOrCritical,
+			`Unexpected assessment-player axe serious/critical violations: ${JSON.stringify(
+				unexpectedSeriousOrCritical,
+				null,
+				2,
+			)}\nKnown assessment-player baseline issues: ${JSON.stringify(
+				seriousOrCritical,
+				null,
+				2,
+			)}`,
+		).toEqual([]);
 	});
 });

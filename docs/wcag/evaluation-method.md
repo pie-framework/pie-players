@@ -114,6 +114,45 @@ Project rule:
 
 They are evidence inputs, not the final conclusion.
 
+### 3.1 Run the critical automated baseline
+
+From repo root:
+
+```bash
+bun run test:e2e:a11y:critical
+```
+
+This command runs the current critical accessibility subset across section, item, and assessment player flows.
+
+### 3.2 Run targeted route/surface suites when changing chrome, shells, or layout
+
+From repo root:
+
+```bash
+export SECTION_DEMOS_PORT=$(bun ./scripts/get-free-port.mjs 5300)
+bun run build:e2e:section-player
+bunx playwright test \
+  packages/section-player/tests/section-toolbar-tools.spec.ts \
+  packages/section-player/tests/section-player-navigation-contract.spec.ts \
+  packages/section-player/tests/section-player-reflow.spec.ts \
+  packages/section-player/tests/section-demos-chrome-a11y.spec.ts \
+  --config packages/section-player/playwright.config.ts
+
+export ITEM_DEMOS_PORT=$(bun ./scripts/get-free-port.mjs 5400)
+bun run build:e2e:item-player
+bunx playwright test \
+  packages/item-player/tests/item-demos-chrome-a11y.spec.ts \
+  --config packages/item-player/playwright.config.ts
+```
+
+When custom-element boundaries are touched, also run:
+
+```bash
+bun run check:source-exports
+bun run check:consumer-boundaries
+bun run check:custom-elements
+```
+
 ### 4. Run the manual passes
 
 #### Keyboard and focus pass

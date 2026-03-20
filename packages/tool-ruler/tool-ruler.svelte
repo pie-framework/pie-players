@@ -100,6 +100,10 @@
 		// Associate the moveable instance with the tool ID
 		const controlBox = moveable.getControlBoxElement();
 		controlBox?.setAttribute('data-moveablejs-tool-control-box', toolId);
+		const surface = containerEl.getAttribute('data-pie-tool-surface');
+		if (surface) {
+			controlBox?.setAttribute('data-pie-tool-surface', surface);
+		}
 
 		moveable.on('drag', ({ target, transform }) => {
 			if (target) {
@@ -354,11 +358,6 @@
 		width: 540px; /* Matching production implementation frame width */
 	}
 
-	.pie-tool-ruler:focus {
-		outline: 3px solid var(--pie-button-focus-outline, var(--pie-primary, #4A90E2));
-		outline-offset: 2px;
-	}
-
 	.pie-tool-ruler:focus-visible {
 		outline: 3px solid var(--pie-button-focus-outline, var(--pie-primary, #4A90E2));
 		outline-offset: 2px;
@@ -431,8 +430,8 @@
 
 	/* Moveable.js control styling (matching production implementation) */
 	/* Production implementation uses black (--moveable-color: #000) globally, not red for ruler */
-	:global(body .moveable-control-box[data-moveablejs-tool-control-box="ruler"]) {
-		--moveable-color: #000; /* Black, matching production implementation default */
+	:global(body .moveable-control-box[data-pie-tool-surface="frameless"]) {
+		--moveable-color: transparent;
 		z-index: 2003; /* ZIndexLayer.CONTROL */
 	}
 

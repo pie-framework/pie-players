@@ -97,6 +97,7 @@
 				href={candidateHref}
 				data-sveltekit-reload
 				title="Candidate view - student taking assessment (gather mode)"
+				aria-current={roleType === 'candidate' ? 'page' : undefined}
 			>
 				Student
 			</a>
@@ -106,6 +107,7 @@
 				href={scorerHref}
 				data-sveltekit-reload
 				title="Scorer view - instructor reviewing/scoring (evaluate mode)"
+				aria-current={roleType === 'scorer' ? 'page' : undefined}
 			>
 				Scorer
 			</a>
@@ -114,7 +116,6 @@
 
 	<div class="navbar-end gap-2">
 		<label class="flex items-center gap-2">
-			<span class="text-xs opacity-70"></span>
 			<select
 				class="select select-sm select-bordered"
 				value={selectedDaisyTheme}

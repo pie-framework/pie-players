@@ -296,6 +296,21 @@ test.describe("section player demo tts-ssml", () => {
 		await ttsSettingsToggle.click();
 		const ttsDialog = page.locator(".pie-tts-dialog");
 		await expect(ttsDialog.getByRole("heading", { name: "TTS settings" })).toBeVisible();
+		await ttsDialog.getByRole("button", { name: "Close TTS settings" }).focus();
+
+		// Focus remains trapped within dialog while open.
+		for (let i = 0; i < 4; i += 1) {
+			await page.keyboard.press("Tab");
+			await expect
+				.poll(async () => {
+					return await page.evaluate(() => {
+						const dialog = document.querySelector(".pie-tts-dialog");
+						const active = document.activeElement;
+						return Boolean(dialog && active && dialog.contains(active));
+					});
+				})
+				.toBe(true);
+		}
 
 		// Endpoint defaults + normalization path for server-backed tabs.
 		await ttsDialog.getByRole("button", { name: "Polly" }).click();
@@ -336,6 +351,7 @@ test.describe("section player demo tts-ssml", () => {
 		await setRangeValue(page, "#tts-browser-pitch", 1.1);
 		await ttsDialog.getByRole("button", { name: "Apply" }).click();
 		await expect(ttsDialog).toHaveCount(0);
+
 		const ttsRuntimeSnapshot = await page
 			.locator("pie-section-player-tools-session-debugger")
 			.evaluate((element) => {

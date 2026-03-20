@@ -604,6 +604,7 @@
 		let headerEl: HTMLDivElement | null = null;
 		let contentEl: HTMLDivElement | null = null;
 		let titleEl: HTMLSpanElement | null = null;
+		let controlsEl: HTMLDivElement | null = null;
 		let closeButtonEl: HTMLButtonElement | null = null;
 		let resizeHandleEl: HTMLDivElement | null = null;
 		let mountedContentElement: HTMLElement | null = null;
@@ -659,6 +660,84 @@
 		const clamp = (value: number, min: number, max: number): number =>
 			Math.max(min, Math.min(value, max));
 
+		const getShellBounds = () => {
+			const shellConfig = currentArgs.mounted.entry.shell;
+			const minWidth = shellConfig?.minWidth ?? 320;
+			const minHeight = shellConfig?.minHeight ?? 240;
+			const maxWidth = shellConfig?.maxWidth ?? window.innerWidth;
+			const maxHeight = shellConfig?.maxHeight ?? window.innerHeight;
+			return {
+				minWidth,
+				minHeight,
+				maxWidth,
+				maxHeight
+			};
+		};
+
+		const applyPositionAndSize = () => {
+			const { minWidth, minHeight, maxWidth, maxHeight } = getShellBounds();
+			width = clamp(width, minWidth, Math.max(minWidth, Math.min(maxWidth, window.innerWidth)));
+			height = clamp(height, minHeight, Math.max(minHeight, Math.min(maxHeight, window.innerHeight)));
+			x = clamp(x, 0, Math.max(0, window.innerWidth - width));
+			y = clamp(y, 0, Math.max(0, window.innerHeight - height));
+			applyShellStyle();
+			notifyHostedResize();
+		};
+
+		const moveBy = (dx: number, dy: number) => {
+			x += dx;
+			y += dy;
+			applyPositionAndSize();
+		};
+
+		const resizeBy = (dw: number, dh: number) => {
+			width += dw;
+			height += dh;
+			applyPositionAndSize();
+		};
+
+		const createShellControlButton = (
+			label: string,
+			glyph: string,
+			onActivate: () => void
+		) => {
+			const button = document.createElement('button');
+			button.type = 'button';
+			button.className = 'pie-tool-shell__control';
+			button.setAttribute('aria-label', label);
+			button.title = label;
+			button.textContent = glyph;
+			button.style.border = '1px solid transparent';
+			button.style.background = 'color-mix(in srgb, var(--pie-white, #fff) 10%, transparent)';
+			button.style.color = 'inherit';
+			button.style.cursor = 'pointer';
+			button.style.display = 'inline-flex';
+			button.style.alignItems = 'center';
+			button.style.justifyContent = 'center';
+			button.style.width = '28px';
+			button.style.height = '28px';
+			button.style.padding = '0';
+			button.style.fontSize = '14px';
+			button.style.fontWeight = '700';
+			button.style.borderRadius = '8px';
+			button.style.lineHeight = '1';
+			button.onclick = (event) => {
+				event.stopPropagation();
+				onActivate();
+				bringToFront();
+			};
+			button.onfocus = () => {
+				button.style.outline =
+					'2px solid var(--pie-button-focus-outline, var(--pie-primary, #4A90E2))';
+				button.style.outlineOffset = '2px';
+			};
+			button.onblur = () => {
+				button.style.outline = 'none';
+				button.style.outlineOffset = '0';
+			};
+			return button;
+		};
+
 		const applyShellStyle = () => {
 			if (!shellEl) return;
 			shellEl.style.left = `${x}px`;
@@ -704,6 +783,7 @@
 			const viewportH = window.innerHeight;
 			x = Math.max(0, Math.round((viewportW - width) / 2));
 			y = Math.max(0, Math.round((viewportH - height) / 2));
+			applyPositionAndSize();
 		};
 
 		const closeShell = () => {
@@ -779,11 +859,7 @@
 		};
 
 		const onWindowResize = () => {
-			const maxX = Math.max(0, window.innerWidth - width);
-			const maxY = Math.max(0, window.innerHeight - height);
-			x = clamp(x, 0, maxX);
-			y = clamp(y, 0, maxY);
-			applyShellStyle();
+			applyPositionAndSize();
 		};
 
 		if (isBrowser && currentArgs.mounted.entry.shell) {
@@ -816,6 +892,31 @@
 			titleEl.className = 'pie-tool-shell__title';
 			titleEl.textContent = currentArgs.mounted.entry.shell.title || currentArgs.mounted.toolId;
 			headerEl.appendChild(titleEl);
+
+			controlsEl = document.createElement('div');
+			controlsEl.className = 'pie-tool-shell__controls';
+			controlsEl.style.display = 'inline-flex';
+			controlsEl.style.alignItems = 'center';
+			controlsEl.style.gap = '4px';
+			const shellConfig = currentArgs.mounted.entry.shell;
+			if (shellConfig?.draggable !== false) {
+				controlsEl.appendChild(
+					createShellControlButton('Move tool left', '←', () => moveBy(-24, 0))
+				);
+				controlsEl.appendChild(
+					createShellControlButton('Move tool right', '→', () => moveBy(24, 0))
+				);
+			}
+			if (shellConfig?.resizable !== false) {
+				controlsEl.appendChild(
+					createShellControlButton('Shrink tool window', '−', () => resizeBy(-40, -40))
+				);
+				controlsEl.appendChild(
+					createShellControlButton('Grow tool window', '+', () => resizeBy(40, 40))
+				);
+			}
+			controlsEl.appendChild(createShellControlButton('Center tool window', '◎', centerShell));
+			headerEl.appendChild(controlsEl);
 
 			closeButtonEl = document.createElement('button');
 			closeButtonEl.type = 'button';
@@ -867,6 +968,42 @@
 			};
 			closeButtonEl.onclick = closeShell;
 			headerEl.appendChild(closeButtonEl);
+			headerEl.tabIndex = 0;
+			headerEl.onkeydown = (event: KeyboardEvent) => {
+				if (event.key === 'Home') {
+					event.preventDefault();
+					centerShell();
+					return;
+				}
+				const keyboardShellConfig = currentArgs.mounted.entry.shell;
+				if (event.shiftKey && keyboardShellConfig?.resizable !== false) {
+					if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+						event.preventDefault();
+						resizeBy(40, 40);
+						return;
+					}
+					if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+						event.preventDefault();
+						resizeBy(-40, -40);
+						return;
+					}
+				}
+				if (keyboardShellConfig?.draggable !== false) {
+					if (event.key === 'ArrowLeft') {
+						event.preventDefault();
+						moveBy(-24, 0);
+					} else if (event.key === 'ArrowRight') {
+						event.preventDefault();
+						moveBy(24, 0);
+					} else if (event.key === 'ArrowUp') {
+						event.preventDefault();
+						moveBy(0, -24);
+					} else if (event.key === 'ArrowDown') {
+						event.preventDefault();
+						moveBy(0, 24);
+					}
+				}
+			};
 
 			contentEl = document.createElement('div');
 			contentEl.className = 'pie-tool-shell__content';
@@ -924,6 +1061,7 @@
 				}
 				if (headerEl) {
 					headerEl.removeEventListener('pointerdown', onHeaderPointerDown);
+					headerEl.onkeydown = null;
 				}
 				if (shellEl) {
 					shellEl.removeEventListener('pointermove', onShellPointerMove);
@@ -1096,13 +1234,18 @@
 
 	.item-toolbar--left .item-toolbar__tools-row,
 	.item-toolbar--right .item-toolbar__tools-row {
+		flex-direction: column;
+		align-items: center;
 		justify-content: flex-start;
-		flex-wrap: wrap;
+		flex-wrap: nowrap;
 	}
 
 	.item-toolbar--left .item-toolbar__controls-row,
 	.item-toolbar--right .item-toolbar__controls-row {
 		justify-content: flex-start;
+		width: auto;
+		min-height: 0;
+		height: auto;
 	}
 
 	.item-toolbar__button {

@@ -39,7 +39,7 @@
 		<a href="/" class="btn btn-ghost btn-sm shrink-0">&#8592; Back to Demos</a>
 		<div class="min-w-0">
 			<div class="font-semibold truncate">{demoName}</div>
-			<div class="text-xs opacity-65 truncate">{demoPackage}</div>
+			<div class="text-xs opacity-85 truncate">{demoPackage}</div>
 		</div>
 	</div>
 
@@ -77,6 +77,7 @@
 				class:btn-active={viewMode === 'student'}
 				href={studentHref}
 				title="Student view - gather mode"
+				aria-current={viewMode === 'student' ? 'page' : undefined}
 			>
 				Student
 			</a>
@@ -85,6 +86,7 @@
 				class:btn-active={viewMode === 'scorer'}
 				href={scorerHref}
 				title="Scorer view - evaluate mode"
+				aria-current={viewMode === 'scorer' ? 'page' : undefined}
 			>
 				Scorer
 			</a>

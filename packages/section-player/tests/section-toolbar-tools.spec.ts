@@ -65,7 +65,41 @@ async function getComputedBackgroundColor(locator: Locator): Promise<string> {
 	return await locator.evaluate((element) => getComputedStyle(element as HTMLElement).backgroundColor);
 }
 
+async function getRect(locator: Locator): Promise<{
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+}> {
+	return await locator.evaluate((element) => {
+		const rect = (element as HTMLElement).getBoundingClientRect();
+		return {
+			x: Math.round(rect.x),
+			y: Math.round(rect.y),
+			width: Math.round(rect.width),
+			height: Math.round(rect.height),
+		};
+	});
+}
+
 test.describe("section toolbar tools", () => {
+	test("stacks right-positioned section toolbar buttons vertically", async ({ page }) => {
+		await gotoDemo(page);
+
+		const toolbar = sectionToolbar(page);
+		await expect(toolbar).toBeVisible();
+
+		const buttons = toolbar.getByRole("button");
+		await expect(buttons).toHaveCount(SECTION_TOOL_SPECS.length);
+
+		const firstButtonRect = await getRect(buttons.nth(0));
+		const secondButtonRect = await getRect(buttons.nth(1));
+
+		// Right-positioned section tools should stack in a column.
+		expect(secondButtonRect.y).toBeGreaterThan(firstButtonRect.y);
+		expect(Math.abs(secondButtonRect.x - firstButtonRect.x)).toBeLessThanOrEqual(4);
+	});
+
 	test("renders expected section-level tool buttons in demo defaults", async ({ page }) => {
 		test.setTimeout(180_000);
 		await gotoDemo(page);
@@ -101,6 +135,9 @@ test.describe("section toolbar tools", () => {
 				`${spec.toolHostTag}[tool-id^="${spec.id}:section:"]`,
 			);
 			await expect(host, `Missing ${spec.id} tool host`).toHaveCount(1);
+			if (["protractor", "lineReader", "ruler"].includes(spec.id)) {
+				await expect(host).toHaveAttribute("data-pie-tool-surface", "frameless");
+			}
 			if (spec.panelRole === "group") {
 				await expect
 					.poll(async () =>
@@ -155,6 +192,44 @@ test.describe("section toolbar tools", () => {
 		await expect
 			.poll(async () => await getComputedBackgroundColor(closeButton))
 			.toBe(baseBackground);
+	});
+
+	test("provides keyboard/single-action move and resize controls for hosted shells", async ({
+		page,
+	}) => {
+		await gotoDemo(page);
+		const toolbar = sectionToolbar(page);
+		const graphButton = toolbar.getByRole("button", {
+			name: "Graph - Graphing calculator",
+		});
+		await graphButton.click();
+
+		const graphShell = page.locator('[data-pie-tool-shell="graph"]').first();
+		await expect(graphShell).toBeVisible();
+
+		const moveRight = graphShell.getByRole("button", { name: "Move tool right" });
+		const grow = graphShell.getByRole("button", { name: "Grow tool window" });
+		const center = graphShell.getByRole("button", { name: "Center tool window" });
+
+		await expect(moveRight).toBeVisible();
+		await expect(grow).toBeVisible();
+		await expect(center).toBeVisible();
+
+		const before = await getRect(graphShell);
+		await moveRight.click();
+		const moved = await getRect(graphShell);
+		expect(moved.x).toBeGreaterThan(before.x);
+
+		await grow.click();
+		const resized = await getRect(graphShell);
+		expect(resized.width).toBeGreaterThanOrEqual(moved.width);
+		expect(resized.height).toBeGreaterThanOrEqual(moved.height);
+
+		const header = graphShell.locator(".pie-tool-shell__header");
+		await header.focus();
+		await page.keyboard.press("ArrowLeft");
+		const movedByKeyboard = await getRect(graphShell);
+		expect(movedByKeyboard.x).toBeLessThanOrEqual(resized.x);
 	});
 
 	test("exposes split divider semantics and keyboard resizing in splitpane layout", async ({

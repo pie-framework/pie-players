@@ -515,17 +515,41 @@
 
 					<div class="pie-item-player-session-debugger__card">
 						<div class="pie-item-player-session-debugger__card-title">Session Data</div>
-						<pre class="pie-item-player-session-debugger__card-pre">{JSON.stringify(snapshot.session, null, 2)}</pre>
+						<div
+							class="pie-item-player-session-debugger__card-region"
+							role="textbox"
+							aria-readonly="true"
+							tabindex="0"
+							aria-label="Session data JSON"
+						>
+							<pre class="pie-item-player-session-debugger__card-pre">{JSON.stringify(snapshot.session, null, 2)}</pre>
+						</div>
 					</div>
 
 					<div class="pie-item-player-session-debugger__card">
 						<div class="pie-item-player-session-debugger__card-title">Environment</div>
-						<pre class="pie-item-player-session-debugger__card-pre">{JSON.stringify(snapshot.env, null, 2)}</pre>
+						<div
+							class="pie-item-player-session-debugger__card-region"
+							role="textbox"
+							aria-readonly="true"
+							tabindex="0"
+							aria-label="Environment JSON"
+						>
+							<pre class="pie-item-player-session-debugger__card-pre">{JSON.stringify(snapshot.env, null, 2)}</pre>
+						</div>
 					</div>
 				{:else}
 					<div class="pie-item-player-session-debugger__card">
 						<div class="pie-item-player-session-debugger__card-title">Filtered Model</div>
-						<pre class="pie-item-player-session-debugger__card-pre">{JSON.stringify(filteredModelSnapshot, null, 2)}</pre>
+						<div
+							class="pie-item-player-session-debugger__card-region"
+							role="textbox"
+							aria-readonly="true"
+							tabindex="0"
+							aria-label="Filtered model JSON"
+						>
+							<pre class="pie-item-player-session-debugger__card-pre">{JSON.stringify(filteredModelSnapshot, null, 2)}</pre>
+						</div>
 					</div>
 				{/if}
 			</div>
@@ -698,6 +722,12 @@
 		overflow: auto;
 		white-space: pre-wrap;
 		word-break: break-word;
+	}
+
+	.pie-item-player-session-debugger__card-region:focus-visible {
+		outline: 2px solid #3b82f6;
+		outline-offset: 2px;
+		border-radius: 0.55rem;
 	}
 
 	.pie-item-player-session-debugger__resize-handle {

@@ -24,6 +24,7 @@
 		"test:e2e:item-player": "export ITEM_DEMOS_PORT=$(bun ./scripts/get-free-port.mjs 5400); bun run build:e2e:item-player && bunx playwright test --config packages/item-player/playwright.config.ts",
 		"test:e2e:assessment-player": "export ASSESSMENT_DEMOS_PORT=$(bun ./scripts/get-free-port.mjs 5500); bun run build:e2e:assessment-player && bunx playwright test --config packages/assessment-player/playwright.config.ts",
 		"test:e2e:item-player:multiple-choice": "export ITEM_DEMOS_PORT=$(bun ./scripts/get-free-port.mjs 5400); bun run build:e2e:item-player && bunx playwright test packages/item-player/tests/item-player-multiple-choice.spec.ts --config packages/item-player/playwright.config.ts",
+		"test:e2e:a11y:critical": "bun run test:e2e:section-player:tts-ssml && bun run test:e2e:item-player:multiple-choice && bun run test:e2e:assessment-player",
 		"test:e2e:all": "bun run test:e2e:section-player && bun run test:e2e:item-player && bun run test:e2e:assessment-player",
 		"test:local-esm-cdn": "bun run --cwd apps/local-esm-cdn test",
 		"cli": "bun --cwd tools/cli ./bin/run.js",
@@ -97,7 +98,7 @@
 		"lefthook": "^2.1.1",
 		"playwright": "^1.58.2",
 		"publint": "^0.3.17",
-		"turbo": "^2.8.19",
+		"turbo": "^2.8.20",
 		"typescript": "^5.9.3"
 	},
 	"packageManager": "bun@1.3.11",

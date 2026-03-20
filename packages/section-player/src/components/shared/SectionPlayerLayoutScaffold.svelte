@@ -10,6 +10,7 @@
 	import type { SectionControllerHandle } from "@pie-players/pie-assessment-toolkit";
 	import { coerceBooleanLike } from "./section-player-props.js";
 	import { onDestroy } from "svelte";
+	import type { SectionPlayerFocusPolicy } from "../../policies/types.js";
 
 	let {
 		runtime = null as Record<string, unknown> | null,
@@ -19,6 +20,7 @@
 		showToolbar = "false" as boolean | string | null | undefined,
 		toolbarPosition = "right",
 		enabledTools = "",
+		focusPolicy = { autoFocusFirstItem: false } as SectionPlayerFocusPolicy,
 		cardRenderContext = null as SectionPlayerCardRenderContext | null,
 		onCompositionChanged,
 		onSectionReady,
@@ -35,6 +37,7 @@
 		showToolbar?: boolean | string | null | undefined;
 		toolbarPosition?: string;
 		enabledTools?: string;
+		focusPolicy?: SectionPlayerFocusPolicy;
 		cardRenderContext?: SectionPlayerCardRenderContext | null;
 		onCompositionChanged?: (event: Event) => void;
 		onSectionReady?: (event: Event) => void;
@@ -67,6 +70,27 @@
 		unsubscribeNavigationStatus = controller.subscribe((event: any) => {
 			if (event?.type !== "item-selected") return;
 			navigationStatusMessage = buildStatusMessage(event);
+			if (focusPolicy?.autoFocusFirstItem !== true) return;
+			queueMicrotask(() => {
+				const cards = Array.from(
+					document.querySelectorAll<HTMLElement>(
+						".pie-section-player-content-card[data-section-item-card]",
+					),
+				);
+				if (!cards.length) return;
+				const cardById = cards.find(
+					(card) =>
+						(event.currentItemId &&
+							card.getAttribute("data-canonical-item-id") ===
+								String(event.currentItemId)) ||
+						(event.currentItemId &&
+							card.closest("pie-item-shell")?.getAttribute("canonical-item-id") ===
+								String(event.currentItemId)),
+				);
+				const target = cardById || cards[0];
+				target.scrollIntoView({ block: "start", inline: "nearest" });
+				target.focus();
+			});
 		});
 	}
 

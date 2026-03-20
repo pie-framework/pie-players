@@ -598,7 +598,13 @@
 				{/each}
 			{/if}
 		</div>
-		<div class="pie-section-player-tools-event-debugger__detail">
+		<div
+			class="pie-section-player-tools-event-debugger__detail"
+			role="textbox"
+			aria-readonly="true"
+			tabindex="0"
+			aria-label="Controller event details"
+		>
 			{#if selectedRecord}
 				<div class="pie-section-player-tools-event-debugger__detail-meta">
 					<div><strong>Type:</strong> {selectedRecord.type}</div>

@@ -1,26 +1,84 @@
-/**
- * Minimal focus trap helper.
- *
- * Tools use this to keep keyboard focus within a floating dialog while visible.
- * For now, we implement a lightweight version that:
- * - focuses the container when activated
- * - restores previous focus on cleanup
- */
-export function createFocusTrap(container: HTMLElement): () => void {
-	const prev =
-		typeof document !== "undefined"
-			? (document.activeElement as HTMLElement | null)
-			: null;
+const FOCUSABLE_SELECTOR = [
+	"a[href]",
+	"button:not([disabled])",
+	"input:not([disabled]):not([type='hidden'])",
+	"select:not([disabled])",
+	"textarea:not([disabled])",
+	"[tabindex]:not([tabindex='-1'])",
+].join(",");
 
-	queueMicrotask(() => {
-		try {
-			container.focus?.();
-		} catch {
-			// ignore
-		}
+type FocusTrapOptions = {
+	initialFocus?: HTMLElement | null;
+	onEscape?: () => void;
+};
+
+function getFocusableElements(container: HTMLElement): HTMLElement[] {
+	return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter((el) => {
+		if (el.hasAttribute("disabled")) return false;
+		return el.offsetParent !== null || el.getClientRects().length > 0;
 	});
+}
+
+function focusInitialTarget(container: HTMLElement, initialFocus?: HTMLElement | null): void {
+	try {
+		if (initialFocus && container.contains(initialFocus)) {
+			initialFocus.focus();
+			return;
+		}
+		const focusable = getFocusableElements(container);
+		if (focusable.length > 0) {
+			focusable[0].focus();
+			return;
+		}
+		container.focus?.();
+	} catch {
+		// ignore
+	}
+}
+
+/**
+ * Focus trap helper for floating dialogs/panels.
+ *
+ * Keeps tab navigation contained, supports Escape callback,
+ * and restores prior focus when the trap is removed.
+ */
+export function createFocusTrap(container: HTMLElement, options: FocusTrapOptions = {}): () => void {
+	const prev =
+		typeof document !== "undefined" ? (document.activeElement as HTMLElement | null) : null;
+	const onKeydown = (event: KeyboardEvent) => {
+		if (event.key === "Escape") {
+			options.onEscape?.();
+			return;
+		}
+		if (event.key !== "Tab") return;
+
+		const focusable = getFocusableElements(container);
+		if (!focusable.length) {
+			event.preventDefault();
+			container.focus?.();
+			return;
+		}
+
+		const current = document.activeElement as HTMLElement | null;
+		const currentIndex = focusable.indexOf(current || focusable[0]);
+		if (event.shiftKey) {
+			if (currentIndex <= 0) {
+				event.preventDefault();
+				focusable[focusable.length - 1].focus();
+			}
+			return;
+		}
+		if (currentIndex === focusable.length - 1) {
+			event.preventDefault();
+			focusable[0].focus();
+		}
+	};
+
+	queueMicrotask(() => focusInitialTarget(container, options.initialFocus));
+	container.addEventListener("keydown", onKeydown);
 
 	return () => {
+		container.removeEventListener("keydown", onKeydown);
 		try {
 			prev?.focus?.();
 		} catch {

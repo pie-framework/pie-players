@@ -223,6 +223,48 @@
 	let previewPollingTimer: number | null = null;
 	let previewRunId = 0;
 	let activeCustomProviderElement = $state<Element | null>(null);
+	let dialogEl = $state<HTMLElement | null>(null);
+	let closeButtonEl = $state<HTMLButtonElement | null>(null);
+	let cleanupFocusTrap: (() => void) | null = null;
+
+	function createLocalFocusTrap(
+		container: HTMLElement,
+		options: { initialFocus?: HTMLElement | null; onEscape?: () => void } = {}
+	): () => void {
+		const focusable = () =>
+			Array.from(
+				container.querySelectorAll<HTMLElement>(
+					"button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])",
+				),
+			).filter((el) => el.offsetParent !== null || el.getClientRects().length > 0);
+		const previous = document.activeElement as HTMLElement | null;
+		const onKeyDown = (event: KeyboardEvent) => {
+			if (event.key === "Escape") {
+				options.onEscape?.();
+				return;
+			}
+			if (event.key !== "Tab") return;
+			const nodes = focusable();
+			if (!nodes.length) return;
+			const current = document.activeElement as HTMLElement | null;
+			const currentIndex = nodes.indexOf(current || nodes[0]);
+			if (event.shiftKey && currentIndex <= 0) {
+				event.preventDefault();
+				nodes[nodes.length - 1].focus();
+			} else if (!event.shiftKey && currentIndex === nodes.length - 1) {
+				event.preventDefault();
+				nodes[0].focus();
+			}
+		};
+		container.addEventListener("keydown", onKeyDown);
+		queueMicrotask(() => {
+			(options.initialFocus || focusable()[0] || container)?.focus?.();
+		});
+		return () => {
+			container.removeEventListener("keydown", onKeyDown);
+			previous?.focus?.();
+		};
+	}
 
 	const DEFAULT_PREVIEW_TEXT: Record<BackendTab, string> = {
 		browser:
@@ -1259,6 +1301,22 @@
 	});
 
 	$effect(() => {
+		if (!dialogEl) return;
+		cleanupFocusTrap?.();
+		cleanupFocusTrap = createLocalFocusTrap(dialogEl, {
+			initialFocus: closeButtonEl,
+			onEscape: requestClose
+		});
+		queueMicrotask(() => {
+			closeButtonEl?.focus?.();
+		});
+		return () => {
+			cleanupFocusTrap?.();
+			cleanupFocusTrap = null;
+		};
+	});
+
+	$effect(() => {
 		void normalizedCustomProviders;
 		untrack(() => {
 			syncCustomProvidersState();
@@ -1287,15 +1345,30 @@
 	});
 
 	onDestroy(() => {
+		cleanupFocusTrap?.();
+		cleanupFocusTrap = null;
 		stopPreview();
 	});
 </script>
 
 <div class="pie-tts-dialog-backdrop" style="z-index: {TTS_MODAL_Z_INDEX};">
-	<div class="pie-tts-dialog">
+	<div
+		class="pie-tts-dialog"
+		bind:this={dialogEl}
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby="pie-tts-dialog-title"
+		tabindex="-1"
+	>
 		<div class="pie-tts-dialog-header">
-			<h3 class="pie-tts-dialog-title">TTS settings</h3>
-			<button class="btn btn-xs btn-ghost btn-circle" onclick={requestClose} aria-label="Close TTS settings">
+			<h3 id="pie-tts-dialog-title" class="pie-tts-dialog-title">TTS settings</h3>
+			<button
+				class="btn btn-xs btn-ghost btn-circle"
+				bind:this={closeButtonEl}
+				type="button"
+				onclick={requestClose}
+				aria-label="Close TTS settings"
+			>
 				<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
 				</svg>

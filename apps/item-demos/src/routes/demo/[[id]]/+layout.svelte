@@ -125,7 +125,7 @@
 		<div class="mb-5">
 			<h1 class="text-3xl font-bold">{data.demo?.name || 'Demo'}</h1>
 			{#if data.demo?.description}
-				<p class="mt-2 text-base-content/70">{data.demo.description}</p>
+				<p class="mt-2 text-base-content/90">{data.demo.description}</p>
 			{/if}
 		</div>
 

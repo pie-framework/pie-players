@@ -168,4 +168,23 @@ test.describe("section player preloaded strategy", () => {
 			);
 		});
 	});
+
+	test("iife section strategy still enforces preloaded item-player strategy", async ({
+		page,
+	}) => {
+		await page.goto("/tts-ssml?mode=candidate&layout=splitpane&player=iife", {
+			waitUntil: "networkidle",
+		});
+		await expect(page.getByRole("main", { name: "Items" })).toBeVisible();
+		await expect(page.locator("pie-item-player").first()).toBeVisible({
+			timeout: 30_000,
+		});
+		const strategyValues = await page.locator("pie-item-player").evaluateAll((els) =>
+			els.map((el) => el.getAttribute("strategy")),
+		);
+		expect(strategyValues.length).toBeGreaterThan(0);
+		for (const strategy of strategyValues) {
+			expect(strategy).toBe("preloaded");
+		}
+	});
 });

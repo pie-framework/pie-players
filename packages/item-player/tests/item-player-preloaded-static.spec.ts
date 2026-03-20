@@ -232,6 +232,67 @@ test.describe("item-player strategy regressions", () => {
 		await assertMediaRetryBridge(page, IIFE_DELIVERY_PATH);
 	});
 
+	test("iife uses client-player for standalone and player bundle for hosted mode", async ({
+		page,
+	}) => {
+		const bundleRequests: string[] = [];
+		page.on("request", (request) => {
+			const url = request.url();
+			if (url.includes("/bundles/")) bundleRequests.push(url);
+		});
+
+		await page.goto(IIFE_DELIVERY_PATH, { waitUntil: "networkidle" });
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({ timeout: 20_000 });
+
+		await page.evaluate(() => {
+			const fixture = document.createElement("div");
+			fixture.id = "pie-hosted-bundle-type-fixture";
+			document.body.appendChild(fixture);
+
+			const sharedConfig = {
+				elements: {
+					"pie-multiple-choice": "@pie-element/multiple-choice@11.4.3",
+				},
+				models: [
+					{
+						id: "hosted-mode-check",
+						element: "pie-multiple-choice",
+						prompt: "Hosted mode bundle check",
+						choiceMode: "radio",
+						choices: [
+							{ value: "a", label: "A", correct: false },
+							{ value: "b", label: "B", correct: true },
+						],
+					},
+				],
+				markup: '<pie-multiple-choice id="hosted-mode-check"></pie-multiple-choice>',
+			};
+
+			const standalone = document.createElement("pie-item-player") as any;
+			standalone.strategy = "iife";
+			standalone.hosted = false;
+			standalone.env = { mode: "gather", role: "student" };
+			standalone.session = { id: "standalone-session", data: [] };
+			standalone.config = sharedConfig;
+			fixture.appendChild(standalone);
+
+			const hosted = document.createElement("pie-item-player") as any;
+			hosted.strategy = "iife";
+			hosted.hosted = true;
+			hosted.env = { mode: "gather", role: "student" };
+			hosted.session = { id: "hosted-session", data: [] };
+			hosted.config = sharedConfig;
+			fixture.appendChild(hosted);
+		});
+
+		await expect
+			.poll(() => bundleRequests.some((url) => url.includes("/client-player")))
+			.toBe(true);
+		await expect
+			.poll(() => bundleRequests.some((url) => url.includes("/player")))
+			.toBe(true);
+	});
+
 test.skip("esm emits media-retry-ready after first audio load failure", async ({ page }) => {
 		await assertMediaRetryBridge(page, ESM_DELIVERY_PATH);
 	});

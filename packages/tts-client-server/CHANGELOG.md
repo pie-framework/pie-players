@@ -1,5 +1,13 @@
 # @pie-players/tts-client-server
 
+## 0.3.21
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-tts@0.3.21
+
 ## 0.3.20
 
 ### Patch Changes

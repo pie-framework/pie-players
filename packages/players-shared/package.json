@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-players-shared",
-	"version": "0.3.20",
+	"version": "0.3.21",
 	"type": "module",
 	"description": "Shared runtime + UI utilities for PIE players",
 	"license": "MIT",

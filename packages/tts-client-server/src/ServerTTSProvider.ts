@@ -130,6 +130,13 @@ interface SynthesizeAPIResponse {
 interface CustomTransportResponse {
 	audioContent: string;
 	word?: string;
+	speechMarks?: Array<{
+		time?: number;
+		type?: string;
+		start?: number;
+		end?: number;
+		value?: string;
+	}>;
 }
 
 type NormalizedAudioSource =
@@ -262,6 +269,41 @@ const parseJSONLSpeechMarks = (raw: string): NormalizedSynthesisResult["speechMa
 	return marks;
 };
 
+const parseInlineSpeechMarks = (
+	input: CustomTransportResponse["speechMarks"],
+): NormalizedSynthesisResult["speechMarks"] => {
+	if (!Array.isArray(input)) return [];
+	const marks: NormalizedSynthesisResult["speechMarks"] = [];
+	let fallbackIndex = 0;
+	for (const entry of input) {
+		if (!entry || typeof entry !== "object") continue;
+		const type = typeof entry.type === "string" ? entry.type : "word";
+		const time =
+			typeof entry.time === "number" && Number.isFinite(entry.time)
+				? entry.time
+				: 0;
+		const value = typeof entry.value === "string" ? entry.value : "";
+		const explicitStart =
+			typeof entry.start === "number" && Number.isFinite(entry.start)
+				? entry.start
+				: null;
+		const explicitEnd =
+			typeof entry.end === "number" && Number.isFinite(entry.end)
+				? entry.end
+				: null;
+		const start = explicitStart ?? fallbackIndex;
+		const end =
+			explicitEnd ?? (start + Math.max(1, value.length || 1));
+		fallbackIndex = Math.max(fallbackIndex, end + 1);
+		marks.push({ time, type, start, end, value });
+	}
+	return marks.sort((left, right) => {
+		if (left.time !== right.time) return left.time - right.time;
+		if (left.start !== right.start) return left.start - right.start;
+		return left.end - right.end;
+	});
+};
+
 const pieAdapter: TransportAdapter = {
 	id: "pie",
 	resolveSynthesisUrl: (config) => {
@@ -354,7 +396,10 @@ const customAdapter: TransportAdapter = {
 			}
 		}
 		let speechMarks: NormalizedSynthesisResult["speechMarks"] = [];
-		if (typeof data.word === "string" && data.word.length > 0) {
+		const inlineSpeechMarks = parseInlineSpeechMarks(data.speechMarks);
+		if (inlineSpeechMarks.length > 0) {
+			speechMarks = inlineSpeechMarks;
+		} else if (typeof data.word === "string" && data.word.length > 0) {
 			const marksResponse = await fetch(data.word, {
 				headers: marksHeaders,
 				signal,

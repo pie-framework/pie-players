@@ -422,13 +422,13 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		id: "tts-ssml",
 		name: "TTS with SSML",
 		description:
-			"Three items with passage - demonstrates SSML extraction, AWS SSML tags, and multi-level TTS",
+			"Three items with passage - demonstrates SSML extraction, AWS SSML tags, and SC-proxy-backed custom TTS",
 		integrationLevel: 4,
 		integrationTheme: "JS API customization",
 		focus:
 			"Demonstrates text-to-speech behavior across plain text, authored SSML, and backend-specific SSML handling.",
 		whatMakesItTick: [
-			"TTS settings panel lets you switch browser, Polly, and Google providers at runtime.",
+			"Defaults to a server-side SC proxy (`/api/tts/sc`) so auth remains off the client.",
 			"Section content intentionally mixes plain text and SSML-rich prompts/passages for comparison.",
 			"Toolkit tool config enables `textToSpeech` in item and passage placements."
 		],

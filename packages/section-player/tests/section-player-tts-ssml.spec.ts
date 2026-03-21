@@ -48,18 +48,6 @@ async function readSessionSnapshot(
 	return snapshot || {};
 }
 
-async function setRangeValue(page: Page, selector: string, value: number): Promise<void> {
-	await page.locator(selector).evaluate(
-		(node, nextValue) => {
-			const input = node as HTMLInputElement;
-			input.value = String(nextValue);
-			input.dispatchEvent(new Event("input", { bubbles: true }));
-			input.dispatchEvent(new Event("change", { bubbles: true }));
-		},
-		value,
-	);
-}
-
 async function forceBrowserTtsRuntime(page: Page): Promise<void> {
 	await page.locator("pie-section-player-tools-session-debugger").evaluate(async (element) => {
 		const coordinator = (element as any).toolkitCoordinator;
@@ -324,7 +312,7 @@ test.describe("section player demo tts-ssml", () => {
 		});
 		const pollyCheckNormalizedResponse = page.waitForResponse(
 			(response) =>
-				response.url().includes("/api/tts/polly/voices") &&
+				response.url().includes("/polly/voices") &&
 				response.request().method() === "GET",
 		);
 		await ttsDialog.getByRole("button", { name: "Recheck" }).click();
@@ -337,18 +325,20 @@ test.describe("section player demo tts-ssml", () => {
 		});
 		const pollyCheckFallbackResponse = page.waitForResponse(
 			(response) =>
-				response.url().includes("/api/tts/polly/voices") &&
+				response.url().includes("/polly/voices") &&
 				response.request().method() === "GET",
 		);
 		await ttsDialog.getByRole("button", { name: "Recheck" }).click();
 		await pollyCheckFallbackResponse;
+		await expect(ttsDialog.locator("#tts-polly-rate")).toHaveCount(0);
 
 		await ttsDialog.getByRole("button", { name: "Google" }).click();
 		await expect(ttsDialog.locator("#tts-google-endpoint")).toHaveValue("/api/tts");
+		await expect(ttsDialog.locator("#tts-google-rate")).toHaveCount(0);
 
 		await ttsDialog.getByRole("button", { name: "Browser" }).click();
-		await setRangeValue(page, "#tts-browser-rate", 1.35);
-		await setRangeValue(page, "#tts-browser-pitch", 1.1);
+		await expect(ttsDialog.locator("#tts-browser-rate")).toHaveCount(0);
+		await expect(ttsDialog.locator("#tts-browser-pitch")).toHaveCount(0);
 		await ttsDialog.getByRole("button", { name: "Apply" }).click();
 		await expect(ttsDialog).toHaveCount(0);
 
@@ -361,10 +351,8 @@ test.describe("section player demo tts-ssml", () => {
 				return { toolConfig, serviceConfig };
 			});
 		expect(ttsRuntimeSnapshot.toolConfig?.backend).toBe("browser");
-		expect(Number(ttsRuntimeSnapshot.toolConfig?.rate ?? 0)).toBeCloseTo(1.35, 2);
-		expect(Number(ttsRuntimeSnapshot.toolConfig?.pitch ?? 0)).toBeCloseTo(1.1, 2);
-		expect(Number(ttsRuntimeSnapshot.serviceConfig?.rate ?? 0)).toBeCloseTo(1.35, 2);
-		expect(Number(ttsRuntimeSnapshot.serviceConfig?.pitch ?? 0)).toBeCloseTo(1.1, 2);
+		expect(ttsRuntimeSnapshot.toolConfig).toBeTruthy();
+		expect(ttsRuntimeSnapshot.serviceConfig).toBeTruthy();
 
 		// Calculator is available in items, not in passage.
 		await expect(passageRegion.getByRole("button", { name: /calculator/i })).toHaveCount(0);
@@ -474,7 +462,7 @@ test.describe("section player demo tts-ssml", () => {
 		await gotoDemo(page);
 		await openSessionPanel(page);
 
-		await page.route("**/api/tts/polly/voices**", async (route) => {
+		await page.route("**/polly/voices**", async (route) => {
 			await route.fulfill({
 				status: 200,
 				contentType: "application/json",
@@ -491,7 +479,7 @@ test.describe("section player demo tts-ssml", () => {
 			});
 		});
 
-		await page.route("**/api/tts/synthesize", async (route) => {
+		await page.route("**/synthesize", async (route) => {
 			const request = route.request();
 			const payload = request.postDataJSON() as Record<string, unknown>;
 			expect(payload.provider).toBe("polly");
@@ -546,7 +534,7 @@ test.describe("section player demo tts-ssml", () => {
 		await expect(passageInlineTts).toBeVisible();
 		const synthRequest = page.waitForRequest(
 			(request) =>
-				request.url().includes("/api/tts/synthesize") &&
+				request.url().includes("/synthesize") &&
 				request.method() === "POST",
 		);
 		await passageInlineTts.getByRole("button", { name: "Play reading" }).click();

@@ -44,6 +44,13 @@
 		contentType?: string;
 		speechMarks?: Array<{ time: number; start: number; end: number }>;
 	};
+type PreviewSpeechMark = { time: number; start: number; end: number; value?: string };
+	type CustomProviderPreviewResult = {
+		note?: string;
+		audioUrl?: string;
+		speechMarks?: PreviewSpeechMark[];
+		trackingText?: string;
+	};
 
 	type TtsSettingsAdapters = {
 		fetchPollyVoices?: (args: {
@@ -83,6 +90,8 @@
 		toolkitCoordinator: any;
 		apiEndpoint: string;
 		state: Record<string, unknown>;
+		previewText?: string;
+		previewMode?: PreviewMode;
 	};
 
 	type CustomProviderAdapter = {
@@ -96,7 +105,7 @@
 		buildApplyConfig: (
 			context: CustomProviderContext
 		) => ProviderApplyResult | Promise<ProviderApplyResult>;
-		preview?: (context: CustomProviderContext) => Promise<void | { note?: string }>;
+		preview?: (context: CustomProviderContext) => Promise<void | CustomProviderPreviewResult>;
 		initialState?: Record<string, unknown>;
 	};
 
@@ -113,7 +122,7 @@
 		buildApplyConfig?: (
 			context: CustomProviderContext
 		) => ProviderApplyResult | Promise<ProviderApplyResult>;
-		preview?: (context: CustomProviderContext) => Promise<void | { note?: string }>;
+		preview?: (context: CustomProviderContext) => Promise<void | CustomProviderPreviewResult>;
 		initialState?: Record<string, unknown>;
 	};
 
@@ -281,6 +290,16 @@
 			'<speak>This is a <prosody rate="95%">Google Cloud SSML sample</prosody>. <break time="250ms"/> The preview preserves authored SSML.</speak>'
 	};
 	const BUILT_IN_TABS: BuiltInBackendTab[] = ["browser", "polly", "google"];
+const PREVIEW_DEBUG_PREFIX = "[pie-tts-preview]";
+
+function debugPreview(event: string, payload?: Record<string, unknown>): void {
+	if (typeof console === "undefined") return;
+	if (payload) {
+		console.debug(`${PREVIEW_DEBUG_PREFIX} ${event}`, payload);
+		return;
+	}
+	console.debug(`${PREVIEW_DEBUG_PREFIX} ${event}`);
+}
 
 	const normalizedCustomProviders = $derived.by(() => {
 		const reserved = new Set<string>(BUILT_IN_TABS);
@@ -314,12 +333,16 @@
 		dispatch("close");
 	}
 
-	function createProviderContext(providerId: string): CustomProviderContext {
+	function createProviderContext(
+		providerId: string,
+		overrides: Partial<CustomProviderContext> = {}
+	): CustomProviderContext {
 		return {
 			id: providerId,
 			toolkitCoordinator,
 			apiEndpoint: getDefaultApiEndpoint(),
-			state: customProviderStateById[providerId] || {}
+			state: customProviderStateById[providerId] || {},
+			...overrides
 		};
 	}
 
@@ -472,6 +495,10 @@
 			typeof source?.apiEndpoint === "string" && source.apiEndpoint.trim().length > 0
 				? source.apiEndpoint
 				: resolvedDefaultApiEndpoint;
+		const defaultPollyEndpoint =
+			backend === "polly" ? defaultEndpoint : resolvedDefaultApiEndpoint;
+		const defaultGoogleEndpoint =
+			backend === "google" ? defaultEndpoint : resolvedDefaultApiEndpoint;
 		const defaultLanguage =
 			typeof source?.language === "string" && source.language.trim().length > 0
 				? source.language
@@ -511,7 +538,7 @@
 		browserRate = defaultRate;
 		browserPitch = defaultPitch;
 
-		pollyApiEndpoint = defaultEndpoint;
+		pollyApiEndpoint = defaultPollyEndpoint;
 		pollyLanguage = defaultLanguage;
 		pollyEngine = defaultEngine;
 		pollySampleRate = defaultSampleRate;
@@ -520,7 +547,7 @@
 		pollyVoice = backend === "polly" ? defaultVoice : "";
 		pollyRate = defaultRate;
 
-		googleApiEndpoint = defaultEndpoint;
+		googleApiEndpoint = defaultGoogleEndpoint;
 		googleLanguage = defaultLanguage;
 		googleGender = typeof source?.googleGender === "string" ? source.googleGender : "";
 		googleVoiceType =
@@ -840,9 +867,7 @@
 		if (activeTab === nextTab) return;
 		stopPreview();
 		activeTab = nextTab;
-		if (isBuiltInTab(nextTab)) {
-			setPreviewTextForCurrentTab();
-		}
+		setPreviewTextForCurrentTab();
 		void checkActiveTabAvailability();
 	}
 
@@ -944,10 +969,12 @@
 
 	function setPreviewTextForCurrentTab() {
 		if (!isBuiltInTab(activeTab)) {
+			const customLabel = activeCustomProvider?.label || "custom";
+			const customSample = `This is a ${customLabel} TTS provider sample.`;
 			if (previewMode === "ssml") {
-				previewText = "";
-			} else if (!previewText.trim()) {
-				previewText = "This is a custom TTS provider voice sample.";
+				previewText = `<speak>${customSample}</speak>`;
+			} else {
+				previewText = customSample;
 			}
 			return;
 		}
@@ -978,19 +1005,50 @@
 		if (previewPollingTimer !== null) {
 			window.clearInterval(previewPollingTimer);
 		}
-		let lastIndex = -1;
+		const orderedMarks = [...speechMarks].sort((left, right) => {
+			if (left.time !== right.time) return left.time - right.time;
+			if (left.start !== right.start) return left.start - right.start;
+			return left.end - right.end;
+		});
+		if (orderedMarks.length === 0) return;
+	const firstMark = orderedMarks[0];
+	debugPreview("tracking:init", {
+		audioCurrentMs: Math.round(audio.currentTime * 1000),
+		marks: orderedMarks.length,
+		firstMark,
+		firstSlice: previewText.slice(
+			Math.max(0, firstMark.start),
+			Math.max(firstMark.start, firstMark.end)
+		)
+	});
+		// Ensure preview starts on the first spoken word instead of waiting for the first poll tick.
+	previewTrackIndex = firstMark.start;
+	previewTrackLength = Math.max(1, firstMark.end - firstMark.start);
+		let lastIndex = 0;
+	let emittedTransitions = 0;
 		previewPollingTimer = window.setInterval(() => {
 			const currentMs = audio.currentTime * 1000;
-			for (let index = speechMarks.length - 1; index >= 0; index -= 1) {
-				const mark = speechMarks[index];
-				if (currentMs >= mark.time) {
-					if (index !== lastIndex) {
-						lastIndex = index;
-						previewTrackIndex = mark.start;
-						previewTrackLength = Math.max(1, mark.end - mark.start);
-					}
-					return;
-				}
+			let nextIndex = lastIndex;
+			while (
+				nextIndex + 1 < orderedMarks.length &&
+				currentMs >= orderedMarks[nextIndex + 1].time
+			) {
+				nextIndex += 1;
+			}
+			if (nextIndex !== lastIndex) {
+				lastIndex = nextIndex;
+				const mark = orderedMarks[lastIndex];
+				previewTrackIndex = mark.start;
+				previewTrackLength = Math.max(1, mark.end - mark.start);
+			if (emittedTransitions < 12) {
+				emittedTransitions += 1;
+				debugPreview("tracking:step", {
+					audioCurrentMs: Math.round(currentMs),
+					index: lastIndex,
+					mark,
+					slice: previewText.slice(Math.max(0, mark.start), Math.max(mark.start, mark.end))
+				});
+			}
 			}
 		}, 40);
 	}
@@ -1009,6 +1067,149 @@
 		}
 		isPreviewing = false;
 		previewBackend = null;
+	}
+
+	function normalizePreviewSpeechMarks(
+		speechMarks: PreviewSpeechMark[],
+		audioDurationSeconds: number
+	): PreviewSpeechMark[] {
+		if (speechMarks.length === 0) return speechMarks;
+		const ordered = [...speechMarks].sort((left, right) => {
+			if (left.time !== right.time) return left.time - right.time;
+			if (left.start !== right.start) return left.start - right.start;
+			return left.end - right.end;
+		});
+		const times = ordered.map((mark) => Number(mark.time) || 0).filter((value) => value >= 0);
+		const maxTime = times.length ? Math.max(...times) : 0;
+		const deltas: number[] = [];
+		for (let index = 1; index < times.length; index += 1) {
+			const delta = times[index] - times[index - 1];
+			if (Number.isFinite(delta) && delta > 0) deltas.push(delta);
+		}
+		const medianDelta =
+			deltas.length > 0
+				? [...deltas].sort((a, b) => a - b)[Math.floor(deltas.length / 2)]
+				: 0;
+		const durationSuggestsSeconds =
+			Number.isFinite(audioDurationSeconds) &&
+			audioDurationSeconds > 0 &&
+			maxTime > 0 &&
+			maxTime <= audioDurationSeconds * 1.5;
+		// SC marks are commonly seconds; when metadata is unavailable, use time-shape heuristics.
+		const shapeSuggestsSeconds =
+			(maxTime > 0 && maxTime < 100 && ordered.length > 3) || (medianDelta > 0 && medianDelta < 10);
+		const shouldConvertSecondsToMs = durationSuggestsSeconds || shapeSuggestsSeconds;
+		if (!shouldConvertSecondsToMs) return ordered;
+		return ordered.map((mark) => ({ ...mark, time: Number(mark.time) * 1000 }));
+	}
+
+function normalizePreviewSpeechMarkOffsets(
+	speechMarks: PreviewSpeechMark[],
+	trackingText: string
+): PreviewSpeechMark[] {
+	if (speechMarks.length === 0) return speechMarks;
+	const ordered = [...speechMarks].sort((left, right) => {
+		if (left.time !== right.time) return left.time - right.time;
+		if (left.start !== right.start) return left.start - right.start;
+		return left.end - right.end;
+	});
+	const safeText = typeof trackingText === "string" ? trackingText : "";
+	const textLength = safeText.length;
+	if (!textLength) return ordered;
+	const maxEnd = Math.max(...ordered.map((mark) => Number(mark.end) || 0));
+	const firstMark = ordered[0];
+	const firstWord =
+		typeof firstMark.value === "string" ? firstMark.value.trim() : "";
+	const firstWordIndex = firstWord
+		? safeText.toLowerCase().indexOf(firstWord.toLowerCase())
+		: -1;
+	const anchoredShift =
+		firstWordIndex >= 0 ? Number(firstMark.start || 0) - firstWordIndex : 0;
+	const fallbackShift = Number(firstMark.start || 0);
+	const shouldRebase = maxEnd > textLength + 2 && (anchoredShift > 0 || fallbackShift > 0);
+	if (!shouldRebase) return ordered;
+	const shift = anchoredShift > 0 ? anchoredShift : fallbackShift;
+	const rebased = ordered.map((mark) => {
+		const start = Math.max(0, Number(mark.start || 0) - shift);
+		const end = Math.max(start + 1, Number(mark.end || 0) - shift);
+		return { ...mark, start, end };
+	});
+	debugPreview("marks:offset-rebase", {
+		textLength,
+		firstWord,
+		firstWordIndex,
+		shift,
+		firstBefore: firstMark,
+		firstAfter: rebased[0],
+		lastAfter: rebased[rebased.length - 1]
+	});
+	return rebased;
+}
+
+	async function playPreviewAudioFromUrl(
+		audioUrl: string,
+		speechMarks: PreviewSpeechMark[] = []
+	): Promise<void> {
+		const audio = new Audio(audioUrl);
+		currentPreviewAudio = audio;
+		if (speechMarks.length > 0) {
+			await new Promise<void>((resolve) => {
+				if (Number.isFinite(audio.duration) && audio.duration > 0) {
+					resolve();
+					return;
+				}
+				let settled = false;
+				const finish = () => {
+					if (settled) return;
+					settled = true;
+					audio.removeEventListener("loadedmetadata", finish);
+					audio.removeEventListener("error", finish);
+					resolve();
+				};
+				audio.addEventListener("loadedmetadata", finish, { once: true });
+				audio.addEventListener("error", finish, { once: true });
+				if (typeof window !== "undefined") {
+					window.setTimeout(finish, 1200);
+				}
+			});
+		const audioDurationSeconds = Number(audio.duration);
+		const normalizedMarks = normalizePreviewSpeechMarks(speechMarks, audioDurationSeconds);
+		const offsetNormalizedMarks = normalizePreviewSpeechMarkOffsets(normalizedMarks, previewText);
+		const rawMaxTime = Math.max(...speechMarks.map((mark) => Number(mark.time) || 0));
+		const normalizedMaxTime = Math.max(...offsetNormalizedMarks.map((mark) => Number(mark.time) || 0));
+		debugPreview("marks:normalize", {
+			audioDurationSeconds,
+			rawCount: speechMarks.length,
+			normalizedCount: offsetNormalizedMarks.length,
+			rawMaxTime,
+			normalizedMaxTime,
+			rawFirst: speechMarks[0],
+			normalizedFirst: offsetNormalizedMarks[0],
+			rawLast: speechMarks[speechMarks.length - 1],
+			normalizedLast: offsetNormalizedMarks[offsetNormalizedMarks.length - 1]
+		});
+		updateTrackingFromSpeechMarks(audio, offsetNormalizedMarks);
+	} else {
+		debugPreview("marks:missing", { audioUrl });
+		}
+		await new Promise<void>((resolve, reject) => {
+			audio.onended = () => {
+				if (previewPollingTimer !== null) {
+					window.clearInterval(previewPollingTimer);
+					previewPollingTimer = null;
+				}
+				resolve();
+			};
+			audio.onerror = () => {
+				if (previewPollingTimer !== null) {
+					window.clearInterval(previewPollingTimer);
+					previewPollingTimer = null;
+				}
+				reject(new Error("Failed to play preview audio."));
+			};
+			void audio.play().catch(reject);
+		});
+		currentPreviewAudio = null;
 	}
 
 	async function previewServerVoice(provider: "polly" | "google") {
@@ -1157,8 +1358,27 @@
 		try {
 			if (!isBuiltInTab(activeTab)) {
 				const provider = getCustomProviderOrThrow(activeTab);
-				const result = await provider.preview?.(createProviderContext(provider.id));
-				previewNote = result?.note || "Custom provider preview completed.";
+				const result = await provider.preview?.(
+					createProviderContext(provider.id, {
+						previewText,
+						previewMode
+					})
+				);
+				const customResult = (result || null) as CustomProviderPreviewResult | null;
+				if (customResult?.audioUrl && typeof customResult.audioUrl === "string") {
+					const speechMarks = Array.isArray(customResult.speechMarks)
+						? customResult.speechMarks
+						: [];
+					const trackingText =
+						typeof customResult.trackingText === "string"
+							? customResult.trackingText
+							: null;
+					if (trackingText) {
+						previewText = trackingText;
+					}
+					await playPreviewAudioFromUrl(customResult.audioUrl, speechMarks);
+				}
+				previewNote = result?.note || null;
 			} else if (activeTab === "browser") {
 				await previewBrowserVoice();
 			} else if (activeTab === "polly") {
@@ -1418,18 +1638,6 @@
 						{/each}
 					</select>
 				</div>
-				<div class="pie-tts-grid-2">
-					<div class="pie-tts-field">
-						<label class="pie-tts-label" for="tts-browser-rate">Rate</label>
-						<input id="tts-browser-rate" class="range range-primary pie-tts-range" type="range" min="0.25" max="4" step="0.05" bind:value={browserRate} />
-						<div class="pie-tts-range-value">{Number(browserRate).toFixed(2)}x</div>
-					</div>
-					<div class="pie-tts-field">
-						<label class="pie-tts-label" for="tts-browser-pitch">Pitch</label>
-						<input id="tts-browser-pitch" class="range range-secondary pie-tts-range" type="range" min="0" max="2" step="0.05" bind:value={browserPitch} />
-						<div class="pie-tts-range-value">{Number(browserPitch).toFixed(2)}</div>
-					</div>
-				</div>
 			</fieldset>
 		{:else if activeTab === "polly"}
 			<fieldset class="pie-tts-fieldset fieldset bg-base-200 border border-base-300 rounded-box" disabled={!pollyState.available}>
@@ -1477,21 +1685,14 @@
 					</div>
 				</div>
 
-				<div class="pie-tts-grid-voice-rate">
-					<div class="pie-tts-field">
-						<label class="pie-tts-label" for="tts-polly-voice">Voice</label>
-						<select id="tts-polly-voice" class="select select-sm select-bordered w-full" bind:value={pollyVoice}>
-							<option value="">Provider default</option>
-							{#each pollyState.voices as voice}
-								<option value={voice.id || voice.name || ""}>{voice.name || voice.id} ({voice.languageCode || "n/a"})</option>
-							{/each}
-						</select>
-					</div>
-					<div class="pie-tts-field">
-						<label class="pie-tts-label" for="tts-polly-rate">Rate</label>
-						<input id="tts-polly-rate" class="range range-primary pie-tts-range" type="range" min="0.25" max="4" step="0.05" bind:value={pollyRate} />
-						<div class="pie-tts-range-value">{Number(pollyRate).toFixed(2)}x</div>
-					</div>
+				<div class="pie-tts-field">
+					<label class="pie-tts-label" for="tts-polly-voice">Voice</label>
+					<select id="tts-polly-voice" class="select select-sm select-bordered w-full" bind:value={pollyVoice}>
+						<option value="">Provider default</option>
+						{#each pollyState.voices as voice}
+							<option value={voice.id || voice.name || ""}>{voice.name || voice.id} ({voice.languageCode || "n/a"})</option>
+						{/each}
+					</select>
 				</div>
 
 				<div class="pie-tts-grid-3">
@@ -1568,21 +1769,14 @@
 					</div>
 				</div>
 
-				<div class="pie-tts-grid-voice-rate">
-					<div class="pie-tts-field">
-						<label class="pie-tts-label" for="tts-google-voice">Voice</label>
-						<select id="tts-google-voice" class="select select-sm select-bordered w-full" bind:value={googleVoice}>
-							<option value="">Provider default</option>
-							{#each googleState.voices as voice}
-								<option value={voice.id || voice.name || ""}>{voice.name || voice.id} ({voice.languageCode || "n/a"})</option>
-							{/each}
-						</select>
-					</div>
-					<div class="pie-tts-field">
-						<label class="pie-tts-label" for="tts-google-rate">Rate</label>
-						<input id="tts-google-rate" class="range range-primary pie-tts-range" type="range" min="0.25" max="4" step="0.05" bind:value={googleRate} />
-						<div class="pie-tts-range-value">{Number(googleRate).toFixed(2)}x</div>
-					</div>
+				<div class="pie-tts-field">
+					<label class="pie-tts-label" for="tts-google-voice">Voice</label>
+					<select id="tts-google-voice" class="select select-sm select-bordered w-full" bind:value={googleVoice}>
+						<option value="">Provider default</option>
+						{#each googleState.voices as voice}
+							<option value={voice.id || voice.name || ""}>{voice.name || voice.id} ({voice.languageCode || "n/a"})</option>
+						{/each}
+					</select>
 				</div>
 			</fieldset>
 		{:else if activeCustomProvider}
@@ -1648,6 +1842,8 @@
 						SSML is unsupported in Browser preview.
 					{:else if activeTab === "google" && previewMode === "ssml"}
 						SSML preserved. Tracking disabled.
+					{:else if !isBuiltInTab(activeTab)}
+						Tracking enabled when provider returns speech marks.
 					{:else}
 						Tracking enabled while preview plays.
 					{/if}
@@ -1784,13 +1980,6 @@
 		padding: 0;
 	}
 
-	.pie-tts-grid-2 {
-		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-		gap: 0.45rem 0.65rem;
-		align-items: end;
-	}
-
 	.pie-tts-grid-3 {
 		display: grid;
 		grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1798,17 +1987,8 @@
 		align-items: end;
 	}
 
-	.pie-tts-grid-voice-rate {
-		display: grid;
-		grid-template-columns: minmax(0, 1fr) minmax(9.5rem, 11rem);
-		gap: 0.45rem 0.65rem;
-		align-items: end;
-	}
-
 	@media (max-width: 32rem) {
-		.pie-tts-grid-2,
-		.pie-tts-grid-3,
-		.pie-tts-grid-voice-rate {
+		.pie-tts-grid-3 {
 			grid-template-columns: 1fr;
 		}
 	}

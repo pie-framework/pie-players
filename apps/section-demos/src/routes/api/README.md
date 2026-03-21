@@ -9,6 +9,7 @@ This directory contains SvelteKit API routes used by section demos for developme
 **Routes**:
 
 - `POST /api/tts/synthesize` - Synthesize speech from text
+- `POST /api/tts/sc` - Proxy SchoolCity-style custom transport synthesis
 - `GET /api/tts/voices` - Get available voices
 - `GET /api/tts/polly/voices` - Get AWS Polly voices
 - `GET /api/tts/google/voices` - Get Google Cloud TTS voices
@@ -16,6 +17,12 @@ This directory contains SvelteKit API routes used by section demos for developme
 `/api/tts/*` routes in section-demos implement the PIE transport contract. Custom URL-based
 integrations are expected to run through backend translation using `transportMode: "custom"`
 at the client provider boundary.
+
+`POST /api/tts/sc` requires server env vars with no defaults:
+
+- `TTS_SCHOOLCITY_URL`
+- `TTS_SCHOOLCITY_API_KEY`
+- `TTS_SCHOOLCITY_ISS`
 
 ### Desmos Calculator Auth
 

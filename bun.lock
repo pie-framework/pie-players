@@ -140,6 +140,7 @@
         "@pie-players/tts-server-google": "workspace:*",
         "@pie-players/tts-server-polly": "workspace:*",
         "dotenv": "^16.4.7",
+        "jose": "^6.2.2",
       },
       "devDependencies": {
         "@sveltejs/adapter-node": "5.5.4",
@@ -163,6 +164,7 @@
         "@pie-players/pie-section-player": "workspace:*",
       },
       "devDependencies": {
+        "@axe-core/playwright": "^4.11.1",
         "@biomejs/biome": "^2.3.13",
         "@playwright/test": "^1.58.2",
         "typescript": "^5.9.3",
@@ -1931,6 +1933,8 @@
     "jiti": ["jiti@2.6.1", "", { "bin": { "jiti": "lib/jiti-cli.mjs" } }, "sha512-ekilCSN1jwRvIbgeg/57YFh8qQDNbwDb9xT/qu2DAHbFFZUicIl4ygVaAvzveMhMVr3LnpSKTNnwt8PoOfmKhQ=="],
 
     "jju": ["jju@1.4.0", "", {}, "sha512-8wb9Yw966OSxApiCt0K3yNJL8pnNeIv+OEq2YMidz4FKP6nonSRoOXc80iXY4JaN2FC11B9qsNmDsm+ZOfMROA=="],
+
+    "jose": ["jose@6.2.2", "", {}, "sha512-d7kPDd34KO/YnzaDOlikGpOurfF0ByC2sEV4cANCtdqLlTfBlw2p14O/5d/zv40gJPbIQxfES3nSx1/oYNyuZQ=="],
 
     "js-tokens": ["js-tokens@9.0.1", "", {}, "sha512-mxa9E9ITFOt0ban3j6L5MpjwegGz6lBQmM1IJkWeBZGcMxto50+eWdjC/52xDbS2vy0k7vIMK0Fe2wfL9OQSpQ=="],
 

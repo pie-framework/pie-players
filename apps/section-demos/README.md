@@ -191,6 +191,18 @@ host.runtime = {
 
 Use `loaderOptions` only for module/bundle loading behavior. Use `loaderConfig` for resource monitor observability/retry behavior.
 
+### SC TTS Proxy Demo Config
+
+The `tts-ssml` route defaults to an SC-style custom transport through the local proxy route:
+
+- Client endpoint: `POST /api/tts/sc`
+- Required server env vars (no defaults):
+  - `TTS_SCHOOLCITY_URL`
+  - `TTS_SCHOOLCITY_API_KEY`
+  - `TTS_SCHOOLCITY_ISS`
+
+This keeps upstream auth/signing material server-side.
+
 ### Adding New Demos
 1. Create content file in `src/lib/content/demoX-*.ts`
 2. Register the demo in `src/lib/content/sections.ts`

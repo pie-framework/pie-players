@@ -39,7 +39,7 @@
 		MODE_OPTIONS,
 		PLAYER_OPTIONS
 	} from '$lib/demo-runtime/demo-page-helpers';
-	import { SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER } from '$lib/demo-runtime/section-demos-default-tts';
+	import { SECTION_DEMOS_SC_TTS_TOOL_PROVIDER } from '$lib/demo-runtime/section-demos-default-tts';
 	import { collectElementPackages, fetchBundleWithRetry } from '$lib/demo-runtime/preload-utils';
 	import type { PageData } from './$types';
 
@@ -48,7 +48,7 @@
 	// Level 4: CE setup plus controller JS API subscriptions.
 	const toolkitToolsConfig = {
 		providers: {
-			tts: SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER,
+			tts: SECTION_DEMOS_SC_TTS_TOOL_PROVIDER,
 			calculator: {
 				authFetcher: fetchDesmosAuthConfig
 			},

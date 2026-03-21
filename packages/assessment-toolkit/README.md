@@ -441,6 +441,37 @@ tools: {
 }
 ```
 
+### Custom Transport via Server Proxy (SC-style)
+
+For custom backends that return URL assets (for example `{ audioContent, word }`),
+prefer a host-owned proxy endpoint so secrets never ship to the browser.
+
+```typescript
+tools: {
+  providers: {
+    tts: {
+      enabled: true,
+      backend: "server",
+      serverProvider: "custom",
+      transportMode: "custom",
+      endpointMode: "rootPost",
+      endpointValidationMode: "none",
+      apiEndpoint: "/api/tts/sc",
+      speedRate: "medium",
+      lang_id: "en-US",
+      cache: true
+    }
+  }
+}
+```
+
+Recommended host boundary:
+
+- Browser calls local proxy (`/api/tts/sc`) only.
+- Proxy route reads required server env vars (no defaults) and signs/attaches auth
+  upstream.
+- Browser never receives shared secret, API key, or signing material.
+
 ## Test Attempt Session Adapter (pie backend)
 
 The toolkit exposes a canonical `TestAttemptSession` runtime and a deterministic adapter for pie backend activity payloads from `../../kds/pie-api-aws`.

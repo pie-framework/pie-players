@@ -472,6 +472,10 @@ Recommended host boundary:
   upstream.
 - Browser never receives shared secret, API key, or signing material.
 
+SchoolCity is used as a host-configured integration example for custom transport.
+Toolkit defaults still remain browser/standard providers unless the host explicitly
+configures custom server-backed TTS.
+
 ## Test Attempt Session Adapter (pie backend)
 
 The toolkit exposes a canonical `TestAttemptSession` runtime and a deterministic adapter for pie backend activity payloads from `../../kds/pie-api-aws`.

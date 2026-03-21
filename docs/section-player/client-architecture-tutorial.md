@@ -315,6 +315,161 @@ coordinator.catalogResolver      // QTI 3.0 accessibility catalog resolution
 
 The TTS service uses a pluggable provider architecture (browser Web Speech API by default, with AWS Polly and Google TTS as built-in alternatives, or implement `ITTSProvider` for your own backend). The highlight coordinator manages two independent layers — TTS word/sentence tracking and student-created annotations — using the browser's CSS Custom Highlight API for zero DOM mutation. See the `@pie-players/tts` and assessment toolkit package documentation for the full service APIs.
 
+### Custom TTS option (host-configured)
+
+Custom transport is a host-owned integration pattern. Toolkit defaults still remain browser/standard unless your host explicitly sets a custom TTS provider in `tools.providers.tts`.
+
+The following is a full client-side example showing:
+
+- host `ToolkitCoordinator` custom TTS provider config
+- section-player wiring with `tools` and `coordinator`
+- optional TTS settings dialog custom tab (`customProviders`) with apply + preview hooks
+
+```ts
+import { ToolkitCoordinator } from "@pie-players/pie-assessment-toolkit";
+
+const customTtsProvider = {
+  enabled: true,
+  backend: "server" as const,
+  serverProvider: "custom" as const,
+  transportMode: "custom" as const,
+  endpointMode: "rootPost" as const,
+  endpointValidationMode: "none" as const,
+  apiEndpoint: "/api/tts/sc", // host proxy route
+  lang_id: "en-US" as const,
+  speedRate: "medium" as const,
+  cache: true,
+  includeAuthOnAssetFetch: false,
+};
+
+const tools = {
+  placement: {
+    section: ["theme", "graph", "periodicTable", "protractor", "lineReader", "ruler"],
+    item: ["calculator", "textToSpeech", "answerEliminator", "annotationToolbar"],
+    passage: ["textToSpeech", "annotationToolbar"],
+  },
+  providers: {
+    tts: customTtsProvider,
+    calculator: {
+      authFetcher: async () => {
+        const r = await fetch("/api/tools/desmos/auth");
+        const payload = await r.json();
+        return payload?.apiKey ? { apiKey: payload.apiKey } : {};
+      },
+    },
+    annotationToolbar: { enabled: true },
+  },
+};
+
+export const coordinator = new ToolkitCoordinator({
+  assessmentId: "my-assessment-id",
+  tools,
+});
+```
+
+```svelte
+<script lang="ts">
+  import "@pie-players/pie-section-player/components/section-player-splitpane-element";
+  import { coordinator } from "./coordinator";
+
+  export let section: unknown;
+  export let sectionId = "section-1";
+  export let attemptId = "attempt-1";
+</script>
+
+<pie-section-player-splitpane
+  assessment-id="my-assessment-id"
+  section-id={sectionId}
+  attempt-id={attemptId}
+  tools={coordinator.config.tools}
+  section={section}
+  coordinator={coordinator}
+  show-toolbar={true}
+  enabled-tools="theme,graph,periodicTable,protractor,lineReader,ruler,annotationToolbar"
+></pie-section-player-splitpane>
+```
+
+```ts
+const customProviders = [
+  {
+    id: "demo-custom-provider",
+    label: "Demo Custom",
+    description: "Example custom provider tab wired through adapter mode.",
+    mode: "adapter" as const,
+    checkAvailability: async () => ({
+      available: true,
+      message: "Demo custom provider available.",
+    }),
+    buildApplyConfig: ({
+      apiEndpoint,
+      state,
+    }: {
+      apiEndpoint: string;
+      state: Record<string, unknown>;
+    }) => {
+      const base = String(apiEndpoint || "/api/tts")
+        .replace(/\/+$/, "")
+        .replace(/\/synthesize\/?$/i, "");
+      const customEndpoint = base.endsWith("/sc") ? base : `${base}/sc`;
+      return {
+        config: {
+          backend: "server",
+          serverProvider: "custom",
+          transportMode: "custom",
+          endpointMode: "rootPost",
+          endpointValidationMode: "none",
+          apiEndpoint: customEndpoint,
+          lang_id: "en-US",
+          speedRate: "medium",
+          cache: true,
+          includeAuthOnAssetFetch: false,
+          providerOptions: { source: "host-app", ...state },
+        },
+      };
+    },
+    preview: async ({
+      previewText,
+    }: {
+      previewText?: string;
+    }) => {
+      const text = String(previewText || "").trim() || "This is a custom provider preview.";
+      const response = await fetch("/api/tts/sc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text,
+          speedRate: "medium",
+          lang_id: "en-US",
+          cache: true,
+        }),
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(String(payload?.message || payload?.error || "Preview failed"));
+      }
+      return {
+        audioUrl: payload.audioContent,
+        speechMarks: payload.speechMarks || [],
+        trackingText: text,
+      };
+    },
+  },
+];
+```
+
+```svelte
+<pie-section-player-tools-tts-settings
+  toolkitCoordinator={coordinator}
+  customProviders={customProviders}
+></pie-section-player-tools-tts-settings>
+```
+
+Boundary rules for this setup:
+
+- Browser calls only your local proxy route (for example `POST /api/tts/sc`).
+- Tokens/secrets stay on the server route and are never sent to the browser.
+- This is opt-in at host level; toolkit does not enable this mode by default.
+
 ---
 
 ## 6. Theming

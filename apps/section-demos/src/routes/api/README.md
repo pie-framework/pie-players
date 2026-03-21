@@ -24,6 +24,10 @@ at the client provider boundary.
 - `TTS_SCHOOLCITY_API_KEY`
 - `TTS_SCHOOLCITY_ISS`
 
+`/api/tts/sc` in section-demos is a host-owned demo/reference adapter route backed by
+`@pie-players/tts-server-sc`. It demonstrates custom provider integration boundaries and
+is intentionally not a toolkit built-in default option.
+
 ### Desmos Calculator Auth
 
 **Route**: `GET /api/tools/desmos/auth`

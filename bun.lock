@@ -139,8 +139,8 @@
         "@pie-players/tts-server-core": "workspace:*",
         "@pie-players/tts-server-google": "workspace:*",
         "@pie-players/tts-server-polly": "workspace:*",
+        "@pie-players/tts-server-sc": "workspace:*",
         "dotenv": "^16.4.7",
-        "jose": "^6.2.2",
       },
       "devDependencies": {
         "@sveltejs/adapter-node": "5.5.4",
@@ -701,6 +701,18 @@
         "vitest": "^1.0.4",
       },
     },
+    "packages/tts-server-sc": {
+      "name": "@pie-players/tts-server-sc",
+      "version": "0.3.20",
+      "dependencies": {
+        "@pie-players/tts-server-core": "workspace:*",
+        "jose": "^6.2.2",
+      },
+      "devDependencies": {
+        "typescript": "^5.9.3",
+        "vitest": "^1.0.4",
+      },
+    },
     "tools/cli": {
       "name": "@pie-players/pie-players-cli",
       "version": "0.3.0",
@@ -1127,6 +1139,8 @@
     "@pie-players/tts-server-google": ["@pie-players/tts-server-google@workspace:packages/tts-server-google"],
 
     "@pie-players/tts-server-polly": ["@pie-players/tts-server-polly@workspace:packages/tts-server-polly"],
+
+    "@pie-players/tts-server-sc": ["@pie-players/tts-server-sc@workspace:packages/tts-server-sc"],
 
     "@playwright/test": ["@playwright/test@1.58.2", "", { "dependencies": { "playwright": "1.58.2" }, "bin": { "playwright": "cli.js" } }, "sha512-akea+6bHYBBfA9uQqSYmlJXn61cTa+jbO87xVLCWbTqbWadRVmhxlXATaOjOgcBaWU4ePo0wB41KMFv3o35IXA=="],
 

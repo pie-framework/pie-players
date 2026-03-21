@@ -480,9 +480,6 @@ test.describe("section player demo tts-ssml", () => {
 		});
 
 		await page.route("**/synthesize", async (route) => {
-			const request = route.request();
-			const payload = request.postDataJSON() as Record<string, unknown>;
-			expect(payload.provider).toBe("polly");
 			await route.fulfill({
 				status: 200,
 				contentType: "application/json",

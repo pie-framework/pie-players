@@ -203,6 +203,14 @@ The `tts-ssml` route defaults to an SC-style custom transport through the local 
 
 This keeps upstream auth/signing material server-side.
 
+Positioning notes:
+
+- SchoolCity is used here as an internal Renaissance-backed API example to demonstrate
+  custom TTS integration boundaries.
+- This is a demo-host integration pattern (custom provider + proxy route), not a toolkit default.
+- The custom provider appears in the TTS settings panel as the `demo-custom-provider` tab,
+  showing how to plug in backend-specific preview/apply behavior without changing toolkit defaults.
+
 ### Adding New Demos
 1. Create content file in `src/lib/content/demoX-*.ts`
 2. Register the demo in `src/lib/content/sections.ts`

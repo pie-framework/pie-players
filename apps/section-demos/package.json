@@ -34,8 +34,8 @@
 		"@pie-players/tts-server-core": "workspace:*",
 		"@pie-players/tts-server-google": "workspace:*",
 		"@pie-players/tts-server-polly": "workspace:*",
-		"dotenv": "^16.4.7",
-		"jose": "^6.2.2"
+		"@pie-players/tts-server-sc": "workspace:*",
+		"dotenv": "^16.4.7"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-node": "5.5.4",

@@ -32,14 +32,8 @@ export interface IifeLoaderConfig {
 	debugEnabled?: () => boolean;
 
 	/**
-	 * When true, retries a failed script load by appending a cache-busting query param.
-	 * Mirrors legacy `reFetchBundle` behavior from older loaders.
-	 */
-	reFetchBundle?: boolean;
-
-	/**
 	 * Timeout (ms) for `customElements.whenDefined(...)` waiting.
-	 * Prevents infinite loading hangs; mirrors legacy loader behavior.
+	 * Prevents infinite loading hangs.
 	 */
 	whenDefinedTimeoutMs?: number;
 }
@@ -53,6 +47,8 @@ if (typeof window !== "undefined" && !window.pieHelpers) {
 	window.pieHelpers = {
 		loadingScripts: {},
 		loadingPromises: {},
+		globalLoadQueue: Promise.resolve(),
+		activeBundleUrl: null,
 	};
 }
 
@@ -66,6 +62,74 @@ export class IifePieLoader {
 			"iife-loader",
 			config.debugEnabled || (() => false),
 		);
+	}
+
+	private ensurePieHelpers(): NonNullable<Window["pieHelpers"]> {
+		if (!window.pieHelpers) {
+			window.pieHelpers = {
+				loadingScripts: {},
+				loadingPromises: {},
+				globalLoadQueue: Promise.resolve(),
+				activeBundleUrl: null,
+			};
+		}
+		return window.pieHelpers;
+	}
+
+	private getRequestedPackageNames(elements: Record<string, string>): string[] {
+		return Array.from(
+			new Set(
+				Object.values(elements)
+					.map((packageVersion) => getPackageWithoutVersion(packageVersion))
+					.filter((name) => typeof name === "string" && name.length > 0),
+			),
+		).sort();
+	}
+
+	private isReusableActiveBundle(
+		doc: Document,
+		bundleUrl: string,
+		requestedPackageNames: string[],
+	): boolean {
+		const pieModule = window.pie?.default;
+		if (!pieModule || typeof pieModule !== "object") {
+			return false;
+		}
+		const helpers = this.ensurePieHelpers();
+		const hasMatchingScript = !!doc.querySelector(`script[src="${bundleUrl}"]`);
+		const activeBundleMatches = helpers.activeBundleUrl === bundleUrl;
+		if (!hasMatchingScript || !activeBundleMatches) {
+			return false;
+		}
+		return requestedPackageNames.every((packageName) => !!pieModule[packageName]);
+	}
+
+	private clearActiveBundleState(): void {
+		const helpers = this.ensurePieHelpers();
+		helpers.activeBundleUrl = null;
+		if (window.pie) {
+			delete window.pie;
+		}
+	}
+
+	private removePieBundleScripts(doc: Document): void {
+		const scripts = Array.from(
+			doc.querySelectorAll('script[data-pie-bundle="true"]'),
+		);
+		for (const script of scripts) {
+			script.remove();
+		}
+	}
+
+	private withGlobalLoadQueue(operation: () => Promise<void>): Promise<void> {
+		const helpers = this.ensurePieHelpers();
+		const previous = helpers.globalLoadQueue || Promise.resolve();
+		const run = previous.then(operation, operation);
+		helpers.globalLoadQueue = run.then(
+			() => undefined,
+			() => undefined,
+		);
+		return run;
 	}
 
 	/**
@@ -145,7 +209,7 @@ export class IifePieLoader {
 
 	private createEmptyConfigure(): CustomElementConstructor {
 		// Minimal configure element to avoid hard failures when a package lacks Configure export.
-		// Matches legacy behavior (empty-configure) but intentionally does not emit model updates.
+		// Intentionally does not emit model updates.
 		return class EmptyConfigureElement extends HTMLElement {
 			private _model: any;
 			private _configuration: any;
@@ -208,7 +272,7 @@ export class IifePieLoader {
 				}
 
 				// For editor bundles, look for Configure class; otherwise use Element class.
-				// If Configure is missing, fall back to an empty configure element (legacy parity).
+				// If Configure is missing, fall back to an empty configure element.
 				const ElementClass = isEditorBundle
 					? elementData.Configure || this.createEmptyConfigure()
 					: elementData.Element;
@@ -305,122 +369,70 @@ export class IifePieLoader {
 			logger.warn("No elements in config");
 			return;
 		}
+		const elements = Object.fromEntries(
+			Object.entries(contentConfig.elements as Record<string, unknown>).filter(
+				([tagName, packageVersion]) =>
+					typeof tagName === "string" &&
+					tagName.trim().length > 0 &&
+					typeof packageVersion === "string" &&
+					packageVersion.trim().length > 0,
+			),
+		) as Record<string, string>;
+		if (Object.keys(elements).length === 0) {
+			logger.debug("No valid element package versions found; skipping bundle load");
+			return;
+		}
+
+		const helpers = this.ensurePieHelpers();
 
 		// 0. Determine bundle URL
 		const bundleUrl = this.getBundleUrl(
-			contentConfig.elements,
+			elements,
 			bundleType,
 			contentConfig.bundle, // May contain { hash, url }
 		);
+		const requestedPackageNames = this.getRequestedPackageNames(elements);
+		logger.debug("Requested package names:", requestedPackageNames);
 
-		// 2. Check if we need to load a different bundle
-		// Remove any previously loaded bundle script to avoid conflicts
-		const existingScript = doc.querySelector(`script[src="${bundleUrl}"]`);
-		const existingScriptDifferent = Array.from(
-			doc.querySelectorAll('script[data-pie-bundle="true"]'),
-		).find((script) => script.getAttribute("src") !== bundleUrl);
-
-		if (existingScriptDifferent) {
-			logger.debug(
-				"Removing previously loaded bundle:",
-				existingScriptDifferent.getAttribute("src"),
-			);
-			existingScriptDifferent.remove();
-			// Clear window.pie to force clean reload
-			if (window.pie) {
-				delete window.pie;
-			}
-		}
-
-		// If the exact bundle we need is already loaded, just register elements
-		if (existingScript && window.pie && window.pie.default) {
-			logger.debug("Exact bundle already loaded, registering elements");
-			await this.registerElementsFromBundle(
-				contentConfig.elements,
-				needsControllers,
-				bundleType,
-			);
-			logger.debug("✅ Elements registered from existing bundle");
+		if (helpers.loadingPromises[bundleUrl]) {
+			logger.debug("Waiting for in-flight bundle load:", bundleUrl);
+			await helpers.loadingPromises[bundleUrl];
 			return;
 		}
 
-		// 3. Check if bundle is currently loading - if so, wait for it
-		if (window.pieHelpers?.loadingPromises?.[bundleUrl]) {
-			logger.debug(
-				"Bundle is already loading, waiting for existing load:",
-				bundleUrl,
-			);
-			await window.pieHelpers.loadingPromises[bundleUrl];
-			logger.debug("Existing bundle load completed, registering elements");
-			await this.registerElementsFromBundle(
-				contentConfig.elements,
-				needsControllers,
-				bundleType,
-			);
-			logger.debug("✅ Elements registered from already-loading bundle");
-			return;
-		}
-
-		// 4. Mark as loading and create promise
-		if (window.pieHelpers) {
-			window.pieHelpers.loadingScripts[bundleUrl] = true;
-		}
-
-		// Create and store the loading promise
-		const loadPromise = (async () => {
-			try {
-				// Load the IIFE bundle
-				logger.debug("Loading IIFE bundle from:", bundleUrl);
-				try {
-					await this.loadBundleScript(bundleUrl, doc);
-				} catch (e) {
-					if (this.config.reFetchBundle) {
-						const retryUrl =
-							bundleUrl +
-							(bundleUrl.includes("?") ? "&" : "?") +
-							`t=${Date.now()}`;
-						logger.warn(
-							"[IifePieLoader] Initial bundle load failed, retrying with cache bust:",
-							retryUrl,
-						);
-						await this.loadBundleScript(retryUrl, doc);
-					} else {
-						throw e;
-					}
-				}
-
-				// Register elements from the loaded bundle
-				logger.debug("Registering elements from loaded bundle");
-				await this.registerElementsFromBundle(
-					contentConfig.elements,
-					needsControllers,
-					bundleType,
-				);
-
-				logger.debug("✅ IIFE bundle loaded and elements registered");
-			} catch (err) {
-				logger.error("Failed to load IIFE bundle:", err);
-				// Clean up on error
-				if (window.pieHelpers) {
-					delete window.pieHelpers.loadingPromises[bundleUrl];
-					delete window.pieHelpers.loadingScripts[bundleUrl];
-				}
-				throw err;
-			} finally {
-				// Clean up promise after completion (success or failure)
-				if (window.pieHelpers?.loadingPromises?.[bundleUrl]) {
-					delete window.pieHelpers.loadingPromises[bundleUrl];
-				}
+		const loadPromise = this.withGlobalLoadQueue(async () => {
+			if (
+				this.isReusableActiveBundle(doc, bundleUrl, requestedPackageNames) &&
+				window.pie?.default
+			) {
+				logger.debug("Reusing active IIFE bundle:", bundleUrl);
+				await this.registerElementsFromBundle(elements, needsControllers, bundleType);
+				return;
 			}
-		})();
 
-		// Store the promise so other loaders can wait for it
-		if (window.pieHelpers) {
-			window.pieHelpers.loadingPromises[bundleUrl] = loadPromise;
+			logger.debug("Loading fresh IIFE bundle:", bundleUrl);
+			this.removePieBundleScripts(doc);
+			this.clearActiveBundleState();
+
+			await this.loadBundleScript(bundleUrl, doc);
+			this.ensurePieHelpers().activeBundleUrl = bundleUrl;
+
+			await this.registerElementsFromBundle(elements, needsControllers, bundleType);
+			logger.debug("✅ IIFE bundle loaded and elements registered");
+		}).catch((err) => {
+			logger.error("Failed to load IIFE bundle:", err);
+			this.clearActiveBundleState();
+			throw err;
+		});
+
+		helpers.loadingPromises[bundleUrl] = loadPromise;
+		try {
+			await loadPromise;
+		} finally {
+			if (helpers.loadingPromises[bundleUrl] === loadPromise) {
+				delete helpers.loadingPromises[bundleUrl];
+			}
 		}
-
-		// Wait for the load to complete
-		await loadPromise;
 	}
 
 	/**

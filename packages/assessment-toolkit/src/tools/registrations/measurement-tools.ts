@@ -21,6 +21,7 @@ import {
 	type ToolComponentOverrides,
 } from "../tool-tag-map.js";
 import {
+	applyOverlaySurface,
 	createScopedVisibilityBinding,
 	syncButtonAndOverlayVisibility,
 } from "./toolbar-registration-helpers.js";
@@ -82,6 +83,7 @@ export const rulerToolRegistration: ToolRegistration = {
 			toolkitCoordinator: unknown;
 		};
 		overlay.setAttribute("tool-id", visibility.fullToolId);
+		applyOverlaySurface(overlay, "frameless");
 		return {
 			toolId: this.toolId,
 			button,
@@ -158,6 +160,7 @@ export const protractorToolRegistration: ToolRegistration = {
 			toolkitCoordinator: unknown;
 		};
 		overlay.setAttribute("tool-id", visibility.fullToolId);
+		applyOverlaySurface(overlay, "frameless");
 		return {
 			toolId: this.toolId,
 			button,

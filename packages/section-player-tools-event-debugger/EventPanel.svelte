@@ -4,9 +4,15 @@
 		shadow: "open",
 		props: {
 			maxEvents: { type: "Number", attribute: "max-events" },
+			maxEventsByLevel: {
+				type: "Object",
+				attribute: "max-events-by-level",
+			},
 			toolkitCoordinator: { type: "Object", attribute: "toolkit-coordinator" },
 			sectionId: { type: "String", attribute: "section-id" },
 			attemptId: { type: "String", attribute: "attempt-id" },
+			persistenceScope: { type: "String", attribute: "persistence-scope" },
+			persistencePanelId: { type: "String", attribute: "persistence-panel-id" },
 		},
 	}}
 />
@@ -70,6 +76,7 @@
 		| "section-items-complete-changed"
 		| "section-error";
 	type EventLevel = "item" | "section";
+	type EventLimitOverrides = Partial<Record<EventLevel, number>>;
 
 	type EventRecord = {
 		id: number;
@@ -89,14 +96,20 @@
 
 	let {
 		maxEvents = 200,
+		maxEventsByLevel = {},
 		toolkitCoordinator = null,
 		sectionId = "",
 		attemptId = undefined,
+		persistenceScope = "",
+		persistencePanelId = "controller-events",
 	}: {
 		maxEvents?: number;
+		maxEventsByLevel?: EventLimitOverrides;
 		toolkitCoordinator?: ToolkitCoordinatorLike | null;
 		sectionId?: string;
 		attemptId?: string;
+		persistenceScope?: string;
+		persistencePanelId?: string;
 	} = $props();
 	let isPaused = $state(false);
 	let selectedLevel = $state<EventLevel>("item");
@@ -229,10 +242,54 @@
 			];
 			return;
 		}
-		const cappedMaxEvents = Math.max(10, Math.min(2000, maxEvents || 200));
-		records = [next, ...records].slice(0, cappedMaxEvents);
+		records = pruneAndSortRecords([next, ...records]);
 		if (selectedRecordId == null) {
 			selectedRecordId = next.id;
+		}
+	}
+
+	function resolveCap(rawCap: unknown, fallback: number): number {
+		const parsed = Number(rawCap);
+		if (!Number.isFinite(parsed)) return Math.max(10, Math.min(2000, fallback));
+		return Math.max(10, Math.min(2000, parsed));
+	}
+
+	function getCapForLevel(level: EventLevel): number {
+		const globalCap = resolveCap(maxEvents || 200, 200);
+		const override = maxEventsByLevel?.[level];
+		return resolveCap(override, globalCap);
+	}
+
+	function pruneAndSortRecords(nextRecords: EventRecord[]): EventRecord[] {
+		const sorted = [...nextRecords].sort((left, right) => {
+			if (left.timestamp === right.timestamp) {
+				return right.id - left.id;
+			}
+			return right.timestamp - left.timestamp;
+		});
+		const nextByLevel: Record<EventLevel, number> = { item: 0, section: 0 };
+		const pruned: EventRecord[] = [];
+		for (const record of sorted) {
+			const level = getEventLevel(record.type);
+			const levelCap = getCapForLevel(level);
+			if (nextByLevel[level] >= levelCap) continue;
+			pruned.push(record);
+			nextByLevel[level] += 1;
+		}
+		return pruned;
+	}
+
+	function reconcileRecordsWithLimits(): void {
+		const nextRecords = pruneAndSortRecords(records);
+		if (nextRecords.length !== records.length) {
+			records = nextRecords;
+			return;
+		}
+		for (let index = 0; index < nextRecords.length; index += 1) {
+			if (nextRecords[index]?.id !== records[index]?.id) {
+				records = nextRecords;
+				return;
+			}
 		}
 	}
 
@@ -416,6 +473,12 @@
 		};
 	});
 
+	$effect(() => {
+		void maxEvents;
+		void maxEventsByLevel;
+		reconcileRecordsWithLimits();
+	});
+
 	onDestroy(() => {
 		detachControllerSubscription();
 		detachLifecycleSubscription();
@@ -427,6 +490,8 @@
 	ariaLabel="Drag event debugger panel"
 	minWidth={360}
 	minHeight={280}
+	{persistenceScope}
+	{persistencePanelId}
 	initialSizing={{
 		widthRatio: 0.34,
 		heightRatio: 0.74,
@@ -533,7 +598,13 @@
 				{/each}
 			{/if}
 		</div>
-		<div class="pie-section-player-tools-event-debugger__detail">
+		<div
+			class="pie-section-player-tools-event-debugger__detail"
+			role="textbox"
+			aria-readonly="true"
+			tabindex="0"
+			aria-label="Controller event details"
+		>
 			{#if selectedRecord}
 				<div class="pie-section-player-tools-event-debugger__detail-meta">
 					<div><strong>Type:</strong> {selectedRecord.type}</div>

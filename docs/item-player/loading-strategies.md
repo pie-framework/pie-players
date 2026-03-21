@@ -97,16 +97,15 @@ The player assumes all required PIE custom elements are already defined in the b
 ```html
 <pie-item-player
   strategy="preloaded"
-  skip-element-loading
   config="..."
 ></pie-item-player>
 ```
 
-Pair with `skip-element-loading` to bypass the loader entirely.
+When a preloaded package is imported (it registers `window.PIE_PRELOADED_ELEMENTS`), `strategy="preloaded"` automatically bypasses runtime element loading. Otherwise, the player checks whether required elements are already registered and only falls back to runtime loading when needed.
 
 ### Preloaded player builds
 
-The `configs/preloaded-player/` directory contains JSON manifests that define fixed sets of PIE elements to bundle into a single `@pie-players/pie-preloaded-player` package. This package registers all listed elements at import time, so `<pie-item-player strategy="preloaded">` can render them without any network requests.
+The `configs/preloaded-player/` directory contains JSON manifests that define predefined sets of PIE elements to bundle into a single `@pie-players/pie-preloaded-player` package. This package registers all listed elements at import time, so `<pie-item-player strategy="preloaded">` can render them without any network requests.
 
 Build a preloaded bundle locally:
 

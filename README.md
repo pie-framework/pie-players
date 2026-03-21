@@ -16,12 +16,14 @@ bun run dev:section   # Section demos
 ## Development
 
 ```bash
-bun dev          # Watch all packages
-bun build        # Build all
-bun typecheck    # Type check
-bun test         # Run tests
-bun format       # Format code
+bun run dev      # Turbo dev for section-demos (see package.json "dev")
+bun run build    # Build publishable packages + tools (excludes apps)
+bun run typecheck
+bun run test
+bun run format   # Format (Biome)
 ```
+
+Demo apps resolve publishable packages through **`dist/`** (and section-demos uses explicit Vite aliases for many tools). See [Demo workspace resolution](docs/development/demo-workspace-resolution.md).
 
 ## Consumer Import Rules
 
@@ -58,14 +60,14 @@ Before release merges/publishes, run:
 bun run verify:publish
 ```
 
-Manual publish flow (matches CI gates):
+Manual patch-only publish flow (matches CI gates):
 
 ```bash
-bun run version
-bun run release:manual
+bun run release:with-version
 ```
 
-`release:manual` executes publish preflight checks and tests before publish.
+`release:with-version` creates a temporary all-packages patch changeset, runs preflight checks/tests, then publishes.
+Merges to `master` also auto-generate a temporary patch changeset when needed for release PR prep.
 
 ### Registry switching (CodeArtifact vs npmjs)
 

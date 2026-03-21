@@ -8,6 +8,7 @@
 		scorerHref: string;
 		showSessionPanel: boolean;
 		showEventPanel: boolean;
+		showInstrumentationPanel: boolean;
 		showSourcePanel: boolean;
 		showPnpPanel: boolean;
 		showTtsPanel: boolean;
@@ -21,6 +22,7 @@
 		onSetVerticalLayout: () => void;
 		onToggleSessionPanel: () => void;
 		onToggleEventPanel: () => void;
+		onToggleInstrumentationPanel: () => void;
 		onToggleSourcePanel: () => void;
 		onTogglePnpPanel: () => void;
 		onToggleTtsPanel: () => void;
@@ -36,6 +38,7 @@
 		scorerHref,
 		showSessionPanel,
 		showEventPanel,
+		showInstrumentationPanel,
 		showSourcePanel,
 		showPnpPanel,
 		showTtsPanel,
@@ -49,6 +52,7 @@
 		onSetVerticalLayout,
 		onToggleSessionPanel,
 		onToggleEventPanel,
+		onToggleInstrumentationPanel,
 		onToggleSourcePanel,
 		onTogglePnpPanel,
 		onToggleTtsPanel,
@@ -93,6 +97,7 @@
 				href={candidateHref}
 				data-sveltekit-reload
 				title="Candidate view - student taking assessment (gather mode)"
+				aria-current={roleType === 'candidate' ? 'page' : undefined}
 			>
 				Student
 			</a>
@@ -102,6 +107,7 @@
 				href={scorerHref}
 				data-sveltekit-reload
 				title="Scorer view - instructor reviewing/scoring (evaluate mode)"
+				aria-current={roleType === 'scorer' ? 'page' : undefined}
 			>
 				Scorer
 			</a>
@@ -110,7 +116,6 @@
 
 	<div class="navbar-end gap-2">
 		<label class="flex items-center gap-2">
-			<span class="text-xs opacity-70"></span>
 			<select
 				class="select select-sm select-bordered"
 				value={selectedDaisyTheme}
@@ -134,9 +139,11 @@
 		<DebugPanelToggles
 			{showSessionPanel}
 			{showEventPanel}
+			{showInstrumentationPanel}
 			showDbPanel={isSessionHydrateDbDemo ? showDbPanel : false}
 			{onToggleSessionPanel}
 			{onToggleEventPanel}
+			{onToggleInstrumentationPanel}
 			onToggleDbPanel={isSessionHydrateDbDemo ? onToggleDbPanel : undefined}
 		/>
 		<button

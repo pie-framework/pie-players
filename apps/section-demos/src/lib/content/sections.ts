@@ -3,6 +3,7 @@ import { demo1Section } from "./demo1-single-question";
 import { demo2Section } from "./demo2-question-passage";
 import { demo3Section } from "./demo3-three-questions";
 import { demo4Section } from "./demo4-tts-ssml";
+import { demo5Section } from "./demo5-resource-observability";
 
 export interface SectionDemoInfo {
 	id: string;
@@ -421,17 +422,33 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		id: "tts-ssml",
 		name: "TTS with SSML",
 		description:
-			"Three items with passage - demonstrates SSML extraction, AWS SSML tags, and multi-level TTS",
+			"Three items with passage - demonstrates SSML extraction, AWS SSML tags, and SC-proxy-backed custom TTS",
 		integrationLevel: 4,
 		integrationTheme: "JS API customization",
 		focus:
 			"Demonstrates text-to-speech behavior across plain text, authored SSML, and backend-specific SSML handling.",
 		whatMakesItTick: [
-			"TTS settings panel lets you switch browser, Polly, and Google providers at runtime.",
+			"Defaults to a server-side SC proxy (`/api/tts/sc`) so auth remains off the client.",
 			"Section content intentionally mixes plain text and SSML-rich prompts/passages for comparison.",
 			"Toolkit tool config enables `textToSpeech` in item and passage placements."
 		],
 		section: demo4Section,
+	},
+	"resource-observability": {
+		id: "resource-observability",
+		name: "Resource Observability",
+		description:
+			"Passage + items that load image/audio resources to validate resource-monitor instrumentation",
+		integrationLevel: 5,
+		integrationTheme: "Resource instrumentation",
+		focus:
+			"Demonstrates resource loading telemetry for media embedded in passage and item content.",
+		whatMakesItTick: [
+			"Passage includes image and audio assets served from local demo static files.",
+			"Items also embed media in prompt content to exercise item-level resource monitoring.",
+			"Instrumentation panel should show resource events such as `pie-resource-load`."
+		],
+		section: demo5Section,
 	},
 	"session-hydrate-db": {
 		id: "session-hydrate-db",

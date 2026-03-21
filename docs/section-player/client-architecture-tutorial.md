@@ -80,6 +80,7 @@ Key props you'll set via attributes:
 | `section` | `object` | Section content/composition model |
 | `env` | `object` | `{ mode: 'gather'/'view'/'evaluate', role: 'student'/'instructor' }` |
 | `tools` | `object` | Tool placement/provider config (see §5) |
+| `debug` | `boolean` | Verbose logging control (`true` to enable, `false`/`0` to disable) |
 | `show-toolbar` | `boolean` | Whether to render the section toolbar |
 | `enabled-tools` | `string` | Comma-separated list of tool IDs for the toolbar |
 | `player-type` | `string` | `'iife'` (default), `'esm'`, or `'preloaded'` |
@@ -146,7 +147,95 @@ Content items are rendered via `<pie-item-player>` elements. The `player-type` a
 
 For `loaderOptions` (custom bundle host URL, ESM CDN URL, import-map mode, etc.) see [docs/item-player/loading-strategies.md](../item-player/loading-strategies.md).
 
+### Item-level observability wiring
+
+Item-level resource observability is configured at the embedded `pie-item-player` level through
+`loaderConfig`. In section-player integrations, the canonical path is:
+
+- `runtime.player.loaderConfig.trackPageActions`
+- `runtime.player.loaderConfig.instrumentationProvider`
+
+Example:
+
+```ts
+import { ConsoleInstrumentationProvider } from '@pie-players/pie-players-shared';
+
+const provider = new ConsoleInstrumentationProvider({ useColors: true });
+await provider.initialize({ debug: true });
+
+sectionPlayerEl.runtime = {
+  playerType: 'esm',
+  player: {
+    loaderConfig: {
+      trackPageActions: true,
+      instrumentationProvider: provider,
+      maxResourceRetries: 3,
+      resourceRetryDelay: 500,
+    },
+    loaderOptions: {
+      esmCdnUrl: 'https://cdn.jsdelivr.net/npm',
+    },
+  },
+};
+```
+
+Notes:
+
+- `loaderOptions` and `loaderConfig` are different concerns: loading strategy vs observability/retry behavior.
+- For custom providers, pass object references as JS properties (`runtime`), not serialized string attributes.
+- Higher-level section/toolkit instrumentation is also provider-generic. Section-player emits runtime/public events (for example `readiness-change`, `session-changed`, `composition-changed`) and those can be bridged to `InstrumentationProvider.trackEvent(...)` without coupling to New Relic-specific APIs.
+- New Relic remains one provider implementation option; it is not the player contract.
+- With `trackPageActions: true`, missing/`undefined` `instrumentationProvider` uses the default New Relic provider path.
+- `instrumentationProvider: null` is an explicit no-op opt-out.
+- Ownership model: section-player instrumentation owns section runtime/public events; toolkit instrumentation covers toolkit lifecycle events. This avoids semantic overlap and duplicate telemetry.
+
 The player tracks loading through `totalRegistered` and `totalLoaded` counters (accessible via `getRuntimeState()`) and emits `section-loading-complete` when all registered items have loaded. The `readiness-change` event gives you the current phase (`bootstrapping` → `interaction-ready` → `loading` → `ready`).
+
+### Instrumentation (dedicated)
+
+Section player instrumentation is provider-agnostic and layered:
+
+- **Item-level resource instrumentation**: forwarded to embedded `pie-item-player` via `runtime.player.loaderConfig`.
+- **Section-level event instrumentation**: emitted from section-player runtime/public events and bridged to `InstrumentationProvider.trackEvent(...)`.
+- **Toolkit-level event instrumentation** (when toolkit is mounted): emitted by toolkit-owned lifecycle events.
+- **Toolkit tool/backend telemetry**: forwarded from toolkit runtime telemetry to provider events (for example TTS init/synthesize and calculator auth/script-load operations).
+
+Canonical provider injection path:
+
+- `runtime.player.loaderConfig.instrumentationProvider`
+
+Provider semantics:
+
+- With `trackPageActions: true`, missing/`undefined` provider values use the default New Relic provider path.
+- `provider: null` explicitly disables instrumentation.
+- Invalid provider objects are ignored (optional debug warning), also no-op.
+- Existing `item-player` behavior remains the compatibility anchor.
+
+Section-player owned canonical event stream:
+
+- `pie-section-readiness-change`
+- `pie-section-interaction-ready`
+- `pie-section-ready`
+- `pie-section-controller-ready`
+- `pie-section-session-changed`
+- `pie-section-composition-changed`
+- `pie-section-runtime-error`
+
+Toolkit-owned canonical stream (when present) is separate and intentionally non-overlapping:
+
+- `pie-toolkit-runtime-owned`
+- `pie-toolkit-runtime-inherited`
+- `pie-toolkit-ready`
+- `pie-toolkit-section-ready`
+- `pie-toolkit-runtime-error`
+
+Toolkit tool/backend operational stream (forwarded through the same provider path):
+
+- `pie-tool-init-start|success|error`
+- `pie-tool-backend-call-start|success|error`
+- `pie-tool-library-load-start|success|error`
+
+Ownership rule: section semantics stay in section streams, toolkit semantics stay in toolkit streams. Dedupe in the bridge is a safety net, not the primary correctness mechanism.
 
 ---
 
@@ -225,6 +314,161 @@ coordinator.catalogResolver      // QTI 3.0 accessibility catalog resolution
 ```
 
 The TTS service uses a pluggable provider architecture (browser Web Speech API by default, with AWS Polly and Google TTS as built-in alternatives, or implement `ITTSProvider` for your own backend). The highlight coordinator manages two independent layers — TTS word/sentence tracking and student-created annotations — using the browser's CSS Custom Highlight API for zero DOM mutation. See the `@pie-players/tts` and assessment toolkit package documentation for the full service APIs.
+
+### Custom TTS option (host-configured)
+
+Custom transport is a host-owned integration pattern. Toolkit defaults still remain browser/standard unless your host explicitly sets a custom TTS provider in `tools.providers.tts`.
+
+The following is a full client-side example showing:
+
+- host `ToolkitCoordinator` custom TTS provider config
+- section-player wiring with `tools` and `coordinator`
+- optional TTS settings dialog custom tab (`customProviders`) with apply + preview hooks
+
+```ts
+import { ToolkitCoordinator } from "@pie-players/pie-assessment-toolkit";
+
+const customTtsProvider = {
+  enabled: true,
+  backend: "server" as const,
+  serverProvider: "custom" as const,
+  transportMode: "custom" as const,
+  endpointMode: "rootPost" as const,
+  endpointValidationMode: "none" as const,
+  apiEndpoint: "/api/tts/sc", // host proxy route
+  lang_id: "en-US" as const,
+  speedRate: "medium" as const,
+  cache: true,
+  includeAuthOnAssetFetch: false,
+};
+
+const tools = {
+  placement: {
+    section: ["theme", "graph", "periodicTable", "protractor", "lineReader", "ruler"],
+    item: ["calculator", "textToSpeech", "answerEliminator", "annotationToolbar"],
+    passage: ["textToSpeech", "annotationToolbar"],
+  },
+  providers: {
+    tts: customTtsProvider,
+    calculator: {
+      authFetcher: async () => {
+        const r = await fetch("/api/tools/desmos/auth");
+        const payload = await r.json();
+        return payload?.apiKey ? { apiKey: payload.apiKey } : {};
+      },
+    },
+    annotationToolbar: { enabled: true },
+  },
+};
+
+export const coordinator = new ToolkitCoordinator({
+  assessmentId: "my-assessment-id",
+  tools,
+});
+```
+
+```svelte
+<script lang="ts">
+  import "@pie-players/pie-section-player/components/section-player-splitpane-element";
+  import { coordinator } from "./coordinator";
+
+  export let section: unknown;
+  export let sectionId = "section-1";
+  export let attemptId = "attempt-1";
+</script>
+
+<pie-section-player-splitpane
+  assessment-id="my-assessment-id"
+  section-id={sectionId}
+  attempt-id={attemptId}
+  tools={coordinator.config.tools}
+  section={section}
+  coordinator={coordinator}
+  show-toolbar={true}
+  enabled-tools="theme,graph,periodicTable,protractor,lineReader,ruler,annotationToolbar"
+></pie-section-player-splitpane>
+```
+
+```ts
+const customProviders = [
+  {
+    id: "demo-custom-provider",
+    label: "Demo Custom",
+    description: "Example custom provider tab wired through adapter mode.",
+    mode: "adapter" as const,
+    checkAvailability: async () => ({
+      available: true,
+      message: "Demo custom provider available.",
+    }),
+    buildApplyConfig: ({
+      apiEndpoint,
+      state,
+    }: {
+      apiEndpoint: string;
+      state: Record<string, unknown>;
+    }) => {
+      const base = String(apiEndpoint || "/api/tts")
+        .replace(/\/+$/, "")
+        .replace(/\/synthesize\/?$/i, "");
+      const customEndpoint = base.endsWith("/sc") ? base : `${base}/sc`;
+      return {
+        config: {
+          backend: "server",
+          serverProvider: "custom",
+          transportMode: "custom",
+          endpointMode: "rootPost",
+          endpointValidationMode: "none",
+          apiEndpoint: customEndpoint,
+          lang_id: "en-US",
+          speedRate: "medium",
+          cache: true,
+          includeAuthOnAssetFetch: false,
+          providerOptions: { source: "host-app", ...state },
+        },
+      };
+    },
+    preview: async ({
+      previewText,
+    }: {
+      previewText?: string;
+    }) => {
+      const text = String(previewText || "").trim() || "This is a custom provider preview.";
+      const response = await fetch("/api/tts/sc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text,
+          speedRate: "medium",
+          lang_id: "en-US",
+          cache: true,
+        }),
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(String(payload?.message || payload?.error || "Preview failed"));
+      }
+      return {
+        audioUrl: payload.audioContent,
+        speechMarks: payload.speechMarks || [],
+        trackingText: text,
+      };
+    },
+  },
+];
+```
+
+```svelte
+<pie-section-player-tools-tts-settings
+  toolkitCoordinator={coordinator}
+  customProviders={customProviders}
+></pie-section-player-tools-tts-settings>
+```
+
+Boundary rules for this setup:
+
+- Browser calls only your local proxy route (for example `POST /api/tts/sc`).
+- Tokens/secrets stay on the server route and are never sent to the browser.
+- This is opt-in at host level; toolkit does not enable this mode by default.
 
 ---
 
@@ -630,4 +874,3 @@ Key rules:
 **Dispose intentionally.** On route unmount, call `coordinator.disposeSectionController()` with explicit `persistBeforeDispose`/`clearPersistence` flags. Don't let controllers garbage-collect silently.
 
 **`attemptId` is owned by the host.** In standalone deployments, reflect `attemptId` in the URL so page refresh and back-navigation restore the correct attempt context. In embedded integrations where an outer player manages routing, the outer layer owns `attemptId` persistence — the section player should receive it as a prop rather than derive or store it independently.
-

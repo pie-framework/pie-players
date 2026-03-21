@@ -19,17 +19,24 @@
 			isolation: { attribute: "isolation", type: "String" },
 			env: { type: "Object", reflect: false },
 			iifeBundleHost: { attribute: "iife-bundle-host", type: "String" },
+			debug: { attribute: "debug", type: "String" },
 			showToolbar: { attribute: "show-toolbar", type: "String" },
 			toolbarPosition: { attribute: "toolbar-position", type: "String" },
 			enabledTools: { attribute: "enabled-tools", type: "String" },
 			itemToolbarTools: { attribute: "item-toolbar-tools", type: "String" },
 			passageToolbarTools: { attribute: "passage-toolbar-tools", type: "String" },
+			policies: { type: "Object", reflect: false },
 			narrowLayoutBreakpoint: { attribute: "narrow-layout-breakpoint", type: "Number" },
 		},
 	}}
 />
 
 <script lang="ts">
+	import {
+		attachInstrumentationEventBridge,
+		resolveInstrumentationProvider,
+		SECTION_INSTRUMENTATION_EVENT_MAP,
+	} from "@pie-players/pie-players-shared/pie";
 	import "./section-player-item-card-element.js";
 	import "./section-player-passage-card-element.js";
 	import "./section-player-items-pane-element.js";
@@ -44,6 +51,7 @@
 		SectionPlayerRuntimeHostContract,
 		SectionPlayerSnapshot,
 	} from "../contracts/runtime-host-contract.js";
+import type { SectionPlayerPolicies } from "../policies/types.js";
 
 	const DEFAULT_NARROW_BREAKPOINT_PX = 1100;
 	const NARROW_BREAKPOINT_MIN_PX = 400;
@@ -65,16 +73,36 @@
 		isolation,
 		env,
 		iifeBundleHost,
+		debug = undefined as string | boolean | undefined,
 		showToolbar = "false" as boolean | string | null | undefined,
 		toolbarPosition = "right",
 		enabledTools = "",
 		itemToolbarTools = "",
 		passageToolbarTools = "",
+		policies = undefined as SectionPlayerPolicies | undefined,
 		narrowLayoutBreakpoint = undefined as number | undefined,
 	} = $props();
 	const dispatch = createEventDispatcher();
+	let anchor = $state<HTMLDivElement | null>(null);
 	let kernelRef = $state<SectionPlayerRuntimeHostContract | null>(null);
 	let isNarrow = $state(false);
+	const instrumentationProvider = $derived.by(() =>
+		resolveInstrumentationProvider({
+			runtimePlayer: runtime?.player,
+			player,
+			component: "pie-section-player-vertical",
+		}),
+	);
+
+	function getHostElement(): HTMLElement | null {
+		if (!anchor) return null;
+		const rootNode = anchor.getRootNode();
+		if (rootNode && "host" in rootNode) {
+			return (rootNode as ShadowRoot).host as HTMLElement;
+		}
+		return anchor.parentElement as HTMLElement | null;
+	}
+	const hostElement = $derived.by(() => getHostElement());
 
 	const clampedBreakpoint = $derived.by(() => {
 		const n = narrowLayoutBreakpoint ?? DEFAULT_NARROW_BREAKPOINT_PX;
@@ -143,8 +171,28 @@
 		const controller = await kernelRef?.waitForSectionController?.(timeoutMs);
 		return controller || null;
 	}
+
+	$effect(() => {
+		if (!hostElement) return;
+		const localHost = hostElement;
+		return attachInstrumentationEventBridge({
+			host: localHost,
+			instrumentationProvider,
+			component: "pie-section-player-vertical",
+			eventMap: SECTION_INSTRUMENTATION_EVENT_MAP,
+			staticAttributes: {
+				instrumentationLayer: "section",
+				assessmentId,
+				sectionId,
+				attemptId: attemptId || undefined,
+			},
+			shouldTrackEvent: (event: Event) => event.target === localHost,
+			dedupeWindowMs: 100,
+		});
+	});
 </script>
 
+<div bind:this={anchor} class="pie-section-player-observability-anchor" aria-hidden="true"></div>
 <SectionPlayerLayoutKernel
 	bind:this={kernelRef}
 	{assessmentId}
@@ -162,11 +210,13 @@
 	{isolation}
 	{env}
 	{iifeBundleHost}
+	{debug}
 	{showToolbar}
 	toolbarPosition={effectiveToolbarPosition}
 	{enabledTools}
 	{itemToolbarTools}
 	{passageToolbarTools}
+	{policies}
 	playerActionConfig={{
 		stateKey: "__verticalAppliedParams",
 		includeSessionRefInState: false,
@@ -252,5 +302,9 @@
 
 	.pie-section-player-passages-section {
 		width: 100%;
+	}
+
+	.pie-section-player-observability-anchor {
+		display: none;
 	}
 </style>

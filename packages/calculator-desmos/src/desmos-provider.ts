@@ -51,6 +51,20 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 	private apiKey?: string;
 	private proxyEndpoint?: string;
 	private isDevelopment = false;
+	private onTelemetry:
+		| ((eventName: string, payload?: Record<string, unknown>) => void | Promise<void>)
+		| undefined;
+
+	private async emitTelemetry(
+		eventName: string,
+		payload?: Record<string, unknown>,
+	): Promise<void> {
+		try {
+			await this.onTelemetry?.(eventName, payload);
+		} catch (error) {
+			console.warn("[DesmosProvider] telemetry callback failed:", error);
+		}
+	}
 
 	/**
 	 * Get the configured API key
@@ -95,8 +109,13 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 	async initialize(config?: {
 		apiKey?: string;
 		proxyEndpoint?: string;
+		onTelemetry?: (
+			eventName: string,
+			payload?: Record<string, unknown>,
+		) => void | Promise<void>;
 	}): Promise<void> {
 		if (this.initialized) return;
+		this.onTelemetry = config?.onTelemetry;
 
 		// SSR guard
 		if (typeof window === "undefined") {
@@ -115,6 +134,12 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 		if (config?.proxyEndpoint) {
 			// Production pattern: server-side proxy
 			this.proxyEndpoint = config.proxyEndpoint;
+			const authStartedAt = Date.now();
+			await this.emitTelemetry("pie-tool-backend-call-start", {
+				toolId: "calculator",
+				backend: "desmos",
+				operation: "proxy-auth-fetch",
+			});
 			try {
 				const response = await fetch(config.proxyEndpoint);
 				if (!response.ok) {
@@ -122,10 +147,24 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 				}
 				const data = await response.json();
 				this.apiKey = data.apiKey;
+				await this.emitTelemetry("pie-tool-backend-call-success", {
+					toolId: "calculator",
+					backend: "desmos",
+					operation: "proxy-auth-fetch",
+					duration: Date.now() - authStartedAt,
+				});
 				console.log(
 					"[DesmosProvider] Initialized with server-side proxy (SECURE)",
 				);
 			} catch (error) {
+				await this.emitTelemetry("pie-tool-backend-call-error", {
+					toolId: "calculator",
+					backend: "desmos",
+					operation: "proxy-auth-fetch",
+					duration: Date.now() - authStartedAt,
+					errorType: "CalculatorProxyAuthError",
+					message: error instanceof Error ? error.message : String(error),
+				});
 				throw new Error(
 					`[DesmosProvider] Failed to fetch API key from proxy: ${error}`,
 				);
@@ -158,7 +197,31 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 		// Load Desmos API if not already loaded
 		if (!window.Desmos) {
 			console.log("[DesmosProvider] Loading Desmos API library...");
-			await this.loadDesmosScript();
+			const libraryLoadStartedAt = Date.now();
+			await this.emitTelemetry("pie-tool-library-load-start", {
+				toolId: "calculator",
+				backend: "desmos",
+				operation: "desmos-script-load",
+			});
+			try {
+				await this.loadDesmosScript();
+				await this.emitTelemetry("pie-tool-library-load-success", {
+					toolId: "calculator",
+					backend: "desmos",
+					operation: "desmos-script-load",
+					duration: Date.now() - libraryLoadStartedAt,
+				});
+			} catch (error) {
+				await this.emitTelemetry("pie-tool-library-load-error", {
+					toolId: "calculator",
+					backend: "desmos",
+					operation: "desmos-script-load",
+					duration: Date.now() - libraryLoadStartedAt,
+					errorType: "ToolLibraryLoadError",
+					message: error instanceof Error ? error.message : String(error),
+				});
+				throw error;
+			}
 		}
 
 		this.initialized = true;
@@ -195,6 +258,7 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 	 */
 	destroy(): void {
 		this.initialized = false;
+		this.onTelemetry = undefined;
 	}
 
 	/**

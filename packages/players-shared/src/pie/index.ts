@@ -38,6 +38,15 @@ export {
 	renderMath,
 	setMathRenderer,
 } from "./math-rendering.js";
+export { attachInstrumentationEventBridge } from "./instrumentation-event-bridge.js";
+export type { AttachInstrumentationEventBridgeArgs } from "./instrumentation-event-bridge.js";
+export { resolveInstrumentationProvider } from "./instrumentation-provider-resolution.js";
+export {
+	ASSESSMENT_INSTRUMENTATION_EVENT_MAP,
+	SECTION_INSTRUMENTATION_EVENT_MAP,
+	TOOLKIT_INSTRUMENTATION_EVENT_MAP,
+} from "./instrumentation-event-map.js";
+export type { InstrumentationEventMapping } from "./instrumentation-event-map.js";
 // Item controller
 export type { ItemControllerOptions } from "./item-controller.js";
 export { ItemController, normalizeItemSessionContainer } from "./item-controller.js";
@@ -61,7 +70,7 @@ export {
 // Logging
 export type { PieLogger } from "./logger.js";
 export { createPieLogger, isGlobalDebugEnabled } from "./logger.js";
-// Player bootstrap helpers (used by inline/fixed players)
+// Player bootstrap helpers (used by inline/preloaded players)
 export type {
 	ItemData,
 	PiePlayerConfig,

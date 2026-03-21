@@ -1,0 +1,68 @@
+{
+	"name": "@pie-players/pie-section-player-tools-instrumentation-debugger",
+	"version": "0.3.20",
+	"type": "module",
+	"description": "Instrumentation debugger panel for PIE players",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pie-framework/pie-players.git",
+		"directory": "packages/section-player-tools-instrumentation-debugger"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"keywords": [
+		"pie",
+		"assessment",
+		"instrumentation",
+		"debugger",
+		"web-component"
+	],
+	"svelte": "./InstrumentationPanel.svelte",
+	"main": "./dist/section-player-tools-instrumentation-debugger.js",
+	"module": "./dist/section-player-tools-instrumentation-debugger.js",
+	"unpkg": "./dist/section-player-tools-instrumentation-debugger.js",
+	"jsdelivr": "./dist/section-player-tools-instrumentation-debugger.js",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/section-player-tools-instrumentation-debugger.js",
+			"svelte": "./InstrumentationPanel.svelte"
+		}
+	},
+	"files": [
+		"dist",
+		"InstrumentationPanel.svelte",
+		"index.ts",
+		"package.json"
+	],
+	"license": "MIT",
+	"dependencies": {
+		"@pie-players/pie-players-shared": "workspace:*",
+		"@pie-players/pie-section-player-tools-shared": "workspace:*",
+		"@pie-players/pie-theme": "workspace:*"
+	},
+	"types": "./dist/index.d.ts",
+	"scripts": {
+		"build": "vite build",
+		"dev": "vite build --watch",
+		"typecheck": "tsc --noEmit",
+		"lint": "biome check InstrumentationPanel.svelte index.ts vite.config.ts package.json"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.3.10",
+		"@sveltejs/vite-plugin-svelte": "^7.0.0",
+		"svelte": "^5.54.0",
+		"typescript": "^5.9.3",
+		"vite": "^8.0.1",
+		"vite-plugin-dts": "^4.5.4"
+	},
+	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/section-player-tools-instrumentation-debugger#readme",
+	"bugs": {
+		"url": "https://github.com/pie-framework/pie-players/issues"
+	},
+	"engines": {
+		"node": ">=20.0.0"
+	},
+	"sideEffects": true
+}

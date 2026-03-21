@@ -137,7 +137,9 @@ test.describe("session hydrate db flow", () => {
 	test("hydrates baseline, persists user updates, and resets in one click", async ({
 		page,
 	}) => {
-		const baseUrl = process.env.PLAYWRIGHT_BASE_URL || "http://127.0.0.1:5301";
+		const sectionPort = process.env.SECTION_DEMOS_PORT || "5300";
+		const baseUrl =
+			process.env.PLAYWRIGHT_BASE_URL || `http://127.0.0.1:${sectionPort}`;
 		await page.goto(new URL(DEMO_PATH, baseUrl).toString(), { waitUntil: "domcontentloaded" });
 		const origin = new URL(page.url()).origin;
 		const attemptId = await resolveAttemptId(page);

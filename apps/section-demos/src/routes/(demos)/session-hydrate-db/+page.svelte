@@ -1,6 +1,11 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import {
+		CompositeInstrumentationProvider,
+		DebugPanelInstrumentationProvider,
+		NewRelicInstrumentationProvider
+	} from '@pie-players/pie-players-shared';
+	import {
 		createDefaultPersonalNeedsProfile,
 		ToolkitCoordinator
 	} from '@pie-players/pie-assessment-toolkit';
@@ -38,6 +43,7 @@
 		MODE_OPTIONS,
 		PLAYER_OPTIONS
 	} from '$lib/demo-runtime/demo-page-helpers';
+	import { SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER } from '$lib/demo-runtime/section-demos-default-tts';
 	import { collectElementPackages, fetchBundleWithRetry } from '$lib/demo-runtime/preload-utils';
 	import type { PageData } from './$types';
 
@@ -46,6 +52,7 @@
 	// Level 5: route-owned session hydration, save, and reset strategy.
 	const toolkitToolsConfig = {
 		providers: {
+			tts: SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER,
 			calculator: {
 				authFetcher: fetchDesmosAuthConfig
 			},
@@ -60,6 +67,26 @@
 		}
 	};
 	const sectionToolbarTools = 'theme,graph,periodicTable,protractor,lineReader,ruler';
+	const sectionInstrumentationProvider = new CompositeInstrumentationProvider([
+		new NewRelicInstrumentationProvider(),
+		new DebugPanelInstrumentationProvider()
+	]);
+	void sectionInstrumentationProvider
+		.initialize()
+		.then(() => {
+			sectionInstrumentationProvider.trackMetric('demo.instrumentation.bootstrap', 1, {
+				app: 'section-demos',
+				demo: 'session-hydrate-db',
+				category: 'demo'
+			});
+		})
+		.catch(() => {});
+	const sectionPlayerConfig = {
+		loaderConfig: {
+			trackPageActions: true,
+			instrumentationProvider: sectionInstrumentationProvider
+		}
+	};
 	const sessionDbApi = {
 		bootstrap: loadSessionDemoActivity,
 		loadSnapshot: loadSnapshotFromSessionDb,
@@ -107,6 +134,7 @@
 
 	let showSessionPanel = $state(false);
 	let showEventPanel = $state(false);
+	let showInstrumentationPanel = $state(false);
 	let showSourcePanel = $state(false);
 	let showPnpPanel = $state(false);
 	let showTtsPanel = $state(false);
@@ -114,6 +142,7 @@
 	let autoOpenedSessionDbPanel = $state(false);
 	let sessionDebuggerElement: any = $state(null);
 	let eventDebuggerElement: any = $state(null);
+	let instrumentationDebuggerElement: any = $state(null);
 	let pnpDebuggerElement: any = $state(null);
 
 	let dbHydrateEnabled = $state(false);
@@ -344,6 +373,13 @@
 	});
 
 	$effect(() => {
+		if (!instrumentationDebuggerElement) return;
+		return wireCloseListener(instrumentationDebuggerElement, () => {
+			showInstrumentationPanel = false;
+		});
+	});
+
+	$effect(() => {
 		if (!browser) return;
 		const triggerSessionPanelRefresh = () => {
 			queueMicrotask(() => {
@@ -475,12 +511,14 @@
 	onResetDb={() => void resetServerDb()}
 	bind:showSessionPanel
 	bind:showEventPanel
+	bind:showInstrumentationPanel
 	bind:showSourcePanel
 	bind:showPnpPanel
 	bind:showTtsPanel
 	bind:showSessionDbPanel
 	bind:sessionDebuggerElement
 	bind:eventDebuggerElement
+	bind:instrumentationDebuggerElement
 	bind:pnpDebuggerElement
 >
 	{#key `${sessionPanelSectionId}:${attemptId}:${playerInstanceKey}`}
@@ -497,6 +535,7 @@
 				player-type={selectedPlayerType}
 				lazy-init={true}
 				tools={toolkitToolsConfig}
+				player={sectionPlayerConfig}
 				section={resolvedSectionForPlayer}
 				env={pieEnv}
 				coordinator={coordinator}
@@ -513,6 +552,7 @@
 				player-type={selectedPlayerType}
 				lazy-init={true}
 				tools={toolkitToolsConfig}
+				player={sectionPlayerConfig}
 				section={resolvedSectionForPlayer}
 				env={pieEnv}
 				coordinator={coordinator}

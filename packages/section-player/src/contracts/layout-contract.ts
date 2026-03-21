@@ -16,6 +16,7 @@ export type SectionPlayerBasicPropName =
 	| "section"
 	| "sectionId"
 	| "attemptId"
+	| "debug"
 	| "showToolbar"
 	| "toolbarPosition"
 	| "narrowLayoutBreakpoint"

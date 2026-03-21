@@ -26,7 +26,9 @@ interface Window {
 	};
 	pie?: any;
 	pieHelpers?: {
-		loadingScripts: Record<string, boolean>;
-		loadingPromises: Record<string, Promise<void>>;
+		loadingScripts: Partial<Record<string, boolean>>;
+		loadingPromises: Partial<Record<string, Promise<void>>>;
+		globalLoadQueue?: Promise<void>;
+		activeBundleUrl?: string | null;
 	};
 }

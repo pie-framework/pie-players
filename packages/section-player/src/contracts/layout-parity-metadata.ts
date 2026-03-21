@@ -6,6 +6,7 @@ const RECOMMENDED_BASIC_PROPS = [
 	"section",
 	"sectionId",
 	"attemptId",
+	"debug",
 	"showToolbar",
 	"toolbarPosition",
 	"narrowLayoutBreakpoint",

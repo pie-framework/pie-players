@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 480" role="img" aria-labelledby="title desc">
+  <title id="title">Spectrum observer illustration</title>
+  <desc id="desc">A stylized observatory with layered spectrum bars and measurement lines.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#111827"/>
+    </linearGradient>
+    <linearGradient id="spectrum" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#ef4444"/>
+      <stop offset="16%" stop-color="#f97316"/>
+      <stop offset="32%" stop-color="#eab308"/>
+      <stop offset="50%" stop-color="#22c55e"/>
+      <stop offset="68%" stop-color="#06b6d4"/>
+      <stop offset="84%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#a855f7"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="960" height="480" fill="url(#bg)"/>
+  <g opacity="0.14" stroke="#94a3b8">
+    <path d="M0 120h960M0 240h960M0 360h960" />
+    <path d="M120 0v480M240 0v480M360 0v480M480 0v480M600 0v480M720 0v480M840 0v480" />
+  </g>
+
+  <rect x="140" y="86" width="680" height="92" rx="10" fill="#0b1220" stroke="#334155"/>
+  <rect x="164" y="112" width="632" height="40" rx="8" fill="url(#spectrum)"/>
+  <g fill="#e2e8f0" font-family="ui-sans-serif,system-ui" font-size="18">
+    <text x="146" y="70">Visible Spectrum Sensor Readout</text>
+    <text x="164" y="170">380nm</text>
+    <text x="752" y="170">740nm</text>
+  </g>
+
+  <g transform="translate(190 220)">
+    <path d="M0 170h580" stroke="#94a3b8" stroke-width="5"/>
+    <path d="M60 170v-70h460v70" fill="#1f2937" stroke="#64748b" stroke-width="4"/>
+    <circle cx="290" cy="72" r="74" fill="#111827" stroke="#94a3b8" stroke-width="5"/>
+    <circle cx="290" cy="72" r="38" fill="#22d3ee" opacity="0.7"/>
+    <path d="M290 72l110-24" stroke="#e2e8f0" stroke-width="3"/>
+    <circle cx="400" cy="48" r="8" fill="#f8fafc"/>
+    <g fill="#cbd5e1" font-family="ui-sans-serif,system-ui" font-size="16">
+      <text x="12" y="206">Base mount</text>
+      <text x="248" y="-20">Optical lens</text>
+      <text x="420" y="62">Tracking vector</text>
+    </g>
+  </g>
+</svg>

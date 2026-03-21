@@ -68,6 +68,13 @@ Both are scoped to the player instance using a generated or custom class name to
 
 Set the `debug` attribute or `window.PIE_DEBUG = true` to enable verbose logging. The player uses `createPieLogger` for structured, namespaced console output.
 
+To disable verbose debug logging explicitly:
+
+- Set `debug="false"` (or `debug="0"`) on `<pie-item-player>`.
+- Or set `window.PIE_DEBUG = false` in the browser console.
+
+If the `debug` attribute is present, that local value takes precedence for that player instance.
+
 ## Session debugger
 
 An auxiliary `<pie-item-player-session-debugger>` element provides a floating, draggable panel that displays live session data, environment state, and controller-filtered models. Import it separately:

@@ -6,6 +6,7 @@ import {
 	normalizeItemPlayerStrategy,
 	type ItemEntity,
 } from "@pie-players/pie-players-shared";
+import type { LoaderConfig } from "@pie-players/pie-players-shared/loader-config";
 import { DEFAULT_PLAYER_DEFINITIONS } from "../../component-definitions.js";
 
 export const DEFAULT_ASSESSMENT_ID = "section-demo-direct";
@@ -17,10 +18,16 @@ export const DEFAULT_ENV = { mode: "gather", role: "student" } as Record<
 	unknown
 >;
 
+type PlayerOverrides = {
+	loaderConfig?: LoaderConfig;
+	loaderOptions?: Record<string, unknown>;
+	[key: string]: unknown;
+};
+
 export type RuntimeConfig = {
 	assessmentId?: string;
 	playerType?: string;
-	player?: Record<string, unknown> | null;
+	player?: PlayerOverrides | null;
 	lazyInit?: boolean;
 	tools?: Record<string, unknown> | null;
 	accessibility?: Record<string, unknown> | null;
@@ -33,7 +40,7 @@ export type RuntimeConfig = {
 export type RuntimeInputs = {
 	assessmentId?: string;
 	playerType?: string;
-	player?: Record<string, unknown> | null;
+	player?: PlayerOverrides | null;
 	lazyInit?: boolean;
 	tools?: Record<string, unknown> | null;
 	accessibility?: Record<string, unknown> | null;
@@ -78,7 +85,7 @@ export function resolveToolsConfig(args: {
 export function resolveRuntime(args: {
 	assessmentId: string;
 	playerType: string;
-	player: Record<string, unknown> | null;
+	player: PlayerOverrides | null;
 	lazyInit: boolean;
 	accessibility: Record<string, unknown> | null;
 	coordinator: unknown;
@@ -89,11 +96,27 @@ export function resolveRuntime(args: {
 	effectiveToolsConfig: unknown;
 }) {
 	const runtime = args.runtime || {};
+	const topLevelPlayer = (args.player || {}) as PlayerOverrides;
+	const runtimePlayer = (runtime.player || {}) as PlayerOverrides;
+	const mergedPlayerCandidate = {
+		...topLevelPlayer,
+		...runtimePlayer,
+		loaderOptions: {
+			...((topLevelPlayer.loaderOptions || {}) as Record<string, unknown>),
+			...((runtimePlayer.loaderOptions || {}) as Record<string, unknown>),
+		},
+		loaderConfig: {
+			...((topLevelPlayer.loaderConfig || {}) as Record<string, unknown>),
+			...((runtimePlayer.loaderConfig || {}) as Record<string, unknown>),
+		},
+	};
+	const mergedPlayer =
+		Object.keys(mergedPlayerCandidate).length > 0 ? mergedPlayerCandidate : null;
 	return {
 		...runtime,
 		assessmentId: runtime.assessmentId ?? args.assessmentId,
 		playerType: runtime.playerType ?? args.playerType,
-		player: runtime.player ?? args.player,
+		player: mergedPlayer,
 		lazyInit: runtime.lazyInit ?? args.lazyInit,
 		accessibility: runtime.accessibility ?? args.accessibility,
 		coordinator: runtime.coordinator ?? args.coordinator,
@@ -121,7 +144,24 @@ export function resolvePlayerRuntime(args: {
 	const resolvedPlayerTag =
 		resolvedPlayerDefinition?.tagName || "pie-item-player";
 	const resolvedPlayerAttributes = resolvedPlayerDefinition?.attributes || {};
-	const resolvedPlayerProps = resolvedPlayerDefinition?.props || {};
+	const definitionProps = (resolvedPlayerDefinition?.props || {}) as Record<
+		string,
+		unknown
+	>;
+	const runtimePlayerOverrides = ((args.effectiveRuntime
+		?.player as PlayerOverrides) || {}) as PlayerOverrides;
+	const definitionLoaderOptions = (definitionProps.loaderOptions ||
+		{}) as Record<string, unknown>;
+	const runtimeLoaderOptions = (runtimePlayerOverrides.loaderOptions ||
+		{}) as Record<string, unknown>;
+	const resolvedPlayerProps = {
+		...definitionProps,
+		...runtimePlayerOverrides,
+		loaderOptions: {
+			...definitionLoaderOptions,
+			...runtimeLoaderOptions,
+		},
+	};
 	const resolvedPlayerEnv = ((args.effectiveRuntime?.env as Record<
 		string,
 		unknown

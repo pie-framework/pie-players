@@ -5,7 +5,7 @@ component:
   underTest: "pie-tool-color-scheme"
 
 examplesApp:
-  app: "@pie-framework/pie-players-example"
+  app: "@pie-players/section-demos"
   routeTemplate: "/evals/assessment-toolkit"
 
 evals:

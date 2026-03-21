@@ -121,6 +121,8 @@
 	{#each items as item, itemIndex (item.id || itemIndex)}
 		<pie-section-player-item-card
 			{item}
+			itemIndex={itemIndex}
+			itemCount={items.length}
 			canonicalItemId={getCanonicalItemId({ compositionModel, item })}
 			playerParams={getItemPlayerParams({
 				item,

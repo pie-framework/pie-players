@@ -61,6 +61,7 @@ This folder contains the active documentation set for `pie-players`. The focus i
 
 ## Setup And Publishing
 
+- [`development/demo-workspace-resolution.md`](./development/demo-workspace-resolution.md) - How demo apps resolve `@pie-players/*` (`dist/` and Vite aliases)
 - [`setup/environment-setup.md`](./setup/environment-setup.md) - Local environment setup
 - [`setup/publishing.md`](./setup/publishing.md) - Publishing workflow
 - [`setup/publishable_packages.md`](./setup/publishable_packages.md) - Publishable package inventory

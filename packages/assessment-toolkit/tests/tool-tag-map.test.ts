@@ -98,7 +98,6 @@ describe("createDefaultToolRegistry component overrides", () => {
 			toggleTool: () => {},
 			isToolVisible: () => false,
 			subscribeVisibility: null,
-			ensureTTSReady: null,
 		};
 
 		const renderResult = withFakeDocument(() =>

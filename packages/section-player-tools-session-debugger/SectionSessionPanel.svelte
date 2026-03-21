@@ -344,7 +344,15 @@
 				<div class="pie-section-player-tools-session-debugger__card-title">
 					Item Sessions Snapshot
 				</div>
-				<pre class="pie-section-player-tools-session-debugger__card-pre">{JSON.stringify(sessionPanelSnapshot, null, 2)}</pre>
+				<div
+					class="pie-section-player-tools-session-debugger__card-region"
+					role="textbox"
+					aria-readonly="true"
+					tabindex="0"
+					aria-label="Section session snapshot JSON"
+				>
+					<pre class="pie-section-player-tools-session-debugger__card-pre">{JSON.stringify(sessionPanelSnapshot, null, 2)}</pre>
+				</div>
 			</div>
 		{/if}
 	</div>
@@ -354,6 +362,12 @@
 	.pie-section-player-tools-session-debugger__icon-sm {
 		width: 1rem;
 		height: 1rem;
+	}
+
+	.pie-section-player-tools-session-debugger__card-region:focus-visible {
+		outline: 2px solid var(--color-primary, #2563eb);
+		outline-offset: 2px;
+		border-radius: 0.5rem;
 	}
 
 </style>

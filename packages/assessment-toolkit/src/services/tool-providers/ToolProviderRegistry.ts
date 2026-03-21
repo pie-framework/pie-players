@@ -47,6 +47,14 @@ export interface ToolProviderConfig<TConfig = any> {
 	 * ```
 	 */
 	authFetcher?: () => Promise<Partial<TConfig>>;
+
+	/**
+	 * Optional telemetry callback used for provider lifecycle/backend instrumentation.
+	 */
+	onTelemetry?: (
+		eventName: string,
+		payload?: Record<string, unknown>,
+	) => void | Promise<void>;
 }
 
 /**
@@ -82,6 +90,18 @@ export class ToolProviderRegistry {
 	private configs = new Map<string, ToolProviderConfig>();
 	private initialized = new Map<string, boolean>();
 	private initializationPromises = new Map<string, Promise<void>>();
+
+	private async emitTelemetry(
+		config: ToolProviderConfig,
+		eventName: string,
+		payload?: Record<string, unknown>,
+	): Promise<void> {
+		try {
+			await config.onTelemetry?.(eventName, payload);
+		} catch (error) {
+			console.warn("[ToolProviderRegistry] Telemetry callback failed:", error);
+		}
+	}
 
 	/**
 	 * Register a tool provider
@@ -167,16 +187,61 @@ export class ToolProviderRegistry {
 
 		// Start with base config
 		let providerConfig = { ...config.config };
+		const deriveBackend = (value: unknown): string => {
+			if (!value || typeof value !== "object") return "unknown";
+			const typed = value as Record<string, unknown>;
+			const direct =
+				typeof typed.backend === "string"
+					? typed.backend
+					: typeof typed.provider === "string"
+						? typed.provider
+						: typeof typed.serverProvider === "string"
+							? typed.serverProvider
+							: typeof typed.providerId === "string"
+								? typed.providerId
+								: "";
+			return direct || "unknown";
+		};
+		const providerInitStartedAt = Date.now();
+		await this.emitTelemetry(config, "pie-tool-init-start", {
+			toolId: providerId,
+			providerId,
+			backend: deriveBackend(providerConfig),
+			operation: "provider-initialize",
+		});
 
 		// Fetch auth if needed
 		if (provider.requiresAuth && config.authFetcher) {
+			const authFetchStartedAt = Date.now();
+			await this.emitTelemetry(config, "pie-tool-backend-call-start", {
+				toolId: providerId,
+				providerId,
+				backend: deriveBackend(providerConfig),
+				operation: "auth-fetch",
+			});
 			console.log(
 				`[ToolProviderRegistry] Fetching auth for "${providerId}"...`,
 			);
 			try {
 				const authData = await config.authFetcher();
 				providerConfig = { ...providerConfig, ...authData };
+				await this.emitTelemetry(config, "pie-tool-backend-call-success", {
+					toolId: providerId,
+					providerId,
+					backend: deriveBackend(providerConfig),
+					operation: "auth-fetch",
+					duration: Date.now() - authFetchStartedAt,
+				});
 			} catch (error) {
+				await this.emitTelemetry(config, "pie-tool-backend-call-error", {
+					toolId: providerId,
+					providerId,
+					backend: deriveBackend(providerConfig),
+					operation: "auth-fetch",
+					duration: Date.now() - authFetchStartedAt,
+					errorType: "ProviderAuthFetchError",
+					message: error instanceof Error ? error.message : String(error),
+				});
 				console.error(
 					`[ToolProviderRegistry] Auth fetch failed for "${providerId}":`,
 					error,
@@ -191,10 +256,26 @@ export class ToolProviderRegistry {
 		try {
 			await provider.initialize(providerConfig);
 			this.initialized.set(providerId, true);
+			await this.emitTelemetry(config, "pie-tool-init-success", {
+				toolId: providerId,
+				providerId,
+				backend: deriveBackend(providerConfig),
+				operation: "provider-initialize",
+				duration: Date.now() - providerInitStartedAt,
+			});
 			console.log(
 				`[ToolProviderRegistry] Provider "${providerId}" initialized`,
 			);
 		} catch (error) {
+			await this.emitTelemetry(config, "pie-tool-init-error", {
+				toolId: providerId,
+				providerId,
+				backend: deriveBackend(providerConfig),
+				operation: "provider-initialize",
+				duration: Date.now() - providerInitStartedAt,
+				errorType: "ProviderInitializationError",
+				message: error instanceof Error ? error.message : String(error),
+			});
 			console.error(
 				`[ToolProviderRegistry] Initialization failed for "${providerId}":`,
 				error,

@@ -17,7 +17,9 @@
 	// State
 	let initializedDemoId = $state<string | null>(null);
 	let showSessionPanel = $state(false);
+	let showInstrumentationPanel = $state(false);
 	let sessionDebuggerElement: PieItemSessionDebuggerElement | null = $state(null);
+	let instrumentationDebuggerElement: HTMLElement | null = $state(null);
 
 	// Initialize state only when switching to a different demo id.
 	$effect(() => {
@@ -87,6 +89,13 @@
 	});
 
 	$effect(() => {
+		if (!instrumentationDebuggerElement) return;
+		return wireCloseListener(instrumentationDebuggerElement as any, () => {
+			showInstrumentationPanel = false;
+		});
+	});
+
+	$effect(() => {
 		if (activeView !== 'delivery' && showSessionPanel) {
 			showSessionPanel = false;
 		}
@@ -105,15 +114,18 @@
 		scorerHref={modeHref('scorer')}
 		{viewMode}
 		{showSessionPanel}
+		{showInstrumentationPanel}
 		showSessionToggle={activeView === 'delivery'}
 		onToggleSessionPanel={() => (showSessionPanel = !showSessionPanel)}
+		onToggleInstrumentationPanel={() =>
+			(showInstrumentationPanel = !showInstrumentationPanel)}
 	/>
 
 	<div class="container mx-auto max-w-7xl px-4 py-6">
 		<div class="mb-5">
 			<h1 class="text-3xl font-bold">{data.demo?.name || 'Demo'}</h1>
 			{#if data.demo?.description}
-				<p class="mt-2 text-base-content/70">{data.demo.description}</p>
+				<p class="mt-2 text-base-content/90">{data.demo.description}</p>
 			{/if}
 		</div>
 
@@ -126,10 +138,12 @@
 	demoId={data.demoId || ''}
 	config={data.demo?.item?.config ?? null}
 	{showSessionPanel}
+	{showInstrumentationPanel}
 	session={$sessionStore}
 	env={$envStore}
 	score={$scoreStore}
 	bind:sessionDebuggerElement
+	bind:instrumentationDebuggerElement
 />
 
 <style>

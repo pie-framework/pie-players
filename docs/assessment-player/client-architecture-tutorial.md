@@ -142,11 +142,14 @@ Key attributes/properties on `pie-assessment-player-default`:
 | `attempt-id` | `string` | Identifies the attempt (host-owned) |
 | `section-player-layout` | `'splitpane' \| 'vertical'` | Which section player layout to use |
 | `show-navigation` | `boolean` | Whether to render built-in Back/Next navigation |
+| `debug` | `boolean` | Verbose logging control (`true` to enable, `false`/`0` to disable) |
 | `player-type` | `'iife' \| 'esm' \| 'preloaded'` | Item element loading strategy |
 | `assessment` | `object` | Assessment definition (sections, test parts) |
 | `hooks` | `object` | Assessment player hooks (see §7) |
 | `env` | `object` | `{ mode: 'gather'/'view'/'evaluate', role: 'student'/'instructor' }` |
 | `coordinator` | `ToolkitCoordinator` | Pass-through coordinator for tools/TTS/accessibility |
+| `sectionPlayerRuntime` | `object` | Optional pass-through runtime object applied to each mounted section-player |
+| `sectionPlayerPlayer` | `object` | Optional pass-through player overrides applied to each mounted section-player |
 
 To obtain the controller after bootstrap:
 
@@ -191,6 +194,80 @@ playerEl.coordinator = coordinator;
 
 This keeps one coordinator per assessment context — the same instance drives TTS, highlights, tool state, and section controller lifecycle across all sections. Creating multiple coordinators for the same assessment is a bug.
 
+### Item-level observability through assessment-player
+
+When using `pie-assessment-player-default`, pass section-level player observability overrides
+through `sectionPlayerRuntime` and/or `sectionPlayerPlayer`:
+
+```ts
+import { ConsoleInstrumentationProvider } from '@pie-players/pie-players-shared';
+
+const provider = new ConsoleInstrumentationProvider({ useColors: true });
+await provider.initialize({ debug: true });
+
+playerEl.sectionPlayerRuntime = {
+  player: {
+    loaderConfig: {
+      trackPageActions: true,
+      instrumentationProvider: provider,
+      maxResourceRetries: 3,
+      resourceRetryDelay: 500,
+    },
+  },
+};
+
+// Optional direct section-player player override path:
+playerEl.sectionPlayerPlayer = {
+  loaderOptions: { esmCdnUrl: 'https://cdn.jsdelivr.net/npm' },
+};
+```
+
+Notes:
+
+- `sectionPlayerRuntime` and `sectionPlayerPlayer` are JS properties, not serialized attributes.
+- For observability providers, prefer object property assignment to preserve provider instance references.
+- Assessment-level public events (for example `assessment-navigation-requested`, `assessment-route-changed`, `assessment-session-changed`) are instrumented through the same generic provider contract. They are not New Relic-specific hooks.
+- Use `loaderConfig.instrumentationProvider` as the canonical injection point; New Relic is one possible provider implementation.
+- With `trackPageActions: true`, missing/`undefined` `instrumentationProvider` uses the default New Relic provider path.
+- `instrumentationProvider: null` is an explicit no-op opt-out.
+- Ownership model: assessment-player instrumentation owns assessment events; section-player owns section events; toolkit owns toolkit lifecycle events. This keeps event streams clean and non-overlapping.
+
+### Instrumentation (dedicated)
+
+Assessment-player instrumentation is generic and provider-agnostic. It uses the same `InstrumentationProvider` contract as item-player and section-player.
+
+Canonical provider injection paths:
+
+- `sectionPlayerRuntime.player.loaderConfig.instrumentationProvider`
+- `sectionPlayerPlayer.loaderConfig.instrumentationProvider` (fallback)
+
+Provider semantics:
+
+- With `trackPageActions: true`, missing/`undefined` provider values use the default New Relic provider path.
+- `provider: null` explicitly disables instrumentation.
+- Invalid provider objects are ignored (optional debug warning), also no-op.
+- Post-connect provider updates are supported: the bridge rebinds when provider-bearing properties change.
+- Toolkit telemetry forwarding uses the same provider instance, so tool/backend operations are visible in the same stream as assessment/section events.
+
+Assessment-player owned canonical event stream:
+
+- `pie-assessment-controller-ready`
+- `pie-assessment-navigation-requested`
+- `pie-assessment-route-changed`
+- `pie-assessment-session-applied`
+- `pie-assessment-session-changed`
+- `pie-assessment-progress-changed`
+- `pie-assessment-submission-state-changed`
+- `pie-assessment-error`
+
+Ownership rule: assessment-player does not claim section/toolkit semantics. Keep streams independent, and rely on bridge dedupe only as a defensive safety net.
+
+Toolkit tool/backend operational events (visible through assessment-player when toolkit is mounted) include:
+
+- `pie-tool-init-start|success|error`
+- `pie-tool-backend-call-start|success|error`
+- `pie-tool-library-load-start|success|error`
+
 ---
 
 ## 5. Content and Loading
@@ -213,7 +290,7 @@ const assessment = {
 playerEl.assessment = assessment;
 ```
 
-Each section is passed to a `pie-section-player-splitpane` or `pie-section-player-vertical` element when it becomes active. Item element loading (IIFE/ESM/preloaded), bundle resolution, and registration tracking all happen at the section player level — the assessment player controls `player-type` pass-through but otherwise stays out of the loading path. See the [section player integration guide](../section-player/client-architecture-tutorial.md) §4 for full coverage of content loading strategies.
+Each section is passed to a `pie-section-player-splitpane` or `pie-section-player-vertical` element when it becomes active. Item element loading (IIFE/ESM/preloaded), bundle resolution, and registration tracking all happen at the section player level — assessment-player forwards `player-type` plus optional `sectionPlayerRuntime` / `sectionPlayerPlayer` pass-through overrides. See the [section player integration guide](../section-player/client-architecture-tutorial.md) §4 for full coverage of content loading strategies.
 
 ---
 

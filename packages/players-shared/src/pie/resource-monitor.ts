@@ -12,10 +12,11 @@
  */
 
 import { NewRelicInstrumentationProvider } from "../instrumentation/providers/NewRelicInstrumentationProvider.js";
+import { isInstrumentationProvider } from "../instrumentation/provider-guards.js";
 import type { InstrumentationProvider } from "../instrumentation/types.js";
 import type { ComponentContext } from "./component-context.js";
 import { getCurrentComponentContext } from "./component-context.js";
-import { createPieLogger } from "./logger.js";
+import { createPieLogger, isGlobalDebugEnabled } from "./logger.js";
 
 export type ResourceMonitorConfig = {
 	/**
@@ -48,6 +49,14 @@ export type ResourceMonitorConfig = {
 	instrumentationProvider?: InstrumentationProvider;
 
 	/**
+	 * Whether ResourceMonitor should initialize/destroy the instrumentation provider.
+	 *
+	 * Defaults to `true` when ResourceMonitor creates the provider internally, and
+	 * `false` when a provider is injected by the host.
+	 */
+	manageProviderLifecycle?: boolean;
+
+	/**
 	 * Maximum number of retry attempts for failed resources
 	 * Default: 3
 	 */
@@ -74,6 +83,7 @@ export type ResourceMonitorConfig = {
 const DEFAULT_CONFIG = {
 	trackPageActions: false as const,
 	instrumentationProvider: undefined as InstrumentationProvider | undefined,
+	manageProviderLifecycle: undefined as boolean | undefined,
 	maxRetries: 3 as number,
 	initialRetryDelay: 500 as number,
 	maxRetryDelay: 5000 as number,
@@ -104,6 +114,31 @@ export interface ResourceMonitorEventDetail {
 	error?: string;
 }
 
+export interface MediaRetryReadyDetail extends ResourceMonitorEventDetail {
+	mediaTag: "audio" | "video";
+}
+
+interface ResourceErrorDiagnostics {
+	eventType: string;
+	tagName: string;
+	resourceUrl: string;
+	originalUrl: string;
+	currentRetries: number;
+	remainingRetries: number;
+	willRetry: boolean;
+	cacheBypassActive: boolean;
+	currentSrc?: string;
+	readyState?: number;
+	networkState?: number;
+	paused?: boolean;
+	ended?: boolean;
+	currentTime?: number;
+	duration?: number | null;
+	mediaErrorCode?: number;
+	mediaErrorName?: string;
+	mediaErrorMessage?: string;
+}
+
 /**
  * Tracks resource loads and provides retry capability
  */
@@ -118,43 +153,65 @@ export class ResourceMonitor {
 	private mutationObserver: MutationObserver | null = null;
 	private errorHandler: ((event: Event) => void) | null = null;
 	private retryAttempts = new Map<string, number>();
+	private retryTargets = new Map<string, Set<ResourceElement>>();
 	private container: HTMLElement | null = null;
 	private isBrowser: boolean;
 	private containerResources = new Set<string>(); // Track resources within our container
 	private provider: InstrumentationProvider;
+	private readonly ownsProvider: boolean;
+	private readonly manageProviderLifecycle: boolean;
+	private started = false;
 
 	constructor(config: ResourceMonitorConfig = {}) {
+		const validInjectedProvider = isInstrumentationProvider(
+			config.instrumentationProvider,
+		)
+			? config.instrumentationProvider
+			: undefined;
+		const hasInjectedProvider = !!validInjectedProvider;
+		const manageProviderLifecycle =
+			config.manageProviderLifecycle ?? !hasInjectedProvider;
 		this.config = {
 			trackPageActions:
 				config.trackPageActions ?? DEFAULT_CONFIG.trackPageActions,
-			instrumentationProvider:
-				config.instrumentationProvider ??
-				DEFAULT_CONFIG.instrumentationProvider,
+			instrumentationProvider: validInjectedProvider,
+			manageProviderLifecycle,
 			maxRetries: config.maxRetries ?? DEFAULT_CONFIG.maxRetries,
 			initialRetryDelay:
 				config.initialRetryDelay ?? DEFAULT_CONFIG.initialRetryDelay,
 			maxRetryDelay: config.maxRetryDelay ?? DEFAULT_CONFIG.maxRetryDelay,
 			debug: config.debug ?? DEFAULT_CONFIG.debug,
 		};
-
-		// Always use a provider - default to NewRelic if not specified
-		this.provider =
-			this.config.instrumentationProvider ??
-			new NewRelicInstrumentationProvider();
-
-		// Initialize the provider (async, but don't block constructor)
-		this.provider.initialize().catch((err) => {
-			if (this.config.debug) {
-				console.warn(
-					"[ResourceMonitor] Failed to initialize instrumentation provider:",
-					err,
-				);
-			}
-		});
-
 		this.logger = createPieLogger("resource-monitor", () =>
 			this.isDebugEnabled(),
 		);
+		if (config.instrumentationProvider && !validInjectedProvider) {
+			if (this.isDebugEnabled()) {
+				this.logger.warn(
+					"Ignoring invalid instrumentation provider; expected InstrumentationProvider shape",
+				);
+			}
+		}
+
+		// Always use a provider - default to NewRelic if not specified
+		this.ownsProvider = !this.config.instrumentationProvider;
+		this.provider =
+			this.config.instrumentationProvider ??
+			new NewRelicInstrumentationProvider();
+		this.manageProviderLifecycle = this.config.manageProviderLifecycle;
+
+		// Initialize the provider (async, but don't block constructor)
+		if (this.manageProviderLifecycle) {
+			this.provider.initialize().catch((err) => {
+				if (this.isDebugEnabled()) {
+					this.logger.warn("Failed to initialize instrumentation provider:", err);
+				}
+			});
+		} else if (this.isDebugEnabled()) {
+			this.logger.debug(
+				"Skipping provider lifecycle management for injected provider",
+			);
+		}
 		this.isBrowser =
 			typeof window !== "undefined" && typeof document !== "undefined";
 	}
@@ -163,10 +220,7 @@ export class ResourceMonitor {
 	 * Check if debug logging is enabled (dynamically checks window.PIE_DEBUG)
 	 */
 	private isDebugEnabled(): boolean {
-		return (
-			this.config.debug ||
-			(typeof window !== "undefined" && (window as any).PIE_DEBUG === true)
-		);
+		return this.config.debug || isGlobalDebugEnabled();
 	}
 
 	/**
@@ -191,6 +245,85 @@ export class ResourceMonitor {
 			// If URL parsing fails, return as-is
 			return url;
 		}
+	}
+
+	private withRetryParams(url: string, attempt: number): string {
+		const retryValue = String(attempt);
+		const timestamp = Date.now().toString();
+		try {
+			const parsed = new URL(url);
+			parsed.searchParams.set("retry", retryValue);
+			parsed.searchParams.set("t", timestamp);
+			return parsed.toString();
+		} catch {
+			// Fallback for relative or malformed URLs.
+			const separator = url.includes("?") ? "&" : "?";
+			return `${url}${separator}retry=${encodeURIComponent(retryValue)}&t=${encodeURIComponent(timestamp)}`;
+		}
+	}
+
+	private getMediaErrorName(code: number | undefined): string | undefined {
+		switch (code) {
+			case 1:
+				return "MEDIA_ERR_ABORTED";
+			case 2:
+				return "MEDIA_ERR_NETWORK";
+			case 3:
+				return "MEDIA_ERR_DECODE";
+			case 4:
+				return "MEDIA_ERR_SRC_NOT_SUPPORTED";
+			default:
+				return undefined;
+		}
+	}
+
+	private buildResourceErrorDiagnostics(
+		target: ResourceElement,
+		args: {
+			eventType: string;
+			resourceUrl: string;
+			originalUrl: string;
+			currentRetries: number;
+			remainingRetries: number;
+			willRetry: boolean;
+		},
+	): ResourceErrorDiagnostics {
+		const diagnostics: ResourceErrorDiagnostics = {
+			eventType: args.eventType,
+			tagName: target.tagName.toLowerCase(),
+			resourceUrl: args.resourceUrl,
+			originalUrl: args.originalUrl,
+			currentRetries: args.currentRetries,
+			remainingRetries: args.remainingRetries,
+			willRetry: args.willRetry,
+			cacheBypassActive:
+				args.resourceUrl.includes("retry=") || args.resourceUrl.includes("t="),
+		};
+
+		if (
+			target instanceof HTMLAudioElement ||
+			target instanceof HTMLVideoElement
+		) {
+			const mediaError = target.error;
+			const mediaErrorCode = mediaError?.code;
+			diagnostics.currentSrc = target.currentSrc || target.src;
+			diagnostics.readyState = target.readyState;
+			diagnostics.networkState = target.networkState;
+			diagnostics.paused = target.paused;
+			diagnostics.ended = target.ended;
+			diagnostics.currentTime = target.currentTime;
+			diagnostics.duration = Number.isFinite(target.duration)
+				? target.duration
+				: null;
+			diagnostics.mediaErrorCode = mediaErrorCode;
+			diagnostics.mediaErrorName = this.getMediaErrorName(mediaErrorCode);
+			diagnostics.mediaErrorMessage =
+				typeof mediaError?.message === "string"
+					? mediaError.message
+					: undefined;
+		}
+
+		return diagnostics;
 	}
 
 	/**
@@ -233,6 +366,13 @@ export class ResourceMonitor {
 	 * Start monitoring resources in the given container
 	 */
 	public start(container: HTMLElement): void {
+		if (this.started) {
+			if (this.container === container) {
+				return;
+			}
+			this.stop();
+		}
+
 		if (!this.isBrowser) {
 			this.logger.debug(
 				"Not in browser environment, skipping resource monitoring",
@@ -246,6 +386,7 @@ export class ResourceMonitor {
 		this.scanContainerResources(); // Initial scan of existing resources
 		this.setupPerformanceObserver();
 		this.setupErrorHandler();
+		this.started = true;
 
 		this.logger.info("✅ Resource monitoring started");
 	}
@@ -254,6 +395,8 @@ export class ResourceMonitor {
 	 * Stop monitoring and clean up
 	 */
 	public stop(): void {
+		if (!this.started) return;
+
 		if (this.observer) {
 			this.observer.disconnect();
 			this.observer = null;
@@ -270,8 +413,20 @@ export class ResourceMonitor {
 		}
 
 		this.retryAttempts.clear();
+		this.retryTargets.clear();
 		this.containerResources.clear();
 		this.container = null;
+		this.started = false;
+
+		if (this.manageProviderLifecycle) {
+			try {
+				this.provider.destroy();
+			} catch (error) {
+				if (this.isDebugEnabled()) {
+					this.logger.warn("Failed to destroy instrumentation provider:", error);
+				}
+			}
+		}
 
 		this.logger.info("Resource monitoring stopped");
 	}
@@ -447,6 +602,7 @@ export class ResourceMonitor {
 		const duration = entry.duration;
 		const size = entry.transferSize;
 		const url = entry.name;
+		const originalUrl = this.getOriginalUrl(url);
 
 		// Detect actual failures: responseEnd === 0 means the request didn't complete
 		// Note: transferSize === 0 is NOT a failure indicator (can be cache, CORS, or small resources)
@@ -454,8 +610,8 @@ export class ResourceMonitor {
 		const failed = entry.responseEnd === 0 && entry.duration > 0;
 
 		// Check if this was a retry that succeeded
-		const wasRetried = this.retryAttempts.has(url);
-		const retryCount = this.retryAttempts.get(url) || 0;
+		const wasRetried = this.retryAttempts.has(originalUrl);
+		const retryCount = this.retryAttempts.get(originalUrl) || 0;
 
 		// Enhanced debug logging with detailed timing breakdown
 		if (this.isDebugEnabled()) {
@@ -519,7 +675,7 @@ export class ResourceMonitor {
 		// Handle successful loads
 		if (!failed) {
 			this.handleSuccessfulLoad(
-				url,
+				originalUrl,
 				entry,
 				duration,
 				size,
@@ -541,7 +697,7 @@ export class ResourceMonitor {
 
 		// Track failed loads
 		if (failed) {
-			this.handleFailedLoad(url, entry, duration, retryCount, wasRetried);
+			this.handleFailedLoad(originalUrl, entry, duration, retryCount, wasRetried);
 		}
 	}
 
@@ -586,9 +742,44 @@ export class ResourceMonitor {
 				retryCount,
 				maxRetries: this.config.maxRetries,
 			});
+			this.dispatchMediaRetryReady(url, {
+				url,
+				resourceType: entry.initiatorType,
+				duration,
+				size,
+				retryCount,
+				maxRetries: this.config.maxRetries,
+			});
 
 			// Clear retry tracking since it succeeded
 			this.retryAttempts.delete(url);
+			this.retryTargets.delete(url);
+		}
+	}
+
+	private dispatchMediaRetryReady(
+		url: string,
+		detail: ResourceMonitorEventDetail,
+	): void {
+		const targets = this.retryTargets.get(url);
+		if (!targets || targets.size === 0) return;
+		for (const target of targets) {
+			const isAudio = target instanceof HTMLAudioElement;
+			const isVideo = target instanceof HTMLVideoElement;
+			if (!isAudio && !isVideo) continue;
+			const mediaTag: "audio" | "video" = isAudio ? "audio" : "video";
+			const event = new CustomEvent<MediaRetryReadyDetail>(
+				"pie-media-retry-ready",
+				{
+					detail: {
+						...detail,
+						mediaTag,
+					},
+					bubbles: true,
+					composed: true,
+				},
+			);
+			target.dispatchEvent(event);
 		}
 	}
 
@@ -809,6 +1000,14 @@ export class ResourceMonitor {
 			const currentRetries = this.retryAttempts.get(originalSrc) || 0;
 			const remainingRetries = this.config.maxRetries - currentRetries;
 			const willRetry = remainingRetries > 0;
+			const diagnostics = this.buildResourceErrorDiagnostics(target, {
+				eventType: event.type,
+				resourceUrl: src,
+				originalUrl: originalSrc,
+				currentRetries,
+				remainingRetries,
+				willRetry,
+			});
 
 			// Enhanced debug logging for errors
 			// Use warn if we'll retry, error if we've exhausted retries
@@ -826,6 +1025,7 @@ export class ResourceMonitor {
 						`   Current Attempts: ${currentRetries}\n` +
 						`   Remaining Retries: ${remainingRetries}/${this.config.maxRetries}\n` +
 						`   Action: ${willRetry ? "Will retry with exponential backoff" : "Max retries reached, giving up"}`,
+					diagnostics,
 				);
 			} else {
 				const logMethod = willRetry
@@ -835,12 +1035,14 @@ export class ResourceMonitor {
 				logMethod(`${icon} Resource error: ${tagName} failed to load ${src}`);
 			}
 
+			this.trackInstrumentationEvent("pie-resource-load-error", diagnostics);
+
 			// Track error with instrumentation provider
 			this.trackInstrumentationError(
 				new Error(`Resource load error: ${originalSrc}`),
 				{
 					resourceType: tagName,
-					resourceUrl: originalSrc,
+					...diagnostics,
 				},
 			);
 
@@ -975,6 +1177,12 @@ export class ResourceMonitor {
 		originalSrc: string,
 	): Promise<void> {
 		const retryCount = this.retryAttempts.get(originalSrc) || 0;
+		let trackedTargets = this.retryTargets.get(originalSrc);
+		if (!trackedTargets) {
+			trackedTargets = new Set<ResourceElement>();
+			this.retryTargets.set(originalSrc, trackedTargets);
+		}
+		trackedTargets.add(element);
 
 		if (retryCount >= this.config.maxRetries) {
 			this.handlePermanentFailure(
@@ -1024,19 +1232,45 @@ export class ResourceMonitor {
 				element instanceof HTMLAudioElement ||
 				element instanceof HTMLVideoElement
 			) {
-				// For media elements, use load() method
+				// For media elements, force a fresh request to avoid cache-only replay
+				// failures (e.g. ERR_CACHE_OPERATION_NOT_SUPPORTED in Chromium).
+				const retryUrl = this.withRetryParams(originalSrc, retryCount + 1);
+				if (element.src) {
+					element.src = retryUrl;
+				} else {
+					const source = Array.from(element.querySelectorAll("source")).find(
+						(candidate) =>
+							typeof candidate.src === "string" &&
+							this.getOriginalUrl(candidate.src) === originalSrc,
+					);
+					if (source) {
+						source.src = retryUrl;
+					}
+				}
 				element.load();
 				if (this.isDebugEnabled()) {
 					this.logger.debug(
-						`✓ Triggered load() on <${element.tagName.toLowerCase()}>`,
+						`✓ Triggered load() on <${element.tagName.toLowerCase()}> with cache-busting params`,
+					);
+				}
+			} else if (element instanceof HTMLSourceElement) {
+				const retryUrl = this.withRetryParams(originalSrc, retryCount + 1);
+				element.src = retryUrl;
+				const parent = element.parentElement;
+				if (
+					parent instanceof HTMLAudioElement ||
+					parent instanceof HTMLVideoElement
+				) {
+					parent.load();
+				}
+				if (this.isDebugEnabled()) {
+					this.logger.debug(
+						`✓ Updated <source> src with cache-busting params and reloaded parent media: retry=${retryCount + 1}`,
 					);
 				}
 			} else if (element instanceof HTMLImageElement) {
 				// For images, force reload by appending cache-busting parameter
-				const url = new URL(originalSrc);
-				url.searchParams.set("retry", (retryCount + 1).toString());
-				url.searchParams.set("t", Date.now().toString());
-				element.src = url.toString();
+				element.src = this.withRetryParams(originalSrc, retryCount + 1);
 				if (this.isDebugEnabled()) {
 					this.logger.debug(
 						`✓ Updated <img> src with cache-busting params: retry=${retryCount + 1}, t=${Date.now()}`,
@@ -1044,10 +1278,7 @@ export class ResourceMonitor {
 				}
 			} else if (element instanceof HTMLLinkElement) {
 				// For stylesheets, update href with cache-busting params (avoid clone/replace for Shady DOM compatibility)
-				const url = new URL(originalSrc);
-				url.searchParams.set("retry", (retryCount + 1).toString());
-				url.searchParams.set("t", Date.now().toString());
-				element.href = url.toString();
+				element.href = this.withRetryParams(originalSrc, retryCount + 1);
 				if (this.isDebugEnabled()) {
 					this.logger.debug(
 						`✓ Updated <link> href with cache-busting params: retry=${retryCount + 1}, t=${Date.now()}`,
@@ -1055,14 +1286,29 @@ export class ResourceMonitor {
 				}
 			}
 		} catch (error) {
+			const diagnostics = this.buildResourceErrorDiagnostics(element, {
+				eventType: "retry",
+				resourceUrl: this.getResourceSrc(element) || originalSrc,
+				originalUrl: originalSrc,
+				currentRetries: retryCount + 1,
+				remainingRetries: Math.max(0, this.config.maxRetries - (retryCount + 1)),
+				willRetry: retryCount + 1 < this.config.maxRetries,
+			});
 			if (this.isDebugEnabled()) {
 				this.logger.error(
 					`❌ Error during retry attempt for ${originalSrc}:`,
 					error,
+					diagnostics,
 				);
 			} else {
 				this.logger.error(`Error during retry for ${originalSrc}:`, error);
 			}
+			this.trackInstrumentationError(
+				new Error(`Retry attempt error for resource: ${originalSrc}`),
+				{
+					...diagnostics,
+				},
+			);
 		}
 	}
 

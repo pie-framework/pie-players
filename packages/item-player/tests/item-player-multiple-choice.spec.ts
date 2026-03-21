@@ -43,6 +43,21 @@ async function openSessionPanel(page: Page) {
 	return panel;
 }
 
+async function openInstrumentationPanel(page: Page) {
+	const panel = page.locator("pie-section-player-tools-instrumentation-debugger");
+	const firstRow = panel.locator(
+		".pie-section-player-tools-instrumentation-debugger__row",
+	).first();
+	if (await firstRow.isVisible().catch(() => false)) {
+		return panel;
+	}
+	await page.getByRole("button", { name: "Toggle instrumentation panel" }).click();
+	await expect(
+		panel.locator(".pie-section-player-tools-instrumentation-debugger"),
+	).toBeVisible();
+	return panel;
+}
+
 async function selectChoiceByLabel(page: Page, labelText: string) {
 	await page
 		.locator('label[for^="choice-"]')
@@ -259,5 +274,32 @@ test.describe("item-player demo multiple-choice", () => {
 				2,
 			)}`,
 		).toEqual([]);
+	});
+
+	test("renders instrumentation records in instrumentation panel", async ({
+		page,
+	}) => {
+		await gotoRoute(page, DELIVERY_PATH);
+		const panel = await openInstrumentationPanel(page);
+		await page.evaluate(() => {
+			window.dispatchEvent(
+				new CustomEvent("pie-instrumentation-debug-record", {
+					detail: {
+						id: 1,
+						kind: "event",
+						providerId: "test",
+						providerName: "Test Provider",
+						timestamp: new Date().toISOString(),
+						name: "pie-item-test-event",
+						attributes: { component: "pie-item-player" },
+					},
+				}),
+			);
+		});
+		await expect(
+			panel.locator(
+				".pie-section-player-tools-instrumentation-debugger__row",
+			).first(),
+		).toBeVisible({ timeout: 30_000 });
 	});
 });

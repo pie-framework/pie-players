@@ -1,0 +1,56 @@
+{
+	"name": "@pie-players/tts-server-sc",
+	"version": "0.3.20",
+	"description": "SchoolCity-backed provider for server-side TTS with speech marks support",
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "tsc",
+		"dev": "tsc --watch",
+		"test": "vitest run --passWithNoTests",
+		"test:coverage": "vitest --coverage"
+	},
+	"keywords": [
+		"tts",
+		"text-to-speech",
+		"schoolcity",
+		"speech-marks",
+		"server-side"
+	],
+	"author": "PIE Framework",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pie-framework/pie-players.git",
+		"directory": "packages/tts-server-sc"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"dependencies": {
+		"@pie-players/tts-server-core": "workspace:*",
+		"jose": "^6.2.2"
+	},
+	"devDependencies": {
+		"typescript": "^5.9.3",
+		"vitest": "^1.0.4"
+	},
+	"sideEffects": false,
+	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/tts-server-sc#readme",
+	"bugs": {
+		"url": "https://github.com/pie-framework/pie-players/issues"
+	},
+	"engines": {
+		"node": ">=20.0.0"
+	}
+}

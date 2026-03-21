@@ -1,9 +1,15 @@
 <script lang="ts">
 	import { browser } from "$app/environment";
 	import { onMount } from "svelte";
+import {
+	CompositeInstrumentationProvider,
+	DebugPanelInstrumentationProvider,
+	NewRelicInstrumentationProvider,
+} from "@pie-players/pie-players-shared";
 	import { ToolkitCoordinator } from "@pie-players/pie-assessment-toolkit";
 	import "@pie-players/pie-assessment-player/components/assessment-player-default-element";
 	import "@pie-players/pie-section-player-tools-event-debugger";
+import "@pie-players/pie-section-player-tools-instrumentation-debugger";
 	import "@pie-players/pie-section-player-tools-session-debugger";
 	import SessionDbPanel from "@pie-players/pie-section-player-tools-shared/SessionDbPanel.svelte";
 	import AssessmentDemoMenuBar from "$lib/demo-runtime/components/AssessmentDemoMenuBar.svelte";
@@ -75,6 +81,28 @@
 		},
 		},
 	});
+const sectionInstrumentationProvider = new CompositeInstrumentationProvider([
+	new NewRelicInstrumentationProvider(),
+	new DebugPanelInstrumentationProvider(),
+]);
+void sectionInstrumentationProvider
+	.initialize()
+	.then(() => {
+		sectionInstrumentationProvider.trackMetric("demo.instrumentation.bootstrap", 1, {
+			app: "assessment-demos",
+			demo: "session-hydrate-db",
+			category: "demo",
+		});
+	})
+	.catch(() => {});
+const sectionPlayerRuntimeConfig = {
+	player: {
+		loaderConfig: {
+			trackPageActions: true,
+			instrumentationProvider: sectionInstrumentationProvider,
+		},
+	},
+};
 
 	let attemptId = $state("");
 	let sectionLayout = $state<"splitpane" | "vertical">("splitpane");
@@ -86,9 +114,11 @@
 	let activeSectionId = $state("");
 	let showSessionPanel = $state(false);
 	let showEventPanel = $state(false);
+let showInstrumentationPanel = $state(false);
 	let showDbPanel = $state(false);
 	let sessionDebuggerElement = $state<any>(null);
 	let eventDebuggerElement = $state<any>(null);
+let instrumentationDebuggerElement = $state<any>(null);
 	let dbHydrateEnabled = $state(false);
 	let dbErrorMessage = $state<string | null>(null);
 	let dbBootstrapAt = $state<number | null>(null);
@@ -332,6 +362,7 @@
 		(playerRef as any).assessment =
 			serverLoadedAssessment || data.demo.assessment;
 		(playerRef as any).sectionPlayerLayout = sectionLayout;
+		(playerRef as any).sectionPlayerRuntime = sectionPlayerRuntimeConfig;
 		(playerRef as any).showNavigation = true;
 		(playerRef as any).hooks = hooks;
 		(playerRef as any).coordinator = coordinator;
@@ -392,6 +423,13 @@
 		});
 	});
 
+	$effect(() => {
+		if (!instrumentationDebuggerElement) return;
+		return wireCloseListener(instrumentationDebuggerElement, () => {
+			showInstrumentationPanel = false;
+		});
+	});
+
 	function handleRouteChange(event: Event) {
 		const detail = (event as CustomEvent<AssessmentRouteChangedDetail>).detail;
 		snapshot = {
@@ -425,6 +463,7 @@
 		{sectionLayout}
 		{showSessionPanel}
 		{showEventPanel}
+		{showInstrumentationPanel}
 		{showDbPanel}
 		onSetSplitpaneLayout={() => {
 			sectionLayout = "splitpane";
@@ -436,6 +475,8 @@
 		}}
 		onToggleSessionPanel={() => (showSessionPanel = !showSessionPanel)}
 		onToggleEventPanel={() => (showEventPanel = !showEventPanel)}
+		onToggleInstrumentationPanel={() =>
+			(showInstrumentationPanel = !showInstrumentationPanel)}
 		onToggleDbPanel={() => (showDbPanel = !showDbPanel)}
 	/>
 
@@ -496,6 +537,12 @@
 			sectionId={activeSectionId}
 			attemptId={attemptId}
 		></pie-section-player-tools-event-debugger>
+	{/if}
+
+	{#if showInstrumentationPanel}
+		<pie-section-player-tools-instrumentation-debugger
+			bind:this={instrumentationDebuggerElement}
+		></pie-section-player-tools-instrumentation-debugger>
 	{/if}
 
 	{#if showDbPanel}

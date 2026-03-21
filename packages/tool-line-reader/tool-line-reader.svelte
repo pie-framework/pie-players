@@ -360,11 +360,6 @@ import { onMount } from 'svelte';
 		touch-action: none;
 	}
 
-	.pie-tool-line-reader:focus {
-		outline: 3px solid var(--pie-button-focus-outline, var(--pie-primary, #4A90E2));
-		outline-offset: 2px;
-	}
-
 	.pie-tool-line-reader:focus-visible {
 		outline: 3px solid var(--pie-button-focus-outline, var(--pie-primary, #4A90E2));
 		outline-offset: 2px;

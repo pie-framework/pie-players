@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import { onMount } from 'svelte';
+	import { createFocusTrap } from '../ui/focus-trap.js';
 
 	let {
 		open,
@@ -18,13 +19,20 @@
 
 	let panelEl = $state<HTMLDivElement | null>(null);
 	let panelPosition = $state<{ top: number; left?: number; right?: number } | null>(null);
-
-	function onKeyDown(e: KeyboardEvent) {
-		if (e.key === 'Escape') onClose();
-	}
+	let cleanupFocusTrap: (() => void) | null = null;
 
 	$effect(() => {
-		if (open) queueMicrotask(() => panelEl?.focus?.());
+		if (!open || !panelEl) {
+			cleanupFocusTrap?.();
+			cleanupFocusTrap = null;
+			return;
+		}
+		cleanupFocusTrap?.();
+		cleanupFocusTrap = createFocusTrap(panelEl, { onEscape: onClose });
+		return () => {
+			cleanupFocusTrap?.();
+			cleanupFocusTrap = null;
+		};
 	});
 
 	// Calculate position based on anchor element
@@ -67,7 +75,11 @@
 		};
 
 		document.addEventListener('mousedown', onDocClick);
-		return () => document.removeEventListener('mousedown', onDocClick);
+		return () => {
+			cleanupFocusTrap?.();
+			cleanupFocusTrap = null;
+			document.removeEventListener('mousedown', onDocClick);
+		};
 	});
 </script>
 
@@ -79,7 +91,6 @@
 		role="dialog"
 		aria-label={title}
 		tabindex="-1"
-		onkeydown={onKeyDown}
 		style="z-index: 4100; {panelPosition ? `top: ${panelPosition.top}px; ${panelPosition.left !== undefined ? `left: ${panelPosition.left}px;` : `right: ${panelPosition.right}px;`}` : 'top: 4rem; right: 1rem;'}"
 	>
 		<div class="flex items-center justify-between gap-2 mb-2">

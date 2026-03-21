@@ -13,7 +13,8 @@
 <script lang="ts">
 	import type { ToolCoordinatorApi, TtsServiceApi } from '@pie-players/pie-assessment-toolkit';
 	import { BrowserTTSProvider, ZIndexLayer } from '@pie-players/pie-assessment-toolkit';
-import { onDestroy, onMount } from 'svelte';
+	import { createFocusTrap } from '@pie-players/pie-players-shared';
+	import { onMount } from 'svelte';
 
 	// Props
 	let {
@@ -33,6 +34,7 @@ import { onDestroy, onMount } from 'svelte';
 
 	// State
 	let containerEl = $state<HTMLDivElement | undefined>();
+	let closeButtonEl = $state<HTMLButtonElement | undefined>();
 	let isDragging = $state(false);
 	let position = $state({
 		x: isBrowser ? window.innerWidth - 320 : 400,
@@ -51,6 +53,7 @@ import { onDestroy, onMount } from 'svelte';
 
 	// Track registration state
 	let registered = $state(false);
+	let cleanupFocusTrap: (() => void) | null = null;
 
 	// Register with coordinator when it becomes available
 	$effect(() => {
@@ -81,6 +84,8 @@ import { onDestroy, onMount } from 'svelte';
 				document.removeEventListener('selectionchange', handleSelectionChange);
 				ttsService.stop();
 			}
+			cleanupFocusTrap?.();
+			cleanupFocusTrap = null;
 			if (coordinator && toolId) {
 				coordinator.unregisterTool(toolId);
 			}
@@ -92,6 +97,23 @@ import { onDestroy, onMount } from 'svelte';
 		if (coordinator && containerEl && toolId) {
 			coordinator.updateToolElement(toolId, containerEl);
 		}
+	});
+
+	$effect(() => {
+		if (!visible || !containerEl) {
+			cleanupFocusTrap?.();
+			cleanupFocusTrap = null;
+			return;
+		}
+		cleanupFocusTrap?.();
+		cleanupFocusTrap = createFocusTrap(containerEl, {
+			initialFocus: closeButtonEl || null,
+			onEscape: handleClose
+		});
+		return () => {
+			cleanupFocusTrap?.();
+			cleanupFocusTrap = null;
+		};
 	});
 
 	// Handle text selection
@@ -264,6 +286,7 @@ import { onDestroy, onMount } from 'svelte';
 				<span class="pie-tool-text-to-speech__title">Text-to-Speech</span>
 			</div>
 			<button
+				bind:this={closeButtonEl}
 				class="pie-tool-text-to-speech__close-button"
 				onclick={handleClose}
 				aria-label="Close"

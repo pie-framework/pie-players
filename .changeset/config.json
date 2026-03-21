@@ -4,6 +4,7 @@
 	"commit": false,
 	"fixed": [
 		[
+			"@pie-players/pie-assessment-player",
 			"@pie-players/pie-assessment-toolkit",
 			"@pie-players/pie-calculator",
 			"@pie-players/pie-calculator-desmos",
@@ -14,8 +15,10 @@
 			"@pie-players/pie-print-player",
 			"@pie-players/pie-section-player",
 			"@pie-players/pie-section-player-tools-event-debugger",
+			"@pie-players/pie-section-player-tools-instrumentation-debugger",
 			"@pie-players/pie-section-player-tools-pnp-debugger",
 			"@pie-players/pie-section-player-tools-session-debugger",
+			"@pie-players/pie-section-player-tools-tts-settings",
 			"@pie-players/pie-section-player-tools-shared",
 			"@pie-players/pie-toolbars",
 			"@pie-players/pie-theme",

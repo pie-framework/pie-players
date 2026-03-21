@@ -1,4 +1,8 @@
 <script lang="ts">
+	import {
+		createPieLogger,
+		isGlobalDebugEnabled,
+	} from "@pie-players/pie-players-shared";
 	import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
 	import type { SectionControllerHandle } from "@pie-players/pie-assessment-toolkit";
 	import { createEventDispatcher } from "svelte";
@@ -27,7 +31,6 @@
 
 	type PlayerActionConfig = {
 		stateKey: string;
-		setSkipElementLoadingOnce?: boolean;
 		includeSessionRefInState?: boolean;
 	};
 
@@ -68,6 +71,7 @@
 		enabledTools = "",
 		itemToolbarTools = "",
 		passageToolbarTools = "",
+		debug = undefined as string | boolean | undefined,
 		playerActionConfig = {
 			stateKey: "__sectionPlayerAppliedParams",
 			includeSessionRefInState: false,
@@ -76,6 +80,25 @@
 	} = $props();
 
 	const dispatch = createEventDispatcher<KernelEvents>();
+	const isBrowser = typeof window !== "undefined" && typeof document !== "undefined";
+	const debugEnabled = $derived.by(() => {
+		if (debug !== undefined && debug !== null) {
+			const debugStr = String(debug);
+			const debugValue = !(
+				debugStr.toLowerCase() === "false" ||
+				debugStr === "0" ||
+				debugStr === ""
+			);
+			if (isBrowser) {
+				try {
+					(window as any).PIE_DEBUG = debugValue;
+				} catch {}
+			}
+			return debugValue;
+		}
+		return isGlobalDebugEnabled();
+	});
+	const logger = createPieLogger("section-player-layout-kernel", () => debugEnabled);
 	let compositionSnapshot = $state<LayoutCompositionSnapshot>(
 		deriveLayoutCompositionSnapshot(EMPTY_COMPOSITION),
 	);
@@ -126,6 +149,13 @@
 	const resolvedPlayerTag = $derived(playerRuntime.resolvedPlayerTag);
 	const resolvedPlayerAttributes = $derived(playerRuntime.resolvedPlayerAttributes);
 	const resolvedPlayerProps = $derived(playerRuntime.resolvedPlayerProps);
+	const effectiveResolvedPlayerProps = $derived.by(() => {
+		if (debug === undefined || debug === null) return resolvedPlayerProps;
+		return {
+			...(resolvedPlayerProps || {}),
+			debug,
+		};
+	});
 	const resolvedPlayerEnv = $derived(playerRuntime.resolvedPlayerEnv);
 	const playerStrategy = $derived(playerRuntime.strategy);
 	const playerAction = $derived.by(() => createPlayerAction(playerActionConfig));
@@ -280,7 +310,7 @@
 
 	$effect(() => {
 		resolvedPlayerDefinition?.ensureDefined?.().catch((error: unknown) => {
-			console.error("[section-player-layout-kernel] Failed to load item player component:", error);
+			logger.error("Failed to load item player component:", error);
 		});
 	});
 
@@ -313,6 +343,7 @@
 	showToolbar={normalizedShowToolbar}
 	toolbarPosition={toolbarPosition}
 	enabledTools={enabledTools}
+	focusPolicy={policies.focus}
 	cardRenderContext={cardRenderContextValue}
 >
 	<slot
@@ -324,7 +355,7 @@
 			preloadedRenderablesSignature,
 			resolvedPlayerEnv,
 			resolvedPlayerAttributes,
-			resolvedPlayerProps,
+			resolvedPlayerProps: effectiveResolvedPlayerProps,
 			playerStrategy,
 			iifeBundleHost,
 			paneElementsLoaded,
@@ -338,7 +369,7 @@
 		{preloadedRenderablesSignature}
 		{resolvedPlayerEnv}
 		{resolvedPlayerAttributes}
-		{resolvedPlayerProps}
+		resolvedPlayerProps={effectiveResolvedPlayerProps}
 		{playerStrategy}
 		{iifeBundleHost}
 		{paneElementsLoaded}

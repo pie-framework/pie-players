@@ -5,6 +5,7 @@ import type {
 	ImageHandler,
 	SoundHandler,
 } from "@pie-players/pie-players-shared/types";
+import type { LoaderConfig } from "@pie-players/pie-players-shared/loader-config";
 
 export type { DeleteDone, ImageHandler, SoundHandler };
 
@@ -21,6 +22,7 @@ export interface PieItemPlayerElement extends HTMLElement {
 	onInsertSound?: (handler: SoundHandler) => void;
 	onDeleteSound?: (src: string, done: DeleteDone) => void;
 	loaderOptions?: Record<string, unknown>;
+	loaderConfig?: LoaderConfig;
 }
 
 export interface PieItemSessionDebuggerElement extends HTMLElement {

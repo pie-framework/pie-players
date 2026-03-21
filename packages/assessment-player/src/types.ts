@@ -3,6 +3,7 @@ import type {
 	Env,
 	TestPart,
 } from "@pie-players/pie-players-shared/types";
+import type { LoaderConfig } from "@pie-players/pie-players-shared/loader-config";
 
 export interface SectionSessionSnapshot {
 	currentItemIndex?: number;
@@ -133,10 +134,32 @@ export interface AssessmentDefinition {
 	sections?: AssessmentSection[];
 }
 
+export interface SectionPlayerLoaderOverrides {
+	loaderConfig?: LoaderConfig;
+	loaderOptions?: Record<string, unknown>;
+	[key: string]: unknown;
+}
+
+export interface SectionPlayerRuntimeOverrides {
+	player?: SectionPlayerLoaderOverrides | null;
+	[key: string]: unknown;
+}
+
 export interface AssessmentPlayerRuntimeConfig {
 	assessmentId?: string;
 	attemptId?: string;
 	assessment?: AssessmentDefinition | null;
 	env?: Env;
+	debug?: boolean | string;
+	/**
+	 * Optional section-player runtime overrides passed through by assessment-player.
+	 * Useful for advanced configuration such as runtime.player.loaderConfig observability wiring.
+	 */
+	sectionPlayerRuntime?: SectionPlayerRuntimeOverrides | null;
+	/**
+	 * Optional section-player player overrides passed through by assessment-player.
+	 * Useful for directly supplying runtime-equivalent player settings such as loaderConfig.
+	 */
+	sectionPlayerPlayer?: SectionPlayerLoaderOverrides | null;
 	hooks?: AssessmentPlayerHooks;
 }

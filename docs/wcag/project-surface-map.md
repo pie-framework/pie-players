@@ -10,6 +10,16 @@ It is intentionally pattern-oriented. It should stay useful even when file names
 - Use it together with [`wcag-2.2-aa-baseline.md`](./wcag-2.2-aa-baseline.md) and [`patterns-and-widgets.md`](./patterns-and-widgets.md).
 - Treat the `Relevant criteria` column as a starting point, not a full audit result.
 
+## Review Tiers (Current)
+
+These tiers define the default project-wide review scope.
+
+| Tier | Scope | Notes |
+| --- | --- | --- |
+| Tier 1 (critical) | `packages/section-player`, `packages/item-player`, `packages/assessment-player`, `packages/assessment-toolkit`, `packages/toolbars`, `packages/tool-*`, `packages/theme`, `packages/print-player` | Primary learner-facing and shipped custom-element surfaces. |
+| Tier 2 (integration) | `apps/section-demos`, `apps/item-demos`, `apps/assessment-demos`, `apps/docs` | Integration wrappers and demo chrome that can add or hide accessibility defects. |
+| Tier 3 (support) | `packages/section-player-tools-*` and demo-only support panels | Lower learner impact, still reviewed when visible in supported demo flows. |
+
 ## Surface Map
 
 | Surface | What it includes | Relevant criteria | Useful guidance | Existing local references |
@@ -23,7 +33,7 @@ It is intentionally pattern-oriented. It should stay useful even when file names
 | Line reader and masking overlays | Reading guide, masking mode, movement and resize controls, overlay behavior | `2.1.1`, `2.4.11`, `2.5.7`, `2.5.8`, `4.1.2`, `4.1.3` | [Developing a Keyboard Interface](https://www.w3.org/WAI/ARIA/apg/practices/keyboard-interface/), [WCAG 2.5.7](https://www.w3.org/WAI/WCAG22/Understanding/dragging-movements) | [`../evals/tools/line-reader/evals.yaml`](../evals/tools/line-reader/evals.yaml) |
 | Answer eliminator and compact answer controls | Injected or adjacent controls inside question content, toggle state, compact icon buttons | `1.4.11`, `2.4.3`, `2.5.3`, `2.5.8`, `4.1.2`, `4.1.3` | [Names and Descriptions](https://www.w3.org/WAI/ARIA/apg/practices/names-and-descriptions/), [WCAG 2.5.3](https://www.w3.org/WAI/WCAG22/Understanding/label-in-name) | [`../evals/tools/answer-eliminator/evals.yaml`](../evals/tools/answer-eliminator/evals.yaml) |
 | Math, graph, calculator, ruler, protractor, periodic table | Domain-specific tools with custom interaction surfaces | `1.1.1`, `2.1.1`, `2.5.7`, `2.5.8`, `4.1.2` | [Slider Pattern](https://www.w3.org/WAI/ARIA/apg/patterns/slider/), [Developing a Keyboard Interface](https://www.w3.org/WAI/ARIA/apg/practices/keyboard-interface/) | [`../evals/tools/calculator/evals.yaml`](../evals/tools/calculator/evals.yaml), [`../evals/tools/graph/evals.yaml`](../evals/tools/graph/evals.yaml), [`../evals/tools/ruler/evals.yaml`](../evals/tools/ruler/evals.yaml), [`../evals/tools/protractor/evals.yaml`](../evals/tools/protractor/evals.yaml), [`../evals/tools/periodic-table/evals.yaml`](../evals/tools/periodic-table/evals.yaml) |
-| Demo apps | Integrated review harness for layout, mode, and runtime combinations | depends on route and feature | [Evaluating Web Accessibility Overview](https://www.w3.org/WAI/test-evaluate/), [WCAG-EM Overview](https://www.w3.org/WAI/test-evaluate/conformance/wcag-em/) | `apps/section-demos`, `apps/item-demos`, [`../setup/demo_system.md`](../setup/demo_system.md) |
+| Demo apps | Integrated review harness for layout, mode, runtime combinations, and consumer integration behavior | depends on route and feature | [Evaluating Web Accessibility Overview](https://www.w3.org/WAI/test-evaluate/), [WCAG-EM Overview](https://www.w3.org/WAI/test-evaluate/conformance/wcag-em/) | `apps/section-demos`, `apps/item-demos`, `apps/assessment-demos`, `apps/docs`, [`../setup/demo_system.md`](../setup/demo_system.md) |
 | Local eval specs | Repeatable supporting checks for behavior and intent | supporting evidence only | [About ACT Rules](https://www.w3.org/WAI/standards-guidelines/act/rules/about/) | [`../evals/readme.md`](../evals/readme.md) |
 
 ## Review Focus By Surface Type
@@ -78,3 +88,9 @@ This repo already has useful supporting documents, but they do different jobs:
 - this WCAG library explains how to interpret those surfaces against official accessibility guidance
 
 Keep those roles separate to avoid duplicating standards text or letting test specs stand in for the standard.
+
+## Scope Baseline Notes
+
+- Root CI currently validates build/lint/package rules but does not run Playwright accessibility checks by default.
+- Root pre-push hooks execute a critical subset of end-to-end checks, including two axe-backed tests.
+- `docs/evals` should be treated as supporting evidence and intent capture unless host-app runner wiring is present and maintained.

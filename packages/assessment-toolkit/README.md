@@ -58,6 +58,48 @@ player.toolkitCoordinator = toolkitCoordinator;
 - **Accessibility theming**: Consistent high-contrast, font sizing
 - **State separation**: Ephemeral tool state separate from persistent session data
 
+## Instrumentation and Observability
+
+Toolkit instrumentation is provider-agnostic and additive. It uses the shared
+`InstrumentationProvider` contract from `@pie-players/pie-players-shared`.
+
+### Injection Path
+
+When toolkit is hosted by section/assessment player flows, the canonical
+provider path is the item-player loader config:
+
+- `runtime.player.loaderConfig.instrumentationProvider`
+
+### Semantics
+
+- With `trackPageActions: true`, missing/`undefined` providers use the default New Relic provider path.
+- `instrumentationProvider: null` explicitly disables instrumentation.
+- Invalid provider objects are ignored (optional debug warning), also no-op.
+- Existing `item-player` behavior remains the compatibility anchor.
+- Debug overlays can consume the same stream by composing providers with
+  `CompositeInstrumentationProvider` (for example New Relic + debug panel).
+- Toolkit telemetry forwarding uses the same provider path, so tool/backend
+  instrumentation is sent to production providers and is visible in debug panel
+  overlays.
+
+### Toolkit-Owned Canonical Event Stream
+
+- `pie-toolkit-runtime-owned`
+- `pie-toolkit-runtime-inherited`
+- `pie-toolkit-ready`
+- `pie-toolkit-section-ready`
+- `pie-toolkit-runtime-error`
+
+Toolkit tool/backend operational stream:
+
+- `pie-tool-init-start|success|error`
+- `pie-tool-backend-call-start|success|error`
+- `pie-tool-library-load-start|success|error`
+
+Ownership boundary: toolkit emits toolkit lifecycle semantics only. Section and
+assessment semantic streams stay in their own layers to avoid overlap. Bridge
+dedupe is a safety net, not a substitute for clear ownership.
+
 ## Architecture Overview
 
 See [ToolkitCoordinator Architecture](../../docs/architecture/TOOLKIT_COORDINATOR.md) for complete design documentation.
@@ -351,6 +393,88 @@ const coordinator = new ToolkitCoordinator({
 ```
 
 The ToolkitCoordinator handles all internal complexity (service initialization, provider management, state coordination). The only special configuration is `authFetcher` for Desmos calculator (optional - falls back to local calculator if not provided).
+
+### Minimal Server-Backed TTS Config
+
+For Polly/Google server-backed TTS, the provider config supports a minimal form.
+Common options are defaulted so you can start with:
+
+```typescript
+tools: {
+  providers: {
+    tts: {
+      enabled: true,
+      backend: 'polly'
+    }
+  }
+}
+```
+
+By default, server-backed TTS resolves:
+
+- `apiEndpoint: '/api/tts'`
+- `transportMode: 'pie'`
+- `endpointValidationMode: 'voices'`
+
+You can still set `apiEndpoint` explicitly when your host route is not `/api/tts`.
+
+`provider.runtime.authFetcher` is optional. Add it only when your host environment
+requires runtime auth material for TTS requests:
+
+```typescript
+tools: {
+  providers: {
+    tts: {
+      enabled: true,
+      backend: 'polly',
+      apiEndpoint: '/api/tts',
+      provider: {
+        runtime: {
+          authFetcher: async () => {
+            const response = await fetch('/api/tts/auth');
+            return response.json();
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+### Custom Transport via Server Proxy (SC-style)
+
+For custom backends that return URL assets (for example `{ audioContent, word }`),
+prefer a host-owned proxy endpoint so secrets never ship to the browser.
+
+```typescript
+tools: {
+  providers: {
+    tts: {
+      enabled: true,
+      backend: "server",
+      serverProvider: "custom",
+      transportMode: "custom",
+      endpointMode: "rootPost",
+      endpointValidationMode: "none",
+      apiEndpoint: "/api/tts/sc",
+      speedRate: "medium",
+      lang_id: "en-US",
+      cache: true
+    }
+  }
+}
+```
+
+Recommended host boundary:
+
+- Browser calls local proxy (`/api/tts/sc`) only.
+- Proxy route reads required server env vars (no defaults) and signs/attaches auth
+  upstream.
+- Browser never receives shared secret, API key, or signing material.
+
+SchoolCity is used as a host-configured integration example for custom transport.
+Toolkit defaults still remain browser/standard providers unless the host explicitly
+configures custom server-backed TTS.
 
 ## Test Attempt Session Adapter (pie backend)
 

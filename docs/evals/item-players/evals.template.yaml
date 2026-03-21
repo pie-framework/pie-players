@@ -6,7 +6,7 @@ component:
   underTest: "<pie-item-player strategy=iife|esm>"
 
 examplesApp:
-  app: "@pie-framework/pie-players-example"
+  app: "@pie-players/section-demos"
   # Eval harness route (local demo app)
   # player: iife | esm
   # mode: gather | view | evaluate | browse | author

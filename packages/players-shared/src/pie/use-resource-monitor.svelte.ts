@@ -25,6 +25,7 @@
 
 import { onDestroy } from "svelte";
 import type { LoaderConfig } from "../loader-config.js";
+import { isInstrumentationProvider } from "../instrumentation/provider-guards.js";
 import { DEFAULT_LOADER_CONFIG } from "../loader-config.js";
 import { createPieLogger } from "./logger.js";
 import { ResourceMonitor } from "./resource-monitor.js";
@@ -51,12 +52,49 @@ export function useResourceMonitor(
 
 	let monitor = $state<ResourceMonitor | null>(null);
 	let isInitialized = $state(false);
+	let activeHostElement = $state<HTMLElement | null>(null);
+	let monitorConfigKey = $state<string>("");
+	let activeProvider = $state<LoaderConfig["instrumentationProvider"] | undefined>(
+		undefined,
+	);
 
 	// Initialize resource monitor when conditions are met
 	$effect(() => {
 		const hostElement = getHostElement();
 		const loaderConfig = getLoaderConfig();
 		const debugEnabled = getDebugEnabled();
+		const resolvedTrackPageActions = loaderConfig?.trackPageActions ?? false;
+		const resolvedMaxRetries =
+			loaderConfig?.maxResourceRetries ??
+			DEFAULT_LOADER_CONFIG.maxResourceRetries;
+		const resolvedRetryDelay =
+			loaderConfig?.resourceRetryDelay ??
+			DEFAULT_LOADER_CONFIG.resourceRetryDelay;
+		const resolvedInstrumentationProvider = isInstrumentationProvider(
+			loaderConfig?.instrumentationProvider,
+		)
+			? loaderConfig?.instrumentationProvider
+			: undefined;
+		if (
+			debugEnabled &&
+			loaderConfig?.instrumentationProvider &&
+			!resolvedInstrumentationProvider
+		) {
+			logger.warn(
+				`Ignoring invalid instrumentation provider for ${componentName}; expected InstrumentationProvider contract`,
+			);
+		}
+		const nextConfigKey = JSON.stringify({
+			trackPageActions: resolvedTrackPageActions,
+			maxRetries: resolvedMaxRetries,
+			retryDelay: resolvedRetryDelay,
+			debugEnabled,
+		});
+		const providerChanged = activeProvider !== resolvedInstrumentationProvider;
+		const hostChanged = activeHostElement !== hostElement;
+		const configChanged = monitorConfigKey !== nextConfigKey;
+		const shouldReinitialize =
+			hostElement && isInitialized && (hostChanged || configChanged || providerChanged);
 
 		// Clean up existing monitor if host element becomes null
 		if (!hostElement && monitor) {
@@ -66,41 +104,54 @@ export function useResourceMonitor(
 			monitor.stop();
 			monitor = null;
 			isInitialized = false;
+			activeHostElement = null;
+			activeProvider = undefined;
+			monitorConfigKey = "";
 			return;
+		}
+
+		if (shouldReinitialize && monitor) {
+			logger.debug(`Reinitializing resource monitor for ${componentName}`, {
+				hostChanged,
+				configChanged,
+				providerChanged,
+			});
+			monitor.stop();
+			monitor = null;
+			isInitialized = false;
 		}
 
 		// Initialize if we have a host element (retry logic works independently of trackPageActions)
 		if (hostElement && !isInitialized) {
 			logger.debug(`Initializing resource monitor for ${componentName}`, {
-				trackPageActions: loaderConfig?.trackPageActions ?? false,
-				maxRetries:
-					loaderConfig?.maxResourceRetries ??
-					DEFAULT_LOADER_CONFIG.maxResourceRetries,
-				retryDelay:
-					loaderConfig?.resourceRetryDelay ??
-					DEFAULT_LOADER_CONFIG.resourceRetryDelay,
+				trackPageActions: resolvedTrackPageActions,
+				maxRetries: resolvedMaxRetries,
+				retryDelay: resolvedRetryDelay,
+				hasCustomProvider: !!resolvedInstrumentationProvider,
 				hasContainer: !!hostElement,
 			});
 
 			// Create and start resource monitor with config from loaderConfig
 			monitor = new ResourceMonitor({
-				trackPageActions: loaderConfig?.trackPageActions ?? false,
-				maxRetries:
-					loaderConfig?.maxResourceRetries ??
-					DEFAULT_LOADER_CONFIG.maxResourceRetries,
-				initialRetryDelay:
-					loaderConfig?.resourceRetryDelay ??
-					DEFAULT_LOADER_CONFIG.resourceRetryDelay,
+				trackPageActions: resolvedTrackPageActions,
+				instrumentationProvider: resolvedInstrumentationProvider,
+				maxRetries: resolvedMaxRetries,
+				initialRetryDelay: resolvedRetryDelay,
 				maxRetryDelay: DEFAULT_MAX_RETRY_DELAY,
 				debug: debugEnabled,
 			});
 
 			monitor.start(hostElement);
 			isInitialized = true;
+			activeHostElement = hostElement;
+			activeProvider = resolvedInstrumentationProvider;
+			monitorConfigKey = nextConfigKey;
 			logger.info(
 				`✅ Resource monitoring enabled for ${componentName}` +
-					(loaderConfig?.trackPageActions
-						? " (with New Relic tracking)"
+					(resolvedTrackPageActions
+						? resolvedInstrumentationProvider
+							? " (with custom instrumentation provider)"
+							: " (with New Relic tracking)"
 						: " (retry only)"),
 			);
 		}
@@ -117,6 +168,9 @@ export function useResourceMonitor(
 			monitor.stop();
 			monitor = null;
 			isInitialized = false;
+			activeHostElement = null;
+			activeProvider = undefined;
+			monitorConfigKey = "";
 		}
 	});
 

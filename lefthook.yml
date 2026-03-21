@@ -20,6 +20,8 @@ pre-push:
       run: bun run test:e2e:section-player:critical
     item-player-multiple-choice-e2e:
       run: bun run test:e2e:item-player:multiple-choice
+    assessment-player-smoke-e2e:
+      run: bun run test:e2e:assessment-player
     check-custom-elements:
       run: bun run check:custom-elements
     check-source-exports:

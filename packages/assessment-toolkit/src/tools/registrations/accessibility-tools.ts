@@ -24,6 +24,7 @@ import {
 	type ToolComponentOverrides,
 } from "../tool-tag-map.js";
 import {
+	applyOverlaySurface,
 	createScopedVisibilityBinding,
 	syncButtonAndOverlayVisibility,
 } from "./toolbar-registration-helpers.js";
@@ -88,6 +89,7 @@ export const lineReaderToolRegistration: ToolRegistration = {
 			toolkitCoordinator: unknown;
 		};
 		overlay.setAttribute("tool-id", visibility.fullToolId);
+		applyOverlaySurface(overlay, "frameless");
 		return {
 			toolId: this.toolId,
 			button,
@@ -202,12 +204,6 @@ export const themeToolRegistration: ToolRegistration = {
 		};
 	},
 };
-
-/**
- * Backward-compatible export name used by existing imports.
- * Canonical toolId is `theme`; `colorScheme` remains an alias at config level.
- */
-export const colorSchemeToolRegistration = themeToolRegistration;
 
 /**
  * Annotation Toolbar registration

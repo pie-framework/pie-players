@@ -8,3 +8,5 @@ declare module '@pie-players/pie-item-player/components/item-session-debugger-el
 		score?: unknown;
 	}
 }
+
+declare module '@pie-players/pie-section-player-tools-instrumentation-debugger';

@@ -151,6 +151,11 @@ describe("ServerTTSProvider", () => {
 		const fetchMock = vi.fn(
 			async (_input: RequestInfo | URL, init?: RequestInit): Promise<Response> =>
 				new Promise((_resolve, reject) => {
+					if (init?.signal?.aborted) {
+						aborted = true;
+						reject(new DOMException("Aborted", "AbortError"));
+						return;
+					}
 					init?.signal?.addEventListener("abort", () => {
 						aborted = true;
 						reject(new DOMException("Aborted", "AbortError"));
@@ -167,5 +172,49 @@ describe("ServerTTSProvider", () => {
 		impl.stop();
 		await expect(speakPromise).rejects.toThrow();
 		expect(aborted).toBe(true);
+	});
+
+	test("validates provider-specific voices endpoint for Polly", async () => {
+		const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+			const url = String(input);
+			if (url === "/api/tts/polly/voices") {
+				return createJSONResponse({ voices: [] }, 200);
+			}
+			return new Response("not-found", { status: 404 });
+		});
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+		const provider = new ServerTTSProvider();
+		await provider.initialize({
+			apiEndpoint: "/api/tts",
+			provider: "polly",
+			validateEndpoint: true,
+			endpointValidationMode: "voices",
+		} as any);
+
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+		expect(String(fetchMock.mock.calls[0]?.[0])).toBe("/api/tts/polly/voices");
+	});
+
+	test("validates provider-specific voices endpoint for Google", async () => {
+		const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+			const url = String(input);
+			if (url === "/api/tts/google/voices") {
+				return createJSONResponse({ voices: [] }, 200);
+			}
+			return new Response("not-found", { status: 404 });
+		});
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+		const provider = new ServerTTSProvider();
+		await provider.initialize({
+			apiEndpoint: "/api/tts",
+			provider: "google",
+			validateEndpoint: true,
+			endpointValidationMode: "voices",
+		} as any);
+
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+		expect(String(fetchMock.mock.calls[0]?.[0])).toBe("/api/tts/google/voices");
 	});
 });

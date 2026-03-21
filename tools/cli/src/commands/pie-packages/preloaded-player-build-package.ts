@@ -8,6 +8,7 @@ import {
 	buildPreloadedPlayerStaticPackage,
 	parseElementsInput,
 } from "../../utils/pie-packages/fixed-static.js";
+import { createNpmAuthEnvironment } from "../../utils/npm-auth-env.js";
 
 export default class PreloadedPlayerBuildPackage extends Command {
 	static override description =
@@ -56,6 +57,10 @@ export default class PreloadedPlayerBuildPackage extends Command {
 			description:
 				"Bundle builder base URL (default: https://proxy.pie-api.com)",
 		}),
+		publishTag: Flags.string({
+			description:
+				"npm dist-tag for publish. Defaults to 'next' for prerelease versions and npm default for stable versions.",
+		}),
 	};
 
 	protected async parseElements(
@@ -71,11 +76,24 @@ export default class PreloadedPlayerBuildPackage extends Command {
 		return buildPreloadedPlayerStaticPackage(options);
 	}
 
-	protected publish(outputDir: string) {
-		const cmd =
-			"npm publish --access public --registry https://registry.npmjs.org/";
-		execSync(cmd, { cwd: outputDir, stdio: "inherit" });
-		return cmd;
+	protected publish(outputDir: string, cmd: string, monorepoDir: string) {
+		const envPath = join(monorepoDir, ".env");
+		const { env, cleanup } = createNpmAuthEnvironment(
+			existsSync(envPath) ? envPath : undefined,
+		);
+		try {
+			execSync(cmd, { cwd: outputDir, stdio: "inherit", env });
+			return cmd;
+		} finally {
+			cleanup();
+		}
+	}
+
+	private buildPublishCommand(version: string, publishTag?: string): string {
+		const isPreRelease = version.includes("-");
+		const resolvedTag = publishTag || (isPreRelease ? "next" : "");
+		const tagArgs = resolvedTag ? ` --tag ${resolvedTag}` : "";
+		return `npm publish --access public --registry https://registry.npmjs.org/${tagArgs}`;
 	}
 
 	private findMonorepoRoot(startDir: string): string | undefined {
@@ -162,20 +180,20 @@ export default class PreloadedPlayerBuildPackage extends Command {
 			pitsBaseUrl: flags.pitsBaseUrl,
 			monorepoDir,
 			overwriteBundle: flags.overwriteBundle,
+			publish: flags.publish,
 		});
 
 		this.log(`\n✅ Built: @pie-players/pie-preloaded-player@${version}`);
 		this.log(`   Output: ${outputDir}\n`);
 
 		if (flags.publish) {
-			const cmd =
-				"npm publish --access public --registry https://registry.npmjs.org/";
+			const cmd = this.buildPublishCommand(version, flags.publishTag);
 			if (flags.dryRun) {
 				this.log(`[DRY RUN] Would run: ${cmd}`);
 				this.log(`[DRY RUN] In directory: ${outputDir}`);
 				return;
 			}
-			this.publish(outputDir);
+			this.publish(outputDir, cmd, monorepoDir);
 			this.log("\n✅ Published\n");
 		} else {
 			this.log("Install locally (example):");

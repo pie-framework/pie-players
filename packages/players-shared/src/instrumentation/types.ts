@@ -338,11 +338,6 @@ export interface EventAttributes {
 	type?: string;
 
 	/**
-	 * Resource type (alternative name for compatibility)
-	 */
-	resourceType?: string;
-
-	/**
 	 * Whether the resource load failed
 	 */
 	failed?: boolean;

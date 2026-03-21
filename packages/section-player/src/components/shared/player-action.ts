@@ -4,7 +4,6 @@ export type PlayerElementParams = {
 	session?: Record<string, unknown>;
 	attributes?: Record<string, string>;
 	props?: Record<string, unknown>;
-	skipElementLoading?: boolean;
 };
 
 type AppliedPlayerParams = {
@@ -14,12 +13,12 @@ type AppliedPlayerParams = {
 	envSignature?: string;
 	session?: Record<string, unknown>;
 	sessionSignature?: string;
-	skipElementLoading?: boolean;
+	attributeKeys?: string[];
+	propKeys?: string[];
 };
 
 type PlayerActionOptions = {
 	stateKey: string;
-	setSkipElementLoadingOnce?: boolean;
 	includeSessionRefInState?: boolean;
 };
 
@@ -69,6 +68,20 @@ function applyPlayerParams(
 ) {
 	const nodeRecord = node as unknown as Record<string, unknown>;
 	const state = getNodeState(node, options.stateKey);
+	const nextAttributeKeys = Object.keys(params.attributes || {});
+	const nextPropKeys = Object.keys(params.props || {});
+	const previousAttributeKeys = state.attributeKeys || [];
+	const previousPropKeys = state.propKeys || [];
+	for (const name of previousAttributeKeys) {
+		if (!nextAttributeKeys.includes(name)) {
+			node.removeAttribute(name);
+		}
+	}
+	for (const name of previousPropKeys) {
+		if (!nextPropKeys.includes(name)) {
+			delete nodeRecord[name];
+		}
+	}
 	const nextConfigSignature = getObjectSignature(params.config);
 	if (state.configSignature !== nextConfigSignature) {
 		nodeRecord.config = params.config;
@@ -90,14 +103,6 @@ function applyPlayerParams(
 	for (const [name, value] of Object.entries(params.props || {})) {
 		nodeRecord[name] = value;
 	}
-	if (params.skipElementLoading) {
-		const shouldSetSkip =
-			options.setSkipElementLoadingOnce !== true ||
-			state.skipElementLoading !== true;
-		if (shouldSetSkip) {
-			node.setAttribute("skip-element-loading", "true");
-		}
-	}
 	setNodeState(node, options.stateKey, {
 		config: params.config,
 		configSignature: nextConfigSignature,
@@ -105,7 +110,8 @@ function applyPlayerParams(
 		envSignature: nextEnvSignature,
 		session: options.includeSessionRefInState ? params.session : undefined,
 		sessionSignature: nextSessionSignature,
-		skipElementLoading: !!params.skipElementLoading,
+		attributeKeys: nextAttributeKeys,
+		propKeys: nextPropKeys,
 	} as AppliedPlayerParams);
 }
 

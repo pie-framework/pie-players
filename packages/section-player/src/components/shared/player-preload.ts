@@ -1,13 +1,37 @@
 import {
+	BundleType,
 	EsmElementLoader,
 	IifeElementLoader,
 	type ItemEntity,
+	createPieLogger,
+	isGlobalDebugEnabled,
 } from "@pie-players/pie-players-shared";
 import { ensureItemPlayerMathRenderingReady } from "@pie-players/pie-item-player";
 
 export const PRELOAD_TIMEOUT_MS = 15000;
 
+function getPreloadLogger(componentTag: string) {
+	return createPieLogger(componentTag, () => isGlobalDebugEnabled());
+}
+
 export function getRenderablesSignature(renderables: unknown[]): string {
+	const createElementsSignature = (entity: Record<string, unknown>): string => {
+		const elements =
+			(entity.config as Record<string, unknown> | undefined)?.elements || {};
+		if (!elements || typeof elements !== "object") return "";
+		return Object.entries(elements as Record<string, unknown>)
+			.filter(
+				([tagName, packageVersion]) =>
+					typeof tagName === "string" &&
+					tagName.trim().length > 0 &&
+					typeof packageVersion === "string" &&
+					packageVersion.trim().length > 0,
+			)
+			.sort(([tagA], [tagB]) => tagA.localeCompare(tagB))
+			.map(([tagName, packageVersion]) => `${tagName}=${packageVersion}`)
+			.join(",");
+	};
+
 	return renderables
 		.map((entry, index) => {
 			const entity = ((entry as { entity?: unknown })?.entity || {}) as Record<
@@ -23,7 +47,7 @@ export function getRenderablesSignature(renderables: unknown[]): string {
 					?.version === "string"
 					? ((entity.config as Record<string, unknown>).version as string)
 					: "");
-			return `${entityId}:${entityVersion}`;
+			return `${entityId}:${entityVersion}:${createElementsSignature(entity)}`;
 		})
 		.join("|");
 }
@@ -36,6 +60,7 @@ export function getLoaderView(
 
 export function buildPreloadSignature(args: {
 	strategy: string;
+	iifeBundleType: BundleType | null;
 	loaderView: string;
 	esmCdnUrl: string;
 	moduleResolution: "url" | "import-map";
@@ -44,6 +69,7 @@ export function buildPreloadSignature(args: {
 }) {
 	return [
 		args.strategy,
+		args.strategy === "iife" ? String(args.iifeBundleType || "") : "",
 		args.loaderView,
 		args.strategy === "esm"
 			? `${args.esmCdnUrl}|${args.moduleResolution}`
@@ -55,6 +81,7 @@ export function buildPreloadSignature(args: {
 export async function preloadPlayerElements(args: {
 	strategy: string;
 	renderables: ItemEntity[];
+	iifeBundleType: BundleType | null;
 	loaderView: "author" | "delivery";
 	esmCdnUrl: string;
 	moduleResolution: "url" | "import-map";
@@ -90,6 +117,7 @@ export async function preloadPlayerElements(args: {
 		await loader.loadFromItems(args.renderables, {
 			view: args.loaderView,
 			needsControllers: true,
+			bundleType: args.iifeBundleType || undefined,
 		});
 	} finally {
 		window.clearTimeout(timeoutHandle);
@@ -131,6 +159,7 @@ export function orchestratePlayerElementPreload(args: {
 	getState: () => PlayerPreloadState;
 	setState: (next: Partial<PlayerPreloadState>) => void;
 }) {
+	const logger = getPreloadLogger(args.componentTag);
 	const esmCdnUrl = String(
 		(args.resolvedPlayerProps?.loaderOptions as Record<string, unknown> | undefined)
 			?.esmCdnUrl || "https://cdn.jsdelivr.net/npm",
@@ -147,8 +176,17 @@ export function orchestratePlayerElementPreload(args: {
 			? "import-map"
 			: "url";
 	const loaderView = getLoaderView(args.resolvedPlayerEnv);
+	const iifeBundleType = (() => {
+		if (args.strategy !== "iife") return null;
+		const mode = String((args.resolvedPlayerProps?.mode as string) || "").toLowerCase();
+		if (mode === "author") return BundleType.editor;
+		return args.resolvedPlayerProps?.hosted === true
+			? BundleType.player
+			: BundleType.clientPlayer;
+	})();
 	const preloadSignature = buildPreloadSignature({
 		strategy: args.strategy,
+		iifeBundleType,
 		loaderView,
 		esmCdnUrl,
 		moduleResolution,
@@ -175,8 +213,8 @@ export function orchestratePlayerElementPreload(args: {
 		return;
 	}
 	if (args.strategy !== "esm" && !bundleHost) {
-		console.warn(
-			`[${args.componentTag}] Missing iifeBundleHost for element preloading; rendering without preload.`,
+		logger.warn(
+			"Missing iifeBundleHost for element preloading; rendering without preload.",
 		);
 		args.setState({ elementsLoaded: true });
 		return;
@@ -184,15 +222,14 @@ export function orchestratePlayerElementPreload(args: {
 	void preloadPlayerElements({
 		strategy: args.strategy,
 		renderables: args.renderables,
+		iifeBundleType,
 		loaderView,
 		esmCdnUrl,
 		moduleResolution,
 		bundleHost,
 		onTimeout: () => {
 			if (runToken !== args.getState().preloadRunToken) return;
-			console.warn(
-				`[${args.componentTag}] Element preloading timed out; continuing render without preload.`,
-			);
+			logger.warn("Element preloading timed out; continuing render without preload.");
 			args.setState({ elementsLoaded: true });
 		},
 	})
@@ -202,7 +239,7 @@ export function orchestratePlayerElementPreload(args: {
 			}
 		})
 		.catch((error) => {
-			console.error(`[${args.componentTag}] Failed to preload PIE elements:`, error);
+			logger.error("Failed to preload PIE elements:", error);
 			if (runToken === args.getState().preloadRunToken) {
 				args.setState({ elementsLoaded: true });
 			}

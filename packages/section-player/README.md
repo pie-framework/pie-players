@@ -39,6 +39,7 @@ Both layout elements support:
 - `runtime` (object): primary coordinator/tools/player runtime bundle
 - `section` (object): assessment section payload
 - `env` (object): optional top-level override for `{ mode, role }`
+- `debug` (boolean-like): verbose debug logging control (`"true"` enables, `"false"`/`"0"` disables)
 - `toolbar-position` (string): `top|right|bottom|left|none`
 - `narrow-layout-breakpoint` (number, optional): viewport width in px below which the layout collapses (split pane: single column; vertical: toolbar moves to top). Clamped to 400–2000; default 1100.
 - `show-toolbar` (boolean-like): accepts `true/false` and common string forms (`"true"`, `"false"`, `"1"`, `"0"`, `"yes"`, `"no"`)
@@ -48,7 +49,7 @@ Both layout elements support:
 The intended usage model is:
 
 - **CE props for default/standard flows (roughly 90% use cases)**:
-  - `assessment-id`, `section`, `section-id`, `attempt-id`
+  - `assessment-id`, `section`, `section-id`, `attempt-id`, `debug`
   - `show-toolbar`, `toolbar-position`, `narrow-layout-breakpoint`, `enabled-tools`, `item-toolbar-tools`, `passage-toolbar-tools`
 - **JS API for advanced customization**:
   - Get the controller handle via `getSectionController()` or `waitForSectionController()`
@@ -66,8 +67,15 @@ Advanced CE props are still supported as escape hatches (`runtime`, `coordinator
 Runtime precedence is explicit:
 
 - `runtime` values are primary for runtime fields (`assessmentId`, `playerType`, `player`, `lazyInit`, `tools`, `accessibility`, `coordinator`, `createSectionController`, `isolation`, `env`).
-- Top-level runtime-like props are treated as compatibility/override inputs when a corresponding `runtime` field is absent.
+- Top-level runtime-like props remain compatibility inputs and are merged with `runtime` values. For `player`, top-level values are merged first, then `runtime.player` overrides. Nested `loaderOptions` and `loaderConfig` are also merged with the same precedence.
 - Toolbar placement overrides (`enabled-tools`, `item-toolbar-tools`, `passage-toolbar-tools`) are normalized on top of the runtime tools config.
+
+Debug logging can be controlled per section-player host:
+
+- Enable: `<pie-section-player-splitpane debug="true">`
+- Disable: `<pie-section-player-splitpane debug="false">` (or `debug="0"`)
+
+You can also disable globally via `window.PIE_DEBUG = false`.
 
 See the progressive demo routes in `apps/section-demos/src/routes/(demos)` (for example `single-question/+page.svelte` and `session-hydrate-db/+page.svelte`) for end-to-end host integrations.
 
@@ -169,6 +177,72 @@ const unsubscribeSection = coordinator.subscribeSectionLifecycleEvents({
 ```
 
 Use `subscribeSectionEvents(...)` only for advanced mixed filtering requirements.
+
+### Item-level observability configuration
+
+Item-level resource observability is configured on the embedded `pie-item-player` via
+`loaderConfig`. In section-player integrations, pass this through `runtime.player.loaderConfig`.
+
+```ts
+import { ConsoleInstrumentationProvider } from "@pie-players/pie-players-shared";
+
+const provider = new ConsoleInstrumentationProvider({ useColors: true });
+await provider.initialize({ debug: true });
+
+sectionPlayerEl.runtime = {
+  playerType: "esm",
+  player: {
+    loaderConfig: {
+      trackPageActions: true,
+      instrumentationProvider: provider,
+      maxResourceRetries: 3,
+      resourceRetryDelay: 500,
+    },
+    loaderOptions: {
+      esmCdnUrl: "https://cdn.jsdelivr.net/npm",
+    },
+  },
+};
+```
+
+Important:
+
+- `loaderOptions` controls bundle loading. `loaderConfig` controls runtime resource monitoring.
+- Custom providers (functions/instances) must be passed as JS properties (`runtime` object), not serialized string attributes.
+
+### Instrumentation ownership and semantics
+
+Section-player instrumentation is provider-agnostic and uses the shared
+`InstrumentationProvider` contract.
+
+- Canonical provider path: `runtime.player.loaderConfig.instrumentationProvider`
+- With `trackPageActions: true`, missing/`undefined` providers use the default New Relic provider path.
+- `instrumentationProvider: null` explicitly disables instrumentation.
+- Invalid provider objects are ignored (optional debug warning), also no-op.
+- Existing `item-player` behavior is preserved.
+- For local debug overlays, compose providers (for example `NewRelicInstrumentationProvider` + `DebugPanelInstrumentationProvider`) through `CompositeInstrumentationProvider`.
+- Toolkit telemetry forwarding uses the same provider path, so tool/backend
+  operational events are visible alongside section events when toolkit is mounted.
+
+Section-player owned canonical stream:
+
+- `pie-section-readiness-change`
+- `pie-section-interaction-ready`
+- `pie-section-ready`
+- `pie-section-controller-ready`
+- `pie-section-session-changed`
+- `pie-section-composition-changed`
+- `pie-section-runtime-error`
+
+If toolkit is mounted, toolkit lifecycle events are emitted on a separate
+`pie-toolkit-*` stream. This separation avoids semantic overlap; bridge dedupe
+is a defensive safety net only.
+
+Toolkit tool/backend operational stream:
+
+- `pie-tool-init-start|success|error`
+- `pie-tool-backend-call-start|success|error`
+- `pie-tool-library-load-start|success|error`
 
 ### Item session management
 

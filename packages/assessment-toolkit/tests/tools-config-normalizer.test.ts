@@ -6,8 +6,8 @@ import {
 } from "../src/services/tools-config-normalizer";
 
 describe("tools-config-normalizer", () => {
-	test("normalizes aliases and removes duplicates", () => {
-		expect(parseToolList("calculator, tts, tts, graph")).toEqual([
+	test("normalizes ids and removes duplicates", () => {
+		expect(parseToolList("calculator, textToSpeech, textToSpeech, graph")).toEqual([
 			"calculator",
 			"textToSpeech",
 			"graph",

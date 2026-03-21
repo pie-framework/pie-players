@@ -1,3 +1,8 @@
+/**
+ * Workspace resolution: many `@pie-players/*` imports are aliased to each package’s
+ * built `dist/` output so local dev matches npm consumers. See
+ * docs/development/demo-workspace-resolution.md
+ */
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";

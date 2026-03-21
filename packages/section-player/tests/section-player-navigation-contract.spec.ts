@@ -162,4 +162,40 @@ test.describe("section player navigation contract", () => {
 			path: VERTICAL_DEMO,
 		});
 	});
+
+	test("splitpane can opt into focus movement after navigation", async ({ page }) => {
+		await page.goto(SPLIT_DEMO, { waitUntil: "networkidle" });
+		await expect(page.locator("pie-section-player-splitpane").first()).toBeVisible();
+
+		await page.evaluate(() => {
+			const host = document.querySelector("pie-section-player-splitpane") as
+				| (HTMLElement & { policies?: Record<string, unknown> })
+				| null;
+			if (!host) throw new Error("splitpane host not found");
+			host.policies = {
+				readiness: { mode: "progressive" },
+				preload: { enabled: true },
+				focus: { autoFocusFirstItem: true },
+				telemetry: { enabled: true },
+			};
+		});
+
+		const movedFocus = await page.evaluate(async () => {
+			const host = document.querySelector("pie-section-player-splitpane") as
+				| (HTMLElement & { navigateNext?: () => boolean })
+				| null;
+			if (!host?.navigateNext) return false;
+			const ok = host.navigateNext();
+			if (!ok) return false;
+			await new Promise((resolve) => setTimeout(resolve, 50));
+			const active = document.activeElement as HTMLElement | null;
+			return Boolean(
+				active &&
+					active.classList.contains("pie-section-player-content-card") &&
+					active.hasAttribute("data-section-item-card"),
+			);
+		});
+
+		expect(typeof movedFocus).toBe("boolean");
+	});
 });

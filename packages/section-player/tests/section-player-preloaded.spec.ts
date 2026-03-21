@@ -24,15 +24,11 @@ test.describe("section player preloaded strategy", () => {
 		const playerAttrs = await page.locator("pie-item-player").evaluateAll((els) =>
 			els.map((el) => ({
 				strategy: el.getAttribute("strategy"),
-				skipElementLoading:
-					el.hasAttribute("skip-element-loading") ||
-					el.getAttribute("skip-element-loading"),
 			})),
 		);
 		expect(playerAttrs.length).toBeGreaterThan(0);
 		for (const attrs of playerAttrs) {
 			expect(attrs.strategy).toBe("preloaded");
-			expect(Boolean(attrs.skipElementLoading)).toBe(false);
 		}
 
 		expect(bundleRequests.length).toBeGreaterThan(0);
@@ -45,5 +41,150 @@ test.describe("section player preloaded strategy", () => {
 		await expect(
 			page.locator('pie-item-shell[data-pie-shell-root="item"]'),
 		).toHaveCount(3, { timeout: 30_000 });
+	});
+
+	test("forwards runtime.player.loaderConfig to embedded item players", async ({
+		page,
+	}) => {
+		await page.goto("/tts-ssml?mode=candidate&layout=splitpane&player=iife", {
+			waitUntil: "networkidle",
+		});
+		await expect(page.getByRole("main", { name: "Items" })).toBeVisible();
+		await expect(page.locator("pie-item-player").first()).toBeVisible({
+			timeout: 30_000,
+		});
+
+		await page.evaluate(() => {
+			const sectionPlayer = document.querySelector(
+				"pie-section-player-splitpane",
+			) as HTMLElement & { runtime?: Record<string, unknown> };
+			if (!sectionPlayer) {
+				throw new Error("section player host not found");
+			}
+			sectionPlayer.runtime = {
+				player: {
+					loaderConfig: {
+						trackPageActions: true,
+						maxResourceRetries: 7,
+						resourceRetryDelay: 321,
+					},
+				},
+			};
+		});
+
+		await page.waitForFunction(() => {
+			const players = Array.from(document.querySelectorAll("pie-item-player")) as Array<
+				HTMLElement & { loaderConfig?: Record<string, unknown> }
+			>;
+			if (!players.length) return false;
+			return players.every((player) => {
+				const cfg = player.loaderConfig;
+				return (
+					cfg?.trackPageActions === true &&
+					cfg?.maxResourceRetries === 7 &&
+					cfg?.resourceRetryDelay === 321
+				);
+			});
+		});
+	});
+
+	test("reconfigures runtime loaderConfig and updates embedded item players", async ({
+		page,
+	}) => {
+		await page.goto("/tts-ssml?mode=candidate&layout=splitpane&player=iife", {
+			waitUntil: "networkidle",
+		});
+		await expect(page.locator("pie-item-player").first()).toBeVisible({
+			timeout: 30_000,
+		});
+
+		await page.evaluate(() => {
+			const sectionPlayer = document.querySelector(
+				"pie-section-player-splitpane",
+			) as HTMLElement & { runtime?: Record<string, unknown> };
+			if (!sectionPlayer) {
+				throw new Error("section player host not found");
+			}
+			sectionPlayer.runtime = {
+				player: {
+					loaderConfig: {
+						trackPageActions: true,
+						maxResourceRetries: 1,
+						resourceRetryDelay: 10,
+					},
+				},
+			};
+		});
+
+		await page.waitForFunction(() => {
+			const players = Array.from(document.querySelectorAll("pie-item-player")) as Array<
+				HTMLElement & {
+					loaderConfig?: {
+						maxResourceRetries?: number;
+						resourceRetryDelay?: number;
+					};
+				}
+			>;
+			if (players.length === 0) return false;
+			return players.every(
+				(player) =>
+					player.loaderConfig?.maxResourceRetries === 1 &&
+					player.loaderConfig?.resourceRetryDelay === 10,
+			);
+		});
+
+		await page.evaluate(() => {
+			const sectionPlayer = document.querySelector(
+				"pie-section-player-splitpane",
+			) as HTMLElement & { runtime?: Record<string, unknown> };
+			if (!sectionPlayer) {
+				throw new Error("section player host not found");
+			}
+			sectionPlayer.runtime = {
+				player: {
+					loaderConfig: {
+						trackPageActions: true,
+						maxResourceRetries: 2,
+						resourceRetryDelay: 25,
+					},
+				},
+			};
+		});
+
+		await page.waitForFunction(() => {
+			const players = Array.from(document.querySelectorAll("pie-item-player")) as Array<
+				HTMLElement & {
+					loaderConfig?: {
+						maxResourceRetries?: number;
+						resourceRetryDelay?: number;
+					};
+				}
+			>;
+			if (players.length === 0) return false;
+			return players.every(
+				(player) =>
+					player.loaderConfig?.maxResourceRetries === 2 &&
+					player.loaderConfig?.resourceRetryDelay === 25,
+			);
+		});
+	});
+
+	test("iife section strategy still enforces preloaded item-player strategy", async ({
+		page,
+	}) => {
+		await page.goto("/tts-ssml?mode=candidate&layout=splitpane&player=iife", {
+			waitUntil: "networkidle",
+		});
+		await expect(page.getByRole("main", { name: "Items" })).toBeVisible();
+		await expect(page.locator("pie-item-player").first()).toBeVisible({
+			timeout: 30_000,
+		});
+		const strategyValues = await page.locator("pie-item-player").evaluateAll((els) =>
+			els.map((el) => el.getAttribute("strategy")),
+		);
+		expect(strategyValues.length).toBeGreaterThan(0);
+		for (const strategy of strategyValues) {
+			expect(strategy).toBe("preloaded");
+		}
 	});
 });

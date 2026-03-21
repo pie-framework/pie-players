@@ -1400,6 +1400,7 @@ function normalizePreviewSpeechMarkOffsets(
 			}
 		} finally {
 			if (runId === previewRunId) {
+				clearPreviewTracking();
 				isPreviewing = false;
 				previewBackend = null;
 			}

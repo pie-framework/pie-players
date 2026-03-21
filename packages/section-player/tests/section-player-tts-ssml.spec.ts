@@ -548,6 +548,52 @@ test.describe("section player demo tts-ssml", () => {
 		}
 	});
 
+	test("clears preview word highlight after browser preview ends", async ({ page }) => {
+		await page.addInitScript(() => {
+			const synth: SpeechSynthesis = {
+				...window.speechSynthesis,
+				getVoices: () =>
+					[
+						{
+							name: "Preview Voice",
+							lang: "en-US",
+							default: true,
+							localService: true,
+							voiceURI: "preview-voice",
+						},
+					] as unknown as SpeechSynthesisVoice[],
+				speak: (utterance: SpeechSynthesisUtterance) => {
+					window.setTimeout(() => {
+						const boundary = { name: "word", charIndex: 0 } as Event;
+						utterance.onboundary?.(boundary as SpeechSynthesisEvent);
+					}, 80);
+					window.setTimeout(() => {
+						const endEvent = new Event("end");
+						utterance.onend?.(endEvent as SpeechSynthesisEvent);
+					}, 220);
+				},
+				cancel: () => {},
+			};
+			Object.defineProperty(window, "speechSynthesis", {
+				configurable: true,
+				value: synth,
+			});
+		});
+
+		await gotoDemo(page);
+		await page.getByRole("button", { name: "Toggle TTS settings panel" }).click();
+		const ttsDialog = page.locator(".pie-tts-dialog");
+		await expect(ttsDialog.getByRole("heading", { name: "TTS settings" })).toBeVisible();
+		await ttsDialog.getByRole("button", { name: "Browser" }).click();
+		await ttsDialog.locator("#tts-preview-text").fill("Preview highlight should clear");
+
+		const previewTrack = ttsDialog.locator(".pie-tts-preview-track");
+		await ttsDialog.getByRole("button", { name: "Preview voice" }).click();
+		await expect(previewTrack.locator(".pie-tts-preview-active")).toHaveCount(1);
+		await expect(ttsDialog.getByRole("button", { name: "Preview voice" })).toBeVisible();
+		await expect(previewTrack.locator(".pie-tts-preview-active")).toHaveCount(0);
+	});
+
 	test("keeps baseline a11y regressions in check", async ({ page }) => {
 		await gotoDemo(page);
 

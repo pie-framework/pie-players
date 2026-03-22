@@ -99,6 +99,12 @@ export interface TTSToolConfig extends ToolConfig {
 	cache?: boolean;
 	speedRate?: "slow" | "medium" | "fast";
 	lang_id?: string;
+	/**
+	 * Optional inline TTS speed buttons.
+	 * - Omitted/non-array: default speed buttons are shown.
+	 * - Empty array: hide speed buttons.
+	 * - Arrays that sanitize to no valid values: default speed buttons are shown.
+	 */
 	speedOptions?: number[];
 	authFetcher?: () => Promise<Partial<TTSToolProviderConfig>>;
 }

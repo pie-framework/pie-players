@@ -1,5 +1,11 @@
 # @pie-players/pie-players-shared
 
+## 0.3.22
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+
 ## 0.3.21
 
 ### Patch Changes

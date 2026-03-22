@@ -38,7 +38,7 @@ const itemContext: ToolContext = {
 };
 
 describe("ttsToolRegistration speed options", () => {
-	test("applies custom speedOptions from toolkit config", () => {
+	test("applies custom speedOptions from toolkit config in provided order", () => {
 		const toolbarContext: ToolbarContext = {
 			scope: {
 				level: "item",
@@ -51,7 +51,7 @@ describe("ttsToolRegistration speed options", () => {
 			toolCoordinator: null,
 			toolkitCoordinator: {
 				getToolConfig: () => ({
-					settings: { speedOptions: [1.25, 1.5, 2, 2, 1] },
+					settings: { speedOptions: [2, 1.25, 1.5, 2, 1] },
 				}),
 			} as any,
 			ttsService: null,
@@ -67,10 +67,10 @@ describe("ttsToolRegistration speed options", () => {
 		const element = renderResult?.elements?.[0]?.element as {
 			speedOptions?: number[];
 		};
-		expect(element?.speedOptions).toEqual([1.25, 1.5, 2]);
+		expect(element?.speedOptions).toEqual([2, 1.25, 1.5]);
 	});
 
-	test("falls back to default speed options when config missing or invalid", () => {
+	test("falls back to default speed options when config is invalid-only", () => {
 		const toolbarContext: ToolbarContext = {
 			scope: {
 				level: "item",
@@ -82,7 +82,7 @@ describe("ttsToolRegistration speed options", () => {
 			language: "en-US",
 			toolCoordinator: null,
 			toolkitCoordinator: {
-				getToolConfig: () => ({ settings: { speedOptions: ["fast", null, -2] } }),
+				getToolConfig: () => ({ settings: { speedOptions: ["fast", null, -2, 1] } }),
 			} as any,
 			ttsService: null,
 			elementToolStateStore: null,
@@ -98,6 +98,36 @@ describe("ttsToolRegistration speed options", () => {
 			speedOptions?: number[];
 		};
 		expect(element?.speedOptions).toEqual([1.5, 2]);
+	});
+
+	test("uses explicit empty speedOptions to hide speed buttons", () => {
+		const toolbarContext: ToolbarContext = {
+			scope: {
+				level: "item",
+				scopeId: "item-1",
+				itemId: "item-1",
+			},
+			itemId: "item-1",
+			catalogId: "item-1",
+			language: "en-US",
+			toolCoordinator: null,
+			toolkitCoordinator: {
+				getToolConfig: () => ({ settings: { speedOptions: [] } }),
+			} as any,
+			ttsService: null,
+			elementToolStateStore: null,
+			toggleTool: () => {},
+			isToolVisible: () => false,
+			subscribeVisibility: null,
+		};
+
+		const renderResult = withFakeDocument(() =>
+			ttsToolRegistration.renderToolbar(itemContext, toolbarContext),
+		);
+		const element = renderResult?.elements?.[0]?.element as {
+			speedOptions?: number[];
+		};
+		expect(element?.speedOptions).toEqual([]);
 	});
 
 	test("evicts cached inline element on unmount callback", () => {

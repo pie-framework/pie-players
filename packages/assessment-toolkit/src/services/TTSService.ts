@@ -24,6 +24,7 @@ import type {
 } from "@pie-players/pie-tts";
 import type { AccessibilityCatalogResolver } from "./AccessibilityCatalogResolver.js";
 import type { HighlightCoordinatorApi } from "./interfaces.js";
+import { BrowserTTSProvider } from "./tts/browser-provider.js";
 import {
 	type BoundarySpacingMode,
 	collectVisibleTextAndMap,
@@ -772,13 +773,124 @@ export class TTSService {
 			this.setState(PlaybackState.IDLE);
 			this.clearHighlightsAndTracking();
 		} catch (error) {
-			console.error("TTS error:", error);
-			this.lastError = error instanceof Error ? error.message : String(error);
+			let finalError = error;
+			if (runId === this.speakRunId) {
+				try {
+					const recovered = await this.retryWithBrowserFallback({
+						error,
+						runId,
+						shouldUsePlan,
+						highlightMode,
+						contentToSpeak,
+						wordBoundaryOffset: options?.wordBoundaryOffset || 0,
+					});
+					if (recovered) {
+						this.setState(PlaybackState.IDLE);
+						this.clearHighlightsAndTracking();
+						return;
+					}
+				} catch (retryError) {
+					finalError = retryError;
+				}
+			}
+			console.error("TTS error:", finalError);
+			this.lastError =
+				finalError instanceof Error ? finalError.message : String(finalError);
 			if (runId !== this.speakRunId) return;
 			this.setState(PlaybackState.ERROR);
 			this.clearHighlightsAndTracking();
-			throw error;
+			throw finalError;
 		}
+	}
+
+	private shouldAttemptBrowserFallback(error: unknown): boolean {
+		if (!this.provider || !this.currentProvider) return false;
+		const providerId = (this.currentProvider.providerId || "").toLowerCase();
+		if (providerId === "browser") return false;
+		const message = (error instanceof Error ? error.message : String(error))
+			.toLowerCase()
+			.trim();
+		if (!message) return false;
+		if (message.includes("text-to-speech service encountered an error")) return true;
+		if (message.includes("service unavailable")) return true;
+		if (message.includes("failed to fetch")) return true;
+		if (message.includes("network error")) return true;
+		if (message.includes("failed to download synthesized audio")) return true;
+		if (/\b5\d{2}\b/.test(message)) return true;
+		if (/server returned 5\d{2}/.test(message)) return true;
+		return false;
+	}
+
+	private async switchProviderToBrowser(reason: unknown): Promise<boolean> {
+		if (!this.currentProvider) return false;
+		const fallbackProvider = new BrowserTTSProvider();
+		const previousProviderId = this.currentProvider.providerId;
+		const browserConfig: Partial<TTSConfig> = { ...this.ttsConfig };
+		try {
+			this.provider?.stop();
+			this.currentProvider.destroy();
+			this.currentProvider = fallbackProvider;
+			this.provider = await fallbackProvider.initialize(browserConfig as TTSConfig);
+			this.ttsConfig = browserConfig;
+			await this.emitTelemetry("pie-tool-runtime-fallback", {
+				toolId: "textToSpeech",
+				operation: "tts-speak",
+				fromProvider: previousProviderId,
+				toProvider: fallbackProvider.providerId,
+				reason: reason instanceof Error ? reason.message : String(reason),
+			});
+			console.warn(
+				"[TTSService] Server TTS playback failed; switched to browser fallback",
+				{
+					fromProvider: previousProviderId,
+					reason,
+				},
+			);
+			return true;
+		} catch (fallbackError) {
+			await this.emitTelemetry("pie-tool-runtime-fallback-error", {
+				toolId: "textToSpeech",
+				operation: "tts-speak",
+				fromProvider: previousProviderId,
+				toProvider: "browser",
+				errorType: "TTSRuntimeFallbackError",
+				message:
+					fallbackError instanceof Error
+						? fallbackError.message
+						: String(fallbackError),
+			});
+			console.error(
+				"[TTSService] Failed to switch to browser fallback provider",
+				fallbackError,
+			);
+			return false;
+		}
+	}
+
+	private async retryWithBrowserFallback(args: {
+		error: unknown;
+		runId: number;
+		shouldUsePlan: boolean;
+		highlightMode: HighlightMode;
+		contentToSpeak: string;
+		wordBoundaryOffset: number;
+	}): Promise<boolean> {
+		if (!this.shouldAttemptBrowserFallback(args.error)) return false;
+		const switched = await this.switchProviderToBrowser(args.error);
+		if (!switched) return false;
+		if (args.runId !== this.speakRunId) return true;
+		// Rebind highlight callbacks to the newly initialized provider, then retry once.
+		this.configureWordBoundaryHighlighting({
+			highlightMode: args.highlightMode,
+			wordBoundaryOffset: args.wordBoundaryOffset,
+		});
+		await this.executeSpeakPlayback({
+			shouldUsePlan: args.shouldUsePlan,
+			runId: args.runId,
+			highlightMode: args.highlightMode,
+			contentToSpeak: args.contentToSpeak,
+		});
+		return true;
 	}
 
 	private async applyLanguageSettings(options?: SpeakOptions): Promise<void> {

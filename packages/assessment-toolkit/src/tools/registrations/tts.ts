@@ -32,6 +32,7 @@ const DEFAULT_SPEED_OPTIONS = Object.freeze([1.5, 2]);
 
 const resolveSpeedOptions = (value: unknown): number[] => {
 	if (!Array.isArray(value)) return [...DEFAULT_SPEED_OPTIONS];
+	if (value.length === 0) return [];
 	const deduped = new Set<number>();
 	for (const entry of value) {
 		if (typeof entry !== "number" || !Number.isFinite(entry) || entry <= 0) continue;

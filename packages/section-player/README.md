@@ -44,6 +44,10 @@ Both layout elements support:
 - `narrow-layout-breakpoint` (number, optional): viewport width in px below which the layout collapses (split pane: single column; vertical: toolbar moves to top). Clamped to 400–2000; default 1100.
 - `show-toolbar` (boolean-like): accepts `true/false` and common string forms (`"true"`, `"false"`, `"1"`, `"0"`, `"yes"`, `"no"`)
 
+When viewport width is within the collapsed range (~1100px and below), inline section
+toolbar positions (`left`/`right`) normalize to `top` so controls remain horizontally
+laid out and easier to access.
+
 ### API direction: CE defaults first, JS customization for advanced cases
 
 The intended usage model is:

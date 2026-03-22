@@ -58,8 +58,10 @@
 	let playbackRate = $state(1);
 	let focusedControlIndex = $state(0);
 	let playActionInFlight = $state(false);
+	const defaultSpeedChoices = [1.5, 2];
 	const speedChoices = $derived.by(() => {
-		if (!Array.isArray(speedOptions)) return [1.5, 2];
+		if (!Array.isArray(speedOptions)) return [...defaultSpeedChoices];
+		if (speedOptions.length === 0) return [];
 		const deduped = new Set<number>();
 		for (const value of speedOptions) {
 			if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) continue;
@@ -67,7 +69,7 @@
 			if (rounded === 1) continue;
 			deduped.add(rounded);
 		}
-		return deduped.size ? Array.from(deduped).sort((a, b) => b - a) : [2, 1.5];
+		return deduped.size ? Array.from(deduped) : [...defaultSpeedChoices];
 	});
 
 	const instanceId = `pie-tts-inline-instance-${Math.random().toString(36).slice(2)}`;
@@ -403,22 +405,24 @@
 				tabindex="-1"
 				onkeydown={handleToolbarKeydown}
 			>
-				{#each speedChoices as speed, speedIdx (speed)}
-					<button
-						type="button"
-						data-pie-tts-control
-						class="pie-tool-tts-inline__control pie-tool-tts-inline__control--speed"
-						class:pie-tool-tts-inline__control--speed-active={playbackRate === speed}
-						onclick={() => handlePlaybackRate(speed)}
-						onfocus={() => (focusedControlIndex = speedIdx)}
-						tabindex={focusedControlIndex === speedIdx ? 0 : -1}
-						aria-label={`Speed ${speed}x`}
-						aria-pressed={playbackRate === speed}
-						disabled={!ttsService}
-					>
-						<span aria-hidden="true">{speed}x</span>
-					</button>
-				{/each}
+				{#if speedChoices.length > 0}
+					{#each speedChoices as speed, speedIdx (speed)}
+						<button
+							type="button"
+							data-pie-tts-control
+							class="pie-tool-tts-inline__control pie-tool-tts-inline__control--speed"
+							class:pie-tool-tts-inline__control--speed-active={playbackRate === speed}
+							onclick={() => handlePlaybackRate(speed)}
+							onfocus={() => (focusedControlIndex = speedIdx)}
+							tabindex={focusedControlIndex === speedIdx ? 0 : -1}
+							aria-label={`Speed ${speed}x`}
+							aria-pressed={playbackRate === speed}
+							disabled={!ttsService}
+						>
+							<span aria-hidden="true">{speed}x</span>
+						</button>
+					{/each}
+				{/if}
 
 				<button
 					type="button"

@@ -418,6 +418,50 @@ By default, server-backed TTS resolves:
 
 You can still set `apiEndpoint` explicitly when your host route is not `/api/tts`.
 
+### Inline TTS Speed Options
+
+Inline TTS speed buttons are configurable via `speedOptions` in provider settings.
+
+```typescript
+tools: {
+  providers: {
+    tts: {
+      enabled: true,
+      backend: "browser",
+      settings: {
+        speedOptions: [2, 1.25, 1.5] // rendered in this order
+      }
+    }
+  }
+}
+```
+
+`speedOptions` semantics:
+
+- Omitted or non-array: default speed buttons are shown (`1.5x`, `2x`).
+- Explicit empty array (`[]`): hide all speed buttons.
+- Invalid-only arrays (for example `["fast", -1, 1]`): fall back to defaults.
+- Valid numeric values are deduplicated and keep first-seen order.
+- `1` is excluded (normal speed is already available by toggling active speed off).
+
+### Runtime Fallback: Server TTS -> Browser TTS
+
+When server-backed playback fails at runtime (for example `503`, network outage,
+or synthesized asset fetch failure), `TTSService` now performs a one-time
+runtime fallback for that session:
+
+1. Switches provider from server-backed implementation to browser speech synthesis.
+2. Rebinds highlight callbacks to the browser provider.
+3. Retries the same `speak()` request once.
+
+This keeps the inline/passage TTS controls usable during transient backend
+incidents without requiring host-side reconfiguration.
+
+Telemetry emitted for observability:
+
+- `pie-tool-runtime-fallback` (fallback switch succeeded)
+- `pie-tool-runtime-fallback-error` (fallback switch failed)
+
 `provider.runtime.authFetcher` is optional. Add it only when your host environment
 requires runtime auth material for TTS requests:
 

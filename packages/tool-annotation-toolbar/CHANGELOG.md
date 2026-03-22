@@ -1,5 +1,14 @@
 # @pie-players/pie-tool-annotation-toolbar
 
+## 0.3.22
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.22
+  - @pie-players/pie-players-shared@0.3.22
+
 ## 0.3.21
 
 ### Patch Changes

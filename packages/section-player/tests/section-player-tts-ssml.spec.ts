@@ -548,6 +548,50 @@ test.describe("section player demo tts-ssml", () => {
 		}
 	});
 
+	test("applies ordered inline speed options and supports no speed buttons", async ({
+		page,
+	}) => {
+		await gotoDemo(page);
+		await openSessionPanel(page);
+		await forceBrowserTtsRuntime(page);
+
+		const passageInlineTts = page
+			.getByRole("complementary", { name: "Passages" })
+			.locator("pie-tool-tts-inline:visible")
+			.first();
+		await expect(passageInlineTts).toBeVisible();
+
+		await passageInlineTts.evaluate((element) => {
+			(element as HTMLElement & { speedOptions?: number[] }).speedOptions = [
+				2, 1.25, 1.5, 2, 1,
+			];
+		});
+		await passageInlineTts.getByRole("button", { name: "Play reading" }).click();
+		const passagePanel = passageInlineTts.locator(
+			'[role="toolbar"][aria-label="Reading controls"]',
+		);
+		await expect(passagePanel).toBeVisible();
+		const speedButtons = passagePanel.locator(".pie-tool-tts-inline__control--speed");
+		await expect(speedButtons).toHaveCount(3);
+		await expect(speedButtons.nth(0)).toContainText("2x");
+		await expect(speedButtons.nth(1)).toContainText("1.25x");
+		await expect(speedButtons.nth(2)).toContainText("1.5x");
+		await passagePanel.getByRole("button", { name: "Stop reading" }).click();
+		await expect(passagePanel).toHaveCount(0);
+
+		await passageInlineTts.evaluate((element) => {
+			(element as HTMLElement & { speedOptions?: number[] }).speedOptions = [];
+		});
+		await passageInlineTts.getByRole("button", { name: "Play reading" }).click();
+		await expect(passagePanel).toBeVisible();
+		await expect(passagePanel.locator(".pie-tool-tts-inline__control--speed")).toHaveCount(0);
+		await expect(passagePanel.getByRole("button", { name: "Rewind" })).toBeVisible();
+		await expect(passagePanel.getByRole("button", { name: "Fast-forward" })).toBeVisible();
+		await expect(passagePanel.getByRole("button", { name: "Stop reading" })).toBeVisible();
+		await passagePanel.getByRole("button", { name: "Stop reading" }).click();
+		await expect(passagePanel).toHaveCount(0);
+	});
+
 	test("clears preview word highlight after browser preview ends", async ({ page }) => {
 		await page.addInitScript(() => {
 			const synth: SpeechSynthesis = {

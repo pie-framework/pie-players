@@ -101,6 +101,148 @@ export class DataURLAssetHandler implements AssetHandler {
 	}
 }
 
+type UploadHandlerLike = {
+	cancel?: () => void;
+	done?: (err?: Error, src?: string) => void;
+	progress?: (percent: number, bytes: number, total: number) => void;
+	fileChosen?: (file: File) => void;
+	isPasted?: boolean;
+	getChosenFile?: () => File;
+};
+
+function toError(value: unknown, fallback: string): Error {
+	if (value instanceof Error) {
+		return value;
+	}
+	return new Error(String(value ?? fallback));
+}
+
+function createOnceCompletion(
+	handler: UploadHandlerLike,
+	dataURLHandler: DataURLAssetHandler,
+) {
+	let settled = false;
+	const originalDone = handler.done;
+	const originalCancel = handler.cancel;
+
+	const done = (err?: Error, src?: string) => {
+		if (settled) {
+			return;
+		}
+		settled = true;
+		if (err) {
+			try {
+				originalCancel?.();
+			} catch (cancelError) {
+				logger.error("[asset-handler] cancel callback failed:", cancelError);
+			}
+			dataURLHandler.cancel();
+		}
+		try {
+			originalDone?.(err, src);
+		} catch (doneError) {
+			logger.error("[asset-handler] done callback failed:", doneError);
+		}
+	};
+
+	const cancel = () => {
+		if (settled) {
+			return;
+		}
+		settled = true;
+		try {
+			originalCancel?.();
+		} catch (cancelError) {
+			logger.error("[asset-handler] cancel callback failed:", cancelError);
+		}
+		dataURLHandler.cancel();
+	};
+
+	handler.done = done;
+	handler.cancel = cancel;
+
+	return {
+		done,
+		cancel,
+		isSettled: () => settled,
+	};
+}
+
+function pickFileWithDialogLifecycle(
+	accept: string,
+	onCancel: () => void,
+): Promise<File | null> {
+	return new Promise((resolve) => {
+		const input = document.createElement("input");
+		input.type = "file";
+		input.accept = accept;
+
+		let resolved = false;
+		let changeHandled = false;
+		let dialogOpened = false;
+
+		const cleanup = () => {
+			input.onchange = null;
+			window.removeEventListener("focus", onFocus);
+			input.removeEventListener("cancel", onCancelEvent as EventListener);
+		};
+
+		const finalize = (file: File | null) => {
+			if (resolved) {
+				return;
+			}
+			resolved = true;
+			cleanup();
+			resolve(file);
+		};
+
+		const onFocus = () => {
+			if (!dialogOpened || changeHandled) {
+				return;
+			}
+			dialogOpened = false;
+			window.setTimeout(() => {
+				if (changeHandled || resolved) {
+					return;
+				}
+				const file = input.files?.[0] ?? null;
+				if (!file) {
+					onCancel();
+				}
+				finalize(file);
+			}, 300);
+		};
+
+		const onCancelEvent = () => {
+			onCancel();
+			finalize(null);
+		};
+
+		input.onchange = () => {
+			changeHandled = true;
+			dialogOpened = false;
+			finalize(input.files?.[0] ?? null);
+		};
+
+		input.addEventListener("cancel", onCancelEvent as EventListener);
+		window.addEventListener("focus", onFocus);
+		dialogOpened = true;
+		input.click();
+	});
+}
+
+function getPastedFile(handler: UploadHandlerLike): File | null {
+	if (!handler.isPasted || typeof handler.getChosenFile !== "function") {
+		return null;
+	}
+	try {
+		return handler.getChosenFile() ?? null;
+	} catch (error) {
+		logger.error("[asset-handler] Failed to read pasted file", error);
+		return null;
+	}
+}
+
 /**
  * Asset Event Manager
  *
@@ -217,30 +359,58 @@ export function createDefaultImageInsertHandler(
 	return (handler: ImageHandler) => {
 		logger.debug("[createDefaultImageInsertHandler] Creating DataURL handler");
 
-		const dataURLHandler = new DataURLAssetHandler(onComplete);
+		let completion: ReturnType<typeof createOnceCompletion> | null = null;
+		const dataURLHandler = new DataURLAssetHandler((src) => {
+			onComplete(src);
+			completion?.done(undefined, src);
+		});
+		completion = createOnceCompletion(handler, dataURLHandler);
+		const finishCancelled = () => {
+			completion?.done(new Error("Image selection cancelled"));
+		};
 
-		// Connect the handler methods
-		handler.cancel = () => dataURLHandler.cancel();
-		handler.done = (err?: Error, src?: string) => dataURLHandler.done(err, src);
+		const handleChosenFile = (file: File | null) => {
+			if (!file) {
+				finishCancelled();
+				return;
+			}
+			try {
+				handler.fileChosen(file);
+			} catch (error) {
+				logger.error(
+					"[createDefaultImageInsertHandler] fileChosen failed",
+					error,
+				);
+				completion?.done(toError(error, "Image fileChosen failed"));
+				return;
+			}
+			try {
+				dataURLHandler.fileChosen(file);
+			} catch (error) {
+				completion?.done(toError(error, "Image upload failed"));
+			}
+		};
 
-		// Trigger file chooser if not a paste event
-		if (!handler.isPasted) {
-			const input = document.createElement("input");
-			input.type = "file";
-			input.accept = "image/*";
-
-			input.onchange = (e) => {
-				const file = (e.target as HTMLInputElement).files?.[0];
-				if (file) {
-					handler.fileChosen(file);
-					dataURLHandler.fileChosen(file);
-				} else {
-					handler.cancel();
-				}
-			};
-
-			input.click();
+		const pastedFile = getPastedFile(handler);
+		if (pastedFile) {
+			handleChosenFile(pastedFile);
+			return;
 		}
+		if (handler.isPasted) {
+			completion?.done(new Error("Pasted image is unavailable"));
+			return;
+		}
+
+		void pickFileWithDialogLifecycle("image/*", finishCancelled)
+			.then((file) => {
+				if (completion?.isSettled()) {
+					return;
+				}
+				handleChosenFile(file);
+			})
+			.catch((error) => {
+				completion?.done(toError(error, "Image selection failed"));
+			});
 	};
 }
 
@@ -253,27 +423,63 @@ export function createDefaultSoundInsertHandler(
 	return (handler: SoundHandler) => {
 		logger.debug("[createDefaultSoundInsertHandler] Creating DataURL handler");
 
-		const dataURLHandler = new DataURLAssetHandler(onComplete);
+		let completion: ReturnType<typeof createOnceCompletion> | null = null;
+		const dataURLHandler = new DataURLAssetHandler((src) => {
+			onComplete(src);
+			completion?.done(undefined, src);
+		});
+		const handlerLike = handler as unknown as UploadHandlerLike;
+		completion = createOnceCompletion(handlerLike, dataURLHandler);
+		const finishCancelled = () => {
+			completion?.done(new Error("Sound selection cancelled"));
+		};
 
-		// Connect the handler methods
-		handler.cancel = () => dataURLHandler.cancel();
-		handler.done = (err?: Error, src?: string) => dataURLHandler.done(err, src);
-
-		// Trigger file chooser
-		const input = document.createElement("input");
-		input.type = "file";
-		input.accept = "audio/*";
-
-		input.onchange = (e) => {
-			const file = (e.target as HTMLInputElement).files?.[0];
-			if (file) {
+		const handleChosenFile = (file: File | null) => {
+			if (!file) {
+				finishCancelled();
+				return;
+			}
+			// Some handlers expose fileChosen as function, while others store file directly.
+			const maybeFileChosen = (handlerLike as any).fileChosen;
+			if (typeof maybeFileChosen === "function") {
+				try {
+					maybeFileChosen(file);
+				} catch (error) {
+					logger.error(
+						"[createDefaultSoundInsertHandler] fileChosen failed",
+						error,
+					);
+					completion?.done(toError(error, "Sound fileChosen failed"));
+					return;
+				}
+			}
+			try {
 				dataURLHandler.fileChosen(file);
-			} else {
-				handler.cancel();
+			} catch (error) {
+				completion?.done(toError(error, "Sound upload failed"));
 			}
 		};
 
-		input.click();
+		const pastedFile = getPastedFile(handlerLike);
+		if (pastedFile) {
+			handleChosenFile(pastedFile);
+			return;
+		}
+		if (handlerLike.isPasted) {
+			completion?.done(new Error("Pasted sound is unavailable"));
+			return;
+		}
+
+		void pickFileWithDialogLifecycle("audio/*", finishCancelled)
+			.then((file) => {
+				if (completion?.isSettled()) {
+					return;
+				}
+				handleChosenFile(file);
+			})
+			.catch((error) => {
+				completion?.done(toError(error, "Sound selection failed"));
+			});
 	};
 }
 

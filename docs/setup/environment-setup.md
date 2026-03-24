@@ -4,24 +4,50 @@ This document explains how to configure environment variables for PIE Players de
 
 ## Quick Start
 
-1. **Copy the example file**:
-   ```bash
-   cp .env.example .env
-   ```
+From the monorepo root, use this sequence for deterministic first-time setup.
 
-2. **Add your AWS credentials** (for TTS):
-   ```bash
-   AWS_REGION=us-east-1
-   AWS_ACCESS_KEY_ID=your_key_here
-   AWS_SECRET_ACCESS_KEY=your_secret_here
-   ```
+- **Install workspace dependencies**:
 
-3. **Run a demo**:
-   ```bash
-   bun run dev:section
-   ```
+```bash
+bun install
+```
+
+- **Copy the example file**:
+
+```bash
+cp .env.example .env
+```
+
+- **Add your AWS credentials** (for TTS):
+
+```bash
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=your_key_here
+AWS_SECRET_ACCESS_KEY=your_secret_here
+```
+
+- **First run** (build package artifacts + start section demos):
+
+```bash
+bun run dev:section -- --rebuild
+```
+
+- **Normal daily run**:
+
+```bash
+bun run dev:section
+```
 
 That's it! The demo scripts automatically load `.env` using `dotenvx`.
+
+## Packaging reliability contract
+
+- Demo and package consumers use publish-style `dist` entrypoints.
+- Browser custom-element packages (for example `pie-item-player`,
+  `pie-section-player`) are browser-only runtime packages.
+- Node-import-safe package guidance and boundary details live in:
+  [`library-packaging-strategy.md`](./library-packaging-strategy.md)
+- Standalone variants are deferred; rely on documented default export paths.
 
 ## What Environment Variables Do
 
@@ -35,7 +61,7 @@ AWS_SECRET_ACCESS_KEY=wJalr...
 
 **Used by**: Server-side TTS with speech marks for word-level highlighting
 
-**Setup guide**: See [AWS Polly Setup Guide](./aws-polly-setup-guide.md)
+**Setup guide**: See [AWS Polly Setup Guide](../accessibility/aws-polly-setup-guide.md)
 
 ### Redis Caching (Optional, but recommended)
 
@@ -44,11 +70,13 @@ REDIS_URL=redis://localhost:6379
 ```
 
 **Benefits**:
+
 - Caches TTS synthesis results for 24 hours
 - Reduces AWS Polly API costs by 70-90%
 - Faster response times for repeated content
 
 **Setup**:
+
 ```bash
 # macOS
 brew install redis
@@ -102,6 +130,21 @@ These are all in `.gitignore`.
 
 ## Troubleshooting
 
+### Missing `dist/*.js` import errors
+
+If you see errors for packages like `pie-tool-graph`, `pie-tool-line-reader`, or
+`pie-tool-text-to-speech` mentioning missing `dist/*.js`, local package artifacts
+have not been built yet.
+
+```bash
+# Build package artifacts and start section demos in one command
+bun run dev:section -- --rebuild
+
+# Or, if the dev server is already running:
+bun run build
+bun run dev:section
+```
+
 ### Environment variables not loading
 
 **Check**: Are you running scripts from the monorepo root?
@@ -130,13 +173,14 @@ dotenvx run -- env | grep AWS_
 ```
 
 **Expected output**:
-```
+
+```text
 AWS_REGION=us-east-1
 AWS_ACCESS_KEY_ID=AKIA...
 AWS_SECRET_ACCESS_KEY=wJalr...
 ```
 
-**Fix**: See [AWS Polly Setup Guide](./aws-polly-setup-guide.md)
+**Fix**: See [AWS Polly Setup Guide](../accessibility/aws-polly-setup-guide.md)
 
 ### Redis connection errors
 
@@ -148,6 +192,7 @@ redis-cli ping
 ```
 
 **Fix**:
+
 ```bash
 # macOS
 brew services restart redis
@@ -169,6 +214,6 @@ docker restart <redis-container-id>
 
 ## See Also
 
-- [AWS Polly Setup Guide](./aws-polly-setup-guide.md) - Detailed AWS configuration
-- [TTS Architecture](./tts-architecture.md) - How TTS works
+- [AWS Polly Setup Guide](../accessibility/aws-polly-setup-guide.md) - Detailed AWS configuration
+- [TTS Architecture](../accessibility/tts-architecture.md) - How TTS works
 - [TTS Integration Guide](../../packages/tts-server-polly/examples/INTEGRATION-GUIDE.md) - Server implementation

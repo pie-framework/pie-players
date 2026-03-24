@@ -5,7 +5,7 @@ import path from "node:path";
 
 const ROOT = process.cwd();
 const SEARCH_ROOT = path.join(ROOT, "packages");
-const SOURCE_EXTENSIONS = new Set([".ts", ".js", ".mjs"]);
+const SOURCE_EXTENSIONS = new Set([".ts", ".js", ".mjs", ".svelte"]);
 const ALLOWED_DIRECT_DEFINE_FILES = new Set([
 	"packages/players-shared/src/pie/custom-element-define.ts",
 	"packages/print-player/src/ce-registry.ts",

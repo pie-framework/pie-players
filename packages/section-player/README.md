@@ -13,6 +13,24 @@ The package no longer exposes the legacy `pie-section-player` layout orchestrati
 npm install @pie-players/pie-section-player
 ```
 
+## Runtime boundary and migration
+
+- Browser-only package: `@pie-players/pie-section-player` registers custom elements and
+  is intended for browser/DOM hosts, not plain Node runtime imports.
+- Node-import-safe packages (for server/runtime utilities) are documented in
+  `docs/setup/library-packaging-strategy.md`.
+- Migration direction: prefer the stable default entry for side-effect registration:
+
+```ts
+import "@pie-players/pie-section-player";
+```
+
+If hosts need explicit registration control, keep using documented component
+entrypoints under `@pie-players/pie-section-player/components/*`.
+
+Standalone browser variants for this package are intentionally deferred; the
+current supported contract is the default bundler entrypoints under `dist`.
+
 ## Usage
 
 Import the custom-element registration entrypoint in consumers:
@@ -43,6 +61,7 @@ Both layout elements support:
 - `toolbar-position` (string): `top|right|bottom|left|none`
 - `narrow-layout-breakpoint` (number, optional): viewport width in px below which the layout collapses (split pane: single column; vertical: toolbar moves to top). Clamped to 400–2000; default 1100.
 - `show-toolbar` (boolean-like): accepts `true/false` and common string forms (`"true"`, `"false"`, `"1"`, `"0"`, `"yes"`, `"no"`)
+- Host extension props (JS properties only): `toolRegistry`, `sectionHostButtons`, `itemHostButtons`, `passageHostButtons`
 
 When viewport width is within the collapsed range (~1100px and below), inline section
 toolbar positions (`left`/`right`) normalize to `top` so controls remain horizontally
@@ -60,6 +79,7 @@ The intended usage model is:
   - Listen to `section-controller-ready`
   - Apply custom policy/gating in host code (for example, domain-specific `canNext` based on controller events like `section-items-complete-changed`)
   - Compose forward/backward eligibility in host code using `selectNavigation()` + host state; there is intentionally no separate parallel CE gating API for this
+  - Inject custom toolbar tooling with `toolRegistry` and optional host button arrays (`sectionHostButtons`, `itemHostButtons`, `passageHostButtons`)
 
 Advanced CE props are still supported as escape hatches (`runtime`, `coordinator`, `createSectionController`, etc.), but hosts should prefer JS/controller composition for non-standard behavior.
 
@@ -73,6 +93,9 @@ Runtime precedence is explicit:
 - `runtime` values are primary for runtime fields (`assessmentId`, `playerType`, `player`, `lazyInit`, `tools`, `accessibility`, `coordinator`, `createSectionController`, `isolation`, `env`).
 - Top-level runtime-like props remain compatibility inputs and are merged with `runtime` values. For `player`, top-level values are merged first, then `runtime.player` overrides. Nested `loaderOptions` and `loaderConfig` are also merged with the same precedence.
 - Toolbar placement overrides (`enabled-tools`, `item-toolbar-tools`, `passage-toolbar-tools`) are normalized on top of the runtime tools config.
+- Host tool overrides are additive:
+  - `toolRegistry` overrides the default toolbar registry when provided
+  - host buttons are appended per toolbar scope via `sectionHostButtons`, `itemHostButtons`, `passageHostButtons`
 
 Debug logging can be controlled per section-player host:
 
@@ -124,18 +147,24 @@ Minimal pattern for package layout components:
     show-toolbar={showToolbar}
     toolbar-position={toolbarPosition}
     enabled-tools={enabledTools}
+    toolRegistry={toolRegistry}
+    sectionHostButtons={sectionHostButtons}
   >
     <!-- layout-specific body -->
     <pie-section-player-passage-card
       passage={passage}
       playerParams={passagePlayerParams}
       passageToolbarTools={passageToolbarTools}
+      toolRegistry={toolRegistry}
+      hostButtons={passageHostButtons}
     ></pie-section-player-passage-card>
     <pie-section-player-item-card
       item={item}
       canonicalItemId={canonicalItemId}
       playerParams={itemPlayerParams}
       itemToolbarTools={itemToolbarTools}
+      toolRegistry={toolRegistry}
+      hostButtons={itemHostButtons}
     ></pie-section-player-item-card>
   </pie-section-player-shell>
 </pie-section-player-base>

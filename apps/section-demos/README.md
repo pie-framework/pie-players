@@ -56,21 +56,22 @@ Demonstrates a restart/resume workflow with external server-side persistence. Th
 
 ```bash
 # From monorepo root
-cd apps/section-demos
-
-# Install dependencies (if needed)
 bun install
 
-# Start dev server
-bun run dev
+# First run on a fresh checkout (build package dist outputs + start demos)
+bun run dev:section -- --rebuild
+
+# Normal daily start
+bun run dev:section
 # Opens http://localhost:5300
 
-# Build for production
-bun run build
-
-# Preview production build
-bun run preview
+# Optional: watch section-related package builds while iterating on tools/packages
+bun run build:watch:section-tools
 ```
+
+Use root scripts rather than running `bun run dev` directly inside
+`apps/section-demos`; root scripts apply the shared `.env` loading and
+consistent monorepo startup behavior.
 
 ## Technical Details
 

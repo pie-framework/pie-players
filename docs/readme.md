@@ -4,6 +4,12 @@ This folder contains the active documentation set for `pie-players`. The focus i
 
 ## Start Here
 
+- Section demo onboarding (canonical local flow):
+  1. `bun install`
+  2. `bun run dev:section -- --rebuild` (first run)
+  3. `bun run dev:section` (daily run)
+- Packaging boundary contract (Node-safe vs browser-only packages):
+  - [`setup/library-packaging-strategy.md`](./setup/library-packaging-strategy.md)
 - [`item-player/overview.md`](./item-player/overview.md) - Core item-player architecture and standalone usage
 - [`section-player/client-architecture-tutorial.md`](./section-player/client-architecture-tutorial.md) - Section-player and assessment-toolkit integration guide
 - [`../packages/section-player/README.md`](../packages/section-player/README.md) - Current public section-player API and host-facing patterns
@@ -63,11 +69,12 @@ This folder contains the active documentation set for `pie-players`. The focus i
 
 - [`development/demo-workspace-resolution.md`](./development/demo-workspace-resolution.md) - How demo apps resolve `@pie-players/*` (`dist/` and Vite aliases)
 - [`setup/environment-setup.md`](./setup/environment-setup.md) - Local environment setup
+- [`setup/demo_system.md`](./setup/demo_system.md) - Canonical root demo commands and run orchestration
 - [`setup/publishing.md`](./setup/publishing.md) - Publishing workflow
 - [`setup/publishable_packages.md`](./setup/publishable_packages.md) - Publishable package inventory
+- [`setup/library-packaging-strategy.md`](./setup/library-packaging-strategy.md) - Packaging strategy for bundler reliability and runtime boundary contract (standalone variants deferred)
 - [`setup/cdn_usage.md`](./setup/cdn_usage.md) - CDN and loader usage
 - [`setup/npm_token_setup.md`](./setup/npm_token_setup.md) - npm token setup
-- [`setup/demo_system.md`](./setup/demo_system.md) - Demo app and harness overview
 
 ## Supporting Specs
 

@@ -9,8 +9,9 @@ PIE players and assessment toolkit with Bun + TypeScript + Svelte 5.
 
 ```bash
 bun install
-bun run dev:docs      # Docs site
-bun run dev:section   # Section demos
+bun run dev:section -- --rebuild   # First section-demo run (builds package dist outputs)
+bun run dev:section                # Section demos (daily run)
+bun run dev:docs                   # Docs site
 ```
 
 ## Development

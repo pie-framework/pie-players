@@ -47,21 +47,21 @@ Advanced math problem with constructed response input fields. Shows how math ren
 
 ```bash
 # From monorepo root
-cd apps/item-demos
-
-# Install dependencies (if needed)
 bun install
 
-# Start dev server
-bun run dev
+# First run on a fresh checkout (build package dist outputs + start demos)
+bun run dev:item -- --rebuild
+
+# Normal daily start
+bun run dev:item
 # Opens http://localhost:5301
 
-# Build for production
-bun run build
-
-# Preview production build
-bun run preview
+# Optional: watch section/item shared package builds while iterating on libraries
+bun run build:watch:section-tools
 ```
+
+Use root scripts rather than running `bun run dev` directly inside
+`apps/item-demos`; root scripts apply shared monorepo startup behavior.
 
 ## Technical Details
 

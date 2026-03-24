@@ -34,4 +34,43 @@ test.describe("section player vertical passage layout", () => {
 			),
 		).toBeVisible();
 	});
+
+	test("keeps vertical container scrollbar styling available when content overflows", async ({
+		page,
+	}) => {
+		await page.goto(VERTICAL_DEMO_PATH, { waitUntil: "networkidle" });
+
+		const verticalContainer = page.locator(".pie-section-player-vertical-content");
+		await expect(verticalContainer).toBeVisible();
+
+		const metrics = await page.evaluate(() => {
+			const pane = document.querySelector(
+				".pie-section-player-vertical-content",
+			) as HTMLElement | null;
+			if (!pane) {
+				return { found: false, canScroll: false, scrollbarWidth: "", overflowY: "" };
+			}
+
+			if (pane.scrollHeight <= pane.clientHeight + 1) {
+				const filler = document.createElement("div");
+				filler.setAttribute("data-pie-scroll-test-filler", "true");
+				filler.setAttribute("aria-hidden", "true");
+				filler.style.height = "900px";
+				filler.style.pointerEvents = "none";
+				pane.appendChild(filler);
+			}
+
+			return {
+				found: true,
+				canScroll: pane.scrollHeight > pane.clientHeight,
+				scrollbarWidth: getComputedStyle(pane, "::-webkit-scrollbar").width,
+				overflowY: getComputedStyle(pane).overflowY,
+			};
+		});
+
+		expect(metrics.found).toBe(true);
+		expect(metrics.canScroll).toBe(true);
+		expect(metrics.overflowY).toBe("auto");
+		expect(metrics.scrollbarWidth).toBe("12px");
+	});
 });

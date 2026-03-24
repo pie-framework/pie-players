@@ -1,8 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
 const DEMO_PATH = "/tts-ssml?mode=candidate&layout=splitpane";
-const IDLE_TIMEOUT_MS = 900;
-const IDLE_BUFFER_MS = 300;
 
 type PaneSelector =
 	| "aside.pie-section-player-passages-pane"
@@ -39,18 +37,38 @@ async function ensurePaneCanScroll(page: Page, selector: PaneSelector) {
 	expect(metrics.scrollHeight).toBeGreaterThan(metrics.clientHeight);
 }
 
-async function triggerPaneScroll(page: Page, selector: PaneSelector) {
-	await page.evaluate((paneSelector) => {
+async function assertPaneHasStableScrollbarStyling(page: Page, selector: PaneSelector) {
+	const metrics = await page.evaluate((paneSelector) => {
 		const pane = document.querySelector(paneSelector) as HTMLElement | null;
-		if (!pane) return;
+		if (!pane) {
+			return {
+				found: false,
+				overflowY: "",
+				hasTransientManagedClass: false,
+				hasTransientScrollingClass: false,
+				scrollbarWidth: "",
+			};
+		}
 
-		const maxScroll = Math.max(0, pane.scrollHeight - pane.clientHeight);
-		pane.scrollTop = Math.min(Math.max(48, pane.scrollTop + 48), maxScroll);
+		const pseudoScrollbarStyle = getComputedStyle(pane, "::-webkit-scrollbar");
+		return {
+			found: true,
+			overflowY: getComputedStyle(pane).overflowY,
+			hasTransientManagedClass: pane.classList.contains("pie-pane-scrollbars-managed"),
+			hasTransientScrollingClass: pane.classList.contains("pie-pane-scrolling"),
+			scrollbarWidth: pseudoScrollbarStyle.width,
+		};
 	}, selector);
+
+	expect(metrics.found).toBe(true);
+	expect(metrics.overflowY).toBe("auto");
+	expect(metrics.hasTransientManagedClass).toBe(false);
+	expect(metrics.hasTransientScrollingClass).toBe(false);
+	expect(metrics.scrollbarWidth).toBe("12px");
 }
 
-test.describe("section player transient pane scrollbars", () => {
-	test("adds active class while scrolling and clears it after idle timeout per pane", async ({
+test.describe("section player splitpane scrollbars", () => {
+	test("keeps pane scrollbar styling stable whenever pane content is scrollable", async ({
 		page,
 	}) => {
 		await gotoDemo(page);
@@ -64,14 +82,17 @@ test.describe("section player transient pane scrollbars", () => {
 			await ensurePaneCanScroll(page, paneSelector);
 			const pane = page.locator(paneSelector);
 
-			await expect(pane).toHaveClass(/pie-pane-scrollbars-managed/);
-			await expect(pane).not.toHaveClass(/pie-pane-scrolling/);
+			await expect(pane).toBeVisible();
+			await assertPaneHasStableScrollbarStyling(page, paneSelector);
 
-			await triggerPaneScroll(page, paneSelector);
-			await expect(pane).toHaveClass(/pie-pane-scrolling/);
+			await page.evaluate((currentPaneSelector) => {
+				const currentPane = document.querySelector(currentPaneSelector) as HTMLElement | null;
+				if (!currentPane) return;
+				const maxScroll = Math.max(0, currentPane.scrollHeight - currentPane.clientHeight);
+				currentPane.scrollTop = Math.min(Math.max(48, currentPane.scrollTop + 48), maxScroll);
+			}, paneSelector);
 
-			await page.waitForTimeout(IDLE_TIMEOUT_MS + IDLE_BUFFER_MS);
-			await expect(pane).not.toHaveClass(/pie-pane-scrolling/);
+			await assertPaneHasStableScrollbarStyling(page, paneSelector);
 		}
 	});
 });

@@ -32,7 +32,6 @@
 />
 
 <script lang="ts">
-	import { onMount } from "svelte";
 	import {
 		attachInstrumentationEventBridge,
 		resolveInstrumentationProvider,
@@ -43,10 +42,11 @@
 	import "./section-player-items-pane-element.js";
 	import "./section-player-passages-pane-element.js";
 	import SectionPlayerLayoutKernel from "./shared/SectionPlayerLayoutKernel.svelte";
+	// TS language service false-positive in this workspace: Svelte component has a default export.
+	// @ts-ignore false-positive no-default-export in IDE language service for this import
 	import SectionSplitDivider from "./shared/SectionSplitDivider.svelte";
 	import { createEventDispatcher } from "svelte";
 	import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
-	import { manageOuterScrollbars } from "./shared/outer-scrollbars.js";
 	import {
 		type RuntimeConfig,
 	} from "./shared/section-player-runtime.js";
@@ -54,7 +54,7 @@
 		SectionPlayerRuntimeHostContract,
 		SectionPlayerSnapshot,
 	} from "../contracts/runtime-host-contract.js";
-import type { SectionPlayerPolicies } from "../policies/types.js";
+	import type { SectionPlayerPolicies } from "../policies/types.js";
 
 	const DEFAULT_NARROW_BREAKPOINT_PX = 1100;
 	const NARROW_BREAKPOINT_MIN_PX = 400;
@@ -151,94 +151,6 @@ import type { SectionPlayerPolicies } from "../policies/types.js";
 		leftPanelWidth = Math.max(20, Math.min(80, next));
 	}
 
-	function managePaneScrollbars(args: {
-		root: HTMLElement;
-		paneSelector?: string;
-		managedClass?: string;
-		activeClass?: string;
-		idleTimeoutMs?: number;
-	}): () => void {
-		const paneSelector =
-			args.paneSelector ??
-			".pie-section-player-passages-pane, .pie-section-player-items-pane";
-		const managedClass = args.managedClass ?? "pie-pane-scrollbars-managed";
-		const activeClass = args.activeClass ?? "pie-pane-scrolling";
-		const idleTimeoutMs = args.idleTimeoutMs ?? 900;
-		const paneTimers = new Map<HTMLElement, ReturnType<typeof setTimeout>>();
-		const trackedPanes = new Set<HTMLElement>();
-		const onScrollByPane = new Map<HTMLElement, () => void>();
-
-		const markPaneAsScrolling = (pane: HTMLElement) => {
-			pane.classList.add(activeClass);
-			const existingTimer = paneTimers.get(pane);
-			if (existingTimer) clearTimeout(existingTimer);
-			paneTimers.set(
-				pane,
-				setTimeout(() => {
-					pane.classList.remove(activeClass);
-					paneTimers.delete(pane);
-				}, idleTimeoutMs),
-			);
-		};
-
-		const attachPane = (pane: HTMLElement) => {
-			if (trackedPanes.has(pane)) return;
-			trackedPanes.add(pane);
-			pane.classList.add(managedClass);
-			const onScroll = () => markPaneAsScrolling(pane);
-			pane.addEventListener("scroll", onScroll, { passive: true });
-			onScrollByPane.set(pane, onScroll);
-		};
-
-		const detachPane = (pane: HTMLElement) => {
-			if (!trackedPanes.has(pane)) return;
-			trackedPanes.delete(pane);
-			const onScroll = onScrollByPane.get(pane);
-			if (onScroll) {
-				pane.removeEventListener("scroll", onScroll);
-				onScrollByPane.delete(pane);
-			}
-			pane.classList.remove(activeClass);
-			pane.classList.remove(managedClass);
-			const timer = paneTimers.get(pane);
-			if (timer) {
-				clearTimeout(timer);
-				paneTimers.delete(pane);
-			}
-		};
-
-		const syncPanes = () => {
-			const currentPanes = new Set(
-				Array.from(args.root.querySelectorAll<HTMLElement>(paneSelector)),
-			);
-			for (const pane of currentPanes) {
-				attachPane(pane);
-			}
-			for (const pane of trackedPanes) {
-				if (!currentPanes.has(pane)) {
-					detachPane(pane);
-				}
-			}
-		};
-
-		syncPanes();
-
-		const observer = new MutationObserver(() => {
-			syncPanes();
-		});
-		observer.observe(args.root, { childList: true, subtree: true });
-
-		return () => {
-			observer.disconnect();
-			for (const pane of trackedPanes) {
-				detachPane(pane);
-			}
-			onScrollByPane.clear();
-			trackedPanes.clear();
-			paneTimers.clear();
-		};
-	}
-
 	export function getSnapshot(): SectionPlayerSnapshot | null {
 		return kernelRef?.getSnapshot?.() ?? null;
 	}
@@ -277,15 +189,6 @@ import type { SectionPlayerPolicies } from "../policies/types.js";
 		const controller = await kernelRef?.waitForSectionController?.(timeoutMs);
 		return controller || null;
 	}
-
-	onMount(() => {
-		return manageOuterScrollbars();
-	});
-
-	$effect(() => {
-		if (!splitContainerElement) return;
-		return managePaneScrollbars({ root: splitContainerElement });
-	});
 
 	$effect(() => {
 		if (!hostElement) return;
@@ -465,7 +368,8 @@ import type { SectionPlayerPolicies } from "../policies/types.js";
 		box-sizing: border-box;
 		background: var(--pie-background-dark, #ecedf1);
 		scrollbar-width: thin;
-		scrollbar-color: transparent transparent;
+		scrollbar-color:
+			var(--pie-scrollbar-thumb, #6b7280) var(--pie-scrollbar-track, #d1d5db);
 	}
 
 	.pie-section-player-passages-pane:focus-visible,
@@ -474,70 +378,27 @@ import type { SectionPlayerPolicies } from "../policies/types.js";
 		outline-offset: -2px;
 	}
 
-	.pie-section-player-passages-pane.pie-pane-scrollbars-managed.pie-pane-scrolling,
-	.pie-section-player-items-pane.pie-pane-scrollbars-managed.pie-pane-scrolling,
-	.pie-section-player-passages-pane.pie-pane-scrollbars-managed:hover,
-	.pie-section-player-items-pane.pie-pane-scrollbars-managed:hover,
-	.pie-section-player-passages-pane.pie-pane-scrollbars-managed:focus,
-	.pie-section-player-items-pane.pie-pane-scrollbars-managed:focus,
-	.pie-section-player-passages-pane.pie-pane-scrollbars-managed:focus-within,
-	.pie-section-player-items-pane.pie-pane-scrollbars-managed:focus-within {
-		scrollbar-color:
-			var(--pie-scrollbar-thumb, #6b7280) var(--pie-scrollbar-track, #d1d5db);
-	}
-
-	.pie-section-player-passages-pane.pie-pane-scrollbars-managed::-webkit-scrollbar,
-	.pie-section-player-items-pane.pie-pane-scrollbars-managed::-webkit-scrollbar {
-		width: 0;
-		height: 0;
-		background: transparent;
-	}
-
-	.pie-section-player-passages-pane.pie-pane-scrollbars-managed.pie-pane-scrolling::-webkit-scrollbar,
-	.pie-section-player-items-pane.pie-pane-scrollbars-managed.pie-pane-scrolling::-webkit-scrollbar,
-	.pie-section-player-passages-pane.pie-pane-scrollbars-managed:hover::-webkit-scrollbar,
-	.pie-section-player-items-pane.pie-pane-scrollbars-managed:hover::-webkit-scrollbar,
-	.pie-section-player-passages-pane.pie-pane-scrollbars-managed:focus::-webkit-scrollbar,
-	.pie-section-player-items-pane.pie-pane-scrollbars-managed:focus::-webkit-scrollbar,
-	.pie-section-player-passages-pane.pie-pane-scrollbars-managed:focus-within::-webkit-scrollbar,
-	.pie-section-player-items-pane.pie-pane-scrollbars-managed:focus-within::-webkit-scrollbar {
+	.pie-section-player-passages-pane::-webkit-scrollbar,
+	.pie-section-player-items-pane::-webkit-scrollbar {
 		width: 0.75rem;
 		height: 0.75rem;
 	}
 
-	.pie-section-player-passages-pane.pie-pane-scrollbars-managed.pie-pane-scrolling::-webkit-scrollbar-track,
-	.pie-section-player-items-pane.pie-pane-scrollbars-managed.pie-pane-scrolling::-webkit-scrollbar-track,
-	.pie-section-player-passages-pane.pie-pane-scrollbars-managed:hover::-webkit-scrollbar-track,
-	.pie-section-player-items-pane.pie-pane-scrollbars-managed:hover::-webkit-scrollbar-track,
-	.pie-section-player-passages-pane.pie-pane-scrollbars-managed:focus::-webkit-scrollbar-track,
-	.pie-section-player-items-pane.pie-pane-scrollbars-managed:focus::-webkit-scrollbar-track,
-	.pie-section-player-passages-pane.pie-pane-scrollbars-managed:focus-within::-webkit-scrollbar-track,
-	.pie-section-player-items-pane.pie-pane-scrollbars-managed:focus-within::-webkit-scrollbar-track {
+	.pie-section-player-passages-pane::-webkit-scrollbar-track,
+	.pie-section-player-items-pane::-webkit-scrollbar-track {
 		background: var(--pie-scrollbar-track, #d1d5db);
 		border-radius: 999px;
 	}
 
-	.pie-section-player-passages-pane.pie-pane-scrollbars-managed.pie-pane-scrolling::-webkit-scrollbar-thumb,
-	.pie-section-player-items-pane.pie-pane-scrollbars-managed.pie-pane-scrolling::-webkit-scrollbar-thumb,
-	.pie-section-player-passages-pane.pie-pane-scrollbars-managed:hover::-webkit-scrollbar-thumb,
-	.pie-section-player-items-pane.pie-pane-scrollbars-managed:hover::-webkit-scrollbar-thumb,
-	.pie-section-player-passages-pane.pie-pane-scrollbars-managed:focus::-webkit-scrollbar-thumb,
-	.pie-section-player-items-pane.pie-pane-scrollbars-managed:focus::-webkit-scrollbar-thumb,
-	.pie-section-player-passages-pane.pie-pane-scrollbars-managed:focus-within::-webkit-scrollbar-thumb,
-	.pie-section-player-items-pane.pie-pane-scrollbars-managed:focus-within::-webkit-scrollbar-thumb {
+	.pie-section-player-passages-pane::-webkit-scrollbar-thumb,
+	.pie-section-player-items-pane::-webkit-scrollbar-thumb {
 		background: var(--pie-scrollbar-thumb, #6b7280);
 		border-radius: 999px;
 		border: 2px solid var(--pie-scrollbar-track, #d1d5db);
 	}
 
-	.pie-section-player-passages-pane.pie-pane-scrollbars-managed.pie-pane-scrolling::-webkit-scrollbar-thumb:hover,
-	.pie-section-player-items-pane.pie-pane-scrollbars-managed.pie-pane-scrolling::-webkit-scrollbar-thumb:hover,
-	.pie-section-player-passages-pane.pie-pane-scrollbars-managed:hover::-webkit-scrollbar-thumb:hover,
-	.pie-section-player-items-pane.pie-pane-scrollbars-managed:hover::-webkit-scrollbar-thumb:hover,
-	.pie-section-player-passages-pane.pie-pane-scrollbars-managed:focus::-webkit-scrollbar-thumb:hover,
-	.pie-section-player-items-pane.pie-pane-scrollbars-managed:focus::-webkit-scrollbar-thumb:hover,
-	.pie-section-player-passages-pane.pie-pane-scrollbars-managed:focus-within::-webkit-scrollbar-thumb:hover,
-	.pie-section-player-items-pane.pie-pane-scrollbars-managed:focus-within::-webkit-scrollbar-thumb:hover {
+	.pie-section-player-passages-pane::-webkit-scrollbar-thumb:hover,
+	.pie-section-player-items-pane::-webkit-scrollbar-thumb:hover {
 		background: var(--pie-scrollbar-thumb-hover, #4b5563);
 	}
 
@@ -545,44 +406,4 @@ import type { SectionPlayerPolicies } from "../policies/types.js";
 		display: none;
 	}
 
-	:global(html.pie-outer-scrollbars-managed),
-	:global(body.pie-outer-scrollbars-managed) {
-		scrollbar-width: auto;
-		scrollbar-color: transparent transparent;
-	}
-
-	:global(html.pie-outer-scrollbars-managed.pie-outer-scrolling),
-	:global(body.pie-outer-scrollbars-managed.pie-outer-scrolling) {
-		scrollbar-color: #c1c1c1 #f1f1f1;
-	}
-
-	:global(html.pie-outer-scrollbars-managed::-webkit-scrollbar),
-	:global(body.pie-outer-scrollbars-managed::-webkit-scrollbar) {
-		width: 0;
-		height: 0;
-		background: transparent;
-	}
-
-	:global(html.pie-outer-scrollbars-managed.pie-outer-scrolling::-webkit-scrollbar),
-	:global(body.pie-outer-scrollbars-managed.pie-outer-scrolling::-webkit-scrollbar) {
-		width: 8px;
-		height: 8px;
-	}
-
-	:global(html.pie-outer-scrollbars-managed.pie-outer-scrolling::-webkit-scrollbar-track),
-	:global(body.pie-outer-scrollbars-managed.pie-outer-scrolling::-webkit-scrollbar-track) {
-		background: #f1f1f1;
-		border-radius: 4px;
-	}
-
-	:global(html.pie-outer-scrollbars-managed.pie-outer-scrolling::-webkit-scrollbar-thumb),
-	:global(body.pie-outer-scrollbars-managed.pie-outer-scrolling::-webkit-scrollbar-thumb) {
-		background: #c1c1c1;
-		border-radius: 4px;
-	}
-
-	:global(html.pie-outer-scrollbars-managed.pie-outer-scrolling::-webkit-scrollbar-thumb:hover),
-	:global(body.pie-outer-scrollbars-managed.pie-outer-scrolling::-webkit-scrollbar-thumb:hover) {
-		background: #a1a1a1;
-	}
 </style>

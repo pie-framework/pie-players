@@ -294,6 +294,29 @@ import type { SectionPlayerPolicies } from "../policies/types.js";
 		padding: 0.5rem;
 		box-sizing: border-box;
 		background: var(--pie-background-dark, #ecedf1);
+		scrollbar-width: thin;
+		scrollbar-color:
+			var(--pie-scrollbar-thumb, #6b7280) var(--pie-scrollbar-track, #d1d5db);
+	}
+
+	.pie-section-player-vertical-content::-webkit-scrollbar {
+		width: 0.75rem;
+		height: 0.75rem;
+	}
+
+	.pie-section-player-vertical-content::-webkit-scrollbar-track {
+		background: var(--pie-scrollbar-track, #d1d5db);
+		border-radius: 999px;
+	}
+
+	.pie-section-player-vertical-content::-webkit-scrollbar-thumb {
+		background: var(--pie-scrollbar-thumb, #6b7280);
+		border-radius: 999px;
+		border: 2px solid var(--pie-scrollbar-track, #d1d5db);
+	}
+
+	.pie-section-player-vertical-content::-webkit-scrollbar-thumb:hover {
+		background: var(--pie-scrollbar-thumb-hover, #4b5563);
 	}
 
 	.pie-section-player-passages-section,

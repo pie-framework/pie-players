@@ -1,5 +1,14 @@
 # @pie-players/pie-section-player-tools-session-debugger
 
+## 0.3.23
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-section-player-tools-shared@0.3.23
+  - @pie-players/pie-theme@0.3.23
+
 ## 0.3.22
 
 ### Patch Changes

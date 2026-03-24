@@ -42,6 +42,7 @@
 	import "./section-player-items-pane-element.js";
 	import "./section-player-passages-pane-element.js";
 	import SectionPlayerLayoutKernel from "./shared/SectionPlayerLayoutKernel.svelte";
+	import SectionPlayerVerticalContent from "./shared/SectionPlayerVerticalContent.svelte";
 	// TS language service false-positive in this workspace: Svelte component has a default export.
 	// @ts-ignore false-positive no-default-export in IDE language service for this import
 	import SectionSplitDivider from "./shared/SectionSplitDivider.svelte";
@@ -253,33 +254,39 @@
 	on:element-preload-error={forward}
 	let:layoutModel
 >
-	<div
-		class={`pie-section-player-split-content ${layoutModel.passages.length === 0 ? "pie-section-player-split-content--no-passages" : ""} ${isStacked ? "pie-section-player-split-content--stacked" : ""}`}
-		bind:this={splitContainerElement}
-		style={layoutModel.passages.length === 0
-			? "grid-template-columns: 1fr"
-			: !isStacked
-				? `grid-template-columns: ${leftPanelWidth}% 0.5rem ${100 - leftPanelWidth - 0.5}%`
-				: ""}
-	>
-		{#if layoutModel.passages.length > 0}
-			<aside
-				id={passagesPaneId}
-				class="pie-section-player-passages-pane"
-				aria-label="Passages"
-			>
-				<pie-section-player-passages-pane
-					passages={layoutModel.passages}
-					elementsLoaded={layoutModel.paneElementsLoaded}
-					resolvedPlayerEnv={layoutModel.resolvedPlayerEnv}
-					resolvedPlayerAttributes={layoutModel.resolvedPlayerAttributes}
-					resolvedPlayerProps={layoutModel.resolvedPlayerProps}
-					playerStrategy={layoutModel.playerStrategy}
-					passageToolbarTools={passageToolbarTools}
-				></pie-section-player-passages-pane>
-			</aside>
+	{#if isStacked}
+		<SectionPlayerVerticalContent
+			{layoutModel}
+			{itemToolbarTools}
+			{passageToolbarTools}
+			{iifeBundleHost}
+			preloadComponentTag="pie-section-player-vertical"
+		/>
+	{:else}
+		<div
+			class={`pie-section-player-split-content ${layoutModel.passages.length === 0 ? "pie-section-player-split-content--no-passages" : ""}`}
+			bind:this={splitContainerElement}
+			style={layoutModel.passages.length === 0
+				? "grid-template-columns: 1fr"
+				: `grid-template-columns: ${leftPanelWidth}% 0.5rem ${100 - leftPanelWidth - 0.5}%`}
+		>
+			{#if layoutModel.passages.length > 0}
+				<aside
+					id={passagesPaneId}
+					class="pie-section-player-passages-pane"
+					aria-label="Passages"
+				>
+					<pie-section-player-passages-pane
+						passages={layoutModel.passages}
+						elementsLoaded={layoutModel.paneElementsLoaded}
+						resolvedPlayerEnv={layoutModel.resolvedPlayerEnv}
+						resolvedPlayerAttributes={layoutModel.resolvedPlayerAttributes}
+						resolvedPlayerProps={layoutModel.resolvedPlayerProps}
+						playerStrategy={layoutModel.playerStrategy}
+						passageToolbarTools={passageToolbarTools}
+					></pie-section-player-passages-pane>
+				</aside>
 
-			{#if !isStacked}
 				<SectionSplitDivider
 					value={leftPanelWidth}
 					ariaLabel="Resize passages and items panels"
@@ -289,31 +296,31 @@
 					on:resize-commit={handleSplitResizePreview}
 				/>
 			{/if}
-		{/if}
 
-		<main
-			id={itemsPaneId}
-			class="pie-section-player-items-pane"
-			aria-label="Items"
-		>
-			<pie-section-player-items-pane
-				items={layoutModel.items}
-				compositionModel={layoutModel.compositionModel}
-				resolvedPlayerEnv={layoutModel.resolvedPlayerEnv}
-				resolvedPlayerAttributes={layoutModel.resolvedPlayerAttributes}
-				resolvedPlayerProps={layoutModel.resolvedPlayerProps}
-				playerStrategy={layoutModel.playerStrategy}
-				itemToolbarTools={itemToolbarTools}
-				iifeBundleHost={iifeBundleHost}
-				preloadedRenderables={layoutModel.preloadedRenderables}
-				preloadedRenderablesSignature={layoutModel.preloadedRenderablesSignature}
-				preloadComponentTag="pie-section-player-splitpane"
-				onelements-loaded-change={layoutModel.onItemsPaneElementsLoaded}
-				onelement-preload-retry={layoutModel.onItemsPanePreloadRetry}
-				onelement-preload-error={layoutModel.onItemsPanePreloadError}
-			></pie-section-player-items-pane>
-		</main>
-	</div>
+			<main
+				id={itemsPaneId}
+				class="pie-section-player-items-pane"
+				aria-label="Items"
+			>
+				<pie-section-player-items-pane
+					items={layoutModel.items}
+					compositionModel={layoutModel.compositionModel}
+					resolvedPlayerEnv={layoutModel.resolvedPlayerEnv}
+					resolvedPlayerAttributes={layoutModel.resolvedPlayerAttributes}
+					resolvedPlayerProps={layoutModel.resolvedPlayerProps}
+					playerStrategy={layoutModel.playerStrategy}
+					itemToolbarTools={itemToolbarTools}
+					iifeBundleHost={iifeBundleHost}
+					preloadedRenderables={layoutModel.preloadedRenderables}
+					preloadedRenderablesSignature={layoutModel.preloadedRenderablesSignature}
+					preloadComponentTag="pie-section-player-splitpane"
+					onelements-loaded-change={layoutModel.onItemsPaneElementsLoaded}
+					onelement-preload-retry={layoutModel.onItemsPanePreloadRetry}
+					onelement-preload-error={layoutModel.onItemsPanePreloadError}
+				></pie-section-player-items-pane>
+			</main>
+		</div>
+	{/if}
 </SectionPlayerLayoutKernel>
 
 <style>
@@ -332,27 +339,6 @@
 		min-height: 0;
 		height: 100%;
 		overflow: hidden;
-	}
-
-	/* Collapsed/stacked: single column, passage(s) then items, no separator (mirrors vertical player) */
-	.pie-section-player-split-content--stacked {
-		display: flex;
-		flex-direction: column;
-		overflow-y: auto;
-		overflow-x: hidden;
-		overscroll-behavior: contain;
-		gap: 1rem;
-	}
-
-	.pie-section-player-split-content--stacked .pie-section-player-passages-pane,
-	.pie-section-player-split-content--stacked .pie-section-player-items-pane {
-		flex: 0 0 auto;
-		height: auto;
-		max-height: 100%;
-		min-height: 0;
-		min-width: 0;
-		overflow-y: auto;
-		overflow-x: hidden;
 	}
 
 	.pie-section-player-passages-pane,

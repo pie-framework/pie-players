@@ -14,19 +14,27 @@ test.describe("section player splitpane reflow", () => {
 			const host = page.locator("pie-section-player-splitpane").first();
 			await expect(host).toBeVisible();
 
-			const splitContent = page.locator(".pie-section-player-split-content").first();
-			await expect(splitContent).toBeVisible();
+			const layoutContainer = page
+				.locator(
+					".pie-section-player-split-content, .pie-section-player-vertical-content",
+				)
+				.first();
+			await expect(layoutContainer).toBeVisible();
 
 			await expect
 				.poll(async () => {
-					return await splitContent.evaluate((element) => {
+					return await layoutContainer.evaluate((element) => {
 						const el = element as HTMLElement;
 						return el.scrollWidth <= el.clientWidth + 1;
 					});
 				})
 				.toBe(true);
 
-			const itemPane = page.locator(".pie-section-player-items-pane").first();
+			const itemPane = page
+				.locator(
+					".pie-section-player-items-pane, .pie-section-player-items-section",
+				)
+				.first();
 			await expect(itemPane).toBeVisible();
 			await expect
 				.poll(async () => {

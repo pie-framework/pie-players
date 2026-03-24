@@ -111,6 +111,40 @@ describe("tts-runtime-config defaults", () => {
 			speechMarkTypes: ["word"],
 		});
 	});
+
+	test("prefers explicit google backend over stale custom provider markers", () => {
+		const settings = resolveTTSRuntimeSettings({
+			enabled: true,
+			backend: "google",
+			serverProvider: "custom",
+			provider: "custom",
+		} as any);
+		const backend = resolveTTSBackend(settings);
+		const provider = resolveRuntimeProvider(settings, backend);
+		const runtimeConfig = buildRuntimeTTSConfig(settings);
+
+		expect(backend).toBe("google");
+		expect(provider).toBe("google");
+		expect(runtimeConfig.provider).toBe("google");
+		expect(runtimeConfig.transportMode).toBe("pie");
+	});
+
+	test("prefers explicit polly backend over stale custom provider markers", () => {
+		const settings = resolveTTSRuntimeSettings({
+			enabled: true,
+			backend: "polly",
+			serverProvider: "custom",
+			provider: "custom",
+		} as any);
+		const backend = resolveTTSBackend(settings);
+		const provider = resolveRuntimeProvider(settings, backend);
+		const runtimeConfig = buildRuntimeTTSConfig(settings);
+
+		expect(backend).toBe("polly");
+		expect(provider).toBe("polly");
+		expect(runtimeConfig.provider).toBe("polly");
+		expect(runtimeConfig.transportMode).toBe("pie");
+	});
 });
 
 describe("tts registration auth fetcher behavior", () => {

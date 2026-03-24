@@ -100,10 +100,13 @@ export const resolveTTSBackend = (
 export const resolveRuntimeProvider = (
 	config: TTSRuntimeSettings,
 	backend: NonNullable<TTSRuntimeSettings["backend"]>,
-): TTSRuntimeSettings["serverProvider"] =>
-	config.serverProvider ||
-	config.provider ||
-	(backend === "polly" || backend === "google" ? backend : undefined);
+): TTSRuntimeSettings["serverProvider"] => {
+	if (backend === "polly" || backend === "google") return backend;
+	if (backend === "server") {
+		return config.serverProvider || config.provider;
+	}
+	return config.serverProvider || config.provider;
+};
 
 export const resolveTransportMode = (
 	config: TTSRuntimeSettings,

@@ -1448,6 +1448,8 @@ function normalizePreviewSpeechMarkOffsets(
 			} else if (activeTab === "browser") {
 				const next = {
 					backend: "browser" as const,
+					serverProvider: undefined,
+					provider: undefined,
 					defaultVoice: resolveVoiceForBackend("browser"),
 					rate: normalizeRate(browserRate),
 					pitch: normalizePitch(browserPitch),
@@ -1461,6 +1463,8 @@ function normalizePreviewSpeechMarkOffsets(
 			} else if (activeTab === "polly") {
 				const next = {
 					backend: "polly" as const,
+					serverProvider: "polly" as const,
+					provider: "polly" as const,
 					apiEndpoint: normalizeApiEndpoint(pollyApiEndpoint, getDefaultApiEndpoint()),
 					transportMode: "pie" as const,
 					endpointMode: "synthesizePath" as const,
@@ -1487,6 +1491,8 @@ function normalizePreviewSpeechMarkOffsets(
 			} else {
 				const next = {
 					backend: "google" as const,
+					serverProvider: "google" as const,
+					provider: "google" as const,
 					apiEndpoint: normalizeApiEndpoint(googleApiEndpoint, getDefaultApiEndpoint()),
 					transportMode: "pie" as const,
 					endpointMode: "synthesizePath" as const,

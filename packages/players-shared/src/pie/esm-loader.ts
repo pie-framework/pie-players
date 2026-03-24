@@ -218,7 +218,7 @@ export class EsmPieLoader {
 	private normalizeImportError(
 		err: unknown,
 		specifier: string,
-		context: "element" | "controller",
+		context: string,
 	): Error {
 		const message = err instanceof Error ? err.message : String(err);
 		const lower = message.toLowerCase();
@@ -323,8 +323,8 @@ export class EsmPieLoader {
 			} catch (err) {
 				// If loading fails and there's a fallback, try the fallback
 				if (viewConfig.fallback) {
-					logger.warn(
-						`Failed to load ${importSpecifier}, trying fallback: ${viewConfig.fallback}`,
+					logger.debug(
+						`Primary element import failed for ${importSpecifier}; attempting fallback view "${viewConfig.fallback}"`,
 					);
 					const fallbackConfig = BUILT_IN_VIEWS[viewConfig.fallback];
 					const fallbackSpecifier = this.resolveElementSpecifier(
@@ -333,8 +333,16 @@ export class EsmPieLoader {
 						fallbackConfig || BUILT_IN_VIEWS.delivery,
 					);
 
-					// @vite-ignore - Dynamic import from runtime specifier (URL or import-map bare path)
-					module = await import(/* @vite-ignore */ fallbackSpecifier);
+					try {
+						// @vite-ignore - Dynamic import from runtime specifier (URL or import-map bare path)
+						module = await import(/* @vite-ignore */ fallbackSpecifier);
+					} catch (fallbackErr) {
+						throw this.normalizeImportError(
+							fallbackErr,
+							fallbackSpecifier,
+							"fallback element",
+						);
+					}
 					ElementClass = module.default || module.Element;
 					logger.debug(`Loaded fallback view for ${actualTag}`);
 				} else {

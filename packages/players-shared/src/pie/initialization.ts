@@ -13,6 +13,7 @@ import { createPieLogger, isGlobalDebugEnabled } from "./logger.js";
 import { initializeMathRendering } from "./math-rendering.js";
 import { pieRegistry } from "./registry.js";
 import { findPieController } from "./scoring.js";
+import { defineCustomElementSafely } from "./custom-element-define.js";
 import { validateCustomElementTag } from "./tag-names.js";
 import type {
 	EventListeners,
@@ -296,7 +297,11 @@ const registerPieElementsFromBundle = (
 			};
 
 			if (isCustomElementConstructor(elementData.Element)) {
-				customElements.define(elementTagName, elementData.Element);
+				defineCustomElementSafely(
+					elementTagName,
+					elementData.Element,
+					`element tag in config.elements for ${String(pkg)}`,
+				);
 
 				// Initialize existing elements
 				const searchRoot = options.container || document;
@@ -403,7 +408,11 @@ const registerPieElementsFromBundle = (
 							elementTagName,
 							String(pkg),
 						);
-						customElements.define(editorElName, elementData.Configure);
+						defineCustomElementSafely(
+							editorElName,
+							elementData.Configure,
+							`editor element tag for ${String(pkg)}`,
+						);
 						promises.push(
 							customElements.whenDefined(editorElName).then(() => {
 								logger.debug(

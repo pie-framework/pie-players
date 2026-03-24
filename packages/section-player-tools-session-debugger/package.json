@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-section-player-tools-session-debugger",
-	"version": "0.3.23",
+	"version": "0.3.25",
 	"type": "module",
 	"description": "Session debugger panel for PIE section-player flows",
 	"repository": {

@@ -13,6 +13,7 @@
 
 import { createPieLogger } from "./logger.js";
 import { pieRegistry } from "./registry.js";
+import { defineCustomElementSafely } from "./custom-element-define.js";
 import { validateCustomElementTag } from "./tag-names.js";
 import { isCustomElementConstructor, Status } from "./types.js";
 
@@ -399,26 +400,23 @@ export class EsmPieLoader {
 			};
 
 			// Register custom element with the tag name (including suffix)
-			if (!customElements.get(actualTag)) {
-				if (isCustomElementConstructor(ElementClass)) {
-					// Wrap the Element class to allow multiple versions
-					customElements.define(actualTag, class extends ElementClass {});
+			if (isCustomElementConstructor(ElementClass)) {
+				const defineResult = defineCustomElementSafely(
+					actualTag,
+					class extends ElementClass {},
+					`element tag for ${packageName}`,
+				);
+				if (defineResult.status === "defined") {
 					logger.debug(`Registered custom element: ${actualTag}`);
-
-					// Update status to loaded
-					registry[actualTag] = {
-						...registry[actualTag],
-						status: Status.loaded,
-					};
 				} else {
-					logger.warn(`No Element export found in module`);
+					logger.debug(`Element ${actualTag} already registered`);
 				}
-			} else {
-				logger.debug(`Element ${actualTag} already registered`);
 				registry[actualTag] = {
 					...registry[actualTag],
 					status: Status.loaded,
 				};
+			} else {
+				logger.warn(`No Element export found in module`);
 			}
 		} catch (err) {
 			logger.error(`Failed to load element ${tag}:`, err);

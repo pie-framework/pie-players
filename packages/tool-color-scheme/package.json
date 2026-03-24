@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-tool-theme",
-	"version": "0.3.23",
+	"version": "0.3.25",
 	"type": "module",
 	"description": "Theme tool for PIE assessment player - provides accessible themes and color schemes",
 	"repository": {

@@ -10,6 +10,7 @@
 
 import { createPieLogger } from "./logger.js";
 import { pieRegistry } from "./registry.js";
+import { defineCustomElementSafely } from "./custom-element-define.js";
 import { validateCustomElementTag } from "./tag-names.js";
 import { BundleType, isCustomElementConstructor, Status } from "./types.js";
 import { getPackageWithoutVersion } from "./utils.js";
@@ -424,37 +425,36 @@ export class IifePieLoader {
 				};
 
 				// Register custom element if not already defined
-				if (!customElements.get(actualTagName)) {
-					if (isCustomElementConstructor(ElementClass)) {
-						// Wrap the Element class to allow multiple registrations with the same constructor
-						customElements.define(actualTagName, class extends ElementClass {});
+				if (isCustomElementConstructor(ElementClass)) {
+					const defineResult = defineCustomElementSafely(
+						actualTagName,
+						class extends ElementClass {},
+						`element tag for ${packageName}`,
+					);
+					if (defineResult.status === "defined") {
 						logger.debug(`Registered custom element: ${actualTagName}`);
-
-						// Wait for element to be defined, then update status
-						const promise = this.whenDefinedWithTimeout(actualTagName)
-							.then(() => {
-								registry[actualTagName] = {
-									...registry[actualTagName],
-									status: Status.loaded,
-								};
-								logger.debug(`Element ${actualTagName} fully loaded`);
-							})
-							.catch((err) => {
-								logger.error(`Failed to define element ${actualTagName}:`, err);
-							});
-
-						promises.push(promise);
 					} else {
-						logger.warn(
-							`Element class for ${packageName} is not a valid custom element constructor`,
-						);
+						logger.debug(`Element ${actualTagName} already registered`);
 					}
+
+					// Wait for element to be defined, then update status
+					const promise = this.whenDefinedWithTimeout(actualTagName)
+						.then(() => {
+							registry[actualTagName] = {
+								...registry[actualTagName],
+								status: Status.loaded,
+							};
+							logger.debug(`Element ${actualTagName} fully loaded`);
+						})
+						.catch((err) => {
+							logger.error(`Failed to define element ${actualTagName}:`, err);
+						});
+
+					promises.push(promise);
 				} else {
-					logger.debug(`Element ${actualTagName} already registered`);
-					registry[actualTagName] = {
-						...registry[actualTagName],
-						status: Status.loaded,
-					};
+					logger.warn(
+						`Element class for ${packageName} is not a valid custom element constructor`,
+					);
 				}
 			} catch (err) {
 				logger.error(`Failed to register element ${tagName}:`, err);

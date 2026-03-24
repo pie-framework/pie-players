@@ -308,4 +308,43 @@ describe("IifePieLoader", () => {
 		expect(scripts).toHaveLength(1);
 		expect(scripts[0]?.src.includes("ebsr")).toBe(true);
 	});
+
+	test("registerElementsFromBundle tolerates duplicate-define race conditions", async () => {
+		const loader = createLoader();
+		(globalThis as any).HTMLElement = class {};
+		const HTMLElementBase =
+			typeof HTMLElement === "undefined"
+				? (class {} as unknown as typeof HTMLElement)
+				: HTMLElement;
+		const ElementCtor = class extends HTMLElementBase {};
+		let defined = false;
+
+		(globalThis as any).customElements = {
+			get: () => (defined ? ElementCtor : undefined),
+			define: () => {
+				defined = true;
+				throw new DOMException(
+					'the name "pie-ebsr" has already been used with this registry',
+					"NotSupportedError",
+				);
+			},
+			whenDefined: async () => undefined,
+		};
+		(window as any).pie = {
+			default: {
+				"@pie-element/ebsr": {
+					Element: ElementCtor,
+					controller: { model: (m: unknown) => m },
+				},
+			},
+		};
+
+		await expect(
+			(loader as any).registerElementsFromBundle(
+				{ "pie-ebsr": "@pie-element/ebsr@1.0.0" },
+				true,
+				BundleType.clientPlayer,
+			),
+		).resolves.toBeUndefined();
+	});
 });

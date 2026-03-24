@@ -8,6 +8,24 @@ const HTMLElementBase =
 		? (class {} as unknown as typeof HTMLElement)
 		: HTMLElement;
 
+function defineThemeElementSafely(
+	tagName: string,
+	constructor: CustomElementConstructor,
+): void {
+	if (customElements.get(tagName)) {
+		return;
+	}
+	try {
+		customElements.define(tagName, constructor);
+	} catch (error) {
+		const isDuplicate =
+			error instanceof DOMException && error.name === "NotSupportedError";
+		if (!isDuplicate || !customElements.get(tagName)) {
+			throw error;
+		}
+	}
+}
+
 function parseVariableOverrides(value: unknown): ThemeVariables {
 	if (!value) {
 		return {};
@@ -230,7 +248,5 @@ export function definePieTheme(tagName = "pie-theme") {
 		return;
 	}
 
-	if (!customElements.get(tagName)) {
-		customElements.define(tagName, PieThemeElement);
-	}
+	defineThemeElementSafely(tagName, PieThemeElement);
 }

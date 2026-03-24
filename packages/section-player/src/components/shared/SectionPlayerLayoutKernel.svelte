@@ -48,6 +48,8 @@
 			attemptId?: string;
 			controller: unknown;
 		};
+		"element-preload-retry": Record<string, unknown>;
+		"element-preload-error": Record<string, unknown>;
 	};
 
 	let {
@@ -187,6 +189,32 @@
 	function handleItemsPaneElementsLoaded(event: Event) {
 		const detail = (event as CustomEvent<{ elementsLoaded?: unknown }>).detail;
 		paneElementsLoaded = detail?.elementsLoaded === true;
+	}
+
+	function handleItemsPanePreloadRetry(event: Event) {
+		const detail = (event as CustomEvent<Record<string, unknown>>).detail || {};
+		dispatch(
+			"element-preload-retry",
+			{
+				...detail,
+				assessmentId,
+				sectionId,
+				attemptId: attemptId || undefined,
+			},
+		);
+	}
+
+	function handleItemsPanePreloadError(event: Event) {
+		const detail = (event as CustomEvent<Record<string, unknown>>).detail || {};
+		dispatch(
+			"element-preload-error",
+			{
+				...detail,
+				assessmentId,
+				sectionId,
+				attemptId: attemptId || undefined,
+			},
+		);
 	}
 
 	function handleSectionReady(_event: Event) {
@@ -361,6 +389,8 @@
 			paneElementsLoaded,
 			readinessDetail,
 			onItemsPaneElementsLoaded: handleItemsPaneElementsLoaded,
+			onItemsPanePreloadRetry: handleItemsPanePreloadRetry,
+			onItemsPanePreloadError: handleItemsPanePreloadError,
 		}}
 		{compositionModel}
 		{passages}
@@ -375,5 +405,7 @@
 		{paneElementsLoaded}
 		{readinessDetail}
 		onItemsPaneElementsLoaded={handleItemsPaneElementsLoaded}
+		onItemsPanePreloadRetry={handleItemsPanePreloadRetry}
+		onItemsPanePreloadError={handleItemsPanePreloadError}
 	></slot>
 </SectionPlayerLayoutScaffold>

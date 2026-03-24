@@ -233,6 +233,8 @@
 		syncNavigationSnapshot();
 		reemit(event);
 	}}
+	on:element-preload-retry={reemit}
+	on:element-preload-error={reemit}
 	let:items
 	let:passages
 	let:compositionModel
@@ -243,6 +245,8 @@
 	let:preloadedRenderables
 	let:preloadedRenderablesSignature
 	let:onItemsPaneElementsLoaded
+	let:onItemsPanePreloadRetry
+	let:onItemsPanePreloadError
 >
 	<div class="pie-section-player-kernel-host-content">
 		{#if passages.length > 0}
@@ -269,6 +273,8 @@
 			preloadedRenderablesSignature={preloadedRenderablesSignature}
 			preloadComponentTag="pie-section-player-kernel-host"
 			onelements-loaded-change={onItemsPaneElementsLoaded}
+			onelement-preload-retry={onItemsPanePreloadRetry}
+			onelement-preload-error={onItemsPanePreloadError}
 		></pie-section-player-items-pane>
 	</div>
 </SectionPlayerLayoutKernel>

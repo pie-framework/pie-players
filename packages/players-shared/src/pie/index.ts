@@ -15,11 +15,13 @@
 
 // Config
 export {
+	assertPieConfigContract,
 	addMarkupForPackage,
 	addRubricIfNeeded,
 	elementForPackage,
 	makeUniqueTags,
 	modelsForPackage,
+	validatePieConfigContract,
 } from "./config.js";
 // Loaders
 export type { EsmLoaderConfig } from "./esm-loader.js";

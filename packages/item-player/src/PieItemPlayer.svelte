@@ -42,6 +42,7 @@
 	} from "./types.js";
 	import {
 		BundleType,
+		assertPieConfigContract,
 		createPieLogger,
 		DEFAULT_BUNDLE_HOST,
 		DEFAULT_LOADER_CONFIG,
@@ -52,6 +53,7 @@
 		isGlobalDebugEnabled,
 		initializeMathRendering,
 		makeUniqueTags,
+		validatePieConfigContract,
 		normalizeItemSessionContainer,
 		normalizeItemPlayerStrategy,
 		parsePackageName,
@@ -75,6 +77,7 @@
 		esmCdnUrl?: string;
 		view?: string;
 		loadControllers?: boolean;
+		allowPreloadedFallbackLoad?: boolean;
 	};
 
 	let {
@@ -235,6 +238,15 @@
 		);
 	}
 
+	function getMissingCustomElementTags(configEntity: any): string[] {
+		if (!configEntity?.elements || typeof configEntity.elements !== "object") {
+			return [];
+		}
+		return Object.keys(configEntity.elements).filter(
+			(tagName) => typeof customElements.get(tagName) !== "function",
+		);
+	}
+
 	function normalizePreloadedElementVersions(configEntity: any): any {
 		if (!isBrowser || normalizedStrategy !== "preloaded") return configEntity;
 		if (!configEntity?.elements || typeof configEntity.elements !== "object") {
@@ -308,8 +320,16 @@
 				typeof currentConfig === "string" ? JSON.parse(currentConfig) : currentConfig;
 
 			stage = "validate-config";
-			if (!parsedConfig.elements || !parsedConfig.models || !parsedConfig.markup) {
-				throw new Error("Invalid config: must contain elements, models, and markup");
+			assertPieConfigContract(parsedConfig);
+			const contractValidation = validatePieConfigContract(parsedConfig);
+			const contractWarnings = (
+				contractValidation as unknown as { warnings?: unknown }
+			).warnings;
+			const warnings = Array.isArray(contractWarnings)
+				? contractWarnings.filter((entry): entry is string => typeof entry === "string")
+				: [];
+			for (const warning of warnings) {
+				logger.warn(`[pie-item-player] ${warning}`);
 			}
 
 			stage = "normalize-preloaded-elements";
@@ -320,6 +340,9 @@
 			const transformedConfig = transformed.config;
 			const shouldSkipElementLoading =
 				shouldAutoSkipElementLoading(transformedConfig);
+			const allowPreloadedFallbackLoad =
+				(loaderOptions as UnifiedLoaderOptions | undefined)
+					?.allowPreloadedFallbackLoad === true;
 
 			stage = "math-rendering-init";
 			await initializeMathRendering();
@@ -328,6 +351,23 @@
 				logger.debug(
 					"[pie-item-player] Skipping element loading for preloaded flow.",
 				);
+			} else if (normalizedStrategy === "preloaded" && !allowPreloadedFallbackLoad) {
+				stage = "preloaded-readiness";
+				const requiredTags = Object.keys(transformedConfig?.elements || {});
+				const missingTags = getMissingCustomElementTags(transformedConfig);
+				if (requiredTags.length === 0) {
+					logger.debug(
+						"[pie-item-player] Preloaded strategy has no custom-element tags to preload.",
+					);
+				} else if (missingTags.length > 0) {
+					throw new Error(
+						`Preloaded strategy requires pre-registered elements; missing tags: ${missingTags.join(", ")}.`,
+					);
+				} else {
+					throw new Error(
+						`Preloaded strategy readiness mismatch. required tags: ${requiredTags.join(", ")}`,
+					);
+				}
 			} else if (
 				normalizedStrategy === "iife" ||
 				normalizedStrategy === "preloaded"

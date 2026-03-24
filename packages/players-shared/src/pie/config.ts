@@ -8,6 +8,122 @@ import { cloneDeep } from "../object/index.js";
 import type { ConfigContainerEntity, ConfigEntity, PieModel } from "../types/index.js";
 import { parsePackageName } from "./utils.js";
 
+export type PieConfigContractValidationResult = {
+	valid: boolean;
+	errors: string[];
+	warnings: string[];
+};
+
+function collectMarkupElementTags(markup: string): Set<string> {
+	const tags = new Set<string>();
+	const tagRegex = /<\/?([a-zA-Z][\w-]*)\b/g;
+	let match: RegExpExecArray | null = null;
+	while ((match = tagRegex.exec(markup)) !== null) {
+		const tagName = String(match[1] || "").trim();
+		if (!tagName) continue;
+		// PIE custom elements use custom-element naming (must include a hyphen).
+		if (tagName.includes("-")) {
+			tags.add(tagName);
+		}
+	}
+	return tags;
+}
+
+export const validatePieConfigContract = (
+	config: unknown,
+): PieConfigContractValidationResult => {
+	const errors: string[] = [];
+	const warnings: string[] = [];
+	if (!config || typeof config !== "object" || Array.isArray(config)) {
+		return {
+			valid: false,
+			errors: ["Config must be an object."],
+			warnings,
+		};
+	}
+
+	const cfg = config as Record<string, unknown>;
+	const markup = cfg.markup;
+	const elements = cfg.elements;
+	const models = cfg.models;
+
+	if (typeof markup !== "string") {
+		errors.push("`markup` must be a string.");
+	}
+	if (!elements || typeof elements !== "object" || Array.isArray(elements)) {
+		errors.push("`elements` must be an object.");
+	}
+	if (!Array.isArray(models)) {
+		errors.push("`models` must be an array.");
+	}
+	if (errors.length > 0) {
+		return { valid: false, errors, warnings };
+	}
+
+	const elementMap = elements as Record<string, unknown>;
+	const modelList = models as Array<Record<string, unknown>>;
+	const elementTags = Object.keys(elementMap);
+
+	for (const [tagName, packageSpec] of Object.entries(elementMap)) {
+		if (typeof tagName !== "string" || tagName.trim().length === 0) {
+			errors.push("`elements` contains an empty tag name.");
+			continue;
+		}
+		if (typeof packageSpec !== "string" || packageSpec.trim().length === 0) {
+			errors.push(`Element "${tagName}" must map to a non-empty package spec.`);
+			continue;
+		}
+		try {
+			parsePackageName(packageSpec);
+		} catch {
+			errors.push(`Element "${tagName}" has invalid package spec "${packageSpec}".`);
+		}
+	}
+
+	const modelElementTags = new Set<string>();
+	for (const [index, model] of modelList.entries()) {
+		const modelElement = model?.element;
+		if (typeof modelElement !== "string" || modelElement.trim().length === 0) {
+			errors.push(`Model at index ${index} is missing a valid "element" reference.`);
+			continue;
+		}
+		modelElementTags.add(modelElement);
+		if (!(modelElement in elementMap)) {
+			errors.push(
+				`Model element "${modelElement}" is not declared in \`elements\`.`,
+			);
+		}
+	}
+
+	const markupElementTags = collectMarkupElementTags(markup as string);
+	for (const tagName of markupElementTags) {
+		if (!(tagName in elementMap)) {
+			errors.push(`Markup tag "${tagName}" is not declared in \`elements\`.`);
+		}
+	}
+
+	const referencedTags = new Set<string>([...modelElementTags, ...markupElementTags]);
+	for (const tagName of elementTags) {
+		if (!referencedTags.has(tagName)) {
+			warnings.push(
+				`Element "${tagName}" is declared in \`elements\` but not referenced by models or markup.`,
+			);
+		}
+	}
+
+	return {
+		valid: errors.length === 0,
+		errors,
+		warnings,
+	};
+};
+
+export const assertPieConfigContract = (config: unknown): void => {
+	const result = validatePieConfigContract(config);
+	if (result.valid) return;
+	throw new Error(`Invalid PIE config contract: ${result.errors.join(" | ")}`);
+};
+
 /**
  * Get all models for a given npm package
  */

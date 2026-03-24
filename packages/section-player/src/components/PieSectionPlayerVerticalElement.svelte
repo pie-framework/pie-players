@@ -230,6 +230,8 @@ import type { SectionPlayerPolicies } from "../policies/types.js";
 	on:section-controller-ready={forward}
 	on:session-changed={forward}
 	on:composition-changed={forward}
+	on:element-preload-retry={forward}
+	on:element-preload-error={forward}
 	let:layoutModel
 >
 	<div class="pie-section-player-vertical-content">
@@ -261,6 +263,8 @@ import type { SectionPlayerPolicies } from "../policies/types.js";
 				preloadedRenderablesSignature={layoutModel.preloadedRenderablesSignature}
 				preloadComponentTag="pie-section-player-vertical"
 				onelements-loaded-change={layoutModel.onItemsPaneElementsLoaded}
+				onelement-preload-retry={layoutModel.onItemsPanePreloadRetry}
+				onelement-preload-error={layoutModel.onItemsPanePreloadError}
 			></pie-section-player-items-pane>
 		</section>
 	</div>

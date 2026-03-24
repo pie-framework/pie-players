@@ -7,6 +7,7 @@
  */
 
 import type { BundleType } from "../pie/types.js";
+import { parsePackageName } from "../pie/utils.js";
 import type { ItemEntity } from "../types/index.js";
 
 /**
@@ -76,22 +77,51 @@ export interface ElementLoaderInterface {
  */
 export function aggregateElements(items: ItemEntity[]): ElementMap {
 	const elementMap: Record<string, string> = {};
+	const seenOriginalTags: Record<string, string> = {};
+
+	const VERSION_DELIMITER = "--version-";
+	const parseTagName = (
+		tagName: string,
+	): { baseName: string; existingVersion?: string } => {
+		const versionMatch = tagName.match(`${VERSION_DELIMITER}(\\d+-\\d+-\\d+)$`);
+		return versionMatch
+			? {
+					baseName: tagName.replace(`${VERSION_DELIMITER}${versionMatch[1]}`, ""),
+					existingVersion: versionMatch[1].replace(/-/g, "."),
+				}
+			: { baseName: tagName };
+	};
+	const normalizeElementTag = (tagName: string, packageSpec: string): string => {
+		const { baseName, existingVersion } = parseTagName(tagName);
+		const { version } = parsePackageName(packageSpec);
+		if (!version || existingVersion === version) return tagName;
+		return `${baseName}${VERSION_DELIMITER}${version.replace(/\./g, "-")}`;
+	};
 
 	items.forEach((item) => {
 		const itemElements = item.config?.elements || {};
 
 		Object.entries(itemElements).forEach(([tag, pkg]) => {
-			if (!elementMap[tag]) {
-				// First time seeing this element
-				elementMap[tag] = pkg as string;
-			} else if (elementMap[tag] !== pkg) {
-				// Version conflict detected
+			const packageSpec = String(pkg);
+			if (!seenOriginalTags[tag]) {
+				seenOriginalTags[tag] = packageSpec;
+			} else if (seenOriginalTags[tag] !== packageSpec) {
+				// Preserve existing conflict behavior for repeated original tags.
 				throw new Error(
-					`Element version conflict: ${tag} requires both ${elementMap[tag]} and ${pkg}. ` +
+					`Element version conflict: ${tag} requires both ${seenOriginalTags[tag]} and ${packageSpec}. ` +
 						`All items in a section must use the same version of each element.`,
 				);
 			}
-			// else: Same version, no-op
+
+			const normalizedTag = normalizeElementTag(tag, packageSpec);
+			if (!elementMap[normalizedTag]) {
+				elementMap[normalizedTag] = packageSpec;
+			} else if (elementMap[normalizedTag] !== packageSpec) {
+				throw new Error(
+					`Element version conflict: ${normalizedTag} requires both ${elementMap[normalizedTag]} and ${packageSpec}. ` +
+						`All items in a section must use the same version of each element.`,
+				);
+			}
 		});
 	});
 

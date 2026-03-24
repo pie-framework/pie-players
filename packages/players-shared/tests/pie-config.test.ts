@@ -1,8 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import {
 	addRubricIfNeeded,
+	assertPieConfigContract,
 	elementForPackage,
 	makeUniqueTags,
+	validatePieConfigContract,
 } from "../src/pie/config";
 import type { ConfigContainerEntity } from "../src/types";
 
@@ -80,5 +82,96 @@ describe("addRubricIfNeeded", () => {
 
 		const out = addRubricIfNeeded(config as any);
 		expect(out.markup).toContain("<pie-rubric id='r1'></pie-rubric>");
+	});
+});
+
+describe("validatePieConfigContract", () => {
+	test("accepts a minimal valid config", () => {
+		const result = validatePieConfigContract({
+			markup: '<pie-mc id="m1"></pie-mc>',
+			elements: {
+				"pie-mc": "@pie-element/multiple-choice@1.0.0",
+			},
+			models: [{ id: "m1", element: "pie-mc" }],
+		});
+		expect(result.valid).toBe(true);
+		expect(result.errors).toHaveLength(0);
+	});
+
+	test("fails when model.element is not declared in elements", () => {
+		const result = validatePieConfigContract({
+			markup: '<pie-mc id="m1"></pie-mc>',
+			elements: {
+				"pie-mc": "@pie-element/multiple-choice@1.0.0",
+			},
+			models: [{ id: "m1", element: "pie-other" }],
+		});
+		expect(result.valid).toBe(false);
+		expect(result.errors.join(" | ")).toContain(
+			'Model element "pie-other" is not declared in `elements`.',
+		);
+	});
+
+	test("fails when custom tags in markup are not declared in elements", () => {
+		const result = validatePieConfigContract({
+			markup: '<pie-missing id="x"></pie-missing>',
+			elements: {
+				"pie-mc": "@pie-element/multiple-choice@1.0.0",
+			},
+			models: [{ id: "m1", element: "pie-mc" }],
+		});
+		expect(result.valid).toBe(false);
+		expect(result.errors.join(" | ")).toContain(
+			'Markup tag "pie-missing" is not declared in `elements`.',
+		);
+	});
+
+	test("warns when declared elements are not referenced by models or markup", () => {
+		const result = validatePieConfigContract({
+			markup: "<div>plain</div>",
+			elements: {
+				"pie-mc": "@pie-element/multiple-choice@1.0.0",
+			},
+			models: [],
+		});
+		expect(result.valid).toBe(true);
+		expect(result.errors).toHaveLength(0);
+		expect(result.warnings.join(" | ")).toContain(
+			'Element "pie-mc" is declared in `elements` but not referenced by models or markup.',
+		);
+	});
+
+	test("accepts html-only config with empty elements/models", () => {
+		const result = validatePieConfigContract({
+			markup: "<div>Passage content</div>",
+			elements: {},
+			models: [],
+		});
+		expect(result.valid).toBe(true);
+		expect(result.errors).toHaveLength(0);
+	});
+
+	test("assertPieConfigContract throws with consolidated message", () => {
+		expect(() =>
+			assertPieConfigContract({
+				markup: "<div />",
+				elements: {
+					"pie-mc": "",
+				},
+				models: [],
+			}),
+		).toThrow("Invalid PIE config contract:");
+	});
+
+	test("assertPieConfigContract does not throw for warning-only contracts", () => {
+		expect(() =>
+			assertPieConfigContract({
+				markup: "<div>plain</div>",
+				elements: {
+					"pie-mc": "@pie-element/multiple-choice@1.0.0",
+				},
+				models: [],
+			}),
+		).not.toThrow();
 	});
 });

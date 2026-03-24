@@ -33,6 +33,8 @@
 	import type { SectionCompositionModel } from "../../controllers/types.js";
 	import {
 		createPlayerPreloadStateSetter,
+		type ElementPreloadErrorDetail,
+		type ElementPreloadRetryDetail,
 		orchestratePlayerElementPreload,
 		type PlayerPreloadState,
 	} from "./player-preload.js";
@@ -69,6 +71,8 @@
 
 	const dispatch = createEventDispatcher<{
 		"elements-loaded-change": { elementsLoaded: boolean };
+		"element-preload-retry": ElementPreloadRetryDetail;
+		"element-preload-error": ElementPreloadErrorDetail;
 	}>();
 	let elementsLoaded = $state(false);
 	let lastPreloadSignature = $state("");
@@ -105,6 +109,12 @@
 					elementsLoaded,
 				}) as PlayerPreloadState,
 			setState: setPreloadState,
+			onPreloadRetry: (detail) => {
+				dispatch("element-preload-retry", detail);
+			},
+			onPreloadError: (detail) => {
+				dispatch("element-preload-error", detail);
+			},
 		});
 	});
 </script>

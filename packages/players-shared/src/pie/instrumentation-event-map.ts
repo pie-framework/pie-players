@@ -55,6 +55,14 @@ export const SECTION_INSTRUMENTATION_EVENT_MAP: InstrumentationEventMapping[] = 
 		sourceEventName: "runtime-error",
 		instrumentationEventName: "pie-section-runtime-error",
 	},
+	{
+		sourceEventName: "element-preload-retry",
+		instrumentationEventName: "pie-section-element-preload-retry",
+	},
+	{
+		sourceEventName: "element-preload-error",
+		instrumentationEventName: "pie-section-element-preload-error",
+	},
 ];
 
 export const ASSESSMENT_INSTRUMENTATION_EVENT_MAP: InstrumentationEventMapping[] = [

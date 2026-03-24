@@ -142,7 +142,10 @@ export class IifePieLoader {
 			requestedPackageNames: string[];
 			bundleType: BundleType;
 			needsControllers: boolean;
-			path: "reuse-active-bundle" | "load-fresh-bundle";
+			path:
+				| "reuse-active-bundle"
+				| "load-fresh-bundle"
+				| "retry-after-reload";
 		},
 	): Record<string, unknown> {
 		const helpers = this.ensurePieHelpers();
@@ -162,6 +165,70 @@ export class IifePieLoader {
 			availablePackageNames,
 			activePieBundleScriptUrls: this.getActivePieBundleScriptUrls(doc),
 		};
+	}
+
+	private isRecoverableRegistrationError(err: unknown): boolean {
+		const message =
+			err instanceof Error ? err.message : typeof err === "string" ? err : "";
+		return (
+			message.includes("window.pie not found") ||
+			message.includes("not found in IIFE bundle")
+		);
+	}
+
+	private async registerWithReloadRecovery(args: {
+		doc: Document;
+		elements: Record<string, string>;
+		needsControllers: boolean;
+		bundleType: BundleType;
+		bundleUrl: string;
+		requestedPackageNames: string[];
+		initialPath: "reuse-active-bundle" | "load-fresh-bundle";
+	}): Promise<void> {
+		const initialDiagnostics = this.buildLoadDiagnostics(args.doc, {
+			bundleUrl: args.bundleUrl,
+			requestedPackageNames: args.requestedPackageNames,
+			bundleType: args.bundleType,
+			needsControllers: args.needsControllers,
+			path: args.initialPath,
+		});
+		try {
+			await this.registerElementsFromBundle(
+				args.elements,
+				args.needsControllers,
+				args.bundleType,
+				initialDiagnostics,
+			);
+			return;
+		} catch (err) {
+			if (!this.isRecoverableRegistrationError(err)) {
+				throw err;
+			}
+			logger.warn(
+				"Recoverable registration mismatch detected; forcing bundle reload and retry",
+				err,
+				initialDiagnostics,
+			);
+		}
+
+		this.removePieBundleScripts(args.doc);
+		this.clearActiveBundleState();
+		await this.loadBundleScript(args.bundleUrl, args.doc);
+		this.ensurePieHelpers().activeBundleUrl = args.bundleUrl;
+
+		const retryDiagnostics = this.buildLoadDiagnostics(args.doc, {
+			bundleUrl: args.bundleUrl,
+			requestedPackageNames: args.requestedPackageNames,
+			bundleType: args.bundleType,
+			needsControllers: args.needsControllers,
+			path: "retry-after-reload",
+		});
+		await this.registerElementsFromBundle(
+			args.elements,
+			args.needsControllers,
+			args.bundleType,
+			retryDiagnostics,
+		);
 	}
 
 	private withGlobalLoadQueue(operation: () => Promise<void>): Promise<void> {
@@ -455,31 +522,23 @@ export class IifePieLoader {
 		}
 
 		const loadPromise = this.withGlobalLoadQueue(async () => {
-			let loadPath: "reuse-active-bundle" | "load-fresh-bundle" =
-				"load-fresh-bundle";
 			if (
 				this.isReusableActiveBundle(doc, bundleUrl, requestedPackageNames) &&
 				window.pie?.default
 			) {
-				loadPath = "reuse-active-bundle";
 				logger.debug("Reusing active IIFE bundle:", bundleUrl);
-				const diagnostics = this.buildLoadDiagnostics(doc, {
-					bundleUrl,
-					requestedPackageNames,
-					bundleType,
-					needsControllers,
-					path: loadPath,
-				});
-				await this.registerElementsFromBundle(
+				await this.registerWithReloadRecovery({
+					doc,
 					elements,
 					needsControllers,
 					bundleType,
-					diagnostics,
-				);
+					bundleUrl,
+					requestedPackageNames,
+					initialPath: "reuse-active-bundle",
+				});
 				return;
 			}
 
-			loadPath = "load-fresh-bundle";
 			logger.debug("Loading fresh IIFE bundle:", bundleUrl);
 			this.removePieBundleScripts(doc);
 			this.clearActiveBundleState();
@@ -487,19 +546,15 @@ export class IifePieLoader {
 			await this.loadBundleScript(bundleUrl, doc);
 			this.ensurePieHelpers().activeBundleUrl = bundleUrl;
 
-			const diagnostics = this.buildLoadDiagnostics(doc, {
-				bundleUrl,
-				requestedPackageNames,
-				bundleType,
-				needsControllers,
-				path: loadPath,
-			});
-			await this.registerElementsFromBundle(
+			await this.registerWithReloadRecovery({
+				doc,
 				elements,
 				needsControllers,
 				bundleType,
-				diagnostics,
-			);
+				bundleUrl,
+				requestedPackageNames,
+				initialPath: "load-fresh-bundle",
+			});
 			logger.debug("✅ IIFE bundle loaded and elements registered");
 		}).catch((err) => {
 			logger.error(

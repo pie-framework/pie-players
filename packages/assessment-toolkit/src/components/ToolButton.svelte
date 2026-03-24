@@ -48,10 +48,10 @@
 >
 	{#if button.icon}
 		<span class="tool-button__icon" aria-hidden="true">
-			{#if button.icon.startsWith("<svg")}
+			{#if button.icon.trimStart().startsWith("<svg")}
 				<!-- Inline SVG -->
 				{@html button.icon}
-			{:else if button.icon.startsWith("http")}
+			{:else if button.icon.trimStart().startsWith("http")}
 				<!-- External image URL -->
 				<img src={button.icon} alt="" />
 			{:else}

@@ -25,6 +25,10 @@
 			enabledTools: { attribute: "enabled-tools", type: "String" },
 			itemToolbarTools: { attribute: "item-toolbar-tools", type: "String" },
 			passageToolbarTools: { attribute: "passage-toolbar-tools", type: "String" },
+			toolRegistry: { type: "Object", reflect: false },
+			sectionHostButtons: { type: "Object", reflect: false },
+			itemHostButtons: { type: "Object", reflect: false },
+			passageHostButtons: { type: "Object", reflect: false },
 			policies: { type: "Object", reflect: false },
 			narrowLayoutBreakpoint: { attribute: "narrow-layout-breakpoint", type: "Number" },
 		},
@@ -47,6 +51,10 @@
 	// @ts-ignore false-positive no-default-export in IDE language service for this import
 	import SectionSplitDivider from "./shared/SectionSplitDivider.svelte";
 	import { createEventDispatcher } from "svelte";
+	import type {
+		ToolRegistry,
+		ToolbarItem,
+	} from "@pie-players/pie-assessment-toolkit";
 	import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
 	import {
 		type RuntimeConfig,
@@ -83,6 +91,10 @@
 		enabledTools = "",
 		itemToolbarTools = "",
 		passageToolbarTools = "",
+		toolRegistry = null as ToolRegistry | null,
+		sectionHostButtons = [] as ToolbarItem[],
+		itemHostButtons = [] as ToolbarItem[],
+		passageHostButtons = [] as ToolbarItem[],
 		policies = undefined as SectionPlayerPolicies | undefined,
 		narrowLayoutBreakpoint = undefined as number | undefined,
 	} = $props();
@@ -236,6 +248,10 @@
 	{enabledTools}
 	{itemToolbarTools}
 	{passageToolbarTools}
+	{toolRegistry}
+	{sectionHostButtons}
+	{itemHostButtons}
+	{passageHostButtons}
 	{policies}
 	playerActionConfig={{
 		stateKey: "__splitPaneAppliedParams",
@@ -259,6 +275,9 @@
 			{layoutModel}
 			{itemToolbarTools}
 			{passageToolbarTools}
+			toolRegistry={layoutModel.toolRegistry}
+			itemHostButtons={layoutModel.itemHostButtons}
+			passageHostButtons={layoutModel.passageHostButtons}
 			{iifeBundleHost}
 			preloadComponentTag="pie-section-player-vertical"
 		/>
@@ -284,6 +303,8 @@
 						resolvedPlayerProps={layoutModel.resolvedPlayerProps}
 						playerStrategy={layoutModel.playerStrategy}
 						passageToolbarTools={passageToolbarTools}
+						toolRegistry={layoutModel.toolRegistry}
+						hostButtons={layoutModel.passageHostButtons}
 					></pie-section-player-passages-pane>
 				</aside>
 
@@ -310,6 +331,8 @@
 					resolvedPlayerProps={layoutModel.resolvedPlayerProps}
 					playerStrategy={layoutModel.playerStrategy}
 					itemToolbarTools={itemToolbarTools}
+					toolRegistry={layoutModel.toolRegistry}
+					hostButtons={layoutModel.itemHostButtons}
 					iifeBundleHost={iifeBundleHost}
 					preloadedRenderables={layoutModel.preloadedRenderables}
 					preloadedRenderablesSignature={layoutModel.preloadedRenderablesSignature}

@@ -15,6 +15,8 @@
 			resolvedPlayerProps: { attribute: "resolved-player-props", type: "Object", reflect: false },
 			playerStrategy: { attribute: "player-strategy", type: "String" },
 			itemToolbarTools: { attribute: "item-toolbar-tools", type: "String" },
+			toolRegistry: { type: "Object", reflect: false },
+			hostButtons: { type: "Object", reflect: false },
 			iifeBundleHost: { attribute: "iife-bundle-host", type: "String" },
 			preloadedRenderables: { attribute: "preloaded-renderables", type: "Object", reflect: false },
 			preloadedRenderablesSignature: {
@@ -28,6 +30,10 @@
 
 <script lang="ts">
 	import { createEventDispatcher } from "svelte";
+	import type {
+		ToolRegistry,
+		ToolbarItem,
+	} from "@pie-players/pie-assessment-toolkit";
 	import "../section-player-item-card-element.js";
 	import type { ItemEntity } from "@pie-players/pie-players-shared/types";
 	import type { SectionCompositionModel } from "../../controllers/types.js";
@@ -51,6 +57,8 @@
 		resolvedPlayerProps = {} as Record<string, unknown>,
 		playerStrategy = "preloaded",
 		itemToolbarTools = "",
+		toolRegistry = null as ToolRegistry | null,
+		hostButtons = [] as ToolbarItem[],
 		iifeBundleHost = "",
 		preloadedRenderables = [] as ItemEntity[],
 		preloadedRenderablesSignature = "",
@@ -63,6 +71,8 @@
 		resolvedPlayerProps: Record<string, unknown>;
 		playerStrategy: string;
 		itemToolbarTools: string;
+		toolRegistry?: ToolRegistry | null;
+		hostButtons?: ToolbarItem[];
 		iifeBundleHost?: string | null;
 		preloadedRenderables: ItemEntity[];
 		preloadedRenderablesSignature: string;
@@ -143,6 +153,8 @@
 				playerStrategy,
 			})}
 			itemToolbarTools={itemToolbarTools}
+			{toolRegistry}
+			{hostButtons}
 		></pie-section-player-item-card>
 	{/each}
 {/if}

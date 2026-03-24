@@ -29,9 +29,9 @@ export function isToolbarLinkItem(item: ToolbarItem): item is ToolbarLinkItem {
 }
 
 export function isInlineSvgIcon(icon: string | undefined): boolean {
-	return typeof icon === "string" && icon.startsWith("<svg");
+	return typeof icon === "string" && icon.trimStart().startsWith("<svg");
 }
 
 export function isExternalIconUrl(icon: string | undefined): boolean {
-	return typeof icon === "string" && icon.startsWith("http");
+	return typeof icon === "string" && icon.trimStart().startsWith("http");
 }

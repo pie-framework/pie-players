@@ -15,12 +15,18 @@
 			resolvedPlayerProps: { attribute: "resolved-player-props", type: "Object", reflect: false },
 			playerStrategy: { attribute: "player-strategy", type: "String" },
 			passageToolbarTools: { attribute: "passage-toolbar-tools", type: "String" },
+			toolRegistry: { type: "Object", reflect: false },
+			hostButtons: { type: "Object", reflect: false },
 		},
 	}}
 />
 
 <script lang="ts">
 	import "../section-player-passage-card-element.js";
+	import type {
+		ToolRegistry,
+		ToolbarItem,
+	} from "@pie-players/pie-assessment-toolkit";
 	import type { PassageEntity } from "@pie-players/pie-players-shared/types";
 	import { getPassagePlayerParams } from "./section-player-view-state.js";
 
@@ -32,6 +38,8 @@
 		resolvedPlayerProps = {} as Record<string, unknown>,
 		playerStrategy = "preloaded",
 		passageToolbarTools = "",
+		toolRegistry = null as ToolRegistry | null,
+		hostButtons = [] as ToolbarItem[],
 	} = $props<{
 		passages: PassageEntity[];
 		elementsLoaded: boolean;
@@ -40,6 +48,8 @@
 		resolvedPlayerProps: Record<string, unknown>;
 		playerStrategy: string;
 		passageToolbarTools: string;
+		toolRegistry?: ToolRegistry | null;
+		hostButtons?: ToolbarItem[];
 	}>();
 </script>
 
@@ -63,6 +73,8 @@
 				playerStrategy,
 			})}
 			passageToolbarTools={passageToolbarTools}
+			{toolRegistry}
+			{hostButtons}
 		></pie-section-player-passage-card>
 	{/each}
 {/if}

@@ -1,6 +1,10 @@
 <script lang="ts">
 	import "../section-player-base-element.js";
 	import "../section-player-shell-element.js";
+	import type {
+		ToolRegistry,
+		ToolbarItem,
+	} from "@pie-players/pie-assessment-toolkit";
 	import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
 	import {
 		createSectionPlayerCardRenderContextProvider,
@@ -20,6 +24,8 @@
 		showToolbar = "false" as boolean | string | null | undefined,
 		toolbarPosition = "right",
 		enabledTools = "",
+		toolRegistry = null as ToolRegistry | null,
+		sectionHostButtons = [] as ToolbarItem[],
 		focusPolicy = { autoFocusFirstItem: false } as SectionPlayerFocusPolicy,
 		cardRenderContext = null as SectionPlayerCardRenderContext | null,
 		onCompositionChanged,
@@ -37,6 +43,8 @@
 		showToolbar?: boolean | string | null | undefined;
 		toolbarPosition?: string;
 		enabledTools?: string;
+		toolRegistry?: ToolRegistry | null;
+		sectionHostButtons?: ToolbarItem[];
 		focusPolicy?: SectionPlayerFocusPolicy;
 		cardRenderContext?: SectionPlayerCardRenderContext | null;
 		onCompositionChanged?: (event: Event) => void;
@@ -236,6 +244,8 @@
 		show-toolbar={normalizedShowToolbar}
 		toolbar-position={toolbarPosition}
 		enabled-tools={enabledTools}
+		{toolRegistry}
+		{sectionHostButtons}
 	>
 		<slot></slot>
 	</pie-section-player-shell>

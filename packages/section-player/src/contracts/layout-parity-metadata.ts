@@ -27,6 +27,10 @@ const ADVANCED_ESCAPE_HATCH_PROPS = [
 	"isolation",
 	"env",
 	"iifeBundleHost",
+	"toolRegistry",
+	"sectionHostButtons",
+	"itemHostButtons",
+	"passageHostButtons",
 ] as const;
 
 const SHARED_PROPS = [

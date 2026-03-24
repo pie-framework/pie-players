@@ -3,6 +3,10 @@
 		createPieLogger,
 		isGlobalDebugEnabled,
 	} from "@pie-players/pie-players-shared";
+	import type {
+		ToolRegistry,
+		ToolbarItem,
+	} from "@pie-players/pie-assessment-toolkit";
 	import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
 	import type { SectionControllerHandle } from "@pie-players/pie-assessment-toolkit";
 	import { createEventDispatcher } from "svelte";
@@ -73,6 +77,10 @@
 		enabledTools = "",
 		itemToolbarTools = "",
 		passageToolbarTools = "",
+		toolRegistry = null as ToolRegistry | null,
+		sectionHostButtons = [] as ToolbarItem[],
+		itemHostButtons = [] as ToolbarItem[],
+		passageHostButtons = [] as ToolbarItem[],
 		debug = undefined as string | boolean | undefined,
 		playerActionConfig = {
 			stateKey: "__sectionPlayerAppliedParams",
@@ -371,6 +379,8 @@
 	showToolbar={normalizedShowToolbar}
 	toolbarPosition={toolbarPosition}
 	enabledTools={enabledTools}
+	{toolRegistry}
+	{sectionHostButtons}
 	focusPolicy={policies.focus}
 	cardRenderContext={cardRenderContextValue}
 >
@@ -387,6 +397,9 @@
 			playerStrategy,
 			iifeBundleHost,
 			paneElementsLoaded,
+			toolRegistry,
+			itemHostButtons,
+			passageHostButtons,
 			readinessDetail,
 			onItemsPaneElementsLoaded: handleItemsPaneElementsLoaded,
 			onItemsPanePreloadRetry: handleItemsPanePreloadRetry,
@@ -403,6 +416,9 @@
 		{playerStrategy}
 		{iifeBundleHost}
 		{paneElementsLoaded}
+		{toolRegistry}
+		{itemHostButtons}
+		{passageHostButtons}
 		{readinessDetail}
 		onItemsPaneElementsLoaded={handleItemsPaneElementsLoaded}
 		onItemsPanePreloadRetry={handleItemsPanePreloadRetry}

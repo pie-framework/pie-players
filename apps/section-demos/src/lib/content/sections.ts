@@ -418,6 +418,22 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		],
 		section: demo3Section,
 	},
+	"custom-tools": {
+		id: "custom-tools",
+		name: "Custom Tools (Host Registry)",
+		description:
+			"Host-provided custom tools via toolRegistry and hostButtons without publishing new packages",
+		integrationLevel: 4,
+		integrationTheme: "Host custom toolbar integration",
+		focus:
+			"Demonstrates additive host-side tool extension with one item-level and one section-level custom tool.",
+		whatMakesItTick: [
+			"Injects a host-owned ToolRegistry into section-player (`toolRegistry` prop).",
+			"Adds an item/passage word counter tool with read-only word and character metrics.",
+			"Adds a section metadata panel tool with stable read-only session details.",
+		],
+		section: demo3Section,
+	},
 	"tts-ssml": {
 		id: "tts-ssml",
 		name: "TTS with SSML",

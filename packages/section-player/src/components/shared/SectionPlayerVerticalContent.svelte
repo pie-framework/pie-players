@@ -1,4 +1,9 @@
 <script lang="ts">
+	import type {
+		ToolRegistry,
+		ToolbarItem,
+	} from "@pie-players/pie-assessment-toolkit";
+
 	type LayoutModel = {
 		passages: unknown[];
 		items: unknown[];
@@ -10,6 +15,9 @@
 		playerStrategy: unknown;
 		preloadedRenderables: unknown;
 		preloadedRenderablesSignature: string;
+		toolRegistry: ToolRegistry | null;
+		itemHostButtons: ToolbarItem[];
+		passageHostButtons: ToolbarItem[];
 		onItemsPaneElementsLoaded: (event: Event) => void;
 		onItemsPanePreloadRetry: (event: Event) => void;
 		onItemsPanePreloadError: (event: Event) => void;
@@ -19,12 +27,18 @@
 		layoutModel,
 		itemToolbarTools = "",
 		passageToolbarTools = "",
+		toolRegistry = null as ToolRegistry | null,
+		itemHostButtons = [] as ToolbarItem[],
+		passageHostButtons = [] as ToolbarItem[],
 		iifeBundleHost,
 		preloadComponentTag = "pie-section-player-vertical",
 	} = $props<{
 		layoutModel: LayoutModel;
 		itemToolbarTools?: string;
 		passageToolbarTools?: string;
+		toolRegistry?: ToolRegistry | null;
+		itemHostButtons?: ToolbarItem[];
+		passageHostButtons?: ToolbarItem[];
 		iifeBundleHost?: string;
 		preloadComponentTag?: string;
 	}>();
@@ -41,6 +55,12 @@
 				resolvedPlayerProps={layoutModel.resolvedPlayerProps}
 				playerStrategy={layoutModel.playerStrategy}
 				passageToolbarTools={passageToolbarTools}
+				toolRegistry={toolRegistry || layoutModel.toolRegistry}
+				hostButtons={
+					passageHostButtons.length > 0
+						? passageHostButtons
+						: layoutModel.passageHostButtons
+				}
 			></pie-section-player-passages-pane>
 		</section>
 	{/if}
@@ -54,6 +74,10 @@
 			resolvedPlayerProps={layoutModel.resolvedPlayerProps}
 			playerStrategy={layoutModel.playerStrategy}
 			itemToolbarTools={itemToolbarTools}
+			toolRegistry={toolRegistry || layoutModel.toolRegistry}
+			hostButtons={
+				itemHostButtons.length > 0 ? itemHostButtons : layoutModel.itemHostButtons
+			}
 			iifeBundleHost={iifeBundleHost}
 			preloadedRenderables={layoutModel.preloadedRenderables}
 			preloadedRenderablesSignature={layoutModel.preloadedRenderablesSignature}

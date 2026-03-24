@@ -9,6 +9,8 @@
 			playerAction: { type: "Object", reflect: false },
 			playerParams: { attribute: "player-params", type: "Object", reflect: false },
 			passageToolbarTools: { attribute: "passage-toolbar-tools", type: "String" },
+			toolRegistry: { type: "Object", reflect: false },
+			hostButtons: { type: "Object", reflect: false },
 		},
 	}}
 />
@@ -17,6 +19,10 @@
 	import { onMount } from "svelte";
 	import "../passage-shell-element.js";
 	import "@pie-players/pie-toolbars/components/item-toolbar-element";
+	import type {
+		ToolRegistry,
+		ToolbarItem,
+	} from "@pie-players/pie-assessment-toolkit";
 	import type { PassageEntity } from "@pie-players/pie-players-shared/types";
 	import type { PlayerElementParams } from "./player-action.js";
 	import {
@@ -31,12 +37,16 @@
 		playerAction = (_node: HTMLElement, _params: PlayerElementParams) => undefined,
 		playerParams,
 		passageToolbarTools,
+		toolRegistry = null as ToolRegistry | null,
+		hostButtons = [] as ToolbarItem[],
 	} = $props<{
 		passage: PassageEntity;
 		resolvedPlayerTag?: string;
 		playerAction?: (node: HTMLElement, params: PlayerElementParams) => unknown;
 		playerParams: PlayerElementParams;
 		passageToolbarTools: string;
+		toolRegistry?: ToolRegistry | null;
+		hostButtons?: ToolbarItem[];
 	}>();
 
 	let contextAnchor = $state<HTMLDivElement | null>(null);
@@ -104,6 +114,8 @@
 				content-kind="rubric-block-stimulus"
 				size="md"
 				language="en-US"
+				{toolRegistry}
+				{hostButtons}
 			></pie-item-toolbar>
 		</div>
 		<div

@@ -6,12 +6,18 @@
 			showToolbar: { attribute: "show-toolbar", type: "String" },
 			toolbarPosition: { attribute: "toolbar-position", type: "String" },
 			enabledTools: { attribute: "enabled-tools", type: "String" },
+			toolRegistry: { type: "Object", reflect: false },
+			sectionHostButtons: { type: "Object", reflect: false },
 		},
 	}}
 />
 
 <script lang="ts">
 	import "@pie-players/pie-toolbars/components/section-toolbar-element";
+	import type {
+		ToolRegistry,
+		ToolbarItem,
+	} from "@pie-players/pie-assessment-toolkit";
 	import { coerceBooleanLike } from "./shared/section-player-props.js";
 
 	const DEFAULT_COLLAPSED_BREAKPOINT_PX = 1100;
@@ -20,10 +26,14 @@
 		showToolbar = "false" as boolean | string | null | undefined,
 		toolbarPosition = "right",
 		enabledTools = "",
+		toolRegistry = null as ToolRegistry | null,
+		sectionHostButtons = [] as ToolbarItem[],
 	} = $props<{
 		showToolbar?: boolean | string | null | undefined;
 		toolbarPosition?: string;
 		enabledTools?: string;
+		toolRegistry?: ToolRegistry | null;
+		sectionHostButtons?: ToolbarItem[];
 	}>();
 
 	let isNarrow = $state(false);
@@ -68,6 +78,8 @@
 			class={`pie-section-player-toolbar pie-section-player-toolbar--${effectiveToolbarPosition}`}
 			position={effectiveToolbarPosition}
 			enabled-tools={enabledTools}
+			{toolRegistry}
+			hostButtons={sectionHostButtons}
 		></pie-section-toolbar>
 	{/if}
 
@@ -86,6 +98,8 @@
 				<pie-section-toolbar
 					position="left"
 					enabled-tools={enabledTools}
+					{toolRegistry}
+					hostButtons={sectionHostButtons}
 				></pie-section-toolbar>
 			</aside>
 		{/if}
@@ -100,6 +114,8 @@
 				<pie-section-toolbar
 					position="right"
 					enabled-tools={enabledTools}
+					{toolRegistry}
+					hostButtons={sectionHostButtons}
 				></pie-section-toolbar>
 			</aside>
 		{/if}
@@ -110,6 +126,8 @@
 			class={`pie-section-player-toolbar pie-section-player-toolbar--${effectiveToolbarPosition}`}
 			position={effectiveToolbarPosition}
 			enabled-tools={enabledTools}
+			{toolRegistry}
+			hostButtons={sectionHostButtons}
 		></pie-section-toolbar>
 	{/if}
 </div>

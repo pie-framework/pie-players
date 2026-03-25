@@ -30,6 +30,7 @@
 			itemHostButtons: { type: "Object", reflect: false },
 			passageHostButtons: { type: "Object", reflect: false },
 			policies: { type: "Object", reflect: false },
+			cardTitleFormatter: { type: "Object", reflect: false },
 			narrowLayoutBreakpoint: { attribute: "narrow-layout-breakpoint", type: "Number" },
 		},
 	}}
@@ -64,6 +65,7 @@
 		SectionPlayerSnapshot,
 	} from "../contracts/runtime-host-contract.js";
 	import type { SectionPlayerPolicies } from "../policies/types.js";
+	import type { SectionPlayerCardTitleFormatter } from "../contracts/card-title-formatters.js";
 
 	const DEFAULT_NARROW_BREAKPOINT_PX = 1100;
 	const NARROW_BREAKPOINT_MIN_PX = 400;
@@ -96,6 +98,7 @@
 		itemHostButtons = [] as ToolbarItem[],
 		passageHostButtons = [] as ToolbarItem[],
 		policies = undefined as SectionPlayerPolicies | undefined,
+		cardTitleFormatter = undefined as SectionPlayerCardTitleFormatter | undefined,
 		narrowLayoutBreakpoint = undefined as number | undefined,
 	} = $props();
 
@@ -253,6 +256,7 @@
 	{itemHostButtons}
 	{passageHostButtons}
 	{policies}
+	{cardTitleFormatter}
 	playerActionConfig={{
 		stateKey: "__splitPaneAppliedParams",
 		includeSessionRefInState: true,

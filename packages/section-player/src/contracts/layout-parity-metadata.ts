@@ -31,6 +31,7 @@ const ADVANCED_ESCAPE_HATCH_PROPS = [
 	"sectionHostButtons",
 	"itemHostButtons",
 	"passageHostButtons",
+	"cardTitleFormatter",
 ] as const;
 
 const SHARED_PROPS = [

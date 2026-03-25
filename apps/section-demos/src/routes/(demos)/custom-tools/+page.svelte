@@ -63,6 +63,20 @@
 	let attemptId = $state(getOrCreateAttemptId());
 	let playerHostElement: HTMLElement | null = $state(null);
 
+	// Host integration pattern: set `cardTitleFormatter` as a JS property on the
+	// section-player element (not an HTML string attribute). The callback receives
+	// rich context (`kind`, entity, indices, and `defaultTitle`) and should return
+	// the title text to render in item/passage card headers.
+	const customCardTitleFormatter = (context: any) => {
+		if (context?.kind === "item") {
+			return `Custom question ${Number(context.itemIndex) + 1}`;
+		}
+		if (context?.kind === "passage") {
+			return "Custom passage";
+		}
+		return context?.defaultTitle;
+	};
+
 	let showSessionPanel = $state(false);
 	let showEventPanel = $state(false);
 	let showInstrumentationPanel = $state(false);
@@ -251,6 +265,7 @@
 			sectionHostButtons={customTools.sectionHostButtons}
 			itemHostButtons={customTools.itemHostButtons}
 			passageHostButtons={customTools.passageHostButtons}
+			cardTitleFormatter={customCardTitleFormatter}
 		></pie-section-player-vertical>
 	{:else}
 		<pie-section-player-splitpane
@@ -272,6 +287,7 @@
 			sectionHostButtons={customTools.sectionHostButtons}
 			itemHostButtons={customTools.itemHostButtons}
 			passageHostButtons={customTools.passageHostButtons}
+			cardTitleFormatter={customCardTitleFormatter}
 		></pie-section-player-splitpane>
 	{/if}
 </DemoRuntimeChrome>

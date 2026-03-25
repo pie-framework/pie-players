@@ -195,6 +195,54 @@ test.describe("section toolbar tools", () => {
 		expect(Math.abs(secondButtonRect.y - firstButtonRect.y)).toBeLessThanOrEqual(4);
 	});
 
+	test("preserves card title formatter across splitpane collapse transitions", async ({
+		page,
+	}) => {
+		async function expectCustomTitles() {
+			await expect(page.locator(".pie-section-player-item-header h2").first()).toHaveText(
+				"Custom question 1",
+			);
+			await expect(page.locator(".pie-section-player-passage-header h2").first()).toHaveText(
+				"Custom passage",
+			);
+		}
+
+		await page.setViewportSize({ width: 1280, height: 900 });
+		await page.goto(`${DEMO_PATH}&customTitles=1`, { waitUntil: "networkidle" });
+		await expect(page.getByRole("link", { name: "Student" })).toBeVisible();
+
+		await expectCustomTitles();
+		await expect(
+			page.getByRole("separator", { name: "Resize passages and items panels" }),
+		).toHaveCount(1);
+
+		await page.setViewportSize({ width: 900, height: 900 });
+		await expect(
+			page.getByRole("separator", { name: "Resize passages and items panels" }),
+		).toHaveCount(0);
+		await expectCustomTitles();
+
+		await page.setViewportSize({ width: 1280, height: 900 });
+		await expect(
+			page.getByRole("separator", { name: "Resize passages and items panels" }),
+		).toHaveCount(1);
+		await expectCustomTitles();
+	});
+
+	test("applies card title formatter in vertical layout", async ({ page }) => {
+		await page.goto("/tts-ssml?mode=candidate&layout=vertical&customTitles=1", {
+			waitUntil: "networkidle",
+		});
+		await expect(page.getByRole("link", { name: "Student" })).toBeVisible();
+
+		await expect(page.locator(".pie-section-player-item-header h2").first()).toHaveText(
+			"Custom question 1",
+		);
+		await expect(page.locator(".pie-section-player-passage-header h2").first()).toHaveText(
+			"Custom passage",
+		);
+	});
+
 	test("restores hosted shell close button background after hover", async ({ page }) => {
 		await gotoDemo(page);
 

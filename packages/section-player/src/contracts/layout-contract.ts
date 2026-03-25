@@ -39,7 +39,8 @@ export type SectionPlayerAdvancedPropName =
 	| "toolRegistry"
 	| "sectionHostButtons"
 	| "itemHostButtons"
-	| "passageHostButtons";
+	| "passageHostButtons"
+	| "cardTitleFormatter";
 
 export type SectionPlayerLayoutPropName =
 	| SectionPlayerBasicPropName

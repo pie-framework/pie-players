@@ -24,6 +24,7 @@
 		ToolbarItem,
 	} from "@pie-players/pie-assessment-toolkit";
 	import type { PassageEntity } from "@pie-players/pie-players-shared/types";
+	import type { SectionPlayerCardTitleFormatter } from "../../contracts/card-title-formatters.js";
 	import type { PlayerElementParams } from "./player-action.js";
 	import {
 		connectSectionPlayerCardRenderContext,
@@ -54,6 +55,7 @@
 	let contextPlayerAction = $state<
 		((node: HTMLElement, params: PlayerElementParams) => unknown) | null
 	>(null);
+	let contextCardTitleFormatter = $state<SectionPlayerCardTitleFormatter | null>(null);
 	let contextConnected = $state(false);
 	// Context is the canonical source for shared render wiring while connected.
 	// Props are explicit fallback when context is unavailable.
@@ -63,11 +65,31 @@
 	const effectivePlayerAction = $derived(
 		(contextConnected ? contextPlayerAction : null) || playerAction,
 	);
+	const effectiveCardTitleFormatter = $derived(
+		(contextConnected ? contextCardTitleFormatter : null) || null,
+	);
+	const headerTitle = $derived.by(() => {
+		const defaultTitle = "Passage";
+		if (!effectiveCardTitleFormatter) return defaultTitle;
+		try {
+			const nextTitle = effectiveCardTitleFormatter({
+				kind: "passage",
+				passage,
+				defaultTitle,
+			});
+			if (typeof nextTitle !== "string") return defaultTitle;
+			const trimmedTitle = nextTitle.trim();
+			return trimmedTitle || defaultTitle;
+		} catch {
+			return defaultTitle;
+		}
+	});
 
 	function resetContextOverrides(): void {
 		contextConnected = false;
 		contextResolvedPlayerTag = null;
 		contextPlayerAction = null;
+		contextCardTitleFormatter = null;
 	}
 
 	function applyCardRenderContext(value: SectionPlayerCardRenderContext): void {
@@ -77,6 +99,9 @@
 		}
 		if (typeof value.playerAction === "function") {
 			contextPlayerAction = value.playerAction;
+		}
+		if (typeof value.cardTitleFormatter === "function") {
+			contextCardTitleFormatter = value.cardTitleFormatter;
 		}
 	}
 
@@ -106,7 +131,7 @@
 			class="pie-section-player-content-card-header pie-section-player-passage-header pie-section-player__passage-header"
 			data-region="header"
 		>
-			<h2>Passage</h2>
+			<h2>{headerTitle}</h2>
 			<pie-item-toolbar
 				item-id={passage.id}
 				catalog-id={passage.id}

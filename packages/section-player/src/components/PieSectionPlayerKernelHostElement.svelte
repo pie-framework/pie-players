@@ -30,6 +30,7 @@
 			itemHostButtons: { type: "Object", reflect: false },
 			passageHostButtons: { type: "Object", reflect: false },
 			policies: { type: "Object", reflect: false },
+			cardTitleFormatter: { type: "Object", reflect: false },
 		},
 	}}
 />
@@ -52,6 +53,7 @@
 		SectionPlayerRuntimeHostContract,
 		SectionPlayerSnapshot,
 	} from "../contracts/runtime-host-contract.js";
+	import type { SectionPlayerCardTitleFormatter } from "../contracts/card-title-formatters.js";
 	import type { RuntimeConfig } from "./shared/section-player-runtime.js";
 
 	let {
@@ -81,6 +83,7 @@
 		itemHostButtons = [] as ToolbarItem[],
 		passageHostButtons = [] as ToolbarItem[],
 		policies,
+		cardTitleFormatter = undefined as SectionPlayerCardTitleFormatter | undefined,
 	} = $props();
 
 	const dispatch = createEventDispatcher();
@@ -221,6 +224,7 @@
 	{itemHostButtons}
 	{passageHostButtons}
 	{policies}
+	{cardTitleFormatter}
 	on:readiness-change={(event: CustomEvent) => {
 		const detail = (event as CustomEvent).detail;
 		snapshot = { ...snapshot, readiness: detail };

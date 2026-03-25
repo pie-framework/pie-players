@@ -32,6 +32,7 @@
 	import { coerceBooleanLike } from "./section-player-props.js";
 	import { createReadinessDetail } from "./section-player-readiness.js";
 	import SectionPlayerLayoutScaffold from "./SectionPlayerLayoutScaffold.svelte";
+	import type { SectionPlayerCardTitleFormatter } from "../../contracts/card-title-formatters.js";
 
 	type PlayerActionConfig = {
 		stateKey: string;
@@ -87,6 +88,7 @@
 			includeSessionRefInState: false,
 		} satisfies PlayerActionConfig,
 		policies = DEFAULT_SECTION_PLAYER_POLICIES as SectionPlayerPolicies,
+		cardTitleFormatter = undefined as SectionPlayerCardTitleFormatter | undefined,
 	} = $props();
 
 	const dispatch = createEventDispatcher<KernelEvents>();
@@ -173,6 +175,7 @@
 		(): SectionPlayerCardRenderContext => ({
 			resolvedPlayerTag,
 			playerAction,
+			cardTitleFormatter,
 		}),
 	);
 	const normalizedShowToolbar = $derived(coerceBooleanLike(showToolbar, false));

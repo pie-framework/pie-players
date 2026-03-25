@@ -27,6 +27,7 @@
 		ToolbarItem,
 	} from "@pie-players/pie-assessment-toolkit";
 	import type { ItemEntity } from "@pie-players/pie-players-shared/types";
+	import type { SectionPlayerCardTitleFormatter } from "../../contracts/card-title-formatters.js";
 	import type { PlayerElementParams } from "./player-action.js";
 	import {
 		connectSectionPlayerCardRenderContext,
@@ -63,6 +64,7 @@
 	let contextPlayerAction = $state<
 		((node: HTMLElement, params: PlayerElementParams) => unknown) | null
 	>(null);
+	let contextCardTitleFormatter = $state<SectionPlayerCardTitleFormatter | null>(null);
 	let contextConnected = $state(false);
 	// Context is the canonical source for shared render wiring while connected.
 	// Props are explicit fallback when context is unavailable.
@@ -76,12 +78,34 @@
 		Number.isFinite(itemIndex) ? Math.max(0, Number(itemIndex)) + 1 : 1,
 	);
 	const totalItems = $derived(Number.isFinite(itemCount) ? Math.max(1, Number(itemCount)) : 1);
-	const headerTitle = $derived(totalItems > 1 ? `Question ${itemPosition}` : "Question");
+	const defaultHeaderTitle = $derived(totalItems > 1 ? `Question ${itemPosition}` : "Question");
+	const effectiveCardTitleFormatter = $derived(
+		(contextConnected ? contextCardTitleFormatter : null) || null,
+	);
+	const headerTitle = $derived.by(() => {
+		if (!effectiveCardTitleFormatter) return defaultHeaderTitle;
+		try {
+			const nextTitle = effectiveCardTitleFormatter({
+				kind: "item",
+				item,
+				itemIndex: itemPosition - 1,
+				itemCount: totalItems,
+				canonicalItemId,
+				defaultTitle: defaultHeaderTitle,
+			});
+			if (typeof nextTitle !== "string") return defaultHeaderTitle;
+			const trimmedTitle = nextTitle.trim();
+			return trimmedTitle || defaultHeaderTitle;
+		} catch {
+			return defaultHeaderTitle;
+		}
+	});
 
 	function resetContextOverrides(): void {
 		contextConnected = false;
 		contextResolvedPlayerTag = null;
 		contextPlayerAction = null;
+		contextCardTitleFormatter = null;
 	}
 
 	function applyCardRenderContext(value: SectionPlayerCardRenderContext): void {
@@ -91,6 +115,9 @@
 		}
 		if (typeof value.playerAction === "function") {
 			contextPlayerAction = value.playerAction;
+		}
+		if (typeof value.cardTitleFormatter === "function") {
+			contextCardTitleFormatter = value.cardTitleFormatter;
 		}
 	}
 

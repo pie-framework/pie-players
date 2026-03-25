@@ -115,6 +115,17 @@
 	let eventDebuggerElement: any = $state(null);
 	let instrumentationDebuggerElement: any = $state(null);
 	let pnpDebuggerElement: any = $state(null);
+let customTitlesEnabled = $state(false);
+
+const demoCardTitleFormatter = (context: any) => {
+	if (context?.kind === 'item') {
+		return `Custom question ${Number(context.itemIndex) + 1}`;
+	}
+	if (context?.kind === 'passage') {
+		return 'Custom passage';
+	}
+	return context?.defaultTitle;
+};
 
 	const DEMO_PERSISTENCE_STORAGE_PREFIX = `pie:section-controller:v1:${DEMO_ASSESSMENT_ID}:`;
 	let resolvedSectionForPlayer = $derived.by(() => {
@@ -232,6 +243,12 @@
 		url.searchParams.set(ATTEMPT_QUERY_PARAM, attemptId);
 		url.searchParams.set('layout', layoutType);
 		window.history.replaceState({}, '', url.toString());
+	});
+
+	$effect(() => {
+		if (!browser) return;
+		const url = new URL(window.location.href);
+		customTitlesEnabled = url.searchParams.get('customTitles') === '1';
 	});
 
 	$effect(() => {
@@ -449,6 +466,7 @@
 				toolbar-position="right"
 				show-toolbar={true}
 				enabled-tools={sectionToolbarTools}
+				cardTitleFormatter={customTitlesEnabled ? demoCardTitleFormatter : undefined}
 				ontoolkit-ready={handleToolkitReady}
 			></pie-section-player-vertical>
 		{:else}
@@ -467,6 +485,7 @@
 				toolbar-position="right"
 				show-toolbar={true}
 				enabled-tools={sectionToolbarTools}
+				cardTitleFormatter={customTitlesEnabled ? demoCardTitleFormatter : undefined}
 				ontoolkit-ready={handleToolkitReady}
 			></pie-section-player-splitpane>
 		{/if}

@@ -61,11 +61,13 @@ Both layout elements support:
 - `toolbar-position` (string): `top|right|bottom|left|none`
 - `narrow-layout-breakpoint` (number, optional): viewport width in px below which the layout collapses (split pane: single column; vertical: toolbar moves to top). Clamped to 400–2000; default 1100.
 - `show-toolbar` (boolean-like): accepts `true/false` and common string forms (`"true"`, `"false"`, `"1"`, `"0"`, `"yes"`, `"no"`)
-- Host extension props (JS properties only): `toolRegistry`, `sectionHostButtons`, `itemHostButtons`, `passageHostButtons`
+- Host extension props (JS properties only): `toolRegistry`, `sectionHostButtons`, `itemHostButtons`, `passageHostButtons`, `cardTitleFormatter`
 
 When viewport width is within the collapsed range (~1100px and below), inline section
 toolbar positions (`left`/`right`) normalize to `top` so controls remain horizontally
 laid out and easier to access.
+
+`cardTitleFormatter` remains active across responsive splitpane transitions (split -> stacked and stacked -> split), because title rendering is provided through shared card context rather than layout-specific state.
 
 ### API direction: CE defaults first, JS customization for advanced cases
 
@@ -80,6 +82,19 @@ The intended usage model is:
   - Apply custom policy/gating in host code (for example, domain-specific `canNext` based on controller events like `section-items-complete-changed`)
   - Compose forward/backward eligibility in host code using `selectNavigation()` + host state; there is intentionally no separate parallel CE gating API for this
   - Inject custom toolbar tooling with `toolRegistry` and optional host button arrays (`sectionHostButtons`, `itemHostButtons`, `passageHostButtons`)
+  - Customize item/passage card headings via `cardTitleFormatter`
+
+Example:
+
+```ts
+const host = document.querySelector("pie-section-player-splitpane") as any;
+host.cardTitleFormatter = (context: any) => {
+  if (context.kind === "item") {
+    return `Question ${context.itemIndex + 1}: ${context.item?.name || context.defaultTitle}`;
+  }
+  return context.passage?.name || context.defaultTitle;
+};
+```
 
 Advanced CE props are still supported as escape hatches (`runtime`, `coordinator`, `createSectionController`, etc.), but hosts should prefer JS/controller composition for non-standard behavior.
 

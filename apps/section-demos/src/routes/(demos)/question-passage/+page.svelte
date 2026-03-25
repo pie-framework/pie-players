@@ -44,12 +44,12 @@
 			}
 		},
 		placement: {
-			section: ['theme', 'graph', 'lineReader'],
+			section: ['theme', 'graph'],
 			item: ['textToSpeech', 'annotationToolbar'],
-			passage: ['textToSpeech', 'annotationToolbar']
+			passage: ['textToSpeech', 'annotationToolbar', 'lineReader']
 		}
 	};
-	const sectionToolbarTools = 'theme,graph,lineReader';
+	const sectionToolbarTools = 'theme,graph';
 	const sectionInstrumentationProvider = new CompositeInstrumentationProvider([
 		new NewRelicInstrumentationProvider(),
 		new DebugPanelInstrumentationProvider()

@@ -65,9 +65,17 @@
 				}
 			},
 			placement: {
-				section: ['theme', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
-				item: ['calculator', 'textToSpeech', 'answerEliminator', 'annotationToolbar'],
-				passage: ['textToSpeech', 'annotationToolbar']
+				section: ['theme', 'graph', 'periodicTable'],
+				item: [
+					'calculator',
+					'textToSpeech',
+					'answerEliminator',
+					'annotationToolbar',
+					'lineReader',
+					'ruler',
+					'protractor'
+				],
+				passage: ['textToSpeech', 'annotationToolbar', 'lineReader']
 			}
 		}
 	});
@@ -78,7 +86,7 @@
 			toolsConfigResult.diagnostics
 		);
 	}
-	const sectionToolbarTools = 'theme,graph,periodicTable,protractor,lineReader,ruler';
+	const sectionToolbarTools = 'theme,graph,periodicTable';
 	const sectionInstrumentationProvider = new CompositeInstrumentationProvider([
 		new NewRelicInstrumentationProvider(),
 		new DebugPanelInstrumentationProvider()

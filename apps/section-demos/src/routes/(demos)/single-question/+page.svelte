@@ -42,12 +42,12 @@
 			textToSpeech: SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER
 		},
 		placement: {
-			section: ['theme', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
-			item: [],
+			section: ['theme', 'graph', 'periodicTable'],
+			item: ['lineReader', 'ruler', 'protractor'],
 			passage: []
 		}
 	};
-	const sectionToolbarTools = 'theme,graph,periodicTable,protractor,lineReader,ruler';
+	const sectionToolbarTools = 'theme,graph,periodicTable';
 	const sectionInstrumentationProvider = new CompositeInstrumentationProvider([
 		new NewRelicInstrumentationProvider(),
 		new DebugPanelInstrumentationProvider()

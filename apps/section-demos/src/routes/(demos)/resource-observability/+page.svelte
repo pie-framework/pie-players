@@ -42,12 +42,12 @@
 			}
 		},
 		placement: {
-			section: ['theme', 'lineReader'],
+			section: ['theme'],
 			item: ['textToSpeech', 'annotationToolbar'],
-			passage: ['textToSpeech', 'annotationToolbar']
+			passage: ['textToSpeech', 'annotationToolbar', 'lineReader']
 		}
 	};
-	const sectionToolbarTools = 'theme,lineReader';
+	const sectionToolbarTools = 'theme';
 	const sectionInstrumentationProvider = new CompositeInstrumentationProvider([
 		new NewRelicInstrumentationProvider(),
 		new DebugPanelInstrumentationProvider()

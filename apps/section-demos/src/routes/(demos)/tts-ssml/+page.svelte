@@ -61,9 +61,17 @@
 				}
 			},
 			placement: {
-				section: ['theme', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
-				item: ['calculator', 'textToSpeech', 'answerEliminator', 'annotationToolbar'],
-				passage: ['textToSpeech', 'annotationToolbar']
+				section: ['theme', 'graph', 'periodicTable'],
+				item: [
+					'calculator',
+					'textToSpeech',
+					'answerEliminator',
+					'annotationToolbar',
+					'lineReader',
+					'ruler',
+					'protractor'
+				],
+				passage: ['textToSpeech', 'annotationToolbar', 'lineReader']
 			}
 		}
 	});
@@ -71,8 +79,7 @@
 	if (toolsConfigResult.diagnostics.length > 0) {
 		console.warn('[tts-ssml demo] tools config diagnostics:', toolsConfigResult.diagnostics);
 	}
-	const sectionToolbarTools =
-		'theme,graph,periodicTable,protractor,lineReader,ruler,annotationToolbar';
+	const sectionToolbarTools = 'theme,graph,periodicTable';
 	const sectionInstrumentationProvider = new CompositeInstrumentationProvider([
 		new NewRelicInstrumentationProvider(),
 		new DebugPanelInstrumentationProvider()

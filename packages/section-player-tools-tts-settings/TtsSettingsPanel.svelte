@@ -479,7 +479,7 @@ function debugPreview(event: string, payload?: Record<string, unknown>): void {
 	}
 
 	function initializeFromCoordinator() {
-		const existing = toolkitCoordinator?.getToolConfig?.("tts") || {};
+		const existing = toolkitCoordinator?.getToolConfig?.("textToSpeech") || {};
 		const stored = readStoredSettings();
 		const source = stored ? { ...existing, ...stored } : existing;
 		const resolvedDefaultApiEndpoint = getDefaultApiEndpoint();
@@ -1436,7 +1436,7 @@ function normalizePreviewSpeechMarkOffsets(
 						`Custom provider '${provider.id}' did not return apply config.`
 					);
 				}
-				toolkitCoordinator.updateToolConfig("tts", {
+				toolkitCoordinator.updateToolConfig("textToSpeech", {
 					enabled: true,
 					...next.config
 				});
@@ -1455,7 +1455,7 @@ function normalizePreviewSpeechMarkOffsets(
 					pitch: normalizePitch(browserPitch),
 					transportMode: "pie" as const
 				};
-				toolkitCoordinator.updateToolConfig("tts", {
+				toolkitCoordinator.updateToolConfig("textToSpeech", {
 					enabled: true,
 					...next
 				});
@@ -1464,7 +1464,6 @@ function normalizePreviewSpeechMarkOffsets(
 				const next = {
 					backend: "polly" as const,
 					serverProvider: "polly" as const,
-					provider: "polly" as const,
 					apiEndpoint: normalizeApiEndpoint(pollyApiEndpoint, getDefaultApiEndpoint()),
 					transportMode: "pie" as const,
 					endpointMode: "synthesizePath" as const,
@@ -1483,7 +1482,7 @@ function normalizePreviewSpeechMarkOffsets(
 						speechMarkTypes: getPollySpeechMarkTypes()
 					}
 				};
-				toolkitCoordinator.updateToolConfig("tts", {
+				toolkitCoordinator.updateToolConfig("textToSpeech", {
 					enabled: true,
 					...next
 				});
@@ -1492,7 +1491,6 @@ function normalizePreviewSpeechMarkOffsets(
 				const next = {
 					backend: "google" as const,
 					serverProvider: "google" as const,
-					provider: "google" as const,
 					apiEndpoint: normalizeApiEndpoint(googleApiEndpoint, getDefaultApiEndpoint()),
 					transportMode: "pie" as const,
 					endpointMode: "synthesizePath" as const,
@@ -1503,13 +1501,15 @@ function normalizePreviewSpeechMarkOffsets(
 					googleVoiceType,
 					googleGender
 				};
-				toolkitCoordinator.updateToolConfig("tts", {
+				toolkitCoordinator.updateToolConfig("textToSpeech", {
 					enabled: true,
 					...next
 				});
 				persistSettings(next);
 			}
-			await toolkitCoordinator?.ensureTTSReady?.(toolkitCoordinator?.getToolConfig?.("tts"));
+			await toolkitCoordinator?.ensureTTSReady?.(
+				toolkitCoordinator?.getToolConfig?.("textToSpeech"),
+			);
 			if (isBuiltInTab(activeTab)) {
 				applyMessage = `Applied ${activeTab} TTS settings.`;
 			}

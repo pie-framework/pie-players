@@ -232,6 +232,7 @@
 	{section}
 	section-id={sectionId}
 	attempt-id={attemptId}
+	{toolRegistry}
 	oncomposition-changed={handleCompositionChanged}
 	onsection-ready={handleSectionReady}
 	onruntime-error={handleRuntimeError}

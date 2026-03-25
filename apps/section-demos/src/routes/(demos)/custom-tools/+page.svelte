@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { browser } from "$app/environment";
 	import {
+		createToolsConfig,
 		createDefaultPersonalNeedsProfile,
 		ToolkitCoordinator,
 		type ToolkitCoordinatorHooks,
@@ -33,22 +34,39 @@
 	let { data }: { data: PageData } = $props();
 	const customTools = createDemoCustomToolsIntegration();
 
-	const toolkitToolsConfig = {
-		providers: {
-			tts: SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER,
-			calculator: {
-				authFetcher: fetchDesmosAuthConfig,
+	// Safe host config pattern:
+	// 1) Build tools config via createToolsConfig so runtime + diagnostics contract is shared.
+	// 2) Provide the same registry used by custom tools so placement/provider IDs validate correctly.
+	const toolsConfigResult = createToolsConfig({
+		source: "section-demos.custom-tools",
+		strictness: "error",
+		toolRegistry: customTools.toolRegistry,
+		tools: {
+			providers: {
+				textToSpeech: SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER,
+				calculator: {
+					authFetcher: fetchDesmosAuthConfig,
+				},
+			},
+			placement: {
+				section: ["sectionMetaInfo", "theme"],
+				item: ["wordCounter", "calculator"],
+				passage: ["wordCounter", "textToSpeech"],
 			},
 		},
-		placement: {
-			section: ["sectionMetaInfo", "theme"],
-			item: ["wordCounter", "calculator"],
-			passage: ["wordCounter", "textToSpeech"],
-		},
-	};
+	});
+	const toolkitToolsConfig = toolsConfigResult.config;
+	if (toolsConfigResult.diagnostics.length > 0) {
+		console.warn(
+			"[custom-tools demo] tools config diagnostics:",
+			toolsConfigResult.diagnostics,
+		);
+	}
 	const sectionToolbarTools = "sectionMetaInfo,theme";
 	const coordinator = new ToolkitCoordinator({
 		assessmentId: DEMO_ASSESSMENT_ID,
+		toolRegistry: customTools.toolRegistry,
+		toolConfigStrictness: "error",
 		tools: toolkitToolsConfig,
 	});
 

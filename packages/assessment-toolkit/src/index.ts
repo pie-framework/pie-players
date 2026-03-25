@@ -144,6 +144,8 @@ export {
 	PACKAGED_TOOL_PLACEMENT,
 	registerPackagedTools,
 } from "./services/createDefaultToolRegistry.js";
+export type { CreateToolsConfigArgs } from "./services/create-tools-config.js";
+export { createToolsConfig } from "./services/create-tools-config.js";
 export {
 	DEFAULT_PERSONAL_NEEDS_PROFILE,
 	createDefaultPersonalNeedsProfile,
@@ -235,6 +237,13 @@ export type {
 	ToolProvidersConfig,
 } from "./services/tools-config-normalizer.js";
 export type {
+	ToolConfigDiagnostic,
+	ToolConfigDiagnosticSeverity,
+	ToolConfigStrictness,
+	ToolConfigValidationOptions,
+	ToolConfigValidationResult,
+} from "./services/tool-config-validation.js";
+export type {
 	ToolbarButtonItem,
 	ToolbarItem,
 	ToolbarItemBase,
@@ -244,6 +253,7 @@ export {
 	isExternalIconUrl,
 	isInlineSvgIcon,
 	isToolbarLinkItem,
+	isValidToolbarItemShape,
 } from "./services/toolbar-items.js";
 export {
 	normalizeToolsConfig,
@@ -252,6 +262,7 @@ export {
 	parseToolList,
 	resolveToolsForLevel,
 } from "./services/tools-config-normalizer.js";
+export { normalizeAndValidateToolsConfig } from "./services/tool-config-validation.js";
 export type {
 	ParsedToolInstanceId,
 	ToolScopeLevel,

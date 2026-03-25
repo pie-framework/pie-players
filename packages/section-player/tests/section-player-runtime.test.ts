@@ -1,4 +1,5 @@
 import { describe, expect, mock, test } from "bun:test";
+import { createPackagedToolRegistry } from "@pie-players/pie-assessment-toolkit";
 
 mock.module("@pie-players/pie-item-player", () => ({}));
 
@@ -86,6 +87,7 @@ describe("resolveRuntime", () => {
 			isolation: "inherit",
 			env: null,
 			runtime: {
+				toolConfigStrictness: "off",
 				player: {
 					loaderConfig: {
 						resourceRetryDelay: 750,
@@ -96,6 +98,7 @@ describe("resolveRuntime", () => {
 				},
 			},
 			effectiveToolsConfig: {},
+			toolConfigStrictness: "error",
 		});
 
 		expect((merged.player as any).loaderConfig.trackPageActions).toBe(true);
@@ -105,5 +108,65 @@ describe("resolveRuntime", () => {
 			"https://top-level.example",
 		);
 		expect((merged.player as any).loaderOptions.moduleResolution).toBe("import-map");
+		expect((merged as any).toolConfigStrictness).toBe("off");
+	});
+});
+
+describe("resolveToolsConfig", () => {
+	test("validates toolbar overlays with strict error mode", async () => {
+		const { resolveToolsConfig } = await loadRuntimeModule();
+		const toolRegistry = createPackagedToolRegistry();
+
+		expect(() =>
+			resolveToolsConfig({
+				runtime: {
+					toolConfigStrictness: "error",
+				},
+				tools: null,
+				enabledTools: "unknownTool",
+				itemToolbarTools: "",
+				passageToolbarTools: "",
+				toolRegistry,
+			}),
+		).toThrow(`Unknown tool id "unknownTool"`);
+	});
+
+	test("defaults overlays to strict error mode", async () => {
+		const { resolveToolsConfig } = await loadRuntimeModule();
+		const toolRegistry = createPackagedToolRegistry();
+
+		expect(() =>
+			resolveToolsConfig({
+				runtime: null,
+				tools: null,
+				enabledTools: "unknownTool",
+				itemToolbarTools: "",
+				passageToolbarTools: "",
+				toolRegistry,
+			}),
+		).toThrow(`Unknown tool id "unknownTool"`);
+	});
+
+	test("accepts canonical provider key textToSpeech", async () => {
+		const { resolveToolsConfig } = await loadRuntimeModule();
+		const toolRegistry = createPackagedToolRegistry();
+		const resolved = resolveToolsConfig({
+			runtime: {
+				toolConfigStrictness: "error",
+			},
+			tools: {
+				providers: {
+					textToSpeech: {
+						enabled: true,
+						backend: "browser",
+					},
+				},
+			},
+			enabledTools: "",
+			itemToolbarTools: "",
+			passageToolbarTools: "",
+			toolRegistry,
+		});
+		expect(resolved.providers.textToSpeech?.enabled).toBe(true);
 	});
 });

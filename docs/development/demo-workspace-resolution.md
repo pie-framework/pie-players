@@ -28,7 +28,7 @@ Uses a **small** set of explicit `dist` aliases where needed (see its `vite.conf
 
 ## TTS defaults (Polly)
 
-`ToolkitCoordinator` defaults to **browser** TTS unless `tools.providers.tts` sets a server backend. Section-demos merges a shared **AWS Polly** preset (`apps/section-demos/src/lib/demo-runtime/section-demos-default-tts.ts`) into each demo’s `toolkitToolsConfig` so playback and the TTS settings panel default to **`/api/tts`** (Polly) instead of Web Speech.
+`ToolkitCoordinator` defaults to **browser** TTS unless `tools.providers.textToSpeech` sets a server backend. Section-demos merges a shared **AWS Polly** preset (`apps/section-demos/src/lib/demo-runtime/section-demos-default-tts.ts`) into each demo’s `toolkitToolsConfig` so playback and the TTS settings panel default to **`/api/tts`** (Polly) instead of Web Speech.
 
 ## Related scripts
 

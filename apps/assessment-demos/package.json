@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/assessment-demos",
-	"version": "0.1.13",
+	"version": "0.1.14",
 	"description": "Progressive demos for PIE Assessment Player",
 	"type": "module",
 	"private": true,

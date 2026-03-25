@@ -1,5 +1,21 @@
 # @pie-players/assessment-demos
 
+## 0.1.14
+
+### Patch Changes
+
+- Updated dependencies
+  - @pie-players/pie-assessment-player@0.3.26
+  - @pie-players/pie-assessment-toolkit@0.3.26
+  - @pie-players/pie-players-shared@0.3.26
+  - @pie-players/pie-section-player-tools-event-debugger@0.3.26
+  - @pie-players/pie-section-player-tools-instrumentation-debugger@0.3.26
+  - @pie-players/pie-section-player-tools-session-debugger@0.3.26
+  - @pie-players/pie-section-player-tools-shared@0.3.26
+  - @pie-players/pie-tool-text-to-speech@0.3.26
+  - @pie-players/tts-server-google@0.3.26
+  - @pie-players/tts-server-polly@0.3.26
+
 ## 0.1.13
 
 ### Patch Changes

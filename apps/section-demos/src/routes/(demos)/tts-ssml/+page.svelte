@@ -7,6 +7,7 @@
 	} from '@pie-players/pie-players-shared';
 	import { onDestroy } from 'svelte';
 	import {
+		createToolsConfig,
 		createDefaultPersonalNeedsProfile,
 		ToolkitCoordinator,
 		type ToolkitCoordinatorHooks
@@ -46,22 +47,30 @@
 	let { data }: { data: PageData } = $props();
 
 	// Level 4: CE setup plus controller JS API subscriptions.
-	const toolkitToolsConfig = {
-		providers: {
-			tts: SECTION_DEMOS_SC_TTS_TOOL_PROVIDER,
-			calculator: {
-				authFetcher: fetchDesmosAuthConfig
+	const toolsConfigResult = createToolsConfig({
+		source: 'section-demos.tts-ssml',
+		strictness: 'error',
+		tools: {
+			providers: {
+				textToSpeech: SECTION_DEMOS_SC_TTS_TOOL_PROVIDER,
+				calculator: {
+					authFetcher: fetchDesmosAuthConfig
+				},
+				annotationToolbar: {
+					enabled: true
+				}
 			},
-			annotationToolbar: {
-				enabled: true
+			placement: {
+				section: ['theme', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
+				item: ['calculator', 'textToSpeech', 'answerEliminator', 'annotationToolbar'],
+				passage: ['textToSpeech', 'annotationToolbar']
 			}
-		},
-		placement: {
-			section: ['theme', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
-			item: ['calculator', 'textToSpeech', 'answerEliminator', 'annotationToolbar'],
-			passage: ['textToSpeech', 'annotationToolbar']
 		}
-	};
+	});
+	const toolkitToolsConfig = toolsConfigResult.config;
+	if (toolsConfigResult.diagnostics.length > 0) {
+		console.warn('[tts-ssml demo] tools config diagnostics:', toolsConfigResult.diagnostics);
+	}
 	const sectionToolbarTools =
 		'theme,graph,periodicTable,protractor,lineReader,ruler,annotationToolbar';
 	const sectionInstrumentationProvider = new CompositeInstrumentationProvider([
@@ -86,6 +95,7 @@
 	};
 	const coordinator = new ToolkitCoordinator({
 		assessmentId: DEMO_ASSESSMENT_ID,
+		toolConfigStrictness: 'error',
 		tools: toolkitToolsConfig
 	});
 

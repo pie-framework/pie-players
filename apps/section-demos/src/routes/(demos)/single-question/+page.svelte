@@ -39,7 +39,7 @@
 	// Level 1: CE-first setup with direct custom-element props/attrs.
 	const toolkitToolsConfig = {
 		providers: {
-			tts: SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER
+			textToSpeech: SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER
 		},
 		placement: {
 			section: ['theme', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],

@@ -12,6 +12,7 @@
 			player: { type: "Object", reflect: false },
 			lazyInit: { attribute: "lazy-init", type: "Boolean" },
 			tools: { type: "Object", reflect: false },
+			toolRegistry: { type: "Object", reflect: false },
 			accessibility: { type: "Object", reflect: false },
 			coordinator: { type: "Object", reflect: false },
 			createSectionController: { type: "Object", reflect: false },
@@ -25,6 +26,7 @@
 	import "@pie-players/pie-assessment-toolkit/components/pie-assessment-toolkit-element";
 	import {
 		createDefaultPersonalNeedsProfile,
+		type ToolRegistry,
 	} from "@pie-players/pie-assessment-toolkit";
 	import {
 		normalizeToolsConfig,
@@ -54,6 +56,7 @@
 		player = null as Record<string, unknown> | null,
 		lazyInit = DEFAULT_LAZY_INIT,
 		tools = null as Record<string, unknown> | null,
+		toolRegistry = null as ToolRegistry | null,
 		accessibility = null as Record<string, unknown> | null,
 		coordinator = null as unknown,
 		createSectionController = null as unknown,
@@ -79,6 +82,12 @@
 	const effectivePlayer = $derived.by(() => runtime?.player ?? player);
 	const effectiveLazyInit = $derived.by(() => runtime?.lazyInit ?? lazyInit);
 	const effectiveTools = $derived.by(() => runtime?.tools ?? tools);
+	const effectiveToolConfigStrictness = $derived.by(() => {
+		const value = runtime?.toolConfigStrictness;
+		return value === "off" || value === "warn" || value === "error"
+			? value
+			: "error";
+	});
 	const effectiveAccessibility = $derived.by(
 		() => runtime?.accessibility ?? accessibility,
 	);
@@ -290,7 +299,9 @@
 	player={effectivePlayer}
 	env={effectiveEnv}
 	lazy-init={effectiveLazyInit}
+	tool-config-strictness={effectiveToolConfigStrictness}
 	tools={effectiveTools}
+	{toolRegistry}
 	accessibility={effectiveAccessibility}
 	coordinator={effectiveCoordinator}
 	isolation={effectiveIsolation}

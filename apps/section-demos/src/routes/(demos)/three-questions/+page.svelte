@@ -6,6 +6,7 @@
 		NewRelicInstrumentationProvider
 	} from '@pie-players/pie-players-shared';
 	import {
+		createToolsConfig,
 		createDefaultPersonalNeedsProfile,
 		ToolkitCoordinator,
 		type ToolkitCoordinatorHooks
@@ -41,22 +42,30 @@
 	let { data }: { data: PageData } = $props();
 
 	// Level 3: explicit host-managed coordinator initialization.
-	const toolkitToolsConfig = {
-		providers: {
-			tts: SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER,
-			calculator: {
-				authFetcher: fetchDesmosAuthConfig
+	const toolsConfigResult = createToolsConfig({
+		source: 'section-demos.three-questions',
+		strictness: 'error',
+		tools: {
+			providers: {
+				textToSpeech: SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER,
+				calculator: {
+					authFetcher: fetchDesmosAuthConfig
+				},
+				annotationToolbar: {
+					enabled: true
+				}
 			},
-			annotationToolbar: {
-				enabled: true
+			placement: {
+				section: ['theme', 'graph', 'periodicTable'],
+				item: ['calculator', 'textToSpeech', 'annotationToolbar'],
+				passage: ['textToSpeech', 'annotationToolbar']
 			}
-		},
-		placement: {
-			section: ['theme', 'graph', 'periodicTable'],
-			item: ['calculator', 'textToSpeech', 'annotationToolbar'],
-			passage: ['textToSpeech', 'annotationToolbar']
 		}
-	};
+	});
+	const toolkitToolsConfig = toolsConfigResult.config;
+	if (toolsConfigResult.diagnostics.length > 0) {
+		console.warn('[three-questions demo] tools config diagnostics:', toolsConfigResult.diagnostics);
+	}
 	const sectionToolbarTools = 'theme,graph,periodicTable';
 	const sectionInstrumentationProvider = new CompositeInstrumentationProvider([
 		new NewRelicInstrumentationProvider(),
@@ -80,6 +89,7 @@
 	};
 	const coordinator = new ToolkitCoordinator({
 		assessmentId: DEMO_ASSESSMENT_ID,
+		toolConfigStrictness: 'error',
 		tools: toolkitToolsConfig
 	});
 

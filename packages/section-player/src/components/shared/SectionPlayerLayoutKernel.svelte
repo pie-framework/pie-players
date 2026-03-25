@@ -6,6 +6,7 @@
 	import type {
 		ToolRegistry,
 		ToolbarItem,
+		ToolConfigStrictness,
 	} from "@pie-players/pie-assessment-toolkit";
 	import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
 	import type { SectionControllerHandle } from "@pie-players/pie-assessment-toolkit";
@@ -78,6 +79,7 @@
 		enabledTools = "",
 		itemToolbarTools = "",
 		passageToolbarTools = "",
+		toolConfigStrictness = "error" as ToolConfigStrictness,
 		toolRegistry = null as ToolRegistry | null,
 		sectionHostButtons = [] as ToolbarItem[],
 		itemHostButtons = [] as ToolbarItem[],
@@ -153,6 +155,8 @@
 			enabledTools,
 			itemToolbarTools,
 			passageToolbarTools,
+			toolRegistry,
+			toolConfigStrictness,
 		}),
 	);
 	const effectiveRuntime = $derived(runtimeState.effectiveRuntime);

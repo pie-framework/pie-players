@@ -10,7 +10,9 @@
 			view: { attribute: "view", type: "String" },
 			env: { attribute: "env", type: "Object" },
 			lazyInit: { attribute: "lazy-init", type: "Boolean" },
+			toolConfigStrictness: { attribute: "tool-config-strictness", type: "String" },
 			tools: { attribute: "tools", type: "Object" },
+			toolRegistry: { type: "Object", reflect: false },
 			accessibility: { attribute: "accessibility", type: "Object" },
 			player: { attribute: "player", type: "Object" },
 			playerType: { attribute: "player-type", type: "String" },
@@ -43,6 +45,8 @@
 	} from "../context/assessment-toolkit-context.js";
 	import { connectAssessmentToolkitHostRuntimeContext } from "../context/runtime-context-consumer.js";
 	import { ToolkitCoordinator } from "../services/ToolkitCoordinator.js";
+	import type { ToolRegistry } from "../services/ToolRegistry.js";
+	import type { ToolConfigStrictness } from "../services/tool-config-validation.js";
 	import {
 		PIE_INTERNAL_CONTENT_LOADED_EVENT,
 		PIE_INTERNAL_ITEM_SESSION_CHANGED_EVENT,
@@ -123,7 +127,9 @@ const DEFAULT_ENV = {
 		view = "candidate",
 		env = {},
 		lazyInit = true,
+		toolConfigStrictness = "error" as ToolConfigStrictness,
 		tools = {},
+		toolRegistry = null as ToolRegistry | null,
 		accessibility = {},
 		player = null as HostItemPlayerInput,
 		playerType = "" as ItemPlayerType | "",
@@ -326,7 +332,9 @@ const DEFAULT_ENV = {
 		return new ToolkitCoordinator({
 			assessmentId: fallbackAssessmentId,
 			lazyInit,
+			toolConfigStrictness,
 			tools: tools as any,
+			toolRegistry,
 			accessibility: accessibility as any,
 		});
 	}

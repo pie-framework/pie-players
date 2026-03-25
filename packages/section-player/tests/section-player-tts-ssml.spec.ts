@@ -52,12 +52,14 @@ async function forceBrowserTtsRuntime(page: Page): Promise<void> {
 	await page.locator("pie-section-player-tools-session-debugger").evaluate(async (element) => {
 		const coordinator = (element as any).toolkitCoordinator;
 		if (!coordinator?.updateToolConfig) return;
-		coordinator.updateToolConfig("tts", {
+		coordinator.updateToolConfig("textToSpeech", {
 			enabled: true,
 			backend: "browser",
 			transportMode: "pie",
 		});
-		await coordinator?.ensureTTSReady?.(coordinator?.getToolConfig?.("tts"));
+		await coordinator?.ensureTTSReady?.(
+			coordinator?.getToolConfig?.("textToSpeech"),
+		);
 	});
 }
 
@@ -346,7 +348,7 @@ test.describe("section player demo tts-ssml", () => {
 			.locator("pie-section-player-tools-session-debugger")
 			.evaluate((element) => {
 				const coordinator = (element as any).toolkitCoordinator;
-				const toolConfig = coordinator?.getToolConfig?.("tts") || null;
+				const toolConfig = coordinator?.getToolConfig?.("textToSpeech") || null;
 				const serviceConfig = (coordinator?.ttsService as any)?.ttsConfig || null;
 				return { toolConfig, serviceConfig };
 			});
@@ -517,7 +519,7 @@ test.describe("section player demo tts-ssml", () => {
 			.evaluate((element) => {
 				const coordinator = (element as any).toolkitCoordinator;
 				return {
-					backend: coordinator?.getToolConfig?.("tts")?.backend || null,
+					backend: coordinator?.getToolConfig?.("textToSpeech")?.backend || null,
 					providerId: coordinator?.ttsService?.currentProvider?.providerId || null,
 				};
 			});

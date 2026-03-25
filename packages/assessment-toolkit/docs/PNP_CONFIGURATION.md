@@ -30,7 +30,7 @@ AssessmentEntity
     │
     └── toolConfigs                # Tool-specific settings
         ├── calculator: {...}
-        └── tts: {...}
+        └── textToSpeech: {...}
 
 AssessmentItemRef
 └── settings: ItemSettings         # Per-item rules
@@ -274,8 +274,9 @@ const assessment: AssessmentEntity = {
 
     // Tool provider configurations
     toolConfigs: {
-      tts: {
-        provider: "polly",
+      textToSpeech: {
+        backend: "polly",
+        serverProvider: "polly",
         voice: "Matthew",
         rate: 1.0,
         providerOptions: {

@@ -6,6 +6,7 @@
 		NewRelicInstrumentationProvider
 	} from '@pie-players/pie-players-shared';
 	import {
+		createToolsConfig,
 		createDefaultPersonalNeedsProfile,
 		ToolkitCoordinator
 	} from '@pie-players/pie-assessment-toolkit';
@@ -50,22 +51,33 @@
 	let { data }: { data: PageData } = $props();
 
 	// Level 5: route-owned session hydration, save, and reset strategy.
-	const toolkitToolsConfig = {
-		providers: {
-			tts: SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER,
-			calculator: {
-				authFetcher: fetchDesmosAuthConfig
+	const toolsConfigResult = createToolsConfig({
+		source: 'section-demos.session-hydrate-db',
+		strictness: 'error',
+		tools: {
+			providers: {
+				textToSpeech: SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER,
+				calculator: {
+					authFetcher: fetchDesmosAuthConfig
+				},
+				annotationToolbar: {
+					enabled: true
+				}
 			},
-			annotationToolbar: {
-				enabled: true
+			placement: {
+				section: ['theme', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
+				item: ['calculator', 'textToSpeech', 'answerEliminator', 'annotationToolbar'],
+				passage: ['textToSpeech', 'annotationToolbar']
 			}
-		},
-		placement: {
-			section: ['theme', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
-			item: ['calculator', 'textToSpeech', 'answerEliminator', 'annotationToolbar'],
-			passage: ['textToSpeech', 'annotationToolbar']
 		}
-	};
+	});
+	const toolkitToolsConfig = toolsConfigResult.config;
+	if (toolsConfigResult.diagnostics.length > 0) {
+		console.warn(
+			'[session-hydrate-db demo] tools config diagnostics:',
+			toolsConfigResult.diagnostics
+		);
+	}
 	const sectionToolbarTools = 'theme,graph,periodicTable,protractor,lineReader,ruler';
 	const sectionInstrumentationProvider = new CompositeInstrumentationProvider([
 		new NewRelicInstrumentationProvider(),
@@ -95,6 +107,7 @@
 	};
 	const coordinator = new ToolkitCoordinator({
 		assessmentId: DEMO_ASSESSMENT_ID,
+		toolConfigStrictness: 'error',
 		tools: toolkitToolsConfig,
 		hooks: {
 			onError: (error, context) => {

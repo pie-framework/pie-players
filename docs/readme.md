@@ -64,6 +64,7 @@ This folder contains the active documentation set for `pie-players`. The focus i
 - [`tools-and-accomodations/architecture.md`](./tools-and-accomodations/architecture.md) - Overall tools and accommodations architecture
 - [`tools-and-accomodations/tool_provider_system.md`](./tools-and-accomodations/tool_provider_system.md) - Tool provider configuration and integration patterns
 - [`tools-and-accomodations/tool_host_contract.md`](./tools-and-accomodations/tool_host_contract.md) - Host and tool runtime contract
+- [`tools-and-accomodations/safe-custom-tool-config.md`](./tools-and-accomodations/safe-custom-tool-config.md) - Safe host-side custom tool configuration patterns
 
 ## Setup And Publishing
 

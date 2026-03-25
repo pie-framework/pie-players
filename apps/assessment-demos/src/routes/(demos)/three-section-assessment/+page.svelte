@@ -6,7 +6,10 @@ import {
 	DebugPanelInstrumentationProvider,
 	NewRelicInstrumentationProvider,
 } from "@pie-players/pie-players-shared";
-	import { ToolkitCoordinator } from "@pie-players/pie-assessment-toolkit";
+	import {
+		createToolsConfig,
+		ToolkitCoordinator,
+	} from "@pie-players/pie-assessment-toolkit";
 	import "@pie-players/pie-assessment-player/components/assessment-player-default-element";
 	import "@pie-players/pie-section-player-tools-event-debugger";
 import "@pie-players/pie-section-player-tools-instrumentation-debugger";
@@ -26,30 +29,42 @@ import "@pie-players/pie-section-player-tools-instrumentation-debugger";
 	const ATTEMPT_QUERY_PARAM = "attemptId";
 	const SECTION_LAYOUT_QUERY_PARAM = "sectionLayout";
 	const DEMO_ASSESSMENT_ID = "assessment-demo-001";
-	const toolkitToolsConfig = {
-		providers: {
-			tts: {
-				enabled: true,
-				backend: "polly",
-				serverProvider: "polly",
-				apiEndpoint: "/api/tts",
-				transportMode: "pie",
-				endpointMode: "synthesizePath",
-				endpointValidationMode: "voices",
-				defaultVoice: "Joanna",
-				language: "en-US",
-				rate: 1,
-				engine: "neural",
-				sampleRate: 24000,
-				format: "mp3",
-				speechMarksMode: "word",
+	const toolsConfigResult = createToolsConfig({
+		source: "assessment-demos.three-section-assessment",
+		strictness: "error",
+		tools: {
+			providers: {
+				textToSpeech: {
+					enabled: true,
+					backend: "polly",
+					serverProvider: "polly",
+					apiEndpoint: "/api/tts",
+					transportMode: "pie",
+					endpointMode: "synthesizePath",
+					endpointValidationMode: "voices",
+					defaultVoice: "Joanna",
+					language: "en-US",
+					rate: 1,
+					engine: "neural",
+					sampleRate: 24000,
+					format: "mp3",
+					speechMarksMode: "word",
+				},
+			},
+			placement: {
+				section: [],
+				item: ["textToSpeech"],
+				passage: ["textToSpeech"],
 			},
 		},
-		placement: {
-			item: ["textToSpeech"],
-			passage: ["textToSpeech"],
-		},
-	} as any;
+	});
+	const toolkitToolsConfig = toolsConfigResult.config;
+	if (toolsConfigResult.diagnostics.length > 0) {
+		console.warn(
+			"[three-section-assessment demo] tools config diagnostics:",
+			toolsConfigResult.diagnostics,
+		);
+	}
 
 	const coordinator = new ToolkitCoordinator({
 		assessmentId: DEMO_ASSESSMENT_ID,
@@ -183,7 +198,7 @@ let instrumentationDebuggerElement = $state<any>(null);
 
 		try {
 			await coordinator.ensureTTSReady(
-				coordinator.getToolConfig("tts") as Record<string, unknown>,
+				coordinator.getToolConfig("textToSpeech") as Record<string, unknown>,
 			);
 			await probePollyAvailability();
 			ttsBackend = "polly";
@@ -192,7 +207,7 @@ let instrumentationDebuggerElement = $state<any>(null);
 				"[Assessment Demo] Polly TTS unavailable, falling back to browser TTS:",
 				error,
 			);
-			coordinator.updateToolConfig("tts", {
+			coordinator.updateToolConfig("textToSpeech", {
 				backend: "browser",
 				provider: undefined,
 				serverProvider: undefined,

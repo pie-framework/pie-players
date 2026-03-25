@@ -53,6 +53,7 @@
 		isExternalIconUrl,
 		isInlineSvgIcon,
 		isToolbarLinkItem,
+		isValidToolbarItemShape,
 		type ToolbarItem
 	} from '../services/toolbar-items.js';
 	import type { PnpToolResolver } from '../services/PNPToolResolver.js';
@@ -420,11 +421,20 @@
 		}
 		return rendered;
 	});
-	const normalizedHostButtons = $derived.by((): ToolbarItem[] =>
-		Array.isArray(hostButtons)
-			? hostButtons.filter((item): item is ToolbarItem => !!item && typeof item.id === 'string')
-			: []
-	);
+	const normalizedHostButtons = $derived.by((): ToolbarItem[] => {
+		if (!Array.isArray(hostButtons)) return [];
+		const valid: ToolbarItem[] = [];
+		hostButtons.forEach((item, index) => {
+			if (isValidToolbarItemShape(item)) {
+				valid.push(item);
+				return;
+			}
+			console.warn(
+				`[ItemToolBar] Ignoring invalid host button at index ${index}. Expected { id, label, href | onClick } with valid types.`,
+			);
+		});
+		return valid;
+	});
 	const nativeToolbarItems = $derived.by((): ToolbarItem[] =>
 		renderedTools
 			.filter((renderedTool) => !!renderedTool.button)

@@ -15,6 +15,7 @@ import type {
 } from "./interfaces.js";
 import type { ToolProviderApi } from "./tool-providers/ToolProviderApi.js";
 import type { ToolProviderConfig as ToolRuntimeConfig } from "./tools-config-normalizer.js";
+import type { ToolConfigDiagnostic } from "./tool-config-validation.js";
 import { normalizeToolAlias } from "./tools-config-normalizer.js";
 
 export type ToolModuleLoader = () => Promise<unknown>;
@@ -102,6 +103,12 @@ export interface ToolProviderDescriptor {
 	getProviderId?: (config: ToolRuntimeConfig | undefined) => string;
 	createProvider: (config: ToolRuntimeConfig | undefined) => ToolProviderApi;
 	getInitConfig?: (config: ToolRuntimeConfig | undefined) => Record<string, unknown>;
+	sanitizeConfig?: (
+		config: ToolRuntimeConfig,
+	) => ToolRuntimeConfig;
+	validateConfig?: (
+		config: ToolRuntimeConfig,
+	) => ToolConfigDiagnostic[];
 	getAuthFetcher?: (
 		config: ToolRuntimeConfig | undefined,
 	) => (() => Promise<Record<string, unknown>>) | undefined;

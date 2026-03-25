@@ -33,7 +33,7 @@ const toolkitCoordinator = new ToolkitCoordinator({
   assessmentId: 'my-assessment',
   tools: {
     providers: {
-      tts: { enabled: true, backend: 'browser' },
+      textToSpeech: { enabled: true, backend: 'browser' },
       calculator: { enabled: true }
     },
     placement: {
@@ -126,7 +126,7 @@ const coordinator = new ToolkitCoordinator({
   assessmentId: 'demo-assessment',
   tools: {
     providers: {
-      tts: { enabled: true, backend: 'browser', defaultVoice: 'en-US' },
+      textToSpeech: { enabled: true, backend: 'browser', defaultVoice: 'en-US' },
       calculator: { enabled: true }
     },
     placement: {
@@ -219,7 +219,7 @@ The toolkit uses one canonical `tools` model with three concerns:
 
 - `policy`: allow/block constraints (global gates)
 - `placement`: where tools appear (`assessment`, `section`, `item`, `passage`, `rubric`, plus custom registered levels)
-- `providers`: provider/runtime options (calculator, tts, etc.)
+- `providers`: provider/runtime options (calculator, textToSpeech, etc.)
 
 Example:
 
@@ -238,7 +238,7 @@ tools: {
   },
   providers: {
     calculator: { authFetcher: async () => ({ apiKey: '...' }) },
-    tts: { enabled: true, backend: 'browser', defaultVoice: 'en-US' }
+    textToSpeech: { enabled: true, backend: 'browser', defaultVoice: 'en-US' }
   }
 }
 ```
@@ -361,7 +361,7 @@ const coordinator = new ToolkitCoordinator({
           return response.json();
         }
       },
-      tts: { enabled: true, backend: 'browser' }
+      textToSpeech: { enabled: true, backend: 'browser' }
     }
   },
   accessibility: {
@@ -386,7 +386,7 @@ const coordinator = new ToolkitCoordinator({
     },
     providers: {
       calculator: { enabled: true },
-      tts: { enabled: true, backend: 'browser' }
+      textToSpeech: { enabled: true, backend: 'browser' }
     }
   }
 });
@@ -402,7 +402,7 @@ Common options are defaulted so you can start with:
 ```typescript
 tools: {
   providers: {
-    tts: {
+    textToSpeech: {
       enabled: true,
       backend: 'polly'
     }
@@ -425,7 +425,7 @@ Inline TTS speed buttons are configurable via `speedOptions` in provider setting
 ```typescript
 tools: {
   providers: {
-    tts: {
+    textToSpeech: {
       enabled: true,
       backend: "browser",
       settings: {
@@ -468,7 +468,7 @@ requires runtime auth material for TTS requests:
 ```typescript
 tools: {
   providers: {
-    tts: {
+    textToSpeech: {
       enabled: true,
       backend: 'polly',
       apiEndpoint: '/api/tts',
@@ -493,7 +493,7 @@ prefer a host-owned proxy endpoint so secrets never ship to the browser.
 ```typescript
 tools: {
   providers: {
-    tts: {
+    textToSpeech: {
       enabled: true,
       backend: "server",
       serverProvider: "custom",
@@ -615,7 +615,7 @@ export interface ToolkitCoordinatorConfig {
       rubric?: string[];
     };
     providers?: {
-      tts?: {
+      textToSpeech?: {
         enabled?: boolean;
         backend?: 'browser' | 'polly' | 'google' | 'server';
         defaultVoice?: string;
@@ -627,6 +627,7 @@ export interface ToolkitCoordinatorConfig {
       };
     };
   };
+  toolRegistry?: ToolRegistry | null;
   accessibility?: {
     catalogs?: any[];
     language?: string;
@@ -642,9 +643,9 @@ const services = coordinator.getServiceBundle();
 // Returns: { ttsService, toolCoordinator, highlightCoordinator, elementToolStateStore, catalogResolver }
 
 // Tool configuration
-coordinator.isToolEnabled('tts');  // Check if tool is enabled
-coordinator.getToolConfig('tts');  // Get tool-specific config
-coordinator.updateToolConfig('tts', { rate: 1.5 });  // Update tool config
+coordinator.isToolEnabled('textToSpeech');  // Check if tool is enabled
+coordinator.getToolConfig('textToSpeech');  // Get tool-specific config
+coordinator.updateToolConfig('textToSpeech', { rate: 1.5 });  // Update tool config
 ```
 
 ### Direct Service Access
@@ -865,7 +866,7 @@ The section player provides automatic ToolkitCoordinator integration:
   const coordinator = new ToolkitCoordinator({
     assessmentId: 'my-assessment',
     tools: {
-      providers: { tts: { enabled: true, backend: 'browser' } },
+      providers: { textToSpeech: { enabled: true, backend: 'browser' } },
       placement: {
         section: ['calculator', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
         item: ['calculator', 'textToSpeech', 'answerEliminator'],
@@ -929,7 +930,7 @@ player.section = mySection;
 // new ToolkitCoordinator({
 //   assessmentId: 'anon_...',  // auto-generated
 //   tools: {
-//     providers: { tts: { enabled: true, backend: 'browser' }, calculator: { enabled: true } },
+//     providers: { textToSpeech: { enabled: true, backend: 'browser' }, calculator: { enabled: true } },
 //     placement: {
 //       section: ['calculator', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
 //       item: ['calculator', 'textToSpeech', 'answerEliminator'],
@@ -938,6 +939,47 @@ player.section = mySection;
 //   }
 // })
 ```
+
+### Safe Custom Tool Configuration
+
+Use `createToolsConfig()` to normalize and validate host-provided tool config before creating the coordinator:
+
+```typescript
+import {
+  createPackagedToolRegistry,
+  createToolsConfig,
+  ToolkitCoordinator
+} from "@pie-players/pie-assessment-toolkit";
+
+const toolRegistry = createPackagedToolRegistry();
+const { config, diagnostics } = createToolsConfig({
+  source: "host.bootstrap",
+  strictness: "error",
+  toolRegistry,
+  tools: {
+    providers: {
+      textToSpeech: { enabled: true, backend: "browser" },
+      calculator: { enabled: true }
+    },
+    placement: {
+      item: ["calculator", "textToSpeech"]
+    }
+  }
+});
+
+// Fail-fast default: invalid config throws at the boundary.
+const coordinator = new ToolkitCoordinator({
+  assessmentId: "demo-assessment",
+  toolRegistry,
+  tools: config,
+  toolConfigStrictness: "error"
+});
+```
+
+Notes:
+- `providers.textToSpeech` is the canonical TTS provider key.
+- `providers.tts` is rejected by the validation contract.
+- Custom tools can provide provider-level `sanitizeConfig` and `validateConfig` hooks.
 
 ## State Separation: Tool State vs Session Data
 

@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import {
 	buildRuntimeTTSConfig,
+	resolveTTSHostToolbarLayout,
+	resolveTTSLayoutMode,
 	resolveRuntimeProvider,
 	resolveTTSBackend,
 	resolveTTSRuntimeSettings,
@@ -144,6 +146,48 @@ describe("tts-runtime-config defaults", () => {
 		expect(provider).toBe("polly");
 		expect(runtimeConfig.provider).toBe("polly");
 		expect(runtimeConfig.transportMode).toBe("pie");
+	});
+
+	test("defaults layout mode to reserved-row", () => {
+		const settings = resolveTTSRuntimeSettings({
+			enabled: true,
+			backend: "browser",
+		} as any);
+		expect(resolveTTSLayoutMode(settings)).toBe("reserved-row");
+		expect(resolveTTSHostToolbarLayout(settings)).toEqual({
+			mount: "before-buttons",
+			controlsRow: {
+				reserveSpace: true,
+				expandWhenToolActive: false,
+			},
+		});
+	});
+
+	test("maps floating and left-aligned layouts to toolbar overlay mount", () => {
+		const floating = resolveTTSRuntimeSettings({
+			enabled: true,
+			backend: "browser",
+			layoutMode: "floating-overlay",
+		} as any);
+		const left = resolveTTSRuntimeSettings({
+			enabled: true,
+			backend: "browser",
+			layoutMode: "left-aligned",
+		} as any);
+		expect(resolveTTSHostToolbarLayout(floating)).toEqual({
+			mount: "before-buttons",
+			controlsRow: {
+				reserveSpace: false,
+				expandWhenToolActive: false,
+			},
+		});
+		expect(resolveTTSHostToolbarLayout(left)).toEqual({
+			mount: "before-buttons",
+			controlsRow: {
+				reserveSpace: false,
+				expandWhenToolActive: false,
+			},
+		});
 	});
 });
 

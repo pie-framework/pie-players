@@ -6,7 +6,8 @@
 			catalogId: { type: 'String', attribute: 'catalog-id' },
 			language: { type: 'String', attribute: 'language' },
 			size: { type: 'String', attribute: 'size' },
-			speedOptions: { type: 'Array', attribute: 'speed-options' }
+			speedOptions: { type: 'Array', attribute: 'speed-options' },
+			layoutMode: { type: 'String', attribute: 'layout-mode' }
 		}
 	}}
 />
@@ -27,12 +28,18 @@
 		catalogId = '', // Explicit catalog ID
 		language = 'en-US',
 		size = 'md' as 'sm' | 'md' | 'lg',
-		speedOptions = [1.5, 2] as number[]
+		speedOptions = [1.5, 2] as number[],
+		layoutMode = 'reserved-row' as
+			| 'reserved-row'
+			| 'expanding-row'
+			| 'floating-overlay'
+			| 'left-aligned'
 	}: {
 		catalogId?: string;
 		language?: string;
 		size?: 'sm' | 'md' | 'lg';
 		speedOptions?: number[];
+		layoutMode?: 'reserved-row' | 'expanding-row' | 'floating-overlay' | 'left-aligned';
 	} = $props();
 
 	const isBrowser = typeof window !== 'undefined';
@@ -373,10 +380,46 @@
 				? 'pie-tool-tts-inline__trigger--lg'
 				: 'pie-tool-tts-inline__trigger--md',
 	);
+	const isControlsRowLayout = $derived(
+		layoutMode === 'reserved-row' || layoutMode === 'expanding-row'
+	);
+	const isFloatingLayout = $derived(
+		layoutMode === 'floating-overlay'
+	);
+	const isLeftAlignedFloatingLayout = $derived(layoutMode === 'left-aligned');
+
+	function resolveHostElement(): HTMLElement | null {
+		if (!containerEl) return null;
+		const root = containerEl.getRootNode();
+		if (root instanceof ShadowRoot) {
+			return root.host as HTMLElement;
+		}
+		return null;
+	}
+
+	$effect(() => {
+		const host = resolveHostElement();
+		if (!host) return;
+		const active = controlsVisible === true;
+		host.setAttribute('data-active', active ? 'true' : 'false');
+		host.dispatchEvent(
+			new CustomEvent('pie-tool-active-change', {
+				detail: { active },
+				bubbles: true,
+				composed: true
+			})
+		);
+	});
 </script>
 
 {#if isBrowser}
-	<div bind:this={containerEl} class="pie-tool-tts-inline">
+	<div
+		bind:this={containerEl}
+		class="pie-tool-tts-inline"
+		class:pie-tool-tts-inline--controls-row={isControlsRowLayout}
+		class:pie-tool-tts-inline--floating={isFloatingLayout}
+		class:pie-tool-tts-inline--left-aligned-inline={isLeftAlignedFloatingLayout}
+	>
 		<button
 			type="button"
 			class="pie-tool-tts-inline__trigger {sizeClass}"
@@ -400,6 +443,9 @@
 			<div
 				bind:this={toolbarEl}
 				class="pie-tool-tts-inline__panel"
+				class:pie-tool-tts-inline__panel--floating={isFloatingLayout}
+				class:pie-tool-tts-inline__panel--row={isControlsRowLayout}
+				class:pie-tool-tts-inline__panel--left-aligned-inline={isLeftAlignedFloatingLayout}
 				role="toolbar"
 				aria-label="Reading controls"
 				tabindex="-1"
@@ -484,6 +530,15 @@
 		align-items: center;
 	}
 
+	.pie-tool-tts-inline--controls-row {
+		width: 100%;
+		justify-content: flex-end;
+	}
+
+	.pie-tool-tts-inline--left-aligned-inline {
+		flex-direction: row-reverse;
+	}
+
 	.pie-tool-tts-inline__trigger {
 		display: inline-flex;
 		align-items: center;
@@ -524,11 +579,6 @@
 	}
 
 	.pie-tool-tts-inline__panel {
-		position: absolute;
-		z-index: 2;
-		top: 100%;
-		right: 0;
-		left: auto;
 		display: inline-flex;
 		flex-wrap: nowrap;
 		align-items: center;
@@ -540,6 +590,27 @@
 		background: var(--pie-surface, var(--pie-background, #fff));
 		border: 1px solid var(--pie-border, #d0d0d0);
 		border-radius: 0.5rem;
+	}
+
+	.pie-tool-tts-inline__panel--floating {
+		position: absolute;
+		z-index: 2;
+		top: 100%;
+		right: 0;
+		left: auto;
+	}
+
+	.pie-tool-tts-inline__panel--left-aligned-inline {
+		position: static;
+		margin-right: 0.5rem;
+	}
+
+	.pie-tool-tts-inline__panel--row {
+		position: absolute;
+		z-index: 2;
+		top: 100%;
+		right: 0;
+		left: auto;
 	}
 
 	.pie-tool-tts-inline__control {

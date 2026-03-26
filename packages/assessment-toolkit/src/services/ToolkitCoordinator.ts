@@ -1672,6 +1672,7 @@ export class ToolkitCoordinator {
 			},
 		);
 		this.config.tools = validated.config;
+		void this.emitTelemetry("tool-config-updated", { toolId });
 
 		// Apply configuration changes to services
 		this._applyToolConfigChange(toolId, updates);

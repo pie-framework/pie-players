@@ -1,0 +1,11 @@
+---
+description: Build affected packages before running tests
+alwaysApply: true
+---
+
+# Build Before Tests
+
+- Before running tests, rebuild the package(s) whose source changed and any direct consumers that load their `dist` outputs.
+- For custom-element packages consumed via exports, do not rely on stale `dist`; run the package build first.
+- If the exact impacted package set is unclear, default to rebuilding all likely affected packages in the current test path.
+- When test failures can be caused by stale artifacts, rebuild first and rerun once before deeper debugging.

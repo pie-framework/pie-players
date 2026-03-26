@@ -3,7 +3,8 @@ import AxeBuilder from "@axe-core/playwright";
 
 const DEMO_PATH = "/tts-ssml?mode=candidate&layout=splitpane";
 const KNOWN_A11Y_BASELINE_DEBT = new Set(["aria-allowed-attr", "aria-roles", "tabindex"]);
-const TTS_PREVIEW_MS = 1000;
+// Keep playback windows short to avoid reading long passages in CI.
+const TTS_PREVIEW_MS = 250;
 
 async function gotoDemo(page: Page) {
 	await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
@@ -63,6 +64,74 @@ async function forceBrowserTtsRuntime(page: Page): Promise<void> {
 	});
 }
 
+async function suppressAudibleBrowserTts(page: Page): Promise<void> {
+	await page.addInitScript(() => {
+		if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+		const originalSynth = window.speechSynthesis;
+		let activeUtterance: SpeechSynthesisUtterance | null = null;
+		let playbackTimer: number | null = null;
+		let speaking = false;
+		let paused = false;
+		const clearPlayback = () => {
+			if (playbackTimer !== null) {
+				window.clearTimeout(playbackTimer);
+				playbackTimer = null;
+			}
+			activeUtterance = null;
+			speaking = false;
+			paused = false;
+		};
+		const dispatchSafe = (callback: ((event: SpeechSynthesisEvent) => void) | null | undefined) => {
+			if (!callback) return;
+			callback(new Event("speech") as SpeechSynthesisEvent);
+		};
+		const fakeSynth: SpeechSynthesis = {
+			...originalSynth,
+			getVoices: () => originalSynth.getVoices(),
+			speak: (utterance: SpeechSynthesisUtterance) => {
+				clearPlayback();
+				activeUtterance = utterance;
+				speaking = true;
+				paused = false;
+				dispatchSafe(utterance.onstart);
+				// Keep "playing" long enough for control assertions, but remain silent.
+				playbackTimer = window.setTimeout(() => {
+					if (!activeUtterance) return;
+					dispatchSafe(activeUtterance.onend);
+					clearPlayback();
+				}, 4000);
+			},
+			cancel: () => {
+				if (activeUtterance) {
+					dispatchSafe(activeUtterance.onend);
+				}
+				clearPlayback();
+			},
+			pause: () => {
+				if (!speaking) return;
+				paused = true;
+			},
+			resume: () => {
+				if (!speaking) return;
+				paused = false;
+			},
+			get speaking() {
+				return speaking;
+			},
+			get paused() {
+				return paused;
+			},
+			get pending() {
+				return false;
+			},
+		};
+		Object.defineProperty(window, "speechSynthesis", {
+			configurable: true,
+			value: fakeSynth,
+		});
+	});
+}
+
 async function selectPassageText(page: Page): Promise<void> {
 	await page.locator("pie-passage-shell [data-region='content'] p").first().evaluate((node) => {
 		const textNode = node.firstChild;
@@ -86,8 +155,223 @@ async function selectPassageText(page: Page): Promise<void> {
 }
 
 test.describe("section player demo tts-ssml", () => {
+	test("covers all four TTS layout modes end-to-end", async ({ page }) => {
+		await suppressAudibleBrowserTts(page);
+		await gotoDemo(page);
+		await openSessionPanel(page);
+		await forceBrowserTtsRuntime(page);
+
+		const modes: Array<{
+			mode: "reserved-row" | "expanding-row" | "floating-overlay" | "left-aligned";
+			expectReserveBeforePlay: boolean;
+			expectActiveExpandOnPlay: boolean;
+			expectPanelPositionOnPlay: "absolute" | "static";
+			expectContainerDirectionOnPlay?: "row-reverse";
+		}> = [
+			{
+				mode: "reserved-row",
+				expectReserveBeforePlay: true,
+				expectActiveExpandOnPlay: false,
+				expectPanelPositionOnPlay: "absolute",
+			},
+			{
+				mode: "expanding-row",
+				expectReserveBeforePlay: false,
+				expectActiveExpandOnPlay: true,
+				expectPanelPositionOnPlay: "absolute",
+			},
+			{
+				mode: "floating-overlay",
+				expectReserveBeforePlay: false,
+				expectActiveExpandOnPlay: false,
+				expectPanelPositionOnPlay: "absolute",
+			},
+			{
+				mode: "left-aligned",
+				expectReserveBeforePlay: false,
+				expectActiveExpandOnPlay: false,
+				expectPanelPositionOnPlay: "static",
+				expectContainerDirectionOnPlay: "row-reverse",
+			},
+		];
+
+		const readItemToolbarSnapshot = async () =>
+			page.evaluate(() => {
+				const collectPieItemToolbars = (): HTMLElement[] => {
+					const collected: HTMLElement[] = [];
+					const visitNode = (root: ParentNode) => {
+						const localToolbars = Array.from(
+							root.querySelectorAll("pie-item-toolbar"),
+						) as HTMLElement[];
+						collected.push(...localToolbars);
+						const allElements = Array.from(root.querySelectorAll("*")) as HTMLElement[];
+						for (const element of allElements) {
+							if (element.shadowRoot) visitNode(element.shadowRoot);
+						}
+					};
+					visitNode(document);
+					return collected;
+				};
+				const itemToolbar = collectPieItemToolbars().find((toolbar) => {
+					const level =
+						toolbar.shadowRoot
+							?.querySelector(".item-toolbar")
+							?.getAttribute("data-level") || null;
+					return level === "item";
+				});
+				if (!itemToolbar) {
+					return {
+						found: false,
+						reserveClass: false,
+						activeClass: false,
+						panelPosition: null as string | null,
+						containerDirection: null as string | null,
+					};
+				}
+				const root = itemToolbar.shadowRoot;
+				const controlsRow = root?.querySelector(
+					".item-toolbar__controls-row",
+				) as HTMLElement | null;
+				const ttsInline = root?.querySelector(
+					"pie-tool-tts-inline",
+				) as HTMLElement | null;
+				const ttsInlineRoot = ttsInline?.shadowRoot;
+				const panel = ttsInlineRoot?.querySelector(
+					".pie-tool-tts-inline__panel",
+				) as HTMLElement | null;
+				const container = ttsInlineRoot?.querySelector(
+					".pie-tool-tts-inline",
+				) as HTMLElement | null;
+				return {
+					found: true,
+					reserveClass:
+						controlsRow?.classList.contains("item-toolbar__controls-row--reserve") ===
+						true,
+					activeClass:
+						controlsRow?.classList.contains("item-toolbar__controls-row--active") ===
+						true,
+					panelPosition: panel ? window.getComputedStyle(panel).position : null,
+					containerDirection: container
+						? window.getComputedStyle(container).flexDirection
+						: null,
+				};
+			});
+
+		const firstInlineTts = page
+			.locator('pie-item-shell[data-pie-shell-root="item"] pie-tool-tts-inline:visible')
+			.first();
+		await expect(firstInlineTts).toBeVisible();
+
+		for (const layout of modes) {
+			await page.getByRole("button", { name: "Toggle TTS settings panel" }).click();
+			const ttsDialog = page.locator(".pie-tts-dialog");
+			await expect(ttsDialog.getByRole("heading", { name: "TTS settings" })).toBeVisible();
+			await ttsDialog.locator("#tts-layout-mode").selectOption(layout.mode);
+			await ttsDialog.getByRole("button", { name: "Apply" }).click();
+			await expect(ttsDialog).toHaveCount(0);
+
+			await expect
+				.poll(async () => {
+					return await page
+						.locator("pie-section-player-tools-session-debugger")
+						.evaluate((element) => {
+							const coordinator = (element as any).toolkitCoordinator;
+							return coordinator?.getToolConfig?.("textToSpeech")?.layoutMode || null;
+						});
+				})
+				.toBe(layout.mode);
+
+			const beforePlay = await readItemToolbarSnapshot();
+			expect(beforePlay.found).toBe(true);
+			expect(beforePlay.reserveClass).toBe(layout.expectReserveBeforePlay);
+			expect(beforePlay.activeClass).toBe(false);
+
+			await firstInlineTts.getByRole("button", { name: "Play reading" }).click();
+			const panel = firstInlineTts.locator('[role="toolbar"][aria-label="Reading controls"]');
+			await expect(panel).toBeVisible();
+
+			const whilePlaying = await readItemToolbarSnapshot();
+			expect(whilePlaying.panelPosition).toBe(layout.expectPanelPositionOnPlay);
+			expect(whilePlaying.activeClass).toBe(layout.expectActiveExpandOnPlay);
+			if (layout.expectContainerDirectionOnPlay) {
+				expect(whilePlaying.containerDirection).toBe(layout.expectContainerDirectionOnPlay);
+			}
+
+			await panel.getByRole("button", { name: "Stop reading" }).click();
+			await expect(panel).toHaveCount(0);
+		}
+	});
+
+	test("removes header controls-row reservation when layout mode is expanding-row", async ({
+		page,
+	}) => {
+		await gotoDemo(page);
+		await openSessionPanel(page);
+
+		const ttsSettingsToggle = page.getByRole("button", {
+			name: "Toggle TTS settings panel",
+		});
+		await ttsSettingsToggle.click();
+		const ttsDialog = page.locator(".pie-tts-dialog");
+		await expect(ttsDialog.getByRole("heading", { name: "TTS settings" })).toBeVisible();
+
+		const layoutModeSelect = ttsDialog.locator("#tts-layout-mode");
+		await expect(layoutModeSelect).toBeVisible();
+		await layoutModeSelect.selectOption("expanding-row");
+		await expect(ttsDialog.getByText("Item header row reservation: Disabled")).toBeVisible();
+		await ttsDialog.getByRole("button", { name: "Apply" }).click();
+		await expect(ttsDialog).toHaveCount(0);
+
+		const reservationState = await page.evaluate(() => {
+			const collectPieItemToolbars = (): HTMLElement[] => {
+				const collected: HTMLElement[] = [];
+				const visitNode = (root: ParentNode) => {
+					const localToolbars = Array.from(
+						root.querySelectorAll("pie-item-toolbar"),
+					) as HTMLElement[];
+					collected.push(...localToolbars);
+					const allElements = Array.from(root.querySelectorAll("*")) as HTMLElement[];
+					for (const element of allElements) {
+						if (element.shadowRoot) {
+							visitNode(element.shadowRoot);
+						}
+					}
+				};
+				visitNode(document);
+				return collected;
+			};
+			const toolbars = collectPieItemToolbars();
+			const resolveLevel = (toolbar: HTMLElement): string | null =>
+				toolbar.shadowRoot
+					?.querySelector(".item-toolbar")
+					?.getAttribute("data-level") || null;
+			const itemToolbars = toolbars.filter((toolbar) => resolveLevel(toolbar) === "item");
+			const passageToolbars = toolbars.filter(
+				(toolbar) => resolveLevel(toolbar) === "passage",
+			);
+			const hasReservedControlsRow = (toolbar: HTMLElement): boolean => {
+				const controlsRow = toolbar.shadowRoot?.querySelector(".item-toolbar__controls-row");
+				return controlsRow?.classList.contains("item-toolbar__controls-row--reserve") === true;
+			};
+			return {
+				itemToolbarCount: itemToolbars.length,
+				passageToolbarCount: passageToolbars.length,
+				itemReservedFlags: itemToolbars.map(hasReservedControlsRow),
+				passageReservedFlags: passageToolbars.map(hasReservedControlsRow),
+			};
+		});
+
+		expect(reservationState.itemToolbarCount).toBeGreaterThan(0);
+		expect(reservationState.passageToolbarCount).toBeGreaterThan(0);
+		expect(reservationState.itemReservedFlags.every((flag) => flag === false)).toBe(true);
+		expect(reservationState.passageReservedFlags.every((flag) => flag === false)).toBe(
+			true,
+		);
+	});
+
 	test("covers passage, interactions, mode switching, and tools", async ({ page }) => {
 		test.setTimeout(180_000);
+		await suppressAudibleBrowserTts(page);
 
 		await gotoDemo(page);
 
@@ -341,6 +625,10 @@ test.describe("section player demo tts-ssml", () => {
 		await ttsDialog.getByRole("button", { name: "Browser" }).click();
 		await expect(ttsDialog.locator("#tts-browser-rate")).toHaveCount(0);
 		await expect(ttsDialog.locator("#tts-browser-pitch")).toHaveCount(0);
+		const layoutModeSelect = ttsDialog.locator("#tts-layout-mode");
+		await expect(layoutModeSelect).toBeVisible();
+		await layoutModeSelect.selectOption("floating-overlay");
+		await expect(ttsDialog.getByText("Item header row reservation: Disabled")).toBeVisible();
 		await ttsDialog.getByRole("button", { name: "Apply" }).click();
 		await expect(ttsDialog).toHaveCount(0);
 
@@ -353,6 +641,7 @@ test.describe("section player demo tts-ssml", () => {
 				return { toolConfig, serviceConfig };
 			});
 		expect(ttsRuntimeSnapshot.toolConfig?.backend).toBe("browser");
+		expect(ttsRuntimeSnapshot.toolConfig?.layoutMode).toBe("floating-overlay");
 		expect(ttsRuntimeSnapshot.toolConfig).toBeTruthy();
 		expect(ttsRuntimeSnapshot.serviceConfig).toBeTruthy();
 
@@ -553,6 +842,7 @@ test.describe("section player demo tts-ssml", () => {
 	test("applies ordered inline speed options and supports no speed buttons", async ({
 		page,
 	}) => {
+		await suppressAudibleBrowserTts(page);
 		await gotoDemo(page);
 		await openSessionPanel(page);
 		await forceBrowserTtsRuntime(page);

@@ -72,6 +72,12 @@ These checks ensure:
 
 **Test files**: `*.test.ts` in `tests/` or package directories
 
+### Build Before Tests (Required)
+
+- Before running tests, rebuild the package(s) whose `src` files changed and any direct consumer packages that resolve those packages through `dist` exports.
+- For custom-element package workflows, assume consumer apps use built `dist` outputs and rebuild affected packages first.
+- If test failures might be caused by stale artifacts, rebuild and rerun once before deeper debugging.
+
 ## Player Architecture
 
 ### Four Player Types

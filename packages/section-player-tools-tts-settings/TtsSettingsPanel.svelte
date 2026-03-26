@@ -45,6 +45,11 @@
 		speechMarks?: Array<{ time: number; start: number; end: number }>;
 	};
 type PreviewSpeechMark = { time: number; start: number; end: number; value?: string };
+	type TTSLayoutMode =
+		| "reserved-row"
+		| "expanding-row"
+		| "floating-overlay"
+		| "left-aligned";
 	type CustomProviderPreviewResult = {
 		note?: string;
 		audioUrl?: string;
@@ -164,6 +169,7 @@ type PreviewSpeechMark = { time: number; start: number; end: number; value?: str
 		googleVoiceType?: string;
 		googleGender?: string;
 		providerOptions?: Record<string, unknown>;
+		layoutMode?: TTSLayoutMode;
 		[key: string]: unknown;
 	};
 
@@ -186,6 +192,7 @@ type PreviewSpeechMark = { time: number; start: number; end: number; value?: str
 	let browserVoice = $state("");
 	let browserRate = $state(1);
 	let browserPitch = $state(1);
+	let layoutMode = $state<TTSLayoutMode>("reserved-row");
 
 	let pollyApiEndpoint = $state("");
 	let pollyLanguage = $state("en-US");
@@ -300,6 +307,15 @@ function debugPreview(event: string, payload?: Record<string, unknown>): void {
 	}
 	console.debug(`${PREVIEW_DEBUG_PREFIX} ${event}`);
 }
+
+	function isLayoutMode(value: unknown): value is TTSLayoutMode {
+		return (
+			value === "reserved-row" ||
+			value === "expanding-row" ||
+			value === "floating-overlay" ||
+			value === "left-aligned"
+		);
+	}
 
 	const normalizedCustomProviders = $derived.by(() => {
 		const reserved = new Set<string>(BUILT_IN_TABS);
@@ -512,6 +528,7 @@ function debugPreview(event: string, payload?: Record<string, unknown>): void {
 						? "standard"
 						: "neural";
 		const sourceProviderOptions = (source?.providerOptions || {}) as Record<string, unknown>;
+		layoutMode = isLayoutMode(source?.layoutMode) ? source.layoutMode : "reserved-row";
 		const defaultSampleRate = normalizePollySampleRate(
 			Number(source?.sampleRate ?? sourceProviderOptions.sampleRate ?? 24000)
 		);
@@ -569,6 +586,8 @@ function debugPreview(event: string, payload?: Record<string, unknown>): void {
 		}
 		setPreviewTextForCurrentTab();
 	}
+
+	const layoutModeReservesRow = $derived(layoutMode === "reserved-row");
 
 	function sameRecordEntries<T>(left: Record<string, T>, right: Record<string, T>): boolean {
 		const leftKeys = Object.keys(left);
@@ -1438,10 +1457,12 @@ function normalizePreviewSpeechMarkOffsets(
 				}
 				toolkitCoordinator.updateToolConfig("textToSpeech", {
 					enabled: true,
+					layoutMode,
 					...next.config
 				});
 				persistSettings({
 					backend: provider.id,
+					layoutMode,
 					...(next.config || {})
 				});
 				applyMessage = next.message || `Applied ${provider.label} TTS settings.`;
@@ -1453,7 +1474,8 @@ function normalizePreviewSpeechMarkOffsets(
 					defaultVoice: resolveVoiceForBackend("browser"),
 					rate: normalizeRate(browserRate),
 					pitch: normalizePitch(browserPitch),
-					transportMode: "pie" as const
+					transportMode: "pie" as const,
+					layoutMode
 				};
 				toolkitCoordinator.updateToolConfig("textToSpeech", {
 					enabled: true,
@@ -1480,7 +1502,8 @@ function normalizePreviewSpeechMarkOffsets(
 						sampleRate: normalizePollySampleRate(pollySampleRate),
 						format: pollyFormat,
 						speechMarkTypes: getPollySpeechMarkTypes()
-					}
+					},
+					layoutMode
 				};
 				toolkitCoordinator.updateToolConfig("textToSpeech", {
 					enabled: true,
@@ -1499,7 +1522,8 @@ function normalizePreviewSpeechMarkOffsets(
 					rate: normalizeRate(googleRate),
 					language: googleLanguage || undefined,
 					googleVoiceType,
-					googleGender
+					googleGender,
+					layoutMode
 				};
 				toolkitCoordinator.updateToolConfig("textToSpeech", {
 					enabled: true,
@@ -1600,6 +1624,25 @@ function normalizePreviewSpeechMarkOffsets(
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
 				</svg>
 			</button>
+		</div>
+
+		<div class="pie-tts-fieldset fieldset bg-base-200 border border-base-300 rounded-box">
+			<div class="pie-tts-field">
+				<label class="pie-tts-label" for="tts-layout-mode">Toolbar layout mode</label>
+				<select
+					id="tts-layout-mode"
+					class="select select-sm select-bordered w-full"
+					bind:value={layoutMode}
+				>
+					<option value="reserved-row">Reserved row</option>
+					<option value="expanding-row">Expanding row</option>
+					<option value="floating-overlay">Floating overlay</option>
+					<option value="left-aligned">Left-aligned controls</option>
+				</select>
+				<div class="text-xs opacity-75">
+					Item header row reservation: {layoutModeReservesRow ? "Enabled" : "Disabled"}
+				</div>
+			</div>
 		</div>
 
 		<div class="join pie-tts-tabs">

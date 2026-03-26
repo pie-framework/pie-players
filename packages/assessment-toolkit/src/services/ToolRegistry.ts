@@ -62,7 +62,13 @@ export interface ToolbarContext {
 
 export interface ToolRenderElement {
 	element: HTMLElement | null;
-	mount: "before-buttons" | "after-buttons";
+	mount: "before-buttons" | "after-buttons" | "controls-row";
+	layoutHints?: {
+		controlsRow?: {
+			reserveSpace?: boolean;
+			showWhenToolActive?: boolean;
+		};
+	};
 	shell?: ToolWindowShellConfig;
 }
 

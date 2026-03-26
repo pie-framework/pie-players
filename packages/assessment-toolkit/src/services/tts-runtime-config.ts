@@ -1,6 +1,20 @@
 import type { TTSConfig } from "./TTSService.js";
 import type { ToolProviderConfig } from "./tools-config-normalizer.js";
 
+export type TTSLayoutMode =
+	| "reserved-row"
+	| "expanding-row"
+	| "floating-overlay"
+	| "left-aligned";
+
+export interface TTSHostToolbarLayout {
+	mount: "before-buttons";
+	controlsRow: {
+		reserveSpace: boolean;
+		expandWhenToolActive: boolean;
+	};
+}
+
 export interface TTSRuntimeSettings {
 	backend?: "browser" | "polly" | "google" | "server";
 	serverProvider?: "polly" | "google" | "custom";
@@ -29,6 +43,7 @@ export interface TTSRuntimeSettings {
 	 * - Arrays that sanitize to no valid values: default speed buttons are shown.
 	 */
 	speedOptions?: number[];
+	layoutMode?: TTSLayoutMode;
 }
 
 const toRecord = (value: unknown): Record<string, unknown> =>
@@ -45,18 +60,28 @@ const withDefault = <T>(value: T | undefined, fallback: T): T =>
 const applyRuntimeDefaults = (
 	config: TTSRuntimeSettings,
 ): TTSRuntimeSettings => {
+	const withLayoutDefaults: TTSRuntimeSettings = {
+		...config,
+		layoutMode: withDefault(config.layoutMode, "reserved-row"),
+	};
 	const backend = config.backend || "browser";
-	if (!isServerBackend(backend)) return config;
+	if (!isServerBackend(backend)) return withLayoutDefaults;
 
 	const withServerDefaults: TTSRuntimeSettings = {
-		...config,
-		apiEndpoint: withDefault(config.apiEndpoint, "/api/tts"),
-		transportMode: withDefault(config.transportMode, "pie"),
-		endpointValidationMode: withDefault(config.endpointValidationMode, "voices"),
-		validateEndpoint: withDefault(config.validateEndpoint, true),
-		includeAuthOnAssetFetch: withDefault(config.includeAuthOnAssetFetch, false),
-		rate: withDefault(config.rate, 1.0),
-		language: withDefault(config.language, "en-US"),
+		...withLayoutDefaults,
+		apiEndpoint: withDefault(withLayoutDefaults.apiEndpoint, "/api/tts"),
+		transportMode: withDefault(withLayoutDefaults.transportMode, "pie"),
+		endpointValidationMode: withDefault(
+			withLayoutDefaults.endpointValidationMode,
+			"voices",
+		),
+		validateEndpoint: withDefault(withLayoutDefaults.validateEndpoint, true),
+		includeAuthOnAssetFetch: withDefault(
+			withLayoutDefaults.includeAuthOnAssetFetch,
+			false,
+		),
+		rate: withDefault(withLayoutDefaults.rate, 1.0),
+		language: withDefault(withLayoutDefaults.language, "en-US"),
 	};
 
 	if (backend === "polly") {
@@ -158,4 +183,42 @@ export const buildRuntimeTTSConfig = (
 		includeAuthOnAssetFetch: config.includeAuthOnAssetFetch,
 		validateEndpoint: config.validateEndpoint,
 	} as Partial<TTSConfig>;
+};
+
+export const resolveTTSLayoutMode = (
+	config: TTSRuntimeSettings,
+): TTSLayoutMode => config.layoutMode || "reserved-row";
+
+export const resolveTTSHostToolbarLayout = (
+	config: TTSRuntimeSettings,
+): TTSHostToolbarLayout => {
+	const layoutMode = resolveTTSLayoutMode(config);
+	switch (layoutMode) {
+		case "reserved-row":
+			return {
+				mount: "before-buttons",
+				controlsRow: {
+					reserveSpace: true,
+					expandWhenToolActive: false,
+				},
+			};
+		case "expanding-row":
+			return {
+				mount: "before-buttons",
+				controlsRow: {
+					reserveSpace: false,
+					expandWhenToolActive: true,
+				},
+			};
+		case "floating-overlay":
+		case "left-aligned":
+		default:
+			return {
+				mount: "before-buttons",
+				controlsRow: {
+					reserveSpace: false,
+					expandWhenToolActive: false,
+				},
+			};
+	}
 };

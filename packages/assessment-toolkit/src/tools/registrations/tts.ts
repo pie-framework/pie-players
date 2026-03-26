@@ -18,6 +18,8 @@ import { hasReadableText } from "../../services/tool-context.js";
 import { createScopedToolId } from "../../services/tool-instance-id.js";
 import {
 	buildRuntimeTTSConfig,
+	resolveTTSHostToolbarLayout,
+	resolveTTSLayoutMode,
 	resolveTTSBackend,
 	resolveTTSRuntimeSettings,
 	resolveRuntimeProvider,
@@ -27,6 +29,7 @@ import { TTSToolProvider } from "../../services/tool-providers/index.js";
 
 const inlineTTSControls = new Map<string, HTMLElement>();
 export const TOOL_ELEMENT_UNMOUNT_CALLBACK_PROP = "__pieToolElementUnmount";
+export const TOOL_ACTIVE_CHANGE_EVENT = "pie-tool-active-change";
 
 const DEFAULT_SPEED_OPTIONS = Object.freeze([1.5, 2]);
 
@@ -109,12 +112,16 @@ export const ttsToolRegistration: ToolRegistration = {
 		_context: ToolContext,
 		toolbarContext: ToolbarContext,
 	): ToolToolbarRenderResult {
-		const resolveElementSpeedOptions = (): number[] => {
-			const runtimeSettings = resolveTTSRuntimeSettings(
+		const resolveRuntimeSettings = () =>
+			resolveTTSRuntimeSettings(
 				toolbarContext.toolkitCoordinator?.getToolConfig(this.toolId) || undefined,
 			);
+		const resolveElementSpeedOptions = (): number[] => {
+			const runtimeSettings = resolveRuntimeSettings();
 			return resolveSpeedOptions(runtimeSettings.speedOptions);
 		};
+		const resolveLayoutMode = () => resolveTTSLayoutMode(resolveRuntimeSettings());
+		const resolveHostLayout = () => resolveTTSHostToolbarLayout(resolveRuntimeSettings());
 		const fullToolId = createScopedToolId(
 			this.toolId,
 			toolbarContext.scope.level,
@@ -151,10 +158,12 @@ export const ttsToolRegistration: ToolRegistration = {
 			element.setAttribute("catalog-id", toolbarContext.catalogId || toolbarContext.itemId);
 			element.setAttribute("language", toolbarContext.language || "en-US");
 			element.setAttribute("size", resolveControlSize());
+			element.setAttribute("layout-mode", resolveLayoutMode());
 			(element as HTMLElement & { speedOptions?: number[] }).speedOptions =
 				resolveElementSpeedOptions();
 			return element;
 		};
+		const hostLayout = resolveHostLayout();
 
 		return {
 			toolId: this.toolId,
@@ -162,15 +171,33 @@ export const ttsToolRegistration: ToolRegistration = {
 			elements: [
 				{
 					element: ensureElement(),
-					mount: "before-buttons",
+					mount: hostLayout.mount,
+					layoutHints: {
+						controlsRow: {
+							reserveSpace: hostLayout.controlsRow.reserveSpace,
+							showWhenToolActive: hostLayout.controlsRow.expandWhenToolActive,
+						},
+					},
 				},
 			],
+			subscribeActive: (callback) => {
+				const element = ensureElement();
+				const handler = (event: Event) => {
+					const detail = (event as CustomEvent<{ active?: boolean }>).detail;
+					callback(detail?.active === true);
+				};
+				element.addEventListener(TOOL_ACTIVE_CHANGE_EVENT, handler);
+				return () => {
+					element.removeEventListener(TOOL_ACTIVE_CHANGE_EVENT, handler);
+				};
+			},
 			sync: () => {
 				const element = ensureElement();
 				element.setAttribute("tool-id", fullToolId);
 				element.setAttribute("catalog-id", toolbarContext.catalogId || toolbarContext.itemId);
 				element.setAttribute("language", toolbarContext.language || "en-US");
 				element.setAttribute("size", resolveControlSize());
+				element.setAttribute("layout-mode", resolveLayoutMode());
 				(element as HTMLElement & { speedOptions?: number[] }).speedOptions =
 					resolveElementSpeedOptions();
 			},

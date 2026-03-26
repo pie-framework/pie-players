@@ -496,6 +496,48 @@
 				}))
 		)
 	);
+	const mountedElementsControlsRow = $derived.by((): MountedToolElement[] =>
+		renderedTools.flatMap((renderedTool) =>
+			(renderedTool.elements || [])
+				.filter((entry) => entry.mount === 'controls-row')
+				.filter((entry): entry is ToolRenderElement & { element: HTMLElement } => Boolean(entry.element))
+				.map((entry, index) => ({
+					key: `controls-row-${renderedTool.toolId}-${index}`,
+					toolId: renderedTool.toolId,
+					entry
+				}))
+		)
+	);
+	const controlsRowHints = $derived.by(() =>
+		renderedTools.flatMap((renderedTool) =>
+			(renderedTool.elements || [])
+				.map((entry) => ({
+					toolId: renderedTool.toolId,
+					hint: entry.layoutHints?.controlsRow
+				}))
+				.filter((entry) => Boolean(entry.hint))
+		)
+	);
+	const controlsRowShouldReserveSpace = $derived.by(
+		() => controlsRowHints.some((entry) => entry.hint?.reserveSpace === true)
+	);
+	const controlsRowShouldExpandForActiveTool = $derived.by(
+		() =>
+			controlsRowHints.some(
+				(entry) =>
+					entry.hint?.showWhenToolActive === true &&
+					(renderedToolActiveById[entry.toolId] ?? false)
+			)
+	);
+	const controlsRowAlignStart = $derived.by(() =>
+		position === 'left' || position === 'right'
+	);
+	const shouldRenderControlsRow = $derived.by(
+		() =>
+			mountedElementsControlsRow.length > 0 ||
+			controlsRowShouldReserveSpace ||
+			controlsRowShouldExpandForActiveTool
+	);
 
 	function isToolbarItemActive(item: ToolbarItem): boolean {
 		if (item.id in activeToolState) {
@@ -561,6 +603,19 @@
 	$effect(() => {
 		if (!toolbarContext.subscribeVisibility) return;
 		return toolbarContext.subscribeVisibility(() => {
+			syncRenderedToolsState();
+		});
+	});
+
+	$effect(() => {
+		const toolkitCoordinator = toolbarContext.toolkitCoordinator as
+			| { subscribeTelemetry?: (listener: (args: { eventName?: string; payload?: { toolId?: string } }) => void) => () => void }
+			| null;
+		if (typeof toolkitCoordinator?.subscribeTelemetry !== 'function') return;
+		return toolkitCoordinator.subscribeTelemetry(({ eventName, payload }) => {
+			if (eventName !== 'tool-config-updated') return;
+			if (payload?.toolId && !toolbarVisibleToolIds.includes(payload.toolId)) return;
+			moduleLoadVersion += 1;
 			syncRenderedToolsState();
 		});
 	});
@@ -1193,7 +1248,28 @@
 				{/if}
 			{/each}
 		</div>
-		<div class="item-toolbar__controls-row" aria-hidden="true"></div>
+		{#if shouldRenderControlsRow}
+			<div
+				class="item-toolbar__controls-row"
+				class:item-toolbar__controls-row--reserve={controlsRowShouldReserveSpace}
+				class:item-toolbar__controls-row--active={controlsRowShouldExpandForActiveTool}
+				class:item-toolbar__controls-row--align-start={controlsRowAlignStart}
+			>
+				{#each mountedElementsControlsRow as mounted (mounted.key)}
+					{#if mounted.entry.shell}
+						<span
+							class="item-toolbar__controls-host"
+							use:mountElementWithShell={{
+								mounted,
+								active: renderedToolActiveById[mounted.toolId] ?? false
+							}}
+						></span>
+					{:else}
+						<span class="item-toolbar__controls-host" use:mountElement={mounted.entry.element}></span>
+					{/if}
+				{/each}
+			</div>
+		{/if}
 	</div>
 {/if}
 
@@ -1221,8 +1297,22 @@
 		align-items: center;
 		justify-content: flex-end;
 		width: 100%;
+		min-height: 0;
+		height: auto;
+	}
+
+	.item-toolbar__controls-row--reserve {
 		min-height: var(--pie-tts-controls-row-height);
 		height: var(--pie-tts-controls-row-height);
+	}
+
+	.item-toolbar__controls-row--active {
+		min-height: var(--pie-tts-controls-row-height);
+		height: var(--pie-tts-controls-row-height);
+	}
+
+	.item-toolbar__controls-row--align-start {
+		justify-content: flex-start;
 	}
 
 	.item-toolbar__controls-host {

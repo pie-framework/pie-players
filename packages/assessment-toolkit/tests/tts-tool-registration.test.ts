@@ -233,4 +233,100 @@ describe("ttsToolRegistration speed options", () => {
 		renderResult?.sync?.();
 		expect(ensureCalls).toBe(0);
 	});
+
+	test("uses reserved-row layout by default", () => {
+		const toolbarContext: ToolbarContext = {
+			scope: {
+				level: "item",
+				scopeId: "item-layout-default",
+				itemId: "item-layout-default",
+			},
+			itemId: "item-layout-default",
+			catalogId: "item-layout-default",
+			language: "en-US",
+			toolCoordinator: null,
+			toolkitCoordinator: {
+				getToolConfig: () => ({ settings: {} }),
+			} as any,
+			ttsService: null,
+			elementToolStateStore: null,
+			toggleTool: () => {},
+			isToolVisible: () => false,
+			subscribeVisibility: null,
+		};
+
+		const renderResult = withFakeDocument(() =>
+			ttsToolRegistration.renderToolbar(itemContext, toolbarContext),
+		);
+		const entry = renderResult?.elements?.[0];
+		const element = entry?.element as { getAttribute: (name: string) => string | null };
+		expect(entry?.mount).toBe("before-buttons");
+		expect(entry?.layoutHints?.controlsRow?.reserveSpace).toBe(true);
+		expect(entry?.layoutHints?.controlsRow?.showWhenToolActive).toBe(false);
+		expect(element?.getAttribute("layout-mode")).toBe("reserved-row");
+	});
+
+	test("maps floating-overlay to before-buttons mount", () => {
+		const toolbarContext: ToolbarContext = {
+			scope: {
+				level: "item",
+				scopeId: "item-layout-floating",
+				itemId: "item-layout-floating",
+			},
+			itemId: "item-layout-floating",
+			catalogId: "item-layout-floating",
+			language: "en-US",
+			toolCoordinator: null,
+			toolkitCoordinator: {
+				getToolConfig: () => ({ settings: { layoutMode: "floating-overlay" } }),
+			} as any,
+			ttsService: null,
+			elementToolStateStore: null,
+			toggleTool: () => {},
+			isToolVisible: () => false,
+			subscribeVisibility: null,
+		};
+
+		const renderResult = withFakeDocument(() =>
+			ttsToolRegistration.renderToolbar(itemContext, toolbarContext),
+		);
+		const entry = renderResult?.elements?.[0];
+		const element = entry?.element as { getAttribute: (name: string) => string | null };
+		expect(entry?.mount).toBe("before-buttons");
+		expect(entry?.layoutHints?.controlsRow?.reserveSpace).toBe(false);
+		expect(entry?.layoutHints?.controlsRow?.showWhenToolActive).toBe(false);
+		expect(element?.getAttribute("layout-mode")).toBe("floating-overlay");
+	});
+
+	test("maps expanding-row to before-buttons with active controls-row expansion hint", () => {
+		const toolbarContext: ToolbarContext = {
+			scope: {
+				level: "item",
+				scopeId: "item-layout-expanding",
+				itemId: "item-layout-expanding",
+			},
+			itemId: "item-layout-expanding",
+			catalogId: "item-layout-expanding",
+			language: "en-US",
+			toolCoordinator: null,
+			toolkitCoordinator: {
+				getToolConfig: () => ({ settings: { layoutMode: "expanding-row" } }),
+			} as any,
+			ttsService: null,
+			elementToolStateStore: null,
+			toggleTool: () => {},
+			isToolVisible: () => false,
+			subscribeVisibility: null,
+		};
+
+		const renderResult = withFakeDocument(() =>
+			ttsToolRegistration.renderToolbar(itemContext, toolbarContext),
+		);
+		const entry = renderResult?.elements?.[0];
+		const element = entry?.element as { getAttribute: (name: string) => string | null };
+		expect(entry?.mount).toBe("before-buttons");
+		expect(entry?.layoutHints?.controlsRow?.reserveSpace).toBe(false);
+		expect(entry?.layoutHints?.controlsRow?.showWhenToolActive).toBe(true);
+		expect(element?.getAttribute("layout-mode")).toBe("expanding-row");
+	});
 });

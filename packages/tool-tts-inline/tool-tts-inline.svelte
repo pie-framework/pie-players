@@ -17,6 +17,8 @@
 		connectToolRegionScopeContext,
 		connectToolRuntimeContext,
 		connectToolShellContext,
+		DEFAULT_TTS_SPEED_OPTIONS,
+		normalizeTTSSpeedOptions,
 		type AssessmentToolkitRegionScopeContext,
 		type AssessmentToolkitRuntimeContext,
 		type AssessmentToolkitShellContext,
@@ -28,8 +30,8 @@
 		catalogId = '', // Explicit catalog ID
 		language = 'en-US',
 		size = 'md' as 'sm' | 'md' | 'lg',
-		speedOptions = [1.5, 2] as number[],
-		layoutMode = 'reserved-row' as
+		speedOptions = [...DEFAULT_TTS_SPEED_OPTIONS] as number[],
+		layoutMode = 'expanding-row' as
 			| 'reserved-row'
 			| 'expanding-row'
 			| 'floating-overlay'
@@ -65,22 +67,11 @@
 	let playbackRate = $state(1);
 	let focusedControlIndex = $state(0);
 	let playActionInFlight = $state(false);
-	const defaultSpeedChoices = [1.5, 2];
-	const speedChoices = $derived.by(() => {
-		if (!Array.isArray(speedOptions)) return [...defaultSpeedChoices];
-		if (speedOptions.length === 0) return [];
-		const deduped = new Set<number>();
-		for (const value of speedOptions) {
-			if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) continue;
-			const rounded = Math.round(value * 100) / 100;
-			if (rounded === 1) continue;
-			deduped.add(rounded);
-		}
-		return deduped.size ? Array.from(deduped) : [...defaultSpeedChoices];
-	});
+	const speedChoices = $derived.by(() => normalizeTTSSpeedOptions(speedOptions));
 
 	const instanceId = `pie-tts-inline-instance-${Math.random().toString(36).slice(2)}`;
 	const listenerId = `pie-tts-inline-${Math.random().toString(36).slice(2)}`;
+	const panelId = `${instanceId}-controls`;
 
 	function getActiveOwnerId(): string | null {
 		if (!isBrowser) return null;
@@ -418,103 +409,117 @@
 		class="pie-tool-tts-inline"
 		class:pie-tool-tts-inline--controls-row={isControlsRowLayout}
 		class:pie-tool-tts-inline--floating={isFloatingLayout}
-		class:pie-tool-tts-inline--left-aligned-inline={isLeftAlignedFloatingLayout}
 	>
-		<button
-			type="button"
-			class="pie-tool-tts-inline__trigger {sizeClass}"
-			class:pie-tool-tts-inline__trigger--active={controlsVisible}
-			onclick={handlePlayPause}
-			aria-label={speaking && !paused ? 'Pause reading' : paused ? 'Resume reading' : 'Play reading'}
-			disabled={!ttsService || playActionInFlight}
-		>
-			{#if speaking && !paused}
-				<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="pie-tool-tts-inline__icon" aria-hidden="true">
-					<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
-				</svg>
-			{:else}
-				<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="pie-tool-tts-inline__icon" aria-hidden="true">
-					<path d="M8 5v14l11-7z" />
-				</svg>
-			{/if}
-		</button>
-
-		{#if controlsVisible}
-			<div
-				bind:this={toolbarEl}
-				class="pie-tool-tts-inline__panel"
-				class:pie-tool-tts-inline__panel--floating={isFloatingLayout}
-				class:pie-tool-tts-inline__panel--row={isControlsRowLayout}
-				class:pie-tool-tts-inline__panel--left-aligned-inline={isLeftAlignedFloatingLayout}
-				role="toolbar"
-				aria-label="Reading controls"
-				tabindex="-1"
-				onkeydown={handleToolbarKeydown}
+		{#snippet triggerButton()}
+			<button
+				type="button"
+				class="pie-tool-tts-inline__trigger {sizeClass}"
+				class:pie-tool-tts-inline__trigger--active={controlsVisible}
+				onclick={handlePlayPause}
+				aria-label={speaking && !paused ? 'Pause reading' : paused ? 'Resume reading' : 'Play reading'}
+				aria-expanded={controlsVisible}
+				aria-controls={controlsVisible ? panelId : undefined}
+				disabled={!ttsService || playActionInFlight}
 			>
-				{#if speedChoices.length > 0}
-					{#each speedChoices as speed, speedIdx (speed)}
-						<button
-							type="button"
-							data-pie-tts-control
-							class="pie-tool-tts-inline__control pie-tool-tts-inline__control--speed"
-							class:pie-tool-tts-inline__control--speed-active={playbackRate === speed}
-							onclick={() => handlePlaybackRate(speed)}
-							onfocus={() => (focusedControlIndex = speedIdx)}
-							tabindex={focusedControlIndex === speedIdx ? 0 : -1}
-							aria-label={`Speed ${speed}x`}
-							aria-pressed={playbackRate === speed}
-							disabled={!ttsService}
-						>
-							<span aria-hidden="true">{speed}x</span>
-						</button>
-					{/each}
+				{#if speaking && !paused}
+					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="pie-tool-tts-inline__icon" aria-hidden="true">
+						<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+					</svg>
+				{:else}
+					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="pie-tool-tts-inline__icon" aria-hidden="true">
+						<path d="M8 5v14l11-7z" />
+					</svg>
 				{/if}
+			</button>
+		{/snippet}
 
-				<button
-					type="button"
-					data-pie-tts-control
-					class="pie-tool-tts-inline__control"
-					onclick={handleSeekBackward}
-					onfocus={() => (focusedControlIndex = speedChoices.length)}
-					tabindex={focusedControlIndex === speedChoices.length ? 0 : -1}
-					aria-label="Rewind"
-					disabled={!ttsService || !speaking}
+		{#snippet controlsPanel()}
+			{#if controlsVisible}
+				<div
+					id={panelId}
+					bind:this={toolbarEl}
+					class="pie-tool-tts-inline__panel"
+					class:pie-tool-tts-inline__panel--floating={isFloatingLayout}
+					class:pie-tool-tts-inline__panel--row={isControlsRowLayout}
+					class:pie-tool-tts-inline__panel--left-aligned-inline={isLeftAlignedFloatingLayout}
+					role="toolbar"
+					aria-label="Reading controls"
+					tabindex="-1"
+					onkeydown={handleToolbarKeydown}
 				>
-					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="pie-tool-tts-inline__icon" aria-hidden="true">
-						<path d="M20 18V6l-8.5 6L20 18zM10.5 18V6L2 12l8.5 6z" />
-					</svg>
-				</button>
+					{#if speedChoices.length > 0}
+						{#each speedChoices as speed, speedIdx (speed)}
+							<button
+								type="button"
+								data-pie-tts-control
+								class="pie-tool-tts-inline__control pie-tool-tts-inline__control--speed"
+								class:pie-tool-tts-inline__control--speed-active={playbackRate === speed}
+								onclick={() => handlePlaybackRate(speed)}
+								onfocus={() => (focusedControlIndex = speedIdx)}
+								tabindex={focusedControlIndex === speedIdx ? 0 : -1}
+								aria-label={`Speed ${speed}x`}
+								aria-pressed={playbackRate === speed}
+								disabled={!ttsService}
+							>
+								<span aria-hidden="true">{speed}x</span>
+							</button>
+						{/each}
+					{/if}
 
-				<button
-					type="button"
-					data-pie-tts-control
-					class="pie-tool-tts-inline__control"
-					onclick={handleSeekForward}
-					onfocus={() => (focusedControlIndex = speedChoices.length + 1)}
-					tabindex={focusedControlIndex === speedChoices.length + 1 ? 0 : -1}
-					aria-label="Fast-forward"
-					disabled={!ttsService || !speaking}
-				>
-					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="pie-tool-tts-inline__icon" aria-hidden="true">
-						<path d="M4 18l8.5-6L4 6v12zm9.5 0L22 12l-8.5-6v12z" />
-					</svg>
-				</button>
+					<button
+						type="button"
+						data-pie-tts-control
+						class="pie-tool-tts-inline__control"
+						onclick={handleSeekBackward}
+						onfocus={() => (focusedControlIndex = speedChoices.length)}
+						tabindex={focusedControlIndex === speedChoices.length ? 0 : -1}
+						aria-label="Rewind"
+						disabled={!ttsService || !speaking}
+					>
+						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="pie-tool-tts-inline__icon" aria-hidden="true">
+							<path d="M20 18V6l-8.5 6L20 18zM10.5 18V6L2 12l8.5 6z" />
+						</svg>
+					</button>
 
-				<button
-					type="button"
-					data-pie-tts-control
-					class="pie-tool-tts-inline__control"
-					onclick={handleStop}
-					onfocus={() => (focusedControlIndex = speedChoices.length + 2)}
-					tabindex={focusedControlIndex === speedChoices.length + 2 ? 0 : -1}
-					aria-label="Stop reading"
-					disabled={!ttsService || (!speaking && !paused)}
-				>
-					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="pie-tool-tts-inline__icon" aria-hidden="true">
-						<path d="M6 6h12v12H6z" />
-					</svg>
-				</button>
-			</div>
+					<button
+						type="button"
+						data-pie-tts-control
+						class="pie-tool-tts-inline__control"
+						onclick={handleSeekForward}
+						onfocus={() => (focusedControlIndex = speedChoices.length + 1)}
+						tabindex={focusedControlIndex === speedChoices.length + 1 ? 0 : -1}
+						aria-label="Fast-forward"
+						disabled={!ttsService || !speaking}
+					>
+						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="pie-tool-tts-inline__icon" aria-hidden="true">
+							<path d="M4 18l8.5-6L4 6v12zm9.5 0L22 12l-8.5-6v12z" />
+						</svg>
+					</button>
+
+					<button
+						type="button"
+						data-pie-tts-control
+						class="pie-tool-tts-inline__control"
+						onclick={handleStop}
+						onfocus={() => (focusedControlIndex = speedChoices.length + 2)}
+						tabindex={focusedControlIndex === speedChoices.length + 2 ? 0 : -1}
+						aria-label="Stop reading"
+						disabled={!ttsService || (!speaking && !paused)}
+					>
+						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="pie-tool-tts-inline__icon" aria-hidden="true">
+							<path d="M6 6h12v12H6z" />
+						</svg>
+					</button>
+				</div>
+			{/if}
+		{/snippet}
+
+		{#if isLeftAlignedFloatingLayout}
+			{@render controlsPanel()}
+			{@render triggerButton()}
+		{:else}
+			{@render triggerButton()}
+			{@render controlsPanel()}
 		{/if}
 
 		<div class="pie-sr-only" role="status" aria-live="polite" aria-atomic="true">
@@ -533,10 +538,6 @@
 	.pie-tool-tts-inline--controls-row {
 		width: 100%;
 		justify-content: flex-end;
-	}
-
-	.pie-tool-tts-inline--left-aligned-inline {
-		flex-direction: row-reverse;
 	}
 
 	.pie-tool-tts-inline__trigger {

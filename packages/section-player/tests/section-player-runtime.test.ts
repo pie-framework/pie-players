@@ -1,5 +1,4 @@
 import { describe, expect, mock, test } from "bun:test";
-import { createPackagedToolRegistry } from "@pie-players/pie-assessment-toolkit";
 
 mock.module("@pie-players/pie-item-player", () => ({}));
 
@@ -142,7 +141,6 @@ describe("resolveToolsConfig", () => {
 
 	test("accepts canonical provider key textToSpeech", async () => {
 		const { resolveToolsConfig } = await loadRuntimeModule();
-		const toolRegistry = createPackagedToolRegistry();
 		const resolved = resolveToolsConfig({
 			runtime: {
 				toolConfigStrictness: "error",
@@ -152,14 +150,15 @@ describe("resolveToolsConfig", () => {
 					textToSpeech: {
 						enabled: true,
 						backend: "browser",
+						layoutMode: "left-aligned",
 					},
 				},
 			},
 			enabledTools: "",
 			itemToolbarTools: "",
 			passageToolbarTools: "",
-			toolRegistry,
 		});
-		expect(resolved.providers.textToSpeech?.enabled).toBe(true);
+		expect((resolved as any).providers.textToSpeech?.enabled).toBe(true);
+		expect((resolved as any).providers.textToSpeech?.layoutMode).toBe("left-aligned");
 	});
 });

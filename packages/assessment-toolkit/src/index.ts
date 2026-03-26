@@ -290,6 +290,21 @@ export {
 export type { TTSConfig } from "./services/TTSService.js";
 export { PlaybackState, TTSService } from "./services/TTSService.js";
 export { BrowserTTSProvider } from "./services/tts/browser-provider.js";
+export type {
+	TTSHostToolbarLayout,
+	TTSLayoutMode,
+	TTSRuntimeSettings,
+} from "./services/tts-runtime-config.js";
+export {
+	DEFAULT_TTS_SPEED_OPTIONS,
+	formatTTSSpeedOptionsAsText,
+	normalizeTTSLayoutMode,
+	normalizeTTSSpeedOptions,
+	parseTTSSpeedOptionsFromText,
+	resolveTTSHostToolbarLayout,
+	resolveTTSLayoutMode,
+	resolveTTSRuntimeSettings,
+} from "./services/tts-runtime-config.js";
 // TTS Provider System
 export type {
 	ITTSProvider,

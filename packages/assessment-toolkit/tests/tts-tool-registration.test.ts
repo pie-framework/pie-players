@@ -97,7 +97,7 @@ describe("ttsToolRegistration speed options", () => {
 		const element = renderResult?.elements?.[0]?.element as {
 			speedOptions?: number[];
 		};
-		expect(element?.speedOptions).toEqual([1.5, 2]);
+		expect(element?.speedOptions).toEqual([0.8, 1.25]);
 	});
 
 	test("uses explicit empty speedOptions to hide speed buttons", () => {
@@ -234,7 +234,7 @@ describe("ttsToolRegistration speed options", () => {
 		expect(ensureCalls).toBe(0);
 	});
 
-	test("uses reserved-row layout by default", () => {
+	test("uses expanding-row layout by default", () => {
 		const toolbarContext: ToolbarContext = {
 			scope: {
 				level: "item",
@@ -261,9 +261,9 @@ describe("ttsToolRegistration speed options", () => {
 		const entry = renderResult?.elements?.[0];
 		const element = entry?.element as { getAttribute: (name: string) => string | null };
 		expect(entry?.mount).toBe("before-buttons");
-		expect(entry?.layoutHints?.controlsRow?.reserveSpace).toBe(true);
-		expect(entry?.layoutHints?.controlsRow?.showWhenToolActive).toBe(false);
-		expect(element?.getAttribute("layout-mode")).toBe("reserved-row");
+		expect(entry?.layoutHints?.controlsRow?.reserveSpace).toBe(false);
+		expect(entry?.layoutHints?.controlsRow?.showWhenToolActive).toBe(true);
+		expect(element?.getAttribute("layout-mode")).toBe("expanding-row");
 	});
 
 	test("maps floating-overlay to before-buttons mount", () => {
@@ -328,5 +328,93 @@ describe("ttsToolRegistration speed options", () => {
 		expect(entry?.layoutHints?.controlsRow?.reserveSpace).toBe(false);
 		expect(entry?.layoutHints?.controlsRow?.showWhenToolActive).toBe(true);
 		expect(element?.getAttribute("layout-mode")).toBe("expanding-row");
+	});
+
+	test("maps left-aligned to before-buttons without controls-row reservation", () => {
+		const toolbarContext: ToolbarContext = {
+			scope: {
+				level: "item",
+				scopeId: "item-layout-left",
+				itemId: "item-layout-left",
+			},
+			itemId: "item-layout-left",
+			catalogId: "item-layout-left",
+			language: "en-US",
+			toolCoordinator: null,
+			toolkitCoordinator: {
+				getToolConfig: () => ({ settings: { layoutMode: "left-aligned" } }),
+			} as any,
+			ttsService: null,
+			elementToolStateStore: null,
+			toggleTool: () => {},
+			isToolVisible: () => false,
+			subscribeVisibility: null,
+		};
+
+		const renderResult = withFakeDocument(() =>
+			ttsToolRegistration.renderToolbar(itemContext, toolbarContext),
+		);
+		const entry = renderResult?.elements?.[0];
+		const element = entry?.element as { getAttribute: (name: string) => string | null };
+		expect(entry?.mount).toBe("before-buttons");
+		expect(entry?.layoutHints?.controlsRow?.reserveSpace).toBe(false);
+		expect(entry?.layoutHints?.controlsRow?.showWhenToolActive).toBe(false);
+		expect(element?.getAttribute("layout-mode")).toBe("left-aligned");
+	});
+
+	test("falls back to expanding-row when layout mode config is invalid", () => {
+		const toolbarContext: ToolbarContext = {
+			scope: {
+				level: "item",
+				scopeId: "item-layout-invalid",
+				itemId: "item-layout-invalid",
+			},
+			itemId: "item-layout-invalid",
+			catalogId: "item-layout-invalid",
+			language: "en-US",
+			toolCoordinator: null,
+			toolkitCoordinator: {
+				getToolConfig: () => ({ settings: { layoutMode: "bad-mode" } }),
+			} as any,
+			ttsService: null,
+			elementToolStateStore: null,
+			toggleTool: () => {},
+			isToolVisible: () => false,
+			subscribeVisibility: null,
+		};
+
+		const renderResult = withFakeDocument(() =>
+			ttsToolRegistration.renderToolbar(itemContext, toolbarContext),
+		);
+		const entry = renderResult?.elements?.[0];
+		const element = entry?.element as { getAttribute: (name: string) => string | null };
+		expect(entry?.layoutHints?.controlsRow?.reserveSpace).toBe(false);
+		expect(entry?.layoutHints?.controlsRow?.showWhenToolActive).toBe(true);
+		expect(element?.getAttribute("layout-mode")).toBe("expanding-row");
+	});
+});
+
+describe("ttsToolRegistration sanitizeConfig", () => {
+	test("normalizes speedOptions in settings and top-level", () => {
+		const sanitize = ttsToolRegistration.provider?.sanitizeConfig as (
+			cfg: Record<string, unknown>,
+		) => Record<string, unknown>;
+		const out = sanitize({
+			enabled: true,
+			speedOptions: [2, 1, "x", 1.5],
+			settings: { speedOptions: [0.8, 1, 1.25] },
+		});
+		expect(out.speedOptions).toEqual([2, 1.5]);
+		expect((out.settings as { speedOptions: number[] }).speedOptions).toEqual([0.8, 1.25]);
+	});
+
+	test("preserves explicit empty speedOptions in settings", () => {
+		const sanitize = ttsToolRegistration.provider?.sanitizeConfig as (
+			cfg: Record<string, unknown>,
+		) => Record<string, unknown>;
+		const out = sanitize({
+			settings: { speedOptions: [] },
+		});
+		expect((out.settings as { speedOptions: number[] }).speedOptions).toEqual([]);
 	});
 });

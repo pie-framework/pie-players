@@ -14,6 +14,14 @@
 
 <script lang="ts">
 	import "@pie-players/pie-theme/components.css";
+	import {
+		DEFAULT_TTS_SPEED_OPTIONS,
+		formatTTSSpeedOptionsAsText,
+		normalizeTTSSpeedOptions,
+		parseTTSSpeedOptionsFromText,
+		resolveTTSRuntimeSettings,
+		type TTSLayoutMode,
+	} from "@pie-players/pie-assessment-toolkit";
 	import { createEventDispatcher, onDestroy, onMount, untrack } from "svelte";
 
 	type BuiltInBackendTab = "browser" | "polly" | "google";
@@ -45,11 +53,6 @@
 		speechMarks?: Array<{ time: number; start: number; end: number }>;
 	};
 type PreviewSpeechMark = { time: number; start: number; end: number; value?: string };
-	type TTSLayoutMode =
-		| "reserved-row"
-		| "expanding-row"
-		| "floating-overlay"
-		| "left-aligned";
 	type CustomProviderPreviewResult = {
 		note?: string;
 		audioUrl?: string;
@@ -170,6 +173,8 @@ type PreviewSpeechMark = { time: number; start: number; end: number; value?: str
 		googleGender?: string;
 		providerOptions?: Record<string, unknown>;
 		layoutMode?: TTSLayoutMode;
+		/** Inline toolbar speed multipliers; `[]` hides speed buttons. */
+		speedOptions?: number[];
 		[key: string]: unknown;
 	};
 
@@ -192,7 +197,8 @@ type PreviewSpeechMark = { time: number; start: number; end: number; value?: str
 	let browserVoice = $state("");
 	let browserRate = $state(1);
 	let browserPitch = $state(1);
-	let layoutMode = $state<TTSLayoutMode>("reserved-row");
+	let layoutMode = $state<TTSLayoutMode>("expanding-row");
+	let speedOptionsText = $state("");
 
 	let pollyApiEndpoint = $state("");
 	let pollyLanguage = $state("en-US");
@@ -298,6 +304,12 @@ type PreviewSpeechMark = { time: number; start: number; end: number; value?: str
 	};
 	const BUILT_IN_TABS: BuiltInBackendTab[] = ["browser", "polly", "google"];
 const PREVIEW_DEBUG_PREFIX = "[pie-tts-preview]";
+const TTS_LAYOUT_MODES: readonly TTSLayoutMode[] = [
+	"reserved-row",
+	"expanding-row",
+	"floating-overlay",
+	"left-aligned",
+];
 
 function debugPreview(event: string, payload?: Record<string, unknown>): void {
 	if (typeof console === "undefined") return;
@@ -308,13 +320,14 @@ function debugPreview(event: string, payload?: Record<string, unknown>): void {
 	console.debug(`${PREVIEW_DEBUG_PREFIX} ${event}`);
 }
 
-	function isLayoutMode(value: unknown): value is TTSLayoutMode {
-		return (
-			value === "reserved-row" ||
-			value === "expanding-row" ||
-			value === "floating-overlay" ||
-			value === "left-aligned"
-		);
+	function normalizeLayoutMode(value: unknown): TTSLayoutMode {
+		return TTS_LAYOUT_MODES.includes(value as TTSLayoutMode)
+			? (value as TTSLayoutMode)
+			: "expanding-row";
+	}
+
+	function resetInlineSpeedOptionsToDefaults(): void {
+		speedOptionsText = formatTTSSpeedOptionsAsText([...DEFAULT_TTS_SPEED_OPTIONS]);
 	}
 
 	const normalizedCustomProviders = $derived.by(() => {
@@ -528,7 +541,22 @@ function debugPreview(event: string, payload?: Record<string, unknown>): void {
 						? "standard"
 						: "neural";
 		const sourceProviderOptions = (source?.providerOptions || {}) as Record<string, unknown>;
-		layoutMode = isLayoutMode(source?.layoutMode) ? source.layoutMode : "reserved-row";
+		layoutMode = normalizeLayoutMode(source?.layoutMode);
+		const runtimeForSpeed = resolveTTSRuntimeSettings(
+			source && typeof source === "object" ? (source as Record<string, unknown>) : undefined,
+		);
+		if (runtimeForSpeed.speedOptions === undefined) {
+			speedOptionsText = formatTTSSpeedOptionsAsText([...DEFAULT_TTS_SPEED_OPTIONS]);
+		} else if (
+			Array.isArray(runtimeForSpeed.speedOptions) &&
+			runtimeForSpeed.speedOptions.length === 0
+		) {
+			speedOptionsText = "";
+		} else {
+			speedOptionsText = formatTTSSpeedOptionsAsText(
+				normalizeTTSSpeedOptions(runtimeForSpeed.speedOptions),
+			);
+		}
 		const defaultSampleRate = normalizePollySampleRate(
 			Number(source?.sampleRate ?? sourceProviderOptions.sampleRate ?? 24000)
 		);
@@ -1441,6 +1469,7 @@ function normalizePreviewSpeechMarkOffsets(
 
 		isApplying = true;
 		try {
+			const appliedSpeedOptions = parseTTSSpeedOptionsFromText(speedOptionsText);
 			if (!isBuiltInTab(activeTab)) {
 				const provider = getCustomProviderOrThrow(activeTab);
 				let next: ProviderApplyResult | undefined;
@@ -1457,13 +1486,15 @@ function normalizePreviewSpeechMarkOffsets(
 				}
 				toolkitCoordinator.updateToolConfig("textToSpeech", {
 					enabled: true,
+					...next.config,
 					layoutMode,
-					...next.config
+					speedOptions: appliedSpeedOptions,
 				});
 				persistSettings({
 					backend: provider.id,
+					...(next.config || {}),
 					layoutMode,
-					...(next.config || {})
+					speedOptions: appliedSpeedOptions,
 				});
 				applyMessage = next.message || `Applied ${provider.label} TTS settings.`;
 			} else if (activeTab === "browser") {
@@ -1475,7 +1506,8 @@ function normalizePreviewSpeechMarkOffsets(
 					rate: normalizeRate(browserRate),
 					pitch: normalizePitch(browserPitch),
 					transportMode: "pie" as const,
-					layoutMode
+					layoutMode,
+					speedOptions: appliedSpeedOptions,
 				};
 				toolkitCoordinator.updateToolConfig("textToSpeech", {
 					enabled: true,
@@ -1503,7 +1535,8 @@ function normalizePreviewSpeechMarkOffsets(
 						format: pollyFormat,
 						speechMarkTypes: getPollySpeechMarkTypes()
 					},
-					layoutMode
+					layoutMode,
+					speedOptions: appliedSpeedOptions,
 				};
 				toolkitCoordinator.updateToolConfig("textToSpeech", {
 					enabled: true,
@@ -1523,7 +1556,8 @@ function normalizePreviewSpeechMarkOffsets(
 					language: googleLanguage || undefined,
 					googleVoiceType,
 					googleGender,
-					layoutMode
+					layoutMode,
+					speedOptions: appliedSpeedOptions,
 				};
 				toolkitCoordinator.updateToolConfig("textToSpeech", {
 					enabled: true,
@@ -1641,6 +1675,29 @@ function normalizePreviewSpeechMarkOffsets(
 				</select>
 				<div class="text-xs opacity-75">
 					Item header row reservation: {layoutModeReservesRow ? "Enabled" : "Disabled"}
+				</div>
+			</div>
+			<div class="pie-tts-field">
+				<label class="pie-tts-label" for="tts-inline-speed-options">Inline speed buttons</label>
+				<input
+					id="tts-inline-speed-options"
+					class="input input-sm input-bordered w-full"
+					bind:value={speedOptionsText}
+					placeholder="0.8, 1.25"
+					autocomplete="off"
+				/>
+				<div class="mt-1 flex flex-wrap items-center gap-2">
+					<span class="text-xs opacity-75">
+						Comma or semicolon-separated multipliers (1× is not shown as a button). Leave empty to
+						hide speed buttons.
+					</span>
+					<button
+						type="button"
+						class="btn btn-xs btn-ghost"
+						onclick={resetInlineSpeedOptionsToDefaults}
+					>
+						Reset to defaults
+					</button>
 				</div>
 			</div>
 		</div>

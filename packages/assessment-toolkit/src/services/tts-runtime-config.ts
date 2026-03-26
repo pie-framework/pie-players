@@ -7,6 +7,13 @@ export type TTSLayoutMode =
 	| "floating-overlay"
 	| "left-aligned";
 
+const VALID_TTS_LAYOUT_MODES = new Set<TTSLayoutMode>([
+	"reserved-row",
+	"expanding-row",
+	"floating-overlay",
+	"left-aligned",
+]);
+
 export interface TTSHostToolbarLayout {
 	mount: "before-buttons";
 	controlsRow: {
@@ -57,12 +64,66 @@ const isServerBackend = (
 const withDefault = <T>(value: T | undefined, fallback: T): T =>
 	value === undefined ? fallback : value;
 
+export const normalizeTTSLayoutMode = (
+	value: unknown,
+	fallback: TTSLayoutMode = "expanding-row",
+): TTSLayoutMode =>
+	typeof value === "string" &&
+	VALID_TTS_LAYOUT_MODES.has(value as TTSLayoutMode)
+		? (value as TTSLayoutMode)
+		: fallback;
+
+/** Default inline TTS speed button multipliers (excluding 1.0×). */
+export const DEFAULT_TTS_SPEED_OPTIONS = Object.freeze([0.8, 1.25]);
+
+/**
+ * Resolves inline toolbar speed options from host config.
+ * - Omitted/non-array: default speed buttons.
+ * - Empty array: hide speed buttons.
+ * - Arrays that sanitize to no valid values: default speed buttons.
+ * - 1.0× is never shown as a discrete speed button.
+ */
+export const normalizeTTSSpeedOptions = (value: unknown): number[] => {
+	if (!Array.isArray(value)) return [...DEFAULT_TTS_SPEED_OPTIONS];
+	if (value.length === 0) return [];
+	const deduped = new Set<number>();
+	for (const entry of value) {
+		if (typeof entry !== "number" || !Number.isFinite(entry) || entry <= 0) continue;
+		const rounded = Math.round(entry * 100) / 100;
+		if (rounded === 1) continue;
+		deduped.add(rounded);
+	}
+	return deduped.size ? Array.from(deduped) : [...DEFAULT_TTS_SPEED_OPTIONS];
+};
+
+export const formatTTSSpeedOptionsAsText = (values: number[]): string =>
+	values.join(", ");
+
+/**
+ * Parse comma/semicolon-separated multipliers from settings UI text.
+ * - Empty or whitespace-only string → hide speed buttons (`[]`).
+ * - Non-empty text with no parseable finite numbers → same as invalid-only array config: defaults.
+ */
+export const parseTTSSpeedOptionsFromText = (text: string): number[] => {
+	const trimmed = text.trim();
+	if (!trimmed) return [];
+	const parts = trimmed
+		.split(/[,;]+/)
+		.map((p) => p.trim())
+		.filter(Boolean);
+	const candidates = parts
+		.map((p) => Number.parseFloat(p))
+		.filter((n) => Number.isFinite(n));
+	if (!candidates.length) return [...DEFAULT_TTS_SPEED_OPTIONS];
+	return normalizeTTSSpeedOptions(candidates);
+};
+
 const applyRuntimeDefaults = (
 	config: TTSRuntimeSettings,
 ): TTSRuntimeSettings => {
 	const withLayoutDefaults: TTSRuntimeSettings = {
 		...config,
-		layoutMode: withDefault(config.layoutMode, "reserved-row"),
+		layoutMode: normalizeTTSLayoutMode(config.layoutMode),
 	};
 	const backend = config.backend || "browser";
 	if (!isServerBackend(backend)) return withLayoutDefaults;
@@ -187,7 +248,7 @@ export const buildRuntimeTTSConfig = (
 
 export const resolveTTSLayoutMode = (
 	config: TTSRuntimeSettings,
-): TTSLayoutMode => config.layoutMode || "reserved-row";
+): TTSLayoutMode => normalizeTTSLayoutMode(config.layoutMode);
 
 export const resolveTTSHostToolbarLayout = (
 	config: TTSRuntimeSettings,

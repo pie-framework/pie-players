@@ -1,6 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import {
 	buildRuntimeTTSConfig,
+	DEFAULT_TTS_SPEED_OPTIONS,
+	formatTTSSpeedOptionsAsText,
+	normalizeTTSLayoutMode,
+	normalizeTTSSpeedOptions,
+	parseTTSSpeedOptionsFromText,
 	resolveTTSHostToolbarLayout,
 	resolveTTSLayoutMode,
 	resolveRuntimeProvider,
@@ -148,17 +153,17 @@ describe("tts-runtime-config defaults", () => {
 		expect(runtimeConfig.transportMode).toBe("pie");
 	});
 
-	test("defaults layout mode to reserved-row", () => {
+	test("defaults layout mode to expanding-row", () => {
 		const settings = resolveTTSRuntimeSettings({
 			enabled: true,
 			backend: "browser",
 		} as any);
-		expect(resolveTTSLayoutMode(settings)).toBe("reserved-row");
+		expect(resolveTTSLayoutMode(settings)).toBe("expanding-row");
 		expect(resolveTTSHostToolbarLayout(settings)).toEqual({
 			mount: "before-buttons",
 			controlsRow: {
-				reserveSpace: true,
-				expandWhenToolActive: false,
+				reserveSpace: false,
+				expandWhenToolActive: true,
 			},
 		});
 	});
@@ -188,6 +193,63 @@ describe("tts-runtime-config defaults", () => {
 				expandWhenToolActive: false,
 			},
 		});
+	});
+
+	test("normalizes invalid layout modes to expanding-row", () => {
+		expect(normalizeTTSLayoutMode("not-a-layout")).toBe("expanding-row");
+		expect(
+			resolveTTSLayoutMode({ layoutMode: "not-a-layout" as any } as any),
+		).toBe("expanding-row");
+	});
+
+	test("settings.layoutMode overrides top-level layoutMode when both are provided", () => {
+		const settings = resolveTTSRuntimeSettings({
+			enabled: true,
+			layoutMode: "reserved-row",
+			settings: {
+				layoutMode: "floating-overlay",
+			},
+		} as any);
+		expect(resolveTTSLayoutMode(settings)).toBe("floating-overlay");
+	});
+});
+
+describe("normalizeTTSSpeedOptions", () => {
+	test("defaults when omitted or non-array", () => {
+		expect(normalizeTTSSpeedOptions(undefined)).toEqual([...DEFAULT_TTS_SPEED_OPTIONS]);
+		expect(normalizeTTSSpeedOptions("nope")).toEqual([...DEFAULT_TTS_SPEED_OPTIONS]);
+	});
+
+	test("returns empty array for explicit empty input", () => {
+		expect(normalizeTTSSpeedOptions([])).toEqual([]);
+	});
+
+	test("dedupes and excludes 1.0, preserving order", () => {
+		expect(normalizeTTSSpeedOptions([2, 1, 1.5, 2, 0.8])).toEqual([2, 1.5, 0.8]);
+	});
+
+	test("falls back to defaults when only invalid or 1.0 remain", () => {
+		expect(normalizeTTSSpeedOptions([1, "x", -1])).toEqual([...DEFAULT_TTS_SPEED_OPTIONS]);
+	});
+});
+
+describe("parseTTSSpeedOptionsFromText / formatTTSSpeedOptionsAsText", () => {
+	test("parses comma and semicolon separated values", () => {
+		expect(parseTTSSpeedOptionsFromText("0.8, 1.25")).toEqual([0.8, 1.25]);
+		expect(parseTTSSpeedOptionsFromText("1.5; 2")).toEqual([1.5, 2]);
+	});
+
+	test("empty string means hide speed buttons", () => {
+		expect(parseTTSSpeedOptionsFromText("   ")).toEqual([]);
+	});
+
+	test("non-empty text with no parseable numbers falls back to defaults", () => {
+		expect(parseTTSSpeedOptionsFromText("foo, bar")).toEqual([...DEFAULT_TTS_SPEED_OPTIONS]);
+		expect(parseTTSSpeedOptionsFromText(",")).toEqual([...DEFAULT_TTS_SPEED_OPTIONS]);
+	});
+
+	test("formats round-trip", () => {
+		expect(formatTTSSpeedOptionsAsText([0.8, 1.25])).toBe("0.8, 1.25");
 	});
 });
 

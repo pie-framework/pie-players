@@ -1,0 +1,25 @@
+---
+description: Multi-agent code review workflow and when to run it after substantial changes
+alwaysApply: true
+---
+
+# Code review workflow
+
+When the user asks for a **code review**, or after completing a **substantial set of code changes** (multi-file feature, cross-package work, non-trivial refactors, or anything you would reasonably put in a PR description), treat a review as **required follow-up** unless they explicitly opt out.
+
+## What “code review” means here
+
+1. **Spin up three independent sub-agents** (e.g. Cursor **Task** with `code-reviewer`, or equivalent), each reviewing the same change set **without** sharing one another’s outputs—split focus if useful (e.g. correctness/API vs UI/persistence vs tests/docs).
+2. **Merge and coordinate** their findings in one response: align on consensus, note unique catches, de-duplicate.
+3. **Produce a short plan** to address issues (ordered, concrete file/area pointers). Implement fixes when in scope unless the user asked review-only.
+4. **Disagreement** between reviewers that cannot be reconciled with a clear technical or product rule: **stop and ask the user** which direction to take—do not guess.
+
+## Execution notes
+
+- Pass each reviewer enough context (paths, intent, constraints) to review without re-deriving scope from scratch.
+- Prefer **high-signal** items: bugs, contract breaks, security, misleading API/UX, missing tests for new behavior—not style nits unless project rules demand them.
+- After fixes from a review, a **quick sanity pass** (tests/build) is appropriate; a full second 3-agent round is optional unless the change set grew large again.
+
+## Explicit user requests
+
+If the user says they want a review of **specific files/commits**, scope the three agents to that reference only.

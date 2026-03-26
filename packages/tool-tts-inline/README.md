@@ -110,9 +110,9 @@ ttsButton.speedOptions = [2, 1.25, 1.5]; // rendered in this order
 
 Semantics:
 
-- Omitted or non-array: defaults to `[1.5, 2]`.
+- Omitted or non-array: defaults to `[0.8, 1.25]`.
 - Explicit `[]`: no speed buttons rendered.
-- Invalid-only values: fall back to `[1.5, 2]`.
+- Invalid-only values: fall back to `[0.8, 1.25]`.
 - Values are deduplicated while preserving first-seen order.
 - `1` is excluded from rendered options.
 

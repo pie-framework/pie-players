@@ -438,7 +438,7 @@ tools: {
 
 `speedOptions` semantics:
 
-- Omitted or non-array: default speed buttons are shown (`1.5x`, `2x`).
+- Omitted or non-array: default speed buttons are shown (`0.8x`, `1.25x`).
 - Explicit empty array (`[]`): hide all speed buttons.
 - Invalid-only arrays (for example `["fast", -1, 1]`): fall back to defaults.
 - Valid numeric values are deduplicated and keep first-seen order.

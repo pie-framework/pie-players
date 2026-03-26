@@ -18,6 +18,8 @@ import { hasReadableText } from "../../services/tool-context.js";
 import { createScopedToolId } from "../../services/tool-instance-id.js";
 import {
 	buildRuntimeTTSConfig,
+	normalizeTTSLayoutMode,
+	normalizeTTSSpeedOptions,
 	resolveTTSHostToolbarLayout,
 	resolveTTSLayoutMode,
 	resolveTTSBackend,
@@ -30,21 +32,6 @@ import { TTSToolProvider } from "../../services/tool-providers/index.js";
 const inlineTTSControls = new Map<string, HTMLElement>();
 export const TOOL_ELEMENT_UNMOUNT_CALLBACK_PROP = "__pieToolElementUnmount";
 export const TOOL_ACTIVE_CHANGE_EVENT = "pie-tool-active-change";
-
-const DEFAULT_SPEED_OPTIONS = Object.freeze([1.5, 2]);
-
-const resolveSpeedOptions = (value: unknown): number[] => {
-	if (!Array.isArray(value)) return [...DEFAULT_SPEED_OPTIONS];
-	if (value.length === 0) return [];
-	const deduped = new Set<number>();
-	for (const entry of value) {
-		if (typeof entry !== "number" || !Number.isFinite(entry) || entry <= 0) continue;
-		const rounded = Math.round(entry * 100) / 100;
-		if (rounded === 1) continue;
-		deduped.add(rounded);
-	}
-	return deduped.size ? Array.from(deduped) : [...DEFAULT_SPEED_OPTIONS];
-};
 
 /**
  * Text-to-Speech tool registration
@@ -83,6 +70,35 @@ export const ttsToolRegistration: ToolRegistration = {
 				? runtimeAuthFetcher
 				: undefined;
 		},
+		sanitizeConfig: (config) => {
+			const settings =
+				config.settings && typeof config.settings === "object"
+					? { ...(config.settings as Record<string, unknown>) }
+					: undefined;
+			if (settings && "layoutMode" in settings) {
+				settings.layoutMode = normalizeTTSLayoutMode(settings.layoutMode);
+			}
+			if (settings && "speedOptions" in settings) {
+				settings.speedOptions = normalizeTTSSpeedOptions(settings.speedOptions);
+			}
+			const normalizedConfig: Record<string, unknown> = {
+				...(config as Record<string, unknown>),
+			};
+			if ("layoutMode" in normalizedConfig) {
+				normalizedConfig.layoutMode = normalizeTTSLayoutMode(
+					normalizedConfig.layoutMode,
+				);
+			}
+			if ("speedOptions" in normalizedConfig) {
+				normalizedConfig.speedOptions = normalizeTTSSpeedOptions(
+					normalizedConfig.speedOptions,
+				);
+			}
+			if (settings) {
+				normalizedConfig.settings = settings;
+			}
+			return normalizedConfig as typeof config;
+		},
 		lazy: true,
 	},
 
@@ -118,7 +134,7 @@ export const ttsToolRegistration: ToolRegistration = {
 			);
 		const resolveElementSpeedOptions = (): number[] => {
 			const runtimeSettings = resolveRuntimeSettings();
-			return resolveSpeedOptions(runtimeSettings.speedOptions);
+			return normalizeTTSSpeedOptions(runtimeSettings.speedOptions);
 		};
 		const resolveLayoutMode = () => resolveTTSLayoutMode(resolveRuntimeSettings());
 		const resolveHostLayout = () => resolveTTSHostToolbarLayout(resolveRuntimeSettings());

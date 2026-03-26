@@ -166,7 +166,9 @@ test.describe("section player demo tts-ssml", () => {
 			expectReserveBeforePlay: boolean;
 			expectActiveExpandOnPlay: boolean;
 			expectPanelPositionOnPlay: "absolute" | "static";
-			expectContainerDirectionOnPlay?: "row-reverse";
+			expectContainerDirectionOnPlay?: "row";
+			expectPanelBeforeTriggerOnPlay?: boolean;
+			expectPanelLeftOfTriggerOnPlay?: boolean;
 		}> = [
 			{
 				mode: "reserved-row",
@@ -191,7 +193,9 @@ test.describe("section player demo tts-ssml", () => {
 				expectReserveBeforePlay: false,
 				expectActiveExpandOnPlay: false,
 				expectPanelPositionOnPlay: "static",
-				expectContainerDirectionOnPlay: "row-reverse",
+				expectContainerDirectionOnPlay: "row",
+				expectPanelBeforeTriggerOnPlay: true,
+				expectPanelLeftOfTriggerOnPlay: true,
 			},
 		];
 
@@ -254,6 +258,26 @@ test.describe("section player demo tts-ssml", () => {
 					containerDirection: container
 						? window.getComputedStyle(container).flexDirection
 						: null,
+					panelBeforeTrigger:
+						(() => {
+							if (!panel || !container) return null;
+							const trigger = container.querySelector(
+								".pie-tool-tts-inline__trigger",
+							) as HTMLElement | null;
+							if (!trigger) return null;
+							return Boolean(
+								panel.compareDocumentPosition(trigger) &
+									Node.DOCUMENT_POSITION_FOLLOWING,
+							);
+						})(),
+					panelLeftOfTrigger: (() => {
+						if (!panel || !container) return null;
+						const trigger = container.querySelector(
+							".pie-tool-tts-inline__trigger",
+						) as HTMLElement | null;
+						if (!trigger) return null;
+						return panel.getBoundingClientRect().left < trigger.getBoundingClientRect().left;
+					})(),
 				};
 			});
 
@@ -293,12 +317,47 @@ test.describe("section player demo tts-ssml", () => {
 			const whilePlaying = await readItemToolbarSnapshot();
 			expect(whilePlaying.panelPosition).toBe(layout.expectPanelPositionOnPlay);
 			expect(whilePlaying.activeClass).toBe(layout.expectActiveExpandOnPlay);
+			if (layout.expectPanelBeforeTriggerOnPlay !== undefined) {
+				expect(whilePlaying.panelBeforeTrigger).toBe(layout.expectPanelBeforeTriggerOnPlay);
+			}
+			if (layout.expectPanelLeftOfTriggerOnPlay !== undefined) {
+				expect(whilePlaying.panelLeftOfTrigger).toBe(layout.expectPanelLeftOfTriggerOnPlay);
+			}
 			if (layout.expectContainerDirectionOnPlay) {
 				expect(whilePlaying.containerDirection).toBe(layout.expectContainerDirectionOnPlay);
 			}
+			const triggerA11y = await firstInlineTts.evaluate((host) => {
+				const root = host.shadowRoot;
+				const trigger = root?.querySelector(
+					".pie-tool-tts-inline__trigger",
+				) as HTMLButtonElement | null;
+				const panelEl = root?.querySelector(
+					".pie-tool-tts-inline__panel",
+				) as HTMLElement | null;
+				return {
+					expanded: trigger?.getAttribute("aria-expanded") || null,
+					controlsId: trigger?.getAttribute("aria-controls") || null,
+					panelId: panelEl?.id || null,
+				};
+			});
+			expect(triggerA11y.expanded).toBe("true");
+			expect(triggerA11y.controlsId).toBeTruthy();
+			expect(triggerA11y.controlsId).toBe(triggerA11y.panelId);
+
+			const rewindButton = panel.getByRole("button", { name: "Rewind" });
+			await rewindButton.focus();
+			await page.keyboard.press("ArrowRight");
+			await expect(panel.getByRole("button", { name: "Fast-forward" })).toBeFocused();
 
 			await panel.getByRole("button", { name: "Stop reading" }).click();
 			await expect(panel).toHaveCount(0);
+			const postStopExpanded = await firstInlineTts.evaluate((host) => {
+				const trigger = host.shadowRoot?.querySelector(
+					".pie-tool-tts-inline__trigger",
+				) as HTMLButtonElement | null;
+				return trigger?.getAttribute("aria-expanded") || null;
+			});
+			expect(postStopExpanded).toBe("false");
 		}
 	});
 
@@ -461,13 +520,13 @@ test.describe("section player demo tts-ssml", () => {
 				'[role="toolbar"][aria-label="Reading controls"]',
 			);
 			await expect(passagePanel).toBeVisible();
-			const passageSpeed15 = passagePanel.getByRole("button", { name: "Speed 1.5x" });
-			const passageSpeed2 = passagePanel.getByRole("button", { name: "Speed 2x" });
-			await expect(passageSpeed15).toHaveAttribute("aria-pressed", "false");
-			await expect(passageSpeed2).toHaveAttribute("aria-pressed", "false");
-			await passageSpeed15.evaluate((element) => (element as HTMLButtonElement).click());
-			await expect(passageSpeed15).toHaveAttribute("aria-pressed", "true");
-			await expect(passageSpeed2).toHaveAttribute("aria-pressed", "false");
+			const passageSpeedSlow = passagePanel.getByRole("button", { name: "Speed 0.8x" });
+			const passageSpeedFast = passagePanel.getByRole("button", { name: "Speed 1.25x" });
+			await expect(passageSpeedSlow).toHaveAttribute("aria-pressed", "false");
+			await expect(passageSpeedFast).toHaveAttribute("aria-pressed", "false");
+			await passageSpeedSlow.evaluate((element) => (element as HTMLButtonElement).click());
+			await expect(passageSpeedSlow).toHaveAttribute("aria-pressed", "true");
+			await expect(passageSpeedFast).toHaveAttribute("aria-pressed", "false");
 			const calcTopWhileVisible = await itemCalculatorButton.evaluate((element) =>
 				element.getBoundingClientRect().top,
 			);
@@ -476,12 +535,12 @@ test.describe("section player demo tts-ssml", () => {
 			);
 			expect(Math.abs(calcTopWhileVisible - calcTopBefore)).toBeLessThanOrEqual(2);
 			expect(Math.abs(promptTopWhileVisible - promptTopBefore)).toBeLessThanOrEqual(2);
-			await passageSpeed2.evaluate((element) => (element as HTMLButtonElement).click());
-			await expect(passageSpeed15).toHaveAttribute("aria-pressed", "false");
-			await expect(passageSpeed2).toHaveAttribute("aria-pressed", "true");
-			await passageSpeed2.evaluate((element) => (element as HTMLButtonElement).click());
-			await expect(passageSpeed15).toHaveAttribute("aria-pressed", "false");
-			await expect(passageSpeed2).toHaveAttribute("aria-pressed", "false");
+			await passageSpeedFast.evaluate((element) => (element as HTMLButtonElement).click());
+			await expect(passageSpeedSlow).toHaveAttribute("aria-pressed", "false");
+			await expect(passageSpeedFast).toHaveAttribute("aria-pressed", "true");
+			await passageSpeedFast.evaluate((element) => (element as HTMLButtonElement).click());
+			await expect(passageSpeedSlow).toHaveAttribute("aria-pressed", "false");
+			await expect(passageSpeedFast).toHaveAttribute("aria-pressed", "false");
 			await page.waitForTimeout(TTS_PREVIEW_MS);
 			await expect(passagePanel).toBeVisible();
 			await passagePanel.getByRole("button", { name: "Stop reading" }).click();
@@ -853,10 +912,17 @@ test.describe("section player demo tts-ssml", () => {
 			.first();
 		await expect(passageInlineTts).toBeVisible();
 
-		await passageInlineTts.evaluate((element) => {
-			(element as HTMLElement & { speedOptions?: number[] }).speedOptions = [
-				2, 1.25, 1.5, 2, 1,
-			];
+		await page.locator("pie-section-player-tools-session-debugger").evaluate(async (element) => {
+			const coordinator = (element as any).toolkitCoordinator;
+			if (!coordinator?.updateToolConfig) return;
+			coordinator.updateToolConfig("textToSpeech", {
+				enabled: true,
+				backend: "browser",
+				speedOptions: [2, 1.25, 1.5, 2, 1],
+			});
+			await coordinator?.ensureTTSReady?.(
+				coordinator?.getToolConfig?.("textToSpeech"),
+			);
 		});
 		await passageInlineTts.getByRole("button", { name: "Play reading" }).click();
 		const passagePanel = passageInlineTts.locator(
@@ -871,8 +937,17 @@ test.describe("section player demo tts-ssml", () => {
 		await passagePanel.getByRole("button", { name: "Stop reading" }).click();
 		await expect(passagePanel).toHaveCount(0);
 
-		await passageInlineTts.evaluate((element) => {
-			(element as HTMLElement & { speedOptions?: number[] }).speedOptions = [];
+		await page.locator("pie-section-player-tools-session-debugger").evaluate(async (element) => {
+			const coordinator = (element as any).toolkitCoordinator;
+			if (!coordinator?.updateToolConfig) return;
+			coordinator.updateToolConfig("textToSpeech", {
+				enabled: true,
+				backend: "browser",
+				speedOptions: [],
+			});
+			await coordinator?.ensureTTSReady?.(
+				coordinator?.getToolConfig?.("textToSpeech"),
+			);
 		});
 		await passageInlineTts.getByRole("button", { name: "Play reading" }).click();
 		await expect(passagePanel).toBeVisible();

@@ -38,6 +38,7 @@ import { BrowserTTSProvider } from "./tts/browser-provider.js";
 import {
 	buildRuntimeTTSConfig,
 	resolveTTSBackend,
+	type TTSLayoutMode,
 } from "./tts-runtime-config.js";
 import { ToolProviderRegistry } from "./tool-providers/index.js";
 import type { ToolProviderApi } from "./tool-providers/ToolProviderApi.js";
@@ -111,6 +112,7 @@ export interface TTSToolConfig extends ToolConfig {
 	 * - Arrays that sanitize to no valid values: default speed buttons are shown.
 	 */
 	speedOptions?: number[];
+	layoutMode?: TTSLayoutMode;
 	authFetcher?: () => Promise<Partial<TTSToolProviderConfig>>;
 }
 

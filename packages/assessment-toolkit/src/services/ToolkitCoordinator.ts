@@ -21,6 +21,7 @@ import {
 	type ToolPolicyConfig,
 	type ToolProviderConfig,
 	type ToolProvidersConfig,
+	normalizeToolsConfig,
 	resolveToolsForLevel,
 } from "./tools-config-normalizer.js";
 import {
@@ -183,6 +184,15 @@ export interface ToolkitCoordinatorConfig {
 	 * @default false
 	 */
 	lazyInit?: boolean;
+
+	/**
+	 * Internal bootstrap escape hatch used by framework-owned hosts.
+	 * When true, constructor skips throwing validation and expects caller
+	 * to pass a pre-validated tools config.
+	 *
+	 * @internal
+	 */
+	deferToolConfigValidation?: boolean;
 }
 
 export interface ToolkitErrorContext {
@@ -458,11 +468,14 @@ export class ToolkitCoordinator {
 			config.toolConfigStrictness,
 		);
 		const toolRegistry = config.toolRegistry ?? createPackagedToolRegistry();
-		const normalized = normalizeAndValidateToolsConfig(config.tools as any, {
-			strictness,
-			source: "ToolkitCoordinator.init",
-			toolRegistry,
-		}).config;
+		const normalized =
+			config.deferToolConfigValidation === true
+				? normalizeToolsConfig(config.tools as any)
+				: normalizeAndValidateToolsConfig(config.tools as any, {
+						strictness,
+						source: "ToolkitCoordinator.init",
+						toolRegistry,
+					}).config;
 		const defaultProviders: ToolkitToolsConfig["providers"] = {
 			textToSpeech: {
 				enabled: true,

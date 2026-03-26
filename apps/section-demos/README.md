@@ -40,6 +40,18 @@ Full reading comprehension assessment with three questions all referencing a sin
 - See how multiple questions share a single passage in page mode
 - Learn about photosynthesis and its role in ecosystems
 
+### Demo: Invalid Tools Config (Error Surfacing)
+**Difficulty:** Advanced
+**Estimated Time:** ~3 minutes
+**Topic:** Framework validation diagnostics
+
+Intentionally uses a malformed tools configuration shape (host nesting error) to verify strict validation behavior. This demo is the canonical check for:
+- Deterministic framework console diagnostics (including tool-validation details)
+- User-facing framework fallback UI with actionable format guidance
+- `framework-error` event emission for host observers (`onframework-error`)
+
+Use this route to validate framework-owned error handling before shipping new config changes.
+
 ### Demo: Session Hydration (Server DB)
 **Difficulty:** Advanced
 **Estimated Time:** ~10 minutes

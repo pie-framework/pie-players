@@ -16,6 +16,7 @@
 			accessibility: { type: "Object", reflect: false },
 			coordinator: { type: "Object", reflect: false },
 			createSectionController: { type: "Object", reflect: false },
+			frameworkErrorHook: { type: "Object", reflect: false },
 			isolation: { attribute: "isolation", type: "String" },
 			env: { type: "Object", reflect: false },
 		},
@@ -60,6 +61,9 @@
 		accessibility = null as Record<string, unknown> | null,
 		coordinator = null as unknown,
 		createSectionController = null as unknown,
+		frameworkErrorHook: _frameworkErrorHook = undefined as
+			| undefined
+			| ((errorModel: Record<string, unknown>) => void),
 		isolation = DEFAULT_ISOLATION,
 		env = null as Record<string, unknown> | null,
 	} = $props();
@@ -72,6 +76,7 @@
 		"toolkit-ready": Record<string, unknown>;
 		"section-ready": Record<string, unknown>;
 		"runtime-error": Record<string, unknown>;
+		"framework-error": Record<string, unknown>;
 		"session-changed": Record<string, unknown>;
 		"runtime-owned": Record<string, unknown>;
 		"runtime-inherited": Record<string, unknown>;
@@ -148,6 +153,35 @@
 		emit(eventName, detail || ({} as Record<string, unknown>));
 	}
 
+	function handleToolkitReadyEvent(event: Event): void {
+		handleToolkitEvent(event, "toolkit-ready");
+	}
+
+	function handleSectionReadyEvent(event: Event): void {
+		handleToolkitEvent(event, "section-ready");
+	}
+
+	function handleRuntimeErrorEvent(event: Event): void {
+		handleToolkitEvent(event, "runtime-error");
+	}
+
+	function handleFrameworkErrorHook(errorModel: unknown): void {
+		const detail = (errorModel || {}) as Record<string, unknown>;
+		emit("framework-error", detail);
+	}
+
+	function handleSessionChangedEvent(event: Event): void {
+		handleToolkitEvent(event, "session-changed");
+	}
+
+	function handleRuntimeOwnedEvent(event: Event): void {
+		handleToolkitEvent(event, "runtime-owned");
+	}
+
+	function handleRuntimeInheritedEvent(event: Event): void {
+		handleToolkitEvent(event, "runtime-inherited");
+	}
+
 	const normalizedToolsConfig = $derived.by(() =>
 		normalizeToolsConfig((effectiveTools || {}) as any),
 	);
@@ -202,6 +236,14 @@
 		if (!toolkitElement) return;
 		toolkitElement.createSectionController =
 			effectiveCreateSectionController || (() => new SectionController());
+	});
+
+	$effect(() => {
+		if (!toolkitElement) return;
+		toolkitElement.frameworkErrorHook = handleFrameworkErrorHook;
+		return () => {
+			toolkitElement.frameworkErrorHook = undefined;
+		};
 	});
 
 	type BaseNavigationState = {
@@ -304,14 +346,15 @@
 	{toolRegistry}
 	accessibility={effectiveAccessibility}
 	coordinator={effectiveCoordinator}
+	frameworkErrorHook={handleFrameworkErrorHook}
 	isolation={effectiveIsolation}
 	oncomposition-changed={handleCompositionChanged}
-	ontoolkit-ready={(event: Event) => handleToolkitEvent(event, "toolkit-ready")}
-	onsection-ready={(event: Event) => handleToolkitEvent(event, "section-ready")}
-	onruntime-error={(event: Event) => handleToolkitEvent(event, "runtime-error")}
-	onsession-changed={(event: Event) => handleToolkitEvent(event, "session-changed")}
-	onruntime-owned={(event: Event) => handleToolkitEvent(event, "runtime-owned")}
-	onruntime-inherited={(event: Event) => handleToolkitEvent(event, "runtime-inherited")}
+	ontoolkit-ready={handleToolkitReadyEvent}
+	onsection-ready={handleSectionReadyEvent}
+	onruntime-error={handleRuntimeErrorEvent}
+	onsession-changed={handleSessionChangedEvent}
+	onruntime-owned={handleRuntimeOwnedEvent}
+	onruntime-inherited={handleRuntimeInheritedEvent}
 >
 	{#if shouldRenderAnnotationToolbar && annotationToolbarModuleLoaded}
 		<pie-tool-annotation-toolbar

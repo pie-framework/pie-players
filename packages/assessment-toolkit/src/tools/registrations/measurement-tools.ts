@@ -38,8 +38,8 @@ export const rulerToolRegistration: ToolRegistration = {
 	description: "On-screen ruler for measurements",
 	icon: "ruler",
 
-	// Ruler typically appears at item/element level
-	supportedLevels: ["item", "element"],
+	// Ruler typically appears at section/item/element level
+	supportedLevels: ["section", "item", "element"],
 
 	// PNP support IDs
 	// Maps to QTI 3.0 standard feature: ruler
@@ -115,8 +115,8 @@ export const protractorToolRegistration: ToolRegistration = {
 	description: "On-screen protractor for angle measurements",
 	icon: "protractor",
 
-	// Protractor typically appears at item/element level
-	supportedLevels: ["item", "element"],
+	// Protractor typically appears at section/item/element level
+	supportedLevels: ["section", "item", "element"],
 
 	// PNP support IDs
 	// Maps to QTI 3.0 standard feature: protractor

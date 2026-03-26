@@ -942,7 +942,14 @@ player.section = mySection;
 
 ### Safe Custom Tool Configuration
 
-Use `createToolsConfig()` to normalize and validate host-provided tool config before creating the coordinator:
+Default behavior is now framework-owned: invalid tools/runtime initialization is handled in `pie-assessment-toolkit` without host try/catch.
+
+- Framework logs a deterministic console error prefix: `[pie-framework:<kind>:<source>]`
+- Framework emits a canonical `framework-error` event (and still emits `runtime-error` for compatibility)
+- Framework renders a fallback error panel instead of a blank player
+- Startup tool-config validation can surface as `kind: "coordinator-init"` when the owned coordinator construction path throws.
+
+Use `createToolsConfig()` when you want to pre-validate and inspect diagnostics before mounting:
 
 ```typescript
 import {
@@ -980,6 +987,8 @@ Notes:
 - `providers.textToSpeech` is the canonical TTS provider key.
 - `providers.tts` is rejected by the validation contract.
 - Custom tools can provide provider-level `sanitizeConfig` and `validateConfig` hooks.
+- Hosts can react to framework errors via `onframework-error` listeners or `onFrameworkError` callback prop.
+- See `docs/tools-and-accomodations/framework-owned-error-handling.md` for event payload and error-kind mapping details.
 
 ## State Separation: Tool State vs Session Data
 
@@ -1055,6 +1064,8 @@ import type {
 - **[PNP Configuration Guide](docs/PNP_CONFIGURATION.md)** - ⭐ NEW - How to configure student profiles, district policies, and governance rules
 - [ToolkitCoordinator Architecture](../../docs/architecture/TOOLKIT_COORDINATOR.md) - Design decisions and patterns
 - [Section Player README](../section-player/README.md) - Section player integration
+- [Framework-Owned Error Handling](../../docs/tools-and-accomodations/framework-owned-error-handling.md) - Canonical framework error model/events and fallback behavior
+- [Safe Custom Tool Configuration](../../docs/tools-and-accomodations/safe-custom-tool-config.md) - Host-side config patterns and validation guidance
 - [Architecture Overview](../../docs/architecture/architecture.md) - Complete system architecture
 
 ## License

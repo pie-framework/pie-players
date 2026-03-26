@@ -42,7 +42,7 @@ export const lineReaderToolRegistration: ToolRegistration = {
 	icon: "bars-3",
 
 	// Line reader appears where there's text to read
-	supportedLevels: ["passage", "rubric", "item"],
+	supportedLevels: ["section", "passage", "rubric", "item"],
 
 	// PNP support IDs
 	// Maps to QTI 3.0 standard features: readingMask, readingGuide, readingRuler

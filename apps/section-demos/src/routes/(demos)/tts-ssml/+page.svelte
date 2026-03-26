@@ -47,39 +47,7 @@
 	let { data }: { data: PageData } = $props();
 
 	// Level 4: CE setup plus controller JS API subscriptions.
-	const toolsConfigResult = createToolsConfig({
-		source: 'section-demos.tts-ssml',
-		strictness: 'error',
-		tools: {
-			providers: {
-				textToSpeech: SECTION_DEMOS_SC_TTS_TOOL_PROVIDER,
-				calculator: {
-					authFetcher: fetchDesmosAuthConfig
-				},
-				annotationToolbar: {
-					enabled: true
-				}
-			},
-			placement: {
-				section: ['theme', 'graph', 'periodicTable'],
-				item: [
-					'calculator',
-					'textToSpeech',
-					'answerEliminator',
-					'annotationToolbar',
-					'lineReader',
-					'ruler',
-					'protractor'
-				],
-				passage: ['textToSpeech', 'annotationToolbar', 'lineReader']
-			}
-		}
-	});
-	const toolkitToolsConfig = toolsConfigResult.config;
-	if (toolsConfigResult.diagnostics.length > 0) {
-		console.warn('[tts-ssml demo] tools config diagnostics:', toolsConfigResult.diagnostics);
-	}
-	const sectionToolbarTools = 'theme,graph,periodicTable';
+	const sectionToolbarTools = 'theme,graph,periodicTable,lineReader,ruler,protractor';
 	const sectionInstrumentationProvider = new CompositeInstrumentationProvider([
 		new NewRelicInstrumentationProvider(),
 		new DebugPanelInstrumentationProvider()
@@ -100,11 +68,55 @@
 			instrumentationProvider: sectionInstrumentationProvider
 		}
 	};
-	const coordinator = new ToolkitCoordinator({
-		assessmentId: DEMO_ASSESSMENT_ID,
-		toolConfigStrictness: 'error',
-		tools: toolkitToolsConfig
-	});
+	const bootstrap = (() => {
+		try {
+		const toolsConfigResult = createToolsConfig({
+			source: 'section-demos.tts-ssml',
+			strictness: 'error',
+			tools: {
+				providers: {
+					textToSpeech: SECTION_DEMOS_SC_TTS_TOOL_PROVIDER,
+					calculator: {
+						authFetcher: fetchDesmosAuthConfig
+					},
+					annotationToolbar: {
+						enabled: true
+					}
+				},
+				placement: {
+					section: ['theme', 'graph', 'periodicTable', 'lineReader', 'ruler', 'protractor'],
+					item: [
+						'calculator',
+						'textToSpeech',
+						'answerEliminator',
+						'annotationToolbar'
+					],
+					passage: ['textToSpeech', 'annotationToolbar']
+				}
+			}
+		});
+		if (toolsConfigResult.diagnostics.length > 0) {
+			console.warn('[tts-ssml demo] tools config diagnostics:', toolsConfigResult.diagnostics);
+		}
+		return {
+			bootstrapErrorMessage: null as string | null,
+			toolkitToolsConfig: toolsConfigResult.config,
+			coordinator: new ToolkitCoordinator({
+			assessmentId: DEMO_ASSESSMENT_ID,
+			toolConfigStrictness: 'error',
+			tools: toolsConfigResult.config
+		})
+		};
+	} catch (error) {
+		console.error('[tts-ssml demo] config/coordinator bootstrap failed', error);
+		return {
+			bootstrapErrorMessage: error instanceof Error ? error.message : String(error),
+			toolkitToolsConfig: {},
+			coordinator: null as ToolkitCoordinator | null
+		};
+	}
+	})();
+	const { bootstrapErrorMessage, toolkitToolsConfig, coordinator } = bootstrap;
 
 	let selectedPlayerType = $state(getUrlEnumParam('player', PLAYER_OPTIONS, 'iife'));
 	let roleType = $state<'candidate' | 'scorer'>(getUrlEnumParam('mode', MODE_OPTIONS, 'candidate'));
@@ -179,6 +191,7 @@ const demoCardTitleFormatter = (context: any) => {
 
 	function handleToolkitReady(event: Event) {
 		const detail = (event as CustomEvent<{ coordinator?: unknown }>).detail;
+		if (!coordinator) return;
 		if (detail?.coordinator !== coordinator) return;
 		coordinatorReady = true;
 		coordinator.setHooks({
@@ -405,6 +418,12 @@ const demoCardTitleFormatter = (context: any) => {
 	<title>{data.demo?.name || 'Demo'} - Direct Layout</title>
 </svelte:head>
 
+{#if bootstrapErrorMessage}
+	<div class="preload-status error" role="alert" data-testid="demo-bootstrap-error">
+		<strong>Demo bootstrap failed before toolkit mount.</strong>
+		<pre>{bootstrapErrorMessage}</pre>
+	</div>
+{:else}
 <DemoRuntimeChrome
 	{data}
 	{roleType}
@@ -455,11 +474,11 @@ const demoCardTitleFormatter = (context: any) => {
 			</ul>
 		</aside>
 	{/snippet}
-	{#if coordinatorReady}
+	{#if coordinatorReady && coordinator}
 		<pie-tool-annotation-toolbar
 			enabled={true}
-			ttsService={coordinator.ttsService}
-			highlightCoordinator={coordinator.highlightCoordinator}
+			ttsService={coordinator?.ttsService}
+			highlightCoordinator={coordinator?.highlightCoordinator}
 		></pie-tool-annotation-toolbar>
 	{/if}
 	{#key `${sessionPanelSectionId}:${attemptId}:${playerInstanceKey}`}
@@ -508,6 +527,7 @@ const demoCardTitleFormatter = (context: any) => {
 		{/if}
 	{/key}
 </DemoRuntimeChrome>
+{/if}
 
 <style>
 	:global(pie-section-player-splitpane),

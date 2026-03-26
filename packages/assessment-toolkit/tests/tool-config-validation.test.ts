@@ -1,7 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { createPackagedToolRegistry } from "../src/services/createDefaultToolRegistry.js";
 import { ToolRegistry, type ToolRegistration } from "../src/services/ToolRegistry.js";
-import { normalizeAndValidateToolsConfig } from "../src/services/tool-config-validation.js";
+import {
+	frameworkErrorFromToolConfigValidation,
+	normalizeAndValidateToolsConfig,
+} from "../src/services/tool-config-validation.js";
 
 describe("tool-config-validation", () => {
 	test("keeps deterministic validation pipeline diagnostics", () => {
@@ -163,6 +166,25 @@ describe("tool-config-validation", () => {
 		);
 	});
 
+	test("allows section-capable tools in item placement without unsupported-level diagnostics", () => {
+		const registry = createPackagedToolRegistry();
+		const result = normalizeAndValidateToolsConfig(
+			{
+				placement: {
+					item: ["graph"],
+				},
+			},
+			{
+				strictness: "error",
+				source: "test",
+				toolRegistry: registry,
+			},
+		);
+		expect(result.diagnostics.some((entry) => entry.code === "tools.unsupportedLevel")).toBe(
+			false,
+		);
+	});
+
 	test("runs provider sanitize and validate hooks", () => {
 		const registry = new ToolRegistry();
 		const registration: ToolRegistration = {
@@ -232,6 +254,36 @@ describe("tool-config-validation", () => {
 			true,
 		);
 		expect(result.diagnostics).toEqual([]);
+	});
+
+	test("maps diagnostics to framework error model", () => {
+		const model = frameworkErrorFromToolConfigValidation({
+			source: "test.framework",
+			diagnostics: [
+				{
+					code: "tools.unsupportedLevel",
+					severity: "error",
+					path: "placement.section",
+					message: 'Tool "calculator" does not support level "section".',
+					toolId: "calculator",
+				},
+			],
+		});
+		expect(model.kind).toBe("tool-config");
+		expect(model.source).toBe("test.framework");
+		expect(model.details).toEqual([
+			'placement.section: Tool "calculator" does not support level "section".',
+		]);
+	});
+
+	test("maps unknown thrown error to framework error model", () => {
+		const model = frameworkErrorFromToolConfigValidation({
+			source: "test.framework",
+			error: new Error("bad config"),
+		});
+		expect(model.kind).toBe("tool-config");
+		expect(model.source).toBe("test.framework");
+		expect(model.message).toBe("bad config");
 	});
 
 });

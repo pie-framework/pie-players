@@ -113,38 +113,31 @@ describe("resolveRuntime", () => {
 });
 
 describe("resolveToolsConfig", () => {
-	test("validates toolbar overlays with strict error mode", async () => {
+	test("applies toolbar overlays without validating tool ids", async () => {
 		const { resolveToolsConfig } = await loadRuntimeModule();
-		const toolRegistry = createPackagedToolRegistry();
-
-		expect(() =>
-			resolveToolsConfig({
-				runtime: {
-					toolConfigStrictness: "error",
-				},
-				tools: null,
-				enabledTools: "unknownTool",
-				itemToolbarTools: "",
-				passageToolbarTools: "",
-				toolRegistry,
-			}),
-		).toThrow(`Unknown tool id "unknownTool"`);
+		const resolved = resolveToolsConfig({
+			runtime: {
+				toolConfigStrictness: "error",
+			},
+			tools: null,
+			enabledTools: "unknownTool",
+			itemToolbarTools: "",
+			passageToolbarTools: "",
+		});
+		expect(resolved.placement.section).toEqual(["unknownTool"]);
 	});
 
-	test("defaults overlays to strict error mode", async () => {
+	test("keeps overlay behavior when runtime is omitted", async () => {
 		const { resolveToolsConfig } = await loadRuntimeModule();
-		const toolRegistry = createPackagedToolRegistry();
-
-		expect(() =>
-			resolveToolsConfig({
-				runtime: null,
-				tools: null,
-				enabledTools: "unknownTool",
-				itemToolbarTools: "",
-				passageToolbarTools: "",
-				toolRegistry,
-			}),
-		).toThrow(`Unknown tool id "unknownTool"`);
+		const resolved = resolveToolsConfig({
+			runtime: null,
+			tools: null,
+			enabledTools: "unknownTool",
+			itemToolbarTools: "",
+			passageToolbarTools: "",
+		});
+		// Strict tool-id validation now happens in toolkit coordinator initialization.
+		expect(resolved.placement.section).toEqual(["unknownTool"]);
 	});
 
 	test("accepts canonical provider key textToSpeech", async () => {

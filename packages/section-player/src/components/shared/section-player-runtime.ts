@@ -1,5 +1,4 @@
 import {
-	normalizeAndValidateToolsConfig,
 	parseToolList,
 	type ToolConfigStrictness,
 	type ToolRegistry,
@@ -65,40 +64,26 @@ export function resolveToolsConfig(args: {
 	enabledTools: string;
 	itemToolbarTools: string;
 	passageToolbarTools: string;
-	toolRegistry?: ToolRegistry | null;
-	toolConfigStrictness?: ToolConfigStrictness;
 }) {
 	const runtimeTools = (args.runtime?.tools || args.tools || {}) as Record<
 		string,
 		unknown
 	>;
-	const strictness = args.toolConfigStrictness ?? args.runtime?.toolConfigStrictness ?? "error";
-	const normalized = normalizeAndValidateToolsConfig(runtimeTools, {
-		strictness,
-		source: "section-player.resolveToolsConfig",
-		toolRegistry: args.toolRegistry,
-	}).config;
 	const sectionTools = parseToolList(args.enabledTools);
 	const itemTools = parseToolList(args.itemToolbarTools);
 	const passageTools = parseToolList(args.passageToolbarTools);
-	return normalizeAndValidateToolsConfig(
-		{
-		...normalized,
+	const placement = (runtimeTools.placement || {}) as Record<string, unknown>;
+	const overlayToolsConfig = {
+		...runtimeTools,
 		placement: {
-			...normalized.placement,
-			section:
-				sectionTools.length > 0 ? sectionTools : normalized.placement.section,
-			item: itemTools.length > 0 ? itemTools : normalized.placement.item,
-			passage:
-				passageTools.length > 0 ? passageTools : normalized.placement.passage,
+			...placement,
+			...(sectionTools.length > 0 ? { section: sectionTools } : {}),
+			...(itemTools.length > 0 ? { item: itemTools } : {}),
+			...(passageTools.length > 0 ? { passage: passageTools } : {}),
 		},
-		},
-		{
-			strictness,
-			source: "section-player.resolveToolsConfig.overlays",
-			toolRegistry: args.toolRegistry,
-		},
-	).config;
+	};
+	// Keep host-provided shape intact; framework-owned validation surfaces malformed config.
+	return overlayToolsConfig;
 }
 
 export function resolveRuntime(args: {
@@ -232,8 +217,6 @@ export function resolveSectionPlayerRuntimeState(args: RuntimeInputs) {
 		enabledTools: args.enabledTools,
 		itemToolbarTools: args.itemToolbarTools,
 		passageToolbarTools: args.passageToolbarTools,
-			toolRegistry: args.toolRegistry,
-			toolConfigStrictness: args.toolConfigStrictness,
 	});
 	const effectiveRuntime = resolveRuntime({
 		assessmentId,

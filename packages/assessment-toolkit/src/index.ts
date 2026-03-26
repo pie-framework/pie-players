@@ -237,6 +237,17 @@ export type {
 	ToolProvidersConfig,
 } from "./services/tools-config-normalizer.js";
 export type {
+	FrameworkErrorKind,
+	FrameworkErrorModel,
+	FrameworkErrorSeverity,
+} from "./services/framework-error.js";
+export {
+	formatFrameworkErrorForConsole,
+	frameworkErrorFromToolConfigDiagnostics,
+	frameworkErrorFromUnknown,
+	toFrameworkErrorModel,
+} from "./services/framework-error.js";
+export type {
 	ToolConfigDiagnostic,
 	ToolConfigDiagnosticSeverity,
 	ToolConfigStrictness,
@@ -262,7 +273,10 @@ export {
 	parseToolList,
 	resolveToolsForLevel,
 } from "./services/tools-config-normalizer.js";
-export { normalizeAndValidateToolsConfig } from "./services/tool-config-validation.js";
+export {
+	frameworkErrorFromToolConfigValidation,
+	normalizeAndValidateToolsConfig,
+} from "./services/tool-config-validation.js";
 export type {
 	ParsedToolInstanceId,
 	ToolScopeLevel,

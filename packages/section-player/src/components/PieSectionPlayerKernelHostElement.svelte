@@ -233,6 +233,7 @@
 	on:interaction-ready={reemit}
 	on:ready={reemit}
 	on:runtime-error={reemit}
+	on:framework-error={reemit}
 	on:runtime-owned={reemit}
 	on:runtime-inherited={reemit}
 	on:section-controller-ready={reemit}

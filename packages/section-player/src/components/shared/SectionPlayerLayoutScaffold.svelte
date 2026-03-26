@@ -31,6 +31,8 @@
 		onCompositionChanged,
 		onSectionReady,
 		onRuntimeError,
+		onFrameworkError,
+		frameworkErrorHook: _frameworkErrorHook,
 		onSessionChanged,
 		onRuntimeOwned,
 		onRuntimeInherited,
@@ -50,6 +52,8 @@
 		onCompositionChanged?: (event: Event) => void;
 		onSectionReady?: (event: Event) => void;
 		onRuntimeError?: (event: Event) => void;
+		onFrameworkError?: (event: Event) => void;
+		frameworkErrorHook?: (errorModel: Record<string, unknown>) => void;
 		onSessionChanged?: (event: Event) => void;
 		onRuntimeOwned?: (event: Event) => void;
 		onRuntimeInherited?: (event: Event) => void;
@@ -138,6 +142,10 @@
 
 	function handleRuntimeError(event: Event) {
 		onRuntimeError?.(event);
+	}
+
+	function handleFrameworkError(event: Event) {
+		onFrameworkError?.(event);
 	}
 
 	function handleSessionChanged(event: Event) {
@@ -236,6 +244,7 @@
 	oncomposition-changed={handleCompositionChanged}
 	onsection-ready={handleSectionReady}
 	onruntime-error={handleRuntimeError}
+	onframework-error={handleFrameworkError}
 	onsession-changed={handleSessionChanged}
 	onruntime-owned={handleRuntimeOwned}
 	onruntime-inherited={handleRuntimeInherited}

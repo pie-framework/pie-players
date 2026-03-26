@@ -31,6 +31,7 @@
 			passageHostButtons: { type: "Object", reflect: false },
 			policies: { type: "Object", reflect: false },
 			cardTitleFormatter: { type: "Object", reflect: false },
+			frameworkErrorHook: { type: "Object", reflect: false },
 			narrowLayoutBreakpoint: { attribute: "narrow-layout-breakpoint", type: "Number" },
 		},
 	}}
@@ -99,6 +100,9 @@
 		passageHostButtons = [] as ToolbarItem[],
 		policies = undefined as SectionPlayerPolicies | undefined,
 		cardTitleFormatter = undefined as SectionPlayerCardTitleFormatter | undefined,
+		frameworkErrorHook = undefined as
+			| undefined
+			| ((errorModel: Record<string, unknown>) => void),
 		narrowLayoutBreakpoint = undefined as number | undefined,
 	} = $props();
 
@@ -257,6 +261,7 @@
 	{passageHostButtons}
 	{policies}
 	{cardTitleFormatter}
+	frameworkErrorHook={frameworkErrorHook}
 	playerActionConfig={{
 		stateKey: "__splitPaneAppliedParams",
 		includeSessionRefInState: true,
@@ -265,6 +270,7 @@
 	on:interaction-ready={forward}
 	on:ready={forward}
 	on:runtime-error={forward}
+	on:framework-error={forward}
 	on:runtime-owned={forward}
 	on:runtime-inherited={forward}
 	on:section-controller-ready={forward}

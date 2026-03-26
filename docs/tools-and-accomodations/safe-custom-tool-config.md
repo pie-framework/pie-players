@@ -2,12 +2,23 @@
 
 Use the same normalization and validation contract in host apps, demos, and runtime updates so invalid tool config fails fast with actionable diagnostics.
 
+Baseline safety is framework-owned: hosts do not need manual try/catch to avoid blank UI.
+
+- `pie-assessment-toolkit` logs `[pie-framework:<kind>:<source>]` errors
+- emits `framework-error` (plus `runtime-error` for compatibility)
+- renders a built-in fallback panel for fatal initialization failures
+
+Tool-config validation failures surfaced during owned coordinator construction
+currently use `kind: "coordinator-init"` with tool-validation details in the
+message payload.
+
 ## Recommended flow
 
 1. Register packaged + custom tools in a `ToolRegistry`.
 2. Build `tools` with `createToolsConfig(...)`.
 3. Pass the resulting `config` into `ToolkitCoordinator`.
 4. Keep strict enforcement at `error` so invalid config fails at boundary time.
+5. Optionally listen for `framework-error` to add host-specific observability/UX.
 
 ```ts
 import {
@@ -63,8 +74,13 @@ This keeps core validation generic while allowing custom tools to define their o
 
 ## Overlay safety in section-player
 
-`enabled-tools`, `item-toolbar-tools`, and `passage-toolbar-tools` overlays are validated on top of runtime `tools`. Invalid IDs produce diagnostics (or throw in strict `error`).
+`enabled-tools`, `item-toolbar-tools`, and `passage-toolbar-tools` overlays are normalized in section-player and validated in toolkit initialization. Invalid IDs produce diagnostics (or throw in strict `error`).
 
 ## Demo reference
 
 See `apps/section-demos/src/routes/(demos)/custom-tools/+page.svelte` for the safe host pattern using `createToolsConfig(...)`.
+
+## Related docs
+
+- `docs/tools-and-accomodations/framework-owned-error-handling.md`
+- `packages/assessment-toolkit/README.md` ("Safe Custom Tool Configuration")

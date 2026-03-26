@@ -418,6 +418,22 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		],
 		section: demo3Section,
 	},
+	"invalid-tools-config": {
+		id: "invalid-tools-config",
+		name: "Invalid Tools Config (Error Surfacing)",
+		description:
+			"Intentionally malformed tools config shape to validate framework-owned diagnostics and user-facing error surfacing.",
+		integrationLevel: 4,
+		integrationTheme: "Validation diagnostics",
+		focus:
+			"Proves malformed host tools-config is validated and surfaced by the framework (console + UI + framework-error event) without host pre-validation.",
+		whatMakesItTick: [
+			"Uses an intentionally wrong nesting shape (`placement.section` as an object instead of array) to emulate common host wiring mistakes.",
+			"Shows deterministic framework error fallback UI and event diagnostics driven by toolkit initialization.",
+			"Designed as the canonical e2e target for config-error surfacing checks."
+		],
+		section: demo3Section
+	},
 	"custom-tools": {
 		id: "custom-tools",
 		name: "Custom Tools (Host Registry)",

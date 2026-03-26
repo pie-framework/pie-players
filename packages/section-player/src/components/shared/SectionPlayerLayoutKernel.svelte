@@ -45,6 +45,7 @@
 		"interaction-ready": SectionPlayerReadinessChangeDetail;
 		ready: SectionPlayerReadinessChangeDetail;
 		"runtime-error": Record<string, unknown>;
+		"framework-error": Record<string, unknown>;
 		"runtime-owned": Record<string, unknown>;
 		"runtime-inherited": Record<string, unknown>;
 		"session-changed": Record<string, unknown>;
@@ -91,6 +92,9 @@
 		} satisfies PlayerActionConfig,
 		policies = DEFAULT_SECTION_PLAYER_POLICIES as SectionPlayerPolicies,
 		cardTitleFormatter = undefined as SectionPlayerCardTitleFormatter | undefined,
+		frameworkErrorHook = undefined as
+			| undefined
+			| ((errorModel: Record<string, unknown>) => void),
 	} = $props();
 
 	const dispatch = createEventDispatcher<KernelEvents>();
@@ -241,6 +245,13 @@
 		dispatch("runtime-error", (event as CustomEvent<Record<string, unknown>>).detail || {});
 	}
 
+	function handleFrameworkError(event: Event) {
+		const detail = (event as CustomEvent<Record<string, unknown>>).detail || {};
+		runtimeErrorState = true;
+		dispatch("framework-error", detail);
+		frameworkErrorHook?.(detail);
+	}
+
 	function handleSessionChanged(event: Event) {
 		dispatch("session-changed", (event as CustomEvent<Record<string, unknown>>).detail || {});
 	}
@@ -379,6 +390,8 @@
 	onCompositionChanged={handleBaseCompositionChanged}
 	onSectionReady={handleSectionReady}
 	onRuntimeError={handleRuntimeError}
+	onFrameworkError={handleFrameworkError}
+	{frameworkErrorHook}
 	onSessionChanged={handleSessionChanged}
 	onRuntimeOwned={handleRuntimeOwned}
 	onRuntimeInherited={handleRuntimeInherited}

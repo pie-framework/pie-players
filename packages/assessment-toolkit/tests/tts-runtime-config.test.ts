@@ -153,17 +153,17 @@ describe("tts-runtime-config defaults", () => {
 		expect(runtimeConfig.transportMode).toBe("pie");
 	});
 
-	test("defaults layout mode to expanding-row", () => {
+	test("defaults layout mode to left-aligned", () => {
 		const settings = resolveTTSRuntimeSettings({
 			enabled: true,
 			backend: "browser",
 		} as any);
-		expect(resolveTTSLayoutMode(settings)).toBe("expanding-row");
+		expect(resolveTTSLayoutMode(settings)).toBe("left-aligned");
 		expect(resolveTTSHostToolbarLayout(settings)).toEqual({
 			mount: "before-buttons",
 			controlsRow: {
 				reserveSpace: false,
-				expandWhenToolActive: true,
+				expandWhenToolActive: false,
 			},
 		});
 	});
@@ -195,11 +195,11 @@ describe("tts-runtime-config defaults", () => {
 		});
 	});
 
-	test("normalizes invalid layout modes to expanding-row", () => {
-		expect(normalizeTTSLayoutMode("not-a-layout")).toBe("expanding-row");
+	test("normalizes invalid layout modes to left-aligned", () => {
+		expect(normalizeTTSLayoutMode("not-a-layout")).toBe("left-aligned");
 		expect(
 			resolveTTSLayoutMode({ layoutMode: "not-a-layout" as any } as any),
-		).toBe("expanding-row");
+		).toBe("left-aligned");
 	});
 
 	test("settings.layoutMode overrides top-level layoutMode when both are provided", () => {

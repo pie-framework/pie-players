@@ -1516,9 +1516,45 @@ export class ToolkitCoordinator {
 			providerOptions: nextProviderOptions,
 		} as Partial<TTSConfig>;
 		await this.ttsService.initialize(provider, nextConfig);
+		await this.ensureBrowserVoicesReady(provider);
 		this.ttsService.setCatalogResolver(this.catalogResolver);
 		this.ttsInitialized = true;
 		await this.hooks.onTTSReady?.();
+	}
+
+	private async ensureBrowserVoicesReady(
+		provider: ITTSProvider,
+		timeoutMs = 1200,
+	): Promise<void> {
+		if (provider.providerId !== "browser") return;
+		if (typeof window === "undefined") return;
+		if (!("speechSynthesis" in window)) return;
+		const synth = window.speechSynthesis;
+		const voices = synth.getVoices();
+		if (voices.length > 0) return;
+		await new Promise<void>((resolve) => {
+			let settled = false;
+			const finish = () => {
+				if (settled) return;
+				settled = true;
+				resolve();
+			};
+			const timeoutId = window.setTimeout(() => {
+				synth.removeEventListener("voiceschanged", onVoicesChanged);
+				finish();
+			}, timeoutMs);
+			const onVoicesChanged = () => {
+				window.clearTimeout(timeoutId);
+				synth.removeEventListener("voiceschanged", onVoicesChanged);
+				finish();
+			};
+			synth.addEventListener("voiceschanged", onVoicesChanged, { once: true });
+		});
+		const voicesAfterWait = synth.getVoices();
+		await this.emitTelemetry("tts-browser-voices-ready", {
+			voiceCount: voicesAfterWait.length,
+			timedOut: voicesAfterWait.length === 0,
+		});
 	}
 
 	/**

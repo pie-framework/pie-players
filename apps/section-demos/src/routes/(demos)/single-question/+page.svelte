@@ -13,6 +13,7 @@
 	import '@pie-players/pie-tool-periodic-table';
 	import '@pie-players/pie-tool-protractor';
 	import '@pie-players/pie-tool-ruler';
+	import '@pie-players/pie-tool-text-to-speech';
 	import '@pie-players/pie-tool-theme';
 	import DemoRuntimeChrome from '$lib/demo-runtime/components/DemoRuntimeChrome.svelte';
 	import {
@@ -43,7 +44,7 @@
 		},
 		placement: {
 			section: ['theme', 'graph', 'periodicTable', 'lineReader', 'ruler', 'protractor'],
-			item: [],
+			item: ['textToSpeech'],
 			passage: []
 		}
 	};

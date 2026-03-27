@@ -26,8 +26,5 @@ export const DEFAULT_TOOL_MODULE_LOADERS: Record<string, ToolModuleLoader> = {
 	// Hosts can register additional optional tool loaders as needed.
 	calculator: loadCalculatorModule,
 	textToSpeech: () =>
-		Promise.all([
-			loadSideEffectModule(() => import("@pie-players/pie-tool-text-to-speech")),
-			loadSideEffectModule(() => import("@pie-players/pie-tool-tts-inline")),
-		]).then(() => undefined),
+		loadSideEffectModule(() => import("@pie-players/pie-tool-tts-inline")),
 };

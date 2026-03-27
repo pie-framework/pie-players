@@ -234,7 +234,7 @@ describe("ttsToolRegistration speed options", () => {
 		expect(ensureCalls).toBe(0);
 	});
 
-	test("uses expanding-row layout by default", () => {
+	test("uses left-aligned layout by default", () => {
 		const toolbarContext: ToolbarContext = {
 			scope: {
 				level: "item",
@@ -262,8 +262,8 @@ describe("ttsToolRegistration speed options", () => {
 		const element = entry?.element as { getAttribute: (name: string) => string | null };
 		expect(entry?.mount).toBe("before-buttons");
 		expect(entry?.layoutHints?.controlsRow?.reserveSpace).toBe(false);
-		expect(entry?.layoutHints?.controlsRow?.showWhenToolActive).toBe(true);
-		expect(element?.getAttribute("layout-mode")).toBe("expanding-row");
+		expect(entry?.layoutHints?.controlsRow?.showWhenToolActive).toBe(false);
+		expect(element?.getAttribute("layout-mode")).toBe("left-aligned");
 	});
 
 	test("maps floating-overlay to before-buttons mount", () => {
@@ -362,7 +362,7 @@ describe("ttsToolRegistration speed options", () => {
 		expect(element?.getAttribute("layout-mode")).toBe("left-aligned");
 	});
 
-	test("falls back to expanding-row when layout mode config is invalid", () => {
+	test("falls back to left-aligned when layout mode config is invalid", () => {
 		const toolbarContext: ToolbarContext = {
 			scope: {
 				level: "item",
@@ -389,9 +389,10 @@ describe("ttsToolRegistration speed options", () => {
 		const entry = renderResult?.elements?.[0];
 		const element = entry?.element as { getAttribute: (name: string) => string | null };
 		expect(entry?.layoutHints?.controlsRow?.reserveSpace).toBe(false);
-		expect(entry?.layoutHints?.controlsRow?.showWhenToolActive).toBe(true);
-		expect(element?.getAttribute("layout-mode")).toBe("expanding-row");
+		expect(entry?.layoutHints?.controlsRow?.showWhenToolActive).toBe(false);
+		expect(element?.getAttribute("layout-mode")).toBe("left-aligned");
 	});
+
 });
 
 describe("ttsToolRegistration sanitizeConfig", () => {

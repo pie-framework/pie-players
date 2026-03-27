@@ -66,7 +66,10 @@
 	if (toolsConfigResult.diagnostics.length > 0) {
 		console.warn('[three-questions demo] tools config diagnostics:', toolsConfigResult.diagnostics);
 	}
-	const sectionToolbarTools = 'theme,graph,periodicTable';
+	// Include item/passage tools for hosts that still interpret enabled-tools
+	// as a global whitelist instead of section-only placement.
+	const sectionToolbarTools =
+		'theme,graph,periodicTable,calculator,textToSpeech,annotationToolbar';
 	const sectionInstrumentationProvider = new CompositeInstrumentationProvider([
 		new NewRelicInstrumentationProvider(),
 		new DebugPanelInstrumentationProvider()
@@ -261,6 +264,7 @@
 
 	$effect(() => {
 		if (!browser) return;
+		let warnedQuotaExceeded = false;
 		const triggerSessionPanelRefresh = () => {
 			queueMicrotask(() => {
 				sessionDebuggerElement?.refreshFromHost?.();
@@ -273,7 +277,20 @@
 					attemptId
 				});
 				if (!controller?.persist) return;
-				void controller.persist();
+				void Promise.resolve(controller.persist()).catch((error: unknown) => {
+					const isQuotaError =
+						error instanceof DOMException && error.name === 'QuotaExceededError';
+					if (isQuotaError) {
+						if (!warnedQuotaExceeded) {
+							warnedQuotaExceeded = true;
+							console.warn(
+								'[three-questions demo] Storage quota exceeded while persisting section session; persistence is skipped until storage is cleared.'
+							);
+						}
+						return;
+					}
+					console.error('[three-questions demo] Failed to persist section session:', error);
+				});
 			});
 		};
 		document.addEventListener('item-session-changed', triggerSessionPanelRefresh as EventListener, true);

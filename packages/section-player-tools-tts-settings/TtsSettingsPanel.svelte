@@ -197,7 +197,7 @@ type PreviewSpeechMark = { time: number; start: number; end: number; value?: str
 	let browserVoice = $state("");
 	let browserRate = $state(1);
 	let browserPitch = $state(1);
-	let layoutMode = $state<TTSLayoutMode>("expanding-row");
+	let layoutMode = $state<TTSLayoutMode>("left-aligned");
 	let speedOptionsText = $state("");
 
 	let pollyApiEndpoint = $state("");
@@ -323,7 +323,7 @@ function debugPreview(event: string, payload?: Record<string, unknown>): void {
 	function normalizeLayoutMode(value: unknown): TTSLayoutMode {
 		return TTS_LAYOUT_MODES.includes(value as TTSLayoutMode)
 			? (value as TTSLayoutMode)
-			: "expanding-row";
+			: "left-aligned";
 	}
 
 	function resetInlineSpeedOptionsToDefaults(): void {

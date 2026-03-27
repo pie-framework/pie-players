@@ -102,8 +102,8 @@ export const ttsToolRegistration: ToolRegistration = {
 		lazy: true,
 	},
 
-	// TTS can appear at all levels except assessment and element.
-	supportedLevels: ["section", "item", "passage", "rubric"],
+	// TTS is inline-only and scoped to item/passage contexts.
+	supportedLevels: ["item", "passage"],
 
 	// PNP support IDs that enable this tool
 	// Maps to QTI 3.0 standard features: textToSpeech, readAloud

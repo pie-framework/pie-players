@@ -66,7 +66,7 @@ const withDefault = <T>(value: T | undefined, fallback: T): T =>
 
 export const normalizeTTSLayoutMode = (
 	value: unknown,
-	fallback: TTSLayoutMode = "expanding-row",
+	fallback: TTSLayoutMode = "left-aligned",
 ): TTSLayoutMode =>
 	typeof value === "string" &&
 	VALID_TTS_LAYOUT_MODES.has(value as TTSLayoutMode)

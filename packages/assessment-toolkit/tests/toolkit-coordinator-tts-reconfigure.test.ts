@@ -4,6 +4,108 @@ import { createPackagedToolRegistry } from "../src/services/createDefaultToolReg
 import type { ToolRegistration } from "../src/services/ToolRegistry.js";
 
 describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
+	test("browser readiness waits for voiceschanged when voices are initially empty", async () => {
+		const coordinator = new ToolkitCoordinator({
+			assessmentId: "tts-browser-voice-prewarm-test",
+			lazyInit: true,
+		});
+
+		let voices: SpeechSynthesisVoice[] = [];
+		let voicesChangedListener: (() => void) | null = null;
+		let listenerRegistered = false;
+		const synthMock = {
+			getVoices: () => voices,
+			addEventListener: (_event: string, listener: () => void) => {
+				listenerRegistered = true;
+				voicesChangedListener = listener;
+			},
+			removeEventListener: (_event: string, listener: () => void) => {
+				if (voicesChangedListener === listener) {
+					voicesChangedListener = null;
+				}
+			},
+		} as unknown as SpeechSynthesis;
+		const previousWindow = (globalThis as any).window;
+		(globalThis as any).window = {
+			setTimeout,
+			clearTimeout,
+			speechSynthesis: synthMock,
+		};
+
+		try {
+			let resolved = false;
+			const readyPromise = (coordinator as any)
+				.ensureBrowserVoicesReady({
+					providerId: "browser",
+				})
+				.then(() => {
+					resolved = true;
+				});
+			await new Promise((resolve) => setTimeout(resolve, 1));
+			expect(listenerRegistered).toBe(true);
+			expect(resolved).toBe(false);
+			expect(typeof voicesChangedListener).toBe("function");
+			setTimeout(() => {
+				voices = [{ name: "Demo Voice" } as SpeechSynthesisVoice];
+				voicesChangedListener?.();
+			}, 5);
+			await readyPromise;
+			expect(resolved).toBe(true);
+		} finally {
+			(globalThis as any).window = previousWindow;
+		}
+	});
+
+	test("browser readiness resolves on timeout and cleans up listeners", async () => {
+		const coordinator = new ToolkitCoordinator({
+			assessmentId: "tts-browser-voice-timeout-test",
+			lazyInit: true,
+		});
+		const removeCalls: Array<() => void> = [];
+		let voicesChangedListener: (() => void) | null = null;
+		const synthMock = {
+			getVoices: () => [] as SpeechSynthesisVoice[],
+			addEventListener: (_event: string, listener: () => void) => {
+				voicesChangedListener = listener;
+			},
+			removeEventListener: (_event: string, listener: () => void) => {
+				removeCalls.push(listener);
+				if (voicesChangedListener === listener) {
+					voicesChangedListener = null;
+				}
+			},
+		} as unknown as SpeechSynthesis;
+		const previousWindow = (globalThis as any).window;
+		(globalThis as any).window = {
+			setTimeout,
+			clearTimeout,
+			speechSynthesis: synthMock,
+		};
+		try {
+			await (coordinator as any).ensureBrowserVoicesReady(
+				{
+					providerId: "browser",
+				},
+				1,
+			);
+			expect(removeCalls.length).toBeGreaterThan(0);
+			expect(voicesChangedListener).toBeNull();
+		} finally {
+			(globalThis as any).window = previousWindow;
+		}
+	});
+
+	test("browser readiness is a no-op for non-browser providers", async () => {
+		const coordinator = new ToolkitCoordinator({
+			assessmentId: "tts-browser-voice-prewarm-noop-test",
+			lazyInit: true,
+		});
+
+		await (coordinator as any).ensureBrowserVoicesReady({
+			providerId: "polly",
+		});
+	});
+
 	test("ensureTTSReady waits for in-flight TTS reconfigure", async () => {
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: "tts-reconfigure-sequencing-test",

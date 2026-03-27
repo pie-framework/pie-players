@@ -1,5 +1,15 @@
 # @pie-players/pie-tool-periodic-table
 
+## 0.3.28
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.28
+  - @pie-players/pie-context@0.3.28
+  - @pie-players/pie-players-shared@0.3.28
+
 ## 0.3.27
 
 ### Patch Changes

@@ -112,6 +112,7 @@ export class TTSService {
 	private currentBoundaryOffset = 0;
 	private seekSegments: TTSSpeechSegment[] = [];
 	private currentSeekSegmentIndex = 0;
+	private activeSentenceStartOffset: number | null = null;
 	private activeHighlightMode: HighlightMode = "word";
 	private telemetryReporter:
 		| ((eventName: string, payload?: Record<string, unknown>) => void | Promise<void>)
@@ -651,6 +652,30 @@ export class TTSService {
 		range.setStart(start.node, start.offset);
 		range.setEnd(end.node, end.offset + 1);
 		this.highlightCoordinator.highlightTTSSentence([range]);
+		this.activeSentenceStartOffset = startOffset;
+	}
+
+	private getSeekSegmentIndexForOffset(offset: number): number {
+		if (this.seekSegments.length === 0) return -1;
+		let index = -1;
+		for (let i = 0; i < this.seekSegments.length; i++) {
+			if (this.seekSegments[i].startOffset <= offset) {
+				index = i;
+			} else {
+				break;
+			}
+		}
+		return index;
+	}
+
+	private highlightSentenceForOffset(offset: number): void {
+		if (!this.highlightCoordinator || this.seekSegments.length === 0) return;
+		const segmentIndex = this.getSeekSegmentIndexForOffset(offset);
+		if (segmentIndex < 0) return;
+		const segment = this.seekSegments[segmentIndex];
+		if (!segment) return;
+		if (this.activeSentenceStartOffset === segment.startOffset) return;
+		this.highlightSentenceSegment(segment.startOffset, segment.text);
 	}
 
 	/**
@@ -967,6 +992,23 @@ export class TTSService {
 				);
 			}
 		}
+		if (usedCatalogSpoken && options?.contentElement) {
+			const normalizedCatalogText = normalizeTextForSpeech(contentToSpeak);
+			const preserveCatalogSpeech = this.hasExplicitBreakSemantics(contentToSpeak);
+			if (!preserveCatalogSpeech && normalizedCatalogText !== normalizedText) {
+				console.warn(
+					"[TTSService] Catalog spoken text diverges from visible DOM; using normalized visible text to keep highlighting aligned.",
+					{
+						catalogId: options.catalogId || null,
+						catalogLength: normalizedCatalogText.length,
+						visibleLength: normalizedText.length,
+					},
+				);
+				contentToSpeak = normalizedText;
+				usedCatalogSpoken = false;
+				speechSource = "dom-or-input";
+			}
+		}
 		return {
 			contentToSpeak,
 			usedCatalogSpoken,
@@ -998,6 +1040,7 @@ export class TTSService {
 		this.lastError = null;
 		this.currentBoundaryOffset = 0;
 		this.currentSeekSegmentIndex = 0;
+		this.activeSentenceStartOffset = null;
 	}
 
 	private prepareHighlightsForSpeak(args: {
@@ -1012,11 +1055,24 @@ export class TTSService {
 			args.contentToSpeak,
 			args.options?.language,
 		);
-		if (!(args.highlightMode === "sentence" && args.shouldUsePlan)) {
-			const range = document.createRange();
-			range.selectNodeContents(this.currentContentElement);
-			this.highlightCoordinator.highlightTTSSentence([range]);
-			console.log("[TTSService] Applied sentence-level highlighting");
+		if (args.highlightMode === "sentence" && args.shouldUsePlan) {
+			return;
+		}
+		const initialSegment = this.seekSegments[0];
+		if (initialSegment) {
+			this.highlightSentenceSegment(
+				initialSegment.startOffset,
+				initialSegment.text,
+			);
+			console.log("[TTSService] Applied initial sentence highlighting");
+		} else {
+			try {
+				const range = document.createRange();
+				range.selectNodeContents(this.currentContentElement);
+				this.highlightCoordinator.highlightTTSSentence([range]);
+			} catch {
+				// No-op fallback when DOM range creation fails.
+			}
 		}
 	}
 
@@ -1032,9 +1088,12 @@ export class TTSService {
 		) {
 			return;
 		}
+		// Word index uses the same globalIndex as highlightTTSWord (browser boundaries
+		// or ServerTTSProvider time-scaled onWordBoundary).
 		this.provider.onWordBoundary = (word: string, charIndex: number, length?: number) => {
 			const wordLength = length || word.length;
 			const globalIndex = charIndex + this.currentBoundaryOffset + args.wordBoundaryOffset;
+			this.highlightSentenceForOffset(globalIndex);
 			const highlightRange = this.findHighlightRange(globalIndex, wordLength);
 			if (highlightRange && this.highlightCoordinator) {
 				const highlightText =
@@ -1089,6 +1148,7 @@ export class TTSService {
 		this.currentBoundaryOffset = 0;
 		this.seekSegments = [];
 		this.currentSeekSegmentIndex = 0;
+		this.activeSentenceStartOffset = null;
 	}
 
 	/**
@@ -1240,6 +1300,7 @@ export class TTSService {
 		this.currentBoundaryOffset = 0;
 		this.seekSegments = [];
 		this.currentSeekSegmentIndex = 0;
+		this.activeSentenceStartOffset = null;
 	}
 
 	/**

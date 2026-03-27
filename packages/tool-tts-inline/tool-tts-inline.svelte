@@ -252,7 +252,7 @@
 		return asElement;
 	}
 
-	async function startSpeaking(): Promise<void> {
+	function startSpeaking(): void {
 		if (!ttsService) return;
 		const readingTarget = resolveReadingTarget();
 		if (!readingTarget) {
@@ -272,10 +272,16 @@
 			(ttsService as any).setRootElement?.(readingTarget as HTMLElement);
 			const isPassageScope = Boolean(readingTarget.closest('pie-passage-shell'));
 			statusMessage = 'Reading started';
-			await ttsService.speak(text, {
+			void ttsService.speak(text, {
 				catalogId: isPassageScope ? undefined : catalogId || undefined,
 				language,
 				contentElement: readingTarget,
+			}).catch((error) => {
+				console.error('[TTS Inline] Error:', error);
+				statusMessage = 'Unable to start reading';
+				if (highlightCoordinator) {
+					highlightCoordinator.clearTTS();
+				}
 			});
 		} catch (error) {
 			console.error('[TTS Inline] Error:', error);
@@ -315,7 +321,7 @@
 				ttsService.stop();
 			}
 			claimActiveOwner();
-			await startSpeaking();
+			startSpeaking();
 		} finally {
 			playActionInFlight = false;
 		}

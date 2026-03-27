@@ -435,4 +435,95 @@ describe("TTSService structural pauses", () => {
 
 		expect(impl.stopCalls).toBe(0);
 	});
+
+	test("word mode keeps sentence highlight at grammatical segment boundaries", async () => {
+		const impl = new MockTTSImpl(true);
+		impl.speakSegments = async (segments: TTSSpeechSegment[]) => {
+			impl.segmentCalls.push(segments);
+			impl.onWordBoundary?.("First", 0, 5);
+			impl.onWordBoundary?.("segment", 1, 7);
+			impl.onWordBoundary?.("Second", 13, 6);
+		};
+		const service = new TTSService();
+		await service.initialize(new MockTTSProvider(impl, "server-tts", true));
+		(service as any).extractVisibleText = () => "First segment Second segment";
+		(service as any).buildPositionMap = () => {
+			const node = { textContent: "First segment Second segment" } as Text;
+			(service as any).normalizedToDOM = new Map();
+			for (let i = 0; i < node.textContent!.length; i++) {
+				(service as any).normalizedToDOM.set(i, { node, offset: i });
+			}
+		};
+		(service as any).createSpeechPlan = () =>
+			[
+				{ text: "First segment", startOffset: 0, pauseMsAfter: 0 },
+				{ text: "Second segment", startOffset: 14, pauseMsAfter: 0 },
+			] as TTSSpeechSegment[];
+		(service as any).findHighlightRange = () => ({
+			node: { textContent: "First" } as Text,
+			start: 0,
+			end: 5,
+		});
+		const sentenceCalls: Range[][] = [];
+		const originalDocument = (globalThis as any).document;
+		(globalThis as any).document = {
+			createRange: () => ({
+				selectNodeContents: () => {},
+				setStart: () => {},
+				setEnd: () => {},
+			}),
+		};
+		service.setHighlightCoordinator({
+			highlightRange: () => {},
+			highlightTTSWord: () => {},
+			highlightTTSSentence: (ranges: Range[]) => sentenceCalls.push(ranges),
+			clearTTS: () => {},
+			clearHighlights: () => {},
+			clearAll: () => {},
+			isSupported: () => true,
+			updateTTSHighlightStyle: () => {},
+		} as any);
+
+		try {
+			await service.speak("First segment Second segment", {
+				contentElement: {} as Element,
+			});
+		} finally {
+			(globalThis as any).document = originalDocument;
+		}
+
+		expect(sentenceCalls).toHaveLength(2);
+		expect(impl.segmentCalls).toHaveLength(1);
+	});
+
+	test("falls back to visible text when catalog spoken diverges from DOM", async () => {
+		const impl = new MockTTSImpl(true);
+		const service = new TTSService();
+		await service.initialize(new MockTTSProvider(impl, "server-tts", true));
+		(service as any).extractVisibleText = () => "A. Chlorophyll B. Oxygen";
+		(service as any).createSpeechPlan = () =>
+			[
+				{ text: "A. Chlorophyll", startOffset: 0, pauseMsAfter: 0 },
+				{ text: "B. Oxygen", startOffset: 15, pauseMsAfter: 0 },
+			] as TTSSpeechSegment[];
+		service.setCatalogResolver({
+			getAlternative: () => ({
+				content: "Choice one. Choice two.",
+				language: "en-US",
+				type: "spoken",
+				identifier: "choices",
+			}),
+		} as any);
+
+		await service.speak("unused", {
+			contentElement: {} as Element,
+			catalogId: "choices",
+		});
+
+		expect(impl.segmentCalls).toHaveLength(1);
+		expect(impl.segmentCalls[0].map((segment) => segment.text)).toEqual([
+			"A. Chlorophyll",
+			"B. Oxygen",
+		]);
+	});
 });

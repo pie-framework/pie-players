@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-tool-protractor",
-	"version": "0.3.26",
+	"version": "0.3.27",
 	"type": "module",
 	"description": "Draggable and rotatable protractor tool for PIE assessment player",
 	"repository": {

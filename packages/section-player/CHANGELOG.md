@@ -1,5 +1,21 @@
 # @pie-players/pie-section-player
 
+## 0.3.27
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.27
+  - @pie-players/pie-context@0.3.27
+  - @pie-players/pie-item-player@0.3.27
+  - @pie-players/pie-players-shared@0.3.27
+  - @pie-players/pie-tool-annotation-toolbar@0.3.27
+  - @pie-players/pie-tool-calculator-desmos@0.3.27
+  - @pie-players/pie-tool-text-to-speech@0.3.27
+  - @pie-players/pie-tool-tts-inline@0.3.27
+  - @pie-players/pie-toolbars@0.3.27
+
 ## 0.3.26
 
 ### Patch Changes

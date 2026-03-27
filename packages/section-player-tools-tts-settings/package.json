@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-section-player-tools-tts-settings",
-	"version": "0.3.26",
+	"version": "0.3.27",
 	"type": "module",
 	"description": "Reusable TTS settings panel for PIE section-player development tools",
 	"repository": {

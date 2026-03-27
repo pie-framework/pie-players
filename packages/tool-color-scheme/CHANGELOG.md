@@ -1,5 +1,16 @@
 # @pie-players/pie-tool-color-scheme
 
+## 0.3.27
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.27
+  - @pie-players/pie-context@0.3.27
+  - @pie-players/pie-players-shared@0.3.27
+  - @pie-players/pie-theme@0.3.27
+
 ## 0.3.26
 
 ### Patch Changes

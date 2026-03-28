@@ -835,15 +835,14 @@ export class TTSService {
 		const message = (error instanceof Error ? error.message : String(error))
 			.toLowerCase()
 			.trim();
-		if (!message) return false;
-		if (message.includes("text-to-speech service encountered an error")) return true;
-		if (message.includes("service unavailable")) return true;
-		if (message.includes("failed to fetch")) return true;
-		if (message.includes("network error")) return true;
-		if (message.includes("failed to download synthesized audio")) return true;
-		if (/\b5\d{2}\b/.test(message)) return true;
-		if (/server returned 5\d{2}/.test(message)) return true;
-		return false;
+		// Avoid fallback for expected cancellation/superseded flows.
+		if (message.includes("superseded by a newer request")) return false;
+		if (message.includes("aborterror")) return false;
+		if (message.includes("aborted")) return false;
+		if (message.includes("cancelled")) return false;
+		if (message.includes("canceled")) return false;
+		// For non-browser providers, default to browser fallback on runtime errors.
+		return true;
 	}
 
 	private async switchProviderToBrowser(reason: unknown): Promise<boolean> {
@@ -892,6 +891,12 @@ export class TTSService {
 		}
 	}
 
+	private isBrowserSpeechFallbackAvailable(): boolean {
+		if (typeof window === "undefined") return false;
+		if (!("speechSynthesis" in window)) return false;
+		return typeof (globalThis as Record<string, unknown>).SpeechSynthesisUtterance === "function";
+	}
+
 	private async retryWithBrowserFallback(args: {
 		error: unknown;
 		runId: number;
@@ -901,6 +906,7 @@ export class TTSService {
 		wordBoundaryOffset: number;
 	}): Promise<boolean> {
 		if (!this.shouldAttemptBrowserFallback(args.error)) return false;
+		if (!this.isBrowserSpeechFallbackAvailable()) return false;
 		const switched = await this.switchProviderToBrowser(args.error);
 		if (!switched) return false;
 		if (args.runId !== this.speakRunId) return true;

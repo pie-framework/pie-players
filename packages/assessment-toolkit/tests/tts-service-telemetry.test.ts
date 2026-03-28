@@ -189,4 +189,73 @@ describe("TTSService telemetry", () => {
 			),
 		).toBe(true);
 	});
+
+	test("falls back to browser provider on server env configuration error", async () => {
+		installBrowserSpeechMocks();
+		const emitted: Array<{ eventName: string; payload?: Record<string, unknown> }> =
+			[];
+		const failingServerImpl: ITTSProviderImplementation = {
+			speak: async () => {
+				throw new Error(
+					"Missing required SC TTS env vars: TTS_SCHOOLCITY_ISS",
+				);
+			},
+			pause: () => {},
+			resume: () => {},
+			stop: () => {},
+			isPlaying: () => false,
+			isPaused: () => false,
+		};
+		const service = new TTSService();
+		await service.initialize(new TelemetryMockProvider(failingServerImpl), {
+			providerOptions: {
+				__pieTelemetry: (eventName: string, payload?: Record<string, unknown>) => {
+					emitted.push({ eventName, payload });
+				},
+			},
+		});
+
+		await expect(service.speak("fallback should succeed")).resolves.toBeUndefined();
+		expect(service.getState()).toBe(PlaybackState.IDLE);
+		expect(emitted.map((entry) => entry.eventName)).toContain(
+			"pie-tool-runtime-fallback",
+		);
+		expect(
+			emitted.some(
+				(entry) =>
+					entry.eventName === "pie-tool-runtime-fallback" &&
+					entry.payload?.toProvider === "browser",
+			),
+		).toBe(true);
+	});
+
+	test("falls back to browser provider on unknown server runtime error", async () => {
+		installBrowserSpeechMocks();
+		const emitted: Array<{ eventName: string; payload?: Record<string, unknown> }> =
+			[];
+		const failingServerImpl: ITTSProviderImplementation = {
+			speak: async () => {
+				throw new Error("Unexpected backend runtime failure");
+			},
+			pause: () => {},
+			resume: () => {},
+			stop: () => {},
+			isPlaying: () => false,
+			isPaused: () => false,
+		};
+		const service = new TTSService();
+		await service.initialize(new TelemetryMockProvider(failingServerImpl), {
+			providerOptions: {
+				__pieTelemetry: (eventName: string, payload?: Record<string, unknown>) => {
+					emitted.push({ eventName, payload });
+				},
+			},
+		});
+
+		await expect(service.speak("fallback should succeed")).resolves.toBeUndefined();
+		expect(service.getState()).toBe(PlaybackState.IDLE);
+		expect(emitted.map((entry) => entry.eventName)).toContain(
+			"pie-tool-runtime-fallback",
+		);
+	});
 });

@@ -230,8 +230,8 @@
 <div bind:this={cardContextAnchor} class="pie-section-player-layout-scaffold-anchor" aria-hidden="true"></div>
 <div
 	class="pie-section-player-nav-status"
-	role="status"
-	aria-live="polite"
+	role="alert"
+	aria-live="assertive"
 	aria-atomic="true"
 >{navigationStatusMessage}</div>
 <pie-section-player-base

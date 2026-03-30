@@ -127,6 +127,12 @@
 			},
 		});
 	});
+
+	const currentItemIndex = $derived(
+		Number.isFinite(compositionModel?.currentItemIndex)
+			? Math.max(0, Number(compositionModel.currentItemIndex))
+			: -1,
+	);
 </script>
 
 {#if !elementsLoaded}
@@ -143,6 +149,7 @@
 			{item}
 			itemIndex={itemIndex}
 			itemCount={items.length}
+			isCurrent={itemIndex === currentItemIndex}
 			canonicalItemId={getCanonicalItemId({ compositionModel, item })}
 			playerParams={getItemPlayerParams({
 				item,

@@ -7,6 +7,7 @@
 			item: { type: "Object", reflect: false },
 			itemIndex: { attribute: "item-index", type: "Number" },
 			itemCount: { attribute: "item-count", type: "Number" },
+			isCurrent: { attribute: "is-current", type: "Boolean" },
 			canonicalItemId: { attribute: "canonical-item-id", type: "String" },
 			resolvedPlayerTag: { attribute: "resolved-player-tag", type: "String" },
 			playerAction: { type: "Object", reflect: false },
@@ -39,6 +40,7 @@
 		item,
 		itemIndex = 0,
 		itemCount = 1,
+		isCurrent = false,
 		canonicalItemId,
 		resolvedPlayerTag = "div",
 		playerAction = (_node: HTMLElement, _params: PlayerElementParams) => undefined,
@@ -50,6 +52,7 @@
 		item: ItemEntity;
 		itemIndex?: number;
 		itemCount?: number;
+		isCurrent?: boolean;
 		canonicalItemId: string;
 		resolvedPlayerTag?: string;
 		playerAction?: (node: HTMLElement, params: PlayerElementParams) => unknown;
@@ -148,6 +151,7 @@
 		tabindex="-1"
 		data-section-item-card
 		data-canonical-item-id={canonicalItemId}
+		aria-current={isCurrent ? "true" : undefined}
 	>
 		<div
 			class="pie-section-player-content-card-header pie-section-player-item-header pie-section-player__item-header"

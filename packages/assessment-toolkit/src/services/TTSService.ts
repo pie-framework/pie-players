@@ -111,6 +111,7 @@ export class TTSService {
 	private speakRunId = 0;
 	private currentBoundaryOffset = 0;
 	private seekSegments: TTSSpeechSegment[] = [];
+	private sentenceHighlightSegments: TTSSpeechSegment[] = [];
 	private currentSeekSegmentIndex = 0;
 	private activeSentenceStartOffset: number | null = null;
 	private activeHighlightMode: HighlightMode = "word";
@@ -574,6 +575,66 @@ export class TTSService {
 			.filter((segment) => segment.text.length > 0);
 	}
 
+	private splitSegmentsAtBoundaries(
+		segments: TTSSpeechSegment[],
+		boundaryOffsets: number[],
+		sourceText: string,
+	): TTSSpeechSegment[] {
+		if (segments.length === 0 || boundaryOffsets.length === 0) return segments;
+		const normalizedBoundaries = Array.from(new Set(boundaryOffsets))
+			.filter((offset) => Number.isFinite(offset) && offset > 0)
+			.sort((left, right) => left - right);
+		if (normalizedBoundaries.length === 0) return segments;
+		const result: TTSSpeechSegment[] = [];
+		for (const segment of segments) {
+			const segmentStart = segment.startOffset;
+			const segmentEnd = segment.startOffset + segment.text.length;
+			const splitPoints = normalizedBoundaries.filter(
+				(offset) => offset > segmentStart && offset < segmentEnd,
+			);
+			if (splitPoints.length === 0) {
+				result.push(segment);
+				continue;
+			}
+			let cursor = segmentStart;
+			for (const point of [...splitPoints, segmentEnd]) {
+				const raw = sourceText.substring(cursor, point);
+				const leadingWhitespace = raw.match(/^\s*/)?.[0].length || 0;
+				const trailingWhitespace = raw.match(/\s*$/)?.[0].length || 0;
+				const startOffset = cursor + leadingWhitespace;
+				const endOffset = point - trailingWhitespace;
+				if (endOffset > startOffset) {
+					result.push({
+						text: sourceText.substring(startOffset, endOffset),
+						startOffset,
+						pauseMsAfter: 0,
+					});
+				}
+				cursor = point;
+			}
+		}
+		return result;
+	}
+
+	private createSentenceHighlightSegments(args: {
+		contentToSpeak: string;
+		shouldUsePlan: boolean;
+		playbackSegments: TTSSpeechSegment[];
+	}): TTSSpeechSegment[] {
+		const grammaticalSegments = this.createSeekSegmentsFromText(args.contentToSpeak);
+		if (!args.shouldUsePlan || args.playbackSegments.length === 0) {
+			return grammaticalSegments;
+		}
+		const structuralBoundaries = args.playbackSegments
+			.map((segment) => segment.startOffset)
+			.filter((offset) => offset > 0);
+		return this.splitSegmentsAtBoundaries(
+			grammaticalSegments,
+			structuralBoundaries,
+			args.contentToSpeak,
+		);
+	}
+
 	private getCurrentSeekSegmentIndex(): number {
 		if (this.seekSegments.length === 0) return 0;
 		let index = 0;
@@ -655,11 +716,14 @@ export class TTSService {
 		this.activeSentenceStartOffset = startOffset;
 	}
 
-	private getSeekSegmentIndexForOffset(offset: number): number {
-		if (this.seekSegments.length === 0) return -1;
+	private getSegmentIndexForOffset(
+		segments: TTSSpeechSegment[],
+		offset: number,
+	): number {
+		if (segments.length === 0) return -1;
 		let index = -1;
-		for (let i = 0; i < this.seekSegments.length; i++) {
-			if (this.seekSegments[i].startOffset <= offset) {
+		for (let i = 0; i < segments.length; i++) {
+			if (segments[i].startOffset <= offset) {
 				index = i;
 			} else {
 				break;
@@ -669,10 +733,11 @@ export class TTSService {
 	}
 
 	private highlightSentenceForOffset(offset: number): void {
-		if (!this.highlightCoordinator || this.seekSegments.length === 0) return;
-		const segmentIndex = this.getSeekSegmentIndexForOffset(offset);
+		const segments = this.sentenceHighlightSegments;
+		if (!this.highlightCoordinator || segments.length === 0) return;
+		const segmentIndex = this.getSegmentIndexForOffset(segments, offset);
 		if (segmentIndex < 0) return;
-		const segment = this.seekSegments[segmentIndex];
+		const segment = segments[segmentIndex];
 		if (!segment) return;
 		if (this.activeSentenceStartOffset === segment.startOffset) return;
 		this.highlightSentenceSegment(segment.startOffset, segment.text);
@@ -774,6 +839,13 @@ export class TTSService {
 			: shouldUsePlan && this.currentContentElement
 				? this.createSpeechPlan(this.currentContentElement, normalizedText)
 				: this.createSeekSegmentsFromText(contentToSpeak);
+		this.sentenceHighlightSegments = this.hasExplicitBreakSemantics(contentToSpeak)
+			? []
+			: this.createSentenceHighlightSegments({
+					contentToSpeak,
+					shouldUsePlan,
+					playbackSegments: this.seekSegments,
+				});
 		this.setState(PlaybackState.LOADING);
 		this.prepareHighlightsForSpeak({
 			contentToSpeak,
@@ -1064,7 +1136,8 @@ export class TTSService {
 		if (args.highlightMode === "sentence" && args.shouldUsePlan) {
 			return;
 		}
-		const initialSegment = this.seekSegments[0];
+		const initialSegment =
+			this.sentenceHighlightSegments[0] || this.seekSegments[0];
 		if (initialSegment) {
 			this.highlightSentenceSegment(
 				initialSegment.startOffset,
@@ -1153,6 +1226,7 @@ export class TTSService {
 		this.normalizedToDOM.clear();
 		this.currentBoundaryOffset = 0;
 		this.seekSegments = [];
+		this.sentenceHighlightSegments = [];
 		this.currentSeekSegmentIndex = 0;
 		this.activeSentenceStartOffset = null;
 	}
@@ -1305,6 +1379,7 @@ export class TTSService {
 		this.normalizedToDOM.clear();
 		this.currentBoundaryOffset = 0;
 		this.seekSegments = [];
+		this.sentenceHighlightSegments = [];
 		this.currentSeekSegmentIndex = 0;
 		this.activeSentenceStartOffset = null;
 	}

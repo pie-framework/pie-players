@@ -441,23 +441,24 @@ describe("TTSService structural pauses", () => {
 		impl.speakSegments = async (segments: TTSSpeechSegment[]) => {
 			impl.segmentCalls.push(segments);
 			impl.onWordBoundary?.("First", 0, 5);
-			impl.onWordBoundary?.("segment", 1, 7);
-			impl.onWordBoundary?.("Second", 13, 6);
+			impl.onWordBoundary?.("segment", 2, 7);
+			impl.onWordBoundary?.("Second", 15, 6);
 		};
 		const service = new TTSService();
 		await service.initialize(new MockTTSProvider(impl, "server-tts", true));
-		(service as any).extractVisibleText = () => "First segment Second segment";
+		(service as any).extractVisibleText = () => "First segment. Second segment.";
 		(service as any).buildPositionMap = () => {
-			const node = { textContent: "First segment Second segment" } as Text;
+			const node = { textContent: "First segment. Second segment." } as Text;
 			(service as any).normalizedToDOM = new Map();
 			for (let i = 0; i < node.textContent!.length; i++) {
 				(service as any).normalizedToDOM.set(i, { node, offset: i });
 			}
 		};
+		// Playback chunk intentionally spans two grammatical sentences to mimic
+		// paragraph-level structural planning.
 		(service as any).createSpeechPlan = () =>
 			[
-				{ text: "First segment", startOffset: 0, pauseMsAfter: 0 },
-				{ text: "Second segment", startOffset: 14, pauseMsAfter: 0 },
+				{ text: "First segment. Second segment.", startOffset: 0, pauseMsAfter: 0 },
 			] as TTSSpeechSegment[];
 		(service as any).findHighlightRange = () => ({
 			node: { textContent: "First" } as Text,
@@ -485,7 +486,70 @@ describe("TTSService structural pauses", () => {
 		} as any);
 
 		try {
-			await service.speak("First segment Second segment", {
+			await service.speak("First segment. Second segment.", {
+				contentElement: {} as Element,
+			});
+		} finally {
+			(globalThis as any).document = originalDocument;
+		}
+
+		expect(sentenceCalls).toHaveLength(2);
+		expect(impl.segmentCalls).toHaveLength(1);
+	});
+
+	test("sentence highlight also splits on structural boundaries without punctuation", async () => {
+		const impl = new MockTTSImpl(true);
+		impl.speakSegments = async (segments: TTSSpeechSegment[]) => {
+			impl.segmentCalls.push(segments);
+			// Boundary within the second structural segment (word-level callback in chunk scope).
+			impl.onWordBoundary?.("photosynthesis", 18, 13);
+		};
+		const service = new TTSService();
+		await service.initialize(new MockTTSProvider(impl, "server-tts", true));
+		(service as any).extractVisibleText =
+			() => "Photosynthesis The process converts light to energy";
+		(service as any).buildPositionMap = () => {
+			const node = {
+				textContent: "Photosynthesis The process converts light to energy",
+			} as Text;
+			(service as any).normalizedToDOM = new Map();
+			for (let i = 0; i < node.textContent!.length; i++) {
+				(service as any).normalizedToDOM.set(i, { node, offset: i });
+			}
+		};
+		// Structural plan marks title/body boundary despite no punctuation delimiter.
+		(service as any).createSpeechPlan = () =>
+			[
+				{ text: "Photosynthesis", startOffset: 0, pauseMsAfter: 0 },
+				{ text: "The process converts light to energy", startOffset: 14, pauseMsAfter: 0 },
+			] as TTSSpeechSegment[];
+		(service as any).findHighlightRange = () => ({
+			node: { textContent: "Photosynthesis" } as Text,
+			start: 0,
+			end: 13,
+		});
+		const sentenceCalls: Range[][] = [];
+		const originalDocument = (globalThis as any).document;
+		(globalThis as any).document = {
+			createRange: () => ({
+				selectNodeContents: () => {},
+				setStart: () => {},
+				setEnd: () => {},
+			}),
+		};
+		service.setHighlightCoordinator({
+			highlightRange: () => {},
+			highlightTTSWord: () => {},
+			highlightTTSSentence: (ranges: Range[]) => sentenceCalls.push(ranges),
+			clearTTS: () => {},
+			clearHighlights: () => {},
+			clearAll: () => {},
+			isSupported: () => true,
+			updateTTSHighlightStyle: () => {},
+		} as any);
+
+		try {
+			await service.speak("Photosynthesis The process converts light to energy", {
 				contentElement: {} as Element,
 			});
 		} finally {

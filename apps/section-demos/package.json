@@ -29,6 +29,7 @@
 		"@pie-players/pie-tool-answer-eliminator": "workspace:*",
 		"@pie-players/pie-tool-calculator-desmos": "workspace:*",
 		"@pie-players/pie-tool-text-to-speech": "workspace:*",
+		"@pie-players/pie-tool-tts-inline": "workspace:*",
 		"@pie-players/pie-toolbars": "workspace:*",
 		"@pie-players/tts-client-server": "workspace:*",
 		"@pie-players/tts-server-core": "workspace:*",

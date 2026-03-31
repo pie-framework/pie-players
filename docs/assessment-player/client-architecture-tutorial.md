@@ -149,7 +149,6 @@ Key attributes/properties on `pie-assessment-player-default`:
 | `env` | `object` | `{ mode: 'gather'/'view'/'evaluate', role: 'student'/'instructor' }` |
 | `coordinator` | `ToolkitCoordinator` | Pass-through coordinator for tools/TTS/accessibility |
 | `sectionPlayerRuntime` | `object` | Optional pass-through runtime object applied to each mounted section-player |
-| `sectionPlayerPlayer` | `object` | Optional pass-through player overrides applied to each mounted section-player |
 
 To obtain the controller after bootstrap:
 
@@ -197,7 +196,7 @@ This keeps one coordinator per assessment context — the same instance drives T
 ### Item-level observability through assessment-player
 
 When using `pie-assessment-player-default`, pass section-level player observability overrides
-through `sectionPlayerRuntime` and/or `sectionPlayerPlayer`:
+through `sectionPlayerRuntime.player`:
 
 ```ts
 import { ConsoleInstrumentationProvider } from '@pie-players/pie-players-shared';
@@ -215,16 +214,11 @@ playerEl.sectionPlayerRuntime = {
     },
   },
 };
-
-// Optional direct section-player player override path:
-playerEl.sectionPlayerPlayer = {
-  loaderOptions: { esmCdnUrl: 'https://cdn.jsdelivr.net/npm' },
-};
 ```
 
 Notes:
 
-- `sectionPlayerRuntime` and `sectionPlayerPlayer` are JS properties, not serialized attributes.
+- `sectionPlayerRuntime` is a JS property, not a serialized attribute.
 - For observability providers, prefer object property assignment to preserve provider instance references.
 - Assessment-level public events (for example `assessment-navigation-requested`, `assessment-route-changed`, `assessment-session-changed`) are instrumented through the same generic provider contract. They are not New Relic-specific hooks.
 - Use `loaderConfig.instrumentationProvider` as the canonical injection point; New Relic is one possible provider implementation.
@@ -239,7 +233,6 @@ Assessment-player instrumentation is generic and provider-agnostic. It uses the 
 Canonical provider injection paths:
 
 - `sectionPlayerRuntime.player.loaderConfig.instrumentationProvider`
-- `sectionPlayerPlayer.loaderConfig.instrumentationProvider` (fallback)
 
 Provider semantics:
 
@@ -290,7 +283,7 @@ const assessment = {
 playerEl.assessment = assessment;
 ```
 
-Each section is passed to a `pie-section-player-splitpane` or `pie-section-player-vertical` element when it becomes active. Item element loading (IIFE/ESM/preloaded), bundle resolution, and registration tracking all happen at the section player level — assessment-player forwards `player-type` plus optional `sectionPlayerRuntime` / `sectionPlayerPlayer` pass-through overrides. See the [section player integration guide](../section-player/client-architecture-tutorial.md) §4 for full coverage of content loading strategies.
+Each section is passed to a `pie-section-player-splitpane` or `pie-section-player-vertical` element when it becomes active. Item element loading (IIFE/ESM/preloaded), bundle resolution, and registration tracking all happen at the section player level — assessment-player forwards `player-type` plus optional `sectionPlayerRuntime` pass-through overrides. See the [section player integration guide](../section-player/client-architecture-tutorial.md) §4 for full coverage of content loading strategies.
 
 ---
 

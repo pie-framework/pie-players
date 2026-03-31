@@ -81,8 +81,6 @@ export class AssessmentPlayerDefaultElement
 	private detachInstrumentationBridge?: () => void;
 	private _sectionPlayerRuntime: AssessmentPlayerRuntimeConfig["sectionPlayerRuntime"] =
 		null;
-	private _sectionPlayerPlayer: AssessmentPlayerRuntimeConfig["sectionPlayerPlayer"] =
-		null;
 	private readiness: AssessmentPlayerSnapshot["readiness"] = {
 		phase: "bootstrapping",
 	};
@@ -127,17 +125,6 @@ export class AssessmentPlayerDefaultElement
 
 	set sectionPlayerRuntime(value: AssessmentPlayerRuntimeConfig["sectionPlayerRuntime"]) {
 		this._sectionPlayerRuntime = value;
-		if (this.isConnected) {
-			this.attachInstrumentationBridge();
-		}
-	}
-
-	get sectionPlayerPlayer(): AssessmentPlayerRuntimeConfig["sectionPlayerPlayer"] {
-		return this._sectionPlayerPlayer;
-	}
-
-	set sectionPlayerPlayer(value: AssessmentPlayerRuntimeConfig["sectionPlayerPlayer"]) {
-		this._sectionPlayerPlayer = value;
 		if (this.isConnected) {
 			this.attachInstrumentationBridge();
 		}
@@ -247,7 +234,6 @@ export class AssessmentPlayerDefaultElement
 	private resolveInstrumentationProvider(): unknown {
 		return resolveInstrumentationProvider({
 			runtimePlayer: this.sectionPlayerRuntime?.player,
-			player: this.sectionPlayerPlayer,
 			component: "pie-assessment-player-default",
 		});
 	}
@@ -427,9 +413,6 @@ export class AssessmentPlayerDefaultElement
 			if (this.coordinator) (sectionEl as any).coordinator = this.coordinator;
 			if (this.sectionPlayerRuntime) {
 				(sectionEl as any).runtime = this.sectionPlayerRuntime;
-			}
-			if (this.sectionPlayerPlayer) {
-				(sectionEl as any).player = this.sectionPlayerPlayer;
 			}
 			this.attachSectionControllerReadyListener(
 				sectionEl,

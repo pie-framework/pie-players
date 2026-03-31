@@ -300,10 +300,12 @@
 				: `grid-template-columns: ${leftPanelWidth}% 0.5rem ${100 - leftPanelWidth - 0.5}%`}
 		>
 			{#if layoutModel.passages.length > 0}
+				<!-- svelte-ignore a11y_no_noninteractive_tabindex scrollable pane needs keyboard focus -->
 				<aside
 					id={passagesPaneId}
 					class="pie-section-player-passages-pane"
 					aria-label="Passages"
+					tabindex="0"
 				>
 					<pie-section-player-passages-pane
 						passages={layoutModel.passages}

@@ -1545,10 +1545,20 @@ export class ToolkitCoordinator {
 			}, timeoutMs);
 			const onVoicesChanged = () => {
 				window.clearTimeout(timeoutId);
-				synth.removeEventListener("voiceschanged", onVoicesChanged);
+				if (
+					typeof synth.removeEventListener === "function" &&
+					typeof synth.addEventListener === "function"
+				) {
+					synth.removeEventListener("voiceschanged", onVoicesChanged);
+				}
 				finish();
 			};
-			synth.addEventListener("voiceschanged", onVoicesChanged, { once: true });
+			if (
+				typeof synth.addEventListener === "function" &&
+				typeof synth.removeEventListener === "function"
+			) {
+				synth.addEventListener("voiceschanged", onVoicesChanged, { once: true });
+			}
 		});
 		const voicesAfterWait = synth.getVoices();
 		await this.emitTelemetry("tts-browser-voices-ready", {

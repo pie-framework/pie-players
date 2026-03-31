@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-section-player-tools-event-debugger",
-	"version": "0.3.28",
+	"version": "0.3.29",
 	"type": "module",
 	"description": "Runtime event debugger panel for PIE section-player session broadcasts",
 	"repository": {

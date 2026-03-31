@@ -1,5 +1,14 @@
 # @pie-players/pie-tool-text-to-speech
 
+## 0.3.29
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.29
+  - @pie-players/pie-players-shared@0.3.29
+
 ## 0.3.28
 
 ### Patch Changes

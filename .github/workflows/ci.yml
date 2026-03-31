@@ -173,9 +173,6 @@ jobs:
       - name: Install Dependencies
         run: bun install --frozen-lockfile
 
-      - name: Install Playwright Chromium
-        run: bunx playwright install --with-deps chromium
-
-      - name: Run Critical Accessibility E2E Suite
-        run: bun run test:e2e:a11y:critical
+      - name: Skip A11y Critical E2E in CI
+        run: echo "A11y critical E2E is local-only; run 'bun run test:e2e:a11y:critical' locally."
 

@@ -10,13 +10,13 @@ const HTMLElementBase =
 
 function defineThemeElementSafely(
 	tagName: string,
-	constructor: CustomElementConstructor,
+	elementConstructor: CustomElementConstructor,
 ): void {
 	if (customElements.get(tagName)) {
 		return;
 	}
 	try {
-		customElements.define(tagName, constructor);
+		customElements.define(tagName, elementConstructor);
 	} catch (error) {
 		const isDuplicate =
 			error instanceof DOMException && error.name === "NotSupportedError";

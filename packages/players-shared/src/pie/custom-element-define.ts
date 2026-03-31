@@ -24,7 +24,7 @@ const isDuplicateDefineError = (error: unknown): boolean => {
 
 export const defineCustomElementSafely = (
 	tagName: string,
-	constructor: CustomElementConstructor,
+	elementConstructor: CustomElementConstructor,
 	context = "custom element tag",
 ): SafeDefineResult => {
 	const validTagName = validateCustomElementTag(tagName, context);
@@ -33,7 +33,7 @@ export const defineCustomElementSafely = (
 	}
 
 	try {
-		customElements.define(validTagName, constructor);
+		customElements.define(validTagName, elementConstructor);
 		return { status: "defined", tagName: validTagName };
 	} catch (error) {
 		if (!isDuplicateDefineError(error)) {

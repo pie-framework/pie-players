@@ -18,6 +18,29 @@ Assessment-player now exposes a `debug` option on `pie-assessment-player-default
 The setting is forwarded to the rendered section-player instance and also applies
 the global flag (`window.PIE_DEBUG`) for shared runtime logging behavior.
 
+## Card Title Formatter
+
+Use the existing `hooks` registration surface on `pie-assessment-player-default`.
+The callback is forwarded to each rendered section-player instance, including the
+initially mounted section (for example when launching directly into section 2).
+
+```ts
+const host = document.querySelector("pie-assessment-player-default") as any;
+host.hooks = {
+  ...(host.hooks || {}),
+  cardTitleFormatter: (context: Record<string, unknown>) => {
+    if (context.kind === "item") {
+      const itemIndex = Number(context.itemIndex ?? 0) + 1;
+      return `Question ${itemIndex}`;
+    }
+    if (context.kind === "passage") {
+      return "Reading passage";
+    }
+    return typeof context.defaultTitle === "string" ? context.defaultTitle : "";
+  },
+};
+```
+
 Component registration entrypoints:
 
 - `@pie-players/pie-assessment-player/components/assessment-player-default-element`

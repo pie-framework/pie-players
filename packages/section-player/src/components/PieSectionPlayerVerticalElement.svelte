@@ -30,7 +30,8 @@
 			itemHostButtons: { type: "Object", reflect: false },
 			passageHostButtons: { type: "Object", reflect: false },
 			policies: { type: "Object", reflect: false },
-			cardTitleFormatter: { type: "Object", reflect: false },
+			hooks: { type: "Object", reflect: false },
+			frameworkErrorHook: { type: "Object", reflect: false },
 			narrowLayoutBreakpoint: { attribute: "narrow-layout-breakpoint", type: "Number" },
 		},
 	}}
@@ -62,7 +63,7 @@
 		SectionPlayerSnapshot,
 	} from "../contracts/runtime-host-contract.js";
 	import type { SectionPlayerPolicies } from "../policies/types.js";
-	import type { SectionPlayerCardTitleFormatter } from "../contracts/card-title-formatters.js";
+	import type { SectionPlayerHostHooks } from "../contracts/host-hooks.js";
 
 	const DEFAULT_NARROW_BREAKPOINT_PX = 1100;
 	const NARROW_BREAKPOINT_MIN_PX = 400;
@@ -95,7 +96,10 @@
 		itemHostButtons = [] as ToolbarItem[],
 		passageHostButtons = [] as ToolbarItem[],
 		policies = undefined as SectionPlayerPolicies | undefined,
-		cardTitleFormatter = undefined as SectionPlayerCardTitleFormatter | undefined,
+		hooks = undefined as SectionPlayerHostHooks | undefined,
+		frameworkErrorHook = undefined as
+			| undefined
+			| ((errorModel: Record<string, unknown>) => void),
 		narrowLayoutBreakpoint = undefined as number | undefined,
 	} = $props();
 	const dispatch = createEventDispatcher();
@@ -237,7 +241,8 @@
 	{itemHostButtons}
 	{passageHostButtons}
 	{policies}
-	{cardTitleFormatter}
+	{hooks}
+	frameworkErrorHook={frameworkErrorHook}
 	playerActionConfig={{
 		stateKey: "__verticalAppliedParams",
 		includeSessionRefInState: false,
@@ -246,6 +251,7 @@
 	on:interaction-ready={forward}
 	on:ready={forward}
 	on:runtime-error={forward}
+	on:framework-error={forward}
 	on:runtime-owned={forward}
 	on:runtime-inherited={forward}
 	on:section-controller-ready={forward}

@@ -33,7 +33,7 @@
 	import { coerceBooleanLike } from "./section-player-props.js";
 	import { createReadinessDetail } from "./section-player-readiness.js";
 	import SectionPlayerLayoutScaffold from "./SectionPlayerLayoutScaffold.svelte";
-	import type { SectionPlayerCardTitleFormatter } from "../../contracts/card-title-formatters.js";
+	import type { SectionPlayerHostHooks } from "../../contracts/host-hooks.js";
 
 	type PlayerActionConfig = {
 		stateKey: string;
@@ -91,7 +91,7 @@
 			includeSessionRefInState: false,
 		} satisfies PlayerActionConfig,
 		policies = DEFAULT_SECTION_PLAYER_POLICIES as SectionPlayerPolicies,
-		cardTitleFormatter = undefined as SectionPlayerCardTitleFormatter | undefined,
+		hooks = undefined as SectionPlayerHostHooks | undefined,
 		frameworkErrorHook = undefined as
 			| undefined
 			| ((errorModel: Record<string, unknown>) => void),
@@ -179,11 +179,12 @@
 	const resolvedPlayerEnv = $derived(playerRuntime.resolvedPlayerEnv);
 	const playerStrategy = $derived(playerRuntime.strategy);
 	const playerAction = $derived.by(() => createPlayerAction(playerActionConfig));
+	const effectiveCardTitleFormatter = $derived(hooks?.cardTitleFormatter);
 	const cardRenderContextValue = $derived.by(
 		(): SectionPlayerCardRenderContext => ({
 			resolvedPlayerTag,
 			playerAction,
-			cardTitleFormatter,
+			cardTitleFormatter: effectiveCardTitleFormatter,
 		}),
 	);
 	const normalizedShowToolbar = $derived(coerceBooleanLike(showToolbar, false));

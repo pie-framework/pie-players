@@ -40,7 +40,7 @@ export type SectionPlayerAdvancedPropName =
 	| "sectionHostButtons"
 	| "itemHostButtons"
 	| "passageHostButtons"
-	| "cardTitleFormatter";
+	| "hooks";
 
 export type SectionPlayerLayoutPropName =
 	| SectionPlayerBasicPropName

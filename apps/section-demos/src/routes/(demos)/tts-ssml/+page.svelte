@@ -155,6 +155,9 @@ const demoCardTitleFormatter = (context: any) => {
 	}
 	return context?.defaultTitle;
 };
+const sectionPlayerHooks = $derived.by(() =>
+	customTitlesEnabled ? { cardTitleFormatter: demoCardTitleFormatter } : undefined
+);
 
 	const DEMO_PERSISTENCE_STORAGE_PREFIX = `pie:section-controller:v1:${DEMO_ASSESSMENT_ID}:`;
 	let resolvedSectionForPlayer = $derived.by(() => {
@@ -502,7 +505,7 @@ const demoCardTitleFormatter = (context: any) => {
 				toolbar-position="right"
 				show-toolbar={true}
 				enabled-tools={sectionToolbarTools}
-				cardTitleFormatter={customTitlesEnabled ? demoCardTitleFormatter : undefined}
+				hooks={sectionPlayerHooks}
 				ontoolkit-ready={handleToolkitReady}
 			></pie-section-player-vertical>
 		{:else}
@@ -521,7 +524,7 @@ const demoCardTitleFormatter = (context: any) => {
 				toolbar-position="right"
 				show-toolbar={true}
 				enabled-tools={sectionToolbarTools}
-				cardTitleFormatter={customTitlesEnabled ? demoCardTitleFormatter : undefined}
+				hooks={sectionPlayerHooks}
 				ontoolkit-ready={handleToolkitReady}
 			></pie-section-player-splitpane>
 		{/if}

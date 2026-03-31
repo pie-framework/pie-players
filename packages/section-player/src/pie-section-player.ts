@@ -47,3 +47,4 @@ export type {
 	SectionPlayerItemTitleContext,
 	SectionPlayerPassageTitleContext,
 } from "./contracts/card-title-formatters.js";
+export type { SectionPlayerHostHooks } from "./contracts/host-hooks.js";

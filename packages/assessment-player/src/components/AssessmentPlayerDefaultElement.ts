@@ -28,7 +28,10 @@ import type {
 
 interface SectionControllerHandle {
 	getSession?: () => unknown;
-	applySession?: (session: unknown, options?: { mode?: string }) => Promise<void>;
+	applySession?: (
+		session: unknown,
+		options?: { mode?: string },
+	) => Promise<void>;
 }
 
 const DEFAULT_SECTION_TAG = "pie-section-player-splitpane";
@@ -73,8 +76,9 @@ export class AssessmentPlayerDefaultElement
 	private controller: AssessmentControllerHandle | null = null;
 	private controllerReadyPromise: Promise<AssessmentControllerHandle | null> | null =
 		null;
-	private controllerReadyResolve: ((value: AssessmentControllerHandle | null) => void) | null =
-		null;
+	private controllerReadyResolve:
+		| ((value: AssessmentControllerHandle | null) => void)
+		| null = null;
 	private sectionHost: HTMLElement | null = null;
 	private sectionControllerRef: SectionControllerHandle | null = null;
 	private unsubscribeController?: () => void;
@@ -92,12 +96,17 @@ export class AssessmentPlayerDefaultElement
 		});
 	}
 
-	attributeChangedCallback(name: string, _oldValue: string | null, value: string | null) {
+	attributeChangedCallback(
+		name: string,
+		_oldValue: string | null,
+		value: string | null,
+	) {
 		if (name === "assessment-id") this.assessmentId = value || "";
 		if (name === "attempt-id") this.attemptId = value || "";
 		if (name === "show-navigation") this.showNavigation = value;
 		if (name === "section-player-layout") {
-			this.sectionPlayerLayout = value === "vertical" ? "vertical" : "splitpane";
+			this.sectionPlayerLayout =
+				value === "vertical" ? "vertical" : "splitpane";
 		}
 		if (name === "player-type") {
 			this.playerType = (value as typeof this.playerType) || "iife";
@@ -156,7 +165,11 @@ export class AssessmentPlayerDefaultElement
 		this.hooks?.onAssessmentControllerDispose?.(this.controller || undefined);
 	}
 
-	private dispatch(name: string, detail?: unknown, cancelable = false): boolean {
+	private dispatch(
+		name: string,
+		detail?: unknown,
+		cancelable = false,
+	): boolean {
 		return this.dispatchEvent(
 			new CustomEvent(name, {
 				detail,
@@ -286,15 +299,21 @@ export class AssessmentPlayerDefaultElement
 		target: HTMLElement,
 		sectionIdentifier: string,
 	): void {
-		target.addEventListener("section-controller-ready", async (event: Event) => {
-			const detail = (event as CustomEvent<{ controller?: SectionControllerHandle }>)
-				.detail;
-			this.sectionControllerRef = detail?.controller || null;
-			const saved = this.controller?.getSectionSession(sectionIdentifier);
-			if (saved && this.sectionControllerRef?.applySession) {
-				await this.sectionControllerRef.applySession(saved, { mode: "replace" });
-			}
-		});
+		target.addEventListener(
+			"section-controller-ready",
+			async (event: Event) => {
+				const detail = (
+					event as CustomEvent<{ controller?: SectionControllerHandle }>
+				).detail;
+				this.sectionControllerRef = detail?.controller || null;
+				const saved = this.controller?.getSectionSession(sectionIdentifier);
+				if (saved && this.sectionControllerRef?.applySession) {
+					await this.sectionControllerRef.applySession(saved, {
+						mode: "replace",
+					});
+				}
+			},
+		);
 		target.addEventListener("session-changed", () =>
 			this.syncCurrentSectionSessionIntoAssessment(),
 		);
@@ -414,6 +433,9 @@ export class AssessmentPlayerDefaultElement
 			if (this.sectionPlayerRuntime) {
 				(sectionEl as any).runtime = this.sectionPlayerRuntime;
 			}
+			(sectionEl as any).hooks = {
+				cardTitleFormatter: this.hooks?.cardTitleFormatter,
+			};
 			this.attachSectionControllerReadyListener(
 				sectionEl,
 				currentSection.sectionIdentifier,
@@ -488,7 +510,8 @@ export class AssessmentPlayerDefaultElement
 		let targetSectionId: string | undefined;
 		if (typeof indexOrIdentifier === "number") {
 			targetIndex = indexOrIdentifier;
-			targetSectionId = this.controller?.getSectionAt(targetIndex)?.sectionIdentifier;
+			targetSectionId =
+				this.controller?.getSectionAt(targetIndex)?.sectionIdentifier;
 		} else {
 			targetSectionId = indexOrIdentifier;
 			const section = this.controller?.getCurrentSection();
@@ -561,7 +584,8 @@ export class AssessmentPlayerDefaultElement
 	async waitForAssessmentController(timeoutMs = 5000) {
 		if (this.controller) return this.controller;
 		const controllerPromise =
-			this.controllerReadyPromise || Promise.resolve<AssessmentControllerHandle | null>(null);
+			this.controllerReadyPromise ||
+			Promise.resolve<AssessmentControllerHandle | null>(null);
 		const timeoutPromise = new Promise<null>((resolve) => {
 			setTimeout(() => resolve(null), timeoutMs);
 		});

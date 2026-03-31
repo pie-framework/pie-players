@@ -88,6 +88,9 @@ export interface AssessmentSessionPersistenceFactoryDefaults {
 }
 
 export interface AssessmentPlayerHooks {
+	cardTitleFormatter?: (
+		context: Record<string, unknown>,
+	) => string | null | undefined;
 	createAssessmentDeliveryPlan?: (
 		context: AssessmentDeliveryPlanContext,
 		defaults: AssessmentDeliveryPlanFactoryDefaults,

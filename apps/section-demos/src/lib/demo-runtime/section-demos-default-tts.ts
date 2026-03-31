@@ -1,9 +1,8 @@
 /**
- * Default TTS tool config for section-demos: AWS Polly via SvelteKit `/api/tts` routes.
- * ToolkitCoordinator otherwise defaults to `backend: "browser"`; merging this into
- * each demo's `tools.providers` aligns playback and the TTS settings panel with Polly.
+ * Optional AWS Polly transport via local `/api/tts` proxy.
+ * Keep available for targeted comparisons in specific demos.
  */
-export const SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER = {
+export const SECTION_DEMOS_POLLY_TTS_TOOL_PROVIDER = {
 	enabled: true,
 	backend: "polly" as const,
 	serverProvider: "polly" as const,
@@ -38,3 +37,11 @@ export const SECTION_DEMOS_SC_TTS_TOOL_PROVIDER = {
 	// Keep auth server-side; asset URLs are expected to be public CloudFront links.
 	includeAuthOnAssetFetch: false,
 };
+
+/**
+ * Default for section demos and downstream hosts (including Pieoneer):
+ * SchoolCity-style transport through the local `/api/tts/sc` proxy.
+ */
+export const SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER = {
+	...SECTION_DEMOS_SC_TTS_TOOL_PROVIDER,
+} as const;

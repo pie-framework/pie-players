@@ -16,14 +16,19 @@
 
 import type { AccessibilityCatalog } from "@pie-players/pie-players-shared/types";
 import {
-	normalizeToolsConfig,
 	type CanonicalToolsConfig,
 	type ToolPlacementConfig,
 	type ToolPolicyConfig,
 	type ToolProviderConfig,
 	type ToolProvidersConfig,
+	normalizeToolsConfig,
 	resolveToolsForLevel,
 } from "./tools-config-normalizer.js";
+import {
+	normalizeAndValidateToolsConfig,
+	normalizeToolConfigStrictness,
+	type ToolConfigStrictness,
+} from "./tool-config-validation.js";
 import { AccessibilityCatalogResolver } from "./AccessibilityCatalogResolver.js";
 import { ElementToolStateStore } from "./ElementToolStateStore.js";
 import { HighlightCoordinator } from "./HighlightCoordinator.js";
@@ -33,6 +38,7 @@ import { BrowserTTSProvider } from "./tts/browser-provider.js";
 import {
 	buildRuntimeTTSConfig,
 	resolveTTSBackend,
+	type TTSLayoutMode,
 } from "./tts-runtime-config.js";
 import { ToolProviderRegistry } from "./tool-providers/index.js";
 import type { ToolProviderApi } from "./tool-providers/ToolProviderApi.js";
@@ -40,7 +46,7 @@ import type {
 	TTSToolProviderConfig,
 } from "./tool-providers/index.js";
 import { createPackagedToolRegistry } from "./createDefaultToolRegistry.js";
-import type { ToolRegistration } from "./ToolRegistry.js";
+import type { ToolRegistration, ToolRegistry } from "./ToolRegistry.js";
 import type {
 	SectionControllerContext,
 	SectionControllerEvent,
@@ -99,7 +105,14 @@ export interface TTSToolConfig extends ToolConfig {
 	cache?: boolean;
 	speedRate?: "slow" | "medium" | "fast";
 	lang_id?: string;
+	/**
+	 * Optional inline TTS speed buttons.
+	 * - Omitted/non-array: default speed buttons are shown.
+	 * - Empty array: hide speed buttons.
+	 * - Arrays that sanitize to no valid values: default speed buttons are shown.
+	 */
 	speedOptions?: number[];
+	layoutMode?: TTSLayoutMode;
 	authFetcher?: () => Promise<Partial<TTSToolProviderConfig>>;
 }
 
@@ -137,6 +150,22 @@ export interface ToolkitCoordinatorConfig {
 	};
 
 	/**
+	 * Validation strictness for tool config contracts.
+	 * - off: keep diagnostics internal (no warnings or throws)
+	 * - warn: log diagnostics and continue
+	 * - error: throw on diagnostics
+	 *
+	 * @default "error"
+	 */
+	toolConfigStrictness?: ToolConfigStrictness;
+
+	/**
+	 * Optional registry used for tool-config validation and provider descriptor resolution.
+	 * Defaults to packaged PIE tools when omitted.
+	 */
+	toolRegistry?: ToolRegistry | null;
+
+	/**
 	 * Accessibility configuration.
 	 * Includes QTI 3.0 accessibility catalogs and language settings.
 	 */
@@ -157,6 +186,15 @@ export interface ToolkitCoordinatorConfig {
 	 * @default false
 	 */
 	lazyInit?: boolean;
+
+	/**
+	 * Internal bootstrap escape hatch used by framework-owned hosts.
+	 * When true, constructor skips throwing validation and expects caller
+	 * to pass a pre-validated tools config.
+	 *
+	 * @internal
+	 */
+	deferToolConfigValidation?: boolean;
 }
 
 export interface ToolkitErrorContext {
@@ -355,8 +393,13 @@ export interface ToolkitServiceBundle {
  * const coordinator = new ToolkitCoordinator({
  *   assessmentId: 'demo-three-questions',
  *   tools: {
- *     tts: { enabled: true, defaultVoice: 'en-US' },
- *     answerEliminator: { enabled: true, strategy: 'strikethrough' }
+ *     providers: {
+ *       textToSpeech: { enabled: true, defaultVoice: 'en-US' },
+ *       answerEliminator: { enabled: true, strategy: 'strikethrough' }
+ *     },
+ *     placement: {
+ *       item: ['textToSpeech', 'answerEliminator']
+ *     }
  *   }
  * });
  *
@@ -394,7 +437,7 @@ export class ToolkitCoordinator {
 	private coordinatorReadyPromise?: Promise<void>;
 	private coordinatorReadyNotified = false;
 	private readonly providerInitPromises = new Map<string, Promise<ToolProviderApi>>();
-	private readonly packagedToolRegistry = createPackagedToolRegistry();
+	private readonly toolRegistry: ToolRegistry;
 	private readonly sectionControllers = new Map<string, SectionControllerHandle>();
 	private readonly sectionControllerKeys = new Map<string, SectionControllerKey>();
 	private readonly sectionControllerInitPromises = new Map<
@@ -423,9 +466,20 @@ export class ToolkitCoordinator {
 	private static resolveConfig(
 		config: ToolkitCoordinatorConfig,
 	): ToolkitCoordinatorConfig {
-		const normalized = normalizeToolsConfig(config.tools as any);
+		const strictness = normalizeToolConfigStrictness(
+			config.toolConfigStrictness,
+		);
+		const toolRegistry = config.toolRegistry ?? createPackagedToolRegistry();
+		const normalized =
+			config.deferToolConfigValidation === true
+				? normalizeToolsConfig(config.tools as any)
+				: normalizeAndValidateToolsConfig(config.tools as any, {
+						strictness,
+						source: "ToolkitCoordinator.init",
+						toolRegistry,
+					}).config;
 		const defaultProviders: ToolkitToolsConfig["providers"] = {
-			tts: {
+			textToSpeech: {
 				enabled: true,
 				backend: "browser",
 			},
@@ -436,6 +490,8 @@ export class ToolkitCoordinator {
 
 		return {
 			...config,
+			toolConfigStrictness: strictness,
+			toolRegistry,
 			tools: {
 				...normalized,
 				providers: {
@@ -460,6 +516,7 @@ export class ToolkitCoordinator {
 
 		this.assessmentId = resolvedConfig.assessmentId;
 		this.config = resolvedConfig;
+		this.toolRegistry = resolvedConfig.toolRegistry ?? createPackagedToolRegistry();
 		this.hooks = resolvedConfig.hooks ?? {};
 		this.lazyInit = config.lazyInit === true;
 
@@ -637,7 +694,7 @@ export class ToolkitCoordinator {
 	}
 
 	private getProviderDescriptorTools(): ToolRegistration[] {
-		return this.packagedToolRegistry
+		return this.toolRegistry
 			.getAllTools()
 			.filter((tool) => !!tool.provider);
 	}
@@ -1459,9 +1516,55 @@ export class ToolkitCoordinator {
 			providerOptions: nextProviderOptions,
 		} as Partial<TTSConfig>;
 		await this.ttsService.initialize(provider, nextConfig);
+		await this.ensureBrowserVoicesReady(provider);
 		this.ttsService.setCatalogResolver(this.catalogResolver);
 		this.ttsInitialized = true;
 		await this.hooks.onTTSReady?.();
+	}
+
+	private async ensureBrowserVoicesReady(
+		provider: ITTSProvider,
+		timeoutMs = 1200,
+	): Promise<void> {
+		if (provider.providerId !== "browser") return;
+		if (typeof window === "undefined") return;
+		if (!("speechSynthesis" in window)) return;
+		const synth = window.speechSynthesis;
+		const voices = synth.getVoices();
+		if (voices.length > 0) return;
+		await new Promise<void>((resolve) => {
+			let settled = false;
+			const finish = () => {
+				if (settled) return;
+				settled = true;
+				resolve();
+			};
+			const timeoutId = window.setTimeout(() => {
+				synth.removeEventListener("voiceschanged", onVoicesChanged);
+				finish();
+			}, timeoutMs);
+			const onVoicesChanged = () => {
+				window.clearTimeout(timeoutId);
+				if (
+					typeof synth.removeEventListener === "function" &&
+					typeof synth.addEventListener === "function"
+				) {
+					synth.removeEventListener("voiceschanged", onVoicesChanged);
+				}
+				finish();
+			};
+			if (
+				typeof synth.addEventListener === "function" &&
+				typeof synth.removeEventListener === "function"
+			) {
+				synth.addEventListener("voiceschanged", onVoicesChanged, { once: true });
+			}
+		});
+		const voicesAfterWait = synth.getVoices();
+		await this.emitTelemetry("tts-browser-voices-ready", {
+			voiceCount: voicesAfterWait.length,
+			timedOut: voicesAfterWait.length === 0,
+		});
 	}
 
 	/**
@@ -1535,37 +1638,33 @@ export class ToolkitCoordinator {
 		const providers =
 			(this.config.tools as { providers?: Record<string, ToolProviderConfig | undefined> })
 				?.providers || {};
-		return (
-			(providers.textToSpeech as TTSToolConfig | undefined) ||
-			(providers.tts as TTSToolConfig | undefined)
-		);
+		return providers.textToSpeech as TTSToolConfig | undefined;
 	}
 
-	private resolveProviderConfigKey(toolId: string): string {
-		const providers =
-			(this.config.tools as { providers?: Record<string, ToolProviderConfig | undefined> })
-				?.providers || {};
-		const aliasCandidates: Record<string, string[]> = {
-			tts: ["textToSpeech", "tts"],
-			textToSpeech: ["textToSpeech", "tts"],
-		};
-		const candidates = aliasCandidates[toolId] || [toolId];
-		for (const candidate of candidates) {
-			if (candidate in providers) return candidate;
+	private assertCanonicalToolId(toolId: string): void {
+		if (typeof toolId !== "string" || toolId.trim().length === 0) {
+			throw new Error("Tool id must be a non-empty string.");
 		}
-		return candidates[0];
+		if (toolId === "tts") {
+			throw new Error(
+				`Tool id "tts" is no longer supported. Use "textToSpeech".`,
+			);
+		}
+		if (!this.toolRegistry.get(toolId)) {
+			throw new Error(`Unknown tool id "${toolId}".`);
+		}
 	}
 
 	/**
 	 * Check if a tool is enabled.
 	 * Tools are enabled by default unless explicitly disabled.
 	 *
-	 * @param toolId Tool identifier (e.g., 'tts', 'answerEliminator')
+	 * @param toolId Tool identifier (e.g., 'textToSpeech', 'answerEliminator')
 	 * @returns True if tool is enabled
 	 */
 	isToolEnabled(toolId: string): boolean {
-		const configKey = this.resolveProviderConfigKey(toolId);
-		const toolConfig = (this.config.tools as any)?.providers?.[configKey];
+		this.assertCanonicalToolId(toolId);
+		const toolConfig = (this.config.tools as any)?.providers?.[toolId];
 		// Enabled by default unless explicitly set to false
 		return toolConfig?.enabled !== false;
 	}
@@ -1577,10 +1676,10 @@ export class ToolkitCoordinator {
 	 * @returns Tool configuration or null if not configured
 	 */
 	getToolConfig(toolId: string): ToolProviderConfig | null {
-		const configKey = this.resolveProviderConfigKey(toolId);
+		this.assertCanonicalToolId(toolId);
 		return (
 			((this.config.tools as { providers?: Record<string, ToolProviderConfig | undefined> })
-				?.providers?.[configKey] as ToolProviderConfig | undefined) || null
+				?.providers?.[toolId] as ToolProviderConfig | undefined) || null
 		);
 	}
 
@@ -1593,18 +1692,38 @@ export class ToolkitCoordinator {
 	 */
 	updateToolConfig(toolId: string, updates: Partial<ToolProviderConfig>): void {
 		// Update config
-		const configKey = this.resolveProviderConfigKey(toolId);
+		this.assertCanonicalToolId(toolId);
 		const current = this.getToolConfig(toolId) || {};
 		if (!this.config.tools) {
-			this.config.tools = normalizeToolsConfig();
+			this.config.tools = normalizeAndValidateToolsConfig(undefined, {
+				strictness: this.config.toolConfigStrictness ?? "error",
+				source: "ToolkitCoordinator.updateToolConfig",
+				toolRegistry: this.toolRegistry,
+			}).config;
 		}
 		if (!(this.config.tools as any).providers) {
 			(this.config.tools as any).providers = {};
 		}
-		(this.config.tools as any).providers[configKey] = { ...current, ...updates };
+		const nextProviders = {
+			...((this.config.tools as any).providers || {}),
+			[toolId]: { ...current, ...updates },
+		};
+		const validated = normalizeAndValidateToolsConfig(
+			{
+				...(this.config.tools as CanonicalToolsConfig),
+				providers: nextProviders,
+			},
+			{
+				strictness: this.config.toolConfigStrictness ?? "error",
+				source: "ToolkitCoordinator.updateToolConfig",
+				toolRegistry: this.toolRegistry,
+			},
+		);
+		this.config.tools = validated.config;
+		void this.emitTelemetry("tool-config-updated", { toolId });
 
 		// Apply configuration changes to services
-		this._applyToolConfigChange(configKey, updates);
+		this._applyToolConfigChange(toolId, updates);
 	}
 
 	/**
@@ -1615,12 +1734,28 @@ export class ToolkitCoordinator {
 	 */
 	updateFloatingTools(toolIds: string[]): void {
 		if (!this.config.tools) {
-			this.config.tools = normalizeToolsConfig();
+			this.config.tools = normalizeAndValidateToolsConfig(undefined, {
+				strictness: this.config.toolConfigStrictness ?? "error",
+				source: "ToolkitCoordinator.updateFloatingTools",
+				toolRegistry: this.toolRegistry,
+			}).config;
 		}
-		if (!this.config.tools.placement) {
-			this.config.tools.placement = normalizeToolsConfig().placement;
-		}
-		this.config.tools.placement.section = [...toolIds];
+		const validated = normalizeAndValidateToolsConfig(
+			{
+				...(this.config.tools as CanonicalToolsConfig),
+				placement: {
+					section: [...toolIds],
+					item: [...(this.config.tools?.placement?.item || [])],
+					passage: [...(this.config.tools?.placement?.passage || [])],
+				},
+			},
+			{
+				strictness: this.config.toolConfigStrictness ?? "error",
+				source: "ToolkitCoordinator.updateFloatingTools",
+				toolRegistry: this.toolRegistry,
+			},
+		);
+		this.config.tools = validated.config;
 
 		// Notify listener of change
 		if (this.floatingToolsChangeCallback) {
@@ -1664,7 +1799,6 @@ export class ToolkitCoordinator {
 	): void {
 		// Apply configuration changes based on tool
 		switch (toolId) {
-			case "tts":
 			case "textToSpeech": {
 				const reconfigurePromise = this._reconfigureTTSProvider();
 				this.ttsReconfigurePromise = reconfigurePromise;

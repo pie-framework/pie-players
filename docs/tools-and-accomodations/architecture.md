@@ -314,7 +314,7 @@ const coordinator = new ToolkitCoordinator({
           }
         }
       },
-      tts: {
+      textToSpeech: {
         enabled: true,
         settings: { backend: 'browser' }
       }

@@ -179,7 +179,7 @@ try {
 }
 ```
 
-When using toolkit `tools.providers.tts` configuration (instead of initializing
+When using toolkit `tools.providers.textToSpeech` configuration (instead of initializing
 `ServerTTSProvider` directly), server-backed defaults can be applied for common
 cases (for example `apiEndpoint: '/api/tts'` and `transportMode: 'pie'`), so
 host config can stay minimal.

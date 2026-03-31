@@ -6,6 +6,7 @@
 		NewRelicInstrumentationProvider
 	} from '@pie-players/pie-players-shared';
 	import {
+		createToolsConfig,
 		createDefaultPersonalNeedsProfile,
 		ToolkitCoordinator,
 		type ToolkitCoordinatorHooks
@@ -41,23 +42,34 @@
 	let { data }: { data: PageData } = $props();
 
 	// Level 3: explicit host-managed coordinator initialization.
-	const toolkitToolsConfig = {
-		providers: {
-			tts: SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER,
-			calculator: {
-				authFetcher: fetchDesmosAuthConfig
+	const toolsConfigResult = createToolsConfig({
+		source: 'section-demos.three-questions',
+		strictness: 'error',
+		tools: {
+			providers: {
+				textToSpeech: SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER,
+				calculator: {
+					authFetcher: fetchDesmosAuthConfig
+				},
+				annotationToolbar: {
+					enabled: true
+				}
 			},
-			annotationToolbar: {
-				enabled: true
+			placement: {
+				section: ['theme', 'graph', 'periodicTable'],
+				item: ['calculator', 'textToSpeech', 'annotationToolbar'],
+				passage: ['textToSpeech', 'annotationToolbar']
 			}
-		},
-		placement: {
-			section: ['theme', 'graph', 'periodicTable'],
-			item: ['calculator', 'textToSpeech', 'annotationToolbar'],
-			passage: ['textToSpeech', 'annotationToolbar']
 		}
-	};
-	const sectionToolbarTools = 'theme,graph,periodicTable';
+	});
+	const toolkitToolsConfig = toolsConfigResult.config;
+	if (toolsConfigResult.diagnostics.length > 0) {
+		console.warn('[three-questions demo] tools config diagnostics:', toolsConfigResult.diagnostics);
+	}
+	// Include item/passage tools for hosts that still interpret enabled-tools
+	// as a global whitelist instead of section-only placement.
+	const sectionToolbarTools =
+		'theme,graph,periodicTable,calculator,textToSpeech,annotationToolbar';
 	const sectionInstrumentationProvider = new CompositeInstrumentationProvider([
 		new NewRelicInstrumentationProvider(),
 		new DebugPanelInstrumentationProvider()
@@ -80,6 +92,7 @@
 	};
 	const coordinator = new ToolkitCoordinator({
 		assessmentId: DEMO_ASSESSMENT_ID,
+		toolConfigStrictness: 'error',
 		tools: toolkitToolsConfig
 	});
 
@@ -251,6 +264,7 @@
 
 	$effect(() => {
 		if (!browser) return;
+		let warnedQuotaExceeded = false;
 		const triggerSessionPanelRefresh = () => {
 			queueMicrotask(() => {
 				sessionDebuggerElement?.refreshFromHost?.();
@@ -263,7 +277,20 @@
 					attemptId
 				});
 				if (!controller?.persist) return;
-				void controller.persist();
+				void Promise.resolve(controller.persist()).catch((error: unknown) => {
+					const isQuotaError =
+						error instanceof DOMException && error.name === 'QuotaExceededError';
+					if (isQuotaError) {
+						if (!warnedQuotaExceeded) {
+							warnedQuotaExceeded = true;
+							console.warn(
+								'[three-questions demo] Storage quota exceeded while persisting section session; persistence is skipped until storage is cleared.'
+							);
+						}
+						return;
+					}
+					console.error('[three-questions demo] Failed to persist section session:', error);
+				});
 			});
 		};
 		document.addEventListener('item-session-changed', triggerSessionPanelRefresh as EventListener, true);

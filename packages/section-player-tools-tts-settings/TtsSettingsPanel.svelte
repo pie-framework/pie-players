@@ -14,6 +14,14 @@
 
 <script lang="ts">
 	import "@pie-players/pie-theme/components.css";
+	import {
+		DEFAULT_TTS_SPEED_OPTIONS,
+		formatTTSSpeedOptionsAsText,
+		normalizeTTSSpeedOptions,
+		parseTTSSpeedOptionsFromText,
+		resolveTTSRuntimeSettings,
+		type TTSLayoutMode,
+	} from "@pie-players/pie-assessment-toolkit";
 	import { createEventDispatcher, onDestroy, onMount, untrack } from "svelte";
 
 	type BuiltInBackendTab = "browser" | "polly" | "google";
@@ -164,6 +172,9 @@ type PreviewSpeechMark = { time: number; start: number; end: number; value?: str
 		googleVoiceType?: string;
 		googleGender?: string;
 		providerOptions?: Record<string, unknown>;
+		layoutMode?: TTSLayoutMode;
+		/** Inline toolbar speed multipliers; `[]` hides speed buttons. */
+		speedOptions?: number[];
 		[key: string]: unknown;
 	};
 
@@ -186,6 +197,8 @@ type PreviewSpeechMark = { time: number; start: number; end: number; value?: str
 	let browserVoice = $state("");
 	let browserRate = $state(1);
 	let browserPitch = $state(1);
+	let layoutMode = $state<TTSLayoutMode>("left-aligned");
+	let speedOptionsText = $state("");
 
 	let pollyApiEndpoint = $state("");
 	let pollyLanguage = $state("en-US");
@@ -291,6 +304,12 @@ type PreviewSpeechMark = { time: number; start: number; end: number; value?: str
 	};
 	const BUILT_IN_TABS: BuiltInBackendTab[] = ["browser", "polly", "google"];
 const PREVIEW_DEBUG_PREFIX = "[pie-tts-preview]";
+const TTS_LAYOUT_MODES: readonly TTSLayoutMode[] = [
+	"reserved-row",
+	"expanding-row",
+	"floating-overlay",
+	"left-aligned",
+];
 
 function debugPreview(event: string, payload?: Record<string, unknown>): void {
 	if (typeof console === "undefined") return;
@@ -300,6 +319,16 @@ function debugPreview(event: string, payload?: Record<string, unknown>): void {
 	}
 	console.debug(`${PREVIEW_DEBUG_PREFIX} ${event}`);
 }
+
+	function normalizeLayoutMode(value: unknown): TTSLayoutMode {
+		return TTS_LAYOUT_MODES.includes(value as TTSLayoutMode)
+			? (value as TTSLayoutMode)
+			: "left-aligned";
+	}
+
+	function resetInlineSpeedOptionsToDefaults(): void {
+		speedOptionsText = formatTTSSpeedOptionsAsText([...DEFAULT_TTS_SPEED_OPTIONS]);
+	}
 
 	const normalizedCustomProviders = $derived.by(() => {
 		const reserved = new Set<string>(BUILT_IN_TABS);
@@ -479,7 +508,7 @@ function debugPreview(event: string, payload?: Record<string, unknown>): void {
 	}
 
 	function initializeFromCoordinator() {
-		const existing = toolkitCoordinator?.getToolConfig?.("tts") || {};
+		const existing = toolkitCoordinator?.getToolConfig?.("textToSpeech") || {};
 		const stored = readStoredSettings();
 		const source = stored ? { ...existing, ...stored } : existing;
 		const resolvedDefaultApiEndpoint = getDefaultApiEndpoint();
@@ -512,6 +541,22 @@ function debugPreview(event: string, payload?: Record<string, unknown>): void {
 						? "standard"
 						: "neural";
 		const sourceProviderOptions = (source?.providerOptions || {}) as Record<string, unknown>;
+		layoutMode = normalizeLayoutMode(source?.layoutMode);
+		const runtimeForSpeed = resolveTTSRuntimeSettings(
+			source && typeof source === "object" ? (source as Record<string, unknown>) : undefined,
+		);
+		if (runtimeForSpeed.speedOptions === undefined) {
+			speedOptionsText = formatTTSSpeedOptionsAsText([...DEFAULT_TTS_SPEED_OPTIONS]);
+		} else if (
+			Array.isArray(runtimeForSpeed.speedOptions) &&
+			runtimeForSpeed.speedOptions.length === 0
+		) {
+			speedOptionsText = "";
+		} else {
+			speedOptionsText = formatTTSSpeedOptionsAsText(
+				normalizeTTSSpeedOptions(runtimeForSpeed.speedOptions),
+			);
+		}
 		const defaultSampleRate = normalizePollySampleRate(
 			Number(source?.sampleRate ?? sourceProviderOptions.sampleRate ?? 24000)
 		);
@@ -569,6 +614,8 @@ function debugPreview(event: string, payload?: Record<string, unknown>): void {
 		}
 		setPreviewTextForCurrentTab();
 	}
+
+	const layoutModeReservesRow = $derived(layoutMode === "reserved-row");
 
 	function sameRecordEntries<T>(left: Record<string, T>, right: Record<string, T>): boolean {
 		const leftKeys = Object.keys(left);
@@ -1400,6 +1447,7 @@ function normalizePreviewSpeechMarkOffsets(
 			}
 		} finally {
 			if (runId === previewRunId) {
+				clearPreviewTracking();
 				isPreviewing = false;
 				previewBackend = null;
 			}
@@ -1421,6 +1469,7 @@ function normalizePreviewSpeechMarkOffsets(
 
 		isApplying = true;
 		try {
+			const appliedSpeedOptions = parseTTSSpeedOptionsFromText(speedOptionsText);
 			if (!isBuiltInTab(activeTab)) {
 				const provider = getCustomProviderOrThrow(activeTab);
 				let next: ProviderApplyResult | undefined;
@@ -1435,24 +1484,32 @@ function normalizePreviewSpeechMarkOffsets(
 						`Custom provider '${provider.id}' did not return apply config.`
 					);
 				}
-				toolkitCoordinator.updateToolConfig("tts", {
+				toolkitCoordinator.updateToolConfig("textToSpeech", {
 					enabled: true,
-					...next.config
+					...next.config,
+					layoutMode,
+					speedOptions: appliedSpeedOptions,
 				});
 				persistSettings({
 					backend: provider.id,
-					...(next.config || {})
+					...(next.config || {}),
+					layoutMode,
+					speedOptions: appliedSpeedOptions,
 				});
 				applyMessage = next.message || `Applied ${provider.label} TTS settings.`;
 			} else if (activeTab === "browser") {
 				const next = {
 					backend: "browser" as const,
+					serverProvider: undefined,
+					provider: undefined,
 					defaultVoice: resolveVoiceForBackend("browser"),
 					rate: normalizeRate(browserRate),
 					pitch: normalizePitch(browserPitch),
-					transportMode: "pie" as const
+					transportMode: "pie" as const,
+					layoutMode,
+					speedOptions: appliedSpeedOptions,
 				};
-				toolkitCoordinator.updateToolConfig("tts", {
+				toolkitCoordinator.updateToolConfig("textToSpeech", {
 					enabled: true,
 					...next
 				});
@@ -1460,6 +1517,7 @@ function normalizePreviewSpeechMarkOffsets(
 			} else if (activeTab === "polly") {
 				const next = {
 					backend: "polly" as const,
+					serverProvider: "polly" as const,
 					apiEndpoint: normalizeApiEndpoint(pollyApiEndpoint, getDefaultApiEndpoint()),
 					transportMode: "pie" as const,
 					endpointMode: "synthesizePath" as const,
@@ -1476,9 +1534,11 @@ function normalizePreviewSpeechMarkOffsets(
 						sampleRate: normalizePollySampleRate(pollySampleRate),
 						format: pollyFormat,
 						speechMarkTypes: getPollySpeechMarkTypes()
-					}
+					},
+					layoutMode,
+					speedOptions: appliedSpeedOptions,
 				};
-				toolkitCoordinator.updateToolConfig("tts", {
+				toolkitCoordinator.updateToolConfig("textToSpeech", {
 					enabled: true,
 					...next
 				});
@@ -1486,6 +1546,7 @@ function normalizePreviewSpeechMarkOffsets(
 			} else {
 				const next = {
 					backend: "google" as const,
+					serverProvider: "google" as const,
 					apiEndpoint: normalizeApiEndpoint(googleApiEndpoint, getDefaultApiEndpoint()),
 					transportMode: "pie" as const,
 					endpointMode: "synthesizePath" as const,
@@ -1494,15 +1555,19 @@ function normalizePreviewSpeechMarkOffsets(
 					rate: normalizeRate(googleRate),
 					language: googleLanguage || undefined,
 					googleVoiceType,
-					googleGender
+					googleGender,
+					layoutMode,
+					speedOptions: appliedSpeedOptions,
 				};
-				toolkitCoordinator.updateToolConfig("tts", {
+				toolkitCoordinator.updateToolConfig("textToSpeech", {
 					enabled: true,
 					...next
 				});
 				persistSettings(next);
 			}
-			await toolkitCoordinator?.ensureTTSReady?.(toolkitCoordinator?.getToolConfig?.("tts"));
+			await toolkitCoordinator?.ensureTTSReady?.(
+				toolkitCoordinator?.getToolConfig?.("textToSpeech"),
+			);
 			if (isBuiltInTab(activeTab)) {
 				applyMessage = `Applied ${activeTab} TTS settings.`;
 			}
@@ -1593,6 +1658,48 @@ function normalizePreviewSpeechMarkOffsets(
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
 				</svg>
 			</button>
+		</div>
+
+		<div class="pie-tts-fieldset fieldset bg-base-200 border border-base-300 rounded-box">
+			<div class="pie-tts-field">
+				<label class="pie-tts-label" for="tts-layout-mode">Toolbar layout mode</label>
+				<select
+					id="tts-layout-mode"
+					class="select select-sm select-bordered w-full"
+					bind:value={layoutMode}
+				>
+					<option value="reserved-row">Reserved row</option>
+					<option value="expanding-row">Expanding row</option>
+					<option value="floating-overlay">Floating overlay</option>
+					<option value="left-aligned">Left-aligned controls</option>
+				</select>
+				<div class="text-xs opacity-75">
+					Item header row reservation: {layoutModeReservesRow ? "Enabled" : "Disabled"}
+				</div>
+			</div>
+			<div class="pie-tts-field">
+				<label class="pie-tts-label" for="tts-inline-speed-options">Inline speed buttons</label>
+				<input
+					id="tts-inline-speed-options"
+					class="input input-sm input-bordered w-full"
+					bind:value={speedOptionsText}
+					placeholder="0.8, 1.25"
+					autocomplete="off"
+				/>
+				<div class="mt-1 flex flex-wrap items-center gap-2">
+					<span class="text-xs opacity-75">
+						Comma or semicolon-separated multipliers (1× is not shown as a button). Leave empty to
+						hide speed buttons.
+					</span>
+					<button
+						type="button"
+						class="btn btn-xs btn-ghost"
+						onclick={resetInlineSpeedOptionsToDefaults}
+					>
+						Reset to defaults
+					</button>
+				</div>
+			</div>
 		</div>
 
 		<div class="join pie-tts-tabs">

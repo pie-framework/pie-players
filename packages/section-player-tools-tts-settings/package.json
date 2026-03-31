@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-section-player-tools-tts-settings",
-	"version": "0.3.20",
+	"version": "0.3.28",
 	"type": "module",
 	"description": "Reusable TTS settings panel for PIE section-player development tools",
 	"repository": {
@@ -39,6 +39,7 @@
 	],
 	"license": "MIT",
 	"dependencies": {
+		"@pie-players/pie-assessment-toolkit": "workspace:*",
 		"@pie-players/pie-theme": "workspace:*"
 	},
 	"types": "./dist/index.d.ts",

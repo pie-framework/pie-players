@@ -38,7 +38,7 @@
 	// Level 2: keep CE usage but explicitly configure tool providers and placement.
 	const toolkitToolsConfig = {
 		providers: {
-			tts: SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER,
+			textToSpeech: SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER,
 			annotationToolbar: {
 				enabled: true
 			}

@@ -41,3 +41,9 @@ export type {
 	SectionPlayerTelemetryPolicy,
 } from "./policies/types.js";
 export { DEFAULT_SECTION_PLAYER_POLICIES } from "./policies/index.js";
+export type {
+	SectionPlayerCardTitleContext,
+	SectionPlayerCardTitleFormatter,
+	SectionPlayerItemTitleContext,
+	SectionPlayerPassageTitleContext,
+} from "./contracts/card-title-formatters.js";

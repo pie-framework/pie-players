@@ -31,7 +31,6 @@ Assessment-player instrumentation is provider-agnostic and built on the shared
 Canonical provider injection paths:
 
 - `sectionPlayerRuntime.player.loaderConfig.instrumentationProvider`
-- `sectionPlayerPlayer.loaderConfig.instrumentationProvider` (fallback)
 
 Provider semantics:
 

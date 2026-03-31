@@ -303,6 +303,10 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 			vars.sentenceHighlight,
 		);
 		document.documentElement.style.setProperty(
+			"--pie-tts-line-highlight",
+			vars.sentenceHighlight,
+		);
+		document.documentElement.style.setProperty(
 			"--pie-tts-word-underline",
 			vars.wordUnderline,
 		);
@@ -356,8 +360,9 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
         color: inherit;
       }
 
+      /* tts-sentence registry id: coarse read-along band (visual line boxes in layout) */
       ::highlight(tts-sentence) {
-        background-color: var(--pie-tts-sentence-highlight, color-mix(in srgb, var(--pie-missing, #ffeb3b) 38%, transparent));
+        background-color: var(--pie-tts-line-highlight, var(--pie-tts-sentence-highlight, color-mix(in srgb, var(--pie-missing, #ffeb3b) 38%, transparent)));
         color: inherit;
       }
 
@@ -425,9 +430,10 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 	}
 
 	/**
-	 * Highlight a sentence for TTS (temporary)
+	 * Highlight the coarse TTS read-along band (temporary).
+	 * Usually one Range per visual line; CSS layer `tts-sentence` for compatibility.
 	 *
-	 * @param ranges Array of ranges that make up the sentence
+	 * @param ranges Line (or sentence) ranges to paint with `--pie-tts-line-highlight`
 	 */
 	highlightTTSSentence(ranges: Range[]): void {
 		if (!this.ttsSentenceHighlight) return;

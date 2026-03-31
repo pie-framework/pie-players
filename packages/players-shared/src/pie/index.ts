@@ -15,11 +15,13 @@
 
 // Config
 export {
+	assertPieConfigContract,
 	addMarkupForPackage,
 	addRubricIfNeeded,
 	elementForPackage,
 	makeUniqueTags,
 	modelsForPackage,
+	validatePieConfigContract,
 } from "./config.js";
 // Loaders
 export type { EsmLoaderConfig } from "./esm-loader.js";
@@ -108,6 +110,11 @@ export {
 	Status,
 } from "./types.js";
 // Tag naming helpers
+export {
+	defineCustomElementSafely,
+	type SafeDefineResult,
+	type SafeDefineStatus,
+} from "./custom-element-define.js";
 export {
 	toPrintHashedTag,
 	toViewTag,

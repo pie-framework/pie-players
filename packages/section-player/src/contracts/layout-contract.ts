@@ -35,7 +35,12 @@ export type SectionPlayerAdvancedPropName =
 	| "createSectionController"
 	| "isolation"
 	| "env"
-	| "iifeBundleHost";
+	| "iifeBundleHost"
+	| "toolRegistry"
+	| "sectionHostButtons"
+	| "itemHostButtons"
+	| "passageHostButtons"
+	| "cardTitleFormatter";
 
 export type SectionPlayerLayoutPropName =
 	| SectionPlayerBasicPropName

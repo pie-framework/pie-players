@@ -1,5 +1,86 @@
 # @pie-players/item-demos
 
+## 0.1.36
+
+### Patch Changes
+
+- Updated dependencies
+  - @pie-players/pie-item-player@0.3.28
+  - @pie-players/pie-players-shared@0.3.28
+  - @pie-players/pie-section-player-tools-instrumentation-debugger@0.3.28
+
+## 0.1.35
+
+### Patch Changes
+
+- Updated dependencies
+  - @pie-players/pie-item-player@0.3.27
+  - @pie-players/pie-players-shared@0.3.27
+  - @pie-players/pie-section-player-tools-instrumentation-debugger@0.3.27
+
+## 0.1.34
+
+### Patch Changes
+
+- Updated dependencies
+  - @pie-players/pie-item-player@0.3.26
+  - @pie-players/pie-players-shared@0.3.26
+  - @pie-players/pie-section-player-tools-instrumentation-debugger@0.3.26
+
+## 0.1.33
+
+### Patch Changes
+
+- Updated dependencies
+  - @pie-players/pie-item-player@0.3.25
+  - @pie-players/pie-players-shared@0.3.25
+  - @pie-players/pie-section-player-tools-instrumentation-debugger@0.3.25
+
+## 0.1.32
+
+### Patch Changes
+
+- Updated dependencies
+  - @pie-players/pie-item-player@0.3.25
+  - @pie-players/pie-players-shared@0.3.25
+  - @pie-players/pie-section-player-tools-instrumentation-debugger@0.3.25
+
+## 0.1.31
+
+### Patch Changes
+
+- Updated dependencies
+  - @pie-players/pie-item-player@0.3.24
+  - @pie-players/pie-players-shared@0.3.24
+  - @pie-players/pie-section-player-tools-instrumentation-debugger@0.3.24
+
+## 0.1.30
+
+### Patch Changes
+
+- Updated dependencies
+  - @pie-players/pie-item-player@0.3.23
+  - @pie-players/pie-players-shared@0.3.23
+  - @pie-players/pie-section-player-tools-instrumentation-debugger@0.3.23
+
+## 0.1.29
+
+### Patch Changes
+
+- Updated dependencies
+  - @pie-players/pie-item-player@0.3.22
+  - @pie-players/pie-players-shared@0.3.22
+  - @pie-players/pie-section-player-tools-instrumentation-debugger@0.3.22
+
+## 0.1.28
+
+### Patch Changes
+
+- Updated dependencies
+  - @pie-players/pie-item-player@0.3.21
+  - @pie-players/pie-players-shared@0.3.21
+  - @pie-players/pie-section-player-tools-instrumentation-debugger@0.3.21
+
 ## 0.1.27
 
 ### Patch Changes

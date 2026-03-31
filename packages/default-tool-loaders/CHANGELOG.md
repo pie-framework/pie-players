@@ -1,5 +1,158 @@
 # @pie-players/pie-default-tool-loaders
 
+## 0.3.28
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-tool-annotation-toolbar@0.3.28
+  - @pie-players/pie-tool-answer-eliminator@0.3.28
+  - @pie-players/pie-tool-calculator-desmos@0.3.28
+  - @pie-players/pie-tool-graph@0.3.28
+  - @pie-players/pie-tool-line-reader@0.3.28
+  - @pie-players/pie-tool-periodic-table@0.3.28
+  - @pie-players/pie-tool-protractor@0.3.28
+  - @pie-players/pie-tool-ruler@0.3.28
+  - @pie-players/pie-tool-text-to-speech@0.3.28
+  - @pie-players/pie-tool-theme@0.3.28
+
+## 0.3.27
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-tool-annotation-toolbar@0.3.27
+  - @pie-players/pie-tool-answer-eliminator@0.3.27
+  - @pie-players/pie-tool-calculator-desmos@0.3.27
+  - @pie-players/pie-tool-graph@0.3.27
+  - @pie-players/pie-tool-line-reader@0.3.27
+  - @pie-players/pie-tool-periodic-table@0.3.27
+  - @pie-players/pie-tool-protractor@0.3.27
+  - @pie-players/pie-tool-ruler@0.3.27
+  - @pie-players/pie-tool-text-to-speech@0.3.27
+  - @pie-players/pie-tool-theme@0.3.27
+
+## 0.3.26
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-tool-annotation-toolbar@0.3.26
+  - @pie-players/pie-tool-answer-eliminator@0.3.26
+  - @pie-players/pie-tool-calculator-desmos@0.3.26
+  - @pie-players/pie-tool-graph@0.3.26
+  - @pie-players/pie-tool-line-reader@0.3.26
+  - @pie-players/pie-tool-periodic-table@0.3.26
+  - @pie-players/pie-tool-protractor@0.3.26
+  - @pie-players/pie-tool-ruler@0.3.26
+  - @pie-players/pie-tool-text-to-speech@0.3.26
+  - @pie-players/pie-tool-theme@0.3.26
+
+## 0.3.25
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-tool-annotation-toolbar@0.3.25
+  - @pie-players/pie-tool-answer-eliminator@0.3.25
+  - @pie-players/pie-tool-calculator-desmos@0.3.25
+  - @pie-players/pie-tool-graph@0.3.25
+  - @pie-players/pie-tool-line-reader@0.3.25
+  - @pie-players/pie-tool-periodic-table@0.3.25
+  - @pie-players/pie-tool-protractor@0.3.25
+  - @pie-players/pie-tool-ruler@0.3.25
+  - @pie-players/pie-tool-text-to-speech@0.3.25
+  - @pie-players/pie-tool-theme@0.3.25
+
+## 0.3.25
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-tool-annotation-toolbar@0.3.25
+  - @pie-players/pie-tool-answer-eliminator@0.3.25
+  - @pie-players/pie-tool-calculator-desmos@0.3.25
+  - @pie-players/pie-tool-graph@0.3.25
+  - @pie-players/pie-tool-line-reader@0.3.25
+  - @pie-players/pie-tool-periodic-table@0.3.25
+  - @pie-players/pie-tool-protractor@0.3.25
+  - @pie-players/pie-tool-ruler@0.3.25
+  - @pie-players/pie-tool-text-to-speech@0.3.25
+  - @pie-players/pie-tool-theme@0.3.25
+
+## 0.3.24
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-tool-annotation-toolbar@0.3.24
+  - @pie-players/pie-tool-answer-eliminator@0.3.24
+  - @pie-players/pie-tool-calculator-desmos@0.3.24
+  - @pie-players/pie-tool-graph@0.3.24
+  - @pie-players/pie-tool-line-reader@0.3.24
+  - @pie-players/pie-tool-periodic-table@0.3.24
+  - @pie-players/pie-tool-protractor@0.3.24
+  - @pie-players/pie-tool-ruler@0.3.24
+  - @pie-players/pie-tool-text-to-speech@0.3.24
+  - @pie-players/pie-tool-theme@0.3.24
+
+## 0.3.23
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-tool-annotation-toolbar@0.3.23
+  - @pie-players/pie-tool-answer-eliminator@0.3.23
+  - @pie-players/pie-tool-calculator-desmos@0.3.23
+  - @pie-players/pie-tool-graph@0.3.23
+  - @pie-players/pie-tool-line-reader@0.3.23
+  - @pie-players/pie-tool-periodic-table@0.3.23
+  - @pie-players/pie-tool-protractor@0.3.23
+  - @pie-players/pie-tool-ruler@0.3.23
+  - @pie-players/pie-tool-text-to-speech@0.3.23
+  - @pie-players/pie-tool-theme@0.3.23
+
+## 0.3.22
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-tool-annotation-toolbar@0.3.22
+  - @pie-players/pie-tool-answer-eliminator@0.3.22
+  - @pie-players/pie-tool-calculator-desmos@0.3.22
+  - @pie-players/pie-tool-graph@0.3.22
+  - @pie-players/pie-tool-line-reader@0.3.22
+  - @pie-players/pie-tool-periodic-table@0.3.22
+  - @pie-players/pie-tool-protractor@0.3.22
+  - @pie-players/pie-tool-ruler@0.3.22
+  - @pie-players/pie-tool-text-to-speech@0.3.22
+  - @pie-players/pie-tool-theme@0.3.22
+
+## 0.3.21
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-tool-annotation-toolbar@0.3.21
+  - @pie-players/pie-tool-answer-eliminator@0.3.21
+  - @pie-players/pie-tool-calculator-desmos@0.3.21
+  - @pie-players/pie-tool-graph@0.3.21
+  - @pie-players/pie-tool-line-reader@0.3.21
+  - @pie-players/pie-tool-periodic-table@0.3.21
+  - @pie-players/pie-tool-protractor@0.3.21
+  - @pie-players/pie-tool-ruler@0.3.21
+  - @pie-players/pie-tool-text-to-speech@0.3.21
+  - @pie-players/pie-tool-theme@0.3.21
+
 ## 0.3.20
 
 ### Patch Changes

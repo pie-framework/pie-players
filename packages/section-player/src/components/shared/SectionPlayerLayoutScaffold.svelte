@@ -1,6 +1,10 @@
 <script lang="ts">
 	import "../section-player-base-element.js";
 	import "../section-player-shell-element.js";
+	import type {
+		ToolRegistry,
+		ToolbarItem,
+	} from "@pie-players/pie-assessment-toolkit";
 	import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
 	import {
 		createSectionPlayerCardRenderContextProvider,
@@ -20,11 +24,15 @@
 		showToolbar = "false" as boolean | string | null | undefined,
 		toolbarPosition = "right",
 		enabledTools = "",
+		toolRegistry = null as ToolRegistry | null,
+		sectionHostButtons = [] as ToolbarItem[],
 		focusPolicy = { autoFocusFirstItem: false } as SectionPlayerFocusPolicy,
 		cardRenderContext = null as SectionPlayerCardRenderContext | null,
 		onCompositionChanged,
 		onSectionReady,
 		onRuntimeError,
+		onFrameworkError,
+		frameworkErrorHook: _frameworkErrorHook,
 		onSessionChanged,
 		onRuntimeOwned,
 		onRuntimeInherited,
@@ -37,11 +45,15 @@
 		showToolbar?: boolean | string | null | undefined;
 		toolbarPosition?: string;
 		enabledTools?: string;
+		toolRegistry?: ToolRegistry | null;
+		sectionHostButtons?: ToolbarItem[];
 		focusPolicy?: SectionPlayerFocusPolicy;
 		cardRenderContext?: SectionPlayerCardRenderContext | null;
 		onCompositionChanged?: (event: Event) => void;
 		onSectionReady?: (event: Event) => void;
 		onRuntimeError?: (event: Event) => void;
+		onFrameworkError?: (event: Event) => void;
+		frameworkErrorHook?: (errorModel: Record<string, unknown>) => void;
 		onSessionChanged?: (event: Event) => void;
 		onRuntimeOwned?: (event: Event) => void;
 		onRuntimeInherited?: (event: Event) => void;
@@ -132,6 +144,10 @@
 		onRuntimeError?.(event);
 	}
 
+	function handleFrameworkError(event: Event) {
+		onFrameworkError?.(event);
+	}
+
 	function handleSessionChanged(event: Event) {
 		onSessionChanged?.(event);
 	}
@@ -214,8 +230,8 @@
 <div bind:this={cardContextAnchor} class="pie-section-player-layout-scaffold-anchor" aria-hidden="true"></div>
 <div
 	class="pie-section-player-nav-status"
-	role="status"
-	aria-live="polite"
+	role="alert"
+	aria-live="assertive"
 	aria-atomic="true"
 >{navigationStatusMessage}</div>
 <pie-section-player-base
@@ -224,9 +240,11 @@
 	{section}
 	section-id={sectionId}
 	attempt-id={attemptId}
+	{toolRegistry}
 	oncomposition-changed={handleCompositionChanged}
 	onsection-ready={handleSectionReady}
 	onruntime-error={handleRuntimeError}
+	onframework-error={handleFrameworkError}
 	onsession-changed={handleSessionChanged}
 	onruntime-owned={handleRuntimeOwned}
 	onruntime-inherited={handleRuntimeInherited}
@@ -236,6 +254,8 @@
 		show-toolbar={normalizedShowToolbar}
 		toolbar-position={toolbarPosition}
 		enabled-tools={enabledTools}
+		{toolRegistry}
+		{sectionHostButtons}
 	>
 		<slot></slot>
 	</pie-section-player-shell>

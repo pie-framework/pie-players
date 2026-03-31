@@ -15,6 +15,8 @@
 			resolvedPlayerProps: { attribute: "resolved-player-props", type: "Object", reflect: false },
 			playerStrategy: { attribute: "player-strategy", type: "String" },
 			itemToolbarTools: { attribute: "item-toolbar-tools", type: "String" },
+			toolRegistry: { type: "Object", reflect: false },
+			hostButtons: { type: "Object", reflect: false },
 			iifeBundleHost: { attribute: "iife-bundle-host", type: "String" },
 			preloadedRenderables: { attribute: "preloaded-renderables", type: "Object", reflect: false },
 			preloadedRenderablesSignature: {
@@ -28,11 +30,17 @@
 
 <script lang="ts">
 	import { createEventDispatcher } from "svelte";
+	import type {
+		ToolRegistry,
+		ToolbarItem,
+	} from "@pie-players/pie-assessment-toolkit";
 	import "../section-player-item-card-element.js";
 	import type { ItemEntity } from "@pie-players/pie-players-shared/types";
 	import type { SectionCompositionModel } from "../../controllers/types.js";
 	import {
 		createPlayerPreloadStateSetter,
+		type ElementPreloadErrorDetail,
+		type ElementPreloadRetryDetail,
 		orchestratePlayerElementPreload,
 		type PlayerPreloadState,
 	} from "./player-preload.js";
@@ -49,6 +57,8 @@
 		resolvedPlayerProps = {} as Record<string, unknown>,
 		playerStrategy = "preloaded",
 		itemToolbarTools = "",
+		toolRegistry = null as ToolRegistry | null,
+		hostButtons = [] as ToolbarItem[],
 		iifeBundleHost = "",
 		preloadedRenderables = [] as ItemEntity[],
 		preloadedRenderablesSignature = "",
@@ -61,6 +71,8 @@
 		resolvedPlayerProps: Record<string, unknown>;
 		playerStrategy: string;
 		itemToolbarTools: string;
+		toolRegistry?: ToolRegistry | null;
+		hostButtons?: ToolbarItem[];
 		iifeBundleHost?: string | null;
 		preloadedRenderables: ItemEntity[];
 		preloadedRenderablesSignature: string;
@@ -69,6 +81,8 @@
 
 	const dispatch = createEventDispatcher<{
 		"elements-loaded-change": { elementsLoaded: boolean };
+		"element-preload-retry": ElementPreloadRetryDetail;
+		"element-preload-error": ElementPreloadErrorDetail;
 	}>();
 	let elementsLoaded = $state(false);
 	let lastPreloadSignature = $state("");
@@ -105,8 +119,20 @@
 					elementsLoaded,
 				}) as PlayerPreloadState,
 			setState: setPreloadState,
+			onPreloadRetry: (detail) => {
+				dispatch("element-preload-retry", detail);
+			},
+			onPreloadError: (detail) => {
+				dispatch("element-preload-error", detail);
+			},
 		});
 	});
+
+	const currentItemIndex = $derived(
+		Number.isFinite(compositionModel?.currentItemIndex)
+			? Math.max(0, Number(compositionModel.currentItemIndex))
+			: -1,
+	);
 </script>
 
 {#if !elementsLoaded}
@@ -123,6 +149,7 @@
 			{item}
 			itemIndex={itemIndex}
 			itemCount={items.length}
+			isCurrent={itemIndex === currentItemIndex}
 			canonicalItemId={getCanonicalItemId({ compositionModel, item })}
 			playerParams={getItemPlayerParams({
 				item,
@@ -133,6 +160,8 @@
 				playerStrategy,
 			})}
 			itemToolbarTools={itemToolbarTools}
+			{toolRegistry}
+			{hostButtons}
 		></pie-section-player-item-card>
 	{/each}
 {/if}

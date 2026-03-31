@@ -1,7 +1,7 @@
 import PieItemPlayer from "./PieItemPlayer.svelte";
 import {
+	defineCustomElementSafely,
 	initializeMathRendering,
-	validateCustomElementTag,
 } from "@pie-players/pie-players-shared";
 
 export type { PieItemPlayerElement } from "./types.js";
@@ -24,16 +24,11 @@ void ensureItemPlayerMathRenderingReady().catch((error) => {
 });
 
 export function definePieItemPlayer(tagName = "pie-item-player") {
-	const validTagName = validateCustomElementTag(
+	defineCustomElementSafely(
 		tagName,
+		PieItemPlayer as unknown as CustomElementConstructor,
 		"pie-item-player tagName",
 	);
-	if (!customElements.get(validTagName)) {
-		customElements.define(
-			validTagName,
-			PieItemPlayer as unknown as CustomElementConstructor,
-		);
-	}
 }
 
 definePieItemPlayer();

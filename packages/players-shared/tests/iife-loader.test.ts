@@ -122,6 +122,83 @@ describe("IifePieLoader", () => {
 		expect((window as any).pieHelpers.activeBundleUrl).toBe(bundleUrl);
 	});
 
+	test("recovers by reloading when active-bundle registration fails with missing window.pie", async () => {
+		const doc = createMockDocument();
+		const loader = createLoader();
+		const bundleUrl =
+			"https://proxy.pie-api.com/bundles/@pie-element/ebsr@1.0.0/client-player.js?elements=pie-ebsr";
+		doc._addBundleScript(bundleUrl);
+		(window as any).pieHelpers.activeBundleUrl = bundleUrl;
+		(window as any).pie = {
+			default: {
+				"@pie-element/ebsr": {},
+			},
+		};
+
+		let scriptLoadCalls = 0;
+		let registerCalls = 0;
+		(loader as any).loadBundleScript = async (url: string, targetDoc: MockDocument) => {
+			scriptLoadCalls += 1;
+			targetDoc._addBundleScript(url);
+			(window as any).pie = {
+				default: {
+					"@pie-element/ebsr": {},
+				},
+			};
+		};
+		(loader as any).registerElementsFromBundle = async () => {
+			registerCalls += 1;
+			if (registerCalls === 1) {
+				throw new Error("window.pie not found - simulated transient mismatch");
+			}
+		};
+
+		await loader.load(
+			{ elements: { "pie-ebsr": "@pie-element/ebsr@1.0.0" } },
+			doc,
+			BundleType.clientPlayer,
+			true,
+		);
+
+		expect(scriptLoadCalls).toBe(1);
+		expect(registerCalls).toBe(2);
+		expect((window as any).pieHelpers.activeBundleUrl).toBe(bundleUrl);
+	});
+
+	test("retries fresh load once when registration reports package mismatch", async () => {
+		const doc = createMockDocument();
+		const loader = createLoader();
+		let scriptLoadCalls = 0;
+		let registerCalls = 0;
+		(loader as any).loadBundleScript = async (url: string, targetDoc: MockDocument) => {
+			scriptLoadCalls += 1;
+			targetDoc._addBundleScript(url);
+			(window as any).pie = {
+				default: {
+					"@pie-element/multiple-choice": {},
+				},
+			};
+		};
+		(loader as any).registerElementsFromBundle = async () => {
+			registerCalls += 1;
+			if (registerCalls === 1) {
+				throw new Error(
+					'Package "@pie-element/ebsr" not found in IIFE bundle. Available: @pie-element/multiple-choice',
+				);
+			}
+		};
+
+		await loader.load(
+			{ elements: { "pie-ebsr": "@pie-element/ebsr@1.0.0" } },
+			doc,
+			BundleType.clientPlayer,
+			true,
+		);
+
+		expect(scriptLoadCalls).toBe(2);
+		expect(registerCalls).toBe(2);
+	});
+
 	test("dedupes in-flight loads for the same bundle URL", async () => {
 		const doc = createMockDocument();
 		const loader = createLoader();
@@ -230,5 +307,44 @@ describe("IifePieLoader", () => {
 		const scripts = doc._listBundleScripts();
 		expect(scripts).toHaveLength(1);
 		expect(scripts[0]?.src.includes("ebsr")).toBe(true);
+	});
+
+	test("registerElementsFromBundle tolerates duplicate-define race conditions", async () => {
+		const loader = createLoader();
+		(globalThis as any).HTMLElement = class {};
+		const HTMLElementBase =
+			typeof HTMLElement === "undefined"
+				? (class {} as unknown as typeof HTMLElement)
+				: HTMLElement;
+		const ElementCtor = class extends HTMLElementBase {};
+		let defined = false;
+
+		(globalThis as any).customElements = {
+			get: () => (defined ? ElementCtor : undefined),
+			define: () => {
+				defined = true;
+				throw new DOMException(
+					'the name "pie-ebsr" has already been used with this registry',
+					"NotSupportedError",
+				);
+			},
+			whenDefined: async () => undefined,
+		};
+		(window as any).pie = {
+			default: {
+				"@pie-element/ebsr": {
+					Element: ElementCtor,
+					controller: { model: (m: unknown) => m },
+				},
+			},
+		};
+
+		await expect(
+			(loader as any).registerElementsFromBundle(
+				{ "pie-ebsr": "@pie-element/ebsr@1.0.0" },
+				true,
+				BundleType.clientPlayer,
+			),
+		).resolves.toBeUndefined();
 	});
 });

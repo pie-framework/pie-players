@@ -28,6 +28,22 @@ const entries = [
 	},
 ];
 
+const SAFE_DEFINE_HELPER = `
+const __pieDefineSafely = (tagName, ctor) => {
+	if (customElements.get(tagName)) return;
+	try {
+		customElements.define(tagName, ctor);
+	} catch (error) {
+		const duplicate =
+			(error instanceof DOMException && error.name === "NotSupportedError") ||
+			(error && typeof error === "object" && error.name === "NotSupportedError");
+		if (!duplicate || !customElements.get(tagName)) {
+			throw error;
+		}
+	}
+};
+`;
+
 for (const entry of entries) {
 	const source = readFileSync(entry.source, "utf8");
 	const compiled = compile(source, {
@@ -40,10 +56,15 @@ for (const entry of entries) {
 
 	// Svelte CE output can include setter parameters with default values, which
 	// are not valid in plain JS class setters and break svelte-check consumers.
-	const sanitizedCode = compiled.js.code.replace(
+	let sanitizedCode = compiled.js.code.replace(
 		/set\s+([A-Za-z_$][\w$]*)\(\s*\$\$value\s*=\s*[^)]+\)/g,
 		(_, setterName) => `set ${setterName}($$value)`,
 	);
+	sanitizedCode = sanitizedCode.replace(
+		/customElements\.define\s*\(/g,
+		"__pieDefineSafely(",
+	);
+	sanitizedCode = `${SAFE_DEFINE_HELPER}\n${sanitizedCode}`;
 
 	writeFileSync(entry.output, `// @ts-nocheck\n${sanitizedCode}`, "utf8");
 }

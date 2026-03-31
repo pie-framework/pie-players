@@ -86,6 +86,12 @@ async function validateNavigationContract(args: {
 		// The region is rendered inside the layout scaffold's light DOM or closest ancestor.
 		const statusEl = document.querySelector(".pie-section-player-nav-status");
 		const navStatusText = statusEl ? statusEl.textContent?.trim() ?? "" : null;
+		const currentCards = Array.from(
+			document.querySelectorAll(".pie-section-player-content-card[data-section-item-card]"),
+		);
+		const ariaCurrentCount = currentCards.filter(
+			(card) => (card as HTMLElement).getAttribute("aria-current") === "true",
+		).length;
 
 		return {
 			ok: true,
@@ -96,6 +102,7 @@ async function validateNavigationContract(args: {
 			afterPrev,
 			itemSelectedEvents,
 			navStatusText,
+			ariaCurrentCount,
 		};
 	}, selector);
 
@@ -107,6 +114,8 @@ async function validateNavigationContract(args: {
 
 	// aria-live region must be present in the DOM (WCAG 4.1.3).
 	expect(result.navStatusText).not.toBeNull();
+	// Exactly one rendered item card should expose aria-current semantics.
+	expect(result.ariaCurrentCount).toBe(1);
 
 	const canNext = result.before?.canNext === true;
 	if (canNext) {

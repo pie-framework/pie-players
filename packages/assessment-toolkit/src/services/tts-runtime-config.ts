@@ -1,6 +1,27 @@
 import type { TTSConfig } from "./TTSService.js";
 import type { ToolProviderConfig } from "./tools-config-normalizer.js";
 
+export type TTSLayoutMode =
+	| "reserved-row"
+	| "expanding-row"
+	| "floating-overlay"
+	| "left-aligned";
+
+const VALID_TTS_LAYOUT_MODES = new Set<TTSLayoutMode>([
+	"reserved-row",
+	"expanding-row",
+	"floating-overlay",
+	"left-aligned",
+]);
+
+export interface TTSHostToolbarLayout {
+	mount: "before-buttons";
+	controlsRow: {
+		reserveSpace: boolean;
+		expandWhenToolActive: boolean;
+	};
+}
+
 export interface TTSRuntimeSettings {
 	backend?: "browser" | "polly" | "google" | "server";
 	serverProvider?: "polly" | "google" | "custom";
@@ -22,7 +43,14 @@ export interface TTSRuntimeSettings {
 	cache?: boolean;
 	speedRate?: "slow" | "medium" | "fast";
 	lang_id?: string;
+	/**
+	 * Optional inline TTS speed buttons.
+	 * - Omitted/non-array: default speed buttons are shown.
+	 * - Empty array: hide speed buttons.
+	 * - Arrays that sanitize to no valid values: default speed buttons are shown.
+	 */
 	speedOptions?: number[];
+	layoutMode?: TTSLayoutMode;
 }
 
 const toRecord = (value: unknown): Record<string, unknown> =>
@@ -36,21 +64,85 @@ const isServerBackend = (
 const withDefault = <T>(value: T | undefined, fallback: T): T =>
 	value === undefined ? fallback : value;
 
+export const normalizeTTSLayoutMode = (
+	value: unknown,
+	fallback: TTSLayoutMode = "left-aligned",
+): TTSLayoutMode =>
+	typeof value === "string" &&
+	VALID_TTS_LAYOUT_MODES.has(value as TTSLayoutMode)
+		? (value as TTSLayoutMode)
+		: fallback;
+
+/** Default inline TTS speed button multipliers (excluding 1.0×). */
+export const DEFAULT_TTS_SPEED_OPTIONS = Object.freeze([0.8, 1.25]);
+
+/**
+ * Resolves inline toolbar speed options from host config.
+ * - Omitted/non-array: default speed buttons.
+ * - Empty array: hide speed buttons.
+ * - Arrays that sanitize to no valid values: default speed buttons.
+ * - 1.0× is never shown as a discrete speed button.
+ */
+export const normalizeTTSSpeedOptions = (value: unknown): number[] => {
+	if (!Array.isArray(value)) return [...DEFAULT_TTS_SPEED_OPTIONS];
+	if (value.length === 0) return [];
+	const deduped = new Set<number>();
+	for (const entry of value) {
+		if (typeof entry !== "number" || !Number.isFinite(entry) || entry <= 0) continue;
+		const rounded = Math.round(entry * 100) / 100;
+		if (rounded === 1) continue;
+		deduped.add(rounded);
+	}
+	return deduped.size ? Array.from(deduped) : [...DEFAULT_TTS_SPEED_OPTIONS];
+};
+
+export const formatTTSSpeedOptionsAsText = (values: number[]): string =>
+	values.join(", ");
+
+/**
+ * Parse comma/semicolon-separated multipliers from settings UI text.
+ * - Empty or whitespace-only string → hide speed buttons (`[]`).
+ * - Non-empty text with no parseable finite numbers → same as invalid-only array config: defaults.
+ */
+export const parseTTSSpeedOptionsFromText = (text: string): number[] => {
+	const trimmed = text.trim();
+	if (!trimmed) return [];
+	const parts = trimmed
+		.split(/[,;]+/)
+		.map((p) => p.trim())
+		.filter(Boolean);
+	const candidates = parts
+		.map((p) => Number.parseFloat(p))
+		.filter((n) => Number.isFinite(n));
+	if (!candidates.length) return [...DEFAULT_TTS_SPEED_OPTIONS];
+	return normalizeTTSSpeedOptions(candidates);
+};
+
 const applyRuntimeDefaults = (
 	config: TTSRuntimeSettings,
 ): TTSRuntimeSettings => {
+	const withLayoutDefaults: TTSRuntimeSettings = {
+		...config,
+		layoutMode: normalizeTTSLayoutMode(config.layoutMode),
+	};
 	const backend = config.backend || "browser";
-	if (!isServerBackend(backend)) return config;
+	if (!isServerBackend(backend)) return withLayoutDefaults;
 
 	const withServerDefaults: TTSRuntimeSettings = {
-		...config,
-		apiEndpoint: withDefault(config.apiEndpoint, "/api/tts"),
-		transportMode: withDefault(config.transportMode, "pie"),
-		endpointValidationMode: withDefault(config.endpointValidationMode, "voices"),
-		validateEndpoint: withDefault(config.validateEndpoint, true),
-		includeAuthOnAssetFetch: withDefault(config.includeAuthOnAssetFetch, false),
-		rate: withDefault(config.rate, 1.0),
-		language: withDefault(config.language, "en-US"),
+		...withLayoutDefaults,
+		apiEndpoint: withDefault(withLayoutDefaults.apiEndpoint, "/api/tts"),
+		transportMode: withDefault(withLayoutDefaults.transportMode, "pie"),
+		endpointValidationMode: withDefault(
+			withLayoutDefaults.endpointValidationMode,
+			"voices",
+		),
+		validateEndpoint: withDefault(withLayoutDefaults.validateEndpoint, true),
+		includeAuthOnAssetFetch: withDefault(
+			withLayoutDefaults.includeAuthOnAssetFetch,
+			false,
+		),
+		rate: withDefault(withLayoutDefaults.rate, 1.0),
+		language: withDefault(withLayoutDefaults.language, "en-US"),
 	};
 
 	if (backend === "polly") {
@@ -94,10 +186,13 @@ export const resolveTTSBackend = (
 export const resolveRuntimeProvider = (
 	config: TTSRuntimeSettings,
 	backend: NonNullable<TTSRuntimeSettings["backend"]>,
-): TTSRuntimeSettings["serverProvider"] =>
-	config.serverProvider ||
-	config.provider ||
-	(backend === "polly" || backend === "google" ? backend : undefined);
+): TTSRuntimeSettings["serverProvider"] => {
+	if (backend === "polly" || backend === "google") return backend;
+	if (backend === "server") {
+		return config.serverProvider || config.provider;
+	}
+	return config.serverProvider || config.provider;
+};
 
 export const resolveTransportMode = (
 	config: TTSRuntimeSettings,
@@ -149,4 +244,42 @@ export const buildRuntimeTTSConfig = (
 		includeAuthOnAssetFetch: config.includeAuthOnAssetFetch,
 		validateEndpoint: config.validateEndpoint,
 	} as Partial<TTSConfig>;
+};
+
+export const resolveTTSLayoutMode = (
+	config: TTSRuntimeSettings,
+): TTSLayoutMode => normalizeTTSLayoutMode(config.layoutMode);
+
+export const resolveTTSHostToolbarLayout = (
+	config: TTSRuntimeSettings,
+): TTSHostToolbarLayout => {
+	const layoutMode = resolveTTSLayoutMode(config);
+	switch (layoutMode) {
+		case "reserved-row":
+			return {
+				mount: "before-buttons",
+				controlsRow: {
+					reserveSpace: true,
+					expandWhenToolActive: false,
+				},
+			};
+		case "expanding-row":
+			return {
+				mount: "before-buttons",
+				controlsRow: {
+					reserveSpace: false,
+					expandWhenToolActive: true,
+				},
+			};
+		case "floating-overlay":
+		case "left-aligned":
+		default:
+			return {
+				mount: "before-buttons",
+				controlsRow: {
+					reserveSpace: false,
+					expandWhenToolActive: false,
+				},
+			};
+	}
 };

@@ -10,12 +10,18 @@
 			view: { attribute: "view", type: "String" },
 			env: { attribute: "env", type: "Object" },
 			lazyInit: { attribute: "lazy-init", type: "Boolean" },
+			toolConfigStrictness: { attribute: "tool-config-strictness", type: "String" },
 			tools: { attribute: "tools", type: "Object" },
+			toolRegistry: { type: "Object", reflect: false },
 			accessibility: { attribute: "accessibility", type: "Object" },
 			player: { attribute: "player", type: "Object" },
 			playerType: { attribute: "player-type", type: "String" },
 			coordinator: { type: "Object", reflect: false },
 			createSectionController: { type: "Object", reflect: false },
+			frameworkErrorHook: { type: "Object", reflect: false },
+			onFrameworkError: { type: "Object", reflect: false },
+			onframeworkerror: { type: "Object", reflect: false },
+			errorRenderer: { type: "Object", reflect: false },
 			isolation: { attribute: "isolation", type: "String" },
 		},
 	}}
@@ -43,6 +49,16 @@
 	} from "../context/assessment-toolkit-context.js";
 	import { connectAssessmentToolkitHostRuntimeContext } from "../context/runtime-context-consumer.js";
 	import { ToolkitCoordinator } from "../services/ToolkitCoordinator.js";
+	import {
+		formatFrameworkErrorForConsole,
+		frameworkErrorFromUnknown,
+		type FrameworkErrorModel,
+	} from "../services/framework-error.js";
+	import type { ToolRegistry } from "../services/ToolRegistry.js";
+	import {
+		normalizeAndValidateToolsConfig,
+		type ToolConfigStrictness,
+	} from "../services/tool-config-validation.js";
 	import {
 		PIE_INTERNAL_CONTENT_LOADED_EVENT,
 		PIE_INTERNAL_ITEM_SESSION_CHANGED_EVENT,
@@ -123,12 +139,23 @@ const DEFAULT_ENV = {
 		view = "candidate",
 		env = {},
 		lazyInit = true,
+		toolConfigStrictness = "error" as ToolConfigStrictness,
 		tools = {},
+		toolRegistry = null as ToolRegistry | null,
 		accessibility = {},
 		player = null as HostItemPlayerInput,
 		playerType = "" as ItemPlayerType | "",
 		coordinator = null as ToolkitCoordinator | null,
 		createSectionController = null as null | (() => unknown),
+		frameworkErrorHook: frameworkErrorCallback = null as null | ((errorModel: FrameworkErrorModel) => void),
+		onFrameworkError = null as null | ((errorModel: FrameworkErrorModel) => void),
+		onframeworkerror = null as null | ((errorModel: FrameworkErrorModel) => void),
+		errorRenderer = null as
+			| null
+			| ((errorModel: FrameworkErrorModel) => {
+					title?: string;
+					details?: string[];
+			  }),
 		isolation = "inherit",
 	} = $props();
 
@@ -145,10 +172,16 @@ const DEFAULT_ENV = {
 	let compositionVersion = $state(0);
 	let compositionModel = $state<unknown>(null);
 	let runtimeError = $state<unknown>(null);
+	let frameworkErrorModel = $state<FrameworkErrorModel | null>(null);
+	let frameworkErrorTitle = $state("Unable to initialize assessment toolkit.");
+	let frameworkErrorDetails = $state<string[]>([]);
+	let deliveredFrameworkErrorKey = $state("");
+	let lastOwnedBootstrapFailureKey = $state("");
 	let lastCompositionRevisionKey = $state("");
 	let pendingCompositionModel: unknown = null;
 	let pendingCompositionEmit = false;
 	let compositionEmitRaf: number | null = null;
+	let pendingCrossBoundaryEvents: Array<{ name: string; detail: unknown }> = [];
 	const sessionEmitPolicyState = createSessionEmitPolicyState();
 
 	function getHostElement(): HTMLElement | null {
@@ -162,9 +195,127 @@ const DEFAULT_ENV = {
 	const host = $derived.by(() => getHostElement());
 
 	function emit(name: string, detail: unknown): void {
-		if (!host) return;
+		if (!host) {
+			pendingCrossBoundaryEvents = [...pendingCrossBoundaryEvents, { name, detail }];
+			return;
+		}
 		dispatchCrossBoundaryEvent(host, name, detail);
 	}
+
+	$effect(() => {
+		if (!host) return;
+		if (pendingCrossBoundaryEvents.length === 0) return;
+		const queued = pendingCrossBoundaryEvents;
+		pendingCrossBoundaryEvents = [];
+		queueMicrotask(() => {
+			const resolvedHost = host;
+			if (!resolvedHost) {
+				pendingCrossBoundaryEvents = [...queued, ...pendingCrossBoundaryEvents];
+				return;
+			}
+			for (const event of queued) {
+				dispatchCrossBoundaryEvent(resolvedHost, event.name, event.detail);
+			}
+		});
+	});
+
+	function applyErrorRenderer(model: FrameworkErrorModel): {
+		title: string;
+		details: string[];
+	} {
+		if (!errorRenderer) {
+			return {
+				title: "Unable to initialize assessment toolkit.",
+				details: model.details.length > 0 ? model.details : [model.message],
+			};
+		}
+		try {
+			const rendered = errorRenderer(model) || {};
+			return {
+				title:
+					typeof rendered.title === "string" && rendered.title.trim().length > 0
+						? rendered.title
+						: "Unable to initialize assessment toolkit.",
+				details:
+					Array.isArray(rendered.details) && rendered.details.length > 0
+						? rendered.details.map((detail) => String(detail))
+						: model.details.length > 0
+							? model.details
+							: [model.message],
+			};
+		} catch (rendererError) {
+			const message =
+				rendererError instanceof Error && rendererError.message.trim().length > 0
+					? rendererError.message
+					: String(rendererError || "Unknown renderer error");
+			return {
+				title: "Unable to initialize assessment toolkit.",
+				details: [
+					...model.details,
+					`Error renderer failed: ${message}`,
+				],
+			};
+		}
+	}
+
+	function reportFrameworkError(args: {
+		kind: FrameworkErrorModel["kind"];
+		source: string;
+		error: unknown;
+		recoverable?: boolean;
+	}): FrameworkErrorModel {
+		const model = frameworkErrorFromUnknown({
+			kind: args.kind,
+			source: args.source,
+			error: args.error,
+			recoverable: args.recoverable,
+		});
+		console.error(formatFrameworkErrorForConsole(model), model.cause);
+		const rendered = applyErrorRenderer(model);
+		frameworkErrorModel = model;
+		frameworkErrorTitle = rendered.title;
+		frameworkErrorDetails = rendered.details;
+		emit("framework-error", model);
+		emit("runtime-error", {
+			runtimeId,
+			error: args.error,
+			frameworkError: model,
+		});
+		const frameworkErrorHook =
+			frameworkErrorCallback ?? onFrameworkError ?? onframeworkerror;
+		if (frameworkErrorHook) {
+			try {
+				frameworkErrorHook(model);
+				deliveredFrameworkErrorKey = `${model.kind}|${model.source}|${model.message}`;
+			} catch (hookError) {
+				console.error(
+					`[pie-framework:runtime-init:pie-assessment-toolkit] framework error hook failed`,
+					hookError,
+				);
+			}
+		}
+		return model;
+	}
+
+	$effect(() => {
+		if (!frameworkErrorModel) {
+			return;
+		}
+		const frameworkErrorKey = `${frameworkErrorModel.kind}|${frameworkErrorModel.source}|${frameworkErrorModel.message}`;
+		if (deliveredFrameworkErrorKey === frameworkErrorKey) return;
+		const frameworkErrorHook =
+			frameworkErrorCallback ?? onFrameworkError ?? onframeworkerror;
+		if (!frameworkErrorHook) return;
+		try {
+			frameworkErrorHook(frameworkErrorModel);
+			deliveredFrameworkErrorKey = frameworkErrorKey;
+		} catch (hookError) {
+			console.error(
+				`[pie-framework:runtime-init:pie-assessment-toolkit] framework error hook failed`,
+				hookError,
+			);
+		}
+	});
 
 	function hashString(input: string): string {
 		let hash = 5381;
@@ -318,7 +469,29 @@ const DEFAULT_ENV = {
 		);
 	}
 
-	function buildOwnedCoordinator(): ToolkitCoordinator {
+	function validateToolsConfigForBootstrap() {
+		return normalizeAndValidateToolsConfig(tools as any, {
+			strictness: toolConfigStrictness,
+			source: "pie-assessment-toolkit.bootstrap",
+			toolRegistry,
+		}).config;
+	}
+
+	function getOwnedBootstrapFailureKey(): string {
+		let toolsSignature = "";
+		try {
+			toolsSignature = JSON.stringify(tools || {});
+		} catch {
+			toolsSignature = "[unserializable-tools]";
+		}
+		return [
+			assessmentId || "",
+			String(toolConfigStrictness || "error"),
+			toolsSignature,
+		].join("|");
+	}
+
+	function buildOwnedCoordinator(validatedTools: unknown): ToolkitCoordinator {
 		const fallbackAssessmentId =
 			assessmentId ||
 			(section as any)?.identifier ||
@@ -326,7 +499,10 @@ const DEFAULT_ENV = {
 		return new ToolkitCoordinator({
 			assessmentId: fallbackAssessmentId,
 			lazyInit,
-			tools: tools as any,
+			toolConfigStrictness,
+			deferToolConfigValidation: true,
+			tools: validatedTools as any,
+			toolRegistry,
 			accessibility: accessibility as any,
 		});
 	}
@@ -339,6 +515,7 @@ const DEFAULT_ENV = {
 	});
 
 	$effect(() => {
+		if (!host) return;
 		if (coordinator) {
 			if (ownedCoordinator) {
 				ownedCoordinator = null;
@@ -352,7 +529,27 @@ const DEFAULT_ENV = {
 			return;
 		}
 		if (!ownedCoordinator) {
-			ownedCoordinator = buildOwnedCoordinator();
+			const failureKey = getOwnedBootstrapFailureKey();
+			if (lastOwnedBootstrapFailureKey === failureKey) {
+				return;
+			}
+			try {
+				const validatedTools = validateToolsConfigForBootstrap();
+				ownedCoordinator = buildOwnedCoordinator(validatedTools);
+				lastOwnedBootstrapFailureKey = "";
+				frameworkErrorModel = null;
+				frameworkErrorTitle = "Unable to initialize assessment toolkit.";
+				frameworkErrorDetails = [];
+			} catch (error) {
+				runtimeError = error;
+				ownedCoordinator = null;
+				lastOwnedBootstrapFailureKey = failureKey;
+				reportFrameworkError({
+					kind: "coordinator-init",
+					source: "pie-assessment-toolkit",
+					error,
+				});
+			}
 		}
 	});
 
@@ -675,8 +872,9 @@ const DEFAULT_ENV = {
 					error,
 					timestamp: Date.now(),
 				});
-				emit("runtime-error", {
-					runtimeId,
+				reportFrameworkError({
+					kind: "runtime-init",
+					source: "pie-assessment-toolkit",
 					error,
 				});
 			});
@@ -818,16 +1016,55 @@ const DEFAULT_ENV = {
 			pendingCompositionEmit = false;
 			void sectionEngine.dispose().catch((error) => {
 				runtimeError = error;
+				reportFrameworkError({
+					kind: "runtime-dispose",
+					source: "pie-assessment-toolkit",
+					error,
+					recoverable: true,
+				});
 			});
 		};
 	});
 </script>
 
 <div bind:this={anchor} class="pie-assessment-toolkit-anchor" aria-hidden="true"></div>
-<slot></slot>
+{#if frameworkErrorModel && !frameworkErrorModel.recoverable}
+	<div class="pie-assessment-toolkit-error" role="alert" aria-live="assertive">
+		<div class="pie-assessment-toolkit-error-title">{frameworkErrorTitle}</div>
+		<div class="pie-assessment-toolkit-error-message">{frameworkErrorModel.message}</div>
+		<pre class="pie-assessment-toolkit-error-details">{frameworkErrorDetails.join("\n")}</pre>
+	</div>
+{:else}
+	<slot></slot>
+{/if}
 
 <style>
 	.pie-assessment-toolkit-anchor {
 		display: none;
+	}
+
+	.pie-assessment-toolkit-error {
+		margin: 0.75rem;
+		padding: 0.75rem 1rem;
+		border-radius: 0.5rem;
+		border: 1px solid color-mix(in srgb, #dc2626 40%, transparent);
+		background: color-mix(in srgb, #dc2626 12%, transparent);
+		color: #7f1d1d;
+		font-size: 0.9rem;
+	}
+
+	.pie-assessment-toolkit-error-title {
+		font-weight: 600;
+		margin-bottom: 0.25rem;
+	}
+
+	.pie-assessment-toolkit-error-message {
+		margin-bottom: 0.5rem;
+	}
+
+	.pie-assessment-toolkit-error-details {
+		margin: 0;
+		white-space: pre-wrap;
+		word-break: break-word;
 	}
 </style>

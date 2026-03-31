@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/section-demos",
-	"version": "0.1.33",
+	"version": "0.1.42",
 	"description": "Progressive demos for PIE Section Player",
 	"type": "module",
 	"private": true,
@@ -29,6 +29,7 @@
 		"@pie-players/pie-tool-answer-eliminator": "workspace:*",
 		"@pie-players/pie-tool-calculator-desmos": "workspace:*",
 		"@pie-players/pie-tool-text-to-speech": "workspace:*",
+		"@pie-players/pie-tool-tts-inline": "workspace:*",
 		"@pie-players/pie-toolbars": "workspace:*",
 		"@pie-players/tts-client-server": "workspace:*",
 		"@pie-players/tts-server-core": "workspace:*",

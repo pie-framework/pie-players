@@ -13,6 +13,7 @@
 	import '@pie-players/pie-tool-periodic-table';
 	import '@pie-players/pie-tool-protractor';
 	import '@pie-players/pie-tool-ruler';
+	import '@pie-players/pie-tool-text-to-speech';
 	import '@pie-players/pie-tool-theme';
 	import DemoRuntimeChrome from '$lib/demo-runtime/components/DemoRuntimeChrome.svelte';
 	import {
@@ -39,15 +40,15 @@
 	// Level 1: CE-first setup with direct custom-element props/attrs.
 	const toolkitToolsConfig = {
 		providers: {
-			tts: SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER
+			textToSpeech: SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER
 		},
 		placement: {
-			section: ['theme', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
-			item: [],
+			section: ['theme', 'graph', 'periodicTable', 'lineReader', 'ruler', 'protractor'],
+			item: ['textToSpeech'],
 			passage: []
 		}
 	};
-	const sectionToolbarTools = 'theme,graph,periodicTable,protractor,lineReader,ruler';
+	const sectionToolbarTools = 'theme,graph,periodicTable,lineReader,ruler,protractor';
 	const sectionInstrumentationProvider = new CompositeInstrumentationProvider([
 		new NewRelicInstrumentationProvider(),
 		new DebugPanelInstrumentationProvider()

@@ -156,10 +156,5 @@ export interface AssessmentPlayerRuntimeConfig {
 	 * Useful for advanced configuration such as runtime.player.loaderConfig observability wiring.
 	 */
 	sectionPlayerRuntime?: SectionPlayerRuntimeOverrides | null;
-	/**
-	 * Optional section-player player overrides passed through by assessment-player.
-	 * Useful for directly supplying runtime-equivalent player settings such as loaderConfig.
-	 */
-	sectionPlayerPlayer?: SectionPlayerLoaderOverrides | null;
 	hooks?: AssessmentPlayerHooks;
 }

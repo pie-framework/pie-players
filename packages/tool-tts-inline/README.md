@@ -90,12 +90,31 @@ toolCoordinator.showTool('tts-passage-1');
 - `catalog-id` - QTI 3.0 accessibility catalog ID for SSML lookup (default: `''`)
 - `language` - Language code for TTS (default: `'en-US'`)
 - `size` - Icon size: `'sm'` (1.5rem), `'md'` (2rem), or `'lg'` (2.5rem) (default: `'md'`)
-- `speed-options` - Optional speed options array for inline speed buttons (default: `[1.5, 2]`)
 
 ### JavaScript Properties
 
 - `ttsService` - ITTSService instance (required)
 - `coordinator` - IToolCoordinator instance (optional, for visibility management)
+- `speedOptions` - Optional number array controlling inline speed button rendering
+
+### `speedOptions` Configuration
+
+`speedOptions` is intended to be set as a JavaScript property (not as a
+serialized HTML attribute), either directly on the element or via toolkit
+provider settings.
+
+```javascript
+const ttsButton = document.createElement("pie-tool-tts-inline");
+ttsButton.speedOptions = [2, 1.25, 1.5]; // rendered in this order
+```
+
+Semantics:
+
+- Omitted or non-array: defaults to `[0.8, 1.25]`.
+- Explicit `[]`: no speed buttons rendered.
+- Invalid-only values: fall back to `[0.8, 1.25]`.
+- Values are deduplicated while preserving first-seen order.
+- `1` is excluded from rendered options.
 
 ## Behavior
 
@@ -115,6 +134,7 @@ toolCoordinator.showTool('tts-passage-1');
    - Speed buttons call `ttsService.updateSettings({ rate })`
    - Selecting another speed switches active state to that option
    - Clicking the currently active speed resets back to `1x`
+   - If `speedOptions` is `[]`, speed controls are omitted while rewind/forward/stop still render
 6. **Keyboard Interaction**: Arrow keys move between controls; Tab enters/leaves the toolbar
 7. **Cleanup**: Unregisters from coordinator on unmount
 

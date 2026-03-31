@@ -39,7 +39,8 @@
 			"@pie-players/tts-client-server",
 			"@pie-players/tts-server-core",
 			"@pie-players/tts-server-google",
-			"@pie-players/tts-server-polly"
+			"@pie-players/tts-server-polly",
+			"@pie-players/tts-server-sc"
 		]
 	],
 	"linked": [],

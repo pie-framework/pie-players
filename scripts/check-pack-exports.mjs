@@ -4,6 +4,8 @@ import path from "node:path";
 
 const ROOT = process.cwd();
 const ROOT_PACKAGE_JSON = path.join(ROOT, "package.json");
+const HASH_ONLY_FILE_PATTERN = /^(?:module|chunk|index)?-?[a-f0-9]{8,}\.m?js$/i;
+const HASH_SUFFIX_FILE_PATTERN = /-[a-f0-9]{8,}\.m?js$/i;
 
 const readJson = (filePath) => JSON.parse(readFileSync(filePath, "utf8"));
 
@@ -25,6 +27,24 @@ const isPackedMatch = (declaredPath, packedFiles) => {
 	}
 	return false;
 };
+
+const getHashOnlyDeclaredTargets = (declaredTargets) =>
+	[...declaredTargets]
+		.filter((target) => {
+			if (!target.endsWith(".js") && !target.endsWith(".mjs")) return false;
+			const fileName = target.split("/").pop() || "";
+			return HASH_ONLY_FILE_PATTERN.test(fileName);
+		})
+		.sort();
+
+const getHashSuffixDeclaredTargets = (declaredTargets) =>
+	[...declaredTargets]
+		.filter((target) => {
+			if (!target.endsWith(".js") && !target.endsWith(".mjs")) return false;
+			const fileName = target.split("/").pop() || "";
+			return HASH_SUFFIX_FILE_PATTERN.test(fileName);
+		})
+		.sort();
 
 const collectExportTargets = (value, out) => {
 	if (!value) return;
@@ -119,12 +139,16 @@ const run = () => {
 		const missing = [...declaredTargets]
 			.filter((target) => !isPackedMatch(target, packedFiles))
 			.sort();
+		const unstable = getHashOnlyDeclaredTargets(declaredTargets);
+		const hashedSuffix = getHashSuffixDeclaredTargets(declaredTargets);
 
-		if (missing.length > 0) {
+		if (missing.length > 0 || unstable.length > 0 || hashedSuffix.length > 0) {
 			failures.push({
 				name: pkg.name || path.basename(dir),
 				dir,
 				missing,
+				unstable,
+				hashedSuffix,
 			});
 		}
 	}
@@ -137,6 +161,16 @@ const run = () => {
 			console.error(`\n- ${failure.name} (${failure.dir})`);
 			for (const missingEntry of failure.missing) {
 				console.error(`  - missing: ${missingEntry}`);
+			}
+			for (const unstableEntry of failure.unstable ?? []) {
+				console.error(
+					`  - unstable export target (hash-only filename): ${unstableEntry}`,
+				);
+			}
+			for (const hashedSuffixEntry of failure.hashedSuffix ?? []) {
+				console.error(
+					`  - unstable export target (hashed suffix filename): ${hashedSuffixEntry}`,
+				);
 			}
 		}
 		process.exit(1);

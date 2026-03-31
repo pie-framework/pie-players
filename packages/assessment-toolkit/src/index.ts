@@ -144,6 +144,8 @@ export {
 	PACKAGED_TOOL_PLACEMENT,
 	registerPackagedTools,
 } from "./services/createDefaultToolRegistry.js";
+export type { CreateToolsConfigArgs } from "./services/create-tools-config.js";
+export { createToolsConfig } from "./services/create-tools-config.js";
 export {
 	DEFAULT_PERSONAL_NEEDS_PROFILE,
 	createDefaultPersonalNeedsProfile,
@@ -235,6 +237,24 @@ export type {
 	ToolProvidersConfig,
 } from "./services/tools-config-normalizer.js";
 export type {
+	FrameworkErrorKind,
+	FrameworkErrorModel,
+	FrameworkErrorSeverity,
+} from "./services/framework-error.js";
+export {
+	formatFrameworkErrorForConsole,
+	frameworkErrorFromToolConfigDiagnostics,
+	frameworkErrorFromUnknown,
+	toFrameworkErrorModel,
+} from "./services/framework-error.js";
+export type {
+	ToolConfigDiagnostic,
+	ToolConfigDiagnosticSeverity,
+	ToolConfigStrictness,
+	ToolConfigValidationOptions,
+	ToolConfigValidationResult,
+} from "./services/tool-config-validation.js";
+export type {
 	ToolbarButtonItem,
 	ToolbarItem,
 	ToolbarItemBase,
@@ -244,6 +264,7 @@ export {
 	isExternalIconUrl,
 	isInlineSvgIcon,
 	isToolbarLinkItem,
+	isValidToolbarItemShape,
 } from "./services/toolbar-items.js";
 export {
 	normalizeToolsConfig,
@@ -252,6 +273,10 @@ export {
 	parseToolList,
 	resolveToolsForLevel,
 } from "./services/tools-config-normalizer.js";
+export {
+	frameworkErrorFromToolConfigValidation,
+	normalizeAndValidateToolsConfig,
+} from "./services/tool-config-validation.js";
 export type {
 	ParsedToolInstanceId,
 	ToolScopeLevel,
@@ -265,6 +290,21 @@ export {
 export type { TTSConfig } from "./services/TTSService.js";
 export { PlaybackState, TTSService } from "./services/TTSService.js";
 export { BrowserTTSProvider } from "./services/tts/browser-provider.js";
+export type {
+	TTSHostToolbarLayout,
+	TTSLayoutMode,
+	TTSRuntimeSettings,
+} from "./services/tts-runtime-config.js";
+export {
+	DEFAULT_TTS_SPEED_OPTIONS,
+	formatTTSSpeedOptionsAsText,
+	normalizeTTSLayoutMode,
+	normalizeTTSSpeedOptions,
+	parseTTSSpeedOptionsFromText,
+	resolveTTSHostToolbarLayout,
+	resolveTTSLayoutMode,
+	resolveTTSRuntimeSettings,
+} from "./services/tts-runtime-config.js";
 // TTS Provider System
 export type {
 	ITTSProvider,

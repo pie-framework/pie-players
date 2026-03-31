@@ -6,7 +6,8 @@
 			catalogId: { type: 'String', attribute: 'catalog-id' },
 			language: { type: 'String', attribute: 'language' },
 			size: { type: 'String', attribute: 'size' },
-			speedOptions: { type: 'Array', attribute: 'speed-options' }
+			speedOptions: { type: 'Array', attribute: 'speed-options' },
+			layoutMode: { type: 'String', attribute: 'layout-mode' }
 		}
 	}}
 />
@@ -16,6 +17,8 @@
 		connectToolRegionScopeContext,
 		connectToolRuntimeContext,
 		connectToolShellContext,
+		DEFAULT_TTS_SPEED_OPTIONS,
+		normalizeTTSSpeedOptions,
 		type AssessmentToolkitRegionScopeContext,
 		type AssessmentToolkitRuntimeContext,
 		type AssessmentToolkitShellContext,
@@ -27,12 +30,18 @@
 		catalogId = '', // Explicit catalog ID
 		language = 'en-US',
 		size = 'md' as 'sm' | 'md' | 'lg',
-		speedOptions = [1.5, 2] as number[]
+		speedOptions = [...DEFAULT_TTS_SPEED_OPTIONS] as number[],
+		layoutMode = 'expanding-row' as
+			| 'reserved-row'
+			| 'expanding-row'
+			| 'floating-overlay'
+			| 'left-aligned'
 	}: {
 		catalogId?: string;
 		language?: string;
 		size?: 'sm' | 'md' | 'lg';
 		speedOptions?: number[];
+		layoutMode?: 'reserved-row' | 'expanding-row' | 'floating-overlay' | 'left-aligned';
 	} = $props();
 
 	const isBrowser = typeof window !== 'undefined';
@@ -58,20 +67,11 @@
 	let playbackRate = $state(1);
 	let focusedControlIndex = $state(0);
 	let playActionInFlight = $state(false);
-	const speedChoices = $derived.by(() => {
-		if (!Array.isArray(speedOptions)) return [1.5, 2];
-		const deduped = new Set<number>();
-		for (const value of speedOptions) {
-			if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) continue;
-			const rounded = Math.round(value * 100) / 100;
-			if (rounded === 1) continue;
-			deduped.add(rounded);
-		}
-		return deduped.size ? Array.from(deduped).sort((a, b) => b - a) : [2, 1.5];
-	});
+	const speedChoices = $derived.by(() => normalizeTTSSpeedOptions(speedOptions));
 
 	const instanceId = `pie-tts-inline-instance-${Math.random().toString(36).slice(2)}`;
 	const listenerId = `pie-tts-inline-${Math.random().toString(36).slice(2)}`;
+	const panelId = `${instanceId}-controls`;
 
 	function getActiveOwnerId(): string | null {
 		if (!isBrowser) return null;
@@ -252,7 +252,7 @@
 		return asElement;
 	}
 
-	async function startSpeaking(): Promise<void> {
+	function startSpeaking(): void {
 		if (!ttsService) return;
 		const readingTarget = resolveReadingTarget();
 		if (!readingTarget) {
@@ -272,10 +272,16 @@
 			(ttsService as any).setRootElement?.(readingTarget as HTMLElement);
 			const isPassageScope = Boolean(readingTarget.closest('pie-passage-shell'));
 			statusMessage = 'Reading started';
-			await ttsService.speak(text, {
+			void ttsService.speak(text, {
 				catalogId: isPassageScope ? undefined : catalogId || undefined,
 				language,
 				contentElement: readingTarget,
+			}).catch((error) => {
+				console.error('[TTS Inline] Error:', error);
+				statusMessage = 'Unable to start reading';
+				if (highlightCoordinator) {
+					highlightCoordinator.clearTTS();
+				}
 			});
 		} catch (error) {
 			console.error('[TTS Inline] Error:', error);
@@ -315,7 +321,7 @@
 				ttsService.stop();
 			}
 			claimActiveOwner();
-			await startSpeaking();
+			startSpeaking();
 		} finally {
 			playActionInFlight = false;
 		}
@@ -371,100 +377,155 @@
 				? 'pie-tool-tts-inline__trigger--lg'
 				: 'pie-tool-tts-inline__trigger--md',
 	);
+	const isControlsRowLayout = $derived(
+		layoutMode === 'reserved-row' || layoutMode === 'expanding-row'
+	);
+	const isFloatingLayout = $derived(
+		layoutMode === 'floating-overlay'
+	);
+	const isLeftAlignedFloatingLayout = $derived(layoutMode === 'left-aligned');
+
+	function resolveHostElement(): HTMLElement | null {
+		if (!containerEl) return null;
+		const root = containerEl.getRootNode();
+		if (root instanceof ShadowRoot) {
+			return root.host as HTMLElement;
+		}
+		return null;
+	}
+
+	$effect(() => {
+		const host = resolveHostElement();
+		if (!host) return;
+		const active = controlsVisible === true;
+		host.setAttribute('data-active', active ? 'true' : 'false');
+		host.dispatchEvent(
+			new CustomEvent('pie-tool-active-change', {
+				detail: { active },
+				bubbles: true,
+				composed: true
+			})
+		);
+	});
 </script>
 
 {#if isBrowser}
-	<div bind:this={containerEl} class="pie-tool-tts-inline">
-		<button
-			type="button"
-			class="pie-tool-tts-inline__trigger {sizeClass}"
-			class:pie-tool-tts-inline__trigger--active={controlsVisible}
-			onclick={handlePlayPause}
-			aria-label={speaking && !paused ? 'Pause reading' : paused ? 'Resume reading' : 'Play reading'}
-			disabled={!ttsService || playActionInFlight}
-		>
-			{#if speaking && !paused}
-				<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="pie-tool-tts-inline__icon" aria-hidden="true">
-					<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
-				</svg>
-			{:else}
-				<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="pie-tool-tts-inline__icon" aria-hidden="true">
-					<path d="M8 5v14l11-7z" />
-				</svg>
-			{/if}
-		</button>
-
-		{#if controlsVisible}
-			<div
-				bind:this={toolbarEl}
-				class="pie-tool-tts-inline__panel"
-				role="toolbar"
-				aria-label="Reading controls"
-				tabindex="-1"
-				onkeydown={handleToolbarKeydown}
+	<div
+		bind:this={containerEl}
+		class="pie-tool-tts-inline"
+		class:pie-tool-tts-inline--controls-row={isControlsRowLayout}
+		class:pie-tool-tts-inline--floating={isFloatingLayout}
+	>
+		{#snippet triggerButton()}
+			<button
+				type="button"
+				class="pie-tool-tts-inline__trigger {sizeClass}"
+				class:pie-tool-tts-inline__trigger--active={controlsVisible}
+				onclick={handlePlayPause}
+				aria-label={speaking && !paused ? 'Pause reading' : paused ? 'Resume reading' : 'Play reading'}
+				aria-expanded={controlsVisible}
+				aria-controls={controlsVisible ? panelId : undefined}
+				disabled={!ttsService || playActionInFlight}
 			>
-				{#each speedChoices as speed, speedIdx (speed)}
+				{#if speaking && !paused}
+					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="pie-tool-tts-inline__icon" aria-hidden="true">
+						<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+					</svg>
+				{:else}
+					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="pie-tool-tts-inline__icon" aria-hidden="true">
+						<path d="M8 5v14l11-7z" />
+					</svg>
+				{/if}
+			</button>
+		{/snippet}
+
+		{#snippet controlsPanel()}
+			{#if controlsVisible}
+				<div
+					id={panelId}
+					bind:this={toolbarEl}
+					class="pie-tool-tts-inline__panel"
+					class:pie-tool-tts-inline__panel--floating={isFloatingLayout}
+					class:pie-tool-tts-inline__panel--row={isControlsRowLayout}
+					class:pie-tool-tts-inline__panel--left-aligned-inline={isLeftAlignedFloatingLayout}
+					role="toolbar"
+					aria-label="Reading controls"
+					tabindex="-1"
+					onkeydown={handleToolbarKeydown}
+				>
+					{#if speedChoices.length > 0}
+						{#each speedChoices as speed, speedIdx (speed)}
+							<button
+								type="button"
+								data-pie-tts-control
+								class="pie-tool-tts-inline__control pie-tool-tts-inline__control--speed"
+								class:pie-tool-tts-inline__control--speed-active={playbackRate === speed}
+								onclick={() => handlePlaybackRate(speed)}
+								onfocus={() => (focusedControlIndex = speedIdx)}
+								tabindex={focusedControlIndex === speedIdx ? 0 : -1}
+								aria-label={`Speed ${speed}x`}
+								aria-pressed={playbackRate === speed}
+								disabled={!ttsService}
+							>
+								<span aria-hidden="true">{speed}x</span>
+							</button>
+						{/each}
+					{/if}
+
 					<button
 						type="button"
 						data-pie-tts-control
-						class="pie-tool-tts-inline__control pie-tool-tts-inline__control--speed"
-						class:pie-tool-tts-inline__control--speed-active={playbackRate === speed}
-						onclick={() => handlePlaybackRate(speed)}
-						onfocus={() => (focusedControlIndex = speedIdx)}
-						tabindex={focusedControlIndex === speedIdx ? 0 : -1}
-						aria-label={`Speed ${speed}x`}
-						aria-pressed={playbackRate === speed}
-						disabled={!ttsService}
+						class="pie-tool-tts-inline__control"
+						onclick={handleSeekBackward}
+						onfocus={() => (focusedControlIndex = speedChoices.length)}
+						tabindex={focusedControlIndex === speedChoices.length ? 0 : -1}
+						aria-label="Rewind"
+						disabled={!ttsService || !speaking}
 					>
-						<span aria-hidden="true">{speed}x</span>
+						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="pie-tool-tts-inline__icon" aria-hidden="true">
+							<path d="M20 18V6l-8.5 6L20 18zM10.5 18V6L2 12l8.5 6z" />
+						</svg>
 					</button>
-				{/each}
 
-				<button
-					type="button"
-					data-pie-tts-control
-					class="pie-tool-tts-inline__control"
-					onclick={handleSeekBackward}
-					onfocus={() => (focusedControlIndex = speedChoices.length)}
-					tabindex={focusedControlIndex === speedChoices.length ? 0 : -1}
-					aria-label="Rewind"
-					disabled={!ttsService || !speaking}
-				>
-					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="pie-tool-tts-inline__icon" aria-hidden="true">
-						<path d="M20 18V6l-8.5 6L20 18zM10.5 18V6L2 12l8.5 6z" />
-					</svg>
-				</button>
+					<button
+						type="button"
+						data-pie-tts-control
+						class="pie-tool-tts-inline__control"
+						onclick={handleSeekForward}
+						onfocus={() => (focusedControlIndex = speedChoices.length + 1)}
+						tabindex={focusedControlIndex === speedChoices.length + 1 ? 0 : -1}
+						aria-label="Fast-forward"
+						disabled={!ttsService || !speaking}
+					>
+						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="pie-tool-tts-inline__icon" aria-hidden="true">
+							<path d="M4 18l8.5-6L4 6v12zm9.5 0L22 12l-8.5-6v12z" />
+						</svg>
+					</button>
 
-				<button
-					type="button"
-					data-pie-tts-control
-					class="pie-tool-tts-inline__control"
-					onclick={handleSeekForward}
-					onfocus={() => (focusedControlIndex = speedChoices.length + 1)}
-					tabindex={focusedControlIndex === speedChoices.length + 1 ? 0 : -1}
-					aria-label="Fast-forward"
-					disabled={!ttsService || !speaking}
-				>
-					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="pie-tool-tts-inline__icon" aria-hidden="true">
-						<path d="M4 18l8.5-6L4 6v12zm9.5 0L22 12l-8.5-6v12z" />
-					</svg>
-				</button>
+					<button
+						type="button"
+						data-pie-tts-control
+						class="pie-tool-tts-inline__control"
+						onclick={handleStop}
+						onfocus={() => (focusedControlIndex = speedChoices.length + 2)}
+						tabindex={focusedControlIndex === speedChoices.length + 2 ? 0 : -1}
+						aria-label="Stop reading"
+						disabled={!ttsService || (!speaking && !paused)}
+					>
+						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="pie-tool-tts-inline__icon" aria-hidden="true">
+							<path d="M6 6h12v12H6z" />
+						</svg>
+					</button>
+				</div>
+			{/if}
+		{/snippet}
 
-				<button
-					type="button"
-					data-pie-tts-control
-					class="pie-tool-tts-inline__control"
-					onclick={handleStop}
-					onfocus={() => (focusedControlIndex = speedChoices.length + 2)}
-					tabindex={focusedControlIndex === speedChoices.length + 2 ? 0 : -1}
-					aria-label="Stop reading"
-					disabled={!ttsService || (!speaking && !paused)}
-				>
-					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="pie-tool-tts-inline__icon" aria-hidden="true">
-						<path d="M6 6h12v12H6z" />
-					</svg>
-				</button>
-			</div>
+		{#if isLeftAlignedFloatingLayout}
+			{@render controlsPanel()}
+			{@render triggerButton()}
+		{:else}
+			{@render triggerButton()}
+			{@render controlsPanel()}
 		{/if}
 
 		<div class="pie-sr-only" role="status" aria-live="polite" aria-atomic="true">
@@ -478,6 +539,11 @@
 		position: relative;
 		display: inline-flex;
 		align-items: center;
+	}
+
+	.pie-tool-tts-inline--controls-row {
+		width: 100%;
+		justify-content: flex-end;
 	}
 
 	.pie-tool-tts-inline__trigger {
@@ -520,11 +586,6 @@
 	}
 
 	.pie-tool-tts-inline__panel {
-		position: absolute;
-		z-index: 2;
-		top: 100%;
-		right: 0;
-		left: auto;
 		display: inline-flex;
 		flex-wrap: nowrap;
 		align-items: center;
@@ -536,6 +597,27 @@
 		background: var(--pie-surface, var(--pie-background, #fff));
 		border: 1px solid var(--pie-border, #d0d0d0);
 		border-radius: 0.5rem;
+	}
+
+	.pie-tool-tts-inline__panel--floating {
+		position: absolute;
+		z-index: 2;
+		top: 100%;
+		right: 0;
+		left: auto;
+	}
+
+	.pie-tool-tts-inline__panel--left-aligned-inline {
+		position: static;
+		margin-right: 0.5rem;
+	}
+
+	.pie-tool-tts-inline__panel--row {
+		position: absolute;
+		z-index: 2;
+		top: 100%;
+		right: 0;
+		left: auto;
 	}
 
 	.pie-tool-tts-inline__control {

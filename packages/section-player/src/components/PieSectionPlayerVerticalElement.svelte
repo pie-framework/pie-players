@@ -25,7 +25,12 @@
 			enabledTools: { attribute: "enabled-tools", type: "String" },
 			itemToolbarTools: { attribute: "item-toolbar-tools", type: "String" },
 			passageToolbarTools: { attribute: "passage-toolbar-tools", type: "String" },
+			toolRegistry: { type: "Object", reflect: false },
+			sectionHostButtons: { type: "Object", reflect: false },
+			itemHostButtons: { type: "Object", reflect: false },
+			passageHostButtons: { type: "Object", reflect: false },
 			policies: { type: "Object", reflect: false },
+			cardTitleFormatter: { type: "Object", reflect: false },
 			narrowLayoutBreakpoint: { attribute: "narrow-layout-breakpoint", type: "Number" },
 		},
 	}}
@@ -42,7 +47,12 @@
 	import "./section-player-items-pane-element.js";
 	import "./section-player-passages-pane-element.js";
 	import SectionPlayerLayoutKernel from "./shared/SectionPlayerLayoutKernel.svelte";
+	import SectionPlayerVerticalContent from "./shared/SectionPlayerVerticalContent.svelte";
 	import { createEventDispatcher } from "svelte";
+	import type {
+		ToolRegistry,
+		ToolbarItem,
+	} from "@pie-players/pie-assessment-toolkit";
 	import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
 	import {
 		type RuntimeConfig,
@@ -51,7 +61,8 @@
 		SectionPlayerRuntimeHostContract,
 		SectionPlayerSnapshot,
 	} from "../contracts/runtime-host-contract.js";
-import type { SectionPlayerPolicies } from "../policies/types.js";
+	import type { SectionPlayerPolicies } from "../policies/types.js";
+	import type { SectionPlayerCardTitleFormatter } from "../contracts/card-title-formatters.js";
 
 	const DEFAULT_NARROW_BREAKPOINT_PX = 1100;
 	const NARROW_BREAKPOINT_MIN_PX = 400;
@@ -79,7 +90,12 @@ import type { SectionPlayerPolicies } from "../policies/types.js";
 		enabledTools = "",
 		itemToolbarTools = "",
 		passageToolbarTools = "",
+		toolRegistry = null as ToolRegistry | null,
+		sectionHostButtons = [] as ToolbarItem[],
+		itemHostButtons = [] as ToolbarItem[],
+		passageHostButtons = [] as ToolbarItem[],
 		policies = undefined as SectionPlayerPolicies | undefined,
+		cardTitleFormatter = undefined as SectionPlayerCardTitleFormatter | undefined,
 		narrowLayoutBreakpoint = undefined as number | undefined,
 	} = $props();
 	const dispatch = createEventDispatcher();
@@ -216,7 +232,12 @@ import type { SectionPlayerPolicies } from "../policies/types.js";
 	{enabledTools}
 	{itemToolbarTools}
 	{passageToolbarTools}
+	{toolRegistry}
+	{sectionHostButtons}
+	{itemHostButtons}
+	{passageHostButtons}
 	{policies}
+	{cardTitleFormatter}
 	playerActionConfig={{
 		stateKey: "__verticalAppliedParams",
 		includeSessionRefInState: false,
@@ -230,40 +251,20 @@ import type { SectionPlayerPolicies } from "../policies/types.js";
 	on:section-controller-ready={forward}
 	on:session-changed={forward}
 	on:composition-changed={forward}
+	on:element-preload-retry={forward}
+	on:element-preload-error={forward}
 	let:layoutModel
 >
-	<div class="pie-section-player-vertical-content">
-		{#if layoutModel.passages.length > 0 && layoutModel.paneElementsLoaded}
-			<section class="pie-section-player-passages-section" aria-label="Passages">
-				<pie-section-player-passages-pane
-					passages={layoutModel.passages}
-					elementsLoaded={layoutModel.paneElementsLoaded}
-					resolvedPlayerEnv={layoutModel.resolvedPlayerEnv}
-					resolvedPlayerAttributes={layoutModel.resolvedPlayerAttributes}
-					resolvedPlayerProps={layoutModel.resolvedPlayerProps}
-					playerStrategy={layoutModel.playerStrategy}
-					passageToolbarTools={passageToolbarTools}
-				></pie-section-player-passages-pane>
-			</section>
-		{/if}
-
-		<section class="pie-section-player-items-section" aria-label="Items">
-			<pie-section-player-items-pane
-				items={layoutModel.items}
-				compositionModel={layoutModel.compositionModel}
-				resolvedPlayerEnv={layoutModel.resolvedPlayerEnv}
-				resolvedPlayerAttributes={layoutModel.resolvedPlayerAttributes}
-				resolvedPlayerProps={layoutModel.resolvedPlayerProps}
-				playerStrategy={layoutModel.playerStrategy}
-				itemToolbarTools={itemToolbarTools}
-				iifeBundleHost={iifeBundleHost}
-				preloadedRenderables={layoutModel.preloadedRenderables}
-				preloadedRenderablesSignature={layoutModel.preloadedRenderablesSignature}
-				preloadComponentTag="pie-section-player-vertical"
-				onelements-loaded-change={layoutModel.onItemsPaneElementsLoaded}
-			></pie-section-player-items-pane>
-		</section>
-	</div>
+	<SectionPlayerVerticalContent
+		{layoutModel}
+		{itemToolbarTools}
+		{passageToolbarTools}
+		toolRegistry={layoutModel.toolRegistry}
+		itemHostButtons={layoutModel.itemHostButtons}
+		passageHostButtons={layoutModel.passageHostButtons}
+		{iifeBundleHost}
+		preloadComponentTag="pie-section-player-vertical"
+	/>
 </SectionPlayerLayoutKernel>
 
 <style>
@@ -274,34 +275,6 @@ import type { SectionPlayerPolicies } from "../policies/types.js";
 		min-height: 0;
 		max-height: 100%;
 		overflow: hidden;
-	}
-
-	.pie-section-player-vertical-content {
-		height: 100%;
-		max-height: 100%;
-		min-height: 0;
-		min-width: 0;
-		overflow-y: auto;
-		overflow-x: hidden;
-		overscroll-behavior: contain;
-		display: flex;
-		flex-direction: column;
-		gap: 1rem;
-		padding: 0.5rem;
-		box-sizing: border-box;
-		background: var(--pie-background-dark, #ecedf1);
-	}
-
-	.pie-section-player-passages-section,
-	.pie-section-player-items-section {
-		min-height: 0;
-		/* Prevent flexbox from compressing content sections.
-		   Let the vertical container own scrolling instead. */
-		flex: 0 0 auto;
-	}
-
-	.pie-section-player-passages-section {
-		width: 100%;
 	}
 
 	.pie-section-player-observability-anchor {

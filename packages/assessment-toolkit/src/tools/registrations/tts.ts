@@ -18,6 +18,10 @@ import { hasReadableText } from "../../services/tool-context.js";
 import { createScopedToolId } from "../../services/tool-instance-id.js";
 import {
 	buildRuntimeTTSConfig,
+	normalizeTTSLayoutMode,
+	normalizeTTSSpeedOptions,
+	resolveTTSHostToolbarLayout,
+	resolveTTSLayoutMode,
 	resolveTTSBackend,
 	resolveTTSRuntimeSettings,
 	resolveRuntimeProvider,
@@ -27,20 +31,7 @@ import { TTSToolProvider } from "../../services/tool-providers/index.js";
 
 const inlineTTSControls = new Map<string, HTMLElement>();
 export const TOOL_ELEMENT_UNMOUNT_CALLBACK_PROP = "__pieToolElementUnmount";
-
-const DEFAULT_SPEED_OPTIONS = Object.freeze([1.5, 2]);
-
-const resolveSpeedOptions = (value: unknown): number[] => {
-	if (!Array.isArray(value)) return [...DEFAULT_SPEED_OPTIONS];
-	const deduped = new Set<number>();
-	for (const entry of value) {
-		if (typeof entry !== "number" || !Number.isFinite(entry) || entry <= 0) continue;
-		const rounded = Math.round(entry * 100) / 100;
-		if (rounded === 1) continue;
-		deduped.add(rounded);
-	}
-	return deduped.size ? Array.from(deduped) : [...DEFAULT_SPEED_OPTIONS];
-};
+export const TOOL_ACTIVE_CHANGE_EVENT = "pie-tool-active-change";
 
 /**
  * Text-to-Speech tool registration
@@ -79,11 +70,40 @@ export const ttsToolRegistration: ToolRegistration = {
 				? runtimeAuthFetcher
 				: undefined;
 		},
+		sanitizeConfig: (config) => {
+			const settings =
+				config.settings && typeof config.settings === "object"
+					? { ...(config.settings as Record<string, unknown>) }
+					: undefined;
+			if (settings && "layoutMode" in settings) {
+				settings.layoutMode = normalizeTTSLayoutMode(settings.layoutMode);
+			}
+			if (settings && "speedOptions" in settings) {
+				settings.speedOptions = normalizeTTSSpeedOptions(settings.speedOptions);
+			}
+			const normalizedConfig: Record<string, unknown> = {
+				...(config as Record<string, unknown>),
+			};
+			if ("layoutMode" in normalizedConfig) {
+				normalizedConfig.layoutMode = normalizeTTSLayoutMode(
+					normalizedConfig.layoutMode,
+				);
+			}
+			if ("speedOptions" in normalizedConfig) {
+				normalizedConfig.speedOptions = normalizeTTSSpeedOptions(
+					normalizedConfig.speedOptions,
+				);
+			}
+			if (settings) {
+				normalizedConfig.settings = settings;
+			}
+			return normalizedConfig as typeof config;
+		},
 		lazy: true,
 	},
 
-	// TTS can appear at all levels except assessment and element.
-	supportedLevels: ["section", "item", "passage", "rubric"],
+	// TTS is inline-only and scoped to item/passage contexts.
+	supportedLevels: ["item", "passage"],
 
 	// PNP support IDs that enable this tool
 	// Maps to QTI 3.0 standard features: textToSpeech, readAloud
@@ -108,12 +128,16 @@ export const ttsToolRegistration: ToolRegistration = {
 		_context: ToolContext,
 		toolbarContext: ToolbarContext,
 	): ToolToolbarRenderResult {
-		const resolveElementSpeedOptions = (): number[] => {
-			const runtimeSettings = resolveTTSRuntimeSettings(
+		const resolveRuntimeSettings = () =>
+			resolveTTSRuntimeSettings(
 				toolbarContext.toolkitCoordinator?.getToolConfig(this.toolId) || undefined,
 			);
-			return resolveSpeedOptions(runtimeSettings.speedOptions);
+		const resolveElementSpeedOptions = (): number[] => {
+			const runtimeSettings = resolveRuntimeSettings();
+			return normalizeTTSSpeedOptions(runtimeSettings.speedOptions);
 		};
+		const resolveLayoutMode = () => resolveTTSLayoutMode(resolveRuntimeSettings());
+		const resolveHostLayout = () => resolveTTSHostToolbarLayout(resolveRuntimeSettings());
 		const fullToolId = createScopedToolId(
 			this.toolId,
 			toolbarContext.scope.level,
@@ -150,10 +174,12 @@ export const ttsToolRegistration: ToolRegistration = {
 			element.setAttribute("catalog-id", toolbarContext.catalogId || toolbarContext.itemId);
 			element.setAttribute("language", toolbarContext.language || "en-US");
 			element.setAttribute("size", resolveControlSize());
+			element.setAttribute("layout-mode", resolveLayoutMode());
 			(element as HTMLElement & { speedOptions?: number[] }).speedOptions =
 				resolveElementSpeedOptions();
 			return element;
 		};
+		const hostLayout = resolveHostLayout();
 
 		return {
 			toolId: this.toolId,
@@ -161,15 +187,33 @@ export const ttsToolRegistration: ToolRegistration = {
 			elements: [
 				{
 					element: ensureElement(),
-					mount: "before-buttons",
+					mount: hostLayout.mount,
+					layoutHints: {
+						controlsRow: {
+							reserveSpace: hostLayout.controlsRow.reserveSpace,
+							showWhenToolActive: hostLayout.controlsRow.expandWhenToolActive,
+						},
+					},
 				},
 			],
+			subscribeActive: (callback) => {
+				const element = ensureElement();
+				const handler = (event: Event) => {
+					const detail = (event as CustomEvent<{ active?: boolean }>).detail;
+					callback(detail?.active === true);
+				};
+				element.addEventListener(TOOL_ACTIVE_CHANGE_EVENT, handler);
+				return () => {
+					element.removeEventListener(TOOL_ACTIVE_CHANGE_EVENT, handler);
+				};
+			},
 			sync: () => {
 				const element = ensureElement();
 				element.setAttribute("tool-id", fullToolId);
 				element.setAttribute("catalog-id", toolbarContext.catalogId || toolbarContext.itemId);
 				element.setAttribute("language", toolbarContext.language || "en-US");
 				element.setAttribute("size", resolveControlSize());
+				element.setAttribute("layout-mode", resolveLayoutMode());
 				(element as HTMLElement & { speedOptions?: number[] }).speedOptions =
 					resolveElementSpeedOptions();
 			},

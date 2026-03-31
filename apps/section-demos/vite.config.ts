@@ -82,6 +82,10 @@ export default (async () => {
 					__dirname,
 					"../../packages/tool-text-to-speech/dist/tool-text-to-speech.js",
 				),
+				"@pie-players/pie-tool-tts-inline": resolve(
+					__dirname,
+					"../../packages/tool-tts-inline/dist/tool-tts-inline.js",
+				),
 				"@pie-players/pie-tool-answer-eliminator": resolve(
 					__dirname,
 					"../../packages/tool-answer-eliminator/dist/tool-answer-eliminator.js",

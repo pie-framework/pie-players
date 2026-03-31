@@ -7,11 +7,14 @@
 			item: { type: "Object", reflect: false },
 			itemIndex: { attribute: "item-index", type: "Number" },
 			itemCount: { attribute: "item-count", type: "Number" },
+			isCurrent: { attribute: "is-current", type: "Boolean" },
 			canonicalItemId: { attribute: "canonical-item-id", type: "String" },
 			resolvedPlayerTag: { attribute: "resolved-player-tag", type: "String" },
 			playerAction: { type: "Object", reflect: false },
 			playerParams: { attribute: "player-params", type: "Object", reflect: false },
 			itemToolbarTools: { attribute: "item-toolbar-tools", type: "String" },
+			toolRegistry: { type: "Object", reflect: false },
+			hostButtons: { type: "Object", reflect: false },
 		},
 	}}
 />
@@ -20,7 +23,12 @@
 	import { onMount } from "svelte";
 	import "../item-shell-element.js";
 	import "@pie-players/pie-toolbars/components/item-toolbar-element";
+	import type {
+		ToolRegistry,
+		ToolbarItem,
+	} from "@pie-players/pie-assessment-toolkit";
 	import type { ItemEntity } from "@pie-players/pie-players-shared/types";
+	import type { SectionPlayerCardTitleFormatter } from "../../contracts/card-title-formatters.js";
 	import type { PlayerElementParams } from "./player-action.js";
 	import {
 		connectSectionPlayerCardRenderContext,
@@ -32,20 +40,26 @@
 		item,
 		itemIndex = 0,
 		itemCount = 1,
+		isCurrent = false,
 		canonicalItemId,
 		resolvedPlayerTag = "div",
 		playerAction = (_node: HTMLElement, _params: PlayerElementParams) => undefined,
 		playerParams,
 		itemToolbarTools,
+		toolRegistry = null as ToolRegistry | null,
+		hostButtons = [] as ToolbarItem[],
 	} = $props<{
 		item: ItemEntity;
 		itemIndex?: number;
 		itemCount?: number;
+		isCurrent?: boolean;
 		canonicalItemId: string;
 		resolvedPlayerTag?: string;
 		playerAction?: (node: HTMLElement, params: PlayerElementParams) => unknown;
 		playerParams: PlayerElementParams;
 		itemToolbarTools: string;
+		toolRegistry?: ToolRegistry | null;
+		hostButtons?: ToolbarItem[];
 	}>();
 
 	let contextAnchor = $state<HTMLDivElement | null>(null);
@@ -53,6 +67,7 @@
 	let contextPlayerAction = $state<
 		((node: HTMLElement, params: PlayerElementParams) => unknown) | null
 	>(null);
+	let contextCardTitleFormatter = $state<SectionPlayerCardTitleFormatter | null>(null);
 	let contextConnected = $state(false);
 	// Context is the canonical source for shared render wiring while connected.
 	// Props are explicit fallback when context is unavailable.
@@ -66,12 +81,34 @@
 		Number.isFinite(itemIndex) ? Math.max(0, Number(itemIndex)) + 1 : 1,
 	);
 	const totalItems = $derived(Number.isFinite(itemCount) ? Math.max(1, Number(itemCount)) : 1);
-	const headerTitle = $derived(totalItems > 1 ? `Question ${itemPosition}` : "Question");
+	const defaultHeaderTitle = $derived(totalItems > 1 ? `Question ${itemPosition}` : "Question");
+	const effectiveCardTitleFormatter = $derived(
+		(contextConnected ? contextCardTitleFormatter : null) || null,
+	);
+	const headerTitle = $derived.by(() => {
+		if (!effectiveCardTitleFormatter) return defaultHeaderTitle;
+		try {
+			const nextTitle = effectiveCardTitleFormatter({
+				kind: "item",
+				item,
+				itemIndex: itemPosition - 1,
+				itemCount: totalItems,
+				canonicalItemId,
+				defaultTitle: defaultHeaderTitle,
+			});
+			if (typeof nextTitle !== "string") return defaultHeaderTitle;
+			const trimmedTitle = nextTitle.trim();
+			return trimmedTitle || defaultHeaderTitle;
+		} catch {
+			return defaultHeaderTitle;
+		}
+	});
 
 	function resetContextOverrides(): void {
 		contextConnected = false;
 		contextResolvedPlayerTag = null;
 		contextPlayerAction = null;
+		contextCardTitleFormatter = null;
 	}
 
 	function applyCardRenderContext(value: SectionPlayerCardRenderContext): void {
@@ -81,6 +118,9 @@
 		}
 		if (typeof value.playerAction === "function") {
 			contextPlayerAction = value.playerAction;
+		}
+		if (typeof value.cardTitleFormatter === "function") {
+			contextCardTitleFormatter = value.cardTitleFormatter;
 		}
 	}
 
@@ -111,6 +151,7 @@
 		tabindex="-1"
 		data-section-item-card
 		data-canonical-item-id={canonicalItemId}
+		aria-current={isCurrent ? "true" : undefined}
 	>
 		<div
 			class="pie-section-player-content-card-header pie-section-player-item-header pie-section-player__item-header"
@@ -124,6 +165,8 @@
 				content-kind="assessment-item"
 				size="md"
 				language="en-US"
+				{toolRegistry}
+				{hostButtons}
 			></pie-item-toolbar>
 		</div>
 		<div

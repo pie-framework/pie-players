@@ -6,6 +6,7 @@
 		NewRelicInstrumentationProvider
 	} from '@pie-players/pie-players-shared';
 	import {
+		createToolsConfig,
 		createDefaultPersonalNeedsProfile,
 		ToolkitCoordinator
 	} from '@pie-players/pie-assessment-toolkit';
@@ -50,23 +51,7 @@
 	let { data }: { data: PageData } = $props();
 
 	// Level 5: route-owned session hydration, save, and reset strategy.
-	const toolkitToolsConfig = {
-		providers: {
-			tts: SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER,
-			calculator: {
-				authFetcher: fetchDesmosAuthConfig
-			},
-			annotationToolbar: {
-				enabled: true
-			}
-		},
-		placement: {
-			section: ['theme', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
-			item: ['calculator', 'textToSpeech', 'answerEliminator', 'annotationToolbar'],
-			passage: ['textToSpeech', 'annotationToolbar']
-		}
-	};
-	const sectionToolbarTools = 'theme,graph,periodicTable,protractor,lineReader,ruler';
+	const sectionToolbarTools = 'theme,graph,periodicTable,lineReader,ruler,protractor';
 	const sectionInstrumentationProvider = new CompositeInstrumentationProvider([
 		new NewRelicInstrumentationProvider(),
 		new DebugPanelInstrumentationProvider()
@@ -93,31 +78,79 @@
 		saveSnapshot: saveSnapshotToSessionDb,
 		deleteSnapshot: deleteSnapshotFromSessionDb
 	};
-	const coordinator = new ToolkitCoordinator({
-		assessmentId: DEMO_ASSESSMENT_ID,
-		tools: toolkitToolsConfig,
-		hooks: {
-			onError: (error, context) => {
-				console.error('[Demo] Toolkit hook error:', context, error);
-			},
-			async createSectionSessionPersistence(context) {
-				const targetSectionId = context.key.sectionId;
-				return {
-					async loadSession() {
-						if (!dbHydrateEnabled) return null;
-						return await loadSnapshotFromDb(targetSectionId);
+	const bootstrap = (() => {
+		try {
+		const toolsConfigResult = createToolsConfig({
+			source: 'section-demos.session-hydrate-db',
+			strictness: 'error',
+			tools: {
+				providers: {
+					textToSpeech: SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER,
+					calculator: {
+						authFetcher: fetchDesmosAuthConfig
 					},
-					async saveSession(_ctx, session) {
-						if (!dbHydrateEnabled || isDemoDbAutoPersistSuppressed()) return;
-						await saveSnapshotToDb(targetSectionId, (session || { itemSessions: {} }) as any);
-					},
-					async clearSession() {
-						await deleteSnapshotFromDb(targetSectionId);
+					annotationToolbar: {
+						enabled: true
 					}
-				};
+				},
+				placement: {
+					section: ['theme', 'graph', 'periodicTable', 'lineReader', 'ruler', 'protractor'],
+					item: [
+						'calculator',
+						'textToSpeech',
+						'answerEliminator',
+						'annotationToolbar'
+					],
+					passage: ['textToSpeech', 'annotationToolbar']
+				}
 			}
+		});
+		if (toolsConfigResult.diagnostics.length > 0) {
+			console.warn(
+				'[session-hydrate-db demo] tools config diagnostics:',
+				toolsConfigResult.diagnostics
+			);
 		}
-	});
+		return {
+			bootstrapErrorMessage: null as string | null,
+			toolkitToolsConfig: toolsConfigResult.config,
+			coordinator: new ToolkitCoordinator({
+			assessmentId: DEMO_ASSESSMENT_ID,
+			toolConfigStrictness: 'error',
+			tools: toolsConfigResult.config,
+			hooks: {
+				onError: (error, context) => {
+					console.error('[Demo] Toolkit hook error:', context, error);
+				},
+				async createSectionSessionPersistence(context) {
+					const targetSectionId = context.key.sectionId;
+					return {
+						async loadSession() {
+							if (!dbHydrateEnabled) return null;
+							return await loadSnapshotFromDb(targetSectionId);
+						},
+						async saveSession(_ctx, session) {
+							if (!dbHydrateEnabled || isDemoDbAutoPersistSuppressed()) return;
+							await saveSnapshotToDb(targetSectionId, (session || { itemSessions: {} }) as any);
+						},
+						async clearSession() {
+							await deleteSnapshotFromDb(targetSectionId);
+						}
+					};
+				}
+			}
+		})
+		};
+	} catch (error) {
+		console.error('[session-hydrate-db demo] config/coordinator bootstrap failed', error);
+		return {
+			bootstrapErrorMessage: error instanceof Error ? error.message : String(error),
+			toolkitToolsConfig: {},
+			coordinator: null as ToolkitCoordinator | null
+		};
+	}
+	})();
+	const { bootstrapErrorMessage, toolkitToolsConfig, coordinator } = bootstrap;
 
 	let selectedPlayerType = $state(getUrlEnumParam('player', PLAYER_OPTIONS, 'iife'));
 	let roleType = $state<'candidate' | 'scorer'>(getUrlEnumParam('mode', MODE_OPTIONS, 'candidate'));
@@ -492,77 +525,84 @@
 	<title>{data.demo?.name || 'Demo'} - Direct Layout</title>
 </svelte:head>
 
-<DemoRuntimeChrome
-	{data}
-	{roleType}
-	{layoutType}
-	{selectedPlayerType}
-	{attemptId}
-	{selectedDaisyTheme}
-	sectionId={sessionPanelSectionId}
-	{sourcePanelJson}
-	toolkitCoordinator={coordinator}
-	isSessionHydrateDbDemo={true}
-	{dbErrorMessage}
-	onReset={() => void resetSessions()}
-	onSetSplitpaneLayout={() => (layoutType = 'splitpane')}
-	onSetVerticalLayout={() => (layoutType = 'vertical')}
-	onSelectDaisyTheme={handleDaisyThemeSelection}
-	onResetDb={() => void resetServerDb()}
-	bind:showSessionPanel
-	bind:showEventPanel
-	bind:showInstrumentationPanel
-	bind:showSourcePanel
-	bind:showPnpPanel
-	bind:showTtsPanel
-	bind:showSessionDbPanel
-	bind:sessionDebuggerElement
-	bind:eventDebuggerElement
-	bind:instrumentationDebuggerElement
-	bind:pnpDebuggerElement
->
-	{#key `${sessionPanelSectionId}:${attemptId}:${playerInstanceKey}`}
-		{#if selectedPlayerType === 'preloaded' && !preloadedReady}
-			<div class="preload-status">Preloading section item bundles...</div>
-		{:else if preloadedError}
-			<div class="preload-status error">Preloaded bundle failed: {preloadedError}</div>
-		{:else if layoutType === 'vertical'}
-			<pie-section-player-vertical
-				bind:this={playerHostElement}
-				assessment-id={DEMO_ASSESSMENT_ID}
-				section-id={sessionPanelSectionId}
-				attempt-id={attemptId}
-				player-type={selectedPlayerType}
-				lazy-init={true}
-				tools={toolkitToolsConfig}
-				player={sectionPlayerConfig}
-				section={resolvedSectionForPlayer}
-				env={pieEnv}
-				coordinator={coordinator}
-				toolbar-position="right"
-				show-toolbar={true}
-				enabled-tools={sectionToolbarTools}
-			></pie-section-player-vertical>
-		{:else}
-			<pie-section-player-splitpane
-				bind:this={playerHostElement}
-				assessment-id={DEMO_ASSESSMENT_ID}
-				section-id={sessionPanelSectionId}
-				attempt-id={attemptId}
-				player-type={selectedPlayerType}
-				lazy-init={true}
-				tools={toolkitToolsConfig}
-				player={sectionPlayerConfig}
-				section={resolvedSectionForPlayer}
-				env={pieEnv}
-				coordinator={coordinator}
-				toolbar-position="right"
-				show-toolbar={true}
-				enabled-tools={sectionToolbarTools}
-			></pie-section-player-splitpane>
-		{/if}
-	{/key}
-</DemoRuntimeChrome>
+{#if bootstrapErrorMessage}
+	<div class="preload-status error" role="alert" data-testid="demo-bootstrap-error">
+		<strong>Demo bootstrap failed before toolkit mount.</strong>
+		<pre>{bootstrapErrorMessage}</pre>
+	</div>
+{:else}
+	<DemoRuntimeChrome
+		{data}
+		{roleType}
+		{layoutType}
+		{selectedPlayerType}
+		{attemptId}
+		{selectedDaisyTheme}
+		sectionId={sessionPanelSectionId}
+		{sourcePanelJson}
+		toolkitCoordinator={coordinator}
+		isSessionHydrateDbDemo={true}
+		{dbErrorMessage}
+		onReset={() => void resetSessions()}
+		onSetSplitpaneLayout={() => (layoutType = 'splitpane')}
+		onSetVerticalLayout={() => (layoutType = 'vertical')}
+		onSelectDaisyTheme={handleDaisyThemeSelection}
+		onResetDb={() => void resetServerDb()}
+		bind:showSessionPanel
+		bind:showEventPanel
+		bind:showInstrumentationPanel
+		bind:showSourcePanel
+		bind:showPnpPanel
+		bind:showTtsPanel
+		bind:showSessionDbPanel
+		bind:sessionDebuggerElement
+		bind:eventDebuggerElement
+		bind:instrumentationDebuggerElement
+		bind:pnpDebuggerElement
+	>
+		{#key `${sessionPanelSectionId}:${attemptId}:${playerInstanceKey}`}
+			{#if selectedPlayerType === 'preloaded' && !preloadedReady}
+				<div class="preload-status">Preloading section item bundles...</div>
+			{:else if preloadedError}
+				<div class="preload-status error">Preloaded bundle failed: {preloadedError}</div>
+			{:else if layoutType === 'vertical'}
+				<pie-section-player-vertical
+					bind:this={playerHostElement}
+					assessment-id={DEMO_ASSESSMENT_ID}
+					section-id={sessionPanelSectionId}
+					attempt-id={attemptId}
+					player-type={selectedPlayerType}
+					lazy-init={true}
+					tools={toolkitToolsConfig}
+					player={sectionPlayerConfig}
+					section={resolvedSectionForPlayer}
+					env={pieEnv}
+					coordinator={coordinator}
+					toolbar-position="right"
+					show-toolbar={true}
+					enabled-tools={sectionToolbarTools}
+				></pie-section-player-vertical>
+			{:else}
+				<pie-section-player-splitpane
+					bind:this={playerHostElement}
+					assessment-id={DEMO_ASSESSMENT_ID}
+					section-id={sessionPanelSectionId}
+					attempt-id={attemptId}
+					player-type={selectedPlayerType}
+					lazy-init={true}
+					tools={toolkitToolsConfig}
+					player={sectionPlayerConfig}
+					section={resolvedSectionForPlayer}
+					env={pieEnv}
+					coordinator={coordinator}
+					toolbar-position="right"
+					show-toolbar={true}
+					enabled-tools={sectionToolbarTools}
+				></pie-section-player-splitpane>
+			{/if}
+		{/key}
+	</DemoRuntimeChrome>
+{/if}
 
 <style>
 	:global(pie-section-player-splitpane),

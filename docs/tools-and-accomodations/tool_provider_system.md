@@ -131,12 +131,36 @@ const coordinator = new ToolkitCoordinator({
         settings: {
           backend: "browser",
           defaultVoice: "en-US",
+          layoutMode: "expanding-row",
         },
       },
     },
   },
 });
 ```
+
+`layoutMode` can be configured directly on `tools.providers.textToSpeech` (either top-level or inside `settings`). When omitted, the default is **`expanding-row`**. Supported values are:
+
+- `reserved-row`
+- `expanding-row`
+- `floating-overlay`
+- `left-aligned`
+
+Example using top-level provider fields:
+
+```ts
+providers: {
+  textToSpeech: {
+    enabled: true,
+    backend: "browser",
+    layoutMode: "left-aligned",
+  },
+}
+```
+
+The `@pie-players/pie-section-player-tools-tts-settings` package is optional and only provides a runtime settings dialog UI. Hosts do not need that package to use TTS layout modes.
+
+`speedOptions` (inline toolbar speed multipliers, excluding 1.0×) can be set on `tools.providers.textToSpeech` at the top level or under `settings`, same as `layoutMode`. Defaults are `0.8` and `1.25`; an explicit empty array hides speed buttons. The optional TTS settings dialog edits both `layoutMode` and `speedOptions` in one global toolbar section.
 
 ### Calculator With Host Auth
 

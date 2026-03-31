@@ -78,6 +78,7 @@ describe("HighlightCoordinator TTS style contrast", () => {
 		expect(styleEl.textContent).toContain("--pie-tts-word-underline");
 		expect(styleEl.textContent).toContain("--pie-tts-word-shadow");
 		expect(styleEl.textContent).toContain("--pie-tts-sentence-highlight");
+		expect(styleEl.textContent).toContain("--pie-tts-line-highlight");
 	});
 
 	test("updates all tts contrast variables from custom color", () => {
@@ -91,6 +92,9 @@ describe("HighlightCoordinator TTS style contrast", () => {
 		);
 		expect(rootVars.get("--pie-tts-sentence-highlight")).toBe(
 			"rgba(255, 204, 0, 0.24)",
+		);
+		expect(rootVars.get("--pie-tts-line-highlight")).toBe(
+			rootVars.get("--pie-tts-sentence-highlight"),
 		);
 		expect(rootVars.get("--pie-tts-word-underline")).toBe(
 			"rgba(17, 24, 39, 0.55)",

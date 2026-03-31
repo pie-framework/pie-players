@@ -1,14 +1,40 @@
 import {
+	assertPieConfigContract,
 	BundleType,
 	EsmElementLoader,
 	IifeElementLoader,
 	type ItemEntity,
 	createPieLogger,
 	isGlobalDebugEnabled,
+	validatePieConfigContract,
 } from "@pie-players/pie-players-shared";
 import { ensureItemPlayerMathRenderingReady } from "@pie-players/pie-item-player";
 
 export const PRELOAD_TIMEOUT_MS = 15000;
+export const PRELOAD_RETRY_COUNT = 1;
+export const PRELOAD_RETRY_DELAY_MS = 300;
+
+export type ElementPreloadRetryDetail = {
+	componentTag: string;
+	stage: string;
+	attempt: number;
+	maxRetries: number;
+	error: string;
+	strategy: string;
+	bundleType: string | null;
+	bundleHost: string;
+	renderablesCount: number;
+};
+
+export type ElementPreloadErrorDetail = {
+	componentTag: string;
+	stage: string;
+	error: string;
+	strategy: string;
+	bundleType: string | null;
+	bundleHost: string;
+	renderablesCount: number;
+};
 
 function getPreloadLogger(componentTag: string) {
 	return createPieLogger(componentTag, () => isGlobalDebugEnabled());
@@ -78,6 +104,56 @@ export function buildPreloadSignature(args: {
 	].join("|");
 }
 
+function waitForRetryDelay(delayMs: number): Promise<void> {
+	return new Promise((resolve) => window.setTimeout(resolve, delayMs));
+}
+
+function toErrorMessage(error: unknown): string {
+	if (error instanceof Error) return error.message;
+	return String(error);
+}
+
+function validateRenderableConfigContracts(renderables: ItemEntity[]): void {
+	for (const [index, renderable] of renderables.entries()) {
+		try {
+			assertPieConfigContract(renderable?.config);
+		} catch (error) {
+			const id =
+				typeof (renderable as { id?: unknown })?.id === "string"
+					? (renderable as { id: string }).id
+					: `renderable-${index}`;
+			const message = toErrorMessage(error);
+			throw new Error(`${id}: ${message}`);
+		}
+	}
+}
+
+function logRenderableConfigWarnings(
+	renderables: ItemEntity[],
+	logger: ReturnType<typeof createPieLogger>,
+): void {
+	for (const [index, renderable] of renderables.entries()) {
+		const id =
+			typeof (renderable as { id?: unknown })?.id === "string"
+				? (renderable as { id: string }).id
+				: `renderable-${index}`;
+		const result = validatePieConfigContract(renderable?.config);
+		const maybeWarnings = (result as unknown as { warnings?: unknown }).warnings;
+		const warnings = Array.isArray(maybeWarnings)
+			? maybeWarnings.filter((entry): entry is string => typeof entry === "string")
+			: [];
+		for (const warning of warnings) {
+			logger.warn(
+				formatElementLoadError("validate-config", `${id}: ${warning}`),
+			);
+		}
+	}
+}
+
+export function formatElementLoadError(stage: string, error: unknown): string {
+	return `Error loading elements (${stage}): ${toErrorMessage(error)}`;
+}
+
 export async function preloadPlayerElements(args: {
 	strategy: string;
 	renderables: ItemEntity[];
@@ -124,6 +200,99 @@ export async function preloadPlayerElements(args: {
 	}
 }
 
+export async function preloadPlayerElementsWithRetry(args: {
+	componentTag: string;
+	strategy: string;
+	renderables: ItemEntity[];
+	iifeBundleType: BundleType | null;
+	loaderView: "author" | "delivery";
+	esmCdnUrl: string;
+	moduleResolution: "url" | "import-map";
+	bundleHost: string;
+	timeoutMs?: number;
+	retryCount?: number;
+	retryDelayMs?: number;
+	logger: ReturnType<typeof createPieLogger>;
+	onRetry?: (detail: ElementPreloadRetryDetail) => void;
+	onFinalError?: (detail: ElementPreloadErrorDetail) => void;
+	loadOnce?: (args: {
+		strategy: string;
+		renderables: ItemEntity[];
+		iifeBundleType: BundleType | null;
+		loaderView: "author" | "delivery";
+		esmCdnUrl: string;
+		moduleResolution: "url" | "import-map";
+		bundleHost: string;
+		onTimeout: () => void;
+		timeoutMs?: number;
+	}) => Promise<void>;
+}): Promise<void> {
+	const maxRetries = Math.max(0, Math.floor(args.retryCount ?? PRELOAD_RETRY_COUNT));
+	const retryDelayMs = Math.max(
+		0,
+		Math.floor(args.retryDelayMs ?? PRELOAD_RETRY_DELAY_MS),
+	);
+	const loadOnce = args.loadOnce || preloadPlayerElements;
+	let lastError: unknown = null;
+	for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+		const stage = attempt === 0 ? "iife-load" : "iife-load-retry";
+		try {
+			await loadOnce({
+				strategy: args.strategy,
+				renderables: args.renderables,
+				iifeBundleType: args.iifeBundleType,
+				loaderView: args.loaderView,
+				esmCdnUrl: args.esmCdnUrl,
+				moduleResolution: args.moduleResolution,
+				bundleHost: args.bundleHost,
+				timeoutMs: args.timeoutMs,
+				onTimeout: () => {
+					args.logger.warn(
+						formatElementLoadError(
+							"iife-load-timeout",
+							new Error(`Element preloading exceeded ${args.timeoutMs || PRELOAD_TIMEOUT_MS}ms`),
+						),
+					);
+				},
+			});
+			return;
+		} catch (error) {
+			lastError = error;
+			const formattedError = formatElementLoadError(stage, error);
+			if (attempt >= maxRetries) {
+				args.onFinalError?.({
+					stage,
+					componentTag: args.componentTag,
+					error: toErrorMessage(error),
+					strategy: args.strategy,
+					bundleType: args.iifeBundleType ? String(args.iifeBundleType) : null,
+					bundleHost: args.bundleHost,
+					renderablesCount: args.renderables.length,
+				});
+				throw new Error(formattedError);
+			}
+			args.onRetry?.({
+				stage,
+				componentTag: args.componentTag,
+				attempt: attempt + 1,
+				maxRetries,
+				error: toErrorMessage(error),
+				strategy: args.strategy,
+				bundleType: args.iifeBundleType ? String(args.iifeBundleType) : null,
+				bundleHost: args.bundleHost,
+				renderablesCount: args.renderables.length,
+			});
+			args.logger.warn(
+				`${formattedError} Retrying (${attempt + 1}/${maxRetries})...`,
+			);
+			if (retryDelayMs > 0) {
+				await waitForRetryDelay(retryDelayMs);
+			}
+		}
+	}
+	throw new Error(formatElementLoadError("iife-load", lastError));
+}
+
 export type PlayerPreloadState = {
 	lastPreloadSignature: string;
 	preloadRunToken: number;
@@ -158,6 +327,8 @@ export function orchestratePlayerElementPreload(args: {
 	iifeBundleHost?: string | null;
 	getState: () => PlayerPreloadState;
 	setState: (next: Partial<PlayerPreloadState>) => void;
+	onPreloadRetry?: (detail: ElementPreloadRetryDetail) => void;
+	onPreloadError?: (detail: ElementPreloadErrorDetail) => void;
 }) {
 	const logger = getPreloadLogger(args.componentTag);
 	const esmCdnUrl = String(
@@ -175,6 +346,14 @@ export function orchestratePlayerElementPreload(args: {
 			?.moduleResolution === "import-map"
 			? "import-map"
 			: "url";
+	const preloadRetryCount = Number(
+		(args.resolvedPlayerProps?.loaderOptions as Record<string, unknown> | undefined)
+			?.preloadRetryCount ?? PRELOAD_RETRY_COUNT,
+	);
+	const preloadRetryDelayMs = Number(
+		(args.resolvedPlayerProps?.loaderOptions as Record<string, unknown> | undefined)
+			?.preloadRetryDelayMs ?? PRELOAD_RETRY_DELAY_MS,
+	);
 	const loaderView = getLoaderView(args.resolvedPlayerEnv);
 	const iifeBundleType = (() => {
 		if (args.strategy !== "iife") return null;
@@ -208,18 +387,43 @@ export function orchestratePlayerElementPreload(args: {
 		preloadRunToken: runToken,
 		elementsLoaded: false,
 	});
+	try {
+		validateRenderableConfigContracts(args.renderables);
+		logRenderableConfigWarnings(args.renderables, logger);
+	} catch (error) {
+		const formattedError = formatElementLoadError("validate-config", error);
+		args.onPreloadError?.({
+			componentTag: args.componentTag,
+			stage: "validate-config",
+			error: toErrorMessage(error),
+			strategy: args.strategy,
+			bundleType: iifeBundleType ? String(iifeBundleType) : null,
+			bundleHost,
+			renderablesCount: args.renderables.length,
+		});
+		logger.error(formattedError);
+		return;
+	}
 	if (args.strategy === "preloaded") {
 		args.setState({ elementsLoaded: true });
 		return;
 	}
 	if (args.strategy !== "esm" && !bundleHost) {
-		logger.warn(
-			"Missing iifeBundleHost for element preloading; rendering without preload.",
-		);
-		args.setState({ elementsLoaded: true });
+		const error = new Error("Missing iifeBundleHost for element preloading");
+		args.onPreloadError?.({
+			componentTag: args.componentTag,
+			stage: "iife-load",
+			error: toErrorMessage(error),
+			strategy: args.strategy,
+			bundleType: iifeBundleType ? String(iifeBundleType) : null,
+			bundleHost,
+			renderablesCount: args.renderables.length,
+		});
+		logger.error(formatElementLoadError("iife-load", error));
 		return;
 	}
-	void preloadPlayerElements({
+	void preloadPlayerElementsWithRetry({
+		componentTag: args.componentTag,
 		strategy: args.strategy,
 		renderables: args.renderables,
 		iifeBundleType,
@@ -227,11 +431,15 @@ export function orchestratePlayerElementPreload(args: {
 		esmCdnUrl,
 		moduleResolution,
 		bundleHost,
-		onTimeout: () => {
-			if (runToken !== args.getState().preloadRunToken) return;
-			logger.warn("Element preloading timed out; continuing render without preload.");
-			args.setState({ elementsLoaded: true });
-		},
+		logger,
+		retryCount: Number.isFinite(preloadRetryCount)
+			? preloadRetryCount
+			: PRELOAD_RETRY_COUNT,
+		retryDelayMs: Number.isFinite(preloadRetryDelayMs)
+			? preloadRetryDelayMs
+			: PRELOAD_RETRY_DELAY_MS,
+		onRetry: args.onPreloadRetry,
+		onFinalError: args.onPreloadError,
 	})
 		.then(() => {
 			if (runToken === args.getState().preloadRunToken) {
@@ -239,9 +447,10 @@ export function orchestratePlayerElementPreload(args: {
 			}
 		})
 		.catch((error) => {
-			logger.error("Failed to preload PIE elements:", error);
-			if (runToken === args.getState().preloadRunToken) {
-				args.setState({ elementsLoaded: true });
-			}
+			logger.error(
+				error instanceof Error
+					? error.message
+					: formatElementLoadError("iife-load", error),
+			);
 		});
 }

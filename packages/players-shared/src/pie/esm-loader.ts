@@ -13,6 +13,7 @@
 
 import { createPieLogger } from "./logger.js";
 import { pieRegistry } from "./registry.js";
+import { defineCustomElementSafely } from "./custom-element-define.js";
 import { validateCustomElementTag } from "./tag-names.js";
 import { isCustomElementConstructor, Status } from "./types.js";
 
@@ -218,7 +219,7 @@ export class EsmPieLoader {
 	private normalizeImportError(
 		err: unknown,
 		specifier: string,
-		context: "element" | "controller",
+		context: string,
 	): Error {
 		const message = err instanceof Error ? err.message : String(err);
 		const lower = message.toLowerCase();
@@ -323,8 +324,8 @@ export class EsmPieLoader {
 			} catch (err) {
 				// If loading fails and there's a fallback, try the fallback
 				if (viewConfig.fallback) {
-					logger.warn(
-						`Failed to load ${importSpecifier}, trying fallback: ${viewConfig.fallback}`,
+					logger.debug(
+						`Primary element import failed for ${importSpecifier}; attempting fallback view "${viewConfig.fallback}"`,
 					);
 					const fallbackConfig = BUILT_IN_VIEWS[viewConfig.fallback];
 					const fallbackSpecifier = this.resolveElementSpecifier(
@@ -333,8 +334,16 @@ export class EsmPieLoader {
 						fallbackConfig || BUILT_IN_VIEWS.delivery,
 					);
 
-					// @vite-ignore - Dynamic import from runtime specifier (URL or import-map bare path)
-					module = await import(/* @vite-ignore */ fallbackSpecifier);
+					try {
+						// @vite-ignore - Dynamic import from runtime specifier (URL or import-map bare path)
+						module = await import(/* @vite-ignore */ fallbackSpecifier);
+					} catch (fallbackErr) {
+						throw this.normalizeImportError(
+							fallbackErr,
+							fallbackSpecifier,
+							"fallback element",
+						);
+					}
 					ElementClass = module.default || module.Element;
 					logger.debug(`Loaded fallback view for ${actualTag}`);
 				} else {
@@ -391,26 +400,23 @@ export class EsmPieLoader {
 			};
 
 			// Register custom element with the tag name (including suffix)
-			if (!customElements.get(actualTag)) {
-				if (isCustomElementConstructor(ElementClass)) {
-					// Wrap the Element class to allow multiple versions
-					customElements.define(actualTag, class extends ElementClass {});
+			if (isCustomElementConstructor(ElementClass)) {
+				const defineResult = defineCustomElementSafely(
+					actualTag,
+					class extends ElementClass {},
+					`element tag for ${packageName}`,
+				);
+				if (defineResult.status === "defined") {
 					logger.debug(`Registered custom element: ${actualTag}`);
-
-					// Update status to loaded
-					registry[actualTag] = {
-						...registry[actualTag],
-						status: Status.loaded,
-					};
 				} else {
-					logger.warn(`No Element export found in module`);
+					logger.debug(`Element ${actualTag} already registered`);
 				}
-			} else {
-				logger.debug(`Element ${actualTag} already registered`);
 				registry[actualTag] = {
 					...registry[actualTag],
 					status: Status.loaded,
 				};
+			} else {
+				logger.warn(`No Element export found in module`);
 			}
 		} catch (err) {
 			logger.error(`Failed to load element ${tag}:`, err);

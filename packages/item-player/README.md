@@ -20,6 +20,26 @@ Or load from a CDN:
 
 The script self-registers the `<pie-item-player>` custom element.
 
+## Runtime boundary and migration
+
+- Browser-only package: `@pie-players/pie-item-player` is a DOM custom-element
+  runtime package and is not intended for plain Node runtime imports.
+- Node-import-safe packages (for server/runtime utilities) are documented in
+  `docs/setup/library-packaging-strategy.md`.
+- Migration direction:
+  - Legacy migration from `@pie-framework/pie-player-components` remains documented.
+  - For current hosts, prefer the stable default entrypoint:
+
+```ts
+import "@pie-players/pie-item-player";
+```
+
+Use explicit component subpath exports only when you need targeted registration
+control (for example the session debugger element export).
+
+Standalone browser variants for this package are intentionally deferred; current
+support targets default bundler entrypoints under `dist`.
+
 ## Quick start
 
 ```html

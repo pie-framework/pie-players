@@ -1,10 +1,10 @@
 import { AssessmentPlayerDefaultElement } from "./AssessmentPlayerDefaultElement.js";
+import { defineCustomElementSafely } from "@pie-players/pie-players-shared";
 
-if (!customElements.get("pie-assessment-player-default")) {
-	customElements.define(
-		"pie-assessment-player-default",
-		AssessmentPlayerDefaultElement,
-	);
-}
+defineCustomElementSafely(
+	"pie-assessment-player-default",
+	AssessmentPlayerDefaultElement,
+	"assessment player default tag",
+);
 
 export {};

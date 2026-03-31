@@ -1,6 +1,7 @@
 import {
-	normalizeToolsConfig,
 	parseToolList,
+	type ToolConfigStrictness,
+	type ToolRegistry,
 } from "@pie-players/pie-assessment-toolkit";
 import {
 	normalizeItemPlayerStrategy,
@@ -35,6 +36,7 @@ export type RuntimeConfig = {
 	createSectionController?: unknown;
 	isolation?: string;
 	env?: Record<string, unknown>;
+	toolConfigStrictness?: ToolConfigStrictness;
 };
 
 export type RuntimeInputs = {
@@ -48,6 +50,8 @@ export type RuntimeInputs = {
 	createSectionController?: unknown;
 	isolation?: string;
 	env?: Record<string, unknown> | null;
+	toolRegistry?: ToolRegistry | null;
+	toolConfigStrictness?: ToolConfigStrictness;
 	runtime: RuntimeConfig | null;
 	enabledTools: string;
 	itemToolbarTools: string;
@@ -65,21 +69,21 @@ export function resolveToolsConfig(args: {
 		string,
 		unknown
 	>;
-	const normalized = normalizeToolsConfig(runtimeTools);
 	const sectionTools = parseToolList(args.enabledTools);
 	const itemTools = parseToolList(args.itemToolbarTools);
 	const passageTools = parseToolList(args.passageToolbarTools);
-	return normalizeToolsConfig({
-		...normalized,
+	const placement = (runtimeTools.placement || {}) as Record<string, unknown>;
+	const overlayToolsConfig = {
+		...runtimeTools,
 		placement: {
-			...normalized.placement,
-			section:
-				sectionTools.length > 0 ? sectionTools : normalized.placement.section,
-			item: itemTools.length > 0 ? itemTools : normalized.placement.item,
-			passage:
-				passageTools.length > 0 ? passageTools : normalized.placement.passage,
+			...placement,
+			...(sectionTools.length > 0 ? { section: sectionTools } : {}),
+			...(itemTools.length > 0 ? { item: itemTools } : {}),
+			...(passageTools.length > 0 ? { passage: passageTools } : {}),
 		},
-	});
+	};
+	// Keep host-provided shape intact; framework-owned validation surfaces malformed config.
+	return overlayToolsConfig;
 }
 
 export function resolveRuntime(args: {
@@ -94,6 +98,7 @@ export function resolveRuntime(args: {
 	env: Record<string, unknown> | null;
 	runtime: RuntimeConfig | null;
 	effectiveToolsConfig: unknown;
+	toolConfigStrictness?: ToolConfigStrictness;
 }) {
 	const runtime = args.runtime || {};
 	const topLevelPlayer = (args.player || {}) as PlayerOverrides;
@@ -124,6 +129,10 @@ export function resolveRuntime(args: {
 			runtime.createSectionController ?? args.createSectionController,
 		isolation: runtime.isolation ?? args.isolation,
 		env: runtime.env ?? args.env ?? DEFAULT_ENV,
+		toolConfigStrictness:
+			runtime.toolConfigStrictness ??
+			args.toolConfigStrictness ??
+			"error",
 		tools: args.effectiveToolsConfig,
 	};
 }
@@ -221,6 +230,7 @@ export function resolveSectionPlayerRuntimeState(args: RuntimeInputs) {
 		env,
 		runtime: args.runtime,
 		effectiveToolsConfig,
+		toolConfigStrictness: args.toolConfigStrictness,
 	});
 	const playerRuntime = resolvePlayerRuntime({
 		effectiveRuntime: effectiveRuntime as Record<string, unknown>,

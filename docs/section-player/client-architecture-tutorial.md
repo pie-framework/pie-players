@@ -317,7 +317,7 @@ The TTS service uses a pluggable provider architecture (browser Web Speech API b
 
 ### Custom TTS option (host-configured)
 
-Custom transport is a host-owned integration pattern. Toolkit defaults still remain browser/standard unless your host explicitly sets a custom TTS provider in `tools.providers.tts`.
+Custom transport is a host-owned integration pattern. Toolkit defaults still remain browser/standard unless your host explicitly sets a custom TTS provider in `tools.providers.textToSpeech`.
 
 The following is a full client-side example showing:
 
@@ -349,7 +349,7 @@ const tools = {
     passage: ["textToSpeech", "annotationToolbar"],
   },
   providers: {
-    tts: customTtsProvider,
+    textToSpeech: customTtsProvider,
     calculator: {
       authFetcher: async () => {
         const r = await fetch("/api/tools/desmos/auth");

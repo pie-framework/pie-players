@@ -8,7 +8,13 @@ type RunOptions = {
 };
 
 const itemDemosDir = resolve(process.cwd(), "apps/item-demos");
+const workspaceRootDir = process.cwd();
 const svelteKitTsconfigPath = resolve(itemDemosDir, ".svelte-kit/tsconfig.json");
+const requiredDistArtifacts = [
+	"packages/item-player/dist/pie-item-player.js",
+	"packages/players-shared/dist/index.js",
+	"packages/section-player-tools-instrumentation-debugger/dist/section-player-tools-instrumentation-debugger.js",
+];
 
 async function runCommand(cmd: string[], options: RunOptions = {}) {
 	const proc = Bun.spawn(cmd, {
@@ -25,6 +31,12 @@ async function runCommand(cmd: string[], options: RunOptions = {}) {
 function removeDirIfExists(path: string) {
 	if (!existsSync(path)) return;
 	rmSync(path, { recursive: true, force: true });
+}
+
+function getMissingDistArtifacts() {
+	return requiredDistArtifacts.filter((relativePath) => {
+		return !existsSync(resolve(workspaceRootDir, relativePath));
+	});
 }
 
 const args = process.argv.slice(2);
@@ -51,6 +63,23 @@ if (!existsSync(svelteKitTsconfigPath)) {
 	await runCommand(["bun", "x", "svelte-kit", "sync"], {
 		cwd: itemDemosDir,
 	});
+}
+
+if (!shouldRebuild) {
+	const missingArtifacts = getMissingDistArtifacts();
+	if (missingArtifacts.length > 0) {
+		console.error(
+			"[dev:item] Missing package build artifacts required by item demos:",
+		);
+		for (const artifact of missingArtifacts) {
+			console.error(`  - ${artifact}`);
+		}
+		console.error("");
+		console.error("[dev:item] Run one of these commands, then try again:");
+		console.error("  bun run dev:item -- --rebuild");
+		console.error("  bun run build && bun run dev:item");
+		process.exit(1);
+	}
 }
 
 console.log("[dev:item] Starting item demo dev server...");

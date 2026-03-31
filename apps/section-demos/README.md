@@ -40,6 +40,18 @@ Full reading comprehension assessment with three questions all referencing a sin
 - See how multiple questions share a single passage in page mode
 - Learn about photosynthesis and its role in ecosystems
 
+### Demo: Invalid Tools Config (Error Surfacing)
+**Difficulty:** Advanced
+**Estimated Time:** ~3 minutes
+**Topic:** Framework validation diagnostics
+
+Intentionally uses a malformed tools configuration shape (host nesting error) to verify strict validation behavior. This demo is the canonical check for:
+- Deterministic framework console diagnostics (including tool-validation details)
+- User-facing framework fallback UI with actionable format guidance
+- `framework-error` event emission for host observers (`onframework-error`)
+
+Use this route to validate framework-owned error handling before shipping new config changes.
+
 ### Demo: Session Hydration (Server DB)
 **Difficulty:** Advanced
 **Estimated Time:** ~10 minutes
@@ -56,21 +68,22 @@ Demonstrates a restart/resume workflow with external server-side persistence. Th
 
 ```bash
 # From monorepo root
-cd apps/section-demos
-
-# Install dependencies (if needed)
 bun install
 
-# Start dev server
-bun run dev
+# First run on a fresh checkout (build package dist outputs + start demos)
+bun run dev:section -- --rebuild
+
+# Normal daily start
+bun run dev:section
 # Opens http://localhost:5300
 
-# Build for production
-bun run build
-
-# Preview production build
-bun run preview
+# Optional: watch section-related package builds while iterating on tools/packages
+bun run build:watch:section-tools
 ```
+
+Use root scripts rather than running `bun run dev` directly inside
+`apps/section-demos`; root scripts apply the shared `.env` loading and
+consistent monorepo startup behavior.
 
 ## Technical Details
 

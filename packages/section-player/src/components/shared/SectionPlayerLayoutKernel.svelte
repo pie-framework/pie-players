@@ -3,6 +3,11 @@
 		createPieLogger,
 		isGlobalDebugEnabled,
 	} from "@pie-players/pie-players-shared";
+	import type {
+		ToolRegistry,
+		ToolbarItem,
+		ToolConfigStrictness,
+	} from "@pie-players/pie-assessment-toolkit";
 	import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
 	import type { SectionControllerHandle } from "@pie-players/pie-assessment-toolkit";
 	import { createEventDispatcher } from "svelte";
@@ -28,6 +33,7 @@
 	import { coerceBooleanLike } from "./section-player-props.js";
 	import { createReadinessDetail } from "./section-player-readiness.js";
 	import SectionPlayerLayoutScaffold from "./SectionPlayerLayoutScaffold.svelte";
+	import type { SectionPlayerCardTitleFormatter } from "../../contracts/card-title-formatters.js";
 
 	type PlayerActionConfig = {
 		stateKey: string;
@@ -39,6 +45,7 @@
 		"interaction-ready": SectionPlayerReadinessChangeDetail;
 		ready: SectionPlayerReadinessChangeDetail;
 		"runtime-error": Record<string, unknown>;
+		"framework-error": Record<string, unknown>;
 		"runtime-owned": Record<string, unknown>;
 		"runtime-inherited": Record<string, unknown>;
 		"session-changed": Record<string, unknown>;
@@ -48,6 +55,8 @@
 			attemptId?: string;
 			controller: unknown;
 		};
+		"element-preload-retry": Record<string, unknown>;
+		"element-preload-error": Record<string, unknown>;
 	};
 
 	let {
@@ -71,12 +80,21 @@
 		enabledTools = "",
 		itemToolbarTools = "",
 		passageToolbarTools = "",
+		toolConfigStrictness = "error" as ToolConfigStrictness,
+		toolRegistry = null as ToolRegistry | null,
+		sectionHostButtons = [] as ToolbarItem[],
+		itemHostButtons = [] as ToolbarItem[],
+		passageHostButtons = [] as ToolbarItem[],
 		debug = undefined as string | boolean | undefined,
 		playerActionConfig = {
 			stateKey: "__sectionPlayerAppliedParams",
 			includeSessionRefInState: false,
 		} satisfies PlayerActionConfig,
 		policies = DEFAULT_SECTION_PLAYER_POLICIES as SectionPlayerPolicies,
+		cardTitleFormatter = undefined as SectionPlayerCardTitleFormatter | undefined,
+		frameworkErrorHook = undefined as
+			| undefined
+			| ((errorModel: Record<string, unknown>) => void),
 	} = $props();
 
 	const dispatch = createEventDispatcher<KernelEvents>();
@@ -141,6 +159,8 @@
 			enabledTools,
 			itemToolbarTools,
 			passageToolbarTools,
+			toolRegistry,
+			toolConfigStrictness,
 		}),
 	);
 	const effectiveRuntime = $derived(runtimeState.effectiveRuntime);
@@ -163,6 +183,7 @@
 		(): SectionPlayerCardRenderContext => ({
 			resolvedPlayerTag,
 			playerAction,
+			cardTitleFormatter,
 		}),
 	);
 	const normalizedShowToolbar = $derived(coerceBooleanLike(showToolbar, false));
@@ -189,6 +210,32 @@
 		paneElementsLoaded = detail?.elementsLoaded === true;
 	}
 
+	function handleItemsPanePreloadRetry(event: Event) {
+		const detail = (event as CustomEvent<Record<string, unknown>>).detail || {};
+		dispatch(
+			"element-preload-retry",
+			{
+				...detail,
+				assessmentId,
+				sectionId,
+				attemptId: attemptId || undefined,
+			},
+		);
+	}
+
+	function handleItemsPanePreloadError(event: Event) {
+		const detail = (event as CustomEvent<Record<string, unknown>>).detail || {};
+		dispatch(
+			"element-preload-error",
+			{
+				...detail,
+				assessmentId,
+				sectionId,
+				attemptId: attemptId || undefined,
+			},
+		);
+	}
+
 	function handleSectionReady(_event: Event) {
 		sectionReady = true;
 	}
@@ -196,6 +243,13 @@
 	function handleRuntimeError(event: Event) {
 		runtimeErrorState = true;
 		dispatch("runtime-error", (event as CustomEvent<Record<string, unknown>>).detail || {});
+	}
+
+	function handleFrameworkError(event: Event) {
+		const detail = (event as CustomEvent<Record<string, unknown>>).detail || {};
+		runtimeErrorState = true;
+		dispatch("framework-error", detail);
+		frameworkErrorHook?.(detail);
 	}
 
 	function handleSessionChanged(event: Event) {
@@ -336,6 +390,8 @@
 	onCompositionChanged={handleBaseCompositionChanged}
 	onSectionReady={handleSectionReady}
 	onRuntimeError={handleRuntimeError}
+	onFrameworkError={handleFrameworkError}
+	{frameworkErrorHook}
 	onSessionChanged={handleSessionChanged}
 	onRuntimeOwned={handleRuntimeOwned}
 	onRuntimeInherited={handleRuntimeInherited}
@@ -343,6 +399,8 @@
 	showToolbar={normalizedShowToolbar}
 	toolbarPosition={toolbarPosition}
 	enabledTools={enabledTools}
+	{toolRegistry}
+	{sectionHostButtons}
 	focusPolicy={policies.focus}
 	cardRenderContext={cardRenderContextValue}
 >
@@ -359,8 +417,13 @@
 			playerStrategy,
 			iifeBundleHost,
 			paneElementsLoaded,
+			toolRegistry,
+			itemHostButtons,
+			passageHostButtons,
 			readinessDetail,
 			onItemsPaneElementsLoaded: handleItemsPaneElementsLoaded,
+			onItemsPanePreloadRetry: handleItemsPanePreloadRetry,
+			onItemsPanePreloadError: handleItemsPanePreloadError,
 		}}
 		{compositionModel}
 		{passages}
@@ -373,7 +436,12 @@
 		{playerStrategy}
 		{iifeBundleHost}
 		{paneElementsLoaded}
+		{toolRegistry}
+		{itemHostButtons}
+		{passageHostButtons}
 		{readinessDetail}
 		onItemsPaneElementsLoaded={handleItemsPaneElementsLoaded}
+		onItemsPanePreloadRetry={handleItemsPanePreloadRetry}
+		onItemsPanePreloadError={handleItemsPanePreloadError}
 	></slot>
 </SectionPlayerLayoutScaffold>

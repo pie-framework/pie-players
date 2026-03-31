@@ -47,10 +47,12 @@ bun run verify:publish
 - package build
 - fixed-versioning invariants (`scripts/check-fixed-versioning.mjs`)
 - metadata policy validation
+- custom-element contract checks (`check:custom-elements`, `check:ce-define-safety`)
 - `publint` package surface checks
 - ATTW type-surface checks (`scripts/check-attw.mjs`)
 - pack exports check (`npm pack --dry-run` + export target verification)
 - pack smoke check (`npm pack` tarball verification)
+- Node consumer import boundary checks (`scripts/check-node-consumer-imports.mjs`)
 - dependency, source export policy, and runtime boundary checks
 
 ## Release intent in CI

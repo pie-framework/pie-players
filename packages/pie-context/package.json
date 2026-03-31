@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-context",
-	"version": "0.3.20",
+	"version": "0.3.28",
 	"type": "module",
 	"description": "Framework-agnostic Context Protocol helpers for PIE web components",
 	"repository": {

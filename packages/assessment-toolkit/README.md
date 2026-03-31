@@ -33,7 +33,7 @@ const toolkitCoordinator = new ToolkitCoordinator({
   assessmentId: 'my-assessment',
   tools: {
     providers: {
-      tts: { enabled: true, backend: 'browser' },
+      textToSpeech: { enabled: true, backend: 'browser' },
       calculator: { enabled: true }
     },
     placement: {
@@ -126,7 +126,7 @@ const coordinator = new ToolkitCoordinator({
   assessmentId: 'demo-assessment',
   tools: {
     providers: {
-      tts: { enabled: true, backend: 'browser', defaultVoice: 'en-US' },
+      textToSpeech: { enabled: true, backend: 'browser', defaultVoice: 'en-US' },
       calculator: { enabled: true }
     },
     placement: {
@@ -219,7 +219,7 @@ The toolkit uses one canonical `tools` model with three concerns:
 
 - `policy`: allow/block constraints (global gates)
 - `placement`: where tools appear (`assessment`, `section`, `item`, `passage`, `rubric`, plus custom registered levels)
-- `providers`: provider/runtime options (calculator, tts, etc.)
+- `providers`: provider/runtime options (calculator, textToSpeech, etc.)
 
 Example:
 
@@ -238,7 +238,7 @@ tools: {
   },
   providers: {
     calculator: { authFetcher: async () => ({ apiKey: '...' }) },
-    tts: { enabled: true, backend: 'browser', defaultVoice: 'en-US' }
+    textToSpeech: { enabled: true, backend: 'browser', defaultVoice: 'en-US' }
   }
 }
 ```
@@ -361,7 +361,7 @@ const coordinator = new ToolkitCoordinator({
           return response.json();
         }
       },
-      tts: { enabled: true, backend: 'browser' }
+      textToSpeech: { enabled: true, backend: 'browser' }
     }
   },
   accessibility: {
@@ -386,7 +386,7 @@ const coordinator = new ToolkitCoordinator({
     },
     providers: {
       calculator: { enabled: true },
-      tts: { enabled: true, backend: 'browser' }
+      textToSpeech: { enabled: true, backend: 'browser' }
     }
   }
 });
@@ -402,7 +402,7 @@ Common options are defaulted so you can start with:
 ```typescript
 tools: {
   providers: {
-    tts: {
+    textToSpeech: {
       enabled: true,
       backend: 'polly'
     }
@@ -418,13 +418,57 @@ By default, server-backed TTS resolves:
 
 You can still set `apiEndpoint` explicitly when your host route is not `/api/tts`.
 
+### Inline TTS Speed Options
+
+Inline TTS speed buttons are configurable via `speedOptions` in provider settings.
+
+```typescript
+tools: {
+  providers: {
+    textToSpeech: {
+      enabled: true,
+      backend: "browser",
+      settings: {
+        speedOptions: [2, 1.25, 1.5] // rendered in this order
+      }
+    }
+  }
+}
+```
+
+`speedOptions` semantics:
+
+- Omitted or non-array: default speed buttons are shown (`0.8x`, `1.25x`).
+- Explicit empty array (`[]`): hide all speed buttons.
+- Invalid-only arrays (for example `["fast", -1, 1]`): fall back to defaults.
+- Valid numeric values are deduplicated and keep first-seen order.
+- `1` is excluded (normal speed is already available by toggling active speed off).
+
+### Runtime Fallback: Server TTS -> Browser TTS
+
+When server-backed playback fails at runtime (for example `503`, network outage,
+or synthesized asset fetch failure), `TTSService` now performs a one-time
+runtime fallback for that session:
+
+1. Switches provider from server-backed implementation to browser speech synthesis.
+2. Rebinds highlight callbacks to the browser provider.
+3. Retries the same `speak()` request once.
+
+This keeps the inline/passage TTS controls usable during transient backend
+incidents without requiring host-side reconfiguration.
+
+Telemetry emitted for observability:
+
+- `pie-tool-runtime-fallback` (fallback switch succeeded)
+- `pie-tool-runtime-fallback-error` (fallback switch failed)
+
 `provider.runtime.authFetcher` is optional. Add it only when your host environment
 requires runtime auth material for TTS requests:
 
 ```typescript
 tools: {
   providers: {
-    tts: {
+    textToSpeech: {
       enabled: true,
       backend: 'polly',
       apiEndpoint: '/api/tts',
@@ -449,7 +493,7 @@ prefer a host-owned proxy endpoint so secrets never ship to the browser.
 ```typescript
 tools: {
   providers: {
-    tts: {
+    textToSpeech: {
       enabled: true,
       backend: "server",
       serverProvider: "custom",
@@ -571,7 +615,7 @@ export interface ToolkitCoordinatorConfig {
       rubric?: string[];
     };
     providers?: {
-      tts?: {
+      textToSpeech?: {
         enabled?: boolean;
         backend?: 'browser' | 'polly' | 'google' | 'server';
         defaultVoice?: string;
@@ -583,6 +627,7 @@ export interface ToolkitCoordinatorConfig {
       };
     };
   };
+  toolRegistry?: ToolRegistry | null;
   accessibility?: {
     catalogs?: any[];
     language?: string;
@@ -598,9 +643,9 @@ const services = coordinator.getServiceBundle();
 // Returns: { ttsService, toolCoordinator, highlightCoordinator, elementToolStateStore, catalogResolver }
 
 // Tool configuration
-coordinator.isToolEnabled('tts');  // Check if tool is enabled
-coordinator.getToolConfig('tts');  // Get tool-specific config
-coordinator.updateToolConfig('tts', { rate: 1.5 });  // Update tool config
+coordinator.isToolEnabled('textToSpeech');  // Check if tool is enabled
+coordinator.getToolConfig('textToSpeech');  // Get tool-specific config
+coordinator.updateToolConfig('textToSpeech', { rate: 1.5 });  // Update tool config
 ```
 
 ### Direct Service Access
@@ -821,7 +866,7 @@ The section player provides automatic ToolkitCoordinator integration:
   const coordinator = new ToolkitCoordinator({
     assessmentId: 'my-assessment',
     tools: {
-      providers: { tts: { enabled: true, backend: 'browser' } },
+      providers: { textToSpeech: { enabled: true, backend: 'browser' } },
       placement: {
         section: ['calculator', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
         item: ['calculator', 'textToSpeech', 'answerEliminator'],
@@ -885,7 +930,7 @@ player.section = mySection;
 // new ToolkitCoordinator({
 //   assessmentId: 'anon_...',  // auto-generated
 //   tools: {
-//     providers: { tts: { enabled: true, backend: 'browser' }, calculator: { enabled: true } },
+//     providers: { textToSpeech: { enabled: true, backend: 'browser' }, calculator: { enabled: true } },
 //     placement: {
 //       section: ['calculator', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
 //       item: ['calculator', 'textToSpeech', 'answerEliminator'],
@@ -894,6 +939,56 @@ player.section = mySection;
 //   }
 // })
 ```
+
+### Safe Custom Tool Configuration
+
+Default behavior is now framework-owned: invalid tools/runtime initialization is handled in `pie-assessment-toolkit` without host try/catch.
+
+- Framework logs a deterministic console error prefix: `[pie-framework:<kind>:<source>]`
+- Framework emits a canonical `framework-error` event (and still emits `runtime-error` for compatibility)
+- Framework renders a fallback error panel instead of a blank player
+- Startup tool-config validation can surface as `kind: "coordinator-init"` when the owned coordinator construction path throws.
+
+Use `createToolsConfig()` when you want to pre-validate and inspect diagnostics before mounting:
+
+```typescript
+import {
+  createPackagedToolRegistry,
+  createToolsConfig,
+  ToolkitCoordinator
+} from "@pie-players/pie-assessment-toolkit";
+
+const toolRegistry = createPackagedToolRegistry();
+const { config, diagnostics } = createToolsConfig({
+  source: "host.bootstrap",
+  strictness: "error",
+  toolRegistry,
+  tools: {
+    providers: {
+      textToSpeech: { enabled: true, backend: "browser" },
+      calculator: { enabled: true }
+    },
+    placement: {
+      item: ["calculator", "textToSpeech"]
+    }
+  }
+});
+
+// Fail-fast default: invalid config throws at the boundary.
+const coordinator = new ToolkitCoordinator({
+  assessmentId: "demo-assessment",
+  toolRegistry,
+  tools: config,
+  toolConfigStrictness: "error"
+});
+```
+
+Notes:
+- `providers.textToSpeech` is the canonical TTS provider key.
+- `providers.tts` is rejected by the validation contract.
+- Custom tools can provide provider-level `sanitizeConfig` and `validateConfig` hooks.
+- Hosts can react to framework errors via `onframework-error` listeners or `onFrameworkError` callback prop.
+- See `docs/tools-and-accomodations/framework-owned-error-handling.md` for event payload and error-kind mapping details.
 
 ## State Separation: Tool State vs Session Data
 
@@ -969,6 +1064,8 @@ import type {
 - **[PNP Configuration Guide](docs/PNP_CONFIGURATION.md)** - ⭐ NEW - How to configure student profiles, district policies, and governance rules
 - [ToolkitCoordinator Architecture](../../docs/architecture/TOOLKIT_COORDINATOR.md) - Design decisions and patterns
 - [Section Player README](../section-player/README.md) - Section player integration
+- [Framework-Owned Error Handling](../../docs/tools-and-accomodations/framework-owned-error-handling.md) - Canonical framework error model/events and fallback behavior
+- [Safe Custom Tool Configuration](../../docs/tools-and-accomodations/safe-custom-tool-config.md) - Host-side config patterns and validation guidance
 - [Architecture Overview](../../docs/architecture/architecture.md) - Complete system architecture
 
 ## License

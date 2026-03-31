@@ -7,6 +7,7 @@
 	} from '@pie-players/pie-players-shared';
 	import { onDestroy } from 'svelte';
 	import {
+		createToolsConfig,
 		createDefaultPersonalNeedsProfile,
 		ToolkitCoordinator,
 		type ToolkitCoordinatorHooks
@@ -46,24 +47,7 @@
 	let { data }: { data: PageData } = $props();
 
 	// Level 4: CE setup plus controller JS API subscriptions.
-	const toolkitToolsConfig = {
-		providers: {
-			tts: SECTION_DEMOS_SC_TTS_TOOL_PROVIDER,
-			calculator: {
-				authFetcher: fetchDesmosAuthConfig
-			},
-			annotationToolbar: {
-				enabled: true
-			}
-		},
-		placement: {
-			section: ['theme', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
-			item: ['calculator', 'textToSpeech', 'answerEliminator', 'annotationToolbar'],
-			passage: ['textToSpeech', 'annotationToolbar']
-		}
-	};
-	const sectionToolbarTools =
-		'theme,graph,periodicTable,protractor,lineReader,ruler,annotationToolbar';
+	const sectionToolbarTools = 'theme,graph,periodicTable,lineReader,ruler,protractor';
 	const sectionInstrumentationProvider = new CompositeInstrumentationProvider([
 		new NewRelicInstrumentationProvider(),
 		new DebugPanelInstrumentationProvider()
@@ -84,10 +68,55 @@
 			instrumentationProvider: sectionInstrumentationProvider
 		}
 	};
-	const coordinator = new ToolkitCoordinator({
-		assessmentId: DEMO_ASSESSMENT_ID,
-		tools: toolkitToolsConfig
-	});
+	const bootstrap = (() => {
+		try {
+		const toolsConfigResult = createToolsConfig({
+			source: 'section-demos.tts-ssml',
+			strictness: 'error',
+			tools: {
+				providers: {
+					textToSpeech: SECTION_DEMOS_SC_TTS_TOOL_PROVIDER,
+					calculator: {
+						authFetcher: fetchDesmosAuthConfig
+					},
+					annotationToolbar: {
+						enabled: true
+					}
+				},
+				placement: {
+					section: ['theme', 'graph', 'periodicTable', 'lineReader', 'ruler', 'protractor'],
+					item: [
+						'calculator',
+						'textToSpeech',
+						'answerEliminator',
+						'annotationToolbar'
+					],
+					passage: ['textToSpeech', 'annotationToolbar']
+				}
+			}
+		});
+		if (toolsConfigResult.diagnostics.length > 0) {
+			console.warn('[tts-ssml demo] tools config diagnostics:', toolsConfigResult.diagnostics);
+		}
+		return {
+			bootstrapErrorMessage: null as string | null,
+			toolkitToolsConfig: toolsConfigResult.config,
+			coordinator: new ToolkitCoordinator({
+			assessmentId: DEMO_ASSESSMENT_ID,
+			toolConfigStrictness: 'error',
+			tools: toolsConfigResult.config
+		})
+		};
+	} catch (error) {
+		console.error('[tts-ssml demo] config/coordinator bootstrap failed', error);
+		return {
+			bootstrapErrorMessage: error instanceof Error ? error.message : String(error),
+			toolkitToolsConfig: {},
+			coordinator: null as ToolkitCoordinator | null
+		};
+	}
+	})();
+	const { bootstrapErrorMessage, toolkitToolsConfig, coordinator } = bootstrap;
 
 	let selectedPlayerType = $state(getUrlEnumParam('player', PLAYER_OPTIONS, 'iife'));
 	let roleType = $state<'candidate' | 'scorer'>(getUrlEnumParam('mode', MODE_OPTIONS, 'candidate'));
@@ -115,6 +144,17 @@
 	let eventDebuggerElement: any = $state(null);
 	let instrumentationDebuggerElement: any = $state(null);
 	let pnpDebuggerElement: any = $state(null);
+let customTitlesEnabled = $state(false);
+
+const demoCardTitleFormatter = (context: any) => {
+	if (context?.kind === 'item') {
+		return `Custom question ${Number(context.itemIndex) + 1}`;
+	}
+	if (context?.kind === 'passage') {
+		return 'Custom passage';
+	}
+	return context?.defaultTitle;
+};
 
 	const DEMO_PERSISTENCE_STORAGE_PREFIX = `pie:section-controller:v1:${DEMO_ASSESSMENT_ID}:`;
 	let resolvedSectionForPlayer = $derived.by(() => {
@@ -151,6 +191,7 @@
 
 	function handleToolkitReady(event: Event) {
 		const detail = (event as CustomEvent<{ coordinator?: unknown }>).detail;
+		if (!coordinator) return;
 		if (detail?.coordinator !== coordinator) return;
 		coordinatorReady = true;
 		coordinator.setHooks({
@@ -232,6 +273,12 @@
 		url.searchParams.set(ATTEMPT_QUERY_PARAM, attemptId);
 		url.searchParams.set('layout', layoutType);
 		window.history.replaceState({}, '', url.toString());
+	});
+
+	$effect(() => {
+		if (!browser) return;
+		const url = new URL(window.location.href);
+		customTitlesEnabled = url.searchParams.get('customTitles') === '1';
 	});
 
 	$effect(() => {
@@ -371,6 +418,12 @@
 	<title>{data.demo?.name || 'Demo'} - Direct Layout</title>
 </svelte:head>
 
+{#if bootstrapErrorMessage}
+	<div class="preload-status error" role="alert" data-testid="demo-bootstrap-error">
+		<strong>Demo bootstrap failed before toolkit mount.</strong>
+		<pre>{bootstrapErrorMessage}</pre>
+	</div>
+{:else}
 <DemoRuntimeChrome
 	{data}
 	{roleType}
@@ -421,11 +474,11 @@
 			</ul>
 		</aside>
 	{/snippet}
-	{#if coordinatorReady}
+	{#if coordinatorReady && coordinator}
 		<pie-tool-annotation-toolbar
 			enabled={true}
-			ttsService={coordinator.ttsService}
-			highlightCoordinator={coordinator.highlightCoordinator}
+			ttsService={coordinator?.ttsService}
+			highlightCoordinator={coordinator?.highlightCoordinator}
 		></pie-tool-annotation-toolbar>
 	{/if}
 	{#key `${sessionPanelSectionId}:${attemptId}:${playerInstanceKey}`}
@@ -449,6 +502,7 @@
 				toolbar-position="right"
 				show-toolbar={true}
 				enabled-tools={sectionToolbarTools}
+				cardTitleFormatter={customTitlesEnabled ? demoCardTitleFormatter : undefined}
 				ontoolkit-ready={handleToolkitReady}
 			></pie-section-player-vertical>
 		{:else}
@@ -467,11 +521,13 @@
 				toolbar-position="right"
 				show-toolbar={true}
 				enabled-tools={sectionToolbarTools}
+				cardTitleFormatter={customTitlesEnabled ? demoCardTitleFormatter : undefined}
 				ontoolkit-ready={handleToolkitReady}
 			></pie-section-player-splitpane>
 		{/if}
 	{/key}
 </DemoRuntimeChrome>
+{/if}
 
 <style>
 	:global(pie-section-player-splitpane),

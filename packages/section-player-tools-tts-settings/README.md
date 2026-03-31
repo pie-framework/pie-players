@@ -35,8 +35,8 @@ Without adapters, the panel uses the existing route contract:
 
 and applies settings via toolkit coordinator:
 
-- `getToolConfig("tts")`
-- `updateToolConfig("tts", ...)`
+- `getToolConfig("textToSpeech")`
+- `updateToolConfig("textToSpeech", ...)`
 - optional `ensureTTSReady(...)`
 
 ## Custom element API
@@ -73,7 +73,7 @@ Use adapters when your host app cannot or should not expose the default route co
 You can add provider tabs beyond Browser/Polly/Google through `customProviders`.
 
 - Keep provider `id` unique and avoid reserved ids: `browser`, `polly`, `google`.
-- The panel still owns persistence and `updateToolConfig("tts", ...)`.
+- The panel still owns persistence and `updateToolConfig("textToSpeech", ...)`.
 - Provider apply returns normalized output: `{ config, message? }`.
 
 ### JS adapter mode

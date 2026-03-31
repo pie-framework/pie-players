@@ -24,6 +24,7 @@ import type {
 } from "@pie-players/pie-tts";
 import type { AccessibilityCatalogResolver } from "./AccessibilityCatalogResolver.js";
 import type { HighlightCoordinatorApi } from "./interfaces.js";
+import { BrowserTTSProvider } from "./tts/browser-provider.js";
 import {
 	type BoundarySpacingMode,
 	collectVisibleTextAndMap,
@@ -110,7 +111,9 @@ export class TTSService {
 	private speakRunId = 0;
 	private currentBoundaryOffset = 0;
 	private seekSegments: TTSSpeechSegment[] = [];
+	private sentenceHighlightSegments: TTSSpeechSegment[] = [];
 	private currentSeekSegmentIndex = 0;
+	private activeSentenceStartOffset: number | null = null;
 	private activeHighlightMode: HighlightMode = "word";
 	private telemetryReporter:
 		| ((eventName: string, payload?: Record<string, unknown>) => void | Promise<void>)
@@ -572,6 +575,66 @@ export class TTSService {
 			.filter((segment) => segment.text.length > 0);
 	}
 
+	private splitSegmentsAtBoundaries(
+		segments: TTSSpeechSegment[],
+		boundaryOffsets: number[],
+		sourceText: string,
+	): TTSSpeechSegment[] {
+		if (segments.length === 0 || boundaryOffsets.length === 0) return segments;
+		const normalizedBoundaries = Array.from(new Set(boundaryOffsets))
+			.filter((offset) => Number.isFinite(offset) && offset > 0)
+			.sort((left, right) => left - right);
+		if (normalizedBoundaries.length === 0) return segments;
+		const result: TTSSpeechSegment[] = [];
+		for (const segment of segments) {
+			const segmentStart = segment.startOffset;
+			const segmentEnd = segment.startOffset + segment.text.length;
+			const splitPoints = normalizedBoundaries.filter(
+				(offset) => offset > segmentStart && offset < segmentEnd,
+			);
+			if (splitPoints.length === 0) {
+				result.push(segment);
+				continue;
+			}
+			let cursor = segmentStart;
+			for (const point of [...splitPoints, segmentEnd]) {
+				const raw = sourceText.substring(cursor, point);
+				const leadingWhitespace = raw.match(/^\s*/)?.[0].length || 0;
+				const trailingWhitespace = raw.match(/\s*$/)?.[0].length || 0;
+				const startOffset = cursor + leadingWhitespace;
+				const endOffset = point - trailingWhitespace;
+				if (endOffset > startOffset) {
+					result.push({
+						text: sourceText.substring(startOffset, endOffset),
+						startOffset,
+						pauseMsAfter: 0,
+					});
+				}
+				cursor = point;
+			}
+		}
+		return result;
+	}
+
+	private createSentenceHighlightSegments(args: {
+		contentToSpeak: string;
+		shouldUsePlan: boolean;
+		playbackSegments: TTSSpeechSegment[];
+	}): TTSSpeechSegment[] {
+		const grammaticalSegments = this.createSeekSegmentsFromText(args.contentToSpeak);
+		if (!args.shouldUsePlan || args.playbackSegments.length === 0) {
+			return grammaticalSegments;
+		}
+		const structuralBoundaries = args.playbackSegments
+			.map((segment) => segment.startOffset)
+			.filter((offset) => offset > 0);
+		return this.splitSegmentsAtBoundaries(
+			grammaticalSegments,
+			structuralBoundaries,
+			args.contentToSpeak,
+		);
+	}
+
 	private getCurrentSeekSegmentIndex(): number {
 		if (this.seekSegments.length === 0) return 0;
 		let index = 0;
@@ -650,6 +713,34 @@ export class TTSService {
 		range.setStart(start.node, start.offset);
 		range.setEnd(end.node, end.offset + 1);
 		this.highlightCoordinator.highlightTTSSentence([range]);
+		this.activeSentenceStartOffset = startOffset;
+	}
+
+	private getSegmentIndexForOffset(
+		segments: TTSSpeechSegment[],
+		offset: number,
+	): number {
+		if (segments.length === 0) return -1;
+		let index = -1;
+		for (let i = 0; i < segments.length; i++) {
+			if (segments[i].startOffset <= offset) {
+				index = i;
+			} else {
+				break;
+			}
+		}
+		return index;
+	}
+
+	private highlightSentenceForOffset(offset: number): void {
+		const segments = this.sentenceHighlightSegments;
+		if (!this.highlightCoordinator || segments.length === 0) return;
+		const segmentIndex = this.getSegmentIndexForOffset(segments, offset);
+		if (segmentIndex < 0) return;
+		const segment = segments[segmentIndex];
+		if (!segment) return;
+		if (this.activeSentenceStartOffset === segment.startOffset) return;
+		this.highlightSentenceSegment(segment.startOffset, segment.text);
 	}
 
 	/**
@@ -748,6 +839,13 @@ export class TTSService {
 			: shouldUsePlan && this.currentContentElement
 				? this.createSpeechPlan(this.currentContentElement, normalizedText)
 				: this.createSeekSegmentsFromText(contentToSpeak);
+		this.sentenceHighlightSegments = this.hasExplicitBreakSemantics(contentToSpeak)
+			? []
+			: this.createSentenceHighlightSegments({
+					contentToSpeak,
+					shouldUsePlan,
+					playbackSegments: this.seekSegments,
+				});
 		this.setState(PlaybackState.LOADING);
 		this.prepareHighlightsForSpeak({
 			contentToSpeak,
@@ -772,13 +870,130 @@ export class TTSService {
 			this.setState(PlaybackState.IDLE);
 			this.clearHighlightsAndTracking();
 		} catch (error) {
-			console.error("TTS error:", error);
-			this.lastError = error instanceof Error ? error.message : String(error);
+			let finalError = error;
+			if (runId === this.speakRunId) {
+				try {
+					const recovered = await this.retryWithBrowserFallback({
+						error,
+						runId,
+						shouldUsePlan,
+						highlightMode,
+						contentToSpeak,
+						wordBoundaryOffset: options?.wordBoundaryOffset || 0,
+					});
+					if (recovered) {
+						this.setState(PlaybackState.IDLE);
+						this.clearHighlightsAndTracking();
+						return;
+					}
+				} catch (retryError) {
+					finalError = retryError;
+				}
+			}
+			console.error("TTS error:", finalError);
+			this.lastError =
+				finalError instanceof Error ? finalError.message : String(finalError);
 			if (runId !== this.speakRunId) return;
 			this.setState(PlaybackState.ERROR);
 			this.clearHighlightsAndTracking();
-			throw error;
+			throw finalError;
 		}
+	}
+
+	private shouldAttemptBrowserFallback(error: unknown): boolean {
+		if (!this.provider || !this.currentProvider) return false;
+		const providerId = (this.currentProvider.providerId || "").toLowerCase();
+		if (providerId === "browser") return false;
+		const message = (error instanceof Error ? error.message : String(error))
+			.toLowerCase()
+			.trim();
+		// Avoid fallback for expected cancellation/superseded flows.
+		if (message.includes("superseded by a newer request")) return false;
+		if (message.includes("aborterror")) return false;
+		if (message.includes("aborted")) return false;
+		if (message.includes("cancelled")) return false;
+		if (message.includes("canceled")) return false;
+		// For non-browser providers, default to browser fallback on runtime errors.
+		return true;
+	}
+
+	private async switchProviderToBrowser(reason: unknown): Promise<boolean> {
+		if (!this.currentProvider) return false;
+		const fallbackProvider = new BrowserTTSProvider();
+		const previousProviderId = this.currentProvider.providerId;
+		const browserConfig: Partial<TTSConfig> = { ...this.ttsConfig };
+		try {
+			this.provider?.stop();
+			this.currentProvider.destroy();
+			this.currentProvider = fallbackProvider;
+			this.provider = await fallbackProvider.initialize(browserConfig as TTSConfig);
+			this.ttsConfig = browserConfig;
+			await this.emitTelemetry("pie-tool-runtime-fallback", {
+				toolId: "textToSpeech",
+				operation: "tts-speak",
+				fromProvider: previousProviderId,
+				toProvider: fallbackProvider.providerId,
+				reason: reason instanceof Error ? reason.message : String(reason),
+			});
+			console.warn(
+				"[TTSService] Server TTS playback failed; switched to browser fallback",
+				{
+					fromProvider: previousProviderId,
+					reason,
+				},
+			);
+			return true;
+		} catch (fallbackError) {
+			await this.emitTelemetry("pie-tool-runtime-fallback-error", {
+				toolId: "textToSpeech",
+				operation: "tts-speak",
+				fromProvider: previousProviderId,
+				toProvider: "browser",
+				errorType: "TTSRuntimeFallbackError",
+				message:
+					fallbackError instanceof Error
+						? fallbackError.message
+						: String(fallbackError),
+			});
+			console.error(
+				"[TTSService] Failed to switch to browser fallback provider",
+				fallbackError,
+			);
+			return false;
+		}
+	}
+
+	private isBrowserSpeechFallbackAvailable(): boolean {
+		if (typeof window === "undefined") return false;
+		if (!("speechSynthesis" in window)) return false;
+		return typeof (globalThis as Record<string, unknown>).SpeechSynthesisUtterance === "function";
+	}
+
+	private async retryWithBrowserFallback(args: {
+		error: unknown;
+		runId: number;
+		shouldUsePlan: boolean;
+		highlightMode: HighlightMode;
+		contentToSpeak: string;
+		wordBoundaryOffset: number;
+	}): Promise<boolean> {
+		if (!this.shouldAttemptBrowserFallback(args.error)) return false;
+		if (!this.isBrowserSpeechFallbackAvailable()) return false;
+		const switched = await this.switchProviderToBrowser(args.error);
+		if (!switched) return false;
+		if (args.runId !== this.speakRunId) return true;
+		// Rebind highlight callbacks to the newly initialized provider, then retry once.
+		this.configureWordBoundaryHighlighting({
+			highlightMode: args.highlightMode,
+			wordBoundaryOffset: args.wordBoundaryOffset,
+		});
+		await this.executeSpeakPlayback({
+			shouldUsePlan: args.shouldUsePlan,
+			runId: args.runId,
+			highlightMode: args.highlightMode,
+			contentToSpeak: args.contentToSpeak,
+		});
+		return true;
 	}
 
 	private async applyLanguageSettings(options?: SpeakOptions): Promise<void> {
@@ -855,6 +1070,23 @@ export class TTSService {
 				);
 			}
 		}
+		if (usedCatalogSpoken && options?.contentElement) {
+			const normalizedCatalogText = normalizeTextForSpeech(contentToSpeak);
+			const preserveCatalogSpeech = this.hasExplicitBreakSemantics(contentToSpeak);
+			if (!preserveCatalogSpeech && normalizedCatalogText !== normalizedText) {
+				console.warn(
+					"[TTSService] Catalog spoken text diverges from visible DOM; using normalized visible text to keep highlighting aligned.",
+					{
+						catalogId: options.catalogId || null,
+						catalogLength: normalizedCatalogText.length,
+						visibleLength: normalizedText.length,
+					},
+				);
+				contentToSpeak = normalizedText;
+				usedCatalogSpoken = false;
+				speechSource = "dom-or-input";
+			}
+		}
 		return {
 			contentToSpeak,
 			usedCatalogSpoken,
@@ -886,6 +1118,7 @@ export class TTSService {
 		this.lastError = null;
 		this.currentBoundaryOffset = 0;
 		this.currentSeekSegmentIndex = 0;
+		this.activeSentenceStartOffset = null;
 	}
 
 	private prepareHighlightsForSpeak(args: {
@@ -900,11 +1133,25 @@ export class TTSService {
 			args.contentToSpeak,
 			args.options?.language,
 		);
-		if (!(args.highlightMode === "sentence" && args.shouldUsePlan)) {
-			const range = document.createRange();
-			range.selectNodeContents(this.currentContentElement);
-			this.highlightCoordinator.highlightTTSSentence([range]);
-			console.log("[TTSService] Applied sentence-level highlighting");
+		if (args.highlightMode === "sentence" && args.shouldUsePlan) {
+			return;
+		}
+		const initialSegment =
+			this.sentenceHighlightSegments[0] || this.seekSegments[0];
+		if (initialSegment) {
+			this.highlightSentenceSegment(
+				initialSegment.startOffset,
+				initialSegment.text,
+			);
+			console.log("[TTSService] Applied initial sentence highlighting");
+		} else {
+			try {
+				const range = document.createRange();
+				range.selectNodeContents(this.currentContentElement);
+				this.highlightCoordinator.highlightTTSSentence([range]);
+			} catch {
+				// No-op fallback when DOM range creation fails.
+			}
 		}
 	}
 
@@ -920,9 +1167,12 @@ export class TTSService {
 		) {
 			return;
 		}
+		// Word index uses the same globalIndex as highlightTTSWord (browser boundaries
+		// or ServerTTSProvider time-scaled onWordBoundary).
 		this.provider.onWordBoundary = (word: string, charIndex: number, length?: number) => {
 			const wordLength = length || word.length;
 			const globalIndex = charIndex + this.currentBoundaryOffset + args.wordBoundaryOffset;
+			this.highlightSentenceForOffset(globalIndex);
 			const highlightRange = this.findHighlightRange(globalIndex, wordLength);
 			if (highlightRange && this.highlightCoordinator) {
 				const highlightText =
@@ -976,7 +1226,9 @@ export class TTSService {
 		this.normalizedToDOM.clear();
 		this.currentBoundaryOffset = 0;
 		this.seekSegments = [];
+		this.sentenceHighlightSegments = [];
 		this.currentSeekSegmentIndex = 0;
+		this.activeSentenceStartOffset = null;
 	}
 
 	/**
@@ -1127,7 +1379,9 @@ export class TTSService {
 		this.normalizedToDOM.clear();
 		this.currentBoundaryOffset = 0;
 		this.seekSegments = [];
+		this.sentenceHighlightSegments = [];
 		this.currentSeekSegmentIndex = 0;
+		this.activeSentenceStartOffset = null;
 	}
 
 	/**

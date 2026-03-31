@@ -208,7 +208,7 @@ test.describe("item-player strategy regressions", () => {
 		});
 	});
 
-	test("preloaded falls back to runtime loading when preloaded metadata is present but tags are missing", async ({
+	test("preloaded does not autonomously fallback to runtime loading when tags are missing", async ({
 		page,
 	}) => {
 		const bundleRequests: string[] = [];
@@ -217,15 +217,123 @@ test.describe("item-player strategy regressions", () => {
 			if (url.includes("/bundles/")) bundleRequests.push(url);
 		});
 
-		await page.addInitScript(() => {
-			(window as any).PIE_PRELOADED_ELEMENTS = {
-				"@pie-element/unrelated": "@pie-element/unrelated@1.0.0",
+		await page.goto(PRELOADED_DELIVERY_PATH, { waitUntil: "networkidle" });
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({ timeout: 20_000 });
+		const baselineCount = bundleRequests.length;
+
+		await page.evaluate(() => {
+			const fixture = document.createElement("div");
+			fixture.id = "pie-preloaded-no-fallback-fixture";
+			document.body.appendChild(fixture);
+			const player = document.createElement("pie-item-player") as any;
+			player.strategy = "preloaded";
+			player.env = { mode: "gather", role: "student" };
+			player.session = { id: "missing-tags", data: [] };
+			player.config = {
+				elements: {
+					"pie-runtime-missing": "@pie-element/multiple-choice@11.4.3",
+				},
+				models: [
+					{
+						id: "missing-tags-model",
+						element: "pie-runtime-missing",
+						prompt: "Missing tags prompt",
+						choiceMode: "radio",
+						choices: [
+							{ value: "a", label: "A", correct: false },
+							{ value: "b", label: "B", correct: true },
+						],
+					},
+				],
+				markup: '<pie-runtime-missing id="missing-tags-model"></pie-runtime-missing>',
 			};
+			fixture.appendChild(player);
+		});
+
+		await expect(page.getByText("Error loading elements (preloaded-readiness):")).toBeVisible(
+			{ timeout: 20_000 },
+		);
+		expect(bundleRequests.length).toBe(baselineCount);
+	});
+
+	test("preloaded fallback can be explicitly opted in", async ({ page }) => {
+		const bundleRequests: string[] = [];
+		page.on("request", (request) => {
+			const url = request.url();
+			if (url.includes("/bundles/")) bundleRequests.push(url);
 		});
 
 		await page.goto(PRELOADED_DELIVERY_PATH, { waitUntil: "networkidle" });
 		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({ timeout: 20_000 });
-		expect(bundleRequests.length).toBeGreaterThan(0);
+		const baselineCount = bundleRequests.length;
+
+		await page.evaluate(() => {
+			const fixture = document.createElement("div");
+			fixture.id = "pie-preloaded-optin-fallback-fixture";
+			document.body.appendChild(fixture);
+			const player = document.createElement("pie-item-player") as any;
+			player.strategy = "preloaded";
+			player.loaderOptions = { allowPreloadedFallbackLoad: true };
+			player.env = { mode: "gather", role: "student" };
+			player.session = { id: "fallback-optin", data: [] };
+			player.config = {
+				elements: {
+					"pie-runtime-optin": "@pie-element/multiple-choice@11.4.3",
+				},
+				models: [
+					{
+						id: "optin-model",
+						element: "pie-runtime-optin",
+						prompt: "Opt-in fallback prompt",
+						choiceMode: "radio",
+						choices: [
+							{ value: "a", label: "A", correct: false },
+							{ value: "b", label: "B", correct: true },
+						],
+					},
+				],
+				markup: '<pie-runtime-optin id="optin-model"></pie-runtime-optin>',
+			};
+			fixture.appendChild(player);
+		});
+
+		await expect
+			.poll(() => bundleRequests.length)
+			.toBeGreaterThan(baselineCount);
+	});
+
+	test("surfaces validate-config contract errors for invalid PIE references", async ({
+		page,
+	}) => {
+		await page.goto(PRELOADED_DELIVERY_PATH, { waitUntil: "networkidle" });
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({ timeout: 20_000 });
+
+		await page.evaluate(() => {
+			const fixture = document.createElement("div");
+			fixture.id = "pie-invalid-contract-fixture";
+			document.body.appendChild(fixture);
+			const player = document.createElement("pie-item-player") as any;
+			player.strategy = "preloaded";
+			player.env = { mode: "gather", role: "student" };
+			player.session = { id: "invalid-contract", data: [] };
+			player.config = {
+				elements: {
+					"pie-valid": "@pie-element/multiple-choice@11.4.3",
+				},
+				models: [
+					{
+						id: "invalid-model",
+						element: "pie-missing",
+					},
+				],
+				markup: '<pie-valid id="invalid-model"></pie-valid>',
+			};
+			fixture.appendChild(player);
+		});
+
+		await expect(page.getByText("Error loading elements (validate-config):")).toBeVisible({
+			timeout: 20_000,
+		});
 	});
 
 	test("iife emits media-retry-ready after first audio load failure", async ({ page }) => {

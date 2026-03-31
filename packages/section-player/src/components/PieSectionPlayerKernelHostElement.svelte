@@ -25,13 +25,22 @@
 			enabledTools: { attribute: "enabled-tools", type: "String" },
 			itemToolbarTools: { attribute: "item-toolbar-tools", type: "String" },
 			passageToolbarTools: { attribute: "passage-toolbar-tools", type: "String" },
+			toolRegistry: { type: "Object", reflect: false },
+			sectionHostButtons: { type: "Object", reflect: false },
+			itemHostButtons: { type: "Object", reflect: false },
+			passageHostButtons: { type: "Object", reflect: false },
 			policies: { type: "Object", reflect: false },
+			cardTitleFormatter: { type: "Object", reflect: false },
 		},
 	}}
 />
 
 <script lang="ts">
 	import { createEventDispatcher } from "svelte";
+	import type {
+		ToolRegistry,
+		ToolbarItem,
+	} from "@pie-players/pie-assessment-toolkit";
 	import {
 		attachInstrumentationEventBridge,
 		resolveInstrumentationProvider,
@@ -44,6 +53,7 @@
 		SectionPlayerRuntimeHostContract,
 		SectionPlayerSnapshot,
 	} from "../contracts/runtime-host-contract.js";
+	import type { SectionPlayerCardTitleFormatter } from "../contracts/card-title-formatters.js";
 	import type { RuntimeConfig } from "./shared/section-player-runtime.js";
 
 	let {
@@ -68,7 +78,12 @@
 		enabledTools = "",
 		itemToolbarTools = "",
 		passageToolbarTools = "",
+		toolRegistry = null as ToolRegistry | null,
+		sectionHostButtons = [] as ToolbarItem[],
+		itemHostButtons = [] as ToolbarItem[],
+		passageHostButtons = [] as ToolbarItem[],
 		policies,
+		cardTitleFormatter = undefined as SectionPlayerCardTitleFormatter | undefined,
 	} = $props();
 
 	const dispatch = createEventDispatcher();
@@ -204,7 +219,12 @@
 	{enabledTools}
 	{itemToolbarTools}
 	{passageToolbarTools}
+	{toolRegistry}
+	{sectionHostButtons}
+	{itemHostButtons}
+	{passageHostButtons}
 	{policies}
+	{cardTitleFormatter}
 	on:readiness-change={(event: CustomEvent) => {
 		const detail = (event as CustomEvent).detail;
 		snapshot = { ...snapshot, readiness: detail };
@@ -213,6 +233,7 @@
 	on:interaction-ready={reemit}
 	on:ready={reemit}
 	on:runtime-error={reemit}
+	on:framework-error={reemit}
 	on:runtime-owned={reemit}
 	on:runtime-inherited={reemit}
 	on:section-controller-ready={reemit}
@@ -233,6 +254,8 @@
 		syncNavigationSnapshot();
 		reemit(event);
 	}}
+	on:element-preload-retry={reemit}
+	on:element-preload-error={reemit}
 	let:items
 	let:passages
 	let:compositionModel
@@ -243,6 +266,8 @@
 	let:preloadedRenderables
 	let:preloadedRenderablesSignature
 	let:onItemsPaneElementsLoaded
+	let:onItemsPanePreloadRetry
+	let:onItemsPanePreloadError
 >
 	<div class="pie-section-player-kernel-host-content">
 		{#if passages.length > 0}
@@ -254,6 +279,8 @@
 				{resolvedPlayerProps}
 				{playerStrategy}
 				passageToolbarTools={passageToolbarTools}
+				{toolRegistry}
+				hostButtons={passageHostButtons}
 			></pie-section-player-passages-pane>
 		{/if}
 		<pie-section-player-items-pane
@@ -264,11 +291,15 @@
 			{resolvedPlayerProps}
 			{playerStrategy}
 			itemToolbarTools={itemToolbarTools}
+			{toolRegistry}
+			hostButtons={itemHostButtons}
 			iifeBundleHost={iifeBundleHost}
 			preloadedRenderables={preloadedRenderables}
 			preloadedRenderablesSignature={preloadedRenderablesSignature}
 			preloadComponentTag="pie-section-player-kernel-host"
 			onelements-loaded-change={onItemsPaneElementsLoaded}
+			onelement-preload-retry={onItemsPanePreloadRetry}
+			onelement-preload-error={onItemsPanePreloadError}
 		></pie-section-player-items-pane>
 	</div>
 </SectionPlayerLayoutKernel>

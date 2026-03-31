@@ -62,6 +62,17 @@ These checks ensure:
 3. All tests pass: `bun test`
 4. Linting clean: `bun run lint` (Biome)
 
+## Code review (multi-agent)
+
+When the user asks for a **code review**, or after **substantial code changes** (multi-file features, cross-package work, non-trivial refactors, or anything suitable for a PR), run a structured review unless they opt out.
+
+1. **Three independent reviewers**: Launch three separate review passes (e.g. sub-agents or reviewer skills) over the same change set without cross-sharing outputs; vary focus if useful (correctness/API vs UI/persistence vs tests/docs).
+2. **Merge findings**: One coordinated summary—consensus, unique issues, de-duplicated.
+3. **Plan**: Short actionable plan (ordered, with paths). Fix issues when implementation is in scope unless the user asked review-only.
+4. **Disagreements**: If reviewers disagree and there is no clear technical or product rule to break the tie, **ask the user**—do not guess.
+
+Cursor encodes the same expectations in `.cursor/rules/code-review-workflow.mdc` (`alwaysApply: true`).
+
 ## Testing Strategy
 
 - **Unit tests**: Bun:test for logic and utilities
@@ -71,6 +82,12 @@ These checks ensure:
 - **Evaluation tests**: Separate Playwright config for comprehensive validation
 
 **Test files**: `*.test.ts` in `tests/` or package directories
+
+### Build Before Tests (Required)
+
+- Before running tests, rebuild the package(s) whose `src` files changed and any direct consumer packages that resolve those packages through `dist` exports.
+- For custom-element package workflows, assume consumer apps use built `dist` outputs and rebuild affected packages first.
+- If test failures might be caused by stale artifacts, rebuild and rerun once before deeper debugging.
 
 ## Player Architecture
 

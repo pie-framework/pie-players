@@ -2,8 +2,11 @@
 	import { untrack } from 'svelte';
 	import '@pie-players/pie-item-player';
 	import { config as configStore, updateConfig } from '$lib/stores/demo-state';
+	import { demoHeadingName } from '$lib/utils/demo-heading-name';
 
 	let { data } = $props();
+
+	const demoHeading = $derived(demoHeadingName(data.demo?.name));
 
 	let playerEl: any = $state(null);
 	let lastConfig: any = null;
@@ -221,7 +224,7 @@
 </script>
 
 <svelte:head>
-	<title>{data.demo?.name || 'Demo'} - Author</title>
+	<title>{demoHeading} - Author</title>
 </svelte:head>
 
 <div class="grid grid-cols-1 gap-6">

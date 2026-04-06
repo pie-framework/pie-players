@@ -2,8 +2,11 @@
 	import { get } from 'svelte/store';
 	import JsonEditor from '$lib/components/JsonEditor.svelte';
 	import { config as configStore, updateConfig } from '$lib/stores/demo-state';
+	import { demoHeadingName } from '$lib/utils/demo-heading-name';
 
 	let { data } = $props();
+
+	const demoHeading = $derived(demoHeadingName(data.demo?.name));
 
 	let editedConfigJson = $state(JSON.stringify(get(configStore), null, 2));
 	let lastSyncedConfigJson = $state(JSON.stringify(get(configStore), null, 2));
@@ -113,7 +116,7 @@
 </script>
 
 <svelte:head>
-	<title>{data.demo?.name || 'Demo'} - Source</title>
+	<title>{demoHeading} - Source</title>
 </svelte:head>
 
 <div class="card bg-base-100 shadow-xl">

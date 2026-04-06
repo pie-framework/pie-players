@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { getAllDemos } from '$lib/content/demos';
+	import { getAllDemos } from '$lib/content';
+	import { demoHeadingName } from '$lib/utils/demo-heading-name';
 
 	const demos = getAllDemos();
 	const elementCount = new Set(demos.map((demo) => demo.sourcePackage)).size;
@@ -21,16 +22,16 @@
 </script>
 
 <svelte:head>
-	<title>PIE Item Player - React Demo Catalog</title>
+	<title>PIE Item Player - Demos</title>
 </svelte:head>
 
 <div class="container mx-auto px-4 py-12 max-w-7xl">
 	<header class="mb-12 space-y-4">
-		<div class="badge badge-secondary badge-outline">IIFE Catalog</div>
-		<h1 class="text-5xl font-bold">PIE Item Player React Demos</h1>
+		<div class="badge badge-secondary badge-outline">IIFE</div>
+		<h1 class="text-5xl font-bold">PIE Item Player Demos</h1>
 		<p class="text-xl text-base-content/70 max-w-3xl">
-			Imported from the current `pie-elements-ng` React demo set so each element can be exercised
-			through the unified item player using `@latest` bundle-service packages.
+			Catalog of item configurations so each PIE element can be exercised through the unified item player
+			using <code class="text-sm">@latest</code> bundle-service packages.
 		</p>
 		<div class="stats stats-vertical lg:stats-horizontal shadow bg-base-100">
 			<div class="stat">
@@ -38,7 +39,7 @@
 				<div class="stat-value text-primary">{demos.length}</div>
 			</div>
 			<div class="stat">
-				<div class="stat-title">React Elements</div>
+				<div class="stat-title">Elements</div>
 				<div class="stat-value">{elementCount}</div>
 			</div>
 			<div class="stat">
@@ -69,7 +70,9 @@
 						>
 							<div class="card-body gap-4">
 								<div class="flex items-start justify-between gap-3">
-									<h3 class="card-title text-2xl leading-tight">{demo.name}</h3>
+									<h3 class="card-title text-2xl leading-tight">
+										{demoHeadingName(demo.name)}
+									</h3>
 									<div class="badge badge-secondary badge-outline whitespace-nowrap">
 										{demo.sourceVariantId}
 									</div>

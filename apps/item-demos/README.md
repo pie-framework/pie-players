@@ -120,10 +120,11 @@ apps/item-demos/
 │   │       ├── author/            # Author sub-route
 │   │       └── source/            # Source sub-route
 │   ├── lib/
+│   │   ├── demo-session-seeds.ts  # Optional: map demo id → initial session if empty `data` is not enough
 │   │   └── content/               # Demo content data
-│   │       ├── demo1-multiple-choice.ts
-│   │       ├── demo2-passage.ts
-│   │       └── demo3-math.ts
+│   │       ├── *.ts               # One module per item demo (`export default` DemoInfo), plus:
+│   │       ├── types.ts           # Shared `DemoInfo` type
+│   │       └── index.ts           # Registry (explicit imports + sorted `importedDemos` list)
 │   ├── app.html                   # HTML template
 │   └── app.css                    # Tailwind + DaisyUI styles
 ├── package.json
@@ -134,17 +135,11 @@ apps/item-demos/
 
 ### Content Files
 
-Each demo has a TypeScript file defining the PIE item configuration:
-- `demo1-multiple-choice.ts` - Solar system MCQ
-- `demo2-passage.ts` - Water cycle passage
-- `demo3-math.ts` - Quadratic equation problem
+Each item demo is a TypeScript module `{id}.ts` that default-exports a `DemoInfo` object (see `types.ts`). `index.ts` imports each module explicitly and builds the sorted catalog from that list.
 
 ### Customizing Demos
 
-To modify content, edit the files in `src/lib/content/`. Each file exports an `ItemEntity` object with:
-- Item metadata (id, name)
-- Config with elements registry, models, and markup
-- Model configurations specific to each element type
+Edit or add `src/lib/content/{id}.ts` modules. Each default-exports a `DemoInfo` value (`types.ts`): catalog fields (`id`, `name`, `description`, `sourcePackage`, …) and `item` (`Partial<ItemEntity>` with `config`). **Do not** put `initialSession` in demo files: the app starts from an empty session container unless you add an entry for that demo id in `src/lib/demo-session-seeds.ts` (only when iife delivery requires a non-empty seed).
 
 ### Item Player Configuration (IIFE Strategy)
 
@@ -179,11 +174,9 @@ The item player accepts these key props:
 
 ### Adding New Demos
 
-1. Create a new route in `src/routes/demo4/`
-2. Create content file in `src/lib/content/demo4-*.ts`
-3. Create `+page.ts` to load the content
-4. Create `+page.svelte` with the UI
-5. Add link to landing page (`src/routes/+page.svelte`)
+1. Add `src/lib/content/{unique-id}.ts` default-exporting `DemoInfo`, then register it in `index.ts` (import + add to the `importedDemos` array).
+2. Open the catalog at `/` and follow the new card to `/demo/{unique-id}/delivery`.
+3. If delivery fails with an empty session, add `{unique-id}` to `src/lib/demo-session-seeds.ts` instead of embedding session data in the demo module.
 
 ## Architecture Notes
 

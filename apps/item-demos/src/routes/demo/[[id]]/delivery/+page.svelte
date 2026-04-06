@@ -7,6 +7,7 @@
 		NewRelicInstrumentationProvider
 	} from '@pie-players/pie-players-shared';
 	import ScoringPanel from '$lib/components/ScoringPanel.svelte';
+	import { demoHeadingName } from '$lib/utils/demo-heading-name';
 	import '@pie-players/pie-item-player';
 	import {
 		config as configStore,
@@ -18,6 +19,8 @@
 	} from '$lib/stores/demo-state';
 
 	let { data } = $props();
+
+	const demoHeading = $derived(demoHeadingName(data.demo?.name));
 
 	let playerEl: any = $state(null);
 	let lastConfig: any = null;
@@ -149,7 +152,7 @@
 </script>
 
 <svelte:head>
-	<title>{data.demo?.name || 'Demo'} - Delivery</title>
+	<title>{demoHeading} - Delivery</title>
 </svelte:head>
 
 <div class="space-y-6">

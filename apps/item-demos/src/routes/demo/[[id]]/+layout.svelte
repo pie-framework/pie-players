@@ -4,15 +4,19 @@
 	import { page } from '$app/stores';
 	import { coerceMode, coerceRole } from '$lib/utils/coercion';
 	import { env as envStore, score as scoreStore, session as sessionStore } from '$lib/stores/demo-state';
+	import { getDemoSessionSeed } from '$lib/demo-session-seeds';
 	import {
 		initializeDemoState,
 		mode as modeStore,
 		role as roleStore,
 	} from '$lib/stores/demo-state';
+	import { demoHeadingName } from '$lib/utils/demo-heading-name';
 	import DemoMenuBar from './DemoMenuBar.svelte';
 	import DemoOverlays from './DemoOverlays.svelte';
 
 	let { data, children } = $props();
+
+	const demoHeading = $derived(demoHeadingName(data.demo?.name));
 
 	// State
 	let initializedDemoId = $state<string | null>(null);
@@ -28,7 +32,7 @@
 			initializeDemoState(
 				demoId,
 				data?.demo?.item?.config ?? null,
-				data?.demo?.initialSession ?? null,
+				getDemoSessionSeed(demoId) ?? undefined,
 			);
 			initializedDemoId = demoId;
 		}
@@ -104,7 +108,7 @@
 
 <div class="pie-demo-layout">
 	<DemoMenuBar
-		demoName={data.demo?.name || 'Demo'}
+		demoName={demoHeading}
 		demoPackage={data.demo?.sourcePackage || 'unknown-package'}
 		{activeView}
 		deliveryHref={tabHref('delivery')}
@@ -123,7 +127,7 @@
 
 	<div class="container mx-auto max-w-7xl px-4 py-6">
 		<div class="mb-5">
-			<h1 class="text-3xl font-bold">{data.demo?.name || 'Demo'}</h1>
+			<h1 class="text-3xl font-bold">{demoHeading}</h1>
 			{#if data.demo?.description}
 				<p class="mt-2 text-base-content/90">{data.demo.description}</p>
 			{/if}
@@ -134,7 +138,7 @@
 </div>
 
 <DemoOverlays
-	demoName={data.demo?.name || 'Demo'}
+	demoName={demoHeading}
 	demoId={data.demoId || ''}
 	config={data.demo?.item?.config ?? null}
 	{showSessionPanel}

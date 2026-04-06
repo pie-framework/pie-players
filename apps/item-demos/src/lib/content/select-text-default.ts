@@ -2,17 +2,20 @@ import type { DemoInfo } from "./types";
 
 const demo: DemoInfo = {
 	"id": "select-text-default",
-	"name": "What sentences contain the character 6 in them?",
-	"description": "Basic select text configuration",
+	"name": "Narrator Reliability Evidence",
+	"description": "8th-grade language arts sentence evidence selection",
 	"sourcePackage": "select-text",
 	"sourceVariantId": "default",
 	"tags": [
 		"select-text",
-		"default"
+		"default",
+		"sentence-mode",
+		"language-arts",
+		"grade-8"
 	],
 	"item": {
 		"id": "select-text-default",
-		"name": "What sentences contain the character 6 in them?",
+		"name": "Narrator Reliability Evidence",
 		"config": {
 			"id": "",
 			"markup": "<select-text id=\"1\"></select-text>",
@@ -27,65 +30,49 @@ const demo: DemoInfo = {
 					"feedback": {
 						"correct": {
 							"type": "default",
-							"default": "Correct"
+							"default": "Correct. Those two sentences provide evidence that the narrator is unreliable."
 						},
 						"incorrect": {
 							"type": "default",
-							"default": "Incorrect"
+							"default": "Not quite. Look for specific details showing the narrator changes facts."
 						},
 						"partial": {
 							"type": "default",
-							"default": "Nearly"
+							"default": "Almost there. You identified one piece of evidence."
 						}
 					},
-					"partialScoring": false,
+					"partialScoring": true,
 					"maxSelections": 2,
 					"mode": "sentence",
-					"rationale": "Rationale goes here.",
-					"prompt": "What sentences contain the character 6 in them?",
+					"rationale": "The strongest evidence is where the narrator is described as unreliable and where specific changed facts are mentioned.",
+					"prompt": "Select the two sentences that best support the claim that the narrator is unreliable.",
 					"promptEnabled": true,
 					"toolbarEditorPosition": "bottom",
-					"text": "<p>If 'tweren't for sight and sound and smell,<br />\nI'd like the city pretty well,<br />\nBut when it comes to getting rest,<br />\nI like the country lots the best.</p>\n\n<p>Sometimes it seems to me I must<br />\nJust quit the city's din and dust,<br />\nAnd get out where the sky is blue,<br />\nAnd say, now, how does it seem to you?</p>",
+					"text": "Maya reread the chapter before class discussion. She highlighted two details that showed the narrator was unreliable. During discussion, she explained how the narrator changed key facts between scenes. Her group agreed that the contradictions built suspense.",
 					"tokens": [
 						{
-							"text": "If 'tweren't for sight and sound and smell,",
+							"text": "Maya reread the chapter before class discussion.",
 							"start": 0,
-							"end": 43
+							"end": 48,
+							"correct": false
 						},
 						{
-							"text": "I'd like the city pretty well,",
-							"start": 44,
-							"end": 74
+							"text": "She highlighted two details that showed the narrator was unreliable.",
+							"start": 49,
+							"end": 117,
+							"correct": true
 						},
 						{
-							"text": "But when it comes to getting rest,",
-							"start": 75,
-							"end": 109
+							"text": "During discussion, she explained how the narrator changed key facts between scenes.",
+							"start": 118,
+							"end": 201,
+							"correct": true
 						},
 						{
-							"text": "I like the country lots the best.",
-							"start": 110,
-							"end": 143
-						},
-						{
-							"text": "Sometimes it seems to me I must",
-							"start": 145,
-							"end": 176
-						},
-						{
-							"text": "Just quit the city's din and dust,",
-							"start": 177,
-							"end": 211
-						},
-						{
-							"text": "And get out where the sky is blue,",
-							"start": 212,
-							"end": 246
-						},
-						{
-							"text": "And say, now, how does it seem to you?",
-							"start": 247,
-							"end": 285
+							"text": "Her group agreed that the contradictions built suspense.",
+							"start": 202,
+							"end": 258,
+							"correct": false
 						}
 					],
 					"rubricEnabled": false

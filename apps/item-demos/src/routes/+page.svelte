@@ -3,7 +3,6 @@
 	import { demoHeadingName } from '$lib/utils/demo-heading-name';
 
 	const demos = getAllDemos();
-	const elementCount = new Set(demos.map((demo) => demo.sourcePackage)).size;
 	const groupedDemos = Array.from(
 		demos.reduce((groups, demo) => {
 			const existing = groups.get(demo.sourcePackage) ?? [];
@@ -29,24 +28,6 @@
 	<header class="mb-12 space-y-4">
 		<div class="badge badge-secondary badge-outline">IIFE</div>
 		<h1 class="text-5xl font-bold">PIE Item Player Demos</h1>
-		<p class="text-xl text-base-content/70 max-w-3xl">
-			Catalog of item configurations so each PIE element can be exercised through the unified item player
-			using <code class="text-sm">@latest</code> bundle-service packages.
-		</p>
-		<div class="stats stats-vertical lg:stats-horizontal shadow bg-base-100">
-			<div class="stat">
-				<div class="stat-title">Demo Variants</div>
-				<div class="stat-value text-primary">{demos.length}</div>
-			</div>
-			<div class="stat">
-				<div class="stat-title">Elements</div>
-				<div class="stat-value">{elementCount}</div>
-			</div>
-			<div class="stat">
-				<div class="stat-title">Player Mode</div>
-				<div class="stat-value text-secondary text-2xl">IIFE</div>
-			</div>
-		</div>
 	</header>
 
 	<div class="space-y-12">

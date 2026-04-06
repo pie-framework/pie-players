@@ -30,6 +30,10 @@
 	let preloadedReady = $state(false);
 	let preloadedError = $state<string | null>(null);
 	let loadedPreloadedBundleKey = $state<string | null>(null);
+	let esmLoadPending = $state(false);
+	let esmLoadAttempt = 0;
+	let esmLoadTimer: ReturnType<typeof setTimeout> | null = null;
+	const ESM_LOAD_TIMEOUT_MS = 20_000;
 	const instrumentationProvider = new CompositeInstrumentationProvider([
 		new NewRelicInstrumentationProvider(),
 		new DebugPanelInstrumentationProvider()
@@ -53,6 +57,22 @@
 			selectedPlayerType = 'iife';
 		}
 	});
+
+	function clearEsmLoadTimer() {
+		if (!esmLoadTimer) return;
+		clearTimeout(esmLoadTimer);
+		esmLoadTimer = null;
+	}
+
+	function startEsmLoadWatchdog() {
+		clearEsmLoadTimer();
+		const attemptId = ++esmLoadAttempt;
+		esmLoadPending = true;
+		esmLoadTimer = setTimeout(() => {
+			if (attemptId !== esmLoadAttempt || selectedPlayerType !== 'esm') return;
+			esmLoadPending = false;
+		}, ESM_LOAD_TIMEOUT_MS);
+	}
 
 	async function fetchBundleWithRetry(bundleUrl: string) {
 		let attempt = 0;
@@ -103,6 +123,10 @@
 	$effect(() => {
 		preloadedReady = selectedPlayerType !== 'preloaded';
 		preloadedError = null;
+		if (selectedPlayerType !== 'esm') {
+			esmLoadPending = false;
+			clearEsmLoadTimer();
+		}
 		if (selectedPlayerType !== 'preloaded') return;
 		const currentConfig = $configStore;
 		const elementPackages = Object.values(currentConfig?.elements || {}) as string[];
@@ -133,10 +157,23 @@
 		})();
 	});
 
+	$effect(() => {
+		const currentConfig = $configStore;
+		const currentEnv = $envStore;
+		const currentPlayer = selectedPlayerType;
+		const currentPlayerEl = playerEl;
+		if (currentPlayer !== 'esm') return;
+		if (!currentConfig || !currentEnv || !currentPlayerEl) return;
+		startEsmLoadWatchdog();
+		return () => {
+			clearEsmLoadTimer();
+		};
+	});
+
 	// Listen for session changes
 	$effect(() => {
 		if (playerEl) {
-			const handler = (e: CustomEvent) => {
+			const sessionHandler = (e: CustomEvent) => {
 				const detail = e.detail ?? {};
 				if (detail.session) {
 					updateSession(detail.session);
@@ -145,8 +182,24 @@
 					updateScore(detail.score);
 				}
 			};
-			playerEl.addEventListener('session-changed', handler);
-			return () => playerEl.removeEventListener('session-changed', handler);
+			const loadCompleteHandler = () => {
+				if (selectedPlayerType !== 'esm') return;
+				esmLoadPending = false;
+				clearEsmLoadTimer();
+			};
+			const playerErrorHandler = () => {
+				if (selectedPlayerType !== 'esm') return;
+				esmLoadPending = false;
+				clearEsmLoadTimer();
+			};
+			playerEl.addEventListener('session-changed', sessionHandler);
+			playerEl.addEventListener('load-complete', loadCompleteHandler as EventListener);
+			playerEl.addEventListener('player-error', playerErrorHandler as EventListener);
+			return () => {
+				playerEl?.removeEventListener('session-changed', sessionHandler);
+				playerEl?.removeEventListener('load-complete', loadCompleteHandler as EventListener);
+				playerEl?.removeEventListener('player-error', playerErrorHandler as EventListener);
+			};
 		}
 	});
 </script>
@@ -170,6 +223,9 @@
 			{/if}
 			{#if selectedPlayerType === 'preloaded' && !preloadedReady}
 				<div class="text-base-content/60 mt-2">Preloading item bundle...</div>
+			{/if}
+			{#if selectedPlayerType === 'esm' && esmLoadPending}
+				<div class="text-base-content/60 mt-2">Loading item player using ESM strategy...</div>
 			{/if}
 			{#if preloadedError}
 				<div class="text-error mt-2">Preloaded bundle failed: {preloadedError}</div>

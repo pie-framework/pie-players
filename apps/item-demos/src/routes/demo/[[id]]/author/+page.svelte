@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { page } from '$app/stores';
 	import { untrack } from 'svelte';
 	import '@pie-players/pie-item-player';
 	import { config as configStore, updateConfig } from '$lib/stores/demo-state';
@@ -10,6 +11,11 @@
 
 	let playerEl: any = $state(null);
 	let lastConfig: any = null;
+	let selectedLoaderStrategy = $state<'iife' | 'esm'>('iife');
+
+	$effect(() => {
+		selectedLoaderStrategy = $page.url.searchParams.get('player') === 'esm' ? 'esm' : 'iife';
+	});
 
 	async function callAuthoringMediaJsonService<T>(
 		path: string,
@@ -232,7 +238,7 @@
 		<div class="card-body">
 			<pie-item-player
 				bind:this={playerEl}
-				strategy="iife"
+				strategy={selectedLoaderStrategy}
 				mode="author"
 			></pie-item-player>
 		</div>

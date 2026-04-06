@@ -81,6 +81,17 @@ The demos use `pie-item-player` with `strategy="iife"` to load element bundles d
 - More stable than ESM loading (no CDN resolution issues)
 - Keeps runtime usage aligned with the unified player API
 
+### Element Version Overrides
+
+Delivery and author views include a PIEOneer-style element version toolbar.
+
+- Overrides are stored in URL params as `pie-overrides[pie-element/<name>]=<version>`
+- Base catalog defaults still come from each demo's `config.elements` map
+- `GET /api/packages` powers combobox version suggestions via npm registry lookup
+
+The server npm helper is imported from `@pie-players/pie-players-shared/server/npm-registry`
+and must remain server-only (route/load modules only, never Svelte/browser code).
+
 ### Content Standards
 
 All content is:

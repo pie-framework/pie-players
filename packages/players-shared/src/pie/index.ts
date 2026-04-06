@@ -128,6 +128,17 @@ export {
 	updatePieElements,
 	updatePieElementWithRef,
 } from "./updates.js";
+// URL / element override helpers
+export type { ElementOverrides } from "./overrides.js";
+export {
+	addOrUpdateOverrideInUrl,
+	applyElementOverrides,
+	applyElementVersionOverridesPreserveTags,
+	extractPackageInfo,
+	formatElementOverrideParam,
+	parseElementOverridesFromCurrentUrl,
+	parseElementOverridesFromUrl,
+} from "./overrides.js";
 // Utils
 export {
 	findOrAddSession,

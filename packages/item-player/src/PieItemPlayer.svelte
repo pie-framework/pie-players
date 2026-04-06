@@ -430,6 +430,17 @@
 			error = `Error loading elements (${stage}): ${message}`;
 			loading = false;
 			logger.error("[pie-item-player] failed loading:", err);
+			handlePlayerEvent(
+				new CustomEvent("player-error", {
+					detail: {
+						code: "ITEM_PLAYER_LOAD_ERROR",
+						message,
+						stage,
+						strategy: normalizedStrategy,
+						mode: resolvedMode,
+					},
+				}),
+			);
 		} finally {
 			isProcessing = false;
 		}

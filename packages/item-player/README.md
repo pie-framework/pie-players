@@ -92,7 +92,7 @@ These are set via JavaScript, not HTML attributes.
 |-------|--------|-------------|
 | `load-complete` | payload | Emitted when PIE elements finish loading |
 | `session-changed` | `{ session, ... }` | Emitted when the student interacts and session data changes |
-| `player-error` | `{ code?, message? }` | Error (e.g. `AUTHORING_BACKEND_CONFIG_ERROR`) |
+| `player-error` | `{ code?, message?, stage?, strategy?, mode? }` | Error (e.g. `AUTHORING_BACKEND_CONFIG_ERROR`, `ITEM_PLAYER_LOAD_ERROR`) |
 | `model-updated` | payload | Emitted when a PIE element model is updated |
 
 ## Authoring media hooks

@@ -132,6 +132,25 @@ async function suppressAudibleBrowserTts(page: Page): Promise<void> {
 	});
 }
 
+async function mockPollyVoicesAvailability(page: Page): Promise<void> {
+	await page.route("**/polly/voices**", async (route) => {
+		await route.fulfill({
+			status: 200,
+			contentType: "application/json",
+			body: JSON.stringify({
+				voices: [
+					{
+						id: "Joanna",
+						name: "Joanna",
+						languageCode: "en-US",
+						gender: "female",
+					},
+				],
+			}),
+		});
+	});
+}
+
 async function selectPassageText(page: Page): Promise<void> {
 	await page.locator("pie-passage-shell [data-region='content'] p").first().evaluate((node) => {
 		const textNode = node.firstChild;
@@ -431,6 +450,7 @@ test.describe("section player demo tts-ssml", () => {
 	test("covers passage, interactions, mode switching, and tools", async ({ page }) => {
 		test.setTimeout(180_000);
 		await suppressAudibleBrowserTts(page);
+		await mockPollyVoicesAvailability(page);
 
 		await gotoDemo(page);
 

@@ -194,11 +194,18 @@
 			);
 		}
 		const query = nextParams.toString();
-		await goto(query ? `${url.pathname}?${query}` : url.pathname, {
-			replaceState: true,
-			noScroll: true,
-			keepFocus: true,
-		});
+		const targetUrl = query ? `${url.pathname}?${query}` : url.pathname;
+		await navigateWithRefresh(targetUrl);
+	}
+
+	async function navigateWithRefresh(targetUrl: string) {
+		if (typeof window !== 'undefined') {
+			// Major demo state switches can leave stale player state in-memory.
+			// Force a full document reload so runtime state is recreated cleanly.
+			window.location.assign(targetUrl);
+			return;
+		}
+		await goto(targetUrl, { replaceState: true, noScroll: true, keepFocus: true });
 	}
 
 	async function updateLoaderStrategy(nextStrategy: 'iife' | 'esm') {
@@ -208,13 +215,7 @@
 		nextParams.set('player', nextStrategy);
 		const query = nextParams.toString();
 		const targetUrl = query ? `${url.pathname}?${query}` : url.pathname;
-		if (typeof window !== 'undefined') {
-			// Runtime strategy swaps can leave stale custom-element state in memory.
-			// Force a full document reload so the route and player remount cleanly.
-			window.location.assign(targetUrl);
-			return;
-		}
-		await goto(targetUrl, { replaceState: true, noScroll: true, keepFocus: true });
+		await navigateWithRefresh(targetUrl);
 	}
 </script>
 
@@ -235,6 +236,9 @@
 		showSessionToggle={activeView === 'delivery'}
 		onSwitchLoaderStrategy={(next) => {
 			void updateLoaderStrategy(next);
+		}}
+		onSwitchViewMode={(_, href) => {
+			void navigateWithRefresh(href);
 		}}
 		onToggleSessionPanel={() => (showSessionPanel = !showSessionPanel)}
 		onToggleInstrumentationPanel={() =>
@@ -261,11 +265,8 @@
 				on:resetAll={() => {
 					const nextParams = removeOverrideParams($page.url.searchParams);
 					const query = nextParams.toString();
-					void goto(query ? `${$page.url.pathname}?${query}` : $page.url.pathname, {
-						replaceState: true,
-						noScroll: true,
-						keepFocus: true,
-					});
+					const targetUrl = query ? `${$page.url.pathname}?${query}` : $page.url.pathname;
+					void navigateWithRefresh(targetUrl);
 				}}
 			/>
 		{/if}

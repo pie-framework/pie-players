@@ -14,6 +14,7 @@
 		showInstrumentationPanel: boolean;
 		showSessionToggle: boolean;
 		onSwitchLoaderStrategy: (next: 'iife' | 'esm') => void;
+		onSwitchViewMode?: (next: 'student' | 'scorer', href: string) => void;
 		onToggleSessionPanel: () => void;
 		onToggleInstrumentationPanel: () => void;
 	}
@@ -33,6 +34,7 @@
 		showInstrumentationPanel,
 		showSessionToggle,
 		onSwitchLoaderStrategy,
+		onSwitchViewMode,
 		onToggleSessionPanel,
 		onToggleInstrumentationPanel,
 	}: Props = $props();
@@ -102,6 +104,11 @@
 					class="btn btn-sm join-item"
 					class:btn-active={viewMode === 'student'}
 					href={studentHref}
+					onclick={(event) => {
+						if (!onSwitchViewMode) return;
+						event.preventDefault();
+						onSwitchViewMode('student', studentHref);
+					}}
 					title="Student view - gather mode"
 					aria-current={viewMode === 'student' ? 'page' : undefined}
 				>
@@ -111,6 +118,11 @@
 					class="btn btn-sm join-item"
 					class:btn-active={viewMode === 'scorer'}
 					href={scorerHref}
+					onclick={(event) => {
+						if (!onSwitchViewMode) return;
+						event.preventDefault();
+						onSwitchViewMode('scorer', scorerHref);
+					}}
 					title="Scorer view - evaluate mode"
 					aria-current={viewMode === 'scorer' ? 'page' : undefined}
 				>

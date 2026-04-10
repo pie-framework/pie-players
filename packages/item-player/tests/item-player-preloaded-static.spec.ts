@@ -1,4 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 const DEMO_ID = "multiple-choice-radio-simple";
 const PRELOADED_DELIVERY_PATH =
@@ -43,11 +45,30 @@ async function readSessionState(page: Page): Promise<SessionSnapshot> {
 }
 
 async function assertMediaRetryBridge(page: Page, deliveryPath: string): Promise<void> {
+	const audioFixturePath = join(
+		import.meta.dirname,
+		"../../../apps/section-demos/static/demo-assets/resource-observability/signal-chime.wav",
+	);
+	const audioFixtureBuffer = readFileSync(audioFixturePath);
+	let requestCount = 0;
+	await page.route("**/synthetic-retry-audio.wav*", async (route) => {
+		requestCount += 1;
+		if (requestCount === 1) {
+			await route.abort("failed");
+			return;
+		}
+		await route.fulfill({
+			status: 200,
+			contentType: "audio/wav",
+			body: audioFixtureBuffer,
+		});
+	});
+
 	await page.goto(deliveryPath, { waitUntil: "networkidle" });
 	await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({ timeout: 20_000 });
 
 	await page.evaluate(() => {
-		(window as any).__pieMediaRetryReady = false;
+		(window as any).__pieMediaRetryReadyCount = 0;
 		const playerHost = document.querySelector("pie-item-player");
 		if (!(playerHost instanceof HTMLElement)) {
 			throw new Error("pie-item-player host not found");
@@ -77,48 +98,33 @@ async function assertMediaRetryBridge(page: Page, deliveryPath: string): Promise
 		audio.preload = "auto";
 		audio.addEventListener("pie-media-retry-ready", () => {
 			audioButton.disabled = false;
-			(window as any).__pieMediaRetryReady = true;
+			(window as any).__pieMediaRetryReadyCount += 1;
 		});
 
 		fixture.append(audioButton, audio);
 		rendererRoot.appendChild(fixture);
-		// Simulate a failed first load before retry recovery is announced.
-		audio.dispatchEvent(new Event("error"));
+		audio.load();
 	});
 
-	await page.evaluate(() => {
-		const playerRoot = document.querySelector(
-			"pie-item-player .pie-player-item-container .pie-item-player",
-		) as HTMLElement | null;
-		const audio = document.querySelector(
-			"#pie-audio-retry-fixture audio",
-		) as HTMLAudioElement | null;
-		if (!playerRoot || !audio) {
-			throw new Error("Unable to dispatch retry-success bridge event");
-		}
-		playerRoot.dispatchEvent(
-			new CustomEvent("pie-resource-retry-success", {
-				detail: {
-					url: audio.currentSrc || audio.src,
-					resourceType: "audio",
-					retryCount: 1,
-					maxRetries: 3,
-				},
-				bubbles: true,
-				composed: true,
-			}),
-		);
-	});
-	await page.waitForFunction(() => (window as any).__pieMediaRetryReady === true);
+	await page.waitForFunction(
+		() => (window as any).__pieMediaRetryReadyCount === 1,
+		undefined,
+		{ timeout: 20_000 },
+	);
 
-	const disabledAfterRetry = await page.evaluate(() => {
+	const stateAfterRetry = await page.evaluate(() => {
 		const button = document.querySelector(
 			"#pie-audio-retry-fixture [data-testid='audio-retry-button']",
 		);
-		return button instanceof HTMLButtonElement ? button.disabled : true;
+		return {
+			disabled:
+				button instanceof HTMLButtonElement ? button.disabled : true,
+			readyCount: Number((window as any).__pieMediaRetryReadyCount || 0),
+		};
 	});
 
-	expect(disabledAfterRetry).toBe(false);
+	expect(stateAfterRetry.disabled).toBe(false);
+	expect(stateAfterRetry.readyCount).toBe(1);
 }
 
 test.describe("item-player strategy regressions", () => {

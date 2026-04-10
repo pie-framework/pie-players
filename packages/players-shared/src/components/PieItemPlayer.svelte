@@ -37,16 +37,6 @@
     SoundHandler,
   } from "../types/index.js";
 
-  type RetrySuccessDetail = {
-    url?: string;
-    resourceType?: string;
-    duration?: number;
-    size?: number;
-    retryCount?: number;
-    maxRetries?: number;
-    error?: string;
-  };
-
   // Create logger (respects global debug flag - pass function for dynamic checking)
   const logger = createPieLogger("pie-item-player", () =>
     isGlobalDebugEnabled()
@@ -381,46 +371,6 @@
   // Root element reference for resource monitor
   let rootElement: HTMLElement | null = $state(null);
 
-  function normalizeResourceUrl(url: string): string {
-    try {
-      const parsed = new URL(url, window.location.href);
-      parsed.searchParams.delete("retry");
-      parsed.searchParams.delete("t");
-      return parsed.toString();
-    } catch {
-      return url;
-    }
-  }
-
-  function dispatchMediaRetryReady(detail: RetrySuccessDetail) {
-    if (!rootElement) return;
-    if (!detail || (detail.resourceType !== "audio" && detail.resourceType !== "video")) {
-      return;
-    }
-    const url = typeof detail.url === "string" ? detail.url : "";
-    if (!url) return;
-    const normalizedTargetUrl = normalizeResourceUrl(url);
-    const selector = detail.resourceType === "audio" ? "audio[src]" : "video[src]";
-    const mediaElements = Array.from(
-      rootElement.querySelectorAll<HTMLAudioElement | HTMLVideoElement>(selector)
-    );
-    for (const mediaEl of mediaElements) {
-      const currentSrc = mediaEl.currentSrc || mediaEl.src;
-      if (!currentSrc) continue;
-      if (normalizeResourceUrl(currentSrc) !== normalizedTargetUrl) continue;
-      mediaEl.dispatchEvent(
-        new CustomEvent("pie-media-retry-ready", {
-          detail: {
-            ...detail,
-            mediaTag: detail.resourceType,
-          },
-          bubbles: true,
-          composed: true,
-        })
-      );
-    }
-  }
-
   // Resource monitor (handles initialization and cleanup automatically)
   useResourceMonitor(
     () => rootElement,
@@ -428,26 +378,6 @@
     () => isGlobalDebugEnabled(),
     "pie-item-player"
   );
-
-  // Bridge resource-monitor retry success events to media-level recovery hooks so
-  // item elements can clear local disabled/error UI without coupling to player internals.
-  $effect(() => {
-    if (!rootElement) return;
-    const handleRetrySuccess = (event: Event) => {
-      const customEvent = event as CustomEvent<RetrySuccessDetail>;
-      dispatchMediaRetryReady(customEvent.detail ?? {});
-    };
-    rootElement.addEventListener(
-      "pie-resource-retry-success",
-      handleRetrySuccess as EventListener
-    );
-    return () => {
-      rootElement?.removeEventListener(
-        "pie-resource-retry-success",
-        handleRetrySuccess as EventListener
-      );
-    };
-  });
 
   // Initialize PIE elements AFTER markup is rendered (reactive pattern like PieItemPreview)
   $effect(() => {

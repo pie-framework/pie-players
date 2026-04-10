@@ -6,6 +6,7 @@
 		DebugPanelInstrumentationProvider,
 		NewRelicInstrumentationProvider
 	} from '@pie-players/pie-players-shared';
+	import { BundleType, IifePieLoader } from '@pie-players/pie-players-shared/pie';
 	import ScoringPanel from '$lib/components/ScoringPanel.svelte';
 	import { demoHeadingName } from '$lib/utils/demo-heading-name';
 	import '@pie-players/pie-item-player';
@@ -74,20 +75,77 @@
 		}, ESM_LOAD_TIMEOUT_MS);
 	}
 
-	async function fetchBundleWithRetry(bundleUrl: string) {
-		let attempt = 0;
-		const maxAttempts = 12;
-		while (attempt < maxAttempts) {
-			attempt += 1;
-			const response = await fetch(bundleUrl);
-			if (response.ok) return response;
-			if (response.status === 503) {
-				await new Promise((resolve) => setTimeout(resolve, 1000));
-				continue;
-			}
-			throw new Error(`Bundle preload failed: ${response.status}`);
+	function buildBundleKey(packages: string[]): string {
+		return [...packages]
+			.filter((pkg) => typeof pkg === "string" && pkg.length > 0)
+			.sort()
+			.join("+");
+	}
+
+	const latestResolutionCache = new Map<string, Promise<string>>();
+
+	async function resolveLatestPackageSpec(spec: string): Promise<string> {
+		if (!spec.endsWith("@latest")) return spec;
+		const atIndex = spec.lastIndexOf("@");
+		if (atIndex <= 0) return spec;
+		const packageName = spec.slice(0, atIndex);
+		if (!latestResolutionCache.has(packageName)) {
+			const promise = (async () => {
+				const response = await fetch(
+					`/api/packages?package=${encodeURIComponent(packageName)}&search=0`,
+				);
+				if (!response.ok) return spec;
+				const versions = (await response.json()) as unknown;
+				if (!Array.isArray(versions)) return spec;
+				const concreteVersion = versions.find(
+					(version): version is string =>
+						typeof version === "string" &&
+						version !== "latest" &&
+						!version.includes("-"),
+				);
+				if (concreteVersion) {
+					return `${packageName}@${concreteVersion}`;
+				}
+				const fallbackVersion = versions.find(
+					(version): version is string =>
+						typeof version === "string" && version !== "latest",
+				);
+				return fallbackVersion ? `${packageName}@${fallbackVersion}` : spec;
+			})().catch(() => spec);
+			latestResolutionCache.set(packageName, promise);
 		}
-		throw new Error('Bundle preload timed out after retries');
+		return latestResolutionCache.get(packageName)!;
+	}
+
+	function buildPreloadedVersionMap(specs: string[]): Record<string, string> {
+		const map: Record<string, string> = {};
+		for (const spec of specs) {
+			const atIndex = spec.lastIndexOf("@");
+			if (atIndex <= 0) continue;
+			const packageName = spec.slice(0, atIndex);
+			map[packageName] = spec;
+		}
+		return map;
+	}
+
+	async function resolveElementPackagesForPreload(
+		elements: Record<string, string>,
+	): Promise<Record<string, string>> {
+		const resolvedEntries = await Promise.all(
+			Object.entries(elements).map(async ([tagName, packageSpec]) => {
+				const resolvedSpec = await resolveLatestPackageSpec(String(packageSpec));
+				return [tagName, resolvedSpec] as const;
+			}),
+		);
+		return Object.fromEntries(resolvedEntries);
+	}
+
+	function normalizeTagWithVersion(tagName: string, packageSpec: string): string {
+		const atIndex = packageSpec.lastIndexOf("@");
+		if (atIndex <= 0) return tagName;
+		const version = packageSpec.slice(atIndex + 1).trim();
+		if (!version || tagName.includes("--version-")) return tagName;
+		return `${tagName}--version-${version.replace(/\./g, "-")}`;
 	}
 
 	// Set properties imperatively when config or env changes
@@ -134,21 +192,40 @@
 			preloadedError = 'No elements were found to preload';
 			return;
 		}
-		const bundleKey = elementPackages.join('+');
-		if (loadedPreloadedBundleKey === bundleKey) {
-			preloadedReady = true;
-			return;
-		}
 		preloadedReady = false;
 		void (async () => {
 			try {
-				const bundleUrl = `https://proxy.pie-api.com/bundles/${bundleKey}/player.js`;
-				const response = await fetchBundleWithRetry(bundleUrl);
-				const bundleJs = await response.text();
-				const script = document.createElement('script');
-				script.type = 'text/javascript';
-				script.text = bundleJs;
-				document.head.appendChild(script);
+				const resolvedElements = await resolveElementPackagesForPreload(
+					(currentConfig?.elements || {}) as Record<string, string>,
+				);
+				const resolvedPackages = Object.values(resolvedElements);
+				const bundleKey = buildBundleKey(resolvedPackages);
+				if (loadedPreloadedBundleKey === bundleKey) {
+					preloadedReady = true;
+					return;
+				}
+				const globalPreloadedMap = (window as any).PIE_PRELOADED_ELEMENTS ?? {};
+				(window as any).PIE_PRELOADED_ELEMENTS = {
+					...globalPreloadedMap,
+					...buildPreloadedVersionMap(resolvedPackages)
+				};
+				const preloadedElements = Object.fromEntries(
+					Object.entries(resolvedElements).map(([tagName, packageSpec]) => [
+						normalizeTagWithVersion(tagName, packageSpec),
+						packageSpec,
+					]),
+				);
+				const preloader = new IifePieLoader({
+					bundleHost: 'https://proxy.pie-api.com/bundles/',
+				});
+				await preloader.load(
+					{
+						elements: preloadedElements,
+					},
+					document,
+					BundleType.clientPlayer,
+					true,
+				);
 				loadedPreloadedBundleKey = bundleKey;
 				preloadedReady = true;
 			} catch (error) {

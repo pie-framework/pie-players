@@ -41,7 +41,11 @@
 		PLAYER_OPTIONS
 	} from '$lib/demo-runtime/demo-page-helpers';
 	import { SECTION_DEMOS_SC_TTS_TOOL_PROVIDER } from '$lib/demo-runtime/section-demos-default-tts';
-	import { collectElementPackages, fetchBundleWithRetry } from '$lib/demo-runtime/preload-utils';
+	import {
+		buildBundleKey,
+		collectElementPackages,
+		fetchBundleWithRetry
+	} from '$lib/demo-runtime/preload-utils';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -244,7 +248,7 @@ const sectionPlayerHooks = $derived.by(() =>
 			preloadedError = 'No element packages were found to preload';
 			return;
 		}
-		const bundleKey = packages.join('+');
+		const bundleKey = buildBundleKey(packages);
 		if (loadedPreloadedBundleKey === bundleKey) {
 			preloadedReady = true;
 			return;

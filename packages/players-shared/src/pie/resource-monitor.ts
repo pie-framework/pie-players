@@ -93,6 +93,8 @@ const DEFAULT_CONFIG = {
 // Constants
 const MAX_URL_LENGTH = 80;
 const URL_TRUNCATE_LENGTH = 77;
+const MEDIA_RETRY_RECONCILIATION_TIMEOUT_MS = 1200;
+const MEDIA_RETRY_RECONCILIATION_POLL_MS = 75;
 
 type ResourceElement =
 	| HTMLImageElement
@@ -117,6 +119,19 @@ export interface ResourceMonitorEventDetail {
 export interface MediaRetryReadyDetail extends ResourceMonitorEventDetail {
 	mediaTag: "audio" | "video";
 }
+
+/**
+ * Resource monitor event contract
+ *
+ * - `pie-resource-load-success`: emitted when a resource request is successful.
+ *   For retried media resources, this is emitted only after media becomes healthy.
+ * - `pie-resource-retry-success`: emitted once per successful retry cycle.
+ * - `pie-media-retry-ready`: emitted once per successful retry cycle to recovered
+ *   media targets (`audio`/`video`), including `<source>`-driven retries resolved
+ *   to their parent media element.
+ * - `pie-resource-load-error`: emitted when retries are exhausted or when a retried
+ *   media fetch succeeds but media does not become healthy before reconciliation timeout.
+ */
 
 interface ResourceErrorDiagnostics {
 	eventType: string;
@@ -161,6 +176,15 @@ export class ResourceMonitor {
 	private readonly ownsProvider: boolean;
 	private readonly manageProviderLifecycle: boolean;
 	private started = false;
+	private lifecycleVersion = 0;
+	private pendingRetryTimers = new Map<string, ReturnType<typeof setTimeout>>();
+	private retryInFlight = new Set<string>();
+	private pendingMediaChecks = new Map<
+		string,
+		{
+			cleanup: () => void;
+		}
+	>();
 
 	constructor(config: ResourceMonitorConfig = {}) {
 		const validInjectedProvider = isInstrumentationProvider(
@@ -381,6 +405,7 @@ export class ResourceMonitor {
 		}
 
 		this.container = container;
+		this.lifecycleVersion += 1;
 
 		this.setupMutationObserver();
 		this.scanContainerResources(); // Initial scan of existing resources
@@ -396,6 +421,7 @@ export class ResourceMonitor {
 	 */
 	public stop(): void {
 		if (!this.started) return;
+		this.lifecycleVersion += 1;
 
 		if (this.observer) {
 			this.observer.disconnect();
@@ -414,6 +440,15 @@ export class ResourceMonitor {
 
 		this.retryAttempts.clear();
 		this.retryTargets.clear();
+		this.retryInFlight.clear();
+		for (const timer of this.pendingRetryTimers.values()) {
+			clearTimeout(timer);
+		}
+		this.pendingRetryTimers.clear();
+		for (const pending of this.pendingMediaChecks.values()) {
+			pending.cleanup();
+		}
+		this.pendingMediaChecks.clear();
 		this.containerResources.clear();
 		this.container = null;
 		this.started = false;
@@ -701,6 +736,41 @@ export class ResourceMonitor {
 		}
 	}
 
+	private isLifecycleActive(version: number): boolean {
+		return this.started && this.lifecycleVersion === version;
+	}
+
+	private clearRetryTracking(url: string): void {
+		this.retryAttempts.delete(url);
+		this.retryTargets.delete(url);
+		this.retryInFlight.delete(url);
+	}
+
+	private clearPendingMediaCheck(url: string): void {
+		const pending = this.pendingMediaChecks.get(url);
+		if (!pending) return;
+		pending.cleanup();
+		this.pendingMediaChecks.delete(url);
+	}
+
+	private getRetryTargets(url: string): Set<ResourceElement> {
+		let trackedTargets = this.retryTargets.get(url);
+		if (!trackedTargets) {
+			trackedTargets = new Set<ResourceElement>();
+			this.retryTargets.set(url, trackedTargets);
+		}
+		return trackedTargets;
+	}
+
+	private getPrimaryRetryTarget(url: string): ResourceElement | null {
+		const targets = this.retryTargets.get(url);
+		if (!targets || targets.size === 0) return null;
+		for (const target of targets) {
+			return target;
+		}
+		return null;
+	}
+
 	/**
 	 * Handle successful resource load
 	 */
@@ -712,62 +782,236 @@ export class ResourceMonitor {
 		retryCount: number,
 		wasRetried: boolean,
 	): void {
-		// Dispatch general success event (for any successful load)
-		this.dispatchEvent("pie-resource-load-success", {
+		const detail: ResourceMonitorEventDetail = {
 			url,
 			resourceType: entry.initiatorType,
 			duration,
 			size,
 			retryCount,
 			maxRetries: this.config.maxRetries,
-		});
+		};
+		const isMediaInitiator =
+			entry.initiatorType === "audio" ||
+			entry.initiatorType === "video" ||
+			entry.initiatorType === "source";
 
-		// Log successful retry specifically
-		if (wasRetried) {
-			const shortUrl = this.truncateUrl(url);
-			this.logger.info(
-				`✅ PIE Resource Retry Succeeded!\n` +
-					`   URL: ${shortUrl}\n` +
-					`   Retry Attempt: ${retryCount}\n` +
-					`   Load Time: ${duration.toFixed(2)}ms\n` +
-					`   Result: Resource now available to user`,
-			);
-
-			// Dispatch retry success event (in addition to general success)
-			this.dispatchEvent("pie-resource-retry-success", {
-				url,
-				resourceType: entry.initiatorType,
-				duration,
-				size,
-				retryCount,
-				maxRetries: this.config.maxRetries,
-			});
-			this.dispatchMediaRetryReady(url, {
-				url,
-				resourceType: entry.initiatorType,
-				duration,
-				size,
-				retryCount,
-				maxRetries: this.config.maxRetries,
-			});
-
-			// Clear retry tracking since it succeeded
-			this.retryAttempts.delete(url);
-			this.retryTargets.delete(url);
+		if (wasRetried && isMediaInitiator) {
+			this.reconcileMediaRetrySuccess(url, detail);
+			return;
 		}
+
+		this.dispatchEvent("pie-resource-load-success", detail);
+		if (wasRetried) {
+			this.finalizeRetrySuccess(url, detail);
+		}
+	}
+
+	private resolveMediaTarget(
+		target: ResourceElement,
+	): { mediaEl: HTMLAudioElement | HTMLVideoElement; mediaTag: "audio" | "video" } | null {
+		if (target instanceof HTMLAudioElement) {
+			return { mediaEl: target, mediaTag: "audio" };
+		}
+		if (target instanceof HTMLVideoElement) {
+			return { mediaEl: target, mediaTag: "video" };
+		}
+		if (target instanceof HTMLSourceElement) {
+			const parent = target.parentElement;
+			if (parent instanceof HTMLAudioElement) {
+				return { mediaEl: parent, mediaTag: "audio" };
+			}
+			if (parent instanceof HTMLVideoElement) {
+				return { mediaEl: parent, mediaTag: "video" };
+			}
+		}
+		return null;
+	}
+
+	private resolveMediaTargetsForUrl(url: string): Array<{
+		mediaEl: HTMLAudioElement | HTMLVideoElement;
+		mediaTag: "audio" | "video";
+	}> {
+		const targets = this.retryTargets.get(url);
+		if (!targets || targets.size === 0) return [];
+		const resolved = new Set<HTMLAudioElement | HTMLVideoElement>();
+		const out: Array<{
+			mediaEl: HTMLAudioElement | HTMLVideoElement;
+			mediaTag: "audio" | "video";
+		}> = [];
+		for (const target of targets) {
+			const mediaTarget = this.resolveMediaTarget(target);
+			if (!mediaTarget) continue;
+			const { mediaEl, mediaTag } = mediaTarget;
+			if (resolved.has(mediaEl)) continue;
+			const candidateUrl = mediaEl.currentSrc || mediaEl.src;
+			if (candidateUrl && this.getOriginalUrl(candidateUrl) !== url) continue;
+			resolved.add(mediaEl);
+			out.push({ mediaEl, mediaTag });
+		}
+		return out;
+	}
+
+	private normalizeRetrySuccessResourceType(
+		url: string,
+		resourceType: string,
+	): string {
+		if (resourceType !== "source") return resourceType;
+		const mediaTargets = this.resolveMediaTargetsForUrl(url);
+		if (mediaTargets.length === 0) return resourceType;
+		return mediaTargets[0].mediaTag;
+	}
+
+	private isMediaRetryRecovered(url: string): boolean {
+		const mediaTargets = this.resolveMediaTargetsForUrl(url);
+		if (mediaTargets.length === 0) return false;
+		for (const { mediaEl } of mediaTargets) {
+			const hasError = !!mediaEl.error;
+			const hasNoSource =
+				mediaEl.networkState === HTMLMediaElement.NETWORK_NO_SOURCE;
+			const isReady =
+				mediaEl.readyState >= HTMLMediaElement.HAVE_METADATA;
+			if (!hasError && !hasNoSource && isReady) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private finalizeRetrySuccess(url: string, detail: ResourceMonitorEventDetail): void {
+		if (!this.retryAttempts.has(url)) return;
+		const successDetail: ResourceMonitorEventDetail = {
+			...detail,
+			resourceType: this.normalizeRetrySuccessResourceType(
+				url,
+				detail.resourceType,
+			),
+		};
+		const shortUrl = this.truncateUrl(url);
+		this.logger.info(
+			`✅ PIE Resource Retry Succeeded!\n` +
+				`   URL: ${shortUrl}\n` +
+				`   Retry Attempt: ${successDetail.retryCount}\n` +
+				`   Load Time: ${(successDetail.duration || 0).toFixed(2)}ms\n` +
+				`   Result: Resource now available to user`,
+		);
+		this.dispatchEvent("pie-resource-retry-success", successDetail);
+		this.dispatchMediaRetryReady(url, successDetail);
+		this.clearPendingMediaCheck(url);
+		this.clearRetryTracking(url);
+	}
+
+	private reconcileMediaRetrySuccess(
+		url: string,
+		detail: ResourceMonitorEventDetail,
+	): void {
+		this.clearPendingMediaCheck(url);
+		if (this.isMediaRetryRecovered(url)) {
+			this.dispatchEvent("pie-resource-load-success", detail);
+			this.finalizeRetrySuccess(url, detail);
+			return;
+		}
+		if (this.isDebugEnabled()) {
+			this.logger.debug(
+				`⏳ Waiting for media readiness before retry success: ${this.truncateUrl(url)}`,
+			);
+		}
+		const version = this.lifecycleVersion;
+		const mediaTargets = this.resolveMediaTargetsForUrl(url);
+		const eventHandlers: Array<{
+			mediaEl: HTMLAudioElement | HTMLVideoElement;
+			handler: EventListener;
+		}> = [];
+		const pollTimer = setInterval(() => {
+			if (!this.isLifecycleActive(version)) {
+				this.clearPendingMediaCheck(url);
+				return;
+			}
+			if (!this.retryAttempts.has(url)) {
+				this.clearPendingMediaCheck(url);
+				return;
+			}
+			if (this.isMediaRetryRecovered(url)) {
+				this.dispatchEvent("pie-resource-load-success", detail);
+				this.finalizeRetrySuccess(url, detail);
+			}
+		}, MEDIA_RETRY_RECONCILIATION_POLL_MS);
+		const timeoutTimer = setTimeout(() => {
+			if (!this.isLifecycleActive(version)) {
+				this.clearPendingMediaCheck(url);
+				return;
+			}
+			if (!this.retryAttempts.has(url)) {
+				this.clearPendingMediaCheck(url);
+				return;
+			}
+			this.clearPendingMediaCheck(url);
+			this.handleMediaRetryReconciliationTimeout(url, detail);
+		}, MEDIA_RETRY_RECONCILIATION_TIMEOUT_MS);
+		for (const { mediaEl } of mediaTargets) {
+			const handler: EventListener = () => {
+				if (!this.isLifecycleActive(version)) return;
+				if (!this.retryAttempts.has(url)) return;
+				if (!this.isMediaRetryRecovered(url)) return;
+				this.dispatchEvent("pie-resource-load-success", detail);
+				this.finalizeRetrySuccess(url, detail);
+			};
+			mediaEl.addEventListener("loadedmetadata", handler);
+			mediaEl.addEventListener("canplay", handler);
+			eventHandlers.push({ mediaEl, handler });
+		}
+		this.pendingMediaChecks.set(url, {
+			cleanup: () => {
+				clearInterval(pollTimer);
+				clearTimeout(timeoutTimer);
+				for (const { mediaEl, handler } of eventHandlers) {
+					mediaEl.removeEventListener("loadedmetadata", handler);
+					mediaEl.removeEventListener("canplay", handler);
+				}
+			},
+		});
+	}
+
+	private handleMediaRetryReconciliationTimeout(
+		url: string,
+		detail: ResourceMonitorEventDetail,
+	): void {
+		const shortUrl = this.truncateUrl(url);
+		this.logger.warn(
+			`⚠️  PIE Resource Retry Ready Timeout\n` +
+				`   URL: ${shortUrl}\n` +
+				`   Retry Attempt: ${detail.retryCount}\n` +
+				`   Status: Media did not become healthy after fetch success`,
+		);
+		this.dispatchEvent("pie-resource-retry-failed", {
+			...detail,
+			error: "Media fetch succeeded but did not become ready before timeout",
+		});
+		this.trackInstrumentationError(
+			new Error(
+				`Resource retry reconciliation timed out before media was healthy: ${url}`,
+			),
+			{
+				resourceUrl: url,
+				resourceType: detail.resourceType,
+				retryCount: detail.retryCount,
+				errorType: "MediaRetryReadyTimeout",
+			},
+		);
+		const retryTarget = this.getPrimaryRetryTarget(url);
+		if (retryTarget) {
+			this.retryResourceLoad(retryTarget, url);
+			return;
+		}
+		this.handlePermanentFailure(url, detail.resourceType, detail.retryCount);
 	}
 
 	private dispatchMediaRetryReady(
 		url: string,
 		detail: ResourceMonitorEventDetail,
 	): void {
-		const targets = this.retryTargets.get(url);
-		if (!targets || targets.size === 0) return;
-		for (const target of targets) {
-			const isAudio = target instanceof HTMLAudioElement;
-			const isVideo = target instanceof HTMLVideoElement;
-			if (!isAudio && !isVideo) continue;
-			const mediaTag: "audio" | "video" = isAudio ? "audio" : "video";
+		const mediaTargets = this.resolveMediaTargetsForUrl(url);
+		if (mediaTargets.length === 0) return;
+		for (const { mediaEl, mediaTag } of mediaTargets) {
 			const event = new CustomEvent<MediaRetryReadyDetail>(
 				"pie-media-retry-ready",
 				{
@@ -779,7 +1023,7 @@ export class ResourceMonitor {
 					composed: true,
 				},
 			);
-			target.dispatchEvent(event);
+			mediaEl.dispatchEvent(event);
 		}
 	}
 
@@ -1092,6 +1336,8 @@ export class ResourceMonitor {
 		resourceType: string,
 		retryCount: number,
 	): void {
+		this.clearPendingMediaCheck(url);
+		this.clearRetryTracking(url);
 		if (this.isDebugEnabled()) {
 			const shortUrl = this.truncateUrl(url);
 			this.logger.error(
@@ -1172,69 +1418,17 @@ export class ResourceMonitor {
 	/**
 	 * Retry loading a failed resource with exponential backoff
 	 */
-	private async retryResourceLoad(
+	private performRetryLoadAttempt(
 		element: ResourceElement,
 		originalSrc: string,
-	): Promise<void> {
-		const retryCount = this.retryAttempts.get(originalSrc) || 0;
-		let trackedTargets = this.retryTargets.get(originalSrc);
-		if (!trackedTargets) {
-			trackedTargets = new Set<ResourceElement>();
-			this.retryTargets.set(originalSrc, trackedTargets);
-		}
-		trackedTargets.add(element);
-
-		if (retryCount >= this.config.maxRetries) {
-			this.handlePermanentFailure(
-				originalSrc,
-				element.tagName.toLowerCase(),
-				retryCount,
-			);
-			return;
-		}
-
-		// Calculate backoff delay (exponential)
-		const delay = Math.min(
-			this.config.initialRetryDelay * Math.pow(2, retryCount),
-			this.config.maxRetryDelay,
-		);
-
-		// Log retry schedule
-		this.logRetrySchedule(
-			originalSrc,
-			retryCount,
-			delay,
-			element.tagName.toLowerCase(),
-		);
-
-		// Track retry attempt with instrumentation provider
-		this.trackInstrumentationEvent("pie-resource-retry", {
-			url: originalSrc,
-			attempt: retryCount + 1,
-			delay,
-		});
-
-		// Wait before retrying
-		await new Promise((resolve) => setTimeout(resolve, delay));
-
-		if (this.isDebugEnabled()) {
-			this.logger.debug(
-				`⏱️  Retry wait completed (${delay}ms), attempting reload now...`,
-			);
-		}
-
-		// Increment retry count
-		this.retryAttempts.set(originalSrc, retryCount + 1);
-
-		// Attempt reload based on element type
+		attemptNumber: number,
+	): void {
 		try {
 			if (
 				element instanceof HTMLAudioElement ||
 				element instanceof HTMLVideoElement
 			) {
-				// For media elements, force a fresh request to avoid cache-only replay
-				// failures (e.g. ERR_CACHE_OPERATION_NOT_SUPPORTED in Chromium).
-				const retryUrl = this.withRetryParams(originalSrc, retryCount + 1);
+				const retryUrl = this.withRetryParams(originalSrc, attemptNumber);
 				if (element.src) {
 					element.src = retryUrl;
 				} else {
@@ -1254,7 +1448,7 @@ export class ResourceMonitor {
 					);
 				}
 			} else if (element instanceof HTMLSourceElement) {
-				const retryUrl = this.withRetryParams(originalSrc, retryCount + 1);
+				const retryUrl = this.withRetryParams(originalSrc, attemptNumber);
 				element.src = retryUrl;
 				const parent = element.parentElement;
 				if (
@@ -1265,23 +1459,21 @@ export class ResourceMonitor {
 				}
 				if (this.isDebugEnabled()) {
 					this.logger.debug(
-						`✓ Updated <source> src with cache-busting params and reloaded parent media: retry=${retryCount + 1}`,
+						`✓ Updated <source> src with cache-busting params and reloaded parent media: retry=${attemptNumber}`,
 					);
 				}
 			} else if (element instanceof HTMLImageElement) {
-				// For images, force reload by appending cache-busting parameter
-				element.src = this.withRetryParams(originalSrc, retryCount + 1);
+				element.src = this.withRetryParams(originalSrc, attemptNumber);
 				if (this.isDebugEnabled()) {
 					this.logger.debug(
-						`✓ Updated <img> src with cache-busting params: retry=${retryCount + 1}, t=${Date.now()}`,
+						`✓ Updated <img> src with cache-busting params: retry=${attemptNumber}, t=${Date.now()}`,
 					);
 				}
 			} else if (element instanceof HTMLLinkElement) {
-				// For stylesheets, update href with cache-busting params (avoid clone/replace for Shady DOM compatibility)
-				element.href = this.withRetryParams(originalSrc, retryCount + 1);
+				element.href = this.withRetryParams(originalSrc, attemptNumber);
 				if (this.isDebugEnabled()) {
 					this.logger.debug(
-						`✓ Updated <link> href with cache-busting params: retry=${retryCount + 1}, t=${Date.now()}`,
+						`✓ Updated <link> href with cache-busting params: retry=${attemptNumber}, t=${Date.now()}`,
 					);
 				}
 			}
@@ -1290,9 +1482,9 @@ export class ResourceMonitor {
 				eventType: "retry",
 				resourceUrl: this.getResourceSrc(element) || originalSrc,
 				originalUrl: originalSrc,
-				currentRetries: retryCount + 1,
-				remainingRetries: Math.max(0, this.config.maxRetries - (retryCount + 1)),
-				willRetry: retryCount + 1 < this.config.maxRetries,
+				currentRetries: attemptNumber,
+				remainingRetries: Math.max(0, this.config.maxRetries - attemptNumber),
+				willRetry: attemptNumber < this.config.maxRetries,
 			});
 			if (this.isDebugEnabled()) {
 				this.logger.error(
@@ -1310,6 +1502,63 @@ export class ResourceMonitor {
 				},
 			);
 		}
+	}
+
+	private retryResourceLoad(element: ResourceElement, originalSrc: string): void {
+		this.getRetryTargets(originalSrc).add(element);
+		if (!this.started) return;
+		if (this.retryInFlight.has(originalSrc)) {
+			if (this.isDebugEnabled()) {
+				this.logger.debug(
+					`Retry already scheduled for ${this.truncateUrl(originalSrc)}; skipping duplicate error-triggered schedule`,
+				);
+			}
+			return;
+		}
+		const currentRetries = this.retryAttempts.get(originalSrc) || 0;
+		if (currentRetries >= this.config.maxRetries) {
+			this.handlePermanentFailure(
+				originalSrc,
+				element.tagName.toLowerCase(),
+				currentRetries,
+			);
+			return;
+		}
+		const delay = Math.min(
+			this.config.initialRetryDelay * Math.pow(2, currentRetries),
+			this.config.maxRetryDelay,
+		);
+		const attemptNumber = currentRetries + 1;
+		this.retryInFlight.add(originalSrc);
+		this.retryAttempts.set(originalSrc, attemptNumber);
+		this.logRetrySchedule(
+			originalSrc,
+			currentRetries,
+			delay,
+			element.tagName.toLowerCase(),
+		);
+		this.trackInstrumentationEvent("pie-resource-retry", {
+			url: originalSrc,
+			attempt: attemptNumber,
+			delay,
+		});
+		const version = this.lifecycleVersion;
+		const timer = setTimeout(() => {
+			this.pendingRetryTimers.delete(originalSrc);
+			this.retryInFlight.delete(originalSrc);
+			if (!this.isLifecycleActive(version)) {
+				return;
+			}
+			const retryTarget = this.getPrimaryRetryTarget(originalSrc);
+			if (!retryTarget) return;
+			if (this.isDebugEnabled()) {
+				this.logger.debug(
+					`⏱️  Retry wait completed (${delay}ms), attempting reload now...`,
+				);
+			}
+			this.performRetryLoadAttempt(retryTarget, originalSrc, attemptNumber);
+		}, delay);
+		this.pendingRetryTimers.set(originalSrc, timer);
 	}
 
 	/**

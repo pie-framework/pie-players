@@ -284,8 +284,8 @@ export class AssessmentPlayerDefaultElement
 		const controller = this.controller;
 		if (!controller) return;
 		const sectionController =
-			this.sectionControllerRef ||
-			(this.sectionHost?.firstElementChild as any)?.getSectionController?.();
+			(this.sectionHost?.firstElementChild as any)?.getSectionController?.() ||
+			this.sectionControllerRef;
 		if (!sectionController?.getSession) return;
 		const currentSection = controller.getCurrentSection();
 		if (!currentSection) return;
@@ -326,6 +326,7 @@ export class AssessmentPlayerDefaultElement
 		const controller = this.controller;
 		this.attachInstrumentationBridge();
 		this.innerHTML = "";
+		this.sectionControllerRef = null;
 		const container = document.createElement("div");
 		container.className = "pie-assessment-player-default";
 

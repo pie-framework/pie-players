@@ -470,7 +470,20 @@
 	const loadScopedExternalStyle = async (url: string) => {
 		if (!isBrowser || !url || typeof url !== "string") return;
 		if (document.querySelector(`style[data-pie-style="${url}"]`)) return;
+		if (document.querySelector(`link[data-pie-style-link="${url}"]`)) return;
 		try {
+			const resolvedUrl = new URL(url, window.location.href);
+			const isCrossOrigin = resolvedUrl.origin !== window.location.origin;
+			if (isCrossOrigin) {
+				// Cross-origin stylesheets may block fetch() without CORS headers.
+				// Use a link tag so the browser can apply CSS directly.
+				const link = document.createElement("link");
+				link.setAttribute("rel", "stylesheet");
+				link.setAttribute("href", resolvedUrl.toString());
+				link.setAttribute("data-pie-style-link", url);
+				document.head.appendChild(link);
+				return;
+			}
 			const response = await fetch(url);
 			const cssText = await response.text();
 			const scopedCss = cssText.replace(

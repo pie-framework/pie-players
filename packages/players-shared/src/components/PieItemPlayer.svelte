@@ -8,6 +8,7 @@
 -->
 <script lang="ts">
   import { onDestroy, tick, untrack } from "svelte";
+  import { isInstrumentationProvider } from "../instrumentation/provider-guards.js";
   import type { LoaderConfig } from "../loader-config.js";
   import { DEFAULT_LOADER_CONFIG } from "../loader-config.js";
   import {
@@ -24,6 +25,7 @@
   } from "../pie/correct-response-env.js";
   import { initializePiesFromLoadedBundle } from "../pie/initialization.js";
   import { createPieLogger, isGlobalDebugEnabled } from "../pie/logger.js";
+  import { resolveInstrumentationProvider } from "../pie/instrumentation-provider-resolution.js";
   import { findPieController } from "../pie/scoring.js";
   import type { AuthoringEnv } from "../pie/types.js";
   import { BundleType } from "../pie/types.js";
@@ -102,6 +104,7 @@
   let assetEventManager: AssetEventManager | null = $state(null);
   let authoringBlockedError: string | null = $state(null);
   let lastReportedAuthoringError: string | null = $state(null);
+  let runtimePlayerError: string | null = $state(null);
 
   // Transform markup for authoring mode (append -config suffix)
   function transformMarkupForAuthoring(
@@ -143,6 +146,57 @@
     return passageConfig.markup;
   });
 
+  function normalizePlayerErrorDetail(
+    detail: unknown,
+    fallbackCode = "ITEM_PLAYER_RUNTIME_ERROR"
+  ) {
+    if (detail && typeof detail === "object") {
+      const detailObject = detail as Record<string, unknown>;
+      const message =
+        typeof detailObject.message === "string" && detailObject.message.trim().length > 0
+          ? detailObject.message
+          : "Unknown PIE runtime error";
+      const code =
+        typeof detailObject.code === "string" && detailObject.code.trim().length > 0
+          ? detailObject.code
+          : fallbackCode;
+      return { ...detailObject, message, code };
+    }
+    const message =
+      typeof detail === "string" && detail.trim().length > 0
+        ? detail
+        : "Unknown PIE runtime error";
+    return { code: fallbackCode, message };
+  }
+
+  function trackPlayerError(detail: Record<string, unknown>) {
+    const resolvedProvider = resolveInstrumentationProvider({
+      player: { loaderConfig },
+      component: "pie-item-player",
+      debug: isGlobalDebugEnabled(),
+    });
+    if (!isInstrumentationProvider(resolvedProvider) || !resolvedProvider.isReady()) return;
+    const message =
+      typeof detail.message === "string" ? detail.message : "Unknown PIE runtime error";
+    const code =
+      typeof detail.code === "string" && detail.code.length > 0
+        ? detail.code
+        : "ITEM_PLAYER_RUNTIME_ERROR";
+    resolvedProvider.trackError(new Error(message), {
+      component: "pie-item-player",
+      errorType: code,
+      ...detail,
+    });
+  }
+
+  function reportPlayerError(detail: unknown, fallbackCode = "ITEM_PLAYER_RUNTIME_ERROR") {
+    const normalizedDetail = normalizePlayerErrorDetail(detail, fallbackCode);
+    runtimePlayerError = normalizedDetail.message as string;
+    logger.error("[PieItemPlayer] Runtime error:", normalizedDetail);
+    trackPlayerError(normalizedDetail);
+    dispatch("player-error", normalizedDetail);
+  }
+
   // Dispatch events (will add more as needed)
   const dispatch = (type: string, detail?: any) => {
     // Call callback prop if provided (Svelte 5 pattern)
@@ -175,8 +229,7 @@
   function reportAuthoringErrorOnce(message: string) {
     if (lastReportedAuthoringError === message) return;
     lastReportedAuthoringError = message;
-    logger.error(`[PieItemPlayer] ${message}`);
-    dispatch("player-error", {
+    reportPlayerError({
       code: "AUTHORING_BACKEND_CONFIG_ERROR",
       message,
     });
@@ -390,6 +443,7 @@
     // Wait for DOM to update (markup to render)
     tick().then(async () => {
       try {
+        runtimePlayerError = null;
         logger.debug("[PieItemPlayer] DOM ready, initializing PIE elements");
         logger.debug("[PieItemPlayer] Config:", {
           itemElements: Object.keys(itemConfig.elements || {}),
@@ -667,8 +721,14 @@
         );
         dispatch("load-complete");
       } catch (e: any) {
-        logger.error("[PieItemPlayer] Error initializing:", e);
-        dispatch("player-error", e.message);
+        reportPlayerError(
+          {
+            code: "ITEM_PLAYER_INITIALIZATION_ERROR",
+            message: e instanceof Error ? e.message : String(e),
+            cause: e instanceof Error ? e.stack || e.message : String(e),
+          },
+          "ITEM_PLAYER_INITIALIZATION_ERROR"
+        );
       }
     });
   });
@@ -727,16 +787,60 @@
         if (passageConfig) {
           updatePieElements(passageConfig, session, env, rootElement ?? undefined);
         }
+      } catch (e: any) {
+        reportPlayerError(
+          {
+            code: "ITEM_PLAYER_UPDATE_ERROR",
+            message: e instanceof Error ? e.message : String(e),
+            cause: e instanceof Error ? e.stack || e.message : String(e),
+          },
+          "ITEM_PLAYER_UPDATE_ERROR"
+        );
       } finally {
         isUpdating = false;
       }
     });
   });
 
+  $effect(() => {
+    if (!rootElement) return;
+    const handleControllerError = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      reportPlayerError(customEvent.detail, "PIE_CONTROLLER_RUNTIME_ERROR");
+    };
+    rootElement.addEventListener(
+      "pie-controller-error",
+      handleControllerError as EventListener
+    );
+    return () => {
+      rootElement?.removeEventListener(
+        "pie-controller-error",
+        handleControllerError as EventListener
+      );
+    };
+  });
+
   // Note: Resource monitor cleanup is handled automatically by useResourceMonitor's onDestroy
 </script>
 
 <div class="pie-item-player" bind:this={rootElement}>
+  {#if runtimePlayerError}
+    <div
+      class="pie-player-error"
+      style="
+        padding: 20px;
+        margin: 20px 0;
+        border: 2px solid #d32f2f;
+        border-radius: 4px;
+        background-color: #ffebee;
+        color: #c62828;
+        font-family: sans-serif;
+      "
+    >
+      <h3 style="margin: 0 0 10px 0">Player Error</h3>
+      <p style="margin: 0">{runtimePlayerError}</p>
+    </div>
+  {/if}
   {#if authoringBlockedError}
     <div
       class="pie-player-error"

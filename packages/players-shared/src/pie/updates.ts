@@ -5,7 +5,7 @@
  */
 
 import { mergeObjectsIgnoringNullUndefined } from "../object/index.js";
-import type { ConfigEntity, Env, PieController, PieModel } from "../types/index.js";
+import type { ConfigEntity, Env, PieModel } from "../types/index.js";
 import { createPieLogger, isGlobalDebugEnabled } from "./logger.js";
 import { findPieController } from "./scoring.js";
 import type { PieElement, UpdatePieElementOptions } from "./types.js";
@@ -15,6 +15,67 @@ import { findOrAddSession } from "./utils.js";
 // Create module-level logger (respects global debug flag - pass function for dynamic checking)
 const logger = createPieLogger("pie-updates", () => isGlobalDebugEnabled());
 
+type ControllerErrorDetail = {
+	code: "PIE_CONTROLLER_CONTRACT_ERROR" | "PIE_CONTROLLER_RUNTIME_ERROR";
+	message: string;
+	elementName: string;
+	elementId: string;
+	controllerShape?: string;
+	cause?: string;
+};
+
+const describeControllerShape = (controller: unknown): string => {
+	if (!controller) return "missing";
+	if (typeof controller === "function") return "function";
+	if (typeof controller !== "object") return typeof controller;
+	const keys = Object.keys(controller as Record<string, unknown>);
+	const defaultValue = (controller as Record<string, unknown>).default;
+	const defaultKeys =
+		defaultValue && typeof defaultValue === "object"
+			? Object.keys(defaultValue as Record<string, unknown>)
+			: [];
+	return defaultKeys.length > 0
+		? `object(keys=[${keys.join(",")}],defaultKeys=[${defaultKeys.join(",")}])`
+		: `object(keys=[${keys.join(",")}])`;
+};
+
+const resolveControllerModelFunction = (
+	controller: unknown,
+): ((model: PieModel, session: any, env: Env, updateSession: any) => unknown) | null => {
+	if (!controller) return null;
+	if (typeof controller === "function") {
+		return controller as (model: PieModel, session: any, env: Env, updateSession: any) => unknown;
+	}
+	if (typeof controller !== "object") return null;
+	const direct = (controller as Record<string, unknown>).model;
+	if (typeof direct === "function") {
+		return (model, sessionData, env, updateSession) =>
+			(direct as Function).call(controller, model, sessionData, env, updateSession);
+	}
+	const fromDefault = (controller as Record<string, unknown>).default;
+	if (fromDefault && typeof fromDefault === "object") {
+		const nested = (fromDefault as Record<string, unknown>).model;
+		if (typeof nested === "function") {
+			return (model, sessionData, env, updateSession) =>
+				(nested as Function).call(fromDefault, model, sessionData, env, updateSession);
+		}
+	}
+	return null;
+};
+
+const emitControllerError = (
+	pieElement: PieElement,
+	detail: ControllerErrorDetail,
+): void => {
+	pieElement.dispatchEvent(
+		new CustomEvent("pie-controller-error", {
+			detail,
+			bubbles: true,
+			composed: true,
+		}),
+	);
+};
+
 /**
  * Helper function to apply controller to element
  * Extracted to eliminate duplication and ensure consistent controller invocation
@@ -23,7 +84,7 @@ const applyControllerToElement = async (
 	element: PieElement,
 	model: PieModel,
 	elementSession: any,
-	controller: PieController,
+	controller: unknown,
 	env: Env,
 	logPrefix: string,
 ): Promise<void> => {
@@ -45,18 +106,25 @@ const applyControllerToElement = async (
 	};
 
 	try {
-		const controllerResult = await (controller as any).model(
-			model,
-			elementSession,
-			env,
-			updateSession,
-		);
+		const modelFunction = resolveControllerModelFunction(controller);
+		if (!modelFunction) {
+			throw new Error(
+				`Controller contract mismatch: expected a model() function but received ${describeControllerShape(
+					controller,
+				)}`,
+			);
+		}
+		const controllerResult = await modelFunction(model, elementSession, env, updateSession);
 
 		// Merge controller result with id and element (like server-side PieControllerExecutor does)
+		const controllerResultObject =
+			controllerResult && typeof controllerResult === "object"
+				? (controllerResult as Record<string, unknown>)
+				: {};
 		const filteredModel = {
 			id: model.id,
 			element: model.element,
-			...controllerResult,
+			...controllerResultObject,
 		};
 
 		logger.debug(`${logPrefix} ✅ Controller filtered model:`, {
@@ -150,10 +218,24 @@ const updateSinglePieElement = (
 			env,
 			`${logContext}(${controllerLookupTag}#${pieElement.id})`,
 		).catch((err) => {
+			const errorMessage = err instanceof Error ? err.message : String(err);
+			const isContractError = errorMessage.includes(
+				"Controller contract mismatch",
+			);
 			logger.error(
 				`${logContext} Controller failed for ${controllerLookupTag}#${pieElement.id}:`,
 				err,
 			);
+			emitControllerError(pieElement, {
+				code: isContractError
+					? "PIE_CONTROLLER_CONTRACT_ERROR"
+					: "PIE_CONTROLLER_RUNTIME_ERROR",
+				message: `${controllerLookupTag} controller failed while applying model for ${pieElement.id}. ${errorMessage}`,
+				elementName: controllerLookupTag,
+				elementId: pieElement.id,
+				controllerShape: describeControllerShape(controller),
+				cause: errorMessage,
+			});
 			// Fall back to raw model on controller error
 			pieElement.model = model;
 			pieElement.session = elementSession;

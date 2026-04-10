@@ -36,6 +36,14 @@ import matchListDefault from "./match-list-default";
 import mathInlineDefault from "./math-inline-default";
 import mathTemplatedDefault from "./math-templated-default";
 import matrixDefault from "./matrix-default";
+import mcPopulatedBlankVariantSelR1Gplusggg from "./mc-populated-blank-variant-sel-r1-gplusggg";
+import mcPopulatedBlankVariantSelR1GStem from "./mc-populated-blank-variant-sel-r1-g-stem";
+import mcPopulatedBlankVariantSelR1GgPlus from "./mc-populated-blank-variant-sel-r1-gg-plus";
+import mcPopulatedBlankVariantSelR1Ggplus from "./mc-populated-blank-variant-sel-r1-ggplus";
+import mcPopulatedBlankVariantSelR1Plusggg from "./mc-populated-blank-variant-sel-r1-plusggg";
+import mcPopulatedBlankVariantSelR1S3 from "./mc-populated-blank-variant-sel-r1-s3";
+import mcPopulatedBlankVariantSelVic from "./mc-populated-blank-variant-sel-vic";
+import mcPopulatedBlankVariantSrVic from "./mc-populated-blank-variant-sr-vic";
 import multiTraitRubricDefault from "./multi-trait-rubric-default";
 import multipleChoiceBasicCheckbox from "./multiple-choice-basic-checkbox";
 import multipleChoiceMathAlgebraQuadratic from "./multiple-choice-math-algebra-quadratic";
@@ -90,6 +98,14 @@ const importedDemos: DemoInfo[] = [
 	mathInlineDefault,
 	mathTemplatedDefault,
 	matrixDefault,
+	mcPopulatedBlankVariantSelR1Gplusggg,
+	mcPopulatedBlankVariantSelR1GStem,
+	mcPopulatedBlankVariantSelR1GgPlus,
+	mcPopulatedBlankVariantSelR1Ggplus,
+	mcPopulatedBlankVariantSelR1Plusggg,
+	mcPopulatedBlankVariantSelR1S3,
+	mcPopulatedBlankVariantSelVic,
+	mcPopulatedBlankVariantSrVic,
 	multiTraitRubricDefault,
 	multipleChoiceBasicCheckbox,
 	multipleChoiceMathAlgebraQuadratic,

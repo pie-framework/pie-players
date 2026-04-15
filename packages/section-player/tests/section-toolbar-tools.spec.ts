@@ -309,9 +309,10 @@ test.describe("section toolbar tools", () => {
 		expect(movedByKeyboard.x).toBeLessThanOrEqual(resized.x);
 	});
 
-	test("exposes split divider semantics and keyboard resizing in splitpane layout", async ({
+	test("exposes default split divider semantics and keyboard resizing in splitpane layout", async ({
 		page,
 	}) => {
+		await page.setViewportSize({ width: 1280, height: 900 });
 		await gotoDemo(page);
 
 		const divider = page.getByRole("separator", {
@@ -319,8 +320,14 @@ test.describe("section toolbar tools", () => {
 		});
 		await expect(divider).toBeVisible();
 		await expect(divider).toHaveAttribute("aria-orientation", "vertical");
-		await expect(divider).toHaveAttribute("aria-valuemin", "20");
-		await expect(divider).toHaveAttribute("aria-valuemax", "80");
+		const minValue = Number(await divider.getAttribute("aria-valuemin"));
+		const maxValue = Number(await divider.getAttribute("aria-valuemax"));
+		expect(Number.isFinite(minValue)).toBe(true);
+		expect(Number.isFinite(maxValue)).toBe(true);
+		expect(minValue).toBe(20);
+		expect(maxValue).toBe(80);
+		expect(maxValue).toBeGreaterThan(minValue);
+		expect(Math.abs(minValue + maxValue - 100)).toBeLessThanOrEqual(0.6);
 
 		const controlledPaneId = await divider.getAttribute("aria-controls");
 		expect(controlledPaneId).toBeTruthy();
@@ -332,8 +339,123 @@ test.describe("section toolbar tools", () => {
 		await page.keyboard.press("ArrowRight");
 		await expect(divider).toHaveAttribute("aria-valuenow", "55");
 		await page.keyboard.press("End");
-		await expect(divider).toHaveAttribute("aria-valuenow", "80");
+		await expect(divider).toHaveAttribute("aria-valuenow", String(Math.round(maxValue)));
 		await page.keyboard.press("Home");
-		await expect(divider).toHaveAttribute("aria-valuenow", "20");
+		await expect(divider).toHaveAttribute("aria-valuenow", String(Math.round(minValue)));
+
+		const itemsPaneId = String(controlledPaneId).replace(/-passages$/, "-items");
+		const paneWidthsAtMin = await page.evaluate(
+			({ passagesId, itemsId }) => {
+				const passagesPane = document.querySelector<HTMLElement>(`#${passagesId}`);
+				const itemsPane = document.querySelector<HTMLElement>(`#${itemsId}`);
+				if (!passagesPane || !itemsPane) {
+					throw new Error("Expected split panes were not found");
+				}
+				const passagesRect = passagesPane.getBoundingClientRect();
+				const itemsRect = itemsPane.getBoundingClientRect();
+				return {
+					passagesWidth: passagesRect.width,
+					itemsWidth: itemsRect.width,
+				};
+			},
+			{ passagesId: String(controlledPaneId), itemsId: itemsPaneId },
+		);
+		const narrowerAtMin = Math.min(
+			paneWidthsAtMin.passagesWidth,
+			paneWidthsAtMin.itemsWidth,
+		);
+		expect(narrowerAtMin).toBeGreaterThanOrEqual(220);
+
+		await page.keyboard.press("End");
+		const paneWidthsAtMax = await page.evaluate(
+			({ passagesId, itemsId }) => {
+				const passagesPane = document.querySelector<HTMLElement>(`#${passagesId}`);
+				const itemsPane = document.querySelector<HTMLElement>(`#${itemsId}`);
+				if (!passagesPane || !itemsPane) {
+					throw new Error("Expected split panes were not found");
+				}
+				const passagesRect = passagesPane.getBoundingClientRect();
+				const itemsRect = itemsPane.getBoundingClientRect();
+				return {
+					passagesWidth: passagesRect.width,
+					itemsWidth: itemsRect.width,
+				};
+			},
+			{ passagesId: String(controlledPaneId), itemsId: itemsPaneId },
+		);
+		const narrowerAtMax = Math.min(
+			paneWidthsAtMax.passagesWidth,
+			paneWidthsAtMax.itemsWidth,
+		);
+		expect(narrowerAtMax).toBeGreaterThanOrEqual(220);
+	});
+
+	test("honors configured split-pane minimum region width", async ({ page }) => {
+		await page.setViewportSize({ width: 1280, height: 900 });
+		await gotoDemo(page);
+		await page.locator("pie-section-player-splitpane").first().evaluate((element) => {
+			const host = element as HTMLElement & {
+				splitPaneMinRegionWidth?: number;
+			};
+			host.splitPaneMinRegionWidth = 280;
+			host.setAttribute("split-pane-min-region-width", "280");
+		});
+
+		const divider = page.getByRole("separator", {
+			name: "Resize passages and items panels",
+		});
+		await expect(divider).toBeVisible();
+		const minValue = Number(await divider.getAttribute("aria-valuemin"));
+		const maxValue = Number(await divider.getAttribute("aria-valuemax"));
+		expect(minValue).toBeGreaterThan(20);
+		expect(maxValue).toBeLessThan(80);
+		expect(Math.abs(minValue + maxValue - 100)).toBeLessThanOrEqual(0.6);
+
+		const controlledPaneId = await divider.getAttribute("aria-controls");
+		expect(controlledPaneId).toBeTruthy();
+		const itemsPaneId = String(controlledPaneId).replace(/-passages$/, "-items");
+
+		await divider.focus();
+		await page.keyboard.press("Home");
+		const widthsAtMin = await page.evaluate(
+			({ passagesId, itemsId }) => {
+				const passagesPane = document.querySelector<HTMLElement>(`#${passagesId}`);
+				const itemsPane = document.querySelector<HTMLElement>(`#${itemsId}`);
+				if (!passagesPane || !itemsPane) {
+					throw new Error("Expected split panes were not found");
+				}
+				const passagesRect = passagesPane.getBoundingClientRect();
+				const itemsRect = itemsPane.getBoundingClientRect();
+				return {
+					passagesWidth: passagesRect.width,
+					itemsWidth: itemsRect.width,
+				};
+			},
+			{ passagesId: String(controlledPaneId), itemsId: itemsPaneId },
+		);
+		expect(Math.min(widthsAtMin.passagesWidth, widthsAtMin.itemsWidth)).toBeGreaterThanOrEqual(
+			270,
+		);
+
+		await page.keyboard.press("End");
+		const widthsAtMax = await page.evaluate(
+			({ passagesId, itemsId }) => {
+				const passagesPane = document.querySelector<HTMLElement>(`#${passagesId}`);
+				const itemsPane = document.querySelector<HTMLElement>(`#${itemsId}`);
+				if (!passagesPane || !itemsPane) {
+					throw new Error("Expected split panes were not found");
+				}
+				const passagesRect = passagesPane.getBoundingClientRect();
+				const itemsRect = itemsPane.getBoundingClientRect();
+				return {
+					passagesWidth: passagesRect.width,
+					itemsWidth: itemsRect.width,
+				};
+			},
+			{ passagesId: String(controlledPaneId), itemsId: itemsPaneId },
+		);
+		expect(Math.min(widthsAtMax.passagesWidth, widthsAtMax.itemsWidth)).toBeGreaterThanOrEqual(
+			270,
+		);
 	});
 });

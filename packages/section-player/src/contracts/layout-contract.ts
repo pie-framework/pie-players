@@ -20,6 +20,9 @@ export type SectionPlayerBasicPropName =
 	| "showToolbar"
 	| "toolbarPosition"
 	| "narrowLayoutBreakpoint"
+	| "contentMaxWidthNoPassage"
+	| "contentMaxWidthWithPassage"
+	| "splitPaneMinRegionWidth"
 	| "enabledTools"
 	| "itemToolbarTools"
 	| "passageToolbarTools";

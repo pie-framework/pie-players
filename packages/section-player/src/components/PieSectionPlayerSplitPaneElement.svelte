@@ -33,6 +33,18 @@
 			hooks: { type: "Object", reflect: false },
 			frameworkErrorHook: { type: "Object", reflect: false },
 			narrowLayoutBreakpoint: { attribute: "narrow-layout-breakpoint", type: "Number" },
+			contentMaxWidthNoPassage: {
+				attribute: "content-max-width-no-passage",
+				type: "Number",
+			},
+			contentMaxWidthWithPassage: {
+				attribute: "content-max-width-with-passage",
+				type: "Number",
+			},
+			splitPaneMinRegionWidth: {
+				attribute: "split-pane-min-region-width",
+				type: "Number",
+			},
 		},
 	}}
 />
@@ -71,6 +83,61 @@
 	const DEFAULT_NARROW_BREAKPOINT_PX = 1100;
 	const NARROW_BREAKPOINT_MIN_PX = 400;
 	const NARROW_BREAKPOINT_MAX_PX = 2000;
+	const CONTENT_MAX_WIDTH_MIN_PX = 320;
+	const CONTENT_MAX_WIDTH_MAX_PX = 2200;
+	const SPLIT_PANE_MIN_REGION_MIN_PX = 160;
+	const SPLIT_PANE_MIN_REGION_MAX_PX = 1200;
+	const SPLIT_DIVIDER_TRACK_REM = 0.5;
+	const SPLIT_LEFT_PERCENT_MIN = 20;
+	const SPLIT_LEFT_PERCENT_MAX = 80;
+
+	type SplitBounds = {
+		min: number;
+		max: number;
+	};
+
+	function resolveConfiguredPx(
+		value: unknown,
+		min: number,
+		max: number,
+	): number | undefined {
+		if (value === undefined || value === null || value === "") return undefined;
+		const num = typeof value === "number" ? value : Number(value);
+		if (!Number.isFinite(num)) return undefined;
+		return Math.max(min, Math.min(max, num));
+	}
+
+	function clampSplitWidth(next: number, bounds: SplitBounds): number {
+		return Math.max(bounds.min, Math.min(bounds.max, next));
+	}
+
+	function getDividerTrackPx(container: HTMLElement): number {
+		const fontSizePx = Number.parseFloat(getComputedStyle(container).fontSize || "16");
+		const safeFontSizePx = Number.isFinite(fontSizePx) && fontSizePx > 0 ? fontSizePx : 16;
+		return safeFontSizePx * SPLIT_DIVIDER_TRACK_REM;
+	}
+
+	function computeSplitBounds(
+		container: HTMLElement,
+		minRegionWidthPx: number,
+	): SplitBounds {
+		const containerWidthPx = container.clientWidth;
+		if (!Number.isFinite(containerWidthPx) || containerWidthPx <= 0) {
+			return { min: SPLIT_LEFT_PERCENT_MIN, max: SPLIT_LEFT_PERCENT_MAX };
+		}
+		const dividerTrackPx = getDividerTrackPx(container);
+		const usableWidthPx = Math.max(0, containerWidthPx - dividerTrackPx);
+		if (usableWidthPx <= 0) {
+			return { min: 50, max: 50 };
+		}
+		const rawMinPercent = (minRegionWidthPx / usableWidthPx) * 100;
+		if (!Number.isFinite(rawMinPercent) || rawMinPercent >= 50) {
+			return { min: 50, max: 50 };
+		}
+		const min = Math.max(SPLIT_LEFT_PERCENT_MIN, rawMinPercent);
+		const max = Math.min(SPLIT_LEFT_PERCENT_MAX, Math.max(min, 100 - min));
+		return { min, max };
+	}
 
 	let {
 		assessmentId,
@@ -104,6 +171,9 @@
 			| undefined
 			| ((errorModel: Record<string, unknown>) => void),
 		narrowLayoutBreakpoint = undefined as number | undefined,
+		contentMaxWidthNoPassage = undefined as number | undefined,
+		contentMaxWidthWithPassage = undefined as number | undefined,
+		splitPaneMinRegionWidth = undefined as number | undefined,
 	} = $props();
 
 	const clampedBreakpoint = $derived.by(() => {
@@ -117,6 +187,7 @@
 	});
 
 	let leftPanelWidth = $state(50);
+	let splitBounds = $state<SplitBounds>({ min: 20, max: 80 });
 	let splitContainerElement = $state<HTMLDivElement | null>(null);
 	let anchor = $state<HTMLDivElement | null>(null);
 	let kernelRef = $state<SectionPlayerRuntimeHostContract | null>(null);
@@ -128,6 +199,30 @@
 	const passagesPaneId = $derived(`${paneIdBase}-passages`);
 	const itemsPaneId = $derived(`${paneIdBase}-items`);
 	const splitDividerValueText = $derived(`${Math.round(leftPanelWidth)}% passages width`);
+	const configuredContentMaxWidthNoPassagePx = $derived.by(() =>
+		resolveConfiguredPx(
+			contentMaxWidthNoPassage,
+			CONTENT_MAX_WIDTH_MIN_PX,
+			CONTENT_MAX_WIDTH_MAX_PX,
+		)
+	);
+	const configuredContentMaxWidthWithPassagePx = $derived.by(() => {
+		const withPassage = resolveConfiguredPx(
+			contentMaxWidthWithPassage,
+			CONTENT_MAX_WIDTH_MIN_PX,
+			CONTENT_MAX_WIDTH_MAX_PX,
+		);
+		if (withPassage === undefined) return undefined;
+		if (configuredContentMaxWidthNoPassagePx === undefined) return withPassage;
+		return Math.max(configuredContentMaxWidthNoPassagePx, withPassage);
+	});
+	const configuredSplitPaneMinRegionWidthPx = $derived.by(() =>
+		resolveConfiguredPx(
+			splitPaneMinRegionWidth,
+			SPLIT_PANE_MIN_REGION_MIN_PX,
+			SPLIT_PANE_MIN_REGION_MAX_PX,
+		)
+	);
 	const instrumentationProvider = $derived.by(() =>
 		resolveInstrumentationProvider({
 			runtimePlayer: runtime?.player,
@@ -158,6 +253,32 @@
 		return () => query.removeEventListener("change", update);
 	});
 
+	$effect(() => {
+		const container = splitContainerElement;
+		const minRegionWidthPx = configuredSplitPaneMinRegionWidthPx;
+		if (typeof window === "undefined" || !container || typeof ResizeObserver === "undefined") {
+			return;
+		}
+		if (minRegionWidthPx === undefined) {
+			const defaultBounds = {
+				min: SPLIT_LEFT_PERCENT_MIN,
+				max: SPLIT_LEFT_PERCENT_MAX,
+			} satisfies SplitBounds;
+			splitBounds = defaultBounds;
+			leftPanelWidth = clampSplitWidth(leftPanelWidth, defaultBounds);
+			return;
+		}
+		const updateBounds = () => {
+			const nextBounds = computeSplitBounds(container, minRegionWidthPx);
+			splitBounds = nextBounds;
+			leftPanelWidth = clampSplitWidth(leftPanelWidth, nextBounds);
+		};
+		updateBounds();
+		const resizeObserver = new ResizeObserver(() => updateBounds());
+		resizeObserver.observe(container);
+		return () => resizeObserver.disconnect();
+	});
+
 	function forward(event: Event) {
 		const customEvent = event as CustomEvent;
 		dispatch(customEvent.type, customEvent.detail);
@@ -168,7 +289,7 @@
 		const detail = (event as CustomEvent<{ value: number }>).detail;
 		const next = Number(detail?.value);
 		if (Number.isNaN(next)) return;
-		leftPanelWidth = Math.max(20, Math.min(80, next));
+		leftPanelWidth = clampSplitWidth(next, splitBounds);
 	}
 
 	export function getSnapshot(): SectionPlayerSnapshot | null {
@@ -285,6 +406,8 @@
 			{layoutModel}
 			{itemToolbarTools}
 			{passageToolbarTools}
+			contentMaxWidthNoPassagePx={configuredContentMaxWidthNoPassagePx}
+			contentMaxWidthWithPassagePx={configuredContentMaxWidthWithPassagePx}
 			toolRegistry={layoutModel.toolRegistry}
 			itemHostButtons={layoutModel.itemHostButtons}
 			passageHostButtons={layoutModel.passageHostButtons}
@@ -293,67 +416,82 @@
 		/>
 	{:else}
 		<div
-			class={`pie-section-player-split-content ${layoutModel.passages.length === 0 ? "pie-section-player-split-content--no-passages" : ""}`}
-			bind:this={splitContainerElement}
-			style={layoutModel.passages.length === 0
-				? "grid-template-columns: 1fr"
-				: `grid-template-columns: ${leftPanelWidth}% 0.5rem ${100 - leftPanelWidth - 0.5}%`}
+			class="pie-section-player-split-frame"
+			style={`--pie-section-player-layout-max-width: ${
+				layoutModel.passages.length === 0
+					? (configuredContentMaxWidthNoPassagePx !== undefined
+						? `${configuredContentMaxWidthNoPassagePx}px`
+						: "none")
+					: (configuredContentMaxWidthWithPassagePx !== undefined
+						? `${configuredContentMaxWidthWithPassagePx}px`
+						: "none")
+			};`}
 		>
-			{#if layoutModel.passages.length > 0}
-				<!-- svelte-ignore a11y_no_noninteractive_tabindex scrollable pane needs keyboard focus -->
-				<aside
-					id={passagesPaneId}
-					class="pie-section-player-passages-pane"
-					aria-label="Passages"
-					tabindex="0"
+			<div
+				class={`pie-section-player-split-content ${layoutModel.passages.length === 0 ? "pie-section-player-split-content--no-passages" : ""}`}
+				bind:this={splitContainerElement}
+				style={layoutModel.passages.length === 0
+					? "grid-template-columns: 1fr"
+					: `grid-template-columns: minmax(0, calc((100% - 0.5rem) * ${leftPanelWidth / 100})) 0.5rem minmax(0, calc((100% - 0.5rem) * ${(100 - leftPanelWidth) / 100}))`}
+			>
+				{#if layoutModel.passages.length > 0}
+					<!-- svelte-ignore a11y_no_noninteractive_tabindex scrollable pane needs keyboard focus -->
+					<aside
+						id={passagesPaneId}
+						class="pie-section-player-passages-pane"
+						aria-label="Passages"
+						tabindex="0"
+					>
+						<pie-section-player-passages-pane
+							passages={layoutModel.passages}
+							elementsLoaded={layoutModel.paneElementsLoaded}
+							resolvedPlayerEnv={layoutModel.resolvedPlayerEnv}
+							resolvedPlayerAttributes={layoutModel.resolvedPlayerAttributes}
+							resolvedPlayerProps={layoutModel.resolvedPlayerProps}
+							playerStrategy={layoutModel.playerStrategy}
+							passageToolbarTools={passageToolbarTools}
+							toolRegistry={layoutModel.toolRegistry}
+							hostButtons={layoutModel.passageHostButtons}
+						></pie-section-player-passages-pane>
+					</aside>
+
+					<SectionSplitDivider
+						value={leftPanelWidth}
+						min={splitBounds.min}
+						max={splitBounds.max}
+						ariaLabel="Resize passages and items panels"
+						ariaControls={passagesPaneId}
+						ariaValueText={splitDividerValueText}
+						on:resize-preview={handleSplitResizePreview}
+						on:resize-commit={handleSplitResizePreview}
+					/>
+				{/if}
+
+				<main
+					id={itemsPaneId}
+					class="pie-section-player-items-pane"
+					aria-label="Items"
 				>
-					<pie-section-player-passages-pane
-						passages={layoutModel.passages}
-						elementsLoaded={layoutModel.paneElementsLoaded}
+					<pie-section-player-items-pane
+						items={layoutModel.items}
+						compositionModel={layoutModel.compositionModel}
 						resolvedPlayerEnv={layoutModel.resolvedPlayerEnv}
 						resolvedPlayerAttributes={layoutModel.resolvedPlayerAttributes}
 						resolvedPlayerProps={layoutModel.resolvedPlayerProps}
 						playerStrategy={layoutModel.playerStrategy}
-						passageToolbarTools={passageToolbarTools}
+						itemToolbarTools={itemToolbarTools}
 						toolRegistry={layoutModel.toolRegistry}
-						hostButtons={layoutModel.passageHostButtons}
-					></pie-section-player-passages-pane>
-				</aside>
-
-				<SectionSplitDivider
-					value={leftPanelWidth}
-					ariaLabel="Resize passages and items panels"
-					ariaControls={passagesPaneId}
-					ariaValueText={splitDividerValueText}
-					on:resize-preview={handleSplitResizePreview}
-					on:resize-commit={handleSplitResizePreview}
-				/>
-			{/if}
-
-			<main
-				id={itemsPaneId}
-				class="pie-section-player-items-pane"
-				aria-label="Items"
-			>
-				<pie-section-player-items-pane
-					items={layoutModel.items}
-					compositionModel={layoutModel.compositionModel}
-					resolvedPlayerEnv={layoutModel.resolvedPlayerEnv}
-					resolvedPlayerAttributes={layoutModel.resolvedPlayerAttributes}
-					resolvedPlayerProps={layoutModel.resolvedPlayerProps}
-					playerStrategy={layoutModel.playerStrategy}
-					itemToolbarTools={itemToolbarTools}
-					toolRegistry={layoutModel.toolRegistry}
-					hostButtons={layoutModel.itemHostButtons}
-					iifeBundleHost={iifeBundleHost}
-					preloadedRenderables={layoutModel.preloadedRenderables}
-					preloadedRenderablesSignature={layoutModel.preloadedRenderablesSignature}
-					preloadComponentTag="pie-section-player-splitpane"
-					onelements-loaded-change={layoutModel.onItemsPaneElementsLoaded}
-					onelement-preload-retry={layoutModel.onItemsPanePreloadRetry}
-					onelement-preload-error={layoutModel.onItemsPanePreloadError}
-				></pie-section-player-items-pane>
-			</main>
+						hostButtons={layoutModel.itemHostButtons}
+						iifeBundleHost={iifeBundleHost}
+						preloadedRenderables={layoutModel.preloadedRenderables}
+						preloadedRenderablesSignature={layoutModel.preloadedRenderablesSignature}
+						preloadComponentTag="pie-section-player-splitpane"
+						onelements-loaded-change={layoutModel.onItemsPaneElementsLoaded}
+						onelement-preload-retry={layoutModel.onItemsPanePreloadRetry}
+						onelement-preload-error={layoutModel.onItemsPanePreloadError}
+					></pie-section-player-items-pane>
+				</main>
+			</div>
 		</div>
 	{/if}
 </SectionPlayerLayoutKernel>
@@ -368,10 +506,21 @@
 		overflow: hidden;
 	}
 
+	.pie-section-player-split-frame {
+		width: 100%;
+		max-width: var(--pie-section-player-layout-max-width, none);
+		height: 100%;
+		min-height: 0;
+		max-height: 100%;
+		margin-inline: auto;
+		overflow: hidden;
+	}
+
 	.pie-section-player-split-content {
 		display: grid;
 		gap: 0;
 		min-height: 0;
+		width: 100%;
 		height: 100%;
 		overflow: hidden;
 	}

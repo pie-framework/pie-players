@@ -60,14 +60,33 @@ Both layout elements support:
 - `debug` (boolean-like): verbose debug logging control (`"true"` enables, `"false"`/`"0"` disables)
 - `toolbar-position` (string): `top|right|bottom|left|none`
 - `narrow-layout-breakpoint` (number, optional): viewport width in px below which the layout collapses (split pane: single column; vertical: toolbar moves to top). Clamped to 400–2000; default 1100.
+- `content-max-width-no-passage` (number, optional): max width in px when no passages exist. Clamped to 320–2200. Unset by default (layout uses available width).
+- `content-max-width-with-passage` (number, optional): max width in px when passages are present. Clamped to 320–2200. Unset by default (layout uses available width).
+- `split-pane-min-region-width` (number, optional): splitpane minimum pane width in px. Clamped to 160–1200. Unset by default (legacy split bounds stay at 20–80). (Ignored by vertical layout; supported for API parity.)
 - `show-toolbar` (boolean-like): accepts `true/false` and common string forms (`"true"`, `"false"`, `"1"`, `"0"`, `"yes"`, `"no"`)
 - Host extension props (JS properties only): `toolRegistry`, `sectionHostButtons`, `itemHostButtons`, `passageHostButtons`, `hooks`
 
-When viewport width is within the collapsed range (~1100px and below), inline section
-toolbar positions (`left`/`right`) normalize to `top` so controls remain horizontally
-laid out and easier to access.
+When viewport width is within the collapsed range (~1100px and below), splitpane and
+vertical layout hosts normalize section toolbar placement to `top`. This includes
+`left`, `right`, `bottom`, and `none` values.
 
 `hooks.cardTitleFormatter` remains active across responsive splitpane transitions (split -> stacked and stacked -> split), because title rendering is provided through shared card context rather than layout-specific state.
+
+To opt into PIE-117 dimensions from a host, configure:
+
+```html
+<pie-section-player-splitpane
+  content-max-width-no-passage="800"
+  content-max-width-with-passage="1200"
+  split-pane-min-region-width="280"
+></pie-section-player-splitpane>
+```
+
+Use the same max-width attributes on `pie-section-player-vertical` when you want the same no-passage/with-passage width behavior in vertical mode.
+
+When both max-width attributes are set, the with-passage cap resolves to the greater
+of the two configured values (after clamp), so with-passage mode never ends up narrower
+than no-passage mode.
 
 ### API direction: CE defaults first, JS customization for advanced cases
 
@@ -75,7 +94,9 @@ The intended usage model is:
 
 - **CE props for default/standard flows (roughly 90% use cases)**:
   - `assessment-id`, `section`, `section-id`, `attempt-id`, `debug`
-  - `show-toolbar`, `toolbar-position`, `narrow-layout-breakpoint`, `enabled-tools`, `item-toolbar-tools`, `passage-toolbar-tools`
+  - `show-toolbar`, `toolbar-position`, `narrow-layout-breakpoint`
+  - `content-max-width-no-passage`, `content-max-width-with-passage`, `split-pane-min-region-width`
+  - `enabled-tools`, `item-toolbar-tools`, `passage-toolbar-tools`
 - **JS API for advanced customization**:
   - Get the controller handle via `getSectionController()` or `waitForSectionController()`
   - Listen to `section-controller-ready`

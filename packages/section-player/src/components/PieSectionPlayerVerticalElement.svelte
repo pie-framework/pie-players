@@ -33,6 +33,18 @@
 			hooks: { type: "Object", reflect: false },
 			frameworkErrorHook: { type: "Object", reflect: false },
 			narrowLayoutBreakpoint: { attribute: "narrow-layout-breakpoint", type: "Number" },
+			contentMaxWidthNoPassage: {
+				attribute: "content-max-width-no-passage",
+				type: "Number",
+			},
+			contentMaxWidthWithPassage: {
+				attribute: "content-max-width-with-passage",
+				type: "Number",
+			},
+			splitPaneMinRegionWidth: {
+				attribute: "split-pane-min-region-width",
+				type: "Number",
+			},
 		},
 	}}
 />
@@ -68,6 +80,19 @@
 	const DEFAULT_NARROW_BREAKPOINT_PX = 1100;
 	const NARROW_BREAKPOINT_MIN_PX = 400;
 	const NARROW_BREAKPOINT_MAX_PX = 2000;
+	const CONTENT_MAX_WIDTH_MIN_PX = 320;
+	const CONTENT_MAX_WIDTH_MAX_PX = 2200;
+
+	function resolveConfiguredPx(
+		value: unknown,
+		min: number,
+		max: number,
+	): number | undefined {
+		if (value === undefined || value === null || value === "") return undefined;
+		const num = typeof value === "number" ? value : Number(value);
+		if (!Number.isFinite(num)) return undefined;
+		return Math.max(min, Math.min(max, num));
+	}
 
 	let {
 		assessmentId,
@@ -101,6 +126,11 @@
 			| undefined
 			| ((errorModel: Record<string, unknown>) => void),
 		narrowLayoutBreakpoint = undefined as number | undefined,
+		contentMaxWidthNoPassage = undefined as number | undefined,
+		contentMaxWidthWithPassage = undefined as number | undefined,
+		splitPaneMinRegionWidth: _splitPaneMinRegionWidth = undefined as
+			| number
+			| undefined,
 	} = $props();
 	const dispatch = createEventDispatcher();
 	let anchor = $state<HTMLDivElement | null>(null);
@@ -147,6 +177,23 @@
 	});
 
 	const effectiveToolbarPosition = $derived(isNarrow ? "top" : toolbarPosition);
+	const configuredContentMaxWidthNoPassagePx = $derived.by(() =>
+		resolveConfiguredPx(
+			contentMaxWidthNoPassage,
+			CONTENT_MAX_WIDTH_MIN_PX,
+			CONTENT_MAX_WIDTH_MAX_PX,
+		)
+	);
+	const configuredContentMaxWidthWithPassagePx = $derived.by(() => {
+		const withPassage = resolveConfiguredPx(
+			contentMaxWidthWithPassage,
+			CONTENT_MAX_WIDTH_MIN_PX,
+			CONTENT_MAX_WIDTH_MAX_PX,
+		);
+		if (withPassage === undefined) return undefined;
+		if (configuredContentMaxWidthNoPassagePx === undefined) return withPassage;
+		return Math.max(configuredContentMaxWidthNoPassagePx, withPassage);
+	});
 
 	function forward(event: Event) {
 		const customEvent = event as CustomEvent;
@@ -265,6 +312,8 @@
 		{layoutModel}
 		{itemToolbarTools}
 		{passageToolbarTools}
+		contentMaxWidthNoPassagePx={configuredContentMaxWidthNoPassagePx}
+		contentMaxWidthWithPassagePx={configuredContentMaxWidthWithPassagePx}
 		toolRegistry={layoutModel.toolRegistry}
 		itemHostButtons={layoutModel.itemHostButtons}
 		passageHostButtons={layoutModel.passageHostButtons}

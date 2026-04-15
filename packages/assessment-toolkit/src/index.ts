@@ -289,6 +289,10 @@ export {
 // Text-to-Speech Service
 export type { TTSConfig } from "./services/TTSService.js";
 export { PlaybackState, TTSService } from "./services/TTSService.js";
+export {
+	PIE_TTS_CONTROL_HANDOFF_EVENT,
+	type TTSControlHandoffDetail,
+} from "./services/tts-control-events.js";
 export { BrowserTTSProvider } from "./services/tts/browser-provider.js";
 export type {
 	TTSHostToolbarLayout,

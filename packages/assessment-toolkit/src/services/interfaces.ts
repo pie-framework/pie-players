@@ -249,6 +249,14 @@ export interface TtsServiceApi {
 	stop(): void;
 
 	/**
+	 * Request active TTS controls to hand off/deactivate their UI state.
+	 *
+	 * This is an orchestration hint for TTS tool chrome and does not replace
+	 * playback controls such as stop/pause/resume.
+	 */
+	requestControlHandoff(): void;
+
+	/**
 	 * Seek forward by sentence units
 	 */
 	seekForward(units?: number): Promise<void>;

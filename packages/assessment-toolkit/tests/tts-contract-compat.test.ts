@@ -74,9 +74,10 @@ describe("TTS contract compatibility", () => {
 		expect(withoutSegments.speakSegments).toBeUndefined();
 	});
 
-test("TTSService satisfies seek-capable TtsServiceApi contract", () => {
+	test("TTSService satisfies seek-capable TtsServiceApi contract", () => {
 		const service: TtsServiceApi = new TTSService();
 		expect(typeof service.seekForward).toBe("function");
 		expect(typeof service.seekBackward).toBe("function");
+		expect(typeof service.requestControlHandoff).toBe("function");
 	});
 });

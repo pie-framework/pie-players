@@ -18,6 +18,7 @@
 		connectToolRuntimeContext,
 		connectToolShellContext,
 		DEFAULT_TTS_SPEED_OPTIONS,
+		PIE_TTS_CONTROL_HANDOFF_EVENT,
 		normalizeTTSSpeedOptions,
 		type AssessmentToolkitRegionScopeContext,
 		type AssessmentToolkitRuntimeContext,
@@ -67,6 +68,7 @@
 	let playbackRate = $state(1);
 	let focusedControlIndex = $state(0);
 	let playActionInFlight = $state(false);
+	let handoffInProgress = $state(false);
 	const speedChoices = $derived.by(() => normalizeTTSSpeedOptions(speedOptions));
 
 	const instanceId = `pie-tts-inline-instance-${Math.random().toString(36).slice(2)}`;
@@ -114,6 +116,45 @@
 		focusedControlIndex = 0;
 		controlsVisible = keepControlsVisible;
 		statusMessage = status;
+	}
+
+	function focusTriggerIfPanelHadFocus(hadPanelFocus: boolean): void {
+		if (!containerEl || !hadPanelFocus) return;
+		const root = containerEl.getRootNode();
+		if (!(root instanceof ShadowRoot)) return;
+		const triggerButton = root.querySelector(
+			'.pie-tool-tts-inline__trigger',
+		) as HTMLButtonElement | null;
+		triggerButton?.focus();
+	}
+
+	function handleProgrammaticControlHandoff(
+		status = 'Reading switched to another section',
+		restoreFocus = false,
+	): void {
+		if (handoffInProgress) return;
+		if (!controlsVisible && !isActiveOwner()) return;
+		handoffInProgress = true;
+		try {
+			const hadPanelFocus = (() => {
+				if (!containerEl || !toolbarEl) return false;
+				const root = containerEl.getRootNode();
+				if (!(root instanceof ShadowRoot)) return false;
+				const activeElement = root.activeElement as HTMLElement | null;
+				return Boolean(activeElement && toolbarEl.contains(activeElement));
+			})();
+			if (isActiveOwner()) {
+				releaseActiveOwner();
+			}
+			resetLocalPlaybackUi(status);
+			if (restoreFocus) {
+				queueMicrotask(() => {
+					focusTriggerIfPanelHadFocus(hadPanelFocus);
+				});
+			}
+		} finally {
+			handoffInProgress = false;
+		}
 	}
 
 	$effect(() => {
@@ -175,12 +216,23 @@
 			}>;
 			const { ownerId = null, previousOwnerId = null } = ownerChange.detail || {};
 			if (previousOwnerId === instanceId && ownerId !== instanceId) {
-				resetLocalPlaybackUi('Reading switched to another section');
+				handleProgrammaticControlHandoff('Reading switched to another section');
 			}
 		};
 		window.addEventListener(OWNER_EVENT, ownerListener);
 		return () => {
 			window.removeEventListener(OWNER_EVENT, ownerListener);
+		};
+	});
+
+	$effect(() => {
+		if (!isBrowser) return;
+		const controlHandoffListener = () => {
+			handleProgrammaticControlHandoff('Reading switched to another section', true);
+		};
+		window.addEventListener(PIE_TTS_CONTROL_HANDOFF_EVENT, controlHandoffListener);
+		return () => {
+			window.removeEventListener(PIE_TTS_CONTROL_HANDOFF_EVENT, controlHandoffListener);
 		};
 	});
 

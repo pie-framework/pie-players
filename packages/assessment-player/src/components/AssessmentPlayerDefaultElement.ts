@@ -34,6 +34,15 @@ interface SectionControllerHandle {
 	) => Promise<void>;
 }
 
+interface TtsServiceHandle {
+	stop?: () => void;
+	requestControlHandoff?: () => void;
+}
+
+interface CoordinatorWithTtsService {
+	ttsService?: TtsServiceHandle;
+}
+
 const DEFAULT_SECTION_TAG = "pie-section-player-splitpane";
 const VERTICAL_SECTION_TAG = "pie-section-player-vertical";
 
@@ -200,6 +209,9 @@ export class AssessmentPlayerDefaultElement
 		this.controller = controller;
 		this.unsubscribeController = controller.subscribe((event) => {
 			if (event.type === "assessment-route-changed") {
+				this.cleanupTtsForSectionNavigation(
+					event satisfies AssessmentRouteChangedDetail,
+				);
 				this.dispatch(
 					ASSESSMENT_PLAYER_PUBLIC_EVENTS.routeChanged,
 					event satisfies AssessmentRouteChangedDetail,
@@ -278,6 +290,27 @@ export class AssessmentPlayerDefaultElement
 		return this.sectionPlayerLayout === "vertical"
 			? VERTICAL_SECTION_TAG
 			: DEFAULT_SECTION_TAG;
+	}
+
+	private cleanupTtsForSectionNavigation(
+		route: AssessmentRouteChangedDetail,
+	): void {
+		if (
+			route.currentSectionId &&
+			route.previousSectionId &&
+			route.currentSectionId === route.previousSectionId
+		) {
+			return;
+		}
+		const ttsService = (this.coordinator as CoordinatorWithTtsService | null)
+			?.ttsService;
+		if (!ttsService) return;
+		try {
+			ttsService.stop?.();
+		} catch {}
+		try {
+			ttsService.requestControlHandoff?.();
+		} catch {}
 	}
 
 	private syncCurrentSectionSessionIntoAssessment() {

@@ -1,6 +1,6 @@
 <svelte:options
 	customElement={{
-		tag: "pie-section-player-vertical",
+		tag: "pie-section-player-tabbed",
 		// Use light DOM so item-player/runtime styles can cascade into rendered item content.
 		shadow: "none",
 		props: {
@@ -64,7 +64,7 @@
 	import "./section-player-items-pane-element.js";
 	import "./section-player-passages-pane-element.js";
 	import SectionPlayerLayoutKernel from "./shared/SectionPlayerLayoutKernel.svelte";
-	import SectionPlayerVerticalContent from "./shared/SectionPlayerVerticalContent.svelte";
+	import SectionPlayerTabbedContent from "./shared/SectionPlayerTabbedContent.svelte";
 	import { createEventDispatcher } from "svelte";
 	import type {
 		ToolRegistry,
@@ -144,11 +144,14 @@
 	let anchor = $state<HTMLDivElement | null>(null);
 	let kernelRef = $state<SectionPlayerRuntimeHostContract | null>(null);
 	let isNarrow = $state(false);
+	const paneIdBase = $derived.by(() =>
+		`pie-section-player-tabbed-${(sectionId || attemptId || "default").replace(/[^a-zA-Z0-9_-]/g, "-")}`
+	);
 	const instrumentationProvider = $derived.by(() =>
 		resolveInstrumentationProvider({
 			runtimePlayer: runtime?.player,
 			player,
-			component: "pie-section-player-vertical",
+			component: "pie-section-player-tabbed",
 		}),
 	);
 
@@ -253,7 +256,7 @@
 		return attachInstrumentationEventBridge({
 			host: localHost,
 			instrumentationProvider,
-			component: "pie-section-player-vertical",
+			component: "pie-section-player-tabbed",
 			eventMap: SECTION_INSTRUMENTATION_EVENT_MAP,
 			staticAttributes: {
 				instrumentationLayer: "section",
@@ -299,7 +302,7 @@
 	{hooks}
 	frameworkErrorHook={frameworkErrorHook}
 	playerActionConfig={{
-		stateKey: "__verticalAppliedParams",
+		stateKey: "__tabbedAppliedParams",
 		includeSessionRefInState: false,
 	}}
 	on:readiness-change={forward}
@@ -316,7 +319,7 @@
 	on:element-preload-error={forward}
 	let:layoutModel
 >
-	<SectionPlayerVerticalContent
+	<SectionPlayerTabbedContent
 		{layoutModel}
 		{itemToolbarTools}
 		{passageToolbarTools}
@@ -326,7 +329,8 @@
 		itemHostButtons={layoutModel.itemHostButtons}
 		passageHostButtons={layoutModel.passageHostButtons}
 		{iifeBundleHost}
-		preloadComponentTag="pie-section-player-vertical"
+		preloadComponentTag="pie-section-player-tabbed"
+		idBase={paneIdBase}
 	/>
 </SectionPlayerLayoutKernel>
 

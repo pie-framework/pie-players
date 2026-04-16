@@ -4,6 +4,7 @@ import { demo2Section } from "./demo2-question-passage";
 import { demo3Section } from "./demo3-three-questions";
 import { demo4Section } from "./demo4-tts-ssml";
 import { demo5Section } from "./demo5-resource-observability";
+import { demo6Section } from "./demo6-tabbed-layout";
 
 export interface SectionDemoInfo {
 	id: string;
@@ -465,6 +466,22 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 			"Toolkit tool config enables `textToSpeech` in item and passage placements."
 		],
 		section: demo4Section,
+	},
+	"tabbed-layout": {
+		id: "tabbed-layout",
+		name: "Tabbed Layout",
+		description:
+			"Dedicated passage + three-question demo for tabbed section-player layouts and splitpane tabbed collapse strategy",
+		integrationLevel: 4,
+		integrationTheme: "Tabbed responsive layout",
+		focus:
+			"Exercises passage/items tab switching behavior with a single passage and three items in one section.",
+		whatMakesItTick: [
+			"Includes one passage and at least three items to validate tab navigation end-to-end.",
+			"Uses dedicated bookmarkable subroutes: `/tabbed-layout/tabbed` and `/tabbed-layout/splitpane-tabbed-collapse`.",
+			"Provides both direct `pie-section-player-tabbed` and splitpane tabbed-collapse behavior without query-param toggling.",
+		],
+		section: demo6Section,
 	},
 	"resource-observability": {
 		id: "resource-observability",

@@ -1,5 +1,6 @@
 import "./components/section-player-splitpane-element";
 import "./components/section-player-vertical-element";
+import "./components/section-player-tabbed-element";
 import "./components/section-player-item-card-element";
 import "./components/section-player-passage-card-element";
 import "./components/section-player-items-pane-element";
@@ -30,6 +31,7 @@ export type {
 } from "./contracts/runtime-host-contract.js";
 export {
 	SPLITPANE_LAYOUT_CONTRACT,
+	TABBED_LAYOUT_CONTRACT,
 	VERTICAL_LAYOUT_CONTRACT,
 } from "./contracts/layout-parity-metadata.js";
 export type {

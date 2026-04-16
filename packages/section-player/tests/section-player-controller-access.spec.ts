@@ -2,10 +2,14 @@ import { expect, test } from "@playwright/test";
 
 const SPLIT_DEMO = "/tts-ssml?mode=candidate&layout=splitpane";
 const VERTICAL_DEMO = "/tts-ssml?mode=candidate&layout=vertical";
+const TABBED_DEMO = "/tabbed-layout/tabbed";
 
 async function validateControllerAccess(args: {
 	page: import("@playwright/test").Page;
-	selector: "pie-section-player-splitpane" | "pie-section-player-vertical";
+	selector:
+		| "pie-section-player-splitpane"
+		| "pie-section-player-vertical"
+		| "pie-section-player-tabbed";
 	path: string;
 }) {
 	const { page, selector, path } = args;
@@ -109,6 +113,14 @@ test.describe("section player controller access", () => {
 			page,
 			selector: "pie-section-player-vertical",
 			path: VERTICAL_DEMO,
+		});
+	});
+
+	test("tabbed exposes section controller via JS API", async ({ page }) => {
+		await validateControllerAccess({
+			page,
+			selector: "pie-section-player-tabbed",
+			path: TABBED_DEMO,
 		});
 	});
 });

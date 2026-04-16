@@ -306,7 +306,7 @@ test.describe("section toolbar tools", () => {
 		await header.focus();
 		await page.keyboard.press("ArrowLeft");
 		const movedByKeyboard = await getRect(graphShell);
-		expect(movedByKeyboard.x).toBeLessThanOrEqual(resized.x);
+		expect(movedByKeyboard.x).toBeLessThan(resized.x);
 	});
 
 	test("exposes default split divider semantics and keyboard resizing in splitpane layout", async ({

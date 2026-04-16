@@ -44,6 +44,22 @@ test.describe("section player splitpane reflow", () => {
 					});
 				})
 				.toBe(true);
+
+			const passagePane = page
+				.locator(
+					".pie-section-player-passages-pane, .pie-section-player-passages-section",
+				)
+				.first();
+			if ((await passagePane.count()) > 0) {
+				await expect
+					.poll(async () => {
+						return await passagePane.evaluate((element) => {
+							const el = element as HTMLElement;
+							return el.scrollWidth <= el.clientWidth + 1;
+						});
+					})
+					.toBe(true);
+			}
 		});
 	}
 

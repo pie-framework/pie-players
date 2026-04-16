@@ -45,6 +45,10 @@
 				attribute: "split-pane-min-region-width",
 				type: "Number",
 			},
+			splitPaneCollapseStrategy: {
+				attribute: "split-pane-collapse-strategy",
+				type: "String",
+			},
 		},
 	}}
 />
@@ -60,6 +64,7 @@
 	import "./section-player-items-pane-element.js";
 	import "./section-player-passages-pane-element.js";
 	import SectionPlayerLayoutKernel from "./shared/SectionPlayerLayoutKernel.svelte";
+	import SectionPlayerTabbedContent from "./shared/SectionPlayerTabbedContent.svelte";
 	import SectionPlayerVerticalContent from "./shared/SectionPlayerVerticalContent.svelte";
 	// TS language service false-positive in this workspace: Svelte component has a default export.
 	// @ts-ignore false-positive no-default-export in IDE language service for this import
@@ -174,6 +179,7 @@
 		contentMaxWidthNoPassage = undefined as number | undefined,
 		contentMaxWidthWithPassage = undefined as number | undefined,
 		splitPaneMinRegionWidth = undefined as number | undefined,
+		splitPaneCollapseStrategy = "vertical" as "vertical" | "tabbed" | string,
 	} = $props();
 
 	const clampedBreakpoint = $derived.by(() => {
@@ -222,6 +228,9 @@
 			SPLIT_PANE_MIN_REGION_MIN_PX,
 			SPLIT_PANE_MIN_REGION_MAX_PX,
 		)
+	);
+	const normalizedCollapseStrategy = $derived.by(() =>
+		splitPaneCollapseStrategy === "tabbed" ? "tabbed" : "vertical"
 	);
 	const instrumentationProvider = $derived.by(() =>
 		resolveInstrumentationProvider({
@@ -402,18 +411,34 @@
 	let:layoutModel
 >
 	{#if isStacked}
-		<SectionPlayerVerticalContent
-			{layoutModel}
-			{itemToolbarTools}
-			{passageToolbarTools}
-			contentMaxWidthNoPassagePx={configuredContentMaxWidthNoPassagePx}
-			contentMaxWidthWithPassagePx={configuredContentMaxWidthWithPassagePx}
-			toolRegistry={layoutModel.toolRegistry}
-			itemHostButtons={layoutModel.itemHostButtons}
-			passageHostButtons={layoutModel.passageHostButtons}
-			{iifeBundleHost}
-			preloadComponentTag="pie-section-player-vertical"
-		/>
+		{#if normalizedCollapseStrategy === "tabbed"}
+			<SectionPlayerTabbedContent
+				{layoutModel}
+				{itemToolbarTools}
+				{passageToolbarTools}
+				contentMaxWidthNoPassagePx={configuredContentMaxWidthNoPassagePx}
+				contentMaxWidthWithPassagePx={configuredContentMaxWidthWithPassagePx}
+				toolRegistry={layoutModel.toolRegistry}
+				itemHostButtons={layoutModel.itemHostButtons}
+				passageHostButtons={layoutModel.passageHostButtons}
+				{iifeBundleHost}
+				preloadComponentTag="pie-section-player-splitpane"
+				idBase={`${paneIdBase}-tabbed`}
+			/>
+		{:else}
+			<SectionPlayerVerticalContent
+				{layoutModel}
+				{itemToolbarTools}
+				{passageToolbarTools}
+				contentMaxWidthNoPassagePx={configuredContentMaxWidthNoPassagePx}
+				contentMaxWidthWithPassagePx={configuredContentMaxWidthWithPassagePx}
+				toolRegistry={layoutModel.toolRegistry}
+				itemHostButtons={layoutModel.itemHostButtons}
+				passageHostButtons={layoutModel.passageHostButtons}
+				{iifeBundleHost}
+				preloadComponentTag="pie-section-player-vertical"
+			/>
+		{/if}
 	{:else}
 		<div
 			class="pie-section-player-split-frame"

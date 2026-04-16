@@ -1,6 +1,6 @@
 import type { SectionPlayerPublicEventName } from "./public-events.js";
 
-export type SectionPlayerLayoutName = "splitpane" | "vertical";
+export type SectionPlayerLayoutName = "splitpane" | "vertical" | "tabbed";
 
 export type SectionPlayerLayoutCapability =
 	| "items-pane"
@@ -23,6 +23,7 @@ export type SectionPlayerBasicPropName =
 	| "contentMaxWidthNoPassage"
 	| "contentMaxWidthWithPassage"
 	| "splitPaneMinRegionWidth"
+	| "splitPaneCollapseStrategy"
 	| "enabledTools"
 	| "itemToolbarTools"
 	| "passageToolbarTools";

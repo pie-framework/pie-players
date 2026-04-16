@@ -29,6 +29,10 @@
 			"types": "./dist/pie-section-player.d.ts",
 			"import": "./dist/pie-section-player.js"
 		},
+		"./components/section-player-tabbed-element": {
+			"types": "./dist/pie-section-player.d.ts",
+			"import": "./dist/pie-section-player.js"
+		},
 		"./components/section-player-shell-element": {
 			"types": "./dist/pie-section-player.d.ts",
 			"import": "./dist/pie-section-player.js"

@@ -13,6 +13,7 @@ const RECOMMENDED_BASIC_PROPS = [
 	"contentMaxWidthNoPassage",
 	"contentMaxWidthWithPassage",
 	"splitPaneMinRegionWidth",
+	"splitPaneCollapseStrategy",
 	"enabledTools",
 	"itemToolbarTools",
 	"passageToolbarTools",
@@ -90,6 +91,17 @@ export const SPLITPANE_LAYOUT_CONTRACT: SectionPlayerLayoutContract = {
 export const VERTICAL_LAYOUT_CONTRACT: SectionPlayerLayoutContract = {
 	version: 1,
 	layout: "vertical",
+	props: SHARED_PROPS,
+	recommendedBasicProps: RECOMMENDED_BASIC_PROPS,
+	advancedEscapeHatchProps: ADVANCED_ESCAPE_HATCH_PROPS,
+	events: SHARED_EVENTS,
+	commands: SHARED_COMMANDS,
+	capabilities: SHARED_CAPABILITIES,
+};
+
+export const TABBED_LAYOUT_CONTRACT: SectionPlayerLayoutContract = {
+	version: 1,
+	layout: "tabbed",
 	props: SHARED_PROPS,
 	recommendedBasicProps: RECOMMENDED_BASIC_PROPS,
 	advancedEscapeHatchProps: ADVANCED_ESCAPE_HATCH_PROPS,

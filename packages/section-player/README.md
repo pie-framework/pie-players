@@ -4,6 +4,7 @@ Section rendering package with layout custom elements:
 
 - `pie-section-player-splitpane`
 - `pie-section-player-vertical`
+- `pie-section-player-tabbed`
 
 The package no longer exposes the legacy `pie-section-player` layout orchestration API.
 
@@ -38,6 +39,7 @@ Import the custom-element registration entrypoint in consumers:
 ```ts
 import '@pie-players/pie-section-player/components/section-player-splitpane-element';
 import '@pie-players/pie-section-player/components/section-player-vertical-element';
+import '@pie-players/pie-section-player/components/section-player-tabbed-element';
 import '@pie-players/pie-section-player/components/section-player-item-card-element';
 import '@pie-players/pie-section-player/components/section-player-passage-card-element';
 ```
@@ -63,6 +65,7 @@ Both layout elements support:
 - `content-max-width-no-passage` (number, optional): max width in px when no passages exist. Clamped to 320–2200. Unset by default (layout uses available width).
 - `content-max-width-with-passage` (number, optional): max width in px when passages are present. Clamped to 320–2200. Unset by default (layout uses available width).
 - `split-pane-min-region-width` (number, optional): splitpane minimum pane width in px. Clamped to 160–1200. Unset by default (legacy split bounds stay at 20–80). (Ignored by vertical layout; supported for API parity.)
+- `split-pane-collapse-strategy` (string, optional): splitpane stacked-mode strategy. Supported values: `vertical` (default) and `tabbed`. (Ignored by vertical/tabbed layouts; supported for API parity.)
 - `show-toolbar` (boolean-like): accepts `true/false` and common string forms (`"true"`, `"false"`, `"1"`, `"0"`, `"yes"`, `"no"`)
 - Host extension props (JS properties only): `toolRegistry`, `sectionHostButtons`, `itemHostButtons`, `passageHostButtons`, `hooks`
 
@@ -84,6 +87,36 @@ To opt into PIE-117 dimensions from a host, configure:
 
 Use the same max-width attributes on `pie-section-player-vertical` when you want the same no-passage/with-passage width behavior in vertical mode.
 
+To keep splitpane in stacked mode but switch narrow rendering to tabs:
+
+```html
+<pie-section-player-splitpane
+  narrow-layout-breakpoint="1100"
+  split-pane-collapse-strategy="tabbed"
+></pie-section-player-splitpane>
+```
+
+The dedicated `pie-section-player-tabbed` layout always renders passage/items tabs when passages are present.
+
+### Tab styling hooks
+
+`pie-section-player-tabbed` and splitpane `tabbed` collapse mode expose canonical `pie-*`
+hooks for theming:
+
+- `pie-section-player-tabs`
+- `pie-section-player-tab`
+- `pie-section-player-tab--active`
+- `pie-section-player-tab-panel`
+
+For theme compatibility with existing passage-label patterns, tabs also expose:
+
+- `data-pie-purpose="passage-label"` and alias class `passage-label`
+- `data-pie-purpose="item-label"` and alias class `item-label`
+
+Tab colors/spacing can be themed via CSS variables such as:
+`--pie-section-player-tab-color`, `--pie-section-player-tab-active-color`,
+`--pie-section-player-tab-indicator-color`, and `--pie-section-player-tab-spacing`.
+
 When both max-width attributes are set, the with-passage cap resolves to the greater
 of the two configured values (after clamp), so with-passage mode never ends up narrower
 than no-passage mode.
@@ -95,7 +128,7 @@ The intended usage model is:
 - **CE props for default/standard flows (roughly 90% use cases)**:
   - `assessment-id`, `section`, `section-id`, `attempt-id`, `debug`
   - `show-toolbar`, `toolbar-position`, `narrow-layout-breakpoint`
-  - `content-max-width-no-passage`, `content-max-width-with-passage`, `split-pane-min-region-width`
+  - `content-max-width-no-passage`, `content-max-width-with-passage`, `split-pane-min-region-width`, `split-pane-collapse-strategy`
   - `enabled-tools`, `item-toolbar-tools`, `passage-toolbar-tools`
 - **JS API for advanced customization**:
   - Get the controller handle via `getSectionController()` or `waitForSectionController()`
@@ -363,16 +396,20 @@ Published exports are intentionally minimal:
 - `@pie-players/pie-section-player`
 - `@pie-players/pie-section-player/components/section-player-splitpane-element`
 - `@pie-players/pie-section-player/components/section-player-vertical-element`
+- `@pie-players/pie-section-player/components/section-player-tabbed-element`
 - `@pie-players/pie-section-player/components/section-player-kernel-host-element`
 - `@pie-players/pie-section-player/components/section-player-shell-element`
 - `@pie-players/pie-section-player/components/section-player-item-card-element`
 - `@pie-players/pie-section-player/components/section-player-passage-card-element`
+- `@pie-players/pie-section-player/components/section-player-items-pane-element`
+- `@pie-players/pie-section-player/components/section-player-passages-pane-element`
 - `@pie-players/pie-section-player/contracts/layout-contract`
 - `@pie-players/pie-section-player/contracts/public-events`
 - `@pie-players/pie-section-player/contracts/runtime-host-contract`
 - `@pie-players/pie-section-player/contracts/layout-parity-metadata`
 - `@pie-players/pie-section-player/contracts/host-hooks`
 - `@pie-players/pie-section-player/policies`
+- `@pie-players/pie-section-player/utils/player-preload`
 
 ## Development
 

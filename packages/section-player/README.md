@@ -65,7 +65,7 @@ Both layout elements support:
 - `content-max-width-no-passage` (number, optional): max width in px when no passages exist. Clamped to 320–2200. Unset by default (layout uses available width).
 - `content-max-width-with-passage` (number, optional): max width in px when passages are present. Clamped to 320–2200. Unset by default (layout uses available width).
 - `split-pane-min-region-width` (number, optional): splitpane minimum pane width in px. Clamped to 160–1200. Unset by default (legacy split bounds stay at 20–80). (Ignored by vertical layout; supported for API parity.)
-- `split-pane-collapse-strategy` (string, optional): splitpane stacked-mode strategy. Supported values: `vertical` (default) and `tabbed`. (Ignored by vertical/tabbed layouts; supported for API parity.)
+- `split-pane-collapse-strategy` (string, optional): splitpane stacked-mode strategy. Supported values: `tabbed` (default) and `vertical`. (Ignored by vertical/tabbed layouts; supported for API parity.)
 - `show-toolbar` (boolean-like): accepts `true/false` and common string forms (`"true"`, `"false"`, `"1"`, `"0"`, `"yes"`, `"no"`)
 - Host extension props (JS properties only): `toolRegistry`, `sectionHostButtons`, `itemHostButtons`, `passageHostButtons`, `hooks`
 
@@ -87,16 +87,16 @@ To opt into PIE-117 dimensions from a host, configure:
 
 Use the same max-width attributes on `pie-section-player-vertical` when you want the same no-passage/with-passage width behavior in vertical mode.
 
-To keep splitpane in stacked mode but switch narrow rendering to tabs:
+To force splitpane stacked mode to use vertical rendering:
 
 ```html
 <pie-section-player-splitpane
   narrow-layout-breakpoint="1100"
-  split-pane-collapse-strategy="tabbed"
+  split-pane-collapse-strategy="vertical"
 ></pie-section-player-splitpane>
 ```
 
-The dedicated `pie-section-player-tabbed` layout always renders passage/items tabs when passages are present.
+By default, splitpane stacked mode uses tabs. The dedicated `pie-section-player-tabbed` layout also always renders passage/items tabs when passages are present.
 
 ### Tab styling hooks
 

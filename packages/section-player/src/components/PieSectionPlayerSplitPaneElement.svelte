@@ -179,7 +179,7 @@
 		contentMaxWidthNoPassage = undefined as number | undefined,
 		contentMaxWidthWithPassage = undefined as number | undefined,
 		splitPaneMinRegionWidth = undefined as number | undefined,
-		splitPaneCollapseStrategy = "vertical" as "vertical" | "tabbed" | string,
+		splitPaneCollapseStrategy = "tabbed" as "vertical" | "tabbed" | string,
 	} = $props();
 
 	const clampedBreakpoint = $derived.by(() => {

@@ -199,6 +199,18 @@ test.describe("section toolbar tools", () => {
 		page,
 	}) => {
 		async function expectCustomTitles() {
+			const tablist = page.getByRole("tablist", { name: "Section content tabs" });
+			if ((await tablist.count()) > 0) {
+				await page.getByRole("tab", { name: "Items" }).click();
+				await expect(
+					page.locator(".pie-section-player-item-header h2").first(),
+				).toHaveText("Custom question 1");
+				await page.getByRole("tab", { name: "Passage" }).click();
+				await expect(
+					page.locator(".pie-section-player-passage-header h2").first(),
+				).toHaveText("Custom passage");
+				return;
+			}
 			await expect(page.locator(".pie-section-player-item-header h2").first()).toHaveText(
 				"Custom question 1",
 			);

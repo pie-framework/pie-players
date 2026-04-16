@@ -59,7 +59,7 @@ test.describe("section player tabbed layout", () => {
 		expect(pageErrors).toEqual([]);
 	});
 
-	test("switches splitpane stacked collapse between vertical and tabbed strategies", async ({
+	test("switches splitpane stacked collapse between tabbed and vertical strategies", async ({
 		page,
 	}) => {
 		await page.setViewportSize({ width: 900, height: 900 });
@@ -69,22 +69,21 @@ test.describe("section player tabbed layout", () => {
 
 		const splitHost = page.locator("pie-section-player-splitpane").first();
 		await expect(splitHost).toBeVisible();
-		await expect(page.locator(".pie-section-player-vertical-content").first()).toBeVisible();
-		await expect(page.getByRole("tablist", { name: "Section content tabs" })).toHaveCount(0);
-
-		await splitHost.evaluate((element) => {
-			(element as HTMLElement).setAttribute("split-pane-collapse-strategy", "tabbed");
-		});
 		await expect(page.getByRole("tablist", { name: "Section content tabs" })).toBeVisible();
-		await expect(
-			page.getByRole("separator", { name: "Resize passages and items panels" }),
-		).toHaveCount(0);
 
 		await splitHost.evaluate((element) => {
 			(element as HTMLElement).setAttribute("split-pane-collapse-strategy", "vertical");
 		});
 		await expect(page.getByRole("tablist", { name: "Section content tabs" })).toHaveCount(0);
 		await expect(page.locator(".pie-section-player-vertical-content").first()).toBeVisible();
+		await expect(
+			page.getByRole("separator", { name: "Resize passages and items panels" }),
+		).toHaveCount(0);
+
+		await splitHost.evaluate((element) => {
+			(element as HTMLElement).setAttribute("split-pane-collapse-strategy", "tabbed");
+		});
+		await expect(page.getByRole("tablist", { name: "Section content tabs" })).toBeVisible();
 	});
 
 	test("uses tabbed collapse strategy in dedicated splitpane tabbed demo mode", async ({

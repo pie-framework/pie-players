@@ -64,6 +64,50 @@ describe("makeUniqueTags", () => {
 		expect(out.config.markup).toBe(container.config.markup);
 		expect(out.config.models[0].element).toBe("pie-mc--version-1-2-3");
 	});
+
+	test("keeps prerelease tag unchanged when it already matches package version", () => {
+		const container: ConfigContainerEntity = {
+			id: "item-1",
+			config: {
+				markup:
+					"<pie-mc--version-9-2-0-next-6 id='m1'></pie-mc--version-9-2-0-next-6>",
+				elements: {
+					"pie-mc--version-9-2-0-next-6":
+						"@pie-element/multiple-choice@9.2.0-next.6",
+				},
+				models: [{ id: "m1", element: "pie-mc--version-9-2-0-next-6" }],
+			},
+		};
+
+		const out = makeUniqueTags(container);
+		expect(out.config.elements).toEqual(container.config.elements);
+		expect(out.config.markup).toBe(container.config.markup);
+		expect(out.config.models[0].element).toBe("pie-mc--version-9-2-0-next-6");
+	});
+
+	test("updates prerelease tag when encoded suffix no longer matches package version", () => {
+		const container: ConfigContainerEntity = {
+			id: "item-1",
+			config: {
+				markup:
+					"<pie-mc--version-9-2-0-next-6 id='m1'></pie-mc--version-9-2-0-next-6>",
+				elements: {
+					"pie-mc--version-9-2-0-next-6":
+						"@pie-element/multiple-choice@9.2.0-next.7",
+				},
+				models: [{ id: "m1", element: "pie-mc--version-9-2-0-next-6" }],
+			},
+		};
+
+		const out = makeUniqueTags(container);
+		expect(out.config.elements).toEqual({
+			"pie-mc--version-9-2-0-next-7":
+				"@pie-element/multiple-choice@9.2.0-next.7",
+		});
+		expect(out.config.markup).toContain("<pie-mc--version-9-2-0-next-7");
+		expect(out.config.markup).toContain("</pie-mc--version-9-2-0-next-7>");
+		expect(out.config.models[0].element).toBe("pie-mc--version-9-2-0-next-7");
+	});
 });
 
 describe("addRubricIfNeeded", () => {

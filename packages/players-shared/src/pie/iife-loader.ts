@@ -14,6 +14,12 @@ import { defineCustomElementSafely } from "./custom-element-define.js";
 import { validateCustomElementTag } from "./tag-names.js";
 import { BundleType, isCustomElementConstructor, Status } from "./types.js";
 import { getPackageWithoutVersion } from "./utils.js";
+import {
+	DEFAULT_IIFE_BUNDLE_RETRY_CONFIG,
+	type IifeBundleRetryConfig,
+} from "../loader-config.js";
+import type { InstrumentationProvider } from "../instrumentation/types.js";
+import { isInstrumentationProvider } from "../instrumentation/provider-guards.js";
 
 // Logger factory - will be initialized when loader is created
 let logger: ReturnType<typeof createPieLogger>;
@@ -37,6 +43,35 @@ export interface IifeLoaderConfig {
 	 * Prevents infinite loading hangs.
 	 */
 	whenDefinedTimeoutMs?: number;
+
+	/**
+	 * Retry policy for transient bundle load failures.
+	 */
+	bundleRetry?: IifeBundleRetryConfig;
+
+	/**
+	 * Enable IIFE retry instrumentation events.
+	 */
+	trackPageActions?: boolean;
+
+	/**
+	 * Instrumentation provider used when tracking retry events.
+	 */
+	instrumentationProvider?: InstrumentationProvider;
+
+	/**
+	 * Optional callback that reports active retry/building status.
+	 * Receives `null` when retry mode is no longer active.
+	 */
+	onBundleRetryStatus?: (status: IifeBundleRetryStatus | null) => void;
+}
+
+export interface IifeBundleRetryStatus {
+	url: string;
+	attempt: number;
+	elapsedMs: number;
+	retryDelayMs: number;
+	timeoutMs: number;
 }
 
 // Default PIE bundle service URL.
@@ -214,7 +249,7 @@ export class IifePieLoader {
 
 		this.removePieBundleScripts(args.doc);
 		this.clearActiveBundleState();
-		await this.loadBundleScript(args.bundleUrl, args.doc);
+		await this.loadBundleScriptWithRetry(args.bundleUrl, args.doc);
 		this.ensurePieHelpers().activeBundleUrl = args.bundleUrl;
 
 		const retryDiagnostics = this.buildLoadDiagnostics(args.doc, {
@@ -241,6 +276,66 @@ export class IifePieLoader {
 			() => undefined,
 		);
 		return run;
+	}
+
+	private toErrorMessage(error: unknown): string {
+		if (error instanceof Error) return error.message;
+		return typeof error === "string" ? error : String(error);
+	}
+
+	private getBundleRetryConfig(): Required<IifeBundleRetryConfig> {
+		const configured = this.config.bundleRetry || {};
+		const retryDelayMs =
+			typeof configured.retryDelayMs === "number" && configured.retryDelayMs > 0
+				? configured.retryDelayMs
+				: DEFAULT_IIFE_BUNDLE_RETRY_CONFIG.retryDelayMs;
+		const timeoutMs =
+			typeof configured.timeoutMs === "number" && configured.timeoutMs > 0
+				? configured.timeoutMs
+				: DEFAULT_IIFE_BUNDLE_RETRY_CONFIG.timeoutMs;
+		return { retryDelayMs, timeoutMs };
+	}
+
+	private emitBundleRetryStatus(status: IifeBundleRetryStatus | null): void {
+		try {
+			this.config.onBundleRetryStatus?.(status);
+		} catch (error) {
+			logger.warn("Failed to emit IIFE bundle retry status callback", error);
+		}
+	}
+
+	private getInstrumentationProvider(): InstrumentationProvider | undefined {
+		const provider = this.config.instrumentationProvider;
+		if (!this.config.trackPageActions) return undefined;
+		if (!isInstrumentationProvider(provider)) return undefined;
+		if (!provider.isReady()) return undefined;
+		return provider;
+	}
+
+	private trackRetryEvent(
+		eventName: string,
+		attributes: Record<string, unknown>,
+	): void {
+		const provider = this.getInstrumentationProvider();
+		if (!provider) return;
+		provider.trackEvent(eventName, attributes);
+	}
+
+	private trackRetryError(
+		error: Error,
+		attributes: Record<string, unknown>,
+	): void {
+		const provider = this.getInstrumentationProvider();
+		if (!provider) return;
+		provider.trackError(error, {
+			component: "iife-loader",
+			errorType: "IifeBundleRetryError",
+			...attributes,
+		});
+	}
+
+	private wait(ms: number): Promise<void> {
+		return new Promise((resolve) => setTimeout(resolve, ms));
 	}
 
 	/**
@@ -303,6 +398,86 @@ export class IifePieLoader {
 
 			doc.head.appendChild(script);
 		});
+	}
+
+	private async loadBundleScriptWithRetry(
+		url: string,
+		doc: Document,
+	): Promise<void> {
+		const retryConfig = this.getBundleRetryConfig();
+		const startedAt = Date.now();
+		let attempt = 0;
+
+		while (true) {
+			attempt += 1;
+			try {
+				await this.loadBundleScript(url, doc);
+				const elapsedMs = Date.now() - startedAt;
+				if (attempt > 1) {
+					logger.info(
+						`✅ IIFE bundle load recovered after ${attempt} attempts (${elapsedMs}ms): ${url}`,
+					);
+					this.trackRetryEvent("pie-iife-bundle-retry-success", {
+						url,
+						attempt,
+						elapsedMs,
+						timeoutMs: retryConfig.timeoutMs,
+					});
+				}
+				this.emitBundleRetryStatus(null);
+				return;
+			} catch (error) {
+				const elapsedMs = Date.now() - startedAt;
+				const remainingMs = retryConfig.timeoutMs - elapsedMs;
+				const errorMessage = this.toErrorMessage(error);
+				if (remainingMs <= 0) {
+					const timeoutError = new Error(
+						`IIFE bundle load timed out after ${retryConfig.timeoutMs}ms: ${url}`,
+					);
+					logger.error(
+						`${timeoutError.message}. Last error: ${errorMessage}`,
+					);
+					this.trackRetryEvent("pie-iife-bundle-retry-timeout", {
+						url,
+						attempt,
+						elapsedMs,
+						timeoutMs: retryConfig.timeoutMs,
+						lastError: errorMessage,
+					});
+					this.trackRetryError(timeoutError, {
+						component: "iife-loader",
+						url,
+						attempt,
+						elapsedMs,
+						timeoutMs: retryConfig.timeoutMs,
+						lastError: errorMessage,
+					});
+					this.emitBundleRetryStatus(null);
+					throw timeoutError;
+				}
+
+				const retryDelayMs = Math.min(retryConfig.retryDelayMs, remainingMs);
+				logger.warn(
+					`⚠️ IIFE bundle load failed (attempt ${attempt}); bundle may still be building. Retrying in ${retryDelayMs}ms: ${url}`,
+				);
+				this.trackRetryEvent("pie-iife-bundle-retry", {
+					url,
+					attempt,
+					elapsedMs,
+					retryDelayMs,
+					timeoutMs: retryConfig.timeoutMs,
+					lastError: errorMessage,
+				});
+				this.emitBundleRetryStatus({
+					url,
+					attempt,
+					elapsedMs,
+					retryDelayMs,
+					timeoutMs: retryConfig.timeoutMs,
+				});
+				await this.wait(retryDelayMs);
+			}
+		}
 	}
 
 	private whenDefinedWithTimeout(tagName: string): Promise<void> {
@@ -488,6 +663,7 @@ export class IifePieLoader {
 
 		if (!contentConfig?.elements) {
 			logger.warn("No elements in config");
+			this.emitBundleRetryStatus(null);
 			return;
 		}
 		const elements = Object.fromEntries(
@@ -501,8 +677,10 @@ export class IifePieLoader {
 		) as Record<string, string>;
 		if (Object.keys(elements).length === 0) {
 			logger.debug("No valid element package versions found; skipping bundle load");
+			this.emitBundleRetryStatus(null);
 			return;
 		}
+		this.emitBundleRetryStatus(null);
 
 		const helpers = this.ensurePieHelpers();
 
@@ -543,7 +721,7 @@ export class IifePieLoader {
 			this.removePieBundleScripts(doc);
 			this.clearActiveBundleState();
 
-			await this.loadBundleScript(bundleUrl, doc);
+			await this.loadBundleScriptWithRetry(bundleUrl, doc);
 			this.ensurePieHelpers().activeBundleUrl = bundleUrl;
 
 			await this.registerWithReloadRecovery({

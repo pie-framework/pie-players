@@ -230,28 +230,38 @@ export const makeUniqueTags = <T extends ConfigContainerEntity>(
 	container: T,
 ): T => {
 	const VERSION_DELIMITER = "--version-";
+	const TAG_VERSION_PATTERN = "[0-9A-Za-z-]+";
+	const encodeVersionForTag = (version: string): string =>
+		version
+			.trim()
+			.replace(/[.+]/g, "-")
+			.replace(/[^0-9A-Za-z-]/g, "-")
+			.replace(/-{2,}/g, "-");
 
 	const parseElementName = (
 		elName: string,
-	): { baseName: string; existingVersion?: string } => {
-		const versionMatch = elName.match(`${VERSION_DELIMITER}(\\d+-\\d+-\\d+)$`);
+	): { baseName: string; existingEncodedVersion?: string } => {
+		const versionMatch = elName.match(
+			new RegExp(`${VERSION_DELIMITER}(${TAG_VERSION_PATTERN})$`),
+		);
 		return versionMatch
 			? {
 					baseName: elName.replace(
 						`${VERSION_DELIMITER}${versionMatch[1]}`,
 						"",
 					),
-					existingVersion: versionMatch[1].replace(/-/g, "."),
+					existingEncodedVersion: versionMatch[1],
 				}
 			: { baseName: elName };
 	};
 
 	const createVersionedName = (elName: string, pkg: string): string => {
-		const { baseName, existingVersion } = parseElementName(elName);
+		const { baseName, existingEncodedVersion } = parseElementName(elName);
 		const { version } = parsePackageName(pkg);
+		const targetEncodedVersion = encodeVersionForTag(version);
 
-		if (existingVersion !== version) {
-			return `${baseName}${VERSION_DELIMITER}${version.replace(/\./g, "-")}`;
+		if (existingEncodedVersion !== targetEncodedVersion) {
+			return `${baseName}${VERSION_DELIMITER}${targetEncodedVersion}`;
 		}
 
 		return elName;

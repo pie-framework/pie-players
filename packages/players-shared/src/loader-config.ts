@@ -6,6 +6,18 @@
 
 import type { InstrumentationProvider } from "./instrumentation/types.js";
 
+export type IifeBundleRetryConfig = {
+	/**
+	 * Delay in ms between IIFE bundle retry attempts.
+	 */
+	retryDelayMs?: number;
+
+	/**
+	 * Total timeout in ms before IIFE bundle load retries fail permanently.
+	 */
+	timeoutMs?: number;
+};
+
 export type LoaderConfig = {
 	/**
 	 * Enable tracking page actions/events.
@@ -52,11 +64,25 @@ export type LoaderConfig = {
 	 * Initial delay in ms before first resource retry attempt (exponential backoff).
 	 */
 	resourceRetryDelay?: number;
+
+	/**
+	 * Retry policy for IIFE bundle loads.
+	 *
+	 * Kept separate from resource retry settings so bundle-build polling can be tuned
+	 * independently from media/resource retries.
+	 */
+	iifeBundleRetry?: IifeBundleRetryConfig;
 };
+
+export const DEFAULT_IIFE_BUNDLE_RETRY_CONFIG = {
+	retryDelayMs: 3000,
+	timeoutMs: 120000,
+} as const;
 
 export const DEFAULT_LOADER_CONFIG = {
 	trackPageActions: false,
 	instrumentationProvider: undefined,
 	maxResourceRetries: 3,
 	resourceRetryDelay: 500,
+	iifeBundleRetry: DEFAULT_IIFE_BUNDLE_RETRY_CONFIG,
 } as const;

@@ -32,6 +32,7 @@
 	import type {
 		ConfigEntity,
 		Env,
+		IifeBundleRetryStatus,
 		LoaderConfig,
 	} from "@pie-players/pie-players-shared";
 	import type {
@@ -57,6 +58,7 @@
 		normalizeItemSessionContainer,
 		normalizeItemPlayerStrategy,
 		parsePackageName,
+		resolveInstrumentationProvider,
 		resolveItemPlayerView,
 	} from "@pie-players/pie-players-shared";
 	import { PieItemPlayer as PieItemRenderer, PieSpinner } from "@pie-players/pie-players-shared/components";
@@ -112,6 +114,9 @@
 	const resolvedEsmCdnUrl = $derived(
 		loaderOptions?.esmCdnUrl || "https://cdn.jsdelivr.net/npm",
 	);
+	const loaderRetrySignature = $derived.by(() =>
+		JSON.stringify(loaderConfig?.iifeBundleRetry || {}),
+	);
 
 	const debugEnabled = $derived.by(() => {
 		if (debug !== undefined && debug !== null) {
@@ -132,15 +137,38 @@
 	});
 
 	const logger = createPieLogger("pie-item-player", () => debugEnabled);
+	const resolvedInstrumentationProvider = $derived.by(
+		() =>
+			resolveInstrumentationProvider({
+				player: { loaderConfig },
+				component: "pie-item-player",
+				debug: debugEnabled,
+			}) as LoaderConfig["instrumentationProvider"],
+	);
 
 	let loading = $state(true);
 	let error: string | null = $state(null);
+	let bundleRetryStatus: IifeBundleRetryStatus | null = $state(null);
 	let itemConfig: ConfigEntity | null = $state(null);
 	let hostElement: HTMLElement | null = $state(null);
 	let sessionController: ItemController | null = $state(null);
 	let sessionControllerItemId = $state("pie-item-player");
 	let sessionSignature = $state("");
 	let sessionRevision = $state(0);
+
+	const bundleBuildWarning = $derived.by(() => {
+		const retryState = (bundleRetryStatus as { state?: string } | null)?.state;
+		if (!bundleRetryStatus || retryState !== "retrying") return null;
+		const elapsedSeconds = Math.max(
+			1,
+			Math.ceil(bundleRetryStatus.elapsedMs / 1000),
+		);
+		const timeoutSeconds = Math.max(
+			1,
+			Math.ceil(bundleRetryStatus.timeoutMs / 1000),
+		);
+		return `Bundle is still building. Retrying load attempt ${bundleRetryStatus.attempt} (elapsed ${elapsedSeconds}s of ${timeoutSeconds}s).`;
+	});
 
 	function parseSessionProp(input: unknown): unknown {
 		if (typeof input === "string") {
@@ -223,6 +251,7 @@
 	let lastProcessedConfig: any = null;
 	let lastProcessedStrategy = "";
 	let lastProcessedMode = "";
+	let lastProcessedLoaderRetrySignature = "";
 	let isProcessing = false;
 
 	function shouldAutoSkipElementLoading(configEntity: any): boolean {
@@ -295,7 +324,8 @@
 			isProcessing ||
 			(currentConfig === lastProcessedConfig &&
 				normalizedStrategy === lastProcessedStrategy &&
-				resolvedMode === lastProcessedMode)
+				resolvedMode === lastProcessedMode &&
+				loaderRetrySignature === lastProcessedLoaderRetrySignature)
 		) {
 			return;
 		}
@@ -310,8 +340,10 @@
 		lastProcessedConfig = currentConfig;
 		lastProcessedStrategy = normalizedStrategy;
 		lastProcessedMode = resolvedMode;
+		lastProcessedLoaderRetrySignature = loaderRetrySignature;
 		loading = true;
 		error = null;
+		bundleRetryStatus = null;
 
 		let stage = "start";
 		try {
@@ -376,6 +408,17 @@
 				const iifeLoader = new IifePieLoader({
 					bundleHost: resolvedIifeBundleHost,
 					debugEnabled: () => debugEnabled,
+					bundleRetry: loaderConfig?.iifeBundleRetry,
+					trackPageActions: loaderConfig?.trackPageActions,
+					instrumentationProvider: resolvedInstrumentationProvider,
+					onBundleRetryStatus: (status) => {
+						bundleRetryStatus = status;
+						handlePlayerEvent(
+							new CustomEvent("bundle-retry-status", {
+								detail: status,
+							}),
+						);
+					},
 				});
 				const bundleType =
 					resolvedMode === "author"
@@ -425,10 +468,12 @@
 			itemConfig = transformedConfig;
 			loading = false;
 			error = null;
+			bundleRetryStatus = null;
 		} catch (err: any) {
 			const message = err?.message || String(err);
 			error = `Error loading elements (${stage}): ${message}`;
 			loading = false;
+			bundleRetryStatus = null;
 			logger.error("[pie-item-player] failed loading:", err);
 			handlePlayerEvent(
 				new CustomEvent("player-error", {
@@ -452,6 +497,7 @@
 		void resolvedMode;
 		void resolvedIifeBundleHost;
 		void resolvedEsmCdnUrl;
+		void loaderRetrySignature;
 		queueMicrotask(() => {
 			untrack(() => {
 				loadConfig(currentConfig);
@@ -603,7 +649,19 @@
 			<p style="margin: 0">{error}</p>
 		</div>
 	{:else if loading || !itemConfig}
-		<PieSpinner />
+		<div class="pie-item-player-loading">
+			<PieSpinner />
+			{#if bundleBuildWarning}
+				<p
+					class="pie-item-player-build-warning"
+					role="status"
+					aria-live="polite"
+					aria-atomic="true"
+				>
+					{bundleBuildWarning}
+				</p>
+			{/if}
+		</div>
 	{:else}
 		<div class="pie-player-item-container {containerClass}">
 			<PieItemRenderer
@@ -646,5 +704,19 @@
 
 	:global(.pie-player-item-container) {
 		width: 100%;
+	}
+
+	.pie-item-player-loading {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 12px;
+	}
+
+	.pie-item-player-build-warning {
+		margin: 0;
+		font-size: 0.95rem;
+		color: #9a6700;
+		text-align: center;
 	}
 </style>

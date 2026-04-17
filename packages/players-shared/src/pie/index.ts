@@ -26,7 +26,7 @@ export {
 // Loaders
 export type { EsmLoaderConfig } from "./esm-loader.js";
 export { EsmPieLoader } from "./esm-loader.js";
-export type { IifeLoaderConfig } from "./iife-loader.js";
+export type { IifeBundleRetryStatus, IifeLoaderConfig } from "./iife-loader.js";
 export { DEFAULT_BUNDLE_HOST, IifePieLoader } from "./iife-loader.js";
 // Initialization
 export {

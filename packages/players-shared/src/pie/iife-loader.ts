@@ -61,17 +61,18 @@ export interface IifeLoaderConfig {
 
 	/**
 	 * Optional callback that reports active retry/building status.
-	 * Receives `null` when retry mode is no longer active.
 	 */
-	onBundleRetryStatus?: (status: IifeBundleRetryStatus | null) => void;
+	onBundleRetryStatus?: (status: IifeBundleRetryStatus) => void;
 }
 
 export interface IifeBundleRetryStatus {
+	state: "retrying" | "completed" | "timeout" | "cancelled";
 	url: string;
 	attempt: number;
 	elapsedMs: number;
-	retryDelayMs: number;
 	timeoutMs: number;
+	retryDelayMs?: number;
+	reason?: string;
 }
 
 // Default PIE bundle service URL.
@@ -296,7 +297,7 @@ export class IifePieLoader {
 		return { retryDelayMs, timeoutMs };
 	}
 
-	private emitBundleRetryStatus(status: IifeBundleRetryStatus | null): void {
+	private emitBundleRetryStatus(status: IifeBundleRetryStatus): void {
 		try {
 			this.config.onBundleRetryStatus?.(status);
 		} catch (error) {
@@ -424,7 +425,13 @@ export class IifePieLoader {
 						timeoutMs: retryConfig.timeoutMs,
 					});
 				}
-				this.emitBundleRetryStatus(null);
+				this.emitBundleRetryStatus({
+					state: "completed",
+					url,
+					attempt,
+					elapsedMs,
+					timeoutMs: retryConfig.timeoutMs,
+				});
 				return;
 			} catch (error) {
 				const elapsedMs = Date.now() - startedAt;
@@ -452,7 +459,14 @@ export class IifePieLoader {
 						timeoutMs: retryConfig.timeoutMs,
 						lastError: errorMessage,
 					});
-					this.emitBundleRetryStatus(null);
+					this.emitBundleRetryStatus({
+						state: "timeout",
+						url,
+						attempt,
+						elapsedMs,
+						timeoutMs: retryConfig.timeoutMs,
+						reason: errorMessage,
+					});
 					throw timeoutError;
 				}
 
@@ -469,11 +483,13 @@ export class IifePieLoader {
 					lastError: errorMessage,
 				});
 				this.emitBundleRetryStatus({
+					state: "retrying",
 					url,
 					attempt,
 					elapsedMs,
 					retryDelayMs,
 					timeoutMs: retryConfig.timeoutMs,
+					reason: errorMessage,
 				});
 				await this.wait(retryDelayMs);
 			}
@@ -663,7 +679,6 @@ export class IifePieLoader {
 
 		if (!contentConfig?.elements) {
 			logger.warn("No elements in config");
-			this.emitBundleRetryStatus(null);
 			return;
 		}
 		const elements = Object.fromEntries(
@@ -677,10 +692,8 @@ export class IifePieLoader {
 		) as Record<string, string>;
 		if (Object.keys(elements).length === 0) {
 			logger.debug("No valid element package versions found; skipping bundle load");
-			this.emitBundleRetryStatus(null);
 			return;
 		}
-		this.emitBundleRetryStatus(null);
 
 		const helpers = this.ensurePieHelpers();
 

@@ -79,6 +79,20 @@ function createLoader(bundleHost = "https://proxy.pie-api.com/bundles/") {
 	});
 }
 
+function createInstrumentationProvider() {
+	const trackEvent = (..._args: unknown[]) => undefined;
+	const trackError = (..._args: unknown[]) => undefined;
+	return {
+		providerId: "test-provider",
+		providerName: "Test Provider",
+		initialize: async () => undefined,
+		trackEvent,
+		trackError,
+		destroy: () => undefined,
+		isReady: () => true,
+	} as const;
+}
+
 describe("IifePieLoader", () => {
 	beforeEach(() => {
 		setupDomGlobals();
@@ -346,5 +360,95 @@ describe("IifePieLoader", () => {
 				BundleType.clientPlayer,
 			),
 		).resolves.toBeUndefined();
+	});
+
+	test("retries script load until success and tracks retry instrumentation", async () => {
+		const doc = createMockDocument();
+		const statuses: unknown[] = [];
+		const provider = createInstrumentationProvider();
+		const eventCalls: unknown[][] = [];
+		const errorCalls: unknown[][] = [];
+		const loader = createLoader();
+		(loader as any).config.bundleRetry = { retryDelayMs: 1, timeoutMs: 100 };
+		(loader as any).config.trackPageActions = true;
+		(loader as any).config.instrumentationProvider = {
+			...provider,
+			trackEvent: (...args: unknown[]) => eventCalls.push(args),
+			trackError: (...args: unknown[]) => errorCalls.push(args),
+		};
+		(loader as any).config.onBundleRetryStatus = (status: unknown) => {
+			statuses.push(status);
+		};
+
+		let scriptAttempts = 0;
+		(loader as any).loadBundleScript = async (url: string, targetDoc: MockDocument) => {
+			scriptAttempts += 1;
+			if (scriptAttempts < 3) {
+				throw new Error(`simulated 503 attempt ${scriptAttempts}`);
+			}
+			targetDoc._addBundleScript(url);
+			(window as any).pie = {
+				default: {
+					"@pie-element/multiple-choice": {},
+				},
+			};
+		};
+		(loader as any).registerElementsFromBundle = async () => undefined;
+
+		await loader.load(
+			{ elements: { "pie-multiple-choice": "@pie-element/multiple-choice@1.0.0" } },
+			doc,
+			BundleType.clientPlayer,
+			true,
+		);
+
+		expect(scriptAttempts).toBe(3);
+		expect(eventCalls.some((entry) => entry[0] === "pie-iife-bundle-retry")).toBe(
+			true,
+		);
+		expect(
+			eventCalls.some((entry) => entry[0] === "pie-iife-bundle-retry-success"),
+		).toBe(true);
+		expect(errorCalls).toHaveLength(0);
+		expect(statuses.length).toBeGreaterThanOrEqual(2);
+		expect((statuses.at(-1) as any)?.state).toBe("completed");
+	});
+
+	test("times out retry loop and tracks terminal retry error", async () => {
+		const doc = createMockDocument();
+		const provider = createInstrumentationProvider();
+		const eventCalls: unknown[][] = [];
+		const errorCalls: unknown[][] = [];
+		const statuses: unknown[] = [];
+		const loader = createLoader();
+		(loader as any).config.bundleRetry = { retryDelayMs: 5, timeoutMs: 12 };
+		(loader as any).config.trackPageActions = true;
+		(loader as any).config.instrumentationProvider = {
+			...provider,
+			trackEvent: (...args: unknown[]) => eventCalls.push(args),
+			trackError: (...args: unknown[]) => errorCalls.push(args),
+		};
+		(loader as any).config.onBundleRetryStatus = (status: unknown) => {
+			statuses.push(status);
+		};
+		(loader as any).loadBundleScript = async () => {
+			throw new Error("simulated 503");
+		};
+		(loader as any).registerElementsFromBundle = async () => undefined;
+
+		await expect(
+			loader.load(
+				{ elements: { "pie-multiple-choice": "@pie-element/multiple-choice@1.0.0" } },
+				doc,
+				BundleType.clientPlayer,
+				true,
+			),
+		).rejects.toThrow("timed out");
+
+		expect(
+			eventCalls.some((entry) => entry[0] === "pie-iife-bundle-retry-timeout"),
+		).toBe(true);
+		expect(errorCalls.length).toBeGreaterThanOrEqual(1);
+		expect((statuses.at(-1) as any)?.state).toBe("timeout");
 	});
 });

@@ -328,9 +328,9 @@ export class IifePieLoader {
 		const provider = this.getInstrumentationProvider();
 		if (!provider) return;
 		provider.trackError(error, {
+			...attributes,
 			component: "iife-loader",
 			errorType: "IifeBundleRetryError",
-			...attributes,
 		});
 	}
 

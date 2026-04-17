@@ -108,6 +108,69 @@ describe("makeUniqueTags", () => {
 		expect(out.config.markup).toContain("</pie-mc--version-9-2-0-next-7>");
 		expect(out.config.models[0].element).toBe("pie-mc--version-9-2-0-next-7");
 	});
+
+	test("keeps build-metadata tag unchanged when it already matches package version", () => {
+		const container: ConfigContainerEntity = {
+			id: "item-1",
+			config: {
+				markup:
+					"<pie-mc--version-1-2-3-build-5 id='m1'></pie-mc--version-1-2-3-build-5>",
+				elements: {
+					"pie-mc--version-1-2-3-build-5":
+						"@pie-element/multiple-choice@1.2.3+build.5",
+				},
+				models: [{ id: "m1", element: "pie-mc--version-1-2-3-build-5" }],
+			},
+		};
+
+		const out = makeUniqueTags(container);
+		expect(out.config.elements).toEqual(container.config.elements);
+		expect(out.config.markup).toBe(container.config.markup);
+		expect(out.config.models[0].element).toBe("pie-mc--version-1-2-3-build-5");
+	});
+
+	test("updates build-metadata tag when encoded suffix no longer matches package version", () => {
+		const container: ConfigContainerEntity = {
+			id: "item-1",
+			config: {
+				markup:
+					"<pie-mc--version-1-2-3-build-5 id='m1'></pie-mc--version-1-2-3-build-5>",
+				elements: {
+					"pie-mc--version-1-2-3-build-5":
+						"@pie-element/multiple-choice@1.2.3+build.6",
+				},
+				models: [{ id: "m1", element: "pie-mc--version-1-2-3-build-5" }],
+			},
+		};
+
+		const out = makeUniqueTags(container);
+		expect(out.config.elements).toEqual({
+			"pie-mc--version-1-2-3-build-6":
+				"@pie-element/multiple-choice@1.2.3+build.6",
+		});
+		expect(out.config.markup).toContain("<pie-mc--version-1-2-3-build-6");
+		expect(out.config.markup).toContain("</pie-mc--version-1-2-3-build-6>");
+		expect(out.config.models[0].element).toBe("pie-mc--version-1-2-3-build-6");
+	});
+
+	test("is idempotent for prerelease plus build versions", () => {
+		const container: ConfigContainerEntity = {
+			id: "item-1",
+			config: {
+				markup:
+					"<pie-mc--version-1-2-3-rc-1-sha-9 id='m1'></pie-mc--version-1-2-3-rc-1-sha-9>",
+				elements: {
+					"pie-mc--version-1-2-3-rc-1-sha-9":
+						"@pie-element/multiple-choice@1.2.3-rc.1+sha.9",
+				},
+				models: [{ id: "m1", element: "pie-mc--version-1-2-3-rc-1-sha-9" }],
+			},
+		};
+
+		const once = makeUniqueTags(container);
+		const twice = makeUniqueTags(once as ConfigContainerEntity);
+		expect(twice).toEqual(once);
+	});
 });
 
 describe("addRubricIfNeeded", () => {

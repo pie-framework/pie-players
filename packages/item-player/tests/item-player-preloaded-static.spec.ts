@@ -410,4 +410,171 @@ test.describe("item-player strategy regressions", () => {
 test.skip("esm emits media-retry-ready after first audio load failure", async ({ page }) => {
 		await assertMediaRetryBridge(page, ESM_DELIVERY_PATH);
 	});
+
+	test("on runtime support check does not fail when metadata is missing", async ({
+		page,
+	}) => {
+		await page.route("**/runtime-support*", async (route) => {
+			await route.fulfill({
+				status: 404,
+				contentType: "application/javascript",
+				body: "export default {};",
+			});
+		});
+
+		await page.goto(PRELOADED_DELIVERY_PATH, { waitUntil: "networkidle" });
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({ timeout: 20_000 });
+
+		await page.evaluate(() => {
+			const fixture = document.createElement("div");
+			fixture.id = "pie-runtime-support-strict-fixture";
+			document.body.appendChild(fixture);
+			const player = document.createElement("pie-item-player") as any;
+			player.strategy = "preloaded";
+			player.loaderOptions = {
+				runtimeSupportCheck: "on",
+				allowPreloadedFallbackLoad: true,
+			};
+			player.env = { mode: "gather", role: "student" };
+			player.session = { id: "strict-runtime-support", data: [] };
+			player.config = {
+				elements: {
+					"pie-multiple-choice": "@pie-element/multiple-choice@11.4.3",
+				},
+				models: [
+					{
+						id: "strict-runtime-support-model",
+						element: "pie-multiple-choice",
+						prompt: "Strict runtime support prompt",
+						choiceMode: "radio",
+						choices: [
+							{ value: "a", label: "A", correct: false },
+							{ value: "b", label: "B", correct: true },
+						],
+					},
+				],
+				markup:
+					'<pie-multiple-choice id="strict-runtime-support-model"></pie-multiple-choice>',
+			};
+			fixture.appendChild(player);
+		});
+
+		await expect(page.getByText("Strict runtime support prompt")).toBeVisible({
+			timeout: 20_000,
+		});
+		await expect(page.getByText("Missing runtime-support metadata")).not.toBeVisible();
+	});
+
+	test("off runtime support check does not request metadata", async ({ page }) => {
+		let runtimeSupportRequests = 0;
+		await page.route("**/runtime-support*", async (route) => {
+			runtimeSupportRequests += 1;
+			await route.fallback();
+		});
+
+		await page.goto(PRELOADED_DELIVERY_PATH, { waitUntil: "networkidle" });
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({ timeout: 20_000 });
+
+		await page.evaluate(() => {
+			const fixture = document.createElement("div");
+			fixture.id = "pie-runtime-support-off-fixture";
+			document.body.appendChild(fixture);
+			const player = document.createElement("pie-item-player") as any;
+			player.strategy = "preloaded";
+			player.loaderOptions = {
+				runtimeSupportCheck: "off",
+				allowPreloadedFallbackLoad: true,
+			};
+			player.env = { mode: "gather", role: "student" };
+			player.session = { id: "off-runtime-support", data: [] };
+			player.config = {
+				elements: {
+					"pie-multiple-choice": "@pie-element/multiple-choice@11.4.3",
+				},
+				models: [
+					{
+						id: "off-runtime-support-model",
+						element: "pie-multiple-choice",
+						prompt: "Off runtime support prompt",
+						choiceMode: "radio",
+						choices: [
+							{ value: "a", label: "A", correct: false },
+							{ value: "b", label: "B", correct: true },
+						],
+					},
+				],
+				markup:
+					'<pie-multiple-choice id="off-runtime-support-model"></pie-multiple-choice>',
+			};
+			fixture.appendChild(player);
+		});
+
+		await expect(page.getByText("Off runtime support prompt")).toBeVisible({
+			timeout: 20_000,
+		});
+		await page.waitForTimeout(400);
+		expect(runtimeSupportRequests).toBe(0);
+	});
+
+	test("metadata unsupported does not alter unrelated load errors", async ({ page }) => {
+		await page.goto(PRELOADED_DELIVERY_PATH, { waitUntil: "networkidle" });
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({ timeout: 20_000 });
+
+		await page.route("**/runtime-support*", async (route) => {
+			await route.fulfill({
+				status: 200,
+				contentType: "application/javascript",
+				headers: {
+					"access-control-allow-origin": "*",
+					"cache-control": "no-store",
+				},
+				body: `
+          export default {
+            schemaVersion: 1,
+            supports: {
+              iife: { delivery: false },
+              esm: { delivery: true }
+            }
+          };
+        `,
+			});
+		});
+
+		await page.evaluate(() => {
+			const fixture = document.createElement("div");
+			fixture.id = "pie-runtime-support-hint-fixture";
+			document.body.appendChild(fixture);
+			const player = document.createElement("pie-item-player") as any;
+			player.strategy = "preloaded";
+			player.loaderOptions = {
+				runtimeSupportCheck: "on",
+			};
+			player.env = { mode: "gather", role: "student" };
+			player.session = { id: "hint-runtime-support", data: [] };
+			player.config = {
+				elements: {
+					"pie-hint-mode": "@pie-element/multiple-choice@11.4.3-hint",
+				},
+				models: [
+					{
+						id: "hint-runtime-support-model",
+						element: "pie-hint-mode",
+						prompt: "Hint runtime support prompt",
+						choiceMode: "radio",
+						choices: [
+							{ value: "a", label: "A", correct: false },
+							{ value: "b", label: "B", correct: true },
+						],
+					},
+				],
+				markup: '<pie-hint-mode id="hint-runtime-support-model"></pie-hint-mode>',
+			};
+			fixture.appendChild(player);
+		});
+
+		await expect(page.getByText("Error loading elements (preloaded-readiness):")).toBeVisible(
+			{ timeout: 20_000 },
+		);
+		await expect(page.getByText("Missing runtime-support metadata")).not.toBeVisible();
+	});
 });

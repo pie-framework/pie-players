@@ -164,7 +164,10 @@
 					playerEl.config = currentConfig;
 					playerEl.env = currentEnv;
 					playerEl.session = currentSession;
-					playerEl.loaderOptions = { bundleHost: 'https://proxy.pie-api.com/bundles/' };
+					playerEl.loaderOptions = {
+						bundleHost: 'https://proxy.pie-api.com/bundles/',
+						runtimeSupportCheck: 'on'
+					};
 					playerEl.loaderConfig = {
 						trackPageActions: true,
 						instrumentationProvider

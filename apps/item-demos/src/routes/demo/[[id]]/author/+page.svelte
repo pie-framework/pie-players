@@ -165,7 +165,10 @@
 					playerEl.session = { id: 'preview', data: [] };
 					playerEl.env = { mode: 'author', role: 'instructor' };
 					playerEl.authoringBackend = 'required';
-					playerEl.loaderOptions = { bundleHost: 'https://proxy.pie-api.com/bundles/' };
+					playerEl.loaderOptions = {
+						bundleHost: 'https://proxy.pie-api.com/bundles/',
+						runtimeSupportCheck: 'on'
+					};
 					playerEl.onInsertImage = demoMediaBackend.onInsertImage;
 					playerEl.onDeleteImage = demoMediaBackend.onDeleteImage;
 					playerEl.onInsertSound = demoMediaBackend.onInsertSound;

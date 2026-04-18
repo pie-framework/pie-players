@@ -80,6 +80,7 @@
 		view?: string;
 		loadControllers?: boolean;
 		allowPreloadedFallbackLoad?: boolean;
+		runtimeSupportCheck?: "off" | "on";
 	};
 
 	let {
@@ -117,6 +118,130 @@
 	const loaderRetrySignature = $derived.by(() =>
 		JSON.stringify(loaderConfig?.iifeBundleRetry || {}),
 	);
+	const RUNTIME_SUPPORT_NEGATIVE_CACHE_MS = 30_000;
+	const runtimeSupportCache = new Map<
+		string,
+		{
+			schemaVersion?: number;
+			supports?: Partial<
+				Record<"esm" | "iife", Partial<Record<"delivery" | "author" | "print", boolean>>>
+			>;
+		}
+	>();
+	const runtimeSupportMissingCache = new Map<string, number>();
+
+	function normalizeRuntimeSupportCheck(
+		value: unknown,
+		fallback: "off" | "on" = "off",
+	): "off" | "on" {
+		if (value === "off" || value === "on") {
+			return value;
+		}
+		return fallback;
+	}
+
+	function resolveRuntimeSupportUrl(packageVersion: string): string {
+		const isJsDelivr = resolvedEsmCdnUrl.includes("cdn.jsdelivr.net/npm");
+		if (isJsDelivr) {
+			return `${resolvedEsmCdnUrl}/${packageVersion}/runtime-support/+esm`;
+		}
+		return `${resolvedEsmCdnUrl}/${packageVersion}/runtime-support`;
+	}
+
+	function isStrategySupportedForView(
+		runtimeSupport: {
+			supports?: Partial<
+				Record<"esm" | "iife", Partial<Record<"delivery" | "author" | "print", boolean>>>
+			>;
+		},
+		strategy: "esm" | "iife",
+		view: "delivery" | "author" | "print",
+	): boolean {
+		const strategyMap = runtimeSupport.supports?.[strategy];
+		if (!strategyMap) return true;
+		const value = strategyMap[view];
+		if (value === undefined) return true;
+		return value;
+	}
+
+	function classifyRuntimeSupportMissing(error: unknown): boolean {
+		const message = String(error || "").toLowerCase();
+		return (
+			message.includes("cannot find module") ||
+			message.includes("failed to fetch dynamically imported module") ||
+			message.includes("404") ||
+			message.includes("runtime-support")
+		);
+	}
+
+	async function resolveRuntimeSupportForPackage(
+		packageVersion: string,
+		mode: "off" | "on",
+	): Promise<
+		| {
+				schemaVersion?: number;
+				supports?: Partial<
+					Record<"esm" | "iife", Partial<Record<"delivery" | "author" | "print", boolean>>>
+				>;
+		  }
+		| undefined
+	> {
+		if (mode !== "on") {
+			return undefined;
+		}
+		const key = packageVersion;
+		const cached = runtimeSupportCache.get(key);
+		if (cached) {
+			return cached;
+		}
+		const missingAt = runtimeSupportMissingCache.get(key);
+		if (missingAt && Date.now() - missingAt < RUNTIME_SUPPORT_NEGATIVE_CACHE_MS) {
+			return undefined;
+		}
+		try {
+			// @vite-ignore
+			const module = await import(/* @vite-ignore */ resolveRuntimeSupportUrl(packageVersion));
+			const runtimeSupport = module.default || module.runtimeSupport || module;
+			if (!runtimeSupport || typeof runtimeSupport !== "object") {
+				throw new Error(`Invalid runtime-support export for ${packageVersion}`);
+			}
+			runtimeSupportCache.set(key, runtimeSupport);
+			runtimeSupportMissingCache.delete(key);
+			return runtimeSupport;
+		} catch (error) {
+			if (classifyRuntimeSupportMissing(error)) {
+				runtimeSupportMissingCache.set(key, Date.now());
+				return undefined;
+			}
+			return undefined;
+		}
+	}
+
+	async function collectRuntimeSupportHints(
+		elements: Record<string, string>,
+		strategy: "iife" | "esm" | "preloaded",
+		view: "delivery" | "author" | "print",
+		mode: "off" | "on",
+	): Promise<{ unsupportedPackages: string[] }> {
+		if (mode !== "on") return { unsupportedPackages: [] };
+		const strategyForChecks: "esm" | "iife" =
+			strategy === "iife" || strategy === "preloaded" ? "iife" : "esm";
+		const unsupportedPackages: string[] = [];
+
+		for (const packageVersion of Object.values(elements || {})) {
+			const runtimeSupport = await resolveRuntimeSupportForPackage(packageVersion, mode);
+			if (!runtimeSupport) {
+				continue;
+			}
+			const supported = isStrategySupportedForView(runtimeSupport, strategyForChecks, view);
+			if (supported) {
+				continue;
+			}
+			const { name } = parsePackageName(packageVersion);
+			unsupportedPackages.push(name);
+		}
+		return { unsupportedPackages };
+	}
 
 	const debugEnabled = $derived.by(() => {
 		if (debug !== undefined && debug !== null) {
@@ -346,6 +471,7 @@
 		bundleRetryStatus = null;
 
 		let stage = "start";
+		let runtimeSupportErrorHint: string | null = null;
 		try {
 			stage = "parse-config";
 			const parsedConfig =
@@ -370,7 +496,27 @@
 			stage = "makeUniqueTags";
 			const transformed = makeUniqueTags({ config: normalizedConfig });
 			const transformedConfig = transformed.config;
+			const runtimeSupportCheck = normalizeRuntimeSupportCheck(
+				(loaderOptions as UnifiedLoaderOptions | undefined)?.runtimeSupportCheck,
+				"off",
+			);
+			const runtimeSupportView =
+				(loaderOptions as UnifiedLoaderOptions | undefined)?.view ||
+				resolveItemPlayerView(env?.mode, "delivery");
+			const runtimeSupportHints = await collectRuntimeSupportHints(
+				transformedConfig.elements || {},
+				normalizedStrategy,
+				runtimeSupportView as "delivery" | "author" | "print",
+				runtimeSupportCheck,
+			);
+			const strategyForChecks: "esm" | "iife" =
+				normalizedStrategy === "esm" ? "esm" : "iife";
+			runtimeSupportErrorHint =
+				runtimeSupportHints.unsupportedPackages.length > 0
+					? ` Runtime support metadata indicates ${strategyForChecks}/${runtimeSupportView} is unsupported for ${runtimeSupportHints.unsupportedPackages.join(", ")}.`
+					: null;
 			const shouldSkipElementLoading =
+				normalizedStrategy === "preloaded" &&
 				shouldAutoSkipElementLoading(transformedConfig);
 			const allowPreloadedFallbackLoad =
 				(loaderOptions as UnifiedLoaderOptions | undefined)
@@ -383,7 +529,10 @@
 				logger.debug(
 					"[pie-item-player] Skipping element loading for preloaded flow.",
 				);
-			} else if (normalizedStrategy === "preloaded" && !allowPreloadedFallbackLoad) {
+			} else if (
+				normalizedStrategy === "preloaded" &&
+				!allowPreloadedFallbackLoad
+			) {
 				stage = "preloaded-readiness";
 				const requiredTags = Object.keys(transformedConfig?.elements || {});
 				const missingTags = getMissingCustomElementTags(transformedConfig);
@@ -470,7 +619,8 @@
 			error = null;
 			bundleRetryStatus = null;
 		} catch (err: any) {
-			const message = err?.message || String(err);
+			const baseMessage = err?.message || String(err);
+			const message = `${baseMessage}${runtimeSupportErrorHint || ""}`;
 			error = `Error loading elements (${stage}): ${message}`;
 			loading = false;
 			bundleRetryStatus = null;

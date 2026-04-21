@@ -32,7 +32,6 @@
 	"files": [
 		"dist",
 		"tool-ruler.svelte",
-		"index.ts",
 		"ruler-cm.svg",
 		"ruler-inches.svg",
 		"package.json",

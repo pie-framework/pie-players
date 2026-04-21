@@ -31,7 +31,6 @@
 	"files": [
 		"dist",
 		"tool-protractor.svelte",
-		"index.ts",
 		"protractor.svg",
 		"README.md"
 	],

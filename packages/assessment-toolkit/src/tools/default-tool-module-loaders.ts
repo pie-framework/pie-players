@@ -20,6 +20,7 @@ function loadCalculatorModule(): Promise<unknown> {
 	}
 	return loadSideEffectModule(
 		() =>
+			// biome-ignore lint/suspicious/noTsIgnore: module is optional; @ts-expect-error would fail in workspace builds where the symlink resolves
 			// @ts-ignore Optional host module may be absent from toolkit package deps.
 			import("@pie-players/pie-tool-calculator-desmos"),
 	);
@@ -32,6 +33,7 @@ export const DEFAULT_TOOL_MODULE_LOADERS: Record<string, ToolModuleLoader> = {
 	textToSpeech: () =>
 		loadSideEffectModule(
 			() =>
+				// biome-ignore lint/suspicious/noTsIgnore: module is optional; @ts-expect-error would fail in workspace builds where the symlink resolves
 				// @ts-ignore Optional host module may be absent from toolkit package deps.
 				import("@pie-players/pie-tool-tts-inline"),
 		),

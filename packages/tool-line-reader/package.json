@@ -31,7 +31,6 @@
 	"files": [
 		"dist",
 		"tool-line-reader.svelte",
-		"index.ts",
 		"package.json"
 	],
 	"license": "MIT",

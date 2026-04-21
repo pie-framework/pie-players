@@ -35,7 +35,6 @@
 	"files": [
 		"dist",
 		"EventPanel.svelte",
-		"index.ts",
 		"package.json"
 	],
 	"license": "MIT",

@@ -33,7 +33,6 @@
 	"files": [
 		"dist",
 		"tool-annotation-toolbar.svelte",
-		"index.ts",
 		"package.json",
 		"README.md"
 	],

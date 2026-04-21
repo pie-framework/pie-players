@@ -10,15 +10,12 @@
 		"noUnusedParameters": false,
 		"moduleResolution": "NodeNext"
 	},
-	"include": [
-		"src/**/*.ts",
-		"src/**/*.d.ts",
-		"src/**/*.json"
-	],
+	"include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.json"],
 	"exclude": [
 		"node_modules",
 		"dist",
 		"build",
-		"src/components/**"
+		"src/components/**",
+		"src/i18n/scripts/**"
 	]
 }

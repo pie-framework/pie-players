@@ -31,8 +31,6 @@
 	"files": [
 		"dist",
 		"tool-periodic-table.svelte",
-		"index.ts",
-		"elements-data.ts",
 		"periodic-table-data.json",
 		"package.json"
 	],

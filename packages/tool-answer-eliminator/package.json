@@ -36,7 +36,6 @@
 	"files": [
 		"dist",
 		"tool-answer-eliminator.svelte",
-		"index.ts",
 		"package.json",
 		"answer-eliminator-core.ts",
 		"adapters/",

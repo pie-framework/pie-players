@@ -34,7 +34,6 @@
 	"files": [
 		"dist",
 		"TtsSettingsPanel.svelte",
-		"index.ts",
 		"package.json"
 	],
 	"license": "MIT",

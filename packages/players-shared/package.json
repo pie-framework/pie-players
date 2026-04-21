@@ -54,59 +54,57 @@
 			"import": "./dist/server/npm-registry.js"
 		},
 		"./components": {
-			"types": "./src/components/index.ts",
-			"import": "./src/components/index.ts",
-			"svelte": "./src/components/index.ts"
+			"types": "./dist/components/index.ts",
+			"import": "./dist/components/index.ts",
+			"svelte": "./dist/components/index.ts"
 		},
 		"./components/PieItemPlayer.svelte": {
-			"types": "./src/components/PieItemPlayer.svelte",
-			"import": "./src/components/PieItemPlayer.svelte",
-			"svelte": "./src/components/PieItemPlayer.svelte"
+			"types": "./dist/components/PieItemPlayer.svelte",
+			"import": "./dist/components/PieItemPlayer.svelte",
+			"svelte": "./dist/components/PieItemPlayer.svelte"
 		},
 		"./components/PieSpinner.svelte": {
-			"types": "./src/components/PieSpinner.svelte",
-			"import": "./src/components/PieSpinner.svelte",
-			"svelte": "./src/components/PieSpinner.svelte"
+			"types": "./dist/components/PieSpinner.svelte",
+			"import": "./dist/components/PieSpinner.svelte",
+			"svelte": "./dist/components/PieSpinner.svelte"
 		},
 		"./components/ToolSettingsButton.svelte": {
-			"types": "./src/components/ToolSettingsButton.svelte",
-			"import": "./src/components/ToolSettingsButton.svelte",
-			"svelte": "./src/components/ToolSettingsButton.svelte"
+			"types": "./dist/components/ToolSettingsButton.svelte",
+			"import": "./dist/components/ToolSettingsButton.svelte",
+			"svelte": "./dist/components/ToolSettingsButton.svelte"
 		},
 		"./components/ToolSettingsPanel.svelte": {
-			"types": "./src/components/ToolSettingsPanel.svelte",
-			"import": "./src/components/ToolSettingsPanel.svelte",
-			"svelte": "./src/components/ToolSettingsPanel.svelte"
+			"types": "./dist/components/ToolSettingsPanel.svelte",
+			"import": "./dist/components/ToolSettingsPanel.svelte",
+			"svelte": "./dist/components/ToolSettingsPanel.svelte"
 		},
 		"./components/PiePreviewToggle.svelte": {
-			"types": "./src/components/PiePreviewToggle.svelte",
-			"import": "./src/components/PiePreviewToggle.svelte",
-			"svelte": "./src/components/PiePreviewToggle.svelte"
+			"types": "./dist/components/PiePreviewToggle.svelte",
+			"import": "./dist/components/PiePreviewToggle.svelte",
+			"svelte": "./dist/components/PiePreviewToggle.svelte"
 		},
 		"./components/PiePreviewLayout.svelte": {
-			"types": "./src/components/PiePreviewLayout.svelte",
-			"import": "./src/components/PiePreviewLayout.svelte",
-			"svelte": "./src/components/PiePreviewLayout.svelte"
+			"types": "./dist/components/PiePreviewLayout.svelte",
+			"import": "./dist/components/PiePreviewLayout.svelte",
+			"svelte": "./dist/components/PiePreviewLayout.svelte"
 		},
 		"./i18n": {
 			"types": "./dist/i18n/index.d.ts",
 			"import": "./dist/i18n/index.js"
 		},
 		"./i18n/use-i18n": {
-			"types": "./src/i18n/use-i18n.svelte.ts",
-			"import": "./src/i18n/use-i18n.svelte.ts",
-			"svelte": "./src/i18n/use-i18n.svelte.ts"
+			"types": "./dist/i18n/use-i18n.svelte.ts",
+			"import": "./dist/i18n/use-i18n.svelte.ts",
+			"svelte": "./dist/i18n/use-i18n.svelte.ts"
 		},
 		"./i18n/use-i18n-standalone": {
-			"types": "./src/i18n/use-i18n-standalone.svelte.ts",
-			"import": "./src/i18n/use-i18n-standalone.svelte.ts",
-			"svelte": "./src/i18n/use-i18n-standalone.svelte.ts"
+			"types": "./dist/i18n/use-i18n-standalone.svelte.ts",
+			"import": "./dist/i18n/use-i18n-standalone.svelte.ts",
+			"svelte": "./dist/i18n/use-i18n-standalone.svelte.ts"
 		}
 	},
 	"files": [
-		"dist",
-		"src/components",
-		"src/i18n"
+		"dist"
 	],
 	"dependencies": {
 		"@pie-lib/math-rendering-module": "4.0.7",
@@ -115,7 +113,7 @@
 		"svelte": "^5.54.0"
 	},
 	"scripts": {
-		"build": "tsc -p tsconfig.json",
+		"build": "rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json && bun run scripts/copy-source-exports.mjs",
 		"dev": "tsc -p tsconfig.json --watch",
 		"typecheck": "tsc -p tsconfig.json --noEmit",
 		"lint": "biome check .",

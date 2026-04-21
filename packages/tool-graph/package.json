@@ -32,7 +32,6 @@
 	"files": [
 		"dist",
 		"tool-graph.svelte",
-		"index.ts",
 		"package.json"
 	],
 	"license": "MIT",

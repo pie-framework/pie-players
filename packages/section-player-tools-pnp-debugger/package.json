@@ -34,7 +34,6 @@
 	"files": [
 		"dist",
 		"PnpPanel.svelte",
-		"index.ts",
 		"package.json"
 	],
 	"license": "MIT",

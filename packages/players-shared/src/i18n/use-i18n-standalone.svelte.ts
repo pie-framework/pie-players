@@ -25,6 +25,7 @@
  * ```
  */
 
+/// <reference types="svelte" />
 import { BUNDLED_TRANSLATIONS, loadTranslations } from "./loader.js";
 import { SimpleI18n } from "./simple-i18n.js";
 

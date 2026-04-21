@@ -11,7 +11,6 @@ const ASSESSMENT_TOOLKIT_TYPES_DIR = path.join(
 );
 
 const ALLOWED_SOURCE_EXPORT_PACKAGES = new Set([
-	"@pie-players/pie-players-shared",
 	"@pie-players/pie-print-player",
 ]);
 
@@ -19,7 +18,9 @@ const readJson = (filePath) => JSON.parse(readFileSync(filePath, "utf8"));
 
 const getWorkspaceDirs = () => {
 	const rootPkg = readJson(ROOT_PACKAGE_JSON);
-	const workspaces = Array.isArray(rootPkg.workspaces) ? rootPkg.workspaces : [];
+	const workspaces = Array.isArray(rootPkg.workspaces)
+		? rootPkg.workspaces
+		: [];
 	const dirs = new Set();
 
 	for (const workspace of workspaces) {
@@ -83,7 +84,9 @@ for (const dir of getWorkspaceDirs()) {
 	collectTargets(pkg.exports, targets);
 
 	const sourceTargets = [...targets]
-		.filter((target) => typeof target === "string" && target.startsWith("./src/"))
+		.filter(
+			(target) => typeof target === "string" && target.startsWith("./src/"),
+		)
 		.sort();
 
 	if (sourceTargets.length === 0) continue;
@@ -98,7 +101,8 @@ for (const dir of getWorkspaceDirs()) {
 
 const forbiddenAmbientModules = [];
 const dtsFiles = collectFilesByExtension(ASSESSMENT_TOOLKIT_TYPES_DIR, ".d.ts");
-const ambientModulePattern = /declare\s+module\s+["']@pie-players\/(pie-tool-|pie-calculator-desmos|tts-client-server)/g;
+const ambientModulePattern =
+	/declare\s+module\s+["']@pie-players\/(pie-tool-|pie-calculator-desmos|tts-client-server)/g;
 for (const file of dtsFiles) {
 	const content = readFileSync(file, "utf8");
 	const matches = [...content.matchAll(ambientModulePattern)].map(

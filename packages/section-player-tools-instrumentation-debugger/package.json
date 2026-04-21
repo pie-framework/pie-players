@@ -33,7 +33,6 @@
 	"files": [
 		"dist",
 		"InstrumentationPanel.svelte",
-		"index.ts",
 		"package.json"
 	],
 	"license": "MIT",

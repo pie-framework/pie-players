@@ -36,8 +36,6 @@
 	},
 	"files": [
 		"dist",
-		"components",
-		"index.ts",
 		"package.json"
 	],
 	"license": "MIT",

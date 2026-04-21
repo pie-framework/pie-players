@@ -33,7 +33,6 @@
 	"files": [
 		"dist",
 		"tool-color-scheme.svelte",
-		"index.ts",
 		"package.json"
 	],
 	"license": "MIT",

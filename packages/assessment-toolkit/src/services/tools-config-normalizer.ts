@@ -42,7 +42,7 @@ export interface ToolRuntimeProviderBridge {
 	subscribe?: (
 		eventName: string,
 		handler: (payload: unknown) => void,
-	) => (() => void) | void;
+	) => (() => void) | undefined;
 	[key: string]: unknown;
 }
 

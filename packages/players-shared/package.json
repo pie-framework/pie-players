@@ -25,6 +25,10 @@
 			"types": "./dist/loader-config.d.ts",
 			"import": "./dist/loader-config.js"
 		},
+		"./security": {
+			"types": "./dist/security/index.d.ts",
+			"import": "./dist/security/index.js"
+		},
 		"./object": {
 			"types": "./dist/object/index.d.ts",
 			"import": "./dist/object/index.js"
@@ -106,6 +110,7 @@
 	],
 	"dependencies": {
 		"@pie-lib/math-rendering-module": "4.0.7",
+		"dompurify": "^3.4.0",
 		"semver": "^7.7.4",
 		"svelte": "^5.54.0"
 	},
@@ -121,6 +126,7 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.3.10",
+		"@happy-dom/global-registrator": "^20.9.0",
 		"@types/semver": "^7.7.1",
 		"glob": "^13.0.0",
 		"typescript": "^5.9.3"

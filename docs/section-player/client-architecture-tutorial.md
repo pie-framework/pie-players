@@ -145,7 +145,7 @@ Content items are rendered via `<pie-item-player>` elements. The `player-type` a
 
 - **`preloaded`**: All required PIE custom elements are assumed to be already registered in the browser — no loading occurs at runtime. This strategy is used with the `@pie-players/pie-preloaded-player` package, which is a pre-built project dependency containing a fixed set of elements bundled at build time. Because the element set and versions are locked to your application's CI/CD cycle, this trades flexibility for zero-network-request rendering: useful for offline environments, strict performance budgets, or controlled test harnesses. The downside is that updating an element version or adding a new element requires a redeployment — you lose the ability to hot-swap element versions dynamically without a full release cycle.
 
-For `loaderOptions` (custom bundle host URL, ESM CDN URL, import-map mode, etc.) see [docs/item-player/loading-strategies.md](../item-player/loading-strategies.md).
+For `loaderOptions` (custom bundle host URL, ESM CDN URL, import-map mode, etc.) see [docs/item-player/loading-strategies.md](./loading-strategies.md).
 
 ### Item-level observability wiring
 

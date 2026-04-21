@@ -1058,6 +1058,22 @@ import type {
 } from '@pie-players/pie-assessment-toolkit';
 ```
 
+## Content trust boundary
+
+The toolkit embeds item content via the underlying `pie-item-player`
+custom element and renders tool icons / SSML fragments that originate
+from tool configuration. Two sanitization layers apply:
+
+- **Item / passage markup** - sanitized by default in
+  `pie-item-player`. See
+  [pie-item-player README](./README.md#content-trust-boundary)
+  for the `trust-markup` opt-out and the `sanitizeMarkup` override.
+- **Tool icons and SSML** - tool-registered icon markup is parsed and
+  DOMPurified inside the toolbar at render time; SSML payloads are
+  restricted to an allow-listed subset of SSML tags/attributes before
+  being forwarded to TTS providers. Do not ship tools that rely on raw
+  `<script>` or event-handler attributes in their icon strings.
+
 ## Related Documentation
 
 - **[Tool Registry Architecture](docs/TOOL_REGISTRY.md)** - ⭐ NEW - Registry-based tool management and QTI 3.0 PNP support

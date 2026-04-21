@@ -43,7 +43,7 @@
 	},
 	"peerDependencies": {
 		"vite": "^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0",
-		"@sveltejs/kit": "^2.55.0"
+		"@sveltejs/kit": "^2.57.1"
 	},
 	"peerDependenciesMeta": {
 		"vite": {

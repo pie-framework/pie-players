@@ -74,9 +74,11 @@ support targets default bundler entrypoints under `dist`.
 | `debug` | `String` | `""` | Debug control: truthy enables verbose logs; `"false"`/`"0"`/`""` disables (also reads `window.PIE_DEBUG`) |
 | `custom-class-name` | `String` | `""` | CSS scope class applied to the player container |
 | `container-class` | `String` | `""` | Extra class on the inner item container |
-| `external-style-urls` | `String` | `""` | Comma-separated CSS URLs loaded and scoped to the player |
+| `external-style-urls` | `String` | `""` | Comma-separated CSS URLs loaded and scoped to the player. Must be `http:` or `https:`. |
+| `allowed-style-origins` | `String` | `""` | Optional comma-separated origin allow-list (e.g. `https://cdn.example.com`). When set, `external-style-urls` and `itemConfig.resources.stylesheets[*].url` are rejected if their origin is not on the list. |
 | `loader-config` | `Object` | (default) | Loader instrumentation config |
 | `configuration` | `Object` | `{}` | Authoring configuration settings |
+| `trust-markup` | `Boolean` | `false` | Skip the built-in markup sanitizer. See [Content trust boundary](#content-trust-boundary). |
 
 ## Properties (JS only)
 
@@ -85,6 +87,7 @@ These are set via JavaScript, not HTML attributes.
 | Property | Type | Description |
 |----------|------|-------------|
 | `loaderOptions` | `{ bundleHost?: string, esmCdnUrl?: string, view?: string, loadControllers?: boolean }` | Strategy-specific loader options |
+| `sanitizeMarkup` | `(markup: string) => string` | Replace the built-in DOMPurify sanitizer with a host-supplied function. Ignored when `trust-markup` is set. |
 
 ## Events
 
@@ -135,6 +138,56 @@ import type {
   DeleteDone,
 } from "@pie-players/pie-item-player";
 ```
+
+## Content trust boundary
+
+`<pie-item-player>` injects the `markup` field from the supplied `config`
+(and from `passageConfig.markup` when a passage is attached) into the DOM
+via Svelte's `{@html}` directive. To avoid XSS when hosts embed
+attacker-influenced item/passage JSON (preview surfaces, multi-tenant
+authoring, etc.) the player now ships with a **default-on** markup
+sanitizer powered by [DOMPurify](https://github.com/cure53/DOMPurify). The
+sanitizer:
+
+- Strips `<script>`, `<iframe>`, `<object>`, `<embed>`, `<base>`, `<form>`,
+  `<meta>`, `<link>`, and any event-handler attributes (`onerror`,
+  `onload`, ...).
+- Rejects unknown URL protocols (`javascript:`, `data:` unless explicitly
+  marked safe).
+- Preserves the PIE custom-element contract: any tag matching `pie-*` and
+  the attribute families `data-*`, `aria-*`, `pie-*`, `model-*`,
+  `session-*`, `config-*`, `context-*` pass through unchanged. Third-party
+  custom elements must be registered via the `sanitizeMarkup` property.
+
+### Opt out (trusted content)
+
+Hosts that already validate item markup (for example, content-authoring
+pipelines that only ever render markup produced by their own trusted
+servers) can disable sanitization:
+
+```html
+<pie-item-player trust-markup config='...' session='...'></pie-item-player>
+```
+
+```ts
+el.trustMarkup = true;
+```
+
+### Provide a custom sanitizer
+
+To extend the allow-list (or use a stricter sanitizer) set
+`sanitizeMarkup` on the element:
+
+```ts
+import { sanitizeItemMarkup } from "@pie-players/pie-players-shared/security";
+
+el.sanitizeMarkup = (markup: string) =>
+  sanitizeItemMarkup(markup, {
+    allowedCustomElements: ["my-custom-widget"],
+  });
+```
+
+When `trust-markup` is set, `sanitizeMarkup` is ignored.
 
 ## Further reading
 

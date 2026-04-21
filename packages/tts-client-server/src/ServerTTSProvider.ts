@@ -68,6 +68,18 @@ export interface ServerTTSProviderConfig extends TTSConfig {
 	includeAuthOnAssetFetch?: boolean;
 
 	/**
+	 * Origins that are trusted to receive the provider's `Authorization`
+	 * header (and any `authToken`-derived credentials). When an asset URL
+	 * returned by the TTS server falls outside this list, auth is scrubbed
+	 * before the fetch. Malformed or non-http(s) URLs are always rejected
+	 * and the fetch is skipped.
+	 *
+	 * Defaults to the origin of `apiEndpoint` so same-origin / same-host
+	 * responses keep working without explicit configuration.
+	 */
+	assetOrigins?: string[];
+
+	/**
 	 * Validate API endpoint availability during initialization (slower but safer)
 	 *
 	 * @extension Performance vs safety tradeoff
@@ -81,6 +93,97 @@ type TelemetryReporter = (
 	eventName: string,
 	payload?: Record<string, unknown>,
 ) => void | Promise<void>;
+
+/**
+ * Parse a TTS asset URL (speech marks or audio). Rejects anything that is
+ * not an absolute http(s) URL; relative URLs are resolved against
+ * `apiEndpoint` when it is itself absolute.
+ */
+function parseAssetUrl(
+	rawUrl: string,
+	config: ServerTTSProviderConfig,
+): URL | null {
+	if (typeof rawUrl !== "string" || rawUrl.length === 0) {
+		return null;
+	}
+	try {
+		const base =
+			typeof config.apiEndpoint === "string" && /^https?:\/\//i.test(config.apiEndpoint)
+				? config.apiEndpoint
+				: undefined;
+		const parsed = base ? new URL(rawUrl, base) : new URL(rawUrl);
+		if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+			return null;
+		}
+		return parsed;
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * Decide whether a parsed asset URL is allowed to receive the provider's
+ * `Authorization` header. Defaults to the origin of `apiEndpoint` when
+ * `assetOrigins` is not configured.
+ */
+function isOriginTrustedForAuth(
+	url: URL,
+	config: ServerTTSProviderConfig,
+): boolean {
+	const configured = Array.isArray(config.assetOrigins)
+		? config.assetOrigins
+				.filter((value): value is string => typeof value === "string" && value.length > 0)
+				.map((value) => {
+					try {
+						return new URL(value).origin;
+					} catch {
+						return value;
+					}
+				})
+		: [];
+	if (configured.length === 0) {
+		if (
+			typeof config.apiEndpoint === "string" &&
+			/^https?:\/\//i.test(config.apiEndpoint)
+		) {
+			try {
+				return new URL(config.apiEndpoint).origin === url.origin;
+			} catch {
+				return false;
+			}
+		}
+		// Relative apiEndpoint (e.g. "/api/tts") implies same-origin usage;
+		// only same-origin assets should carry auth.
+		return (
+			typeof window !== "undefined" &&
+			typeof window.location?.origin === "string" &&
+			window.location.origin === url.origin
+		);
+	}
+	return configured.includes(url.origin);
+}
+
+/**
+ * Strip auth-carrying headers when the target origin is not trusted.
+ */
+function scrubAuthHeaders(
+	headers: Record<string, string>,
+): Record<string, string> {
+	const cleaned: Record<string, string> = {};
+	for (const [key, value] of Object.entries(headers)) {
+		const lower = key.toLowerCase();
+		if (
+			lower === "authorization" ||
+			lower === "proxy-authorization" ||
+			lower === "cookie" ||
+			lower.startsWith("x-auth-")
+		) {
+			continue;
+		}
+		cleaned[key] = value;
+	}
+	return cleaned;
+}
 
 const getTelemetryReporter = (
 	config: ServerTTSProviderConfig,
@@ -400,19 +503,33 @@ const customAdapter: TransportAdapter = {
 		if (inlineSpeechMarks.length > 0) {
 			speechMarks = inlineSpeechMarks;
 		} else if (typeof data.word === "string" && data.word.length > 0) {
-			const marksResponse = await fetch(data.word, {
-				headers: marksHeaders,
-				signal,
-			});
-			if (marksResponse.ok) {
-				const marksRaw = await marksResponse.text();
-				speechMarks = parseJSONLSpeechMarks(marksRaw);
+			const marksUrl = parseAssetUrl(data.word, config);
+			if (marksUrl !== null) {
+				const effectiveMarksHeaders = isOriginTrustedForAuth(marksUrl, config)
+					? marksHeaders
+					: scrubAuthHeaders(marksHeaders);
+				const marksResponse = await fetch(marksUrl.toString(), {
+					headers: effectiveMarksHeaders,
+					signal,
+					// Fail loud on redirects; the origin allow-list decision
+					// is made pre-redirect and a silent hop could leak auth
+					// to an unlisted origin.
+					redirect: "error",
+				});
+				if (marksResponse.ok) {
+					const marksRaw = await marksResponse.text();
+					speechMarks = parseJSONLSpeechMarks(marksRaw);
+				}
 			}
+		}
+		const parsedAudioUrl = parseAssetUrl(data.audioContent, config);
+		if (parsedAudioUrl === null) {
+			throw new Error("TTS server returned an invalid audio URL");
 		}
 		return {
 			audio: {
 				kind: "url",
-				url: data.audioContent,
+				url: parsedAudioUrl.toString(),
 			},
 			speechMarks,
 		};
@@ -644,11 +761,30 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 					assetHeaders["Authorization"] = `Bearer ${this.config.authToken}`;
 				}
 			}
+			const parsedAssetUrl = parseAssetUrl(audioAssetUrl, this.config);
+			if (parsedAssetUrl === null) {
+				await this.emitTelemetry("pie-tool-backend-call-error", {
+					toolId: "tts",
+					backend: this.config.provider || "server",
+					operation: "fetch-synthesized-audio-asset",
+					duration: Date.now() - assetFetchStartedAt,
+					errorType: "TTSAssetInvalidUrl",
+					message: "TTS asset URL rejected (non-http(s) or malformed)",
+				});
+				throw new Error("TTS asset URL rejected (non-http(s) or malformed)");
+			}
+			const effectiveAssetHeaders = isOriginTrustedForAuth(
+				parsedAssetUrl,
+				this.config,
+			)
+				? assetHeaders
+				: scrubAuthHeaders(assetHeaders);
 			const audioResponse = await (async () => {
 				try {
-					return await fetch(audioAssetUrl, {
-						headers: assetHeaders,
+					return await fetch(parsedAssetUrl.toString(), {
+						headers: effectiveAssetHeaders,
 						signal,
+						redirect: "error",
 					});
 				} catch (error) {
 					await this.emitTelemetry("pie-tool-backend-call-error", {

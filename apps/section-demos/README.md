@@ -213,6 +213,14 @@ The `tts-ssml` route defaults to an SC-style custom transport through the local 
   - `TTS_SCHOOLCITY_URL`
   - `TTS_SCHOOLCITY_API_KEY`
   - `TTS_SCHOOLCITY_ISS`
+- Optional:
+  - `TTS_SCHOOLCITY_ASSET_ORIGINS` — comma-separated exact-origin allow-list
+    for synthesized audio / speech-mark asset fetches. When unset, the provider
+    defaults to allowing `TTS_SCHOOLCITY_URL`'s origin plus any host on the
+    same registrable domain (so a service at `tts.svcdev.schoolcity.com`
+    automatically permits `tts-cdn.svcdev.schoolcity.com` without further
+    config). Set this env var to switch to a strict exact-origin allow-list
+    (recommended for production for audit and typo resistance).
 
 This keeps upstream auth/signing material server-side.
 

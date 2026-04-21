@@ -13,7 +13,7 @@
 	"main": "./dist/index.js",
 	"devDependencies": {
 		"typescript": "^5.9.3",
-		"vitest": "^1.0.4"
+		"vitest": "^4.1.4"
 	},
 	"exports": {
 		".": {

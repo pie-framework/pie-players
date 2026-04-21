@@ -12,6 +12,11 @@
   import type { LoaderConfig } from "../loader-config.js";
   import { DEFAULT_LOADER_CONFIG } from "../loader-config.js";
   import {
+    buildAuthoringAllowList,
+    createDefaultItemMarkupSanitizer,
+    type ItemMarkupSanitizer,
+  } from "../security/index.js";
+  import {
     AssetEventManager,
     createDefaultImageDeleteHandler,
     createDefaultImageInsertHandler,
@@ -60,6 +65,9 @@
     mode = "view" as "view" | "author",
     configuration = {} as Record<string, any>,
     authoringBackend = "demo" as "demo" | "required",
+    // Security: sanitize markup before {@html} injection unless the host opts out.
+    trustMarkup = false,
+    sanitizeMarkup,
     // Asset handler callbacks
     onInsertImage,
     onDeleteImage,
@@ -85,6 +93,9 @@
     mode?: "view" | "author";
     configuration?: Record<string, any>;
     authoringBackend?: "demo" | "required";
+    // Markup-trust controls
+    trustMarkup?: boolean;
+    sanitizeMarkup?: ItemMarkupSanitizer;
     // Asset handlers
     onInsertImage?: (handler: ImageHandler) => void;
     onDeleteImage?: (src: string, done: (err?: Error) => void) => void;
@@ -123,27 +134,50 @@
     return result;
   }
 
+  // Custom-element allow-list derived from the item/passage `elements` maps.
+  // Includes both the raw tag names and their authoring-mode `-config`
+  // rewrites so `transformMarkupForAuthoring` output still passes the
+  // sanitizer.
+  const itemAllowList = $derived.by<string[]>(() => {
+    const elements = itemConfig?.elements ?? {};
+    return buildAuthoringAllowList(Object.keys(elements));
+  });
+
+  const passageAllowList = $derived.by<string[]>(() => {
+    const elements = passageConfig?.elements ?? {};
+    return buildAuthoringAllowList(Object.keys(elements));
+  });
+
+  function applySanitizer(markup: string, allowList: string[]): string {
+    if (!markup) return "";
+    if (trustMarkup) return markup;
+    if (sanitizeMarkup) return sanitizeMarkup(markup);
+    const sanitizer = createDefaultItemMarkupSanitizer({
+      allowedCustomElements: allowList,
+    });
+    return sanitizer(markup);
+  }
+
   // Get appropriate markup based on mode
   const itemMarkup = $derived.by(() => {
     if (!itemConfig?.markup) return "";
-    if (mode === "author" && itemConfig.elements) {
-      return transformMarkupForAuthoring(
-        itemConfig.markup,
-        itemConfig.elements
-      );
-    }
-    return itemConfig.markup;
+    const raw =
+      mode === "author" && itemConfig.elements
+        ? transformMarkupForAuthoring(itemConfig.markup, itemConfig.elements)
+        : itemConfig.markup;
+    return applySanitizer(raw, itemAllowList);
   });
 
   const passageMarkup = $derived.by(() => {
     if (!passageConfig?.markup) return "";
-    if (mode === "author" && passageConfig.elements) {
-      return transformMarkupForAuthoring(
-        passageConfig.markup,
-        passageConfig.elements
-      );
-    }
-    return passageConfig.markup;
+    const raw =
+      mode === "author" && passageConfig.elements
+        ? transformMarkupForAuthoring(
+            passageConfig.markup,
+            passageConfig.elements
+          )
+        : passageConfig.markup;
+    return applySanitizer(raw, passageAllowList);
   });
 
   function normalizePlayerErrorDetail(

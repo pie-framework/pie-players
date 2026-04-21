@@ -56,6 +56,7 @@
 		isValidToolbarItemShape,
 		type ToolbarItem
 	} from '../services/toolbar-items.js';
+	import { sanitizeSvgIcon } from '@pie-players/pie-players-shared/security';
 	import type { PnpToolResolver } from '../services/PNPToolResolver.js';
 	import { createPackagedToolRegistry } from '../services/createDefaultToolRegistry.js';
 	import { DEFAULT_TOOL_MODULE_LOADERS } from '../tools/default-tool-module-loaders.js';
@@ -987,16 +988,25 @@
 			closeButtonEl.type = 'button';
 			closeButtonEl.className = 'pie-tool-shell__close';
 			closeButtonEl.setAttribute('aria-label', 'Close tool');
-			closeButtonEl.innerHTML =
-				'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 3.5L12.5 12.5M12.5 3.5L3.5 12.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
-			const closeIconEl = closeButtonEl.querySelector('svg');
-			if (closeIconEl) {
-				closeIconEl.style.width = '16px';
-				closeIconEl.style.height = '16px';
-				closeIconEl.style.display = 'block';
-				closeIconEl.style.flexShrink = '0';
-				closeIconEl.style.pointerEvents = 'none';
-			}
+			const svgNs = 'http://www.w3.org/2000/svg';
+			const closeIconEl = document.createElementNS(svgNs, 'svg');
+			closeIconEl.setAttribute('xmlns', svgNs);
+			closeIconEl.setAttribute('viewBox', '0 0 16 16');
+			closeIconEl.setAttribute('aria-hidden', 'true');
+			const closeIconPath = document.createElementNS(svgNs, 'path');
+			closeIconPath.setAttribute('d', 'M3.5 3.5L12.5 12.5M12.5 3.5L3.5 12.5');
+			closeIconPath.setAttribute('stroke', 'currentColor');
+			closeIconPath.setAttribute('stroke-width', '1.8');
+			closeIconPath.setAttribute('stroke-linecap', 'round');
+			closeIconEl.appendChild(closeIconPath);
+			closeButtonEl.appendChild(closeIconEl);
+			// SVGElement.style exists but is readonly in DOM types; cast once.
+			const closeIconStyle = (closeIconEl as unknown as HTMLElement).style;
+			closeIconStyle.width = '16px';
+			closeIconStyle.height = '16px';
+			closeIconStyle.display = 'block';
+			closeIconStyle.flexShrink = '0';
+			closeIconStyle.pointerEvents = 'none';
 			const closeButtonBaseBackground =
 				'color-mix(in srgb, var(--pie-white, #fff) 8%, transparent)';
 			const closeButtonHoverBackground =
@@ -1192,13 +1202,13 @@
 					>
 						{#if item.icon}
 							{#if isInlineSvgIcon(item.icon)}
-								{@html item.icon}
+								<span aria-hidden="true">{@html sanitizeSvgIcon(item.icon)}</span>
 							{:else if isExternalIconUrl(item.icon)}
 								<img class="item-toolbar__icon-image" src={item.icon} alt="" />
 							{:else}
 								{@const fallbackIcon = getFallbackIconSvg(item.icon)}
 								{#if fallbackIcon}
-									{@html fallbackIcon}
+									<span aria-hidden="true">{@html sanitizeSvgIcon(fallbackIcon)}</span>
 								{:else}
 									<i class={`icon icon-${item.icon}`} aria-hidden="true"></i>
 								{/if}
@@ -1218,13 +1228,13 @@
 					>
 						{#if item.icon}
 							{#if isInlineSvgIcon(item.icon)}
-								{@html item.icon}
+								<span aria-hidden="true">{@html sanitizeSvgIcon(item.icon)}</span>
 							{:else if isExternalIconUrl(item.icon)}
 								<img class="item-toolbar__icon-image" src={item.icon} alt="" />
 							{:else}
 								{@const fallbackIcon = getFallbackIconSvg(item.icon)}
 								{#if fallbackIcon}
-									{@html fallbackIcon}
+									<span aria-hidden="true">{@html sanitizeSvgIcon(fallbackIcon)}</span>
 								{:else}
 									<i class={`icon icon-${item.icon}`} aria-hidden="true"></i>
 								{/if}

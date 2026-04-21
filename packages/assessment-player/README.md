@@ -86,3 +86,17 @@ Toolkit tool/backend operational stream (when toolkit is mounted):
 - `pie-tool-init-start|success|error`
 - `pie-tool-backend-call-start|success|error`
 - `pie-tool-library-load-start|success|error`
+
+## Content trust boundary
+
+Assessment markup reaches the DOM via the underlying
+`<pie-item-player>` element, which now sanitizes item / passage markup by
+default through DOMPurify. See
+[pie-item-player README](./README.md#content-trust-boundary)
+for the allow-list, opt-out mechanics (`trust-markup`), and the
+`sanitizeMarkup` property override. Assessment-player hosts forward these
+settings by setting `runtime.player.trustMarkup` /
+`runtime.player.sanitizeMarkup` on the shared runtime they pass into the
+section-player instances; the section-player runtime flattens `runtime.player.*`
+fields onto the embedded `<pie-item-player>` (see the section-player README
+for the exact forwarding shape).

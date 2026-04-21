@@ -23,6 +23,15 @@ at the client provider boundary.
 - `TTS_SCHOOLCITY_URL`
 - `TTS_SCHOOLCITY_API_KEY`
 - `TTS_SCHOOLCITY_ISS`
+- `TTS_SCHOOLCITY_ASSET_ORIGINS` (optional, comma-separated) — exact origins the
+  provider is permitted to fetch synthesized audio / speech-mark assets from.
+  When set, it replaces the default policy with a strict exact-origin allow-list
+  (recommended for production; fully auditable). When unset, the provider
+  permits `TTS_SCHOOLCITY_URL`'s origin plus any host on the same registrable
+  domain (eTLD+1) — e.g. setting `TTS_SCHOOLCITY_URL=https://tts.svcdev.schoolcity.com`
+  automatically permits `https://tts-cdn.svcdev.schoolcity.com`. Regardless of
+  this setting, the provider always rejects private/metadata hostnames,
+  non-http(s) schemes, and cross-origin redirects that escape the policy.
 
 `/api/tts/sc` in section-demos is a host-owned demo/reference adapter route backed by
 `@pie-players/tts-server-sc`. It demonstrates custom provider integration boundaries and

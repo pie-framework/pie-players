@@ -389,6 +389,29 @@ await controller?.updateItemSession?.("q1", {
 The same controller snapshot is what the persistence strategy saves/loads.
 When a controller is reused for the same `sectionId`/`attemptId`, `updateInput()` refreshes composition input while preserving in-memory section session data.
 
+## Content trust boundary
+
+Section-player layouts embed `<pie-item-player>` elements for each item.
+Item and passage markup is sanitized by default via DOMPurify; see
+[pie-item-player README](./README.md#content-trust-boundary)
+property. Hosts can forward those settings through the section-player
+`runtime.player` overrides — the runtime flattens these onto the embedded
+`<pie-item-player>` instance, so any field not recognized by the kernel is
+passed straight through as a prop/attribute:
+
+```ts
+const runtime = {
+  playerType: "iife",
+  player: {
+    trustMarkup: false, // default, keeps DOMPurify on
+    // sanitizeMarkup: (html) => myCustomSanitize(html),
+  },
+};
+```
+
+Set `trustMarkup: true` only when the section payload is guaranteed to be
+produced by a trusted pipeline.
+
 ## Exports
 
 Published exports are intentionally minimal:

@@ -24,8 +24,8 @@
 		"@pie-players/tts-server-polly": "workspace:*"
 	},
 	"devDependencies": {
-		"@sveltejs/adapter-node": "5.5.4",
-		"@sveltejs/kit": "^2.55.0",
+		"@sveltejs/adapter-node": "^5.5.4",
+		"@sveltejs/kit": "^2.57.1",
 		"@sveltejs/vite-plugin-svelte": "^7.0.0",
 		"@tailwindcss/vite": "^4.2.2",
 		"daisyui": "^5.5.19",

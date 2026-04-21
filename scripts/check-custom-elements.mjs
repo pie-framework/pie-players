@@ -146,6 +146,31 @@ const validatePackage = (pkgInfo) => {
 				`dist JS must not import ".svelte?customElement" (${ceSvelteImportViolations.join(", ")})`,
 			);
 		}
+
+		// The toolkit / section-player CE build scripts run `svelte.compile()`
+		// on each CE entry in isolation and do NOT recursively bundle or copy
+		// child `.svelte` imports. Any surviving `.svelte` import in the
+		// published dist JS therefore points at a file that does not exist at
+		// consumer install time, breaking downstream Vite dep-scan / import
+		// resolution. CEs are the primary consumer-facing surface, so guard
+		// against regressions here explicitly.
+		const danglingSvelteImportRegex =
+			/(?:from|import)\s*\(?\s*['"][^'"]+\.svelte(?:\?[^'"]*)?['"]/g;
+		const danglingSvelteViolations = [];
+		for (const filePath of distJsFiles) {
+			const src = readText(filePath);
+			const matches = src.match(danglingSvelteImportRegex);
+			if (matches && matches.length > 0) {
+				danglingSvelteViolations.push(
+					`${rel(filePath)} [${[...new Set(matches)].join(", ")}]`,
+				);
+			}
+		}
+		if (danglingSvelteViolations.length > 0) {
+			failures.push(
+				`dist JS must not reference ".svelte" sources at runtime (${danglingSvelteViolations.join("; ")})`,
+			);
+		}
 	}
 
 	return { pkg, failures };

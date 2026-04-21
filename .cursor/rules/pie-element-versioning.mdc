@@ -1,0 +1,70 @@
+---
+description: Preserve versioned PIE element tag names and the id/model contract
+alwaysApply: true
+---
+
+# PIE Element Versioning & Tag/ID Contract
+
+## Why this exists
+
+The Custom Elements spec disallows redefining a tag once it has been registered
+with `customElements.define`. PIE items can legitimately load multiple versions
+of the same package (e.g. preview vs production, item-level override vs
+defaults, or side-by-side A/B comparison), so the player encodes the package
+version into the tag name itself — e.g. `pie-multiple-choice--version-latest`,
+`pie-multiple-choice--version-1-2-3`. See
+`packages/players-shared/src/pie/config.ts` (`makeUniqueTags`) for the canonical
+encoder and the inline explanation.
+
+Because versioned tag names are the *only* way two versions can coexist at
+runtime, they are part of the authored content contract — not opaque author
+markup. Stripping, normalizing, or rewriting them silently breaks PIE runtime
+element/model binding.
+
+## Rules for tools, sanitizers, and transformers
+
+- Do not strip, trim, or normalize the `--version-<encoded>` suffix on any
+  `pie-*` tag name in markup, config, registries, or logs.
+- Do not compare a rendered PIE element against its base (non-versioned) tag
+  name. Always compare the full tag as it appears after `makeUniqueTags`.
+- Authoring-mode variants (`pie-*-config`) are versioned the same way and carry
+  the same guarantees; keep them in allow-lists alongside their runtime tags.
+- The `id` attribute on `pie-*` elements is a contract key, not content.
+  `updateSinglePieElement` in
+  `packages/players-shared/src/pie/updates.ts` matches
+  `config.models[].id === pieElement.id` by strict equality. Sanitizers,
+  transformers, and HTML pre/post-processors must pass `id` through verbatim —
+  no prefixing (`user-content-`, `sanitized-`, etc.), no slugging, no casing
+  changes, no collapse of repeated hyphens.
+- Related contract attributes that must also pass through unchanged:
+  `model-id`, `session-id`, `slot`, `data-*`, `aria-*`, `pie-*`, `config-*`,
+  `context-*`.
+
+## DOMPurify specifics
+
+- Keep `SANITIZE_DOM: true` for DOM-clobbering defense.
+- Keep `SANITIZE_NAMED_PROPS: false` (DOMPurify's default). `true` prefixes
+  every `id`/`name` with `user-content-` and silently breaks model lookup.
+- Any change that flips `SANITIZE_NAMED_PROPS` must be accompanied by a
+  contract-preserving test in
+  `packages/players-shared/tests/sanitize-item-markup.test.ts` proving `id`
+  round-trips unchanged.
+- Use `CUSTOM_ELEMENT_HANDLING.tagNameCheck` / `attributeNameCheck` to allow
+  versioned `pie-*` tags and their contract attributes. Do not fall back to
+  generic HTML5 allow-lists that would drop unknown tags.
+
+## Classes of changes to reject
+
+- Alias maps that collapse versioned tags back to a base tag for "convenience".
+- Regex cleanups that strip `--version-*` or `-config` suffixes before
+  comparison or logging (logging is fine; dispatch is not).
+- Any sanitizer/transformer that mutates `id`, `model-id`, or `session-id`.
+- Any attempt to re-`define` an existing PIE custom element tag; if a new
+  version is needed, produce a new versioned tag and update the content.
+
+## Exception policy
+
+The only permitted compatibility surface is the `pie-item` client contract,
+per `.cursor/rules/legacy-compatibility-boundaries.mdc`. Exceptions must carry
+the inline `pie-item contract compatibility: <reason>` comment and a covering
+test.

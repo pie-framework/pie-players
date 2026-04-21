@@ -19,7 +19,10 @@
 			mode: { attribute: "mode", type: "String" },
 			configuration: { attribute: "configuration", type: "Object" },
 			authoringBackend: { attribute: "authoring-backend", type: "String" },
+			allowedStyleOrigins: { attribute: "allowed-style-origins", type: "String" },
 			loaderOptions: { type: "Object", reflect: false },
+			trustMarkup: { attribute: "trust-markup", type: "Boolean" },
+			sanitizeMarkup: { type: "Object", reflect: false },
 			onInsertImage: { type: "Object", reflect: false },
 			onDeleteImage: { type: "Object", reflect: false },
 			onInsertSound: { type: "Object", reflect: false },
@@ -33,7 +36,12 @@
 		ConfigEntity,
 		Env,
 		IifeBundleRetryStatus,
+		ItemMarkupSanitizer,
 		LoaderConfig,
+	} from "@pie-players/pie-players-shared";
+	import {
+		parseAllowedStyleOrigins,
+		validateExternalStyleUrl,
 	} from "@pie-players/pie-players-shared";
 	import type {
 		AuthoringBackendMode,
@@ -99,7 +107,10 @@
 		mode = "view" as "view" | "author",
 		configuration = {} as Record<string, any>,
 		authoringBackend = "demo" as AuthoringBackendMode,
+		allowedStyleOrigins = "",
 		loaderOptions = {} as UnifiedLoaderOptions,
+		trustMarkup = false,
+		sanitizeMarkup = null as ItemMarkupSanitizer | null,
 		onInsertImage = null as ((handler: ImageHandler) => void) | null,
 		onDeleteImage = null as ((src: string, done: DeleteDone) => void) | null,
 		onInsertSound = null as ((handler: SoundHandler) => void) | null,
@@ -663,12 +674,37 @@
 		syncControllerSession(controller, parsed, { allowMetadataOverwrite: false });
 	});
 
+	const allowedStyleOriginList = $derived(
+		parseAllowedStyleOrigins(allowedStyleOrigins),
+	);
+
+	const cssEscapeValue = (value: string): string => {
+		const cssApi = (globalThis as { CSS?: { escape?: (v: string) => string } })
+			.CSS;
+		if (typeof cssApi?.escape === "function") {
+			return cssApi.escape(value);
+		}
+		return value.replace(/[^a-zA-Z0-9_-]/g, (char) => `\\${char}`);
+	};
+
 	const loadScopedExternalStyle = async (url: string) => {
 		if (!isBrowser || !url || typeof url !== "string") return;
-		if (document.querySelector(`style[data-pie-style="${url}"]`)) return;
-		if (document.querySelector(`link[data-pie-style-link="${url}"]`)) return;
+		const validation = validateExternalStyleUrl(url, {
+			baseUrl: window.location.href,
+			allowedOrigins: allowedStyleOriginList,
+		});
+		if (!validation.ok) {
+			logger.error(
+				`[pie-item-player] ${validation.message} (url=${url})`,
+			);
+			return;
+		}
+		const resolvedUrl = validation.resolvedUrl;
+		const escapedUrl = cssEscapeValue(url);
+		if (document.querySelector(`style[data-pie-style="${escapedUrl}"]`)) return;
+		if (document.querySelector(`link[data-pie-style-link="${escapedUrl}"]`))
+			return;
 		try {
-			const resolvedUrl = new URL(url, window.location.href);
 			const isCrossOrigin = resolvedUrl.origin !== window.location.origin;
 			if (isCrossOrigin) {
 				// Cross-origin stylesheets may block fetch() without CORS headers.
@@ -680,7 +716,7 @@
 				document.head.appendChild(link);
 				return;
 			}
-			const response = await fetch(url);
+			const response = await fetch(resolvedUrl.toString());
 			const cssText = await response.text();
 			const scopedCss = cssText.replace(
 				/([^\r\n,{}]+)(,(?=[^}]*{)|\s*{)/g,
@@ -824,6 +860,8 @@
 				{loaderConfig}
 				mode={resolvedMode}
 				authoringBackend={authoringBackend}
+				{trustMarkup}
+				sanitizeMarkup={sanitizeMarkup ?? undefined}
 				configuration={typeof configuration === "string"
 					? JSON.parse(configuration)
 					: configuration}

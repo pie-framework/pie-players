@@ -65,7 +65,7 @@
 		"lint": "biome check PanelWindowControls.svelte PanelResizeHandle.svelte SharedFloatingPanel.svelte SessionDbPanel.svelte DebugPanelToggles.svelte floating-panel.ts section-controller.ts index.ts vite.config.ts package.json"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.3.10",
+		"@biomejs/biome": "^2.4.12",
 		"@sveltejs/vite-plugin-svelte": "^7.0.0",
 		"svelte": "^5.54.0",
 		"typescript": "^5.9.3",

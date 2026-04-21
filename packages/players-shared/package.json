@@ -123,7 +123,7 @@
 		"scan-hardcoded": "bun run src/i18n/scripts/scan-hardcoded.ts"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.3.10",
+		"@biomejs/biome": "^2.4.12",
 		"@happy-dom/global-registrator": "^20.9.0",
 		"@types/semver": "^7.7.1",
 		"glob": "^13.0.0",

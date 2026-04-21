@@ -1,6 +1,14 @@
 import { error } from '@sveltejs/kit';
+import {
+	parseElementOverridesFromUrl,
+	type ElementOverrides
+} from '@pie-players/pie-players-shared/pie';
 import type { AssessmentSection } from '@pie-players/pie-players-shared/types';
 import { getSectionDemoById, type SectionDemoInfo } from './sections';
+import {
+	aggregateElementsAcrossPages,
+	applyOverridesToSection
+} from './apply-overrides';
 
 export type DemoPageEntry = {
 	id: string;
@@ -13,6 +21,8 @@ export type DemoRouteData = {
 	demoPages: DemoPageEntry[];
 	activeDemoPageId: string;
 	section: AssessmentSection | null;
+	elementOverrides: ElementOverrides;
+	aggregatedElements: Record<string, string>;
 };
 
 export function loadDemoRouteDataById(demoId: string, url: URL): DemoRouteData {
@@ -25,12 +35,18 @@ export function loadDemoRouteDataById(demoId: string, url: URL): DemoRouteData {
 	const requestedPageId = (url.searchParams.get('page') || '').trim();
 	const activeDemoPage =
 		demoPages.find((page) => page.id === requestedPageId) || demoPages[0] || null;
-	const section = activeDemoPage?.section || demo.section || null;
+	const rawSection = activeDemoPage?.section || demo.section || null;
+
+	const elementOverrides = parseElementOverridesFromUrl(url.searchParams);
+	const section = applyOverridesToSection(rawSection, elementOverrides);
+	const aggregatedElements = aggregateElementsAcrossPages(demoPages, demo.section || null);
 
 	return {
 		demo,
 		demoPages,
 		activeDemoPageId: activeDemoPage?.id || '',
-		section
+		section,
+		elementOverrides,
+		aggregatedElements
 	};
 }

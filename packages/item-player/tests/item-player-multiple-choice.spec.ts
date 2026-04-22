@@ -141,9 +141,16 @@ async function replaceSourcePrompt(page: Page, nextPrompt: string) {
 	}
 	currentConfig.models[0].prompt = nextPrompt;
 	const nextJson = JSON.stringify(currentConfig, null, 2);
+	await page.context().grantPermissions(["clipboard-read", "clipboard-write"], {
+		origin: new URL(page.url()).origin,
+	});
 	await editor.click();
 	await page.keyboard.press(process.platform === "darwin" ? "Meta+A" : "Control+A");
-	await page.keyboard.type(nextJson);
+	await page.evaluate(async (text) => {
+		await navigator.clipboard.writeText(text);
+	}, nextJson);
+	await page.keyboard.press(process.platform === "darwin" ? "Meta+V" : "Control+V");
+	await expect(editor).toContainText(nextPrompt);
 }
 
 test.describe("item-player demo multiple-choice", () => {

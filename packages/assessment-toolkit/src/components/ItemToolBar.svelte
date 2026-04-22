@@ -57,6 +57,7 @@
 		type ToolbarItem
 	} from '../services/toolbar-items.js';
 	import { sanitizeSvgIcon } from '@pie-players/pie-players-shared/security';
+	import { createFocusTrap } from '@pie-players/pie-players-shared';
 	import type { PnpToolResolver } from '../services/PNPToolResolver.js';
 	import { createPackagedToolRegistry } from '../services/createDefaultToolRegistry.js';
 	import { DEFAULT_TOOL_MODULE_LOADERS } from '../tools/default-tool-module-loaders.js';
@@ -686,6 +687,9 @@
 		let y = 0;
 		let width = currentArgs.mounted.entry.shell?.initialWidth ?? 720;
 		let height = currentArgs.mounted.entry.shell?.initialHeight ?? 560;
+		let focusTrapCleanup: (() => void) | null = null;
+		let openerEl: HTMLElement | null = null;
+		let previousActive = false;
 		const invokeElementUnmount = (value: HTMLElement | null) => {
 			if (!value) return;
 			const callback = (value as unknown as { [key: string]: unknown })[
@@ -850,6 +854,61 @@
 			x = Math.max(0, Math.round((viewportW - width) / 2));
 			y = Math.max(0, Math.round((viewportH - height) / 2));
 			applyPositionAndSize();
+		};
+
+		const restoreOpenerFocus = () => {
+			const target = openerEl;
+			if (!target) return;
+			queueMicrotask(() => {
+				if (!target.isConnected) return;
+				try {
+					target.focus();
+				} catch {
+					// ignore
+				}
+			});
+		};
+
+		const getDeepActiveElement = (): HTMLElement | null => {
+			if (typeof document === 'undefined') return null;
+			let active: Element | null = document.activeElement;
+			while (active) {
+				const root = (active as Element & { shadowRoot?: ShadowRoot | null }).shadowRoot;
+				if (root && root.activeElement && root.activeElement !== active) {
+					active = root.activeElement;
+				} else {
+					break;
+				}
+			}
+			return (active as HTMLElement | null) ?? null;
+		};
+
+		const installFocusTrap = () => {
+			if (!shellEl || focusTrapCleanup) return;
+			const active = getDeepActiveElement();
+			// Only update opener if we don't already have one (survives re-open within a
+			// single mount lifecycle) and the active element isn't inside the shell itself.
+			if (!openerEl && active && !shellEl.contains(active)) {
+				openerEl = active;
+			}
+			focusTrapCleanup = createFocusTrap(shellEl, {
+				initialFocus: closeButtonEl,
+				onEscape: () => {
+					closeShell();
+				}
+			});
+		};
+
+		const removeFocusTrap = () => {
+			if (!focusTrapCleanup) return;
+			const cleanup = focusTrapCleanup;
+			focusTrapCleanup = null;
+			try {
+				cleanup();
+			} catch {
+				// ignore
+			}
+			restoreOpenerFocus();
 		};
 
 		const closeShell = () => {
@@ -1116,6 +1175,10 @@
 			applyShellStyle();
 			mountContent();
 			notifyHostedResize();
+			if (currentArgs.active) {
+				installFocusTrap();
+			}
+			previousActive = currentArgs.active;
 		}
 
 		return {
@@ -1128,9 +1191,20 @@
 				mountContent();
 				applyShellStyle();
 				notifyHostedResize();
+				if (!previousActive && currentArgs.active) {
+					installFocusTrap();
+				} else if (previousActive && !currentArgs.active) {
+					removeFocusTrap();
+					openerEl = null;
+				}
+				previousActive = currentArgs.active;
 			},
 			destroy() {
 				notifyHostedUnmount();
+				if (focusTrapCleanup) {
+					removeFocusTrap();
+				}
+				openerEl = null;
 				if (resizeHandleEl) {
 					resizeHandleEl.removeEventListener('pointerdown', onResizePointerDown);
 				}

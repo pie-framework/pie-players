@@ -321,6 +321,57 @@ test.describe("section toolbar tools", () => {
 		expect(movedByKeyboard.x).toBeLessThan(resized.x);
 	});
 
+	// PIE-215: keyboard-only users must be able to Tab to shell title-bar buttons,
+	// activate them with Space/Enter, and get focus returned to the toolbar opener
+	// after the shell is closed via the keyboard.
+	test("places title-bar buttons on the tab path and restores focus on close", async ({
+		page,
+	}) => {
+		await gotoDemo(page);
+		const toolbar = sectionToolbar(page);
+		const graphButton = toolbar.getByRole("button", {
+			name: "Graph - Graphing calculator",
+		});
+		await graphButton.focus();
+		await expect(graphButton).toBeFocused();
+		await page.keyboard.press("Enter");
+
+		const graphShell = page.locator('[data-pie-tool-shell="graph"]').first();
+		await expect(graphShell).toBeVisible();
+
+		const closeButton = graphShell.getByRole("button", { name: "Close tool" });
+		await expect(closeButton).toBeVisible();
+		await expect(closeButton).toBeFocused();
+
+		const isCloseFocused = async () =>
+			closeButton.evaluate((element) => element === document.activeElement);
+		await expect.poll(isCloseFocused).toBe(true);
+
+		const grow = graphShell.getByRole("button", { name: "Grow tool window" });
+		await grow.focus();
+		await expect(grow).toBeFocused();
+
+		const rectBefore = await getRect(graphShell);
+		await page.keyboard.press("Space");
+		const rectAfter = await getRect(graphShell);
+		expect(rectAfter.width).toBeGreaterThan(rectBefore.width);
+		expect(rectAfter.height).toBeGreaterThan(rectBefore.height);
+
+		await closeButton.focus();
+		await page.keyboard.press("Enter");
+		await expect(graphShell).toBeHidden();
+		await expect(graphButton).toBeFocused();
+
+		await graphButton.focus();
+		await page.keyboard.press("Enter");
+		await expect(graphShell).toBeVisible();
+		await expect(graphShell.getByRole("button", { name: "Close tool" })).toBeFocused();
+
+		await page.keyboard.press("Escape");
+		await expect(graphShell).toBeHidden();
+		await expect(graphButton).toBeFocused();
+	});
+
 	test("exposes default split divider semantics and keyboard resizing in splitpane layout", async ({
 		page,
 	}) => {

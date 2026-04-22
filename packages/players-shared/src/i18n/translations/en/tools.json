@@ -43,7 +43,7 @@
 	},
 	"calculator": {
 		"title": "Calculator",
-		"aria_label": "Calculator tool - Use Alt+Arrow keys to move, Escape to close",
+		"aria_label": "Calculator tool - Tab to reach title bar controls. On the title bar, Arrow keys move the window, Shift+Arrow resizes it, Home re-centers, and Escape closes.",
 		"settings": "Calculator settings",
 		"close": "Close calculator",
 		"settings_title": "Calculator Settings",

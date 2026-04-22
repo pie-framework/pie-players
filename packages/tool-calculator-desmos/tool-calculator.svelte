@@ -51,7 +51,6 @@
 		AssessmentToolkitRuntimeContext,
 	} from '@pie-players/pie-assessment-toolkit';
 	import type { Calculator, CalculatorProviderConfig, CalculatorType } from '@pie-players/pie-assessment-toolkit/tools/client';
-	import { createFocusTrap } from '@pie-players/pie-players-shared';
 import { onMount } from 'svelte';
 
 	// ============================================================================
@@ -96,7 +95,6 @@ import { onMount } from 'svelte';
 	// Component State
 	// ============================================================================
 
-	let containerEl = $state<HTMLDivElement | undefined>();
 	let calculatorContainerEl = $state<HTMLDivElement | undefined>();
 	let calculatorInstance = $state<Calculator | null>(null);
 	let currentCalculatorType = $state<CalculatorType>('basic');
@@ -105,7 +103,6 @@ import { onMount } from 'svelte';
 	let initializationFailed = $state(false);
 	let lastInitializationError = $state<string | null>(null);
 	let hasMountedSurface = $state(false);
-	let cleanupFocusTrap = $state<(() => void) | null>(null);
 	const CALCULATOR_MOUNT_SELECTOR =
 		'.dcg-container,.dcg-calculator-api-container,iframe,canvas';
 
@@ -369,7 +366,6 @@ import { onMount } from 'svelte';
 		}
 
 		return () => {
-			cleanupFocusTrap?.();
 			calculatorInstance?.destroy();
 		};
 	});
@@ -448,23 +444,11 @@ import { onMount } from 'svelte';
 		return undefined;
 	});
 
-	$effect(() => {
-		if (containerEl && visible) {
-			if (!cleanupFocusTrap) {
-				cleanupFocusTrap = createFocusTrap(containerEl);
-			}
-		} else if (!visible && cleanupFocusTrap) {
-			cleanupFocusTrap();
-			cleanupFocusTrap = null;
-		}
-	});
-
 </script>
 
 <div bind:this={contextHostElement} class="pie-tool-calculator__context-host">
 {#if visible}
 	<div
-		bind:this={containerEl}
 		class="pie-tool-calculator notranslate"
 		role="region"
 		data-tool-id={toolId}

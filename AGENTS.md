@@ -79,6 +79,19 @@ tests that exercise its CE entrypoint.
 
 Rule file: [`.cursor/rules/build-before-tests.mdc`](.cursor/rules/build-before-tests.mdc).
 
+### Playwright / `git push` must run outside the sandbox
+
+The pre-push lefthook runs Playwright e2e suites; running those (or any
+`test:e2e:*` script, `bunx playwright …`, or `git push`) inside the default
+tool sandbox fails with missing Chromium binaries, dev-server timeouts, or
+blocked downloads.
+
+Agents MUST invoke these commands with `required_permissions: ["all"]` so
+they execute outside the sandbox and reuse the shared
+`~/Library/Caches/ms-playwright/` browser cache.
+
+Rule file: [`.cursor/rules/playwright-sandbox.mdc`](.cursor/rules/playwright-sandbox.mdc).
+
 ### Release version alignment
 
 Always include all publishable packages in release/versioning steps so

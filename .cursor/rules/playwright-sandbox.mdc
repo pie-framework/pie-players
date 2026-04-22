@@ -1,0 +1,60 @@
+---
+description: Run Playwright-invoking scripts (including git push) outside the sandbox
+alwaysApply: true
+---
+
+# Playwright and Sandboxed Execution
+
+Playwright cannot install browsers, spawn a web server, or launch Chromium
+inside the default tool sandbox. Agents that invoke Playwright from inside the
+sandbox will see confusing, non-deterministic failures such as:
+
+- `browserType.launch: Executable doesn't exist at …/chrome-headless-shell-<n>/…`
+- Dev-server start timeouts
+- Silent network blocks when Playwright tries to download browser binaries
+
+## Rule
+
+When running any command that may invoke Playwright, **request
+`required_permissions: ["all"]`** (or at minimum `["full_network"]` plus write
+access to the Playwright browser cache) so the command runs outside the
+sandbox.
+
+This applies to, at a minimum:
+
+- `git push` (the `pre-push` lefthook runs
+  `test:e2e:section-player:critical`, `test:e2e:item-player:multiple-choice`,
+  and `test:e2e:assessment-player`; see `lefthook.yml`).
+- Any `bun run test:e2e:*` script.
+- `bunx playwright …` / `bun playwright …` (install, test, codegen).
+- Playwright scripts invoked from agent helper scripts (`verify-*.mjs`,
+  ad-hoc DOM verification scripts, screenshot capture, etc.).
+- `bun run test` / `bun test` in packages whose `tests/` directory contains
+  `*.spec.ts` Playwright specs (most `packages/*-player/tests/`).
+
+## Practical pattern
+
+```text
+required_permissions: ["all"]
+```
+
+Prefer `["all"]` for `git push` because the pre-push hook chain also runs
+`check:publint` / other scripts that write to caches outside the workspace.
+
+## Why not just retry inside the sandbox
+
+The Playwright browser cache lives in a per-sandbox-session temp directory
+(for example
+`/var/folders/.../cursor-sandbox-cache/<hash>/playwright/chromium_headless_shell-<n>`).
+Running outside the sandbox reuses the shared
+`~/Library/Caches/ms-playwright/` cache, which already has the matching
+browser version installed, so tests start immediately instead of downloading
+a fresh ~90 MB Chromium on every run.
+
+## Related
+
+- Pre-push hook configuration: `lefthook.yml`
+- Playwright configs: `packages/*/playwright.config.ts`
+- Build-before-tests rule: `.cursor/rules/build-before-tests.mdc` (rebuild
+  consumers before running e2e so stale `dist/` artefacts don't confuse the
+  failure mode)

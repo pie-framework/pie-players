@@ -89,6 +89,30 @@ Cursor encodes the same expectations in `.cursor/rules/code-review-workflow.mdc`
 - For custom-element package workflows, assume consumer apps use built `dist` outputs and rebuild affected packages first.
 - If test failures might be caused by stale artifacts, rebuild and rerun once before deeper debugging.
 
+### Playwright and `git push` must run outside the sandbox (Required)
+
+The pre-push lefthook (see `lefthook.yml`) runs Playwright e2e suites
+(`test:e2e:section-player:critical`, `test:e2e:item-player:multiple-choice`,
+`test:e2e:assessment-player`). Playwright cannot install or launch Chromium
+inside the default tool sandbox, so agents must invoke the following with
+`required_permissions: ["all"]` so they execute outside the sandbox:
+
+- `git push` (triggers the e2e pre-push hook).
+- Any `bun run test:e2e:*` script or direct `bunx playwright …` invocation.
+- `bun run test` / `bun test` in packages whose `tests/` directory contains
+  Playwright `*.spec.ts` files.
+- Any helper script (e.g. `verify-*.mjs`, ad-hoc DOM verification, screenshot
+  capture) that imports `@playwright/test` or launches a browser.
+
+Running inside the sandbox produces confusing failures such as
+`browserType.launch: Executable doesn't exist at …/chrome-headless-shell-…`,
+web-server start timeouts, or silent network blocks when Playwright tries to
+download browser binaries. Running outside the sandbox reuses the shared
+`~/Library/Caches/ms-playwright/` cache and the already-installed browser
+version.
+
+Canonical rule: [`.cursor/rules/playwright-sandbox.mdc`](../.cursor/rules/playwright-sandbox.mdc).
+
 ## Player Architecture
 
 ### Four Player Types

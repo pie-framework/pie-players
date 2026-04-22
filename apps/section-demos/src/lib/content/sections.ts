@@ -392,14 +392,15 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 	"question-passage": {
 		id: "question-passage",
 		name: "Question with Passage",
-		description: "Section with passage and related question",
+		description: "Section with illustrated passage and related question",
 		integrationLevel: 2,
 		integrationTheme: "CE tool configuration",
 		focus:
-			"Shows how a stimulus passage and an associated item are authored and rendered together in one section.",
+			"Shows how a stimulus passage and an associated item are authored and rendered together in one section, and exercises the PIE-94 horizontal-scroll wrapper for an intentionally overwide authored image.",
 		whatMakesItTick: [
 			"Passage content is supplied through `rubricBlocks` as a stimulus block.",
 			"Item and passage coexist in section JSON so layout and reading flow can be tested.",
+			"Passage markup embeds a 1792×592 Renaissance timeline image to verify `.pie-image-scroll` kicks in inside narrow columns and at 400% browser zoom (WCAG 1.4.10 Reflow).",
 			"Shared demo host allows switching between student/scorer and splitpane/vertical layouts."
 		],
 		section: demo2Section,

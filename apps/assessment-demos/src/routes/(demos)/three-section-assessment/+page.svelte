@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { browser } from "$app/environment";
+	import { afterNavigate, replaceState } from "$app/navigation";
 	import { onMount } from "svelte";
 import {
 	CompositeInstrumentationProvider,
@@ -153,12 +154,18 @@ let instrumentationDebuggerElement = $state<any>(null);
 		syncUrl();
 	}
 
+	let routerReady = $state(false);
+	afterNavigate(() => {
+		routerReady = true;
+		syncUrl();
+	});
+
 	function syncUrl() {
-		if (!browser) return;
+		if (!browser || !routerReady) return;
 		const url = new URL(window.location.href);
 		url.searchParams.set(ATTEMPT_QUERY_PARAM, attemptId);
 		url.searchParams.set(SECTION_LAYOUT_QUERY_PARAM, sectionLayout);
-		window.history.replaceState({}, "", url.toString());
+		replaceState(url, {});
 	}
 
 	function refreshSnapshot() {

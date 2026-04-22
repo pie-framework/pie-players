@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { browser } from "$app/environment";
+	import { afterNavigate, replaceState } from "$app/navigation";
 	import {
 		createToolsConfig,
 		createDefaultPersonalNeedsProfile,
@@ -79,6 +80,10 @@
 	);
 	let selectedDaisyTheme = $state<string>(DEFAULT_DAISY_THEME);
 	let attemptId = $state(getOrCreateAttemptId());
+	let routerReady = $state(false);
+	afterNavigate(() => {
+		routerReady = true;
+	});
 	let playerHostElement: HTMLElement | null = $state(null);
 
 	// Host integration pattern: register callbacks under section-player `hooks`
@@ -158,14 +163,14 @@
 	}
 
 	$effect(() => {
-		if (!browser || !attemptId) return;
+		if (!browser || !routerReady || !attemptId) return;
 		const url = new URL(window.location.href);
 		const existingAttemptId = url.searchParams.get(ATTEMPT_QUERY_PARAM);
 		const existingLayout = url.searchParams.get("layout");
 		if (existingAttemptId === attemptId && existingLayout === layoutType) return;
 		url.searchParams.set(ATTEMPT_QUERY_PARAM, attemptId);
 		url.searchParams.set("layout", layoutType);
-		window.history.replaceState({}, "", url.toString());
+		replaceState(url, {});
 	});
 
 	$effect(() => {

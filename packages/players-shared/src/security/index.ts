@@ -18,3 +18,4 @@ export {
 	resetSvgSanitizerForTesting,
 	sanitizeSvgIcon,
 } from "./sanitize-svg-icon.js";
+export { wrapOverwideImages } from "./wrap-overwide-images.js";

@@ -1068,6 +1068,14 @@ from tool configuration. Two sanitization layers apply:
   `pie-item-player`. See
   [pie-item-player README](./README.md#content-trust-boundary)
   for the `trust-markup` opt-out and the `sanitizeMarkup` override.
+  As a post-sanitization step, every authored `<img>` outside a `pie-*`
+  custom element is wrapped in `<span class="pie-image-scroll">` so
+  overwide images surface a horizontal scrollbar instead of being
+  clipped by the section layout's `overflow-x: hidden` ancestors
+  (PIE-94 / WCAG 1.4.10 Reflow at 400% zoom). The wrapper is
+  keyboard-scrollable (`tabindex="0"`, `role="region"`) and carries
+  the image's `alt` text in its `aria-label`; matching CSS lives in
+  `@pie-players/pie-theme` (`components.css`).
 - **Tool icons and SSML** - tool-registered icon markup is parsed and
   DOMPurified inside the toolbar at render time; SSML payloads are
   restricted to an allow-listed subset of SSML tags/attributes before

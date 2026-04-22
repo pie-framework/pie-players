@@ -218,6 +218,16 @@ export interface Calculator {
 	resize?(): void;
 
 	/**
+	 * Move keyboard focus to the primary input/expression field.
+	 *
+	 * Optional: providers that cannot focus an input meaningfully (e.g. a
+	 * keypad-only UI without a text field) should omit or no-op. Called by
+	 * host components (like the shelled calculator tool) after mount so
+	 * keyboard users can begin typing immediately.
+	 */
+	focus?(): void;
+
+	/**
 	 * Export calculator state for persistence
 	 */
 	exportState(): CalculatorState;

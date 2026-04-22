@@ -372,6 +372,115 @@ test.describe("section toolbar tools", () => {
 		await expect(graphButton).toBeFocused();
 	});
 
+	// PIE-95: when the calculator tool opens (keyboard or mouse), focus must
+	// land on the calculator's input/expression field so the user can start
+	// typing immediately. The shell-wide focus trap from PIE-215 still keeps
+	// Tab navigation contained and restores focus to the opener on close.
+	test("focuses the calculator input field when opened and restores opener on close", async ({
+		page,
+	}) => {
+		test.setTimeout(60_000);
+		await gotoDemo(page);
+
+		const q1 = page.locator("pie-section-player-item-card").first();
+		const calculatorButton = q1.getByRole("button", {
+			name: /open .* calculator/i,
+		});
+		await expect(calculatorButton).toBeVisible();
+
+		const desmosAuthResponse = page.waitForResponse(
+			(response) =>
+				response.url().includes("/api/tools/desmos/auth") &&
+				response.request().method() === "GET",
+		);
+		await calculatorButton.focus();
+		await expect(calculatorButton).toBeFocused();
+		await page.keyboard.press("Enter");
+		await desmosAuthResponse;
+
+		const calculatorShell = page.locator('[data-pie-tool-shell="calculator"]').first();
+		await expect(calculatorShell).toBeVisible();
+
+		const calculatorHost = page.locator("pie-tool-calculator .pie-tool-calculator").last();
+		await expect(calculatorHost).toBeVisible({ timeout: 20_000 });
+		const calculatorSurface = calculatorHost.locator(
+			[
+				".pie-tool-calculator__container .dcg-container",
+				".pie-tool-calculator__container .dcg-calculator-api-container",
+				".pie-tool-calculator__container iframe",
+				".pie-tool-calculator__container canvas",
+			].join(","),
+		);
+		await expect(calculatorSurface.first()).toBeVisible({ timeout: 20_000 });
+
+		// Once Desmos has rendered, focus must move off the shell's Close button
+		// and onto the calculator's input. Piercing shadow roots is required
+		// because pie-tool-calculator uses shadow DOM.
+		await expect
+			.poll(
+				async () =>
+					await page.evaluate(() => {
+						const getDeepActive = (): Element | null => {
+							let active: Element | null = document.activeElement;
+							while (active) {
+								const root = (active as Element & { shadowRoot?: ShadowRoot | null })
+									.shadowRoot;
+								if (root && root.activeElement && root.activeElement !== active) {
+									active = root.activeElement;
+								} else {
+									break;
+								}
+							}
+							return active;
+						};
+						const active = getDeepActive();
+						if (!active) return { insideCalculator: false, isCloseButton: false };
+						const container = active.closest(".pie-tool-calculator__container");
+						const isCloseButton =
+							active.getAttribute?.("aria-label") === "Close tool";
+						return {
+							insideCalculator: Boolean(container),
+							isCloseButton,
+						};
+					}),
+				{ timeout: 15_000 },
+			)
+			.toEqual({ insideCalculator: true, isCloseButton: false });
+
+		// Shift+Tab from the calculator input must still reach the shell's
+		// header controls, confirming the shell-wide focus trap from PIE-215
+		// hasn't been broken. The trap wraps, so the last focusable in the
+		// shell is the Close button.
+		await page.keyboard.press("Shift+Tab");
+		await expect
+			.poll(
+				async () =>
+					await page.evaluate(() => {
+						const getDeepActive = (): Element | null => {
+							let active: Element | null = document.activeElement;
+							while (active) {
+								const root = (active as Element & { shadowRoot?: ShadowRoot | null })
+									.shadowRoot;
+								if (root && root.activeElement && root.activeElement !== active) {
+									active = root.activeElement;
+								} else {
+									break;
+								}
+							}
+							return active;
+						};
+						const active = getDeepActive();
+						return active?.getAttribute?.("aria-label") ?? null;
+					}),
+			)
+			.toBe("Close tool");
+
+		// Escape closes the shell and restores focus to the opener button.
+		await page.keyboard.press("Escape");
+		await expect(calculatorShell).toBeHidden();
+		await expect(calculatorButton).toBeFocused();
+	});
+
 	test("exposes default split divider semantics and keyboard resizing in splitpane layout", async ({
 		page,
 	}) => {

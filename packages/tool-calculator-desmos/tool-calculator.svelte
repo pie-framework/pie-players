@@ -201,6 +201,33 @@ import { onMount } from 'svelte';
 		return hasCalculatorMount(container);
 	}
 
+	/**
+	 * Move keyboard focus to the calculator's input/expression field after
+	 * Desmos has rendered its DOM. Skipped if focus has already landed inside
+	 * the calculator container (user-initiated focus wins over auto-focus).
+	 *
+	 * Addresses PIE-95: on open (keyboard or mouse), the input field should
+	 * receive focus so the user can begin a calculation immediately.
+	 */
+	function focusCalculatorInput(): void {
+		requestAnimationFrame(() => {
+			try {
+				if (!visible) return;
+				const instance = calculatorInstance;
+				const container = calculatorContainerEl;
+				if (!instance || !container || !container.isConnected) return;
+				const active = document.activeElement;
+				if (active instanceof Node && container.contains(active)) {
+					// Focus already inside the calculator; don't disrupt the user.
+					return;
+				}
+				instance.focus?.();
+			} catch {
+				// best-effort; focus is non-critical for functionality
+			}
+		});
+	}
+
 	function waitForAnimationFrames(count: number, signal?: AbortSignal): Promise<void> {
 		return new Promise<void>((resolve) => {
 			let remaining = count;
@@ -336,6 +363,9 @@ import { onMount } from 'svelte';
 			lastInitializationError = null;
 			hasMountedSurface = hasCalculatorMount(mountContainer);
 			console.log(`[ToolCalculator] ${currentCalculatorType} calculator initialized successfully`);
+			if (hasMountedSurface) {
+				focusCalculatorInput();
+			}
 		} catch (error) {
 			initializationFailed = true;
 			lastInitializationError = error instanceof Error ? error.message : String(error);
@@ -398,6 +428,16 @@ import { onMount } from 'svelte';
 					}
 				});
 			}
+		}
+	});
+
+	// PIE-95: when the calculator becomes visible and is already mounted (e.g. a
+	// rapid hide/show cycle that skipped teardown), move focus to the input so
+	// the user can begin typing immediately. initCalculator() handles the
+	// fresh-mount path; this covers the reuse path.
+	$effect(() => {
+		if (visible && calculatorInstance && hasMountedSurface) {
+			focusCalculatorInput();
 		}
 	});
 

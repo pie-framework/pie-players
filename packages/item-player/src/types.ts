@@ -23,6 +23,8 @@ export interface PieItemPlayerElement extends HTMLElement {
 	onDeleteSound?: (src: string, done: DeleteDone) => void;
 	loaderOptions?: Record<string, unknown>;
 	loaderConfig?: LoaderConfig;
+	/** Focus first tabbable / interactive control inside the item (open shadow only). */
+	focusFirst(): boolean;
 }
 
 export interface PieItemSessionDebuggerElement extends HTMLElement {

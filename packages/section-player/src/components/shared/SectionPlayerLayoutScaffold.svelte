@@ -110,7 +110,29 @@
 		const firstItem =
 			itemsPane?.querySelector<HTMLElement>("pie-section-player-item-card") ||
 			root.querySelector<HTMLElement>("pie-section-player-item-card");
-		return focusAndReveal(firstItem);
+		if (!focusAndReveal(firstItem)) return false;
+		nestFocusIntoItemPlayerIfPresent(firstItem);
+		return true;
+	}
+
+	type ItemPlayerWithFocusFirst = HTMLElement & { focusFirst?: () => boolean };
+
+	/** After focusing an item card, move into `pie-item-player` when it exposes `focusFirst()`. */
+	function nestFocusIntoItemPlayerIfPresent(itemCard: HTMLElement | null | undefined): void {
+		if (!itemCard) return;
+		const player = itemCard.querySelector(
+			"pie-item-player",
+		) as ItemPlayerWithFocusFirst | null;
+		if (!player) return;
+		const focusFirst = player.focusFirst;
+		if (typeof focusFirst !== "function") return;
+		void tick().then(() => {
+			try {
+				focusFirst.call(player);
+			} catch {
+				// ignore cross-browser focus edge cases
+			}
+		});
 	}
 
 	function focusCurrentItem(): boolean {
@@ -118,7 +140,9 @@
 		const target = root.querySelector<HTMLElement>(
 			"pie-section-player-item-card[is-current]",
 		);
-		return focusAndReveal(target);
+		if (!focusAndReveal(target)) return false;
+		nestFocusIntoItemPlayerIfPresent(target);
+		return true;
 	}
 
 	function subscribeNavigationStatus(controller: SectionControllerHandle | null): void {

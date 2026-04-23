@@ -30,6 +30,7 @@ export interface PieItemPlayerElement extends HTMLElement {
 	onInsertSound?: (handler: SoundHandler) => void;
 	onDeleteSound?: (src: string, done: DeleteDone) => void;
 	loaderOptions?: Record<string, unknown>;
+	focusFirst(): boolean;
 }
 
 export declare function definePieItemPlayer(tagName?: string): void;

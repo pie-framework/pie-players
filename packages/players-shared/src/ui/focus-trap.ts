@@ -1,11 +1,4 @@
-const FOCUSABLE_SELECTOR = [
-	"a[href]",
-	"button:not([disabled])",
-	"input:not([disabled]):not([type='hidden'])",
-	"select:not([disabled])",
-	"textarea:not([disabled])",
-	"[tabindex]:not([tabindex='-1'])",
-].join(",");
+import { FOCUSABLE_SELECTOR, isProgrammaticFocusTarget } from "./first-focusable.js";
 
 type FocusTrapOptions = {
 	initialFocus?: HTMLElement | null;
@@ -13,10 +6,9 @@ type FocusTrapOptions = {
 };
 
 function getFocusableElements(container: HTMLElement): HTMLElement[] {
-	return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter((el) => {
-		if (el.hasAttribute("disabled")) return false;
-		return el.offsetParent !== null || el.getClientRects().length > 0;
-	});
+	return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter((el) =>
+		isProgrammaticFocusTarget(el),
+	);
 }
 
 function focusInitialTarget(container: HTMLElement, initialFocus?: HTMLElement | null): void {

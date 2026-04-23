@@ -200,7 +200,7 @@ test.describe("section player navigation contract", () => {
 		expect(activeTag).toBe("pie-section-player-passage-card");
 	});
 
-	test("autoFocus='current-item' focuses the newly active item card", async ({
+	test("autoFocus='current-item' focuses the active item surface (card or first control)", async ({
 		page,
 	}) => {
 		await page.goto(SPLIT_DEMO, { waitUntil: "networkidle" });
@@ -213,7 +213,7 @@ test.describe("section player navigation contract", () => {
 						navigateNext?: () => boolean;
 				  })
 				| null;
-			if (!host) return { active: null, hasIsCurrent: false };
+			if (!host) return { active: null, insideCurrentItem: false };
 			host.policies = {
 				readiness: { mode: "progressive" },
 				preload: { enabled: true },
@@ -221,17 +221,19 @@ test.describe("section player navigation contract", () => {
 				telemetry: { enabled: true },
 			};
 			await new Promise((resolve) => setTimeout(resolve, 20));
-			if (!host.navigateNext?.()) return { active: null, hasIsCurrent: false };
-			await new Promise((resolve) => setTimeout(resolve, 50));
+			if (!host.navigateNext?.()) return { active: null, insideCurrentItem: false };
+			await new Promise((resolve) => setTimeout(resolve, 120));
 			const active = document.activeElement as HTMLElement | null;
+			const card = document.querySelector("pie-section-player-item-card[is-current]");
+			const insideCurrentItem =
+				Boolean(card && active && (card === active || card.contains(active)));
 			return {
 				active: (active?.tagName || "").toLowerCase(),
-				hasIsCurrent: Boolean(active?.hasAttribute?.("is-current")),
+				insideCurrentItem,
 			};
 		});
 
-		expect(result.active).toBe("pie-section-player-item-card");
-		expect(result.hasIsCurrent).toBe(true);
+		expect(result.insideCurrentItem).toBe(true);
 	});
 
 	test("autoFocus='none' leaves focus unchanged after navigation", async ({
@@ -362,7 +364,7 @@ test.describe("section player navigation contract", () => {
 		expect(activeTag).toBe("pie-section-player-passage-card");
 	});
 
-	test("focusStart() with autoFocus 'current-item' lands on the current item card", async ({
+	test("focusStart() with autoFocus 'current-item' lands on the current item surface", async ({
 		page,
 	}) => {
 		await page.goto(SPLIT_DEMO, { waitUntil: "networkidle" });
@@ -385,17 +387,19 @@ test.describe("section player navigation contract", () => {
 			await new Promise((resolve) => setTimeout(resolve, 20));
 			document.body.focus();
 			const moved = host.focusStart();
-			await new Promise((resolve) => setTimeout(resolve, 20));
+			await new Promise((resolve) => setTimeout(resolve, 120));
 			if (!moved) return null;
 			const active = document.activeElement as HTMLElement | null;
+			const card = document.querySelector("pie-section-player-item-card[is-current]");
+			const insideCurrentItem =
+				Boolean(card && active && (card === active || card.contains(active)));
 			return {
 				tag: (active?.tagName || "").toLowerCase(),
-				isCurrent: active?.hasAttribute("is-current") ?? false,
+				insideCurrentItem,
 			};
 		});
 
-		expect(result?.tag).toBe("pie-section-player-item-card");
-		expect(result?.isCurrent).toBe(true);
+		expect(result?.insideCurrentItem).toBe(true);
 	});
 
 	test("keepTogether:true + autoFocus:'current-item' still fires item-selected and focuses the new current card", async ({
@@ -461,10 +465,15 @@ test.describe("section player navigation contract", () => {
 
 			const before = host.selectNavigation?.();
 			const moved = host.navigateNext?.() === true;
-			await new Promise((resolve) => setTimeout(resolve, 80));
+			await new Promise((resolve) => setTimeout(resolve, 120));
 			const after = host.selectNavigation?.();
 			unsubscribe?.();
 			const active = document.activeElement as HTMLElement | null;
+			const currentCard = document.querySelector("pie-section-player-item-card[is-current]");
+			const insideCurrentItem =
+				Boolean(
+					currentCard && active && (currentCard === active || currentCard.contains(active)),
+				);
 
 			return {
 				moved,
@@ -472,7 +481,7 @@ test.describe("section player navigation contract", () => {
 				after,
 				events,
 				activeTag: (active?.tagName || "").toLowerCase(),
-				activeIsCurrent: active?.hasAttribute?.("is-current") ?? false,
+				insideCurrentItem,
 			};
 		});
 
@@ -483,8 +492,7 @@ test.describe("section player navigation contract", () => {
 		expect(result.after?.currentIndex).toBe((result.before?.currentIndex ?? 0) + 1);
 		expect(result.events.length).toBeGreaterThanOrEqual(1);
 		expect(result.events[0]?.itemIndex).toBe(result.after?.currentIndex);
-		expect(result.activeTag).toBe("pie-section-player-item-card");
-		expect(result.activeIsCurrent).toBe(true);
+		expect(result.insideCurrentItem).toBe(true);
 	});
 
 	test("passage and item cards expose public focus attributes", async ({ page }) => {

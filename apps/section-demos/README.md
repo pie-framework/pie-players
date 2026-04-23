@@ -52,6 +52,24 @@ Intentionally uses a malformed tools configuration shape (host nesting error) to
 
 Use this route to validate framework-owned error handling before shipping new config changes.
 
+### Demo: Focus Management
+**Difficulty:** Advanced
+**Estimated Time:** ~3 minutes
+**Topic:** Accessibility — Skip-to-Main and navigation focus
+
+Dedicated demo for the section-player focus contract. Exposes a strategy
+selector (`autoFocus = start-of-content | current-item | none`), a layout
+switcher (splitpane / vertical / tabbed), a passage/no-passage toggle, a
+mock "Skip to Main" button that calls `focusStart()`, and a live readout
+of `document.activeElement`. Route: `/focus-management`. Query params:
+
+- `?focus=start-of-content|current-item|none` (default `start-of-content`)
+- `?layout=splitpane|vertical|tabbed` (default `splitpane`)
+- `?passage=on|off` (default `on`)
+
+Use this page to verify that mount, Next/Back, and Skip-to-Main land on
+the expected element for each strategy.
+
 ### Demo: Session Hydration (Server DB)
 **Difficulty:** Advanced
 **Estimated Time:** ~10 minutes

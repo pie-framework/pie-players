@@ -102,6 +102,34 @@ test.describe("section player tabbed layout", () => {
 		).toHaveCount(0);
 	});
 
+	test("tabbed layout exposes focusStart() and lands on start-of-content", async ({
+		page,
+	}) => {
+		await page.setViewportSize({ width: 1280, height: 900 });
+		await page.goto("/tabbed-layout/tabbed", { waitUntil: "networkidle" });
+
+		const host = page.locator("pie-section-player-tabbed").first();
+		await expect(host).toBeVisible();
+		await expect(
+			page.locator("pie-section-player-passage-card").first(),
+		).toHaveAttribute("tabindex", "-1");
+
+		const activeTag = await page.evaluate(async () => {
+			const el = document.querySelector("pie-section-player-tabbed") as
+				| (HTMLElement & { focusStart?: () => boolean })
+				| null;
+			if (!el?.focusStart) return null;
+			document.body.focus();
+			if (!el.focusStart()) return null;
+			await new Promise((resolve) => setTimeout(resolve, 20));
+			return (document.activeElement?.tagName || "").toLowerCase();
+		});
+
+		// Passage is mounted (even when the Items tab is active it remains in the
+		// light DOM), so start-of-content lands on it.
+		expect(activeTag).toBe("pie-section-player-passage-card");
+	});
+
 	test("keeps passage content visible after route switch from tabbed to splitpane collapse", async ({
 		page,
 	}) => {

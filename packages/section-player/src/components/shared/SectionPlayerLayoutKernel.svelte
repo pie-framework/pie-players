@@ -129,6 +129,7 @@
 			timeoutMs?: number,
 		) => Promise<SectionControllerHandle | null>;
 		getNavigationStateSnapshot?: () => SectionPlayerNavigationSnapshot;
+		focusStart?: () => boolean;
 	} | null>(null);
 	let sectionReady = $state(false);
 	let interactionReadyDispatched = $state(false);
@@ -333,6 +334,10 @@
 		const navigation = getNavigationState();
 		if (!navigation.canPrevious) return false;
 		return navigateTo(navigation.currentIndex - 1);
+	}
+
+	export function focusStart(): boolean {
+		return scaffoldRef?.focusStart?.() === true;
 	}
 
 	export function getSectionController(): SectionControllerHandle | null {

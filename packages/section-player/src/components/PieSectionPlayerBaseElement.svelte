@@ -269,11 +269,9 @@
 			| {
 					currentItemIndex?: number;
 					items?: Array<{ id?: string }>;
-					isPageMode?: boolean;
 			  }
 			| null;
 		const items = compositionModel?.items || [];
-		const isPageMode = compositionModel?.isPageMode === true;
 		const currentIndex = Math.max(
 			0,
 			Math.min(
@@ -286,8 +284,8 @@
 		return {
 			currentIndex,
 			totalItems: items.length,
-			canNext: !isPageMode && currentIndex < items.length - 1,
-			canPrevious: !isPageMode && currentIndex > 0,
+			canNext: currentIndex < items.length - 1,
+			canPrevious: currentIndex > 0,
 			currentItemId: items[currentIndex]?.id || undefined,
 		};
 	}
@@ -327,6 +325,42 @@
 			await new Promise((resolve) => setTimeout(resolve, 25));
 		}
 		return null;
+	}
+
+	/**
+	 * Host-triggered focus escape hatch for Skip-to-Main. Focuses the passage
+	 * card when present, otherwise the first item card. Exposed on the base
+	 * element for API parity with the layout custom elements; hosts should
+	 * normally prefer calling `focusStart()` on the chosen layout element
+	 * (splitpane/vertical/tabbed/kernel-host).
+	 */
+	export function focusStart(): boolean {
+		if (typeof document === "undefined") return false;
+		const root = toolkitElement?.closest?.("pie-section-player-base") ||
+			toolkitElement ||
+			document;
+		const passage = (root as ParentNode).querySelector?.(
+			"pie-section-player-passage-card",
+		) as HTMLElement | null;
+		if (passage) {
+			passage.scrollIntoView({ block: "start", inline: "nearest" });
+			passage.focus();
+			return true;
+		}
+		const itemsPane = (root as ParentNode).querySelector?.(
+			"pie-section-player-items-pane",
+		);
+		const firstItem =
+			(itemsPane as ParentNode | null)?.querySelector?.(
+				"pie-section-player-item-card",
+			) ||
+			(root as ParentNode).querySelector?.("pie-section-player-item-card");
+		if (firstItem instanceof HTMLElement) {
+			firstItem.scrollIntoView({ block: "start", inline: "nearest" });
+			firstItem.focus();
+			return true;
+		}
+		return false;
 	}
 
 </script>

@@ -58,6 +58,17 @@ export interface SectionSessionState {
 
 export interface SectionViewModel extends SectionContentModel {
 	currentItemIndex: number;
+	/**
+	 * Rendering/pagination hint derived from the QTI 3
+	 * `qti-assessment-section@keep-together` property. When `true`, a section's
+	 * items are intended to be rendered together (not split across pages).
+	 *
+	 * This is a PURE rendering hint: it does NOT disable item-level navigation,
+	 * current-item tracking, or `item-selected` events. Layouts MAY branch on
+	 * this to enable page-mode-only affordances (e.g., scroll-current-into-view),
+	 * but the controller continues to surface `currentItem`, `canNext`,
+	 * `canPrevious`, and navigation events exactly as in paginated mode.
+	 */
 	isPageMode: boolean;
 }
 
@@ -71,6 +82,11 @@ export interface SectionCompositionModel {
 	renderables: SectionRenderable[];
 	currentItemIndex: number;
 	currentItem: ItemEntity | null;
+	/**
+	 * Rendering/pagination hint derived from `keepTogether`. Purely informational
+	 * for composition snapshots — see `SectionViewModel.isPageMode` for the full
+	 * contract.
+	 */
 	isPageMode: boolean;
 	itemSessionsByItemId: Record<string, unknown>;
 	testAttemptSession: TestAttemptSession | null;

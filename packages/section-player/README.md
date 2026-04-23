@@ -154,6 +154,80 @@ host.hooks = {
 
 Advanced CE props are still supported as escape hatches (`runtime`, `coordinator`, `createSectionController`, etc.), but hosts should prefer JS/controller composition for non-standard behavior.
 
+### Focus management
+
+Section-player owns its own focus contract so hosts can integrate a
+"Skip to Main" affordance and keyboard navigation without re-encoding
+the passage-first rule.
+
+**Public focus targets.** Both card custom elements are `tabindex="-1"`
+(programmatically focusable, never in sequential tab order) and expose a
+`:focus-visible` outline:
+
+- `<pie-section-player-passage-card>` (when the section has a passage)
+- `<pie-section-player-item-card>`
+
+The inner `.pie-section-player-content-card[data-section-item-card]`
+selector is an internal back-compat hook and is not part of the public
+contract — prefer querying the custom element tags.
+
+**Declarative control.** The `SectionPlayerFocusPolicy.autoFocus` strategy
+governs focus on every navigation event (Next / Back / `navigateTo`) and is
+also honored by the imperative `focusStart()`:
+
+- `"start-of-content"` *(default)* — focus the passage card when present,
+  otherwise the first item card. Matches the canonical assessment UX where
+  Skip-to-Main and navigation land in the same place. Best for
+  one-item-per-page layouts (splitpane, tabbed).
+- `"current-item"` — focus the newly-active item card (queried as
+  `pie-section-player-item-card[is-current]`). Best for stacked/list
+  layouts where multiple items are visible at once (vertical, custom
+  kernel-host variants). Works in both paginated and keep-together
+  sections — QTI 3 `keep-together` is a pagination hint only and does
+  not disable item-level navigation or current-item tracking.
+- `"none"` — framework never moves focus on navigation; the host owns it
+  entirely. `focusStart()` still moves focus (defaults to
+  start-of-content) because hosts only call it when they *want* focus to
+  move.
+
+```ts
+const host = document.querySelector("pie-section-player-splitpane") as any;
+host.policies = {
+  readiness: { mode: "progressive" },
+  preload: { enabled: true },
+  focus: { autoFocus: "start-of-content" },
+  telemetry: { enabled: true },
+};
+```
+
+**Imperative escape hatch (host-owned focus moments).** Every layout
+element (`pie-section-player-splitpane`, `-vertical`, `-tabbed`,
+`-kernel-host`, and `-base`) exposes a `focusStart(): boolean` method.
+Call it from host-owned affordances the framework cannot observe — most
+commonly a "Skip to Main" button in the host's ribbon:
+
+```ts
+document.querySelector("pie-section-player-splitpane")?.focusStart();
+```
+
+`focusStart()` honors the `autoFocus` strategy so Skip-to-Main lands
+wherever the host has opted in for navigation focus:
+
+- `"start-of-content"` *(default)* → passage card when present, else first
+  item card.
+- `"current-item"` → the item card currently marked `is-current`, falling
+  back to start-of-content if no current item is resolvable.
+- `"none"` → start-of-content (hosts call `focusStart()` precisely
+  because they want focus to move).
+
+For Next / Back / question-number navigation the host does **not** call
+`focusStart()` — the `autoFocus` policy fires automatically.
+
+**Deprecation.** `SectionPlayerFocusPolicy.autoFocusFirstItem` still
+works for one release (mapped onto `autoFocus`: `true` →
+`"start-of-content"`, `false` → `"none"`) and emits a one-time console
+warning. It will be removed in the next major. Migrate to `autoFocus`.
+
 ### Navigation signals
 
 - `item-selected`: item-level navigation change within the current section in the `SectionController` broadcast stream (`itemIndex`, `currentItemId`, `totalItems`).

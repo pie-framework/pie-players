@@ -239,6 +239,10 @@
 		return kernelRef?.navigatePrevious?.() === true;
 	}
 
+	export function focusStart(): boolean {
+		return kernelRef?.focusStart?.() === true;
+	}
+
 	export function getSectionController() {
 		return kernelRef?.getSectionController?.() || null;
 	}

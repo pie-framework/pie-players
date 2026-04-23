@@ -500,6 +500,22 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		],
 		section: demo5Section,
 	},
+	"focus-management": {
+		id: "focus-management",
+		name: "Focus Management",
+		description:
+			"Exercises the section-player focus contract (autoFocus policy + focusStart() imperative API) for Skip-to-Main",
+		integrationLevel: 5,
+		integrationTheme: "Accessibility",
+		focus:
+			"Verifies focus targets for mount, navigation, and Skip-to-Main across layouts and passage presence.",
+		whatMakesItTick: [
+			"Strategy selector toggles `SectionPlayerFocusPolicy.autoFocus` between `start-of-content`, `current-item`, and `none`.",
+			"Layout switcher drives `pie-section-player-splitpane`, `pie-section-player-vertical`, and `pie-section-player-tabbed`.",
+			"Mock Skip-to-Main button calls `focusStart()` on the active layout element; active element is read back live."
+		],
+		section: demo3Section,
+	},
 	"session-hydrate-db": {
 		id: "session-hydrate-db",
 		name: "Session Hydration (Server DB)",

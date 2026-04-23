@@ -385,7 +385,6 @@ export class SectionController implements SectionControllerHandle {
 	}
 
 	public getCurrentItem(): ItemEntity | null {
-		if (this.state.viewModel.isPageMode) return null;
 		return (
 			this.state.viewModel.items[this.state.viewModel.currentItemIndex] || null
 		);
@@ -400,12 +399,11 @@ export class SectionController implements SectionControllerHandle {
 	public getNavigationState(isLoading = false): SectionNavigationState {
 		const currentIndex = this.state.viewModel.currentItemIndex;
 		const totalItems = this.state.viewModel.items.length;
-		const isPageMode = this.state.viewModel.isPageMode;
 		return {
 			currentIndex,
 			totalItems,
-			canNext: !isPageMode && currentIndex < totalItems - 1,
-			canPrevious: !isPageMode && currentIndex > 0,
+			canNext: currentIndex < totalItems - 1,
+			canPrevious: currentIndex > 0,
 			isLoading,
 		};
 	}
@@ -504,7 +502,6 @@ export class SectionController implements SectionControllerHandle {
 		if (!this.state.testAttemptSession) return null;
 		const result = this.itemNavigationService.navigate({
 			index,
-			isPageMode: this.state.viewModel.isPageMode,
 			items: this.state.viewModel.items,
 			currentItemIndex: this.state.viewModel.currentItemIndex,
 			sectionIdentifier:

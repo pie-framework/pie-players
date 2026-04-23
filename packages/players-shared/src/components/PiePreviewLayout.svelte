@@ -43,7 +43,8 @@
 		onLoadComplete,
 		onPlayerError,
 		onSessionChanged,
-		onModelUpdated
+		onModelUpdated,
+		baseHeadingLevel = undefined,
 	}: {
 		mode?: 'author' | 'preview';
 		itemConfig: ConfigEntity;
@@ -69,6 +70,11 @@
 		onPlayerError?: (detail?: any) => void;
 		onSessionChanged?: (detail?: any) => void;
 		onModelUpdated?: (detail?: any) => void;
+		/**
+		 * The level of the first heading emitted inside this player.
+		 * Passed through to `PieItemPlayer` unchanged — see that component for full docs.
+		 */
+		baseHeadingLevel?: 1 | 2 | 3 | 4 | 5 | 6;
 	} = $props();
 
 	// Track current mode state
@@ -125,6 +131,7 @@
 				{onPlayerError}
 				{onSessionChanged}
 				{onModelUpdated}
+				{baseHeadingLevel}
 			/>
 		{/key}
 	</div>

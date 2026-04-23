@@ -61,6 +61,7 @@
     onPlayerError,
     onSessionChanged,
     onModelUpdated,
+    baseHeadingLevel = undefined,
   }: {
     itemConfig: ConfigEntity;
     passageConfig?: ConfigEntity | null;
@@ -89,6 +90,26 @@
     onPlayerError?: (detail?: any) => void;
     onSessionChanged?: (detail?: any) => void;
     onModelUpdated?: (detail?: any) => void;
+    /**
+     * The level of the first heading emitted inside this player.
+     *
+     * Rewrites `<p data-heading="headingN">…</p>` →
+     * `<h{clamp(baseLevel + N − 1, 1, 6)} data-heading="headingN">…</h…>`,
+     * preserving the `data-heading` attribute so host CSS keyed on
+     * `[data-heading]` continues to match.
+     *
+     * Fast path: when `baseHeadingLevel` is `undefined` **or** the markup
+     * contains no `data-heading=` substring, the input is returned unchanged
+     * (the common case for legacy content, so the transform is effectively free).
+     *
+     * PIE elements can read this value by walking up the DOM:
+     *
+     *   const player = element.closest('pie-item-player');
+     *   let raw = player?.baseHeadingLevel
+     *          ?? player?.getAttribute('base-heading-level')
+     *          ?? player?.getAttribute('baseheadinglevel');
+     */
+    baseHeadingLevel?: 1 | 2 | 3 | 4 | 5 | 6;
   } = $props();
 
   // Track if correct responses have been added

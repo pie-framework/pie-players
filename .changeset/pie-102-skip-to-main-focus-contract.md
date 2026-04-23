@@ -1,5 +1,5 @@
 ---
-'@pie-players/pie-section-player': minor
+'@pie-players/pie-section-player': patch
 ---
 
 Ship the framework-side focus contract for Skip-to-Main (PIE-102).

@@ -228,10 +228,14 @@
 
 	.pie-section-player-content-card-header {
 		display: flex;
-		align-items: flex-start;
+		align-items: center;
 		gap: 0.75rem;
 		padding: 0.75rem 1rem;
 		border-bottom: 1px solid var(--pie-border-light, #e5e7eb);
+		/* Header fill is intentionally transparent by default. Hosts/themes
+		   opt-in to a solid color via --pie-section-player-card-header-background
+		   (e.g. a brand Bluegreen tint) without this framework encoding a palette. */
+		background: var(--pie-section-player-card-header-background, transparent);
 	}
 
 	.pie-section-player-content-card-header h2 {

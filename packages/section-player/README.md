@@ -117,6 +117,28 @@ Tab colors/spacing can be themed via CSS variables such as:
 `--pie-section-player-tab-color`, `--pie-section-player-tab-active-color`,
 `--pie-section-player-tab-indicator-color`, and `--pie-section-player-tab-spacing`.
 
+### Card header styling hooks
+
+Passage and item cards share a common header row
+(`.pie-section-player-content-card-header`, with the card-specific aliases
+`.pie-section-player-passage-header` / `.pie-section-player-item-header`).
+
+- Title and toolbar are centered vertically by default. There is no prop or
+  attribute for this — hosts needing a non-standard alignment should override
+  the selector in their own stylesheet.
+- The header fill is transparent by default. Hosts/themes opt into a color
+  via the `--pie-section-player-card-header-background` CSS variable; the
+  framework does not ship a brand palette.
+
+Example (host CSS):
+
+```css
+pie-section-player-passage-card,
+pie-section-player-item-card {
+  --pie-section-player-card-header-background: #c9e5e6;
+}
+```
+
 When both max-width attributes are set, the with-passage cap resolves to the greater
 of the two configured values (after clamp), so with-passage mode never ends up narrower
 than no-passage mode.

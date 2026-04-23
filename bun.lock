@@ -273,7 +273,7 @@
       "name": "@pie-players/pie-players-shared",
       "version": "0.3.29",
       "dependencies": {
-        "@pie-lib/math-rendering-module": "4.0.7",
+        "@pie-lib/math-rendering-module": "4.1.2",
         "dompurify": "^3.4.0",
         "semver": "^7.7.4",
         "svelte": "^5.54.0",
@@ -1042,7 +1042,7 @@
 
     "@oxc-project/types": ["@oxc-project/types@0.126.0", "", {}, "sha512-oGfVtjAgwQVVpfBrbtk4e1XDyWHRFta6BS3GWVzrF8xYBT2VGQAk39yJS/wFSMrZqoiCU4oghT3Ch0HaHGIHcQ=="],
 
-    "@pie-lib/math-rendering-module": ["@pie-lib/math-rendering-module@4.0.7", "", {}, "sha512-KvpffEzQj5IqJ5PLF7NZSKFvsiVNM6BbW072A1EgNJndJMZA6hoIgcf3nOch4LwPFKiTUi9YQEaqziSa8880eA=="],
+    "@pie-lib/math-rendering-module": ["@pie-lib/math-rendering-module@4.1.2", "", {}, "sha512-uhQkfh0cuaVFiTyY2WpDAuGE5ngrUpQrJUOMUw7S3rZDZIpw9A0oHWCG7LvfdUDZT4blLCV6UqbMwwENejqKBg=="],
 
     "@pie-players/assessment-demos": ["@pie-players/assessment-demos@workspace:apps/assessment-demos"],
 

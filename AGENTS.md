@@ -99,6 +99,15 @@ versions stay globally aligned across the monorepo.
 
 Rule file: [`.cursor/rules/release-version-alignment.mdc`](.cursor/rules/release-version-alignment.mdc).
 
+### Ticket comment discipline
+
+When posting to Jira / Confluence / GitHub on the user's behalf, keep
+comments brief and scoped to the current work. No sub-ticket asks,
+process recommendations, or unsolicited next-steps unless the user
+directed it — ask first if you think something is worth raising.
+
+Rule file: [`.cursor/rules/ticket-comment-discipline.mdc`](.cursor/rules/ticket-comment-discipline.mdc).
+
 ### Code review workflow
 
 For any substantial change set (multi-file feature, cross-package work,

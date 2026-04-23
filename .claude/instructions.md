@@ -62,6 +62,20 @@ These checks ensure:
 3. All tests pass: `bun test`
 4. Linting clean: `bun run lint` (Biome)
 
+## Ticket comment discipline
+
+When posting to Jira, Confluence, or GitHub on the user's behalf, keep
+comments **brief and scoped to the current work**. Summarize what landed
+and, if relevant, the single action another team needs to take — nothing
+more. Do not add sub-ticket asks, process recommendations, epic
+restructuring suggestions, or unsolicited next-steps. If you think
+something is worth raising, **ask the user first** rather than embedding
+it in the comment. Honor removals: if the user removed a prior comment
+and asks for a rewrite, do not reintroduce removed content.
+
+Canonical rule: [`.cursor/rules/ticket-comment-discipline.mdc`](../.cursor/rules/ticket-comment-discipline.mdc).
+Claude Code skill: [`.claude/skills/ticket-comment-discipline/SKILL.md`](./skills/ticket-comment-discipline/SKILL.md).
+
 ## Code review (multi-agent)
 
 When the user asks for a **code review**, or after **substantial code changes** (multi-file features, cross-package work, non-trivial refactors, or anything suitable for a PR), run a structured review unless they opt out.

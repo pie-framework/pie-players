@@ -1,10 +1,63 @@
 ---
-description: Keep release versions globally aligned across all packages
+description: Keep release versions globally aligned across all publishable packages (fixed/lockstep versioning)
 alwaysApply: true
 ---
 
-# Release Version Alignment
+# Release Version Alignment (Fixed / Lockstep Versioning)
 
-- When preparing a release, always include **all publishable packages** in release/versioning steps so versions stay globally aligned across the monorepo.
-- Do not prepare release bumps for only a subset of changed packages unless there is an explicit maintainer-approved exception for that release.
-- If a release is requested and package selection is ambiguous, default to full publishable-package coverage.
+## Policy
+
+All publishable `@pie-players/*` packages are released with a **fixed (lockstep)
+version**. At any published version, every package in the suite carries that
+same version number — there is no per-package version drift.
+
+This is enforced via Changesets' `fixed` block in
+[`.changeset/config.json`](../../.changeset/config.json). The complete list of
+lockstep packages lives there and is the source of truth.
+
+## Why this exists
+
+The publishable packages in this repo (players, tools, TTS servers, theming,
+toolkits) form a single cohesive player framework. Internal contracts cross
+package boundaries — element registration, theme tokens, tool coordination,
+session shape — so consumers adopt the suite as a unit. Fixed versioning gives
+consumers two guarantees:
+
+1. **One version per upgrade.** They pick a version and bump every
+   `@pie-players/*` dependency to it; there is no compatibility matrix.
+2. **Tested together.** Packages published at the same version are designed and
+   tested as a unit at that version.
+
+The cost is that every release bumps every publishable package — including ones
+whose source did not change in that release. That is **expected**, not a bug to
+fix.
+
+## Rules for release/versioning work
+
+- When preparing a release, always include **all publishable packages** in
+  release/versioning steps so versions stay globally aligned across the
+  monorepo.
+- Do not prepare release bumps for only a subset of changed packages. "Only
+  package X changed, so only bump X" is the wrong framing for this repo.
+- If a release is requested and package selection is ambiguous, default to full
+  publishable-package coverage. Exceptions require explicit maintainer approval
+  documented for that release.
+- A breaking change in any single publishable package forces a major bump on
+  every publishable package. Account for that when scoping breaking changes;
+  prefer additive changes where feasible.
+- When adding a new publishable package under `packages/*`, add it to the
+  Changesets `fixed` block in
+  [`.changeset/config.json`](../../.changeset/config.json) in the same change
+  set. A publishable package outside the `fixed` block silently breaks the
+  lockstep invariant.
+- Do not remove packages from the `fixed` block to "unblock" a release. That
+  hides drift instead of fixing it. If drift is real, escalate to the
+  maintainer.
+
+## Enforcement
+
+- `scripts/check-fixed-versioning.mjs` (run via `bun run verify:publish`) fails
+  CI if publishable package versions diverge.
+- Consumer-facing documentation lives in
+  [`docs/setup/publishing.md`](../../docs/setup/publishing.md) and the root
+  [`README.md`](../../README.md) "Versioning Policy" section.

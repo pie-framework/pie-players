@@ -14,6 +14,41 @@ The monorepo uses Changesets **fixed versioning** for all publishable
 - source manifests keep internal references as `workspace:*`
 - publish rewrites workspace refs to concrete versions, then restores manifests
 
+### Why fixed (lockstep) versioning
+
+Publishable packages in this repo form a single cohesive player framework
+(players, tools, TTS servers, theming, toolkits). Internal contracts cross
+package boundaries — element registration, theme tokens, tool coordination,
+session shape — so consumers almost always adopt the suite as a whole.
+
+Fixed versioning gives consumers two guarantees:
+
+1. **One version per upgrade.** Pick a version, bump every `@pie-players/*`
+   dependency to it. There is no compatibility matrix to reason about across
+   `@pie-players/*` packages.
+2. **Tested together.** Packages that publish at the same version are designed
+   and tested as a unit at that version.
+
+The cost is that releases bump **every** publishable package — including ones
+whose source did not change in that release — so some churn is unavoidable on
+every release PR. This is expected and enforced.
+
+### Consequences for release preparation
+
+- Every release/versioning step must cover **all** publishable packages. Do not
+  prepare a release bump scoped to only the changed packages; that would break
+  the lockstep invariant. See
+  [`.cursor/rules/release-version-alignment.mdc`](../../.cursor/rules/release-version-alignment.mdc).
+- A breaking change in any publishable package forces a major bump across every
+  publishable package. Plan breaking changes with that in mind, or consider
+  whether the change can be introduced additively first.
+- Changesets' `fixed` block in
+  [`../../.changeset/config.json`](../../.changeset/config.json) is the source
+  of truth for which packages are in the lockstep set. New publishable packages
+  must be added there.
+- `scripts/check-fixed-versioning.mjs` (run via `bun run verify:publish`) is the
+  invariant check that fails CI if versions drift.
+
 ## Required package metadata (publishable workspaces)
 
 For every non-private workspace package in `packages/*`:

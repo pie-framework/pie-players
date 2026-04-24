@@ -92,10 +92,30 @@ they execute outside the sandbox and reuse the shared
 
 Rule file: [`.cursor/rules/playwright-sandbox.mdc`](.cursor/rules/playwright-sandbox.mdc).
 
-### Release version alignment
+### Release version alignment (fixed / lockstep versioning)
 
-Always include all publishable packages in release/versioning steps so
-versions stay globally aligned across the monorepo.
+All publishable `@pie-players/*` packages are released with a **fixed
+(lockstep) version**. At any published version, every package in the suite
+carries the same version number. This is enforced by Changesets' `fixed`
+block in `.changeset/config.json`.
+
+Implications for agent-driven work:
+
+- Always include **all** publishable packages in release/versioning steps.
+  Never scope a release bump to "only the packages I changed."
+- Every release bumps every publishable package, including ones whose source
+  did not change. That is expected, not a bug. Do not try to skip unchanged
+  packages.
+- A breaking change in one publishable package forces a major bump across
+  the entire suite. Factor that in when scoping breaking changes; prefer
+  additive changes where feasible.
+- When adding a new publishable package under `packages/*`, add it to the
+  `fixed` block in `.changeset/config.json` in the same change set.
+- The invariant is checked by `scripts/check-fixed-versioning.mjs` (run via
+  `bun run verify:publish`).
+
+Consumer-facing docs: [`docs/setup/publishing.md`](docs/setup/publishing.md)
+and the "Versioning Policy" section in [`README.md`](README.md).
 
 Rule file: [`.cursor/rules/release-version-alignment.mdc`](.cursor/rules/release-version-alignment.mdc).
 

@@ -43,12 +43,48 @@ bun run check:consumer-boundaries
 bun run check:custom-elements
 ```
 
+## Versioning Policy
+
+All publishable `@pie-players/*` packages are released with a **fixed (lockstep)
+version**. At any published version, every package in the suite carries that same
+version number — there is no per-package version drift.
+
+### What this means for consumers
+
+- Pick one `@pie-players/*` version and update every `@pie-players/*` dependency
+  in your app to that version. The suite is tested and published as a cohesive
+  unit at that version.
+- You will never need to reason about a compatibility matrix across
+  `@pie-players/*` packages. If two `@pie-players/*` packages report the same
+  version, they are designed and tested to work together.
+- A minor or major bump on any one package is reflected as a minor or major bump
+  on **all** publishable packages, including ones whose source did not change in
+  that release. This is expected — it is the cost of the lockstep guarantee
+  above.
+
+### Why fixed versioning
+
+The publishable packages in this repo (players, tools, TTS servers, theming,
+toolkits) form a single cohesive player framework. Internal contracts cross
+package boundaries (element registration, theme tokens, tool coordination,
+session/session-state shape), so consumers almost always adopt the suite
+together rather than piecemeal. Fixed versioning removes a category of
+compatibility bugs at the cost of more churn on unchanged packages per release.
+
+### How it is enforced
+
+- Changesets' `fixed` block in
+  [`.changeset/config.json`](./.changeset/config.json) lists every publishable
+  package.
+- `scripts/check-fixed-versioning.mjs` runs as part of `bun run verify:publish`
+  and blocks publish if any publishable package has drifted.
+- Release prep always covers every publishable package — see
+  [`.cursor/rules/release-version-alignment.mdc`](./.cursor/rules/release-version-alignment.mdc)
+  and [`docs/setup/publishing.md`](./docs/setup/publishing.md).
+
 ## Releasing From Workspace
 
 This monorepo keeps internal dependencies as `workspace:*` during development.
-
-All publishable `@pie-players/*` packages follow a fixed lockstep version train.
-When a release wave is cut, every publishable package lands on the same version.
 
 On release, `bun run release` runs a publish wrapper that temporarily rewrites workspace
 ranges to concrete package versions, executes `changeset publish`, then restores the

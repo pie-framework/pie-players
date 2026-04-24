@@ -270,8 +270,39 @@ bun run check          # Svelte component validation
 - **MIT license**: All packages public
 - **npm publishing**: Public access
 - **Local packaging**: `pack:local` for offline builds
-- **Release prep policy (required)**: Always prepare release changesets so the release includes **all publishable packages**, keeping versions globally aligned across the monorepo.
-- **Do not scope release bumps to only changed packages** unless there is an explicit maintainer exception documented for that release.
+
+### Fixed (lockstep) versioning policy (required)
+
+All publishable `@pie-players/*` packages are released with a **fixed
+(lockstep) version**. At any published version, every package in the suite
+carries the same version number. This is enforced by Changesets' `fixed`
+block in `.changeset/config.json` and validated by
+`scripts/check-fixed-versioning.mjs` (run via `bun run verify:publish`).
+
+**Why**: the publishable packages form a single cohesive player framework
+(players, tools, TTS servers, theming, toolkits) with internal contracts
+that cross package boundaries. Consumers adopt the suite as a unit, so
+lockstep removes a class of compatibility bugs and eliminates any
+`@pie-players/*` cross-version matrix.
+
+**Implications for agent-driven work**:
+
+- Always include **all** publishable packages in release/versioning steps.
+  Never scope a release bump to "only the packages I changed."
+- Every release bumps every publishable package, including ones whose
+  source did not change. That is expected, not a bug. Do not try to skip
+  unchanged packages.
+- A breaking change in one publishable package forces a major bump across
+  the entire suite. Factor that in when scoping breaking changes; prefer
+  additive changes where feasible.
+- When adding a new publishable package under `packages/*`, add it to the
+  `fixed` block in `.changeset/config.json` in the same change set.
+- Do not remove packages from the `fixed` block to "unblock" a release.
+  That hides drift instead of fixing it. Escalate to the maintainer.
+
+Consumer-facing docs: [`../docs/setup/publishing.md`](../docs/setup/publishing.md)
+and the "Versioning Policy" section in [`../README.md`](../README.md).
+Canonical rule: [`../.cursor/rules/release-version-alignment.mdc`](../.cursor/rules/release-version-alignment.mdc).
 
 ## Sibling Repository Dependency
 

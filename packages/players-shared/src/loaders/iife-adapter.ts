@@ -19,6 +19,12 @@
  *   6. Resolve (everything OK) or throw `AdapterFailure` (anything failed).
  */
 
+import type { InstrumentationProvider } from "../instrumentation/types.js";
+import { isInstrumentationProvider } from "../instrumentation/provider-guards.js";
+import {
+	DEFAULT_IIFE_BUNDLE_RETRY_CONFIG,
+	type IifeBundleRetryConfig,
+} from "../loader-config.js";
 import { defineCustomElementSafely } from "../pie/custom-element-define.js";
 import { pieRegistry } from "../pie/registry.js";
 import { validateCustomElementTag } from "../pie/tag-names.js";
@@ -37,6 +43,21 @@ import {
 	type RegistrationFailureReason,
 } from "./element-loader-types.js";
 
+/**
+ * Bundle-build retry status emitted while a bundle is being built or after
+ * it completes. Ports the previous IifePieLoader's callback contract
+ * unchanged so hosts that display a "bundle is building…" UI keep working.
+ */
+export type IifeBundleRetryStatus = {
+	state: "retrying" | "completed" | "timeout" | "cancelled";
+	url: string;
+	attempt: number;
+	elapsedMs: number;
+	timeoutMs: number;
+	retryDelayMs?: number;
+	reason?: string;
+};
+
 export type IifeBackendConfig = {
 	kind: "iife";
 	/** Base URL for the PIE bundle service. */
@@ -49,6 +70,30 @@ export type IifeBackendConfig = {
 	bundleInfo?: { hash?: string; url?: string };
 	/** Debug flag hook. */
 	debugEnabled?: () => boolean;
+	/**
+	 * Retry policy for transient bundle load failures.
+	 *
+	 * When the bundle service is building a bundle on demand, the first
+	 * few `<script src>` requests can fail. This policy polls until the
+	 * bundle is available or `timeoutMs` elapses. Default matches
+	 * `DEFAULT_IIFE_BUNDLE_RETRY_CONFIG`.
+	 */
+	bundleRetry?: IifeBundleRetryConfig;
+	/**
+	 * Callback invoked with retry status transitions. Lets hosts render
+	 * "bundle still building, retrying in Ns" messaging without touching
+	 * internal adapter state.
+	 */
+	onBundleRetryStatus?: (status: IifeBundleRetryStatus) => void;
+	/**
+	 * If true and `instrumentationProvider` is set and ready, retry
+	 * lifecycle events (`pie-iife-bundle-retry*`) are emitted.
+	 */
+	trackPageActions?: boolean;
+	/**
+	 * Instrumentation provider used to emit retry lifecycle telemetry.
+	 */
+	instrumentationProvider?: InstrumentationProvider;
 };
 
 /**
@@ -94,11 +139,143 @@ export function createIifeBackend(config: IifeBackendConfig): IifeBackend {
 	): Promise<void> {
 		const existing = inFlightBundleLoads.get(url);
 		if (existing) return existing;
-		const promise = loadBundleScript(url, doc).finally(() => {
+		const promise = loadBundleScriptWithRetry(url, doc).finally(() => {
 			inFlightBundleLoads.delete(url);
 		});
 		inFlightBundleLoads.set(url, promise);
 		return promise;
+	}
+
+	/**
+	 * Wrap the single-shot script loader with poll-until-ready retry.
+	 *
+	 * The PIE bundle service may return a transient failure while it
+	 * builds a bundle on demand. Retry with fixed-interval polling until
+	 * the bundle is ready or the cumulative deadline elapses. Emits
+	 * retry lifecycle events to the host via `onBundleRetryStatus` and to
+	 * the instrumentation provider (if configured and ready).
+	 */
+	async function loadBundleScriptWithRetry(
+		url: string,
+		doc: Document,
+	): Promise<void> {
+		const { retryDelayMs, timeoutMs } = resolveBundleRetryConfig(
+			config.bundleRetry,
+		);
+		const startedAt = Date.now();
+		let attempt = 0;
+		while (true) {
+			attempt += 1;
+			try {
+				await loadBundleScript(url, doc);
+				const elapsedMs = Date.now() - startedAt;
+				if (attempt > 1) {
+					config.onBundleRetryStatus?.({
+						state: "completed",
+						url,
+						attempt,
+						elapsedMs,
+						timeoutMs,
+					});
+					trackRetryEvent("pie-iife-bundle-retry-success", {
+						url,
+						attempt,
+						elapsedMs,
+						timeoutMs,
+					});
+				}
+				return;
+			} catch (error) {
+				const elapsedMs = Date.now() - startedAt;
+				const remainingMs = timeoutMs - elapsedMs;
+				const reason = error instanceof Error ? error.message : String(error);
+				if (remainingMs <= 0) {
+					const timeoutError = new Error(
+						`IIFE bundle load timed out after ${timeoutMs}ms: ${url}`,
+					);
+					config.onBundleRetryStatus?.({
+						state: "timeout",
+						url,
+						attempt,
+						elapsedMs,
+						timeoutMs,
+						reason,
+					});
+					trackRetryEvent("pie-iife-bundle-retry-timeout", {
+						url,
+						attempt,
+						elapsedMs,
+						timeoutMs,
+						lastError: reason,
+					});
+					trackRetryError(timeoutError, {
+						url,
+						attempt,
+						elapsedMs,
+						timeoutMs,
+						lastError: reason,
+					});
+					throw timeoutError;
+				}
+				const nextDelay = Math.min(retryDelayMs, remainingMs);
+				config.onBundleRetryStatus?.({
+					state: "retrying",
+					url,
+					attempt,
+					elapsedMs,
+					timeoutMs,
+					retryDelayMs: nextDelay,
+					reason,
+				});
+				trackRetryEvent("pie-iife-bundle-retry", {
+					url,
+					attempt,
+					elapsedMs,
+					retryDelayMs: nextDelay,
+					timeoutMs,
+					lastError: reason,
+				});
+				await waitMs(nextDelay);
+			}
+		}
+	}
+
+	function getInstrumentationProvider(): InstrumentationProvider | undefined {
+		if (!config.trackPageActions) return undefined;
+		const provider = config.instrumentationProvider;
+		if (!isInstrumentationProvider(provider)) return undefined;
+		if (!provider.isReady()) return undefined;
+		return provider;
+	}
+
+	function trackRetryEvent(
+		eventName: string,
+		attributes: Record<string, unknown>,
+	): void {
+		const provider = getInstrumentationProvider();
+		if (!provider) return;
+		try {
+			provider.trackEvent(eventName, attributes);
+		} catch {
+			// Swallow: instrumentation must never break loading.
+		}
+	}
+
+	function trackRetryError(
+		error: Error,
+		attributes: Record<string, unknown>,
+	): void {
+		const provider = getInstrumentationProvider();
+		if (!provider) return;
+		try {
+			provider.trackError(error, {
+				...attributes,
+				component: "iife-adapter",
+				errorType: "IifeBundleRetryError",
+			});
+		} catch {
+			// Swallow: instrumentation must never break loading.
+		}
 	}
 
 	async function load(
@@ -278,6 +455,24 @@ function buildBundleUrl(
 
 function normalizeBundleHost(host: string): string {
 	return `${host.trim().replace(/\/+$/, "")}/`;
+}
+
+function resolveBundleRetryConfig(
+	configured: IifeBundleRetryConfig | undefined,
+): Required<IifeBundleRetryConfig> {
+	const retryDelayMs =
+		typeof configured?.retryDelayMs === "number" && configured.retryDelayMs > 0
+			? configured.retryDelayMs
+			: DEFAULT_IIFE_BUNDLE_RETRY_CONFIG.retryDelayMs;
+	const timeoutMs =
+		typeof configured?.timeoutMs === "number" && configured.timeoutMs > 0
+			? configured.timeoutMs
+			: DEFAULT_IIFE_BUNDLE_RETRY_CONFIG.timeoutMs;
+	return { retryDelayMs, timeoutMs };
+}
+
+function waitMs(ms: number): Promise<void> {
+	return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function createEmptyConfigure(): CustomElementConstructor {

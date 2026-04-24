@@ -61,6 +61,7 @@ export { BUILT_IN_VIEWS, createEsmBackend } from "./esm-adapter.js";
 export type {
 	IifeBackend,
 	IifeBackendTestSeams,
+	IifeBundleRetryStatus,
 	IifeBundleScriptLoader,
 } from "./iife-adapter.js";
 export { createIifeBackend } from "./iife-adapter.js";

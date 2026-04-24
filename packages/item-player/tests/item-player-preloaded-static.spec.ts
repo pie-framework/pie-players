@@ -262,51 +262,12 @@ test.describe("item-player strategy regressions", () => {
 		expect(bundleRequests.length).toBe(baselineCount);
 	});
 
-	test("preloaded fallback can be explicitly opted in", async ({ page }) => {
-		const bundleRequests: string[] = [];
-		page.on("request", (request) => {
-			const url = request.url();
-			if (url.includes("/bundles/")) bundleRequests.push(url);
-		});
-
-		await page.goto(PRELOADED_DELIVERY_PATH, { waitUntil: "networkidle" });
-		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({ timeout: 20_000 });
-		const baselineCount = bundleRequests.length;
-
-		await page.evaluate(() => {
-			const fixture = document.createElement("div");
-			fixture.id = "pie-preloaded-optin-fallback-fixture";
-			document.body.appendChild(fixture);
-			const player = document.createElement("pie-item-player") as any;
-			player.strategy = "preloaded";
-			player.loaderOptions = { allowPreloadedFallbackLoad: true };
-			player.env = { mode: "gather", role: "student" };
-			player.session = { id: "fallback-optin", data: [] };
-			player.config = {
-				elements: {
-					"pie-runtime-optin": "@pie-element/multiple-choice@11.4.3",
-				},
-				models: [
-					{
-						id: "optin-model",
-						element: "pie-runtime-optin",
-						prompt: "Opt-in fallback prompt",
-						choiceMode: "radio",
-						choices: [
-							{ value: "a", label: "A", correct: false },
-							{ value: "b", label: "B", correct: true },
-						],
-					},
-				],
-				markup: '<pie-runtime-optin id="optin-model"></pie-runtime-optin>',
-			};
-			fixture.appendChild(player);
-		});
-
-		await expect
-			.poll(() => bundleRequests.length)
-			.toBeGreaterThan(baselineCount);
-	});
+	// NOTE: the previous "preloaded fallback can be explicitly opted in" test
+	// was deleted together with the `allowPreloadedFallbackLoad` escape hatch.
+	// `preloaded` now means "host pre-registered these elements; assert
+	// loudly or throw" — there is no autonomous runtime fallback to load.
+	// Hosts that want runtime loading should use `strategy="iife"` or
+	// `strategy="esm"` instead.
 
 	test("surfaces validate-config contract errors for invalid PIE references", async ({
 		page,
@@ -422,7 +383,11 @@ test.skip("esm emits media-retry-ready after first audio load failure", async ({
 			});
 		});
 
-		await page.goto(PRELOADED_DELIVERY_PATH, { waitUntil: "networkidle" });
+		// Use the IIFE strategy so the loader actually fetches a bundle
+		// when `runtimeSupportCheck: "on"` is active. (Previously this test
+		// relied on `allowPreloadedFallbackLoad` to coerce preloaded into
+		// fetching a bundle; that escape hatch no longer exists.)
+		await page.goto(IIFE_DELIVERY_PATH, { waitUntil: "networkidle" });
 		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({ timeout: 20_000 });
 
 		await page.evaluate(() => {
@@ -430,10 +395,9 @@ test.skip("esm emits media-retry-ready after first audio load failure", async ({
 			fixture.id = "pie-runtime-support-strict-fixture";
 			document.body.appendChild(fixture);
 			const player = document.createElement("pie-item-player") as any;
-			player.strategy = "preloaded";
+			player.strategy = "iife";
 			player.loaderOptions = {
 				runtimeSupportCheck: "on",
-				allowPreloadedFallbackLoad: true,
 			};
 			player.env = { mode: "gather", role: "student" };
 			player.session = { id: "strict-runtime-support", data: [] };
@@ -472,7 +436,9 @@ test.skip("esm emits media-retry-ready after first audio load failure", async ({
 			await route.fallback();
 		});
 
-		await page.goto(PRELOADED_DELIVERY_PATH, { waitUntil: "networkidle" });
+		// Use the IIFE strategy so the loader actually touches runtime-support
+		// when the option is active. (See the "strict" test above for why.)
+		await page.goto(IIFE_DELIVERY_PATH, { waitUntil: "networkidle" });
 		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({ timeout: 20_000 });
 
 		await page.evaluate(() => {
@@ -480,10 +446,9 @@ test.skip("esm emits media-retry-ready after first audio load failure", async ({
 			fixture.id = "pie-runtime-support-off-fixture";
 			document.body.appendChild(fixture);
 			const player = document.createElement("pie-item-player") as any;
-			player.strategy = "preloaded";
+			player.strategy = "iife";
 			player.loaderOptions = {
 				runtimeSupportCheck: "off",
-				allowPreloadedFallbackLoad: true,
 			};
 			player.env = { mode: "gather", role: "student" };
 			player.session = { id: "off-runtime-support", data: [] };

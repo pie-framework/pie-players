@@ -53,12 +53,12 @@
 	import {
 		BundleType,
 		assertPieConfigContract,
+		assertRegistered,
 		createPieLogger,
 		DEFAULT_BUNDLE_HOST,
 		DEFAULT_LOADER_CONFIG,
-		EsmPieLoader,
+		ensureRegistered,
 		hasResponseValue,
-		IifePieLoader,
 		ItemController,
 		isGlobalDebugEnabled,
 		initializeMathRendering,
@@ -69,6 +69,10 @@
 		parsePackageName,
 		resolveInstrumentationProvider,
 		resolveItemPlayerView,
+	} from "@pie-players/pie-players-shared";
+	import type {
+		EsmBackendConfig,
+		IifeBackendConfig,
 	} from "@pie-players/pie-players-shared";
 	import { PieItemPlayer as PieItemRenderer, PieSpinner } from "@pie-players/pie-players-shared/components";
 	import { tick, untrack } from "svelte";
@@ -88,7 +92,7 @@
 		esmCdnUrl?: string;
 		view?: string;
 		loadControllers?: boolean;
-		allowPreloadedFallbackLoad?: boolean;
+		moduleResolution?: "url" | "import-map";
 		runtimeSupportCheck?: "off" | "on";
 	};
 
@@ -385,33 +389,15 @@
 	});
 	const scopeClass = $derived((customClassName || fallbackScopeClass).trim());
 
+	// Dedup of the last successfully-processed inputs. The deep ElementLoader
+	// primitive also deduplicates concurrent identical requests internally,
+	// so this guard exists purely to skip the outer pipeline (config parsing,
+	// transform, runtime-support, etc.) when the effect re-fires with the
+	// same props. It does not gate readiness.
 	let lastProcessedConfig: any = null;
 	let lastProcessedStrategy = "";
 	let lastProcessedMode = "";
 	let lastProcessedLoaderRetrySignature = "";
-	let isProcessing = false;
-
-	function shouldAutoSkipElementLoading(configEntity: any): boolean {
-		if (normalizedStrategy !== "preloaded") return false;
-		if (!isBrowser) return false;
-
-		return (
-			!!configEntity?.elements &&
-			Object.keys(configEntity.elements).length > 0 &&
-			Object.keys(configEntity.elements).every((tagName) =>
-				typeof customElements.get(tagName) === "function",
-			)
-		);
-	}
-
-	function getMissingCustomElementTags(configEntity: any): string[] {
-		if (!configEntity?.elements || typeof configEntity.elements !== "object") {
-			return [];
-		}
-		return Object.keys(configEntity.elements).filter(
-			(tagName) => typeof customElements.get(tagName) !== "function",
-		);
-	}
 
 	function normalizePreloadedElementVersions(configEntity: any): any {
 		if (!isBrowser || normalizedStrategy !== "preloaded") return configEntity;
@@ -456,13 +442,87 @@
 		};
 	}
 
+	// ─── loadConfig pipeline ─────────────────────────────────────────────────
+	//
+	// The pipeline is a sequence of pure transforms over `(config, env,
+	// strategy, loaderOptions)` producing `(resolvedConfig | error)`.
+	//
+	//     parse → validate → normalizePreloaded → makeUniqueTags
+	//       → collectRuntimeSupportHints → initializeMathRendering
+	//       → (preloaded: assertRegistered | iife|esm: ensureRegistered)
+	//       → setItemConfig
+	//
+	// The deep ElementLoader primitive owns registration truth end-to-end
+	// and deduplicates concurrent identical requests, so this function no
+	// longer needs:
+	//   - an `isProcessing` guard (the primitive already deduplicates)
+	//   - an `allowPreloadedFallbackLoad` escape hatch (preloaded means
+	//     "host pre-registered; assert loudly or throw")
+	//   - a manual "all elements already registered" shortcut (the primitive
+	//     short-circuits when every tag is in `customElements` already)
+
+	function resolveBundleType(): BundleType {
+		if (resolvedMode === "author") return BundleType.editor;
+		return hosted ? BundleType.player : BundleType.clientPlayer;
+	}
+
+	function buildIifeBackendConfig(
+		bundleType: BundleType,
+	): IifeBackendConfig {
+		const needsControllers = bundleType !== BundleType.editor && !hosted;
+		return {
+			kind: "iife",
+			bundleHost: resolvedIifeBundleHost,
+			bundleType,
+			needsControllers,
+			debugEnabled: () => debugEnabled,
+			bundleRetry: loaderConfig?.iifeBundleRetry,
+			trackPageActions: loaderConfig?.trackPageActions,
+			instrumentationProvider: resolvedInstrumentationProvider,
+			onBundleRetryStatus: (status) => {
+				bundleRetryStatus = status;
+				handlePlayerEvent(
+					new CustomEvent("bundle-retry-status", {
+						detail: status,
+					}),
+				);
+			},
+		};
+	}
+
+	function buildEsmBackendConfig(view: string): EsmBackendConfig {
+		const moduleResolution =
+			(loaderOptions as Record<string, unknown> | undefined)
+				?.moduleResolution === "import-map"
+				? "import-map"
+				: "url";
+		return {
+			kind: "esm",
+			cdnBaseUrl: resolvedEsmCdnUrl,
+			moduleResolution,
+			view: view === "author" ? "author" : "delivery",
+			loadControllers: loaderOptions?.loadControllers ?? true,
+		};
+	}
+
+	function tagsForConfig(
+		transformedConfig: any,
+		context: { strategy: string; view: string; bundleType: BundleType },
+	): string[] {
+		if (!transformedConfig?.elements) return [];
+		const isEditor =
+			context.bundleType === BundleType.editor || context.view === "author";
+		return Object.keys(transformedConfig.elements).map((el) =>
+			isEditor ? `${el}-config` : el,
+		);
+	}
+
 	async function loadConfig(currentConfig: any) {
 		if (
-			isProcessing ||
-			(currentConfig === lastProcessedConfig &&
-				normalizedStrategy === lastProcessedStrategy &&
-				resolvedMode === lastProcessedMode &&
-				loaderRetrySignature === lastProcessedLoaderRetrySignature)
+			currentConfig === lastProcessedConfig &&
+			normalizedStrategy === lastProcessedStrategy &&
+			resolvedMode === lastProcessedMode &&
+			loaderRetrySignature === lastProcessedLoaderRetrySignature
 		) {
 			return;
 		}
@@ -473,7 +533,6 @@
 			return;
 		}
 
-		isProcessing = true;
 		lastProcessedConfig = currentConfig;
 		lastProcessedStrategy = normalizedStrategy;
 		lastProcessedMode = resolvedMode;
@@ -527,102 +586,40 @@
 				runtimeSupportHints.unsupportedPackages.length > 0
 					? ` Runtime support metadata indicates ${strategyForChecks}/${runtimeSupportView} is unsupported for ${runtimeSupportHints.unsupportedPackages.join(", ")}.`
 					: null;
-			const shouldSkipElementLoading =
-				normalizedStrategy === "preloaded" &&
-				shouldAutoSkipElementLoading(transformedConfig);
-			const allowPreloadedFallbackLoad =
-				(loaderOptions as UnifiedLoaderOptions | undefined)
-					?.allowPreloadedFallbackLoad === true;
 
 			stage = "math-rendering-init";
 			await initializeMathRendering();
 
-			if (shouldSkipElementLoading) {
-				logger.debug(
-					"[pie-item-player] Skipping element loading for preloaded flow.",
-				);
-			} else if (
-				normalizedStrategy === "preloaded" &&
-				!allowPreloadedFallbackLoad
-			) {
+			const elementMap = (transformedConfig?.elements || {}) as Record<
+				string,
+				string
+			>;
+
+			if (normalizedStrategy === "preloaded") {
 				stage = "preloaded-readiness";
-				const requiredTags = Object.keys(transformedConfig?.elements || {});
-				const missingTags = getMissingCustomElementTags(transformedConfig);
-				if (requiredTags.length === 0) {
-					logger.debug(
-						"[pie-item-player] Preloaded strategy has no custom-element tags to preload.",
-					);
-				} else if (missingTags.length > 0) {
-					throw new Error(
-						`Preloaded strategy requires pre-registered elements; missing tags: ${missingTags.join(", ")}.`,
-					);
-				} else {
-					throw new Error(
-						`Preloaded strategy readiness mismatch. required tags: ${requiredTags.join(", ")}`,
-					);
-				}
-			} else if (
-				normalizedStrategy === "iife" ||
-				normalizedStrategy === "preloaded"
-			) {
-				stage = "iife-load";
-				const iifeLoader = new IifePieLoader({
-					bundleHost: resolvedIifeBundleHost,
-					debugEnabled: () => debugEnabled,
-					bundleRetry: loaderConfig?.iifeBundleRetry,
-					trackPageActions: loaderConfig?.trackPageActions,
-					instrumentationProvider: resolvedInstrumentationProvider,
-					onBundleRetryStatus: (status) => {
-						bundleRetryStatus = status;
-						handlePlayerEvent(
-							new CustomEvent("bundle-retry-status", {
-								detail: status,
-							}),
-						);
-					},
-				});
-				const bundleType =
-					resolvedMode === "author"
-						? BundleType.editor
-						: hosted
-							? BundleType.player
-							: BundleType.clientPlayer;
-				const needsControllers = bundleType !== BundleType.editor && !hosted;
-				await iifeLoader.load(
-					transformedConfig,
-					document,
+				const bundleType = resolveBundleType();
+				const tags = tagsForConfig(transformedConfig, {
+					strategy: normalizedStrategy,
+					view: runtimeSupportView,
 					bundleType,
-					needsControllers,
-				);
-				const isEditorBundle = bundleType === BundleType.editor;
-				const elements = Object.keys(transformedConfig.elements).map((el) => ({
-					name: el,
-					tag: isEditorBundle ? `${el}-config` : el,
-				}));
-				await iifeLoader.elementsHaveLoaded(elements);
+				});
+				// `assertRegistered` throws `ElementAssertionError` with a
+				// diagnostic message (expected, missing, currently-registered)
+				// when any tag is missing. No loading, no fallback.
+				assertRegistered(tags);
+			} else if (normalizedStrategy === "iife") {
+				stage = "iife-load";
+				const bundleType = resolveBundleType();
+				await ensureRegistered(elementMap, {
+					backend: buildIifeBackendConfig(bundleType),
+				});
 			} else {
 				stage = "esm-load";
-				const moduleResolution =
-					(loaderOptions as Record<string, unknown> | undefined)
-						?.moduleResolution === "import-map"
-						? "import-map"
-						: "url";
-				const esmLoader = new EsmPieLoader({
-					cdnBaseUrl: resolvedEsmCdnUrl,
-					debugEnabled: () => debugEnabled,
-					moduleResolution,
-				} as any);
 				const view =
 					loaderOptions?.view || resolveItemPlayerView(env?.mode, "delivery");
-				await esmLoader.load(transformedConfig, document, {
-					view,
-					loadControllers: loaderOptions?.loadControllers ?? true,
+				await ensureRegistered(elementMap, {
+					backend: buildEsmBackendConfig(view),
 				});
-				const elements = Object.keys(transformedConfig.elements).map((el) => ({
-					name: el,
-					tag: view === "author" ? `${el}-config` : el,
-				}));
-				await esmLoader.elementsHaveLoaded(elements);
 			}
 
 			stage = "set-item-config";
@@ -648,8 +645,6 @@
 					},
 				}),
 			);
-		} finally {
-			isProcessing = false;
 		}
 	}
 

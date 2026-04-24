@@ -20,6 +20,7 @@ import {
 } from "../loader-config.js";
 import type { InstrumentationProvider } from "../instrumentation/types.js";
 import { isInstrumentationProvider } from "../instrumentation/provider-guards.js";
+import type { IifeBundleRetryStatus as AdapterIifeBundleRetryStatus } from "../loaders/iife-adapter.js";
 
 // Logger factory - will be initialized when loader is created
 let logger: ReturnType<typeof createPieLogger>;
@@ -65,15 +66,13 @@ export interface IifeLoaderConfig {
 	onBundleRetryStatus?: (status: IifeBundleRetryStatus) => void;
 }
 
-export interface IifeBundleRetryStatus {
-	state: "retrying" | "completed" | "timeout" | "cancelled";
-	url: string;
-	attempt: number;
-	elapsedMs: number;
-	timeoutMs: number;
-	retryDelayMs?: number;
-	reason?: string;
-}
+/**
+ * Re-exported from the `iife-adapter` so both the legacy `IifePieLoader`
+ * and the new `ElementLoader` primitive speak the same type. The legacy
+ * loader is deleted in commit 6; after that this re-export goes away and
+ * the adapter stays as the canonical source.
+ */
+export type IifeBundleRetryStatus = AdapterIifeBundleRetryStatus;
 
 // Default PIE bundle service URL.
 // Use the public proxy endpoint (stable + cached) rather than the builder origin directly.

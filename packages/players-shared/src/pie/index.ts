@@ -23,14 +23,10 @@ export {
 	modelsForPackage,
 	validatePieConfigContract,
 } from "./config.js";
-// Loaders
-export type { EsmLoaderConfig } from "./esm-loader.js";
-export { EsmPieLoader } from "./esm-loader.js";
-// IifeBundleRetryStatus is canonically exported from loaders/iife-adapter
-// (re-exported via loaders/index). Avoid re-exporting it here to prevent an
-// ambiguous re-export in players-shared/src/index.ts.
-export type { IifeLoaderConfig } from "./iife-loader.js";
-export { DEFAULT_BUNDLE_HOST, IifePieLoader } from "./iife-loader.js";
+// Loaders — the deep `ElementLoader` primitive (async `ensureRegistered` /
+// sync `assertRegistered`) lives under `pie-players-shared/loaders`. The
+// old per-strategy classes (`IifePieLoader`, `EsmPieLoader`) were removed;
+// the adapters behind the primitive carry their behaviour.
 // Initialization
 export {
 	initializePiesFromLoadedBundle,

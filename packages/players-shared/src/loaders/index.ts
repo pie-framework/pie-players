@@ -1,35 +1,38 @@
 /**
  * PIE Element Loaders
  *
- * Element-level loading abstractions for PIE players.
- * Provides both IIFE and ESM loaders with element aggregation capabilities.
+ * Deep `ElementLoader` primitive — the public entry point for registering
+ * PIE custom elements at runtime. Exposes `ensureRegistered` (async) and
+ * `assertRegistered` (sync) with a truthful promise contract: the returned
+ * promise resolves iff every requested tag is actually in `customElements`.
+ *
+ * Backends (IIFE, ESM) are internal adapter modules; they implement the
+ * `ElementLoaderBackend` interface and are wired via `{ backend: ... }`
+ * options.
  *
  * @example
  * ```typescript
- * // ESM (modern, preferred)
- * import { EsmElementLoader } from '@pie-players/pie-players-shared/loaders';
+ * import {
+ *   ensureRegistered,
+ *   BundleType,
+ * } from "@pie-players/pie-players-shared/loaders";
  *
- * const loader = new EsmElementLoader({ esmCdnUrl: 'https://esm.sh' });
- * await loader.loadFromItems(section.items);
- *
- * // IIFE (legacy compatibility)
- * import { IifeElementLoader } from '@pie-players/pie-players-shared/loaders';
- *
- * const loader = new IifeElementLoader({ bundleHost: 'https://bundles.pie.org' });
- * await loader.loadFromItems(section.items);
+ * await ensureRegistered(
+ *   { "pie-multiple-choice": "@pie-element/multiple-choice@11.0.1" },
+ *   {
+ *     backend: {
+ *       kind: "iife",
+ *       bundleHost: "https://proxy.pie-api.com/bundles/",
+ *       bundleType: BundleType.clientPlayer,
+ *       needsControllers: true,
+ *     },
+ *   },
+ * );
  * ```
  */
 
-export type {
-	ElementLoaderInterface,
-	ElementMap,
-	LoadOptions,
-} from "./ElementLoader.js";
+export type { ElementMap } from "./ElementLoader.js";
 export { aggregateElements } from "./ElementLoader.js";
-export type { EsmElementLoaderConfig } from "./EsmElementLoader.js";
-export { EsmElementLoader } from "./EsmElementLoader.js";
-export type { IifeElementLoaderConfig } from "./IifeElementLoader.js";
-export { IifeElementLoader } from "./IifeElementLoader.js";
 
 // ElementLoader primitive — truthful-promise loader. The public entry point
 // that replaces IifePieLoader/EsmPieLoader as the deep loader.
@@ -64,4 +67,4 @@ export type {
 	IifeBundleRetryStatus,
 	IifeBundleScriptLoader,
 } from "./iife-adapter.js";
-export { createIifeBackend } from "./iife-adapter.js";
+export { createIifeBackend, DEFAULT_BUNDLE_HOST } from "./iife-adapter.js";

@@ -1,12 +1,13 @@
 /**
- * Element Loader - Core types and utilities for loading PIE elements
+ * Element Loader — element aggregation utilities.
  *
- * This module provides element aggregation and loading abstractions for PIE players.
- * It enables loading multiple PIE elements in a single operation, eliminating duplicate
- * bundle requests when multiple items use the same elements.
+ * The deep `ElementLoader` primitive lives in `./element-loader.ts`. This
+ * module owns the shared `ElementMap` type and the `aggregateElements`
+ * helper that reduces many items' element declarations into a single
+ * deduplicated, version-aware map (used by the section-player to
+ * pre-warm in one shot).
  */
 
-import type { BundleType } from "../pie/types.js";
 import { parsePackageName } from "../pie/utils.js";
 import type { ItemEntity } from "../types/index.js";
 
@@ -15,40 +16,6 @@ import type { ItemEntity } from "../types/index.js";
  * Example: { "pie-multiple-choice": "@pie-element/multiple-choice@11.0.1" }
  */
 export type ElementMap = { [tagName: string]: string };
-
-/**
- * Options for loading PIE elements
- */
-export interface LoadOptions {
-	/** Bundle type to load (player or clientPlayer) */
-	bundleType?: BundleType;
-
-	/** Whether to load controllers (for client-side processing) */
-	needsControllers?: boolean;
-
-	/** View mode (ESM only) - delivery, author, or print */
-	view?: "delivery" | "author" | "print";
-}
-
-/**
- * Common interface for element loaders (IIFE and ESM)
- */
-export interface ElementLoaderInterface {
-	/**
-	 * Load elements directly from an element map
-	 * @param elements - Map of element tag names to package versions
-	 * @param options - Loading options
-	 */
-	loadElements(elements: ElementMap, options?: LoadOptions): Promise<void>;
-
-	/**
-	 * Extract and load elements from items
-	 * Automatically aggregates unique elements from all items
-	 * @param items - Array of items to extract elements from
-	 * @param options - Loading options
-	 */
-	loadFromItems(items: ItemEntity[], options?: LoadOptions): Promise<void>;
-}
 
 /**
  * Aggregate unique elements from multiple items

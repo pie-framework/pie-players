@@ -62,6 +62,11 @@ type GlobalWithDom = typeof globalThis & {
 
 const g = globalThis as GlobalWithDom;
 
+const originalCustomElements = g.customElements;
+const originalHtmlElement = g.HTMLElement;
+const originalHtmlScriptElement = g.HTMLScriptElement;
+const originalWindow = g.window;
+
 /**
  * A scripted custom-elements registry we can control deterministically.
  * Tracks define/get/whenDefined state so tests can assert what the
@@ -79,7 +84,7 @@ function installScriptedCustomElements(): ScriptedRegistry {
 	const registry = new Map<string, CustomElementConstructor>();
 	const pending = new Map<string, (ctor: CustomElementConstructor) => void>();
 
-	g.customElements = {
+	const scriptedRegistry = {
 		get(tag: string) {
 			return registry.get(tag);
 		},
@@ -104,7 +109,12 @@ function installScriptedCustomElements(): ScriptedRegistry {
 				pending.set(tag, resolve);
 			});
 		},
+		// Non-standard hook the primitive uses for diagnostic messages.
+		__pieSnapshot(): string[] {
+			return [...registry.keys()].sort();
+		},
 	};
+	g.customElements = scriptedRegistry;
 
 	return {
 		define(tag, ctor) {
@@ -185,6 +195,28 @@ beforeEach(() => {
 
 afterEach(() => {
 	elementLoaderTesting.resetDedupState();
+	// Restore any globals this file stomped on so sibling test files that rely
+	// on happy-dom (first-focusable, etc.) still see a clean slate.
+	if (originalCustomElements === undefined) {
+		delete (g as { customElements?: unknown }).customElements;
+	} else {
+		g.customElements = originalCustomElements;
+	}
+	if (originalHtmlElement === undefined) {
+		delete (g as { HTMLElement?: unknown }).HTMLElement;
+	} else {
+		g.HTMLElement = originalHtmlElement;
+	}
+	if (originalHtmlScriptElement === undefined) {
+		delete (g as { HTMLScriptElement?: unknown }).HTMLScriptElement;
+	} else {
+		g.HTMLScriptElement = originalHtmlScriptElement;
+	}
+	if (originalWindow === undefined) {
+		delete (g as { window?: unknown }).window;
+	} else {
+		g.window = originalWindow;
+	}
 });
 
 // ─── ensureRegistered — primitive-level contract ─────────────────────────────

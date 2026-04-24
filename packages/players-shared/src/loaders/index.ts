@@ -30,3 +30,37 @@ export type { EsmElementLoaderConfig } from "./EsmElementLoader.js";
 export { EsmElementLoader } from "./EsmElementLoader.js";
 export type { IifeElementLoaderConfig } from "./IifeElementLoader.js";
 export { IifeElementLoader } from "./IifeElementLoader.js";
+
+// ElementLoader primitive — truthful-promise loader. The public entry point
+// that replaces IifePieLoader/EsmPieLoader as the deep loader.
+export type {
+	BackendContext,
+	BackendOption,
+	ElementLoaderBackend,
+	ElementTag,
+	EnsureRegisteredOptions,
+	EsmBackendConfig,
+	IifeBackendConfig,
+	RegistrationFailureReason,
+} from "./element-loader.js";
+export {
+	AdapterFailure,
+	ElementAssertionError,
+	ElementLoaderError,
+	assertRegistered,
+	ensureRegistered,
+} from "./element-loader.js";
+export type {
+	EsmBackend,
+	EsmBackendTestSeams,
+	EsmImportMapObserver,
+	EsmModuleImporter,
+	ViewConfig,
+} from "./esm-adapter.js";
+export { BUILT_IN_VIEWS, createEsmBackend } from "./esm-adapter.js";
+export type {
+	IifeBackend,
+	IifeBackendTestSeams,
+	IifeBundleScriptLoader,
+} from "./iife-adapter.js";
+export { createIifeBackend } from "./iife-adapter.js";

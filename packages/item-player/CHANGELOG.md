@@ -1,5 +1,22 @@
 # @pie-players/pie-item-player
 
+## 0.3.30
+
+### Patch Changes
+
+- 698aa82: Add `focusFirst()` to `pie-item-player` and nest it after section navigation focuses the current item card.
+
+  - Export `queryFirstFocusableDeep`, `focusFirstFocusableInElement`, `isProgrammaticFocusTarget`, and `FOCUSABLE_SELECTOR` from `@pie-players/pie-players-shared` (deep traversal into **open** shadow roots; same selector basis as the focus trap).
+  - `pie-item-player.focusFirst()` moves focus to the first visible interactive control inside the item.
+  - Section player scaffold calls `focusFirst()` after programmatic focus lands on an item card (`start-of-content` without passage, and `current-item`).
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies [0981bc3]
+- Updated dependencies [698aa82]
+- Updated dependencies
+  - @pie-players/pie-players-shared@0.3.30
+  - @pie-players/pie-theme@0.3.30
+
 ## 0.3.29
 
 ### Patch Changes

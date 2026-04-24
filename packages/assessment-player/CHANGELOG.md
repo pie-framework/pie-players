@@ -1,5 +1,18 @@
 # @pie-players/pie-assessment-player
 
+## 0.3.30
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies [96b66d1]
+- Updated dependencies [0981bc3]
+- Updated dependencies [698aa82]
+- Updated dependencies
+  - @pie-players/pie-section-player@0.3.30
+  - @pie-players/pie-players-shared@0.3.30
+  - @pie-players/pie-assessment-toolkit@0.3.30
+
 ## 0.3.29
 
 ### Patch Changes

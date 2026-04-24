@@ -1,5 +1,36 @@
 # @pie-players/pie-players-shared
 
+## 0.3.30
+
+### Patch Changes
+
+- 0981bc3: Bump `@pie-lib/math-rendering-module` from `4.0.7` to `4.1.2` (PIE-147 / PIE-423).
+
+  `math-rendering@4.1.0-next.1` regressed screen-reader support by dropping the
+  `mjx-assistive-mml` MathML sibling that MathJax attaches for assistive
+  technologies, so screen readers in the item player fell back to reading raw
+  glyphs (e.g. "9 1 8") for prompt math. `4.1.2` — via
+  [pie-framework/pie-lib#2201](https://github.com/pie-framework/pie-lib/pull/2201) —
+  restores the assistive MathML attachment, so VoiceOver / NVDA announce prompt
+  and answer-choice math correctly again.
+
+  `players-shared` is the single source of truth for this dependency (enforced by
+  `scripts/check-math-rendering-version.mjs`); every consumer — including
+  `@pie-players/pie-item-player` — picks this up transitively on their next
+  build/publish.
+
+  The existing vite `patch-math-rendering-module-eval` hook in `item-player`
+  still neutralizes the `return eval('require')` pattern in the upstream module
+  (confirmed present in `4.1.2`), and `assert-no-eval-require-in-output` passes.
+
+- 698aa82: Add `focusFirst()` to `pie-item-player` and nest it after section navigation focuses the current item card.
+
+  - Export `queryFirstFocusableDeep`, `focusFirstFocusableInElement`, `isProgrammaticFocusTarget`, and `FOCUSABLE_SELECTOR` from `@pie-players/pie-players-shared` (deep traversal into **open** shadow roots; same selector basis as the focus trap).
+  - `pie-item-player.focusFirst()` moves focus to the first visible interactive control inside the item.
+  - Section player scaffold calls `focusFirst()` after programmatic focus lands on an item card (`start-of-content` without passage, and `current-item`).
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+
 ## 0.3.29
 
 ### Patch Changes

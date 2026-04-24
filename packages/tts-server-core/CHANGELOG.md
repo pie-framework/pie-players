@@ -1,5 +1,11 @@
 # @pie-players/tts-server-core
 
+## 0.3.30
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+
 ## 0.3.29
 
 ### Patch Changes

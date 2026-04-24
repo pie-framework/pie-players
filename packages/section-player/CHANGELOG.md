@@ -1,5 +1,37 @@
 # @pie-players/pie-section-player
 
+## 0.3.30
+
+### Patch Changes
+
+- 96b66d1: Ship the framework-side focus contract for Skip-to-Main (PIE-102).
+
+  - Promote `<pie-section-player-passage-card>` and `<pie-section-player-item-card>` to public focus targets: each custom element now carries `tabindex="-1"`, `role="region"`, and `aria-labelledby` pointing at its heading, plus a `:focus-visible` outline scoped to the tag so the indicator wraps the whole card box. The inner `data-section-item-card` div remains as an internal hook.
+  - Replace `SectionPlayerFocusPolicy.autoFocusFirstItem: boolean` with `SectionPlayerFocusPolicy.autoFocus: 'none' | 'start-of-content' | 'current-item'` (default `'start-of-content'`). The strategy governs both mount and navigation focus moments: `start-of-content` focuses the passage when present else the first item card; `current-item` focuses the newly-active `pie-section-player-item-card[is-current]` for stacked/list layouts; `none` disables framework-driven focus movement entirely.
+  - Keep `autoFocusFirstItem` as a deprecated alias (`true` → `'start-of-content'`, `false` → `'none'`) with a one-time console warning. Existing hosts continue to work unchanged.
+  - Expose a `focusStart(): boolean` imperative method on `pie-section-player-splitpane`, `pie-section-player-vertical`, `pie-section-player-tabbed`, `pie-section-player-kernel-host`, and `pie-section-player-base`. It always focuses start-of-content and is the escape hatch hosts call from Skip-to-Main handlers — strategy-agnostic by design.
+  - Export `DEFAULT_FOCUS_POLICY`, `SectionPlayerAutoFocusStrategy`, and `resolveAutoFocusStrategy` alongside the existing policy types.
+
+- 698aa82: Add `focusFirst()` to `pie-item-player` and nest it after section navigation focuses the current item card.
+
+  - Export `queryFirstFocusableDeep`, `focusFirstFocusableInElement`, `isProgrammaticFocusTarget`, and `FOCUSABLE_SELECTOR` from `@pie-players/pie-players-shared` (deep traversal into **open** shadow roots; same selector basis as the focus trap).
+  - `pie-item-player.focusFirst()` moves focus to the first visible interactive control inside the item.
+  - Section player scaffold calls `focusFirst()` after programmatic focus lands on an item card (`start-of-content` without passage, and `current-item`).
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies [0981bc3]
+- Updated dependencies [698aa82]
+- Updated dependencies
+  - @pie-players/pie-players-shared@0.3.30
+  - @pie-players/pie-item-player@0.3.30
+  - @pie-players/pie-assessment-toolkit@0.3.30
+  - @pie-players/pie-context@0.3.30
+  - @pie-players/pie-tool-annotation-toolbar@0.3.30
+  - @pie-players/pie-tool-calculator-desmos@0.3.30
+  - @pie-players/pie-tool-text-to-speech@0.3.30
+  - @pie-players/pie-tool-tts-inline@0.3.30
+  - @pie-players/pie-toolbars@0.3.30
+
 ## 0.3.29
 
 ### Patch Changes

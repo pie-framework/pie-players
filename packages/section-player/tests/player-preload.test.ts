@@ -9,224 +9,249 @@ async function loadPlayerPreloadModule() {
 	return import("../src/components/shared/player-preload");
 }
 
-describe("player-preload signatures", () => {
-	test("renderables signature changes when element map changes", async () => {
-		const { getRenderablesSignature } = await loadPlayerPreloadModule();
-		const renderablesBase = [
-			{
-				entity: {
-					id: "item-1",
-					version: "1",
-					config: {
-						elements: {
-							"pie-multiple-choice": "@pie-element/multiple-choice@1.0.0",
-						},
-					},
-				},
+describe("player-preload: backend config", () => {
+	test("iife backend picks clientPlayer bundle by default", async () => {
+		const { buildBackendConfigFromProps } = await loadPlayerPreloadModule();
+		const backend = buildBackendConfigFromProps({
+			strategy: "iife",
+			resolvedPlayerProps: {
+				loaderOptions: { bundleHost: "https://proxy.pie-api.com/bundles" },
 			},
-		];
-		const renderablesUpdated = [
-			{
-				entity: {
-					id: "item-1",
-					version: "1",
-					config: {
-						elements: {
-							"pie-multiple-choice": "@pie-element/multiple-choice@2.0.0",
-						},
-					},
-				},
-			},
-		];
-
-		const baseSignature = getRenderablesSignature(renderablesBase);
-		const updatedSignature = getRenderablesSignature(renderablesUpdated);
-
-		expect(baseSignature).not.toBe(updatedSignature);
+			resolvedPlayerEnv: {},
+		});
+		expect(backend.kind).toBe("iife");
+		if (backend.kind === "iife") {
+			expect(backend.bundleHost).toBe("https://proxy.pie-api.com/bundles");
+			expect(backend.bundleType).toBe(BundleType.clientPlayer);
+		}
 	});
 
-	test("preload signature differs for iife bundle types", async () => {
-		const { buildPreloadSignature } = await loadPlayerPreloadModule();
-		const baseArgs = {
+	test("iife backend upgrades to player bundle when hosted=true", async () => {
+		const { buildBackendConfigFromProps } = await loadPlayerPreloadModule();
+		const backend = buildBackendConfigFromProps({
 			strategy: "iife",
-			loaderView: "delivery",
-			esmCdnUrl: "https://cdn.jsdelivr.net/npm",
-			moduleResolution: "url" as const,
-			bundleHost: "https://proxy.pie-api.com/bundles",
-			renderablesSignature: "renderables:v1",
-		};
-
-		const clientPlayerSignature = buildPreloadSignature({
-			...baseArgs,
-			iifeBundleType: BundleType.clientPlayer,
+			resolvedPlayerProps: {
+				hosted: true,
+				loaderOptions: { bundleHost: "https://proxy.pie-api.com/bundles" },
+			},
+			resolvedPlayerEnv: {},
 		});
-		const playerSignature = buildPreloadSignature({
-			...baseArgs,
-			iifeBundleType: BundleType.player,
-		});
+		if (backend.kind === "iife") {
+			expect(backend.bundleType).toBe(BundleType.player);
+		} else {
+			throw new Error("expected iife backend");
+		}
+	});
 
-		expect(clientPlayerSignature).not.toBe(playerSignature);
+	test("iife backend uses editor bundle in author mode", async () => {
+		const { buildBackendConfigFromProps } = await loadPlayerPreloadModule();
+		const backend = buildBackendConfigFromProps({
+			strategy: "iife",
+			resolvedPlayerProps: {
+				mode: "author",
+				loaderOptions: { bundleHost: "https://proxy.pie-api.com/bundles" },
+			},
+			resolvedPlayerEnv: {},
+		});
+		if (backend.kind === "iife") {
+			expect(backend.bundleType).toBe(BundleType.editor);
+		} else {
+			throw new Error("expected iife backend");
+		}
+	});
+
+	test("iife backend falls back to iifeBundleHost arg when loaderOptions omit it", async () => {
+		const { buildBackendConfigFromProps } = await loadPlayerPreloadModule();
+		const backend = buildBackendConfigFromProps({
+			strategy: "iife",
+			resolvedPlayerProps: {},
+			resolvedPlayerEnv: {},
+			iifeBundleHost: "https://fallback.example.com/bundles",
+		});
+		if (backend.kind === "iife") {
+			expect(backend.bundleHost).toBe("https://fallback.example.com/bundles");
+		} else {
+			throw new Error("expected iife backend");
+		}
+	});
+
+	test("iife backend throws when no bundle host is available", async () => {
+		const { buildBackendConfigFromProps } = await loadPlayerPreloadModule();
+		expect(() =>
+			buildBackendConfigFromProps({
+				strategy: "iife",
+				resolvedPlayerProps: {},
+				resolvedPlayerEnv: {},
+			}),
+		).toThrow(/iifeBundleHost/);
+	});
+
+	test("esm backend reads loaderOptions.esmCdnUrl", async () => {
+		const { buildBackendConfigFromProps } = await loadPlayerPreloadModule();
+		const backend = buildBackendConfigFromProps({
+			strategy: "esm",
+			resolvedPlayerProps: {
+				loaderOptions: { esmCdnUrl: "https://esm.sh" },
+			},
+			resolvedPlayerEnv: {},
+		});
+		expect(backend.kind).toBe("esm");
+		if (backend.kind === "esm") {
+			expect(backend.cdnBaseUrl).toBe("https://esm.sh");
+			expect(backend.moduleResolution).toBe("url");
+			expect(backend.view).toBe("delivery");
+		}
+	});
+
+	test("esm backend honors author env for view", async () => {
+		const { buildBackendConfigFromProps } = await loadPlayerPreloadModule();
+		const backend = buildBackendConfigFromProps({
+			strategy: "esm",
+			resolvedPlayerProps: {},
+			resolvedPlayerEnv: { mode: "author" },
+		});
+		if (backend.kind === "esm") {
+			expect(backend.view).toBe("author");
+		} else {
+			throw new Error("expected esm backend");
+		}
+	});
+
+	test("esm backend honors import-map moduleResolution", async () => {
+		const { buildBackendConfigFromProps } = await loadPlayerPreloadModule();
+		const backend = buildBackendConfigFromProps({
+			strategy: "esm",
+			resolvedPlayerProps: {
+				loaderOptions: { moduleResolution: "import-map" },
+			},
+			resolvedPlayerEnv: {},
+		});
+		if (backend.kind === "esm") {
+			expect(backend.moduleResolution).toBe("import-map");
+		} else {
+			throw new Error("expected esm backend");
+		}
 	});
 });
 
-describe("player-preload retry behavior", () => {
+describe("player-preload: error helpers", () => {
 	test("formats stage-based element load errors like item-player", async () => {
 		const { formatElementLoadError } = await loadPlayerPreloadModule();
 		const message = formatElementLoadError("iife-load", new Error("network down"));
 		expect(message).toBe("Error loading elements (iife-load): network down");
 	});
 
-	test("retries bounded preload attempts before succeeding", async () => {
-		const { preloadPlayerElementsWithRetry } = await loadPlayerPreloadModule();
-		let attempts = 0;
-		await preloadPlayerElementsWithRetry({
-			componentTag: "pie-test",
-			strategy: "iife",
-			renderables: [{ config: { elements: {} } } as any],
-			iifeBundleType: BundleType.clientPlayer,
-			loaderView: "delivery",
-			esmCdnUrl: "https://cdn.jsdelivr.net/npm",
-			moduleResolution: "url",
-			bundleHost: "https://proxy.pie-api.com/bundles",
-			retryCount: 1,
-			retryDelayMs: 0,
-			logger: {
-				warn: () => undefined,
-			} as any,
-			loadOnce: async () => {
-				attempts += 1;
-				if (attempts < 2) {
-					throw new Error("first attempt failed");
-				}
-			},
-		});
-		expect(attempts).toBe(2);
-	});
-
-	test("throws item-player style error when retries are exhausted", async () => {
-		const { preloadPlayerElementsWithRetry } = await loadPlayerPreloadModule();
-		await expect(
-			preloadPlayerElementsWithRetry({
-				componentTag: "pie-test",
-				strategy: "iife",
-				renderables: [{ config: { elements: {} } } as any],
-				iifeBundleType: BundleType.clientPlayer,
-				loaderView: "delivery",
-				esmCdnUrl: "https://cdn.jsdelivr.net/npm",
-				moduleResolution: "url",
-				bundleHost: "https://proxy.pie-api.com/bundles",
-				retryCount: 1,
-				retryDelayMs: 0,
-				logger: {
-					warn: () => undefined,
-				} as any,
-				loadOnce: async () => {
-					throw new Error("still failing");
-				},
+	test("describeBundleType returns null for esm and preloaded backends", async () => {
+		const { describeBundleType } = await loadPlayerPreloadModule();
+		expect(describeBundleType(null)).toBeNull();
+		expect(
+			describeBundleType({
+				kind: "esm",
+				cdnBaseUrl: "https://cdn.jsdelivr.net/npm",
 			}),
-		).rejects.toThrow("Error loading elements (iife-load-retry): still failing");
-	});
-
-	test("emits retry and final error details for instrumentation hooks", async () => {
-		const { preloadPlayerElementsWithRetry } = await loadPlayerPreloadModule();
-		const retryEvents: Array<Record<string, unknown>> = [];
-		const finalErrors: Array<Record<string, unknown>> = [];
-		await expect(
-			preloadPlayerElementsWithRetry({
-				componentTag: "pie-test",
-				strategy: "iife",
-				renderables: [{ config: { elements: {} } } as any],
-				iifeBundleType: BundleType.clientPlayer,
-				loaderView: "delivery",
-				esmCdnUrl: "https://cdn.jsdelivr.net/npm",
-				moduleResolution: "url",
-				bundleHost: "https://proxy.pie-api.com/bundles",
-				retryCount: 1,
-				retryDelayMs: 0,
-				logger: {
-					warn: () => undefined,
-				} as any,
-				onRetry: (detail) => retryEvents.push(detail as Record<string, unknown>),
-				onFinalError: (detail) =>
-					finalErrors.push(detail as Record<string, unknown>),
-				loadOnce: async () => {
-					throw new Error("still failing");
-				},
+		).toBeNull();
+		expect(
+			describeBundleType({
+				kind: "iife",
+				bundleHost: "https://proxy",
+				bundleType: BundleType.clientPlayer,
 			}),
-		).rejects.toThrow();
-
-		expect(retryEvents).toHaveLength(1);
-		expect(retryEvents[0]?.componentTag).toBe("pie-test");
-		expect(retryEvents[0]?.stage).toBe("iife-load");
-		expect(retryEvents[0]?.attempt).toBe(1);
-		expect(finalErrors).toHaveLength(1);
-		expect(finalErrors[0]?.componentTag).toBe("pie-test");
-		expect(finalErrors[0]?.stage).toBe("iife-load-retry");
-		expect(finalErrors[0]?.error).toBe("still failing");
+		).toBe(String(BundleType.clientPlayer));
 	});
 
-	test("keeps elements gated when iife preload is requested without bundle host", async () => {
-		const { orchestratePlayerElementPreload } = await loadPlayerPreloadModule();
-		const state = {
-			lastPreloadSignature: "",
-			preloadRunToken: 0,
-			elementsLoaded: false,
-		};
-		orchestratePlayerElementPreload({
-			componentTag: "pie-test",
-			strategy: "iife",
-			renderables: [{ config: { elements: { "pie-x": "@pie-element/x@1.0.0" } } } as any],
-			renderablesSignature: "sig-1",
-			resolvedPlayerProps: {
-				loaderOptions: {},
-			},
-			resolvedPlayerEnv: {},
-			iifeBundleHost: "",
-			getState: () => state,
-			setState: (next) => Object.assign(state, next),
-		});
-
-		expect(state.elementsLoaded).toBe(false);
-		expect(state.preloadRunToken).toBe(1);
+	test("describeBundleHost returns '' for esm and preloaded backends", async () => {
+		const { describeBundleHost } = await loadPlayerPreloadModule();
+		expect(describeBundleHost(null)).toBe("");
+		expect(
+			describeBundleHost({
+				kind: "esm",
+				cdnBaseUrl: "https://cdn.jsdelivr.net/npm",
+			}),
+		).toBe("");
+		expect(
+			describeBundleHost({
+				kind: "iife",
+				bundleHost: "https://proxy",
+			}),
+		).toBe("https://proxy");
 	});
+});
 
-	test("emits preload error and keeps gated on invalid PIE contract", async () => {
-		const { orchestratePlayerElementPreload } = await loadPlayerPreloadModule();
-		const state = {
-			lastPreloadSignature: "",
-			preloadRunToken: 0,
-			elementsLoaded: false,
-		};
-		const preloadErrors: Array<Record<string, unknown>> = [];
-		orchestratePlayerElementPreload({
-			componentTag: "pie-test",
-			strategy: "iife",
+describe("warmupSectionElements", () => {
+	test("no-op for preloaded strategy (host pre-registers)", async () => {
+		const { warmupSectionElements } = await loadPlayerPreloadModule();
+		await warmupSectionElements({
+			strategy: "preloaded",
 			renderables: [
 				{
-					id: "broken-item",
+					id: "item-1",
 					config: {
-						markup: '<pie-mc id="m1"></pie-mc>',
+						markup: "<pie-mc></pie-mc>",
 						elements: { "pie-mc": "@pie-element/multiple-choice@1.0.0" },
-						models: [{ id: "m1", element: "pie-missing" }],
+						models: [{ id: "mc1", element: "pie-mc" }],
 					},
 				} as any,
 			],
-			renderablesSignature: "sig-invalid",
+			resolvedPlayerProps: {},
+			resolvedPlayerEnv: {},
+		});
+	});
+
+	test("no-op for empty renderables", async () => {
+		const { warmupSectionElements } = await loadPlayerPreloadModule();
+		await warmupSectionElements({
+			strategy: "iife",
+			renderables: [],
 			resolvedPlayerProps: {
 				loaderOptions: { bundleHost: "https://proxy.pie-api.com/bundles" },
 			},
 			resolvedPlayerEnv: {},
-			iifeBundleHost: "https://proxy.pie-api.com/bundles",
-			getState: () => state,
-			setState: (next) => Object.assign(state, next),
-			onPreloadError: (detail) => preloadErrors.push(detail as Record<string, unknown>),
 		});
+	});
 
-		expect(state.elementsLoaded).toBe(false);
-		expect(preloadErrors).toHaveLength(1);
-		expect(preloadErrors[0]?.stage).toBe("validate-config");
-		expect(String(preloadErrors[0]?.error || "")).toContain(
-			"Invalid PIE config contract",
-		);
+	test("rejects when iife preload is requested without bundle host", async () => {
+		const { warmupSectionElements } = await loadPlayerPreloadModule();
+		await expect(
+			warmupSectionElements({
+				strategy: "iife",
+				renderables: [
+					{
+						id: "item-1",
+						config: {
+							markup: '<pie-x id="m1"></pie-x>',
+							elements: { "pie-x": "@pie-element/x@1.0.0" },
+							models: [{ id: "m1", element: "pie-x" }],
+						},
+					} as any,
+				],
+				resolvedPlayerProps: { loaderOptions: {} },
+				resolvedPlayerEnv: {},
+				iifeBundleHost: "",
+			}),
+		).rejects.toThrow(/iifeBundleHost/);
+	});
+
+	test("rejects on invalid PIE config contract before touching the loader", async () => {
+		const { warmupSectionElements } = await loadPlayerPreloadModule();
+		await expect(
+			warmupSectionElements({
+				strategy: "iife",
+				renderables: [
+					{
+						id: "broken-item",
+						config: {
+							markup: '<pie-mc id="m1"></pie-mc>',
+							elements: { "pie-mc": "@pie-element/multiple-choice@1.0.0" },
+							models: [{ id: "m1", element: "pie-missing" }],
+						},
+					} as any,
+				],
+				resolvedPlayerProps: {
+					loaderOptions: { bundleHost: "https://proxy.pie-api.com/bundles" },
+				},
+				resolvedPlayerEnv: {},
+				iifeBundleHost: "https://proxy.pie-api.com/bundles",
+			}),
+		).rejects.toThrow(/Invalid PIE config contract|broken-item/);
 	});
 });

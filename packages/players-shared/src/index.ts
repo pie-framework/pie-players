@@ -30,3 +30,7 @@ export * from "./ui/focus-trap.js";
 export * from "./ui/first-focusable.js";
 export * from "./ui/debug-panel-persistence.js";
 export * from "./ui/safe-storage.js";
+// use-promise is a Svelte 5 runes module and is shipped as raw source via
+// the `./ui/use-promise` subpath export. It is not re-exported here because
+// tsc cannot compile `.svelte.ts` runes correctly; the consumer's Svelte
+// plugin processes it at consume time.

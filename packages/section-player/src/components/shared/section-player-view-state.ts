@@ -17,10 +17,6 @@ export type LayoutCompositionSnapshot = {
 	renderablesSignature: string;
 };
 
-function resolveEmbeddedItemStrategy(playerStrategy: string): string {
-	return playerStrategy === "iife" ? "preloaded" : playerStrategy;
-}
-
 export function getCompositionFromEvent(event: Event): SectionCompositionModel {
 	const detail = (event as CustomEvent<{ composition?: SectionCompositionModel }>)
 		.detail;
@@ -55,13 +51,17 @@ export function getPassagePlayerParams(args: {
 }): PlayerElementParams {
 	// Keep passage visuals aligned with item defaults by sharing the same
 	// runtime env shape; passage content remains non-response by content model.
-	const embeddedStrategy = resolveEmbeddedItemStrategy(args.playerStrategy);
+	// Strategy is propagated verbatim: with the deep ElementLoader primitive,
+	// aggregate pre-warming is a performance optimization rather than a
+	// correctness-critical coordination mechanism, so embedded items keep the
+	// host's requested strategy and independently call ensureRegistered /
+	// assertRegistered.
 	return {
 		config: args.passage.config || {},
 		env: args.resolvedPlayerEnv,
 		attributes: {
 			...(args.resolvedPlayerAttributes || {}),
-			strategy: embeddedStrategy,
+			strategy: args.playerStrategy,
 		},
 		props: args.resolvedPlayerProps || {},
 	};
@@ -75,14 +75,13 @@ export function getItemPlayerParams(args: {
 	resolvedPlayerProps: Record<string, unknown>;
 	playerStrategy: string;
 }): PlayerElementParams {
-	const embeddedStrategy = resolveEmbeddedItemStrategy(args.playerStrategy);
 	return {
 		config: args.item.config || {},
 		env: args.resolvedPlayerEnv,
 		session: getSessionForItemOrEmpty(args.compositionModel, args.item),
 		attributes: {
 			...(args.resolvedPlayerAttributes || {}),
-			strategy: embeddedStrategy,
+			strategy: args.playerStrategy,
 		},
 		props: args.resolvedPlayerProps || {},
 	};

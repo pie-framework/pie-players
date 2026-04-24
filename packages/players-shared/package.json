@@ -101,6 +101,11 @@
 			"types": "./dist/i18n/use-i18n-standalone.svelte.ts",
 			"import": "./dist/i18n/use-i18n-standalone.svelte.ts",
 			"svelte": "./dist/i18n/use-i18n-standalone.svelte.ts"
+		},
+		"./ui/use-promise": {
+			"types": "./dist/ui/use-promise.svelte.ts",
+			"import": "./dist/ui/use-promise.svelte.ts",
+			"svelte": "./dist/ui/use-promise.svelte.ts"
 		}
 	},
 	"files": [

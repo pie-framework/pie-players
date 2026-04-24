@@ -36,13 +36,18 @@
 	} from "@pie-players/pie-assessment-toolkit";
 	import "../section-player-item-card-element.js";
 	import type { ItemEntity } from "@pie-players/pie-players-shared/types";
+	import { usePromise } from "@pie-players/pie-players-shared/ui/use-promise";
 	import type { SectionCompositionModel } from "../../controllers/types.js";
 	import {
-		createPlayerPreloadStateSetter,
+		buildBackendConfigFromProps,
+		describeBundleHost,
+		describeBundleType,
 		type ElementPreloadErrorDetail,
 		type ElementPreloadRetryDetail,
-		orchestratePlayerElementPreload,
-		type PlayerPreloadState,
+		formatElementLoadError,
+		getPreloadLogger,
+		toErrorMessage,
+		warmupSectionElements,
 	} from "./player-preload.js";
 	import {
 		getCanonicalItemId,
@@ -61,7 +66,11 @@
 		hostButtons = [] as ToolbarItem[],
 		iifeBundleHost = "",
 		preloadedRenderables = [] as ItemEntity[],
-		preloadedRenderablesSignature = "",
+		/* preloadedRenderablesSignature is plumbed through the host element
+		 * tree for back-compat, but the deep ElementLoader primitive
+		 * deduplicates concurrent requests by itself, so we no longer key
+		 * warmup on it. The prop stays accepted so call-sites outside this
+		 * package don't have to change in lock-step. */
 		preloadComponentTag = "pie-section-player-items-pane",
 	} = $props<{
 		items: ItemEntity[];
@@ -84,47 +93,62 @@
 		"element-preload-retry": ElementPreloadRetryDetail;
 		"element-preload-error": ElementPreloadErrorDetail;
 	}>();
-	let elementsLoaded = $state(false);
-	let lastPreloadSignature = $state("");
-	let preloadRunToken = $state(0);
-	const setPreloadState = createPlayerPreloadStateSetter({
-		setLastPreloadSignature: (value) => {
-			lastPreloadSignature = value;
-		},
-		setPreloadRunToken: (value) => {
-			preloadRunToken = value;
-		},
-		setElementsLoaded: (value) => {
-			elementsLoaded = value;
-		},
-	});
+
+	const logger = $derived(getPreloadLogger(preloadComponentTag));
+
+	/*
+	 * The readiness lifecycle value.
+	 *
+	 * `usePromise` turns an async factory into a reactive
+	 * `{ status: "idle" | "pending" | "resolved" | "rejected" }` value that
+	 * invalidates instantly on input change and ignores late resolutions
+	 * from stale invocations. This is what used to be a hand-rolled trio of
+	 * `$state` fields (`elementsLoaded`, `preloadRunToken`,
+	 * `lastPreloadSignature`) plus a separate state-setter in
+	 * `player-preload.ts` — all of which only existed to re-implement this
+	 * helper badly and produced the sporadic section-swap race in the process.
+	 */
+	const readiness = usePromise(() =>
+		warmupSectionElements({
+			strategy: playerStrategy,
+			renderables: preloadedRenderables,
+			resolvedPlayerProps: resolvedPlayerProps as Record<string, unknown>,
+			resolvedPlayerEnv: resolvedPlayerEnv as Record<string, unknown>,
+			iifeBundleHost,
+			logger,
+		}),
+	);
+
+	const elementsLoaded = $derived(readiness.current.status === "resolved");
 
 	$effect(() => {
 		dispatch("elements-loaded-change", { elementsLoaded });
 	});
 
 	$effect(() => {
-		orchestratePlayerElementPreload({
+		if (readiness.current.status !== "rejected") return;
+		const error = readiness.current.error;
+		logger.error(formatElementLoadError("iife-load", error));
+		let backendForTelemetry: ReturnType<typeof buildBackendConfigFromProps> | null =
+			null;
+		try {
+			backendForTelemetry = buildBackendConfigFromProps({
+				strategy: playerStrategy,
+				resolvedPlayerProps: resolvedPlayerProps as Record<string, unknown>,
+				resolvedPlayerEnv: resolvedPlayerEnv as Record<string, unknown>,
+				iifeBundleHost,
+			});
+		} catch {
+			backendForTelemetry = null;
+		}
+		dispatch("element-preload-error", {
 			componentTag: preloadComponentTag,
+			stage: "iife-load",
+			error: toErrorMessage(error),
 			strategy: playerStrategy,
-			renderables: preloadedRenderables,
-			renderablesSignature: preloadedRenderablesSignature,
-			resolvedPlayerProps: resolvedPlayerProps as Record<string, unknown>,
-			resolvedPlayerEnv: resolvedPlayerEnv as Record<string, unknown>,
-			iifeBundleHost,
-			getState: () =>
-				({
-					lastPreloadSignature,
-					preloadRunToken,
-					elementsLoaded,
-				}) as PlayerPreloadState,
-			setState: setPreloadState,
-			onPreloadRetry: (detail) => {
-				dispatch("element-preload-retry", detail);
-			},
-			onPreloadError: (detail) => {
-				dispatch("element-preload-error", detail);
-			},
+			bundleType: describeBundleType(backendForTelemetry),
+			bundleHost: describeBundleHost(backendForTelemetry),
+			renderablesCount: preloadedRenderables.length,
 		});
 	});
 

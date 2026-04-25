@@ -35,7 +35,7 @@ export type { ElementMap } from "./ElementLoader.js";
 export { aggregateElements } from "./ElementLoader.js";
 
 // ElementLoader primitive — truthful-promise loader. The public entry point
-// that replaces IifePieLoader/EsmPieLoader as the deep loader.
+// for ensureRegistered / assertRegistered.
 export type {
 	BackendContext,
 	BackendOption,
@@ -53,18 +53,10 @@ export {
 	assertRegistered,
 	ensureRegistered,
 } from "./element-loader.js";
-export type {
-	EsmBackend,
-	EsmBackendTestSeams,
-	EsmImportMapObserver,
-	EsmModuleImporter,
-	ViewConfig,
-} from "./esm-adapter.js";
+export type { EsmBackend, ViewConfig } from "./esm-adapter.js";
 export { BUILT_IN_VIEWS, createEsmBackend } from "./esm-adapter.js";
 export type {
 	IifeBackend,
-	IifeBackendTestSeams,
 	IifeBundleRetryStatus,
-	IifeBundleScriptLoader,
 } from "./iife-adapter.js";
 export { createIifeBackend, DEFAULT_BUNDLE_HOST } from "./iife-adapter.js";

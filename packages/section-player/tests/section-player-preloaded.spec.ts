@@ -169,9 +169,22 @@ test.describe("section player preloaded strategy", () => {
 		});
 	});
 
-	test("iife section strategy still enforces preloaded item-player strategy", async ({
+	test("iife section strategy propagates verbatim to embedded item-players", async ({
 		page,
 	}) => {
+		// The section-player no longer substitutes `iife` → `preloaded` on
+		// embedded item-players. That substitution was the parent-to-child
+		// state coupling behind the "missing tags: pie-passage--version-3-2-4"
+		// section-swap race: the section-player pre-registered aggregate
+		// elements once then rewrote the embedded strategy to `preloaded`,
+		// so any later section-swap that added new tags produced items
+		// asserting pre-registration the host had not done.
+		//
+		// Under the new architecture, section and items share the deep
+		// `ElementLoader` primitive. The primitive deduplicates concurrent
+		// identical load requests, so letting each item-player inherit
+		// `iife` verbatim does not cost extra fetches — the aggregate pre-warm
+		// satisfies every per-item call synchronously-ish.
 		await page.goto("/tts-ssml?mode=candidate&layout=splitpane&player=iife", {
 			waitUntil: "networkidle",
 		});
@@ -184,7 +197,7 @@ test.describe("section player preloaded strategy", () => {
 		);
 		expect(strategyValues.length).toBeGreaterThan(0);
 		for (const strategy of strategyValues) {
-			expect(strategy).toBe("preloaded");
+			expect(strategy).toBe("iife");
 		}
 	});
 });

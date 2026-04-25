@@ -6,12 +6,7 @@ Kill section-player strategy substitution and functionalize the widget state (Ph
 
 ## Root cause fixed
 
-Hosts running `<pie-section-player-splitpane strategy="iife">` could see a sporadic error after navigating between sections:
-
-```
-[pie-item-player] failed loading: Error: Preloaded strategy requires
-pre-registered elements; missing tags: pie-passage--version-3-2-4.
-```
+Hosts running `<pie-section-player-splitpane strategy="iife">` could see a sporadic error after navigating between sections — the misleading "preloaded requires pre-registered" message reflected the silent strategy substitution, not the host's actual choice. Under the deep-primitive architecture this rejection now surfaces as `Element registration failed; missing tags: …` from `ElementLoaderError` (and the strict-mode "Preloaded strategy requires …" language is reserved for `ElementAssertionError`, thrown only when a host opted into `strategy="preloaded"` and did not pre-register).
 
 The section-player was aggregate-loading elements once, then silently rewriting every embedded `<pie-item-player>`'s strategy to `"preloaded"`:
 
@@ -32,11 +27,32 @@ Parent and child then coordinated ambiently via DOM mount timing, gated by a cac
 ## Host-visible changes
 
 - **Behaviour (intended):** no more spurious "missing tags: …" errors on section swap. Element loading now reliably tracks registration truth.
-- **Events:** `elements-loaded-change`, `element-preload-error`, `element-preload-retry`, and `player-error` continue to fire with the same shapes; only their source code changed. Host listeners require no update.
+- **Events:** `elements-loaded-change`, `element-preload-error`, `element-preload-retry`, and `player-error` continue to fire. Listeners that match the historical shape keep working — see the "Event field reporting" note below for the one detail that gained an additional reported value.
 - **Props:** unchanged. `strategy`, `loaderOptions`, `iifeBundleHost`, `esmCdnUrl`, and the retry config surface are all preserved.
+
+### Event field reporting
+
+`element-preload-error` and `element-preload-retry` carry a `stage` field that previously only ever reported `"iife-load"` because the section-preload pipeline mislabeled every rejection. The pipeline now reports the stage truthfully:
+
+- `"validate-config"` — a renderable's PIE config contract failed before any backend was contacted.
+- `"iife-load"` — IIFE strategy backend rejection.
+- `"esm-load"` — ESM strategy backend rejection.
+
+Hosts that switched on `stage` will start observing `"validate-config"` and `"esm-load"` for failure modes that were previously misreported as `"iife-load"`. Hosts that only display the `error` field need no update.
+
+## Breaking: `allowPreloadedFallbackLoad` removed
+
+The `allowPreloadedFallbackLoad` loader option on `<pie-item-player>` is gone. It existed as an escape hatch for hosts that wanted `strategy="preloaded"` to silently fall back to a runtime bundle fetch when pre-registration was incomplete — but that fallback is the precise contract violation the deep primitive eliminates. Under the new architecture `strategy="preloaded"` means exactly one thing: "the host pre-registered these tags; assert loudly or throw". `assertRegistered` produces an `ElementAssertionError` with diagnostic detail (expected / missing / currently-registered) that strict-mode hosts can render or surface to telemetry.
+
+**Migration.** Hosts that relied on the fallback should pick the strategy they actually want:
+
+- If the host is willing to fetch and register on demand, use `strategy="iife"` or `strategy="esm"` and let the primitive's truthful-promise contract drive registration. The dedup cache means switching costs no extra fetches when an aggregate pre-warm has already happened.
+- If the host genuinely pre-registers elements and wants strict mode, keep `strategy="preloaded"` and pre-register before mount.
+
+There is no third option. The primitive will not silently coerce a "preloaded" claim into a fetch.
 
 ## Companion change in `@pie-players/pie-item-player`
 
-`PieItemPlayer.loadConfig` is rewritten as a linear pipeline over the new primitive. The `allowPreloadedFallbackLoad` loader option was removed: `strategy="preloaded"` now has a single sharp contract — "host pre-registered these tags; assert loudly or throw". Hosts that relied on the fallback to coerce `preloaded` into a runtime bundle fetch should set `strategy="iife"` or `strategy="esm"` instead. (The option was documented as an escape hatch, so this is a deliberate cleanup rather than a typical breaking change.)
+`PieItemPlayer.loadConfig` is rewritten as a linear pipeline over the new primitive.
 
 Fixed-versioning note: this is a single minor bump that propagates across every package in the release per the monorepo-versioning convention.

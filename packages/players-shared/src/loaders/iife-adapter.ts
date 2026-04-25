@@ -51,8 +51,8 @@ export const DEFAULT_BUNDLE_HOST = "https://proxy.pie-api.com/bundles/";
 
 /**
  * Bundle-build retry status emitted while a bundle is being built or after
- * it completes. Ports the previous IifePieLoader's callback contract
- * unchanged so hosts that display a "bundle is building…" UI keep working.
+ * it completes. Hosts that display a "bundle is building…" UI subscribe via
+ * `onBundleRetryStatus` and read each transition.
  */
 export type IifeBundleRetryStatus = {
 	state: "retrying" | "completed" | "timeout" | "cancelled";
@@ -106,18 +106,29 @@ export type IifeBackendConfig = {
  * Bundle-script loader seam. Default implementation injects a `<script>` tag
  * into the document head. Tests replace it with a scripted stub via
  * `IifeBackendTestSeams.replaceLoadBundleScript`.
+ *
+ * @internal
  */
 export type IifeBundleScriptLoader = (
 	url: string,
 	doc: Document,
 ) => Promise<void>;
 
+/**
+ * Test-only seam exposed via `IifeBackend.__seams`. Lets contract tests
+ * inject scripted bundle-load behaviour without going through the network
+ * or the document. Not part of the runtime API; production code must not
+ * touch this field.
+ *
+ * @internal
+ */
 export type IifeBackendTestSeams = {
 	replaceLoadBundleScript(fn: IifeBundleScriptLoader): void;
 	restore(): void;
 };
 
 export type IifeBackend = ElementLoaderBackend & {
+	/** @internal Test-only seam — see {@link IifeBackendTestSeams}. */
 	readonly __seams: IifeBackendTestSeams;
 };
 

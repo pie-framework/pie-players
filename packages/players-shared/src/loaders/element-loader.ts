@@ -2,9 +2,7 @@
  * ElementLoader primitive — the one place where "these tags are registered
  * with customElements" is decided.
  *
- * This replaces the two parallel, leaky PIE element loaders
- * (`IifePieLoader`, `EsmPieLoader`) with one deep primitive that truthfully
- * keeps its promise:
+ * Owns the truthful promise contract end-to-end:
  *
  *     ensureRegistered(elements, options) resolves iff every requested tag
  *     is in `customElements` at the moment of resolution. On partial
@@ -21,6 +19,7 @@
  * required to catch.
  */
 
+import { DEFAULT_IIFE_BUNDLE_RETRY_CONFIG } from "../loader-config.js";
 import type { ElementMap } from "./ElementLoader.js";
 import {
 	AdapterFailure,
@@ -119,9 +118,24 @@ export type EnsureRegisteredOptions = {
 	backend: BackendOption;
 	doc?: Document;
 	whenDefinedTimeoutMs?: number;
+	/**
+	 * Outer cumulative deadline for the backend's `load()` call.
+	 *
+	 * Closes the "promise never settles" seam for adapters whose underlying
+	 * fetch can stall indefinitely (e.g. ESM `import()` against a frozen
+	 * CDN). When the deadline elapses, the primitive synthesizes an
+	 * `AdapterFailure` with `kind: "timeout"` reasons for every requested
+	 * tag — surfacing as a normal `ElementLoaderError` to the caller.
+	 *
+	 * Defaults to `DEFAULT_IIFE_BUNDLE_RETRY_CONFIG.timeoutMs` so
+	 * adapter-internal retry windows (IIFE bundle-build polling) fit
+	 * inside the same overall budget.
+	 */
+	loadTimeoutMs?: number;
 };
 
 const DEFAULT_WHEN_DEFINED_TIMEOUT_MS = 5000;
+const DEFAULT_LOAD_TIMEOUT_MS = DEFAULT_IIFE_BUNDLE_RETRY_CONFIG.timeoutMs;
 
 // Module-scoped in-flight cache. Key: backend signature + sorted elements.
 // Keeps concurrent identical requests collapsed to one backend call.
@@ -148,6 +162,7 @@ export async function ensureRegistered(
 	const tags = Object.keys(elements);
 	const timeoutMs =
 		options.whenDefinedTimeoutMs ?? DEFAULT_WHEN_DEFINED_TIMEOUT_MS;
+	const loadTimeoutMs = options.loadTimeoutMs ?? DEFAULT_LOAD_TIMEOUT_MS;
 
 	// Fast path: everything already registered. Skip backend and dedup
 	// bookkeeping entirely.
@@ -166,6 +181,7 @@ export async function ensureRegistered(
 		backend,
 		{ doc, whenDefinedTimeoutMs: timeoutMs },
 		timeoutMs,
+		loadTimeoutMs,
 	);
 
 	inFlightRequests.set(dedupKey, promise);
@@ -184,10 +200,15 @@ async function runEnsureRegistered(
 	backend: ElementLoaderBackend,
 	context: BackendContext,
 	timeoutMs: number,
+	loadTimeoutMs: number,
 ): Promise<void> {
 	let adapterError: Error | undefined;
 	try {
-		await backend.load(elements, context);
+		await raceWithLoadTimeout(
+			backend.load(elements, context),
+			tags,
+			loadTimeoutMs,
+		);
 	} catch (err) {
 		adapterError = err instanceof Error ? err : new Error(String(err));
 	}
@@ -218,10 +239,47 @@ async function runEnsureRegistered(
 
 	if (unregistered.size > 0) {
 		throw new ElementLoaderError(
-			`Preloaded strategy requires pre-registered elements; missing tags: ${[...unregistered].join(", ")}`,
+			`Element registration failed; missing tags: ${[...unregistered].join(", ")}`,
 			unregistered,
 			reasons,
 		);
+	}
+}
+
+/**
+ * Race the backend's `load()` against a cumulative deadline.
+ *
+ * On timeout, synthesize an `AdapterFailure` whose `reasons` map carries
+ * a `kind: "timeout"` entry per requested tag. The verification pass in
+ * `runEnsureRegistered` will then produce a normal `ElementLoaderError`
+ * with structured per-tag reasons — same surface shape as any other
+ * adapter rejection.
+ */
+async function raceWithLoadTimeout(
+	loadPromise: Promise<void>,
+	tags: ElementTag[],
+	loadTimeoutMs: number,
+): Promise<void> {
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	try {
+		await Promise.race([
+			loadPromise,
+			new Promise<void>((_, reject) => {
+				timer = setTimeout(() => {
+					const reasons = new Map<ElementTag, RegistrationFailureReason>();
+					for (const tag of tags) {
+						reasons.set(tag, {
+							kind: "timeout",
+							tag,
+							timeoutMs: loadTimeoutMs,
+						});
+					}
+					reject(new AdapterFailure(reasons));
+				}, loadTimeoutMs);
+			}),
+		]);
+	} finally {
+		if (timer) clearTimeout(timer);
 	}
 }
 
@@ -373,6 +431,8 @@ function extractAdapterReason(
 /**
  * Internal helpers for test harnesses. Not part of the public runtime API;
  * production code should never reach for these.
+ *
+ * @internal
  */
 export const __testing = {
 	resetDedupState(): void {

@@ -1,12 +1,12 @@
 # Loading Strategies
 
-`<pie-item-player>` supports three loading strategies, set via the `strategy` attribute:
+`<pie-item-player>` supports three loading strategies, set via the `strategy` attribute. All strategies route through the `ElementLoader` primitive (`@pie-players/pie-players-shared/loaders`); the strategy selects which backend the primitive uses (or, for `preloaded`, asserts that no backend is needed):
 
-| Strategy | Loader | Source | Best for |
-|----------|--------|--------|----------|
-| `iife` | `IifePieLoader` | Bundle host (script injection) | Production deployments using PIE bundle infrastructure |
-| `esm` | `EsmPieLoader` | ESM CDN (import maps) | Modern ESM-compatible element packages |
-| `preloaded` | `IifePieLoader` | Host-preloaded bundles | Section-level preloading, static builds, offline use |
+| Strategy | Backend | Source | Best for |
+|----------|---------|--------|----------|
+| `iife` | IIFE backend | Bundle host (script injection) | Production deployments using PIE bundle infrastructure |
+| `esm` | ESM backend | ESM CDN (URL or import-map resolution) | Modern ESM-compatible element packages |
+| `preloaded` | _none_ (uses `assertRegistered`) | Host-preloaded bundles | Section-level preloading, static builds, offline use |
 
 ## Standalone usage
 
@@ -101,7 +101,7 @@ The player assumes all required PIE custom elements are already defined in the b
 ></pie-item-player>
 ```
 
-When a preloaded package is imported (it registers `window.PIE_PRELOADED_ELEMENTS`), `strategy="preloaded"` automatically bypasses runtime element loading. Otherwise, the player checks whether required elements are already registered and only falls back to runtime loading when needed.
+When a preloaded package is imported (it registers `window.PIE_PRELOADED_ELEMENTS`), `strategy="preloaded"` is satisfied without any further loading. The player calls `assertRegistered(tags)` from the `ElementLoader` primitive to confirm every required tag is in `customElements`; if any tag is missing, an `ElementAssertionError` is thrown with the expected / missing / currently-registered tag sets — there is no silent fall-back to bundle fetching.
 
 ### Preloaded player builds
 

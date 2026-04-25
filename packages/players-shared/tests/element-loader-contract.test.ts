@@ -10,10 +10,10 @@
  *   and a per-tag `reasons` map.
  *
  * Every test here corresponds to a real failure mode in the legacy
- * IifePieLoader / EsmPieLoader families where the load promise resolved
- * while tags were not actually registered. The primitive is expected to
- * catch each of these through a combination of adapter-level rejections
- * and a post-load `customElements.whenDefined` verification pass.
+ * per-strategy loader families where the load promise resolved while tags
+ * were not actually registered. The primitive is expected to catch each of
+ * these through a combination of adapter-level rejections and a post-load
+ * `customElements.whenDefined` verification pass.
  *
  * The tests are written against the primitive's public contract — not
  * against internal plumbing — so they survive implementation
@@ -899,6 +899,51 @@ describe("ESM adapter — contract", () => {
 	);
 
 	test(
+		"backend.load() is bounded by loadTimeoutMs — never hangs on a never-resolving import()",
+		async () => {
+			const backend = createEsmBackend({
+				kind: "esm",
+				cdnBaseUrl: "https://cdn.jsdelivr.net/npm",
+				view: "delivery",
+			});
+
+			const seams = (backend as unknown as { __seams: EsmBackendTestSeams })
+				.__seams;
+			// Install an importer that never resolves — the production failure
+			// mode this commit closes (frozen CDN / network freeze).
+			seams.replaceImporter(
+				() => new Promise<Record<string, unknown>>(() => undefined),
+			);
+
+			const startedAt = Date.now();
+			let error: ElementLoaderError | undefined;
+			try {
+				await ensureRegistered(
+					{ "pie-mc--version-11-0-1": "@pie-element/multiple-choice@11.0.1" },
+					{
+						backend,
+						doc: createMockDocument(),
+						whenDefinedTimeoutMs: 25,
+						loadTimeoutMs: 50,
+					},
+				);
+			} catch (err) {
+				error = err as ElementLoaderError;
+			}
+			const elapsed = Date.now() - startedAt;
+
+			expect(error).toBeInstanceOf(ElementLoaderError);
+			expect(elapsed).toBeLessThan(1000);
+			const reason = error?.reasons.get("pie-mc--version-11-0-1");
+			expect(reason?.kind).toBe("timeout");
+			if (reason?.kind === "timeout") {
+				expect(reason.tag).toBe("pie-mc--version-11-0-1");
+				expect(reason.timeoutMs).toBe(50);
+			}
+		},
+	);
+
+	test(
 		"ESM: empty element map resolves immediately without fetching or injecting anything",
 		async () => {
 			const backend = createEsmBackend({
@@ -930,6 +975,418 @@ describe("ESM adapter — contract", () => {
 
 			expect(importerCalls).toBe(0);
 			expect(injectionCalls).toBe(0);
+		},
+	);
+});
+
+// ─── IIFE adapter — bundle-retry lifecycle ───────────────────────────────────
+
+describe("IIFE adapter — bundle-retry lifecycle", () => {
+	test(
+		"retry-then-succeed: emits retrying… completed; primitive resolves",
+		async () => {
+			const backend = createIifeBackend({
+				kind: "iife",
+				bundleHost: "https://example.test/bundles/",
+				bundleType: BundleType.clientPlayer,
+				needsControllers: true,
+				bundleRetry: { retryDelayMs: 5, timeoutMs: 500 },
+				onBundleRetryStatus: (status) => statuses.push(status),
+			});
+
+			const statuses: Array<{
+				state: string;
+				attempt: number;
+				url: string;
+			}> = [];
+
+			const seams = (backend as unknown as { __seams: IifeBackendTestSeams })
+				.__seams;
+			let attempts = 0;
+			seams.replaceLoadBundleScript(async () => {
+				attempts++;
+				if (attempts < 3) {
+					throw new Error(`transient bundle build (attempt ${attempts})`);
+				}
+				(g.window as { pie?: unknown }).pie = {
+					default: {
+						"@pie-element/multiple-choice": {
+							Element: createConstructorFor("pie-mc--version-11-0-1"),
+						},
+					},
+				};
+			});
+
+			await ensureRegistered(
+				{ "pie-mc--version-11-0-1": "@pie-element/multiple-choice@11.0.1" },
+				{
+					backend,
+					doc: createMockDocument(),
+					whenDefinedTimeoutMs: 200,
+				},
+			);
+
+			expect(attempts).toBe(3);
+			const states = statuses.map((s) => s.state);
+			expect(states.filter((s) => s === "retrying").length).toBeGreaterThanOrEqual(
+				2,
+			);
+			expect(states[states.length - 1]).toBe("completed");
+			expect(statuses.every((s) => s.url.length > 0)).toBe(true);
+			expect(statuses.every((s) => s.attempt >= 1)).toBe(true);
+		},
+	);
+
+	test(
+		"retry-then-timeout: emits retrying…* timeout; primitive rejects with ElementLoaderError",
+		async () => {
+			const backend = createIifeBackend({
+				kind: "iife",
+				bundleHost: "https://example.test/bundles/",
+				bundleType: BundleType.clientPlayer,
+				needsControllers: true,
+				bundleRetry: { retryDelayMs: 10, timeoutMs: 40 },
+				onBundleRetryStatus: (status) => statuses.push(status),
+			});
+
+			const statuses: Array<{
+				state: string;
+				attempt: number;
+				reason?: string;
+			}> = [];
+
+			const seams = (backend as unknown as { __seams: IifeBackendTestSeams })
+				.__seams;
+			seams.replaceLoadBundleScript(async () => {
+				throw new Error("never resolves");
+			});
+
+			let error: ElementLoaderError | undefined;
+			try {
+				await ensureRegistered(
+					{ "pie-mc--version-11-0-1": "@pie-element/multiple-choice@11.0.1" },
+					{
+						backend,
+						doc: createMockDocument(),
+						whenDefinedTimeoutMs: 25,
+						loadTimeoutMs: 500,
+					},
+				);
+			} catch (err) {
+				error = err as ElementLoaderError;
+			}
+
+			expect(error).toBeInstanceOf(ElementLoaderError);
+			const states = statuses.map((s) => s.state);
+			expect(states[states.length - 1]).toBe("timeout");
+			expect(states.includes("retrying")).toBe(true);
+			expect(states.includes("completed")).toBe(false);
+			const lastStatus = statuses[statuses.length - 1];
+			expect(lastStatus?.reason).toBeDefined();
+			const reason = error?.reasons.get("pie-mc--version-11-0-1");
+			expect(reason).toBeTruthy();
+		},
+	);
+
+	test(
+		"status sequence is monotonic: retrying* → (completed | timeout); never both, never out of order",
+		async () => {
+			const backend = createIifeBackend({
+				kind: "iife",
+				bundleHost: "https://example.test/bundles/",
+				bundleType: BundleType.clientPlayer,
+				needsControllers: true,
+				bundleRetry: { retryDelayMs: 5, timeoutMs: 500 },
+				onBundleRetryStatus: (status) => statuses.push(status),
+			});
+
+			const statuses: Array<{ state: string; attempt: number }> = [];
+
+			const seams = (backend as unknown as { __seams: IifeBackendTestSeams })
+				.__seams;
+			let attempts = 0;
+			seams.replaceLoadBundleScript(async () => {
+				attempts++;
+				if (attempts < 2) {
+					throw new Error("first attempt fails");
+				}
+				(g.window as { pie?: unknown }).pie = {
+					default: {
+						"@pie-element/multiple-choice": {
+							Element: createConstructorFor("pie-mc--version-11-0-1"),
+						},
+					},
+				};
+			});
+
+			await ensureRegistered(
+				{ "pie-mc--version-11-0-1": "@pie-element/multiple-choice@11.0.1" },
+				{
+					backend,
+					doc: createMockDocument(),
+					whenDefinedTimeoutMs: 200,
+				},
+			);
+
+			const terminalIndex = statuses.findIndex(
+				(s) => s.state === "completed" || s.state === "timeout",
+			);
+			expect(terminalIndex).toBe(statuses.length - 1);
+			for (let i = 0; i < terminalIndex; i++) {
+				expect(statuses[i]?.state).toBe("retrying");
+			}
+			let lastAttempt = 0;
+			for (const s of statuses) {
+				expect(s.attempt).toBeGreaterThanOrEqual(lastAttempt);
+				lastAttempt = s.attempt;
+			}
+		},
+	);
+
+	test(
+		"instrumentation emission: trackPageActions + ready provider receives retry / success events",
+		async () => {
+			const events: Array<{
+				name: string;
+				attributes: Record<string, unknown>;
+			}> = [];
+
+			const provider = {
+				providerId: "test",
+				providerName: "Test Provider",
+				async initialize() {},
+				trackError() {},
+				trackEvent(name: string, attributes: Record<string, unknown>) {
+					events.push({ name, attributes });
+				},
+				destroy() {},
+				isReady() {
+					return true;
+				},
+			};
+
+			const backend = createIifeBackend({
+				kind: "iife",
+				bundleHost: "https://example.test/bundles/",
+				bundleType: BundleType.clientPlayer,
+				needsControllers: true,
+				bundleRetry: { retryDelayMs: 5, timeoutMs: 500 },
+				trackPageActions: true,
+				instrumentationProvider: provider,
+			});
+
+			const seams = (backend as unknown as { __seams: IifeBackendTestSeams })
+				.__seams;
+			let attempts = 0;
+			seams.replaceLoadBundleScript(async () => {
+				attempts++;
+				if (attempts < 2) {
+					throw new Error("transient");
+				}
+				(g.window as { pie?: unknown }).pie = {
+					default: {
+						"@pie-element/multiple-choice": {
+							Element: createConstructorFor("pie-mc--version-11-0-1"),
+						},
+					},
+				};
+			});
+
+			await ensureRegistered(
+				{ "pie-mc--version-11-0-1": "@pie-element/multiple-choice@11.0.1" },
+				{
+					backend,
+					doc: createMockDocument(),
+					whenDefinedTimeoutMs: 200,
+				},
+			);
+
+			const eventNames = events.map((e) => e.name);
+			expect(eventNames).toContain("pie-iife-bundle-retry");
+			expect(eventNames).toContain("pie-iife-bundle-retry-success");
+			const retryEvent = events.find((e) => e.name === "pie-iife-bundle-retry");
+			expect(retryEvent?.attributes.url).toBeDefined();
+			expect(retryEvent?.attributes.attempt).toBeGreaterThanOrEqual(1);
+			expect(retryEvent?.attributes.timeoutMs).toBeDefined();
+		},
+	);
+
+	test(
+		"instrumentation emission on timeout: trackPageActions + ready provider receives retry-timeout + tracked error",
+		async () => {
+			const events: Array<{ name: string; attrs: Record<string, unknown> }> =
+				[];
+			const errors: Array<{
+				message: string;
+				attrs: Record<string, unknown>;
+			}> = [];
+
+			const provider = {
+				providerId: "test",
+				providerName: "Test Provider",
+				async initialize() {},
+				trackError(error: Error, attrs: Record<string, unknown>) {
+					errors.push({ message: error.message, attrs });
+				},
+				trackEvent(name: string, attrs: Record<string, unknown>) {
+					events.push({ name, attrs });
+				},
+				destroy() {},
+				isReady() {
+					return true;
+				},
+			};
+
+			const backend = createIifeBackend({
+				kind: "iife",
+				bundleHost: "https://example.test/bundles/",
+				bundleType: BundleType.clientPlayer,
+				needsControllers: true,
+				bundleRetry: { retryDelayMs: 5, timeoutMs: 30 },
+				trackPageActions: true,
+				instrumentationProvider: provider,
+			});
+
+			const seams = (backend as unknown as { __seams: IifeBackendTestSeams })
+				.__seams;
+			seams.replaceLoadBundleScript(async () => {
+				throw new Error("permanent");
+			});
+
+			await expect(
+				ensureRegistered(
+					{ "pie-mc--version-11-0-1": "@pie-element/multiple-choice@11.0.1" },
+					{
+						backend,
+						doc: createMockDocument(),
+						whenDefinedTimeoutMs: 25,
+						loadTimeoutMs: 500,
+					},
+				),
+			).rejects.toBeInstanceOf(ElementLoaderError);
+
+			expect(events.map((e) => e.name)).toContain("pie-iife-bundle-retry-timeout");
+			expect(errors.length).toBeGreaterThanOrEqual(1);
+			expect(errors[0]?.attrs.component).toBe("iife-adapter");
+			expect(errors[0]?.attrs.errorType).toBe("IifeBundleRetryError");
+		},
+	);
+
+	test(
+		"instrumentation suppressed when provider not ready",
+		async () => {
+			const events: string[] = [];
+
+			const provider = {
+				providerId: "test",
+				providerName: "Test Provider",
+				async initialize() {},
+				trackError() {},
+				trackEvent(name: string) {
+					events.push(name);
+				},
+				destroy() {},
+				isReady() {
+					return false; // not ready — emission must be suppressed
+				},
+			};
+
+			const backend = createIifeBackend({
+				kind: "iife",
+				bundleHost: "https://example.test/bundles/",
+				bundleType: BundleType.clientPlayer,
+				needsControllers: true,
+				bundleRetry: { retryDelayMs: 5, timeoutMs: 500 },
+				trackPageActions: true,
+				instrumentationProvider: provider,
+			});
+
+			const seams = (backend as unknown as { __seams: IifeBackendTestSeams })
+				.__seams;
+			let attempts = 0;
+			seams.replaceLoadBundleScript(async () => {
+				attempts++;
+				if (attempts < 2) {
+					throw new Error("transient");
+				}
+				(g.window as { pie?: unknown }).pie = {
+					default: {
+						"@pie-element/multiple-choice": {
+							Element: createConstructorFor("pie-mc--version-11-0-1"),
+						},
+					},
+				};
+			});
+
+			await ensureRegistered(
+				{ "pie-mc--version-11-0-1": "@pie-element/multiple-choice@11.0.1" },
+				{
+					backend,
+					doc: createMockDocument(),
+					whenDefinedTimeoutMs: 200,
+				},
+			);
+
+			expect(events).toEqual([]);
+		},
+	);
+});
+
+// ─── ESM adapter — assertImportMapSupported error path ───────────────────────
+
+describe("ESM adapter — assertImportMapSupported", () => {
+	test(
+		"rejects with actionable message when HTMLScriptElement.supports('importmap') is false",
+		async () => {
+			// Override the global to report no import-map support, then run an
+			// ESM load with import-map module resolution. The adapter must
+			// surface an actionable error pointing the host at moduleResolution
+			// or at switching strategy.
+			g.HTMLScriptElement = class {
+				static supports() {
+					return false;
+				}
+			} as unknown as GlobalWithDom["HTMLScriptElement"];
+
+			const backend = createEsmBackend({
+				kind: "esm",
+				cdnBaseUrl: "https://cdn.jsdelivr.net/npm",
+				moduleResolution: "import-map",
+				view: "delivery",
+			});
+
+			const seams = (backend as unknown as { __seams: EsmBackendTestSeams })
+				.__seams;
+			let importerCalls = 0;
+			seams.replaceImporter(async () => {
+				importerCalls++;
+				return { default: createNonConstructor() };
+			});
+
+			let error: ElementLoaderError | undefined;
+			try {
+				await ensureRegistered(
+					{ "pie-mc--version-11-0-1": "@pie-element/multiple-choice@11.0.1" },
+					{
+						backend,
+						doc: createMockDocument(),
+						whenDefinedTimeoutMs: 25,
+					},
+				);
+			} catch (err) {
+				error = err as ElementLoaderError;
+			}
+
+			expect(error).toBeInstanceOf(ElementLoaderError);
+			const reason = error?.reasons.get("pie-mc--version-11-0-1");
+			expect(reason).toBeTruthy();
+			expect(reason?.kind).toBe("backend-rejected");
+			if (reason?.kind === "backend-rejected") {
+				expect(reason.cause).toMatch(/import map/i);
+				expect(reason.cause).toMatch(/moduleResolution|iife|preloaded/);
+			}
+			// Importer never runs — assertion fires before any module resolution.
+			expect(importerCalls).toBe(0);
 		},
 	);
 });

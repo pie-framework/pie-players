@@ -29,7 +29,7 @@
 />
 
 <script lang="ts">
-	import { createEventDispatcher } from "svelte";
+	import { createEventDispatcher, untrack } from "svelte";
 	import type {
 		ToolRegistry,
 		ToolbarItem,
@@ -46,6 +46,9 @@
 		type ElementPreloadRetryDetail,
 		formatElementLoadError,
 		getPreloadLogger,
+		getRenderablesSignature,
+		PreloadStageError,
+		type PreloadStage,
 		toErrorMessage,
 		warmupSectionElements,
 	} from "./player-preload.js";
@@ -97,27 +100,109 @@
 	const logger = $derived(getPreloadLogger(preloadComponentTag));
 
 	/*
+	 * The reactive key for the warmup call. Captures only the inputs that
+	 * logically alter the `ensureRegistered` request: the strategy, the
+	 * element-set signature of the renderables, the bundle host for IIFE,
+	 * and the view/bundle-type discriminants read from player props/env.
+	 *
+	 * This is NOT the old `lastPreloadSignature` guard — the deep
+	 * ElementLoader primitive already dedupes concurrent identical
+	 * requests internally. The signature here serves a different purpose:
+	 * it stabilizes `usePromise`'s reactive input so that semantically
+	 * no-op prop churn (current-item index change, session data updates,
+	 * controller event emission) does not drag `elementsLoaded` back to
+	 * `pending` and force an items-pane remount. Without this, navigation
+	 * and session-update tests observe transient "Loading section
+	 * content…" flashes that break focus and shell identity invariants.
+	 */
+	const warmupInputsSignature = $derived(
+		JSON.stringify({
+			strategy: playerStrategy,
+			renderables: getRenderablesSignature(preloadedRenderables),
+			iifeBundleHost,
+			mode:
+				(resolvedPlayerProps as Record<string, unknown> | undefined)?.mode ?? null,
+			hosted:
+				(resolvedPlayerProps as Record<string, unknown> | undefined)?.hosted ??
+				null,
+			envMode:
+				(resolvedPlayerEnv as Record<string, unknown> | undefined)?.mode ?? null,
+			loaderOptions:
+				(resolvedPlayerProps as Record<string, unknown> | undefined)
+					?.loaderOptions ?? null,
+		}),
+	);
+
+	/*
 	 * The readiness lifecycle value.
 	 *
 	 * `usePromise` turns an async factory into a reactive
 	 * `{ status: "idle" | "pending" | "resolved" | "rejected" }` value that
-	 * invalidates instantly on input change and ignores late resolutions
-	 * from stale invocations. This is what used to be a hand-rolled trio of
-	 * `$state` fields (`elementsLoaded`, `preloadRunToken`,
-	 * `lastPreloadSignature`) plus a separate state-setter in
-	 * `player-preload.ts` — all of which only existed to re-implement this
-	 * helper badly and produced the sporadic section-swap race in the process.
+	 * invalidates instantly on signature change and ignores late
+	 * resolutions from stale invocations. This is what used to be a
+	 * hand-rolled trio of `$state` fields (`elementsLoaded`,
+	 * `preloadRunToken`, `lastPreloadSignature`) plus a separate
+	 * state-setter in `player-preload.ts` — all of which only existed to
+	 * re-implement this helper badly and produced the sporadic
+	 * section-swap race in the process.
+	 *
+	 * Reactive dep: `warmupInputsSignature` only. The factory reads the
+	 * live prop values inside `untrack(...)` so transient reactive churn
+	 * on those same props (e.g. parent re-rendering on a composition
+	 * update) does not retrigger the effect.
 	 */
-	const readiness = usePromise(() =>
-		warmupSectionElements({
-			strategy: playerStrategy,
-			renderables: preloadedRenderables,
-			resolvedPlayerProps: resolvedPlayerProps as Record<string, unknown>,
-			resolvedPlayerEnv: resolvedPlayerEnv as Record<string, unknown>,
-			iifeBundleHost,
-			logger,
-		}),
-	);
+	const readiness = usePromise(() => {
+		// Establish the single reactive dep.
+		// biome-ignore lint/correctness/noUnusedExpressions: track signature
+		warmupInputsSignature;
+		return untrack(() =>
+			warmupSectionElements({
+				strategy: playerStrategy,
+				renderables: preloadedRenderables,
+				resolvedPlayerProps: resolvedPlayerProps as Record<string, unknown>,
+				resolvedPlayerEnv: resolvedPlayerEnv as Record<string, unknown>,
+				iifeBundleHost,
+				logger,
+				onBundleRetryStatus: (status) => {
+					// Mirror the IIFE bundle-build retry transitions into the host's
+					// existing `element-preload-retry` event surface so hosts that
+					// already render "bundle still building, retrying" messaging
+					// keep working under the deep-primitive architecture. We dispatch
+					// every transition (retrying / completed / timeout / cancelled)
+					// so consumers can drive show/hide UI from the same stream.
+					let backendForTelemetry: ReturnType<
+						typeof buildBackendConfigFromProps
+					> | null = null;
+					try {
+						backendForTelemetry = buildBackendConfigFromProps({
+							strategy: playerStrategy,
+							resolvedPlayerProps: resolvedPlayerProps as Record<string, unknown>,
+							resolvedPlayerEnv: resolvedPlayerEnv as Record<string, unknown>,
+							iifeBundleHost,
+						});
+					} catch {
+						backendForTelemetry = null;
+					}
+					const retryDelayMs = Math.max(status.retryDelayMs ?? 0, 1);
+					const maxRetries = Math.max(
+						1,
+						Math.ceil(status.timeoutMs / retryDelayMs),
+					);
+					dispatch("element-preload-retry", {
+						componentTag: preloadComponentTag,
+						stage: "iife-load",
+						attempt: status.attempt,
+						maxRetries,
+						error: status.reason ?? status.state,
+						strategy: playerStrategy,
+						bundleType: describeBundleType(backendForTelemetry),
+						bundleHost: describeBundleHost(backendForTelemetry),
+						renderablesCount: preloadedRenderables.length,
+					});
+				},
+			}),
+		);
+	});
 
 	const elementsLoaded = $derived(readiness.current.status === "resolved");
 
@@ -128,7 +213,15 @@
 	$effect(() => {
 		if (readiness.current.status !== "rejected") return;
 		const error = readiness.current.error;
-		logger.error(formatElementLoadError("iife-load", error));
+		const stage: PreloadStage =
+			error instanceof PreloadStageError
+				? error.stage
+				: playerStrategy === "esm"
+					? "esm-load"
+					: "iife-load";
+		const cause =
+			error instanceof PreloadStageError ? error.cause : error;
+		logger.error(formatElementLoadError(stage, cause));
 		let backendForTelemetry: ReturnType<typeof buildBackendConfigFromProps> | null =
 			null;
 		try {
@@ -143,8 +236,8 @@
 		}
 		dispatch("element-preload-error", {
 			componentTag: preloadComponentTag,
-			stage: "iife-load",
-			error: toErrorMessage(error),
+			stage,
+			error: toErrorMessage(cause),
 			strategy: playerStrategy,
 			bundleType: describeBundleType(backendForTelemetry),
 			bundleHost: describeBundleHost(backendForTelemetry),

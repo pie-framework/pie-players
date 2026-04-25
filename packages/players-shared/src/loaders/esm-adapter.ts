@@ -55,9 +55,19 @@ export type EsmBackendConfig = {
 	debugEnabled?: () => boolean;
 };
 
+/** @internal */
 export type EsmModuleImporter = (specifier: string) => Promise<unknown>;
+/** @internal */
 export type EsmImportMapObserver = (json: string, doc: Document) => void;
 
+/**
+ * Test-only seam exposed via `EsmBackend.__seams`. Lets contract tests
+ * inject scripted import behaviour and observe import-map injection
+ * without going through the network or the document. Not part of the
+ * runtime API; production code must not touch this field.
+ *
+ * @internal
+ */
 export type EsmBackendTestSeams = {
 	replaceImporter(fn: EsmModuleImporter): void;
 	observeImportMapInjection(cb: EsmImportMapObserver): void;
@@ -65,6 +75,7 @@ export type EsmBackendTestSeams = {
 };
 
 export type EsmBackend = ElementLoaderBackend & {
+	/** @internal Test-only seam — see {@link EsmBackendTestSeams}. */
 	readonly __seams: EsmBackendTestSeams;
 };
 

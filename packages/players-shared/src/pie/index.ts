@@ -24,9 +24,7 @@ export {
 	validatePieConfigContract,
 } from "./config.js";
 // Loaders — the deep `ElementLoader` primitive (async `ensureRegistered` /
-// sync `assertRegistered`) lives under `pie-players-shared/loaders`. The
-// old per-strategy classes (`IifePieLoader`, `EsmPieLoader`) were removed;
-// the adapters behind the primitive carry their behaviour.
+// sync `assertRegistered`) lives under `pie-players-shared/loaders`.
 // Initialization
 export {
 	initializePiesFromLoadedBundle,

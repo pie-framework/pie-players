@@ -33,6 +33,7 @@ import {
 	ensureRegistered,
 	type EsmBackendConfig,
 	type IifeBackendConfig,
+	type IifeBundleRetryStatus,
 	type ItemEntity,
 	createPieLogger,
 	isGlobalDebugEnabled,
@@ -40,9 +41,21 @@ import {
 } from "@pie-players/pie-players-shared";
 import { ensureItemPlayerMathRenderingReady } from "@pie-players/pie-item-player";
 
+export type IifeBundleRetryStatusHandler = (
+	status: IifeBundleRetryStatus,
+) => void;
+
+/**
+ * Narrow string union of section-preload pipeline stages reported on
+ * `element-preload-retry` and `element-preload-error` events. Hosts use
+ * this to disambiguate "the renderable's PIE config is invalid" from
+ * "the IIFE bundle won't load" from "the ESM module won't import".
+ */
+export type PreloadStage = "validate-config" | "iife-load" | "esm-load";
+
 export type ElementPreloadRetryDetail = {
 	componentTag: string;
-	stage: string;
+	stage: PreloadStage;
 	attempt: number;
 	maxRetries: number;
 	error: string;
@@ -54,13 +67,36 @@ export type ElementPreloadRetryDetail = {
 
 export type ElementPreloadErrorDetail = {
 	componentTag: string;
-	stage: string;
+	stage: PreloadStage;
 	error: string;
 	strategy: string;
 	bundleType: string | null;
 	bundleHost: string;
 	renderablesCount: number;
 };
+
+/**
+ * Carries which stage of `warmupSectionElements` rejected, so the
+ * `SectionItemsPane.svelte` `usePromise` rejection effect can surface
+ * the right `stage` on the host's `element-preload-error` event.
+ *
+ * Catastrophic adapter rejections (network freeze, bundle timeout) bubble
+ * up through `ensureRegistered` as `ElementLoaderError` and get wrapped
+ * in `PreloadStageError` with stage `"iife-load"` or `"esm-load"`
+ * depending on the requested strategy. Config-contract failures wrap
+ * with stage `"validate-config"`.
+ */
+export class PreloadStageError extends Error {
+	override readonly name = "PreloadStageError";
+	readonly stage: PreloadStage;
+	override readonly cause: unknown;
+
+	constructor(stage: PreloadStage, cause: unknown) {
+		super(toErrorMessage(cause));
+		this.stage = stage;
+		this.cause = cause;
+	}
+}
 
 export function getPreloadLogger(componentTag: string) {
 	return createPieLogger(componentTag, () => isGlobalDebugEnabled());
@@ -169,12 +205,17 @@ function logRenderableConfigWarnings(
  * Translate a section-player's resolved props into an `ElementLoader`
  * backend config. Throws when required host-supplied values (bundle host
  * for IIFE) are missing — callers should surface this as a preload error.
+ *
+ * `onBundleRetryStatus` is wired through to `IifeBackendConfig` for IIFE
+ * strategy so hosts can render "bundle still building" UI while the
+ * adapter polls the bundle service. ESM ignores it.
  */
 export function buildBackendConfigFromProps(args: {
 	strategy: string;
 	resolvedPlayerProps: Record<string, unknown>;
 	resolvedPlayerEnv: Record<string, unknown>;
 	iifeBundleHost?: string | null;
+	onBundleRetryStatus?: IifeBundleRetryStatusHandler;
 }): IifeBackendConfig | EsmBackendConfig {
 	const loaderOptions = args.resolvedPlayerProps?.loaderOptions as
 		| Record<string, unknown>
@@ -211,6 +252,7 @@ export function buildBackendConfigFromProps(args: {
 		bundleHost,
 		bundleType,
 		needsControllers: true,
+		onBundleRetryStatus: args.onBundleRetryStatus,
 	};
 }
 
@@ -258,11 +300,16 @@ export async function warmupSectionElements(args: {
 	resolvedPlayerEnv: Record<string, unknown>;
 	iifeBundleHost?: string | null;
 	logger?: ReturnType<typeof createPieLogger>;
+	onBundleRetryStatus?: IifeBundleRetryStatusHandler;
 }): Promise<void> {
 	const logger = args.logger ?? getPreloadLogger("pie-section-player-items-pane");
 
-	validateRenderableConfigContracts(args.renderables);
-	logRenderableConfigWarnings(args.renderables, logger);
+	try {
+		validateRenderableConfigContracts(args.renderables);
+		logRenderableConfigWarnings(args.renderables, logger);
+	} catch (error) {
+		throw new PreloadStageError("validate-config", error);
+	}
 
 	if (args.strategy === "preloaded") return;
 	if (args.renderables.length === 0) return;
@@ -273,8 +320,16 @@ export async function warmupSectionElements(args: {
 		resolvedPlayerProps: args.resolvedPlayerProps,
 		resolvedPlayerEnv: args.resolvedPlayerEnv,
 		iifeBundleHost: args.iifeBundleHost,
+		onBundleRetryStatus: args.onBundleRetryStatus,
 	});
 
-	await ensureItemPlayerMathRenderingReady();
-	await ensureRegistered(elements, { backend });
+	const loadStage: PreloadStage =
+		args.strategy === "esm" ? "esm-load" : "iife-load";
+
+	try {
+		await ensureItemPlayerMathRenderingReady();
+		await ensureRegistered(elements, { backend });
+	} catch (error) {
+		throw new PreloadStageError(loadStage, error);
+	}
 }

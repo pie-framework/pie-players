@@ -25,15 +25,17 @@ For the full attribute/property/event reference, see the [package README](../../
 
 All loader, controller, and type code lives in `@pie-players/pie-players-shared` (`packages/players-shared`); the item-player package composes them.
 
-**PieItemPlayer.svelte** -- The outer custom element. Parses the `config` prop, selects a loader based on `strategy`, loads PIE element bundles, then delegates rendering to `PieItemRenderer`. Manages the config-load lifecycle (loading spinner, error display, loaded state).
+**PieItemPlayer.svelte** -- The outer custom element. Parses the `config` prop, then drives a linear pipeline over the `ElementLoader` primitive (selecting the IIFE or ESM backend based on `strategy`) to register PIE element bundles, and delegates rendering to `PieItemRenderer`. Manages the config-load lifecycle (loading spinner, error display, loaded state).
 
 **ItemController** (`players-shared/src/pie/item-controller.ts`) -- Manages the session container (`{ id, data }`) in memory. The player creates one controller per item and uses it to deduplicate and normalize `session-changed` events from PIE elements, preventing metadata-only events from overwriting real responses.
 
 **PieItemRenderer** (`players-shared/src/components/PieItemPlayer.svelte`) -- A Svelte component that takes a loaded `ConfigEntity`, renders the item markup, binds models and sessions to PIE custom elements, and forwards lifecycle events (`load-complete`, `session-changed`, `player-error`, `model-updated`).
 
-**IifePieLoader** (`players-shared/src/pie/iife-loader.ts`) -- Loads IIFE bundles from a bundle host by injecting `<script>` tags. Supports bundle types `player` (elements only, hosted mode), `clientPlayer` (elements + controllers), and `editor` (authoring elements). Registers loaded elements in the global `window.PIE_REGISTRY`.
+**ElementLoader primitive** (`players-shared/src/loaders/element-loader.ts`) -- The single entry point for registering PIE custom elements. Exposes `ensureRegistered(elements, { backend, ... })` (async, truthful-promise contract: resolves iff every requested tag is in `customElements`) and `assertRegistered(tags)` (sync, throws `ElementAssertionError` with a diagnostic message if any tag is missing). The primitive owns the post-load `customElements.whenDefined` verification pass; backends cannot silently under-register.
 
-**EsmPieLoader** (`players-shared/src/pie/esm-loader.ts`) -- Loads ESM modules from a CDN using import maps and `import()`. Supports views `delivery`, `author`, and `print` via module subpath conventions.
+**IIFE backend** (`players-shared/src/loaders/iife-adapter.ts`) -- Loads IIFE bundles from a bundle host by injecting `<script>` tags. Supports bundle types `player` (elements only, hosted mode), `clientPlayer` (elements + controllers), and `editor` (authoring elements). Registers loaded elements in the global `window.PIE_REGISTRY`. Includes a configurable retry policy (`bundleRetry`, `onBundleRetryStatus`) for the bundle service's "still building" lifecycle.
+
+**ESM backend** (`players-shared/src/loaders/esm-adapter.ts`) -- Loads ESM modules from a CDN using either fully-qualified URLs or an injected import map plus dynamic `import()`. Supports views `delivery`, `author`, and `print` via module subpath conventions.
 
 ## Modes
 

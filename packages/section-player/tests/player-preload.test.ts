@@ -1,9 +1,46 @@
-import { describe, expect, mock, test } from "bun:test";
+import { GlobalRegistrator } from "@happy-dom/global-registrator";
+import {
+	afterAll,
+	afterEach,
+	beforeAll,
+	describe,
+	expect,
+	mock,
+	test,
+} from "bun:test";
 import { BundleType } from "@pie-players/pie-players-shared";
 
 mock.module("@pie-players/pie-item-player", () => ({
 	ensureItemPlayerMathRenderingReady: async () => undefined,
 }));
+
+beforeAll(() => {
+	if (typeof (globalThis as unknown as { window?: unknown }).window === "undefined") {
+		GlobalRegistrator.register();
+	}
+});
+
+afterAll(() => {
+	if (GlobalRegistrator.isRegistered) {
+		GlobalRegistrator.unregister();
+	}
+});
+
+let definedTagsForTest: string[] = [];
+
+function definePreloadedTag(tag: string): void {
+	if (!customElements.get(tag)) {
+		customElements.define(tag, class extends HTMLElement {});
+		definedTagsForTest.push(tag);
+	}
+}
+
+afterEach(() => {
+	// happy-dom does not expose a customElements.unregister API; tags
+	// installed by tests stay defined for the lifetime of the suite.
+	// Tests that need a clean registry must use unique tag names.
+	definedTagsForTest = [];
+});
 
 async function loadPlayerPreloadModule() {
 	return import("../src/components/shared/player-preload");
@@ -178,20 +215,71 @@ describe("player-preload: error helpers", () => {
 });
 
 describe("warmupSectionElements", () => {
-	test("no-op for preloaded strategy (host pre-registers)", async () => {
+	test(
+		"preloaded strategy with all aggregate tags registered resolves without touching the loader",
+		async () => {
+			const { warmupSectionElements } = await loadPlayerPreloadModule();
+			definePreloadedTag("pie-mc-pa--version-1-0-0");
+			await warmupSectionElements({
+				strategy: "preloaded",
+				renderables: [
+					{
+						id: "item-1",
+						config: {
+							markup: '<pie-mc-pa id="m1"></pie-mc-pa>',
+							elements: { "pie-mc-pa": "@pie-element/multiple-choice@1.0.0" },
+							models: [{ id: "m1", element: "pie-mc-pa" }],
+						},
+					} as any,
+				],
+				resolvedPlayerProps: {},
+				resolvedPlayerEnv: {},
+			});
+		},
+	);
+
+	test(
+		"preloaded strategy with missing aggregate tags throws diagnostic-rich PreloadStageError(stage=preloaded-assert)",
+		async () => {
+			const { warmupSectionElements, PreloadStageError } =
+				await loadPlayerPreloadModule();
+			let caught: Error | undefined;
+			try {
+				await warmupSectionElements({
+					strategy: "preloaded",
+					renderables: [
+						{
+							id: "item-1",
+							config: {
+								markup: '<pie-pa-missing id="m1"></pie-pa-missing>',
+								elements: {
+									"pie-pa-missing": "@pie-element/missing@1.2.3",
+								},
+								models: [{ id: "m1", element: "pie-pa-missing" }],
+							},
+						} as any,
+					],
+					resolvedPlayerProps: {},
+					resolvedPlayerEnv: {},
+				});
+			} catch (err) {
+				caught = err as Error;
+			}
+			expect(caught).toBeInstanceOf(PreloadStageError);
+			if (caught instanceof PreloadStageError) {
+				expect(caught.stage).toBe("preloaded-assert");
+				const cause = caught.cause as { name?: string; message?: string };
+				expect(cause?.name).toBe("ElementAssertionError");
+				expect(String(cause?.message)).toContain("pie-pa-missing");
+			}
+		},
+	);
+
+	test("no-op for preloaded strategy with empty renderables", async () => {
 		const { warmupSectionElements } = await loadPlayerPreloadModule();
 		await warmupSectionElements({
 			strategy: "preloaded",
-			renderables: [
-				{
-					id: "item-1",
-					config: {
-						markup: "<pie-mc></pie-mc>",
-						elements: { "pie-mc": "@pie-element/multiple-choice@1.0.0" },
-						models: [{ id: "mc1", element: "pie-mc" }],
-					},
-				} as any,
-			],
+			renderables: [],
 			resolvedPlayerProps: {},
 			resolvedPlayerEnv: {},
 		});

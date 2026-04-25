@@ -333,6 +333,10 @@ function buildDedupKey(backend: BackendOption, elements: ElementMap): string {
 
 const backendIds = new WeakMap<ElementLoaderBackend, string>();
 let nextBackendId = 0;
+const functionIds = new WeakMap<Function, string>();
+let nextFunctionId = 0;
+const opaqueObjectIds = new WeakMap<object, string>();
+let nextOpaqueObjectId = 0;
 
 function backendKeyOf(backend: BackendOption): string {
 	if (isDirectBackend(backend)) {
@@ -345,24 +349,104 @@ function backendKeyOf(backend: BackendOption): string {
 	}
 	if ("kind" in backend) {
 		if (backend.kind === "iife") {
-			return [
-				"iife",
-				backend.bundleHost,
-				backend.bundleType ?? "",
-				backend.needsControllers ?? true,
-			].join("|");
+			return `iife#${fingerprintValue({
+				kind: "iife",
+				bundleHost: backend.bundleHost,
+				bundleType: backend.bundleType ?? "",
+				needsControllers: backend.needsControllers ?? true,
+				bundleInfo: backend.bundleInfo ?? null,
+				debugEnabled: backend.debugEnabled ?? null,
+				bundleRetry: backend.bundleRetry ?? null,
+				onBundleRetryStatus: backend.onBundleRetryStatus ?? null,
+				trackPageActions: backend.trackPageActions ?? false,
+				instrumentationProvider: backend.instrumentationProvider ?? null,
+			})}`;
 		}
 		if (backend.kind === "esm") {
-			return [
-				"esm",
-				backend.cdnBaseUrl,
-				backend.moduleResolution ?? "url",
-				backend.view ?? "delivery",
-				backend.loadControllers ?? true,
-			].join("|");
+			return `esm#${fingerprintValue({
+				kind: "esm",
+				cdnBaseUrl: backend.cdnBaseUrl,
+				moduleResolution: backend.moduleResolution ?? "url",
+				view: backend.view ?? "delivery",
+				viewConfig: backend.viewConfig ?? null,
+				loadControllers: backend.loadControllers ?? true,
+				debugEnabled: backend.debugEnabled ?? null,
+			})}`;
 		}
 	}
 	return "unknown";
+}
+
+function fingerprintValue(value: unknown): string {
+	return JSON.stringify(normalizeForFingerprint(value, new Map()));
+}
+
+function normalizeForFingerprint(
+	value: unknown,
+	seen: Map<object, string>,
+): unknown {
+	if (value === null || value === undefined) return value;
+	const primitiveType = typeof value;
+	if (
+		primitiveType === "string" ||
+		primitiveType === "number" ||
+		primitiveType === "boolean"
+	) {
+		return value;
+	}
+	if (primitiveType === "function") {
+		return { __functionRef: getFunctionRefId(value as Function) };
+	}
+	if (primitiveType !== "object") {
+		return String(value);
+	}
+
+	const objectValue = value as object;
+	const existing = seen.get(objectValue);
+	if (existing) return { __cycleRef: existing };
+	const cycleRefId = `cycle#${seen.size + 1}`;
+	seen.set(objectValue, cycleRefId);
+
+	if (Array.isArray(value)) {
+		return value.map((entry) => normalizeForFingerprint(entry, seen));
+	}
+
+	if (!isPlainObject(value)) {
+		return { __objectRef: getOpaqueObjectRefId(objectValue) };
+	}
+
+	const normalized: Record<string, unknown> = {};
+	for (const key of Object.keys(value).sort()) {
+		normalized[key] = normalizeForFingerprint(
+			(value as Record<string, unknown>)[key],
+			seen,
+		);
+	}
+	return normalized;
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+	if (!value || typeof value !== "object") return false;
+	const prototype = Object.getPrototypeOf(value);
+	return prototype === Object.prototype || prototype === null;
+}
+
+function getFunctionRefId(fn: Function): string {
+	let id = functionIds.get(fn);
+	if (!id) {
+		id = `fn#${++nextFunctionId}`;
+		functionIds.set(fn, id);
+	}
+	return id;
+}
+
+function getOpaqueObjectRefId(value: object): string {
+	let id = opaqueObjectIds.get(value);
+	if (!id) {
+		id = `obj#${++nextOpaqueObjectId}`;
+		opaqueObjectIds.set(value, id);
+	}
+	return id;
 }
 
 function allAlreadyRegistered(tags: ElementTag[]): boolean {
@@ -440,5 +524,8 @@ export const __testing = {
 	},
 	inFlightCount(): number {
 		return inFlightRequests.size;
+	},
+	dedupKeyFor(elements: ElementMap, backend: BackendOption): string {
+		return buildDedupKey(backend, elements);
 	},
 };

@@ -528,7 +528,6 @@ Published exports are intentionally minimal:
 - `@pie-players/pie-section-player/contracts/layout-parity-metadata`
 - `@pie-players/pie-section-player/contracts/host-hooks`
 - `@pie-players/pie-section-player/policies`
-- `@pie-players/pie-section-player/utils/player-preload`
 
 ## Development
 

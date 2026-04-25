@@ -510,6 +510,79 @@ describe("ensureRegistered — primitive-level contract", () => {
 	);
 });
 
+describe("ensureRegistered dedup key fingerprinting", () => {
+	const elements = {
+		"pie-mc--version-11-0-1": "@pie-element/multiple-choice@11.0.1",
+	};
+
+	test("iife backend keys differ when bundleInfo differs", () => {
+		const a = elementLoaderTesting.dedupKeyFor(elements, {
+			kind: "iife",
+			bundleHost: "https://example.test/bundles/",
+			bundleInfo: { hash: "bundle-a" },
+		});
+		const b = elementLoaderTesting.dedupKeyFor(elements, {
+			kind: "iife",
+			bundleHost: "https://example.test/bundles/",
+			bundleInfo: { hash: "bundle-b" },
+		});
+
+		expect(a).not.toBe(b);
+	});
+
+	test("iife backend keys differ when retry config differs", () => {
+		const a = elementLoaderTesting.dedupKeyFor(elements, {
+			kind: "iife",
+			bundleHost: "https://example.test/bundles/",
+			bundleRetry: { retryDelayMs: 50, timeoutMs: 5000 },
+		});
+		const b = elementLoaderTesting.dedupKeyFor(elements, {
+			kind: "iife",
+			bundleHost: "https://example.test/bundles/",
+			bundleRetry: { retryDelayMs: 10, timeoutMs: 1000 },
+		});
+
+		expect(a).not.toBe(b);
+	});
+
+	test("esm backend keys differ when viewConfig differs", () => {
+		const a = elementLoaderTesting.dedupKeyFor(elements, {
+			kind: "esm",
+			cdnBaseUrl: "https://cdn.jsdelivr.net/npm",
+			view: "delivery",
+			viewConfig: { subpath: "/delivery", tagSuffix: "" },
+		});
+		const b = elementLoaderTesting.dedupKeyFor(elements, {
+			kind: "esm",
+			cdnBaseUrl: "https://cdn.jsdelivr.net/npm",
+			view: "delivery",
+			viewConfig: { subpath: "/author", tagSuffix: "-config" },
+		});
+
+		expect(a).not.toBe(b);
+	});
+
+	test("direct backend identity semantics are preserved", () => {
+		const backendA: ElementLoaderBackend = {
+			async load() {
+				/* no-op */
+			},
+		};
+		const backendB: ElementLoaderBackend = {
+			async load() {
+				/* no-op */
+			},
+		};
+
+		const keyA1 = elementLoaderTesting.dedupKeyFor(elements, backendA);
+		const keyA2 = elementLoaderTesting.dedupKeyFor(elements, backendA);
+		const keyB = elementLoaderTesting.dedupKeyFor(elements, backendB);
+
+		expect(keyA1).toBe(keyA2);
+		expect(keyA1).not.toBe(keyB);
+	});
+});
+
 // ─── assertRegistered — synchronous contract ─────────────────────────────────
 
 describe("assertRegistered — synchronous contract", () => {

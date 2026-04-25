@@ -46,7 +46,6 @@
 		type ElementPreloadRetryDetail,
 		formatElementLoadError,
 		getPreloadLogger,
-		getRenderablesSignature,
 		PreloadStageError,
 		type PreloadStage,
 		toErrorMessage,
@@ -102,23 +101,58 @@
 	/*
 	 * The reactive key for the warmup call. Captures only the inputs that
 	 * logically alter the `ensureRegistered` request: the strategy, the
-	 * element-set signature of the renderables, the bundle host for IIFE,
-	 * and the view/bundle-type discriminants read from player props/env.
+	 * element-set fingerprint of the renderables, the bundle host for
+	 * IIFE, and the view/bundle-type discriminants read from player
+	 * props/env.
 	 *
 	 * This is NOT the old `lastPreloadSignature` guard — the deep
 	 * ElementLoader primitive already dedupes concurrent identical
-	 * requests internally. The signature here serves a different purpose:
-	 * it stabilizes `usePromise`'s reactive input so that semantically
-	 * no-op prop churn (current-item index change, session data updates,
-	 * controller event emission) does not drag `elementsLoaded` back to
-	 * `pending` and force an items-pane remount. Without this, navigation
-	 * and session-update tests observe transient "Loading section
-	 * content…" flashes that break focus and shell identity invariants.
+	 * requests internally. The fingerprint here serves a different
+	 * purpose: it stabilizes `usePromise`'s reactive input so that
+	 * semantically no-op prop churn (current-item index change, session
+	 * data updates, controller event emission) does not drag
+	 * `elementsLoaded` back to `pending` and force an items-pane remount.
+	 * Without this, navigation and session-update tests observe transient
+	 * "Loading section content…" flashes that break focus and shell
+	 * identity invariants.
+	 *
+	 * The fingerprint is built inline (not via the layout-tree's
+	 * `getRenderablesSignature`) because the input here is unwrapped
+	 * `ItemEntity[]` produced by `mapRenderablesToItems`, while the
+	 * layout-tree helper expects each entry to carry an `entity` wrapper.
+	 * Conflating them would silently degrade the fingerprint to "list
+	 * length only" — a regression that hides element-set changes (e.g. a
+	 * section swap that adds `pie-passage`) from the warmup factory and
+	 * is especially load-bearing under `strategy="preloaded"` where the
+	 * cached resolved promise must invalidate when the aggregate tag set
+	 * changes.
 	 */
 	const warmupInputsSignature = $derived(
 		JSON.stringify({
 			strategy: playerStrategy,
-			renderables: getRenderablesSignature(preloadedRenderables),
+			renderables: preloadedRenderables.map((renderable: ItemEntity, index: number) => {
+				const entity = ((renderable ?? {}) as unknown) as Record<string, unknown>;
+				const id =
+					typeof entity.id === "string" && entity.id
+						? entity.id
+						: `renderable-${index}`;
+				const elements =
+					(entity.config as Record<string, unknown> | undefined)?.elements ?? {};
+				const elementsSignature = Object.entries(
+					(elements as Record<string, unknown>) ?? {},
+				)
+					.filter(
+						([tag, pkg]) =>
+							typeof tag === "string" &&
+							tag.length > 0 &&
+							typeof pkg === "string" &&
+							pkg.length > 0,
+					)
+					.sort(([a], [b]) => a.localeCompare(b))
+					.map(([tag, pkg]) => `${tag}=${pkg}`)
+					.join(",");
+				return `${id}:${elementsSignature}`;
+			}),
 			iifeBundleHost,
 			mode:
 				(resolvedPlayerProps as Record<string, unknown> | undefined)?.mode ?? null,

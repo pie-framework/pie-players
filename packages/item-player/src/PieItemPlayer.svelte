@@ -296,6 +296,16 @@
 	let sessionControllerItemId = $state("pie-item-player");
 	let sessionSignature = $state("");
 	let sessionRevision = $state(0);
+	let latestLoadRequestToken = 0;
+
+	function beginLoadRequest(): number {
+		latestLoadRequestToken += 1;
+		return latestLoadRequestToken;
+	}
+
+	function isCurrentLoadRequest(requestToken: number): boolean {
+		return requestToken === latestLoadRequestToken;
+	}
 
 	const bundleBuildWarning = $derived.by(() => {
 		const retryState = (bundleRetryStatus as { state?: string } | null)?.state;
@@ -468,6 +478,7 @@
 
 	function buildIifeBackendConfig(
 		bundleType: BundleType,
+		requestToken: number,
 	): IifeBackendConfig {
 		const needsControllers = bundleType !== BundleType.editor && !hosted;
 		return {
@@ -479,7 +490,8 @@
 			bundleRetry: loaderConfig?.iifeBundleRetry,
 			trackPageActions: loaderConfig?.trackPageActions,
 			instrumentationProvider: resolvedInstrumentationProvider,
-			onBundleRetryStatus: (status) => {
+			onBundleRetryStatus: (status: IifeBundleRetryStatus) => {
+				if (!isCurrentLoadRequest(requestToken)) return;
 				bundleRetryStatus = status;
 				handlePlayerEvent(
 					new CustomEvent("bundle-retry-status", {
@@ -517,6 +529,18 @@
 		);
 	}
 
+	function mapExpectedRegistrationElements(
+		elements: Record<string, string>,
+		bundleType: BundleType,
+	): Record<string, string> {
+		if (bundleType !== BundleType.editor) {
+			return elements;
+		}
+		return Object.fromEntries(
+			Object.entries(elements).map(([tagName, packageSpec]) => [`${tagName}-config`, packageSpec]),
+		);
+	}
+
 	async function loadConfig(currentConfig: any) {
 		if (
 			currentConfig === lastProcessedConfig &&
@@ -527,9 +551,20 @@
 			return;
 		}
 
+		const requestToken = beginLoadRequest();
+		const commitIfCurrent = (commit: () => void): boolean => {
+			if (!isCurrentLoadRequest(requestToken)) return false;
+			commit();
+			return true;
+		};
+
 		if (!currentConfig) {
-			itemConfig = null;
-			loading = true;
+			commitIfCurrent(() => {
+				itemConfig = null;
+				loading = true;
+				error = null;
+				bundleRetryStatus = null;
+			});
 			return;
 		}
 
@@ -537,9 +572,11 @@
 		lastProcessedStrategy = normalizedStrategy;
 		lastProcessedMode = resolvedMode;
 		lastProcessedLoaderRetrySignature = loaderRetrySignature;
-		loading = true;
-		error = null;
-		bundleRetryStatus = null;
+		commitIfCurrent(() => {
+			loading = true;
+			error = null;
+			bundleRetryStatus = null;
+		});
 
 		let stage = "start";
 		let runtimeSupportErrorHint: string | null = null;
@@ -580,6 +617,7 @@
 				runtimeSupportView as "delivery" | "author" | "print",
 				runtimeSupportCheck,
 			);
+			if (!isCurrentLoadRequest(requestToken)) return;
 			const strategyForChecks: "esm" | "iife" =
 				normalizedStrategy === "esm" ? "esm" : "iife";
 			runtimeSupportErrorHint =
@@ -589,6 +627,7 @@
 
 			stage = "math-rendering-init";
 			await initializeMathRendering();
+			if (!isCurrentLoadRequest(requestToken)) return;
 
 			const elementMap = (transformedConfig?.elements || {}) as Record<
 				string,
@@ -610,8 +649,12 @@
 			} else if (normalizedStrategy === "iife") {
 				stage = "iife-load";
 				const bundleType = resolveBundleType();
-				await ensureRegistered(elementMap, {
-					backend: buildIifeBackendConfig(bundleType),
+				const expectedElements = mapExpectedRegistrationElements(
+					elementMap,
+					bundleType,
+				);
+				await ensureRegistered(expectedElements, {
+					backend: buildIifeBackendConfig(bundleType, requestToken),
 				});
 			} else {
 				stage = "esm-load";
@@ -621,18 +664,24 @@
 					backend: buildEsmBackendConfig(view),
 				});
 			}
+			if (!isCurrentLoadRequest(requestToken)) return;
 
 			stage = "set-item-config";
-			itemConfig = transformedConfig;
-			loading = false;
-			error = null;
-			bundleRetryStatus = null;
+			commitIfCurrent(() => {
+				itemConfig = transformedConfig;
+				loading = false;
+				error = null;
+				bundleRetryStatus = null;
+			});
 		} catch (err: any) {
+			if (!isCurrentLoadRequest(requestToken)) return;
 			const baseMessage = err?.message || String(err);
 			const message = `${baseMessage}${runtimeSupportErrorHint || ""}`;
-			error = `Error loading elements (${stage}): ${message}`;
-			loading = false;
-			bundleRetryStatus = null;
+			commitIfCurrent(() => {
+				error = `Error loading elements (${stage}): ${message}`;
+				loading = false;
+				bundleRetryStatus = null;
+			});
 			logger.error("[pie-item-player] failed loading:", err);
 			handlePlayerEvent(
 				new CustomEvent("player-error", {

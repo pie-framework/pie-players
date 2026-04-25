@@ -128,6 +128,99 @@ async function assertMediaRetryBridge(page: Page, deliveryPath: string): Promise
 }
 
 test.describe("item-player strategy regressions", () => {
+	test("ignores stale iife failures after newer iife config succeeds", async ({
+		page,
+	}) => {
+		await page.goto(PRELOADED_DELIVERY_PATH, { waitUntil: "networkidle" });
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({ timeout: 20_000 });
+
+		await page.route("**/bundles/**", async (route) => {
+			const url = route.request().url();
+			if (!url.includes("not-a-real-element")) {
+				await route.fallback();
+				return;
+			}
+			await new Promise((resolve) => setTimeout(resolve, 600));
+			await route.fulfill({
+				status: 404,
+				contentType: "application/javascript",
+				body: "window.__pie_stale_load_failure__ = true; throw new Error('stale load failed');",
+			});
+		});
+
+		const freshPrompt = "Fresh iife config should win";
+		await page.evaluate((prompt) => {
+			const fixture = document.createElement("div");
+			fixture.id = "pie-stale-load-order-fixture";
+			document.body.appendChild(fixture);
+
+			const player = document.createElement("pie-item-player") as any;
+			player.strategy = "iife";
+			player.env = { mode: "gather", role: "student" };
+			player.session = { id: "stale-load-order", data: [] };
+			player.config = {
+				elements: {
+					"pie-not-a-real-element": "@pie-element/not-a-real-element@1.0.0",
+				},
+				models: [
+					{
+						id: "stale-load-order-model",
+						element: "pie-not-a-real-element",
+						prompt: "Stale iife config",
+					},
+				],
+				markup:
+					'<pie-not-a-real-element id="stale-load-order-model"></pie-not-a-real-element>',
+			};
+			fixture.appendChild(player);
+
+			queueMicrotask(() => {
+				player.config = {
+					elements: {
+						"pie-multiple-choice": "@pie-element/multiple-choice@11.4.0",
+					},
+					models: [
+						{
+							id: "stale-load-order-model",
+							element: "pie-multiple-choice",
+							prompt,
+							choiceMode: "radio",
+							choices: [
+								{ value: "a", label: "A", correct: false },
+								{ value: "b", label: "B", correct: true },
+							],
+						},
+					],
+					markup:
+						'<pie-multiple-choice id="stale-load-order-model"></pie-multiple-choice>',
+				};
+			});
+		}, freshPrompt);
+
+		const fixture = page.locator("#pie-stale-load-order-fixture");
+		await expect(fixture.getByText(freshPrompt)).toBeVisible({ timeout: 20_000 });
+		await page.waitForTimeout(800);
+
+		const staleState = await page.evaluate(() => {
+			const host = document.querySelector(
+				"#pie-stale-load-order-fixture pie-item-player",
+			) as HTMLElement | null;
+			if (!host) {
+				return { errorText: "missing-host", renderedPrompt: null };
+			}
+			const errorText = host.querySelector(".pie-player-error p")?.textContent || null;
+			const renderedPrompt = host.textContent?.includes("Fresh iife config should win")
+				? "fresh"
+				: host.textContent?.includes("Stale iife config")
+					? "stale"
+					: null;
+			return { errorText, renderedPrompt };
+		});
+
+		expect(staleState.errorText).toBeNull();
+		expect(staleState.renderedPrompt).toBe("fresh");
+	});
+
 	test("renders and updates session using preloaded bundles", async ({ page }) => {
 		const bundleRequests: string[] = [];
 		const esmRequests: string[] = [];
@@ -166,10 +259,22 @@ test.describe("item-player strategy regressions", () => {
 		await page.goto(PRELOADED_DELIVERY_PATH, { waitUntil: "networkidle" });
 		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({ timeout: 20_000 });
 
+		const bundledVersionTag = await page.evaluate(() => {
+			const preloadedElements = (window as any).PIE_PRELOADED_ELEMENTS as
+				| Record<string, string>
+				| undefined;
+			const bundledSpec = preloadedElements?.["@pie-element/multiple-choice"];
+			if (!bundledSpec) {
+				throw new Error("Expected preloaded mapping for @pie-element/multiple-choice");
+			}
+			const match = bundledSpec.match(/@(\d+\.\d+\.\d+)$/);
+			if (!match?.[1]) {
+				throw new Error(`Unexpected preloaded mapping format: ${bundledSpec}`);
+			}
+			return `multiple-choice--version-${match[1].replaceAll(".", "-")}`;
+		});
+
 		await page.evaluate(() => {
-			(window as any).PIE_PRELOADED_ELEMENTS = {
-				"@pie-element/multiple-choice": "@pie-element/multiple-choice@11.4.3",
-			};
 			const fixture = document.createElement("div");
 			fixture.id = "pie-preloaded-version-normalization-fixture";
 			document.body.appendChild(fixture);
@@ -180,12 +285,12 @@ test.describe("item-player strategy regressions", () => {
 			player.session = { id: "normalize-test", data: [] };
 			player.config = {
 				elements: {
-					"pie-multiple-choice": "@pie-element/multiple-choice@0.0.1",
+					"multiple-choice": "@pie-element/multiple-choice@0.0.1",
 				},
 				models: [
 					{
 						id: "normalize-mc",
-						element: "pie-multiple-choice",
+						element: "multiple-choice",
 						prompt: "Normalization prompt",
 						choiceMode: "radio",
 						choices: [
@@ -194,24 +299,36 @@ test.describe("item-player strategy regressions", () => {
 						],
 					},
 				],
-				markup: '<pie-multiple-choice id="normalize-mc"></pie-multiple-choice>',
+				markup: '<multiple-choice id="normalize-mc"></multiple-choice>',
 			};
 			fixture.appendChild(player);
 		});
 
-		await page.waitForFunction(() => {
+		const versionRewriteState = await page.evaluate((expectedBundledTag) => {
 			const fixture = document.getElementById(
 				"pie-preloaded-version-normalization-fixture",
 			);
-			if (!fixture) return false;
-			const hasBundledVersionTag = !!fixture.querySelector(
-				"pie-multiple-choice--version-11-4-3",
-			);
-			const hasStaleVersionTag = !!fixture.querySelector(
-				"pie-multiple-choice--version-0-0-1",
-			);
-			return hasBundledVersionTag && !hasStaleVersionTag;
-		});
+			if (!fixture) {
+				return {
+					hasBundledVersionTag: false,
+					hasStaleVersionTag: false,
+					errorText: "missing-fixture",
+				};
+			}
+			const host = fixture.querySelector("pie-item-player");
+			const errorText = host?.querySelector(".pie-player-error p")?.textContent || null;
+			return {
+				hasBundledVersionTag: !!fixture.querySelector(expectedBundledTag),
+				hasStaleVersionTag: !!fixture.querySelector(
+					"multiple-choice--version-0-0-1",
+				),
+				errorText,
+			};
+		}, bundledVersionTag);
+
+		expect(versionRewriteState.errorText).toBeNull();
+		expect(versionRewriteState.hasBundledVersionTag).toBe(true);
+		expect(versionRewriteState.hasStaleVersionTag).toBe(false);
 	});
 
 	test("preloaded does not autonomously fallback to runtime loading when tags are missing", async ({

@@ -37,8 +37,9 @@ Parent and child then coordinated ambiently via DOM mount timing, gated by a cac
 - `"validate-config"` — a renderable's PIE config contract failed before any backend was contacted.
 - `"iife-load"` — IIFE strategy backend rejection.
 - `"esm-load"` — ESM strategy backend rejection.
+- `"preloaded-assert"` — `strategy="preloaded"` host did not pre-register every aggregate tag; the section-level `assertRegistered` rejected before any item mounted.
 
-Hosts that switched on `stage` will start observing `"validate-config"` and `"esm-load"` for failure modes that were previously misreported as `"iife-load"`. Hosts that only display the `error` field need no update.
+Hosts that switched on `stage` will start observing `"validate-config"`, `"esm-load"`, and `"preloaded-assert"` for failure modes that were previously misreported as `"iife-load"`. Hosts that only display the `error` field need no update.
 
 ## Breaking: `allowPreloadedFallbackLoad` removed
 
@@ -50,6 +51,12 @@ The `allowPreloadedFallbackLoad` loader option on `<pie-item-player>` is gone. I
 - If the host genuinely pre-registers elements and wants strict mode, keep `strategy="preloaded"` and pre-register before mount.
 
 There is no third option. The primitive will not silently coerce a "preloaded" claim into a fetch.
+
+## Breaking: `@pie-players/pie-section-player/utils/player-preload` subpath removed
+
+The `@pie-players/pie-section-player/utils/player-preload` subpath export is gone. It was a pure pass-through barrel re-exporting helpers from the section-player's internal `components/shared/player-preload.ts`. With the orchestrator deleted, the public surface it advertised (`getRenderablesSignature`, `PlayerPreloadState`, `preloadPlayerElements`, etc.) no longer exists. Keeping a thin barrel around the surviving config helpers (`buildBackendConfigFromProps`, `warmupSectionElements`, `formatElementLoadError`, `describeBundleType`, `describeBundleHost`) would advertise an internal pipeline as a host integration point; the section-player widgets are the supported integration point.
+
+**Migration.** Hosts that imported from the subpath should rewrite to use the section-player widget directly. The functions exposed there were always implementation details of the section-player's own preload step.
 
 ## Companion change in `@pie-players/pie-item-player`
 

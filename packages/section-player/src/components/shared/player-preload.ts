@@ -28,6 +28,7 @@
 import {
 	aggregateElements,
 	assertPieConfigContract,
+	assertRegistered,
 	BundleType,
 	type ElementMap,
 	ensureRegistered,
@@ -49,9 +50,14 @@ export type IifeBundleRetryStatusHandler = (
  * Narrow string union of section-preload pipeline stages reported on
  * `element-preload-retry` and `element-preload-error` events. Hosts use
  * this to disambiguate "the renderable's PIE config is invalid" from
- * "the IIFE bundle won't load" from "the ESM module won't import".
+ * "the IIFE bundle won't load" from "the ESM module won't import" from
+ * "the host claimed strategy='preloaded' but didn't pre-register".
  */
-export type PreloadStage = "validate-config" | "iife-load" | "esm-load";
+export type PreloadStage =
+	| "validate-config"
+	| "iife-load"
+	| "esm-load"
+	| "preloaded-assert";
 
 export type ElementPreloadRetryDetail = {
 	componentTag: string;
@@ -283,9 +289,12 @@ export function describeBundleHost(
  * Pre-warm the aggregate element set for a section before items mount.
  *
  * Contract:
- * - `strategy === "preloaded"` — no-op. Host pre-registers elements
- *   out-of-band; per-item assertion happens in `PieItemPlayer`.
  * - `renderables.length === 0` — no-op. Nothing to load.
+ * - `strategy === "preloaded"` — assert every aggregate tag is already
+ *   registered with `customElements`. Throws `ElementAssertionError`
+ *   (wrapped in `PreloadStageError` with stage `"preloaded-assert"`) on
+ *   any missing tag, surfacing one section-level diagnostic instead of
+ *   N small per-item rejections.
  * - Otherwise: aggregate tags, build backend, await `ensureRegistered`.
  *
  * On any validation or load failure, rejects with a descriptive Error.
@@ -311,10 +320,19 @@ export async function warmupSectionElements(args: {
 		throw new PreloadStageError("validate-config", error);
 	}
 
-	if (args.strategy === "preloaded") return;
 	if (args.renderables.length === 0) return;
 
 	const elements: ElementMap = aggregateElements(args.renderables);
+
+	if (args.strategy === "preloaded") {
+		try {
+			assertRegistered(Object.keys(elements));
+		} catch (error) {
+			throw new PreloadStageError("preloaded-assert", error);
+		}
+		return;
+	}
+
 	const backend = buildBackendConfigFromProps({
 		strategy: args.strategy,
 		resolvedPlayerProps: args.resolvedPlayerProps,

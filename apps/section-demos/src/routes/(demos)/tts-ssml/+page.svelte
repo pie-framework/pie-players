@@ -4,7 +4,10 @@
 	import {
 		CompositeInstrumentationProvider,
 		DebugPanelInstrumentationProvider,
-		NewRelicInstrumentationProvider
+		NewRelicInstrumentationProvider,
+		initializePiesFromLoadedBundle,
+		loadBundleFromString,
+		makeUniqueTags
 	} from '@pie-players/pie-players-shared';
 	import { onDestroy } from 'svelte';
 	import {
@@ -44,8 +47,11 @@
 	import { SECTION_DEMOS_SC_TTS_TOOL_PROVIDER } from '$lib/demo-runtime/section-demos-default-tts';
 	import {
 		buildBundleKey,
+		collectElementTags,
+		collectPieConfigs,
 		collectElementPackages,
-		fetchBundleWithRetry
+		fetchBundleWithRetry,
+		waitForCustomElements
 	} from '$lib/demo-runtime/preload-utils';
 	import type { PageData } from './$types';
 
@@ -249,8 +255,14 @@ const sectionPlayerHooks = $derived.by(() =>
 		preloadedError = null;
 		if (selectedPlayerType !== 'preloaded') return;
 		const packages = collectElementPackages(resolvedSectionForPlayer);
+		const preloadConfigs = collectPieConfigs(resolvedSectionForPlayer);
+		const preloadTags = collectElementTags(resolvedSectionForPlayer);
 		if (!packages.length) {
 			preloadedError = 'No element packages were found to preload';
+			return;
+		}
+		if (!preloadConfigs.length) {
+			preloadedError = 'No PIE configs were found to initialize';
 			return;
 		}
 		const bundleKey = buildBundleKey(packages);
@@ -264,10 +276,12 @@ const sectionPlayerHooks = $derived.by(() =>
 				const bundleUrl = `https://proxy.pie-api.com/bundles/${bundleKey}/player.js`;
 				const response = await fetchBundleWithRetry(bundleUrl);
 				const bundleJs = await response.text();
-				const script = document.createElement('script');
-				script.type = 'text/javascript';
-				script.text = bundleJs;
-				document.head.appendChild(script);
+				await loadBundleFromString(bundleJs);
+				for (const config of preloadConfigs) {
+					const versionedConfig = makeUniqueTags({ config: config as any }).config;
+					initializePiesFromLoadedBundle(versionedConfig as any, [], {});
+				}
+				await waitForCustomElements(preloadTags);
 				loadedPreloadedBundleKey = bundleKey;
 				preloadedReady = true;
 			} catch (error) {

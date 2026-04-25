@@ -16,10 +16,13 @@ test.describe("section player preloaded strategy", () => {
 		});
 
 		await page.goto(SPLITPANE_PRELOADED_PATH, { waitUntil: "networkidle" });
-		await expect(page.getByRole("main", { name: "Items" })).toBeVisible();
-		await expect(page.locator('pie-item-shell[data-pie-shell-root="item"]')).toHaveCount(
-			3,
-		);
+		await expect(page.locator(".preload-status")).toHaveCount(0, { timeout: 30_000 });
+		await expect(page.getByRole("main", { name: "Items" })).toBeVisible({
+			timeout: 30_000,
+		});
+		await expect(
+			page.locator('pie-item-shell[data-pie-shell-root="item"]'),
+		).toHaveCount(3, { timeout: 30_000 });
 
 		const playerAttrs = await page.locator("pie-item-player").evaluateAll((els) =>
 			els.map((el) => ({
@@ -37,6 +40,7 @@ test.describe("section player preloaded strategy", () => {
 
 	test("vertical layout renders with preloaded strategy", async ({ page }) => {
 		await page.goto(VERTICAL_PRELOADED_PATH, { waitUntil: "networkidle" });
+		await expect(page.locator(".preload-status")).toHaveCount(0, { timeout: 30_000 });
 		await expect(page.locator(".preload-status.error")).toHaveCount(0);
 		await expect(
 			page.locator('pie-item-shell[data-pie-shell-root="item"]'),

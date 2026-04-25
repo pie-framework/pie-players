@@ -47,22 +47,38 @@ export function aggregateElements(items: ItemEntity[]): ElementMap {
 	const seenOriginalTags: Record<string, string> = {};
 
 	const VERSION_DELIMITER = "--version-";
+	const TAG_VERSION_PATTERN = "[0-9A-Za-z-]+";
+	const encodeVersionForTag = (version: string): string =>
+		version
+			.trim()
+			.replace(/[.+]/g, "-")
+			.replace(/[^0-9A-Za-z-]/g, "-")
+			.replace(/-{2,}/g, "-");
 	const parseTagName = (
 		tagName: string,
-	): { baseName: string; existingVersion?: string } => {
-		const versionMatch = tagName.match(`${VERSION_DELIMITER}(\\d+-\\d+-\\d+)$`);
+	): { baseName: string; existingEncodedVersion?: string } => {
+		const versionMatch = tagName.match(
+			new RegExp(`${VERSION_DELIMITER}(${TAG_VERSION_PATTERN})$`),
+		);
 		return versionMatch
 			? {
-					baseName: tagName.replace(`${VERSION_DELIMITER}${versionMatch[1]}`, ""),
-					existingVersion: versionMatch[1].replace(/-/g, "."),
+					baseName: tagName.replace(
+						`${VERSION_DELIMITER}${versionMatch[1]}`,
+						"",
+					),
+					existingEncodedVersion: versionMatch[1],
 				}
 			: { baseName: tagName };
 	};
 	const normalizeElementTag = (tagName: string, packageSpec: string): string => {
-		const { baseName, existingVersion } = parseTagName(tagName);
+		const { baseName, existingEncodedVersion } = parseTagName(tagName);
 		const { version } = parsePackageName(packageSpec);
-		if (!version || existingVersion === version) return tagName;
-		return `${baseName}${VERSION_DELIMITER}${version.replace(/\./g, "-")}`;
+		if (!version) return tagName;
+		const targetEncodedVersion = encodeVersionForTag(version);
+		if (!targetEncodedVersion || existingEncodedVersion === targetEncodedVersion) {
+			return tagName;
+		}
+		return `${baseName}${VERSION_DELIMITER}${targetEncodedVersion}`;
 	};
 
 	items.forEach((item) => {

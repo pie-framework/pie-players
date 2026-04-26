@@ -83,6 +83,7 @@
 		SectionPlayerSnapshot,
 	} from "../contracts/runtime-host-contract.js";
 	import type { SectionPlayerPolicies } from "../policies/types.js";
+	import { isTelemetryEnabled } from "../policies/index.js";
 	import type { SectionPlayerHostHooks } from "../contracts/host-hooks.js";
 
 	const DEFAULT_NARROW_BREAKPOINT_PX = 1100;
@@ -346,6 +347,11 @@
 
 	$effect(() => {
 		if (!hostElement) return;
+		// `policies.telemetry.enabled === false` skips instrumentation bridge
+		// setup entirely so hosts that opt out emit no `pie-section-*`
+		// telemetry events through the bridge. Hosts that need a different
+		// shape of opt-out can still supply a custom `instrumentationProvider`.
+		if (!isTelemetryEnabled(policies)) return;
 		const localHost = hostElement;
 		return attachInstrumentationEventBridge({
 			host: localHost,
@@ -515,6 +521,7 @@
 						preloadedRenderables={layoutModel.preloadedRenderables}
 						preloadedRenderablesSignature={layoutModel.preloadedRenderablesSignature}
 						preloadComponentTag="pie-section-player-splitpane"
+						preloadEnabled={layoutModel.preloadEnabled}
 						onelements-loaded-change={layoutModel.onItemsPaneElementsLoaded}
 						onelement-preload-retry={layoutModel.onItemsPanePreloadRetry}
 						onelement-preload-error={layoutModel.onItemsPanePreloadError}

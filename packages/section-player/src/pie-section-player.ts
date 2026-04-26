@@ -46,6 +46,8 @@ export type {
 export {
 	DEFAULT_FOCUS_POLICY,
 	DEFAULT_SECTION_PLAYER_POLICIES,
+	isPreloadEnabled,
+	isTelemetryEnabled,
 	resolveAutoFocusStrategy,
 } from "./policies/index.js";
 export type {

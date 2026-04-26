@@ -55,6 +55,8 @@
 	} from "../contracts/runtime-host-contract.js";
 	import type { SectionPlayerHostHooks } from "../contracts/host-hooks.js";
 	import type { RuntimeConfig } from "./shared/section-player-runtime.js";
+	import type { SectionPlayerPolicies } from "../policies/types.js";
+	import { isTelemetryEnabled } from "../policies/index.js";
 
 	let {
 		assessmentId,
@@ -82,7 +84,7 @@
 		sectionHostButtons = [] as ToolbarItem[],
 		itemHostButtons = [] as ToolbarItem[],
 		passageHostButtons = [] as ToolbarItem[],
-		policies,
+		policies = undefined as SectionPlayerPolicies | undefined,
 		hooks = undefined as SectionPlayerHostHooks | undefined,
 	} = $props();
 
@@ -181,6 +183,10 @@
 
 	$effect(() => {
 		if (!hostElement) return;
+		// `policies.telemetry.enabled === false` skips instrumentation bridge
+		// setup entirely so hosts that opt out emit no `pie-section-*`
+		// telemetry events through the bridge.
+		if (!isTelemetryEnabled(policies)) return;
 		const localHost = hostElement;
 		return attachInstrumentationEventBridge({
 			host: localHost,
@@ -269,6 +275,7 @@
 	let:playerStrategy
 	let:preloadedRenderables
 	let:preloadedRenderablesSignature
+	let:preloadEnabled
 	let:onItemsPaneElementsLoaded
 	let:onItemsPanePreloadRetry
 	let:onItemsPanePreloadError
@@ -301,6 +308,7 @@
 			preloadedRenderables={preloadedRenderables}
 			preloadedRenderablesSignature={preloadedRenderablesSignature}
 			preloadComponentTag="pie-section-player-kernel-host"
+			preloadEnabled={preloadEnabled}
 			onelements-loaded-change={onItemsPaneElementsLoaded}
 			onelement-preload-retry={onItemsPanePreloadRetry}
 			onelement-preload-error={onItemsPanePreloadError}

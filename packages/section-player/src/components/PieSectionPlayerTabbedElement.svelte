@@ -79,6 +79,7 @@
 		SectionPlayerSnapshot,
 	} from "../contracts/runtime-host-contract.js";
 	import type { SectionPlayerPolicies } from "../policies/types.js";
+	import { isTelemetryEnabled } from "../policies/index.js";
 	import type { SectionPlayerHostHooks } from "../contracts/host-hooks.js";
 
 	const DEFAULT_NARROW_BREAKPOINT_PX = 1100;
@@ -256,6 +257,10 @@
 
 	$effect(() => {
 		if (!hostElement) return;
+		// `policies.telemetry.enabled === false` skips instrumentation bridge
+		// setup entirely so hosts that opt out emit no `pie-section-*`
+		// telemetry events through the bridge.
+		if (!isTelemetryEnabled(policies)) return;
 		const localHost = hostElement;
 		return attachInstrumentationEventBridge({
 			host: localHost,

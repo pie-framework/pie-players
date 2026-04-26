@@ -24,6 +24,7 @@
 				type: "String",
 			},
 			preloadComponentTag: { attribute: "preload-component-tag", type: "String" },
+			preloadEnabled: { attribute: "preload-enabled", type: "Boolean" },
 		},
 	}}
 />
@@ -74,6 +75,7 @@
 		 * warmup on it. The prop stays accepted so call-sites outside this
 		 * package don't have to change in lock-step. */
 		preloadComponentTag = "pie-section-player-items-pane",
+		preloadEnabled = true,
 	} = $props<{
 		items: ItemEntity[];
 		compositionModel: SectionCompositionModel;
@@ -88,6 +90,7 @@
 		preloadedRenderables: ItemEntity[];
 		preloadedRenderablesSignature: string;
 		preloadComponentTag?: string;
+		preloadEnabled?: boolean;
 	}>();
 
 	const dispatch = createEventDispatcher<{
@@ -129,6 +132,7 @@
 	 */
 	const warmupInputsSignature = $derived(
 		JSON.stringify({
+			preloadEnabled,
 			strategy: playerStrategy,
 			renderables: preloadedRenderables.map((renderable: ItemEntity, index: number) => {
 				const entity = ((renderable ?? {}) as unknown) as Record<string, unknown>;
@@ -189,6 +193,12 @@
 		// Establish the single reactive dep.
 		// biome-ignore lint/correctness/noUnusedExpressions: track signature
 		warmupInputsSignature;
+		// `policies.preload.enabled === false` short-circuits the warmup
+		// pipeline. Items still mount and item-players register their own
+		// elements on demand; we just skip the section-level pre-warm.
+		if (!preloadEnabled) {
+			return untrack(() => Promise.resolve());
+		}
 		return untrack(() =>
 			warmupSectionElements({
 				strategy: playerStrategy,

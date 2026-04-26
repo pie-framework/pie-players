@@ -16,7 +16,10 @@
 		SectionPlayerNavigationSnapshot,
 		SectionPlayerSnapshot,
 	} from "../../contracts/runtime-host-contract.js";
-	import { DEFAULT_SECTION_PLAYER_POLICIES } from "../../policies/index.js";
+	import {
+		DEFAULT_SECTION_PLAYER_POLICIES,
+		isPreloadEnabled,
+	} from "../../policies/index.js";
 	import type { SectionPlayerPolicies } from "../../policies/types.js";
 	import { createPlayerAction } from "./player-action.js";
 	import {
@@ -189,6 +192,7 @@
 		}),
 	);
 	const normalizedShowToolbar = $derived(coerceBooleanLike(showToolbar, false));
+	const preloadEnabled = $derived(isPreloadEnabled(policies));
 	const readinessDetail = $derived.by(() =>
 		createReadinessDetail({
 			mode: policies.readiness.mode,
@@ -427,6 +431,7 @@
 			itemHostButtons,
 			passageHostButtons,
 			readinessDetail,
+			preloadEnabled,
 			onItemsPaneElementsLoaded: handleItemsPaneElementsLoaded,
 			onItemsPanePreloadRetry: handleItemsPanePreloadRetry,
 			onItemsPanePreloadError: handleItemsPanePreloadError,
@@ -446,6 +451,7 @@
 		{itemHostButtons}
 		{passageHostButtons}
 		{readinessDetail}
+		{preloadEnabled}
 		onItemsPaneElementsLoaded={handleItemsPaneElementsLoaded}
 		onItemsPanePreloadRetry={handleItemsPanePreloadRetry}
 		onItemsPanePreloadError={handleItemsPanePreloadError}

@@ -222,6 +222,29 @@ host.policies = {
 };
 ```
 
+**Wired policy toggles.** Each `SectionPlayerPolicies` field has a real
+runtime effect; nothing in this surface is decorative.
+
+- `readiness.mode` (`"progressive"` | `"strict"`) — drives readiness-event
+  emission via `createReadinessDetail` in `SectionPlayerLayoutKernel`.
+- `preload.enabled` — when `false`, `SectionItemsPane` short-circuits the
+  section-level element warmup pipeline (`warmupSectionElements`). Items
+  still mount and item-players register their own elements on demand. Use
+  this to disable section pre-warm when the host already owns element
+  registration end-to-end. Default: `true`.
+- `focus.autoFocus` — focus strategy on navigation; see "Focus management"
+  above.
+- `telemetry.enabled` — when `false`, the layout custom elements skip
+  `attachInstrumentationEventBridge` setup, so no `pie-section-*`
+  telemetry events flow through the bridge. Hosts that want a different
+  shape of opt-out can still override `runtime.player.loaderConfig.instrumentationProvider`.
+  Default: `true`.
+
+The exported `isPreloadEnabled(policies)` and `isTelemetryEnabled(policies)`
+helpers read these toggles with the documented default-true semantics, so
+host code that needs to mirror the same gate (e.g. when composing a custom
+layout host) can call them directly.
+
 **Imperative escape hatch (host-owned focus moments).** Every layout
 element (`pie-section-player-splitpane`, `-vertical`, `-tabbed`,
 `-kernel-host`, and `-base`) exposes a `focusStart(): boolean` method.

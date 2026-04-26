@@ -40,6 +40,26 @@ export {
 export { attachInstrumentationEventBridge } from "./instrumentation-event-bridge.js";
 export type { AttachInstrumentationEventBridgeArgs } from "./instrumentation-event-bridge.js";
 export { resolveInstrumentationProvider } from "./instrumentation-provider-resolution.js";
+// Canonical stage vocabulary (M6). Both `<pie-section-player-*>` and
+// `<pie-assessment-toolkit>` share this primitive so the
+// `pie-stage-change` event family stays coherent across CE shapes.
+export {
+	STAGES,
+	applicableStages,
+	stageOrdinal,
+} from "./stages.js";
+export type {
+	LoadingCompleteDetail,
+	Stage,
+	StageChangeDetail,
+	StageSourceCe,
+	StageStatus,
+} from "./stages.js";
+export { createStageTracker } from "./stage-tracker.js";
+export type {
+	CreateStageTrackerOptions,
+	StageTracker,
+} from "./stage-tracker.js";
 export {
 	ASSESSMENT_INSTRUMENTATION_EVENT_MAP,
 	SECTION_INSTRUMENTATION_EVENT_MAP,

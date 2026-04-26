@@ -4,6 +4,15 @@ export type InstrumentationEventMapping = {
 };
 
 export const TOOLKIT_INSTRUMENTATION_EVENT_MAP: InstrumentationEventMapping[] = [
+	// M6 canonical readiness vocabulary. The toolkit CE applies every stage
+	// except `ui-rendered` (it has no UI of its own); the tracker auto-skips
+	// non-applicable stages to keep iteration order stable across CE shapes.
+	// Hosts listen for the DOM-prefixed name directly (`pie-stage-change`);
+	// the instrumentation bridge forwards the same name to telemetry.
+	{
+		sourceEventName: "pie-stage-change",
+		instrumentationEventName: "pie-toolkit-stage-change",
+	},
 	{
 		sourceEventName: "runtime-owned",
 		instrumentationEventName: "pie-toolkit-runtime-owned",

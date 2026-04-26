@@ -35,6 +35,7 @@
 />
 
 <script lang="ts">
+	import { untrack } from "svelte";
 	import {
 		ContextProvider,
 		ContextRoot,
@@ -42,8 +43,10 @@
 	} from "@pie-players/pie-context";
 	import {
 		attachInstrumentationEventBridge,
+		createStageTracker,
 		resolveInstrumentationProvider,
 		TOOLKIT_INSTRUMENTATION_EVENT_MAP,
+		type StageChangeDetail,
 	} from "@pie-players/pie-players-shared/pie";
 	import { isInstrumentationProvider } from "@pie-players/pie-players-shared";
 	import {
@@ -201,6 +204,32 @@ const DEFAULT_ENV = {
 	let compositionEmitRaf: number | null = null;
 	let pendingCrossBoundaryEvents: Array<{ name: string; detail: unknown }> = [];
 	const sessionEmitPolicyState = createSessionEmitPolicyState();
+
+	// M6 canonical stage tracker. The toolkit applies every stage except
+	// `ui-rendered` (it has no UI of its own); the tracker auto-skips
+	// non-applicable stages so subscriber iteration order stays stable
+	// across `<pie-section-player-*>` and `<pie-assessment-toolkit>` CE
+	// shapes. `attached` fires once per CE mount; cohort changes
+	// (`(sectionId, attemptId)`) reset the tracker so the new cohort
+	// begins emitting from `composed`. Initial seed values are captured
+	// via `untrack` because the tracker explicitly absorbs subsequent
+	// cohort changes through `reset()`, not through prop reactivity at
+	// construction time.
+	const stageTracker = createStageTracker({
+		sourceCe: "pie-assessment-toolkit",
+		sourceCeShape: "toolkit",
+		runtimeId,
+		sectionId: untrack(() => sectionId || undefined),
+		attemptId: untrack(() => attemptId || undefined),
+		emit: (detail: StageChangeDetail) => emit("pie-stage-change", detail),
+	});
+	let lastStageCohortKey = $state(
+		untrack(() => `${sectionId}|${attemptId}`),
+	);
+	let composedStageEntered = $state(false);
+	let runtimeBoundStageEntered = $state(false);
+	let engineReadyStageEntered = $state(false);
+	let interactiveStageEntered = $state(false);
 
 	function getHostElement(): HTMLElement | null {
 		if (!anchor) return null;
@@ -964,8 +993,16 @@ const DEFAULT_ENV = {
 				emit("section-ready", {
 					sectionId: effectiveSectionId,
 				});
+				untrack(() => {
+					if (interactiveStageEntered) return;
+					interactiveStageEntered = true;
+					stageTracker.enter("interactive");
+				});
 			})
 			.catch((error) => {
+				untrack(() => {
+					stageTracker.enter("interactive", "failed");
+				});
 				runtimeError = error;
 				sectionEngine.reportSectionError({
 					source: "section-runtime",
@@ -1106,6 +1143,107 @@ const DEFAULT_ENV = {
 	export async function hydrate(): Promise<void> {
 		await sectionEngine.hydrate();
 	}
+
+	// Stage: `attached` — wired exactly once on CE mount. Per §3.5 of
+	// the M6 plan, `attached` fires once per DOM element instance and is
+	// not re-emitted on cohort change. The matching `disposed` fires on
+	// CE unmount as part of the kernel-side teardown effect below.
+	$effect(() => {
+		untrack(() => {
+			stageTracker.enter("attached");
+		});
+		return () => {
+			untrack(() => {
+				stageTracker.enter("disposed");
+			});
+		};
+	});
+
+	// Cohort change handler: when `(sectionId, attemptId)` changes, emit
+	// `disposed` for the outgoing cohort and reset the tracker so the
+	// new cohort begins emitting from `composed` against the same DOM
+	// element. The boolean stage flags must reset in lockstep.
+	$effect(() => {
+		const nextKey = `${sectionId}|${attemptId}`;
+		untrack(() => {
+			if (nextKey === lastStageCohortKey) return;
+			if (stageTracker.getCurrent() !== null) {
+				stageTracker.enter("disposed");
+			}
+			stageTracker.reset({
+				sectionId: sectionId || undefined,
+				attemptId: attemptId || undefined,
+			});
+			lastStageCohortKey = nextKey;
+			composedStageEntered = false;
+			runtimeBoundStageEntered = false;
+			engineReadyStageEntered = false;
+			interactiveStageEntered = false;
+		});
+	});
+
+	// Canonical M6 stage progression for the toolkit CE. Each branch is
+	// short-circuited so later stages cannot fire before their
+	// predecessors; the tracker itself is idempotent and rejects
+	// backward transitions, but gating here keeps the emit order
+	// monotonic across asynchronous sources. `ui-rendered` is auto-
+	// skipped by the tracker (toolkit applicability), so callers see a
+	// consistent `composed → runtime-bound → engine-ready → ui-rendered
+	// (skipped) → interactive` sequence.
+	$effect(() => {
+		const composed = compositionVersion > 0 || compositionModel !== null;
+		const runtimeBound =
+			effectiveCoordinator !== null && runtimeContextValue !== null;
+		untrack(() => {
+			if (!composedStageEntered && composed) {
+				composedStageEntered = true;
+				stageTracker.enter("composed");
+			}
+			if (
+				!runtimeBoundStageEntered &&
+				composedStageEntered &&
+				runtimeBound
+			) {
+				runtimeBoundStageEntered = true;
+				stageTracker.enter("runtime-bound");
+			}
+		});
+	});
+
+	// `engine-ready` resolves once `effectiveCoordinator.waitUntilReady()`
+	// settles — that promise covers state load, TTS bring-up, and provider
+	// initialization. Failures still flow through the framework-error bus;
+	// here we record the position with `failed` so subscribers see a
+	// monotonic stage chain even when the coordinator throws during
+	// readiness.
+	$effect(() => {
+		if (!effectiveCoordinator) return;
+		if (!runtimeBoundStageEntered) return;
+		if (engineReadyStageEntered) return;
+		const coord = effectiveCoordinator;
+		let cancelled = false;
+		void coord
+			.waitUntilReady()
+			.then(() => {
+				if (cancelled) return;
+				untrack(() => {
+					if (engineReadyStageEntered) return;
+					engineReadyStageEntered = true;
+					stageTracker.enter("engine-ready");
+				});
+			})
+			.catch(() => {
+				if (cancelled) return;
+				untrack(() => {
+					if (engineReadyStageEntered) return;
+					engineReadyStageEntered = true;
+					stageTracker.enter("engine-ready", "failed");
+				});
+			});
+		return () => {
+			cancelled = true;
+		};
+	});
 
 	$effect(() => {
 		return () => {

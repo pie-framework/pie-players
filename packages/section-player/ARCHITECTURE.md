@@ -83,12 +83,24 @@ choice is about ergonomics, not capability.
   };
   ```
 
-### Naming rule
+### Naming rule (strict mirror, locked in M5)
 
-The easy-tier attribute name is the kebab-cased version of the runtime key.
-`tool-config-strictness` ↔ `runtime.toolConfigStrictness`. `player-type` ↔
-`runtime.playerType`. Hosts can move a knob from the easy tier to `runtime`
-(or back) without renaming.
+Every tier-1 surface obeys the same shape:
+
+```
+kebab-attribute  ↔  camelCaseProp  ↔  runtime.<sameCamelCaseKey>
+```
+
+`tool-config-strictness` ↔ `toolConfigStrictness` prop ↔
+`runtime.toolConfigStrictness`. `enabled-tools` ↔ `enabledTools` prop ↔
+`runtime.enabledTools`. Hosts can move a knob from the easy tier to
+`runtime` (or back) without renaming.
+
+This is enforced by
+[`tests/m5-mirror-rule.test.ts`](tests/m5-mirror-rule.test.ts), which
+parses the layout CE source files and asserts that every key in
+`RuntimeConfig` is reachable through both tiers and that every declared
+attribute is the camelCase-to-kebab conversion of its prop.
 
 ### Precedence rule
 
@@ -99,20 +111,41 @@ The easy-tier attribute name is the kebab-cased version of the runtime key.
 3. Documented default
 
 This is implemented centrally in `resolveRuntime` / `resolveToolsConfig` in
-[src/components/shared/section-player-runtime.ts](src/components/shared/section-player-runtime.ts).
-The equivalent path in `pie-assessment-toolkit` follows the same rule. New
-knobs MUST go through these helpers; do not add ad-hoc fall-throughs.
+[src/components/shared/section-player-runtime.ts](src/components/shared/section-player-runtime.ts)
+via a single `pick(runtimeVal, attrVal)` helper applied per key — so adding
+a new knob means appending exactly one entry to `RuntimeConfig`, one prop
+on each layout CE, and one `pick(...)` slot in `resolveRuntime`.
+Per-key precedence is locked behind parametrized tests in
+[`tests/section-player-runtime.test.ts`](tests/section-player-runtime.test.ts).
+New knobs MUST go through these helpers; do not add ad-hoc fall-throughs.
+
+### Documented exceptions to the mirror rule
+
+A small set of tier-1 attributes have *no* `runtime.<key>` mirror by
+design:
+
+- **Identity** (`section-id`, `attempt-id`, `section`): per-attempt host
+  state, not configuration. Re-using a section across attempts is the
+  reason `assessmentId` *does* mirror.
+- **Layout-only shell knobs** (`show-toolbar`, `toolbar-position`,
+  `narrow-layout-breakpoint`, `split-pane-collapse-strategy`): layout-CE
+  rendering concerns; the resolver does not see them.
+- **Deprecated aliases** (`item-toolbar-tools`, `passage-toolbar-tools`,
+  `framework-error-hook`): kept as props for back-compat but absorbed at
+  the CE boundary into the canonical surface (`tools.placement`,
+  `onFrameworkError`).
 
 ### Canonical tier-1 attribute set
 
-The tier-1 attribute set is intended to be the same shape across the
+The tier-1 attribute set is the same shape across the
 `pie-section-player-*` layout elements, `pie-section-player-base`, and
 `pie-assessment-toolkit`. Common members include:
 
 - Identity: `assessment-id`, `section-id`, `attempt-id`
 - Player: `player-type`, `lazy-init`
-- Tools: `tools` (object property) plus per-level easy attributes that
-  mirror `tools.placement`
+- Tools: `tools` (object property), `enabled-tools` (shorthand for
+  `tools.placement.section`), and the deprecated `item-toolbar-tools` /
+  `passage-toolbar-tools` aliases
 - Coordination: `coordinator`, `create-section-controller`
 - Accessibility: `accessibility`
 - Diagnostics: `tool-config-strictness`, `debug`. Framework-error
@@ -120,13 +153,10 @@ The tier-1 attribute set is intended to be the same shape across the
   bubbling `framework-error` DOM event (see "Framework error contract"
   below). The deprecated `framework-error-hook` / `frameworkErrorHook`
   alias is still accepted for migration.
-- Layout / shell (section-player only): `show-toolbar`, `toolbar-position`
-
-The exact canonical set is reconciled across CEs in M5 of the Coherent
-Options Surface tightening track. Drift today (for example,
-`tool-config-strictness` exposed on `pie-assessment-toolkit` but not on
-`pie-section-player-base`) is a known target for M5, not a precedent for
-new knobs.
+- Layout / shell (section-player only): `show-toolbar`, `toolbar-position`,
+  `narrow-layout-breakpoint`, `split-pane-collapse-strategy`,
+  `content-max-width-no-passage`, `content-max-width-with-passage`,
+  `split-pane-min-region-width`
 
 ### When to add a tier-1 attribute
 

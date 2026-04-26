@@ -177,27 +177,39 @@ do not add ad-hoc fall-throughs.
 
 ### Canonical tier-1 attribute set
 
-The tier-1 attribute set is intended to be the same shape across
+The tier-1 attribute set is the same shape across
 `pie-assessment-toolkit`, `pie-section-player-base`, and the
-`pie-section-player-*` layout elements. Common members include:
+`pie-section-player-*` layout elements (locked in M5). Every tier-1
+surface obeys the strict mirror rule:
+
+```
+kebab-attribute  ↔  camelCaseProp  ↔  runtime.<sameCamelCaseKey>
+```
+
+Common members include:
 
 - Identity: `assessment-id`, `section-id`, `attempt-id`
 - Player: `player-type`, `lazy-init`
-- Tools: `tools` (object property), `tool-registry` (object property), plus
-  per-level easy attributes that mirror `tools.placement`
+- Tools: `tools` (object property), `tool-registry` (object property),
+  `enabled-tools` (shorthand for `tools.placement.section`)
 - Coordination: `coordinator`, `create-section-controller`
-- Accessibility: `accessibility`
+- Accessibility: `accessibility` (object property; the deprecated
+  `accessibility` *attribute* mapping was removed in M5)
 - Diagnostics: `tool-config-strictness`, `debug`. Framework-error
   delivery is via the canonical `onFrameworkError` callback prop and the
   bubbling `framework-error` DOM event. The deprecated
   `framework-error-hook` / `frameworkErrorHook` alias is still accepted
   for migration.
 
-The exact canonical set is reconciled across CEs in M5 of the Coherent
-Options Surface tightening track. Drift today (for example,
-`tool-config-strictness` exposed on `pie-assessment-toolkit` but not on
-`pie-section-player-base`) is a known target for M5, not a precedent for
-new knobs.
+Documented exceptions to the mirror rule:
+
+- Identity (`section-id`, `attempt-id`, `section`): per-attempt host
+  state, not configuration.
+- Layout-only shell knobs on the section-player layout CEs
+  (`show-toolbar`, `toolbar-position`, `narrow-layout-breakpoint`,
+  `split-pane-collapse-strategy`): layout-CE rendering concerns.
+- Deprecated aliases (`item-toolbar-tools`, `passage-toolbar-tools`,
+  `framework-error-hook`): absorbed at the CE boundary.
 
 ### When to add a tier-1 attribute
 

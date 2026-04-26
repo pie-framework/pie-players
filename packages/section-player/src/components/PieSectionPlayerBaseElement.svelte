@@ -208,9 +208,8 @@
 		handleToolkitEvent(event, "runtime-error");
 	}
 
-	function handleFrameworkErrorHook(errorModel: unknown): void {
-		const detail = (errorModel || {}) as Record<string, unknown>;
-		emit("framework-error", detail);
+	function handleFrameworkErrorEvent(event: Event): void {
+		handleToolkitEvent(event, "framework-error");
 	}
 
 	function handleSessionChangedEvent(event: Event): void {
@@ -281,11 +280,18 @@
 			effectiveCreateSectionController || (() => new SectionController());
 	});
 
+	// Svelte 5 compiles `<custom-element onCamelCase={fn}>` as
+	// `addEventListener('camelcase', fn)` rather than a property
+	// assignment, so the canonical model-shape `onFrameworkError`
+	// callback prop on the toolkit cannot be wired through template
+	// binding. Imperatively assign it here so the base CE's resolved
+	// callback (runtime > prop > deprecated `frameworkErrorHook`)
+	// reaches the toolkit's bus subscriber.
 	$effect(() => {
 		if (!toolkitElement) return;
-		toolkitElement.frameworkErrorHook = handleFrameworkErrorHook;
+		toolkitElement.onFrameworkError = effectiveOnFrameworkError;
 		return () => {
-			toolkitElement.frameworkErrorHook = undefined;
+			toolkitElement.onFrameworkError = undefined;
 		};
 	});
 
@@ -423,13 +429,12 @@
 	{toolRegistry}
 	accessibility={effectiveAccessibility}
 	coordinator={effectiveCoordinator}
-	onFrameworkError={effectiveOnFrameworkError}
-	frameworkErrorHook={handleFrameworkErrorHook}
 	isolation={effectiveIsolation}
 	oncomposition-changed={handleCompositionChanged}
 	ontoolkit-ready={handleToolkitReadyEvent}
 	onsection-ready={handleSectionReadyEvent}
 	onruntime-error={handleRuntimeErrorEvent}
+	onframework-error={handleFrameworkErrorEvent}
 	onsession-changed={handleSessionChangedEvent}
 	onruntime-owned={handleRuntimeOwnedEvent}
 	onruntime-inherited={handleRuntimeInheritedEvent}

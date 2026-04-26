@@ -7,21 +7,28 @@
 			section: { attribute: "section", type: "Object" },
 			sectionId: { attribute: "section-id", type: "String" },
 			attemptId: { attribute: "attempt-id", type: "String" },
-			view: { attribute: "view", type: "String" },
 			env: { attribute: "env", type: "Object" },
 			lazyInit: { attribute: "lazy-init", type: "Boolean" },
 			toolConfigStrictness: { attribute: "tool-config-strictness", type: "String" },
 			tools: { attribute: "tools", type: "Object" },
+			enabledTools: { attribute: "enabled-tools", type: "String" },
 			toolRegistry: { type: "Object", reflect: false },
-			accessibility: { attribute: "accessibility", type: "Object" },
+			accessibility: { type: "Object", reflect: false },
 			player: { attribute: "player", type: "Object" },
 			playerType: { attribute: "player-type", type: "String" },
 			coordinator: { type: "Object", reflect: false },
 			createSectionController: { type: "Object", reflect: false },
-			frameworkErrorHook: { type: "Object", reflect: false },
 			onFrameworkError: { type: "Object", reflect: false },
+			// @deprecated since M3; use `onFrameworkError` (canonical) or
+			// `onframework-error` DOM event. Absorbed in
+			// `deliverFrameworkErrorHook` with a one-time dev warn.
+			frameworkErrorHook: { type: "Object", reflect: false },
+			// @deprecated since M3; use `onFrameworkError` or the
+			// `onframework-error` DOM event (kebab name).
 			onframeworkerror: { type: "Object", reflect: false },
 			errorRenderer: { type: "Object", reflect: false },
+			// @deprecated since M5; set via `runtime.isolation` on a
+			// containing section-player CE, or omit (default `inherit`).
 			isolation: { attribute: "isolation", type: "String" },
 		},
 	}}
@@ -61,6 +68,7 @@
 		normalizeAndValidateToolsConfig,
 		type ToolConfigStrictness,
 	} from "../services/tool-config-validation.js";
+	import { parseToolList } from "../services/tools-config-normalizer.js";
 	import {
 		PIE_INTERNAL_CONTENT_LOADED_EVENT,
 		PIE_INTERNAL_ITEM_SESSION_CHANGED_EVENT,
@@ -146,11 +154,11 @@ const DEFAULT_ENV = {
 		section = null,
 		sectionId = "",
 		attemptId = "",
-		view = "candidate",
 		env = {},
 		lazyInit = true,
 		toolConfigStrictness = "error" as ToolConfigStrictness,
 		tools = {},
+		enabledTools = "",
 		toolRegistry = null as ToolRegistry | null,
 		accessibility = {},
 		player = null as HostItemPlayerInput,
@@ -525,8 +533,42 @@ const DEFAULT_ENV = {
 		);
 	}
 
+	/**
+	 * Merge the `enabled-tools` shorthand into a `tools.placement.section`
+	 * list, leaving the `tools` object form authoritative when both are
+	 * provided. Mirrors `resolveToolsConfig` in the section-player layer
+	 * so direct toolkit hosts get the same easy-tier behavior.
+	 *
+	 * Precedence (highest first):
+	 *   1. Explicit `tools.placement.section` array on the `tools` prop
+	 *   2. `enabled-tools` shorthand attribute / `enabledTools` prop
+	 *
+	 * Section-player CEs already merge before passing `tools` here, so for
+	 * the embedded path this helper is a no-op in practice; it only fires
+	 * when a host mounts `<pie-assessment-toolkit>` directly.
+	 */
+	function buildEffectiveToolsInput(): Record<string, unknown> {
+		const baseTools = (tools || {}) as Record<string, unknown>;
+		const sectionShorthand = parseToolList(enabledTools);
+		if (sectionShorthand.length === 0) return baseTools;
+		const placement = (baseTools.placement || {}) as Record<string, unknown>;
+		const explicitSectionPlacement = Array.isArray(placement.section)
+			? (placement.section as unknown[])
+			: null;
+		if (explicitSectionPlacement && explicitSectionPlacement.length > 0) {
+			return baseTools;
+		}
+		return {
+			...baseTools,
+			placement: {
+				...placement,
+				section: sectionShorthand,
+			},
+		};
+	}
+
 	function validateToolsConfigForBootstrap() {
-		return normalizeAndValidateToolsConfig(tools as any, {
+		return normalizeAndValidateToolsConfig(buildEffectiveToolsInput() as any, {
 			strictness: toolConfigStrictness,
 			source: "pie-assessment-toolkit.bootstrap",
 			toolRegistry,
@@ -536,7 +578,7 @@ const DEFAULT_ENV = {
 	function getOwnedBootstrapFailureKey(): string {
 		let toolsSignature = "";
 		try {
-			toolsSignature = JSON.stringify(tools || {});
+			toolsSignature = JSON.stringify(buildEffectiveToolsInput());
 		} catch {
 			toolsSignature = "[unserializable-tools]";
 		}

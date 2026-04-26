@@ -183,6 +183,110 @@ describe("resolveRuntime onFrameworkError precedence", () => {
 	});
 });
 
+describe("resolveRuntime onStageChange / onLoadingComplete propagation (M6)", () => {
+	test("resolveSectionPlayerRuntimeState propagates onStageChange into effectiveRuntime", async () => {
+		const { resolveSectionPlayerRuntimeState } = await loadRuntimeModule();
+		const handler = () => {};
+		const state = resolveSectionPlayerRuntimeState({
+			assessmentId: "a1",
+			playerType: "iife",
+			player: null,
+			lazyInit: true,
+			tools: null,
+			accessibility: null,
+			coordinator: null,
+			createSectionController: null,
+			isolation: "inherit",
+			env: null,
+			toolRegistry: null,
+			toolConfigStrictness: "error",
+			onStageChange: handler,
+			runtime: null,
+			enabledTools: "",
+			itemToolbarTools: "",
+			passageToolbarTools: "",
+		});
+		expect((state.effectiveRuntime as any).onStageChange).toBe(handler);
+	});
+
+	test("resolveSectionPlayerRuntimeState propagates onLoadingComplete into effectiveRuntime", async () => {
+		const { resolveSectionPlayerRuntimeState } = await loadRuntimeModule();
+		const handler = () => {};
+		const state = resolveSectionPlayerRuntimeState({
+			assessmentId: "a1",
+			playerType: "iife",
+			player: null,
+			lazyInit: true,
+			tools: null,
+			accessibility: null,
+			coordinator: null,
+			createSectionController: null,
+			isolation: "inherit",
+			env: null,
+			toolRegistry: null,
+			toolConfigStrictness: "error",
+			onLoadingComplete: handler,
+			runtime: null,
+			enabledTools: "",
+			itemToolbarTools: "",
+			passageToolbarTools: "",
+		});
+		expect((state.effectiveRuntime as any).onLoadingComplete).toBe(handler);
+	});
+
+	test("runtime.onStageChange wins over the top-level prop in resolveSectionPlayerRuntimeState", async () => {
+		const { resolveSectionPlayerRuntimeState } = await loadRuntimeModule();
+		const fromRuntime = () => {};
+		const fromProp = () => {};
+		const state = resolveSectionPlayerRuntimeState({
+			assessmentId: "a1",
+			playerType: "iife",
+			player: null,
+			lazyInit: true,
+			tools: null,
+			accessibility: null,
+			coordinator: null,
+			createSectionController: null,
+			isolation: "inherit",
+			env: null,
+			toolRegistry: null,
+			toolConfigStrictness: "error",
+			onStageChange: fromProp,
+			runtime: { onStageChange: fromRuntime },
+			enabledTools: "",
+			itemToolbarTools: "",
+			passageToolbarTools: "",
+		});
+		expect((state.effectiveRuntime as any).onStageChange).toBe(fromRuntime);
+	});
+
+	test("runtime.onLoadingComplete wins over the top-level prop in resolveSectionPlayerRuntimeState", async () => {
+		const { resolveSectionPlayerRuntimeState } = await loadRuntimeModule();
+		const fromRuntime = () => {};
+		const fromProp = () => {};
+		const state = resolveSectionPlayerRuntimeState({
+			assessmentId: "a1",
+			playerType: "iife",
+			player: null,
+			lazyInit: true,
+			tools: null,
+			accessibility: null,
+			coordinator: null,
+			createSectionController: null,
+			isolation: "inherit",
+			env: null,
+			toolRegistry: null,
+			toolConfigStrictness: "error",
+			onLoadingComplete: fromProp,
+			runtime: { onLoadingComplete: fromRuntime },
+			enabledTools: "",
+			itemToolbarTools: "",
+			passageToolbarTools: "",
+		});
+		expect((state.effectiveRuntime as any).onLoadingComplete).toBe(fromRuntime);
+	});
+});
+
 /**
  * Per-key precedence guardrail (M5 strict mirror rule).
  *
@@ -220,6 +324,12 @@ const PER_KEY_FIXTURES: ReadonlyArray<{
 	{ key: "contentMaxWidthNoPassage", runtimeValue: 800, topLevelValue: 1024 },
 	{ key: "contentMaxWidthWithPassage", runtimeValue: 1280, topLevelValue: 1440 },
 	{ key: "splitPaneMinRegionWidth", runtimeValue: 240, topLevelValue: 320 },
+	{ key: "onStageChange", runtimeValue: () => {}, topLevelValue: () => {} },
+	{
+		key: "onLoadingComplete",
+		runtimeValue: () => {},
+		topLevelValue: () => {},
+	},
 ];
 
 describe("resolveRuntime per-key precedence (M5 mirror rule)", () => {

@@ -245,6 +245,59 @@ Telemetry
   mappings are kept so hosts that still listen to `runtime-error` see
   no telemetry regression while they migrate.
 
+## Readiness vocabulary (M6)
+
+`pie-stage-change` is the canonical readiness vocabulary across the
+section-player and the assessment toolkit. It replaces a heterogeneous
+mix of legacy events (`ready`, `interaction-ready`,
+`section-controller-ready`, `toolkit-ready`, `section-ready`) with a
+single typed transition stream that a host can subscribe to once and
+correlate across wrapper depths.
+
+Stages and order
+- `attached` (per DOM element, fires exactly once)
+- `composed` (host-provided composition resolved)
+- `runtime-bound` (effective runtime resolved)
+- `engine-ready` (controller / toolkit engine ready)
+- `ui-rendered` (host UI rendered; layout-only — toolkit-shape mounts
+  emit `ui-rendered:skipped` since the toolkit is not the renderer)
+- `interactive` (user input accepted)
+- `disposed` (cohort change or unmount)
+
+The `StageTracker` primitive (`@pie-players/pie-players-shared/pie`)
+enforces monotonic ordering, applicability per CE shape (layout vs
+toolkit), and cohort reset on `(sectionId, attemptId)` change. Both
+the layout kernel and `<pie-assessment-toolkit>` use the same
+primitive; `sourceCe` and `sourceCeShape` distinguish emissions.
+
+DOM events
+- Canonical: `pie-stage-change` (detail = `StageChangeDetail`).
+- Canonical: `pie-loading-complete` (detail = `LoadingCompleteDetail`)
+  — kernel-only; fires once per cohort when every item has loaded.
+- Compatibility: `ready`, `interaction-ready`, `readiness-change` are
+  kept dual-emitting through the M6 deprecation window.
+
+Callback prop mirrors
+- `onStageChange(detail)` is exposed on every `<pie-section-player-…>`
+  layout element, `<pie-section-player-base>`, and
+  `<pie-assessment-toolkit>`. The kernel and the toolkit invoke the
+  resolved handler at the same emit point as `pie-stage-change`, so
+  callback and event stay in lockstep across cohort changes.
+- `onLoadingComplete(detail)` is exposed on the kernel-backed layout
+  CEs only (split-pane / vertical / tabbed / kernel-host). The toolkit
+  and the base CE do not own a `pie-loading-complete` emit point and
+  intentionally omit the prop. `runtime.onLoadingComplete` set on
+  those surfaces still flows through `runtime` passthrough — it just
+  never fires from there.
+
+Two-tier precedence
+- `runtime.onStageChange` wins over the top-level `onStageChange`
+  prop; same for `runtime.onLoadingComplete`. Resolved through the
+  shared per-key `pick(...)` slot in `resolveRuntime` (Decision D1) —
+  no per-feature special-casing.
+- Thrown handlers are caught at the emit point and logged so a faulty
+  consumer cannot break the stage pipeline.
+
 ## Verification matrix
 
 - Forward-only controller events + runtime state bootstrap:

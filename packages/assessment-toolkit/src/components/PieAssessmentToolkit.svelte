@@ -74,7 +74,7 @@
 	import { SectionRuntimeEngine } from "../runtime/SectionRuntimeEngine.js";
 	import {
 		createRuntimeId,
-	} from "../runtime/runtime-event-guards.js";
+	} from "../runtime/runtime-id.js";
 	import {
 		createSessionEmitPolicyState,
 		resetSessionEmitPolicyState,
@@ -802,9 +802,10 @@ const DEFAULT_ENV = {
 		return effectiveCoordinator.subscribeTelemetry(({ eventName, payload }) => {
 			if (!isInstrumentationProvider(instrumentationProvider)) return;
 			if (!instrumentationProvider.isReady()) return;
-			const instrumentationEventName = eventName.startsWith("pie-")
-				? eventName
-				: `pie-toolkit-${eventName}`;
+			// Telemetry event names are prefixed at the emit site in
+			// `ToolkitCoordinator.emitTelemetry`. See the JSDoc on that
+			// method for the namespace convention. No fallback here.
+			const instrumentationEventName = eventName;
 			const timestamp = new Date().toISOString();
 			const attributes = {
 				...(payload || {}),

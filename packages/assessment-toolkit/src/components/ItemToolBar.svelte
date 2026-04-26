@@ -615,7 +615,7 @@
 			| null;
 		if (typeof toolkitCoordinator?.subscribeTelemetry !== 'function') return;
 		return toolkitCoordinator.subscribeTelemetry(({ eventName, payload }) => {
-			if (eventName !== 'tool-config-updated') return;
+			if (eventName !== 'pie-toolkit-tool-config-updated') return;
 			if (payload?.toolId && !toolbarVisibleToolIds.includes(payload.toolId)) return;
 			moduleLoadVersion += 1;
 			syncRenderedToolsState();

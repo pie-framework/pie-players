@@ -548,6 +548,29 @@ export class ToolkitCoordinator {
 		}
 	}
 
+	/**
+	 * Emit a telemetry event to `onTelemetry` hook + all `subscribeTelemetry`
+	 * listeners.
+	 *
+	 * **Naming convention.** Event names MUST be prefixed at the call site,
+	 * not auto-decorated here. The convention is:
+	 *
+	 * - `pie-toolkit-*` for toolkit lifecycle (state load, providers,
+	 *   coordinator readiness, section-controller register/dispose, TTS
+	 *   bring-up, tool-config updates, etc.).
+	 * - `pie-tool-*` for individual tool events (provider init lifecycle,
+	 *   provider backend calls, tool-specific telemetry forwarded from
+	 *   `__pieTelemetry`).
+	 * - `pie-section-*` is reserved for section-player layout events
+	 *   surfaced via `attachInstrumentationEventBridge` and is not emitted
+	 *   from this method directly.
+	 *
+	 * Anything that does not fit a documented prefix is a deliberate decision
+	 * to be raised in code review, not a fallback. There is no "auto prefix"
+	 * here on purpose: it keeps every emit-site honest about which namespace
+	 * it owns, and lets `subscribeTelemetry` consumers compare against
+	 * documented strings without per-consumer normalization.
+	 */
 	private async emitTelemetry(
 		eventName: string,
 		payload?: Record<string, unknown>,
@@ -671,7 +694,7 @@ export class ToolkitCoordinator {
 					this.elementToolStateStore.loadState(state);
 				}
 				this.stateLoaded = true;
-				await this.emitTelemetry("tool-state-loaded", {
+				await this.emitTelemetry("pie-toolkit-tool-state-loaded", {
 					hasState: Boolean(state),
 				});
 			} catch (err) {
@@ -786,7 +809,7 @@ export class ToolkitCoordinator {
 				providerName: config.provider.providerName,
 			};
 			await this.hooks.onProviderRegistered?.(providerId, meta);
-			await this.emitTelemetry("provider-registered", {
+			await this.emitTelemetry("pie-toolkit-provider-registered", {
 				providerId,
 				providerName: config.provider.providerName,
 			});
@@ -816,7 +839,7 @@ export class ToolkitCoordinator {
 				await this.hooks.onProviderInitStart?.(providerId, meta);
 				await this.toolProviderRegistry.initialize(providerId);
 				await this.hooks.onProviderReady?.(providerId, meta);
-				await this.emitTelemetry("provider-ready", { providerId });
+				await this.emitTelemetry("pie-toolkit-provider-ready", { providerId });
 				return provider;
 			} catch (err) {
 				const error = err instanceof Error ? err : new Error(String(err));
@@ -1258,7 +1281,7 @@ export class ToolkitCoordinator {
 			controller: args.controller,
 		});
 		await this.hooks.onSectionControllerReady?.(args.context, args.controller);
-		await this.emitTelemetry("section-controller-ready", {
+		await this.emitTelemetry("pie-toolkit-section-controller-ready", {
 			assessmentId: args.key.assessmentId,
 			sectionId: args.key.sectionId,
 			attemptId: args.key.attemptId,
@@ -1345,7 +1368,7 @@ export class ToolkitCoordinator {
 		}
 		await args.controller.dispose?.();
 		await this.hooks.onSectionControllerDispose?.(args.context, args.controller);
-		await this.emitTelemetry("section-controller-disposed", {
+		await this.emitTelemetry("pie-toolkit-section-controller-disposed", {
 			assessmentId: args.key.assessmentId,
 			sectionId: args.key.sectionId,
 			attemptId: args.key.attemptId,
@@ -1403,7 +1426,7 @@ export class ToolkitCoordinator {
 				backend: resolvedBackend,
 			},
 		});
-		await this.emitTelemetry("tts-init-start", {
+		await this.emitTelemetry("pie-toolkit-tts-init-start", {
 			backend: resolvedBackend,
 		});
 		await this.emitTelemetry("pie-tool-init-start", {
@@ -1418,7 +1441,7 @@ export class ToolkitCoordinator {
 				const ttsProvider = await this.ensureProviderReady("tts");
 				const providerInstance = await ttsProvider.createInstance();
 				await this.initializeTTSService(providerInstance, runtimeTTSConfig);
-				await this.emitTelemetry("tts-init-success", {
+				await this.emitTelemetry("pie-toolkit-tts-init-success", {
 					provider: "registry",
 				});
 				await this.emitTelemetry("pie-tool-init-success", {
@@ -1463,7 +1486,7 @@ export class ToolkitCoordinator {
 		const provider = new BrowserTTSProvider();
 		try {
 			await this.initializeTTSService(provider, runtimeTTSConfig);
-			await this.emitTelemetry("tts-init-success", {
+			await this.emitTelemetry("pie-toolkit-tts-init-success", {
 				provider: "browser-fallback",
 			});
 			await this.emitTelemetry("pie-tool-init-success", {
@@ -1477,7 +1500,7 @@ export class ToolkitCoordinator {
 				error instanceof Error ? error : new Error(String(error));
 			this.hooks.onTTSError?.(normalized, { phase: "tts-init" });
 			this.handleError(normalized, { phase: "tts-init" });
-			await this.emitTelemetry("tts-init-error", {
+			await this.emitTelemetry("pie-toolkit-tts-init-error", {
 				message: normalized.message,
 			});
 			await this.emitTelemetry("pie-tool-init-error", {
@@ -1561,7 +1584,7 @@ export class ToolkitCoordinator {
 			}
 		});
 		const voicesAfterWait = synth.getVoices();
-		await this.emitTelemetry("tts-browser-voices-ready", {
+		await this.emitTelemetry("pie-toolkit-tts-browser-voices-ready", {
 			voiceCount: voicesAfterWait.length,
 			timedOut: voicesAfterWait.length === 0,
 		});
@@ -1604,7 +1627,7 @@ export class ToolkitCoordinator {
 			if (!this.coordinatorReadyNotified) {
 				this.coordinatorReadyNotified = true;
 				await this.hooks.onCoordinatorReady?.(this);
-				await this.emitTelemetry("coordinator-ready", {
+				await this.emitTelemetry("pie-toolkit-coordinator-ready", {
 					assessmentId: this.assessmentId,
 				});
 			}
@@ -1720,7 +1743,7 @@ export class ToolkitCoordinator {
 			},
 		);
 		this.config.tools = validated.config;
-		void this.emitTelemetry("tool-config-updated", { toolId });
+		void this.emitTelemetry("pie-toolkit-tool-config-updated", { toolId });
 
 		// Apply configuration changes to services
 		this._applyToolConfigChange(toolId, updates);

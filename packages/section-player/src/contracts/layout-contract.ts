@@ -44,6 +44,8 @@ export type SectionPlayerAdvancedPropName =
 	| "sectionHostButtons"
 	| "itemHostButtons"
 	| "passageHostButtons"
+	| "policies"
+	| "toolConfigStrictness"
 	| "hooks"
 	| "onFrameworkError";
 

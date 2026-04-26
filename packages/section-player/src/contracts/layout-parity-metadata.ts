@@ -35,6 +35,8 @@ const ADVANCED_ESCAPE_HATCH_PROPS = [
 	"sectionHostButtons",
 	"itemHostButtons",
 	"passageHostButtons",
+	"policies",
+	"toolConfigStrictness",
 	"hooks",
 	"onFrameworkError",
 ] as const;

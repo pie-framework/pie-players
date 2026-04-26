@@ -183,6 +183,95 @@ describe("resolveRuntime onFrameworkError precedence", () => {
 	});
 });
 
+/**
+ * Per-key precedence guardrail (M5 strict mirror rule).
+ *
+ * For every key in `RuntimeConfig` that flows through `resolveRuntime`'s
+ * single-value `pick(...)` slot, prove that `runtime.<key>` wins over the
+ * top-level prop. This is the *behavioral* counterpart to the
+ * source-parsing test in `m5-mirror-rule.test.ts`.
+ *
+ * Two-arg picks only — `player` is a merge (not a pick) and `tools` runs
+ * through `resolveToolsConfig` first, so they're covered by their own
+ * dedicated tests above and below.
+ */
+const PER_KEY_FIXTURES: ReadonlyArray<{
+	key: string;
+	runtimeValue: unknown;
+	topLevelValue: unknown;
+}> = [
+	{ key: "assessmentId", runtimeValue: "from-runtime", topLevelValue: "from-prop" },
+	{ key: "playerType", runtimeValue: "esm", topLevelValue: "iife" },
+	{ key: "lazyInit", runtimeValue: false, topLevelValue: true },
+	{ key: "accessibility", runtimeValue: { fontSize: "lg" }, topLevelValue: { fontSize: "sm" } },
+	{ key: "coordinator", runtimeValue: { id: "rt" }, topLevelValue: { id: "tp" } },
+	{ key: "createSectionController", runtimeValue: () => ({}), topLevelValue: () => ({}) },
+	{ key: "isolation", runtimeValue: "shadow", topLevelValue: "inherit" },
+	{ key: "env", runtimeValue: { mode: "review" }, topLevelValue: { mode: "gather" } },
+	{ key: "toolConfigStrictness", runtimeValue: "off", topLevelValue: "error" },
+	{ key: "toolRegistry", runtimeValue: { tools: { foo: {} } }, topLevelValue: { tools: { bar: {} } } },
+	{ key: "policies", runtimeValue: { sample: 1 }, topLevelValue: { sample: 2 } },
+	{ key: "hooks", runtimeValue: { onItemMount: () => {} }, topLevelValue: { onItemMount: () => {} } },
+	{ key: "sectionHostButtons", runtimeValue: [{ id: "rt" }], topLevelValue: [{ id: "tp" }] },
+	{ key: "itemHostButtons", runtimeValue: [{ id: "rt" }], topLevelValue: [{ id: "tp" }] },
+	{ key: "passageHostButtons", runtimeValue: [{ id: "rt" }], topLevelValue: [{ id: "tp" }] },
+	{ key: "iifeBundleHost", runtimeValue: "https://rt.example", topLevelValue: "https://tp.example" },
+	{ key: "debug", runtimeValue: "tools", topLevelValue: "all" },
+	{ key: "contentMaxWidthNoPassage", runtimeValue: 800, topLevelValue: 1024 },
+	{ key: "contentMaxWidthWithPassage", runtimeValue: 1280, topLevelValue: 1440 },
+	{ key: "splitPaneMinRegionWidth", runtimeValue: 240, topLevelValue: 320 },
+];
+
+describe("resolveRuntime per-key precedence (M5 mirror rule)", () => {
+	for (const fixture of PER_KEY_FIXTURES) {
+		test(`runtime.${fixture.key} wins over top-level \`${fixture.key}\``, async () => {
+			const { resolveRuntime } = await loadRuntimeModule();
+			const baseArgs: Record<string, unknown> = {
+				assessmentId: "a1",
+				playerType: "iife",
+				player: null,
+				lazyInit: true,
+				accessibility: null,
+				coordinator: null,
+				createSectionController: null,
+				isolation: "inherit",
+				env: null,
+				runtime: { [fixture.key]: fixture.runtimeValue },
+				effectiveToolsConfig: {},
+				toolConfigStrictness: "error",
+			};
+			baseArgs[fixture.key] = fixture.topLevelValue;
+			const merged = resolveRuntime(baseArgs as never);
+			expect((merged as Record<string, unknown>)[fixture.key]).toBe(
+				fixture.runtimeValue as never,
+			);
+		});
+
+		test(`runtime falls back to top-level \`${fixture.key}\` when omitted`, async () => {
+			const { resolveRuntime } = await loadRuntimeModule();
+			const baseArgs: Record<string, unknown> = {
+				assessmentId: "a1",
+				playerType: "iife",
+				player: null,
+				lazyInit: true,
+				accessibility: null,
+				coordinator: null,
+				createSectionController: null,
+				isolation: "inherit",
+				env: null,
+				runtime: {},
+				effectiveToolsConfig: {},
+				toolConfigStrictness: "error",
+			};
+			baseArgs[fixture.key] = fixture.topLevelValue;
+			const merged = resolveRuntime(baseArgs as never);
+			expect((merged as Record<string, unknown>)[fixture.key]).toBe(
+				fixture.topLevelValue as never,
+			);
+		});
+	}
+});
+
 describe("resolveToolsConfig", () => {
 	test("applies toolbar overlays without validating tool ids", async () => {
 		const { resolveToolsConfig } = await loadRuntimeModule();

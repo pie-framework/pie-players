@@ -10,7 +10,7 @@
 	} from "@pie-players/pie-assessment-toolkit";
 	import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
 	import type { SectionControllerHandle } from "@pie-players/pie-assessment-toolkit";
-	import { createEventDispatcher } from "svelte";
+	import { createEventDispatcher, untrack } from "svelte";
 	import type { SectionPlayerReadinessChangeDetail } from "../../contracts/public-events.js";
 	import type {
 		SectionPlayerNavigationSnapshot,
@@ -22,6 +22,10 @@
 	} from "../../policies/index.js";
 	import type { FrameworkErrorModel } from "@pie-players/pie-assessment-toolkit";
 	import type { SectionPlayerPolicies } from "../../policies/types.js";
+	import type {
+		LoadingCompleteDetail,
+		StageChangeDetail,
+	} from "../../contracts/stages.js";
 	import { createPlayerAction } from "./player-action.js";
 	import {
 		type LayoutCompositionSnapshot,
@@ -36,8 +40,13 @@
 	import type { SectionPlayerCardRenderContext } from "./section-player-card-context.js";
 	import { coerceBooleanLike } from "./section-player-props.js";
 	import { createReadinessDetail } from "./section-player-readiness.js";
+	import { createStageTracker } from "./section-player-stage-tracker.js";
 	import SectionPlayerLayoutScaffold from "./SectionPlayerLayoutScaffold.svelte";
 	import type { SectionPlayerHostHooks } from "../../contracts/host-hooks.js";
+
+	function createSectionPlayerRuntimeId(): string {
+		return `section-player-${Math.random().toString(16).slice(2)}-${Date.now()}`;
+	}
 
 	type PlayerActionConfig = {
 		stateKey: string;
@@ -61,6 +70,11 @@
 		};
 		"element-preload-retry": Record<string, unknown>;
 		"element-preload-error": Record<string, unknown>;
+		// Canonical M6 readiness vocabulary. Layout CEs forward these as the
+		// `pie-stage-change` and `pie-loading-complete` DOM events; legacy
+		// readiness aliases above keep dual-emitting through one major.
+		"pie-stage-change": StageChangeDetail;
+		"pie-loading-complete": LoadingCompleteDetail;
 	};
 
 	let {
@@ -99,6 +113,12 @@
 		onFrameworkError = undefined as
 			| undefined
 			| ((model: FrameworkErrorModel) => void),
+		// `sourceCe` is the host layout CE's tag name (without the
+		// `--version-<encoded>` suffix) used to label `pie-stage-change`
+		// emissions. Each layout CE that mounts the kernel passes its own
+		// canonical tag name; defaults to `pie-section-player` so kernel
+		// instantiations in tests/demos still produce well-formed events.
+		sourceCe = "pie-section-player" as string,
 	} = $props();
 
 	const dispatch = createEventDispatcher<KernelEvents>();
@@ -140,6 +160,28 @@
 	let finalReadyDispatched = $state(false);
 	let runtimeErrorState = $state(false);
 	let sectionControllerReadyDispatched = $state(false);
+
+	// M6 canonical stage tracker. One tracker per kernel mount; cohort
+	// resets on `(sectionId, attemptId)` change emit `disposed` for the
+	// outgoing cohort and re-arm from `composed` for the incoming one.
+	// `attached` fires exactly once per DOM element (kernel mount),
+	// matching the contract in `stages.ts` §3.5. Initial seed values are
+	// captured via `untrack` because the tracker explicitly absorbs
+	// subsequent cohort changes through `reset()`, not through prop
+	// reactivity at construction time.
+	const runtimeId = createSectionPlayerRuntimeId();
+	const stageTracker = createStageTracker({
+		sourceCe: untrack(() => sourceCe),
+		sourceCeShape: "layout",
+		runtimeId,
+		sectionId: untrack(() => sectionId || undefined),
+		attemptId: untrack(() => attemptId || undefined),
+		emit: (detail) => {
+			dispatch("pie-stage-change", detail);
+		},
+	});
+	let lastCohortKey = $state(untrack(() => `${sectionId}|${attemptId}`));
+	let loadingCompleteEmittedForCohort = $state<string | null>(null);
 
 	const compositionModel = $derived(compositionSnapshot.compositionModel);
 	const passages = $derived(compositionSnapshot.passages);
@@ -395,6 +437,67 @@
 		});
 	});
 
+	// Stage: `attached` — wired exactly once on kernel mount. Per §3.5
+	// of the M6 plan, `attached` fires once per DOM element instance and
+	// is not re-emitted on cohort change.
+	$effect(() => {
+		untrack(() => {
+			stageTracker.enter("attached");
+		});
+		return () => {
+			untrack(() => {
+				stageTracker.enter("disposed");
+			});
+		};
+	});
+
+	// Cohort change handler: when `(sectionId, attemptId)` changes, emit
+	// `disposed` for the outgoing cohort and reset the tracker so the
+	// new cohort begins emitting from `composed` for the same DOM
+	// element. Also re-arms `pie-loading-complete` emission.
+	$effect(() => {
+		const nextKey = `${sectionId}|${attemptId}`;
+		untrack(() => {
+			if (nextKey === lastCohortKey) return;
+			if (stageTracker.getCurrent() !== null) {
+				stageTracker.enter("disposed");
+			}
+			stageTracker.reset({
+				sectionId: sectionId || undefined,
+				attemptId: attemptId || undefined,
+			});
+			lastCohortKey = nextKey;
+			loadingCompleteEmittedForCohort = null;
+			interactionReadyDispatched = false;
+			finalReadyDispatched = false;
+			sectionControllerReadyDispatched = false;
+		});
+	});
+
+	// Canonical M6 stage progression. Each branch is short-circuited so
+	// later stages cannot fire before their predecessors; the tracker
+	// itself is idempotent and rejects backward transitions, but gating
+	// here keeps the emit order monotonic across asynchronous sources.
+	$effect(() => {
+		const composed = items.length > 0 || passages.length > 0;
+		const runtimeBound = !!effectiveRuntime;
+		const engineReady = sectionControllerReadyDispatched;
+		const uiRendered = sectionReady;
+		const interactive = readinessDetail.interactionReady;
+		untrack(() => {
+			if (!composed) return;
+			stageTracker.enter("composed");
+			if (!runtimeBound) return;
+			stageTracker.enter("runtime-bound");
+			if (!engineReady) return;
+			stageTracker.enter("engine-ready");
+			if (!uiRendered) return;
+			stageTracker.enter("ui-rendered");
+			if (!interactive) return;
+			stageTracker.enter("interactive");
+		});
+	});
+
 	$effect(() => {
 		dispatch("readiness-change", readinessDetail);
 		if (readinessDetail.interactionReady && !interactionReadyDispatched) {
@@ -404,6 +507,20 @@
 		if (readinessDetail.allLoadingComplete && !finalReadyDispatched) {
 			finalReadyDispatched = true;
 			dispatch("ready", readinessDetail);
+			const cohortKey = `${sectionId}|${attemptId}`;
+			if (loadingCompleteEmittedForCohort !== cohortKey) {
+				loadingCompleteEmittedForCohort = cohortKey;
+				const loadedItemCount = items.length;
+				dispatch("pie-loading-complete", {
+					runtimeId,
+					sectionId,
+					attemptId: attemptId || undefined,
+					itemCount: loadedItemCount,
+					loadedCount: loadedItemCount,
+					timestamp: new Date().toISOString(),
+					sourceCe,
+				});
+			}
 		}
 	});
 </script>

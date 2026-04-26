@@ -343,6 +343,7 @@
 	{hooks}
 	{toolConfigStrictness}
 	onFrameworkError={effectiveOnFrameworkError}
+	sourceCe="pie-section-player-tabbed"
 	playerActionConfig={{
 		stateKey: "__tabbedAppliedParams",
 		includeSessionRefInState: false,
@@ -359,6 +360,8 @@
 	on:composition-changed={forward}
 	on:element-preload-retry={forward}
 	on:element-preload-error={forward}
+	on:pie-stage-change={forward}
+	on:pie-loading-complete={forward}
 	let:layoutModel
 >
 	<SectionPlayerTabbedContent

@@ -441,6 +441,7 @@
 	{hooks}
 	{toolConfigStrictness}
 	onFrameworkError={effectiveOnFrameworkError}
+	sourceCe="pie-section-player-splitpane"
 	playerActionConfig={{
 		stateKey: "__splitPaneAppliedParams",
 		includeSessionRefInState: true,
@@ -457,6 +458,8 @@
 	on:composition-changed={forward}
 	on:element-preload-retry={forward}
 	on:element-preload-error={forward}
+	on:pie-stage-change={forward}
+	on:pie-loading-complete={forward}
 	let:layoutModel
 >
 	{#if isStacked}

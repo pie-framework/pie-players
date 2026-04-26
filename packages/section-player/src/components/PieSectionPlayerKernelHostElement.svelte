@@ -272,6 +272,7 @@
 	{hooks}
 	{toolConfigStrictness}
 	onFrameworkError={effectiveOnFrameworkError}
+	sourceCe="pie-section-player"
 	on:readiness-change={(event: CustomEvent) => {
 		const detail = (event as CustomEvent).detail;
 		snapshot = { ...snapshot, readiness: detail };
@@ -285,6 +286,8 @@
 	on:runtime-inherited={reemit}
 	on:section-controller-ready={reemit}
 	on:session-changed={reemit}
+	on:pie-stage-change={reemit}
+	on:pie-loading-complete={reemit}
 	on:composition-changed={(event: CustomEvent) => {
 		const detail = (event as CustomEvent).detail as {
 			composition?: { items?: unknown[]; passages?: unknown[] };

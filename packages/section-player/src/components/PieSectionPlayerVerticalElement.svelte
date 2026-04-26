@@ -340,6 +340,7 @@
 	{hooks}
 	{toolConfigStrictness}
 	onFrameworkError={effectiveOnFrameworkError}
+	sourceCe="pie-section-player-vertical"
 	playerActionConfig={{
 		stateKey: "__verticalAppliedParams",
 		includeSessionRefInState: false,
@@ -356,6 +357,8 @@
 	on:composition-changed={forward}
 	on:element-preload-retry={forward}
 	on:element-preload-error={forward}
+	on:pie-stage-change={forward}
+	on:pie-loading-complete={forward}
 	let:layoutModel
 >
 	<SectionPlayerVerticalContent

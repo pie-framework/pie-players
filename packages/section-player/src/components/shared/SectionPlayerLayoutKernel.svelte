@@ -20,10 +20,7 @@
 		DEFAULT_SECTION_PLAYER_POLICIES,
 		isPreloadEnabled,
 	} from "../../policies/index.js";
-	import {
-		warnDeprecatedOnce,
-		type FrameworkErrorModel,
-	} from "@pie-players/pie-assessment-toolkit";
+	import type { FrameworkErrorModel } from "@pie-players/pie-assessment-toolkit";
 	import type { SectionPlayerPolicies } from "../../policies/types.js";
 	import { createPlayerAction } from "./player-action.js";
 	import {
@@ -173,6 +170,14 @@
 			toolRegistry,
 			toolConfigStrictness,
 			onFrameworkError,
+			frameworkErrorHook,
+			policies,
+			hooks,
+			sectionHostButtons,
+			itemHostButtons,
+			passageHostButtons,
+			iifeBundleHost,
+			debug,
 		}),
 	);
 	const effectiveRuntime = $derived(runtimeState.effectiveRuntime);
@@ -268,17 +273,10 @@
 		// `effectiveRuntime.onFrameworkError → pie-section-player-base →
 		// pie-assessment-toolkit` (two-tier precedence: `runtime` wins
 		// over the top-level prop, applied in `resolveRuntime`). The
-		// kernel intentionally does not invoke `onFrameworkError` here
-		// to avoid double-firing.
-		// Deprecated `frameworkErrorHook` alias is consumed locally; it
-		// has no toolkit-side delivery path.
-		if (frameworkErrorHook) {
-			warnDeprecatedOnce(
-				"section-player-layout-kernel-prop:frameworkErrorHook",
-				"<pie-section-player-...>'s `frameworkErrorHook` prop is deprecated; use `onFrameworkError` instead.",
-			);
-			frameworkErrorHook(detail);
-		}
+		// deprecated `frameworkErrorHook` alias is also absorbed in
+		// `resolveOnFrameworkError` and converges on the same delivery
+		// path; the kernel intentionally does not invoke any handler
+		// here to avoid double-firing.
 	}
 
 	function handleSessionChanged(event: Event) {

@@ -1,19 +1,29 @@
 /**
  * Tool Coordinator Store (Svelte-specific)
  *
- * Svelte store-based implementation of tool coordination.
- * This is a framework-specific alternative to the class-based ToolCoordinator service.
+ * @deprecated This Svelte-store-based floating-tool coordinator is the
+ * second of two parallel implementations and has zero in-tree consumers.
+ * It will be removed in the next major release of `@pie-players/*`. Use
+ * the class-based `ToolCoordinator` from
+ * `@pie-players/pie-assessment-toolkit` (re-exported via the package
+ * root and instantiated by `ToolkitCoordinator`). The class exposes a
+ * `subscribe()` method for reactive consumers; wrap that in a small
+ * derived store at the call site if you need a Svelte store shape.
  *
- * **When to use:**
- * - In Svelte components that need reactive tool state
- * - When you want automatic subscription/unsubscription
+ * Migration:
+ * - `registerTool` / `unregisterTool` / `showTool` / `hideTool` /
+ *   `toggleTool` / `bringToFront` / `updateToolElement` /
+ *   `hideAllTools` / `getToolState` / `isToolVisible` are all available
+ *   as methods on the class-based `ToolCoordinator`.
+ * - `visibleTools` derived store → call
+ *   `ToolCoordinator.getVisibleTools()` and re-derive in your
+ *   component, or subscribe via `ToolCoordinator.subscribe()`.
+ * - `activeTool` derived store → there is no direct equivalent; track
+ *   in component state if needed (the class assigns z-index per layer
+ *   instead of an explicit "active tool").
  *
- * **When NOT to use:**
- * - In framework-agnostic code
- * - When you need fine-grained control over service lifecycle
- * - In testing scenarios (prefer class-based ToolCoordinator with DI)
- *
- * For framework-agnostic code, use the class-based ToolCoordinator from services/.
+ * Single-floating-tool-stack rationale: see M9 of the Coherent Options
+ * Surface review (`.cursor/plans/coherent_options_surface_review_*.plan.md`).
  */
 
 import { derived, get, writable } from "svelte/store";
@@ -35,7 +45,9 @@ const initialState: ToolCoordinatorState = {
 const { subscribe, update } = writable<ToolCoordinatorState>(initialState);
 
 /**
- * Register a new tool with the coordinator
+ * Register a new tool with the coordinator.
+ *
+ * @deprecated Use the class-based `ToolCoordinator` from the toolkit.
  */
 export function registerTool(
 	id: ToolId,
@@ -56,7 +68,9 @@ export function registerTool(
 }
 
 /**
- * Unregister a tool
+ * Unregister a tool.
+ *
+ * @deprecated Use the class-based `ToolCoordinator` from the toolkit.
  */
 export function unregisterTool(id: ToolId): void {
 	update((state) => {
@@ -69,7 +83,9 @@ export function unregisterTool(id: ToolId): void {
 }
 
 /**
- * Show a tool
+ * Show a tool.
+ *
+ * @deprecated Use the class-based `ToolCoordinator` from the toolkit.
  */
 export function showTool(id: ToolId): void {
 	update((state) => {
@@ -90,7 +106,9 @@ export function showTool(id: ToolId): void {
 }
 
 /**
- * Hide a tool
+ * Hide a tool.
+ *
+ * @deprecated Use the class-based `ToolCoordinator` from the toolkit.
  */
 export function hideTool(id: ToolId): void {
 	update((state) => {
@@ -108,7 +126,9 @@ export function hideTool(id: ToolId): void {
 }
 
 /**
- * Toggle a tool's visibility
+ * Toggle a tool's visibility.
+ *
+ * @deprecated Use the class-based `ToolCoordinator` from the toolkit.
  */
 export function toggleTool(id: ToolId): void {
 	const state = get({ subscribe });
@@ -122,8 +142,10 @@ export function toggleTool(id: ToolId): void {
 }
 
 /**
- * Bring a tool to front (highest z-index)
- * Can be called with either a tool ID or an element directly
+ * Bring a tool to front (highest z-index).
+ * Can be called with either a tool ID or an element directly.
+ *
+ * @deprecated Use the class-based `ToolCoordinator` from the toolkit.
  */
 export function bringToFront(idOrElement: ToolId | HTMLElement): void {
 	update((state) => {
@@ -158,7 +180,9 @@ export function bringToFront(idOrElement: ToolId | HTMLElement): void {
 }
 
 /**
- * Update tool element reference
+ * Update tool element reference.
+ *
+ * @deprecated Use the class-based `ToolCoordinator` from the toolkit.
  */
 export function updateToolElement(id: ToolId, element: HTMLElement): void {
 	update((state) => {
@@ -174,7 +198,9 @@ export function updateToolElement(id: ToolId, element: HTMLElement): void {
 }
 
 /**
- * Hide all tools
+ * Hide all tools.
+ *
+ * @deprecated Use the class-based `ToolCoordinator` from the toolkit.
  */
 export function hideAllTools(): void {
 	update((state) => {
@@ -188,7 +214,9 @@ export function hideAllTools(): void {
 }
 
 /**
- * Get tool state
+ * Get tool state.
+ *
+ * @deprecated Use the class-based `ToolCoordinator` from the toolkit.
  */
 export function getToolState(id: ToolId): ToolState | undefined {
 	const state = get({ subscribe });
@@ -196,24 +224,39 @@ export function getToolState(id: ToolId): ToolState | undefined {
 }
 
 /**
- * Check if a tool is visible
+ * Check if a tool is visible.
+ *
+ * @deprecated Use the class-based `ToolCoordinator` from the toolkit.
  */
 export function isToolVisible(id: ToolId): boolean {
 	return getToolState(id)?.isVisible ?? false;
 }
 
-// Derived store for getting all visible tools
+/**
+ * Derived store for getting all visible tools.
+ *
+ * @deprecated Use the class-based `ToolCoordinator.getVisibleTools()`.
+ */
 export const visibleTools = derived({ subscribe }, ($state) =>
 	Array.from($state.tools.values()).filter((tool) => tool.isVisible),
 );
 
-// Derived store for getting active tool
+/**
+ * Derived store for getting the active tool.
+ *
+ * @deprecated The class-based `ToolCoordinator` does not track an
+ * "active tool" — it assigns z-index per layer. Track active state in
+ * component state if you need it.
+ */
 export const activeTool = derived({ subscribe }, ($state) =>
 	$state.activeTool ? $state.tools.get($state.activeTool) : null,
 );
 
-// Export the main store with explicit type
-// Renamed to toolCoordinatorStore to distinguish from class-based ToolCoordinator
+/**
+ * Main store with explicit type.
+ *
+ * @deprecated Use the class-based `ToolCoordinator` from the toolkit.
+ */
 export const toolCoordinatorStore: ToolCoordinator & {
 	subscribe: typeof subscribe;
 } = {

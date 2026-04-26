@@ -114,6 +114,100 @@ See [ToolkitCoordinator Architecture](../../docs/architecture/TOOLKIT_COORDINATO
 6. **Element-Level Granularity**: Tool state tracked per PIE element, not per item
 7. **State Separation**: Tool state (ephemeral) separate from PIE session data (persistent)
 
+## Configuration tiers: easy attribute + sophisticated `runtime`
+
+This package and `@pie-players/pie-section-player` follow a deliberate
+two-tier configuration model. The same knob can usually be set in either
+tier; the choice is about ergonomics, not capability.
+
+### When to use each tier
+
+- **Easy tier — top-level CE attributes / properties.** Use these for the
+  common cases that are static for the lifetime of the player or that hosts
+  want to set declaratively in HTML / templating frameworks. Example:
+
+  ```html
+  <pie-assessment-toolkit
+    assessment-id="my-assessment"
+    section-id="s-1"
+    tool-config-strictness="warn"
+  ></pie-assessment-toolkit>
+  ```
+
+- **Sophisticated tier — passing a constructed `ToolkitCoordinator` (or a
+  `runtime` object on consumer CEs).** Use this for advanced cases: composed
+  configuration, dynamic overrides, runtime mutation, fields without a
+  tier-1 attribute, or anything that benefits from being a single typed
+  object passed by reference. Example:
+
+  ```ts
+  const coordinator = new ToolkitCoordinator({
+    assessmentId: "my-assessment",
+    toolConfigStrictness: "warn",
+    tools: {
+      providers: { calculator: { enabled: true } },
+      placement: { item: ["calculator", "textToSpeech"] },
+    },
+  });
+  el.coordinator = coordinator;
+  ```
+
+### Naming rule
+
+The easy-tier attribute name is the kebab-cased version of the runtime /
+config key. `tool-config-strictness` ↔ `toolConfigStrictness`,
+`assessment-id` ↔ `assessmentId`, `player-type` ↔ `playerType`. Hosts can
+move a knob from the easy tier to the configuration object (or back)
+without renaming.
+
+### Precedence rule
+
+The configuration object wins. When the same knob is set in both tiers,
+resolution is:
+
+1. The constructed `ToolkitCoordinator` config (or `runtime.<key>` on a
+   consumer CE) if set
+2. Top-level attribute / property if set
+3. Documented default
+
+This applies symmetrically to `pie-assessment-toolkit` itself and to
+section-player CEs that embed it. New knobs MUST follow this precedence;
+do not add ad-hoc fall-throughs.
+
+### Canonical tier-1 attribute set
+
+The tier-1 attribute set is intended to be the same shape across
+`pie-assessment-toolkit`, `pie-section-player-base`, and the
+`pie-section-player-*` layout elements. Common members include:
+
+- Identity: `assessment-id`, `section-id`, `attempt-id`
+- Player: `player-type`, `lazy-init`
+- Tools: `tools` (object property), `tool-registry` (object property), plus
+  per-level easy attributes that mirror `tools.placement`
+- Coordination: `coordinator`, `create-section-controller`
+- Accessibility: `accessibility`
+- Diagnostics: `tool-config-strictness`, `debug`, `framework-error-hook`
+
+The exact canonical set is reconciled across CEs in M5 of the Coherent
+Options Surface tightening track. Drift today (for example,
+`tool-config-strictness` exposed on `pie-assessment-toolkit` but not on
+`pie-section-player-base`) is a known target for M5, not a precedent for
+new knobs.
+
+### When to add a tier-1 attribute
+
+Add a tier-1 attribute only if all of the following hold:
+
+- It is a common case that hosts set without composing a `ToolkitCoordinator`
+  / `runtime` object.
+- Its value is a primitive or small typed object that round-trips through
+  HTML attributes (string, boolean-like, number; structured data passes via
+  property assignment).
+- It exists on every CE that conceptually owns the same knob, or has a
+  deliberate documented exclusion.
+
+Otherwise expose it through the configuration object only.
+
 ## Quick Start
 
 ### Option 1: Use ToolkitCoordinator (Recommended)
@@ -562,8 +656,8 @@ The persistence strategy works with the same `SectionControllerSessionState` sha
 
 ### ✅ Core Infrastructure
 
-- **TypedEventBus**: Type-safe event bus built on native EventTarget
-- **Event Types**: Complete event definitions (player, tools, navigation, state, interaction)
+- **TypedEventBus**: Generic type-safe `EventTarget` wrapper exported as a building block. The toolkit's own production events are emitted via DOM `CustomEvent`s on `<pie-assessment-toolkit>` and via `ToolkitCoordinator.subscribe*` helpers, not through this bus. Hosts and downstream packages may still use it to compose their own typed event maps.
+- **Event Types**: ⚠️ The colon-namespaced `AssessmentToolkitEvents` map (`player:*`, `tool:*`, `nav:*`, `assessment:*`, `state:*`, `interaction:*`, `i18n:*`) and its member interfaces are deprecated. They were aspirational and are not emitted from any production path. They will be removed in the next major release. See `src/types/events.ts` for the canonical replacement surfaces (DOM `CustomEvent`s, `ToolkitCoordinator.subscribe*`, and the M3 framework-error contract).
 
 ### ✅ Toolkit Services
 

@@ -49,6 +49,94 @@ This package exposes layout-specific section-player custom elements:
 
 This keeps runtime contracts stable while giving layout authors one clear composition primitive.
 
+## Configuration tiers: easy attribute + sophisticated `runtime`
+
+This package and `pie-assessment-toolkit` follow a deliberate two-tier
+configuration model. The same knob can usually be set in either tier; the
+choice is about ergonomics, not capability.
+
+### When to use each tier
+
+- **Easy tier — top-level CE attributes / properties.** Use these for the
+  common cases that are static for the lifetime of the player or that hosts
+  want to set declaratively in HTML / templating frameworks. Example:
+
+  ```html
+  <pie-section-player-splitpane
+    section-id="s-1"
+    player-type="custom"
+    toolbar-position="top"
+    show-toolbar
+  ></pie-section-player-splitpane>
+  ```
+
+- **Sophisticated tier — the `runtime` object.** Use this for advanced cases:
+  composed configuration, dynamic overrides, runtime mutation, fields without
+  a tier-1 attribute, or anything that benefits from being a single typed
+  object passed by reference. Example:
+
+  ```ts
+  el.runtime = {
+    playerType: "custom",
+    toolConfigStrictness: "warn",
+    tools: { providers: { calculator: { enabled: true } } },
+  };
+  ```
+
+### Naming rule
+
+The easy-tier attribute name is the kebab-cased version of the runtime key.
+`tool-config-strictness` ↔ `runtime.toolConfigStrictness`. `player-type` ↔
+`runtime.playerType`. Hosts can move a knob from the easy tier to `runtime`
+(or back) without renaming.
+
+### Precedence rule
+
+`runtime.<key>` wins. When the same knob is set in both tiers, resolution is:
+
+1. `runtime.<key>` if set
+2. Top-level attribute / property if set
+3. Documented default
+
+This is implemented centrally in `resolveRuntime` / `resolveToolsConfig` in
+[src/components/shared/section-player-runtime.ts](src/components/shared/section-player-runtime.ts).
+The equivalent path in `pie-assessment-toolkit` follows the same rule. New
+knobs MUST go through these helpers; do not add ad-hoc fall-throughs.
+
+### Canonical tier-1 attribute set
+
+The tier-1 attribute set is intended to be the same shape across the
+`pie-section-player-*` layout elements, `pie-section-player-base`, and
+`pie-assessment-toolkit`. Common members include:
+
+- Identity: `assessment-id`, `section-id`, `attempt-id`
+- Player: `player-type`, `lazy-init`
+- Tools: `tools` (object property) plus per-level easy attributes that
+  mirror `tools.placement`
+- Coordination: `coordinator`, `create-section-controller`
+- Accessibility: `accessibility`
+- Diagnostics: `tool-config-strictness`, `debug`, `framework-error-hook`
+- Layout / shell (section-player only): `show-toolbar`, `toolbar-position`
+
+The exact canonical set is reconciled across CEs in M5 of the Coherent
+Options Surface tightening track. Drift today (for example,
+`tool-config-strictness` exposed on `pie-assessment-toolkit` but not on
+`pie-section-player-base`) is a known target for M5, not a precedent for
+new knobs.
+
+### When to add a tier-1 attribute
+
+Add a tier-1 attribute only if all of the following hold:
+
+- It is a common case that hosts set without composing a `runtime` object.
+- Its value is a primitive or small typed object that round-trips through
+  HTML attributes (string, boolean-like, number; structured data passes via
+  property assignment).
+- It exists on every CE that conceptually owns the same knob, or has a
+  deliberate documented exclusion.
+
+Otherwise expose it through `runtime` only.
+
 ## Runtime contract normalization
 
 - `runtime` is the primary input for runtime fields.

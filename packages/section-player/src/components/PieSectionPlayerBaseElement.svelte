@@ -16,6 +16,7 @@
 			accessibility: { type: "Object", reflect: false },
 			coordinator: { type: "Object", reflect: false },
 			createSectionController: { type: "Object", reflect: false },
+			onFrameworkError: { type: "Object", reflect: false },
 			frameworkErrorHook: { type: "Object", reflect: false },
 			isolation: { attribute: "isolation", type: "String" },
 			env: { type: "Object", reflect: false },
@@ -27,6 +28,7 @@
 	import "@pie-players/pie-assessment-toolkit/components/pie-assessment-toolkit-element";
 	import {
 		createDefaultPersonalNeedsProfile,
+		type FrameworkErrorModel,
 		type ToolRegistry,
 	} from "@pie-players/pie-assessment-toolkit";
 	import {
@@ -61,6 +63,9 @@
 		accessibility = null as Record<string, unknown> | null,
 		coordinator = null as unknown,
 		createSectionController = null as unknown,
+		onFrameworkError = undefined as
+			| undefined
+			| ((model: FrameworkErrorModel) => void),
 		frameworkErrorHook: _frameworkErrorHook = undefined as
 			| undefined
 			| ((errorModel: Record<string, unknown>) => void),
@@ -380,6 +385,7 @@
 	{toolRegistry}
 	accessibility={effectiveAccessibility}
 	coordinator={effectiveCoordinator}
+	{onFrameworkError}
 	frameworkErrorHook={handleFrameworkErrorHook}
 	isolation={effectiveIsolation}
 	oncomposition-changed={handleCompositionChanged}

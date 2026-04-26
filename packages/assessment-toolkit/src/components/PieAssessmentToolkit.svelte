@@ -54,6 +54,8 @@
 		frameworkErrorFromUnknown,
 		type FrameworkErrorModel,
 	} from "../services/framework-error.js";
+	import { FrameworkErrorBus } from "../services/framework-error-bus.js";
+	import { warnDeprecatedOnce } from "../services/deprecation-warnings.js";
 	import type { ToolRegistry } from "../services/ToolRegistry.js";
 	import {
 		normalizeAndValidateToolsConfig,
@@ -120,6 +122,14 @@
 
 	const runtimeId = createRuntimeId("toolkit");
 	const sectionEngine = new SectionRuntimeEngine();
+	// Per-CE-instance framework-error bus. Shared with the owned
+	// `ToolkitCoordinator` so coordinator-side failures (provider-init,
+	// tts-init, ...) flow through the same fan-out as CE-side failures
+	// (coordinator-init, runtime-init, runtime-dispose). The bus is the
+	// single source for the canonical `onFrameworkError` prop, the
+	// `framework-error` DOM event, the banner UI, and the
+	// `subscribeFrameworkErrors` API on the coordinator.
+	const frameworkErrorBus = new FrameworkErrorBus();
 const DEFAULT_ENV = {
 	mode: "gather",
 	role: "student",
@@ -258,6 +268,20 @@ const DEFAULT_ENV = {
 		}
 	}
 
+	/**
+	 * Build a `FrameworkErrorModel` and publish it on this CE's
+	 * framework-error bus.
+	 *
+	 * All delivery side-effects (banner UI, `framework-error` /
+	 * `runtime-error` DOM events, hook delivery, console logging) live in
+	 * the bus subscriber registered below — keeping this helper a thin
+	 * publish-side wrapper that CE-internal callers can use.
+	 *
+	 * Coordinator-side failures (provider-init, tts-init, ...) reach the
+	 * same subscriber by way of the shared bus (passed into the owned
+	 * coordinator via `buildOwnedCoordinator`), so consumers see one
+	 * canonical fan-out per error.
+	 */
 	function reportFrameworkError(args: {
 		kind: FrameworkErrorModel["kind"];
 		source: string;
@@ -270,51 +294,83 @@ const DEFAULT_ENV = {
 			error: args.error,
 			recoverable: args.recoverable,
 		});
-		console.error(formatFrameworkErrorForConsole(model), model.cause);
-		const rendered = applyErrorRenderer(model);
-		frameworkErrorModel = model;
-		frameworkErrorTitle = rendered.title;
-		frameworkErrorDetails = rendered.details;
-		emit("framework-error", model);
-		emit("runtime-error", {
-			runtimeId,
-			error: args.error,
-			frameworkError: model,
-		});
-		const frameworkErrorHook =
-			frameworkErrorCallback ?? onFrameworkError ?? onframeworkerror;
-		if (frameworkErrorHook) {
-			try {
-				frameworkErrorHook(model);
-				deliveredFrameworkErrorKey = `${model.kind}|${model.source}|${model.message}`;
-			} catch (hookError) {
-				console.error(
-					`[pie-framework:runtime-init:pie-assessment-toolkit] framework error hook failed`,
-					hookError,
-				);
-			}
-		}
+		frameworkErrorBus.reportFrameworkError(model);
 		return model;
 	}
 
-	$effect(() => {
-		if (!frameworkErrorModel) {
-			return;
+	/**
+	 * Whether this CE should surface the bootstrap banner for `kind`.
+	 *
+	 * The banner is the visible "we could not start the toolkit" surface
+	 * and is intentionally narrower than the canonical contract: it only
+	 * fires for fatal CE-bootstrap kinds (`coordinator-init`,
+	 * `runtime-init`, `tool-config`). Coordinator-internal failures
+	 * (provider-init, tts-init, ...) still flow through the canonical
+	 * hook + DOM event but do not replace the toolkit content with an
+	 * error card — they are degradations, not bootstrap failures.
+	 */
+	function isBootstrapKind(kind: FrameworkErrorModel["kind"]): boolean {
+		return (
+			kind === "coordinator-init" ||
+			kind === "runtime-init" ||
+			kind === "tool-config"
+		);
+	}
+
+	function deliverFrameworkErrorHook(model: FrameworkErrorModel): void {
+		if (frameworkErrorCallback) {
+			warnDeprecatedOnce(
+				"pie-assessment-toolkit-prop:frameworkErrorHook",
+				"<pie-assessment-toolkit>'s `frameworkErrorHook` prop is deprecated; use `onFrameworkError` instead.",
+			);
 		}
-		const frameworkErrorKey = `${frameworkErrorModel.kind}|${frameworkErrorModel.source}|${frameworkErrorModel.message}`;
-		if (deliveredFrameworkErrorKey === frameworkErrorKey) return;
-		const frameworkErrorHook =
+		const hook =
 			frameworkErrorCallback ?? onFrameworkError ?? onframeworkerror;
-		if (!frameworkErrorHook) return;
+		if (!hook) return;
 		try {
-			frameworkErrorHook(frameworkErrorModel);
-			deliveredFrameworkErrorKey = frameworkErrorKey;
+			hook(model);
+			deliveredFrameworkErrorKey = `${model.kind}|${model.source}|${model.message}`;
 		} catch (hookError) {
 			console.error(
-				`[pie-framework:runtime-init:pie-assessment-toolkit] framework error hook failed`,
+				`[pie-framework:${model.kind}:${model.source}] framework error hook failed`,
 				hookError,
 			);
 		}
+	}
+
+	$effect(() => {
+		const detach = frameworkErrorBus.subscribeFrameworkErrors((model) => {
+			console.error(formatFrameworkErrorForConsole(model), model.cause);
+
+			if (isBootstrapKind(model.kind)) {
+				const rendered = applyErrorRenderer(model);
+				frameworkErrorModel = model;
+				frameworkErrorTitle = rendered.title;
+				frameworkErrorDetails = rendered.details;
+			}
+
+			emit("framework-error", model);
+			emit("runtime-error", {
+				runtimeId,
+				error: model.cause,
+				frameworkError: model,
+			});
+
+			deliverFrameworkErrorHook(model);
+		});
+		return () => {
+			detach();
+		};
+	});
+
+	$effect(() => {
+		if (!frameworkErrorModel) return;
+		const frameworkErrorKey = `${frameworkErrorModel.kind}|${frameworkErrorModel.source}|${frameworkErrorModel.message}`;
+		if (deliveredFrameworkErrorKey === frameworkErrorKey) return;
+		// Hook prop became available after the framework-error model was
+		// already produced (e.g. host wired it asynchronously). Re-deliver
+		// once for the current model so late-binding hosts see the error.
+		deliverFrameworkErrorHook(frameworkErrorModel);
 	});
 
 	function hashString(input: string): string {
@@ -504,6 +560,7 @@ const DEFAULT_ENV = {
 			tools: validatedTools as any,
 			toolRegistry,
 			accessibility: accessibility as any,
+			frameworkErrorBus,
 		});
 	}
 
@@ -1015,15 +1072,20 @@ const DEFAULT_ENV = {
 				compositionEmitRaf = null;
 			}
 			pendingCompositionEmit = false;
-			void sectionEngine.dispose().catch((error) => {
-				runtimeError = error;
-				reportFrameworkError({
-					kind: "runtime-dispose",
-					source: "pie-assessment-toolkit",
-					error,
-					recoverable: true,
+			void sectionEngine
+				.dispose()
+				.catch((error) => {
+					runtimeError = error;
+					reportFrameworkError({
+						kind: "runtime-dispose",
+						source: "pie-assessment-toolkit",
+						error,
+						recoverable: true,
+					});
+				})
+				.finally(() => {
+					frameworkErrorBus.dispose();
 				});
-			});
 		};
 	});
 </script>

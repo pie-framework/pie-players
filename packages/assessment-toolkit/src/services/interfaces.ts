@@ -16,6 +16,7 @@ import type {
 	CatalogType,
 	ResolvedCatalog,
 } from "./AccessibilityCatalogResolver.js";
+import type { FrameworkErrorListener } from "./framework-error-bus.js";
 import type { HighlightColor, HighlightType } from "./HighlightCoordinator.js";
 import type {
 	SectionControllerHandle,
@@ -636,6 +637,25 @@ export interface ToolkitCoordinatorApi {
 		persistBeforeDispose?: boolean;
 		clearPersistence?: boolean;
 	}): Promise<void>;
+
+	/**
+	 * Subscribe to framework-error events emitted by the coordinator.
+	 *
+	 * Mirrors the shape of {@link subscribeTelemetry} (see
+	 * `ToolkitCoordinator.subscribeTelemetry`): a synchronous,
+	 * multi-subscriber stream where each call to the internal bus's
+	 * `reportFrameworkError` fans out to every active listener exactly once.
+	 *
+	 * The returned function detaches the listener; calling it twice is a
+	 * no-op. A listener that throws is caught and logged; the throw does
+	 * not break fan-out to the remaining listeners.
+	 *
+	 * Use this to wire framework errors into Sentry / Datadog / a custom
+	 * banner without listening on a DOM event. The DOM event
+	 * (`framework-error`) and the canonical `onFrameworkError` prop on
+	 * `<pie-assessment-toolkit>` consume the same bus.
+	 */
+	subscribeFrameworkErrors(listener: FrameworkErrorListener): () => void;
 }
 
 // I18nServiceApi is re-exported from @pie-players/pie-players-shared/i18n

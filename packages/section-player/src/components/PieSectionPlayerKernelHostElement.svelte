@@ -31,6 +31,8 @@
 			passageHostButtons: { type: "Object", reflect: false },
 			policies: { type: "Object", reflect: false },
 			hooks: { type: "Object", reflect: false },
+			onFrameworkError: { type: "Object", reflect: false },
+			frameworkErrorHook: { type: "Object", reflect: false },
 		},
 	}}
 />
@@ -38,6 +40,7 @@
 <script lang="ts">
 	import { createEventDispatcher } from "svelte";
 	import type {
+		FrameworkErrorModel,
 		ToolRegistry,
 		ToolbarItem,
 	} from "@pie-players/pie-assessment-toolkit";
@@ -86,6 +89,12 @@
 		passageHostButtons = [] as ToolbarItem[],
 		policies = undefined as SectionPlayerPolicies | undefined,
 		hooks = undefined as SectionPlayerHostHooks | undefined,
+		onFrameworkError = undefined as
+			| undefined
+			| ((model: FrameworkErrorModel) => void),
+		frameworkErrorHook = undefined as
+			| undefined
+			| ((errorModel: Record<string, unknown>) => void),
 	} = $props();
 
 	const dispatch = createEventDispatcher();
@@ -235,6 +244,8 @@
 	{passageHostButtons}
 	{policies}
 	{hooks}
+	{onFrameworkError}
+	{frameworkErrorHook}
 	on:readiness-change={(event: CustomEvent) => {
 		const detail = (event as CustomEvent).detail;
 		snapshot = { ...snapshot, readiness: detail };

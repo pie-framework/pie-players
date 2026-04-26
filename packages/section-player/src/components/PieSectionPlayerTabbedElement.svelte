@@ -31,6 +31,7 @@
 			passageHostButtons: { type: "Object", reflect: false },
 			policies: { type: "Object", reflect: false },
 			hooks: { type: "Object", reflect: false },
+			onFrameworkError: { type: "Object", reflect: false },
 			frameworkErrorHook: { type: "Object", reflect: false },
 			narrowLayoutBreakpoint: { attribute: "narrow-layout-breakpoint", type: "Number" },
 			contentMaxWidthNoPassage: {
@@ -67,6 +68,7 @@
 	import SectionPlayerTabbedContent from "./shared/SectionPlayerTabbedContent.svelte";
 	import { createEventDispatcher } from "svelte";
 	import type {
+		FrameworkErrorModel,
 		ToolRegistry,
 		ToolbarItem,
 	} from "@pie-players/pie-assessment-toolkit";
@@ -127,6 +129,9 @@
 		passageHostButtons = [] as ToolbarItem[],
 		policies = undefined as SectionPlayerPolicies | undefined,
 		hooks = undefined as SectionPlayerHostHooks | undefined,
+		onFrameworkError = undefined as
+			| undefined
+			| ((model: FrameworkErrorModel) => void),
 		frameworkErrorHook = undefined as
 			| undefined
 			| ((errorModel: Record<string, unknown>) => void),
@@ -309,7 +314,8 @@
 	{passageHostButtons}
 	{policies}
 	{hooks}
-	frameworkErrorHook={frameworkErrorHook}
+	{onFrameworkError}
+	{frameworkErrorHook}
 	playerActionConfig={{
 		stateKey: "__tabbedAppliedParams",
 		includeSessionRefInState: false,

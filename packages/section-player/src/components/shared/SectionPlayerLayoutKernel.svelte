@@ -20,6 +20,10 @@
 		DEFAULT_SECTION_PLAYER_POLICIES,
 		isPreloadEnabled,
 	} from "../../policies/index.js";
+	import {
+		warnDeprecatedOnce,
+		type FrameworkErrorModel,
+	} from "@pie-players/pie-assessment-toolkit";
 	import type { SectionPlayerPolicies } from "../../policies/types.js";
 	import { createPlayerAction } from "./player-action.js";
 	import {
@@ -95,6 +99,9 @@
 		} satisfies PlayerActionConfig,
 		policies = DEFAULT_SECTION_PLAYER_POLICIES as SectionPlayerPolicies,
 		hooks = undefined as SectionPlayerHostHooks | undefined,
+		onFrameworkError = undefined as
+			| undefined
+			| ((model: FrameworkErrorModel) => void),
 		frameworkErrorHook = undefined as
 			| undefined
 			| ((errorModel: Record<string, unknown>) => void),
@@ -255,7 +262,20 @@
 		const detail = (event as CustomEvent<Record<string, unknown>>).detail || {};
 		runtimeErrorState = true;
 		dispatch("framework-error", detail);
-		frameworkErrorHook?.(detail);
+		// Canonical model-shape hook prop. The detail emitted by the
+		// underlying toolkit is already a `FrameworkErrorModel`; cast to
+		// reflect the public contract.
+		onFrameworkError?.(detail as unknown as FrameworkErrorModel);
+		// Deprecated alias, kept for hosts still wired to the old name.
+		// Both callbacks see the same model — `frameworkErrorHook` does
+		// not act as a fallback when `onFrameworkError` is set.
+		if (frameworkErrorHook) {
+			warnDeprecatedOnce(
+				"section-player-layout-kernel-prop:frameworkErrorHook",
+				"<pie-section-player-...>'s `frameworkErrorHook` prop is deprecated; use `onFrameworkError` instead.",
+			);
+			frameworkErrorHook(detail);
+		}
 	}
 
 	function handleSessionChanged(event: Event) {
@@ -400,8 +420,7 @@
 	onCompositionChanged={handleBaseCompositionChanged}
 	onSectionReady={handleSectionReady}
 	onRuntimeError={handleRuntimeError}
-	onFrameworkError={handleFrameworkError}
-	{frameworkErrorHook}
+	onFrameworkErrorEvent={handleFrameworkError}
 	onSessionChanged={handleSessionChanged}
 	onRuntimeOwned={handleRuntimeOwned}
 	onRuntimeInherited={handleRuntimeInherited}

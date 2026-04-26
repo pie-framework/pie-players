@@ -107,6 +107,9 @@
 	);
 	const effectiveIsolation = $derived.by(() => runtime?.isolation ?? isolation);
 	const effectiveEnv = $derived.by(() => runtime?.env ?? env ?? DEFAULT_ENV);
+	const effectiveOnFrameworkError = $derived.by(
+		() => runtime?.onFrameworkError ?? onFrameworkError,
+	);
 	const effectiveSectionId = $derived.by(
 		() => sectionId || (resolvedSection as any)?.identifier || "",
 	);
@@ -385,7 +388,7 @@
 	{toolRegistry}
 	accessibility={effectiveAccessibility}
 	coordinator={effectiveCoordinator}
-	{onFrameworkError}
+	onFrameworkError={effectiveOnFrameworkError}
 	frameworkErrorHook={handleFrameworkErrorHook}
 	isolation={effectiveIsolation}
 	oncomposition-changed={handleCompositionChanged}

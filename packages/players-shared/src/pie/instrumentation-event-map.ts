@@ -21,6 +21,13 @@ export const TOOLKIT_INSTRUMENTATION_EVENT_MAP: InstrumentationEventMapping[] = 
 		instrumentationEventName: "pie-toolkit-section-ready",
 	},
 	{
+		sourceEventName: "framework-error",
+		instrumentationEventName: "pie-toolkit-framework-error",
+	},
+	// Deprecated source alias for `framework-error`. Telemetry kept so hosts
+	// that still listen to `runtime-error` see no telemetry regression while
+	// they migrate to `framework-error`.
+	{
 		sourceEventName: "runtime-error",
 		instrumentationEventName: "pie-toolkit-runtime-error",
 	},
@@ -51,6 +58,13 @@ export const SECTION_INSTRUMENTATION_EVENT_MAP: InstrumentationEventMapping[] = 
 		sourceEventName: "composition-changed",
 		instrumentationEventName: "pie-section-composition-changed",
 	},
+	{
+		sourceEventName: "framework-error",
+		instrumentationEventName: "pie-section-framework-error",
+	},
+	// Deprecated source alias for `framework-error`. Telemetry kept so hosts
+	// that still listen to `runtime-error` see no telemetry regression while
+	// they migrate to `framework-error`.
 	{
 		sourceEventName: "runtime-error",
 		instrumentationEventName: "pie-section-runtime-error",

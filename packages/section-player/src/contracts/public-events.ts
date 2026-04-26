@@ -1,7 +1,13 @@
 export const SECTION_PLAYER_PUBLIC_EVENTS = {
 	runtimeOwned: "runtime-owned",
 	runtimeInherited: "runtime-inherited",
+	/**
+	 * Deprecated alias for `frameworkError`. Kept for hosts that still
+	 * subscribe to the old event name; new consumers should listen to
+	 * `framework-error` and treat the detail as a `FrameworkErrorModel`.
+	 */
 	runtimeError: "runtime-error",
+	frameworkError: "framework-error",
 	compositionChanged: "composition-changed",
 	sessionChanged: "session-changed",
 	sectionControllerReady: "section-controller-ready",

@@ -172,6 +172,7 @@
 			passageToolbarTools,
 			toolRegistry,
 			toolConfigStrictness,
+			onFrameworkError,
 		}),
 	);
 	const effectiveRuntime = $derived(runtimeState.effectiveRuntime);
@@ -262,13 +263,15 @@
 		const detail = (event as CustomEvent<Record<string, unknown>>).detail || {};
 		runtimeErrorState = true;
 		dispatch("framework-error", detail);
-		// Canonical model-shape hook prop. The detail emitted by the
-		// underlying toolkit is already a `FrameworkErrorModel`; cast to
-		// reflect the public contract.
-		onFrameworkError?.(detail as unknown as FrameworkErrorModel);
-		// Deprecated alias, kept for hosts still wired to the old name.
-		// Both callbacks see the same model — `frameworkErrorHook` does
-		// not act as a fallback when `onFrameworkError` is set.
+		// `onFrameworkError` is delivered exactly once by the underlying
+		// `pie-assessment-toolkit` — the canonical prop flows through
+		// `effectiveRuntime.onFrameworkError → pie-section-player-base →
+		// pie-assessment-toolkit` (two-tier precedence: `runtime` wins
+		// over the top-level prop, applied in `resolveRuntime`). The
+		// kernel intentionally does not invoke `onFrameworkError` here
+		// to avoid double-firing.
+		// Deprecated `frameworkErrorHook` alias is consumed locally; it
+		// has no toolkit-side delivery path.
 		if (frameworkErrorHook) {
 			warnDeprecatedOnce(
 				"section-player-layout-kernel-prop:frameworkErrorHook",

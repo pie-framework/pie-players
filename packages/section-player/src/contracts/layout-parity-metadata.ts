@@ -36,6 +36,7 @@ const ADVANCED_ESCAPE_HATCH_PROPS = [
 	"itemHostButtons",
 	"passageHostButtons",
 	"hooks",
+	"onFrameworkError",
 ] as const;
 
 const SHARED_PROPS = [
@@ -47,6 +48,7 @@ const SHARED_EVENTS = [
 	SECTION_PLAYER_PUBLIC_EVENTS.runtimeOwned,
 	SECTION_PLAYER_PUBLIC_EVENTS.runtimeInherited,
 	SECTION_PLAYER_PUBLIC_EVENTS.runtimeError,
+	SECTION_PLAYER_PUBLIC_EVENTS.frameworkError,
 	SECTION_PLAYER_PUBLIC_EVENTS.compositionChanged,
 	SECTION_PLAYER_PUBLIC_EVENTS.sessionChanged,
 	SECTION_PLAYER_PUBLIC_EVENTS.sectionControllerReady,

@@ -1,5 +1,6 @@
 import {
 	parseToolList,
+	type FrameworkErrorModel,
 	type ToolConfigStrictness,
 	type ToolRegistry,
 } from "@pie-players/pie-assessment-toolkit";
@@ -37,6 +38,7 @@ export type RuntimeConfig = {
 	isolation?: string;
 	env?: Record<string, unknown>;
 	toolConfigStrictness?: ToolConfigStrictness;
+	onFrameworkError?: (model: FrameworkErrorModel) => void;
 };
 
 export type RuntimeInputs = {
@@ -52,6 +54,7 @@ export type RuntimeInputs = {
 	env?: Record<string, unknown> | null;
 	toolRegistry?: ToolRegistry | null;
 	toolConfigStrictness?: ToolConfigStrictness;
+	onFrameworkError?: (model: FrameworkErrorModel) => void;
 	runtime: RuntimeConfig | null;
 	enabledTools: string;
 	itemToolbarTools: string;
@@ -99,6 +102,7 @@ export function resolveRuntime(args: {
 	runtime: RuntimeConfig | null;
 	effectiveToolsConfig: unknown;
 	toolConfigStrictness?: ToolConfigStrictness;
+	onFrameworkError?: (model: FrameworkErrorModel) => void;
 }) {
 	const runtime = args.runtime || {};
 	const topLevelPlayer = (args.player || {}) as PlayerOverrides;
@@ -133,6 +137,11 @@ export function resolveRuntime(args: {
 			runtime.toolConfigStrictness ??
 			args.toolConfigStrictness ??
 			"error",
+		// Two-tier precedence: `runtime.onFrameworkError` wins over the
+		// top-level `onFrameworkError` prop. Both sites converge on the
+		// same canonical `FrameworkErrorModel` payload.
+		onFrameworkError:
+			runtime.onFrameworkError ?? args.onFrameworkError,
 		tools: args.effectiveToolsConfig,
 	};
 }
@@ -231,6 +240,7 @@ export function resolveSectionPlayerRuntimeState(args: RuntimeInputs) {
 		runtime: args.runtime,
 		effectiveToolsConfig,
 		toolConfigStrictness: args.toolConfigStrictness,
+		onFrameworkError: args.onFrameworkError,
 	});
 	const playerRuntime = resolvePlayerRuntime({
 		effectiveRuntime: effectiveRuntime as Record<string, unknown>,

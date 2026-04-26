@@ -44,7 +44,8 @@ export type SectionPlayerAdvancedPropName =
 	| "sectionHostButtons"
 	| "itemHostButtons"
 	| "passageHostButtons"
-	| "hooks";
+	| "hooks"
+	| "onFrameworkError";
 
 export type SectionPlayerLayoutPropName =
 	| SectionPlayerBasicPropName

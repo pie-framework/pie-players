@@ -99,9 +99,6 @@
 		onFrameworkError = undefined as
 			| undefined
 			| ((model: FrameworkErrorModel) => void),
-		frameworkErrorHook = undefined as
-			| undefined
-			| ((errorModel: Record<string, unknown>) => void),
 	} = $props();
 
 	const dispatch = createEventDispatcher<KernelEvents>();
@@ -170,7 +167,6 @@
 			toolRegistry,
 			toolConfigStrictness,
 			onFrameworkError,
-			frameworkErrorHook,
 			policies,
 			hooks,
 			sectionHostButtons,

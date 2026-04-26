@@ -15,15 +15,21 @@
 			tools: { type: "Object", reflect: false },
 			accessibility: { type: "Object", reflect: false },
 			coordinator: { type: "Object", reflect: false },
+			// @deprecated since M5; set via `runtime.createSectionController`.
 			createSectionController: { type: "Object", reflect: false },
+			// @deprecated since M5; set via `runtime.isolation`.
 			isolation: { attribute: "isolation", type: "String" },
 			env: { type: "Object", reflect: false },
+			// @deprecated since M5; set via `runtime.iifeBundleHost`.
 			iifeBundleHost: { attribute: "iife-bundle-host", type: "String" },
+			// @deprecated since M5; set via `runtime.debug`.
 			debug: { attribute: "debug", type: "String" },
 			showToolbar: { attribute: "show-toolbar", type: "String" },
 			toolbarPosition: { attribute: "toolbar-position", type: "String" },
 			enabledTools: { attribute: "enabled-tools", type: "String" },
+			// @deprecated since M5; use `tools.placement.item` (object form).
 			itemToolbarTools: { attribute: "item-toolbar-tools", type: "String" },
+			// @deprecated since M5; use `tools.placement.passage` (object form).
 			passageToolbarTools: { attribute: "passage-toolbar-tools", type: "String" },
 			toolRegistry: { type: "Object", reflect: false },
 			sectionHostButtons: { type: "Object", reflect: false },
@@ -31,17 +37,26 @@
 			passageHostButtons: { type: "Object", reflect: false },
 			policies: { type: "Object", reflect: false },
 			hooks: { type: "Object", reflect: false },
+			toolConfigStrictness: {
+				attribute: "tool-config-strictness",
+				type: "String",
+			},
 			onFrameworkError: { type: "Object", reflect: false },
+			// @deprecated since M3; use `onFrameworkError`. Absorbed at the CE
+			// boundary by `resolveOnFrameworkError` (one-time dev warn).
 			frameworkErrorHook: { type: "Object", reflect: false },
 			narrowLayoutBreakpoint: { attribute: "narrow-layout-breakpoint", type: "Number" },
+			// @deprecated since M5; set via `runtime.contentMaxWidthNoPassage`.
 			contentMaxWidthNoPassage: {
 				attribute: "content-max-width-no-passage",
 				type: "Number",
 			},
+			// @deprecated since M5; set via `runtime.contentMaxWidthWithPassage`.
 			contentMaxWidthWithPassage: {
 				attribute: "content-max-width-with-passage",
 				type: "Number",
 			},
+			// @deprecated since M5; set via `runtime.splitPaneMinRegionWidth`.
 			splitPaneMinRegionWidth: {
 				attribute: "split-pane-min-region-width",
 				type: "Number",
@@ -69,11 +84,13 @@
 	import { createEventDispatcher } from "svelte";
 	import type {
 		FrameworkErrorModel,
+		ToolConfigStrictness,
 		ToolRegistry,
 		ToolbarItem,
 	} from "@pie-players/pie-assessment-toolkit";
 	import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
 	import {
+		resolveOnFrameworkError,
 		type RuntimeConfig,
 	} from "./shared/section-player-runtime.js";
 	import type {
@@ -129,6 +146,7 @@
 		passageHostButtons = [] as ToolbarItem[],
 		policies = undefined as SectionPlayerPolicies | undefined,
 		hooks = undefined as SectionPlayerHostHooks | undefined,
+		toolConfigStrictness = undefined as ToolConfigStrictness | undefined,
 		onFrameworkError = undefined as
 			| undefined
 			| ((model: FrameworkErrorModel) => void),
@@ -155,6 +173,15 @@
 			runtimePlayer: runtime?.player,
 			player,
 			component: "pie-section-player-vertical",
+		}),
+	);
+	// Absorb the deprecated `frameworkErrorHook` alias at the CE boundary so
+	// only the canonical handler crosses into the kernel.
+	const effectiveOnFrameworkError = $derived.by(() =>
+		resolveOnFrameworkError({
+			runtime,
+			onFrameworkError,
+			frameworkErrorHook,
 		}),
 	);
 
@@ -311,8 +338,8 @@
 	{passageHostButtons}
 	{policies}
 	{hooks}
-	{onFrameworkError}
-	{frameworkErrorHook}
+	{toolConfigStrictness}
+	onFrameworkError={effectiveOnFrameworkError}
 	playerActionConfig={{
 		stateKey: "__verticalAppliedParams",
 		includeSessionRefInState: false,

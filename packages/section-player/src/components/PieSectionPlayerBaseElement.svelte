@@ -15,9 +15,22 @@
 			toolRegistry: { type: "Object", reflect: false },
 			accessibility: { type: "Object", reflect: false },
 			coordinator: { type: "Object", reflect: false },
+			// @deprecated since M5; set via `runtime.createSectionController`.
 			createSectionController: { type: "Object", reflect: false },
+			toolConfigStrictness: {
+				attribute: "tool-config-strictness",
+				type: "String",
+			},
+			policies: { type: "Object", reflect: false },
+			hooks: { type: "Object", reflect: false },
+			sectionHostButtons: { type: "Object", reflect: false },
+			itemHostButtons: { type: "Object", reflect: false },
+			passageHostButtons: { type: "Object", reflect: false },
 			onFrameworkError: { type: "Object", reflect: false },
+			// @deprecated since M3; use `onFrameworkError`. Absorbed at the CE
+			// boundary by `resolveOnFrameworkError` (one-time dev warn).
 			frameworkErrorHook: { type: "Object", reflect: false },
+			// @deprecated since M5; set via `runtime.isolation`.
 			isolation: { attribute: "isolation", type: "String" },
 			env: { type: "Object", reflect: false },
 		},
@@ -29,7 +42,9 @@
 	import {
 		createDefaultPersonalNeedsProfile,
 		type FrameworkErrorModel,
+		type ToolConfigStrictness,
 		type ToolRegistry,
+		type ToolbarItem,
 	} from "@pie-players/pie-assessment-toolkit";
 	import {
 		normalizeToolsConfig,
@@ -47,8 +62,11 @@
 		DEFAULT_ISOLATION,
 		DEFAULT_LAZY_INIT,
 		DEFAULT_PLAYER_TYPE,
+		resolveOnFrameworkError,
 		type RuntimeConfig,
 	} from "./shared/section-player-runtime.js";
+	import type { SectionPlayerPolicies } from "../policies/types.js";
+	import type { SectionPlayerHostHooks } from "../contracts/host-hooks.js";
 	let {
 		assessmentId = DEFAULT_ASSESSMENT_ID,
 		runtime = null as RuntimeConfig | null,
@@ -63,10 +81,20 @@
 		accessibility = null as Record<string, unknown> | null,
 		coordinator = null as unknown,
 		createSectionController = null as unknown,
+		toolConfigStrictness = undefined as ToolConfigStrictness | undefined,
+		policies: _policies = undefined as SectionPlayerPolicies | undefined,
+		hooks: _hooks = undefined as SectionPlayerHostHooks | undefined,
+		sectionHostButtons: _sectionHostButtons = undefined as
+			| ToolbarItem[]
+			| undefined,
+		itemHostButtons: _itemHostButtons = undefined as ToolbarItem[] | undefined,
+		passageHostButtons: _passageHostButtons = undefined as
+			| ToolbarItem[]
+			| undefined,
 		onFrameworkError = undefined as
 			| undefined
 			| ((model: FrameworkErrorModel) => void),
-		frameworkErrorHook: _frameworkErrorHook = undefined as
+		frameworkErrorHook = undefined as
 			| undefined
 			| ((errorModel: Record<string, unknown>) => void),
 		isolation = DEFAULT_ISOLATION,
@@ -93,7 +121,7 @@
 	const effectiveLazyInit = $derived.by(() => runtime?.lazyInit ?? lazyInit);
 	const effectiveTools = $derived.by(() => runtime?.tools ?? tools);
 	const effectiveToolConfigStrictness = $derived.by(() => {
-		const value = runtime?.toolConfigStrictness;
+		const value = runtime?.toolConfigStrictness ?? toolConfigStrictness;
 		return value === "off" || value === "warn" || value === "error"
 			? value
 			: "error";
@@ -107,8 +135,15 @@
 	);
 	const effectiveIsolation = $derived.by(() => runtime?.isolation ?? isolation);
 	const effectiveEnv = $derived.by(() => runtime?.env ?? env ?? DEFAULT_ENV);
-	const effectiveOnFrameworkError = $derived.by(
-		() => runtime?.onFrameworkError ?? onFrameworkError,
+	// Two-tier resolution including the deprecated `frameworkErrorHook`
+	// alias. The base CE talks to the toolkit directly (no kernel layer),
+	// so it owns the alias-absorption boundary in this path.
+	const effectiveOnFrameworkError = $derived.by(() =>
+		resolveOnFrameworkError({
+			runtime,
+			onFrameworkError,
+			frameworkErrorHook,
+		}),
 	);
 	const effectiveSectionId = $derived.by(
 		() => sectionId || (resolvedSection as any)?.identifier || "",

@@ -15,15 +15,23 @@
 			tools: { type: "Object", reflect: false },
 			accessibility: { type: "Object", reflect: false },
 			coordinator: { type: "Object", reflect: false },
+			// @deprecated since M5; set via `runtime.createSectionController`.
 			createSectionController: { type: "Object", reflect: false },
+			// @deprecated since M5; set via `runtime.isolation`.
 			isolation: { attribute: "isolation", type: "String" },
 			env: { type: "Object", reflect: false },
+			// @deprecated since M5; set via `runtime.iifeBundleHost`.
 			iifeBundleHost: { attribute: "iife-bundle-host", type: "String" },
+			// @deprecated since M5; set via `runtime.debug`.
 			debug: { attribute: "debug", type: "String" },
 			showToolbar: { attribute: "show-toolbar", type: "String" },
 			toolbarPosition: { attribute: "toolbar-position", type: "String" },
 			enabledTools: { attribute: "enabled-tools", type: "String" },
+			// @deprecated since M5; use `tools.placement.item` (object form) or
+			// `runtime.tools.placement.item`. Emits a one-time dev warn on use.
 			itemToolbarTools: { attribute: "item-toolbar-tools", type: "String" },
+			// @deprecated since M5; use `tools.placement.passage` (object form)
+			// or `runtime.tools.placement.passage`. Emits a one-time dev warn.
 			passageToolbarTools: { attribute: "passage-toolbar-tools", type: "String" },
 			toolRegistry: { type: "Object", reflect: false },
 			sectionHostButtons: { type: "Object", reflect: false },
@@ -31,17 +39,29 @@
 			passageHostButtons: { type: "Object", reflect: false },
 			policies: { type: "Object", reflect: false },
 			hooks: { type: "Object", reflect: false },
+			toolConfigStrictness: {
+				attribute: "tool-config-strictness",
+				type: "String",
+			},
 			onFrameworkError: { type: "Object", reflect: false },
+			// @deprecated since M3; use `onFrameworkError` instead. Absorbed at
+			// the CE boundary by `resolveOnFrameworkError` (one-time dev warn).
 			frameworkErrorHook: { type: "Object", reflect: false },
 			narrowLayoutBreakpoint: { attribute: "narrow-layout-breakpoint", type: "Number" },
+			// @deprecated since M5; set via `runtime.contentMaxWidthNoPassage`
+			// instead. Absorbed by `resolveRuntime`.
 			contentMaxWidthNoPassage: {
 				attribute: "content-max-width-no-passage",
 				type: "Number",
 			},
+			// @deprecated since M5; set via `runtime.contentMaxWidthWithPassage`
+			// instead. Absorbed by `resolveRuntime`.
 			contentMaxWidthWithPassage: {
 				attribute: "content-max-width-with-passage",
 				type: "Number",
 			},
+			// @deprecated since M5; set via `runtime.splitPaneMinRegionWidth`
+			// instead. Absorbed by `resolveRuntime`.
 			splitPaneMinRegionWidth: {
 				attribute: "split-pane-min-region-width",
 				type: "Number",
@@ -73,11 +93,13 @@
 	import { createEventDispatcher } from "svelte";
 	import type {
 		FrameworkErrorModel,
+		ToolConfigStrictness,
 		ToolRegistry,
 		ToolbarItem,
 	} from "@pie-players/pie-assessment-toolkit";
 	import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
 	import {
+		resolveOnFrameworkError,
 		type RuntimeConfig,
 	} from "./shared/section-player-runtime.js";
 	import type {
@@ -175,6 +197,7 @@
 		passageHostButtons = [] as ToolbarItem[],
 		policies = undefined as SectionPlayerPolicies | undefined,
 		hooks = undefined as SectionPlayerHostHooks | undefined,
+		toolConfigStrictness = undefined as ToolConfigStrictness | undefined,
 		onFrameworkError = undefined as
 			| undefined
 			| ((model: FrameworkErrorModel) => void),
@@ -243,6 +266,16 @@
 			runtimePlayer: runtime?.player,
 			player,
 			component: "pie-section-player-splitpane",
+		}),
+	);
+	// Absorb the deprecated `frameworkErrorHook` alias at the CE boundary so
+	// only the canonical handler crosses into the kernel (single resolution
+	// point — the kernel's resolver no longer sees the alias).
+	const effectiveOnFrameworkError = $derived.by(() =>
+		resolveOnFrameworkError({
+			runtime,
+			onFrameworkError,
+			frameworkErrorHook,
 		}),
 	);
 
@@ -406,8 +439,8 @@
 	{passageHostButtons}
 	{policies}
 	{hooks}
-	{onFrameworkError}
-	{frameworkErrorHook}
+	{toolConfigStrictness}
+	onFrameworkError={effectiveOnFrameworkError}
 	playerActionConfig={{
 		stateKey: "__splitPaneAppliedParams",
 		includeSessionRefInState: true,

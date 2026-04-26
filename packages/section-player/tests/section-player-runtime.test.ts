@@ -111,6 +111,78 @@ describe("resolveRuntime", () => {
 	});
 });
 
+describe("resolveRuntime onFrameworkError precedence", () => {
+	test("runtime.onFrameworkError takes precedence over the top-level prop", async () => {
+		const { resolveRuntime } = await loadRuntimeModule();
+		const topLevel = () => {};
+		const fromRuntime = () => {};
+		const merged = resolveRuntime({
+			assessmentId: "a1",
+			playerType: "iife",
+			player: null,
+			lazyInit: true,
+			accessibility: null,
+			coordinator: null,
+			createSectionController: null,
+			isolation: "inherit",
+			env: null,
+			runtime: {
+				onFrameworkError: fromRuntime,
+			},
+			effectiveToolsConfig: {},
+			toolConfigStrictness: "error",
+			onFrameworkError: topLevel,
+		});
+		expect((merged as any).onFrameworkError).toBe(fromRuntime);
+	});
+
+	test("falls back to top-level onFrameworkError when runtime omits it", async () => {
+		const { resolveRuntime } = await loadRuntimeModule();
+		const topLevel = () => {};
+		const merged = resolveRuntime({
+			assessmentId: "a1",
+			playerType: "iife",
+			player: null,
+			lazyInit: true,
+			accessibility: null,
+			coordinator: null,
+			createSectionController: null,
+			isolation: "inherit",
+			env: null,
+			runtime: {},
+			effectiveToolsConfig: {},
+			toolConfigStrictness: "error",
+			onFrameworkError: topLevel,
+		});
+		expect((merged as any).onFrameworkError).toBe(topLevel);
+	});
+
+	test("resolveSectionPlayerRuntimeState propagates onFrameworkError into effectiveRuntime", async () => {
+		const { resolveSectionPlayerRuntimeState } = await loadRuntimeModule();
+		const handler = () => {};
+		const state = resolveSectionPlayerRuntimeState({
+			assessmentId: "a1",
+			playerType: "iife",
+			player: null,
+			lazyInit: true,
+			tools: null,
+			accessibility: null,
+			coordinator: null,
+			createSectionController: null,
+			isolation: "inherit",
+			env: null,
+			toolRegistry: null,
+			toolConfigStrictness: "error",
+			onFrameworkError: handler,
+			runtime: null,
+			enabledTools: "",
+			itemToolbarTools: "",
+			passageToolbarTools: "",
+		});
+		expect((state.effectiveRuntime as any).onFrameworkError).toBe(handler);
+	});
+});
+
 describe("resolveToolsConfig", () => {
 	test("applies toolbar overlays without validating tool ids", async () => {
 		const { resolveToolsConfig } = await loadRuntimeModule();

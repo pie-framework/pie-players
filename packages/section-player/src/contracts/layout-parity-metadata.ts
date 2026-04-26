@@ -39,6 +39,8 @@ const ADVANCED_ESCAPE_HATCH_PROPS = [
 	"toolConfigStrictness",
 	"hooks",
 	"onFrameworkError",
+	"onStageChange",
+	"onLoadingComplete",
 ] as const;
 
 const SHARED_PROPS = [

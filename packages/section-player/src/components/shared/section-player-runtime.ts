@@ -11,6 +11,10 @@ import {
 	type ItemEntity,
 } from "@pie-players/pie-players-shared";
 import type { LoaderConfig } from "@pie-players/pie-players-shared/loader-config";
+import type {
+	LoadingCompleteDetail,
+	StageChangeDetail,
+} from "@pie-players/pie-players-shared/pie";
 import { DEFAULT_PLAYER_DEFINITIONS } from "../../component-definitions.js";
 import type { SectionPlayerHostHooks } from "../../contracts/host-hooks.js";
 import type { SectionPlayerPolicies } from "../../policies/types.js";
@@ -34,6 +38,8 @@ export type FrameworkErrorHandler = (model: FrameworkErrorModel) => void;
 export type LegacyFrameworkErrorHook = (
 	errorModel: Record<string, unknown>,
 ) => void;
+export type StageChangeHandler = (detail: StageChangeDetail) => void;
+export type LoadingCompleteHandler = (detail: LoadingCompleteDetail) => void;
 
 /**
  * Two-tier section player runtime config.
@@ -78,6 +84,27 @@ export type RuntimeConfig = {
 	itemHostButtons?: ToolbarItem[];
 	passageHostButtons?: ToolbarItem[];
 
+	// M6 mirror — canonical stage-change callback. The DOM event
+	// `pie-stage-change` remains the primary channel; this callback is
+	// the convenience surface that mirrors the event one-to-one through
+	// the same emit point (kernel for layout CEs, toolkit for
+	// `<pie-assessment-toolkit>`). Per-event invocation is in
+	// `SectionPlayerLayoutKernel`/`PieAssessmentToolkit`; precedence is
+	// `runtime.onStageChange` over the top-level `onStageChange` prop.
+	onStageChange?: StageChangeHandler;
+
+	// M6 mirror — canonical loading-complete callback. Mirrors the
+	// `pie-loading-complete` DOM event, which the kernel dispatches
+	// once per cohort when every item has finished loading. Only the
+	// kernel-backed layout CEs (split-pane / vertical / tabbed /
+	// kernel-host) own this emit point; `<pie-assessment-toolkit>`
+	// and `<pie-section-player-base>` do not dispatch
+	// `pie-loading-complete`, so the callback is intentionally absent
+	// on those surfaces. Precedence: `runtime.onLoadingComplete` wins
+	// over the top-level `onLoadingComplete` prop, matching every
+	// other tier-1 callback (D1).
+	onLoadingComplete?: LoadingCompleteHandler;
+
 	// M5 mirrors of demoted kebab attributes (Decision D1: every reachable
 	// configuration value is reachable via `runtime.<key>` if a host wants
 	// the override path).
@@ -103,6 +130,8 @@ export type RuntimeInputs = {
 	toolConfigStrictness?: ToolConfigStrictness;
 	onFrameworkError?: FrameworkErrorHandler;
 	frameworkErrorHook?: LegacyFrameworkErrorHook;
+	onStageChange?: StageChangeHandler;
+	onLoadingComplete?: LoadingCompleteHandler;
 	policies?: SectionPlayerPolicies;
 	hooks?: SectionPlayerHostHooks;
 	sectionHostButtons?: ToolbarItem[];
@@ -229,6 +258,8 @@ export function resolveRuntime(args: {
 	toolConfigStrictness?: ToolConfigStrictness;
 	onFrameworkError?: FrameworkErrorHandler;
 	frameworkErrorHook?: LegacyFrameworkErrorHook;
+	onStageChange?: StageChangeHandler;
+	onLoadingComplete?: LoadingCompleteHandler;
 	toolRegistry?: ToolRegistry | null;
 	policies?: SectionPlayerPolicies;
 	hooks?: SectionPlayerHostHooks;
@@ -283,6 +314,22 @@ export function resolveRuntime(args: {
 			onFrameworkError: args.onFrameworkError,
 			frameworkErrorHook: args.frameworkErrorHook,
 		}),
+
+		// M6 mirror — `onStageChange` follows the same precedence as every
+		// other tier-1 surface: `runtime.onStageChange` wins over the
+		// top-level prop. The kernel/toolkit invokes the resolved handler
+		// at the same emit point as `pie-stage-change`, so the callback
+		// and DOM event are guaranteed in lockstep.
+		onStageChange: pick(r.onStageChange, args.onStageChange),
+
+		// M6 mirror — `onLoadingComplete` follows the same precedence
+		// rule. The kernel invokes the resolved handler at the same
+		// emit point as `pie-loading-complete`. Only the kernel-backed
+		// layout CEs forward this handler; the toolkit / base CE pass
+		// it through `runtime.onLoadingComplete` only and never invoke
+		// it themselves (they do not own a `pie-loading-complete` emit
+		// point).
+		onLoadingComplete: pick(r.onLoadingComplete, args.onLoadingComplete),
 
 		// M5 mirrors of tier-1 props.
 		toolRegistry: pick(r.toolRegistry, args.toolRegistry),
@@ -408,6 +455,8 @@ export function resolveSectionPlayerRuntimeState(args: RuntimeInputs) {
 		toolConfigStrictness: args.toolConfigStrictness,
 		onFrameworkError: args.onFrameworkError,
 		frameworkErrorHook: args.frameworkErrorHook,
+		onStageChange: args.onStageChange,
+		onLoadingComplete: args.onLoadingComplete,
 		toolRegistry: args.toolRegistry,
 		policies: args.policies,
 		hooks: args.hooks,

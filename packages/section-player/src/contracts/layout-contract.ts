@@ -47,7 +47,9 @@ export type SectionPlayerAdvancedPropName =
 	| "policies"
 	| "toolConfigStrictness"
 	| "hooks"
-	| "onFrameworkError";
+	| "onFrameworkError"
+	| "onStageChange"
+	| "onLoadingComplete";
 
 export type SectionPlayerLayoutPropName =
 	| SectionPlayerBasicPropName

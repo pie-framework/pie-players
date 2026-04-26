@@ -45,6 +45,14 @@
 			// @deprecated since M3; use `onFrameworkError`. Absorbed at the CE
 			// boundary by `resolveOnFrameworkError` (one-time dev warn).
 			frameworkErrorHook: { type: "Object", reflect: false },
+			// M6 canonical stage-change callback. Mirrors
+			// `runtime.onStageChange`; resolver picks runtime over prop.
+			onStageChange: { type: "Object", reflect: false },
+			// M6 canonical loading-complete callback. Mirrors
+			// `runtime.onLoadingComplete`; the kernel invokes it at the
+			// same emit point as `pie-loading-complete` so callback and
+			// event stay in lockstep per cohort.
+			onLoadingComplete: { type: "Object", reflect: false },
 		},
 	}}
 />
@@ -73,6 +81,8 @@
 	import {
 		resolveOnFrameworkError,
 		type RuntimeConfig,
+		type StageChangeHandler,
+		type LoadingCompleteHandler,
 	} from "./shared/section-player-runtime.js";
 	import type { SectionPlayerPolicies } from "../policies/types.js";
 	import { isTelemetryEnabled } from "../policies/index.js";
@@ -112,6 +122,8 @@
 		frameworkErrorHook = undefined as
 			| undefined
 			| ((errorModel: Record<string, unknown>) => void),
+		onStageChange = undefined as StageChangeHandler | undefined,
+		onLoadingComplete = undefined as LoadingCompleteHandler | undefined,
 	} = $props();
 	// Absorb the deprecated `frameworkErrorHook` alias at the CE boundary so
 	// only the canonical handler crosses into the kernel.
@@ -272,6 +284,8 @@
 	{hooks}
 	{toolConfigStrictness}
 	onFrameworkError={effectiveOnFrameworkError}
+	{onStageChange}
+	{onLoadingComplete}
 	sourceCe="pie-section-player"
 	on:readiness-change={(event: CustomEvent) => {
 		const detail = (event as CustomEvent).detail;

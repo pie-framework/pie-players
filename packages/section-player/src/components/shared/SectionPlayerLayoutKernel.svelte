@@ -36,6 +36,8 @@
 	import {
 		resolveSectionPlayerRuntimeState,
 		type RuntimeConfig,
+		type StageChangeHandler,
+		type LoadingCompleteHandler,
 	} from "./section-player-runtime.js";
 	import type { SectionPlayerCardRenderContext } from "./section-player-card-context.js";
 	import { coerceBooleanLike } from "./section-player-props.js";
@@ -113,6 +115,20 @@
 		onFrameworkError = undefined as
 			| undefined
 			| ((model: FrameworkErrorModel) => void),
+		// M6 canonical stage-change callback. The DOM event
+		// `pie-stage-change` remains the canonical channel; this
+		// callback runs at the same emit point so hosts that prefer
+		// callback-style wiring stay in lockstep with the event. Per
+		// the strict mirror rule, `runtime.onStageChange` wins; the
+		// resolved handler arrives via `runtimeState.effectiveRuntime`.
+		onStageChange = undefined as StageChangeHandler | undefined,
+		// M6 canonical loading-complete callback. Mirrors the
+		// `pie-loading-complete` DOM event one-to-one; invoked at the
+		// same dispatch point so the event and the callback fire in
+		// lockstep for the same cohort. Resolved through the runtime
+		// (`runtime.onLoadingComplete` wins over the top-level prop)
+		// so any host channel reaches the same effective handler.
+		onLoadingComplete = undefined as LoadingCompleteHandler | undefined,
 		// `sourceCe` is the host layout CE's tag name (without the
 		// `--version-<encoded>` suffix) used to label `pie-stage-change`
 		// emissions. Each layout CE that mounts the kernel passes its own
@@ -168,7 +184,10 @@
 	// matching the contract in `stages.ts` §3.5. Initial seed values are
 	// captured via `untrack` because the tracker explicitly absorbs
 	// subsequent cohort changes through `reset()`, not through prop
-	// reactivity at construction time.
+	// reactivity at construction time. The tracker's `emit` resolves
+	// `onStageChange` from the effective runtime at emit time so the
+	// callback and the DOM event stay in lockstep without ever firing
+	// against a stale handler reference.
 	const runtimeId = createSectionPlayerRuntimeId();
 	const stageTracker = createStageTracker({
 		sourceCe: untrack(() => sourceCe),
@@ -178,6 +197,16 @@
 		attemptId: untrack(() => attemptId || undefined),
 		emit: (detail) => {
 			dispatch("pie-stage-change", detail);
+			const handler = effectiveRuntime?.onStageChange as
+				| StageChangeHandler
+				| undefined;
+			if (handler) {
+				try {
+					handler(detail);
+				} catch (error) {
+					logger.error("onStageChange handler threw", error);
+				}
+			}
 		},
 	});
 	let lastCohortKey = $state(untrack(() => `${sectionId}|${attemptId}`));
@@ -209,6 +238,8 @@
 			toolRegistry,
 			toolConfigStrictness,
 			onFrameworkError,
+			onStageChange,
+			onLoadingComplete,
 			policies,
 			hooks,
 			sectionHostButtons,
@@ -511,7 +542,7 @@
 			if (loadingCompleteEmittedForCohort !== cohortKey) {
 				loadingCompleteEmittedForCohort = cohortKey;
 				const loadedItemCount = items.length;
-				dispatch("pie-loading-complete", {
+				const loadingCompleteDetail: LoadingCompleteDetail = {
 					runtimeId,
 					sectionId,
 					attemptId: attemptId || undefined,
@@ -519,7 +550,24 @@
 					loadedCount: loadedItemCount,
 					timestamp: new Date().toISOString(),
 					sourceCe,
-				});
+				};
+				dispatch("pie-loading-complete", loadingCompleteDetail);
+				// Invoke the resolved `onLoadingComplete` callback at the
+				// same emit point so the DOM event and the callback fire
+				// in lockstep for the same cohort. The handler is read
+				// from the effective runtime on every emit so reassigns
+				// (cohort change, host swap) always reach the latest
+				// reference.
+				const handler = effectiveRuntime?.onLoadingComplete as
+					| LoadingCompleteHandler
+					| undefined;
+				if (handler) {
+					try {
+						handler(loadingCompleteDetail);
+					} catch (error) {
+						logger.error("onLoadingComplete handler threw", error);
+					}
+				}
 			}
 		}
 	});

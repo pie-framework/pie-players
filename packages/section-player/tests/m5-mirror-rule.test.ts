@@ -57,6 +57,8 @@ const RUNTIME_CONFIG_KEYS = [
 	"env",
 	"toolConfigStrictness",
 	"onFrameworkError",
+	"onStageChange",
+	"onLoadingComplete",
 	"enabledTools",
 	"toolRegistry",
 	"policies",

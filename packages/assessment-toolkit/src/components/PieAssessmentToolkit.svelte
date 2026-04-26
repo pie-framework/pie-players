@@ -27,6 +27,11 @@
 			// `onframework-error` DOM event (kebab name).
 			onframeworkerror: { type: "Object", reflect: false },
 			errorRenderer: { type: "Object", reflect: false },
+			// M6 canonical stage-change callback. Invoked at the same
+			// emit point as `pie-stage-change` so the callback and DOM
+			// event stay in lockstep. Hosts using `<pie-section-player-*>`
+			// receive this through the base CE's runtime-tier resolver.
+			onStageChange: { type: "Object", reflect: false },
 			// @deprecated since M5; set via `runtime.isolation` on a
 			// containing section-player CE, or omit (default `inherit`).
 			isolation: { attribute: "isolation", type: "String" },
@@ -177,6 +182,7 @@ const DEFAULT_ENV = {
 					title?: string;
 					details?: string[];
 			  }),
+		onStageChange = null as null | ((detail: StageChangeDetail) => void),
 		isolation = "inherit",
 	} = $props();
 
@@ -221,7 +227,25 @@ const DEFAULT_ENV = {
 		runtimeId,
 		sectionId: untrack(() => sectionId || undefined),
 		attemptId: untrack(() => attemptId || undefined),
-		emit: (detail: StageChangeDetail) => emit("pie-stage-change", detail),
+		emit: (detail: StageChangeDetail) => {
+			emit("pie-stage-change", detail);
+			// Invoke the canonical `onStageChange` callback alongside the
+			// DOM event so hosts using either surface receive every stage
+			// transition from the same emit point. The prop is read on
+			// every emit so reassignments (cohort change, host swap)
+			// always reach the latest handler.
+			const handler = onStageChange;
+			if (handler) {
+				try {
+					handler(detail);
+				} catch (error) {
+					console.error(
+						"[pie-assessment-toolkit] onStageChange handler threw",
+						error,
+					);
+				}
+			}
+		},
 	});
 	let lastStageCohortKey = $state(
 		untrack(() => `${sectionId}|${attemptId}`),

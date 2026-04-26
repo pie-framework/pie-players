@@ -45,6 +45,14 @@
 			// @deprecated since M3; use `onFrameworkError`. Absorbed at the CE
 			// boundary by `resolveOnFrameworkError` (one-time dev warn).
 			frameworkErrorHook: { type: "Object", reflect: false },
+			// M6 canonical stage-change callback. Mirrors
+			// `runtime.onStageChange`; resolver picks runtime over prop.
+			onStageChange: { type: "Object", reflect: false },
+			// M6 canonical loading-complete callback. Mirrors
+			// `runtime.onLoadingComplete`; the kernel invokes it at the
+			// same emit point as `pie-loading-complete` so callback and
+			// event stay in lockstep per cohort.
+			onLoadingComplete: { type: "Object", reflect: false },
 			narrowLayoutBreakpoint: { attribute: "narrow-layout-breakpoint", type: "Number" },
 			// @deprecated since M5; set via `runtime.contentMaxWidthNoPassage`.
 			contentMaxWidthNoPassage: {
@@ -92,6 +100,8 @@
 	import {
 		resolveOnFrameworkError,
 		type RuntimeConfig,
+		type StageChangeHandler,
+		type LoadingCompleteHandler,
 	} from "./shared/section-player-runtime.js";
 	import type {
 		SectionPlayerRuntimeHostContract,
@@ -153,6 +163,8 @@
 		frameworkErrorHook = undefined as
 			| undefined
 			| ((errorModel: Record<string, unknown>) => void),
+		onStageChange = undefined as StageChangeHandler | undefined,
+		onLoadingComplete = undefined as LoadingCompleteHandler | undefined,
 		narrowLayoutBreakpoint = undefined as number | undefined,
 		contentMaxWidthNoPassage = undefined as number | undefined,
 		contentMaxWidthWithPassage = undefined as number | undefined,
@@ -343,6 +355,8 @@
 	{hooks}
 	{toolConfigStrictness}
 	onFrameworkError={effectiveOnFrameworkError}
+	{onStageChange}
+	{onLoadingComplete}
 	sourceCe="pie-section-player-tabbed"
 	playerActionConfig={{
 		stateKey: "__tabbedAppliedParams",

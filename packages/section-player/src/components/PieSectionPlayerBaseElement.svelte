@@ -30,6 +30,11 @@
 			// @deprecated since M3; use `onFrameworkError`. Absorbed at the CE
 			// boundary by `resolveOnFrameworkError` (one-time dev warn).
 			frameworkErrorHook: { type: "Object", reflect: false },
+			// M6 canonical stage-change callback. Mirrors
+			// `runtime.onStageChange`; resolver picks runtime over prop.
+			// Wired imperatively to the toolkit element so the resolved
+			// handler reaches the canonical stage emit point.
+			onStageChange: { type: "Object", reflect: false },
 			// @deprecated since M5; set via `runtime.isolation`.
 			isolation: { attribute: "isolation", type: "String" },
 			env: { type: "Object", reflect: false },
@@ -64,6 +69,7 @@
 		DEFAULT_PLAYER_TYPE,
 		resolveOnFrameworkError,
 		type RuntimeConfig,
+		type StageChangeHandler,
 	} from "./shared/section-player-runtime.js";
 	import type { SectionPlayerPolicies } from "../policies/types.js";
 	import type { SectionPlayerHostHooks } from "../contracts/host-hooks.js";
@@ -97,6 +103,7 @@
 		frameworkErrorHook = undefined as
 			| undefined
 			| ((errorModel: Record<string, unknown>) => void),
+		onStageChange = undefined as StageChangeHandler | undefined,
 		isolation = DEFAULT_ISOLATION,
 		env = null as Record<string, unknown> | null,
 	} = $props();
@@ -144,6 +151,11 @@
 			onFrameworkError,
 			frameworkErrorHook,
 		}),
+	);
+	// Two-tier resolution for `onStageChange` (M6). Strict mirror rule
+	// applies: `runtime.onStageChange` wins over the top-level prop.
+	const effectiveOnStageChange = $derived.by(
+		() => runtime?.onStageChange ?? onStageChange,
 	);
 	const effectiveSectionId = $derived.by(
 		() => sectionId || (resolvedSection as any)?.identifier || "",
@@ -292,6 +304,18 @@
 		toolkitElement.onFrameworkError = effectiveOnFrameworkError;
 		return () => {
 			toolkitElement.onFrameworkError = undefined;
+		};
+	});
+
+	// Same Svelte-5 rationale for the M6 `onStageChange` callback. The
+	// toolkit's stage tracker invokes the resolved handler at the same
+	// emit point as the `pie-stage-change` DOM event so the callback
+	// and the event stay in lockstep for hosts using either surface.
+	$effect(() => {
+		if (!toolkitElement) return;
+		toolkitElement.onStageChange = effectiveOnStageChange;
+		return () => {
+			toolkitElement.onStageChange = undefined;
 		};
 	});
 

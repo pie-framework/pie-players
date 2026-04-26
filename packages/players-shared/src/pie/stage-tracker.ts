@@ -20,10 +20,12 @@ import {
  * - Monotonic ordering across `STAGES`. Backward transitions inside one
  *   cohort are rejected (dev) / warned-once (prod) so subscribers never
  *   see a stage regress without an intervening `reset()`.
- * - Per-CE applicability. Stages that don't apply to the source CE
- *   (today: `ui-rendered` on the toolkit) auto-emit `status: "skipped"`
- *   when an applicable later stage is entered, so iteration order stays
- *   stable across CE shapes.
+ * - Per-CE applicability. The post-retro canonical list applies to
+ *   every CE shape; the `applicableStages` indirection is kept so a
+ *   future shape-specific stage can opt out without rewriting callers.
+ *   Non-applicable stages auto-emit `status: "skipped"` when an
+ *   applicable later stage is entered, so iteration order stays stable
+ *   across CE shapes.
  * - One source for every emit. The injected `emit(detail)` function
  *   drives DOM events, engine subscribers, and coordinator subscribers
  *   from the same call site so no surface drifts.

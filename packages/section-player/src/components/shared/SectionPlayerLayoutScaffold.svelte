@@ -37,7 +37,6 @@
 		cardRenderContext = null as SectionPlayerCardRenderContext | null,
 		onCompositionChanged,
 		onSectionReady,
-		onRuntimeError,
 		onFrameworkErrorEvent,
 		onSessionChanged,
 		onRuntimeOwned,
@@ -57,7 +56,6 @@
 		cardRenderContext?: SectionPlayerCardRenderContext | null;
 		onCompositionChanged?: (event: Event) => void;
 		onSectionReady?: (event: Event) => void;
-		onRuntimeError?: (event: Event) => void;
 		/**
 		 * Internal scaffold-level event-listener for `framework-error` DOM
 		 * events. Distinct from the canonical, model-shape
@@ -213,10 +211,6 @@
 		onSectionReady?.(event);
 	}
 
-	function handleRuntimeError(event: Event) {
-		onRuntimeError?.(event);
-	}
-
 	function handleFrameworkError(event: Event) {
 		onFrameworkErrorEvent?.(event);
 	}
@@ -336,7 +330,6 @@
 	{toolRegistry}
 	oncomposition-changed={handleCompositionChanged}
 	onsection-ready={handleSectionReady}
-	onruntime-error={handleRuntimeError}
 	onframework-error={handleFrameworkError}
 	onsession-changed={handleSessionChanged}
 	onruntime-owned={handleRuntimeOwned}

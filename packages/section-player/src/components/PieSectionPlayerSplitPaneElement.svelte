@@ -20,9 +20,7 @@
 			// @deprecated since M5; set via `runtime.isolation`.
 			isolation: { attribute: "isolation", type: "String" },
 			env: { type: "Object", reflect: false },
-			// @deprecated since M5; set via `runtime.iifeBundleHost`.
 			iifeBundleHost: { attribute: "iife-bundle-host", type: "String" },
-			// @deprecated since M5; set via `runtime.debug`.
 			debug: { attribute: "debug", type: "String" },
 			showToolbar: { attribute: "show-toolbar", type: "String" },
 			toolbarPosition: { attribute: "toolbar-position", type: "String" },
@@ -44,9 +42,6 @@
 				type: "String",
 			},
 			onFrameworkError: { type: "Object", reflect: false },
-			// @deprecated since M3; use `onFrameworkError` instead. Absorbed at
-			// the CE boundary by `resolveOnFrameworkError` (one-time dev warn).
-			frameworkErrorHook: { type: "Object", reflect: false },
 			// M6 canonical stage-change callback. Mirrors
 			// `runtime.onStageChange`; resolver picks runtime over prop.
 			onStageChange: { type: "Object", reflect: false },
@@ -56,20 +51,14 @@
 			// event stay in lockstep per cohort.
 			onLoadingComplete: { type: "Object", reflect: false },
 			narrowLayoutBreakpoint: { attribute: "narrow-layout-breakpoint", type: "Number" },
-			// @deprecated since M5; set via `runtime.contentMaxWidthNoPassage`
-			// instead. Absorbed by `resolveRuntime`.
 			contentMaxWidthNoPassage: {
 				attribute: "content-max-width-no-passage",
 				type: "Number",
 			},
-			// @deprecated since M5; set via `runtime.contentMaxWidthWithPassage`
-			// instead. Absorbed by `resolveRuntime`.
 			contentMaxWidthWithPassage: {
 				attribute: "content-max-width-with-passage",
 				type: "Number",
 			},
-			// @deprecated since M5; set via `runtime.splitPaneMinRegionWidth`
-			// instead. Absorbed by `resolveRuntime`.
 			splitPaneMinRegionWidth: {
 				attribute: "split-pane-min-region-width",
 				type: "Number",
@@ -211,9 +200,6 @@
 		onFrameworkError = undefined as
 			| undefined
 			| ((model: FrameworkErrorModel) => void),
-		frameworkErrorHook = undefined as
-			| undefined
-			| ((errorModel: Record<string, unknown>) => void),
 		onStageChange = undefined as StageChangeHandler | undefined,
 		onLoadingComplete = undefined as LoadingCompleteHandler | undefined,
 		narrowLayoutBreakpoint = undefined as number | undefined,
@@ -280,14 +266,12 @@
 			component: "pie-section-player-splitpane",
 		}),
 	);
-	// Absorb the deprecated `frameworkErrorHook` alias at the CE boundary so
-	// only the canonical handler crosses into the kernel (single resolution
-	// point — the kernel's resolver no longer sees the alias).
+	// Two-tier resolution at the CE boundary so only the canonical handler
+	// crosses into the kernel (single resolution point).
 	const effectiveOnFrameworkError = $derived.by(() =>
 		resolveOnFrameworkError({
 			runtime,
 			onFrameworkError,
-			frameworkErrorHook,
 		}),
 	);
 
@@ -463,7 +447,6 @@
 	on:readiness-change={forward}
 	on:interaction-ready={forward}
 	on:ready={forward}
-	on:runtime-error={forward}
 	on:framework-error={forward}
 	on:runtime-owned={forward}
 	on:runtime-inherited={forward}

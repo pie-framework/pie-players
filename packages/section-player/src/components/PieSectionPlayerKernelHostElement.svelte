@@ -20,9 +20,7 @@
 			// @deprecated since M5; set via `runtime.isolation`.
 			isolation: { attribute: "isolation", type: "String" },
 			env: { type: "Object", reflect: false },
-			// @deprecated since M5; set via `runtime.iifeBundleHost`.
 			iifeBundleHost: { attribute: "iife-bundle-host", type: "String" },
-			// @deprecated since M5; set via `runtime.debug`.
 			debug: { attribute: "debug", type: "String" },
 			showToolbar: { attribute: "show-toolbar", type: "String" },
 			toolbarPosition: { attribute: "toolbar-position", type: "String" },
@@ -42,9 +40,6 @@
 				type: "String",
 			},
 			onFrameworkError: { type: "Object", reflect: false },
-			// @deprecated since M3; use `onFrameworkError`. Absorbed at the CE
-			// boundary by `resolveOnFrameworkError` (one-time dev warn).
-			frameworkErrorHook: { type: "Object", reflect: false },
 			// M6 canonical stage-change callback. Mirrors
 			// `runtime.onStageChange`; resolver picks runtime over prop.
 			onStageChange: { type: "Object", reflect: false },
@@ -119,19 +114,15 @@
 		onFrameworkError = undefined as
 			| undefined
 			| ((model: FrameworkErrorModel) => void),
-		frameworkErrorHook = undefined as
-			| undefined
-			| ((errorModel: Record<string, unknown>) => void),
 		onStageChange = undefined as StageChangeHandler | undefined,
 		onLoadingComplete = undefined as LoadingCompleteHandler | undefined,
 	} = $props();
-	// Absorb the deprecated `frameworkErrorHook` alias at the CE boundary so
-	// only the canonical handler crosses into the kernel.
+	// Two-tier resolution at the CE boundary so only the canonical handler
+	// crosses into the kernel.
 	const effectiveOnFrameworkError = $derived.by(() =>
 		resolveOnFrameworkError({
 			runtime,
 			onFrameworkError,
-			frameworkErrorHook,
 		}),
 	);
 
@@ -294,7 +285,6 @@
 	}}
 	on:interaction-ready={reemit}
 	on:ready={reemit}
-	on:runtime-error={reemit}
 	on:framework-error={reemit}
 	on:runtime-owned={reemit}
 	on:runtime-inherited={reemit}

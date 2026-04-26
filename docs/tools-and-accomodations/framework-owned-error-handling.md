@@ -12,9 +12,6 @@ The framework now does three things by default:
 2. Renders a built-in fallback UI for fatal startup failures.
 3. Emits a canonical `framework-error` event for optional host reactions.
 
-`runtime-error` is still emitted for compatibility and now includes optional
-`frameworkError` details when available.
-
 ---
 
 ## Why this change was made
@@ -87,7 +84,6 @@ Primary file:
   `pie-assessment-toolkit` that fans out to every observable surface so
   every host integration sees the same payload exactly once.
 - Emit `framework-error` (canonical event).
-- Emit `runtime-error` (compatibility signal) with optional `frameworkError`.
 - Render built-in fallback UI when the error is a fatal bootstrap kind
   (`coordinator-init`, `runtime-init`, `tool-config`) and is not flagged
   recoverable. Non-bootstrap kinds (e.g. `tool-runtime`, `provider-init`,
@@ -109,17 +105,14 @@ should not assume startup tool validation always emits `kind: "tool-config"`.
 ### Recoverable behavior note
 
 Recoverable framework errors are still logged and emitted through
-`framework-error` / `runtime-error`, but they do not trigger the built-in fatal
-fallback panel. The default slot remains active when `recoverable === true`.
+`framework-error`, but they do not trigger the built-in fatal fallback
+panel. The default slot remains active when `recoverable === true`.
 
 ### Optional host extension points
 
 - `onFrameworkError?: (errorModel: FrameworkErrorModel) => void` — canonical
   prop. Mirrors the `framework-error` DOM event payload exactly, fires
   exactly once per error.
-- `frameworkErrorHook?: (errorModel) => void` — **deprecated** alias for
-  `onFrameworkError`. Still delivered for compatibility, but emits a
-  one-shot `[pie-deprecated]` console warning. Prefer `onFrameworkError`.
 - `errorRenderer?: (errorModel) => { title?: string; details?: string[] }`
 
 The `<pie-section-player-…>` layout custom elements (and
@@ -197,30 +190,12 @@ The e2e test verifies:
   `onFrameworkError` callback is delivered exactly once per error,
   regardless of wrapper depth.
 
-### Compatibility event
-
-- `runtime-error`
-
-`runtime-error` detail remains compatibility-first and now may include:
-
-- `runtimeId`
-- `error`
-- `frameworkError?: FrameworkErrorModel`
-
-Compatibility goal: existing host listeners continue to work, while new
-integrations should prefer `framework-error` and `onFrameworkError`. The
-deprecated `frameworkErrorHook` prop is kept for migration and emits a
-one-shot `[pie-deprecated]` console warning when used.
-
 ### Telemetry mapping
 
-Section-player and toolkit instrumentation bridges now emit:
+Section-player and toolkit instrumentation bridges emit:
 
 - `pie-toolkit-framework-error`
 - `pie-section-framework-error`
-
-The legacy `pie-toolkit-runtime-error` / `pie-section-runtime-error`
-mappings are kept so hosts mid-migration see no telemetry regression.
 
 ---
 

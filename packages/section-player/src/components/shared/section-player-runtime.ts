@@ -3,8 +3,6 @@ import {
 	warnDeprecatedOnce,
 	type FrameworkErrorModel,
 	type ToolConfigStrictness,
-	type ToolRegistry,
-	type ToolbarItem,
 } from "@pie-players/pie-assessment-toolkit";
 import {
 	normalizeItemPlayerStrategy,
@@ -16,8 +14,6 @@ import type {
 	StageChangeDetail,
 } from "@pie-players/pie-players-shared/pie";
 import { DEFAULT_PLAYER_DEFINITIONS } from "../../component-definitions.js";
-import type { SectionPlayerHostHooks } from "../../contracts/host-hooks.js";
-import type { SectionPlayerPolicies } from "../../policies/types.js";
 
 export const DEFAULT_ASSESSMENT_ID = "section-demo-direct";
 export const DEFAULT_PLAYER_TYPE = "iife";
@@ -35,27 +31,36 @@ type PlayerOverrides = {
 };
 
 export type FrameworkErrorHandler = (model: FrameworkErrorModel) => void;
-export type LegacyFrameworkErrorHook = (
-	errorModel: Record<string, unknown>,
-) => void;
 export type StageChangeHandler = (detail: StageChangeDetail) => void;
 export type LoadingCompleteHandler = (detail: LoadingCompleteDetail) => void;
 
 /**
  * Two-tier section player runtime config.
  *
- * Mirror rule (locked in M5): every tier-1 surface has the shape
+ * Mirror rule (locked in M5; trimmed in the M5 follow-up): every tier-1
+ * surface that is honored by the consumer has the shape
  *   `kebab-attribute ↔ camelCaseProp ↔ runtime.<sameCamelCaseKey>`
  *
- * `runtime.<key>` always wins over the equivalent prop/attribute. Adding a new
- * tier-1 surface means appending a key here AND adding the matching layout-CE
- * prop entry; `m5-mirror-rule.test.ts` is the CI guardrail for this invariant.
+ * `runtime.<key>` always wins over the equivalent prop/attribute. Adding a
+ * new tier-1 surface means (a) appending a key here, (b) adding the matching
+ * layout-CE prop entry, AND (c) wiring `runtime?.<key>` (or
+ * `effectiveRuntime?.<key>`) at the consumer. `m5-mirror-rule.test.ts` is
+ * the CI guardrail for the prop-declaration leg; the
+ * `RUNTIME_TIER_CONSUMERS` table in that test is the guardrail for the
+ * consumer leg.
  *
  * Documented exceptions (no runtime mirror, by design):
  * - Identity (`section-id`, `attempt-id`, `section`): per-attempt host state.
  * - Layout-only shell knobs (`show-toolbar`, `toolbar-position`,
- *   `narrow-layout-breakpoint`, `split-pane-collapse-strategy`): layout-CE
- *   concerns; the resolver does not see them.
+ *   `narrow-layout-breakpoint`, `split-pane-collapse-strategy`,
+ *   `content-max-width-no-passage`, `content-max-width-with-passage`,
+ *   `split-pane-min-region-width`, `iife-bundle-host`, `debug`): layout-CE
+ *   rendering / preload-host concerns. The resolver does not see them.
+ * - Layout-shell host data (`policies`, `hooks`, `toolRegistry`,
+ *   `sectionHostButtons`, `itemHostButtons`, `passageHostButtons`): consumed
+ *   by the layout kernel through its top-level prop, not via `runtime`.
+ *   These pass straight through to the kernel/scaffold and are not part of
+ *   the two-tier mirror.
  *
  * See `packages/section-player/ARCHITECTURE.md` for the full policy.
  */
@@ -75,14 +80,10 @@ export type RuntimeConfig = {
 	// M3 mirror — canonical onFrameworkError handler.
 	onFrameworkError?: FrameworkErrorHandler;
 
-	// M5 mirrors of currently-prop-only tier-1 surfaces.
+	// M5 mirror — `enabledTools` is the canonical tier-1 shorthand for
+	// `tools.placement.section`; `resolveToolsConfig` reads it from
+	// `runtime?.enabledTools` when present.
 	enabledTools?: string;
-	toolRegistry?: ToolRegistry | null;
-	policies?: SectionPlayerPolicies;
-	hooks?: SectionPlayerHostHooks;
-	sectionHostButtons?: ToolbarItem[];
-	itemHostButtons?: ToolbarItem[];
-	passageHostButtons?: ToolbarItem[];
 
 	// M6 mirror — canonical stage-change callback. The DOM event
 	// `pie-stage-change` remains the primary channel; this callback is
@@ -104,15 +105,6 @@ export type RuntimeConfig = {
 	// over the top-level `onLoadingComplete` prop, matching every
 	// other tier-1 callback (D1).
 	onLoadingComplete?: LoadingCompleteHandler;
-
-	// M5 mirrors of demoted kebab attributes (Decision D1: every reachable
-	// configuration value is reachable via `runtime.<key>` if a host wants
-	// the override path).
-	iifeBundleHost?: string;
-	debug?: string | boolean;
-	contentMaxWidthNoPassage?: number;
-	contentMaxWidthWithPassage?: number;
-	splitPaneMinRegionWidth?: number;
 };
 
 export type RuntimeInputs = {
@@ -126,22 +118,10 @@ export type RuntimeInputs = {
 	createSectionController?: unknown;
 	isolation?: string;
 	env?: Record<string, unknown> | null;
-	toolRegistry?: ToolRegistry | null;
 	toolConfigStrictness?: ToolConfigStrictness;
 	onFrameworkError?: FrameworkErrorHandler;
-	frameworkErrorHook?: LegacyFrameworkErrorHook;
 	onStageChange?: StageChangeHandler;
 	onLoadingComplete?: LoadingCompleteHandler;
-	policies?: SectionPlayerPolicies;
-	hooks?: SectionPlayerHostHooks;
-	sectionHostButtons?: ToolbarItem[];
-	itemHostButtons?: ToolbarItem[];
-	passageHostButtons?: ToolbarItem[];
-	iifeBundleHost?: string;
-	debug?: string | boolean;
-	contentMaxWidthNoPassage?: number;
-	contentMaxWidthWithPassage?: number;
-	splitPaneMinRegionWidth?: number;
 	runtime: RuntimeConfig | null;
 	enabledTools: string;
 	itemToolbarTools: string;
@@ -161,13 +141,11 @@ function pick<T>(
 }
 
 /**
- * Resolve the canonical `onFrameworkError` handler from the two-tier surface
- * plus the deprecated `frameworkErrorHook` alias.
+ * Resolve the canonical `onFrameworkError` handler from the two-tier surface.
  *
  * Precedence (highest first):
  *   1. `runtime.onFrameworkError`
  *   2. top-level `onFrameworkError` prop
- *   3. legacy `frameworkErrorHook` prop (deprecated; emits a one-time dev warn)
  *
  * Layout CEs and the kernel call this so every entry point converges on the
  * same handler — the toolkit element invokes it exactly once per error.
@@ -175,24 +153,10 @@ function pick<T>(
 export function resolveOnFrameworkError(args: {
 	runtime: RuntimeConfig | null;
 	onFrameworkError?: FrameworkErrorHandler;
-	frameworkErrorHook?: LegacyFrameworkErrorHook;
 }): FrameworkErrorHandler | undefined {
 	const r = args.runtime ?? {};
 	if (r.onFrameworkError !== undefined) return r.onFrameworkError;
-	if (args.onFrameworkError !== undefined) return args.onFrameworkError;
-	if (args.frameworkErrorHook !== undefined) {
-		warnDeprecatedOnce(
-			"section-player:frameworkErrorHook",
-			"<pie-section-player-...>'s `frameworkErrorHook` prop is deprecated; use `onFrameworkError` instead.",
-		);
-		// The legacy hook accepts a looser `Record<string, unknown>`; wrap it
-		// rather than casting so the canonical-handler contract stays clean.
-		// Migration target is the runtime mirror `runtime.onFrameworkError`
-		// or the top-level `onFrameworkError` prop.
-		const legacy = args.frameworkErrorHook;
-		return (model) => legacy(model as unknown as Record<string, unknown>);
-	}
-	return undefined;
+	return args.onFrameworkError;
 }
 
 export function resolveToolsConfig(args: {
@@ -257,20 +221,8 @@ export function resolveRuntime(args: {
 	effectiveToolsConfig: unknown;
 	toolConfigStrictness?: ToolConfigStrictness;
 	onFrameworkError?: FrameworkErrorHandler;
-	frameworkErrorHook?: LegacyFrameworkErrorHook;
 	onStageChange?: StageChangeHandler;
 	onLoadingComplete?: LoadingCompleteHandler;
-	toolRegistry?: ToolRegistry | null;
-	policies?: SectionPlayerPolicies;
-	hooks?: SectionPlayerHostHooks;
-	sectionHostButtons?: ToolbarItem[];
-	itemHostButtons?: ToolbarItem[];
-	passageHostButtons?: ToolbarItem[];
-	iifeBundleHost?: string;
-	debug?: string | boolean;
-	contentMaxWidthNoPassage?: number;
-	contentMaxWidthWithPassage?: number;
-	splitPaneMinRegionWidth?: number;
 }) {
 	const r = args.runtime || {};
 	const topLevelPlayer = (args.player || {}) as PlayerOverrides;
@@ -307,12 +259,10 @@ export function resolveRuntime(args: {
 			pick(r.toolConfigStrictness, args.toolConfigStrictness) ?? "error",
 
 		// M3 mirror absorbed via the shared helper so every layout CE wires
-		// `onFrameworkError` identically (including the deprecated
-		// `frameworkErrorHook` alias).
+		// `onFrameworkError` identically.
 		onFrameworkError: resolveOnFrameworkError({
 			runtime: args.runtime,
 			onFrameworkError: args.onFrameworkError,
-			frameworkErrorHook: args.frameworkErrorHook,
 		}),
 
 		// M6 mirror — `onStageChange` follows the same precedence as every
@@ -330,30 +280,6 @@ export function resolveRuntime(args: {
 		// it themselves (they do not own a `pie-loading-complete` emit
 		// point).
 		onLoadingComplete: pick(r.onLoadingComplete, args.onLoadingComplete),
-
-		// M5 mirrors of tier-1 props.
-		toolRegistry: pick(r.toolRegistry, args.toolRegistry),
-		policies: pick(r.policies, args.policies),
-		hooks: pick(r.hooks, args.hooks),
-		sectionHostButtons: pick(r.sectionHostButtons, args.sectionHostButtons),
-		itemHostButtons: pick(r.itemHostButtons, args.itemHostButtons),
-		passageHostButtons: pick(r.passageHostButtons, args.passageHostButtons),
-
-		// Demoted-with-alias keys (Decision D1).
-		iifeBundleHost: pick(r.iifeBundleHost, args.iifeBundleHost),
-		debug: pick(r.debug, args.debug),
-		contentMaxWidthNoPassage: pick(
-			r.contentMaxWidthNoPassage,
-			args.contentMaxWidthNoPassage,
-		),
-		contentMaxWidthWithPassage: pick(
-			r.contentMaxWidthWithPassage,
-			args.contentMaxWidthWithPassage,
-		),
-		splitPaneMinRegionWidth: pick(
-			r.splitPaneMinRegionWidth,
-			args.splitPaneMinRegionWidth,
-		),
 
 		tools: args.effectiveToolsConfig,
 	};
@@ -454,20 +380,8 @@ export function resolveSectionPlayerRuntimeState(args: RuntimeInputs) {
 		effectiveToolsConfig,
 		toolConfigStrictness: args.toolConfigStrictness,
 		onFrameworkError: args.onFrameworkError,
-		frameworkErrorHook: args.frameworkErrorHook,
 		onStageChange: args.onStageChange,
 		onLoadingComplete: args.onLoadingComplete,
-		toolRegistry: args.toolRegistry,
-		policies: args.policies,
-		hooks: args.hooks,
-		sectionHostButtons: args.sectionHostButtons,
-		itemHostButtons: args.itemHostButtons,
-		passageHostButtons: args.passageHostButtons,
-		iifeBundleHost: args.iifeBundleHost,
-		debug: args.debug,
-		contentMaxWidthNoPassage: args.contentMaxWidthNoPassage,
-		contentMaxWidthWithPassage: args.contentMaxWidthWithPassage,
-		splitPaneMinRegionWidth: args.splitPaneMinRegionWidth,
 	});
 	const playerRuntime = resolvePlayerRuntime({
 		effectiveRuntime: effectiveRuntime as Record<string, unknown>,

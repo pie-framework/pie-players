@@ -5,7 +5,7 @@ Use the same normalization and validation contract in host apps, demos, and runt
 Baseline safety is framework-owned: hosts do not need manual try/catch to avoid blank UI.
 
 - `pie-assessment-toolkit` logs `[pie-framework:<kind>:<source>]` errors
-- emits `framework-error` (plus `runtime-error` for compatibility)
+- emits `framework-error`
 - renders a built-in fallback panel for fatal initialization failures
 
 Tool-config validation failures surfaced during owned coordinator construction

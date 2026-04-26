@@ -1,21 +1,15 @@
 export const SECTION_PLAYER_PUBLIC_EVENTS = {
 	runtimeOwned: "runtime-owned",
 	runtimeInherited: "runtime-inherited",
-	/**
-	 * Deprecated alias for `frameworkError`. Kept for hosts that still
-	 * subscribe to the old event name; new consumers should listen to
-	 * `framework-error` and treat the detail as a `FrameworkErrorModel`.
-	 */
-	runtimeError: "runtime-error",
 	frameworkError: "framework-error",
 	compositionChanged: "composition-changed",
 	sessionChanged: "session-changed",
 	/**
-	 * Canonical readiness vocabulary (M6). One DOM event family carries
-	 * every stage transition (`attached` → `composed` → `runtime-bound` →
-	 * `engine-ready` → `ui-rendered` → `interactive` → `disposed`) with
-	 * the discriminator in `event.detail.stage`. See
-	 * `packages/section-player/src/contracts/stages.ts`.
+	 * Canonical readiness vocabulary (M6, post-retro 4 stages). One DOM
+	 * event family carries every stage transition (`composed` →
+	 * `engine-ready` → `interactive` → `disposed`) with the
+	 * discriminator in `event.detail.stage`. See
+	 * `packages/players-shared/src/pie/stages.ts`.
 	 */
 	stageChange: "pie-stage-change",
 	/**

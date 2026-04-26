@@ -19,13 +19,6 @@
 			coordinator: { type: "Object", reflect: false },
 			createSectionController: { type: "Object", reflect: false },
 			onFrameworkError: { type: "Object", reflect: false },
-			// @deprecated since M3; use `onFrameworkError` (canonical) or
-			// `onframework-error` DOM event. Absorbed in
-			// `deliverFrameworkErrorHook` with a one-time dev warn.
-			frameworkErrorHook: { type: "Object", reflect: false },
-			// @deprecated since M3; use `onFrameworkError` or the
-			// `onframework-error` DOM event (kebab name).
-			onframeworkerror: { type: "Object", reflect: false },
 			errorRenderer: { type: "Object", reflect: false },
 			// M6 canonical stage-change callback. Invoked at the same
 			// emit point as `pie-stage-change` so the callback and DOM
@@ -70,7 +63,6 @@
 		type FrameworkErrorModel,
 	} from "../services/framework-error.js";
 	import { FrameworkErrorBus } from "../services/framework-error-bus.js";
-	import { warnDeprecatedOnce } from "../services/deprecation-warnings.js";
 	import type { ToolRegistry } from "../services/ToolRegistry.js";
 	import {
 		normalizeAndValidateToolsConfig,
@@ -173,9 +165,7 @@ const DEFAULT_ENV = {
 		playerType = "" as ItemPlayerType | "",
 		coordinator = null as ToolkitCoordinator | null,
 		createSectionController = null as null | (() => unknown),
-		frameworkErrorHook: frameworkErrorCallback = null as null | ((errorModel: FrameworkErrorModel) => void),
 		onFrameworkError = null as null | ((errorModel: FrameworkErrorModel) => void),
-		onframeworkerror = null as null | ((errorModel: FrameworkErrorModel) => void),
 		errorRenderer = null as
 			| null
 			| ((errorModel: FrameworkErrorModel) => {
@@ -211,11 +201,11 @@ const DEFAULT_ENV = {
 	let pendingCrossBoundaryEvents: Array<{ name: string; detail: unknown }> = [];
 	const sessionEmitPolicyState = createSessionEmitPolicyState();
 
-	// M6 canonical stage tracker. The toolkit applies every stage except
-	// `ui-rendered` (it has no UI of its own); the tracker auto-skips
-	// non-applicable stages so subscriber iteration order stays stable
-	// across `<pie-section-player-*>` and `<pie-assessment-toolkit>` CE
-	// shapes. `attached` fires once per CE mount; cohort changes
+	// M6 canonical stage tracker. Post-retro the toolkit applies the
+	// same four-stage canonical list (`composed`, `engine-ready`,
+	// `interactive`, `disposed`) as every layout CE; subscriber
+	// iteration order stays stable across `<pie-section-player-*>` and
+	// `<pie-assessment-toolkit>` CE shapes. Cohort changes
 	// (`(sectionId, attemptId)`) reset the tracker so the new cohort
 	// begins emitting from `composed`. Initial seed values are captured
 	// via `untrack` because the tracker explicitly absorbs subsequent
@@ -251,9 +241,15 @@ const DEFAULT_ENV = {
 		untrack(() => `${sectionId}|${attemptId}`),
 	);
 	let composedStageEntered = $state(false);
-	let runtimeBoundStageEntered = $state(false);
 	let engineReadyStageEntered = $state(false);
 	let interactiveStageEntered = $state(false);
+	// `sectionInitialized` is the second of two preconditions for the
+	// `interactive` stage emission. The toolkit's interactive entrance
+	// requires *both* `engine-ready` (coordinator bring-up settled) and
+	// `sectionInitialized` (section composition + controller hydrated)
+	// before it fires. A reactive effect below joins them so neither
+	// race ordering silently drops a stage.
+	let sectionInitialized = $state(false);
 
 	function getHostElement(): HTMLElement | null {
 		if (!anchor) return null;
@@ -333,10 +329,10 @@ const DEFAULT_ENV = {
 	 * Build a `FrameworkErrorModel` and publish it on this CE's
 	 * framework-error bus.
 	 *
-	 * All delivery side-effects (banner UI, `framework-error` /
-	 * `runtime-error` DOM events, hook delivery, console logging) live in
-	 * the bus subscriber registered below — keeping this helper a thin
-	 * publish-side wrapper that CE-internal callers can use.
+	 * All delivery side-effects (banner UI, `framework-error` DOM event,
+	 * hook delivery, console logging) live in the bus subscriber
+	 * registered below — keeping this helper a thin publish-side wrapper
+	 * that CE-internal callers can use.
 	 *
 	 * Coordinator-side failures (provider-init, tts-init, ...) reach the
 	 * same subscriber by way of the shared bus (passed into the owned
@@ -379,17 +375,9 @@ const DEFAULT_ENV = {
 	}
 
 	function deliverFrameworkErrorHook(model: FrameworkErrorModel): void {
-		if (frameworkErrorCallback) {
-			warnDeprecatedOnce(
-				"pie-assessment-toolkit-prop:frameworkErrorHook",
-				"<pie-assessment-toolkit>'s `frameworkErrorHook` prop is deprecated; use `onFrameworkError` instead.",
-			);
-		}
-		const hook =
-			frameworkErrorCallback ?? onFrameworkError ?? onframeworkerror;
-		if (!hook) return;
+		if (!onFrameworkError) return;
 		try {
-			hook(model);
+			onFrameworkError(model);
 			deliveredFrameworkErrorKey = `${model.kind}|${model.source}|${model.message}`;
 		} catch (hookError) {
 			console.error(
@@ -411,11 +399,6 @@ const DEFAULT_ENV = {
 			}
 
 			emit("framework-error", model);
-			emit("runtime-error", {
-				runtimeId,
-				error: model.cause,
-				frameworkError: model,
-			});
 
 			deliverFrameworkErrorHook(model);
 		});
@@ -1017,14 +1000,31 @@ const DEFAULT_ENV = {
 				emit("section-ready", {
 					sectionId: effectiveSectionId,
 				});
+				// Mark section initialization complete. The reactive
+				// effect below joins this with `engineReadyStageEntered`
+				// so `interactive` only fires once the canonical
+				// predecessor is in. Direct emit here would race with
+				// `waitUntilReady()` and silently auto-skip
+				// `engine-ready` on fast hydration paths.
 				untrack(() => {
-					if (interactiveStageEntered) return;
-					interactiveStageEntered = true;
-					stageTracker.enter("interactive");
+					sectionInitialized = true;
 				});
 			})
 			.catch((error) => {
 				untrack(() => {
+					// If `engine-ready` has not latched yet, mark it
+					// explicitly skipped so subscribers see a monotonic
+					// chain (`composed → engine-ready:skipped →
+					// interactive:failed`) instead of `engine-ready`
+					// silently disappearing from the canonical stream.
+					// `waitUntilReady()` is still in flight at this
+					// point; `engineReadyStageEntered` guards its
+					// resolver so a late success cannot regress past
+					// the recorded skip.
+					if (!engineReadyStageEntered) {
+						engineReadyStageEntered = true;
+						stageTracker.enter("engine-ready", "skipped");
+					}
 					stageTracker.enter("interactive", "failed");
 				});
 				runtimeError = error;
@@ -1168,17 +1168,17 @@ const DEFAULT_ENV = {
 		await sectionEngine.hydrate();
 	}
 
-	// Stage: `attached` — wired exactly once on CE mount. Per §3.5 of
-	// the M6 plan, `attached` fires once per DOM element instance and is
-	// not re-emitted on cohort change. The matching `disposed` fires on
-	// CE unmount as part of the kernel-side teardown effect below.
+	// Stage: `disposed` — wired on CE unmount. The four-stage retro
+	// dropped `attached` (it had no consumers); the toolkit no longer
+	// emits anything on mount and starts the canonical chain at
+	// `composed` once the section composition lands. `disposed` still
+	// fires on CE teardown so subscribers see a monotonic close-out.
 	$effect(() => {
-		untrack(() => {
-			stageTracker.enter("attached");
-		});
 		return () => {
 			untrack(() => {
-				stageTracker.enter("disposed");
+				if (stageTracker.getCurrent() !== null) {
+					stageTracker.enter("disposed");
+				}
 			});
 		};
 	});
@@ -1200,36 +1200,37 @@ const DEFAULT_ENV = {
 			});
 			lastStageCohortKey = nextKey;
 			composedStageEntered = false;
-			runtimeBoundStageEntered = false;
 			engineReadyStageEntered = false;
 			interactiveStageEntered = false;
+			sectionInitialized = false;
 		});
 	});
 
-	// Canonical M6 stage progression for the toolkit CE. Each branch is
-	// short-circuited so later stages cannot fire before their
-	// predecessors; the tracker itself is idempotent and rejects
-	// backward transitions, but gating here keeps the emit order
-	// monotonic across asynchronous sources. `ui-rendered` is auto-
-	// skipped by the tracker (toolkit applicability), so callers see a
-	// consistent `composed → runtime-bound → engine-ready → ui-rendered
-	// (skipped) → interactive` sequence.
+	// `interactive` fires once both canonical predecessors land:
+	// `engine-ready` (coordinator bring-up settled) and
+	// `sectionInitialized` (section composition + controller hydrated).
+	// Joining here prevents the race that would otherwise silently
+	// auto-skip `engine-ready` when the section initializer wins.
+	$effect(() => {
+		const ready = engineReadyStageEntered && sectionInitialized;
+		untrack(() => {
+			if (!ready) return;
+			if (interactiveStageEntered) return;
+			interactiveStageEntered = true;
+			stageTracker.enter("interactive");
+		});
+	});
+
+	// Canonical M6 stage progression for the toolkit CE (post-retro:
+	// 4 stages). The tracker is idempotent and rejects backward
+	// transitions; gating with `composedStageEntered` keeps the emit
+	// order monotonic across asynchronous sources.
 	$effect(() => {
 		const composed = compositionVersion > 0 || compositionModel !== null;
-		const runtimeBound =
-			effectiveCoordinator !== null && runtimeContextValue !== null;
 		untrack(() => {
 			if (!composedStageEntered && composed) {
 				composedStageEntered = true;
 				stageTracker.enter("composed");
-			}
-			if (
-				!runtimeBoundStageEntered &&
-				composedStageEntered &&
-				runtimeBound
-			) {
-				runtimeBoundStageEntered = true;
-				stageTracker.enter("runtime-bound");
 			}
 		});
 	});
@@ -1239,10 +1240,13 @@ const DEFAULT_ENV = {
 	// initialization. Failures still flow through the framework-error bus;
 	// here we record the position with `failed` so subscribers see a
 	// monotonic stage chain even when the coordinator throws during
-	// readiness.
+	// readiness. Gated on `composedStageEntered` so the engine-ready
+	// emission cannot precede `composed` even if the coordinator
+	// resolves before composition lands (rare but possible during
+	// fast-hydration paths).
 	$effect(() => {
 		if (!effectiveCoordinator) return;
-		if (!runtimeBoundStageEntered) return;
+		if (!composedStageEntered) return;
 		if (engineReadyStageEntered) return;
 		const coord = effectiveCoordinator;
 		let cancelled = false;

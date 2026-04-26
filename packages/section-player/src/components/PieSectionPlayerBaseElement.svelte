@@ -21,15 +21,7 @@
 				attribute: "tool-config-strictness",
 				type: "String",
 			},
-			policies: { type: "Object", reflect: false },
-			hooks: { type: "Object", reflect: false },
-			sectionHostButtons: { type: "Object", reflect: false },
-			itemHostButtons: { type: "Object", reflect: false },
-			passageHostButtons: { type: "Object", reflect: false },
 			onFrameworkError: { type: "Object", reflect: false },
-			// @deprecated since M3; use `onFrameworkError`. Absorbed at the CE
-			// boundary by `resolveOnFrameworkError` (one-time dev warn).
-			frameworkErrorHook: { type: "Object", reflect: false },
 			// M6 canonical stage-change callback. Mirrors
 			// `runtime.onStageChange`; resolver picks runtime over prop.
 			// Wired imperatively to the toolkit element so the resolved
@@ -49,7 +41,6 @@
 		type FrameworkErrorModel,
 		type ToolConfigStrictness,
 		type ToolRegistry,
-		type ToolbarItem,
 	} from "@pie-players/pie-assessment-toolkit";
 	import {
 		normalizeToolsConfig,
@@ -71,8 +62,6 @@
 		type RuntimeConfig,
 		type StageChangeHandler,
 	} from "./shared/section-player-runtime.js";
-	import type { SectionPlayerPolicies } from "../policies/types.js";
-	import type { SectionPlayerHostHooks } from "../contracts/host-hooks.js";
 	let {
 		assessmentId = DEFAULT_ASSESSMENT_ID,
 		runtime = null as RuntimeConfig | null,
@@ -88,21 +77,9 @@
 		coordinator = null as unknown,
 		createSectionController = null as unknown,
 		toolConfigStrictness = undefined as ToolConfigStrictness | undefined,
-		policies: _policies = undefined as SectionPlayerPolicies | undefined,
-		hooks: _hooks = undefined as SectionPlayerHostHooks | undefined,
-		sectionHostButtons: _sectionHostButtons = undefined as
-			| ToolbarItem[]
-			| undefined,
-		itemHostButtons: _itemHostButtons = undefined as ToolbarItem[] | undefined,
-		passageHostButtons: _passageHostButtons = undefined as
-			| ToolbarItem[]
-			| undefined,
 		onFrameworkError = undefined as
 			| undefined
 			| ((model: FrameworkErrorModel) => void),
-		frameworkErrorHook = undefined as
-			| undefined
-			| ((errorModel: Record<string, unknown>) => void),
 		onStageChange = undefined as StageChangeHandler | undefined,
 		isolation = DEFAULT_ISOLATION,
 		env = null as Record<string, unknown> | null,
@@ -115,7 +92,6 @@
 		"composition-changed": { composition: SectionCompositionModel };
 		"toolkit-ready": Record<string, unknown>;
 		"section-ready": Record<string, unknown>;
-		"runtime-error": Record<string, unknown>;
 		"framework-error": Record<string, unknown>;
 		"session-changed": Record<string, unknown>;
 		"runtime-owned": Record<string, unknown>;
@@ -142,14 +118,12 @@
 	);
 	const effectiveIsolation = $derived.by(() => runtime?.isolation ?? isolation);
 	const effectiveEnv = $derived.by(() => runtime?.env ?? env ?? DEFAULT_ENV);
-	// Two-tier resolution including the deprecated `frameworkErrorHook`
-	// alias. The base CE talks to the toolkit directly (no kernel layer),
-	// so it owns the alias-absorption boundary in this path.
+	// Two-tier resolution. The base CE talks to the toolkit directly (no
+	// kernel layer), so it owns the resolver boundary in this path.
 	const effectiveOnFrameworkError = $derived.by(() =>
 		resolveOnFrameworkError({
 			runtime,
 			onFrameworkError,
-			frameworkErrorHook,
 		}),
 	);
 	// Two-tier resolution for `onStageChange` (M6). Strict mirror rule
@@ -214,10 +188,6 @@
 
 	function handleSectionReadyEvent(event: Event): void {
 		handleToolkitEvent(event, "section-ready");
-	}
-
-	function handleRuntimeErrorEvent(event: Event): void {
-		handleToolkitEvent(event, "runtime-error");
 	}
 
 	function handleFrameworkErrorEvent(event: Event): void {
@@ -297,8 +267,7 @@
 	// assignment, so the canonical model-shape `onFrameworkError`
 	// callback prop on the toolkit cannot be wired through template
 	// binding. Imperatively assign it here so the base CE's resolved
-	// callback (runtime > prop > deprecated `frameworkErrorHook`)
-	// reaches the toolkit's bus subscriber.
+	// callback (runtime > prop) reaches the toolkit's bus subscriber.
 	$effect(() => {
 		if (!toolkitElement) return;
 		toolkitElement.onFrameworkError = effectiveOnFrameworkError;
@@ -457,7 +426,6 @@
 	oncomposition-changed={handleCompositionChanged}
 	ontoolkit-ready={handleToolkitReadyEvent}
 	onsection-ready={handleSectionReadyEvent}
-	onruntime-error={handleRuntimeErrorEvent}
 	onframework-error={handleFrameworkErrorEvent}
 	onsession-changed={handleSessionChangedEvent}
 	onruntime-owned={handleRuntimeOwnedEvent}

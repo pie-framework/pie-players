@@ -128,12 +128,20 @@ design:
   state, not configuration. Re-using a section across attempts is the
   reason `assessmentId` *does* mirror.
 - **Layout-only shell knobs** (`show-toolbar`, `toolbar-position`,
-  `narrow-layout-breakpoint`, `split-pane-collapse-strategy`): layout-CE
-  rendering concerns; the resolver does not see them.
-- **Deprecated aliases** (`item-toolbar-tools`, `passage-toolbar-tools`,
-  `framework-error-hook`): kept as props for back-compat but absorbed at
-  the CE boundary into the canonical surface (`tools.placement`,
-  `onFrameworkError`).
+  `narrow-layout-breakpoint`, `split-pane-collapse-strategy`,
+  `content-max-width-no-passage`, `content-max-width-with-passage`,
+  `split-pane-min-region-width`, `iife-bundle-host`, `debug`):
+  layout-CE rendering / preload-host concerns. Each is a top-level
+  prop / kebab attribute on the layout CE that owns it; the resolver
+  does not see them.
+- **Layout-shell host data** (`policies`, `hooks`, `toolRegistry`,
+  `sectionHostButtons`, `itemHostButtons`, `passageHostButtons`):
+  consumed by the layout kernel through its top-level prop, not via
+  `runtime`. They pass straight through to the kernel/scaffold and
+  are not part of the two-tier mirror.
+- **Deprecated aliases** (`item-toolbar-tools`, `passage-toolbar-tools`):
+  kept as props for back-compat but absorbed at the CE boundary into the
+  canonical surface (`tools.placement`).
 
 ### Canonical tier-1 attribute set
 
@@ -151,8 +159,7 @@ The tier-1 attribute set is the same shape across the
 - Diagnostics: `tool-config-strictness`, `debug`. Framework-error
   delivery is via the canonical `onFrameworkError` callback prop and the
   bubbling `framework-error` DOM event (see "Framework error contract"
-  below). The deprecated `framework-error-hook` / `frameworkErrorHook`
-  alias is still accepted for migration.
+  below).
 - Layout / shell (section-player only): `show-toolbar`, `toolbar-position`,
   `narrow-layout-breakpoint`, `split-pane-collapse-strategy`,
   `content-max-width-no-passage`, `content-max-width-with-passage`,
@@ -231,19 +238,13 @@ Single-fire delivery
 Two-tier precedence
 - `runtime.onFrameworkError` wins over the top-level
   `onFrameworkError` prop. The merge happens once in `resolveRuntime`.
-- The deprecated `frameworkErrorHook` alias is still accepted for
-  migration and emits a one-shot `[pie-deprecated]` console warning.
 
 DOM events
 - Canonical: `framework-error` (detail = `FrameworkErrorModel`).
-- Compatibility: `runtime-error` (detail extends with
-  `frameworkError?: FrameworkErrorModel`); kept for hosts mid-migration.
 
 Telemetry
 - `pie-toolkit-framework-error` and `pie-section-framework-error` are
-  the canonical instrumentation streams; the legacy `*-runtime-error`
-  mappings are kept so hosts that still listen to `runtime-error` see
-  no telemetry regression while they migrate.
+  the canonical instrumentation streams.
 
 ## Readiness vocabulary (M6)
 
@@ -254,21 +255,29 @@ mix of legacy events (`ready`, `interaction-ready`,
 single typed transition stream that a host can subscribe to once and
 correlate across wrapper depths.
 
-Stages and order
-- `attached` (per DOM element, fires exactly once)
-- `composed` (host-provided composition resolved)
-- `runtime-bound` (effective runtime resolved)
-- `engine-ready` (controller / toolkit engine ready)
-- `ui-rendered` (host UI rendered; layout-only — toolkit-shape mounts
-  emit `ui-rendered:skipped` since the toolkit is not the renderer)
-- `interactive` (user input accepted)
+Stages and order (post-retro: 4 canonical stages)
+- `composed` (host-provided composition resolved — items / passages
+  present)
+- `engine-ready` (controller / toolkit engine ready — coordinator
+  bring-up settled, section controller initialized)
+- `interactive` (user input accepted — readiness predicate passed,
+  toolkit's join of `engine-ready` and `sectionInitialized` reached)
 - `disposed` (cohort change or unmount)
+
+The original M6 plan included `attached`, `runtime-bound`, and
+`ui-rendered` stages. The post-M5/M6 cumulative review confirmed zero
+internal or external consumers for those three stages, so the retro
+removed them. The retro also unifies the canonical list across CE
+shapes: both the layout CEs and the toolkit CE now apply the same four
+stages, eliminating the auto-skip of `ui-rendered` on the toolkit and
+the per-DOM-element single-fire requirement on `attached`.
 
 The `StageTracker` primitive (`@pie-players/pie-players-shared/pie`)
 enforces monotonic ordering, applicability per CE shape (layout vs
-toolkit), and cohort reset on `(sectionId, attemptId)` change. Both
-the layout kernel and `<pie-assessment-toolkit>` use the same
-primitive; `sourceCe` and `sourceCeShape` distinguish emissions.
+toolkit; identical post-retro), and cohort reset on
+`(sectionId, attemptId)` change. Both the layout kernel and
+`<pie-assessment-toolkit>` use the same primitive; `sourceCe` and
+`sourceCeShape` distinguish emissions.
 
 DOM events
 - Canonical: `pie-stage-change` (detail = `StageChangeDetail`).

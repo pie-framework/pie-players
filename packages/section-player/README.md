@@ -458,20 +458,17 @@ Section-player owned canonical stream:
 - `pie-section-session-changed`
 - `pie-section-composition-changed`
 - `pie-section-framework-error`
-- `pie-section-runtime-error` (deprecated alias for `framework-error`)
 
 Framework boundary stream (from toolkit, re-emitted through section-player wrappers):
 
 - `framework-error` (canonical; payload is a `FrameworkErrorModel`)
-- `runtime-error` (compatibility signal; deprecated)
 
 Layout custom elements (`pie-section-player-splitpane`,
 `pie-section-player-vertical`, `pie-section-player-tabbed`,
 `pie-section-player-kernel-host`) and `pie-section-player-base` accept a
 canonical `onFrameworkError(model: FrameworkErrorModel) => void` prop.
 Two-tier precedence applies: `runtime.onFrameworkError` wins over the
-top-level prop. The deprecated `frameworkErrorHook` alias still fires
-but logs a one-shot `[pie-deprecated]` console warning.
+top-level prop.
 
 If toolkit is mounted, toolkit lifecycle events are emitted on a separate
 `pie-toolkit-*` stream. This separation avoids semantic overlap; bridge dedupe

@@ -36,7 +36,7 @@ function isProduction(): boolean {
  * for the lifetime of this module.
  *
  * The `label` is the dedupe key. Use a stable, namespaced string such
- * as `"pie-assessment-toolkit:frameworkErrorHook-prop"` rather than a
+ * as `"pie-assessment-toolkit:itemToolbarTools-prop"` rather than a
  * full sentence — it must be safe to compare with `===` across call
  * sites and stable across rebuilds.
  *

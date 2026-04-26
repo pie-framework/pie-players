@@ -7,6 +7,13 @@
  * question — "is this CE at stage ≥ X?" — across every `<pie-section-player-*>`
  * and `<pie-assessment-toolkit>` element.
  *
+ * The four-stage canonical list (`composed`, `engine-ready`, `interactive`,
+ * `disposed`) was finalized after the M5/M6 cumulative review confirmed
+ * zero internal or external consumers for the original `attached`,
+ * `runtime-bound`, and `ui-rendered` stages. The retro keeps the same
+ * shape for both the toolkit CE and the layout CEs — every CE iterates
+ * through the same list so subscribers don't need to special-case shape.
+ *
  * Locked decisions (see `m6_ready_vocab_canonical_followup.plan.md`):
  * - **A1** Stage machine model with one canonical event family.
  * - **B1** "All items loaded" is reclassified as `pie-loading-complete`,
@@ -23,11 +30,8 @@
  */
 
 export const STAGES = Object.freeze([
-	"attached",
 	"composed",
-	"runtime-bound",
 	"engine-ready",
-	"ui-rendered",
 	"interactive",
 	"disposed",
 ] as const);
@@ -37,37 +41,26 @@ export type Stage = (typeof STAGES)[number];
 export type StageStatus = "entered" | "skipped" | "failed";
 
 /**
- * Subset of the source CE shape used by stage subscribers. The toolkit has
- * no UI of its own, so it skips `ui-rendered`; layout CEs render frames and
- * apply every stage.
+ * Subset of the source CE shape used by stage subscribers. Both shapes
+ * apply every canonical stage post-retro — the distinction stays in the
+ * type so future shape-specific stages (e.g. layout-only `paginated`) can
+ * be added without churn at the call sites.
  */
 export type StageSourceCe = "toolkit" | "layout";
 
-const TOOLKIT_STAGES: readonly Stage[] = Object.freeze([
-	"attached",
-	"composed",
-	"runtime-bound",
-	"engine-ready",
-	"interactive",
-	"disposed",
-]);
-
-const LAYOUT_STAGES: readonly Stage[] = STAGES;
-
 /**
- * Stages that apply to a given CE shape. Subscribers use the returned
- * order to verify a coherent iteration through the canonical list per
- * cohort; the tracker emits `status: "skipped"` for stages a CE does
- * not apply (today: only `ui-rendered` on the toolkit) so iteration
- * order stays stable.
+ * Stages that apply to a given CE shape. Post-retro the toolkit and the
+ * layout CEs share the same canonical list; `applicableStages` is kept as
+ * an indirection so the tracker, telemetry, and tests don't have to be
+ * rewritten when a future stage diverges between shapes.
  */
-export function applicableStages(sourceCe: StageSourceCe): readonly Stage[] {
-	return sourceCe === "toolkit" ? TOOLKIT_STAGES : LAYOUT_STAGES;
+export function applicableStages(_sourceCe: StageSourceCe): readonly Stage[] {
+	return STAGES;
 }
 
 /**
  * Strict ordering index used by the tracker to detect monotonic
- * violations. `disposed` is last; `attached` is first.
+ * violations. `disposed` is last; `composed` is first.
  */
 export function stageOrdinal(stage: Stage): number {
 	const idx = STAGES.indexOf(stage);

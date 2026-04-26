@@ -59,7 +59,6 @@
 		"readiness-change": SectionPlayerReadinessChangeDetail;
 		"interaction-ready": SectionPlayerReadinessChangeDetail;
 		ready: SectionPlayerReadinessChangeDetail;
-		"runtime-error": Record<string, unknown>;
 		"framework-error": Record<string, unknown>;
 		"runtime-owned": Record<string, unknown>;
 		"runtime-inherited": Record<string, unknown>;
@@ -177,17 +176,27 @@
 	let runtimeErrorState = $state(false);
 	let sectionControllerReadyDispatched = $state(false);
 
+	// Per-cohort latches for the canonical stage progression. Without
+	// these, the progression `$effect` would call `stageTracker.enter()`
+	// every time any of its tracked dependencies updates, and the
+	// tracker's duplicate-detection warning would fire on every
+	// re-entry. The latches reset in the cohort-change handler so each
+	// cohort sees exactly one `entered` per stage.
+	let composedStageEntered = false;
+	let engineReadyStageEntered = false;
+	let interactiveStageEntered = false;
+
 	// M6 canonical stage tracker. One tracker per kernel mount; cohort
 	// resets on `(sectionId, attemptId)` change emit `disposed` for the
 	// outgoing cohort and re-arm from `composed` for the incoming one.
-	// `attached` fires exactly once per DOM element (kernel mount),
-	// matching the contract in `stages.ts` §3.5. Initial seed values are
-	// captured via `untrack` because the tracker explicitly absorbs
-	// subsequent cohort changes through `reset()`, not through prop
-	// reactivity at construction time. The tracker's `emit` resolves
-	// `onStageChange` from the effective runtime at emit time so the
-	// callback and the DOM event stay in lockstep without ever firing
-	// against a stale handler reference.
+	// Post-retro the canonical list is `composed → engine-ready →
+	// interactive → disposed` (matching the toolkit CE shape). Initial
+	// seed values are captured via `untrack` because the tracker
+	// explicitly absorbs subsequent cohort changes through `reset()`,
+	// not through prop reactivity at construction time. The tracker's
+	// `emit` resolves `onStageChange` from the effective runtime at
+	// emit time so the callback and the DOM event stay in lockstep
+	// without ever firing against a stale handler reference.
 	const runtimeId = createSectionPlayerRuntimeId();
 	const stageTracker = createStageTracker({
 		sourceCe: untrack(() => sourceCe),
@@ -235,18 +244,10 @@
 			enabledTools,
 			itemToolbarTools,
 			passageToolbarTools,
-			toolRegistry,
 			toolConfigStrictness,
 			onFrameworkError,
 			onStageChange,
 			onLoadingComplete,
-			policies,
-			hooks,
-			sectionHostButtons,
-			itemHostButtons,
-			passageHostButtons,
-			iifeBundleHost,
-			debug,
 		}),
 	);
 	const effectiveRuntime = $derived(runtimeState.effectiveRuntime);
@@ -328,11 +329,6 @@
 		sectionReady = true;
 	}
 
-	function handleRuntimeError(event: Event) {
-		runtimeErrorState = true;
-		dispatch("runtime-error", (event as CustomEvent<Record<string, unknown>>).detail || {});
-	}
-
 	function handleFrameworkError(event: Event) {
 		const detail = (event as CustomEvent<Record<string, unknown>>).detail || {};
 		runtimeErrorState = true;
@@ -342,10 +338,8 @@
 		// `effectiveRuntime.onFrameworkError → pie-section-player-base →
 		// pie-assessment-toolkit` (two-tier precedence: `runtime` wins
 		// over the top-level prop, applied in `resolveRuntime`). The
-		// deprecated `frameworkErrorHook` alias is also absorbed in
-		// `resolveOnFrameworkError` and converges on the same delivery
-		// path; the kernel intentionally does not invoke any handler
-		// here to avoid double-firing.
+		// kernel intentionally does not invoke any handler here to avoid
+		// double-firing.
 	}
 
 	function handleSessionChanged(event: Event) {
@@ -468,16 +462,16 @@
 		});
 	});
 
-	// Stage: `attached` — wired exactly once on kernel mount. Per §3.5
-	// of the M6 plan, `attached` fires once per DOM element instance and
-	// is not re-emitted on cohort change.
+	// Stage: `disposed` — wired on kernel unmount. The four-stage retro
+	// dropped `attached` (it had no consumers), so the kernel no longer
+	// emits anything on mount; the cohort progression effect below owns
+	// the entrance into `composed` once items/passages compose.
 	$effect(() => {
-		untrack(() => {
-			stageTracker.enter("attached");
-		});
 		return () => {
 			untrack(() => {
-				stageTracker.enter("disposed");
+				if (stageTracker.getCurrent() !== null) {
+					stageTracker.enter("disposed");
+				}
 			});
 		};
 	});
@@ -502,74 +496,100 @@
 			interactionReadyDispatched = false;
 			finalReadyDispatched = false;
 			sectionControllerReadyDispatched = false;
+			composedStageEntered = false;
+			engineReadyStageEntered = false;
+			interactiveStageEntered = false;
 		});
 	});
 
-	// Canonical M6 stage progression. Each branch is short-circuited so
-	// later stages cannot fire before their predecessors; the tracker
-	// itself is idempotent and rejects backward transitions, but gating
-	// here keeps the emit order monotonic across asynchronous sources.
+	// Canonical M6 stage progression (post-retro: 4 stages). Each
+	// branch is short-circuited so later stages cannot fire before
+	// their predecessors. The local `*StageEntered` latches gate
+	// `stageTracker.enter(...)` to exactly one call per cohort per
+	// stage — without them, every reactive update on the tracked
+	// dependencies would re-call `enter()` and the tracker's
+	// duplicate-transition warning would fire on every re-entry.
 	$effect(() => {
 		const composed = items.length > 0 || passages.length > 0;
-		const runtimeBound = !!effectiveRuntime;
 		const engineReady = sectionControllerReadyDispatched;
-		const uiRendered = sectionReady;
 		const interactive = readinessDetail.interactionReady;
 		untrack(() => {
-			if (!composed) return;
-			stageTracker.enter("composed");
-			if (!runtimeBound) return;
-			stageTracker.enter("runtime-bound");
-			if (!engineReady) return;
-			stageTracker.enter("engine-ready");
-			if (!uiRendered) return;
-			stageTracker.enter("ui-rendered");
-			if (!interactive) return;
-			stageTracker.enter("interactive");
+			if (!composedStageEntered && composed) {
+				composedStageEntered = true;
+				stageTracker.enter("composed");
+			}
+			if (
+				!engineReadyStageEntered &&
+				composedStageEntered &&
+				engineReady
+			) {
+				engineReadyStageEntered = true;
+				stageTracker.enter("engine-ready");
+			}
+			if (
+				!interactiveStageEntered &&
+				engineReadyStageEntered &&
+				interactive
+			) {
+				interactiveStageEntered = true;
+				stageTracker.enter("interactive");
+			}
 		});
 	});
 
+	// Legacy readiness emit chain (`readiness-change` / `interaction-ready`
+	// / `ready` / `pie-loading-complete`). Only `readinessDetail` is a
+	// tracked dep — the per-cohort latches and the cohort-key derivation
+	// run inside `untrack` so reads/writes of `interactionReadyDispatched`,
+	// `finalReadyDispatched`, and `loadingCompleteEmittedForCohort` do not
+	// add themselves as tracked deps and re-trigger this effect on every
+	// write (Svelte 5 `effect_update_depth_exceeded`). The cohort-change
+	// effect above is the single point that resets the latches when
+	// `(sectionId, attemptId)` rolls over; this effect only emits.
 	$effect(() => {
-		dispatch("readiness-change", readinessDetail);
-		if (readinessDetail.interactionReady && !interactionReadyDispatched) {
-			interactionReadyDispatched = true;
-			dispatch("interaction-ready", readinessDetail);
-		}
-		if (readinessDetail.allLoadingComplete && !finalReadyDispatched) {
-			finalReadyDispatched = true;
-			dispatch("ready", readinessDetail);
-			const cohortKey = `${sectionId}|${attemptId}`;
-			if (loadingCompleteEmittedForCohort !== cohortKey) {
-				loadingCompleteEmittedForCohort = cohortKey;
-				const loadedItemCount = items.length;
-				const loadingCompleteDetail: LoadingCompleteDetail = {
-					runtimeId,
-					sectionId,
-					attemptId: attemptId || undefined,
-					itemCount: loadedItemCount,
-					loadedCount: loadedItemCount,
-					timestamp: new Date().toISOString(),
-					sourceCe,
-				};
-				dispatch("pie-loading-complete", loadingCompleteDetail);
-				// Invoke the resolved `onLoadingComplete` callback at the
-				// same emit point so the DOM event and the callback fire
-				// in lockstep for the same cohort. The handler is read
-				// from the effective runtime on every emit so reassigns
-				// (cohort change, host swap) always reach the latest
-				// reference.
-				const handler = effectiveRuntime?.onLoadingComplete as
-					| LoadingCompleteHandler
-					| undefined;
-				if (handler) {
-					try {
-						handler(loadingCompleteDetail);
-					} catch (error) {
-						logger.error("onLoadingComplete handler threw", error);
+		const detail = readinessDetail;
+		untrack(() => {
+			dispatch("readiness-change", detail);
+			if (detail.interactionReady && !interactionReadyDispatched) {
+				interactionReadyDispatched = true;
+				dispatch("interaction-ready", detail);
+			}
+			if (detail.allLoadingComplete && !finalReadyDispatched) {
+				finalReadyDispatched = true;
+				dispatch("ready", detail);
+				const cohortKey = `${sectionId}|${attemptId}`;
+				if (loadingCompleteEmittedForCohort !== cohortKey) {
+					loadingCompleteEmittedForCohort = cohortKey;
+					const loadedItemCount = items.length;
+					const loadingCompleteDetail: LoadingCompleteDetail = {
+						runtimeId,
+						sectionId,
+						attemptId: attemptId || undefined,
+						itemCount: loadedItemCount,
+						loadedCount: loadedItemCount,
+						timestamp: new Date().toISOString(),
+						sourceCe,
+					};
+					dispatch("pie-loading-complete", loadingCompleteDetail);
+					// Invoke the resolved `onLoadingComplete` callback at
+					// the same emit point so the DOM event and the
+					// callback fire in lockstep for the same cohort. The
+					// handler is read from the effective runtime on every
+					// emit so reassigns (cohort change, host swap) always
+					// reach the latest reference.
+					const handler = effectiveRuntime?.onLoadingComplete as
+						| LoadingCompleteHandler
+						| undefined;
+					if (handler) {
+						try {
+							handler(loadingCompleteDetail);
+						} catch (error) {
+							logger.error("onLoadingComplete handler threw", error);
+						}
 					}
 				}
 			}
-		}
+		});
 	});
 </script>
 
@@ -581,7 +601,6 @@
 	attemptId={attemptId}
 	onCompositionChanged={handleBaseCompositionChanged}
 	onSectionReady={handleSectionReady}
-	onRuntimeError={handleRuntimeError}
 	onFrameworkErrorEvent={handleFrameworkError}
 	onSessionChanged={handleSessionChanged}
 	onRuntimeOwned={handleRuntimeOwned}

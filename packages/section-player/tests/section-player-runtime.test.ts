@@ -171,7 +171,6 @@ describe("resolveRuntime onFrameworkError precedence", () => {
 			createSectionController: null,
 			isolation: "inherit",
 			env: null,
-			toolRegistry: null,
 			toolConfigStrictness: "error",
 			onFrameworkError: handler,
 			runtime: null,
@@ -198,7 +197,6 @@ describe("resolveRuntime onStageChange / onLoadingComplete propagation (M6)", ()
 			createSectionController: null,
 			isolation: "inherit",
 			env: null,
-			toolRegistry: null,
 			toolConfigStrictness: "error",
 			onStageChange: handler,
 			runtime: null,
@@ -223,7 +221,6 @@ describe("resolveRuntime onStageChange / onLoadingComplete propagation (M6)", ()
 			createSectionController: null,
 			isolation: "inherit",
 			env: null,
-			toolRegistry: null,
 			toolConfigStrictness: "error",
 			onLoadingComplete: handler,
 			runtime: null,
@@ -249,7 +246,6 @@ describe("resolveRuntime onStageChange / onLoadingComplete propagation (M6)", ()
 			createSectionController: null,
 			isolation: "inherit",
 			env: null,
-			toolRegistry: null,
 			toolConfigStrictness: "error",
 			onStageChange: fromProp,
 			runtime: { onStageChange: fromRuntime },
@@ -275,7 +271,6 @@ describe("resolveRuntime onStageChange / onLoadingComplete propagation (M6)", ()
 			createSectionController: null,
 			isolation: "inherit",
 			env: null,
-			toolRegistry: null,
 			toolConfigStrictness: "error",
 			onLoadingComplete: fromProp,
 			runtime: { onLoadingComplete: fromRuntime },
@@ -288,16 +283,24 @@ describe("resolveRuntime onStageChange / onLoadingComplete propagation (M6)", ()
 });
 
 /**
- * Per-key precedence guardrail (M5 strict mirror rule).
+ * Per-key precedence guardrail (M5 strict mirror rule, post-trim).
  *
- * For every key in `RuntimeConfig` that flows through `resolveRuntime`'s
- * single-value `pick(...)` slot, prove that `runtime.<key>` wins over the
- * top-level prop. This is the *behavioral* counterpart to the
- * source-parsing test in `m5-mirror-rule.test.ts`.
+ * For every key in the trimmed `RuntimeConfig` that flows through
+ * `resolveRuntime`'s single-value `pick(...)` slot, prove that
+ * `runtime.<key>` wins over the top-level prop. This is the *behavioral*
+ * counterpart to the source-parsing test in `m5-mirror-rule.test.ts`.
  *
  * Two-arg picks only — `player` is a merge (not a pick) and `tools` runs
  * through `resolveToolsConfig` first, so they're covered by their own
  * dedicated tests above and below.
+ *
+ * The post-trim demoted keys (`policies`, `hooks`, `toolRegistry`,
+ * `sectionHostButtons`, `itemHostButtons`, `passageHostButtons`,
+ * `iifeBundleHost`, `debug`, `contentMaxWidthNoPassage`,
+ * `contentMaxWidthWithPassage`, `splitPaneMinRegionWidth`) are deliberately
+ * absent from this fixture list — they are layout-shell-only props and the
+ * runtime tier no longer offers a mirror for them. See `RuntimeConfig`'s
+ * "Documented exceptions" block in `section-player-runtime.ts`.
  */
 const PER_KEY_FIXTURES: ReadonlyArray<{
 	key: string;
@@ -313,17 +316,6 @@ const PER_KEY_FIXTURES: ReadonlyArray<{
 	{ key: "isolation", runtimeValue: "shadow", topLevelValue: "inherit" },
 	{ key: "env", runtimeValue: { mode: "review" }, topLevelValue: { mode: "gather" } },
 	{ key: "toolConfigStrictness", runtimeValue: "off", topLevelValue: "error" },
-	{ key: "toolRegistry", runtimeValue: { tools: { foo: {} } }, topLevelValue: { tools: { bar: {} } } },
-	{ key: "policies", runtimeValue: { sample: 1 }, topLevelValue: { sample: 2 } },
-	{ key: "hooks", runtimeValue: { onItemMount: () => {} }, topLevelValue: { onItemMount: () => {} } },
-	{ key: "sectionHostButtons", runtimeValue: [{ id: "rt" }], topLevelValue: [{ id: "tp" }] },
-	{ key: "itemHostButtons", runtimeValue: [{ id: "rt" }], topLevelValue: [{ id: "tp" }] },
-	{ key: "passageHostButtons", runtimeValue: [{ id: "rt" }], topLevelValue: [{ id: "tp" }] },
-	{ key: "iifeBundleHost", runtimeValue: "https://rt.example", topLevelValue: "https://tp.example" },
-	{ key: "debug", runtimeValue: "tools", topLevelValue: "all" },
-	{ key: "contentMaxWidthNoPassage", runtimeValue: 800, topLevelValue: 1024 },
-	{ key: "contentMaxWidthWithPassage", runtimeValue: 1280, topLevelValue: 1440 },
-	{ key: "splitPaneMinRegionWidth", runtimeValue: 240, topLevelValue: 320 },
 	{ key: "onStageChange", runtimeValue: () => {}, topLevelValue: () => {} },
 	{
 		key: "onLoadingComplete",

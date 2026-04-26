@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
 import { resolve } from "node:path";
+import type { RuntimeConfig } from "../src/components/shared/section-player-runtime.js";
 
 /**
  * M5 mirror rule (CI guardrail).
@@ -10,23 +11,34 @@ import { resolve } from "node:path";
  *
  *   `kebab-attribute ↔ camelCaseProp ↔ runtime.<sameCamelCaseKey>`
  *
- * Every key in `RuntimeConfig` must be settable through:
+ * Every key in `RuntimeConfig` must:
  *
- *   1. The `runtime` object (canonical, highest precedence).
- *   2. A camelCase prop on at least one layout CE (tier-1 surface).
+ *   1. Be settable through the `runtime` object (canonical, highest
+ *      precedence).
+ *   2. Be declared as a camelCase prop on at least one layout CE
+ *      (tier-1 surface).
  *   3. When the prop has an HTML attribute mapping, the attribute name
  *      must match the camelCase-to-kebab conversion of the prop name.
+ *   4. Be **read at the consumer site** as `runtime?.<key>` or
+ *      `effectiveRuntime?.<key>` (or via `resolveOnFrameworkError(...)`
+ *      for the M3 hook). Without this leg, a runtime-tier key is
+ *      computed by `resolveRuntime` and silently discarded.
  *
- * Documented exceptions (no runtime mirror, by design):
- *   - Identity surfaces (`section-id`, `attempt-id`, `section`,
- *     `assessmentId`): per-attempt host state. `assessmentId` does
- *     mirror because re-using a section across attempts is supported.
+ * Documented exceptions to the mirror rule (no `runtime.<key>`, by design):
+ *   - Identity (`section-id`, `attempt-id`, `section`): per-attempt host
+ *     state, not configuration.
  *   - Layout-only shell knobs (`show-toolbar`, `toolbar-position`,
- *     `narrow-layout-breakpoint`, `split-pane-collapse-strategy`):
- *     layout-CE concerns; the resolver does not see them.
- *   - Deprecated aliases (`itemToolbarTools`, `passageToolbarTools`,
- *     `frameworkErrorHook`): kept as props for back-compat but absorbed
- *     at the CE boundary into a canonical surface.
+ *     `narrow-layout-breakpoint`, `split-pane-collapse-strategy`,
+ *     `content-max-width-no-passage`, `content-max-width-with-passage`,
+ *     `split-pane-min-region-width`, `iife-bundle-host`, `debug`):
+ *     layout-CE rendering / preload-host concerns.
+ *   - Layout-shell host data (`policies`, `hooks`, `toolRegistry`,
+ *     `sectionHostButtons`, `itemHostButtons`, `passageHostButtons`):
+ *     consumed by the layout kernel through its top-level prop, not via
+ *     `runtime`. Demoted from the M5 mirror in the follow-up trim.
+ *   - Deprecated aliases (`itemToolbarTools`, `passageToolbarTools`):
+ *     kept as props for back-compat but absorbed at the CE boundary into
+ *     `tools.placement`.
  */
 
 const PACKAGE_ROOT = resolve(__dirname, "..");
@@ -40,38 +52,39 @@ const LAYOUT_CE_FILES = [
 ] as const;
 
 /**
- * Keys from `RuntimeConfig` (mirrored manually so the test is also a
- * tripwire on intent: every additive change to `RuntimeConfig` should
- * touch this list and force the developer to think about the mirror).
+ * Keys derived from `RuntimeConfig` via an exhaustiveness sentinel: any
+ * additive change to `RuntimeConfig` forces a corresponding edit here, and
+ * any removal here without removing the type key fails type-check. This
+ * keeps the test self-maintaining instead of relying on a hand-edited list
+ * that could drift silently.
+ *
+ * Adding a key:
+ *   - Add the key to `RuntimeConfig`.
+ *   - Add the same key to `RUNTIME_CONFIG_KEYS_SENTINEL` below.
+ *   - Wire a `runtime?.<key>` or `effectiveRuntime?.<key>` read at the
+ *     consumer (or extend the documented-exceptions list above).
  */
-const RUNTIME_CONFIG_KEYS = [
-	"assessmentId",
-	"playerType",
-	"player",
-	"lazyInit",
-	"tools",
-	"accessibility",
-	"coordinator",
-	"createSectionController",
-	"isolation",
-	"env",
-	"toolConfigStrictness",
-	"onFrameworkError",
-	"onStageChange",
-	"onLoadingComplete",
-	"enabledTools",
-	"toolRegistry",
-	"policies",
-	"hooks",
-	"sectionHostButtons",
-	"itemHostButtons",
-	"passageHostButtons",
-	"iifeBundleHost",
-	"debug",
-	"contentMaxWidthNoPassage",
-	"contentMaxWidthWithPassage",
-	"splitPaneMinRegionWidth",
-] as const;
+const RUNTIME_CONFIG_KEYS_SENTINEL: Record<keyof RuntimeConfig, true> = {
+	assessmentId: true,
+	playerType: true,
+	player: true,
+	lazyInit: true,
+	tools: true,
+	accessibility: true,
+	coordinator: true,
+	createSectionController: true,
+	isolation: true,
+	env: true,
+	toolConfigStrictness: true,
+	onFrameworkError: true,
+	onStageChange: true,
+	onLoadingComplete: true,
+	enabledTools: true,
+};
+
+const RUNTIME_CONFIG_KEYS = Object.keys(
+	RUNTIME_CONFIG_KEYS_SENTINEL,
+) as Array<keyof RuntimeConfig>;
 
 type LayoutProp = {
 	name: string;
@@ -163,6 +176,44 @@ function camelToKebab(name: string): string {
 	);
 }
 
+/**
+ * Walk `src/` and return concatenated source text for every `.ts` /
+ * `.svelte` file. Used by the consumer-leg test to scan for
+ * `runtime?.<key>` / `effectiveRuntime?.<key>` reads.
+ */
+function readAllPackageSource(): string {
+	const root = resolve(PACKAGE_ROOT, "src");
+	const buffers: string[] = [];
+	const stack: string[] = [root];
+	while (stack.length > 0) {
+		const current = stack.pop() as string;
+		const entries = readdirSync(current);
+		for (const entry of entries) {
+			const full = resolve(current, entry);
+			const stats = statSync(full);
+			if (stats.isDirectory()) {
+				stack.push(full);
+				continue;
+			}
+			if (!/\.(ts|svelte)$/.test(entry)) continue;
+			buffers.push(readFileSync(full, "utf8"));
+		}
+	}
+	return buffers.join("\n");
+}
+
+const allPackageSource = readAllPackageSource();
+
+/**
+ * Keys whose runtime-tier consumption is not a literal `runtime?.<key>`
+ * read but is wired through a dedicated resolver helper. Each entry maps
+ * the `RuntimeConfig` key to a unique source-text marker that proves the
+ * runtime tier is honored at the consumer.
+ */
+const CONSUMER_HELPER_MARKERS: Partial<Record<keyof RuntimeConfig, string>> = {
+	onFrameworkError: "resolveOnFrameworkError({",
+};
+
 const layoutsByFile = LAYOUT_CE_FILES.map((rel) => ({
 	file: rel,
 	props: parseLayoutProps(resolve(PACKAGE_ROOT, rel)),
@@ -200,6 +251,26 @@ describe("M5 mirror rule — runtime field is canonical", () => {
 		test(`${layout.file} declares the \`runtime\` prop`, () => {
 			const found = layout.props.find((p) => p.name === "runtime");
 			expect(found).toBeDefined();
+		});
+	}
+});
+
+describe("M5 mirror rule — runtime tier is read by the consumer", () => {
+	for (const key of RUNTIME_CONFIG_KEYS) {
+		test(`RuntimeConfig key \`${key}\` is consumed via \`runtime?.${key}\` / \`effectiveRuntime?.${key}\` (or a dedicated resolver helper)`, () => {
+			const helperMarker = CONSUMER_HELPER_MARKERS[key];
+			if (helperMarker) {
+				expect(allPackageSource.includes(helperMarker)).toBe(true);
+				return;
+			}
+			const directRead = `runtime?.${key}`;
+			const effectiveRead = `effectiveRuntime?.${key}`;
+			const dotEffectiveRead = `effectiveRuntime.${key}`;
+			expect(
+				allPackageSource.includes(directRead) ||
+					allPackageSource.includes(effectiveRead) ||
+					allPackageSource.includes(dotEffectiveRead),
+			).toBe(true);
 		});
 	}
 });

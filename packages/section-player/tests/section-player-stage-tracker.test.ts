@@ -58,20 +58,14 @@ describe("createStageTracker — layout CE shape", () => {
 			now: frozenClock(),
 		});
 
-		tracker.enter("attached");
 		tracker.enter("composed");
-		tracker.enter("runtime-bound");
 		tracker.enter("engine-ready");
-		tracker.enter("ui-rendered");
 		tracker.enter("interactive");
 		tracker.enter("disposed");
 
 		expect(captured.map((c) => `${c.stage}:${c.status}`)).toEqual([
-			"attached:entered",
 			"composed:entered",
-			"runtime-bound:entered",
 			"engine-ready:entered",
-			"ui-rendered:entered",
 			"interactive:entered",
 			"disposed:entered",
 		]);
@@ -79,7 +73,7 @@ describe("createStageTracker — layout CE shape", () => {
 		expect(captured[0].attemptId).toBe("a-1");
 	});
 
-	test("rejects backward transitions without resetting", async () => {
+	test("rejects re-entering an earlier stage as duplicate", async () => {
 		const { createStageTracker } = await loadStageTracker();
 		const { emit, captured } = makeEmit();
 		const onUnexpected = mock(() => {});
@@ -93,13 +87,13 @@ describe("createStageTracker — layout CE shape", () => {
 		});
 
 		tracker.enter("composed");
-		tracker.enter("runtime-bound");
+		tracker.enter("engine-ready");
 		tracker.enter("composed");
 
-		expect(captured.map((c) => c.stage)).toEqual(["composed", "runtime-bound"]);
+		expect(captured.map((c) => c.stage)).toEqual(["composed", "engine-ready"]);
 		expect(onUnexpected).toHaveBeenCalledTimes(1);
 		expect(onUnexpected.mock.calls[0]?.[0]).toMatchObject({
-			from: "runtime-bound",
+			from: "engine-ready",
 			to: "composed",
 			reason: "duplicate",
 		});
@@ -143,7 +137,7 @@ describe("createStageTracker — layout CE shape", () => {
 		});
 
 		tracker.enter("composed");
-		tracker.enter("runtime-bound");
+		tracker.enter("engine-ready");
 		tracker.reset({ sectionId: "s-2", attemptId: "a-2" });
 		tracker.enter("composed");
 
@@ -155,7 +149,7 @@ describe("createStageTracker — layout CE shape", () => {
 });
 
 describe("createStageTracker — toolkit CE shape", () => {
-	test("auto-skips `ui-rendered` when `interactive` enters", async () => {
+	test("emits the four canonical stages in order (post-retro: same shape as layout)", async () => {
 		const { createStageTracker } = await loadStageTracker();
 		const { emit, captured } = makeEmit();
 		const tracker = createStageTracker({
@@ -166,18 +160,13 @@ describe("createStageTracker — toolkit CE shape", () => {
 			now: frozenClock(),
 		});
 
-		tracker.enter("attached");
 		tracker.enter("composed");
-		tracker.enter("runtime-bound");
 		tracker.enter("engine-ready");
 		tracker.enter("interactive");
 
 		expect(captured.map((c) => `${c.stage}:${c.status}`)).toEqual([
-			"attached:entered",
 			"composed:entered",
-			"runtime-bound:entered",
 			"engine-ready:entered",
-			"ui-rendered:skipped",
 			"interactive:entered",
 		]);
 	});
@@ -194,10 +183,10 @@ describe("createStageTracker — toolkit CE shape", () => {
 		});
 
 		expect(tracker.getCurrent()).toBeNull();
-		tracker.enter("attached");
-		expect(tracker.getCurrent()).toBe("attached");
 		tracker.enter("composed");
 		expect(tracker.getCurrent()).toBe("composed");
+		tracker.enter("engine-ready");
+		expect(tracker.getCurrent()).toBe("engine-ready");
 	});
 });
 
@@ -214,12 +203,12 @@ describe("createStageTracker — failure semantics", () => {
 		});
 
 		tracker.enter("composed");
-		tracker.enter("runtime-bound", "failed");
+		tracker.enter("engine-ready", "failed");
 
 		expect(captured.map((c) => `${c.stage}:${c.status}`)).toEqual([
 			"composed:entered",
-			"runtime-bound:failed",
+			"engine-ready:failed",
 		]);
-		expect(tracker.getCurrent()).toBe("runtime-bound");
+		expect(tracker.getCurrent()).toBe("engine-ready");
 	});
 });

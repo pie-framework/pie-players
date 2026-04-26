@@ -4,11 +4,13 @@ export type InstrumentationEventMapping = {
 };
 
 export const TOOLKIT_INSTRUMENTATION_EVENT_MAP: InstrumentationEventMapping[] = [
-	// M6 canonical readiness vocabulary. The toolkit CE applies every stage
-	// except `ui-rendered` (it has no UI of its own); the tracker auto-skips
-	// non-applicable stages to keep iteration order stable across CE shapes.
-	// Hosts listen for the DOM-prefixed name directly (`pie-stage-change`);
-	// the instrumentation bridge forwards the same name to telemetry.
+	// M6 canonical readiness vocabulary. The four-stage canonical list
+	// (`composed`, `engine-ready`, `interactive`, `disposed`) is identical
+	// across the toolkit CE and the layout CEs — the M6 retro removed the
+	// `attached`, `runtime-bound`, and `ui-rendered` stages because they
+	// had zero internal or external consumers. Hosts listen for the
+	// DOM-prefixed name directly (`pie-stage-change`); the instrumentation
+	// bridge forwards the same name to telemetry.
 	{
 		sourceEventName: "pie-stage-change",
 		instrumentationEventName: "pie-toolkit-stage-change",
@@ -32,13 +34,6 @@ export const TOOLKIT_INSTRUMENTATION_EVENT_MAP: InstrumentationEventMapping[] = 
 	{
 		sourceEventName: "framework-error",
 		instrumentationEventName: "pie-toolkit-framework-error",
-	},
-	// Deprecated source alias for `framework-error`. Telemetry kept so hosts
-	// that still listen to `runtime-error` see no telemetry regression while
-	// they migrate to `framework-error`.
-	{
-		sourceEventName: "runtime-error",
-		instrumentationEventName: "pie-toolkit-runtime-error",
 	},
 ];
 
@@ -83,13 +78,6 @@ export const SECTION_INSTRUMENTATION_EVENT_MAP: InstrumentationEventMapping[] = 
 	{
 		sourceEventName: "framework-error",
 		instrumentationEventName: "pie-section-framework-error",
-	},
-	// Deprecated source alias for `framework-error`. Telemetry kept so hosts
-	// that still listen to `runtime-error` see no telemetry regression while
-	// they migrate to `framework-error`.
-	{
-		sourceEventName: "runtime-error",
-		instrumentationEventName: "pie-section-runtime-error",
 	},
 	{
 		sourceEventName: "element-preload-retry",

@@ -89,7 +89,6 @@ provider path is the item-player loader config:
 - `pie-toolkit-ready`
 - `pie-toolkit-section-ready`
 - `pie-toolkit-framework-error`
-- `pie-toolkit-runtime-error` (deprecated alias for `framework-error`)
 
 Toolkit tool/backend operational stream:
 
@@ -197,9 +196,7 @@ Common members include:
   `accessibility` *attribute* mapping was removed in M5)
 - Diagnostics: `tool-config-strictness`, `debug`. Framework-error
   delivery is via the canonical `onFrameworkError` callback prop and the
-  bubbling `framework-error` DOM event. The deprecated
-  `framework-error-hook` / `frameworkErrorHook` alias is still accepted
-  for migration.
+  bubbling `framework-error` DOM event.
 
 Documented exceptions to the mirror rule:
 
@@ -208,8 +205,8 @@ Documented exceptions to the mirror rule:
 - Layout-only shell knobs on the section-player layout CEs
   (`show-toolbar`, `toolbar-position`, `narrow-layout-breakpoint`,
   `split-pane-collapse-strategy`): layout-CE rendering concerns.
-- Deprecated aliases (`item-toolbar-tools`, `passage-toolbar-tools`,
-  `framework-error-hook`): absorbed at the CE boundary.
+- Deprecated aliases (`item-toolbar-tools`, `passage-toolbar-tools`):
+  absorbed at the CE boundary.
 
 ### When to add a tier-1 attribute
 
@@ -1056,7 +1053,7 @@ player.section = mySection;
 Default behavior is now framework-owned: invalid tools/runtime initialization is handled in `pie-assessment-toolkit` without host try/catch.
 
 - Framework logs a deterministic console error prefix: `[pie-framework:<kind>:<source>]`
-- Framework emits a canonical `framework-error` event (and still emits `runtime-error` for compatibility)
+- Framework emits a canonical `framework-error` event
 - Framework renders a fallback error panel instead of a blank player
 - Startup tool-config validation can surface as `kind: "coordinator-init"` when the owned coordinator construction path throws.
 
@@ -1103,8 +1100,6 @@ Notes:
   to the package-internal bus via
   `ToolkitCoordinator.subscribeFrameworkErrors(listener)`. The callback
   prop fires exactly once per error, regardless of wrapper depth.
-- The deprecated `frameworkErrorHook` prop alias is still accepted for
-  migration and emits a one-shot `[pie-deprecated]` console warning.
 - Per-tool/provider error hooks (`onProviderError`, `onTTSError`) are
   delivered through the same bus and continue to fire for hosts that
   rely on them.

@@ -1,41 +1,46 @@
 ---
-'@pie-players/pie-section-player': minor
-'@pie-players/pie-assessment-toolkit': minor
-'@pie-players/pie-players-shared': minor
+'@pie-players/pie-section-player': major
+'@pie-players/pie-assessment-toolkit': major
+'@pie-players/pie-players-shared': major
 ---
 
 Introduce the **canonical readiness vocabulary** across the section
 player and the assessment toolkit (M6 of the Coherent Options Surface
-track). Replaces a heterogeneous set of legacy ready/loaded events
-with a single typed transition stream that hosts can subscribe to once
-and correlate across wrapper depths.
+track, with the post-cumulative-review retro to four stages).
+Replaces a heterogeneous set of legacy ready/loaded events with a
+single typed transition stream that hosts can subscribe to once and
+correlate across wrapper depths.
 
 ## What's new
 
 ### Stage vocabulary
 
-A single ordered set of stages, fired exactly once per cohort
+A single ordered set of four stages, fired exactly once per cohort
 (`(sectionId, attemptId)`):
 
 ```
-attached → composed → runtime-bound → engine-ready
-        → ui-rendered → interactive → disposed
+composed → engine-ready → interactive → disposed
 ```
 
-`ui-rendered` is layout-only; the toolkit shape emits
-`ui-rendered:skipped` because the toolkit is not the renderer.
+The vocabulary is identical for the layout CEs and the toolkit CE.
 `disposed` fires on cohort change (the old cohort) and on unmount.
+
+The original M6 plan included `attached`, `runtime-bound`, and
+`ui-rendered` stages. Those three were removed in the M6 retro after
+the cumulative review confirmed zero internal or external consumers —
+they only added noise to the canonical stream.
 
 ### `StageTracker` primitive (`@pie-players/pie-players-shared/pie`)
 
 - Enforces monotonic ordering — a stage is silently dropped if it
   arrives out of order.
-- Knows per-CE-shape applicability (layout vs toolkit), so the toolkit
-  doesn't mis-emit `ui-rendered`.
 - Resets on cohort change so the next attempt re-traverses the stage
   set cleanly.
 - Catches handler exceptions at the emit point so a faulty consumer
   cannot break the stage pipeline.
+- The `applicableStages(sourceCe)` indirection is kept (returns the
+  full list for both shapes today) so a future shape-specific stage
+  can opt out without rewriting callers.
 
 ### Canonical DOM events
 
@@ -82,6 +87,21 @@ first attempt fired. M6 standardizes that surface: one event family,
 one tracker primitive, monotonic ordering, deterministic cohort
 reset, and a typed callback mirror so consumers can subscribe in one
 line.
+
+## Breaking changes (M6 retro)
+
+- The canonical stage list is now `composed → engine-ready →
+  interactive → disposed` only. The `attached`, `runtime-bound`, and
+  `ui-rendered` stages are no longer emitted on `pie-stage-change`.
+  Subscribers that filter by `detail.stage === "attached"`,
+  `"runtime-bound"`, or `"ui-rendered"` will never receive an event;
+  drop those branches and key off `composed` / `engine-ready` /
+  `interactive` instead.
+- `Stage` (the canonical type) and `STAGES` (the canonical list)
+  exported from `@pie-players/pie-players-shared/pie` no longer
+  contain those three values. Code that imports the type and expects
+  the full seven-stage union will fail typechecking — update to the
+  four-stage union.
 
 ## Migration
 

@@ -1,7 +1,7 @@
 ---
-'@pie-players/pie-assessment-toolkit': minor
-'@pie-players/pie-section-player': minor
-'@pie-players/pie-players-shared': minor
+'@pie-players/pie-assessment-toolkit': major
+'@pie-players/pie-section-player': major
+'@pie-players/pie-players-shared': major
 ---
 
 Single canonical framework-error contract across `pie-assessment-toolkit`
@@ -23,31 +23,33 @@ and `pie-section-player` (M3 of the Coherent Options Surface track).
   `tool-config`, and `tool-runtime`. A new
   `frameworkErrorFromCoordinatorContext(...)` helper builds a
   `FrameworkErrorModel` from a coordinator phase + error.
-- New canonical `onFrameworkError(model: FrameworkErrorModel) => void`
-  prop on `<pie-assessment-toolkit>`, every `<pie-section-player-…>`
-  layout custom element, `<pie-section-player-base>`, and the
+- Canonical `onFrameworkError(model: FrameworkErrorModel) => void` prop
+  on `<pie-assessment-toolkit>`, every `<pie-section-player-…>` layout
+  custom element, `<pie-section-player-base>`, and the
   `SectionPlayerLayoutKernel`. The toolkit delivers the model exactly
   once per error regardless of wrapper depth.
-- New `framework-error` entry on `SECTION_PLAYER_PUBLIC_EVENTS` and the
-  `pie-toolkit-framework-error` / `pie-section-framework-error`
-  instrumentation mappings. `runtime-error` (event) and the
-  `*-runtime-error` instrumentation mappings are kept as deprecated
-  aliases for hosts mid-migration.
-- `RuntimeConfig.onFrameworkError` is the runtime-tier hook; `resolveRuntime`
-  applies two-tier precedence (`runtime.onFrameworkError` wins over the
-  top-level `onFrameworkError` prop) and the merged callback flows down
-  through `effectiveRuntime → pie-section-player-base →
-  pie-assessment-toolkit`.
+- Canonical `framework-error` entry on `SECTION_PLAYER_PUBLIC_EVENTS`
+  and the `pie-toolkit-framework-error` / `pie-section-framework-error`
+  instrumentation mappings.
+- `RuntimeConfig.onFrameworkError` is the runtime-tier hook;
+  `resolveRuntime` applies two-tier precedence
+  (`runtime.onFrameworkError` wins over the top-level `onFrameworkError`
+  prop) and the merged callback flows down through
+  `effectiveRuntime → pie-section-player-base → pie-assessment-toolkit`.
 
-## Deprecations
+## Breaking changes
 
-- `frameworkErrorHook` prop alias on `<pie-assessment-toolkit>`,
-  `<pie-section-player-…>`, `<pie-section-player-base>`, and
-  `SectionPlayerLayoutKernel`. Still delivered, now emits a one-shot
-  `[pie-deprecated]` console warning. Migrate to `onFrameworkError`.
-- `runtime-error` DOM event and `pie-toolkit-runtime-error` /
-  `pie-section-runtime-error` telemetry. Still emitted. Migrate to
-  `framework-error` and the corresponding `*-framework-error` telemetry.
+- The `frameworkErrorHook` prop has been removed from
+  `<pie-assessment-toolkit>`, every `<pie-section-player-…>` layout
+  custom element, `<pie-section-player-base>`, and the
+  `SectionPlayerLayoutKernel`. Use `onFrameworkError` directly.
+- The `runtime-error` DOM event has been removed from
+  `<pie-assessment-toolkit>` and every `<pie-section-player-…>` layout
+  custom element. Subscribe to `framework-error` instead — its detail
+  is a `FrameworkErrorModel`.
+- The `pie-toolkit-runtime-error` and `pie-section-runtime-error`
+  instrumentation event mappings have been removed. Subscribe to
+  `pie-toolkit-framework-error` / `pie-section-framework-error`.
 
 ## Migration
 
@@ -66,5 +68,4 @@ and `pie-section-player` (M3 of the Coherent Options Surface track).
 ```
 
 For event listeners: replace `runtime-error` listeners with
-`framework-error` (the detail is a `FrameworkErrorModel`); the legacy
-event continues to fire during the deprecation window.
+`framework-error` (detail is a `FrameworkErrorModel`).

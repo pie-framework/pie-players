@@ -219,7 +219,7 @@ Section-player owned canonical event stream:
 - `pie-section-controller-ready`
 - `pie-section-session-changed`
 - `pie-section-composition-changed`
-- `pie-section-runtime-error`
+- `pie-section-framework-error`
 
 Toolkit-owned canonical stream (when present) is separate and intentionally non-overlapping:
 
@@ -227,7 +227,7 @@ Toolkit-owned canonical stream (when present) is separate and intentionally non-
 - `pie-toolkit-runtime-inherited`
 - `pie-toolkit-ready`
 - `pie-toolkit-section-ready`
-- `pie-toolkit-runtime-error`
+- `pie-toolkit-framework-error`
 
 Toolkit tool/backend operational stream (forwarded through the same provider path):
 
@@ -820,7 +820,7 @@ The player element does dispatch a small set of DOM `CustomEvent`s that are genu
 
 `readiness-change` covers the full phase sequence: `bootstrapping` → `interaction-ready` → `loading` → `ready`. Gate "start test" UI on `interaction-ready`, not `ready` — the latter waits for all items to fully load, which may take noticeably longer in sections with many items.
 
-Other DOM events the element dispatches (`session-changed`, `composition-changed`, `runtime-owned`, `runtime-inherited`, `runtime-error`) are internal plumbing used by the player's own rendering pipeline. Do not build host integrations against them.
+Other DOM events the element dispatches (`session-changed`, `composition-changed`, `runtime-owned`, `runtime-inherited`, `framework-error`) are internal plumbing used by the player's own rendering pipeline. Do not build host integrations against them.
 
 ---
 

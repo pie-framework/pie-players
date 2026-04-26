@@ -115,7 +115,11 @@ The tier-1 attribute set is intended to be the same shape across the
   mirror `tools.placement`
 - Coordination: `coordinator`, `create-section-controller`
 - Accessibility: `accessibility`
-- Diagnostics: `tool-config-strictness`, `debug`, `framework-error-hook`
+- Diagnostics: `tool-config-strictness`, `debug`. Framework-error
+  delivery is via the canonical `onFrameworkError` callback prop and the
+  bubbling `framework-error` DOM event (see "Framework error contract"
+  below). The deprecated `framework-error-hook` / `frameworkErrorHook`
+  alias is still accepted for migration.
 - Layout / shell (section-player only): `show-toolbar`, `toolbar-position`
 
 The exact canonical set is reconciled across CEs in M5 of the Coherent
@@ -170,6 +174,46 @@ The following are considered non-structural updates and must preserve identity/s
 - runtime setting tweaks that do not alter item/passage renderable identity
 
 If an update changes the section composition structure (add/remove/reorder/new IDs), remount behavior can be valid.
+
+## Framework error contract
+
+`framework-error` is the canonical error event for any failure that
+crosses the framework boundary (coordinator initialization, runtime
+initialization, tool configuration, provider/TTS initialization, tool
+runtime). The payload is a `FrameworkErrorModel` from
+`@pie-players/pie-assessment-toolkit`.
+
+Single-fire delivery
+- The toolkit owns a package-internal `FrameworkErrorBus`. A single
+  subscriber on `<pie-assessment-toolkit>` performs all
+  side-effects (console log, optional fallback banner for fatal
+  bootstrap kinds, DOM event emission, canonical prop delivery).
+- The canonical `onFrameworkError(model)` callback is delivered exactly
+  once per error, regardless of how deep the section-player wrapper
+  stack is. Layout custom elements (`pie-section-player-splitpane`,
+  `pie-section-player-vertical`, `pie-section-player-tabbed`,
+  `pie-section-player-kernel-host`) and `pie-section-player-base`
+  forward `onFrameworkError` through `effectiveRuntime →
+  pie-section-player-base → pie-assessment-toolkit`. The kernel
+  re-emits the bubbling DOM event but does not re-invoke the
+  callback, so wrapper depth does not multiply the call count.
+
+Two-tier precedence
+- `runtime.onFrameworkError` wins over the top-level
+  `onFrameworkError` prop. The merge happens once in `resolveRuntime`.
+- The deprecated `frameworkErrorHook` alias is still accepted for
+  migration and emits a one-shot `[pie-deprecated]` console warning.
+
+DOM events
+- Canonical: `framework-error` (detail = `FrameworkErrorModel`).
+- Compatibility: `runtime-error` (detail extends with
+  `frameworkError?: FrameworkErrorModel`); kept for hosts mid-migration.
+
+Telemetry
+- `pie-toolkit-framework-error` and `pie-section-framework-error` are
+  the canonical instrumentation streams; the legacy `*-runtime-error`
+  mappings are kept so hosts that still listen to `runtime-error` see
+  no telemetry regression while they migrate.
 
 ## Verification matrix
 

@@ -88,7 +88,8 @@ provider path is the item-player loader config:
 - `pie-toolkit-runtime-inherited`
 - `pie-toolkit-ready`
 - `pie-toolkit-section-ready`
-- `pie-toolkit-runtime-error`
+- `pie-toolkit-framework-error`
+- `pie-toolkit-runtime-error` (deprecated alias for `framework-error`)
 
 Toolkit tool/backend operational stream:
 
@@ -186,7 +187,11 @@ The tier-1 attribute set is intended to be the same shape across
   per-level easy attributes that mirror `tools.placement`
 - Coordination: `coordinator`, `create-section-controller`
 - Accessibility: `accessibility`
-- Diagnostics: `tool-config-strictness`, `debug`, `framework-error-hook`
+- Diagnostics: `tool-config-strictness`, `debug`. Framework-error
+  delivery is via the canonical `onFrameworkError` callback prop and the
+  bubbling `framework-error` DOM event. The deprecated
+  `framework-error-hook` / `frameworkErrorHook` alias is still accepted
+  for migration.
 
 The exact canonical set is reconciled across CEs in M5 of the Coherent
 Options Surface tightening track. Drift today (for example,
@@ -1081,7 +1086,16 @@ Notes:
 - `providers.textToSpeech` is the canonical TTS provider key.
 - `providers.tts` is rejected by the validation contract.
 - Custom tools can provide provider-level `sanitizeConfig` and `validateConfig` hooks.
-- Hosts can react to framework errors via `onframework-error` listeners or `onFrameworkError` callback prop.
+- Hosts can react to framework errors via the `framework-error` DOM event,
+  the `onFrameworkError(model)` callback prop, or by subscribing directly
+  to the package-internal bus via
+  `ToolkitCoordinator.subscribeFrameworkErrors(listener)`. The callback
+  prop fires exactly once per error, regardless of wrapper depth.
+- The deprecated `frameworkErrorHook` prop alias is still accepted for
+  migration and emits a one-shot `[pie-deprecated]` console warning.
+- Per-tool/provider error hooks (`onProviderError`, `onTTSError`) are
+  delivered through the same bus and continue to fire for hosts that
+  rely on them.
 - See `docs/tools-and-accomodations/framework-owned-error-handling.md` for event payload and error-kind mapping details.
 
 ## State Separation: Tool State vs Session Data

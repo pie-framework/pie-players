@@ -61,7 +61,7 @@
 		resolveOnFrameworkError,
 		type RuntimeConfig,
 		type StageChangeHandler,
-	} from "./shared/section-player-runtime.js";
+	} from "@pie-players/pie-assessment-toolkit/runtime/internal";
 	let {
 		assessmentId = DEFAULT_ASSESSMENT_ID,
 		runtime = null as RuntimeConfig | null,

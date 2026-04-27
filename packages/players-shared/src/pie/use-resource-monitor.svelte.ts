@@ -23,7 +23,7 @@
  * ```
  */
 
-import { onDestroy } from "svelte";
+import { onDestroy, untrack } from "svelte";
 import type { LoaderConfig } from "../loader-config.js";
 import { isInstrumentationProvider } from "../instrumentation/provider-guards.js";
 import { DEFAULT_LOADER_CONFIG } from "../loader-config.js";
@@ -58,103 +58,116 @@ export function useResourceMonitor(
 		undefined,
 	);
 
-	// Initialize resource monitor when conditions are met
+	// Initialize resource monitor when conditions are met.
+	//
+	// The body of this effect both reads and writes the local `$state`
+	// latches (`monitor`, `isInitialized`, `activeHostElement`,
+	// `monitorConfigKey`, `activeProvider`) — those latches exist so the
+	// public `instance`/`isActive` getters stay reactive for downstream
+	// consumers, but the same-effect read+write would otherwise trip
+	// `effect_update_depth_exceeded` on every host/config/provider change
+	// (observed in the assessment-player smoke flow during instrumentation
+	// provider rebinding). Per `.cursor/rules/svelte-subscription-safety.mdc`,
+	// we explicitly track only the input getters and run the body inside
+	// `untrack(...)` so the self-mutations don't re-trigger the effect.
 	$effect(() => {
-		const hostElement = getHostElement();
-		const loaderConfig = getLoaderConfig();
-		const debugEnabled = getDebugEnabled();
-		const resolvedTrackPageActions = loaderConfig?.trackPageActions ?? false;
-		const resolvedMaxRetries =
-			loaderConfig?.maxResourceRetries ??
-			DEFAULT_LOADER_CONFIG.maxResourceRetries;
-		const resolvedRetryDelay =
-			loaderConfig?.resourceRetryDelay ??
-			DEFAULT_LOADER_CONFIG.resourceRetryDelay;
-		const resolvedInstrumentationProvider = isInstrumentationProvider(
-			loaderConfig?.instrumentationProvider,
-		)
-			? loaderConfig?.instrumentationProvider
-			: undefined;
-		if (
-			debugEnabled &&
-			loaderConfig?.instrumentationProvider &&
-			!resolvedInstrumentationProvider
-		) {
-			logger.warn(
-				`Ignoring invalid instrumentation provider for ${componentName}; expected InstrumentationProvider contract`,
-			);
-		}
-		const nextConfigKey = JSON.stringify({
-			trackPageActions: resolvedTrackPageActions,
-			maxRetries: resolvedMaxRetries,
-			retryDelay: resolvedRetryDelay,
-			debugEnabled,
-		});
-		const providerChanged = activeProvider !== resolvedInstrumentationProvider;
-		const hostChanged = activeHostElement !== hostElement;
-		const configChanged = monitorConfigKey !== nextConfigKey;
-		const shouldReinitialize =
-			hostElement && isInitialized && (hostChanged || configChanged || providerChanged);
-
-		// Clean up existing monitor if host element becomes null
-		if (!hostElement && monitor) {
-			logger.debug(
-				`Host element removed, stopping resource monitor for ${componentName}`,
-			);
-			monitor.stop();
-			monitor = null;
-			isInitialized = false;
-			activeHostElement = null;
-			activeProvider = undefined;
-			monitorConfigKey = "";
-			return;
-		}
-
-		if (shouldReinitialize && monitor) {
-			logger.debug(`Reinitializing resource monitor for ${componentName}`, {
-				hostChanged,
-				configChanged,
-				providerChanged,
-			});
-			monitor.stop();
-			monitor = null;
-			isInitialized = false;
-		}
-
-		// Initialize if we have a host element (retry logic works independently of trackPageActions)
-		if (hostElement && !isInitialized) {
-			logger.debug(`Initializing resource monitor for ${componentName}`, {
+		void getHostElement();
+		void getLoaderConfig();
+		void getDebugEnabled();
+		untrack(() => {
+			const hostElement = getHostElement();
+			const loaderConfig = getLoaderConfig();
+			const debugEnabled = getDebugEnabled();
+			const resolvedTrackPageActions = loaderConfig?.trackPageActions ?? false;
+			const resolvedMaxRetries =
+				loaderConfig?.maxResourceRetries ??
+				DEFAULT_LOADER_CONFIG.maxResourceRetries;
+			const resolvedRetryDelay =
+				loaderConfig?.resourceRetryDelay ??
+				DEFAULT_LOADER_CONFIG.resourceRetryDelay;
+			const resolvedInstrumentationProvider = isInstrumentationProvider(
+				loaderConfig?.instrumentationProvider,
+			)
+				? loaderConfig?.instrumentationProvider
+				: undefined;
+			if (
+				debugEnabled &&
+				loaderConfig?.instrumentationProvider &&
+				!resolvedInstrumentationProvider
+			) {
+				logger.warn(
+					`Ignoring invalid instrumentation provider for ${componentName}; expected InstrumentationProvider contract`,
+				);
+			}
+			const nextConfigKey = JSON.stringify({
 				trackPageActions: resolvedTrackPageActions,
 				maxRetries: resolvedMaxRetries,
 				retryDelay: resolvedRetryDelay,
-				hasCustomProvider: !!resolvedInstrumentationProvider,
-				hasContainer: !!hostElement,
+				debugEnabled,
 			});
+			const providerChanged = activeProvider !== resolvedInstrumentationProvider;
+			const hostChanged = activeHostElement !== hostElement;
+			const configChanged = monitorConfigKey !== nextConfigKey;
+			const shouldReinitialize =
+				hostElement && isInitialized && (hostChanged || configChanged || providerChanged);
 
-			// Create and start resource monitor with config from loaderConfig
-			monitor = new ResourceMonitor({
-				trackPageActions: resolvedTrackPageActions,
-				instrumentationProvider: resolvedInstrumentationProvider,
-				maxRetries: resolvedMaxRetries,
-				initialRetryDelay: resolvedRetryDelay,
-				maxRetryDelay: DEFAULT_MAX_RETRY_DELAY,
-				debug: debugEnabled,
-			});
+			if (!hostElement && monitor) {
+				logger.debug(
+					`Host element removed, stopping resource monitor for ${componentName}`,
+				);
+				monitor.stop();
+				monitor = null;
+				isInitialized = false;
+				activeHostElement = null;
+				activeProvider = undefined;
+				monitorConfigKey = "";
+				return;
+			}
 
-			monitor.start(hostElement);
-			isInitialized = true;
-			activeHostElement = hostElement;
-			activeProvider = resolvedInstrumentationProvider;
-			monitorConfigKey = nextConfigKey;
-			logger.info(
-				`✅ Resource monitoring enabled for ${componentName}` +
-					(resolvedTrackPageActions
-						? resolvedInstrumentationProvider
-							? " (with custom instrumentation provider)"
-							: " (with New Relic tracking)"
-						: " (retry only)"),
-			);
-		}
+			if (shouldReinitialize && monitor) {
+				logger.debug(`Reinitializing resource monitor for ${componentName}`, {
+					hostChanged,
+					configChanged,
+					providerChanged,
+				});
+				monitor.stop();
+				monitor = null;
+				isInitialized = false;
+			}
+
+			if (hostElement && !isInitialized) {
+				logger.debug(`Initializing resource monitor for ${componentName}`, {
+					trackPageActions: resolvedTrackPageActions,
+					maxRetries: resolvedMaxRetries,
+					retryDelay: resolvedRetryDelay,
+					hasCustomProvider: !!resolvedInstrumentationProvider,
+					hasContainer: !!hostElement,
+				});
+
+				monitor = new ResourceMonitor({
+					trackPageActions: resolvedTrackPageActions,
+					instrumentationProvider: resolvedInstrumentationProvider,
+					maxRetries: resolvedMaxRetries,
+					initialRetryDelay: resolvedRetryDelay,
+					maxRetryDelay: DEFAULT_MAX_RETRY_DELAY,
+					debug: debugEnabled,
+				});
+
+				monitor.start(hostElement);
+				isInitialized = true;
+				activeHostElement = hostElement;
+				activeProvider = resolvedInstrumentationProvider;
+				monitorConfigKey = nextConfigKey;
+				logger.info(
+					`✅ Resource monitoring enabled for ${componentName}` +
+						(resolvedTrackPageActions
+							? resolvedInstrumentationProvider
+								? " (with custom instrumentation provider)"
+								: " (with New Relic tracking)"
+							: " (retry only)"),
+				);
+			}
+		});
 	});
 
 	// Cleanup on component destroy

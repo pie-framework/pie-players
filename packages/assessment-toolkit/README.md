@@ -196,7 +196,7 @@ Common members include:
   `accessibility` *attribute* mapping was removed in M5)
 - Diagnostics: `tool-config-strictness`, `debug`. Framework-error
   delivery is via the canonical `onFrameworkError` callback prop and the
-  bubbling `framework-error` DOM event.
+  `framework-error` DOM event dispatched on the layout CE host.
 
 Documented exceptions to the mirror rule:
 
@@ -1105,6 +1105,150 @@ Notes:
   rely on them.
 - See `docs/tools-and-accomodations/framework-owned-error-handling.md` for event payload and error-kind mapping details.
 
+## Section Runtime Engine (advanced)
+
+The toolkit exposes a layered **section runtime engine** that consolidates
+runtime resolution, FSM-driven stage progression, framework-error reporting,
+DOM-event fan-out, and instrumentation into a single object hosts can mount
+and dispose. The engine is what `<pie-section-player-…>` and
+`<pie-assessment-toolkit>` use internally, and it is also the surface
+custom hosts (or alternate layout shells) consume directly.
+
+### Two import paths
+
+The engine ships with two deliberately separate entry points so consumers
+pick the stability surface that matches their use case:
+
+- **Stable facade — `@pie-players/pie-assessment-toolkit/runtime/engine`.**
+  Narrow, semver-stable surface for hosts that want to mount, drive, and
+  dispose a section runtime. Re-exports `SectionRuntimeEngine`,
+  `SECTION_RUNTIME_ENGINE_KEY` (Svelte context), the cross-CE host
+  context (`sectionRuntimeEngineHostContext`), and the consumer-side
+  helper for that bridge (`connectSectionRuntimeEngineHostContext`).
+- **Internal surface — `@pie-players/pie-assessment-toolkit/runtime/internal`.**
+  Wider, evolving surface for advanced hosts that need to construct an
+  engine manually, inspect FSM state, or build alternate fan-out paths.
+  Exposes `SectionEngineCore`, the five adapter bridges
+  (`createDomEventBridge`, `createFrameworkErrorBridge`,
+  `createLegacyEventBridge`, `createCoordinatorBridge`,
+  `createInstrumentationBridge`), `FrameworkErrorBus`, cohort helpers,
+  and the `resolveRuntime` / `resolveToolsConfig` /
+  `resolveSectionEngineRuntimeState` helpers. Symbols here may change
+  between minor versions with a changeset note.
+
+### Single-engine invariant
+
+When `<pie-assessment-toolkit>` is nested inside a section-player layout,
+the layout kernel publishes its engine reference via
+`sectionRuntimeEngineHostContext`. The toolkit detects that upstream
+engine and **suppresses its own external lifecycle DOM emits and stage
+tracker** in favor of the kernel's engine. From the outside, one cohort
+yields one `pie-stage-change` / `pie-loading-complete` chain on the
+layout CE host regardless of wrapper depth — even though, during the
+0.x line, the toolkit still constructs a local engine instance for its
+controller-side surface (`register`, `handleContent*`, `initialize`).
+A future release collapses the toolkit's controller-side surface onto
+the upstream engine; until then the externally observable invariant —
+**one cohort, one canonical event chain** — is what hosts should rely
+on. A standalone `<pie-assessment-toolkit>` (no upstream context)
+emits from its own engine.
+
+**Detection.** If a custom layout shell emits two `pie-stage-change`
+events per stage transition (or two `pie-loading-complete` per cohort)
+on the same layout CE — typically with two distinct `detail.runtimeId`
+values — the shell has not published its engine via
+`sectionRuntimeEngineHostContext`, so the wrapped
+`<pie-assessment-toolkit>` falls back to its standalone path and
+constructs a second engine. Wire the bridge as shown below.
+
+### Common-host wiring example
+
+Most hosts never construct the engine directly — the section-player
+layout CE and the toolkit CE handle it. Use the facade only when
+building an alternate layout shell (e.g. a custom kernel host). The
+shape mirrors what the section-player kernel does internally:
+
+```ts
+import { ContextProvider } from "@pie-players/pie-context";
+import {
+  SectionRuntimeEngine,
+  sectionRuntimeEngineHostContext,
+} from "@pie-players/pie-assessment-toolkit/runtime/engine";
+import {
+  FrameworkErrorBus,
+  makeCohort,
+} from "@pie-players/pie-assessment-toolkit/runtime/internal";
+
+const bus = new FrameworkErrorBus();
+const engine = new SectionRuntimeEngine();
+
+// 1. Attach to the layout CE host. `sourceCe` is stamped onto every
+//    DOM event the engine dispatches and is required.
+engine.attachHost({
+  host: layoutHostElement,
+  sourceCe: "my-custom-layout",
+  frameworkErrorBus: bus,
+  coordinator: toolkitCoordinator,
+});
+
+// 2. Publish the engine reference on the layout CE host so any
+//    wrapped <pie-assessment-toolkit> consumes it instead of
+//    constructing its own (single-engine invariant).
+const engineProvider = new ContextProvider(layoutHostElement, {
+  context: sectionRuntimeEngineHostContext,
+  initialValue: { engine },
+});
+engineProvider.connect();
+
+// 3. (Optional) Subscribe to the structured output stream — same set
+//    of outputs the DOM-event bridge fans out to the host element.
+engine.subscribe((output) => {
+  // tap stage transitions, readiness updates, framework errors,
+  // instrumentation events
+});
+
+// 4. Drive the engine. Use real `SectionEngineInput` shapes:
+const cohort = makeCohort({ sectionId, attemptId });
+engine.dispatchInput({
+  kind: "initialize",
+  cohort,
+  effectiveRuntime,
+  effectiveToolsConfig,
+  itemCount,
+});
+
+// On loading-progress / readiness signal updates:
+engine.dispatchInput({
+  kind: "update-readiness-signals",
+  signals: {
+    sectionReady,
+    interactionReady,
+    allLoadingComplete,
+    runtimeError,
+  },
+  loadedCount,
+  itemCount,
+  mode: "progressive",
+});
+
+// On unmount:
+engineProvider.disconnect();
+engine.dispose();
+```
+
+The DOM events `pie-stage-change`, `pie-loading-complete`, and
+`framework-error` are dispatched on `host` automatically by the
+adapter's `dom-event-bridge`. The canonical `onFrameworkError` callback
+prop and the package-internal `FrameworkErrorBus` deliver each error
+exactly once regardless of wrapper depth. The `framework-error` DOM
+event itself is currently dual-emitted on the layout CE host when a
+toolkit is nested (the toolkit's inner emit bubbles up alongside the
+engine's bridge emit); the dual-emit is pinned by the contract test
+`tests/section-player-framework-error-dual-emit.test.ts` and will be
+collapsed in a future release. The deprecated readiness aliases
+(`readiness-change`, `interaction-ready`, `ready`) are dual-emitted by
+the `legacy-event-bridge` through the current 0.x line.
+
 ## State Separation: Tool State vs Session Data
 
 The toolkit enforces a clear separation between ephemeral tool state and persistent session data:
@@ -1203,6 +1347,7 @@ from tool configuration. Two sanitization layers apply:
 - **[PNP Configuration Guide](docs/PNP_CONFIGURATION.md)** - ⭐ NEW - How to configure student profiles, district policies, and governance rules
 - [ToolkitCoordinator Architecture](../../docs/architecture/TOOLKIT_COORDINATOR.md) - Design decisions and patterns
 - [Section Player README](../section-player/README.md) - Section player integration
+- [Section Player Architecture](../section-player/ARCHITECTURE.md#layered-runtime-engine-post-m7) - Layered runtime engine, kernel/toolkit wiring, single-engine invariant
 - [Framework-Owned Error Handling](../../docs/tools-and-accomodations/framework-owned-error-handling.md) - Canonical framework error model/events and fallback behavior
 - [Safe Custom Tool Configuration](../../docs/tools-and-accomodations/safe-custom-tool-config.md) - Host-side config patterns and validation guidance
 - [Architecture Overview](../../docs/architecture/architecture.md) - Complete system architecture

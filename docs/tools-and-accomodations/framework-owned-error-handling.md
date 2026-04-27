@@ -133,9 +133,15 @@ to observe framework errors without going through the DOM.
 
 Section-player runtime tools overlay resolution now preserves host-provided shape, and strict validation is performed during toolkit initialization.
 
-Primary file:
+Primary files:
 
-- `packages/section-player/src/components/shared/section-player-runtime.ts`
+- `packages/assessment-toolkit/src/runtime/core/engine-resolver.ts`
+  (canonical `resolveRuntime` / `resolveToolsConfig`, exported via
+  `@pie-players/pie-assessment-toolkit/runtime/internal`)
+- `packages/section-player/src/components/shared/section-player-host-runtime.ts`
+  (section-player-coupled wrapper that delegates to the toolkit
+  resolver and adds player-side coupling such as
+  `DEFAULT_PLAYER_DEFINITIONS`)
 
 This removes host-side shape correction/early throw paths and centralizes failure
 surfacing through the toolkit boundary.

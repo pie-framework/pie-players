@@ -153,8 +153,9 @@ The intended usage model is:
   - `content-max-width-no-passage`, `content-max-width-with-passage`, `split-pane-min-region-width`, `split-pane-collapse-strategy`
   - `enabled-tools`, `item-toolbar-tools`, `passage-toolbar-tools`
 - **JS API for advanced customization**:
-  - Get the controller handle via `getSectionController()` or `waitForSectionController()`
-  - Listen to `section-controller-ready`
+  - Get the controller handle via `getSectionController()` or `waitForSectionController()` (preferred)
+  - Listen for `pie-stage-change` and filter on `detail.stage === "engine-ready"` for an event-driven entry point
+  - The legacy `section-controller-ready` event is still emitted by the kernel during the 0.x compatibility window but is `@deprecated since M6`
   - Apply custom policy/gating in host code (for example, domain-specific `canNext` based on controller events like `section-items-complete-changed`)
   - Compose forward/backward eligibility in host code using `selectNavigation()` + host state; there is intentionally no separate parallel CE gating API for this
   - Inject custom toolbar tooling with `toolRegistry` and optional host button arrays (`sectionHostButtons`, `itemHostButtons`, `passageHostButtons`)
@@ -449,7 +450,37 @@ Section-player instrumentation is provider-agnostic and uses the shared
 - Toolkit telemetry forwarding uses the same provider path, so tool/backend
   operational events are visible alongside section events when toolkit is mounted.
 
-Section-player owned canonical stream:
+Canonical lifecycle stream (engine-routed, dispatched on the outer layout CE):
+
+- `pie-stage-change` — single typed transition stream covering
+  `composed` → `engine-ready` → `interactive` → `disposed`. Payload is a
+  `StageChangeDetail`. Replaces the legacy readiness vocabulary.
+- `pie-loading-complete` — fires once per cohort when every item has
+  loaded (kernel-routed; gated on `interactive`).
+- `framework-error` — canonical error event for any failure crossing the
+  framework boundary. Payload is a `FrameworkErrorModel`. The toolkit's
+  package-internal `FrameworkErrorBus` and the `onFrameworkError`
+  callback prop deliver each error exactly once regardless of wrapper
+  depth. The `framework-error` *DOM event* on the outer layout CE is
+  dual-emitted while a toolkit is nested (the toolkit's inner emit
+  bubbles up alongside the engine's bridge emit); the dual-emit is
+  pinned by `tests/section-player-framework-error-dual-emit.test.ts`
+  and will be collapsed in a future release. Hosts that need single-fire
+  delivery should consume `onFrameworkError` instead.
+
+Callback-prop mirrors with two-tier precedence (`runtime.<key>` wins over
+the top-level prop):
+
+- `onStageChange(detail)` — on every layout CE, `pie-section-player-base`,
+  and `pie-assessment-toolkit`.
+- `onLoadingComplete(detail)` — on the kernel-backed layout CEs only
+  (split-pane / vertical / tabbed / kernel-host).
+- `onFrameworkError(model)` — on every layout CE and
+  `pie-section-player-base`. Fires exactly once per error regardless of
+  wrapper depth (delivered through the package-internal
+  `FrameworkErrorBus`, not the dual-emitted DOM event).
+
+Section-player owned instrumentation stream:
 
 - `pie-section-readiness-change`
 - `pie-section-interaction-ready`
@@ -459,16 +490,21 @@ Section-player owned canonical stream:
 - `pie-section-composition-changed`
 - `pie-section-framework-error`
 
-Framework boundary stream (from toolkit, re-emitted through section-player wrappers):
+Deprecated readiness compatibility events (dual-emit through the
+current 0.x line; new host code should listen for `pie-stage-change` /
+`pie-loading-complete` instead):
 
-- `framework-error` (canonical; payload is a `FrameworkErrorModel`)
-
-Layout custom elements (`pie-section-player-splitpane`,
-`pie-section-player-vertical`, `pie-section-player-tabbed`,
-`pie-section-player-kernel-host`) and `pie-section-player-base` accept a
-canonical `onFrameworkError(model: FrameworkErrorModel) => void` prop.
-Two-tier precedence applies: `runtime.onFrameworkError` wins over the
-top-level prop.
+- `readiness-change` → covered by `pie-stage-change` (`stage` + `status`).
+  Emitted by the engine's `legacy-event-bridge`.
+- `interaction-ready` → `pie-stage-change` with `detail.stage === "interactive"`.
+  Emitted by the engine's `legacy-event-bridge`.
+- `ready` → `pie-loading-complete`. Emitted by the engine's `legacy-event-bridge`.
+- `section-controller-ready` → `pie-stage-change` with
+  `detail.stage === "engine-ready"`, or
+  `coordinator.waitForSectionController(sectionId, attemptId)` for a
+  direct controller handle. Dispatched by the kernel's Svelte
+  `createEventDispatcher` (forwarded by each layout CE wrapper); not
+  by `legacy-event-bridge`.
 
 If toolkit is mounted, toolkit lifecycle events are emitted on a separate
 `pie-toolkit-*` stream. This separation avoids semantic overlap; bridge dedupe

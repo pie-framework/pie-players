@@ -73,12 +73,11 @@
 		SectionPlayerSnapshot,
 	} from "../contracts/runtime-host-contract.js";
 	import type { SectionPlayerHostHooks } from "../contracts/host-hooks.js";
-	import {
-		resolveOnFrameworkError,
-		type RuntimeConfig,
-		type StageChangeHandler,
-		type LoadingCompleteHandler,
-	} from "./shared/section-player-runtime.js";
+	import type {
+		RuntimeConfig,
+		StageChangeHandler,
+		LoadingCompleteHandler,
+	} from "@pie-players/pie-assessment-toolkit/runtime/internal";
 	import type { SectionPlayerPolicies } from "../policies/types.js";
 	import { isTelemetryEnabled } from "../policies/index.js";
 
@@ -117,14 +116,11 @@
 		onStageChange = undefined as StageChangeHandler | undefined,
 		onLoadingComplete = undefined as LoadingCompleteHandler | undefined,
 	} = $props();
-	// Two-tier resolution at the CE boundary so only the canonical handler
-	// crosses into the kernel.
-	const effectiveOnFrameworkError = $derived.by(() =>
-		resolveOnFrameworkError({
-			runtime,
-			onFrameworkError,
-		}),
-	);
+	// Two-tier resolution for `onFrameworkError` is handled by the
+	// kernel's resolver (`resolveSectionPlayerRuntimeState` →
+	// `effectiveRuntime.onFrameworkError`); the CE forwards the
+	// top-level prop and `runtime` verbatim and the resolver picks
+	// `runtime.onFrameworkError` over `onFrameworkError`.
 
 	const dispatch = createEventDispatcher();
 	let anchor = $state<HTMLDivElement | null>(null);
@@ -241,6 +237,34 @@
 			dedupeWindowMs: 100,
 		});
 	});
+
+	// Engine-owned events (`pie-stage-change`, `pie-loading-complete`,
+	// `framework-error`, `readiness-change`, `interaction-ready`,
+	// `ready`) are dispatched by the kernel-owned section runtime engine
+	// directly onto this CE element via its DOM-event / legacy-event
+	// bridges, so outside listeners on `<pie-section-player-kernel-host>`
+	// already see them without any CE-level re-emission. Local snapshot
+	// state (`snapshot.readiness`) is kept in sync by listening to the
+	// canonical `readiness-change` event on the host once it resolves.
+	$effect(() => {
+		if (!hostElement) return;
+		const localHost = hostElement;
+		const handleReadinessChange = (event: Event) => {
+			const detail = (event as CustomEvent).detail;
+			if (!detail) return;
+			snapshot = { ...snapshot, readiness: detail };
+		};
+		localHost.addEventListener(
+			"readiness-change",
+			handleReadinessChange as EventListener,
+		);
+		return () => {
+			localHost.removeEventListener(
+				"readiness-change",
+				handleReadinessChange as EventListener,
+			);
+		};
+	});
 </script>
 
 <div bind:this={anchor} class="pie-section-player-observability-anchor" aria-hidden="true"></div>
@@ -274,24 +298,15 @@
 	{policies}
 	{hooks}
 	{toolConfigStrictness}
-	onFrameworkError={effectiveOnFrameworkError}
+	{onFrameworkError}
 	{onStageChange}
 	{onLoadingComplete}
 	sourceCe="pie-section-player"
-	on:readiness-change={(event: CustomEvent) => {
-		const detail = (event as CustomEvent).detail;
-		snapshot = { ...snapshot, readiness: detail };
-		reemit(event);
-	}}
-	on:interaction-ready={reemit}
-	on:ready={reemit}
-	on:framework-error={reemit}
+	host={hostElement}
 	on:runtime-owned={reemit}
 	on:runtime-inherited={reemit}
 	on:section-controller-ready={reemit}
 	on:session-changed={reemit}
-	on:pie-stage-change={reemit}
-	on:pie-loading-complete={reemit}
 	on:composition-changed={(event: CustomEvent) => {
 		const detail = (event as CustomEvent).detail as {
 			composition?: { items?: unknown[]; passages?: unknown[] };

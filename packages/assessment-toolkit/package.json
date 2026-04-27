@@ -48,6 +48,14 @@
 		"./services/I18nService": {
 			"types": "./dist/services/I18nService.d.ts",
 			"import": "./dist/services/I18nService.js"
+		},
+		"./runtime/engine": {
+			"types": "./dist/runtime/engine.d.ts",
+			"import": "./dist/runtime/engine.js"
+		},
+		"./runtime/internal": {
+			"types": "./dist/runtime/internal.d.ts",
+			"import": "./dist/runtime/internal.js"
 		}
 	},
 	"files": [

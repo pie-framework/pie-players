@@ -1,13 +1,15 @@
 import { describe, expect, test } from "bun:test";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { resolve } from "node:path";
-import type { RuntimeConfig } from "../src/components/shared/section-player-runtime.js";
+import type { RuntimeConfig } from "@pie-players/pie-assessment-toolkit/runtime/internal";
 
 /**
  * M5 mirror rule (CI guardrail).
  *
- * Locks the contract documented in
- * `packages/section-player/src/components/shared/section-player-runtime.ts`:
+ * Locks the contract whose canonical resolver lives in
+ * `packages/assessment-toolkit/src/runtime/core/engine-resolver.ts`
+ * (the `RuntimeConfig` type and the `resolveRuntime` /
+ * `resolveToolsConfig` helpers). The contract is:
  *
  *   `kebab-attribute ↔ camelCaseProp ↔ runtime.<sameCamelCaseKey>`
  *
@@ -177,9 +179,38 @@ function camelToKebab(name: string): string {
 }
 
 /**
- * Walk `src/` and return concatenated source text for every `.ts` /
- * `.svelte` file. Used by the consumer-leg test to scan for
- * `runtime?.<key>` / `effectiveRuntime?.<key>` reads.
+ * Strip `/* … *\/` block comments and `// …` line comments from a
+ * source buffer. Used by `readAllPackageSource` so the
+ * `CONSUMER_HELPER_MARKERS` substring scan cannot be satisfied by
+ * comment text (which would let stale prose silently mask a real
+ * regression in the consumer-leg leg of the M5 mirror).
+ *
+ * The strip is intentionally simple: it does not attempt to track
+ * string literals or template literals. That is fine for this scan
+ * because the markers are call-shaped (`resolveOnFrameworkError({`,
+ * `resolveSectionEngineRuntimeState(args,`) and would not appear
+ * inside a runtime-relevant string literal.
+ */
+function stripComments(source: string): string {
+	const withoutBlocks = source.replace(/\/\*[\s\S]*?\*\//g, "");
+	return withoutBlocks
+		.split("\n")
+		.map((line) => {
+			const trimmed = line.trimStart();
+			if (trimmed.startsWith("//")) return "";
+			if (trimmed.startsWith("*")) return "";
+			return line;
+		})
+		.join("\n");
+}
+
+/**
+ * Walk `src/` and return concatenated, comment-stripped source text
+ * for every `.ts` / `.svelte` file. Used by the consumer-leg test to
+ * scan for `runtime?.<key>` / `effectiveRuntime?.<key>` reads (and the
+ * dedicated-helper markers). Stripping comments closes a footgun
+ * where a stale prose mention of a helper call could falsely satisfy
+ * the marker after the actual call site moved or was inlined.
  */
 function readAllPackageSource(): string {
 	const root = resolve(PACKAGE_ROOT, "src");
@@ -196,7 +227,7 @@ function readAllPackageSource(): string {
 				continue;
 			}
 			if (!/\.(ts|svelte)$/.test(entry)) continue;
-			buffers.push(readFileSync(full, "utf8"));
+			buffers.push(stripComments(readFileSync(full, "utf8")));
 		}
 	}
 	return buffers.join("\n");
@@ -209,9 +240,17 @@ const allPackageSource = readAllPackageSource();
  * read but is wired through a dedicated resolver helper. Each entry maps
  * the `RuntimeConfig` key to a unique source-text marker that proves the
  * runtime tier is honored at the consumer.
+ *
+ * Post M7 PR 7: `enabledTools` is honored inside the toolkit-side
+ * `resolveSectionEngineRuntimeState` orchestrator — section-player no
+ * longer holds a literal `runtime?.enabledTools` read of its own. The
+ * marker proves the kernel's host-runtime wrapper still funnels through
+ * that orchestrator (which is itself locked by the engine-resolver
+ * tests in the toolkit suite).
  */
 const CONSUMER_HELPER_MARKERS: Partial<Record<keyof RuntimeConfig, string>> = {
 	onFrameworkError: "resolveOnFrameworkError({",
+	enabledTools: "resolveSectionEngineRuntimeState(args,",
 };
 
 const layoutsByFile = LAYOUT_CE_FILES.map((rel) => ({

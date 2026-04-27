@@ -1,19 +1,37 @@
-import {
-	parseToolList,
-	warnDeprecatedOnce,
-	type FrameworkErrorModel,
-	type ToolConfigStrictness,
-} from "@pie-players/pie-assessment-toolkit";
-import {
-	normalizeItemPlayerStrategy,
-	type ItemEntity,
-} from "@pie-players/pie-players-shared";
+/**
+ * Section runtime engine resolver (M7).
+ *
+ * Canonical home of `resolveRuntime`, `resolveToolsConfig`, and their
+ * supporting helpers/types. As of M7 PR 7 the previous duplicates in
+ * `packages/section-player/src/components/shared/section-player-runtime.ts`
+ * have been deleted; section-player now consumes these helpers via
+ * `@pie-players/pie-assessment-toolkit/runtime/internal`.
+ *
+ * What is NOT absorbed in this module:
+ * - `resolvePlayerRuntime` stays in section-player because it depends on
+ *   `DEFAULT_PLAYER_DEFINITIONS` (which side-effect-imports the
+ *   item-player package). The toolkit core stays free of that
+ *   dependency by exposing a parametrized orchestrator —
+ *   `resolveSectionEngineRuntimeState` — that takes a `resolvePlayerRuntime`
+ *   callable. The section-player wrapper
+ *   (`resolveSectionPlayerRuntimeState` in
+ *   `packages/section-player/src/components/shared/section-player-host-runtime.ts`)
+ *   hands its local implementation in.
+ *
+ * The strict mirror rule (M5) and the `runtime.<key>` precedence rule
+ * are preserved bit-for-bit; the per-key precedence test in
+ * `engine-resolver.test.ts` is the guardrail.
+ */
+
 import type { LoaderConfig } from "@pie-players/pie-players-shared/loader-config";
 import type {
 	LoadingCompleteDetail,
 	StageChangeDetail,
 } from "@pie-players/pie-players-shared/pie";
-import { DEFAULT_PLAYER_DEFINITIONS } from "../../component-definitions.js";
+import type { FrameworkErrorModel } from "../../services/framework-error.js";
+import type { ToolConfigStrictness } from "../../services/tool-config-validation.js";
+import { warnDeprecatedOnce } from "../../services/deprecation-warnings.js";
+import { parseToolList } from "../../services/tools-config-normalizer.js";
 
 export const DEFAULT_ASSESSMENT_ID = "section-demo-direct";
 export const DEFAULT_PLAYER_TYPE = "iife";
@@ -24,7 +42,7 @@ export const DEFAULT_ENV = { mode: "gather", role: "student" } as Record<
 	unknown
 >;
 
-type PlayerOverrides = {
+export type PlayerOverrides = {
 	loaderConfig?: LoaderConfig;
 	loaderOptions?: Record<string, unknown>;
 	[key: string]: unknown;
@@ -35,34 +53,17 @@ export type StageChangeHandler = (detail: StageChangeDetail) => void;
 export type LoadingCompleteHandler = (detail: LoadingCompleteDetail) => void;
 
 /**
- * Two-tier section player runtime config.
+ * Two-tier section runtime config (M5 strict mirror, post-trim).
  *
- * Mirror rule (locked in M5; trimmed in the M5 follow-up): every tier-1
- * surface that is honored by the consumer has the shape
- *   `kebab-attribute ↔ camelCaseProp ↔ runtime.<sameCamelCaseKey>`
+ * Mirror rule: `kebab-attribute ↔ camelCaseProp ↔ runtime.<sameCamelCaseKey>`.
+ * `runtime.<key>` always wins over the equivalent prop/attribute.
  *
- * `runtime.<key>` always wins over the equivalent prop/attribute. Adding a
- * new tier-1 surface means (a) appending a key here, (b) adding the matching
- * layout-CE prop entry, AND (c) wiring `runtime?.<key>` (or
- * `effectiveRuntime?.<key>`) at the consumer. `m5-mirror-rule.test.ts` is
- * the CI guardrail for the prop-declaration leg; the
- * `RUNTIME_TIER_CONSUMERS` table in that test is the guardrail for the
- * consumer leg.
- *
- * Documented exceptions (no runtime mirror, by design):
- * - Identity (`section-id`, `attempt-id`, `section`): per-attempt host state.
- * - Layout-only shell knobs (`show-toolbar`, `toolbar-position`,
- *   `narrow-layout-breakpoint`, `split-pane-collapse-strategy`,
- *   `content-max-width-no-passage`, `content-max-width-with-passage`,
- *   `split-pane-min-region-width`, `iife-bundle-host`, `debug`): layout-CE
- *   rendering / preload-host concerns. The resolver does not see them.
- * - Layout-shell host data (`policies`, `hooks`, `toolRegistry`,
- *   `sectionHostButtons`, `itemHostButtons`, `passageHostButtons`): consumed
- *   by the layout kernel through its top-level prop, not via `runtime`.
- *   These pass straight through to the kernel/scaffold and are not part of
- *   the two-tier mirror.
- *
- * See `packages/section-player/ARCHITECTURE.md` for the full policy.
+ * Documented exceptions (no runtime mirror, by design): identity
+ * (`section-id`, `attempt-id`, `section`); layout-only shell knobs
+ * (`show-toolbar`, `toolbar-position`, etc.); and layout-shell host
+ * data (`policies`, `hooks`, `toolRegistry`, `*HostButtons`). Those
+ * surfaces are layout-shell concerns; the runtime engine does not see
+ * them. See section-player's ARCHITECTURE.md for the full policy.
  */
 export type RuntimeConfig = {
 	assessmentId?: string;
@@ -87,23 +88,12 @@ export type RuntimeConfig = {
 
 	// M6 mirror — canonical stage-change callback. The DOM event
 	// `pie-stage-change` remains the primary channel; this callback is
-	// the convenience surface that mirrors the event one-to-one through
-	// the same emit point (kernel for layout CEs, toolkit for
-	// `<pie-assessment-toolkit>`). Per-event invocation is in
-	// `SectionPlayerLayoutKernel`/`PieAssessmentToolkit`; precedence is
-	// `runtime.onStageChange` over the top-level `onStageChange` prop.
+	// the convenience surface that mirrors the event one-to-one.
 	onStageChange?: StageChangeHandler;
 
 	// M6 mirror — canonical loading-complete callback. Mirrors the
-	// `pie-loading-complete` DOM event, which the kernel dispatches
-	// once per cohort when every item has finished loading. Only the
-	// kernel-backed layout CEs (split-pane / vertical / tabbed /
-	// kernel-host) own this emit point; `<pie-assessment-toolkit>`
-	// and `<pie-section-player-base>` do not dispatch
-	// `pie-loading-complete`, so the callback is intentionally absent
-	// on those surfaces. Precedence: `runtime.onLoadingComplete` wins
-	// over the top-level `onLoadingComplete` prop, matching every
-	// other tier-1 callback (D1).
+	// `pie-loading-complete` DOM event, which the engine dispatches
+	// once per cohort when every item has finished loading.
 	onLoadingComplete?: LoadingCompleteHandler;
 };
 
@@ -130,8 +120,8 @@ export type RuntimeInputs = {
 
 /**
  * Pick the runtime-tier value when defined, otherwise the prop/attribute
- * value. The strict mirror rule means every tier-1 surface is resolved with
- * this single helper; per-feature special-casing is forbidden.
+ * value. The strict mirror rule means every tier-1 surface is resolved
+ * with this single helper; per-feature special-casing is forbidden.
  */
 function pick<T>(
 	runtimeVal: T | undefined,
@@ -141,14 +131,10 @@ function pick<T>(
 }
 
 /**
- * Resolve the canonical `onFrameworkError` handler from the two-tier surface.
- *
- * Precedence (highest first):
- *   1. `runtime.onFrameworkError`
- *   2. top-level `onFrameworkError` prop
- *
- * Layout CEs and the kernel call this so every entry point converges on the
- * same handler — the toolkit element invokes it exactly once per error.
+ * Resolve the canonical `onFrameworkError` handler from the two-tier
+ * surface. Precedence (highest first): `runtime.onFrameworkError`,
+ * then top-level `onFrameworkError`. Layout CEs and the kernel call
+ * this so every entry point converges on the same handler.
  */
 export function resolveOnFrameworkError(args: {
 	runtime: RuntimeConfig | null;
@@ -174,10 +160,8 @@ export function resolveToolsConfig(args: {
 	// the easy-tier alias. Per Decision B1, it merges into
 	// `tools.placement.section`. The object form (`runtime.tools`) keeps
 	// precedence over both — that lock lives in the merge below.
-	const effectiveEnabledTools = pick(
-		args.runtime?.enabledTools,
-		args.enabledTools,
-	) ?? "";
+	const effectiveEnabledTools =
+		pick(args.runtime?.enabledTools, args.enabledTools) ?? "";
 	if (args.itemToolbarTools && args.itemToolbarTools.length > 0) {
 		warnDeprecatedOnce(
 			"section-player:itemToolbarTools",
@@ -267,87 +251,48 @@ export function resolveRuntime(args: {
 
 		// M6 mirror — `onStageChange` follows the same precedence as every
 		// other tier-1 surface: `runtime.onStageChange` wins over the
-		// top-level prop. The kernel/toolkit invokes the resolved handler
-		// at the same emit point as `pie-stage-change`, so the callback
-		// and DOM event are guaranteed in lockstep.
+		// top-level prop.
 		onStageChange: pick(r.onStageChange, args.onStageChange),
 
 		// M6 mirror — `onLoadingComplete` follows the same precedence
-		// rule. The kernel invokes the resolved handler at the same
-		// emit point as `pie-loading-complete`. Only the kernel-backed
-		// layout CEs forward this handler; the toolkit / base CE pass
-		// it through `runtime.onLoadingComplete` only and never invoke
-		// it themselves (they do not own a `pie-loading-complete` emit
-		// point).
+		// rule.
 		onLoadingComplete: pick(r.onLoadingComplete, args.onLoadingComplete),
 
 		tools: args.effectiveToolsConfig,
 	};
 }
 
-export function resolvePlayerRuntime(args: {
-	effectiveRuntime: Record<string, unknown>;
-	playerType: string;
-	env: Record<string, unknown> | null;
-}) {
-	const effectivePlayerType = String(
-		(args.effectiveRuntime?.playerType as string) ||
-			args.playerType ||
-			DEFAULT_PLAYER_TYPE,
-	);
-	const resolvedPlayerDefinition =
-		DEFAULT_PLAYER_DEFINITIONS[effectivePlayerType] ||
-		DEFAULT_PLAYER_DEFINITIONS.iife;
-	const resolvedPlayerTag =
-		resolvedPlayerDefinition?.tagName || "pie-item-player";
-	const resolvedPlayerAttributes = resolvedPlayerDefinition?.attributes || {};
-	const definitionProps = (resolvedPlayerDefinition?.props || {}) as Record<
-		string,
-		unknown
-	>;
-	const runtimePlayerOverrides = ((args.effectiveRuntime
-		?.player as PlayerOverrides) || {}) as PlayerOverrides;
-	const definitionLoaderOptions = (definitionProps.loaderOptions ||
-		{}) as Record<string, unknown>;
-	const runtimeLoaderOptions = (runtimePlayerOverrides.loaderOptions ||
-		{}) as Record<string, unknown>;
-	const resolvedPlayerProps = {
-		...definitionProps,
-		...runtimePlayerOverrides,
-		loaderOptions: {
-			...definitionLoaderOptions,
-			...runtimeLoaderOptions,
-		},
-	};
-	const resolvedPlayerEnv = ((args.effectiveRuntime?.env as Record<
-		string,
-		unknown
-	>) ||
-		args.env ||
-		{}) as Record<string, unknown>;
-	const strategy = normalizeItemPlayerStrategy(
-		resolvedPlayerAttributes?.strategy || effectivePlayerType,
-		"iife",
-	);
-	return {
-		effectivePlayerType,
-		resolvedPlayerDefinition,
-		resolvedPlayerTag,
-		resolvedPlayerAttributes,
-		resolvedPlayerProps,
-		resolvedPlayerEnv,
-		strategy,
-	};
-}
+/**
+ * Effective runtime returned by `resolveRuntime`. The shape is exposed
+ * as `unknown` at the public boundary because consumers spread it into
+ * arbitrary host props; downstream call sites narrow with the specific
+ * keys they need.
+ */
+export type EffectiveRuntime = ReturnType<typeof resolveRuntime>;
 
-export function mapRenderablesToItems(renderables: unknown[]): ItemEntity[] {
-	return renderables.map((entry) => {
-		const entity = (entry as { entity?: ItemEntity })?.entity;
-		return entity as ItemEntity;
-	});
-}
-
-export function resolveSectionPlayerRuntimeState(args: RuntimeInputs) {
+/**
+ * Engine-side orchestrator that mirrors the legacy
+ * `resolveSectionPlayerRuntimeState` from section-player but takes
+ * `resolvePlayerRuntime` as an injected callable so the toolkit core
+ * stays free of host-coupled defaults (`DEFAULT_PLAYER_DEFINITIONS`).
+ *
+ * The legacy section-player wrapper passes its local `resolvePlayerRuntime`
+ * here in M7 PR 5 when the kernel switches onto the engine.
+ */
+export function resolveSectionEngineRuntimeState<P>(
+	args: RuntimeInputs,
+	deps: {
+		resolvePlayerRuntime: (resolverArgs: {
+			effectiveRuntime: Record<string, unknown>;
+			playerType: string;
+			env: Record<string, unknown> | null;
+		}) => P;
+	},
+): {
+	effectiveToolsConfig: unknown;
+	effectiveRuntime: EffectiveRuntime;
+	playerRuntime: P;
+} {
 	const assessmentId = args.assessmentId ?? DEFAULT_ASSESSMENT_ID;
 	const playerType = args.playerType ?? DEFAULT_PLAYER_TYPE;
 	const player = args.player ?? null;
@@ -383,7 +328,7 @@ export function resolveSectionPlayerRuntimeState(args: RuntimeInputs) {
 		onStageChange: args.onStageChange,
 		onLoadingComplete: args.onLoadingComplete,
 	});
-	const playerRuntime = resolvePlayerRuntime({
+	const playerRuntime = deps.resolvePlayerRuntime({
 		effectiveRuntime: effectiveRuntime as Record<string, unknown>,
 		playerType,
 		env,

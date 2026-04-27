@@ -7,7 +7,7 @@ import {
 } from "./composition.js";
 import type { PlayerElementParams } from "./player-action.js";
 import { getRenderablesSignature } from "./player-preload.js";
-import { mapRenderablesToItems } from "./section-player-runtime.js";
+import { mapRenderablesToItems } from "./section-player-host-runtime.js";
 
 export type LayoutCompositionSnapshot = {
 	compositionModel: SectionCompositionModel;

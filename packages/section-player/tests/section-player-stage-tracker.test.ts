@@ -3,9 +3,7 @@ import { describe, expect, mock, test } from "bun:test";
 mock.module("@pie-players/pie-item-player", () => ({}));
 
 async function loadStageTracker() {
-	return import(
-		"../src/components/shared/section-player-stage-tracker"
-	);
+	return import("@pie-players/pie-players-shared/pie");
 }
 
 const FROZEN_TIMES = [

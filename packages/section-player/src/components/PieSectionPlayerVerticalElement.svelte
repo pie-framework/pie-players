@@ -89,12 +89,11 @@
 		ToolbarItem,
 	} from "@pie-players/pie-assessment-toolkit";
 	import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
-	import {
-		resolveOnFrameworkError,
-		type RuntimeConfig,
-		type StageChangeHandler,
-		type LoadingCompleteHandler,
-	} from "./shared/section-player-runtime.js";
+	import type {
+		RuntimeConfig,
+		StageChangeHandler,
+		LoadingCompleteHandler,
+	} from "@pie-players/pie-assessment-toolkit/runtime/internal";
 	import type {
 		SectionPlayerRuntimeHostContract,
 		SectionPlayerSnapshot,
@@ -176,14 +175,11 @@
 			component: "pie-section-player-vertical",
 		}),
 	);
-	// Two-tier resolution at the CE boundary so only the canonical handler
-	// crosses into the kernel.
-	const effectiveOnFrameworkError = $derived.by(() =>
-		resolveOnFrameworkError({
-			runtime,
-			onFrameworkError,
-		}),
-	);
+	// Two-tier resolution for `onFrameworkError` is handled by the
+	// kernel's resolver (`resolveSectionPlayerRuntimeState` →
+	// `effectiveRuntime.onFrameworkError`); the CE forwards the
+	// top-level prop and `runtime` verbatim and the resolver picks
+	// `runtime.onFrameworkError` over `onFrameworkError`.
 
 	function getHostElement(): HTMLElement | null {
 		if (!anchor) return null;
@@ -339,18 +335,15 @@
 	{policies}
 	{hooks}
 	{toolConfigStrictness}
-	onFrameworkError={effectiveOnFrameworkError}
+	{onFrameworkError}
 	{onStageChange}
 	{onLoadingComplete}
 	sourceCe="pie-section-player-vertical"
+	host={hostElement}
 	playerActionConfig={{
 		stateKey: "__verticalAppliedParams",
 		includeSessionRefInState: false,
 	}}
-	on:readiness-change={forward}
-	on:interaction-ready={forward}
-	on:ready={forward}
-	on:framework-error={forward}
 	on:runtime-owned={forward}
 	on:runtime-inherited={forward}
 	on:section-controller-ready={forward}
@@ -358,8 +351,6 @@
 	on:composition-changed={forward}
 	on:element-preload-retry={forward}
 	on:element-preload-error={forward}
-	on:pie-stage-change={forward}
-	on:pie-loading-complete={forward}
 	let:layoutModel
 >
 	<SectionPlayerVerticalContent

@@ -25,6 +25,18 @@
 			// event stay in lockstep. Hosts using `<pie-section-player-*>`
 			// receive this through the base CE's runtime-tier resolver.
 			onStageChange: { type: "Object", reflect: false },
+			// M8 PR 2 — additive Tool Policy Engine inputs. The toolkit
+			// CE forwards these into the owned `ToolkitCoordinator` so
+			// the engine has the QTI inputs needed for accessibility-
+			// aware policy decisions. PR 2 introduces them unused by
+			// internal toolbars; PR 3 switches the toolbars onto the
+			// engine and these props become the canonical input path.
+			assessment: { type: "Object", reflect: false },
+			currentItemRef: { type: "Object", reflect: false },
+			qtiEnforcement: {
+				attribute: "qti-enforcement",
+				type: "String",
+			},
 			// @deprecated since M5; set via `runtime.isolation` on a
 			// containing section-player CE, or omit (default `inherit`).
 			isolation: { attribute: "isolation", type: "String" },
@@ -57,6 +69,11 @@
 	} from "../context/assessment-toolkit-context.js";
 	import { connectAssessmentToolkitHostRuntimeContext } from "../context/runtime-context-consumer.js";
 	import { ToolkitCoordinator } from "../services/ToolkitCoordinator.js";
+	import type { QtiEnforcementMode } from "../policy/engine.js";
+	import type {
+		AssessmentEntity,
+		AssessmentItemRef,
+	} from "@pie-players/pie-players-shared/types";
 	import {
 		formatFrameworkErrorForConsole,
 		frameworkErrorFromUnknown,
@@ -82,6 +99,8 @@
 	} from "../runtime/registration-events.js";
 	import { dispatchCrossBoundaryEvent } from "../runtime/tool-host-contract.js";
 	import { SectionRuntimeEngine } from "../runtime/SectionRuntimeEngine.js";
+	import { connectSectionRuntimeEngineHostContext } from "../runtime/section-runtime-engine-host-context.js";
+	import { runStageEmitWithSuppression } from "../runtime/stage-emit-gate.js";
 	import {
 		createRuntimeId,
 	} from "../runtime/runtime-id.js";
@@ -130,6 +149,20 @@
 
 	const runtimeId = createRuntimeId("toolkit");
 	const sectionEngine = new SectionRuntimeEngine();
+	// M7 PR 6: when wrapped by a section-player layout, the kernel
+	// publishes its engine via the cross-CE
+	// `sectionRuntimeEngineHostContext`. We track the upstream
+	// reference so wrapped-mode-specific behavior (stage-emit
+	// suppression to avoid double-emit on layout CE; framework-error
+	// FSM input forwarding) can branch off it. `null` means
+	// standalone — no upstream provider responded — and the toolkit
+	// keeps its existing pre-PR-6 behavior. The reference is set once
+	// per cohort by the cross-CE consumer effect below; it never
+	// becomes a substitute for `sectionEngine` (the local engine
+	// remains the controller-side facade for `register`,
+	// `handleContent*`, `initialize`, etc.). PR 7+ will collapse the
+	// local controller-side surface onto the upstream engine.
+	let upstreamEngine = $state<SectionRuntimeEngine | null>(null);
 	// Per-CE-instance framework-error bus. Shared with the owned
 	// `ToolkitCoordinator` so coordinator-side failures (provider-init,
 	// tts-init, ...) flow through the same fan-out as CE-side failures
@@ -173,13 +206,28 @@ const DEFAULT_ENV = {
 					details?: string[];
 			  }),
 		onStageChange = null as null | ((detail: StageChangeDetail) => void),
+		// M8 PR 2 — additive Tool Policy Engine inputs. See the
+		// `<svelte:options>` props block above for the rationale.
+		// `qtiEnforcement` accepts `"on"`, `"off"`, or `null` (auto —
+		// the coordinator infers the effective mode from whether
+		// `assessment` is bound). Hosts that want PR-4-style
+		// always-on enforcement can pass `"on"` today.
+		assessment = null as AssessmentEntity | null,
+		currentItemRef = null as AssessmentItemRef | null,
+		qtiEnforcement = null as QtiEnforcementMode | null,
 		isolation = "inherit",
 	} = $props();
 
 	let anchor = $state<HTMLDivElement | null>(null);
 	let ownedCoordinator = $state<ToolkitCoordinator | null>(null);
 	let inheritedRuntime = $state<AssessmentToolkitHostRuntimeContext | null>(null);
-	let lastOwnership = $state<"owned" | "inherited" | null>(null);
+	// `lastOwnership` is a self-comparison latch read and written only by
+	// the ownership-change `$effect` below. Keeping it as `$state` would
+	// make Svelte treat the same-effect read+write as a reactivity loop
+	// (effect_update_depth_exceeded). It does not feed any other reactive
+	// consumer, so a plain `let` is safer and matches the canonical Svelte
+	// 5 latch pattern from `.cursor/rules/svelte-subscription-safety.mdc`.
+	let lastOwnership: "owned" | "inherited" | null = null;
 	let provider: ContextProvider<typeof assessmentToolkitRuntimeContext> | null = null;
 	let contextRoot: ContextRoot | null = null;
 	let hostRuntimeProvider: ContextProvider<
@@ -192,8 +240,15 @@ const DEFAULT_ENV = {
 	let frameworkErrorModel = $state<FrameworkErrorModel | null>(null);
 	let frameworkErrorTitle = $state("Unable to initialize assessment toolkit.");
 	let frameworkErrorDetails = $state<string[]>([]);
-	let deliveredFrameworkErrorKey = $state("");
-	let lastOwnedBootstrapFailureKey = $state("");
+	// Self-comparison latches for the framework-error redelivery `$effect`
+	// and the owned-coordinator bootstrap `$effect` below. Same rationale
+	// as `lastOwnership`: keeping these as `$state` made the owning
+	// effects read+write the same source in a single pass, tripping
+	// `effect_update_depth_exceeded`. Neither value is read by any other
+	// reactive consumer, so plain `let` removes the loop without dropping
+	// any subscriber.
+	let deliveredFrameworkErrorKey = "";
+	let lastOwnedBootstrapFailureKey = "";
 	let lastCompositionRevisionKey = $state("");
 	let pendingCompositionModel: unknown = null;
 	let pendingCompositionEmit = false;
@@ -218,23 +273,46 @@ const DEFAULT_ENV = {
 		sectionId: untrack(() => sectionId || undefined),
 		attemptId: untrack(() => attemptId || undefined),
 		emit: (detail: StageChangeDetail) => {
-			emit("pie-stage-change", detail);
-			// Invoke the canonical `onStageChange` callback alongside the
-			// DOM event so hosts using either surface receive every stage
-			// transition from the same emit point. The prop is read on
-			// every emit so reassignments (cohort change, host swap)
-			// always reach the latest handler.
-			const handler = onStageChange;
-			if (handler) {
-				try {
-					handler(detail);
-				} catch (error) {
-					console.error(
-						"[pie-assessment-toolkit] onStageChange handler threw",
-						error,
-					);
-				}
-			}
+			// M7 PR 6: route the toolkit's stage-emit through the
+			// extracted `runStageEmitWithSuppression` helper so the
+			// wrapped/standalone gating logic is testable in isolation
+			// (see `tests/runtime/stage-emit-gate.test.ts`). The
+			// thunks below preserve pre-PR-6 semantics:
+			//
+			//   - `isSuppressed`: when wrapped by a section-player
+			//     layout the kernel's engine emits the canonical
+			//     `pie-stage-change` chain on the layout CE host and
+			//     invokes the runtime-tier `onStageChange` callback
+			//     itself. Suppressing here prevents the toolkit CE
+			//     from also emitting (which would bubble through
+			//     `composed: true` to the layout CE host and produce a
+			//     duplicate emission for outside listeners). The
+			//     internal stage-tracker latch state advances before
+			//     `opts.emit` runs, so suppression only short-circuits
+			//     externally-visible side effects — the toolkit's own
+			//     readiness path (`waitUntilReady` / `engine-ready` /
+			//     `interactive`) stays correct in standalone mode and
+			//     degenerates into a series of suppressed emits in
+			//     wrapped mode without losing any latch transitions.
+			//
+			//     The reactive `upstreamEngine` is read inside the
+			//     thunk (i.e. at emit time, not at construction time)
+			//     and all callers of `stageTracker.enter(...)` are
+			//     themselves wrapped in `untrack(...)` (see effects
+			//     below), so the read does not feed back into any
+			//     tracked dependency graph.
+			//
+			//   - `getOnStageChange`: the prop is read on every emit
+			//     so reassignments (cohort change, host swap) always
+			//     reach the latest handler.
+			runStageEmitWithSuppression(
+				{
+					isSuppressed: () => upstreamEngine !== null,
+					dispatchDomEvent: (d) => emit("pie-stage-change", d),
+					getOnStageChange: () => onStageChange,
+				},
+				detail,
+			);
 		},
 	});
 	let lastStageCohortKey = $state(
@@ -625,6 +703,20 @@ const DEFAULT_ENV = {
 		].join("|");
 	}
 
+	// Coerce the public `qti-enforcement` CE attribute (string or null)
+	// into the engine's `QtiEnforcementMode | null` contract. Anything
+	// outside the canonical "on" / "off" set — typos like "ON",
+	// missing-attribute artifacts like "" or "null" strings — collapses
+	// to `null` (auto-mode) instead of silently degrading inside the
+	// engine. This is the single canonical entry point for the prop;
+	// keep all `setQtiEnforcement(...)` calls in this file routed
+	// through it.
+	function coerceQtiEnforcement(
+		value: QtiEnforcementMode | null | string | undefined,
+	): QtiEnforcementMode | null {
+		return value === "on" || value === "off" ? value : null;
+	}
+
 	function buildOwnedCoordinator(validatedTools: unknown): ToolkitCoordinator {
 		const fallbackAssessmentId =
 			assessmentId ||
@@ -649,43 +741,59 @@ const DEFAULT_ENV = {
 		return coordinator || ownedCoordinator;
 	});
 
+	// Owned-coordinator bootstrap. The effect must re-run when ownership
+	// inputs (`host`, `coordinator`, `isolation`, `inheritedRuntime`)
+	// change so the toolkit can swap between owned, passed-in, and
+	// inherited coordinators. It must *not* re-run on its own writes to
+	// `ownedCoordinator` / `lastOwnedBootstrapFailureKey` /
+	// `frameworkError*` / `runtimeError` — those self-mutations were the
+	// observed source of the `effect_update_depth_exceeded` warnings in
+	// the assessment-player smoke flow. We therefore explicitly track
+	// only the ownership inputs and run the bootstrap body inside
+	// `untrack`, matching `.cursor/rules/svelte-subscription-safety.mdc`.
 	$effect(() => {
-		if (!host) return;
-		if (coordinator) {
-			if (ownedCoordinator) {
-				ownedCoordinator = null;
-			}
-			return;
-		}
-		if (isolation !== "force" && inheritedRuntime?.coordinator) {
-			if (ownedCoordinator) {
-				ownedCoordinator = null;
-			}
-			return;
-		}
-		if (!ownedCoordinator) {
-			const failureKey = getOwnedBootstrapFailureKey();
-			if (lastOwnedBootstrapFailureKey === failureKey) {
+		void host;
+		void coordinator;
+		void isolation;
+		void inheritedRuntime;
+		untrack(() => {
+			if (!host) return;
+			if (coordinator) {
+				if (ownedCoordinator) {
+					ownedCoordinator = null;
+				}
 				return;
 			}
-			try {
-				const validatedTools = validateToolsConfigForBootstrap();
-				ownedCoordinator = buildOwnedCoordinator(validatedTools);
-				lastOwnedBootstrapFailureKey = "";
-				frameworkErrorModel = null;
-				frameworkErrorTitle = "Unable to initialize assessment toolkit.";
-				frameworkErrorDetails = [];
-			} catch (error) {
-				runtimeError = error;
-				ownedCoordinator = null;
-				lastOwnedBootstrapFailureKey = failureKey;
-				reportFrameworkError({
-					kind: "coordinator-init",
-					source: "pie-assessment-toolkit",
-					error,
-				});
+			if (isolation !== "force" && inheritedRuntime?.coordinator) {
+				if (ownedCoordinator) {
+					ownedCoordinator = null;
+				}
+				return;
 			}
-		}
+			if (!ownedCoordinator) {
+				const failureKey = getOwnedBootstrapFailureKey();
+				if (lastOwnedBootstrapFailureKey === failureKey) {
+					return;
+				}
+				try {
+					const validatedTools = validateToolsConfigForBootstrap();
+					ownedCoordinator = buildOwnedCoordinator(validatedTools);
+					lastOwnedBootstrapFailureKey = "";
+					frameworkErrorModel = null;
+					frameworkErrorTitle = "Unable to initialize assessment toolkit.";
+					frameworkErrorDetails = [];
+				} catch (error) {
+					runtimeError = error;
+					ownedCoordinator = null;
+					lastOwnedBootstrapFailureKey = failureKey;
+					reportFrameworkError({
+						kind: "coordinator-init",
+						source: "pie-assessment-toolkit",
+						error,
+					});
+				}
+			}
+		});
 	});
 
 	const effectiveAssessmentId = $derived(
@@ -840,6 +948,25 @@ const DEFAULT_ENV = {
 		});
 	});
 
+	// M7 PR 6: cross-CE engine bridge consumer. When the toolkit CE
+	// renders inside a section-player layout, the kernel publishes its
+	// `SectionRuntimeEngine` via `sectionRuntimeEngineHostContext` on
+	// the layout CE host. The consumer's `context-request` bubbles up
+	// across the toolkit's shadow boundary, the kernel's provider
+	// answers, and we record the upstream reference. When standalone,
+	// no provider responds within the consumer's retry window and
+	// `upstreamEngine` stays `null` — that is the standalone path's
+	// contract. `isolation === "force"` does not opt out of this
+	// bridge: it is a runtime-engine seam, not a coordinator-isolation
+	// seam, and `force` still wants the canonical engine path.
+	$effect(() => {
+		if (!host) return;
+		return connectSectionRuntimeEngineHostContext(host, (value) => {
+			if (value.engine === upstreamEngine) return;
+			upstreamEngine = value.engine;
+		});
+	});
+
 	$effect(() => {
 		const parentRuntimeId =
 			isolation !== "force" && inheritedRuntime ? inheritedRuntime.runtimeId : null;
@@ -929,6 +1056,50 @@ const DEFAULT_ENV = {
 				sectionId: effectiveSectionId,
 				attemptId: attemptId || undefined,
 			},
+		});
+	});
+
+	// M8 PR 2 — push Tool Policy Engine inputs (`assessment`,
+	// `currentItemRef`, `qtiEnforcement`) into the toolkit-owned
+	// coordinator whenever they change. The coordinator's
+	// `updateAssessment` / `updateCurrentItemRef` / `setQtiEnforcement`
+	// forwards land on `ToolPolicyEngine.updateInputs`, which value-
+	// diffs each key with `Object.is` and only emits an `inputs` event
+	// on real changes — so re-running this effect on coordinator swap
+	// is safe and self-idempotent. We touch the reactive props
+	// explicitly and then run the side effect inside `untrack(...)`
+	// per `.cursor/rules/svelte-subscription-safety.mdc`.
+	//
+	// CRITICAL: only push when the toolkit *owns* the coordinator
+	// (i.e. `effectiveCoordinator === ownedCoordinator`). When the
+	// host passes a coordinator via the `coordinator` prop or shares
+	// one through `assessmentToolkitHostRuntimeContext`, that
+	// coordinator's policy inputs are the host's contract — overwriting
+	// them with our prop defaults would silently null out a host's
+	// pre-bound `AssessmentEntity`, etc. PR 3 will plumb these inputs
+	// through `runtime.tools.qtiEnforcement` etc. for the embedded
+	// path; until then, hosts that share a coordinator drive policy
+	// inputs directly via `coord.updateAssessment(...)` and friends.
+	$effect(() => {
+		void assessment;
+		void currentItemRef;
+		void qtiEnforcement;
+		const coord = effectiveCoordinator;
+		if (!coord) return;
+		// Host-owned coordinators are off-limits for this effect.
+		if (coord !== ownedCoordinator) return;
+		untrack(() => {
+			// Apply order matters: `setQtiEnforcement` lands the override
+			// (or clears it) FIRST so `updateAssessment(...)`'s
+			// auto-promote path sees the final override and doesn't
+			// briefly resolve to "on" (when binding an assessment with
+			// `qtiEnforcement="off"`) or "off" (when clearing an
+			// assessment with `qtiEnforcement="on"`). Without this
+			// ordering we would emit a transient wrong-state policy
+			// event between the calls.
+			coord.setQtiEnforcement(coerceQtiEnforcement(qtiEnforcement));
+			coord.updateAssessment(assessment);
+			coord.updateCurrentItemRef(currentItemRef);
 		});
 	});
 

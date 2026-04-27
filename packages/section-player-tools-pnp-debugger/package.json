@@ -47,7 +47,8 @@
 		"build": "vite build",
 		"dev": "vite build --watch",
 		"typecheck": "tsc --noEmit",
-		"lint": "biome check PnpPanel.svelte index.ts vite.config.ts package.json"
+		"test": "bun test tests",
+		"lint": "biome check PnpPanel.svelte derive-panel-data.ts index.ts vite.config.ts package.json tests"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.4.12",

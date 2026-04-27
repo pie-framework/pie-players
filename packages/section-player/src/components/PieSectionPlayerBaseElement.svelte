@@ -40,11 +40,8 @@
 		createDefaultPersonalNeedsProfile,
 		type FrameworkErrorModel,
 		type ToolConfigStrictness,
+		type ToolkitCoordinatorApi,
 		type ToolRegistry,
-	} from "@pie-players/pie-assessment-toolkit";
-	import {
-		normalizeToolsConfig,
-		resolveToolsForLevel,
 	} from "@pie-players/pie-assessment-toolkit";
 	import type { SectionControllerHandle } from "@pie-players/pie-assessment-toolkit";
 	import { createEventDispatcher } from "svelte";
@@ -86,7 +83,7 @@
 	} = $props();
 
 	let toolkitElement = $state<any>(null);
-	let activeToolkitCoordinator = $state<any>(null);
+	let activeToolkitCoordinator = $state<ToolkitCoordinatorApi | null>(null);
 	let lastCompositionVersion = $state(-1);
 	type BaseSectionPlayerEvents = {
 		"composition-changed": { composition: SectionCompositionModel };
@@ -177,7 +174,8 @@
 	): void {
 		const detail = (event as CustomEvent).detail as Record<string, unknown>;
 		if (eventName === "toolkit-ready" && detail?.coordinator) {
-			activeToolkitCoordinator = detail.coordinator;
+			activeToolkitCoordinator =
+				detail.coordinator as ToolkitCoordinatorApi;
 		}
 		emit(eventName, detail || ({} as Record<string, unknown>));
 	}
@@ -206,33 +204,63 @@
 		handleToolkitEvent(event, "runtime-inherited");
 	}
 
-	const normalizedToolsConfig = $derived.by(() =>
-		normalizeToolsConfig((effectiveTools || {}) as any),
-	);
-	const annotationToolbarPlacementEnabled = $derived.by(() => {
-		const levels: Array<"section" | "item" | "passage"> = [
-			"section",
-			"item",
-			"passage",
-		];
-		return levels.some((level) =>
-			resolveToolsForLevel(normalizedToolsConfig as any, level).includes(
-				"annotationToolbar",
-			),
+	// M8 PR 3 — annotation-toolbar visibility goes through the
+	// coordinator's `ToolPolicyEngine`. The engine already applies
+	// placement + `policy.allowed` / `policy.blocked` + provider
+	// veto + QTI gates in one pass, so the base CE no longer
+	// duplicates those checks against the raw `tools` config.
+	//
+	// The engine answer can change without the coordinator reference
+	// changing (e.g. host calls `updateAssessment(...)` mid-session),
+	// so we bump `policyVersion` from `onPolicyChange` to retrigger
+	// this derivation.
+	let policyVersion = $state(0);
+	$effect(() => {
+		const coord = activeToolkitCoordinator;
+		if (!coord || typeof coord.onPolicyChange !== "function") return;
+		const unsubscribe = coord.onPolicyChange(() => {
+			policyVersion += 1;
+		});
+		return () => {
+			try {
+				unsubscribe?.();
+			} catch {
+				// detach errors are non-fatal
+			}
+		};
+	});
+	// Keep the scope shape aligned with what `pie-item-toolbar`
+	// passes for its own per-item decisions so a custom
+	// `PolicySource` that reads e.g. `assessmentId` cannot disagree
+	// with the toolbar's verdict for the same level / id. Item +
+	// passage scopes here only know the section we're mounting in
+	// (item / passage ids belong to the inner toolbars), so we pass
+	// the section id as the scope id and let `assessmentId` /
+	// `sectionId` carry the rest.
+	//
+	// `Array.some` short-circuits on the first matching level, so
+	// the typical case (annotation toolbar registered at one level)
+	// is one engine call; the worst case is three.
+	const ANNOTATION_LEVELS = ["section", "item", "passage"] as const;
+	const shouldRenderAnnotationToolbar = $derived.by(() => {
+		void policyVersion;
+		const coord = activeToolkitCoordinator;
+		if (!coord || typeof coord.decideToolPolicy !== "function") return false;
+		const scopeId = effectiveSectionId || "*";
+		return ANNOTATION_LEVELS.some((level) =>
+			coord
+				.decideToolPolicy({
+					level,
+					scope: {
+						level,
+						scopeId,
+						assessmentId: effectiveAssessmentId,
+						sectionId: effectiveSectionId || undefined,
+					},
+				})
+				.visibleTools.some((entry) => entry.toolId === "annotationToolbar"),
 		);
 	});
-	const annotationToolbarProviderEnabled = $derived.by(() =>
-		activeToolkitCoordinator?.isToolEnabled?.("annotationToolbar") ??
-		((normalizedToolsConfig as any)?.providers?.annotationToolbar?.enabled !==
-			false),
-	);
-	const shouldRenderAnnotationToolbar = $derived(
-		Boolean(
-			activeToolkitCoordinator &&
-				annotationToolbarPlacementEnabled &&
-				annotationToolbarProviderEnabled,
-		),
-	);
 	let annotationToolbarModuleLoaded = $state(false);
 
 	$effect(() => {
@@ -431,7 +459,7 @@
 	onruntime-owned={handleRuntimeOwnedEvent}
 	onruntime-inherited={handleRuntimeInheritedEvent}
 >
-	{#if shouldRenderAnnotationToolbar && annotationToolbarModuleLoaded}
+	{#if shouldRenderAnnotationToolbar && annotationToolbarModuleLoaded && activeToolkitCoordinator}
 		<pie-tool-annotation-toolbar
 			enabled={true}
 			ttsService={activeToolkitCoordinator.ttsService}

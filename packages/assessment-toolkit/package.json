@@ -56,6 +56,14 @@
 		"./runtime/internal": {
 			"types": "./dist/runtime/internal.d.ts",
 			"import": "./dist/runtime/internal.js"
+		},
+		"./policy/engine": {
+			"types": "./dist/policy/engine.d.ts",
+			"import": "./dist/policy/engine.js"
+		},
+		"./policy/internal": {
+			"types": "./dist/policy/internal.d.ts",
+			"import": "./dist/policy/internal.js"
 		}
 	},
 	"files": [

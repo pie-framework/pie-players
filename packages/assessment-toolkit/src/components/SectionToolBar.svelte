@@ -9,20 +9,23 @@
 			size: { type: "String", attribute: "size" },
 			language: { type: "String", attribute: "language" },
 			toolRegistry: { type: "Object", reflect: false },
-			pnpResolver: { type: "Object", reflect: false },
-			assessment: { type: "Object", reflect: false },
-			itemRef: { type: "Object", reflect: false },
 			item: { type: "Object", reflect: false },
 			hostButtons: { type: "Object", reflect: false },
 		},
 	}}
 />
 
+<!--
+  SectionToolBar - Thin wrapper around `<pie-item-toolbar>` for
+  section-level placement. As of M8 PR 3 the legacy `pnpResolver` /
+  `assessment` / `itemRef` props are gone — the toolkit coordinator
+  drives QTI inputs via its policy engine, so toolbars no longer
+  need to resolve them locally.
+-->
 <script lang="ts">
 	import "./item-toolbar-element.js";
 	import type { ToolRegistry } from "../services/ToolRegistry.js";
-	import type { PnpToolResolver } from "../services/PNPToolResolver.js";
-	import type { AssessmentEntity, AssessmentItemRef, ItemEntity } from "@pie-players/pie-players-shared/types";
+	import type { ItemEntity } from "@pie-players/pie-players-shared/types";
 	import type { ToolbarItem } from "../services/toolbar-items.js";
 
 	let {
@@ -32,9 +35,6 @@
 		size = "md" as "sm" | "md" | "lg",
 		language = "en-US",
 		toolRegistry = null as ToolRegistry | null,
-		pnpResolver = null as PnpToolResolver | null,
-		assessment = null as AssessmentEntity | null,
-		itemRef = null as AssessmentItemRef | null,
 		item = null as ItemEntity | null,
 		hostButtons = [] as ToolbarItem[],
 	} = $props();
@@ -50,9 +50,6 @@
 	{size}
 	{language}
 	{toolRegistry}
-	{pnpResolver}
-	{assessment}
-	{itemRef}
 	{item}
 	{hostButtons}
 ></pie-item-toolbar>

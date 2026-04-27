@@ -14,7 +14,11 @@
  * Part of PIE Assessment Toolkit.
  */
 
-import type { AccessibilityCatalog } from "@pie-players/pie-players-shared/types";
+import type {
+	AccessibilityCatalog,
+	AssessmentEntity,
+	AssessmentItemRef,
+} from "@pie-players/pie-players-shared/types";
 import {
 	type CanonicalToolsConfig,
 	type ToolPlacementConfig,
@@ -22,7 +26,6 @@ import {
 	type ToolProviderConfig,
 	type ToolProvidersConfig,
 	normalizeToolsConfig,
-	resolveToolsForLevel,
 } from "./tools-config-normalizer.js";
 import {
 	normalizeAndValidateToolsConfig,
@@ -56,6 +59,15 @@ import type {
 } from "./tool-providers/index.js";
 import { createPackagedToolRegistry } from "./createDefaultToolRegistry.js";
 import type { ToolRegistration, ToolRegistry } from "./ToolRegistry.js";
+import {
+	ToolPolicyEngine,
+	type PolicySource,
+	type QtiEnforcementMode,
+	type ResolvedEngineInputs,
+	type ToolPolicyChangeListener,
+	type ToolPolicyDecision,
+	type ToolPolicyDecisionRequest,
+} from "../policy/engine.js";
 import type {
 	SectionControllerContext,
 	SectionControllerEvent,
@@ -79,6 +91,13 @@ export type {
 	SectionControllerSessionState,
 	SectionPersistenceFactoryDefaults,
 } from "./section-controller-types.js";
+export type {
+	QtiEnforcementMode,
+	ResolvedEngineInputs,
+	ToolPolicyChangeListener,
+	ToolPolicyDecision,
+	ToolPolicyDecisionRequest,
+} from "../policy/engine.js";
 
 /**
  * Generic tool configuration
@@ -521,6 +540,35 @@ export class ToolkitCoordinator {
 	private readonly ownsFrameworkErrorBus: boolean;
 	private nextSectionEventListenerId = 1;
 
+	/**
+	 * M8 PR 2 — unified Tool Policy Engine. Owned by the coordinator;
+	 * disposed when the coordinator is torn down. Hosts read decisions
+	 * via {@link decideToolPolicy} or subscribe to changes via
+	 * {@link onPolicyChange}. PR 2 introduces this surface additively;
+	 * legacy `resolveToolsForLevel` / `PnpToolResolver` paths still
+	 * coexist until PR 5 deletes them.
+	 */
+	private readonly policyEngine: ToolPolicyEngine;
+
+	/**
+	 * Host-set override for QTI enforcement. `null` (the default) means
+	 * "auto" — the coordinator infers the effective mode from whether
+	 * an `AssessmentEntity` has been bound (`updateAssessment(...)`).
+	 * `"on"` / `"off"` are explicit host opt-in / opt-out and stick
+	 * across subsequent assessment swaps. PR 4 flips the auto default
+	 * to `"on"` regardless of bound assessment.
+	 */
+	private qtiEnforcementOverride: QtiEnforcementMode | null = null;
+
+	/**
+	 * Last assessment passed to {@link updateAssessment}. Read by
+	 * {@link resolveEffectiveQtiEnforcement} to compute auto-mode.
+	 * The engine's own copy is the canonical record for decisions;
+	 * this mirror exists only so the auto-mode helper does not need
+	 * to round-trip through {@link policyEngine}'s frozen snapshot.
+	 */
+	private boundAssessment: AssessmentEntity | null = null;
+
 	/** Callback for floating tools changes */
 	private floatingToolsChangeCallback: ((toolIds: string[]) => void) | null =
 		null;
@@ -606,6 +654,24 @@ export class ToolkitCoordinator {
 		// Initialize TTS service based on config
 		this.ttsService = new TTSService();
 		this.setupStatePersistenceHooks();
+
+		// M8 PR 2 — construct the unified ToolPolicyEngine seeded with
+		// the validated tools config. QTI inputs (`assessment`,
+		// `currentItemRef`) start `null`; `qtiEnforcement` defaults to
+		// `"off"` until a host calls `updateAssessment(...)` (auto-mode)
+		// or `setQtiEnforcement("on" | "off")` (explicit). Hosts that
+		// only consume the engine for placement/policy gating get the
+		// pre-PR-2 behavior bit-for-bit.
+		this.policyEngine = new ToolPolicyEngine({
+			toolRegistry: this.toolRegistry,
+			contextId: `toolkit-coordinator:${this.assessmentId}`,
+			inputs: {
+				tools: this.config.tools as CanonicalToolsConfig,
+				assessment: null,
+				currentItemRef: null,
+				qtiEnforcement: "off",
+			},
+		});
 
 		if (!this.lazyInit) {
 			void this.waitUntilReady().catch((err) => {
@@ -1975,6 +2041,13 @@ export class ToolkitCoordinator {
 			},
 		);
 		this.config.tools = validated.config;
+		// M8 PR 2 — keep the policy engine's tools input in lockstep
+		// with the validated coordinator config. The engine emits an
+		// `inputs` change event so subscribers (e.g. PR 3 toolbars) can
+		// re-decide without us managing a parallel pub/sub.
+		this.policyEngine.updateInputs({
+			tools: this.config.tools as CanonicalToolsConfig,
+		});
 		void this.emitTelemetry("pie-toolkit-tool-config-updated", { toolId });
 
 		// Apply configuration changes to services
@@ -2011,6 +2084,12 @@ export class ToolkitCoordinator {
 			},
 		);
 		this.config.tools = validated.config;
+		// M8 PR 2 — keep the policy engine in lockstep with the
+		// floating-tools placement update. See `updateToolConfig` for
+		// the same pattern.
+		this.policyEngine.updateInputs({
+			tools: this.config.tools as CanonicalToolsConfig,
+		});
 
 		// Notify listener of change
 		if (this.floatingToolsChangeCallback) {
@@ -2019,13 +2098,40 @@ export class ToolkitCoordinator {
 	}
 
 	/**
-	 * Get currently enabled floating tools.
+	 * Get currently enabled floating tools (section-level placement).
 	 *
-	 * @returns Array of enabled tool IDs
+	 * @returns Array of enabled tool IDs.
+	 *
+	 * @remarks
+	 * As of M8 PR 2 this routes through the {@link ToolPolicyEngine}
+	 * rather than the legacy `resolveToolsForLevel(...)` shim. The two
+	 * paths agree on `placement → policy.allowed → policy.blocked`,
+	 * but the engine additionally enforces:
+	 *
+	 *   - **Provider veto** — `tools.providers[id].enabled === false`
+	 *     removes the tool from the visible set. The legacy resolver
+	 *     ignored this flag for floating tools.
+	 *   - **QTI gates** — when `qtiEnforcement` is `"on"` (set by host
+	 *     via {@link setQtiEnforcement}, or auto-promoted when an
+	 *     `AssessmentEntity` is bound via {@link updateAssessment}),
+	 *     the QTI 6-level precedence (district block → test-admin
+	 *     override → item restriction/requirement → district
+	 *     requirement → PNP supports / prohibitions) is applied.
+	 *   - **Custom `PolicySource`s** registered via
+	 *     {@link registerPolicySource}.
+	 *
+	 * Under the default no-assessment, no-override, no-provider-veto
+	 * configuration the result still matches `resolveToolsForLevel(...)`
+	 * exactly — a parity asserted by the integration tests in
+	 * `tests/policy/coordinator-integration.test.ts`. Once PR 5 deletes
+	 * the legacy resolver this method becomes the canonical surface.
+	 *
+	 * Consumers that need the full decision (provenance, diagnostics)
+	 * should call {@link decideToolPolicy} instead.
 	 */
 	getFloatingTools(): string[] {
 		if (!this.config.tools) return [];
-		return resolveToolsForLevel(this.config.tools as unknown as CanonicalToolsConfig, "section");
+		return this.policyEngine.getVisibleToolIds("section", "*");
 	}
 
 	/**
@@ -2042,6 +2148,131 @@ export class ToolkitCoordinator {
 		return () => {
 			this.floatingToolsChangeCallback = null;
 		};
+	}
+
+	// ----------------------------------------------------------------
+	// M8 PR 2 — Tool Policy Engine surface
+	//
+	// The methods below are additive in PR 2: hosts can already drive
+	// the unified ToolPolicyEngine, but the existing toolbar / section-
+	// player render paths still consume the legacy `resolveToolsForLevel`
+	// / `PnpToolResolver` chain. PR 3 switches consumers; PR 5 deletes
+	// the legacy path. See `.cursor/plans/m8-implementation-plan.md`.
+	// ----------------------------------------------------------------
+
+	/**
+	 * Resolve the visible tool set for a given placement level + scope.
+	 *
+	 * Thin shim over the owned {@link ToolPolicyEngine}. Hosts that
+	 * need richer outputs (provenance, diagnostics) read this directly;
+	 * hosts that only need the tool IDs can call
+	 * {@link policyEngine.getVisibleToolIds} via {@link getFloatingTools}.
+	 */
+	decideToolPolicy(request: ToolPolicyDecisionRequest): ToolPolicyDecision {
+		return this.policyEngine.decide(request);
+	}
+
+	/**
+	 * Subscribe to policy-engine change events. Fires whenever the
+	 * coordinator's bound inputs change (`updateToolConfig`,
+	 * `updateFloatingTools`, `updateAssessment`, `updateCurrentItemRef`,
+	 * `setQtiEnforcement`) or a custom `PolicySource` is registered /
+	 * removed via {@link registerPolicySource}.
+	 *
+	 * The listener receives a `ToolPolicyChangeEvent` with the event
+	 * `reason` and a frozen snapshot of the engine inputs. Listeners
+	 * that want the new visible tool set should call
+	 * {@link decideToolPolicy} with their level / scope.
+	 */
+	onPolicyChange(listener: ToolPolicyChangeListener): () => void {
+		return this.policyEngine.onPolicyChange(listener);
+	}
+
+	/**
+	 * Bind (or clear) the active QTI assessment for policy decisions.
+	 *
+	 * Calling this with a non-null assessment auto-promotes the engine
+	 * to `qtiEnforcement: "on"` *unless* a host has previously called
+	 * {@link setQtiEnforcement} (the override is sticky). Calling with
+	 * `null` clears the binding and reverts to `"off"` under auto-mode.
+	 */
+	updateAssessment(assessment: AssessmentEntity | null): void {
+		this.boundAssessment = assessment;
+		this.policyEngine.updateInputs({
+			assessment,
+			qtiEnforcement: this.resolveEffectiveQtiEnforcement(),
+		});
+	}
+
+	/**
+	 * Bind (or clear) the current item reference for policy decisions.
+	 * Used by item-level QTI gates (item `requiredTools` /
+	 * `restrictedTools`).
+	 */
+	updateCurrentItemRef(itemRef: AssessmentItemRef | null): void {
+		this.policyEngine.updateInputs({ currentItemRef: itemRef });
+	}
+
+	/**
+	 * Override the auto-mode QTI enforcement decision.
+	 *
+	 * Pass `"on"` to opt into QTI enforcement even before an assessment
+	 * is bound (useful for tests / fixtures). Pass `"off"` to opt out
+	 * even when an assessment is bound. Pass `null` to clear the
+	 * override and return to auto-mode (`"on"` iff an assessment is
+	 * bound — pre-PR-4 default; PR 4 flips this to default-on).
+	 */
+	setQtiEnforcement(mode: QtiEnforcementMode | null): void {
+		this.qtiEnforcementOverride = mode;
+		this.policyEngine.updateInputs({
+			qtiEnforcement: this.resolveEffectiveQtiEnforcement(),
+		});
+	}
+
+	/**
+	 * Get the policy engine inputs currently driving decisions. Useful
+	 * for debugging / instrumentation; do not mutate.
+	 */
+	getPolicyInputs(): Readonly<ResolvedEngineInputs> {
+		return this.policyEngine.getInputs();
+	}
+
+	/**
+	 * Register a custom {@link PolicySource} with the owned policy
+	 * engine. The source participates in every subsequent
+	 * {@link decideToolPolicy} call until disposed (the returned
+	 * function detaches and emits a `policy-source-removed` event).
+	 *
+	 * Delegates verbatim to
+	 * {@link ToolPolicyEngine.registerPolicySource} — see that
+	 * method for the full contract (event ordering, idempotency of
+	 * the returned dispose function, and how registered sources
+	 * compose with the built-in QTI source).
+	 */
+	registerPolicySource(source: PolicySource): () => void {
+		return this.policyEngine.registerPolicySource(source);
+	}
+
+	/**
+	 * Compute the effective `qtiEnforcement` mode given the explicit
+	 * override and the auto-mode heuristic.
+	 *
+	 * Auto-mode in PR 2 is a coarse "any non-null assessment → on"
+	 * placeholder. `.cursor/plans/m8-design.md` F2 narrows the
+	 * intended trigger to assessments that actually carry QTI inputs
+	 * (`personalNeedsProfile`, `settings.districtPolicy`,
+	 * `settings.testAdministration`, or per-item
+	 * `requiredTools` / `restrictedTools` / `toolParameters`); PR 4
+	 * tightens this helper to that test. Until then, hosts that bind
+	 * a non-QTI assessment and want the legacy floating-tools
+	 * behavior should call `setQtiEnforcement("off")` to pin the
+	 * override.
+	 */
+	private resolveEffectiveQtiEnforcement(): QtiEnforcementMode {
+		if (this.qtiEnforcementOverride !== null) {
+			return this.qtiEnforcementOverride;
+		}
+		return this.boundAssessment ? "on" : "off";
 	}
 
 	/**

@@ -32,6 +32,18 @@ import type { PlaybackState, TTSConfig } from "./TTSService.js";
 import type { ToolProviderConfig } from "./tools-config-normalizer.js";
 import type { ToolProviderRegistry } from "./tool-providers/ToolProviderRegistry.js";
 import type {
+	PolicySource,
+	QtiEnforcementMode,
+	ResolvedEngineInputs,
+	ToolPolicyChangeListener,
+	ToolPolicyDecision,
+	ToolPolicyDecisionRequest,
+} from "../policy/engine.js";
+import type {
+	AssessmentEntity,
+	AssessmentItemRef,
+} from "@pie-players/pie-players-shared/types";
+import type {
 	ITTSProvider,
 	TTSProviderCapabilities,
 } from "@pie-players/pie-tts";
@@ -656,6 +668,73 @@ export interface ToolkitCoordinatorApi {
 	 * `<pie-assessment-toolkit>` consume the same bus.
 	 */
 	subscribeFrameworkErrors(listener: FrameworkErrorListener): () => void;
+
+	// ----------------------------------------------------------------
+	// Tool Policy Engine — public surface (M8 PR 2 / PR 3).
+	//
+	// The coordinator owns a single `ToolPolicyEngine` instance and
+	// exposes its decision and subscription surface through the API
+	// so that toolbar custom elements (`pie-item-toolbar`,
+	// `pie-section-toolbar`), the base section player, and bespoke
+	// host instrumentation (PNP debugger, etc.) all flow through the
+	// same engine. Hosts that want to drive QTI inputs imperatively
+	// (instead of binding props on `<pie-assessment-toolkit>`) call
+	// `updateAssessment` / `updateCurrentItemRef` /
+	// `setQtiEnforcement` directly.
+	// ----------------------------------------------------------------
+
+	/**
+	 * Resolve the visible tool set for a given placement level + scope.
+	 * Returns the engine's full decision (visible tools, diagnostics,
+	 * provenance). Hosts that only need the IDs may map
+	 * `decision.visibleTools` themselves.
+	 */
+	decideToolPolicy(request: ToolPolicyDecisionRequest): ToolPolicyDecision;
+
+	/**
+	 * Subscribe to policy-engine change events. Fires whenever the
+	 * coordinator's bound policy inputs change (`updateToolConfig`,
+	 * `updateFloatingTools`, `updateAssessment`, `updateCurrentItemRef`,
+	 * `setQtiEnforcement`) or a custom `PolicySource` is registered /
+	 * removed. Listeners that need the new visible tool set should
+	 * call `decideToolPolicy(...)` with their level / scope.
+	 */
+	onPolicyChange(listener: ToolPolicyChangeListener): () => void;
+
+	/**
+	 * Bind (or clear) the active QTI assessment for policy decisions.
+	 * Calling with a non-null assessment auto-promotes the engine to
+	 * `qtiEnforcement: "on"` unless a host has previously called
+	 * {@link setQtiEnforcement} (the override is sticky).
+	 */
+	updateAssessment(assessment: AssessmentEntity | null): void;
+
+	/**
+	 * Bind (or clear) the current item reference for policy decisions.
+	 * Used by item-level QTI gates (item `requiredTools` /
+	 * `restrictedTools`).
+	 */
+	updateCurrentItemRef(itemRef: AssessmentItemRef | null): void;
+
+	/**
+	 * Override the auto-mode QTI enforcement decision. Pass `"on"` /
+	 * `"off"` to pin the mode, or `null` to clear the override and
+	 * return to auto-mode.
+	 */
+	setQtiEnforcement(mode: QtiEnforcementMode | null): void;
+
+	/**
+	 * Read the engine inputs currently driving decisions. Useful for
+	 * debugging / instrumentation; do not mutate.
+	 */
+	getPolicyInputs(): Readonly<ResolvedEngineInputs>;
+
+	/**
+	 * Register a custom `PolicySource`. The source participates in
+	 * every subsequent `decideToolPolicy(...)` call until disposed
+	 * (the returned function detaches).
+	 */
+	registerPolicySource(source: PolicySource): () => void;
 }
 
 // I18nServiceApi is re-exported from @pie-players/pie-players-shared/i18n

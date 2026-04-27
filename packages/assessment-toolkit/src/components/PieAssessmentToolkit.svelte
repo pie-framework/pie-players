@@ -209,9 +209,12 @@ const DEFAULT_ENV = {
 		// M8 PR 2 — additive Tool Policy Engine inputs. See the
 		// `<svelte:options>` props block above for the rationale.
 		// `qtiEnforcement` accepts `"on"`, `"off"`, or `null` (auto —
-		// the coordinator infers the effective mode from whether
-		// `assessment` is bound). Hosts that want PR-4-style
-		// always-on enforcement can pass `"on"` today.
+		// the coordinator infers the effective mode from QTI material
+		// on the bound `assessment` / `currentItemRef`). Embedded
+		// under `<pie-section-player-*>` the same override flows via
+		// `runtime.tools.qtiEnforcement`; the effect below falls back
+		// to `tools.qtiEnforcement` when the explicit prop is `null`
+		// so both entry points converge on the same coordinator call.
 		assessment = null as AssessmentEntity | null,
 		currentItemRef = null as AssessmentItemRef | null,
 		qtiEnforcement = null as QtiEnforcementMode | null,
@@ -717,6 +720,29 @@ const DEFAULT_ENV = {
 		return value === "on" || value === "off" ? value : null;
 	}
 
+	// Resolve the effective override that flows into the coordinator.
+	// The explicit `qti-enforcement` attribute (standalone path) wins
+	// over `tools.qtiEnforcement` (embedded path via
+	// `runtime.tools.qtiEnforcement`); both fall back to `null`
+	// (auto-mode) so the coordinator's
+	// {@link resolveDefaultQtiEnforcement} helper runs on the bound
+	// assessment / item ref.
+	function resolveQtiEnforcementInput(
+		explicit: QtiEnforcementMode | null | string | undefined,
+		toolsConfig: unknown,
+	): QtiEnforcementMode | null {
+		const explicitMode = coerceQtiEnforcement(explicit);
+		if (explicitMode) return explicitMode;
+		if (toolsConfig && typeof toolsConfig === "object") {
+			const candidate = (toolsConfig as { qtiEnforcement?: unknown })
+				.qtiEnforcement;
+			return coerceQtiEnforcement(
+				typeof candidate === "string" ? candidate : null,
+			);
+		}
+		return null;
+	}
+
 	function buildOwnedCoordinator(validatedTools: unknown): ToolkitCoordinator {
 		const fallbackAssessmentId =
 			assessmentId ||
@@ -1059,7 +1085,7 @@ const DEFAULT_ENV = {
 		});
 	});
 
-	// M8 PR 2 — push Tool Policy Engine inputs (`assessment`,
+	// M8 — push Tool Policy Engine inputs (`assessment`,
 	// `currentItemRef`, `qtiEnforcement`) into the toolkit-owned
 	// coordinator whenever they change. The coordinator's
 	// `updateAssessment` / `updateCurrentItemRef` / `setQtiEnforcement`
@@ -1070,20 +1096,27 @@ const DEFAULT_ENV = {
 	// explicitly and then run the side effect inside `untrack(...)`
 	// per `.cursor/rules/svelte-subscription-safety.mdc`.
 	//
+	// `qtiEnforcement` resolves through {@link resolveQtiEnforcementInput}
+	// so the embedded path (`<pie-section-player-*>` setting
+	// `runtime.tools.qtiEnforcement`) and the standalone path (the
+	// explicit `qti-enforcement` attribute on `<pie-assessment-toolkit>`)
+	// converge on a single coordinator call. The explicit prop wins
+	// over `tools.qtiEnforcement` so a host can pin a stricter mode
+	// without rewriting the runtime overlay.
+	//
 	// CRITICAL: only push when the toolkit *owns* the coordinator
 	// (i.e. `effectiveCoordinator === ownedCoordinator`). When the
 	// host passes a coordinator via the `coordinator` prop or shares
 	// one through `assessmentToolkitHostRuntimeContext`, that
 	// coordinator's policy inputs are the host's contract — overwriting
 	// them with our prop defaults would silently null out a host's
-	// pre-bound `AssessmentEntity`, etc. PR 3 will plumb these inputs
-	// through `runtime.tools.qtiEnforcement` etc. for the embedded
-	// path; until then, hosts that share a coordinator drive policy
-	// inputs directly via `coord.updateAssessment(...)` and friends.
+	// pre-bound `AssessmentEntity`, etc. Hosts that share a coordinator
+	// drive policy inputs directly via `coord.updateAssessment(...)`.
 	$effect(() => {
 		void assessment;
 		void currentItemRef;
 		void qtiEnforcement;
+		void tools;
 		const coord = effectiveCoordinator;
 		if (!coord) return;
 		// Host-owned coordinators are off-limits for this effect.
@@ -1097,7 +1130,7 @@ const DEFAULT_ENV = {
 			// assessment with `qtiEnforcement="on"`). Without this
 			// ordering we would emit a transient wrong-state policy
 			// event between the calls.
-			coord.setQtiEnforcement(coerceQtiEnforcement(qtiEnforcement));
+			coord.setQtiEnforcement(resolveQtiEnforcementInput(qtiEnforcement, tools));
 			coord.updateAssessment(assessment);
 			coord.updateCurrentItemRef(currentItemRef);
 		});

@@ -1,7 +1,8 @@
 /**
- * ToolkitCoordinator ↔ ToolPolicyEngine integration (M8 PR 2).
+ * ToolkitCoordinator ↔ ToolPolicyEngine integration (M8 PR 2 + PR 4).
  *
- * Verifies the additive engine surface introduced in PR 2:
+ * Verifies the additive engine surface introduced in PR 2 and the
+ * auto-detection heuristic tightened in PR 4:
  *
  *   - `decideToolPolicy(...)` round-trips through the engine and
  *     stays consistent with `getFloatingTools()` for the section
@@ -12,12 +13,15 @@
  *   - `qtiEnforcement: "off"` short-circuits the QTI source so a
  *     PNP-supported tool does NOT auto-promote to `alwaysAvailable`.
  *   - The auto-mode heuristic — `qtiEnforcement` defaults to `"off"`
- *     until `updateAssessment(non-null)` is called, then auto-promotes
- *     to `"on"` unless a host-side override is set first.
- *   - PR 3 toolbars will read decisions through this surface; the
- *     legacy `getFloatingTools()` shim must agree with the engine
- *     under the default (no-QTI) path so no consumer regresses
- *     between PR 2 and PR 3.
+ *     until QTI material is bound (PNP / district policy / test
+ *     administration on the assessment, or
+ *     `requiredTools` / `restrictedTools` / `toolParameters` on the
+ *     item ref). A bare assessment record (just `id` / `name`) keeps
+ *     `"off"`. Host overrides via {@link setQtiEnforcement} are
+ *     sticky across assessment swaps.
+ *   - PR 3 toolbars read decisions through this surface; the legacy
+ *     `getFloatingTools()` shim agrees with the engine under the
+ *     default (no-QTI) path so no consumer regresses.
  */
 
 import { describe, expect, test } from "bun:test";
@@ -107,7 +111,7 @@ describe("ToolkitCoordinator policy-engine integration", () => {
 		expect(coord.getFloatingTools()).toEqual(["theme"]);
 	});
 
-	test("updateAssessment(non-null) auto-promotes qtiEnforcement to 'on'", () => {
+	test("updateAssessment with PNP supports auto-promotes qtiEnforcement to 'on'", () => {
 		const coord = makeCoordinator({
 			tools: {
 				placement: { section: ["graph"] },
@@ -138,9 +142,24 @@ describe("ToolkitCoordinator policy-engine integration", () => {
 		expect(graph?.alwaysAvailable).toBe(true);
 	});
 
-	test("updateAssessment(null) reverts auto-mode qtiEnforcement to 'off'", () => {
+	test("updateAssessment(bare-assessment-no-QTI) keeps auto-mode qtiEnforcement at 'off'", () => {
+		// PR 4 narrows the heuristic: a non-null assessment that
+		// carries no QTI material (no PNP, no district policy, no
+		// test-administration settings) must NOT auto-promote QTI to
+		// "on". Hosts that want QTI in that case opt in explicitly via
+		// `setQtiEnforcement("on")` or via attribute on the toolkit.
 		const coord = makeCoordinator();
 		coord.updateAssessment({ id: "a1" } as AssessmentEntity);
+		expect(coord.getPolicyInputs().qtiEnforcement).toBe("off");
+	});
+
+	test("updateAssessment(null) keeps qtiEnforcement at 'off' under auto-mode", () => {
+		const coord = makeCoordinator();
+		// Bind QTI material so auto-mode resolves to "on".
+		coord.updateAssessment({
+			id: "a1",
+			personalNeedsProfile: { supports: ["graph"] },
+		} as AssessmentEntity);
 		expect(coord.getPolicyInputs().qtiEnforcement).toBe("on");
 
 		coord.updateAssessment(null);
@@ -187,8 +206,11 @@ describe("ToolkitCoordinator policy-engine integration", () => {
 		coord.setQtiEnforcement(null);
 		expect(coord.getPolicyInputs().qtiEnforcement).toBe("off");
 
-		// Bind an assessment → auto-mode gives "on".
-		coord.updateAssessment({ id: "a1" } as AssessmentEntity);
+		// Bind an assessment carrying QTI material → auto-mode gives "on".
+		coord.updateAssessment({
+			id: "a1",
+			personalNeedsProfile: { supports: ["graph"] },
+		} as AssessmentEntity);
 		expect(coord.getPolicyInputs().qtiEnforcement).toBe("on");
 	});
 
@@ -301,14 +323,18 @@ describe("ToolkitCoordinator policy-engine integration", () => {
 	test("setQtiEnforcement runs before updateAssessment in batched effects to avoid transient wrong-state events", () => {
 		// PieAssessmentToolkit.svelte applies override → assessment →
 		// itemRef in that order. Verify the contract here: when a
-		// host configures `assessment={x}` *and* `qti-enforcement="off"`
-		// in one render, the effective mode after the batch is
-		// "off" (the override wins). The order on the coordinator is
-		// what makes this work without a transient "on" emit.
+		// host configures `assessment={x}` (carrying QTI material) and
+		// `qti-enforcement="off"` in one render, the effective mode
+		// after the batch is "off" (the override wins). The ordering
+		// on the coordinator is what makes this work without a
+		// transient "on" emit between assessment-bind and override.
 		const coord = makeCoordinator();
 
 		coord.setQtiEnforcement("off");
-		coord.updateAssessment({ id: "a1" } as AssessmentEntity);
+		coord.updateAssessment({
+			id: "a1",
+			personalNeedsProfile: { supports: ["graph"] },
+		} as AssessmentEntity);
 		coord.updateCurrentItemRef(null);
 
 		expect(coord.getPolicyInputs().qtiEnforcement).toBe("off");

@@ -35,6 +35,7 @@ import type {
 } from "./decision-types.js";
 import type { PolicySource } from "./PolicySource.js";
 import { composeDecision } from "./compose-decision.js";
+import { resolveDefaultQtiEnforcement } from "./qti-inputs.js";
 import { QtiPolicySource } from "../sources/QtiPolicySource.js";
 
 export type QtiEnforcementMode = "on" | "off";
@@ -44,10 +45,18 @@ export interface ToolPolicyEngineInputs {
 	assessment?: AssessmentEntity | null;
 	currentItemRef?: AssessmentItemRef | null;
 	/**
-	 * "on" applies the QTI 6-level precedence (default — see M8
-	 * design Q5). Hosts that explicitly want to bypass QTI gates
-	 * (test fixtures, demos that don't carry an `AssessmentEntity`)
-	 * pass `"off"`.
+	 * Explicit override. When omitted (or `undefined`), the engine
+	 * defaults to {@link resolveDefaultQtiEnforcement} over the bound
+	 * `assessment` and `currentItemRef`: `"on"` if they carry any QTI
+	 * 6-level precedence material (PNP, district policy, test
+	 * administration, item-level required/restricted/parameters),
+	 * `"off"` otherwise. See `.cursor/plans/m8-design.md` F2.
+	 *
+	 * Hosts that want to force a mode (test fixtures, demos that
+	 * intentionally bypass QTI gates) pass `"on"` or `"off"`
+	 * explicitly. Embedded under `<pie-section-player-*>` the same
+	 * override flows through `runtime.tools.qtiEnforcement` (see the
+	 * M5 mirror rule).
 	 */
 	qtiEnforcement?: QtiEnforcementMode;
 }
@@ -110,7 +119,12 @@ export class ToolPolicyEngine {
 		this.tools = inputs.tools ?? DEFAULT_TOOLS;
 		this.assessment = inputs.assessment ?? null;
 		this.currentItemRef = inputs.currentItemRef ?? null;
-		this.qtiEnforcement = inputs.qtiEnforcement ?? "on";
+		this.qtiEnforcement =
+			inputs.qtiEnforcement ??
+			resolveDefaultQtiEnforcement({
+				assessment: this.assessment,
+				currentItemRef: this.currentItemRef,
+			});
 	}
 
 	/**

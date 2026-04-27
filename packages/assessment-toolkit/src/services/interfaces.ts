@@ -703,23 +703,34 @@ export interface ToolkitCoordinatorApi {
 
 	/**
 	 * Bind (or clear) the active QTI assessment for policy decisions.
-	 * Calling with a non-null assessment auto-promotes the engine to
-	 * `qtiEnforcement: "on"` unless a host has previously called
-	 * {@link setQtiEnforcement} (the override is sticky).
+	 *
+	 * Under auto-mode (no host override via {@link setQtiEnforcement}),
+	 * the engine flips to `qtiEnforcement: "on"` iff the assessment
+	 * carries QTI 6-level precedence material (`personalNeedsProfile`,
+	 * `settings.districtPolicy`, `settings.testAdministration`) or the
+	 * currently-bound item ref carries item-level QTI inputs. A bare
+	 * assessment record (just `id` / `name`) keeps `"off"`.
+	 *
+	 * The host override set via {@link setQtiEnforcement} is sticky
+	 * across assessment swaps.
 	 */
 	updateAssessment(assessment: AssessmentEntity | null): void;
 
 	/**
 	 * Bind (or clear) the current item reference for policy decisions.
 	 * Used by item-level QTI gates (item `requiredTools` /
-	 * `restrictedTools`).
+	 * `restrictedTools` / `toolParameters`). Item-level QTI material
+	 * also feeds the auto-mode helper — navigating to an item with
+	 * QTI settings can flip auto-mode to `"on"` even when the parent
+	 * assessment carries no QTI block of its own.
 	 */
 	updateCurrentItemRef(itemRef: AssessmentItemRef | null): void;
 
 	/**
 	 * Override the auto-mode QTI enforcement decision. Pass `"on"` /
 	 * `"off"` to pin the mode, or `null` to clear the override and
-	 * return to auto-mode.
+	 * return to auto-mode (`"on"` iff the bound assessment / item ref
+	 * carries QTI material, otherwise `"off"`).
 	 */
 	setQtiEnforcement(mode: QtiEnforcementMode | null): void;
 

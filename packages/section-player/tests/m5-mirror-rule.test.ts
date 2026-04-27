@@ -313,3 +313,73 @@ describe("M5 mirror rule — runtime tier is read by the consumer", () => {
 		});
 	}
 });
+
+/**
+ * Nested mirror chain for `runtime.tools.qtiEnforcement` (M8 PR 4).
+ *
+ * `qtiEnforcement` is not a top-level `RuntimeConfig` key — it lives
+ * under `runtime.tools`. The kebab/camelCase/runtime contract still
+ * applies, but the surfaces are owned by `<pie-assessment-toolkit>`
+ * (assessment-toolkit package), not by the section-player layout
+ * shells. This block locks each leg of that nested chain so the
+ * embedded path (`<pie-section-player-* runtime={{ tools: { ... } }}>`
+ * → forwarded `tools` prop → toolkit reads `tools.qtiEnforcement`)
+ * stays in sync with the standalone `qti-enforcement` attribute.
+ */
+const TOOLKIT_FILE = resolve(
+	PACKAGE_ROOT,
+	"..",
+	"assessment-toolkit",
+	"src",
+	"components",
+	"PieAssessmentToolkit.svelte",
+);
+const NORMALIZER_FILE = resolve(
+	PACKAGE_ROOT,
+	"..",
+	"assessment-toolkit",
+	"src",
+	"services",
+	"tools-config-normalizer.ts",
+);
+const toolkitSource = readFileSync(TOOLKIT_FILE, "utf8");
+const toolkitProps = parseLayoutProps(TOOLKIT_FILE);
+const normalizerSource = readFileSync(NORMALIZER_FILE, "utf8");
+const sectionPlayerBaseSource = readFileSync(
+	resolve(PACKAGE_ROOT, "src", "components", "PieSectionPlayerBaseElement.svelte"),
+	"utf8",
+);
+
+describe("M5 mirror rule — runtime.tools.qtiEnforcement nested chain (M8 PR 4)", () => {
+	test("`<pie-assessment-toolkit>` declares the `qtiEnforcement` prop with `attribute: \"qti-enforcement\"`", () => {
+		const prop = toolkitProps.find((p) => p.name === "qtiEnforcement");
+		expect(prop).toBeDefined();
+		expect(prop?.attribute).toBe("qti-enforcement");
+	});
+
+	test("`CanonicalToolsConfig` declares `qtiEnforcement` so `runtime.tools.qtiEnforcement` is preserved through `normalizeToolsConfig`", () => {
+		expect(normalizerSource.includes("qtiEnforcement?: ToolsQtiEnforcement")).toBe(
+			true,
+		);
+		expect(normalizerSource.includes("config.qtiEnforcement = qtiEnforcement")).toBe(
+			true,
+		);
+	});
+
+	test("`<pie-assessment-toolkit>` falls back to `tools.qtiEnforcement` when the explicit prop is null (embedded `runtime.tools.qtiEnforcement` path)", () => {
+		expect(
+			toolkitSource.includes("resolveQtiEnforcementInput(qtiEnforcement, tools)"),
+		).toBe(true);
+		expect(
+			toolkitSource.includes(`(toolsConfig as { qtiEnforcement?: unknown })`),
+		).toBe(true);
+	});
+
+	test("`<pie-section-player-base>` forwards `runtime?.tools` through `effectiveTools` to `<pie-assessment-toolkit>`", () => {
+		expect(
+			sectionPlayerBaseSource.includes("const effectiveTools = $derived"),
+		).toBe(true);
+		expect(sectionPlayerBaseSource.includes("runtime?.tools ?? tools")).toBe(true);
+		expect(sectionPlayerBaseSource.includes("tools={effectiveTools}")).toBe(true);
+	});
+});

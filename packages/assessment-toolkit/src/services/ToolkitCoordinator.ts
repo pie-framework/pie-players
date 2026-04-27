@@ -68,6 +68,7 @@ import {
 	type ToolPolicyDecision,
 	type ToolPolicyDecisionRequest,
 } from "../policy/engine.js";
+import { resolveDefaultQtiEnforcement } from "../policy/internal.js";
 import type {
 	SectionControllerContext,
 	SectionControllerEvent,
@@ -552,11 +553,12 @@ export class ToolkitCoordinator {
 
 	/**
 	 * Host-set override for QTI enforcement. `null` (the default) means
-	 * "auto" — the coordinator infers the effective mode from whether
-	 * an `AssessmentEntity` has been bound (`updateAssessment(...)`).
+	 * "auto" — the coordinator infers the effective mode from the
+	 * QTI inputs the bound `AssessmentEntity` and `AssessmentItemRef`
+	 * actually carry (see {@link resolveEffectiveQtiEnforcement}).
 	 * `"on"` / `"off"` are explicit host opt-in / opt-out and stick
-	 * across subsequent assessment swaps. PR 4 flips the auto default
-	 * to `"on"` regardless of bound assessment.
+	 * across subsequent assessment / item swaps until the host clears
+	 * the override by calling `setQtiEnforcement(null)`.
 	 */
 	private qtiEnforcementOverride: QtiEnforcementMode | null = null;
 
@@ -568,6 +570,16 @@ export class ToolkitCoordinator {
 	 * to round-trip through {@link policyEngine}'s frozen snapshot.
 	 */
 	private boundAssessment: AssessmentEntity | null = null;
+
+	/**
+	 * Last item reference passed to {@link updateCurrentItemRef}.
+	 * Mirrored alongside {@link boundAssessment} so
+	 * {@link resolveEffectiveQtiEnforcement} can detect item-level
+	 * QTI inputs (`requiredTools` / `restrictedTools` /
+	 * `toolParameters`) without round-tripping through the engine's
+	 * frozen snapshot.
+	 */
+	private boundCurrentItemRef: AssessmentItemRef | null = null;
 
 	/** Callback for floating tools changes */
 	private floatingToolsChangeCallback: ((toolIds: string[]) => void) | null =
@@ -657,11 +669,12 @@ export class ToolkitCoordinator {
 
 		// M8 PR 2 — construct the unified ToolPolicyEngine seeded with
 		// the validated tools config. QTI inputs (`assessment`,
-		// `currentItemRef`) start `null`; `qtiEnforcement` defaults to
-		// `"off"` until a host calls `updateAssessment(...)` (auto-mode)
-		// or `setQtiEnforcement("on" | "off")` (explicit). Hosts that
-		// only consume the engine for placement/policy gating get the
-		// pre-PR-2 behavior bit-for-bit.
+		// `currentItemRef`) start `null`; `qtiEnforcement` is resolved
+		// through {@link resolveEffectiveQtiEnforcement}, which flips
+		// to `"on"` only once the bound assessment or item carries
+		// actual QTI material (PR 4). Hosts that only consume the
+		// engine for placement/policy gating get the pre-PR-2 behavior
+		// bit-for-bit.
 		this.policyEngine = new ToolPolicyEngine({
 			toolRegistry: this.toolRegistry,
 			contextId: `toolkit-coordinator:${this.assessmentId}`,
@@ -669,7 +682,7 @@ export class ToolkitCoordinator {
 				tools: this.config.tools as CanonicalToolsConfig,
 				assessment: null,
 				currentItemRef: null,
-				qtiEnforcement: "off",
+				qtiEnforcement: this.resolveEffectiveQtiEnforcement(),
 			},
 		});
 
@@ -2112,11 +2125,13 @@ export class ToolkitCoordinator {
 	 *     removes the tool from the visible set. The legacy resolver
 	 *     ignored this flag for floating tools.
 	 *   - **QTI gates** — when `qtiEnforcement` is `"on"` (set by host
-	 *     via {@link setQtiEnforcement}, or auto-promoted when an
-	 *     `AssessmentEntity` is bound via {@link updateAssessment}),
-	 *     the QTI 6-level precedence (district block → test-admin
-	 *     override → item restriction/requirement → district
-	 *     requirement → PNP supports / prohibitions) is applied.
+	 *     via {@link setQtiEnforcement}, or auto-promoted when the
+	 *     bound `AssessmentEntity` / current `AssessmentItemRef`
+	 *     carries QTI 6-level precedence material — see
+	 *     {@link resolveEffectiveQtiEnforcement}), the QTI 6-level
+	 *     precedence (district block → test-admin override → item
+	 *     restriction/requirement → district requirement → PNP
+	 *     supports / prohibitions) is applied.
 	 *   - **Custom `PolicySource`s** registered via
 	 *     {@link registerPolicySource}.
 	 *
@@ -2191,10 +2206,17 @@ export class ToolkitCoordinator {
 	/**
 	 * Bind (or clear) the active QTI assessment for policy decisions.
 	 *
-	 * Calling this with a non-null assessment auto-promotes the engine
-	 * to `qtiEnforcement: "on"` *unless* a host has previously called
-	 * {@link setQtiEnforcement} (the override is sticky). Calling with
-	 * `null` clears the binding and reverts to `"off"` under auto-mode.
+	 * Under auto-mode (no host override via {@link setQtiEnforcement}),
+	 * the coordinator promotes the engine to `qtiEnforcement: "on"`
+	 * iff the assessment carries any QTI 6-level precedence material
+	 * (`personalNeedsProfile`, `settings.districtPolicy`,
+	 * `settings.testAdministration`) or the currently-bound item ref
+	 * carries item-level QTI inputs. A bare assessment record (just
+	 * `id` / `name`, no PNP, no settings) keeps `"off"`.
+	 *
+	 * The host override set via {@link setQtiEnforcement} is sticky
+	 * across assessment swaps; calling with `null` clears the binding
+	 * and re-runs the auto-mode helper.
 	 */
 	updateAssessment(assessment: AssessmentEntity | null): void {
 		this.boundAssessment = assessment;
@@ -2206,21 +2228,30 @@ export class ToolkitCoordinator {
 
 	/**
 	 * Bind (or clear) the current item reference for policy decisions.
+	 *
 	 * Used by item-level QTI gates (item `requiredTools` /
-	 * `restrictedTools`).
+	 * `restrictedTools` / `toolParameters`). Item-level QTI material
+	 * also feeds {@link resolveEffectiveQtiEnforcement} — navigating
+	 * to an item with QTI settings can flip auto-mode to `"on"` even
+	 * when the parent assessment carries no QTI block of its own.
 	 */
 	updateCurrentItemRef(itemRef: AssessmentItemRef | null): void {
-		this.policyEngine.updateInputs({ currentItemRef: itemRef });
+		this.boundCurrentItemRef = itemRef;
+		this.policyEngine.updateInputs({
+			currentItemRef: itemRef,
+			qtiEnforcement: this.resolveEffectiveQtiEnforcement(),
+		});
 	}
 
 	/**
 	 * Override the auto-mode QTI enforcement decision.
 	 *
-	 * Pass `"on"` to opt into QTI enforcement even before an assessment
-	 * is bound (useful for tests / fixtures). Pass `"off"` to opt out
-	 * even when an assessment is bound. Pass `null` to clear the
-	 * override and return to auto-mode (`"on"` iff an assessment is
-	 * bound — pre-PR-4 default; PR 4 flips this to default-on).
+	 * Pass `"on"` to force QTI enforcement even when no QTI inputs
+	 * are bound (useful for tests / fixtures). Pass `"off"` to opt
+	 * out even when QTI inputs are present. Pass `null` to clear the
+	 * override and return to auto-mode — `"on"` iff
+	 * {@link resolveDefaultQtiEnforcement} reports any QTI material
+	 * on the bound assessment or current item, otherwise `"off"`.
 	 */
 	setQtiEnforcement(mode: QtiEnforcementMode | null): void {
 		this.qtiEnforcementOverride = mode;
@@ -2255,24 +2286,25 @@ export class ToolkitCoordinator {
 
 	/**
 	 * Compute the effective `qtiEnforcement` mode given the explicit
-	 * override and the auto-mode heuristic.
+	 * host override and the auto-mode helper.
 	 *
-	 * Auto-mode in PR 2 is a coarse "any non-null assessment → on"
-	 * placeholder. `.cursor/plans/m8-design.md` F2 narrows the
-	 * intended trigger to assessments that actually carry QTI inputs
-	 * (`personalNeedsProfile`, `settings.districtPolicy`,
-	 * `settings.testAdministration`, or per-item
-	 * `requiredTools` / `restrictedTools` / `toolParameters`); PR 4
-	 * tightens this helper to that test. Until then, hosts that bind
-	 * a non-QTI assessment and want the legacy floating-tools
-	 * behavior should call `setQtiEnforcement("off")` to pin the
-	 * override.
+	 * Auto-mode (no override) defers to
+	 * {@link resolveDefaultQtiEnforcement}, which returns `"on"`
+	 * exactly when the bound assessment or current item ref carries
+	 * QTI 6-level precedence material (PNP, district policy, test
+	 * administration, item-level required/restricted/parameters), and
+	 * `"off"` otherwise. Hosts that bind a bare assessment record
+	 * (just `id` / `name`) therefore keep the legacy floating-tools
+	 * behavior — QTI gates engage the moment QTI material is present.
 	 */
 	private resolveEffectiveQtiEnforcement(): QtiEnforcementMode {
 		if (this.qtiEnforcementOverride !== null) {
 			return this.qtiEnforcementOverride;
 		}
-		return this.boundAssessment ? "on" : "off";
+		return resolveDefaultQtiEnforcement({
+			assessment: this.boundAssessment,
+			currentItemRef: this.boundCurrentItemRef,
+		});
 	}
 
 	/**

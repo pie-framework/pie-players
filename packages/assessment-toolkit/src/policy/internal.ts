@@ -37,3 +37,9 @@ export {
 	ToolPolicyProvenanceBuilder,
 	createEmptyToolPolicyProvenance,
 } from "./core/provenance.js";
+
+export {
+	assessmentHasQtiInputs,
+	itemRefHasQtiInputs,
+	resolveDefaultQtiEnforcement,
+} from "./core/qti-inputs.js";

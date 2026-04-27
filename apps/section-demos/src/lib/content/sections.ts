@@ -436,6 +436,22 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		],
 		section: demo3Section
 	},
+	"qti-default-on": {
+		id: "qti-default-on",
+		name: "QTI Default On (Auto-detect)",
+		description:
+			"Smoke fixture: an assessment that carries QTI material auto-promotes `qtiEnforcement` to 'on' without an explicit `qti-enforcement` attribute.",
+		integrationLevel: 4,
+		integrationTheme: "Tool policy engine",
+		focus:
+			"Proves the M8 PR 4 narrow auto-on rule end-to-end: bind an `AssessmentEntity` with PNP / district policy through `coord.updateAssessment(...)` and the coordinator flips QTI gates on by itself.",
+		whatMakesItTick: [
+			"Listens for `toolkit-ready` and binds an assessment with `personalNeedsProfile.supports = ['graph']` and `districtPolicy.requiredTools = ['graph']`.",
+			"Never sets the `qti-enforcement` attribute, so the auto-default rule (`assessmentHasQtiInputs` / `itemRefHasQtiInputs`) decides.",
+			"Reads back `coord.getPolicyInputs().qtiEnforcement` and the engine's `decideToolPolicy(...)` so the resolved mode is visible in the page.",
+		],
+		section: demo1Section,
+	},
 	"custom-tools": {
 		id: "custom-tools",
 		name: "Custom Tools (Host Registry)",

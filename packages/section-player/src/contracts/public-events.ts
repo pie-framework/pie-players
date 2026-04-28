@@ -23,15 +23,18 @@
  * session forwarding stays in section-player because the shape is
  * section-player-specific and the engine has no opinion on it.
  *
- * **Inner toolkit emission (M7 PR 6 transitional).**
- * `<pie-assessment-toolkit>` nested inside a layout CE intentionally
- * preserves a duplicate `framework-error` emit during the migration
- * window so consumers that listen on the inner toolkit (rather than
- * the outer layout CE) keep working. The collapse of that dual-emit
- * is tracked in `SectionPlayerLayoutKernel.svelte` and pinned by the
- * dual-emit contract test
- * (`tests/section-player-framework-error-dual-emit.test.ts`,
- * R3-#3 follow-up).
+ * **`framework-error` single-emit on the layout host (compat sweep).**
+ * `<pie-assessment-toolkit>` nested inside a layout CE still
+ * dispatches its own `framework-error` (with `bubbles: true,
+ * composed: true`) so direct toolkit consumers keep working. The
+ * kernel's `handleFrameworkError` listener intercepts that bubbled
+ * emit at `<pie-section-player-base>` and calls
+ * `event.stopPropagation()`, leaving the engine-bridge emit on the
+ * layout host as the single canonical DOM surface for
+ * section-player consumers. The single-emit contract is pinned by
+ * `tests/section-player-framework-error-dual-emit.test.ts`. The
+ * previous dual-emit was removed in the broad architecture review
+ * compat sweep.
  *
  * **Removed in the broad architecture review compat sweep.** The
  * deprecated readiness aliases (`readiness-change`,

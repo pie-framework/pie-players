@@ -1243,11 +1243,16 @@ The DOM events `pie-stage-change`, `pie-loading-complete`, and
 adapter's `dom-event-bridge`. The canonical `onFrameworkError` callback
 prop and the package-internal `FrameworkErrorBus` deliver each error
 exactly once regardless of wrapper depth. The `framework-error` DOM
-event itself is currently dual-emitted on the layout CE host when a
-toolkit is nested (the toolkit's inner emit bubbles up alongside the
-engine's bridge emit); the dual-emit is pinned by the contract test
-`tests/section-player-framework-error-dual-emit.test.ts` and will be
-collapsed in a future release.
+event on the layout CE host also delivers each error exactly once: the
+section-player kernel intercepts the toolkit's bubbled emit at
+`<pie-section-player-base>` and calls `event.stopPropagation()`, so the
+layout host sees only the canonical engine-bridge emit. Direct
+listeners on `<pie-assessment-toolkit>` itself still see the toolkit's
+own emit (the toolkit dispatch reaches them before the kernel listener
+runs). The single-emit contract is pinned by
+`packages/section-player/tests/section-player-framework-error-dual-emit.test.ts`.
+The previous dual-emit on the layout host was removed in the broad
+architecture review compat sweep.
 
 The deprecated readiness aliases (`readiness-change`,
 `interaction-ready`, `ready`) and their `legacy-event-bridge` were

@@ -461,12 +461,16 @@ Canonical lifecycle stream (engine-routed, dispatched on the outer layout CE):
   framework boundary. Payload is a `FrameworkErrorModel`. The toolkit's
   package-internal `FrameworkErrorBus` and the `onFrameworkError`
   callback prop deliver each error exactly once regardless of wrapper
-  depth. The `framework-error` *DOM event* on the outer layout CE is
-  dual-emitted while a toolkit is nested (the toolkit's inner emit
-  bubbles up alongside the engine's bridge emit); the dual-emit is
-  pinned by `tests/section-player-framework-error-dual-emit.test.ts`
-  and will be collapsed in a future release. Hosts that need single-fire
-  delivery should consume `onFrameworkError` instead.
+  depth. The `framework-error` *DOM event* on the outer layout CE
+  also delivers each error exactly once: the kernel listener at
+  `<pie-section-player-base>` intercepts the toolkit's bubbled emit
+  and calls `event.stopPropagation()`, leaving only the canonical
+  engine-bridge emit on the layout host. The single-emit contract is
+  pinned by `tests/section-player-framework-error-dual-emit.test.ts`.
+  Direct listeners attached to `<pie-assessment-toolkit>` itself
+  still see the toolkit's own emit. The previous dual-emit on the
+  layout host was removed in the broad architecture review compat
+  sweep.
 
 Callback-prop mirrors with two-tier precedence (`runtime.<key>` wins over
 the top-level prop):
@@ -478,7 +482,8 @@ the top-level prop):
 - `onFrameworkError(model)` — on every layout CE and
   `pie-section-player-base`. Fires exactly once per error regardless of
   wrapper depth (delivered through the package-internal
-  `FrameworkErrorBus`, not the dual-emitted DOM event).
+  `FrameworkErrorBus`). The `framework-error` DOM event on the layout
+  CE host is also single-fire post-compat-sweep; consume either.
 
 Section-player owned instrumentation stream:
 

@@ -107,6 +107,27 @@ unblocks a single canonical path for every consumer.
   (`coordinator.waitForSectionController(...)` or `pie-stage-change`
   filtered on `detail.stage === "engine-ready"`).
 
+- **`framework-error` dual-emit on the layout CE host.** Previously,
+  while a `<pie-assessment-toolkit>` was nested inside a layout CE,
+  the layout host received **two** `framework-error` DOM events per
+  error (one engine-bridge emit on the layout host plus the bubbled
+  toolkit emit). The dual-emit is collapsed to a single canonical
+  emit: the kernel's `handleFrameworkError` listener at
+  `<pie-section-player-base>` now calls `event.stopPropagation()`
+  after re-feeding the engine, so the bubbled toolkit emit no
+  longer reaches the layout CE host. Outside listeners on the layout
+  host now see exactly one `framework-error` per error — the
+  engine-bridge emit (target = layout host, non-bubbling,
+  non-composed). Direct listeners attached to
+  `<pie-assessment-toolkit>` itself are unaffected (the toolkit
+  dispatch reaches them before the kernel listener runs). The
+  `onFrameworkError` callback prop and the package-internal
+  `FrameworkErrorBus` are unchanged — both were already single-fire.
+  The single-emit contract is now pinned by
+  `packages/section-player/tests/section-player-framework-error-dual-emit.test.ts`
+  (the file name is preserved for git blame; the test now asserts
+  the single canonical emit).
+
 ## Migration
 
 ```ts

@@ -821,7 +821,7 @@ These are the events to build host integrations against. They are dispatched on 
 | `toolkit-ready` | `{ coordinator }` | — | Coordinator initialized — **CE-first only**: this is how you obtain the coordinator reference when you haven't constructed one yourself |
 | `pie-stage-change` | `StageChangeDetail` (`{ stage, status, runtimeId, sectionId, attemptId, sourceCe, timestamp }`) | `onStageChange(detail)` | One typed transition stream covering the full lifecycle: `composed` → `engine-ready` → `interactive` → `disposed`. Replaces the legacy readiness vocabulary with a single subscription that correlates across wrapper depths. |
 | `pie-loading-complete` | `LoadingCompleteDetail` (`{ runtimeId, sectionId, attemptId, itemCount, loadedCount, sourceCe, timestamp }`) | `onLoadingComplete(detail)` | Fires once per cohort when every item has finished loading (gated on `interactive`). |
-| `framework-error` | `FrameworkErrorModel` | `onFrameworkError(model)` | Canonical error event for any failure crossing the framework boundary (coordinator init, runtime init, tool config, provider/TTS init, tool runtime). The callback prop and the package-internal `FrameworkErrorBus` deliver each error exactly once; the layout-host *DOM event* is dual-emitted while a toolkit is nested (see "Deprecated readiness events" note below). |
+| `framework-error` | `FrameworkErrorModel` | `onFrameworkError(model)` | Canonical error event for any failure crossing the framework boundary (coordinator init, runtime init, tool config, provider/TTS init, tool runtime). The callback prop, the package-internal `FrameworkErrorBus`, and the layout-host DOM event each deliver one notification per error. |
 
 Callback-prop precedence: `runtime.<key>` (set on the layout CE's `runtime` object) wins over the top-level CE prop. Both fire at the same emit point as the DOM event so callback and event stay in lockstep across cohort changes.
 
@@ -829,7 +829,7 @@ Recommended host wiring:
 
 - Gate "start test" UI on `pie-stage-change` with `detail.stage === "interactive"`, or subscribe to the engine via `engine.subscribe(output => { if (output.kind === "stage-change" && output.detail.stage === "interactive") { /* … */ } })` if you hold a programmatic engine reference.
 - Show item-loading affordances until `pie-loading-complete` fires for the active cohort.
-- Surface `framework-error` to your error UX via `onFrameworkError(model)` (single-fire) rather than the layout-host DOM event (dual-emitted while a toolkit is nested).
+- Surface `framework-error` to your error UX via `onFrameworkError(model)` (single-fire) or via the layout-host DOM event — both deliver each error exactly once.
 
 ### Deprecated readiness events (removed)
 
@@ -843,7 +843,7 @@ The deprecated readiness aliases and their `legacy-event-bridge` were removed in
 
 `section-controller-ready` is **not** part of this removal — it is still dispatched on the layout host by the kernel's Svelte `createEventDispatcher` (forwarded by each layout CE wrapper). It is `@deprecated since M6`; new host code should use `coordinator.waitForSectionController(...)` for a controller handle, or `pie-stage-change` filtered on `detail.stage === "engine-ready"`.
 
-Note on `framework-error` dual-emit: while a `<pie-assessment-toolkit>` is nested inside a layout CE (the common case), the layout host receives **two** `framework-error` DOM events per error — one from the engine's `dom-event-bridge`, one bubbled up from the toolkit's inner emit. The dual-emit is pinned by `tests/section-player-framework-error-dual-emit.test.ts` and will be collapsed in a future release. The `onFrameworkError(model)` callback and the package-internal `FrameworkErrorBus` remain single-fire; consume those if you need exactly-once notification.
+Note on `framework-error` (previously dual-emitted): in earlier releases, while a `<pie-assessment-toolkit>` was nested inside a layout CE, the layout host received **two** `framework-error` DOM events per error (one engine-bridge emit on the layout host plus the bubbled toolkit emit). The dual-emit was collapsed in the broad architecture review compat sweep — the kernel listener at `<pie-section-player-base>` now stops the bubbled toolkit emit, leaving the engine-bridge emit on the layout host as the single canonical DOM surface. The single-emit contract is pinned by `tests/section-player-framework-error-dual-emit.test.ts`. Direct listeners attached to `<pie-assessment-toolkit>` itself are unaffected — the toolkit's own emit reaches them before the kernel listener runs.
 
 ### Internal plumbing events (do not build host integrations against)
 

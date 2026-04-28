@@ -351,18 +351,23 @@ Single-fire delivery (callback / bus)
   forward `onFrameworkError` through `effectiveRuntime →
   pie-section-player-base → pie-assessment-toolkit`.
 
-DOM event dual-emit (current 0.x)
-- The `framework-error` *DOM event* on the layout CE host is currently
-  dual-emitted while a toolkit is nested: the toolkit's inner emit
-  (`bubbles: true, composed: true`) bubbles up alongside the engine's
-  bridge emit. The kernel does **not** re-invoke the
-  `onFrameworkError` callback for the bubbled event, so callback
-  delivery stays single-fire — only the DOM event count doubles. The
-  dual-emit is pinned by
-  [`tests/section-player-framework-error-dual-emit.test.ts`](tests/section-player-framework-error-dual-emit.test.ts)
-  and will be collapsed in a future release. Hosts that need exactly
-  one notification per error should consume `onFrameworkError` (the
-  callback prop) rather than the layout-host DOM event.
+DOM event (single-emit)
+- The `framework-error` *DOM event* on the layout CE host delivers
+  each error exactly once. The kernel listener at
+  `<pie-section-player-base>` intercepts the toolkit's bubbled emit
+  (`bubbles: true, composed: true`), calls `event.stopPropagation()`,
+  and re-feeds the detail into the section runtime engine — the
+  engine's `dom-event-bridge` then dispatches a (non-bubbling)
+  `framework-error` directly on the layout CE host. Outside listeners
+  on the layout host therefore see exactly one emit per error.
+  Direct listeners attached to `<pie-assessment-toolkit>` itself are
+  unaffected (the toolkit dispatch reaches them before the kernel
+  listener runs). The kernel does **not** re-invoke the
+  `onFrameworkError` callback for the intercepted event, so callback
+  delivery is also single-fire. The single-emit contract is pinned by
+  [`tests/section-player-framework-error-dual-emit.test.ts`](tests/section-player-framework-error-dual-emit.test.ts).
+  The previous dual-emit was removed in the broad architecture review
+  compat sweep.
 
 Two-tier precedence
 - `runtime.onFrameworkError` wins over the top-level

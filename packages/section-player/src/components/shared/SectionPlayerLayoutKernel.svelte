@@ -362,34 +362,34 @@
 		// Route the framework-error model into the section runtime
 		// engine so the engine's framework-error / DOM-event bridges
 		// fan out a `framework-error` DOM event on the layout CE host.
-		// The legacy kernel-side `dispatch("framework-error", detail)`
-		// Svelte event has been dropped: the engine's bridge is the
-		// only kernel-side emit point. The wrapped
-		// `<pie-assessment-toolkit>` continues to dispatch its own
-		// `framework-error` (with `bubbles: true, composed: true`)
-		// during the M7 migration window; that bubbled event reaches
-		// outside listeners on the layout CE host as a second emit.
-		// PR 6 deliberately preserves this dual-emit (the toolkit's
-		// own `frameworkErrorBus → DOM emit` is unchanged in PR 6
-		// scope and the kernel intentionally re-feeds the bubbled
-		// detail into its engine here so `engine.dispatchInput` is
-		// the canonical kernel-side input source) — collapsing the
-		// dual emit is deferred to a later PR with an idempotency /
-		// dedup latch on the layout CE host. Outside listeners
-		// already see two emits today; PR 6 does not change that.
-		// `onFrameworkError` itself is still delivered exactly once by
-		// the underlying `pie-assessment-toolkit` (two-tier precedence:
+		// The engine's bridge is the only kernel-side emit point.
+		//
+		// The wrapped `<pie-assessment-toolkit>` still dispatches its
+		// own `framework-error` (with `bubbles: true, composed: true`)
+		// for direct toolkit consumers — that emit is captured here
+		// mid-bubble at `<pie-section-player-base>`. To collapse the
+		// previously dual-emitted layout-host surface to a single
+		// canonical `framework-error` per error, we stop further
+		// propagation after re-feeding the engine: the bubbled toolkit
+		// emit no longer reaches the layout CE host, but the engine
+		// bridge fires its own (non-bubbling) `framework-error` on the
+		// layout host directly. Direct listeners on the toolkit host
+		// itself are unaffected because the event was already
+		// delivered to them before this listener runs.
+		//
+		// `onFrameworkError` is still delivered exactly once by the
+		// underlying `pie-assessment-toolkit` (two-tier precedence:
 		// `runtime.onFrameworkError` wins; resolution happens in
 		// `resolveRuntime`); the kernel intentionally does not invoke
 		// any handler here to avoid double-firing.
 		//
-		// PR 7 follow-up (R3-#3): The dual-emit count, ordering, and
-		// detail-equality contract is pinned by
-		// `tests/section-player-framework-error-dual-emit.test.ts`.
-		// When PR 8+ collapses the dual emit, that test flips to
-		// assert the single canonical emit (and the bubbled-toolkit
-		// branch is removed from this comment).
+		// The collapse is pinned by
+		// `tests/section-player-framework-error-dual-emit.test.ts`,
+		// which now asserts the single canonical emit on the layout
+		// host. The deprecated dual-emit was removed in the broad
+		// architecture review compat sweep.
 		if (!detail) return;
+		event.stopPropagation();
 		engine.dispatchInput({ kind: "framework-error", error: detail });
 	}
 

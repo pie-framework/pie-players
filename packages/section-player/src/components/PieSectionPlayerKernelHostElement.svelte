@@ -113,12 +113,13 @@
 	const dispatch = createEventDispatcher();
 	let anchor = $state<HTMLDivElement | null>(null);
 	let kernelRef = $state<SectionPlayerRuntimeHostContract | null>(null);
+	const BOOTSTRAP_READINESS = {
+		phase: "bootstrapping",
+		interactionReady: false,
+		allLoadingComplete: false,
+	} as const satisfies SectionPlayerSnapshot["readiness"];
 	let snapshot = $state<SectionPlayerSnapshot>({
-		readiness: {
-			phase: "bootstrapping",
-			interactionReady: false,
-			allLoadingComplete: false,
-		},
+		readiness: BOOTSTRAP_READINESS,
 		composition: {
 			itemsCount: 0,
 			passagesCount: 0,
@@ -149,7 +150,11 @@
 	const hostElement = $derived.by(() => getHostElement());
 
 	export function getSnapshot(): SectionPlayerSnapshot {
-		return snapshot;
+		return {
+			...snapshot,
+			readiness: selectReadiness(),
+			navigation: kernelRef?.selectNavigation?.() || snapshot.navigation,
+		};
 	}
 
 	export function selectComposition(): SectionPlayerSnapshot["composition"] {
@@ -161,7 +166,7 @@
 	}
 
 	export function selectReadiness(): SectionPlayerSnapshot["readiness"] {
-		return snapshot.readiness;
+		return kernelRef?.selectReadiness?.() || BOOTSTRAP_READINESS;
 	}
 
 	export function navigateTo(_index: number): boolean {
@@ -227,32 +232,13 @@
 	});
 
 	// Engine-owned events (`pie-stage-change`, `pie-loading-complete`,
-	// `framework-error`, `readiness-change`, `interaction-ready`,
-	// `ready`) are dispatched by the kernel-owned section runtime engine
-	// directly onto this CE element via its DOM-event / legacy-event
-	// bridges, so outside listeners on `<pie-section-player-kernel-host>`
-	// already see them without any CE-level re-emission. Local snapshot
-	// state (`snapshot.readiness`) is kept in sync by listening to the
-	// canonical `readiness-change` event on the host once it resolves.
-	$effect(() => {
-		if (!hostElement) return;
-		const localHost = hostElement;
-		const handleReadinessChange = (event: Event) => {
-			const detail = (event as CustomEvent).detail;
-			if (!detail) return;
-			snapshot = { ...snapshot, readiness: detail };
-		};
-		localHost.addEventListener(
-			"readiness-change",
-			handleReadinessChange as EventListener,
-		);
-		return () => {
-			localHost.removeEventListener(
-				"readiness-change",
-				handleReadinessChange as EventListener,
-			);
-		};
-	});
+	// `framework-error`) are dispatched by the kernel-owned section
+	// runtime engine directly onto this CE element via its DOM-event
+	// bridge, so outside listeners on `<pie-section-player-kernel-host>`
+	// already see them without any CE-level re-emission. Local
+	// `snapshot.readiness` is read on demand from the kernel via
+	// `selectReadiness()` (see above) — no in-CE event listener is
+	// needed because the kernel owns the canonical readiness state.
 </script>
 
 <div bind:this={anchor} class="pie-section-player-observability-anchor" aria-hidden="true"></div>
@@ -321,6 +307,7 @@
 	let:preloadEnabled
 	let:itemToolbarTools
 	let:passageToolbarTools
+	let:readinessDetail
 	let:onItemsPaneElementsLoaded
 	let:onItemsPanePreloadRetry
 	let:onItemsPanePreloadError
@@ -329,7 +316,7 @@
 		{#if passages.length > 0}
 			<pie-section-player-passages-pane
 				{passages}
-				elementsLoaded={snapshot.readiness.allLoadingComplete}
+				elementsLoaded={readinessDetail.allLoadingComplete}
 				{resolvedPlayerEnv}
 				{resolvedPlayerAttributes}
 				{resolvedPlayerProps}

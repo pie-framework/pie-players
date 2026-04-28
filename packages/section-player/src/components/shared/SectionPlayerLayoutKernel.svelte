@@ -60,13 +60,14 @@
 
 	type KernelEvents = {
 		// Non-engine Svelte events the kernel still dispatches up to the
-		// hosting layout CE. The legacy readiness vocabulary
-		// (`readiness-change` / `interaction-ready` / `ready`) and the
-		// canonical M6 vocabulary (`pie-stage-change` /
-		// `pie-loading-complete`) are no longer dispatched here — the
-		// section runtime engine bridges those onto DOM events fired
-		// directly on the layout CE host (post-M7 PR 5). Same for
-		// `framework-error`: the engine's DOM event bridge owns it.
+		// hosting layout CE. The canonical M6 vocabulary
+		// (`pie-stage-change` / `pie-loading-complete`) and
+		// `framework-error` are not dispatched here — the section
+		// runtime engine bridges those onto DOM events fired directly
+		// on the layout CE host. The deprecated readiness aliases
+		// (`readiness-change` / `interaction-ready` / `ready`) and
+		// their DOM-event bridge were removed in the broad
+		// architecture review compat sweep.
 		"runtime-owned": Record<string, unknown>;
 		"runtime-inherited": Record<string, unknown>;
 		"session-changed": Record<string, unknown>;

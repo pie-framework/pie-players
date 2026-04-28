@@ -6,14 +6,17 @@
  * `disposed`) and every input variant. The transition is pure and
  * total, so every assertion runs without a host, DOM, or coordinator.
  *
- * Output ordering invariants asserted here (preserved from today's
- * kernel chain):
- *   1. `stage-change` for stage advancement fires before
- *      `readiness-change` / `interaction-ready` / `ready` for the same
- *      input.
- *   2. `readiness-change` fires before its derived legacy emits.
- *   3. `loading-complete` fires after `ready`.
- *   4. `framework-error` is independent of stage progression.
+ * Output ordering invariants asserted here:
+ *   1. `stage-change` for stage advancement fires before any
+ *      `loading-complete` triggered by the same input.
+ *   2. `loading-complete` fires once per cohort, gated on
+ *      `state.loadingCompleteEmitted`.
+ *   3. `framework-error` is independent of stage progression.
+ *
+ * The deprecated readiness output kinds (`readiness-change`,
+ * `interaction-ready`, `ready`) and their DOM-event bridge were
+ * removed in the broad architecture review compat sweep; assertions
+ * here cover only the canonical surface that remains.
  */
 
 import { describe, expect, test } from "bun:test";
@@ -155,7 +158,7 @@ describe("transition: section-controller-resolved", () => {
 });
 
 describe("transition: update-readiness-signals (progressive)", () => {
-	test("emits readiness-change + interaction-ready + stage interactive when gated", () => {
+	test("advances engine-ready → interactive and emits stage-change when gated", () => {
 		const start = fold(createInitialEngineState(), [
 			initialize(COHORT_A, 1),
 			{ kind: "section-controller-resolved" },
@@ -173,19 +176,17 @@ describe("transition: update-readiness-signals (progressive)", () => {
 			itemCount: 1,
 		});
 		expect(next.state.phase).toBe("interactive");
-		// stage-change fires before the legacy chain.
-		expect(next.outputs[0]).toEqual({
-			kind: "stage-change",
-			stage: "interactive",
-			status: "entered",
-			cohort: COHORT_A,
-		});
-		expect(next.outputs[1]?.kind).toBe("readiness-change");
-		expect(next.outputs[2]?.kind).toBe("interaction-ready");
-		expect(next.outputs).toHaveLength(3);
+		expect(next.outputs).toEqual([
+			{
+				kind: "stage-change",
+				stage: "interactive",
+				status: "entered",
+				cohort: COHORT_A,
+			},
+		]);
 	});
 
-	test("emits ready + loading-complete once per cohort when allLoadingComplete latches", () => {
+	test("emits stage-change + loading-complete once per cohort when allLoadingComplete latches", () => {
 		const start = fold(createInitialEngineState(), [
 			initialize(COHORT_A, 2),
 			{ kind: "section-controller-resolved" },
@@ -203,17 +204,10 @@ describe("transition: update-readiness-signals (progressive)", () => {
 			itemCount: 2,
 		});
 		expect(next.state.phase).toBe("interactive");
-		expect(next.state.readyEmitted).toBe(true);
 		expect(next.state.loadingCompleteEmitted).toBe(true);
-		// Output order: stage-change, readiness-change, interaction-ready, ready, loading-complete.
+		// Output order: stage-change (interactive), then loading-complete.
 		const kinds = next.outputs.map((output) => output.kind);
-		expect(kinds).toEqual([
-			"stage-change",
-			"readiness-change",
-			"interaction-ready",
-			"ready",
-			"loading-complete",
-		]);
+		expect(kinds).toEqual(["stage-change", "loading-complete"]);
 		const loadingComplete = next.outputs.find(
 			(output) => output.kind === "loading-complete",
 		);
@@ -224,7 +218,7 @@ describe("transition: update-readiness-signals (progressive)", () => {
 		});
 	});
 
-	test("does not double-emit ready / loading-complete on subsequent updates with same signals", () => {
+	test("does not double-emit loading-complete on subsequent updates with same signals", () => {
 		const start = fold(createInitialEngineState(), [
 			initialize(COHORT_A, 1),
 			{ kind: "section-controller-resolved" },
@@ -256,9 +250,9 @@ describe("transition: update-readiness-signals (progressive)", () => {
 		expect(next.outputs).toEqual([]);
 	});
 
-	test("does not emit `loading-complete` while still in engine-ready (no interactive yet)", () => {
+	test("emits loading-complete from engine-ready when allLoadingComplete fires before interactionReady", () => {
 		// Edge case: progressive mode + `interactionReady=false` + `allLoadingComplete=true`
-		// should fire `ready` but not advance to interactive.
+		// emits `loading-complete` for the cohort but does not advance to interactive.
 		const start = fold(createInitialEngineState(), [
 			initialize(COHORT_A, 1),
 			{ kind: "section-controller-resolved" },
@@ -277,9 +271,7 @@ describe("transition: update-readiness-signals (progressive)", () => {
 		});
 		expect(next.state.phase).toBe("engine-ready");
 		const kinds = next.outputs.map((output) => output.kind);
-		expect(kinds).toContain("ready");
-		expect(kinds).toContain("loading-complete");
-		expect(kinds).not.toContain("interaction-ready");
+		expect(kinds).toEqual(["loading-complete"]);
 	});
 
 	test("ignored in idle phase (no cohort)", () => {
@@ -317,15 +309,12 @@ describe("transition: update-readiness-signals (strict mode)", () => {
 			loadedCount: 1,
 			itemCount: 2,
 		});
+		// Strict mode collapses interactionReady to false until loading
+		// completes, so the engine stays in `engine-ready` and the
+		// transition emits no outputs (no stage advance, no loading
+		// complete).
 		expect(partial.state.phase).toBe("engine-ready");
-		// Strict mode collapses interactionReady to false until loading completes.
-		const partialReadiness = partial.outputs.find(
-			(output) => output.kind === "readiness-change",
-		);
-		expect(partialReadiness?.kind).toBe("readiness-change");
-		expect((partialReadiness as { detail?: { interactionReady: boolean } } | undefined)?.detail?.interactionReady).toBe(
-			false,
-		);
+		expect(partial.outputs).toEqual([]);
 
 		const complete = transition(partial.state, {
 			kind: "update-readiness-signals",
@@ -374,8 +363,6 @@ describe("transition: cohort-change", () => {
 		expect(next.state.phase).toBe("booting-section");
 		expect(next.state.cohort).toEqual(COHORT_B);
 		expect(next.state.loadingCompleteEmitted).toBe(false);
-		expect(next.state.interactionReadyEmitted).toBe(false);
-		expect(next.state.readyEmitted).toBe(false);
 		expect(next.state.controllerResolved).toBe(false);
 		expect(next.outputs).toEqual([
 			{

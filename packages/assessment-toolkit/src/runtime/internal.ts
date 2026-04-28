@@ -68,12 +68,6 @@ export {
 } from "./adapter/instrumentation-bridge.js";
 
 export {
-	createLegacyEventBridge,
-	type LegacyEventBridgeHandle,
-	type LegacyEventBridgeOptions,
-} from "./adapter/legacy-event-bridge.js";
-
-export {
 	createSubscriberFanout,
 	type EngineOutputListener,
 	type SubscriberFanoutHandle,

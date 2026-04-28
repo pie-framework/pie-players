@@ -7,8 +7,7 @@
  *   - the next `SectionEngineState` (immutable; the input state object
  *     is never mutated);
  *   - the ordered list of `SectionEngineOutput`s the adapter must
- *     dispatch (DOM events, framework-error fan-out, legacy event
- *     mirrors, etc.).
+ *     dispatch (DOM events, framework-error fan-out, etc.).
  *
  * The function imports nothing from Svelte, the DOM, or the
  * coordinator. The `core/` constraint is enforced by the per-PR audit
@@ -19,16 +18,19 @@
  *   (cohort-change rolls back to booting-section for the new cohort
  *    after emitting `disposed` for the outgoing cohort)
  *
- * Output ordering invariants (preserved bit-for-bit from the kernel's
- * legacy emit order, M7 PR 1 acceptance):
- *   1. `stage-change` for stage advancement fires *before* the
- *      readiness-change-derived legacy outputs for the same input.
- *   2. `readiness-change` always fires before `interaction-ready` /
- *      `ready` for the same readiness update.
- *   3. `loading-complete` fires after `ready` because the kernel's
- *      legacy chain emits in that order.
- *   4. `framework-error` outputs are independent of the stage chain
+ * Output ordering invariants:
+ *   1. `stage-change` for stage advancement fires before any
+ *      `loading-complete` triggered by the same input.
+ *   2. `loading-complete` fires once per cohort, gated on
+ *      `state.loadingCompleteEmitted`.
+ *   3. `framework-error` outputs are independent of the stage chain
  *      and do not move the phase.
+ *
+ * The deprecated readiness output kinds (`readiness-change`,
+ * `interaction-ready`, `ready`) and their DOM-event bridge were
+ * removed in the broad architecture review compat sweep. Hosts that
+ * need the readiness detail read it via the kernel's `selectReadiness`
+ * / `getSnapshot` selectors or via `SectionEngineCore.getState()`.
  */
 
 import { cohortsEqual, type CohortKey } from "./cohort.js";
@@ -36,7 +38,6 @@ import type { SectionEngineInput } from "./engine-input.js";
 import type { SectionEngineOutput } from "./engine-output.js";
 import {
 	createReadinessDetail,
-	type EngineReadinessDetail,
 	type EngineReadinessSignals,
 } from "./engine-readiness.js";
 import { phaseToStage } from "./engine-stage-derivation.js";
@@ -49,20 +50,6 @@ import {
 export interface TransitionResult {
 	state: SectionEngineState;
 	outputs: SectionEngineOutput[];
-}
-
-function readinessDetailsEqual(
-	a: EngineReadinessDetail | null,
-	b: EngineReadinessDetail | null,
-): boolean {
-	if (a === b) return true;
-	if (!a || !b) return false;
-	return (
-		a.phase === b.phase &&
-		a.interactionReady === b.interactionReady &&
-		a.allLoadingComplete === b.allLoadingComplete &&
-		a.reason === b.reason
-	);
 }
 
 function emitStageChange(
@@ -103,9 +90,8 @@ function startCohort(args: {
 
 /**
  * Apply a readiness update: store new signals, derive the detail in
- * the requested mode, emit `readiness-change` if the detail changed,
- * fire one-shot legacy emits, advance the phase to `interactive` when
- * gated, and emit `loading-complete` once per cohort.
+ * the requested mode, advance the phase to `interactive` when gated,
+ * and emit `loading-complete` once per cohort.
  */
 function applyReadinessUpdate(
 	state: SectionEngineState,
@@ -128,8 +114,6 @@ function applyReadinessUpdate(
 	const outputs: SectionEngineOutput[] = [];
 
 	let phase = state.phase;
-	let interactionReadyEmitted = state.interactionReadyEmitted;
-	let readyEmitted = state.readyEmitted;
 	let loadingCompleteEmitted = state.loadingCompleteEmitted;
 
 	// Stage advancement: engine-ready → interactive when readiness
@@ -139,31 +123,21 @@ function applyReadinessUpdate(
 		emitStageChange(outputs, phase, state.cohort);
 	}
 
-	// Readiness-change emission. Always fires when the detail differs
-	// from the previously emitted detail.
-	if (!readinessDetailsEqual(detail, state.lastReadinessDetail)) {
-		outputs.push({ kind: "readiness-change", detail });
-	}
-
-	// Legacy `interaction-ready` one-shot per cohort.
-	if (detail.interactionReady && !interactionReadyEmitted) {
-		interactionReadyEmitted = true;
-		outputs.push({ kind: "interaction-ready", detail });
-	}
-
-	// Legacy `ready` one-shot per cohort + canonical `loading-complete`.
-	if (detail.allLoadingComplete && !readyEmitted) {
-		readyEmitted = true;
-		outputs.push({ kind: "ready", detail });
-		if (state.cohort && !loadingCompleteEmitted) {
-			loadingCompleteEmitted = true;
-			outputs.push({
-				kind: "loading-complete",
-				cohort: state.cohort,
-				itemCount: args.itemCount,
-				loadedCount: args.loadedCount,
-			});
-		}
+	// Canonical `loading-complete` emission. One-shot per cohort, gated
+	// on the readiness signals indicating every item has finished
+	// loading.
+	if (
+		detail.allLoadingComplete &&
+		state.cohort &&
+		!loadingCompleteEmitted
+	) {
+		loadingCompleteEmitted = true;
+		outputs.push({
+			kind: "loading-complete",
+			cohort: state.cohort,
+			itemCount: args.itemCount,
+			loadedCount: args.loadedCount,
+		});
 	}
 
 	const nextState: SectionEngineState = {
@@ -172,10 +146,7 @@ function applyReadinessUpdate(
 		readinessSignals: args.signals,
 		loadedCount: args.loadedCount,
 		itemCount: args.itemCount,
-		interactionReadyEmitted,
-		readyEmitted,
 		loadingCompleteEmitted,
-		lastReadinessDetail: detail,
 	};
 	return { state: nextState, outputs };
 }

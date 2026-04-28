@@ -482,29 +482,29 @@ the top-level prop):
 
 Section-player owned instrumentation stream:
 
-- `pie-section-readiness-change`
-- `pie-section-interaction-ready`
-- `pie-section-ready`
+- `pie-section-stage-change`
+- `pie-section-loading-complete`
 - `pie-section-controller-ready`
 - `pie-section-session-changed`
 - `pie-section-composition-changed`
 - `pie-section-framework-error`
 
-Deprecated readiness compatibility events (dual-emit through the
-current 0.x line; new host code should listen for `pie-stage-change` /
-`pie-loading-complete` instead):
+The deprecated readiness aliases (`readiness-change`,
+`interaction-ready`, `ready`) and their `legacy-event-bridge` were
+removed in the broad architecture review compat sweep. Migrate
+consumers as follows:
 
-- `readiness-change` → covered by `pie-stage-change` (`stage` + `status`).
-  Emitted by the engine's `legacy-event-bridge`.
-- `interaction-ready` → `pie-stage-change` with `detail.stage === "interactive"`.
-  Emitted by the engine's `legacy-event-bridge`.
-- `ready` → `pie-loading-complete`. Emitted by the engine's `legacy-event-bridge`.
-- `section-controller-ready` → `pie-stage-change` with
-  `detail.stage === "engine-ready"`, or
-  `coordinator.waitForSectionController(sectionId, attemptId)` for a
-  direct controller handle. Dispatched by the kernel's Svelte
-  `createEventDispatcher` (forwarded by each layout CE wrapper); not
-  by `legacy-event-bridge`.
+- `readiness-change` → listen for `pie-stage-change`. The readiness
+  payload is also available via `selectReadiness()` /
+  `getSnapshot().readiness` on the layout CE.
+- `interaction-ready` → `pie-stage-change` filtered on
+  `detail.stage === "interactive"`.
+- `ready` → `pie-loading-complete`.
+- `section-controller-ready` is still dispatched by the kernel's
+  Svelte `createEventDispatcher` (forwarded by each layout CE wrapper)
+  and is **not** part of this compat removal. New host code should
+  prefer `coordinator.waitForSectionController(sectionId, attemptId)`
+  or `pie-stage-change` filtered on `detail.stage === "engine-ready"`.
 
 If toolkit is mounted, toolkit lifecycle events are emitted on a separate
 `pie-toolkit-*` stream. This separation avoids semantic overlap; bridge dedupe

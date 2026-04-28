@@ -183,13 +183,13 @@ Notes:
 
 - `loaderOptions` and `loaderConfig` are different concerns: loading strategy vs observability/retry behavior.
 - For custom providers, pass object references as JS properties (`runtime`), not serialized string attributes.
-- Higher-level section/toolkit instrumentation is also provider-generic. Section-player emits runtime/public events (for example `readiness-change`, `session-changed`, `composition-changed`) and those can be bridged to `InstrumentationProvider.trackEvent(...)` without coupling to New Relic-specific APIs.
+- Higher-level section/toolkit instrumentation is also provider-generic. Section-player emits runtime/public events (for example `pie-stage-change`, `session-changed`, `composition-changed`) and those can be bridged to `InstrumentationProvider.trackEvent(...)` without coupling to New Relic-specific APIs.
 - New Relic remains one provider implementation option; it is not the player contract.
 - With `trackPageActions: true`, missing/`undefined` `instrumentationProvider` uses the default New Relic provider path.
 - `instrumentationProvider: null` is an explicit no-op opt-out.
 - Ownership model: section-player instrumentation owns section runtime/public events; toolkit instrumentation covers toolkit lifecycle events. This avoids semantic overlap and duplicate telemetry.
 
-The player tracks loading through `totalRegistered` and `totalLoaded` counters (accessible via `getRuntimeState()`) and emits `pie-loading-complete` when all registered items have loaded. The canonical lifecycle stream is `pie-stage-change`, which carries the full transition sequence (`composed` → `engine-ready` → `interactive` → `disposed`) on a single typed event. The legacy `readiness-change` / `interaction-ready` / `ready` events still dual-emit through the current 0.x compatibility window — see §10 for the migration mapping.
+The player tracks loading through `totalRegistered` and `totalLoaded` counters (accessible via `getRuntimeState()`) and emits `pie-loading-complete` when all registered items have loaded. The canonical lifecycle stream is `pie-stage-change`, which carries the full transition sequence (`composed` → `engine-ready` → `interactive` → `disposed`) on a single typed event. The deprecated readiness aliases (`readiness-change`, `interaction-ready`, `ready`) and their `legacy-event-bridge` were removed in the broad architecture review compat sweep — see §10 for the migration mapping.
 
 ### Instrumentation (dedicated)
 
@@ -213,9 +213,8 @@ Provider semantics:
 
 Section-player owned canonical event stream:
 
-- `pie-section-readiness-change`
-- `pie-section-interaction-ready`
-- `pie-section-ready`
+- `pie-section-stage-change`
+- `pie-section-loading-complete`
 - `pie-section-controller-ready`
 - `pie-section-session-changed`
 - `pie-section-composition-changed`
@@ -545,7 +544,7 @@ playerEl.addEventListener('pie-stage-change', (event) => {
 });
 ```
 
-The legacy `section-controller-ready` event is still dispatched on the layout host (by the kernel's Svelte `createEventDispatcher`, not the engine's `legacy-event-bridge`) during the current 0.x compatibility window, but it is `@deprecated since M6` and new host code should use one of the two patterns above.
+The legacy `section-controller-ready` event is still dispatched on the layout host (by the kernel's Svelte `createEventDispatcher`) during the current 0.x compatibility window, but it is `@deprecated since M6` and new host code should use one of the two patterns above.
 
 ### Reading state
 
@@ -832,16 +831,17 @@ Recommended host wiring:
 - Show item-loading affordances until `pie-loading-complete` fires for the active cohort.
 - Surface `framework-error` to your error UX via `onFrameworkError(model)` (single-fire) rather than the layout-host DOM event (dual-emitted while a toolkit is nested).
 
-### Deprecated readiness events (compatibility window)
+### Deprecated readiness events (removed)
 
-The following events still dual-emit alongside the canonical events through the current 0.x compatibility window. New host code should use the canonical event instead.
+The deprecated readiness aliases and their `legacy-event-bridge` were removed in the broad architecture review compat sweep. Hosts that listened for them migrate to the canonical events as follows:
 
-| Event name | Equivalent canonical event | Routed by |
+| Removed event name | Replacement | Notes |
 | --- | --- | --- |
-| `readiness-change` | `pie-stage-change` (full phase sequence; covered by `stage` + `status` discriminator) | engine `legacy-event-bridge` |
-| `interaction-ready` | `pie-stage-change` with `detail.stage === "interactive"` | engine `legacy-event-bridge` |
-| `ready` | `pie-loading-complete` | engine `legacy-event-bridge` |
-| `section-controller-ready` | `pie-stage-change` with `detail.stage === "engine-ready"` (or `coordinator.waitForSectionController(...)` for a controller handle) | kernel's Svelte `createEventDispatcher`, forwarded by each layout CE wrapper — **not** the engine's `legacy-event-bridge` |
+| `readiness-change` | `pie-stage-change` (full phase sequence; `stage` + `status` discriminator) | The readiness payload is also reachable via `selectReadiness()` / `getSnapshot().readiness` on the layout CE. |
+| `interaction-ready` | `pie-stage-change` filtered on `detail.stage === "interactive"` | |
+| `ready` | `pie-loading-complete` | Same single-shot, cohort-scoped semantics. |
+
+`section-controller-ready` is **not** part of this removal — it is still dispatched on the layout host by the kernel's Svelte `createEventDispatcher` (forwarded by each layout CE wrapper). It is `@deprecated since M6`; new host code should use `coordinator.waitForSectionController(...)` for a controller handle, or `pie-stage-change` filtered on `detail.stage === "engine-ready"`.
 
 Note on `framework-error` dual-emit: while a `<pie-assessment-toolkit>` is nested inside a layout CE (the common case), the layout host receives **two** `framework-error` DOM events per error — one from the engine's `dom-event-bridge`, one bubbled up from the toolkit's inner emit. The dual-emit is pinned by `tests/section-player-framework-error-dual-emit.test.ts` and will be collapsed in a future release. The `onFrameworkError(model)` callback and the package-internal `FrameworkErrorBus` remain single-fire; consume those if you need exactly-once notification.
 

@@ -12,9 +12,9 @@
  *
  *   2. Subscribe to the core's output stream and **route each output**
  *      through the bridges in a deterministic order so the public DOM
- *      surface, framework-error bus, legacy events, instrumentation
- *      hook, and host subscribers all see exactly the same fan-out
- *      with byte-identical detail shapes.
+ *      surface, framework-error bus, instrumentation hook, and host
+ *      subscribers all see exactly the same fan-out with
+ *      byte-identical detail shapes.
  *
  * Output routing is a single exhaustive `switch` (`assertNever` on
  * the default branch) so adding a new `SectionEngineOutput` kind in
@@ -24,15 +24,15 @@
  * **Routing order per output:**
  *   - canonical DOM event (`pie-stage-change`, `pie-loading-complete`,
  *     `framework-error`)
- *   - legacy DOM event (`readiness-change`, `interaction-ready`,
- *     `ready`)
  *   - framework-error bus (single fan-out for in-process subscribers)
  *   - instrumentation hook
  *   - public subscriber fan-out (batched, runs once per
  *     `core.dispatch`)
  *
- * The order matches the kernel's existing emit chain so PR 5 (kernel
- * switch) is a structural delete, not a behavior change.
+ * The deprecated `readiness-change` / `interaction-ready` / `ready`
+ * DOM events and their `legacy-event-bridge.ts` were removed in the
+ * broad architecture review compat sweep; the corresponding output
+ * kinds are gone from `engine-output.ts`.
  *
  * **Layering constraint.** The adapter is plain TS. It must not
  * import `svelte` — the M7 implementation plan and
@@ -68,10 +68,6 @@ import {
 	type InstrumentationBridgeHandle,
 	type InstrumentationHook,
 } from "./instrumentation-bridge.js";
-import {
-	createLegacyEventBridge,
-	type LegacyEventBridgeHandle,
-} from "./legacy-event-bridge.js";
 import {
 	createSubscriberFanout,
 	type EngineOutputListener,
@@ -116,7 +112,6 @@ export interface SectionEngineAdapterOptions {
 export class SectionEngineAdapter {
 	private readonly core: SectionEngineCore;
 	private readonly domEventBridge: DomEventBridgeHandle;
-	private readonly legacyEventBridge: LegacyEventBridgeHandle;
 	private readonly frameworkErrorBridge: FrameworkErrorBridgeHandle;
 	private readonly instrumentationBridge: InstrumentationBridgeHandle;
 	private readonly subscriberFanout: SubscriberFanoutHandle;
@@ -131,9 +126,6 @@ export class SectionEngineAdapter {
 			runtimeId: options.runtimeId,
 			sourceCe: options.sourceCe,
 			now: options.now,
-		});
-		this.legacyEventBridge = createLegacyEventBridge({
-			host: options.host,
 		});
 		this.frameworkErrorBridge = createFrameworkErrorBridge({
 			bus: options.frameworkErrorBus,
@@ -185,7 +177,6 @@ export class SectionEngineAdapter {
 	 */
 	setHost(host: EventTarget): void {
 		this.domEventBridge.setHost(host);
-		this.legacyEventBridge.setHost(host);
 	}
 
 	/**
@@ -250,11 +241,6 @@ export class SectionEngineAdapter {
 			case "framework-error":
 				this.domEventBridge.dispatch(output);
 				this.frameworkErrorBridge.dispatch(output);
-				break;
-			case "readiness-change":
-			case "interaction-ready":
-			case "ready":
-				this.legacyEventBridge.dispatch(output);
 				break;
 			default: {
 				const exhaustive: never = output;

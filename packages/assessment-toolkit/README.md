@@ -1247,9 +1247,14 @@ event itself is currently dual-emitted on the layout CE host when a
 toolkit is nested (the toolkit's inner emit bubbles up alongside the
 engine's bridge emit); the dual-emit is pinned by the contract test
 `tests/section-player-framework-error-dual-emit.test.ts` and will be
-collapsed in a future release. The deprecated readiness aliases
-(`readiness-change`, `interaction-ready`, `ready`) are dual-emitted by
-the `legacy-event-bridge` through the current 0.x line.
+collapsed in a future release.
+
+The deprecated readiness aliases (`readiness-change`,
+`interaction-ready`, `ready`) and their `legacy-event-bridge` were
+removed in the broad architecture review compat sweep. Hosts that
+listened for them migrate to `pie-stage-change` (with the readiness
+detail also available via the kernel's `selectReadiness()`) and
+`pie-loading-complete`.
 
 ## State Separation: Tool State vs Session Data
 

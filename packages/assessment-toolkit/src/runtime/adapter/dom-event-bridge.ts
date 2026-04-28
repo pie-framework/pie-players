@@ -133,11 +133,6 @@ export function createDomEventBridge(
 			case "framework-error":
 				dispatchFrameworkError(output);
 				return;
-			case "readiness-change":
-			case "interaction-ready":
-			case "ready":
-				// Owned by the legacy-event-bridge.
-				return;
 			default: {
 				const exhaustive: never = output;
 				void exhaustive;

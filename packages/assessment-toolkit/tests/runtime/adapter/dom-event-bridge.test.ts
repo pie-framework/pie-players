@@ -153,35 +153,6 @@ describe("dom-event-bridge", () => {
 		expect(events[0].detail).toBe(model);
 	});
 
-	test("ignores legacy outputs (the legacy-event-bridge owns those)", () => {
-		const bridge = makeBridge(host);
-		bridge.dispatch({
-			kind: "readiness-change",
-			detail: {
-				phase: "loading",
-				interactionReady: false,
-				allLoadingComplete: false,
-			},
-		});
-		bridge.dispatch({
-			kind: "interaction-ready",
-			detail: {
-				phase: "interaction-ready",
-				interactionReady: true,
-				allLoadingComplete: false,
-			},
-		});
-		bridge.dispatch({
-			kind: "ready",
-			detail: {
-				phase: "ready",
-				interactionReady: true,
-				allLoadingComplete: true,
-			},
-		});
-		expect(events).toHaveLength(0);
-	});
-
 	test("setHost re-points subsequent dispatches at the new host", () => {
 		const bridge = makeBridge(host);
 		const next = document.createElement("div");

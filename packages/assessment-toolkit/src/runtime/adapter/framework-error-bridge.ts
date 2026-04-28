@@ -50,9 +50,6 @@ export function createFrameworkErrorBridge(
 				return;
 			case "stage-change":
 			case "loading-complete":
-			case "readiness-change":
-			case "interaction-ready":
-			case "ready":
 				return;
 			default: {
 				const exhaustive: never = output;

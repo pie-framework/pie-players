@@ -4,7 +4,7 @@
  * Outputs are the closed discriminated union of effects the transition
  * function returns. The adapter (PR 2) takes the output array, walks
  * it in order, and dispatches each one to the right bridge (DOM
- * events, legacy events, framework-error bus, subscriber fan-out).
+ * events, framework-error bus, subscriber fan-out).
  *
  * Outputs carry only plain data so the transition table can be tested
  * exhaustively without any DOM or coordinator wiring.
@@ -14,11 +14,18 @@
  * the `interactive` phase when the readiness signals indicate every
  * item has finished loading. This mirrors today's
  * `pie-loading-complete` DOM event semantics.
+ *
+ * The deprecated readiness output kinds (`readiness-change`,
+ * `interaction-ready`, `ready`) were removed in the broad
+ * architecture review compat sweep along with their DOM-event bridge
+ * (`legacy-event-bridge.ts`). Stage and readiness changes now flow
+ * through `stage-change` (with `EngineReadinessDetail` available via
+ * `SectionEngineCore.getState()` / kernel `selectReadiness()`); the
+ * "all items loaded" signal flows through `loading-complete` only.
  */
 
 import type { Stage, StageStatus } from "@pie-players/pie-players-shared/pie";
 import type { CohortKey } from "./cohort.js";
-import type { EngineReadinessDetail } from "./engine-readiness.js";
 import type { FrameworkErrorModel } from "../../services/framework-error.js";
 
 /**
@@ -32,36 +39,6 @@ export type EngineOutputStageChange = {
 	stage: Stage;
 	status: StageStatus;
 	cohort: CohortKey | null;
-};
-
-/**
- * Readiness snapshot. Mirrors the legacy `readiness-change` DOM event.
- * Emitted whenever the readiness signals or strict-mode gate produce a
- * different `EngineReadinessDetail` than the previously emitted one.
- */
-export type EngineOutputReadinessChange = {
-	kind: "readiness-change";
-	detail: EngineReadinessDetail;
-};
-
-/**
- * Legacy `interaction-ready` emit. One-shot per cohort: fires when
- * `interactionReady` first becomes `true` for the cohort. Mirrors the
- * deprecated DOM event of the same name.
- */
-export type EngineOutputInteractionReady = {
-	kind: "interaction-ready";
-	detail: EngineReadinessDetail;
-};
-
-/**
- * Legacy `ready` emit. One-shot per cohort: fires when
- * `allLoadingComplete` first becomes `true` for the cohort. Mirrors
- * the deprecated DOM event of the same name.
- */
-export type EngineOutputReady = {
-	kind: "ready";
-	detail: EngineReadinessDetail;
 };
 
 /**
@@ -88,8 +65,5 @@ export type EngineOutputFrameworkError = {
 
 export type SectionEngineOutput =
 	| EngineOutputStageChange
-	| EngineOutputReadinessChange
-	| EngineOutputInteractionReady
-	| EngineOutputReady
 	| EngineOutputLoadingComplete
 	| EngineOutputFrameworkError;

@@ -73,16 +73,18 @@ consume the same engine instance per cohort.
     `framework-error` on the layout host element.
   - `framework-error-bridge` — reports framework errors onto the
     package-internal `FrameworkErrorBus`.
-  - `legacy-event-bridge` — dual-emits the deprecated readiness vocabulary
-    (`readiness-change`, `interaction-ready`, `ready`) through the
-    current 0.x line. Note: `section-controller-ready` is dispatched
-    separately by the kernel's Svelte `createEventDispatcher`, not by
-    this bridge.
   - `coordinator-bridge` — resolves the `SectionControllerHandle` from a
     `ToolkitCoordinator`.
   - `instrumentation-bridge` — invokes the host-supplied
     `InstrumentationHook` on each `SectionEngineOutput`, with
     `runtimeId`, `sourceCe`, and `timestamp` stamped from the adapter.
+
+  Note: `section-controller-ready` is dispatched separately by the
+  kernel's Svelte `createEventDispatcher`, not by an adapter bridge.
+  The deprecated readiness aliases (`readiness-change`,
+  `interaction-ready`, `ready`) and their `legacy-event-bridge` were
+  removed in the broad architecture review compat sweep — see the
+  Migration section below.
 - **`SectionRuntimeEngine`** — narrow, stable facade hosts use to mount,
   drive, and dispose a section runtime. Owns the registry, lazily constructs
   the adapter on `attachHost(...)`, exposes `dispatchInput`, `subscribe`,
@@ -410,13 +412,20 @@ DOM events
 - Canonical: `pie-stage-change` (detail = `StageChangeDetail`).
 - Canonical: `pie-loading-complete` (detail = `LoadingCompleteDetail`)
   — kernel-only; fires once per cohort when every item has loaded.
-- Compatibility: `ready`, `interaction-ready`, `readiness-change` are
-  kept dual-emitting by the engine's `legacy-event-bridge` through the
-  current 0.x line. `section-controller-ready` continues to be
-  dispatched by the kernel's Svelte `createEventDispatcher` (forwarded
-  by each layout CE wrapper) for the same window; new host code should
-  use `coordinator.waitForSectionController(...)` or
-  `pie-stage-change` filtered on `detail.stage === "engine-ready"`.
+- Removed in the broad architecture review compat sweep: the
+  deprecated readiness aliases `readiness-change`, `interaction-ready`,
+  and `ready`, along with their `legacy-event-bridge`. Migrate
+  consumers as follows:
+  - `readiness-change` → listen for `pie-stage-change`; the readiness
+    payload is also reachable via `selectReadiness()` /
+    `getSnapshot().readiness` on the layout CE.
+  - `interaction-ready` → listen for `pie-stage-change` and filter on
+    `detail.stage === "interactive"`.
+  - `ready` → listen for `pie-loading-complete`.
+- `section-controller-ready` is still dispatched by the kernel's Svelte
+  `createEventDispatcher` (forwarded by each layout CE wrapper); new
+  host code should prefer `coordinator.waitForSectionController(...)`
+  or `pie-stage-change` filtered on `detail.stage === "engine-ready"`.
 
 Callback prop mirrors
 - `onStageChange(detail)` is exposed on every `<pie-section-player-…>`

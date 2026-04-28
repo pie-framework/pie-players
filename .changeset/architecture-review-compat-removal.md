@@ -80,6 +80,33 @@ unblocks a single canonical path for every consumer.
   `<pie-section-player-passages-pane>`) keep their existing
   string-attribute contract unchanged.
 
+- **Deprecated readiness DOM-event aliases on every section-player
+  layout custom element** — `readiness-change`, `interaction-ready`,
+  and `ready` — along with the engine's `legacy-event-bridge` that
+  emitted them, the corresponding `SectionEngineOutput` kinds
+  (`readiness-change`, `interaction-ready`, `ready`), the engine
+  state fields that gated them (`interactionReadyEmitted`,
+  `readyEmitted`, `lastReadinessDetail`), the
+  `pie-section-readiness-change` / `pie-section-interaction-ready` /
+  `pie-section-ready` instrumentation mappings, and the
+  `readinessChange` / `interactionReady` / `ready` entries on
+  `SECTION_PLAYER_PUBLIC_EVENTS`. Hosts now consume the canonical
+  M6 vocabulary directly:
+
+  - `readiness-change` → `pie-stage-change` (the readiness payload
+    is also reachable via the layout CE's `selectReadiness()` /
+    `getSnapshot().readiness`).
+  - `interaction-ready` → `pie-stage-change` filtered on
+    `detail.stage === "interactive"`.
+  - `ready` → `pie-loading-complete`.
+
+  `section-controller-ready` is **not** part of this removal — it is
+  still dispatched on the layout host by the kernel's Svelte
+  `createEventDispatcher` (forwarded by each layout CE wrapper) and
+  remains `@deprecated since M6` with the same migration guidance
+  (`coordinator.waitForSectionController(...)` or `pie-stage-change`
+  filtered on `detail.stage === "engine-ready"`).
+
 ## Migration
 
 ```ts
@@ -107,3 +134,30 @@ el.runtime = {
 DOM events / coordinator helpers instead. The Svelte-store coordinator
 had no in-tree consumers; hosts that imported it should switch to
 `ToolkitCoordinator` directly.
+
+```ts
+// before
+el.addEventListener("readiness-change", (event) => {
+  // event.detail: EngineReadinessDetail
+});
+el.addEventListener("interaction-ready", () => {
+  // gate "start test" UI
+});
+el.addEventListener("ready", () => {
+  // all items loaded
+});
+
+// after
+el.addEventListener("pie-stage-change", (event) => {
+  // event.detail.stage: "composed" | "engine-ready" | "interactive" | "disposed"
+  if (event.detail.stage === "interactive") {
+    // gate "start test" UI
+  }
+});
+el.addEventListener("pie-loading-complete", () => {
+  // all items loaded (single-shot, cohort-scoped)
+});
+// Readiness payload (formerly the `readiness-change` detail) is also
+// reachable on demand:
+const readiness = el.selectReadiness?.();
+```

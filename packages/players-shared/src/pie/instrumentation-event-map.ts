@@ -40,9 +40,10 @@ export const TOOLKIT_INSTRUMENTATION_EVENT_MAP: InstrumentationEventMapping[] = 
 export const SECTION_INSTRUMENTATION_EVENT_MAP: InstrumentationEventMapping[] = [
 	// M6 canonical readiness vocabulary. Hosts listen for the DOM-prefixed
 	// names directly (`pie-stage-change`, `pie-loading-complete`); the
-	// instrumentation bridge forwards the same names to telemetry. Legacy
-	// readiness mappings below stay in place during the deprecation window
-	// so existing telemetry pipelines see no regression.
+	// instrumentation bridge forwards the same names to telemetry. The
+	// deprecated readiness mappings (`readiness-change`,
+	// `interaction-ready`, `ready`) were removed in the broad
+	// architecture review compat sweep alongside their DOM-event bridge.
 	{
 		sourceEventName: "pie-stage-change",
 		instrumentationEventName: "pie-section-stage-change",
@@ -50,18 +51,6 @@ export const SECTION_INSTRUMENTATION_EVENT_MAP: InstrumentationEventMapping[] = 
 	{
 		sourceEventName: "pie-loading-complete",
 		instrumentationEventName: "pie-section-loading-complete",
-	},
-	{
-		sourceEventName: "readiness-change",
-		instrumentationEventName: "pie-section-readiness-change",
-	},
-	{
-		sourceEventName: "interaction-ready",
-		instrumentationEventName: "pie-section-interaction-ready",
-	},
-	{
-		sourceEventName: "ready",
-		instrumentationEventName: "pie-section-ready",
 	},
 	{
 		sourceEventName: "section-controller-ready",

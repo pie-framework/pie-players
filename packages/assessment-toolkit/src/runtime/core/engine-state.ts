@@ -72,33 +72,11 @@ export type SectionEngineState = {
 
 	/**
 	 * `true` once the engine has emitted `loading-complete` for the
-	 * current cohort. Re-armed on cohort change. The legacy
-	 * single-shot semantics of the kernel's `pie-loading-complete`
-	 * event are preserved by gating emission on this flag in the
-	 * transition.
+	 * current cohort. Re-armed on cohort change. The single-shot
+	 * semantics of the canonical `pie-loading-complete` event are
+	 * preserved by gating emission on this flag in the transition.
 	 */
 	loadingCompleteEmitted: boolean;
-
-	/**
-	 * One-shot latch for the legacy `interaction-ready` DOM event.
-	 * Re-armed on cohort change. Mirrors the kernel's
-	 * `interactionReadyDispatched` flag.
-	 */
-	interactionReadyEmitted: boolean;
-
-	/**
-	 * One-shot latch for the legacy `ready` DOM event. Re-armed on
-	 * cohort change. Mirrors the kernel's `finalReadyDispatched` flag.
-	 */
-	readyEmitted: boolean;
-
-	/**
-	 * Most recent readiness detail observed by the transition. Used to
-	 * decide whether the next `update-readiness-signals` input should
-	 * emit a `readiness-change` output (only when the detail differs
-	 * by value).
-	 */
-	lastReadinessDetail: import("./engine-readiness.js").EngineReadinessDetail | null;
 
 	/**
 	 * Most recent framework error, if any. The engine routes errors
@@ -133,9 +111,6 @@ export function createInitialEngineState(): SectionEngineState {
 		effectiveRuntime: null,
 		effectiveToolsConfig: null,
 		loadingCompleteEmitted: false,
-		interactionReadyEmitted: false,
-		readyEmitted: false,
-		lastReadinessDetail: null,
 		lastFrameworkError: null,
 		itemCount: 0,
 		loadedCount: 0,

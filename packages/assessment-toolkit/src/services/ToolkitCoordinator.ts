@@ -542,12 +542,18 @@ export class ToolkitCoordinator {
 	private nextSectionEventListenerId = 1;
 
 	/**
-	 * M8 PR 2 — unified Tool Policy Engine. Owned by the coordinator;
-	 * disposed when the coordinator is torn down. Hosts read decisions
-	 * via {@link decideToolPolicy} or subscribe to changes via
-	 * {@link onPolicyChange}. PR 2 introduces this surface additively;
-	 * legacy `resolveToolsForLevel` / `PnpToolResolver` paths still
-	 * coexist until PR 5 deletes them.
+	 * Unified Tool Policy Engine. Owned by the coordinator and lives
+	 * for the lifetime of the coordinator instance — there is no
+	 * explicit teardown path today; the engine and its listener set
+	 * are reclaimed by GC when the coordinator becomes unreachable.
+	 * Subscribers attached via {@link onPolicyChange} must therefore
+	 * detach via the unsubscribe function the engine returns; do not
+	 * rely on a `disposed` event being emitted on coordinator teardown.
+	 *
+	 * Hosts read decisions via {@link decideToolPolicy} or subscribe
+	 * to changes via {@link onPolicyChange}. The legacy
+	 * `resolveToolsForLevel` / `PnpToolResolver` paths still coexist
+	 * until the upcoming compat-removal sweep deletes them.
 	 */
 	private readonly policyEngine: ToolPolicyEngine;
 
@@ -2128,10 +2134,12 @@ export class ToolkitCoordinator {
 	 *     via {@link setQtiEnforcement}, or auto-promoted when the
 	 *     bound `AssessmentEntity` / current `AssessmentItemRef`
 	 *     carries QTI 6-level precedence material — see
-	 *     {@link resolveEffectiveQtiEnforcement}), the QTI 6-level
-	 *     precedence (district block → test-admin override → item
-	 *     restriction/requirement → district requirement → PNP
-	 *     supports / prohibitions) is applied.
+	 *     {@link resolveEffectiveQtiEnforcement}) **and an assessment
+	 *     is bound**, the QTI 6-level precedence (district block →
+	 *     test-admin override → item restriction/requirement →
+	 *     district requirement → PNP supports / prohibitions) is
+	 *     applied. `qtiEnforcement: "on"` without a bound assessment
+	 *     is a no-op for QTI gating.
 	 *   - **Custom `PolicySource`s** registered via
 	 *     {@link registerPolicySource}.
 	 *
@@ -2178,10 +2186,10 @@ export class ToolkitCoordinator {
 	/**
 	 * Resolve the visible tool set for a given placement level + scope.
 	 *
-	 * Thin shim over the owned {@link ToolPolicyEngine}. Hosts that
-	 * need richer outputs (provenance, diagnostics) read this directly;
-	 * hosts that only need the tool IDs can call
-	 * {@link policyEngine.getVisibleToolIds} via {@link getFloatingTools}.
+	 * Thin shim over the owned tool-policy engine. Hosts that need
+	 * richer outputs (provenance, diagnostics) read this directly;
+	 * hosts that only need the section-level tool IDs can call
+	 * {@link getFloatingTools} instead.
 	 */
 	decideToolPolicy(request: ToolPolicyDecisionRequest): ToolPolicyDecision {
 		return this.policyEngine.decide(request);
@@ -2198,6 +2206,12 @@ export class ToolkitCoordinator {
 	 * `reason` and a frozen snapshot of the engine inputs. Listeners
 	 * that want the new visible tool set should call
 	 * {@link decideToolPolicy} with their level / scope.
+	 *
+	 * Note: the engine itself can also emit `reason: "disposed"`, but
+	 * the coordinator does not dispose its engine on teardown today,
+	 * so subscribers attached via this method will not observe that
+	 * reason. Detach via the returned unsubscribe function instead of
+	 * relying on a `disposed` event.
 	 */
 	onPolicyChange(listener: ToolPolicyChangeListener): () => void {
 		return this.policyEngine.onPolicyChange(listener);

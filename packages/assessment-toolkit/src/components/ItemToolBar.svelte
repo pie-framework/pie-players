@@ -150,8 +150,8 @@
 			try {
 				unsubscribe?.();
 			} catch {
-				// detach errors are non-fatal: the listener set is cleared on
-				// engine dispose, and the coordinator may already be torn down.
+				// detach errors are non-fatal: the coordinator may already
+				// be torn down, in which case the listener set is GC-eligible.
 			}
 		};
 	});

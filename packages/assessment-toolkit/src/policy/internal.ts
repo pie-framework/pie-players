@@ -33,10 +33,7 @@ export {
 	type QtiToolFlags,
 } from "./sources/QtiPolicySource.js";
 
-export {
-	ToolPolicyProvenanceBuilder,
-	createEmptyToolPolicyProvenance,
-} from "./core/provenance.js";
+export { ToolPolicyProvenanceBuilder } from "./core/provenance.js";
 
 export {
 	assessmentHasQtiInputs,

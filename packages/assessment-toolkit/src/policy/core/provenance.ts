@@ -361,26 +361,3 @@ function generateExplanation(trail: ToolPolicyFeatureTrail): string {
 	return explanation;
 }
 
-/**
- * Empty provenance constructor for the `decide(...)` paths that have
- * nothing to record (e.g. provenance disabled by the engine input).
- */
-export function createEmptyToolPolicyProvenance(
-	contextId: string,
-): ToolPolicyProvenance {
-	return {
-		contextId,
-		resolvedAt: new Date(),
-		sources: {},
-		features: new Map(),
-		decisionLog: [],
-		summary: {
-			totalFeatures: 0,
-			enabled: 0,
-			blocked: 0,
-			notConfigured: 0,
-			bySource: {},
-			byRule: {},
-		},
-	};
-}

@@ -320,15 +320,22 @@ describe("ToolkitCoordinator policy-engine integration", () => {
 		expect(events).toEqual([]);
 	});
 
-	test("setQtiEnforcement runs before updateAssessment in batched effects to avoid transient wrong-state events", () => {
-		// PieAssessmentToolkit.svelte applies override → assessment →
-		// itemRef in that order. Verify the contract here: when a
-		// host configures `assessment={x}` (carrying QTI material) and
-		// `qti-enforcement="off"` in one render, the effective mode
-		// after the batch is "off" (the override wins). The ordering
-		// on the coordinator is what makes this work without a
-		// transient "on" emit between assessment-bind and override.
+	test("setQtiEnforcement-before-updateAssessment ordering avoids a transient 'on' policy event", () => {
+		// `PieAssessmentToolkit.svelte` applies override → assessment →
+		// itemRef in that order. The contract this guards: when a host
+		// configures `assessment={x}` (carrying QTI material) and
+		// `qti-enforcement="off"` in one render, no intermediate
+		// `onPolicyChange` snapshot should ever expose
+		// `qtiEnforcement === "on"`. Attach the listener BEFORE the two
+		// calls so we capture every emission (including the
+		// `setQtiEnforcement("off")` event itself) and assert that none
+		// of them surface auto-mode `"on"`.
 		const coord = makeCoordinator();
+
+		const seenModes: Array<"on" | "off"> = [];
+		coord.onPolicyChange((event) => {
+			seenModes.push(event.inputs.qtiEnforcement);
+		});
 
 		coord.setQtiEnforcement("off");
 		coord.updateAssessment({
@@ -338,23 +345,25 @@ describe("ToolkitCoordinator policy-engine integration", () => {
 		coord.updateCurrentItemRef(null);
 
 		expect(coord.getPolicyInputs().qtiEnforcement).toBe("off");
+		expect(seenModes).not.toContain("on");
+		expect(seenModes.length).toBeGreaterThan(0);
 	});
 
-	test("subscriber pattern matches the M8 PR 3 toolbar contract: every input mutation reaches a re-read", () => {
-		// PR 3's `pie-item-toolbar`, `pie-section-toolbar`,
-		// `pie-section-player-base`, and `pie-section-player-tools-pnp-debugger`
-		// all wire reactivity through the same shape:
+	test("coordinator publishes onPolicyChange + decideToolPolicy lockstep across the input mutations toolbars subscribe to", () => {
+		// The PR 3 consumers (`pie-item-toolbar`, `pie-section-toolbar`,
+		// `pie-section-player-base`, `pie-section-player-tools-pnp-debugger`)
+		// all wire reactivity through the same coordinator-level shape:
 		//
 		//   $effect(() => coord.onPolicyChange(() => version += 1));
 		//   $derived(() => { void version; return coord.decideToolPolicy(...); });
 		//
-		// Validate the contract end-to-end: every input mutation
-		// (assessment binding, QTI override, custom `PolicySource`
-		// registration) must (a) fire `onPolicyChange` and (b) make
-		// the next `decideToolPolicy` call reflect the new state.
-		// This is the direct unit-test equivalent of mounting the
-		// toolbar in happy-dom — the toolbar adds nothing on top of
-		// this loop except component-render fanout.
+		// This test pins down that coordinator-level contract — for each
+		// input mutation toolbars care about (assessment binding, QTI
+		// override, custom `PolicySource` registration) we see (a) an
+		// `onPolicyChange` fire and (b) the next `decideToolPolicy` call
+		// reflect the new state. It does NOT exercise the toolbar's own
+		// scope-shape, Pass-2 registry filtering, or `ensureToolModulesLoaded`
+		// plumbing — those live with their owning components.
 		const coord = makeCoordinator({
 			tools: { placement: { section: ["graph", "theme"] } },
 		});

@@ -48,13 +48,6 @@ export interface ComposeDecisionInputs {
 		enforcement: "on" | "off";
 	};
 	customSources: readonly PolicySource[];
-	/**
-	 * When `false`, the engine MAY return `createEmptyToolPolicyProvenance`
-	 * to skip allocation. Step 1 of design § 4 — provenance is "always
-	 * collected for Pass-1 decisions"; the flag is here for tests that
-	 * want to assert the cheap-path behavior is identical.
-	 */
-	collectProvenance?: boolean;
 	/** Stable identifier used as the provenance `contextId`. */
 	contextId: string;
 }

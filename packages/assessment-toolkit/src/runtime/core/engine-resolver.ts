@@ -105,7 +105,6 @@ export type RuntimeInputs = {
 	tools?: Record<string, unknown> | null;
 	accessibility?: Record<string, unknown> | null;
 	coordinator?: unknown;
-	isolation?: string;
 	env?: Record<string, unknown> | null;
 	toolConfigStrictness?: ToolConfigStrictness;
 	onFrameworkError?: FrameworkErrorHandler;
@@ -197,7 +196,6 @@ export function resolveRuntime(args: {
 	lazyInit: boolean;
 	accessibility: Record<string, unknown> | null;
 	coordinator: unknown;
-	isolation: string;
 	env: Record<string, unknown> | null;
 	runtime: RuntimeConfig | null;
 	effectiveToolsConfig: unknown;
@@ -232,7 +230,7 @@ export function resolveRuntime(args: {
 		accessibility: pick(r.accessibility, args.accessibility),
 		coordinator: pick(r.coordinator, args.coordinator),
 		createSectionController: r.createSectionController,
-		isolation: pick(r.isolation, args.isolation),
+		isolation: r.isolation ?? DEFAULT_ISOLATION,
 		env: pick(r.env, args.env) ?? DEFAULT_ENV,
 		toolConfigStrictness:
 			pick(r.toolConfigStrictness, args.toolConfigStrictness) ?? "error",
@@ -294,7 +292,6 @@ export function resolveSectionEngineRuntimeState<P>(
 	const lazyInit = args.lazyInit ?? DEFAULT_LAZY_INIT;
 	const accessibility = args.accessibility ?? null;
 	const coordinator = args.coordinator ?? null;
-	const isolation = args.isolation ?? DEFAULT_ISOLATION;
 	const env = args.env ?? null;
 	const tools = args.tools ?? null;
 
@@ -312,7 +309,6 @@ export function resolveSectionEngineRuntimeState<P>(
 		lazyInit,
 		accessibility,
 		coordinator,
-		isolation,
 		env,
 		runtime: args.runtime,
 		effectiveToolsConfig,

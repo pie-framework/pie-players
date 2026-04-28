@@ -25,8 +25,6 @@
 			// Wired imperatively to the toolkit element so the resolved
 			// handler reaches the canonical stage emit point.
 			onStageChange: { type: "Object", reflect: false },
-			// @deprecated since M5; set via `runtime.isolation`.
-			isolation: { attribute: "isolation", type: "String" },
 			env: { type: "Object", reflect: false },
 		},
 	}}
@@ -75,7 +73,6 @@
 			| undefined
 			| ((model: FrameworkErrorModel) => void),
 		onStageChange = undefined as StageChangeHandler | undefined,
-		isolation = DEFAULT_ISOLATION,
 		env = null as Record<string, unknown> | null,
 	} = $props();
 
@@ -110,7 +107,9 @@
 	const effectiveCreateSectionController = $derived.by(
 		() => runtime?.createSectionController,
 	);
-	const effectiveIsolation = $derived.by(() => runtime?.isolation ?? isolation);
+	const effectiveIsolation = $derived.by(
+		() => runtime?.isolation ?? DEFAULT_ISOLATION,
+	);
 	const effectiveEnv = $derived.by(() => runtime?.env ?? env ?? DEFAULT_ENV);
 	// Two-tier resolution. The base CE talks to the toolkit directly (no
 	// kernel layer), so it owns the resolver boundary in this path.

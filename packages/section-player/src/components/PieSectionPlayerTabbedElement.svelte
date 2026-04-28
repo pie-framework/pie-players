@@ -15,8 +15,6 @@
 			tools: { type: "Object", reflect: false },
 			accessibility: { type: "Object", reflect: false },
 			coordinator: { type: "Object", reflect: false },
-			// @deprecated since M5; set via `runtime.isolation`.
-			isolation: { attribute: "isolation", type: "String" },
 			env: { type: "Object", reflect: false },
 			iifeBundleHost: { attribute: "iife-bundle-host", type: "String" },
 			debug: { attribute: "debug", type: "String" },
@@ -129,7 +127,6 @@
 		tools,
 		accessibility,
 		coordinator,
-		isolation,
 		env,
 		iifeBundleHost,
 		debug = undefined as string | boolean | undefined,
@@ -318,7 +315,6 @@
 	{tools}
 	{accessibility}
 	{coordinator}
-	{isolation}
 	{env}
 	{iifeBundleHost}
 	{debug}

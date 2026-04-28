@@ -41,9 +41,9 @@ import type { RuntimeConfig } from "@pie-players/pie-assessment-toolkit/runtime/
  *   - Deprecated aliases (`itemToolbarTools`, `passageToolbarTools`):
  *     kept as props for back-compat but absorbed at the CE boundary into
  *     `tools.placement`.
- *   - Runtime-only keys with no top-level mirror (`createSectionController`):
- *     accepted only via `runtime.createSectionController`. The top-level
- *     prop alias was removed in the broad architecture review compat sweep
+ *   - Runtime-only keys with no top-level mirror (`createSectionController`,
+ *     `isolation`): accepted only via `runtime.<key>`. The top-level prop
+ *     aliases were removed in the broad architecture review compat sweep
  *     and the runtime tier is the sole supported entry point.
  */
 
@@ -276,6 +276,7 @@ for (const layout of layoutsByFile) {
  */
 const RUNTIME_ONLY_KEYS = new Set<keyof RuntimeConfig>([
 	"createSectionController",
+	"isolation",
 ]);
 
 describe("M5 mirror rule — RuntimeConfig coverage", () => {

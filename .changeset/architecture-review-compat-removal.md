@@ -48,16 +48,30 @@ unblocks a single canonical path for every consumer.
   is **unchanged** — the toolkit accepts it directly as part of its
   composition surface.
 
+- **Top-level `isolation` prop on every section-player layout custom
+  element** (`<pie-section-player-splitpane>`,
+  `<pie-section-player-vertical>`, `<pie-section-player-tabbed>`,
+  `<pie-section-player-kernel-host>`, `<pie-section-player-base>`)
+  and the corresponding kernel pass-through. The isolation strategy
+  is now read only from `runtime.isolation`; when omitted, the
+  resolver falls back to the package default (`DEFAULT_ISOLATION`).
+
+  Note: `<pie-assessment-toolkit>`'s `isolation` prop is **unchanged** —
+  the toolkit derives it via the section-player base element from
+  `runtime.isolation`.
+
 ## Migration
 
 ```ts
 // before
 const el = document.createElement("pie-section-player-splitpane");
 el.createSectionController = () => new SectionController();
+el.isolation = "shadow";
 
 // after
 el.runtime = {
   createSectionController: () => new SectionController(),
+  isolation: "shadow",
 };
 ```
 

@@ -74,7 +74,6 @@ function makeRuntimeInputs(
 		tools: null,
 		accessibility: null,
 		coordinator: null,
-		isolation: "inherit",
 		env: null,
 		toolConfigStrictness: "error",
 		runtime: null,

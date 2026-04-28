@@ -156,29 +156,45 @@ found).
 
 ## Manual publishing (local)
 
-Use the same gate as CI before publish:
+The canonical local-publish command is:
 
 ```bash
-bun run version
-bun run release:manual
+bun run release:with-version
 ```
 
-`release:manual` now runs:
+`release:with-version` runs the entire CI release path locally, in order:
 
-1. `check:npm-auth` (fails fast if npm auth is missing/expired or `@pie-players` access is unavailable)
-2. `verify:publish`
-3. workspace tests
-4. release publish
+1. `scripts/create-temporary-release-changeset.mjs` — writes a temporary
+   `.changeset/temporary-release-all-packages.md` declaring `patch` for every
+   publishable package, so the lockstep set is always covered (existing
+   author-written changesets coexist with this temporary one and may upgrade
+   the bump for some / all packages).
+2. `bun run version` — applies all changesets to `package.json` and
+   `CHANGELOG.md` files.
+3. `bun run restore:workspace-ranges` — keeps source manifests on
+   `workspace:*` after `version`.
+4. `bun run check:npm-auth` — fails fast if the NPM token in `.env` is
+   missing/expired or `@pie-players` access is unavailable.
+5. `bun run verify:publish` — full publish gate (build + every `check:*`).
+6. `bun run test` — workspace test suites.
+7. `bun run release` — `dotenvx run -f .env` wrapper around build + 
+   `changeset publish` (with workspace ranges resolved) + preloaded-player
+   bundle publish.
+8. `bun run restore:workspace-ranges` — restore `workspace:*` ranges in
+   source manifests.
+
+NPM authentication: the repo's `.env` file holds the `NPM_TOKEN` for
+`@pie-players` publish access. Both `check:npm-auth` and `release` load it via
+`dotenvx run -f .env`. No separate `npm login` is needed.
 
 If you hit errors like:
 
 - `npm notice Access token expired or revoked`
 - `E404 Not Found - PUT https://registry.npmjs.org/@pie-players%2f...`
 
-re-auth locally and verify org access before retrying:
+verify the token in `.env` is still valid (or re-auth and update `.env`):
 
 ```bash
-npm login --registry=https://registry.npmjs.org/
 npm whoami --registry=https://registry.npmjs.org/
 npm org ls pie-players --registry=https://registry.npmjs.org/
 ```

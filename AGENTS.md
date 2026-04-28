@@ -106,9 +106,16 @@ Implications for agent-driven work:
 - Every release bumps every publishable package, including ones whose source
   did not change. That is expected, not a bug. Do not try to skip unchanged
   packages.
-- A breaking change in one publishable package forces a major bump across
-  the entire suite. Factor that in when scoping breaking changes; prefer
-  additive changes where feasible.
+- **Patch only.** While we are pre-1.0 (`0.x.y` line), every release is a
+  `patch` bump — even for breaking changes. Do not author `minor` / `major`
+  changesets unless the maintainer explicitly lifts this constraint and
+  rewrites the rule. Document breaking changes in the changeset body, but
+  ship them under `patch`. A pending `minor` / `major` changeset is a
+  release blocker because the highest declared bump wins for the lockstep
+  set.
+- Local publishing uses **`bun run release:with-version`** (NPM token comes
+  from `.env` via `dotenvx`). Do not invoke `bun run release` or
+  `npm publish` directly.
 - When adding a new publishable package under `packages/*`, add it to the
   `fixed` block in `.changeset/config.json` in the same change set.
 - The invariant is checked by `scripts/check-fixed-versioning.mjs` (run via

@@ -22,7 +22,27 @@ All publishable `@pie-players/*` packages are released with a **fixed
 (lockstep) version**. At any published version, every package in the suite
 carries that same version number — there is no per-package version drift.
 Every release bumps every publishable package, including ones whose source
-did not change. That is **expected**, not a bug to fix.
+did not change. That is **expected**, not a bug to fix. While we are pre-1.0
+(the current `0.x.y` line), every release is a **`patch`** bump, even for
+breaking changes — see "Bump level" below.
+
+## Bump level — patch only
+
+Until the maintainer rewrites the rule, **every release is `patch`**.
+Pre-1.0 semver allows breaking changes within a `0.x` line, and the
+lockstep invariant already keeps consumers aligned.
+
+- Author every changeset entry as `patch`. Do not propose `minor` /
+  `major` unless the maintainer explicitly lifts this constraint and
+  updates
+  [`.cursor/rules/release-version-alignment.mdc`](../../../.cursor/rules/release-version-alignment.mdc).
+- A pending changeset declaring `minor` / `major` is a release blocker —
+  flip it to `patch` before running `bun run release:with-version`. The
+  auto-generated temporary all-packages changeset is always `patch`; the
+  highest-declared bump in `.changeset/` wins for the lockstep set, so a
+  stray `major` upgrades the whole suite.
+- Document breaking changes in the changeset body (so consumers see them
+  in the assembled `CHANGELOG.md`), but ship them under a `patch` bump.
 
 ## Authoring a changeset
 
@@ -32,21 +52,11 @@ When making changes that should ship in a release:
 bun run changeset
 ```
 
-Pick a bump level for the suite:
-
-- **patch** — default. Bug fixes, additive non-breaking refactors,
-  internal changes. Always safe.
-- **minor** — only when the user explicitly asks for one or the change
-  introduces user-visible additive surface. Bumps every publishable
-  package to the next minor.
-- **major** — only when the user explicitly asks. A breaking change in
-  any single publishable package forces a major bump on **every**
-  publishable package in the same release. Factor that in; prefer
-  additive changes where feasible.
-
-The changeset must scope to the publishable packages affected. When in
-doubt about the impact set, **default to all publishable packages** —
-the lockstep policy means there is no value in narrowing.
+Use `patch` for every entry. The changeset must scope to the publishable
+packages whose source actually changed (the lockstep coverage for the
+rest is added automatically by `release:with-version`). When in doubt
+about which packages to list, **default to all publishable packages** —
+the result is the same either way under lockstep.
 
 ## When to add a changeset
 
@@ -65,9 +75,33 @@ the lockstep policy means there is no value in narrowing.
 | `bun run changeset` | Interactive: author a `.changeset/<name>.md`. |
 | `bun run version` | Apply pending changesets to package versions. |
 | `bun run verify:publish` | Full pre-publish gate (build + every `check:*`). |
-| `bun run release` | Publish wrapper: rewrites workspace ranges, runs `changeset publish`, restores ranges. |
-| `bun run release:with-version` | Manual patch-only path: temp all-packages patch changeset → preflight → publish. Mirrors CI. |
+| `bun run release:with-version` | **Canonical local-publish command.** Auto-generates a temporary all-packages patch changeset (lockstep coverage), runs `version`, restores workspace ranges, runs `check:npm-auth` + `verify:publish` + the workspace test suite, publishes via `release`, restores ranges again. Mirrors the CI release path. |
+| `bun run release` | Publish wrapper invoked by `release:with-version` and CI: builds the publishable packages, runs `changeset publish` with workspace ranges resolved, then publishes the preloaded-player bundles. Don't run directly — use `release:with-version`. |
 | `bun run release:label` / `release:label:push` | Tag a coordinated release wave (annotated tag, default `pie-players-YYYY.MM.DD`). |
+
+## Local publishing
+
+`bun run release:with-version` is the canonical command. To run it locally
+you need:
+
+- **NPM auth in `.env`.** The `release` step is wrapped in
+  `dotenvx run -f .env`, and `check:npm-auth` (the first preflight step)
+  also loads `.env` via `dotenvx`. The repo's `.env` contains the
+  `NPM_TOKEN` for `@pie-players` publish access; no separate
+  `npm login` is needed.
+- **A clean working tree on the branch you're releasing from** (typically
+  `master` after merge). The script writes to `package.json` and
+  `CHANGELOG.md` files during `version`.
+- **Outside the sandbox.** The command runs `bun run test`, which
+  triggers Playwright and other browser-bound suites; invoke with
+  `required_permissions: ["all"]`.
+
+Bump-level note: the auto-generated temporary changeset only adds
+**patch**-level entries for every publishable package, but if a regular
+`.changeset/*.md` already declares a higher bump (`minor` / `major`) for
+some package, the highest declared bump wins for the whole lockstep set.
+When you want a patch-only release, ensure no pending changeset declares
+`minor` / `major`.
 
 ## Adding a publishable package
 
@@ -82,13 +116,20 @@ When adding a new package under `packages/*` that ships to npm:
 
 ## Do not
 
+- Author a `minor` or `major` changeset. Patch-only is the policy until
+  the maintainer rewrites
+  [`.cursor/rules/release-version-alignment.mdc`](../../../.cursor/rules/release-version-alignment.mdc).
+  Even breaking changes ship as `patch` on the `0.x.y` line.
 - Prepare release bumps for only a subset of changed packages. "Only
-  package X changed, so only bump X" is the wrong framing for this repo.
+  package X changed, so only bump X" is the wrong framing for this repo —
+  every publishable package gets the new version regardless of whether
+  its source changed.
 - Remove packages from the `fixed` block to "unblock" a release. That
   hides drift. Escalate to the maintainer instead.
-- Run `npm publish` directly. Use `bun run release` /
-  `bun run release:with-version` so workspace ranges and token auth are
-  handled consistently.
+- Run `npm publish` directly, or invoke `bun run release` directly. Use
+  `bun run release:with-version` so the temporary all-packages
+  changeset, workspace-range rewrite, NPM token load from `.env`, and
+  preflight checks all run in the right order.
 
 ## Pre-publish smoke (recommended before pushing a release branch)
 

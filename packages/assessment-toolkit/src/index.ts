@@ -389,39 +389,6 @@ export {
 	toItemSessionsRecord,
 } from "./attempt/adapters/activity-to-test-attempt-session.js";
 
-// ============================================================================
-// Event Types (Standard Contracts)
-// ============================================================================
-
-export type {
-	AssessmentCompletedEvent,
-	AssessmentPausedEvent,
-	AssessmentResumedEvent,
-	AssessmentStartedEvent,
-	// Event map
-	AssessmentToolkitEvents,
-	CanNavigateChangedEvent,
-	InteractionEvent,
-	InteractionType,
-	ItemChangedEvent,
-	ItemMetadata,
-	LoadCompleteEvent,
-	LocaleChangedEvent,
-	LocaleLoadingCompleteEvent,
-	LocaleLoadingErrorEvent,
-	LocaleLoadingStartEvent,
-	NavigationRequestEvent,
-	PlayerErrorEvent,
-	// Event interfaces
-	SessionChangedEvent,
-	StateRestoredEvent,
-	StateSavedEvent,
-	SyncFailedEvent,
-	ToolActivatedEvent,
-	ToolDeactivatedEvent,
-	ToolStateChangedEvent,
-} from "./types/events.js";
-
 // Section Player - Use @pie-players/pie-section-player web component
 
 // ============================================================================

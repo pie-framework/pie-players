@@ -671,7 +671,6 @@ The persistence strategy works with the same `SectionControllerSessionState` sha
 ### ✅ Core Infrastructure
 
 - **TypedEventBus**: Generic type-safe `EventTarget` wrapper exported as a building block. The toolkit's own production events are emitted via DOM `CustomEvent`s on `<pie-assessment-toolkit>` and via `ToolkitCoordinator.subscribe*` helpers, not through this bus. Hosts and downstream packages may still use it to compose their own typed event maps.
-- **Event Types**: ⚠️ The colon-namespaced `AssessmentToolkitEvents` map (`player:*`, `tool:*`, `nav:*`, `assessment:*`, `state:*`, `interaction:*`, `i18n:*`) and its member interfaces are deprecated. They were aspirational and are not emitted from any production path. They will be removed in the next major release. See `src/types/events.ts` for the canonical replacement surfaces (DOM `CustomEvent`s, `ToolkitCoordinator.subscribe*`, and the M3 framework-error contract).
 
 ### ✅ Toolkit Services
 

@@ -22,7 +22,5 @@ export {
 	ResponseDiscoveryServiceImpl,
 	responseDiscovery,
 } from "./response-discovery.js";
-// Tool coordinator (client-safe, uses Svelte stores)
-export * from "./tool-coordinator.js";
 // Core types (client-safe)
 export * from "./types.js";

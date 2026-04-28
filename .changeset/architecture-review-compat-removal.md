@@ -1,9 +1,16 @@
 ---
 '@pie-players/pie-section-player': major
 '@pie-players/pie-assessment-toolkit': major
+'@pie-players/pie-players-shared': major
 ---
 
 Broad architecture review — compat removal sweep (part 1).
+
+Pre-1.0 lockstep release: every package in the `fixed` block is bumped
+together at release time per the project versioning policy. Source
+changes for this sweep land in `pie-section-player`,
+`pie-assessment-toolkit`, and `pie-players-shared` (the
+`SECTION_INSTRUMENTATION_EVENT_MAP` exports).
 
 Removes deprecated compatibility paths that were superseded by the M5
 two-tier mirror, the M3 framework-error contract, the M7 runtime engine,
@@ -182,3 +189,11 @@ el.addEventListener("pie-loading-complete", () => {
 // reachable on demand:
 const readiness = el.selectReadiness?.();
 ```
+
+Hosts that previously de-duplicated `framework-error` listeners on the
+layout CE host (because the same logical error arrived twice — once
+bubbled from the toolkit, once from the engine bridge) can drop that
+de-dup logic: the layout host now fires `framework-error` exactly once
+per error. The canonical `onFrameworkError` callback prop and the
+package-internal `FrameworkErrorBus` were already single-fire and need
+no migration.

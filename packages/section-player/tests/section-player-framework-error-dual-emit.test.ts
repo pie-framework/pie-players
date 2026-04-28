@@ -278,6 +278,40 @@ describe("framework-error single-emit contract on the layout CE host", () => {
 		});
 	});
 
+	test("`onFrameworkError` proxy (the framework-error bus) fires exactly once per error, even though the kernel re-feeds the bubbled toolkit event into the engine", () => {
+		// Behavioral counterpart to the kernel-source guard "kernel
+		// `handleFrameworkError` does NOT invoke `onFrameworkError`
+		// itself" below. The toolkit coordinator delivers
+		// `runtime.onFrameworkError` by subscribing to the shared
+		// `FrameworkErrorBus` (see `ToolkitCoordinator` +
+		// `framework-error-bridge`). This test stands in for that
+		// subscription with a plain bus listener and asserts it
+		// observes exactly one fan-out per error. A kernel-side
+		// change that fans the model out a second time onto the bus
+		// (for "fan-out symmetry" or by adding a callback bridge in
+		// the dispatch path) would visibly produce `calls.length
+		// === 2` and fail this test. The existing
+		// "framework-error bus fan-outs exactly once per error"
+		// test pins the same bus contract; this test names the
+		// regression mode the kernel comment warns against so the
+		// failure diagnoses itself.
+		const calls: FrameworkErrorModel[] = [];
+		bus.subscribeFrameworkErrors((model) => calls.push(model));
+
+		const model = makeFrameworkError();
+		toolkitHost.dispatchEvent(
+			new CustomEvent<FrameworkErrorModel>("framework-error", {
+				detail: model,
+				bubbles: true,
+				composed: true,
+				cancelable: false,
+			}),
+		);
+
+		expect(calls).toHaveLength(1);
+		expect(calls[0]).toBe(model);
+	});
+
 	test("the framework-error bus fan-outs exactly once per error (canonical single-fire programmatic surface)", () => {
 		const model = makeFrameworkError();
 
@@ -511,6 +545,44 @@ describe("framework-error single-emit — kernel-source mirror", () => {
 		// guarded path (after the `!detail` early return) so the
 		// kernel does not stop propagation for malformed events.
 		expect(source).toContain("event.stopPropagation();");
+	});
+
+	test("kernel `handleFrameworkError` does NOT invoke `onFrameworkError` itself (single-fire callback contract)", () => {
+		// `onFrameworkError` is delivered exactly once by the toolkit
+		// coordinator subscribing to the shared `FrameworkErrorBus`
+		// and invoking the resolved `runtime.onFrameworkError`
+		// callback. The kernel re-feeds the bubbled toolkit event
+		// into the engine — which fans the model out onto the same
+		// bus once via the engine's `framework-error-bridge`. Any
+		// kernel-side path that *also* invokes `onFrameworkError`
+		// (directly, or via a second bus emit, or by adding a
+		// callback bridge in the dispatch path) would silently
+		// double-fire the callback surface. Catch that structurally:
+		// the body of `handleFrameworkError` must not reference
+		// `onFrameworkError` (or `onError`), and must not push a
+		// second model onto the bus directly via
+		// `frameworkErrorBus`/`bus.reportFrameworkError`. The
+		// engine's bridge is the only kernel-side entry point onto
+		// the bus, and that goes through `engine.dispatchInput(...)`.
+		// (The behavioral counterpart — the bus fan-outs exactly
+		// once even though the kernel re-feeds the bubbled event —
+		// is asserted by the "`onFrameworkError` proxy" test in the
+		// outer single-emit contract describe.)
+		const source = readFileSync(KERNEL_PATH, "utf8");
+		const bodyMatch = source.match(
+			/function\s+handleFrameworkError\s*\([^)]*\)\s*\{([\s\S]*?)\n\t\}/,
+		);
+		expect(bodyMatch).not.toBeNull();
+		// Strip JSDoc / single-line comments so the negative match
+		// only covers actual statements (not the explanatory comment
+		// in the kernel that legitimately mentions `onFrameworkError`).
+		const body = (bodyMatch?.[1] ?? "")
+			.replace(/\/\*[\s\S]*?\*\//g, "")
+			.replace(/(^|[^:])\/\/.*$/gm, "$1");
+		expect(body).not.toMatch(/onFrameworkError\s*\(/);
+		expect(body).not.toMatch(/onError\s*\(/);
+		expect(body).not.toMatch(/frameworkErrorBus\s*\.\s*reportFrameworkError/);
+		expect(body).not.toMatch(/\bbus\s*\.\s*reportFrameworkError/);
 	});
 
 	test("kernel binds `handleFrameworkError` to the inner section-player-base scaffold, not directly to the layout CE host", () => {

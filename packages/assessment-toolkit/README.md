@@ -191,7 +191,10 @@ Common members include:
 - Player: `player-type`, `lazy-init`
 - Tools: `tools` (object property), `tool-registry` (object property),
   `enabled-tools` (shorthand for `tools.placement.section`)
-- Coordination: `coordinator`, `create-section-controller`
+- Coordination: `coordinator` (`createSectionController` is a
+  runtime-only key on the section-player layout CEs — see
+  "Documented exceptions" below; `<pie-assessment-toolkit>` accepts
+  it as a direct JS prop on its own composition surface)
 - Accessibility: `accessibility` (object property; the deprecated
   `accessibility` *attribute* mapping was removed in M5)
 - Diagnostics: `tool-config-strictness`, `debug`. Framework-error
@@ -210,6 +213,12 @@ Documented exceptions to the mirror rule:
   `runtime.tools.placement.{item,passage}` directly. The previously
   deprecated `item-toolbar-tools` / `passage-toolbar-tools` attribute
   aliases were removed in the broad architecture review compat sweep.
+- Runtime-only keys on the section-player layout CEs
+  (`createSectionController`, `isolation`): accepted only via
+  `runtime.<key>`. The top-level prop aliases were removed in the
+  broad architecture review compat sweep. `<pie-assessment-toolkit>`
+  itself keeps `createSectionController` as a direct JS prop and
+  `isolation` as a kebab attribute (`@deprecated since M5`).
 
 ### When to add a tier-1 attribute
 
@@ -1130,10 +1139,10 @@ pick the stability surface that matches their use case:
 - **Internal surface — `@pie-players/pie-assessment-toolkit/runtime/internal`.**
   Wider, evolving surface for advanced hosts that need to construct an
   engine manually, inspect FSM state, or build alternate fan-out paths.
-  Exposes `SectionEngineCore`, the five adapter bridges
+  Exposes `SectionEngineCore`, the four adapter bridges
   (`createDomEventBridge`, `createFrameworkErrorBridge`,
-  `createLegacyEventBridge`, `createCoordinatorBridge`,
-  `createInstrumentationBridge`), `FrameworkErrorBus`, cohort helpers,
+  `createCoordinatorBridge`, `createInstrumentationBridge`),
+  `FrameworkErrorBus`, cohort helpers,
   and the `resolveRuntime` / `resolveToolsConfig` /
   `resolveSectionEngineRuntimeState` helpers. Symbols here may change
   between minor versions with a changeset note.

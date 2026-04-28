@@ -222,17 +222,57 @@ describe("engine disposal", () => {
 			);
 		});
 
+		const frameworkErrorEvents: unknown[] = [];
+		host.addEventListener("framework-error", (event) => {
+			frameworkErrorEvents.push((event as CustomEvent).detail);
+		});
+		const busHits: unknown[] = [];
+		fake.bus.subscribeFrameworkErrors((model) => {
+			busHits.push(model);
+		});
+
 		await adapter.dispose();
 		stageEvents.length = 0;
+		frameworkErrorEvents.length = 0;
+		busHits.length = 0;
 
-		const outputs = adapter.dispatchInput({
+		const initOutputs = adapter.dispatchInput({
 			kind: "initialize",
 			cohort: COHORT,
 			effectiveRuntime: {} as never,
 			effectiveToolsConfig: null,
 			itemCount: 1,
 		});
-		expect(outputs).toEqual([]);
+		expect(initOutputs).toEqual([]);
 		expect(stageEvents).toHaveLength(0);
+
+		// `framework-error` is the FSM input most likely to slip past
+		// a future refactor that lifted `this.disposed` out of the
+		// adapter on the assumption "the transition function handles
+		// all phase gating": the pure `transition()` function emits
+		// `framework-error` regardless of phase (see
+		// `engine-transition.ts` `case "framework-error"`), so the
+		// adapter's `dispose` guard at
+		// `SectionEngineAdapter.dispatchInput` is what prevents the
+		// bridges from fanning out post-dispose. Pin that boundary
+		// here so a regression is caught at the unit level (the
+		// end-to-end coverage in
+		// `packages/section-player/tests/section-player-framework-error-dual-emit.test.ts`
+		// also asserts this, but a unit-level signal is faster to
+		// diagnose).
+		const errorOutputs = adapter.dispatchInput({
+			kind: "framework-error",
+			error: {
+				kind: "tool-config",
+				severity: "error",
+				source: "engine-disposal-test",
+				message: "ignored after dispose",
+				details: [],
+				recoverable: false,
+			},
+		});
+		expect(errorOutputs).toEqual([]);
+		expect(frameworkErrorEvents).toHaveLength(0);
+		expect(busHits).toHaveLength(0);
 	});
 });

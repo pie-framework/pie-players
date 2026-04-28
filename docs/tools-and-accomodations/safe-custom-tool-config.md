@@ -74,7 +74,7 @@ This keeps core validation generic while allowing custom tools to define their o
 
 ## Overlay safety in section-player
 
-`enabled-tools`, `item-toolbar-tools`, and `passage-toolbar-tools` overlays are normalized in section-player and validated in toolkit initialization. Invalid IDs produce diagnostics (or throw in strict `error`).
+`enabled-tools` (the section-toolbar override) is normalized in section-player and validated in toolkit initialization. Per-region placement is configured directly on `tools.placement.{item,passage}` (or `runtime.tools.placement.{item,passage}`) and validated through the same path; the deprecated `item-toolbar-tools` / `passage-toolbar-tools` attribute aliases were removed in the broad architecture review compat sweep. Invalid IDs in any of these surfaces produce diagnostics (or throw in strict `error`).
 
 ## Demo reference
 

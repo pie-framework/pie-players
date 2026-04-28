@@ -38,10 +38,23 @@ unblocks a single canonical path for every consumer.
   framework-error contract) are unchanged.
 
 - **Deprecated Svelte-store-shaped `toolCoordinatorStore`** and the
-  legacy `ToolCoordinator` interface. The canonical coordinator is
-  `ToolkitCoordinator` with its tool-policy engine surface
+  legacy `ToolCoordinator` *interface* (the z-index / visibility shape
+  in `packages/assessment-toolkit/src/tools/types.ts`, with
+  `registerTool` / `showTool` / `hideTool` / `toggleTool` /
+  `bringToFront` / `updateToolElement` / `hideAllTools` /
+  `getToolState` / `isToolVisible`). The canonical replacement is the
+  class-based `ToolCoordinator` (typed by `ToolCoordinatorApi` in
+  `packages/assessment-toolkit/src/services/interfaces.ts`)
+  re-exported from `@pie-players/pie-assessment-toolkit` and
+  instantiated by `ToolkitCoordinator` as `coordinator.toolCoordinator`.
+  All instance methods carry over verbatim, plus a `subscribe()` for
+  reactive consumption that replaces the deleted Svelte-store derived
+  views. Independently, `ToolkitCoordinator`'s tool-policy surface
   (`onPolicyChange`, `decideToolPolicy`, `getFloatingTools`,
-  `setQtiEnforcement`, `registerPolicySource`).
+  `setQtiEnforcement`, `registerPolicySource`) is the canonical entry
+  point for the *tool policy* concern (allow/block + QTI enforcement)
+  — that is a different concern than the floating-tool z-index API
+  the deleted interface served.
 
 - **Top-level `createSectionController` prop on every section-player
   layout custom element** (`<pie-section-player-splitpane>`,
@@ -63,9 +76,13 @@ unblocks a single canonical path for every consumer.
   is now read only from `runtime.isolation`; when omitted, the
   resolver falls back to the package default (`DEFAULT_ISOLATION`).
 
-  Note: `<pie-assessment-toolkit>`'s `isolation` prop is **unchanged** —
-  the toolkit derives it via the section-player base element from
-  `runtime.isolation`.
+  Note: `<pie-assessment-toolkit>`'s `isolation` kebab-attribute / prop
+  is **unchanged** in this sweep — the toolkit derives the effective
+  isolation strategy via the section-player base element from
+  `runtime.isolation`. The toolkit's own `isolation` attribute remains
+  `@deprecated since M5` (the M5 deprecation predates this sweep) and
+  is kept on the toolkit for the standalone-toolkit case until a
+  follow-up release; layout-CE hosts must use `runtime.isolation`.
 
 - **Top-level `item-toolbar-tools` / `passage-toolbar-tools`
   attribute aliases (and their `itemToolbarTools` / `passageToolbarTools`
@@ -160,8 +177,13 @@ el.runtime = {
 
 `AssessmentToolkitEvents` consumers should subscribe to the canonical
 DOM events / coordinator helpers instead. The Svelte-store coordinator
-had no in-tree consumers; hosts that imported it should switch to
-`ToolkitCoordinator` directly.
+had no in-tree consumers; hosts that imported it should switch to the
+class-based `ToolCoordinator` reachable via
+`coordinator.toolCoordinator` on `ToolkitCoordinator` (same method
+shape — `registerTool`, `showTool`, `hideTool`, `toggleTool`,
+`bringToFront`, `updateToolElement`, `hideAllTools`, `getToolState`,
+`isToolVisible` — plus `subscribe(listener)` for reactive consumers
+that previously relied on the Svelte-store derived views).
 
 ```ts
 // before
@@ -176,9 +198,13 @@ el.addEventListener("ready", () => {
 });
 
 // after
+import type { StageChangeDetail } from "@pie-players/pie-players-shared/pie";
+import type { EngineReadinessDetail } from "@pie-players/pie-assessment-toolkit/runtime/internal";
+
 el.addEventListener("pie-stage-change", (event) => {
-  // event.detail.stage: "composed" | "engine-ready" | "interactive" | "disposed"
-  if (event.detail.stage === "interactive") {
+  const { stage } = (event as CustomEvent<StageChangeDetail>).detail;
+  // stage: "composed" | "engine-ready" | "interactive" | "disposed"
+  if (stage === "interactive") {
     // gate "start test" UI
   }
 });
@@ -187,7 +213,7 @@ el.addEventListener("pie-loading-complete", () => {
 });
 // Readiness payload (formerly the `readiness-change` detail) is also
 // reachable on demand:
-const readiness = el.selectReadiness?.();
+const readiness: EngineReadinessDetail | undefined = el.selectReadiness?.();
 ```
 
 Hosts that previously de-duplicated `framework-error` listeners on the

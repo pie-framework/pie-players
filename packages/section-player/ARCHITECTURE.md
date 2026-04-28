@@ -66,7 +66,7 @@ consume the same engine instance per cohort.
   events. Lives in
   [`assessment-toolkit/src/runtime/core/`](../assessment-toolkit/src/runtime/core/).
 - **`SectionEngineAdapter`** — single I/O seam over the core. Fans
-  outputs to the five bridges below.
+  outputs to the four bridges below.
   ([`assessment-toolkit/src/runtime/adapter/SectionEngineAdapter.ts`](../assessment-toolkit/src/runtime/adapter/SectionEngineAdapter.ts))
 - **Adapter bridges:**
   - `dom-event-bridge` — emits `pie-stage-change`, `pie-loading-complete`,
@@ -259,6 +259,14 @@ design:
   The previously deprecated `item-toolbar-tools` /
   `passage-toolbar-tools` attribute aliases were removed in the broad
   architecture review compat sweep.
+- **Runtime-only keys** (`createSectionController`, `isolation`):
+  accepted only via `runtime.<key>` on every section-player layout CE.
+  The top-level prop aliases were removed in the broad architecture
+  review compat sweep; the runtime tier is the sole supported entry
+  point on the layout CEs. `<pie-assessment-toolkit>` keeps
+  `createSectionController` as a direct JS prop (its composition
+  surface) and `isolation` as a kebab attribute (`@deprecated since
+  M5`); see the changeset for the exact carve-outs.
 
 ### Canonical tier-1 attribute set
 
@@ -272,7 +280,9 @@ The tier-1 attribute set is the same shape across the
   `tools.placement.section`). Per-region placement (`tools.placement.item`,
   `tools.placement.passage`) is configured directly on the canonical
   `tools` object.
-- Coordination: `coordinator`, `create-section-controller`
+- Coordination: `coordinator` (`createSectionController` is a
+  runtime-only key on the layout CEs — see "Documented exceptions"
+  above; `<pie-assessment-toolkit>` accepts it as a direct JS prop)
 - Accessibility: `accessibility`
 - Diagnostics: `tool-config-strictness`, `debug`. Framework-error
   delivery is via the canonical `onFrameworkError` callback prop and the

@@ -16,7 +16,7 @@
 />
 
 <script lang="ts">
-	import { onMount } from "svelte";
+	import { onMount, untrack } from "svelte";
 	import "../passage-shell-element.js";
 	import "@pie-players/pie-toolbars/components/item-toolbar-element";
 	import type {
@@ -58,9 +58,12 @@
 	let contextCardTitleFormatter = $state<SectionPlayerCardTitleFormatter | null>(null);
 	let contextConnected = $state(false);
 	// Stable id for aria-labelledby wiring between the host and the card heading.
-	const headingId = `pie-section-player-passage-card-heading-${
-		passage?.id ?? Math.random().toString(36).slice(2, 10)
-	}`;
+	const headingId = untrack(
+		() =>
+			`pie-section-player-passage-card-heading-${
+				passage?.id ?? Math.random().toString(36).slice(2, 10)
+			}`,
+	);
 	// Context is the canonical source for shared render wiring while connected.
 	// Props are explicit fallback when context is unavailable.
 	const effectiveResolvedPlayerTag = $derived(

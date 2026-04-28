@@ -194,7 +194,6 @@
 	let suppressDemoDbAutoPersistUntilMs = $state(0);
 	let lastPersistedSnapshotFingerprint = $state<string | null>(null);
 	let serverLoadedSection = $state<any>(null);
-	let bootstrappedSessionDbAttemptId = $state<string | null>(null);
 
 	const DEMO_PERSISTENCE_STORAGE_PREFIX = `pie:section-controller:v1:${DEMO_ASSESSMENT_ID}:`;
 	let resolvedSectionForPlayer = $derived.by(() => {
@@ -344,12 +343,14 @@
 		dbHydrateEnabled = true;
 		dbErrorMessage = null;
 		let cancelled = false;
-		const shouldResetOnBootstrap = bootstrappedSessionDbAttemptId !== attemptId;
-		void bootstrapSessionDemoDb(shouldResetOnBootstrap)
-			.then(() => {
-				if (cancelled) return;
-				bootstrappedSessionDbAttemptId = attemptId;
-			})
+		// Never force a DB reset on cold mount: the Student/Scorer toggle (and any
+		// other navigation) is a full page reload, so any in-memory "already
+		// bootstrapped this attempt" flag is wiped before this effect runs and a
+		// reset would clobber the student's saved answers. The server's
+		// seedIfNeeded(reset=false) path already seeds empty snapshots when the
+		// attempt is new and leaves existing snapshots alone. Explicit reset paths
+		// (resetServerDb / resetSessions) pass reset=true themselves.
+		void bootstrapSessionDemoDb(false)
 			.catch((error) => {
 				if (cancelled) return;
 				dbErrorMessage = error instanceof Error ? error.message : String(error);

@@ -629,14 +629,32 @@
 		syncRenderedToolsState();
 		for (const renderedTool of renderedTools) {
 			if (renderedTool.subscribeActive) {
+				let disposed = false;
 				const unsubscribe = renderedTool.subscribeActive((active) => {
-					activeToolState = {
-						...activeToolState,
-						[renderedTool.toolId]: active
-					};
-					renderedTool.sync?.();
+					// Tools may dispatch their active-change signal from inside
+					// a tracked Svelte $effect (e.g. tool-tts-inline does this
+					// on mount). When the toolbar synchronously creates / re-
+					// connects the tool element during its own template/
+					// derivation pass — for example when the section player
+					// collapses on resize — that dispatch lands back here while
+					// our parent derivation is still running, and Svelte
+					// rejects the `activeToolState` write with
+					// `state_unsafe_mutation`. Queue the update on a
+					// microtask so the mutation happens after the current
+					// reactive flush settles.
+					queueMicrotask(() => {
+						if (disposed) return;
+						activeToolState = {
+							...activeToolState,
+							[renderedTool.toolId]: active
+						};
+						renderedTool.sync?.();
+					});
 				});
-				unsubs.push(unsubscribe);
+				unsubs.push(() => {
+					disposed = true;
+					unsubscribe();
+				});
 			}
 		}
 
@@ -647,9 +665,22 @@
 
 	$effect(() => {
 		if (!toolbarContext.subscribeVisibility) return;
-		return toolbarContext.subscribeVisibility(() => {
-			syncRenderedToolsState();
+		let disposed = false;
+		const unsubscribe = toolbarContext.subscribeVisibility(() => {
+			// Defense-in-depth: defer the state write so a synchronous
+			// visibility broadcast from the coordinator never lands inside
+			// an active parent derivation/template flush. See the
+			// `subscribeActive` handler above for the failure mode this
+			// pattern prevents.
+			queueMicrotask(() => {
+				if (disposed) return;
+				syncRenderedToolsState();
+			});
 		});
+		return () => {
+			disposed = true;
+			unsubscribe?.();
+		};
 	});
 
 	$effect(() => {
@@ -657,12 +688,24 @@
 			| { subscribeTelemetry?: (listener: (args: { eventName?: string; payload?: { toolId?: string } }) => void) => () => void }
 			| null;
 		if (typeof toolkitCoordinator?.subscribeTelemetry !== 'function') return;
-		return toolkitCoordinator.subscribeTelemetry(({ eventName, payload }) => {
+		let disposed = false;
+		const unsubscribe = toolkitCoordinator.subscribeTelemetry(({ eventName, payload }) => {
 			if (eventName !== 'pie-toolkit-tool-config-updated') return;
 			if (payload?.toolId && !toolbarVisibleToolIds.includes(payload.toolId)) return;
-			moduleLoadVersion += 1;
-			syncRenderedToolsState();
+			// Defense-in-depth: telemetry can be emitted from anywhere in
+			// the toolkit lifecycle, including paths that flush
+			// synchronously while this component's deriveds are running.
+			// Defer the writes so the parent flush always settles first.
+			queueMicrotask(() => {
+				if (disposed) return;
+				moduleLoadVersion += 1;
+				syncRenderedToolsState();
+			});
 		});
+		return () => {
+			disposed = true;
+			unsubscribe?.();
+		};
 	});
 
 	function mountElement(node: HTMLSpanElement, element: HTMLElement | null) {

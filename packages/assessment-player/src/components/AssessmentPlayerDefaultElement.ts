@@ -34,6 +34,13 @@ interface SectionControllerHandle {
 	) => Promise<void>;
 }
 
+interface SectionPlayerHostElement extends HTMLElement {
+	waitForSectionController?: (
+		timeoutMs?: number,
+	) => Promise<SectionControllerHandle | null>;
+	getSectionController?: () => SectionControllerHandle | null;
+}
+
 interface TtsServiceHandle {
 	stop?: () => void;
 	requestControlHandoff?: () => void;
@@ -332,21 +339,29 @@ export class AssessmentPlayerDefaultElement
 		target: HTMLElement,
 		sectionIdentifier: string,
 	): void {
-		target.addEventListener(
-			"section-controller-ready",
-			async (event: Event) => {
-				const detail = (
-					event as CustomEvent<{ controller?: SectionControllerHandle }>
-				).detail;
-				this.sectionControllerRef = detail?.controller || null;
+		const sectionEl = target as SectionPlayerHostElement;
+		// Svelte 5 custom elements mount their underlying component on a
+		// microtask after `connectedCallback` (the mount sits behind an
+		// `await Promise.resolve()` inside Svelte's CE wrapper). Property
+		// getters for exported functions resolve to `this.$$c?.[name]`,
+		// which is `undefined` until the mount microtask completes. Defer
+		// the controller-resolve wait with `queueMicrotask` so it runs
+		// after Svelte's mount microtask, guaranteeing
+		// `waitForSectionController` is bound when we read it. Caller is
+		// expected to attach this *after* `appendChild`; the microtask
+		// defer is belt-and-suspenders for either ordering.
+		queueMicrotask(() => {
+			void (async () => {
+				const controller =
+					(await sectionEl.waitForSectionController?.(5000)) || null;
+				this.sectionControllerRef = controller;
+				if (!controller) return;
 				const saved = this.controller?.getSectionSession(sectionIdentifier);
-				if (saved && this.sectionControllerRef?.applySession) {
-					await this.sectionControllerRef.applySession(saved, {
-						mode: "replace",
-					});
+				if (saved && controller.applySession) {
+					await controller.applySession(saved, { mode: "replace" });
 				}
-			},
-		);
+			})();
+		});
 		target.addEventListener("session-changed", () =>
 			this.syncCurrentSectionSessionIntoAssessment(),
 		);
@@ -470,11 +485,11 @@ export class AssessmentPlayerDefaultElement
 			(sectionEl as any).hooks = {
 				cardTitleFormatter: this.hooks?.cardTitleFormatter,
 			};
+			sectionHost.appendChild(sectionEl);
 			this.attachSectionControllerReadyListener(
 				sectionEl,
 				currentSection.sectionIdentifier,
 			);
-			sectionHost.appendChild(sectionEl);
 		}
 
 		container.appendChild(sectionHost);

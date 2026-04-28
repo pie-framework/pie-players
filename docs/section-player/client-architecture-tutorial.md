@@ -92,7 +92,7 @@ To obtain the coordinator and attach any hooks:
 playerEl.addEventListener('toolkit-ready', (e: CustomEvent) => {
   const coordinator = e.detail.coordinator;
   coordinator.setHooks({
-    onError: (error, context) => console.error('[toolkit]', context, error),
+    onFrameworkError: (model) => console.error('[toolkit]', model),
   });
 });
 ```
@@ -117,7 +117,7 @@ const coordinator = new ToolkitCoordinator({
     },
   },
   hooks: {
-    onError: (error, context) => reportError(error, context),
+    onFrameworkError: (model) => reportError(model),
     async createSectionSessionPersistence(context) {
       // See §8 for full treatment
       return buildPersistenceStrategy(context);
@@ -215,7 +215,6 @@ Section-player owned canonical event stream:
 
 - `pie-section-stage-change`
 - `pie-section-loading-complete`
-- `pie-section-controller-ready`
 - `pie-section-session-changed`
 - `pie-section-composition-changed`
 - `pie-section-framework-error`
@@ -544,7 +543,7 @@ playerEl.addEventListener('pie-stage-change', (event) => {
 });
 ```
 
-The legacy `section-controller-ready` event is still dispatched on the layout host (by the kernel's Svelte `createEventDispatcher`) during the current 0.x compatibility window, but it is `@deprecated since M6` and new host code should use one of the two patterns above.
+The legacy `section-controller-ready` event was removed in the broad architecture review compat sweep, along with its `pie-section-controller-ready` instrumentation mapping. Hosts must use one of the two patterns above (`waitForSectionController(...)` / `getSectionController()`, or `pie-stage-change` filtered on `detail.stage === "engine-ready"`).
 
 ### Reading state
 
@@ -680,7 +679,7 @@ The typical page-load sequence is:
 1. Mount the player element with `assessmentId`, `sectionId`, `attemptId`, and `coordinator`.
 2. Player bootstraps, registers the section controller with the coordinator.
 3. `toolkit-ready` event fires — by this point the coordinator is active.
-4. `section-controller-ready` event fires — controller is now available.
+4. `pie-stage-change` reaches `detail.stage === "engine-ready"` — the section controller is now available via `waitForSectionController()` / `getSectionController()`.
 5. The coordinator calls `createSectionSessionPersistence` to resolve the strategy.
 6. On `controller.hydrate()`, the strategy's `loadSession` is called and the snapshot is applied via `applySession`.
 7. Item elements register and load, emitting `section-loading-complete` when done.
@@ -840,8 +839,7 @@ The deprecated readiness aliases and their `legacy-event-bridge` were removed in
 | `readiness-change` | `pie-stage-change` (full phase sequence; `stage` + `status` discriminator) | The readiness payload is also reachable via `selectReadiness()` / `getSnapshot().readiness` on the layout CE. |
 | `interaction-ready` | `pie-stage-change` filtered on `detail.stage === "interactive"` | |
 | `ready` | `pie-loading-complete` | Same single-shot, cohort-scoped semantics. |
-
-`section-controller-ready` is **not** part of this removal — it is still dispatched on the layout host by the kernel's Svelte `createEventDispatcher` (forwarded by each layout CE wrapper). It is `@deprecated since M6`; new host code should use `coordinator.waitForSectionController(...)` for a controller handle, or `pie-stage-change` filtered on `detail.stage === "engine-ready"`.
+| `section-controller-ready` | `waitForSectionController(timeoutMs)` / `getSectionController()` on the layout CE, or `pie-stage-change` filtered on `detail.stage === "engine-ready"` | Removed alongside its `pie-section-controller-ready` instrumentation mapping. |
 
 Note on `framework-error` (previously dual-emitted): in earlier releases, while a `<pie-assessment-toolkit>` was nested inside a layout CE, the layout host received **two** `framework-error` DOM events per error (one engine-bridge emit on the layout host plus the bubbled toolkit emit). The dual-emit was collapsed in the broad architecture review compat sweep — the kernel listener at `<pie-section-player-base>` now stops the bubbled toolkit emit, leaving the engine-bridge emit on the layout host as the single canonical DOM surface. The single-emit contract is pinned by `tests/section-player-framework-error-dual-emit.test.ts`. Direct listeners attached to `<pie-assessment-toolkit>` itself are unaffected — the toolkit's own emit reaches them before the kernel listener runs.
 

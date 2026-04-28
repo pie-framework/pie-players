@@ -72,11 +72,6 @@
 		"runtime-inherited": Record<string, unknown>;
 		"session-changed": Record<string, unknown>;
 		"composition-changed": { composition: unknown };
-		"section-controller-ready": {
-			sectionId: string;
-			attemptId?: string;
-			controller: unknown;
-		};
 		"element-preload-retry": Record<string, unknown>;
 		"element-preload-error": Record<string, unknown>;
 	};
@@ -405,19 +400,17 @@
 		dispatch("runtime-inherited", (event as CustomEvent<Record<string, unknown>>).detail || {});
 	}
 
-	function notifySectionControllerResolved(controller: SectionControllerHandle) {
-		// Two emit channels for the same event: the engine FSM (for
-		// stage progression `booting-section → engine-ready`) and the
-		// kernel-level Svelte event consumed by layout CEs (which
-		// re-emit it as a DOM event). Both are kept idempotent by the
-		// `sectionControllerReadyDispatched` latch; the latch is reset
-		// in the engine-driver `$effect` whenever the cohort rolls.
+	function notifySectionControllerResolved(_controller: SectionControllerHandle) {
+		// Drives the engine FSM stage progression
+		// `booting-section → engine-ready`. Idempotent per cohort via
+		// the `sectionControllerReadyDispatched` latch (reset in the
+		// engine-driver `$effect` whenever the cohort rolls). The
+		// previously co-emitted kernel `section-controller-ready` Svelte
+		// event was removed in the broad architecture review compat
+		// sweep; hosts should call `waitForSectionController(timeoutMs)`
+		// or `getSectionController()` on the layout CE, or filter
+		// `pie-stage-change` for `detail.stage === "engine-ready"`.
 		engine.dispatchInput({ kind: "section-controller-resolved" });
-		dispatch("section-controller-ready", {
-			sectionId,
-			attemptId: attemptId || undefined,
-			controller,
-		});
 	}
 
 	async function emitSectionControllerReadyIfNeeded() {

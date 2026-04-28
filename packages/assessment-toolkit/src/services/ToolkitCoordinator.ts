@@ -34,7 +34,6 @@ import {
 } from "./tool-config-validation.js";
 import { AccessibilityCatalogResolver } from "./AccessibilityCatalogResolver.js";
 import { ElementToolStateStore } from "./ElementToolStateStore.js";
-import { warnDeprecatedOnce } from "./deprecation-warnings.js";
 import {
 	frameworkErrorFromCoordinatorContext,
 	type FrameworkErrorModel,
@@ -357,35 +356,6 @@ export interface ToolkitCoordinatorHooks {
 	 */
 	onFrameworkError?: (model: FrameworkErrorModel) => void;
 
-	/**
-	 * @deprecated Use {@link onFrameworkError}. Kept for the M3
-	 * deprecation window; will be removed in the next major release of
-	 * `@pie-players/*`. The legacy `(Error, context)` shape is mapped to
-	 * the canonical `FrameworkErrorModel` internally and dispatched in
-	 * parallel with `onFrameworkError`.
-	 */
-	onError?: (error: Error, context: ToolkitErrorContext) => void;
-
-	/**
-	 * @deprecated Use {@link onFrameworkError}. Kept for the M3
-	 * deprecation window. Filters to `tts-init` failures only; the
-	 * canonical hook receives the same model with `kind: "tts-init"`.
-	 */
-	onTTSError?: (error: Error, context: ToolkitErrorContext) => void;
-
-	/**
-	 * @deprecated Use {@link onFrameworkError}. Kept for the M3
-	 * deprecation window. Filters to `provider-register` and
-	 * `provider-init` failures; the canonical hook receives the same
-	 * model with `kind: "provider-register"` or `kind: "provider-init"`
-	 * and `source: "pie-toolkit-coordinator/<providerId>"`.
-	 */
-	onProviderError?: (
-		providerId: string,
-		error: Error,
-		context: ToolkitErrorContext,
-	) => void;
-
 	onBeforeTTSInit?: (context: ToolkitErrorContext) => void | Promise<void>;
 	onTTSReady?: () => void | Promise<void>;
 	onCoordinatorReady?: (
@@ -704,12 +674,12 @@ export class ToolkitCoordinator {
 	}
 
 	/**
-	 * Subscribe the canonical-hook adapter and the deprecated alias-hook
-	 * adapters to the framework-error bus.
+	 * Subscribe the canonical `onFrameworkError` hook adapter to the
+	 * framework-error bus.
 	 *
-	 * Called once from the constructor. Each adapter inspects the model
-	 * and the live `this.hooks` reference, so hooks added later via
-	 * {@link setHooks} are picked up automatically without re-subscribing.
+	 * Called once from the constructor. The adapter inspects the live
+	 * `this.hooks` reference, so a hook added later via {@link setHooks}
+	 * is picked up automatically without re-subscribing.
 	 */
 	private subscribeFrameworkErrorHookAdapters(): void {
 		this.frameworkErrorBus.subscribeFrameworkErrors((model) => {
@@ -724,111 +694,6 @@ export class ToolkitCoordinator {
 				);
 			}
 		});
-
-		this.frameworkErrorBus.subscribeFrameworkErrors((model) => {
-			if (!this.hooks.onError) return;
-			warnDeprecatedOnce(
-				"toolkit-coordinator-hook:onError",
-				"ToolkitCoordinatorHooks.onError is deprecated; use onFrameworkError(model) instead.",
-			);
-			try {
-				const error = this.toCauseError(model);
-				this.hooks.onError(error, this.legacyContextFromModel(model));
-			} catch (hookError) {
-				console.warn(
-					"[ToolkitCoordinator] onError hook failed:",
-					hookError,
-				);
-			}
-		});
-
-		this.frameworkErrorBus.subscribeFrameworkErrors((model) => {
-			if (model.kind !== "tts-init") return;
-			if (!this.hooks.onTTSError) return;
-			warnDeprecatedOnce(
-				"toolkit-coordinator-hook:onTTSError",
-				"ToolkitCoordinatorHooks.onTTSError is deprecated; use onFrameworkError(model) and filter on model.kind === 'tts-init'.",
-			);
-			try {
-				const error = this.toCauseError(model);
-				this.hooks.onTTSError(error, { phase: "tts-init" });
-			} catch (hookError) {
-				console.warn(
-					"[ToolkitCoordinator] onTTSError hook failed:",
-					hookError,
-				);
-			}
-		});
-
-		this.frameworkErrorBus.subscribeFrameworkErrors((model) => {
-			if (model.kind !== "provider-register" && model.kind !== "provider-init") {
-				return;
-			}
-			if (!this.hooks.onProviderError) return;
-			const providerId = ToolkitCoordinator.providerIdFromSource(model.source);
-			if (!providerId) return;
-			warnDeprecatedOnce(
-				"toolkit-coordinator-hook:onProviderError",
-				"ToolkitCoordinatorHooks.onProviderError is deprecated; use onFrameworkError(model) and filter on model.kind === 'provider-init'/'provider-register'.",
-			);
-			try {
-				const error = this.toCauseError(model);
-				this.hooks.onProviderError(providerId, error, {
-					phase: model.kind,
-					providerId,
-				});
-			} catch (hookError) {
-				console.warn(
-					"[ToolkitCoordinator] onProviderError hook failed:",
-					hookError,
-				);
-			}
-		});
-	}
-
-	private toCauseError(model: FrameworkErrorModel): Error {
-		if (model.cause instanceof Error) return model.cause;
-		return new Error(model.message);
-	}
-
-	private legacyContextFromModel(model: FrameworkErrorModel): ToolkitErrorContext {
-		const providerId = ToolkitCoordinator.providerIdFromSource(model.source);
-		switch (model.kind) {
-			case "tts-init":
-				return { phase: "tts-init" };
-			case "tool-state-load":
-				return { phase: "state-load" };
-			case "tool-state-save":
-				return { phase: "state-save" };
-			case "section-controller-init":
-				return { phase: "section-controller-init" };
-			case "section-controller-dispose":
-				return { phase: "section-controller-dispose" };
-			case "provider-init":
-				return providerId
-					? { phase: "provider-init", providerId }
-					: { phase: "provider-init" };
-			case "provider-register":
-				return providerId
-					? { phase: "provider-register", providerId }
-					: { phase: "provider-register" };
-			case "coordinator-init":
-				return { phase: "coordinator-ready" };
-			default:
-				// `tool-config`, `runtime-init`, `runtime-dispose`, and
-				// `unknown` do not have a 1:1 legacy phase. Map to
-				// `coordinator-ready` so the deprecated `onError` hook
-				// keeps receiving them, with a coarse phase tag, until
-				// callers migrate to `onFrameworkError`.
-				return { phase: "coordinator-ready" };
-		}
-	}
-
-	private static providerIdFromSource(source: string): string | undefined {
-		const prefix = "pie-toolkit-coordinator/";
-		if (!source.startsWith(prefix)) return undefined;
-		const candidate = source.slice(prefix.length);
-		return candidate.length > 0 ? candidate : undefined;
 	}
 
 	/**
@@ -901,10 +766,9 @@ export class ToolkitCoordinator {
 	 * Subscribe to framework-error events emitted by this coordinator.
 	 *
 	 * See `ToolkitCoordinatorApi.subscribeFrameworkErrors` for the
-	 * contract. The bus is shared with the canonical / deprecated
-	 * lifecycle hooks (`onFrameworkError`, `onError`, `onTTSError`,
-	 * `onProviderError`), so a listener registered here sees the same
-	 * fan-out the hooks see.
+	 * contract. The bus is shared with the canonical
+	 * `onFrameworkError` lifecycle hook, so a listener registered here
+	 * sees the same fan-out the hook sees.
 	 */
 	public subscribeFrameworkErrors(listener: FrameworkErrorListener): () => void {
 		return this.frameworkErrorBus.subscribeFrameworkErrors(listener);
@@ -1132,10 +996,6 @@ export class ToolkitCoordinator {
 				`[ToolkitCoordinator] Failed to register provider "${providerId}":`,
 				err,
 			);
-			// `handleError` publishes through the framework-error bus, which
-			// fans out to `onFrameworkError` and the deprecated alias hook
-			// `onProviderError`. No direct alias-hook call here — that would
-			// double-fire under the new bus model.
 			this.handleError(err, { phase: "provider-register", providerId });
 		}
 	}
@@ -1157,10 +1017,6 @@ export class ToolkitCoordinator {
 				return provider;
 			} catch (err) {
 				const error = err instanceof Error ? err : new Error(String(err));
-				// `handleError` publishes through the framework-error bus,
-				// which fans out to `onFrameworkError` and the deprecated
-				// alias hook `onProviderError`. No direct alias-hook call
-				// here — that would double-fire under the new bus model.
 				this.handleError(error, { phase: "provider-init", providerId });
 				throw error;
 			}
@@ -1812,10 +1668,6 @@ export class ToolkitCoordinator {
 		} catch (error) {
 			const normalized =
 				error instanceof Error ? error : new Error(String(error));
-			// `handleError` publishes through the framework-error bus, which
-			// fans out to `onFrameworkError` and the deprecated alias hook
-			// `onTTSError`. No direct alias-hook call here — that would
-			// double-fire under the new bus model.
 			this.handleError(normalized, { phase: "tts-init" });
 			await this.emitTelemetry("pie-toolkit-tts-init-error", {
 				message: normalized.message,

@@ -250,7 +250,6 @@ export {
 export type {
 	FrameworkErrorListener,
 } from "./services/framework-error-bus.js";
-export { warnDeprecatedOnce } from "./services/deprecation-warnings.js";
 export type {
 	ToolConfigDiagnostic,
 	ToolConfigDiagnosticSeverity,

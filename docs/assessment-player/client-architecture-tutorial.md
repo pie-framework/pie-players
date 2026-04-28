@@ -638,7 +638,7 @@ The typical page-load sequence is:
 6. `loadSession()` loads the assessment snapshot and applies it (emits `assessment-session-applied`).
 7. Controller transitions to `ready` — emits `assessment-controller-ready`.
 8. Player renders the current section by mounting a `pie-section-player-*` element.
-9. Section player bootstraps, emits `section-controller-ready`.
+9. Section player bootstraps; the assessment player awaits `waitForSectionController(...)` on the section CE to obtain the section controller handle.
 10. Section items load and register; `section-loading-complete` fires.
 11. Session replay applies the restored section session to all loaded items.
 

@@ -425,7 +425,6 @@
 	}}
 	on:runtime-owned={forward}
 	on:runtime-inherited={forward}
-	on:section-controller-ready={forward}
 	on:session-changed={forward}
 	on:composition-changed={forward}
 	on:element-preload-retry={forward}

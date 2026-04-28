@@ -37,9 +37,16 @@
 				attribute: "qti-enforcement",
 				type: "String",
 			},
-			// @deprecated since M5; set via `runtime.isolation` on a
-			// containing section-player CE, or omit (default `inherit`).
-			isolation: { attribute: "isolation", type: "String" },
+			// JS-only prop. Section-player layouts forward
+			// `runtime.isolation` through this property via
+			// `<pie-assessment-toolkit isolation={effectiveIsolation}>`
+			// in `PieSectionPlayerBaseElement.svelte`. Standalone
+			// hosts that want to override the toolkit's coordinator-
+			// inheritance behavior should pass an explicit
+			// `coordinator={...}` instead — the kebab-attribute
+			// surface (`<pie-assessment-toolkit isolation="force">`)
+			// is no longer observed.
+			isolation: { type: "Object", reflect: false },
 		},
 	}}
 />

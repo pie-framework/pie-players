@@ -275,7 +275,6 @@
 	host={hostElement}
 	on:runtime-owned={reemit}
 	on:runtime-inherited={reemit}
-	on:section-controller-ready={reemit}
 	on:session-changed={reemit}
 	on:composition-changed={(event: CustomEvent) => {
 		const detail = (event as CustomEvent).detail as {

@@ -1,10 +1,6 @@
-import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
+import { describe, expect, mock, test } from "bun:test";
 import { FrameworkErrorBus } from "../src/services/framework-error-bus";
 import type { FrameworkErrorModel } from "../src/services/framework-error";
-import {
-	__resetDeprecationWarnings,
-	warnDeprecatedOnce,
-} from "../src/services/deprecation-warnings";
 
 function model(
 	overrides: Partial<FrameworkErrorModel> = {},
@@ -131,55 +127,5 @@ describe("FrameworkErrorBus", () => {
 			received = m;
 		});
 		expect(received).toBeNull();
-	});
-});
-
-describe("warnDeprecatedOnce", () => {
-	let warnSpy: ReturnType<typeof mock>;
-	let originalWarn: typeof console.warn;
-	let originalNodeEnv: string | undefined;
-
-	beforeEach(() => {
-		__resetDeprecationWarnings();
-		originalWarn = console.warn;
-		warnSpy = mock(() => {});
-		console.warn = warnSpy as unknown as typeof console.warn;
-		originalNodeEnv = process.env.NODE_ENV;
-		process.env.NODE_ENV = "development";
-	});
-
-	afterEach(() => {
-		console.warn = originalWarn;
-		if (originalNodeEnv === undefined) {
-			delete process.env.NODE_ENV;
-		} else {
-			process.env.NODE_ENV = originalNodeEnv;
-		}
-	});
-
-	test("emits exactly once per label, even from different call sites", () => {
-		const fired1 = warnDeprecatedOnce("alpha", "use canonical instead");
-		const fired2 = warnDeprecatedOnce("alpha", "use canonical instead (again)");
-		const fired3 = warnDeprecatedOnce("alpha", "yet again");
-
-		expect(fired1).toBe(true);
-		expect(fired2).toBe(false);
-		expect(fired3).toBe(false);
-		expect(warnSpy).toHaveBeenCalledTimes(1);
-	});
-
-	test("different labels each warn once", () => {
-		warnDeprecatedOnce("alpha", "msg-a");
-		warnDeprecatedOnce("beta", "msg-b");
-		warnDeprecatedOnce("alpha", "msg-a-again");
-
-		expect(warnSpy).toHaveBeenCalledTimes(2);
-	});
-
-	test("is silent in production", () => {
-		process.env.NODE_ENV = "production";
-		const fired = warnDeprecatedOnce("only-prod", "should not warn");
-		expect(fired).toBe(false);
-		expect(warnSpy).not.toHaveBeenCalled();
 	});
 });

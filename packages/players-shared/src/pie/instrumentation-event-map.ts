@@ -42,8 +42,10 @@ export const SECTION_INSTRUMENTATION_EVENT_MAP: InstrumentationEventMapping[] = 
 	// names directly (`pie-stage-change`, `pie-loading-complete`); the
 	// instrumentation bridge forwards the same names to telemetry. The
 	// deprecated readiness mappings (`readiness-change`,
-	// `interaction-ready`, `ready`) were removed in the broad
-	// architecture review compat sweep alongside their DOM-event bridge.
+	// `interaction-ready`, `ready`) and the deprecated
+	// `section-controller-ready` mapping were removed in the broad
+	// architecture review compat sweep alongside their DOM-event
+	// surfaces.
 	{
 		sourceEventName: "pie-stage-change",
 		instrumentationEventName: "pie-section-stage-change",
@@ -51,10 +53,6 @@ export const SECTION_INSTRUMENTATION_EVENT_MAP: InstrumentationEventMapping[] = 
 	{
 		sourceEventName: "pie-loading-complete",
 		instrumentationEventName: "pie-section-loading-complete",
-	},
-	{
-		sourceEventName: "section-controller-ready",
-		instrumentationEventName: "pie-section-controller-ready",
 	},
 	{
 		sourceEventName: "session-changed",

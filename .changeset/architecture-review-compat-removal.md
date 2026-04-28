@@ -1,6 +1,7 @@
 ---
 '@pie-players/pie-section-player': major
 '@pie-players/pie-assessment-toolkit': major
+'@pie-players/pie-assessment-player': major
 '@pie-players/pie-players-shared': major
 ---
 
@@ -9,8 +10,9 @@ Broad architecture review — compat removal sweep (part 1).
 Pre-1.0 lockstep release: every package in the `fixed` block is bumped
 together at release time per the project versioning policy. Source
 changes for this sweep land in `pie-section-player`,
-`pie-assessment-toolkit`, and `pie-players-shared` (the
-`SECTION_INSTRUMENTATION_EVENT_MAP` exports).
+`pie-assessment-toolkit`, `pie-assessment-player` (migrating off the
+removed `section-controller-ready` event), and `pie-players-shared`
+(the `SECTION_INSTRUMENTATION_EVENT_MAP` exports).
 
 Removes deprecated compatibility paths that were superseded by the M5
 two-tier mirror, the M3 framework-error contract, the M7 runtime engine,
@@ -76,13 +78,11 @@ unblocks a single canonical path for every consumer.
   is now read only from `runtime.isolation`; when omitted, the
   resolver falls back to the package default (`DEFAULT_ISOLATION`).
 
-  Note: `<pie-assessment-toolkit>`'s `isolation` kebab-attribute / prop
-  is **unchanged** in this sweep — the toolkit derives the effective
-  isolation strategy via the section-player base element from
-  `runtime.isolation`. The toolkit's own `isolation` attribute remains
-  `@deprecated since M5` (the M5 deprecation predates this sweep) and
-  is kept on the toolkit for the standalone-toolkit case until a
-  follow-up release; layout-CE hosts must use `runtime.isolation`.
+  Note: the toolkit's `<pie-assessment-toolkit>` keeps `isolation` as a
+  JS-only object property (see the toolkit-side carve-out below), but
+  the kebab-attribute (`isolation="…"` HTML form) was also removed in
+  this sweep. Layout-CE hosts must use `runtime.isolation`; standalone
+  toolkit hosts must assign `el.isolation = …` programmatically.
 
 - **Top-level `item-toolbar-tools` / `passage-toolbar-tools`
   attribute aliases (and their `itemToolbarTools` / `passageToolbarTools`
@@ -124,12 +124,114 @@ unblocks a single canonical path for every consumer.
     `detail.stage === "interactive"`.
   - `ready` → `pie-loading-complete`.
 
-  `section-controller-ready` is **not** part of this removal — it is
-  still dispatched on the layout host by the kernel's Svelte
-  `createEventDispatcher` (forwarded by each layout CE wrapper) and
-  remains `@deprecated since M6` with the same migration guidance
-  (`coordinator.waitForSectionController(...)` or `pie-stage-change`
-  filtered on `detail.stage === "engine-ready"`).
+- **Deprecated `section-controller-ready` Svelte/DOM event** — the
+  kernel-side `dispatch("section-controller-ready", ...)` call,
+  the matching `on:section-controller-ready={…}` forwarders on every
+  layout CE wrapper (`<pie-section-player-splitpane>`,
+  `<pie-section-player-vertical>`, `<pie-section-player-tabbed>`,
+  `<pie-section-player-kernel-host>`), the
+  `sectionControllerReady` entry on `SECTION_PLAYER_PUBLIC_EVENTS`,
+  the `SectionPlayerControllerReadyDetail` type export, and the
+  `pie-section-controller-ready` instrumentation mapping in
+  `SECTION_INSTRUMENTATION_EVENT_MAP`. The kernel still feeds the
+  engine FSM's `section-controller-resolved` input on first
+  resolution per cohort (canonical stage progression
+  `booting-section → engine-ready`); only the kernel-level Svelte
+  event and its DOM-forwarded layout-host emit are gone. The
+  toolkit-internal `pie-toolkit-section-controller-ready`
+  telemetry name is unchanged. Migration:
+
+  - Pull a controller handle directly:
+    `await el.waitForSectionController(timeoutMs)` or
+    `el.getSectionController()` on the layout CE.
+  - Or filter `pie-stage-change` for
+    `detail.stage === "engine-ready"` and then call
+    `el.getSectionController()`.
+
+- **`autoFocusFirstItem` boolean alias on
+  `SectionPlayerFocusPolicy`** and the runtime translation logic that
+  mapped it onto the canonical `autoFocus` enum (along with its
+  one-time deprecation warning). Hosts now set `autoFocus` directly:
+
+  ```ts
+  // before
+  el.policies = { focus: { autoFocusFirstItem: true } };
+  // after
+  el.policies = { focus: { autoFocus: "start-of-content" } };
+  // (or `"none"` to disable)
+  ```
+
+  The two Playwright tests that pinned the deprecated alias contract
+  (`section-player-navigation-contract.spec.ts`) are removed.
+
+- **Orphaned `runtime-event-guards.ts` re-export shim** in
+  `@pie-players/pie-assessment-toolkit` (`@deprecated since M7`,
+  `createRuntimeId` is the only re-export). Import from
+  `@pie-players/pie-assessment-toolkit/runtime/internal` instead.
+
+- **`warnDeprecatedOnce` deprecation-warning utility** and its
+  public re-export from `@pie-players/pie-assessment-toolkit`
+  (`packages/assessment-toolkit/src/services/deprecation-warnings.ts`,
+  along with the test-only `__resetDeprecationWarnings` and the
+  `warnDeprecatedOnce` test block in
+  `tests/framework-error-bus.test.ts`). Every internal callsite
+  was removed earlier in this sweep; no in-tree code depends on the
+  utility. External consumers that imported it from the package
+  root should inline a per-callsite `console.warn` (the utility
+  was a thin once-per-label, dev-only `console.warn` wrapper).
+
+- **Toolkit `isolation` kebab-attribute surface on
+  `<pie-assessment-toolkit>`.** The `isolation` prop is now a
+  JS-only object property (`type: "Object", reflect: false`); the
+  previously observed `isolation="…"` HTML attribute is no longer
+  parsed. Hosts that set isolation declaratively must move to a
+  property assignment (or set it via `runtime.isolation` on the
+  enclosing layout CE):
+
+  ```html
+  <!-- before -->
+  <pie-assessment-toolkit isolation="shadow"></pie-assessment-toolkit>
+  ```
+
+  ```ts
+  // after
+  el.isolation = "shadow";
+  ```
+
+- **Deprecated `ToolkitCoordinatorHooks` error hooks**
+  (`onError`, `onTTSError`, `onProviderError`) and their
+  subscription/dispatch logic on `ToolkitCoordinator`, plus the
+  internal helpers (`toCauseError`, `legacyContextFromModel`,
+  `providerIdFromSource`) that synthesized the legacy
+  `(error, context)` payload from the canonical
+  `FrameworkErrorModel`. The single canonical hook is
+  `onFrameworkError(model: FrameworkErrorModel)`, which already
+  delivers every `framework-error` exactly once per error
+  (filterable on `model.kind`). Migration:
+
+  ```ts
+  // before
+  coordinator.setHooks({
+    onError: (error, context) => log({ error, context }),
+    onTTSError: (error) => bumpTtsErrorCount(),
+    onProviderError: (error, context) => log(context.providerId, error),
+  });
+
+  // after
+  coordinator.setHooks({
+    onFrameworkError: (model) => {
+      // model.kind: "tool-config" | "runtime-init" | "runtime-dispose"
+      //           | "coordinator-init" | "provider-init" | "provider-register"
+      //           | "tts-init" | "tool-state-load" | "tool-state-save"
+      //           | "section-controller-init" | "section-controller-dispose"
+      //           | "unknown"
+      // model.severity, model.source, model.message, model.details,
+      // model.recoverable, model.cause, …
+      log(model);
+      if (model.kind === "tts-init") bumpTtsErrorCount();
+    },
+  });
+  ```
 
 - **`framework-error` dual-emit on the layout CE host.** Previously,
   while a `<pie-assessment-toolkit>` was nested inside a layout CE,
@@ -173,6 +275,33 @@ el.runtime = {
     },
   },
 };
+```
+
+Section-controller resolution (replaces `section-controller-ready`):
+
+```ts
+// before
+el.addEventListener("section-controller-ready", (event) => {
+  const { controller } = (event as CustomEvent).detail;
+  // …
+});
+
+// after — pull-style (preferred for one-shot consumers)
+const controller = await (
+  el as HTMLElement & {
+    waitForSectionController?: (timeoutMs?: number) => Promise<unknown>;
+  }
+).waitForSectionController?.(5000);
+
+// after — event-driven
+el.addEventListener("pie-stage-change", (event) => {
+  const { stage } = (event as CustomEvent).detail;
+  if (stage !== "engine-ready") return;
+  const controller = (
+    el as HTMLElement & { getSectionController?: () => unknown }
+  ).getSectionController?.();
+  // …
+});
 ```
 
 `AssessmentToolkitEvents` consumers should subscribe to the canonical

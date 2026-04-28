@@ -1,11 +1,12 @@
 /**
  * Canonical stage vocabulary (M6 of the Coherent Options Surface track).
  *
- * One monotonic stage list is the unified replacement for today's drift of
- * `toolkit-ready`, `section-ready`, `section-controller-ready`,
- * `interaction-ready`, `readiness-change`, and `ready`. Hosts ask the same
- * question — "is this CE at stage ≥ X?" — across every `<pie-section-player-*>`
- * and `<pie-assessment-toolkit>` element.
+ * One monotonic stage list is the unified replacement for the previous
+ * drift of `toolkit-ready`, `section-ready`, `section-controller-ready`,
+ * `interaction-ready`, `readiness-change`, and `ready` — all of which
+ * have been removed. Hosts ask the same question — "is this CE at
+ * stage ≥ X?" — across every `<pie-section-player-*>` and
+ * `<pie-assessment-toolkit>` element.
  *
  * The four-stage canonical list (`composed`, `engine-ready`, `interactive`,
  * `disposed`) was finalized after the M5/M6 cumulative review confirmed
@@ -17,8 +18,8 @@
  * Locked decisions (see `m6_ready_vocab_canonical_followup.plan.md`):
  * - **A1** Stage machine model with one canonical event family.
  * - **B1** "All items loaded" is reclassified as `pie-loading-complete`,
- *   not a stage. The legacy `ready` DOM event keeps firing as a deprecated
- *   alias.
+ *   not a stage. (The previous `ready` DOM event alias was removed in
+ *   the broad architecture review compat sweep.)
  * - **C1** `readiness.mode = "strict"` only delays the `interactive`
  *   transition; every earlier stage fires identically across modes.
  * - **D1** One DOM event family `pie-stage-change` with the stage in the

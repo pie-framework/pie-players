@@ -9,9 +9,6 @@
  * (`engine.attachHost({ host, sourceCe, frameworkErrorBus })`), and
  * the engine's DOM-event bridge dispatches `pie-stage-change`,
  * `pie-loading-complete`, and `framework-error`.
- * `section-controller-ready` is dispatched separately by the kernel's
- * Svelte `createEventDispatcher` (forwarded by each layout CE
- * wrapper).
  *
  * **Kernel-side Svelte forwards (not engine-routed).** The
  * composition / session / runtime-tier family
@@ -47,6 +44,12 @@
  *     `detail.stage === "interactive"`.
  *   - `ready` → `pie-loading-complete`.
  *
+ * The deprecated `section-controller-ready` Svelte/DOM event was
+ * also removed. Hosts that previously listened for it migrate to
+ * `waitForSectionController(timeoutMs)` / `getSectionController()`
+ * on the layout CE, or filter `pie-stage-change` for
+ * `detail.stage === "engine-ready"`.
+ *
  * Source of truth for the names: `players-shared/src/pie/stages.ts`
  * and the `SectionEngineOutput` discriminator in
  * `assessment-toolkit/src/runtime/core/engine-output.ts`.
@@ -79,16 +82,6 @@ export const SECTION_PLAYER_PUBLIC_EVENTS = {
 	 * `interactive` state.
 	 */
 	loadingComplete: "pie-loading-complete",
-	/**
-	 * @deprecated since M6 — new host code should listen for
-	 * `stageChange` and filter on `detail.stage === "engine-ready"`,
-	 * or use
-	 * `IToolkitCoordinator.waitForSectionController(sectionId, attemptId)`
-	 * to await a controller handle directly. Still emitted on the
-	 * layout CE host by the kernel's Svelte `createEventDispatcher`
-	 * (forwarded by each layout CE wrapper).
-	 */
-	sectionControllerReady: "section-controller-ready",
 } as const;
 
 export type SectionPlayerPublicEventName =
@@ -113,10 +106,4 @@ export type SectionPlayerReadinessChangeDetail = {
 	interactionReady: boolean;
 	allLoadingComplete: boolean;
 	reason?: string;
-};
-
-export type SectionPlayerControllerReadyDetail = {
-	sectionId: string;
-	attemptId?: string;
-	controller: unknown;
 };

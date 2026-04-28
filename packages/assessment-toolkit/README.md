@@ -217,8 +217,12 @@ Documented exceptions to the mirror rule:
   (`createSectionController`, `isolation`): accepted only via
   `runtime.<key>`. The top-level prop aliases were removed in the
   broad architecture review compat sweep. `<pie-assessment-toolkit>`
-  itself keeps `createSectionController` as a direct JS prop and
-  `isolation` as a kebab attribute (`@deprecated since M5`).
+  itself keeps `createSectionController` and `isolation` as JS-only
+  props (no kebab-attribute surface): section-player layouts forward
+  `runtime.isolation` and `runtime.createSectionController` to the
+  wrapped toolkit via property bindings; standalone hosts that need
+  to override coordinator inheritance should pass an explicit
+  `coordinator={...}` instead.
 
 ### When to add a tier-1 attribute
 
@@ -1110,10 +1114,9 @@ Notes:
   the `onFrameworkError(model)` callback prop, or by subscribing directly
   to the package-internal bus via
   `ToolkitCoordinator.subscribeFrameworkErrors(listener)`. The callback
-  prop fires exactly once per error, regardless of wrapper depth.
-- Per-tool/provider error hooks (`onProviderError`, `onTTSError`) are
-  delivered through the same bus and continue to fire for hosts that
-  rely on them.
+  prop fires exactly once per error, regardless of wrapper depth. Filter
+  by `model.kind` (e.g. `"tts-init"`, `"provider-init"`,
+  `"provider-register"`) for tool- or provider-specific handling.
 - See `docs/tools-and-accomodations/framework-owned-error-handling.md` for event payload and error-kind mapping details.
 
 ## Section Runtime Engine (advanced)

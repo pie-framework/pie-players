@@ -149,8 +149,8 @@
 	});
 
 	coordinator.setHooks({
-		onError: (error, context) => {
-			console.error("[CustomToolsDemo] Toolkit hook error:", context, error);
+		onFrameworkError: (model) => {
+			console.error("[CustomToolsDemo] Toolkit framework error:", model);
 		},
 	} satisfies ToolkitCoordinatorHooks);
 

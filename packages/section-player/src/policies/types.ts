@@ -31,11 +31,6 @@ export type SectionPlayerAutoFocusStrategy =
 
 export type SectionPlayerFocusPolicy = {
 	autoFocus: SectionPlayerAutoFocusStrategy;
-	/**
-	 * @deprecated Use `autoFocus` instead. `true` maps to `"start-of-content"`,
-	 * `false` maps to `"none"`. Scheduled for removal in the next major version.
-	 */
-	autoFocusFirstItem?: boolean;
 };
 
 export type SectionPlayerTelemetryPolicy = {

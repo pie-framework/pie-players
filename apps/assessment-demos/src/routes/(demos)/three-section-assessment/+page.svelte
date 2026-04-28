@@ -71,8 +71,8 @@ import "@pie-players/pie-section-player-tools-instrumentation-debugger";
 		assessmentId: DEMO_ASSESSMENT_ID,
 		tools: toolkitToolsConfig,
 		hooks: {
-			onError: (error, context) => {
-				console.warn("[Assessment Demo] toolkit error:", context, error);
+			onFrameworkError: (model) => {
+				console.warn("[Assessment Demo] toolkit framework error:", model);
 			},
 		// Assessment session persistence should own state in assessment demos.
 		async createSectionSessionPersistence() {

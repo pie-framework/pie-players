@@ -31,22 +31,9 @@ async function validateControllerAccess(args: {
 			| null;
 		if (!host) return { ok: false, reason: "missing-host" };
 
-		let readyEventCount = 0;
-		let readyEventControllerSeen = false;
-		const onControllerReady = (event: Event) => {
-			readyEventCount += 1;
-			const detail = (event as CustomEvent).detail as
-				| { controller?: unknown }
-				| undefined;
-			readyEventControllerSeen = Boolean(detail?.controller);
-		};
-		host.addEventListener("section-controller-ready", onControllerReady);
-
 		const immediate = host.getSectionController?.() || null;
 		const awaited = await host.waitForSectionController?.(5000);
 		const afterWait = host.getSectionController?.() || null;
-
-		host.removeEventListener("section-controller-ready", onControllerReady);
 
 		const hasRuntimeState =
 			typeof (awaited as { getRuntimeState?: unknown } | null)
@@ -77,8 +64,6 @@ async function validateControllerAccess(args: {
 			hasCanNavigateForwardApi: typeof host.canNavigateForward === "function",
 			hasCanNavigateBackwardApi: typeof host.canNavigateBackward === "function",
 			hasSetNavigationPolicyApi: typeof host.setNavigationPolicy === "function",
-			readyEventCount,
-			readyEventControllerSeen,
 		};
 	}, selector);
 
@@ -94,9 +79,6 @@ async function validateControllerAccess(args: {
 	expect(result.hasCanNavigateForwardApi).toBe(false);
 	expect(result.hasCanNavigateBackwardApi).toBe(false);
 	expect(result.hasSetNavigationPolicyApi).toBe(false);
-	if (result.readyEventCount > 0) {
-		expect(result.readyEventControllerSeen).toBe(true);
-	}
 }
 
 test.describe("section player controller access", () => {

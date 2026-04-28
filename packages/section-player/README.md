@@ -155,7 +155,6 @@ The intended usage model is:
 - **JS API for advanced customization**:
   - Get the controller handle via `getSectionController()` or `waitForSectionController()` (preferred)
   - Listen for `pie-stage-change` and filter on `detail.stage === "engine-ready"` for an event-driven entry point
-  - The legacy `section-controller-ready` event is still emitted by the kernel during the 0.x compatibility window but is `@deprecated since M6`
   - Apply custom policy/gating in host code (for example, domain-specific `canNext` based on controller events like `section-items-complete-changed`)
   - Compose forward/backward eligibility in host code using `selectNavigation()` + host state; there is intentionally no separate parallel CE gating API for this
   - Inject custom toolbar tooling with `toolRegistry` and optional host button arrays (`sectionHostButtons`, `itemHostButtons`, `passageHostButtons`)
@@ -268,11 +267,6 @@ wherever the host has opted in for navigation focus:
 
 For Next / Back / question-number navigation the host does **not** call
 `focusStart()` — the `autoFocus` policy fires automatically.
-
-**Deprecation.** `SectionPlayerFocusPolicy.autoFocusFirstItem` still
-works for one release (mapped onto `autoFocus`: `true` →
-`"start-of-content"`, `false` → `"none"`) and emits a one-time console
-warning. It will be removed in the next major. Migrate to `autoFocus`.
 
 ### Navigation signals
 
@@ -489,13 +483,14 @@ Section-player owned instrumentation stream:
 
 - `pie-section-stage-change`
 - `pie-section-loading-complete`
-- `pie-section-controller-ready`
 - `pie-section-session-changed`
 - `pie-section-composition-changed`
 - `pie-section-framework-error`
 
 The deprecated readiness aliases (`readiness-change`,
-`interaction-ready`, `ready`) and their `legacy-event-bridge` were
+`interaction-ready`, `ready`) and their `legacy-event-bridge`, along
+with the deprecated `section-controller-ready` Svelte/DOM event and
+its `pie-section-controller-ready` instrumentation mapping, were
 removed in the broad architecture review compat sweep. Migrate
 consumers as follows:
 
@@ -505,11 +500,10 @@ consumers as follows:
 - `interaction-ready` → `pie-stage-change` filtered on
   `detail.stage === "interactive"`.
 - `ready` → `pie-loading-complete`.
-- `section-controller-ready` is still dispatched by the kernel's
-  Svelte `createEventDispatcher` (forwarded by each layout CE wrapper)
-  and is **not** part of this compat removal. New host code should
-  prefer `coordinator.waitForSectionController(sectionId, attemptId)`
-  or `pie-stage-change` filtered on `detail.stage === "engine-ready"`.
+- `section-controller-ready` → call
+  `waitForSectionController(timeoutMs)` or `getSectionController()`
+  on the layout CE, or filter `pie-stage-change` for
+  `detail.stage === "engine-ready"`.
 
 If toolkit is mounted, toolkit lifecycle events are emitted on a separate
 `pie-toolkit-*` stream. This separation avoids semantic overlap; bridge dedupe

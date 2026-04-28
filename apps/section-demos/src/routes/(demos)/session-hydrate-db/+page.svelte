@@ -124,8 +124,8 @@
 			toolConfigStrictness: 'error',
 			tools: toolsConfigResult.config,
 			hooks: {
-				onError: (error, context) => {
-					console.error('[Demo] Toolkit hook error:', context, error);
+				onFrameworkError: (model) => {
+					console.error('[Demo] Toolkit framework error:', model);
 				},
 				async createSectionSessionPersistence(context) {
 					const targetSectionId = context.key.sectionId;

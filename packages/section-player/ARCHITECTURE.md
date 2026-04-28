@@ -79,11 +79,10 @@ consume the same engine instance per cohort.
     `InstrumentationHook` on each `SectionEngineOutput`, with
     `runtimeId`, `sourceCe`, and `timestamp` stamped from the adapter.
 
-  Note: `section-controller-ready` is dispatched separately by the
-  kernel's Svelte `createEventDispatcher`, not by an adapter bridge.
-  The deprecated readiness aliases (`readiness-change`,
-  `interaction-ready`, `ready`) and their `legacy-event-bridge` were
-  removed in the broad architecture review compat sweep — see the
+  Note: the deprecated readiness aliases (`readiness-change`,
+  `interaction-ready`, `ready`) and their `legacy-event-bridge`, plus
+  the deprecated `section-controller-ready` Svelte/DOM event, were
+  all removed in the broad architecture review compat sweep — see the
   Migration section below.
 - **`SectionRuntimeEngine`** — narrow, stable facade hosts use to mount,
   drive, and dispose a section runtime. Owns the registry, lazily constructs
@@ -263,10 +262,12 @@ design:
   accepted only via `runtime.<key>` on every section-player layout CE.
   The top-level prop aliases were removed in the broad architecture
   review compat sweep; the runtime tier is the sole supported entry
-  point on the layout CEs. `<pie-assessment-toolkit>` keeps
-  `createSectionController` as a direct JS prop (its composition
-  surface) and `isolation` as a kebab attribute (`@deprecated since
-  M5`); see the changeset for the exact carve-outs.
+  point on the layout CEs. `<pie-assessment-toolkit>` keeps both keys
+  as JS-only props (no kebab-attribute surface): section-player
+  layouts forward `runtime.createSectionController` and
+  `runtime.isolation` to the wrapped toolkit via Svelte property
+  bindings, and standalone hosts that need to override coordinator
+  inheritance should pass an explicit `coordinator={...}` instead.
 
 ### Canonical tier-1 attribute set
 
@@ -393,11 +394,11 @@ Telemetry
 ## Readiness vocabulary (M6)
 
 `pie-stage-change` is the canonical readiness vocabulary across the
-section-player and the assessment toolkit. It replaces a heterogeneous
+section-player and the assessment toolkit. It replaced a heterogeneous
 mix of legacy events (`ready`, `interaction-ready`,
-`section-controller-ready`, `toolkit-ready`, `section-ready`) with a
-single typed transition stream that a host can subscribe to once and
-correlate across wrapper depths.
+`section-controller-ready`, `toolkit-ready`, `section-ready`) — all
+of which have been removed — with a single typed transition stream
+that a host can subscribe to once and correlate across wrapper depths.
 
 Stages and order (post-retro: 4 canonical stages)
 - `composed` (host-provided composition resolved — items / passages
@@ -429,7 +430,9 @@ DOM events
   — kernel-only; fires once per cohort when every item has loaded.
 - Removed in the broad architecture review compat sweep: the
   deprecated readiness aliases `readiness-change`, `interaction-ready`,
-  and `ready`, along with their `legacy-event-bridge`. Migrate
+  and `ready` (plus their `legacy-event-bridge`), and the deprecated
+  `section-controller-ready` Svelte/DOM event (plus its
+  `pie-section-controller-ready` instrumentation mapping). Migrate
   consumers as follows:
   - `readiness-change` → listen for `pie-stage-change`; the readiness
     payload is also reachable via `selectReadiness()` /
@@ -437,10 +440,10 @@ DOM events
   - `interaction-ready` → listen for `pie-stage-change` and filter on
     `detail.stage === "interactive"`.
   - `ready` → listen for `pie-loading-complete`.
-- `section-controller-ready` is still dispatched by the kernel's Svelte
-  `createEventDispatcher` (forwarded by each layout CE wrapper); new
-  host code should prefer `coordinator.waitForSectionController(...)`
-  or `pie-stage-change` filtered on `detail.stage === "engine-ready"`.
+  - `section-controller-ready` → call
+    `waitForSectionController(timeoutMs)` or `getSectionController()`
+    on the layout CE, or filter `pie-stage-change` for
+    `detail.stage === "engine-ready"`.
 
 Callback prop mirrors
 - `onStageChange(detail)` is exposed on every `<pie-section-player-…>`

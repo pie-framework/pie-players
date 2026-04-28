@@ -5,8 +5,7 @@
  * Routes `framework-error` engine outputs into a `FrameworkErrorBus`
  * (write side: `FrameworkErrorReporter`). The bus is the single
  * fan-out point shared with the toolkit CE's banner, the coordinator's
- * canonical / deprecated lifecycle hooks (`onFrameworkError`,
- * `onError`, `onTTSError`, `onProviderError`), and any direct host
+ * canonical `onFrameworkError` lifecycle hook, and any direct host
  * subscribers via `subscribeFrameworkErrors`. See
  * `packages/assessment-toolkit/src/services/framework-error-bus.ts`
  * for the full bus contract.

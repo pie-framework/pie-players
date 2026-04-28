@@ -1,14 +1,17 @@
 ---
-'@pie-players/pie-section-player': major
-'@pie-players/pie-assessment-toolkit': major
-'@pie-players/pie-assessment-player': major
-'@pie-players/pie-players-shared': major
+'@pie-players/pie-section-player': patch
+'@pie-players/pie-assessment-toolkit': patch
+'@pie-players/pie-assessment-player': patch
+'@pie-players/pie-players-shared': patch
 ---
 
 PIE-501: harden element loading during section-player section swaps.
 
 Pre-1.0 lockstep release: every package in the `fixed` block bumps
-together at release time per the project versioning policy. PIE-501
+together at release time per the project versioning policy. Per pre-1.0
+semver convention every release is a patch bump, even when behavior
+changes are breaking — the breaking changes inventory below is for
+host migration, not for the version bump level. PIE-501
 investigation traced sporadic post-section-swap render failures
 (`Preloaded strategy requires pre-registered elements; missing tags:
 …`) to two coupled root causes — a non-truthful element-load promise

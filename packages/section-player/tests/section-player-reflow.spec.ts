@@ -16,7 +16,7 @@ test.describe("section player splitpane reflow", () => {
 
 			const layoutContainer = page
 				.locator(
-					".pie-section-player-split-content, .pie-section-player-vertical-content",
+					".pie-section-player-split-content, .pie-section-player-vertical-content, .pie-section-player-tabbed-frame, .pie-section-player-tabbed-content",
 				)
 				.first();
 			await expect(layoutContainer).toBeVisible();
@@ -30,9 +30,17 @@ test.describe("section player splitpane reflow", () => {
 				})
 				.toBe(true);
 
+			const tabbedItemsLabel = page
+				.locator('[data-pie-purpose="item-label"][role="tab"]')
+				.first();
+			if ((await tabbedItemsLabel.count()) > 0) {
+				await tabbedItemsLabel.click();
+				await expect(tabbedItemsLabel).toHaveAttribute("aria-selected", "true");
+			}
+
 			const itemPane = page
 				.locator(
-					".pie-section-player-items-pane, .pie-section-player-items-section",
+					'.pie-section-player-tab-panel[role="tabpanel"][id$="-panel-items"], .pie-section-player-tab-panel--items, .pie-section-player-items-pane, .pie-section-player-items-section',
 				)
 				.first();
 			await expect(itemPane).toBeVisible();
@@ -45,9 +53,17 @@ test.describe("section player splitpane reflow", () => {
 				})
 				.toBe(true);
 
+			const tabbedPassageLabel = page
+				.locator('[data-pie-purpose="passage-label"][role="tab"]')
+				.first();
+			if ((await tabbedPassageLabel.count()) > 0) {
+				await tabbedPassageLabel.click();
+				await expect(tabbedPassageLabel).toHaveAttribute("aria-selected", "true");
+			}
+
 			const passagePane = page
 				.locator(
-					".pie-section-player-passages-pane, .pie-section-player-passages-section",
+					'.pie-section-player-tab-panel[role="tabpanel"][id$="-panel-passage"], .pie-section-player-tab-panel--passages, .pie-section-player-passages-pane, .pie-section-player-passages-section',
 				)
 				.first();
 			if ((await passagePane.count()) > 0) {

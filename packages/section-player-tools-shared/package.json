@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-section-player-tools-shared",
-	"version": "0.3.30",
+	"version": "0.3.31",
 	"type": "module",
 	"description": "Shared UI and helpers for PIE section-player debug tools",
 	"repository": {

@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-players-shared",
-	"version": "0.3.30",
+	"version": "0.3.31",
 	"type": "module",
 	"description": "Shared runtime + UI utilities for PIE players",
 	"license": "MIT",
@@ -101,6 +101,11 @@
 			"types": "./dist/i18n/use-i18n-standalone.svelte.ts",
 			"import": "./dist/i18n/use-i18n-standalone.svelte.ts",
 			"svelte": "./dist/i18n/use-i18n-standalone.svelte.ts"
+		},
+		"./ui/use-promise": {
+			"types": "./dist/ui/use-promise.svelte.ts",
+			"import": "./dist/ui/use-promise.svelte.ts",
+			"svelte": "./dist/ui/use-promise.svelte.ts"
 		}
 	},
 	"files": [

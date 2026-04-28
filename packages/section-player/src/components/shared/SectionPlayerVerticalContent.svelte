@@ -98,6 +98,7 @@
 				preloadedRenderables={layoutModel.preloadedRenderables}
 				preloadedRenderablesSignature={layoutModel.preloadedRenderablesSignature}
 				{preloadComponentTag}
+				preloadEnabled={layoutModel.preloadEnabled}
 				onelements-loaded-change={layoutModel.onItemsPaneElementsLoaded}
 				onelement-preload-retry={layoutModel.onItemsPanePreloadRetry}
 				onelement-preload-error={layoutModel.onItemsPanePreloadError}

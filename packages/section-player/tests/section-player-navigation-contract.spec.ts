@@ -269,68 +269,6 @@ test.describe("section player navigation contract", () => {
 		expect(sameBody).toBe(true);
 	});
 
-	test("deprecated autoFocusFirstItem:true still moves focus (start-of-content)", async ({
-		page,
-	}) => {
-		await page.goto(SPLIT_DEMO, { waitUntil: "networkidle" });
-		await expect(page.locator("pie-section-player-splitpane").first()).toBeVisible();
-
-		const activeTag = await page.evaluate(async () => {
-			const host = document.querySelector("pie-section-player-splitpane") as
-				| (HTMLElement & {
-						policies?: Record<string, unknown>;
-						navigateNext?: () => boolean;
-				  })
-				| null;
-			if (!host) return null;
-			host.policies = {
-				readiness: { mode: "progressive" },
-				preload: { enabled: true },
-				focus: { autoFocusFirstItem: true },
-				telemetry: { enabled: true },
-			};
-			await new Promise((resolve) => setTimeout(resolve, 20));
-			if (!host.navigateNext?.()) return null;
-			await new Promise((resolve) => setTimeout(resolve, 50));
-			return (document.activeElement?.tagName || "").toLowerCase();
-		});
-
-		expect(activeTag).toBe("pie-section-player-passage-card");
-	});
-
-	test("deprecated autoFocusFirstItem:false disables focus movement", async ({
-		page,
-	}) => {
-		await page.goto(SPLIT_DEMO, { waitUntil: "networkidle" });
-		await expect(page.locator("pie-section-player-splitpane").first()).toBeVisible();
-
-		const sameBody = await page.evaluate(async () => {
-			const host = document.querySelector("pie-section-player-splitpane") as
-				| (HTMLElement & {
-						policies?: Record<string, unknown>;
-						navigateNext?: () => boolean;
-				  })
-				| null;
-			if (!host) return false;
-			host.policies = {
-				readiness: { mode: "progressive" },
-				preload: { enabled: true },
-				focus: { autoFocusFirstItem: false },
-				telemetry: { enabled: true },
-			};
-			await new Promise((resolve) => setTimeout(resolve, 20));
-			document.body.focus();
-			if (!host.navigateNext?.()) return false;
-			await new Promise((resolve) => setTimeout(resolve, 50));
-			return (
-				document.activeElement === document.body ||
-				document.activeElement === document.documentElement
-			);
-		});
-
-		expect(sameBody).toBe(true);
-	});
-
 	test("focusStart() defaults to start-of-content even when autoFocus is 'none'", async ({
 		page,
 	}) => {

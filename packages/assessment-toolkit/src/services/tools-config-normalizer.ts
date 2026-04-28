@@ -63,10 +63,34 @@ export interface ToolProvidersConfig {
 	[key: string]: ToolProviderConfig | undefined;
 }
 
+/**
+ * QTI enforcement mode mirrored on `runtime.tools.qtiEnforcement` (M5
+ * mirror rule). Carried alongside `policy` / `placement` / `providers`
+ * so hosts can pin or opt out of the QTI 6-level precedence via the
+ * runtime config without reaching for the toolkit prop directly.
+ *
+ * - `"on"` — force QTI enforcement (engine applies QTI gates regardless
+ *   of bound assessment).
+ * - `"off"` — opt out (engine ignores QTI inputs).
+ * - omitted / `undefined` — auto-mode (the default). The toolkit
+ *   coordinator computes the effective mode from QTI material on the
+ *   bound `AssessmentEntity` / `AssessmentItemRef`. See
+ *   `resolveDefaultQtiEnforcement` in `policy/core/qti-inputs.ts`.
+ */
+export type ToolsQtiEnforcement = "on" | "off";
+
 export interface CanonicalToolsConfig {
 	policy: ToolPolicyConfig;
 	placement: Required<ToolPlacementConfig>;
 	providers: ToolProvidersConfig;
+	/**
+	 * Optional QTI enforcement override. Mirrored on
+	 * `runtime.tools.qtiEnforcement`; consumed by
+	 * `<pie-assessment-toolkit>` and `ToolkitCoordinator` as the
+	 * embedded path's equivalent of the standalone `qti-enforcement`
+	 * attribute. See {@link ToolsQtiEnforcement} for semantics.
+	 */
+	qtiEnforcement?: ToolsQtiEnforcement;
 }
 
 const DEFAULT_PLACEMENT: Required<ToolPlacementConfig> = {
@@ -202,6 +226,14 @@ export function parseToolList(input: string | undefined | null): string[] {
 	);
 }
 
+function assertQtiEnforcement(value: unknown): ToolsQtiEnforcement | undefined {
+	if (value == null) return undefined;
+	if (value === "on" || value === "off") return value;
+	throw new Error(
+		`Invalid tools config at "qtiEnforcement": expected "on" or "off", got ${JSON.stringify(value)}.`,
+	);
+}
+
 export function normalizeToolsConfig(
 	input?: Partial<CanonicalToolsConfig> | null,
 ): CanonicalToolsConfig {
@@ -213,8 +245,9 @@ export function normalizeToolsConfig(
 	const policy = assertPolicyConfig(input?.policy);
 	const placement = assertPlacementConfig(input?.placement);
 	const providers = assertProvidersConfig(input?.providers);
+	const qtiEnforcement = assertQtiEnforcement(input?.qtiEnforcement);
 
-	return {
+	const config: CanonicalToolsConfig = {
 		policy: {
 			allowed: normalizeToolList(assertStringArray(policy?.allowed, "policy.allowed")),
 			blocked: normalizeToolList(assertStringArray(policy?.blocked, "policy.blocked")),
@@ -237,6 +270,10 @@ export function normalizeToolsConfig(
 		},
 		providers,
 	};
+	if (qtiEnforcement) {
+		config.qtiEnforcement = qtiEnforcement;
+	}
+	return config;
 }
 
 export function resolveToolsForLevel(

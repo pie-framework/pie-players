@@ -15,9 +15,16 @@
 			toolRegistry: { type: "Object", reflect: false },
 			accessibility: { type: "Object", reflect: false },
 			coordinator: { type: "Object", reflect: false },
-			createSectionController: { type: "Object", reflect: false },
-			frameworkErrorHook: { type: "Object", reflect: false },
-			isolation: { attribute: "isolation", type: "String" },
+			toolConfigStrictness: {
+				attribute: "tool-config-strictness",
+				type: "String",
+			},
+			onFrameworkError: { type: "Object", reflect: false },
+			// M6 canonical stage-change callback. Mirrors
+			// `runtime.onStageChange`; resolver picks runtime over prop.
+			// Wired imperatively to the toolkit element so the resolved
+			// handler reaches the canonical stage emit point.
+			onStageChange: { type: "Object", reflect: false },
 			env: { type: "Object", reflect: false },
 		},
 	}}
@@ -27,11 +34,10 @@
 	import "@pie-players/pie-assessment-toolkit/components/pie-assessment-toolkit-element";
 	import {
 		createDefaultPersonalNeedsProfile,
+		type FrameworkErrorModel,
+		type ToolConfigStrictness,
+		type ToolkitCoordinatorApi,
 		type ToolRegistry,
-	} from "@pie-players/pie-assessment-toolkit";
-	import {
-		normalizeToolsConfig,
-		resolveToolsForLevel,
 	} from "@pie-players/pie-assessment-toolkit";
 	import type { SectionControllerHandle } from "@pie-players/pie-assessment-toolkit";
 	import { createEventDispatcher } from "svelte";
@@ -45,8 +51,10 @@
 		DEFAULT_ISOLATION,
 		DEFAULT_LAZY_INIT,
 		DEFAULT_PLAYER_TYPE,
+		resolveOnFrameworkError,
 		type RuntimeConfig,
-	} from "./shared/section-player-runtime.js";
+		type StageChangeHandler,
+	} from "@pie-players/pie-assessment-toolkit/runtime/internal";
 	let {
 		assessmentId = DEFAULT_ASSESSMENT_ID,
 		runtime = null as RuntimeConfig | null,
@@ -60,22 +68,21 @@
 		toolRegistry = null as ToolRegistry | null,
 		accessibility = null as Record<string, unknown> | null,
 		coordinator = null as unknown,
-		createSectionController = null as unknown,
-		frameworkErrorHook: _frameworkErrorHook = undefined as
+		toolConfigStrictness = undefined as ToolConfigStrictness | undefined,
+		onFrameworkError = undefined as
 			| undefined
-			| ((errorModel: Record<string, unknown>) => void),
-		isolation = DEFAULT_ISOLATION,
+			| ((model: FrameworkErrorModel) => void),
+		onStageChange = undefined as StageChangeHandler | undefined,
 		env = null as Record<string, unknown> | null,
 	} = $props();
 
 	let toolkitElement = $state<any>(null);
-	let activeToolkitCoordinator = $state<any>(null);
+	let activeToolkitCoordinator = $state<ToolkitCoordinatorApi | null>(null);
 	let lastCompositionVersion = $state(-1);
 	type BaseSectionPlayerEvents = {
 		"composition-changed": { composition: SectionCompositionModel };
 		"toolkit-ready": Record<string, unknown>;
 		"section-ready": Record<string, unknown>;
-		"runtime-error": Record<string, unknown>;
 		"framework-error": Record<string, unknown>;
 		"session-changed": Record<string, unknown>;
 		"runtime-owned": Record<string, unknown>;
@@ -88,7 +95,7 @@
 	const effectiveLazyInit = $derived.by(() => runtime?.lazyInit ?? lazyInit);
 	const effectiveTools = $derived.by(() => runtime?.tools ?? tools);
 	const effectiveToolConfigStrictness = $derived.by(() => {
-		const value = runtime?.toolConfigStrictness;
+		const value = runtime?.toolConfigStrictness ?? toolConfigStrictness;
 		return value === "off" || value === "warn" || value === "error"
 			? value
 			: "error";
@@ -98,10 +105,25 @@
 	);
 	const effectiveCoordinator = $derived.by(() => runtime?.coordinator ?? coordinator);
 	const effectiveCreateSectionController = $derived.by(
-		() => runtime?.createSectionController ?? createSectionController,
+		() => runtime?.createSectionController,
 	);
-	const effectiveIsolation = $derived.by(() => runtime?.isolation ?? isolation);
+	const effectiveIsolation = $derived.by(
+		() => runtime?.isolation ?? DEFAULT_ISOLATION,
+	);
 	const effectiveEnv = $derived.by(() => runtime?.env ?? env ?? DEFAULT_ENV);
+	// Two-tier resolution. The base CE talks to the toolkit directly (no
+	// kernel layer), so it owns the resolver boundary in this path.
+	const effectiveOnFrameworkError = $derived.by(() =>
+		resolveOnFrameworkError({
+			runtime,
+			onFrameworkError,
+		}),
+	);
+	// Two-tier resolution for `onStageChange` (M6). Strict mirror rule
+	// applies: `runtime.onStageChange` wins over the top-level prop.
+	const effectiveOnStageChange = $derived.by(
+		() => runtime?.onStageChange ?? onStageChange,
+	);
 	const effectiveSectionId = $derived.by(
 		() => sectionId || (resolvedSection as any)?.identifier || "",
 	);
@@ -148,7 +170,8 @@
 	): void {
 		const detail = (event as CustomEvent).detail as Record<string, unknown>;
 		if (eventName === "toolkit-ready" && detail?.coordinator) {
-			activeToolkitCoordinator = detail.coordinator;
+			activeToolkitCoordinator =
+				detail.coordinator as ToolkitCoordinatorApi;
 		}
 		emit(eventName, detail || ({} as Record<string, unknown>));
 	}
@@ -161,13 +184,8 @@
 		handleToolkitEvent(event, "section-ready");
 	}
 
-	function handleRuntimeErrorEvent(event: Event): void {
-		handleToolkitEvent(event, "runtime-error");
-	}
-
-	function handleFrameworkErrorHook(errorModel: unknown): void {
-		const detail = (errorModel || {}) as Record<string, unknown>;
-		emit("framework-error", detail);
+	function handleFrameworkErrorEvent(event: Event): void {
+		handleToolkitEvent(event, "framework-error");
 	}
 
 	function handleSessionChangedEvent(event: Event): void {
@@ -182,33 +200,63 @@
 		handleToolkitEvent(event, "runtime-inherited");
 	}
 
-	const normalizedToolsConfig = $derived.by(() =>
-		normalizeToolsConfig((effectiveTools || {}) as any),
-	);
-	const annotationToolbarPlacementEnabled = $derived.by(() => {
-		const levels: Array<"section" | "item" | "passage"> = [
-			"section",
-			"item",
-			"passage",
-		];
-		return levels.some((level) =>
-			resolveToolsForLevel(normalizedToolsConfig as any, level).includes(
-				"annotationToolbar",
-			),
+	// M8 PR 3 — annotation-toolbar visibility goes through the
+	// coordinator's `ToolPolicyEngine`. The engine already applies
+	// placement + `policy.allowed` / `policy.blocked` + provider
+	// veto + QTI gates in one pass, so the base CE no longer
+	// duplicates those checks against the raw `tools` config.
+	//
+	// The engine answer can change without the coordinator reference
+	// changing (e.g. host calls `updateAssessment(...)` mid-session),
+	// so we bump `policyVersion` from `onPolicyChange` to retrigger
+	// this derivation.
+	let policyVersion = $state(0);
+	$effect(() => {
+		const coord = activeToolkitCoordinator;
+		if (!coord || typeof coord.onPolicyChange !== "function") return;
+		const unsubscribe = coord.onPolicyChange(() => {
+			policyVersion += 1;
+		});
+		return () => {
+			try {
+				unsubscribe?.();
+			} catch {
+				// detach errors are non-fatal
+			}
+		};
+	});
+	// Keep the scope shape aligned with what `pie-item-toolbar`
+	// passes for its own per-item decisions so a custom
+	// `PolicySource` that reads e.g. `assessmentId` cannot disagree
+	// with the toolbar's verdict for the same level / id. Item +
+	// passage scopes here only know the section we're mounting in
+	// (item / passage ids belong to the inner toolbars), so we pass
+	// the section id as the scope id and let `assessmentId` /
+	// `sectionId` carry the rest.
+	//
+	// `Array.some` short-circuits on the first matching level, so
+	// the typical case (annotation toolbar registered at one level)
+	// is one engine call; the worst case is three.
+	const ANNOTATION_LEVELS = ["section", "item", "passage"] as const;
+	const shouldRenderAnnotationToolbar = $derived.by(() => {
+		void policyVersion;
+		const coord = activeToolkitCoordinator;
+		if (!coord || typeof coord.decideToolPolicy !== "function") return false;
+		const scopeId = effectiveSectionId || "*";
+		return ANNOTATION_LEVELS.some((level) =>
+			coord
+				.decideToolPolicy({
+					level,
+					scope: {
+						level,
+						scopeId,
+						assessmentId: effectiveAssessmentId,
+						sectionId: effectiveSectionId || undefined,
+					},
+				})
+				.visibleTools.some((entry) => entry.toolId === "annotationToolbar"),
 		);
 	});
-	const annotationToolbarProviderEnabled = $derived.by(() =>
-		activeToolkitCoordinator?.isToolEnabled?.("annotationToolbar") ??
-		((normalizedToolsConfig as any)?.providers?.annotationToolbar?.enabled !==
-			false),
-	);
-	const shouldRenderAnnotationToolbar = $derived(
-		Boolean(
-			activeToolkitCoordinator &&
-				annotationToolbarPlacementEnabled &&
-				annotationToolbarProviderEnabled,
-		),
-	);
 	let annotationToolbarModuleLoaded = $state(false);
 
 	$effect(() => {
@@ -238,11 +286,29 @@
 			effectiveCreateSectionController || (() => new SectionController());
 	});
 
+	// Svelte 5 compiles `<custom-element onCamelCase={fn}>` as
+	// `addEventListener('camelcase', fn)` rather than a property
+	// assignment, so the canonical model-shape `onFrameworkError`
+	// callback prop on the toolkit cannot be wired through template
+	// binding. Imperatively assign it here so the base CE's resolved
+	// callback (runtime > prop) reaches the toolkit's bus subscriber.
 	$effect(() => {
 		if (!toolkitElement) return;
-		toolkitElement.frameworkErrorHook = handleFrameworkErrorHook;
+		toolkitElement.onFrameworkError = effectiveOnFrameworkError;
 		return () => {
-			toolkitElement.frameworkErrorHook = undefined;
+			toolkitElement.onFrameworkError = undefined;
+		};
+	});
+
+	// Same Svelte-5 rationale for the M6 `onStageChange` callback. The
+	// toolkit's stage tracker invokes the resolved handler at the same
+	// emit point as the `pie-stage-change` DOM event so the callback
+	// and the event stay in lockstep for hosts using either surface.
+	$effect(() => {
+		if (!toolkitElement) return;
+		toolkitElement.onStageChange = effectiveOnStageChange;
+		return () => {
+			toolkitElement.onStageChange = undefined;
 		};
 	});
 
@@ -380,17 +446,16 @@
 	{toolRegistry}
 	accessibility={effectiveAccessibility}
 	coordinator={effectiveCoordinator}
-	frameworkErrorHook={handleFrameworkErrorHook}
 	isolation={effectiveIsolation}
 	oncomposition-changed={handleCompositionChanged}
 	ontoolkit-ready={handleToolkitReadyEvent}
 	onsection-ready={handleSectionReadyEvent}
-	onruntime-error={handleRuntimeErrorEvent}
+	onframework-error={handleFrameworkErrorEvent}
 	onsession-changed={handleSessionChangedEvent}
 	onruntime-owned={handleRuntimeOwnedEvent}
 	onruntime-inherited={handleRuntimeInheritedEvent}
 >
-	{#if shouldRenderAnnotationToolbar && annotationToolbarModuleLoaded}
+	{#if shouldRenderAnnotationToolbar && annotationToolbarModuleLoaded && activeToolkitCoordinator}
 		<pie-tool-annotation-toolbar
 			enabled={true}
 			ttsService={activeToolkitCoordinator.ttsService}

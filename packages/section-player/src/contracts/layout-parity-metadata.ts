@@ -15,8 +15,6 @@ const RECOMMENDED_BASIC_PROPS = [
 	"splitPaneMinRegionWidth",
 	"splitPaneCollapseStrategy",
 	"enabledTools",
-	"itemToolbarTools",
-	"passageToolbarTools",
 ] as const;
 
 const ADVANCED_ESCAPE_HATCH_PROPS = [
@@ -27,15 +25,18 @@ const ADVANCED_ESCAPE_HATCH_PROPS = [
 	"tools",
 	"accessibility",
 	"coordinator",
-	"createSectionController",
-	"isolation",
 	"env",
 	"iifeBundleHost",
 	"toolRegistry",
 	"sectionHostButtons",
 	"itemHostButtons",
 	"passageHostButtons",
+	"policies",
+	"toolConfigStrictness",
 	"hooks",
+	"onFrameworkError",
+	"onStageChange",
+	"onLoadingComplete",
 ] as const;
 
 const SHARED_PROPS = [
@@ -46,13 +47,11 @@ const SHARED_PROPS = [
 const SHARED_EVENTS = [
 	SECTION_PLAYER_PUBLIC_EVENTS.runtimeOwned,
 	SECTION_PLAYER_PUBLIC_EVENTS.runtimeInherited,
-	SECTION_PLAYER_PUBLIC_EVENTS.runtimeError,
+	SECTION_PLAYER_PUBLIC_EVENTS.frameworkError,
 	SECTION_PLAYER_PUBLIC_EVENTS.compositionChanged,
 	SECTION_PLAYER_PUBLIC_EVENTS.sessionChanged,
-	SECTION_PLAYER_PUBLIC_EVENTS.sectionControllerReady,
-	SECTION_PLAYER_PUBLIC_EVENTS.readinessChange,
-	SECTION_PLAYER_PUBLIC_EVENTS.interactionReady,
-	SECTION_PLAYER_PUBLIC_EVENTS.ready,
+	SECTION_PLAYER_PUBLIC_EVENTS.stageChange,
+	SECTION_PLAYER_PUBLIC_EVENTS.loadingComplete,
 ] as const;
 
 const SHARED_COMMANDS = [

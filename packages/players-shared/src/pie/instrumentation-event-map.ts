@@ -4,6 +4,17 @@ export type InstrumentationEventMapping = {
 };
 
 export const TOOLKIT_INSTRUMENTATION_EVENT_MAP: InstrumentationEventMapping[] = [
+	// M6 canonical readiness vocabulary. The four-stage canonical list
+	// (`composed`, `engine-ready`, `interactive`, `disposed`) is identical
+	// across the toolkit CE and the layout CEs — the M6 retro removed the
+	// `attached`, `runtime-bound`, and `ui-rendered` stages because they
+	// had zero internal or external consumers. Hosts listen for the
+	// DOM-prefixed name directly (`pie-stage-change`); the instrumentation
+	// bridge forwards the same name to telemetry.
+	{
+		sourceEventName: "pie-stage-change",
+		instrumentationEventName: "pie-toolkit-stage-change",
+	},
 	{
 		sourceEventName: "runtime-owned",
 		instrumentationEventName: "pie-toolkit-runtime-owned",
@@ -21,27 +32,27 @@ export const TOOLKIT_INSTRUMENTATION_EVENT_MAP: InstrumentationEventMapping[] = 
 		instrumentationEventName: "pie-toolkit-section-ready",
 	},
 	{
-		sourceEventName: "runtime-error",
-		instrumentationEventName: "pie-toolkit-runtime-error",
+		sourceEventName: "framework-error",
+		instrumentationEventName: "pie-toolkit-framework-error",
 	},
 ];
 
 export const SECTION_INSTRUMENTATION_EVENT_MAP: InstrumentationEventMapping[] = [
+	// M6 canonical readiness vocabulary. Hosts listen for the DOM-prefixed
+	// names directly (`pie-stage-change`, `pie-loading-complete`); the
+	// instrumentation bridge forwards the same names to telemetry. The
+	// deprecated readiness mappings (`readiness-change`,
+	// `interaction-ready`, `ready`) and the deprecated
+	// `section-controller-ready` mapping were removed in the broad
+	// architecture review compat sweep alongside their DOM-event
+	// surfaces.
 	{
-		sourceEventName: "readiness-change",
-		instrumentationEventName: "pie-section-readiness-change",
+		sourceEventName: "pie-stage-change",
+		instrumentationEventName: "pie-section-stage-change",
 	},
 	{
-		sourceEventName: "interaction-ready",
-		instrumentationEventName: "pie-section-interaction-ready",
-	},
-	{
-		sourceEventName: "ready",
-		instrumentationEventName: "pie-section-ready",
-	},
-	{
-		sourceEventName: "section-controller-ready",
-		instrumentationEventName: "pie-section-controller-ready",
+		sourceEventName: "pie-loading-complete",
+		instrumentationEventName: "pie-section-loading-complete",
 	},
 	{
 		sourceEventName: "session-changed",
@@ -52,8 +63,8 @@ export const SECTION_INSTRUMENTATION_EVENT_MAP: InstrumentationEventMapping[] = 
 		instrumentationEventName: "pie-section-composition-changed",
 	},
 	{
-		sourceEventName: "runtime-error",
-		instrumentationEventName: "pie-section-runtime-error",
+		sourceEventName: "framework-error",
+		instrumentationEventName: "pie-section-framework-error",
 	},
 	{
 		sourceEventName: "element-preload-retry",

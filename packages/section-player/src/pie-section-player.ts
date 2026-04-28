@@ -21,7 +21,6 @@ export type {
 	SectionPlayerPublicEventName,
 	SectionPlayerReadinessPhase,
 	SectionPlayerReadinessChangeDetail,
-	SectionPlayerControllerReadyDetail,
 } from "./contracts/public-events.js";
 export { SECTION_PLAYER_PUBLIC_EVENTS } from "./contracts/public-events.js";
 export type {
@@ -46,6 +45,8 @@ export type {
 export {
 	DEFAULT_FOCUS_POLICY,
 	DEFAULT_SECTION_PLAYER_POLICIES,
+	isPreloadEnabled,
+	isTelemetryEnabled,
 	resolveAutoFocusStrategy,
 } from "./policies/index.js";
 export type {

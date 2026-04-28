@@ -8,15 +8,30 @@
 		ToolbarItem,
 		ToolConfigStrictness,
 	} from "@pie-players/pie-assessment-toolkit";
+	import {
+		SECTION_RUNTIME_ENGINE_KEY,
+		SectionRuntimeEngine,
+		sectionRuntimeEngineHostContext,
+	} from "@pie-players/pie-assessment-toolkit/runtime/engine";
+	import { ContextProvider } from "@pie-players/pie-context";
+	import {
+		FrameworkErrorBus,
+		cohortsEqual,
+		makeCohort,
+		type EngineReadinessSignals,
+	} from "@pie-players/pie-assessment-toolkit/runtime/internal";
 	import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
 	import type { SectionControllerHandle } from "@pie-players/pie-assessment-toolkit";
-	import { createEventDispatcher } from "svelte";
-	import type { SectionPlayerReadinessChangeDetail } from "../../contracts/public-events.js";
+	import { createEventDispatcher, setContext, untrack } from "svelte";
 	import type {
 		SectionPlayerNavigationSnapshot,
 		SectionPlayerSnapshot,
 	} from "../../contracts/runtime-host-contract.js";
-	import { DEFAULT_SECTION_PLAYER_POLICIES } from "../../policies/index.js";
+	import {
+		DEFAULT_SECTION_PLAYER_POLICIES,
+		isPreloadEnabled,
+	} from "../../policies/index.js";
+	import type { FrameworkErrorModel } from "@pie-players/pie-assessment-toolkit";
 	import type { SectionPlayerPolicies } from "../../policies/types.js";
 	import { createPlayerAction } from "./player-action.js";
 	import {
@@ -25,13 +40,16 @@
 		getCompositionSnapshotFromEvent,
 	} from "./section-player-view-state.js";
 	import { EMPTY_COMPOSITION } from "./composition.js";
-	import {
-		resolveSectionPlayerRuntimeState,
-		type RuntimeConfig,
-	} from "./section-player-runtime.js";
+	import { resolveSectionPlayerRuntimeState } from "./section-player-host-runtime.js";
+	import type {
+		RuntimeConfig,
+		StageChangeHandler,
+		LoadingCompleteHandler,
+	} from "@pie-players/pie-assessment-toolkit/runtime/internal";
+	import { attachRuntimeCallbackBridge } from "./section-player-runtime-callbacks.js";
 	import type { SectionPlayerCardRenderContext } from "./section-player-card-context.js";
 	import { coerceBooleanLike } from "./section-player-props.js";
-	import { createReadinessDetail } from "./section-player-readiness.js";
+	import { createReadinessDetail } from "@pie-players/pie-assessment-toolkit/runtime/internal";
 	import SectionPlayerLayoutScaffold from "./SectionPlayerLayoutScaffold.svelte";
 	import type { SectionPlayerHostHooks } from "../../contracts/host-hooks.js";
 
@@ -41,20 +59,19 @@
 	};
 
 	type KernelEvents = {
-		"readiness-change": SectionPlayerReadinessChangeDetail;
-		"interaction-ready": SectionPlayerReadinessChangeDetail;
-		ready: SectionPlayerReadinessChangeDetail;
-		"runtime-error": Record<string, unknown>;
-		"framework-error": Record<string, unknown>;
+		// Non-engine Svelte events the kernel still dispatches up to the
+		// hosting layout CE. The canonical M6 vocabulary
+		// (`pie-stage-change` / `pie-loading-complete`) and
+		// `framework-error` are not dispatched here — the section
+		// runtime engine bridges those onto DOM events fired directly
+		// on the layout CE host. The deprecated readiness aliases
+		// (`readiness-change` / `interaction-ready` / `ready`) and
+		// their DOM-event bridge were removed in the broad
+		// architecture review compat sweep.
 		"runtime-owned": Record<string, unknown>;
 		"runtime-inherited": Record<string, unknown>;
 		"session-changed": Record<string, unknown>;
 		"composition-changed": { composition: unknown };
-		"section-controller-ready": {
-			sectionId: string;
-			attemptId?: string;
-			controller: unknown;
-		};
 		"element-preload-retry": Record<string, unknown>;
 		"element-preload-error": Record<string, unknown>;
 	};
@@ -71,15 +88,11 @@
 		tools,
 		accessibility,
 		coordinator,
-		createSectionController,
-		isolation,
 		env,
 		iifeBundleHost,
 		showToolbar = "false" as boolean | string | null | undefined,
 		toolbarPosition = "right",
 		enabledTools = "",
-		itemToolbarTools = "",
-		passageToolbarTools = "",
 		toolConfigStrictness = "error" as ToolConfigStrictness,
 		toolRegistry = null as ToolRegistry | null,
 		sectionHostButtons = [] as ToolbarItem[],
@@ -92,9 +105,37 @@
 		} satisfies PlayerActionConfig,
 		policies = DEFAULT_SECTION_PLAYER_POLICIES as SectionPlayerPolicies,
 		hooks = undefined as SectionPlayerHostHooks | undefined,
-		frameworkErrorHook = undefined as
+		onFrameworkError = undefined as
 			| undefined
-			| ((errorModel: Record<string, unknown>) => void),
+			| ((model: FrameworkErrorModel) => void),
+		// M6 canonical stage-change callback. The DOM event
+		// `pie-stage-change` remains the canonical channel; this
+		// callback runs at the same emit point so hosts that prefer
+		// callback-style wiring stay in lockstep with the event. Per
+		// the strict mirror rule, `runtime.onStageChange` wins; the
+		// resolved handler arrives via `runtimeState.effectiveRuntime`.
+		onStageChange = undefined as StageChangeHandler | undefined,
+		// M6 canonical loading-complete callback. Mirrors the
+		// `pie-loading-complete` DOM event one-to-one; invoked at the
+		// same dispatch point so the event and the callback fire in
+		// lockstep for the same cohort. Resolved through the runtime
+		// (`runtime.onLoadingComplete` wins over the top-level prop)
+		// so any host channel reaches the same effective handler.
+		onLoadingComplete = undefined as LoadingCompleteHandler | undefined,
+		// `sourceCe` is the host layout CE's tag name (without the
+		// `--version-<encoded>` suffix) used to label `pie-stage-change`
+		// emissions. Each layout CE that mounts the kernel passes its own
+		// canonical tag name; defaults to `pie-section-player` so kernel
+		// instantiations in tests/demos still produce well-formed events.
+		sourceCe = "pie-section-player" as string,
+		// Host element on which the section runtime engine should
+		// dispatch its DOM events (`pie-stage-change`,
+		// `pie-loading-complete`, `framework-error`, and the legacy
+		// readiness aliases). Each layout CE that mounts the kernel
+		// passes its own host element (`this`); defaults to `null` so
+		// the kernel keeps mounting before the layout CE has resolved
+		// its host. The engine attaches lazily once `host` is non-null.
+		host = null as HTMLElement | null,
 	} = $props();
 
 	const dispatch = createEventDispatcher<KernelEvents>();
@@ -132,10 +173,53 @@
 		focusStart?: () => boolean;
 	} | null>(null);
 	let sectionReady = $state(false);
-	let interactionReadyDispatched = $state(false);
-	let finalReadyDispatched = $state(false);
 	let runtimeErrorState = $state(false);
 	let sectionControllerReadyDispatched = $state(false);
+
+	// M7 PR 5: own a section runtime engine + framework-error bus per
+	// kernel mount. The engine drives stage progression, readiness
+	// emission, and `pie-loading-complete` directly via DOM events on
+	// the layout CE host (passed in as `host` once the layout CE has
+	// resolved its self-element). The kernel feeds the engine reactive
+	// inputs from a single tracked `$effect` wrapped in `untrack`.
+	//
+	// Construction is cheap and side-effect free; `attachHost` is the
+	// step that actually wires the adapter (DOM/legacy/framework-error
+	// bridges). We construct here so the engine reference is stable for
+	// `setContext` and so `getRuntimeId()` returns the canonical id used
+	// downstream (e.g. for the `runtimeId` field in event details).
+	const frameworkErrorBus = new FrameworkErrorBus();
+	const engine = new SectionRuntimeEngine();
+
+	// Provide the engine to descendant Svelte components via the
+	// canonical Svelte context key. This reaches in-tree consumers
+	// (descendants in the same shadow root) but does not cross the
+	// custom-element boundary into the toolkit CE.
+	setContext(SECTION_RUNTIME_ENGINE_KEY, engine);
+
+	// M7 PR 6: cross-CE bridge to the wrapped toolkit. The toolkit CE
+	// renders inside its own shadow root and reaches the engine through
+	// a `pie-context` handshake on the layout CE host. We install the
+	// `ContextProvider` once the layout CE host is available and
+	// disconnect on unmount; the consumer is on the toolkit side and
+	// uses `connectSectionRuntimeEngineHostContext`. Standalone
+	// toolkits never see this provider and continue using their own
+	// engine.
+	let engineHostProvider: ContextProvider<
+		typeof sectionRuntimeEngineHostContext
+	> | null = null;
+
+	// Non-reactive bookkeeping for the engine-driver effect. `attached`
+	// gates the very first `attachHost` (per cohort the adapter handles
+	// host swaps idempotently via `setHost`); `lastCohort` is the
+	// previously-dispatched cohort we compare against with
+	// `cohortsEqual` so we differentiate first-time `initialize`,
+	// no-op (same cohort), `update-runtime` (same cohort, runtime
+	// changed), and `cohort-change` (rolled over). Mutated only inside
+	// `untrack(...)` so they never appear as tracked deps of the
+	// effect that maintains them.
+	let attached = false;
+	let lastCohort: ReturnType<typeof makeCohort> = null;
 
 	const compositionModel = $derived(compositionSnapshot.compositionModel);
 	const passages = $derived(compositionSnapshot.passages);
@@ -153,19 +237,43 @@
 			tools,
 			accessibility,
 			coordinator,
-			createSectionController,
-			isolation,
 			env,
 			runtime,
 			enabledTools,
-			itemToolbarTools,
-			passageToolbarTools,
-			toolRegistry,
 			toolConfigStrictness,
+			onFrameworkError,
+			onStageChange,
+			onLoadingComplete,
 		}),
 	);
 	const effectiveRuntime = $derived(runtimeState.effectiveRuntime);
+	const effectiveToolsConfig = $derived(runtimeState.effectiveToolsConfig);
 	const playerRuntime = $derived(runtimeState.playerRuntime);
+	// Per-region toolbar-tools strings derived from the canonical
+	// `tools.placement.{item,passage}` arrays. Internal card / pane
+	// custom elements still consume these as comma-separated strings
+	// (the `<pie-item-toolbar tools="...">` attribute), so the kernel
+	// joins the canonical placement arrays back into strings and
+	// exposes them via the slot. The deprecated top-level
+	// `item-toolbar-tools` / `passage-toolbar-tools` aliases were
+	// removed in the broad architecture review compat sweep; hosts
+	// must populate `tools.placement.{item,passage}` directly.
+	const effectiveItemToolbarTools = $derived.by(() => {
+		const tools = effectiveToolsConfig as
+			| { placement?: { item?: unknown } }
+			| undefined
+			| null;
+		const item = tools?.placement?.item;
+		return Array.isArray(item) ? item.join(",") : "";
+	});
+	const effectivePassageToolbarTools = $derived.by(() => {
+		const tools = effectiveToolsConfig as
+			| { placement?: { passage?: unknown } }
+			| undefined
+			| null;
+		const passage = tools?.placement?.passage;
+		return Array.isArray(passage) ? passage.join(",") : "";
+	});
 	const resolvedPlayerDefinition = $derived(playerRuntime.resolvedPlayerDefinition);
 	const resolvedPlayerTag = $derived(playerRuntime.resolvedPlayerTag);
 	const resolvedPlayerAttributes = $derived(playerRuntime.resolvedPlayerAttributes);
@@ -189,6 +297,7 @@
 		}),
 	);
 	const normalizedShowToolbar = $derived(coerceBooleanLike(showToolbar, false));
+	const preloadEnabled = $derived(isPreloadEnabled(policies));
 	const readinessDetail = $derived.by(() =>
 		createReadinessDetail({
 			mode: policies.readiness.mode,
@@ -242,16 +351,41 @@
 		sectionReady = true;
 	}
 
-	function handleRuntimeError(event: Event) {
-		runtimeErrorState = true;
-		dispatch("runtime-error", (event as CustomEvent<Record<string, unknown>>).detail || {});
-	}
-
 	function handleFrameworkError(event: Event) {
-		const detail = (event as CustomEvent<Record<string, unknown>>).detail || {};
+		const detail = (event as CustomEvent<FrameworkErrorModel>).detail;
 		runtimeErrorState = true;
-		dispatch("framework-error", detail);
-		frameworkErrorHook?.(detail);
+		// Route the framework-error model into the section runtime
+		// engine so the engine's framework-error / DOM-event bridges
+		// fan out a `framework-error` DOM event on the layout CE host.
+		// The engine's bridge is the only kernel-side emit point.
+		//
+		// The wrapped `<pie-assessment-toolkit>` still dispatches its
+		// own `framework-error` (with `bubbles: true, composed: true`)
+		// for direct toolkit consumers — that emit is captured here
+		// mid-bubble at `<pie-section-player-base>`. To collapse the
+		// previously dual-emitted layout-host surface to a single
+		// canonical `framework-error` per error, we stop further
+		// propagation after re-feeding the engine: the bubbled toolkit
+		// emit no longer reaches the layout CE host, but the engine
+		// bridge fires its own (non-bubbling) `framework-error` on the
+		// layout host directly. Direct listeners on the toolkit host
+		// itself are unaffected because the event was already
+		// delivered to them before this listener runs.
+		//
+		// `onFrameworkError` is still delivered exactly once by the
+		// underlying `pie-assessment-toolkit` (two-tier precedence:
+		// `runtime.onFrameworkError` wins; resolution happens in
+		// `resolveRuntime`); the kernel intentionally does not invoke
+		// any handler here to avoid double-firing.
+		//
+		// The collapse is pinned by
+		// `tests/section-player-framework-error-dual-emit.test.ts`,
+		// which now asserts the single canonical emit on the layout
+		// host. The deprecated dual-emit was removed in the broad
+		// architecture review compat sweep.
+		if (!detail) return;
+		event.stopPropagation();
+		engine.dispatchInput({ kind: "framework-error", error: detail });
 	}
 
 	function handleSessionChanged(event: Event) {
@@ -266,16 +400,25 @@
 		dispatch("runtime-inherited", (event as CustomEvent<Record<string, unknown>>).detail || {});
 	}
 
+	function notifySectionControllerResolved(_controller: SectionControllerHandle) {
+		// Drives the engine FSM stage progression
+		// `booting-section → engine-ready`. Idempotent per cohort via
+		// the `sectionControllerReadyDispatched` latch (reset in the
+		// engine-driver `$effect` whenever the cohort rolls). The
+		// previously co-emitted kernel `section-controller-ready` Svelte
+		// event was removed in the broad architecture review compat
+		// sweep; hosts should call `waitForSectionController(timeoutMs)`
+		// or `getSectionController()` on the layout CE, or filter
+		// `pie-stage-change` for `detail.stage === "engine-ready"`.
+		engine.dispatchInput({ kind: "section-controller-resolved" });
+	}
+
 	async function emitSectionControllerReadyIfNeeded() {
 		if (sectionControllerReadyDispatched) return;
 		const controller = await scaffoldRef?.waitForSectionController?.(2500);
 		if (!controller) return;
 		sectionControllerReadyDispatched = true;
-		dispatch("section-controller-ready", {
-			sectionId,
-			attemptId: attemptId || undefined,
-			controller,
-		});
+		notifySectionControllerResolved(controller);
 	}
 
 	function handleToolkitReady(_event: Event) {
@@ -344,11 +487,7 @@
 		const controller = scaffoldRef?.getSectionController?.() || null;
 		if (controller && !sectionControllerReadyDispatched) {
 			sectionControllerReadyDispatched = true;
-			dispatch("section-controller-ready", {
-				sectionId,
-				attemptId: attemptId || undefined,
-				controller,
-			});
+			notifySectionControllerResolved(controller);
 		}
 		return controller;
 	}
@@ -359,11 +498,7 @@
 		const controller = await scaffoldRef?.waitForSectionController?.(timeoutMs);
 		if (controller && !sectionControllerReadyDispatched) {
 			sectionControllerReadyDispatched = true;
-			dispatch("section-controller-ready", {
-				sectionId,
-				attemptId: attemptId || undefined,
-				controller,
-			});
+			notifySectionControllerResolved(controller);
 		}
 		return controller || null;
 	}
@@ -374,16 +509,193 @@
 		});
 	});
 
+	// Cross-CE engine context provider (M7 PR 6). Connects when the
+	// layout CE host is available; disconnects on unmount. The provider
+	// value carries this kernel's engine reference so the wrapped
+	// toolkit CE can route legacy controller-side calls (`register`,
+	// `handleContent*`, `initialize`) and FSM input dispatch
+	// (`framework-error`) through the same engine instance the kernel
+	// has already attached and is driving.
 	$effect(() => {
-		dispatch("readiness-change", readinessDetail);
-		if (readinessDetail.interactionReady && !interactionReadyDispatched) {
-			interactionReadyDispatched = true;
-			dispatch("interaction-ready", readinessDetail);
-		}
-		if (readinessDetail.allLoadingComplete && !finalReadyDispatched) {
-			finalReadyDispatched = true;
-			dispatch("ready", readinessDetail);
-		}
+		if (!host) return;
+		engineHostProvider = new ContextProvider(host, {
+			context: sectionRuntimeEngineHostContext,
+			initialValue: { engine },
+		});
+		engineHostProvider.connect();
+		return () => {
+			engineHostProvider?.disconnect();
+			engineHostProvider = null;
+		};
+	});
+
+	// Primary engine-driver effect (M7 PR 5). Replaces the legacy
+	// stage-tracker / cohort-change / readiness emit chain. Reads every
+	// host-side input the engine cares about so Svelte tracks them as
+	// deps; performs the actual `attachHost` / `dispatchInput` calls
+	// inside `untrack` so the writes to the (non-reactive) `attached`
+	// and `lastCohort` flags do not feed back into this effect.
+	//
+	// Flow per run:
+	//   1. Bail until a host element is available; the layout CE
+	//      passes `host = this` after its first render, so this effect
+	//      remains a no-op on the very first mount tick.
+	//   2. `attachHost` once per `host` reference. The adapter handles
+	//      host swaps via `setHost` internally; calling `attachHost`
+	//      again with a fresh host updates it without rebuilding the
+	//      adapter, which is exactly the post-layout-swap contract.
+	//   3. Decide which input to dispatch:
+	//        - first cohort                 → `initialize`
+	//        - new cohort                   → `cohort-change` (engine
+	//                                         emits `disposed` for the
+	//                                         outgoing cohort and
+	//                                         re-arms latches for the
+	//                                         new one)
+	//        - same cohort                  → `update-runtime` so the
+	//                                         engine records the
+	//                                         latest resolver output
+	//        - cohort cleared (non-empty
+	//          → empty, e.g. host clears
+	//          `sectionId` while still
+	//          mounted)                     → no-op. Pre-PR-5 the
+	//                                         legacy stage tracker
+	//                                         emitted `disposed` here;
+	//                                         the engine path
+	//                                         intentionally does not.
+	//                                         Hosts that need a
+	//                                         `disposed` for the
+	//                                         outgoing cohort should
+	//                                         unmount the layout CE,
+	//                                         which routes through the
+	//                                         cleanup `$effect` below
+	//                                         and dispatches `dispose`
+	//                                         to the engine.
+	//        - no cohort                    → no-op (engine stays in
+	//                                         `idle`)
+	//      On any cohort rollover the local
+	//      `sectionControllerReadyDispatched` latch is also reset so
+	//      `notifySectionControllerResolved` will fire once for the
+	//      next cohort.
+	//   4. While a cohort is active, push the latest readiness signals
+	//      so the engine can re-derive `EngineReadinessDetail`,
+	//      advance the phase to `interactive`, and emit
+	//      `loading-complete` exactly once per cohort.
+	$effect(() => {
+		void host;
+		void sectionId;
+		void attemptId;
+		void effectiveRuntime;
+		void effectiveToolsConfig;
+		void items.length;
+		void sectionReady;
+		void paneElementsLoaded;
+		void runtimeErrorState;
+		void policies.readiness.mode;
+		untrack(() => {
+			if (!host) return;
+			engine.attachHost({
+				host,
+				sourceCe,
+				frameworkErrorBus,
+			});
+			attached = true;
+
+			const nextCohort = makeCohort({ sectionId, attemptId });
+			const itemCount = items.length;
+
+			if (!cohortsEqual(lastCohort, nextCohort)) {
+				sectionControllerReadyDispatched = false;
+				if (nextCohort) {
+					if (lastCohort === null) {
+						engine.dispatchInput({
+							kind: "initialize",
+							cohort: nextCohort,
+							effectiveRuntime,
+							effectiveToolsConfig,
+							itemCount,
+						});
+					} else {
+						engine.dispatchInput({
+							kind: "cohort-change",
+							cohort: nextCohort,
+							effectiveRuntime,
+							effectiveToolsConfig,
+							itemCount,
+						});
+					}
+				}
+				lastCohort = nextCohort;
+			} else if (nextCohort !== null) {
+				engine.dispatchInput({
+					kind: "update-runtime",
+					effectiveRuntime,
+					effectiveToolsConfig,
+				});
+			}
+
+			if (lastCohort !== null) {
+				const signals: EngineReadinessSignals = {
+					sectionReady,
+					interactionReady: sectionReady,
+					allLoadingComplete: paneElementsLoaded,
+					runtimeError: runtimeErrorState,
+				};
+				engine.dispatchInput({
+					kind: "update-readiness-signals",
+					signals,
+					loadedCount: itemCount,
+					itemCount,
+					mode: policies.readiness.mode,
+				});
+			}
+		});
+	});
+
+	// Lockstep runtime callback invocation. The engine's DOM event
+	// bridge fires `pie-stage-change` / `pie-loading-complete` directly
+	// on the layout CE host; the helper attaches matching listeners so
+	// `runtime.onStageChange` / `runtime.onLoadingComplete` fire at the
+	// exact same point as the canonical event for the cohort. Lookups
+	// read `effectiveRuntime` lazily (handler scope, not reactive
+	// scope) so prop reassigns mid-cohort still reach the freshest
+	// handler. Extracted to a helper so unit tests can exercise the
+	// contract directly with a real `SectionRuntimeEngine`; see
+	// `tests/section-player-runtime-callbacks.test.ts`.
+	$effect(() => {
+		if (!host) return;
+		return attachRuntimeCallbackBridge({
+			host,
+			getOnStageChange: () =>
+				effectiveRuntime?.onStageChange as
+					| StageChangeHandler
+					| undefined,
+			getOnLoadingComplete: () =>
+				effectiveRuntime?.onLoadingComplete as
+					| LoadingCompleteHandler
+					| undefined,
+			onError: (channel, error) => {
+				logger.error(`${channel} handler threw`, error);
+			},
+		});
+	});
+
+	// Tear down the engine + framework-error bus on unmount. Dispatch a
+	// `dispose` input first so the engine emits `disposed` for the
+	// active cohort through the same DOM/legacy bridges as every other
+	// stage transition; then run the async adapter teardown (the
+	// promise is fire-and-forget — Svelte cleanup paths cannot await).
+	$effect(() => {
+		return () => {
+			untrack(() => {
+				if (attached) {
+					engine.dispatchInput({ kind: "dispose" });
+				}
+				engine.dispose().catch((error: unknown) => {
+					logger.error("engine.dispose() failed", error);
+				});
+				frameworkErrorBus.dispose();
+			});
+		};
 	});
 </script>
 
@@ -395,9 +707,7 @@
 	attemptId={attemptId}
 	onCompositionChanged={handleBaseCompositionChanged}
 	onSectionReady={handleSectionReady}
-	onRuntimeError={handleRuntimeError}
-	onFrameworkError={handleFrameworkError}
-	{frameworkErrorHook}
+	onFrameworkErrorEvent={handleFrameworkError}
 	onSessionChanged={handleSessionChanged}
 	onRuntimeOwned={handleRuntimeOwned}
 	onRuntimeInherited={handleRuntimeInherited}
@@ -427,6 +737,9 @@
 			itemHostButtons,
 			passageHostButtons,
 			readinessDetail,
+			preloadEnabled,
+			itemToolbarTools: effectiveItemToolbarTools,
+			passageToolbarTools: effectivePassageToolbarTools,
 			onItemsPaneElementsLoaded: handleItemsPaneElementsLoaded,
 			onItemsPanePreloadRetry: handleItemsPanePreloadRetry,
 			onItemsPanePreloadError: handleItemsPanePreloadError,
@@ -446,6 +759,9 @@
 		{itemHostButtons}
 		{passageHostButtons}
 		{readinessDetail}
+		{preloadEnabled}
+		itemToolbarTools={effectiveItemToolbarTools}
+		passageToolbarTools={effectivePassageToolbarTools}
 		onItemsPaneElementsLoaded={handleItemsPaneElementsLoaded}
 		onItemsPanePreloadRetry={handleItemsPanePreloadRetry}
 		onItemsPanePreloadError={handleItemsPanePreloadError}

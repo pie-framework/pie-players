@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/tts-server-sc",
-	"version": "0.3.30",
+	"version": "0.3.31",
 	"description": "SchoolCity-backed provider for server-side TTS with speech marks support",
 	"type": "module",
 	"main": "./dist/index.js",

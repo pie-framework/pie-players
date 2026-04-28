@@ -24,9 +24,7 @@ export type SectionPlayerBasicPropName =
 	| "contentMaxWidthWithPassage"
 	| "splitPaneMinRegionWidth"
 	| "splitPaneCollapseStrategy"
-	| "enabledTools"
-	| "itemToolbarTools"
-	| "passageToolbarTools";
+	| "enabledTools";
 
 export type SectionPlayerAdvancedPropName =
 	| "runtime"
@@ -36,15 +34,18 @@ export type SectionPlayerAdvancedPropName =
 	| "tools"
 	| "accessibility"
 	| "coordinator"
-	| "createSectionController"
-	| "isolation"
 	| "env"
 	| "iifeBundleHost"
 	| "toolRegistry"
 	| "sectionHostButtons"
 	| "itemHostButtons"
 	| "passageHostButtons"
-	| "hooks";
+	| "policies"
+	| "toolConfigStrictness"
+	| "hooks"
+	| "onFrameworkError"
+	| "onStageChange"
+	| "onLoadingComplete";
 
 export type SectionPlayerLayoutPropName =
 	| SectionPlayerBasicPropName

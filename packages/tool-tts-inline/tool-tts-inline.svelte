@@ -451,13 +451,29 @@
 		if (!host) return;
 		const active = controlsVisible === true;
 		host.setAttribute('data-active', active ? 'true' : 'false');
-		host.dispatchEvent(
-			new CustomEvent('pie-tool-active-change', {
-				detail: { active },
-				bubbles: true,
-				composed: true
-			})
-		);
+		// Defer the broadcast so listeners (e.g. the parent toolbar's
+		// `subscribeActive` callback) never run inside our own mount /
+		// update flush. Without this, a parent that synchronously creates
+		// or reconnects this element during its template/derivation pass
+		// — which happens when the section player layout collapses on
+		// resize — would receive the event re-entrantly and fail with
+		// `state_unsafe_mutation`. The microtask boundary still fires
+		// before paint, so consumers see the active state in the same
+		// frame.
+		let cancelled = false;
+		queueMicrotask(() => {
+			if (cancelled) return;
+			host.dispatchEvent(
+				new CustomEvent('pie-tool-active-change', {
+					detail: { active },
+					bubbles: true,
+					composed: true
+				})
+			);
+		});
+		return () => {
+			cancelled = true;
+		};
 	});
 </script>
 

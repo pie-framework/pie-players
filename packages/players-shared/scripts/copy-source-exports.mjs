@@ -43,23 +43,39 @@ const copyOne = (relativePath) => {
 	cpSync(from, to);
 };
 
-const STALE_TSC_ARTIFACT_NAMES = new Set([
-	"use-i18n.svelte.js",
-	"use-i18n.svelte.js.map",
-	"use-i18n.svelte.d.ts",
-	"use-i18n.svelte.d.ts.map",
-	"use-i18n-standalone.svelte.js",
-	"use-i18n-standalone.svelte.js.map",
-	"use-i18n-standalone.svelte.d.ts",
-	"use-i18n-standalone.svelte.d.ts.map",
+const STALE_TSC_ARTIFACT_NAMES = new Map([
+	[
+		"i18n",
+		new Set([
+			"use-i18n.svelte.js",
+			"use-i18n.svelte.js.map",
+			"use-i18n.svelte.d.ts",
+			"use-i18n.svelte.d.ts.map",
+			"use-i18n-standalone.svelte.js",
+			"use-i18n-standalone.svelte.js.map",
+			"use-i18n-standalone.svelte.d.ts",
+			"use-i18n-standalone.svelte.d.ts.map",
+		]),
+	],
+	[
+		"ui",
+		new Set([
+			"use-promise.svelte.js",
+			"use-promise.svelte.js.map",
+			"use-promise.svelte.d.ts",
+			"use-promise.svelte.d.ts.map",
+		]),
+	],
 ]);
 
 const removeStaleTscArtifacts = () => {
-	const i18nDist = join(DIST, "i18n");
-	if (!existsSync(i18nDist)) return;
-	for (const entry of readdirSync(i18nDist)) {
-		if (STALE_TSC_ARTIFACT_NAMES.has(entry)) {
-			rmSync(join(i18nDist, entry));
+	for (const [subdir, names] of STALE_TSC_ARTIFACT_NAMES) {
+		const dir = join(DIST, subdir);
+		if (!existsSync(dir)) continue;
+		for (const entry of readdirSync(dir)) {
+			if (names.has(entry)) {
+				rmSync(join(dir, entry));
+			}
 		}
 	}
 };
@@ -80,15 +96,22 @@ const i18nRunes = [
 	"i18n/use-i18n-standalone.svelte.ts",
 ];
 
+const uiRunes = ["ui/use-promise.svelte.ts"];
+
 removeStaleTscArtifacts();
 
-for (const rel of [...svelteComponents, ...componentsBarrel, ...i18nRunes]) {
+for (const rel of [
+	...svelteComponents,
+	...componentsBarrel,
+	...i18nRunes,
+	...uiRunes,
+]) {
 	copyOne(rel);
 }
 
 const countSvelte = svelteComponents.length;
 const countBarrel = componentsBarrel.length;
-const countRunes = i18nRunes.length;
+const countRunes = i18nRunes.length + uiRunes.length;
 console.log(
 	`[copy-source-exports] staged ${countSvelte} svelte + ${countBarrel} ts + ${countRunes} svelte.ts source files into dist/`,
 );

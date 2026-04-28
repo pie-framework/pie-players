@@ -82,8 +82,8 @@ import "@pie-players/pie-section-player-tools-instrumentation-debugger";
 		toolConfigStrictness: "error",
 		tools: toolkitToolsConfig,
 		hooks: {
-			onError: (error, context) => {
-				console.warn("[Assessment Session DB Demo] toolkit error:", context, error);
+			onFrameworkError: (model) => {
+				console.warn("[Assessment Session DB Demo] toolkit framework error:", model);
 			},
 		// In assessment demos, assessment-session persistence is the single source of truth.
 		// Disable section controller default localStorage persistence to avoid competing stores.

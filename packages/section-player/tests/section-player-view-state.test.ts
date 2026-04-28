@@ -9,7 +9,13 @@ async function loadViewStateModule() {
 }
 
 describe("section player view state", () => {
-	test("forces embedded item strategy to preloaded when section strategy is iife", async () => {
+	// The section-player used to substitute `iife` -> `preloaded` for
+	// embedded item-players. That parent-to-child strategy coupling was the
+	// root cause of the sporadic "missing tags" section-swap race. With the
+	// deep ElementLoader primitive the strategy is propagated verbatim; the
+	// item-player independently calls ensureRegistered and no longer
+	// depends on a cached readiness claim from the section.
+	test("propagates iife strategy verbatim to embedded items (no substitution)", async () => {
 		const { getItemPlayerParams } = await loadViewStateModule();
 		const params = getItemPlayerParams({
 			item: {
@@ -30,10 +36,10 @@ describe("section player view state", () => {
 			playerStrategy: "iife",
 		});
 
-		expect(params.attributes?.strategy).toBe("preloaded");
+		expect(params.attributes?.strategy).toBe("iife");
 	});
 
-	test("keeps embedded strategy aligned for non-iife section strategies", async () => {
+	test("propagates esm strategy verbatim to embedded passages", async () => {
 		const { getPassagePlayerParams } = await loadViewStateModule();
 		const params = getPassagePlayerParams({
 			passage: { config: {} } as any,
@@ -44,5 +50,22 @@ describe("section player view state", () => {
 		});
 
 		expect(params.attributes?.strategy).toBe("esm");
+	});
+
+	test("propagates preloaded strategy verbatim to embedded items", async () => {
+		const { getItemPlayerParams } = await loadViewStateModule();
+		const params = getItemPlayerParams({
+			item: { id: "item-1", config: {} } as any,
+			compositionModel: {
+				itemSessions: {},
+				itemViewModels: [],
+			} as any,
+			resolvedPlayerEnv: {},
+			resolvedPlayerAttributes: {},
+			resolvedPlayerProps: {},
+			playerStrategy: "preloaded",
+		});
+
+		expect(params.attributes?.strategy).toBe("preloaded");
 	});
 });

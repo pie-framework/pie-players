@@ -92,7 +92,7 @@ To obtain the coordinator and attach any hooks:
 playerEl.addEventListener('toolkit-ready', (e: CustomEvent) => {
   const coordinator = e.detail.coordinator;
   coordinator.setHooks({
-    onError: (error, context) => console.error('[toolkit]', context, error),
+    onFrameworkError: (model) => console.error('[toolkit]', model),
   });
 });
 ```
@@ -117,7 +117,7 @@ const coordinator = new ToolkitCoordinator({
     },
   },
   hooks: {
-    onError: (error, context) => reportError(error, context),
+    onFrameworkError: (model) => reportError(model),
     async createSectionSessionPersistence(context) {
       // See §8 for full treatment
       return buildPersistenceStrategy(context);
@@ -183,13 +183,13 @@ Notes:
 
 - `loaderOptions` and `loaderConfig` are different concerns: loading strategy vs observability/retry behavior.
 - For custom providers, pass object references as JS properties (`runtime`), not serialized string attributes.
-- Higher-level section/toolkit instrumentation is also provider-generic. Section-player emits runtime/public events (for example `readiness-change`, `session-changed`, `composition-changed`) and those can be bridged to `InstrumentationProvider.trackEvent(...)` without coupling to New Relic-specific APIs.
+- Higher-level section/toolkit instrumentation is also provider-generic. Section-player emits runtime/public events (for example `pie-stage-change`, `session-changed`, `composition-changed`) and those can be bridged to `InstrumentationProvider.trackEvent(...)` without coupling to New Relic-specific APIs.
 - New Relic remains one provider implementation option; it is not the player contract.
 - With `trackPageActions: true`, missing/`undefined` `instrumentationProvider` uses the default New Relic provider path.
 - `instrumentationProvider: null` is an explicit no-op opt-out.
 - Ownership model: section-player instrumentation owns section runtime/public events; toolkit instrumentation covers toolkit lifecycle events. This avoids semantic overlap and duplicate telemetry.
 
-The player tracks loading through `totalRegistered` and `totalLoaded` counters (accessible via `getRuntimeState()`) and emits `section-loading-complete` when all registered items have loaded. The `readiness-change` event gives you the current phase (`bootstrapping` → `interaction-ready` → `loading` → `ready`).
+The player tracks loading through `totalRegistered` and `totalLoaded` counters (accessible via `getRuntimeState()`) and emits `pie-loading-complete` when all registered items have loaded. The canonical lifecycle stream is `pie-stage-change`, which carries the full transition sequence (`composed` → `engine-ready` → `interactive` → `disposed`) on a single typed event. The deprecated readiness aliases (`readiness-change`, `interaction-ready`, `ready`) and their `legacy-event-bridge` were removed in the broad architecture review compat sweep — see §10 for the migration mapping.
 
 ### Instrumentation (dedicated)
 
@@ -213,13 +213,11 @@ Provider semantics:
 
 Section-player owned canonical event stream:
 
-- `pie-section-readiness-change`
-- `pie-section-interaction-ready`
-- `pie-section-ready`
-- `pie-section-controller-ready`
+- `pie-section-stage-change`
+- `pie-section-loading-complete`
 - `pie-section-session-changed`
 - `pie-section-composition-changed`
-- `pie-section-runtime-error`
+- `pie-section-framework-error`
 
 Toolkit-owned canonical stream (when present) is separate and intentionally non-overlapping:
 
@@ -227,7 +225,7 @@ Toolkit-owned canonical stream (when present) is separate and intentionally non-
 - `pie-toolkit-runtime-inherited`
 - `pie-toolkit-ready`
 - `pie-toolkit-section-ready`
-- `pie-toolkit-runtime-error`
+- `pie-toolkit-framework-error`
 
 Toolkit tool/backend operational stream (forwarded through the same provider path):
 
@@ -529,20 +527,23 @@ The `SectionControllerHandle` is the primary programmatic interface between your
 
 Never assume the controller is synchronously available after mounting. Two patterns are available:
 
-**Event callback** — listen for `section-controller-ready` and call `coordinator.getSectionController()` inside the handler. This fits naturally with the rest of the event wiring, requires no timeout management, and is the more idiomatic choice when your integration is already event-driven.
-
-```ts
-playerEl.addEventListener('section-controller-ready', () => {
-  const controller = coordinator.getSectionController({ sectionId, attemptId });
-});
-```
-
-**Async/await** — `waitForSectionController` resolves once the controller is ready, or returns `null` after the timeout. Useful for imperative contexts (test harnesses, programmatic code running after mount) where attaching an event listener retroactively is awkward, but requires you to handle the timeout case explicitly.
+**Async/await (preferred)** — `waitForSectionController` resolves once the controller is ready, or returns `null` after the timeout. This is the recommended entry point for imperative contexts (test harnesses, programmatic code running after mount) and integration code that wants a typed handle without juggling event-listener registration.
 
 ```ts
 const controller = await playerEl.waitForSectionController(5000);
 if (!controller) throw new Error('Section controller did not become ready');
 ```
+
+**Stage-event filter** — listen for `pie-stage-change` and filter on `detail.stage === "engine-ready"` to obtain the controller via `coordinator.getSectionController(...)`. This fits naturally when your integration is already subscribed to `pie-stage-change` for other lifecycle gating.
+
+```ts
+playerEl.addEventListener('pie-stage-change', (event) => {
+  if (event.detail.stage !== 'engine-ready') return;
+  const controller = coordinator.getSectionController({ sectionId, attemptId });
+});
+```
+
+The legacy `section-controller-ready` event was removed in the broad architecture review compat sweep, along with its `pie-section-controller-ready` instrumentation mapping. Hosts must use one of the two patterns above (`waitForSectionController(...)` / `getSectionController()`, or `pie-stage-change` filtered on `detail.stage === "engine-ready"`).
 
 ### Reading state
 
@@ -678,7 +679,7 @@ The typical page-load sequence is:
 1. Mount the player element with `assessmentId`, `sectionId`, `attemptId`, and `coordinator`.
 2. Player bootstraps, registers the section controller with the coordinator.
 3. `toolkit-ready` event fires — by this point the coordinator is active.
-4. `section-controller-ready` event fires — controller is now available.
+4. `pie-stage-change` reaches `detail.stage === "engine-ready"` — the section controller is now available via `waitForSectionController()` / `getSectionController()`.
 5. The coordinator calls `createSectionSessionPersistence` to resolve the strategy.
 6. On `controller.hydrate()`, the strategy's `loadSession` is called and the snapshot is applied via `applySession`.
 7. Item elements register and load, emitting `section-loading-complete` when done.
@@ -808,19 +809,43 @@ In multi-attempt or multi-section layouts, subscriptions without an explicit `at
 
 For session data, loading state, and completion tracking, use the coordinator subscription API (§9) — not DOM events. The coordinator gives you typed, scoped, properly filtered access to the controller event stream and is the recommended integration surface for anything involving session state.
 
-The player element does dispatch a small set of DOM `CustomEvent`s that are genuinely host-facing, because they have no coordinator equivalent:
+The player element does dispatch a small set of DOM `CustomEvent`s that are genuinely host-facing.
 
-| Event name | Detail | When |
+### Canonical readiness and error events (recommended)
+
+These are the events to build host integrations against. They are dispatched on the layout custom element (`pie-section-player-splitpane` / `-vertical` / `-tabbed` / `-kernel-host`) by the section runtime engine, with stable typed payloads.
+
+| Event name | Detail | Callback-prop mirror | When |
+| --- | --- | --- | --- |
+| `toolkit-ready` | `{ coordinator }` | — | Coordinator initialized — **CE-first only**: this is how you obtain the coordinator reference when you haven't constructed one yourself |
+| `pie-stage-change` | `StageChangeDetail` (`{ stage, status, runtimeId, sectionId, attemptId, sourceCe, timestamp }`) | `onStageChange(detail)` | One typed transition stream covering the full lifecycle: `composed` → `engine-ready` → `interactive` → `disposed`. Replaces the legacy readiness vocabulary with a single subscription that correlates across wrapper depths. |
+| `pie-loading-complete` | `LoadingCompleteDetail` (`{ runtimeId, sectionId, attemptId, itemCount, loadedCount, sourceCe, timestamp }`) | `onLoadingComplete(detail)` | Fires once per cohort when every item has finished loading (gated on `interactive`). |
+| `framework-error` | `FrameworkErrorModel` | `onFrameworkError(model)` | Canonical error event for any failure crossing the framework boundary (coordinator init, runtime init, tool config, provider/TTS init, tool runtime). The callback prop, the package-internal `FrameworkErrorBus`, and the layout-host DOM event each deliver one notification per error. |
+
+Callback-prop precedence: `runtime.<key>` (set on the layout CE's `runtime` object) wins over the top-level CE prop. Both fire at the same emit point as the DOM event so callback and event stay in lockstep across cohort changes.
+
+Recommended host wiring:
+
+- Gate "start test" UI on `pie-stage-change` with `detail.stage === "interactive"`, or subscribe to the engine via `engine.subscribe(output => { if (output.kind === "stage-change" && output.detail.stage === "interactive") { /* … */ } })` if you hold a programmatic engine reference.
+- Show item-loading affordances until `pie-loading-complete` fires for the active cohort.
+- Surface `framework-error` to your error UX via `onFrameworkError(model)` (single-fire) or via the layout-host DOM event — both deliver each error exactly once.
+
+### Deprecated readiness events (removed)
+
+The deprecated readiness aliases and their `legacy-event-bridge` were removed in the broad architecture review compat sweep. Hosts that listened for them migrate to the canonical events as follows:
+
+| Removed event name | Replacement | Notes |
 | --- | --- | --- |
-| `toolkit-ready` | `{ coordinator }` | Coordinator initialized — **CE-first only**: this is how you obtain the coordinator reference when you haven't constructed one yourself |
-| `section-controller-ready` | `{ sectionId, attemptId, controller }` | Controller instance available — use this or `waitForSectionController()` as your entry point into the controller API |
-| `readiness-change` | `{ phase, interactionReady, allLoadingComplete }` | Player phase transitions — use to drive loading UI |
-| `interaction-ready` | same as readiness-change | First item is interactive (fires before all items have loaded) |
-| `ready` | same as readiness-change | All items loaded and ready |
+| `readiness-change` | `pie-stage-change` (full phase sequence; `stage` + `status` discriminator) | The readiness payload is also reachable via `selectReadiness()` / `getSnapshot().readiness` on the layout CE. |
+| `interaction-ready` | `pie-stage-change` filtered on `detail.stage === "interactive"` | |
+| `ready` | `pie-loading-complete` | Same single-shot, cohort-scoped semantics. |
+| `section-controller-ready` | `waitForSectionController(timeoutMs)` / `getSectionController()` on the layout CE, or `pie-stage-change` filtered on `detail.stage === "engine-ready"` | Removed alongside its `pie-section-controller-ready` instrumentation mapping. |
 
-`readiness-change` covers the full phase sequence: `bootstrapping` → `interaction-ready` → `loading` → `ready`. Gate "start test" UI on `interaction-ready`, not `ready` — the latter waits for all items to fully load, which may take noticeably longer in sections with many items.
+Note on `framework-error` (previously dual-emitted): in earlier releases, while a `<pie-assessment-toolkit>` was nested inside a layout CE, the layout host received **two** `framework-error` DOM events per error (one engine-bridge emit on the layout host plus the bubbled toolkit emit). The dual-emit was collapsed in the broad architecture review compat sweep — the kernel listener at `<pie-section-player-base>` now stops the bubbled toolkit emit, leaving the engine-bridge emit on the layout host as the single canonical DOM surface. The single-emit contract is pinned by `tests/section-player-framework-error-dual-emit.test.ts`. Direct listeners attached to `<pie-assessment-toolkit>` itself are unaffected — the toolkit's own emit reaches them before the kernel listener runs.
 
-Other DOM events the element dispatches (`session-changed`, `composition-changed`, `runtime-owned`, `runtime-inherited`, `runtime-error`) are internal plumbing used by the player's own rendering pipeline. Do not build host integrations against them.
+### Internal plumbing events (do not build host integrations against)
+
+The player also dispatches `session-changed`, `composition-changed`, `runtime-owned`, and `runtime-inherited`. These are kernel-side Svelte forwards used by the player's own rendering pipeline; their shape is not part of the public host contract.
 
 ---
 

@@ -151,10 +151,10 @@ The intended usage model is:
   - `assessment-id`, `section`, `section-id`, `attempt-id`, `debug`
   - `show-toolbar`, `toolbar-position`, `narrow-layout-breakpoint`
   - `content-max-width-no-passage`, `content-max-width-with-passage`, `split-pane-min-region-width`, `split-pane-collapse-strategy`
-  - `enabled-tools`, `item-toolbar-tools`, `passage-toolbar-tools`
+  - `enabled-tools` (per-region tool placement is configured via `tools.placement.{item,passage}`; the `item-toolbar-tools` / `passage-toolbar-tools` aliases were removed in the broad architecture review compat sweep)
 - **JS API for advanced customization**:
-  - Get the controller handle via `getSectionController()` or `waitForSectionController()`
-  - Listen to `section-controller-ready`
+  - Get the controller handle via `getSectionController()` or `waitForSectionController()` (preferred)
+  - Listen for `pie-stage-change` and filter on `detail.stage === "engine-ready"` for an event-driven entry point
   - Apply custom policy/gating in host code (for example, domain-specific `canNext` based on controller events like `section-items-complete-changed`)
   - Compose forward/backward eligibility in host code using `selectNavigation()` + host state; there is intentionally no separate parallel CE gating API for this
   - Inject custom toolbar tooling with `toolRegistry` and optional host button arrays (`sectionHostButtons`, `itemHostButtons`, `passageHostButtons`)
@@ -174,7 +174,7 @@ host.hooks = {
 };
 ```
 
-Advanced CE props are still supported as escape hatches (`runtime`, `coordinator`, `createSectionController`, etc.), but hosts should prefer JS/controller composition for non-standard behavior.
+Advanced CE props are still supported as escape hatches (`runtime`, `coordinator`, etc.), but hosts should prefer JS/controller composition for non-standard behavior. Note: `createSectionController` is **runtime-only** — set it on `runtime.createSectionController` rather than as a top-level CE prop (the prop alias was removed in the broad architecture review compat sweep).
 
 ### Focus management
 
@@ -222,6 +222,29 @@ host.policies = {
 };
 ```
 
+**Wired policy toggles.** Each `SectionPlayerPolicies` field has a real
+runtime effect; nothing in this surface is decorative.
+
+- `readiness.mode` (`"progressive"` | `"strict"`) — drives readiness-event
+  emission via `createReadinessDetail` in `SectionPlayerLayoutKernel`.
+- `preload.enabled` — when `false`, `SectionItemsPane` short-circuits the
+  section-level element warmup pipeline (`warmupSectionElements`). Items
+  still mount and item-players register their own elements on demand. Use
+  this to disable section pre-warm when the host already owns element
+  registration end-to-end. Default: `true`.
+- `focus.autoFocus` — focus strategy on navigation; see "Focus management"
+  above.
+- `telemetry.enabled` — when `false`, the layout custom elements skip
+  `attachInstrumentationEventBridge` setup, so no `pie-section-*`
+  telemetry events flow through the bridge. Hosts that want a different
+  shape of opt-out can still override `runtime.player.loaderConfig.instrumentationProvider`.
+  Default: `true`.
+
+The exported `isPreloadEnabled(policies)` and `isTelemetryEnabled(policies)`
+helpers read these toggles with the documented default-true semantics, so
+host code that needs to mirror the same gate (e.g. when composing a custom
+layout host) can call them directly.
+
 **Imperative escape hatch (host-owned focus moments).** Every layout
 element (`pie-section-player-splitpane`, `-vertical`, `-tabbed`,
 `-kernel-host`, and `-base`) exposes a `focusStart(): boolean` method.
@@ -245,11 +268,6 @@ wherever the host has opted in for navigation focus:
 For Next / Back / question-number navigation the host does **not** call
 `focusStart()` — the `autoFocus` policy fires automatically.
 
-**Deprecation.** `SectionPlayerFocusPolicy.autoFocusFirstItem` still
-works for one release (mapped onto `autoFocus`: `true` →
-`"start-of-content"`, `false` → `"none"`) and emits a one-time console
-warning. It will be removed in the next major. Migrate to `autoFocus`.
-
 ### Navigation signals
 
 - `item-selected`: item-level navigation change within the current section in the `SectionController` broadcast stream (`itemIndex`, `currentItemId`, `totalItems`).
@@ -257,9 +275,9 @@ warning. It will be removed in the next major. Migrate to `autoFocus`.
 
 Runtime precedence is explicit:
 
-- `runtime` values are primary for runtime fields (`assessmentId`, `playerType`, `player`, `lazyInit`, `tools`, `accessibility`, `coordinator`, `createSectionController`, `isolation`, `env`).
+- `runtime` values are primary for runtime fields (`assessmentId`, `playerType`, `player`, `lazyInit`, `tools`, `accessibility`, `coordinator`, `isolation`, `env`). `createSectionController` is exposed only via `runtime.createSectionController`.
 - Top-level runtime-like props remain compatibility inputs and are merged with `runtime` values. For `player`, top-level values are merged first, then `runtime.player` overrides. Nested `loaderOptions` and `loaderConfig` are also merged with the same precedence.
-- Toolbar placement overrides (`enabled-tools`, `item-toolbar-tools`, `passage-toolbar-tools`) are normalized on top of the runtime tools config.
+- The section-level toolbar placement override (`enabled-tools`) is normalized on top of the runtime tools config and merges into `tools.placement.section`. Per-region placement (`tools.placement.item` / `tools.placement.passage`) is configured directly on the canonical `tools` / `runtime.tools` object — the deprecated `item-toolbar-tools` / `passage-toolbar-tools` aliases were removed in the broad architecture review compat sweep.
 - Tool configuration validation is canonical in toolkit initialization (`pie-assessment-toolkit`), including toolbar overlays. Use `runtime.toolConfigStrictness` (`off` | `warn` | `error`) to control warning-only vs fail-fast behavior.
 - TTS provider config must use `tools.providers.textToSpeech` (canonical). `tools.providers.tts` is rejected by validation.
 - Host tool overrides are additive:
@@ -426,20 +444,66 @@ Section-player instrumentation is provider-agnostic and uses the shared
 - Toolkit telemetry forwarding uses the same provider path, so tool/backend
   operational events are visible alongside section events when toolkit is mounted.
 
-Section-player owned canonical stream:
+Canonical lifecycle stream (engine-routed, dispatched on the outer layout CE):
 
-- `pie-section-readiness-change`
-- `pie-section-interaction-ready`
-- `pie-section-ready`
-- `pie-section-controller-ready`
+- `pie-stage-change` — single typed transition stream covering
+  `composed` → `engine-ready` → `interactive` → `disposed`. Payload is a
+  `StageChangeDetail`. Replaces the legacy readiness vocabulary.
+- `pie-loading-complete` — fires once per cohort when every item has
+  loaded (kernel-routed; gated on `interactive`).
+- `framework-error` — canonical error event for any failure crossing the
+  framework boundary. Payload is a `FrameworkErrorModel`. The toolkit's
+  package-internal `FrameworkErrorBus` and the `onFrameworkError`
+  callback prop deliver each error exactly once regardless of wrapper
+  depth. The `framework-error` *DOM event* on the outer layout CE
+  also delivers each error exactly once: the kernel listener at
+  `<pie-section-player-base>` intercepts the toolkit's bubbled emit
+  and calls `event.stopPropagation()`, leaving only the canonical
+  engine-bridge emit on the layout host. The single-emit contract is
+  pinned by `tests/section-player-framework-error-dual-emit.test.ts`.
+  Direct listeners attached to `<pie-assessment-toolkit>` itself
+  still see the toolkit's own emit. The previous dual-emit on the
+  layout host was removed in the broad architecture review compat
+  sweep.
+
+Callback-prop mirrors with two-tier precedence (`runtime.<key>` wins over
+the top-level prop):
+
+- `onStageChange(detail)` — on every layout CE, `pie-section-player-base`,
+  and `pie-assessment-toolkit`.
+- `onLoadingComplete(detail)` — on the kernel-backed layout CEs only
+  (split-pane / vertical / tabbed / kernel-host).
+- `onFrameworkError(model)` — on every layout CE and
+  `pie-section-player-base`. Fires exactly once per error regardless of
+  wrapper depth (delivered through the package-internal
+  `FrameworkErrorBus`). The `framework-error` DOM event on the layout
+  CE host is also single-fire post-compat-sweep; consume either.
+
+Section-player owned instrumentation stream:
+
+- `pie-section-stage-change`
+- `pie-section-loading-complete`
 - `pie-section-session-changed`
 - `pie-section-composition-changed`
-- `pie-section-runtime-error`
+- `pie-section-framework-error`
 
-Framework boundary stream (from toolkit, re-emitted through section-player wrappers):
+The deprecated readiness aliases (`readiness-change`,
+`interaction-ready`, `ready`) and their `legacy-event-bridge`, along
+with the deprecated `section-controller-ready` Svelte/DOM event and
+its `pie-section-controller-ready` instrumentation mapping, were
+removed in the broad architecture review compat sweep. Migrate
+consumers as follows:
 
-- `framework-error` (canonical)
-- `runtime-error` (compatibility signal)
+- `readiness-change` → listen for `pie-stage-change`. The readiness
+  payload is also available via `selectReadiness()` /
+  `getSnapshot().readiness` on the layout CE.
+- `interaction-ready` → `pie-stage-change` filtered on
+  `detail.stage === "interactive"`.
+- `ready` → `pie-loading-complete`.
+- `section-controller-ready` → call
+  `waitForSectionController(timeoutMs)` or `getSectionController()`
+  on the layout CE, or filter `pie-stage-change` for
+  `detail.stage === "engine-ready"`.
 
 If toolkit is mounted, toolkit lifecycle events are emitted on a separate
 `pie-toolkit-*` stream. This separation avoids semantic overlap; bridge dedupe
@@ -528,7 +592,6 @@ Published exports are intentionally minimal:
 - `@pie-players/pie-section-player/contracts/layout-parity-metadata`
 - `@pie-players/pie-section-player/contracts/host-hooks`
 - `@pie-players/pie-section-player/policies`
-- `@pie-players/pie-section-player/utils/player-preload`
 
 ## Development
 

@@ -37,9 +37,7 @@
 		cardRenderContext = null as SectionPlayerCardRenderContext | null,
 		onCompositionChanged,
 		onSectionReady,
-		onRuntimeError,
-		onFrameworkError,
-		frameworkErrorHook: _frameworkErrorHook,
+		onFrameworkErrorEvent,
 		onSessionChanged,
 		onRuntimeOwned,
 		onRuntimeInherited,
@@ -58,9 +56,14 @@
 		cardRenderContext?: SectionPlayerCardRenderContext | null;
 		onCompositionChanged?: (event: Event) => void;
 		onSectionReady?: (event: Event) => void;
-		onRuntimeError?: (event: Event) => void;
-		onFrameworkError?: (event: Event) => void;
-		frameworkErrorHook?: (errorModel: Record<string, unknown>) => void;
+		/**
+		 * Internal scaffold-level event-listener for `framework-error` DOM
+		 * events. Distinct from the canonical, model-shape
+		 * `onFrameworkError` prop on `SectionPlayerLayoutKernel` and the
+		 * layout custom elements: the scaffold does not own the canonical
+		 * model contract — it only re-emits raw events to its consumer.
+		 */
+		onFrameworkErrorEvent?: (event: Event) => void;
 		onSessionChanged?: (event: Event) => void;
 		onRuntimeOwned?: (event: Event) => void;
 		onRuntimeInherited?: (event: Event) => void;
@@ -208,12 +211,8 @@
 		onSectionReady?.(event);
 	}
 
-	function handleRuntimeError(event: Event) {
-		onRuntimeError?.(event);
-	}
-
 	function handleFrameworkError(event: Event) {
-		onFrameworkError?.(event);
+		onFrameworkErrorEvent?.(event);
 	}
 
 	function handleSessionChanged(event: Event) {
@@ -331,7 +330,6 @@
 	{toolRegistry}
 	oncomposition-changed={handleCompositionChanged}
 	onsection-ready={handleSectionReady}
-	onruntime-error={handleRuntimeError}
 	onframework-error={handleFrameworkError}
 	onsession-changed={handleSessionChanged}
 	onruntime-owned={handleRuntimeOwned}

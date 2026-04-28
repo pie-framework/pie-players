@@ -270,41 +270,6 @@ export interface ToolMetadata {
 	dependencies?: string[];
 }
 
-/**
- * Tool Coordinator interface
- * Manages tool registration, visibility, and z-index coordination
- */
-export interface ToolCoordinator {
-	/** Bring an element to the front (highest z-index) */
-	bringToFront(element: HTMLElement): void;
-	/** Register a tool with the coordinator */
-	registerTool(id: ToolId, name: string, element?: HTMLElement): void;
-
-	/** Unregister a tool */
-	unregisterTool(id: ToolId): void;
-
-	/** Show a tool */
-	showTool(id: ToolId): void;
-
-	/** Hide a tool */
-	hideTool(id: ToolId): void;
-
-	/** Toggle a tool's visibility */
-	toggleTool(id: ToolId): void;
-
-	/** Update a tool's element reference */
-	updateToolElement(id: ToolId, element: HTMLElement): void;
-
-	/** Hide all tools */
-	hideAllTools(): void;
-
-	/** Get the state of a specific tool */
-	getToolState(id: ToolId): ToolState | undefined;
-
-	/** Check if a tool is visible */
-	isToolVisible(id: ToolId): boolean;
-}
-
 // ===== SERVICE INTERFACES (Architectural Enhancements) =====
 
 /**

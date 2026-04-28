@@ -14,7 +14,11 @@
  * Part of PIE Assessment Toolkit.
  */
 
-import type { AccessibilityCatalog } from "@pie-players/pie-players-shared/types";
+import type {
+	AccessibilityCatalog,
+	AssessmentEntity,
+	AssessmentItemRef,
+} from "@pie-players/pie-players-shared/types";
 import {
 	type CanonicalToolsConfig,
 	type ToolPlacementConfig,
@@ -22,7 +26,6 @@ import {
 	type ToolProviderConfig,
 	type ToolProvidersConfig,
 	normalizeToolsConfig,
-	resolveToolsForLevel,
 } from "./tools-config-normalizer.js";
 import {
 	normalizeAndValidateToolsConfig,
@@ -31,6 +34,14 @@ import {
 } from "./tool-config-validation.js";
 import { AccessibilityCatalogResolver } from "./AccessibilityCatalogResolver.js";
 import { ElementToolStateStore } from "./ElementToolStateStore.js";
+import {
+	frameworkErrorFromCoordinatorContext,
+	type FrameworkErrorModel,
+} from "./framework-error.js";
+import {
+	FrameworkErrorBus,
+	type FrameworkErrorListener,
+} from "./framework-error-bus.js";
 import { HighlightCoordinator } from "./HighlightCoordinator.js";
 import { ToolCoordinator } from "./ToolCoordinator.js";
 import { TTSService, type ITTSProvider, type TTSConfig } from "./TTSService.js";
@@ -47,6 +58,16 @@ import type {
 } from "./tool-providers/index.js";
 import { createPackagedToolRegistry } from "./createDefaultToolRegistry.js";
 import type { ToolRegistration, ToolRegistry } from "./ToolRegistry.js";
+import {
+	ToolPolicyEngine,
+	type PolicySource,
+	type QtiEnforcementMode,
+	type ResolvedEngineInputs,
+	type ToolPolicyChangeListener,
+	type ToolPolicyDecision,
+	type ToolPolicyDecisionRequest,
+} from "../policy/engine.js";
+import { resolveDefaultQtiEnforcement } from "../policy/internal.js";
 import type {
 	SectionControllerContext,
 	SectionControllerEvent,
@@ -70,6 +91,13 @@ export type {
 	SectionControllerSessionState,
 	SectionPersistenceFactoryDefaults,
 } from "./section-controller-types.js";
+export type {
+	QtiEnforcementMode,
+	ResolvedEngineInputs,
+	ToolPolicyChangeListener,
+	ToolPolicyDecision,
+	ToolPolicyDecisionRequest,
+} from "../policy/engine.js";
 
 /**
  * Generic tool configuration
@@ -195,6 +223,19 @@ export interface ToolkitCoordinatorConfig {
 	 * @internal
 	 */
 	deferToolConfigValidation?: boolean;
+
+	/**
+	 * Optional pre-constructed framework-error bus.
+	 *
+	 * Pass a bus owned by the embedding host (typically
+	 * `<pie-assessment-toolkit>`) when the host wants pre-coordinator
+	 * failures (e.g. `coordinator-init` itself) to flow through the same
+	 * fan-out as post-coordinator failures. When omitted, the coordinator
+	 * constructs its own private bus, which is what standalone embeds get.
+	 *
+	 * @internal
+	 */
+	frameworkErrorBus?: FrameworkErrorBus;
 }
 
 export interface ToolkitErrorContext {
@@ -298,13 +339,22 @@ const SECTION_SCOPED_EVENT_TYPES: readonly SectionScopedEventType[] = [
 ];
 
 export interface ToolkitCoordinatorHooks {
-	onError?: (error: Error, context: ToolkitErrorContext) => void;
-	onTTSError?: (error: Error, context: ToolkitErrorContext) => void;
-	onProviderError?: (
-		providerId: string,
-		error: Error,
-		context: ToolkitErrorContext,
-	) => void;
+	/**
+	 * Canonical framework-error hook.
+	 *
+	 * Called once per framework-level failure (tool-config validation,
+	 * provider register / init, TTS bring-up, state load / save, section
+	 * controller init / dispose, coordinator init). The model carries the
+	 * canonical {@link FrameworkErrorModel} shape — `kind`, `severity`,
+	 * `source`, `message`, `details`, `recoverable`, and the original
+	 * thrown value as `cause`.
+	 *
+	 * Listeners should return synchronously and avoid throwing; a thrown
+	 * hook is caught and logged but does not stop fan-out to the other
+	 * subscribers (DOM event, prop callback, deprecated alias hooks,
+	 * `subscribeFrameworkErrors` listeners).
+	 */
+	onFrameworkError?: (model: FrameworkErrorModel) => void;
 
 	onBeforeTTSInit?: (context: ToolkitErrorContext) => void | Promise<void>;
 	onTTSReady?: () => void | Promise<void>;
@@ -457,7 +507,55 @@ export class ToolkitCoordinator {
 	>();
 	private readonly sectionEventSubscriptions = new Map<string, () => void>();
 	private readonly telemetryListeners = new Set<ToolkitTelemetryListener>();
+	private readonly frameworkErrorBus: FrameworkErrorBus;
+	private readonly ownsFrameworkErrorBus: boolean;
 	private nextSectionEventListenerId = 1;
+
+	/**
+	 * Unified Tool Policy Engine. Owned by the coordinator and lives
+	 * for the lifetime of the coordinator instance — there is no
+	 * explicit teardown path today; the engine and its listener set
+	 * are reclaimed by GC when the coordinator becomes unreachable.
+	 * Subscribers attached via {@link onPolicyChange} must therefore
+	 * detach via the unsubscribe function the engine returns; do not
+	 * rely on a `disposed` event being emitted on coordinator teardown.
+	 *
+	 * Hosts read decisions via {@link decideToolPolicy} or subscribe
+	 * to changes via {@link onPolicyChange}. The legacy
+	 * `resolveToolsForLevel` / `PnpToolResolver` paths still coexist
+	 * until the upcoming compat-removal sweep deletes them.
+	 */
+	private readonly policyEngine: ToolPolicyEngine;
+
+	/**
+	 * Host-set override for QTI enforcement. `null` (the default) means
+	 * "auto" — the coordinator infers the effective mode from the
+	 * QTI inputs the bound `AssessmentEntity` and `AssessmentItemRef`
+	 * actually carry (see {@link resolveEffectiveQtiEnforcement}).
+	 * `"on"` / `"off"` are explicit host opt-in / opt-out and stick
+	 * across subsequent assessment / item swaps until the host clears
+	 * the override by calling `setQtiEnforcement(null)`.
+	 */
+	private qtiEnforcementOverride: QtiEnforcementMode | null = null;
+
+	/**
+	 * Last assessment passed to {@link updateAssessment}. Read by
+	 * {@link resolveEffectiveQtiEnforcement} to compute auto-mode.
+	 * The engine's own copy is the canonical record for decisions;
+	 * this mirror exists only so the auto-mode helper does not need
+	 * to round-trip through {@link policyEngine}'s frozen snapshot.
+	 */
+	private boundAssessment: AssessmentEntity | null = null;
+
+	/**
+	 * Last item reference passed to {@link updateCurrentItemRef}.
+	 * Mirrored alongside {@link boundAssessment} so
+	 * {@link resolveEffectiveQtiEnforcement} can detect item-level
+	 * QTI inputs (`requiredTools` / `restrictedTools` /
+	 * `toolParameters`) without round-tripping through the engine's
+	 * frozen snapshot.
+	 */
+	private boundCurrentItemRef: AssessmentItemRef | null = null;
 
 	/** Callback for floating tools changes */
 	private floatingToolsChangeCallback: ((toolIds: string[]) => void) | null =
@@ -520,6 +618,14 @@ export class ToolkitCoordinator {
 		this.hooks = resolvedConfig.hooks ?? {};
 		this.lazyInit = config.lazyInit === true;
 
+		// Use the host-provided framework-error bus if one was passed
+		// (typical when embedded inside <pie-assessment-toolkit>, so
+		// pre-coordinator failures from the CE flow through the same
+		// fan-out as coordinator failures). Otherwise own a private one.
+		this.frameworkErrorBus = config.frameworkErrorBus ?? new FrameworkErrorBus();
+		this.ownsFrameworkErrorBus = !config.frameworkErrorBus;
+		this.subscribeFrameworkErrorHookAdapters();
+
 		// Initialize all services
 		this.toolCoordinator = new ToolCoordinator();
 		this.highlightCoordinator = new HighlightCoordinator();
@@ -537,6 +643,25 @@ export class ToolkitCoordinator {
 		this.ttsService = new TTSService();
 		this.setupStatePersistenceHooks();
 
+		// M8 PR 2 — construct the unified ToolPolicyEngine seeded with
+		// the validated tools config. QTI inputs (`assessment`,
+		// `currentItemRef`) start `null`; `qtiEnforcement` is resolved
+		// through {@link resolveEffectiveQtiEnforcement}, which flips
+		// to `"on"` only once the bound assessment or item carries
+		// actual QTI material (PR 4). Hosts that only consume the
+		// engine for placement/policy gating get the pre-PR-2 behavior
+		// bit-for-bit.
+		this.policyEngine = new ToolPolicyEngine({
+			toolRegistry: this.toolRegistry,
+			contextId: `toolkit-coordinator:${this.assessmentId}`,
+			inputs: {
+				tools: this.config.tools as CanonicalToolsConfig,
+				assessment: null,
+				currentItemRef: null,
+				qtiEnforcement: this.resolveEffectiveQtiEnforcement(),
+			},
+		});
+
 		if (!this.lazyInit) {
 			void this.waitUntilReady().catch((err) => {
 				console.error(
@@ -548,6 +673,52 @@ export class ToolkitCoordinator {
 		}
 	}
 
+	/**
+	 * Subscribe the canonical `onFrameworkError` hook adapter to the
+	 * framework-error bus.
+	 *
+	 * Called once from the constructor. The adapter inspects the live
+	 * `this.hooks` reference, so a hook added later via {@link setHooks}
+	 * is picked up automatically without re-subscribing.
+	 */
+	private subscribeFrameworkErrorHookAdapters(): void {
+		this.frameworkErrorBus.subscribeFrameworkErrors((model) => {
+			const hook = this.hooks.onFrameworkError;
+			if (!hook) return;
+			try {
+				hook(model);
+			} catch (hookError) {
+				console.warn(
+					"[ToolkitCoordinator] onFrameworkError hook failed:",
+					hookError,
+				);
+			}
+		});
+	}
+
+	/**
+	 * Emit a telemetry event to `onTelemetry` hook + all `subscribeTelemetry`
+	 * listeners.
+	 *
+	 * **Naming convention.** Event names MUST be prefixed at the call site,
+	 * not auto-decorated here. The convention is:
+	 *
+	 * - `pie-toolkit-*` for toolkit lifecycle (state load, providers,
+	 *   coordinator readiness, section-controller register/dispose, TTS
+	 *   bring-up, tool-config updates, etc.).
+	 * - `pie-tool-*` for individual tool events (provider init lifecycle,
+	 *   provider backend calls, tool-specific telemetry forwarded from
+	 *   `__pieTelemetry`).
+	 * - `pie-section-*` is reserved for section-player layout events
+	 *   surfaced via `attachInstrumentationEventBridge` and is not emitted
+	 *   from this method directly.
+	 *
+	 * Anything that does not fit a documented prefix is a deliberate decision
+	 * to be raised in code review, not a fallback. There is no "auto prefix"
+	 * here on purpose: it keeps every emit-site honest about which namespace
+	 * it owns, and lets `subscribeTelemetry` consumers compare against
+	 * documented strings without per-consumer normalization.
+	 */
 	private async emitTelemetry(
 		eventName: string,
 		payload?: Record<string, unknown>,
@@ -584,12 +755,42 @@ export class ToolkitCoordinator {
 	}
 
 	private handleError(error: unknown, context: ToolkitErrorContext): void {
-		const normalized = error instanceof Error ? error : new Error(String(error));
-		try {
-			this.hooks.onError?.(normalized, context);
-		} catch (hookError) {
-			console.warn("[ToolkitCoordinator] onError hook failed:", hookError);
-		}
+		const model = frameworkErrorFromCoordinatorContext({
+			error,
+			context,
+		});
+		this.frameworkErrorBus.reportFrameworkError(model);
+	}
+
+	/**
+	 * Subscribe to framework-error events emitted by this coordinator.
+	 *
+	 * See `ToolkitCoordinatorApi.subscribeFrameworkErrors` for the
+	 * contract. The bus is shared with the canonical
+	 * `onFrameworkError` lifecycle hook, so a listener registered here
+	 * sees the same fan-out the hook sees.
+	 */
+	public subscribeFrameworkErrors(listener: FrameworkErrorListener): () => void {
+		return this.frameworkErrorBus.subscribeFrameworkErrors(listener);
+	}
+
+	/**
+	 * Report a framework-error model directly into this coordinator's bus.
+	 *
+	 * Used by embedding hosts (e.g. `<pie-assessment-toolkit>`) that
+	 * pre-construct their own framework-error model in a path that does
+	 * not go through `handleError` — for example, `runtime-init` failures
+	 * raised before any coordinator phase, or `tool-config` failures
+	 * synthesized from validation diagnostics.
+	 *
+	 * Hosts that already share their bus via the constructor's
+	 * `frameworkErrorBus` config field do not need to call this; their
+	 * own `bus.reportFrameworkError(model)` is observed here.
+	 *
+	 * @internal
+	 */
+	public reportFrameworkError(model: FrameworkErrorModel): void {
+		this.frameworkErrorBus.reportFrameworkError(model);
 	}
 
 	private getSectionControllerMapKey(key: SectionControllerKey): string {
@@ -671,7 +872,7 @@ export class ToolkitCoordinator {
 					this.elementToolStateStore.loadState(state);
 				}
 				this.stateLoaded = true;
-				await this.emitTelemetry("tool-state-loaded", {
+				await this.emitTelemetry("pie-toolkit-tool-state-loaded", {
 					hasState: Boolean(state),
 				});
 			} catch (err) {
@@ -786,7 +987,7 @@ export class ToolkitCoordinator {
 				providerName: config.provider.providerName,
 			};
 			await this.hooks.onProviderRegistered?.(providerId, meta);
-			await this.emitTelemetry("provider-registered", {
+			await this.emitTelemetry("pie-toolkit-provider-registered", {
 				providerId,
 				providerName: config.provider.providerName,
 			});
@@ -796,10 +997,6 @@ export class ToolkitCoordinator {
 				err,
 			);
 			this.handleError(err, { phase: "provider-register", providerId });
-			this.hooks.onProviderError?.(providerId, err as Error, {
-				phase: "provider-register",
-				providerId,
-			});
 		}
 	}
 
@@ -816,14 +1013,10 @@ export class ToolkitCoordinator {
 				await this.hooks.onProviderInitStart?.(providerId, meta);
 				await this.toolProviderRegistry.initialize(providerId);
 				await this.hooks.onProviderReady?.(providerId, meta);
-				await this.emitTelemetry("provider-ready", { providerId });
+				await this.emitTelemetry("pie-toolkit-provider-ready", { providerId });
 				return provider;
 			} catch (err) {
 				const error = err instanceof Error ? err : new Error(String(err));
-				this.hooks.onProviderError?.(providerId, error, {
-					phase: "provider-init",
-					providerId,
-				});
 				this.handleError(error, { phase: "provider-init", providerId });
 				throw error;
 			}
@@ -1258,7 +1451,7 @@ export class ToolkitCoordinator {
 			controller: args.controller,
 		});
 		await this.hooks.onSectionControllerReady?.(args.context, args.controller);
-		await this.emitTelemetry("section-controller-ready", {
+		await this.emitTelemetry("pie-toolkit-section-controller-ready", {
 			assessmentId: args.key.assessmentId,
 			sectionId: args.key.sectionId,
 			attemptId: args.key.attemptId,
@@ -1345,7 +1538,7 @@ export class ToolkitCoordinator {
 		}
 		await args.controller.dispose?.();
 		await this.hooks.onSectionControllerDispose?.(args.context, args.controller);
-		await this.emitTelemetry("section-controller-disposed", {
+		await this.emitTelemetry("pie-toolkit-section-controller-disposed", {
 			assessmentId: args.key.assessmentId,
 			sectionId: args.key.sectionId,
 			attemptId: args.key.attemptId,
@@ -1403,7 +1596,7 @@ export class ToolkitCoordinator {
 				backend: resolvedBackend,
 			},
 		});
-		await this.emitTelemetry("tts-init-start", {
+		await this.emitTelemetry("pie-toolkit-tts-init-start", {
 			backend: resolvedBackend,
 		});
 		await this.emitTelemetry("pie-tool-init-start", {
@@ -1418,7 +1611,7 @@ export class ToolkitCoordinator {
 				const ttsProvider = await this.ensureProviderReady("tts");
 				const providerInstance = await ttsProvider.createInstance();
 				await this.initializeTTSService(providerInstance, runtimeTTSConfig);
-				await this.emitTelemetry("tts-init-success", {
+				await this.emitTelemetry("pie-toolkit-tts-init-success", {
 					provider: "registry",
 				});
 				await this.emitTelemetry("pie-tool-init-success", {
@@ -1463,7 +1656,7 @@ export class ToolkitCoordinator {
 		const provider = new BrowserTTSProvider();
 		try {
 			await this.initializeTTSService(provider, runtimeTTSConfig);
-			await this.emitTelemetry("tts-init-success", {
+			await this.emitTelemetry("pie-toolkit-tts-init-success", {
 				provider: "browser-fallback",
 			});
 			await this.emitTelemetry("pie-tool-init-success", {
@@ -1475,9 +1668,8 @@ export class ToolkitCoordinator {
 		} catch (error) {
 			const normalized =
 				error instanceof Error ? error : new Error(String(error));
-			this.hooks.onTTSError?.(normalized, { phase: "tts-init" });
 			this.handleError(normalized, { phase: "tts-init" });
-			await this.emitTelemetry("tts-init-error", {
+			await this.emitTelemetry("pie-toolkit-tts-init-error", {
 				message: normalized.message,
 			});
 			await this.emitTelemetry("pie-tool-init-error", {
@@ -1561,7 +1753,7 @@ export class ToolkitCoordinator {
 			}
 		});
 		const voicesAfterWait = synth.getVoices();
-		await this.emitTelemetry("tts-browser-voices-ready", {
+		await this.emitTelemetry("pie-toolkit-tts-browser-voices-ready", {
 			voiceCount: voicesAfterWait.length,
 			timedOut: voicesAfterWait.length === 0,
 		});
@@ -1604,7 +1796,7 @@ export class ToolkitCoordinator {
 			if (!this.coordinatorReadyNotified) {
 				this.coordinatorReadyNotified = true;
 				await this.hooks.onCoordinatorReady?.(this);
-				await this.emitTelemetry("coordinator-ready", {
+				await this.emitTelemetry("pie-toolkit-coordinator-ready", {
 					assessmentId: this.assessmentId,
 				});
 			}
@@ -1720,7 +1912,14 @@ export class ToolkitCoordinator {
 			},
 		);
 		this.config.tools = validated.config;
-		void this.emitTelemetry("tool-config-updated", { toolId });
+		// M8 PR 2 — keep the policy engine's tools input in lockstep
+		// with the validated coordinator config. The engine emits an
+		// `inputs` change event so subscribers (e.g. PR 3 toolbars) can
+		// re-decide without us managing a parallel pub/sub.
+		this.policyEngine.updateInputs({
+			tools: this.config.tools as CanonicalToolsConfig,
+		});
+		void this.emitTelemetry("pie-toolkit-tool-config-updated", { toolId });
 
 		// Apply configuration changes to services
 		this._applyToolConfigChange(toolId, updates);
@@ -1756,6 +1955,12 @@ export class ToolkitCoordinator {
 			},
 		);
 		this.config.tools = validated.config;
+		// M8 PR 2 — keep the policy engine in lockstep with the
+		// floating-tools placement update. See `updateToolConfig` for
+		// the same pattern.
+		this.policyEngine.updateInputs({
+			tools: this.config.tools as CanonicalToolsConfig,
+		});
 
 		// Notify listener of change
 		if (this.floatingToolsChangeCallback) {
@@ -1764,13 +1969,44 @@ export class ToolkitCoordinator {
 	}
 
 	/**
-	 * Get currently enabled floating tools.
+	 * Get currently enabled floating tools (section-level placement).
 	 *
-	 * @returns Array of enabled tool IDs
+	 * @returns Array of enabled tool IDs.
+	 *
+	 * @remarks
+	 * As of M8 PR 2 this routes through the {@link ToolPolicyEngine}
+	 * rather than the legacy `resolveToolsForLevel(...)` shim. The two
+	 * paths agree on `placement → policy.allowed → policy.blocked`,
+	 * but the engine additionally enforces:
+	 *
+	 *   - **Provider veto** — `tools.providers[id].enabled === false`
+	 *     removes the tool from the visible set. The legacy resolver
+	 *     ignored this flag for floating tools.
+	 *   - **QTI gates** — when `qtiEnforcement` is `"on"` (set by host
+	 *     via {@link setQtiEnforcement}, or auto-promoted when the
+	 *     bound `AssessmentEntity` / current `AssessmentItemRef`
+	 *     carries QTI 6-level precedence material — see
+	 *     {@link resolveEffectiveQtiEnforcement}) **and an assessment
+	 *     is bound**, the QTI 6-level precedence (district block →
+	 *     test-admin override → item restriction/requirement →
+	 *     district requirement → PNP supports / prohibitions) is
+	 *     applied. `qtiEnforcement: "on"` without a bound assessment
+	 *     is a no-op for QTI gating.
+	 *   - **Custom `PolicySource`s** registered via
+	 *     {@link registerPolicySource}.
+	 *
+	 * Under the default no-assessment, no-override, no-provider-veto
+	 * configuration the result still matches `resolveToolsForLevel(...)`
+	 * exactly — a parity asserted by the integration tests in
+	 * `tests/policy/coordinator-integration.test.ts`. Once PR 5 deletes
+	 * the legacy resolver this method becomes the canonical surface.
+	 *
+	 * Consumers that need the full decision (provenance, diagnostics)
+	 * should call {@link decideToolPolicy} instead.
 	 */
 	getFloatingTools(): string[] {
 		if (!this.config.tools) return [];
-		return resolveToolsForLevel(this.config.tools as unknown as CanonicalToolsConfig, "section");
+		return this.policyEngine.getVisibleToolIds("section", "*");
 	}
 
 	/**
@@ -1787,6 +2023,154 @@ export class ToolkitCoordinator {
 		return () => {
 			this.floatingToolsChangeCallback = null;
 		};
+	}
+
+	// ----------------------------------------------------------------
+	// M8 PR 2 — Tool Policy Engine surface
+	//
+	// The methods below are additive in PR 2: hosts can already drive
+	// the unified ToolPolicyEngine, but the existing toolbar / section-
+	// player render paths still consume the legacy `resolveToolsForLevel`
+	// / `PnpToolResolver` chain. PR 3 switches consumers; PR 5 deletes
+	// the legacy path. See `.cursor/plans/m8-implementation-plan.md`.
+	// ----------------------------------------------------------------
+
+	/**
+	 * Resolve the visible tool set for a given placement level + scope.
+	 *
+	 * Thin shim over the owned tool-policy engine. Hosts that need
+	 * richer outputs (provenance, diagnostics) read this directly;
+	 * hosts that only need the section-level tool IDs can call
+	 * {@link getFloatingTools} instead.
+	 */
+	decideToolPolicy(request: ToolPolicyDecisionRequest): ToolPolicyDecision {
+		return this.policyEngine.decide(request);
+	}
+
+	/**
+	 * Subscribe to policy-engine change events. Fires whenever the
+	 * coordinator's bound inputs change (`updateToolConfig`,
+	 * `updateFloatingTools`, `updateAssessment`, `updateCurrentItemRef`,
+	 * `setQtiEnforcement`) or a custom `PolicySource` is registered /
+	 * removed via {@link registerPolicySource}.
+	 *
+	 * The listener receives a `ToolPolicyChangeEvent` with the event
+	 * `reason` and a frozen snapshot of the engine inputs. Listeners
+	 * that want the new visible tool set should call
+	 * {@link decideToolPolicy} with their level / scope.
+	 *
+	 * Note: the engine itself can also emit `reason: "disposed"`, but
+	 * the coordinator does not dispose its engine on teardown today,
+	 * so subscribers attached via this method will not observe that
+	 * reason. Detach via the returned unsubscribe function instead of
+	 * relying on a `disposed` event.
+	 */
+	onPolicyChange(listener: ToolPolicyChangeListener): () => void {
+		return this.policyEngine.onPolicyChange(listener);
+	}
+
+	/**
+	 * Bind (or clear) the active QTI assessment for policy decisions.
+	 *
+	 * Under auto-mode (no host override via {@link setQtiEnforcement}),
+	 * the coordinator promotes the engine to `qtiEnforcement: "on"`
+	 * iff the assessment carries any QTI 6-level precedence material
+	 * (`personalNeedsProfile`, `settings.districtPolicy`,
+	 * `settings.testAdministration`) or the currently-bound item ref
+	 * carries item-level QTI inputs. A bare assessment record (just
+	 * `id` / `name`, no PNP, no settings) keeps `"off"`.
+	 *
+	 * The host override set via {@link setQtiEnforcement} is sticky
+	 * across assessment swaps; calling with `null` clears the binding
+	 * and re-runs the auto-mode helper.
+	 */
+	updateAssessment(assessment: AssessmentEntity | null): void {
+		this.boundAssessment = assessment;
+		this.policyEngine.updateInputs({
+			assessment,
+			qtiEnforcement: this.resolveEffectiveQtiEnforcement(),
+		});
+	}
+
+	/**
+	 * Bind (or clear) the current item reference for policy decisions.
+	 *
+	 * Used by item-level QTI gates (item `requiredTools` /
+	 * `restrictedTools` / `toolParameters`). Item-level QTI material
+	 * also feeds {@link resolveEffectiveQtiEnforcement} — navigating
+	 * to an item with QTI settings can flip auto-mode to `"on"` even
+	 * when the parent assessment carries no QTI block of its own.
+	 */
+	updateCurrentItemRef(itemRef: AssessmentItemRef | null): void {
+		this.boundCurrentItemRef = itemRef;
+		this.policyEngine.updateInputs({
+			currentItemRef: itemRef,
+			qtiEnforcement: this.resolveEffectiveQtiEnforcement(),
+		});
+	}
+
+	/**
+	 * Override the auto-mode QTI enforcement decision.
+	 *
+	 * Pass `"on"` to force QTI enforcement even when no QTI inputs
+	 * are bound (useful for tests / fixtures). Pass `"off"` to opt
+	 * out even when QTI inputs are present. Pass `null` to clear the
+	 * override and return to auto-mode — `"on"` iff
+	 * {@link resolveDefaultQtiEnforcement} reports any QTI material
+	 * on the bound assessment or current item, otherwise `"off"`.
+	 */
+	setQtiEnforcement(mode: QtiEnforcementMode | null): void {
+		this.qtiEnforcementOverride = mode;
+		this.policyEngine.updateInputs({
+			qtiEnforcement: this.resolveEffectiveQtiEnforcement(),
+		});
+	}
+
+	/**
+	 * Get the policy engine inputs currently driving decisions. Useful
+	 * for debugging / instrumentation; do not mutate.
+	 */
+	getPolicyInputs(): Readonly<ResolvedEngineInputs> {
+		return this.policyEngine.getInputs();
+	}
+
+	/**
+	 * Register a custom {@link PolicySource} with the owned policy
+	 * engine. The source participates in every subsequent
+	 * {@link decideToolPolicy} call until disposed (the returned
+	 * function detaches and emits a `policy-source-removed` event).
+	 *
+	 * Delegates verbatim to
+	 * {@link ToolPolicyEngine.registerPolicySource} — see that
+	 * method for the full contract (event ordering, idempotency of
+	 * the returned dispose function, and how registered sources
+	 * compose with the built-in QTI source).
+	 */
+	registerPolicySource(source: PolicySource): () => void {
+		return this.policyEngine.registerPolicySource(source);
+	}
+
+	/**
+	 * Compute the effective `qtiEnforcement` mode given the explicit
+	 * host override and the auto-mode helper.
+	 *
+	 * Auto-mode (no override) defers to
+	 * {@link resolveDefaultQtiEnforcement}, which returns `"on"`
+	 * exactly when the bound assessment or current item ref carries
+	 * QTI 6-level precedence material (PNP, district policy, test
+	 * administration, item-level required/restricted/parameters), and
+	 * `"off"` otherwise. Hosts that bind a bare assessment record
+	 * (just `id` / `name`) therefore keep the legacy floating-tools
+	 * behavior — QTI gates engage the moment QTI material is present.
+	 */
+	private resolveEffectiveQtiEnforcement(): QtiEnforcementMode {
+		if (this.qtiEnforcementOverride !== null) {
+			return this.qtiEnforcementOverride;
+		}
+		return resolveDefaultQtiEnforcement({
+			assessment: this.boundAssessment,
+			currentItemRef: this.boundCurrentItemRef,
+		});
 	}
 
 	/**

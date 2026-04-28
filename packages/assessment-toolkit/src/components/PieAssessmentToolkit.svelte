@@ -7,27 +7,52 @@
 			section: { attribute: "section", type: "Object" },
 			sectionId: { attribute: "section-id", type: "String" },
 			attemptId: { attribute: "attempt-id", type: "String" },
-			view: { attribute: "view", type: "String" },
 			env: { attribute: "env", type: "Object" },
 			lazyInit: { attribute: "lazy-init", type: "Boolean" },
 			toolConfigStrictness: { attribute: "tool-config-strictness", type: "String" },
 			tools: { attribute: "tools", type: "Object" },
+			enabledTools: { attribute: "enabled-tools", type: "String" },
 			toolRegistry: { type: "Object", reflect: false },
-			accessibility: { attribute: "accessibility", type: "Object" },
+			accessibility: { type: "Object", reflect: false },
 			player: { attribute: "player", type: "Object" },
 			playerType: { attribute: "player-type", type: "String" },
 			coordinator: { type: "Object", reflect: false },
 			createSectionController: { type: "Object", reflect: false },
-			frameworkErrorHook: { type: "Object", reflect: false },
 			onFrameworkError: { type: "Object", reflect: false },
-			onframeworkerror: { type: "Object", reflect: false },
 			errorRenderer: { type: "Object", reflect: false },
-			isolation: { attribute: "isolation", type: "String" },
+			// M6 canonical stage-change callback. Invoked at the same
+			// emit point as `pie-stage-change` so the callback and DOM
+			// event stay in lockstep. Hosts using `<pie-section-player-*>`
+			// receive this through the base CE's runtime-tier resolver.
+			onStageChange: { type: "Object", reflect: false },
+			// M8 PR 2 — additive Tool Policy Engine inputs. The toolkit
+			// CE forwards these into the owned `ToolkitCoordinator` so
+			// the engine has the QTI inputs needed for accessibility-
+			// aware policy decisions. PR 2 introduces them unused by
+			// internal toolbars; PR 3 switches the toolbars onto the
+			// engine and these props become the canonical input path.
+			assessment: { type: "Object", reflect: false },
+			currentItemRef: { type: "Object", reflect: false },
+			qtiEnforcement: {
+				attribute: "qti-enforcement",
+				type: "String",
+			},
+			// JS-only prop. Section-player layouts forward
+			// `runtime.isolation` through this property via
+			// `<pie-assessment-toolkit isolation={effectiveIsolation}>`
+			// in `PieSectionPlayerBaseElement.svelte`. Standalone
+			// hosts that want to override the toolkit's coordinator-
+			// inheritance behavior should pass an explicit
+			// `coordinator={...}` instead — the kebab-attribute
+			// surface (`<pie-assessment-toolkit isolation="force">`)
+			// is no longer observed.
+			isolation: { type: "Object", reflect: false },
 		},
 	}}
 />
 
 <script lang="ts">
+	import { untrack } from "svelte";
 	import {
 		ContextProvider,
 		ContextRoot,
@@ -35,8 +60,10 @@
 	} from "@pie-players/pie-context";
 	import {
 		attachInstrumentationEventBridge,
+		createStageTracker,
 		resolveInstrumentationProvider,
 		TOOLKIT_INSTRUMENTATION_EVENT_MAP,
+		type StageChangeDetail,
 	} from "@pie-players/pie-players-shared/pie";
 	import { isInstrumentationProvider } from "@pie-players/pie-players-shared";
 	import {
@@ -49,16 +76,23 @@
 	} from "../context/assessment-toolkit-context.js";
 	import { connectAssessmentToolkitHostRuntimeContext } from "../context/runtime-context-consumer.js";
 	import { ToolkitCoordinator } from "../services/ToolkitCoordinator.js";
+	import type { QtiEnforcementMode } from "../policy/engine.js";
+	import type {
+		AssessmentEntity,
+		AssessmentItemRef,
+	} from "@pie-players/pie-players-shared/types";
 	import {
 		formatFrameworkErrorForConsole,
 		frameworkErrorFromUnknown,
 		type FrameworkErrorModel,
 	} from "../services/framework-error.js";
+	import { FrameworkErrorBus } from "../services/framework-error-bus.js";
 	import type { ToolRegistry } from "../services/ToolRegistry.js";
 	import {
 		normalizeAndValidateToolsConfig,
 		type ToolConfigStrictness,
 	} from "../services/tool-config-validation.js";
+	import { parseToolList } from "../services/tools-config-normalizer.js";
 	import {
 		PIE_INTERNAL_CONTENT_LOADED_EVENT,
 		PIE_INTERNAL_ITEM_SESSION_CHANGED_EVENT,
@@ -72,9 +106,11 @@
 	} from "../runtime/registration-events.js";
 	import { dispatchCrossBoundaryEvent } from "../runtime/tool-host-contract.js";
 	import { SectionRuntimeEngine } from "../runtime/SectionRuntimeEngine.js";
+	import { connectSectionRuntimeEngineHostContext } from "../runtime/section-runtime-engine-host-context.js";
+	import { runStageEmitWithSuppression } from "../runtime/stage-emit-gate.js";
 	import {
 		createRuntimeId,
-	} from "../runtime/runtime-event-guards.js";
+	} from "../runtime/runtime-id.js";
 	import {
 		createSessionEmitPolicyState,
 		resetSessionEmitPolicyState,
@@ -120,6 +156,28 @@
 
 	const runtimeId = createRuntimeId("toolkit");
 	const sectionEngine = new SectionRuntimeEngine();
+	// M7 PR 6: when wrapped by a section-player layout, the kernel
+	// publishes its engine via the cross-CE
+	// `sectionRuntimeEngineHostContext`. We track the upstream
+	// reference so wrapped-mode-specific behavior (stage-emit
+	// suppression to avoid double-emit on layout CE; framework-error
+	// FSM input forwarding) can branch off it. `null` means
+	// standalone — no upstream provider responded — and the toolkit
+	// keeps its existing pre-PR-6 behavior. The reference is set once
+	// per cohort by the cross-CE consumer effect below; it never
+	// becomes a substitute for `sectionEngine` (the local engine
+	// remains the controller-side facade for `register`,
+	// `handleContent*`, `initialize`, etc.). PR 7+ will collapse the
+	// local controller-side surface onto the upstream engine.
+	let upstreamEngine = $state<SectionRuntimeEngine | null>(null);
+	// Per-CE-instance framework-error bus. Shared with the owned
+	// `ToolkitCoordinator` so coordinator-side failures (provider-init,
+	// tts-init, ...) flow through the same fan-out as CE-side failures
+	// (coordinator-init, runtime-init, runtime-dispose). The bus is the
+	// single source for the canonical `onFrameworkError` prop, the
+	// `framework-error` DOM event, the banner UI, and the
+	// `subscribeFrameworkErrors` API on the coordinator.
+	const frameworkErrorBus = new FrameworkErrorBus();
 const DEFAULT_ENV = {
 	mode: "gather",
 	role: "student",
@@ -136,33 +194,50 @@ const DEFAULT_ENV = {
 		section = null,
 		sectionId = "",
 		attemptId = "",
-		view = "candidate",
 		env = {},
 		lazyInit = true,
 		toolConfigStrictness = "error" as ToolConfigStrictness,
 		tools = {},
+		enabledTools = "",
 		toolRegistry = null as ToolRegistry | null,
 		accessibility = {},
 		player = null as HostItemPlayerInput,
 		playerType = "" as ItemPlayerType | "",
 		coordinator = null as ToolkitCoordinator | null,
 		createSectionController = null as null | (() => unknown),
-		frameworkErrorHook: frameworkErrorCallback = null as null | ((errorModel: FrameworkErrorModel) => void),
 		onFrameworkError = null as null | ((errorModel: FrameworkErrorModel) => void),
-		onframeworkerror = null as null | ((errorModel: FrameworkErrorModel) => void),
 		errorRenderer = null as
 			| null
 			| ((errorModel: FrameworkErrorModel) => {
 					title?: string;
 					details?: string[];
 			  }),
+		onStageChange = null as null | ((detail: StageChangeDetail) => void),
+		// M8 PR 2 — additive Tool Policy Engine inputs. See the
+		// `<svelte:options>` props block above for the rationale.
+		// `qtiEnforcement` accepts `"on"`, `"off"`, or `null` (auto —
+		// the coordinator infers the effective mode from QTI material
+		// on the bound `assessment` / `currentItemRef`). Embedded
+		// under `<pie-section-player-*>` the same override flows via
+		// `runtime.tools.qtiEnforcement`; the effect below falls back
+		// to `tools.qtiEnforcement` when the explicit prop is `null`
+		// so both entry points converge on the same coordinator call.
+		assessment = null as AssessmentEntity | null,
+		currentItemRef = null as AssessmentItemRef | null,
+		qtiEnforcement = null as QtiEnforcementMode | null,
 		isolation = "inherit",
 	} = $props();
 
 	let anchor = $state<HTMLDivElement | null>(null);
 	let ownedCoordinator = $state<ToolkitCoordinator | null>(null);
 	let inheritedRuntime = $state<AssessmentToolkitHostRuntimeContext | null>(null);
-	let lastOwnership = $state<"owned" | "inherited" | null>(null);
+	// `lastOwnership` is a self-comparison latch read and written only by
+	// the ownership-change `$effect` below. Keeping it as `$state` would
+	// make Svelte treat the same-effect read+write as a reactivity loop
+	// (effect_update_depth_exceeded). It does not feed any other reactive
+	// consumer, so a plain `let` is safer and matches the canonical Svelte
+	// 5 latch pattern from `.cursor/rules/svelte-subscription-safety.mdc`.
+	let lastOwnership: "owned" | "inherited" | null = null;
 	let provider: ContextProvider<typeof assessmentToolkitRuntimeContext> | null = null;
 	let contextRoot: ContextRoot | null = null;
 	let hostRuntimeProvider: ContextProvider<
@@ -175,14 +250,94 @@ const DEFAULT_ENV = {
 	let frameworkErrorModel = $state<FrameworkErrorModel | null>(null);
 	let frameworkErrorTitle = $state("Unable to initialize assessment toolkit.");
 	let frameworkErrorDetails = $state<string[]>([]);
-	let deliveredFrameworkErrorKey = $state("");
-	let lastOwnedBootstrapFailureKey = $state("");
+	// Self-comparison latches for the framework-error redelivery `$effect`
+	// and the owned-coordinator bootstrap `$effect` below. Same rationale
+	// as `lastOwnership`: keeping these as `$state` made the owning
+	// effects read+write the same source in a single pass, tripping
+	// `effect_update_depth_exceeded`. Neither value is read by any other
+	// reactive consumer, so plain `let` removes the loop without dropping
+	// any subscriber.
+	let deliveredFrameworkErrorKey = "";
+	let lastOwnedBootstrapFailureKey = "";
 	let lastCompositionRevisionKey = $state("");
 	let pendingCompositionModel: unknown = null;
 	let pendingCompositionEmit = false;
 	let compositionEmitRaf: number | null = null;
 	let pendingCrossBoundaryEvents: Array<{ name: string; detail: unknown }> = [];
 	const sessionEmitPolicyState = createSessionEmitPolicyState();
+
+	// M6 canonical stage tracker. Post-retro the toolkit applies the
+	// same four-stage canonical list (`composed`, `engine-ready`,
+	// `interactive`, `disposed`) as every layout CE; subscriber
+	// iteration order stays stable across `<pie-section-player-*>` and
+	// `<pie-assessment-toolkit>` CE shapes. Cohort changes
+	// (`(sectionId, attemptId)`) reset the tracker so the new cohort
+	// begins emitting from `composed`. Initial seed values are captured
+	// via `untrack` because the tracker explicitly absorbs subsequent
+	// cohort changes through `reset()`, not through prop reactivity at
+	// construction time.
+	const stageTracker = createStageTracker({
+		sourceCe: "pie-assessment-toolkit",
+		sourceCeShape: "toolkit",
+		runtimeId,
+		sectionId: untrack(() => sectionId || undefined),
+		attemptId: untrack(() => attemptId || undefined),
+		emit: (detail: StageChangeDetail) => {
+			// M7 PR 6: route the toolkit's stage-emit through the
+			// extracted `runStageEmitWithSuppression` helper so the
+			// wrapped/standalone gating logic is testable in isolation
+			// (see `tests/runtime/stage-emit-gate.test.ts`). The
+			// thunks below preserve pre-PR-6 semantics:
+			//
+			//   - `isSuppressed`: when wrapped by a section-player
+			//     layout the kernel's engine emits the canonical
+			//     `pie-stage-change` chain on the layout CE host and
+			//     invokes the runtime-tier `onStageChange` callback
+			//     itself. Suppressing here prevents the toolkit CE
+			//     from also emitting (which would bubble through
+			//     `composed: true` to the layout CE host and produce a
+			//     duplicate emission for outside listeners). The
+			//     internal stage-tracker latch state advances before
+			//     `opts.emit` runs, so suppression only short-circuits
+			//     externally-visible side effects — the toolkit's own
+			//     readiness path (`waitUntilReady` / `engine-ready` /
+			//     `interactive`) stays correct in standalone mode and
+			//     degenerates into a series of suppressed emits in
+			//     wrapped mode without losing any latch transitions.
+			//
+			//     The reactive `upstreamEngine` is read inside the
+			//     thunk (i.e. at emit time, not at construction time)
+			//     and all callers of `stageTracker.enter(...)` are
+			//     themselves wrapped in `untrack(...)` (see effects
+			//     below), so the read does not feed back into any
+			//     tracked dependency graph.
+			//
+			//   - `getOnStageChange`: the prop is read on every emit
+			//     so reassignments (cohort change, host swap) always
+			//     reach the latest handler.
+			runStageEmitWithSuppression(
+				{
+					isSuppressed: () => upstreamEngine !== null,
+					dispatchDomEvent: (d) => emit("pie-stage-change", d),
+					getOnStageChange: () => onStageChange,
+				},
+				detail,
+			);
+		},
+	});
+	let lastStageCohortKey = $state(
+		untrack(() => `${sectionId}|${attemptId}`),
+	);
+	let composedStageEntered = $state(false);
+	let engineReadyStageEntered = $state(false);
+	let interactiveStageEntered = $state(false);
+	// `sectionInitialized` is the second of two preconditions for the
+	// `interactive` stage emission. The toolkit's interactive entrance
+	// requires *both* `engine-ready` (coordinator bring-up settled) and
+	// `sectionInitialized` (section composition + controller hydrated)
+	// before it fires. A reactive effect below joins them so neither
+	// race ordering silently drops a stage.
+	let sectionInitialized = $state(false);
 
 	function getHostElement(): HTMLElement | null {
 		if (!anchor) return null;
@@ -258,6 +413,20 @@ const DEFAULT_ENV = {
 		}
 	}
 
+	/**
+	 * Build a `FrameworkErrorModel` and publish it on this CE's
+	 * framework-error bus.
+	 *
+	 * All delivery side-effects (banner UI, `framework-error` DOM event,
+	 * hook delivery, console logging) live in the bus subscriber
+	 * registered below — keeping this helper a thin publish-side wrapper
+	 * that CE-internal callers can use.
+	 *
+	 * Coordinator-side failures (provider-init, tts-init, ...) reach the
+	 * same subscriber by way of the shared bus (passed into the owned
+	 * coordinator via `buildOwnedCoordinator`), so consumers see one
+	 * canonical fan-out per error.
+	 */
 	function reportFrameworkError(args: {
 		kind: FrameworkErrorModel["kind"];
 		source: string;
@@ -270,51 +439,70 @@ const DEFAULT_ENV = {
 			error: args.error,
 			recoverable: args.recoverable,
 		});
-		console.error(formatFrameworkErrorForConsole(model), model.cause);
-		const rendered = applyErrorRenderer(model);
-		frameworkErrorModel = model;
-		frameworkErrorTitle = rendered.title;
-		frameworkErrorDetails = rendered.details;
-		emit("framework-error", model);
-		emit("runtime-error", {
-			runtimeId,
-			error: args.error,
-			frameworkError: model,
-		});
-		const frameworkErrorHook =
-			frameworkErrorCallback ?? onFrameworkError ?? onframeworkerror;
-		if (frameworkErrorHook) {
-			try {
-				frameworkErrorHook(model);
-				deliveredFrameworkErrorKey = `${model.kind}|${model.source}|${model.message}`;
-			} catch (hookError) {
-				console.error(
-					`[pie-framework:runtime-init:pie-assessment-toolkit] framework error hook failed`,
-					hookError,
-				);
-			}
-		}
+		frameworkErrorBus.reportFrameworkError(model);
 		return model;
 	}
 
-	$effect(() => {
-		if (!frameworkErrorModel) {
-			return;
-		}
-		const frameworkErrorKey = `${frameworkErrorModel.kind}|${frameworkErrorModel.source}|${frameworkErrorModel.message}`;
-		if (deliveredFrameworkErrorKey === frameworkErrorKey) return;
-		const frameworkErrorHook =
-			frameworkErrorCallback ?? onFrameworkError ?? onframeworkerror;
-		if (!frameworkErrorHook) return;
+	/**
+	 * Whether this CE should surface the bootstrap banner for `kind`.
+	 *
+	 * The banner is the visible "we could not start the toolkit" surface
+	 * and is intentionally narrower than the canonical contract: it only
+	 * fires for fatal CE-bootstrap kinds (`coordinator-init`,
+	 * `runtime-init`, `tool-config`). Coordinator-internal failures
+	 * (provider-init, tts-init, ...) still flow through the canonical
+	 * hook + DOM event but do not replace the toolkit content with an
+	 * error card — they are degradations, not bootstrap failures.
+	 */
+	function isBootstrapKind(kind: FrameworkErrorModel["kind"]): boolean {
+		return (
+			kind === "coordinator-init" ||
+			kind === "runtime-init" ||
+			kind === "tool-config"
+		);
+	}
+
+	function deliverFrameworkErrorHook(model: FrameworkErrorModel): void {
+		if (!onFrameworkError) return;
 		try {
-			frameworkErrorHook(frameworkErrorModel);
-			deliveredFrameworkErrorKey = frameworkErrorKey;
+			onFrameworkError(model);
+			deliveredFrameworkErrorKey = `${model.kind}|${model.source}|${model.message}`;
 		} catch (hookError) {
 			console.error(
-				`[pie-framework:runtime-init:pie-assessment-toolkit] framework error hook failed`,
+				`[pie-framework:${model.kind}:${model.source}] framework error hook failed`,
 				hookError,
 			);
 		}
+	}
+
+	$effect(() => {
+		const detach = frameworkErrorBus.subscribeFrameworkErrors((model) => {
+			console.error(formatFrameworkErrorForConsole(model), model.cause);
+
+			if (isBootstrapKind(model.kind)) {
+				const rendered = applyErrorRenderer(model);
+				frameworkErrorModel = model;
+				frameworkErrorTitle = rendered.title;
+				frameworkErrorDetails = rendered.details;
+			}
+
+			emit("framework-error", model);
+
+			deliverFrameworkErrorHook(model);
+		});
+		return () => {
+			detach();
+		};
+	});
+
+	$effect(() => {
+		if (!frameworkErrorModel) return;
+		const frameworkErrorKey = `${frameworkErrorModel.kind}|${frameworkErrorModel.source}|${frameworkErrorModel.message}`;
+		if (deliveredFrameworkErrorKey === frameworkErrorKey) return;
+		// Hook prop became available after the framework-error model was
+		// already produced (e.g. host wired it asynchronously). Re-deliver
+		// once for the current model so late-binding hosts see the error.
+		deliverFrameworkErrorHook(frameworkErrorModel);
 	});
 
 	function hashString(input: string): string {
@@ -469,8 +657,42 @@ const DEFAULT_ENV = {
 		);
 	}
 
+	/**
+	 * Merge the `enabled-tools` shorthand into a `tools.placement.section`
+	 * list, leaving the `tools` object form authoritative when both are
+	 * provided. Mirrors `resolveToolsConfig` in the section-player layer
+	 * so direct toolkit hosts get the same easy-tier behavior.
+	 *
+	 * Precedence (highest first):
+	 *   1. Explicit `tools.placement.section` array on the `tools` prop
+	 *   2. `enabled-tools` shorthand attribute / `enabledTools` prop
+	 *
+	 * Section-player CEs already merge before passing `tools` here, so for
+	 * the embedded path this helper is a no-op in practice; it only fires
+	 * when a host mounts `<pie-assessment-toolkit>` directly.
+	 */
+	function buildEffectiveToolsInput(): Record<string, unknown> {
+		const baseTools = (tools || {}) as Record<string, unknown>;
+		const sectionShorthand = parseToolList(enabledTools);
+		if (sectionShorthand.length === 0) return baseTools;
+		const placement = (baseTools.placement || {}) as Record<string, unknown>;
+		const explicitSectionPlacement = Array.isArray(placement.section)
+			? (placement.section as unknown[])
+			: null;
+		if (explicitSectionPlacement && explicitSectionPlacement.length > 0) {
+			return baseTools;
+		}
+		return {
+			...baseTools,
+			placement: {
+				...placement,
+				section: sectionShorthand,
+			},
+		};
+	}
+
 	function validateToolsConfigForBootstrap() {
-		return normalizeAndValidateToolsConfig(tools as any, {
+		return normalizeAndValidateToolsConfig(buildEffectiveToolsInput() as any, {
 			strictness: toolConfigStrictness,
 			source: "pie-assessment-toolkit.bootstrap",
 			toolRegistry,
@@ -480,7 +702,7 @@ const DEFAULT_ENV = {
 	function getOwnedBootstrapFailureKey(): string {
 		let toolsSignature = "";
 		try {
-			toolsSignature = JSON.stringify(tools || {});
+			toolsSignature = JSON.stringify(buildEffectiveToolsInput());
 		} catch {
 			toolsSignature = "[unserializable-tools]";
 		}
@@ -489,6 +711,43 @@ const DEFAULT_ENV = {
 			String(toolConfigStrictness || "error"),
 			toolsSignature,
 		].join("|");
+	}
+
+	// Coerce the public `qti-enforcement` CE attribute (string or null)
+	// into the engine's `QtiEnforcementMode | null` contract. Anything
+	// outside the canonical "on" / "off" set — typos like "ON",
+	// missing-attribute artifacts like "" or "null" strings — collapses
+	// to `null` (auto-mode) instead of silently degrading inside the
+	// engine. This is the single canonical entry point for the prop;
+	// keep all `setQtiEnforcement(...)` calls in this file routed
+	// through it.
+	function coerceQtiEnforcement(
+		value: QtiEnforcementMode | null | string | undefined,
+	): QtiEnforcementMode | null {
+		return value === "on" || value === "off" ? value : null;
+	}
+
+	// Resolve the effective override that flows into the coordinator.
+	// The explicit `qti-enforcement` attribute (standalone path) wins
+	// over `tools.qtiEnforcement` (embedded path via
+	// `runtime.tools.qtiEnforcement`); both fall back to `null`
+	// (auto-mode) so the coordinator's
+	// {@link resolveDefaultQtiEnforcement} helper runs on the bound
+	// assessment / item ref.
+	function resolveQtiEnforcementInput(
+		explicit: QtiEnforcementMode | null | string | undefined,
+		toolsConfig: unknown,
+	): QtiEnforcementMode | null {
+		const explicitMode = coerceQtiEnforcement(explicit);
+		if (explicitMode) return explicitMode;
+		if (toolsConfig && typeof toolsConfig === "object") {
+			const candidate = (toolsConfig as { qtiEnforcement?: unknown })
+				.qtiEnforcement;
+			return coerceQtiEnforcement(
+				typeof candidate === "string" ? candidate : null,
+			);
+		}
+		return null;
 	}
 
 	function buildOwnedCoordinator(validatedTools: unknown): ToolkitCoordinator {
@@ -504,6 +763,7 @@ const DEFAULT_ENV = {
 			tools: validatedTools as any,
 			toolRegistry,
 			accessibility: accessibility as any,
+			frameworkErrorBus,
 		});
 	}
 
@@ -514,43 +774,59 @@ const DEFAULT_ENV = {
 		return coordinator || ownedCoordinator;
 	});
 
+	// Owned-coordinator bootstrap. The effect must re-run when ownership
+	// inputs (`host`, `coordinator`, `isolation`, `inheritedRuntime`)
+	// change so the toolkit can swap between owned, passed-in, and
+	// inherited coordinators. It must *not* re-run on its own writes to
+	// `ownedCoordinator` / `lastOwnedBootstrapFailureKey` /
+	// `frameworkError*` / `runtimeError` — those self-mutations were the
+	// observed source of the `effect_update_depth_exceeded` warnings in
+	// the assessment-player smoke flow. We therefore explicitly track
+	// only the ownership inputs and run the bootstrap body inside
+	// `untrack`, matching `.cursor/rules/svelte-subscription-safety.mdc`.
 	$effect(() => {
-		if (!host) return;
-		if (coordinator) {
-			if (ownedCoordinator) {
-				ownedCoordinator = null;
-			}
-			return;
-		}
-		if (isolation !== "force" && inheritedRuntime?.coordinator) {
-			if (ownedCoordinator) {
-				ownedCoordinator = null;
-			}
-			return;
-		}
-		if (!ownedCoordinator) {
-			const failureKey = getOwnedBootstrapFailureKey();
-			if (lastOwnedBootstrapFailureKey === failureKey) {
+		void host;
+		void coordinator;
+		void isolation;
+		void inheritedRuntime;
+		untrack(() => {
+			if (!host) return;
+			if (coordinator) {
+				if (ownedCoordinator) {
+					ownedCoordinator = null;
+				}
 				return;
 			}
-			try {
-				const validatedTools = validateToolsConfigForBootstrap();
-				ownedCoordinator = buildOwnedCoordinator(validatedTools);
-				lastOwnedBootstrapFailureKey = "";
-				frameworkErrorModel = null;
-				frameworkErrorTitle = "Unable to initialize assessment toolkit.";
-				frameworkErrorDetails = [];
-			} catch (error) {
-				runtimeError = error;
-				ownedCoordinator = null;
-				lastOwnedBootstrapFailureKey = failureKey;
-				reportFrameworkError({
-					kind: "coordinator-init",
-					source: "pie-assessment-toolkit",
-					error,
-				});
+			if (isolation !== "force" && inheritedRuntime?.coordinator) {
+				if (ownedCoordinator) {
+					ownedCoordinator = null;
+				}
+				return;
 			}
-		}
+			if (!ownedCoordinator) {
+				const failureKey = getOwnedBootstrapFailureKey();
+				if (lastOwnedBootstrapFailureKey === failureKey) {
+					return;
+				}
+				try {
+					const validatedTools = validateToolsConfigForBootstrap();
+					ownedCoordinator = buildOwnedCoordinator(validatedTools);
+					lastOwnedBootstrapFailureKey = "";
+					frameworkErrorModel = null;
+					frameworkErrorTitle = "Unable to initialize assessment toolkit.";
+					frameworkErrorDetails = [];
+				} catch (error) {
+					runtimeError = error;
+					ownedCoordinator = null;
+					lastOwnedBootstrapFailureKey = failureKey;
+					reportFrameworkError({
+						kind: "coordinator-init",
+						source: "pie-assessment-toolkit",
+						error,
+					});
+				}
+			}
+		});
 	});
 
 	const effectiveAssessmentId = $derived(
@@ -705,6 +981,25 @@ const DEFAULT_ENV = {
 		});
 	});
 
+	// M7 PR 6: cross-CE engine bridge consumer. When the toolkit CE
+	// renders inside a section-player layout, the kernel publishes its
+	// `SectionRuntimeEngine` via `sectionRuntimeEngineHostContext` on
+	// the layout CE host. The consumer's `context-request` bubbles up
+	// across the toolkit's shadow boundary, the kernel's provider
+	// answers, and we record the upstream reference. When standalone,
+	// no provider responds within the consumer's retry window and
+	// `upstreamEngine` stays `null` — that is the standalone path's
+	// contract. `isolation === "force"` does not opt out of this
+	// bridge: it is a runtime-engine seam, not a coordinator-isolation
+	// seam, and `force` still wants the canonical engine path.
+	$effect(() => {
+		if (!host) return;
+		return connectSectionRuntimeEngineHostContext(host, (value) => {
+			if (value.engine === upstreamEngine) return;
+			upstreamEngine = value.engine;
+		});
+	});
+
 	$effect(() => {
 		const parentRuntimeId =
 			isolation !== "force" && inheritedRuntime ? inheritedRuntime.runtimeId : null;
@@ -797,14 +1092,66 @@ const DEFAULT_ENV = {
 		});
 	});
 
+	// M8 — push Tool Policy Engine inputs (`assessment`,
+	// `currentItemRef`, `qtiEnforcement`) into the toolkit-owned
+	// coordinator whenever they change. The coordinator's
+	// `updateAssessment` / `updateCurrentItemRef` / `setQtiEnforcement`
+	// forwards land on `ToolPolicyEngine.updateInputs`, which value-
+	// diffs each key with `Object.is` and only emits an `inputs` event
+	// on real changes — so re-running this effect on coordinator swap
+	// is safe and self-idempotent. We touch the reactive props
+	// explicitly and then run the side effect inside `untrack(...)`
+	// per `.cursor/rules/svelte-subscription-safety.mdc`.
+	//
+	// `qtiEnforcement` resolves through {@link resolveQtiEnforcementInput}
+	// so the embedded path (`<pie-section-player-*>` setting
+	// `runtime.tools.qtiEnforcement`) and the standalone path (the
+	// explicit `qti-enforcement` attribute on `<pie-assessment-toolkit>`)
+	// converge on a single coordinator call. The explicit prop wins
+	// over `tools.qtiEnforcement` so a host can pin a stricter mode
+	// without rewriting the runtime overlay.
+	//
+	// CRITICAL: only push when the toolkit *owns* the coordinator
+	// (i.e. `effectiveCoordinator === ownedCoordinator`). When the
+	// host passes a coordinator via the `coordinator` prop or shares
+	// one through `assessmentToolkitHostRuntimeContext`, that
+	// coordinator's policy inputs are the host's contract — overwriting
+	// them with our prop defaults would silently null out a host's
+	// pre-bound `AssessmentEntity`, etc. Hosts that share a coordinator
+	// drive policy inputs directly via `coord.updateAssessment(...)`.
+	$effect(() => {
+		void assessment;
+		void currentItemRef;
+		void qtiEnforcement;
+		void tools;
+		const coord = effectiveCoordinator;
+		if (!coord) return;
+		// Host-owned coordinators are off-limits for this effect.
+		if (coord !== ownedCoordinator) return;
+		untrack(() => {
+			// Apply order matters: `setQtiEnforcement` lands the override
+			// (or clears it) FIRST so `updateAssessment(...)`'s
+			// auto-promote path sees the final override and doesn't
+			// briefly resolve to "on" (when binding an assessment with
+			// `qtiEnforcement="off"`) or "off" (when clearing an
+			// assessment with `qtiEnforcement="on"`). Without this
+			// ordering we would emit a transient wrong-state policy
+			// event between the calls.
+			coord.setQtiEnforcement(resolveQtiEnforcementInput(qtiEnforcement, tools));
+			coord.updateAssessment(assessment);
+			coord.updateCurrentItemRef(currentItemRef);
+		});
+	});
+
 	$effect(() => {
 		if (!effectiveCoordinator) return;
 		return effectiveCoordinator.subscribeTelemetry(({ eventName, payload }) => {
 			if (!isInstrumentationProvider(instrumentationProvider)) return;
 			if (!instrumentationProvider.isReady()) return;
-			const instrumentationEventName = eventName.startsWith("pie-")
-				? eventName
-				: `pie-toolkit-${eventName}`;
+			// Telemetry event names are prefixed at the emit site in
+			// `ToolkitCoordinator.emitTelemetry`. See the JSDoc on that
+			// method for the namespace convention. No fallback here.
+			const instrumentationEventName = eventName;
 			const timestamp = new Date().toISOString();
 			const attributes = {
 				...(payload || {}),
@@ -864,8 +1211,33 @@ const DEFAULT_ENV = {
 				emit("section-ready", {
 					sectionId: effectiveSectionId,
 				});
+				// Mark section initialization complete. The reactive
+				// effect below joins this with `engineReadyStageEntered`
+				// so `interactive` only fires once the canonical
+				// predecessor is in. Direct emit here would race with
+				// `waitUntilReady()` and silently auto-skip
+				// `engine-ready` on fast hydration paths.
+				untrack(() => {
+					sectionInitialized = true;
+				});
 			})
 			.catch((error) => {
+				untrack(() => {
+					// If `engine-ready` has not latched yet, mark it
+					// explicitly skipped so subscribers see a monotonic
+					// chain (`composed → engine-ready:skipped →
+					// interactive:failed`) instead of `engine-ready`
+					// silently disappearing from the canonical stream.
+					// `waitUntilReady()` is still in flight at this
+					// point; `engineReadyStageEntered` guards its
+					// resolver so a late success cannot regress past
+					// the recorded skip.
+					if (!engineReadyStageEntered) {
+						engineReadyStageEntered = true;
+						stageTracker.enter("engine-ready", "skipped");
+					}
+					stageTracker.enter("interactive", "failed");
+				});
 				runtimeError = error;
 				sectionEngine.reportSectionError({
 					source: "section-runtime",
@@ -1007,6 +1379,111 @@ const DEFAULT_ENV = {
 		await sectionEngine.hydrate();
 	}
 
+	// Stage: `disposed` — wired on CE unmount. The four-stage retro
+	// dropped `attached` (it had no consumers); the toolkit no longer
+	// emits anything on mount and starts the canonical chain at
+	// `composed` once the section composition lands. `disposed` still
+	// fires on CE teardown so subscribers see a monotonic close-out.
+	$effect(() => {
+		return () => {
+			untrack(() => {
+				if (stageTracker.getCurrent() !== null) {
+					stageTracker.enter("disposed");
+				}
+			});
+		};
+	});
+
+	// Cohort change handler: when `(sectionId, attemptId)` changes, emit
+	// `disposed` for the outgoing cohort and reset the tracker so the
+	// new cohort begins emitting from `composed` against the same DOM
+	// element. The boolean stage flags must reset in lockstep.
+	$effect(() => {
+		const nextKey = `${sectionId}|${attemptId}`;
+		untrack(() => {
+			if (nextKey === lastStageCohortKey) return;
+			if (stageTracker.getCurrent() !== null) {
+				stageTracker.enter("disposed");
+			}
+			stageTracker.reset({
+				sectionId: sectionId || undefined,
+				attemptId: attemptId || undefined,
+			});
+			lastStageCohortKey = nextKey;
+			composedStageEntered = false;
+			engineReadyStageEntered = false;
+			interactiveStageEntered = false;
+			sectionInitialized = false;
+		});
+	});
+
+	// `interactive` fires once both canonical predecessors land:
+	// `engine-ready` (coordinator bring-up settled) and
+	// `sectionInitialized` (section composition + controller hydrated).
+	// Joining here prevents the race that would otherwise silently
+	// auto-skip `engine-ready` when the section initializer wins.
+	$effect(() => {
+		const ready = engineReadyStageEntered && sectionInitialized;
+		untrack(() => {
+			if (!ready) return;
+			if (interactiveStageEntered) return;
+			interactiveStageEntered = true;
+			stageTracker.enter("interactive");
+		});
+	});
+
+	// Canonical M6 stage progression for the toolkit CE (post-retro:
+	// 4 stages). The tracker is idempotent and rejects backward
+	// transitions; gating with `composedStageEntered` keeps the emit
+	// order monotonic across asynchronous sources.
+	$effect(() => {
+		const composed = compositionVersion > 0 || compositionModel !== null;
+		untrack(() => {
+			if (!composedStageEntered && composed) {
+				composedStageEntered = true;
+				stageTracker.enter("composed");
+			}
+		});
+	});
+
+	// `engine-ready` resolves once `effectiveCoordinator.waitUntilReady()`
+	// settles — that promise covers state load, TTS bring-up, and provider
+	// initialization. Failures still flow through the framework-error bus;
+	// here we record the position with `failed` so subscribers see a
+	// monotonic stage chain even when the coordinator throws during
+	// readiness. Gated on `composedStageEntered` so the engine-ready
+	// emission cannot precede `composed` even if the coordinator
+	// resolves before composition lands (rare but possible during
+	// fast-hydration paths).
+	$effect(() => {
+		if (!effectiveCoordinator) return;
+		if (!composedStageEntered) return;
+		if (engineReadyStageEntered) return;
+		const coord = effectiveCoordinator;
+		let cancelled = false;
+		void coord
+			.waitUntilReady()
+			.then(() => {
+				if (cancelled) return;
+				untrack(() => {
+					if (engineReadyStageEntered) return;
+					engineReadyStageEntered = true;
+					stageTracker.enter("engine-ready");
+				});
+			})
+			.catch(() => {
+				if (cancelled) return;
+				untrack(() => {
+					if (engineReadyStageEntered) return;
+					engineReadyStageEntered = true;
+					stageTracker.enter("engine-ready", "failed");
+				});
+			});
+		return () => {
+			cancelled = true;
+		};
+	});
+
 	$effect(() => {
 		return () => {
 			if (compositionEmitRaf !== null && typeof window !== "undefined") {
@@ -1014,15 +1491,20 @@ const DEFAULT_ENV = {
 				compositionEmitRaf = null;
 			}
 			pendingCompositionEmit = false;
-			void sectionEngine.dispose().catch((error) => {
-				runtimeError = error;
-				reportFrameworkError({
-					kind: "runtime-dispose",
-					source: "pie-assessment-toolkit",
-					error,
-					recoverable: true,
+			void sectionEngine
+				.dispose()
+				.catch((error) => {
+					runtimeError = error;
+					reportFrameworkError({
+						kind: "runtime-dispose",
+						source: "pie-assessment-toolkit",
+						error,
+						recoverable: true,
+					});
+				})
+				.finally(() => {
+					frameworkErrorBus.dispose();
 				});
-			});
 		};
 	});
 </script>

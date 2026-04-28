@@ -43,6 +43,7 @@
 					class="btn btn-sm"
 					class:btn-active={!isSplitpaneVariant}
 					href="/tabbed-layout/tabbed"
+					data-sveltekit-reload
 				>
 					Tabbed route
 				</a>
@@ -50,6 +51,7 @@
 					class="btn btn-sm"
 					class:btn-active={isSplitpaneVariant}
 					href="/tabbed-layout/splitpane-tabbed-collapse"
+					data-sveltekit-reload
 				>
 					Splitpane tabbed-collapse route
 				</a>

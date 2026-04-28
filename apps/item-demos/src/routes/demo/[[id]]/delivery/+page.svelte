@@ -4,9 +4,10 @@
 	import {
 		CompositeInstrumentationProvider,
 		DebugPanelInstrumentationProvider,
+		ensureRegistered,
 		NewRelicInstrumentationProvider
 	} from '@pie-players/pie-players-shared';
-	import { BundleType, IifePieLoader } from '@pie-players/pie-players-shared/pie';
+	import { BundleType } from '@pie-players/pie-players-shared/pie';
 	import ScoringPanel from '$lib/components/ScoringPanel.svelte';
 	import { demoHeadingName } from '$lib/utils/demo-heading-name';
 	import '@pie-players/pie-item-player';
@@ -218,17 +219,18 @@
 						packageSpec,
 					]),
 				);
-				const preloader = new IifePieLoader({
-					bundleHost: 'https://proxy.pie-api.com/bundles/',
-				});
-				await preloader.load(
-					{
-						elements: preloadedElements,
+				// Pre-register elements via the deep ElementLoader primitive.
+				// This drives the `strategy="preloaded"` demo path: the player
+				// itself runs `assertRegistered` and mounts without hitting
+				// the network.
+				await ensureRegistered(preloadedElements, {
+					backend: {
+						kind: 'iife',
+						bundleHost: 'https://proxy.pie-api.com/bundles/',
+						bundleType: BundleType.clientPlayer,
+						needsControllers: true,
 					},
-					document,
-					BundleType.clientPlayer,
-					true,
-				);
+				});
 				loadedPreloadedBundleKey = bundleKey;
 				preloadedReady = true;
 			} catch (error) {

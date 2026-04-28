@@ -142,8 +142,8 @@ describe("attachInstrumentationEventBridge", () => {
 			component: "bridge-owner",
 			eventMap: [
 				{
-					sourceEventName: "runtime-error",
-					instrumentationEventName: "pie-toolkit-runtime-error",
+					sourceEventName: "framework-error",
+					instrumentationEventName: "pie-toolkit-framework-error",
 				},
 			],
 			staticAttributes: {
@@ -151,7 +151,7 @@ describe("attachInstrumentationEventBridge", () => {
 			},
 		});
 		host.dispatchEvent(
-			new CustomEvent("runtime-error", {
+			new CustomEvent("framework-error", {
 				detail: {
 					component: "override-attempt",
 					sourceEventName: "override-attempt",
@@ -161,7 +161,7 @@ describe("attachInstrumentationEventBridge", () => {
 		);
 		expect(provider.trackedEvents).toHaveLength(1);
 		expect(provider.trackedEvents[0]?.attributes.component).toBe("bridge-owner");
-		expect(provider.trackedEvents[0]?.attributes.sourceEventName).toBe("runtime-error");
+		expect(provider.trackedEvents[0]?.attributes.sourceEventName).toBe("framework-error");
 		expect(provider.trackedEvents[0]?.attributes.timestamp).not.toBe(
 			"1900-01-01T00:00:00.000Z",
 		);

@@ -1,10 +1,112 @@
 ---
-description: Keep release versions globally aligned across all packages
+description: Keep release versions globally aligned across all publishable packages (fixed/lockstep versioning)
 alwaysApply: true
 ---
 
-# Release Version Alignment
+# Release Version Alignment (Fixed / Lockstep Versioning)
 
-- When preparing a release, always include **all publishable packages** in release/versioning steps so versions stay globally aligned across the monorepo.
-- Do not prepare release bumps for only a subset of changed packages unless there is an explicit maintainer-approved exception for that release.
-- If a release is requested and package selection is ambiguous, default to full publishable-package coverage.
+## Policy
+
+All publishable `@pie-players/*` packages are released with a **fixed (lockstep)
+version**. At any published version, every package in the suite carries that
+same version number — there is no per-package version drift.
+
+This is enforced via Changesets' `fixed` block in
+[`.changeset/config.json`](../../.changeset/config.json). The complete list of
+lockstep packages lives there and is the source of truth.
+
+## Why this exists
+
+The publishable packages in this repo (players, tools, TTS servers, theming,
+toolkits) form a single cohesive player framework. Internal contracts cross
+package boundaries — element registration, theme tokens, tool coordination,
+session shape — so consumers adopt the suite as a unit. Fixed versioning gives
+consumers two guarantees:
+
+1. **One version per upgrade.** They pick a version and bump every
+   `@pie-players/*` dependency to it; there is no compatibility matrix.
+2. **Tested together.** Packages published at the same version are designed and
+   tested as a unit at that version.
+
+The cost is that every release bumps every publishable package — including ones
+whose source did not change in that release. That is **expected**, not a bug to
+fix.
+
+## Bump level — patch only
+
+Until this rule is rewritten by the maintainer, **every release is a `patch`
+bump**. Pre-1.0 (the current `0.x.y` line) we are not cutting `minor` or
+`major` versions, even for breaking changes — pre-1.0 semver allows breaking
+changes within a `0.x` line, and the lockstep policy is already strong
+enough to keep consumers aligned.
+
+- Author every changeset entry as `patch`. Do not propose `minor` / `major`
+  unless the maintainer explicitly lifts this constraint and updates this
+  rule.
+- Treat any pending changeset declaring `minor` / `major` in
+  `.changeset/*.md` as a release blocker — flip it to `patch` (or split it,
+  if the narrative needs to be preserved) before running
+  `bun run release:with-version`. The auto-generated temporary
+  all-packages changeset is always `patch`; the highest-declared bump in
+  `.changeset/` wins for the lockstep set, so a stray `major` upgrades the
+  whole suite.
+- "Breaking change ⇒ major" is **not** the policy on this branch. Document
+  the breaking change in the changeset body so consumers see it in the
+  assembled `CHANGELOG.md`, but ship it under a `patch` bump.
+
+## Rules for release/versioning work
+
+- Every release publishes **every** publishable package — the lockstep
+  invariant is non-negotiable. The auto-generated all-packages changeset
+  in `bun run release:with-version` is what guarantees this; do not bypass
+  it.
+- Do not prepare release bumps for only a subset of changed packages. "Only
+  package X changed, so only bump X" is the wrong framing for this repo —
+  every package gets the new version regardless of whether its source
+  changed.
+- If a release is requested and package selection is ambiguous, default to
+  full publishable-package coverage. Exceptions require explicit maintainer
+  approval documented for that release.
+- When adding a new publishable package under `packages/*`, add it to the
+  Changesets `fixed` block in
+  [`.changeset/config.json`](../../.changeset/config.json) in the same change
+  set. A publishable package outside the `fixed` block silently breaks the
+  lockstep invariant.
+- Do not remove packages from the `fixed` block to "unblock" a release. That
+  hides drift instead of fixing it. If drift is real, escalate to the
+  maintainer.
+
+## Enforcement
+
+- `scripts/check-fixed-versioning.mjs` (run via `bun run verify:publish`) fails
+  CI if publishable package versions diverge.
+- Consumer-facing documentation lives in
+  [`docs/setup/publishing.md`](../../docs/setup/publishing.md) and the root
+  [`README.md`](../../README.md) "Versioning Policy" section.
+
+## Local publishing
+
+The canonical local-publish command is **`bun run release:with-version`**. It
+auto-generates a temporary all-packages patch changeset (so lockstep coverage
+is always satisfied), runs `version`, restores workspace ranges, runs
+`check:npm-auth` + `verify:publish` + the workspace tests, publishes via
+`bun run release`, and restores ranges again — mirroring the CI release path.
+
+NPM authentication is loaded from the repo's `.env`: the `release` step is
+wrapped in `dotenvx run -f .env`, and `check:npm-auth` also loads `.env` via
+`dotenvx`. No separate `npm login` is needed when `.env` contains a valid
+`NPM_TOKEN` for `@pie-players` publish access.
+
+Because the command runs `bun run test` (which can trigger Playwright), invoke
+it with `required_permissions: ["all"]` per
+[`./playwright-sandbox.mdc`](./playwright-sandbox.mdc).
+
+Do not run `npm publish` directly, or invoke `bun run release` directly. Use
+`release:with-version` so the temporary changeset, workspace-range rewrite,
+token auth, preflight, tests, publish, and restore all run in the right
+order.
+
+If a release fails after `bun run version` already updated `package.json` /
+`CHANGELOG.md` files, do not rerun `release:with-version` — see the
+"Local release retry" section in
+[`docs/setup/publishing.md`](../../docs/setup/publishing.md).

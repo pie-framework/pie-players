@@ -44,7 +44,6 @@ describe("engine-resolver: resolveRuntime", () => {
 			lazyInit: true,
 			accessibility: null,
 			coordinator: null,
-			createSectionController: null,
 			isolation: "inherit",
 			env: null,
 			runtime: {
@@ -85,7 +84,6 @@ describe("engine-resolver: onFrameworkError precedence", () => {
 			lazyInit: true,
 			accessibility: null,
 			coordinator: null,
-			createSectionController: null,
 			isolation: "inherit",
 			env: null,
 			runtime: {
@@ -108,7 +106,6 @@ describe("engine-resolver: onFrameworkError precedence", () => {
 			lazyInit: true,
 			accessibility: null,
 			coordinator: null,
-			createSectionController: null,
 			isolation: "inherit",
 			env: null,
 			runtime: {},
@@ -136,7 +133,6 @@ describe("engine-resolver: resolveSectionEngineRuntimeState", () => {
 				tools: null,
 				accessibility: null,
 				coordinator: null,
-				createSectionController: null,
 				isolation: "inherit",
 				env: null,
 				toolConfigStrictness: "error",
@@ -164,7 +160,6 @@ describe("engine-resolver: resolveSectionEngineRuntimeState", () => {
 				tools: null,
 				accessibility: null,
 				coordinator: null,
-				createSectionController: null,
 				isolation: "inherit",
 				env: null,
 				toolConfigStrictness: "error",
@@ -191,7 +186,6 @@ describe("engine-resolver: resolveSectionEngineRuntimeState", () => {
 				tools: null,
 				accessibility: null,
 				coordinator: null,
-				createSectionController: null,
 				isolation: "inherit",
 				env: null,
 				toolConfigStrictness: "error",
@@ -219,7 +213,6 @@ describe("engine-resolver: resolveSectionEngineRuntimeState", () => {
 				tools: null,
 				accessibility: null,
 				coordinator: null,
-				createSectionController: null,
 				isolation: "inherit",
 				env: null,
 				toolConfigStrictness: "error",
@@ -247,7 +240,6 @@ describe("engine-resolver: resolveSectionEngineRuntimeState", () => {
 				tools: null,
 				accessibility: null,
 				coordinator: null,
-				createSectionController: null,
 				isolation: "inherit",
 				env: null,
 				toolConfigStrictness: "error",
@@ -286,7 +278,6 @@ describe("engine-resolver: resolveSectionEngineRuntimeState", () => {
 				tools: null,
 				accessibility: null,
 				coordinator: null,
-				createSectionController: null,
 				isolation: "inherit",
 				env: { mode: "review" },
 				toolConfigStrictness: "error",
@@ -323,7 +314,6 @@ const PER_KEY_FIXTURES: ReadonlyArray<{
 	{ key: "lazyInit", runtimeValue: false, topLevelValue: true },
 	{ key: "accessibility", runtimeValue: { fontSize: "lg" }, topLevelValue: { fontSize: "sm" } },
 	{ key: "coordinator", runtimeValue: { id: "rt" }, topLevelValue: { id: "tp" } },
-	{ key: "createSectionController", runtimeValue: () => ({}), topLevelValue: () => ({}) },
 	{ key: "isolation", runtimeValue: "shadow", topLevelValue: "inherit" },
 	{ key: "env", runtimeValue: { mode: "review" }, topLevelValue: { mode: "gather" } },
 	{ key: "toolConfigStrictness", runtimeValue: "off", topLevelValue: "error" },
@@ -342,7 +332,6 @@ describe("engine-resolver: per-key precedence (M5 mirror)", () => {
 				lazyInit: true,
 				accessibility: null,
 				coordinator: null,
-				createSectionController: null,
 				isolation: "inherit",
 				env: null,
 				runtime: { [fixture.key]: fixture.runtimeValue },
@@ -365,7 +354,6 @@ describe("engine-resolver: per-key precedence (M5 mirror)", () => {
 				lazyInit: true,
 				accessibility: null,
 				coordinator: null,
-				createSectionController: null,
 				isolation: "inherit",
 				env: null,
 				runtime: {},
@@ -379,6 +367,50 @@ describe("engine-resolver: per-key precedence (M5 mirror)", () => {
 			);
 		});
 	}
+});
+
+/**
+ * `createSectionController` is intentionally **runtime-only** post the
+ * broad-architecture-review compat sweep — there is no top-level prop
+ * mirror on layout CEs, so the resolver only honors `runtime.createSectionController`.
+ */
+describe("engine-resolver: createSectionController is runtime-only", () => {
+	test("runtime.createSectionController is exposed on the effective runtime", async () => {
+		const { resolveRuntime } = await loadEngineResolver();
+		const factory = () => ({ kind: "from-runtime" });
+		const merged = resolveRuntime({
+			assessmentId: "a1",
+			playerType: "iife",
+			player: null,
+			lazyInit: true,
+			accessibility: null,
+			coordinator: null,
+			isolation: "inherit",
+			env: null,
+			runtime: { createSectionController: factory },
+			effectiveToolsConfig: {},
+			toolConfigStrictness: "error",
+		});
+		expect((merged as any).createSectionController).toBe(factory);
+	});
+
+	test("createSectionController is undefined when runtime omits it (no top-level fallback)", async () => {
+		const { resolveRuntime } = await loadEngineResolver();
+		const merged = resolveRuntime({
+			assessmentId: "a1",
+			playerType: "iife",
+			player: null,
+			lazyInit: true,
+			accessibility: null,
+			coordinator: null,
+			isolation: "inherit",
+			env: null,
+			runtime: {},
+			effectiveToolsConfig: {},
+			toolConfigStrictness: "error",
+		});
+		expect((merged as any).createSectionController).toBeUndefined();
+	});
 });
 
 describe("engine-resolver: resolveToolsConfig", () => {

@@ -15,8 +15,6 @@
 			toolRegistry: { type: "Object", reflect: false },
 			accessibility: { type: "Object", reflect: false },
 			coordinator: { type: "Object", reflect: false },
-			// @deprecated since M5; set via `runtime.createSectionController`.
-			createSectionController: { type: "Object", reflect: false },
 			toolConfigStrictness: {
 				attribute: "tool-config-strictness",
 				type: "String",
@@ -72,7 +70,6 @@
 		toolRegistry = null as ToolRegistry | null,
 		accessibility = null as Record<string, unknown> | null,
 		coordinator = null as unknown,
-		createSectionController = null as unknown,
 		toolConfigStrictness = undefined as ToolConfigStrictness | undefined,
 		onFrameworkError = undefined as
 			| undefined
@@ -111,7 +108,7 @@
 	);
 	const effectiveCoordinator = $derived.by(() => runtime?.coordinator ?? coordinator);
 	const effectiveCreateSectionController = $derived.by(
-		() => runtime?.createSectionController ?? createSectionController,
+		() => runtime?.createSectionController,
 	);
 	const effectiveIsolation = $derived.by(() => runtime?.isolation ?? isolation);
 	const effectiveEnv = $derived.by(() => runtime?.env ?? env ?? DEFAULT_ENV);

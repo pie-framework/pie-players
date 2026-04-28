@@ -36,7 +36,6 @@ export type SectionPlayerAdvancedPropName =
 	| "tools"
 	| "accessibility"
 	| "coordinator"
-	| "createSectionController"
 	| "isolation"
 	| "env"
 	| "iifeBundleHost"

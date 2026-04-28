@@ -15,8 +15,6 @@
 			tools: { type: "Object", reflect: false },
 			accessibility: { type: "Object", reflect: false },
 			coordinator: { type: "Object", reflect: false },
-			// @deprecated since M5; set via `runtime.createSectionController`.
-			createSectionController: { type: "Object", reflect: false },
 			// @deprecated since M5; set via `runtime.isolation`.
 			isolation: { attribute: "isolation", type: "String" },
 			env: { type: "Object", reflect: false },
@@ -179,7 +177,6 @@
 		tools,
 		accessibility,
 		coordinator,
-		createSectionController,
 		isolation,
 		env,
 		iifeBundleHost,
@@ -415,7 +412,6 @@
 	{tools}
 	{accessibility}
 	{coordinator}
-	{createSectionController}
 	{isolation}
 	{env}
 	{iifeBundleHost}

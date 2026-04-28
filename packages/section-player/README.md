@@ -175,7 +175,7 @@ host.hooks = {
 };
 ```
 
-Advanced CE props are still supported as escape hatches (`runtime`, `coordinator`, `createSectionController`, etc.), but hosts should prefer JS/controller composition for non-standard behavior.
+Advanced CE props are still supported as escape hatches (`runtime`, `coordinator`, etc.), but hosts should prefer JS/controller composition for non-standard behavior. Note: `createSectionController` is **runtime-only** — set it on `runtime.createSectionController` rather than as a top-level CE prop (the prop alias was removed in the broad architecture review compat sweep).
 
 ### Focus management
 
@@ -281,7 +281,7 @@ warning. It will be removed in the next major. Migrate to `autoFocus`.
 
 Runtime precedence is explicit:
 
-- `runtime` values are primary for runtime fields (`assessmentId`, `playerType`, `player`, `lazyInit`, `tools`, `accessibility`, `coordinator`, `createSectionController`, `isolation`, `env`).
+- `runtime` values are primary for runtime fields (`assessmentId`, `playerType`, `player`, `lazyInit`, `tools`, `accessibility`, `coordinator`, `isolation`, `env`). `createSectionController` is exposed only via `runtime.createSectionController`.
 - Top-level runtime-like props remain compatibility inputs and are merged with `runtime` values. For `player`, top-level values are merged first, then `runtime.player` overrides. Nested `loaderOptions` and `loaderConfig` are also merged with the same precedence.
 - Toolbar placement overrides (`enabled-tools`, `item-toolbar-tools`, `passage-toolbar-tools`) are normalized on top of the runtime tools config.
 - Tool configuration validation is canonical in toolkit initialization (`pie-assessment-toolkit`), including toolbar overlays. Use `runtime.toolConfigStrictness` (`off` | `warn` | `error`) to control warning-only vs fail-fast behavior.

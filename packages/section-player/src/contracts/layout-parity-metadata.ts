@@ -27,7 +27,6 @@ const ADVANCED_ESCAPE_HATCH_PROPS = [
 	"tools",
 	"accessibility",
 	"coordinator",
-	"createSectionController",
 	"isolation",
 	"env",
 	"iifeBundleHost",

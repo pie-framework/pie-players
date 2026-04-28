@@ -5,23 +5,72 @@
 '@pie-players/pie-players-shared': major
 ---
 
-Broad architecture review — compat removal sweep (part 1).
+PIE-501: harden element loading during section-player section swaps.
 
-Pre-1.0 lockstep release: every package in the `fixed` block is bumped
-together at release time per the project versioning policy. Source
-changes for this sweep land in `pie-section-player`,
-`pie-assessment-toolkit`, `pie-assessment-player` (migrating off the
-removed `section-controller-ready` event), and `pie-players-shared`
-(the `SECTION_INSTRUMENTATION_EVENT_MAP` exports).
+Pre-1.0 lockstep release: every package in the `fixed` block bumps
+together at release time per the project versioning policy. PIE-501
+investigation traced sporadic post-section-swap render failures
+(`Preloaded strategy requires pre-registered elements; missing tags:
+…`) to two coupled root causes — a non-truthful element-load promise
+contract, and the section-player rewriting embedded items' loading
+strategy and tracking readiness through cached state. Fixing those
+unblocked a broader architecture-review compat-removal sweep that had
+been gated on the same surfaces.
 
-Removes deprecated compatibility paths that were superseded by the M5
-two-tier mirror, the M3 framework-error contract, the M7 runtime engine,
-and the M8 tool policy engine. None of these surfaces are part of the
-`pie-item` client contract (the only allowed compatibility surface per
-`.cursor/rules/legacy-compatibility-boundaries.mdc`), and removing them
-unblocks a single canonical path for every consumer.
+This release ships both phases of the PIE-501 plan plus the
+compat-removal work that fell out of the same review. None of the
+removed surfaces are part of the `pie-item` client contract (the only
+allowed compatibility surface per
+`.cursor/rules/legacy-compatibility-boundaries.mdc`).
 
-## Removed
+## What's new
+
+- **Deep `ElementLoader` primitive** (PIE-501 Phase A). A single loader
+  primitive whose promise resolves only when every requested custom-
+  element tag is actually registered, and rejects with a per-tag
+  reason otherwise. Both IIFE and ESM are now adapters over this
+  primitive. Replaces the previous parallel `IifeLoader` / `EsmLoader`
+  classes in `@pie-players/pie-players-shared`. The deep primitive is
+  the shipped contract; the strategy name (`iife` / `esm` / `preloaded`)
+  selects an adapter rather than a parallel implementation.
+
+- **Strategy substitution removed** (PIE-501 Phase B). Embedded
+  item-players inherit the host's chosen strategy verbatim. The
+  section-player still pre-warms the aggregate element set for
+  performance but no longer owns correctness through cached state;
+  widget readiness is now a function of inputs. The
+  `allowPreloadedFallbackLoad` escape hatch is gone.
+
+- **M5 — strict two-tier mirror rule.** Tier-1 layout-CE props mirror
+  to `runtime.*` keys with documented precedence; the resolver enforces
+  the mirror per-key.
+
+- **M6 — canonical stage vocabulary.** `pie-stage-change` (`composed`,
+  `engine-ready`, `interactive`, `disposed`) and `pie-loading-complete`
+  are the canonical readiness surface, with a toolkit-side stage
+  tracker and `onStageChange` / `onLoadingComplete` props on the layout
+  CEs.
+
+- **M7 — `SectionRuntimeEngine`.** A single FSM-driven runtime engine
+  consolidates section-controller lifecycle, readiness derivation, and
+  stage emissions previously scattered across multiple coordinators.
+
+- **M8 — tool policy engine.** Allow/block + QTI enforcement become a
+  first-class policy surface on `ToolkitCoordinator`
+  (`onPolicyChange`, `decideToolPolicy`, `getFloatingTools`,
+  `setQtiEnforcement`, `registerPolicySource`), with narrow QTI
+  auto-detection mirrored through `runtime.tools.qtiEnforcement`.
+
+- **`FrameworkErrorBus` contract.** A single canonical
+  `framework-error` source, single subscription via
+  `onFrameworkError(model: FrameworkErrorModel)`, and the layout-CE
+  host emits exactly one `framework-error` per error (the previous
+  toolkit-bubble + engine-bridge dual-emit is collapsed — see Removed).
+
+- **Tabbed section-player layout.** New `<pie-section-player-tabbed>`
+  CE alongside the existing splitpane and vertical layouts.
+
+## Removed (breaking)
 
 - **Deprecated `AssessmentToolkitEvents` event-map and member event
   interfaces** (`AssessmentStartedEvent`, `AssessmentCompletedEvent`,
@@ -253,6 +302,20 @@ unblocks a single canonical path for every consumer.
   `packages/section-player/tests/section-player-framework-error-dual-emit.test.ts`
   (the file name is preserved for git blame; the test now asserts
   the single canonical emit).
+
+- **`allowPreloadedFallbackLoad` escape hatch.** Removed alongside the
+  PIE-501 Phase B strategy-substitution work. Hosts that relied on it
+  to mask preload-misses should ensure their preload set is correct
+  (the `ElementLoader` primitive now rejects deterministically with a
+  per-tag reason if a requested tag never registers).
+
+- **Per-strategy loader classes** (`IifeLoader`, `EsmLoader` and their
+  test fixtures) in `@pie-players/pie-players-shared`. Replaced by the
+  deep `ElementLoader` primitive plus IIFE / ESM adapters. Hosts that
+  imported the loader classes directly should switch to
+  `ElementLoader`; hosts that only used the public
+  `<pie-item-player>` / `<pie-section-player-*>` attribute surface
+  need no change.
 
 ## Migration
 

@@ -1,5 +1,20 @@
 # IIFE Loader Wrong-Bundle Investigation
 
+> **Historical — kept for context only.** This investigation pre-dates the
+> PIE-501 element-loader hardening. The single file it anchors on
+> (`packages/players-shared/src/pie/iife-loader.ts`) no longer exists; the
+> IIFE and ESM loaders were consolidated behind the deep `ElementLoader`
+> primitive, with thin per-strategy adapters
+> (`packages/players-shared/src/loaders/ElementLoader.ts`,
+> `iife-adapter.ts`, `esm-adapter.ts`). The promise contract (resolves
+> only when every requested tag is registered, rejects with a per-tag
+> reason otherwise) and the removal of section-player strategy
+> substitution together address the root cause described below. For
+> current architecture see
+> [`docs/item-player/loading-strategies.md`](../item-player/loading-strategies.md)
+> and the PIE-501 entry in `.changeset/`. The "Suggested Next Session
+> Plan" section is no longer applicable.
+
 ## Problem Summary
 
 In downstream apps (notably `../element-QuizEngineFixedPlayer`), we intermittently see runtime failures where an item requests one PIE package (for example `@pie-element/ebsr`) but the loaded IIFE module only exposes a different package set (for example `@pie-element/multiple-choice`).

@@ -78,8 +78,15 @@ enough to keep consumers aligned.
 
 ## Enforcement
 
-- `scripts/check-fixed-versioning.mjs` (run via `bun run verify:publish`) fails
-  CI if publishable package versions diverge.
+- `scripts/check-changeset-patch-only.mjs` (run via
+  `bun run check:changeset-patch-only`, wired into both `verify:publish` and
+  as the very first step of `release:with-version`) rejects any pending
+  `.changeset/*.md` whose YAML frontmatter declares `minor` or `major`,
+  blocking a stray bump before `bun run version` mutates `package.json` /
+  `CHANGELOG.md` files.
+- `scripts/check-fixed-versioning.mjs` (run via `bun run verify:publish`) is
+  the second line of defense: it fails CI if publishable package versions
+  diverge or skip a patch step from the published baseline.
 - Consumer-facing documentation lives in
   [`docs/setup/publishing.md`](../../docs/setup/publishing.md) and the root
   [`README.md`](../../README.md) "Versioning Policy" section.

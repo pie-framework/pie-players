@@ -9,9 +9,16 @@ Canonical rule: [`.cursor/rules/release-version-alignment.mdc`](../../../.cursor
 Lockstep package list (source of truth):
 [`.changeset/config.json`](../../../.changeset/config.json) (the `fixed`
 block).
-Enforcement script:
-[`scripts/check-fixed-versioning.mjs`](../../../scripts/check-fixed-versioning.mjs)
-(runs as part of `bun run verify:publish`).
+Enforcement scripts:
+
+- [`scripts/check-changeset-patch-only.mjs`](../../../scripts/check-changeset-patch-only.mjs)
+  (`bun run check:changeset-patch-only`) — rejects any pending
+  `.changeset/*.md` declaring `minor` / `major`. Wired into
+  `verify:publish` and as the first step of `release:with-version`.
+- [`scripts/check-fixed-versioning.mjs`](../../../scripts/check-fixed-versioning.mjs)
+  (`bun run check:fixed-versioning`, also wired into `verify:publish`) —
+  fails if publishable package versions diverge or skip a patch step from
+  the published baseline.
 Consumer-facing docs:
 [`docs/setup/publishing.md`](../../../docs/setup/publishing.md) and the
 "Versioning Policy" section in [`README.md`](../../../README.md).

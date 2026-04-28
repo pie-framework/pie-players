@@ -24,9 +24,7 @@ export type SectionPlayerBasicPropName =
 	| "contentMaxWidthWithPassage"
 	| "splitPaneMinRegionWidth"
 	| "splitPaneCollapseStrategy"
-	| "enabledTools"
-	| "itemToolbarTools"
-	| "passageToolbarTools";
+	| "enabledTools";
 
 export type SectionPlayerAdvancedPropName =
 	| "runtime"

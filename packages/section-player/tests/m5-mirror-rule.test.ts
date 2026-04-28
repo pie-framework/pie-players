@@ -38,13 +38,17 @@ import type { RuntimeConfig } from "@pie-players/pie-assessment-toolkit/runtime/
  *     `sectionHostButtons`, `itemHostButtons`, `passageHostButtons`):
  *     consumed by the layout kernel through its top-level prop, not via
  *     `runtime`. Demoted from the M5 mirror in the follow-up trim.
- *   - Deprecated aliases (`itemToolbarTools`, `passageToolbarTools`):
- *     kept as props for back-compat but absorbed at the CE boundary into
- *     `tools.placement`.
  *   - Runtime-only keys with no top-level mirror (`createSectionController`,
  *     `isolation`): accepted only via `runtime.<key>`. The top-level prop
  *     aliases were removed in the broad architecture review compat sweep
- *     and the runtime tier is the sole supported entry point.
+ *     and the runtime tier is the sole supported entry point. The
+ *     deprecated per-region `itemToolbarTools` / `passageToolbarTools`
+ *     aliases were removed in the same sweep — hosts must populate
+ *     `tools.placement.{item,passage}` (object form) or
+ *     `runtime.tools.placement.{item,passage}` directly. The kernel
+ *     joins those arrays back into comma-separated strings to feed the
+ *     internal card / pane custom elements that still consume the
+ *     `<pie-item-toolbar tools="...">` attribute shape.
  */
 
 const PACKAGE_ROOT = resolve(__dirname, "..");

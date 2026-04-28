@@ -15,8 +15,6 @@ const RECOMMENDED_BASIC_PROPS = [
 	"splitPaneMinRegionWidth",
 	"splitPaneCollapseStrategy",
 	"enabledTools",
-	"itemToolbarTools",
-	"passageToolbarTools",
 ] as const;
 
 const ADVANCED_ESCAPE_HATCH_PROPS = [

@@ -97,8 +97,6 @@
 		showToolbar = "false" as boolean | string | null | undefined,
 		toolbarPosition = "right",
 		enabledTools = "",
-		itemToolbarTools = "",
-		passageToolbarTools = "",
 		toolConfigStrictness = "error" as ToolConfigStrictness,
 		toolRegistry = null as ToolRegistry | null,
 		sectionHostButtons = [] as ToolbarItem[],
@@ -246,8 +244,6 @@
 			env,
 			runtime,
 			enabledTools,
-			itemToolbarTools,
-			passageToolbarTools,
 			toolConfigStrictness,
 			onFrameworkError,
 			onStageChange,
@@ -257,6 +253,31 @@
 	const effectiveRuntime = $derived(runtimeState.effectiveRuntime);
 	const effectiveToolsConfig = $derived(runtimeState.effectiveToolsConfig);
 	const playerRuntime = $derived(runtimeState.playerRuntime);
+	// Per-region toolbar-tools strings derived from the canonical
+	// `tools.placement.{item,passage}` arrays. Internal card / pane
+	// custom elements still consume these as comma-separated strings
+	// (the `<pie-item-toolbar tools="...">` attribute), so the kernel
+	// joins the canonical placement arrays back into strings and
+	// exposes them via the slot. The deprecated top-level
+	// `item-toolbar-tools` / `passage-toolbar-tools` aliases were
+	// removed in the broad architecture review compat sweep; hosts
+	// must populate `tools.placement.{item,passage}` directly.
+	const effectiveItemToolbarTools = $derived.by(() => {
+		const tools = effectiveToolsConfig as
+			| { placement?: { item?: unknown } }
+			| undefined
+			| null;
+		const item = tools?.placement?.item;
+		return Array.isArray(item) ? item.join(",") : "";
+	});
+	const effectivePassageToolbarTools = $derived.by(() => {
+		const tools = effectiveToolsConfig as
+			| { placement?: { passage?: unknown } }
+			| undefined
+			| null;
+		const passage = tools?.placement?.passage;
+		return Array.isArray(passage) ? passage.join(",") : "";
+	});
 	const resolvedPlayerDefinition = $derived(playerRuntime.resolvedPlayerDefinition);
 	const resolvedPlayerTag = $derived(playerRuntime.resolvedPlayerTag);
 	const resolvedPlayerAttributes = $derived(playerRuntime.resolvedPlayerAttributes);
@@ -723,6 +744,8 @@
 			passageHostButtons,
 			readinessDetail,
 			preloadEnabled,
+			itemToolbarTools: effectiveItemToolbarTools,
+			passageToolbarTools: effectivePassageToolbarTools,
 			onItemsPaneElementsLoaded: handleItemsPaneElementsLoaded,
 			onItemsPanePreloadRetry: handleItemsPanePreloadRetry,
 			onItemsPanePreloadError: handleItemsPanePreloadError,
@@ -743,6 +766,8 @@
 		{passageHostButtons}
 		{readinessDetail}
 		{preloadEnabled}
+		itemToolbarTools={effectiveItemToolbarTools}
+		passageToolbarTools={effectivePassageToolbarTools}
 		onItemsPaneElementsLoaded={handleItemsPaneElementsLoaded}
 		onItemsPanePreloadRetry={handleItemsPanePreloadRetry}
 		onItemsPanePreloadError={handleItemsPanePreloadError}

@@ -21,12 +21,6 @@
 			showToolbar: { attribute: "show-toolbar", type: "String" },
 			toolbarPosition: { attribute: "toolbar-position", type: "String" },
 			enabledTools: { attribute: "enabled-tools", type: "String" },
-			// @deprecated since M5; use `tools.placement.item` (object form) or
-			// `runtime.tools.placement.item`. Emits a one-time dev warn on use.
-			itemToolbarTools: { attribute: "item-toolbar-tools", type: "String" },
-			// @deprecated since M5; use `tools.placement.passage` (object form)
-			// or `runtime.tools.placement.passage`. Emits a one-time dev warn.
-			passageToolbarTools: { attribute: "passage-toolbar-tools", type: "String" },
 			toolRegistry: { type: "Object", reflect: false },
 			sectionHostButtons: { type: "Object", reflect: false },
 			itemHostButtons: { type: "Object", reflect: false },
@@ -181,8 +175,6 @@
 		showToolbar = "false" as boolean | string | null | undefined,
 		toolbarPosition = "right",
 		enabledTools = "",
-		itemToolbarTools = "",
-		passageToolbarTools = "",
 		toolRegistry = null as ToolRegistry | null,
 		sectionHostButtons = [] as ToolbarItem[],
 		itemHostButtons = [] as ToolbarItem[],
@@ -415,8 +407,6 @@
 	{showToolbar}
 	toolbarPosition={isStacked ? "top" : toolbarPosition}
 	{enabledTools}
-	{itemToolbarTools}
-	{passageToolbarTools}
 	{toolRegistry}
 	{sectionHostButtons}
 	{itemHostButtons}
@@ -446,8 +436,8 @@
 		{#if normalizedCollapseStrategy === "tabbed"}
 			<SectionPlayerTabbedContent
 				{layoutModel}
-				{itemToolbarTools}
-				{passageToolbarTools}
+				itemToolbarTools={layoutModel.itemToolbarTools}
+				passageToolbarTools={layoutModel.passageToolbarTools}
 				contentMaxWidthNoPassagePx={configuredContentMaxWidthNoPassagePx}
 				contentMaxWidthWithPassagePx={configuredContentMaxWidthWithPassagePx}
 				toolRegistry={layoutModel.toolRegistry}
@@ -460,8 +450,8 @@
 		{:else}
 			<SectionPlayerVerticalContent
 				{layoutModel}
-				{itemToolbarTools}
-				{passageToolbarTools}
+				itemToolbarTools={layoutModel.itemToolbarTools}
+				passageToolbarTools={layoutModel.passageToolbarTools}
 				contentMaxWidthNoPassagePx={configuredContentMaxWidthNoPassagePx}
 				contentMaxWidthWithPassagePx={configuredContentMaxWidthWithPassagePx}
 				toolRegistry={layoutModel.toolRegistry}
@@ -506,7 +496,7 @@
 							resolvedPlayerAttributes={layoutModel.resolvedPlayerAttributes}
 							resolvedPlayerProps={layoutModel.resolvedPlayerProps}
 							playerStrategy={layoutModel.playerStrategy}
-							passageToolbarTools={passageToolbarTools}
+							passageToolbarTools={layoutModel.passageToolbarTools}
 							toolRegistry={layoutModel.toolRegistry}
 							hostButtons={layoutModel.passageHostButtons}
 						></pie-section-player-passages-pane>
@@ -536,7 +526,7 @@
 						resolvedPlayerAttributes={layoutModel.resolvedPlayerAttributes}
 						resolvedPlayerProps={layoutModel.resolvedPlayerProps}
 						playerStrategy={layoutModel.playerStrategy}
-						itemToolbarTools={itemToolbarTools}
+						itemToolbarTools={layoutModel.itemToolbarTools}
 						toolRegistry={layoutModel.toolRegistry}
 						hostButtons={layoutModel.itemHostButtons}
 						iifeBundleHost={iifeBundleHost}

@@ -60,6 +60,26 @@ unblocks a single canonical path for every consumer.
   the toolkit derives it via the section-player base element from
   `runtime.isolation`.
 
+- **Top-level `item-toolbar-tools` / `passage-toolbar-tools`
+  attribute aliases (and their `itemToolbarTools` / `passageToolbarTools`
+  prop forms) on every section-player layout custom element**
+  (`<pie-section-player-splitpane>`, `<pie-section-player-vertical>`,
+  `<pie-section-player-tabbed>`, `<pie-section-player-kernel-host>`),
+  along with the matching one-time deprecation warnings and the
+  `parseToolList(itemToolbarTools)` / `parseToolList(passageToolbarTools)`
+  absorption inside `resolveToolsConfig`. Per-region tool placement is
+  now configured directly on the canonical `tools` object as
+  `tools.placement.item` / `tools.placement.passage` (or via
+  `runtime.tools.placement.{item,passage}`).
+
+  The kernel re-exposes the canonical placement arrays as
+  comma-separated strings via slot props (`itemToolbarTools`,
+  `passageToolbarTools`) so internal card / pane custom elements
+  (`<pie-section-player-item-card>`, `<pie-section-player-passage-card>`,
+  `<pie-section-player-items-pane>`,
+  `<pie-section-player-passages-pane>`) keep their existing
+  string-attribute contract unchanged.
+
 ## Migration
 
 ```ts
@@ -67,11 +87,19 @@ unblocks a single canonical path for every consumer.
 const el = document.createElement("pie-section-player-splitpane");
 el.createSectionController = () => new SectionController();
 el.isolation = "shadow";
+el.setAttribute("item-toolbar-tools", "calculator,answer-eliminator");
+el.setAttribute("passage-toolbar-tools", "line-reader");
 
 // after
 el.runtime = {
   createSectionController: () => new SectionController(),
   isolation: "shadow",
+  tools: {
+    placement: {
+      item: ["calculator", "answer-eliminator"],
+      passage: ["line-reader"],
+    },
+  },
 };
 ```
 

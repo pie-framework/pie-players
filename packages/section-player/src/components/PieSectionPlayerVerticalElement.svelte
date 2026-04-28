@@ -21,10 +21,6 @@
 			showToolbar: { attribute: "show-toolbar", type: "String" },
 			toolbarPosition: { attribute: "toolbar-position", type: "String" },
 			enabledTools: { attribute: "enabled-tools", type: "String" },
-			// @deprecated since M5; use `tools.placement.item` (object form).
-			itemToolbarTools: { attribute: "item-toolbar-tools", type: "String" },
-			// @deprecated since M5; use `tools.placement.passage` (object form).
-			passageToolbarTools: { attribute: "passage-toolbar-tools", type: "String" },
 			toolRegistry: { type: "Object", reflect: false },
 			sectionHostButtons: { type: "Object", reflect: false },
 			itemHostButtons: { type: "Object", reflect: false },
@@ -133,8 +129,6 @@
 		showToolbar = "false" as boolean | string | null | undefined,
 		toolbarPosition = "right",
 		enabledTools = "",
-		itemToolbarTools = "",
-		passageToolbarTools = "",
 		toolRegistry = null as ToolRegistry | null,
 		sectionHostButtons = [] as ToolbarItem[],
 		itemHostButtons = [] as ToolbarItem[],
@@ -318,8 +312,6 @@
 	{showToolbar}
 	toolbarPosition={effectiveToolbarPosition}
 	{enabledTools}
-	{itemToolbarTools}
-	{passageToolbarTools}
 	{toolRegistry}
 	{sectionHostButtons}
 	{itemHostButtons}
@@ -347,8 +339,8 @@
 >
 	<SectionPlayerVerticalContent
 		{layoutModel}
-		{itemToolbarTools}
-		{passageToolbarTools}
+		itemToolbarTools={layoutModel.itemToolbarTools}
+		passageToolbarTools={layoutModel.passageToolbarTools}
 		contentMaxWidthNoPassagePx={configuredContentMaxWidthNoPassagePx}
 		contentMaxWidthWithPassagePx={configuredContentMaxWidthWithPassagePx}
 		toolRegistry={layoutModel.toolRegistry}

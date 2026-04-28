@@ -21,10 +21,6 @@
 			showToolbar: { attribute: "show-toolbar", type: "String" },
 			toolbarPosition: { attribute: "toolbar-position", type: "String" },
 			enabledTools: { attribute: "enabled-tools", type: "String" },
-			// @deprecated since M5; use `tools.placement.item` (object form).
-			itemToolbarTools: { attribute: "item-toolbar-tools", type: "String" },
-			// @deprecated since M5; use `tools.placement.passage` (object form).
-			passageToolbarTools: { attribute: "passage-toolbar-tools", type: "String" },
 			toolRegistry: { type: "Object", reflect: false },
 			sectionHostButtons: { type: "Object", reflect: false },
 			itemHostButtons: { type: "Object", reflect: false },
@@ -95,8 +91,6 @@
 		showToolbar = "false",
 		toolbarPosition = "right",
 		enabledTools = "",
-		itemToolbarTools = "",
-		passageToolbarTools = "",
 		toolRegistry = null as ToolRegistry | null,
 		sectionHostButtons = [] as ToolbarItem[],
 		itemHostButtons = [] as ToolbarItem[],
@@ -281,8 +275,6 @@
 	{showToolbar}
 	{toolbarPosition}
 	{enabledTools}
-	{itemToolbarTools}
-	{passageToolbarTools}
 	{toolRegistry}
 	{sectionHostButtons}
 	{itemHostButtons}
@@ -327,6 +319,8 @@
 	let:preloadedRenderables
 	let:preloadedRenderablesSignature
 	let:preloadEnabled
+	let:itemToolbarTools
+	let:passageToolbarTools
 	let:onItemsPaneElementsLoaded
 	let:onItemsPanePreloadRetry
 	let:onItemsPanePreloadError

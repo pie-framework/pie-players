@@ -205,8 +205,11 @@ Documented exceptions to the mirror rule:
 - Layout-only shell knobs on the section-player layout CEs
   (`show-toolbar`, `toolbar-position`, `narrow-layout-breakpoint`,
   `split-pane-collapse-strategy`): layout-CE rendering concerns.
-- Deprecated aliases (`item-toolbar-tools`, `passage-toolbar-tools`):
-  absorbed at the CE boundary.
+- Per-region toolbar tool placement: hosts populate
+  `tools.placement.item` / `tools.placement.passage` (object form) or
+  `runtime.tools.placement.{item,passage}` directly. The previously
+  deprecated `item-toolbar-tools` / `passage-toolbar-tools` attribute
+  aliases were removed in the broad architecture review compat sweep.
 
 ### When to add a tier-1 attribute
 

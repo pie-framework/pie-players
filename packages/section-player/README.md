@@ -151,7 +151,7 @@ The intended usage model is:
   - `assessment-id`, `section`, `section-id`, `attempt-id`, `debug`
   - `show-toolbar`, `toolbar-position`, `narrow-layout-breakpoint`
   - `content-max-width-no-passage`, `content-max-width-with-passage`, `split-pane-min-region-width`, `split-pane-collapse-strategy`
-  - `enabled-tools`, `item-toolbar-tools`, `passage-toolbar-tools`
+  - `enabled-tools` (per-region tool placement is configured via `tools.placement.{item,passage}`; the `item-toolbar-tools` / `passage-toolbar-tools` aliases were removed in the broad architecture review compat sweep)
 - **JS API for advanced customization**:
   - Get the controller handle via `getSectionController()` or `waitForSectionController()` (preferred)
   - Listen for `pie-stage-change` and filter on `detail.stage === "engine-ready"` for an event-driven entry point
@@ -283,7 +283,7 @@ Runtime precedence is explicit:
 
 - `runtime` values are primary for runtime fields (`assessmentId`, `playerType`, `player`, `lazyInit`, `tools`, `accessibility`, `coordinator`, `isolation`, `env`). `createSectionController` is exposed only via `runtime.createSectionController`.
 - Top-level runtime-like props remain compatibility inputs and are merged with `runtime` values. For `player`, top-level values are merged first, then `runtime.player` overrides. Nested `loaderOptions` and `loaderConfig` are also merged with the same precedence.
-- Toolbar placement overrides (`enabled-tools`, `item-toolbar-tools`, `passage-toolbar-tools`) are normalized on top of the runtime tools config.
+- The section-level toolbar placement override (`enabled-tools`) is normalized on top of the runtime tools config and merges into `tools.placement.section`. Per-region placement (`tools.placement.item` / `tools.placement.passage`) is configured directly on the canonical `tools` / `runtime.tools` object — the deprecated `item-toolbar-tools` / `passage-toolbar-tools` aliases were removed in the broad architecture review compat sweep.
 - Tool configuration validation is canonical in toolkit initialization (`pie-assessment-toolkit`), including toolbar overlays. Use `runtime.toolConfigStrictness` (`off` | `warn` | `error`) to control warning-only vs fail-fast behavior.
 - TTS provider config must use `tools.providers.textToSpeech` (canonical). `tools.providers.tts` is rejected by validation.
 - Host tool overrides are additive:

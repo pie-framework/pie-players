@@ -135,8 +135,6 @@ describe("engine-resolver: resolveSectionEngineRuntimeState", () => {
 				onFrameworkError: handler,
 				runtime: null,
 				enabledTools: "",
-				itemToolbarTools: "",
-				passageToolbarTools: "",
 			},
 			{ resolvePlayerRuntime: stubPlayerRuntime },
 		);
@@ -161,8 +159,6 @@ describe("engine-resolver: resolveSectionEngineRuntimeState", () => {
 				onStageChange: handler,
 				runtime: null,
 				enabledTools: "",
-				itemToolbarTools: "",
-				passageToolbarTools: "",
 			},
 			{ resolvePlayerRuntime: () => ({}) },
 		);
@@ -186,8 +182,6 @@ describe("engine-resolver: resolveSectionEngineRuntimeState", () => {
 				onLoadingComplete: handler,
 				runtime: null,
 				enabledTools: "",
-				itemToolbarTools: "",
-				passageToolbarTools: "",
 			},
 			{ resolvePlayerRuntime: () => ({}) },
 		);
@@ -212,8 +206,6 @@ describe("engine-resolver: resolveSectionEngineRuntimeState", () => {
 				onStageChange: fromProp,
 				runtime: { onStageChange: fromRuntime },
 				enabledTools: "",
-				itemToolbarTools: "",
-				passageToolbarTools: "",
 			},
 			{ resolvePlayerRuntime: () => ({}) },
 		);
@@ -238,8 +230,6 @@ describe("engine-resolver: resolveSectionEngineRuntimeState", () => {
 				onLoadingComplete: fromProp,
 				runtime: { onLoadingComplete: fromRuntime },
 				enabledTools: "",
-				itemToolbarTools: "",
-				passageToolbarTools: "",
 			},
 			{ resolvePlayerRuntime: () => ({}) },
 		);
@@ -274,8 +264,6 @@ describe("engine-resolver: resolveSectionEngineRuntimeState", () => {
 				toolConfigStrictness: "error",
 				runtime: null,
 				enabledTools: "",
-				itemToolbarTools: "",
-				passageToolbarTools: "",
 			},
 			{ resolvePlayerRuntime: stub },
 		);
@@ -445,8 +433,6 @@ describe("engine-resolver: resolveToolsConfig", () => {
 			},
 			tools: null,
 			enabledTools: "unknownTool",
-			itemToolbarTools: "",
-			passageToolbarTools: "",
 		});
 		expect(resolved.placement.section).toEqual(["unknownTool"]);
 	});
@@ -457,8 +443,6 @@ describe("engine-resolver: resolveToolsConfig", () => {
 			runtime: null,
 			tools: null,
 			enabledTools: "unknownTool",
-			itemToolbarTools: "",
-			passageToolbarTools: "",
 		});
 		expect(resolved.placement.section).toEqual(["unknownTool"]);
 	});
@@ -479,8 +463,6 @@ describe("engine-resolver: resolveToolsConfig", () => {
 				},
 			},
 			enabledTools: "",
-			itemToolbarTools: "",
-			passageToolbarTools: "",
 		});
 		expect((resolved as any).providers.textToSpeech?.enabled).toBe(true);
 		expect((resolved as any).providers.textToSpeech?.layoutMode).toBe("left-aligned");

@@ -103,8 +103,6 @@ describe("resolveSectionPlayerRuntimeState", () => {
 			onFrameworkError: handler,
 			runtime: null,
 			enabledTools: "",
-			itemToolbarTools: "",
-			passageToolbarTools: "",
 		});
 		expect((state.effectiveRuntime as any).onFrameworkError).toBe(handler);
 	});
@@ -125,8 +123,6 @@ describe("resolveSectionPlayerRuntimeState", () => {
 			onStageChange: handler,
 			runtime: null,
 			enabledTools: "",
-			itemToolbarTools: "",
-			passageToolbarTools: "",
 		});
 		expect((state.effectiveRuntime as any).onStageChange).toBe(handler);
 	});
@@ -147,8 +143,6 @@ describe("resolveSectionPlayerRuntimeState", () => {
 			onLoadingComplete: handler,
 			runtime: null,
 			enabledTools: "",
-			itemToolbarTools: "",
-			passageToolbarTools: "",
 		});
 		expect((state.effectiveRuntime as any).onLoadingComplete).toBe(handler);
 	});
@@ -170,8 +164,6 @@ describe("resolveSectionPlayerRuntimeState", () => {
 			onStageChange: fromProp,
 			runtime: { onStageChange: fromRuntime },
 			enabledTools: "",
-			itemToolbarTools: "",
-			passageToolbarTools: "",
 		});
 		expect((state.effectiveRuntime as any).onStageChange).toBe(fromRuntime);
 	});
@@ -193,8 +185,6 @@ describe("resolveSectionPlayerRuntimeState", () => {
 			onLoadingComplete: fromProp,
 			runtime: { onLoadingComplete: fromRuntime },
 			enabledTools: "",
-			itemToolbarTools: "",
-			passageToolbarTools: "",
 		});
 		expect((state.effectiveRuntime as any).onLoadingComplete).toBe(fromRuntime);
 	});
@@ -213,8 +203,6 @@ describe("resolveSectionPlayerRuntimeState", () => {
 			toolConfigStrictness: "error",
 			runtime: null,
 			enabledTools: "",
-			itemToolbarTools: "",
-			passageToolbarTools: "",
 		});
 		expect(state.playerRuntime.effectivePlayerType).toBe("iife");
 		expect(state.playerRuntime.resolvedPlayerTag).toBeDefined();

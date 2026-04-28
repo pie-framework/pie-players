@@ -30,7 +30,6 @@ import type {
 } from "@pie-players/pie-players-shared/pie";
 import type { FrameworkErrorModel } from "../../services/framework-error.js";
 import type { ToolConfigStrictness } from "../../services/tool-config-validation.js";
-import { warnDeprecatedOnce } from "../../services/deprecation-warnings.js";
 import { parseToolList } from "../../services/tools-config-normalizer.js";
 
 export const DEFAULT_ASSESSMENT_ID = "section-demo-direct";
@@ -112,8 +111,6 @@ export type RuntimeInputs = {
 	onLoadingComplete?: LoadingCompleteHandler;
 	runtime: RuntimeConfig | null;
 	enabledTools: string;
-	itemToolbarTools: string;
-	passageToolbarTools: string;
 };
 
 /**
@@ -147,8 +144,6 @@ export function resolveToolsConfig(args: {
 	runtime: RuntimeConfig | null;
 	tools: Record<string, unknown> | null;
 	enabledTools: string;
-	itemToolbarTools: string;
-	passageToolbarTools: string;
 }) {
 	const runtimeTools = (args.runtime?.tools || args.tools || {}) as Record<
 		string,
@@ -158,31 +153,21 @@ export function resolveToolsConfig(args: {
 	// the easy-tier alias. Per Decision B1, it merges into
 	// `tools.placement.section`. The object form (`runtime.tools`) keeps
 	// precedence over both — that lock lives in the merge below.
+	//
+	// The deprecated `item-toolbar-tools` / `passage-toolbar-tools`
+	// per-region aliases were removed in the broad architecture review
+	// compat sweep; hosts must populate `tools.placement.item` /
+	// `tools.placement.passage` (object form) or
+	// `runtime.tools.placement.{item,passage}` directly.
 	const effectiveEnabledTools =
 		pick(args.runtime?.enabledTools, args.enabledTools) ?? "";
-	if (args.itemToolbarTools && args.itemToolbarTools.length > 0) {
-		warnDeprecatedOnce(
-			"section-player:itemToolbarTools",
-			"<pie-section-player-...>'s `item-toolbar-tools` attribute is deprecated; set `tools.placement.item` (object form) or `runtime.tools.placement.item` instead.",
-		);
-	}
-	if (args.passageToolbarTools && args.passageToolbarTools.length > 0) {
-		warnDeprecatedOnce(
-			"section-player:passageToolbarTools",
-			"<pie-section-player-...>'s `passage-toolbar-tools` attribute is deprecated; set `tools.placement.passage` (object form) or `runtime.tools.placement.passage` instead.",
-		);
-	}
 	const sectionTools = parseToolList(effectiveEnabledTools);
-	const itemTools = parseToolList(args.itemToolbarTools);
-	const passageTools = parseToolList(args.passageToolbarTools);
 	const placement = (runtimeTools.placement || {}) as Record<string, unknown>;
 	const overlayToolsConfig = {
 		...runtimeTools,
 		placement: {
 			...placement,
 			...(sectionTools.length > 0 ? { section: sectionTools } : {}),
-			...(itemTools.length > 0 ? { item: itemTools } : {}),
-			...(passageTools.length > 0 ? { passage: passageTools } : {}),
 		},
 	};
 	// Keep host-provided shape intact; framework-owned validation surfaces malformed config.
@@ -299,8 +284,6 @@ export function resolveSectionEngineRuntimeState<P>(
 		runtime: args.runtime,
 		tools,
 		enabledTools: args.enabledTools,
-		itemToolbarTools: args.itemToolbarTools,
-		passageToolbarTools: args.passageToolbarTools,
 	});
 	const effectiveRuntime = resolveRuntime({
 		assessmentId,

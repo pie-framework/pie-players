@@ -78,8 +78,6 @@ function makeRuntimeInputs(
 		toolConfigStrictness: "error",
 		runtime: null,
 		enabledTools: "",
-		itemToolbarTools: "",
-		passageToolbarTools: "",
 		...overrides,
 	};
 }

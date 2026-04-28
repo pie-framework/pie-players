@@ -251,9 +251,12 @@ design:
   consumed by the layout kernel through its top-level prop, not via
   `runtime`. They pass straight through to the kernel/scaffold and
   are not part of the two-tier mirror.
-- **Deprecated aliases** (`item-toolbar-tools`, `passage-toolbar-tools`):
-  kept as props for back-compat but absorbed at the CE boundary into the
-  canonical surface (`tools.placement`).
+- Per-region toolbar tool placement is configured directly on the
+  canonical `tools` object as `tools.placement.item` /
+  `tools.placement.passage` (or via `runtime.tools.placement.{item,passage}`).
+  The previously deprecated `item-toolbar-tools` /
+  `passage-toolbar-tools` attribute aliases were removed in the broad
+  architecture review compat sweep.
 
 ### Canonical tier-1 attribute set
 
@@ -263,9 +266,10 @@ The tier-1 attribute set is the same shape across the
 
 - Identity: `assessment-id`, `section-id`, `attempt-id`
 - Player: `player-type`, `lazy-init`
-- Tools: `tools` (object property), `enabled-tools` (shorthand for
-  `tools.placement.section`), and the deprecated `item-toolbar-tools` /
-  `passage-toolbar-tools` aliases
+- Tools: `tools` (object property) and `enabled-tools` (shorthand for
+  `tools.placement.section`). Per-region placement (`tools.placement.item`,
+  `tools.placement.passage`) is configured directly on the canonical
+  `tools` object.
 - Coordination: `coordinator`, `create-section-controller`
 - Accessibility: `accessibility`
 - Diagnostics: `tool-config-strictness`, `debug`. Framework-error

@@ -113,6 +113,12 @@ export interface SectionCanonicalSessionViewModel {
 	itemSessionsByCanonicalId: Record<string, unknown>;
 }
 
+export interface SectionAttemptSessionSliceLoadedRenderable {
+	itemId: string;
+	canonicalItemId: string;
+	contentKind: SectionContentKind;
+}
+
 export interface SectionAttemptSessionSlice {
 	sectionId: string;
 	sectionIdentifier?: string;
@@ -127,6 +133,7 @@ export interface SectionAttemptSessionSlice {
 	itemsComplete: boolean;
 	completedCount: number;
 	totalItems: number;
+	loadedRenderables?: ReadonlyArray<SectionAttemptSessionSliceLoadedRenderable>;
 }
 
 export interface SessionChangedResult {

@@ -85,6 +85,7 @@ export type {
 	SectionControllerFactoryDefaults,
 	SectionControllerHandle,
 	SectionControllerKey,
+	SectionControllerLoadedRenderable,
 	SectionSessionPersistenceConfig,
 	SectionSessionPersistenceStrategy,
 	SectionControllerRuntimeState,
@@ -1083,6 +1084,22 @@ export class ToolkitCoordinator {
 			args.listener(event);
 		});
 
+		// Replay `content-loaded` events first so a late subscriber observes
+		// the same ordering a live subscriber would have seen (per-renderable
+		// loads, then the aggregate `section-loading-complete`). Symmetric
+		// with `section-loading-complete` replay below; without this, a
+		// consumer that attaches after a cohort transition (e.g. a fresh
+		// section controller created on navigation) silently misses every
+		// `content-loaded` event for items that finished loading before the
+		// subscription attached. See PIE-512 for the consumer-observable
+		// regression.
+		const contentLoadedReplays = this.buildContentLoadedReplayEvents(controller);
+		for (const event of contentLoadedReplays) {
+			if (shouldDeliverEvent(event)) {
+				args.listener(event);
+			}
+		}
+
 		const replayEvent = this.buildLoadingCompleteReplayEvent(controller);
 		if (replayEvent && shouldDeliverEvent(replayEvent)) {
 			args.listener(replayEvent);
@@ -1169,6 +1186,56 @@ export class ToolkitCoordinator {
 			itemIds.add(event.previousItemId);
 		}
 		return itemIds;
+	}
+
+	/**
+	 * Build replay `content-loaded` events for renderables the controller has
+	 * already finished loading.
+	 *
+	 * Strict by design: only renderables explicitly reported in
+	 * `runtimeState.loadedRenderables` are replayed. Synthetic test harnesses
+	 * that omit the field (or controllers from older revisions that did not
+	 * populate it) get an empty replay set rather than a fabricated one — that
+	 * preserves the contract that replays mirror events that actually fired.
+	 *
+	 * Order follows registration order from
+	 * `SectionController.collectLoadedRenderableSnapshot`, which mirrors the
+	 * order live `content-loaded` events were emitted in.
+	 */
+	private buildContentLoadedReplayEvents(
+		controller: SectionControllerHandle,
+	): SectionControllerEvent[] {
+		const runtimeState = controller.getRuntimeState?.();
+		const loadedRenderables = runtimeState?.loadedRenderables;
+		if (!Array.isArray(loadedRenderables) || loadedRenderables.length === 0) {
+			return [];
+		}
+		const currentItemIndex =
+			typeof runtimeState?.currentItemIndex === "number" &&
+			Number.isFinite(runtimeState.currentItemIndex)
+				? runtimeState.currentItemIndex
+				: 0;
+		const timestamp = Date.now();
+		const events: SectionControllerEvent[] = [];
+		for (const renderable of loadedRenderables) {
+			if (!renderable) continue;
+			const itemId = renderable.itemId;
+			const canonicalItemId =
+				typeof renderable.canonicalItemId === "string" &&
+				renderable.canonicalItemId
+					? renderable.canonicalItemId
+					: itemId;
+			if (typeof itemId !== "string" || !itemId) continue;
+			events.push({
+				type: "content-loaded",
+				contentKind: renderable.contentKind ?? "unknown",
+				itemId,
+				canonicalItemId,
+				currentItemIndex,
+				timestamp,
+			});
+		}
+		return events;
 	}
 
 	private buildLoadingCompleteReplayEvent(

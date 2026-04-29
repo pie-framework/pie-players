@@ -103,6 +103,15 @@ jobs:
       - name: Build All Packages
         run: bun run build
 
+      - name: Run Unit Tests
+        # Tests gate at PR-into-develop/master time. The release path
+        # (changeset PR titled `[skip-heavy-ci]` → push: master →
+        # release.yml) inherits trust from the develop merges and stays
+        # fast. release.yml's manual publish run still has its own
+        # `bun run test` step as a final safety net.
+        if: github.event_name == 'pull_request'
+        run: bun run test
+
       - name: Verify Runtime Compatibility Boundaries
         run: bun run check:runtime-compat
 

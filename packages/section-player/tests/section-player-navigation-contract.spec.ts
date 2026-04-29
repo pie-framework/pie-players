@@ -172,39 +172,276 @@ test.describe("section player navigation contract", () => {
 		});
 	});
 
-	test("splitpane can opt into focus movement after navigation", async ({ page }) => {
+	test("default autoFocus policy moves focus to passage card after navigation", async ({
+		page,
+	}) => {
 		await page.goto(SPLIT_DEMO, { waitUntil: "networkidle" });
 		await expect(page.locator("pie-section-player-splitpane").first()).toBeVisible();
 
-		await page.evaluate(() => {
-			const host = document.querySelector("pie-section-player-splitpane") as
-				| (HTMLElement & { policies?: Record<string, unknown> })
-				| null;
-			if (!host) throw new Error("splitpane host not found");
-			host.policies = {
-				readiness: { mode: "progressive" },
-				preload: { enabled: true },
-				focus: { autoFocusFirstItem: true },
-				telemetry: { enabled: true },
-			};
-		});
+		// Wait for cards to mount and receive their public focus attributes.
+		await expect(
+			page.locator("pie-section-player-passage-card").first(),
+		).toHaveAttribute("tabindex", "-1");
+		await expect(
+			page.locator("pie-section-player-item-card").first(),
+		).toHaveAttribute("tabindex", "-1");
 
-		const movedFocus = await page.evaluate(async () => {
+		const activeTag = await page.evaluate(async () => {
 			const host = document.querySelector("pie-section-player-splitpane") as
 				| (HTMLElement & { navigateNext?: () => boolean })
 				| null;
-			if (!host?.navigateNext) return false;
-			const ok = host.navigateNext();
-			if (!ok) return false;
+			if (!host?.navigateNext) return null;
+			if (!host.navigateNext()) return null;
 			await new Promise((resolve) => setTimeout(resolve, 50));
+			return (document.activeElement?.tagName || "").toLowerCase();
+		});
+
+		// tts-ssml demo has a passage, so start-of-content lands on the passage card.
+		expect(activeTag).toBe("pie-section-player-passage-card");
+	});
+
+	test("autoFocus='current-item' focuses the active item surface (card or first control)", async ({
+		page,
+	}) => {
+		await page.goto(SPLIT_DEMO, { waitUntil: "networkidle" });
+		await expect(page.locator("pie-section-player-splitpane").first()).toBeVisible();
+
+		const result = await page.evaluate(async () => {
+			const host = document.querySelector("pie-section-player-splitpane") as
+				| (HTMLElement & {
+						policies?: Record<string, unknown>;
+						navigateNext?: () => boolean;
+				  })
+				| null;
+			if (!host) return { active: null, insideCurrentItem: false };
+			host.policies = {
+				readiness: { mode: "progressive" },
+				preload: { enabled: true },
+				focus: { autoFocus: "current-item" },
+				telemetry: { enabled: true },
+			};
+			await new Promise((resolve) => setTimeout(resolve, 20));
+			if (!host.navigateNext?.()) return { active: null, insideCurrentItem: false };
+			await new Promise((resolve) => setTimeout(resolve, 120));
 			const active = document.activeElement as HTMLElement | null;
-			return Boolean(
-				active &&
-					active.classList.contains("pie-section-player-content-card") &&
-					active.hasAttribute("data-section-item-card"),
+			const card = document.querySelector("pie-section-player-item-card[is-current]");
+			const insideCurrentItem =
+				Boolean(card && active && (card === active || card.contains(active)));
+			return {
+				active: (active?.tagName || "").toLowerCase(),
+				insideCurrentItem,
+			};
+		});
+
+		expect(result.insideCurrentItem).toBe(true);
+	});
+
+	test("autoFocus='none' leaves focus unchanged after navigation", async ({
+		page,
+	}) => {
+		await page.goto(SPLIT_DEMO, { waitUntil: "networkidle" });
+		await expect(page.locator("pie-section-player-splitpane").first()).toBeVisible();
+
+		const sameBody = await page.evaluate(async () => {
+			const host = document.querySelector("pie-section-player-splitpane") as
+				| (HTMLElement & {
+						policies?: Record<string, unknown>;
+						navigateNext?: () => boolean;
+				  })
+				| null;
+			if (!host) return false;
+			host.policies = {
+				readiness: { mode: "progressive" },
+				preload: { enabled: true },
+				focus: { autoFocus: "none" },
+				telemetry: { enabled: true },
+			};
+			await new Promise((resolve) => setTimeout(resolve, 20));
+			document.body.focus();
+			if (!host.navigateNext?.()) return false;
+			await new Promise((resolve) => setTimeout(resolve, 50));
+			return (
+				document.activeElement === document.body ||
+				document.activeElement === document.documentElement
 			);
 		});
 
-		expect(typeof movedFocus).toBe("boolean");
+		expect(sameBody).toBe(true);
+	});
+
+	test("focusStart() defaults to start-of-content even when autoFocus is 'none'", async ({
+		page,
+	}) => {
+		await page.goto(SPLIT_DEMO, { waitUntil: "networkidle" });
+		await expect(page.locator("pie-section-player-splitpane").first()).toBeVisible();
+
+		const activeTag = await page.evaluate(async () => {
+			const host = document.querySelector("pie-section-player-splitpane") as
+				| (HTMLElement & {
+						policies?: Record<string, unknown>;
+						focusStart?: () => boolean;
+				  })
+				| null;
+			if (!host?.focusStart) return null;
+			// Even with autoFocus:'none', focusStart() must still move focus —
+			// hosts only call it when they *want* focus to move.
+			host.policies = {
+				readiness: { mode: "progressive" },
+				preload: { enabled: true },
+				focus: { autoFocus: "none" },
+				telemetry: { enabled: true },
+			};
+			await new Promise((resolve) => setTimeout(resolve, 20));
+			document.body.focus();
+			const moved = host.focusStart();
+			await new Promise((resolve) => setTimeout(resolve, 20));
+			if (!moved) return null;
+			return (document.activeElement?.tagName || "").toLowerCase();
+		});
+
+		expect(activeTag).toBe("pie-section-player-passage-card");
+	});
+
+	test("focusStart() with autoFocus 'current-item' lands on the current item surface", async ({
+		page,
+	}) => {
+		await page.goto(SPLIT_DEMO, { waitUntil: "networkidle" });
+		await expect(page.locator("pie-section-player-splitpane").first()).toBeVisible();
+
+		const result = await page.evaluate(async () => {
+			const host = document.querySelector("pie-section-player-splitpane") as
+				| (HTMLElement & {
+						policies?: Record<string, unknown>;
+						focusStart?: () => boolean;
+				  })
+				| null;
+			if (!host?.focusStart) return null;
+			host.policies = {
+				readiness: { mode: "progressive" },
+				preload: { enabled: true },
+				focus: { autoFocus: "current-item" },
+				telemetry: { enabled: true },
+			};
+			await new Promise((resolve) => setTimeout(resolve, 20));
+			document.body.focus();
+			const moved = host.focusStart();
+			await new Promise((resolve) => setTimeout(resolve, 120));
+			if (!moved) return null;
+			const active = document.activeElement as HTMLElement | null;
+			const card = document.querySelector("pie-section-player-item-card[is-current]");
+			const insideCurrentItem =
+				Boolean(card && active && (card === active || card.contains(active)));
+			return {
+				tag: (active?.tagName || "").toLowerCase(),
+				insideCurrentItem,
+			};
+		});
+
+		expect(result?.insideCurrentItem).toBe(true);
+	});
+
+	test("keepTogether:true + autoFocus:'current-item' still fires item-selected and focuses the new current card", async ({
+		page,
+	}) => {
+		// The tts-ssml demo section has keepTogether:true. This asserts that the
+		// QTI 3 keep-together pagination hint does NOT disable item-level
+		// navigation events or current-item focus movement.
+		await page.goto(SPLIT_DEMO, { waitUntil: "networkidle" });
+		await expect(page.locator("pie-section-player-splitpane").first()).toBeVisible();
+
+		const result = await page.evaluate(async () => {
+			const host = document.querySelector("pie-section-player-splitpane") as
+				| (HTMLElement & {
+						policies?: Record<string, unknown>;
+						navigateNext?: () => boolean;
+						getSectionController?: () => {
+							subscribe?: (
+								listener: (event: {
+									type?: string;
+									itemIndex?: number;
+									currentItemId?: string;
+								}) => void,
+							) => () => void;
+						} | null;
+						waitForSectionController?: (timeoutMs?: number) => Promise<{
+							subscribe?: (
+								listener: (event: {
+									type?: string;
+									itemIndex?: number;
+									currentItemId?: string;
+								}) => void,
+							) => () => void;
+						} | null>;
+						selectNavigation?: () => {
+							currentIndex: number;
+							totalItems: number;
+						};
+				  })
+				| null;
+			if (!host) return null;
+
+			host.policies = {
+				readiness: { mode: "progressive" },
+				preload: { enabled: true },
+				focus: { autoFocus: "current-item" },
+				telemetry: { enabled: true },
+			};
+			await new Promise((resolve) => setTimeout(resolve, 20));
+
+			const controller =
+				host.getSectionController?.() ||
+				(await host.waitForSectionController?.(5000)) ||
+				null;
+			const events: Array<{ itemIndex?: number; currentItemId?: string }> = [];
+			const unsubscribe = controller?.subscribe?.((event) => {
+				if (event?.type !== "item-selected") return;
+				events.push({
+					itemIndex: event.itemIndex,
+					currentItemId: event.currentItemId,
+				});
+			});
+
+			const before = host.selectNavigation?.();
+			const moved = host.navigateNext?.() === true;
+			await new Promise((resolve) => setTimeout(resolve, 120));
+			const after = host.selectNavigation?.();
+			unsubscribe?.();
+			const active = document.activeElement as HTMLElement | null;
+			const currentCard = document.querySelector("pie-section-player-item-card[is-current]");
+			const insideCurrentItem =
+				Boolean(
+					currentCard && active && (currentCard === active || currentCard.contains(active)),
+				);
+
+			return {
+				moved,
+				before,
+				after,
+				events,
+				activeTag: (active?.tagName || "").toLowerCase(),
+				insideCurrentItem,
+			};
+		});
+
+		expect(result).not.toBeNull();
+		if (!result) return;
+		expect(result.moved).toBe(true);
+		expect(result.before?.totalItems ?? 0).toBeGreaterThan(1);
+		expect(result.after?.currentIndex).toBe((result.before?.currentIndex ?? 0) + 1);
+		expect(result.events.length).toBeGreaterThanOrEqual(1);
+		expect(result.events[0]?.itemIndex).toBe(result.after?.currentIndex);
+		expect(result.insideCurrentItem).toBe(true);
+	});
+
+	test("passage and item cards expose public focus attributes", async ({ page }) => {
+		await page.goto(SPLIT_DEMO, { waitUntil: "networkidle" });
+		const passage = page.locator("pie-section-player-passage-card").first();
+		const item = page.locator("pie-section-player-item-card").first();
+		await expect(passage).toHaveAttribute("tabindex", "-1");
+		await expect(passage).toHaveAttribute("role", "region");
+		await expect(passage).toHaveAttribute("aria-labelledby", /.+/);
+		await expect(item).toHaveAttribute("tabindex", "-1");
+		await expect(item).toHaveAttribute("role", "region");
+		await expect(item).toHaveAttribute("aria-labelledby", /.+/);
 	});
 });

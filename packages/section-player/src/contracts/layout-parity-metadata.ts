@@ -10,9 +10,11 @@ const RECOMMENDED_BASIC_PROPS = [
 	"showToolbar",
 	"toolbarPosition",
 	"narrowLayoutBreakpoint",
+	"contentMaxWidthNoPassage",
+	"contentMaxWidthWithPassage",
+	"splitPaneMinRegionWidth",
+	"splitPaneCollapseStrategy",
 	"enabledTools",
-	"itemToolbarTools",
-	"passageToolbarTools",
 ] as const;
 
 const ADVANCED_ESCAPE_HATCH_PROPS = [
@@ -23,15 +25,18 @@ const ADVANCED_ESCAPE_HATCH_PROPS = [
 	"tools",
 	"accessibility",
 	"coordinator",
-	"createSectionController",
-	"isolation",
 	"env",
 	"iifeBundleHost",
 	"toolRegistry",
 	"sectionHostButtons",
 	"itemHostButtons",
 	"passageHostButtons",
-	"cardTitleFormatter",
+	"policies",
+	"toolConfigStrictness",
+	"hooks",
+	"onFrameworkError",
+	"onStageChange",
+	"onLoadingComplete",
 ] as const;
 
 const SHARED_PROPS = [
@@ -42,13 +47,11 @@ const SHARED_PROPS = [
 const SHARED_EVENTS = [
 	SECTION_PLAYER_PUBLIC_EVENTS.runtimeOwned,
 	SECTION_PLAYER_PUBLIC_EVENTS.runtimeInherited,
-	SECTION_PLAYER_PUBLIC_EVENTS.runtimeError,
+	SECTION_PLAYER_PUBLIC_EVENTS.frameworkError,
 	SECTION_PLAYER_PUBLIC_EVENTS.compositionChanged,
 	SECTION_PLAYER_PUBLIC_EVENTS.sessionChanged,
-	SECTION_PLAYER_PUBLIC_EVENTS.sectionControllerReady,
-	SECTION_PLAYER_PUBLIC_EVENTS.readinessChange,
-	SECTION_PLAYER_PUBLIC_EVENTS.interactionReady,
-	SECTION_PLAYER_PUBLIC_EVENTS.ready,
+	SECTION_PLAYER_PUBLIC_EVENTS.stageChange,
+	SECTION_PLAYER_PUBLIC_EVENTS.loadingComplete,
 ] as const;
 
 const SHARED_COMMANDS = [
@@ -87,6 +90,17 @@ export const SPLITPANE_LAYOUT_CONTRACT: SectionPlayerLayoutContract = {
 export const VERTICAL_LAYOUT_CONTRACT: SectionPlayerLayoutContract = {
 	version: 1,
 	layout: "vertical",
+	props: SHARED_PROPS,
+	recommendedBasicProps: RECOMMENDED_BASIC_PROPS,
+	advancedEscapeHatchProps: ADVANCED_ESCAPE_HATCH_PROPS,
+	events: SHARED_EVENTS,
+	commands: SHARED_COMMANDS,
+	capabilities: SHARED_CAPABILITIES,
+};
+
+export const TABBED_LAYOUT_CONTRACT: SectionPlayerLayoutContract = {
+	version: 1,
+	layout: "tabbed",
 	props: SHARED_PROPS,
 	recommendedBasicProps: RECOMMENDED_BASIC_PROPS,
 	advancedEscapeHatchProps: ADVANCED_ESCAPE_HATCH_PROPS,

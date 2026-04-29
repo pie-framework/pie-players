@@ -389,6 +389,28 @@ class DesmosCalculator implements Calculator {
 	}
 
 	/**
+	 * Move keyboard focus to the primary input/expression field so keyboard
+	 * users can begin typing immediately after the calculator opens.
+	 */
+	focus(): void {
+		try {
+			if (
+				this.type === "graphing" &&
+				typeof this.desmosCalculator?.focusFirstExpression === "function"
+			) {
+				this.desmosCalculator.focusFirstExpression();
+				return;
+			}
+			const target = this.container.querySelector<HTMLElement>(
+				'.dcg-mq-editable-field[tabindex="0"], textarea, [contenteditable="true"], [tabindex]:not([tabindex="-1"])',
+			);
+			target?.focus();
+		} catch (error) {
+			console.warn("[DesmosCalculator] focus() failed:", error);
+		}
+	}
+
+	/**
 	 * Evaluate expression (for graphing calculator)
 	 */
 	async evaluate(expression: string): Promise<string> {

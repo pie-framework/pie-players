@@ -1,5 +1,5 @@
 import {
-	ContextProviderEvent,
+	type ContextProviderEvent,
 	ContextRequestEvent,
 } from "./events.js";
 import type { UnknownContext } from "./types.js";

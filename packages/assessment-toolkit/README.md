@@ -88,7 +88,7 @@ provider path is the item-player loader config:
 - `pie-toolkit-runtime-inherited`
 - `pie-toolkit-ready`
 - `pie-toolkit-section-ready`
-- `pie-toolkit-runtime-error`
+- `pie-toolkit-framework-error`
 
 Toolkit tool/backend operational stream:
 
@@ -113,6 +113,130 @@ See [ToolkitCoordinator Architecture](../../docs/architecture/TOOLKIT_COORDINATO
 5. **Standard Contracts**: Well-defined event types for component communication
 6. **Element-Level Granularity**: Tool state tracked per PIE element, not per item
 7. **State Separation**: Tool state (ephemeral) separate from PIE session data (persistent)
+
+## Configuration tiers: easy attribute + sophisticated `runtime`
+
+This package and `@pie-players/pie-section-player` follow a deliberate
+two-tier configuration model. The same knob can usually be set in either
+tier; the choice is about ergonomics, not capability.
+
+### When to use each tier
+
+- **Easy tier — top-level CE attributes / properties.** Use these for the
+  common cases that are static for the lifetime of the player or that hosts
+  want to set declaratively in HTML / templating frameworks. Example:
+
+  ```html
+  <pie-assessment-toolkit
+    assessment-id="my-assessment"
+    section-id="s-1"
+    tool-config-strictness="warn"
+  ></pie-assessment-toolkit>
+  ```
+
+- **Sophisticated tier — passing a constructed `ToolkitCoordinator` (or a
+  `runtime` object on consumer CEs).** Use this for advanced cases: composed
+  configuration, dynamic overrides, runtime mutation, fields without a
+  tier-1 attribute, or anything that benefits from being a single typed
+  object passed by reference. Example:
+
+  ```ts
+  const coordinator = new ToolkitCoordinator({
+    assessmentId: "my-assessment",
+    toolConfigStrictness: "warn",
+    tools: {
+      providers: { calculator: { enabled: true } },
+      placement: { item: ["calculator", "textToSpeech"] },
+    },
+  });
+  el.coordinator = coordinator;
+  ```
+
+### Naming rule
+
+The easy-tier attribute name is the kebab-cased version of the runtime /
+config key. `tool-config-strictness` ↔ `toolConfigStrictness`,
+`assessment-id` ↔ `assessmentId`, `player-type` ↔ `playerType`. Hosts can
+move a knob from the easy tier to the configuration object (or back)
+without renaming.
+
+### Precedence rule
+
+The configuration object wins. When the same knob is set in both tiers,
+resolution is:
+
+1. The constructed `ToolkitCoordinator` config (or `runtime.<key>` on a
+   consumer CE) if set
+2. Top-level attribute / property if set
+3. Documented default
+
+This applies symmetrically to `pie-assessment-toolkit` itself and to
+section-player CEs that embed it. New knobs MUST follow this precedence;
+do not add ad-hoc fall-throughs.
+
+### Canonical tier-1 attribute set
+
+The tier-1 attribute set is the same shape across
+`pie-assessment-toolkit`, `pie-section-player-base`, and the
+`pie-section-player-*` layout elements (locked in M5). Every tier-1
+surface obeys the strict mirror rule:
+
+```
+kebab-attribute  ↔  camelCaseProp  ↔  runtime.<sameCamelCaseKey>
+```
+
+Common members include:
+
+- Identity: `assessment-id`, `section-id`, `attempt-id`
+- Player: `player-type`, `lazy-init`
+- Tools: `tools` (object property), `tool-registry` (object property),
+  `enabled-tools` (shorthand for `tools.placement.section`)
+- Coordination: `coordinator` (`createSectionController` is a
+  runtime-only key on the section-player layout CEs — see
+  "Documented exceptions" below; `<pie-assessment-toolkit>` accepts
+  it as a direct JS prop on its own composition surface)
+- Accessibility: `accessibility` (object property; the deprecated
+  `accessibility` *attribute* mapping was removed in M5)
+- Diagnostics: `tool-config-strictness`, `debug`. Framework-error
+  delivery is via the canonical `onFrameworkError` callback prop and the
+  `framework-error` DOM event dispatched on the layout CE host.
+
+Documented exceptions to the mirror rule:
+
+- Identity (`section-id`, `attempt-id`, `section`): per-attempt host
+  state, not configuration.
+- Layout-only shell knobs on the section-player layout CEs
+  (`show-toolbar`, `toolbar-position`, `narrow-layout-breakpoint`,
+  `split-pane-collapse-strategy`): layout-CE rendering concerns.
+- Per-region toolbar tool placement: hosts populate
+  `tools.placement.item` / `tools.placement.passage` (object form) or
+  `runtime.tools.placement.{item,passage}` directly. The previously
+  deprecated `item-toolbar-tools` / `passage-toolbar-tools` attribute
+  aliases were removed in the broad architecture review compat sweep.
+- Runtime-only keys on the section-player layout CEs
+  (`createSectionController`, `isolation`): accepted only via
+  `runtime.<key>`. The top-level prop aliases were removed in the
+  broad architecture review compat sweep. `<pie-assessment-toolkit>`
+  itself keeps `createSectionController` and `isolation` as JS-only
+  props (no kebab-attribute surface): section-player layouts forward
+  `runtime.isolation` and `runtime.createSectionController` to the
+  wrapped toolkit via property bindings; standalone hosts that need
+  to override coordinator inheritance should pass an explicit
+  `coordinator={...}` instead.
+
+### When to add a tier-1 attribute
+
+Add a tier-1 attribute only if all of the following hold:
+
+- It is a common case that hosts set without composing a `ToolkitCoordinator`
+  / `runtime` object.
+- Its value is a primitive or small typed object that round-trips through
+  HTML attributes (string, boolean-like, number; structured data passes via
+  property assignment).
+- It exists on every CE that conceptually owns the same knob, or has a
+  deliberate documented exclusion.
+
+Otherwise expose it through the configuration object only.
 
 ## Quick Start
 
@@ -562,8 +686,7 @@ The persistence strategy works with the same `SectionControllerSessionState` sha
 
 ### ✅ Core Infrastructure
 
-- **TypedEventBus**: Type-safe event bus built on native EventTarget
-- **Event Types**: Complete event definitions (player, tools, navigation, state, interaction)
+- **TypedEventBus**: Generic type-safe `EventTarget` wrapper exported as a building block. The toolkit's own production events are emitted via DOM `CustomEvent`s on `<pie-assessment-toolkit>` and via `ToolkitCoordinator.subscribe*` helpers, not through this bus. Hosts and downstream packages may still use it to compose their own typed event maps.
 
 ### ✅ Toolkit Services
 
@@ -945,7 +1068,7 @@ player.section = mySection;
 Default behavior is now framework-owned: invalid tools/runtime initialization is handled in `pie-assessment-toolkit` without host try/catch.
 
 - Framework logs a deterministic console error prefix: `[pie-framework:<kind>:<source>]`
-- Framework emits a canonical `framework-error` event (and still emits `runtime-error` for compatibility)
+- Framework emits a canonical `framework-error` event
 - Framework renders a fallback error panel instead of a blank player
 - Startup tool-config validation can surface as `kind: "coordinator-init"` when the owned coordinator construction path throws.
 
@@ -987,8 +1110,168 @@ Notes:
 - `providers.textToSpeech` is the canonical TTS provider key.
 - `providers.tts` is rejected by the validation contract.
 - Custom tools can provide provider-level `sanitizeConfig` and `validateConfig` hooks.
-- Hosts can react to framework errors via `onframework-error` listeners or `onFrameworkError` callback prop.
+- Hosts can react to framework errors via the `framework-error` DOM event,
+  the `onFrameworkError(model)` callback prop, or by subscribing directly
+  to the package-internal bus via
+  `ToolkitCoordinator.subscribeFrameworkErrors(listener)`. The callback
+  prop fires exactly once per error, regardless of wrapper depth. Filter
+  by `model.kind` (e.g. `"tts-init"`, `"provider-init"`,
+  `"provider-register"`) for tool- or provider-specific handling.
 - See `docs/tools-and-accomodations/framework-owned-error-handling.md` for event payload and error-kind mapping details.
+
+## Section Runtime Engine (advanced)
+
+The toolkit exposes a layered **section runtime engine** that consolidates
+runtime resolution, FSM-driven stage progression, framework-error reporting,
+DOM-event fan-out, and instrumentation into a single object hosts can mount
+and dispose. The engine is what `<pie-section-player-…>` and
+`<pie-assessment-toolkit>` use internally, and it is also the surface
+custom hosts (or alternate layout shells) consume directly.
+
+### Two import paths
+
+The engine ships with two deliberately separate entry points so consumers
+pick the stability surface that matches their use case:
+
+- **Stable facade — `@pie-players/pie-assessment-toolkit/runtime/engine`.**
+  Narrow, semver-stable surface for hosts that want to mount, drive, and
+  dispose a section runtime. Re-exports `SectionRuntimeEngine`,
+  `SECTION_RUNTIME_ENGINE_KEY` (Svelte context), the cross-CE host
+  context (`sectionRuntimeEngineHostContext`), and the consumer-side
+  helper for that bridge (`connectSectionRuntimeEngineHostContext`).
+- **Internal surface — `@pie-players/pie-assessment-toolkit/runtime/internal`.**
+  Wider, evolving surface for advanced hosts that need to construct an
+  engine manually, inspect FSM state, or build alternate fan-out paths.
+  Exposes `SectionEngineCore`, the four adapter bridges
+  (`createDomEventBridge`, `createFrameworkErrorBridge`,
+  `createCoordinatorBridge`, `createInstrumentationBridge`),
+  `FrameworkErrorBus`, cohort helpers,
+  and the `resolveRuntime` / `resolveToolsConfig` /
+  `resolveSectionEngineRuntimeState` helpers. Symbols here may change
+  between minor versions with a changeset note.
+
+### Single-engine invariant
+
+When `<pie-assessment-toolkit>` is nested inside a section-player layout,
+the layout kernel publishes its engine reference via
+`sectionRuntimeEngineHostContext`. The toolkit detects that upstream
+engine and **suppresses its own external lifecycle DOM emits and stage
+tracker** in favor of the kernel's engine. From the outside, one cohort
+yields one `pie-stage-change` / `pie-loading-complete` chain on the
+layout CE host regardless of wrapper depth — even though, during the
+0.x line, the toolkit still constructs a local engine instance for its
+controller-side surface (`register`, `handleContent*`, `initialize`).
+A future release collapses the toolkit's controller-side surface onto
+the upstream engine; until then the externally observable invariant —
+**one cohort, one canonical event chain** — is what hosts should rely
+on. A standalone `<pie-assessment-toolkit>` (no upstream context)
+emits from its own engine.
+
+**Detection.** If a custom layout shell emits two `pie-stage-change`
+events per stage transition (or two `pie-loading-complete` per cohort)
+on the same layout CE — typically with two distinct `detail.runtimeId`
+values — the shell has not published its engine via
+`sectionRuntimeEngineHostContext`, so the wrapped
+`<pie-assessment-toolkit>` falls back to its standalone path and
+constructs a second engine. Wire the bridge as shown below.
+
+### Common-host wiring example
+
+Most hosts never construct the engine directly — the section-player
+layout CE and the toolkit CE handle it. Use the facade only when
+building an alternate layout shell (e.g. a custom kernel host). The
+shape mirrors what the section-player kernel does internally:
+
+```ts
+import { ContextProvider } from "@pie-players/pie-context";
+import {
+  SectionRuntimeEngine,
+  sectionRuntimeEngineHostContext,
+} from "@pie-players/pie-assessment-toolkit/runtime/engine";
+import {
+  FrameworkErrorBus,
+  makeCohort,
+} from "@pie-players/pie-assessment-toolkit/runtime/internal";
+
+const bus = new FrameworkErrorBus();
+const engine = new SectionRuntimeEngine();
+
+// 1. Attach to the layout CE host. `sourceCe` is stamped onto every
+//    DOM event the engine dispatches and is required.
+engine.attachHost({
+  host: layoutHostElement,
+  sourceCe: "my-custom-layout",
+  frameworkErrorBus: bus,
+  coordinator: toolkitCoordinator,
+});
+
+// 2. Publish the engine reference on the layout CE host so any
+//    wrapped <pie-assessment-toolkit> consumes it instead of
+//    constructing its own (single-engine invariant).
+const engineProvider = new ContextProvider(layoutHostElement, {
+  context: sectionRuntimeEngineHostContext,
+  initialValue: { engine },
+});
+engineProvider.connect();
+
+// 3. (Optional) Subscribe to the structured output stream — same set
+//    of outputs the DOM-event bridge fans out to the host element.
+engine.subscribe((output) => {
+  // tap stage transitions, readiness updates, framework errors,
+  // instrumentation events
+});
+
+// 4. Drive the engine. Use real `SectionEngineInput` shapes:
+const cohort = makeCohort({ sectionId, attemptId });
+engine.dispatchInput({
+  kind: "initialize",
+  cohort,
+  effectiveRuntime,
+  effectiveToolsConfig,
+  itemCount,
+});
+
+// On loading-progress / readiness signal updates:
+engine.dispatchInput({
+  kind: "update-readiness-signals",
+  signals: {
+    sectionReady,
+    interactionReady,
+    allLoadingComplete,
+    runtimeError,
+  },
+  loadedCount,
+  itemCount,
+  mode: "progressive",
+});
+
+// On unmount:
+engineProvider.disconnect();
+engine.dispose();
+```
+
+The DOM events `pie-stage-change`, `pie-loading-complete`, and
+`framework-error` are dispatched on `host` automatically by the
+adapter's `dom-event-bridge`. The canonical `onFrameworkError` callback
+prop and the package-internal `FrameworkErrorBus` deliver each error
+exactly once regardless of wrapper depth. The `framework-error` DOM
+event on the layout CE host also delivers each error exactly once: the
+section-player kernel intercepts the toolkit's bubbled emit at
+`<pie-section-player-base>` and calls `event.stopPropagation()`, so the
+layout host sees only the canonical engine-bridge emit. Direct
+listeners on `<pie-assessment-toolkit>` itself still see the toolkit's
+own emit (the toolkit dispatch reaches them before the kernel listener
+runs). The single-emit contract is pinned by
+`packages/section-player/tests/section-player-framework-error-dual-emit.test.ts`.
+The previous dual-emit on the layout host was removed in the broad
+architecture review compat sweep.
+
+The deprecated readiness aliases (`readiness-change`,
+`interaction-ready`, `ready`) and their `legacy-event-bridge` were
+removed in the broad architecture review compat sweep. Hosts that
+listened for them migrate to `pie-stage-change` (with the readiness
+detail also available via the kernel's `selectReadiness()`) and
+`pie-loading-complete`.
 
 ## State Separation: Tool State vs Session Data
 
@@ -1058,12 +1341,37 @@ import type {
 } from '@pie-players/pie-assessment-toolkit';
 ```
 
+## Content trust boundary
+
+The toolkit embeds item content via the underlying `pie-item-player`
+custom element and renders tool icons / SSML fragments that originate
+from tool configuration. Two sanitization layers apply:
+
+- **Item / passage markup** - sanitized by default in
+  `pie-item-player`. See
+  [pie-item-player README](./README.md#content-trust-boundary)
+  for the `trust-markup` opt-out and the `sanitizeMarkup` override.
+  As a post-sanitization step, every authored `<img>` outside a `pie-*`
+  custom element is wrapped in `<span class="pie-image-scroll">` so
+  overwide images surface a horizontal scrollbar instead of being
+  clipped by the section layout's `overflow-x: hidden` ancestors
+  (PIE-94 / WCAG 1.4.10 Reflow at 400% zoom). The wrapper is
+  keyboard-scrollable (`tabindex="0"`, `role="region"`) and carries
+  the image's `alt` text in its `aria-label`; matching CSS lives in
+  `@pie-players/pie-theme` (`components.css`).
+- **Tool icons and SSML** - tool-registered icon markup is parsed and
+  DOMPurified inside the toolbar at render time; SSML payloads are
+  restricted to an allow-listed subset of SSML tags/attributes before
+  being forwarded to TTS providers. Do not ship tools that rely on raw
+  `<script>` or event-handler attributes in their icon strings.
+
 ## Related Documentation
 
 - **[Tool Registry Architecture](docs/TOOL_REGISTRY.md)** - ⭐ NEW - Registry-based tool management and QTI 3.0 PNP support
 - **[PNP Configuration Guide](docs/PNP_CONFIGURATION.md)** - ⭐ NEW - How to configure student profiles, district policies, and governance rules
 - [ToolkitCoordinator Architecture](../../docs/architecture/TOOLKIT_COORDINATOR.md) - Design decisions and patterns
 - [Section Player README](../section-player/README.md) - Section player integration
+- [Section Player Architecture](../section-player/ARCHITECTURE.md#layered-runtime-engine-post-m7) - Layered runtime engine, kernel/toolkit wiring, single-engine invariant
 - [Framework-Owned Error Handling](../../docs/tools-and-accomodations/framework-owned-error-handling.md) - Canonical framework error model/events and fallback behavior
 - [Safe Custom Tool Configuration](../../docs/tools-and-accomodations/safe-custom-tool-config.md) - Host-side config patterns and validation guidance
 - [Architecture Overview](../../docs/architecture/architecture.md) - Complete system architecture

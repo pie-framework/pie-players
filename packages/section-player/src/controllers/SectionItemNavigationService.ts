@@ -9,13 +9,11 @@ import type { NavigationResult } from "./types.js";
 export class SectionItemNavigationService {
 	public navigate(args: {
 		index: number;
-		isPageMode: boolean;
 		items: ItemEntity[];
 		currentItemIndex: number;
 		sectionIdentifier?: string;
 		testAttemptSession: TestAttemptSession;
 	}): NavigationResult | null {
-		if (args.isPageMode) return null;
 		if (args.index < 0 || args.index >= args.items.length) return null;
 
 		const previousItemId = args.items[args.currentItemIndex]?.id || "";

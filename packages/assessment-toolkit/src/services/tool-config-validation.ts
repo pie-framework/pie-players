@@ -321,7 +321,7 @@ export function normalizeAndValidateToolsConfig(
 	);
 	const normalized = normalizeToolsConfig(input);
 	const diagnostics: ToolConfigDiagnostic[] = [];
-	const hasDeprecatedTtsKey = Object.prototype.hasOwnProperty.call(
+	const hasDeprecatedTtsKey = Object.hasOwn(
 		normalized.providers,
 		"tts",
 	);

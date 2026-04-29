@@ -37,6 +37,42 @@ describe("aggregateElements", () => {
 		});
 	});
 
+	test("does not double-append already-versioned latest tags", () => {
+		const elements = aggregateElements([
+			{
+				config: {
+					elements: {
+						"pie-multiple-choice--version-latest":
+							"@pie-element/multiple-choice@latest",
+					},
+				},
+			} as any,
+		]);
+
+		expect(elements).toEqual({
+			"pie-multiple-choice--version-latest":
+				"@pie-element/multiple-choice@latest",
+		});
+	});
+
+	test("keeps prerelease-encoded tags stable when version already matches", () => {
+		const elements = aggregateElements([
+			{
+				config: {
+					elements: {
+						"pie-inline-choice--version-1-2-3-beta-1":
+							"@pie-element/inline-choice@1.2.3-beta.1",
+					},
+				},
+			} as any,
+		]);
+
+		expect(elements).toEqual({
+			"pie-inline-choice--version-1-2-3-beta-1":
+				"@pie-element/inline-choice@1.2.3-beta.1",
+		});
+	});
+
 	test("preserves existing conflict behavior for repeated original tags", () => {
 		expect(() =>
 			aggregateElements([

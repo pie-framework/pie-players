@@ -12,9 +12,6 @@ The framework now does three things by default:
 2. Renders a built-in fallback UI for fatal startup failures.
 3. Emits a canonical `framework-error` event for optional host reactions.
 
-`runtime-error` is still emitted for compatibility and now includes optional
-`frameworkError` details when available.
-
 ---
 
 ## Why this change was made
@@ -82,9 +79,16 @@ Primary file:
 ### New default behavior
 
 - Log to `console.error(...)` with framework prefix.
+- Publish a single `FrameworkErrorModel` to the package-internal
+  `FrameworkErrorBus`. The bus has one subscriber on
+  `pie-assessment-toolkit` that fans out to every observable surface so
+  every host integration sees the same payload exactly once.
 - Emit `framework-error` (canonical event).
-- Emit `runtime-error` (compatibility signal) with optional `frameworkError`.
-- Render built-in fallback UI when error is fatal (`recoverable !== true`).
+- Render built-in fallback UI when the error is a fatal bootstrap kind
+  (`coordinator-init`, `runtime-init`, `tool-config`) and is not flagged
+  recoverable. Non-bootstrap kinds (e.g. `tool-runtime`, `provider-init`,
+  `tts-init`) still fire the canonical event/prop but keep the default
+  slot active.
 
 ### Error kind mapping note
 
@@ -101,15 +105,27 @@ should not assume startup tool validation always emits `kind: "tool-config"`.
 ### Recoverable behavior note
 
 Recoverable framework errors are still logged and emitted through
-`framework-error` / `runtime-error`, but they do not trigger the built-in fatal
-fallback panel. The default slot remains active when `recoverable === true`.
+`framework-error`, but they do not trigger the built-in fatal fallback
+panel. The default slot remains active when `recoverable === true`.
 
 ### Optional host extension points
 
-- `onFrameworkError?: (errorModel) => void`
+- `onFrameworkError?: (errorModel: FrameworkErrorModel) => void` — canonical
+  prop. Mirrors the `framework-error` DOM event payload exactly, fires
+  exactly once per error.
 - `errorRenderer?: (errorModel) => { title?: string; details?: string[] }`
 
-Hosts can react/customize, but framework provides safe defaults even without hooks.
+The `<pie-section-player-…>` layout custom elements (and
+`SectionPlayerLayoutKernel`) accept the same `onFrameworkError` prop. The
+two-tier configuration model applies: `runtime.onFrameworkError` wins
+over the top-level `onFrameworkError` prop. The merged callback flows
+down through `effectiveRuntime → pie-section-player-base →
+pie-assessment-toolkit`, which is the single delivery point — there is
+no double-firing across wrapper layers.
+
+Hosts can also subscribe to the package-internal bus directly via
+`ToolkitCoordinator.subscribeFrameworkErrors(listener)` when they need
+to observe framework errors without going through the DOM.
 
 ---
 
@@ -117,9 +133,15 @@ Hosts can react/customize, but framework provides safe defaults even without hoo
 
 Section-player runtime tools overlay resolution now preserves host-provided shape, and strict validation is performed during toolkit initialization.
 
-Primary file:
+Primary files:
 
-- `packages/section-player/src/components/shared/section-player-runtime.ts`
+- `packages/assessment-toolkit/src/runtime/core/engine-resolver.ts`
+  (canonical `resolveRuntime` / `resolveToolsConfig`, exported via
+  `@pie-players/pie-assessment-toolkit/runtime/internal`)
+- `packages/section-player/src/components/shared/section-player-host-runtime.ts`
+  (section-player-coupled wrapper that delegates to the toolkit
+  resolver and adds player-side coupling such as
+  `DEFAULT_PLAYER_DEFINITIONS`)
 
 This removes host-side shape correction/early throw paths and centralizes failure
 surfacing through the toolkit boundary.
@@ -167,20 +189,19 @@ The e2e test verifies:
 
 ### Canonical event
 
-- `framework-error`
+- `framework-error` — payload is a `FrameworkErrorModel`. Emitted by
+  `<pie-assessment-toolkit>` and re-emitted by every section-player
+  wrapper layer (base, scaffold, kernel, layout custom elements). The
+  toolkit is the single source of truth; the canonical
+  `onFrameworkError` callback is delivered exactly once per error,
+  regardless of wrapper depth.
 
-### Compatibility event
+### Telemetry mapping
 
-- `runtime-error`
+Section-player and toolkit instrumentation bridges emit:
 
-`runtime-error` detail remains compatibility-first and now may include:
-
-- `runtimeId`
-- `error`
-- `frameworkError?: FrameworkErrorModel`
-
-Compatibility goal: existing host listeners continue to work, while new integrations
-should prefer `framework-error`.
+- `pie-toolkit-framework-error`
+- `pie-section-framework-error`
 
 ---
 

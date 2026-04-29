@@ -13,8 +13,15 @@
 	} from "./section-player-card-context.js";
 	import type { SectionControllerHandle } from "@pie-players/pie-assessment-toolkit";
 	import { coerceBooleanLike } from "./section-player-props.js";
-	import { onDestroy } from "svelte";
-	import type { SectionPlayerFocusPolicy } from "../../policies/types.js";
+	import { onDestroy, tick } from "svelte";
+	import type {
+		SectionPlayerAutoFocusStrategy,
+		SectionPlayerFocusPolicy,
+	} from "../../policies/types.js";
+	import {
+		DEFAULT_FOCUS_POLICY,
+		resolveAutoFocusStrategy,
+	} from "../../policies/index.js";
 
 	let {
 		runtime = null as Record<string, unknown> | null,
@@ -26,13 +33,11 @@
 		enabledTools = "",
 		toolRegistry = null as ToolRegistry | null,
 		sectionHostButtons = [] as ToolbarItem[],
-		focusPolicy = { autoFocusFirstItem: false } as SectionPlayerFocusPolicy,
+		focusPolicy = DEFAULT_FOCUS_POLICY as SectionPlayerFocusPolicy,
 		cardRenderContext = null as SectionPlayerCardRenderContext | null,
 		onCompositionChanged,
 		onSectionReady,
-		onRuntimeError,
-		onFrameworkError,
-		frameworkErrorHook: _frameworkErrorHook,
+		onFrameworkErrorEvent,
 		onSessionChanged,
 		onRuntimeOwned,
 		onRuntimeInherited,
@@ -51,9 +56,14 @@
 		cardRenderContext?: SectionPlayerCardRenderContext | null;
 		onCompositionChanged?: (event: Event) => void;
 		onSectionReady?: (event: Event) => void;
-		onRuntimeError?: (event: Event) => void;
-		onFrameworkError?: (event: Event) => void;
-		frameworkErrorHook?: (errorModel: Record<string, unknown>) => void;
+		/**
+		 * Internal scaffold-level event-listener for `framework-error` DOM
+		 * events. Distinct from the canonical, model-shape
+		 * `onFrameworkError` prop on `SectionPlayerLayoutKernel` and the
+		 * layout custom elements: the scaffold does not own the canonical
+		 * model contract — it only re-emits raw events to its consumer.
+		 */
+		onFrameworkErrorEvent?: (event: Event) => void;
 		onSessionChanged?: (event: Event) => void;
 		onRuntimeOwned?: (event: Event) => void;
 		onRuntimeInherited?: (event: Event) => void;
@@ -62,6 +72,12 @@
 	let cardContextAnchor = $state<HTMLDivElement | null>(null);
 	let navigationStatusMessage = $state("");
 	let unsubscribeNavigationStatus: (() => void) | null = null;
+	// Set when `item-selected` fires so the next `composition-changed` (which
+	// carries the DOM update with the new `[is-current]` attribute) can move
+	// focus according to the resolved `autoFocus` strategy. Needed because
+	// the toolkit defers composition emission behind a RAF, so the DOM isn't
+	// up to date when the controller's `item-selected` event fires.
+	let pendingNavigationFocus: SectionPlayerAutoFocusStrategy | null = null;
 
 	function buildStatusMessage(event: { itemIndex?: number; totalItems?: number; itemLabel?: string }): string {
 		const position = typeof event.itemIndex === "number" ? event.itemIndex + 1 : null;
@@ -75,6 +91,63 @@
 		return "";
 	}
 
+	function getFocusRoot(): Document | HTMLElement {
+		const rooted = getHostElementFromAnchor(cardContextAnchor);
+		return rooted || document;
+	}
+
+	function focusAndReveal(el: HTMLElement | null | undefined): boolean {
+		if (!el) return false;
+		el.scrollIntoView({ block: "start", inline: "nearest" });
+		el.focus();
+		return true;
+	}
+
+	function focusStartOfContent(): boolean {
+		const root = getFocusRoot();
+		const passage = root.querySelector<HTMLElement>(
+			"pie-section-player-passage-card",
+		);
+		if (passage) return focusAndReveal(passage);
+		const itemsPane = root.querySelector("pie-section-player-items-pane");
+		const firstItem =
+			itemsPane?.querySelector<HTMLElement>("pie-section-player-item-card") ||
+			root.querySelector<HTMLElement>("pie-section-player-item-card");
+		if (!focusAndReveal(firstItem)) return false;
+		nestFocusIntoItemPlayerIfPresent(firstItem);
+		return true;
+	}
+
+	type ItemPlayerWithFocusFirst = HTMLElement & { focusFirst?: () => boolean };
+
+	/** After focusing an item card, move into `pie-item-player` when it exposes `focusFirst()`. */
+	function nestFocusIntoItemPlayerIfPresent(itemCard: HTMLElement | null | undefined): void {
+		if (!itemCard) return;
+		const player = itemCard.querySelector(
+			"pie-item-player",
+		) as ItemPlayerWithFocusFirst | null;
+		if (!player) return;
+		const focusFirst = player.focusFirst;
+		if (typeof focusFirst !== "function") return;
+		void tick().then(() => {
+			try {
+				focusFirst.call(player);
+			} catch {
+				// ignore cross-browser focus edge cases
+			}
+		});
+	}
+
+	function focusCurrentItem(): boolean {
+		const root = getFocusRoot();
+		const target = root.querySelector<HTMLElement>(
+			"pie-section-player-item-card[is-current]",
+		);
+		if (!focusAndReveal(target)) return false;
+		nestFocusIntoItemPlayerIfPresent(target);
+		return true;
+	}
+
 	function subscribeNavigationStatus(controller: SectionControllerHandle | null): void {
 		unsubscribeNavigationStatus?.();
 		unsubscribeNavigationStatus = null;
@@ -82,27 +155,12 @@
 		unsubscribeNavigationStatus = controller.subscribe((event: any) => {
 			if (event?.type !== "item-selected") return;
 			navigationStatusMessage = buildStatusMessage(event);
-			if (focusPolicy?.autoFocusFirstItem !== true) return;
-			queueMicrotask(() => {
-				const cards = Array.from(
-					document.querySelectorAll<HTMLElement>(
-						".pie-section-player-content-card[data-section-item-card]",
-					),
-				);
-				if (!cards.length) return;
-				const cardById = cards.find(
-					(card) =>
-						(event.currentItemId &&
-							card.getAttribute("data-canonical-item-id") ===
-								String(event.currentItemId)) ||
-						(event.currentItemId &&
-							card.closest("pie-item-shell")?.getAttribute("canonical-item-id") ===
-								String(event.currentItemId)),
-				);
-				const target = cardById || cards[0];
-				target.scrollIntoView({ block: "start", inline: "nearest" });
-				target.focus();
-			});
+			const strategy = resolveAutoFocusStrategy(focusPolicy);
+			if (strategy === "none") return;
+			// Defer the focus move until the next `composition-changed` event
+			// so we query after Svelte has flushed the new `[is-current]`
+			// attribute reflection onto the item card in the DOM.
+			pendingNavigationFocus = strategy;
 		});
 	}
 
@@ -134,18 +192,27 @@
 
 	function handleCompositionChanged(event: Event) {
 		onCompositionChanged?.(event);
+		const pending = pendingNavigationFocus;
+		if (pending) {
+			pendingNavigationFocus = null;
+			// Svelte still needs one more flush to propagate the new
+			// composition down to SectionItemsPane and reflect `is-current`.
+			void tick().then(() => {
+				if (pending === "start-of-content") {
+					focusStartOfContent();
+				} else if (pending === "current-item") {
+					focusCurrentItem();
+				}
+			});
+		}
 	}
 
 	function handleSectionReady(event: Event) {
 		onSectionReady?.(event);
 	}
 
-	function handleRuntimeError(event: Event) {
-		onRuntimeError?.(event);
-	}
-
 	function handleFrameworkError(event: Event) {
-		onFrameworkError?.(event);
+		onFrameworkErrorEvent?.(event);
 	}
 
 	function handleSessionChanged(event: Event) {
@@ -209,6 +276,26 @@
 		return baseElement.waitForSectionController(timeoutMs);
 	}
 
+	/**
+	 * Host-triggered focus escape hatch for moments the framework cannot observe
+	 * (Skip-to-Main). Honors `SectionPlayerFocusPolicy.autoFocus`:
+	 * - `"current-item"` → focuses the item card currently marked `is-current`
+	 *   (falls back to start-of-content if no current item is resolvable).
+	 * - `"start-of-content"` / `"none"` → focuses the passage card when
+	 *   present, else the first item card.
+	 *
+	 * Hosts reach for `focusStart()` specifically when they *want* focus to
+	 * move (a Skip-to-Main button only exists for that reason), so `"none"`
+	 * is treated as "default to start-of-content" rather than "do nothing".
+	 */
+	export function focusStart(): boolean {
+		const strategy = resolveAutoFocusStrategy(focusPolicy);
+		if (strategy === "current-item") {
+			return focusCurrentItem() || focusStartOfContent();
+		}
+		return focusStartOfContent();
+	}
+
 	$effect(() => {
 		if (!host || !cardRenderContext) return;
 		cardContextProvider = createSectionPlayerCardRenderContextProvider(
@@ -243,7 +330,6 @@
 	{toolRegistry}
 	oncomposition-changed={handleCompositionChanged}
 	onsection-ready={handleSectionReady}
-	onruntime-error={handleRuntimeError}
 	onframework-error={handleFrameworkError}
 	onsession-changed={handleSessionChanged}
 	onruntime-owned={handleRuntimeOwned}

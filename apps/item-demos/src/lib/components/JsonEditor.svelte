@@ -19,6 +19,8 @@ import { onDestroy, onMount } from 'svelte';
 	let editorElement: HTMLDivElement;
 	let editor: Editor | null = null;
 	const lowlight = createLowlight(common);
+	/** Last doc text emitted via `onUpdate`; used to ignore parent `value` echoes. */
+	let lastEmittedFromEditor = "";
 
 	function buildJsonDoc(text: string) {
 		return {
@@ -55,20 +57,27 @@ import { onDestroy, onMount } from 'svelte';
 			},
 			onUpdate: ({ editor }) => {
 				const text = editor.state.doc.textContent;
+				lastEmittedFromEditor = text;
 				onInput?.(text);
 			}
 		});
+		lastEmittedFromEditor = editor.state.doc.textContent;
 	});
 
 	onDestroy(() => {
 		editor?.destroy();
 	});
 
-	// Update editor when value changes externally
+	// Push external `value` into the editor (reset, cross-route sync). Do not
+	// call `setContent` when `value` is just the parent echoing our latest
+	// `onUpdate` — that races with in-flight keystrokes (e.g. Playwright
+	// `keyboard.type` of large JSON) and can drop the leading `{`.
 	$effect(() => {
-		if (editor && value !== editor.state.doc.textContent) {
-			editor.commands.setContent(buildJsonDoc(value));
-		}
+		if (!editor) return;
+		if (value === lastEmittedFromEditor) return;
+		if (value === editor.state.doc.textContent) return;
+		lastEmittedFromEditor = value;
+		editor.commands.setContent(buildJsonDoc(value));
 	});
 </script>
 

@@ -32,4 +32,17 @@ export interface SectionPlayerRuntimeHostContract {
 	waitForSectionController(
 		timeoutMs?: number,
 	): Promise<SectionControllerHandle | null>;
+	/**
+	 * Move focus into this section player for a host-owned moment the
+	 * framework cannot observe (e.g. a Skip-to-Main button in the host
+	 * ribbon). Returns `true` if focus moved.
+	 *
+	 * Honors `SectionPlayerFocusPolicy.autoFocus`:
+	 * - `"start-of-content"` (default): passage card when present, else the
+	 *   first item card.
+	 * - `"current-item"`: the item card currently marked `is-current`.
+	 * - `"none"`: falls back to `"start-of-content"` — hosts call
+	 *   `focusStart()` precisely because they do want focus to move.
+	 */
+	focusStart(): boolean;
 }

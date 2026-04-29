@@ -1,5 +1,49 @@
 # @pie-players/pie-tool-line-reader
 
+## 0.3.32
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies [0355143]
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.32
+  - @pie-players/pie-context@0.3.32
+  - @pie-players/pie-players-shared@0.3.32
+
+## 0.3.31
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies [26dbea3]
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.31
+  - @pie-players/pie-players-shared@0.3.31
+  - @pie-players/pie-context@0.3.31
+
+## 0.3.30
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies [0981bc3]
+- Updated dependencies [698aa82]
+- Updated dependencies
+  - @pie-players/pie-players-shared@0.3.30
+  - @pie-players/pie-assessment-toolkit@0.3.30
+  - @pie-players/pie-context@0.3.30
+
+## 0.3.29
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.29
+  - @pie-players/pie-context@0.3.29
+  - @pie-players/pie-players-shared@0.3.29
+
 ## 0.3.28
 
 ### Patch Changes

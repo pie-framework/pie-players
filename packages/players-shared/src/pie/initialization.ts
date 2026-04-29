@@ -175,9 +175,18 @@ const updateRegisteredElement = (
  * Shared element registration logic
  * Extracted from initializePiesFromLoadedBundle and loadPieModule to eliminate ~200 lines of duplication
  * Also fixes MutationObserver memory leak by storing latest config/session in window context
+ *
+ * `elementModule` may be `null`. In that case we cannot register *new*
+ * tags (no element constructor source), but we can still update tags
+ * that another loader (e.g. the section-player's IIFE adapter) has
+ * already registered with `customElements`. This is the common case
+ * when `pie-item-player` mounts inside `pie-section-player`: the
+ * section player has already pre-warmed the bundle through the deep
+ * `ElementLoader` primitive, so the legacy `window.pie.default`
+ * requirement no longer applies for those tags.
  */
 const registerPieElementsFromBundle = (
-	elementModule: any,
+	elementModule: any | null,
 	config: ConfigEntity,
 	session: any[],
 	registry: PieRegistry,
@@ -192,10 +201,16 @@ const registerPieElementsFromBundle = (
 		return node instanceof Node && container.contains(node);
 	};
 
-	logger.debug(
-		"[registerPieElementsFromBundle] Available packages in bundle:",
-		Object.keys(elementModule),
-	);
+	if (elementModule) {
+		logger.debug(
+			"[registerPieElementsFromBundle] Available packages in bundle:",
+			Object.keys(elementModule),
+		);
+	} else {
+		logger.debug(
+			"[registerPieElementsFromBundle] No bundle module supplied; will only update tags already registered with customElements.",
+		);
+	}
 	logger.debug(
 		"[registerPieElementsFromBundle] config.elements:",
 		config.elements,
@@ -219,6 +234,48 @@ const registerPieElementsFromBundle = (
 		logger.debug(
 			`[registerPieElementsFromBundle] Processing element: ${elementTagName} -> ${pkg}`,
 		);
+
+		// Fast path — the tag is already registered with customElements
+		// (typically by the host's pre-warm pipeline). We can update its
+		// session/model bindings without needing the bundle module at all.
+		// This branch is also the one that runs when `elementModule` is
+		// `null` because `window.pie` was missing.
+		if (customElements.get(elementTagName)) {
+			updateRegisteredElement(elementTagName, config, session, options);
+
+			if (options.bundleType === BundleType.editor) {
+				const editorElName = getEditorElementTagName(
+					elementTagName,
+					String(pkg),
+				);
+				updateRegisteredElement(
+					editorElName,
+					config,
+					session,
+					options,
+					true,
+				);
+			}
+			return;
+		}
+
+		// From here on we are in the "register a new tag" branch, which
+		// requires a bundle module to read the element constructor from.
+		if (!elementModule) {
+			// A missing bundle module + an unregistered tag is *not*
+			// always an error: in the section-player composition the
+			// host's own `ElementLoader` may register this tag
+			// out-of-band moments later, in which case `updatePieElement`
+			// will pick it up on the next reactive pass via the
+			// MutationObserver / `whenDefined` paths. Log at warn so the
+			// transient miss is still visible during diagnostics without
+			// printing a red stack trace for a routine timing condition.
+			logger.warn(
+				`[registerPieElementsFromBundle] Skipping "${elementTagName}" — no bundle module available and the tag is not yet registered. Will bind on next update if the host's loader registers it.`,
+			);
+			return;
+		}
+
 		const pkgStripped = getPackageWithoutVersion(pkg as string);
 		logger.debug(
 			`[registerPieElementsFromBundle] Package without version: "${pkgStripped}"`,
@@ -278,7 +335,7 @@ const registerPieElementsFromBundle = (
 			}
 		}
 
-		if (!customElements.get(elementTagName)) {
+		{
 			// Register the element in our registry
 			logger.debug(
 				`[registerPieElementsFromBundle] Registering ${elName} in registry${
@@ -432,23 +489,6 @@ const registerPieElementsFromBundle = (
 					`[registerPieElementsFromBundle] pie.Element for ${pkgStripped} is not a valid custom element constructor.`,
 				);
 			}
-		} else {
-			// Element already defined, just update it
-			updateRegisteredElement(elementTagName, config, session, options);
-
-			if (options.bundleType === BundleType.editor) {
-				const editorElName = getEditorElementTagName(
-					elementTagName,
-					String(pkg),
-				);
-				updateRegisteredElement(
-					editorElName,
-					config,
-					session,
-					options,
-					true,
-				);
-			}
 		}
 	});
 
@@ -456,7 +496,32 @@ const registerPieElementsFromBundle = (
 };
 
 /**
- * Initialize PIE elements from a bundle already loaded into window.pie
+ * Initialize PIE elements from a bundle that may already be loaded.
+ *
+ * `window.pie` is the legacy bundle-loading global populated by
+ * `loadPieModule` / `loadBundleFromString`. When the host loaded the
+ * bundle through the deep `ElementLoader` primitive instead — as
+ * `pie-section-player` does — the global is irrelevant: the loader
+ * registers tags directly with `customElements`, so this function only
+ * needs to bind models/sessions to whatever is already registered.
+ *
+ * Behavior:
+ * - `window.pie` available → register any new tags from the bundle and
+ *   update bindings for already-registered tags (legacy fast path).
+ * - `window.pie` missing → fall back to the update-only path. Tags that
+ *   are already registered get their model/session updated; tags that
+ *   are not yet registered are logged at `warn` and left alone — the
+ *   host's loader is expected to register them imminently, after which
+ *   the existing `MutationObserver` / `updatePieElements` flow binds
+ *   them on the next reactive pass.
+ *
+ * The original blanket `window.pie not found; was the bundle inlined
+ * correctly?` error has been removed: in the section-player + item-player
+ * composition it produced a confusing red stack trace for a routine
+ * timing condition that the host already handles. Genuine failures
+ * (bundle not loaded by *anyone*) still surface — every unregistered tag
+ * gets its own warning, and `updatePieElements` later reports any tag
+ * that never resolves.
  */
 export const initializePiesFromLoadedBundle = (
 	config: ConfigEntity,
@@ -469,8 +534,6 @@ export const initializePiesFromLoadedBundle = (
 	if (isPieAvailable(window)) {
 		logger.debug("[initializePiesFromLoadedBundle] window.pie available");
 		const elementModule = window.pie.default;
-
-		// Use shared registration logic
 		registerPieElementsFromBundle(
 			elementModule,
 			config,
@@ -478,11 +541,13 @@ export const initializePiesFromLoadedBundle = (
 			registry,
 			options,
 		);
-	} else {
-		logger.error(
-			"[initializePiesFromLoadedBundle] window.pie not found; was the bundle inlined correctly?",
-		);
+		return;
 	}
+
+	logger.debug(
+		"[initializePiesFromLoadedBundle] window.pie not present; using update-only path. Already-registered tags will be bound now; missing tags are expected to be registered by the host's loader and will bind on the next update pass.",
+	);
+	registerPieElementsFromBundle(null, config, session, registry, options);
 };
 
 /**

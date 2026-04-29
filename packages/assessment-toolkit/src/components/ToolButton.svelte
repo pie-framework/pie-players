@@ -7,6 +7,7 @@
 	 */
 
 	import type { ToolToolbarButtonDefinition } from "../services/ToolRegistry.js";
+	import ToolIcon from "./ToolIcon.svelte";
 
 	// Props
 	let {
@@ -49,13 +50,10 @@
 	{#if button.icon}
 		<span class="tool-button__icon" aria-hidden="true">
 			{#if button.icon.trimStart().startsWith("<svg")}
-				<!-- Inline SVG -->
-				{@html button.icon}
+				<ToolIcon icon={button.icon} />
 			{:else if button.icon.trimStart().startsWith("http")}
-				<!-- External image URL -->
 				<img src={button.icon} alt="" />
 			{:else}
-				<!-- Icon name/class -->
 				<i class={`icon icon-${button.icon}`}></i>
 			{/if}
 		</span>

@@ -28,7 +28,26 @@ import type {
 
 interface SectionControllerHandle {
 	getSession?: () => unknown;
-	applySession?: (session: unknown, options?: { mode?: string }) => Promise<void>;
+	applySession?: (
+		session: unknown,
+		options?: { mode?: string },
+	) => Promise<void>;
+}
+
+interface SectionPlayerHostElement extends HTMLElement {
+	waitForSectionController?: (
+		timeoutMs?: number,
+	) => Promise<SectionControllerHandle | null>;
+	getSectionController?: () => SectionControllerHandle | null;
+}
+
+interface TtsServiceHandle {
+	stop?: () => void;
+	requestControlHandoff?: () => void;
+}
+
+interface CoordinatorWithTtsService {
+	ttsService?: TtsServiceHandle;
 }
 
 const DEFAULT_SECTION_TAG = "pie-section-player-splitpane";
@@ -73,8 +92,9 @@ export class AssessmentPlayerDefaultElement
 	private controller: AssessmentControllerHandle | null = null;
 	private controllerReadyPromise: Promise<AssessmentControllerHandle | null> | null =
 		null;
-	private controllerReadyResolve: ((value: AssessmentControllerHandle | null) => void) | null =
-		null;
+	private controllerReadyResolve:
+		| ((value: AssessmentControllerHandle | null) => void)
+		| null = null;
 	private sectionHost: HTMLElement | null = null;
 	private sectionControllerRef: SectionControllerHandle | null = null;
 	private unsubscribeController?: () => void;
@@ -92,12 +112,17 @@ export class AssessmentPlayerDefaultElement
 		});
 	}
 
-	attributeChangedCallback(name: string, _oldValue: string | null, value: string | null) {
+	attributeChangedCallback(
+		name: string,
+		_oldValue: string | null,
+		value: string | null,
+	) {
 		if (name === "assessment-id") this.assessmentId = value || "";
 		if (name === "attempt-id") this.attemptId = value || "";
 		if (name === "show-navigation") this.showNavigation = value;
 		if (name === "section-player-layout") {
-			this.sectionPlayerLayout = value === "vertical" ? "vertical" : "splitpane";
+			this.sectionPlayerLayout =
+				value === "vertical" ? "vertical" : "splitpane";
 		}
 		if (name === "player-type") {
 			this.playerType = (value as typeof this.playerType) || "iife";
@@ -156,7 +181,11 @@ export class AssessmentPlayerDefaultElement
 		this.hooks?.onAssessmentControllerDispose?.(this.controller || undefined);
 	}
 
-	private dispatch(name: string, detail?: unknown, cancelable = false): boolean {
+	private dispatch(
+		name: string,
+		detail?: unknown,
+		cancelable = false,
+	): boolean {
 		return this.dispatchEvent(
 			new CustomEvent(name, {
 				detail,
@@ -187,6 +216,9 @@ export class AssessmentPlayerDefaultElement
 		this.controller = controller;
 		this.unsubscribeController = controller.subscribe((event) => {
 			if (event.type === "assessment-route-changed") {
+				this.cleanupTtsForSectionNavigation(
+					event satisfies AssessmentRouteChangedDetail,
+				);
 				this.dispatch(
 					ASSESSMENT_PLAYER_PUBLIC_EVENTS.routeChanged,
 					event satisfies AssessmentRouteChangedDetail,
@@ -267,12 +299,33 @@ export class AssessmentPlayerDefaultElement
 			: DEFAULT_SECTION_TAG;
 	}
 
+	private cleanupTtsForSectionNavigation(
+		route: AssessmentRouteChangedDetail,
+	): void {
+		if (
+			route.currentSectionId &&
+			route.previousSectionId &&
+			route.currentSectionId === route.previousSectionId
+		) {
+			return;
+		}
+		const ttsService = (this.coordinator as CoordinatorWithTtsService | null)
+			?.ttsService;
+		if (!ttsService) return;
+		try {
+			ttsService.stop?.();
+		} catch {}
+		try {
+			ttsService.requestControlHandoff?.();
+		} catch {}
+	}
+
 	private syncCurrentSectionSessionIntoAssessment() {
 		const controller = this.controller;
 		if (!controller) return;
 		const sectionController =
-			this.sectionControllerRef ||
-			(this.sectionHost?.firstElementChild as any)?.getSectionController?.();
+			(this.sectionHost?.firstElementChild as any)?.getSectionController?.() ||
+			this.sectionControllerRef;
 		if (!sectionController?.getSession) return;
 		const currentSection = controller.getCurrentSection();
 		if (!currentSection) return;
@@ -286,14 +339,28 @@ export class AssessmentPlayerDefaultElement
 		target: HTMLElement,
 		sectionIdentifier: string,
 	): void {
-		target.addEventListener("section-controller-ready", async (event: Event) => {
-			const detail = (event as CustomEvent<{ controller?: SectionControllerHandle }>)
-				.detail;
-			this.sectionControllerRef = detail?.controller || null;
-			const saved = this.controller?.getSectionSession(sectionIdentifier);
-			if (saved && this.sectionControllerRef?.applySession) {
-				await this.sectionControllerRef.applySession(saved, { mode: "replace" });
-			}
+		const sectionEl = target as SectionPlayerHostElement;
+		// Svelte 5 custom elements mount their underlying component on a
+		// microtask after `connectedCallback` (the mount sits behind an
+		// `await Promise.resolve()` inside Svelte's CE wrapper). Property
+		// getters for exported functions resolve to `this.$$c?.[name]`,
+		// which is `undefined` until the mount microtask completes. Defer
+		// the controller-resolve wait with `queueMicrotask` so it runs
+		// after Svelte's mount microtask, guaranteeing
+		// `waitForSectionController` is bound when we read it. Caller is
+		// expected to attach this *after* `appendChild`; the microtask
+		// defer is belt-and-suspenders for either ordering.
+		queueMicrotask(() => {
+			void (async () => {
+				const controller =
+					(await sectionEl.waitForSectionController?.(5000)) || null;
+				this.sectionControllerRef = controller;
+				if (!controller) return;
+				const saved = this.controller?.getSectionSession(sectionIdentifier);
+				if (saved && controller.applySession) {
+					await controller.applySession(saved, { mode: "replace" });
+				}
+			})();
 		});
 		target.addEventListener("session-changed", () =>
 			this.syncCurrentSectionSessionIntoAssessment(),
@@ -307,6 +374,7 @@ export class AssessmentPlayerDefaultElement
 		const controller = this.controller;
 		this.attachInstrumentationBridge();
 		this.innerHTML = "";
+		this.sectionControllerRef = null;
 		const container = document.createElement("div");
 		container.className = "pie-assessment-player-default";
 
@@ -414,11 +482,14 @@ export class AssessmentPlayerDefaultElement
 			if (this.sectionPlayerRuntime) {
 				(sectionEl as any).runtime = this.sectionPlayerRuntime;
 			}
+			(sectionEl as any).hooks = {
+				cardTitleFormatter: this.hooks?.cardTitleFormatter,
+			};
+			sectionHost.appendChild(sectionEl);
 			this.attachSectionControllerReadyListener(
 				sectionEl,
 				currentSection.sectionIdentifier,
 			);
-			sectionHost.appendChild(sectionEl);
 		}
 
 		container.appendChild(sectionHost);
@@ -488,7 +559,8 @@ export class AssessmentPlayerDefaultElement
 		let targetSectionId: string | undefined;
 		if (typeof indexOrIdentifier === "number") {
 			targetIndex = indexOrIdentifier;
-			targetSectionId = this.controller?.getSectionAt(targetIndex)?.sectionIdentifier;
+			targetSectionId =
+				this.controller?.getSectionAt(targetIndex)?.sectionIdentifier;
 		} else {
 			targetSectionId = indexOrIdentifier;
 			const section = this.controller?.getCurrentSection();
@@ -561,7 +633,8 @@ export class AssessmentPlayerDefaultElement
 	async waitForAssessmentController(timeoutMs = 5000) {
 		if (this.controller) return this.controller;
 		const controllerPromise =
-			this.controllerReadyPromise || Promise.resolve<AssessmentControllerHandle | null>(null);
+			this.controllerReadyPromise ||
+			Promise.resolve<AssessmentControllerHandle | null>(null);
 		const timeoutPromise = new Promise<null>((resolve) => {
 			setTimeout(() => resolve(null), timeoutMs);
 		});

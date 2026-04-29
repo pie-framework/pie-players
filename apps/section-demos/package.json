@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/section-demos",
-	"version": "0.1.42",
+	"version": "0.1.46",
 	"description": "Progressive demos for PIE Section Player",
 	"type": "module",
 	"private": true,
@@ -39,16 +39,17 @@
 		"dotenv": "^16.4.7"
 	},
 	"devDependencies": {
-		"@sveltejs/adapter-node": "5.5.4",
-		"@sveltejs/kit": "^2.55.0",
+		"@sveltejs/adapter-node": "^5.5.4",
+		"@sveltejs/kit": "^2.57.1",
 		"@sveltejs/vite-plugin-svelte": "^7.0.0",
 		"@tailwindcss/vite": "^4.2.2",
+		"@types/node": "^25.0.10",
 		"daisyui": "^5.5.19",
 		"svelte": "^5.54.0",
-		"svelte-check": "^4.4.5",
+		"svelte-check": "^4.4.6",
 		"tailwindcss": "^4.2.2",
 		"typescript": "^5.9.3",
-		"vite": "^8.0.1"
+		"vite": "^8.0.10"
 	},
 	"license": "MIT"
 }

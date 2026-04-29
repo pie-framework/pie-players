@@ -16,7 +16,20 @@ const REQUIRED_ENV_KEYS = [
 	"TTS_SCHOOLCITY_ISS",
 ] as const;
 
-const getRequiredEnv = (): Record<(typeof REQUIRED_ENV_KEYS)[number], string> => {
+interface ScEnv {
+	TTS_SCHOOLCITY_URL: string;
+	TTS_SCHOOLCITY_API_KEY: string;
+	TTS_SCHOOLCITY_ISS: string;
+	TTS_SCHOOLCITY_ASSET_ORIGINS: string;
+}
+
+const parseAssetOrigins = (raw: string): string[] =>
+	raw
+		.split(",")
+		.map((value) => value.trim())
+		.filter((value) => value.length > 0);
+
+const getRequiredEnv = (): ScEnv => {
 	const missing = REQUIRED_ENV_KEYS.filter((key) => !process.env[key]?.trim());
 	if (missing.length > 0) {
 		throw error(503, {
@@ -27,23 +40,22 @@ const getRequiredEnv = (): Record<(typeof REQUIRED_ENV_KEYS)[number], string> =>
 		TTS_SCHOOLCITY_URL: process.env.TTS_SCHOOLCITY_URL as string,
 		TTS_SCHOOLCITY_API_KEY: process.env.TTS_SCHOOLCITY_API_KEY as string,
 		TTS_SCHOOLCITY_ISS: process.env.TTS_SCHOOLCITY_ISS as string,
+		TTS_SCHOOLCITY_ASSET_ORIGINS:
+			process.env.TTS_SCHOOLCITY_ASSET_ORIGINS?.trim() ?? "",
 	};
 };
 
 let provider: SchoolCityServerProvider | null = null;
 let providerCacheKey = "";
 
-const toCacheKey = (
-	env: Record<(typeof REQUIRED_ENV_KEYS)[number], string>,
-): string =>
-	`${env.TTS_SCHOOLCITY_URL}|${env.TTS_SCHOOLCITY_API_KEY}|${env.TTS_SCHOOLCITY_ISS}`;
+const toCacheKey = (env: ScEnv): string =>
+	`${env.TTS_SCHOOLCITY_URL}|${env.TTS_SCHOOLCITY_API_KEY}|${env.TTS_SCHOOLCITY_ISS}|${env.TTS_SCHOOLCITY_ASSET_ORIGINS}`;
 
-const getProvider = async (
-	env: Record<(typeof REQUIRED_ENV_KEYS)[number], string>,
-): Promise<SchoolCityServerProvider> => {
+const getProvider = async (env: ScEnv): Promise<SchoolCityServerProvider> => {
 	const nextKey = toCacheKey(env);
 	if (!provider || providerCacheKey !== nextKey) {
 		const next = new SchoolCityServerProvider();
+		const assetOrigins = parseAssetOrigins(env.TTS_SCHOOLCITY_ASSET_ORIGINS);
 		await next.initialize({
 			baseUrl: env.TTS_SCHOOLCITY_URL,
 			apiKey: env.TTS_SCHOOLCITY_API_KEY,
@@ -51,6 +63,13 @@ const getProvider = async (
 			defaultLanguage: "en-US",
 			defaultSpeedRate: "medium",
 			defaultCache: true,
+			// By default the provider allows asset fetches against baseUrl's
+			// origin plus any host on the same registrable domain (eTLD+1),
+			// which covers the common "service at x.vendor.tld, CDN at
+			// y.vendor.tld" deployment. Set TTS_SCHOOLCITY_ASSET_ORIGINS to
+			// lock the provider to an explicit exact-origin allow-list
+			// instead (recommended for production; fully auditable).
+			...(assetOrigins.length > 0 ? { assetOrigins } : {}),
 		});
 		provider = next;
 		providerCacheKey = nextKey;

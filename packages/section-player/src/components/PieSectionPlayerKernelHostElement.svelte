@@ -15,22 +15,31 @@
 			tools: { type: "Object", reflect: false },
 			accessibility: { type: "Object", reflect: false },
 			coordinator: { type: "Object", reflect: false },
-			createSectionController: { type: "Object", reflect: false },
-			isolation: { attribute: "isolation", type: "String" },
 			env: { type: "Object", reflect: false },
 			iifeBundleHost: { attribute: "iife-bundle-host", type: "String" },
 			debug: { attribute: "debug", type: "String" },
 			showToolbar: { attribute: "show-toolbar", type: "String" },
 			toolbarPosition: { attribute: "toolbar-position", type: "String" },
 			enabledTools: { attribute: "enabled-tools", type: "String" },
-			itemToolbarTools: { attribute: "item-toolbar-tools", type: "String" },
-			passageToolbarTools: { attribute: "passage-toolbar-tools", type: "String" },
 			toolRegistry: { type: "Object", reflect: false },
 			sectionHostButtons: { type: "Object", reflect: false },
 			itemHostButtons: { type: "Object", reflect: false },
 			passageHostButtons: { type: "Object", reflect: false },
 			policies: { type: "Object", reflect: false },
-			cardTitleFormatter: { type: "Object", reflect: false },
+			hooks: { type: "Object", reflect: false },
+			toolConfigStrictness: {
+				attribute: "tool-config-strictness",
+				type: "String",
+			},
+			onFrameworkError: { type: "Object", reflect: false },
+			// M6 canonical stage-change callback. Mirrors
+			// `runtime.onStageChange`; resolver picks runtime over prop.
+			onStageChange: { type: "Object", reflect: false },
+			// M6 canonical loading-complete callback. Mirrors
+			// `runtime.onLoadingComplete`; the kernel invokes it at the
+			// same emit point as `pie-loading-complete` so callback and
+			// event stay in lockstep per cohort.
+			onLoadingComplete: { type: "Object", reflect: false },
 		},
 	}}
 />
@@ -38,6 +47,8 @@
 <script lang="ts">
 	import { createEventDispatcher } from "svelte";
 	import type {
+		FrameworkErrorModel,
+		ToolConfigStrictness,
 		ToolRegistry,
 		ToolbarItem,
 	} from "@pie-players/pie-assessment-toolkit";
@@ -53,8 +64,14 @@
 		SectionPlayerRuntimeHostContract,
 		SectionPlayerSnapshot,
 	} from "../contracts/runtime-host-contract.js";
-	import type { SectionPlayerCardTitleFormatter } from "../contracts/card-title-formatters.js";
-	import type { RuntimeConfig } from "./shared/section-player-runtime.js";
+	import type { SectionPlayerHostHooks } from "../contracts/host-hooks.js";
+	import type {
+		RuntimeConfig,
+		StageChangeHandler,
+		LoadingCompleteHandler,
+	} from "@pie-players/pie-assessment-toolkit/runtime/internal";
+	import type { SectionPlayerPolicies } from "../policies/types.js";
+	import { isTelemetryEnabled } from "../policies/index.js";
 
 	let {
 		assessmentId,
@@ -68,33 +85,41 @@
 		tools,
 		accessibility,
 		coordinator,
-		createSectionController,
-		isolation,
 		env,
 		iifeBundleHost,
 		debug = undefined as string | boolean | undefined,
 		showToolbar = "false",
 		toolbarPosition = "right",
 		enabledTools = "",
-		itemToolbarTools = "",
-		passageToolbarTools = "",
 		toolRegistry = null as ToolRegistry | null,
 		sectionHostButtons = [] as ToolbarItem[],
 		itemHostButtons = [] as ToolbarItem[],
 		passageHostButtons = [] as ToolbarItem[],
-		policies,
-		cardTitleFormatter = undefined as SectionPlayerCardTitleFormatter | undefined,
+		policies = undefined as SectionPlayerPolicies | undefined,
+		hooks = undefined as SectionPlayerHostHooks | undefined,
+		toolConfigStrictness = undefined as ToolConfigStrictness | undefined,
+		onFrameworkError = undefined as
+			| undefined
+			| ((model: FrameworkErrorModel) => void),
+		onStageChange = undefined as StageChangeHandler | undefined,
+		onLoadingComplete = undefined as LoadingCompleteHandler | undefined,
 	} = $props();
+	// Two-tier resolution for `onFrameworkError` is handled by the
+	// kernel's resolver (`resolveSectionPlayerRuntimeState` →
+	// `effectiveRuntime.onFrameworkError`); the CE forwards the
+	// top-level prop and `runtime` verbatim and the resolver picks
+	// `runtime.onFrameworkError` over `onFrameworkError`.
 
 	const dispatch = createEventDispatcher();
 	let anchor = $state<HTMLDivElement | null>(null);
 	let kernelRef = $state<SectionPlayerRuntimeHostContract | null>(null);
+	const BOOTSTRAP_READINESS = {
+		phase: "bootstrapping",
+		interactionReady: false,
+		allLoadingComplete: false,
+	} as const satisfies SectionPlayerSnapshot["readiness"];
 	let snapshot = $state<SectionPlayerSnapshot>({
-		readiness: {
-			phase: "bootstrapping",
-			interactionReady: false,
-			allLoadingComplete: false,
-		},
+		readiness: BOOTSTRAP_READINESS,
 		composition: {
 			itemsCount: 0,
 			passagesCount: 0,
@@ -125,7 +150,11 @@
 	const hostElement = $derived.by(() => getHostElement());
 
 	export function getSnapshot(): SectionPlayerSnapshot {
-		return snapshot;
+		return {
+			...snapshot,
+			readiness: selectReadiness(),
+			navigation: kernelRef?.selectNavigation?.() || snapshot.navigation,
+		};
 	}
 
 	export function selectComposition(): SectionPlayerSnapshot["composition"] {
@@ -137,7 +166,7 @@
 	}
 
 	export function selectReadiness(): SectionPlayerSnapshot["readiness"] {
-		return snapshot.readiness;
+		return kernelRef?.selectReadiness?.() || BOOTSTRAP_READINESS;
 	}
 
 	export function navigateTo(_index: number): boolean {
@@ -150,6 +179,10 @@
 
 	export function navigatePrevious(): boolean {
 		return kernelRef?.navigatePrevious?.() === true;
+	}
+
+	export function focusStart(): boolean {
+		return kernelRef?.focusStart?.() === true;
 	}
 
 	export function getSectionController() {
@@ -177,6 +210,10 @@
 
 	$effect(() => {
 		if (!hostElement) return;
+		// `policies.telemetry.enabled === false` skips instrumentation bridge
+		// setup entirely so hosts that opt out emit no `pie-section-*`
+		// telemetry events through the bridge.
+		if (!isTelemetryEnabled(policies)) return;
 		const localHost = hostElement;
 		return attachInstrumentationEventBridge({
 			host: localHost,
@@ -193,6 +230,15 @@
 			dedupeWindowMs: 100,
 		});
 	});
+
+	// Engine-owned events (`pie-stage-change`, `pie-loading-complete`,
+	// `framework-error`) are dispatched by the kernel-owned section
+	// runtime engine directly onto this CE element via its DOM-event
+	// bridge, so outside listeners on `<pie-section-player-kernel-host>`
+	// already see them without any CE-level re-emission. Local
+	// `snapshot.readiness` is read on demand from the kernel via
+	// `selectReadiness()` (see above) — no in-CE event listener is
+	// needed because the kernel owns the canonical readiness state.
 </script>
 
 <div bind:this={anchor} class="pie-section-player-observability-anchor" aria-hidden="true"></div>
@@ -209,34 +255,26 @@
 	{tools}
 	{accessibility}
 	{coordinator}
-	{createSectionController}
-	{isolation}
 	{env}
 	{iifeBundleHost}
 	{debug}
 	{showToolbar}
 	{toolbarPosition}
 	{enabledTools}
-	{itemToolbarTools}
-	{passageToolbarTools}
 	{toolRegistry}
 	{sectionHostButtons}
 	{itemHostButtons}
 	{passageHostButtons}
 	{policies}
-	{cardTitleFormatter}
-	on:readiness-change={(event: CustomEvent) => {
-		const detail = (event as CustomEvent).detail;
-		snapshot = { ...snapshot, readiness: detail };
-		reemit(event);
-	}}
-	on:interaction-ready={reemit}
-	on:ready={reemit}
-	on:runtime-error={reemit}
-	on:framework-error={reemit}
+	{hooks}
+	{toolConfigStrictness}
+	{onFrameworkError}
+	{onStageChange}
+	{onLoadingComplete}
+	sourceCe="pie-section-player"
+	host={hostElement}
 	on:runtime-owned={reemit}
 	on:runtime-inherited={reemit}
-	on:section-controller-ready={reemit}
 	on:session-changed={reemit}
 	on:composition-changed={(event: CustomEvent) => {
 		const detail = (event as CustomEvent).detail as {
@@ -265,6 +303,10 @@
 	let:playerStrategy
 	let:preloadedRenderables
 	let:preloadedRenderablesSignature
+	let:preloadEnabled
+	let:itemToolbarTools
+	let:passageToolbarTools
+	let:readinessDetail
 	let:onItemsPaneElementsLoaded
 	let:onItemsPanePreloadRetry
 	let:onItemsPanePreloadError
@@ -273,7 +315,7 @@
 		{#if passages.length > 0}
 			<pie-section-player-passages-pane
 				{passages}
-				elementsLoaded={snapshot.readiness.allLoadingComplete}
+				elementsLoaded={readinessDetail.allLoadingComplete}
 				{resolvedPlayerEnv}
 				{resolvedPlayerAttributes}
 				{resolvedPlayerProps}
@@ -297,6 +339,7 @@
 			preloadedRenderables={preloadedRenderables}
 			preloadedRenderablesSignature={preloadedRenderablesSignature}
 			preloadComponentTag="pie-section-player-kernel-host"
+			preloadEnabled={preloadEnabled}
 			onelements-loaded-change={onItemsPaneElementsLoaded}
 			onelement-preload-retry={onItemsPanePreloadRetry}
 			onelement-preload-error={onItemsPanePreloadError}

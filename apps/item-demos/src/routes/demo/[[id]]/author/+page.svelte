@@ -1,12 +1,21 @@
 <script lang="ts">
+	import { page } from '$app/stores';
 	import { untrack } from 'svelte';
 	import '@pie-players/pie-item-player';
 	import { config as configStore, updateConfig } from '$lib/stores/demo-state';
+	import { demoHeadingName } from '$lib/utils/demo-heading-name';
 
 	let { data } = $props();
 
+	const demoHeading = $derived(demoHeadingName(data.demo?.name));
+
 	let playerEl: any = $state(null);
 	let lastConfig: any = null;
+	let selectedLoaderStrategy = $state<'iife' | 'esm'>('iife');
+
+	$effect(() => {
+		selectedLoaderStrategy = $page.url.searchParams.get('player') === 'esm' ? 'esm' : 'iife';
+	});
 
 	async function callAuthoringMediaJsonService<T>(
 		path: string,
@@ -156,7 +165,10 @@
 					playerEl.session = { id: 'preview', data: [] };
 					playerEl.env = { mode: 'author', role: 'instructor' };
 					playerEl.authoringBackend = 'required';
-					playerEl.loaderOptions = { bundleHost: 'https://proxy.pie-api.com/bundles/' };
+					playerEl.loaderOptions = {
+						bundleHost: 'https://proxy.pie-api.com/bundles/',
+						runtimeSupportCheck: 'on'
+					};
 					playerEl.onInsertImage = demoMediaBackend.onInsertImage;
 					playerEl.onDeleteImage = demoMediaBackend.onDeleteImage;
 					playerEl.onInsertSound = demoMediaBackend.onInsertSound;
@@ -221,7 +233,7 @@
 </script>
 
 <svelte:head>
-	<title>{data.demo?.name || 'Demo'} - Author</title>
+	<title>{demoHeading} - Author</title>
 </svelte:head>
 
 <div class="grid grid-cols-1 gap-6">
@@ -229,7 +241,7 @@
 		<div class="card-body">
 			<pie-item-player
 				bind:this={playerEl}
-				strategy="iife"
+				strategy={selectedLoaderStrategy}
 				mode="author"
 			></pie-item-player>
 		</div>

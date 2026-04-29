@@ -1,0 +1,3 @@
+import "./PieSectionPlayerTabbedElement.svelte";
+
+export {};

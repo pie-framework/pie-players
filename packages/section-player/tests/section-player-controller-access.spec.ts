@@ -2,10 +2,14 @@ import { expect, test } from "@playwright/test";
 
 const SPLIT_DEMO = "/tts-ssml?mode=candidate&layout=splitpane";
 const VERTICAL_DEMO = "/tts-ssml?mode=candidate&layout=vertical";
+const TABBED_DEMO = "/tabbed-layout/tabbed";
 
 async function validateControllerAccess(args: {
 	page: import("@playwright/test").Page;
-	selector: "pie-section-player-splitpane" | "pie-section-player-vertical";
+	selector:
+		| "pie-section-player-splitpane"
+		| "pie-section-player-vertical"
+		| "pie-section-player-tabbed";
 	path: string;
 }) {
 	const { page, selector, path } = args;
@@ -27,22 +31,9 @@ async function validateControllerAccess(args: {
 			| null;
 		if (!host) return { ok: false, reason: "missing-host" };
 
-		let readyEventCount = 0;
-		let readyEventControllerSeen = false;
-		const onControllerReady = (event: Event) => {
-			readyEventCount += 1;
-			const detail = (event as CustomEvent).detail as
-				| { controller?: unknown }
-				| undefined;
-			readyEventControllerSeen = Boolean(detail?.controller);
-		};
-		host.addEventListener("section-controller-ready", onControllerReady);
-
 		const immediate = host.getSectionController?.() || null;
 		const awaited = await host.waitForSectionController?.(5000);
 		const afterWait = host.getSectionController?.() || null;
-
-		host.removeEventListener("section-controller-ready", onControllerReady);
 
 		const hasRuntimeState =
 			typeof (awaited as { getRuntimeState?: unknown } | null)
@@ -73,8 +64,6 @@ async function validateControllerAccess(args: {
 			hasCanNavigateForwardApi: typeof host.canNavigateForward === "function",
 			hasCanNavigateBackwardApi: typeof host.canNavigateBackward === "function",
 			hasSetNavigationPolicyApi: typeof host.setNavigationPolicy === "function",
-			readyEventCount,
-			readyEventControllerSeen,
 		};
 	}, selector);
 
@@ -90,9 +79,6 @@ async function validateControllerAccess(args: {
 	expect(result.hasCanNavigateForwardApi).toBe(false);
 	expect(result.hasCanNavigateBackwardApi).toBe(false);
 	expect(result.hasSetNavigationPolicyApi).toBe(false);
-	if (result.readyEventCount > 0) {
-		expect(result.readyEventControllerSeen).toBe(true);
-	}
 }
 
 test.describe("section player controller access", () => {
@@ -109,6 +95,14 @@ test.describe("section player controller access", () => {
 			page,
 			selector: "pie-section-player-vertical",
 			path: VERTICAL_DEMO,
+		});
+	});
+
+	test("tabbed exposes section controller via JS API", async ({ page }) => {
+		await validateControllerAccess({
+			page,
+			selector: "pie-section-player-tabbed",
+			path: TABBED_DEMO,
 		});
 	});
 });

@@ -410,6 +410,24 @@ class DesmosCalculator implements Calculator {
 		}
 	}
 
+	focus(): void {
+		try {
+			if (
+				this.type === "graphing" &&
+				typeof this.calculator?.focusFirstExpression === "function"
+			) {
+				this.calculator.focusFirstExpression();
+				return;
+			}
+			const target = this.container.querySelector<HTMLElement>(
+				'.dcg-mq-editable-field[tabindex="0"], textarea, [contenteditable="true"], [tabindex]:not([tabindex="-1"])',
+			);
+			target?.focus();
+		} catch (error) {
+			console.warn("[DesmosCalculator] focus() failed:", error);
+		}
+	}
+
 	exportState(): CalculatorState {
 		let providerState: any = {};
 

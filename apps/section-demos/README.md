@@ -52,6 +52,24 @@ Intentionally uses a malformed tools configuration shape (host nesting error) to
 
 Use this route to validate framework-owned error handling before shipping new config changes.
 
+### Demo: Focus Management
+**Difficulty:** Advanced
+**Estimated Time:** ~3 minutes
+**Topic:** Accessibility — Skip-to-Main and navigation focus
+
+Dedicated demo for the section-player focus contract. Exposes a strategy
+selector (`autoFocus = start-of-content | current-item | none`), a layout
+switcher (splitpane / vertical / tabbed), a passage/no-passage toggle, a
+mock "Skip to Main" button that calls `focusStart()`, and a live readout
+of `document.activeElement`. Route: `/focus-management`. Query params:
+
+- `?focus=start-of-content|current-item|none` (default `start-of-content`)
+- `?layout=splitpane|vertical|tabbed` (default `splitpane`)
+- `?passage=on|off` (default `on`)
+
+Use this page to verify that mount, Next/Back, and Skip-to-Main land on
+the expected element for each strategy.
+
 ### Demo: Session Hydration (Server DB)
 **Difficulty:** Advanced
 **Estimated Time:** ~10 minutes
@@ -213,6 +231,14 @@ The `tts-ssml` route defaults to an SC-style custom transport through the local 
   - `TTS_SCHOOLCITY_URL`
   - `TTS_SCHOOLCITY_API_KEY`
   - `TTS_SCHOOLCITY_ISS`
+- Optional:
+  - `TTS_SCHOOLCITY_ASSET_ORIGINS` — comma-separated exact-origin allow-list
+    for synthesized audio / speech-mark asset fetches. When unset, the provider
+    defaults to allowing `TTS_SCHOOLCITY_URL`'s origin plus any host on the
+    same registrable domain (so a service at `tts.svcdev.schoolcity.com`
+    automatically permits `tts-cdn.svcdev.schoolcity.com` without further
+    config). Set this env var to switch to a strict exact-origin allow-list
+    (recommended for production for audit and typo resistance).
 
 This keeps upstream auth/signing material server-side.
 

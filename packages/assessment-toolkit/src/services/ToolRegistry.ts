@@ -223,6 +223,42 @@ function assertNonEmptyString(value: unknown, fieldName: string): asserts value 
 	}
 }
 
+// Defence-in-depth: reject obvious XSS payloads in tool-registered icon
+// markup at registration time. Runtime rendering still runs each icon
+// through DOMPurify (see `ToolIcon.svelte`), but surfacing the problem
+// early produces a clearer error for tool authors than "the icon silently
+// disappeared after sanitization".
+const SCRIPTABLE_ICON_PATTERNS: Array<{ pattern: RegExp; reason: string }> = [
+	{ pattern: /<script\b/i, reason: "contains a <script> tag" },
+	{ pattern: /\son[a-z]+\s*=/i, reason: "contains an inline event handler (on*=) attribute" },
+	{ pattern: /javascript:/i, reason: "contains a javascript: URL" },
+	{ pattern: /<foreignObject\b/i, reason: "contains a <foreignObject> element" },
+];
+
+function assertIconStringIsSafe(
+	toolId: string,
+	icon: string,
+	fieldName: string,
+): void {
+	const trimmed = icon.trimStart();
+	const looksLikeSvg = trimmed.toLowerCase().startsWith("<svg");
+	const looksLikeUrl = /^https?:/i.test(trimmed);
+	const looksLikeDataUrl = /^data:/i.test(trimmed);
+	if (looksLikeDataUrl) {
+		throw new Error(
+			`Invalid tool registration "${toolId}": "${fieldName}" may not be a data: URL.`,
+		);
+	}
+	if (!looksLikeSvg && !looksLikeUrl) return;
+	for (const { pattern, reason } of SCRIPTABLE_ICON_PATTERNS) {
+		if (pattern.test(icon)) {
+			throw new Error(
+				`Invalid tool registration "${toolId}": "${fieldName}" ${reason}. Inline SVG icons must not include scriptable content.`,
+			);
+		}
+	}
+}
+
 function assertToolRegistrationShape(registration: ToolRegistration): void {
 	assertNonEmptyString(registration.toolId, "toolId");
 	assertNonEmptyString(registration.name, "name");
@@ -235,6 +271,9 @@ function assertToolRegistrationShape(registration: ToolRegistration): void {
 		throw new Error(
 			`Invalid tool registration "${registration.toolId}": "icon" must be a string or function.`,
 		);
+	}
+	if (typeof registration.icon === "string") {
+		assertIconStringIsSafe(registration.toolId, registration.icon, "icon");
 	}
 	if (
 		!Array.isArray(registration.supportedLevels) ||

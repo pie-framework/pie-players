@@ -28,6 +28,13 @@ export const demo2Section: AssessmentSection = {
 				baseId: "passage-renaissance",
 				version: { major: 1, minor: 0, patch: 0 },
 				config: {
+					// The <figure> below embeds an intentionally overwide authored image
+					// (1792x592) to exercise the PIE-94 horizontal-scroll wrapper applied
+					// by `sanitizeItemMarkup` / `wrapOverwideImages` in
+					// `@pie-players/pie-players-shared`. In a narrow passage column (or
+					// at 400% zoom) the image should surface its own horizontal scrollbar
+					// instead of being clipped — satisfying WCAG 1.4.10 Reflow while
+					// preserving the authored resolution.
 					markup: `<div class="passage">
             <h2>
               The Renaissance: A Cultural Rebirth
@@ -49,6 +56,19 @@ export const demo2Section: AssessmentSection = {
               unprecedented ways. Scientists and thinkers such as Galileo and Copernicus challenged
               long-held beliefs about the universe, laying the groundwork for the Scientific Revolution.
             </p>
+
+            <figure class="passage-figure">
+              <img
+                src="/demo-assets/overwide-images/renaissance-timeline.jpg"
+                alt="Illustrated timeline of the European Renaissance from 1300 to 1650, showing Dante Alighieri, Leonardo da Vinci, the Gutenberg printing press, Michelangelo at work on the Sistine Chapel, William Shakespeare writing, Galileo Galilei with a telescope, and Copernicus with a heliocentric model."
+                width="1792"
+                height="592"
+              />
+              <figcaption>
+                A Renaissance timeline (1300&ndash;1650): key figures and inventions
+                that shaped the era.
+              </figcaption>
+            </figure>
 
             <p>
               The invention of the printing press by Johannes Gutenberg around 1440 accelerated the spread

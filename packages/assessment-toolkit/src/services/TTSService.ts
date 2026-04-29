@@ -36,6 +36,10 @@ import {
 	segmentSentences as segmentTextToSentences,
 	type SentenceSegment as SharedSentenceSegment,
 } from "./tts/text-segmentation.js";
+import {
+	PIE_TTS_CONTROL_HANDOFF_EVENT,
+	type TTSControlHandoffDetail,
+} from "./tts-control-events.js";
 
 interface TTSSpeechSegment {
 	text: string;
@@ -1382,6 +1386,22 @@ export class TTSService {
 		this.sentenceHighlightSegments = [];
 		this.currentSeekSegmentIndex = 0;
 		this.activeSentenceStartOffset = null;
+	}
+
+	/**
+	 * Request UI-level TTS controls to hand off/deactivate.
+	 *
+	 * This is intentionally separate from playback controls so hosts can orchestrate
+	 * control handoff explicitly (for example: stop playback, then dismiss controls).
+	 */
+	requestControlHandoff(): void {
+		if (typeof window === "undefined") return;
+		const detail: TTSControlHandoffDetail = { source: "host" };
+		window.dispatchEvent(
+			new CustomEvent(PIE_TTS_CONTROL_HANDOFF_EVENT, {
+				detail,
+			}),
+		);
 	}
 
 	/**

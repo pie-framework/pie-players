@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-print-player",
-	"version": "0.3.28",
+	"version": "0.3.32",
 	"description": "Print player for PIE elements - dynamically loads and renders print-friendly versions of PIE elements",
 	"type": "module",
 	"main": "./dist/print-player.js",
@@ -30,7 +30,7 @@
 	"devDependencies": {
 		"@types/node": "^22.10.2",
 		"typescript": "^5.9.3",
-		"vite": "^8.0.1"
+		"vite": "^8.0.10"
 	},
 	"keywords": [
 		"pie",

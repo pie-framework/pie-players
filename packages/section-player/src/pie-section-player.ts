@@ -1,5 +1,6 @@
 import "./components/section-player-splitpane-element";
 import "./components/section-player-vertical-element";
+import "./components/section-player-tabbed-element";
 import "./components/section-player-item-card-element";
 import "./components/section-player-passage-card-element";
 import "./components/section-player-items-pane-element";
@@ -20,7 +21,6 @@ export type {
 	SectionPlayerPublicEventName,
 	SectionPlayerReadinessPhase,
 	SectionPlayerReadinessChangeDetail,
-	SectionPlayerControllerReadyDetail,
 } from "./contracts/public-events.js";
 export { SECTION_PLAYER_PUBLIC_EVENTS } from "./contracts/public-events.js";
 export type {
@@ -30,6 +30,7 @@ export type {
 } from "./contracts/runtime-host-contract.js";
 export {
 	SPLITPANE_LAYOUT_CONTRACT,
+	TABBED_LAYOUT_CONTRACT,
 	VERTICAL_LAYOUT_CONTRACT,
 } from "./contracts/layout-parity-metadata.js";
 export type {
@@ -38,12 +39,20 @@ export type {
 	SectionPlayerReadinessPolicy,
 	SectionPlayerPreloadPolicy,
 	SectionPlayerFocusPolicy,
+	SectionPlayerAutoFocusStrategy,
 	SectionPlayerTelemetryPolicy,
 } from "./policies/types.js";
-export { DEFAULT_SECTION_PLAYER_POLICIES } from "./policies/index.js";
+export {
+	DEFAULT_FOCUS_POLICY,
+	DEFAULT_SECTION_PLAYER_POLICIES,
+	isPreloadEnabled,
+	isTelemetryEnabled,
+	resolveAutoFocusStrategy,
+} from "./policies/index.js";
 export type {
 	SectionPlayerCardTitleContext,
 	SectionPlayerCardTitleFormatter,
 	SectionPlayerItemTitleContext,
 	SectionPlayerPassageTitleContext,
 } from "./contracts/card-title-formatters.js";
+export type { SectionPlayerHostHooks } from "./contracts/host-hooks.js";

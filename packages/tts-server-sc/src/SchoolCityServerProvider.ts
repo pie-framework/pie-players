@@ -1,4 +1,5 @@
 import { SignJWT } from "jose";
+import { getDomain } from "tldts";
 
 import {
 	BaseTTSProvider,
@@ -41,6 +42,46 @@ export interface SchoolCityProviderConfig extends TTSServerConfig {
 	defaultCache?: boolean;
 	requestTimeoutMs?: number;
 	fetchImpl?: FetchLike;
+	/**
+	 * Explicit allow-list of origins that upstream-returned `audioContent`
+	 * and `word` URLs may use. When provided, only exact origin matches
+	 * are accepted — this is the tightest setting and recommended for
+	 * production (gives an auditable, typo-resistant declaration of
+	 * which CDNs the provider is permitted to reach).
+	 *
+	 * When omitted, the provider falls back to a zero-config default:
+	 * allow `baseUrl`'s origin plus any hostname on the same registrable
+	 * domain (eTLD+1) as `baseUrl`. This matches the common "service at
+	 * `x.vendor.tld`, CDN at `y.vendor.tld`" deployment pattern without
+	 * weakening the private-host / metadata / scheme / redirect defenses
+	 * (all of which remain active regardless of this setting).
+	 *
+	 * To force strict single-origin behavior (no registrable-domain
+	 * fallback), pass `assetOrigins: [baseUrl]`.
+	 */
+	assetOrigins?: string[];
+	/**
+	 * When true (default), asset URLs that resolve to RFC1918 / loopback /
+	 * link-local / IPv6 unique-local hosts are rejected as a defense against
+	 * SSRF. Set to `false` only for deployments where the SchoolCity
+	 * service legitimately lives on a private network (on-prem CDN,
+	 * in-cluster K8s service, VPC endpoint, air-gapped install). When you
+	 * disable this guard, always also pass an explicit `assetOrigins`
+	 * allow-list so a compromised upstream response cannot redirect the
+	 * fetch to arbitrary internal hosts.
+	 *
+	 * Cloud-metadata / IMDS endpoints (169.254.169.254, fd00:ec2::254,
+	 * metadata.google.internal, metadata.azure.internal,
+	 * metadata.packet.net, metadata.oci.oraclecloud.com) are always
+	 * blocked regardless of this flag — there is no legitimate TTS-asset
+	 * use case for those, and they are the primary SSRF payoff target.
+	 */
+	blockPrivateAssetHosts?: boolean;
+	/**
+	 * Maximum number of HTTP redirects to follow when dereferencing
+	 * upstream-returned asset URLs. Defaults to 2.
+	 */
+	maxAssetRedirects?: number;
 }
 
 export interface SchoolCitySynthesizeAssetsResult {
@@ -53,6 +94,296 @@ const DEFAULT_LANGUAGE = "en-US";
 const DEFAULT_SPEED_RATE: SchoolCitySpeedRate = "medium";
 const DEFAULT_CACHE = true;
 const DEFAULT_REQUEST_TIMEOUT_MS = 15000;
+const DEFAULT_MAX_ASSET_REDIRECTS = 2;
+
+// Cloud-metadata / IMDS endpoints are ALWAYS blocked, even when
+// `blockPrivateAssetHosts` is `false`. These have no legitimate TTS-asset
+// use case and are the primary SSRF payoff target (they return IAM
+// credentials, instance tokens, and provisioning secrets).
+const CLOUD_METADATA_HOSTNAME_PATTERNS: RegExp[] = [
+	/^169\.254\.169\.254$/,
+	/^fd00:ec2::254$/i,
+	/^metadata\.google\.internal$/i,
+	/^metadata\.azure\.internal$/i,
+	/^metadata\.packet\.net$/i,
+	/^metadata\.oci\.oraclecloud\.com$/i,
+];
+
+// Private / internal-network patterns. Blocked by default, can be
+// opted-out via `blockPrivateAssetHosts: false` for deployments where
+// the TTS service legitimately runs on a private network.
+const PRIVATE_HOSTNAME_PATTERNS: RegExp[] = [
+	/^localhost$/i,
+	/^127(?:\.\d{1,3}){3}$/,
+	/^0(?:\.\d{1,3}){3}$/,
+	/^10(?:\.\d{1,3}){3}$/,
+	/^192\.168(?:\.\d{1,3}){2}$/,
+	/^172\.(?:1[6-9]|2\d|3[01])(?:\.\d{1,3}){2}$/,
+	/^169\.254(?:\.\d{1,3}){2}$/,
+	/^::1$/,
+	/^0:0:0:0:0:0:0:1$/,
+	/^fe80:/i,
+	/^fc00:/i,
+	/^fd[0-9a-f]{2}:/i,
+];
+
+const ipv4BareToDotted = (hostname: string): string | null => {
+	// Reject obviously non-numeric inputs fast; numeric IPv4 encodings
+	// (bare decimal, hex, or octal) are a classic SSRF bypass.
+	if (!/^(?:0x[0-9a-f]+|0[0-7]*|\d+)$/i.test(hostname)) return null;
+	let asInt: number;
+	try {
+		asInt = Number.parseInt(hostname, hostname.startsWith("0x") ? 16 : 10);
+	} catch {
+		return null;
+	}
+	if (!Number.isFinite(asInt) || asInt < 0 || asInt > 0xff_ff_ff_ff) return null;
+	return [
+		(asInt >>> 24) & 0xff,
+		(asInt >>> 16) & 0xff,
+		(asInt >>> 8) & 0xff,
+		asInt & 0xff,
+	].join(".");
+};
+
+const normalizeHostnameForSafetyCheck = (hostname: string): string => {
+	let host = hostname.replace(/^\[|\]$/g, "").replace(/\.$/, "");
+	// Unmap IPv4-in-IPv6 (e.g. `::ffff:127.0.0.1` / `::ffff:7f00:1`).
+	const mapped = host.match(/^::ffff:([0-9a-f.]+)$/i);
+	if (mapped) {
+		const inner = mapped[1];
+		if (/^\d+\.\d+\.\d+\.\d+$/.test(inner)) {
+			host = inner;
+		}
+	}
+	return host;
+};
+
+const hostnameMatchesAny = (
+	hostname: string,
+	patterns: RegExp[],
+): boolean => {
+	const normalized = normalizeHostnameForSafetyCheck(hostname);
+	const numericDotted = ipv4BareToDotted(normalized);
+	const candidates = [normalized.toLowerCase()];
+	if (numericDotted) candidates.push(numericDotted);
+	return candidates.some((candidate) =>
+		patterns.some((pattern) => pattern.test(candidate)),
+	);
+};
+
+const hostnameIsCloudMetadata = (hostname: string): boolean =>
+	hostnameMatchesAny(hostname, CLOUD_METADATA_HOSTNAME_PATTERNS);
+
+const hostnameIsPrivate = (hostname: string): boolean =>
+	hostnameMatchesAny(hostname, PRIVATE_HOSTNAME_PATTERNS);
+
+interface ResolvedAssetPolicy {
+	/** Explicit origin allow-list (empty when host did not configure one). */
+	explicitOrigins: Set<string>;
+	/** Origin of `baseUrl`; always permitted. */
+	baseUrlOrigin: string | null;
+	/**
+	 * Registrable domain (eTLD+1) of `baseUrl`. Present only when
+	 * `explicitOrigins` is empty and `baseUrl`'s hostname has a recognised
+	 * public suffix. When present, any URL whose hostname resolves to the
+	 * same registrable domain is permitted in addition to `baseUrlOrigin`.
+	 */
+	baseUrlRegistrableDomain: string | null;
+}
+
+const resolveAssetPolicy = (
+	config: SchoolCityProviderConfig,
+	baseUrl: string,
+): ResolvedAssetPolicy => {
+	const explicitOrigins = new Set<string>();
+	if (Array.isArray(config.assetOrigins)) {
+		for (const raw of config.assetOrigins) {
+			if (typeof raw !== "string" || raw.length === 0) continue;
+			try {
+				explicitOrigins.add(new URL(raw).origin);
+			} catch {
+				// Ignore malformed origins; they simply won't match.
+			}
+		}
+	}
+
+	let baseUrlOrigin: string | null = null;
+	let baseUrlHostname: string | null = null;
+	if (baseUrl) {
+		try {
+			const parsed = new URL(baseUrl);
+			baseUrlOrigin = parsed.origin;
+			baseUrlHostname = parsed.hostname;
+		} catch {
+			// baseUrl validated at initialize(); unreachable in practice.
+		}
+	}
+
+	// Only derive a registrable-domain fallback when the host did NOT pass
+	// an explicit allow-list. Explicit config always wins and stays strict.
+	const baseUrlRegistrableDomain =
+		explicitOrigins.size === 0 && baseUrlHostname
+			? getDomain(baseUrlHostname)
+			: null;
+
+	return {
+		explicitOrigins,
+		baseUrlOrigin,
+		baseUrlRegistrableDomain,
+	};
+};
+
+const describePolicy = (policy: ResolvedAssetPolicy): string[] => {
+	const descriptions: string[] = [];
+	for (const origin of policy.explicitOrigins) descriptions.push(origin);
+	if (policy.explicitOrigins.size === 0) {
+		if (policy.baseUrlOrigin) descriptions.push(policy.baseUrlOrigin);
+		if (policy.baseUrlRegistrableDomain) {
+			descriptions.push(`*.${policy.baseUrlRegistrableDomain}`);
+		}
+	}
+	return descriptions;
+};
+
+const isUrlAllowedByPolicy = (
+	parsed: URL,
+	policy: ResolvedAssetPolicy,
+): boolean => {
+	if (policy.explicitOrigins.size > 0) {
+		return policy.explicitOrigins.has(parsed.origin);
+	}
+	if (policy.baseUrlOrigin && parsed.origin === policy.baseUrlOrigin) {
+		return true;
+	}
+	if (policy.baseUrlRegistrableDomain) {
+		const parsedRegistrable = getDomain(parsed.hostname);
+		if (
+			parsedRegistrable !== null &&
+			parsedRegistrable === policy.baseUrlRegistrableDomain
+		) {
+			return true;
+		}
+	}
+	// Fall back to "baseUrl origin only" when PSL lookup yields no
+	// registrable domain for baseUrl (e.g. IP literal, single-label host).
+	return (
+		policy.explicitOrigins.size === 0 &&
+		policy.baseUrlOrigin !== null &&
+		policy.baseUrlRegistrableDomain === null &&
+		parsed.origin === policy.baseUrlOrigin
+	);
+};
+
+const validateAssetUrl = (
+	rawUrl: string,
+	config: SchoolCityProviderConfig,
+	baseUrl: string,
+): URL => {
+	let parsed: URL;
+	try {
+		parsed = new URL(rawUrl);
+	} catch {
+		throw new TTSError(
+			TTSErrorCode.PROVIDER_ERROR,
+			"SchoolCity returned a malformed asset URL",
+			{ url: rawUrl },
+			"schoolcity-tts",
+		);
+	}
+	if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+		throw new TTSError(
+			TTSErrorCode.PROVIDER_ERROR,
+			`SchoolCity asset URL uses unsupported protocol: ${parsed.protocol}`,
+			{ url: rawUrl },
+			"schoolcity-tts",
+		);
+	}
+	// Cloud-metadata / IMDS is always blocked, even when the private-host
+	// guard is intentionally disabled for internal-network deployments.
+	if (hostnameIsCloudMetadata(parsed.hostname)) {
+		throw new TTSError(
+			TTSErrorCode.PROVIDER_ERROR,
+			"SchoolCity asset URL resolves to a cloud metadata endpoint",
+			{ url: rawUrl, hostname: parsed.hostname },
+			"schoolcity-tts",
+		);
+	}
+	if (config.blockPrivateAssetHosts !== false && hostnameIsPrivate(parsed.hostname)) {
+		throw new TTSError(
+			TTSErrorCode.PROVIDER_ERROR,
+			"SchoolCity asset URL resolves to a private/internal host",
+			{ url: rawUrl, hostname: parsed.hostname },
+			"schoolcity-tts",
+		);
+	}
+	const policy = resolveAssetPolicy(config, baseUrl);
+	if (!isUrlAllowedByPolicy(parsed, policy)) {
+		throw new TTSError(
+			TTSErrorCode.PROVIDER_ERROR,
+			`SchoolCity asset URL origin is not allow-listed: ${parsed.origin}`,
+			{ url: rawUrl, allowed: describePolicy(policy) },
+			"schoolcity-tts",
+		);
+	}
+	return parsed;
+};
+
+const fetchAssetWithManualRedirects = async (
+	initialUrl: URL,
+	config: SchoolCityProviderConfig,
+	baseUrl: string,
+	fetchImpl: FetchLike,
+	init: RequestInit,
+): Promise<Response> => {
+	const maxRedirects = Math.max(
+		0,
+		Math.floor(config.maxAssetRedirects ?? DEFAULT_MAX_ASSET_REDIRECTS),
+	);
+	let current = initialUrl;
+	for (let hop = 0; hop <= maxRedirects; hop += 1) {
+		const response = await fetchImpl(current.toString(), {
+			...init,
+			redirect: "manual",
+		});
+		const status = response.status;
+		const isRedirect = status >= 300 && status < 400 && status !== 304;
+		if (!isRedirect) {
+			return response;
+		}
+		const location = response.headers.get("location");
+		if (!location) {
+			return response;
+		}
+		if (hop === maxRedirects) {
+			throw new TTSError(
+				TTSErrorCode.PROVIDER_ERROR,
+				"SchoolCity asset redirect chain exceeded limit",
+				{ limit: maxRedirects, lastUrl: current.toString() },
+				"schoolcity-tts",
+			);
+		}
+		let nextUrl: URL;
+		try {
+			nextUrl = new URL(location, current);
+		} catch {
+			throw new TTSError(
+				TTSErrorCode.PROVIDER_ERROR,
+				"SchoolCity asset redirect target is malformed",
+				{ from: current.toString(), location },
+				"schoolcity-tts",
+			);
+		}
+		current = validateAssetUrl(nextUrl.toString(), config, baseUrl);
+	}
+	// Unreachable: loop either returns or throws.
+	throw new TTSError(
+		TTSErrorCode.PROVIDER_ERROR,
+		"SchoolCity asset fetch terminated unexpectedly",
+		undefined,
+		"schoolcity-tts",
+	);
+};
 
 const asFiniteNumber = (value: unknown): number | null => {
 	const next = Number(value);
@@ -363,7 +694,18 @@ export class SchoolCityServerProvider extends BaseTTSProvider {
 
 			let speechMarks: SpeechMark[] = [];
 			if (request.includeSpeechMarks !== false) {
-				const marksResponse = await this.fetchImpl(word, { signal: timeout.signal });
+				const marksUrl = validateAssetUrl(
+					word,
+					this.config as SchoolCityProviderConfig,
+					this.baseUrl,
+				);
+				const marksResponse = await fetchAssetWithManualRedirects(
+					marksUrl,
+					this.config as SchoolCityProviderConfig,
+					this.baseUrl,
+					this.fetchImpl,
+					{ signal: timeout.signal },
+				);
 				if (!marksResponse.ok) {
 					throw new TTSError(
 						TTSErrorCode.PROVIDER_ERROR,
@@ -399,7 +741,24 @@ export class SchoolCityServerProvider extends BaseTTSProvider {
 	async synthesize(request: SynthesizeRequest): Promise<SynthesizeResponse> {
 		const startedAt = Date.now();
 		const { audioContent, speechMarks } = await this.synthesizeWithAssets(request);
-		const audioResponse = await this.fetchImpl(audioContent);
+		const audioUrl = validateAssetUrl(
+			audioContent,
+			this.config as SchoolCityProviderConfig,
+			this.baseUrl,
+		);
+		const audioTimeout = this.withTimeout();
+		let audioResponse: Response;
+		try {
+			audioResponse = await fetchAssetWithManualRedirects(
+				audioUrl,
+				this.config as SchoolCityProviderConfig,
+				this.baseUrl,
+				this.fetchImpl,
+				{ signal: audioTimeout.signal },
+			);
+		} finally {
+			audioTimeout.clear();
+		}
 		if (!audioResponse.ok) {
 			throw new TTSError(
 				TTSErrorCode.PROVIDER_ERROR,

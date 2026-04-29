@@ -83,6 +83,33 @@
 	max-height: inherit !important;
 }
 
+/*
+ * PIE-94: horizontal-scroll wrapper for authored images inside passages and
+ * item stems. The shared sanitizer (`sanitizeItemMarkup` in
+ * `@pie-players/pie-players-shared`) wraps every `<img>` in
+ * `<span class="pie-image-scroll">` before injection. When the image fits its
+ * column the scrollbar stays hidden (overflow-x: auto); when it doesn't, the
+ * wrapper — not the passage or section layout — provides the sideways scroll
+ * needed to satisfy WCAG 1.4.10 Reflow at 400% zoom.
+ */
+.pie-image-scroll {
+	display: block;
+	max-width: 100%;
+	overflow-x: auto;
+	overflow-y: hidden;
+}
+
+.pie-image-scroll > img {
+	display: block;
+	max-width: none;
+	height: auto;
+}
+
+.pie-image-scroll:focus-visible {
+	outline: 2px solid var(--pie-focus-ring-color, #1a73e8);
+	outline-offset: 2px;
+}
+
 /* These styles are used in the body content of an item -- they also appear in the item body editor. */
 
 .book-title-k5 {

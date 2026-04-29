@@ -42,14 +42,15 @@ See [loading-strategies.md](./loading-strategies.md) for details.
 | Module format | CJS + IIFE (Stencil dist) | ESM-first (`"type": "module"`) |
 | Registration | `defineCustomElements(window)` or auto via `<script>` | Auto-registers on import; `definePieItemPlayer()` for custom tag names |
 
-## Modular loaders
+## Modular loading primitive
 
-The legacy `PieLoader` was a monolithic class that handled URL resolution, script injection, retry, and registry in a single file.
+The legacy `PieLoader` was a monolithic class that handled URL resolution, script injection, retry, and registry in a single file, and resolved its load promise opportunistically — sometimes before every requested tag was actually registered.
 
-The new architecture splits this into focused, tree-shakeable modules in `@pie-players/pie-players-shared`:
+The new architecture replaces it with the `ElementLoader` primitive plus pluggable backends, all in `@pie-players/pie-players-shared`:
 
-- `IifePieLoader` -- IIFE bundle loading and registration
-- `EsmPieLoader` -- ESM import-map loading
+- `ensureRegistered(elements, { backend, ... })` / `assertRegistered(tags)` -- single primitive, truthful-promise contract enforced via a uniform post-load `customElements.whenDefined` verification pass
+- IIFE backend (`loaders/iife-adapter.ts`) -- IIFE bundle loading and registration with bundle-build retry telemetry
+- ESM backend (`loaders/esm-adapter.ts`) -- ESM dynamic-import loading via fully-qualified URLs or an injected import map
 - `ItemController` -- Session state management (new; previously inlined in the player)
 - `normalizeItemPlayerStrategy()`, `resolveItemPlayerView()` -- Strategy/view resolution utilities
 

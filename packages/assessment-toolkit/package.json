@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-assessment-toolkit",
-	"version": "0.3.28",
+	"version": "0.3.32",
 	"type": "module",
 	"description": "PIE assessment toolkit: composable services + reference implementation for assessment players and tool coordination",
 	"license": "MIT",
@@ -48,6 +48,22 @@
 		"./services/I18nService": {
 			"types": "./dist/services/I18nService.d.ts",
 			"import": "./dist/services/I18nService.js"
+		},
+		"./runtime/engine": {
+			"types": "./dist/runtime/engine.d.ts",
+			"import": "./dist/runtime/engine.js"
+		},
+		"./runtime/internal": {
+			"types": "./dist/runtime/internal.d.ts",
+			"import": "./dist/runtime/internal.js"
+		},
+		"./policy/engine": {
+			"types": "./dist/policy/engine.d.ts",
+			"import": "./dist/policy/engine.js"
+		},
+		"./policy/internal": {
+			"types": "./dist/policy/internal.d.ts",
+			"import": "./dist/policy/internal.js"
 		}
 	},
 	"files": [
@@ -82,7 +98,8 @@
 		}
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.3.10",
+		"@biomejs/biome": "^2.4.12",
+		"@happy-dom/global-registrator": "^20.9.0",
 		"typescript": "^5.9.3"
 	},
 	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/assessment-toolkit#readme",

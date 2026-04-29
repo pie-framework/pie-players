@@ -1,0 +1,29 @@
+---
+description: Keep Jira / ticket comments brief and scoped to the current work
+alwaysApply: true
+---
+
+# Ticket comment discipline
+
+When posting to Jira (or any external tracker) on the user's behalf:
+
+- Keep comments **brief and to the point**. Summarize what landed in this
+  repo and, if relevant, the single action another team needs to take.
+- **Do not go beyond the scope of the current work.** No process
+  recommendations, sub-ticket asks, epic restructuring suggestions, or
+  unsolicited next-steps unless the user directed you to include them.
+  If you think something is worth raising, **ask the user first** — do
+  not add it to the comment preemptively.
+- Prefer bullet points over prose for technical summaries. Cite APIs,
+  tags, and filenames verbatim (backticks).
+- Do not editorialize about responsibility splits, team ownership, or
+  process unless the ticket conversation is explicitly about that.
+- Avoid greetings, sign-offs, and filler ("Short version:", "Hope this
+  helps", "Thanks!"). Get to the content.
+- When the user asks you to rewrite a comment they removed, do not
+  reintroduce removed content (asks, tangents) — they removed it on
+  purpose.
+
+Applies to: `addCommentToJiraIssue`, `createConfluenceFooterComment`,
+`createConfluenceInlineComment`, GitHub PR/issue comments, and any
+equivalent external-communication tool call.

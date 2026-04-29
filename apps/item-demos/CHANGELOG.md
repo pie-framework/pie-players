@@ -1,5 +1,44 @@
 # @pie-players/item-demos
 
+## 0.1.40
+
+### Patch Changes
+
+- Updated dependencies
+  - @pie-players/pie-item-player@0.3.32
+  - @pie-players/pie-players-shared@0.3.32
+  - @pie-players/pie-section-player-tools-instrumentation-debugger@0.3.32
+
+## 0.1.39
+
+### Patch Changes
+
+- Updated dependencies [26dbea3]
+- Updated dependencies
+  - @pie-players/pie-players-shared@0.3.31
+  - @pie-players/pie-item-player@0.3.31
+  - @pie-players/pie-section-player-tools-instrumentation-debugger@0.3.31
+
+## 0.1.38
+
+### Patch Changes
+
+- Updated dependencies [0981bc3]
+- Updated dependencies [698aa82]
+- Updated dependencies
+  - @pie-players/pie-players-shared@0.3.30
+  - @pie-players/pie-item-player@0.3.30
+  - @pie-players/pie-section-player-tools-instrumentation-debugger@0.3.30
+
+## 0.1.37
+
+### Patch Changes
+
+- Updated dependencies
+  - @pie-players/pie-item-player@0.3.29
+  - @pie-players/pie-players-shared@0.3.29
+  - @pie-players/pie-section-player-tools-instrumentation-debugger@0.3.29
+
 ## 0.1.36
 
 ### Patch Changes

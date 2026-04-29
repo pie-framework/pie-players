@@ -14,11 +14,11 @@
 	import '@pie-players/pie-theme/components.css';
 	import SharedFloatingPanel from '@pie-players/pie-section-player-tools-shared/SharedFloatingPanel.svelte';
 	import { createEventDispatcher } from 'svelte';
+	import { createDefaultPersonalNeedsProfile } from '@pie-players/pie-assessment-toolkit';
 	import {
-		PnpToolResolver,
-		createDefaultPersonalNeedsProfile,
-		createPackagedToolRegistry
-	} from '@pie-players/pie-assessment-toolkit';
+		derivePnpPanelData,
+		type PolicyPanelCoordinator
+	} from './derive-panel-data.js';
 	const dispatch = createEventDispatcher<{ close: undefined }>();
 
 	interface Props {
@@ -33,8 +33,13 @@
 		toolkitCoordinator = null
 	}: Props = $props();
 
-	const pnpResolver = new PnpToolResolver(createPackagedToolRegistry());
 	let floatingTools = $state<string[]>([]);
+	// Bumped from `coordinator.onPolicyChange(...)` so the
+	// `pnpPanelData` derivation re-runs whenever the engine inputs
+	// change (assessment binding, QTI override, custom source). The
+	// coordinator reference itself doesn't change on those events,
+	// so a manual reactivity hook is required.
+	let policyVersion = $state(0);
 
 	$effect(() => {
 		if (!toolkitCoordinator?.onFloatingToolsChange) {
@@ -49,56 +54,36 @@
 		};
 	});
 
-	let pnpPanelData = $derived.by(() => {
-		const directProfile = sectionData?.personalNeedsProfile;
-		const settingsProfile = sectionData?.settings?.personalNeedsProfile;
-		const profile = directProfile || settingsProfile || createDefaultPersonalNeedsProfile();
-		const source = directProfile
-			? 'section.personalNeedsProfile'
-			: settingsProfile
-				? 'section.settings.personalNeedsProfile'
-				: 'toolkit default profile (derived)';
-
-		const resolverInput = {
-			...(sectionData || {}),
-			personalNeedsProfile: profile
-		};
-		const resolution = pnpResolver.resolveToolsWithProvenance(resolverInput as any);
-
-		const toolkitToolConfig = toolkitCoordinator?.config?.tools || null;
-		const effectiveFloatingTools = floatingTools.length > 0
-			? floatingTools
-			: (toolkitCoordinator?.getFloatingTools?.() || toolkitToolConfig?.placement?.section || []);
-		const hasCatalogResolver = Boolean(toolkitCoordinator?.catalogResolver);
-		const catalogStats = hasCatalogResolver ? toolkitCoordinator.catalogResolver.getStatistics?.() : null;
-
-		return {
-			pnpProfile: profile,
-			resolvedTools: resolution.tools,
-			provenance: {
-				summary: resolution.provenance?.summary || null,
-				featureCount: resolution.provenance?.features?.size || 0,
-				sourceCount: Object.keys(resolution.provenance?.sources || {}).length
-			},
-			determination: {
-				source,
-				checked: [
-					'section.personalNeedsProfile',
-					'section.settings.personalNeedsProfile'
-				],
-				note: directProfile || settingsProfile
-					? 'Profile was taken directly from section payload.'
-					: 'No explicit PNP profile was found in section payload, so the toolkit default PNP profile is applied.',
-				runtimeContext: {
-					role: roleType,
-					floatingToolsEnabled: effectiveFloatingTools,
-					hasCatalogResolver,
-					catalogCount: catalogStats?.totalCatalogs ?? 0,
-					assessmentCatalogCount: catalogStats?.assessmentCatalogs ?? 0,
-					itemCatalogCount: catalogStats?.itemCatalogs ?? 0
-				}
+	$effect(() => {
+		if (typeof toolkitCoordinator?.onPolicyChange !== 'function') return;
+		const unsubscribe = toolkitCoordinator.onPolicyChange(() => {
+			policyVersion += 1;
+		});
+		return () => {
+			try {
+				unsubscribe?.();
+			} catch {
+				// detach errors are non-fatal
 			}
 		};
+	});
+
+	// M8 PR 3 — read the coordinator's owned ToolPolicyEngine via the
+	// pure `derivePnpPanelData` helper. Decisions reflect every
+	// Pass-1 contributor (placement, host policy, provider veto, QTI
+	// gates, custom sources) — not just PNP — which is the correct
+	// debugger surface as of M8. The panel keeps its PNP-focused
+	// chrome (title, profile card) but also surfaces the broader
+	// per-tool feature trails the engine emits.
+	let pnpPanelData = $derived.by(() => {
+		void policyVersion;
+		return derivePnpPanelData({
+			sectionData,
+			roleType,
+			floatingTools,
+			defaultPnpProfile: createDefaultPersonalNeedsProfile(),
+			coordinator: toolkitCoordinator as PolicyPanelCoordinator | null
+		});
 	});
 
 </script>
@@ -149,8 +134,12 @@
 			<pre class="pie-section-player-tools-pnp-debugger__card-pre">{JSON.stringify(pnpPanelData.resolvedTools, null, 2)}</pre>
 		</div>
 		<div class="pie-section-player-tools-pnp-debugger__card">
-			<div class="pie-section-player-tools-pnp-debugger__card-title">Provenance Summary</div>
+			<div class="pie-section-player-tools-pnp-debugger__card-title">Tool Policy Provenance Summary</div>
 			<pre class="pie-section-player-tools-pnp-debugger__card-pre">{JSON.stringify(pnpPanelData.provenance, null, 2)}</pre>
+		</div>
+		<div class="pie-section-player-tools-pnp-debugger__card">
+			<div class="pie-section-player-tools-pnp-debugger__card-title">Per-Tool Decisions</div>
+			<pre class="pie-section-player-tools-pnp-debugger__card-pre">{JSON.stringify(pnpPanelData.featureTrails, null, 2)}</pre>
 		</div>
 		<div class="pie-section-player-tools-pnp-debugger__card">
 			<div class="pie-section-player-tools-pnp-debugger__card-title">PNP Profile (read-only)</div>

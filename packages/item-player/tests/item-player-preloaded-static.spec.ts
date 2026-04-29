@@ -1,4 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 const DEMO_ID = "multiple-choice-radio-simple";
 const PRELOADED_DELIVERY_PATH =
@@ -43,11 +45,30 @@ async function readSessionState(page: Page): Promise<SessionSnapshot> {
 }
 
 async function assertMediaRetryBridge(page: Page, deliveryPath: string): Promise<void> {
+	const audioFixturePath = join(
+		import.meta.dirname,
+		"../../../apps/section-demos/static/demo-assets/resource-observability/signal-chime.wav",
+	);
+	const audioFixtureBuffer = readFileSync(audioFixturePath);
+	let requestCount = 0;
+	await page.route("**/synthetic-retry-audio.wav*", async (route) => {
+		requestCount += 1;
+		if (requestCount === 1) {
+			await route.abort("failed");
+			return;
+		}
+		await route.fulfill({
+			status: 200,
+			contentType: "audio/wav",
+			body: audioFixtureBuffer,
+		});
+	});
+
 	await page.goto(deliveryPath, { waitUntil: "networkidle" });
 	await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({ timeout: 20_000 });
 
 	await page.evaluate(() => {
-		(window as any).__pieMediaRetryReady = false;
+		(window as any).__pieMediaRetryReadyCount = 0;
 		const playerHost = document.querySelector("pie-item-player");
 		if (!(playerHost instanceof HTMLElement)) {
 			throw new Error("pie-item-player host not found");
@@ -77,51 +98,129 @@ async function assertMediaRetryBridge(page: Page, deliveryPath: string): Promise
 		audio.preload = "auto";
 		audio.addEventListener("pie-media-retry-ready", () => {
 			audioButton.disabled = false;
-			(window as any).__pieMediaRetryReady = true;
+			(window as any).__pieMediaRetryReadyCount += 1;
 		});
 
 		fixture.append(audioButton, audio);
 		rendererRoot.appendChild(fixture);
-		// Simulate a failed first load before retry recovery is announced.
-		audio.dispatchEvent(new Event("error"));
+		audio.load();
 	});
 
-	await page.evaluate(() => {
-		const playerRoot = document.querySelector(
-			"pie-item-player .pie-player-item-container .pie-item-player",
-		) as HTMLElement | null;
-		const audio = document.querySelector(
-			"#pie-audio-retry-fixture audio",
-		) as HTMLAudioElement | null;
-		if (!playerRoot || !audio) {
-			throw new Error("Unable to dispatch retry-success bridge event");
-		}
-		playerRoot.dispatchEvent(
-			new CustomEvent("pie-resource-retry-success", {
-				detail: {
-					url: audio.currentSrc || audio.src,
-					resourceType: "audio",
-					retryCount: 1,
-					maxRetries: 3,
-				},
-				bubbles: true,
-				composed: true,
-			}),
-		);
-	});
-	await page.waitForFunction(() => (window as any).__pieMediaRetryReady === true);
+	await page.waitForFunction(
+		() => (window as any).__pieMediaRetryReadyCount === 1,
+		undefined,
+		{ timeout: 20_000 },
+	);
 
-	const disabledAfterRetry = await page.evaluate(() => {
+	const stateAfterRetry = await page.evaluate(() => {
 		const button = document.querySelector(
 			"#pie-audio-retry-fixture [data-testid='audio-retry-button']",
 		);
-		return button instanceof HTMLButtonElement ? button.disabled : true;
+		return {
+			disabled:
+				button instanceof HTMLButtonElement ? button.disabled : true,
+			readyCount: Number((window as any).__pieMediaRetryReadyCount || 0),
+		};
 	});
 
-	expect(disabledAfterRetry).toBe(false);
+	expect(stateAfterRetry.disabled).toBe(false);
+	expect(stateAfterRetry.readyCount).toBe(1);
 }
 
 test.describe("item-player strategy regressions", () => {
+	test("ignores stale iife failures after newer iife config succeeds", async ({
+		page,
+	}) => {
+		await page.goto(PRELOADED_DELIVERY_PATH, { waitUntil: "networkidle" });
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({ timeout: 20_000 });
+
+		await page.route("**/bundles/**", async (route) => {
+			const url = route.request().url();
+			if (!url.includes("not-a-real-element")) {
+				await route.fallback();
+				return;
+			}
+			await new Promise((resolve) => setTimeout(resolve, 600));
+			await route.fulfill({
+				status: 404,
+				contentType: "application/javascript",
+				body: "window.__pie_stale_load_failure__ = true; throw new Error('stale load failed');",
+			});
+		});
+
+		const freshPrompt = "Fresh iife config should win";
+		await page.evaluate((prompt) => {
+			const fixture = document.createElement("div");
+			fixture.id = "pie-stale-load-order-fixture";
+			document.body.appendChild(fixture);
+
+			const player = document.createElement("pie-item-player") as any;
+			player.strategy = "iife";
+			player.env = { mode: "gather", role: "student" };
+			player.session = { id: "stale-load-order", data: [] };
+			player.config = {
+				elements: {
+					"pie-not-a-real-element": "@pie-element/not-a-real-element@1.0.0",
+				},
+				models: [
+					{
+						id: "stale-load-order-model",
+						element: "pie-not-a-real-element",
+						prompt: "Stale iife config",
+					},
+				],
+				markup:
+					'<pie-not-a-real-element id="stale-load-order-model"></pie-not-a-real-element>',
+			};
+			fixture.appendChild(player);
+
+			queueMicrotask(() => {
+				player.config = {
+					elements: {
+						"pie-multiple-choice": "@pie-element/multiple-choice@11.4.0",
+					},
+					models: [
+						{
+							id: "stale-load-order-model",
+							element: "pie-multiple-choice",
+							prompt,
+							choiceMode: "radio",
+							choices: [
+								{ value: "a", label: "A", correct: false },
+								{ value: "b", label: "B", correct: true },
+							],
+						},
+					],
+					markup:
+						'<pie-multiple-choice id="stale-load-order-model"></pie-multiple-choice>',
+				};
+			});
+		}, freshPrompt);
+
+		const fixture = page.locator("#pie-stale-load-order-fixture");
+		await expect(fixture.getByText(freshPrompt)).toBeVisible({ timeout: 20_000 });
+		await page.waitForTimeout(800);
+
+		const staleState = await page.evaluate(() => {
+			const host = document.querySelector(
+				"#pie-stale-load-order-fixture pie-item-player",
+			) as HTMLElement | null;
+			if (!host) {
+				return { errorText: "missing-host", renderedPrompt: null };
+			}
+			const errorText = host.querySelector(".pie-player-error p")?.textContent || null;
+			const renderedPrompt = host.textContent?.includes("Fresh iife config should win")
+				? "fresh"
+				: host.textContent?.includes("Stale iife config")
+					? "stale"
+					: null;
+			return { errorText, renderedPrompt };
+		});
+
+		expect(staleState.errorText).toBeNull();
+		expect(staleState.renderedPrompt).toBe("fresh");
+	});
+
 	test("renders and updates session using preloaded bundles", async ({ page }) => {
 		const bundleRequests: string[] = [];
 		const esmRequests: string[] = [];
@@ -160,10 +259,22 @@ test.describe("item-player strategy regressions", () => {
 		await page.goto(PRELOADED_DELIVERY_PATH, { waitUntil: "networkidle" });
 		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({ timeout: 20_000 });
 
+		const bundledVersionTag = await page.evaluate(() => {
+			const preloadedElements = (window as any).PIE_PRELOADED_ELEMENTS as
+				| Record<string, string>
+				| undefined;
+			const bundledSpec = preloadedElements?.["@pie-element/multiple-choice"];
+			if (!bundledSpec) {
+				throw new Error("Expected preloaded mapping for @pie-element/multiple-choice");
+			}
+			const match = bundledSpec.match(/@(\d+\.\d+\.\d+)$/);
+			if (!match?.[1]) {
+				throw new Error(`Unexpected preloaded mapping format: ${bundledSpec}`);
+			}
+			return `multiple-choice--version-${match[1].replaceAll(".", "-")}`;
+		});
+
 		await page.evaluate(() => {
-			(window as any).PIE_PRELOADED_ELEMENTS = {
-				"@pie-element/multiple-choice": "@pie-element/multiple-choice@11.4.3",
-			};
 			const fixture = document.createElement("div");
 			fixture.id = "pie-preloaded-version-normalization-fixture";
 			document.body.appendChild(fixture);
@@ -174,12 +285,12 @@ test.describe("item-player strategy regressions", () => {
 			player.session = { id: "normalize-test", data: [] };
 			player.config = {
 				elements: {
-					"pie-multiple-choice": "@pie-element/multiple-choice@0.0.1",
+					"multiple-choice": "@pie-element/multiple-choice@0.0.1",
 				},
 				models: [
 					{
 						id: "normalize-mc",
-						element: "pie-multiple-choice",
+						element: "multiple-choice",
 						prompt: "Normalization prompt",
 						choiceMode: "radio",
 						choices: [
@@ -188,24 +299,36 @@ test.describe("item-player strategy regressions", () => {
 						],
 					},
 				],
-				markup: '<pie-multiple-choice id="normalize-mc"></pie-multiple-choice>',
+				markup: '<multiple-choice id="normalize-mc"></multiple-choice>',
 			};
 			fixture.appendChild(player);
 		});
 
-		await page.waitForFunction(() => {
+		const versionRewriteState = await page.evaluate((expectedBundledTag) => {
 			const fixture = document.getElementById(
 				"pie-preloaded-version-normalization-fixture",
 			);
-			if (!fixture) return false;
-			const hasBundledVersionTag = !!fixture.querySelector(
-				"pie-multiple-choice--version-11-4-3",
-			);
-			const hasStaleVersionTag = !!fixture.querySelector(
-				"pie-multiple-choice--version-0-0-1",
-			);
-			return hasBundledVersionTag && !hasStaleVersionTag;
-		});
+			if (!fixture) {
+				return {
+					hasBundledVersionTag: false,
+					hasStaleVersionTag: false,
+					errorText: "missing-fixture",
+				};
+			}
+			const host = fixture.querySelector("pie-item-player");
+			const errorText = host?.querySelector(".pie-player-error p")?.textContent || null;
+			return {
+				hasBundledVersionTag: !!fixture.querySelector(expectedBundledTag),
+				hasStaleVersionTag: !!fixture.querySelector(
+					"multiple-choice--version-0-0-1",
+				),
+				errorText,
+			};
+		}, bundledVersionTag);
+
+		expect(versionRewriteState.errorText).toBeNull();
+		expect(versionRewriteState.hasBundledVersionTag).toBe(true);
+		expect(versionRewriteState.hasStaleVersionTag).toBe(false);
 	});
 
 	test("preloaded does not autonomously fallback to runtime loading when tags are missing", async ({
@@ -256,51 +379,12 @@ test.describe("item-player strategy regressions", () => {
 		expect(bundleRequests.length).toBe(baselineCount);
 	});
 
-	test("preloaded fallback can be explicitly opted in", async ({ page }) => {
-		const bundleRequests: string[] = [];
-		page.on("request", (request) => {
-			const url = request.url();
-			if (url.includes("/bundles/")) bundleRequests.push(url);
-		});
-
-		await page.goto(PRELOADED_DELIVERY_PATH, { waitUntil: "networkidle" });
-		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({ timeout: 20_000 });
-		const baselineCount = bundleRequests.length;
-
-		await page.evaluate(() => {
-			const fixture = document.createElement("div");
-			fixture.id = "pie-preloaded-optin-fallback-fixture";
-			document.body.appendChild(fixture);
-			const player = document.createElement("pie-item-player") as any;
-			player.strategy = "preloaded";
-			player.loaderOptions = { allowPreloadedFallbackLoad: true };
-			player.env = { mode: "gather", role: "student" };
-			player.session = { id: "fallback-optin", data: [] };
-			player.config = {
-				elements: {
-					"pie-runtime-optin": "@pie-element/multiple-choice@11.4.3",
-				},
-				models: [
-					{
-						id: "optin-model",
-						element: "pie-runtime-optin",
-						prompt: "Opt-in fallback prompt",
-						choiceMode: "radio",
-						choices: [
-							{ value: "a", label: "A", correct: false },
-							{ value: "b", label: "B", correct: true },
-						],
-					},
-				],
-				markup: '<pie-runtime-optin id="optin-model"></pie-runtime-optin>',
-			};
-			fixture.appendChild(player);
-		});
-
-		await expect
-			.poll(() => bundleRequests.length)
-			.toBeGreaterThan(baselineCount);
-	});
+	// NOTE: the previous "preloaded fallback can be explicitly opted in" test
+	// was deleted together with the `allowPreloadedFallbackLoad` escape hatch.
+	// `preloaded` now means "host pre-registered these elements; assert
+	// loudly or throw" — there is no autonomous runtime fallback to load.
+	// Hosts that want runtime loading should use `strategy="iife"` or
+	// `strategy="esm"` instead.
 
 	test("surfaces validate-config contract errors for invalid PIE references", async ({
 		page,
@@ -403,5 +487,176 @@ test.describe("item-player strategy regressions", () => {
 
 test.skip("esm emits media-retry-ready after first audio load failure", async ({ page }) => {
 		await assertMediaRetryBridge(page, ESM_DELIVERY_PATH);
+	});
+
+	test("on runtime support check does not fail when metadata is missing", async ({
+		page,
+	}) => {
+		await page.route("**/runtime-support*", async (route) => {
+			await route.fulfill({
+				status: 404,
+				contentType: "application/javascript",
+				body: "export default {};",
+			});
+		});
+
+		// Use the IIFE strategy so the loader actually fetches a bundle
+		// when `runtimeSupportCheck: "on"` is active. (Previously this test
+		// relied on `allowPreloadedFallbackLoad` to coerce preloaded into
+		// fetching a bundle; that escape hatch no longer exists.)
+		await page.goto(IIFE_DELIVERY_PATH, { waitUntil: "networkidle" });
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({ timeout: 20_000 });
+
+		await page.evaluate(() => {
+			const fixture = document.createElement("div");
+			fixture.id = "pie-runtime-support-strict-fixture";
+			document.body.appendChild(fixture);
+			const player = document.createElement("pie-item-player") as any;
+			player.strategy = "iife";
+			player.loaderOptions = {
+				runtimeSupportCheck: "on",
+			};
+			player.env = { mode: "gather", role: "student" };
+			player.session = { id: "strict-runtime-support", data: [] };
+			player.config = {
+				elements: {
+					"pie-multiple-choice": "@pie-element/multiple-choice@11.4.3",
+				},
+				models: [
+					{
+						id: "strict-runtime-support-model",
+						element: "pie-multiple-choice",
+						prompt: "Strict runtime support prompt",
+						choiceMode: "radio",
+						choices: [
+							{ value: "a", label: "A", correct: false },
+							{ value: "b", label: "B", correct: true },
+						],
+					},
+				],
+				markup:
+					'<pie-multiple-choice id="strict-runtime-support-model"></pie-multiple-choice>',
+			};
+			fixture.appendChild(player);
+		});
+
+		await expect(page.getByText("Strict runtime support prompt")).toBeVisible({
+			timeout: 20_000,
+		});
+		await expect(page.getByText("Missing runtime-support metadata")).not.toBeVisible();
+	});
+
+	test("off runtime support check does not request metadata", async ({ page }) => {
+		let runtimeSupportRequests = 0;
+		await page.route("**/runtime-support*", async (route) => {
+			runtimeSupportRequests += 1;
+			await route.fallback();
+		});
+
+		// Use the IIFE strategy so the loader actually touches runtime-support
+		// when the option is active. (See the "strict" test above for why.)
+		await page.goto(IIFE_DELIVERY_PATH, { waitUntil: "networkidle" });
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({ timeout: 20_000 });
+
+		await page.evaluate(() => {
+			const fixture = document.createElement("div");
+			fixture.id = "pie-runtime-support-off-fixture";
+			document.body.appendChild(fixture);
+			const player = document.createElement("pie-item-player") as any;
+			player.strategy = "iife";
+			player.loaderOptions = {
+				runtimeSupportCheck: "off",
+			};
+			player.env = { mode: "gather", role: "student" };
+			player.session = { id: "off-runtime-support", data: [] };
+			player.config = {
+				elements: {
+					"pie-multiple-choice": "@pie-element/multiple-choice@11.4.3",
+				},
+				models: [
+					{
+						id: "off-runtime-support-model",
+						element: "pie-multiple-choice",
+						prompt: "Off runtime support prompt",
+						choiceMode: "radio",
+						choices: [
+							{ value: "a", label: "A", correct: false },
+							{ value: "b", label: "B", correct: true },
+						],
+					},
+				],
+				markup:
+					'<pie-multiple-choice id="off-runtime-support-model"></pie-multiple-choice>',
+			};
+			fixture.appendChild(player);
+		});
+
+		await expect(page.getByText("Off runtime support prompt")).toBeVisible({
+			timeout: 20_000,
+		});
+		await page.waitForTimeout(400);
+		expect(runtimeSupportRequests).toBe(0);
+	});
+
+	test("metadata unsupported does not alter unrelated load errors", async ({ page }) => {
+		await page.goto(PRELOADED_DELIVERY_PATH, { waitUntil: "networkidle" });
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({ timeout: 20_000 });
+
+		await page.route("**/runtime-support*", async (route) => {
+			await route.fulfill({
+				status: 200,
+				contentType: "application/javascript",
+				headers: {
+					"access-control-allow-origin": "*",
+					"cache-control": "no-store",
+				},
+				body: `
+          export default {
+            schemaVersion: 1,
+            supports: {
+              iife: { delivery: false },
+              esm: { delivery: true }
+            }
+          };
+        `,
+			});
+		});
+
+		await page.evaluate(() => {
+			const fixture = document.createElement("div");
+			fixture.id = "pie-runtime-support-hint-fixture";
+			document.body.appendChild(fixture);
+			const player = document.createElement("pie-item-player") as any;
+			player.strategy = "preloaded";
+			player.loaderOptions = {
+				runtimeSupportCheck: "on",
+			};
+			player.env = { mode: "gather", role: "student" };
+			player.session = { id: "hint-runtime-support", data: [] };
+			player.config = {
+				elements: {
+					"pie-hint-mode": "@pie-element/multiple-choice@11.4.3-hint",
+				},
+				models: [
+					{
+						id: "hint-runtime-support-model",
+						element: "pie-hint-mode",
+						prompt: "Hint runtime support prompt",
+						choiceMode: "radio",
+						choices: [
+							{ value: "a", label: "A", correct: false },
+							{ value: "b", label: "B", correct: true },
+						],
+					},
+				],
+				markup: '<pie-hint-mode id="hint-runtime-support-model"></pie-hint-mode>',
+			};
+			fixture.appendChild(player);
+		});
+
+		await expect(page.getByText("Error loading elements (preloaded-readiness):")).toBeVisible(
+			{ timeout: 20_000 },
+		);
+		await expect(page.getByText("Missing runtime-support metadata")).not.toBeVisible();
 	});
 });

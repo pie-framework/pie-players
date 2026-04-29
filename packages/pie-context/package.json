@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-context",
-	"version": "0.3.28",
+	"version": "0.3.32",
 	"type": "module",
 	"description": "Framework-agnostic Context Protocol helpers for PIE web components",
 	"repository": {
@@ -32,7 +32,7 @@
 		"test": "bun test"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.3.10",
+		"@biomejs/biome": "^2.4.12",
 		"typescript": "^5.9.3"
 	},
 	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/pie-context#readme",

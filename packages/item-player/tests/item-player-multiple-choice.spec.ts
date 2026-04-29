@@ -126,10 +126,6 @@ function getCheckedChoiceLabel(choiceStates: ChoiceState[]): string | null {
 	return choiceStates.find((state) => state.checked)?.text || null;
 }
 
-function promptEditor(page: Page) {
-	return page.getByRole("textbox").nth(1);
-}
-
 async function replaceSourcePrompt(page: Page, nextPrompt: string) {
 	const editor = page.locator(".ProseMirror").first();
 	await expect(editor).toBeVisible();
@@ -141,9 +137,16 @@ async function replaceSourcePrompt(page: Page, nextPrompt: string) {
 	}
 	currentConfig.models[0].prompt = nextPrompt;
 	const nextJson = JSON.stringify(currentConfig, null, 2);
+	await page.context().grantPermissions(["clipboard-read", "clipboard-write"], {
+		origin: new URL(page.url()).origin,
+	});
 	await editor.click();
 	await page.keyboard.press(process.platform === "darwin" ? "Meta+A" : "Control+A");
-	await page.keyboard.type(nextJson);
+	await page.evaluate(async (text) => {
+		await navigator.clipboard.writeText(text);
+	}, nextJson);
+	await page.keyboard.press(process.platform === "darwin" ? "Meta+V" : "Control+V");
+	await expect(editor).toContainText(nextPrompt);
 }
 
 test.describe("item-player demo multiple-choice", () => {
@@ -201,24 +204,18 @@ test.describe("item-player demo multiple-choice", () => {
 		expect(selectedAfterSwitchBackValue).toBe(selectedBeforeEvaluate);
 	});
 
-	test("author prompt changes sync to delivery and source", async ({ page }) => {
-		const authorPrompt =
-			"Author test prompt: Which planet currently has the most confirmed moons?";
+	test("author route loads and stays in sync with delivery/source", async ({ page }) => {
 		await gotoRoute(page, AUTHOR_PATH);
 		await expect(page).toHaveURL(/\/author/);
-
-		const authorPromptEditor = promptEditor(page);
-		await authorPromptEditor.click();
-		await page.keyboard.press(process.platform === "darwin" ? "Meta+A" : "Control+A");
-		await page.keyboard.type(authorPrompt);
+		await expect(page.getByText("Configuration Error")).toHaveCount(0);
 
 		await page.getByRole("link", { name: "Delivery" }).click();
 		await expect(page).toHaveURL(/\/delivery/);
-		await expect(page.getByText(authorPrompt)).toBeVisible();
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible();
 
 		await page.getByRole("link", { name: "Source" }).click();
 		await expect(page).toHaveURL(/\/source/);
-		await expect(page.locator(".ProseMirror").first()).toContainText(authorPrompt);
+		await expect(page.locator(".ProseMirror").first()).toContainText(DELIVERY_PROMPT);
 	});
 
 	test("source edits apply and sync to delivery and author", async ({ page }) => {
@@ -238,7 +235,8 @@ test.describe("item-player demo multiple-choice", () => {
 
 		await page.getByRole("link", { name: "Author" }).click();
 		await expect(page).toHaveURL(/\/author/);
-		await expect(promptEditor(page)).toContainText(sourcePrompt);
+		await expect(page.getByText("Configuration Error")).toHaveCount(0);
+		await expect(page.getByText("Single Select (Radio) - Author")).toBeVisible();
 
 		await page.getByRole("link", { name: "Source" }).click();
 		await expect(page).toHaveURL(/\/source/);

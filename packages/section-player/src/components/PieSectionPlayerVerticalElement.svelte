@@ -15,23 +15,48 @@
 			tools: { type: "Object", reflect: false },
 			accessibility: { type: "Object", reflect: false },
 			coordinator: { type: "Object", reflect: false },
-			createSectionController: { type: "Object", reflect: false },
-			isolation: { attribute: "isolation", type: "String" },
 			env: { type: "Object", reflect: false },
 			iifeBundleHost: { attribute: "iife-bundle-host", type: "String" },
 			debug: { attribute: "debug", type: "String" },
 			showToolbar: { attribute: "show-toolbar", type: "String" },
 			toolbarPosition: { attribute: "toolbar-position", type: "String" },
 			enabledTools: { attribute: "enabled-tools", type: "String" },
-			itemToolbarTools: { attribute: "item-toolbar-tools", type: "String" },
-			passageToolbarTools: { attribute: "passage-toolbar-tools", type: "String" },
 			toolRegistry: { type: "Object", reflect: false },
 			sectionHostButtons: { type: "Object", reflect: false },
 			itemHostButtons: { type: "Object", reflect: false },
 			passageHostButtons: { type: "Object", reflect: false },
 			policies: { type: "Object", reflect: false },
-			cardTitleFormatter: { type: "Object", reflect: false },
+			hooks: { type: "Object", reflect: false },
+			toolConfigStrictness: {
+				attribute: "tool-config-strictness",
+				type: "String",
+			},
+			onFrameworkError: { type: "Object", reflect: false },
+			// M6 canonical stage-change callback. Mirrors
+			// `runtime.onStageChange`; resolver picks runtime over prop.
+			onStageChange: { type: "Object", reflect: false },
+			// M6 canonical loading-complete callback. Mirrors
+			// `runtime.onLoadingComplete`; the kernel invokes it at the
+			// same emit point as `pie-loading-complete` so callback and
+			// event stay in lockstep per cohort.
+			onLoadingComplete: { type: "Object", reflect: false },
 			narrowLayoutBreakpoint: { attribute: "narrow-layout-breakpoint", type: "Number" },
+			contentMaxWidthNoPassage: {
+				attribute: "content-max-width-no-passage",
+				type: "Number",
+			},
+			contentMaxWidthWithPassage: {
+				attribute: "content-max-width-with-passage",
+				type: "Number",
+			},
+			splitPaneMinRegionWidth: {
+				attribute: "split-pane-min-region-width",
+				type: "Number",
+			},
+			splitPaneCollapseStrategy: {
+				attribute: "split-pane-collapse-strategy",
+				type: "String",
+			},
 		},
 	}}
 />
@@ -50,23 +75,41 @@
 	import SectionPlayerVerticalContent from "./shared/SectionPlayerVerticalContent.svelte";
 	import { createEventDispatcher } from "svelte";
 	import type {
+		FrameworkErrorModel,
+		ToolConfigStrictness,
 		ToolRegistry,
 		ToolbarItem,
 	} from "@pie-players/pie-assessment-toolkit";
 	import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
-	import {
-		type RuntimeConfig,
-	} from "./shared/section-player-runtime.js";
+	import type {
+		RuntimeConfig,
+		StageChangeHandler,
+		LoadingCompleteHandler,
+	} from "@pie-players/pie-assessment-toolkit/runtime/internal";
 	import type {
 		SectionPlayerRuntimeHostContract,
 		SectionPlayerSnapshot,
 	} from "../contracts/runtime-host-contract.js";
 	import type { SectionPlayerPolicies } from "../policies/types.js";
-	import type { SectionPlayerCardTitleFormatter } from "../contracts/card-title-formatters.js";
+	import { isTelemetryEnabled } from "../policies/index.js";
+	import type { SectionPlayerHostHooks } from "../contracts/host-hooks.js";
 
 	const DEFAULT_NARROW_BREAKPOINT_PX = 1100;
 	const NARROW_BREAKPOINT_MIN_PX = 400;
 	const NARROW_BREAKPOINT_MAX_PX = 2000;
+	const CONTENT_MAX_WIDTH_MIN_PX = 320;
+	const CONTENT_MAX_WIDTH_MAX_PX = 2200;
+
+	function resolveConfiguredPx(
+		value: unknown,
+		min: number,
+		max: number,
+	): number | undefined {
+		if (value === undefined || value === null || value === "") return undefined;
+		const num = typeof value === "number" ? value : Number(value);
+		if (!Number.isFinite(num)) return undefined;
+		return Math.max(min, Math.min(max, num));
+	}
 
 	let {
 		assessmentId,
@@ -80,23 +123,34 @@
 		tools,
 		accessibility,
 		coordinator,
-		createSectionController,
-		isolation,
 		env,
 		iifeBundleHost,
 		debug = undefined as string | boolean | undefined,
 		showToolbar = "false" as boolean | string | null | undefined,
 		toolbarPosition = "right",
 		enabledTools = "",
-		itemToolbarTools = "",
-		passageToolbarTools = "",
 		toolRegistry = null as ToolRegistry | null,
 		sectionHostButtons = [] as ToolbarItem[],
 		itemHostButtons = [] as ToolbarItem[],
 		passageHostButtons = [] as ToolbarItem[],
 		policies = undefined as SectionPlayerPolicies | undefined,
-		cardTitleFormatter = undefined as SectionPlayerCardTitleFormatter | undefined,
+		hooks = undefined as SectionPlayerHostHooks | undefined,
+		toolConfigStrictness = undefined as ToolConfigStrictness | undefined,
+		onFrameworkError = undefined as
+			| undefined
+			| ((model: FrameworkErrorModel) => void),
+		onStageChange = undefined as StageChangeHandler | undefined,
+		onLoadingComplete = undefined as LoadingCompleteHandler | undefined,
 		narrowLayoutBreakpoint = undefined as number | undefined,
+		contentMaxWidthNoPassage = undefined as number | undefined,
+		contentMaxWidthWithPassage = undefined as number | undefined,
+		splitPaneMinRegionWidth: _splitPaneMinRegionWidth = undefined as
+			| number
+			| undefined,
+		splitPaneCollapseStrategy: _splitPaneCollapseStrategy = "vertical" as
+			| "vertical"
+			| "tabbed"
+			| string,
 	} = $props();
 	const dispatch = createEventDispatcher();
 	let anchor = $state<HTMLDivElement | null>(null);
@@ -109,6 +163,11 @@
 			component: "pie-section-player-vertical",
 		}),
 	);
+	// Two-tier resolution for `onFrameworkError` is handled by the
+	// kernel's resolver (`resolveSectionPlayerRuntimeState` →
+	// `effectiveRuntime.onFrameworkError`); the CE forwards the
+	// top-level prop and `runtime` verbatim and the resolver picks
+	// `runtime.onFrameworkError` over `onFrameworkError`.
 
 	function getHostElement(): HTMLElement | null {
 		if (!anchor) return null;
@@ -143,6 +202,23 @@
 	});
 
 	const effectiveToolbarPosition = $derived(isNarrow ? "top" : toolbarPosition);
+	const configuredContentMaxWidthNoPassagePx = $derived.by(() =>
+		resolveConfiguredPx(
+			contentMaxWidthNoPassage,
+			CONTENT_MAX_WIDTH_MIN_PX,
+			CONTENT_MAX_WIDTH_MAX_PX,
+		)
+	);
+	const configuredContentMaxWidthWithPassagePx = $derived.by(() => {
+		const withPassage = resolveConfiguredPx(
+			contentMaxWidthWithPassage,
+			CONTENT_MAX_WIDTH_MIN_PX,
+			CONTENT_MAX_WIDTH_MAX_PX,
+		);
+		if (withPassage === undefined) return undefined;
+		if (configuredContentMaxWidthNoPassagePx === undefined) return withPassage;
+		return Math.max(configuredContentMaxWidthNoPassagePx, withPassage);
+	});
 
 	function forward(event: Event) {
 		const customEvent = event as CustomEvent;
@@ -177,6 +253,10 @@
 		return kernelRef?.navigatePrevious?.() === true;
 	}
 
+	export function focusStart(): boolean {
+		return kernelRef?.focusStart?.() === true;
+	}
+
 	export function getSectionController() {
 		return kernelRef?.getSectionController?.() || null;
 	}
@@ -190,6 +270,10 @@
 
 	$effect(() => {
 		if (!hostElement) return;
+		// `policies.telemetry.enabled === false` skips instrumentation bridge
+		// setup entirely so hosts that opt out emit no `pie-section-*`
+		// telemetry events through the bridge.
+		if (!isTelemetryEnabled(policies)) return;
 		const localHost = hostElement;
 		return attachInstrumentationEventBridge({
 			host: localHost,
@@ -222,33 +306,30 @@
 	{tools}
 	{accessibility}
 	{coordinator}
-	{createSectionController}
-	{isolation}
 	{env}
 	{iifeBundleHost}
 	{debug}
 	{showToolbar}
 	toolbarPosition={effectiveToolbarPosition}
 	{enabledTools}
-	{itemToolbarTools}
-	{passageToolbarTools}
 	{toolRegistry}
 	{sectionHostButtons}
 	{itemHostButtons}
 	{passageHostButtons}
 	{policies}
-	{cardTitleFormatter}
+	{hooks}
+	{toolConfigStrictness}
+	{onFrameworkError}
+	{onStageChange}
+	{onLoadingComplete}
+	sourceCe="pie-section-player-vertical"
+	host={hostElement}
 	playerActionConfig={{
 		stateKey: "__verticalAppliedParams",
 		includeSessionRefInState: false,
 	}}
-	on:readiness-change={forward}
-	on:interaction-ready={forward}
-	on:ready={forward}
-	on:runtime-error={forward}
 	on:runtime-owned={forward}
 	on:runtime-inherited={forward}
-	on:section-controller-ready={forward}
 	on:session-changed={forward}
 	on:composition-changed={forward}
 	on:element-preload-retry={forward}
@@ -257,8 +338,10 @@
 >
 	<SectionPlayerVerticalContent
 		{layoutModel}
-		{itemToolbarTools}
-		{passageToolbarTools}
+		itemToolbarTools={layoutModel.itemToolbarTools}
+		passageToolbarTools={layoutModel.passageToolbarTools}
+		contentMaxWidthNoPassagePx={configuredContentMaxWidthNoPassagePx}
+		contentMaxWidthWithPassagePx={configuredContentMaxWidthWithPassagePx}
 		toolRegistry={layoutModel.toolRegistry}
 		itemHostButtons={layoutModel.itemHostButtons}
 		passageHostButtons={layoutModel.passageHostButtons}

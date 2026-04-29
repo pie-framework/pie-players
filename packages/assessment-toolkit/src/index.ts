@@ -216,6 +216,7 @@ export type {
 	SectionScopedEventSubscriptionArgs,
 	SectionEventSubscriptionArgs,
 	SectionSessionPersistenceStrategy,
+	SectionControllerLoadedRenderable,
 	SectionControllerRuntimeState,
 	SectionControllerSessionState,
 	SectionPersistenceFactoryDefaults,
@@ -247,6 +248,9 @@ export {
 	frameworkErrorFromUnknown,
 	toFrameworkErrorModel,
 } from "./services/framework-error.js";
+export type {
+	FrameworkErrorListener,
+} from "./services/framework-error-bus.js";
 export type {
 	ToolConfigDiagnostic,
 	ToolConfigDiagnosticSeverity,
@@ -289,6 +293,10 @@ export {
 // Text-to-Speech Service
 export type { TTSConfig } from "./services/TTSService.js";
 export { PlaybackState, TTSService } from "./services/TTSService.js";
+export {
+	PIE_TTS_CONTROL_HANDOFF_EVENT,
+	type TTSControlHandoffDetail,
+} from "./services/tts-control-events.js";
 export { BrowserTTSProvider } from "./services/tts/browser-provider.js";
 export type {
 	TTSHostToolbarLayout,
@@ -380,39 +388,6 @@ export {
 	mapActivityToTestAttemptSession,
 	toItemSessionsRecord,
 } from "./attempt/adapters/activity-to-test-attempt-session.js";
-
-// ============================================================================
-// Event Types (Standard Contracts)
-// ============================================================================
-
-export type {
-	AssessmentCompletedEvent,
-	AssessmentPausedEvent,
-	AssessmentResumedEvent,
-	AssessmentStartedEvent,
-	// Event map
-	AssessmentToolkitEvents,
-	CanNavigateChangedEvent,
-	InteractionEvent,
-	InteractionType,
-	ItemChangedEvent,
-	ItemMetadata,
-	LoadCompleteEvent,
-	LocaleChangedEvent,
-	LocaleLoadingCompleteEvent,
-	LocaleLoadingErrorEvent,
-	LocaleLoadingStartEvent,
-	NavigationRequestEvent,
-	PlayerErrorEvent,
-	// Event interfaces
-	SessionChangedEvent,
-	StateRestoredEvent,
-	StateSavedEvent,
-	SyncFailedEvent,
-	ToolActivatedEvent,
-	ToolDeactivatedEvent,
-	ToolStateChangedEvent,
-} from "./types/events.js";
 
 // Section Player - Use @pie-players/pie-section-player web component
 

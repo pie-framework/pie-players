@@ -286,6 +286,16 @@ export interface AssessmentSection
 	title?: string;
 	visible?: boolean;
 	required?: boolean;
+	/**
+	 * QTI 3 pagination hint (`qti-assessment-section@keep-together`).
+	 *
+	 * Indicates that the delivery system SHOULD render this section's items
+	 * together rather than splitting them across pages. This is strictly a
+	 * rendering/layout hint — it does NOT disable item-level navigation,
+	 * current-item tracking, or `item-selected` events in the section player.
+	 * Paginated and keep-together sections both support Next/Back,
+	 * `getCurrentItem()`, and `autoFocus: "current-item"` focus strategies.
+	 */
 	keepTogether?: boolean;
 
 	sections?: AssessmentSection[];

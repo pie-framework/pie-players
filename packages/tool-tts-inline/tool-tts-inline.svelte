@@ -18,6 +18,7 @@
 		connectToolRuntimeContext,
 		connectToolShellContext,
 		DEFAULT_TTS_SPEED_OPTIONS,
+		PIE_TTS_CONTROL_HANDOFF_EVENT,
 		normalizeTTSSpeedOptions,
 		type AssessmentToolkitRegionScopeContext,
 		type AssessmentToolkitRuntimeContext,
@@ -67,6 +68,7 @@
 	let playbackRate = $state(1);
 	let focusedControlIndex = $state(0);
 	let playActionInFlight = $state(false);
+	let handoffInProgress = $state(false);
 	const speedChoices = $derived.by(() => normalizeTTSSpeedOptions(speedOptions));
 
 	const instanceId = `pie-tts-inline-instance-${Math.random().toString(36).slice(2)}`;
@@ -114,6 +116,45 @@
 		focusedControlIndex = 0;
 		controlsVisible = keepControlsVisible;
 		statusMessage = status;
+	}
+
+	function focusTriggerIfPanelHadFocus(hadPanelFocus: boolean): void {
+		if (!containerEl || !hadPanelFocus) return;
+		const root = containerEl.getRootNode();
+		if (!(root instanceof ShadowRoot)) return;
+		const triggerButton = root.querySelector(
+			'.pie-tool-tts-inline__trigger',
+		) as HTMLButtonElement | null;
+		triggerButton?.focus();
+	}
+
+	function handleProgrammaticControlHandoff(
+		status = 'Reading switched to another section',
+		restoreFocus = false,
+	): void {
+		if (handoffInProgress) return;
+		if (!controlsVisible && !isActiveOwner()) return;
+		handoffInProgress = true;
+		try {
+			const hadPanelFocus = (() => {
+				if (!containerEl || !toolbarEl) return false;
+				const root = containerEl.getRootNode();
+				if (!(root instanceof ShadowRoot)) return false;
+				const activeElement = root.activeElement as HTMLElement | null;
+				return Boolean(activeElement && toolbarEl.contains(activeElement));
+			})();
+			if (isActiveOwner()) {
+				releaseActiveOwner();
+			}
+			resetLocalPlaybackUi(status);
+			if (restoreFocus) {
+				queueMicrotask(() => {
+					focusTriggerIfPanelHadFocus(hadPanelFocus);
+				});
+			}
+		} finally {
+			handoffInProgress = false;
+		}
 	}
 
 	$effect(() => {
@@ -175,12 +216,23 @@
 			}>;
 			const { ownerId = null, previousOwnerId = null } = ownerChange.detail || {};
 			if (previousOwnerId === instanceId && ownerId !== instanceId) {
-				resetLocalPlaybackUi('Reading switched to another section');
+				handleProgrammaticControlHandoff('Reading switched to another section');
 			}
 		};
 		window.addEventListener(OWNER_EVENT, ownerListener);
 		return () => {
 			window.removeEventListener(OWNER_EVENT, ownerListener);
+		};
+	});
+
+	$effect(() => {
+		if (!isBrowser) return;
+		const controlHandoffListener = () => {
+			handleProgrammaticControlHandoff('Reading switched to another section', true);
+		};
+		window.addEventListener(PIE_TTS_CONTROL_HANDOFF_EVENT, controlHandoffListener);
+		return () => {
+			window.removeEventListener(PIE_TTS_CONTROL_HANDOFF_EVENT, controlHandoffListener);
 		};
 	});
 
@@ -399,13 +451,29 @@
 		if (!host) return;
 		const active = controlsVisible === true;
 		host.setAttribute('data-active', active ? 'true' : 'false');
-		host.dispatchEvent(
-			new CustomEvent('pie-tool-active-change', {
-				detail: { active },
-				bubbles: true,
-				composed: true
-			})
-		);
+		// Defer the broadcast so listeners (e.g. the parent toolbar's
+		// `subscribeActive` callback) never run inside our own mount /
+		// update flush. Without this, a parent that synchronously creates
+		// or reconnects this element during its template/derivation pass
+		// — which happens when the section player layout collapses on
+		// resize — would receive the event re-entrantly and fail with
+		// `state_unsafe_mutation`. The microtask boundary still fires
+		// before paint, so consumers see the active state in the same
+		// frame.
+		let cancelled = false;
+		queueMicrotask(() => {
+			if (cancelled) return;
+			host.dispatchEvent(
+				new CustomEvent('pie-tool-active-change', {
+					detail: { active },
+					bubbles: true,
+					composed: true
+				})
+			);
+		});
+		return () => {
+			cancelled = true;
+		};
 	});
 </script>
 

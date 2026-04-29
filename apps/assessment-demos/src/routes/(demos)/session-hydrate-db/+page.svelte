@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { browser } from "$app/environment";
+	import { afterNavigate, replaceState } from "$app/navigation";
 	import { onMount } from "svelte";
 import {
 	CompositeInstrumentationProvider,
@@ -81,8 +82,8 @@ import "@pie-players/pie-section-player-tools-instrumentation-debugger";
 		toolConfigStrictness: "error",
 		tools: toolkitToolsConfig,
 		hooks: {
-			onError: (error, context) => {
-				console.warn("[Assessment Session DB Demo] toolkit error:", context, error);
+			onFrameworkError: (model) => {
+				console.warn("[Assessment Session DB Demo] toolkit framework error:", model);
 			},
 		// In assessment demos, assessment-session persistence is the single source of truth.
 		// Disable section controller default localStorage persistence to avoid competing stores.
@@ -168,12 +169,18 @@ let instrumentationDebuggerElement = $state<any>(null);
 		return created;
 	}
 
+	let routerReady = $state(false);
+	afterNavigate(() => {
+		routerReady = true;
+		syncUrl();
+	});
+
 	function syncUrl() {
-		if (!browser) return;
+		if (!browser || !routerReady) return;
 		const url = new URL(window.location.href);
 		url.searchParams.set(ATTEMPT_QUERY_PARAM, attemptId);
 		url.searchParams.set(SECTION_LAYOUT_QUERY_PARAM, sectionLayout);
-		window.history.replaceState({}, "", url.toString());
+		replaceState(url, {});
 	}
 
 	function refreshSnapshot() {

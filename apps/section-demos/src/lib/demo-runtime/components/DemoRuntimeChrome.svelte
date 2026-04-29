@@ -11,11 +11,17 @@
 	import DemoInfoDialog from './DemoInfoDialog.svelte';
 	import DemoMenuBar from './DemoMenuBar.svelte';
 	import DemoOverlays from './DemoOverlays.svelte';
+	import ElementVersionPanel from './ElementVersionPanel.svelte';
 	import {
 		buildDemoHref,
 		buildSectionPageHref,
 		DAISY_DEFAULT_THEMES
 	} from '$lib/demo-runtime/demo-page-helpers';
+	import {
+		buildOverrideUrl,
+		removeOverrideParams
+	} from '$lib/demo-runtime/override-url-helpers';
+	import type { ElementOverrides } from '@pie-players/pie-players-shared/pie';
 
 	interface Props {
 		data: any;
@@ -44,6 +50,7 @@
 		showPnpPanel?: boolean;
 		showTtsPanel?: boolean;
 		showSessionDbPanel?: boolean;
+		showElementVersionPanel?: boolean;
 		sessionDebuggerElement?: any;
 		eventDebuggerElement?: any;
 		instrumentationDebuggerElement?: any;
@@ -83,6 +90,7 @@
 		showPnpPanel = $bindable(false),
 		showTtsPanel = $bindable(false),
 		showSessionDbPanel = $bindable(false),
+		showElementVersionPanel = $bindable(false),
 		sessionDebuggerElement = $bindable(null),
 		eventDebuggerElement = $bindable(null),
 		instrumentationDebuggerElement = $bindable(null),
@@ -104,6 +112,7 @@
 		pnp?: boolean;
 		tts?: boolean;
 		sessionDb?: boolean;
+		elementVersion?: boolean;
 	};
 
 	const DEBUG_PANEL_STORAGE_PREFIX = 'pie:debug-panels:v1';
@@ -169,6 +178,47 @@
 			activeDemoPageId: data.activeDemoPageId
 		})
 	);
+	const aggregatedElements = $derived<Record<string, string>>(
+		(data?.aggregatedElements as Record<string, string>) || {}
+	);
+	const elementOverrides = $derived<ElementOverrides>(
+		(data?.elementOverrides as ElementOverrides) || {}
+	);
+	const hasElementVersionTargets = $derived(
+		Object.keys(aggregatedElements).length > 0
+	);
+	const hasElementVersionOverrides = $derived(
+		Object.keys(elementOverrides).length > 0
+	);
+
+	function navigateWithFullReload(targetUrl: string): void {
+		if (!browser) return;
+		window.location.assign(targetUrl);
+	}
+
+	function handleOverrideChange(detail: { packageName: string; version: string }): void {
+		if (!browser) return;
+		const currentUrl = new URL(window.location.href);
+		navigateWithFullReload(
+			buildOverrideUrl(currentUrl, detail.packageName, detail.version)
+		);
+	}
+
+	function handleOverrideResetOne(detail: { packageName: string }): void {
+		if (!browser) return;
+		const currentUrl = new URL(window.location.href);
+		navigateWithFullReload(buildOverrideUrl(currentUrl, detail.packageName, null));
+	}
+
+	function handleOverrideResetAll(): void {
+		if (!browser) return;
+		const currentUrl = new URL(window.location.href);
+		const nextParams = removeOverrideParams(currentUrl.searchParams);
+		const query = nextParams.toString();
+		const targetUrl = query ? `${currentUrl.pathname}?${query}` : currentUrl.pathname;
+		navigateWithFullReload(targetUrl);
+	}
+
 	let demoInfoFocus = $derived(
 		typeof (data?.demo as any)?.focus === 'string' ? (data?.demo as any)?.focus : ''
 	);
@@ -192,6 +242,7 @@
 			showPnpPanel = persisted.pnp === true;
 			showTtsPanel = persisted.tts === true;
 			showSessionDbPanel = persisted.sessionDb === true;
+			showElementVersionPanel = persisted.elementVersion === true;
 		}
 		hasHydratedPanelVisibility = true;
 	});
@@ -206,7 +257,8 @@
 			source: showSourcePanel,
 			pnp: showPnpPanel,
 			tts: showTtsPanel,
-			sessionDb: showSessionDbPanel
+			sessionDb: showSessionDbPanel,
+			elementVersion: showElementVersionPanel
 		});
 	});
 </script>
@@ -227,6 +279,9 @@
 			{showTtsPanel}
 			showDbPanel={showSessionDbPanel}
 			showInfoDialog={showDemoInfoDialog}
+			showElementVersionPanel={showElementVersionPanel}
+			hasElementVersionTargets={hasElementVersionTargets}
+			hasElementVersionOverrides={hasElementVersionOverrides}
 			{isSessionHydrateDbDemo}
 			{selectedDaisyTheme}
 			daisyThemes={[...daisyThemes]}
@@ -242,6 +297,8 @@
 			onToggleTtsPanel={() => (showTtsPanel = !showTtsPanel)}
 			onToggleDbPanel={() => (showSessionDbPanel = !showSessionDbPanel)}
 			onToggleInfoDialog={() => (showDemoInfoDialog = !showDemoInfoDialog)}
+			onToggleElementVersionPanel={() =>
+				(showElementVersionPanel = !showElementVersionPanel)}
 			{onSelectDaisyTheme}
 		/>
 
@@ -311,6 +368,18 @@
 	bind:instrumentationDebuggerElement
 	bind:pnpDebuggerElement
 />
+
+{#if showElementVersionPanel && hasElementVersionTargets}
+	<ElementVersionPanel
+		elements={aggregatedElements}
+		overrides={elementOverrides}
+		persistenceScope={panelPersistenceScope}
+		onChange={handleOverrideChange}
+		onResetOne={handleOverrideResetOne}
+		onResetAll={handleOverrideResetAll}
+		onClose={() => (showElementVersionPanel = false)}
+	/>
+{/if}
 
 <style>
 	.pie-direct-layout {

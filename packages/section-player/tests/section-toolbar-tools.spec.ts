@@ -199,6 +199,18 @@ test.describe("section toolbar tools", () => {
 		page,
 	}) => {
 		async function expectCustomTitles() {
+			const tablist = page.getByRole("tablist", { name: "Section content tabs" });
+			if ((await tablist.count()) > 0) {
+				await page.getByRole("tab", { name: "Items" }).click();
+				await expect(
+					page.locator(".pie-section-player-item-header h2").first(),
+				).toHaveText("Custom question 1");
+				await page.getByRole("tab", { name: "Passage" }).click();
+				await expect(
+					page.locator(".pie-section-player-passage-header h2").first(),
+				).toHaveText("Custom passage");
+				return;
+			}
 			await expect(page.locator(".pie-section-player-item-header h2").first()).toHaveText(
 				"Custom question 1",
 			);
@@ -306,12 +318,173 @@ test.describe("section toolbar tools", () => {
 		await header.focus();
 		await page.keyboard.press("ArrowLeft");
 		const movedByKeyboard = await getRect(graphShell);
-		expect(movedByKeyboard.x).toBeLessThanOrEqual(resized.x);
+		expect(movedByKeyboard.x).toBeLessThan(resized.x);
 	});
 
-	test("exposes split divider semantics and keyboard resizing in splitpane layout", async ({
+	// PIE-215: keyboard-only users must be able to Tab to shell title-bar buttons,
+	// activate them with Space/Enter, and get focus returned to the toolbar opener
+	// after the shell is closed via the keyboard.
+	test("places title-bar buttons on the tab path and restores focus on close", async ({
 		page,
 	}) => {
+		await gotoDemo(page);
+		const toolbar = sectionToolbar(page);
+		const graphButton = toolbar.getByRole("button", {
+			name: "Graph - Graphing calculator",
+		});
+		await graphButton.focus();
+		await expect(graphButton).toBeFocused();
+		await page.keyboard.press("Enter");
+
+		const graphShell = page.locator('[data-pie-tool-shell="graph"]').first();
+		await expect(graphShell).toBeVisible();
+
+		const closeButton = graphShell.getByRole("button", { name: "Close tool" });
+		await expect(closeButton).toBeVisible();
+		await expect(closeButton).toBeFocused();
+
+		const isCloseFocused = async () =>
+			closeButton.evaluate((element) => element === document.activeElement);
+		await expect.poll(isCloseFocused).toBe(true);
+
+		const grow = graphShell.getByRole("button", { name: "Grow tool window" });
+		await grow.focus();
+		await expect(grow).toBeFocused();
+
+		const rectBefore = await getRect(graphShell);
+		await page.keyboard.press("Space");
+		const rectAfter = await getRect(graphShell);
+		expect(rectAfter.width).toBeGreaterThan(rectBefore.width);
+		expect(rectAfter.height).toBeGreaterThan(rectBefore.height);
+
+		await closeButton.focus();
+		await page.keyboard.press("Enter");
+		await expect(graphShell).toBeHidden();
+		await expect(graphButton).toBeFocused();
+
+		await graphButton.focus();
+		await page.keyboard.press("Enter");
+		await expect(graphShell).toBeVisible();
+		await expect(graphShell.getByRole("button", { name: "Close tool" })).toBeFocused();
+
+		await page.keyboard.press("Escape");
+		await expect(graphShell).toBeHidden();
+		await expect(graphButton).toBeFocused();
+	});
+
+	// PIE-95: when the calculator tool opens (keyboard or mouse), focus must
+	// land on the calculator's input/expression field so the user can start
+	// typing immediately. The shell-wide focus trap from PIE-215 still keeps
+	// Tab navigation contained and restores focus to the opener on close.
+	test("focuses the calculator input field when opened and restores opener on close", async ({
+		page,
+	}) => {
+		test.setTimeout(60_000);
+		await gotoDemo(page);
+
+		const q1 = page.locator("pie-section-player-item-card").first();
+		const calculatorButton = q1.getByRole("button", {
+			name: /open .* calculator/i,
+		});
+		await expect(calculatorButton).toBeVisible();
+
+		const desmosAuthResponse = page.waitForResponse(
+			(response) =>
+				response.url().includes("/api/tools/desmos/auth") &&
+				response.request().method() === "GET",
+		);
+		await calculatorButton.focus();
+		await expect(calculatorButton).toBeFocused();
+		await page.keyboard.press("Enter");
+		await desmosAuthResponse;
+
+		const calculatorShell = page.locator('[data-pie-tool-shell="calculator"]').first();
+		await expect(calculatorShell).toBeVisible();
+
+		const calculatorHost = page.locator("pie-tool-calculator .pie-tool-calculator").last();
+		await expect(calculatorHost).toBeVisible({ timeout: 20_000 });
+		const calculatorSurface = calculatorHost.locator(
+			[
+				".pie-tool-calculator__container .dcg-container",
+				".pie-tool-calculator__container .dcg-calculator-api-container",
+				".pie-tool-calculator__container iframe",
+				".pie-tool-calculator__container canvas",
+			].join(","),
+		);
+		await expect(calculatorSurface.first()).toBeVisible({ timeout: 20_000 });
+
+		// Once Desmos has rendered, focus must move off the shell's Close button
+		// and onto the calculator's input. Piercing shadow roots is required
+		// because pie-tool-calculator uses shadow DOM.
+		await expect
+			.poll(
+				async () =>
+					await page.evaluate(() => {
+						const getDeepActive = (): Element | null => {
+							let active: Element | null = document.activeElement;
+							while (active) {
+								const root = (active as Element & { shadowRoot?: ShadowRoot | null })
+									.shadowRoot;
+								if (root && root.activeElement && root.activeElement !== active) {
+									active = root.activeElement;
+								} else {
+									break;
+								}
+							}
+							return active;
+						};
+						const active = getDeepActive();
+						if (!active) return { insideCalculator: false, isCloseButton: false };
+						const container = active.closest(".pie-tool-calculator__container");
+						const isCloseButton =
+							active.getAttribute?.("aria-label") === "Close tool";
+						return {
+							insideCalculator: Boolean(container),
+							isCloseButton,
+						};
+					}),
+				{ timeout: 15_000 },
+			)
+			.toEqual({ insideCalculator: true, isCloseButton: false });
+
+		// Shift+Tab from the calculator input must still reach the shell's
+		// header controls, confirming the shell-wide focus trap from PIE-215
+		// hasn't been broken. The trap wraps, so the last focusable in the
+		// shell is the Close button.
+		await page.keyboard.press("Shift+Tab");
+		await expect
+			.poll(
+				async () =>
+					await page.evaluate(() => {
+						const getDeepActive = (): Element | null => {
+							let active: Element | null = document.activeElement;
+							while (active) {
+								const root = (active as Element & { shadowRoot?: ShadowRoot | null })
+									.shadowRoot;
+								if (root && root.activeElement && root.activeElement !== active) {
+									active = root.activeElement;
+								} else {
+									break;
+								}
+							}
+							return active;
+						};
+						const active = getDeepActive();
+						return active?.getAttribute?.("aria-label") ?? null;
+					}),
+			)
+			.toBe("Close tool");
+
+		// Escape closes the shell and restores focus to the opener button.
+		await page.keyboard.press("Escape");
+		await expect(calculatorShell).toBeHidden();
+		await expect(calculatorButton).toBeFocused();
+	});
+
+	test("exposes default split divider semantics and keyboard resizing in splitpane layout", async ({
+		page,
+	}) => {
+		await page.setViewportSize({ width: 1280, height: 900 });
 		await gotoDemo(page);
 
 		const divider = page.getByRole("separator", {
@@ -319,8 +492,14 @@ test.describe("section toolbar tools", () => {
 		});
 		await expect(divider).toBeVisible();
 		await expect(divider).toHaveAttribute("aria-orientation", "vertical");
-		await expect(divider).toHaveAttribute("aria-valuemin", "20");
-		await expect(divider).toHaveAttribute("aria-valuemax", "80");
+		const minValue = Number(await divider.getAttribute("aria-valuemin"));
+		const maxValue = Number(await divider.getAttribute("aria-valuemax"));
+		expect(Number.isFinite(minValue)).toBe(true);
+		expect(Number.isFinite(maxValue)).toBe(true);
+		expect(minValue).toBe(20);
+		expect(maxValue).toBe(80);
+		expect(maxValue).toBeGreaterThan(minValue);
+		expect(Math.abs(minValue + maxValue - 100)).toBeLessThanOrEqual(0.6);
 
 		const controlledPaneId = await divider.getAttribute("aria-controls");
 		expect(controlledPaneId).toBeTruthy();
@@ -332,8 +511,123 @@ test.describe("section toolbar tools", () => {
 		await page.keyboard.press("ArrowRight");
 		await expect(divider).toHaveAttribute("aria-valuenow", "55");
 		await page.keyboard.press("End");
-		await expect(divider).toHaveAttribute("aria-valuenow", "80");
+		await expect(divider).toHaveAttribute("aria-valuenow", String(Math.round(maxValue)));
 		await page.keyboard.press("Home");
-		await expect(divider).toHaveAttribute("aria-valuenow", "20");
+		await expect(divider).toHaveAttribute("aria-valuenow", String(Math.round(minValue)));
+
+		const itemsPaneId = String(controlledPaneId).replace(/-passages$/, "-items");
+		const paneWidthsAtMin = await page.evaluate(
+			({ passagesId, itemsId }) => {
+				const passagesPane = document.querySelector<HTMLElement>(`#${passagesId}`);
+				const itemsPane = document.querySelector<HTMLElement>(`#${itemsId}`);
+				if (!passagesPane || !itemsPane) {
+					throw new Error("Expected split panes were not found");
+				}
+				const passagesRect = passagesPane.getBoundingClientRect();
+				const itemsRect = itemsPane.getBoundingClientRect();
+				return {
+					passagesWidth: passagesRect.width,
+					itemsWidth: itemsRect.width,
+				};
+			},
+			{ passagesId: String(controlledPaneId), itemsId: itemsPaneId },
+		);
+		const narrowerAtMin = Math.min(
+			paneWidthsAtMin.passagesWidth,
+			paneWidthsAtMin.itemsWidth,
+		);
+		expect(narrowerAtMin).toBeGreaterThanOrEqual(220);
+
+		await page.keyboard.press("End");
+		const paneWidthsAtMax = await page.evaluate(
+			({ passagesId, itemsId }) => {
+				const passagesPane = document.querySelector<HTMLElement>(`#${passagesId}`);
+				const itemsPane = document.querySelector<HTMLElement>(`#${itemsId}`);
+				if (!passagesPane || !itemsPane) {
+					throw new Error("Expected split panes were not found");
+				}
+				const passagesRect = passagesPane.getBoundingClientRect();
+				const itemsRect = itemsPane.getBoundingClientRect();
+				return {
+					passagesWidth: passagesRect.width,
+					itemsWidth: itemsRect.width,
+				};
+			},
+			{ passagesId: String(controlledPaneId), itemsId: itemsPaneId },
+		);
+		const narrowerAtMax = Math.min(
+			paneWidthsAtMax.passagesWidth,
+			paneWidthsAtMax.itemsWidth,
+		);
+		expect(narrowerAtMax).toBeGreaterThanOrEqual(220);
+	});
+
+	test("honors configured split-pane minimum region width", async ({ page }) => {
+		await page.setViewportSize({ width: 1280, height: 900 });
+		await gotoDemo(page);
+		await page.locator("pie-section-player-splitpane").first().evaluate((element) => {
+			const host = element as HTMLElement & {
+				splitPaneMinRegionWidth?: number;
+			};
+			host.splitPaneMinRegionWidth = 280;
+			host.setAttribute("split-pane-min-region-width", "280");
+		});
+
+		const divider = page.getByRole("separator", {
+			name: "Resize passages and items panels",
+		});
+		await expect(divider).toBeVisible();
+		const minValue = Number(await divider.getAttribute("aria-valuemin"));
+		const maxValue = Number(await divider.getAttribute("aria-valuemax"));
+		expect(minValue).toBeGreaterThan(20);
+		expect(maxValue).toBeLessThan(80);
+		expect(Math.abs(minValue + maxValue - 100)).toBeLessThanOrEqual(0.6);
+
+		const controlledPaneId = await divider.getAttribute("aria-controls");
+		expect(controlledPaneId).toBeTruthy();
+		const itemsPaneId = String(controlledPaneId).replace(/-passages$/, "-items");
+
+		await divider.focus();
+		await page.keyboard.press("Home");
+		const widthsAtMin = await page.evaluate(
+			({ passagesId, itemsId }) => {
+				const passagesPane = document.querySelector<HTMLElement>(`#${passagesId}`);
+				const itemsPane = document.querySelector<HTMLElement>(`#${itemsId}`);
+				if (!passagesPane || !itemsPane) {
+					throw new Error("Expected split panes were not found");
+				}
+				const passagesRect = passagesPane.getBoundingClientRect();
+				const itemsRect = itemsPane.getBoundingClientRect();
+				return {
+					passagesWidth: passagesRect.width,
+					itemsWidth: itemsRect.width,
+				};
+			},
+			{ passagesId: String(controlledPaneId), itemsId: itemsPaneId },
+		);
+		expect(Math.min(widthsAtMin.passagesWidth, widthsAtMin.itemsWidth)).toBeGreaterThanOrEqual(
+			270,
+		);
+
+		await page.keyboard.press("End");
+		const widthsAtMax = await page.evaluate(
+			({ passagesId, itemsId }) => {
+				const passagesPane = document.querySelector<HTMLElement>(`#${passagesId}`);
+				const itemsPane = document.querySelector<HTMLElement>(`#${itemsId}`);
+				if (!passagesPane || !itemsPane) {
+					throw new Error("Expected split panes were not found");
+				}
+				const passagesRect = passagesPane.getBoundingClientRect();
+				const itemsRect = itemsPane.getBoundingClientRect();
+				return {
+					passagesWidth: passagesRect.width,
+					itemsWidth: itemsRect.width,
+				};
+			},
+			{ passagesId: String(controlledPaneId), itemsId: itemsPaneId },
+		);
+		expect(Math.min(widthsAtMax.passagesWidth, widthsAtMax.itemsWidth)).toBeGreaterThanOrEqual(
+			270,
+		);
 	});
 });

@@ -1,5 +1,29 @@
 # @pie-players/pie-context
 
+## 0.3.32
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+
+## 0.3.31
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+
+## 0.3.30
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+
+## 0.3.29
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+
 ## 0.3.28
 
 ### Patch Changes

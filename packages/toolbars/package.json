@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-toolbars",
-	"version": "0.3.28",
+	"version": "0.3.32",
 	"type": "module",
 	"description": "Item and section toolbar custom elements for PIE players",
 	"repository": {
@@ -36,8 +36,6 @@
 	},
 	"files": [
 		"dist",
-		"components",
-		"index.ts",
 		"package.json"
 	],
 	"license": "MIT",
@@ -53,11 +51,11 @@
 		"lint": "biome check ."
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.3.10",
+		"@biomejs/biome": "^2.4.12",
 		"@sveltejs/vite-plugin-svelte": "^7.0.0",
 		"svelte": "^5.54.0",
 		"typescript": "^5.9.3",
-		"vite": "^8.0.1",
+		"vite": "^8.0.10",
 		"vite-plugin-dts": "^4.5.4"
 	},
 	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/toolbars#readme",

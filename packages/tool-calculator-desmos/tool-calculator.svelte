@@ -51,7 +51,6 @@
 		AssessmentToolkitRuntimeContext,
 	} from '@pie-players/pie-assessment-toolkit';
 	import type { Calculator, CalculatorProviderConfig, CalculatorType } from '@pie-players/pie-assessment-toolkit/tools/client';
-	import { createFocusTrap } from '@pie-players/pie-players-shared';
 import { onMount } from 'svelte';
 
 	// ============================================================================
@@ -96,7 +95,6 @@ import { onMount } from 'svelte';
 	// Component State
 	// ============================================================================
 
-	let containerEl = $state<HTMLDivElement | undefined>();
 	let calculatorContainerEl = $state<HTMLDivElement | undefined>();
 	let calculatorInstance = $state<Calculator | null>(null);
 	let currentCalculatorType = $state<CalculatorType>('basic');
@@ -105,7 +103,6 @@ import { onMount } from 'svelte';
 	let initializationFailed = $state(false);
 	let lastInitializationError = $state<string | null>(null);
 	let hasMountedSurface = $state(false);
-	let cleanupFocusTrap = $state<(() => void) | null>(null);
 	const CALCULATOR_MOUNT_SELECTOR =
 		'.dcg-container,.dcg-calculator-api-container,iframe,canvas';
 
@@ -202,6 +199,33 @@ import { onMount } from 'svelte';
 			await new Promise<void>((resolve) => setTimeout(resolve, 100));
 		}
 		return hasCalculatorMount(container);
+	}
+
+	/**
+	 * Move keyboard focus to the calculator's input/expression field after
+	 * Desmos has rendered its DOM. Skipped if focus has already landed inside
+	 * the calculator container (user-initiated focus wins over auto-focus).
+	 *
+	 * Addresses PIE-95: on open (keyboard or mouse), the input field should
+	 * receive focus so the user can begin a calculation immediately.
+	 */
+	function focusCalculatorInput(): void {
+		requestAnimationFrame(() => {
+			try {
+				if (!visible) return;
+				const instance = calculatorInstance;
+				const container = calculatorContainerEl;
+				if (!instance || !container || !container.isConnected) return;
+				const active = document.activeElement;
+				if (active instanceof Node && container.contains(active)) {
+					// Focus already inside the calculator; don't disrupt the user.
+					return;
+				}
+				instance.focus?.();
+			} catch {
+				// best-effort; focus is non-critical for functionality
+			}
+		});
 	}
 
 	function waitForAnimationFrames(count: number, signal?: AbortSignal): Promise<void> {
@@ -339,6 +363,9 @@ import { onMount } from 'svelte';
 			lastInitializationError = null;
 			hasMountedSurface = hasCalculatorMount(mountContainer);
 			console.log(`[ToolCalculator] ${currentCalculatorType} calculator initialized successfully`);
+			if (hasMountedSurface) {
+				focusCalculatorInput();
+			}
 		} catch (error) {
 			initializationFailed = true;
 			lastInitializationError = error instanceof Error ? error.message : String(error);
@@ -369,7 +396,6 @@ import { onMount } from 'svelte';
 		}
 
 		return () => {
-			cleanupFocusTrap?.();
 			calculatorInstance?.destroy();
 		};
 	});
@@ -402,6 +428,16 @@ import { onMount } from 'svelte';
 					}
 				});
 			}
+		}
+	});
+
+	// PIE-95: when the calculator becomes visible and is already mounted (e.g. a
+	// rapid hide/show cycle that skipped teardown), move focus to the input so
+	// the user can begin typing immediately. initCalculator() handles the
+	// fresh-mount path; this covers the reuse path.
+	$effect(() => {
+		if (visible && calculatorInstance && hasMountedSurface) {
+			focusCalculatorInput();
 		}
 	});
 
@@ -448,23 +484,11 @@ import { onMount } from 'svelte';
 		return undefined;
 	});
 
-	$effect(() => {
-		if (containerEl && visible) {
-			if (!cleanupFocusTrap) {
-				cleanupFocusTrap = createFocusTrap(containerEl);
-			}
-		} else if (!visible && cleanupFocusTrap) {
-			cleanupFocusTrap();
-			cleanupFocusTrap = null;
-		}
-	});
-
 </script>
 
 <div bind:this={contextHostElement} class="pie-tool-calculator__context-host">
 {#if visible}
 	<div
-		bind:this={containerEl}
 		class="pie-tool-calculator notranslate"
 		role="region"
 		data-tool-id={toolId}

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { browser } from "$app/environment";
+	import { afterNavigate, replaceState } from "$app/navigation";
 	import {
 		createToolsConfig,
 		createDefaultPersonalNeedsProfile,
@@ -79,12 +80,15 @@
 	);
 	let selectedDaisyTheme = $state<string>(DEFAULT_DAISY_THEME);
 	let attemptId = $state(getOrCreateAttemptId());
+	let routerReady = $state(false);
+	afterNavigate(() => {
+		routerReady = true;
+	});
 	let playerHostElement: HTMLElement | null = $state(null);
 
-	// Host integration pattern: set `cardTitleFormatter` as a JS property on the
-	// section-player element (not an HTML string attribute). The callback receives
-	// rich context (`kind`, entity, indices, and `defaultTitle`) and should return
-	// the title text to render in item/passage card headers.
+	// Host integration pattern: register callbacks under section-player `hooks`
+	// as a JS property on the custom element. This keeps callback wiring in a
+	// single, extensible object while preserving rich title context.
 	const customCardTitleFormatter = (context: any) => {
 		if (context?.kind === "item") {
 			return `Custom question ${Number(context.itemIndex) + 1}`;
@@ -93,6 +97,9 @@
 			return "Custom passage";
 		}
 		return context?.defaultTitle;
+	};
+	const sectionPlayerHooks = {
+		cardTitleFormatter: customCardTitleFormatter,
 	};
 
 	let showSessionPanel = $state(false);
@@ -142,8 +149,8 @@
 	});
 
 	coordinator.setHooks({
-		onError: (error, context) => {
-			console.error("[CustomToolsDemo] Toolkit hook error:", context, error);
+		onFrameworkError: (model) => {
+			console.error("[CustomToolsDemo] Toolkit framework error:", model);
 		},
 	} satisfies ToolkitCoordinatorHooks);
 
@@ -156,14 +163,14 @@
 	}
 
 	$effect(() => {
-		if (!browser || !attemptId) return;
+		if (!browser || !routerReady || !attemptId) return;
 		const url = new URL(window.location.href);
 		const existingAttemptId = url.searchParams.get(ATTEMPT_QUERY_PARAM);
 		const existingLayout = url.searchParams.get("layout");
 		if (existingAttemptId === attemptId && existingLayout === layoutType) return;
 		url.searchParams.set(ATTEMPT_QUERY_PARAM, attemptId);
 		url.searchParams.set("layout", layoutType);
-		window.history.replaceState({}, "", url.toString());
+		replaceState(url, {});
 	});
 
 	$effect(() => {
@@ -283,7 +290,7 @@
 			sectionHostButtons={customTools.sectionHostButtons}
 			itemHostButtons={customTools.itemHostButtons}
 			passageHostButtons={customTools.passageHostButtons}
-			cardTitleFormatter={customCardTitleFormatter}
+			hooks={sectionPlayerHooks}
 		></pie-section-player-vertical>
 	{:else}
 		<pie-section-player-splitpane
@@ -305,7 +312,7 @@
 			sectionHostButtons={customTools.sectionHostButtons}
 			itemHostButtons={customTools.itemHostButtons}
 			passageHostButtons={customTools.passageHostButtons}
-			cardTitleFormatter={customCardTitleFormatter}
+			hooks={sectionPlayerHooks}
 		></pie-section-player-splitpane>
 	{/if}
 </DemoRuntimeChrome>

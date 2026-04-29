@@ -1,14 +1,36 @@
+/**
+ * Section-player host-runtime tests (post M7 PR 7).
+ *
+ * Covers the player-coupled helpers that stay in section-player after
+ * the M7 rip-out:
+ *
+ *   - `resolvePlayerRuntime` — depends on `DEFAULT_PLAYER_DEFINITIONS`
+ *     (which side-effect-imports `@pie-players/pie-item-player`), so
+ *     it cannot move into the toolkit-side engine resolver.
+ *   - `resolveSectionPlayerRuntimeState` — thin wrapper over the
+ *     toolkit's `resolveSectionEngineRuntimeState` that supplies the
+ *     local `resolvePlayerRuntime`. Pinning the propagation +
+ *     precedence behavior here proves the wrapper still threads
+ *     handlers through the engine-side orchestrator unchanged.
+ *
+ * The pure two-tier-mirror behavior of `resolveRuntime`,
+ * `resolveToolsConfig`, and the per-key precedence rule lives in
+ * `packages/assessment-toolkit/tests/runtime/core/engine-resolver.test.ts`
+ * (re-pointed in M7 PR 1). This file deliberately does not re-cover
+ * those — they have a single source of truth in the toolkit suite.
+ */
+
 import { describe, expect, mock, test } from "bun:test";
 
 mock.module("@pie-players/pie-item-player", () => ({}));
 
-async function loadRuntimeModule() {
-	return import("../src/components/shared/section-player-runtime");
+async function loadHostRuntime() {
+	return import("../src/components/shared/section-player-host-runtime");
 }
 
 describe("resolvePlayerRuntime", () => {
 	test("forwards runtime player.loaderConfig into resolved player props", async () => {
-		const { resolvePlayerRuntime } = await loadRuntimeModule();
+		const { resolvePlayerRuntime } = await loadHostRuntime();
 		const instrumentationProvider = {
 			providerId: "custom",
 			providerName: "Custom",
@@ -41,7 +63,7 @@ describe("resolvePlayerRuntime", () => {
 	});
 
 	test("merges runtime loaderOptions with strategy defaults", async () => {
-		const { resolvePlayerRuntime } = await loadRuntimeModule();
+		const { resolvePlayerRuntime } = await loadHostRuntime();
 		const runtime = resolvePlayerRuntime({
 			effectiveRuntime: {
 				playerType: "iife",
@@ -64,101 +86,148 @@ describe("resolvePlayerRuntime", () => {
 	});
 });
 
-describe("resolveRuntime", () => {
-	test("merges top-level player config with runtime.player overrides", async () => {
-		const { resolveRuntime } = await loadRuntimeModule();
-		const merged = resolveRuntime({
+describe("resolveSectionPlayerRuntimeState", () => {
+	test("propagates onFrameworkError into effectiveRuntime", async () => {
+		const { resolveSectionPlayerRuntimeState } = await loadHostRuntime();
+		const handler = () => {};
+		const state = resolveSectionPlayerRuntimeState({
 			assessmentId: "a1",
 			playerType: "iife",
-			player: {
-				loaderConfig: {
-					trackPageActions: true,
-					maxResourceRetries: 2,
-				},
-				loaderOptions: {
-					bundleHost: "https://top-level.example",
-				},
-			},
+			player: null,
 			lazyInit: true,
+			tools: null,
 			accessibility: null,
 			coordinator: null,
-			createSectionController: null,
-			isolation: "inherit",
 			env: null,
-			runtime: {
-				toolConfigStrictness: "off",
-				player: {
-					loaderConfig: {
-						resourceRetryDelay: 750,
-					},
-					loaderOptions: {
-						moduleResolution: "import-map",
-					},
-				},
-			},
-			effectiveToolsConfig: {},
 			toolConfigStrictness: "error",
+			onFrameworkError: handler,
+			runtime: null,
+			enabledTools: "",
 		});
+		expect((state.effectiveRuntime as any).onFrameworkError).toBe(handler);
+	});
 
-		expect((merged.player as any).loaderConfig.trackPageActions).toBe(true);
-		expect((merged.player as any).loaderConfig.maxResourceRetries).toBe(2);
-		expect((merged.player as any).loaderConfig.resourceRetryDelay).toBe(750);
-		expect((merged.player as any).loaderOptions.bundleHost).toBe(
-			"https://top-level.example",
-		);
-		expect((merged.player as any).loaderOptions.moduleResolution).toBe("import-map");
-		expect((merged as any).toolConfigStrictness).toBe("off");
+	test("propagates onStageChange into effectiveRuntime", async () => {
+		const { resolveSectionPlayerRuntimeState } = await loadHostRuntime();
+		const handler = () => {};
+		const state = resolveSectionPlayerRuntimeState({
+			assessmentId: "a1",
+			playerType: "iife",
+			player: null,
+			lazyInit: true,
+			tools: null,
+			accessibility: null,
+			coordinator: null,
+			env: null,
+			toolConfigStrictness: "error",
+			onStageChange: handler,
+			runtime: null,
+			enabledTools: "",
+		});
+		expect((state.effectiveRuntime as any).onStageChange).toBe(handler);
+	});
+
+	test("propagates onLoadingComplete into effectiveRuntime", async () => {
+		const { resolveSectionPlayerRuntimeState } = await loadHostRuntime();
+		const handler = () => {};
+		const state = resolveSectionPlayerRuntimeState({
+			assessmentId: "a1",
+			playerType: "iife",
+			player: null,
+			lazyInit: true,
+			tools: null,
+			accessibility: null,
+			coordinator: null,
+			env: null,
+			toolConfigStrictness: "error",
+			onLoadingComplete: handler,
+			runtime: null,
+			enabledTools: "",
+		});
+		expect((state.effectiveRuntime as any).onLoadingComplete).toBe(handler);
+	});
+
+	test("runtime.onStageChange wins over the top-level prop", async () => {
+		const { resolveSectionPlayerRuntimeState } = await loadHostRuntime();
+		const fromRuntime = () => {};
+		const fromProp = () => {};
+		const state = resolveSectionPlayerRuntimeState({
+			assessmentId: "a1",
+			playerType: "iife",
+			player: null,
+			lazyInit: true,
+			tools: null,
+			accessibility: null,
+			coordinator: null,
+			env: null,
+			toolConfigStrictness: "error",
+			onStageChange: fromProp,
+			runtime: { onStageChange: fromRuntime },
+			enabledTools: "",
+		});
+		expect((state.effectiveRuntime as any).onStageChange).toBe(fromRuntime);
+	});
+
+	test("runtime.onLoadingComplete wins over the top-level prop", async () => {
+		const { resolveSectionPlayerRuntimeState } = await loadHostRuntime();
+		const fromRuntime = () => {};
+		const fromProp = () => {};
+		const state = resolveSectionPlayerRuntimeState({
+			assessmentId: "a1",
+			playerType: "iife",
+			player: null,
+			lazyInit: true,
+			tools: null,
+			accessibility: null,
+			coordinator: null,
+			env: null,
+			toolConfigStrictness: "error",
+			onLoadingComplete: fromProp,
+			runtime: { onLoadingComplete: fromRuntime },
+			enabledTools: "",
+		});
+		expect((state.effectiveRuntime as any).onLoadingComplete).toBe(fromRuntime);
+	});
+
+	test("threads through resolved playerRuntime so the host can read both halves at once", async () => {
+		const { resolveSectionPlayerRuntimeState } = await loadHostRuntime();
+		const state = resolveSectionPlayerRuntimeState({
+			assessmentId: "a1",
+			playerType: "iife",
+			player: null,
+			lazyInit: true,
+			tools: null,
+			accessibility: null,
+			coordinator: null,
+			env: { mode: "gather" },
+			toolConfigStrictness: "error",
+			runtime: null,
+			enabledTools: "",
+		});
+		expect(state.playerRuntime.effectivePlayerType).toBe("iife");
+		expect(state.playerRuntime.resolvedPlayerTag).toBeDefined();
+		expect(state.effectiveRuntime).toBeDefined();
+		expect(state.effectiveToolsConfig).toBeDefined();
 	});
 });
 
-describe("resolveToolsConfig", () => {
-	test("applies toolbar overlays without validating tool ids", async () => {
-		const { resolveToolsConfig } = await loadRuntimeModule();
-		const resolved = resolveToolsConfig({
-			runtime: {
-				toolConfigStrictness: "error",
-			},
-			tools: null,
-			enabledTools: "unknownTool",
-			itemToolbarTools: "",
-			passageToolbarTools: "",
-		});
-		expect(resolved.placement.section).toEqual(["unknownTool"]);
+describe("mapRenderablesToItems", () => {
+	test("flattens composition entries to their `entity` fields", async () => {
+		const { mapRenderablesToItems } = await loadHostRuntime();
+		const a = { id: "a" } as unknown;
+		const b = { id: "b" } as unknown;
+		const result = mapRenderablesToItems([
+			{ entity: a },
+			{ entity: b },
+		]);
+		expect(result[0]).toBe(a as never);
+		expect(result[1]).toBe(b as never);
 	});
 
-	test("keeps overlay behavior when runtime is omitted", async () => {
-		const { resolveToolsConfig } = await loadRuntimeModule();
-		const resolved = resolveToolsConfig({
-			runtime: null,
-			tools: null,
-			enabledTools: "unknownTool",
-			itemToolbarTools: "",
-			passageToolbarTools: "",
-		});
-		// Strict tool-id validation now happens in toolkit coordinator initialization.
-		expect(resolved.placement.section).toEqual(["unknownTool"]);
-	});
-
-	test("accepts canonical provider key textToSpeech", async () => {
-		const { resolveToolsConfig } = await loadRuntimeModule();
-		const resolved = resolveToolsConfig({
-			runtime: {
-				toolConfigStrictness: "error",
-			},
-			tools: {
-				providers: {
-					textToSpeech: {
-						enabled: true,
-						backend: "browser",
-						layoutMode: "left-aligned",
-					},
-				},
-			},
-			enabledTools: "",
-			itemToolbarTools: "",
-			passageToolbarTools: "",
-		});
-		expect((resolved as any).providers.textToSpeech?.enabled).toBe(true);
-		expect((resolved as any).providers.textToSpeech?.layoutMode).toBe("left-aligned");
+	test("returns undefined entries for renderables that omit `entity`", async () => {
+		const { mapRenderablesToItems } = await loadHostRuntime();
+		const result = mapRenderablesToItems([{}, { entity: { id: "ok" } }]);
+		expect(result[0]).toBeUndefined();
+		expect((result[1] as { id: string }).id).toBe("ok");
 	});
 });

@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-tool-periodic-table",
-	"version": "0.3.28",
+	"version": "0.3.32",
 	"type": "module",
 	"description": "Interactive periodic table reference tool for PIE assessment player",
 	"repository": {
@@ -31,8 +31,6 @@
 	"files": [
 		"dist",
 		"tool-periodic-table.svelte",
-		"index.ts",
-		"elements-data.ts",
 		"periodic-table-data.json",
 		"package.json"
 	],
@@ -52,11 +50,11 @@
 		"lint": "biome check ."
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.3.10",
+		"@biomejs/biome": "^2.4.12",
 		"@sveltejs/vite-plugin-svelte": "^7.0.0",
 		"svelte": "^5.54.0",
 		"typescript": "^5.9.3",
-		"vite": "^8.0.1",
+		"vite": "^8.0.10",
 		"vite-plugin-dts": "^4.5.4"
 	},
 	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/tool-periodic-table#readme",

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
+	import { afterNavigate, replaceState } from '$app/navigation';
 	import {
 		CompositeInstrumentationProvider,
 		DebugPanelInstrumentationProvider,
@@ -45,7 +46,11 @@
 		PLAYER_OPTIONS
 	} from '$lib/demo-runtime/demo-page-helpers';
 	import { SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER } from '$lib/demo-runtime/section-demos-default-tts';
-	import { collectElementPackages, fetchBundleWithRetry } from '$lib/demo-runtime/preload-utils';
+	import {
+		buildBundleKey,
+		collectElementPackages,
+		fetchBundleWithRetry
+	} from '$lib/demo-runtime/preload-utils';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -119,8 +124,8 @@
 			toolConfigStrictness: 'error',
 			tools: toolsConfigResult.config,
 			hooks: {
-				onError: (error, context) => {
-					console.error('[Demo] Toolkit hook error:', context, error);
+				onFrameworkError: (model) => {
+					console.error('[Demo] Toolkit framework error:', model);
 				},
 				async createSectionSessionPersistence(context) {
 					const targetSectionId = context.key.sectionId;
@@ -159,6 +164,10 @@
 	);
 	let selectedDaisyTheme = $state<string>(DEFAULT_DAISY_THEME);
 	let attemptId = $state(getOrCreateAttemptId());
+	let routerReady = $state(false);
+	afterNavigate(() => {
+		routerReady = true;
+	});
 	let playerInstanceKey = $state(0);
 	let preloadedReady = $state(false);
 	let preloadedError = $state<string | null>(null);
@@ -185,7 +194,6 @@
 	let suppressDemoDbAutoPersistUntilMs = $state(0);
 	let lastPersistedSnapshotFingerprint = $state<string | null>(null);
 	let serverLoadedSection = $state<any>(null);
-	let bootstrappedSessionDbAttemptId = $state<string | null>(null);
 
 	const DEMO_PERSISTENCE_STORAGE_PREFIX = `pie:section-controller:v1:${DEMO_ASSESSMENT_ID}:`;
 	let resolvedSectionForPlayer = $derived.by(() => {
@@ -306,7 +314,7 @@
 			preloadedError = 'No element packages were found to preload';
 			return;
 		}
-		const bundleKey = packages.join('+');
+		const bundleKey = buildBundleKey(packages);
 		if (loadedPreloadedBundleKey === bundleKey) {
 			preloadedReady = true;
 			return;
@@ -335,12 +343,14 @@
 		dbHydrateEnabled = true;
 		dbErrorMessage = null;
 		let cancelled = false;
-		const shouldResetOnBootstrap = bootstrappedSessionDbAttemptId !== attemptId;
-		void bootstrapSessionDemoDb(shouldResetOnBootstrap)
-			.then(() => {
-				if (cancelled) return;
-				bootstrappedSessionDbAttemptId = attemptId;
-			})
+		// Never force a DB reset on cold mount: the Student/Scorer toggle (and any
+		// other navigation) is a full page reload, so any in-memory "already
+		// bootstrapped this attempt" flag is wiped before this effect runs and a
+		// reset would clobber the student's saved answers. The server's
+		// seedIfNeeded(reset=false) path already seeds empty snapshots when the
+		// attempt is new and leaves existing snapshots alone. Explicit reset paths
+		// (resetServerDb / resetSessions) pass reset=true themselves.
+		void bootstrapSessionDemoDb(false)
 			.catch((error) => {
 				if (cancelled) return;
 				dbErrorMessage = error instanceof Error ? error.message : String(error);
@@ -351,14 +361,14 @@
 	});
 
 	$effect(() => {
-		if (!browser || !attemptId) return;
+		if (!browser || !routerReady || !attemptId) return;
 		const url = new URL(window.location.href);
 		const existingAttemptId = url.searchParams.get(ATTEMPT_QUERY_PARAM);
 		const existingLayout = url.searchParams.get('layout');
 		if (existingAttemptId === attemptId && existingLayout === layoutType) return;
 		url.searchParams.set(ATTEMPT_QUERY_PARAM, attemptId);
 		url.searchParams.set('layout', layoutType);
-		window.history.replaceState({}, '', url.toString());
+		replaceState(url, {});
 	});
 
 	$effect(() => {

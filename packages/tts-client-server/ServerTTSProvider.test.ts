@@ -131,6 +131,10 @@ describe("ServerTTSProvider", () => {
 			endpointMode: "rootPost",
 			authToken: "token-123",
 			includeAuthOnAssetFetch: true,
+			assetOrigins: [
+				"https://tts.custom.example",
+				"https://cdn.custom.example",
+			],
 			language: "en-US",
 			rate: 1.5,
 			providerOptions: { cache: true },

@@ -17,9 +17,6 @@
 			// Local runtime contracts (passed as JS properties, not attributes)
 			scopeElement: { type: 'Object', reflect: false },
 			toolRegistry: { type: 'Object', reflect: false },
-			pnpResolver: { type: 'Object', reflect: false },
-			assessment: { type: 'Object', reflect: false },
-			itemRef: { type: 'Object', reflect: false },
 			item: { type: 'Object', reflect: false },
 			hostButtons: { type: 'Object', reflect: false }
 		}
@@ -30,8 +27,17 @@
   ItemToolBar - Inline toolbar for item/passage headers
 
   Button visibility is always registry-driven:
-  - Pass 1: allowed tool IDs (PNP resolver when available, otherwise explicit tools prop)
-  - Pass 2: tool-owned isVisibleInContext(context)
+  - Pass 1: ToolkitCoordinator.decideToolPolicy(...) — placement,
+    policy.allowed/blocked, provider veto, QTI gates, and registered
+    custom PolicySources are all applied inside the ToolPolicyEngine.
+    The legacy `pnpResolver` / `assessment` / `itemRef` props were
+    removed in M8 PR 3; hosts that need to drive QTI inputs should
+    bind `assessment` / `currentItemRef` on the parent
+    `pie-assessment-toolkit` element instead.
+  - Pass 2: tool-owned isVisibleInContext(context) — relevance gate,
+    e.g. "show calculator only when math content is present". Lives
+    at the toolbar boundary by design (engine doesn't import tool
+    registry render context).
 -->
 <script lang="ts">
 	import {
@@ -56,17 +62,15 @@
 		isValidToolbarItemShape,
 		type ToolbarItem
 	} from '../services/toolbar-items.js';
-	import type { PnpToolResolver } from '../services/PNPToolResolver.js';
+	import { sanitizeSvgIcon } from '@pie-players/pie-players-shared/security';
+	import { createFocusTrap } from '@pie-players/pie-players-shared';
 	import { createPackagedToolRegistry } from '../services/createDefaultToolRegistry.js';
 	import { DEFAULT_TOOL_MODULE_LOADERS } from '../tools/default-tool-module-loaders.js';
-	import {
-		normalizeToolsConfig,
-		parseToolList,
-		resolveToolsForLevel,
-	} from '../services/tools-config-normalizer.js';
+	import { parseToolList } from '../services/tools-config-normalizer.js';
 	import { createScopedToolId, parseScopedToolId } from '../services/tool-instance-id.js';
-	import type { AssessmentEntity, AssessmentItemRef, ItemEntity } from '@pie-players/pie-players-shared/types';
+	import type { AssessmentItemRef, AssessmentEntity, ItemEntity } from '@pie-players/pie-players-shared/types';
 	import type { ElementToolContext, ItemToolContext, ToolLevel, ToolContext } from '../services/tool-context.js';
+	import type { ToolPolicyDecision } from '../policy/engine.js';
 
 	const isBrowser = typeof window !== 'undefined';
 	const fallbackToolRegistry = createPackagedToolRegistry({
@@ -87,9 +91,6 @@
 		position = 'bottom' as 'top' | 'right' | 'bottom' | 'left' | 'none',
 		scopeElement = null,
 		toolRegistry = null,
-		pnpResolver = null,
-		assessment = null,
-		itemRef = null,
 		item = null,
 		hostButtons = [] as ToolbarItem[],
 		class: className = '',
@@ -106,9 +107,6 @@
 		position?: 'top' | 'right' | 'bottom' | 'left' | 'none';
 		scopeElement?: HTMLElement | null;
 		toolRegistry?: ToolRegistry | null;
-		pnpResolver?: PnpToolResolver | null;
-		assessment?: AssessmentEntity | null;
-		itemRef?: AssessmentItemRef | null;
 		item?: ItemEntity | null;
 		hostButtons?: ToolbarItem[];
 		class?: string;
@@ -120,6 +118,13 @@
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
 	let shellContext = $state<AssessmentToolkitShellContext | null>(null);
 	let moduleLoadVersion = $state(0);
+	// Bumped from `coordinator.onPolicyChange(...)` so the engine-driven
+	// `policyDecision` / `policyInputs` derivations rerun on input
+	// changes (`updateAssessment`, `setQtiEnforcement`, custom source
+	// register / remove). The decision itself is computed by the
+	// coordinator's policy engine — this counter is just the reactive
+	// fanout that lets Svelte know the engine answer may have changed.
+	let policyChangeVersion = $state(0);
 
 	$effect(() => {
 		if (!toolbarRootElement) return;
@@ -133,6 +138,22 @@
 		return connectAssessmentToolkitShellContext(toolbarRootElement, (value) => {
 			shellContext = value;
 		});
+	});
+
+	$effect(() => {
+		const coord = runtimeContext?.toolkitCoordinator;
+		if (!coord || typeof coord.onPolicyChange !== 'function') return;
+		const unsubscribe = coord.onPolicyChange(() => {
+			policyChangeVersion += 1;
+		});
+		return () => {
+			try {
+				unsubscribe?.();
+			} catch {
+				// detach errors are non-fatal: the coordinator may already
+				// be torn down, in which case the listener set is GC-eligible.
+			}
+		};
 	});
 
 	const effectiveToolCoordinator = $derived(runtimeContext?.toolCoordinator);
@@ -164,57 +185,64 @@
 	const normalizedExplicitTools = $derived(
 		effectiveToolRegistry.normalizeToolIds(explicitTools).filter(Boolean)
 	);
-	const effectiveToolsConfig = $derived.by(() => {
-		const coordinatorConfig = runtimeContext?.toolkitCoordinator?.config?.tools as any;
-		return normalizeToolsConfig(coordinatorConfig || {});
-	});
-	const placementLevel = $derived.by(() => {
+	const placementLevel = $derived.by((): 'section' | 'item' | 'passage' => {
 		if (effectiveLevel === 'section') return 'section';
 		if (effectiveLevel === 'passage' || effectiveContentKind === 'rubric-block-stimulus') return 'passage';
 		return 'item';
 	});
-	const placementAllowedToolIds = $derived.by(() => {
-		const resolved = resolveToolsForLevel(effectiveToolsConfig, placementLevel);
-		return effectiveToolRegistry.normalizeToolIds(resolved).filter(Boolean);
-	});
-	const providerConfig = $derived(
-		(effectiveToolsConfig?.providers || {}) as Record<
-			string,
-			{ enabled?: boolean } | undefined
-		>
-	);
-	const normalizedProviderConfig = $derived.by(() => {
-		const normalized: Record<string, { enabled?: boolean } | undefined> = {};
-		for (const [toolId, config] of Object.entries(providerConfig)) {
-			const canonicalToolId = effectiveToolRegistry.normalizeToolId(toolId);
-			if (!canonicalToolId) continue;
-			normalized[canonicalToolId] = config;
-		}
-		return normalized;
-	});
-	const isProviderEnabled = (toolId: string): boolean =>
-		normalizedProviderConfig[toolId]?.enabled !== false;
 
-	// Pass 1: determine allowed tools
-	const allowedToolIds = $derived.by(() => {
-		const configuredTools =
-			normalizedExplicitTools.length > 0 ? normalizedExplicitTools : placementAllowedToolIds;
-		const providerEnabledConfiguredTools = configuredTools.filter((toolId) =>
-			isProviderEnabled(toolId)
-		);
-		const dedupe = (toolIds: string[]): string[] => Array.from(new Set(toolIds));
-		if (pnpResolver && assessment && itemRef) {
-			const allowedByPnp = dedupe(
-				effectiveToolRegistry.normalizeToolIds(
-					pnpResolver.getAllowedToolIds(assessment, itemRef)
-				)
-			).filter(Boolean);
-			if (providerEnabledConfiguredTools.length === 0) return allowedByPnp;
-			return dedupe(allowedByPnp.filter((toolId) =>
-				providerEnabledConfiguredTools.includes(toolId)
-			));
+	// Pass 1 — single source of truth via the ToolPolicyEngine
+	// (M8 PR 3). When the toolbar is mounted under
+	// `<pie-assessment-toolkit>` the coordinator owns the engine and
+	// applies `placement → policy.allowed → policy.blocked →
+	// providers → QTI` plus any custom `PolicySource`s the host has
+	// registered. The toolbar trusts that decision verbatim — the
+	// `tools=` prop is *not* applied as a downstream filter.
+	//
+	// The `tools=` attribute is only consulted in the standalone
+	// fallback path (no coordinator in scope, e.g. fixtures that
+	// mount `<pie-item-toolbar>` directly). Hosts that want to
+	// restrict the engine's visible set should configure
+	// `tools.policy` / `tools.providers` on the assessment-toolkit
+	// inputs, or register a custom `PolicySource`, rather than
+	// passing `tools=` here.
+	const policyDecision = $derived.by((): ToolPolicyDecision | null => {
+		// Read `policyChangeVersion` so we re-derive whenever the
+		// coordinator emits a policy change (assessment binding,
+		// QTI enforcement override, custom source registration).
+		void policyChangeVersion;
+		const coord = runtimeContext?.toolkitCoordinator;
+		if (!coord || typeof coord.decideToolPolicy !== 'function') {
+			return null;
 		}
-		return dedupe(providerEnabledConfiguredTools);
+		return coord.decideToolPolicy({
+			level: placementLevel,
+			scope: {
+				level: effectiveLevel,
+				scopeId: effectiveScopeId,
+				assessmentId: runtimeContext?.assessmentId,
+				sectionId: effectiveSectionId || undefined,
+				itemId: effectiveItemId || undefined,
+				canonicalItemId: effectiveCanonicalItemId || undefined,
+				contentKind: effectiveContentKind,
+			},
+		});
+	});
+	const allowedToolIds = $derived.by((): string[] => {
+		const dedupe = (toolIds: string[]): string[] => Array.from(new Set(toolIds));
+		if (policyDecision) {
+			return dedupe(
+				effectiveToolRegistry
+					.normalizeToolIds(
+						policyDecision.visibleTools.map((entry) => entry.toolId),
+					)
+					.filter(Boolean),
+			);
+		}
+		// Standalone fallback: no coordinator in scope. Honour the
+		// explicit `tools=` prop verbatim so demo fixtures keep
+		// working without a `<pie-assessment-toolkit>` ancestor.
+		return dedupe(normalizedExplicitTools);
 	});
 
 	const contentReady = $derived.by(() => {
@@ -223,18 +251,35 @@
 		return !!(effectiveItem && config && typeof config === 'object');
 	});
 
+	// QTI inputs (`assessment`, `currentItemRef`) live on the
+	// coordinator after M8 PR 2; the toolbar reads them through
+	// `getPolicyInputs()` so it can build the correct Pass-2 context
+	// without re-binding props. Standalone (no-coordinator) usage
+	// falls back to the empty / canonical-id-derived contexts that
+	// satisfy the `ToolContext` shape for `isVisibleInContext` calls.
+	const policyInputs = $derived.by(() => {
+		void policyChangeVersion;
+		const coord = runtimeContext?.toolkitCoordinator;
+		if (!coord || typeof coord.getPolicyInputs !== 'function') {
+			return null;
+		}
+		return coord.getPolicyInputs();
+	});
+	const effectiveAssessment = $derived(policyInputs?.assessment ?? null);
+	const effectiveItemRef = $derived(policyInputs?.currentItemRef ?? null);
+
 	const toolContext = $derived.by((): ItemToolContext | null => {
 		if (effectiveLevel === 'section') {
 			return {
 				level: 'section',
-				assessment: (assessment || {}) as AssessmentEntity,
+				assessment: (effectiveAssessment || {}) as AssessmentEntity,
 				section: {} as any
 			} as ToolContext as ItemToolContext;
 		}
 		if (effectiveLevel === 'assessment') {
 			return {
 				level: 'assessment',
-				assessment: (assessment || {}) as AssessmentEntity
+				assessment: (effectiveAssessment || {}) as AssessmentEntity
 			} as ToolContext as ItemToolContext;
 		}
 		if (!contentReady || !effectiveItem) {
@@ -243,15 +288,15 @@
 		if (effectiveLevel === 'passage') {
 			return {
 				level: 'passage',
-				assessment: (assessment || {}) as AssessmentEntity,
-				itemRef: (itemRef || ({ id: effectiveCanonicalItemId } as AssessmentItemRef)) as AssessmentItemRef,
+				assessment: (effectiveAssessment || {}) as AssessmentEntity,
+				itemRef: (effectiveItemRef || ({ id: effectiveCanonicalItemId } as AssessmentItemRef)) as AssessmentItemRef,
 				passage: effectiveItem as any
 			} as ToolContext as ItemToolContext;
 		}
 		return {
 			level: 'item',
-			assessment: (assessment || {}) as AssessmentEntity,
-			itemRef: (itemRef || ({ id: effectiveCanonicalItemId } as AssessmentItemRef)) as AssessmentItemRef,
+			assessment: (effectiveAssessment || {}) as AssessmentEntity,
+			itemRef: (effectiveItemRef || ({ id: effectiveCanonicalItemId } as AssessmentItemRef)) as AssessmentItemRef,
 			item: effectiveItem as ItemEntity
 		} as ToolContext as ItemToolContext;
 	});
@@ -260,8 +305,8 @@
 		if (toolContext) return toolContext;
 		return {
 			level: 'item',
-			assessment: (assessment || {}) as AssessmentEntity,
-			itemRef: (itemRef || ({ id: effectiveCanonicalItemId } as AssessmentItemRef)) as AssessmentItemRef,
+			assessment: (effectiveAssessment || {}) as AssessmentEntity,
+			itemRef: (effectiveItemRef || ({ id: effectiveCanonicalItemId } as AssessmentItemRef)) as AssessmentItemRef,
 			item: ((effectiveItem as ItemEntity | null) || ({ id: effectiveCanonicalItemId, config: {} } as ItemEntity)) as ItemEntity
 		} as ToolContext;
 	});
@@ -279,8 +324,8 @@
 			.filter((model: any) => model && typeof model === 'object' && typeof model.id === 'string')
 			.map((model: any) => ({
 				level: 'element' as const,
-				assessment: (assessment || {}) as AssessmentEntity,
-				itemRef: (itemRef || ({ id: effectiveCanonicalItemId } as AssessmentItemRef)) as AssessmentItemRef,
+				assessment: (effectiveAssessment || {}) as AssessmentEntity,
+				itemRef: (effectiveItemRef || ({ id: effectiveCanonicalItemId } as AssessmentItemRef)) as AssessmentItemRef,
 				item: effectiveItem as ItemEntity,
 				elementId: model.id as string
 			}));
@@ -584,14 +629,32 @@
 		syncRenderedToolsState();
 		for (const renderedTool of renderedTools) {
 			if (renderedTool.subscribeActive) {
+				let disposed = false;
 				const unsubscribe = renderedTool.subscribeActive((active) => {
-					activeToolState = {
-						...activeToolState,
-						[renderedTool.toolId]: active
-					};
-					renderedTool.sync?.();
+					// Tools may dispatch their active-change signal from inside
+					// a tracked Svelte $effect (e.g. tool-tts-inline does this
+					// on mount). When the toolbar synchronously creates / re-
+					// connects the tool element during its own template/
+					// derivation pass — for example when the section player
+					// collapses on resize — that dispatch lands back here while
+					// our parent derivation is still running, and Svelte
+					// rejects the `activeToolState` write with
+					// `state_unsafe_mutation`. Queue the update on a
+					// microtask so the mutation happens after the current
+					// reactive flush settles.
+					queueMicrotask(() => {
+						if (disposed) return;
+						activeToolState = {
+							...activeToolState,
+							[renderedTool.toolId]: active
+						};
+						renderedTool.sync?.();
+					});
 				});
-				unsubs.push(unsubscribe);
+				unsubs.push(() => {
+					disposed = true;
+					unsubscribe();
+				});
 			}
 		}
 
@@ -602,9 +665,22 @@
 
 	$effect(() => {
 		if (!toolbarContext.subscribeVisibility) return;
-		return toolbarContext.subscribeVisibility(() => {
-			syncRenderedToolsState();
+		let disposed = false;
+		const unsubscribe = toolbarContext.subscribeVisibility(() => {
+			// Defense-in-depth: defer the state write so a synchronous
+			// visibility broadcast from the coordinator never lands inside
+			// an active parent derivation/template flush. See the
+			// `subscribeActive` handler above for the failure mode this
+			// pattern prevents.
+			queueMicrotask(() => {
+				if (disposed) return;
+				syncRenderedToolsState();
+			});
 		});
+		return () => {
+			disposed = true;
+			unsubscribe?.();
+		};
 	});
 
 	$effect(() => {
@@ -612,12 +688,24 @@
 			| { subscribeTelemetry?: (listener: (args: { eventName?: string; payload?: { toolId?: string } }) => void) => () => void }
 			| null;
 		if (typeof toolkitCoordinator?.subscribeTelemetry !== 'function') return;
-		return toolkitCoordinator.subscribeTelemetry(({ eventName, payload }) => {
-			if (eventName !== 'tool-config-updated') return;
+		let disposed = false;
+		const unsubscribe = toolkitCoordinator.subscribeTelemetry(({ eventName, payload }) => {
+			if (eventName !== 'pie-toolkit-tool-config-updated') return;
 			if (payload?.toolId && !toolbarVisibleToolIds.includes(payload.toolId)) return;
-			moduleLoadVersion += 1;
-			syncRenderedToolsState();
+			// Defense-in-depth: telemetry can be emitted from anywhere in
+			// the toolkit lifecycle, including paths that flush
+			// synchronously while this component's deriveds are running.
+			// Defer the writes so the parent flush always settles first.
+			queueMicrotask(() => {
+				if (disposed) return;
+				moduleLoadVersion += 1;
+				syncRenderedToolsState();
+			});
 		});
+		return () => {
+			disposed = true;
+			unsubscribe?.();
+		};
 	});
 
 	function mountElement(node: HTMLSpanElement, element: HTMLElement | null) {
@@ -685,6 +773,9 @@
 		let y = 0;
 		let width = currentArgs.mounted.entry.shell?.initialWidth ?? 720;
 		let height = currentArgs.mounted.entry.shell?.initialHeight ?? 560;
+		let focusTrapCleanup: (() => void) | null = null;
+		let openerEl: HTMLElement | null = null;
+		let previousActive = false;
 		const invokeElementUnmount = (value: HTMLElement | null) => {
 			if (!value) return;
 			const callback = (value as unknown as { [key: string]: unknown })[
@@ -851,6 +942,61 @@
 			applyPositionAndSize();
 		};
 
+		const restoreOpenerFocus = () => {
+			const target = openerEl;
+			if (!target) return;
+			queueMicrotask(() => {
+				if (!target.isConnected) return;
+				try {
+					target.focus();
+				} catch {
+					// ignore
+				}
+			});
+		};
+
+		const getDeepActiveElement = (): HTMLElement | null => {
+			if (typeof document === 'undefined') return null;
+			let active: Element | null = document.activeElement;
+			while (active) {
+				const root = (active as Element & { shadowRoot?: ShadowRoot | null }).shadowRoot;
+				if (root && root.activeElement && root.activeElement !== active) {
+					active = root.activeElement;
+				} else {
+					break;
+				}
+			}
+			return (active as HTMLElement | null) ?? null;
+		};
+
+		const installFocusTrap = () => {
+			if (!shellEl || focusTrapCleanup) return;
+			const active = getDeepActiveElement();
+			// Only update opener if we don't already have one (survives re-open within a
+			// single mount lifecycle) and the active element isn't inside the shell itself.
+			if (!openerEl && active && !shellEl.contains(active)) {
+				openerEl = active;
+			}
+			focusTrapCleanup = createFocusTrap(shellEl, {
+				initialFocus: closeButtonEl,
+				onEscape: () => {
+					closeShell();
+				}
+			});
+		};
+
+		const removeFocusTrap = () => {
+			if (!focusTrapCleanup) return;
+			const cleanup = focusTrapCleanup;
+			focusTrapCleanup = null;
+			try {
+				cleanup();
+			} catch {
+				// ignore
+			}
+			restoreOpenerFocus();
+		};
+
 		const closeShell = () => {
 			toolbarContext.toggleTool(currentArgs.mounted.toolId);
 			syncRenderedToolsState();
@@ -987,16 +1133,25 @@
 			closeButtonEl.type = 'button';
 			closeButtonEl.className = 'pie-tool-shell__close';
 			closeButtonEl.setAttribute('aria-label', 'Close tool');
-			closeButtonEl.innerHTML =
-				'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 3.5L12.5 12.5M12.5 3.5L3.5 12.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
-			const closeIconEl = closeButtonEl.querySelector('svg');
-			if (closeIconEl) {
-				closeIconEl.style.width = '16px';
-				closeIconEl.style.height = '16px';
-				closeIconEl.style.display = 'block';
-				closeIconEl.style.flexShrink = '0';
-				closeIconEl.style.pointerEvents = 'none';
-			}
+			const svgNs = 'http://www.w3.org/2000/svg';
+			const closeIconEl = document.createElementNS(svgNs, 'svg');
+			closeIconEl.setAttribute('xmlns', svgNs);
+			closeIconEl.setAttribute('viewBox', '0 0 16 16');
+			closeIconEl.setAttribute('aria-hidden', 'true');
+			const closeIconPath = document.createElementNS(svgNs, 'path');
+			closeIconPath.setAttribute('d', 'M3.5 3.5L12.5 12.5M12.5 3.5L3.5 12.5');
+			closeIconPath.setAttribute('stroke', 'currentColor');
+			closeIconPath.setAttribute('stroke-width', '1.8');
+			closeIconPath.setAttribute('stroke-linecap', 'round');
+			closeIconEl.appendChild(closeIconPath);
+			closeButtonEl.appendChild(closeIconEl);
+			// SVGElement.style exists but is readonly in DOM types; cast once.
+			const closeIconStyle = (closeIconEl as unknown as HTMLElement).style;
+			closeIconStyle.width = '16px';
+			closeIconStyle.height = '16px';
+			closeIconStyle.display = 'block';
+			closeIconStyle.flexShrink = '0';
+			closeIconStyle.pointerEvents = 'none';
 			const closeButtonBaseBackground =
 				'color-mix(in srgb, var(--pie-white, #fff) 8%, transparent)';
 			const closeButtonHoverBackground =
@@ -1106,6 +1261,10 @@
 			applyShellStyle();
 			mountContent();
 			notifyHostedResize();
+			if (currentArgs.active) {
+				installFocusTrap();
+			}
+			previousActive = currentArgs.active;
 		}
 
 		return {
@@ -1118,9 +1277,20 @@
 				mountContent();
 				applyShellStyle();
 				notifyHostedResize();
+				if (!previousActive && currentArgs.active) {
+					installFocusTrap();
+				} else if (previousActive && !currentArgs.active) {
+					removeFocusTrap();
+					openerEl = null;
+				}
+				previousActive = currentArgs.active;
 			},
 			destroy() {
 				notifyHostedUnmount();
+				if (focusTrapCleanup) {
+					removeFocusTrap();
+				}
+				openerEl = null;
 				if (resizeHandleEl) {
 					resizeHandleEl.removeEventListener('pointerdown', onResizePointerDown);
 				}
@@ -1192,13 +1362,13 @@
 					>
 						{#if item.icon}
 							{#if isInlineSvgIcon(item.icon)}
-								{@html item.icon}
+								<span aria-hidden="true">{@html sanitizeSvgIcon(item.icon)}</span>
 							{:else if isExternalIconUrl(item.icon)}
 								<img class="item-toolbar__icon-image" src={item.icon} alt="" />
 							{:else}
 								{@const fallbackIcon = getFallbackIconSvg(item.icon)}
 								{#if fallbackIcon}
-									{@html fallbackIcon}
+									<span aria-hidden="true">{@html sanitizeSvgIcon(fallbackIcon)}</span>
 								{:else}
 									<i class={`icon icon-${item.icon}`} aria-hidden="true"></i>
 								{/if}
@@ -1218,13 +1388,13 @@
 					>
 						{#if item.icon}
 							{#if isInlineSvgIcon(item.icon)}
-								{@html item.icon}
+								<span aria-hidden="true">{@html sanitizeSvgIcon(item.icon)}</span>
 							{:else if isExternalIconUrl(item.icon)}
 								<img class="item-toolbar__icon-image" src={item.icon} alt="" />
 							{:else}
 								{@const fallbackIcon = getFallbackIconSvg(item.icon)}
 								{#if fallbackIcon}
-									{@html fallbackIcon}
+									<span aria-hidden="true">{@html sanitizeSvgIcon(fallbackIcon)}</span>
 								{:else}
 									<i class={`icon icon-${item.icon}`} aria-hidden="true"></i>
 								{/if}

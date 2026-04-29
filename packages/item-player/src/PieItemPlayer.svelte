@@ -19,7 +19,10 @@
 			mode: { attribute: "mode", type: "String" },
 			configuration: { attribute: "configuration", type: "Object" },
 			authoringBackend: { attribute: "authoring-backend", type: "String" },
+			allowedStyleOrigins: { attribute: "allowed-style-origins", type: "String" },
 			loaderOptions: { type: "Object", reflect: false },
+			trustMarkup: { attribute: "trust-markup", type: "Boolean" },
+			sanitizeMarkup: { type: "Object", reflect: false },
 			onInsertImage: { type: "Object", reflect: false },
 			onDeleteImage: { type: "Object", reflect: false },
 			onInsertSound: { type: "Object", reflect: false },
@@ -32,7 +35,14 @@
 	import type {
 		ConfigEntity,
 		Env,
+		IifeBundleRetryStatus,
+		ItemMarkupSanitizer,
 		LoaderConfig,
+	} from "@pie-players/pie-players-shared";
+	import {
+		focusFirstFocusableInElement,
+		parseAllowedStyleOrigins,
+		validateExternalStyleUrl,
 	} from "@pie-players/pie-players-shared";
 	import type {
 		AuthoringBackendMode,
@@ -43,12 +53,12 @@
 	import {
 		BundleType,
 		assertPieConfigContract,
+		assertRegistered,
 		createPieLogger,
 		DEFAULT_BUNDLE_HOST,
 		DEFAULT_LOADER_CONFIG,
-		EsmPieLoader,
+		ensureRegistered,
 		hasResponseValue,
-		IifePieLoader,
 		ItemController,
 		isGlobalDebugEnabled,
 		initializeMathRendering,
@@ -57,7 +67,12 @@
 		normalizeItemSessionContainer,
 		normalizeItemPlayerStrategy,
 		parsePackageName,
+		resolveInstrumentationProvider,
 		resolveItemPlayerView,
+	} from "@pie-players/pie-players-shared";
+	import type {
+		EsmBackendConfig,
+		IifeBackendConfig,
 	} from "@pie-players/pie-players-shared";
 	import { PieItemPlayer as PieItemRenderer, PieSpinner } from "@pie-players/pie-players-shared/components";
 	import { tick, untrack } from "svelte";
@@ -77,7 +92,8 @@
 		esmCdnUrl?: string;
 		view?: string;
 		loadControllers?: boolean;
-		allowPreloadedFallbackLoad?: boolean;
+		moduleResolution?: "url" | "import-map";
+		runtimeSupportCheck?: "off" | "on";
 	};
 
 	let {
@@ -96,7 +112,10 @@
 		mode = "view" as "view" | "author",
 		configuration = {} as Record<string, any>,
 		authoringBackend = "demo" as AuthoringBackendMode,
+		allowedStyleOrigins = "",
 		loaderOptions = {} as UnifiedLoaderOptions,
+		trustMarkup = false,
+		sanitizeMarkup = null as ItemMarkupSanitizer | null,
 		onInsertImage = null as ((handler: ImageHandler) => void) | null,
 		onDeleteImage = null as ((src: string, done: DeleteDone) => void) | null,
 		onInsertSound = null as ((handler: SoundHandler) => void) | null,
@@ -112,6 +131,133 @@
 	const resolvedEsmCdnUrl = $derived(
 		loaderOptions?.esmCdnUrl || "https://cdn.jsdelivr.net/npm",
 	);
+	const loaderRetrySignature = $derived.by(() =>
+		JSON.stringify(loaderConfig?.iifeBundleRetry || {}),
+	);
+	const RUNTIME_SUPPORT_NEGATIVE_CACHE_MS = 30_000;
+	const runtimeSupportCache = new Map<
+		string,
+		{
+			schemaVersion?: number;
+			supports?: Partial<
+				Record<"esm" | "iife", Partial<Record<"delivery" | "author" | "print", boolean>>>
+			>;
+		}
+	>();
+	const runtimeSupportMissingCache = new Map<string, number>();
+
+	function normalizeRuntimeSupportCheck(
+		value: unknown,
+		fallback: "off" | "on" = "off",
+	): "off" | "on" {
+		if (value === "off" || value === "on") {
+			return value;
+		}
+		return fallback;
+	}
+
+	function resolveRuntimeSupportUrl(packageVersion: string): string {
+		const isJsDelivr = resolvedEsmCdnUrl.includes("cdn.jsdelivr.net/npm");
+		if (isJsDelivr) {
+			return `${resolvedEsmCdnUrl}/${packageVersion}/runtime-support/+esm`;
+		}
+		return `${resolvedEsmCdnUrl}/${packageVersion}/runtime-support`;
+	}
+
+	function isStrategySupportedForView(
+		runtimeSupport: {
+			supports?: Partial<
+				Record<"esm" | "iife", Partial<Record<"delivery" | "author" | "print", boolean>>>
+			>;
+		},
+		strategy: "esm" | "iife",
+		view: "delivery" | "author" | "print",
+	): boolean {
+		const strategyMap = runtimeSupport.supports?.[strategy];
+		if (!strategyMap) return true;
+		const value = strategyMap[view];
+		if (value === undefined) return true;
+		return value;
+	}
+
+	function classifyRuntimeSupportMissing(error: unknown): boolean {
+		const message = String(error || "").toLowerCase();
+		return (
+			message.includes("cannot find module") ||
+			message.includes("failed to fetch dynamically imported module") ||
+			message.includes("404") ||
+			message.includes("runtime-support")
+		);
+	}
+
+	async function resolveRuntimeSupportForPackage(
+		packageVersion: string,
+		mode: "off" | "on",
+	): Promise<
+		| {
+				schemaVersion?: number;
+				supports?: Partial<
+					Record<"esm" | "iife", Partial<Record<"delivery" | "author" | "print", boolean>>>
+				>;
+		  }
+		| undefined
+	> {
+		if (mode !== "on") {
+			return undefined;
+		}
+		const key = packageVersion;
+		const cached = runtimeSupportCache.get(key);
+		if (cached) {
+			return cached;
+		}
+		const missingAt = runtimeSupportMissingCache.get(key);
+		if (missingAt && Date.now() - missingAt < RUNTIME_SUPPORT_NEGATIVE_CACHE_MS) {
+			return undefined;
+		}
+		try {
+			// @vite-ignore
+			const module = await import(/* @vite-ignore */ resolveRuntimeSupportUrl(packageVersion));
+			const runtimeSupport = module.default || module.runtimeSupport || module;
+			if (!runtimeSupport || typeof runtimeSupport !== "object") {
+				throw new Error(`Invalid runtime-support export for ${packageVersion}`);
+			}
+			runtimeSupportCache.set(key, runtimeSupport);
+			runtimeSupportMissingCache.delete(key);
+			return runtimeSupport;
+		} catch (error) {
+			if (classifyRuntimeSupportMissing(error)) {
+				runtimeSupportMissingCache.set(key, Date.now());
+				return undefined;
+			}
+			return undefined;
+		}
+	}
+
+	async function collectRuntimeSupportHints(
+		elements: Record<string, string>,
+		strategy: "iife" | "esm" | "preloaded",
+		view: "delivery" | "author" | "print",
+		mode: "off" | "on",
+	): Promise<{ unsupportedPackages: string[] }> {
+		if (mode !== "on") return { unsupportedPackages: [] };
+		const strategyForChecks: "esm" | "iife" =
+			strategy === "iife" || strategy === "preloaded" ? "iife" : "esm";
+		const unsupportedPackages: string[] = [];
+
+		for (const packageVersion of Object.values(elements || {})) {
+			const runtimeSupport = await resolveRuntimeSupportForPackage(packageVersion, mode);
+			if (!runtimeSupport) {
+				continue;
+			}
+			const supported = isStrategySupportedForView(runtimeSupport, strategyForChecks, view);
+			if (supported) {
+				continue;
+			}
+			const { name } = parsePackageName(packageVersion);
+			unsupportedPackages.push(name);
+		}
+		return { unsupportedPackages };
+	}
 
 	const debugEnabled = $derived.by(() => {
 		if (debug !== undefined && debug !== null) {
@@ -132,15 +278,48 @@
 	});
 
 	const logger = createPieLogger("pie-item-player", () => debugEnabled);
+	const resolvedInstrumentationProvider = $derived.by(
+		() =>
+			resolveInstrumentationProvider({
+				player: { loaderConfig },
+				component: "pie-item-player",
+				debug: debugEnabled,
+			}) as LoaderConfig["instrumentationProvider"],
+	);
 
 	let loading = $state(true);
 	let error: string | null = $state(null);
+	let bundleRetryStatus: IifeBundleRetryStatus | null = $state(null);
 	let itemConfig: ConfigEntity | null = $state(null);
 	let hostElement: HTMLElement | null = $state(null);
 	let sessionController: ItemController | null = $state(null);
 	let sessionControllerItemId = $state("pie-item-player");
 	let sessionSignature = $state("");
 	let sessionRevision = $state(0);
+	let latestLoadRequestToken = 0;
+
+	function beginLoadRequest(): number {
+		latestLoadRequestToken += 1;
+		return latestLoadRequestToken;
+	}
+
+	function isCurrentLoadRequest(requestToken: number): boolean {
+		return requestToken === latestLoadRequestToken;
+	}
+
+	const bundleBuildWarning = $derived.by(() => {
+		const retryState = (bundleRetryStatus as { state?: string } | null)?.state;
+		if (!bundleRetryStatus || retryState !== "retrying") return null;
+		const elapsedSeconds = Math.max(
+			1,
+			Math.ceil(bundleRetryStatus.elapsedMs / 1000),
+		);
+		const timeoutSeconds = Math.max(
+			1,
+			Math.ceil(bundleRetryStatus.timeoutMs / 1000),
+		);
+		return `Bundle is still building. Retrying load attempt ${bundleRetryStatus.attempt} (elapsed ${elapsedSeconds}s of ${timeoutSeconds}s).`;
+	});
 
 	function parseSessionProp(input: unknown): unknown {
 		if (typeof input === "string") {
@@ -220,32 +399,15 @@
 	});
 	const scopeClass = $derived((customClassName || fallbackScopeClass).trim());
 
+	// Dedup of the last successfully-processed inputs. The deep ElementLoader
+	// primitive also deduplicates concurrent identical requests internally,
+	// so this guard exists purely to skip the outer pipeline (config parsing,
+	// transform, runtime-support, etc.) when the effect re-fires with the
+	// same props. It does not gate readiness.
 	let lastProcessedConfig: any = null;
 	let lastProcessedStrategy = "";
 	let lastProcessedMode = "";
-	let isProcessing = false;
-
-	function shouldAutoSkipElementLoading(configEntity: any): boolean {
-		if (normalizedStrategy !== "preloaded") return false;
-		if (!isBrowser) return false;
-
-		return (
-			!!configEntity?.elements &&
-			Object.keys(configEntity.elements).length > 0 &&
-			Object.keys(configEntity.elements).every((tagName) =>
-				typeof customElements.get(tagName) === "function",
-			)
-		);
-	}
-
-	function getMissingCustomElementTags(configEntity: any): string[] {
-		if (!configEntity?.elements || typeof configEntity.elements !== "object") {
-			return [];
-		}
-		return Object.keys(configEntity.elements).filter(
-			(tagName) => typeof customElements.get(tagName) !== "function",
-		);
-	}
+	let lastProcessedLoaderRetrySignature = "";
 
 	function normalizePreloadedElementVersions(configEntity: any): any {
 		if (!isBrowser || normalizedStrategy !== "preloaded") return configEntity;
@@ -290,30 +452,134 @@
 		};
 	}
 
+	// ─── loadConfig pipeline ─────────────────────────────────────────────────
+	//
+	// The pipeline is a sequence of pure transforms over `(config, env,
+	// strategy, loaderOptions)` producing `(resolvedConfig | error)`.
+	//
+	//     parse → validate → normalizePreloaded → makeUniqueTags
+	//       → collectRuntimeSupportHints → initializeMathRendering
+	//       → (preloaded: assertRegistered | iife|esm: ensureRegistered)
+	//       → setItemConfig
+	//
+	// The deep ElementLoader primitive owns registration truth end-to-end
+	// and deduplicates concurrent identical requests, so this function no
+	// longer needs:
+	//   - an `isProcessing` guard (the primitive already deduplicates)
+	//   - an `allowPreloadedFallbackLoad` escape hatch (preloaded means
+	//     "host pre-registered; assert loudly or throw")
+	//   - a manual "all elements already registered" shortcut (the primitive
+	//     short-circuits when every tag is in `customElements` already)
+
+	function resolveBundleType(): BundleType {
+		if (resolvedMode === "author") return BundleType.editor;
+		return hosted ? BundleType.player : BundleType.clientPlayer;
+	}
+
+	function buildIifeBackendConfig(
+		bundleType: BundleType,
+		requestToken: number,
+	): IifeBackendConfig {
+		const needsControllers = bundleType !== BundleType.editor && !hosted;
+		return {
+			kind: "iife",
+			bundleHost: resolvedIifeBundleHost,
+			bundleType,
+			needsControllers,
+			debugEnabled: () => debugEnabled,
+			bundleRetry: loaderConfig?.iifeBundleRetry,
+			trackPageActions: loaderConfig?.trackPageActions,
+			instrumentationProvider: resolvedInstrumentationProvider,
+			onBundleRetryStatus: (status: IifeBundleRetryStatus) => {
+				if (!isCurrentLoadRequest(requestToken)) return;
+				bundleRetryStatus = status;
+				handlePlayerEvent(
+					new CustomEvent("bundle-retry-status", {
+						detail: status,
+					}),
+				);
+			},
+		};
+	}
+
+	function buildEsmBackendConfig(view: string): EsmBackendConfig {
+		const moduleResolution =
+			(loaderOptions as Record<string, unknown> | undefined)
+				?.moduleResolution === "import-map"
+				? "import-map"
+				: "url";
+		return {
+			kind: "esm",
+			cdnBaseUrl: resolvedEsmCdnUrl,
+			moduleResolution,
+			view: view === "author" ? "author" : "delivery",
+			loadControllers: loaderOptions?.loadControllers ?? true,
+		};
+	}
+
+	function tagsForConfig(
+		transformedConfig: any,
+		context: { strategy: string; view: string; bundleType: BundleType },
+	): string[] {
+		if (!transformedConfig?.elements) return [];
+		const isEditor =
+			context.bundleType === BundleType.editor || context.view === "author";
+		return Object.keys(transformedConfig.elements).map((el) =>
+			isEditor ? `${el}-config` : el,
+		);
+	}
+
+	function mapExpectedRegistrationElements(
+		elements: Record<string, string>,
+		bundleType: BundleType,
+	): Record<string, string> {
+		if (bundleType !== BundleType.editor) {
+			return elements;
+		}
+		return Object.fromEntries(
+			Object.entries(elements).map(([tagName, packageSpec]) => [`${tagName}-config`, packageSpec]),
+		);
+	}
+
 	async function loadConfig(currentConfig: any) {
 		if (
-			isProcessing ||
-			(currentConfig === lastProcessedConfig &&
-				normalizedStrategy === lastProcessedStrategy &&
-				resolvedMode === lastProcessedMode)
+			currentConfig === lastProcessedConfig &&
+			normalizedStrategy === lastProcessedStrategy &&
+			resolvedMode === lastProcessedMode &&
+			loaderRetrySignature === lastProcessedLoaderRetrySignature
 		) {
 			return;
 		}
 
+		const requestToken = beginLoadRequest();
+		const commitIfCurrent = (commit: () => void): boolean => {
+			if (!isCurrentLoadRequest(requestToken)) return false;
+			commit();
+			return true;
+		};
+
 		if (!currentConfig) {
-			itemConfig = null;
-			loading = true;
+			commitIfCurrent(() => {
+				itemConfig = null;
+				loading = true;
+				error = null;
+				bundleRetryStatus = null;
+			});
 			return;
 		}
 
-		isProcessing = true;
 		lastProcessedConfig = currentConfig;
 		lastProcessedStrategy = normalizedStrategy;
 		lastProcessedMode = resolvedMode;
-		loading = true;
-		error = null;
+		lastProcessedLoaderRetrySignature = loaderRetrySignature;
+		commitIfCurrent(() => {
+			loading = true;
+			error = null;
+			bundleRetryStatus = null;
+		});
 
 		let stage = "start";
+		let runtimeSupportErrorHint: string | null = null;
 		try {
 			stage = "parse-config";
 			const parsedConfig =
@@ -338,100 +604,96 @@
 			stage = "makeUniqueTags";
 			const transformed = makeUniqueTags({ config: normalizedConfig });
 			const transformedConfig = transformed.config;
-			const shouldSkipElementLoading =
-				shouldAutoSkipElementLoading(transformedConfig);
-			const allowPreloadedFallbackLoad =
-				(loaderOptions as UnifiedLoaderOptions | undefined)
-					?.allowPreloadedFallbackLoad === true;
+			const runtimeSupportCheck = normalizeRuntimeSupportCheck(
+				(loaderOptions as UnifiedLoaderOptions | undefined)?.runtimeSupportCheck,
+				"off",
+			);
+			const runtimeSupportView =
+				(loaderOptions as UnifiedLoaderOptions | undefined)?.view ||
+				resolveItemPlayerView(env?.mode, "delivery");
+			const runtimeSupportHints = await collectRuntimeSupportHints(
+				transformedConfig.elements || {},
+				normalizedStrategy,
+				runtimeSupportView as "delivery" | "author" | "print",
+				runtimeSupportCheck,
+			);
+			if (!isCurrentLoadRequest(requestToken)) return;
+			const strategyForChecks: "esm" | "iife" =
+				normalizedStrategy === "esm" ? "esm" : "iife";
+			runtimeSupportErrorHint =
+				runtimeSupportHints.unsupportedPackages.length > 0
+					? ` Runtime support metadata indicates ${strategyForChecks}/${runtimeSupportView} is unsupported for ${runtimeSupportHints.unsupportedPackages.join(", ")}.`
+					: null;
 
 			stage = "math-rendering-init";
 			await initializeMathRendering();
+			if (!isCurrentLoadRequest(requestToken)) return;
 
-			if (shouldSkipElementLoading) {
-				logger.debug(
-					"[pie-item-player] Skipping element loading for preloaded flow.",
-				);
-			} else if (normalizedStrategy === "preloaded" && !allowPreloadedFallbackLoad) {
+			const elementMap = (transformedConfig?.elements || {}) as Record<
+				string,
+				string
+			>;
+
+			if (normalizedStrategy === "preloaded") {
 				stage = "preloaded-readiness";
-				const requiredTags = Object.keys(transformedConfig?.elements || {});
-				const missingTags = getMissingCustomElementTags(transformedConfig);
-				if (requiredTags.length === 0) {
-					logger.debug(
-						"[pie-item-player] Preloaded strategy has no custom-element tags to preload.",
-					);
-				} else if (missingTags.length > 0) {
-					throw new Error(
-						`Preloaded strategy requires pre-registered elements; missing tags: ${missingTags.join(", ")}.`,
-					);
-				} else {
-					throw new Error(
-						`Preloaded strategy readiness mismatch. required tags: ${requiredTags.join(", ")}`,
-					);
-				}
-			} else if (
-				normalizedStrategy === "iife" ||
-				normalizedStrategy === "preloaded"
-			) {
-				stage = "iife-load";
-				const iifeLoader = new IifePieLoader({
-					bundleHost: resolvedIifeBundleHost,
-					debugEnabled: () => debugEnabled,
-				});
-				const bundleType =
-					resolvedMode === "author"
-						? BundleType.editor
-						: hosted
-							? BundleType.player
-							: BundleType.clientPlayer;
-				const needsControllers = bundleType !== BundleType.editor && !hosted;
-				await iifeLoader.load(
-					transformedConfig,
-					document,
+				const bundleType = resolveBundleType();
+				const tags = tagsForConfig(transformedConfig, {
+					strategy: normalizedStrategy,
+					view: runtimeSupportView,
 					bundleType,
-					needsControllers,
+				});
+				// `assertRegistered` throws `ElementAssertionError` with a
+				// diagnostic message (expected, missing, currently-registered)
+				// when any tag is missing. No loading, no fallback.
+				assertRegistered(tags);
+			} else if (normalizedStrategy === "iife") {
+				stage = "iife-load";
+				const bundleType = resolveBundleType();
+				const expectedElements = mapExpectedRegistrationElements(
+					elementMap,
+					bundleType,
 				);
-				const isEditorBundle = bundleType === BundleType.editor;
-				const elements = Object.keys(transformedConfig.elements).map((el) => ({
-					name: el,
-					tag: isEditorBundle ? `${el}-config` : el,
-				}));
-				await iifeLoader.elementsHaveLoaded(elements);
+				await ensureRegistered(expectedElements, {
+					backend: buildIifeBackendConfig(bundleType, requestToken),
+				});
 			} else {
 				stage = "esm-load";
-				const moduleResolution =
-					(loaderOptions as Record<string, unknown> | undefined)
-						?.moduleResolution === "import-map"
-						? "import-map"
-						: "url";
-				const esmLoader = new EsmPieLoader({
-					cdnBaseUrl: resolvedEsmCdnUrl,
-					debugEnabled: () => debugEnabled,
-					moduleResolution,
-				} as any);
 				const view =
 					loaderOptions?.view || resolveItemPlayerView(env?.mode, "delivery");
-				await esmLoader.load(transformedConfig, document, {
-					view,
-					loadControllers: loaderOptions?.loadControllers ?? true,
+				await ensureRegistered(elementMap, {
+					backend: buildEsmBackendConfig(view),
 				});
-				const elements = Object.keys(transformedConfig.elements).map((el) => ({
-					name: el,
-					tag: view === "author" ? `${el}-config` : el,
-				}));
-				await esmLoader.elementsHaveLoaded(elements);
 			}
+			if (!isCurrentLoadRequest(requestToken)) return;
 
 			stage = "set-item-config";
-			itemConfig = transformedConfig;
-			loading = false;
-			error = null;
+			commitIfCurrent(() => {
+				itemConfig = transformedConfig;
+				loading = false;
+				error = null;
+				bundleRetryStatus = null;
+			});
 		} catch (err: any) {
-			const message = err?.message || String(err);
-			error = `Error loading elements (${stage}): ${message}`;
-			loading = false;
+			if (!isCurrentLoadRequest(requestToken)) return;
+			const baseMessage = err?.message || String(err);
+			const message = `${baseMessage}${runtimeSupportErrorHint || ""}`;
+			commitIfCurrent(() => {
+				error = `Error loading elements (${stage}): ${message}`;
+				loading = false;
+				bundleRetryStatus = null;
+			});
 			logger.error("[pie-item-player] failed loading:", err);
-		} finally {
-			isProcessing = false;
+			handlePlayerEvent(
+				new CustomEvent("player-error", {
+					detail: {
+						code: "ITEM_PLAYER_LOAD_ERROR",
+						message,
+						stage,
+						strategy: normalizedStrategy,
+						mode: resolvedMode,
+					},
+				}),
+			);
 		}
 	}
 
@@ -441,6 +703,7 @@
 		void resolvedMode;
 		void resolvedIifeBundleHost;
 		void resolvedEsmCdnUrl;
+		void loaderRetrySignature;
 		queueMicrotask(() => {
 			untrack(() => {
 				loadConfig(currentConfig);
@@ -456,11 +719,49 @@
 		syncControllerSession(controller, parsed, { allowMetadataOverwrite: false });
 	});
 
+	const allowedStyleOriginList = $derived(
+		parseAllowedStyleOrigins(allowedStyleOrigins),
+	);
+
+	const cssEscapeValue = (value: string): string => {
+		const cssApi = (globalThis as { CSS?: { escape?: (v: string) => string } })
+			.CSS;
+		if (typeof cssApi?.escape === "function") {
+			return cssApi.escape(value);
+		}
+		return value.replace(/[^a-zA-Z0-9_-]/g, (char) => `\\${char}`);
+	};
+
 	const loadScopedExternalStyle = async (url: string) => {
 		if (!isBrowser || !url || typeof url !== "string") return;
-		if (document.querySelector(`style[data-pie-style="${url}"]`)) return;
+		const validation = validateExternalStyleUrl(url, {
+			baseUrl: window.location.href,
+			allowedOrigins: allowedStyleOriginList,
+		});
+		if (!validation.ok) {
+			logger.error(
+				`[pie-item-player] ${validation.message} (url=${url})`,
+			);
+			return;
+		}
+		const resolvedUrl = validation.resolvedUrl;
+		const escapedUrl = cssEscapeValue(url);
+		if (document.querySelector(`style[data-pie-style="${escapedUrl}"]`)) return;
+		if (document.querySelector(`link[data-pie-style-link="${escapedUrl}"]`))
+			return;
 		try {
-			const response = await fetch(url);
+			const isCrossOrigin = resolvedUrl.origin !== window.location.origin;
+			if (isCrossOrigin) {
+				// Cross-origin stylesheets may block fetch() without CORS headers.
+				// Use a link tag so the browser can apply CSS directly.
+				const link = document.createElement("link");
+				link.setAttribute("rel", "stylesheet");
+				link.setAttribute("href", resolvedUrl.toString());
+				link.setAttribute("data-pie-style-link", url);
+				document.head.appendChild(link);
+				return;
+			}
+			const response = await fetch(resolvedUrl.toString());
 			const cssText = await response.text();
 			const scopedCss = cssText.replace(
 				/([^\r\n,{}]+)(,(?=[^}]*{)|\s*{)/g,
@@ -525,6 +826,17 @@
 		hostElement?.dispatchEvent(newEvent);
 	};
 
+	/**
+	 * Move keyboard focus to the first focusable control inside this item
+	 * (including inside **open** shadow roots of nested PIE custom elements).
+	 * Safe to call after section navigation when the item host is already
+	 * focused or visible.
+	 */
+	export function focusFirst(): boolean {
+		if (!hostElement) return false;
+		return focusFirstFocusableInElement(hostElement);
+	}
+
 	const handleSessionChanged = (detail: unknown) => {
 		const detailObj =
 			detail && typeof detail === "object"
@@ -579,7 +891,19 @@
 			<p style="margin: 0">{error}</p>
 		</div>
 	{:else if loading || !itemConfig}
-		<PieSpinner />
+		<div class="pie-item-player-loading">
+			<PieSpinner />
+			{#if bundleBuildWarning}
+				<p
+					class="pie-item-player-build-warning"
+					role="status"
+					aria-live="polite"
+					aria-atomic="true"
+				>
+					{bundleBuildWarning}
+				</p>
+			{/if}
+		</div>
 	{:else}
 		<div class="pie-player-item-container {containerClass}">
 			<PieItemRenderer
@@ -592,6 +916,8 @@
 				{loaderConfig}
 				mode={resolvedMode}
 				authoringBackend={authoringBackend}
+				{trustMarkup}
+				sanitizeMarkup={sanitizeMarkup ?? undefined}
 				configuration={typeof configuration === "string"
 					? JSON.parse(configuration)
 					: configuration}
@@ -622,5 +948,19 @@
 
 	:global(.pie-player-item-container) {
 		width: 100%;
+	}
+
+	.pie-item-player-loading {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 12px;
+	}
+
+	.pie-item-player-build-warning {
+		margin: 0;
+		font-size: 0.95rem;
+		color: #9a6700;
+		text-align: center;
 	}
 </style>

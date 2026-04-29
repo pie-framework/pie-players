@@ -4,6 +4,11 @@ import { demo2Section } from "./demo2-question-passage";
 import { demo3Section } from "./demo3-three-questions";
 import { demo4Section } from "./demo4-tts-ssml";
 import { demo5Section } from "./demo5-resource-observability";
+import { demo6Section } from "./demo6-tabbed-layout";
+import {
+	pie512SectionA,
+	pie512SectionB,
+} from "./pie-512-asymmetric-sections";
 
 export interface SectionDemoInfo {
 	id: string;
@@ -391,14 +396,15 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 	"question-passage": {
 		id: "question-passage",
 		name: "Question with Passage",
-		description: "Section with passage and related question",
+		description: "Section with illustrated passage and related question",
 		integrationLevel: 2,
 		integrationTheme: "CE tool configuration",
 		focus:
-			"Shows how a stimulus passage and an associated item are authored and rendered together in one section.",
+			"Shows how a stimulus passage and an associated item are authored and rendered together in one section, and exercises the PIE-94 horizontal-scroll wrapper for an intentionally overwide authored image.",
 		whatMakesItTick: [
 			"Passage content is supplied through `rubricBlocks` as a stimulus block.",
 			"Item and passage coexist in section JSON so layout and reading flow can be tested.",
+			"Passage markup embeds a 1792×592 Renaissance timeline image to verify `.pie-image-scroll` kicks in inside narrow columns and at 400% browser zoom (WCAG 1.4.10 Reflow).",
 			"Shared demo host allows switching between student/scorer and splitpane/vertical layouts."
 		],
 		section: demo2Section,
@@ -434,6 +440,22 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		],
 		section: demo3Section
 	},
+	"qti-default-on": {
+		id: "qti-default-on",
+		name: "QTI Default On (Auto-detect)",
+		description:
+			"Smoke fixture: an assessment that carries QTI material auto-promotes `qtiEnforcement` to 'on' without an explicit `qti-enforcement` attribute.",
+		integrationLevel: 4,
+		integrationTheme: "Tool policy engine",
+		focus:
+			"Proves the M8 PR 4 narrow auto-on rule end-to-end: bind an `AssessmentEntity` with PNP / district policy through `coord.updateAssessment(...)` and the coordinator flips QTI gates on by itself.",
+		whatMakesItTick: [
+			"Listens for `toolkit-ready` and binds an assessment with `personalNeedsProfile.supports = ['graph']` and `districtPolicy.requiredTools = ['graph']`.",
+			"Never sets the `qti-enforcement` attribute, so the auto-default rule (`assessmentHasQtiInputs` / `itemRefHasQtiInputs`) decides.",
+			"Reads back `coord.getPolicyInputs().qtiEnforcement` and the engine's `decideToolPolicy(...)` so the resolved mode is visible in the page.",
+		],
+		section: demo1Section,
+	},
 	"custom-tools": {
 		id: "custom-tools",
 		name: "Custom Tools (Host Registry)",
@@ -466,6 +488,22 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		],
 		section: demo4Section,
 	},
+	"tabbed-layout": {
+		id: "tabbed-layout",
+		name: "Tabbed Layout",
+		description:
+			"Dedicated passage + three-question demo for tabbed section-player layouts and splitpane tabbed collapse strategy",
+		integrationLevel: 4,
+		integrationTheme: "Tabbed responsive layout",
+		focus:
+			"Exercises passage/items tab switching behavior with a single passage and three items in one section.",
+		whatMakesItTick: [
+			"Includes one passage and at least three items to validate tab navigation end-to-end.",
+			"Uses dedicated bookmarkable subroutes: `/tabbed-layout/tabbed` and `/tabbed-layout/splitpane-tabbed-collapse`.",
+			"Provides both direct `pie-section-player-tabbed` and splitpane tabbed-collapse behavior without query-param toggling.",
+		],
+		section: demo6Section,
+	},
 	"resource-observability": {
 		id: "resource-observability",
 		name: "Resource Observability",
@@ -481,6 +519,22 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 			"Instrumentation panel should show resource events such as `pie-resource-load`."
 		],
 		section: demo5Section,
+	},
+	"focus-management": {
+		id: "focus-management",
+		name: "Focus Management",
+		description:
+			"Exercises the section-player focus contract (autoFocus policy + focusStart() imperative API) for Skip-to-Main",
+		integrationLevel: 5,
+		integrationTheme: "Accessibility",
+		focus:
+			"Verifies focus targets for mount, navigation, and Skip-to-Main across layouts and passage presence.",
+		whatMakesItTick: [
+			"Strategy selector toggles `SectionPlayerFocusPolicy.autoFocus` between `start-of-content`, `current-item`, and `none`.",
+			"Layout switcher drives `pie-section-player-splitpane`, `pie-section-player-vertical`, and `pie-section-player-tabbed`.",
+			"Mock Skip-to-Main button calls `focusStart()` on the active layout element; active element is read back live."
+		],
+		section: demo3Section,
 	},
 	"session-hydrate-db": {
 		id: "session-hydrate-db",
@@ -506,6 +560,33 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 				id: "session-page-two",
 				name: "Session Page Two",
 				section: sessionPersistencePageTwo,
+			},
+		],
+	},
+	"pie-512-asymmetric-sections": {
+		id: "pie-512-asymmetric-sections",
+		name: "PIE-512: Asymmetric Sections (Regression Fixture)",
+		description:
+			"Narrow-viewport navigation across passage+single-item / multi-item sections.",
+		integrationLevel: 5,
+		integrationTheme: "Regression fixture",
+		focus:
+			"Reproduces the PIE-512 cross-section event-delivery regression: navigating between asymmetric sections in a narrow split-pane viewport must redeliver `content-loaded` and `section-loading-complete` to consumers on each cohort flip.",
+		whatMakesItTick: [
+			"Section A pairs a stimulus passage with a single MC item to seed a passage+item cohort.",
+			"Section B has three MC items and no passage so the cohort shape changes on navigation.",
+			"Wired into the multi-section route shape used by `session-hydrate-db` (`?page=` selects the active section).",
+		],
+		sections: [
+			{
+				id: "pie-512-section-a",
+				name: "Section A (passage + one item)",
+				section: pie512SectionA,
+			},
+			{
+				id: "pie-512-section-b",
+				name: "Section B (three items)",
+				section: pie512SectionB,
 			},
 		],
 	},

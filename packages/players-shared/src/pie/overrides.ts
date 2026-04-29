@@ -96,6 +96,53 @@ export function applyElementOverrides(
 }
 
 /**
+ * Apply element version overrides without renaming custom element tags.
+ *
+ * Unlike `applyElementOverrides`, this helper keeps `config.markup` and
+ * `config.elements` keys intact and only updates each matching element package
+ * value to the requested version. This is intended for unified `pie-item-player`
+ * flows where stable tag names are required.
+ */
+export function applyElementVersionOverridesPreserveTags(
+	config: any,
+	elementOverrides: ElementOverrides,
+) {
+	if (
+		!config ||
+		!elementOverrides ||
+		Object.keys(elementOverrides).length === 0
+	) {
+		return config;
+	}
+
+	const updatedConfig = cloneDeep(config);
+	if (!updatedConfig.elements || typeof updatedConfig.elements !== "object") {
+		return updatedConfig;
+	}
+
+	for (const [elementKey, elementPackageValue] of Object.entries(
+		updatedConfig.elements,
+	)) {
+		const elementPackageStr = String(elementPackageValue);
+		try {
+			const parsed = parsePackageName(elementPackageStr);
+			const nextVersion = elementOverrides[parsed.name];
+			if (!nextVersion) continue;
+			const packageBase = parsed.path
+				? `${parsed.name}/${parsed.path}`
+				: parsed.name;
+			updatedConfig.elements[elementKey] = `${packageBase}@${String(nextVersion).trim()}`;
+		} catch {
+			logger.debug(
+				`Couldn't parse element package value: ${elementPackageStr}`,
+			);
+		}
+	}
+
+	return updatedConfig;
+}
+
+/**
  * Parse element overrides from URL search params.
  * @returns Map of element package names to versions
  */

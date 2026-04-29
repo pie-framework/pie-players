@@ -29,6 +29,7 @@ export default defineConfig({
 		emptyOutDir: true,
 		target: "es2020",
 		minify: "esbuild",
+		cssMinify: "esbuild",
 		sourcemap: false,
 		rollupOptions: {
 			external: [],

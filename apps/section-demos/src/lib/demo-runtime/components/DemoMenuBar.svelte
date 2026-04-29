@@ -14,6 +14,9 @@
 		showTtsPanel: boolean;
 		showDbPanel: boolean;
 		showInfoDialog: boolean;
+		showElementVersionPanel: boolean;
+		hasElementVersionTargets: boolean;
+		hasElementVersionOverrides: boolean;
 		isSessionHydrateDbDemo: boolean;
 		selectedDaisyTheme: string;
 		daisyThemes: string[];
@@ -28,6 +31,7 @@
 		onToggleTtsPanel: () => void;
 		onToggleDbPanel: () => void;
 		onToggleInfoDialog: () => void;
+		onToggleElementVersionPanel: () => void;
 		onSelectDaisyTheme: (theme: string) => void;
 	}
 
@@ -44,6 +48,9 @@
 		showTtsPanel,
 		showDbPanel,
 		showInfoDialog,
+		showElementVersionPanel,
+		hasElementVersionTargets,
+		hasElementVersionOverrides,
 		isSessionHydrateDbDemo,
 		selectedDaisyTheme,
 		daisyThemes,
@@ -58,6 +65,7 @@
 		onToggleTtsPanel,
 		onToggleDbPanel,
 		onToggleInfoDialog,
+		onToggleElementVersionPanel,
 		onSelectDaisyTheme
 	}: Props = $props();
 </script>
@@ -184,6 +192,34 @@
 				<circle cx="12" cy="7.5" r="1" fill="currentColor" stroke="none"></circle>
 			</svg>
 		</button>
+		{#if hasElementVersionTargets}
+			<button
+				class="btn btn-sm btn-outline btn-square pie-demo-menu-bar__element-versions"
+				class:btn-active={showElementVersionPanel}
+				class:pie-demo-menu-bar__element-versions--has-overrides={hasElementVersionOverrides}
+				onclick={onToggleElementVersionPanel}
+				title={hasElementVersionOverrides
+					? 'Element versions (overrides active)'
+					: 'Element versions'}
+				aria-label="Toggle element versions panel"
+				aria-pressed={showElementVersionPanel}
+			>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					class="h-4 w-4"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+				>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+					/>
+				</svg>
+			</button>
+		{/if}
 		<button
 			class="btn btn-sm btn-outline btn-square"
 			class:btn-active={showTtsPanel}
@@ -200,3 +236,21 @@
 		</button>
 	</div>
 </div>
+
+<style>
+	.pie-demo-menu-bar__element-versions {
+		position: relative;
+	}
+
+	.pie-demo-menu-bar__element-versions--has-overrides::after {
+		content: '';
+		position: absolute;
+		top: 2px;
+		right: 2px;
+		width: 0.4rem;
+		height: 0.4rem;
+		border-radius: 9999px;
+		background: var(--color-warning, #f59e0b);
+		box-shadow: 0 0 0 1px var(--color-base-200, #e5e7eb);
+	}
+</style>

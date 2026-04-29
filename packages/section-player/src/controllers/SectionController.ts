@@ -363,6 +363,9 @@ export class SectionController implements SectionControllerHandle {
 			itemSessions[canonicalId] = sessionValue;
 		}
 
+		const loadedRenderables: SectionAttemptSessionSlice["loadedRenderables"] =
+			this.collectLoadedRenderableSnapshot();
+
 		const runtimeState: SectionAttemptSessionSlice = {
 			sectionId: this.state.input?.sectionId || "",
 			sectionIdentifier:
@@ -380,12 +383,42 @@ export class SectionController implements SectionControllerHandle {
 			itemsComplete: this.sectionItemsComplete,
 			completedCount: this.completedCount,
 			totalItems: this.totalItems,
+			loadedRenderables,
 		};
 		return runtimeState;
 	}
 
+	/**
+	 * Snapshot of currently-loaded renderables in registration order.
+	 *
+	 * Walks `trackedRenderables` (preserves insertion order) and emits an entry
+	 * for each entry whose key is in `loadedRenderableKeys`. Used by the
+	 * coordinator to replay `content-loaded` events to subscribers that
+	 * attach after a renderable has finished loading.
+	 */
+	private collectLoadedRenderableSnapshot(): ReadonlyArray<{
+		itemId: string;
+		canonicalItemId: string;
+		contentKind: "item" | "passage" | "rubric" | "unknown";
+	}> {
+		if (this.loadedRenderableKeys.size === 0) return [];
+		const snapshot: Array<{
+			itemId: string;
+			canonicalItemId: string;
+			contentKind: "item" | "passage" | "rubric" | "unknown";
+		}> = [];
+		for (const [key, tracked] of this.trackedRenderables) {
+			if (!this.loadedRenderableKeys.has(key)) continue;
+			snapshot.push({
+				itemId: tracked.itemId,
+				canonicalItemId: tracked.canonicalItemId,
+				contentKind: tracked.contentKind,
+			});
+		}
+		return snapshot;
+	}
+
 	public getCurrentItem(): ItemEntity | null {
-		if (this.state.viewModel.isPageMode) return null;
 		return (
 			this.state.viewModel.items[this.state.viewModel.currentItemIndex] || null
 		);
@@ -400,12 +433,11 @@ export class SectionController implements SectionControllerHandle {
 	public getNavigationState(isLoading = false): SectionNavigationState {
 		const currentIndex = this.state.viewModel.currentItemIndex;
 		const totalItems = this.state.viewModel.items.length;
-		const isPageMode = this.state.viewModel.isPageMode;
 		return {
 			currentIndex,
 			totalItems,
-			canNext: !isPageMode && currentIndex < totalItems - 1,
-			canPrevious: !isPageMode && currentIndex > 0,
+			canNext: currentIndex < totalItems - 1,
+			canPrevious: currentIndex > 0,
 			isLoading,
 		};
 	}
@@ -504,7 +536,6 @@ export class SectionController implements SectionControllerHandle {
 		if (!this.state.testAttemptSession) return null;
 		const result = this.itemNavigationService.navigate({
 			index,
-			isPageMode: this.state.viewModel.isPageMode,
 			items: this.state.viewModel.items,
 			currentItemIndex: this.state.viewModel.currentItemIndex,
 			sectionIdentifier:

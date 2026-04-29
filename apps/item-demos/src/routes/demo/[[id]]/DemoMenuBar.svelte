@@ -3,6 +3,7 @@
 		demoName: string;
 		demoPackage: string;
 		activeView: 'delivery' | 'author' | 'source';
+		loaderStrategy: 'iife' | 'esm';
 		deliveryHref: string;
 		authorHref: string;
 		sourceHref: string;
@@ -12,6 +13,8 @@
 		showSessionPanel: boolean;
 		showInstrumentationPanel: boolean;
 		showSessionToggle: boolean;
+		onSwitchLoaderStrategy: (next: 'iife' | 'esm') => void;
+		onSwitchViewMode?: (next: 'student' | 'scorer', href: string) => void;
 		onToggleSessionPanel: () => void;
 		onToggleInstrumentationPanel: () => void;
 	}
@@ -20,6 +23,7 @@
 		demoName,
 		demoPackage,
 		activeView,
+		loaderStrategy,
 		deliveryHref,
 		authorHref,
 		sourceHref,
@@ -29,6 +33,8 @@
 		showSessionPanel,
 		showInstrumentationPanel,
 		showSessionToggle,
+		onSwitchLoaderStrategy,
+		onSwitchViewMode,
 		onToggleSessionPanel,
 		onToggleInstrumentationPanel,
 	}: Props = $props();
@@ -71,26 +77,59 @@
 			</a>
 		</div>
 
-		<div class="join" aria-label="Demo role mode">
-			<a
-				class="btn btn-sm join-item"
-				class:btn-active={viewMode === 'student'}
-				href={studentHref}
-				title="Student view - gather mode"
-				aria-current={viewMode === 'student' ? 'page' : undefined}
-			>
-				Student
-			</a>
-			<a
-				class="btn btn-sm join-item"
-				class:btn-active={viewMode === 'scorer'}
-				href={scorerHref}
-				title="Scorer view - evaluate mode"
-				aria-current={viewMode === 'scorer' ? 'page' : undefined}
-			>
-				Scorer
-			</a>
-		</div>
+		{#if activeView !== 'source'}
+			<div class="join" aria-label="Loader strategy">
+				<button
+					type="button"
+					class="btn btn-sm join-item"
+					class:btn-active={loaderStrategy === 'iife'}
+					onclick={() => onSwitchLoaderStrategy('iife')}
+				>
+					IIFE
+				</button>
+				<button
+					type="button"
+					class="btn btn-sm join-item"
+					class:btn-active={loaderStrategy === 'esm'}
+					onclick={() => onSwitchLoaderStrategy('esm')}
+				>
+					ESM
+				</button>
+			</div>
+		{/if}
+
+		{#if activeView === 'delivery'}
+			<div class="join" aria-label="Demo role mode">
+				<a
+					class="btn btn-sm join-item"
+					class:btn-active={viewMode === 'student'}
+					href={studentHref}
+					onclick={(event) => {
+						if (!onSwitchViewMode) return;
+						event.preventDefault();
+						onSwitchViewMode('student', studentHref);
+					}}
+					title="Student view - gather mode"
+					aria-current={viewMode === 'student' ? 'page' : undefined}
+				>
+					Student
+				</a>
+				<a
+					class="btn btn-sm join-item"
+					class:btn-active={viewMode === 'scorer'}
+					href={scorerHref}
+					onclick={(event) => {
+						if (!onSwitchViewMode) return;
+						event.preventDefault();
+						onSwitchViewMode('scorer', scorerHref);
+					}}
+					title="Scorer view - evaluate mode"
+					aria-current={viewMode === 'scorer' ? 'page' : undefined}
+				>
+					Scorer
+				</a>
+			</div>
+		{/if}
 	</div>
 
 	<div class="navbar-end gap-2">

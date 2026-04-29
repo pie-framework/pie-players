@@ -6,6 +6,7 @@ export type {
 	SectionControllerEventType,
 	SectionControllerHandle,
 	SectionControllerKey,
+	SectionControllerLoadedRenderable,
 	SectionSessionPersistenceConfig,
 	SectionSessionPersistenceStrategy,
 	SectionControllerRuntimeState,

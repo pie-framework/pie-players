@@ -7,7 +7,7 @@
 			item: { type: "Object", reflect: false },
 			itemIndex: { attribute: "item-index", type: "Number" },
 			itemCount: { attribute: "item-count", type: "Number" },
-			isCurrent: { attribute: "is-current", type: "Boolean" },
+			isCurrent: { attribute: "is-current", type: "Boolean", reflect: true },
 			canonicalItemId: { attribute: "canonical-item-id", type: "String" },
 			resolvedPlayerTag: { attribute: "resolved-player-tag", type: "String" },
 			playerAction: { type: "Object", reflect: false },
@@ -20,7 +20,7 @@
 />
 
 <script lang="ts">
-	import { onMount } from "svelte";
+	import { onMount, untrack } from "svelte";
 	import "../item-shell-element.js";
 	import "@pie-players/pie-toolbars/components/item-toolbar-element";
 	import type {
@@ -69,6 +69,13 @@
 	>(null);
 	let contextCardTitleFormatter = $state<SectionPlayerCardTitleFormatter | null>(null);
 	let contextConnected = $state(false);
+	// Stable id for aria-labelledby wiring between the host and the card heading.
+	const headingId = untrack(
+		() =>
+			`pie-section-player-item-card-heading-${
+				item?.id ?? canonicalItemId ?? Math.random().toString(36).slice(2, 10)
+			}`,
+	);
 	// Context is the canonical source for shared render wiring while connected.
 	// Props are explicit fallback when context is unavailable.
 	const effectiveResolvedPlayerTag = $derived(
@@ -128,6 +135,15 @@
 		const host = getHostElementFromAnchor(contextAnchor);
 		if (!host) return;
 		contextConnected = true;
+		// Public focus target: host is programmatically focusable (tabindex="-1")
+		// but not in sequential tab order. The inner
+		// `.pie-section-player-content-card[data-section-item-card]` remains as an
+		// internal hook; public callers should target the custom element tag.
+		if (!host.hasAttribute("tabindex")) host.setAttribute("tabindex", "-1");
+		if (!host.hasAttribute("role")) host.setAttribute("role", "region");
+		if (!host.hasAttribute("aria-labelledby")) {
+			host.setAttribute("aria-labelledby", headingId);
+		}
 		const disconnect = connectSectionPlayerCardRenderContext(
 			host,
 			applyCardRenderContext,
@@ -157,7 +173,7 @@
 			class="pie-section-player-content-card-header pie-section-player-item-header pie-section-player__item-header"
 			data-region="header"
 		>
-			<h2>{headerTitle}</h2>
+			<h2 id={headingId}>{headerTitle}</h2>
 			<pie-item-toolbar
 				item-id={item.id}
 				catalog-id={item.id}
@@ -187,6 +203,25 @@
 		display: none;
 	}
 
+	/* Public focus-visible treatment for the item card.
+	   Scoped to the custom element tag so the outline wraps the whole card box,
+	   not the inner heading or content. Hosts can override via --pie-focus-outline.
+	   The inner `.pie-section-player-content-card[data-section-item-card]` is
+	   an internal hook kept for back-compat with the old auto-focus path. */
+	:global(pie-section-player-item-card) {
+		display: block;
+		border-radius: 8px;
+	}
+
+	:global(pie-section-player-item-card:focus) {
+		outline: none;
+	}
+
+	:global(pie-section-player-item-card:focus-visible) {
+		outline: 2px solid var(--pie-focus-outline, #1d4ed8);
+		outline-offset: 2px;
+	}
+
 	.pie-section-player-content-card {
 		border: 1px solid var(--pie-border-light, #e5e7eb);
 		border-radius: 8px;
@@ -196,10 +231,14 @@
 
 	.pie-section-player-content-card-header {
 		display: flex;
-		align-items: flex-start;
+		align-items: center;
 		gap: 0.75rem;
 		padding: 0.75rem 1rem;
 		border-bottom: 1px solid var(--pie-border-light, #e5e7eb);
+		/* Header fill is intentionally transparent by default. Hosts/themes
+		   opt-in to a solid color via --pie-section-player-card-header-background
+		   (e.g. a brand Bluegreen tint) without this framework encoding a palette. */
+		background: var(--pie-section-player-card-header-background, transparent);
 	}
 
 	.pie-section-player-content-card-header h2 {

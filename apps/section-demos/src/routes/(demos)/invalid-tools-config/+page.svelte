@@ -1,5 +1,6 @@
 <script lang="ts">
 	import '@pie-players/pie-section-player/components/section-player-splitpane-element';
+	import type { FrameworkErrorModel } from '@pie-players/pie-assessment-toolkit';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -29,16 +30,28 @@
 	let lastFrameworkErrorKind = $state('');
 	let lastFrameworkErrorSource = $state('');
 
-	function handleFrameworkError(detail: Record<string, unknown>) {
+	function handleFrameworkError(model: FrameworkErrorModel) {
 		frameworkErrorCount += 1;
-		const message = typeof detail.message === 'string' ? detail.message : String(detail.message || '');
-		const kind = typeof detail.kind === 'string' ? detail.kind : '';
-		const source = typeof detail.source === 'string' ? detail.source : '';
+		const message = typeof model.message === 'string' ? model.message : String(model.message || '');
+		const kind = typeof model.kind === 'string' ? model.kind : '';
+		const source = typeof model.source === 'string' ? model.source : '';
 		lastFrameworkErrorMessage = message;
 		lastFrameworkErrorKind = kind;
 		lastFrameworkErrorSource = source;
 	}
 
+	let playerEl = $state<HTMLElement | null>(null);
+	$effect(() => {
+		if (!playerEl) return;
+		// Svelte 5 treats `onCamelCase={fn}` template syntax on custom elements
+		// as a DOM event listener for `camelcase`, not a property assignment.
+		// The canonical `onFrameworkError` prop on `pie-section-player-*` is a
+		// declared CE property (not an event), so wire it imperatively here.
+		(playerEl as any).onFrameworkError = handleFrameworkError;
+		return () => {
+			(playerEl as any).onFrameworkError = undefined;
+		};
+	});
 </script>
 
 <svelte:head>
@@ -63,12 +76,12 @@
 		</div>
 
 		<pie-section-player-splitpane
+			bind:this={playerEl}
 			assessment-id="section-demos.invalid-tools-config"
 			{sectionId}
 			{attemptId}
 			section={data.section}
 			tools={rawToolsConfig as any}
-			frameworkErrorHook={handleFrameworkError}
 			tool-config-strictness="error"
 			show-toolbar={true}
 			data-testid="invalid-tools-player"

@@ -16,6 +16,7 @@ import type {
 	CatalogType,
 	ResolvedCatalog,
 } from "./AccessibilityCatalogResolver.js";
+import type { FrameworkErrorListener } from "./framework-error-bus.js";
 import type { HighlightColor, HighlightType } from "./HighlightCoordinator.js";
 import type {
 	SectionControllerHandle,
@@ -30,6 +31,18 @@ import type { ZIndexLayer } from "./ToolCoordinator.js";
 import type { PlaybackState, TTSConfig } from "./TTSService.js";
 import type { ToolProviderConfig } from "./tools-config-normalizer.js";
 import type { ToolProviderRegistry } from "./tool-providers/ToolProviderRegistry.js";
+import type {
+	PolicySource,
+	QtiEnforcementMode,
+	ResolvedEngineInputs,
+	ToolPolicyChangeListener,
+	ToolPolicyDecision,
+	ToolPolicyDecisionRequest,
+} from "../policy/engine.js";
+import type {
+	AssessmentEntity,
+	AssessmentItemRef,
+} from "@pie-players/pie-players-shared/types";
 import type {
 	ITTSProvider,
 	TTSProviderCapabilities,
@@ -247,6 +260,14 @@ export interface TtsServiceApi {
 	 * Stop playback
 	 */
 	stop(): void;
+
+	/**
+	 * Request active TTS controls to hand off/deactivate their UI state.
+	 *
+	 * This is an orchestration hint for TTS tool chrome and does not replace
+	 * playback controls such as stop/pause/resume.
+	 */
+	requestControlHandoff(): void;
 
 	/**
 	 * Seek forward by sentence units
@@ -628,6 +649,103 @@ export interface ToolkitCoordinatorApi {
 		persistBeforeDispose?: boolean;
 		clearPersistence?: boolean;
 	}): Promise<void>;
+
+	/**
+	 * Subscribe to framework-error events emitted by the coordinator.
+	 *
+	 * Mirrors the shape of {@link subscribeTelemetry} (see
+	 * `ToolkitCoordinator.subscribeTelemetry`): a synchronous,
+	 * multi-subscriber stream where each call to the internal bus's
+	 * `reportFrameworkError` fans out to every active listener exactly once.
+	 *
+	 * The returned function detaches the listener; calling it twice is a
+	 * no-op. A listener that throws is caught and logged; the throw does
+	 * not break fan-out to the remaining listeners.
+	 *
+	 * Use this to wire framework errors into Sentry / Datadog / a custom
+	 * banner without listening on a DOM event. The DOM event
+	 * (`framework-error`) and the canonical `onFrameworkError` prop on
+	 * `<pie-assessment-toolkit>` consume the same bus.
+	 */
+	subscribeFrameworkErrors(listener: FrameworkErrorListener): () => void;
+
+	// ----------------------------------------------------------------
+	// Tool Policy Engine — public surface (M8 PR 2 / PR 3).
+	//
+	// The coordinator owns a single `ToolPolicyEngine` instance and
+	// exposes its decision and subscription surface through the API
+	// so that toolbar custom elements (`pie-item-toolbar`,
+	// `pie-section-toolbar`), the base section player, and bespoke
+	// host instrumentation (PNP debugger, etc.) all flow through the
+	// same engine. Hosts that want to drive QTI inputs imperatively
+	// (instead of binding props on `<pie-assessment-toolkit>`) call
+	// `updateAssessment` / `updateCurrentItemRef` /
+	// `setQtiEnforcement` directly.
+	// ----------------------------------------------------------------
+
+	/**
+	 * Resolve the visible tool set for a given placement level + scope.
+	 * Returns the engine's full decision (visible tools, diagnostics,
+	 * provenance). Hosts that only need the IDs may map
+	 * `decision.visibleTools` themselves.
+	 */
+	decideToolPolicy(request: ToolPolicyDecisionRequest): ToolPolicyDecision;
+
+	/**
+	 * Subscribe to policy-engine change events. Fires whenever the
+	 * coordinator's bound policy inputs change (`updateToolConfig`,
+	 * `updateFloatingTools`, `updateAssessment`, `updateCurrentItemRef`,
+	 * `setQtiEnforcement`) or a custom `PolicySource` is registered /
+	 * removed. Listeners that need the new visible tool set should
+	 * call `decideToolPolicy(...)` with their level / scope.
+	 */
+	onPolicyChange(listener: ToolPolicyChangeListener): () => void;
+
+	/**
+	 * Bind (or clear) the active QTI assessment for policy decisions.
+	 *
+	 * Under auto-mode (no host override via {@link setQtiEnforcement}),
+	 * the engine flips to `qtiEnforcement: "on"` iff the assessment
+	 * carries QTI 6-level precedence material (`personalNeedsProfile`,
+	 * `settings.districtPolicy`, `settings.testAdministration`) or the
+	 * currently-bound item ref carries item-level QTI inputs. A bare
+	 * assessment record (just `id` / `name`) keeps `"off"`.
+	 *
+	 * The host override set via {@link setQtiEnforcement} is sticky
+	 * across assessment swaps.
+	 */
+	updateAssessment(assessment: AssessmentEntity | null): void;
+
+	/**
+	 * Bind (or clear) the current item reference for policy decisions.
+	 * Used by item-level QTI gates (item `requiredTools` /
+	 * `restrictedTools` / `toolParameters`). Item-level QTI material
+	 * also feeds the auto-mode helper — navigating to an item with
+	 * QTI settings can flip auto-mode to `"on"` even when the parent
+	 * assessment carries no QTI block of its own.
+	 */
+	updateCurrentItemRef(itemRef: AssessmentItemRef | null): void;
+
+	/**
+	 * Override the auto-mode QTI enforcement decision. Pass `"on"` /
+	 * `"off"` to pin the mode, or `null` to clear the override and
+	 * return to auto-mode (`"on"` iff the bound assessment / item ref
+	 * carries QTI material, otherwise `"off"`).
+	 */
+	setQtiEnforcement(mode: QtiEnforcementMode | null): void;
+
+	/**
+	 * Read the engine inputs currently driving decisions. Useful for
+	 * debugging / instrumentation; do not mutate.
+	 */
+	getPolicyInputs(): Readonly<ResolvedEngineInputs>;
+
+	/**
+	 * Register a custom `PolicySource`. The source participates in
+	 * every subsequent `decideToolPolicy(...)` call until disposed
+	 * (the returned function detaches).
+	 */
+	registerPolicySource(source: PolicySource): () => void;
 }
 
 // I18nServiceApi is re-exported from @pie-players/pie-players-shared/i18n

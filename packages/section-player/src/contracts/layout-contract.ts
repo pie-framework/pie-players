@@ -1,6 +1,6 @@
 import type { SectionPlayerPublicEventName } from "./public-events.js";
 
-export type SectionPlayerLayoutName = "splitpane" | "vertical";
+export type SectionPlayerLayoutName = "splitpane" | "vertical" | "tabbed";
 
 export type SectionPlayerLayoutCapability =
 	| "items-pane"
@@ -20,9 +20,11 @@ export type SectionPlayerBasicPropName =
 	| "showToolbar"
 	| "toolbarPosition"
 	| "narrowLayoutBreakpoint"
-	| "enabledTools"
-	| "itemToolbarTools"
-	| "passageToolbarTools";
+	| "contentMaxWidthNoPassage"
+	| "contentMaxWidthWithPassage"
+	| "splitPaneMinRegionWidth"
+	| "splitPaneCollapseStrategy"
+	| "enabledTools";
 
 export type SectionPlayerAdvancedPropName =
 	| "runtime"
@@ -32,15 +34,18 @@ export type SectionPlayerAdvancedPropName =
 	| "tools"
 	| "accessibility"
 	| "coordinator"
-	| "createSectionController"
-	| "isolation"
 	| "env"
 	| "iifeBundleHost"
 	| "toolRegistry"
 	| "sectionHostButtons"
 	| "itemHostButtons"
 	| "passageHostButtons"
-	| "cardTitleFormatter";
+	| "policies"
+	| "toolConfigStrictness"
+	| "hooks"
+	| "onFrameworkError"
+	| "onStageChange"
+	| "onLoadingComplete";
 
 export type SectionPlayerLayoutPropName =
 	| SectionPlayerBasicPropName

@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import {
 	SPLITPANE_LAYOUT_CONTRACT,
+	TABBED_LAYOUT_CONTRACT,
 	VERTICAL_LAYOUT_CONTRACT,
 } from "../src/contracts/layout-parity-metadata.js";
 import {
@@ -9,22 +10,36 @@ import {
 import { assertPublicEventName } from "../src/policies/guards.js";
 
 test.describe("section player contract parity", () => {
-	test("splitpane and vertical expose the same semantic contract surface", async () => {
+	test("splitpane, vertical, and tabbed expose the same semantic contract surface", async () => {
 		expect(SPLITPANE_LAYOUT_CONTRACT.props).toEqual(VERTICAL_LAYOUT_CONTRACT.props);
+		expect(SPLITPANE_LAYOUT_CONTRACT.props).toEqual(TABBED_LAYOUT_CONTRACT.props);
 		expect(SPLITPANE_LAYOUT_CONTRACT.recommendedBasicProps).toEqual(
 			VERTICAL_LAYOUT_CONTRACT.recommendedBasicProps,
+		);
+		expect(SPLITPANE_LAYOUT_CONTRACT.recommendedBasicProps).toEqual(
+			TABBED_LAYOUT_CONTRACT.recommendedBasicProps,
 		);
 		expect(SPLITPANE_LAYOUT_CONTRACT.advancedEscapeHatchProps).toEqual(
 			VERTICAL_LAYOUT_CONTRACT.advancedEscapeHatchProps,
 		);
+		expect(SPLITPANE_LAYOUT_CONTRACT.advancedEscapeHatchProps).toEqual(
+			TABBED_LAYOUT_CONTRACT.advancedEscapeHatchProps,
+		);
 		expect(SPLITPANE_LAYOUT_CONTRACT.events).toEqual(
 			VERTICAL_LAYOUT_CONTRACT.events,
 		);
+		expect(SPLITPANE_LAYOUT_CONTRACT.events).toEqual(TABBED_LAYOUT_CONTRACT.events);
 		expect(SPLITPANE_LAYOUT_CONTRACT.commands).toEqual(
 			VERTICAL_LAYOUT_CONTRACT.commands,
 		);
+		expect(SPLITPANE_LAYOUT_CONTRACT.commands).toEqual(
+			TABBED_LAYOUT_CONTRACT.commands,
+		);
 		expect(SPLITPANE_LAYOUT_CONTRACT.capabilities).toEqual(
 			VERTICAL_LAYOUT_CONTRACT.capabilities,
+		);
+		expect(SPLITPANE_LAYOUT_CONTRACT.capabilities).toEqual(
+			TABBED_LAYOUT_CONTRACT.capabilities,
 		);
 	});
 

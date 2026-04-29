@@ -1,18 +1,99 @@
+/**
+ * Section-player layout-CE public DOM event vocabulary.
+ *
+ * **Engine routing (M7).** The *stage / loading-complete /
+ * framework-error* family is dispatched on the layout CE host by the
+ * section runtime engine
+ * (`@pie-players/pie-assessment-toolkit/runtime/engine`) — not by an
+ * in-CE `$effect` cluster. The kernel attaches the engine to the host
+ * (`engine.attachHost({ host, sourceCe, frameworkErrorBus })`), and
+ * the engine's DOM-event bridge dispatches `pie-stage-change`,
+ * `pie-loading-complete`, and `framework-error`.
+ *
+ * **Kernel-side Svelte forwards (not engine-routed).** The
+ * composition / session / runtime-tier family
+ * (`composition-changed`, `session-changed`, `runtime-owned`,
+ * `runtime-inherited`) is forwarded by the kernel's Svelte
+ * `createEventDispatcher` from `<pie-section-player-base>` events; it
+ * does not flow through the engine. This split is intentional: the
+ * engine owns lifecycle and error reporting, while composition /
+ * session forwarding stays in section-player because the shape is
+ * section-player-specific and the engine has no opinion on it.
+ *
+ * **`framework-error` single-emit on the layout host (compat sweep).**
+ * `<pie-assessment-toolkit>` nested inside a layout CE still
+ * dispatches its own `framework-error` (with `bubbles: true,
+ * composed: true`) so direct toolkit consumers keep working. The
+ * kernel's `handleFrameworkError` listener intercepts that bubbled
+ * emit at `<pie-section-player-base>` and calls
+ * `event.stopPropagation()`, leaving the engine-bridge emit on the
+ * layout host as the single canonical DOM surface for
+ * section-player consumers. The single-emit contract is pinned by
+ * `tests/section-player-framework-error-dual-emit.test.ts`. The
+ * previous dual-emit was removed in the broad architecture review
+ * compat sweep.
+ *
+ * **Removed in the broad architecture review compat sweep.** The
+ * deprecated readiness aliases (`readiness-change`,
+ * `interaction-ready`, `ready`) and their `legacy-event-bridge.ts`
+ * are gone. Hosts that previously listened for them migrate to:
+ *   - `readiness-change` → `pie-stage-change` (the readiness phase
+ *     is also reachable via `selectReadiness()` /
+ *     `getSnapshot().readiness`).
+ *   - `interaction-ready` → `pie-stage-change` filtered on
+ *     `detail.stage === "interactive"`.
+ *   - `ready` → `pie-loading-complete`.
+ *
+ * The deprecated `section-controller-ready` Svelte/DOM event was
+ * also removed. Hosts that previously listened for it migrate to
+ * `waitForSectionController(timeoutMs)` / `getSectionController()`
+ * on the layout CE, or filter `pie-stage-change` for
+ * `detail.stage === "engine-ready"`.
+ *
+ * Source of truth for the names: `players-shared/src/pie/stages.ts`
+ * and the `SectionEngineOutput` discriminator in
+ * `assessment-toolkit/src/runtime/core/engine-output.ts`.
+ */
 export const SECTION_PLAYER_PUBLIC_EVENTS = {
 	runtimeOwned: "runtime-owned",
 	runtimeInherited: "runtime-inherited",
-	runtimeError: "runtime-error",
+	/**
+	 * Engine-routed (M7). Dispatched by
+	 * `framework-error-bridge.ts` on the layout CE host whenever the
+	 * engine receives a `framework-error` input. See class doc on
+	 * `FrameworkErrorBus` for the back-pressure / fan-out semantics.
+	 */
+	frameworkError: "framework-error",
 	compositionChanged: "composition-changed",
 	sessionChanged: "session-changed",
-	sectionControllerReady: "section-controller-ready",
-	readinessChange: "readiness-change",
-	interactionReady: "interaction-ready",
-	ready: "ready",
+	/**
+	 * Engine-routed (M7). One DOM event family carries every stage
+	 * transition (`composed` → `engine-ready` → `interactive` →
+	 * `disposed`) with the discriminator in `event.detail.stage`.
+	 * Dispatched by the engine's `dom-event-bridge.ts` on each
+	 * `SectionEngineOutput` of kind `stage-change`. See
+	 * `packages/players-shared/src/pie/stages.ts`.
+	 */
+	stageChange: "pie-stage-change",
+	/**
+	 * Engine-routed (M7). Companion to `stageChange`. Fires once per
+	 * cohort when every item in the section has finished loading
+	 * (`loadedCount === itemCount`), gated by the engine's
+	 * `interactive` state.
+	 */
+	loadingComplete: "pie-loading-complete",
 } as const;
 
 export type SectionPlayerPublicEventName =
 	(typeof SECTION_PLAYER_PUBLIC_EVENTS)[keyof typeof SECTION_PLAYER_PUBLIC_EVENTS];
 
+/**
+ * Readiness phase reported by the engine's readiness derivation. The
+ * type is named after the deprecated `readiness-change` event for
+ * backward compatibility with consumers that imported it via the
+ * kernel's `selectReadiness()` selector — the *event name* is gone,
+ * but the readiness payload itself is still the canonical shape.
+ */
 export type SectionPlayerReadinessPhase =
 	| "bootstrapping"
 	| "interaction-ready"
@@ -25,10 +106,4 @@ export type SectionPlayerReadinessChangeDetail = {
 	interactionReady: boolean;
 	allLoadingComplete: boolean;
 	reason?: string;
-};
-
-export type SectionPlayerControllerReadyDetail = {
-	sectionId: string;
-	attemptId?: string;
-	controller: unknown;
 };

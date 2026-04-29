@@ -1,9 +1,13 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
+	import { afterNavigate, replaceState } from '$app/navigation';
 	import {
 		CompositeInstrumentationProvider,
 		DebugPanelInstrumentationProvider,
-		NewRelicInstrumentationProvider
+		NewRelicInstrumentationProvider,
+		initializePiesFromLoadedBundle,
+		loadBundleFromString,
+		makeUniqueTags
 	} from '@pie-players/pie-players-shared';
 	import { onDestroy } from 'svelte';
 	import {
@@ -41,7 +45,14 @@
 		PLAYER_OPTIONS
 	} from '$lib/demo-runtime/demo-page-helpers';
 	import { SECTION_DEMOS_SC_TTS_TOOL_PROVIDER } from '$lib/demo-runtime/section-demos-default-tts';
-	import { collectElementPackages, fetchBundleWithRetry } from '$lib/demo-runtime/preload-utils';
+	import {
+		buildBundleKey,
+		collectElementTags,
+		collectPieConfigs,
+		collectElementPackages,
+		fetchBundleWithRetry,
+		waitForCustomElements
+	} from '$lib/demo-runtime/preload-utils';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -125,6 +136,10 @@
 	);
 	let selectedDaisyTheme = $state<string>(DEFAULT_DAISY_THEME);
 	let attemptId = $state(getOrCreateAttemptId());
+	let routerReady = $state(false);
+	afterNavigate(() => {
+		routerReady = true;
+	});
 	let playerInstanceKey = $state(0);
 	let preloadedReady = $state(false);
 	let preloadedError = $state<string | null>(null);
@@ -155,6 +170,9 @@ const demoCardTitleFormatter = (context: any) => {
 	}
 	return context?.defaultTitle;
 };
+const sectionPlayerHooks = $derived.by(() =>
+	customTitlesEnabled ? { cardTitleFormatter: demoCardTitleFormatter } : undefined
+);
 
 	const DEMO_PERSISTENCE_STORAGE_PREFIX = `pie:section-controller:v1:${DEMO_ASSESSMENT_ID}:`;
 	let resolvedSectionForPlayer = $derived.by(() => {
@@ -195,8 +213,8 @@ const demoCardTitleFormatter = (context: any) => {
 		if (detail?.coordinator !== coordinator) return;
 		coordinatorReady = true;
 		coordinator.setHooks({
-			onError: (error, context) => {
-				console.error('[Demo] Toolkit hook error:', context, error);
+			onFrameworkError: (model) => {
+				console.error('[Demo] Toolkit framework error:', model);
 			}
 		} satisfies ToolkitCoordinatorHooks);
 	}
@@ -237,11 +255,17 @@ const demoCardTitleFormatter = (context: any) => {
 		preloadedError = null;
 		if (selectedPlayerType !== 'preloaded') return;
 		const packages = collectElementPackages(resolvedSectionForPlayer);
+		const preloadConfigs = collectPieConfigs(resolvedSectionForPlayer);
+		const preloadTags = collectElementTags(resolvedSectionForPlayer);
 		if (!packages.length) {
 			preloadedError = 'No element packages were found to preload';
 			return;
 		}
-		const bundleKey = packages.join('+');
+		if (!preloadConfigs.length) {
+			preloadedError = 'No PIE configs were found to initialize';
+			return;
+		}
+		const bundleKey = buildBundleKey(packages);
 		if (loadedPreloadedBundleKey === bundleKey) {
 			preloadedReady = true;
 			return;
@@ -252,10 +276,12 @@ const demoCardTitleFormatter = (context: any) => {
 				const bundleUrl = `https://proxy.pie-api.com/bundles/${bundleKey}/player.js`;
 				const response = await fetchBundleWithRetry(bundleUrl);
 				const bundleJs = await response.text();
-				const script = document.createElement('script');
-				script.type = 'text/javascript';
-				script.text = bundleJs;
-				document.head.appendChild(script);
+				await loadBundleFromString(bundleJs);
+				for (const config of preloadConfigs) {
+					const versionedConfig = makeUniqueTags({ config: config as any }).config;
+					initializePiesFromLoadedBundle(versionedConfig as any, [], {});
+				}
+				await waitForCustomElements(preloadTags);
 				loadedPreloadedBundleKey = bundleKey;
 				preloadedReady = true;
 			} catch (error) {
@@ -265,14 +291,14 @@ const demoCardTitleFormatter = (context: any) => {
 	});
 
 	$effect(() => {
-		if (!browser || !attemptId) return;
+		if (!browser || !routerReady || !attemptId) return;
 		const url = new URL(window.location.href);
 		const existingAttemptId = url.searchParams.get(ATTEMPT_QUERY_PARAM);
 		const existingLayout = url.searchParams.get('layout');
 		if (existingAttemptId === attemptId && existingLayout === layoutType) return;
 		url.searchParams.set(ATTEMPT_QUERY_PARAM, attemptId);
 		url.searchParams.set('layout', layoutType);
-		window.history.replaceState({}, '', url.toString());
+		replaceState(url, {});
 	});
 
 	$effect(() => {
@@ -502,7 +528,7 @@ const demoCardTitleFormatter = (context: any) => {
 				toolbar-position="right"
 				show-toolbar={true}
 				enabled-tools={sectionToolbarTools}
-				cardTitleFormatter={customTitlesEnabled ? demoCardTitleFormatter : undefined}
+				hooks={sectionPlayerHooks}
 				ontoolkit-ready={handleToolkitReady}
 			></pie-section-player-vertical>
 		{:else}
@@ -521,7 +547,7 @@ const demoCardTitleFormatter = (context: any) => {
 				toolbar-position="right"
 				show-toolbar={true}
 				enabled-tools={sectionToolbarTools}
-				cardTitleFormatter={customTitlesEnabled ? demoCardTitleFormatter : undefined}
+				hooks={sectionPlayerHooks}
 				ontoolkit-ready={handleToolkitReady}
 			></pie-section-player-splitpane>
 		{/if}

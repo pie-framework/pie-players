@@ -9,7 +9,7 @@ import {
 	Engine,
 	PollyClient,
 	SynthesizeSpeechCommand,
-	VoiceId,
+	type VoiceId,
 } from "@aws-sdk/client-polly";
 
 import {

@@ -20,6 +20,7 @@
  * ```
  */
 
+/// <reference types="svelte" />
 import type { I18nServiceApi } from "./types.js";
 
 /**

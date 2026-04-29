@@ -23,11 +23,8 @@ export {
 	modelsForPackage,
 	validatePieConfigContract,
 } from "./config.js";
-// Loaders
-export type { EsmLoaderConfig } from "./esm-loader.js";
-export { EsmPieLoader } from "./esm-loader.js";
-export type { IifeLoaderConfig } from "./iife-loader.js";
-export { DEFAULT_BUNDLE_HOST, IifePieLoader } from "./iife-loader.js";
+// Loaders — the deep `ElementLoader` primitive (async `ensureRegistered` /
+// sync `assertRegistered`) lives under `pie-players-shared/loaders`.
 // Initialization
 export {
 	initializePiesFromLoadedBundle,
@@ -43,6 +40,26 @@ export {
 export { attachInstrumentationEventBridge } from "./instrumentation-event-bridge.js";
 export type { AttachInstrumentationEventBridgeArgs } from "./instrumentation-event-bridge.js";
 export { resolveInstrumentationProvider } from "./instrumentation-provider-resolution.js";
+// Canonical stage vocabulary (M6). Both `<pie-section-player-*>` and
+// `<pie-assessment-toolkit>` share this primitive so the
+// `pie-stage-change` event family stays coherent across CE shapes.
+export {
+	STAGES,
+	applicableStages,
+	stageOrdinal,
+} from "./stages.js";
+export type {
+	LoadingCompleteDetail,
+	Stage,
+	StageChangeDetail,
+	StageSourceCe,
+	StageStatus,
+} from "./stages.js";
+export { createStageTracker } from "./stage-tracker.js";
+export type {
+	CreateStageTrackerOptions,
+	StageTracker,
+} from "./stage-tracker.js";
 export {
 	ASSESSMENT_INSTRUMENTATION_EVENT_MAP,
 	SECTION_INSTRUMENTATION_EVENT_MAP,
@@ -128,6 +145,17 @@ export {
 	updatePieElements,
 	updatePieElementWithRef,
 } from "./updates.js";
+// URL / element override helpers
+export type { ElementOverrides } from "./overrides.js";
+export {
+	addOrUpdateOverrideInUrl,
+	applyElementOverrides,
+	applyElementVersionOverridesPreserveTags,
+	extractPackageInfo,
+	formatElementOverrideParam,
+	parseElementOverridesFromCurrentUrl,
+	parseElementOverridesFromUrl,
+} from "./overrides.js";
 // Utils
 export {
 	findOrAddSession,

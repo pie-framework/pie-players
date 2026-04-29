@@ -173,6 +173,21 @@ export class SectionRuntimeEngine {
 	private unsubscribeController: (() => void) | null = null;
 	private activeInitToken = 0;
 
+	/**
+	 * Tracks which `(canonicalItemId, contentKind)` pairs have already
+	 * fired `handleContentLoaded` on this engine. Mirrored alongside
+	 * `RuntimeRegistry`'s registered set so a cohort handoff can
+	 * replay the persistent shells' loaded state into the new
+	 * controller — see `replayRegisteredShellsIntoController` and the
+	 * PIE-512 Phase B regression test.
+	 *
+	 * Cleared in lockstep with `handleContentUnregistered` and on
+	 * `dispose`. Not exposed publicly: the registry alone is the
+	 * external surface; the loaded set exists only to seed cohort B's
+	 * controller with the live state cohort A's shells produced.
+	 */
+	private readonly loadedRenderableKeys = new Set<string>();
+
 	// ============================================================
 	// Engine-side surface (PR 3+; driven by the kernel from PR 5,
 	// by the toolkit CE from PR 6, and by the facade smoke test today).
@@ -301,13 +316,92 @@ export class SectionRuntimeEngine {
 		})) as RuntimeController;
 
 		if (token !== this.activeInitToken) return;
+		const previousController = this.controller;
 		this.unsubscribeController?.();
 		this.controller = resolved;
+		// PIE-512 Phase B: when the cohort flips and the coordinator
+		// returns a fresh controller, replay the registry's currently
+		// registered shells (and their loaded state) into the new
+		// controller. The persistent shell scenario — same passage
+		// element diffed across cohorts in a passage-only narrow
+		// viewport — does not re-fire `pie-register` /
+		// `pie-content-loaded`, so without this replay the new
+		// controller's `loadedRenderables` snapshot stays empty and
+		// late subscribers see zero events.
+		//
+		// Same-cohort updateInput resolves to the existing controller
+		// (`previousController === resolved`), so the replay is a
+		// no-op there and there is no double-bookkeeping.
+		if (resolved !== previousController) {
+			this.replayRegisteredShellsIntoController(resolved);
+		}
 		args.onCompositionChanged?.(resolved.getCompositionModel?.());
 		this.unsubscribeController =
 			resolved.subscribe?.(() => {
 				args.onCompositionChanged?.(resolved.getCompositionModel?.());
 			}) || null;
+	}
+
+	/**
+	 * Re-feed the engine's `RuntimeRegistry` and loaded-set into a
+	 * freshly-resolved controller. Call sites: `initialize(...)` on
+	 * cohort flip.
+	 *
+	 * Two-pass order — register every shell in document order, then
+	 * issue `handleContentLoaded` for each shell whose load already
+	 * fired on this engine. The two-pass shape prevents
+	 * `evaluateSectionLoadingState` from flapping
+	 * `section-loading-complete` `false→true→false→…` while replay is
+	 * mid-walk: any subscriber wired before the engine's own
+	 * `controller.subscribe` (no such caller today, but cheap defense
+	 * for future wiring) sees one clean `false→true` transition.
+	 *
+	 * Idempotent on the controller side — `SectionController.handleContentRegistered`
+	 * is `Map.set`, `handleContentLoaded` is `Set.add` — and at the
+	 * call site no listener is attached during the replay window, so
+	 * the `emitChange` side effects fire into a void on this pass.
+	 */
+	private replayRegisteredShellsIntoController(
+		controller: RuntimeController,
+	): void {
+		if (!controller.handleContentRegistered) return;
+		const shells = this.registry.getOrderedShells();
+		if (shells.length === 0) return;
+		for (const shell of shells) {
+			const canonicalItemId = shell.canonicalItemId || shell.itemId;
+			controller.handleContentRegistered({
+				itemId: shell.itemId,
+				canonicalItemId,
+				contentKind: shell.contentKind || shell.kind,
+			});
+		}
+		const now = Date.now();
+		for (const shell of shells) {
+			const canonicalItemId = shell.canonicalItemId || shell.itemId;
+			const key = this.getLoadedKey(canonicalItemId, shell.contentKind);
+			if (this.loadedRenderableKeys.has(key)) {
+				controller.handleContentLoaded?.({
+					itemId: shell.itemId,
+					canonicalItemId,
+					contentKind: shell.contentKind || shell.kind,
+					timestamp: now,
+				});
+			}
+		}
+	}
+
+	/**
+	 * Stable key for the engine's `loadedRenderableKeys` set. Mirrors
+	 * the `(canonicalItemId, contentKind)` shape `SectionController`
+	 * uses internally (see `getRenderableKey`); we only need
+	 * consistent add/check semantics on this side, not byte-identical
+	 * normalization with the controller.
+	 */
+	private getLoadedKey(
+		canonicalItemId: string,
+		contentKind: string | undefined,
+	): string {
+		return `${contentKind ?? ""}:${canonicalItemId}`;
 	}
 
 	register(detail: RuntimeRegistrationDetail): boolean {
@@ -336,9 +430,20 @@ export class SectionRuntimeEngine {
 	}
 
 	handleContentUnregistered(detail: RuntimeRegistrationDetail): void {
+		const canonicalItemId = detail.canonicalItemId || detail.itemId;
+		// Key the load-set delete with the same `contentKind`-only
+		// shape that `handleContentLoaded` and
+		// `replayRegisteredShellsIntoController` use, so add/check/
+		// delete keys round-trip identically. The `|| detail.kind`
+		// fallback is preserved for the controller-forwarded payload
+		// because the controller normalizes via `toSectionContentKind`
+		// and the legacy `kind` field is still meaningful there.
+		this.loadedRenderableKeys.delete(
+			this.getLoadedKey(canonicalItemId, detail.contentKind),
+		);
 		this.controller?.handleContentUnregistered?.({
 			itemId: detail.itemId,
-			canonicalItemId: detail.canonicalItemId || detail.itemId,
+			canonicalItemId,
 			contentKind: detail.contentKind || detail.kind,
 		});
 	}
@@ -350,6 +455,10 @@ export class SectionRuntimeEngine {
 		detail?: unknown;
 		timestamp?: number;
 	}): void {
+		const canonicalItemId = args.canonicalItemId || args.itemId;
+		this.loadedRenderableKeys.add(
+			this.getLoadedKey(canonicalItemId, args.contentKind),
+		);
 		this.controller?.handleContentLoaded?.(args);
 	}
 
@@ -406,6 +515,7 @@ export class SectionRuntimeEngine {
 			});
 		}
 		this.registry.clear();
+		this.loadedRenderableKeys.clear();
 		this.controller = null;
 		this.coordinator = null;
 		// Tear down the engine-side adapter (if attached) last so any

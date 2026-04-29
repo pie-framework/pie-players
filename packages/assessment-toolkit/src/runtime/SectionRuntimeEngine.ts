@@ -316,25 +316,36 @@ export class SectionRuntimeEngine {
 		})) as RuntimeController;
 
 		if (token !== this.activeInitToken) return;
-		const previousController = this.controller;
 		this.unsubscribeController?.();
 		this.controller = resolved;
-		// PIE-512 Phase B: when the cohort flips and the coordinator
-		// returns a fresh controller, replay the registry's currently
-		// registered shells (and their loaded state) into the new
-		// controller. The persistent shell scenario — same passage
-		// element diffed across cohorts in a passage-only narrow
-		// viewport — does not re-fire `pie-register` /
-		// `pie-content-loaded`, so without this replay the new
-		// controller's `loadedRenderables` snapshot stays empty and
-		// late subscribers see zero events.
+		// PIE-512 Phase C: always re-feed the registry's currently
+		// registered shells (and their loaded state) into the resolved
+		// controller. We do NOT gate on `resolved !== previousController`
+		// any more.
 		//
-		// Same-cohort updateInput resolves to the existing controller
-		// (`previousController === resolved`), so the replay is a
-		// no-op there and there is no double-bookkeeping.
-		if (resolved !== previousController) {
-			this.replayRegisteredShellsIntoController(resolved);
-		}
+		// Why the gate had to go:
+		//   - Cohort flip resolving to a fresh controller — replay seeds
+		//     the new controller, which is the original Phase B fix.
+		//   - Same-cohort `updateInput` resolving to the existing
+		//     controller — the coordinator's
+		//     `resolveExistingSectionController` calls
+		//     `existingController.updateInput(input)` (engine always
+		//     passes `updateExisting: true`), and pre-Phase-C
+		//     `SectionController.initialize` wiped lifecycle tracking
+		//     unconditionally. A subscriber attaching between the wipe
+		//     and the next live event saw an empty
+		//     `loadedRenderables` snapshot.
+		//
+		// Phase C makes this re-feed safe by combining (a) the
+		// section-identity gate around `resetLifecycleTracking()` in
+		// `SectionController.initialize` (so same-cohort `updateInput`
+		// preserves tracking) with (b) idempotent
+		// `handleContentRegistered` / `handleContentLoaded` on the
+		// controller (so re-feeding the same registry entries is a
+		// no-op if the controller already knows about them, but
+		// re-seeds the controller in the post-`updateInput`-wipe case
+		// that pre-Phase-C used to encounter).
+		this.replayRegisteredShellsIntoController(resolved);
 		args.onCompositionChanged?.(resolved.getCompositionModel?.());
 		this.unsubscribeController =
 			resolved.subscribe?.(() => {
@@ -343,9 +354,12 @@ export class SectionRuntimeEngine {
 	}
 
 	/**
-	 * Re-feed the engine's `RuntimeRegistry` and loaded-set into a
-	 * freshly-resolved controller. Call sites: `initialize(...)` on
-	 * cohort flip.
+	 * Re-feed the engine's `RuntimeRegistry` and loaded-set into the
+	 * resolved controller. Call site: `initialize(...)` — runs on
+	 * EVERY initialize, both cohort-flip-resolves-fresh-controller
+	 * and same-cohort-resolves-existing-controller cases. Phase C
+	 * dropped the `resolved !== previousController` gate; see the
+	 * comment at the call site for why.
 	 *
 	 * Two-pass order — register every shell in document order, then
 	 * issue `handleContentLoaded` for each shell whose load already
@@ -356,10 +370,16 @@ export class SectionRuntimeEngine {
 	 * `controller.subscribe` (no such caller today, but cheap defense
 	 * for future wiring) sees one clean `false→true` transition.
 	 *
-	 * Idempotent on the controller side — `SectionController.handleContentRegistered`
-	 * is `Map.set`, `handleContentLoaded` is `Set.add` — and at the
-	 * call site no listener is attached during the replay window, so
-	 * the `emitChange` side effects fire into a void on this pass.
+	 * Idempotent on the controller side — Phase C makes
+	 * `SectionController.handleContentRegistered` and
+	 * `handleContentLoaded` early-return on duplicates so re-feeding
+	 * the same shells into a controller that already tracks them is
+	 * a true no-op (no spurious re-emits, no re-evaluation of
+	 * `section-loading-complete`). At the call site no listener is
+	 * attached during the replay window, so `emitChange` side effects
+	 * fire into a void on this pass anyway, but the controller-side
+	 * idempotence is what makes the replay safe to run on every
+	 * initialize regardless of whether the controller is fresh.
 	 */
 	private replayRegisteredShellsIntoController(
 		controller: RuntimeController,

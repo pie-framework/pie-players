@@ -327,4 +327,81 @@ describe("PIE-512 persistent-shell cohort handoff", () => {
 			).toBe(false);
 		},
 	);
+
+	test(
+		"PIE-512 Phase C: replay also fires when engine.initialize resolves " +
+			"to the EXISTING controller (same-cohort updateInput path)",
+		async () => {
+			// Phase B's fix gated `replayRegisteredShellsIntoController`
+			// behind `resolved !== previousController`. That left a hole:
+			// when the engine's `initialize` resolves to the existing
+			// controller (because the coordinator's
+			// `resolveExistingSectionController` is called with the same
+			// `(sectionId, attemptId)` tuple), no replay fires. Pre-Phase-C
+			// `SectionController.initialize` also wiped lifecycle tracking
+			// unconditionally on every `updateInput`, so a subscriber that
+			// attached after the wipe and before any new live event saw
+			// empty `runtimeState.loadedRenderables` and never received
+			// `content-loaded` / `section-loading-complete` for the
+			// already-mounted persistent shells. Phase C drops the engine's
+			// identity gate so replay fires every time.
+			const controllerA = createTrackingController("section-A");
+
+			await engine.initialize({
+				coordinator,
+				section: { identifier: "section-A" },
+				sectionId: "section-A",
+				assessmentId: "pie-512-persistent-shell",
+				attemptId: "attempt-1",
+				view: "candidate",
+				createDefaultController: () => controllerA,
+			});
+
+			const passage = makePassageRegistration();
+			engine.register(passage);
+			engine.handleContentRegistered(passage);
+			engine.handleContentLoaded({
+				itemId: passage.itemId,
+				canonicalItemId: passage.canonicalItemId,
+				contentKind: passage.contentKind,
+				timestamp: Date.now(),
+			});
+
+			// Snapshot the call count after cohort A's live events have
+			// flushed. The post-Phase-C replay on the second `initialize`
+			// must be observable as additional `handleContentRegistered` /
+			// `handleContentLoaded` calls beyond this baseline.
+			const callsAfterCohortA = controllerA.__calls.length;
+
+			// Same `sectionId` + `attemptId` → coordinator returns the
+			// SAME controller. Pre-Phase-C the engine's identity gate
+			// (`resolved !== previousController`) skipped replay here.
+			await engine.initialize({
+				coordinator,
+				section: { identifier: "section-A" },
+				sectionId: "section-A",
+				assessmentId: "pie-512-persistent-shell",
+				attemptId: "attempt-1",
+				view: "candidate",
+				createDefaultController: () => controllerA,
+			});
+
+			const replayCalls = controllerA.__calls.slice(callsAfterCohortA);
+
+			expect(
+				replayCalls.some(
+					(call) =>
+						call.method === "handleContentRegistered" &&
+						call.itemId === PASSAGE_ITEM_ID,
+				),
+			).toBe(true);
+			expect(
+				replayCalls.some(
+					(call) =>
+						call.method === "handleContentLoaded" &&
+						call.itemId === PASSAGE_ITEM_ID,
+				),
+			).toBe(true);
+		},
+	);
 });

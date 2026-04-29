@@ -40,7 +40,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 
 import {
 	ContextProviderEvent,
-	ContextRequestEvent,
+	type ContextRequestEvent,
 } from "@pie-players/pie-context";
 
 import { SectionRuntimeEngine } from "../../src/runtime/SectionRuntimeEngine.js";

@@ -1,5 +1,13 @@
 # @pie-players/pie-theme-daisyui
 
+## 0.3.33
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-theme@0.3.33
+
 ## 0.3.32
 
 ### Patch Changes

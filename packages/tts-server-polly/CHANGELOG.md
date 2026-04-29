@@ -1,5 +1,13 @@
 # @pie-players/tts-server-polly
 
+## 0.3.34
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/tts-server-core@0.3.34
+
 ## 0.3.33
 
 ### Patch Changes

@@ -14,6 +14,8 @@ pre-push:
   commands:
     check-deps:
       run: bun run check:deps
+    check-changeset-patch-only:
+      run: bun run check:changeset-patch-only
     check-publint:
       run: bun run check:publint
     section-player-critical-e2e:

@@ -5,6 +5,10 @@ import { demo3Section } from "./demo3-three-questions";
 import { demo4Section } from "./demo4-tts-ssml";
 import { demo5Section } from "./demo5-resource-observability";
 import { demo6Section } from "./demo6-tabbed-layout";
+import {
+	pie512SectionA,
+	pie512SectionB,
+} from "./pie-512-asymmetric-sections";
 
 export interface SectionDemoInfo {
 	id: string;
@@ -556,6 +560,33 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 				id: "session-page-two",
 				name: "Session Page Two",
 				section: sessionPersistencePageTwo,
+			},
+		],
+	},
+	"pie-512-asymmetric-sections": {
+		id: "pie-512-asymmetric-sections",
+		name: "PIE-512: Asymmetric Sections (Regression Fixture)",
+		description:
+			"Narrow-viewport navigation across passage+single-item / multi-item sections.",
+		integrationLevel: 5,
+		integrationTheme: "Regression fixture",
+		focus:
+			"Reproduces the PIE-512 cross-section event-delivery regression: navigating between asymmetric sections in a narrow split-pane viewport must redeliver `content-loaded` and `section-loading-complete` to consumers on each cohort flip.",
+		whatMakesItTick: [
+			"Section A pairs a stimulus passage with a single MC item to seed a passage+item cohort.",
+			"Section B has three MC items and no passage so the cohort shape changes on navigation.",
+			"Wired into the multi-section route shape used by `session-hydrate-db` (`?page=` selects the active section).",
+		],
+		sections: [
+			{
+				id: "pie-512-section-a",
+				name: "Section A (passage + one item)",
+				section: pie512SectionA,
+			},
+			{
+				id: "pie-512-section-b",
+				name: "Section B (three items)",
+				section: pie512SectionB,
 			},
 		],
 	},

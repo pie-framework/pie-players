@@ -363,6 +363,9 @@ export class SectionController implements SectionControllerHandle {
 			itemSessions[canonicalId] = sessionValue;
 		}
 
+		const loadedRenderables: SectionAttemptSessionSlice["loadedRenderables"] =
+			this.collectLoadedRenderableSnapshot();
+
 		const runtimeState: SectionAttemptSessionSlice = {
 			sectionId: this.state.input?.sectionId || "",
 			sectionIdentifier:
@@ -380,8 +383,39 @@ export class SectionController implements SectionControllerHandle {
 			itemsComplete: this.sectionItemsComplete,
 			completedCount: this.completedCount,
 			totalItems: this.totalItems,
+			loadedRenderables,
 		};
 		return runtimeState;
+	}
+
+	/**
+	 * Snapshot of currently-loaded renderables in registration order.
+	 *
+	 * Walks `trackedRenderables` (preserves insertion order) and emits an entry
+	 * for each entry whose key is in `loadedRenderableKeys`. Used by the
+	 * coordinator to replay `content-loaded` events to subscribers that
+	 * attach after a renderable has finished loading.
+	 */
+	private collectLoadedRenderableSnapshot(): ReadonlyArray<{
+		itemId: string;
+		canonicalItemId: string;
+		contentKind: "item" | "passage" | "rubric" | "unknown";
+	}> {
+		if (this.loadedRenderableKeys.size === 0) return [];
+		const snapshot: Array<{
+			itemId: string;
+			canonicalItemId: string;
+			contentKind: "item" | "passage" | "rubric" | "unknown";
+		}> = [];
+		for (const [key, tracked] of this.trackedRenderables) {
+			if (!this.loadedRenderableKeys.has(key)) continue;
+			snapshot.push({
+				itemId: tracked.itemId,
+				canonicalItemId: tracked.canonicalItemId,
+				contentKind: tracked.contentKind,
+			});
+		}
+		return snapshot;
 	}
 
 	public getCurrentItem(): ItemEntity | null {

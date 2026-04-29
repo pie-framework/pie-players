@@ -216,6 +216,7 @@ export type {
 	SectionScopedEventSubscriptionArgs,
 	SectionEventSubscriptionArgs,
 	SectionSessionPersistenceStrategy,
+	SectionControllerLoadedRenderable,
 	SectionControllerRuntimeState,
 	SectionControllerSessionState,
 	SectionPersistenceFactoryDefaults,

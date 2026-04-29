@@ -37,6 +37,12 @@ export interface SectionControllerApplySessionOptions {
 	mode?: "replace" | "merge";
 }
 
+export interface SectionControllerLoadedRenderable {
+	itemId: string;
+	canonicalItemId: string;
+	contentKind: "item" | "passage" | "rubric" | "unknown";
+}
+
 export interface SectionControllerRuntimeState {
 	sectionId: string;
 	sectionIdentifier?: string;
@@ -51,6 +57,21 @@ export interface SectionControllerRuntimeState {
 	itemsComplete: boolean;
 	completedCount: number;
 	totalItems: number;
+	/**
+	 * Renderables (items, passages, rubrics) that have completed loading.
+	 *
+	 * Optional so synthetic test harnesses constructing a runtime state by
+	 * hand can omit it; production `SectionController.getRuntimeState` always
+	 * supplies it, which lets `ToolkitCoordinator` replay
+	 * `content-loaded` events to subscribers that attach after a renderable
+	 * has finished loading (e.g. cohort transitions in the assessment
+	 * runtime).
+	 *
+	 * Order is registration order, matching the order in which `content-loaded`
+	 * fires live; coordinator replay walks this list in-order so late
+	 * subscribers observe the same sequence a live subscriber would have seen.
+	 */
+	loadedRenderables?: ReadonlyArray<SectionControllerLoadedRenderable>;
 }
 
 export interface SectionControllerSessionState {

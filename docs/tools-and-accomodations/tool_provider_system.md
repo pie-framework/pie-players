@@ -226,17 +226,15 @@ Prefer those elements and the `coordinator` property over older orchestration pa
 Hosts that need direct access to runtime events or controller state should subscribe through the coordinator or section controller rather than coupling to internal component details.
 
 ```ts
+// Subscribe after the first `getOrCreateSectionController(...)` resolves.
+// The listener follows the toolkit's active section cohort across navigation.
 const unsubscribeItem = coordinator.subscribeItemEvents({
-  sectionId,
-  attemptId,
   listener: (event) => {
     console.log("item event", event);
   },
 });
 
 const unsubscribeSection = coordinator.subscribeSectionLifecycleEvents({
-  sectionId,
-  attemptId,
   listener: (event) => {
     console.log("section event", event);
   },

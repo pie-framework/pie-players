@@ -271,12 +271,42 @@ export interface SectionControllerLifecycleEvent {
 	controller?: SectionControllerHandle;
 }
 
+/**
+ * Subscribe-time arguments for {@link ToolkitCoordinator.subscribeSectionEvents}.
+ *
+ * Phase D contract: subscriptions follow the toolkit's *active section
+ * cohort* automatically. The listener is bound to whatever section
+ * controller is active at subscribe time and is migrated, with snapshot
+ * replay, on every cohort transition. There is no per-subscription
+ * `(sectionId, attemptId)` binding — those args are not part of the
+ * Phase D shape. Hosts that previously passed them should drop them; the
+ * runtime tolerates extra unknown properties to keep legacy call sites
+ * working.
+ */
 export interface SectionEventSubscriptionArgs {
-	sectionId?: string;
-	attemptId?: string;
 	listener: (event: SectionControllerEvent) => void;
 	eventTypes?: readonly SectionControllerEventType[];
 	itemIds?: readonly string[];
+}
+
+/**
+ * Internal Phase D subscription record. Holds a listener's filter args
+ * and the disposer for whichever section controller it is currently
+ * bound to. Detached and re-attached by the coordinator on every cohort
+ * transition.
+ *
+ * @internal
+ */
+interface ActiveSectionSubscription {
+	listener: (event: SectionControllerEvent) => void;
+	eventTypes?: readonly SectionControllerEventType[];
+	itemIds?: readonly string[];
+	/**
+	 * Disposer for the controller `subscribe(...)` call backing this
+	 * subscription, or `null` when no cohort is currently active. Cleared
+	 * on every detach so subsequent re-binds start from a clean slate.
+	 */
+	unsubscribeCurrent: (() => void) | null;
 }
 
 export type SectionItemEventType = Exclude<
@@ -307,17 +337,26 @@ export type SectionScopedEvent = Extract<
 	{ type: SectionScopedEventType }
 >;
 
+/**
+ * Subscribe-time arguments for {@link ToolkitCoordinator.subscribeItemEvents}.
+ *
+ * See {@link SectionEventSubscriptionArgs} for the Phase D active-cohort
+ * binding contract.
+ */
 export interface SectionItemEventSubscriptionArgs {
-	sectionId?: string;
-	attemptId?: string;
 	listener: (event: SectionItemEvent) => void;
 	eventTypes?: readonly SectionItemEventType[];
 	itemIds?: readonly string[];
 }
 
+/**
+ * Subscribe-time arguments for
+ * {@link ToolkitCoordinator.subscribeSectionLifecycleEvents}.
+ *
+ * See {@link SectionEventSubscriptionArgs} for the Phase D active-cohort
+ * binding contract.
+ */
 export interface SectionScopedEventSubscriptionArgs {
-	sectionId?: string;
-	attemptId?: string;
 	listener: (event: SectionScopedEvent) => void;
 	eventTypes?: readonly SectionScopedEventType[];
 }
@@ -502,15 +541,33 @@ export class ToolkitCoordinator {
 	private readonly sectionControllerLifecycleListeners = new Set<
 		(event: SectionControllerLifecycleEvent) => void
 	>();
-	private readonly sectionEventListenerIds = new WeakMap<
+	/**
+	 * Phase D: every active section-event subscription, indexed by
+	 * listener identity. The listener follows the toolkit's active
+	 * section cohort across transitions; this map is the registry the
+	 * coordinator iterates on every cohort change to detach the listener
+	 * from the outgoing controller, attach it to the new one, and replay
+	 * the snapshot (content-loaded × N then section-loading-complete) in
+	 * canonical order.
+	 *
+	 * Dedup is by listener identity: subscribing the same listener
+	 * function twice replaces the prior subscription's filter args.
+	 */
+	private readonly activeSubscriptions = new Map<
 		(event: SectionControllerEvent) => void,
-		number
+		ActiveSectionSubscription
 	>();
-	private readonly sectionEventSubscriptions = new Map<string, () => void>();
+	/**
+	 * Phase D: map key of the section controller currently treated as
+	 * the *active cohort*. Set by `getOrCreateSectionController` (both
+	 * the create-new and resolve-existing paths) and cleared when the
+	 * matching controller is disposed. `null` while no cohort exists,
+	 * which is the only state where `subscribeSectionEvents` throws.
+	 */
+	private activeCohortMapKey: string | null = null;
 	private readonly telemetryListeners = new Set<ToolkitTelemetryListener>();
 	private readonly frameworkErrorBus: FrameworkErrorBus;
 	private readonly ownsFrameworkErrorBus: boolean;
-	private nextSectionEventListenerId = 1;
 
 	/**
 	 * Unified Tool Policy Engine. Owned by the coordinator and lives
@@ -1059,92 +1116,153 @@ export class ToolkitCoordinator {
 	}
 
 	public subscribeSectionEvents(args: SectionEventSubscriptionArgs): () => void {
-		const controllerEntry = this.resolveSectionSubscriptionEntry(args);
-		if (!controllerEntry) return () => {};
-		const { mapKey, controller } = controllerEntry;
-		const subscribe = controller.subscribe;
-		if (!subscribe) {
-			const resolvedKey = this.sectionControllerKeys.get(mapKey);
-			const sectionLabel = resolvedKey?.sectionId || args.sectionId || "<unknown>";
-			const attemptLabel = resolvedKey?.attemptId || args.attemptId || "<default>";
+		// Phase D: subscriptions follow the toolkit's *active section
+		// cohort* automatically. We bind the listener to whichever
+		// controller is currently active and re-bind it on every
+		// `getOrCreateSectionController` / `disposeSectionController`
+		// transition, with snapshot replay on each migration. The
+		// pre-Phase-D `(sectionId, attemptId)` resolution path is gone;
+		// any such args on `args` are ignored at runtime (legacy hosts
+		// that still pass them keep working without a code change).
+		if (this.activeCohortMapKey === null) {
 			throw new Error(
-				`[ToolkitCoordinator] subscribeSectionEvents could not subscribe: resolved controller for section "${sectionLabel}" attempt "${attemptLabel}" does not expose subscribe().`,
+				"[ToolkitCoordinator] subscribeSectionEvents requires an active section cohort; call getOrCreateSectionController first.",
 			);
 		}
-		const listenerId = this.getOrCreateSectionEventListenerId(args.listener);
-		const subscriptionKey = `${mapKey}::${listenerId}`;
-		const previousSubscription = this.sectionEventSubscriptions.get(
-			subscriptionKey,
-		);
-		previousSubscription?.();
+		const previous = this.activeSubscriptions.get(args.listener);
+		if (previous) {
+			previous.unsubscribeCurrent?.();
+			previous.unsubscribeCurrent = null;
+		}
+		const sub: ActiveSectionSubscription = {
+			listener: args.listener,
+			eventTypes: args.eventTypes,
+			itemIds: args.itemIds,
+			unsubscribeCurrent: null,
+		};
+		this.activeSubscriptions.set(args.listener, sub);
 
-		const shouldDeliverEvent = this.buildSectionEventPredicate(args);
-		const unsubscribeController = subscribe.call(controller, (event) => {
-			if (!shouldDeliverEvent(event)) return;
-			args.listener(event);
+		const controller = this.sectionControllers.get(this.activeCohortMapKey);
+		if (controller) {
+			this.bindSubscriptionToController(sub, controller);
+		}
+
+		let detached = false;
+		return () => {
+			if (detached) return;
+			detached = true;
+			sub.unsubscribeCurrent?.();
+			sub.unsubscribeCurrent = null;
+			// Only delete if the registry still points at *this* sub. A
+			// re-subscribe with the same listener replaces the entry; an
+			// old disposer must not stomp the new one.
+			if (this.activeSubscriptions.get(args.listener) === sub) {
+				this.activeSubscriptions.delete(args.listener);
+			}
+		};
+	}
+
+	/**
+	 * Bind a Phase D subscription to a section controller. Detaches any
+	 * prior controller binding the subscription was holding, attaches a
+	 * fresh `controller.subscribe(...)` callback, and replays the
+	 * canonical late-subscribe sequence (content-loaded × N then
+	 * section-loading-complete) so the listener observes the same
+	 * ordering a fresh subscriber would have seen.
+	 *
+	 * Listener throws are caught and `console.warn`-logged; the throw
+	 * does not interrupt fan-out to the remaining listeners (matches
+	 * the {@link FrameworkErrorBus} isolation pattern).
+	 */
+	private bindSubscriptionToController(
+		sub: ActiveSectionSubscription,
+		controller: SectionControllerHandle,
+	): void {
+		sub.unsubscribeCurrent?.();
+		sub.unsubscribeCurrent = null;
+
+		const subscribe = controller.subscribe;
+		if (typeof subscribe !== "function") return;
+
+		const predicate = this.buildSectionEventPredicate(sub);
+
+		sub.unsubscribeCurrent = subscribe.call(controller, (event) => {
+			if (!predicate(event)) return;
+			this.deliverSectionEventSafely(sub.listener, event);
 		});
 
-		// Replay `content-loaded` events first so a late subscriber observes
-		// the same ordering a live subscriber would have seen (per-renderable
-		// loads, then the aggregate `section-loading-complete`). Symmetric
-		// with `section-loading-complete` replay below; without this, a
-		// consumer that attaches after a cohort transition (e.g. a fresh
-		// section controller created on navigation) silently misses every
-		// `content-loaded` event for items that finished loading before the
-		// subscription attached. See PIE-512 for the consumer-observable
-		// regression.
 		const contentLoadedReplays = this.buildContentLoadedReplayEvents(controller);
 		for (const event of contentLoadedReplays) {
-			if (shouldDeliverEvent(event)) {
-				args.listener(event);
+			if (predicate(event)) {
+				this.deliverSectionEventSafely(sub.listener, event);
 			}
 		}
-
-		const replayEvent = this.buildLoadingCompleteReplayEvent(controller);
-		if (replayEvent && shouldDeliverEvent(replayEvent)) {
-			args.listener(replayEvent);
-		}
-
-		const detach = this.createSectionEventDetachHandler(
-			subscriptionKey,
-			unsubscribeController,
-		);
-
-		this.sectionEventSubscriptions.set(subscriptionKey, detach);
-		return detach;
-	}
-
-	private resolveSectionSubscriptionEntry(
-		args: Pick<SectionEventSubscriptionArgs, "sectionId" | "attemptId">,
-	): { mapKey: string; controller: SectionControllerHandle } | null {
-		try {
-			return this.resolveSectionControllerForSubscription({
-				sectionId: args.sectionId,
-				attemptId: args.attemptId,
-			});
-		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
-			const isAmbiguousSectionWithoutAttempt =
-				args.sectionId !== undefined &&
-				args.attemptId === undefined &&
-				message.includes("subscribeSectionEvents is ambiguous for section");
-			if (isAmbiguousSectionWithoutAttempt) {
-				console.warn(message);
-				return null;
-			}
-			throw error;
+		const loadingComplete = this.buildLoadingCompleteReplayEvent(controller);
+		if (loadingComplete && predicate(loadingComplete)) {
+			this.deliverSectionEventSafely(sub.listener, loadingComplete);
 		}
 	}
 
-	private getOrCreateSectionEventListenerId(
+	private deliverSectionEventSafely(
 		listener: (event: SectionControllerEvent) => void,
-	): number {
-		let listenerId = this.sectionEventListenerIds.get(listener);
-		if (!listenerId) {
-			listenerId = this.nextSectionEventListenerId++;
-			this.sectionEventListenerIds.set(listener, listenerId);
+		event: SectionControllerEvent,
+	): void {
+		try {
+			listener(event);
+		} catch (error) {
+			console.warn(
+				"[ToolkitCoordinator] section-event listener failed:",
+				error,
+			);
 		}
-		return listenerId;
+	}
+
+	/**
+	 * Mark the given map key as the active section cohort. Called from
+	 * `getOrCreateSectionController` (both create-new and resolve-existing
+	 * paths) so a cohort transition through either path migrates active
+	 * subscriptions.
+	 *
+	 * Same-cohort re-entry is a no-op so a same-cohort `updateInput`
+	 * (PnP toggle, prompt edit) doesn't double-replay snapshots to
+	 * already-bound listeners.
+	 */
+	private setActiveCohort(mapKey: string): void {
+		if (this.activeCohortMapKey === mapKey) return;
+		this.activeCohortMapKey = mapKey;
+		const controller = this.sectionControllers.get(mapKey);
+		if (!controller) return;
+		// Snapshot the subscription list before iterating: a listener may
+		// synchronously call `subscribeSectionEvents(...)` from inside its
+		// replay delivery, which inserts a new entry into
+		// `activeSubscriptions`. Map iteration yields keys inserted
+		// during the loop; without snapshotting, the inner subscribe path
+		// would bind the new listener once (correctly, with replay) and
+		// the outer loop would then visit it a second time, double-
+		// replaying the snapshot. Snapshot keeps "replay once per cohort
+		// transition" intact.
+		for (const sub of Array.from(this.activeSubscriptions.values())) {
+			this.bindSubscriptionToController(sub, controller);
+		}
+	}
+
+	/**
+	 * Clear the active cohort if `mapKey` matches it, detaching every
+	 * active subscription's current controller binding. Subscriptions
+	 * stay in the registry — a subsequent `setActiveCohort(...)` will
+	 * re-bind them to the new controller.
+	 */
+	private clearActiveCohortIfMatches(mapKey: string): void {
+		if (this.activeCohortMapKey !== mapKey) return;
+		this.activeCohortMapKey = null;
+		// Symmetric snapshot for safety: a disposer fired during detach
+		// could mutate `activeSubscriptions`. Detach is silent (no listener
+		// fan-out), so re-entrancy exposure is lower than `setActiveCohort`,
+		// but the snapshot keeps both paths uniform.
+		for (const sub of Array.from(this.activeSubscriptions.values())) {
+			sub.unsubscribeCurrent?.();
+			sub.unsubscribeCurrent = null;
+		}
 	}
 
 	private buildSectionEventPredicate(
@@ -1262,32 +1380,15 @@ export class ToolkitCoordinator {
 		};
 	}
 
-	private createSectionEventDetachHandler(
-		subscriptionKey: string,
-		unsubscribeController: () => void,
-	): () => void {
-		const detach = () => {
-			const current = this.sectionEventSubscriptions.get(subscriptionKey);
-			if (current !== detach) {
-				return;
-			}
-			this.sectionEventSubscriptions.delete(subscriptionKey);
-			unsubscribeController();
-		};
-		return detach;
-	}
-
 	/**
 	 * Subscribe to item-scoped controller events.
 	 *
-	 * Prefer this helper for answer/session/navigation events tied to item IDs.
-	 * Use `subscribeSectionEvents` directly only when you need mixed item+section
-	 * filtering behavior.
+	 * Same active-cohort binding contract as
+	 * {@link subscribeSectionEvents}; defaults `eventTypes` to the
+	 * item-scoped subset.
 	 */
 	public subscribeItemEvents(args: SectionItemEventSubscriptionArgs): () => void {
 		return this.subscribeSectionEvents({
-			sectionId: args.sectionId,
-			attemptId: args.attemptId,
 			eventTypes: args.eventTypes || SECTION_ITEM_EVENT_TYPES,
 			itemIds: args.itemIds,
 			listener: args.listener as (event: SectionControllerEvent) => void,
@@ -1297,92 +1398,19 @@ export class ToolkitCoordinator {
 	/**
 	 * Subscribe to section-scoped controller events.
 	 *
-	 * Prefer this helper for section lifecycle/loading/completion/error state.
-	 * Section-scoped events do not carry item identifiers, so this helper
-	 * intentionally does not expose `itemIds` filtering.
+	 * Same active-cohort binding contract as
+	 * {@link subscribeSectionEvents}; defaults `eventTypes` to the
+	 * section-scoped subset. Section-scoped events do not carry item
+	 * identifiers, so this helper intentionally does not expose
+	 * `itemIds` filtering.
 	 */
 	public subscribeSectionLifecycleEvents(
 		args: SectionScopedEventSubscriptionArgs,
 	): () => void {
 		return this.subscribeSectionEvents({
-			sectionId: args.sectionId,
-			attemptId: args.attemptId,
 			eventTypes: args.eventTypes || SECTION_SCOPED_EVENT_TYPES,
 			listener: args.listener as (event: SectionControllerEvent) => void,
 		});
-	}
-
-	private resolveSectionControllerForSubscription(args: {
-		sectionId?: string;
-		attemptId?: string;
-	}): { mapKey: string; controller: SectionControllerHandle } {
-		if (args.sectionId) {
-			const explicitKey: SectionControllerKey = {
-				assessmentId: this.assessmentId,
-				sectionId: args.sectionId,
-				attemptId: args.attemptId,
-			};
-			const explicitMapKey = this.getSectionControllerMapKey(explicitKey);
-			const explicitController = this.sectionControllers.get(explicitMapKey);
-			if (explicitController) {
-				return { mapKey: explicitMapKey, controller: explicitController };
-			}
-
-			if (args.attemptId !== undefined) {
-				throw new Error(
-					`[ToolkitCoordinator] subscribeSectionEvents could not resolve controller for section "${args.sectionId}" and attempt "${args.attemptId}".`,
-				);
-			}
-
-			const sectionMatches: Array<{
-				mapKey: string;
-				controller: SectionControllerHandle;
-			}> = [];
-			for (const [mapKey, key] of this.sectionControllerKeys.entries()) {
-				if (key.assessmentId !== this.assessmentId || key.sectionId !== args.sectionId) {
-					continue;
-				}
-				const controller = this.sectionControllers.get(mapKey);
-				if (!controller) continue;
-				sectionMatches.push({ mapKey, controller });
-			}
-			if (sectionMatches.length === 1) {
-				return sectionMatches[0];
-			}
-			if (sectionMatches.length === 0) {
-				throw new Error(
-					`[ToolkitCoordinator] subscribeSectionEvents found no active controller for section "${args.sectionId}".`,
-				);
-			}
-			throw new Error(
-				`[ToolkitCoordinator] subscribeSectionEvents is ambiguous for section "${args.sectionId}" without attemptId; ${sectionMatches.length} controllers are active.`,
-			);
-		}
-
-		if (args.attemptId !== undefined) {
-			throw new Error(
-				`[ToolkitCoordinator] subscribeSectionEvents requires sectionId when attemptId is provided ("${args.attemptId}").`,
-			);
-		}
-
-		const allMatches: Array<{ mapKey: string; controller: SectionControllerHandle }> = [];
-		for (const [mapKey, key] of this.sectionControllerKeys.entries()) {
-			if (key.assessmentId !== this.assessmentId) continue;
-			const controller = this.sectionControllers.get(mapKey);
-			if (!controller) continue;
-			allMatches.push({ mapKey, controller });
-		}
-		if (allMatches.length === 1) {
-			return allMatches[0];
-		}
-		if (allMatches.length === 0) {
-			throw new Error(
-				"[ToolkitCoordinator] subscribeSectionEvents found no active controllers; provide sectionId or initialize a section controller first.",
-			);
-		}
-		throw new Error(
-			`[ToolkitCoordinator] subscribeSectionEvents is ambiguous without sectionId; ${allMatches.length} active controllers are registered.`,
-		);
 	}
 
 	public onSectionControllerLifecycle(
@@ -1452,6 +1480,14 @@ export class ToolkitCoordinator {
 			// without resetting responses.
 			await existingController.updateInput?.(args.input);
 		}
+		// PIE-512 Phase D: a `getOrCreateSectionController` call that
+		// resolves to a previously-created controller still represents a
+		// cohort transition from the toolkit's perspective (same-cohort
+		// re-entry is a no-op inside `setActiveCohort`). Active
+		// subscriptions migrate here so a host that subscribed once on
+		// `toolkit-ready` keeps receiving events after navigating back
+		// to a section it visited earlier.
+		this.setActiveCohort(args.mapKey);
 		return existingController;
 	}
 
@@ -1512,6 +1548,12 @@ export class ToolkitCoordinator {
 	}): Promise<void> {
 		this.sectionControllers.set(args.mapKey, args.controller);
 		this.sectionControllerKeys.set(args.mapKey, args.key);
+		// PIE-512 Phase D: a freshly-resolved controller becomes the
+		// active cohort. Active subscriptions migrate to it before the
+		// `ready` lifecycle event and `onSectionControllerReady` hook
+		// fire so any synchronous post-ready work observes a coherent
+		// active-cohort view.
+		this.setActiveCohort(args.mapKey);
 		this.emitSectionControllerLifecycle({
 			type: "ready",
 			key: args.key,
@@ -1552,7 +1594,12 @@ export class ToolkitCoordinator {
 		const mapKey = this.getSectionControllerMapKey(key);
 		const controller = this.sectionControllers.get(mapKey);
 		if (!controller) return;
-		this.detachSectionEventSubscriptionsForMapKey(mapKey);
+		// PIE-512 Phase D: if the disposing cohort is the active one,
+		// detach all listener-controller bindings before the controller
+		// itself disposes. The subscription registry stays intact so a
+		// later `getOrCreateSectionController(...)` re-binds the same
+		// listeners to the new controller.
+		this.clearActiveCohortIfMatches(mapKey);
 
 		const context = this.createSectionControllerContext({
 			key,
@@ -1581,16 +1628,6 @@ export class ToolkitCoordinator {
 				context,
 				clearPersistence: args.clearPersistence,
 			});
-		}
-	}
-
-	private detachSectionEventSubscriptionsForMapKey(mapKey: string): void {
-		const subscriptionPrefix = `${mapKey}::`;
-		for (const subscriptionKey of Array.from(
-			this.sectionEventSubscriptions.keys(),
-		)) {
-			if (!subscriptionKey.startsWith(subscriptionPrefix)) continue;
-			this.sectionEventSubscriptions.get(subscriptionKey)?.();
 		}
 	}
 

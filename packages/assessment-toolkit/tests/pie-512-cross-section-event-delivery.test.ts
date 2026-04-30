@@ -137,14 +137,10 @@ describe("PIE-512 cross-section event delivery", () => {
 
 		const receivedA: SectionControllerEvent[] = [];
 		const unsubscribeAItems = coordinator.subscribeItemEvents({
-			sectionId: "pie-512-section-a",
-			attemptId: ATTEMPT_ID,
 			eventTypes: ["content-loaded"],
 			listener: (event) => receivedA.push(event),
 		});
 		const unsubscribeASection = coordinator.subscribeSectionLifecycleEvents({
-			sectionId: "pie-512-section-a",
-			attemptId: ATTEMPT_ID,
 			eventTypes: ["section-loading-complete"],
 			listener: (event) => receivedA.push(event),
 		});
@@ -176,14 +172,10 @@ describe("PIE-512 cross-section event delivery", () => {
 
 		const receivedB: SectionControllerEvent[] = [];
 		coordinator.subscribeItemEvents({
-			sectionId: "pie-512-section-b",
-			attemptId: ATTEMPT_ID,
 			eventTypes: ["content-loaded"],
 			listener: (event) => receivedB.push(event),
 		});
 		coordinator.subscribeSectionLifecycleEvents({
-			sectionId: "pie-512-section-b",
-			attemptId: ATTEMPT_ID,
 			eventTypes: ["section-loading-complete"],
 			listener: (event) => receivedB.push(event),
 		});
@@ -268,14 +260,10 @@ describe("PIE-512 cross-section event delivery", () => {
 
 		const receivedASecond: SectionControllerEvent[] = [];
 		coordinator.subscribeItemEvents({
-			sectionId: "pie-512-section-a",
-			attemptId: ATTEMPT_ID,
 			eventTypes: ["content-loaded"],
 			listener: (event) => receivedASecond.push(event),
 		});
 		coordinator.subscribeSectionLifecycleEvents({
-			sectionId: "pie-512-section-a",
-			attemptId: ATTEMPT_ID,
 			eventTypes: ["section-loading-complete"],
 			listener: (event) => receivedASecond.push(event),
 		});
@@ -340,14 +328,10 @@ describe("PIE-512 cross-section event delivery", () => {
 
 		const receivedB: SectionControllerEvent[] = [];
 		coordinator.subscribeItemEvents({
-			sectionId: "pie-512-section-b",
-			attemptId: ATTEMPT_ID,
 			eventTypes: ["content-loaded"],
 			listener: (event) => receivedB.push(event),
 		});
 		coordinator.subscribeSectionLifecycleEvents({
-			sectionId: "pie-512-section-b",
-			attemptId: ATTEMPT_ID,
 			eventTypes: ["section-loading-complete"],
 			listener: (event) => receivedB.push(event),
 		});

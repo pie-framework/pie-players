@@ -276,12 +276,10 @@ const toolState = coordinator.elementToolStateStore.getAllState();
 
 ### Controller Event Subscriptions (Helper First)
 
-For host-side session/progress logic, prefer helper subscriptions over the generic filter API:
+For host-side session/progress logic, prefer helper subscriptions over the generic filter API. Subscriptions follow the toolkit's *active section cohort* automatically — a single `subscribe*` call survives navigation between sections without re-wiring:
 
 ```typescript
 const unsubscribeItem = coordinator.subscribeItemEvents({
-  sectionId: 'section-1',
-  attemptId: 'attempt-1',
   itemIds: ['item-1', 'item-2'],
   listener: (event) => {
     // item-selected, item-session-data-changed, item-complete-changed, ...
@@ -289,8 +287,6 @@ const unsubscribeItem = coordinator.subscribeItemEvents({
 });
 
 const unsubscribeSection = coordinator.subscribeSectionLifecycleEvents({
-  sectionId: 'section-1',
-  attemptId: 'attempt-1',
   listener: (event) => {
     // section-loading-complete, section-items-complete-changed, section-error, ...
   }
@@ -301,13 +297,16 @@ unsubscribeItem?.();
 unsubscribeSection?.();
 ```
 
-Use `subscribeSectionEvents(...)` when you need advanced/custom filtering mixes.  
-Note that section-scoped events do not carry item IDs, so pairing them with `itemIds` filters will not match.
-For late subscribers, `subscribeSectionLifecycleEvents(...)` immediately replays
-`section-loading-complete` when the target controller runtime is already in a
-loaded state.
-For deterministic targeting in multi-attempt hosts, pass both `sectionId` and
-`attemptId` to helper subscriptions.
+Behavior pins (PIE-512 Phase D):
+
+- Subscribe **after** the first `getOrCreateSectionController(...)` resolves; calling subscribe before any cohort exists throws.
+- On every cohort transition (navigation, fresh `getOrCreateSectionController` for a new section), the listener is automatically migrated to the new controller and receives a snapshot replay (`content-loaded` × N then `section-loading-complete`) in the same order a fresh subscriber would have seen.
+- Subscribing the **same listener function** twice replaces the first subscription (filter args from the second call win).
+- A listener that throws is caught and `console.warn`-logged; the throw does not interrupt fan-out to other listeners.
+
+Use `subscribeSectionEvents(...)` when you need advanced/custom filtering mixes. Section-scoped events do not carry item IDs, so pairing them with `itemIds` filters will not match.
+
+To persist or snapshot an inactive section, use `coordinator.getSectionController({ sectionId, attemptId })` — that lookup is by id and is unaffected by the active-cohort behavior described above.
 
 ### Option 2: Create Services Manually (Advanced)
 

@@ -376,25 +376,23 @@ function canAdvance() {
 }
 ```
 
-If you already have a `ToolkitCoordinator` from `toolkit-ready`, prefer helper subscriptions for host logic:
+If you already have a `ToolkitCoordinator`, prefer helper subscriptions for host logic. Subscriptions follow the toolkit's active section cohort automatically — a single subscribe call survives navigation:
 
 ```ts
 const unsubscribeItem = coordinator.subscribeItemEvents({
-  sectionId,
-  attemptId,
   listener: (event: any) => {
     // item-scoped stream
   },
 });
 
 const unsubscribeSection = coordinator.subscribeSectionLifecycleEvents({
-  sectionId,
-  attemptId,
   listener: (event: any) => {
     // section-loading-complete / section-items-complete-changed / section-error / section-navigation-change
   },
 });
 ```
+
+Subscribe **after** the first `getOrCreateSectionController(...)` resolves (or after `toolkit-ready` once the section player has fully wired its controller — typically the safest anchor in host code is `toolkit-ready` followed by the first controller-resolve). Calling subscribe before any cohort exists throws.
 
 Use `subscribeSectionEvents(...)` only for advanced mixed filtering requirements.
 

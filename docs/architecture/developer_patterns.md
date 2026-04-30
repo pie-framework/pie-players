@@ -99,16 +99,15 @@ const localCardConfig = getContext<{ density: "compact" | "comfortable" }>(
 #### 2) Runtime-wide state/events via controller API
 
 ```ts
+// `subscribe*` follows the toolkit's active section cohort — a single
+// subscribe call survives navigation between sections without re-wiring.
+// Subscribe after the first `getOrCreateSectionController(...)` resolves.
 const unsubscribeItem = coordinator.subscribeItemEvents({
-  sectionId,
-  attemptId,
   listener: (event) => {
     handleItemEvent(event);
   },
 });
 const unsubscribeSection = coordinator.subscribeSectionLifecycleEvents({
-  sectionId,
-  attemptId,
   listener: (event) => {
     handleSectionEvent(event);
   },
@@ -118,6 +117,8 @@ const unsubscribe = () => {
   unsubscribeSection?.();
 };
 
+// `getSectionController` is unchanged — still keyed by id, useful for
+// reading state from inactive (persisted) sections.
 const runtimeState = coordinator
   .getSectionController?.({ sectionId, attemptId })
   ?.getRuntimeState?.();

@@ -610,18 +610,47 @@ export interface ToolkitCoordinatorApi {
 	}): SectionControllerHandle | undefined;
 
 	/**
-	 * Subscribe to section controller events with automatic replacement
-	 * for repeated subscriptions using the same listener and section key.
+	 * Subscribe to section controller events.
+	 *
+	 * The listener is bound to the toolkit's *active section cohort* and
+	 * automatically migrates across cohort transitions
+	 * (`getOrCreateSectionController` for a different cohort). On every
+	 * migration the listener receives a snapshot replay of the new
+	 * cohort's already-loaded `content-loaded` events followed by the
+	 * aggregate `section-loading-complete`, in the canonical order a
+	 * fresh subscriber would have observed.
+	 *
+	 * Throws if no active section cohort exists; host code must call
+	 * `getOrCreateSectionController(...)` at least once before
+	 * subscribing. (`toolkit-ready` alone is not sufficient — it fires
+	 * once toolkit state has loaded but before any section controller
+	 * has been created.) The typical pattern is to subscribe once
+	 * immediately after the first `getOrCreateSectionController(...)`
+	 * resolves; the subscription then follows the active cohort across
+	 * all subsequent navigation without further wiring.
+	 *
+	 * Subscribing the same `listener` reference twice replaces the prior
+	 * subscription with the new one (filter args from the second call
+	 * win); calling the returned disposer twice is a no-op.
+	 *
+	 * A listener that throws is caught and `console.warn`-logged; the
+	 * throw does not interrupt fan-out to the remaining listeners.
 	 */
 	subscribeSectionEvents(args: SectionEventSubscriptionArgs): () => void;
 
 	/**
 	 * Subscribe to item-scoped section controller events.
+	 *
+	 * Same active-cohort binding contract as {@link subscribeSectionEvents};
+	 * defaults `eventTypes` to the item-scoped subset.
 	 */
 	subscribeItemEvents(args: SectionItemEventSubscriptionArgs): () => void;
 
 	/**
 	 * Subscribe to section-scoped lifecycle/loading/completion/error events.
+	 *
+	 * Same active-cohort binding contract as {@link subscribeSectionEvents};
+	 * defaults `eventTypes` to the section-scoped subset.
 	 */
 	subscribeSectionLifecycleEvents(
 		args: SectionScopedEventSubscriptionArgs,

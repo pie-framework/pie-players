@@ -255,6 +255,10 @@ Typical examples:
 
 Those endpoint names are host-owned. The tool system only requires that the configured provider runtime functions return the data the provider expects.
 
+For the production security contract these endpoints must meet
+(authentication, rate-limiting, secret boundaries, `assetOrigins`), see
+[`./tool_host_contract.md#backend-endpoints-for-tool-providers`](./tool_host_contract.md#backend-endpoints-for-tool-providers).
+
 ## Related Docs
 
 - [`./architecture.md`](./architecture.md)

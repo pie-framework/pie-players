@@ -308,6 +308,78 @@ Use `subscribeSectionEvents(...)` when you need advanced/custom filtering mixes.
 
 To persist or snapshot an inactive section, use `coordinator.getSectionController({ sectionId, attemptId })` — that lookup is by id and is unaffected by the active-cohort behavior described above.
 
+#### Migrating from `<0.3.35` (BREAKING — pre-1.0)
+
+`0.3.35` is the first release where `subscribeSectionEvents` (and its two helper wrappers `subscribeItemEvents` / `subscribeSectionLifecycleEvents`) follows the toolkit's *active section cohort* automatically. The on-the-wire shape of the subscription args object changed.
+
+If your host code looked like this:
+
+```typescript
+const unsub = coordinator.subscribeItemEvents({
+  sectionId: 'section-1',
+  attemptId: 'attempt-1',
+  listener: handleEvent,
+});
+```
+
+Update it to drop `sectionId` / `attemptId`:
+
+```typescript
+const unsub = coordinator.subscribeItemEvents({
+  listener: handleEvent,
+});
+```
+
+What this means in practice for typed integrations:
+
+- **TypeScript breaking change.** `SectionEventSubscriptionArgs`, `SectionItemEventSubscriptionArgs`, and `SectionScopedEventSubscriptionArgs` no longer declare `sectionId?` / `attemptId?` properties. Any host that imports these arg types directly and passes those keys will fail to compile after upgrade. **Action required.**
+- **Runtime is tolerant.** The runtime silently ignores extra unknown properties, so an untyped or lightly-typed call site that still passes `sectionId` / `attemptId` continues to work without source changes. The args have **no effect** at runtime — the subscription always follows the active cohort.
+- **New precondition.** `subscribe*` now throws if no active section cohort exists. Subscribe **after** the first `getOrCreateSectionController(...)` resolves. Subscribing on `toolkit-ready` alone is no longer sufficient — though in practice the section player emits `toolkit-ready` *after* its first `getOrCreateSectionController(...)` resolves, so a `toolkit-ready` anchor is safe in section-player hosts.
+- **Cohort migration is automatic.** If your wrapper previously re-subscribed on every navigation to keep listeners alive across sections, that wiring is no longer needed (and should be removed). A single subscribe call after the first controller-resolve is now enough — the listener migrates automatically and is replayed the new cohort's snapshot on every transition.
+- **Watch for double-replay if you re-subscribe on every `toolkit-ready`.** Hosts that detached and re-subscribed on every `toolkit-ready` event (the correct pre-Phase D pattern, since each subscription was pinned to a `sectionId`) will now observe **two snapshot replays per navigation**: one delivered automatically when Phase D migrates the existing listener to the new active cohort, and a second when the manual re-subscribe attaches a fresh listener that replays again. Listener handlers that are not strictly idempotent will fire twice — analytics `pageAction`s, non-Set counters, side-effecting hydration. The fix is a one-line guard (`if (this.controllerUnsubscribe) return;`) so the subscribe runs only on the first `toolkit-ready`.
+- **For intentionally-pinned subscriptions to inactive sections** (e.g. a host UI that wants to keep watching section A while the user views section B), the helper API does not support that pattern by design. Use `coordinator.getSectionController({ sectionId, attemptId })` and subscribe directly on the controller handle (`controller.subscribe?.(...)`) — that binding is pinned to one controller instance and does not migrate.
+
+If your local types were hand-rolled structural copies of the public arg types (e.g. an Angular wrapper duplicating the shape rather than importing the package types), the legacy keys will compile but are dead code at runtime — recommend dropping them as part of the upgrade.
+
+#### Pre-Phase D vs Phase D wrapper pattern
+
+```typescript
+// BEFORE (pre-Phase D): rebind for every section change because the
+// subscription was pinned to a sectionId.
+public handleToolkitReady(event: Event): void {
+  const coordinator = (event as CustomEvent).detail?.coordinator;
+  if (!coordinator) return;
+  this.controllerUnsubscribe?.();  // detach prior pin
+  const itemUnsub = coordinator.subscribeItemEvents({
+    sectionId: this.sectionId,
+    listener: handleItemEvent,
+  });
+  const sectionUnsub = coordinator.subscribeSectionLifecycleEvents({
+    sectionId: this.sectionId,
+    listener: handleSectionEvent,
+  });
+  this.controllerUnsubscribe = () => { itemUnsub?.(); sectionUnsub?.(); };
+}
+```
+
+```typescript
+// AFTER (Phase D): subscribe once; the listener follows the active
+// cohort across all subsequent navigation.
+public handleToolkitReady(event: Event): void {
+  const coordinator = (event as CustomEvent).detail?.coordinator;
+  if (!coordinator) return;
+  this.toolkitCoordinator = coordinator;
+  if (this.controllerUnsubscribe) return; // already subscribed; do nothing on re-fire
+  const itemUnsub = coordinator.subscribeItemEvents({
+    listener: handleItemEvent,
+  });
+  const sectionUnsub = coordinator.subscribeSectionLifecycleEvents({
+    listener: handleSectionEvent,
+  });
+  this.controllerUnsubscribe = () => { itemUnsub?.(); sectionUnsub?.(); };
+}
+```
+
 ### Option 2: Create Services Manually (Advanced)
 
 ```typescript

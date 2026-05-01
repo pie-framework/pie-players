@@ -758,7 +758,6 @@ Section lifecycle events cover loading, completion state, and errors:
 
 ```ts
 const unsub = coordinator.subscribeSectionLifecycleEvents({
-  sectionId,
   listener: (event) => {
     switch (event.type) {
       case 'section-loading-complete':

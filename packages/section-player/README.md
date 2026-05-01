@@ -396,6 +396,8 @@ Subscribe **after** the first `getOrCreateSectionController(...)` resolves (or a
 
 Use `subscribeSectionEvents(...)` only for advanced mixed filtering requirements.
 
+> **Upgrading from `<0.3.35`?** The `sectionId` / `attemptId` arguments on `subscribeItemEvents` / `subscribeSectionLifecycleEvents` / `subscribeSectionEvents` were dropped — subscriptions now follow the toolkit's active section cohort automatically and migrate across navigation. See the **"Migrating from `<0.3.35`"** section in [`@pie-players/pie-assessment-toolkit`](../assessment-toolkit/README.md#migrating-from-0335-breaking--pre-10) for the full upgrade recipe.
+
 ### Item-level observability configuration
 
 Item-level resource observability is configured on the embedded `pie-item-player` via

@@ -43,14 +43,15 @@
 		totalItems?: number;
 	} | null;
 	type ToolkitCoordinatorLike = {
+		// Phase D (>=0.3.35): subscribe* helpers follow the toolkit's
+		// active section cohort automatically and do not accept
+		// sectionId / attemptId arguments. The debugger keeps `sectionId`
+		// + `attemptId` in `subscriptions` purely to gate same-target
+		// re-subscribe — it does not pass them to the coordinator.
 		subscribeItemEvents?: (args: {
-			sectionId: string;
-			attemptId?: string;
 			listener: (event: ControllerEvent) => void;
 		}) => () => void;
 		subscribeSectionLifecycleEvents?: (args: {
-			sectionId: string;
-			attemptId?: string;
 			listener: (event: ControllerEvent) => void;
 		}) => () => void;
 		getSectionController?: (args: {
@@ -378,14 +379,10 @@
 		detachControllerSubscription();
 		const unsubscribeItem =
 			toolkitCoordinator?.subscribeItemEvents?.({
-				sectionId,
-				attemptId,
 				listener: handleItemControllerEvent,
 			}) || null;
 		const unsubscribeSection =
 			toolkitCoordinator?.subscribeSectionLifecycleEvents?.({
-				sectionId,
-				attemptId,
 				listener: handleSectionControllerEvent,
 			}) || null;
 		subscriptions.controller = () => {

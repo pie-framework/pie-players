@@ -39,7 +39,7 @@ Built with Bun, TypeScript, and Svelte 5, the architecture leverages modern web 
 
 The PIE Players architecture consists of three major areas organized into logical layers:
 
-![Architectural Layers](img/architectural-layers.png)
+![Architectural Layers](../img/architectural-layers.png)
 
 **Layer 1: Content Rendering** - Item players that render individual PIE assessment items
 **Layer 2: Orchestration** - Section player and assessment toolkit services that coordinate full assessments
@@ -47,7 +47,7 @@ The PIE Players architecture consists of three major areas organized into logica
 
 ### Component Organization
 
-![Component Organization](img/component-organization.png)
+![Component Organization](../img/component-organization.png)
 
 ---
 

@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-section-player-tools-instrumentation-debugger",
-	"version": "0.3.35",
+	"version": "0.3.36",
 	"type": "module",
 	"description": "Instrumentation debugger panel for PIE players",
 	"repository": {

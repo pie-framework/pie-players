@@ -79,7 +79,6 @@
     onSessionChanged,
     onModelUpdated,
     baseHeadingLevel = undefined,
-    includeSrHeading = true,
   }: {
     itemConfig: ConfigEntity;
     passageConfig?: ConfigEntity | null;
@@ -128,17 +127,6 @@
      *          ?? player?.getAttribute('baseheadinglevel');
      */
     baseHeadingLevel?: 1 | 2 | 3 | 4 | 5 | 6;
-    /**
-     * Whether to inject a visually-hidden (screen-reader-only) heading at the
-     * top of the player's rendered content.
-     *
-     * Set to `false` in contexts where an SR heading would be redundant or
-     * counter-indicated (e.g. the player is already labelled by a surrounding
-     * landmark, or the host page manages its own heading structure).
-     * Defaults to `true` so that assistive-technology users get a navigable
-     * heading out of the box.
-     */
-    includeSrHeading?: boolean;
   } = $props();
 
   // Track if correct responses have been added

@@ -108,6 +108,10 @@ Because the command runs `bun run test` (which can trigger Playwright), invoke
 it with `required_permissions: ["all"]` per
 [`./playwright-sandbox.mdc`](./playwright-sandbox.mdc).
 
+Release/versioning commits should be prepared on `develop` (or on a feature
+branch targeting `develop`). Do not merge or push release changes directly to
+`main` / `master`.
+
 Do not run `npm publish` directly, or invoke `bun run release` directly. Use
 `release:with-version` so the temporary changeset, workspace-range rewrite,
 token auth, preflight, tests, publish, and restore all run in the right

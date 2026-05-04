@@ -42,6 +42,7 @@
 		onSessionChanged,
 		onModelUpdated,
 		baseHeadingLevel = undefined,
+		includeSrHeading = true,
 	}: {
 		mode?: 'author' | 'preview';
 		itemConfig: ConfigEntity;
@@ -71,6 +72,12 @@
 		 * Passed through to `PieItemPlayer` unchanged — see that component for full docs.
 		 */
 		baseHeadingLevel?: 1 | 2 | 3 | 4 | 5 | 6;
+		/**
+		 * Whether to inject a visually-hidden (screen-reader-only) heading at the
+		 * top of the player's rendered content.
+		 * Passed through to `PieItemPlayer` unchanged — see that component for full docs.
+		 */
+		includeSrHeading?: boolean;
 	} = $props();
 
 	// Track current mode state
@@ -127,6 +134,7 @@
 				{onSessionChanged}
 				{onModelUpdated}
 				{baseHeadingLevel}
+				{includeSrHeading}
 			/>
 		{/key}
 	</div>

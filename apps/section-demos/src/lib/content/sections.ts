@@ -5,6 +5,7 @@ import { demo3Section } from "./demo3-three-questions";
 import { demo4Section } from "./demo4-tts-ssml";
 import { demo5Section } from "./demo5-resource-observability";
 import { demo6Section } from "./demo6-tabbed-layout";
+import { demo7Section } from "./demo7-heading-accessibility";
 import {
 	pie512SectionA,
 	pie512SectionB,
@@ -589,6 +590,23 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 				section: pie512SectionB,
 			},
 		],
+	},
+	"heading-accessibility": {
+		id: "heading-accessibility",
+		name: "Heading Accessibility (baseHeadingLevel & includeSrHeading)",
+		description:
+			"Demonstrates the baseHeadingLevel and includeSrHeading props on the section player. The item prompt uses data-heading paragraphs that are rewritten to real heading elements at the level specified by the host.",
+		integrationLevel: 2,
+		integrationTheme: "Accessibility props",
+		focus:
+			"Shows how data-heading paragraphs are promoted to semantic heading elements at a host-controlled level, and how the visually-hidden SR heading can be suppressed when the surrounding landmark already provides context.",
+		whatMakesItTick: [
+			"Item prompt contains `<p data-heading=\"heading1\">` and `<p data-heading=\"heading2\">` nodes.",
+			"`baseHeadingLevel` passed via the section player `player` config prop causes those nodes to be rewritten to `<h2>` / `<h3>` (or whichever level the host chooses).",
+			"`includeSrHeading={false}` suppresses the visually-hidden heading injected at the top of the player.",
+			"Toggle controls in the demo let you flip both props live and inspect the resulting DOM."
+		],
+		section: demo7Section,
 	},
 };
 

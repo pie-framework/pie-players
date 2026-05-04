@@ -135,6 +135,16 @@
 		"lodash": "^4.18.1"
 	},
 	"dependencies": {
+		"@pie-players/pie-assessment-toolkit": "^0.3.37",
+		"@pie-players/pie-calculator-desmos": "^0.3.37",
+		"@pie-players/pie-section-player": "^0.3.37",
+		"@pie-players/pie-section-player-tools-event-debugger": "^0.3.37",
+		"@pie-players/pie-section-player-tools-session-debugger": "^0.3.37",
+		"@pie-players/pie-theme-daisyui": "^0.3.37",
+		"@pie-players/pie-tool-calculator-desmos": "^0.3.37",
+		"@pie-players/pie-tool-text-to-speech": "^0.3.37",
+		"@pie-players/tts-client-server": "^0.3.37",
+		"@pie-players/tts-server-polly": "^0.3.37",
 		"@sveltejs/kit": "^2.57.1",
 		"svelte": "^5.55.4",
 		"svelte-check": "^4.4.6",

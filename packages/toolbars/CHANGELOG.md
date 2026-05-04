@@ -1,5 +1,14 @@
 # @pie-players/pie-toolbars
 
+## 0.3.37
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies [2818f93]
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.37
+
 ## 0.3.36
 
 ### Patch Changes

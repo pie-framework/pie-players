@@ -87,6 +87,26 @@ function loadedRuntimeState(args: {
 	};
 }
 
+function itemSelectedEvent(itemId: string): SectionControllerEvent {
+	return {
+		type: "item-selected",
+		previousItemId: itemId,
+		currentItemId: itemId,
+		itemIndex: 0,
+		totalItems: 1,
+		currentItemIndex: 0,
+		timestamp: Date.now(),
+	};
+}
+
+function createDeferred(): { promise: Promise<void>; resolve: () => void } {
+	let resolve!: () => void;
+	const promise = new Promise<void>((innerResolve) => {
+		resolve = innerResolve;
+	});
+	return { promise, resolve };
+}
+
 function bridgePortFor(coordinator: ToolkitCoordinator): CoordinatorPort {
 	return {
 		subscribeFrameworkErrors: (listener) =>
@@ -272,40 +292,17 @@ describe("PIE-512 Phase D: coordinator-bridge cohort handoff", () => {
 		// is layered on top of this and does not interfere with the
 		// bridge's own discipline.
 		//
-		// In production the bridge is driven by the engine state machine,
-		// which never issues concurrent resolves for different cohorts —
-		// so the *coordinator's* active-cohort pointer can safely follow
-		// the most-recently-finalized controller. This test deliberately
-		// scopes its assertion to the bridge's core-input dispatch only.
 		const controllerA = createTestController();
 		const controllerB = createTestController();
+		const releaseA = createDeferred();
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: "phase-d-bridge-token-rollover",
 			lazyInit: true,
 		});
-		let firstCallCapturedResolver: ((value: void) => void) | null = null;
-		const releaseFirstCall = new Promise<void>((resolve) => {
-			firstCallCapturedResolver = resolve;
-		});
-
-		let firstCall = true;
-		const port: CoordinatorPort = {
-			subscribeFrameworkErrors: (listener) =>
-				coordinator.subscribeFrameworkErrors(listener),
-			getOrCreateSectionController: async (args) => {
-				if (firstCall) {
-					firstCall = false;
-					await releaseFirstCall;
-				}
-				return coordinator.getOrCreateSectionController(args);
-			},
-			disposeSectionController: (args) =>
-				coordinator.disposeSectionController(args),
-		};
 
 		const inputs: SectionEngineInput[] = [];
 		const bridge = createCoordinatorBridge({
-			coordinator: port,
+			coordinator: bridgePortFor(coordinator),
 			dispatchCoreInput: (input) => inputs.push(input),
 		});
 
@@ -314,7 +311,10 @@ describe("PIE-512 Phase D: coordinator-bridge cohort handoff", () => {
 			assessmentId: "phase-d-bridge-token-rollover",
 			view: "student",
 			section: { id: COHORT_A.sectionId },
-			createDefaultController: () => controllerA.handle,
+			createDefaultController: async () => {
+				await releaseA.promise;
+				return controllerA.handle;
+			},
 		});
 
 		// Roll the token forward before the first call resolves.
@@ -326,8 +326,16 @@ describe("PIE-512 Phase D: coordinator-bridge cohort handoff", () => {
 			createDefaultController: () => controllerB.handle,
 		});
 
-		firstCallCapturedResolver?.();
-		await Promise.all([firstResolve, secondResolve]);
+		await secondResolve;
+
+		const received: SectionControllerEvent[] = [];
+		coordinator.subscribeItemEvents({
+			eventTypes: ["item-selected"],
+			listener: (event) => received.push(event),
+		});
+
+		releaseA.resolve();
+		await firstResolve;
 
 		// Exactly one `section-controller-resolved` was dispatched — the
 		// one for B. A's stale resolution was caught by the bridge's
@@ -336,6 +344,14 @@ describe("PIE-512 Phase D: coordinator-bridge cohort handoff", () => {
 			(input) => input.kind === "section-controller-resolved",
 		);
 		expect(resolveDispatches).toHaveLength(1);
+
+		// Coordinator-side active cohort also remains B after A's stale
+		// resolution finishes. Without the Phase D latest-request guard,
+		// the stale A completion re-bound this listener back to A.
+		controllerA.emit(itemSelectedEvent("stale-from-a"));
+		controllerB.emit(itemSelectedEvent("live-from-b"));
+		expect(received).toHaveLength(1);
+		expect(received[0]).toMatchObject({ currentItemId: "live-from-b" });
 
 		await bridge.dispose();
 	});

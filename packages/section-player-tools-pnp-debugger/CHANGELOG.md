@@ -1,5 +1,16 @@
 # @pie-players/pie-section-player-tools-pnp-debugger
 
+## 0.3.37
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies [2818f93]
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.37
+  - @pie-players/pie-section-player-tools-shared@0.3.37
+  - @pie-players/pie-theme@0.3.37
+
 ## 0.3.36
 
 ### Patch Changes

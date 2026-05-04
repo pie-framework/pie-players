@@ -565,6 +565,12 @@ export class ToolkitCoordinator {
 	 * which is the only state where `subscribeSectionEvents` throws.
 	 */
 	private activeCohortMapKey: string | null = null;
+	/**
+	 * Latest requested active cohort. Async controller initialization can
+	 * resolve out of order; only the most recent request may migrate active
+	 * subscriptions. Older completions still populate the controller cache.
+	 */
+	private latestRequestedActiveCohortMapKey: string | null = null;
 	private readonly telemetryListeners = new Set<ToolkitTelemetryListener>();
 	private readonly frameworkErrorBus: FrameworkErrorBus;
 	private readonly ownsFrameworkErrorBus: boolean;
@@ -1246,6 +1252,21 @@ export class ToolkitCoordinator {
 		}
 	}
 
+	private setActiveCohortIfLatestRequest(mapKey: string): void {
+		if (this.latestRequestedActiveCohortMapKey !== mapKey) return;
+		this.setActiveCohort(mapKey);
+	}
+
+	private suspendActiveCohortIfSuperseded(mapKey: string): void {
+		if (this.activeCohortMapKey === null) return;
+		if (this.activeCohortMapKey === mapKey) return;
+		this.activeCohortMapKey = null;
+		for (const sub of Array.from(this.activeSubscriptions.values())) {
+			sub.unsubscribeCurrent?.();
+			sub.unsubscribeCurrent = null;
+		}
+	}
+
 	/**
 	 * Clear the active cohort if `mapKey` matches it, detaching every
 	 * active subscription's current controller binding. Subscriptions
@@ -1437,6 +1458,8 @@ export class ToolkitCoordinator {
 			attemptId: args.attemptId,
 		};
 		const mapKey = this.getSectionControllerMapKey(key);
+		this.latestRequestedActiveCohortMapKey = mapKey;
+		this.suspendActiveCohortIfSuperseded(mapKey);
 		const existingController = await this.resolveExistingSectionController({
 			mapKey,
 			key,
@@ -1487,7 +1510,7 @@ export class ToolkitCoordinator {
 		// subscriptions migrate here so a host that subscribed once on
 		// `toolkit-ready` keeps receiving events after navigating back
 		// to a section it visited earlier.
-		this.setActiveCohort(args.mapKey);
+		this.setActiveCohortIfLatestRequest(args.mapKey);
 		return existingController;
 	}
 
@@ -1553,7 +1576,7 @@ export class ToolkitCoordinator {
 		// `ready` lifecycle event and `onSectionControllerReady` hook
 		// fire so any synchronous post-ready work observes a coherent
 		// active-cohort view.
-		this.setActiveCohort(args.mapKey);
+		this.setActiveCohortIfLatestRequest(args.mapKey);
 		this.emitSectionControllerLifecycle({
 			type: "ready",
 			key: args.key,

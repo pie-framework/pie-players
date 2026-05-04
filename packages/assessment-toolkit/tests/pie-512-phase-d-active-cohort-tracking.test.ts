@@ -113,6 +113,14 @@ function loadedRuntimeState(args: {
 
 const ATTEMPT_ID = "attempt-phase-d";
 
+function createDeferred(): { promise: Promise<void>; resolve: () => void } {
+	let resolve!: () => void;
+	const promise = new Promise<void>((innerResolve) => {
+		resolve = innerResolve;
+	});
+	return { promise, resolve };
+}
+
 describe("PIE-512 Phase D: subscribeSectionEvents follows the active cohort", () => {
 	test("subscribeItemEvents (no sectionId) binds to the active cohort and migrates on cohort change", async () => {
 		const controllerA = createTestController();
@@ -552,6 +560,145 @@ describe("PIE-512 Phase D: subscribeSectionEvents follows the active cohort", ()
 		});
 
 		expect(received).toHaveLength(3);
+	});
+
+	test("stale async new-controller resolution does not move active cohort backward", async () => {
+		const controllerA = createTestController();
+		const controllerB = createTestController();
+		const releaseA = createDeferred();
+		const coordinator = new ToolkitCoordinator({
+			assessmentId: "phase-d-stale-new-controller-resolution",
+			lazyInit: true,
+		});
+
+		const firstResolve = coordinator.getOrCreateSectionController({
+			sectionId: "section-A",
+			attemptId: ATTEMPT_ID,
+			createDefaultController: async () => {
+				await releaseA.promise;
+				return controllerA.handle;
+			},
+		});
+
+		await coordinator.getOrCreateSectionController({
+			sectionId: "section-B",
+			attemptId: ATTEMPT_ID,
+			createDefaultController: () => controllerB.handle,
+		});
+
+		const received: SectionControllerEvent[] = [];
+		coordinator.subscribeItemEvents({
+			eventTypes: ["item-selected"],
+			listener: (event) => received.push(event),
+		});
+
+		controllerB.emit(itemSelectedEvent("from-b-before-stale-a"));
+		releaseA.resolve();
+		await firstResolve;
+		controllerA.emit(itemSelectedEvent("stale-from-a"));
+		controllerB.emit(itemSelectedEvent("from-b-after-stale-a"));
+
+		expect(
+			received.map((event) =>
+				event.type === "item-selected" ? event.currentItemId : event.type,
+			),
+		).toEqual(["from-b-before-stale-a", "from-b-after-stale-a"]);
+	});
+
+	test("pending navigation to a new cohort detaches outgoing cohort events", async () => {
+		const controllerA = createTestController();
+		const controllerB = createTestController();
+		const releaseB = createDeferred();
+		const coordinator = new ToolkitCoordinator({
+			assessmentId: "phase-d-pending-navigation-detaches-outgoing",
+			lazyInit: true,
+		});
+
+		await coordinator.getOrCreateSectionController({
+			sectionId: "section-A",
+			attemptId: ATTEMPT_ID,
+			createDefaultController: () => controllerA.handle,
+		});
+
+		const received: SectionControllerEvent[] = [];
+		coordinator.subscribeItemEvents({
+			eventTypes: ["item-selected"],
+			listener: (event) => received.push(event),
+		});
+
+		const pendingB = coordinator.getOrCreateSectionController({
+			sectionId: "section-B",
+			attemptId: ATTEMPT_ID,
+			createDefaultController: async () => {
+				await releaseB.promise;
+				return controllerB.handle;
+			},
+		});
+
+		controllerA.emit(itemSelectedEvent("stale-from-a-while-b-pending"));
+		expect(received).toHaveLength(0);
+
+		releaseB.resolve();
+		await pendingB;
+		controllerB.emit(itemSelectedEvent("live-from-b-after-pending"));
+
+		expect(received).toHaveLength(1);
+		expect(received[0]).toMatchObject({
+			currentItemId: "live-from-b-after-pending",
+		});
+	});
+
+	test("stale async existing-controller update does not move active cohort backward", async () => {
+		const controllerA = createTestController();
+		const controllerB = createTestController();
+		const releaseAUpdate = createDeferred();
+		const coordinator = new ToolkitCoordinator({
+			assessmentId: "phase-d-stale-existing-controller-update",
+			lazyInit: true,
+		});
+		controllerA.handle.updateInput = async () => {
+			await releaseAUpdate.promise;
+		};
+
+		await coordinator.getOrCreateSectionController({
+			sectionId: "section-A",
+			attemptId: ATTEMPT_ID,
+			createDefaultController: () => controllerA.handle,
+		});
+
+		const received: SectionControllerEvent[] = [];
+		coordinator.subscribeItemEvents({
+			eventTypes: ["item-selected"],
+			listener: (event) => received.push(event),
+		});
+
+		const staleAUpdate = coordinator.getOrCreateSectionController({
+			sectionId: "section-A",
+			attemptId: ATTEMPT_ID,
+			input: { sectionId: "section-A", revision: "stale" },
+			createDefaultController: () => controllerA.handle,
+		});
+
+		await coordinator.getOrCreateSectionController({
+			sectionId: "section-B",
+			attemptId: ATTEMPT_ID,
+			createDefaultController: () => controllerB.handle,
+		});
+
+		controllerB.emit(itemSelectedEvent("from-b-before-stale-a-update"));
+		releaseAUpdate.resolve();
+		await staleAUpdate;
+		controllerA.emit(itemSelectedEvent("stale-from-a-update"));
+		controllerB.emit(itemSelectedEvent("from-b-after-stale-a-update"));
+
+		expect(
+			received.map((event) =>
+				event.type === "item-selected" ? event.currentItemId : event.type,
+			),
+		).toEqual([
+			"from-b-before-stale-a-update",
+			"from-b-after-stale-a-update",
+		]);
 	});
 
 	test("subscribing a new listener from inside another listener's replay during cohort migration replays exactly once", async () => {

@@ -274,4 +274,62 @@ describe("SectionController PIE-512 Phase C invariants", () => {
 		expect(lateSnapshot?.loadingComplete).toBe(true);
 		expect(lateSnapshot?.loadedRenderables).toHaveLength(1);
 	});
+
+	test("unsubscribe during fan-out does not drop the current event for remaining listeners", async () => {
+		const controller = new SectionController();
+		const section = makeSection("section-pc-fanout", [
+			"item-pc-fanout-1",
+			"item-pc-fanout-2",
+		]);
+
+		await controller.initialize({
+			section,
+			sectionId: "section-pc-fanout",
+			assessmentId: "assessment-pc",
+			view: ["candidate"],
+		});
+		controller.handleContentRegistered({
+			itemId: "runtime-section-pc-fanout-1",
+			canonicalItemId: "item-pc-fanout-1",
+			contentKind: "item",
+		});
+		controller.handleContentRegistered({
+			itemId: "runtime-section-pc-fanout-2",
+			canonicalItemId: "item-pc-fanout-2",
+			contentKind: "item",
+		});
+
+		const receivedA: string[] = [];
+		const receivedB: string[] = [];
+		let unsubscribeB: (() => void) | null = null;
+		const unsubscribeA = controller.subscribe((event) => {
+			if (event.type !== "content-loaded") return;
+			receivedA.push(event.itemId);
+			unsubscribeB?.();
+		});
+		unsubscribeB = controller.subscribe((event) => {
+			if (event.type === "content-loaded") {
+				receivedB.push(event.itemId);
+			}
+		});
+
+		controller.handleContentLoaded({
+			itemId: "runtime-section-pc-fanout-1",
+			canonicalItemId: "item-pc-fanout-1",
+			contentKind: "item",
+		});
+		controller.handleContentLoaded({
+			itemId: "runtime-section-pc-fanout-2",
+			canonicalItemId: "item-pc-fanout-2",
+			contentKind: "item",
+		});
+
+		unsubscribeA();
+		unsubscribeB?.();
+		expect(receivedA).toEqual([
+			"runtime-section-pc-fanout-1",
+			"runtime-section-pc-fanout-2",
+		]);
+		expect(receivedB).toEqual(["runtime-section-pc-fanout-1"]);
+	});
 });

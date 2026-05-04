@@ -104,7 +104,7 @@ export class SectionController implements SectionControllerHandle {
 	private pendingApplyReplay: PendingApplyReplay | null = null;
 
 	private emitChange(event: SectionControllerChangeEvent): void {
-		for (const listener of this.listeners) {
+		for (const listener of Array.from(this.listeners)) {
 			try {
 				listener(event);
 			} catch (error) {

@@ -32,6 +32,73 @@ entrypoints under `@pie-players/pie-section-player/components/*`.
 Standalone browser variants for this package are intentionally deferred; the
 current supported contract is the default bundler entrypoints under `dist`.
 
+## SectionController
+
+`SectionController` is the domain authority inside a section player. It owns
+in-section navigation state, the canonical aggregation of per-item sessions,
+and the host-facing persistence snapshot. The layout custom elements
+(`pie-section-player-splitpane` / `-vertical` / `-tabbed`) are transport
+adapters around it. See
+[`docs/section-player/controller-boundaries.md`](../../docs/section-player/controller-boundaries.md)
+for the rationale behind that split, and
+[`docs/section-player/client-architecture-tutorial.md`](../../docs/section-player/client-architecture-tutorial.md)
+for the end-to-end walkthrough.
+
+The handle implements `SectionControllerHandle` from
+`@pie-players/pie-assessment-toolkit`; see the JSDoc on that interface for
+the per-method contract.
+
+### Obtaining the handle
+
+```ts
+const host = document.querySelector("pie-section-player-splitpane") as any;
+const controller = await host.waitForSectionController?.(5000);
+```
+
+`waitForSectionController(timeoutMs)` resolves when the layout CE has wired
+its controller (the same anchor `pie-stage-change` reaches with
+`detail.stage === "engine-ready"`). Use `getSectionController()` if you've
+already passed the readiness anchor synchronously. The legacy
+`section-controller-ready` event was removed; either of these helpers
+replaces it.
+
+### Session lifecycle
+
+A typical host flow:
+
+```ts
+controller?.configureSessionPersistence?.({ context, strategy });
+await controller?.hydrate?.();
+const unsubscribe = controller?.subscribe?.(handleEvent);
+// ...later, on save / unload:
+await controller?.persist?.();
+unsubscribe?.();
+```
+
+`getSession()` / `applySession(session, { mode })` / `updateItemSession(itemId,
+detail)` are the direct read/write surfaces and exchange the same
+`SectionControllerSessionState` shape the persistence strategy load/save
+methods receive. See [Item session management](#item-session-management) for
+worked examples.
+
+### Event stream
+
+The controller's typed event stream (`SectionControllerEvent` discriminated
+union) is the single source of truth for in-section change. Hosts usually
+subscribe through `ToolkitCoordinator.subscribeItemEvents` /
+`subscribeSectionLifecycleEvents` (cohort-aware filtering, survives
+navigation) — see [JS API example for advanced host
+policy](#js-api-example-for-advanced-host-policy). Key event types:
+
+- `item-selected` — item navigation within the current section.
+- `item-session-data-changed` / `item-session-meta-changed` — per-item
+  session updates the persistence layer should observe.
+- `content-loaded` — passage / item / rubric finished loading.
+- `section-loading-complete` — every renderable in the section finished
+  loading.
+- `section-items-complete-changed` — aggregate completion flip.
+- `section-navigation-change` — the controller's section identity changed.
+
 ## Usage
 
 Import the custom-element registration entrypoint in consumers:

@@ -755,10 +755,6 @@ The persistence strategy works with the same `SectionControllerSessionState` sha
 
 ## Implementation Status
 
-### ✅ Core Infrastructure
-
-- **TypedEventBus**: Generic type-safe `EventTarget` wrapper exported as a building block. The toolkit's own production events are emitted via DOM `CustomEvent`s on `<pie-assessment-toolkit>` and via `ToolkitCoordinator.subscribe*` helpers, not through this bus. Hosts and downstream packages may still use it to compose their own typed event maps.
-
 ### ✅ Toolkit Services
 
 - **ToolkitCoordinator**: ⭐ NEW - Centralized service orchestration

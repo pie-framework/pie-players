@@ -11,7 +11,6 @@
 // Core Infrastructure
 // ============================================================================
 
-export { TypedEventBus } from "./core/TypedEventBus.js";
 export type {
 	AssessmentToolkitHostRuntimeContext,
 	AssessmentToolkitRegionScopeContext,

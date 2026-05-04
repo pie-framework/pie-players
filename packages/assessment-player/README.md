@@ -8,6 +8,81 @@ Primary entrypoint:
 
 - `@pie-players/pie-assessment-player`
 
+## AssessmentController
+
+`AssessmentController` is the domain authority for an assessment attempt. It
+owns cross-section navigation, the assessment session shape (delivery plan +
+per-section snapshots), and `submit()`. Per-section concerns (in-section
+navigation, item sessions, content loading) belong to the embedded
+`SectionController` exposed by `@pie-players/pie-section-player`. See
+[`docs/assessment-player/client-architecture-tutorial.md`](../../docs/assessment-player/client-architecture-tutorial.md)
+for the end-to-end walkthrough.
+
+The handle implements `AssessmentControllerHandle` (defined in
+`packages/assessment-player/src/controller/AssessmentController.ts`); see
+the JSDoc on that interface for the per-method contract.
+
+### Obtaining the handle
+
+Two equivalent paths:
+
+```ts
+const host = document.querySelector("pie-assessment-player-default") as any;
+const controller =
+  (await host?.waitForAssessmentController?.(5000)) ??
+  host?.getAssessmentController?.();
+```
+
+`waitForAssessmentController(timeoutMs)` resolves once the controller has
+been wired (the same signal the
+`AssessmentPlayerHooks.onAssessmentControllerReady(controller)` hook fires
+on). Use `getAssessmentController()` if you've already passed the readiness
+anchor synchronously.
+
+### Lifecycle
+
+```ts
+// hydrate runs as part of initialize(); call it again only on a manual reload.
+const unsubscribe = controller.subscribe(handleEvent);
+
+// host-driven navigation:
+controller.navigateTo("section-2");
+controller.navigateNext();
+controller.navigatePrevious();
+
+// persist on whatever cadence the host wants; submit() always persists.
+await controller.persist();
+await controller.submit();
+unsubscribe();
+```
+
+`getSession()` returns the current `AssessmentSession` snapshot — the same
+shape the persistence strategy load/save methods exchange and the same
+shape per-section bridges roll up into via `updateSectionSession(sectionId,
+snapshot)`.
+
+### Event stream
+
+The controller's typed event stream
+(`AssessmentControllerEvent` discriminated union) covers assessment-level
+change only — section-level events flow through the embedded
+`SectionController` and the toolkit coordinator's
+`subscribeItemEvents` / `subscribeSectionLifecycleEvents` helpers.
+
+- `assessment-route-changed` — section-level navigation moved (index / id,
+  `previousSectionId`, `canNext` / `canPrevious`).
+- `assessment-session-applied` — `hydrate()` loaded a persisted session.
+- `assessment-session-changed` — assessment session mutated (navigation,
+  per-section snapshot upsert).
+- `assessment-progress-changed` — visited-section count flipped.
+- `assessment-submission-state-changed` — `submit()` recorded the final
+  state.
+
+The same assessment event names are also emitted as DOM events on the player
+chrome. The instrumentation bridge forwards those DOM events under the
+`pie-assessment-*` provider event names documented in
+[Instrumentation and observability](#instrumentation-and-observability).
+
 ## Debug logging
 
 Assessment-player now exposes a `debug` option on `pie-assessment-player-default`.

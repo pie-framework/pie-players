@@ -2,7 +2,7 @@ version: 1
 
 component:
   area: assessment-toolkit
-  underTest: "TypedEventBus + event contracts"
+  underTest: "player:session-changed event contract (host log observation)"
 
 examplesApp:
   app: "@pie-players/section-demos"

@@ -39,6 +39,10 @@ This folder contains the active documentation set for `pie-players`. The focus i
 - [`assessment-player/architecture.md`](./assessment-player/architecture.md) - Target architecture for assessment-player layering, contracts, and extensibility
 - [`assessment-player/implementation-plan.md`](./assessment-player/implementation-plan.md) - Implementation and post-build conformance checklist
 
+## Integrations
+
+- [`integrations/lti.md`](./integrations/lti.md) - Launching players from an LTI tool host after protocol validation
+
 ## Accessibility And TTS
 
 - [`accessibility/accessibility-catalogs-quick-start.md`](./accessibility/accessibility-catalogs-quick-start.md) - Quick start for accessibility catalogs

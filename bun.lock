@@ -29,7 +29,7 @@
     },
     "apps/assessment-demos": {
       "name": "@pie-players/assessment-demos",
-      "version": "0.1.20",
+      "version": "0.1.25",
       "dependencies": {
         "@pie-players/pie-assessment-player": "workspace:*",
         "@pie-players/pie-assessment-toolkit": "workspace:*",
@@ -76,7 +76,7 @@
     },
     "apps/item-demos": {
       "name": "@pie-players/item-demos",
-      "version": "0.1.40",
+      "version": "0.1.45",
       "dependencies": {
         "@pie-players/pie-item-player": "workspace:*",
         "@pie-players/pie-players-shared": "workspace:*",
@@ -125,9 +125,29 @@
         "vite",
       ],
     },
+    "apps/lti-demos": {
+      "name": "@pie-players/lti-demos",
+      "version": "0.1.0",
+      "dependencies": {
+        "@pie-players/pie-assessment-player": "workspace:*",
+        "@pie-players/pie-assessment-toolkit": "workspace:*",
+        "@pie-players/pie-players-shared": "workspace:*",
+      },
+      "devDependencies": {
+        "@sveltejs/adapter-node": "^5.5.4",
+        "@sveltejs/kit": "^2.57.1",
+        "@sveltejs/vite-plugin-svelte": "^7.0.0",
+        "@types/node": "^25.0.10",
+        "bun-types": "^1.3.6",
+        "svelte": "^5.54.0",
+        "svelte-check": "^4.4.6",
+        "typescript": "^5.9.3",
+        "vite": "^8.0.10",
+      },
+    },
     "apps/section-demos": {
       "name": "@pie-players/section-demos",
-      "version": "0.1.46",
+      "version": "0.1.51",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-context": "workspace:*",
@@ -169,7 +189,7 @@
     },
     "packages/assessment-player": {
       "name": "@pie-players/pie-assessment-player",
-      "version": "0.3.32",
+      "version": "0.3.37",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-players-shared": "workspace:*",
@@ -186,7 +206,7 @@
     },
     "packages/assessment-toolkit": {
       "name": "@pie-players/pie-assessment-toolkit",
-      "version": "0.3.32",
+      "version": "0.3.37",
       "dependencies": {
         "@pie-players/pie-calculator": "workspace:*",
         "@pie-players/pie-context": "workspace:*",
@@ -210,14 +230,14 @@
     },
     "packages/calculator": {
       "name": "@pie-players/pie-calculator",
-      "version": "0.3.32",
+      "version": "0.3.37",
       "devDependencies": {
         "typescript": "^5.9.3",
       },
     },
     "packages/calculator-desmos": {
       "name": "@pie-players/pie-calculator-desmos",
-      "version": "0.3.32",
+      "version": "0.3.37",
       "dependencies": {
         "@pie-players/pie-calculator": "workspace:*",
       },
@@ -227,7 +247,7 @@
     },
     "packages/default-tool-loaders": {
       "name": "@pie-players/pie-default-tool-loaders",
-      "version": "0.3.32",
+      "version": "0.3.37",
       "dependencies": {
         "@pie-players/pie-tool-annotation-toolbar": "workspace:*",
         "@pie-players/pie-tool-answer-eliminator": "workspace:*",
@@ -247,7 +267,7 @@
     },
     "packages/item-player": {
       "name": "@pie-players/pie-item-player",
-      "version": "0.3.32",
+      "version": "0.3.37",
       "dependencies": {
         "@pie-players/pie-players-shared": "workspace:*",
         "@pie-players/pie-theme": "workspace:*",
@@ -267,7 +287,7 @@
     },
     "packages/pie-context": {
       "name": "@pie-players/pie-context",
-      "version": "0.3.32",
+      "version": "0.3.37",
       "devDependencies": {
         "@biomejs/biome": "^2.4.12",
         "typescript": "^5.9.3",
@@ -275,7 +295,7 @@
     },
     "packages/players-shared": {
       "name": "@pie-players/pie-players-shared",
-      "version": "0.3.32",
+      "version": "0.3.37",
       "dependencies": {
         "@pie-lib/math-rendering-module": "4.1.2",
         "dompurify": "^3.4.0",
@@ -292,7 +312,7 @@
     },
     "packages/print-player": {
       "name": "@pie-players/pie-print-player",
-      "version": "0.3.32",
+      "version": "0.3.37",
       "dependencies": {
         "lit": "^3.2.1",
         "svelte": "^5.54.0",
@@ -305,7 +325,7 @@
     },
     "packages/section-player": {
       "name": "@pie-players/pie-section-player",
-      "version": "0.3.32",
+      "version": "0.3.37",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-context": "workspace:*",
@@ -338,7 +358,7 @@
     },
     "packages/section-player-tools-event-debugger": {
       "name": "@pie-players/pie-section-player-tools-event-debugger",
-      "version": "0.3.32",
+      "version": "0.3.37",
       "dependencies": {
         "@pie-players/pie-section-player-tools-shared": "workspace:*",
         "@pie-players/pie-theme": "workspace:*",
@@ -354,7 +374,7 @@
     },
     "packages/section-player-tools-instrumentation-debugger": {
       "name": "@pie-players/pie-section-player-tools-instrumentation-debugger",
-      "version": "0.3.32",
+      "version": "0.3.37",
       "dependencies": {
         "@pie-players/pie-players-shared": "workspace:*",
         "@pie-players/pie-section-player-tools-shared": "workspace:*",
@@ -371,7 +391,7 @@
     },
     "packages/section-player-tools-pnp-debugger": {
       "name": "@pie-players/pie-section-player-tools-pnp-debugger",
-      "version": "0.3.32",
+      "version": "0.3.37",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-section-player-tools-shared": "workspace:*",
@@ -388,7 +408,7 @@
     },
     "packages/section-player-tools-session-debugger": {
       "name": "@pie-players/pie-section-player-tools-session-debugger",
-      "version": "0.3.32",
+      "version": "0.3.37",
       "dependencies": {
         "@pie-players/pie-section-player-tools-shared": "workspace:*",
         "@pie-players/pie-theme": "workspace:*",
@@ -404,7 +424,7 @@
     },
     "packages/section-player-tools-shared": {
       "name": "@pie-players/pie-section-player-tools-shared",
-      "version": "0.3.32",
+      "version": "0.3.37",
       "dependencies": {
         "@pie-players/pie-theme": "workspace:*",
       },
@@ -419,7 +439,7 @@
     },
     "packages/section-player-tools-tts-settings": {
       "name": "@pie-players/pie-section-player-tools-tts-settings",
-      "version": "0.3.32",
+      "version": "0.3.37",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-theme": "workspace:*",
@@ -435,7 +455,7 @@
     },
     "packages/theme": {
       "name": "@pie-players/pie-theme",
-      "version": "0.3.32",
+      "version": "0.3.37",
       "devDependencies": {
         "@biomejs/biome": "^2.4.12",
         "typescript": "^5.9.3",
@@ -443,7 +463,7 @@
     },
     "packages/theme-daisyui": {
       "name": "@pie-players/pie-theme-daisyui",
-      "version": "0.3.32",
+      "version": "0.3.37",
       "dependencies": {
         "@pie-players/pie-theme": "workspace:*",
       },
@@ -454,7 +474,7 @@
     },
     "packages/tool-annotation-toolbar": {
       "name": "@pie-players/pie-tool-annotation-toolbar",
-      "version": "0.3.32",
+      "version": "0.3.37",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-players-shared": "workspace:*",
@@ -470,7 +490,7 @@
     },
     "packages/tool-answer-eliminator": {
       "name": "@pie-players/pie-tool-answer-eliminator",
-      "version": "0.3.32",
+      "version": "0.3.37",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-context": "workspace:*",
@@ -487,7 +507,7 @@
     },
     "packages/tool-calculator-desmos": {
       "name": "@pie-players/pie-tool-calculator-desmos",
-      "version": "0.3.32",
+      "version": "0.3.37",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-context": "workspace:*",
@@ -504,7 +524,7 @@
     },
     "packages/tool-calculator-inline-desmos": {
       "name": "@pie-players/pie-tool-calculator-inline-desmos",
-      "version": "0.3.32",
+      "version": "0.3.37",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-context": "workspace:*",
@@ -520,7 +540,7 @@
     },
     "packages/tool-color-scheme": {
       "name": "@pie-players/pie-tool-theme",
-      "version": "0.3.32",
+      "version": "0.3.37",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-context": "workspace:*",
@@ -538,7 +558,7 @@
     },
     "packages/tool-graph": {
       "name": "@pie-players/pie-tool-graph",
-      "version": "0.3.32",
+      "version": "0.3.37",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-context": "workspace:*",
@@ -555,7 +575,7 @@
     },
     "packages/tool-line-reader": {
       "name": "@pie-players/pie-tool-line-reader",
-      "version": "0.3.32",
+      "version": "0.3.37",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-context": "workspace:*",
@@ -572,7 +592,7 @@
     },
     "packages/tool-periodic-table": {
       "name": "@pie-players/pie-tool-periodic-table",
-      "version": "0.3.32",
+      "version": "0.3.37",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-context": "workspace:*",
@@ -589,7 +609,7 @@
     },
     "packages/tool-protractor": {
       "name": "@pie-players/pie-tool-protractor",
-      "version": "0.3.32",
+      "version": "0.3.37",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-context": "workspace:*",
@@ -607,7 +627,7 @@
     },
     "packages/tool-ruler": {
       "name": "@pie-players/pie-tool-ruler",
-      "version": "0.3.32",
+      "version": "0.3.37",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-context": "workspace:*",
@@ -625,7 +645,7 @@
     },
     "packages/tool-text-to-speech": {
       "name": "@pie-players/pie-tool-text-to-speech",
-      "version": "0.3.32",
+      "version": "0.3.37",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-players-shared": "workspace:*",
@@ -641,7 +661,7 @@
     },
     "packages/tool-tts-inline": {
       "name": "@pie-players/pie-tool-tts-inline",
-      "version": "0.3.32",
+      "version": "0.3.37",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-context": "workspace:*",
@@ -657,7 +677,7 @@
     },
     "packages/toolbars": {
       "name": "@pie-players/pie-toolbars",
-      "version": "0.3.32",
+      "version": "0.3.37",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
       },
@@ -672,14 +692,14 @@
     },
     "packages/tts": {
       "name": "@pie-players/pie-tts",
-      "version": "0.3.32",
+      "version": "0.3.37",
       "devDependencies": {
         "typescript": "^5.9.3",
       },
     },
     "packages/tts-client-server": {
       "name": "@pie-players/tts-client-server",
-      "version": "0.3.32",
+      "version": "0.3.37",
       "dependencies": {
         "@pie-players/pie-tts": "workspace:*",
       },
@@ -690,7 +710,7 @@
     },
     "packages/tts-server-core": {
       "name": "@pie-players/tts-server-core",
-      "version": "0.3.32",
+      "version": "0.3.37",
       "devDependencies": {
         "typescript": "^5.9.3",
         "vitest": "^4.1.4",
@@ -698,7 +718,7 @@
     },
     "packages/tts-server-google": {
       "name": "@pie-players/tts-server-google",
-      "version": "0.3.32",
+      "version": "0.3.37",
       "dependencies": {
         "@google-cloud/text-to-speech": "^6.4.0",
         "@pie-players/tts-server-core": "workspace:*",
@@ -710,7 +730,7 @@
     },
     "packages/tts-server-polly": {
       "name": "@pie-players/tts-server-polly",
-      "version": "0.3.32",
+      "version": "0.3.37",
       "dependencies": {
         "@aws-sdk/client-polly": "^3.1033.0",
         "@pie-players/tts-server-core": "workspace:*",
@@ -722,7 +742,7 @@
     },
     "packages/tts-server-sc": {
       "name": "@pie-players/tts-server-sc",
-      "version": "0.3.32",
+      "version": "0.3.37",
       "dependencies": {
         "@pie-players/tts-server-core": "workspace:*",
         "jose": "^6.2.2",
@@ -1105,6 +1125,8 @@
     "@pie-players/item-demos": ["@pie-players/item-demos@workspace:apps/item-demos"],
 
     "@pie-players/local-esm-cdn": ["@pie-players/local-esm-cdn@workspace:apps/local-esm-cdn"],
+
+    "@pie-players/lti-demos": ["@pie-players/lti-demos@workspace:apps/lti-demos"],
 
     "@pie-players/pie-assessment-player": ["@pie-players/pie-assessment-player@workspace:packages/assessment-player"],
 

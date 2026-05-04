@@ -11,6 +11,8 @@ Packaging boundary contract and Node-safe vs browser-only package guidance:
 
 - `apps/item-demos` for item-player focused examples
 - `apps/section-demos` for section-player and toolkit examples
+- `apps/assessment-demos` for assessment-player orchestration examples
+- `apps/lti-demos` for host-owned LTI launch and persistence integration examples
 - `apps/docs` for documentation and static examples
 
 ## Local Commands
@@ -25,6 +27,7 @@ bun run dev:section -- --rebuild
 bun run dev:item
 bun run dev:section
 bun run dev:assessment
+bun run dev:lti
 bun run dev:docs
 ```
 

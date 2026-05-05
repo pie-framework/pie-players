@@ -112,7 +112,7 @@
 		"dist"
 	],
 	"dependencies": {
-		"@pie-lib/math-rendering-module": "4.1.2",
+		"@pie-lib/math-rendering-module": "5.0.0",
 		"dompurify": "^3.4.0",
 		"semver": "^7.7.4",
 		"svelte": "^5.54.0"

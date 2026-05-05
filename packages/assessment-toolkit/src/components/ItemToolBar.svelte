@@ -1117,6 +1117,12 @@
 				controlsEl.appendChild(
 					createShellControlButton('Move tool right', '→', () => moveBy(24, 0))
 				);
+				controlsEl.appendChild(
+					createShellControlButton('Move tool up', '↑', () => moveBy(0, -24))
+				);
+				controlsEl.appendChild(
+					createShellControlButton('Move tool down', '↓', () => moveBy(0, 24))
+				);
 			}
 			if (shellConfig?.resizable !== false) {
 				controlsEl.appendChild(

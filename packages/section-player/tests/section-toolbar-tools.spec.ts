@@ -297,10 +297,14 @@ test.describe("section toolbar tools", () => {
 		await expect(graphShell).toBeVisible();
 
 		const moveRight = graphShell.getByRole("button", { name: "Move tool right" });
+		const moveUp = graphShell.getByRole("button", { name: "Move tool up" });
+		const moveDown = graphShell.getByRole("button", { name: "Move tool down" });
 		const grow = graphShell.getByRole("button", { name: "Grow tool window" });
 		const center = graphShell.getByRole("button", { name: "Center tool window" });
 
 		await expect(moveRight).toBeVisible();
+		await expect(moveUp).toBeVisible();
+		await expect(moveDown).toBeVisible();
 		await expect(grow).toBeVisible();
 		await expect(center).toBeVisible();
 
@@ -309,10 +313,18 @@ test.describe("section toolbar tools", () => {
 		const moved = await getRect(graphShell);
 		expect(moved.x).toBeGreaterThan(before.x);
 
+		await moveDown.click();
+		const movedDown = await getRect(graphShell);
+		expect(movedDown.y).toBeGreaterThan(moved.y);
+
+		await moveUp.click();
+		const movedUp = await getRect(graphShell);
+		expect(movedUp.y).toBeLessThan(movedDown.y);
+
 		await grow.click();
 		const resized = await getRect(graphShell);
-		expect(resized.width).toBeGreaterThanOrEqual(moved.width);
-		expect(resized.height).toBeGreaterThanOrEqual(moved.height);
+		expect(resized.width).toBeGreaterThanOrEqual(movedUp.width);
+		expect(resized.height).toBeGreaterThanOrEqual(movedUp.height);
 
 		const header = graphShell.locator(".pie-tool-shell__header");
 		await header.focus();

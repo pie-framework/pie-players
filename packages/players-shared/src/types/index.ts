@@ -598,7 +598,11 @@ export interface OutcomeResponse {
 export interface PieController {
 	model(model: PieModel, sessionData: any[], env?: any): Promise<PieModel>;
 
-	outcome(sessionData: any[], env?: any): Promise<OutcomeResponse>;
+	outcome(
+		modelOrSessionData: PieModel | any[],
+		sessionOrEnv?: any,
+		env?: any,
+	): Promise<OutcomeResponse>;
 
 	score: (config: object, session: object, env: object) => Promise<object>;
 	createCorrectResponseSession: (

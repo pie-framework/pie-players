@@ -25,6 +25,10 @@ This folder contains the active documentation set for `pie-players`. The focus i
 
 - [`item-player/overview.md`](./item-player/overview.md) - Architecture and runtime behavior
 - [`item-player/loading-strategies.md`](./item-player/loading-strategies.md) - IIFE, ESM, and preloaded loading strategies
+- [`item-player/scoring-and-rubrics.md`](./item-player/scoring-and-rubrics.md) - Item scoring, multi-element aggregation, EBSR, and rubric/manual-scoring behavior
+- [`item-player/legacy-host-api-parity.md`](./item-player/legacy-host-api-parity.md) - Host API parity gaps across current item-player, open-source legacy player, and legacy API player
+- [`item-player/student-teacher-player-parity-plan.md`](./item-player/student-teacher-player-parity-plan.md) - Exact parity plan for student/teacher-facing open-source legacy player behavior
+- [`item-player/authoring-player-plan.md`](./item-player/authoring-player-plan.md) - Parity-informed redesign plan for authoring player behavior
 - [`item-player/migration-from-pie-player-components.md`](./item-player/migration-from-pie-player-components.md) - Upgrade guide from `@pie-framework/pie-player-components`
 - [`preloaded-player/readme.md`](./preloaded-player/readme.md) - Preloaded bundle workflow
 

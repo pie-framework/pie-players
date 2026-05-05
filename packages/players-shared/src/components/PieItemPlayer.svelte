@@ -56,6 +56,7 @@
     env = { mode: "gather", role: "student" } as Env,
     session = [] as any[],
     addCorrectResponse = false,
+    allowedResize = false,
     customClassName = "",
     passageContainerClass = "",
     containerClass = "",
@@ -86,6 +87,7 @@
     env?: Env;
     session?: any[];
     addCorrectResponse?: boolean;
+    allowedResize?: boolean;
     customClassName?: string;
     passageContainerClass?: string;
     containerClass?: string;
@@ -473,6 +475,11 @@
 
   const itemContainerClassFinal = $derived(
     ["pie-item-container", customClassName, containerClass]
+      .filter(Boolean)
+      .join(" ")
+  );
+  const rootClassFinal = $derived(
+    ["pie-item-player", allowedResize ? "pie-item-player--resize-allowed" : ""]
       .filter(Boolean)
       .join(" ")
   );
@@ -890,7 +897,7 @@
   // Note: Resource monitor cleanup is handled automatically by useResourceMonitor's onDestroy
 </script>
 
-<div class="pie-item-player" bind:this={rootElement}>
+<div class={rootClassFinal} bind:this={rootElement}>
   {#if runtimePlayerError}
     <div
       class="pie-player-error"
@@ -947,5 +954,11 @@
   .pie-item-container {
     display: block;
     width: 100%;
+  }
+
+  .pie-item-player--resize-allowed .pie-passage-container {
+    max-width: 100%;
+    overflow: auto;
+    resize: horizontal;
   }
 </style>

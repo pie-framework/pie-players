@@ -12,8 +12,17 @@
 			hosted: { attribute: "hosted", type: "Boolean" },
 			debug: { attribute: "debug", type: "String" },
 			customClassName: { attribute: "custom-class-name", type: "String" },
+			customClassname: { attribute: "custom-classname", type: "String" },
 			containerClass: { attribute: "container-class", type: "String" },
+			passageContainerClass: { attribute: "passage-container-class", type: "String" },
 			externalStyleUrls: { attribute: "external-style-urls", type: "String" },
+			renderStimulus: { attribute: "render-stimulus", type: "Boolean" },
+			allowedResize: { attribute: "allowed-resize", type: "Boolean" },
+			baseHeadingLevel: { attribute: "base-heading-level", type: "Number" },
+			bundleHost: { attribute: "bundle-host", type: "String" },
+			bundleEndpoints: { attribute: "bundle-endpoints", type: "Object" },
+			disableBundler: { attribute: "disable-bundler", type: "Boolean" },
+			reFetchBundle: { attribute: "re-fetch-bundle", type: "Boolean" },
 			loaderConfig: { attribute: "loader-config", type: "Object" },
 			strategy: { attribute: "strategy", type: "String" },
 			mode: { attribute: "mode", type: "String" },
@@ -69,6 +78,8 @@
 		parsePackageName,
 		resolveInstrumentationProvider,
 		resolveItemPlayerView,
+		scorePieItem,
+		updatePieElements,
 	} from "@pie-players/pie-players-shared";
 	import type {
 		EsmBackendConfig,
@@ -105,10 +116,19 @@
 		hosted = false,
 		debug = "" as string | boolean,
 		customClassName = "",
+		customClassname = "",
 		containerClass = "",
+		passageContainerClass = "",
 		externalStyleUrls = "",
+		renderStimulus = true,
+		allowedResize = false,
+		baseHeadingLevel = undefined as 1 | 2 | 3 | 4 | 5 | 6 | undefined,
+		bundleHost = "",
+		bundleEndpoints = null as Record<string, unknown> | null,
+		disableBundler = false,
+		reFetchBundle = false,
 		loaderConfig = DEFAULT_LOADER_CONFIG as LoaderConfig,
-		strategy = "iife",
+		strategy = undefined as "iife" | "esm" | "preloaded" | undefined,
 		mode = "view" as "view" | "author",
 		configuration = {} as Record<string, any>,
 		authoringBackend = "demo" as AuthoringBackendMode,
@@ -123,10 +143,29 @@
 	} = $props();
 
 	const isBrowser = typeof window !== "undefined" && typeof document !== "undefined";
-	const normalizedStrategy = $derived(normalizeItemPlayerStrategy(strategy, "iife"));
+	const requestedStrategy = $derived(
+		strategy ??
+			// pie-item contract compatibility: legacy <pie-player> used
+			// `disableBundler` for host-preloaded elements; current `strategy` remains canonical.
+			(disableBundler
+				? "preloaded"
+				: "iife"),
+	);
+	const normalizedStrategy = $derived(normalizeItemPlayerStrategy(requestedStrategy, "iife"));
 	const resolvedMode = $derived(mode === "author" ? "author" : "view");
+	const resolvedCustomClassName = $derived(
+		customClassName ||
+			// pie-item contract compatibility: legacy <pie-player> exposed `customClassname`;
+			// the current `customClassName` API remains canonical when both are provided.
+			customClassname ||
+			"",
+	);
 	const resolvedIifeBundleHost = $derived(
-		loaderOptions?.bundleHost || DEFAULT_BUNDLE_HOST,
+		loaderOptions?.bundleHost ||
+			// pie-item contract compatibility: legacy <pie-player> exposed `bundleHost`
+			// as a top-level property; `loaderOptions.bundleHost` remains canonical.
+			bundleHost ||
+			DEFAULT_BUNDLE_HOST,
 	);
 	const resolvedEsmCdnUrl = $derived(
 		loaderOptions?.esmCdnUrl || "https://cdn.jsdelivr.net/npm",
@@ -291,6 +330,7 @@
 	let error: string | null = $state(null);
 	let bundleRetryStatus: IifeBundleRetryStatus | null = $state(null);
 	let itemConfig: ConfigEntity | null = $state(null);
+	let passageConfig: ConfigEntity | null = $state(null);
 	let hostElement: HTMLElement | null = $state(null);
 	let sessionController: ItemController | null = $state(null);
 	let sessionControllerItemId = $state("pie-item-player");
@@ -382,6 +422,17 @@
 		}
 		return sessionController.getSession().data;
 	});
+	function configMarkupForKey(cfg: ConfigEntity | null): string {
+		return cfg?.markup ?? "";
+	}
+	const rendererKey = $derived(
+		[
+			configMarkupForKey(itemConfig),
+			renderStimulus ? configMarkupForKey(passageConfig) : "",
+			renderStimulus ? "stimulus" : "item-only",
+			resolvedMode,
+		].join("|"),
+	);
 
 	function stableHashBase36(input: string) {
 		let h = 5381;
@@ -390,14 +441,14 @@
 	}
 
 	const fallbackScopeClass = $derived.by(() => {
-		if (customClassName) return customClassName;
+		if (resolvedCustomClassName) return resolvedCustomClassName;
 		const hash = stableHashBase36("/packages/item-player/src/PieItemPlayer.svelte").slice(
 			0,
 			9,
 		);
 		return `pie-player-${hash}`;
 	});
-	const scopeClass = $derived((customClassName || fallbackScopeClass).trim());
+	const scopeClass = $derived((resolvedCustomClassName || fallbackScopeClass).trim());
 
 	// Dedup of the last successfully-processed inputs. The deep ElementLoader
 	// primitive also deduplicates concurrent identical requests internally,
@@ -408,6 +459,7 @@
 	let lastProcessedStrategy = "";
 	let lastProcessedMode = "";
 	let lastProcessedLoaderRetrySignature = "";
+	let lastProcessedLoaderOptionsSignature = "";
 
 	function normalizePreloadedElementVersions(configEntity: any): any {
 		if (!isBrowser || normalizedStrategy !== "preloaded") return configEntity;
@@ -451,6 +503,81 @@
 			elements: normalizedElements,
 		};
 	}
+
+	type NormalizedItemPlayerConfigInput = {
+		item: ConfigEntity;
+		passage: ConfigEntity | null;
+	};
+
+	function isRecord(value: unknown): value is Record<string, unknown> {
+		return !!value && typeof value === "object" && !Array.isArray(value);
+	}
+
+	function isConfigEntityLike(value: unknown): value is ConfigEntity {
+		if (!isRecord(value)) return false;
+		return (
+			typeof value.markup === "string" &&
+			isRecord(value.elements) &&
+			Array.isArray(value.models)
+		);
+	}
+
+	function normalizeItemPlayerConfigInput(input: unknown): NormalizedItemPlayerConfigInput {
+		if (isConfigEntityLike(input)) {
+			return { item: input, passage: null };
+		}
+
+		if (isRecord(input) && isConfigEntityLike(input.pie)) {
+			// pie-item contract compatibility: legacy <pie-player> accepted advanced
+			// stimulus configs shaped as `{ pie, passage }`; root ConfigEntity remains canonical.
+			return {
+				item: input.pie,
+				passage: isConfigEntityLike(input.passage) ? input.passage : null,
+			};
+		}
+
+		return { item: input as ConfigEntity, passage: null };
+	}
+
+	function prepareConfigEntity(configEntity: ConfigEntity): ConfigEntity {
+		const normalizedConfig = normalizePreloadedElementVersions(configEntity);
+		return makeUniqueTags({ config: normalizedConfig }).config;
+	}
+
+	function mergeElementMaps(...configs: Array<ConfigEntity | null>): Record<string, string> {
+		return configs.reduce(
+			(acc, cfg) => {
+				if (!cfg?.elements) return acc;
+				return { ...acc, ...(cfg.elements as Record<string, string>) };
+			},
+			{} as Record<string, string>,
+		);
+	}
+
+	function parseEnvValue(input: unknown): Env {
+		if (typeof input === "string") {
+			try {
+				return JSON.parse(input) as Env;
+			} catch {
+				return { mode: "gather", role: "student" };
+			}
+		}
+		return (input || { mode: "gather", role: "student" }) as Env;
+	}
+
+	// pie-item contract compatibility: legacy <pie-player> exposed `allowedResize`
+	// for opt-in passage resizing; the default current layout remains unchanged.
+	const resolvedBaseHeadingLevel = $derived.by(() => {
+		if (
+			typeof baseHeadingLevel === "number" &&
+			Number.isInteger(baseHeadingLevel) &&
+			baseHeadingLevel >= 1 &&
+			baseHeadingLevel <= 6
+		) {
+			return baseHeadingLevel as 1 | 2 | 3 | 4 | 5 | 6;
+		}
+		return undefined;
+	});
 
 	// ─── loadConfig pipeline ─────────────────────────────────────────────────
 	//
@@ -542,11 +669,23 @@
 	}
 
 	async function loadConfig(currentConfig: any) {
+		const loaderOptionsSignature = JSON.stringify({
+			bundleHost: resolvedIifeBundleHost,
+			esmCdnUrl: resolvedEsmCdnUrl,
+			loadControllers: loaderOptions?.loadControllers ?? true,
+			moduleResolution: loaderOptions?.moduleResolution ?? "url",
+			runtimeSupportCheck: loaderOptions?.runtimeSupportCheck ?? "off",
+			view: loaderOptions?.view ?? null,
+			disableBundler,
+			bundleEndpoints,
+			reFetchBundle,
+		});
 		if (
 			currentConfig === lastProcessedConfig &&
 			normalizedStrategy === lastProcessedStrategy &&
 			resolvedMode === lastProcessedMode &&
-			loaderRetrySignature === lastProcessedLoaderRetrySignature
+			loaderRetrySignature === lastProcessedLoaderRetrySignature &&
+			loaderOptionsSignature === lastProcessedLoaderOptionsSignature
 		) {
 			return;
 		}
@@ -561,6 +700,7 @@
 		if (!currentConfig) {
 			commitIfCurrent(() => {
 				itemConfig = null;
+				passageConfig = null;
 				loading = true;
 				error = null;
 				bundleRetryStatus = null;
@@ -572,6 +712,7 @@
 		lastProcessedStrategy = normalizedStrategy;
 		lastProcessedMode = resolvedMode;
 		lastProcessedLoaderRetrySignature = loaderRetrySignature;
+		lastProcessedLoaderOptionsSignature = loaderOptionsSignature;
 		commitIfCurrent(() => {
 			loading = true;
 			error = null;
@@ -584,26 +725,39 @@
 			stage = "parse-config";
 			const parsedConfig =
 				typeof currentConfig === "string" ? JSON.parse(currentConfig) : currentConfig;
+			const normalizedInput = normalizeItemPlayerConfigInput(parsedConfig);
 
 			stage = "validate-config";
-			assertPieConfigContract(parsedConfig);
-			const contractValidation = validatePieConfigContract(parsedConfig);
-			const contractWarnings = (
-				contractValidation as unknown as { warnings?: unknown }
-			).warnings;
-			const warnings = Array.isArray(contractWarnings)
-				? contractWarnings.filter((entry): entry is string => typeof entry === "string")
-				: [];
-			for (const warning of warnings) {
-				logger.warn(`[pie-item-player] ${warning}`);
+			for (const [label, cfg] of [
+				["item", normalizedInput.item],
+				["passage", normalizedInput.passage],
+			] as const) {
+				if (!cfg) continue;
+				assertPieConfigContract(cfg);
+				const contractValidation = validatePieConfigContract(cfg);
+				const contractWarnings = (
+					contractValidation as unknown as { warnings?: unknown }
+				).warnings;
+				const warnings = Array.isArray(contractWarnings)
+					? contractWarnings.filter((entry): entry is string => typeof entry === "string")
+					: [];
+				for (const warning of warnings) {
+					logger.warn(`[pie-item-player] ${label}: ${warning}`);
+				}
 			}
 
-			stage = "normalize-preloaded-elements";
-			const normalizedConfig = normalizePreloadedElementVersions(parsedConfig);
-
-			stage = "makeUniqueTags";
-			const transformed = makeUniqueTags({ config: normalizedConfig });
-			const transformedConfig = transformed.config;
+			stage = "normalize-config";
+			if (bundleEndpoints || reFetchBundle) {
+				// pie-item contract compatibility: these legacy loader knobs are accepted at
+				// the boundary, but the current loader has no equivalent mutable endpoint cache.
+				logger.warn(
+					"[pie-item-player] bundleEndpoints/reFetchBundle are accepted for legacy host compatibility but are not used by the current loader boundary.",
+				);
+			}
+			const transformedConfig = prepareConfigEntity(normalizedInput.item);
+			const transformedPassageConfig = normalizedInput.passage
+				? prepareConfigEntity(normalizedInput.passage)
+				: null;
 			const runtimeSupportCheck = normalizeRuntimeSupportCheck(
 				(loaderOptions as UnifiedLoaderOptions | undefined)?.runtimeSupportCheck,
 				"off",
@@ -612,7 +766,7 @@
 				(loaderOptions as UnifiedLoaderOptions | undefined)?.view ||
 				resolveItemPlayerView(env?.mode, "delivery");
 			const runtimeSupportHints = await collectRuntimeSupportHints(
-				transformedConfig.elements || {},
+				mergeElementMaps(transformedConfig, transformedPassageConfig),
 				normalizedStrategy,
 				runtimeSupportView as "delivery" | "author" | "print",
 				runtimeSupportCheck,
@@ -629,15 +783,12 @@
 			await initializeMathRendering();
 			if (!isCurrentLoadRequest(requestToken)) return;
 
-			const elementMap = (transformedConfig?.elements || {}) as Record<
-				string,
-				string
-			>;
+			const elementMap = mergeElementMaps(transformedConfig, transformedPassageConfig);
 
 			if (normalizedStrategy === "preloaded") {
 				stage = "preloaded-readiness";
 				const bundleType = resolveBundleType();
-				const tags = tagsForConfig(transformedConfig, {
+				const tags = tagsForConfig({ ...transformedConfig, elements: elementMap }, {
 					strategy: normalizedStrategy,
 					view: runtimeSupportView,
 					bundleType,
@@ -669,6 +820,7 @@
 			stage = "set-item-config";
 			commitIfCurrent(() => {
 				itemConfig = transformedConfig;
+				passageConfig = transformedPassageConfig;
 				loading = false;
 				error = null;
 				bundleRetryStatus = null;
@@ -704,6 +856,11 @@
 		void resolvedIifeBundleHost;
 		void resolvedEsmCdnUrl;
 		void loaderRetrySignature;
+		void loaderOptions;
+		void disableBundler;
+		void allowedResize;
+		void bundleEndpoints;
+		void reFetchBundle;
 		queueMicrotask(() => {
 			untrack(() => {
 				loadConfig(currentConfig);
@@ -802,7 +959,7 @@
 			tick().then(() => {
 				const elementTags = Object.keys(cfg.elements);
 				for (const tag of elementTags) {
-					const elements = document.querySelectorAll(tag);
+					const elements = hostElement?.querySelectorAll(tag) ?? [];
 					for (const el of elements) {
 						if (el instanceof HTMLElement) {
 							el.style.borderBottom = "1px solid #ddd";
@@ -835,6 +992,59 @@
 	export function focusFirst(): boolean {
 		if (!hostElement) return false;
 		return focusFirstFocusableInElement(hostElement);
+	}
+
+	// pie-item contract compatibility: legacy <pie-player> exposed local
+	// browser scoring through provideScore(); current item-player behavior is
+	// unchanged unless a host opts into this new imperative method.
+	export async function provideScore(): Promise<false | any[]> {
+		const cfg = itemConfig;
+		if (!cfg?.models?.length) {
+			return false;
+		}
+		const currentEnv = parseEnvValue(env);
+		const { results } = await scorePieItem(cfg, rendererSession, {
+			container: hostElement ?? document,
+			env: {
+				...currentEnv,
+				mode: "evaluate",
+				partialScoring: currentEnv.partialScoring,
+			},
+			outcomeArguments: "model-session-env",
+			includeMissingResults: true,
+		});
+		return results;
+	}
+
+	// pie-item contract compatibility: legacy <pie-player> preview hosts update a
+	// rendered element model imperatively; keep the existing strict id/tag binding.
+	export async function updateElementModel(update: Record<string, any>): Promise<void> {
+		if (!itemConfig) {
+			throw new Error("Cannot update element model before the item config has loaded.");
+		}
+		const updateId = typeof update?.id === "string" ? update.id : "";
+		if (!updateId) {
+			throw new Error("updateElementModel(update) requires update.id.");
+		}
+		const modelIndex = itemConfig.models?.findIndex((model) => model.id === updateId) ?? -1;
+		if (modelIndex < 0) {
+			throw new Error(`No PIE model found for id "${updateId}".`);
+		}
+
+		const currentModel = itemConfig.models[modelIndex];
+		const nextModels = [...itemConfig.models];
+		nextModels[modelIndex] = {
+			...currentModel,
+			...update,
+			id: currentModel.id,
+			element: currentModel.element,
+		};
+		itemConfig = {
+			...itemConfig,
+			models: nextModels,
+		};
+		await tick();
+		updatePieElements(itemConfig, rendererSession, parseEnvValue(env), hostElement ?? undefined);
 	}
 
 	const handleSessionChanged = (detail: unknown) => {
@@ -906,33 +1116,39 @@
 		</div>
 	{:else}
 		<div class="pie-player-item-container {containerClass}">
-			<PieItemRenderer
-				{itemConfig}
-				env={typeof env === "string" ? JSON.parse(env) : env}
-				session={rendererSession}
-				{addCorrectResponse}
-				customClassName={scopeClass}
-				bundleType={resolvedMode === "author" ? BundleType.editor : BundleType.clientPlayer}
-				{loaderConfig}
-				mode={resolvedMode}
-				authoringBackend={authoringBackend}
-				{trustMarkup}
-				sanitizeMarkup={sanitizeMarkup ?? undefined}
-				configuration={typeof configuration === "string"
-					? JSON.parse(configuration)
-					: configuration}
-				onInsertImage={onInsertImage ?? undefined}
-				onDeleteImage={onDeleteImage ?? undefined}
-				onInsertSound={onInsertSound ?? undefined}
-				onDeleteSound={onDeleteSound ?? undefined}
-				onLoadComplete={(detail: unknown) =>
-					handlePlayerEvent(new CustomEvent("load-complete", { detail }))}
-				onPlayerError={(detail: unknown) =>
-					handlePlayerEvent(new CustomEvent("player-error", { detail }))}
-				onSessionChanged={(detail: unknown) => handleSessionChanged(detail)}
-				onModelUpdated={(detail: unknown) =>
-					handlePlayerEvent(new CustomEvent("model-updated", { detail }))}
-			/>
+			{#key rendererKey}
+				<PieItemRenderer
+					{itemConfig}
+					passageConfig={renderStimulus ? passageConfig : null}
+					env={parseEnvValue(env)}
+					session={rendererSession}
+					{addCorrectResponse}
+					{allowedResize}
+					customClassName={scopeClass}
+					{passageContainerClass}
+					baseHeadingLevel={resolvedBaseHeadingLevel}
+					bundleType={resolvedMode === "author" ? BundleType.editor : BundleType.clientPlayer}
+					{loaderConfig}
+					mode={resolvedMode}
+					authoringBackend={authoringBackend}
+					{trustMarkup}
+					sanitizeMarkup={sanitizeMarkup ?? undefined}
+					configuration={typeof configuration === "string"
+						? JSON.parse(configuration)
+						: configuration}
+					onInsertImage={onInsertImage ?? undefined}
+					onDeleteImage={onDeleteImage ?? undefined}
+					onInsertSound={onInsertSound ?? undefined}
+					onDeleteSound={onDeleteSound ?? undefined}
+					onLoadComplete={(detail: unknown) =>
+						handlePlayerEvent(new CustomEvent("load-complete", { detail }))}
+					onPlayerError={(detail: unknown) =>
+						handlePlayerEvent(new CustomEvent("player-error", { detail }))}
+					onSessionChanged={(detail: unknown) => handleSessionChanged(detail)}
+					onModelUpdated={(detail: unknown) =>
+						handlePlayerEvent(new CustomEvent("model-updated", { detail }))}
+				/>
+			{/key}
 		</div>
 	{/if}
 </div>

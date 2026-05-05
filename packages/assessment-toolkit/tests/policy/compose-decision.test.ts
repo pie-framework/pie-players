@@ -10,16 +10,16 @@
  *                            removes anything not in the list
  *   4. Host blocklist      → `tools.policy.blocked` removes
  *                            unconditionally
- *   5. QTI gates           → applied only when `enforcement === "on"`
+ *   5. PNP/profile gates  → applied only when `enforcement === "on"`
  *                            and an assessment is supplied
  *   6. Custom PolicySources → can only narrow the candidate set;
  *                             attempts to add new IDs are rejected
  *                             with a `tool-policy.placementMissing`
  *                             diagnostic
  *
- * The QTI source's *internal* precedence rules are exercised by
- * `tests/policy/QtiPolicySource.test.ts`; this file only asserts how
- * the engine wires QTI's output into the surrounding pipeline.
+ * The PNP policy source's internal precedence rules are exercised by
+ * `tests/policy/PnpPolicySource.test.ts`; this file only asserts how
+ * the engine wires PNP policy output into the surrounding pipeline.
  */
 
 import { beforeEach, describe, expect, test } from "bun:test";
@@ -29,7 +29,7 @@ import type { AssessmentEntity } from "@pie-players/pie-players-shared/types";
 import { composeDecision } from "../../src/policy/core/compose-decision.js";
 import type { PolicySource } from "../../src/policy/core/PolicySource.js";
 import type { ToolPolicyDecisionRequest } from "../../src/policy/core/decision-types.js";
-import { QtiPolicySource } from "../../src/policy/sources/QtiPolicySource.js";
+import { PnpPolicySource } from "../../src/policy/sources/PnpPolicySource.js";
 import { ToolRegistry } from "../../src/services/ToolRegistry.js";
 import {
 	normalizeToolsConfig,
@@ -61,7 +61,7 @@ describe("composeDecision — host-only pipeline", () => {
 		const decision = composeDecision({
 			request: baseRequest,
 			tools: tools({}),
-			qti: { source: null, enforcement: "off" },
+			pnpPolicy: { source: null, enforcement: "off" },
 			customSources: [],
 			contextId: "test",
 		});
@@ -75,7 +75,7 @@ describe("composeDecision — host-only pipeline", () => {
 			tools: tools({
 				placement: { section: [], item: ["calculator", "tts"], passage: [] },
 			}),
-			qti: { source: null, enforcement: "off" },
+			pnpPolicy: { source: null, enforcement: "off" },
 			customSources: [],
 			contextId: "test",
 		});
@@ -95,7 +95,7 @@ describe("composeDecision — host-only pipeline", () => {
 				placement: { section: [], item: ["calculator", "tts"], passage: [] },
 				providers: { calculator: { enabled: false } },
 			}),
-			qti: { source: null, enforcement: "off" },
+			pnpPolicy: { source: null, enforcement: "off" },
 			customSources: [],
 			contextId: "test",
 		});
@@ -109,7 +109,7 @@ describe("composeDecision — host-only pipeline", () => {
 				placement: { section: [], item: ["calculator"], passage: [] },
 				providers: { calculator: { settings: {} } },
 			}),
-			qti: { source: null, enforcement: "off" },
+			pnpPolicy: { source: null, enforcement: "off" },
 			customSources: [],
 			contextId: "test",
 		});
@@ -127,7 +127,7 @@ describe("composeDecision — host-only pipeline", () => {
 					passage: [],
 				},
 			}),
-			qti: { source: null, enforcement: "off" },
+			pnpPolicy: { source: null, enforcement: "off" },
 			customSources: [],
 			contextId: "test",
 		});
@@ -141,7 +141,7 @@ describe("composeDecision — host-only pipeline", () => {
 				policy: { allowed: [], blocked: [] },
 				placement: { section: [], item: ["calculator", "tts"], passage: [] },
 			}),
-			qti: { source: null, enforcement: "off" },
+			pnpPolicy: { source: null, enforcement: "off" },
 			customSources: [],
 			contextId: "test",
 		});
@@ -162,7 +162,7 @@ describe("composeDecision — host-only pipeline", () => {
 					passage: [],
 				},
 			}),
-			qti: { source: null, enforcement: "off" },
+			pnpPolicy: { source: null, enforcement: "off" },
 			customSources: [],
 			contextId: "test",
 		});
@@ -172,7 +172,7 @@ describe("composeDecision — host-only pipeline", () => {
 		]);
 	});
 
-	test("step 5 — qtiEnforcement: 'off' skips QTI entirely even when source/assessment present", () => {
+	test("step 5 — pnpEnforcement: 'off' skips profile policy even when source/assessment present", () => {
 		const assessment: AssessmentEntity = {
 			id: "asm-1",
 			personalNeedsProfile: { supports: ["calculator"] },
@@ -182,8 +182,8 @@ describe("composeDecision — host-only pipeline", () => {
 			tools: tools({
 				placement: { section: [], item: ["calculator"], passage: [] },
 			}),
-			qti: {
-				source: new QtiPolicySource(registry),
+			pnpPolicy: {
+				source: new PnpPolicySource(registry),
 				assessment,
 				enforcement: "off",
 			},
@@ -191,7 +191,7 @@ describe("composeDecision — host-only pipeline", () => {
 			contextId: "test",
 		});
 		expect(decision.visibleTools[0].alwaysAvailable).toBe(false);
-		// No QTI provenance entries when enforcement is off.
+		// No PNP/profile provenance entries when enforcement is off.
 		expect(
 			decision.provenance.decisionLog.some((d) => d.rule === "pnp-support"),
 		).toBe(false);
@@ -207,8 +207,8 @@ describe("composeDecision — host-only pipeline", () => {
 			tools: tools({
 				placement: { section: [], item: ["calculator"], passage: [] },
 			}),
-			qti: {
-				source: new QtiPolicySource(registry),
+			pnpPolicy: {
+				source: new PnpPolicySource(registry),
 				assessment,
 				enforcement: "on",
 			},
@@ -219,11 +219,11 @@ describe("composeDecision — host-only pipeline", () => {
 		expect(decision.visibleTools[0].alwaysAvailable).toBe(true);
 		expect(decision.visibleTools[0].sources).toEqual([
 			"placement",
-			"qti.pnp-support",
+			"pnp.pnp-support",
 		]);
 	});
 
-	test("step 5 — host blocklist wins over QTI district requirement (qtiRequiredBlocked diagnostic)", () => {
+	test("step 5 — host blocklist wins over district requirement (requiredToolBlocked diagnostic)", () => {
 		const assessment: AssessmentEntity = {
 			id: "asm-1",
 			settings: {
@@ -236,8 +236,8 @@ describe("composeDecision — host-only pipeline", () => {
 				policy: { allowed: [], blocked: ["calculator"] },
 				placement: { section: [], item: ["calculator", "tts"], passage: [] },
 			}),
-			qti: {
-				source: new QtiPolicySource(registry),
+			pnpPolicy: {
+				source: new PnpPolicySource(registry),
 				assessment,
 				enforcement: "on",
 			},
@@ -247,7 +247,7 @@ describe("composeDecision — host-only pipeline", () => {
 		expect(decision.visibleTools.map((e) => e.toolId)).toEqual(["tts"]);
 		expect(decision.diagnostics).toHaveLength(1);
 		expect(decision.diagnostics[0]).toMatchObject({
-			code: "tool-policy.qtiRequiredBlocked",
+			code: "tool-policy.requiredToolBlocked",
 			toolId: "calculator",
 			level: "item",
 			details: {
@@ -258,7 +258,7 @@ describe("composeDecision — host-only pipeline", () => {
 		});
 	});
 
-	test("step 5 — QTI item restriction removes a host-listed tool", () => {
+	test("step 5 — item restriction removes a host-listed tool", () => {
 		const assessment: AssessmentEntity = {
 			id: "asm-1",
 		} as AssessmentEntity;
@@ -271,8 +271,8 @@ describe("composeDecision — host-only pipeline", () => {
 			tools: tools({
 				placement: { section: [], item: ["calculator", "tts"], passage: [] },
 			}),
-			qti: {
-				source: new QtiPolicySource(registry),
+			pnpPolicy: {
+				source: new PnpPolicySource(registry),
 				assessment,
 				currentItemRef: itemRef,
 				enforcement: "on",
@@ -282,6 +282,28 @@ describe("composeDecision — host-only pipeline", () => {
 		});
 		expect(decision.visibleTools.map((e) => e.toolId)).toEqual(["tts"]);
 		expect(decision.diagnostics).toEqual([]);
+	});
+
+	test("step 5 — item-only profile material still applies when no assessment is bound", () => {
+		const itemRef = {
+			identifier: "item-1",
+			settings: { restrictedTools: ["calculator"] },
+		} as any;
+		const decision = composeDecision({
+			request: baseRequest,
+			tools: tools({
+				placement: { section: [], item: ["calculator", "tts"], passage: [] },
+			}),
+			pnpPolicy: {
+				source: new PnpPolicySource(registry),
+				currentItemRef: itemRef,
+				enforcement: "on",
+			},
+			customSources: [],
+			contextId: "test",
+		});
+		expect(decision.visibleTools.map((e) => e.toolId)).toEqual(["tts"]);
+		expect(decision.provenance.sources.item?.id).toBe("item-1");
 	});
 
 	test("step 6 — custom source narrows the candidate set", () => {
@@ -305,7 +327,7 @@ describe("composeDecision — host-only pipeline", () => {
 			tools: tools({
 				placement: { section: [], item: ["calculator", "tts"], passage: [] },
 			}),
-			qti: { source: null, enforcement: "off" },
+			pnpPolicy: { source: null, enforcement: "off" },
 			customSources: [oddOnly],
 			contextId: "test",
 		});
@@ -328,7 +350,7 @@ describe("composeDecision — host-only pipeline", () => {
 			tools: tools({
 				placement: { section: [], item: ["calculator"], passage: [] },
 			}),
-			qti: { source: null, enforcement: "off" },
+			pnpPolicy: { source: null, enforcement: "off" },
 			customSources: [sneakyAdder],
 			contextId: "test",
 		});
@@ -347,7 +369,7 @@ describe("composeDecision — host-only pipeline", () => {
 			tools: tools({
 				placement: { section: [], item: ["calculator"], passage: [] },
 			}),
-			qti: { source: null, enforcement: "off" },
+			pnpPolicy: { source: null, enforcement: "off" },
 			customSources: [],
 			contextId: "test",
 		});
@@ -362,7 +384,7 @@ describe("composeDecision — host-only pipeline", () => {
 				policy: { allowed: [], blocked: ["calculator"] },
 				placement: { section: [], item: ["calculator"], passage: [] },
 			}),
-			qti: { source: null, enforcement: "off" },
+			pnpPolicy: { source: null, enforcement: "off" },
 			customSources: [],
 			contextId: "test",
 		});
@@ -379,8 +401,8 @@ describe("composeDecision — provenance reconciliation (M8 PR 1 R2 M1 fix)", ()
 		registry = new ToolRegistry();
 	});
 
-	test("QTI mandate not in placement → finalState='blocked', diagnostic fires", () => {
-		// Repro of R2 M1 case A: QTI mandates `calculator` via district
+	test("Required tool not in placement → finalState='blocked', diagnostic fires", () => {
+		// Repro of R2 M1 case A: district policy requires `calculator` via district
 		// `requiredTools`, but the host's placement.item is empty. The
 		// pre-fix engine logged a `district-requirement / enable`
 		// decision and `provenance.features.get("calculator").finalState`
@@ -397,8 +419,8 @@ describe("composeDecision — provenance reconciliation (M8 PR 1 R2 M1 fix)", ()
 			tools: tools({
 				placement: { section: [], item: [], passage: [] },
 			}),
-			qti: {
-				source: new QtiPolicySource(registry),
+			pnpPolicy: {
+				source: new PnpPolicySource(registry),
 				assessment,
 				enforcement: "on",
 			},
@@ -413,7 +435,7 @@ describe("composeDecision — provenance reconciliation (M8 PR 1 R2 M1 fix)", ()
 		// tool, just by omitting it from placement (steps 1-4 collectively).
 		expect(decision.diagnostics).toHaveLength(1);
 		expect(decision.diagnostics[0]).toMatchObject({
-			code: "tool-policy.qtiRequiredBlocked",
+			code: "tool-policy.requiredToolBlocked",
 			toolId: "calculator",
 			details: {
 				rule: "district-requirement",
@@ -423,7 +445,7 @@ describe("composeDecision — provenance reconciliation (M8 PR 1 R2 M1 fix)", ()
 		});
 	});
 
-	test("R2 S2 — qtiRequiredBlocked.details enriched with hostRule for each host gate", () => {
+	test("R2 S2 — requiredToolBlocked.details enriched with hostRule for each host gate", () => {
 		// Locks the cross-gate enrichment: every host gate that step 5b
 		// can detect must populate `details.hostRule` and `hostValue`
 		// distinctly so consumers can render the conflict without
@@ -442,8 +464,8 @@ describe("composeDecision — provenance reconciliation (M8 PR 1 R2 M1 fix)", ()
 				placement: { section: [], item: ["calculator", "tts"], passage: [] },
 				providers: { calculator: { enabled: false } },
 			}),
-			qti: {
-				source: new QtiPolicySource(registry),
+			pnpPolicy: {
+				source: new PnpPolicySource(registry),
 				assessment,
 				enforcement: "on",
 			},
@@ -451,7 +473,7 @@ describe("composeDecision — provenance reconciliation (M8 PR 1 R2 M1 fix)", ()
 			contextId: "test",
 		});
 		expect(providerDecision.diagnostics[0]).toMatchObject({
-			code: "tool-policy.qtiRequiredBlocked",
+			code: "tool-policy.requiredToolBlocked",
 			details: {
 				rule: "district-requirement",
 				hostRule: "provider-disabled",
@@ -466,8 +488,8 @@ describe("composeDecision — provenance reconciliation (M8 PR 1 R2 M1 fix)", ()
 				policy: { allowed: ["tts"], blocked: [] },
 				placement: { section: [], item: ["calculator", "tts"], passage: [] },
 			}),
-			qti: {
-				source: new QtiPolicySource(registry),
+			pnpPolicy: {
+				source: new PnpPolicySource(registry),
 				assessment,
 				enforcement: "on",
 			},
@@ -475,7 +497,7 @@ describe("composeDecision — provenance reconciliation (M8 PR 1 R2 M1 fix)", ()
 			contextId: "test",
 		});
 		expect(allowlistDecision.diagnostics[0]).toMatchObject({
-			code: "tool-policy.qtiRequiredBlocked",
+			code: "tool-policy.requiredToolBlocked",
 			details: {
 				rule: "district-requirement",
 				hostRule: "host-allowlist",
@@ -486,7 +508,7 @@ describe("composeDecision — provenance reconciliation (M8 PR 1 R2 M1 fix)", ()
 
 	test("custom source silent removal → finalState='blocked', auto-logged decision", () => {
 		// Repro of R2 M1 case B / R2 S1: a custom PolicySource removes a
-		// QTI-PNP-supported tool from the candidate set without emitting
+		// PNP-supported tool from the candidate set without emitting
 		// a `decisions` entry. The auto-log keeps the trail honest.
 		const assessment: AssessmentEntity = {
 			id: "asm-1",
@@ -505,8 +527,8 @@ describe("composeDecision — provenance reconciliation (M8 PR 1 R2 M1 fix)", ()
 			tools: tools({
 				placement: { section: [], item: ["calculator"], passage: [] },
 			}),
-			qti: {
-				source: new QtiPolicySource(registry),
+			pnpPolicy: {
+				source: new PnpPolicySource(registry),
 				assessment,
 				enforcement: "on",
 			},
@@ -548,7 +570,7 @@ describe("composeDecision — provenance reconciliation (M8 PR 1 R2 M1 fix)", ()
 			tools: tools({
 				placement: { section: [], item: ["calculator"], passage: [] },
 			}),
-			qti: { source: null, enforcement: "off" },
+			pnpPolicy: { source: null, enforcement: "off" },
 			customSources: [explicitBlocker],
 			contextId: "test",
 		});
@@ -565,7 +587,7 @@ describe("composeDecision — provenance reconciliation (M8 PR 1 R2 M1 fix)", ()
 	test("survivor with no logged decisions → trail is `enabled` and dense", () => {
 		// `reconcileFinalStates` synthesizes a minimal trail for any
 		// surviving id that never collected a decision (this happens
-		// when QTI is off and no policy/provider/custom rules touched
+		// when PNP enforcement is off and no policy/provider/custom rules touched
 		// the tool). Hosts iterating `provenance.features` to find the
 		// visible set rely on this density.
 		const decision = composeDecision({
@@ -573,7 +595,7 @@ describe("composeDecision — provenance reconciliation (M8 PR 1 R2 M1 fix)", ()
 			tools: tools({
 				placement: { section: [], item: ["pencil"], passage: [] },
 			}),
-			qti: { source: null, enforcement: "off" },
+			pnpPolicy: { source: null, enforcement: "off" },
 			customSources: [],
 			contextId: "test",
 		});
@@ -583,16 +605,16 @@ describe("composeDecision — provenance reconciliation (M8 PR 1 R2 M1 fix)", ()
 		expect(trail?.featureId).toBe("pencil");
 	});
 
-	test("R1 S1 — QTI's own block of a QTI-mandated tool does NOT fire qtiRequiredBlocked", () => {
+	test("R1 S1 — profile policy's own block of a required tool does NOT fire requiredToolBlocked", () => {
 		// Repro of R1 S1: when two PNP supports map to the same toolId
 		// (legitimate case — e.g. "calculator-basic" and
-		// "calculator-scientific" both map to "calculator"), QTI can
+		// "calculator-scientific" both map to "calculator"), profile policy can
 		// land the same toolId in BOTH `mandatedToolIds` (one support
 		// fired item/district `requiredTools` at p=4/5) AND
 		// `blockedToolIds` (the other support fired pnp-prohibited at
-		// p=6). The host did nothing wrong — QTI's own internal
+		// p=6). The host did nothing wrong — profile policy's own internal
 		// precedence resolved the conflict — so step 5b must not blame
-		// the host with a `qtiRequiredBlocked` diagnostic.
+		// the host with a `requiredToolBlocked` diagnostic.
 		registry.register({
 			toolId: "calculator",
 			name: "Calculator",
@@ -620,8 +642,8 @@ describe("composeDecision — provenance reconciliation (M8 PR 1 R2 M1 fix)", ()
 			tools: tools({
 				placement: { section: [], item: ["calculator", "tts"], passage: [] },
 			}),
-			qti: {
-				source: new QtiPolicySource(registry),
+			pnpPolicy: {
+				source: new PnpPolicySource(registry),
 				assessment,
 				enforcement: "on",
 			},
@@ -630,10 +652,10 @@ describe("composeDecision — provenance reconciliation (M8 PR 1 R2 M1 fix)", ()
 		});
 
 		expect(decision.visibleTools.map((e) => e.toolId)).toEqual(["tts"]);
-		const qtiBlocked = decision.diagnostics.filter(
-			(d) => d.code === "tool-policy.qtiRequiredBlocked",
+		const requiredToolBlocked = decision.diagnostics.filter(
+			(d) => d.code === "tool-policy.requiredToolBlocked",
 		);
-		expect(qtiBlocked).toEqual([]);
+		expect(requiredToolBlocked).toEqual([]);
 		// The provenance trail still tells the full story.
 		const trail = decision.provenance.features.get("calculator");
 		expect(trail?.finalState).toBe("blocked");

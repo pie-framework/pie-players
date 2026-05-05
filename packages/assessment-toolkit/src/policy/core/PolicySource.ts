@@ -3,7 +3,7 @@
  * `.cursor/plans/m8-design.md` § 5).
  *
  * Custom sources run in step 6 of the composition pipeline — *after*
- * placement membership, provider veto, host policy, and QTI gates.
+ * placement membership, provider veto, host policy, and PNP/profile gates.
  * That ordering is deliberate: custom rules can only further *narrow*
  * the candidate set or add advisory provenance entries; they cannot
  * promote a tool that the host already removed.
@@ -43,7 +43,7 @@ export interface PolicySourceProvenanceEntry {
 	 * Custom precedence value used for the decision log. Defaults to
 	 * `100 + sourceIndex` (engine-assigned) when `undefined`. Sources
 	 * MAY override only if they know what they are doing — overriding
-	 * to a value `<= 6` lets the source masquerade as a QTI rule and
+	 * to a value `<= 6` lets the source masquerade as a PNP/profile rule and
 	 * is generally a bug.
 	 */
 	precedence?: number;

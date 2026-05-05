@@ -1,24 +1,24 @@
 /**
- * QTI auto-default — narrow auto-on rule (M8 PR 4).
+ * PNP auto-default — narrow auto-on rule (M8 PR 4).
  *
  * Locks the rule documented in `.cursor/plans/m8-design.md` F2:
  *
- *   `qtiEnforcement` defaults to `"on"` only when the bound inputs
- *   actually carry QTI material. A bare assessment record (just
+ *   `pnpEnforcement` defaults to `"on"` only when the bound inputs
+ *   actually carry profile material. A bare assessment record (just
  *   `id` / `name` / `title`) keeps the legacy floating-tools path
- *   without QTI gates engaged. Hosts opt out of auto-on by passing
- *   `qtiEnforcement: "off"` explicitly (engine input or
- *   `ToolkitCoordinator.setQtiEnforcement("off")`).
+ *   without profile gates engaged. Hosts opt out of auto-on by passing
+ *   `pnpEnforcement: "off"` explicitly (engine input or
+ *   `ToolkitCoordinator.setPnpEnforcement("off")`).
  *
  * Covers four surfaces that share the rule:
  *
- *   1. The pure helpers (`assessmentHasQtiInputs`,
- *      `itemRefHasQtiInputs`, `resolveDefaultQtiEnforcement`).
+ *   1. The pure helpers (`assessmentHasPnpPolicyInputs`,
+ *      `itemRefHasPnpPolicyInputs`, `resolveDefaultPnpEnforcement`).
  *   2. `ToolPolicyEngine`'s constructor default for
- *      `qtiEnforcement`.
- *   3. `ToolkitCoordinator.resolveEffectiveQtiEnforcement` via
+ *      `pnpEnforcement`.
+ *   3. `ToolkitCoordinator.resolveEffectivePnpEnforcement` via
  *      `updateAssessment` / `updateCurrentItemRef`.
- *   4. The interaction with explicit `setQtiEnforcement` overrides.
+ *   4. The interaction with explicit `setPnpEnforcement` overrides.
  */
 
 import { describe, expect, test } from "bun:test";
@@ -30,9 +30,9 @@ import type {
 
 import { ToolPolicyEngine } from "../../src/policy/core/ToolPolicyEngine.js";
 import {
-	assessmentHasQtiInputs,
-	itemRefHasQtiInputs,
-	resolveDefaultQtiEnforcement,
+	assessmentHasPnpPolicyInputs,
+	itemRefHasPnpPolicyInputs,
+	resolveDefaultPnpEnforcement,
 } from "../../src/policy/internal.js";
 import { ToolkitCoordinator } from "../../src/services/ToolkitCoordinator.js";
 import { ToolRegistry } from "../../src/services/ToolRegistry.js";
@@ -56,7 +56,7 @@ function makeCoordinator(
 	tools?: ConstructorParameters<typeof ToolkitCoordinator>[0]["tools"],
 ) {
 	return new ToolkitCoordinator({
-		assessmentId: "qti-default-on",
+		assessmentId: "pnp-default-on",
 		lazyInit: true,
 		tools: tools ?? {
 			placement: { section: ["graph"] },
@@ -64,13 +64,13 @@ function makeCoordinator(
 	});
 }
 
-describe("assessmentHasQtiInputs — structural QTI material on the assessment", () => {
+describe("assessmentHasPnpPolicyInputs — structural PNP/profile policy material on the assessment", () => {
 	test("returns false for null / undefined / bare assessment", () => {
-		expect(assessmentHasQtiInputs(null)).toBe(false);
-		expect(assessmentHasQtiInputs(undefined)).toBe(false);
-		expect(assessmentHasQtiInputs({ id: "a1" } as AssessmentEntity)).toBe(false);
+		expect(assessmentHasPnpPolicyInputs(null)).toBe(false);
+		expect(assessmentHasPnpPolicyInputs(undefined)).toBe(false);
+		expect(assessmentHasPnpPolicyInputs({ id: "a1" } as AssessmentEntity)).toBe(false);
 		expect(
-			assessmentHasQtiInputs({
+			assessmentHasPnpPolicyInputs({
 				id: "a1",
 				name: "Bare assessment",
 				title: "Bare",
@@ -80,7 +80,7 @@ describe("assessmentHasQtiInputs — structural QTI material on the assessment",
 
 	test("returns true when the assessment carries any PNP supports", () => {
 		expect(
-			assessmentHasQtiInputs({
+			assessmentHasPnpPolicyInputs({
 				id: "a1",
 				personalNeedsProfile: { supports: ["graph"] },
 			} as AssessmentEntity),
@@ -89,7 +89,7 @@ describe("assessmentHasQtiInputs — structural QTI material on the assessment",
 
 	test("returns true for PNP `prohibitedSupports` and `activateAtInit`", () => {
 		expect(
-			assessmentHasQtiInputs({
+			assessmentHasPnpPolicyInputs({
 				id: "a1",
 				personalNeedsProfile: {
 					supports: [],
@@ -98,7 +98,7 @@ describe("assessmentHasQtiInputs — structural QTI material on the assessment",
 			} as AssessmentEntity),
 		).toBe(true);
 		expect(
-			assessmentHasQtiInputs({
+			assessmentHasPnpPolicyInputs({
 				id: "a1",
 				personalNeedsProfile: {
 					supports: [],
@@ -110,7 +110,7 @@ describe("assessmentHasQtiInputs — structural QTI material on the assessment",
 
 	test("ignores empty PNP arrays / empty objects", () => {
 		expect(
-			assessmentHasQtiInputs({
+			assessmentHasPnpPolicyInputs({
 				id: "a1",
 				personalNeedsProfile: { supports: [] },
 				settings: {
@@ -127,19 +127,19 @@ describe("assessmentHasQtiInputs — structural QTI material on the assessment",
 
 	test("returns true when district policy blocks or requires tools", () => {
 		expect(
-			assessmentHasQtiInputs({
+			assessmentHasPnpPolicyInputs({
 				id: "a1",
 				settings: { districtPolicy: { blockedTools: ["graph"] } },
 			} as AssessmentEntity),
 		).toBe(true);
 		expect(
-			assessmentHasQtiInputs({
+			assessmentHasPnpPolicyInputs({
 				id: "a1",
 				settings: { districtPolicy: { requiredTools: ["graph"] } },
 			} as AssessmentEntity),
 		).toBe(true);
 		expect(
-			assessmentHasQtiInputs({
+			assessmentHasPnpPolicyInputs({
 				id: "a1",
 				settings: { districtPolicy: { policies: { calculator: { mode: "basic" } } } },
 			} as AssessmentEntity),
@@ -148,13 +148,13 @@ describe("assessmentHasQtiInputs — structural QTI material on the assessment",
 
 	test("returns true when test administration carries any populated key", () => {
 		expect(
-			assessmentHasQtiInputs({
+			assessmentHasPnpPolicyInputs({
 				id: "a1",
 				settings: { testAdministration: { mode: "test" } },
 			} as AssessmentEntity),
 		).toBe(true);
 		expect(
-			assessmentHasQtiInputs({
+			assessmentHasPnpPolicyInputs({
 				id: "a1",
 				settings: {
 					testAdministration: { toolOverrides: { calculator: false } },
@@ -164,15 +164,15 @@ describe("assessmentHasQtiInputs — structural QTI material on the assessment",
 	});
 });
 
-describe("itemRefHasQtiInputs — structural QTI material on the bound item ref", () => {
+describe("itemRefHasPnpPolicyInputs — structural PNP/profile policy material on the bound item ref", () => {
 	test("returns false for null / undefined / bare item ref", () => {
-		expect(itemRefHasQtiInputs(null)).toBe(false);
-		expect(itemRefHasQtiInputs(undefined)).toBe(false);
+		expect(itemRefHasPnpPolicyInputs(null)).toBe(false);
+		expect(itemRefHasPnpPolicyInputs(undefined)).toBe(false);
 		expect(
-			itemRefHasQtiInputs({ identifier: "i1" } as AssessmentItemRef),
+			itemRefHasPnpPolicyInputs({ identifier: "i1" } as AssessmentItemRef),
 		).toBe(false);
 		expect(
-			itemRefHasQtiInputs({
+			itemRefHasPnpPolicyInputs({
 				identifier: "i1",
 				settings: { requiredTools: [], restrictedTools: [], toolParameters: {} },
 			} as AssessmentItemRef),
@@ -181,19 +181,19 @@ describe("itemRefHasQtiInputs — structural QTI material on the bound item ref"
 
 	test("returns true for non-empty `requiredTools` / `restrictedTools` / `toolParameters`", () => {
 		expect(
-			itemRefHasQtiInputs({
+			itemRefHasPnpPolicyInputs({
 				identifier: "i1",
 				settings: { requiredTools: ["graph"] },
 			} as AssessmentItemRef),
 		).toBe(true);
 		expect(
-			itemRefHasQtiInputs({
+			itemRefHasPnpPolicyInputs({
 				identifier: "i1",
 				settings: { restrictedTools: ["calculator"] },
 			} as AssessmentItemRef),
 		).toBe(true);
 		expect(
-			itemRefHasQtiInputs({
+			itemRefHasPnpPolicyInputs({
 				identifier: "i1",
 				settings: { toolParameters: { calculator: { mode: "basic" } } },
 			} as AssessmentItemRef),
@@ -201,20 +201,20 @@ describe("itemRefHasQtiInputs — structural QTI material on the bound item ref"
 	});
 });
 
-describe("resolveDefaultQtiEnforcement — precedence", () => {
-	test("returns 'off' when neither input carries QTI material", () => {
-		expect(resolveDefaultQtiEnforcement({})).toBe("off");
+describe("resolveDefaultPnpEnforcement — precedence", () => {
+	test("returns 'off' when neither input carries profile policy material", () => {
+		expect(resolveDefaultPnpEnforcement({})).toBe("off");
 		expect(
-			resolveDefaultQtiEnforcement({
+			resolveDefaultPnpEnforcement({
 				assessment: { id: "a1" } as AssessmentEntity,
 				currentItemRef: { identifier: "i1" } as AssessmentItemRef,
 			}),
 		).toBe("off");
 	});
 
-	test("returns 'on' when the assessment carries QTI material", () => {
+	test("returns 'on' when the assessment carries profile policy material", () => {
 		expect(
-			resolveDefaultQtiEnforcement({
+			resolveDefaultPnpEnforcement({
 				assessment: {
 					id: "a1",
 					personalNeedsProfile: { supports: ["graph"] },
@@ -223,9 +223,9 @@ describe("resolveDefaultQtiEnforcement — precedence", () => {
 		).toBe("on");
 	});
 
-	test("returns 'on' when only the item ref carries QTI material", () => {
+	test("returns 'on' when only the item ref carries profile policy material", () => {
 		expect(
-			resolveDefaultQtiEnforcement({
+			resolveDefaultPnpEnforcement({
 				assessment: { id: "a1" } as AssessmentEntity,
 				currentItemRef: {
 					identifier: "i1",
@@ -236,15 +236,15 @@ describe("resolveDefaultQtiEnforcement — precedence", () => {
 	});
 });
 
-describe("ToolPolicyEngine — qtiEnforcement constructor default", () => {
+describe("ToolPolicyEngine — pnpEnforcement constructor default", () => {
 	test("defaults to 'off' with no inputs", () => {
 		const engine = makeEngine();
-		expect(engine.getInputs().qtiEnforcement).toBe("off");
+		expect(engine.getInputs().pnpEnforcement).toBe("off");
 	});
 
-	test("defaults to 'off' with a bare assessment (no QTI material)", () => {
+	test("defaults to 'off' with a bare assessment (no profile policy material)", () => {
 		const engine = makeEngine({ assessment: { id: "a1" } as AssessmentEntity });
-		expect(engine.getInputs().qtiEnforcement).toBe("off");
+		expect(engine.getInputs().pnpEnforcement).toBe("off");
 	});
 
 	test("defaults to 'on' when the bound assessment carries PNP supports", () => {
@@ -254,35 +254,35 @@ describe("ToolPolicyEngine — qtiEnforcement constructor default", () => {
 				personalNeedsProfile: { supports: ["graph"] },
 			} as AssessmentEntity,
 		});
-		expect(engine.getInputs().qtiEnforcement).toBe("on");
+		expect(engine.getInputs().pnpEnforcement).toBe("on");
 	});
 
-	test("defaults to 'on' when only the bound item ref carries QTI material", () => {
+	test("defaults to 'on' when only the bound item ref carries profile policy material", () => {
 		const engine = makeEngine({
 			currentItemRef: {
 				identifier: "i1",
 				settings: { restrictedTools: ["calculator"] },
 			} as AssessmentItemRef,
 		});
-		expect(engine.getInputs().qtiEnforcement).toBe("on");
+		expect(engine.getInputs().pnpEnforcement).toBe("on");
 	});
 
-	test("explicit qtiEnforcement override wins over the auto-detected default", () => {
+	test("explicit pnpEnforcement override wins over the auto-detected default", () => {
 		const engine = makeEngine({
 			assessment: {
 				id: "a1",
 				personalNeedsProfile: { supports: ["graph"] },
 			} as AssessmentEntity,
-			qtiEnforcement: "off",
+			pnpEnforcement: "off",
 		});
-		expect(engine.getInputs().qtiEnforcement).toBe("off");
+		expect(engine.getInputs().pnpEnforcement).toBe("off");
 	});
 });
 
-describe("ToolkitCoordinator — auto-mode flips on bound QTI material", () => {
+describe("ToolkitCoordinator — auto-mode flips on bound profile policy material", () => {
 	test("starts at 'off' before any assessment / item ref is bound", () => {
 		const coord = makeCoordinator();
-		expect(coord.getPolicyInputs().qtiEnforcement).toBe("off");
+		expect(coord.getPolicyInputs().pnpEnforcement).toBe("off");
 	});
 
 	test("flips to 'on' when an assessment with PNP supports is bound", () => {
@@ -291,63 +291,63 @@ describe("ToolkitCoordinator — auto-mode flips on bound QTI material", () => {
 			id: "a1",
 			personalNeedsProfile: { supports: ["graph"] },
 		} as AssessmentEntity);
-		expect(coord.getPolicyInputs().qtiEnforcement).toBe("on");
+		expect(coord.getPolicyInputs().pnpEnforcement).toBe("on");
 	});
 
-	test("flips to 'on' when only the current item ref carries QTI material", () => {
+	test("flips to 'on' when only the current item ref carries profile policy material", () => {
 		const coord = makeCoordinator({
 			placement: { item: ["graph", "calculator"] },
 		});
-		expect(coord.getPolicyInputs().qtiEnforcement).toBe("off");
+		expect(coord.getPolicyInputs().pnpEnforcement).toBe("off");
 		coord.updateCurrentItemRef({
 			identifier: "i1",
 			settings: { restrictedTools: ["calculator"] },
 		} as AssessmentItemRef);
-		expect(coord.getPolicyInputs().qtiEnforcement).toBe("on");
+		expect(coord.getPolicyInputs().pnpEnforcement).toBe("on");
 	});
 
-	test("stays at 'off' when the host explicitly sets qtiEnforcement: 'off' even with QTI material bound", () => {
+	test("stays at 'off' when the host explicitly sets pnpEnforcement: 'off' even with profile material bound", () => {
 		const coord = makeCoordinator();
-		coord.setQtiEnforcement("off");
+		coord.setPnpEnforcement("off");
 		coord.updateAssessment({
 			id: "a1",
 			personalNeedsProfile: { supports: ["graph"] },
 		} as AssessmentEntity);
-		expect(coord.getPolicyInputs().qtiEnforcement).toBe("off");
+		expect(coord.getPolicyInputs().pnpEnforcement).toBe("off");
 
-		// Item-level QTI material does not break the override either.
+		// Item-level profile policy material does not break the override either.
 		coord.updateCurrentItemRef({
 			identifier: "i1",
 			settings: { restrictedTools: ["calculator"] },
 		} as AssessmentItemRef);
-		expect(coord.getPolicyInputs().qtiEnforcement).toBe("off");
+		expect(coord.getPolicyInputs().pnpEnforcement).toBe("off");
 	});
 
-	test("auto-mode reverts to 'off' when the QTI-bearing assessment is unbound and the item ref has no QTI material", () => {
+	test("auto-mode reverts to 'off' when the profile-bearing assessment is unbound and the item ref has no profile policy material", () => {
 		const coord = makeCoordinator();
 		coord.updateAssessment({
 			id: "a1",
 			personalNeedsProfile: { supports: ["graph"] },
 		} as AssessmentEntity);
-		expect(coord.getPolicyInputs().qtiEnforcement).toBe("on");
+		expect(coord.getPolicyInputs().pnpEnforcement).toBe("on");
 
 		coord.updateAssessment(null);
-		expect(coord.getPolicyInputs().qtiEnforcement).toBe("off");
+		expect(coord.getPolicyInputs().pnpEnforcement).toBe("off");
 
 		coord.updateCurrentItemRef({ identifier: "i1" } as AssessmentItemRef);
-		expect(coord.getPolicyInputs().qtiEnforcement).toBe("off");
+		expect(coord.getPolicyInputs().pnpEnforcement).toBe("off");
 	});
 
-	test("auto-mode survives item ref churn when the assessment carries QTI material", () => {
+	test("auto-mode survives item ref churn when the assessment carries profile policy material", () => {
 		const coord = makeCoordinator();
 		coord.updateAssessment({
 			id: "a1",
 			personalNeedsProfile: { supports: ["graph"] },
 		} as AssessmentEntity);
 		coord.updateCurrentItemRef({ identifier: "i1" } as AssessmentItemRef);
-		expect(coord.getPolicyInputs().qtiEnforcement).toBe("on");
+		expect(coord.getPolicyInputs().pnpEnforcement).toBe("on");
 
 		coord.updateCurrentItemRef(null);
-		expect(coord.getPolicyInputs().qtiEnforcement).toBe("on");
+		expect(coord.getPolicyInputs().pnpEnforcement).toBe("on");
 	});
 });

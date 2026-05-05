@@ -340,16 +340,16 @@ describe("M5 mirror rule — runtime tier is read by the consumer", () => {
 });
 
 /**
- * Nested mirror chain for `runtime.tools.qtiEnforcement` (M8 PR 4).
+ * Nested mirror chain for `runtime.tools.pnpEnforcement`.
  *
- * `qtiEnforcement` is not a top-level `RuntimeConfig` key — it lives
+ * `pnpEnforcement` is not a top-level `RuntimeConfig` key — it lives
  * under `runtime.tools`. The kebab/camelCase/runtime contract still
  * applies, but the surfaces are owned by `<pie-assessment-toolkit>`
  * (assessment-toolkit package), not by the section-player layout
  * shells. This block locks each leg of that nested chain so the
  * embedded path (`<pie-section-player-* runtime={{ tools: { ... } }}>`
- * → forwarded `tools` prop → toolkit reads `tools.qtiEnforcement`)
- * stays in sync with the standalone `qti-enforcement` attribute.
+ * → forwarded `tools` prop → toolkit reads `tools.pnpEnforcement`)
+ * stays in sync with the standalone `pnp-enforcement` attribute.
  */
 const TOOLKIT_FILE = resolve(
 	PACKAGE_ROOT,
@@ -375,28 +375,28 @@ const sectionPlayerBaseSource = readFileSync(
 	"utf8",
 );
 
-describe("M5 mirror rule — runtime.tools.qtiEnforcement nested chain (M8 PR 4)", () => {
-	test("`<pie-assessment-toolkit>` declares the `qtiEnforcement` prop with `attribute: \"qti-enforcement\"`", () => {
-		const prop = toolkitProps.find((p) => p.name === "qtiEnforcement");
+describe("M5 mirror rule — runtime.tools.pnpEnforcement nested chain", () => {
+	test("`<pie-assessment-toolkit>` declares the `pnpEnforcement` prop with `attribute: \"pnp-enforcement\"`", () => {
+		const prop = toolkitProps.find((p) => p.name === "pnpEnforcement");
 		expect(prop).toBeDefined();
-		expect(prop?.attribute).toBe("qti-enforcement");
+		expect(prop?.attribute).toBe("pnp-enforcement");
 	});
 
-	test("`CanonicalToolsConfig` declares `qtiEnforcement` so `runtime.tools.qtiEnforcement` is preserved through `normalizeToolsConfig`", () => {
-		expect(normalizerSource.includes("qtiEnforcement?: ToolsQtiEnforcement")).toBe(
+	test("`CanonicalToolsConfig` declares `pnpEnforcement` so `runtime.tools.pnpEnforcement` is preserved through `normalizeToolsConfig`", () => {
+		expect(normalizerSource.includes("pnpEnforcement?: ToolsPnpEnforcement")).toBe(
 			true,
 		);
-		expect(normalizerSource.includes("config.qtiEnforcement = qtiEnforcement")).toBe(
+		expect(normalizerSource.includes("config.pnpEnforcement = pnpEnforcement")).toBe(
 			true,
 		);
 	});
 
-	test("`<pie-assessment-toolkit>` falls back to `tools.qtiEnforcement` when the explicit prop is null (embedded `runtime.tools.qtiEnforcement` path)", () => {
+	test("`<pie-assessment-toolkit>` falls back to `tools.pnpEnforcement` when the explicit prop is null (embedded `runtime.tools.pnpEnforcement` path)", () => {
 		expect(
-			toolkitSource.includes("resolveQtiEnforcementInput(qtiEnforcement, tools)"),
+			toolkitSource.includes("resolvePnpEnforcementInput(pnpEnforcement, tools)"),
 		).toBe(true);
 		expect(
-			toolkitSource.includes(`(toolsConfig as { qtiEnforcement?: unknown })`),
+			toolkitSource.includes("pnpEnforcement?: unknown"),
 		).toBe(true);
 	});
 

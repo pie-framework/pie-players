@@ -1,9 +1,9 @@
 /**
- * QTI Policy Source — refactor of `PnpToolResolver` for the M8 engine
+ * PNP Policy Source — refactor of `PnpToolResolver` for the M8 engine
  * (see `.cursor/plans/m8-design.md` § 3 step 5 and § 5 §).
  *
- * This source applies the QTI 6-level precedence rules used by today's
- * `PnpToolResolver` but exposes them as a `(candidates, qtiInputs) →
+ * This source applies the PNP/profile precedence rules used by today's
+ * `PnpToolResolver` but exposes them as a `(candidates, pnpPolicyInputs) →
  * (refinedCandidates, perToolFlags, mandates, decisions)` function the
  * engine can call once per `decide(...)` request, with all results
  * routed through the unified `ToolPolicyProvenanceBuilder`.
@@ -12,7 +12,7 @@
  * it.** PR 1 introduces the engine without callers; the legacy
  * `PnpToolResolver` is still in active use by `<pie-item-toolbar>`
  * and by external tests. PR 5 deletes the legacy class once the
- * toolbar (PR 3) and the QTI default flip (PR 4) have landed and the
+ * toolbar (PR 3) and the PNP default flip (PR 4) have landed and the
  * caller list is empty. Until then this source is the *canonical*
  * implementation and the legacy class is the deprecated mirror.
  */
@@ -30,24 +30,24 @@ import type {
 	ToolPolicyResolutionDecision,
 	ToolPolicySourceType,
 } from "../core/provenance.js";
-import type { QtiPolicySourceRule } from "../core/policy-source-tag.js";
+import type { PnpPolicySourceRule } from "../core/policy-source-tag.js";
 
-/** Per-tool flags QTI may attach to a surviving entry. */
-export interface QtiToolFlags {
-	/** QTI mandates this tool (item or district `requiredTools`). */
+/** Per-tool flags PNP/profile policy may attach to a surviving entry. */
+export interface PnpPolicyToolFlags {
+	/** PNP/profile policy mandates this tool (item or district `requiredTools`). */
 	required: boolean;
-	/** QTI marks this tool as a PNP support (host UI cannot toggle off). */
+	/** Student PNP marks this tool as a support (host UI cannot toggle off). */
 	alwaysAvailable: boolean;
 	/** Tool-specific settings derived from item / assessment settings. */
 	settings?: unknown;
-	/** Which QTI rule contributed the surviving verdict. */
-	rule: QtiPolicySourceRule;
+	/** Which PNP/profile rule contributed the surviving verdict. */
+	rule: PnpPolicySourceRule;
 	/** Source attribution for `ToolPolicyEntry.sources`. */
 	sourceType: ToolPolicySourceType;
 }
 
-export interface QtiPolicyApplyArgs {
-	assessment: AssessmentEntity;
+export interface PnpPolicyApplyArgs {
+	assessment?: AssessmentEntity | null;
 	currentItemRef?: AssessmentItemRef;
 }
 
@@ -56,7 +56,7 @@ export interface QtiPolicyApplyArgs {
  * here so the source has a single allocation pattern and the engine
  * keeps a uniform `addDecision(...)` shape.
  */
-export interface QtiPolicyDecisionEvent {
+export interface PnpPolicyDecisionEvent {
 	precedence: 1 | 2 | 3 | 4 | 5 | 6;
 	rule:
 		| "district-block"
@@ -73,28 +73,28 @@ export interface QtiPolicyDecisionEvent {
 	value?: unknown;
 }
 
-export interface QtiPolicyResult {
+export interface PnpPolicyResult {
 	/**
-	 * Tool IDs QTI explicitly blocked. Engine removes these from the
+	 * Tool IDs PNP/profile policy explicitly blocked. Engine removes these from the
 	 * candidate set in step 5.
 	 */
 	blockedToolIds: Set<string>;
 	/**
-	 * Tool IDs QTI mandates (item or district `requiredTools`). Used
-	 * by the engine to detect `tool-policy.qtiRequiredBlocked`
+	 * Tool IDs PNP/profile policy mandates (item or district `requiredTools`). Used
+	 * by the engine to detect `tool-policy.requiredToolBlocked`
 	 * diagnostics for tools removed by host policy.
 	 */
 	mandatedToolIds: Set<string>;
 	/**
 	 * Per-tool flags merged into surviving `ToolPolicyEntry`s.
 	 */
-	perToolFlags: Map<string, QtiToolFlags>;
+	perToolFlags: Map<string, PnpPolicyToolFlags>;
 	/**
 	 * Decision log entries the engine must record. Order matches the
 	 * order rules fired internally (highest precedence first per
 	 * support id).
 	 */
-	decisions: QtiPolicyDecisionEvent[];
+	decisions: PnpPolicyDecisionEvent[];
 	/** Configuration sources the engine should attach to its provenance. */
 	sources: {
 		assessment?: { id: string; name: string; config?: unknown };
@@ -104,10 +104,10 @@ export interface QtiPolicyResult {
 }
 
 /**
- * Internal context: every QTI input bundled together for the rule
+ * Internal context: every PNP/profile policy input bundled together for the rule
  * evaluation loop.
  */
-interface QtiResolutionContext {
+interface PnpResolutionContext {
 	pnp?: PersonalNeedsProfile;
 	districtPolicy?: AssessmentSettings["districtPolicy"];
 	testAdmin?: AssessmentSettings["testAdministration"];
@@ -115,21 +115,21 @@ interface QtiResolutionContext {
 	toolConfigs?: AssessmentSettings["toolConfigs"];
 }
 
-export class QtiPolicySource {
-	readonly id = "qti";
+export class PnpPolicySource {
+	readonly id = "pnp";
 	private readonly toolRegistry: ToolRegistry;
 
 	constructor(toolRegistry: ToolRegistry) {
 		this.toolRegistry = toolRegistry;
 	}
 
-	apply(args: QtiPolicyApplyArgs): QtiPolicyResult {
+	apply(args: PnpPolicyApplyArgs): PnpPolicyResult {
 		const { assessment, currentItemRef } = args;
-		const pnp = assessment.personalNeedsProfile;
-		const settings = assessment.settings as AssessmentSettings | undefined;
+		const pnp = assessment?.personalNeedsProfile;
+		const settings = assessment?.settings as AssessmentSettings | undefined;
 		const itemSettings = currentItemRef?.settings as ItemSettings | undefined;
 
-		const result: QtiPolicyResult = {
+		const result: PnpPolicyResult = {
 			blockedToolIds: new Set(),
 			mandatedToolIds: new Set(),
 			perToolFlags: new Map(),
@@ -139,8 +139,8 @@ export class QtiPolicySource {
 
 		if (settings?.districtPolicy || settings?.testAdministration) {
 			result.sources.assessment = {
-				id: assessment.id || "unknown",
-				name: assessment.name || assessment.id || "Assessment",
+				id: assessment?.id || "unknown",
+				name: assessment?.name || assessment?.id || "Assessment",
 				config: settings,
 			};
 		}
@@ -161,12 +161,13 @@ export class QtiPolicySource {
 
 		const allSupports = new Set<string>();
 		pnp?.supports?.forEach((s) => allSupports.add(s));
+		pnp?.prohibitedSupports?.forEach((s) => allSupports.add(s));
 		settings?.districtPolicy?.blockedTools?.forEach((s) => allSupports.add(s));
 		settings?.districtPolicy?.requiredTools?.forEach((s) => allSupports.add(s));
 		itemSettings?.requiredTools?.forEach((s) => allSupports.add(s));
 		itemSettings?.restrictedTools?.forEach((s) => allSupports.add(s));
 
-		const ctx: QtiResolutionContext = {
+		const ctx: PnpResolutionContext = {
 			pnp,
 			districtPolicy: settings?.districtPolicy,
 			testAdmin: settings?.testAdministration,
@@ -183,8 +184,8 @@ export class QtiPolicySource {
 
 	private resolveSupport(
 		supportId: string,
-		ctx: QtiResolutionContext,
-		out: QtiPolicyResult,
+		ctx: PnpResolutionContext,
+		out: PnpPolicyResult,
 	): void {
 		// 1. District block (absolute veto)
 		if (ctx.districtPolicy?.blockedTools?.includes(supportId)) {
@@ -280,23 +281,24 @@ export class QtiPolicySource {
 			return;
 		}
 
-		// 6. PNP supports (student needs)
+		// 6. PNP prohibitions and supports (student needs)
+		if (ctx.pnp?.prohibitedSupports?.includes(supportId)) {
+			const toolId = this.mapSupportToToolId(supportId);
+			out.blockedToolIds.add(toolId);
+			out.decisions.push({
+				precedence: 6,
+				rule: "pnp-prohibited",
+				featureId: toolId,
+				action: "block",
+				sourceType: "student",
+				reason: `Student PNP profile prohibits "${supportId}"`,
+				value: ctx.pnp.prohibitedSupports,
+			});
+			return;
+		}
+
 		if (ctx.pnp?.supports?.includes(supportId)) {
 			const toolId = this.mapSupportToToolId(supportId);
-			const isProhibited = ctx.pnp.prohibitedSupports?.includes(supportId);
-			if (isProhibited) {
-				out.blockedToolIds.add(toolId);
-				out.decisions.push({
-					precedence: 6,
-					rule: "pnp-prohibited",
-					featureId: toolId,
-					action: "block",
-					sourceType: "student",
-					reason: `Student PNP profile prohibits "${supportId}"`,
-					value: ctx.pnp.prohibitedSupports,
-				});
-				return;
-			}
 			out.perToolFlags.set(toolId, {
 				required: false,
 				alwaysAvailable: true,
@@ -358,7 +360,7 @@ export class QtiPolicySource {
 	 *      losing them in policy evaluation.
 	 *
 	 * The legacy `PnpToolResolver.resolveTool` had the same behavior;
-	 * see `tests/policy/QtiPolicySource.test.ts` for the regression
+	 * see `tests/policy/PnpPolicySource.test.ts` for the regression
 	 * lock.
 	 */
 	private mapSupportToToolId(supportId: string): string {
@@ -383,7 +385,7 @@ export class QtiPolicySource {
 	 */
 	private resolveToolSettings(
 		supportId: string,
-		ctx: QtiResolutionContext,
+		ctx: PnpResolutionContext,
 	): unknown {
 		return (
 			ctx.itemSettings?.toolParameters?.[supportId] ??

@@ -33,7 +33,7 @@ function makeEngine(extra: Parameters<typeof normalizeToolsConfig>[0] = {}) {
 				placement: { item: ["calculator", "tts"] },
 				...extra,
 			}),
-			qtiEnforcement: "off",
+			pnpEnforcement: "off",
 		},
 	});
 }
@@ -73,13 +73,13 @@ describe("ToolPolicyEngine", () => {
 		expect(engine.getVisibleToolIds("item", "i1")).toEqual(["graph"]);
 	});
 
-	test("updateInputs emits qti-enforcement when only qtiEnforcement changes", () => {
+	test("updateInputs emits pnp-enforcement when only pnpEnforcement changes", () => {
 		const engine = makeEngine();
 		const events: ToolPolicyChangeEvent[] = [];
 		engine.onPolicyChange((event) => events.push(event));
-		engine.updateInputs({ qtiEnforcement: "on" });
+		engine.updateInputs({ pnpEnforcement: "on" });
 		expect(events).toHaveLength(1);
-		expect(events[0].reason).toBe("qti-enforcement");
+		expect(events[0].reason).toBe("pnp-enforcement");
 	});
 
 	test("registerPolicySource adds a custom source and the dispose handle removes it", () => {
@@ -123,10 +123,10 @@ describe("ToolPolicyEngine", () => {
 		engine.onPolicyChange(() => {
 			throw new Error("listener crash");
 		});
-		expect(() => engine.updateInputs({ qtiEnforcement: "on" })).not.toThrow();
+		expect(() => engine.updateInputs({ pnpEnforcement: "on" })).not.toThrow();
 	});
 
-	test("QTI enforcement toggle flips the alwaysAvailable flag", () => {
+	test("PNP enforcement toggle flips the alwaysAvailable flag", () => {
 		const registry = new ToolRegistry();
 		const assessment: AssessmentEntity = {
 			id: "a1",
@@ -137,7 +137,7 @@ describe("ToolPolicyEngine", () => {
 			inputs: {
 				tools: ITEM_PLACEMENT,
 				assessment,
-				qtiEnforcement: "off",
+				pnpEnforcement: "off",
 			},
 		});
 		expect(
@@ -146,7 +146,7 @@ describe("ToolPolicyEngine", () => {
 				scope: { level: "item", scopeId: "i1" },
 			}).visibleTools[0].alwaysAvailable,
 		).toBe(false);
-		engine.updateInputs({ qtiEnforcement: "on" });
+		engine.updateInputs({ pnpEnforcement: "on" });
 		expect(
 			engine.decide({
 				level: "item",
@@ -161,14 +161,14 @@ describe("ToolPolicyEngine", () => {
 		expect(Object.isFrozen(snapshot)).toBe(true);
 	});
 
-	test("updateInputs({ assessment }) re-runs QTI on subsequent decide() calls", () => {
+	test("updateInputs({ assessment }) re-runs PNP/profile policy on subsequent decide() calls", () => {
 		// R3 S3: PR 2 will pump in `assessment` reactively from the
 		// toolkit; lock the input-swap path now so PR 2 doesn't silently
 		// stop reacting.
 		const registry = new ToolRegistry();
 		const engine = new ToolPolicyEngine({
 			toolRegistry: registry,
-			inputs: { tools: ITEM_PLACEMENT, qtiEnforcement: "on" },
+			inputs: { tools: ITEM_PLACEMENT, pnpEnforcement: "on" },
 		});
 
 		expect(
@@ -190,7 +190,7 @@ describe("ToolPolicyEngine", () => {
 			scope: { level: "item", scopeId: "i1" },
 		});
 		expect(after.visibleTools[0].alwaysAvailable).toBe(true);
-		expect(after.visibleTools[0].sources).toContain("qti.pnp-support");
+		expect(after.visibleTools[0].sources).toContain("pnp.pnp-support");
 	});
 
 	test("updateInputs({ currentItemRef }) re-runs item-restriction on subsequent decide() calls", () => {
@@ -204,7 +204,7 @@ describe("ToolPolicyEngine", () => {
 			inputs: {
 				tools: ITEM_PLACEMENT,
 				assessment,
-				qtiEnforcement: "on",
+				pnpEnforcement: "on",
 			},
 		});
 
@@ -222,10 +222,10 @@ describe("ToolPolicyEngine", () => {
 		expect(engine.getVisibleToolIds("item", "i2")).toEqual(["tts"]);
 	});
 
-	test("updateInputs({ qtiEnforcement: 'off' }) stops applying QTI from the next decide()", () => {
+	test("updateInputs({ pnpEnforcement: 'off' }) stops applying PNP/profile gates from the next decide()", () => {
 		// R3 S4: only the on→on / off→off transitions had explicit
 		// coverage. This locks the on→off case so PR 4's default-on
-		// flip with `qtiEnforcement: "off"` opt-out cannot regress.
+		// flip with `pnpEnforcement: "off"` opt-out cannot regress.
 		const registry = new ToolRegistry();
 		const assessment: AssessmentEntity = {
 			id: "a1",
@@ -233,7 +233,7 @@ describe("ToolPolicyEngine", () => {
 		} as AssessmentEntity;
 		const engine = new ToolPolicyEngine({
 			toolRegistry: registry,
-			inputs: { tools: ITEM_PLACEMENT, assessment, qtiEnforcement: "on" },
+			inputs: { tools: ITEM_PLACEMENT, assessment, pnpEnforcement: "on" },
 		});
 
 		expect(
@@ -245,16 +245,16 @@ describe("ToolPolicyEngine", () => {
 
 		const events: ToolPolicyChangeEvent[] = [];
 		engine.onPolicyChange((e) => events.push(e));
-		engine.updateInputs({ qtiEnforcement: "off" });
+		engine.updateInputs({ pnpEnforcement: "off" });
 
 		expect(events).toHaveLength(1);
-		expect(events[0].reason).toBe("qti-enforcement");
+		expect(events[0].reason).toBe("pnp-enforcement");
 
 		const after = engine.decide({
 			level: "item",
 			scope: { level: "item", scopeId: "i1" },
 		});
 		expect(after.visibleTools[0].alwaysAvailable).toBe(false);
-		expect(after.visibleTools[0].sources).not.toContain("qti.pnp-support");
+		expect(after.visibleTools[0].sources).not.toContain("pnp.pnp-support");
 	});
 });

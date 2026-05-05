@@ -19,7 +19,7 @@
   SectionToolBar - Thin wrapper around `<pie-item-toolbar>` for
   section-level placement. As of M8 PR 3 the legacy `pnpResolver` /
   `assessment` / `itemRef` props are gone — the toolkit coordinator
-  drives QTI inputs via its policy engine, so toolbars no longer
+  drives PNP/profile inputs via its policy engine, so toolbars no longer
   need to resolve them locally.
 -->
 <script lang="ts">

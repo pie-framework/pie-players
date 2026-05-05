@@ -22,6 +22,7 @@ import type {
 import {
 	type CanonicalToolsConfig,
 	type ToolPlacementConfig,
+	type ToolPlacementLevel,
 	type ToolPolicyConfig,
 	type ToolProviderConfig,
 	type ToolProvidersConfig,
@@ -60,14 +61,14 @@ import { createPackagedToolRegistry } from "./createDefaultToolRegistry.js";
 import type { ToolRegistration, ToolRegistry } from "./ToolRegistry.js";
 import {
 	ToolPolicyEngine,
+	type PnpEnforcementMode,
 	type PolicySource,
-	type QtiEnforcementMode,
 	type ResolvedEngineInputs,
 	type ToolPolicyChangeListener,
 	type ToolPolicyDecision,
 	type ToolPolicyDecisionRequest,
 } from "../policy/engine.js";
-import { resolveDefaultQtiEnforcement } from "../policy/internal.js";
+import { resolveDefaultPnpEnforcement } from "../policy/internal.js";
 import type {
 	SectionControllerContext,
 	SectionControllerEvent,
@@ -93,7 +94,7 @@ export type {
 	SectionPersistenceFactoryDefaults,
 } from "./section-controller-types.js";
 export type {
-	QtiEnforcementMode,
+	PnpEnforcementMode,
 	ResolvedEngineInputs,
 	ToolPolicyChangeListener,
 	ToolPolicyDecision,
@@ -172,11 +173,7 @@ export interface ToolkitCoordinatorConfig {
 	 * Tool availability and configuration.
 	 * Defaults: all tools enabled with default settings.
 	 */
-	tools?: {
-		policy?: ToolPolicyConfig;
-		placement?: ToolPlacementConfig;
-		providers?: ToolProvidersConfig;
-	};
+	tools?: Partial<CanonicalToolsConfig>;
 
 	/**
 	 * Validation strictness for tool config contracts.
@@ -592,19 +589,19 @@ export class ToolkitCoordinator {
 	private readonly policyEngine: ToolPolicyEngine;
 
 	/**
-	 * Host-set override for QTI enforcement. `null` (the default) means
+	 * Host-set override for PNP/profile enforcement. `null` (the default) means
 	 * "auto" — the coordinator infers the effective mode from the
-	 * QTI inputs the bound `AssessmentEntity` and `AssessmentItemRef`
-	 * actually carry (see {@link resolveEffectiveQtiEnforcement}).
+	 * PNP/profile policy inputs the bound `AssessmentEntity` and `AssessmentItemRef`
+	 * actually carry (see {@link resolveEffectivePnpEnforcement}).
 	 * `"on"` / `"off"` are explicit host opt-in / opt-out and stick
 	 * across subsequent assessment / item swaps until the host clears
-	 * the override by calling `setQtiEnforcement(null)`.
+	 * the override by calling `setPnpEnforcement(null)`.
 	 */
-	private qtiEnforcementOverride: QtiEnforcementMode | null = null;
+	private pnpEnforcementOverride: PnpEnforcementMode | null = null;
 
 	/**
 	 * Last assessment passed to {@link updateAssessment}. Read by
-	 * {@link resolveEffectiveQtiEnforcement} to compute auto-mode.
+	 * {@link resolveEffectivePnpEnforcement} to compute auto-mode.
 	 * The engine's own copy is the canonical record for decisions;
 	 * this mirror exists only so the auto-mode helper does not need
 	 * to round-trip through {@link policyEngine}'s frozen snapshot.
@@ -614,8 +611,8 @@ export class ToolkitCoordinator {
 	/**
 	 * Last item reference passed to {@link updateCurrentItemRef}.
 	 * Mirrored alongside {@link boundAssessment} so
-	 * {@link resolveEffectiveQtiEnforcement} can detect item-level
-	 * QTI inputs (`requiredTools` / `restrictedTools` /
+	 * {@link resolveEffectivePnpEnforcement} can detect item-level
+	 * profile policy inputs (`requiredTools` / `restrictedTools` /
 	 * `toolParameters`) without round-tripping through the engine's
 	 * frozen snapshot.
 	 */
@@ -681,6 +678,7 @@ export class ToolkitCoordinator {
 		this.toolRegistry = resolvedConfig.toolRegistry ?? createPackagedToolRegistry();
 		this.hooks = resolvedConfig.hooks ?? {};
 		this.lazyInit = config.lazyInit === true;
+		this.pnpEnforcementOverride = this.resolveConfiguredPnpEnforcement();
 
 		// Use the host-provided framework-error bus if one was passed
 		// (typical when embedded inside <pie-assessment-toolkit>, so
@@ -708,11 +706,11 @@ export class ToolkitCoordinator {
 		this.setupStatePersistenceHooks();
 
 		// M8 PR 2 — construct the unified ToolPolicyEngine seeded with
-		// the validated tools config. QTI inputs (`assessment`,
-		// `currentItemRef`) start `null`; `qtiEnforcement` is resolved
-		// through {@link resolveEffectiveQtiEnforcement}, which flips
+		// the validated tools config. PNP/profile inputs (`assessment`,
+		// `currentItemRef`) start `null`; `pnpEnforcement` is resolved
+		// through {@link resolveEffectivePnpEnforcement}, which flips
 		// to `"on"` only once the bound assessment or item carries
-		// actual QTI material (PR 4). Hosts that only consume the
+		// actual profile material. Hosts that only consume the
 		// engine for placement/policy gating get the pre-PR-2 behavior
 		// bit-for-bit.
 		this.policyEngine = new ToolPolicyEngine({
@@ -722,7 +720,7 @@ export class ToolkitCoordinator {
 				tools: this.config.tools as CanonicalToolsConfig,
 				assessment: null,
 				currentItemRef: null,
-				qtiEnforcement: this.resolveEffectiveQtiEnforcement(),
+				pnpEnforcement: this.resolveEffectivePnpEnforcement(),
 			},
 		});
 
@@ -2053,46 +2051,70 @@ export class ToolkitCoordinator {
 	}
 
 	/**
+	 * Update the enabled tool list for one placement level.
+	 *
+	 * This is the generic placement companion to {@link updateToolConfig}:
+	 * it validates the next canonical tools config, keeps the policy
+	 * engine in lockstep, and emits the same policy-change event used by
+	 * live toolbars/debug panels. Section-level callers that still use
+	 * the legacy "floating tools" name can continue calling
+	 * {@link updateFloatingTools}.
+	 */
+	updateToolPlacement(level: ToolPlacementLevel, toolIds: string[]): void {
+		this.updateToolsPlacement({ [level]: [...toolIds] });
+	}
+
+	/**
+	 * Patch one or more placement levels in the canonical tools config.
+	 */
+	updateToolsPlacement(partial: ToolPlacementConfig): void {
+		if (!this.config.tools) {
+			this.config.tools = normalizeAndValidateToolsConfig(undefined, {
+				strictness: this.config.toolConfigStrictness ?? "error",
+				source: "ToolkitCoordinator.updateToolsPlacement",
+				toolRegistry: this.toolRegistry,
+			}).config;
+		}
+		const currentPlacement = this.config.tools?.placement ?? {
+			section: [],
+			item: [],
+			passage: [],
+		};
+		const nextPlacement: Required<ToolPlacementConfig> = {
+			section: [...(partial.section ?? currentPlacement.section ?? [])],
+			item: [...(partial.item ?? currentPlacement.item ?? [])],
+			passage: [...(partial.passage ?? currentPlacement.passage ?? [])],
+		};
+		const validated = normalizeAndValidateToolsConfig(
+			{
+				...(this.config.tools as CanonicalToolsConfig),
+				placement: nextPlacement,
+			},
+			{
+				strictness: this.config.toolConfigStrictness ?? "error",
+				source: "ToolkitCoordinator.updateToolsPlacement",
+				toolRegistry: this.toolRegistry,
+			},
+		);
+		validated.config.placement = nextPlacement;
+		this.config.tools = validated.config;
+		this.policyEngine.updateInputs({
+			tools: this.config.tools as CanonicalToolsConfig,
+		});
+
+		if (partial.section && this.floatingToolsChangeCallback) {
+			this.floatingToolsChangeCallback(this.getFloatingTools());
+		}
+	}
+
+	/**
 	 * Update the enabled tools list for floating tools (calculator, graph, etc.).
 	 * Used for PNP profile changes or dynamic tool configuration.
 	 *
 	 * @param toolIds Array of tool IDs to enable
 	 */
 	updateFloatingTools(toolIds: string[]): void {
-		if (!this.config.tools) {
-			this.config.tools = normalizeAndValidateToolsConfig(undefined, {
-				strictness: this.config.toolConfigStrictness ?? "error",
-				source: "ToolkitCoordinator.updateFloatingTools",
-				toolRegistry: this.toolRegistry,
-			}).config;
-		}
-		const validated = normalizeAndValidateToolsConfig(
-			{
-				...(this.config.tools as CanonicalToolsConfig),
-				placement: {
-					section: [...toolIds],
-					item: [...(this.config.tools?.placement?.item || [])],
-					passage: [...(this.config.tools?.placement?.passage || [])],
-				},
-			},
-			{
-				strictness: this.config.toolConfigStrictness ?? "error",
-				source: "ToolkitCoordinator.updateFloatingTools",
-				toolRegistry: this.toolRegistry,
-			},
-		);
-		this.config.tools = validated.config;
-		// M8 PR 2 — keep the policy engine in lockstep with the
-		// floating-tools placement update. See `updateToolConfig` for
-		// the same pattern.
-		this.policyEngine.updateInputs({
-			tools: this.config.tools as CanonicalToolsConfig,
-		});
-
-		// Notify listener of change
-		if (this.floatingToolsChangeCallback) {
-			this.floatingToolsChangeCallback(toolIds);
-		}
+		this.updateToolPlacement("section", toolIds);
 	}
 
 	/**
@@ -2109,16 +2131,16 @@ export class ToolkitCoordinator {
 	 *   - **Provider veto** — `tools.providers[id].enabled === false`
 	 *     removes the tool from the visible set. The legacy resolver
 	 *     ignored this flag for floating tools.
-	 *   - **QTI gates** — when `qtiEnforcement` is `"on"` (set by host
-	 *     via {@link setQtiEnforcement}, or auto-promoted when the
+	 *   - **PNP/profile gates** — when `pnpEnforcement` is `"on"` (set by host
+	 *     via {@link setPnpEnforcement}, or auto-promoted when the
 	 *     bound `AssessmentEntity` / current `AssessmentItemRef`
-	 *     carries QTI 6-level precedence material — see
-	 *     {@link resolveEffectiveQtiEnforcement}) **and an assessment
-	 *     is bound**, the QTI 6-level precedence (district block →
+	 *     carries profile precedence material — see
+	 *     {@link resolveEffectivePnpEnforcement}) **and an assessment
+	 *     is bound**, the profile precedence (district block →
 	 *     test-admin override → item restriction/requirement →
 	 *     district requirement → PNP supports / prohibitions) is
-	 *     applied. `qtiEnforcement: "on"` without a bound assessment
-	 *     is a no-op for QTI gating.
+	 *     applied. `pnpEnforcement: "on"` without a bound assessment
+	 *     is a no-op for profile gating.
 	 *   - **Custom `PolicySource`s** registered via
 	 *     {@link registerPolicySource}.
 	 *
@@ -2178,7 +2200,7 @@ export class ToolkitCoordinator {
 	 * Subscribe to policy-engine change events. Fires whenever the
 	 * coordinator's bound inputs change (`updateToolConfig`,
 	 * `updateFloatingTools`, `updateAssessment`, `updateCurrentItemRef`,
-	 * `setQtiEnforcement`) or a custom `PolicySource` is registered /
+	 * `setPnpEnforcement`) or a custom `PolicySource` is registered /
 	 * removed via {@link registerPolicySource}.
 	 *
 	 * The listener receives a `ToolPolicyChangeEvent` with the event
@@ -2197,17 +2219,17 @@ export class ToolkitCoordinator {
 	}
 
 	/**
-	 * Bind (or clear) the active QTI assessment for policy decisions.
+	 * Bind (or clear) the active assessment for PNP/profile policy decisions.
 	 *
-	 * Under auto-mode (no host override via {@link setQtiEnforcement}),
-	 * the coordinator promotes the engine to `qtiEnforcement: "on"`
-	 * iff the assessment carries any QTI 6-level precedence material
+	 * Under auto-mode (no host override via {@link setPnpEnforcement}),
+	 * the coordinator promotes the engine to `pnpEnforcement: "on"`
+	 * iff the assessment carries any profile precedence material
 	 * (`personalNeedsProfile`, `settings.districtPolicy`,
 	 * `settings.testAdministration`) or the currently-bound item ref
-	 * carries item-level QTI inputs. A bare assessment record (just
+	 * carries item-level profile policy inputs. A bare assessment record (just
 	 * `id` / `name`, no PNP, no settings) keeps `"off"`.
 	 *
-	 * The host override set via {@link setQtiEnforcement} is sticky
+	 * The host override set via {@link setPnpEnforcement} is sticky
 	 * across assessment swaps; calling with `null` clears the binding
 	 * and re-runs the auto-mode helper.
 	 */
@@ -2215,41 +2237,34 @@ export class ToolkitCoordinator {
 		this.boundAssessment = assessment;
 		this.policyEngine.updateInputs({
 			assessment,
-			qtiEnforcement: this.resolveEffectiveQtiEnforcement(),
+			pnpEnforcement: this.resolveEffectivePnpEnforcement(),
 		});
 	}
 
 	/**
 	 * Bind (or clear) the current item reference for policy decisions.
 	 *
-	 * Used by item-level QTI gates (item `requiredTools` /
-	 * `restrictedTools` / `toolParameters`). Item-level QTI material
-	 * also feeds {@link resolveEffectiveQtiEnforcement} — navigating
-	 * to an item with QTI settings can flip auto-mode to `"on"` even
-	 * when the parent assessment carries no QTI block of its own.
+	 * Used by item-level profile gates (item `requiredTools` /
+	 * `restrictedTools` / `toolParameters`). Item-level profile material
+	 * also feeds {@link resolveEffectivePnpEnforcement} — navigating
+	 * to an item with profile settings can flip auto-mode to `"on"` even
+	 * when the parent assessment carries no profile block of its own.
 	 */
 	updateCurrentItemRef(itemRef: AssessmentItemRef | null): void {
 		this.boundCurrentItemRef = itemRef;
 		this.policyEngine.updateInputs({
 			currentItemRef: itemRef,
-			qtiEnforcement: this.resolveEffectiveQtiEnforcement(),
+			pnpEnforcement: this.resolveEffectivePnpEnforcement(),
 		});
 	}
 
 	/**
-	 * Override the auto-mode QTI enforcement decision.
-	 *
-	 * Pass `"on"` to force QTI enforcement even when no QTI inputs
-	 * are bound (useful for tests / fixtures). Pass `"off"` to opt
-	 * out even when QTI inputs are present. Pass `null` to clear the
-	 * override and return to auto-mode — `"on"` iff
-	 * {@link resolveDefaultQtiEnforcement} reports any QTI material
-	 * on the bound assessment or current item, otherwise `"off"`.
+	 * Override the auto-mode PNP/profile enforcement decision.
 	 */
-	setQtiEnforcement(mode: QtiEnforcementMode | null): void {
-		this.qtiEnforcementOverride = mode;
+	setPnpEnforcement(mode: PnpEnforcementMode | null): void {
+		this.pnpEnforcementOverride = mode;
 		this.policyEngine.updateInputs({
-			qtiEnforcement: this.resolveEffectiveQtiEnforcement(),
+			pnpEnforcement: this.resolveEffectivePnpEnforcement(),
 		});
 	}
 
@@ -2271,33 +2286,38 @@ export class ToolkitCoordinator {
 	 * {@link ToolPolicyEngine.registerPolicySource} — see that
 	 * method for the full contract (event ordering, idempotency of
 	 * the returned dispose function, and how registered sources
-	 * compose with the built-in QTI source).
+	 * compose with the built-in PNP policy source).
 	 */
 	registerPolicySource(source: PolicySource): () => void {
 		return this.policyEngine.registerPolicySource(source);
 	}
 
 	/**
-	 * Compute the effective `qtiEnforcement` mode given the explicit
+	 * Compute the effective PNP/profile enforcement mode given the explicit
 	 * host override and the auto-mode helper.
 	 *
 	 * Auto-mode (no override) defers to
-	 * {@link resolveDefaultQtiEnforcement}, which returns `"on"`
+	 * {@link resolveDefaultPnpEnforcement}, which returns `"on"`
 	 * exactly when the bound assessment or current item ref carries
-	 * QTI 6-level precedence material (PNP, district policy, test
+	 * profile precedence material (PNP, district policy, test
 	 * administration, item-level required/restricted/parameters), and
 	 * `"off"` otherwise. Hosts that bind a bare assessment record
 	 * (just `id` / `name`) therefore keep the legacy floating-tools
-	 * behavior — QTI gates engage the moment QTI material is present.
+	 * behavior — profile gates engage the moment profile material is present.
 	 */
-	private resolveEffectiveQtiEnforcement(): QtiEnforcementMode {
-		if (this.qtiEnforcementOverride !== null) {
-			return this.qtiEnforcementOverride;
+	private resolveEffectivePnpEnforcement(): PnpEnforcementMode {
+		if (this.pnpEnforcementOverride !== null) {
+			return this.pnpEnforcementOverride;
 		}
-		return resolveDefaultQtiEnforcement({
+		return resolveDefaultPnpEnforcement({
 			assessment: this.boundAssessment,
 			currentItemRef: this.boundCurrentItemRef,
 		});
+	}
+
+	private resolveConfiguredPnpEnforcement(): PnpEnforcementMode | null {
+		const tools = this.config.tools as CanonicalToolsConfig | undefined;
+		return tools?.pnpEnforcement ?? null;
 	}
 
 	/**

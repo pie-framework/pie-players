@@ -3,7 +3,7 @@
  *
  * The engine attaches a `PolicySourceTag` to every `ToolPolicyEntry` it
  * emits, capturing every step from `compose-decision.ts` that contributed
- * to the entry being kept (or, in the case of `qti-required-blocked`,
+ * to the entry being kept (or, in the case of `required-tool-blocked`,
  * the step that surfaced the conflict).
  *
  * Tag vocabulary maps onto the six composition steps in
@@ -15,8 +15,8 @@
  *                                            non-`enabled: false` check)
  *   3. Host whitelist      → `"policy"`
  *   4. Host blocklist      → `"policy"` (negative)
- *   5. QTI gates           → `"qti.${rule}"` (e.g. `"qti.pnp-support"`,
- *                                              `"qti.item-requirement"`)
+ *   5. PNP/profile gates   → `"pnp.${rule}"` (e.g. `"pnp.pnp-support"`,
+ *                                              `"pnp.item-requirement"`)
  *   6. Custom PolicySources → `"custom.${source.id}"`
  *
  * Negative tags do not appear on surviving entries — they are reflected
@@ -26,7 +26,7 @@
  * provenance/diagnostic channel's job.
  */
 
-export type QtiPolicySourceRule =
+export type PnpPolicySourceRule =
 	| "district-block"
 	| "test-admin-override"
 	| "item-restriction"
@@ -35,7 +35,7 @@ export type QtiPolicySourceRule =
 	| "pnp-support"
 	| "pnp-prohibited";
 
-export type QtiPolicySourceTag = `qti.${QtiPolicySourceRule}`;
+export type PnpPolicySourceTag = `pnp.${PnpPolicySourceRule}`;
 
 export type CustomPolicySourceTag = `custom.${string}`;
 
@@ -43,5 +43,5 @@ export type PolicySourceTag =
 	| "placement"
 	| "policy"
 	| "provider"
-	| QtiPolicySourceTag
+	| PnpPolicySourceTag
 	| CustomPolicySourceTag;

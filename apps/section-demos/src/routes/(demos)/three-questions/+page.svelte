@@ -241,6 +241,7 @@
 		pnpDebuggerElement.sectionData = resolvedSectionForPlayer;
 		pnpDebuggerElement.roleType = roleType;
 		pnpDebuggerElement.toolkitCoordinator = coordinator;
+		pnpDebuggerElement.editable = true;
 	});
 
 	$effect(() => {

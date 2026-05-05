@@ -1,10 +1,10 @@
 /**
- * QTI Policy Source — precedence rule tests (M8 PR 1).
+ * PNP Policy Source — precedence rule tests (M8 PR 1).
  *
  * Mirrors the precedence covered by `services/PNPToolResolver.ts`'s
  * `resolveSupport` body, exercised through the new `apply(...)` entry
  * point. PR 5 retires the legacy resolver; until then this file is
- * the canonical regression net for the 6-level QTI precedence.
+ * the canonical regression net for the PNP/profile precedence.
  */
 
 import { describe, expect, test } from "bun:test";
@@ -14,15 +14,15 @@ import type {
 	AssessmentItemRef,
 } from "@pie-players/pie-players-shared/types";
 
-import { QtiPolicySource } from "../../src/policy/sources/QtiPolicySource.js";
+import { PnpPolicySource } from "../../src/policy/sources/PnpPolicySource.js";
 import { ToolRegistry } from "../../src/services/ToolRegistry.js";
 
 function source() {
 	const registry = new ToolRegistry();
-	return new QtiPolicySource(registry);
+	return new PnpPolicySource(registry);
 }
 
-describe("QtiPolicySource — 6-level precedence", () => {
+describe("PnpPolicySource — 6-level precedence", () => {
 	test("1. district-block overrides everything else", () => {
 		const result = source().apply({
 			assessment: {
@@ -141,6 +141,25 @@ describe("QtiPolicySource — 6-level precedence", () => {
 		).toBeDefined();
 	});
 
+	test("6. pnp-prohibited blocks even when supports omits the tool", () => {
+		const result = source().apply({
+			assessment: {
+				id: "a1",
+				personalNeedsProfile: {
+					prohibitedSupports: ["calculator"],
+				},
+			} as AssessmentEntity,
+		});
+		expect(result.blockedToolIds.has("calculator")).toBe(true);
+		expect(result.perToolFlags.has("calculator")).toBe(false);
+		expect(
+			result.decisions.find((d) => d.rule === "pnp-prohibited"),
+		).toMatchObject({
+			action: "block",
+			featureId: "calculator",
+		});
+	});
+
 	test("missing pnpSupport → toolId mapping uses supportId verbatim", () => {
 		const result = source().apply({
 			assessment: {
@@ -153,7 +172,7 @@ describe("QtiPolicySource — 6-level precedence", () => {
 
 	test("mapSupportToToolId — first-registered tool wins when multiple tools share a support id (R1 N6)", () => {
 		// Locks the documented "first-wins" semantics of
-		// `QtiPolicySource.mapSupportToToolId(...)`. A second tool that
+		// `PnpPolicySource.mapSupportToToolId(...)`. A second tool that
 		// claims the same `pnpSupportIds` array must not silently steal
 		// the mapping; integrators who want to override should
 		// `unregister(...)` the default first.
@@ -177,7 +196,7 @@ describe("QtiPolicySource — 6-level precedence", () => {
 			pnpSupportIds: ["calculator"],
 		});
 
-		const result = new QtiPolicySource(registry).apply({
+		const result = new PnpPolicySource(registry).apply({
 			assessment: {
 				id: "a1",
 				personalNeedsProfile: { supports: ["calculator"] },
@@ -194,7 +213,7 @@ describe("QtiPolicySource — 6-level precedence", () => {
 		// the source emits — including non-PNP rules. Hosts that rely
 		// on raw QTI strings for unmapped tools depend on this.
 		const registry = new ToolRegistry();
-		const result = new QtiPolicySource(registry).apply({
+		const result = new PnpPolicySource(registry).apply({
 			assessment: {
 				id: "a1",
 				settings: {

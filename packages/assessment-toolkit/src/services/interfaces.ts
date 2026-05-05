@@ -29,11 +29,15 @@ import type {
 import type { FontSize, ThemeConfig } from "./ThemeProvider.js";
 import type { ZIndexLayer } from "./ToolCoordinator.js";
 import type { PlaybackState, TTSConfig } from "./TTSService.js";
-import type { ToolProviderConfig } from "./tools-config-normalizer.js";
+import type {
+	ToolPlacementConfig,
+	ToolPlacementLevel,
+	ToolProviderConfig,
+} from "./tools-config-normalizer.js";
 import type { ToolProviderRegistry } from "./tool-providers/ToolProviderRegistry.js";
 import type {
 	PolicySource,
-	QtiEnforcementMode,
+	PnpEnforcementMode,
 	ResolvedEngineInputs,
 	ToolPolicyChangeListener,
 	ToolPolicyDecision,
@@ -597,6 +601,16 @@ export interface ToolkitCoordinatorApi {
 	updateToolConfig(toolId: string, updates: Partial<ToolProviderConfig>): void;
 
 	/**
+	 * Update the enabled tool list for one placement level.
+	 */
+	updateToolPlacement(level: ToolPlacementLevel, toolIds: string[]): void;
+
+	/**
+	 * Patch one or more placement levels in the canonical tools config.
+	 */
+	updateToolsPlacement(partial: ToolPlacementConfig): void;
+
+	/**
 	 * Register or update lifecycle hooks at runtime.
 	 */
 	setHooks(hooks: ToolkitCoordinatorHooks): void;
@@ -706,10 +720,10 @@ export interface ToolkitCoordinatorApi {
 	// so that toolbar custom elements (`pie-item-toolbar`,
 	// `pie-section-toolbar`), the base section player, and bespoke
 	// host instrumentation (PNP debugger, etc.) all flow through the
-	// same engine. Hosts that want to drive QTI inputs imperatively
+	// same engine. Hosts that want to drive PNP/profile inputs imperatively
 	// (instead of binding props on `<pie-assessment-toolkit>`) call
 	// `updateAssessment` / `updateCurrentItemRef` /
-	// `setQtiEnforcement` directly.
+	// `setPnpEnforcement` directly.
 	// ----------------------------------------------------------------
 
 	/**
@@ -724,44 +738,44 @@ export interface ToolkitCoordinatorApi {
 	 * Subscribe to policy-engine change events. Fires whenever the
 	 * coordinator's bound policy inputs change (`updateToolConfig`,
 	 * `updateFloatingTools`, `updateAssessment`, `updateCurrentItemRef`,
-	 * `setQtiEnforcement`) or a custom `PolicySource` is registered /
+	 * `setPnpEnforcement`) or a custom `PolicySource` is registered /
 	 * removed. Listeners that need the new visible tool set should
 	 * call `decideToolPolicy(...)` with their level / scope.
 	 */
 	onPolicyChange(listener: ToolPolicyChangeListener): () => void;
 
 	/**
-	 * Bind (or clear) the active QTI assessment for policy decisions.
+	 * Bind (or clear) the active assessment for PNP/profile policy decisions.
 	 *
-	 * Under auto-mode (no host override via {@link setQtiEnforcement}),
-	 * the engine flips to `qtiEnforcement: "on"` iff the assessment
-	 * carries QTI 6-level precedence material (`personalNeedsProfile`,
+	 * Under auto-mode (no host override via {@link setPnpEnforcement}),
+	 * the engine flips to `pnpEnforcement: "on"` iff the assessment
+	 * carries profile precedence material (`personalNeedsProfile`,
 	 * `settings.districtPolicy`, `settings.testAdministration`) or the
-	 * currently-bound item ref carries item-level QTI inputs. A bare
+	 * currently-bound item ref carries item-level profile inputs. A bare
 	 * assessment record (just `id` / `name`) keeps `"off"`.
 	 *
-	 * The host override set via {@link setQtiEnforcement} is sticky
+	 * The host override set via {@link setPnpEnforcement} is sticky
 	 * across assessment swaps.
 	 */
 	updateAssessment(assessment: AssessmentEntity | null): void;
 
 	/**
 	 * Bind (or clear) the current item reference for policy decisions.
-	 * Used by item-level QTI gates (item `requiredTools` /
-	 * `restrictedTools` / `toolParameters`). Item-level QTI material
+	 * Used by item-level profile gates (item `requiredTools` /
+	 * `restrictedTools` / `toolParameters`). Item-level profile material
 	 * also feeds the auto-mode helper — navigating to an item with
-	 * QTI settings can flip auto-mode to `"on"` even when the parent
-	 * assessment carries no QTI block of its own.
+	 * profile settings can flip auto-mode to `"on"` even when the parent
+	 * assessment carries no profile block of its own.
 	 */
 	updateCurrentItemRef(itemRef: AssessmentItemRef | null): void;
 
 	/**
-	 * Override the auto-mode QTI enforcement decision. Pass `"on"` /
+	 * Override the auto-mode PNP/profile enforcement decision. Pass `"on"` /
 	 * `"off"` to pin the mode, or `null` to clear the override and
 	 * return to auto-mode (`"on"` iff the bound assessment / item ref
-	 * carries QTI material, otherwise `"off"`).
+	 * carries profile material, otherwise `"off"`).
 	 */
-	setQtiEnforcement(mode: QtiEnforcementMode | null): void;
+	setPnpEnforcement(mode: PnpEnforcementMode | null): void;
 
 	/**
 	 * Read the engine inputs currently driving decisions. Useful for

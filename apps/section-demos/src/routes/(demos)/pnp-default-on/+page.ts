@@ -4,4 +4,4 @@ import type { PageLoad } from './$types';
 export const ssr = false;
 
 export const load: PageLoad = ({ url }) =>
-	loadDemoRouteDataById('qti-default-on', url);
+	loadDemoRouteDataById('pnp-default-on', url);

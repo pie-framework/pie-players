@@ -1,15 +1,15 @@
 <script lang="ts">
 	/**
-	 * Demo: QTI default-on (M8 PR 4 smoke fixture).
+	 * Demo: PNP default-on (M8 PR 4 smoke fixture).
 	 *
-	 * The host never sets the `qti-enforcement` attribute. Instead it
-	 * binds an `AssessmentEntity` that carries QTI material via
+	 * The host never sets the `pnp-enforcement` attribute. Instead it
+	 * binds an `AssessmentEntity` that carries profile policy material via
 	 * `ToolkitCoordinator.updateAssessment(...)`. The coordinator's
 	 * narrow auto-on rule (see
-	 * `packages/assessment-toolkit/src/policy/core/qti-inputs.ts`)
-	 * flips `qtiEnforcement` to `'on'` without any extra wiring.
+	 * `packages/assessment-toolkit/src/policy/core/pnp-policy-inputs.ts`)
+	 * flips `pnpEnforcement` to `'on'` without any extra wiring.
 	 *
-	 * The page reads back `coord.getPolicyInputs().qtiEnforcement` and
+	 * The page reads back `coord.getPolicyInputs().pnpEnforcement` and
 	 * the engine decision so the resolved mode is observable from the
 	 * DOM, both for humans browsing the demo and for any automated
 	 * smoke fixture that wants to assert the auto-default chain.
@@ -32,13 +32,13 @@
 		},
 	};
 
-	// QTI material: PNP supports + district requirement. Either one
+	// Profile policy material: PNP supports + district requirement. Either one
 	// alone is enough to flip the auto-on rule; both are present so
 	// the demo also exercises `alwaysAvailable` (PNP support) and
 	// `required` (district `requiredTools`) in one decision.
 	const assessmentEntity: AssessmentEntity = {
-		id: 'section-demos.qti-default-on',
-		name: 'QTI default-on assessment',
+		id: 'section-demos.pnp-default-on',
+		name: 'PNP default-on assessment',
 		personalNeedsProfile: { supports: ['graph'] },
 		settings: {
 			districtPolicy: { requiredTools: ['graph'] },
@@ -46,19 +46,19 @@
 	} as AssessmentEntity;
 
 	const sectionId = $derived(
-		String((data.section as any)?.identifier || 'qti-default-on-section'),
+		String((data.section as any)?.identifier || 'pnp-default-on-section'),
 	);
-	const attemptId = 'qti-default-on-attempt';
+	const attemptId = 'pnp-default-on-attempt';
 
 	let toolkitCoordinator = $state<ToolkitCoordinatorApi | null>(null);
-	let resolvedQtiEnforcement = $state<'on' | 'off' | 'pending'>('pending');
+	let resolvedPnpEnforcement = $state<'on' | 'off' | 'pending'>('pending');
 	let sectionDecisionVisibleTools = $state<string[]>([]);
 
 	function refreshPolicySnapshot() {
 		const coord = toolkitCoordinator;
 		if (!coord) return;
 		try {
-			resolvedQtiEnforcement = coord.getPolicyInputs().qtiEnforcement;
+			resolvedPnpEnforcement = coord.getPolicyInputs().pnpEnforcement;
 			const decision = coord.decideToolPolicy({
 				level: 'section',
 				scope: { level: 'section', scopeId: sectionId },
@@ -67,7 +67,7 @@
 				(entry) => `${entry.toolId}${entry.alwaysAvailable ? ' (alwaysAvailable)' : ''}${entry.required ? ' (required)' : ''}`,
 			);
 		} catch (error) {
-			console.warn('[qti-default-on demo] policy snapshot failed:', error);
+			console.warn('[pnp-default-on demo] policy snapshot failed:', error);
 		}
 	}
 
@@ -77,9 +77,9 @@
 		const coord = detail?.coordinator ?? null;
 		toolkitCoordinator = coord;
 		if (!coord) return;
-		// Bind the QTI-bearing assessment. With no `qti-enforcement`
+		// Bind the profile-bearing assessment. With no `pnp-enforcement`
 		// attribute set on the layout CE, the coordinator's auto-on
-		// rule is what resolves `qtiEnforcement` to 'on' here.
+		// rule is what resolves `pnpEnforcement` to 'on' here.
 		coord.updateAssessment(assessmentEntity);
 		coord.onPolicyChange(() => refreshPolicySnapshot());
 		refreshPolicySnapshot();
@@ -87,29 +87,29 @@
 </script>
 
 <svelte:head>
-	<title>{data.demo?.name || 'QTI Default On'} - PIE Section Demos</title>
+	<title>{data.demo?.name || 'PNP Default On'} - PIE Section Demos</title>
 </svelte:head>
 
-<main class="qti-default-on-page">
-	<section class="qti-default-on-card">
-		<h1>{data.demo?.name || 'QTI Default On (Auto-detect)'}</h1>
+<main class="pnp-default-on-page">
+	<section class="pnp-default-on-card">
+		<h1>{data.demo?.name || 'PNP Default On (Auto-detect)'}</h1>
 		<p>{data.demo?.description || 'M8 PR 4 narrow auto-on rule.'}</p>
 
-		<div class="policy-snapshot" data-testid="qti-default-on-policy-snapshot">
+		<div class="policy-snapshot" data-testid="pnp-default-on-policy-snapshot">
 			<div>
-				resolved <code>qtiEnforcement</code>:
-				<strong data-testid="qti-default-on-resolved-mode">{resolvedQtiEnforcement}</strong>
+				resolved <code>pnpEnforcement</code>:
+				<strong data-testid="pnp-default-on-resolved-mode">{resolvedPnpEnforcement}</strong>
 			</div>
 			<div>
 				section visible tools:
-				<code data-testid="qti-default-on-section-visible-tools"
+				<code data-testid="pnp-default-on-section-visible-tools"
 					>{sectionDecisionVisibleTools.join(', ') || 'pending'}</code
 				>
 			</div>
 			<p class="policy-snapshot-help">
-				Expected: <code>qtiEnforcement = "on"</code> as soon as the
+				Expected: <code>pnpEnforcement = "on"</code> as soon as the
 				toolkit binds the assessment, even though no
-				<code>qti-enforcement</code> attribute is set on the player.
+				<code>pnp-enforcement</code> attribute is set on the player.
 			</p>
 		</div>
 
@@ -120,14 +120,14 @@
 			section={data.section}
 			tools={toolkitToolsConfig}
 			show-toolbar={true}
-			data-testid="qti-default-on-player"
+			data-testid="pnp-default-on-player"
 			ontoolkit-ready={handleToolkitReady}
 		></pie-section-player-splitpane>
 	</section>
 </main>
 
 <style>
-	.qti-default-on-page {
+	.pnp-default-on-page {
 		height: 100dvh;
 		display: flex;
 		flex-direction: column;
@@ -136,7 +136,7 @@
 		gap: 1rem;
 	}
 
-	.qti-default-on-card {
+	.pnp-default-on-card {
 		display: flex;
 		flex-direction: column;
 		gap: 0.75rem;

@@ -203,7 +203,7 @@
 	// M8 PR 3 — annotation-toolbar visibility goes through the
 	// coordinator's `ToolPolicyEngine`. The engine already applies
 	// placement + `policy.allowed` / `policy.blocked` + provider
-	// veto + QTI gates in one pass, so the base CE no longer
+	// veto + PNP/profile gates in one pass, so the base CE no longer
 	// duplicates those checks against the raw `tools` config.
 	//
 	// The engine answer can change without the coordinator reference

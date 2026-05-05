@@ -56,9 +56,9 @@ export interface ToolPolicyDecisionRequest {
 
 /**
  * Diagnostic codes the engine may emit alongside a decision. The
- * canonical case in M8 is `tool-policy.qtiRequiredBlocked` — fired
+ * canonical case in M8 is `tool-policy.requiredToolBlocked` — fired
  * when a host policy gate (`policy.blocked`, missing-from-`placement`,
- * provider veto) removed a tool that QTI's `requiredTools` /
+ * provider veto) removed a tool that profile policy `requiredTools` /
  * `district.requiredTools` mandates.
  *
  * `tool-policy.placementMissing` fires when a custom `PolicySource`
@@ -68,12 +68,12 @@ export interface ToolPolicyDecisionRequest {
  * misconfiguration; this channel covers per-decision conflicts.
  */
 export type ToolPolicyDiagnosticCode =
-	| "tool-policy.qtiRequiredBlocked"
+	| "tool-policy.requiredToolBlocked"
 	| "tool-policy.placementMissing";
 
 /**
- * Which host gate removed a QTI-mandated tool. Surfaced inside
- * `ToolPolicyDiagnostic.details` for `tool-policy.qtiRequiredBlocked`
+ * Which host gate removed a profile-mandated tool. Surfaced inside
+ * `ToolPolicyDiagnostic.details` for `tool-policy.requiredToolBlocked`
  * so consumers can render a single human-readable explanation
  * ("the proctor blocked the calculator that this student's IEP
  * requires") without re-deriving the host gate from
@@ -92,14 +92,14 @@ export type ToolPolicyHostGate =
 	| "host-blocked";
 
 /**
- * Strongly-typed payload for `tool-policy.qtiRequiredBlocked`
+ * Strongly-typed payload for `tool-policy.requiredToolBlocked`
  * diagnostics. The diagnostic's `details` field still types as
  * `Record<string, unknown>` for forward compatibility, but engines
  * always populate this exact shape today and consumers can safely
  * cast.
  */
-export interface QtiRequiredBlockedDetails extends Record<string, unknown> {
-	/** The QTI rule that mandated the tool (e.g. `district-requirement`). */
+export interface RequiredToolBlockedDetails extends Record<string, unknown> {
+	/** The profile policy rule that mandated the tool (e.g. `district-requirement`). */
 	rule: string;
 	/** Which host gate removed the tool. */
 	hostRule: ToolPolicyHostGate;
@@ -119,7 +119,7 @@ export interface ToolPolicyDiagnostic {
 export interface ToolPolicyEntry {
 	toolId: string;
 	/**
-	 * `true` when QTI mandates this tool (item or district
+	 * `true` when PNP/profile policy mandates this tool (item or district
 	 * `requiredTools`, or PNP support without prohibition). Advisory
 	 * mandates that the host blocked do *not* surface here — they
 	 * appear in `diagnostics` instead. Hosts that need to know about
@@ -135,7 +135,7 @@ export interface ToolPolicyEntry {
 	alwaysAvailable: boolean;
 	/**
 	 * Tool-specific settings resolved from the assessment / item
-	 * settings via the QTI source. Hosts that want to read these
+	 * settings via the PNP policy source. Hosts that want to read these
 	 * directly should use `entry.settings` rather than peeking into
 	 * the assessment entity from above the engine.
 	 */

@@ -28,10 +28,10 @@
 
   Button visibility is always registry-driven:
   - Pass 1: ToolkitCoordinator.decideToolPolicy(...) — placement,
-    policy.allowed/blocked, provider veto, QTI gates, and registered
+    policy.allowed/blocked, provider veto, PNP/profile gates, and registered
     custom PolicySources are all applied inside the ToolPolicyEngine.
     The legacy `pnpResolver` / `assessment` / `itemRef` props were
-    removed in M8 PR 3; hosts that need to drive QTI inputs should
+    removed in M8 PR 3; hosts that need to drive PNP/profile inputs should
     bind `assessment` / `currentItemRef` on the parent
     `pie-assessment-toolkit` element instead.
   - Pass 2: tool-owned isVisibleInContext(context) — relevance gate,
@@ -120,7 +120,7 @@
 	let moduleLoadVersion = $state(0);
 	// Bumped from `coordinator.onPolicyChange(...)` so the engine-driven
 	// `policyDecision` / `policyInputs` derivations rerun on input
-	// changes (`updateAssessment`, `setQtiEnforcement`, custom source
+	// changes (`updateAssessment`, `setPnpEnforcement`, custom source
 	// register / remove). The decision itself is computed by the
 	// coordinator's policy engine — this counter is just the reactive
 	// fanout that lets Svelte know the engine answer may have changed.
@@ -195,7 +195,7 @@
 	// (M8 PR 3). When the toolbar is mounted under
 	// `<pie-assessment-toolkit>` the coordinator owns the engine and
 	// applies `placement → policy.allowed → policy.blocked →
-	// providers → QTI` plus any custom `PolicySource`s the host has
+	// providers → PNP/profile policy` plus any custom `PolicySource`s the host has
 	// registered. The toolbar trusts that decision verbatim — the
 	// `tools=` prop is *not* applied as a downstream filter.
 	//
@@ -209,7 +209,7 @@
 	const policyDecision = $derived.by((): ToolPolicyDecision | null => {
 		// Read `policyChangeVersion` so we re-derive whenever the
 		// coordinator emits a policy change (assessment binding,
-		// QTI enforcement override, custom source registration).
+		// PNP enforcement override, custom source registration).
 		void policyChangeVersion;
 		const coord = runtimeContext?.toolkitCoordinator;
 		if (!coord || typeof coord.decideToolPolicy !== 'function') {
@@ -251,7 +251,7 @@
 		return !!(effectiveItem && config && typeof config === 'object');
 	});
 
-	// QTI inputs (`assessment`, `currentItemRef`) live on the
+	// PNP/profile inputs (`assessment`, `currentItemRef`) live on the
 	// coordinator after M8 PR 2; the toolbar reads them through
 	// `getPolicyInputs()` so it can build the correct Pass-2 context
 	// without re-binding props. Standalone (no-coordinator) usage

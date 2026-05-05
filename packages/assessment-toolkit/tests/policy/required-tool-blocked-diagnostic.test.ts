@@ -1,9 +1,9 @@
 /**
- * `tool-policy.qtiRequiredBlocked` end-to-end diagnostic (M8 PR 4).
+ * `tool-policy.requiredToolBlocked` end-to-end diagnostic (M8 PR 4).
  *
  * `compose-decision.test.ts` already covers the diagnostic at the
  * pipeline layer. PR 4 needs a higher-level test that proves the
- * diagnostic still fires — with full host + QTI provenance — when
+ * diagnostic still fires — with full host + PNP/profile provenance — when
  * the engine is driven through `ToolPolicyEngine.decide(...)` and
  * through `ToolkitCoordinator.decideToolPolicy(...)`. PR 3 toolbars
  * read decisions through this surface; this test is the regression
@@ -13,11 +13,11 @@
  * For each host gate (`host-blocked`, `placement-missing`,
  * `provider-disabled`, `host-allowlist`) we assert:
  *
- *   1. The diagnostic fires with `code: "tool-policy.qtiRequiredBlocked"`,
+ *   1. The diagnostic fires with `code: "tool-policy.requiredToolBlocked"`,
  *      the right `toolId`, and the right `level`.
- *   2. `details` carries the QTI rule (`district-requirement` or
+ *   2. `details` carries the profile policy rule (`district-requirement` or
  *      `item-requirement`) and the host gate (`hostRule`, `hostValue`).
- *   3. The provenance trail records both contributors — the QTI
+ *   3. The provenance trail records both contributors — the PNP/profile policy
  *      `district-requirement` / `item-requirement` decision and the
  *      host gate decision — so consumers can render the conflict
  *      without re-deriving anything from the host config.
@@ -61,7 +61,7 @@ function decideViaEngine(
 			tools,
 			assessment,
 			currentItemRef,
-			qtiEnforcement: "on",
+			pnpEnforcement: "on",
 		},
 	});
 	return engine.decide(level === "section" ? SECTION_REQUEST : ITEM_REQUEST);
@@ -72,11 +72,11 @@ function findRequiredBlocked(
 	toolId: string,
 ): ToolPolicyDiagnostic | undefined {
 	return diagnostics.find(
-		(d) => d.code === "tool-policy.qtiRequiredBlocked" && d.toolId === toolId,
+		(d) => d.code === "tool-policy.requiredToolBlocked" && d.toolId === toolId,
 	);
 }
 
-describe("tool-policy.qtiRequiredBlocked — engine-level (district-requirement)", () => {
+describe("tool-policy.requiredToolBlocked — engine-level (district-requirement)", () => {
 	test("host `policy.blocked` collides with district `requiredTools` → diagnostic + provenance from both decisions", () => {
 		const tools = normalizeToolsConfig({
 			policy: { allowed: [], blocked: ["calculator"] },
@@ -94,7 +94,7 @@ describe("tool-policy.qtiRequiredBlocked — engine-level (district-requirement)
 		const diag = findRequiredBlocked(decision.diagnostics, "calculator");
 		expect(diag).toBeDefined();
 		expect(diag?.level).toBe("item");
-		expect(diag?.message).toContain("QTI mandates");
+		expect(diag?.message).toContain("Profile policy mandates");
 		expect(diag?.details).toEqual({
 			rule: "district-requirement",
 			hostRule: "host-blocked",
@@ -111,8 +111,8 @@ describe("tool-policy.qtiRequiredBlocked — engine-level (district-requirement)
 		expect(hostBlock?.action).toBe("block");
 		expect(hostBlock?.source.type).toBe("host");
 
-		// QTI contribution: district-requirement mandated the tool.
-		// `QtiPolicySource` emits `action: "enable"` on requirement rules
+		// PNP/profile contribution: district-requirement mandated the tool.
+		// `PnpPolicySource` emits `action: "enable"` on requirement rules
 		// (the precedence and `rule` carry the "this is a requirement"
 		// signal — `action` describes what the source does, not what
 		// the rule type is).
@@ -124,7 +124,7 @@ describe("tool-policy.qtiRequiredBlocked — engine-level (district-requirement)
 		expect(districtRequire?.source.type).toBe("assessment");
 
 		// Advisory entry the diagnostic is paired with.
-		const advisory = decisions.find((d) => d.rule === "qti-required-blocked");
+		const advisory = decisions.find((d) => d.rule === "required-tool-blocked");
 		expect(advisory).toBeDefined();
 		expect(advisory?.action).toBe("advisory");
 	});
@@ -185,7 +185,7 @@ describe("tool-policy.qtiRequiredBlocked — engine-level (district-requirement)
 	});
 });
 
-describe("tool-policy.qtiRequiredBlocked — engine-level (item-requirement)", () => {
+describe("tool-policy.requiredToolBlocked — engine-level (item-requirement)", () => {
 	test("host `policy.blocked` collides with item `requiredTools` → diagnostic with `rule: item-requirement`", () => {
 		const tools = normalizeToolsConfig({
 			policy: { allowed: [], blocked: ["calculator"] },
@@ -220,7 +220,7 @@ describe("tool-policy.qtiRequiredBlocked — engine-level (item-requirement)", (
 	});
 });
 
-describe("tool-policy.qtiRequiredBlocked — coordinator surface (PR 3 toolbar contract)", () => {
+describe("tool-policy.requiredToolBlocked — coordinator surface (PR 3 toolbar contract)", () => {
 	test("`ToolkitCoordinator.decideToolPolicy(...)` propagates the diagnostic and provenance unchanged", () => {
 		// PR 3's toolbars read decisions exclusively through the
 		// coordinator's `decideToolPolicy`. Re-running the
@@ -233,7 +233,7 @@ describe("tool-policy.qtiRequiredBlocked — coordinator surface (PR 3 toolbar c
 		// to feed it the same minimal tools shape the engine-level
 		// tests use without dragging in tool-registry validation.
 		const coord = new ToolkitCoordinator({
-			assessmentId: "qti-required-blocked",
+			assessmentId: "required-tool-blocked",
 			lazyInit: true,
 			toolConfigStrictness: "off",
 			tools: {
@@ -264,12 +264,12 @@ describe("tool-policy.qtiRequiredBlocked — coordinator surface (PR 3 toolbar c
 		const ruleNames = (trail?.allDecisions ?? []).map((d) => d.rule);
 		expect(ruleNames).toContain("host-blocked");
 		expect(ruleNames).toContain("district-requirement");
-		expect(ruleNames).toContain("qti-required-blocked");
+		expect(ruleNames).toContain("required-tool-blocked");
 	});
 
-	test("with `qtiEnforcement: 'off'` the diagnostic does NOT fire (host policy applies but QTI is gated off)", () => {
+	test("with `pnpEnforcement: 'off'` the diagnostic does NOT fire (host policy applies but profile policy is gated off)", () => {
 		const coord = new ToolkitCoordinator({
-			assessmentId: "qti-required-blocked-off",
+			assessmentId: "required-tool-blocked-off",
 			lazyInit: true,
 			toolConfigStrictness: "off",
 			tools: {
@@ -277,7 +277,7 @@ describe("tool-policy.qtiRequiredBlocked — coordinator surface (PR 3 toolbar c
 				placement: { item: ["calculator", "tts"] },
 			},
 		});
-		coord.setQtiEnforcement("off");
+		coord.setPnpEnforcement("off");
 		coord.updateAssessment({
 			id: "asm-1",
 			settings: { districtPolicy: { requiredTools: ["calculator"] } },
@@ -290,7 +290,7 @@ describe("tool-policy.qtiRequiredBlocked — coordinator surface (PR 3 toolbar c
 		expect(decision.visibleTools.map((e) => e.toolId)).toEqual(["tts"]);
 		expect(
 			decision.diagnostics.find(
-				(d) => d.code === "tool-policy.qtiRequiredBlocked",
+				(d) => d.code === "tool-policy.requiredToolBlocked",
 			),
 		).toBeUndefined();
 	});

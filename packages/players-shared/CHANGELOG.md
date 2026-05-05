@@ -93,11 +93,11 @@
     consolidates section-controller lifecycle, readiness derivation, and
     stage emissions previously scattered across multiple coordinators.
 
-  - **M8 — tool policy engine.** Allow/block + QTI enforcement become a
+  - **M8 — tool policy engine.** Allow/block + PNP/profile enforcement become a
     first-class policy surface on `ToolkitCoordinator`
     (`onPolicyChange`, `decideToolPolicy`, `getFloatingTools`,
-    `setQtiEnforcement`, `registerPolicySource`), with narrow QTI
-    auto-detection mirrored through `runtime.tools.qtiEnforcement`.
+    `setPnpEnforcement`, `registerPolicySource`), with narrow profile
+    auto-detection mirrored through `runtime.tools.pnpEnforcement`.
 
   - **`FrameworkErrorBus` contract.** A single canonical
     `framework-error` source, single subscription via
@@ -140,8 +140,8 @@
     reactive consumption that replaces the deleted Svelte-store derived
     views. Independently, `ToolkitCoordinator`'s tool-policy surface
     (`onPolicyChange`, `decideToolPolicy`, `getFloatingTools`,
-    `setQtiEnforcement`, `registerPolicySource`) is the canonical entry
-    point for the _tool policy_ concern (allow/block + QTI enforcement)
+    `setPnpEnforcement`, `registerPolicySource`) is the canonical entry
+    point for the _tool policy_ concern (allow/block + PNP/profile enforcement)
     — that is a different concern than the floating-tool z-index API
     the deleted interface served.
 

@@ -170,7 +170,6 @@
 			timeoutMs?: number,
 		) => Promise<SectionControllerHandle | null>;
 		getNavigationStateSnapshot?: () => SectionPlayerNavigationSnapshot;
-		focusStart?: () => boolean;
 	} | null>(null);
 	let sectionReady = $state(false);
 	let runtimeErrorState = $state(false);
@@ -479,10 +478,6 @@
 		return navigateTo(navigation.currentIndex - 1);
 	}
 
-	export function focusStart(): boolean {
-		return scaffoldRef?.focusStart?.() === true;
-	}
-
 	export function getSectionController(): SectionControllerHandle | null {
 		const controller = scaffoldRef?.getSectionController?.() || null;
 		if (controller && !sectionControllerReadyDispatched) {
@@ -717,7 +712,6 @@
 	enabledTools={enabledTools}
 	{toolRegistry}
 	{sectionHostButtons}
-	focusPolicy={policies.focus}
 	cardRenderContext={cardRenderContextValue}
 >
 	<slot

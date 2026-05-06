@@ -1,17 +1,8 @@
-import type {
-	SectionPlayerAutoFocusStrategy,
-	SectionPlayerFocusPolicy,
-	SectionPlayerPolicies,
-} from "./types.js";
-
-export const DEFAULT_FOCUS_POLICY: SectionPlayerFocusPolicy = {
-	autoFocus: "start-of-content",
-};
+import type { SectionPlayerPolicies } from "./types.js";
 
 export const DEFAULT_SECTION_PLAYER_POLICIES: SectionPlayerPolicies = {
 	readiness: { mode: "progressive" },
 	preload: { enabled: true },
-	focus: DEFAULT_FOCUS_POLICY,
 	telemetry: { enabled: true },
 };
 
@@ -41,16 +32,4 @@ export function isTelemetryEnabled(
 	policies: SectionPlayerPolicies | null | undefined,
 ): boolean {
 	return policies?.telemetry?.enabled !== false;
-}
-
-/**
- * Resolve the auto-focus strategy from a focus policy input, falling back to
- * the package default (`"start-of-content"`) when the policy is unset or
- * leaves `autoFocus` undefined.
- */
-export function resolveAutoFocusStrategy(
-	policy: SectionPlayerFocusPolicy | null | undefined,
-): SectionPlayerAutoFocusStrategy {
-	if (!policy) return DEFAULT_FOCUS_POLICY.autoFocus;
-	return policy.autoFocus ?? DEFAULT_FOCUS_POLICY.autoFocus;
 }

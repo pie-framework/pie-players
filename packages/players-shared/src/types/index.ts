@@ -294,7 +294,7 @@ export interface AssessmentSection
 	 * rendering/layout hint — it does NOT disable item-level navigation,
 	 * current-item tracking, or `item-selected` events in the section player.
 	 * Paginated and keep-together sections both support Next/Back,
-	 * `getCurrentItem()`, and `autoFocus: "current-item"` focus strategies.
+	 * `getCurrentItem()`, and `item-selected` events.
 	 */
 	keepTogether?: boolean;
 

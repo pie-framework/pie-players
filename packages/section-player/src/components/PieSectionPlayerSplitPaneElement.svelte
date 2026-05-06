@@ -346,10 +346,6 @@
 		return kernelRef?.navigatePrevious?.() === true;
 	}
 
-	export function focusStart(): boolean {
-		return kernelRef?.focusStart?.() === true;
-	}
-
 	export function getSectionController() {
 		return kernelRef?.getSectionController?.() || null;
 	}
@@ -481,12 +477,10 @@
 					: `grid-template-columns: minmax(0, calc((100% - 0.5rem) * ${leftPanelWidth / 100})) 0.5rem minmax(0, calc((100% - 0.5rem) * ${(100 - leftPanelWidth) / 100}))`}
 			>
 				{#if layoutModel.passages.length > 0}
-					<!-- svelte-ignore a11y_no_noninteractive_tabindex scrollable pane needs keyboard focus -->
 					<aside
 						id={passagesPaneId}
 						class="pie-section-player-passages-pane"
 						aria-label="Passages"
-						tabindex="0"
 					>
 						<pie-section-player-passages-pane
 							passages={layoutModel.passages}
@@ -587,12 +581,6 @@
 		scrollbar-width: thin;
 		scrollbar-color:
 			var(--pie-scrollbar-thumb, #6b7280) var(--pie-scrollbar-track, #d1d5db);
-	}
-
-	.pie-section-player-passages-pane:focus-visible,
-	.pie-section-player-items-pane:focus-visible {
-		outline: 2px solid var(--pie-focus-outline, #1d4ed8);
-		outline-offset: -2px;
 	}
 
 	.pie-section-player-passages-pane::-webkit-scrollbar,

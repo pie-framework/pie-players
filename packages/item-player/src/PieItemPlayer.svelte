@@ -49,7 +49,6 @@
 		LoaderConfig,
 	} from "@pie-players/pie-players-shared";
 	import {
-		focusFirstFocusableInElement,
 		parseAllowedStyleOrigins,
 		validateExternalStyleUrl,
 	} from "@pie-players/pie-players-shared";
@@ -982,17 +981,6 @@
 		// receive updates (item-demos attaches listeners on the element itself).
 		hostElement?.dispatchEvent(newEvent);
 	};
-
-	/**
-	 * Move keyboard focus to the first focusable control inside this item
-	 * (including inside **open** shadow roots of nested PIE custom elements).
-	 * Safe to call after section navigation when the item host is already
-	 * focused or visible.
-	 */
-	export function focusFirst(): boolean {
-		if (!hostElement) return false;
-		return focusFirstFocusableInElement(hostElement);
-	}
 
 	// pie-item contract compatibility: legacy <pie-player> exposed local
 	// browser scoring through provideScore(); current item-player behavior is

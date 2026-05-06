@@ -37,14 +37,16 @@ The host uses `<pie-item-player>` by setting `config`, `session`, `env`, and
 - `model-updated`
 - `bundle-retry-status` for IIFE retry telemetry
 
-The only imperative method on the current custom element is `focusFirst()`.
-There is no public `provideScore()`, `score()`, `validateModels()`,
-`updateElementModel()`, `reset()`, or ready promise on the element.
+The current custom element exposes legacy-compatible `provideScore()` and
+`updateElementModel()` methods for local browser scoring and preview updates,
+but it does not expose focus-placement APIs. Host shells own page-level focus
+behavior such as skip links and landmarks. There is no public `score()`,
+`validateModels()`, `reset()`, or ready promise on the element.
 
-The current player is therefore primarily a render, controller-model, and
+The current player remains primarily a render, controller-model, and
 session-forwarding host. It can populate correct-response sessions with
-`add-correct-response`, but it does not expose scoring as a first-class element
-API.
+`add-correct-response` and provide local browser scoring, but it does not expose
+the legacy API player's server-backed scoring contract.
 
 ## Open-Source Legacy Player
 

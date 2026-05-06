@@ -34,8 +34,6 @@ export interface PieItemPlayerElement extends HTMLElement {
 	onDeleteSound?: (src: string, done: DeleteDone) => void;
 	loaderOptions?: Record<string, unknown>;
 	loaderConfig?: LoaderConfig;
-	/** Focus first tabbable / interactive control inside the item (open shadow only). */
-	focusFirst(): boolean;
 	/** Legacy-compatible local browser scoring; returns one result slot per scored model. */
 	provideScore(): Promise<false | Array<Record<string, unknown> | undefined>>;
 	/** Legacy-compatible preview update for a single loaded PIE model. */

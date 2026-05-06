@@ -158,14 +158,12 @@ test.describe("item-player demo multiple-choice", () => {
 		const apiSnapshot = await page.evaluate(() => {
 			const player = document.querySelector("pie-item-player") as any;
 			return {
-				focusFirst: typeof player?.focusFirst,
 				provideScore: typeof player?.provideScore,
 				updateElementModel: typeof player?.updateElementModel,
 				loaderOptionsBundleHost: player?.loaderOptions?.bundleHost,
 			};
 		});
 		expect(apiSnapshot).toEqual({
-			focusFirst: "function",
 			provideScore: "function",
 			updateElementModel: "function",
 			loaderOptionsBundleHost: "https://proxy.pie-api.com/bundles/",

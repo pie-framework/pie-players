@@ -116,6 +116,14 @@
 		"dompurify": "^3.4.0",
 		"semver": "^7.7.4"
 	},
+	"peerDependencies": {
+		"svelte": "^5.54.0"
+	},
+	"peerDependenciesMeta": {
+		"svelte": {
+			"optional": true
+		}
+	},
 	"scripts": {
 		"build": "rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json && bun run scripts/copy-source-exports.mjs",
 		"dev": "tsc -p tsconfig.json --watch",

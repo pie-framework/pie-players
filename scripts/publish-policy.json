@@ -6,6 +6,10 @@
 	"requireNodeEngine": true,
 	"defaultNodeEngine": ">=20.0.0",
 	"workspaceRoots": ["packages"],
+	"sveltePeerDependencyRange": "^5.54.0",
+	"allowedSveltePeerDependencies": {
+		"@pie-players/pie-players-shared": "Published raw Svelte source exports require the consumer's Svelte runtime without installing a nested copy."
+	},
 	"allowedUndeclaredRuntimeImports": {
 		"@pie-players/pie-assessment-toolkit": [
 			"@pie-players/pie-tool-calculator-desmos",

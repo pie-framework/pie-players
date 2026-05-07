@@ -1,5 +1,24 @@
 # @pie-players/pie-assessment-toolkit
 
+## 0.3.38
+
+### Patch Changes
+
+- ef29724: Rename generic QTI policy APIs and diagnostics to PNP/profile terminology, including the built-in policy source, default enforcement helpers, provenance tags, and required-tool diagnostics.
+
+  Enhance the editable PNP debugger and section demos so hosts can exercise all available tools and PNP/profile enforcement behavior end-to-end.
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies [f856362]
+- Updated dependencies [c8d46d7]
+- Updated dependencies
+  - @pie-players/pie-players-shared@0.3.38
+  - @pie-players/pie-calculator@0.3.38
+  - @pie-players/pie-calculator-desmos@0.3.38
+  - @pie-players/pie-context@0.3.38
+  - @pie-players/pie-tts@0.3.38
+  - @pie-players/tts-client-server@0.3.38
+
 ## 0.3.37
 
 ### Patch Changes

@@ -1,5 +1,15 @@
 # @pie-players/pie-tool-calculator-inline
 
+## 0.3.38
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies [ef29724]
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.38
+  - @pie-players/pie-context@0.3.38
+
 ## 0.3.37
 
 ### Patch Changes

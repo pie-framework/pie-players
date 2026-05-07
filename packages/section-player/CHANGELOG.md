@@ -1,5 +1,34 @@
 # @pie-players/pie-section-player
 
+## 0.3.38
+
+### Patch Changes
+
+- ef29724: Rename generic QTI policy APIs and diagnostics to PNP/profile terminology, including the built-in policy source, default enforcement helpers, provenance tags, and required-tool diagnostics.
+
+  Enhance the editable PNP debugger and section demos so hosts can exercise all available tools and PNP/profile enforcement behavior end-to-end.
+
+- c8d46d7: Remove PIE-owned focus-placement APIs and automatic section navigation focus movement.
+
+  This is a breaking cleanup for pre-1.0 hosts: `pie-item-player.focusFirst()`, section-player layout `focusStart()`, `SectionPlayerFocusPolicy.autoFocus`, `DEFAULT_FOCUS_POLICY`, and `resolveAutoFocusStrategy` are no longer exported. The shared `queryFirstFocusableDeep()` and `focusFirstFocusableInElement()` helpers were also removed; `FOCUSABLE_SELECTOR` and `isProgrammaticFocusTarget()` remain for focus-trap internals.
+
+  Hosts should own skip links, landmarks, and page-level focus placement while section player preserves natural tab order into actionable controls.
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies [f856362]
+- Updated dependencies [ef29724]
+- Updated dependencies [c8d46d7]
+- Updated dependencies
+  - @pie-players/pie-players-shared@0.3.38
+  - @pie-players/pie-assessment-toolkit@0.3.38
+  - @pie-players/pie-item-player@0.3.38
+  - @pie-players/pie-context@0.3.38
+  - @pie-players/pie-tool-annotation-toolbar@0.3.38
+  - @pie-players/pie-tool-calculator-desmos@0.3.38
+  - @pie-players/pie-tool-text-to-speech@0.3.38
+  - @pie-players/pie-tool-tts-inline@0.3.38
+  - @pie-players/pie-toolbars@0.3.38
+
 ## 0.3.37
 
 ### Patch Changes

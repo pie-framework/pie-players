@@ -1,5 +1,18 @@
 # @pie-players/pie-players-shared
 
+## 0.3.38
+
+### Patch Changes
+
+- f856362: Bump `@pie-lib/math-rendering-module` to `5.0.0` for the PIE-423 math accessibility rendering update.
+- c8d46d7: Remove PIE-owned focus-placement APIs and automatic section navigation focus movement.
+
+  This is a breaking cleanup for pre-1.0 hosts: `pie-item-player.focusFirst()`, section-player layout `focusStart()`, `SectionPlayerFocusPolicy.autoFocus`, `DEFAULT_FOCUS_POLICY`, and `resolveAutoFocusStrategy` are no longer exported. The shared `queryFirstFocusableDeep()` and `focusFirstFocusableInElement()` helpers were also removed; `FOCUSABLE_SELECTOR` and `isProgrammaticFocusTarget()` remain for focus-trap internals.
+
+  Hosts should own skip links, landmarks, and page-level focus placement while section player preserves natural tab order into actionable controls.
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+
 ## 0.3.37
 
 ### Patch Changes

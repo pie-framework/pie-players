@@ -1,5 +1,20 @@
 # @pie-players/pie-assessment-toolkit
 
+## 0.3.39
+
+### Patch Changes
+
+- 0072fad: Move Svelte out of published runtime dependencies and add a release check that rejects future accidental `svelte` runtime dependency declarations. Assessment toolkit custom-element outputs now bundle their Svelte runtime helpers so consumers do not install a second Svelte runtime through player packages.
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies [0072fad]
+- Updated dependencies
+  - @pie-players/pie-players-shared@0.3.39
+  - @pie-players/pie-calculator@0.3.39
+  - @pie-players/pie-calculator-desmos@0.3.39
+  - @pie-players/pie-context@0.3.39
+  - @pie-players/pie-tts@0.3.39
+  - @pie-players/tts-client-server@0.3.39
+
 ## 0.3.38
 
 ### Patch Changes

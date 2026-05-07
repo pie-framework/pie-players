@@ -1,5 +1,15 @@
 # @pie-players/item-demos
 
+## 0.1.47
+
+### Patch Changes
+
+- Updated dependencies [0072fad]
+- Updated dependencies
+  - @pie-players/pie-players-shared@0.3.39
+  - @pie-players/pie-item-player@0.3.39
+  - @pie-players/pie-section-player-tools-instrumentation-debugger@0.3.39
+
 ## 0.1.46
 
 ### Patch Changes

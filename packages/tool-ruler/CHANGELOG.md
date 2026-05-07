@@ -1,5 +1,16 @@
 # @pie-players/pie-tool-ruler
 
+## 0.3.39
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies [0072fad]
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.39
+  - @pie-players/pie-players-shared@0.3.39
+  - @pie-players/pie-context@0.3.39
+
 ## 0.3.38
 
 ### Patch Changes

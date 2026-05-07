@@ -1,5 +1,12 @@
 # @pie-players/pie-players-shared
 
+## 0.3.40
+
+### Patch Changes
+
+- 3a167a8: Declare Svelte as an optional peer for `pie-players-shared` raw Svelte source exports so pnpm consumers resolve the app's Svelte runtime without installing a nested copy.
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+
 ## 0.3.39
 
 ### Patch Changes

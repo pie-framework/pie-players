@@ -100,6 +100,7 @@ const collectRuntimeImportSpecifiers = (content) => {
 	const out = new Set();
 	const patterns = [
 		/import\s+[^'"`]*?\sfrom\s*['"]([^'"]+)['"]/g,
+		/(?:^|[;\n])\s*import\s*['"]([^'"]+)['"]/gm,
 		/import\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
 		/export\s+[^'"`]*?\sfrom\s*['"]([^'"]+)['"]/g,
 		/require\(\s*['"]([^'"]+)['"]\s*\)/g,
@@ -238,7 +239,10 @@ const run = () => {
 			const missingTargets = publishedTargets.filter(
 				(target) => !existsSync(path.join(dir, target)),
 			);
-			if ((missingTargets.length > 0 || isToolWorkspace) && pkg.scripts?.build) {
+			if (
+				(missingTargets.length > 0 || isToolWorkspace) &&
+				pkg.scripts?.build
+			) {
 				execSync("rm -rf dist tsconfig.tsbuildinfo && bun run build", {
 					cwd: dir,
 					stdio: "pipe",
@@ -262,7 +266,11 @@ const run = () => {
 			failures.push({
 				name: pkg.name || path.basename(dir),
 				dir: path.relative(ROOT, dir),
-				error: [error.stdout?.toString(), error.stderr?.toString(), error.message]
+				error: [
+					error.stdout?.toString(),
+					error.stderr?.toString(),
+					error.message,
+				]
 					.filter(Boolean)
 					.join("\n"),
 			});
@@ -280,7 +288,9 @@ const run = () => {
 		process.exit(1);
 	}
 
-	console.log(`[check-publint] OK: validated ${checked} publishable package(s)`);
+	console.log(
+		`[check-publint] OK: validated ${checked} publishable package(s)`,
+	);
 };
 
 run();

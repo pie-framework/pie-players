@@ -114,8 +114,7 @@
 	"dependencies": {
 		"@pie-lib/math-rendering-module": "5.0.0",
 		"dompurify": "^3.4.0",
-		"semver": "^7.7.4",
-		"svelte": "^5.54.0"
+		"semver": "^7.7.4"
 	},
 	"scripts": {
 		"build": "rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json && bun run scripts/copy-source-exports.mjs",
@@ -132,6 +131,7 @@
 		"@happy-dom/global-registrator": "^20.9.0",
 		"@types/semver": "^7.7.1",
 		"glob": "^13.0.0",
+		"svelte": "^5.54.0",
 		"typescript": "^5.9.3"
 	},
 	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/players-shared#readme",

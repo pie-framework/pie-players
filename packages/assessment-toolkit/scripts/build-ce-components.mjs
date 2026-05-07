@@ -1,6 +1,13 @@
 #!/usr/bin/env node
 
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+	existsSync,
+	mkdirSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
+import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { compile } from "svelte/compiler";
@@ -12,19 +19,35 @@ const srcComponents = path.join(packageRoot, "src", "components");
 const distComponents = path.join(packageRoot, "dist", "components");
 
 mkdirSync(distComponents, { recursive: true });
+rmSync(path.join(distComponents, ".generated"), {
+	recursive: true,
+	force: true,
+});
 
 const entries = [
 	{
 		source: path.join(srcComponents, "ItemToolBar.svelte"),
 		output: path.join(distComponents, "ItemToolBar.custom-element.js"),
+		generated: path.join(
+			distComponents,
+			".ItemToolBar.custom-element.unbundled.js",
+		),
 	},
 	{
 		source: path.join(srcComponents, "PieAssessmentToolkit.svelte"),
 		output: path.join(distComponents, "PieAssessmentToolkit.custom-element.js"),
+		generated: path.join(
+			distComponents,
+			".PieAssessmentToolkit.custom-element.unbundled.js",
+		),
 	},
 	{
 		source: path.join(srcComponents, "SectionToolBar.svelte"),
 		output: path.join(distComponents, "SectionToolBar.custom-element.js"),
+		generated: path.join(
+			distComponents,
+			".SectionToolBar.custom-element.unbundled.js",
+		),
 	},
 ];
 
@@ -66,7 +89,23 @@ for (const entry of entries) {
 	);
 	sanitizedCode = `${SAFE_DEFINE_HELPER}\n${sanitizedCode}`;
 
-	writeFileSync(entry.output, `// @ts-nocheck\n${sanitizedCode}`, "utf8");
+	writeFileSync(entry.generated, `// @ts-nocheck\n${sanitizedCode}`, "utf8");
+	execFileSync(
+		process.execPath,
+		[
+			"build",
+			entry.generated,
+			"--target=browser",
+			"--format=esm",
+			"--external=@pie-players/*",
+			`--outfile=${entry.output}`,
+		],
+		{
+			cwd: packageRoot,
+			stdio: "pipe",
+		},
+	);
+	rmSync(entry.generated, { force: true });
 }
 
 // Remove stale copied Svelte sources from older build strategy.
@@ -81,4 +120,6 @@ for (const staleFile of [
 	}
 }
 
-console.log("[build-ce-components] built toolkit custom elements to dist/components");
+console.log(
+	"[build-ce-components] built toolkit custom elements to dist/components",
+);

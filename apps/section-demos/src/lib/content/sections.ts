@@ -6,6 +6,7 @@ import { demo4Section } from "./demo4-tts-ssml";
 import { demo5Section } from "./demo5-resource-observability";
 import { demo6Section } from "./demo6-tabbed-layout";
 import { demo7Section } from "./demo7-heading-accessibility";
+import { demo8ToolVisibilitySection } from "./demo8-tool-visibility";
 import {
 	pie512SectionA,
 	pie512SectionB,
@@ -472,6 +473,23 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 			"Adds a section metadata panel tool with stable read-only session details.",
 		],
 		section: demo3Section,
+	},
+	"tool-visibility": {
+		id: "tool-visibility",
+		name: "Tool Visibility from Item Data",
+		description:
+			"Host policy and registry wiring that shows a basic calculator, scientific calculator, or no calculator based on item data",
+		integrationLevel: 4,
+		integrationTheme: "Host data-driven tool policy",
+		focus:
+			"Demonstrates how hosts can decide whether a tool is available from item-level metadata without baking host business rules into section-player.",
+		whatMakesItTick: [
+			"Item refs carry neutral demo-owned `toolMetadata.calculator` values: `basic`, `scientific`, or omitted.",
+			"A host-owned ToolRegistry override updates calculator labels and constrains each calculator element to the requested type.",
+			"A custom PolicySource removes calculator from untagged item scopes before toolbar rendering.",
+			"The same registry is passed to `createToolsConfig`, `ToolkitCoordinator`, and the section-player element.",
+		],
+		section: demo8ToolVisibilitySection,
 	},
 	"tts-ssml": {
 		id: "tts-ssml",

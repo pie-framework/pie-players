@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import { afterNavigate, replaceState } from '$app/navigation';
+	import { untrack } from 'svelte';
 	import {
 		CompositeInstrumentationProvider,
 		DebugPanelInstrumentationProvider,
@@ -42,14 +43,21 @@
 		collectElementPackages,
 		fetchBundleWithRetry
 	} from '$lib/demo-runtime/preload-utils';
+	import { createItemDataCalculatorIntegration } from '$lib/demo-runtime/item-data-calculator-tools';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+	const demoRuntimeId = untrack(() => data.demo?.id ?? 'three-questions');
+	const itemDataCalculatorEnabled = untrack(() => data.demo?.id === 'tool-visibility');
+	const itemDataCalculatorIntegration = itemDataCalculatorEnabled
+		? createItemDataCalculatorIntegration(untrack(() => data.section))
+		: null;
 
 	// Level 3: explicit host-managed coordinator initialization.
 	const toolsConfigResult = createToolsConfig({
-		source: 'section-demos.three-questions',
+		source: `section-demos.${demoRuntimeId}`,
 		strictness: 'error',
+		toolRegistry: itemDataCalculatorIntegration?.toolRegistry,
 		tools: {
 			providers: {
 				textToSpeech: SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER,
@@ -84,7 +92,7 @@
 		.then(() => {
 			sectionInstrumentationProvider.trackMetric('demo.instrumentation.bootstrap', 1, {
 				app: 'section-demos',
-				demo: 'three-questions',
+				demo: demoRuntimeId,
 				category: 'demo'
 			});
 		})
@@ -98,8 +106,10 @@
 	const coordinator = new ToolkitCoordinator({
 		assessmentId: DEMO_ASSESSMENT_ID,
 		toolConfigStrictness: 'error',
-		tools: toolkitToolsConfig
+		tools: toolkitToolsConfig,
+		toolRegistry: itemDataCalculatorIntegration?.toolRegistry
 	});
+	itemDataCalculatorIntegration?.registerPolicySource(coordinator);
 
 	let selectedPlayerType = $state(getUrlEnumParam('player', PLAYER_OPTIONS, 'iife'));
 	let roleType = $state<'candidate' | 'scorer'>(getUrlEnumParam('mode', MODE_OPTIONS, 'candidate'));
@@ -416,6 +426,7 @@
 				section={resolvedSectionForPlayer}
 				env={pieEnv}
 				coordinator={coordinator}
+				toolRegistry={itemDataCalculatorIntegration?.toolRegistry}
 				toolbar-position="right"
 				show-toolbar={true}
 				enabled-tools={sectionToolbarTools}
@@ -433,6 +444,7 @@
 				section={resolvedSectionForPlayer}
 				env={pieEnv}
 				coordinator={coordinator}
+				toolRegistry={itemDataCalculatorIntegration?.toolRegistry}
 				toolbar-position="right"
 				show-toolbar={true}
 				enabled-tools={sectionToolbarTools}

@@ -28,9 +28,7 @@ async function validateNavigationContract(args: {
 							}) => void,
 						) => () => void;
 					} | null;
-					waitForSectionController?: (
-						timeoutMs?: number,
-					) => Promise<{
+					waitForSectionController?: (timeoutMs?: number) => Promise<{
 						subscribe?: (
 							listener: (event: {
 								type?: string;
@@ -85,9 +83,13 @@ async function validateNavigationContract(args: {
 		// Capture the aria-live status region text after navigation.
 		// The region is rendered inside the layout scaffold's light DOM or closest ancestor.
 		const statusEl = document.querySelector(".pie-section-player-nav-status");
-		const navStatusText = statusEl ? statusEl.textContent?.trim() ?? "" : null;
+		const navStatusText = statusEl
+			? (statusEl.textContent?.trim() ?? "")
+			: null;
 		const currentCards = Array.from(
-			document.querySelectorAll(".pie-section-player-content-card[data-section-item-card]"),
+			document.querySelectorAll(
+				".pie-section-player-content-card[data-section-item-card]",
+			),
 		);
 		const ariaCurrentCount = currentCards.filter(
 			(card) => (card as HTMLElement).getAttribute("aria-current") === "true",
@@ -176,7 +178,9 @@ test.describe("section player navigation contract", () => {
 		page,
 	}) => {
 		await page.goto(SPLIT_DEMO, { waitUntil: "networkidle" });
-		await expect(page.locator("pie-section-player-splitpane").first()).toBeVisible();
+		await expect(
+			page.locator("pie-section-player-splitpane").first(),
+		).toBeVisible();
 
 		const focusStayedOutsideContainers = await page.evaluate(async () => {
 			const host = document.querySelector("pie-section-player-splitpane") as
@@ -203,18 +207,24 @@ test.describe("section player navigation contract", () => {
 		page,
 	}) => {
 		await page.goto(SPLIT_DEMO, { waitUntil: "networkidle" });
-		await expect(page.locator("pie-section-player-splitpane").first()).toBeVisible();
+		await expect(
+			page.locator("pie-section-player-splitpane").first(),
+		).toBeVisible();
 
-		const containerTabIndexes = await page.evaluate(() =>
+		const publicFocusApiState = await page.evaluate(() => {
+			const host = document.querySelector("pie-section-player-splitpane") as
+				| (HTMLElement & { focusStart?: unknown })
+				| null;
+			return {
+				hasFocusStart: Boolean(host && "focusStart" in host),
+			};
+		});
+		expect(publicFocusApiState).toEqual({ hasFocusStart: false });
+
+		const paneTabIndexes = await page.evaluate(() =>
 			Array.from(
 				document.querySelectorAll<HTMLElement>(
-					[
-						".pie-section-player-passages-pane",
-						".pie-section-player-items-pane",
-						"pie-section-player-passage-card",
-						"pie-section-player-item-card",
-						".pie-section-player-content-card[data-section-item-card]",
-					].join(","),
+					".pie-section-player-passages-pane, .pie-section-player-items-pane",
 				),
 			)
 				.map((element) => ({
@@ -224,6 +234,32 @@ test.describe("section player navigation contract", () => {
 				}))
 				.filter((entry) => entry.tabIndexAttribute !== null),
 		);
-		expect(containerTabIndexes).toEqual([]);
+		expect(paneTabIndexes).toEqual([]);
+
+		const containerFocusAttributes = await page.evaluate(() =>
+			Array.from(
+				document.querySelectorAll<HTMLElement>(
+					[
+						"pie-section-player-passage-card",
+						"pie-section-player-item-card",
+						".pie-section-player-content-card[data-section-item-card]",
+					].join(","),
+				),
+			)
+				.map((element) => ({
+					tagName: element.tagName.toLowerCase(),
+					className: element.className,
+					ariaLabelledByAttribute: element.getAttribute("aria-labelledby"),
+					roleAttribute: element.getAttribute("role"),
+					tabIndexAttribute: element.getAttribute("tabindex"),
+				}))
+				.filter(
+					(entry) =>
+						entry.ariaLabelledByAttribute !== null ||
+						entry.roleAttribute !== null ||
+						entry.tabIndexAttribute !== null,
+				),
+		);
+		expect(containerFocusAttributes).toEqual([]);
 	});
 });

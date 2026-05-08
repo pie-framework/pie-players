@@ -179,6 +179,11 @@
 		color: var(--pie-text, #111827);
 	}
 
+	:global(pie-section-player-passage-card .pie-section-player-content-card:has(.pie-section-player-passage-content :focus-visible)) {
+		outline: 3px solid var(--pie-section-player-focus-outline, var(--pie-focus-outline, #146eb3));
+		outline-offset: 2px;
+	}
+
 	.pie-section-player-content-card-header {
 		display: flex;
 		align-items: center;

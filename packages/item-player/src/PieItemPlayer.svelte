@@ -331,6 +331,7 @@
 	let itemConfig: ConfigEntity | null = $state(null);
 	let passageConfig: ConfigEntity | null = $state(null);
 	let hostElement: HTMLElement | null = $state(null);
+	let rendererElement: any = $state(null);
 	let sessionController: ItemController | null = $state(null);
 	let sessionControllerItemId = $state("pie-item-player");
 	let sessionSignature = $state("");
@@ -424,12 +425,42 @@
 	function configMarkupForKey(cfg: ConfigEntity | null): string {
 		return cfg?.markup ?? "";
 	}
+	function stableStringifyForKey(value: unknown): string {
+		try {
+			return JSON.stringify(value);
+		} catch {
+			return String(value);
+		}
+	}
+	const callbackKeyIds = new WeakMap<Function, number>();
+	let nextCallbackKeyId = 0;
+	function callbackIdentityForKey(value: unknown): string {
+		if (typeof value !== "function") return "none";
+		let id = callbackKeyIds.get(value);
+		if (!id) {
+			id = (nextCallbackKeyId += 1);
+			callbackKeyIds.set(value, id);
+		}
+		return `fn:${id}`;
+	}
+	const authoringRendererKey = $derived.by(() => {
+		if (resolvedMode !== "author") return "";
+		return [
+			stableStringifyForKey(configuration),
+			authoringBackend,
+			callbackIdentityForKey(onInsertImage),
+			callbackIdentityForKey(onDeleteImage),
+			callbackIdentityForKey(onInsertSound),
+			callbackIdentityForKey(onDeleteSound),
+		].join("|");
+	});
 	const rendererKey = $derived(
 		[
 			configMarkupForKey(itemConfig),
 			renderStimulus ? configMarkupForKey(passageConfig) : "",
 			renderStimulus ? "stimulus" : "item-only",
 			resolvedMode,
+			authoringRendererKey,
 		].join("|"),
 	);
 
@@ -606,7 +637,9 @@
 		bundleType: BundleType,
 		requestToken: number,
 	): IifeBackendConfig {
-		const needsControllers = bundleType !== BundleType.editor && !hosted;
+		const needsControllers =
+			bundleType === BundleType.editor ||
+			(bundleType === BundleType.clientPlayer && !hosted);
 		return {
 			kind: "iife",
 			bundleHost: resolvedIifeBundleHost,
@@ -1035,6 +1068,16 @@
 		updatePieElements(itemConfig, rendererSession, parseEnvValue(env), hostElement ?? undefined);
 	}
 
+	export async function validateModels(): Promise<{ hasErrors: boolean; validatedModels: any[] }> {
+		if (resolvedMode !== "author") {
+			return { hasErrors: false, validatedModels: [] };
+		}
+		if (typeof rendererElement?.validateModels !== "function") {
+			throw new Error("Cannot validate models before the authoring player has loaded.");
+		}
+		return rendererElement.validateModels();
+	}
+
 	const handleSessionChanged = (detail: unknown) => {
 		const detailObj =
 			detail && typeof detail === "object"
@@ -1106,6 +1149,7 @@
 		<div class="pie-player-item-container {containerClass}">
 			{#key rendererKey}
 				<PieItemRenderer
+					bind:this={rendererElement}
 					{itemConfig}
 					passageConfig={renderStimulus ? passageConfig : null}
 					env={parseEnvValue(env)}
@@ -1135,6 +1179,8 @@
 					onSessionChanged={(detail: unknown) => handleSessionChanged(detail)}
 					onModelUpdated={(detail: unknown) =>
 						handlePlayerEvent(new CustomEvent("model-updated", { detail }))}
+					onModelLoaded={(detail: unknown) =>
+						handlePlayerEvent(new CustomEvent("model-loaded", { detail }))}
 				/>
 			{/key}
 		</div>

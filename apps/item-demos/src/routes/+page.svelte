@@ -18,6 +18,13 @@
 			.join(' '),
 		demos: packageDemos,
 	}));
+
+	function hrefForDemo(demo: (typeof demos)[number]) {
+		if (demo.id === 'authoring-contract-fixture') {
+			return `/demo/${demo.id}/author?mode=gather&role=student`;
+		}
+		return `/demo/${demo.id}/delivery?player=iife`;
+	}
 </script>
 
 <svelte:head>
@@ -46,7 +53,7 @@
 				<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
 					{#each group.demos as demo}
 						<a
-							href={`/demo/${demo.id}/delivery?player=iife`}
+							href={hrefForDemo(demo)}
 							class="card bg-base-100 shadow-xl hover:shadow-2xl transition-all duration-200 hover:-translate-y-1"
 						>
 							<div class="card-body gap-4">

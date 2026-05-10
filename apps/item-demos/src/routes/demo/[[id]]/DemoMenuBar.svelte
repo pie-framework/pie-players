@@ -10,6 +10,7 @@
 		studentHref: string;
 		scorerHref: string;
 		viewMode: 'student' | 'scorer';
+		authorOnly?: boolean;
 		showSessionPanel: boolean;
 		showInstrumentationPanel: boolean;
 		showSessionToggle: boolean;
@@ -30,6 +31,7 @@
 		studentHref,
 		scorerHref,
 		viewMode,
+		authorOnly = false,
 		showSessionPanel,
 		showInstrumentationPanel,
 		showSessionToggle,
@@ -51,14 +53,16 @@
 
 	<div class="navbar-center flex flex-wrap gap-3">
 		<div class="join">
-			<a
-				href={deliveryHref}
-				class="btn btn-sm join-item"
-				class:btn-active={activeView === 'delivery'}
-				aria-current={activeView === 'delivery' ? 'page' : undefined}
-			>
-				Delivery
-			</a>
+			{#if !authorOnly}
+				<a
+					href={deliveryHref}
+					class="btn btn-sm join-item"
+					class:btn-active={activeView === 'delivery'}
+					aria-current={activeView === 'delivery' ? 'page' : undefined}
+				>
+					Delivery
+				</a>
+			{/if}
 			<a
 				href={authorHref}
 				class="btn btn-sm join-item"
@@ -77,7 +81,7 @@
 			</a>
 		</div>
 
-		{#if activeView !== 'source'}
+		{#if activeView !== 'source' && !authorOnly}
 			<div class="join" aria-label="Loader strategy">
 				<button
 					type="button"

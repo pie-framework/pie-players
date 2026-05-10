@@ -17,12 +17,16 @@
     type ItemMarkupSanitizer,
   } from "../security/index.js";
   import {
-    AssetEventManager,
     createDefaultImageDeleteHandler,
     createDefaultImageInsertHandler,
     createDefaultSoundDeleteHandler,
     createDefaultSoundInsertHandler,
   } from "../pie/asset-handler.js";
+  import {
+    createAuthoringAssetEventManager,
+    validateAuthoringModels,
+    type AuthoringValidationResult,
+  } from "../pie/authoring.js";
   import { initializeConfiguresFromLoadedBundle } from "../pie/configure-initialization.js";
   import {
     canPopulateCorrectResponses,
@@ -79,6 +83,7 @@
     onPlayerError,
     onSessionChanged,
     onModelUpdated,
+    onModelLoaded,
     baseHeadingLevel = undefined,
     includeSrHeading = true,
   }: {
@@ -110,6 +115,7 @@
     onPlayerError?: (detail?: any) => void;
     onSessionChanged?: (detail?: any) => void;
     onModelUpdated?: (detail?: any) => void;
+    onModelLoaded?: (detail?: any) => void;
     /**
      * The level of the first heading emitted inside this player.
      *
@@ -147,7 +153,7 @@
   let correctResponsesAdded = $state(false);
 
   // Asset event manager for authoring mode
-  let assetEventManager: AssetEventManager | null = $state(null);
+  let assetEventManager: ReturnType<typeof createAuthoringAssetEventManager> | null = $state(null);
   let authoringBlockedError: string | null = $state(null);
   let lastReportedAuthoringError: string | null = $state(null);
   let runtimePlayerError: string | null = $state(null);
@@ -269,14 +275,16 @@
   // Dispatch events (will add more as needed)
   const dispatch = (type: string, detail?: any) => {
     // Call callback prop if provided (Svelte 5 pattern)
-    if (type === "load-complete" && onLoadComplete) {
+    if (type === "load-complete" && typeof onLoadComplete === "function") {
       onLoadComplete(detail);
-    } else if (type === "player-error" && onPlayerError) {
+    } else if (type === "player-error" && typeof onPlayerError === "function") {
       onPlayerError(detail);
-    } else if (type === "session-changed" && onSessionChanged) {
+    } else if (type === "session-changed" && typeof onSessionChanged === "function") {
       onSessionChanged(detail);
-    } else if (type === "model-updated" && onModelUpdated) {
+    } else if (type === "model-updated" && typeof onModelUpdated === "function") {
       onModelUpdated(detail);
+    } else if (type === "model-loaded" && typeof onModelLoaded === "function") {
+      onModelLoaded(detail);
     }
 
     // Also dispatch DOM event for backward compatibility
@@ -353,6 +361,28 @@
         logger.debug("[PieItemPlayer] Demo sound insert completed:", src);
       }),
       onDeleteSound: createDefaultSoundDeleteHandler(),
+    };
+  }
+
+  export async function validateModels(): Promise<AuthoringValidationResult> {
+    if (mode !== "author" || !itemConfig) {
+      return { hasErrors: false, validatedModels: [] };
+    }
+
+    const results = await Promise.all([
+      validateAuthoringModels(itemConfig, configuration, {
+        container: rootElement ?? undefined,
+      }),
+      passageConfig
+        ? validateAuthoringModels(passageConfig, configuration, {
+            container: rootElement ?? undefined,
+          })
+        : Promise.resolve({ hasErrors: false, validatedModels: [] }),
+    ]);
+
+    return {
+      hasErrors: results.some((result) => result.hasErrors),
+      validatedModels: results.flatMap((result) => result.validatedModels),
     };
   }
 
@@ -550,79 +580,36 @@
             configuration,
           };
 
-          initializeConfiguresFromLoadedBundle(itemConfig, configuration, {
+          const initializedModels = initializeConfiguresFromLoadedBundle(itemConfig, configuration, {
             env: authoringEnv,
+            container: rootElement ?? undefined,
           });
           logger.debug("[PieItemPlayer] Configure elements initialized");
 
           if (passageConfig) {
-            initializeConfiguresFromLoadedBundle(passageConfig, configuration, {
-              env: authoringEnv,
-            });
+            initializedModels.push(
+              ...initializeConfiguresFromLoadedBundle(passageConfig, configuration, {
+                env: authoringEnv,
+                container: rootElement ?? undefined,
+              })
+            );
             logger.debug(
               "[PieItemPlayer] Passage configure elements initialized"
             );
           }
 
+          dispatch("model-loaded", {
+            models: initializedModels,
+            configuration,
+          });
+
           if (rootElement && effectiveHandlers) {
-            assetEventManager = new AssetEventManager(
+            assetEventManager = createAuthoringAssetEventManager(
               rootElement,
-              effectiveHandlers.onInsertImage
-                ? (handler) => {
-                    try {
-                      effectiveHandlers.onInsertImage!(handler);
-                    } catch (error: any) {
-                      const err =
-                        error instanceof Error
-                          ? error
-                          : new Error(String(error ?? "Unknown upload error"));
-                      logger.error("[PieItemPlayer] onInsertImage failed:", err);
-                      handler.done(err);
-                    }
-                  }
-                : undefined,
-              effectiveHandlers.onDeleteImage
-                ? (src, done) => {
-                    try {
-                      effectiveHandlers.onDeleteImage!(src, done);
-                    } catch (error: any) {
-                      const err =
-                        error instanceof Error
-                          ? error
-                          : new Error(String(error ?? "Unknown delete error"));
-                      logger.error("[PieItemPlayer] onDeleteImage failed:", err);
-                      done(err);
-                    }
-                  }
-                : undefined,
-              effectiveHandlers.onInsertSound
-                ? (handler) => {
-                    try {
-                      effectiveHandlers.onInsertSound!(handler);
-                    } catch (error: any) {
-                      const err =
-                        error instanceof Error
-                          ? error
-                          : new Error(String(error ?? "Unknown upload error"));
-                      logger.error("[PieItemPlayer] onInsertSound failed:", err);
-                      handler.done(err);
-                    }
-                  }
-                : undefined,
-              effectiveHandlers.onDeleteSound
-                ? (src, done) => {
-                    try {
-                      effectiveHandlers.onDeleteSound!(src, done);
-                    } catch (error: any) {
-                      const err =
-                        error instanceof Error
-                          ? error
-                          : new Error(String(error ?? "Unknown delete error"));
-                      logger.error("[PieItemPlayer] onDeleteSound failed:", err);
-                      done(err);
-                    }
-                  }
-                : undefined
+              effectiveHandlers,
+              (context, error) => {
+                logger.error(`[PieItemPlayer] ${context} failed:`, error);
+              }
             );
             assetEventManager.attach();
             logger.debug("[PieItemPlayer] Asset event manager attached");

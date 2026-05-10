@@ -10,6 +10,11 @@ import type { PieModel } from "@pie-players/pie-players-shared/types";
 
 export type { DeleteDone, ImageHandler, SoundHandler };
 
+export type AuthoringValidationResult = {
+	hasErrors: boolean;
+	validatedModels: any[];
+};
+
 export interface PieItemPlayerElement extends HTMLElement {
 	config: unknown;
 	session: unknown;
@@ -38,6 +43,8 @@ export interface PieItemPlayerElement extends HTMLElement {
 	provideScore(): Promise<false | Array<Record<string, unknown> | undefined>>;
 	/** Legacy-compatible preview update for a single loaded PIE model. */
 	updateElementModel(update: Partial<PieModel> & { id: string }): Promise<void>;
+	/** Authoring-mode validation for rendered configure elements. */
+	validateModels(): Promise<AuthoringValidationResult>;
 }
 
 export interface PieItemSessionDebuggerElement extends HTMLElement {

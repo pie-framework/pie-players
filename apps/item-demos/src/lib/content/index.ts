@@ -2,6 +2,7 @@ import type { DemoInfo } from "./types";
 
 export type { DemoInfo } from "./types";
 
+import authoringContractFixture from "./authoring-contract-fixture";
 import categorizeAlgebraOperations from "./categorize-algebra-operations";
 import categorizeCalculusConcepts from "./categorize-calculus-concepts";
 import categorizeGeometryShapes from "./categorize-geometry-shapes";
@@ -91,6 +92,7 @@ const importedDemos: DemoInfo[] = [
 	mathTemplatedDefault,
 	matrixDefault,
 	multiTraitRubricDefault,
+	authoringContractFixture,
 	multipleChoiceBasicCheckbox,
 	multipleChoiceMathAlgebraQuadratic,
 	multipleChoiceMathGeometryTriangles,

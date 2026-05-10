@@ -2,8 +2,72 @@
 	import { page } from '$app/stores';
 	import { untrack } from 'svelte';
 	import '@pie-players/pie-item-player';
+	import { makeUniqueTags } from '@pie-players/pie-players-shared/pie';
 	import { config as configStore, updateConfig } from '$lib/stores/demo-state';
 	import { demoHeadingName } from '$lib/utils/demo-heading-name';
+
+	class AuthoringFixtureElement extends HTMLElement {
+		private _model: any = null;
+
+		set model(value: any) {
+			this._model = value;
+			this.render();
+		}
+
+		get model() {
+			return this._model;
+		}
+
+		set session(_value: any) {
+			this.render();
+		}
+
+		connectedCallback() {
+			this.render();
+		}
+
+		private render() {
+			this.innerHTML = `<div data-testid="delivery-fixture">Delivery: ${
+				this._model?.prompt ?? ''
+			}</div>`;
+		}
+	}
+
+	class AuthoringFixtureConfigElement extends HTMLElement {
+		private _model: any = null;
+		private _configuration: any = {};
+
+		set model(value: any) {
+			this._model = value;
+			this.render();
+		}
+
+		get model() {
+			return this._model;
+		}
+
+		set configuration(value: any) {
+			this._configuration = value;
+			this.render();
+		}
+
+		get configuration() {
+			return this._configuration;
+		}
+
+		connectedCallback() {
+			this.render();
+		}
+
+		private render() {
+			this.innerHTML = `
+				<section data-testid="authoring-fixture">
+					<p data-testid="authoring-model-id">${this._model?.id ?? ''}</p>
+					<pre data-testid="authoring-config-value">${JSON.stringify(this._configuration)}</pre>
+				</section>
+			`;
+		}
+	}
 
 	let { data } = $props();
 
@@ -11,10 +75,24 @@
 
 	let playerEl: any = $state(null);
 	let lastConfig: any = null;
-	let selectedLoaderStrategy = $state<'iife' | 'esm'>('iife');
+	let lastPlayerSetupSignature: string | null = null;
+	let selectedLoaderStrategy = $state<'iife' | 'esm' | 'preloaded'>('iife');
+	let authoringContractMode = $state(false);
+	let missingAuthoringBackend = $state(false);
+	let validationResult = $state('');
+	let eventLog = $state<Array<{ type: string; detail: unknown }>>([]);
+	let mediaCalls = $state<Array<{ type: string; src?: string }>>([]);
 
 	$effect(() => {
-		selectedLoaderStrategy = $page.url.searchParams.get('player') === 'esm' ? 'esm' : 'iife';
+		authoringContractMode =
+			data.demo?.id === 'authoring-contract-fixture' ||
+			$page.url.searchParams.get('authoring-contract') === '1';
+		selectedLoaderStrategy = authoringContractMode
+			? 'preloaded'
+			: $page.url.searchParams.get('player') === 'esm'
+				? 'esm'
+				: 'iife';
+		missingAuthoringBackend = $page.url.searchParams.get('missingBackend') === '1';
 	});
 
 	async function callAuthoringMediaJsonService<T>(
@@ -141,6 +219,25 @@
 		},
 	};
 
+	const authoringContractMediaBackend = {
+		onInsertImage(handler: any) {
+			mediaCalls = [...mediaCalls, { type: 'insert-image' }];
+			handler?.done?.(undefined, '/fixture/image.png');
+		},
+		onDeleteImage(src: string, done: (err?: Error) => void) {
+			mediaCalls = [...mediaCalls, { type: 'delete-image', src }];
+			done();
+		},
+		onInsertSound(handler: any) {
+			mediaCalls = [...mediaCalls, { type: 'insert-sound' }];
+			handler?.done?.(undefined, '/fixture/sound.wav');
+		},
+		onDeleteSound(src: string, done: (err?: Error) => void) {
+			mediaCalls = [...mediaCalls, { type: 'delete-sound', src }];
+			done();
+		},
+	};
+
 	function safeClone<T>(value: T): T {
 		try {
 			if (typeof structuredClone === 'function') {
@@ -157,25 +254,43 @@
 	// Set properties imperatively when config changes
 	$effect(() => {
 		const currentConfig = $configStore;
+		const setupSignature = JSON.stringify({
+			config: currentConfig,
+			authoringContractMode,
+			missingAuthoringBackend,
+		});
 
 		if (playerEl && currentConfig) {
-			if (currentConfig !== lastConfig) {
+			if (currentConfig !== lastConfig || setupSignature !== lastPlayerSetupSignature) {
 				untrack(() => {
+					if (authoringContractMode) {
+						defineAuthoringContractFixture(currentConfig);
+					}
 					playerEl.config = currentConfig;
 					playerEl.session = { id: 'preview', data: [] };
 					playerEl.env = { mode: 'author', role: 'instructor' };
+					playerEl.configuration = currentConfig.configuration ?? {};
 					playerEl.authoringBackend = 'required';
 					playerEl.loaderOptions = {
 						bundleHost: 'https://proxy.pie-api.com/bundles/',
 						runtimeSupportCheck: 'on'
 					};
-					playerEl.onInsertImage = demoMediaBackend.onInsertImage;
-					playerEl.onDeleteImage = demoMediaBackend.onDeleteImage;
-					playerEl.onInsertSound = demoMediaBackend.onInsertSound;
-					playerEl.onDeleteSound = demoMediaBackend.onDeleteSound;
+					if (!missingAuthoringBackend) {
+						const mediaBackend = authoringContractMode ? authoringContractMediaBackend : demoMediaBackend;
+						playerEl.onInsertImage = mediaBackend.onInsertImage;
+						playerEl.onDeleteImage = mediaBackend.onDeleteImage;
+						playerEl.onInsertSound = mediaBackend.onInsertSound;
+						playerEl.onDeleteSound = mediaBackend.onDeleteSound;
+					} else {
+						playerEl.onInsertImage = null;
+						playerEl.onDeleteImage = null;
+						playerEl.onInsertSound = null;
+						playerEl.onDeleteSound = null;
+					}
 				});
 
 				lastConfig = currentConfig;
+				lastPlayerSetupSignature = setupSignature;
 			}
 		}
 	});
@@ -186,6 +301,64 @@
 		const cloned = safeClone(nextConfig);
 		lastConfig = cloned;
 		updateConfig(cloned);
+	}
+
+	function cloneForLog(value: unknown): unknown {
+		try {
+			return JSON.parse(JSON.stringify(value));
+		} catch {
+			return String(value);
+		}
+	}
+
+	function recordAuthoringEvent(type: string, detail: unknown) {
+		eventLog = [...eventLog, { type, detail: cloneForLog(detail) }];
+	}
+
+	function defineAuthoringContractFixture(currentConfig: any) {
+		const versionedConfig = makeUniqueTags({ config: currentConfig }).config;
+		const runtimeTag = Object.keys(versionedConfig?.elements ?? {})[0];
+		const packageSpec = versionedConfig?.elements?.[runtimeTag];
+		const modelId = versionedConfig?.models?.[0]?.id;
+		if (!runtimeTag || !packageSpec || !modelId) return;
+		const configTag = `${runtimeTag}-config`;
+
+		if (!customElements.get(runtimeTag)) {
+			customElements.define(runtimeTag, AuthoringFixtureElement);
+		}
+		if (!customElements.get(configTag)) {
+			customElements.define(configTag, AuthoringFixtureConfigElement);
+		}
+
+		const registry = ((window as any).PIE_REGISTRY ??= {});
+		registry[runtimeTag] = {
+			package: packageSpec,
+			status: 'loaded',
+			tagName: runtimeTag,
+			element: AuthoringFixtureElement,
+			controller: {
+				model: async (model: any) => model,
+				outcome: async () => ({
+					id: modelId,
+					element: runtimeTag,
+					score: 1,
+				}),
+			},
+			bundleType: 'client-player.js',
+		};
+		registry[configTag] = {
+			package: packageSpec,
+			status: 'loaded',
+			tagName: configTag,
+			element: AuthoringFixtureConfigElement,
+			controller: {
+				validate: (model: any, config: any) => ({
+					errors: config?.requirePrompt && model?.prompt ? [] : ['prompt is required'],
+					authoringOnly: config?.authoringOnly,
+				}),
+			},
+			bundleType: 'editor.js',
+		};
 	}
 
 	function normalizeElementName(name: unknown): string {
@@ -230,6 +403,26 @@
 		};
 	});
 
+	$effect(() => {
+		if (!playerEl || !authoringContractMode) return;
+		const eventTypes = ['model-loaded', 'model-updated', 'player-error'];
+		const listeners = eventTypes.map((type) => {
+			const listener = (event: Event) => recordAuthoringEvent(type, (event as CustomEvent).detail);
+			playerEl.addEventListener(type, listener);
+			return { type, listener };
+		});
+		return () => {
+			for (const { type, listener } of listeners) {
+				playerEl?.removeEventListener(type, listener);
+			}
+		};
+	});
+
+	async function runValidation() {
+		const result = await playerEl?.validateModels?.();
+		validationResult = JSON.stringify(result);
+	}
+
 </script>
 
 <svelte:head>
@@ -244,6 +437,16 @@
 				strategy={selectedLoaderStrategy}
 				mode="author"
 			></pie-item-player>
+			{#if authoringContractMode}
+				<div class="mt-4 grid gap-3" data-testid="authoring-contract-harness">
+					<button type="button" class="btn btn-primary" data-testid="run-validation" onclick={runValidation}>
+						Run validation
+					</button>
+					<pre data-testid="validation-result">{validationResult}</pre>
+					<pre data-testid="event-log">{JSON.stringify(eventLog)}</pre>
+					<pre data-testid="media-call-log">{JSON.stringify(mediaCalls)}</pre>
+				</div>
+			{/if}
 		</div>
 	</div>
 </div>

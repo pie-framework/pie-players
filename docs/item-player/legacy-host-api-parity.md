@@ -27,6 +27,7 @@ Current package:
 - `packages/item-player/src/types.ts`
 - `packages/players-shared/src/components/PieItemPlayer.svelte`
 - `packages/players-shared/src/pie/scoring.ts`
+- `packages/players-shared/src/pie/authoring.ts`
 
 The host uses `<pie-item-player>` by setting `config`, `session`, `env`, and
 `strategy`, then listening for:
@@ -35,13 +36,15 @@ The host uses `<pie-item-player>` by setting `config`, `session`, `env`, and
 - `session-changed`
 - `player-error`
 - `model-updated`
+- `model-loaded` in authoring mode
 - `bundle-retry-status` for IIFE retry telemetry
 
 The current custom element exposes legacy-compatible `provideScore()` and
 `updateElementModel()` methods for local browser scoring and preview updates,
+plus authoring `validateModels()` for rendered configure elements,
 but it does not expose focus-placement APIs. Host shells own page-level focus
 behavior such as skip links and landmarks. There is no public `score()`,
-`validateModels()`, `reset()`, or ready promise on the element.
+`reset()`, or ready promise on the element.
 
 The current player remains primarily a render, controller-model, and
 session-forwarding host. It can populate correct-response sessions with
@@ -215,14 +218,14 @@ Default API aggregation differs from open-source `provideScore()`:
 
 | Host capability | Open-source legacy | Legacy API player | Current `<pie-item-player>` | Gap |
 | --- | --- | --- | --- | --- |
-| Local browser scoring | `provideScore()` returns per-model outcomes. | Uses inner `<pie-player>` but exposes API `score()`, not `provideScore()`. | No element method; `scorePieItem()` exists only in shared package. | Add a host method if matching open-source legacy. |
+| Local browser scoring | `provideScore()` returns per-model outcomes. | Uses inner `<pie-player>` but exposes API `score()`, not `provideScore()`. | `provideScore()` returns one result slot per scored model. | Covered for open-source legacy parity; not equivalent to API-player server scoring. |
 | Rolled-up score | Not provided by `<pie-player>`. | `score()` returns API-formatted `SessionScore`. | Not provided. | Add only if matching API-player semantics or introduce a clearly named new API. |
 | Persisted scoring | Not provided. | Server-backed `score()` with manual score, cache, rubric, and aggregation rules. | Not provided. | Requires API integration or a separate adapter, not just controller calls. |
 | Session persistence | Host-owned. | Autosaves on `session-changed`; emits `sessionSaved` / `saveSessionError`. | Host-owned; forwards normalized `session-changed`. | Current item player does not replace API persistence. |
 | Stimulus config | Accepts `{ pie, passage }`, `renderStimulus`, `allowedResize`. | Loads stimulus responses and passes them through to inner `<pie-player>`. | Top-level custom element validates only root `{ markup, elements, models }`; shared renderer has `passageConfig` but it is not exposed. | Direct stimulus config parity is missing. |
-| Authoring validation | `<pie-author>.validateModels()`. | API author builds on legacy author. | No public `validateModels()`. | Missing if current author mode is intended to replace `<pie-author>`. |
-| Author model lifecycle | `modelLoaded`, `modelUpdated`. | API author listens to legacy author events. | Only `model-updated`; no `modelLoaded`. | Event naming and lifecycle differ. |
-| Preview model update | `updateElementModel(update)`. | API author/preview flow uses legacy update behavior. | No public method. | Missing imperative preview API. |
+| Authoring validation | `<pie-author>.validateModels()`. | API author builds on legacy author. | `validateModels()` returns `{ hasErrors, validatedModels }`. | Covered for rendered configure elements. |
+| Author model lifecycle | `modelLoaded`, `modelUpdated`. | API author listens to legacy author events. | Canonical events are `model-loaded` and `model-updated`. | Covered with modern event names. |
+| Preview model update | `updateElementModel(update)`. | API author/preview flow uses legacy update behavior. | `updateElementModel(update)` updates a single loaded PIE model. | Covered for local preview updates. |
 | Rubric helpers | `addRubricToConfig()`, `addMultiTraitRubricToConfig()`, complex-rubric toggles. | API author imports legacy rubric utilities. | Shared `addRubricIfNeeded()` exists but is not wired into the player; no public helpers. | Rubric authoring parity is incomplete. |
 | Loader controls | `bundleHost`, `bundleEndpoints`, `disableBundler`, `reFetchBundle`. | Passes `bundleEndpoints` / `reFetchBundle` to inner `<pie-player>`. | `strategy`, `loaderOptions.bundleHost`, `loaderConfig`; no direct `bundleEndpoints` / `reFetchBundle`. | Host migration requires mapping or aliases. |
 | Styling prop name | `customClassname`. | `customClassname`. | `customClassName` / `custom-class-name`. | Naming mismatch for direct migration. |
@@ -245,24 +248,20 @@ There are two distinct scoring targets:
    aggregation rules. This is not the same as calling element controllers in the
    browser.
 
-For `<pie-item-player>` itself, the first missing piece is open-source legacy
-parity: a functional `provideScore()`-style method on the custom element. A
-rolled-up item score should be treated as a separate API decision because it
-matches the legacy API player, not the open-source legacy `<pie-player>`.
+For `<pie-item-player>` itself, open-source legacy local scoring parity is
+covered by `provideScore()`. A rolled-up item score should still be treated as a
+separate API decision because it matches the legacy API player, not the
+open-source legacy `<pie-player>`.
 
 ## Recommended Implementation Order
 
-1. Add `<pie-item-player>.provideScore()` with tests for single-element,
-   multi-element, stimulus, missing-controller, missing-element, and
-   `partialScoring` behavior.
-2. Fix `scorePieItem()` or replace it with a host-scoped implementation that
-   uses the real controller call shape and does not query the entire document.
-3. Add a current-package migration table for legacy `bundleHost`,
+1. Keep `provideScore()` covered for single-element, multi-element, stimulus,
+   missing-controller, missing-element, and `partialScoring` behavior.
+2. Add or maintain a current-package migration table for legacy `bundleHost`,
    `bundleEndpoints`, `disableBundler`, `reFetchBundle`, `customClassname`, and
    stimulus props.
-4. Decide whether current author mode must replace `<pie-author>` fully. If so,
-   add `validateModels()`, `modelLoaded`, rubric helper parity, and complex
-   rubric tests.
-5. If API-player parity is in scope, design it as an API-backed adapter or a
+3. Decide whether rubric helper parity belongs on `<pie-item-player>` or in
+   shared host-side utilities.
+4. If API-player parity is in scope, design it as an API-backed adapter or a
    separate element/host integration surface. Do not silently make local
    browser `provideScore()` pretend to implement persisted API scoring.

@@ -63,11 +63,13 @@ test("backend demo loads, autosaves, and server-scores a delivery session", asyn
 		},
 	});
 	await page.getByRole("button", { name: "Load current session" }).click();
+	await page.getByRole("button", { name: "Toggle backend state tool" }).click();
 	await expect(page.getByTestId("client-session")).toContainText("mars", {
 		timeout: 10_000,
 	});
 	await expect(page.getByRole("radio", { name: /Mars/ })).toBeChecked();
 
+	await page.getByRole("button", { name: "Toggle events tool" }).click();
 	await expect(page.getByText("backend-session-saved").first()).toBeVisible({
 		timeout: 10_000,
 	});
@@ -99,13 +101,13 @@ test("backend demo loads, autosaves, and server-scores a delivery session", asyn
 	expect(scorePayload).toEqual(
 		expect.arrayContaining([expect.objectContaining({ score: 0 })]),
 	);
-	await expect(page.getByText('"score": 0').first()).toBeVisible();
+	await expect(page.getByTestId("backend-outcome")).toContainText('"score": 0');
 
 	await page.getByRole("button", { name: "New backend session" }).click();
 	await expect(page.getByRole("radio", { name: /Mars/ })).not.toBeChecked({
 		timeout: 10_000,
 	});
-	await expect(page.getByText('"data": []').first()).toBeVisible();
+	await expect(page.getByTestId("stored-session")).toContainText('"data": []');
 
 	const persistedSessionId = await page.getByLabel("Session ID").inputValue();
 	await page.request.post("/api/player/save", {
@@ -127,7 +129,7 @@ test("backend demo loads, autosaves, and server-scores a delivery session", asyn
 		timeout: 10_000,
 	});
 	await page.getByRole("button", { name: "server score()" }).click();
-	await expect(page.getByText('"score": 1').first()).toBeVisible();
+	await expect(page.getByTestId("backend-outcome")).toContainText('"score": 1');
 
 	await page.getByRole("button", { name: "Load current session" }).click();
 	await expect(page.getByLabel("Session ID")).toHaveValue(persistedSessionId);

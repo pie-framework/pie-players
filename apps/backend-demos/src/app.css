@@ -1,22 +1,30 @@
-:root {
-	color: #17202a;
-	background: #f4f1ea;
-	font-family:
-		"IBM Plex Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+@import "tailwindcss";
+
+@import "daisyui/daisyui.css";
+@import "daisyui/themes.css";
+
+@layer theme {
+	:root[data-theme="light"] {
+		--p: 26 93 71;
+		--pc: 0 0 100;
+		--s: 217 55 37;
+		--sc: 0 0 100;
+	}
+
+	:root[data-theme="dark"] {
+		--p: 10 79 62;
+		--pc: 0 0 100;
+		--s: 217 91 72;
+		--sc: 0 0 100;
+	}
 }
 
-* {
-	box-sizing: border-box;
-}
-
+html,
 body {
 	margin: 0;
+	padding: 0;
 	min-width: 320px;
 	min-height: 100vh;
-}
-
-button {
-	font: inherit;
 }
 
 pre {

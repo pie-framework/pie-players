@@ -1,6 +1,11 @@
 <script lang="ts">
 	import { onMount, tick } from "svelte";
 	import "@pie-players/pie-item-player";
+	import BackendModelFlowPanel from "$lib/components/BackendModelFlowPanel.svelte";
+	import BackendStatePanel from "$lib/components/BackendStatePanel.svelte";
+	import BackendToolBar from "$lib/components/BackendToolBar.svelte";
+	import BackendToolWindow from "$lib/components/BackendToolWindow.svelte";
+	import EventLogPanel from "$lib/components/EventLogPanel.svelte";
 
 	type EventLogEntry = {
 		at: string;
@@ -26,20 +31,25 @@
 	let playerEl: any = $state(null);
 	let selectedItemId = $state(defaultItemId);
 	let sessionId = $state(`${defaultItemId}-session-1`);
-	let selectedStrategy = $state<"iife" | "esm">("iife");
 	let demoState = $state<DemoState>({});
 	let eventLog = $state<EventLogEntry[]>([]);
 	let clientSessionSnapshot = $state<unknown>(null);
 	let serverSessionSnapshot = $state<unknown>(null);
 	let backendModel = $state<unknown>(null);
 	let serverScore = $state<unknown>(null);
-	let localScore = $state<unknown>(null);
 	let busyMessage = $state("");
 	let errorMessage = $state("");
+	let showModelPanel = $state(false);
+	let showSessionPanel = $state(false);
+	let showEventsPanel = $state(false);
 	const availableItems = $derived(demoState.items || []);
 	const selectedItem = $derived(
 		availableItems.find((item) => item.id === selectedItemId) || null,
 	);
+	const databaseMetadata = $derived({
+		dbPath: demoState.dbPath,
+		sessions: demoState.sessions,
+	});
 
 	function logEvent(type: string, detail: unknown) {
 		eventLog = [
@@ -104,17 +114,11 @@
 	$effect(() => {
 		if (!playerEl) return;
 		playerEl.env = env;
-		playerEl.strategy = selectedStrategy;
-		playerEl.loaderOptions =
-			selectedStrategy === "esm"
-				? {
-						esmCdnUrl: "https://cdn.jsdelivr.net/npm",
-						runtimeSupportCheck: "on",
-					}
-				: {
-						bundleHost: "https://proxy.pie-api.com/bundles/",
-						runtimeSupportCheck: "on",
-					};
+		playerEl.strategy = "iife";
+		playerEl.loaderOptions = {
+			bundleHost: "https://proxy.pie-api.com/bundles/",
+			runtimeSupportCheck: "on",
+		};
 		playerEl.backend = backendConfig();
 	});
 
@@ -139,6 +143,7 @@
 					}
 					clientSessionSnapshot = loadedSession ?? null;
 					void refreshServerSnapshot();
+					void refreshBackendModelSnapshot();
 				}
 				if (type === "session-changed") {
 					const session = (detail as any)?.session;
@@ -182,7 +187,7 @@
 	async function reloadCurrentSession() {
 		await runAction("Loading session from backend", async () => {
 			await playerEl?.loadFromBackend("delivery");
-			await refreshServerSnapshot();
+			await Promise.all([refreshServerSnapshot(), refreshBackendModelSnapshot()]);
 		});
 	}
 
@@ -193,10 +198,9 @@
 			serverSessionSnapshot = null;
 			backendModel = null;
 			serverScore = null;
-			localScore = null;
 			await tick();
 			await playerEl?.loadFromBackend("delivery");
-			await refreshServerSnapshot();
+			await Promise.all([refreshServerSnapshot(), refreshBackendModelSnapshot()]);
 		});
 	}
 
@@ -208,7 +212,6 @@
 		serverSessionSnapshot = null;
 		backendModel = null;
 		serverScore = null;
-		localScore = null;
 		await tick();
 		await reloadCurrentSession();
 	}
@@ -227,27 +230,18 @@
 		});
 	}
 
-	async function refreshBackendModel() {
-		await runAction("Loading backend controller model()", async () => {
-			const response = await fetch("/api/player/model", {
-				method: "POST",
-				headers: {
-					"content-type": "application/json",
-				},
-				body: JSON.stringify({
-					itemId: selectedItemId,
-					sessionId,
-					env,
-				}),
-			});
-			backendModel = await response.json();
+	async function refreshBackendModelSnapshot() {
+		const response = await fetch("/api/player/model", {
+			method: "POST",
+			headers: {
+				"content-type": "application/json",
+			},
+			body: JSON.stringify({
+				itemId: selectedItemId,
+				env,
+			}),
 		});
-	}
-
-	async function scoreLocally() {
-		await runAction("Scoring locally through provideScore()", async () => {
-			localScore = await playerEl?.provideScore();
-		});
+		backendModel = await response.json();
 	}
 </script>
 
@@ -255,361 +249,165 @@
 	<title>PIE Backend Integration Demo</title>
 </svelte:head>
 
-<main class="backend-demo-shell">
-	<section class="hero-panel">
-		<p class="eyebrow">PIE backend contract lab</p>
-		<h1>Delivery backend integration</h1>
-		<p class="lede">
-			This demo wires <code>pie-item-player</code> to local
-			<code>/api/player/*</code> endpoints shaped like the delivery subset used by
-			legacy <code>pie-api-player</code>. Auth, sanctioned versions, overrides, and
-			PIE API release concerns are intentionally absent.
-		</p>
-		<p class="lede">
-			The backend stores raw item config, but delivery loads controller-processed
-			models. For student delivery, that keeps correct-response data and scoring
-			logic on the server: <code>/api/player/model</code> runs controller
-			<code>model()</code>, and <code>/api/player/score</code> runs controller
-			<code>outcome()</code>.
-		</p>
-	</section>
+<main class="min-h-screen bg-base-200">
+	<div class="container mx-auto max-w-7xl px-4 py-10">
+		<div class="grid gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)] lg:items-start">
+			<section class="card bg-base-100 shadow-xl">
+				<div class="card-body gap-4">
+					<div class="badge badge-secondary badge-outline">Backend contract</div>
+					<h1 class="text-4xl font-bold tracking-tight md:text-5xl">
+						Delivery backend integration
+					</h1>
+					<p class="text-base-content/80">
+						This demo wires <code class="kbd kbd-sm">pie-item-player</code> to local
+						<code class="kbd kbd-sm">/api/player/*</code> endpoints shaped like the
+						delivery subset used by legacy <code class="kbd kbd-sm">pie-api-player</code>.
+						Auth, sanctioned versions, overrides, and PIE API release concerns are
+						intentionally absent.
+					</p>
+					<p class="text-base-content/80">
+						The backend stores raw item config, but delivery loads controller-processed
+						models. For student delivery, that keeps correct-response data and scoring
+						logic on the server: <code class="kbd kbd-sm">/api/player/model</code> runs
+						controller <code class="kbd kbd-sm">model()</code>, and
+						<code class="kbd kbd-sm">/api/player/score</code> runs controller
+						<code class="kbd kbd-sm">outcome()</code>.
+					</p>
+				</div>
+			</section>
 
-	<section
-		class="control-rack"
-		aria-label="Backend demo controls"
-		aria-busy={busyMessage ? "true" : "false"}
-	>
-		<label>
-			Demo item from SQLite
-			<select value={selectedItemId} onchange={loadSelectedItem}>
-				{#each availableItems as item}
-					<option value={item.id}>{item.name}</option>
-				{/each}
-			</select>
-		</label>
-		<label>
-			Session ID
-			<input bind:value={sessionId} />
-		</label>
-		<label>
-			Loader strategy
-			<select bind:value={selectedStrategy}>
-				<option value="iife">iife</option>
-				<option value="esm">esm</option>
-			</select>
-		</label>
-		<div class="button-row">
-			<button type="button" onclick={reloadCurrentSession}>Load current session</button>
-			<button type="button" onclick={createFreshSession}>New backend session</button>
-			<button type="button" onclick={saveExplicitly}>saveSession()</button>
-			<button type="button" onclick={refreshBackendModel}>backend model()</button>
-			<button type="button" onclick={scoreOnServer}>server score()</button>
-			<button type="button" onclick={scoreLocally}>local provideScore()</button>
+			<section
+				class="card bg-base-100 shadow-xl"
+				aria-label="Backend demo controls"
+				aria-busy={busyMessage ? "true" : "false"}
+			>
+				<div class="card-body gap-5">
+					<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+						<label class="form-control w-full">
+							<span class="label">
+								<span class="label-text font-semibold">Demo item from SQLite</span>
+							</span>
+							<select class="select select-bordered w-full" value={selectedItemId} onchange={loadSelectedItem}>
+								{#each availableItems as item}
+									<option value={item.id}>{item.name}</option>
+								{/each}
+							</select>
+						</label>
+						<label class="form-control w-full">
+							<span class="label">
+								<span class="label-text font-semibold">Session ID</span>
+							</span>
+							<input class="input input-bordered w-full" bind:value={sessionId} />
+						</label>
+					</div>
+
+					<div class="flex flex-wrap gap-2">
+						<button class="btn btn-primary" type="button" onclick={reloadCurrentSession}>
+							Load current session
+						</button>
+						<button class="btn btn-outline" type="button" onclick={createFreshSession}>
+							New backend session
+						</button>
+						<button class="btn btn-outline" type="button" onclick={saveExplicitly}>
+							saveSession()
+						</button>
+						<button class="btn btn-outline" type="button" onclick={scoreOnServer}>
+							server score()
+						</button>
+					</div>
+
+					<div class="divider my-0"></div>
+
+					<BackendToolBar
+						{showModelPanel}
+						{showSessionPanel}
+						{showEventsPanel}
+						onToggleModelPanel={() => (showModelPanel = !showModelPanel)}
+						onToggleSessionPanel={() => (showSessionPanel = !showSessionPanel)}
+						onToggleEventsPanel={() => (showEventsPanel = !showEventsPanel)}
+					/>
+
+					{#if busyMessage}
+						<div class="alert alert-info" role="status" aria-live="polite">
+							<span>Working: {busyMessage}</span>
+						</div>
+					{/if}
+					{#if errorMessage}
+						<div class="alert alert-error" role="alert">
+							<pre class="text-sm">{errorMessage}</pre>
+						</div>
+					{/if}
+				</div>
+			</section>
 		</div>
-		{#if busyMessage}
-			<p class="status" role="status" aria-live="polite">Working: {busyMessage}</p>
-		{/if}
-		{#if errorMessage}
-			<pre class="error-box" role="alert">{errorMessage}</pre>
-		{/if}
-	</section>
 
-	<section class="concept-panel" aria-label="Backend model and scoring boundary">
-		<article>
-			<h2>Raw database config</h2>
-			<p>
-				SQLite keeps the authored model, including correct-response fields that
-				should not be sent directly to student clients.
-			</p>
-			<pre>{JSON.stringify(selectedItem?.config ?? null, null, 2)}</pre>
-		</article>
-		<article>
-			<h2>Controller-processed model</h2>
-			<p>
-				<code>/api/player/model</code> loads the right controller and returns the
-				model after <code>model()</code> has filtered it for <code>env</code>.
-			</p>
-			<pre>{JSON.stringify(backendModel, null, 2)}</pre>
-		</article>
-		<article>
-			<h2>SQLite metadata</h2>
-			<p>
-				The demo database lives on disk so reloads can hydrate saved sessions.
-			</p>
-			<pre>{JSON.stringify({ dbPath: demoState.dbPath, sessions: demoState.sessions }, null, 2)}</pre>
-		</article>
-	</section>
-
-	<section class="workbench">
-		<div class="player-card">
-			<div class="card-heading">
-				<span>Live item player</span>
-				<code>{selectedStrategy}</code>
+		<section class="card mt-6 min-h-96 bg-base-100 shadow-xl">
+			<div class="card-body">
+				<div class="mb-2 flex items-center justify-between gap-4">
+					<h2 class="card-title">Live item player</h2>
+					<div class="badge badge-primary badge-outline">backend delivery</div>
+				</div>
+				<pie-item-player class="block min-h-60" bind:this={playerEl}></pie-item-player>
 			</div>
-			<pie-item-player bind:this={playerEl}></pie-item-player>
-		</div>
+		</section>
 
-		<div class="telemetry-grid">
-			<article>
-				<h2>Client session</h2>
-				<pre data-testid="client-session">{JSON.stringify(clientSessionSnapshot, null, 2)}</pre>
-			</article>
-			<article>
-				<h2>Stored backend session</h2>
-				<pre data-testid="stored-session">{JSON.stringify(serverSessionSnapshot, null, 2)}</pre>
-			</article>
-			<article>
-				<h2>Backend outcome</h2>
-				<pre data-testid="backend-outcome">{JSON.stringify(serverScore, null, 2)}</pre>
-			</article>
-			<article>
-				<h2>Local score</h2>
-				<pre>{JSON.stringify(localScore, null, 2)}</pre>
-			</article>
-		</div>
-	</section>
+		{#if showModelPanel}
+			<BackendToolWindow
+				title="Backend model flow"
+				ariaLabel="Backend model flow tool"
+				offset={0}
+				widthClass="w-[min(48rem,calc(100vw-2rem))]"
+				onClose={() => (showModelPanel = false)}
+			>
+				{#snippet icon()}
+					<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 6h6m-6 4h6m-7 4h8m-9 6h10a2 2 0 002-2V6.5L14.5 2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+					</svg>
+				{/snippet}
+				<BackendModelFlowPanel
+					rawConfig={selectedItem?.config ?? null}
+					processedModel={backendModel}
+					{databaseMetadata}
+				/>
+			</BackendToolWindow>
+		{/if}
 
-	<section class="event-log" aria-label="Backend event log">
-		<h2>Event stream</h2>
-		{#each eventLog as entry}
-			<article>
-				<header>
-					<time>{entry.at}</time>
-					<strong>{entry.type}</strong>
-				</header>
-				<pre>{JSON.stringify(entry.detail, null, 2)}</pre>
-			</article>
-		{/each}
-	</section>
+		{#if showSessionPanel}
+			<BackendToolWindow
+				title="Backend state"
+				ariaLabel="Backend state tool"
+				offset={1}
+				widthClass="w-[min(48rem,calc(100vw-2rem))]"
+				onClose={() => (showSessionPanel = false)}
+			>
+				{#snippet icon()}
+					<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+					</svg>
+				{/snippet}
+				<BackendStatePanel
+					clientSession={clientSessionSnapshot}
+					storedSession={serverSessionSnapshot}
+					backendScore={serverScore}
+				/>
+			</BackendToolWindow>
+		{/if}
+
+		{#if showEventsPanel}
+			<BackendToolWindow
+				title="Event stream"
+				ariaLabel="Backend event stream tool"
+				offset={2}
+				widthClass="w-[min(48rem,calc(100vw-2rem))]"
+				onClose={() => (showEventsPanel = false)}
+			>
+				{#snippet icon()}
+					<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0l-3-3m3 3l-3 3M3 17h8m0 0l-3-3m3 3l-3 3M3 7h5m8 10h5" />
+					</svg>
+				{/snippet}
+				<EventLogPanel entries={eventLog} />
+			</BackendToolWindow>
+		{/if}
+	</div>
 </main>
-
-<style>
-	.backend-demo-shell {
-		min-height: 100vh;
-		padding: 32px;
-		background:
-			linear-gradient(90deg, rgba(23, 32, 42, 0.05) 1px, transparent 1px),
-			linear-gradient(rgba(23, 32, 42, 0.05) 1px, transparent 1px),
-			#f4f1ea;
-		background-size: 28px 28px;
-	}
-
-	.hero-panel,
-	.concept-panel article,
-	.control-rack,
-	.player-card,
-	.telemetry-grid article,
-	.event-log {
-		border: 2px solid #17202a;
-		background: rgba(255, 252, 244, 0.94);
-		box-shadow: 8px 8px 0 #17202a;
-	}
-
-	.hero-panel {
-		max-width: 1060px;
-		padding: 28px;
-		margin-bottom: 28px;
-	}
-
-	.eyebrow {
-		margin: 0 0 8px;
-		text-transform: uppercase;
-		letter-spacing: 0.18em;
-		font-size: 0.8rem;
-		color: #a13d20;
-	}
-
-	h1,
-	h2,
-	p {
-		margin-top: 0;
-	}
-
-	h1 {
-		margin-bottom: 12px;
-		font-size: clamp(2.25rem, 6vw, 5rem);
-		line-height: 0.9;
-		letter-spacing: -0.08em;
-	}
-
-	.lede {
-		max-width: 850px;
-		margin-bottom: 14px;
-		font-size: 1rem;
-		line-height: 1.6;
-	}
-
-	.lede:last-child {
-		margin-bottom: 0;
-	}
-
-	code {
-		padding: 2px 6px;
-		background: #17202a;
-		color: #f9d65c;
-	}
-
-	.control-rack {
-		display: grid;
-		gap: 16px;
-		padding: 20px;
-		margin-bottom: 28px;
-	}
-
-	label {
-		display: grid;
-		gap: 6px;
-		font-weight: 700;
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-	}
-
-	input,
-	select {
-		width: min(100%, 460px);
-		padding: 10px 12px;
-		border: 2px solid #17202a;
-		background: #fff;
-		font: inherit;
-	}
-
-	.button-row {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 10px;
-	}
-
-	button {
-		padding: 10px 14px;
-		border: 2px solid #17202a;
-		background: #f9d65c;
-		color: #17202a;
-		font-weight: 800;
-		cursor: pointer;
-		box-shadow: 3px 3px 0 #17202a;
-	}
-
-	button:hover {
-		transform: translate(1px, 1px);
-		box-shadow: 2px 2px 0 #17202a;
-	}
-
-	.status {
-		margin: 0;
-		font-weight: 700;
-	}
-
-	.error-box {
-		padding: 12px;
-		border: 2px solid #a13d20;
-		background: #ffe4dc;
-	}
-
-	.workbench {
-		display: grid;
-		grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
-		gap: 28px;
-		align-items: start;
-	}
-
-	.concept-panel {
-		display: grid;
-		grid-template-columns: repeat(3, minmax(0, 1fr));
-		gap: 18px;
-		margin-bottom: 28px;
-	}
-
-	.concept-panel article {
-		padding: 16px;
-	}
-
-	.player-card {
-		padding: 20px;
-		min-height: 360px;
-	}
-
-	.card-heading {
-		display: flex;
-		justify-content: space-between;
-		gap: 16px;
-		margin-bottom: 18px;
-		font-weight: 900;
-		text-transform: uppercase;
-		letter-spacing: 0.1em;
-	}
-
-	pie-item-player {
-		display: block;
-		min-height: 240px;
-	}
-
-	.telemetry-grid {
-		display: grid;
-		gap: 18px;
-	}
-
-	.telemetry-grid article,
-	.event-log {
-		padding: 16px;
-	}
-
-	.concept-panel h2,
-	.telemetry-grid h2,
-	.event-log h2 {
-		margin-bottom: 10px;
-		font-size: 1rem;
-		text-transform: uppercase;
-		letter-spacing: 0.1em;
-	}
-
-	.concept-panel p {
-		min-height: 66px;
-		margin-bottom: 10px;
-		line-height: 1.45;
-	}
-
-	.concept-panel pre,
-	.telemetry-grid pre,
-	.event-log pre {
-		max-height: 220px;
-		overflow: auto;
-		padding: 12px;
-		background: #17202a;
-		color: #d5ffe4;
-		font-size: 0.78rem;
-	}
-
-	.event-log {
-		margin-top: 28px;
-	}
-
-	.event-log article {
-		border-top: 1px solid rgba(23, 32, 42, 0.25);
-		padding: 12px 0;
-	}
-
-	.event-log header {
-		display: flex;
-		gap: 12px;
-		align-items: baseline;
-		margin-bottom: 8px;
-	}
-
-	.event-log time {
-		color: #a13d20;
-	}
-
-	@media (max-width: 980px) {
-		.backend-demo-shell {
-			padding: 18px;
-		}
-
-		.workbench {
-			grid-template-columns: 1fr;
-		}
-
-		.concept-panel {
-			grid-template-columns: 1fr;
-		}
-	}
-</style>

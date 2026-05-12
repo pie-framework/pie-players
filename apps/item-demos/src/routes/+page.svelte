@@ -20,9 +20,6 @@
 	}));
 
 	function hrefForDemo(demo: (typeof demos)[number]) {
-		if (demo.id === 'authoring-contract-fixture') {
-			return `/demo/${demo.id}/author?mode=gather&role=student`;
-		}
 		return `/demo/${demo.id}/delivery?player=iife`;
 	}
 </script>

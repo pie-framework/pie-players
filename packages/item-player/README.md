@@ -106,6 +106,10 @@ These are set via JavaScript, not HTML attributes.
 - `sanitizeMarkup`: `(markup: string) => string`. Replace the built-in
   DOMPurify sanitizer with a host-supplied function. Ignored when
   `trust-markup` is set.
+- `backend`: JS-only backend integration namespace. Use `backend.delivery` for
+  API-backed item/session load, autosave, explicit save, and server scoring.
+  Existing player inputs such as `env`, `strategy`, `loaderOptions`, `config`,
+  and `session` remain top-level player properties.
 
 ## Methods
 
@@ -117,6 +121,13 @@ These are set via JavaScript, not HTML attributes.
 - `validateModels(): Promise<AuthoringValidationResult>` runs authoring-mode
   validation for rendered configure elements and returns
   `{ hasErrors, validatedModels }`.
+- `loadFromBackend(scope?: "delivery" | "authoring"): Promise<void>` loads
+  configured backend data into the existing player config/session pipeline.
+- `saveSession(): Promise<void>` persists the current session through
+  `backend.delivery`.
+- `score(options?): Promise<unknown>` performs server-backed scoring through
+  `backend.delivery`. This is intentionally separate from local
+  `provideScore()`.
 
 ## Events
 
@@ -129,6 +140,43 @@ These are set via JavaScript, not HTML attributes.
 - `model-loaded`: `{ models, configuration }`. Authoring lifecycle event
   emitted once per renderer initialization after configure elements receive
   models and configuration.
+- `backend-load-complete`: emitted after `backend.delivery` loads config/session
+  data.
+- `backend-session-saved`: emitted after `saveSession()` or delivery autosave
+  persists successfully.
+- `backend-score-complete`: emitted after server-backed `score()` completes.
+- `backend-error`: emitted when backend load/save/score fails.
+
+## Backend delivery
+
+Backend support is a JS-only namespace for networking and persistence. It does
+not duplicate existing delivery inputs such as `env`, `strategy`,
+`loaderOptions`, `bundleEndpoints`, or styling props.
+
+```ts
+const el = document.querySelector("pie-item-player");
+el.env = { mode: "gather", role: "student" };
+el.strategy = "iife";
+el.loaderOptions = { bundleHost: "https://proxy.pie-api.com/bundles/" };
+el.backend = {
+  delivery: {
+    enabled: true,
+    provider: "pie-api",
+    itemId: "item-1",
+    sessionId: "session-1",
+    autosave: { enabled: true, debounceMs: 250 },
+    endpoints: {
+      load: "/api/player/load",
+      saveSession: "/api/player/save",
+      model: "/api/player/model",
+      score: "/api/player/score",
+    },
+  },
+};
+```
+
+For a runnable local backend demo, see
+[`docs/item-player/backend-support.md`](../../docs/item-player/backend-support.md).
 
 ## Authoring configuration
 

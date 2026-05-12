@@ -1,0 +1,25 @@
+:root {
+	color: #17202a;
+	background: #f4f1ea;
+	font-family:
+		"IBM Plex Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+body {
+	margin: 0;
+	min-width: 320px;
+	min-height: 100vh;
+}
+
+button {
+	font: inherit;
+}
+
+pre {
+	margin: 0;
+	white-space: pre-wrap;
+}

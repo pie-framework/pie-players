@@ -84,6 +84,29 @@ describe("resolvePlayerRuntime", () => {
 			"import-map",
 		);
 	});
+
+	test("passes backend config through resolved player props unchanged", async () => {
+		const { resolvePlayerRuntime } = await loadHostRuntime();
+		const backend = {
+			delivery: {
+				enabled: true,
+				itemId: "item-1",
+				sessionId: "session-1",
+			},
+		};
+		const runtime = resolvePlayerRuntime({
+			effectiveRuntime: {
+				playerType: "iife",
+				player: {
+					backend,
+				},
+			},
+			playerType: "iife",
+			env: null,
+		});
+
+		expect((runtime.resolvedPlayerProps as any).backend).toBe(backend);
+	});
 });
 
 describe("resolveSectionPlayerRuntimeState", () => {

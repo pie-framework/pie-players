@@ -4,7 +4,7 @@ import {
 	initializeMathRendering,
 } from "@pie-players/pie-players-shared";
 
-export type { PieItemPlayerElement } from "./types.js";
+export type * from "./types.js";
 
 let itemPlayerMathReadyPromise: Promise<void> | null = null;
 

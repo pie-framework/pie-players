@@ -28,6 +28,7 @@
 			mode: { attribute: "mode", type: "String" },
 			configuration: { attribute: "configuration", type: "Object" },
 			authoringBackend: { attribute: "authoring-backend", type: "String" },
+			backend: { type: "Object", reflect: false },
 			allowedStyleOrigins: { attribute: "allowed-style-origins", type: "String" },
 			loaderOptions: { type: "Object", reflect: false },
 			trustMarkup: { attribute: "trust-markup", type: "Boolean" },
@@ -54,10 +55,21 @@
 	} from "@pie-players/pie-players-shared";
 	import type {
 		AuthoringBackendMode,
+		BackendConfig,
+		BackendScoreOptions,
 		DeleteDone,
 		ImageHandler,
 		SoundHandler,
 	} from "./types.js";
+	import {
+		getDeliveryAutosaveOptions,
+		getDeliveryBackend,
+		getDeliveryBackendLoadSignature,
+		isDeliveryBackendEnabled,
+		loadFromDeliveryBackend,
+		saveToDeliveryBackend,
+		scoreWithDeliveryBackend,
+	} from "./backend/delivery.js";
 	import {
 		BundleType,
 		assertPieConfigContract,
@@ -131,6 +143,7 @@
 		mode = "view" as "view" | "author",
 		configuration = {} as Record<string, any>,
 		authoringBackend = "demo" as AuthoringBackendMode,
+		backend = null as BackendConfig | null,
 		allowedStyleOrigins = "",
 		loaderOptions = {} as UnifiedLoaderOptions,
 		trustMarkup = false,
@@ -330,6 +343,13 @@
 	let bundleRetryStatus: IifeBundleRetryStatus | null = $state(null);
 	let itemConfig: ConfigEntity | null = $state(null);
 	let passageConfig: ConfigEntity | null = $state(null);
+	let backendConfigOverride: unknown | null = $state(null);
+	let backendSessionOverride: unknown | null = $state(null);
+	let backendSessionReplacementRevision = $state(0);
+	let lastAppliedBackendSessionReplacementRevision = 0;
+	let backendLoadSignature = "";
+	let backendSaveTimer: ReturnType<typeof setTimeout> | null = null;
+	let backendSaveQueue: Promise<void> = Promise.resolve();
 	let hostElement: HTMLElement | null = $state(null);
 	let rendererElement: any = $state(null);
 	let sessionController: ItemController | null = $state(null);
@@ -337,6 +357,8 @@
 	let sessionSignature = $state("");
 	let sessionRevision = $state(0);
 	let latestLoadRequestToken = 0;
+	const effectiveConfig = $derived(backendConfigOverride ?? config);
+	const effectiveSession = $derived(backendSessionOverride ?? session);
 
 	function beginLoadRequest(): number {
 		latestLoadRequestToken += 1;
@@ -418,7 +440,7 @@
 	const rendererSession = $derived.by(() => {
 		const _rev = sessionRevision;
 		if (!sessionController) {
-			return normalizeItemSessionContainer(parseSessionProp(session)).data;
+			return normalizeItemSessionContainer(parseSessionProp(effectiveSession)).data;
 		}
 		return sessionController.getSession().data;
 	});
@@ -882,7 +904,7 @@
 	}
 
 	$effect(() => {
-		const currentConfig = config;
+		const currentConfig = effectiveConfig;
 		void normalizedStrategy;
 		void resolvedMode;
 		void resolvedIifeBundleHost;
@@ -901,11 +923,18 @@
 	});
 
 	$effect(() => {
-		const parsed = parseSessionProp(session);
+		const parsed = parseSessionProp(effectiveSession);
+		const shouldForceBackendReplacement =
+			backendSessionReplacementRevision !== lastAppliedBackendSessionReplacementRevision;
 		const controllerItemId = itemConfig?.id || "pie-item-player";
 		const controller = ensureSessionController(controllerItemId, parsed);
 		// Do not let metadata-only prop churn wipe user responses already in the controller.
-		syncControllerSession(controller, parsed, { allowMetadataOverwrite: false });
+		syncControllerSession(controller, parsed, {
+			allowMetadataOverwrite: shouldForceBackendReplacement,
+		});
+		if (shouldForceBackendReplacement) {
+			lastAppliedBackendSessionReplacementRevision = backendSessionReplacementRevision;
+		}
 	});
 
 	const allowedStyleOriginList = $derived(
@@ -1015,6 +1044,200 @@
 		hostElement?.dispatchEvent(newEvent);
 	};
 
+	function currentSessionContainer(): { id: string; data: unknown[] } {
+		const normalized = normalizeItemSessionContainer(parseSessionProp(effectiveSession));
+		if (!sessionController) {
+			return normalized as { id: string; data: unknown[] };
+		}
+		return sessionController.getSession() as { id: string; data: unknown[] };
+	}
+
+	function backendSessionContainer(fallbackSessionId?: string): {
+		id: string;
+		data: unknown[];
+	} {
+		const current = currentSessionContainer();
+		if (current.id || !fallbackSessionId) return current;
+		return {
+			...current,
+			id: fallbackSessionId,
+		};
+	}
+
+	function dispatchBackendEvent(type: string, detail: Record<string, unknown>) {
+		handlePlayerEvent(
+			new CustomEvent(type, {
+				detail,
+			}),
+		);
+	}
+
+	function reportBackendError(operation: string, errorValue: unknown) {
+		const message = errorValue instanceof Error ? errorValue.message : String(errorValue);
+		dispatchBackendEvent("backend-error", {
+			scope: "delivery",
+			operation,
+			message,
+			error: errorValue,
+		});
+	}
+
+	async function performBackendLoad(
+		scope: "delivery" | "authoring",
+		expectedSignature: string,
+	): Promise<void> {
+		if (scope !== "delivery") {
+			throw new Error("backend.authoring is reserved but not implemented in this delivery pass.");
+		}
+		if (!backend || !isDeliveryBackendEnabled(backend)) {
+			throw new Error("backend.delivery is not configured.");
+		}
+		const result = await loadFromDeliveryBackend(backend, parseEnvValue(env));
+		if (
+			expectedSignature &&
+			getDeliveryBackendLoadSignature(backend) !== expectedSignature
+		) {
+			return;
+		}
+		backendConfigOverride = result.config;
+		backendSessionOverride = result.session;
+		backendSessionReplacementRevision += 1;
+		dispatchBackendEvent("backend-load-complete", {
+			scope: "delivery",
+			operation: "load",
+			metadata: result.metadata ?? {},
+			session: result.session,
+		});
+	}
+
+	export async function loadFromBackend(scope: "delivery" | "authoring" = "delivery"): Promise<void> {
+		return performBackendLoad(scope, getDeliveryBackendLoadSignature(backend));
+	}
+
+	async function persistCurrentSession(): Promise<void> {
+		if (!backend || !getDeliveryBackend(backend)) {
+			throw new Error("backend.delivery is not configured.");
+		}
+		const delivery = getDeliveryBackend(backend)!;
+		const sessionContainer = backendSessionContainer(delivery.sessionId);
+		await saveToDeliveryBackend(backend, {
+			itemId: delivery.itemId,
+			sessionId: delivery.sessionId,
+			assignmentId: delivery.assignmentId,
+			session: sessionContainer,
+			env: parseEnvValue(env),
+		});
+		dispatchBackendEvent("backend-session-saved", {
+			scope: "delivery",
+			operation: "saveSession",
+			sessionId: sessionContainer.id,
+			session: sessionContainer,
+		});
+	}
+
+	export async function saveSession(): Promise<void> {
+		const nextSave = backendSaveQueue
+			.catch(() => undefined)
+			.then(() => persistCurrentSession());
+		backendSaveQueue = nextSave;
+		return nextSave;
+	}
+
+	export async function score(options?: BackendScoreOptions): Promise<unknown> {
+		if (!backend || !getDeliveryBackend(backend)) {
+			throw new Error("backend.delivery is not configured.");
+		}
+		const delivery = getDeliveryBackend(backend)!;
+		const sessionContainer = backendSessionContainer(delivery.sessionId);
+		const result = await scoreWithDeliveryBackend(
+			backend,
+			{
+				itemId: delivery.itemId,
+				sessionId: delivery.sessionId,
+				assignmentId: delivery.assignmentId,
+				session: sessionContainer,
+				env: parseEnvValue(env),
+			},
+			options,
+		);
+		dispatchBackendEvent("backend-score-complete", {
+			scope: "delivery",
+			operation: "score",
+			sessionId: sessionContainer.id,
+			score: result,
+		});
+		return result;
+	}
+
+	export async function saveContent(): Promise<string> {
+		throw new Error("backend.authoring saveContent is reserved but not implemented in this delivery pass.");
+	}
+
+	export async function releaseContent(): Promise<string> {
+		throw new Error("backend.authoring releaseContent is reserved but not implemented in this delivery pass.");
+	}
+
+	function scheduleBackendAutosave() {
+		if (!backend) return;
+		const delivery = getDeliveryBackend(backend);
+		if (!delivery) return;
+		const autosave = getDeliveryAutosaveOptions(delivery.autosave);
+		if (!autosave.enabled) return;
+		if (backendSaveTimer) {
+			clearTimeout(backendSaveTimer);
+		}
+		const saveSignature = getDeliveryBackendLoadSignature(backend);
+		backendSaveTimer = setTimeout(() => {
+			backendSaveTimer = null;
+			if (saveSignature !== getDeliveryBackendLoadSignature(backend)) {
+				return;
+			}
+			void saveSession().catch((errorValue) => {
+				reportBackendError("saveSession", errorValue);
+			});
+		}, autosave.debounceMs);
+	}
+
+	$effect(() => {
+		const signature = getDeliveryBackendLoadSignature(backend);
+		if (!signature) {
+			queueMicrotask(() => {
+				untrack(() => {
+					if (backendSaveTimer) {
+						clearTimeout(backendSaveTimer);
+						backendSaveTimer = null;
+					}
+					backendLoadSignature = "";
+					backendConfigOverride = null;
+					backendSessionOverride = null;
+				});
+			});
+			return;
+		}
+		if (signature === backendLoadSignature) return;
+		if (backendSaveTimer) {
+			clearTimeout(backendSaveTimer);
+			backendSaveTimer = null;
+		}
+		backendLoadSignature = signature;
+		queueMicrotask(() => {
+			untrack(() => {
+				void performBackendLoad("delivery", signature).catch((errorValue) => {
+					reportBackendError("load", errorValue);
+				});
+			});
+		});
+	});
+
+	$effect(() => {
+		return () => {
+			if (backendSaveTimer) {
+				clearTimeout(backendSaveTimer);
+				backendSaveTimer = null;
+			}
+		};
+	});
+
 	// pie-item contract compatibility: legacy <pie-player> exposed local
 	// browser scoring through provideScore(); current item-player behavior is
 	// unchanged unless a host opts into this new imperative method.
@@ -1097,12 +1320,28 @@
 			return;
 		}
 		const controllerItemId = itemConfig?.id || "pie-item-player";
-		const controller = ensureSessionController(controllerItemId, parseSessionProp(session));
+		const controller = ensureSessionController(
+			controllerItemId,
+			parseSessionProp(effectiveSession),
+		);
 		const beforeSignature = sessionSignature;
-		const normalized = controller.updateFromEventDetail(detail, {
+		const previousSessionId = controller.getSession().id || "";
+		let normalized = controller.updateFromEventDetail(detail, {
 			persist: false,
 			allowMetadataOverwrite: false,
 		});
+		if (!normalized.id && previousSessionId) {
+			normalized = controller.setSession(
+				{
+					...normalized,
+					id: previousSessionId,
+				},
+				{
+					persist: false,
+					allowMetadataOverwrite: true,
+				},
+			);
+		}
 		const nextSignature = JSON.stringify(normalized);
 		if (nextSignature === beforeSignature) {
 			return;
@@ -1111,6 +1350,7 @@
 		sessionRevision += 1;
 		const forwardedDetail = { ...detailObj, session: normalized };
 		handlePlayerEvent(new CustomEvent("session-changed", { detail: forwardedDetail }));
+		scheduleBackendAutosave();
 	};
 </script>
 

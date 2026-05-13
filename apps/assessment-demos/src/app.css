@@ -1,20 +1,55 @@
 @import "tailwindcss";
-@import "daisyui/daisyui.css";
-@import "daisyui/themes.css";
+@plugin "daisyui";
 
-@layer theme {
-	:root[data-theme="light"] {
-		--p: 26 93 71;
-		--pc: 0 0 100;
-		--s: 217 55 37;
-		--sc: 0 0 100;
+/* PIE theme overrides — matches apps/docs and the pie-website-ng site. */
+[data-theme="light"] {
+	--color-primary: oklch(0.63 0.22 27); /* #ee4923 — PIE orange from logo */
+	--color-primary-content: oklch(1 0 0);
+	--color-secondary: oklch(0.35 0.08 230); /* #1e3a5f — deep navy */
+	--color-secondary-content: oklch(1 0 0);
+}
+
+[data-theme="dark"] {
+	--color-primary: oklch(0.67 0.24 27); /* #ff5733 — brighter orange for dark mode */
+	--color-primary-content: oklch(1 0 0);
+	--color-secondary: oklch(0.62 0.24 250); /* #3b82f6 — lighter blue for dark mode */
+	--color-secondary-content: oklch(1 0 0);
+}
+
+@layer base {
+	html {
+		scroll-behavior: smooth;
 	}
-
-	:root[data-theme="dark"] {
-		--p: 10 79 62;
-		--pc: 0 0 100;
-		--s: 217 91 72;
-		--sc: 0 0 100;
+	body {
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
+	}
+	:focus-visible {
+		outline: 3px solid var(--color-primary);
+		outline-offset: 2px;
+		border-radius: 0.25rem;
+	}
+	button:focus-visible,
+	.btn:focus-visible,
+	a:focus-visible {
+		outline: 3px solid var(--color-primary);
+		outline-offset: 2px;
+	}
+	input:focus-visible,
+	textarea:focus-visible,
+	select:focus-visible {
+		outline: 3px solid var(--color-primary);
+		outline-offset: 1px;
+	}
+	@media (prefers-reduced-motion: reduce) {
+		*,
+		*::before,
+		*::after {
+			animation-duration: 0.01ms !important;
+			animation-iteration-count: 1 !important;
+			transition-duration: 0.01ms !important;
+			scroll-behavior: auto !important;
+		}
 	}
 }
 

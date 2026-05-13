@@ -1,11 +1,13 @@
 <script lang="ts">
 	import "../app.css";
+	import SiteHeader from "$lib/components/SiteHeader.svelte";
+
+	let { children } = $props();
 </script>
 
-<svelte:head>
-	<script>
-		document.documentElement.setAttribute("data-theme", "light");
-	</script>
-</svelte:head>
-
-<slot />
+<div class="flex min-h-screen flex-col">
+	<SiteHeader title="PIE Backend Demos" subtitle="Backend integration recipes" />
+	<main class="flex-1">
+		{@render children()}
+	</main>
+</div>

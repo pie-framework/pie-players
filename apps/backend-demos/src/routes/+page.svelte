@@ -249,13 +249,15 @@
 	<title>PIE Backend Integration Demo</title>
 </svelte:head>
 
-<main class="min-h-screen bg-base-200">
+<main class="bg-base-200">
 	<div class="container mx-auto max-w-7xl px-4 py-10">
 		<div class="grid gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)] lg:items-start">
 			<section class="card bg-base-100 shadow-xl">
 				<div class="card-body gap-4">
-					<div class="badge badge-secondary badge-outline">Backend contract</div>
-					<h1 class="text-4xl font-bold tracking-tight md:text-5xl">
+					<p class="text-xs font-bold uppercase tracking-[0.08em] text-primary">
+						Backend contract
+					</p>
+					<h1 class="text-4xl font-bold tracking-tight text-secondary md:text-5xl">
 						Delivery backend integration
 					</h1>
 					<p class="text-base-content/80">

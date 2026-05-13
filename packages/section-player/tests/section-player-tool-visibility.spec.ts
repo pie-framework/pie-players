@@ -52,14 +52,16 @@ test.describe("section demo tool visibility from item data", () => {
 		await basicButton.click();
 		await firstDesmosAuthResponse;
 		const basicCalculator = page.locator(
-			'pie-tool-calculator[tool-id="calculator:item:q1-photosynthesis-products"]',
+			'pie-tool-calculator[tool-id="calculator:item:q1-basic-calculator-cost"]',
 		);
 		await expect(basicCalculator).toHaveAttribute("calculator-type", "basic");
-		await expect(calculatorSurface(basicCalculator)).toBeVisible({ timeout: 20_000 });
+		await expect(calculatorSurface(basicCalculator)).toBeVisible({
+			timeout: 20_000,
+		});
 
 		await scientificButton.click();
 		const scientificCalculator = page.locator(
-			'pie-tool-calculator[tool-id="calculator:item:q2-photosynthesis-location"]',
+			'pie-tool-calculator[tool-id="calculator:item:q2-scientific-calculator-growth"]',
 		);
 		await expect(scientificCalculator).toHaveAttribute(
 			"calculator-type",

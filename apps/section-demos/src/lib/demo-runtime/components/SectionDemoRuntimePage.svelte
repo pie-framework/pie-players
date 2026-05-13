@@ -57,7 +57,6 @@
 	const toolsConfigResult = createToolsConfig({
 		source: `section-demos.${demoRuntimeId}`,
 		strictness: 'error',
-		toolRegistry: itemDataCalculatorIntegration?.toolRegistry,
 		tools: {
 			providers: {
 				textToSpeech: SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER,
@@ -107,9 +106,8 @@
 		assessmentId: DEMO_ASSESSMENT_ID,
 		toolConfigStrictness: 'error',
 		tools: toolkitToolsConfig,
-		toolRegistry: itemDataCalculatorIntegration?.toolRegistry
+		toolContextResolvers: itemDataCalculatorIntegration?.toolContextResolvers
 	});
-	itemDataCalculatorIntegration?.registerPolicySource(coordinator);
 
 	let selectedPlayerType = $state(getUrlEnumParam('player', PLAYER_OPTIONS, 'iife'));
 	let roleType = $state<'candidate' | 'scorer'>(getUrlEnumParam('mode', MODE_OPTIONS, 'candidate'));
@@ -426,7 +424,6 @@
 				section={resolvedSectionForPlayer}
 				env={pieEnv}
 				coordinator={coordinator}
-				toolRegistry={itemDataCalculatorIntegration?.toolRegistry}
 				toolbar-position="right"
 				show-toolbar={true}
 				enabled-tools={sectionToolbarTools}
@@ -444,7 +441,6 @@
 				section={resolvedSectionForPlayer}
 				env={pieEnv}
 				coordinator={coordinator}
-				toolRegistry={itemDataCalculatorIntegration?.toolRegistry}
 				toolbar-position="right"
 				show-toolbar={true}
 				enabled-tools={sectionToolbarTools}

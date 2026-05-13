@@ -51,6 +51,12 @@ import type {
 	ITTSProvider,
 	TTSProviderCapabilities,
 } from "@pie-players/pie-tts";
+import type {
+	ResolvedToolContext,
+	ToolContextResolver,
+	ToolContextResolverContext,
+	ToolContextResolverMap,
+} from "./ToolRegistry.js";
 
 // Re-export I18nServiceApi from players-shared
 export type { I18nServiceApi };
@@ -789,6 +795,38 @@ export interface ToolkitCoordinatorApi {
 	 * (the returned function detaches).
 	 */
 	registerPolicySource(source: PolicySource): () => void;
+
+	/**
+	 * Register a host-owned resolver for scoped tool render context.
+	 */
+	registerToolContextResolver(
+		toolId: string,
+		resolver: ToolContextResolver,
+	): () => void;
+
+	/**
+	 * Replace all host-owned render-context resolvers.
+	 */
+	setToolContextResolvers(
+		resolvers: ToolContextResolverMap | null | undefined,
+	): void;
+
+	/**
+	 * Whether a host resolver is registered for this tool.
+	 */
+	hasToolContextResolver(toolId: string): boolean;
+
+	/**
+	 * Resolve render visibility/params for a tool that already survived policy gates.
+	 */
+	resolveToolContext(
+		context: ToolContextResolverContext,
+	): ResolvedToolContext | null;
+
+	/**
+	 * Subscribe to resolver registration/removal changes.
+	 */
+	onToolContextResolverChange(listener: () => void): () => void;
 }
 
 // I18nServiceApi is re-exported from @pie-players/pie-players-shared/i18n

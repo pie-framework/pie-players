@@ -54,11 +54,16 @@ import {
 } from "./tts-runtime-config.js";
 import { ToolProviderRegistry } from "./tool-providers/index.js";
 import type { ToolProviderApi } from "./tool-providers/ToolProviderApi.js";
-import type {
-	TTSToolProviderConfig,
-} from "./tool-providers/index.js";
+import type { TTSToolProviderConfig } from "./tool-providers/index.js";
 import { createPackagedToolRegistry } from "./createDefaultToolRegistry.js";
-import type { ToolRegistration, ToolRegistry } from "./ToolRegistry.js";
+import type {
+	ResolvedToolContext,
+	ToolContextResolver,
+	ToolContextResolverContext,
+	ToolContextResolverMap,
+	ToolRegistration,
+	ToolRegistry,
+} from "./ToolRegistry.js";
 import {
 	ToolPolicyEngine,
 	type PnpEnforcementMode,
@@ -190,6 +195,15 @@ export interface ToolkitCoordinatorConfig {
 	 * Defaults to packaged PIE tools when omitted.
 	 */
 	toolRegistry?: ToolRegistry | null;
+
+	/**
+	 * Host-owned per-tool render-context resolvers. These run after
+	 * framework policy gates (placement, provider config, host policy,
+	 * PNP/profile rules, and custom policy sources) and can hide a
+	 * surviving tool or attach render params for the tool registration.
+	 * They cannot re-enable a tool removed by policy.
+	 */
+	toolContextResolvers?: ToolContextResolverMap;
 
 	/**
 	 * Accessibility configuration.
@@ -523,10 +537,24 @@ export class ToolkitCoordinator {
 	private stateLoadPromise?: Promise<void>;
 	private coordinatorReadyPromise?: Promise<void>;
 	private coordinatorReadyNotified = false;
-	private readonly providerInitPromises = new Map<string, Promise<ToolProviderApi>>();
+	private readonly providerInitPromises = new Map<
+		string,
+		Promise<ToolProviderApi>
+	>();
 	private readonly toolRegistry: ToolRegistry;
-	private readonly sectionControllers = new Map<string, SectionControllerHandle>();
-	private readonly sectionControllerKeys = new Map<string, SectionControllerKey>();
+	private readonly toolContextResolvers = new Map<
+		string,
+		ToolContextResolver
+	>();
+	private readonly toolContextResolverChangeListeners = new Set<() => void>();
+	private readonly sectionControllers = new Map<
+		string,
+		SectionControllerHandle
+	>();
+	private readonly sectionControllerKeys = new Map<
+		string,
+		SectionControllerKey
+	>();
 	private readonly sectionControllerInitPromises = new Map<
 		string,
 		Promise<SectionControllerHandle>
@@ -675,7 +703,9 @@ export class ToolkitCoordinator {
 
 		this.assessmentId = resolvedConfig.assessmentId;
 		this.config = resolvedConfig;
-		this.toolRegistry = resolvedConfig.toolRegistry ?? createPackagedToolRegistry();
+		this.toolRegistry =
+			resolvedConfig.toolRegistry ?? createPackagedToolRegistry();
+		this.installToolContextResolvers(resolvedConfig.toolContextResolvers);
 		this.hooks = resolvedConfig.hooks ?? {};
 		this.lazyInit = config.lazyInit === true;
 		this.pnpEnforcementOverride = this.resolveConfiguredPnpEnforcement();
@@ -684,7 +714,8 @@ export class ToolkitCoordinator {
 		// (typical when embedded inside <pie-assessment-toolkit>, so
 		// pre-coordinator failures from the CE flow through the same
 		// fan-out as coordinator failures). Otherwise own a private one.
-		this.frameworkErrorBus = config.frameworkErrorBus ?? new FrameworkErrorBus();
+		this.frameworkErrorBus =
+			config.frameworkErrorBus ?? new FrameworkErrorBus();
 		this.ownsFrameworkErrorBus = !config.frameworkErrorBus;
 		this.subscribeFrameworkErrorHookAdapters();
 
@@ -726,10 +757,7 @@ export class ToolkitCoordinator {
 
 		if (!this.lazyInit) {
 			void this.waitUntilReady().catch((err) => {
-				console.error(
-					"[ToolkitCoordinator] Failed eager initialization:",
-					err,
-				);
+				console.error("[ToolkitCoordinator] Failed eager initialization:", err);
 				this.handleError(err, { phase: "coordinator-ready" });
 			});
 		}
@@ -803,7 +831,9 @@ export class ToolkitCoordinator {
 		}
 	}
 
-	private emitSectionControllerLifecycle(event: SectionControllerLifecycleEvent): void {
+	private emitSectionControllerLifecycle(
+		event: SectionControllerLifecycleEvent,
+	): void {
 		for (const listener of this.sectionControllerLifecycleListeners) {
 			try {
 				listener(event);
@@ -832,7 +862,9 @@ export class ToolkitCoordinator {
 	 * `onFrameworkError` lifecycle hook, so a listener registered here
 	 * sees the same fan-out the hook sees.
 	 */
-	public subscribeFrameworkErrors(listener: FrameworkErrorListener): () => void {
+	public subscribeFrameworkErrors(
+		listener: FrameworkErrorListener,
+	): () => void {
 		return this.frameworkErrorBus.subscribeFrameworkErrors(listener);
 	}
 
@@ -957,12 +989,12 @@ export class ToolkitCoordinator {
 	}
 
 	private getProviderDescriptorTools(): ToolRegistration[] {
-		return this.toolRegistry
-			.getAllTools()
-			.filter((tool) => !!tool.provider);
+		return this.toolRegistry.getAllTools().filter((tool) => !!tool.provider);
 	}
 
-	private async registerProviderFromTool(tool: ToolRegistration): Promise<void> {
+	private async registerProviderFromTool(
+		tool: ToolRegistration,
+	): Promise<void> {
 		const descriptor = tool.provider;
 		if (!descriptor) return;
 		const toolConfig = this.getToolConfig(tool.toolId) || undefined;
@@ -974,7 +1006,9 @@ export class ToolkitCoordinator {
 		if (this.toolProviderRegistry.has(providerId)) return;
 		const provider = descriptor.createProvider(toolConfig);
 		const initConfig =
-			descriptor.getInitConfig?.(toolConfig) ?? toolConfig?.provider?.init ?? {};
+			descriptor.getInitConfig?.(toolConfig) ??
+			toolConfig?.provider?.init ??
+			{};
 		const initConfigWithTelemetry = this.addToolTelemetryReporter({
 			toolId: tool.toolId,
 			providerId,
@@ -1023,13 +1057,16 @@ export class ToolkitCoordinator {
 				? (configObject.onTelemetry as (
 						eventName: string,
 						payload?: Record<string, unknown>,
-				  ) => void | Promise<void>)
+					) => void | Promise<void>)
 				: null;
 		const forwardTelemetry = this.createToolTelemetryForwarder({
 			toolId: args.toolId,
 			providerId: args.providerId,
 		});
-		configObject.onTelemetry = async (eventName: string, payload?: Record<string, unknown>) => {
+		configObject.onTelemetry = async (
+			eventName: string,
+			payload?: Record<string, unknown>,
+		) => {
 			if (existingReporter) {
 				await existingReporter(eventName, payload);
 			}
@@ -1062,11 +1099,16 @@ export class ToolkitCoordinator {
 		}
 	}
 
-	public async ensureProviderReady(providerId: string): Promise<ToolProviderApi> {
+	public async ensureProviderReady(
+		providerId: string,
+	): Promise<ToolProviderApi> {
 		const existing = this.providerInitPromises.get(providerId);
 		if (existing) return existing;
 		const promise = (async () => {
-			const provider = await this.toolProviderRegistry.getProvider(providerId, false);
+			const provider = await this.toolProviderRegistry.getProvider(
+				providerId,
+				false,
+			);
 			const meta: ProviderLifecycleContext = {
 				providerId,
 				providerName: provider.providerName,
@@ -1119,7 +1161,9 @@ export class ToolkitCoordinator {
 		return this.sectionControllers.get(this.getSectionControllerMapKey(key));
 	}
 
-	public subscribeSectionEvents(args: SectionEventSubscriptionArgs): () => void {
+	public subscribeSectionEvents(
+		args: SectionEventSubscriptionArgs,
+	): () => void {
 		// Phase D: subscriptions follow the toolkit's *active section
 		// cohort* automatically. We bind the listener to whichever
 		// controller is currently active and re-bind it on every
@@ -1195,7 +1239,8 @@ export class ToolkitCoordinator {
 			this.deliverSectionEventSafely(sub.listener, event);
 		});
 
-		const contentLoadedReplays = this.buildContentLoadedReplayEvents(controller);
+		const contentLoadedReplays =
+			this.buildContentLoadedReplayEvents(controller);
 		for (const event of contentLoadedReplays) {
 			if (predicate(event)) {
 				this.deliverSectionEventSafely(sub.listener, event);
@@ -1292,7 +1337,10 @@ export class ToolkitCoordinator {
 		return (event: SectionControllerEvent): boolean => {
 			if (eventTypeFilter || itemIdFilter) {
 				const eventType = event?.type || null;
-				if (eventTypeFilter && (!eventType || !eventTypeFilter.has(eventType))) {
+				if (
+					eventTypeFilter &&
+					(!eventType || !eventTypeFilter.has(eventType))
+				) {
 					return false;
 				}
 				if (itemIdFilter) {
@@ -1313,7 +1361,10 @@ export class ToolkitCoordinator {
 		if ("itemId" in event && typeof event.itemId === "string") {
 			itemIds.add(event.itemId);
 		}
-		if ("canonicalItemId" in event && typeof event.canonicalItemId === "string") {
+		if (
+			"canonicalItemId" in event &&
+			typeof event.canonicalItemId === "string"
+		) {
 			itemIds.add(event.canonicalItemId);
 		}
 		if ("currentItemId" in event && typeof event.currentItemId === "string") {
@@ -1406,7 +1457,9 @@ export class ToolkitCoordinator {
 	 * {@link subscribeSectionEvents}; defaults `eventTypes` to the
 	 * item-scoped subset.
 	 */
-	public subscribeItemEvents(args: SectionItemEventSubscriptionArgs): () => void {
+	public subscribeItemEvents(
+		args: SectionItemEventSubscriptionArgs,
+	): () => void {
 		return this.subscribeSectionEvents({
 			eventTypes: args.eventTypes || SECTION_ITEM_EVENT_TYPES,
 			itemIds: args.itemIds,
@@ -1662,7 +1715,10 @@ export class ToolkitCoordinator {
 			await args.controller.persist?.();
 		}
 		await args.controller.dispose?.();
-		await this.hooks.onSectionControllerDispose?.(args.context, args.controller);
+		await this.hooks.onSectionControllerDispose?.(
+			args.context,
+			args.controller,
+		);
 		await this.emitTelemetry("pie-toolkit-section-controller-disposed", {
 			assessmentId: args.key.assessmentId,
 			sectionId: args.key.sectionId,
@@ -1874,7 +1930,9 @@ export class ToolkitCoordinator {
 				typeof synth.addEventListener === "function" &&
 				typeof synth.removeEventListener === "function"
 			) {
-				synth.addEventListener("voiceschanged", onVoicesChanged, { once: true });
+				synth.addEventListener("voiceschanged", onVoicesChanged, {
+					once: true,
+				});
 			}
 		});
 		const voicesAfterWait = synth.getVoices();
@@ -1938,7 +1996,8 @@ export class ToolkitCoordinator {
 	getInitStatus(): ToolkitInitStatus {
 		const providers: Record<string, boolean> = {};
 		for (const providerId of this.toolProviderRegistry.getProviderIds()) {
-			providers[providerId] = this.toolProviderRegistry.isInitialized(providerId);
+			providers[providerId] =
+				this.toolProviderRegistry.isInitialized(providerId);
 		}
 		const ttsConfig = this.getTTSConfigFromProviders();
 		return {
@@ -1953,8 +2012,11 @@ export class ToolkitCoordinator {
 
 	private getTTSConfigFromProviders(): TTSToolConfig | undefined {
 		const providers =
-			(this.config.tools as { providers?: Record<string, ToolProviderConfig | undefined> })
-				?.providers || {};
+			(
+				this.config.tools as {
+					providers?: Record<string, ToolProviderConfig | undefined>;
+				}
+			)?.providers || {};
 		return providers.textToSpeech as TTSToolConfig | undefined;
 	}
 
@@ -1969,6 +2031,43 @@ export class ToolkitCoordinator {
 		}
 		if (!this.toolRegistry.get(toolId)) {
 			throw new Error(`Unknown tool id "${toolId}".`);
+		}
+	}
+
+	private installToolContextResolvers(
+		resolvers: ToolContextResolverMap | undefined,
+	): void {
+		if (!resolvers) return;
+		for (const [toolId, resolver] of Object.entries(resolvers)) {
+			if (resolver == null) continue;
+			this.assertCanonicalToolId(toolId);
+			if (typeof resolver !== "function") {
+				throw new Error(
+					`Invalid tool context resolver for "${toolId}": expected a function.`,
+				);
+			}
+			this.toolContextResolvers.set(toolId, resolver);
+		}
+	}
+
+	setToolContextResolvers(
+		resolvers: ToolContextResolverMap | null | undefined,
+	): void {
+		this.toolContextResolvers.clear();
+		this.installToolContextResolvers(resolvers ?? undefined);
+		this.notifyToolContextResolverChange();
+	}
+
+	private notifyToolContextResolverChange(): void {
+		for (const listener of this.toolContextResolverChangeListeners) {
+			try {
+				listener();
+			} catch (error) {
+				console.warn(
+					"[ToolkitCoordinator] Tool context resolver listener threw:",
+					error,
+				);
+			}
 		}
 	}
 
@@ -1995,8 +2094,11 @@ export class ToolkitCoordinator {
 	getToolConfig(toolId: string): ToolProviderConfig | null {
 		this.assertCanonicalToolId(toolId);
 		return (
-			((this.config.tools as { providers?: Record<string, ToolProviderConfig | undefined> })
-				?.providers?.[toolId] as ToolProviderConfig | undefined) || null
+			((
+				this.config.tools as {
+					providers?: Record<string, ToolProviderConfig | undefined>;
+				}
+			)?.providers?.[toolId] as ToolProviderConfig | undefined) || null
 		);
 	}
 
@@ -2293,6 +2395,90 @@ export class ToolkitCoordinator {
 	}
 
 	/**
+	 * Register a host-owned resolver for one tool's render context.
+	 *
+	 * Resolvers are evaluated only for tools that already survived the
+	 * framework policy pipeline. They can hide the tool for the current
+	 * scope or attach render params consumed by the packaged registration;
+	 * they cannot re-enable tools blocked by placement, provider config,
+	 * host policy, or PNP/profile rules.
+	 */
+	registerToolContextResolver(
+		toolId: string,
+		resolver: ToolContextResolver,
+	): () => void {
+		this.assertCanonicalToolId(toolId);
+		if (typeof resolver !== "function") {
+			throw new Error(
+				`Invalid tool context resolver for "${toolId}": expected a function.`,
+			);
+		}
+		this.toolContextResolvers.set(toolId, resolver);
+		this.notifyToolContextResolverChange();
+		return () => {
+			if (this.toolContextResolvers.get(toolId) !== resolver) return;
+			this.toolContextResolvers.delete(toolId);
+			this.notifyToolContextResolverChange();
+		};
+	}
+
+	hasToolContextResolver(toolId: string): boolean {
+		this.assertCanonicalToolId(toolId);
+		return this.toolContextResolvers.has(toolId);
+	}
+
+	resolveToolContext(
+		context: ToolContextResolverContext,
+	): ResolvedToolContext | null {
+		this.assertCanonicalToolId(context.toolId);
+		const resolver = this.toolContextResolvers.get(context.toolId);
+		if (!resolver) return null;
+
+		let result: ReturnType<ToolContextResolver>;
+		try {
+			result = resolver(context);
+		} catch (error) {
+			console.error(
+				`[ToolkitCoordinator] Tool context resolver for "${context.toolId}" threw:`,
+				error,
+			);
+			return {
+				toolId: context.toolId,
+				visible: false,
+				params: {},
+				reason: "Tool context resolver threw.",
+			};
+		}
+		if (!result) {
+			return {
+				toolId: context.toolId,
+				visible: true,
+				params: {},
+			};
+		}
+
+		const params =
+			result.params &&
+			typeof result.params === "object" &&
+			!Array.isArray(result.params)
+				? result.params
+				: {};
+		return {
+			toolId: context.toolId,
+			visible: result.visible !== false,
+			params,
+			reason: typeof result.reason === "string" ? result.reason : undefined,
+		};
+	}
+
+	onToolContextResolverChange(listener: () => void): () => void {
+		this.toolContextResolverChangeListeners.add(listener);
+		return () => {
+			this.toolContextResolverChangeListeners.delete(listener);
+		};
+	}
+
+	/**
 	 * Compute the effective PNP/profile enforcement mode given the explicit
 	 * host override and the auto-mode helper.
 	 *
@@ -2367,9 +2553,9 @@ export class ToolkitCoordinator {
 		if (this.toolProviderRegistry.has("tts")) {
 			await this.toolProviderRegistry.unregister("tts");
 		}
-		const ttsRegistration = this
-			.getProviderDescriptorTools()
-			.find((tool) => tool.toolId === "textToSpeech");
+		const ttsRegistration = this.getProviderDescriptorTools().find(
+			(tool) => tool.toolId === "textToSpeech",
+		);
 		if (!ttsRegistration) return;
 		await this.registerProviderFromTool(ttsRegistration);
 	}

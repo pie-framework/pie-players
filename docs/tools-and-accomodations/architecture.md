@@ -323,6 +323,34 @@ const coordinator = new ToolkitCoordinator({
 });
 ```
 
+### Canonical Tool Resolution Flow
+
+Tool resolution is split between policy, host item metadata, and tool-owned
+rendering:
+
+![Tool resolution from policy through host context](../img/tool-resolution-pnp-host-context-clean-1-1778688163577.jpg)
+
+The canonical order is:
+
+1. Static placement and provider config define the candidate set for the
+   current level (`section`, `item`, or `passage`).
+2. Policy rules narrow that set: `tools.policy`, provider `enabled`, custom
+   `PolicySource`s, and PNP/profile precedence.
+3. A host `toolContextResolvers[toolId]` callback may hide a surviving tool
+   for the current item/passage or attach render params such as
+   `{ calculatorType: "scientific" }`.
+4. If no host resolver is registered, the tool registration applies its
+   default `isVisibleInContext` relevance check.
+5. `renderToolbar` receives a resolved `ToolbarContext`, including
+   `getToolRenderParams(toolId)`, and renders the final button and tool
+   element.
+
+The host resolver intentionally cannot re-enable a tool removed by placement,
+provider config, district/test policy, or PNP/profile rules. It is the right
+place for content metadata, such as Pieoneer's `searchMetaData.k12_tags`, to
+choose whether the calculator appears and which calculator type to pass to the
+packaged tool.
+
 ### Structured Tool Instance IDs
 
 Tool instances use a scoped ID format:

@@ -4,6 +4,11 @@ const SPLITPANE_PRELOADED_PATH =
 	"/tts-ssml?mode=candidate&layout=splitpane&player=preloaded";
 const VERTICAL_PRELOADED_PATH =
 	"/tts-ssml?mode=candidate&layout=vertical&player=preloaded";
+const FIXED_PRELOADED_EXPECTED_TAGS = [
+	"passage-element--version-5-3-3",
+	"multiple-choice--version-11-4-3",
+	"categorize-element--version-11-3-2",
+];
 
 test.describe("section player preloaded strategy", () => {
 	test("splitpane renders item shells with preloaded strategy", async ({ page }) => {
@@ -45,6 +50,71 @@ test.describe("section player preloaded strategy", () => {
 		await expect(
 			page.locator('pie-item-shell[data-pie-shell-root="item"]'),
 		).toHaveCount(3, { timeout: 30_000 });
+	});
+
+	test("fixed-version demo preloads pinned passage and item versions", async ({
+		page,
+	}) => {
+		const bundleRequests: string[] = [];
+		page.on("request", (request) => {
+			const url = request.url();
+			if (url.includes("/bundles/")) bundleRequests.push(url);
+		});
+		const fixedUrl = new URL("http://section-demos.local/preloaded-fixed-elements");
+		fixedUrl.searchParams.set("mode", "candidate");
+		fixedUrl.searchParams.set("layout", "splitpane");
+		fixedUrl.searchParams.set(
+			"pie-overrides[@pie-element/multiple-choice]",
+			"latest",
+		);
+		fixedUrl.searchParams.set("pie-overrides[@pie-element/categorize]", "latest");
+		fixedUrl.searchParams.set("pie-overrides[@pie-element/passage]", "latest");
+
+		await page.goto(`${fixedUrl.pathname}${fixedUrl.search}`, {
+			waitUntil: "networkidle",
+		});
+		await expect(page.locator(".preload-status")).toHaveCount(0, {
+			timeout: 30_000,
+		});
+		await expect(page.getByRole("main", { name: "Items" })).toBeVisible({
+			timeout: 30_000,
+		});
+		await expect(page.getByText("Player Error")).toHaveCount(0);
+		await expect(
+			page.getByText("Which field fixes the multiple-choice package version"),
+		).toBeVisible();
+		await expect(
+			page.getByText("Sort each demo responsibility into the part of the preloaded flow"),
+		).toBeVisible();
+
+		const strategyValues = await page.locator("pie-item-player").evaluateAll((els) =>
+			els.map((el) => el.getAttribute("strategy")),
+		);
+		expect(strategyValues.length).toBeGreaterThan(0);
+		for (const strategy of strategyValues) {
+			expect(strategy).toBe("preloaded");
+		}
+
+		const renderedTags = await page.evaluate(() => {
+			const found = new Set<string>();
+			const visit = (root: Document | ShadowRoot) => {
+				root.querySelectorAll("*").forEach((element) => {
+					found.add(element.localName);
+					if (element.shadowRoot) visit(element.shadowRoot);
+				});
+			};
+			visit(document);
+			return [...found].sort();
+		});
+		for (const tag of FIXED_PRELOADED_EXPECTED_TAGS) {
+			expect(renderedTags).toContain(tag);
+		}
+
+		expect(bundleRequests.length).toBe(1);
+		const decodedBundleUrl = decodeURIComponent(bundleRequests[0] || "");
+		expect(decodedBundleUrl).toContain("@pie-element/categorize@11.3.2");
+		expect(decodedBundleUrl).toContain("@pie-element/multiple-choice@11.4.3");
+		expect(decodedBundleUrl).toContain("@pie-element/passage@5.3.3");
 	});
 
 	test("forwards runtime.player.loaderConfig to embedded item players", async ({

@@ -36,10 +36,17 @@ export function loadDemoRouteDataById(demoId: string, url: URL): DemoRouteData {
 	const activeDemoPage =
 		demoPages.find((page) => page.id === requestedPageId) || demoPages[0] || null;
 	const rawSection = activeDemoPage?.section || demo.section || null;
+	const allowElementVersionOverrides = demo.allowElementVersionOverrides !== false;
 
-	const elementOverrides = parseElementOverridesFromUrl(url.searchParams);
-	const section = applyOverridesToSection(rawSection, elementOverrides);
-	const aggregatedElements = aggregateElementsAcrossPages(demoPages, demo.section || null);
+	const elementOverrides = allowElementVersionOverrides
+		? parseElementOverridesFromUrl(url.searchParams)
+		: {};
+	const section = allowElementVersionOverrides
+		? applyOverridesToSection(rawSection, elementOverrides)
+		: rawSection;
+	const aggregatedElements = allowElementVersionOverrides
+		? aggregateElementsAcrossPages(demoPages, demo.section || null)
+		: {};
 
 	return {
 		demo,

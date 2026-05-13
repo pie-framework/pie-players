@@ -616,6 +616,7 @@ export const loadPieModule = async (
  * For initialization, use initializePiesFromLoadedBundle after loading.
  */
 export const loadBundleFromString = async (bundleJs: string): Promise<void> => {
+	await initializeMathRendering();
 	await withBlobBundleUrl(
 		bundleJs,
 		{ stripSourceMapComment: true },

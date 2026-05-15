@@ -70,6 +70,7 @@ export type RuntimeConfig = {
 	player?: PlayerOverrides | null;
 	lazyInit?: boolean;
 	tools?: Record<string, unknown> | null;
+	toolContextResolvers?: Record<string, unknown> | null;
 	accessibility?: Record<string, unknown> | null;
 	coordinator?: unknown;
 	createSectionController?: unknown;
@@ -205,7 +206,9 @@ export function resolveRuntime(args: {
 		},
 	};
 	const mergedPlayer =
-		Object.keys(mergedPlayerCandidate).length > 0 ? mergedPlayerCandidate : null;
+		Object.keys(mergedPlayerCandidate).length > 0
+			? mergedPlayerCandidate
+			: null;
 	return {
 		...r,
 		assessmentId: pick(r.assessmentId, args.assessmentId),

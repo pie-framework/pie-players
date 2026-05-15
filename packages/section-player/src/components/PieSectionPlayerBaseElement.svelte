@@ -94,6 +94,9 @@
 	const effectivePlayer = $derived.by(() => runtime?.player ?? player);
 	const effectiveLazyInit = $derived.by(() => runtime?.lazyInit ?? lazyInit);
 	const effectiveTools = $derived.by(() => runtime?.tools ?? tools);
+	const effectiveToolContextResolvers = $derived.by(
+		() => runtime?.toolContextResolvers ?? null,
+	);
 	const effectiveToolConfigStrictness = $derived.by(() => {
 		const value = runtime?.toolConfigStrictness ?? toolConfigStrictness;
 		return value === "off" || value === "warn" || value === "error"
@@ -407,6 +410,7 @@
 	lazy-init={effectiveLazyInit}
 	tool-config-strictness={effectiveToolConfigStrictness}
 	tools={effectiveTools}
+	toolContextResolvers={effectiveToolContextResolvers}
 	{toolRegistry}
 	accessibility={effectiveAccessibility}
 	coordinator={effectiveCoordinator}

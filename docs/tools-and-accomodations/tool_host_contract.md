@@ -55,6 +55,32 @@ Allowed root sources:
 2. region scope context (`scopeElement`)
 3. shell context (`scopeElement`) as fallback
 
+## Item Metadata And Render Context
+
+Hosts that need content-specific tool behavior should register
+`toolContextResolvers`, not override packaged tool registrations. Section
+player hosts usually supply them on `runtime.toolContextResolvers`; direct
+toolkit consumers may pass the same map to `ToolkitCoordinator` or the
+`<pie-assessment-toolkit>` JS property. A resolver runs only after the framework
+has applied placement, provider config, host policy, and PNP/profile gates. It
+may hide a surviving tool for the current scope or attach render params for the
+tool to consume.
+
+For calculators, the resolver params are:
+
+```ts
+{
+  calculatorType: "basic" | "scientific";
+  availableTypes: Array<"basic" | "scientific">;
+}
+```
+
+The packaged calculator reads these values through
+`toolbarContext.getToolRenderParams("calculator")` and applies them to the
+toolbar button plus calculator element. Content metadata therefore stays in
+host code, while PNP/profile restrictions remain framework-owned and higher
+precedence.
+
 ## Backend Endpoints for Tool Providers
 
 Tools that call an external service (calculators, server-backed TTS,

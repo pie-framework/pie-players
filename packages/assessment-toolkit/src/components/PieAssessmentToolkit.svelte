@@ -11,6 +11,7 @@
 			lazyInit: { attribute: "lazy-init", type: "Boolean" },
 			toolConfigStrictness: { attribute: "tool-config-strictness", type: "String" },
 			tools: { attribute: "tools", type: "Object" },
+			toolContextResolvers: { type: "Object", reflect: false },
 			enabledTools: { attribute: "enabled-tools", type: "String" },
 			toolRegistry: { type: "Object", reflect: false },
 			accessibility: { type: "Object", reflect: false },
@@ -198,6 +199,7 @@ const DEFAULT_ENV = {
 		lazyInit = true,
 		toolConfigStrictness = "error" as ToolConfigStrictness,
 		tools = {},
+		toolContextResolvers = null as Record<string, unknown> | null,
 		enabledTools = "",
 		toolRegistry = null as ToolRegistry | null,
 		accessibility = {},
@@ -237,6 +239,7 @@ const DEFAULT_ENV = {
 	// consumer, so a plain `let` is safer and matches the canonical Svelte
 	// 5 latch pattern from `.cursor/rules/svelte-subscription-safety.mdc`.
 	let lastOwnership: "owned" | "inherited" | null = null;
+	let lastAppliedToolContextResolvers: Record<string, unknown> | null = null;
 	let provider: ContextProvider<typeof assessmentToolkitRuntimeContext> | null = null;
 	let contextRoot: ContextRoot | null = null;
 	let hostRuntimeProvider: ContextProvider<
@@ -700,15 +703,27 @@ const DEFAULT_ENV = {
 
 	function getOwnedBootstrapFailureKey(): string {
 		let toolsSignature = "";
+		let toolContextResolverSignature = "";
 		try {
 			toolsSignature = JSON.stringify(buildEffectiveToolsInput());
 		} catch {
 			toolsSignature = "[unserializable-tools]";
 		}
+		try {
+			toolContextResolverSignature = JSON.stringify(
+				Object.entries(toolContextResolvers ?? {}).map(([toolId, resolver]) => [
+					toolId,
+					typeof resolver,
+				]),
+			);
+		} catch {
+			toolContextResolverSignature = "[unserializable-resolvers]";
+		}
 		return [
 			assessmentId || "",
 			String(toolConfigStrictness || "error"),
 			toolsSignature,
+			toolContextResolverSignature,
 		].join("|");
 	}
 
@@ -760,6 +775,7 @@ const DEFAULT_ENV = {
 			deferToolConfigValidation: true,
 			tools: validatedTools as any,
 			toolRegistry,
+			toolContextResolvers: toolContextResolvers as any,
 			accessibility: accessibility as any,
 			frameworkErrorBus,
 		});
@@ -787,17 +803,37 @@ const DEFAULT_ENV = {
 		void coordinator;
 		void isolation;
 		void inheritedRuntime;
+		void toolContextResolvers;
 		untrack(() => {
 			if (!host) return;
 			if (coordinator) {
 				if (ownedCoordinator) {
 					ownedCoordinator = null;
 				}
+				lastAppliedToolContextResolvers = null;
 				return;
 			}
 			if (isolation !== "force" && inheritedRuntime?.coordinator) {
 				if (ownedCoordinator) {
 					ownedCoordinator = null;
+				}
+				lastAppliedToolContextResolvers = null;
+				return;
+			}
+			if (
+				ownedCoordinator &&
+				lastAppliedToolContextResolvers !== toolContextResolvers
+			) {
+				try {
+					ownedCoordinator.setToolContextResolvers(toolContextResolvers as any);
+					lastAppliedToolContextResolvers = toolContextResolvers;
+				} catch (error) {
+					runtimeError = error;
+					reportFrameworkError({
+						kind: "coordinator-init",
+						phase: "coordinator-ready",
+						error,
+					});
 				}
 				return;
 			}
@@ -809,6 +845,7 @@ const DEFAULT_ENV = {
 				try {
 					const validatedTools = validateToolsConfigForBootstrap();
 					ownedCoordinator = buildOwnedCoordinator(validatedTools);
+					lastAppliedToolContextResolvers = toolContextResolvers;
 					lastOwnedBootstrapFailureKey = "";
 					frameworkErrorModel = null;
 					frameworkErrorTitle = "Unable to initialize assessment toolkit.";

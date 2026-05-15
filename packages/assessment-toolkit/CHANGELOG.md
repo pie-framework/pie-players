@@ -1,5 +1,19 @@
 # @pie-players/pie-assessment-toolkit
 
+## 0.3.42
+
+### Patch Changes
+
+- 6496dda: Add host tool context resolvers so integrations can attach per-item render params, such as calculator type, after policy and PNP gates but without overriding packaged tool registrations.
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-calculator@0.3.42
+  - @pie-players/pie-calculator-desmos@0.3.42
+  - @pie-players/pie-context@0.3.42
+  - @pie-players/pie-players-shared@0.3.42
+  - @pie-players/pie-tts@0.3.42
+  - @pie-players/tts-client-server@0.3.42
+
 ## 0.3.41
 
 ### Patch Changes

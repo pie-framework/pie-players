@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/lti-demos",
-	"version": "0.1.4",
+	"version": "0.1.5",
 	"description": "LTI host integration demos for PIE Players",
 	"type": "module",
 	"private": true,

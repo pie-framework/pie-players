@@ -1,5 +1,15 @@
 # @pie-players/lti-demos
 
+## 0.1.5
+
+### Patch Changes
+
+- Updated dependencies [6496dda]
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.42
+  - @pie-players/pie-assessment-player@0.3.42
+  - @pie-players/pie-players-shared@0.3.42
+
 ## 0.1.4
 
 ### Patch Changes

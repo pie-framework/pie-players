@@ -106,7 +106,12 @@ export type {
 export { I18nService } from "./services/I18nService.js";
 // Tool Registry (Registry-based tool system)
 export type {
+	ResolvedToolContext,
 	ToolbarContext,
+	ToolContextResolver,
+	ToolContextResolverContext,
+	ToolContextResolverMap,
+	ToolContextResolverResult,
 	ToolModuleLoader,
 	ToolToolbarButtonDefinition,
 	ToolToolbarRenderResult,

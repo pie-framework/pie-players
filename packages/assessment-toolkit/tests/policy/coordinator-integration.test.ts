@@ -9,15 +9,15 @@
  *     level under the no-assessment default.
  *   - `onPolicyChange(...)` fires for `updateAssessment`,
  *     `updateCurrentItemRef`, `updateToolConfig`, `updateFloatingTools`,
-	 *     and `setPnpEnforcement`.
-	 *   - `pnpEnforcement: "off"` short-circuits the PNP/profile source so a
+ *     and `setPnpEnforcement`.
+ *   - `pnpEnforcement: "off"` short-circuits the PNP/profile source so a
  *     PNP-supported tool does NOT auto-promote to `alwaysAvailable`.
-	 *   - The auto-mode heuristic — `pnpEnforcement` defaults to `"off"`
-	 *     until profile material is bound (PNP / district policy / test
+ *   - The auto-mode heuristic — `pnpEnforcement` defaults to `"off"`
+ *     until profile material is bound (PNP / district policy / test
  *     administration on the assessment, or
  *     `requiredTools` / `restrictedTools` / `toolParameters` on the
-	 *     item ref). A bare assessment record (just `id` / `name`) keeps
-	 *     `"off"`. Host overrides via {@link setPnpEnforcement} are
+ *     item ref). A bare assessment record (just `id` / `name`) keeps
+ *     `"off"`. Host overrides via {@link setPnpEnforcement} are
  *     sticky across assessment swaps.
  *   - PR 3 toolbars read decisions through this surface; the legacy
  *     `getFloatingTools()` shim agrees with the engine under the
@@ -39,6 +39,8 @@ import type {
 	PolicySourceResult,
 	ToolPolicyChangeEvent,
 } from "../../src/policy/engine.js";
+import type { ToolContext } from "../../src/services/tool-context.js";
+import type { ToolbarContext } from "../../src/services/ToolRegistry.js";
 
 // Tool ids chosen to satisfy the registry's per-tool `supportedLevels`
 // validation. `graph` / `periodicTable` are section-only; `theme` is
@@ -47,6 +49,9 @@ import type {
 // (`createPackagedToolRegistry`) registers all of these.
 function makeCoordinator(extra?: {
 	tools?: ConstructorParameters<typeof ToolkitCoordinator>[0]["tools"];
+	toolContextResolvers?: ConstructorParameters<
+		typeof ToolkitCoordinator
+	>[0]["toolContextResolvers"];
 }) {
 	return new ToolkitCoordinator({
 		assessmentId: "coord-integration",
@@ -57,6 +62,7 @@ function makeCoordinator(extra?: {
 				item: ["textToSpeech"],
 			},
 		},
+		toolContextResolvers: extra?.toolContextResolvers,
 	});
 }
 
@@ -84,6 +90,118 @@ describe("ToolkitCoordinator policy-engine integration", () => {
 		expect(itemDecision.visibleTools.map((e) => e.toolId)).toEqual([
 			"textToSpeech",
 		]);
+	});
+
+	test("tool context resolvers attach render params without changing policy gates", () => {
+		const context = {
+			level: "item",
+			assessment: {},
+			itemRef: { id: "i1" },
+			item: { id: "i1", config: {} },
+		} as ToolContext;
+		const toolbarContext = {
+			scope: { level: "item", scopeId: "i1" },
+		} as ToolbarContext;
+		const coord = makeCoordinator({
+			tools: {
+				placement: {
+					item: ["calculator"],
+				},
+			},
+			toolContextResolvers: {
+				calculator: () => ({
+					visible: true,
+					params: {
+						calculatorType: "scientific",
+						availableTypes: ["scientific"],
+					},
+				}),
+			},
+		});
+
+		expect(
+			coord
+				.decideToolPolicy({
+					level: "item",
+					scope: { level: "item", scopeId: "i1" },
+				})
+				.visibleTools.map((entry) => entry.toolId),
+		).toEqual(["calculator"]);
+		expect(
+			coord.resolveToolContext({
+				toolId: "calculator",
+				context,
+				toolbarContext,
+			}),
+		).toEqual({
+			toolId: "calculator",
+			visible: true,
+			params: {
+				calculatorType: "scientific",
+				availableTypes: ["scientific"],
+			},
+			reason: undefined,
+		});
+
+		coord.updateToolConfig("calculator", { enabled: false });
+		expect(
+			coord
+				.decideToolPolicy({
+					level: "item",
+					scope: { level: "item", scopeId: "i1" },
+				})
+				.visibleTools.map((entry) => entry.toolId),
+		).toEqual([]);
+	});
+
+	test("tool context resolver registration emits changes and removes cleanly", () => {
+		const coord = makeCoordinator({
+			tools: {
+				placement: {
+					item: ["calculator"],
+				},
+			},
+		});
+		let changes = 0;
+		coord.onToolContextResolverChange(() => {
+			changes += 1;
+		});
+
+		const dispose = coord.registerToolContextResolver("calculator", () => ({
+			visible: false,
+			reason: "item did not request calculator",
+		}));
+
+		expect(changes).toBe(1);
+		expect(coord.hasToolContextResolver("calculator")).toBe(true);
+		dispose();
+		expect(changes).toBe(2);
+		expect(coord.hasToolContextResolver("calculator")).toBe(false);
+	});
+
+	test("setToolContextResolvers replaces the resolver map and emits one change", () => {
+		const coord = makeCoordinator({
+			tools: {
+				placement: {
+					item: ["calculator", "textToSpeech"],
+				},
+			},
+			toolContextResolvers: {
+				calculator: () => ({ visible: true }),
+			},
+		});
+		let changes = 0;
+		coord.onToolContextResolverChange(() => {
+			changes += 1;
+		});
+
+		coord.setToolContextResolvers({
+			textToSpeech: () => ({ visible: false }),
+		});
+
+		expect(changes).toBe(1);
+		expect(coord.hasToolContextResolver("calculator")).toBe(false);
+		expect(coord.hasToolContextResolver("textToSpeech")).toBe(true);
 	});
 
 	test("updateToolConfig pushes tools changes into the engine and emits a change event", () => {

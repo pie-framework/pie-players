@@ -22,6 +22,65 @@ import { createScopedToolId } from "../../services/tool-instance-id.js";
 import { DesmosToolProvider } from "../../services/tool-providers/index.js";
 import { createToolElement } from "../tool-tag-map.js";
 
+type CalculatorType = "basic" | "scientific";
+
+function normalizeCalculatorType(value: unknown): CalculatorType | null {
+	return value === "basic" || value === "scientific" ? value : null;
+}
+
+function getCalculatorRenderParams(toolbarContext: ToolbarContext): {
+	calculatorType: CalculatorType | null;
+	availableTypes: CalculatorType[] | null;
+	displayName: string;
+} {
+	const params = toolbarContext.getToolRenderParams?.("calculator") ?? {};
+	const calculatorType = normalizeCalculatorType(params.calculatorType);
+	const availableTypesRaw = params.availableTypes;
+	const availableTypes = Array.isArray(availableTypesRaw)
+		? availableTypesRaw
+				.map((value) => normalizeCalculatorType(value))
+				.filter((value): value is CalculatorType => value !== null)
+		: calculatorType
+			? [calculatorType]
+			: null;
+
+	return {
+		calculatorType,
+		availableTypes,
+		displayName:
+			calculatorType === "scientific"
+				? "Scientific Calculator"
+				: calculatorType === "basic"
+					? "Basic Calculator"
+					: "Calculator",
+	};
+}
+
+function applyCalculatorParamsToElement(
+	element: HTMLElement,
+	calculatorType: CalculatorType | null,
+	availableTypes: CalculatorType[] | null,
+): void {
+	const calculatorElement = element as HTMLElement & {
+		calculatorType?: CalculatorType;
+		availableTypes?: CalculatorType[];
+	};
+
+	if (calculatorType) {
+		calculatorElement.calculatorType = calculatorType;
+		element.setAttribute("calculator-type", calculatorType);
+	} else {
+		delete calculatorElement.calculatorType;
+		element.removeAttribute("calculator-type");
+	}
+
+	if (availableTypes && availableTypes.length > 0) {
+		calculatorElement.availableTypes = availableTypes;
+	} else {
+		delete calculatorElement.availableTypes;
+	}
+}
+
 /**
  * Calculator tool registration
  *
@@ -89,6 +148,8 @@ export const calculatorToolRegistration: ToolRegistration = {
 		context: ToolContext,
 		toolbarContext: ToolbarContext,
 	): ToolToolbarRenderResult {
+		const { calculatorType, availableTypes, displayName } =
+			getCalculatorRenderParams(toolbarContext);
 		const fullToolId = createScopedToolId(
 			this.toolId,
 			toolbarContext.scope.level,
@@ -107,13 +168,22 @@ export const calculatorToolRegistration: ToolRegistration = {
 		};
 		overlay.setAttribute("tool-id", fullToolId);
 		overlay.toolkitCoordinator = toolbarContext.toolkitCoordinator;
+		applyCalculatorParamsToElement(overlay, calculatorType, availableTypes);
+		const openLabel =
+			calculatorType === null
+				? "Open scientific calculator"
+				: `Open ${displayName.toLowerCase()}`;
+		const closeLabel =
+			calculatorType === null
+				? "Close scientific calculator"
+				: `Close ${displayName.toLowerCase()}`;
 		const button: ToolToolbarButtonDefinition = {
 			toolId: this.toolId,
-			label: this.name,
+			label: displayName,
 			icon: typeof this.icon === "function" ? this.icon(context) : this.icon,
 			disabled: false,
-			ariaLabel: "Open scientific calculator",
-			tooltip: "Calculator",
+			ariaLabel: openLabel,
+			tooltip: displayName,
 			onClick: () => toolbarContext.toggleTool(this.toolId),
 			active: toolbarContext.isToolVisible(fullToolId),
 		};
@@ -142,10 +212,11 @@ export const calculatorToolRegistration: ToolRegistration = {
 			sync: () => {
 				const active = toolbarContext.isToolVisible(fullToolId);
 				button.active = active;
-				button.ariaLabel = active
-					? "Close scientific calculator"
-					: "Open scientific calculator";
-				button.tooltip = active ? "Close calculator" : "Calculator";
+				button.label = displayName;
+				button.ariaLabel = active ? closeLabel : openLabel;
+				button.tooltip = active
+					? `Close ${displayName.toLowerCase()}`
+					: displayName;
 				if (lastVisibleState !== active) {
 					overlay.visible = active;
 					lastVisibleState = active;
@@ -153,6 +224,7 @@ export const calculatorToolRegistration: ToolRegistration = {
 				if (overlay.toolkitCoordinator !== toolbarContext.toolkitCoordinator) {
 					overlay.toolkitCoordinator = toolbarContext.toolkitCoordinator;
 				}
+				applyCalculatorParamsToElement(overlay, calculatorType, availableTypes);
 			},
 			subscribeActive: (callback: (active: boolean) => void) => {
 				if (!toolbarContext.subscribeVisibility) return () => {};

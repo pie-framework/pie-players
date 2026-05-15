@@ -50,6 +50,7 @@
 	} from '../context/runtime-context-consumer.js';
 	import type {
 		HostedToolContext,
+		ResolvedToolContext,
 		ToolRegistry,
 		ToolRenderElement,
 		ToolToolbarRenderResult,
@@ -202,6 +203,7 @@
 	// coordinator's policy engine — this counter is just the reactive
 	// fanout that lets Svelte know the engine answer may have changed.
 	let policyChangeVersion = $state(0);
+	let toolContextResolverChangeVersion = $state(0);
 
 	$effect(() => {
 		if (!toolbarRootElement) return;
@@ -229,6 +231,22 @@
 			} catch {
 				// detach errors are non-fatal: the coordinator may already
 				// be torn down, in which case the listener set is GC-eligible.
+			}
+		};
+	});
+
+	$effect(() => {
+		const coord = runtimeContext?.toolkitCoordinator;
+		if (!coord || typeof coord.onToolContextResolverChange !== 'function') return;
+		const unsubscribe = coord.onToolContextResolverChange(() => {
+			toolContextResolverChangeVersion += 1;
+		});
+		return () => {
+			try {
+				unsubscribe?.();
+			} catch {
+				// detach errors are non-fatal for the same reason as policy
+				// subscriptions: the coordinator may already be unreachable.
 			}
 		};
 	});
@@ -408,34 +426,124 @@
 			}));
 	});
 
+	const resolutionToolbarContext = $derived.by((): ToolbarContext => {
+		const toolkitCoordinator = runtimeContext?.toolkitCoordinator || null;
+		const toInstanceToolId = (toolId: string): string =>
+			parseScopedToolId(toolId) ? toolId : createScopedToolId(toolId, effectiveLevel, effectiveScopeId);
+		return {
+			scope: {
+				level: effectiveLevel,
+				scopeId: effectiveScopeId,
+				assessmentId: runtimeContext?.assessmentId,
+				sectionId: effectiveSectionId,
+				itemId: effectiveItemId,
+				canonicalItemId: effectiveCanonicalItemId,
+				contentKind: effectiveContentKind
+			},
+			itemId: effectiveScopeId,
+			catalogId: effectiveCatalogId,
+			language,
+			ui: {
+				size
+			},
+			getScopeElement: () => scopeElement || shellContext?.scopeElement || null,
+			getGlobalElementId: () => {
+				if (!effectiveElementToolStateStore || !effectiveAssessmentId || !effectiveSectionId || !effectiveCanonicalItemId)
+					return null;
+				return effectiveElementToolStateStore.getGlobalElementId(
+					effectiveAssessmentId,
+					effectiveSectionId,
+					effectiveCanonicalItemId,
+					effectiveCanonicalItemId
+				);
+			},
+			toolCoordinator: effectiveToolCoordinator || null,
+			toolkitCoordinator,
+			ttsService: effectiveTTSService || null,
+			elementToolStateStore: effectiveElementToolStateStore || null,
+			toggleTool: (toolId: string) => {
+				if (!effectiveToolCoordinator) return;
+				const instanceToolId = toInstanceToolId(toolId);
+				if (!effectiveToolCoordinator.getToolState(instanceToolId)) {
+					effectiveToolCoordinator.registerTool(instanceToolId, toolId);
+				}
+				effectiveToolCoordinator.toggleTool(instanceToolId);
+			},
+			isToolVisible: (toolId: string) => {
+				if (!effectiveToolCoordinator) return false;
+				return effectiveToolCoordinator.isToolVisible(toInstanceToolId(toolId));
+			},
+			subscribeVisibility: effectiveToolCoordinator
+				? (listener: () => void) => effectiveToolCoordinator.subscribe(listener)
+				: null
+		};
+	});
+
+	const hostResolvedToolContextById = $derived.by((): Record<string, ResolvedToolContext> => {
+		void toolContextResolverChangeVersion;
+		const coord = runtimeContext?.toolkitCoordinator;
+		if (
+			!coord ||
+			typeof coord.hasToolContextResolver !== 'function' ||
+			typeof coord.resolveToolContext !== 'function'
+		) {
+			return {};
+		}
+		const resolved: Record<string, ResolvedToolContext> = {};
+		for (const toolId of allowedToolIds) {
+			const registration = effectiveToolRegistry.get(toolId);
+			if (!registration?.supportedLevels.includes(effectiveLevel)) continue;
+			if (!coord.hasToolContextResolver(toolId)) continue;
+			const result = coord.resolveToolContext({
+				toolId,
+				context: renderContext,
+				toolbarContext: resolutionToolbarContext
+			});
+			if (result) {
+				resolved[toolId] = result;
+			}
+		}
+		return resolved;
+	});
+
 	// Pass 2: tool-owned context filtering (item + element aggregation)
 	const visibleToolIds = $derived.by(() => {
 		const levelCompatibleToolIds = allowedToolIds.filter((toolId) => {
 			const registration = effectiveToolRegistry.get(toolId);
 			return registration ? registration.supportedLevels.includes(effectiveLevel) : false;
 		});
+		const hostResolvedEntries = Object.values(hostResolvedToolContextById);
+		const hostResolvedToolIds = new Set(hostResolvedEntries.map((entry) => entry.toolId));
+		const visible = new Set<string>(
+			hostResolvedEntries
+				.filter((entry) => entry.visible)
+				.map((entry) => entry.toolId)
+		);
+		const toolOwnedToolIds = levelCompatibleToolIds.filter((toolId) => !hostResolvedToolIds.has(toolId));
 		if (effectiveLevel === 'section') {
 			// Section toolbars are orchestrator-driven. Tool-level relevance is often
 			// item-content dependent. Keep pass-1 as the source of truth here.
-			return allowedToolIds;
+			toolOwnedToolIds.forEach((toolId) => visible.add(toolId));
+			return Array.from(visible);
 		}
 		if (!contentReady) {
 			// Stage 1: orchestrator-level allow-list only.
-			return levelCompatibleToolIds;
+			toolOwnedToolIds.forEach((toolId) => visible.add(toolId));
+			return Array.from(visible);
 		}
 		if (!toolContext && elementContexts.length === 0) {
-			return levelCompatibleToolIds;
+			toolOwnedToolIds.forEach((toolId) => visible.add(toolId));
+			return Array.from(visible);
 		}
-		const visible = new Set<string>();
 		if (toolContext) {
 			effectiveToolRegistry
-				.filterVisibleInContext(levelCompatibleToolIds, toolContext)
+				.filterVisibleInContext(toolOwnedToolIds, toolContext)
 				.forEach((tool) => visible.add(tool.toolId));
 		}
 
 		for (const context of elementContexts) {
 			effectiveToolRegistry
-				.filterVisibleInContext(levelCompatibleToolIds, context)
+				.filterVisibleInContext(toolOwnedToolIds, context)
 				.forEach((tool) => visible.add(tool.toolId));
 		}
 
@@ -526,7 +634,9 @@
 			},
 			subscribeVisibility: effectiveToolCoordinator
 				? (listener: () => void) => effectiveToolCoordinator.subscribe(listener)
-				: null
+				: null,
+			getResolvedToolContext: (toolId: string) => hostResolvedToolContextById[toolId] ?? null,
+			getToolRenderParams: (toolId: string) => hostResolvedToolContextById[toolId]?.params ?? null
 		};
 	});
 

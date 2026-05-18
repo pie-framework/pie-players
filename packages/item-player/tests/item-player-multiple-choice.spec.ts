@@ -137,15 +137,10 @@ async function replaceSourcePrompt(page: Page, nextPrompt: string) {
 	}
 	currentConfig.models[0].prompt = nextPrompt;
 	const nextJson = JSON.stringify(currentConfig, null, 2);
-	await page.context().grantPermissions(["clipboard-read", "clipboard-write"], {
-		origin: new URL(page.url()).origin,
-	});
 	await editor.click();
 	await page.keyboard.press(process.platform === "darwin" ? "Meta+A" : "Control+A");
-	await page.evaluate(async (text) => {
-		await navigator.clipboard.writeText(text);
-	}, nextJson);
-	await page.keyboard.press(process.platform === "darwin" ? "Meta+V" : "Control+V");
+	await page.keyboard.press("Backspace");
+	await page.keyboard.insertText(nextJson);
 	await expect(editor).toContainText(nextPrompt);
 }
 

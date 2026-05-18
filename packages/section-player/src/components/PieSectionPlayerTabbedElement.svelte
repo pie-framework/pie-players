@@ -53,6 +53,10 @@
 				attribute: "split-pane-min-region-width",
 				type: "Number",
 			},
+			splitPaneInitialPassageWidth: {
+				attribute: "split-pane-initial-passage-width",
+				type: "Number",
+			},
 			splitPaneCollapseStrategy: {
 				attribute: "split-pane-collapse-strategy",
 				type: "String",
@@ -146,6 +150,10 @@
 		contentMaxWidthWithPassage = undefined as number | undefined,
 		splitPaneMinRegionWidth: _splitPaneMinRegionWidth = undefined as
 			| number
+			| undefined,
+		splitPaneInitialPassageWidth: _splitPaneInitialPassageWidth = undefined as
+			| number
+			| string
 			| undefined,
 		splitPaneCollapseStrategy: _splitPaneCollapseStrategy = "vertical" as
 			| "vertical"

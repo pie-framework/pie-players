@@ -142,7 +142,7 @@
 					onclick={() => setActiveTab("items")}
 					onkeydown={(event) => handleTabKeyDown(event, "items")}
 				>
-					Items
+					Questions
 				</button>
 			</div>
 		{/if}
@@ -259,42 +259,37 @@
 
 	.pie-section-player-tabs {
 		display: flex;
-		gap: var(--pie-section-player-tab-spacing, 0.5rem);
-		border-bottom: 1px solid
-			var(--pie-section-player-tab-border-color, rgba(55, 65, 81, 0.28));
-		padding-block-end: 0.125rem;
+		gap: 6px;
+		background: var(--pie-background, #ffffff);
+		border-radius: var(--pie-section-player-tab-track-radius, 9999px);
+		border: 1px solid var(--pie-border-gray, #D9DADA);
+		padding: var(--pie-section-player-tab-track-padding, 0.25rem);
+		width: fit-content;
+		align-self: center;
 	}
 
 	.pie-section-player-tab {
 		position: relative;
 		border: none;
-		border-radius: var(--pie-section-player-tab-radius, 0.375rem);
-		background: var(--pie-section-player-tab-background, transparent);
-		color: var(--pie-section-player-tab-color, #334155);
-		padding: var(--pie-section-player-tab-padding-block, 0.4rem)
-			var(--pie-section-player-tab-padding-inline, 0.75rem);
+		border-radius: 24px;
+		background: transparent;
+		color: var(--pie-text, #111827);
+		padding: var(--pie-section-player-tab-padding-block, 0.35rem) 12px;
 		font: inherit;
+		font-size: 12px;
 		font-weight: 600;
 		cursor: pointer;
+		transition: background 0.15s ease, color 0.15s ease;
+		white-space: nowrap;
 	}
 
 	.pie-section-player-tab::after {
-		content: "";
-		position: absolute;
-		left: 0;
-		right: 0;
-		bottom: -0.31rem;
-		height: 2px;
-		background: transparent;
+		display: none;
 	}
 
 	.pie-section-player-tab--active {
-		color: var(--pie-section-player-tab-active-color, #1d4ed8);
-		background: var(--pie-section-player-tab-active-background, transparent);
-	}
-
-	.pie-section-player-tab--active::after {
-		background: var(--pie-section-player-tab-indicator-color, currentColor);
+		background: var(--pie-section-player-card-header-background, #374151);
+		color: var(--pie-background, #ffffff);
 	}
 
 	.pie-section-player-tab:focus-visible {

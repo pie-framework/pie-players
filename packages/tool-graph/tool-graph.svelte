@@ -11,6 +11,7 @@
 
 <script lang="ts">
 
+	import { connectToolRuntimeContext } from '@pie-players/pie-assessment-toolkit';
 
 	// Props
 	let {
@@ -44,6 +45,7 @@
 
 	// State
 	let canvasWrapperEl = $state<HTMLDivElement | undefined>();
+	let containerEl = $state<HTMLDivElement | undefined>();
 	let svgCanvasEl = $state<SVGSVGElement | undefined>();
 
 	// Tool state
@@ -106,6 +108,11 @@
 			title: 'Delete: Click on a point to delete it and any connected lines.'
 		}
 	];
+
+	$effect(() => {
+		if (!containerEl) return;
+		return connectToolRuntimeContext(containerEl, () => undefined);
+	});
 
 	// Helper functions
 	function getUniqueId(): number {
@@ -372,6 +379,7 @@
 
 {#if visible}
 	<div
+		bind:this={containerEl}
 		class="pie-tool-graph"
 		role="dialog"
 		tabindex="-1"

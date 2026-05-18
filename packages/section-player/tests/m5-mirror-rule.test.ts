@@ -80,6 +80,7 @@ const RUNTIME_CONFIG_KEYS_SENTINEL: Record<keyof RuntimeConfig, true> = {
 	player: true,
 	lazyInit: true,
 	tools: true,
+	toolContextResolvers: true,
 	accessibility: true,
 	coordinator: true,
 	createSectionController: true,
@@ -92,9 +93,9 @@ const RUNTIME_CONFIG_KEYS_SENTINEL: Record<keyof RuntimeConfig, true> = {
 	enabledTools: true,
 };
 
-const RUNTIME_CONFIG_KEYS = Object.keys(
-	RUNTIME_CONFIG_KEYS_SENTINEL,
-) as Array<keyof RuntimeConfig>;
+const RUNTIME_CONFIG_KEYS = Object.keys(RUNTIME_CONFIG_KEYS_SENTINEL) as Array<
+	keyof RuntimeConfig
+>;
 
 type LayoutProp = {
 	name: string;
@@ -281,15 +282,13 @@ for (const layout of layoutsByFile) {
 const RUNTIME_ONLY_KEYS = new Set<keyof RuntimeConfig>([
 	"createSectionController",
 	"isolation",
+	"toolContextResolvers",
 ]);
 
 describe("M5 mirror rule — RuntimeConfig coverage", () => {
 	for (const key of RUNTIME_CONFIG_KEYS) {
 		if (RUNTIME_ONLY_KEYS.has(key)) {
-			test.skip(
-				`RuntimeConfig key \`${key}\` is runtime-only (no top-level prop mirror by design)`,
-				() => {},
-			);
+			test.skip(`RuntimeConfig key \`${key}\` is runtime-only (no top-level prop mirror by design)`, () => {});
 			continue;
 		}
 		test(`RuntimeConfig key \`${key}\` is declared as a prop on at least one layout CE`, () => {
@@ -371,40 +370,49 @@ const toolkitSource = readFileSync(TOOLKIT_FILE, "utf8");
 const toolkitProps = parseLayoutProps(TOOLKIT_FILE);
 const normalizerSource = readFileSync(NORMALIZER_FILE, "utf8");
 const sectionPlayerBaseSource = readFileSync(
-	resolve(PACKAGE_ROOT, "src", "components", "PieSectionPlayerBaseElement.svelte"),
+	resolve(
+		PACKAGE_ROOT,
+		"src",
+		"components",
+		"PieSectionPlayerBaseElement.svelte",
+	),
 	"utf8",
 );
 
 describe("M5 mirror rule — runtime.tools.pnpEnforcement nested chain", () => {
-	test("`<pie-assessment-toolkit>` declares the `pnpEnforcement` prop with `attribute: \"pnp-enforcement\"`", () => {
+	test('`<pie-assessment-toolkit>` declares the `pnpEnforcement` prop with `attribute: "pnp-enforcement"`', () => {
 		const prop = toolkitProps.find((p) => p.name === "pnpEnforcement");
 		expect(prop).toBeDefined();
 		expect(prop?.attribute).toBe("pnp-enforcement");
 	});
 
 	test("`CanonicalToolsConfig` declares `pnpEnforcement` so `runtime.tools.pnpEnforcement` is preserved through `normalizeToolsConfig`", () => {
-		expect(normalizerSource.includes("pnpEnforcement?: ToolsPnpEnforcement")).toBe(
-			true,
-		);
-		expect(normalizerSource.includes("config.pnpEnforcement = pnpEnforcement")).toBe(
-			true,
-		);
+		expect(
+			normalizerSource.includes("pnpEnforcement?: ToolsPnpEnforcement"),
+		).toBe(true);
+		expect(
+			normalizerSource.includes("config.pnpEnforcement = pnpEnforcement"),
+		).toBe(true);
 	});
 
 	test("`<pie-assessment-toolkit>` falls back to `tools.pnpEnforcement` when the explicit prop is null (embedded `runtime.tools.pnpEnforcement` path)", () => {
 		expect(
-			toolkitSource.includes("resolvePnpEnforcementInput(pnpEnforcement, tools)"),
+			toolkitSource.includes(
+				"resolvePnpEnforcementInput(pnpEnforcement, tools)",
+			),
 		).toBe(true);
-		expect(
-			toolkitSource.includes("pnpEnforcement?: unknown"),
-		).toBe(true);
+		expect(toolkitSource.includes("pnpEnforcement?: unknown")).toBe(true);
 	});
 
 	test("`<pie-section-player-base>` forwards `runtime?.tools` through `effectiveTools` to `<pie-assessment-toolkit>`", () => {
 		expect(
 			sectionPlayerBaseSource.includes("const effectiveTools = $derived"),
 		).toBe(true);
-		expect(sectionPlayerBaseSource.includes("runtime?.tools ?? tools")).toBe(true);
-		expect(sectionPlayerBaseSource.includes("tools={effectiveTools}")).toBe(true);
+		expect(sectionPlayerBaseSource.includes("runtime?.tools ?? tools")).toBe(
+			true,
+		);
+		expect(sectionPlayerBaseSource.includes("tools={effectiveTools}")).toBe(
+			true,
+		);
 	});
 });

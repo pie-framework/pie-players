@@ -75,6 +75,32 @@ For media, `authoring-backend="demo"` installs demo handlers. Use
 callback properties: `onInsertImage`, `onDeleteImage`, `onInsertSound`, and
 `onDeleteSound`.
 
+## Backend Contract
+
+Backend support is an optional JS-only namespace on `<pie-item-player>`. It does
+not replace the existing render contract; instead, it can load and persist the
+same `config` and `session` data the player already consumes.
+
+```ts
+player.backend = {
+  delivery: {
+    enabled: true,
+    provider: "pie-api",
+    itemId: "item-1",
+    sessionId: "session-1",
+    autosave: { enabled: true },
+  },
+};
+```
+
+Delivery backend support owns networking concerns: item/session load, autosave,
+explicit `saveSession()`, and server-backed `score()`. Existing inputs such as
+`env`, `strategy`, `loaderOptions`, `bundleEndpoints`, `renderStimulus`, and
+styling props stay on the player itself. Local browser scoring remains
+`provideScore()` and is intentionally separate from server scoring.
+
+For details, see [Backend Support](./backend-support.md).
+
 ## Session management
 
 The player manages session state through `ItemController`:

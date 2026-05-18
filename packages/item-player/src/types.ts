@@ -7,8 +7,14 @@ import type {
 } from "@pie-players/pie-players-shared/types";
 import type { LoaderConfig } from "@pie-players/pie-players-shared/loader-config";
 import type { PieModel } from "@pie-players/pie-players-shared/types";
+import type {
+	BackendConfig,
+	BackendSaveContentOptions,
+	BackendScoreOptions,
+} from "./backend/types.js";
 
 export type { DeleteDone, ImageHandler, SoundHandler };
+export type * from "./backend/types.js";
 
 export type AuthoringValidationResult = {
 	hasErrors: boolean;
@@ -23,6 +29,7 @@ export interface PieItemPlayerElement extends HTMLElement {
 	mode?: "view" | "author";
 	configuration?: Record<string, unknown>;
 	authoringBackend?: AuthoringBackendMode;
+	backend?: BackendConfig;
 	renderStimulus?: boolean;
 	allowedResize?: boolean;
 	baseHeadingLevel?: 1 | 2 | 3 | 4 | 5 | 6;
@@ -45,6 +52,16 @@ export interface PieItemPlayerElement extends HTMLElement {
 	updateElementModel(update: Partial<PieModel> & { id: string }): Promise<void>;
 	/** Authoring-mode validation for rendered configure elements. */
 	validateModels(): Promise<AuthoringValidationResult>;
+	/** Load configured backend data into the existing config/session pipeline. */
+	loadFromBackend(scope?: "delivery" | "authoring"): Promise<void>;
+	/** Persist the current session through `backend.delivery`. */
+	saveSession(): Promise<void>;
+	/** Server-backed scoring through `backend.delivery`; distinct from local `provideScore()`. */
+	score(options?: BackendScoreOptions): Promise<unknown>;
+	/** Persist authoring content through `backend.authoring` when configured. */
+	saveContent(options?: BackendSaveContentOptions): Promise<string>;
+	/** Release authoring content through `backend.authoring` when configured. */
+	releaseContent(): Promise<string>;
 }
 
 export interface PieItemSessionDebuggerElement extends HTMLElement {

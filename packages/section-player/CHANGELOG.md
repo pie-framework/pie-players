@@ -1,5 +1,23 @@
 # @pie-players/pie-section-player
 
+## 0.3.42
+
+### Patch Changes
+
+- 6496dda: Add host tool context resolvers so integrations can attach per-item render params, such as calculator type, after policy and PNP gates but without overriding packaged tool registrations.
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies [6496dda]
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.42
+  - @pie-players/pie-context@0.3.42
+  - @pie-players/pie-item-player@0.3.42
+  - @pie-players/pie-players-shared@0.3.42
+  - @pie-players/pie-tool-annotation-toolbar@0.3.42
+  - @pie-players/pie-tool-calculator-desmos@0.3.42
+  - @pie-players/pie-tool-text-to-speech@0.3.42
+  - @pie-players/pie-tool-tts-inline@0.3.42
+  - @pie-players/pie-toolbars@0.3.42
+
 ## 0.3.41
 
 ### Patch Changes

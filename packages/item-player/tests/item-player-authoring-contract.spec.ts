@@ -81,6 +81,36 @@ async function dispatchFromAuthoringRoot(page: Page, type: string, detail: Recor
 }
 
 test.describe("item-player authoring contract", () => {
+	test("loads versioned IIFE authoring config tags exactly once", async ({
+		page,
+	}) => {
+		await page.goto(
+			"/demo/fraction-model-simple-bar-halves/author?player=iife&pie-overrides%5Bpie-element%2Ffraction-model%5D=6.0.1",
+			{ waitUntil: "networkidle" },
+		);
+
+		await expect(
+			page.getByRole("heading", { name: "Simple Bar Model - Halves" }),
+		).toBeVisible();
+		await expect(page.getByText("Configuration Error")).not.toBeVisible();
+		await expect(page.getByText("missing tags")).not.toBeVisible();
+		await expect
+			.poll(async () =>
+				page.evaluate(() => ({
+					configTagDefined: !!customElements.get(
+						"fraction-model--version-6-0-1-config",
+					),
+					doubleConfigTagDefined: !!customElements.get(
+						"fraction-model--version-6-0-1-config-config",
+					),
+				})),
+			)
+			.toEqual({
+				configTagDefined: true,
+				doubleConfigTagDefined: false,
+			});
+	});
+
 	test("supports namespaced authoring config, lifecycle, validation, and media callbacks", async ({
 		page,
 	}) => {

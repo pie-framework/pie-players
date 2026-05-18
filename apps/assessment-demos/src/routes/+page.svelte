@@ -8,61 +8,34 @@
 	<title>PIE Assessment Player - Demo App</title>
 </svelte:head>
 
-<main class="demo-index">
-	<header>
-		<h1>PIE Assessment Player Demos</h1>
-		<p>
-			Assessment-level orchestration demos that compose section-player as the rendering
-			workhorse.
+<div class="container mx-auto max-w-5xl px-4 py-12">
+	<header class="mb-10 space-y-3">
+		<p class="text-xs font-bold uppercase tracking-[0.08em] text-primary">
+			Assessment Player
+		</p>
+		<h1 class="text-4xl font-bold tracking-tight text-secondary md:text-5xl">
+			PIE Assessment Player Demos
+		</h1>
+		<p class="max-w-2xl text-base-content/70">
+			Assessment-level orchestration demos that compose section-player as the
+			rendering workhorse.
 		</p>
 	</header>
 
-	<section class="cards">
+	<section class="grid grid-cols-1 gap-6 md:grid-cols-2">
 		{#each demos as demo}
-			<a href="/{demo.id}" class="card">
-				<h2>{demo.name}</h2>
-				<p>{demo.description}</p>
+			<a
+				href="/{demo.id}"
+				class="card bg-base-100 shadow-xl transition-all duration-200 hover:-translate-y-1 hover:shadow-2xl"
+			>
+				<div class="card-body gap-3">
+					<h2 class="card-title text-2xl">{demo.name}</h2>
+					<p class="text-base-content/70">{demo.description}</p>
+					<div class="card-actions justify-end pt-1">
+						<span class="text-sm font-semibold text-primary">Open demo &#8594;</span>
+					</div>
+				</div>
 			</a>
 		{/each}
 	</section>
-</main>
-
-<style>
-	.demo-index {
-		max-width: 980px;
-		margin: 0 auto;
-		padding: 2rem 1rem;
-	}
-
-	header {
-		margin-bottom: 1.5rem;
-	}
-
-	.cards {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-		gap: 1rem;
-	}
-
-	.card {
-		display: block;
-		padding: 1rem;
-		background: #fff;
-		border: 1px solid #e5e7eb;
-		border-radius: 0.5rem;
-	}
-
-	.card:hover {
-		border-color: #0f766e;
-	}
-
-	.card h2 {
-		margin: 0 0 0.5rem;
-		font-size: 1.1rem;
-	}
-
-	.card p {
-		margin: 0;
-		color: #4b5563;
-	}
-</style>
+</div>

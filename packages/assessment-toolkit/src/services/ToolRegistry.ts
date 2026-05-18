@@ -56,8 +56,38 @@ export interface ToolbarContext {
 	elementToolStateStore: ElementToolStateStoreApi | null;
 	toggleTool: (toolId: string) => void;
 	isToolVisible: (toolId: string) => boolean;
-	subscribeVisibility: ((listener: () => void) => (() => void)) | null;
+	subscribeVisibility: ((listener: () => void) => () => void) | null;
 	componentOverrides?: ToolComponentOverrides;
+	getResolvedToolContext?: (toolId: string) => ResolvedToolContext | null;
+	getToolRenderParams?: (toolId: string) => Record<string, unknown> | null;
+}
+
+export interface ToolContextResolverContext {
+	toolId: string;
+	context: ToolContext;
+	toolbarContext: ToolbarContext;
+}
+
+export interface ToolContextResolverResult {
+	visible?: boolean;
+	params?: Record<string, unknown>;
+	reason?: string;
+}
+
+export type ToolContextResolver = (
+	context: ToolContextResolverContext,
+) => ToolContextResolverResult | null | undefined;
+
+export type ToolContextResolverMap = Record<
+	string,
+	ToolContextResolver | null | undefined
+>;
+
+export interface ResolvedToolContext {
+	toolId: string;
+	visible: boolean;
+	params: Record<string, unknown>;
+	reason?: string;
 }
 
 export interface ToolRenderElement {
@@ -108,13 +138,11 @@ export interface HostedToolSize {
 export interface ToolProviderDescriptor {
 	getProviderId?: (config: ToolRuntimeConfig | undefined) => string;
 	createProvider: (config: ToolRuntimeConfig | undefined) => ToolProviderApi;
-	getInitConfig?: (config: ToolRuntimeConfig | undefined) => Record<string, unknown>;
-	sanitizeConfig?: (
-		config: ToolRuntimeConfig,
-	) => ToolRuntimeConfig;
-	validateConfig?: (
-		config: ToolRuntimeConfig,
-	) => ToolConfigDiagnostic[];
+	getInitConfig?: (
+		config: ToolRuntimeConfig | undefined,
+	) => Record<string, unknown>;
+	sanitizeConfig?: (config: ToolRuntimeConfig) => ToolRuntimeConfig;
+	validateConfig?: (config: ToolRuntimeConfig) => ToolConfigDiagnostic[];
 	getAuthFetcher?: (
 		config: ToolRuntimeConfig | undefined,
 	) => (() => Promise<Record<string, unknown>>) | undefined;
@@ -126,7 +154,7 @@ export interface ToolToolbarRenderResult {
 	elements?: ToolRenderElement[];
 	button?: ToolToolbarButtonDefinition | null;
 	sync?: () => void;
-	subscribeActive?: (callback: (active: boolean) => void) => (() => void);
+	subscribeActive?: (callback: (active: boolean) => void) => () => void;
 }
 
 export type ToolActivation = "toolbar-toggle" | "selection-gateway";
@@ -217,9 +245,14 @@ const VALID_TOOL_LEVELS: ToolLevel[] = [
 	"element",
 ];
 
-function assertNonEmptyString(value: unknown, fieldName: string): asserts value is string {
+function assertNonEmptyString(
+	value: unknown,
+	fieldName: string,
+): asserts value is string {
 	if (typeof value !== "string" || value.trim().length === 0) {
-		throw new Error(`Invalid tool registration: "${fieldName}" must be a non-empty string.`);
+		throw new Error(
+			`Invalid tool registration: "${fieldName}" must be a non-empty string.`,
+		);
 	}
 }
 
@@ -230,9 +263,15 @@ function assertNonEmptyString(value: unknown, fieldName: string): asserts value 
 // disappeared after sanitization".
 const SCRIPTABLE_ICON_PATTERNS: Array<{ pattern: RegExp; reason: string }> = [
 	{ pattern: /<script\b/i, reason: "contains a <script> tag" },
-	{ pattern: /\son[a-z]+\s*=/i, reason: "contains an inline event handler (on*=) attribute" },
+	{
+		pattern: /\son[a-z]+\s*=/i,
+		reason: "contains an inline event handler (on*=) attribute",
+	},
 	{ pattern: /javascript:/i, reason: "contains a javascript: URL" },
-	{ pattern: /<foreignObject\b/i, reason: "contains a <foreignObject> element" },
+	{
+		pattern: /<foreignObject\b/i,
+		reason: "contains a <foreignObject> element",
+	},
 ];
 
 function assertIconStringIsSafe(
@@ -690,7 +729,9 @@ export class ToolRegistry {
 	 * Ensure a set of tool modules are loaded.
 	 */
 	async ensureToolModulesLoaded(toolIds: string[]): Promise<void> {
-		await Promise.all(toolIds.map((toolId) => this.ensureToolModuleLoaded(toolId)));
+		await Promise.all(
+			toolIds.map((toolId) => this.ensureToolModuleLoaded(toolId)),
+		);
 	}
 
 	/**

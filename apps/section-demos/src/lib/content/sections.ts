@@ -7,6 +7,7 @@ import { demo5Section } from "./demo5-resource-observability";
 import { demo6Section } from "./demo6-tabbed-layout";
 import { demo7Section } from "./demo7-heading-accessibility";
 import { demo8ToolVisibilitySection } from "./demo8-tool-visibility";
+import { demo9Section } from "./demo9-preloaded-fixed-elements";
 import {
 	pie512SectionA,
 	pie512SectionB,
@@ -20,6 +21,7 @@ export interface SectionDemoInfo {
 	integrationTheme?: string;
 	focus?: string;
 	whatMakesItTick?: string[];
+	allowElementVersionOverrides?: boolean;
 	section?: AssessmentSection;
 	sections?: Array<{
 		id: string;
@@ -410,6 +412,24 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 			"Shared demo host allows switching between student/scorer and splitpane/vertical layouts."
 		],
 		section: demo2Section,
+	},
+	"preloaded-fixed-elements": {
+		id: "preloaded-fixed-elements",
+		name: "Preloaded Fixed Element Versions",
+		description:
+			"Section with a PIE passage, multiple-choice item, and categorize item loaded through one fixed preloaded bundle",
+		integrationLevel: 3,
+		integrationTheme: "Preloaded fixed versions",
+		focus:
+			"Shows how a host can preload the exact PIE element bundle set a section needs and render the section-player with fixed item-player versions instead of `@latest`.",
+		whatMakesItTick: [
+			"Pins `@pie-element/passage@5.3.3`, `@pie-element/multiple-choice@11.4.3`, and `@pie-element/categorize@11.3.2` directly in `config.elements`.",
+			"Defaults the demo route to `player-type=\"preloaded\"`, so the host loads one bundle before rendering the section-player.",
+			"Keeps authored markup IDs and logical tag names stable; the player derives runtime versioned custom-element tags from the pinned package specs.",
+			"Disables section-demos element-version URL overrides so the pinned package specs remain the demo's source of truth.",
+		],
+		allowElementVersionOverrides: false,
+		section: demo9Section,
 	},
 	"three-questions": {
 		id: "three-questions",

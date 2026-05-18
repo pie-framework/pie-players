@@ -193,6 +193,14 @@ posts `sessionId`, current session `data`, `env`, and optional `overrides` to
 the configured score endpoint. The browser component itself does not compute
 the score.
 
+The current `<pie-item-player>` backend direction keeps this as a namespaced
+capability instead of copying every API-player top-level prop. Delivery
+networking lives under `backend.delivery`, while existing player inputs such as
+`env`, `strategy`, `loaderOptions`, `bundleEndpoints`, `config`, and `session`
+stay on the player itself. The server-backed method is still named `score()`,
+but local browser scoring remains `provideScore()` so hosts must choose the
+semantics they want.
+
 Server scoring in `pie-api-aws`:
 
 1. Flattens save events into the current `session.data[]`.

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { getAllDemos } from '$lib/content';
 	import { demoHeadingName } from '$lib/utils/demo-heading-name';
+	import SiteHeader from '$lib/components/SiteHeader.svelte';
 
 	const demos = getAllDemos();
 	const groupedDemos = Array.from(
@@ -20,9 +21,6 @@
 	}));
 
 	function hrefForDemo(demo: (typeof demos)[number]) {
-		if (demo.id === 'authoring-contract-fixture') {
-			return `/demo/${demo.id}/author?mode=gather&role=student`;
-		}
 		return `/demo/${demo.id}/delivery?player=iife`;
 	}
 </script>
@@ -31,10 +29,14 @@
 	<title>PIE Item Player - Demos</title>
 </svelte:head>
 
+<SiteHeader title="PIE Item Demos" subtitle="Item player recipes" />
+
 <div class="container mx-auto px-4 py-12 max-w-7xl">
-	<header class="mb-12 space-y-4">
-		<div class="badge badge-secondary badge-outline">IIFE</div>
-		<h1 class="text-5xl font-bold">PIE Item Player Demos</h1>
+	<header class="mb-12 space-y-3">
+		<p class="text-xs font-bold uppercase tracking-[0.08em] text-primary">
+			Item Player &middot; IIFE
+		</p>
+		<h1 class="text-5xl font-bold tracking-tight text-secondary">PIE Item Player Demos</h1>
 	</header>
 
 	<div class="space-y-12">

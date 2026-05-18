@@ -583,6 +583,10 @@
 			var(--pie-scrollbar-thumb, #6b7280) var(--pie-scrollbar-track, #d1d5db);
 	}
 
+	.pie-section-player-items-pane :global(.pie-section-player-scroll-hint) {
+	    bottom: -0.5rem;
+	}
+
 	.pie-section-player-passages-pane::-webkit-scrollbar,
 	.pie-section-player-items-pane::-webkit-scrollbar {
 		width: 0.75rem;

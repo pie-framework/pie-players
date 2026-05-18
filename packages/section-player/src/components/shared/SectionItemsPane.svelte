@@ -30,7 +30,7 @@
 />
 
 <script lang="ts">
-	import { createEventDispatcher, untrack } from "svelte";
+	import { createEventDispatcher, onMount, untrack } from "svelte";
 	import type {
 		ToolRegistry,
 		ToolbarItem,
@@ -294,7 +294,47 @@
 			? Math.max(0, Number(compositionModel.currentItemIndex))
 			: -1,
 	);
+
+	let scrollHintSentinel = $state<HTMLDivElement | null>(null);
+	let isScrollable = $state(false);
+
+	onMount(() => {
+		// In light-DOM custom elements the sentinel's parentElement is the CE
+		// itself, and its parentElement is the scroll container wrapping it.
+		const scrollContainer = scrollHintSentinel?.parentElement?.parentElement;
+		if (!scrollContainer) return;
+
+		const updateScrollable = () => {
+			const atBottom =
+				scrollContainer.scrollHeight - scrollContainer.scrollTop <=
+				scrollContainer.clientHeight + 1;
+			isScrollable =
+				scrollContainer.scrollHeight > scrollContainer.clientHeight && !atBottom;
+		};
+
+		updateScrollable();
+
+		const resizeObserver = new ResizeObserver(updateScrollable);
+		resizeObserver.observe(scrollContainer);
+
+		const mutationObserver = new MutationObserver(updateScrollable);
+		mutationObserver.observe(scrollContainer, {
+			childList: true,
+			subtree: true,
+			characterData: true,
+		});
+
+		scrollContainer.addEventListener("scroll", updateScrollable, { passive: true });
+
+		return () => {
+			resizeObserver.disconnect();
+			mutationObserver.disconnect();
+			scrollContainer.removeEventListener("scroll", updateScrollable);
+		};
+	});
 </script>
+
+<div bind:this={scrollHintSentinel} style="display:none" aria-hidden="true"></div>
 
 {#if !elementsLoaded}
 	<div class="pie-section-player-content-card">
@@ -327,6 +367,16 @@
 	{/each}
 {/if}
 
+<div
+	class="pie-section-player-scroll-hint"
+	aria-hidden="true"
+	style:visibility={isScrollable ? "visible" : "hidden"}
+>
+	<svg class="pie-section-player-scroll-caret" viewBox="0 0 24 24" width="28" height="28" xmlns="http://www.w3.org/2000/svg">
+		<path d="M7 10l5 5 5-5" stroke="#6b7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+	</svg>
+</div>
+
 <style>
 	:host {
 		display: flex;
@@ -334,6 +384,24 @@
 		gap: 1rem;
 		min-height: 0;
 		min-width: 0;
+	}
+
+	.pie-section-player-scroll-hint {
+		position: sticky;
+		bottom: 0;
+		height: 56px;
+		margin-top: calc(-56px - 1rem);
+		pointer-events: none;
+		background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, var(--pie-background, #fff) 100%);
+		display: flex;
+		align-items: flex-start;
+		justify-content: center;
+		padding-top: 8px;
+		z-index: 10;
+	}
+
+	.pie-section-player-scroll-caret {
+		display: block;
 	}
 
 	.pie-section-player-content-card {

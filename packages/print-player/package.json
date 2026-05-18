@@ -21,6 +21,7 @@
 	"scripts": {
 		"build": "bun x vite build && bun x tsc --emitDeclarationOnly",
 		"dev": "bun x vite build --watch",
+		"test": "bun test tests",
 		"serve": "bun x vite preview --port 8000"
 	},
 	"dependencies": {

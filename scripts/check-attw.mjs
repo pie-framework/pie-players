@@ -6,6 +6,9 @@ import path from "node:path";
 
 const ROOT = process.cwd();
 const POLICY_PATH = path.join(ROOT, "scripts", "publish-policy.json");
+const ATTW_PARSE_RETRIES = 1;
+const ATTW_MAX_BUFFER = 16 * 1024 * 1024;
+const DIAGNOSTIC_TAIL_LENGTH = 4000;
 
 const readJson = (filePath) => JSON.parse(readFileSync(filePath, "utf8"));
 const policy = existsSync(POLICY_PATH) ? readJson(POLICY_PATH) : {};
@@ -29,21 +32,69 @@ const getWorkspaceDirs = () => {
 	return [...dirs].filter((dir) => existsSync(path.join(dir, "package.json")));
 };
 
+const textTail = (value, length = DIAGNOSTIC_TAIL_LENGTH) => {
+	const text = typeof value === "string" ? value : String(value || "");
+	if (text.length <= length) return text;
+	return `... ${text.length - length} earlier character(s) omitted ...\n${text.slice(-length)}`;
+};
+
 const runAttw = (dir) => {
 	const cmd = "bunx attw --pack --ignore-rules cjs-resolves-to-esm --format json -- .";
 	try {
-		return execSync(cmd, {
+		const stdout = execSync(cmd, {
 			cwd: dir,
 			stdio: "pipe",
 			encoding: "utf8",
+			maxBuffer: ATTW_MAX_BUFFER,
 		});
+		return {
+			stdout,
+			stderr: "",
+			status: 0,
+			signal: null,
+		};
 	} catch (error) {
 		const stdout = error.stdout?.toString?.() ?? "";
+		const stderr = error.stderr?.toString?.() ?? "";
 		if (!stdout.trim()) {
-			const stderr = error.stderr?.toString?.() ?? "";
-			throw new Error([stderr, error.message].filter(Boolean).join("\n"));
+			throw new Error(
+				[
+					"ATTW produced no JSON output.",
+					`status=${error.status ?? "unknown"} signal=${error.signal ?? "none"}`,
+					stderr ? `stderr tail:\n${textTail(stderr)}` : null,
+					error.message,
+				]
+					.filter(Boolean)
+					.join("\n"),
+			);
 		}
-		return stdout;
+		return {
+			stdout,
+			stderr,
+			status: error.status ?? null,
+			signal: error.signal ?? null,
+		};
+	}
+};
+
+const parseAttwReport = ({ pkg, dir, result, attempt }) => {
+	try {
+		return JSON.parse(result.stdout);
+	} catch (error) {
+		const relativeDir = path.relative(ROOT, dir);
+		throw new Error(
+			[
+				`ATTW output parse failure for ${pkg.name || path.basename(dir)} (${relativeDir})`,
+				`attempt=${attempt + 1}`,
+				`parseError=${error.message}`,
+				`status=${result.status ?? "unknown"} signal=${result.signal ?? "none"}`,
+				`stdoutLength=${result.stdout.length}`,
+				result.stderr ? `stderr tail:\n${textTail(result.stderr)}` : null,
+				`stdout tail:\n${textTail(result.stdout)}`,
+			]
+				.filter(Boolean)
+				.join("\n"),
+		);
 	}
 };
 
@@ -97,8 +148,21 @@ const run = () => {
 		}
 		checked += 1;
 		try {
-			const raw = runAttw(dir);
-			const report = JSON.parse(raw);
+			let report;
+			for (let attempt = 0; attempt <= ATTW_PARSE_RETRIES; attempt += 1) {
+				const result = runAttw(dir);
+				try {
+					report = parseAttwReport({ pkg, dir, result, attempt });
+					break;
+				} catch (error) {
+					if (attempt >= ATTW_PARSE_RETRIES) {
+						throw error;
+					}
+					console.warn(
+						`[check-attw] ${pkg.name} returned unparsable JSON; retrying once. ${error.message.split("\n")[2] || ""}`,
+					);
+				}
+			}
 			const problems = flattenProblems(report.problems);
 			const actionable = problems.filter((problem) => !shouldSuppressProblem(problem));
 

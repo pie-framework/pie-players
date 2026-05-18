@@ -1,6 +1,8 @@
 import { describe, expect, mock, test } from "bun:test";
 
-mock.module("@pie-players/pie-item-player", () => ({}));
+mock.module("@pie-players/pie-item-player", () => ({
+	ensureItemPlayerMathRenderingReady: async () => undefined,
+}));
 
 async function loadStageTracker() {
 	return import("@pie-players/pie-players-shared/pie");

@@ -22,7 +22,9 @@
 
 import { describe, expect, mock, test } from "bun:test";
 
-mock.module("@pie-players/pie-item-player", () => ({}));
+mock.module("@pie-players/pie-item-player", () => ({
+	ensureItemPlayerMathRenderingReady: async () => undefined,
+}));
 
 async function loadHostRuntime() {
 	return import("../src/components/shared/section-player-host-runtime");

@@ -20,7 +20,9 @@
 
 import { describe, expect, mock, test } from "bun:test";
 
-mock.module("@pie-players/pie-item-player", () => ({}));
+mock.module("@pie-players/pie-item-player", () => ({
+	ensureItemPlayerMathRenderingReady: async () => undefined,
+}));
 
 async function loadEngineResolver() {
 	return import("../../../src/runtime/core/engine-resolver.js");

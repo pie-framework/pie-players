@@ -32,8 +32,9 @@ import type { RuntimeConfig } from "@pie-players/pie-assessment-toolkit/runtime/
  *   - Layout-only shell knobs (`show-toolbar`, `toolbar-position`,
  *     `narrow-layout-breakpoint`, `split-pane-collapse-strategy`,
  *     `content-max-width-no-passage`, `content-max-width-with-passage`,
- *     `split-pane-min-region-width`, `iife-bundle-host`, `debug`):
- *     layout-CE rendering / preload-host concerns.
+ *     `split-pane-min-region-width`, `split-pane-initial-passage-width`,
+ *     `iife-bundle-host`, `debug`): layout-CE rendering / preload-host
+ *     concerns.
  *   - Layout-shell host data (`policies`, `hooks`, `toolRegistry`,
  *     `sectionHostButtons`, `itemHostButtons`, `passageHostButtons`):
  *     consumed by the layout kernel through its top-level prop, not via

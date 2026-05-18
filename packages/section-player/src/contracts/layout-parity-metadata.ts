@@ -13,6 +13,7 @@ const RECOMMENDED_BASIC_PROPS = [
 	"contentMaxWidthNoPassage",
 	"contentMaxWidthWithPassage",
 	"splitPaneMinRegionWidth",
+	"splitPaneInitialPassageWidth",
 	"splitPaneCollapseStrategy",
 	"enabledTools",
 ] as const;

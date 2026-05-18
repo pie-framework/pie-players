@@ -23,6 +23,7 @@ export type SectionPlayerBasicPropName =
 	| "contentMaxWidthNoPassage"
 	| "contentMaxWidthWithPassage"
 	| "splitPaneMinRegionWidth"
+	| "splitPaneInitialPassageWidth"
 	| "splitPaneCollapseStrategy"
 	| "enabledTools";
 

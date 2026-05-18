@@ -72,8 +72,85 @@
 	import type { AssessmentItemRef, AssessmentEntity, ItemEntity } from '@pie-players/pie-players-shared/types';
 	import type { ElementToolContext, ItemToolContext, ToolLevel, ToolContext } from '../services/tool-context.js';
 	import type { ToolPolicyDecision } from '../policy/engine.js';
+	// Side-effect import: registers <nds-icon-button>. Vendored prebuilt bundle —
+	// see src/components/vendor/nds/README in nextComponentLibrary for source.
+	// Self-contained (Lit + foundations CSS inlined); the build script copies
+	// this folder from src/components/vendor → dist/components/vendor so the CE
+	// bundler can inline it into the published custom element.
+	import './vendor/nds/nds-icon-button.js';
 
 	const isBrowser = typeof window !== 'undefined';
+	// FontAwesome icon source, in load order:
+	//
+	//   1. FA Pro Light from the host's same-origin `/_fa-pro/` path. Hosts
+	//      that have licensed FA Pro (e.g., the section-demos dev server, see
+	//      apps/section-demos/vite.config.ts) proxy this to ui.renaissance.com.
+	//      When the proxy is present, Pro Light renders the design-spec
+	//      `fa-light fa-${iconName}` classes the vendored bundle emits.
+	//   2. FA Free from jsDelivr as a fallback. If the host doesn't expose
+	//      `/_fa-pro/`, the link tag 404s silently and Free's stylesheet stays
+	//      effective. Free ships icons in Solid weight (900); the shim below
+	//      remaps `.fa-light` accordingly so glyphs still render — at a
+	//      thicker stroke than the design intends, but visible.
+	//
+	// Renaissance's direct CDN URL (https://ui.renaissance.com/...) is not
+	// usable directly: the CSS responds 200 cross-origin but the font binaries
+	// it references are CORS-blocked. The proxy avoids that by making the
+	// fetch same-origin from the browser's POV.
+	// FA Pro splits the cascade across two files: `fontawesome.min.css`
+	// defines the glyph map (`.fa-chevron-left:before {content: ...}` etc.)
+	// plus the base `.fa-light` font-family rule, while `light.min.css` adds
+	// the @font-face declaration and weight 300 override. Both are required.
+	const FA_PRO_HREFS = ['/_fa-pro/fontawesome.min.css', '/_fa-pro/light.min.css'];
+	const FA_FREE_HREF =
+		'https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css';
+	// Pre-inject Roboto from a CORS-enabled origin. The vendored bundle's
+	// connectedCallback ships its own `link[href*="Roboto"]` injection from
+	// ui.renaissance.com, which serves the CSS but blocks cross-origin font
+	// downloads. By installing a Roboto link first, the bundle's
+	// `document.querySelector('link[href*="Roboto"]')` guard short-circuits
+	// and our CORS-clean stylesheet wins.
+	const ROBOTO_HREF =
+		'https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap';
+	const FA_LIGHT_SHIM_ID = 'pie-nds-fa-light-shim';
+	let ndsAssetsInstalled = false;
+	const ensureNdsAssets = () => {
+		if (!isBrowser || ndsAssetsInstalled) return;
+		ndsAssetsInstalled = true;
+		if (!document.querySelector('link[href*="Roboto"]')) {
+			const link = document.createElement('link');
+			link.rel = 'stylesheet';
+			link.href = ROBOTO_HREF;
+			document.head.appendChild(link);
+		}
+		// FA Free first, FA Pro second. Both stylesheets define `.fa-light`,
+		// and "later wins" — when Pro loads it overrides Free's font-family
+		// to "Font Awesome 6 Pro" at weight 300. If Pro 404s, Free stays.
+		if (!document.querySelector(`link[href="${FA_FREE_HREF}"]`)) {
+			const link = document.createElement('link');
+			link.rel = 'stylesheet';
+			link.href = FA_FREE_HREF;
+			document.head.appendChild(link);
+		}
+		for (const href of FA_PRO_HREFS) {
+			if (document.querySelector(`link[href="${href}"]`)) continue;
+			const link = document.createElement('link');
+			link.rel = 'stylesheet';
+			link.href = href;
+			document.head.appendChild(link);
+		}
+		if (!document.getElementById(FA_LIGHT_SHIM_ID)) {
+			// Map `fa-light` → FA Free Solid (weight 900) as the fallback
+			// effective when FA Pro isn't reachable. FA Pro's own stylesheet
+			// re-defines `.fa-light` to its weight-300 family, so when Pro
+			// loads after this rule it overrides the shim.
+			const style = document.createElement('style');
+			style.id = FA_LIGHT_SHIM_ID;
+			style.textContent =
+				'.fa-light{font-family:"Font Awesome 6 Free";font-weight:900;}';
+			document.head.appendChild(style);
+		}
+	};
 	const fallbackToolRegistry = createPackagedToolRegistry({
 		toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS
 	});
@@ -868,7 +945,9 @@
 		let contentEl: HTMLDivElement | null = null;
 		let titleEl: HTMLSpanElement | null = null;
 		let controlsEl: HTMLDivElement | null = null;
-		let closeButtonEl: HTMLButtonElement | null = null;
+		// HTMLElement (not HTMLButtonElement) so the calculator branch can use
+		// <nds-icon-button> here while other shells keep the inline <button>.
+		let closeButtonEl: HTMLElement | null = null;
 		let resizeHandleEl: HTMLDivElement | null = null;
 		let mountedContentElement: HTMLElement | null = null;
 		let dragPointerId: number | null = null;
@@ -962,6 +1041,30 @@
 			applyPositionAndSize();
 		};
 
+		// nds-icon-button-backed control. Used for the calculator shell where
+		// the design calls for a circular tertiary icon button. We dispatch
+		// onActivate from a click listener (the element fires `icon-button-click`,
+		// but it bubbles a regular `click` too via the inner <button>).
+		const createShellIconButton = (
+			label: string,
+			iconName: string,
+			onActivate: () => void
+		) => {
+			const button = document.createElement('nds-icon-button');
+			button.setAttribute('variant', 'tertiary');
+			button.setAttribute('size', 'small');
+			button.setAttribute('type', 'circle');
+			button.setAttribute('icon-name', iconName);
+			button.setAttribute('button-aria-label', label);
+			button.title = label;
+			button.addEventListener('click', (event) => {
+				event.stopPropagation();
+				onActivate();
+				bringToFront();
+			});
+			return button;
+		};
+
 		const createShellControlButton = (
 			label: string,
 			glyph: string,
@@ -974,7 +1077,8 @@
 			button.title = label;
 			button.textContent = glyph;
 			button.style.border = '1px solid transparent';
-			button.style.background = 'color-mix(in srgb, var(--pie-white, #fff) 10%, transparent)';
+			button.style.background =
+				'color-mix(in srgb, var(--pie-white, #fff) 10%, transparent)';
 			button.style.color = 'inherit';
 			button.style.cursor = 'pointer';
 			button.style.display = 'inline-flex';
@@ -1184,6 +1288,8 @@
 		};
 
 		if (isBrowser && currentArgs.mounted.entry.shell) {
+			const isCalculatorShell = currentArgs.mounted.toolId === 'calculator';
+			if (isCalculatorShell) ensureNdsAssets();
 			shellEl = document.createElement('div');
 			shellEl.className = 'pie-tool-shell';
 			shellEl.setAttribute('data-pie-tool-shell', currentArgs.mounted.toolId);
@@ -1203,9 +1309,28 @@
 			headerEl.style.display = 'flex';
 			headerEl.style.alignItems = 'center';
 			headerEl.style.justifyContent = 'space-between';
-			headerEl.style.padding = '10px 12px';
-			headerEl.style.background = 'var(--pie-primary-dark, #2c3e50)';
-			headerEl.style.color = 'var(--pie-white, #fff)';
+			// Calculator header follows the Knowledge-Check Figma:
+			// 28px / 12px horizontal padding (asymmetric: more space before the
+			// title, tighter at the close button), 8px vertical, and
+			// space-between layout pushing the controls + close cluster to the
+			// right edge. Other shells keep the legacy dense layout.
+			headerEl.style.padding = isCalculatorShell ? '12px 12px 12px 28px' : '10px 12px';
+			if (isCalculatorShell) {
+				headerEl.style.minHeight = '48px';
+			}
+			if (isCalculatorShell) {
+				// Match the Passage/Question card header var so the calculator picks
+				// up the host-provided tint when set. Fallback is an off-white so
+				// the circular control buttons have a visible surface to contrast
+				// against (transparent would let the white shell body show through).
+				headerEl.style.background =
+					'var(--pie-section-player-card-header-background, #f3f4f6)';
+				headerEl.style.color = 'var(--pie-text, #111827)';
+				headerEl.style.borderBottom = '1px solid var(--pie-border-light, #e5e7eb)';
+			} else {
+				headerEl.style.background = 'var(--pie-primary-dark, #2c3e50)';
+				headerEl.style.color = 'var(--pie-white, #fff)';
+			}
 			headerEl.style.cursor = currentArgs.mounted.entry.shell.draggable === false ? 'default' : 'move';
 			headerEl.style.flex = '0 0 auto';
 
@@ -1218,92 +1343,124 @@
 			controlsEl.className = 'pie-tool-shell__controls';
 			controlsEl.style.display = 'inline-flex';
 			controlsEl.style.alignItems = 'center';
-			controlsEl.style.gap = '4px';
+			controlsEl.style.gap = isCalculatorShell ? '6px' : '4px';
 			const shellConfig = currentArgs.mounted.entry.shell;
+			const appendControl = (label: string, glyph: string, iconName: string, onActivate: () => void) => {
+				if (!controlsEl) return;
+				controlsEl.appendChild(
+					isCalculatorShell
+						? createShellIconButton(label, iconName, onActivate)
+						: createShellControlButton(label, glyph, onActivate)
+				);
+			};
 			if (shellConfig?.draggable !== false) {
-				controlsEl.appendChild(
-					createShellControlButton('Move tool left', '←', () => moveBy(-24, 0))
-				);
-				controlsEl.appendChild(
-					createShellControlButton('Move tool right', '→', () => moveBy(24, 0))
-				);
-				controlsEl.appendChild(
-					createShellControlButton('Move tool up', '↑', () => moveBy(0, -24))
-				);
-				controlsEl.appendChild(
-					createShellControlButton('Move tool down', '↓', () => moveBy(0, 24))
-				);
+				appendControl('Move tool left', '←', 'chevron-left', () => moveBy(-24, 0));
+				appendControl('Move tool right', '→', 'chevron-right', () => moveBy(24, 0));
+				appendControl('Move tool up', '↑', 'chevron-up', () => moveBy(0, -24));
+				appendControl('Move tool down', '↓', 'chevron-down', () => moveBy(0, 24));
 			}
 			if (shellConfig?.resizable !== false) {
-				controlsEl.appendChild(
-					createShellControlButton('Shrink tool window', '−', () => resizeBy(-40, -40))
-				);
-				controlsEl.appendChild(
-					createShellControlButton('Grow tool window', '+', () => resizeBy(40, 40))
-				);
+				appendControl('Shrink tool window', '−', 'magnifying-glass-minus', () => resizeBy(-40, -40));
+				appendControl('Grow tool window', '+', 'magnifying-glass-plus', () => resizeBy(40, 40));
 			}
-			controlsEl.appendChild(createShellControlButton('Center tool window', '◎', centerShell));
-			headerEl.appendChild(controlsEl);
+			if (!isCalculatorShell) {
+				controlsEl.appendChild(createShellControlButton('Center tool window', '◎', centerShell));
+			}
+			// Calculator: pack controls + close into a single right-side cluster
+			// so `space-between` on the header lays out as `title … [controls x]`.
+			// Cluster gap (6px) gives the same separation between any two
+			// circular buttons and between the controls group and the close.
+			// Other shells keep the legacy single-row append flow.
+			let rightClusterEl: HTMLDivElement | null = null;
+			if (isCalculatorShell) {
+				rightClusterEl = document.createElement('div');
+				rightClusterEl.className = 'pie-tool-shell__header-right';
+				rightClusterEl.style.display = 'inline-flex';
+				rightClusterEl.style.alignItems = 'center';
+				rightClusterEl.style.gap = '6px';
+				rightClusterEl.appendChild(controlsEl);
+				headerEl.appendChild(rightClusterEl);
+			} else {
+				headerEl.appendChild(controlsEl);
+			}
 
-			closeButtonEl = document.createElement('button');
-			closeButtonEl.type = 'button';
-			closeButtonEl.className = 'pie-tool-shell__close';
-			closeButtonEl.setAttribute('aria-label', 'Close tool');
-			const svgNs = 'http://www.w3.org/2000/svg';
-			const closeIconEl = document.createElementNS(svgNs, 'svg');
-			closeIconEl.setAttribute('xmlns', svgNs);
-			closeIconEl.setAttribute('viewBox', '0 0 16 16');
-			closeIconEl.setAttribute('aria-hidden', 'true');
-			const closeIconPath = document.createElementNS(svgNs, 'path');
-			closeIconPath.setAttribute('d', 'M3.5 3.5L12.5 12.5M12.5 3.5L3.5 12.5');
-			closeIconPath.setAttribute('stroke', 'currentColor');
-			closeIconPath.setAttribute('stroke-width', '1.8');
-			closeIconPath.setAttribute('stroke-linecap', 'round');
-			closeIconEl.appendChild(closeIconPath);
-			closeButtonEl.appendChild(closeIconEl);
-			// SVGElement.style exists but is readonly in DOM types; cast once.
-			const closeIconStyle = (closeIconEl as unknown as HTMLElement).style;
-			closeIconStyle.width = '16px';
-			closeIconStyle.height = '16px';
-			closeIconStyle.display = 'block';
-			closeIconStyle.flexShrink = '0';
-			closeIconStyle.pointerEvents = 'none';
-			const closeButtonBaseBackground =
-				'color-mix(in srgb, var(--pie-white, #fff) 8%, transparent)';
-			const closeButtonHoverBackground =
-				'color-mix(in srgb, var(--pie-white, #fff) 18%, transparent)';
-			closeButtonEl.style.border = '1px solid transparent';
-			closeButtonEl.style.background = closeButtonBaseBackground;
-			closeButtonEl.style.color = 'inherit';
-			closeButtonEl.style.cursor = 'pointer';
-			closeButtonEl.style.display = 'inline-flex';
-			closeButtonEl.style.alignItems = 'center';
-			closeButtonEl.style.justifyContent = 'center';
-			closeButtonEl.style.width = '28px';
-			closeButtonEl.style.height = '28px';
-			closeButtonEl.style.padding = '0';
-			closeButtonEl.style.borderRadius = '8px';
-			closeButtonEl.style.lineHeight = '0';
-			closeButtonEl.style.transition = 'background-color 0.15s ease, border-color 0.15s ease';
-			closeButtonEl.style.display =
-				currentArgs.mounted.entry.shell.closeable === false ? 'none' : 'inline-flex';
-			closeButtonEl.onmouseenter = () => {
-				closeButtonEl && (closeButtonEl.style.background = closeButtonHoverBackground);
-			};
-			closeButtonEl.onmouseleave = () => {
-				closeButtonEl && (closeButtonEl.style.background = closeButtonBaseBackground);
-			};
-			closeButtonEl.onfocus = () => {
-				closeButtonEl && (closeButtonEl.style.outline =
-					'2px solid var(--pie-button-focus-outline, var(--pie-primary, #4A90E2))');
-				closeButtonEl && (closeButtonEl.style.outlineOffset = '2px');
-			};
-			closeButtonEl.onblur = () => {
-				closeButtonEl && (closeButtonEl.style.outline = 'none');
-				closeButtonEl && (closeButtonEl.style.outlineOffset = '0');
-			};
-			closeButtonEl.onclick = closeShell;
-			headerEl.appendChild(closeButtonEl);
+			if (isCalculatorShell) {
+				closeButtonEl = document.createElement('nds-icon-button');
+				closeButtonEl.setAttribute('variant', 'tertiary');
+				closeButtonEl.setAttribute('size', 'small');
+				closeButtonEl.setAttribute('type', 'circle');
+				closeButtonEl.setAttribute('icon-name', 'xmark');
+				closeButtonEl.setAttribute('button-aria-label', 'Close tool');
+				closeButtonEl.title = 'Close tool';
+				closeButtonEl.style.display =
+					currentArgs.mounted.entry.shell.closeable === false ? 'none' : 'inline-block';
+				closeButtonEl.addEventListener('click', closeShell);
+			} else {
+				const closeButton = document.createElement('button');
+				closeButton.type = 'button';
+				closeButton.className = 'pie-tool-shell__close';
+				closeButton.setAttribute('aria-label', 'Close tool');
+				const svgNs = 'http://www.w3.org/2000/svg';
+				const closeIconEl = document.createElementNS(svgNs, 'svg');
+				closeIconEl.setAttribute('xmlns', svgNs);
+				closeIconEl.setAttribute('viewBox', '0 0 16 16');
+				closeIconEl.setAttribute('aria-hidden', 'true');
+				const closeIconPath = document.createElementNS(svgNs, 'path');
+				closeIconPath.setAttribute('d', 'M3.5 3.5L12.5 12.5M12.5 3.5L3.5 12.5');
+				closeIconPath.setAttribute('stroke', 'currentColor');
+				closeIconPath.setAttribute('stroke-width', '1.8');
+				closeIconPath.setAttribute('stroke-linecap', 'round');
+				closeIconEl.appendChild(closeIconPath);
+				closeButton.appendChild(closeIconEl);
+				// SVGElement.style exists but is readonly in DOM types; cast once.
+				const closeIconStyle = (closeIconEl as unknown as HTMLElement).style;
+				closeIconStyle.width = '16px';
+				closeIconStyle.height = '16px';
+				closeIconStyle.display = 'block';
+				closeIconStyle.flexShrink = '0';
+				closeIconStyle.pointerEvents = 'none';
+				const closeButtonBaseBackground =
+					'color-mix(in srgb, var(--pie-white, #fff) 8%, transparent)';
+				const closeButtonHoverBackground =
+					'color-mix(in srgb, var(--pie-white, #fff) 18%, transparent)';
+				closeButton.style.border = '1px solid transparent';
+				closeButton.style.background = closeButtonBaseBackground;
+				closeButton.style.color = 'inherit';
+				closeButton.style.cursor = 'pointer';
+				closeButton.style.display = 'inline-flex';
+				closeButton.style.alignItems = 'center';
+				closeButton.style.justifyContent = 'center';
+				closeButton.style.width = '28px';
+				closeButton.style.height = '28px';
+				closeButton.style.padding = '0';
+				closeButton.style.borderRadius = '8px';
+				closeButton.style.lineHeight = '0';
+				closeButton.style.transition = 'background-color 0.15s ease, border-color 0.15s ease';
+				closeButton.style.display =
+					currentArgs.mounted.entry.shell.closeable === false ? 'none' : 'inline-flex';
+				closeButton.onmouseenter = () => {
+					closeButton.style.background = closeButtonHoverBackground;
+				};
+				closeButton.onmouseleave = () => {
+					closeButton.style.background = closeButtonBaseBackground;
+				};
+				closeButton.onfocus = () => {
+					closeButton.style.outline =
+						'2px solid var(--pie-button-focus-outline, var(--pie-primary, #4A90E2))';
+					closeButton.style.outlineOffset = '2px';
+				};
+				closeButton.onblur = () => {
+					closeButton.style.outline = 'none';
+					closeButton.style.outlineOffset = '0';
+				};
+				closeButton.onclick = closeShell;
+				closeButtonEl = closeButton;
+			}
+			if (rightClusterEl) {
+				rightClusterEl.appendChild(closeButtonEl);
+			} else {
+				headerEl.appendChild(closeButtonEl);
+			}
 			headerEl.tabIndex = 0;
 			headerEl.onkeydown = (event: KeyboardEvent) => {
 				if (event.key === 'Home') {
@@ -1388,8 +1545,14 @@
 				currentArgs = nextArgs;
 				if (!shellEl || !contentEl || !titleEl || !closeButtonEl) return;
 				titleEl.textContent = currentArgs.mounted.entry.shell?.title || currentArgs.mounted.toolId;
+				// nds-icon-button (calculator branch) is a custom element with
+				// inline-block default display; the legacy branch uses an
+				// inline-flex <button>. Pick the right open-state value so we
+				// don't clobber inline-block back to inline-flex on prop refresh.
+				const closeButtonOpenDisplay =
+					currentArgs.mounted.toolId === 'calculator' ? 'inline-block' : 'inline-flex';
 				closeButtonEl.style.display =
-					currentArgs.mounted.entry.shell?.closeable === false ? 'none' : 'inline-flex';
+					currentArgs.mounted.entry.shell?.closeable === false ? 'none' : closeButtonOpenDisplay;
 				mountContent();
 				applyShellStyle();
 				notifyHostedResize();

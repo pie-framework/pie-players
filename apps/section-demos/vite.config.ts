@@ -63,6 +63,21 @@ export default (async () => {
 		server: {
 			port: 5300,
 			open: true,
+			proxy: {
+				// Same-origin proxy for FontAwesome 6 Pro served by Renaissance.
+				// Renaissance's CDN ships the CSS but doesn't send CORS headers
+				// on the underlying woff2/ttf files, which fails when the
+				// stylesheet's `@font-face` rules are evaluated cross-origin.
+				// Routing through Vite makes the fetches same-origin so the
+				// browser skips the CORS check entirely. Dev-only — production
+				// hosts must arrange their own same-origin path or get
+				// Renaissance to add `Access-Control-Allow-Origin`.
+				"/_fa-pro": {
+					target: "https://ui.renaissance.com",
+					changeOrigin: true,
+					rewrite: (p) => p.replace(/^\/_fa-pro/, "/fonts/Font_Awesome_6_Pro"),
+				},
+			},
 		},
 		resolve: {
 			alias: {

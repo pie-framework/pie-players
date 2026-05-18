@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 
 import {
+	cpSync,
 	existsSync,
 	mkdirSync,
 	readFileSync,
+	readdirSync,
 	rmSync,
 	writeFileSync,
 } from "node:fs";
@@ -23,6 +25,47 @@ rmSync(path.join(distComponents, ".generated"), {
 	recursive: true,
 	force: true,
 });
+
+// Mirror non-TS asset directories (e.g. vendored 3rd-party CE bundles) from
+// src/components into dist/components so relative imports emitted by
+// Svelte resolve at bundle time. tsc only emits TypeScript; static JS
+// vendor bundles need to be copied explicitly.
+//
+// At copy time we also rewrite raw `customElements.define(...)` calls
+// inside vendored files into idempotent guards. The vendor bundles get
+// inlined into multiple toolkit CE artifacts (ItemToolBar / SectionToolBar
+// / PieAssessmentToolkit) and a host page can load more than one of them,
+// so the second register would otherwise throw NotSupportedError. This
+// matches the same guarantee the SAFE_DEFINE_HELPER below provides for
+// Svelte-compiled CEs, applied via source rewrite because we don't own
+// the upstream code.
+const guardVendorDefineCalls = (source) =>
+	source.replace(
+		/customElements\.define\((\w+),\s*(\w+)\)/g,
+		"customElements.get($1) || customElements.define($1, $2)",
+	);
+const vendorSrc = path.join(srcComponents, "vendor");
+const vendorDist = path.join(distComponents, "vendor");
+if (existsSync(vendorSrc)) {
+	rmSync(vendorDist, { recursive: true, force: true });
+	cpSync(vendorSrc, vendorDist, { recursive: true });
+	const walkAndPatch = (dir) => {
+		for (const entry of readdirSync(dir, { withFileTypes: true })) {
+			const absPath = path.join(dir, entry.name);
+			if (entry.isDirectory()) {
+				walkAndPatch(absPath);
+				continue;
+			}
+			if (!entry.name.endsWith(".js")) continue;
+			const original = readFileSync(absPath, "utf8");
+			const patched = guardVendorDefineCalls(original);
+			if (patched !== original) {
+				writeFileSync(absPath, patched, "utf8");
+			}
+		}
+	};
+	walkAndPatch(vendorDist);
+}
 
 const entries = [
 	{

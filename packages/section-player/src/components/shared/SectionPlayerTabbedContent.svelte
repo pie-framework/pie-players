@@ -147,88 +147,61 @@
 			</div>
 		{/if}
 
-		{#key selectedTab}
-			{#if hasPassages && selectedTab === "passage"}
-				<div
-					id={passagePanelId}
-					class="pie-section-player-tab-panel pie-section-player-tab-panel--passages"
-					role="tabpanel"
-					aria-labelledby={passageTabId}
-				>
-					<pie-section-player-passages-pane
-						passages={layoutModel.passages}
-						elementsLoaded={layoutModel.paneElementsLoaded}
-						resolvedPlayerEnv={layoutModel.resolvedPlayerEnv}
-						resolvedPlayerAttributes={layoutModel.resolvedPlayerAttributes}
-						resolvedPlayerProps={layoutModel.resolvedPlayerProps}
-						playerStrategy={layoutModel.playerStrategy}
-						passageToolbarTools={passageToolbarTools}
-						toolRegistry={toolRegistry || layoutModel.toolRegistry}
-						hostButtons={
-							passageHostButtons.length > 0
-								? passageHostButtons
-								: layoutModel.passageHostButtons
-						}
-					></pie-section-player-passages-pane>
-				</div>
-			{:else}
-				<div
-					id={itemsPanelId}
-					class="pie-section-player-tab-panel pie-section-player-tab-panel--items"
-					role="tabpanel"
-					aria-labelledby={hasPassages ? itemsTabId : undefined}
-				>
-					<pie-section-player-items-pane
-						items={layoutModel.items}
-						compositionModel={layoutModel.compositionModel}
-						resolvedPlayerEnv={layoutModel.resolvedPlayerEnv}
-						resolvedPlayerAttributes={layoutModel.resolvedPlayerAttributes}
-						resolvedPlayerProps={layoutModel.resolvedPlayerProps}
-						playerStrategy={layoutModel.playerStrategy}
-						itemToolbarTools={itemToolbarTools}
-						toolRegistry={toolRegistry || layoutModel.toolRegistry}
-						hostButtons={
-							itemHostButtons.length > 0 ? itemHostButtons : layoutModel.itemHostButtons
-						}
-						iifeBundleHost={iifeBundleHost}
-						preloadedRenderables={layoutModel.preloadedRenderables}
-						preloadedRenderablesSignature={layoutModel.preloadedRenderablesSignature}
-						{preloadComponentTag}
-						preloadEnabled={layoutModel.preloadEnabled}
-						onelements-loaded-change={layoutModel.onItemsPaneElementsLoaded}
-						onelement-preload-retry={layoutModel.onItemsPanePreloadRetry}
-						onelement-preload-error={layoutModel.onItemsPanePreloadError}
-					></pie-section-player-items-pane>
-				</div>
-			{/if}
-		{/key}
-
-		{#if hasPassages && selectedTab === "passage" && !layoutModel.paneElementsLoaded}
-			<!-- Keep item-pane lifecycle active in the background so passage rendering can unblock. -->
-			<div class="pie-section-player-tab-preload" aria-hidden="true">
-				<pie-section-player-items-pane
-					items={layoutModel.items}
-					compositionModel={layoutModel.compositionModel}
+		{#if hasPassages}
+			<div
+				id={passagePanelId}
+				class="pie-section-player-tab-panel pie-section-player-tab-panel--passages"
+				role="tabpanel"
+				aria-labelledby={passageTabId}
+				hidden={selectedTab !== "passage"}
+			>
+				<pie-section-player-passages-pane
+					passages={layoutModel.passages}
+					elementsLoaded={layoutModel.paneElementsLoaded}
 					resolvedPlayerEnv={layoutModel.resolvedPlayerEnv}
 					resolvedPlayerAttributes={layoutModel.resolvedPlayerAttributes}
 					resolvedPlayerProps={layoutModel.resolvedPlayerProps}
 					playerStrategy={layoutModel.playerStrategy}
-					itemToolbarTools={itemToolbarTools}
+					passageToolbarTools={passageToolbarTools}
 					toolRegistry={toolRegistry || layoutModel.toolRegistry}
 					hostButtons={
-						itemHostButtons.length > 0 ? itemHostButtons : layoutModel.itemHostButtons
+						passageHostButtons.length > 0
+							? passageHostButtons
+							: layoutModel.passageHostButtons
 					}
-					iifeBundleHost={iifeBundleHost}
-					preloadedRenderables={layoutModel.preloadedRenderables}
-					preloadedRenderablesSignature={layoutModel.preloadedRenderablesSignature}
-					{preloadComponentTag}
-					preloadEnabled={layoutModel.preloadEnabled}
-					onelements-loaded-change={layoutModel.onItemsPaneElementsLoaded}
-					onelement-preload-retry={layoutModel.onItemsPanePreloadRetry}
-					onelement-preload-error={layoutModel.onItemsPanePreloadError}
-				></pie-section-player-items-pane>
+				></pie-section-player-passages-pane>
 			</div>
 		{/if}
+
+		<div
+			id={itemsPanelId}
+			class="pie-section-player-tab-panel pie-section-player-tab-panel--items"
+			role="tabpanel"
+			aria-labelledby={hasPassages ? itemsTabId : undefined}
+			hidden={hasPassages && selectedTab !== "items"}
+		>
+			<pie-section-player-items-pane
+				items={layoutModel.items}
+				compositionModel={layoutModel.compositionModel}
+				resolvedPlayerEnv={layoutModel.resolvedPlayerEnv}
+				resolvedPlayerAttributes={layoutModel.resolvedPlayerAttributes}
+				resolvedPlayerProps={layoutModel.resolvedPlayerProps}
+				playerStrategy={layoutModel.playerStrategy}
+				itemToolbarTools={itemToolbarTools}
+				toolRegistry={toolRegistry || layoutModel.toolRegistry}
+				hostButtons={
+					itemHostButtons.length > 0 ? itemHostButtons : layoutModel.itemHostButtons
+				}
+				iifeBundleHost={iifeBundleHost}
+				preloadedRenderables={layoutModel.preloadedRenderables}
+				preloadedRenderablesSignature={layoutModel.preloadedRenderablesSignature}
+				{preloadComponentTag}
+				preloadEnabled={layoutModel.preloadEnabled}
+				onelements-loaded-change={layoutModel.onItemsPaneElementsLoaded}
+				onelement-preload-retry={layoutModel.onItemsPanePreloadRetry}
+				onelement-preload-error={layoutModel.onItemsPanePreloadError}
+			></pie-section-player-items-pane>
+		</div>
 	</div>
 </div>
 
@@ -330,18 +303,12 @@
 		background: var(--pie-scrollbar-thumb-hover, #4b5563);
 	}
 
+	.pie-section-player-tab-panel[hidden] {
+		display: none;
+	}
+
 	.pie-section-player-tab-panel :global(.pie-section-player-passages-pane),
 	.pie-section-player-tab-panel :global(.pie-section-player-items-pane) {
 		height: 100%;
 	}
-
-	.pie-section-player-tab-preload {
-		position: absolute;
-		inline-size: 0;
-		block-size: 0;
-		overflow: hidden;
-		opacity: 0;
-		pointer-events: none;
-	}
-
 </style>

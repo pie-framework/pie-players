@@ -191,6 +191,7 @@ export const demoKeyboardNavMcEbsrSection: AssessmentSection = {
 						{
 							id: "knav-q3",
 							element: "ebsr",
+							partLabels: false,
 							partA: {
 								id: "knav-q3",
 								element: "ebsr",
@@ -253,6 +254,7 @@ export const demoKeyboardNavMcEbsrSection: AssessmentSection = {
 						{
 							id: "knav-q4",
 							element: "ebsr",
+							partLabels: false,
 							partA: {
 								id: "knav-q4",
 								element: "ebsr",

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { getAllDemos } from '$lib/content';
 	import { demoHeadingName } from '$lib/utils/demo-heading-name';
+	import SiteHeader from '$lib/components/SiteHeader.svelte';
 
 	const demos = getAllDemos();
 	const groupedDemos = Array.from(
@@ -18,16 +19,24 @@
 			.join(' '),
 		demos: packageDemos,
 	}));
+
+	function hrefForDemo(demo: (typeof demos)[number]) {
+		return `/demo/${demo.id}/delivery?player=iife`;
+	}
 </script>
 
 <svelte:head>
 	<title>PIE Item Player - Demos</title>
 </svelte:head>
 
+<SiteHeader title="PIE Item Demos" subtitle="Item player recipes" />
+
 <div class="container mx-auto px-4 py-12 max-w-7xl">
-	<header class="mb-12 space-y-4">
-		<div class="badge badge-secondary badge-outline">IIFE</div>
-		<h1 class="text-5xl font-bold">PIE Item Player Demos</h1>
+	<header class="mb-12 space-y-3">
+		<p class="text-xs font-bold uppercase tracking-[0.08em] text-primary">
+			Item Player &middot; IIFE
+		</p>
+		<h1 class="text-5xl font-bold tracking-tight text-secondary">PIE Item Player Demos</h1>
 	</header>
 
 	<div class="space-y-12">
@@ -46,7 +55,7 @@
 				<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
 					{#each group.demos as demo}
 						<a
-							href={`/demo/${demo.id}/delivery?player=iife`}
+							href={hrefForDemo(demo)}
 							class="card bg-base-100 shadow-xl hover:shadow-2xl transition-all duration-200 hover:-translate-y-1"
 						>
 							<div class="card-body gap-4">

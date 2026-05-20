@@ -181,10 +181,6 @@
 		return kernelRef?.navigatePrevious?.() === true;
 	}
 
-	export function focusStart(): boolean {
-		return kernelRef?.focusStart?.() === true;
-	}
-
 	export function getSectionController() {
 		return kernelRef?.getSectionController?.() || null;
 	}
@@ -364,6 +360,10 @@
 		height: 100%;
 		padding: 0.5rem;
 		box-sizing: border-box;
+	}
+
+	.pie-section-player-items-pane :global(.pie-section-player-scroll-hint) {
+	    bottom: -0.5rem;
 	}
 
 	.pie-section-player-observability-anchor {

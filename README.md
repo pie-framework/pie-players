@@ -146,6 +146,7 @@ bun run release:label:push           # Create and push tag to origin
 
 - [Architecture](docs/architecture/architecture.md)
 - [Authoring Mode](docs/AUTHORING_MODE.md)
+- [Launching from LTI](docs/integrations/lti.md)
 - [NPM Token Setup](docs/setup/npm_token_setup.md)
 - [Publishing Contract](docs/setup/publishing.md)
 - [Docs Index](docs/README.md)

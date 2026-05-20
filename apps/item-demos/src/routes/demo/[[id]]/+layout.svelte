@@ -29,6 +29,7 @@
 	let { data, children } = $props();
 
 	const demoHeading = $derived(demoHeadingName(data.demo?.name));
+	const isAuthoringContractDemo = $derived(data.demo?.id === 'authoring-contract-fixture');
 
 	// State
 	let initializedDemoId = $state<string | null>(null);
@@ -181,6 +182,12 @@
 		}
 	});
 
+	$effect(() => {
+		if (isAuthoringContractDemo && activeView === 'delivery') {
+			void navigateWithRefresh(tabHref('author'));
+		}
+	});
+
 	async function updateOverrideParam(packageName: string, version: string | null) {
 		const url = new URL($page.url);
 		const normalizedPackageName = packageName.startsWith('@') ? packageName.slice(1) : packageName;
@@ -231,9 +238,10 @@
 		studentHref={modeHref('student')}
 		scorerHref={modeHref('scorer')}
 		{viewMode}
+		authorOnly={isAuthoringContractDemo}
 		{showSessionPanel}
 		{showInstrumentationPanel}
-		showSessionToggle={activeView === 'delivery'}
+		showSessionToggle={activeView === 'delivery' && !isAuthoringContractDemo}
 		onSwitchLoaderStrategy={(next) => {
 			void updateLoaderStrategy(next);
 		}}
@@ -252,7 +260,7 @@
 				<p class="mt-2 text-base-content/90">{data.demo.description}</p>
 			{/if}
 		</div>
-		{#if activeView === 'delivery' || activeView === 'author'}
+		{#if (activeView === 'delivery' || activeView === 'author') && data.demo?.id !== 'authoring-contract-fixture'}
 			<ElementVersionToolbar
 				elements={catalogElements}
 				overrides={elementOverrides}

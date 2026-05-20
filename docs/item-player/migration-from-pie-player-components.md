@@ -25,22 +25,24 @@ The legacy player loaded IIFE bundles from the PIE build service exclusively, us
 
 The new player supports three strategies via the `strategy` attribute:
 
-| Strategy | Description |
-|----------|-------------|
-| `iife` | IIFE bundles from a bundle host (same general approach as legacy, modernized) |
-| `esm` | ESM modules from a CDN via import maps -- no script injection, tree-shakeable |
-| `preloaded` | Host preloads element bundles at the page level; player skips all loading |
+- `iife`: IIFE bundles from a bundle host; the same general approach as
+  legacy, modernized.
+- `esm`: ESM modules from a CDN via import maps; no script injection, and
+  tree-shakeable.
+- `preloaded`: host preloads element bundles at the page level; the player skips
+  all loading.
 
 See [loading-strategies.md](./loading-strategies.md) for details.
 
 ## Modern stack
 
-| Aspect | Legacy | Current |
-|--------|--------|---------|
-| Framework | Stencil 1.7 | Svelte 5 + Vite |
-| TypeScript | 3.3 | 5.9 |
-| Module format | CJS + IIFE (Stencil dist) | ESM-first (`"type": "module"`) |
-| Registration | `defineCustomElements(window)` or auto via `<script>` | Auto-registers on import; `definePieItemPlayer()` for custom tag names |
+- Framework: Stencil 1.7 in legacy, Svelte 5 + Vite in the current player.
+- TypeScript: 3.3 in legacy, 5.9 in the current player.
+- Module format: CJS + IIFE in legacy Stencil dist, ESM-first
+  (`"type": "module"`) in the current player.
+- Registration: legacy used `defineCustomElements(window)` or auto-registration
+  via `<script>`; the current player auto-registers on import and also exposes
+  `definePieItemPlayer()` for custom tag names.
 
 ## Modular loading primitive
 
@@ -68,6 +70,56 @@ The new player exposes four explicit handler properties with two enforcement mod
 
 - `authoring-backend="demo"` -- built-in demo handlers (data URL based, non-production)
 - `authoring-backend="required"` -- host must provide `onInsertImage`, `onDeleteImage`, `onInsertSound`, `onDeleteSound`; missing handlers block authoring and emit `player-error`
+
+## Authoring API mapping
+
+Legacy `<pie-author>` is replaced by `<pie-item-player mode="author">`. The
+current API is functionally equivalent for the core configure lifecycle, but it
+uses explicit names and namespaces:
+
+- `config` maps to `config`.
+- Shared `configSettings` maps to `configuration`.
+- Authoring-only `configSettings` maps to `configuration.authoring`.
+- `modelLoaded` maps to `model-loaded`.
+- `modelUpdated` maps to `model-updated`.
+- `validateModels()` stays `validateModels()`.
+- `imageSupport` maps to `onInsertImage` and `onDeleteImage`.
+- `uploadSoundSupport` maps to `onInsertSound` and `onDeleteSound`.
+
+Authoring-only settings should be nested under `configuration.authoring` rather
+than mixed with delivery settings. Keys can target the full versioned PIE tag,
+the package spec, the package name, or the package base name. The full versioned
+tag is the most specific key and is the safest choice when multiple versions of
+the same PIE element can appear on one page.
+
+```ts
+const el = document.querySelector("pie-item-player");
+el.mode = "author";
+el.configuration = {
+  "@pie-element/multiple-choice@1.2.3": {
+    sharedSetting: true,
+  },
+  authoring: {
+    "multiple-choice--version-1-2-3": {
+      authoringOnlySetting: true,
+    },
+  },
+};
+
+el.addEventListener("model-loaded", (event) => {
+  console.log(event.detail.models);
+});
+
+el.addEventListener("model-updated", (event) => {
+  console.log(event.detail.update);
+});
+
+const validation = await el.validateModels();
+```
+
+Rubric helper methods such as `addRubricToConfig()` and
+`addMultiTraitRubricToConfig()` are not exposed as item-player element methods.
+Use shared config utilities or host-side composition for rubric authoring flows.
 
 ## Session management
 

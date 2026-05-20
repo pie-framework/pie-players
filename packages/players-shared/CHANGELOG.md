@@ -1,5 +1,74 @@
 # @pie-players/pie-players-shared
 
+## 0.3.42
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+
+## 0.3.41
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+
+## 0.3.40
+
+### Patch Changes
+
+- 3a167a8: Declare Svelte as an optional peer for `pie-players-shared` raw Svelte source exports so pnpm consumers resolve the app's Svelte runtime without installing a nested copy.
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+
+## 0.3.39
+
+### Patch Changes
+
+- 0072fad: Move Svelte out of published runtime dependencies and add a release check that rejects future accidental `svelte` runtime dependency declarations. Assessment toolkit custom-element outputs now bundle their Svelte runtime helpers so consumers do not install a second Svelte runtime through player packages.
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+
+## 0.3.38
+
+### Patch Changes
+
+- f856362: Bump `@pie-lib/math-rendering-module` to `5.0.0` for the PIE-423 math accessibility rendering update.
+- c8d46d7: Remove PIE-owned focus-placement APIs and automatic section navigation focus movement.
+
+  This is a breaking cleanup for pre-1.0 hosts: `pie-item-player.focusFirst()`, section-player layout `focusStart()`, `SectionPlayerFocusPolicy.autoFocus`, `DEFAULT_FOCUS_POLICY`, and `resolveAutoFocusStrategy` are no longer exported. The shared `queryFirstFocusableDeep()` and `focusFirstFocusableInElement()` helpers were also removed; `FOCUSABLE_SELECTOR` and `isProgrammaticFocusTarget()` remain for focus-trap internals.
+
+  Hosts should own skip links, landmarks, and page-level focus placement while section player preserves natural tab order into actionable controls.
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+
+## 0.3.37
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+
+## 0.3.36
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+
+## 0.3.35
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+
+## 0.3.34
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+
+## 0.3.33
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+
 ## 0.3.32
 
 ### Patch Changes
@@ -63,11 +132,11 @@
     consolidates section-controller lifecycle, readiness derivation, and
     stage emissions previously scattered across multiple coordinators.
 
-  - **M8 — tool policy engine.** Allow/block + QTI enforcement become a
+  - **M8 — tool policy engine.** Allow/block + PNP/profile enforcement become a
     first-class policy surface on `ToolkitCoordinator`
     (`onPolicyChange`, `decideToolPolicy`, `getFloatingTools`,
-    `setQtiEnforcement`, `registerPolicySource`), with narrow QTI
-    auto-detection mirrored through `runtime.tools.qtiEnforcement`.
+    `setPnpEnforcement`, `registerPolicySource`), with narrow profile
+    auto-detection mirrored through `runtime.tools.pnpEnforcement`.
 
   - **`FrameworkErrorBus` contract.** A single canonical
     `framework-error` source, single subscription via
@@ -110,8 +179,8 @@
     reactive consumption that replaces the deleted Svelte-store derived
     views. Independently, `ToolkitCoordinator`'s tool-policy surface
     (`onPolicyChange`, `decideToolPolicy`, `getFloatingTools`,
-    `setQtiEnforcement`, `registerPolicySource`) is the canonical entry
-    point for the _tool policy_ concern (allow/block + QTI enforcement)
+    `setPnpEnforcement`, `registerPolicySource`) is the canonical entry
+    point for the _tool policy_ concern (allow/block + PNP/profile enforcement)
     — that is a different concern than the floating-tool z-index API
     the deleted interface served.
 

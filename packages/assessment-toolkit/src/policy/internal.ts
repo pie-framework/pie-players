@@ -1,7 +1,7 @@
 /**
  * Tool policy engine — **internal** entry point (M8 PR 1).
  *
- * Re-exports the composition pipeline, the QTI source, and the
+ * Re-exports the composition pipeline, the PNP policy source, and the
  * provenance builder for advanced hosts that want to drive the engine
  * components directly, and for the engine's own tests.
  *
@@ -15,7 +15,7 @@
  *   - `./policy/engine`   — narrow, stable facade for common host
  *                           wiring and Svelte context.
  *   - `./policy/internal` — wide, evolving surface for the
- *                           composition pipeline, QTI source, and
+ *                           composition pipeline, PNP policy source, and
  *                           any host that wants to reach past the
  *                           facade.
  */
@@ -26,17 +26,17 @@ export {
 } from "./core/compose-decision.js";
 
 export {
-	QtiPolicySource,
-	type QtiPolicyApplyArgs,
-	type QtiPolicyDecisionEvent,
-	type QtiPolicyResult,
-	type QtiToolFlags,
-} from "./sources/QtiPolicySource.js";
+	PnpPolicySource,
+	type PnpPolicyApplyArgs,
+	type PnpPolicyDecisionEvent,
+	type PnpPolicyResult,
+	type PnpPolicyToolFlags,
+} from "./sources/PnpPolicySource.js";
 
 export { ToolPolicyProvenanceBuilder } from "./core/provenance.js";
 
 export {
-	assessmentHasQtiInputs,
-	itemRefHasQtiInputs,
-	resolveDefaultQtiEnforcement,
-} from "./core/qti-inputs.js";
+	assessmentHasPnpPolicyInputs,
+	itemRefHasPnpPolicyInputs,
+	resolveDefaultPnpEnforcement,
+} from "./core/pnp-policy-inputs.js";

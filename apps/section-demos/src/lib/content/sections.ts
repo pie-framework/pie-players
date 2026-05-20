@@ -6,10 +6,13 @@ import { demo4Section } from "./demo4-tts-ssml";
 import { demo5Section } from "./demo5-resource-observability";
 import { demo6Section } from "./demo6-tabbed-layout";
 import { demo7Section } from "./demo7-heading-accessibility";
+import { demo8ToolVisibilitySection } from "./demo8-tool-visibility";
+import { demo9Section } from "./demo9-preloaded-fixed-elements";
 import {
 	pie512SectionA,
 	pie512SectionB,
 } from "./pie-512-asymmetric-sections";
+import { demoKeyboardNavMcEbsrSection } from "./demo-keyboard-nav-mc-ebsr";
 
 export interface SectionDemoInfo {
 	id: string;
@@ -19,6 +22,7 @@ export interface SectionDemoInfo {
 	integrationTheme?: string;
 	focus?: string;
 	whatMakesItTick?: string[];
+	allowElementVersionOverrides?: boolean;
 	section?: AssessmentSection;
 	sections?: Array<{
 		id: string;
@@ -410,6 +414,24 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		],
 		section: demo2Section,
 	},
+	"preloaded-fixed-elements": {
+		id: "preloaded-fixed-elements",
+		name: "Preloaded Fixed Element Versions",
+		description:
+			"Section with a PIE passage, multiple-choice item, and categorize item loaded through one fixed preloaded bundle",
+		integrationLevel: 3,
+		integrationTheme: "Preloaded fixed versions",
+		focus:
+			"Shows how a host can preload the exact PIE element bundle set a section needs and render the section-player with fixed item-player versions instead of `@latest`.",
+		whatMakesItTick: [
+			"Pins `@pie-element/passage@5.3.3`, `@pie-element/multiple-choice@11.4.3`, and `@pie-element/categorize@11.3.2` directly in `config.elements`.",
+			"Defaults the demo route to `player-type=\"preloaded\"`, so the host loads one bundle before rendering the section-player.",
+			"Keeps authored markup IDs and logical tag names stable; the player derives runtime versioned custom-element tags from the pinned package specs.",
+			"Disables section-demos element-version URL overrides so the pinned package specs remain the demo's source of truth.",
+		],
+		allowElementVersionOverrides: false,
+		section: demo9Section,
+	},
 	"three-questions": {
 		id: "three-questions",
 		name: "Three Questions",
@@ -424,6 +446,22 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 			"Useful baseline before testing advanced persistence or server-hydration flows."
 		],
 		section: demo3Section,
+	},
+	"keyboard-nav-mc-ebsr": {
+		id: "keyboard-nav-mc-ebsr",
+		name: "Keyboard Nav in MC and EBSR",
+		description:
+			"Two multiple-choice and two EBSR items built around a WCAG keyboard-navigation passage — exercises radio roving-tabindex, checkbox Space-toggle, focus visibility, and accessible naming rules",
+		integrationLevel: 3,
+		integrationTheme: "Mixed element types",
+		focus:
+			"Validates that multiple-choice (radio) and EBSR (Part A radio + Part B checkbox) items render and respond to keyboard interaction correctly in a single section.",
+		whatMakesItTick: [
+			"Mixes `@pie-element/multiple-choice` (single-select radio) and `@pie-element/ebsr` (two-part radio + checkbox) in one section.",
+			"All questions reference a shared WCAG keyboard-accessibility passage so content and interaction type reinforce each other.",
+			"Pinned element versions (`multiple-choice@13.2.0-next.19`, `ebsr@14.2.0-next.19`) make this a reliable regression fixture for those pre-release builds.",
+		],
+		section: demoKeyboardNavMcEbsrSection,
 	},
 	"invalid-tools-config": {
 		id: "invalid-tools-config",
@@ -441,19 +479,19 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		],
 		section: demo3Section
 	},
-	"qti-default-on": {
-		id: "qti-default-on",
-		name: "QTI Default On (Auto-detect)",
+	"pnp-default-on": {
+		id: "pnp-default-on",
+		name: "PNP Default On (Auto-detect)",
 		description:
-			"Smoke fixture: an assessment that carries QTI material auto-promotes `qtiEnforcement` to 'on' without an explicit `qti-enforcement` attribute.",
+			"Smoke fixture: an assessment that carries profile policy material auto-promotes `pnpEnforcement` to 'on' without an explicit `pnp-enforcement` attribute.",
 		integrationLevel: 4,
 		integrationTheme: "Tool policy engine",
 		focus:
-			"Proves the M8 PR 4 narrow auto-on rule end-to-end: bind an `AssessmentEntity` with PNP / district policy through `coord.updateAssessment(...)` and the coordinator flips QTI gates on by itself.",
+			"Proves the M8 PR 4 narrow auto-on rule end-to-end: bind an `AssessmentEntity` with PNP / district policy through `coord.updateAssessment(...)` and the coordinator flips PNP/profile gates on by itself.",
 		whatMakesItTick: [
 			"Listens for `toolkit-ready` and binds an assessment with `personalNeedsProfile.supports = ['graph']` and `districtPolicy.requiredTools = ['graph']`.",
-			"Never sets the `qti-enforcement` attribute, so the auto-default rule (`assessmentHasQtiInputs` / `itemRefHasQtiInputs`) decides.",
-			"Reads back `coord.getPolicyInputs().qtiEnforcement` and the engine's `decideToolPolicy(...)` so the resolved mode is visible in the page.",
+			"Never sets the `pnp-enforcement` attribute, so the auto-default rule (`assessmentHasPnpPolicyInputs` / `itemRefHasPnpPolicyInputs`) decides.",
+			"Reads back `coord.getPolicyInputs().pnpEnforcement` and the engine's `decideToolPolicy(...)` so the resolved mode is visible in the page.",
 		],
 		section: demo1Section,
 	},
@@ -472,6 +510,23 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 			"Adds a section metadata panel tool with stable read-only session details.",
 		],
 		section: demo3Section,
+	},
+	"tool-visibility": {
+		id: "tool-visibility",
+		name: "Tool Visibility from Item Data",
+		description:
+			"Host policy and registry wiring that shows a basic calculator, scientific calculator, or no calculator based on item data",
+		integrationLevel: 4,
+		integrationTheme: "Host data-driven tool policy",
+		focus:
+			"Demonstrates how hosts can decide whether a tool is available from item-level metadata without baking host business rules into section-player.",
+		whatMakesItTick: [
+			"Item refs carry neutral demo-owned `toolMetadata.calculator` values: `basic`, `scientific`, or omitted.",
+			"A host-owned ToolRegistry override updates calculator labels and constrains each calculator element to the requested type.",
+			"A custom PolicySource removes calculator from untagged item scopes before toolbar rendering.",
+			"The same registry is passed to `createToolsConfig`, `ToolkitCoordinator`, and the section-player element.",
+		],
+		section: demo8ToolVisibilitySection,
 	},
 	"tts-ssml": {
 		id: "tts-ssml",
@@ -520,22 +575,6 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 			"Instrumentation panel should show resource events such as `pie-resource-load`."
 		],
 		section: demo5Section,
-	},
-	"focus-management": {
-		id: "focus-management",
-		name: "Focus Management",
-		description:
-			"Exercises the section-player focus contract (autoFocus policy + focusStart() imperative API) for Skip-to-Main",
-		integrationLevel: 5,
-		integrationTheme: "Accessibility",
-		focus:
-			"Verifies focus targets for mount, navigation, and Skip-to-Main across layouts and passage presence.",
-		whatMakesItTick: [
-			"Strategy selector toggles `SectionPlayerFocusPolicy.autoFocus` between `start-of-content`, `current-item`, and `none`.",
-			"Layout switcher drives `pie-section-player-splitpane`, `pie-section-player-vertical`, and `pie-section-player-tabbed`.",
-			"Mock Skip-to-Main button calls `focusStart()` on the active layout element; active element is read back live."
-		],
-		section: demo3Section,
 	},
 	"session-hydrate-db": {
 		id: "session-hydrate-db",

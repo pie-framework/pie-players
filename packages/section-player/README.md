@@ -32,6 +32,73 @@ entrypoints under `@pie-players/pie-section-player/components/*`.
 Standalone browser variants for this package are intentionally deferred; the
 current supported contract is the default bundler entrypoints under `dist`.
 
+## SectionController
+
+`SectionController` is the domain authority inside a section player. It owns
+in-section navigation state, the canonical aggregation of per-item sessions,
+and the host-facing persistence snapshot. The layout custom elements
+(`pie-section-player-splitpane` / `-vertical` / `-tabbed`) are transport
+adapters around it. See
+[`docs/section-player/controller-boundaries.md`](../../docs/section-player/controller-boundaries.md)
+for the rationale behind that split, and
+[`docs/section-player/client-architecture-tutorial.md`](../../docs/section-player/client-architecture-tutorial.md)
+for the end-to-end walkthrough.
+
+The handle implements `SectionControllerHandle` from
+`@pie-players/pie-assessment-toolkit`; see the JSDoc on that interface for
+the per-method contract.
+
+### Obtaining the handle
+
+```ts
+const host = document.querySelector("pie-section-player-splitpane") as any;
+const controller = await host.waitForSectionController?.(5000);
+```
+
+`waitForSectionController(timeoutMs)` resolves when the layout CE has wired
+its controller (the same anchor `pie-stage-change` reaches with
+`detail.stage === "engine-ready"`). Use `getSectionController()` if you've
+already passed the readiness anchor synchronously. The legacy
+`section-controller-ready` event was removed; either of these helpers
+replaces it.
+
+### Session lifecycle
+
+A typical host flow:
+
+```ts
+controller?.configureSessionPersistence?.({ context, strategy });
+await controller?.hydrate?.();
+const unsubscribe = controller?.subscribe?.(handleEvent);
+// ...later, on save / unload:
+await controller?.persist?.();
+unsubscribe?.();
+```
+
+`getSession()` / `applySession(session, { mode })` / `updateItemSession(itemId,
+detail)` are the direct read/write surfaces and exchange the same
+`SectionControllerSessionState` shape the persistence strategy load/save
+methods receive. See [Item session management](#item-session-management) for
+worked examples.
+
+### Event stream
+
+The controller's typed event stream (`SectionControllerEvent` discriminated
+union) is the single source of truth for in-section change. Hosts usually
+subscribe through `ToolkitCoordinator.subscribeItemEvents` /
+`subscribeSectionLifecycleEvents` (cohort-aware filtering, survives
+navigation) — see [JS API example for advanced host
+policy](#js-api-example-for-advanced-host-policy). Key event types:
+
+- `item-selected` — item navigation within the current section.
+- `item-session-data-changed` / `item-session-meta-changed` — per-item
+  session updates the persistence layer should observe.
+- `content-loaded` — passage / item / rubric finished loading.
+- `section-loading-complete` — every renderable in the section finished
+  loading.
+- `section-items-complete-changed` — aggregate completion flip.
+- `section-navigation-change` — the controller's section identity changed.
+
 ## Usage
 
 Import the custom-element registration entrypoint in consumers:
@@ -176,50 +243,25 @@ host.hooks = {
 
 Advanced CE props are still supported as escape hatches (`runtime`, `coordinator`, etc.), but hosts should prefer JS/controller composition for non-standard behavior. Note: `createSectionController` is **runtime-only** — set it on `runtime.createSectionController` rather than as a top-level CE prop (the prop alias was removed in the broad architecture review compat sweep).
 
-### Focus management
+### Host-owned focus
 
-Section-player owns its own focus contract so hosts can integrate a
-"Skip to Main" affordance and keyboard navigation without re-encoding
-the passage-first rule.
+Section-player does not move focus on behalf of host-level affordances such
+as "Skip to Main", nor does it make passage/question containers tab stops.
+Hosts own page chrome, skip links, landmarks, and any special focus placement.
+For example, Quiz Engine's Fixed Player shell can focus its own
+`main#main-content`; the next Tab then follows the browser's natural order
+into the first actionable control rendered inside the section player.
 
-**Public focus targets.** Both card custom elements are `tabindex="-1"`
-(programmatically focusable, never in sequential tab order) and expose a
-`:focus-visible` outline:
+The passage and item card custom elements are content/layout surfaces, not
+public focus targets. Splitpane passage content remains scrollable through the
+pane's native scroll behavior, but the passage pane itself is not inserted into
+sequential keyboard navigation.
 
-- `<pie-section-player-passage-card>` (when the section has a passage)
-- `<pie-section-player-item-card>`
-
-The inner `.pie-section-player-content-card[data-section-item-card]`
-selector is an internal back-compat hook and is not part of the public
-contract — prefer querying the custom element tags.
-
-**Declarative control.** The `SectionPlayerFocusPolicy.autoFocus` strategy
-governs focus on every navigation event (Next / Back / `navigateTo`) and is
-also honored by the imperative `focusStart()`:
-
-- `"start-of-content"` *(default)* — focus the passage card when present,
-  otherwise the first item card. Matches the canonical assessment UX where
-  Skip-to-Main and navigation land in the same place. Best for
-  one-item-per-page layouts (splitpane, tabbed).
-- `"current-item"` — focus the newly-active item card (queried as
-  `pie-section-player-item-card[is-current]`). Best for stacked/list
-  layouts where multiple items are visible at once (vertical, custom
-  kernel-host variants). Works in both paginated and keep-together
-  sections — QTI 3 `keep-together` is a pagination hint only and does
-  not disable item-level navigation or current-item tracking.
-- `"none"` — framework never moves focus on navigation; the host owns it
-  entirely. `focusStart()` still moves focus (defaults to
-  start-of-content) because hosts only call it when they *want* focus to
-  move.
-
-```ts
-const host = document.querySelector("pie-section-player-splitpane") as any;
-host.policies = {
-  readiness: { mode: "progressive" },
-  preload: { enabled: true },
-  focus: { autoFocus: "start-of-content" },
-  telemetry: { enabled: true },
-};
+```html
+<a href="#main-content" class="skip-link">Skip to Main</a>
+<main id="main-content" tabindex="-1">
+  <pie-section-player-splitpane></pie-section-player-splitpane>
+</main>
 ```
 
 **Wired policy toggles.** Each `SectionPlayerPolicies` field has a real
@@ -232,8 +274,6 @@ runtime effect; nothing in this surface is decorative.
   still mount and item-players register their own elements on demand. Use
   this to disable section pre-warm when the host already owns element
   registration end-to-end. Default: `true`.
-- `focus.autoFocus` — focus strategy on navigation; see "Focus management"
-  above.
 - `telemetry.enabled` — when `false`, the layout custom elements skip
   `attachInstrumentationEventBridge` setup, so no `pie-section-*`
   telemetry events flow through the bridge. Hosts that want a different
@@ -244,29 +284,6 @@ The exported `isPreloadEnabled(policies)` and `isTelemetryEnabled(policies)`
 helpers read these toggles with the documented default-true semantics, so
 host code that needs to mirror the same gate (e.g. when composing a custom
 layout host) can call them directly.
-
-**Imperative escape hatch (host-owned focus moments).** Every layout
-element (`pie-section-player-splitpane`, `-vertical`, `-tabbed`,
-`-kernel-host`, and `-base`) exposes a `focusStart(): boolean` method.
-Call it from host-owned affordances the framework cannot observe — most
-commonly a "Skip to Main" button in the host's ribbon:
-
-```ts
-document.querySelector("pie-section-player-splitpane")?.focusStart();
-```
-
-`focusStart()` honors the `autoFocus` strategy so Skip-to-Main lands
-wherever the host has opted in for navigation focus:
-
-- `"start-of-content"` *(default)* → passage card when present, else first
-  item card.
-- `"current-item"` → the item card currently marked `is-current`, falling
-  back to start-of-content if no current item is resolvable.
-- `"none"` → start-of-content (hosts call `focusStart()` precisely
-  because they want focus to move).
-
-For Next / Back / question-number navigation the host does **not** call
-`focusStart()` — the `autoFocus` policy fires automatically.
 
 ### Navigation signals
 
@@ -376,27 +393,27 @@ function canAdvance() {
 }
 ```
 
-If you already have a `ToolkitCoordinator` from `toolkit-ready`, prefer helper subscriptions for host logic:
+If you already have a `ToolkitCoordinator`, prefer helper subscriptions for host logic. Subscriptions follow the toolkit's active section cohort automatically — a single subscribe call survives navigation:
 
 ```ts
 const unsubscribeItem = coordinator.subscribeItemEvents({
-  sectionId,
-  attemptId,
   listener: (event: any) => {
     // item-scoped stream
   },
 });
 
 const unsubscribeSection = coordinator.subscribeSectionLifecycleEvents({
-  sectionId,
-  attemptId,
   listener: (event: any) => {
     // section-loading-complete / section-items-complete-changed / section-error / section-navigation-change
   },
 });
 ```
 
+Subscribe **after** the first `getOrCreateSectionController(...)` resolves (or after `toolkit-ready` once the section player has fully wired its controller — typically the safest anchor in host code is `toolkit-ready` followed by the first controller-resolve). Calling subscribe before any cohort exists throws.
+
 Use `subscribeSectionEvents(...)` only for advanced mixed filtering requirements.
+
+> **Upgrading from `<0.3.35`?** The `sectionId` / `attemptId` arguments on `subscribeItemEvents` / `subscribeSectionLifecycleEvents` / `subscribeSectionEvents` were dropped — subscriptions now follow the toolkit's active section cohort automatically and migrate across navigation. See the **"Migrating from `<0.3.35`"** section in [`@pie-players/pie-assessment-toolkit`](../assessment-toolkit/README.md#migrating-from-0335-breaking--pre-10) for the full upgrade recipe.
 
 ### Item-level observability configuration
 

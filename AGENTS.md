@@ -92,6 +92,14 @@ they execute outside the sandbox and reuse the shared
 
 Rule file: [`.cursor/rules/playwright-sandbox.mdc`](.cursor/rules/playwright-sandbox.mdc).
 
+### Branch workflow
+
+`develop` is the integration branch for this project. Do not merge or push
+project changes directly to `main` / `master`. Feature branches are fine, but
+they should target `develop` for PRs and merges.
+
+Rule file: [`.cursor/rules/branch-workflow.mdc`](.cursor/rules/branch-workflow.mdc).
+
 ### Release version alignment (fixed / lockstep versioning)
 
 All publishable `@pie-players/*` packages are released with a **fixed

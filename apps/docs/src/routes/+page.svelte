@@ -333,19 +333,6 @@
 					</p>
 				</div>
 			</div>
-
-			<div class="card bg-base-100 border border-base-300">
-				<div class="card-body">
-					<h4 class="font-bold text-primary mb-2">TypedEventBus</h4>
-					<p class="text-sm">
-						Generic, standards-based <code>EventTarget</code> wrapper hosts and downstream
-						packages can use to compose their own typed event maps. The toolkit's own
-						lifecycle / framework-error / instrumentation events are emitted as documented
-						DOM <code>CustomEvent</code>s and via <code>ToolkitCoordinator.subscribe*</code>
-						helpers — not through this bus.
-					</p>
-				</div>
-			</div>
 		</div>
 	</section>
 

@@ -651,8 +651,6 @@ The preferred pattern is to trigger `controller.persist()` via the coordinator s
 let lastFingerprint: string | null = null;
 
 coordinator.subscribeItemEvents({
-  sectionId,
-  attemptId,
   eventTypes: ['item-session-data-changed'],
   listener: () => {
     const controller = coordinator.getSectionController({ sectionId, attemptId });
@@ -667,6 +665,8 @@ coordinator.subscribeItemEvents({
   },
 });
 ```
+
+`subscribeItemEvents(...)` follows the toolkit's *active section cohort* automatically — the listener migrates to the new controller across navigation. Use `coordinator.getSectionController({ sectionId, attemptId })` (still keyed by id) inside the listener when you need to address a specific cohort's snapshot, e.g. for cross-section persistence work.
 
 You can also subscribe directly on the controller handle (see §9) and react to `item-session-data-changed` events — the approach is equivalent, but the coordinator helper handles scoping automatically.
 
@@ -693,8 +693,6 @@ As a consequence, `section-session-applied` fires twice in a normal hydrated flo
 
 ```ts
 coordinator.subscribeSectionLifecycleEvents({
-  sectionId,
-  attemptId,
   listener: (event) => {
     if (event.type === 'section-session-applied' && event.replay) {
       return;  // suppress duplicate side effects on replay
@@ -716,8 +714,6 @@ Item events are tied to individual response interactions:
 
 ```ts
 const unsub = coordinator.subscribeItemEvents({
-  sectionId,
-  attemptId,
   listener: (event) => {
     switch (event.type) {
       case 'item-session-data-changed':
@@ -746,12 +742,10 @@ const unsub = coordinator.subscribeItemEvents({
 unsub();
 ```
 
-You can also narrow by event type or specific item IDs:
+The subscription follows the toolkit's *active section cohort* automatically — across navigation between sections, the listener is migrated to the new controller and receives a snapshot replay (per-item `content-loaded` then `section-loading-complete`) in the canonical order a fresh subscriber would have observed. You can also narrow by event type or specific item IDs:
 
 ```ts
 coordinator.subscribeItemEvents({
-  sectionId,
-  attemptId,
   eventTypes: ['item-session-data-changed', 'item-complete-changed'],
   itemIds: ['item-q1', 'item-q2'],
   listener: handleSessionChange,
@@ -764,8 +758,6 @@ Section lifecycle events cover loading, completion state, and errors:
 
 ```ts
 const unsub = coordinator.subscribeSectionLifecycleEvents({
-  sectionId,
-  attemptId,
   listener: (event) => {
     switch (event.type) {
       case 'section-loading-complete':
@@ -788,6 +780,8 @@ const unsub = coordinator.subscribeSectionLifecycleEvents({
 });
 ```
 
+Same active-cohort migration semantics as `subscribeItemEvents`: the listener follows navigation, and a snapshot replay of the new cohort's `section-loading-complete` (when applicable) fires on every migration.
+
 ### Raw controller subscription
 
 You can also subscribe directly on the controller handle for finer control:
@@ -799,9 +793,11 @@ const unsub = controller.subscribe?.((event) => {
 });
 ```
 
-### Always include both `sectionId` and `attemptId`
+Use this when you specifically want a binding pinned to one controller instance (it does *not* follow navigation).
 
-In multi-attempt or multi-section layouts, subscriptions without an explicit `attemptId` are ambiguous and will be silently ignored if multiple controllers exist for the same `sectionId`. Always scope subscriptions with both identifiers.
+### Subscribe after the first cohort exists
+
+Calling `subscribeSectionEvents`, `subscribeItemEvents`, or `subscribeSectionLifecycleEvents` before any `getOrCreateSectionController(...)` has resolved throws. In a normal section-player wiring flow, the safest anchor is "after `toolkit-ready` and the first controller-resolve" — once that has happened, a single subscribe call survives all subsequent navigation.
 
 ---
 

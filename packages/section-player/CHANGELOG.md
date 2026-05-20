@@ -1,5 +1,441 @@
 # @pie-players/pie-section-player
 
+## 0.3.42
+
+### Patch Changes
+
+- 6496dda: Add host tool context resolvers so integrations can attach per-item render params, such as calculator type, after policy and PNP gates but without overriding packaged tool registrations.
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies [6496dda]
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.42
+  - @pie-players/pie-context@0.3.42
+  - @pie-players/pie-item-player@0.3.42
+  - @pie-players/pie-players-shared@0.3.42
+  - @pie-players/pie-tool-annotation-toolbar@0.3.42
+  - @pie-players/pie-tool-calculator-desmos@0.3.42
+  - @pie-players/pie-tool-text-to-speech@0.3.42
+  - @pie-players/pie-tool-tts-inline@0.3.42
+  - @pie-players/pie-toolbars@0.3.42
+
+## 0.3.41
+
+### Patch Changes
+
+- Apply the section-player focus ring consistently to passage content and the split-pane divider without restoring player-owned focus placement behavior.
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.41
+  - @pie-players/pie-context@0.3.41
+  - @pie-players/pie-item-player@0.3.41
+  - @pie-players/pie-players-shared@0.3.41
+  - @pie-players/pie-tool-annotation-toolbar@0.3.41
+  - @pie-players/pie-tool-calculator-desmos@0.3.41
+  - @pie-players/pie-tool-text-to-speech@0.3.41
+  - @pie-players/pie-tool-tts-inline@0.3.41
+  - @pie-players/pie-toolbars@0.3.41
+
+## 0.3.40
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies [3a167a8]
+- Updated dependencies
+  - @pie-players/pie-players-shared@0.3.40
+  - @pie-players/pie-assessment-toolkit@0.3.40
+  - @pie-players/pie-context@0.3.40
+  - @pie-players/pie-item-player@0.3.40
+  - @pie-players/pie-tool-annotation-toolbar@0.3.40
+  - @pie-players/pie-tool-calculator-desmos@0.3.40
+  - @pie-players/pie-tool-text-to-speech@0.3.40
+  - @pie-players/pie-tool-tts-inline@0.3.40
+  - @pie-players/pie-toolbars@0.3.40
+
+## 0.3.39
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies [0072fad]
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.39
+  - @pie-players/pie-players-shared@0.3.39
+  - @pie-players/pie-context@0.3.39
+  - @pie-players/pie-item-player@0.3.39
+  - @pie-players/pie-tool-annotation-toolbar@0.3.39
+  - @pie-players/pie-tool-calculator-desmos@0.3.39
+  - @pie-players/pie-tool-text-to-speech@0.3.39
+  - @pie-players/pie-tool-tts-inline@0.3.39
+  - @pie-players/pie-toolbars@0.3.39
+
+## 0.3.38
+
+### Patch Changes
+
+- ef29724: Rename generic QTI policy APIs and diagnostics to PNP/profile terminology, including the built-in policy source, default enforcement helpers, provenance tags, and required-tool diagnostics.
+
+  Enhance the editable PNP debugger and section demos so hosts can exercise all available tools and PNP/profile enforcement behavior end-to-end.
+
+- c8d46d7: Remove PIE-owned focus-placement APIs and automatic section navigation focus movement.
+
+  This is a breaking cleanup for pre-1.0 hosts: `pie-item-player.focusFirst()`, section-player layout `focusStart()`, `SectionPlayerFocusPolicy.autoFocus`, `DEFAULT_FOCUS_POLICY`, and `resolveAutoFocusStrategy` are no longer exported. The shared `queryFirstFocusableDeep()` and `focusFirstFocusableInElement()` helpers were also removed; `FOCUSABLE_SELECTOR` and `isProgrammaticFocusTarget()` remain for focus-trap internals.
+
+  Hosts should own skip links, landmarks, and page-level focus placement while section player preserves natural tab order into actionable controls.
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies [f856362]
+- Updated dependencies [ef29724]
+- Updated dependencies [c8d46d7]
+- Updated dependencies
+  - @pie-players/pie-players-shared@0.3.38
+  - @pie-players/pie-assessment-toolkit@0.3.38
+  - @pie-players/pie-item-player@0.3.38
+  - @pie-players/pie-context@0.3.38
+  - @pie-players/pie-tool-annotation-toolbar@0.3.38
+  - @pie-players/pie-tool-calculator-desmos@0.3.38
+  - @pie-players/pie-tool-text-to-speech@0.3.38
+  - @pie-players/pie-tool-tts-inline@0.3.38
+  - @pie-players/pie-toolbars@0.3.38
+
+## 0.3.37
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies [2818f93]
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.37
+  - @pie-players/pie-context@0.3.37
+  - @pie-players/pie-item-player@0.3.37
+  - @pie-players/pie-players-shared@0.3.37
+  - @pie-players/pie-tool-annotation-toolbar@0.3.37
+  - @pie-players/pie-tool-calculator-desmos@0.3.37
+  - @pie-players/pie-tool-text-to-speech@0.3.37
+  - @pie-players/pie-tool-tts-inline@0.3.37
+  - @pie-players/pie-toolbars@0.3.37
+
+## 0.3.36
+
+### Patch Changes
+
+- 9ef211c: PIE-512 Phase D cleanup: drop legacy `sectionId` / `attemptId` args from internal subscribe call sites; sharpen the migration narrative for typed integrations.
+
+  This is a follow-up to `0.3.35` — same active-cohort contract, no functional behavior change. It cleans up internal code that was still passing the now-ignored args, and adds an explicit migration recipe for typed integrators.
+
+  ### BREAKING CHANGE (re-stated from `0.3.35` for clarity)
+
+  `coordinator.subscribeSectionEvents` / `subscribeItemEvents` / `subscribeSectionLifecycleEvents` no longer accept `sectionId` / `attemptId` arguments at the type level. The runtime silently ignores any extra unknown properties, so untyped or loosely-typed call sites continue to work, but **typed integrations that import `SectionEventSubscriptionArgs`, `SectionItemEventSubscriptionArgs`, or `SectionScopedEventSubscriptionArgs` directly and pass `sectionId` / `attemptId` will fail to compile against `>=0.3.35`.**
+
+  #### What this changes for typed integrations
+
+  | Before (`<0.3.35`)                                                                            | After (`>=0.3.35`)                                                                                                       |
+  | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+  | `subscribeItemEvents({ sectionId, attemptId, listener })`                                     | `subscribeItemEvents({ listener })`                                                                                      |
+  | Listener bound to one controller; manual re-subscribe needed on cohort change                 | Listener follows the active cohort automatically; single subscribe survives navigation                                   |
+  | `subscribe*` was a no-op when called with an unknown `sectionId`                              | `subscribe*` throws if **no** active cohort exists; call it after the first `getOrCreateSectionController(...)` resolves |
+  | Subscribing the same listener function with different filter args added a second subscription | Subscribing the same listener function replaces the prior subscription (filter args from the second call win)            |
+  | Listener throws bubbled up to the dispatcher and could break fan-out                          | Listener throws are caught and `console.warn`-logged; fan-out to other listeners continues                               |
+
+  #### Action required
+
+  - **Drop** `sectionId` / `attemptId` from every `subscribeSectionEvents`, `subscribeItemEvents`, `subscribeSectionLifecycleEvents` call site. The args have no runtime effect under `>=0.3.35`.
+  - **Move the subscribe call** to _after_ the first `getOrCreateSectionController(...)` resolves (rather than synchronously on `toolkit-ready`).
+  - **Remove any re-subscribe-on-navigation logic.** A single subscribe call after the first controller-resolve is sufficient — the listener migrates automatically and gets a snapshot replay (`content-loaded` × N then `section-loading-complete`) on every cohort transition. **This is the most common breakage pattern**: hosts that previously detached and re-subscribed on every `toolkit-ready` (correct under the pre-Phase D pinned-subscription contract) will now observe **double snapshot replays** on every section navigation — once via Phase D auto-migration, then again from the manual re-subscribe. Listener handlers that are not strictly idempotent will fire twice (e.g. analytics `pageAction`s, increment counters that aren't Set-deduplicated, side-effecting hydration calls).
+  - **For intentionally-pinned subscriptions to a non-active section** (e.g. a host UI that wants to keep watching section A while displaying B), use `coordinator.getSectionController({ sectionId, attemptId })` and subscribe directly on the controller handle via `controller.subscribe?.(...)`. That binding is pinned to one controller instance and does not migrate.
+  - **Hand-rolled local structural types** that duplicate the public arg shape: drop the `sectionId` / `attemptId` properties from the local type so the local declaration matches the public contract. Otherwise the local type is misleadingly-wrong dead code at runtime.
+
+  #### Concrete simplification example
+
+  If your wrapper used the pre-Phase D detach-and-re-subscribe pattern on every `toolkit-ready` event:
+
+  ```typescript
+  public handleToolkitReady(event: Event): void {
+    const coordinator = (event as CustomEvent).detail?.coordinator;
+    if (!coordinator) return;
+
+    // Pre-Phase D: rebind for the new section.
+    this.controllerUnsubscribe?.();
+    const itemUnsub = coordinator.subscribeItemEvents({
+      sectionId: this.sectionId, // pinned to currently-displayed section
+      listener: handleItemEvent,
+    });
+    const sectionUnsub = coordinator.subscribeSectionLifecycleEvents({
+      sectionId: this.sectionId,
+      listener: handleSectionEvent,
+    });
+    this.controllerUnsubscribe = () => { itemUnsub?.(); sectionUnsub?.(); };
+  }
+  ```
+
+  …simplify to subscribe **once** and let Phase D follow the active cohort:
+
+  ```typescript
+  public handleToolkitReady(event: Event): void {
+    const coordinator = (event as CustomEvent).detail?.coordinator;
+    if (!coordinator) return;
+    this.toolkitCoordinator = coordinator;
+
+    // Phase D: subscribe once; the listener follows the active cohort
+    // across all subsequent navigation. Bail if already subscribed.
+    if (this.controllerUnsubscribe) return;
+
+    const itemUnsub = coordinator.subscribeItemEvents({
+      listener: handleItemEvent,
+    });
+    const sectionUnsub = coordinator.subscribeSectionLifecycleEvents({
+      listener: handleSectionEvent,
+    });
+    this.controllerUnsubscribe = () => { itemUnsub?.(); sectionUnsub?.(); };
+  }
+  ```
+
+  The full migration recipe with before/after code samples is in `packages/assessment-toolkit/README.md` under "Migrating from `<0.3.35`".
+
+  ### Internal cleanup
+
+  Drops `sectionId` / `attemptId` from:
+
+  - `packages/section-player-tools-event-debugger/EventPanel.svelte` — local `ToolkitCoordinatorLike` structural type and the two coordinator subscribe call sites.
+  - `packages/section-player-tools-session-debugger/SectionSessionPanel.svelte` — same shape.
+  - `packages/section-player/tests/section-player-pie-512-cross-section-events.spec.ts` — the `EventPanelHandle` type and the in-page subscribe call sites.
+
+  These were dead-args at runtime under Phase D — the runtime ignores them, but their presence was misleading: the local types claimed args that the public API no longer accepts, and any future maintainer copy-pasting from those panels would write code that's TS-broken against the public types. No test or behavior change; the cleanup is purely contract-shape hygiene.
+
+  Also fixes a single overlooked `sectionId,` arg in `docs/section-player/client-architecture-tutorial.md` (post-0.3.35 doc-sweep straggler) and adds explicit migration notes to `packages/assessment-toolkit/README.md` and `packages/section-player/README.md`.
+
+  ### Coverage
+
+  No new tests — this is a code-shape cleanup of internal call sites. Coverage for the Phase D contract itself is in:
+
+  - `packages/assessment-toolkit/tests/pie-512-phase-d-active-cohort-tracking.test.ts` (12 cases)
+  - `packages/assessment-toolkit/tests/runtime/adapter/coordinator-bridge-cohort-handoff.test.ts` (3 cases)
+  - `packages/assessment-toolkit/tests/pie-512-cross-section-event-delivery.test.ts` (3 cases)
+  - `packages/section-player/tests/section-player-pie-512-cross-section-events.spec.ts` (Playwright e2e, narrow-viewport A→B→A traversal)
+
+  All pass with the cleanup applied.
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies [9ef211c]
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.36
+  - @pie-players/pie-context@0.3.36
+  - @pie-players/pie-item-player@0.3.36
+  - @pie-players/pie-players-shared@0.3.36
+  - @pie-players/pie-tool-annotation-toolbar@0.3.36
+  - @pie-players/pie-tool-calculator-desmos@0.3.36
+  - @pie-players/pie-tool-text-to-speech@0.3.36
+  - @pie-players/pie-tool-tts-inline@0.3.36
+  - @pie-players/pie-toolbars@0.3.36
+
+## 0.3.35
+
+### Patch Changes
+
+- 286418e: fix(PIE-512): make `subscribeSectionEvents` follow the active section cohort across navigation (Phase D)
+
+  Phase B/C addressed engine-side replay and same-section `updateInput` regressions but
+  left a final residual flake: `coordinator.subscribeItemEvents` and
+  `coordinator.subscribeSectionLifecycleEvents` bound a listener to the section
+  controller that was active **at subscribe time**. A host that subscribes once
+  on `toolkit-ready` and then navigates between sections — without re-subscribing
+  — stayed pinned to the original controller and silently missed `content-loaded`
+  / `section-loading-complete` events from the new cohort. Demos that remounted
+  the layout custom element on navigation (via `{#key}` or equivalent) avoided
+  the bug; a host that keeps the element persistent (the supported pattern) hit
+  it on every cross-section navigation.
+
+  ### What changes
+
+  - `subscribeSectionEvents`, `subscribeItemEvents`, and
+    `subscribeSectionLifecycleEvents` now bind to the toolkit's _active section
+    cohort_ and automatically migrate across cohort transitions. On every
+    migration the listener is detached from the old controller, attached to the
+    new one, and replayed the new cohort's snapshot (`content-loaded` × N in
+    registration order, then `section-loading-complete` if applicable) — the
+    same ordering a fresh subscriber would have observed.
+  - `subscribeSectionEvents` now throws when no active cohort exists; host code
+    must call `getOrCreateSectionController(...)` at least once before
+    subscribing. (`toolkit-ready` alone is not sufficient.) The typical
+    pattern is a single subscribe right after the first
+    `getOrCreateSectionController(...)` resolves — that subscription then
+    follows all subsequent navigation without further wiring.
+  - Subscribing the same listener function twice replaces the prior
+    subscription (filter args from the second call win); the dedup key is
+    listener identity alone, no per-section key.
+  - A listener that throws is caught and `console.warn`-logged; the throw does
+    not interrupt fan-out to other listeners (matches the
+    `FrameworkErrorBus` isolation pattern).
+  - `SectionEventSubscriptionArgs`, `SectionItemEventSubscriptionArgs`, and
+    `SectionScopedEventSubscriptionArgs` no longer declare `sectionId?` /
+    `attemptId?` properties. **Type-level breaking change** for consumers
+    importing these types directly. Runtime tolerates extra unknown
+    properties, so existing call sites that still pass `sectionId` /
+    `attemptId` continue to run unchanged — the args are simply ignored
+    and the subscription follows the active cohort.
+  - `getSectionController({ sectionId, attemptId })` is **unchanged**; it is
+    still keyed by id and remains the right call when reading state from
+    inactive (persisted) sections.
+
+  ### Why this is expected to be the final pass on PIE-512
+
+  - Removes the only remaining subscribe-time staleness path. No new corner-case
+    branches, no timing dependency, no flag — single canonical contract.
+  - Coordinator-side dead code (`resolveSectionSubscriptionEntry`,
+    `resolveSectionControllerForSubscription`,
+    `detachSectionEventSubscriptionsForMapKey`, the listener-id /
+    composite-key bookkeeping) is deleted; the active-cohort registry
+    collapses subscription state to one Map keyed by listener identity.
+
+  ### Coverage
+
+  - `packages/assessment-toolkit/tests/pie-512-phase-d-active-cohort-tracking.test.ts`
+    (new) — 12 coordinator-only synthetic-harness tests covering active-cohort
+    binding, migration with replay, replay ordering, the no-active-cohort
+    throw, listener throw isolation, snapshot-safe unsubscribe during
+    fan-out, same-cohort `updateInput` no-op, re-entrant subscribe during
+    migration replay, and back-compat tolerance of legacy `sectionId` args.
+  - `packages/assessment-toolkit/tests/runtime/adapter/coordinator-bridge-cohort-handoff.test.ts`
+    (new) — bridge + real-`ToolkitCoordinator` integration test mirroring
+    Darin's persistent-host wrapper pattern: `resolveSectionController(A) →
+resolveSectionController(B)` migrates a coordinator-bound listener with
+    replay, `bridge.dispose()` detaches, and stale token rollovers do not
+    dispatch a duplicate `section-controller-resolved` core input.
+  - `packages/assessment-toolkit/tests/pie-512-cross-section-event-delivery.test.ts`
+    — pre-existing PIE-512 regression pins, with `sectionId` arg dropped to
+    match the Phase D shape; the three tests still pin live delivery on
+    cohort flips, A→B→A round-trips, and asymmetric multi-item replays.
+  - `packages/assessment-toolkit/tests/toolkit-coordinator-section-events.test.ts`
+    — cleanup pass: rewrote "replaces existing subscription" to pin
+    listener-identity dedup, deleted "ambiguous without attempt id"
+    (no longer reachable), dropped `sectionId` args from all subscribes.
+
+  ### Pre-fix failure gate
+
+  Before any production code changed, the new + edited tests were run against
+  the pre-fix source: 10 of 17 targeted tests failed in the expected ways
+  (ambiguous-section throws, missed migrations, no throw isolation, missing
+  back-compat tolerance, missing bridge replay). The 7 that passed against
+  pre-fix source pin orthogonal invariants (single-cohort replay ordering,
+  dispose-detach, snapshot-safe iteration). All 27 pass against the Phase D
+  implementation.
+
+  ### Migration notes for type consumers
+
+  If your code imports `SectionEventSubscriptionArgs`,
+  `SectionItemEventSubscriptionArgs`, or `SectionScopedEventSubscriptionArgs`
+  directly, drop the `sectionId?` / `attemptId?` properties from your call
+  sites — the runtime ignores them. Hosts using local hand-rolled structural
+  types (e.g. an Angular wrapper) need no changes at compile time and pick
+  up the runtime fix automatically.
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies [286418e]
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.35
+  - @pie-players/pie-context@0.3.35
+  - @pie-players/pie-item-player@0.3.35
+  - @pie-players/pie-players-shared@0.3.35
+  - @pie-players/pie-tool-annotation-toolbar@0.3.35
+  - @pie-players/pie-tool-calculator-desmos@0.3.35
+  - @pie-players/pie-tool-text-to-speech@0.3.35
+  - @pie-players/pie-tool-tts-inline@0.3.35
+  - @pie-players/pie-toolbars@0.3.35
+
+## 0.3.34
+
+### Patch Changes
+
+- af850c0: fix(PIE-512): preserve controller lifecycle on same-section updateInput and always replay registry into resolved controller (Phase C)
+
+  Phase B (released as `0.3.33`) replayed the engine's `RuntimeRegistry` into the
+  new cohort's controller when the cohort flip resolved to a fresh controller —
+  fixing the persistent-shell case. It left two related gaps that surfaced as
+  intermittent regressions in the consumer's narrow-viewport (passage-only)
+  flow:
+
+  - `SectionController.initialize` ran `resetLifecycleTracking()` unconditionally,
+    so any `updateInput` (which `ToolkitCoordinator.resolveExistingSectionController`
+    always invokes when the engine resolves the existing controller) wiped
+    `trackedRenderables`, `loadedRenderableKeys`, and `sectionLoadingComplete`.
+    A subscriber that attached between the wipe and the next live event saw
+    empty `runtimeState.loadedRenderables` and missed `content-loaded` /
+    `section-loading-complete` for shells that were already mounted and
+    loaded.
+  - `SectionRuntimeEngine.initialize` only re-fed the registry into the
+    controller when the resolved controller was a NEW instance
+    (`resolved !== previousController`). Same-cohort `updateInput` resolves
+    to the existing controller, so replay was skipped and the wipe above
+    was not undone.
+
+  Phase C closes both gaps:
+
+  - `SectionController.initialize` now only calls `resetLifecycleTracking()`
+    when the section identifier actually changes between the previous
+    input and the next. Same-section refreshes preserve lifecycle state.
+  - `SectionController.handleContentRegistered` and `handleContentLoaded`
+    short-circuit on already-tracked / already-loaded renderable keys —
+    no duplicate `content-loaded` emit, no spurious re-evaluation of
+    `section-loading-complete`, and the engine's replay stays safe to
+    run on every `initialize` call.
+  - `SectionRuntimeEngine.initialize` drops the
+    `resolved !== previousController` gate and unconditionally re-feeds
+    the registry into the resolved controller. Combined with the
+    controller-side idempotence above, the replay is a true no-op when
+    the controller already knows about the registered shells, and a
+    recovery seeding when an `updateInput` cohort refresh has wiped
+    state.
+
+  Coverage:
+
+  - `packages/section-player/tests/section-controller-pie-512-phase-c.test.ts` —
+    five new Bun unit tests pinning the controller-side invariants
+    (no wipe on same-section `updateInput`; idempotent register / load;
+    late subscriber on same-section `updateInput` observes preserved
+    `runtimeState`).
+  - `packages/assessment-toolkit/tests/pie-512-persistent-shell-cohort-handoff.test.ts` —
+    new same-controller engine integration test covering the
+    drop-the-gate change.
+  - The existing PIE-512 cross-section A → B → A Playwright spec
+    continues to pass unchanged. End-to-end coverage of the
+    same-cohort `updateInput` path is intentionally left to the
+    engine integration test (under `@happy-dom`) which exercises
+    the exact engine→controller seam where the bug lived; a
+    Playwright spec that drives a second `engine.initialize`
+    imperatively from `page.evaluate` (mirroring the real
+    consumer's plain-HTML pattern) is a useful follow-up but is
+    not required for this fix.
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies [af850c0]
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.34
+  - @pie-players/pie-context@0.3.34
+  - @pie-players/pie-item-player@0.3.34
+  - @pie-players/pie-players-shared@0.3.34
+  - @pie-players/pie-tool-annotation-toolbar@0.3.34
+  - @pie-players/pie-tool-calculator-desmos@0.3.34
+  - @pie-players/pie-tool-text-to-speech@0.3.34
+  - @pie-players/pie-tool-tts-inline@0.3.34
+  - @pie-players/pie-toolbars@0.3.34
+
+## 0.3.33
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies [70612af]
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.33
+  - @pie-players/pie-context@0.3.33
+  - @pie-players/pie-item-player@0.3.33
+  - @pie-players/pie-players-shared@0.3.33
+  - @pie-players/pie-tool-annotation-toolbar@0.3.33
+  - @pie-players/pie-tool-calculator-desmos@0.3.33
+  - @pie-players/pie-tool-text-to-speech@0.3.33
+  - @pie-players/pie-tool-tts-inline@0.3.33
+  - @pie-players/pie-toolbars@0.3.33
+
 ## 0.3.32
 
 ### Patch Changes
@@ -102,11 +538,11 @@
     consolidates section-controller lifecycle, readiness derivation, and
     stage emissions previously scattered across multiple coordinators.
 
-  - **M8 — tool policy engine.** Allow/block + QTI enforcement become a
+  - **M8 — tool policy engine.** Allow/block + PNP/profile enforcement become a
     first-class policy surface on `ToolkitCoordinator`
     (`onPolicyChange`, `decideToolPolicy`, `getFloatingTools`,
-    `setQtiEnforcement`, `registerPolicySource`), with narrow QTI
-    auto-detection mirrored through `runtime.tools.qtiEnforcement`.
+    `setPnpEnforcement`, `registerPolicySource`), with narrow profile
+    auto-detection mirrored through `runtime.tools.pnpEnforcement`.
 
   - **`FrameworkErrorBus` contract.** A single canonical
     `framework-error` source, single subscription via
@@ -149,8 +585,8 @@
     reactive consumption that replaces the deleted Svelte-store derived
     views. Independently, `ToolkitCoordinator`'s tool-policy surface
     (`onPolicyChange`, `decideToolPolicy`, `getFloatingTools`,
-    `setQtiEnforcement`, `registerPolicySource`) is the canonical entry
-    point for the _tool policy_ concern (allow/block + QTI enforcement)
+    `setPnpEnforcement`, `registerPolicySource`) is the canonical entry
+    point for the _tool policy_ concern (allow/block + PNP/profile enforcement)
     — that is a different concern than the floating-tool z-index API
     the deleted interface served.
 

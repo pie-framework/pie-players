@@ -379,6 +379,155 @@ test.describe("item-player strategy regressions", () => {
 		expect(bundleRequests.length).toBe(baselineCount);
 	});
 
+	test("preloaded readiness includes legacy stimulus passage tags", async ({
+		page,
+	}) => {
+		await page.goto(PRELOADED_DELIVERY_PATH, { waitUntil: "networkidle" });
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({ timeout: 20_000 });
+
+		await page.evaluate(() => {
+			const fixture = document.createElement("div");
+			fixture.id = "pie-preloaded-passage-readiness-fixture";
+			document.body.appendChild(fixture);
+			const player = document.createElement("pie-item-player") as any;
+			player.strategy = "preloaded";
+			player.env = { mode: "gather", role: "student" };
+			player.session = { id: "missing-passage-tags", data: [] };
+			player.config = {
+				id: "advanced-missing-passage",
+				pie: {
+					elements: {},
+					models: [],
+					markup: "<p>Item without elements</p>",
+				},
+				passage: {
+					elements: {
+						"pie-passage-missing": "@pie-element/multiple-choice@11.4.3",
+					},
+					models: [
+						{
+							id: "missing-passage-model",
+							element: "pie-passage-missing",
+							prompt: "Missing passage prompt",
+							choiceMode: "radio",
+							choices: [
+								{ value: "a", label: "A", correct: false },
+								{ value: "b", label: "B", correct: true },
+							],
+						},
+					],
+					markup: '<pie-passage-missing id="missing-passage-model"></pie-passage-missing>',
+				},
+			};
+			fixture.appendChild(player);
+		});
+
+		await expect(page.getByText("Error loading elements (preloaded-readiness):")).toBeVisible(
+			{ timeout: 20_000 },
+		);
+	});
+
+	test("legacy disableBundler maps to preloaded readiness without runtime loading", async ({
+		page,
+	}) => {
+		const bundleRequests: string[] = [];
+		page.on("request", (request) => {
+			const url = request.url();
+			if (url.includes("/bundles/")) bundleRequests.push(url);
+		});
+
+		await page.goto(PRELOADED_DELIVERY_PATH, { waitUntil: "networkidle" });
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({ timeout: 20_000 });
+		const baselineCount = bundleRequests.length;
+
+		await page.evaluate(() => {
+			const fixture = document.createElement("div");
+			fixture.id = "pie-disable-bundler-fixture";
+			document.body.appendChild(fixture);
+			const player = document.createElement("pie-item-player") as any;
+			player.disableBundler = true;
+			player.env = { mode: "gather", role: "student" };
+			player.session = { id: "disable-bundler", data: [] };
+			player.config = {
+				elements: {
+					"pie-disable-bundler-missing": "@pie-element/multiple-choice@11.4.3",
+				},
+				models: [
+					{
+						id: "disable-bundler-model",
+						element: "pie-disable-bundler-missing",
+						prompt: "Disable bundler prompt",
+						choiceMode: "radio",
+						choices: [
+							{ value: "a", label: "A", correct: false },
+							{ value: "b", label: "B", correct: true },
+						],
+					},
+				],
+				markup:
+					'<pie-disable-bundler-missing id="disable-bundler-model"></pie-disable-bundler-missing>',
+			};
+			fixture.appendChild(player);
+		});
+
+		await expect(page.getByText("Error loading elements (preloaded-readiness):")).toBeVisible(
+			{ timeout: 20_000 },
+		);
+		expect(bundleRequests.length).toBe(baselineCount);
+	});
+
+	test("legacy top-level bundleHost feeds iife loading when loaderOptions omits bundleHost", async ({
+		page,
+	}) => {
+		const requestedUrls: string[] = [];
+		await page.route("https://legacy-bundles.example/**", async (route) => {
+			requestedUrls.push(route.request().url());
+			await route.fulfill({
+				status: 404,
+				contentType: "application/javascript",
+				body: "throw new Error('legacy host test');",
+			});
+		});
+
+		await page.goto(IIFE_DELIVERY_PATH, { waitUntil: "networkidle" });
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({ timeout: 20_000 });
+
+		await page.evaluate(() => {
+			const fixture = document.createElement("div");
+			fixture.id = "pie-legacy-bundle-host-fixture";
+			document.body.appendChild(fixture);
+			const player = document.createElement("pie-item-player") as any;
+			player.strategy = "iife";
+			player.bundleHost = "https://legacy-bundles.example/bundles/";
+			player.env = { mode: "gather", role: "student" };
+			player.session = { id: "legacy-bundle-host", data: [] };
+			player.config = {
+				elements: {
+					"pie-legacy-host": "@pie-element/multiple-choice@11.4.3",
+				},
+				models: [
+					{
+						id: "legacy-host-model",
+						element: "pie-legacy-host",
+						prompt: "Legacy bundle host prompt",
+						choiceMode: "radio",
+						choices: [
+							{ value: "a", label: "A", correct: false },
+							{ value: "b", label: "B", correct: true },
+						],
+					},
+				],
+				markup: '<pie-legacy-host id="legacy-host-model"></pie-legacy-host>',
+			};
+			fixture.appendChild(player);
+		});
+
+		await expect
+			.poll(() => requestedUrls.length, { timeout: 20_000 })
+			.toBeGreaterThan(0);
+		expect(requestedUrls[0]).toContain("https://legacy-bundles.example/bundles/");
+	});
+
 	// NOTE: the previous "preloaded fallback can be explicitly opted in" test
 	// was deleted together with the `allowPreloadedFallbackLoad` escape hatch.
 	// `preloaded` now means "host pre-registered these elements; assert

@@ -77,15 +77,16 @@ type ControllerHandle = {
 
 type EventPanelHandle = HTMLElement & {
 	toolkitCoordinator?: {
+		// Phase D (>=0.3.35): subscribe* follows the toolkit's active
+		// section cohort automatically. Each `page.goto(...)` in this
+		// spec resets the coordinator to a fresh active cohort matching
+		// the destination, so a single subscribe per page-load is
+		// sufficient and the active-cohort precondition is met.
 		subscribeItemEvents?: (args: {
-			sectionId: string;
-			attemptId?: string;
 			eventTypes?: string[];
 			listener: (event: { type: string }) => void;
 		}) => () => void;
 		subscribeSectionLifecycleEvents?: (args: {
-			sectionId: string;
-			attemptId?: string;
 			eventTypes?: string[];
 			listener: (event: { type: string }) => void;
 		}) => () => void;
@@ -249,14 +250,10 @@ async function ensureSubscriptionsForSection(
 			events.push({ type, sectionId: targetSectionId });
 		};
 		const itemUnsub = coordinator.subscribeItemEvents?.({
-			sectionId: targetSectionId,
-			attemptId,
 			eventTypes: ["content-loaded"],
 			listener: (event) => recordEvent(event.type),
 		});
 		const sectionUnsub = coordinator.subscribeSectionLifecycleEvents?.({
-			sectionId: targetSectionId,
-			attemptId,
 			eventTypes: ["section-loading-complete"],
 			listener: (event) => recordEvent(event.type),
 		});

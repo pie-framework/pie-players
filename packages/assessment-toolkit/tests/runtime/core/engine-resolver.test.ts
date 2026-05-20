@@ -20,7 +20,9 @@
 
 import { describe, expect, mock, test } from "bun:test";
 
-mock.module("@pie-players/pie-item-player", () => ({}));
+mock.module("@pie-players/pie-item-player", () => ({
+	ensureItemPlayerMathRenderingReady: async () => undefined,
+}));
 
 async function loadEngineResolver() {
 	return import("../../../src/runtime/core/engine-resolver.js");
@@ -66,7 +68,9 @@ describe("engine-resolver: resolveRuntime", () => {
 		expect((merged.player as any).loaderOptions.bundleHost).toBe(
 			"https://top-level.example",
 		);
-		expect((merged.player as any).loaderOptions.moduleResolution).toBe("import-map");
+		expect((merged.player as any).loaderOptions.moduleResolution).toBe(
+			"import-map",
+		);
 		expect((merged as any).toolConfigStrictness).toBe("off");
 	});
 });
@@ -118,9 +122,11 @@ describe("engine-resolver: resolveSectionEngineRuntimeState", () => {
 	test("propagates onFrameworkError into effectiveRuntime", async () => {
 		const { resolveSectionEngineRuntimeState } = await loadEngineResolver();
 		const handler = () => {};
-		const stubPlayerRuntime = mock((args: { effectiveRuntime: Record<string, unknown> }) => ({
-			tagFromCore: args.effectiveRuntime.playerType ?? "stub",
-		}));
+		const stubPlayerRuntime = mock(
+			(args: { effectiveRuntime: Record<string, unknown> }) => ({
+				tagFromCore: args.effectiveRuntime.playerType ?? "stub",
+			}),
+		);
 		const state = resolveSectionEngineRuntimeState(
 			{
 				assessmentId: "a1",
@@ -288,12 +294,28 @@ const PER_KEY_FIXTURES: ReadonlyArray<{
 	runtimeValue: unknown;
 	topLevelValue: unknown;
 }> = [
-	{ key: "assessmentId", runtimeValue: "from-runtime", topLevelValue: "from-prop" },
+	{
+		key: "assessmentId",
+		runtimeValue: "from-runtime",
+		topLevelValue: "from-prop",
+	},
 	{ key: "playerType", runtimeValue: "esm", topLevelValue: "iife" },
 	{ key: "lazyInit", runtimeValue: false, topLevelValue: true },
-	{ key: "accessibility", runtimeValue: { fontSize: "lg" }, topLevelValue: { fontSize: "sm" } },
-	{ key: "coordinator", runtimeValue: { id: "rt" }, topLevelValue: { id: "tp" } },
-	{ key: "env", runtimeValue: { mode: "review" }, topLevelValue: { mode: "gather" } },
+	{
+		key: "accessibility",
+		runtimeValue: { fontSize: "lg" },
+		topLevelValue: { fontSize: "sm" },
+	},
+	{
+		key: "coordinator",
+		runtimeValue: { id: "rt" },
+		topLevelValue: { id: "tp" },
+	},
+	{
+		key: "env",
+		runtimeValue: { mode: "review" },
+		topLevelValue: { mode: "gather" },
+	},
 	{ key: "toolConfigStrictness", runtimeValue: "off", topLevelValue: "error" },
 	{ key: "onStageChange", runtimeValue: () => {}, topLevelValue: () => {} },
 	{ key: "onLoadingComplete", runtimeValue: () => {}, topLevelValue: () => {} },
@@ -346,7 +368,7 @@ describe("engine-resolver: per-key precedence (M5 mirror)", () => {
 });
 
 /**
- * `createSectionController` and `isolation` are intentionally
+ * `createSectionController`, `isolation`, and `toolContextResolvers` are intentionally
  * **runtime-only** post the broad-architecture-review compat sweep —
  * neither has a top-level prop mirror on layout CEs, so the resolver
  * only honors them via `runtime.<key>`.
@@ -385,6 +407,43 @@ describe("engine-resolver: createSectionController is runtime-only", () => {
 			toolConfigStrictness: "error",
 		});
 		expect((merged as any).createSectionController).toBeUndefined();
+	});
+});
+
+describe("engine-resolver: toolContextResolvers is runtime-only", () => {
+	test("runtime.toolContextResolvers is exposed on the effective runtime", async () => {
+		const { resolveRuntime } = await loadEngineResolver();
+		const resolvers = { calculator: () => ({ visible: true }) };
+		const merged = resolveRuntime({
+			assessmentId: "a1",
+			playerType: "iife",
+			player: null,
+			lazyInit: true,
+			accessibility: null,
+			coordinator: null,
+			env: null,
+			runtime: { toolContextResolvers: resolvers },
+			effectiveToolsConfig: {},
+			toolConfigStrictness: "error",
+		});
+		expect((merged as any).toolContextResolvers).toBe(resolvers);
+	});
+
+	test("toolContextResolvers is undefined when runtime omits it (no top-level fallback)", async () => {
+		const { resolveRuntime } = await loadEngineResolver();
+		const merged = resolveRuntime({
+			assessmentId: "a1",
+			playerType: "iife",
+			player: null,
+			lazyInit: true,
+			accessibility: null,
+			coordinator: null,
+			env: null,
+			runtime: {},
+			effectiveToolsConfig: {},
+			toolConfigStrictness: "error",
+		});
+		expect((merged as any).toolContextResolvers).toBeUndefined();
 	});
 });
 
@@ -465,6 +524,8 @@ describe("engine-resolver: resolveToolsConfig", () => {
 			enabledTools: "",
 		});
 		expect((resolved as any).providers.textToSpeech?.enabled).toBe(true);
-		expect((resolved as any).providers.textToSpeech?.layoutMode).toBe("left-aligned");
+		expect((resolved as any).providers.textToSpeech?.layoutMode).toBe(
+			"left-aligned",
+		);
 	});
 });

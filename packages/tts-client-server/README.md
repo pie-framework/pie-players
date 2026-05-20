@@ -179,6 +179,7 @@ interface ServerTTSProviderConfig {
   endpointValidationMode?: 'voices' | 'endpoint' | 'none';
   authToken?: string;         // JWT or API key
   includeAuthOnAssetFetch?: boolean;
+  assetOrigins?: string[];    // Trusted origins for Authorization header
   organizationId?: string;    // For multi-tenant setups
   headers?: Record<string, string>;  // Custom headers
   voiceId?: string;           // Voice ID
@@ -187,6 +188,36 @@ interface ServerTTSProviderConfig {
   volume?: number;            // Volume (0-1)
 }
 ```
+
+## Security
+
+`ServerTTSProvider` treats `apiEndpoint` and `authToken` as host-owned.
+The host is responsible for authenticating `/api/tts/*` (session cookie,
+JWT, or equivalent), rate-limiting callers, and keeping vendor
+credentials (AWS, Google, etc.) server-side only. End-to-end guidance —
+including a SvelteKit `hooks.server.ts` sketch and rate-limit example —
+lives in
+[`@pie-players/tts-server-polly` → INTEGRATION-GUIDE.md § Security Considerations](../tts-server-polly/examples/INTEGRATION-GUIDE.md#security-considerations).
+
+The provider itself enforces one piece of security directly: it scrubs
+the `Authorization` header when following URLs returned by the TTS
+server that fall outside a trusted origin set.
+
+- **`assetOrigins`** — allow-list of origins permitted to receive the
+  bearer token when the provider fetches custom-transport audio or
+  speech-mark URLs. Defaults to the origin of `apiEndpoint` (or, for a
+  relative `apiEndpoint`, `window.location.origin`). Non-`http(s)`
+  URLs and malformed URLs are always rejected, regardless of this
+  setting.
+- **`includeAuthOnAssetFetch`** — defaults to `false`. When `true`, the
+  provider will forward `Authorization` on asset fetches *only* to
+  origins in `assetOrigins`; off-allow-list origins are fetched without
+  auth. Leave at the default unless your CDN / storage backend actually
+  requires the bearer token to read assets.
+
+See
+[`docs/tools-and-accomodations/tool_host_contract.md#backend-endpoints-for-tool-providers`](../../docs/tools-and-accomodations/tool_host_contract.md#backend-endpoints-for-tool-providers)
+for the host-wide contract this provider fits into.
 
 ## How It Works
 

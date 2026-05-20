@@ -94,6 +94,9 @@
 	const effectivePlayer = $derived.by(() => runtime?.player ?? player);
 	const effectiveLazyInit = $derived.by(() => runtime?.lazyInit ?? lazyInit);
 	const effectiveTools = $derived.by(() => runtime?.tools ?? tools);
+	const effectiveToolContextResolvers = $derived.by(
+		() => runtime?.toolContextResolvers ?? null,
+	);
 	const effectiveToolConfigStrictness = $derived.by(() => {
 		const value = runtime?.toolConfigStrictness ?? toolConfigStrictness;
 		return value === "off" || value === "warn" || value === "error"
@@ -203,7 +206,7 @@
 	// M8 PR 3 — annotation-toolbar visibility goes through the
 	// coordinator's `ToolPolicyEngine`. The engine already applies
 	// placement + `policy.allowed` / `policy.blocked` + provider
-	// veto + QTI gates in one pass, so the base CE no longer
+	// veto + PNP/profile gates in one pass, so the base CE no longer
 	// duplicates those checks against the raw `tools` config.
 	//
 	// The engine answer can change without the coordinator reference
@@ -393,42 +396,6 @@
 		return null;
 	}
 
-	/**
-	 * Host-triggered focus escape hatch for Skip-to-Main. Focuses the passage
-	 * card when present, otherwise the first item card. Exposed on the base
-	 * element for API parity with the layout custom elements; hosts should
-	 * normally prefer calling `focusStart()` on the chosen layout element
-	 * (splitpane/vertical/tabbed/kernel-host).
-	 */
-	export function focusStart(): boolean {
-		if (typeof document === "undefined") return false;
-		const root = toolkitElement?.closest?.("pie-section-player-base") ||
-			toolkitElement ||
-			document;
-		const passage = (root as ParentNode).querySelector?.(
-			"pie-section-player-passage-card",
-		) as HTMLElement | null;
-		if (passage) {
-			passage.scrollIntoView({ block: "start", inline: "nearest" });
-			passage.focus();
-			return true;
-		}
-		const itemsPane = (root as ParentNode).querySelector?.(
-			"pie-section-player-items-pane",
-		);
-		const firstItem =
-			(itemsPane as ParentNode | null)?.querySelector?.(
-				"pie-section-player-item-card",
-			) ||
-			(root as ParentNode).querySelector?.("pie-section-player-item-card");
-		if (firstItem instanceof HTMLElement) {
-			firstItem.scrollIntoView({ block: "start", inline: "nearest" });
-			firstItem.focus();
-			return true;
-		}
-		return false;
-	}
-
 </script>
 
 <pie-assessment-toolkit
@@ -443,6 +410,7 @@
 	lazy-init={effectiveLazyInit}
 	tool-config-strictness={effectiveToolConfigStrictness}
 	tools={effectiveTools}
+	toolContextResolvers={effectiveToolContextResolvers}
 	{toolRegistry}
 	accessibility={effectiveAccessibility}
 	coordinator={effectiveCoordinator}

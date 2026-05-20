@@ -43,6 +43,13 @@ is intentionally not a toolkit built-in default option.
 
 Returns Desmos API key for calculator tool authentication.
 
+> **Demo only — intentionally unauthenticated.** This route returns the
+> configured `DESMOS_API_KEY` (or a free-tier config when unset) with no
+> session check. Do not deploy as-is; wrap it with the host's auth
+> middleware, or switch to `DesmosToolProvider.proxyEndpoint` so the key
+> never reaches the client. See
+> [`docs/tools-and-accomodations/tool_host_contract.md#backend-endpoints-for-tool-providers`](../../../../../docs/tools-and-accomodations/tool_host_contract.md#backend-endpoints-for-tool-providers).
+
 ### Session Hydration Demo DB
 
 **Routes**:

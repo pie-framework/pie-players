@@ -33,6 +33,17 @@ export {
 	loadPieModuleFromString,
 } from "./initialization.js";
 export {
+	createAuthoringAssetEventManager,
+	initializeAuthoringConfigures,
+	resolveConfigureConfiguration,
+	validateAuthoringModels,
+} from "./authoring.js";
+export type {
+	AuthoringMediaHandlers,
+	AuthoringValidationResult,
+	InitializedConfigureModel,
+} from "./authoring.js";
+export {
 	initializeMathRendering,
 	renderMath,
 	setMathRenderer,

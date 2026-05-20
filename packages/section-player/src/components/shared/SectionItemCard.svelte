@@ -135,15 +135,6 @@
 		const host = getHostElementFromAnchor(contextAnchor);
 		if (!host) return;
 		contextConnected = true;
-		// Public focus target: host is programmatically focusable (tabindex="-1")
-		// but not in sequential tab order. The inner
-		// `.pie-section-player-content-card[data-section-item-card]` remains as an
-		// internal hook; public callers should target the custom element tag.
-		if (!host.hasAttribute("tabindex")) host.setAttribute("tabindex", "-1");
-		if (!host.hasAttribute("role")) host.setAttribute("role", "region");
-		if (!host.hasAttribute("aria-labelledby")) {
-			host.setAttribute("aria-labelledby", headingId);
-		}
 		const disconnect = connectSectionPlayerCardRenderContext(
 			host,
 			applyCardRenderContext,
@@ -164,7 +155,6 @@
 >
 	<div
 		class="pie-section-player-content-card"
-		tabindex="-1"
 		data-section-item-card
 		data-canonical-item-id={canonicalItemId}
 		aria-current={isCurrent ? "true" : undefined}
@@ -203,23 +193,9 @@
 		display: none;
 	}
 
-	/* Public focus-visible treatment for the item card.
-	   Scoped to the custom element tag so the outline wraps the whole card box,
-	   not the inner heading or content. Hosts can override via --pie-focus-outline.
-	   The inner `.pie-section-player-content-card[data-section-item-card]` is
-	   an internal hook kept for back-compat with the old auto-focus path. */
 	:global(pie-section-player-item-card) {
 		display: block;
 		border-radius: 8px;
-	}
-
-	:global(pie-section-player-item-card:focus) {
-		outline: none;
-	}
-
-	:global(pie-section-player-item-card:focus-visible) {
-		outline: 2px solid var(--pie-focus-outline, #1d4ed8);
-		outline-offset: 2px;
 	}
 
 	.pie-section-player-content-card {

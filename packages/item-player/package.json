@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-item-player",
-	"version": "0.3.32",
+	"version": "0.3.42",
 	"type": "module",
 	"description": "Unified custom element for rendering PIE items with iife/esm/preloaded strategies",
 	"license": "MIT",
@@ -32,6 +32,7 @@
 	"scripts": {
 		"build": "vite build",
 		"dev": "vite build --watch",
+		"test": "bun test tests/backend-delivery.test.ts tests/backend-demo-controller.test.ts",
 		"typecheck": "tsc --noEmit",
 		"check": "svelte-check --tsconfig ./tsconfig.json",
 		"lint": "biome check ."

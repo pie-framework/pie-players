@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-tool-calculator-desmos",
-	"version": "0.3.32",
+	"version": "0.3.42",
 	"type": "module",
 	"description": "Calculator tool for PIE assessment player",
 	"repository": {
@@ -32,6 +32,7 @@
 	"scripts": {
 		"build": "vite build",
 		"dev": "vite build --watch",
+		"test": "bun test tests",
 		"typecheck": "tsc --noEmit",
 		"lint": "biome check ."
 	},

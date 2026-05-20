@@ -42,4 +42,10 @@ describe("tools-config-normalizer", () => {
 		expect(config.placement.item).toEqual([]);
 		expect(config.placement.passage).toEqual([]);
 	});
+
+	test("normalizes pnpEnforcement", () => {
+		expect(normalizeToolsConfig({ pnpEnforcement: "off" }).pnpEnforcement).toBe(
+			"off",
+		);
+	});
 });

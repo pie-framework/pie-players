@@ -34,6 +34,7 @@ export interface ResolutionDecision {
 		| "item-requirement"
 		| "district-requirement"
 		| "pnp-support"
+		| "pnp-prohibited"
 		| "system-default";
 
 	/** Tool or feature ID being resolved */
@@ -321,6 +322,7 @@ export class PnpProvenanceBuilder {
 			"item-requirement": "Item Requirement",
 			"district-requirement": "District Requirement",
 			"pnp-support": "Student PNP Support",
+			"pnp-prohibited": "Student PNP Prohibition",
 			"system-default": "System Default",
 		};
 		return names[rule];

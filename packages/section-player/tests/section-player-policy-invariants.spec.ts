@@ -12,7 +12,7 @@ test.describe("section player policy invariants", () => {
 			DEFAULT_SECTION_PLAYER_POLICIES as Record<string, unknown>,
 		);
 		expect(policyKeys.sort()).toEqual(
-			["focus", "preload", "readiness", "telemetry"].sort(),
+			["preload", "readiness", "telemetry"].sort(),
 		);
 		expect(DEFAULT_SECTION_PLAYER_POLICIES.readiness.mode).toBe("progressive");
 		expect(DEFAULT_SECTION_PLAYER_POLICIES.preload.enabled).toBe(true);

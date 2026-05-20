@@ -22,6 +22,7 @@ import type {
 import {
 	type CanonicalToolsConfig,
 	type ToolPlacementConfig,
+	type ToolPlacementLevel,
 	type ToolPolicyConfig,
 	type ToolProviderConfig,
 	type ToolProvidersConfig,
@@ -53,21 +54,26 @@ import {
 } from "./tts-runtime-config.js";
 import { ToolProviderRegistry } from "./tool-providers/index.js";
 import type { ToolProviderApi } from "./tool-providers/ToolProviderApi.js";
-import type {
-	TTSToolProviderConfig,
-} from "./tool-providers/index.js";
+import type { TTSToolProviderConfig } from "./tool-providers/index.js";
 import { createPackagedToolRegistry } from "./createDefaultToolRegistry.js";
-import type { ToolRegistration, ToolRegistry } from "./ToolRegistry.js";
+import type {
+	ResolvedToolContext,
+	ToolContextResolver,
+	ToolContextResolverContext,
+	ToolContextResolverMap,
+	ToolRegistration,
+	ToolRegistry,
+} from "./ToolRegistry.js";
 import {
 	ToolPolicyEngine,
+	type PnpEnforcementMode,
 	type PolicySource,
-	type QtiEnforcementMode,
 	type ResolvedEngineInputs,
 	type ToolPolicyChangeListener,
 	type ToolPolicyDecision,
 	type ToolPolicyDecisionRequest,
 } from "../policy/engine.js";
-import { resolveDefaultQtiEnforcement } from "../policy/internal.js";
+import { resolveDefaultPnpEnforcement } from "../policy/internal.js";
 import type {
 	SectionControllerContext,
 	SectionControllerEvent,
@@ -93,7 +99,7 @@ export type {
 	SectionPersistenceFactoryDefaults,
 } from "./section-controller-types.js";
 export type {
-	QtiEnforcementMode,
+	PnpEnforcementMode,
 	ResolvedEngineInputs,
 	ToolPolicyChangeListener,
 	ToolPolicyDecision,
@@ -172,11 +178,7 @@ export interface ToolkitCoordinatorConfig {
 	 * Tool availability and configuration.
 	 * Defaults: all tools enabled with default settings.
 	 */
-	tools?: {
-		policy?: ToolPolicyConfig;
-		placement?: ToolPlacementConfig;
-		providers?: ToolProvidersConfig;
-	};
+	tools?: Partial<CanonicalToolsConfig>;
 
 	/**
 	 * Validation strictness for tool config contracts.
@@ -193,6 +195,15 @@ export interface ToolkitCoordinatorConfig {
 	 * Defaults to packaged PIE tools when omitted.
 	 */
 	toolRegistry?: ToolRegistry | null;
+
+	/**
+	 * Host-owned per-tool render-context resolvers. These run after
+	 * framework policy gates (placement, provider config, host policy,
+	 * PNP/profile rules, and custom policy sources) and can hide a
+	 * surviving tool or attach render params for the tool registration.
+	 * They cannot re-enable a tool removed by policy.
+	 */
+	toolContextResolvers?: ToolContextResolverMap;
 
 	/**
 	 * Accessibility configuration.
@@ -271,12 +282,42 @@ export interface SectionControllerLifecycleEvent {
 	controller?: SectionControllerHandle;
 }
 
+/**
+ * Subscribe-time arguments for {@link ToolkitCoordinator.subscribeSectionEvents}.
+ *
+ * Phase D contract: subscriptions follow the toolkit's *active section
+ * cohort* automatically. The listener is bound to whatever section
+ * controller is active at subscribe time and is migrated, with snapshot
+ * replay, on every cohort transition. There is no per-subscription
+ * `(sectionId, attemptId)` binding — those args are not part of the
+ * Phase D shape. Hosts that previously passed them should drop them; the
+ * runtime tolerates extra unknown properties to keep legacy call sites
+ * working.
+ */
 export interface SectionEventSubscriptionArgs {
-	sectionId?: string;
-	attemptId?: string;
 	listener: (event: SectionControllerEvent) => void;
 	eventTypes?: readonly SectionControllerEventType[];
 	itemIds?: readonly string[];
+}
+
+/**
+ * Internal Phase D subscription record. Holds a listener's filter args
+ * and the disposer for whichever section controller it is currently
+ * bound to. Detached and re-attached by the coordinator on every cohort
+ * transition.
+ *
+ * @internal
+ */
+interface ActiveSectionSubscription {
+	listener: (event: SectionControllerEvent) => void;
+	eventTypes?: readonly SectionControllerEventType[];
+	itemIds?: readonly string[];
+	/**
+	 * Disposer for the controller `subscribe(...)` call backing this
+	 * subscription, or `null` when no cohort is currently active. Cleared
+	 * on every detach so subsequent re-binds start from a clean slate.
+	 */
+	unsubscribeCurrent: (() => void) | null;
 }
 
 export type SectionItemEventType = Exclude<
@@ -307,17 +348,26 @@ export type SectionScopedEvent = Extract<
 	{ type: SectionScopedEventType }
 >;
 
+/**
+ * Subscribe-time arguments for {@link ToolkitCoordinator.subscribeItemEvents}.
+ *
+ * See {@link SectionEventSubscriptionArgs} for the Phase D active-cohort
+ * binding contract.
+ */
 export interface SectionItemEventSubscriptionArgs {
-	sectionId?: string;
-	attemptId?: string;
 	listener: (event: SectionItemEvent) => void;
 	eventTypes?: readonly SectionItemEventType[];
 	itemIds?: readonly string[];
 }
 
+/**
+ * Subscribe-time arguments for
+ * {@link ToolkitCoordinator.subscribeSectionLifecycleEvents}.
+ *
+ * See {@link SectionEventSubscriptionArgs} for the Phase D active-cohort
+ * binding contract.
+ */
 export interface SectionScopedEventSubscriptionArgs {
-	sectionId?: string;
-	attemptId?: string;
 	listener: (event: SectionScopedEvent) => void;
 	eventTypes?: readonly SectionScopedEventType[];
 }
@@ -487,10 +537,24 @@ export class ToolkitCoordinator {
 	private stateLoadPromise?: Promise<void>;
 	private coordinatorReadyPromise?: Promise<void>;
 	private coordinatorReadyNotified = false;
-	private readonly providerInitPromises = new Map<string, Promise<ToolProviderApi>>();
+	private readonly providerInitPromises = new Map<
+		string,
+		Promise<ToolProviderApi>
+	>();
 	private readonly toolRegistry: ToolRegistry;
-	private readonly sectionControllers = new Map<string, SectionControllerHandle>();
-	private readonly sectionControllerKeys = new Map<string, SectionControllerKey>();
+	private readonly toolContextResolvers = new Map<
+		string,
+		ToolContextResolver
+	>();
+	private readonly toolContextResolverChangeListeners = new Set<() => void>();
+	private readonly sectionControllers = new Map<
+		string,
+		SectionControllerHandle
+	>();
+	private readonly sectionControllerKeys = new Map<
+		string,
+		SectionControllerKey
+	>();
 	private readonly sectionControllerInitPromises = new Map<
 		string,
 		Promise<SectionControllerHandle>
@@ -502,15 +566,39 @@ export class ToolkitCoordinator {
 	private readonly sectionControllerLifecycleListeners = new Set<
 		(event: SectionControllerLifecycleEvent) => void
 	>();
-	private readonly sectionEventListenerIds = new WeakMap<
+	/**
+	 * Phase D: every active section-event subscription, indexed by
+	 * listener identity. The listener follows the toolkit's active
+	 * section cohort across transitions; this map is the registry the
+	 * coordinator iterates on every cohort change to detach the listener
+	 * from the outgoing controller, attach it to the new one, and replay
+	 * the snapshot (content-loaded × N then section-loading-complete) in
+	 * canonical order.
+	 *
+	 * Dedup is by listener identity: subscribing the same listener
+	 * function twice replaces the prior subscription's filter args.
+	 */
+	private readonly activeSubscriptions = new Map<
 		(event: SectionControllerEvent) => void,
-		number
+		ActiveSectionSubscription
 	>();
-	private readonly sectionEventSubscriptions = new Map<string, () => void>();
+	/**
+	 * Phase D: map key of the section controller currently treated as
+	 * the *active cohort*. Set by `getOrCreateSectionController` (both
+	 * the create-new and resolve-existing paths) and cleared when the
+	 * matching controller is disposed. `null` while no cohort exists,
+	 * which is the only state where `subscribeSectionEvents` throws.
+	 */
+	private activeCohortMapKey: string | null = null;
+	/**
+	 * Latest requested active cohort. Async controller initialization can
+	 * resolve out of order; only the most recent request may migrate active
+	 * subscriptions. Older completions still populate the controller cache.
+	 */
+	private latestRequestedActiveCohortMapKey: string | null = null;
 	private readonly telemetryListeners = new Set<ToolkitTelemetryListener>();
 	private readonly frameworkErrorBus: FrameworkErrorBus;
 	private readonly ownsFrameworkErrorBus: boolean;
-	private nextSectionEventListenerId = 1;
 
 	/**
 	 * Unified Tool Policy Engine. Owned by the coordinator and lives
@@ -529,19 +617,19 @@ export class ToolkitCoordinator {
 	private readonly policyEngine: ToolPolicyEngine;
 
 	/**
-	 * Host-set override for QTI enforcement. `null` (the default) means
+	 * Host-set override for PNP/profile enforcement. `null` (the default) means
 	 * "auto" — the coordinator infers the effective mode from the
-	 * QTI inputs the bound `AssessmentEntity` and `AssessmentItemRef`
-	 * actually carry (see {@link resolveEffectiveQtiEnforcement}).
+	 * PNP/profile policy inputs the bound `AssessmentEntity` and `AssessmentItemRef`
+	 * actually carry (see {@link resolveEffectivePnpEnforcement}).
 	 * `"on"` / `"off"` are explicit host opt-in / opt-out and stick
 	 * across subsequent assessment / item swaps until the host clears
-	 * the override by calling `setQtiEnforcement(null)`.
+	 * the override by calling `setPnpEnforcement(null)`.
 	 */
-	private qtiEnforcementOverride: QtiEnforcementMode | null = null;
+	private pnpEnforcementOverride: PnpEnforcementMode | null = null;
 
 	/**
 	 * Last assessment passed to {@link updateAssessment}. Read by
-	 * {@link resolveEffectiveQtiEnforcement} to compute auto-mode.
+	 * {@link resolveEffectivePnpEnforcement} to compute auto-mode.
 	 * The engine's own copy is the canonical record for decisions;
 	 * this mirror exists only so the auto-mode helper does not need
 	 * to round-trip through {@link policyEngine}'s frozen snapshot.
@@ -551,8 +639,8 @@ export class ToolkitCoordinator {
 	/**
 	 * Last item reference passed to {@link updateCurrentItemRef}.
 	 * Mirrored alongside {@link boundAssessment} so
-	 * {@link resolveEffectiveQtiEnforcement} can detect item-level
-	 * QTI inputs (`requiredTools` / `restrictedTools` /
+	 * {@link resolveEffectivePnpEnforcement} can detect item-level
+	 * profile policy inputs (`requiredTools` / `restrictedTools` /
 	 * `toolParameters`) without round-tripping through the engine's
 	 * frozen snapshot.
 	 */
@@ -615,15 +703,19 @@ export class ToolkitCoordinator {
 
 		this.assessmentId = resolvedConfig.assessmentId;
 		this.config = resolvedConfig;
-		this.toolRegistry = resolvedConfig.toolRegistry ?? createPackagedToolRegistry();
+		this.toolRegistry =
+			resolvedConfig.toolRegistry ?? createPackagedToolRegistry();
+		this.installToolContextResolvers(resolvedConfig.toolContextResolvers);
 		this.hooks = resolvedConfig.hooks ?? {};
 		this.lazyInit = config.lazyInit === true;
+		this.pnpEnforcementOverride = this.resolveConfiguredPnpEnforcement();
 
 		// Use the host-provided framework-error bus if one was passed
 		// (typical when embedded inside <pie-assessment-toolkit>, so
 		// pre-coordinator failures from the CE flow through the same
 		// fan-out as coordinator failures). Otherwise own a private one.
-		this.frameworkErrorBus = config.frameworkErrorBus ?? new FrameworkErrorBus();
+		this.frameworkErrorBus =
+			config.frameworkErrorBus ?? new FrameworkErrorBus();
 		this.ownsFrameworkErrorBus = !config.frameworkErrorBus;
 		this.subscribeFrameworkErrorHookAdapters();
 
@@ -645,11 +737,11 @@ export class ToolkitCoordinator {
 		this.setupStatePersistenceHooks();
 
 		// M8 PR 2 — construct the unified ToolPolicyEngine seeded with
-		// the validated tools config. QTI inputs (`assessment`,
-		// `currentItemRef`) start `null`; `qtiEnforcement` is resolved
-		// through {@link resolveEffectiveQtiEnforcement}, which flips
+		// the validated tools config. PNP/profile inputs (`assessment`,
+		// `currentItemRef`) start `null`; `pnpEnforcement` is resolved
+		// through {@link resolveEffectivePnpEnforcement}, which flips
 		// to `"on"` only once the bound assessment or item carries
-		// actual QTI material (PR 4). Hosts that only consume the
+		// actual profile material. Hosts that only consume the
 		// engine for placement/policy gating get the pre-PR-2 behavior
 		// bit-for-bit.
 		this.policyEngine = new ToolPolicyEngine({
@@ -659,16 +751,13 @@ export class ToolkitCoordinator {
 				tools: this.config.tools as CanonicalToolsConfig,
 				assessment: null,
 				currentItemRef: null,
-				qtiEnforcement: this.resolveEffectiveQtiEnforcement(),
+				pnpEnforcement: this.resolveEffectivePnpEnforcement(),
 			},
 		});
 
 		if (!this.lazyInit) {
 			void this.waitUntilReady().catch((err) => {
-				console.error(
-					"[ToolkitCoordinator] Failed eager initialization:",
-					err,
-				);
+				console.error("[ToolkitCoordinator] Failed eager initialization:", err);
 				this.handleError(err, { phase: "coordinator-ready" });
 			});
 		}
@@ -742,7 +831,9 @@ export class ToolkitCoordinator {
 		}
 	}
 
-	private emitSectionControllerLifecycle(event: SectionControllerLifecycleEvent): void {
+	private emitSectionControllerLifecycle(
+		event: SectionControllerLifecycleEvent,
+	): void {
 		for (const listener of this.sectionControllerLifecycleListeners) {
 			try {
 				listener(event);
@@ -771,7 +862,9 @@ export class ToolkitCoordinator {
 	 * `onFrameworkError` lifecycle hook, so a listener registered here
 	 * sees the same fan-out the hook sees.
 	 */
-	public subscribeFrameworkErrors(listener: FrameworkErrorListener): () => void {
+	public subscribeFrameworkErrors(
+		listener: FrameworkErrorListener,
+	): () => void {
 		return this.frameworkErrorBus.subscribeFrameworkErrors(listener);
 	}
 
@@ -896,12 +989,12 @@ export class ToolkitCoordinator {
 	}
 
 	private getProviderDescriptorTools(): ToolRegistration[] {
-		return this.toolRegistry
-			.getAllTools()
-			.filter((tool) => !!tool.provider);
+		return this.toolRegistry.getAllTools().filter((tool) => !!tool.provider);
 	}
 
-	private async registerProviderFromTool(tool: ToolRegistration): Promise<void> {
+	private async registerProviderFromTool(
+		tool: ToolRegistration,
+	): Promise<void> {
 		const descriptor = tool.provider;
 		if (!descriptor) return;
 		const toolConfig = this.getToolConfig(tool.toolId) || undefined;
@@ -913,7 +1006,9 @@ export class ToolkitCoordinator {
 		if (this.toolProviderRegistry.has(providerId)) return;
 		const provider = descriptor.createProvider(toolConfig);
 		const initConfig =
-			descriptor.getInitConfig?.(toolConfig) ?? toolConfig?.provider?.init ?? {};
+			descriptor.getInitConfig?.(toolConfig) ??
+			toolConfig?.provider?.init ??
+			{};
 		const initConfigWithTelemetry = this.addToolTelemetryReporter({
 			toolId: tool.toolId,
 			providerId,
@@ -962,13 +1057,16 @@ export class ToolkitCoordinator {
 				? (configObject.onTelemetry as (
 						eventName: string,
 						payload?: Record<string, unknown>,
-				  ) => void | Promise<void>)
+					) => void | Promise<void>)
 				: null;
 		const forwardTelemetry = this.createToolTelemetryForwarder({
 			toolId: args.toolId,
 			providerId: args.providerId,
 		});
-		configObject.onTelemetry = async (eventName: string, payload?: Record<string, unknown>) => {
+		configObject.onTelemetry = async (
+			eventName: string,
+			payload?: Record<string, unknown>,
+		) => {
 			if (existingReporter) {
 				await existingReporter(eventName, payload);
 			}
@@ -1001,11 +1099,16 @@ export class ToolkitCoordinator {
 		}
 	}
 
-	public async ensureProviderReady(providerId: string): Promise<ToolProviderApi> {
+	public async ensureProviderReady(
+		providerId: string,
+	): Promise<ToolProviderApi> {
 		const existing = this.providerInitPromises.get(providerId);
 		if (existing) return existing;
 		const promise = (async () => {
-			const provider = await this.toolProviderRegistry.getProvider(providerId, false);
+			const provider = await this.toolProviderRegistry.getProvider(
+				providerId,
+				false,
+			);
 			const meta: ProviderLifecycleContext = {
 				providerId,
 				providerName: provider.providerName,
@@ -1058,93 +1161,172 @@ export class ToolkitCoordinator {
 		return this.sectionControllers.get(this.getSectionControllerMapKey(key));
 	}
 
-	public subscribeSectionEvents(args: SectionEventSubscriptionArgs): () => void {
-		const controllerEntry = this.resolveSectionSubscriptionEntry(args);
-		if (!controllerEntry) return () => {};
-		const { mapKey, controller } = controllerEntry;
-		const subscribe = controller.subscribe;
-		if (!subscribe) {
-			const resolvedKey = this.sectionControllerKeys.get(mapKey);
-			const sectionLabel = resolvedKey?.sectionId || args.sectionId || "<unknown>";
-			const attemptLabel = resolvedKey?.attemptId || args.attemptId || "<default>";
+	public subscribeSectionEvents(
+		args: SectionEventSubscriptionArgs,
+	): () => void {
+		// Phase D: subscriptions follow the toolkit's *active section
+		// cohort* automatically. We bind the listener to whichever
+		// controller is currently active and re-bind it on every
+		// `getOrCreateSectionController` / `disposeSectionController`
+		// transition, with snapshot replay on each migration. The
+		// pre-Phase-D `(sectionId, attemptId)` resolution path is gone;
+		// any such args on `args` are ignored at runtime (legacy hosts
+		// that still pass them keep working without a code change).
+		if (this.activeCohortMapKey === null) {
 			throw new Error(
-				`[ToolkitCoordinator] subscribeSectionEvents could not subscribe: resolved controller for section "${sectionLabel}" attempt "${attemptLabel}" does not expose subscribe().`,
+				"[ToolkitCoordinator] subscribeSectionEvents requires an active section cohort; call getOrCreateSectionController first.",
 			);
 		}
-		const listenerId = this.getOrCreateSectionEventListenerId(args.listener);
-		const subscriptionKey = `${mapKey}::${listenerId}`;
-		const previousSubscription = this.sectionEventSubscriptions.get(
-			subscriptionKey,
-		);
-		previousSubscription?.();
+		const previous = this.activeSubscriptions.get(args.listener);
+		if (previous) {
+			previous.unsubscribeCurrent?.();
+			previous.unsubscribeCurrent = null;
+		}
+		const sub: ActiveSectionSubscription = {
+			listener: args.listener,
+			eventTypes: args.eventTypes,
+			itemIds: args.itemIds,
+			unsubscribeCurrent: null,
+		};
+		this.activeSubscriptions.set(args.listener, sub);
 
-		const shouldDeliverEvent = this.buildSectionEventPredicate(args);
-		const unsubscribeController = subscribe.call(controller, (event) => {
-			if (!shouldDeliverEvent(event)) return;
-			args.listener(event);
+		const controller = this.sectionControllers.get(this.activeCohortMapKey);
+		if (controller) {
+			this.bindSubscriptionToController(sub, controller);
+		}
+
+		let detached = false;
+		return () => {
+			if (detached) return;
+			detached = true;
+			sub.unsubscribeCurrent?.();
+			sub.unsubscribeCurrent = null;
+			// Only delete if the registry still points at *this* sub. A
+			// re-subscribe with the same listener replaces the entry; an
+			// old disposer must not stomp the new one.
+			if (this.activeSubscriptions.get(args.listener) === sub) {
+				this.activeSubscriptions.delete(args.listener);
+			}
+		};
+	}
+
+	/**
+	 * Bind a Phase D subscription to a section controller. Detaches any
+	 * prior controller binding the subscription was holding, attaches a
+	 * fresh `controller.subscribe(...)` callback, and replays the
+	 * canonical late-subscribe sequence (content-loaded × N then
+	 * section-loading-complete) so the listener observes the same
+	 * ordering a fresh subscriber would have seen.
+	 *
+	 * Listener throws are caught and `console.warn`-logged; the throw
+	 * does not interrupt fan-out to the remaining listeners (matches
+	 * the {@link FrameworkErrorBus} isolation pattern).
+	 */
+	private bindSubscriptionToController(
+		sub: ActiveSectionSubscription,
+		controller: SectionControllerHandle,
+	): void {
+		sub.unsubscribeCurrent?.();
+		sub.unsubscribeCurrent = null;
+
+		const subscribe = controller.subscribe;
+		if (typeof subscribe !== "function") return;
+
+		const predicate = this.buildSectionEventPredicate(sub);
+
+		sub.unsubscribeCurrent = subscribe.call(controller, (event) => {
+			if (!predicate(event)) return;
+			this.deliverSectionEventSafely(sub.listener, event);
 		});
 
-		// Replay `content-loaded` events first so a late subscriber observes
-		// the same ordering a live subscriber would have seen (per-renderable
-		// loads, then the aggregate `section-loading-complete`). Symmetric
-		// with `section-loading-complete` replay below; without this, a
-		// consumer that attaches after a cohort transition (e.g. a fresh
-		// section controller created on navigation) silently misses every
-		// `content-loaded` event for items that finished loading before the
-		// subscription attached. See PIE-512 for the consumer-observable
-		// regression.
-		const contentLoadedReplays = this.buildContentLoadedReplayEvents(controller);
+		const contentLoadedReplays =
+			this.buildContentLoadedReplayEvents(controller);
 		for (const event of contentLoadedReplays) {
-			if (shouldDeliverEvent(event)) {
-				args.listener(event);
+			if (predicate(event)) {
+				this.deliverSectionEventSafely(sub.listener, event);
 			}
 		}
-
-		const replayEvent = this.buildLoadingCompleteReplayEvent(controller);
-		if (replayEvent && shouldDeliverEvent(replayEvent)) {
-			args.listener(replayEvent);
-		}
-
-		const detach = this.createSectionEventDetachHandler(
-			subscriptionKey,
-			unsubscribeController,
-		);
-
-		this.sectionEventSubscriptions.set(subscriptionKey, detach);
-		return detach;
-	}
-
-	private resolveSectionSubscriptionEntry(
-		args: Pick<SectionEventSubscriptionArgs, "sectionId" | "attemptId">,
-	): { mapKey: string; controller: SectionControllerHandle } | null {
-		try {
-			return this.resolveSectionControllerForSubscription({
-				sectionId: args.sectionId,
-				attemptId: args.attemptId,
-			});
-		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
-			const isAmbiguousSectionWithoutAttempt =
-				args.sectionId !== undefined &&
-				args.attemptId === undefined &&
-				message.includes("subscribeSectionEvents is ambiguous for section");
-			if (isAmbiguousSectionWithoutAttempt) {
-				console.warn(message);
-				return null;
-			}
-			throw error;
+		const loadingComplete = this.buildLoadingCompleteReplayEvent(controller);
+		if (loadingComplete && predicate(loadingComplete)) {
+			this.deliverSectionEventSafely(sub.listener, loadingComplete);
 		}
 	}
 
-	private getOrCreateSectionEventListenerId(
+	private deliverSectionEventSafely(
 		listener: (event: SectionControllerEvent) => void,
-	): number {
-		let listenerId = this.sectionEventListenerIds.get(listener);
-		if (!listenerId) {
-			listenerId = this.nextSectionEventListenerId++;
-			this.sectionEventListenerIds.set(listener, listenerId);
+		event: SectionControllerEvent,
+	): void {
+		try {
+			listener(event);
+		} catch (error) {
+			console.warn(
+				"[ToolkitCoordinator] section-event listener failed:",
+				error,
+			);
 		}
-		return listenerId;
+	}
+
+	/**
+	 * Mark the given map key as the active section cohort. Called from
+	 * `getOrCreateSectionController` (both create-new and resolve-existing
+	 * paths) so a cohort transition through either path migrates active
+	 * subscriptions.
+	 *
+	 * Same-cohort re-entry is a no-op so a same-cohort `updateInput`
+	 * (PnP toggle, prompt edit) doesn't double-replay snapshots to
+	 * already-bound listeners.
+	 */
+	private setActiveCohort(mapKey: string): void {
+		if (this.activeCohortMapKey === mapKey) return;
+		this.activeCohortMapKey = mapKey;
+		const controller = this.sectionControllers.get(mapKey);
+		if (!controller) return;
+		// Snapshot the subscription list before iterating: a listener may
+		// synchronously call `subscribeSectionEvents(...)` from inside its
+		// replay delivery, which inserts a new entry into
+		// `activeSubscriptions`. Map iteration yields keys inserted
+		// during the loop; without snapshotting, the inner subscribe path
+		// would bind the new listener once (correctly, with replay) and
+		// the outer loop would then visit it a second time, double-
+		// replaying the snapshot. Snapshot keeps "replay once per cohort
+		// transition" intact.
+		for (const sub of Array.from(this.activeSubscriptions.values())) {
+			this.bindSubscriptionToController(sub, controller);
+		}
+	}
+
+	private setActiveCohortIfLatestRequest(mapKey: string): void {
+		if (this.latestRequestedActiveCohortMapKey !== mapKey) return;
+		this.setActiveCohort(mapKey);
+	}
+
+	private suspendActiveCohortIfSuperseded(mapKey: string): void {
+		if (this.activeCohortMapKey === null) return;
+		if (this.activeCohortMapKey === mapKey) return;
+		this.activeCohortMapKey = null;
+		for (const sub of Array.from(this.activeSubscriptions.values())) {
+			sub.unsubscribeCurrent?.();
+			sub.unsubscribeCurrent = null;
+		}
+	}
+
+	/**
+	 * Clear the active cohort if `mapKey` matches it, detaching every
+	 * active subscription's current controller binding. Subscriptions
+	 * stay in the registry — a subsequent `setActiveCohort(...)` will
+	 * re-bind them to the new controller.
+	 */
+	private clearActiveCohortIfMatches(mapKey: string): void {
+		if (this.activeCohortMapKey !== mapKey) return;
+		this.activeCohortMapKey = null;
+		// Symmetric snapshot for safety: a disposer fired during detach
+		// could mutate `activeSubscriptions`. Detach is silent (no listener
+		// fan-out), so re-entrancy exposure is lower than `setActiveCohort`,
+		// but the snapshot keeps both paths uniform.
+		for (const sub of Array.from(this.activeSubscriptions.values())) {
+			sub.unsubscribeCurrent?.();
+			sub.unsubscribeCurrent = null;
+		}
 	}
 
 	private buildSectionEventPredicate(
@@ -1155,7 +1337,10 @@ export class ToolkitCoordinator {
 		return (event: SectionControllerEvent): boolean => {
 			if (eventTypeFilter || itemIdFilter) {
 				const eventType = event?.type || null;
-				if (eventTypeFilter && (!eventType || !eventTypeFilter.has(eventType))) {
+				if (
+					eventTypeFilter &&
+					(!eventType || !eventTypeFilter.has(eventType))
+				) {
 					return false;
 				}
 				if (itemIdFilter) {
@@ -1176,7 +1361,10 @@ export class ToolkitCoordinator {
 		if ("itemId" in event && typeof event.itemId === "string") {
 			itemIds.add(event.itemId);
 		}
-		if ("canonicalItemId" in event && typeof event.canonicalItemId === "string") {
+		if (
+			"canonicalItemId" in event &&
+			typeof event.canonicalItemId === "string"
+		) {
 			itemIds.add(event.canonicalItemId);
 		}
 		if ("currentItemId" in event && typeof event.currentItemId === "string") {
@@ -1262,32 +1450,17 @@ export class ToolkitCoordinator {
 		};
 	}
 
-	private createSectionEventDetachHandler(
-		subscriptionKey: string,
-		unsubscribeController: () => void,
-	): () => void {
-		const detach = () => {
-			const current = this.sectionEventSubscriptions.get(subscriptionKey);
-			if (current !== detach) {
-				return;
-			}
-			this.sectionEventSubscriptions.delete(subscriptionKey);
-			unsubscribeController();
-		};
-		return detach;
-	}
-
 	/**
 	 * Subscribe to item-scoped controller events.
 	 *
-	 * Prefer this helper for answer/session/navigation events tied to item IDs.
-	 * Use `subscribeSectionEvents` directly only when you need mixed item+section
-	 * filtering behavior.
+	 * Same active-cohort binding contract as
+	 * {@link subscribeSectionEvents}; defaults `eventTypes` to the
+	 * item-scoped subset.
 	 */
-	public subscribeItemEvents(args: SectionItemEventSubscriptionArgs): () => void {
+	public subscribeItemEvents(
+		args: SectionItemEventSubscriptionArgs,
+	): () => void {
 		return this.subscribeSectionEvents({
-			sectionId: args.sectionId,
-			attemptId: args.attemptId,
 			eventTypes: args.eventTypes || SECTION_ITEM_EVENT_TYPES,
 			itemIds: args.itemIds,
 			listener: args.listener as (event: SectionControllerEvent) => void,
@@ -1297,92 +1470,19 @@ export class ToolkitCoordinator {
 	/**
 	 * Subscribe to section-scoped controller events.
 	 *
-	 * Prefer this helper for section lifecycle/loading/completion/error state.
-	 * Section-scoped events do not carry item identifiers, so this helper
-	 * intentionally does not expose `itemIds` filtering.
+	 * Same active-cohort binding contract as
+	 * {@link subscribeSectionEvents}; defaults `eventTypes` to the
+	 * section-scoped subset. Section-scoped events do not carry item
+	 * identifiers, so this helper intentionally does not expose
+	 * `itemIds` filtering.
 	 */
 	public subscribeSectionLifecycleEvents(
 		args: SectionScopedEventSubscriptionArgs,
 	): () => void {
 		return this.subscribeSectionEvents({
-			sectionId: args.sectionId,
-			attemptId: args.attemptId,
 			eventTypes: args.eventTypes || SECTION_SCOPED_EVENT_TYPES,
 			listener: args.listener as (event: SectionControllerEvent) => void,
 		});
-	}
-
-	private resolveSectionControllerForSubscription(args: {
-		sectionId?: string;
-		attemptId?: string;
-	}): { mapKey: string; controller: SectionControllerHandle } {
-		if (args.sectionId) {
-			const explicitKey: SectionControllerKey = {
-				assessmentId: this.assessmentId,
-				sectionId: args.sectionId,
-				attemptId: args.attemptId,
-			};
-			const explicitMapKey = this.getSectionControllerMapKey(explicitKey);
-			const explicitController = this.sectionControllers.get(explicitMapKey);
-			if (explicitController) {
-				return { mapKey: explicitMapKey, controller: explicitController };
-			}
-
-			if (args.attemptId !== undefined) {
-				throw new Error(
-					`[ToolkitCoordinator] subscribeSectionEvents could not resolve controller for section "${args.sectionId}" and attempt "${args.attemptId}".`,
-				);
-			}
-
-			const sectionMatches: Array<{
-				mapKey: string;
-				controller: SectionControllerHandle;
-			}> = [];
-			for (const [mapKey, key] of this.sectionControllerKeys.entries()) {
-				if (key.assessmentId !== this.assessmentId || key.sectionId !== args.sectionId) {
-					continue;
-				}
-				const controller = this.sectionControllers.get(mapKey);
-				if (!controller) continue;
-				sectionMatches.push({ mapKey, controller });
-			}
-			if (sectionMatches.length === 1) {
-				return sectionMatches[0];
-			}
-			if (sectionMatches.length === 0) {
-				throw new Error(
-					`[ToolkitCoordinator] subscribeSectionEvents found no active controller for section "${args.sectionId}".`,
-				);
-			}
-			throw new Error(
-				`[ToolkitCoordinator] subscribeSectionEvents is ambiguous for section "${args.sectionId}" without attemptId; ${sectionMatches.length} controllers are active.`,
-			);
-		}
-
-		if (args.attemptId !== undefined) {
-			throw new Error(
-				`[ToolkitCoordinator] subscribeSectionEvents requires sectionId when attemptId is provided ("${args.attemptId}").`,
-			);
-		}
-
-		const allMatches: Array<{ mapKey: string; controller: SectionControllerHandle }> = [];
-		for (const [mapKey, key] of this.sectionControllerKeys.entries()) {
-			if (key.assessmentId !== this.assessmentId) continue;
-			const controller = this.sectionControllers.get(mapKey);
-			if (!controller) continue;
-			allMatches.push({ mapKey, controller });
-		}
-		if (allMatches.length === 1) {
-			return allMatches[0];
-		}
-		if (allMatches.length === 0) {
-			throw new Error(
-				"[ToolkitCoordinator] subscribeSectionEvents found no active controllers; provide sectionId or initialize a section controller first.",
-			);
-		}
-		throw new Error(
-			`[ToolkitCoordinator] subscribeSectionEvents is ambiguous without sectionId; ${allMatches.length} active controllers are registered.`,
-		);
 	}
 
 	public onSectionControllerLifecycle(
@@ -1409,6 +1509,8 @@ export class ToolkitCoordinator {
 			attemptId: args.attemptId,
 		};
 		const mapKey = this.getSectionControllerMapKey(key);
+		this.latestRequestedActiveCohortMapKey = mapKey;
+		this.suspendActiveCohortIfSuperseded(mapKey);
 		const existingController = await this.resolveExistingSectionController({
 			mapKey,
 			key,
@@ -1452,6 +1554,14 @@ export class ToolkitCoordinator {
 			// without resetting responses.
 			await existingController.updateInput?.(args.input);
 		}
+		// PIE-512 Phase D: a `getOrCreateSectionController` call that
+		// resolves to a previously-created controller still represents a
+		// cohort transition from the toolkit's perspective (same-cohort
+		// re-entry is a no-op inside `setActiveCohort`). Active
+		// subscriptions migrate here so a host that subscribed once on
+		// `toolkit-ready` keeps receiving events after navigating back
+		// to a section it visited earlier.
+		this.setActiveCohortIfLatestRequest(args.mapKey);
 		return existingController;
 	}
 
@@ -1512,6 +1622,12 @@ export class ToolkitCoordinator {
 	}): Promise<void> {
 		this.sectionControllers.set(args.mapKey, args.controller);
 		this.sectionControllerKeys.set(args.mapKey, args.key);
+		// PIE-512 Phase D: a freshly-resolved controller becomes the
+		// active cohort. Active subscriptions migrate to it before the
+		// `ready` lifecycle event and `onSectionControllerReady` hook
+		// fire so any synchronous post-ready work observes a coherent
+		// active-cohort view.
+		this.setActiveCohortIfLatestRequest(args.mapKey);
 		this.emitSectionControllerLifecycle({
 			type: "ready",
 			key: args.key,
@@ -1552,7 +1668,12 @@ export class ToolkitCoordinator {
 		const mapKey = this.getSectionControllerMapKey(key);
 		const controller = this.sectionControllers.get(mapKey);
 		if (!controller) return;
-		this.detachSectionEventSubscriptionsForMapKey(mapKey);
+		// PIE-512 Phase D: if the disposing cohort is the active one,
+		// detach all listener-controller bindings before the controller
+		// itself disposes. The subscription registry stays intact so a
+		// later `getOrCreateSectionController(...)` re-binds the same
+		// listeners to the new controller.
+		this.clearActiveCohortIfMatches(mapKey);
 
 		const context = this.createSectionControllerContext({
 			key,
@@ -1584,16 +1705,6 @@ export class ToolkitCoordinator {
 		}
 	}
 
-	private detachSectionEventSubscriptionsForMapKey(mapKey: string): void {
-		const subscriptionPrefix = `${mapKey}::`;
-		for (const subscriptionKey of Array.from(
-			this.sectionEventSubscriptions.keys(),
-		)) {
-			if (!subscriptionKey.startsWith(subscriptionPrefix)) continue;
-			this.sectionEventSubscriptions.get(subscriptionKey)?.();
-		}
-	}
-
 	private async runSectionControllerDisposePipeline(args: {
 		key: SectionControllerKey;
 		context: SectionControllerContext;
@@ -1604,7 +1715,10 @@ export class ToolkitCoordinator {
 			await args.controller.persist?.();
 		}
 		await args.controller.dispose?.();
-		await this.hooks.onSectionControllerDispose?.(args.context, args.controller);
+		await this.hooks.onSectionControllerDispose?.(
+			args.context,
+			args.controller,
+		);
 		await this.emitTelemetry("pie-toolkit-section-controller-disposed", {
 			assessmentId: args.key.assessmentId,
 			sectionId: args.key.sectionId,
@@ -1816,7 +1930,9 @@ export class ToolkitCoordinator {
 				typeof synth.addEventListener === "function" &&
 				typeof synth.removeEventListener === "function"
 			) {
-				synth.addEventListener("voiceschanged", onVoicesChanged, { once: true });
+				synth.addEventListener("voiceschanged", onVoicesChanged, {
+					once: true,
+				});
 			}
 		});
 		const voicesAfterWait = synth.getVoices();
@@ -1880,7 +1996,8 @@ export class ToolkitCoordinator {
 	getInitStatus(): ToolkitInitStatus {
 		const providers: Record<string, boolean> = {};
 		for (const providerId of this.toolProviderRegistry.getProviderIds()) {
-			providers[providerId] = this.toolProviderRegistry.isInitialized(providerId);
+			providers[providerId] =
+				this.toolProviderRegistry.isInitialized(providerId);
 		}
 		const ttsConfig = this.getTTSConfigFromProviders();
 		return {
@@ -1895,8 +2012,11 @@ export class ToolkitCoordinator {
 
 	private getTTSConfigFromProviders(): TTSToolConfig | undefined {
 		const providers =
-			(this.config.tools as { providers?: Record<string, ToolProviderConfig | undefined> })
-				?.providers || {};
+			(
+				this.config.tools as {
+					providers?: Record<string, ToolProviderConfig | undefined>;
+				}
+			)?.providers || {};
 		return providers.textToSpeech as TTSToolConfig | undefined;
 	}
 
@@ -1911,6 +2031,43 @@ export class ToolkitCoordinator {
 		}
 		if (!this.toolRegistry.get(toolId)) {
 			throw new Error(`Unknown tool id "${toolId}".`);
+		}
+	}
+
+	private installToolContextResolvers(
+		resolvers: ToolContextResolverMap | undefined,
+	): void {
+		if (!resolvers) return;
+		for (const [toolId, resolver] of Object.entries(resolvers)) {
+			if (resolver == null) continue;
+			this.assertCanonicalToolId(toolId);
+			if (typeof resolver !== "function") {
+				throw new Error(
+					`Invalid tool context resolver for "${toolId}": expected a function.`,
+				);
+			}
+			this.toolContextResolvers.set(toolId, resolver);
+		}
+	}
+
+	setToolContextResolvers(
+		resolvers: ToolContextResolverMap | null | undefined,
+	): void {
+		this.toolContextResolvers.clear();
+		this.installToolContextResolvers(resolvers ?? undefined);
+		this.notifyToolContextResolverChange();
+	}
+
+	private notifyToolContextResolverChange(): void {
+		for (const listener of this.toolContextResolverChangeListeners) {
+			try {
+				listener();
+			} catch (error) {
+				console.warn(
+					"[ToolkitCoordinator] Tool context resolver listener threw:",
+					error,
+				);
+			}
 		}
 	}
 
@@ -1937,8 +2094,11 @@ export class ToolkitCoordinator {
 	getToolConfig(toolId: string): ToolProviderConfig | null {
 		this.assertCanonicalToolId(toolId);
 		return (
-			((this.config.tools as { providers?: Record<string, ToolProviderConfig | undefined> })
-				?.providers?.[toolId] as ToolProviderConfig | undefined) || null
+			((
+				this.config.tools as {
+					providers?: Record<string, ToolProviderConfig | undefined>;
+				}
+			)?.providers?.[toolId] as ToolProviderConfig | undefined) || null
 		);
 	}
 
@@ -1993,46 +2153,70 @@ export class ToolkitCoordinator {
 	}
 
 	/**
+	 * Update the enabled tool list for one placement level.
+	 *
+	 * This is the generic placement companion to {@link updateToolConfig}:
+	 * it validates the next canonical tools config, keeps the policy
+	 * engine in lockstep, and emits the same policy-change event used by
+	 * live toolbars/debug panels. Section-level callers that still use
+	 * the legacy "floating tools" name can continue calling
+	 * {@link updateFloatingTools}.
+	 */
+	updateToolPlacement(level: ToolPlacementLevel, toolIds: string[]): void {
+		this.updateToolsPlacement({ [level]: [...toolIds] });
+	}
+
+	/**
+	 * Patch one or more placement levels in the canonical tools config.
+	 */
+	updateToolsPlacement(partial: ToolPlacementConfig): void {
+		if (!this.config.tools) {
+			this.config.tools = normalizeAndValidateToolsConfig(undefined, {
+				strictness: this.config.toolConfigStrictness ?? "error",
+				source: "ToolkitCoordinator.updateToolsPlacement",
+				toolRegistry: this.toolRegistry,
+			}).config;
+		}
+		const currentPlacement = this.config.tools?.placement ?? {
+			section: [],
+			item: [],
+			passage: [],
+		};
+		const nextPlacement: Required<ToolPlacementConfig> = {
+			section: [...(partial.section ?? currentPlacement.section ?? [])],
+			item: [...(partial.item ?? currentPlacement.item ?? [])],
+			passage: [...(partial.passage ?? currentPlacement.passage ?? [])],
+		};
+		const validated = normalizeAndValidateToolsConfig(
+			{
+				...(this.config.tools as CanonicalToolsConfig),
+				placement: nextPlacement,
+			},
+			{
+				strictness: this.config.toolConfigStrictness ?? "error",
+				source: "ToolkitCoordinator.updateToolsPlacement",
+				toolRegistry: this.toolRegistry,
+			},
+		);
+		validated.config.placement = nextPlacement;
+		this.config.tools = validated.config;
+		this.policyEngine.updateInputs({
+			tools: this.config.tools as CanonicalToolsConfig,
+		});
+
+		if (partial.section && this.floatingToolsChangeCallback) {
+			this.floatingToolsChangeCallback(this.getFloatingTools());
+		}
+	}
+
+	/**
 	 * Update the enabled tools list for floating tools (calculator, graph, etc.).
 	 * Used for PNP profile changes or dynamic tool configuration.
 	 *
 	 * @param toolIds Array of tool IDs to enable
 	 */
 	updateFloatingTools(toolIds: string[]): void {
-		if (!this.config.tools) {
-			this.config.tools = normalizeAndValidateToolsConfig(undefined, {
-				strictness: this.config.toolConfigStrictness ?? "error",
-				source: "ToolkitCoordinator.updateFloatingTools",
-				toolRegistry: this.toolRegistry,
-			}).config;
-		}
-		const validated = normalizeAndValidateToolsConfig(
-			{
-				...(this.config.tools as CanonicalToolsConfig),
-				placement: {
-					section: [...toolIds],
-					item: [...(this.config.tools?.placement?.item || [])],
-					passage: [...(this.config.tools?.placement?.passage || [])],
-				},
-			},
-			{
-				strictness: this.config.toolConfigStrictness ?? "error",
-				source: "ToolkitCoordinator.updateFloatingTools",
-				toolRegistry: this.toolRegistry,
-			},
-		);
-		this.config.tools = validated.config;
-		// M8 PR 2 — keep the policy engine in lockstep with the
-		// floating-tools placement update. See `updateToolConfig` for
-		// the same pattern.
-		this.policyEngine.updateInputs({
-			tools: this.config.tools as CanonicalToolsConfig,
-		});
-
-		// Notify listener of change
-		if (this.floatingToolsChangeCallback) {
-			this.floatingToolsChangeCallback(toolIds);
-		}
+		this.updateToolPlacement("section", toolIds);
 	}
 
 	/**
@@ -2049,16 +2233,16 @@ export class ToolkitCoordinator {
 	 *   - **Provider veto** — `tools.providers[id].enabled === false`
 	 *     removes the tool from the visible set. The legacy resolver
 	 *     ignored this flag for floating tools.
-	 *   - **QTI gates** — when `qtiEnforcement` is `"on"` (set by host
-	 *     via {@link setQtiEnforcement}, or auto-promoted when the
+	 *   - **PNP/profile gates** — when `pnpEnforcement` is `"on"` (set by host
+	 *     via {@link setPnpEnforcement}, or auto-promoted when the
 	 *     bound `AssessmentEntity` / current `AssessmentItemRef`
-	 *     carries QTI 6-level precedence material — see
-	 *     {@link resolveEffectiveQtiEnforcement}) **and an assessment
-	 *     is bound**, the QTI 6-level precedence (district block →
+	 *     carries profile precedence material — see
+	 *     {@link resolveEffectivePnpEnforcement}) **and an assessment
+	 *     is bound**, the profile precedence (district block →
 	 *     test-admin override → item restriction/requirement →
 	 *     district requirement → PNP supports / prohibitions) is
-	 *     applied. `qtiEnforcement: "on"` without a bound assessment
-	 *     is a no-op for QTI gating.
+	 *     applied. `pnpEnforcement: "on"` without a bound assessment
+	 *     is a no-op for profile gating.
 	 *   - **Custom `PolicySource`s** registered via
 	 *     {@link registerPolicySource}.
 	 *
@@ -2118,7 +2302,7 @@ export class ToolkitCoordinator {
 	 * Subscribe to policy-engine change events. Fires whenever the
 	 * coordinator's bound inputs change (`updateToolConfig`,
 	 * `updateFloatingTools`, `updateAssessment`, `updateCurrentItemRef`,
-	 * `setQtiEnforcement`) or a custom `PolicySource` is registered /
+	 * `setPnpEnforcement`) or a custom `PolicySource` is registered /
 	 * removed via {@link registerPolicySource}.
 	 *
 	 * The listener receives a `ToolPolicyChangeEvent` with the event
@@ -2137,17 +2321,17 @@ export class ToolkitCoordinator {
 	}
 
 	/**
-	 * Bind (or clear) the active QTI assessment for policy decisions.
+	 * Bind (or clear) the active assessment for PNP/profile policy decisions.
 	 *
-	 * Under auto-mode (no host override via {@link setQtiEnforcement}),
-	 * the coordinator promotes the engine to `qtiEnforcement: "on"`
-	 * iff the assessment carries any QTI 6-level precedence material
+	 * Under auto-mode (no host override via {@link setPnpEnforcement}),
+	 * the coordinator promotes the engine to `pnpEnforcement: "on"`
+	 * iff the assessment carries any profile precedence material
 	 * (`personalNeedsProfile`, `settings.districtPolicy`,
 	 * `settings.testAdministration`) or the currently-bound item ref
-	 * carries item-level QTI inputs. A bare assessment record (just
+	 * carries item-level profile policy inputs. A bare assessment record (just
 	 * `id` / `name`, no PNP, no settings) keeps `"off"`.
 	 *
-	 * The host override set via {@link setQtiEnforcement} is sticky
+	 * The host override set via {@link setPnpEnforcement} is sticky
 	 * across assessment swaps; calling with `null` clears the binding
 	 * and re-runs the auto-mode helper.
 	 */
@@ -2155,41 +2339,34 @@ export class ToolkitCoordinator {
 		this.boundAssessment = assessment;
 		this.policyEngine.updateInputs({
 			assessment,
-			qtiEnforcement: this.resolveEffectiveQtiEnforcement(),
+			pnpEnforcement: this.resolveEffectivePnpEnforcement(),
 		});
 	}
 
 	/**
 	 * Bind (or clear) the current item reference for policy decisions.
 	 *
-	 * Used by item-level QTI gates (item `requiredTools` /
-	 * `restrictedTools` / `toolParameters`). Item-level QTI material
-	 * also feeds {@link resolveEffectiveQtiEnforcement} — navigating
-	 * to an item with QTI settings can flip auto-mode to `"on"` even
-	 * when the parent assessment carries no QTI block of its own.
+	 * Used by item-level profile gates (item `requiredTools` /
+	 * `restrictedTools` / `toolParameters`). Item-level profile material
+	 * also feeds {@link resolveEffectivePnpEnforcement} — navigating
+	 * to an item with profile settings can flip auto-mode to `"on"` even
+	 * when the parent assessment carries no profile block of its own.
 	 */
 	updateCurrentItemRef(itemRef: AssessmentItemRef | null): void {
 		this.boundCurrentItemRef = itemRef;
 		this.policyEngine.updateInputs({
 			currentItemRef: itemRef,
-			qtiEnforcement: this.resolveEffectiveQtiEnforcement(),
+			pnpEnforcement: this.resolveEffectivePnpEnforcement(),
 		});
 	}
 
 	/**
-	 * Override the auto-mode QTI enforcement decision.
-	 *
-	 * Pass `"on"` to force QTI enforcement even when no QTI inputs
-	 * are bound (useful for tests / fixtures). Pass `"off"` to opt
-	 * out even when QTI inputs are present. Pass `null` to clear the
-	 * override and return to auto-mode — `"on"` iff
-	 * {@link resolveDefaultQtiEnforcement} reports any QTI material
-	 * on the bound assessment or current item, otherwise `"off"`.
+	 * Override the auto-mode PNP/profile enforcement decision.
 	 */
-	setQtiEnforcement(mode: QtiEnforcementMode | null): void {
-		this.qtiEnforcementOverride = mode;
+	setPnpEnforcement(mode: PnpEnforcementMode | null): void {
+		this.pnpEnforcementOverride = mode;
 		this.policyEngine.updateInputs({
-			qtiEnforcement: this.resolveEffectiveQtiEnforcement(),
+			pnpEnforcement: this.resolveEffectivePnpEnforcement(),
 		});
 	}
 
@@ -2211,33 +2388,122 @@ export class ToolkitCoordinator {
 	 * {@link ToolPolicyEngine.registerPolicySource} — see that
 	 * method for the full contract (event ordering, idempotency of
 	 * the returned dispose function, and how registered sources
-	 * compose with the built-in QTI source).
+	 * compose with the built-in PNP policy source).
 	 */
 	registerPolicySource(source: PolicySource): () => void {
 		return this.policyEngine.registerPolicySource(source);
 	}
 
 	/**
-	 * Compute the effective `qtiEnforcement` mode given the explicit
+	 * Register a host-owned resolver for one tool's render context.
+	 *
+	 * Resolvers are evaluated only for tools that already survived the
+	 * framework policy pipeline. They can hide the tool for the current
+	 * scope or attach render params consumed by the packaged registration;
+	 * they cannot re-enable tools blocked by placement, provider config,
+	 * host policy, or PNP/profile rules.
+	 */
+	registerToolContextResolver(
+		toolId: string,
+		resolver: ToolContextResolver,
+	): () => void {
+		this.assertCanonicalToolId(toolId);
+		if (typeof resolver !== "function") {
+			throw new Error(
+				`Invalid tool context resolver for "${toolId}": expected a function.`,
+			);
+		}
+		this.toolContextResolvers.set(toolId, resolver);
+		this.notifyToolContextResolverChange();
+		return () => {
+			if (this.toolContextResolvers.get(toolId) !== resolver) return;
+			this.toolContextResolvers.delete(toolId);
+			this.notifyToolContextResolverChange();
+		};
+	}
+
+	hasToolContextResolver(toolId: string): boolean {
+		this.assertCanonicalToolId(toolId);
+		return this.toolContextResolvers.has(toolId);
+	}
+
+	resolveToolContext(
+		context: ToolContextResolverContext,
+	): ResolvedToolContext | null {
+		this.assertCanonicalToolId(context.toolId);
+		const resolver = this.toolContextResolvers.get(context.toolId);
+		if (!resolver) return null;
+
+		let result: ReturnType<ToolContextResolver>;
+		try {
+			result = resolver(context);
+		} catch (error) {
+			console.error(
+				`[ToolkitCoordinator] Tool context resolver for "${context.toolId}" threw:`,
+				error,
+			);
+			return {
+				toolId: context.toolId,
+				visible: false,
+				params: {},
+				reason: "Tool context resolver threw.",
+			};
+		}
+		if (!result) {
+			return {
+				toolId: context.toolId,
+				visible: true,
+				params: {},
+			};
+		}
+
+		const params =
+			result.params &&
+			typeof result.params === "object" &&
+			!Array.isArray(result.params)
+				? result.params
+				: {};
+		return {
+			toolId: context.toolId,
+			visible: result.visible !== false,
+			params,
+			reason: typeof result.reason === "string" ? result.reason : undefined,
+		};
+	}
+
+	onToolContextResolverChange(listener: () => void): () => void {
+		this.toolContextResolverChangeListeners.add(listener);
+		return () => {
+			this.toolContextResolverChangeListeners.delete(listener);
+		};
+	}
+
+	/**
+	 * Compute the effective PNP/profile enforcement mode given the explicit
 	 * host override and the auto-mode helper.
 	 *
 	 * Auto-mode (no override) defers to
-	 * {@link resolveDefaultQtiEnforcement}, which returns `"on"`
+	 * {@link resolveDefaultPnpEnforcement}, which returns `"on"`
 	 * exactly when the bound assessment or current item ref carries
-	 * QTI 6-level precedence material (PNP, district policy, test
+	 * profile precedence material (PNP, district policy, test
 	 * administration, item-level required/restricted/parameters), and
 	 * `"off"` otherwise. Hosts that bind a bare assessment record
 	 * (just `id` / `name`) therefore keep the legacy floating-tools
-	 * behavior — QTI gates engage the moment QTI material is present.
+	 * behavior — profile gates engage the moment profile material is present.
 	 */
-	private resolveEffectiveQtiEnforcement(): QtiEnforcementMode {
-		if (this.qtiEnforcementOverride !== null) {
-			return this.qtiEnforcementOverride;
+	private resolveEffectivePnpEnforcement(): PnpEnforcementMode {
+		if (this.pnpEnforcementOverride !== null) {
+			return this.pnpEnforcementOverride;
 		}
-		return resolveDefaultQtiEnforcement({
+		return resolveDefaultPnpEnforcement({
 			assessment: this.boundAssessment,
 			currentItemRef: this.boundCurrentItemRef,
 		});
+	}
+
+	private resolveConfiguredPnpEnforcement(): PnpEnforcementMode | null {
+		const tools = this.config.tools as CanonicalToolsConfig | undefined;
+		return tools?.pnpEnforcement ?? null;
 	}
 
 	/**
@@ -2287,9 +2553,9 @@ export class ToolkitCoordinator {
 		if (this.toolProviderRegistry.has("tts")) {
 			await this.toolProviderRegistry.unregister("tts");
 		}
-		const ttsRegistration = this
-			.getProviderDescriptorTools()
-			.find((tool) => tool.toolId === "textToSpeech");
+		const ttsRegistration = this.getProviderDescriptorTools().find(
+			(tool) => tool.toolId === "textToSpeech",
+		);
 		if (!ttsRegistration) return;
 		await this.registerProviderFromTool(ttsRegistration);
 	}

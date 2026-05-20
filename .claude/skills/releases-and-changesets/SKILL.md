@@ -97,8 +97,11 @@ you need:
   `NPM_TOKEN` for `@pie-players` publish access; no separate
   `npm login` is needed.
 - **A clean working tree on the branch you're releasing from** (typically
-  `master` after merge). The script writes to `package.json` and
+  `develop`, or a feature branch targeting `develop`). The script writes to `package.json` and
   `CHANGELOG.md` files during `version`.
+- **The project branch policy.** Do not merge or push release changes
+  directly to `main` / `master`; route feature branches and release commits
+  through `develop`.
 - **Outside the sandbox.** The command runs `bun run test`, which
   triggers Playwright and other browser-bound suites; invoke with
   `required_permissions: ["all"]`.

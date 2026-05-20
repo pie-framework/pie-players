@@ -50,20 +50,135 @@ export type AssessmentControllerEvent =
 			submitted: boolean;
 	  };
 
+/**
+ * Host-facing controller for a single assessment attempt.
+ *
+ * `AssessmentControllerHandle` is the primary API surface a host
+ * application uses after the assessment player signals readiness via
+ * the `AssessmentPlayerHooks.onAssessmentControllerReady(handle)` hook.
+ *
+ * The interface is the contract; the production implementation is
+ * `AssessmentController` in this same file. The controller owns
+ * cross-section navigation, the assessment session shape (delivery
+ * plan + per-section snapshots), and `submit()`. Per-section concerns
+ * (item navigation, item sessions, content loading) belong to the
+ * embedded `SectionControllerHandle`, not here.
+ *
+ * Typical lifecycle for a host:
+ *
+ * ```ts
+ * // wired through AssessmentPlayerHooks.onAssessmentControllerReady
+ * const unsubscribe = controller.subscribe(handleEvent);
+ * // ...later, on save / submit:
+ * await controller.persist();
+ * await controller.submit();
+ * unsubscribe();
+ * ```
+ */
 export interface AssessmentControllerHandle {
+	/**
+	 * Bootstrap the controller: build the delivery plan, ensure a
+	 * session exists, run `hydrate()`, and fire
+	 * `onAssessmentControllerReady`.
+	 *
+	 * Called by the assessment player when the player CE mounts. Hosts
+	 * normally do not call this directly.
+	 */
 	initialize(): Promise<void>;
+	/**
+	 * Load and apply a previously persisted assessment session via the
+	 * registered `AssessmentSessionPersistenceStrategy`. Falls back to
+	 * a fresh session when no snapshot exists. Emits
+	 * `assessment-session-applied` on a successful load.
+	 */
 	hydrate(): Promise<void>;
+	/**
+	 * Save the current assessment session via the registered
+	 * persistence strategy.
+	 *
+	 * Hosts call this on whatever cadence they choose (debounced on
+	 * change, on visibility change, on submit). `submit()` always
+	 * `persist()`s as its final step.
+	 */
 	persist(): Promise<void>;
+	/**
+	 * Return the current `AssessmentSession` snapshot — delivery plan
+	 * realization, navigation state, and the per-section session map.
+	 *
+	 * This is the same shape exchanged with the persistence strategy
+	 * and with the section controllers under each section.
+	 */
 	getSession(): AssessmentSession | null;
+	/**
+	 * Return a live navigation/runtime snapshot — readiness, current
+	 * section index/id, total sections, `canNext` / `canPrevious`,
+	 * visited count, and submission state.
+	 *
+	 * Intended for chrome rendering and runtime introspection (debug
+	 * panels, navigation buttons). Use `getSession()` for persistence.
+	 */
 	getRuntimeState(): AssessmentControllerRuntimeState;
+	/**
+	 * Navigate to a section by zero-based index or by section
+	 * identifier. Emits `assessment-route-changed`,
+	 * `assessment-session-changed`, and `assessment-progress-changed`
+	 * on success. Returns `false` for out-of-range indices and unknown
+	 * identifiers.
+	 */
 	navigateTo(indexOrIdentifier: number | string): boolean;
+	/**
+	 * Advance to the next section. Returns `false` when already at the
+	 * last section. Same emission contract as `navigateTo`.
+	 */
 	navigateNext(): boolean;
+	/**
+	 * Step back to the previous section. Returns `false` when already
+	 * at the first section. Same emission contract as `navigateTo`.
+	 */
 	navigatePrevious(): boolean;
+	/**
+	 * Mark the assessment as submitted, emit
+	 * `assessment-submission-state-changed`, and `persist()` the final
+	 * snapshot.
+	 */
 	submit(): Promise<void>;
+	/**
+	 * Subscribe to the controller's typed event stream
+	 * (`AssessmentControllerEvent` discriminated union:
+	 * `assessment-route-changed`, `assessment-session-applied`,
+	 * `assessment-session-changed`, `assessment-progress-changed`,
+	 * `assessment-submission-state-changed`).
+	 *
+	 * Returns a disposer.
+	 */
 	subscribe(listener: (event: AssessmentControllerEvent) => void): () => void;
+	/**
+	 * Return the `AssessmentSectionInstance` the runtime currently
+	 * considers active (delivery-plan entry at the current section
+	 * index). Returns `null` when the delivery plan is empty.
+	 */
 	getCurrentSection(): AssessmentSectionInstance | null;
+	/**
+	 * Return the delivery-plan entry at a specific zero-based index, or
+	 * `null` if the index is out of range. Used for chrome that needs
+	 * to render section labels / metadata for non-current sections.
+	 */
 	getSectionAt(index: number): AssessmentSectionInstance | null;
+	/**
+	 * Return the persisted snapshot for a specific section
+	 * (`SectionSessionSnapshot`), or `null` if no snapshot has been
+	 * recorded yet.
+	 *
+	 * This is the snapshot shape produced by the embedded
+	 * `SectionControllerHandle.getSession()` for that section.
+	 */
 	getSectionSession(sectionId: string): SectionSessionSnapshot | null;
+	/**
+	 * Persist (in-memory) a snapshot for a specific section into the
+	 * assessment session and emit `assessment-session-changed`. Used by
+	 * the per-section bridge to roll up `SectionController` state into
+	 * the assessment session before the next `persist()`.
+	 */
 	updateSectionSession(
 		sectionId: string,
 		session: SectionSessionSnapshot | null,

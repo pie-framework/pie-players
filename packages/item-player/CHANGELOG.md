@@ -1,5 +1,105 @@
 # @pie-players/pie-item-player
 
+## 0.3.42
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-players-shared@0.3.42
+  - @pie-players/pie-theme@0.3.42
+
+## 0.3.41
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-players-shared@0.3.41
+  - @pie-players/pie-theme@0.3.41
+
+## 0.3.40
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies [3a167a8]
+- Updated dependencies
+  - @pie-players/pie-players-shared@0.3.40
+  - @pie-players/pie-theme@0.3.40
+
+## 0.3.39
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies [0072fad]
+- Updated dependencies
+  - @pie-players/pie-players-shared@0.3.39
+  - @pie-players/pie-theme@0.3.39
+
+## 0.3.38
+
+### Patch Changes
+
+- c8d46d7: Remove PIE-owned focus-placement APIs and automatic section navigation focus movement.
+
+  This is a breaking cleanup for pre-1.0 hosts: `pie-item-player.focusFirst()`, section-player layout `focusStart()`, `SectionPlayerFocusPolicy.autoFocus`, `DEFAULT_FOCUS_POLICY`, and `resolveAutoFocusStrategy` are no longer exported. The shared `queryFirstFocusableDeep()` and `focusFirstFocusableInElement()` helpers were also removed; `FOCUSABLE_SELECTOR` and `isProgrammaticFocusTarget()` remain for focus-trap internals.
+
+  Hosts should own skip links, landmarks, and page-level focus placement while section player preserves natural tab order into actionable controls.
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies [f856362]
+- Updated dependencies [c8d46d7]
+- Updated dependencies
+  - @pie-players/pie-players-shared@0.3.38
+  - @pie-players/pie-theme@0.3.38
+
+## 0.3.37
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-players-shared@0.3.37
+  - @pie-players/pie-theme@0.3.37
+
+## 0.3.36
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-players-shared@0.3.36
+  - @pie-players/pie-theme@0.3.36
+
+## 0.3.35
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-players-shared@0.3.35
+  - @pie-players/pie-theme@0.3.35
+
+## 0.3.34
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-players-shared@0.3.34
+  - @pie-players/pie-theme@0.3.34
+
+## 0.3.33
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-players-shared@0.3.33
+  - @pie-players/pie-theme@0.3.33
+
 ## 0.3.32
 
 ### Patch Changes

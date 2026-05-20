@@ -93,8 +93,6 @@ describe("ToolkitCoordinator section event subscriptions", () => {
 
 		const received: SectionControllerEvent[] = [];
 		const unsubscribe = coordinator.subscribeSectionLifecycleEvents({
-			sectionId: "section-1",
-			attemptId: "attempt-1",
 			listener: (event) => received.push(event),
 		});
 
@@ -136,8 +134,6 @@ describe("ToolkitCoordinator section event subscriptions", () => {
 
 		const received: SectionControllerEvent[] = [];
 		const unsubscribe = coordinator.subscribeSectionLifecycleEvents({
-			sectionId: "section-1",
-			attemptId: "attempt-1",
 			listener: (event) => received.push(event),
 		});
 
@@ -179,8 +175,6 @@ describe("ToolkitCoordinator section event subscriptions", () => {
 
 		const received: SectionControllerEvent[] = [];
 		const unsubscribe = coordinator.subscribeItemEvents({
-			sectionId: "section-1",
-			attemptId: "attempt-1",
 			listener: (event) => received.push(event),
 		});
 
@@ -215,8 +209,6 @@ describe("ToolkitCoordinator section event subscriptions", () => {
 
 		const received: SectionControllerEvent[] = [];
 		const unsubscribe = coordinator.subscribeSectionLifecycleEvents({
-			sectionId: "section-1",
-			attemptId: "attempt-1",
 			eventTypes: ["section-error"],
 			listener: (event) => received.push(event),
 		});
@@ -239,8 +231,6 @@ describe("ToolkitCoordinator section event subscriptions", () => {
 
 		const received: SectionControllerEvent[] = [];
 		const unsubscribe = coordinator.subscribeItemEvents({
-			sectionId: "section-1",
-			attemptId: "attempt-1",
 			eventTypes: ["item-selected"],
 			itemIds: ["item-b"],
 			listener: (event) => received.push(event),
@@ -274,8 +264,6 @@ describe("ToolkitCoordinator section event subscriptions", () => {
 
 		const received: SectionControllerEvent[] = [];
 		const unsubscribe = coordinator.subscribeItemEvents({
-			sectionId: "section-1",
-			attemptId: "attempt-1",
 			itemIds: ["item-b"],
 			listener: (event) => received.push(event),
 		});
@@ -308,8 +296,6 @@ describe("ToolkitCoordinator section event subscriptions", () => {
 
 		const received: SectionControllerEvent[] = [];
 		const unsubscribe = coordinator.subscribeSectionLifecycleEvents({
-			sectionId: "section-1",
-			attemptId: "attempt-1",
 			listener: (event) => received.push(event),
 		});
 
@@ -323,7 +309,13 @@ describe("ToolkitCoordinator section event subscriptions", () => {
 		unsubscribe();
 	});
 
-	test("replaces existing subscription for the same listener and section key", async () => {
+	test("replaces existing subscription for the same listener", async () => {
+		// Phase D: the dedup key is the listener identity alone (no
+		// section key). Subscribing the same listener function twice
+		// replaces the first subscription with the second, regardless of
+		// filter args. Preserves the pre-Phase-D ergonomic that lets a
+		// wrapper re-subscribe the same handler without first manually
+		// unsubscribing.
 		const controller = createTestController();
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: "assessment-replace",
@@ -338,14 +330,10 @@ describe("ToolkitCoordinator section event subscriptions", () => {
 		const received: SectionControllerEvent[] = [];
 		const listener = (event: SectionControllerEvent) => received.push(event);
 		const unsubscribeFirst = coordinator.subscribeItemEvents({
-			sectionId: "section-1",
-			attemptId: "attempt-1",
 			itemIds: ["item-a"],
 			listener,
 		});
 		const unsubscribeSecond = coordinator.subscribeItemEvents({
-			sectionId: "section-1",
-			attemptId: "attempt-1",
 			itemIds: ["item-b"],
 			listener,
 		});
@@ -361,50 +349,5 @@ describe("ToolkitCoordinator section event subscriptions", () => {
 		);
 		unsubscribeFirst();
 		unsubscribeSecond();
-	});
-
-	test("does not subscribe when section is ambiguous without attempt id", async () => {
-		const controllerA = createTestController();
-		const controllerB = createTestController();
-		const coordinator = new ToolkitCoordinator({
-			assessmentId: "assessment-ambiguous",
-			lazyInit: true,
-		});
-		await coordinator.getOrCreateSectionController({
-			sectionId: "section-1",
-			attemptId: "attempt-1",
-			createDefaultController: () => controllerA.handle,
-		});
-		await coordinator.getOrCreateSectionController({
-			sectionId: "section-1",
-			attemptId: "attempt-2",
-			createDefaultController: () => controllerB.handle,
-		});
-
-		const warnings: string[] = [];
-		const originalWarn = console.warn;
-		console.warn = (...args: unknown[]) => {
-			warnings.push(args.map((arg) => String(arg)).join(" "));
-		};
-
-		try {
-			const received: SectionControllerEvent[] = [];
-			const unsubscribe = coordinator.subscribeItemEvents({
-				sectionId: "section-1",
-				listener: (event) => received.push(event),
-			});
-			controllerA.emit(itemSelectedEvent("item-a"));
-			controllerB.emit(itemSelectedEvent("item-b"));
-			unsubscribe();
-
-			expect(received).toHaveLength(0);
-			expect(
-				warnings.some((entry) =>
-					entry.includes("subscribeSectionEvents is ambiguous"),
-				),
-			).toBe(true);
-		} finally {
-			console.warn = originalWarn;
-		}
 	});
 });

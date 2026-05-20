@@ -5,7 +5,10 @@ import type {
 	ToolPolicyResolutionDecision,
 } from "@pie-players/pie-assessment-toolkit/policy/engine";
 import {
+	buildEditableToolRows,
+	createPatchedPnpProfile,
 	derivePnpPanelData,
+	deriveAllAvailablePlacement,
 	fetchSectionPolicyDecision,
 	flattenFeatureTrails,
 	resolveFloatingTools,
@@ -273,6 +276,98 @@ describe("resolveFloatingTools", () => {
 
 	test("returns empty array when nothing is configured", () => {
 		expect(resolveFloatingTools(null, [])).toEqual([]);
+	});
+});
+
+describe("editable tool helpers", () => {
+	const coordinator: PolicyPanelCoordinator = {
+		config: {
+			toolRegistry: {
+				getAllTools: () => [
+					{
+						toolId: "lineReader",
+						name: "Line Reader",
+						description: "Reading guide",
+						supportedLevels: ["section", "item", "passage"],
+						pnpSupportIds: ["readingMask"],
+					},
+					{
+						toolId: "answerEliminator",
+						name: "Answer Eliminator",
+						supportedLevels: ["item"],
+						pnpSupportIds: ["answerMasking"],
+					},
+				],
+			},
+			tools: {
+				placement: {
+					section: ["lineReader"],
+					item: ["answerEliminator"],
+				},
+				providers: {
+					answerEliminator: { enabled: false },
+				},
+			},
+		},
+	};
+
+	test("buildEditableToolRows merges registry, placement, provider, visibility, and PNP state", () => {
+		const rows = buildEditableToolRows({
+			coordinator,
+			pnpProfile: {
+				supports: ["readingMask"],
+				prohibitedSupports: ["answerMasking"],
+			},
+			decisions: {
+				section: makeDecision(["lineReader"], makeProvenance([])),
+				item: makeDecision([], makeProvenance([])),
+			},
+		});
+
+		const lineReader = rows.find((row) => row.toolId === "lineReader");
+		expect(lineReader).toMatchObject({
+			providerEnabled: true,
+			pnpSupported: true,
+			pnpProhibited: false,
+			placement: { section: true, item: false, passage: false },
+			visible: { section: true, item: false, passage: false },
+		});
+		const answerEliminator = rows.find((row) => row.toolId === "answerEliminator");
+		expect(answerEliminator).toMatchObject({
+			providerEnabled: false,
+			pnpSupported: false,
+			pnpProhibited: true,
+			placement: { section: false, item: true, passage: false },
+		});
+	});
+
+	test("deriveAllAvailablePlacement maps tools to supported levels", () => {
+		const rows = buildEditableToolRows({
+			coordinator,
+			pnpProfile: {},
+			decisions: {},
+		});
+
+		expect(deriveAllAvailablePlacement(rows)).toEqual({
+			section: ["lineReader"],
+			item: ["answerEliminator", "lineReader"],
+			passage: ["lineReader"],
+		});
+	});
+
+	test("createPatchedPnpProfile toggles support ids without mutating the source", () => {
+		const source = { supports: ["a"], prohibitedSupports: ["z"] };
+		const added = createPatchedPnpProfile(source, "supports", ["b", "a"], true);
+		expect(added.supports).toEqual(["a", "b"]);
+		expect(source.supports).toEqual(["a"]);
+
+		const removed = createPatchedPnpProfile(
+			added,
+			"supports",
+			["a"],
+			false,
+		);
+		expect(removed.supports).toEqual(["b"]);
 	});
 });
 

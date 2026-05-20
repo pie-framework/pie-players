@@ -11,6 +11,7 @@
 			lazyInit: { attribute: "lazy-init", type: "Boolean" },
 			toolConfigStrictness: { attribute: "tool-config-strictness", type: "String" },
 			tools: { attribute: "tools", type: "Object" },
+			toolContextResolvers: { type: "Object", reflect: false },
 			enabledTools: { attribute: "enabled-tools", type: "String" },
 			toolRegistry: { type: "Object", reflect: false },
 			accessibility: { type: "Object", reflect: false },
@@ -27,14 +28,14 @@
 			onStageChange: { type: "Object", reflect: false },
 			// M8 PR 2 — additive Tool Policy Engine inputs. The toolkit
 			// CE forwards these into the owned `ToolkitCoordinator` so
-			// the engine has the QTI inputs needed for accessibility-
+			// the engine has the PNP/profile inputs needed for accessibility-
 			// aware policy decisions. PR 2 introduces them unused by
 			// internal toolbars; PR 3 switches the toolbars onto the
 			// engine and these props become the canonical input path.
 			assessment: { type: "Object", reflect: false },
 			currentItemRef: { type: "Object", reflect: false },
-			qtiEnforcement: {
-				attribute: "qti-enforcement",
+			pnpEnforcement: {
+				attribute: "pnp-enforcement",
 				type: "String",
 			},
 			// JS-only prop. Section-player layouts forward
@@ -76,7 +77,7 @@
 	} from "../context/assessment-toolkit-context.js";
 	import { connectAssessmentToolkitHostRuntimeContext } from "../context/runtime-context-consumer.js";
 	import { ToolkitCoordinator } from "../services/ToolkitCoordinator.js";
-	import type { QtiEnforcementMode } from "../policy/engine.js";
+	import type { PnpEnforcementMode } from "../policy/engine.js";
 	import type {
 		AssessmentEntity,
 		AssessmentItemRef,
@@ -198,6 +199,7 @@ const DEFAULT_ENV = {
 		lazyInit = true,
 		toolConfigStrictness = "error" as ToolConfigStrictness,
 		tools = {},
+		toolContextResolvers = null as Record<string, unknown> | null,
 		enabledTools = "",
 		toolRegistry = null as ToolRegistry | null,
 		accessibility = {},
@@ -215,16 +217,15 @@ const DEFAULT_ENV = {
 		onStageChange = null as null | ((detail: StageChangeDetail) => void),
 		// M8 PR 2 — additive Tool Policy Engine inputs. See the
 		// `<svelte:options>` props block above for the rationale.
-		// `qtiEnforcement` accepts `"on"`, `"off"`, or `null` (auto —
-		// the coordinator infers the effective mode from QTI material
+		// `pnpEnforcement` accepts `"on"`, `"off"`, or `null` (auto —
+		// the coordinator infers the effective mode from PNP/profile material
 		// on the bound `assessment` / `currentItemRef`). Embedded
 		// under `<pie-section-player-*>` the same override flows via
-		// `runtime.tools.qtiEnforcement`; the effect below falls back
-		// to `tools.qtiEnforcement` when the explicit prop is `null`
-		// so both entry points converge on the same coordinator call.
+		// `runtime.tools.pnpEnforcement`; both entry points converge on
+		// the same coordinator call.
 		assessment = null as AssessmentEntity | null,
 		currentItemRef = null as AssessmentItemRef | null,
-		qtiEnforcement = null as QtiEnforcementMode | null,
+		pnpEnforcement = null as PnpEnforcementMode | null,
 		isolation = "inherit",
 	} = $props();
 
@@ -238,6 +239,7 @@ const DEFAULT_ENV = {
 	// consumer, so a plain `let` is safer and matches the canonical Svelte
 	// 5 latch pattern from `.cursor/rules/svelte-subscription-safety.mdc`.
 	let lastOwnership: "owned" | "inherited" | null = null;
+	let lastAppliedToolContextResolvers: Record<string, unknown> | null = null;
 	let provider: ContextProvider<typeof assessmentToolkitRuntimeContext> | null = null;
 	let contextRoot: ContextRoot | null = null;
 	let hostRuntimeProvider: ContextProvider<
@@ -701,49 +703,60 @@ const DEFAULT_ENV = {
 
 	function getOwnedBootstrapFailureKey(): string {
 		let toolsSignature = "";
+		let toolContextResolverSignature = "";
 		try {
 			toolsSignature = JSON.stringify(buildEffectiveToolsInput());
 		} catch {
 			toolsSignature = "[unserializable-tools]";
 		}
+		try {
+			toolContextResolverSignature = JSON.stringify(
+				Object.entries(toolContextResolvers ?? {}).map(([toolId, resolver]) => [
+					toolId,
+					typeof resolver,
+				]),
+			);
+		} catch {
+			toolContextResolverSignature = "[unserializable-resolvers]";
+		}
 		return [
 			assessmentId || "",
 			String(toolConfigStrictness || "error"),
 			toolsSignature,
+			toolContextResolverSignature,
 		].join("|");
 	}
 
-	// Coerce the public `qti-enforcement` CE attribute (string or null)
-	// into the engine's `QtiEnforcementMode | null` contract. Anything
+	// Coerce the public PNP enforcement CE attribute (string or null)
+	// into the engine's `PnpEnforcementMode | null` contract. Anything
 	// outside the canonical "on" / "off" set — typos like "ON",
 	// missing-attribute artifacts like "" or "null" strings — collapses
 	// to `null` (auto-mode) instead of silently degrading inside the
-	// engine. This is the single canonical entry point for the prop;
-	// keep all `setQtiEnforcement(...)` calls in this file routed
-	// through it.
-	function coerceQtiEnforcement(
-		value: QtiEnforcementMode | null | string | undefined,
-	): QtiEnforcementMode | null {
+	// engine. This is the single canonical entry point for the prop.
+	function coercePnpEnforcement(
+		value: PnpEnforcementMode | null | string | undefined,
+	): PnpEnforcementMode | null {
 		return value === "on" || value === "off" ? value : null;
 	}
 
 	// Resolve the effective override that flows into the coordinator.
-	// The explicit `qti-enforcement` attribute (standalone path) wins
-	// over `tools.qtiEnforcement` (embedded path via
-	// `runtime.tools.qtiEnforcement`); both fall back to `null`
-	// (auto-mode) so the coordinator's
-	// {@link resolveDefaultQtiEnforcement} helper runs on the bound
+	// The explicit `pnp-enforcement` attribute (standalone path) wins
+	// over `tools.pnpEnforcement` (embedded path via
+	// runtime tools config); all fall back to `null` (auto-mode) so the coordinator's
+	// {@link resolveDefaultPnpEnforcement} helper runs on the bound
 	// assessment / item ref.
-	function resolveQtiEnforcementInput(
-		explicit: QtiEnforcementMode | null | string | undefined,
+	function resolvePnpEnforcementInput(
+		explicitPnp: PnpEnforcementMode | null | string | undefined,
 		toolsConfig: unknown,
-	): QtiEnforcementMode | null {
-		const explicitMode = coerceQtiEnforcement(explicit);
+	): PnpEnforcementMode | null {
+		const explicitMode = coercePnpEnforcement(explicitPnp);
 		if (explicitMode) return explicitMode;
 		if (toolsConfig && typeof toolsConfig === "object") {
-			const candidate = (toolsConfig as { qtiEnforcement?: unknown })
-				.qtiEnforcement;
-			return coerceQtiEnforcement(
+			const toolConfig = toolsConfig as {
+				pnpEnforcement?: unknown;
+			};
+			const candidate = toolConfig.pnpEnforcement;
+			return coercePnpEnforcement(
 				typeof candidate === "string" ? candidate : null,
 			);
 		}
@@ -762,6 +775,7 @@ const DEFAULT_ENV = {
 			deferToolConfigValidation: true,
 			tools: validatedTools as any,
 			toolRegistry,
+			toolContextResolvers: toolContextResolvers as any,
 			accessibility: accessibility as any,
 			frameworkErrorBus,
 		});
@@ -789,17 +803,37 @@ const DEFAULT_ENV = {
 		void coordinator;
 		void isolation;
 		void inheritedRuntime;
+		void toolContextResolvers;
 		untrack(() => {
 			if (!host) return;
 			if (coordinator) {
 				if (ownedCoordinator) {
 					ownedCoordinator = null;
 				}
+				lastAppliedToolContextResolvers = null;
 				return;
 			}
 			if (isolation !== "force" && inheritedRuntime?.coordinator) {
 				if (ownedCoordinator) {
 					ownedCoordinator = null;
+				}
+				lastAppliedToolContextResolvers = null;
+				return;
+			}
+			if (
+				ownedCoordinator &&
+				lastAppliedToolContextResolvers !== toolContextResolvers
+			) {
+				try {
+					ownedCoordinator.setToolContextResolvers(toolContextResolvers as any);
+					lastAppliedToolContextResolvers = toolContextResolvers;
+				} catch (error) {
+					runtimeError = error;
+					reportFrameworkError({
+						kind: "coordinator-init",
+						phase: "coordinator-ready",
+						error,
+					});
 				}
 				return;
 			}
@@ -811,6 +845,7 @@ const DEFAULT_ENV = {
 				try {
 					const validatedTools = validateToolsConfigForBootstrap();
 					ownedCoordinator = buildOwnedCoordinator(validatedTools);
+					lastAppliedToolContextResolvers = toolContextResolvers;
 					lastOwnedBootstrapFailureKey = "";
 					frameworkErrorModel = null;
 					frameworkErrorTitle = "Unable to initialize assessment toolkit.";
@@ -1093,9 +1128,9 @@ const DEFAULT_ENV = {
 	});
 
 	// M8 — push Tool Policy Engine inputs (`assessment`,
-	// `currentItemRef`, `qtiEnforcement`) into the toolkit-owned
+	// `currentItemRef`, `pnpEnforcement`) into the toolkit-owned
 	// coordinator whenever they change. The coordinator's
-	// `updateAssessment` / `updateCurrentItemRef` / `setQtiEnforcement`
+	// `updateAssessment` / `updateCurrentItemRef` / `setPnpEnforcement`
 	// forwards land on `ToolPolicyEngine.updateInputs`, which value-
 	// diffs each key with `Object.is` and only emits an `inputs` event
 	// on real changes — so re-running this effect on coordinator swap
@@ -1103,13 +1138,11 @@ const DEFAULT_ENV = {
 	// explicitly and then run the side effect inside `untrack(...)`
 	// per `.cursor/rules/svelte-subscription-safety.mdc`.
 	//
-	// `qtiEnforcement` resolves through {@link resolveQtiEnforcementInput}
+	// `pnpEnforcement` resolves through {@link resolvePnpEnforcementInput}
 	// so the embedded path (`<pie-section-player-*>` setting
-	// `runtime.tools.qtiEnforcement`) and the standalone path (the
-	// explicit `qti-enforcement` attribute on `<pie-assessment-toolkit>`)
-	// converge on a single coordinator call. The explicit prop wins
-	// over `tools.qtiEnforcement` so a host can pin a stricter mode
-	// without rewriting the runtime overlay.
+	// `runtime.tools.pnpEnforcement`) and the standalone path (the
+	// explicit `pnp-enforcement` attribute on `<pie-assessment-toolkit>`)
+	// converge on a single coordinator call.
 	//
 	// CRITICAL: only push when the toolkit *owns* the coordinator
 	// (i.e. `effectiveCoordinator === ownedCoordinator`). When the
@@ -1122,22 +1155,24 @@ const DEFAULT_ENV = {
 	$effect(() => {
 		void assessment;
 		void currentItemRef;
-		void qtiEnforcement;
+		void pnpEnforcement;
 		void tools;
 		const coord = effectiveCoordinator;
 		if (!coord) return;
 		// Host-owned coordinators are off-limits for this effect.
 		if (coord !== ownedCoordinator) return;
 		untrack(() => {
-			// Apply order matters: `setQtiEnforcement` lands the override
+			// Apply order matters: `setPnpEnforcement` lands the override
 			// (or clears it) FIRST so `updateAssessment(...)`'s
 			// auto-promote path sees the final override and doesn't
 			// briefly resolve to "on" (when binding an assessment with
-			// `qtiEnforcement="off"`) or "off" (when clearing an
-			// assessment with `qtiEnforcement="on"`). Without this
+			// `pnpEnforcement="off"`) or "off" (when clearing an
+			// assessment with `pnpEnforcement="on"`). Without this
 			// ordering we would emit a transient wrong-state policy
 			// event between the calls.
-			coord.setQtiEnforcement(resolveQtiEnforcementInput(qtiEnforcement, tools));
+			coord.setPnpEnforcement(
+				resolvePnpEnforcementInput(pnpEnforcement, tools),
+			);
 			coord.updateAssessment(assessment);
 			coord.updateCurrentItemRef(currentItemRef);
 		});

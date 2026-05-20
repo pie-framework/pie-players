@@ -8,12 +8,16 @@ pre-commit:
       run: bun run check:deps
     check-package-metadata:
       run: bun run check:package-metadata
+    check-svelte-runtime-deps:
+      run: bun run check:svelte-runtime-deps
 
 pre-push:
   parallel: false
   commands:
     check-deps:
       run: bun run check:deps
+    check-svelte-runtime-deps:
+      run: bun run check:svelte-runtime-deps
     check-changeset-patch-only:
       run: bun run check:changeset-patch-only
     check-publint:

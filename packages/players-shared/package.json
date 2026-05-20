@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-players-shared",
-	"version": "0.3.32",
+	"version": "0.3.42",
 	"type": "module",
 	"description": "Shared runtime + UI utilities for PIE players",
 	"license": "MIT",
@@ -112,10 +112,17 @@
 		"dist"
 	],
 	"dependencies": {
-		"@pie-lib/math-rendering-module": "4.1.2",
+		"@pie-lib/math-rendering-module": "5.0.0",
 		"dompurify": "^3.4.0",
-		"semver": "^7.7.4",
+		"semver": "^7.7.4"
+	},
+	"peerDependencies": {
 		"svelte": "^5.54.0"
+	},
+	"peerDependenciesMeta": {
+		"svelte": {
+			"optional": true
+		}
 	},
 	"scripts": {
 		"build": "rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json && bun run scripts/copy-source-exports.mjs",
@@ -132,6 +139,7 @@
 		"@happy-dom/global-registrator": "^20.9.0",
 		"@types/semver": "^7.7.1",
 		"glob": "^13.0.0",
+		"svelte": "^5.54.0",
 		"typescript": "^5.9.3"
 	},
 	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/players-shared#readme",

@@ -38,16 +38,12 @@ export type {
 	SectionPlayerPolicies,
 	SectionPlayerReadinessPolicy,
 	SectionPlayerPreloadPolicy,
-	SectionPlayerFocusPolicy,
-	SectionPlayerAutoFocusStrategy,
 	SectionPlayerTelemetryPolicy,
 } from "./policies/types.js";
 export {
-	DEFAULT_FOCUS_POLICY,
 	DEFAULT_SECTION_PLAYER_POLICIES,
 	isPreloadEnabled,
 	isTelemetryEnabled,
-	resolveAutoFocusStrategy,
 } from "./policies/index.js";
 export type {
 	SectionPlayerCardTitleContext,

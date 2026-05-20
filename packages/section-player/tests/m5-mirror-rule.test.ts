@@ -32,8 +32,9 @@ import type { RuntimeConfig } from "@pie-players/pie-assessment-toolkit/runtime/
  *   - Layout-only shell knobs (`show-toolbar`, `toolbar-position`,
  *     `narrow-layout-breakpoint`, `split-pane-collapse-strategy`,
  *     `content-max-width-no-passage`, `content-max-width-with-passage`,
- *     `split-pane-min-region-width`, `iife-bundle-host`, `debug`):
- *     layout-CE rendering / preload-host concerns.
+ *     `split-pane-min-region-width`, `split-pane-initial-passage-width`,
+ *     `iife-bundle-host`, `debug`): layout-CE rendering / preload-host
+ *     concerns.
  *   - Layout-shell host data (`policies`, `hooks`, `toolRegistry`,
  *     `sectionHostButtons`, `itemHostButtons`, `passageHostButtons`):
  *     consumed by the layout kernel through its top-level prop, not via
@@ -80,6 +81,7 @@ const RUNTIME_CONFIG_KEYS_SENTINEL: Record<keyof RuntimeConfig, true> = {
 	player: true,
 	lazyInit: true,
 	tools: true,
+	toolContextResolvers: true,
 	accessibility: true,
 	coordinator: true,
 	createSectionController: true,
@@ -92,9 +94,9 @@ const RUNTIME_CONFIG_KEYS_SENTINEL: Record<keyof RuntimeConfig, true> = {
 	enabledTools: true,
 };
 
-const RUNTIME_CONFIG_KEYS = Object.keys(
-	RUNTIME_CONFIG_KEYS_SENTINEL,
-) as Array<keyof RuntimeConfig>;
+const RUNTIME_CONFIG_KEYS = Object.keys(RUNTIME_CONFIG_KEYS_SENTINEL) as Array<
+	keyof RuntimeConfig
+>;
 
 type LayoutProp = {
 	name: string;
@@ -281,15 +283,13 @@ for (const layout of layoutsByFile) {
 const RUNTIME_ONLY_KEYS = new Set<keyof RuntimeConfig>([
 	"createSectionController",
 	"isolation",
+	"toolContextResolvers",
 ]);
 
 describe("M5 mirror rule — RuntimeConfig coverage", () => {
 	for (const key of RUNTIME_CONFIG_KEYS) {
 		if (RUNTIME_ONLY_KEYS.has(key)) {
-			test.skip(
-				`RuntimeConfig key \`${key}\` is runtime-only (no top-level prop mirror by design)`,
-				() => {},
-			);
+			test.skip(`RuntimeConfig key \`${key}\` is runtime-only (no top-level prop mirror by design)`, () => {});
 			continue;
 		}
 		test(`RuntimeConfig key \`${key}\` is declared as a prop on at least one layout CE`, () => {
@@ -340,16 +340,16 @@ describe("M5 mirror rule — runtime tier is read by the consumer", () => {
 });
 
 /**
- * Nested mirror chain for `runtime.tools.qtiEnforcement` (M8 PR 4).
+ * Nested mirror chain for `runtime.tools.pnpEnforcement`.
  *
- * `qtiEnforcement` is not a top-level `RuntimeConfig` key — it lives
+ * `pnpEnforcement` is not a top-level `RuntimeConfig` key — it lives
  * under `runtime.tools`. The kebab/camelCase/runtime contract still
  * applies, but the surfaces are owned by `<pie-assessment-toolkit>`
  * (assessment-toolkit package), not by the section-player layout
  * shells. This block locks each leg of that nested chain so the
  * embedded path (`<pie-section-player-* runtime={{ tools: { ... } }}>`
- * → forwarded `tools` prop → toolkit reads `tools.qtiEnforcement`)
- * stays in sync with the standalone `qti-enforcement` attribute.
+ * → forwarded `tools` prop → toolkit reads `tools.pnpEnforcement`)
+ * stays in sync with the standalone `pnp-enforcement` attribute.
  */
 const TOOLKIT_FILE = resolve(
 	PACKAGE_ROOT,
@@ -371,40 +371,49 @@ const toolkitSource = readFileSync(TOOLKIT_FILE, "utf8");
 const toolkitProps = parseLayoutProps(TOOLKIT_FILE);
 const normalizerSource = readFileSync(NORMALIZER_FILE, "utf8");
 const sectionPlayerBaseSource = readFileSync(
-	resolve(PACKAGE_ROOT, "src", "components", "PieSectionPlayerBaseElement.svelte"),
+	resolve(
+		PACKAGE_ROOT,
+		"src",
+		"components",
+		"PieSectionPlayerBaseElement.svelte",
+	),
 	"utf8",
 );
 
-describe("M5 mirror rule — runtime.tools.qtiEnforcement nested chain (M8 PR 4)", () => {
-	test("`<pie-assessment-toolkit>` declares the `qtiEnforcement` prop with `attribute: \"qti-enforcement\"`", () => {
-		const prop = toolkitProps.find((p) => p.name === "qtiEnforcement");
+describe("M5 mirror rule — runtime.tools.pnpEnforcement nested chain", () => {
+	test('`<pie-assessment-toolkit>` declares the `pnpEnforcement` prop with `attribute: "pnp-enforcement"`', () => {
+		const prop = toolkitProps.find((p) => p.name === "pnpEnforcement");
 		expect(prop).toBeDefined();
-		expect(prop?.attribute).toBe("qti-enforcement");
+		expect(prop?.attribute).toBe("pnp-enforcement");
 	});
 
-	test("`CanonicalToolsConfig` declares `qtiEnforcement` so `runtime.tools.qtiEnforcement` is preserved through `normalizeToolsConfig`", () => {
-		expect(normalizerSource.includes("qtiEnforcement?: ToolsQtiEnforcement")).toBe(
-			true,
-		);
-		expect(normalizerSource.includes("config.qtiEnforcement = qtiEnforcement")).toBe(
-			true,
-		);
+	test("`CanonicalToolsConfig` declares `pnpEnforcement` so `runtime.tools.pnpEnforcement` is preserved through `normalizeToolsConfig`", () => {
+		expect(
+			normalizerSource.includes("pnpEnforcement?: ToolsPnpEnforcement"),
+		).toBe(true);
+		expect(
+			normalizerSource.includes("config.pnpEnforcement = pnpEnforcement"),
+		).toBe(true);
 	});
 
-	test("`<pie-assessment-toolkit>` falls back to `tools.qtiEnforcement` when the explicit prop is null (embedded `runtime.tools.qtiEnforcement` path)", () => {
+	test("`<pie-assessment-toolkit>` falls back to `tools.pnpEnforcement` when the explicit prop is null (embedded `runtime.tools.pnpEnforcement` path)", () => {
 		expect(
-			toolkitSource.includes("resolveQtiEnforcementInput(qtiEnforcement, tools)"),
+			toolkitSource.includes(
+				"resolvePnpEnforcementInput(pnpEnforcement, tools)",
+			),
 		).toBe(true);
-		expect(
-			toolkitSource.includes(`(toolsConfig as { qtiEnforcement?: unknown })`),
-		).toBe(true);
+		expect(toolkitSource.includes("pnpEnforcement?: unknown")).toBe(true);
 	});
 
 	test("`<pie-section-player-base>` forwards `runtime?.tools` through `effectiveTools` to `<pie-assessment-toolkit>`", () => {
 		expect(
 			sectionPlayerBaseSource.includes("const effectiveTools = $derived"),
 		).toBe(true);
-		expect(sectionPlayerBaseSource.includes("runtime?.tools ?? tools")).toBe(true);
-		expect(sectionPlayerBaseSource.includes("tools={effectiveTools}")).toBe(true);
+		expect(sectionPlayerBaseSource.includes("runtime?.tools ?? tools")).toBe(
+			true,
+		);
+		expect(sectionPlayerBaseSource.includes("tools={effectiveTools}")).toBe(
+			true,
+		);
 	});
 });

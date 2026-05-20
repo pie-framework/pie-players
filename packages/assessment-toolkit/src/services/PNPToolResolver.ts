@@ -200,6 +200,7 @@ export class PnpToolResolver {
 		// Collect all PNP support IDs mentioned anywhere
 		const allSupports = new Set<string>();
 		pnp?.supports?.forEach((s) => allSupports.add(s));
+		pnp?.prohibitedSupports?.forEach((s) => allSupports.add(s));
 		settings?.districtPolicy?.blockedTools?.forEach((s) => allSupports.add(s));
 		settings?.districtPolicy?.requiredTools?.forEach((s) => allSupports.add(s));
 		itemSettings?.requiredTools?.forEach((s) => allSupports.add(s));
@@ -323,24 +324,21 @@ export class PnpToolResolver {
 			});
 		}
 
-		// 6. PNP supports (student needs)
+		// 6. PNP prohibitions and supports (student needs)
+		if (context.pnp?.prohibitedSupports?.includes(supportId)) {
+			provenanceBuilder?.addDecision({
+				precedence: 6,
+				rule: "pnp-prohibited",
+				featureId: supportId,
+				action: "block",
+				sourceType: "student",
+				reason: `Student PNP profile prohibits "${supportId}"`,
+				value: context.pnp.prohibitedSupports,
+			});
+			return null;
+		}
+
 		if (context.pnp?.supports?.includes(supportId)) {
-			// Check if prohibited
-			const isProhibited = context.pnp.prohibitedSupports?.includes(supportId);
-
-			if (isProhibited) {
-				provenanceBuilder?.addDecision({
-					precedence: 6,
-					rule: "pnp-support",
-					featureId: supportId,
-					action: "block",
-					sourceType: "student",
-					reason: `Student PNP profile prohibits "${supportId}"`,
-					value: context.pnp.prohibitedSupports,
-				});
-				return null;
-			}
-
 			provenanceBuilder?.addDecision({
 				precedence: 6,
 				rule: "pnp-support",

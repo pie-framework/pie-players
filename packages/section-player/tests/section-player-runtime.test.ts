@@ -22,7 +22,9 @@
 
 import { describe, expect, mock, test } from "bun:test";
 
-mock.module("@pie-players/pie-item-player", () => ({}));
+mock.module("@pie-players/pie-item-player", () => ({
+	ensureItemPlayerMathRenderingReady: async () => undefined,
+}));
 
 async function loadHostRuntime() {
 	return import("../src/components/shared/section-player-host-runtime");
@@ -83,6 +85,29 @@ describe("resolvePlayerRuntime", () => {
 		expect((runtime.resolvedPlayerProps as any).loaderOptions.moduleResolution).toBe(
 			"import-map",
 		);
+	});
+
+	test("passes backend config through resolved player props unchanged", async () => {
+		const { resolvePlayerRuntime } = await loadHostRuntime();
+		const backend = {
+			delivery: {
+				enabled: true,
+				itemId: "item-1",
+				sessionId: "session-1",
+			},
+		};
+		const runtime = resolvePlayerRuntime({
+			effectiveRuntime: {
+				playerType: "iife",
+				player: {
+					backend,
+				},
+			},
+			playerType: "iife",
+			env: null,
+		});
+
+		expect((runtime.resolvedPlayerProps as any).backend).toBe(backend);
 	});
 });
 

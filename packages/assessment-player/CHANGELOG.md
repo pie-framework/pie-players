@@ -1,5 +1,117 @@
 # @pie-players/pie-assessment-player
 
+## 0.3.42
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies [6496dda]
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.42
+  - @pie-players/pie-section-player@0.3.42
+  - @pie-players/pie-players-shared@0.3.42
+
+## 0.3.41
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+- Updated dependencies
+  - @pie-players/pie-section-player@0.3.41
+  - @pie-players/pie-assessment-toolkit@0.3.41
+  - @pie-players/pie-players-shared@0.3.41
+
+## 0.3.40
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies [3a167a8]
+- Updated dependencies
+  - @pie-players/pie-players-shared@0.3.40
+  - @pie-players/pie-assessment-toolkit@0.3.40
+  - @pie-players/pie-section-player@0.3.40
+
+## 0.3.39
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies [0072fad]
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.39
+  - @pie-players/pie-players-shared@0.3.39
+  - @pie-players/pie-section-player@0.3.39
+
+## 0.3.38
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies [f856362]
+- Updated dependencies [ef29724]
+- Updated dependencies [c8d46d7]
+- Updated dependencies
+  - @pie-players/pie-players-shared@0.3.38
+  - @pie-players/pie-assessment-toolkit@0.3.38
+  - @pie-players/pie-section-player@0.3.38
+
+## 0.3.37
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies [2818f93]
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.37
+  - @pie-players/pie-players-shared@0.3.37
+  - @pie-players/pie-section-player@0.3.37
+
+## 0.3.36
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies [9ef211c]
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.36
+  - @pie-players/pie-section-player@0.3.36
+  - @pie-players/pie-players-shared@0.3.36
+
+## 0.3.35
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies [286418e]
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.35
+  - @pie-players/pie-section-player@0.3.35
+  - @pie-players/pie-players-shared@0.3.35
+
+## 0.3.34
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies [af850c0]
+- Updated dependencies
+  - @pie-players/pie-section-player@0.3.34
+  - @pie-players/pie-assessment-toolkit@0.3.34
+  - @pie-players/pie-players-shared@0.3.34
+
+## 0.3.33
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies [70612af]
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.33
+  - @pie-players/pie-players-shared@0.3.33
+  - @pie-players/pie-section-player@0.3.33
+
 ## 0.3.32
 
 ### Patch Changes
@@ -68,11 +180,11 @@
     consolidates section-controller lifecycle, readiness derivation, and
     stage emissions previously scattered across multiple coordinators.
 
-  - **M8 — tool policy engine.** Allow/block + QTI enforcement become a
+  - **M8 — tool policy engine.** Allow/block + PNP/profile enforcement become a
     first-class policy surface on `ToolkitCoordinator`
     (`onPolicyChange`, `decideToolPolicy`, `getFloatingTools`,
-    `setQtiEnforcement`, `registerPolicySource`), with narrow QTI
-    auto-detection mirrored through `runtime.tools.qtiEnforcement`.
+    `setPnpEnforcement`, `registerPolicySource`), with narrow profile
+    auto-detection mirrored through `runtime.tools.pnpEnforcement`.
 
   - **`FrameworkErrorBus` contract.** A single canonical
     `framework-error` source, single subscription via
@@ -115,8 +227,8 @@
     reactive consumption that replaces the deleted Svelte-store derived
     views. Independently, `ToolkitCoordinator`'s tool-policy surface
     (`onPolicyChange`, `decideToolPolicy`, `getFloatingTools`,
-    `setQtiEnforcement`, `registerPolicySource`) is the canonical entry
-    point for the _tool policy_ concern (allow/block + QTI enforcement)
+    `setPnpEnforcement`, `registerPolicySource`) is the canonical entry
+    point for the _tool policy_ concern (allow/block + PNP/profile enforcement)
     — that is a different concern than the floating-tool z-index API
     the deleted interface served.
 

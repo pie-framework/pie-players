@@ -137,15 +137,10 @@ async function replaceSourcePrompt(page: Page, nextPrompt: string) {
 	}
 	currentConfig.models[0].prompt = nextPrompt;
 	const nextJson = JSON.stringify(currentConfig, null, 2);
-	await page.context().grantPermissions(["clipboard-read", "clipboard-write"], {
-		origin: new URL(page.url()).origin,
-	});
 	await editor.click();
 	await page.keyboard.press(process.platform === "darwin" ? "Meta+A" : "Control+A");
-	await page.evaluate(async (text) => {
-		await navigator.clipboard.writeText(text);
-	}, nextJson);
-	await page.keyboard.press(process.platform === "darwin" ? "Meta+V" : "Control+V");
+	await page.keyboard.press("Backspace");
+	await page.keyboard.insertText(nextJson);
 	await expect(editor).toContainText(nextPrompt);
 }
 
@@ -155,12 +150,87 @@ test.describe("item-player demo multiple-choice", () => {
 	}) => {
 		await gotoRoute(page, DELIVERY_PATH);
 		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible();
+		const apiSnapshot = await page.evaluate(() => {
+			const player = document.querySelector("pie-item-player") as any;
+			return {
+				provideScore: typeof player?.provideScore,
+				updateElementModel: typeof player?.updateElementModel,
+				loaderOptionsBundleHost: player?.loaderOptions?.bundleHost,
+			};
+		});
+		expect(apiSnapshot).toEqual({
+			provideScore: "function",
+			updateElementModel: "function",
+			loaderOptionsBundleHost: "https://proxy.pie-api.com/bundles/",
+		});
 
 		// Gather mode supports mouse selection.
+		const firstSessionChangedDetail = page.evaluate(
+			() =>
+				new Promise((resolve) => {
+					const player = document.querySelector("pie-item-player");
+					player?.addEventListener(
+						"session-changed",
+						(event) => {
+							const detail = (event as CustomEvent).detail;
+							resolve({
+								hasSession: !!detail?.session,
+								sessionDataIsArray: Array.isArray(detail?.session?.data),
+								hasCompleteField: "complete" in (detail || {}),
+							});
+						},
+						{ once: true },
+					);
+				}),
+		);
 		await selectChoiceByLabel(page, "Mars");
+		await expect(firstSessionChangedDetail).resolves.toEqual({
+			hasSession: true,
+			sessionDataIsArray: true,
+			hasCompleteField: true,
+		});
 		const sessionAfterMouse = await readSessionState(page);
 		const selectedAfterMouse = selectedValueFromSession(sessionAfterMouse);
 		expect(selectedAfterMouse).not.toBeNull();
+
+		const localScore = await page.evaluate(async () => {
+			const player = document.querySelector("pie-item-player") as any;
+			const result = await player.provideScore();
+			const first = Array.isArray(result) ? result[0] : null;
+			return {
+				isArray: Array.isArray(result),
+				length: Array.isArray(result) ? result.length : 0,
+				firstId: first?.id,
+				hasScore: typeof first?.score === "number",
+			};
+		});
+		expect(localScore).toEqual({
+			isArray: true,
+			length: 1,
+			firstId: SESSION_ENTRY_ID,
+			hasScore: true,
+		});
+
+		const noModelScore = await page.evaluate(async () => {
+			const fixture = document.createElement("div");
+			document.body.appendChild(fixture);
+			const player = document.createElement("pie-item-player") as any;
+			const loaded = new Promise((resolve) => {
+				player.addEventListener("load-complete", resolve, { once: true });
+			});
+			player.config = {
+				id: "html-only",
+				markup: "<p>No scored models</p>",
+				elements: {},
+				models: [],
+			};
+			player.session = { id: "html-only-session", data: [] };
+			player.env = { mode: "gather", role: "student" };
+			fixture.appendChild(player);
+			await loaded;
+			return player.provideScore();
+		});
+		expect(noModelScore).toBe(false);
 
 		// Gather mode supports keyboard selection and session updates dynamically.
 		const checkedChoiceBeforeKeyboard = page.locator('input[type="radio"]:checked').first();
@@ -202,6 +272,72 @@ test.describe("item-player demo multiple-choice", () => {
 		const sessionAfterSwitchBack = await readSessionState(page);
 		const selectedAfterSwitchBackValue = selectedValueFromSession(sessionAfterSwitchBack);
 		expect(selectedAfterSwitchBackValue).toBe(selectedBeforeEvaluate);
+	});
+
+	test("supports additive legacy host APIs without changing canonical prop precedence", async ({
+		page,
+	}) => {
+		await gotoRoute(page, DELIVERY_PATH);
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible();
+
+		const updatedPrompt = "Updated through updateElementModel";
+		await page.evaluate(async ({ prompt, modelId }) => {
+			const player = document.querySelector("pie-item-player") as any;
+			await player.updateElementModel({ id: modelId, prompt });
+		}, { prompt: updatedPrompt, modelId: SESSION_ENTRY_ID });
+		await expect(page.getByText(updatedPrompt)).toBeVisible();
+
+		await page.evaluate(async () => {
+			const player = document.querySelector("pie-item-player") as any;
+			const currentConfig = structuredClone(player.config);
+			const loaded = new Promise((resolve) => {
+				player.addEventListener("load-complete", resolve, { once: true });
+			});
+			player.customClassName = "canonical-current-class";
+			player.customClassname = "legacy-class-should-not-win";
+			player.renderStimulus = true;
+			player.allowedResize = true;
+			player.passageContainerClass = "legacy-passage-class";
+			player.baseHeadingLevel = 3;
+			player.config = {
+				id: "advanced-item",
+				pie: currentConfig,
+				passage: {
+					id: "passage",
+					markup: '<p data-test-passage="true">Legacy stimulus passage</p>',
+					elements: {},
+					models: [],
+				},
+			};
+			await loaded;
+		});
+
+		await expect(page.locator(".legacy-passage-class")).toContainText(
+			"Legacy stimulus passage",
+		);
+		await expect(
+			page.locator("pie-item-player .pie-item-player--resize-allowed"),
+		).toBeVisible();
+		const advancedScore = await page.evaluate(async () => {
+			const player = document.querySelector("pie-item-player") as any;
+			const result = await player.provideScore();
+			return {
+				isArray: Array.isArray(result),
+				length: Array.isArray(result) ? result.length : 0,
+				firstId: Array.isArray(result) ? result[0]?.id : null,
+			};
+		});
+		expect(advancedScore).toEqual({
+			isArray: true,
+			length: 1,
+			firstId: SESSION_ENTRY_ID,
+		});
+		const scopedClassName = await page
+			.locator("pie-item-player .pie-item-player")
+			.first()
+			.evaluate((element) => element.className);
+		expect(scopedClassName).toContain("canonical-current-class");
+		expect(scopedClassName).not.toContain("legacy-class-should-not-win");
 	});
 
 	test("author route loads and stays in sync with delivery/source", async ({ page }) => {

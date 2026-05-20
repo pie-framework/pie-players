@@ -53,61 +53,172 @@ support targets default bundler entrypoints under `dist`.
 
 ## Custom elements
 
-| Tag | Export | Description |
-|-----|--------|-------------|
-| `pie-item-player` | `@pie-players/pie-item-player` | Main player element |
-| `pie-item-player-session-debugger` | `@pie-players/pie-item-player/components/item-session-debugger-element` | Floating debug panel showing live session and filtered model data |
+- `pie-item-player`
+  - Export: `@pie-players/pie-item-player`
+  - Description: main player element
+- `pie-item-player-session-debugger`
+  - Export: `@pie-players/pie-item-player/components/item-session-debugger-element`
+  - Description: floating debug panel showing live session and filtered model data
 
 ## Attributes
 
-| Attribute | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `config` | `Object` | `null` | Item config with `elements`, `models`, and `markup` fields |
-| `session` | `Object` | `{ id: "", data: [] }` | Session container |
-| `env` | `Object` | `{ mode: "gather", role: "student" }` | Environment (mode + role) |
-| `strategy` | `String` | `"iife"` | Loading strategy: `"iife"`, `"esm"`, or `"preloaded"` |
-| `mode` | `String` | `"view"` | Player mode: `"view"` or `"author"` |
-| `authoring-backend` | `String` | `"demo"` | `"demo"` (built-in stubs) or `"required"` (host must provide handlers) |
-| `hosted` | `Boolean` | `false` | Whether running in hosted mode (affects IIFE bundle type) |
-| `add-correct-response` | `Boolean` | `false` | Populate correct responses on models |
-| `show-bottom-border` | `Boolean` | `false` | Add bottom border in evaluate mode |
-| `debug` | `String` | `""` | Debug control: truthy enables verbose logs; `"false"`/`"0"`/`""` disables (also reads `window.PIE_DEBUG`) |
-| `custom-class-name` | `String` | `""` | CSS scope class applied to the player container |
-| `container-class` | `String` | `""` | Extra class on the inner item container |
-| `external-style-urls` | `String` | `""` | Comma-separated CSS URLs loaded and scoped to the player. Must be `http:` or `https:`. |
-| `allowed-style-origins` | `String` | `""` | Optional comma-separated origin allow-list (e.g. `https://cdn.example.com`). When set, `external-style-urls` and `itemConfig.resources.stylesheets[*].url` are rejected if their origin is not on the list. |
-| `loader-config` | `Object` | (default) | Loader instrumentation config |
-| `configuration` | `Object` | `{}` | Authoring configuration settings |
-| `trust-markup` | `Boolean` | `false` | Skip the built-in markup sanitizer. See [Content trust boundary](#content-trust-boundary). |
+- `config`: `Object`, default `null`. Item config with `elements`, `models`,
+  and `markup` fields.
+- `session`: `Object`, default `{ id: "", data: [] }`. Session container.
+- `env`: `Object`, default `{ mode: "gather", role: "student" }`.
+  Environment mode and role.
+- `strategy`: `String`, default `"iife"`. Loading strategy: `"iife"`,
+  `"esm"`, or `"preloaded"`.
+- `mode`: `String`, default `"view"`. Player mode: `"view"` or `"author"`.
+- `authoring-backend`: `String`, default `"demo"`. `"demo"` uses built-in
+  stubs; `"required"` requires host-provided handlers.
+- `hosted`: `Boolean`, default `false`. Whether running in hosted mode; affects
+  IIFE bundle type.
+- `add-correct-response`: `Boolean`, default `false`. Populate correct
+  responses on models.
+- `show-bottom-border`: `Boolean`, default `false`. Add bottom border in
+  evaluate mode.
+- `debug`: `String`, default `""`. Truthy values enable verbose logs;
+  `"false"`, `"0"`, and `""` disable them. Also reads `window.PIE_DEBUG`.
+- `custom-class-name`: `String`, default `""`. CSS scope class applied to the
+  player container.
+- `container-class`: `String`, default `""`. Extra class on the inner item
+  container.
+- `external-style-urls`: `String`, default `""`. Comma-separated CSS URLs
+  loaded and scoped to the player. URLs must be `http:` or `https:`.
+- `allowed-style-origins`: `String`, default `""`. Optional comma-separated
+  origin allow-list. When set, `external-style-urls` and
+  `itemConfig.resources.stylesheets[*].url` are rejected if their origin is not
+  on the list.
+- `loader-config`: `Object`, default package config. Loader instrumentation
+  config.
+- `configuration`: `Object`, default `{}`. Authoring configuration settings.
+  Use `configuration.authoring` for authoring-only settings.
+- `trust-markup`: `Boolean`, default `false`. Skip the built-in markup
+  sanitizer. See [Content trust boundary](#content-trust-boundary).
 
 ## Properties (JS only)
 
 These are set via JavaScript, not HTML attributes.
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `loaderOptions` | `{ bundleHost?: string, esmCdnUrl?: string, view?: string, loadControllers?: boolean }` | Strategy-specific loader options |
-| `sanitizeMarkup` | `(markup: string) => string` | Replace the built-in DOMPurify sanitizer with a host-supplied function. Ignored when `trust-markup` is set. |
+- `loaderOptions`: `{ bundleHost?: string, esmCdnUrl?: string, view?: string, loadControllers?: boolean }`.
+  Strategy-specific loader options.
+- `sanitizeMarkup`: `(markup: string) => string`. Replace the built-in
+  DOMPurify sanitizer with a host-supplied function. Ignored when
+  `trust-markup` is set.
+- `backend`: JS-only backend integration namespace. Use `backend.delivery` for
+  API-backed item/session load, autosave, explicit save, and server scoring.
+  Existing player inputs such as `env`, `strategy`, `loaderOptions`, `config`,
+  and `session` remain top-level player properties.
+
+## Methods
+
+- `provideScore(): Promise<false | Array<Record<string, unknown> | undefined>>`
+  returns one result slot per scored model for legacy-compatible local browser
+  scoring.
+- `updateElementModel(update): Promise<void>` applies a legacy-compatible
+  preview update for a single loaded PIE model.
+- `validateModels(): Promise<AuthoringValidationResult>` runs authoring-mode
+  validation for rendered configure elements and returns
+  `{ hasErrors, validatedModels }`.
+- `loadFromBackend(scope?: "delivery" | "authoring"): Promise<void>` loads
+  configured backend data into the existing player config/session pipeline.
+- `saveSession(): Promise<void>` persists the current session through
+  `backend.delivery`.
+- `score(options?): Promise<unknown>` performs server-backed scoring through
+  `backend.delivery`. This is intentionally separate from local
+  `provideScore()`.
 
 ## Events
 
-| Event | Detail | Description |
-|-------|--------|-------------|
-| `load-complete` | payload | Emitted when PIE elements finish loading |
-| `session-changed` | `{ session, ... }` | Emitted when the student interacts and session data changes |
-| `player-error` | `{ code?, message?, stage?, strategy?, mode? }` | Error (e.g. `AUTHORING_BACKEND_CONFIG_ERROR`, `ITEM_PLAYER_LOAD_ERROR`) |
-| `model-updated` | payload | Emitted when a PIE element model is updated |
+- `load-complete`: emitted when PIE elements finish loading.
+- `session-changed`: `{ session, ... }`. Emitted when the student interacts and
+  session data changes.
+- `player-error`: `{ code?, message?, stage?, strategy?, mode? }`. Error event,
+  for example `AUTHORING_BACKEND_CONFIG_ERROR` or `ITEM_PLAYER_LOAD_ERROR`.
+- `model-updated`: emitted when a PIE element model is updated.
+- `model-loaded`: `{ models, configuration }`. Authoring lifecycle event
+  emitted once per renderer initialization after configure elements receive
+  models and configuration.
+- `backend-load-complete`: emitted after `backend.delivery` loads config/session
+  data.
+- `backend-session-saved`: emitted after `saveSession()` or delivery autosave
+  persists successfully.
+- `backend-score-complete`: emitted after server-backed `score()` completes.
+- `backend-error`: emitted when backend load/save/score fails.
+
+## Backend delivery
+
+Backend support is a JS-only namespace for networking and persistence. It does
+not duplicate existing delivery inputs such as `env`, `strategy`,
+`loaderOptions`, `bundleEndpoints`, or styling props.
+
+```ts
+const el = document.querySelector("pie-item-player");
+el.env = { mode: "gather", role: "student" };
+el.strategy = "iife";
+el.loaderOptions = { bundleHost: "https://proxy.pie-api.com/bundles/" };
+el.backend = {
+  delivery: {
+    enabled: true,
+    provider: "pie-api",
+    itemId: "item-1",
+    sessionId: "session-1",
+    autosave: { enabled: true, debounceMs: 250 },
+    endpoints: {
+      load: "/api/player/load",
+      saveSession: "/api/player/save",
+      model: "/api/player/model",
+      score: "/api/player/score",
+    },
+  },
+};
+```
+
+For a runnable local backend demo, see
+[`docs/item-player/backend-support.md`](../../docs/item-player/backend-support.md).
+
+## Authoring configuration
+
+When `mode="author"`, `<pie-item-player>` loads editor/config elements and
+passes each configure element a resolved `configuration` object.
+
+Delivery/shared settings stay at the top level of `configuration` and may be
+keyed by package spec, package name, or element tag. Authoring-only settings
+belong under `configuration.authoring` so they do not affect delivery mode.
+Authoring keys resolve by specificity:
+
+1. Full versioned PIE tag, for example `multiple-choice--version-1-2-3`
+2. Package spec, for example `@pie-element/multiple-choice@1.2.3`
+3. Package name, for example `@pie-element/multiple-choice`
+4. Package base name, for example `multiple-choice`
+
+Top-level delivery/shared settings are merged first, then matching
+`configuration.authoring` settings override them for authoring only.
+
+```ts
+const el = document.querySelector("pie-item-player");
+el.mode = "author";
+el.configuration = {
+  "@pie-element/multiple-choice@1.2.3": {
+    sharedSetting: true,
+  },
+  authoring: {
+    "multiple-choice--version-1-2-3": {
+      authoringOnlySetting: true,
+    },
+  },
+};
+```
 
 ## Authoring media hooks
 
 When `mode="author"`, the player supports image and sound upload/delete through four handler properties:
 
-| Property | Signature |
-|----------|-----------|
-| `onInsertImage` | `(handler: ImageHandler) => void` |
-| `onDeleteImage` | `(src: string, done: (err?: Error) => void) => void` |
-| `onInsertSound` | `(handler: SoundHandler) => void` |
-| `onDeleteSound` | `(src: string, done: (err?: Error) => void) => void` |
+- `onInsertImage(handler: ImageHandler): void`
+- `onDeleteImage(src: string, done: (err?: Error) => void): void`
+- `onInsertSound(handler: SoundHandler): void`
+- `onDeleteSound(src: string, done: (err?: Error) => void): void`
 
 With `authoring-backend="demo"`, built-in demo handlers are used. Set `authoring-backend="required"` to enforce that the host provides all four handlers; missing handlers will block the authoring UI and emit a `player-error`.
 
@@ -136,6 +247,7 @@ import type {
   ImageHandler,
   SoundHandler,
   DeleteDone,
+  AuthoringValidationResult,
 } from "@pie-players/pie-item-player";
 ```
 

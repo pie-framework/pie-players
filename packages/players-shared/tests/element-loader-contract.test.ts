@@ -766,6 +766,42 @@ describe("IIFE adapter — contract", () => {
 		},
 	);
 
+	test("editor IIFE bundles register the requested config tag exactly", async () => {
+		const backend = createIifeBackend({
+			kind: "iife",
+			bundleHost: "https://example.test/bundles/",
+			bundleType: BundleType.editor,
+			needsControllers: true,
+		});
+
+		const seams = (backend as unknown as { __seams: IifeBackendTestSeams })
+			.__seams;
+		seams.replaceLoadBundleScript(async () => {
+			(g.window as { pie?: unknown }).pie = {
+				default: {
+					"@pie-element/editor": {
+						Configure: createConstructorFor("pie-editor-config"),
+					},
+				},
+			};
+		});
+
+		const requestedTag = "pie-editor--version-1-0-0-config";
+		await ensureRegistered(
+			{ [requestedTag]: "@pie-element/editor@1.0.0" },
+			{
+				backend,
+				doc: createMockDocument(),
+				whenDefinedTimeoutMs: 25,
+			},
+		);
+
+		expect(g.customElements?.get(requestedTag)).toBeDefined();
+		expect(
+			g.customElements?.get("pie-editor--version-1-0-0-config-config"),
+		).toBeUndefined();
+	});
+
 	test(
 		"concurrent IIFE loads of the same bundle share one fetch AND both callers observe correct registration",
 		async () => {

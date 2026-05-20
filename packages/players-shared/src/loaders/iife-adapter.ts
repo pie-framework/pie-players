@@ -374,7 +374,7 @@ export function createIifeBackend(config: IifeBackendConfig): IifeBackend {
 			let actualTag: string;
 			try {
 				actualTag = validateCustomElementTag(
-					isEditorBundle ? `${tag}-config` : tag,
+					tag,
 					`element tag for ${packageName}`,
 				);
 			} catch (err) {

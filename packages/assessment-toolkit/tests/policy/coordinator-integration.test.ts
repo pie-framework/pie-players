@@ -9,19 +9,19 @@
  *     level under the no-assessment default.
  *   - `onPolicyChange(...)` fires for `updateAssessment`,
  *     `updateCurrentItemRef`, `updateToolConfig`, `updateFloatingTools`,
- *     and `setQtiEnforcement`.
- *   - `qtiEnforcement: "off"` short-circuits the QTI source so a
+ *     and `setPnpEnforcement`.
+ *   - `pnpEnforcement: "off"` short-circuits the PNP/profile source so a
  *     PNP-supported tool does NOT auto-promote to `alwaysAvailable`.
- *   - The auto-mode heuristic — `qtiEnforcement` defaults to `"off"`
- *     until QTI material is bound (PNP / district policy / test
+ *   - The auto-mode heuristic — `pnpEnforcement` defaults to `"off"`
+ *     until profile material is bound (PNP / district policy / test
  *     administration on the assessment, or
  *     `requiredTools` / `restrictedTools` / `toolParameters` on the
  *     item ref). A bare assessment record (just `id` / `name`) keeps
- *     `"off"`. Host overrides via {@link setQtiEnforcement} are
+ *     `"off"`. Host overrides via {@link setPnpEnforcement} are
  *     sticky across assessment swaps.
  *   - PR 3 toolbars read decisions through this surface; the legacy
  *     `getFloatingTools()` shim agrees with the engine under the
- *     default (no-QTI) path so no consumer regresses.
+ *     default (no-profile-policy) path so no consumer regresses.
  */
 
 import { describe, expect, test } from "bun:test";
@@ -39,6 +39,8 @@ import type {
 	PolicySourceResult,
 	ToolPolicyChangeEvent,
 } from "../../src/policy/engine.js";
+import type { ToolContext } from "../../src/services/tool-context.js";
+import type { ToolbarContext } from "../../src/services/ToolRegistry.js";
 
 // Tool ids chosen to satisfy the registry's per-tool `supportedLevels`
 // validation. `graph` / `periodicTable` are section-only; `theme` is
@@ -47,6 +49,9 @@ import type {
 // (`createPackagedToolRegistry`) registers all of these.
 function makeCoordinator(extra?: {
 	tools?: ConstructorParameters<typeof ToolkitCoordinator>[0]["tools"];
+	toolContextResolvers?: ConstructorParameters<
+		typeof ToolkitCoordinator
+	>[0]["toolContextResolvers"];
 }) {
 	return new ToolkitCoordinator({
 		assessmentId: "coord-integration",
@@ -57,6 +62,7 @@ function makeCoordinator(extra?: {
 				item: ["textToSpeech"],
 			},
 		},
+		toolContextResolvers: extra?.toolContextResolvers,
 	});
 }
 
@@ -86,6 +92,118 @@ describe("ToolkitCoordinator policy-engine integration", () => {
 		]);
 	});
 
+	test("tool context resolvers attach render params without changing policy gates", () => {
+		const context = {
+			level: "item",
+			assessment: {},
+			itemRef: { id: "i1" },
+			item: { id: "i1", config: {} },
+		} as ToolContext;
+		const toolbarContext = {
+			scope: { level: "item", scopeId: "i1" },
+		} as ToolbarContext;
+		const coord = makeCoordinator({
+			tools: {
+				placement: {
+					item: ["calculator"],
+				},
+			},
+			toolContextResolvers: {
+				calculator: () => ({
+					visible: true,
+					params: {
+						calculatorType: "scientific",
+						availableTypes: ["scientific"],
+					},
+				}),
+			},
+		});
+
+		expect(
+			coord
+				.decideToolPolicy({
+					level: "item",
+					scope: { level: "item", scopeId: "i1" },
+				})
+				.visibleTools.map((entry) => entry.toolId),
+		).toEqual(["calculator"]);
+		expect(
+			coord.resolveToolContext({
+				toolId: "calculator",
+				context,
+				toolbarContext,
+			}),
+		).toEqual({
+			toolId: "calculator",
+			visible: true,
+			params: {
+				calculatorType: "scientific",
+				availableTypes: ["scientific"],
+			},
+			reason: undefined,
+		});
+
+		coord.updateToolConfig("calculator", { enabled: false });
+		expect(
+			coord
+				.decideToolPolicy({
+					level: "item",
+					scope: { level: "item", scopeId: "i1" },
+				})
+				.visibleTools.map((entry) => entry.toolId),
+		).toEqual([]);
+	});
+
+	test("tool context resolver registration emits changes and removes cleanly", () => {
+		const coord = makeCoordinator({
+			tools: {
+				placement: {
+					item: ["calculator"],
+				},
+			},
+		});
+		let changes = 0;
+		coord.onToolContextResolverChange(() => {
+			changes += 1;
+		});
+
+		const dispose = coord.registerToolContextResolver("calculator", () => ({
+			visible: false,
+			reason: "item did not request calculator",
+		}));
+
+		expect(changes).toBe(1);
+		expect(coord.hasToolContextResolver("calculator")).toBe(true);
+		dispose();
+		expect(changes).toBe(2);
+		expect(coord.hasToolContextResolver("calculator")).toBe(false);
+	});
+
+	test("setToolContextResolvers replaces the resolver map and emits one change", () => {
+		const coord = makeCoordinator({
+			tools: {
+				placement: {
+					item: ["calculator", "textToSpeech"],
+				},
+			},
+			toolContextResolvers: {
+				calculator: () => ({ visible: true }),
+			},
+		});
+		let changes = 0;
+		coord.onToolContextResolverChange(() => {
+			changes += 1;
+		});
+
+		coord.setToolContextResolvers({
+			textToSpeech: () => ({ visible: false }),
+		});
+
+		expect(changes).toBe(1);
+		expect(coord.hasToolContextResolver("calculator")).toBe(false);
+		expect(coord.hasToolContextResolver("textToSpeech")).toBe(true);
+	});
+
 	test("updateToolConfig pushes tools changes into the engine and emits a change event", () => {
 		const coord = makeCoordinator();
 		const events: ToolPolicyChangeEvent[] = [];
@@ -111,13 +229,60 @@ describe("ToolkitCoordinator policy-engine integration", () => {
 		expect(coord.getFloatingTools()).toEqual(["theme"]);
 	});
 
-	test("updateAssessment with PNP supports auto-promotes qtiEnforcement to 'on'", () => {
+	test("updateToolPlacement rewrites non-section placement without changing floating tools", () => {
+		const coord = makeCoordinator();
+		const events: ToolPolicyChangeEvent[] = [];
+		coord.onPolicyChange((event) => events.push(event));
+
+		coord.updateToolPlacement("item", ["answerEliminator", "textToSpeech"]);
+
+		expect(events.length).toBeGreaterThanOrEqual(1);
+		expect(events.at(-1)?.reason).toBe("inputs");
+		expect(coord.getFloatingTools()).toEqual(["graph", "theme"]);
+		expect(
+			coord
+				.decideToolPolicy({
+					level: "item",
+					scope: { level: "item", scopeId: "i1" },
+				})
+				.visibleTools.map((entry) => entry.toolId),
+		).toEqual(["answerEliminator", "textToSpeech"]);
+	});
+
+	test("updateToolsPlacement can patch multiple levels while preserving omitted levels", () => {
+		const coord = makeCoordinator();
+
+		coord.updateToolsPlacement({
+			section: ["theme"],
+			passage: ["textToSpeech"],
+		});
+
+		expect(coord.getFloatingTools()).toEqual(["theme"]);
+		expect(
+			coord
+				.decideToolPolicy({
+					level: "item",
+					scope: { level: "item", scopeId: "i1" },
+				})
+				.visibleTools.map((entry) => entry.toolId),
+		).toEqual(["textToSpeech"]);
+		expect(
+			coord
+				.decideToolPolicy({
+					level: "passage",
+					scope: { level: "passage", scopeId: "p1" },
+				})
+				.visibleTools.map((entry) => entry.toolId),
+		).toEqual(["textToSpeech"]);
+	});
+
+	test("updateAssessment with PNP supports auto-promotes pnpEnforcement to 'on'", () => {
 		const coord = makeCoordinator({
 			tools: {
 				placement: { section: ["graph"] },
 			},
 		});
-		expect(coord.getPolicyInputs().qtiEnforcement).toBe("off");
+		expect(coord.getPolicyInputs().pnpEnforcement).toBe("off");
 
 		const events: ToolPolicyChangeEvent[] = [];
 		coord.onPolicyChange((event) => events.push(event));
@@ -128,7 +293,7 @@ describe("ToolkitCoordinator policy-engine integration", () => {
 		} as AssessmentEntity;
 		coord.updateAssessment(assessment);
 
-		expect(coord.getPolicyInputs().qtiEnforcement).toBe("on");
+		expect(coord.getPolicyInputs().pnpEnforcement).toBe("on");
 		expect(coord.getPolicyInputs().assessment).toBe(assessment);
 		expect(events.length).toBeGreaterThanOrEqual(1);
 		expect(events.at(-1)?.reason).toBe("inputs");
@@ -137,48 +302,48 @@ describe("ToolkitCoordinator policy-engine integration", () => {
 			level: "section",
 			scope: { level: "section", scopeId: "*" },
 		});
-		// PNP-supported tool flips alwaysAvailable when QTI is on.
+		// PNP-supported tool flips alwaysAvailable when enforcement is on.
 		const graph = decision.visibleTools.find((e) => e.toolId === "graph");
 		expect(graph?.alwaysAvailable).toBe(true);
 	});
 
-	test("updateAssessment(bare-assessment-no-QTI) keeps auto-mode qtiEnforcement at 'off'", () => {
+	test("updateAssessment(bare-assessment-no-profile) keeps auto-mode pnpEnforcement at 'off'", () => {
 		// PR 4 narrows the heuristic: a non-null assessment that
-		// carries no QTI material (no PNP, no district policy, no
-		// test-administration settings) must NOT auto-promote QTI to
-		// "on". Hosts that want QTI in that case opt in explicitly via
-		// `setQtiEnforcement("on")` or via attribute on the toolkit.
+		// carries no profile material (no PNP, no district policy, no
+		// test-administration settings) must NOT auto-promote enforcement to
+		// "on". Hosts that want enforcement in that case opt in explicitly via
+		// `setPnpEnforcement("on")` or via attribute on the toolkit.
 		const coord = makeCoordinator();
 		coord.updateAssessment({ id: "a1" } as AssessmentEntity);
-		expect(coord.getPolicyInputs().qtiEnforcement).toBe("off");
+		expect(coord.getPolicyInputs().pnpEnforcement).toBe("off");
 	});
 
-	test("updateAssessment(null) keeps qtiEnforcement at 'off' under auto-mode", () => {
+	test("updateAssessment(null) keeps pnpEnforcement at 'off' under auto-mode", () => {
 		const coord = makeCoordinator();
-		// Bind QTI material so auto-mode resolves to "on".
+		// Bind profile material so auto-mode resolves to "on".
 		coord.updateAssessment({
 			id: "a1",
 			personalNeedsProfile: { supports: ["graph"] },
 		} as AssessmentEntity);
-		expect(coord.getPolicyInputs().qtiEnforcement).toBe("on");
+		expect(coord.getPolicyInputs().pnpEnforcement).toBe("on");
 
 		coord.updateAssessment(null);
-		expect(coord.getPolicyInputs().qtiEnforcement).toBe("off");
+		expect(coord.getPolicyInputs().pnpEnforcement).toBe("off");
 		expect(coord.getPolicyInputs().assessment).toBeNull();
 	});
 
-	test("setQtiEnforcement('off') overrides auto-promotion even when assessment is bound", () => {
+	test("setPnpEnforcement('off') overrides auto-promotion even when assessment is bound", () => {
 		const coord = makeCoordinator({
 			tools: { placement: { section: ["graph"] } },
 		});
-		coord.setQtiEnforcement("off");
+		coord.setPnpEnforcement("off");
 
 		coord.updateAssessment({
 			id: "a1",
 			personalNeedsProfile: { supports: ["graph"] },
 		} as AssessmentEntity);
 
-		expect(coord.getPolicyInputs().qtiEnforcement).toBe("off");
+		expect(coord.getPolicyInputs().pnpEnforcement).toBe("off");
 		const decision = coord.decideToolPolicy({
 			level: "section",
 			scope: { level: "section", scopeId: "*" },
@@ -187,31 +352,70 @@ describe("ToolkitCoordinator policy-engine integration", () => {
 		expect(graph?.alwaysAvailable).toBe(false);
 	});
 
-	test("setQtiEnforcement('on') opts in even before an assessment is bound", () => {
+	test("PNP prohibitedSupports only affects visibility when enforcement is active", () => {
+		const coord = makeCoordinator({
+			tools: { placement: { section: ["lineReader"] } },
+		});
+		const assessment: AssessmentEntity = {
+			id: "a1",
+			personalNeedsProfile: { prohibitedSupports: ["lineReader"] },
+		} as AssessmentEntity;
+
+		coord.setPnpEnforcement("off");
+		coord.updateAssessment(assessment);
+		expect(coord.getFloatingTools()).toEqual(["lineReader"]);
+
+		coord.setPnpEnforcement("on");
+		expect(coord.getFloatingTools()).toEqual([]);
+	});
+
+	test("setPnpEnforcement('on') opts in even before an assessment is bound", () => {
 		const coord = makeCoordinator({
 			tools: { placement: { section: ["graph"] } },
 		});
-		expect(coord.getPolicyInputs().qtiEnforcement).toBe("off");
+		expect(coord.getPolicyInputs().pnpEnforcement).toBe("off");
 
-		coord.setQtiEnforcement("on");
-		expect(coord.getPolicyInputs().qtiEnforcement).toBe("on");
+		coord.setPnpEnforcement("on");
+		expect(coord.getPolicyInputs().pnpEnforcement).toBe("on");
 	});
 
-	test("setQtiEnforcement(null) clears the override and re-enters auto-mode", () => {
+	test("setPnpEnforcement pins enforcement", () => {
 		const coord = makeCoordinator();
-		coord.setQtiEnforcement("on");
-		expect(coord.getPolicyInputs().qtiEnforcement).toBe("on");
+		expect(coord.getPolicyInputs().pnpEnforcement).toBe("off");
+
+		coord.setPnpEnforcement("on");
+		expect(coord.getPolicyInputs().pnpEnforcement).toBe("on");
+
+		coord.setPnpEnforcement(null);
+		expect(coord.getPolicyInputs().pnpEnforcement).toBe("off");
+	});
+
+	test("tools.pnpEnforcement initializes the coordinator override", () => {
+		const coord = makeCoordinator({
+			tools: {
+				pnpEnforcement: "on",
+				placement: { section: ["lineReader"] },
+			},
+		});
+
+		expect(coord.getPolicyInputs().pnpEnforcement).toBe("on");
+	});
+
+	test("setPnpEnforcement(null) clears the override and re-enters auto-mode", () => {
+		const coord = makeCoordinator();
+		coord.setPnpEnforcement("on");
+		expect(coord.getPolicyInputs().pnpEnforcement).toBe("on");
 
 		// Clear override; no assessment bound → auto-mode gives "off".
-		coord.setQtiEnforcement(null);
-		expect(coord.getPolicyInputs().qtiEnforcement).toBe("off");
+		coord.setPnpEnforcement(null);
+		expect(coord.getPolicyInputs().pnpEnforcement).toBe("off");
 
-		// Bind an assessment carrying QTI material → auto-mode gives "on".
+		// Bind an assessment carrying profile material → auto-mode gives "on".
 		coord.updateAssessment({
 			id: "a1",
 			personalNeedsProfile: { supports: ["graph"] },
 		} as AssessmentEntity);
-		expect(coord.getPolicyInputs().qtiEnforcement).toBe("on");
+		expect(coord.getPolicyInputs().pnpEnforcement).toBe("on");
 	});
 
 	test("updateCurrentItemRef pushes the ref into the engine and emits a change event", () => {
@@ -315,36 +519,36 @@ describe("ToolkitCoordinator policy-engine integration", () => {
 
 		coord.updateAssessment(assessment); // same reference
 		coord.updateCurrentItemRef(itemRef); // same reference
-		coord.setQtiEnforcement(null); // override unchanged
+		coord.setPnpEnforcement(null); // override unchanged
 
 		expect(events).toEqual([]);
 	});
 
-	test("setQtiEnforcement-before-updateAssessment ordering avoids a transient 'on' policy event", () => {
+	test("setPnpEnforcement-before-updateAssessment ordering avoids a transient 'on' policy event", () => {
 		// `PieAssessmentToolkit.svelte` applies override → assessment →
 		// itemRef in that order. The contract this guards: when a host
-		// configures `assessment={x}` (carrying QTI material) and
-		// `qti-enforcement="off"` in one render, no intermediate
+		// configures `assessment={x}` (carrying profile material) and
+		// `pnp-enforcement="off"` in one render, no intermediate
 		// `onPolicyChange` snapshot should ever expose
-		// `qtiEnforcement === "on"`. Attach the listener BEFORE the two
+		// `pnpEnforcement === "on"`. Attach the listener BEFORE the two
 		// calls so we capture every emission (including the
-		// `setQtiEnforcement("off")` event itself) and assert that none
+		// `setPnpEnforcement("off")` event itself) and assert that none
 		// of them surface auto-mode `"on"`.
 		const coord = makeCoordinator();
 
 		const seenModes: Array<"on" | "off"> = [];
 		coord.onPolicyChange((event) => {
-			seenModes.push(event.inputs.qtiEnforcement);
+			seenModes.push(event.inputs.pnpEnforcement);
 		});
 
-		coord.setQtiEnforcement("off");
+		coord.setPnpEnforcement("off");
 		coord.updateAssessment({
 			id: "a1",
 			personalNeedsProfile: { supports: ["graph"] },
 		} as AssessmentEntity);
 		coord.updateCurrentItemRef(null);
 
-		expect(coord.getPolicyInputs().qtiEnforcement).toBe("off");
+		expect(coord.getPolicyInputs().pnpEnforcement).toBe("off");
 		expect(seenModes).not.toContain("on");
 		expect(seenModes.length).toBeGreaterThan(0);
 	});
@@ -358,7 +562,7 @@ describe("ToolkitCoordinator policy-engine integration", () => {
 		//   $derived(() => { void version; return coord.decideToolPolicy(...); });
 		//
 		// This test pins down that coordinator-level contract — for each
-		// input mutation toolbars care about (assessment binding, QTI
+		// input mutation toolbars care about (assessment binding, PNP/profile
 		// override, custom `PolicySource` registration) we see (a) an
 		// `onPolicyChange` fire and (b) the next `decideToolPolicy` call
 		// reflect the new state. It does NOT exercise the toolbar's own
@@ -399,7 +603,7 @@ describe("ToolkitCoordinator policy-engine integration", () => {
 			)?.alwaysAvailable,
 		).toBe(true);
 
-		coord.setQtiEnforcement("off");
+		coord.setPnpEnforcement("off");
 		expect(version).toBeGreaterThan(versionAfterAssessment);
 		const decisionAfterOverride = coord.decideToolPolicy({
 			level: "section",

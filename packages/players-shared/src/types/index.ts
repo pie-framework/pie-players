@@ -294,7 +294,7 @@ export interface AssessmentSection
 	 * rendering/layout hint — it does NOT disable item-level navigation,
 	 * current-item tracking, or `item-selected` events in the section player.
 	 * Paginated and keep-together sections both support Next/Back,
-	 * `getCurrentItem()`, and `autoFocus: "current-item"` focus strategies.
+	 * `getCurrentItem()`, and `item-selected` events.
 	 */
 	keepTogether?: boolean;
 
@@ -598,7 +598,11 @@ export interface OutcomeResponse {
 export interface PieController {
 	model(model: PieModel, sessionData: any[], env?: any): Promise<PieModel>;
 
-	outcome(sessionData: any[], env?: any): Promise<OutcomeResponse>;
+	outcome(
+		modelOrSessionData: PieModel | any[],
+		sessionOrEnv?: any,
+		env?: any,
+	): Promise<OutcomeResponse>;
 
 	score: (config: object, session: object, env: object) => Promise<object>;
 	createCorrectResponseSession: (

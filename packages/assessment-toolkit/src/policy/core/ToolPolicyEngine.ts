@@ -35,30 +35,28 @@ import type {
 } from "./decision-types.js";
 import type { PolicySource } from "./PolicySource.js";
 import { composeDecision } from "./compose-decision.js";
-import { resolveDefaultQtiEnforcement } from "./qti-inputs.js";
-import { QtiPolicySource } from "../sources/QtiPolicySource.js";
+import { resolveDefaultPnpEnforcement } from "./pnp-policy-inputs.js";
+import { PnpPolicySource } from "../sources/PnpPolicySource.js";
 
-export type QtiEnforcementMode = "on" | "off";
+export type PnpEnforcementMode = "on" | "off";
 
 export interface ToolPolicyEngineInputs {
 	tools?: CanonicalToolsConfig | null;
 	assessment?: AssessmentEntity | null;
 	currentItemRef?: AssessmentItemRef | null;
 	/**
-	 * Explicit override. When omitted (or `undefined`), the engine
-	 * defaults to {@link resolveDefaultQtiEnforcement} over the bound
-	 * `assessment` and `currentItemRef`: `"on"` if they carry any QTI
-	 * 6-level precedence material (PNP, district policy, test
+	 * Explicit PNP/profile override. When omitted (or `undefined`), the engine
+	 * defaults to {@link resolveDefaultPnpEnforcement} over the bound
+	 * `assessment` and `currentItemRef`: `"on"` if they carry any
+	 * PNP/profile policy material (PNP, district policy, test
 	 * administration, item-level required/restricted/parameters),
 	 * `"off"` otherwise. See `.cursor/plans/m8-design.md` F2.
 	 *
-	 * Hosts that want to force a mode (test fixtures, demos that
-	 * intentionally bypass QTI gates) pass `"on"` or `"off"`
-	 * explicitly. Embedded under `<pie-section-player-*>` the same
-	 * override flows through `runtime.tools.qtiEnforcement` (see the
-	 * M5 mirror rule).
+	 * Hosts that want to force a mode pass `"on"` or `"off"`
+	 * explicitly. Embedded under `<pie-section-player-*>` the preferred
+	 * override flows through `runtime.tools.pnpEnforcement`.
 	 */
-	qtiEnforcement?: QtiEnforcementMode;
+	pnpEnforcement?: PnpEnforcementMode;
 }
 
 export interface ToolPolicyEngineArgs {
@@ -75,7 +73,7 @@ export interface ToolPolicyChangeEvent {
 		| "inputs"
 		| "policy-source-added"
 		| "policy-source-removed"
-		| "qti-enforcement"
+		| "pnp-enforcement"
 		| "disposed";
 	/** Snapshot of the engine's inputs after the change. */
 	inputs: Readonly<ResolvedEngineInputs>;
@@ -85,7 +83,7 @@ export interface ResolvedEngineInputs {
 	tools: CanonicalToolsConfig;
 	assessment: AssessmentEntity | null;
 	currentItemRef: AssessmentItemRef | null;
-	qtiEnforcement: QtiEnforcementMode;
+	pnpEnforcement: PnpEnforcementMode;
 }
 
 export type ToolPolicyChangeListener = (event: ToolPolicyChangeEvent) => void;
@@ -99,29 +97,29 @@ const DEFAULT_TOOLS: CanonicalToolsConfig = normalizeToolsConfig({
 export class ToolPolicyEngine {
 	private readonly toolRegistry: ToolRegistry;
 	private readonly contextId: string;
-	private readonly qtiSource: QtiPolicySource;
+	private readonly pnpPolicySource: PnpPolicySource;
 	private readonly customSources: PolicySource[];
 	private readonly listeners = new Set<ToolPolicyChangeListener>();
 
 	private tools: CanonicalToolsConfig;
 	private assessment: AssessmentEntity | null;
 	private currentItemRef: AssessmentItemRef | null;
-	private qtiEnforcement: QtiEnforcementMode;
+	private pnpEnforcement: PnpEnforcementMode;
 	private disposed = false;
 
 	constructor(args: ToolPolicyEngineArgs) {
 		this.toolRegistry = args.toolRegistry;
 		this.contextId = args.contextId ?? "tool-policy";
-		this.qtiSource = new QtiPolicySource(this.toolRegistry);
+		this.pnpPolicySource = new PnpPolicySource(this.toolRegistry);
 		this.customSources = args.customSources ? [...args.customSources] : [];
 
 		const inputs = args.inputs ?? {};
 		this.tools = inputs.tools ?? DEFAULT_TOOLS;
 		this.assessment = inputs.assessment ?? null;
 		this.currentItemRef = inputs.currentItemRef ?? null;
-		this.qtiEnforcement =
-			inputs.qtiEnforcement ??
-			resolveDefaultQtiEnforcement({
+		this.pnpEnforcement =
+			inputs.pnpEnforcement ??
+			resolveDefaultPnpEnforcement({
 				assessment: this.assessment,
 				currentItemRef: this.currentItemRef,
 			});
@@ -150,11 +148,11 @@ export class ToolPolicyEngine {
 		return composeDecision({
 			request,
 			tools: this.tools,
-			qti: {
-				source: this.qtiSource,
+			pnpPolicy: {
+				source: this.pnpPolicySource,
 				assessment: this.assessment ?? undefined,
 				currentItemRef: this.currentItemRef ?? undefined,
-				enforcement: this.qtiEnforcement,
+				enforcement: this.pnpEnforcement,
 			},
 			customSources: this.customSources,
 			contextId: requestContextId,
@@ -183,15 +181,15 @@ export class ToolPolicyEngine {
 	 * coordinator's `getFloatingTools()` / `decideToolPolicy()` lockstep
 	 * tests.
 	 *
-	 * `qtiEnforcement` is stored on its own field and always emits with
-	 * a distinct `"qti-enforcement"` reason when no other key changed,
+	 * `pnpEnforcement` is stored on its own field and always emits with
+	 * a distinct `"pnp-enforcement"` reason when no other key changed,
 	 * so PR 4's auto-on flip can target that reason without a separate
 	 * event channel.
 	 */
 	updateInputs(patch: Partial<ToolPolicyEngineInputs>): void {
 		this.assertNotDisposed();
 		let changed = false;
-		let qtiChanged = false;
+		let pnpChanged = false;
 		if ("tools" in patch) {
 			const next = patch.tools ?? DEFAULT_TOOLS;
 			if (!Object.is(this.tools, next)) {
@@ -213,15 +211,15 @@ export class ToolPolicyEngine {
 				changed = true;
 			}
 		}
-		if ("qtiEnforcement" in patch && patch.qtiEnforcement) {
-			if (this.qtiEnforcement !== patch.qtiEnforcement) {
-				this.qtiEnforcement = patch.qtiEnforcement;
-				qtiChanged = true;
+		if ("pnpEnforcement" in patch && patch.pnpEnforcement) {
+			if (this.pnpEnforcement !== patch.pnpEnforcement) {
+				this.pnpEnforcement = patch.pnpEnforcement;
+				pnpChanged = true;
 			}
 		}
-		if (changed || qtiChanged) {
+		if (changed || pnpChanged) {
 			this.emit({
-				reason: qtiChanged && !changed ? "qti-enforcement" : "inputs",
+				reason: pnpChanged && !changed ? "pnp-enforcement" : "inputs",
 				inputs: this.snapshotInputs(),
 			});
 		}
@@ -275,7 +273,7 @@ export class ToolPolicyEngine {
 			tools: this.tools,
 			assessment: this.assessment,
 			currentItemRef: this.currentItemRef,
-			qtiEnforcement: this.qtiEnforcement,
+			pnpEnforcement: this.pnpEnforcement,
 		});
 	}
 

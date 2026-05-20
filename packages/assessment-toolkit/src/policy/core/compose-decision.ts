@@ -2,7 +2,7 @@
  * Compose-decision pipeline (M8 — see `.cursor/plans/m8-design.md` § 3).
  *
  * Pure function: given a decision request, the host's tools config,
- * an optional QTI source, and the registered custom sources, returns
+ * an optional PNP policy source, and the registered custom sources, returns
  * a `ToolPolicyDecision`. The function performs no I/O, holds no
  * mutable state, and never reaches into Svelte / DOM — that is the
  * `ToolPolicyEngine` class's job.
@@ -21,7 +21,7 @@ import {
 	normalizeToolList,
 } from "../../services/tools-config-normalizer.js";
 import type {
-	QtiRequiredBlockedDetails,
+	RequiredToolBlockedDetails,
 	ToolPolicyDecision,
 	ToolPolicyDecisionRequest,
 	ToolPolicyDiagnostic,
@@ -31,17 +31,17 @@ import type {
 import type { PolicySource } from "./PolicySource.js";
 import type { PolicySourceTag } from "./policy-source-tag.js";
 import { ToolPolicyProvenanceBuilder } from "./provenance.js";
-import type { QtiPolicySource } from "../sources/QtiPolicySource.js";
+import type { PnpPolicySource } from "../sources/PnpPolicySource.js";
 
 export interface ComposeDecisionInputs {
 	request: ToolPolicyDecisionRequest;
 	tools: CanonicalToolsConfig;
-	qti: {
-		source: QtiPolicySource | null;
+	pnpPolicy: {
+		source: PnpPolicySource | null;
 		assessment?: AssessmentEntity;
 		currentItemRef?: AssessmentItemRef;
 		/**
-		 * "on" applies the QTI 6-level precedence; "off" skips step 5
+		 * "on" applies the PNP/profile precedence rules; "off" skips step 5
 		 * entirely. Defaults to "on" when an assessment is present
 		 * and the source is non-null (see M8 design Q5).
 		 */
@@ -55,7 +55,7 @@ export interface ComposeDecisionInputs {
 export function composeDecision(
 	inputs: ComposeDecisionInputs,
 ): ToolPolicyDecision {
-	const { request, tools, qti, customSources, contextId } = inputs;
+	const { request, tools, pnpPolicy, customSources, contextId } = inputs;
 	const builder = new ToolPolicyProvenanceBuilder(contextId);
 
 	builder.addSource("host", {
@@ -149,7 +149,7 @@ export function composeDecision(
 		return true;
 	});
 
-	// Step 5 — QTI gates.
+	// Step 5 — PNP/profile policy gates.
 	const diagnostics: ToolPolicyDiagnostic[] = [];
 	const sourcesByTool = new Map<string, PolicySourceTag[]>();
 	for (const toolId of candidates) {
@@ -157,30 +157,34 @@ export function composeDecision(
 	}
 
 	// Snapshot the post-host candidate set so step 5b can distinguish
-	// "host removed a QTI-mandated tool" (qtiRequiredBlocked fires)
-	// from "QTI's own precedence removed a QTI-mandated tool" (fix
+	// "host removed a required tool" (requiredToolBlocked fires)
+	// from "profile policy's own precedence removed a required tool" (fix
 	// per M8 PR 1 R1 S1 — multi-rule conflict on the same tool must
 	// not blame the host).
 	const postHostCandidates = new Set(candidates);
 
-	let qtiResult: ReturnType<QtiPolicySource["apply"]> | null = null;
-	if (qti.enforcement === "on" && qti.source && qti.assessment) {
-		qtiResult = qti.source.apply({
-			assessment: qti.assessment,
-			currentItemRef: qti.currentItemRef,
+	let pnpPolicyResult: ReturnType<PnpPolicySource["apply"]> | null = null;
+	if (
+		pnpPolicy.enforcement === "on" &&
+		pnpPolicy.source &&
+		(pnpPolicy.assessment || pnpPolicy.currentItemRef)
+	) {
+		pnpPolicyResult = pnpPolicy.source.apply({
+			assessment: pnpPolicy.assessment,
+			currentItemRef: pnpPolicy.currentItemRef,
 		});
 
-		if (qtiResult.sources.assessment) {
-			builder.addSource("assessment", qtiResult.sources.assessment);
+		if (pnpPolicyResult.sources.assessment) {
+			builder.addSource("assessment", pnpPolicyResult.sources.assessment);
 		}
-		if (qtiResult.sources.student) {
-			builder.addSource("student", qtiResult.sources.student);
+		if (pnpPolicyResult.sources.student) {
+			builder.addSource("student", pnpPolicyResult.sources.student);
 		}
-		if (qtiResult.sources.item) {
-			builder.addSource("item", qtiResult.sources.item);
+		if (pnpPolicyResult.sources.item) {
+			builder.addSource("item", pnpPolicyResult.sources.item);
 		}
 
-		for (const decision of qtiResult.decisions) {
+		for (const decision of pnpPolicyResult.decisions) {
 			builder.addDecision({
 				precedence: decision.precedence,
 				rule: decision.rule,
@@ -192,69 +196,69 @@ export function composeDecision(
 			});
 		}
 
-		// 5a — remove QTI-blocked tools from the candidate set.
+		// 5a — remove PNP/profile-blocked tools from the candidate set.
 		candidates = candidates.filter((toolId) => {
-			return !qtiResult!.blockedToolIds.has(toolId);
+			return !pnpPolicyResult!.blockedToolIds.has(toolId);
 		});
 		for (const toolId of Array.from(sourcesByTool.keys())) {
-			if (qtiResult.blockedToolIds.has(toolId)) {
+			if (pnpPolicyResult.blockedToolIds.has(toolId)) {
 				sourcesByTool.delete(toolId);
 			}
 		}
 
-		// 5b — surface qtiRequiredBlocked diagnostics ONLY for
-		// QTI-mandated tools that the host removed (i.e., the tool was
+		// 5b — surface requiredToolBlocked diagnostics ONLY for
+		// PNP/profile-mandated tools that the host removed (i.e., the tool was
 		// NOT in `postHostCandidates`). Mandated tools removed by
-		// QTI's own higher-precedence rule (e.g. `restrictedTools`
-		// blocking a `requiredTools` mandate) are an internal QTI
+		// profile policy's own higher-precedence rule (e.g. `restrictedTools`
+		// blocking a `requiredTools` mandate) are an internal policy
 		// resolution and must not be reported as a host conflict — the
 		// loser's `block` decision is already in the trail with full
-		// QTI provenance.
+		// provenance.
 		//
 		// `details` carries `{ rule, hostRule, hostValue }` so consumers
 		// can render the conflict as a single sentence without
 		// re-deriving the host gate from `provenance.features`. See
-		// `QtiRequiredBlockedDetails` for the typed shape.
-		for (const mandatedToolId of qtiResult.mandatedToolIds) {
+		// `RequiredToolBlockedDetails` for the typed shape.
+		for (const mandatedToolId of pnpPolicyResult.mandatedToolIds) {
 			const removedByHost = !postHostCandidates.has(mandatedToolId);
 			if (!removedByHost) continue;
-			const flag = qtiResult.perToolFlags.get(mandatedToolId);
-			const ruleName = flag?.rule ?? "qti-required";
+			const flag = pnpPolicyResult.perToolFlags.get(mandatedToolId);
+			const ruleName = flag?.rule ?? "required-tool";
 			const hostGate = detectHostRemovalGate(mandatedToolId, {
 				placement,
 				allowed,
 				blocked,
 				providers: tools.providers,
 			});
-			const details: QtiRequiredBlockedDetails = {
+			const details: RequiredToolBlockedDetails = {
 				rule: ruleName,
 				hostRule: hostGate.hostRule,
 				hostValue: hostGate.hostValue,
 			};
 			diagnostics.push({
-				code: "tool-policy.qtiRequiredBlocked",
+				code: "tool-policy.requiredToolBlocked",
 				level: request.level,
 				toolId: mandatedToolId,
-				message: `QTI mandates "${mandatedToolId}" (${ruleName}) but host policy removed it from level "${request.level}" via ${hostGate.hostRule}.`,
+				message: `Profile policy mandates "${mandatedToolId}" (${ruleName}) but host policy removed it from level "${request.level}" via ${hostGate.hostRule}.`,
 				details,
 			});
 			builder.addDecision({
 				precedence: 0,
-				rule: "qti-required-blocked",
+				rule: "required-tool-blocked",
 				featureId: mandatedToolId,
 				action: "advisory",
 				sourceType: "host",
-				reason: `Host removed QTI-mandated tool "${mandatedToolId}" via ${hostGate.hostRule}`,
+				reason: `Host removed required tool "${mandatedToolId}" via ${hostGate.hostRule}`,
 				value: details,
 			});
 		}
 
-		// 5c — attach QTI source tags to surviving entries.
+		// 5c — attach PNP policy source tags to surviving entries.
 		for (const toolId of candidates) {
-			const flag = qtiResult.perToolFlags.get(toolId);
+			const flag = pnpPolicyResult.perToolFlags.get(toolId);
 			if (flag) {
 				const tags = sourcesByTool.get(toolId) ?? [];
-				tags.push(`qti.${flag.rule}` satisfies PolicySourceTag);
+				tags.push(`pnp.${flag.rule}` satisfies PolicySourceTag);
 				sourcesByTool.set(toolId, tags);
 			}
 		}
@@ -341,7 +345,7 @@ export function composeDecision(
 
 	const survivingIds = new Set(candidates);
 	const visibleTools: ToolPolicyEntry[] = candidates.map((toolId) => {
-		const flag = qtiResult?.perToolFlags.get(toolId);
+		const flag = pnpPolicyResult?.perToolFlags.get(toolId);
 		return {
 			toolId,
 			required: flag?.required ?? false,
@@ -362,7 +366,7 @@ export function composeDecision(
 
 /**
  * Identify which step-1-through-4 host gate removed a tool. Used by
- * step 5b to enrich `tool-policy.qtiRequiredBlocked` diagnostics. The
+ * step 5b to enrich `tool-policy.requiredToolBlocked` diagnostics. The
  * checks mirror the pipeline order — step 1 (placement) first, step 4
  * (blocklist) last — so the FIRST gate that would have matched wins,
  * which is the gate the pipeline actually invoked. Subsequent gates

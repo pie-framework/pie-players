@@ -5,7 +5,7 @@
  * Today's `PnpResolutionProvenance` (in `services/pnp-provenance.ts`)
  * tracks decisions made by `PnpToolResolver` only. M8 generalizes the
  * shape to track decisions from every Pass-1 contributor — host
- * placement, host policy, provider veto, QTI gates, and custom policy
+ * placement, host policy, provider veto, PNP/profile gates, and custom policy
  * sources — without losing PNP debugger compatibility.
  *
  * **Compatibility posture.** This module is the new home of the shape;
@@ -15,18 +15,18 @@
  * fields (`contextId`, `resolvedAt`, `sources`, `features`,
  * `decisionLog`, `summary`) are preserved verbatim. The rule
  * vocabulary expands, and `ResolutionDecision.precedence` widens from
- * `1 | 2 | 3 | 4 | 5 | 6` to a `number` so non-QTI rules can fit
- * (the QTI rules continue to use `1`–`6` exactly as before).
+ * `1 | 2 | 3 | 4 | 5 | 6` to a `number` so non-profile rules can fit
+ * (the PNP/profile rules continue to use `1`–`6` exactly as before).
  */
 
 /**
  * Expanded rule vocabulary for `ResolutionDecision.rule` in M8.
  *
  * The first six values map 1:1 onto `PnpResolutionProvenance`'s
- * existing rule names (the QTI 6-level precedence). The remaining
+ * existing rule names (the PNP/profile precedence ladder). The remaining
  * values capture the new contributors the M8 engine surfaces:
  * placement membership (step 1), provider veto (step 2), host policy
- * (steps 3 / 4), the QTI-conflict diagnostic (`qti-required-blocked`),
+ * (steps 3 / 4), the required-tool conflict diagnostic (`required-tool-blocked`),
  * custom sources (step 6), and the catch-all `system-default` for the
  * "not configured at any level" fallback.
  */
@@ -42,7 +42,7 @@ export type ToolPolicyDecisionRule =
 	| "provider-disabled"
 	| "host-allowlist"
 	| "host-blocked"
-	| "qti-required-blocked"
+	| "required-tool-blocked"
 	| "custom-source"
 	| "system-default";
 
@@ -61,10 +61,10 @@ export interface ToolPolicyResolutionDecision {
 	step: number;
 
 	/**
-	 * Precedence level. QTI rules use `1`–`6` exactly as in today's
-	 * `PnpResolutionProvenance`. Non-QTI rules use `0` (host-side
-	 * gates that always fire before QTI) or `7+` (custom sources that
-	 * fire after QTI).
+	 * Precedence level. PNP/profile rules use `1`–`6` exactly as in today's
+	 * `PnpResolutionProvenance`. Non-profile rules use `0` (host-side
+	 * gates that always fire before PNP/profile policy) or `7+` (custom sources that
+	 * fire after PNP/profile policy).
 	 */
 	precedence: number;
 
@@ -259,7 +259,7 @@ export class ToolPolicyProvenanceBuilder {
 	 * highest-precedence non-skip decision per feature, but a tool's
 	 * *actual* visibility is only known after step 6 of the
 	 * composition pipeline — earlier decisions can be reversed by
-	 * later host gates, QTI gates, or custom sources. This method
+	 * later host gates, PNP/profile gates, or custom sources. This method
 	 * walks every feature trail and rewrites `finalState` from the
 	 * final candidate set so callers can rely on
 	 * `provenance.features.get(toolId)?.finalState` as the canonical

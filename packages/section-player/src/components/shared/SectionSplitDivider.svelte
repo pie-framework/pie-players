@@ -144,8 +144,13 @@
 	}
 
 	.pie-section-player-split-divider:focus {
-		outline: 2px solid var(--pie-focus-checked-border, #1976d2);
+		outline: none;
+	}
+
+	.pie-section-player-split-divider:focus-visible {
+		outline: 3px solid var(--pie-section-player-focus-outline, var(--pie-focus-outline, #146eb3));
 		outline-offset: -2px;
+		border-radius: 999px;
 	}
 
 	.pie-section-player-split-divider-handle {
@@ -174,11 +179,11 @@
 	}
 
 	.pie-section-player-split-divider:hover .pie-section-player-split-divider-handle,
-	.pie-section-player-split-divider:focus .pie-section-player-split-divider-handle,
+	.pie-section-player-split-divider:focus-visible .pie-section-player-split-divider-handle,
 	.pie-section-player-split-divider--dragging .pie-section-player-split-divider-handle {
-		background: var(--pie-primary, #1976d2);
+		background: var(--pie-section-player-focus-outline, var(--pie-focus-outline, #146eb3));
 		height: 80px;
-		box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3);
+		box-shadow: 0 2px 8px color-mix(in srgb, var(--pie-section-player-focus-outline, var(--pie-focus-outline, #146eb3)) 30%, transparent);
 	}
 
 	.pie-section-player-split-divider--dragging {

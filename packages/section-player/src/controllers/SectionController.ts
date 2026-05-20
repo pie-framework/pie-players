@@ -104,7 +104,7 @@ export class SectionController implements SectionControllerHandle {
 	private pendingApplyReplay: PendingApplyReplay | null = null;
 
 	private emitChange(event: SectionControllerChangeEvent): void {
-		for (const listener of this.listeners) {
+		for (const listener of Array.from(this.listeners)) {
 			try {
 				listener(event);
 			} catch (error) {
@@ -149,11 +149,37 @@ export class SectionController implements SectionControllerHandle {
 			},
 			testAttemptSession: sessionState.testAttemptSession,
 		};
-		this.resetLifecycleTracking();
-		this.bootstrapCompletionFromSessions();
 		const currentSectionId =
 			typedInput.section?.identifier || typedInput.sectionId || undefined;
-		if (previousSectionId !== currentSectionId) {
+		const sectionIdentityChanged = previousSectionId !== currentSectionId;
+		// PIE-512 Phase C: only wipe lifecycle tracking when the section
+		// identity actually changes. Same-cohort `updateInput` (the engine
+		// always passes `updateExisting: true` and the coordinator always
+		// forwards it on `resolveExistingSectionController`) refreshes
+		// content + session state but must preserve already-tracked
+		// renderables and the `loadedRenderableKeys` set — otherwise any
+		// subscriber that attaches between the wipe and the engine's
+		// shell replay sees an empty `runtimeState.loadedRenderables`
+		// snapshot and zero replayed events. `bootstrapCompletionFromSessions`
+		// still runs unconditionally because it just refreshes the
+		// completion view from the latest session, which is exactly what
+		// `updateInput` is for.
+		//
+		// Trade-off: if a same-section `updateInput` arrives with mutated
+		// `assessmentItemRefs` (items added or removed under an unchanged
+		// section identifier), `trackedRenderables` retains entries for
+		// items no longer in the section until their DOM shells fire
+		// `pie-unregister` and the engine forwards
+		// `handleContentUnregistered`. That is the documented Phase C
+		// stance: prefer momentarily-stale-but-non-empty over wrongly-empty
+		// tracking, because a same-section `updateInput` is overwhelmingly
+		// a content / session refresh (PnP toggle, prompt edit) rather than
+		// a structural mutation.
+		if (sectionIdentityChanged) {
+			this.resetLifecycleTracking();
+		}
+		this.bootstrapCompletionFromSessions();
+		if (sectionIdentityChanged) {
 			const sectionNavigationEvent: SectionNavigationChangeEvent = {
 				type: "section-navigation-change",
 				previousSectionId,
@@ -569,10 +595,28 @@ export class SectionController implements SectionControllerHandle {
 			args.canonicalItemId || args.itemId,
 		);
 		const key = this.getRenderableKey(canonicalItemId, args.contentKind);
+		const contentKind = this.toSectionContentKind(args.contentKind);
+		// PIE-512 Phase C: register is idempotent. If the same renderable
+		// is already tracked under the same `(itemId, canonicalItemId,
+		// contentKind)` key we skip the `evaluateSectionLoadingState`
+		// call — totals haven't changed and re-running the evaluator
+		// could spuriously re-emit `section-loading-complete` to a
+		// freshly-attached subscriber. The engine's cohort-handoff
+		// replay relies on this idempotence to safely re-feed the
+		// registry into a same-cohort `updateInput`-resolved controller.
+		const existing = this.trackedRenderables.get(key);
+		if (
+			existing &&
+			existing.itemId === args.itemId &&
+			existing.canonicalItemId === canonicalItemId &&
+			existing.contentKind === contentKind
+		) {
+			return;
+		}
 		this.trackedRenderables.set(key, {
 			itemId: args.itemId,
 			canonicalItemId,
-			contentKind: this.toSectionContentKind(args.contentKind),
+			contentKind,
 		});
 		this.evaluateSectionLoadingState(Date.now());
 	}
@@ -604,6 +648,17 @@ export class SectionController implements SectionControllerHandle {
 		);
 		const contentKind = this.toSectionContentKind(args.contentKind);
 		const key = this.getRenderableKey(canonicalItemId, contentKind);
+		// PIE-512 Phase C: load is idempotent. If the renderable is
+		// already in `loadedRenderableKeys` we drop the duplicate — no
+		// re-emit of `content-loaded` (subscribers see a single
+		// authoritative load per renderable) and no re-evaluation of
+		// `section-loading-complete` (totals haven't changed). This
+		// keeps the engine's cohort-handoff replay safe to re-run on
+		// same-cohort `updateInput` flips because the controller's
+		// `loadedRenderableKeys` is preserved.
+		if (this.loadedRenderableKeys.has(key)) {
+			return;
+		}
 		this.loadedRenderableKeys.add(key);
 		const event: ContentLoadedEvent = {
 			type: "content-loaded",

@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-print-player",
-	"version": "0.3.32",
+	"version": "0.3.42",
 	"description": "Print player for PIE elements - dynamically loads and renders print-friendly versions of PIE elements",
 	"type": "module",
 	"main": "./dist/print-player.js",
@@ -21,14 +21,15 @@
 	"scripts": {
 		"build": "bun x vite build && bun x tsc --emitDeclarationOnly",
 		"dev": "bun x vite build --watch",
+		"test": "bun test tests",
 		"serve": "bun x vite preview --port 8000"
 	},
 	"dependencies": {
-		"lit": "^3.2.1",
-		"svelte": "^5.54.0"
+		"lit": "^3.2.1"
 	},
 	"devDependencies": {
 		"@types/node": "^22.10.2",
+		"svelte": "^5.54.0",
 		"typescript": "^5.9.3",
 		"vite": "^8.0.10"
 	},

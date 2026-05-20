@@ -8,10 +8,10 @@
  *
  * **Pairing.** This module is the stable counterpart to
  * `./policy/internal`, which exposes the wider, evolving surface
- * (composition pipeline, provenance builder, QTI source). Consumers
+ * (composition pipeline, provenance builder, PNP policy source). Consumers
  * that only need to drive an engine and read its decisions should
  * import from here. Consumers that need to reach past the facade
- * (e.g. test the composition pipeline directly, build a custom QTI
+ * (e.g. test the composition pipeline directly, build a custom PNP policy
  * source variant, instrument provenance generation) should import
  * from `./policy/internal` and accept the documented stability
  * disclaimer there.
@@ -22,7 +22,7 @@
 
 export {
 	ToolPolicyEngine,
-	type QtiEnforcementMode,
+	type PnpEnforcementMode,
 	type ResolvedEngineInputs,
 	type ToolPolicyChangeEvent,
 	type ToolPolicyChangeListener,
@@ -36,7 +36,7 @@ export {
 } from "./core/engine-context.js";
 
 export type {
-	QtiRequiredBlockedDetails,
+	RequiredToolBlockedDetails,
 	ToolPolicyDecision,
 	ToolPolicyDecisionRequest,
 	ToolPolicyDiagnostic,
@@ -55,8 +55,8 @@ export type {
 
 export type {
 	PolicySourceTag,
-	QtiPolicySourceRule,
-	QtiPolicySourceTag,
+	PnpPolicySourceRule,
+	PnpPolicySourceTag,
 	CustomPolicySourceTag,
 } from "./core/policy-source-tag.js";
 

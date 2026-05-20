@@ -10,7 +10,6 @@
  * - Interpolation: {variable} syntax
  * - Pluralization: ICU-style plural rules
  * - RTL detection: Automatic based on locale
- * - TypedEventBus integration: Emit locale change events
  * - Fallback to English for missing keys
  *
  * Part of PIE Assessment Toolkit.

@@ -29,11 +29,15 @@ import type {
 import type { FontSize, ThemeConfig } from "./ThemeProvider.js";
 import type { ZIndexLayer } from "./ToolCoordinator.js";
 import type { PlaybackState, TTSConfig } from "./TTSService.js";
-import type { ToolProviderConfig } from "./tools-config-normalizer.js";
+import type {
+	ToolPlacementConfig,
+	ToolPlacementLevel,
+	ToolProviderConfig,
+} from "./tools-config-normalizer.js";
 import type { ToolProviderRegistry } from "./tool-providers/ToolProviderRegistry.js";
 import type {
 	PolicySource,
-	QtiEnforcementMode,
+	PnpEnforcementMode,
 	ResolvedEngineInputs,
 	ToolPolicyChangeListener,
 	ToolPolicyDecision,
@@ -47,6 +51,12 @@ import type {
 	ITTSProvider,
 	TTSProviderCapabilities,
 } from "@pie-players/pie-tts";
+import type {
+	ResolvedToolContext,
+	ToolContextResolver,
+	ToolContextResolverContext,
+	ToolContextResolverMap,
+} from "./ToolRegistry.js";
 
 // Re-export I18nServiceApi from players-shared
 export type { I18nServiceApi };
@@ -597,6 +607,16 @@ export interface ToolkitCoordinatorApi {
 	updateToolConfig(toolId: string, updates: Partial<ToolProviderConfig>): void;
 
 	/**
+	 * Update the enabled tool list for one placement level.
+	 */
+	updateToolPlacement(level: ToolPlacementLevel, toolIds: string[]): void;
+
+	/**
+	 * Patch one or more placement levels in the canonical tools config.
+	 */
+	updateToolsPlacement(partial: ToolPlacementConfig): void;
+
+	/**
 	 * Register or update lifecycle hooks at runtime.
 	 */
 	setHooks(hooks: ToolkitCoordinatorHooks): void;
@@ -610,18 +630,47 @@ export interface ToolkitCoordinatorApi {
 	}): SectionControllerHandle | undefined;
 
 	/**
-	 * Subscribe to section controller events with automatic replacement
-	 * for repeated subscriptions using the same listener and section key.
+	 * Subscribe to section controller events.
+	 *
+	 * The listener is bound to the toolkit's *active section cohort* and
+	 * automatically migrates across cohort transitions
+	 * (`getOrCreateSectionController` for a different cohort). On every
+	 * migration the listener receives a snapshot replay of the new
+	 * cohort's already-loaded `content-loaded` events followed by the
+	 * aggregate `section-loading-complete`, in the canonical order a
+	 * fresh subscriber would have observed.
+	 *
+	 * Throws if no active section cohort exists; host code must call
+	 * `getOrCreateSectionController(...)` at least once before
+	 * subscribing. (`toolkit-ready` alone is not sufficient — it fires
+	 * once toolkit state has loaded but before any section controller
+	 * has been created.) The typical pattern is to subscribe once
+	 * immediately after the first `getOrCreateSectionController(...)`
+	 * resolves; the subscription then follows the active cohort across
+	 * all subsequent navigation without further wiring.
+	 *
+	 * Subscribing the same `listener` reference twice replaces the prior
+	 * subscription with the new one (filter args from the second call
+	 * win); calling the returned disposer twice is a no-op.
+	 *
+	 * A listener that throws is caught and `console.warn`-logged; the
+	 * throw does not interrupt fan-out to the remaining listeners.
 	 */
 	subscribeSectionEvents(args: SectionEventSubscriptionArgs): () => void;
 
 	/**
 	 * Subscribe to item-scoped section controller events.
+	 *
+	 * Same active-cohort binding contract as {@link subscribeSectionEvents};
+	 * defaults `eventTypes` to the item-scoped subset.
 	 */
 	subscribeItemEvents(args: SectionItemEventSubscriptionArgs): () => void;
 
 	/**
 	 * Subscribe to section-scoped lifecycle/loading/completion/error events.
+	 *
+	 * Same active-cohort binding contract as {@link subscribeSectionEvents};
+	 * defaults `eventTypes` to the section-scoped subset.
 	 */
 	subscribeSectionLifecycleEvents(
 		args: SectionScopedEventSubscriptionArgs,
@@ -677,10 +726,10 @@ export interface ToolkitCoordinatorApi {
 	// so that toolbar custom elements (`pie-item-toolbar`,
 	// `pie-section-toolbar`), the base section player, and bespoke
 	// host instrumentation (PNP debugger, etc.) all flow through the
-	// same engine. Hosts that want to drive QTI inputs imperatively
+	// same engine. Hosts that want to drive PNP/profile inputs imperatively
 	// (instead of binding props on `<pie-assessment-toolkit>`) call
 	// `updateAssessment` / `updateCurrentItemRef` /
-	// `setQtiEnforcement` directly.
+	// `setPnpEnforcement` directly.
 	// ----------------------------------------------------------------
 
 	/**
@@ -695,44 +744,44 @@ export interface ToolkitCoordinatorApi {
 	 * Subscribe to policy-engine change events. Fires whenever the
 	 * coordinator's bound policy inputs change (`updateToolConfig`,
 	 * `updateFloatingTools`, `updateAssessment`, `updateCurrentItemRef`,
-	 * `setQtiEnforcement`) or a custom `PolicySource` is registered /
+	 * `setPnpEnforcement`) or a custom `PolicySource` is registered /
 	 * removed. Listeners that need the new visible tool set should
 	 * call `decideToolPolicy(...)` with their level / scope.
 	 */
 	onPolicyChange(listener: ToolPolicyChangeListener): () => void;
 
 	/**
-	 * Bind (or clear) the active QTI assessment for policy decisions.
+	 * Bind (or clear) the active assessment for PNP/profile policy decisions.
 	 *
-	 * Under auto-mode (no host override via {@link setQtiEnforcement}),
-	 * the engine flips to `qtiEnforcement: "on"` iff the assessment
-	 * carries QTI 6-level precedence material (`personalNeedsProfile`,
+	 * Under auto-mode (no host override via {@link setPnpEnforcement}),
+	 * the engine flips to `pnpEnforcement: "on"` iff the assessment
+	 * carries profile precedence material (`personalNeedsProfile`,
 	 * `settings.districtPolicy`, `settings.testAdministration`) or the
-	 * currently-bound item ref carries item-level QTI inputs. A bare
+	 * currently-bound item ref carries item-level profile inputs. A bare
 	 * assessment record (just `id` / `name`) keeps `"off"`.
 	 *
-	 * The host override set via {@link setQtiEnforcement} is sticky
+	 * The host override set via {@link setPnpEnforcement} is sticky
 	 * across assessment swaps.
 	 */
 	updateAssessment(assessment: AssessmentEntity | null): void;
 
 	/**
 	 * Bind (or clear) the current item reference for policy decisions.
-	 * Used by item-level QTI gates (item `requiredTools` /
-	 * `restrictedTools` / `toolParameters`). Item-level QTI material
+	 * Used by item-level profile gates (item `requiredTools` /
+	 * `restrictedTools` / `toolParameters`). Item-level profile material
 	 * also feeds the auto-mode helper — navigating to an item with
-	 * QTI settings can flip auto-mode to `"on"` even when the parent
-	 * assessment carries no QTI block of its own.
+	 * profile settings can flip auto-mode to `"on"` even when the parent
+	 * assessment carries no profile block of its own.
 	 */
 	updateCurrentItemRef(itemRef: AssessmentItemRef | null): void;
 
 	/**
-	 * Override the auto-mode QTI enforcement decision. Pass `"on"` /
+	 * Override the auto-mode PNP/profile enforcement decision. Pass `"on"` /
 	 * `"off"` to pin the mode, or `null` to clear the override and
 	 * return to auto-mode (`"on"` iff the bound assessment / item ref
-	 * carries QTI material, otherwise `"off"`).
+	 * carries profile material, otherwise `"off"`).
 	 */
-	setQtiEnforcement(mode: QtiEnforcementMode | null): void;
+	setPnpEnforcement(mode: PnpEnforcementMode | null): void;
 
 	/**
 	 * Read the engine inputs currently driving decisions. Useful for
@@ -746,6 +795,38 @@ export interface ToolkitCoordinatorApi {
 	 * (the returned function detaches).
 	 */
 	registerPolicySource(source: PolicySource): () => void;
+
+	/**
+	 * Register a host-owned resolver for scoped tool render context.
+	 */
+	registerToolContextResolver(
+		toolId: string,
+		resolver: ToolContextResolver,
+	): () => void;
+
+	/**
+	 * Replace all host-owned render-context resolvers.
+	 */
+	setToolContextResolvers(
+		resolvers: ToolContextResolverMap | null | undefined,
+	): void;
+
+	/**
+	 * Whether a host resolver is registered for this tool.
+	 */
+	hasToolContextResolver(toolId: string): boolean;
+
+	/**
+	 * Resolve render visibility/params for a tool that already survived policy gates.
+	 */
+	resolveToolContext(
+		context: ToolContextResolverContext,
+	): ResolvedToolContext | null;
+
+	/**
+	 * Subscribe to resolver registration/removal changes.
+	 */
+	onToolContextResolverChange(listener: () => void): () => void;
 }
 
 // I18nServiceApi is re-exported from @pie-players/pie-players-shared/i18n

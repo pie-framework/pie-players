@@ -15,6 +15,9 @@ const createFakeElement = (tag: string) =>
 		setAttribute(name: string, value: string) {
 			this.attrs.set(name, value);
 		},
+		removeAttribute(name: string) {
+			this.attrs.delete(name);
+		},
 		getAttribute(name: string) {
 			return this.attrs.get(name) || null;
 		},
@@ -104,9 +107,9 @@ describe("createDefaultToolRegistry component overrides", () => {
 			registry.renderForToolbar("calculator", itemContext, toolbarContext),
 		);
 		expect(
-			renderResult?.elements?.find((entry) => entry.mount === "after-buttons")?.element?.tagName.toLowerCase(),
-		).toBe(
-			"custom-calculator",
-		);
+			renderResult?.elements
+				?.find((entry) => entry.mount === "after-buttons")
+				?.element?.tagName.toLowerCase(),
+		).toBe("custom-calculator");
 	});
 });

@@ -61,14 +61,15 @@
 
 	type ToolkitCoordinatorLike = {
 		getSectionController?: (args: { sectionId: string; attemptId?: string }) => SectionControllerLike | undefined;
+		// Phase D (>=0.3.35): subscribe* helpers follow the toolkit's
+		// active section cohort automatically and do not accept
+		// sectionId / attemptId arguments. The session panel keeps
+		// `sectionId` + `attemptId` in `subscriptionTarget` purely to
+		// gate same-target re-subscribe and to drive `getSectionController`.
 		subscribeItemEvents?: (args: {
-			sectionId: string;
-			attemptId?: string;
 			listener: (event: { itemId?: string; timestamp?: number }) => void;
 		}) => () => void;
 		subscribeSectionLifecycleEvents?: (args: {
-			sectionId: string;
-			attemptId?: string;
 			listener: (event: { itemId?: string; timestamp?: number }) => void;
 		}) => () => void;
 	onSectionControllerLifecycle?: (
@@ -229,13 +230,9 @@
 		}
 		detachControllerSubscription();
 		const unsubscribeItem = toolkitCoordinator?.subscribeItemEvents?.({
-			sectionId,
-			attemptId,
 			listener: handleItemControllerEvent
 		}) || null;
 		const unsubscribeSection = toolkitCoordinator?.subscribeSectionLifecycleEvents?.({
-			sectionId,
-			attemptId,
 			listener: handleSectionControllerEvent
 		}) || null;
 		unsubscribeController = () => {

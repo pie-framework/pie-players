@@ -62,7 +62,28 @@ function sectionToolbar(page: Page): Locator {
 }
 
 async function getComputedBackgroundColor(locator: Locator): Promise<string> {
-	return await locator.evaluate((element) => getComputedStyle(element as HTMLElement).backgroundColor);
+	return await locator.evaluate(
+		(element) => getComputedStyle(element as HTMLElement).backgroundColor,
+	);
+}
+
+async function getComputedFocusStyle(locator: Locator): Promise<{
+	outlineColor: string;
+	outlineOffset: string;
+	outlineStyle: string;
+	outlineWidth: string;
+	borderRadius: string;
+}> {
+	return await locator.evaluate((element) => {
+		const style = getComputedStyle(element as HTMLElement);
+		return {
+			outlineColor: style.outlineColor,
+			outlineOffset: style.outlineOffset,
+			outlineStyle: style.outlineStyle,
+			outlineWidth: style.outlineWidth,
+			borderRadius: style.borderRadius,
+		};
+	});
 }
 
 async function getRect(locator: Locator): Promise<{
@@ -83,7 +104,9 @@ async function getRect(locator: Locator): Promise<{
 }
 
 test.describe("section toolbar tools", () => {
-	test("stacks right-positioned section toolbar buttons vertically", async ({ page }) => {
+	test("stacks right-positioned section toolbar buttons vertically", async ({
+		page,
+	}) => {
 		await gotoDemo(page);
 
 		const toolbar = sectionToolbar(page);
@@ -97,10 +120,14 @@ test.describe("section toolbar tools", () => {
 
 		// Right-positioned section tools should stack in a column.
 		expect(secondButtonRect.y).toBeGreaterThan(firstButtonRect.y);
-		expect(Math.abs(secondButtonRect.x - firstButtonRect.x)).toBeLessThanOrEqual(4);
+		expect(
+			Math.abs(secondButtonRect.x - firstButtonRect.x),
+		).toBeLessThanOrEqual(4);
 	});
 
-	test("renders expected section-level tool buttons in demo defaults", async ({ page }) => {
+	test("renders expected section-level tool buttons in demo defaults", async ({
+		page,
+	}) => {
 		test.setTimeout(180_000);
 		await gotoDemo(page);
 
@@ -111,16 +138,24 @@ test.describe("section toolbar tools", () => {
 		);
 		expect(shellUsesShadowDom).toBe(true);
 
-		const rightToolbarPane = page.locator(".pie-section-player-toolbar-pane--right").first();
+		const rightToolbarPane = page
+			.locator(".pie-section-player-toolbar-pane--right")
+			.first();
 		await expect(rightToolbarPane).toBeVisible();
 		const layoutBody = page.locator(".pie-section-player-layout-body").first();
-		await expect(layoutBody).toHaveClass(/pie-section-player-layout-body--inline-right/);
-		await expect(rightToolbarPane.locator("pie-section-toolbar")).toHaveCount(1);
+		await expect(layoutBody).toHaveClass(
+			/pie-section-player-layout-body--inline-right/,
+		);
+		await expect(rightToolbarPane.locator("pie-section-toolbar")).toHaveCount(
+			1,
+		);
 
 		const toolbar = sectionToolbar(page);
 		await expect(toolbar).toHaveCount(1);
 		await expect(toolbar).toBeVisible();
-		await expect(toolbar.getByRole("button")).toHaveCount(SECTION_TOOL_SPECS.length);
+		await expect(toolbar.getByRole("button")).toHaveCount(
+			SECTION_TOOL_SPECS.length,
+		);
 
 		for (const spec of SECTION_TOOL_SPECS) {
 			const button = toolbar.getByRole("button", {
@@ -136,27 +171,38 @@ test.describe("section toolbar tools", () => {
 			);
 			await expect(host, `Missing ${spec.id} tool host`).toHaveCount(1);
 			if (["protractor", "lineReader", "ruler"].includes(spec.id)) {
-				await expect(host).toHaveAttribute("data-pie-tool-surface", "frameless");
+				await expect(host).toHaveAttribute(
+					"data-pie-tool-surface",
+					"frameless",
+				);
 			}
 			if (spec.panelRole === "group") {
 				await expect
 					.poll(async () =>
 						host.first().evaluate((element) => {
-							const panel = element.shadowRoot?.querySelector(".pie-tool-line-reader");
+							const panel = element.shadowRoot?.querySelector(
+								".pie-tool-line-reader",
+							);
 							return panel?.getAttribute("role") || null;
 						}),
 					)
 					.toBe("group");
 			} else {
-				await expect(host.locator(`[role="${spec.panelRole}"]`).first()).toBeVisible();
+				await expect(
+					host.locator(`[role="${spec.panelRole}"]`).first(),
+				).toBeVisible();
 			}
 
 			// Large dialog tools (e.g. graph) can cover the right toolbar; closing via the
 			// hosted shell matches real UX and avoids Playwright "intercepts pointer events".
 			// Inline tools (protractor, ruler, line reader) use toolbar toggle to close.
 			if (spec.panelRole === "dialog") {
-				const toolShell = page.locator(`[data-pie-tool-shell="${spec.id}"]`).first();
-				await expect(toolShell.getByRole("button", { name: "Close tool" })).toBeVisible();
+				const toolShell = page
+					.locator(`[data-pie-tool-shell="${spec.id}"]`)
+					.first();
+				await expect(
+					toolShell.getByRole("button", { name: "Close tool" }),
+				).toBeVisible();
 				await toolShell.getByRole("button", { name: "Close tool" }).click();
 			} else {
 				await button.click();
@@ -177,7 +223,9 @@ test.describe("section toolbar tools", () => {
 		});
 		await expect(splitDivider).toHaveCount(0);
 
-		await expect(page.locator(".pie-section-player-toolbar-pane--right")).toHaveCount(0);
+		await expect(
+			page.locator(".pie-section-player-toolbar-pane--right"),
+		).toHaveCount(0);
 		const themeButton = page.getByRole("button", {
 			name: "Theme - Change colors and contrast",
 		});
@@ -192,14 +240,18 @@ test.describe("section toolbar tools", () => {
 
 		// Collapsed splitpane should render top toolbar controls in a row.
 		expect(secondButtonRect.x).toBeGreaterThan(firstButtonRect.x);
-		expect(Math.abs(secondButtonRect.y - firstButtonRect.y)).toBeLessThanOrEqual(4);
+		expect(
+			Math.abs(secondButtonRect.y - firstButtonRect.y),
+		).toBeLessThanOrEqual(4);
 	});
 
 	test("preserves card title formatter across splitpane collapse transitions", async ({
 		page,
 	}) => {
 		async function expectCustomTitles() {
-			const tablist = page.getByRole("tablist", { name: "Section content tabs" });
+			const tablist = page.getByRole("tablist", {
+				name: "Section content tabs",
+			});
 			if ((await tablist.count()) > 0) {
 				await page.getByRole("tab", { name: "Items" }).click();
 				await expect(
@@ -211,16 +263,18 @@ test.describe("section toolbar tools", () => {
 				).toHaveText("Custom passage");
 				return;
 			}
-			await expect(page.locator(".pie-section-player-item-header h2").first()).toHaveText(
-				"Custom question 1",
-			);
-			await expect(page.locator(".pie-section-player-passage-header h2").first()).toHaveText(
-				"Custom passage",
-			);
+			await expect(
+				page.locator(".pie-section-player-item-header h2").first(),
+			).toHaveText("Custom question 1");
+			await expect(
+				page.locator(".pie-section-player-passage-header h2").first(),
+			).toHaveText("Custom passage");
 		}
 
 		await page.setViewportSize({ width: 1280, height: 900 });
-		await page.goto(`${DEMO_PATH}&customTitles=1`, { waitUntil: "networkidle" });
+		await page.goto(`${DEMO_PATH}&customTitles=1`, {
+			waitUntil: "networkidle",
+		});
 		await expect(page.getByRole("link", { name: "Student" })).toBeVisible();
 
 		await expectCustomTitles();
@@ -247,15 +301,17 @@ test.describe("section toolbar tools", () => {
 		});
 		await expect(page.getByRole("link", { name: "Student" })).toBeVisible();
 
-		await expect(page.locator(".pie-section-player-item-header h2").first()).toHaveText(
-			"Custom question 1",
-		);
-		await expect(page.locator(".pie-section-player-passage-header h2").first()).toHaveText(
-			"Custom passage",
-		);
+		await expect(
+			page.locator(".pie-section-player-item-header h2").first(),
+		).toHaveText("Custom question 1");
+		await expect(
+			page.locator(".pie-section-player-passage-header h2").first(),
+		).toHaveText("Custom passage");
 	});
 
-	test("restores hosted shell close button background after hover", async ({ page }) => {
+	test("restores hosted shell close button background after hover", async ({
+		page,
+	}) => {
 		await gotoDemo(page);
 
 		const toolbar = sectionToolbar(page);
@@ -296,11 +352,19 @@ test.describe("section toolbar tools", () => {
 		const graphShell = page.locator('[data-pie-tool-shell="graph"]').first();
 		await expect(graphShell).toBeVisible();
 
-		const moveRight = graphShell.getByRole("button", { name: "Move tool right" });
+		const moveRight = graphShell.getByRole("button", {
+			name: "Move tool right",
+		});
+		const moveUp = graphShell.getByRole("button", { name: "Move tool up" });
+		const moveDown = graphShell.getByRole("button", { name: "Move tool down" });
 		const grow = graphShell.getByRole("button", { name: "Grow tool window" });
-		const center = graphShell.getByRole("button", { name: "Center tool window" });
+		const center = graphShell.getByRole("button", {
+			name: "Center tool window",
+		});
 
 		await expect(moveRight).toBeVisible();
+		await expect(moveUp).toBeVisible();
+		await expect(moveDown).toBeVisible();
 		await expect(grow).toBeVisible();
 		await expect(center).toBeVisible();
 
@@ -309,10 +373,18 @@ test.describe("section toolbar tools", () => {
 		const moved = await getRect(graphShell);
 		expect(moved.x).toBeGreaterThan(before.x);
 
+		await moveDown.click();
+		const movedDown = await getRect(graphShell);
+		expect(movedDown.y).toBeGreaterThan(moved.y);
+
+		await moveUp.click();
+		const movedUp = await getRect(graphShell);
+		expect(movedUp.y).toBeLessThan(movedDown.y);
+
 		await grow.click();
 		const resized = await getRect(graphShell);
-		expect(resized.width).toBeGreaterThanOrEqual(moved.width);
-		expect(resized.height).toBeGreaterThanOrEqual(moved.height);
+		expect(resized.width).toBeGreaterThanOrEqual(movedUp.width);
+		expect(resized.height).toBeGreaterThanOrEqual(movedUp.height);
 
 		const header = graphShell.locator(".pie-tool-shell__header");
 		await header.focus();
@@ -365,7 +437,9 @@ test.describe("section toolbar tools", () => {
 		await graphButton.focus();
 		await page.keyboard.press("Enter");
 		await expect(graphShell).toBeVisible();
-		await expect(graphShell.getByRole("button", { name: "Close tool" })).toBeFocused();
+		await expect(
+			graphShell.getByRole("button", { name: "Close tool" }),
+		).toBeFocused();
 
 		await page.keyboard.press("Escape");
 		await expect(graphShell).toBeHidden();
@@ -398,10 +472,14 @@ test.describe("section toolbar tools", () => {
 		await page.keyboard.press("Enter");
 		await desmosAuthResponse;
 
-		const calculatorShell = page.locator('[data-pie-tool-shell="calculator"]').first();
+		const calculatorShell = page
+			.locator('[data-pie-tool-shell="calculator"]')
+			.first();
 		await expect(calculatorShell).toBeVisible();
 
-		const calculatorHost = page.locator("pie-tool-calculator .pie-tool-calculator").last();
+		const calculatorHost = page
+			.locator("pie-tool-calculator .pie-tool-calculator")
+			.last();
 		await expect(calculatorHost).toBeVisible({ timeout: 20_000 });
 		const calculatorSurface = calculatorHost.locator(
 			[
@@ -423,9 +501,14 @@ test.describe("section toolbar tools", () => {
 						const getDeepActive = (): Element | null => {
 							let active: Element | null = document.activeElement;
 							while (active) {
-								const root = (active as Element & { shadowRoot?: ShadowRoot | null })
-									.shadowRoot;
-								if (root && root.activeElement && root.activeElement !== active) {
+								const root = (
+									active as Element & { shadowRoot?: ShadowRoot | null }
+								).shadowRoot;
+								if (
+									root &&
+									root.activeElement &&
+									root.activeElement !== active
+								) {
 									active = root.activeElement;
 								} else {
 									break;
@@ -434,7 +517,8 @@ test.describe("section toolbar tools", () => {
 							return active;
 						};
 						const active = getDeepActive();
-						if (!active) return { insideCalculator: false, isCloseButton: false };
+						if (!active)
+							return { insideCalculator: false, isCloseButton: false };
 						const container = active.closest(".pie-tool-calculator__container");
 						const isCloseButton =
 							active.getAttribute?.("aria-label") === "Close tool";
@@ -459,9 +543,14 @@ test.describe("section toolbar tools", () => {
 						const getDeepActive = (): Element | null => {
 							let active: Element | null = document.activeElement;
 							while (active) {
-								const root = (active as Element & { shadowRoot?: ShadowRoot | null })
-									.shadowRoot;
-								if (root && root.activeElement && root.activeElement !== active) {
+								const root = (
+									active as Element & { shadowRoot?: ShadowRoot | null }
+								).shadowRoot;
+								if (
+									root &&
+									root.activeElement &&
+									root.activeElement !== active
+								) {
 									active = root.activeElement;
 								} else {
 									break;
@@ -505,20 +594,45 @@ test.describe("section toolbar tools", () => {
 		expect(controlledPaneId).toBeTruthy();
 		await expect(page.locator(`#${controlledPaneId}`)).toBeVisible();
 
+		await page
+			.locator("pie-section-player-splitpane")
+			.first()
+			.evaluate((element) => {
+				(element as HTMLElement).style.setProperty(
+					"--pie-section-player-focus-outline",
+					"#146eb3",
+				);
+			});
 		await divider.focus();
 		await expect(divider).toBeFocused();
 		await expect(divider).toHaveAttribute("aria-valuenow", "50");
 		await page.keyboard.press("ArrowRight");
+		const focusStyle = await getComputedFocusStyle(divider);
+		expect(focusStyle.outlineStyle).toBe("solid");
+		expect(focusStyle.outlineWidth).toBe("3px");
+		expect(focusStyle.outlineColor).toBe("rgb(20, 110, 179)");
+		expect(Number.parseFloat(focusStyle.borderRadius)).toBeGreaterThan(0);
 		await expect(divider).toHaveAttribute("aria-valuenow", "55");
 		await page.keyboard.press("End");
-		await expect(divider).toHaveAttribute("aria-valuenow", String(Math.round(maxValue)));
+		await expect(divider).toHaveAttribute(
+			"aria-valuenow",
+			String(Math.round(maxValue)),
+		);
 		await page.keyboard.press("Home");
-		await expect(divider).toHaveAttribute("aria-valuenow", String(Math.round(minValue)));
+		await expect(divider).toHaveAttribute(
+			"aria-valuenow",
+			String(Math.round(minValue)),
+		);
 
-		const itemsPaneId = String(controlledPaneId).replace(/-passages$/, "-items");
+		const itemsPaneId = String(controlledPaneId).replace(
+			/-passages$/,
+			"-items",
+		);
 		const paneWidthsAtMin = await page.evaluate(
 			({ passagesId, itemsId }) => {
-				const passagesPane = document.querySelector<HTMLElement>(`#${passagesId}`);
+				const passagesPane = document.querySelector<HTMLElement>(
+					`#${passagesId}`,
+				);
 				const itemsPane = document.querySelector<HTMLElement>(`#${itemsId}`);
 				if (!passagesPane || !itemsPane) {
 					throw new Error("Expected split panes were not found");
@@ -541,7 +655,9 @@ test.describe("section toolbar tools", () => {
 		await page.keyboard.press("End");
 		const paneWidthsAtMax = await page.evaluate(
 			({ passagesId, itemsId }) => {
-				const passagesPane = document.querySelector<HTMLElement>(`#${passagesId}`);
+				const passagesPane = document.querySelector<HTMLElement>(
+					`#${passagesId}`,
+				);
 				const itemsPane = document.querySelector<HTMLElement>(`#${itemsId}`);
 				if (!passagesPane || !itemsPane) {
 					throw new Error("Expected split panes were not found");
@@ -562,16 +678,70 @@ test.describe("section toolbar tools", () => {
 		expect(narrowerAtMax).toBeGreaterThanOrEqual(220);
 	});
 
-	test("honors configured split-pane minimum region width", async ({ page }) => {
+	test("shows the section focus ring when keyboard focus enters passage content", async ({
+		page,
+	}) => {
 		await page.setViewportSize({ width: 1280, height: 900 });
 		await gotoDemo(page);
-		await page.locator("pie-section-player-splitpane").first().evaluate((element) => {
-			const host = element as HTMLElement & {
-				splitPaneMinRegionWidth?: number;
-			};
-			host.splitPaneMinRegionWidth = 280;
-			host.setAttribute("split-pane-min-region-width", "280");
-		});
+
+		await page
+			.locator("pie-section-player-splitpane")
+			.first()
+			.evaluate((element) => {
+				(element as HTMLElement).style.setProperty(
+					"--pie-section-player-focus-outline",
+					"#146eb3",
+				);
+			});
+
+		const passageCard = page
+			.locator(
+				"pie-section-player-passage-card .pie-section-player-content-card",
+			)
+			.first();
+		await expect(passageCard).toBeVisible();
+
+		await page
+			.locator(".pie-section-player-passage-content")
+			.first()
+			.evaluate((content) => {
+				const before = document.createElement("button");
+				before.type = "button";
+				before.id = "before-passage-focus-probe";
+				before.textContent = "Before passage focus probe";
+				const target = document.createElement("button");
+				target.type = "button";
+				target.id = "passage-focus-probe";
+				target.textContent = "Passage focus probe";
+				content.prepend(target);
+				content.prepend(before);
+			});
+
+		await page.locator("#before-passage-focus-probe").focus();
+		await page.keyboard.press("Tab");
+		await expect(page.locator("#passage-focus-probe")).toBeFocused();
+
+		const focusStyle = await getComputedFocusStyle(passageCard);
+		expect(focusStyle.outlineStyle).toBe("solid");
+		expect(focusStyle.outlineWidth).toBe("3px");
+		expect(focusStyle.outlineColor).toBe("rgb(20, 110, 179)");
+	});
+
+	test("honors configured split-pane minimum region width", async ({
+		page,
+	}) => {
+		await page.setViewportSize({ width: 1280, height: 900 });
+		await gotoDemo(page);
+		await page
+			.locator("pie-section-player-splitpane")
+			.first()
+			.evaluate((element) => {
+				const host = element as HTMLElement & {
+					splitPaneMinRegionWidth?: number;
+				};
+				host.splitPaneMinRegionWidth = 280;
+				host.setAttribute("split-pane-min-region-width", "280");
+			});
 
 		const divider = page.getByRole("separator", {
 			name: "Resize passages and items panels",
@@ -585,13 +755,18 @@ test.describe("section toolbar tools", () => {
 
 		const controlledPaneId = await divider.getAttribute("aria-controls");
 		expect(controlledPaneId).toBeTruthy();
-		const itemsPaneId = String(controlledPaneId).replace(/-passages$/, "-items");
+		const itemsPaneId = String(controlledPaneId).replace(
+			/-passages$/,
+			"-items",
+		);
 
 		await divider.focus();
 		await page.keyboard.press("Home");
 		const widthsAtMin = await page.evaluate(
 			({ passagesId, itemsId }) => {
-				const passagesPane = document.querySelector<HTMLElement>(`#${passagesId}`);
+				const passagesPane = document.querySelector<HTMLElement>(
+					`#${passagesId}`,
+				);
 				const itemsPane = document.querySelector<HTMLElement>(`#${itemsId}`);
 				if (!passagesPane || !itemsPane) {
 					throw new Error("Expected split panes were not found");
@@ -605,14 +780,16 @@ test.describe("section toolbar tools", () => {
 			},
 			{ passagesId: String(controlledPaneId), itemsId: itemsPaneId },
 		);
-		expect(Math.min(widthsAtMin.passagesWidth, widthsAtMin.itemsWidth)).toBeGreaterThanOrEqual(
-			270,
-		);
+		expect(
+			Math.min(widthsAtMin.passagesWidth, widthsAtMin.itemsWidth),
+		).toBeGreaterThanOrEqual(270);
 
 		await page.keyboard.press("End");
 		const widthsAtMax = await page.evaluate(
 			({ passagesId, itemsId }) => {
-				const passagesPane = document.querySelector<HTMLElement>(`#${passagesId}`);
+				const passagesPane = document.querySelector<HTMLElement>(
+					`#${passagesId}`,
+				);
 				const itemsPane = document.querySelector<HTMLElement>(`#${itemsId}`);
 				if (!passagesPane || !itemsPane) {
 					throw new Error("Expected split panes were not found");
@@ -626,8 +803,8 @@ test.describe("section toolbar tools", () => {
 			},
 			{ passagesId: String(controlledPaneId), itemsId: itemsPaneId },
 		);
-		expect(Math.min(widthsAtMax.passagesWidth, widthsAtMax.itemsWidth)).toBeGreaterThanOrEqual(
-			270,
-		);
+		expect(
+			Math.min(widthsAtMax.passagesWidth, widthsAtMax.itemsWidth),
+		).toBeGreaterThanOrEqual(270);
 	});
 });

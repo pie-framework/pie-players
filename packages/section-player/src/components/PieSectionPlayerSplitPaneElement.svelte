@@ -53,6 +53,10 @@
 				attribute: "split-pane-min-region-width",
 				type: "Number",
 			},
+			splitPaneInitialPassageWidth: {
+				attribute: "split-pane-initial-passage-width",
+				type: "Number",
+			},
 			splitPaneCollapseStrategy: {
 				attribute: "split-pane-collapse-strategy",
 				type: "String",
@@ -77,7 +81,7 @@
 	// TS language service false-positive in this workspace: Svelte component has a default export.
 	// @ts-ignore false-positive no-default-export in IDE language service for this import
 	import SectionSplitDivider from "./shared/SectionSplitDivider.svelte";
-	import { createEventDispatcher } from "svelte";
+	import { createEventDispatcher, untrack } from "svelte";
 	import type {
 		FrameworkErrorModel,
 		ToolConfigStrictness,
@@ -127,6 +131,20 @@
 
 	function clampSplitWidth(next: number, bounds: SplitBounds): number {
 		return Math.max(bounds.min, Math.min(bounds.max, next));
+	}
+
+	// Coerce a host-supplied initial passage width (number, numeric string, or
+	// undefined) into a percent inside the static SPLIT_LEFT_PERCENT_MIN..MAX
+	// envelope. Returns undefined for missing / non-numeric input so callers
+	// can fall back to the 50% mid-default. The dynamic per-container bounds
+	// (which can be tighter when splitPaneMinRegionWidth is set) are applied
+	// later by the existing splitBounds reactive effect — keeping the prop's
+	// clamp envelope static makes the contract viewport-independent.
+	function resolveInitialPassageWidthPercent(value: unknown): number | undefined {
+		if (value === undefined || value === null || value === "") return undefined;
+		const num = typeof value === "number" ? value : Number(value);
+		if (!Number.isFinite(num)) return undefined;
+		return Math.max(SPLIT_LEFT_PERCENT_MIN, Math.min(SPLIT_LEFT_PERCENT_MAX, num));
 	}
 
 	function getDividerTrackPx(container: HTMLElement): number {
@@ -191,8 +209,22 @@
 		contentMaxWidthNoPassage = undefined as number | undefined,
 		contentMaxWidthWithPassage = undefined as number | undefined,
 		splitPaneMinRegionWidth = undefined as number | undefined,
+		splitPaneInitialPassageWidth = undefined as number | string | undefined,
 		splitPaneCollapseStrategy = "tabbed" as "vertical" | "tabbed" | string,
 	} = $props();
+
+	// Snapshot of the resolved prop at mount. Renders the divider in the
+	// right place on the first frame (so consumers don't see a 50% flash
+	// before the $effect below reapplies), and seeds the change-detection
+	// state used by that effect.
+	const initialPassageWidthPercent = untrack(
+		() => resolveInitialPassageWidthPercent(splitPaneInitialPassageWidth) ?? 50,
+	);
+	let lastAppliedInitialWidth = $state<number | undefined>(
+		untrack(() =>
+			resolveInitialPassageWidthPercent(splitPaneInitialPassageWidth),
+		),
+	);
 
 	const clampedBreakpoint = $derived.by(() => {
 		const n = narrowLayoutBreakpoint ?? DEFAULT_NARROW_BREAKPOINT_PX;
@@ -204,7 +236,7 @@
 		);
 	});
 
-	let leftPanelWidth = $state(50);
+	let leftPanelWidth = $state(initialPassageWidthPercent);
 	let splitBounds = $state<SplitBounds>({ min: 20, max: 80 });
 	let splitContainerElement = $state<HTMLDivElement | null>(null);
 	let anchor = $state<HTMLDivElement | null>(null);
@@ -305,6 +337,25 @@
 		return () => resizeObserver.disconnect();
 	});
 
+	// Re-apply splitPaneInitialPassageWidth when the host changes it after
+	// mount (e.g. via setAttribute / property assignment / inspect-element
+	// edits). Idempotent: we compare the *resolved* (coerced + clamped) value
+	// to the last applied one, so host re-renders that re-assign the same
+	// number don't stomp on a user's drag — only an actual change snaps the
+	// divider. `untrack` around the writes prevents this effect from
+	// retriggering itself through `lastAppliedInitialWidth`/`leftPanelWidth`.
+	$effect(() => {
+		const resolved = resolveInitialPassageWidthPercent(
+			splitPaneInitialPassageWidth,
+		);
+		untrack(() => {
+			if (resolved === lastAppliedInitialWidth) return;
+			lastAppliedInitialWidth = resolved;
+			if (resolved === undefined) return;
+			leftPanelWidth = clampSplitWidth(resolved, splitBounds);
+		});
+	});
+
 	function forward(event: Event) {
 		const customEvent = event as CustomEvent;
 		dispatch(customEvent.type, customEvent.detail);
@@ -344,10 +395,6 @@
 
 	export function navigatePrevious(): boolean {
 		return kernelRef?.navigatePrevious?.() === true;
-	}
-
-	export function focusStart(): boolean {
-		return kernelRef?.focusStart?.() === true;
 	}
 
 	export function getSectionController() {
@@ -481,12 +528,10 @@
 					: `grid-template-columns: minmax(0, calc((100% - 0.5rem) * ${leftPanelWidth / 100})) 0.5rem minmax(0, calc((100% - 0.5rem) * ${(100 - leftPanelWidth) / 100}))`}
 			>
 				{#if layoutModel.passages.length > 0}
-					<!-- svelte-ignore a11y_no_noninteractive_tabindex scrollable pane needs keyboard focus -->
 					<aside
 						id={passagesPaneId}
 						class="pie-section-player-passages-pane"
 						aria-label="Passages"
-						tabindex="0"
 					>
 						<pie-section-player-passages-pane
 							passages={layoutModel.passages}
@@ -589,10 +634,8 @@
 			var(--pie-scrollbar-thumb, #6b7280) var(--pie-scrollbar-track, #d1d5db);
 	}
 
-	.pie-section-player-passages-pane:focus-visible,
-	.pie-section-player-items-pane:focus-visible {
-		outline: 2px solid var(--pie-focus-outline, #1d4ed8);
-		outline-offset: -2px;
+	.pie-section-player-items-pane :global(.pie-section-player-scroll-hint) {
+	    bottom: -0.5rem;
 	}
 
 	.pie-section-player-passages-pane::-webkit-scrollbar,

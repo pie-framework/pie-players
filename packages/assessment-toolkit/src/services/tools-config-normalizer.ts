@@ -64,33 +64,32 @@ export interface ToolProvidersConfig {
 }
 
 /**
- * QTI enforcement mode mirrored on `runtime.tools.qtiEnforcement` (M5
- * mirror rule). Carried alongside `policy` / `placement` / `providers`
- * so hosts can pin or opt out of the QTI 6-level precedence via the
- * runtime config without reaching for the toolkit prop directly.
+ * PNP/profile enforcement mode mirrored on `runtime.tools.pnpEnforcement`
+ * (M5 mirror rule). Carried alongside `policy` / `placement` /
+ * `providers` so hosts can pin or opt out of PNP/profile precedence via
+ * the runtime config without reaching for the toolkit prop directly.
  *
- * - `"on"` — force QTI enforcement (engine applies QTI gates regardless
- *   of bound assessment).
- * - `"off"` — opt out (engine ignores QTI inputs).
+ * - `"on"` — force enforcement (engine applies PNP/profile gates).
+ * - `"off"` — opt out (engine ignores PNP/profile inputs).
  * - omitted / `undefined` — auto-mode (the default). The toolkit
- *   coordinator computes the effective mode from QTI material on the
+ *   coordinator computes the effective mode from PNP/profile policy material on the
  *   bound `AssessmentEntity` / `AssessmentItemRef`. See
- *   `resolveDefaultQtiEnforcement` in `policy/core/qti-inputs.ts`.
+ *   `resolveDefaultPnpEnforcement` in `policy/core/pnp-policy-inputs.ts`.
  */
-export type ToolsQtiEnforcement = "on" | "off";
+export type ToolsPnpEnforcement = "on" | "off";
 
 export interface CanonicalToolsConfig {
 	policy: ToolPolicyConfig;
 	placement: Required<ToolPlacementConfig>;
 	providers: ToolProvidersConfig;
 	/**
-	 * Optional QTI enforcement override. Mirrored on
-	 * `runtime.tools.qtiEnforcement`; consumed by
+	 * Optional PNP/profile enforcement override. Mirrored on
+	 * `runtime.tools.pnpEnforcement`; consumed by
 	 * `<pie-assessment-toolkit>` and `ToolkitCoordinator` as the
-	 * embedded path's equivalent of the standalone `qti-enforcement`
-	 * attribute. See {@link ToolsQtiEnforcement} for semantics.
+	 * embedded path's equivalent of the standalone `pnp-enforcement`
+	 * attribute. See {@link ToolsPnpEnforcement} for semantics.
 	 */
-	qtiEnforcement?: ToolsQtiEnforcement;
+	pnpEnforcement?: ToolsPnpEnforcement;
 }
 
 const DEFAULT_PLACEMENT: Required<ToolPlacementConfig> = {
@@ -226,11 +225,14 @@ export function parseToolList(input: string | undefined | null): string[] {
 	);
 }
 
-function assertQtiEnforcement(value: unknown): ToolsQtiEnforcement | undefined {
+function assertPnpEnforcement(
+	value: unknown,
+	fieldPath: "pnpEnforcement",
+): ToolsPnpEnforcement | undefined {
 	if (value == null) return undefined;
 	if (value === "on" || value === "off") return value;
 	throw new Error(
-		`Invalid tools config at "qtiEnforcement": expected "on" or "off", got ${JSON.stringify(value)}.`,
+		`Invalid tools config at "${fieldPath}": expected "on" or "off", got ${JSON.stringify(value)}.`,
 	);
 }
 
@@ -245,7 +247,10 @@ export function normalizeToolsConfig(
 	const policy = assertPolicyConfig(input?.policy);
 	const placement = assertPlacementConfig(input?.placement);
 	const providers = assertProvidersConfig(input?.providers);
-	const qtiEnforcement = assertQtiEnforcement(input?.qtiEnforcement);
+	const pnpEnforcement = assertPnpEnforcement(
+		input?.pnpEnforcement,
+		"pnpEnforcement",
+	);
 
 	const config: CanonicalToolsConfig = {
 		policy: {
@@ -270,8 +275,8 @@ export function normalizeToolsConfig(
 		},
 		providers,
 	};
-	if (qtiEnforcement) {
-		config.qtiEnforcement = qtiEnforcement;
+	if (pnpEnforcement) {
+		config.pnpEnforcement = pnpEnforcement;
 	}
 	return config;
 }

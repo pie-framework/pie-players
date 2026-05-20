@@ -2,6 +2,7 @@ import type { DemoInfo } from "./types";
 
 export type { DemoInfo } from "./types";
 
+import authoringContractFixture from "./authoring-contract-fixture";
 import categorizeAlgebraOperations from "./categorize-algebra-operations";
 import categorizeCalculusConcepts from "./categorize-calculus-concepts";
 import categorizeGeometryShapes from "./categorize-geometry-shapes";
@@ -55,7 +56,7 @@ import selectTextDefault from "./select-text-default";
 import solarSystemMoons from "./solar-system-moons";
 import waterCyclePassage from "./water-cycle-passage";
 
-const importedDemos: DemoInfo[] = [
+const publicDemos: DemoInfo[] = [
 	categorizeAlgebraOperations,
 	categorizeCalculusConcepts,
 	categorizeGeometryShapes,
@@ -113,8 +114,13 @@ const importedDemos: DemoInfo[] = [
 	return pkg === 0 ? a.id.localeCompare(b.id) : pkg;
 });
 
+const routableDemos: DemoInfo[] = [
+	...publicDemos,
+	authoringContractFixture,
+];
+
 export const demos: Record<string, DemoInfo> = Object.fromEntries(
-	importedDemos.map((demo) => [demo.id, demo]),
+	routableDemos.map((demo) => [demo.id, demo]),
 );
 
 export function getDemoById(id: string | undefined): DemoInfo | null {
@@ -123,5 +129,5 @@ export function getDemoById(id: string | undefined): DemoInfo | null {
 }
 
 export function getAllDemos(): DemoInfo[] {
-	return importedDemos;
+	return publicDemos;
 }

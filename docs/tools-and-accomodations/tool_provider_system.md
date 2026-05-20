@@ -114,6 +114,70 @@ The same coordinator can be reused across section-player instances for a shared 
 - Tools omitted from placement are not shown, even if provider config exists.
 - Placement overrides from layout props are normalized on top of the runtime config.
 
+## Runtime Tool Context Resolvers
+
+Some tool decisions depend on the current item, not just static provider
+configuration. For example, a host may read item metadata and show a basic or
+scientific calculator only on items that request one. Section-player hosts can
+provide `runtime.toolContextResolvers` alongside the existing `runtime.tools`
+object:
+
+```ts
+const sectionPlayerRuntime = {
+  assessmentId: "demo",
+  tools: {
+    placement: {
+      item: ["calculator", "textToSpeech"],
+    },
+    providers: {
+      calculator: {
+        provider: {
+          runtime: { authFetcher: fetchDesmosAuthConfig },
+        },
+      },
+    },
+  },
+  toolContextResolvers: {
+    calculator: ({ context }) => {
+      const calculatorType = readCalculatorTypeFromItemMetadata(context);
+
+      if (!calculatorType) {
+        return {
+          visible: false,
+          reason: "Current item does not request a calculator.",
+        };
+      }
+
+      return {
+        visible: true,
+        params: {
+          calculatorType,
+          availableTypes: [calculatorType],
+        },
+      };
+    },
+  },
+};
+```
+
+Direct `<pie-assessment-toolkit>` consumers can pass the same resolver map as a
+JS property, or provide it when constructing `ToolkitCoordinator` explicitly.
+
+Resolver order is deliberately narrow:
+
+1. `tools.placement`, `tools.policy`, provider `enabled`, custom
+   `PolicySource`s, and PNP/profile rules decide the candidate tool set.
+2. A host resolver, when registered for a surviving tool, may hide that tool
+   for the current scope or attach render params.
+3. If no host resolver is registered, the tool registration uses its built-in
+   `isVisibleInContext` relevance check.
+4. The tool's `renderToolbar` receives params through
+   `toolbarContext.getToolRenderParams(toolId)`.
+
+This means host item metadata can decide calculator type without overriding
+the packaged tool registry, while district/test/PNP blocks still win earlier
+in the pipeline.
+
 ## Provider Configuration
 
 ### Browser TTS
@@ -226,17 +290,15 @@ Prefer those elements and the `coordinator` property over older orchestration pa
 Hosts that need direct access to runtime events or controller state should subscribe through the coordinator or section controller rather than coupling to internal component details.
 
 ```ts
+// Subscribe after the first `getOrCreateSectionController(...)` resolves.
+// The listener follows the toolkit's active section cohort across navigation.
 const unsubscribeItem = coordinator.subscribeItemEvents({
-  sectionId,
-  attemptId,
   listener: (event) => {
     console.log("item event", event);
   },
 });
 
 const unsubscribeSection = coordinator.subscribeSectionLifecycleEvents({
-  sectionId,
-  attemptId,
   listener: (event) => {
     console.log("section event", event);
   },
@@ -256,6 +318,10 @@ Typical examples:
 - `/api/tools/tts/google/token`
 
 Those endpoint names are host-owned. The tool system only requires that the configured provider runtime functions return the data the provider expects.
+
+For the production security contract these endpoints must meet
+(authentication, rate-limiting, secret boundaries, `assetOrigins`), see
+[`./tool_host_contract.md#backend-endpoints-for-tool-providers`](./tool_host_contract.md#backend-endpoints-for-tool-providers).
 
 ## Related Docs
 

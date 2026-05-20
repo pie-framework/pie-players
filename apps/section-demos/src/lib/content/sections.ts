@@ -12,6 +12,7 @@ import {
 	pie512SectionA,
 	pie512SectionB,
 } from "./pie-512-asymmetric-sections";
+import { demoKeyboardNavMcEbsrSection } from "./demo-keyboard-nav-mc-ebsr";
 
 export interface SectionDemoInfo {
 	id: string;
@@ -445,6 +446,22 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 			"Useful baseline before testing advanced persistence or server-hydration flows."
 		],
 		section: demo3Section,
+	},
+	"keyboard-nav-mc-ebsr": {
+		id: "keyboard-nav-mc-ebsr",
+		name: "Keyboard Nav in MC and EBSR",
+		description:
+			"Two multiple-choice and two EBSR items built around a WCAG keyboard-navigation passage — exercises radio roving-tabindex, checkbox Space-toggle, focus visibility, and accessible naming rules",
+		integrationLevel: 3,
+		integrationTheme: "Mixed element types",
+		focus:
+			"Validates that multiple-choice (radio) and EBSR (Part A radio + Part B checkbox) items render and respond to keyboard interaction correctly in a single section.",
+		whatMakesItTick: [
+			"Mixes `@pie-element/multiple-choice` (single-select radio) and `@pie-element/ebsr` (two-part radio + checkbox) in one section.",
+			"All questions reference a shared WCAG keyboard-accessibility passage so content and interaction type reinforce each other.",
+			"Pinned element versions (`multiple-choice@13.2.0-next.19`, `ebsr@14.2.0-next.19`) make this a reliable regression fixture for those pre-release builds.",
+		],
+		section: demoKeyboardNavMcEbsrSection,
 	},
 	"invalid-tools-config": {
 		id: "invalid-tools-config",

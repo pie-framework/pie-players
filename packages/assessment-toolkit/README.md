@@ -1425,7 +1425,11 @@ from tool configuration. Two sanitization layers apply:
   (PIE-94 / WCAG 1.4.10 Reflow at 400% zoom). The wrapper is
   keyboard-scrollable (`tabindex="0"`, `role="region"`) and carries
   the image's `alt` text in its `aria-label`; matching CSS lives in
-  `@pie-players/pie-theme` (`components.css`).
+  `@pie-players/pie-theme` (`components.css`). Authored `<table>`
+  elements outside a `pie-*` custom element get the same treatment via
+  `<div class="pie-table-scroll">` so wide data grids reflow into a
+  horizontally scrollable region; the wrapper's `aria-label` is derived
+  from the table's `aria-label` / `aria-labelledby` / `<caption>`.
 - **Tool icons and SSML** - tool-registered icon markup is parsed and
   DOMPurified inside the toolbar at render time; SSML payloads are
   restricted to an allow-listed subset of SSML tags/attributes before

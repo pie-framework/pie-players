@@ -34,7 +34,8 @@ export const demo2Section: AssessmentSection = {
 					// `@pie-players/pie-players-shared`. In a narrow passage column (or
 					// at 400% zoom) the image should surface its own horizontal scrollbar
 					// instead of being clipped — satisfying WCAG 1.4.10 Reflow while
-					// preserving the authored resolution.
+					// preserving the authored resolution. The authored <table> further
+					// down exercises the matching `wrapOverwideTables` transform.
 					markup: `<div class="passage">
             <h2>
               The Renaissance: A Cultural Rebirth
@@ -76,6 +77,74 @@ export const demo2Section: AssessmentSection = {
               could travel faster than ever before. This technological advancement democratized knowledge
               and helped transform European society from the medieval period into the early modern era.
             </p>
+
+            <table class="passage-table">
+              <caption>Estimated populations of major Renaissance city-states (c.&nbsp;1500)</caption>
+              <thead>
+                <tr>
+                  <th scope="col">City</th>
+                  <th scope="col">Region</th>
+                  <th scope="col">Estimated population</th>
+                  <th scope="col">Notable patron family</th>
+                  <th scope="col">Signature artists</th>
+                  <th scope="col">Major civic landmark</th>
+                  <th scope="col">Primary industry</th>
+                  <th scope="col">University founded</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Florence</td>
+                  <td>Tuscany</td>
+                  <td>70,000</td>
+                  <td>Medici</td>
+                  <td>Leonardo da Vinci, Michelangelo, Botticelli</td>
+                  <td>Cattedrale di Santa Maria del Fiore</td>
+                  <td>Banking, wool textiles</td>
+                  <td>1321</td>
+                </tr>
+                <tr>
+                  <td>Venice</td>
+                  <td>Veneto</td>
+                  <td>100,000</td>
+                  <td>Doge &amp; Council of Ten</td>
+                  <td>Titian, Giovanni Bellini, Tintoretto</td>
+                  <td>Basilica di San Marco</td>
+                  <td>Maritime trade, glassmaking</td>
+                  <td>1222 (nearby Padua)</td>
+                </tr>
+                <tr>
+                  <td>Rome</td>
+                  <td>Lazio</td>
+                  <td>55,000</td>
+                  <td>Papal States (Borgia, della Rovere)</td>
+                  <td>Raphael, Michelangelo, Bramante</td>
+                  <td>St. Peter's Basilica</td>
+                  <td>Pilgrimage, papal administration</td>
+                  <td>1303</td>
+                </tr>
+                <tr>
+                  <td>Milan</td>
+                  <td>Lombardy</td>
+                  <td>100,000</td>
+                  <td>Sforza</td>
+                  <td>Leonardo da Vinci, Bramante</td>
+                  <td>Castello Sforzesco</td>
+                  <td>Armaments, silk</td>
+                  <td>1361</td>
+                </tr>
+                <tr>
+                  <td>Naples</td>
+                  <td>Campania</td>
+                  <td>150,000</td>
+                  <td>House of Aragon</td>
+                  <td>Antonello da Messina</td>
+                  <td>Castel Nuovo</td>
+                  <td>Agriculture, Mediterranean trade</td>
+                  <td>1224</td>
+                </tr>
+              </tbody>
+            </table>
           </div>`,
 					elements: {},
 					models: [],

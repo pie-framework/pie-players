@@ -5,6 +5,12 @@
 		"module": "NodeNext",
 		"moduleResolution": "NodeNext",
 		"types": ["vite/client"],
+		"baseUrl": ".",
+		"paths": {
+			"@pie-players/pie-players-shared/components": [
+				"../players-shared/src/components/index.ts"
+			]
+		},
 		"composite": false,
 		"noUnusedLocals": false,
 		"noUnusedParameters": false

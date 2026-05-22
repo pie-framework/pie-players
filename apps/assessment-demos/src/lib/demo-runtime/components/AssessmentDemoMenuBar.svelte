@@ -1,5 +1,5 @@
 <script lang="ts">
-	import DebugPanelToggles from "@pie-players/pie-section-player-tools-shared/DebugPanelToggles.svelte";
+	import { DebugPanelToggles } from "@pie-players/pie-section-player-tools-shared";
 
 	interface Props {
 		sectionLayout: "splitpane" | "vertical";

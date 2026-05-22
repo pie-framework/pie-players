@@ -21,18 +21,15 @@
 		"wcag",
 		"learnosity"
 	],
-	"svelte": "./tool-color-scheme.svelte",
 	"main": "./dist/tool-color-scheme.js",
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/tool-color-scheme.js",
-			"svelte": "./tool-color-scheme.svelte"
+			"import": "./dist/tool-color-scheme.js"
 		}
 	},
 	"files": [
 		"dist",
-		"tool-color-scheme.svelte",
 		"package.json"
 	],
 	"license": "MIT",

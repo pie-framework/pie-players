@@ -5,9 +5,15 @@
 		"rootDir": "src",
 		"composite": true,
 		"declaration": true,
-		"declarationMap": true,
+		"declarationMap": false,
 		"moduleResolution": "NodeNext"
 	},
-	"include": ["src/**/*.ts", "src/**/*.d.ts"],
-	"exclude": ["dist", "node_modules"]
+	"include": [
+		"src/**/*.ts",
+		"src/**/*.d.ts"
+	],
+	"exclude": [
+		"dist",
+		"node_modules"
+	]
 }

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import SharedFloatingPanel from '@pie-players/pie-section-player-tools-shared/SharedFloatingPanel.svelte';
+	import { SharedFloatingPanel } from "@pie-players/pie-section-player-tools-shared";
 	import {
 		extractPackageInfo,
 		type ElementOverrides

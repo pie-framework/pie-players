@@ -2,7 +2,11 @@
 	"compilerOptions": {
 		"target": "ES2022",
 		"module": "NodeNext",
-		"lib": ["ES2022", "DOM", "DOM.Iterable"],
+		"lib": [
+			"ES2022",
+			"DOM",
+			"DOM.Iterable"
+		],
 		"moduleResolution": "NodeNext",
 		"strict": true,
 		"esModuleInterop": true,
@@ -11,11 +15,14 @@
 		"resolveJsonModule": true,
 		"isolatedModules": true,
 		"declaration": true,
-		"declarationMap": true,
+		"declarationMap": false,
 		"sourceMap": true,
+		"inlineSources": true,
 		"composite": true,
 		"outDir": "./dist",
 		"rootDir": "./src"
 	},
-	"include": ["src/**/*"]
+	"include": [
+		"src/**/*"
+	]
 }

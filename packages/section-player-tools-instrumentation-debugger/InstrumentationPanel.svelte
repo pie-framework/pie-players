@@ -21,7 +21,7 @@
 		subscribeInstrumentationDebugRecords,
 		type InstrumentationDebugRecord,
 	} from "@pie-players/pie-players-shared";
-	import SharedFloatingPanel from "@pie-players/pie-section-player-tools-shared/SharedFloatingPanel.svelte";
+	import { SharedFloatingPanel } from "@pie-players/pie-section-player-tools-shared";
 	import { createEventDispatcher, onDestroy } from "svelte";
 
 	const dispatch = createEventDispatcher<{ close: undefined }>();

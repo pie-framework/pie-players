@@ -20,7 +20,6 @@
 		"debugger",
 		"web-component"
 	],
-	"svelte": "./EventPanel.svelte",
 	"main": "./dist/section-player-tools-event-debugger.js",
 	"module": "./dist/section-player-tools-event-debugger.js",
 	"unpkg": "./dist/section-player-tools-event-debugger.js",
@@ -28,13 +27,11 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/section-player-tools-event-debugger.js",
-			"svelte": "./EventPanel.svelte"
+			"import": "./dist/section-player-tools-event-debugger.js"
 		}
 	},
 	"files": [
 		"dist",
-		"EventPanel.svelte",
 		"package.json"
 	],
 	"license": "MIT",

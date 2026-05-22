@@ -88,7 +88,23 @@ bun run verify:publish
 - pack exports check (`npm pack --dry-run` + export target verification)
 - pack smoke check (`npm pack` tarball verification)
 - Node consumer import boundary checks (`scripts/check-node-consumer-imports.mjs`)
-- dependency, source export policy, and runtime boundary checks
+- dependency, publish-surface, sourcemap, and runtime boundary checks
+
+## Dist-only publish surface
+
+Publishable packages expose generated `dist` artifacts as their public API. Package
+`exports`, `main`, `module`, `types`, CDN fields, and packed source-bearing files
+must not point at raw source paths such as `src`, root `.ts`/`.tsx`, `.svelte`,
+`.svelte.ts`, or `development` conditions that resolve to source.
+
+Debuggability is provided by generated sourcemaps, not by importable source files.
+`bun run check:sourcemaps` rejects packed `.js.map` files that reference source
+files missing from the npm tarball unless the map embeds source content.
+
+The common gates are:
+
+- `bun run check:publish-surface`
+- `bun run check:sourcemaps`
 
 ## Release intent in CI
 

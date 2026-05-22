@@ -19,7 +19,6 @@
 		"debugger",
 		"web-component"
 	],
-	"svelte": "./TtsSettingsPanel.svelte",
 	"main": "./dist/section-player-tools-tts-settings.js",
 	"module": "./dist/section-player-tools-tts-settings.js",
 	"unpkg": "./dist/section-player-tools-tts-settings.js",
@@ -27,13 +26,11 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/section-player-tools-tts-settings.js",
-			"svelte": "./TtsSettingsPanel.svelte"
+			"import": "./dist/section-player-tools-tts-settings.js"
 		}
 	},
 	"files": [
 		"dist",
-		"TtsSettingsPanel.svelte",
 		"package.json"
 	],
 	"license": "MIT",

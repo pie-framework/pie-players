@@ -15,8 +15,7 @@
 		}
 	},
 	"files": [
-		"dist",
-		"src"
+		"dist"
 	],
 	"scripts": {
 		"build": "bun x vite build && bun x tsc --emitDeclarationOnly",

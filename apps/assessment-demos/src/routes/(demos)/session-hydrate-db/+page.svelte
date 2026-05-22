@@ -15,7 +15,7 @@ import {
 	import "@pie-players/pie-section-player-tools-event-debugger";
 import "@pie-players/pie-section-player-tools-instrumentation-debugger";
 	import "@pie-players/pie-section-player-tools-session-debugger";
-	import SessionDbPanel from "@pie-players/pie-section-player-tools-shared/SessionDbPanel.svelte";
+	import { SessionDbPanel } from "@pie-players/pie-section-player-tools-shared";
 	import AssessmentDemoMenuBar from "$lib/demo-runtime/components/AssessmentDemoMenuBar.svelte";
 	import "@pie-players/pie-tool-text-to-speech";
 	import {

@@ -3,9 +3,13 @@
 	"compilerOptions": {
 		"target": "ES2020",
 		"module": "NodeNext",
-		"lib": ["ES2020", "DOM", "DOM.Iterable"],
+		"lib": [
+			"ES2020",
+			"DOM",
+			"DOM.Iterable"
+		],
 		"declaration": true,
-		"declarationMap": true,
+		"declarationMap": false,
 		"outDir": "./dist",
 		"rootDir": "./src",
 		"experimentalDecorators": true,
@@ -15,6 +19,11 @@
 		"esModuleInterop": true,
 		"skipLibCheck": true
 	},
-	"include": ["src/**/*"],
-	"exclude": ["node_modules", "dist"]
+	"include": [
+		"src/**/*"
+	],
+	"exclude": [
+		"node_modules",
+		"dist"
+	]
 }

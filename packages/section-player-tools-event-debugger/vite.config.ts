@@ -18,6 +18,14 @@ export default defineConfig({
 			include: ["**/*.ts", "**/*.svelte"],
 		}),
 	],
+	resolve: {
+		alias: {
+			"@pie-players/pie-section-player-tools-shared": resolve(
+				__dirname,
+				"../section-player-tools-shared/index.ts",
+			),
+		},
+	},
 	build: {
 		lib: {
 			entry: resolve(__dirname, "EventPanel.svelte"),

@@ -4,18 +4,23 @@
 		"outDir": "dist",
 		"rootDir": "src",
 		"declaration": true,
-		"declarationMap": true,
+		"declarationMap": false,
 		"composite": true,
 		"noUnusedLocals": false,
 		"noUnusedParameters": false,
 		"moduleResolution": "NodeNext",
 		"stripInternal": true
 	},
-	"include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.json"],
+	"include": [
+		"src/**/*.ts",
+		"src/**/*.d.ts",
+		"src/**/*.json"
+	],
 	"exclude": [
 		"node_modules",
 		"dist",
 		"build",
+		"src/**/*.svelte.ts",
 		"src/components/**",
 		"src/i18n/scripts/**"
 	]

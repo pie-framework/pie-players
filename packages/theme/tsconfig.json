@@ -4,11 +4,17 @@
 		"outDir": "dist",
 		"rootDir": "src",
 		"declaration": true,
-		"declarationMap": true,
+		"declarationMap": false,
 		"moduleResolution": "NodeNext",
 		"noUnusedLocals": false,
 		"noUnusedParameters": false
 	},
-	"include": ["src/**/*.ts"],
-	"exclude": ["dist", "node_modules", "src/**/*.test.ts"]
+	"include": [
+		"src/**/*.ts"
+	],
+	"exclude": [
+		"dist",
+		"node_modules",
+		"src/**/*.test.ts"
+	]
 }

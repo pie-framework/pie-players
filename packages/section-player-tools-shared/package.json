@@ -22,42 +22,19 @@
 	"module": "./dist/index.js",
 	"exports": {
 		".": {
-			"types": "./dist/index.d.ts",
-			"import": "./dist/index.js",
-			"svelte": "./index.ts"
-		},
-		"./PanelWindowControls.svelte": {
-			"types": "./dist/PanelWindowControls.svelte.d.ts",
-			"svelte": "./PanelWindowControls.svelte"
-		},
-		"./PanelResizeHandle.svelte": {
-			"types": "./dist/PanelResizeHandle.svelte.d.ts",
-			"svelte": "./PanelResizeHandle.svelte"
-		},
-		"./SharedFloatingPanel.svelte": {
-			"types": "./dist/SharedFloatingPanel.svelte.d.ts",
-			"svelte": "./SharedFloatingPanel.svelte"
-		},
-		"./SessionDbPanel.svelte": {
-			"types": "./dist/SessionDbPanel.svelte.d.ts",
-			"svelte": "./SessionDbPanel.svelte"
-		},
-		"./DebugPanelToggles.svelte": {
-			"types": "./dist/DebugPanelToggles.svelte.d.ts",
-			"svelte": "./DebugPanelToggles.svelte"
+			"types": "./dist/index.types.d.ts",
+			"import": "./dist/index.js"
 		}
 	},
 	"files": [
 		"dist",
-		"*.svelte",
-		"*.ts",
 		"package.json"
 	],
 	"license": "MIT",
 	"dependencies": {
 		"@pie-players/pie-theme": "workspace:*"
 	},
-	"types": "./dist/index.d.ts",
+	"types": "./dist/index.types.d.ts",
 	"scripts": {
 		"build": "vite build",
 		"dev": "vite build --watch",

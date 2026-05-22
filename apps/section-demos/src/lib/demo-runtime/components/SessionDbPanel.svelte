@@ -1,5 +1,5 @@
 <script lang="ts">
-	import SessionDbPanelShared from '@pie-players/pie-section-player-tools-shared/SessionDbPanel.svelte';
+	import { SessionDbPanel as SessionDbPanelShared } from "@pie-players/pie-section-player-tools-shared";
 
 	interface Props {
 		assessmentId: string;

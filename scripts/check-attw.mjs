@@ -39,7 +39,8 @@ const textTail = (value, length = DIAGNOSTIC_TAIL_LENGTH) => {
 };
 
 const runAttw = (dir) => {
-	const cmd = "bunx attw --pack --ignore-rules cjs-resolves-to-esm --format json -- .";
+	const cmd =
+		"bunx attw --pack --ignore-rules cjs-resolves-to-esm --format json -- .";
 	try {
 		const stdout = execSync(cmd, {
 			cwd: dir,
@@ -110,7 +111,8 @@ const flattenProblems = (problemsByKind) => {
 };
 
 const shouldSuppressProblem = (problem) => {
-	const entrypoint = typeof problem.entrypoint === "string" ? problem.entrypoint : "";
+	const entrypoint =
+		typeof problem.entrypoint === "string" ? problem.entrypoint : "";
 	const resolutionKind =
 		typeof problem.resolutionKind === "string" ? problem.resolutionKind : "";
 	const moduleSpecifier =
@@ -122,13 +124,8 @@ const shouldSuppressProblem = (problem) => {
 	if (problem.kind === "NoResolution") {
 		// Node10 is out of support for this repo (engines >=18 in publish policy checks).
 		if (resolutionKind === "node10") return true;
-		// ATTW cannot reliably model CSS-only and Svelte source entrypoints.
-		if (entrypoint.endsWith(".css") || entrypoint.endsWith(".svelte")) return true;
-	}
-
-	if (problem.kind === "InternalResolutionError") {
-		// Svelte source imports in declaration surfaces are a known ATTW limitation.
-		if (moduleSpecifier.endsWith(".svelte")) return true;
+		// ATTW cannot reliably model CSS-only entrypoints.
+		if (entrypoint.endsWith(".css")) return true;
 	}
 
 	return false;
@@ -164,7 +161,9 @@ const run = () => {
 				}
 			}
 			const problems = flattenProblems(report.problems);
-			const actionable = problems.filter((problem) => !shouldSuppressProblem(problem));
+			const actionable = problems.filter(
+				(problem) => !shouldSuppressProblem(problem),
+			);
 
 			for (const problem of problems) {
 				if (!shouldSuppressProblem(problem)) continue;
@@ -177,8 +176,9 @@ const run = () => {
 					name: pkg.name || path.basename(dir),
 					dir: path.relative(ROOT, dir),
 					error: actionable
-						.map((problem) =>
-							`${problem.kind} entrypoint=${problem.entrypoint || "n/a"} resolution=${problem.resolutionKind || problem.resolutionOption || "n/a"} module=${problem.moduleSpecifier || "n/a"}`,
+						.map(
+							(problem) =>
+								`${problem.kind} entrypoint=${problem.entrypoint || "n/a"} resolution=${problem.resolutionKind || problem.resolutionOption || "n/a"} module=${problem.moduleSpecifier || "n/a"}`,
 						)
 						.join("\n"),
 				});

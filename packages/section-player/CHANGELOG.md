@@ -1,5 +1,31 @@
 # @pie-players/pie-section-player
 
+## 0.3.44
+
+### Patch Changes
+
+- Lockstep release covering develop since 0.3.42:
+
+  - PIE-548: Integrate `<nds-icon-button>` for the calculator icon in `ItemToolBar`.
+  - PIE-565: Add `splitPaneInitialPassageWidth` prop to section-player layout components (split-pane / tabbed / vertical).
+  - PIE-553: Section-demos keyboard-navigation demo page; align `partLabels` default with KC.
+  - Test stability: audit and wire package test coverage; stabilize item-source-editor and section TTS e2e flows; keep item-player test mocks in sync.
+
+  Note: 0.3.43 was published manually from feat/PIE-546 without merging back to develop. This release re-issues the develop branch onto npm at 0.3.44 and brings local manifests back in sync with the published lockstep version.
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.44
+  - @pie-players/pie-context@0.3.44
+  - @pie-players/pie-item-player@0.3.44
+  - @pie-players/pie-players-shared@0.3.44
+  - @pie-players/pie-tool-annotation-toolbar@0.3.44
+  - @pie-players/pie-tool-calculator-desmos@0.3.44
+  - @pie-players/pie-tool-text-to-speech@0.3.44
+  - @pie-players/pie-tool-tts-inline@0.3.44
+  - @pie-players/pie-toolbars@0.3.44
+
 ## 0.3.42
 
 ### Patch Changes

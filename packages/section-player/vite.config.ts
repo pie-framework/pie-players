@@ -49,6 +49,14 @@ const assertNoEvalRequireInOutput = {
 };
 
 export default defineConfig({
+	resolve: {
+		alias: {
+			"@pie-players/pie-players-shared/ui/use-promise": resolve(
+				__dirname,
+				"../players-shared/src/ui/use-promise.svelte.ts",
+			),
+		},
+	},
 	plugins: [
 		svelte({
 			preprocess: vitePreprocess(),

@@ -15,6 +15,10 @@ export default defineConfig({
 	},
 	resolve: {
 		alias: {
+			"@pie-players/pie-section-player-tools-shared": resolve(
+				__dirname,
+				"../../packages/section-player-tools-shared/index.ts",
+			),
 			"@pie-players/pie-tool-calculator-desmos": resolve(
 				__dirname,
 				"../../packages/tool-calculator-desmos/dist/pie-tool-calculator.js",

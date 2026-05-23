@@ -67,6 +67,14 @@ const assertNoEvalRequireInOutput = {
 };
 
 export default defineConfig({
+	resolve: {
+		alias: {
+			"@pie-players/pie-players-shared/components": resolve(
+				__dirname,
+				"../players-shared/src/components/index.ts",
+			),
+		},
+	},
 	plugins: [
 		patchMathRenderingModuleEval,
 		svelte({

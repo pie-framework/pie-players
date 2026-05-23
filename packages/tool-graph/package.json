@@ -20,18 +20,15 @@
 		"coordinate",
 		"geometry"
 	],
-	"svelte": "./tool-graph.svelte",
 	"main": "./dist/tool-graph.js",
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/tool-graph.js",
-			"svelte": "./tool-graph.svelte"
+			"import": "./dist/tool-graph.js"
 		}
 	},
 	"files": [
 		"dist",
-		"tool-graph.svelte",
 		"package.json"
 	],
 	"license": "MIT",

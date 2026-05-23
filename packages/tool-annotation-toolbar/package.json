@@ -20,19 +20,15 @@
 		"highlighting",
 		"accessibility"
 	],
-	"svelte": "./tool-annotation-toolbar.svelte",
 	"main": "./dist/tool-annotation-toolbar.js",
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/tool-annotation-toolbar.js",
-			"svelte": "./tool-annotation-toolbar.svelte"
-		},
-		"./tool-annotation-toolbar.svelte": "./tool-annotation-toolbar.svelte"
+			"import": "./dist/tool-annotation-toolbar.js"
+		}
 	},
 	"files": [
 		"dist",
-		"tool-annotation-toolbar.svelte",
 		"package.json",
 		"README.md"
 	],

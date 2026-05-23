@@ -2,7 +2,11 @@
 	"compilerOptions": {
 		"target": "ES2022",
 		"module": "NodeNext",
-		"lib": ["ES2022", "DOM", "DOM.Iterable"],
+		"lib": [
+			"ES2022",
+			"DOM",
+			"DOM.Iterable"
+		],
 		"moduleResolution": "NodeNext",
 		"strict": true,
 		"esModuleInterop": true,
@@ -11,41 +15,96 @@
 		"resolveJsonModule": true,
 		"isolatedModules": true,
 		"declaration": true,
-		"declarationMap": true,
+		"declarationMap": false,
 		"sourceMap": true,
+		"inlineSources": true,
 		"composite": true,
 		"noUnusedLocals": true,
 		"noUnusedParameters": true,
 		"noImplicitReturns": true,
 		"noFallthroughCasesInSwitch": true,
-		"types": ["@types/bun"]
+		"types": [
+			"@types/bun"
+		]
 	},
 	"files": [],
 	"references": [
-		{ "path": "./apps/docs" },
-		{ "path": "./tools/cli" },
-		{ "path": "./packages/assessment-toolkit" },
-		{ "path": "./packages/pie-context" },
-		{ "path": "./packages/default-tool-loaders" },
-		{ "path": "./packages/item-player" },
-		{ "path": "./packages/players-shared" },
-		{ "path": "./packages/tool-annotation-toolbar" },
-		{ "path": "./packages/tool-answer-eliminator" },
-		{ "path": "./packages/tool-calculator-desmos" },
-		{ "path": "./packages/tool-color-scheme" },
-		{ "path": "./packages/tool-graph" },
-		{ "path": "./packages/tool-line-reader" },
-		{ "path": "./packages/tool-periodic-table" },
-		{ "path": "./packages/tool-protractor" },
-		{ "path": "./packages/tool-ruler" },
-		{ "path": "./packages/tool-text-to-speech" },
-		{ "path": "./packages/tool-toolbar" },
-		{ "path": "./packages/tts" },
-		{ "path": "./packages/tts-server-core" },
-		{ "path": "./packages/tts-server-polly" },
-		{ "path": "./packages/tts-client-server" },
-		{ "path": "./packages/calculator" },
-		{ "path": "./packages/calculator-desmos" }
+		{
+			"path": "./apps/docs"
+		},
+		{
+			"path": "./tools/cli"
+		},
+		{
+			"path": "./packages/assessment-toolkit"
+		},
+		{
+			"path": "./packages/pie-context"
+		},
+		{
+			"path": "./packages/default-tool-loaders"
+		},
+		{
+			"path": "./packages/item-player"
+		},
+		{
+			"path": "./packages/players-shared"
+		},
+		{
+			"path": "./packages/tool-annotation-toolbar"
+		},
+		{
+			"path": "./packages/tool-answer-eliminator"
+		},
+		{
+			"path": "./packages/tool-calculator-desmos"
+		},
+		{
+			"path": "./packages/tool-color-scheme"
+		},
+		{
+			"path": "./packages/tool-graph"
+		},
+		{
+			"path": "./packages/tool-line-reader"
+		},
+		{
+			"path": "./packages/tool-periodic-table"
+		},
+		{
+			"path": "./packages/tool-protractor"
+		},
+		{
+			"path": "./packages/tool-ruler"
+		},
+		{
+			"path": "./packages/tool-text-to-speech"
+		},
+		{
+			"path": "./packages/tool-toolbar"
+		},
+		{
+			"path": "./packages/tts"
+		},
+		{
+			"path": "./packages/tts-server-core"
+		},
+		{
+			"path": "./packages/tts-server-polly"
+		},
+		{
+			"path": "./packages/tts-client-server"
+		},
+		{
+			"path": "./packages/calculator"
+		},
+		{
+			"path": "./packages/calculator-desmos"
+		}
 	],
-	"exclude": ["node_modules", "dist", "build"]
+	"exclude": [
+		"node_modules",
+		"dist",
+		"build"
+	]
 }

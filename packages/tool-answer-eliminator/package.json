@@ -20,13 +20,11 @@
 		"wcag",
 		"accessibility"
 	],
-	"svelte": "./tool-answer-eliminator.svelte",
 	"main": "./dist/tool-answer-eliminator.js",
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/tool-answer-eliminator.js",
-			"svelte": "./tool-answer-eliminator.svelte"
+			"import": "./dist/tool-answer-eliminator.js"
 		},
 		"./adapters/adapter-registry": {
 			"types": "./dist/adapters/adapter-registry.d.ts",
@@ -35,11 +33,7 @@
 	},
 	"files": [
 		"dist",
-		"tool-answer-eliminator.svelte",
-		"package.json",
-		"answer-eliminator-core.ts",
-		"adapters/",
-		"strategies/"
+		"package.json"
 	],
 	"license": "MIT",
 	"unpkg": "./dist/tool-answer-eliminator.js",

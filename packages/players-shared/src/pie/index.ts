@@ -2,15 +2,11 @@
  * PIE Utilities Index
  *
  * Barrel export for backward compatibility.
- * For better tree-shaking, import directly from specific modules:
+ * Public consumers should import from this aggregate. The only supported
+ * deep `pie/*` subpath is `pie/tag-names` for tag helper reuse.
  *
- * - `pie/types` - Interfaces and enums
- * - `pie/registry` - Registry management
- * - `pie/utils` - URL building and session utilities
- * - `pie/config` - Config manipulation
- * - `pie/updates` - Element update functions
- * - `pie/scoring` - Scoring and controller lookup
- * - `pie/initialization` - Bundle loading and element initialization
+ * - `pie` - PIE runtime utilities, interfaces, and helpers
+ * - `pie/tag-names` - Custom element tag naming helpers
  */
 
 // Config

@@ -19,18 +19,15 @@
 		"reading",
 		"accessibility"
 	],
-	"svelte": "./tool-line-reader.svelte",
 	"main": "./dist/tool-line-reader.js",
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/tool-line-reader.js",
-			"svelte": "./tool-line-reader.svelte"
+			"import": "./dist/tool-line-reader.js"
 		}
 	},
 	"files": [
 		"dist",
-		"tool-line-reader.svelte",
 		"package.json"
 	],
 	"license": "MIT",

@@ -19,7 +19,7 @@
 
 <script lang="ts">
 	import "@pie-players/pie-theme/components.css";
-	import SharedFloatingPanel from "@pie-players/pie-section-player-tools-shared/SharedFloatingPanel.svelte";
+	import { SharedFloatingPanel } from "@pie-players/pie-section-player-tools-shared";
 	import {
 		getSectionControllerFromCoordinator,
 		isMatchingSectionControllerLifecycleEvent,

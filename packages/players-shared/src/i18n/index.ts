@@ -19,8 +19,3 @@ export type {
 	PluralTranslation,
 	TranslationBundle,
 } from "./types.js";
-export { useI18n } from "./use-i18n.svelte.js";
-export {
-	type UseI18nStandaloneConfig,
-	useI18nStandalone,
-} from "./use-i18n-standalone.svelte.js";

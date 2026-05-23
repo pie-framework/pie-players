@@ -1685,14 +1685,13 @@
 					>
 						{#if item.icon}
 							{#if item.icon === 'calculator'}
-								<nds-icon-button
+								<span
 									use:ndsIconButtonAction
-									variant="ghost"
-									size="small"
-									type="rounded"
-									icon-name="calculator"
-									button-aria-label="calculator"
-								></nds-icon-button>
+									class="item-toolbar__calculator-icon"
+									aria-hidden="true"
+								>
+									<i class="fa-light fa-calculator"></i>
+								</span>
 							{:else if isInlineSvgIcon(item.icon)}
 								<span aria-hidden="true">{@html sanitizeSvgIcon(item.icon)}</span>
 							{:else if isExternalIconUrl(item.icon)}
@@ -1720,17 +1719,13 @@
 					>
 						{#if item.icon}
 							{#if item.icon === 'calculator'}
-								<nds-icon-button
+								<span
 									use:ndsIconButtonAction
-									class="item-toolbar__nds-icon"
-									variant="ghost"
-									size="small"
-									type="rounded"
-									icon-name="calculator"
-									button-aria-label="calculator"
+									class="item-toolbar__calculator-icon"
 									aria-hidden="true"
-									tabindex="-1"
-								></nds-icon-button>
+								>
+									<i class="fa-light fa-calculator"></i>
+								</span>
 							{:else if isInlineSvgIcon(item.icon)}
 								<span aria-hidden="true">{@html sanitizeSvgIcon(item.icon)}</span>
 							{:else if isExternalIconUrl(item.icon)}
@@ -1946,10 +1941,13 @@
 		object-fit: contain;
 	}
 
-	/* Inner <nds-icon-button> is decorative — the outer item-toolbar button
-	   owns the click target, focus, and aria semantics. */
-	.item-toolbar__nds-icon {
+	/* Decorative only — the outer link/button owns focus and aria semantics. */
+	.item-toolbar__calculator-icon {
 		pointer-events: none;
 		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 100%;
+		height: 100%;
 	}
 </style>

@@ -497,21 +497,20 @@ test.describe("section player demo tts-ssml", () => {
 		const itemShells = page.locator('pie-item-shell[data-pie-shell-root="item"]');
 		const q1 = itemShells.nth(0);
 		const q2 = itemShells.nth(1);
-		const q3 = itemShells.nth(2);
 
 		// Passage is rendered and visible.
 		await expect(passageRegion).toBeVisible();
 		// Heading semantics can arrive a tick later than text content during hydration;
 		// assert on visible title text to avoid role-timing flakes.
 		await expect(
-			passageRegion.getByText("Understanding Quadratic Equations").first(),
+			passageRegion.getByText("One Formula, Every Quadratic").first(),
 		).toBeVisible({ timeout: 15_000 });
 		await expect(passageRegion.getByText("ax² + bx + c = 0")).toBeVisible();
 		await expect(passageRegion.getByText("x = (-b ± √(b² - 4ac)) / 2a")).toBeVisible();
 
-		// Three questions are rendered.
+		// Two questions are rendered.
 		await expect(itemsRegion).toBeVisible();
-		await expect(itemShells).toHaveCount(3);
+		await expect(itemShells).toHaveCount(2);
 
 		// Session panel shows and updates dynamically.
 		const sessionPanel = await openSessionPanel(page);
@@ -523,31 +522,19 @@ test.describe("section player demo tts-ssml", () => {
 		await expect(q1Radios).toHaveCount(4);
 		await q1Radios.first().click();
 
-		// Q2 keyboard interaction.
-		// Use role-only targeting here because math/markup rendering can subtly
-		// change accessible label text timing and whitespace across runs.
+		// Q2 text interaction.
 		await q2.scrollIntoViewIfNeeded();
-		const q2Radios = q2.getByRole("radio");
-		await expect(q2Radios).toHaveCount(4);
-		const q2FirstRadio = q2Radios.first();
-		await expect(q2FirstRadio).toBeVisible({ timeout: 10_000 });
-		await q2FirstRadio.focus();
-		await page.keyboard.press("ArrowDown");
-		await page.keyboard.press("Space");
-
-		// Q3 text interaction.
-		await q3.scrollIntoViewIfNeeded();
-		const q3TextInput = q3.getByRole("textbox").first();
-		await expect(q3TextInput).toBeVisible({ timeout: 10_000 });
-		await q3TextInput.fill(
-			"Factoring, completing the square, and the quadratic formula can solve quadratic equations.",
+		const q2TextInput = q2.getByRole("textbox").first();
+		await expect(q2TextInput).toBeVisible({ timeout: 10_000 });
+		await q2TextInput.fill(
+			"The PTA request is time-sensitive because the April deadline affects planning for the next event.",
 		);
-		await expect(q3TextInput).toContainText(/quadratic formula/i);
-		await q3.getByRole("button", { name: "Done", exact: true }).click();
+		await expect(q2TextInput).toContainText(/PTA request/i);
+		await q2.getByRole("button", { name: "Done", exact: true }).click();
 
 		// Session panel reflects interactions.
 		const snapshotCandidate = await readSessionSnapshot(sessionPanel);
-		expect(Object.keys(snapshotCandidate.itemSessions || {}).length).toBeGreaterThanOrEqual(2);
+		expect(Object.keys(snapshotCandidate.itemSessions || {}).length).toBeGreaterThanOrEqual(1);
 
 		// Keep core interaction checks independent from external provider credentials.
 		await forceBrowserTtsRuntime(page);
@@ -850,7 +837,7 @@ test.describe("section player demo tts-ssml", () => {
 		// Switch to scorer mode and confirm evaluate-mode rendering path.
 		await page.getByRole("link", { name: "Scorer" }).click();
 		await expect(page).toHaveURL(/mode=scorer/);
-		await expect(itemShells).toHaveCount(3);
+		await expect(itemShells).toHaveCount(2);
 
 		// In scorer mode, answers are review-only and include the expected canonical correct option.
 		const q1ScorerRadios = q1.getByRole("radio");
@@ -869,7 +856,7 @@ test.describe("section player demo tts-ssml", () => {
 		// Switch back to student mode and verify session state is carried.
 		await page.getByRole("link", { name: "Student" }).click();
 		await expect(page).toHaveURL(/mode=candidate/);
-		await expect(itemShells).toHaveCount(3);
+		await expect(itemShells).toHaveCount(2);
 		await expect(q1.getByRole("radio")).toHaveCount(4);
 		await expect(
 			q1.getByText(/The quadratic formula, because it works for all equations/i).first(),

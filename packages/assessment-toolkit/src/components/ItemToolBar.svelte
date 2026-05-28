@@ -155,25 +155,36 @@
 	// <nds-icon-button> renders into light DOM (createRenderRoot returns `this`),
 	// so document-scope FA stylesheets apply when the button is appended directly
 	// to document.body — which is how the calculator shell mounts its controls.
-	// The toolbar's NDS button, however, is rendered inside <pie-item-toolbar>'s
-	// own shadow root, and document.head <link> stylesheets don't cross that
-	// boundary. Replicate the FA cascade into the toolbar's shadow root the
-	// first time we mount an item that needs it.
+	// The toolbar's calculator glyph, however, is rendered inside
+	// <pie-item-toolbar>'s own shadow root, and document.head <link> stylesheets
+	// don't cross that boundary. Replicate the FA cascade into the toolbar's
+	// shadow root the first time we mount an item that needs it.
 	const FA_TOOLBAR_SHADOW_INSTALLED = '__pieFaToolbarShadowInstalled';
+	// Match any FA stylesheet href the host page already has loaded — covers
+	// `fontawesome.min.css`, `font-awesome.css`, `/_fa-pro/light.min.css`,
+	// `fontawesome-free@…`, etc. Cloning the host's actual FA <link> is what
+	// makes prod work: the previous hardcoded `/_fa-pro/` paths only resolve on
+	// hosts that proxy FA Pro themselves (e.g., section-demos dev server).
+	const FA_HREF_PATTERN = /font.?awesome|fa-?pro/i;
 	const installFaInToolbarShadow = (root: HTMLElement) => {
 		const shadow = root.getRootNode();
 		if (!(shadow instanceof ShadowRoot)) return;
 		const marker = shadow as ShadowRoot & { [FA_TOOLBAR_SHADOW_INSTALLED]?: boolean };
 		if (marker[FA_TOOLBAR_SHADOW_INSTALLED]) return;
 		marker[FA_TOOLBAR_SHADOW_INSTALLED] = true;
+		const seenHrefs = new Set<string>();
 		const appendLink = (href: string) => {
+			if (!href || seenHrefs.has(href)) return;
+			seenHrefs.add(href);
 			const link = document.createElement('link');
 			link.rel = 'stylesheet';
 			link.href = href;
 			shadow.appendChild(link);
 		};
-		appendLink(FA_FREE_HREF);
-		for (const href of FA_PRO_HREFS) appendLink(href);
+		const documentFaLinks = Array.from(
+			document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"][href]')
+		).filter((link) => FA_HREF_PATTERN.test(link.href));
+		for (const link of documentFaLinks) appendLink(link.href);
 		const shim = document.createElement('style');
 		shim.textContent =
 			'.fa-light{font-family:"Font Awesome 6 Free";font-weight:900;}';
@@ -184,6 +195,7 @@
 		installFaInToolbarShadow(node);
 		return {};
 	};
+
 	const fallbackToolRegistry = createPackagedToolRegistry({
 		toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS
 	});
@@ -804,10 +816,11 @@
 			controlsRowShouldExpandForActiveTool
 	);
 
-	// The toolbar's calculator button uses <nds-icon-button> as its icon glyph
-	// (Knowledge-Check Figma). Same vendored bundle the calculator shell header
-	// uses; FA + Roboto must be loaded before the inner <i class="fa-light
-	// fa-calculator"> can render.
+	// Prefetch FA + Roboto into document head as soon as we know a calculator
+	// icon will render. The shadow-root injection in `ndsIconButtonAction`
+	// clones whatever <link>s are already on the page; running this first means
+	// the prod-host's FA stylesheet is guaranteed to be present by the time the
+	// toolbar's calculator span mounts.
 	$effect(() => {
 		if (!isBrowser) return;
 		if (toolbarItems.some((item) => item.icon === 'calculator')) {
@@ -1949,5 +1962,11 @@
 		justify-content: center;
 		width: 100%;
 		height: 100%;
+	}
+
+	/* Defensive: if FA fails to load (shadow injection misses, CSP blocks the
+	   stylesheet, etc.), the <i> would otherwise render as italic text. */
+	.item-toolbar__calculator-icon > i {
+		font-style: normal;
 	}
 </style>

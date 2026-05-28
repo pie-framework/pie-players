@@ -15,6 +15,7 @@ import type {
 	ToolToolbarRenderResult,
 	ToolbarContext,
 } from "../../services/ToolRegistry.js";
+import type { ToolCoordinatorApi } from "../../services/interfaces.js";
 import type { ToolProviderConfig } from "../../services/tools-config-normalizer.js";
 import type { ToolContext } from "../../services/tool-context.js";
 import { hasMathContent } from "../../services/tool-context.js";
@@ -23,6 +24,48 @@ import { DesmosToolProvider } from "../../services/tool-providers/index.js";
 import { createToolElement } from "../tool-tag-map.js";
 
 type CalculatorType = "basic" | "scientific";
+
+// The toolbar parent re-derives `renderedTools` whenever item state changes
+// (e.g. the learner answers a question and `effectiveItem`/`renderContext`
+// recompute). Calculator initialization is expensive (Desmos boot, container
+// mount), so we cache the overlay element by coordinator + scoped tool id.
+// Reusing the same element keeps `mountContent` a no-op and avoids tearing
+// down and re-initializing the calculator on every re-render.
+const overlayElementCache = new WeakMap<
+	ToolCoordinatorApi,
+	Map<string, HTMLElement>
+>();
+
+function getCachedOverlay(
+	coordinator: ToolCoordinatorApi | null,
+	fullToolId: string,
+): HTMLElement | null {
+	if (!coordinator) return null;
+	const scoped = overlayElementCache.get(coordinator);
+	const element = scoped?.get(fullToolId);
+	if (!element) return null;
+	// Svelte custom elements destroy their component when disconnected.
+	// A detached cached element is a dead instance — drop it and recreate.
+	if (!element.isConnected) {
+		scoped?.delete(fullToolId);
+		return null;
+	}
+	return element;
+}
+
+function setCachedOverlay(
+	coordinator: ToolCoordinatorApi | null,
+	fullToolId: string,
+	element: HTMLElement,
+): void {
+	if (!coordinator) return;
+	let scoped = overlayElementCache.get(coordinator);
+	if (!scoped) {
+		scoped = new Map();
+		overlayElementCache.set(coordinator, scoped);
+	}
+	scoped.set(fullToolId, element);
+}
 
 function normalizeCalculatorType(value: unknown): CalculatorType | null {
 	return value === "basic" || value === "scientific" ? value : null;
@@ -156,16 +199,24 @@ export const calculatorToolRegistration: ToolRegistration = {
 			toolbarContext.scope.scopeId,
 		);
 		const componentOverrides = toolbarContext.componentOverrides;
-		const overlay = createToolElement(
-			this.toolId,
-			context,
-			toolbarContext,
-			componentOverrides,
-		) as HTMLElement & {
+		const cachedOverlay = getCachedOverlay(
+			toolbarContext.toolCoordinator,
+			fullToolId,
+		);
+		const overlay = (cachedOverlay ??
+			createToolElement(
+				this.toolId,
+				context,
+				toolbarContext,
+				componentOverrides,
+			)) as HTMLElement & {
 			visible?: boolean;
 			toolId?: string;
 			toolkitCoordinator?: unknown;
 		};
+		if (!cachedOverlay) {
+			setCachedOverlay(toolbarContext.toolCoordinator, fullToolId, overlay);
+		}
 		overlay.setAttribute("tool-id", fullToolId);
 		overlay.toolkitCoordinator = toolbarContext.toolkitCoordinator;
 		applyCalculatorParamsToElement(overlay, calculatorType, availableTypes);
@@ -188,7 +239,9 @@ export const calculatorToolRegistration: ToolRegistration = {
 			active: toolbarContext.isToolVisible(fullToolId),
 		};
 		let lastVisibleState: boolean | undefined = button.active;
-		overlay.visible = button.active;
+		if (overlay.visible !== button.active) {
+			overlay.visible = button.active;
+		}
 
 		return {
 			toolId: this.toolId,

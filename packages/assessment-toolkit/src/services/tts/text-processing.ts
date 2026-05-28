@@ -11,6 +11,7 @@ export const normalizeTextForSpeech = (text: string): string =>
 
 export const isElementHiddenForTTS = (element: Element): boolean => {
 	if ((element as HTMLElement).hidden) return true;
+	if (element.tagName?.toLowerCase() === "mjx-assistive-mml") return true;
 	if (element.getAttribute("aria-hidden") === "true") return true;
 	if (element.hasAttribute("inert")) return true;
 	const classList = (element as HTMLElement).classList;
@@ -52,6 +53,22 @@ export const isElementHiddenForTTS = (element: Element): boolean => {
 	return false;
 };
 
+export const isNodeHiddenForTTS = (
+	node: Node,
+	root?: Element | null,
+): boolean => {
+	let current =
+		node.nodeType === 1
+			? (node as Element)
+			: (node.parentElement as Element | null);
+	while (current) {
+		if (isElementHiddenForTTS(current)) return true;
+		if (root && current === root) break;
+		current = current.parentElement;
+	}
+	return false;
+};
+
 const shouldInsertBoundarySpace = (
 	previousChar: string | null,
 	nextChar: string | null,
@@ -65,8 +82,12 @@ const shouldInsertBoundarySpace = (
 		try {
 			const Segmenter = globalThis.Intl?.Segmenter;
 			if (typeof Segmenter === "function") {
-				const segmenter = new Segmenter(options?.locale, { granularity: "word" });
-				const segments = Array.from(segmenter.segment(`${previousChar}${nextChar}`));
+				const segmenter = new Segmenter(options?.locale, {
+					granularity: "word",
+				});
+				const segments = Array.from(
+					segmenter.segment(`${previousChar}${nextChar}`),
+				);
 				const wordLikeCount = segments.filter(
 					(segment) =>
 						(segment as { isWordLike?: boolean }).isWordLike !== false &&
@@ -108,7 +129,7 @@ export const collectVisibleTextAndMap = (
 	while (current) {
 		const textNode = current as Text;
 		const parent = textNode.parentElement;
-		if (parent && !isElementHiddenForTTS(parent)) {
+		if (parent && !isNodeHiddenForTTS(textNode, element)) {
 			const raw = textNode.textContent || "";
 			const firstVisibleMatch = raw.match(/\S/);
 			const firstVisibleChar = firstVisibleMatch ? firstVisibleMatch[0] : null;
@@ -116,7 +137,11 @@ export const collectVisibleTextAndMap = (
 			if (
 				!inLeadingWhitespace &&
 				!lastCharWasWhitespace &&
-				shouldInsertBoundarySpace(previousVisibleChar, firstVisibleChar, options)
+				shouldInsertBoundarySpace(
+					previousVisibleChar,
+					firstVisibleChar,
+					options,
+				)
 			) {
 				outChars.push(" ");
 				if (lastMapped) {

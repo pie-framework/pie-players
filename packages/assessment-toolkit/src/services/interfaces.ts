@@ -11,7 +11,9 @@
 import type { I18nServiceApi } from "@pie-players/pie-players-shared/i18n";
 import type {
 	AccessibilityCatalogResolver,
+	CatalogLookupContext,
 	CatalogLookupOptions,
+	CatalogOwnerContext,
 	CatalogStatistics,
 	CatalogType,
 	ResolvedCatalog,
@@ -243,6 +245,7 @@ export interface TtsServiceApi {
 		text: string,
 		options?: {
 			catalogId?: string;
+			catalogContext?: CatalogLookupContext;
 			language?: string;
 			contentElement?: Element;
 		},
@@ -361,6 +364,14 @@ export interface AccessibilityCatalogResolverApi {
 	 * Add item-level catalogs (called when rendering a new item)
 	 */
 	addItemCatalogs(catalogs: any[]): void;
+
+	/**
+	 * Register catalogs scoped to a mounted content owner.
+	 */
+	registerCatalogs?(
+		context: CatalogOwnerContext,
+		catalogs: any[],
+	): () => void;
 
 	/**
 	 * Clear item-level catalogs (called when leaving an item)

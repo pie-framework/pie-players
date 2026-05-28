@@ -8,10 +8,8 @@ import { demo6Section } from "./demo6-tabbed-layout";
 import { demo7Section } from "./demo7-heading-accessibility";
 import { demo8ToolVisibilitySection } from "./demo8-tool-visibility";
 import { demo9Section } from "./demo9-preloaded-fixed-elements";
-import {
-	pie512SectionA,
-	pie512SectionB,
-} from "./pie-512-asymmetric-sections";
+import { demo10TtsMathSection } from "./demo10-tts-math";
+import { pie512SectionA, pie512SectionB } from "./pie-512-asymmetric-sections";
 import { demoKeyboardNavMcEbsrSection } from "./demo-keyboard-nav-mc-ebsr";
 
 export interface SectionDemoInfo {
@@ -275,7 +273,8 @@ const sessionPersistencePageTwo: AssessmentSection = {
 								},
 								{
 									value: "b",
-									label: "Only religious institutions were allowed to buy paintings",
+									label:
+										"Only religious institutions were allowed to buy paintings",
 									correct: false,
 								},
 								{
@@ -285,7 +284,8 @@ const sessionPersistencePageTwo: AssessmentSection = {
 								},
 								{
 									value: "d",
-									label: "Artists were required to paint military victories only",
+									label:
+										"Artists were required to paint military victories only",
 									correct: false,
 								},
 							],
@@ -335,7 +335,8 @@ const sessionPersistencePageTwo: AssessmentSection = {
 								},
 								{
 									value: "d",
-									label: "Colonial expansion ended before artistic growth began",
+									label:
+										"Colonial expansion ended before artistic growth began",
 									correct: false,
 								},
 							],
@@ -370,8 +371,16 @@ const sessionPersistencePageTwo: AssessmentSection = {
 									label: "Rembrandt van Rijn and Johannes Vermeer",
 									correct: true,
 								},
-								{ value: "b", label: "Raphael and Michelangelo", correct: false },
-								{ value: "c", label: "El Greco and Caravaggio", correct: false },
+								{
+									value: "b",
+									label: "Raphael and Michelangelo",
+									correct: false,
+								},
+								{
+									value: "c",
+									label: "El Greco and Caravaggio",
+									correct: false,
+								},
 								{ value: "d", label: "Titian and Botticelli", correct: false },
 							],
 						},
@@ -394,7 +403,7 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		whatMakesItTick: [
 			"Single `assessmentItemRefs` entry keeps section composition minimal.",
 			"Standard multiple-choice PIE element mapping (`@pie-element/multiple-choice@latest`).",
-			"Uses shared route controls (mode/layout/player) without extra persistence complexity."
+			"Uses shared route controls (mode/layout/player) without extra persistence complexity.",
 		],
 		section: demo1Section,
 	},
@@ -410,7 +419,7 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 			"Passage content is supplied through `rubricBlocks` as a stimulus block.",
 			"Item and passage coexist in section JSON so layout and reading flow can be tested.",
 			"Passage markup embeds a 1792×592 Renaissance timeline image to verify `.pie-image-scroll` kicks in inside narrow columns and at 400% browser zoom (WCAG 1.4.10 Reflow).",
-			"Shared demo host allows switching between student/scorer and splitpane/vertical layouts."
+			"Shared demo host allows switching between student/scorer and splitpane/vertical layouts.",
 		],
 		section: demo2Section,
 	},
@@ -425,7 +434,7 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 			"Shows how a host can preload the exact PIE element bundle set a section needs and render the section-player with fixed item-player versions instead of `@latest`.",
 		whatMakesItTick: [
 			"Pins `@pie-element/passage@5.3.3`, `@pie-element/multiple-choice@11.4.3`, and `@pie-element/categorize@11.3.2` directly in `config.elements`.",
-			"Defaults the demo route to `player-type=\"preloaded\"`, so the host loads one bundle before rendering the section-player.",
+			'Defaults the demo route to `player-type="preloaded"`, so the host loads one bundle before rendering the section-player.',
 			"Keeps authored markup IDs and logical tag names stable; the player derives runtime versioned custom-element tags from the pinned package specs.",
 			"Disables section-demos element-version URL overrides so the pinned package specs remain the demo's source of truth.",
 		],
@@ -443,7 +452,7 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		whatMakesItTick: [
 			"Three distinct item refs in one section validate progression and state accumulation.",
 			"Same host toolchain as other demos enables easy side-by-side behavior comparison.",
-			"Useful baseline before testing advanced persistence or server-hydration flows."
+			"Useful baseline before testing advanced persistence or server-hydration flows.",
 		],
 		section: demo3Section,
 	},
@@ -475,9 +484,9 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		whatMakesItTick: [
 			"Uses an intentionally wrong nesting shape (`placement.section` as an object instead of array) to emulate common host wiring mistakes.",
 			"Shows deterministic framework error fallback UI and event diagnostics driven by toolkit initialization.",
-			"Designed as the canonical e2e target for config-error surfacing checks."
+			"Designed as the canonical e2e target for config-error surfacing checks.",
 		],
-		section: demo3Section
+		section: demo3Section,
 	},
 	"pnp-default-on": {
 		id: "pnp-default-on",
@@ -532,17 +541,33 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		id: "tts-ssml",
 		name: "TTS with SSML",
 		description:
-			"Three items with passage - demonstrates SSML extraction, AWS SSML tags, and SC-proxy-backed custom TTS",
+			"Focused TTS demo for SSML-driven pacing, emphasis, dates, acronyms, and provider-backed speech",
 		integrationLevel: 4,
-		integrationTheme: "JS API customization",
+		integrationTheme: "SSML TTS controls",
 		focus:
-			"Demonstrates text-to-speech behavior across plain text, authored SSML, and backend-specific SSML handling.",
+			"Demonstrates practical authored SSML controls for assessment passages and prompts.",
 		whatMakesItTick: [
 			"Defaults to a server-side SC proxy (`/api/tts/sc`) so auth remains off the client.",
-			"Section content intentionally mixes plain text and SSML-rich prompts/passages for comparison.",
-			"Toolkit tool config enables `textToSpeech` in item and passage placements."
+			"Uses SSML-rich passage and item content for math pacing, emphasized instructions, dates, and acronyms.",
+			"Toolkit tool config enables `textToSpeech` in item and passage placements.",
 		],
 		section: demo4Section,
+	},
+	"tts-math": {
+		id: "tts-math",
+		name: "TTS with MathML",
+		description:
+			"Focused TTS demo for automatic MathML and MathJax-style math speech generation",
+		integrationLevel: 4,
+		integrationTheme: "Math-aware TTS",
+		focus:
+			"Exercises PIE-native MathML-to-speech generation without requiring host or provider-specific math configuration.",
+		whatMakesItTick: [
+			"Passage and item prompts include structured MathML without embedded SSML.",
+			"One item uses a MathJax-style `data-mathml` attribute to exercise rendered-math extraction.",
+			"Toolkit tool config enables `textToSpeech` in item and passage placements.",
+		],
+		section: demo10TtsMathSection,
 	},
 	"tabbed-layout": {
 		id: "tabbed-layout",
@@ -572,7 +597,7 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		whatMakesItTick: [
 			"Passage includes image and audio assets served from local demo static files.",
 			"Items also embed media in prompt content to exercise item-level resource monitoring.",
-			"Instrumentation panel should show resource events such as `pie-resource-load`."
+			"Instrumentation panel should show resource events such as `pie-resource-load`.",
 		],
 		section: demo5Section,
 	},
@@ -588,7 +613,7 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		whatMakesItTick: [
 			"`ToolkitCoordinator` hook `createSectionSessionPersistence` routes load/save/clear to API endpoints.",
 			"Server bootstrap endpoint seeds section data before player hydration.",
-			"DB panel streams state updates and exposes raw/reconstructed/session-request views."
+			"DB panel streams state updates and exposes raw/reconstructed/session-request views.",
 		],
 		sections: [
 			{
@@ -640,10 +665,10 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		focus:
 			"Shows how data-heading paragraphs are promoted to semantic heading elements at a host-controlled level, and how the visually-hidden SR heading can be suppressed when the surrounding landmark already provides context.",
 		whatMakesItTick: [
-			"Item prompt contains `<p data-heading=\"heading1\">` and `<p data-heading=\"heading2\">` nodes.",
+			'Item prompt contains `<p data-heading="heading1">` and `<p data-heading="heading2">` nodes.',
 			"`baseHeadingLevel` passed via the section player `player` config prop causes those nodes to be rewritten to `<h2>` / `<h3>` (or whichever level the host chooses).",
 			"`includeSrHeading={false}` suppresses the visually-hidden heading injected at the top of the player.",
-			"Toggle controls in the demo let you flip both props live and inspect the resulting DOM."
+			"Toggle controls in the demo let you flip both props live and inspect the resulting DOM.",
 		],
 		section: demo7Section,
 	},

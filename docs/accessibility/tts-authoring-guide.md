@@ -81,7 +81,9 @@ Or use SSML in a catalog:
 
 **Problem:** "x² - 5x + 6 = 0" sounds like "x two minus five x plus six equals zero" (too fast, unclear)
 
-**Solution - Add SSML for controlled pacing:**
+**Default support:** PIE automatically looks for MathML in rendered content and converts supported expressions to natural-language speech before calling the configured TTS provider. This works across browser TTS and server-backed providers without a client-side "math support" setting.
+
+**Optional override - Add SSML for controlled pacing:**
 ```json
 {
   "accessibilityCatalogs": [{
@@ -313,12 +315,14 @@ Use `<prosody rate="slow">` for:
 
 **Bad:** "x² - 5x + 6 = 0" → "x two minus five x plus six equals zero"
 
-**Good:**
+**Good:** Let PIE generate speech from MathML when the rendered item contains structured math. Use authored SSML only when content needs exact pacing or a content-specific wording:
 ```xml
 <speak>
   <prosody rate="slow">x squared<break time="150ms"/> minus five x<break time="150ms"/> plus six<break time="200ms"/> equals zero</prosody>
 </speak>
 ```
+
+Authored spoken catalogs still take precedence over generated math speech.
 
 ### 5. Test Your SSML
 

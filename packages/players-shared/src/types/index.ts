@@ -132,6 +132,11 @@ export interface ConfigElements {
 export interface PieModel {
 	id: string;
 	element: string;
+	/**
+	 * QTI/APIP-style accessibility catalogs owned by this model's renderable fields
+	 * (prompt, choices, feedback, rationale, etc.).
+	 */
+	accessibilityCatalogs?: AccessibilityCatalog[];
 
 	[key: string]: any;
 }
@@ -161,6 +166,8 @@ export interface PassageEntity
 		ConfigContainerEntity,
 		SearchMetaDataEntity {
 	name: string;
+	/** QTI/APIP-style accessibility catalogs owned by this passage content. */
+	accessibilityCatalogs?: AccessibilityCatalog[];
 	retired?: boolean;
 	published?: boolean;
 	// Search result highlights from OpenSearch (keyed by field name)
@@ -173,6 +180,8 @@ export interface ItemEntity
 		SearchMetaDataEntity {
 	name?: string;
 	passage?: string | PassageEntity;
+	/** QTI/APIP-style accessibility catalogs owned by the item root. */
+	accessibilityCatalogs?: AccessibilityCatalog[];
 	retired?: boolean;
 	published?: boolean;
 	configuration?: any;
@@ -1003,4 +1012,3 @@ export interface CmsBlueprintItemEntity extends BaseEntity {
 	details?: string;
 	assessmentId?: string;
 }
-

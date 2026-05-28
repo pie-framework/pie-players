@@ -5,72 +5,77 @@
  * Supports filtering by language, gender, and voice type (WaveNet, Studio, Standard).
  */
 
-import { GoogleCloudTTSProvider } from "@pie-players/tts-server-google";
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
+import type { GoogleCloudTTSProvider as GoogleCloudTTSProviderType } from "@pie-players/tts-server-google";
 
 // Use singleton
-let googleProvider: GoogleCloudTTSProvider | null = null;
+let googleProvider: GoogleCloudTTSProviderType | null = null;
+const GOOGLE_TTS_PROVIDER_PACKAGE = "@pie-players/tts-server-google";
 
 /**
  * Get or initialize the Google provider
  */
-async function getGoogleProvider(): Promise<GoogleCloudTTSProvider> {
-	if (!googleProvider) {
-		console.log("[Google TTS API] Initializing Google Cloud TTS provider...");
+async function getGoogleProvider(): Promise<GoogleCloudTTSProviderType> {
+	if (googleProvider) return googleProvider;
 
-		// Check for API key (simple method)
-		const hasApiKey = !!process.env.GOOGLE_API_KEY;
-		// Check for service account credentials (advanced method)
-		const hasServiceAccount = !!process.env.GOOGLE_APPLICATION_CREDENTIALS;
+	console.log("[Google TTS API] Initializing Google Cloud TTS provider...");
 
-		console.log(
-			"[Google TTS API] GOOGLE_API_KEY:",
-			hasApiKey
-				? `set (${process.env.GOOGLE_API_KEY?.substring(0, 8)}...)`
-				: "missing",
-		);
-		console.log(
-			"[Google TTS API] GOOGLE_APPLICATION_CREDENTIALS:",
-			hasServiceAccount ? "set" : "missing",
-		);
-		console.log(
-			"[Google TTS API] GOOGLE_CLOUD_PROJECT:",
-			process.env.GOOGLE_CLOUD_PROJECT ? "set" : "missing",
-		);
+	// Check for API key (simple method)
+	const hasApiKey = !!process.env.GOOGLE_API_KEY;
+	// Check for service account credentials (advanced method)
+	const hasServiceAccount = !!process.env.GOOGLE_APPLICATION_CREDENTIALS;
 
-		// Require at least one authentication method
-		if (!hasApiKey && !hasServiceAccount) {
-			const errorMsg =
-				"Google Cloud credentials not configured. Please set either:\n" +
-				"  - GOOGLE_API_KEY (simpler, for testing)\n" +
-				"  - GOOGLE_APPLICATION_CREDENTIALS (recommended for production, path to service account JSON)";
-			console.error(`[Google TTS API] ${errorMsg}`);
-			throw new Error(errorMsg);
-		}
+	console.log(
+		"[Google TTS API] GOOGLE_API_KEY:",
+		hasApiKey
+			? `set (${process.env.GOOGLE_API_KEY?.substring(0, 8)}...)`
+			: "missing",
+	);
+	console.log(
+		"[Google TTS API] GOOGLE_APPLICATION_CREDENTIALS:",
+		hasServiceAccount ? "set" : "missing",
+	);
+	console.log(
+		"[Google TTS API] GOOGLE_CLOUD_PROJECT:",
+		process.env.GOOGLE_CLOUD_PROJECT ? "set" : "missing",
+	);
 
-		googleProvider = new GoogleCloudTTSProvider();
-
-		// Build credentials object based on what's available
-		let credentials: string | { apiKey: string } | undefined;
-		if (hasApiKey) {
-			console.log("[Google TTS API] Using API key authentication");
-			credentials = { apiKey: process.env.GOOGLE_API_KEY! };
-		} else if (hasServiceAccount) {
-			console.log("[Google TTS API] Using service account authentication");
-			credentials = process.env.GOOGLE_APPLICATION_CREDENTIALS;
-		}
-
-		await googleProvider.initialize({
-			projectId: process.env.GOOGLE_CLOUD_PROJECT || "pie-tts-project",
-			credentials,
-			defaultVoice: "en-US-Wavenet-A",
-			voiceType: "wavenet",
-		});
-
-		console.log("[Google TTS API] Provider initialized successfully");
+	// Require at least one authentication method
+	if (!hasApiKey && !hasServiceAccount) {
+		const errorMsg =
+			"Google Cloud credentials not configured. Please set either:\n" +
+			"  - GOOGLE_API_KEY (simpler, for testing)\n" +
+			"  - GOOGLE_APPLICATION_CREDENTIALS (recommended for production, path to service account JSON)";
+		console.error(`[Google TTS API] ${errorMsg}`);
+		throw new Error(errorMsg);
 	}
-	return googleProvider;
+
+	const { GoogleCloudTTSProvider } = await import(
+		/* @vite-ignore */ GOOGLE_TTS_PROVIDER_PACKAGE
+	);
+	const provider = new GoogleCloudTTSProvider();
+
+	// Build credentials object based on what's available
+	let credentials: string | { apiKey: string } | undefined;
+	if (hasApiKey) {
+		console.log("[Google TTS API] Using API key authentication");
+		credentials = { apiKey: process.env.GOOGLE_API_KEY! };
+	} else if (hasServiceAccount) {
+		console.log("[Google TTS API] Using service account authentication");
+		credentials = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+	}
+
+	await provider.initialize({
+		projectId: process.env.GOOGLE_CLOUD_PROJECT || "pie-tts-project",
+		credentials,
+		defaultVoice: "en-US-Wavenet-A",
+		voiceType: "wavenet",
+	});
+
+	console.log("[Google TTS API] Provider initialized successfully");
+	googleProvider = provider;
+	return provider;
 }
 
 /**

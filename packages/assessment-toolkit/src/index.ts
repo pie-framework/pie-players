@@ -77,7 +77,10 @@ export type {
 
 // Accessibility Catalog Resolver (QTI 3.0 Accessibility Catalogs)
 export type {
+	CatalogLookupContext,
 	CatalogLookupOptions,
+	CatalogOwnerContext,
+	CatalogOwnerKind,
 	CatalogStatistics,
 	CatalogType,
 	ResolvedCatalog,

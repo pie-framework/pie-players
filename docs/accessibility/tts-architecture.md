@@ -53,6 +53,7 @@ See also:
 - Includes `BrowserTTSProvider` as the default, always-available fallback
 - Integrates with QTI 3.0 accessibility catalogs
 - **Automatic SSML extraction** from embedded `<speak>` tags
+- **Automatic math speech generation** from rendered MathML via Speech Rule Engine
 - Coordinates with HighlightCoordinator for word highlighting
 
 ### 3. Server-Side TTS Architecture (New)
@@ -251,6 +252,8 @@ This normalization:
 - Removes leading/trailing whitespace
 - Collapses multiple spaces/tabs/newlines into single spaces
 - Ensures character positions align between spoken text and DOM
+
+Math content is a special case. When PIE finds supported MathML in the read target, it converts that MathML to natural-language speech before provider playback. The visible DOM text still drives sentence/region highlighting and seek state. Word-level highlighting may downgrade for generated math speech because provider speech marks are not guaranteed to align with rendered mathematical notation.
 
 #### Why Normalization is Critical
 

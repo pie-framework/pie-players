@@ -2,6 +2,21 @@ import type {
 	AccessibilityCatalog,
 	CatalogCard,
 } from "@pie-players/pie-players-shared/types";
+import { sanitizeSsmlString } from "./SSMLExtractor.js";
+
+export type CatalogOwnerKind = "global" | "passage" | "itemModel";
+
+export interface CatalogOwnerContext {
+	ownerKind: CatalogOwnerKind;
+	assessmentId?: string;
+	sectionId?: string;
+	canonicalItemId?: string;
+	itemId?: string;
+	passageId?: string;
+	modelId?: string;
+}
+
+export type CatalogLookupContext = CatalogOwnerContext;
 
 /**
  * Supported accessibility catalog types from QTI 3.0 / APIP
@@ -26,6 +41,8 @@ export interface CatalogLookupOptions {
 	language?: string;
 	/** Fallback to default language if requested language not found */
 	useFallback?: boolean;
+	/** Scope used to resolve local catalog idrefs for rendered content */
+	context?: CatalogLookupContext;
 }
 
 /**
@@ -89,6 +106,13 @@ export interface CatalogStatistics {
 export class AccessibilityCatalogResolver {
 	private assessmentCatalogs: Map<string, AccessibilityCatalog> = new Map();
 	private itemCatalogs: Map<string, AccessibilityCatalog> = new Map();
+	private scopedCatalogs = new Map<
+		string,
+		{
+			context: CatalogOwnerContext;
+			catalogs: Map<string, AccessibilityCatalog>;
+		}
+	>();
 	private defaultLanguage: string = "en";
 
 	constructor(
@@ -123,9 +147,53 @@ export class AccessibilityCatalogResolver {
 		const targetMap =
 			source === "assessment" ? this.assessmentCatalogs : this.itemCatalogs;
 
-		for (const catalog of catalogs) {
+		for (const catalog of this.sanitizeCatalogs(catalogs)) {
+			if (targetMap.has(catalog.identifier)) {
+				console.warn(
+					`[AccessibilityCatalogResolver] Duplicate ${source} catalog "${catalog.identifier}" ignored`,
+				);
+				continue;
+			}
 			targetMap.set(catalog.identifier, catalog);
 		}
+	}
+
+	registerCatalogs(
+		context: CatalogOwnerContext,
+		catalogs?: AccessibilityCatalog[],
+	): () => void {
+		if (!catalogs || catalogs.length === 0) return () => {};
+		const key = this.getOwnerKey(context);
+		const existing = this.scopedCatalogs.get(key);
+		const scoped =
+			existing?.catalogs ?? new Map<string, AccessibilityCatalog>();
+		const insertedIds: string[] = [];
+		for (const catalog of this.sanitizeCatalogs(catalogs)) {
+			if (scoped.has(catalog.identifier)) {
+				console.warn(
+					`[AccessibilityCatalogResolver] Duplicate scoped catalog "${catalog.identifier}" ignored for ${key}`,
+				);
+				continue;
+			}
+			scoped.set(catalog.identifier, catalog);
+			insertedIds.push(catalog.identifier);
+		}
+		if (!existing) {
+			this.scopedCatalogs.set(key, {
+				context: { ...context },
+				catalogs: scoped,
+			});
+		}
+		return () => {
+			const current = this.scopedCatalogs.get(key);
+			if (current?.catalogs !== scoped) return;
+			for (const insertedId of insertedIds) {
+				current.catalogs.delete(insertedId);
+			}
+			if (current.catalogs.size === 0) {
+				this.scopedCatalogs.delete(key);
+			}
+		};
 	}
 
 	/**
@@ -148,7 +216,11 @@ export class AccessibilityCatalogResolver {
 	 */
 	hasCatalog(catalogId: string): boolean {
 		return (
-			this.itemCatalogs.has(catalogId) || this.assessmentCatalogs.has(catalogId)
+			this.itemCatalogs.has(catalogId) ||
+			this.assessmentCatalogs.has(catalogId) ||
+			Array.from(this.scopedCatalogs.values()).some((owner) =>
+				owner.catalogs.has(catalogId),
+			)
 		);
 	}
 
@@ -161,6 +233,45 @@ export class AccessibilityCatalogResolver {
 		catalogId: string,
 		options: CatalogLookupOptions,
 	): ResolvedCatalog | null {
+		const scopedCatalog = options.context
+			? this.scopedCatalogs
+					.get(this.getOwnerKey(options.context))
+					?.catalogs.get(catalogId)
+			: null;
+		if (scopedCatalog) {
+			const card = this.findMatchingCard(scopedCatalog, options);
+			if (card) {
+				return {
+					catalogId,
+					type: card.catalog,
+					language: card.language,
+					content: card.content,
+					source: "item",
+				};
+			}
+		}
+		if (options.context) {
+			const candidates = this.findScopedCandidates(catalogId, options.context);
+			if (candidates.length === 1) {
+				const card = this.findMatchingCard(candidates[0], options);
+				if (card) {
+					return {
+						catalogId,
+						type: card.catalog,
+						language: card.language,
+						content: card.content,
+						source: "item",
+					};
+				}
+			} else if (candidates.length > 1) {
+				console.warn(
+					`[AccessibilityCatalogResolver] Ambiguous scoped catalog "${catalogId}" for owner context`,
+					options.context,
+				);
+				return null;
+			}
+		}
+
 		// Check item-level first (higher precedence)
 		const itemCatalog = this.itemCatalogs.get(catalogId);
 		if (itemCatalog) {
@@ -192,6 +303,75 @@ export class AccessibilityCatalogResolver {
 		}
 
 		return null;
+	}
+
+	private getOwnerKey(context: CatalogOwnerContext): string {
+		return [
+			context.ownerKind,
+			context.assessmentId || "",
+			context.sectionId || "",
+			context.canonicalItemId || "",
+			context.itemId || "",
+			context.passageId || "",
+			context.modelId || "",
+		].join("|");
+	}
+
+	private findScopedCandidates(
+		catalogId: string,
+		context: CatalogOwnerContext,
+	): AccessibilityCatalog[] {
+		return Array.from(this.scopedCatalogs.values())
+			.filter((owner) => this.isCompatibleOwnerContext(owner.context, context))
+			.map((owner) => owner.catalogs.get(catalogId))
+			.filter((catalog): catalog is AccessibilityCatalog => Boolean(catalog));
+	}
+
+	private isCompatibleOwnerContext(
+		registered: CatalogOwnerContext,
+		lookup: CatalogOwnerContext,
+	): boolean {
+		if (registered.ownerKind !== lookup.ownerKind) return false;
+		if (
+			lookup.assessmentId &&
+			registered.assessmentId !== lookup.assessmentId
+		) {
+			return false;
+		}
+		if (lookup.sectionId && registered.sectionId !== lookup.sectionId) {
+			return false;
+		}
+		if (
+			lookup.canonicalItemId &&
+			registered.canonicalItemId !== lookup.canonicalItemId
+		) {
+			return false;
+		}
+		if (lookup.itemId && registered.itemId !== lookup.itemId) {
+			return false;
+		}
+		if (lookup.passageId && registered.passageId !== lookup.passageId) {
+			return false;
+		}
+		if (lookup.modelId && registered.modelId !== lookup.modelId) {
+			return false;
+		}
+		return true;
+	}
+
+	private sanitizeCatalogs(
+		catalogs: AccessibilityCatalog[],
+	): AccessibilityCatalog[] {
+		return catalogs.map((catalog) => ({
+			...catalog,
+			cards: catalog.cards.map((card) => ({
+				...card,
+				content:
+					card.catalog === "spoken"
+						? sanitizeSsmlString(card.content)
+						: card.content,
+			})),
+		}));
 	}
 
 	/**
@@ -305,9 +485,20 @@ export class AccessibilityCatalogResolver {
 		}
 
 		return {
-			totalCatalogs: this.assessmentCatalogs.size + this.itemCatalogs.size,
+			totalCatalogs:
+				this.assessmentCatalogs.size +
+				this.itemCatalogs.size +
+				Array.from(this.scopedCatalogs.values()).reduce(
+					(total, owner) => total + owner.catalogs.size,
+					0,
+				),
 			assessmentCatalogs: this.assessmentCatalogs.size,
-			itemCatalogs: this.itemCatalogs.size,
+			itemCatalogs:
+				this.itemCatalogs.size +
+				Array.from(this.scopedCatalogs.values()).reduce(
+					(total, owner) => total + owner.catalogs.size,
+					0,
+				),
 			availableTypes: allTypes,
 			availableLanguages: allLanguages,
 		};
@@ -348,6 +539,7 @@ export class AccessibilityCatalogResolver {
 	reset(): void {
 		this.assessmentCatalogs.clear();
 		this.itemCatalogs.clear();
+		this.scopedCatalogs.clear();
 	}
 
 	/**

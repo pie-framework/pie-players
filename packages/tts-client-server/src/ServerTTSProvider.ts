@@ -714,10 +714,31 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 		})();
 
 		if (!response.ok) {
-			const errorData = await response.json().catch(() => ({}));
+			const rawBody = await response.text().catch(() => "");
+			let errorData: Record<string, unknown> = {};
+			if (rawBody) {
+				try {
+					errorData = JSON.parse(rawBody) as Record<string, unknown>;
+				} catch (parseError) {
+					console.warn(
+						"[ServerTTSProvider] non-OK response body was not JSON",
+						{
+							status: response.status,
+							url: synthUrl,
+							rawBodyPreview: rawBody.slice(0, 500),
+							parseError:
+								parseError instanceof Error
+									? parseError.message
+									: String(parseError),
+						},
+					);
+				}
+			}
 			const errorMessage =
-				errorData.message ||
-				errorData.error?.message ||
+				(typeof errorData.message === "string" && errorData.message) ||
+				(typeof (errorData.error as { message?: string })?.message === "string"
+					? (errorData.error as { message: string }).message
+					: undefined) ||
 				`Server returned ${response.status}`;
 			await this.emitTelemetry("pie-tool-backend-call-error", {
 				toolId: "tts",
@@ -727,6 +748,17 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 				statusCode: response.status,
 				errorType: "TTSBackendRequestError",
 				message: errorMessage,
+			});
+			const textPreview = text.replace(/\s+/g, " ").trim().slice(0, 120);
+			console.error("[ServerTTSProvider] synthesize request failed", {
+				status: response.status,
+				url: synthUrl,
+				backend: this.config.provider || "server",
+				message: errorMessage,
+				responseBody: errorData,
+				textLength: text.length,
+				textPreview:
+					textPreview.length < text.length ? `${textPreview}…` : textPreview,
 			});
 			throw new Error(errorMessage);
 		}

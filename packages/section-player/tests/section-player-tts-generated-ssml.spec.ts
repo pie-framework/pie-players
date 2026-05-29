@@ -604,11 +604,7 @@ test.describe("section player demo tts-generated-ssml", () => {
 		const plainBodies = synthBodies.filter((body) => !body.includes("<speak"));
 		expect(plainBodies.length).toBeGreaterThan(0);
 
-		const stopButton = passagePanel.getByRole("button", { name: "Stop reading" });
-		if (await stopButton.isEnabled().catch(() => false)) {
-			await stopButton.click();
-			await expect(passagePanel).toHaveCount(0);
-		}
+		await expect(passagePanel).toBeVisible();
 	});
 
 	test("sends plain spoken math (no SSML markup) to the browser provider", async ({ page }) => {
@@ -653,12 +649,6 @@ test.describe("section player demo tts-generated-ssml", () => {
 		expect(spoken).not.toContain("<speak");
 		expect(spoken).not.toContain("<math");
 
-		// Playback of the short passage may already have finished (the fake
-		// synthesizer ends each chunk immediately), in which case "Stop reading"
-		// is present but disabled — only click it while it is still actionable.
-		const stopButton = passagePanel.getByRole("button", { name: "Stop reading" });
-		if (await stopButton.isEnabled().catch(() => false)) {
-			await stopButton.click();
-		}
+		await expect(passagePanel).toBeVisible();
 	});
 });

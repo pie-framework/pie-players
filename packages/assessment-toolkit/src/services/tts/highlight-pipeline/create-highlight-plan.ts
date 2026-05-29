@@ -18,6 +18,11 @@ import type {
 
 export interface CreateTTSHighlightPlanArgs {
 	chunks: TTSHighlightChunk[];
+	// When false, math is never broken into per-token highlights: every equation
+	// is painted as a single block — the same expression/region fallback used
+	// whenever token alignment is not confident. Prose word tracking is
+	// unaffected. Defaults to true.
+	mathTokenHighlighting?: boolean;
 }
 
 interface PlannedChunk {
@@ -125,14 +130,22 @@ const wouldEscalateInsideTokenMath = (
 	);
 };
 
-const createPlannedChunk = (chunk: TTSHighlightChunk): PlannedChunk => ({
+const createPlannedChunk = (
+	chunk: TTSHighlightChunk,
+	mathTokenHighlighting: boolean,
+): PlannedChunk => ({
 	chunk,
 	regionTarget: regionTargetFor(chunk),
 	renderedMathTargetResolver: createRenderedMathTargetResolver(),
 	mathCapabilityByElement: new Map(
 		chunk.mathAlignments.map(({ element }) => [
 			element,
-			classifyMathHighlightCapability(element),
+			// Forcing "expression" when per-token math highlighting is disabled
+			// routes every equation through the sticky whole-block path, so the
+			// formula is highlighted as one unit instead of glyph by glyph.
+			mathTokenHighlighting
+				? classifyMathHighlightCapability(element)
+				: "expression",
 		]),
 	),
 	heldTokenByElement: new Map(),
@@ -141,8 +154,12 @@ const createPlannedChunk = (chunk: TTSHighlightChunk): PlannedChunk => ({
 export const createTTSHighlightPlan = (
 	args: CreateTTSHighlightPlanArgs,
 ): TTSHighlightPlan => {
+	const mathTokenHighlighting = args.mathTokenHighlighting !== false;
 	const plannedChunksById = new Map(
-		args.chunks.map((chunk) => [chunk.id, createPlannedChunk(chunk)]),
+		args.chunks.map((chunk) => [
+			chunk.id,
+			createPlannedChunk(chunk, mathTokenHighlighting),
+		]),
 	);
 	return {
 		chunks: args.chunks,
@@ -196,7 +213,11 @@ export const createTTSHighlightPlan = (
 						)
 					: null) || null;
 			const mathTokenTarget =
-				mathTarget && mathTarget.quality !== "expression" ? mathTarget : null;
+				mathTokenHighlighting &&
+				mathTarget &&
+				mathTarget.quality !== "expression"
+					? mathTarget
+					: null;
 			const mathExpressionFallback =
 				mathTarget && mathTarget.quality === "expression" ? mathTarget : null;
 
@@ -221,10 +242,14 @@ export const createTTSHighlightPlan = (
 			// precise; a coarse math expression fallback must never override it.
 			// Exception: a multi-node prose range inside a token-mode equation
 			// would escalate to the whole expression, so it is rejected here and
-			// falls through to the token hold below.
+			// falls through to the token hold below. When per-token math
+			// highlighting is disabled, any prose range that lands inside a
+			// formula is likewise rejected so the formula stays a single block.
 			if (
 				proseTarget &&
-				!wouldEscalateInsideTokenMath(planned, proseTarget, mathCandidates)
+				(mathTokenHighlighting
+					? !wouldEscalateInsideTokenMath(planned, proseTarget, mathCandidates)
+					: mathCandidates.length === 0)
 			) {
 				return createHighlightDecision({
 					semanticTarget: proseTarget,

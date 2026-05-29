@@ -825,4 +825,54 @@ describe("TTS highlight pipeline", () => {
 			quality: "region",
 		});
 	});
+
+	test("highlights the whole formula as a block when math token highlighting is disabled", () => {
+		const math = document.createElementNS(
+			"http://www.w3.org/1998/Math/MathML",
+			"math",
+		);
+		math.innerHTML = "<mi>x</mi><mo>+</mo><mn>1</mn>";
+		const alignment = createMathAwareAlignment({
+			mathElement: math,
+			speechText: "x plus 1",
+		});
+		const chunk = makeChunk({
+			speechText: "x plus 1",
+			visibleText: "x+1",
+			sourceElement: math,
+			regionElement: math,
+			mathAlignments: [{ element: math, alignment }],
+		});
+
+		const plan = createTTSHighlightPlan({
+			chunks: [chunk],
+			mathTokenHighlighting: false,
+		});
+
+		// Up front the formula is painted as one block (forced expression mode),
+		// not held on the region layer awaiting a first token.
+		const initial = plan.resolveInitial(chunk.id);
+		expect(initial.activeTarget).toMatchObject({
+			type: "element",
+			quality: "expression",
+		});
+
+		// A boundary that would normally resolve the "+" token (see "resolves pure
+		// MathML boundaries") now keeps the whole formula highlighted instead of
+		// breaking it into glyphs.
+		const decision = plan.resolveBoundary({
+			chunkId: chunk.id,
+			word: "plus",
+			position: "x ".length,
+			length: "plus".length,
+			providerOffsetSpace: "plain-spoken-text",
+		});
+		expect(decision.activeTarget).toMatchObject({
+			type: "element",
+			quality: "expression",
+		});
+		expect(
+			(decision.activeTarget as { element: Element }).element.localName,
+		).toBe("math");
+	});
 });

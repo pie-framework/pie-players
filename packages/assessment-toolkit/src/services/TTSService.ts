@@ -1726,8 +1726,16 @@ export class TTSService {
 					chunks: [chunk],
 				})[0]
 			: null;
+		// Carried through the config channel (see buildRuntimeTTSConfig); defaults
+		// to per-token math highlighting unless a host explicitly disables it.
+		const mathTokenHighlighting =
+			(this.ttsConfig as { mathTokenHighlighting?: boolean })
+				.mathTokenHighlighting !== false;
 		const highlightPlan = pipelineChunk
-			? createTTSHighlightPlan({ chunks: [pipelineChunk] })
+			? createTTSHighlightPlan({
+					chunks: [pipelineChunk],
+					mathTokenHighlighting,
+				})
 			: null;
 		if (highlightPlan && pipelineChunk && chunk.mathAlignment) {
 			this.renderHighlightDecision(

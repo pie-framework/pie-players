@@ -204,8 +204,8 @@ await ttsService.speak('Hello world', {
 // Auto-detect from DOM element
 // Note: the actual method signature is ttsService.speak(text, { catalogId, contentElement }),
 // not ttsService.speakElement(). Example:
-const element = document.querySelector('[data-catalog-id]');
-const catalogId = element.getAttribute('data-catalog-id');
+const element = document.querySelector('[data-catalog-idref]');
+const catalogId = element.getAttribute('data-catalog-idref');
 await ttsService.speak(element.textContent, { catalogId, contentElement: element });
 // Automatically uses catalog if catalogId resolves
 ```

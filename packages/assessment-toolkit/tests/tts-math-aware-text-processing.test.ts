@@ -59,6 +59,7 @@ describe("math-aware TTS text processing", () => {
 			type: "math",
 			fallbackText: "1 2",
 		});
+		expect(mathChunks[0]?.sourceElement.localName).toBe("math");
 		expect(mathChunks[0]?.mathml).toContain("<math");
 		expect(mathChunks[0]?.mathml).toContain("<mfrac>");
 	});

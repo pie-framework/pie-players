@@ -500,13 +500,11 @@ test.describe("section player demo tts-ssml", () => {
 
 		// Passage is rendered and visible.
 		await expect(passageRegion).toBeVisible();
-		// Heading semantics can arrive a tick later than text content during hydration;
-		// assert on visible title text to avoid role-timing flakes.
 		await expect(
-			passageRegion.getByText("One Formula, Every Quadratic").first(),
+			passageRegion.getByText("The Quadratic Formula").first(),
 		).toBeVisible({ timeout: 15_000 });
-		await expect(passageRegion.getByText("ax² + bx + c = 0")).toBeVisible();
-		await expect(passageRegion.getByText("x = (-b ± √(b² - 4ac)) / 2a")).toBeVisible();
+		await expect(passageRegion.locator("math").first()).toBeVisible();
+		await expect(passageRegion.locator("p.formula math")).toBeVisible();
 
 		// Two questions are rendered.
 		await expect(itemsRegion).toBeVisible();

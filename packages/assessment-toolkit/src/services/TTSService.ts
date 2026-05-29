@@ -27,22 +27,40 @@ import type {
 	CatalogLookupContext,
 	ResolvedCatalog,
 } from "./AccessibilityCatalogResolver.js";
+import { HighlightColor, HighlightType } from "./HighlightCoordinator.js";
 import type { HighlightCoordinatorApi } from "./interfaces.js";
 import { BrowserTTSProvider } from "./tts/browser-provider.js";
 import {
 	type BoundarySpacingMode,
 	collectVisibleTextAndMap,
-	extractVisibleText as extractVisibleTextFromDOM,
 	isElementHiddenForTTS,
 	isNodeHiddenForTTS,
+	type NormalizedTextMap,
 	normalizeTextForSpeech,
 } from "./tts/text-processing.js";
+import {
+	createCatalogSpanAlignment,
+	type CatalogChunkPlaybackMode,
+	type CatalogSpanAlignment,
+} from "./tts/catalog-span-alignment.js";
+import {
+	createMathAwareAlignment,
+	type MathAwareAlignment,
+} from "./tts/math-alignment/index.js";
 import { collectMathAwareTextAndMap } from "./tts/math-aware-text-processing.js";
 import { resolveMathSpeechFromChunks } from "./tts/math-speech.js";
 import {
 	segmentSentences as segmentTextToSentences,
 	type SentenceSegment as SharedSentenceSegment,
 } from "./tts/text-segmentation.js";
+import {
+	createTTSHighlightPlan,
+	normalizeSpeechChunks,
+	resolveReadableRegion,
+	type ChunkOffsetSpace,
+	type HighlightDecision,
+	type RenderableHighlightTarget,
+} from "./tts/highlight-pipeline/index.js";
 import {
 	PIE_TTS_CONTROL_HANDOFF_EVENT,
 	type TTSControlHandoffDetail,
@@ -99,7 +117,13 @@ interface SpeechCompositionChunk {
 	speechText: string;
 	visibleText: string;
 	sourceElement: Element | null;
+	regionElement?: Element | null;
 	speechMatchesVisibleText: boolean;
+	playbackMode?: CatalogChunkPlaybackMode;
+	alignment?: CatalogSpanAlignment;
+	mathAlignment?: MathAwareAlignment;
+	mathAlignments?: Array<{ element: Element; alignment: MathAwareAlignment }>;
+	visibleMap?: NormalizedTextMap;
 }
 
 interface ResolvedSpeechContent {
@@ -148,7 +172,35 @@ export class TTSService {
 		  ) => void | Promise<void>)
 		| null = null;
 
+	// Verbose alignment/highlight tracing is opt-in: it is expensive (large
+	// objects, a full text diff per utterance) and noisy in production. Enable
+	// with `PIE_TTS_DEBUG=1` or `globalThis.__PIE_TTS_DEBUG__ = true`.
+	private static readonly debugEnabled = ((): boolean => {
+		try {
+			if (
+				typeof process !== "undefined" &&
+				process.env?.PIE_TTS_DEBUG === "1"
+			) {
+				return true;
+			}
+		} catch {
+			// `process` is not defined in the browser; fall through to the global.
+		}
+		return (
+			(globalThis as { __PIE_TTS_DEBUG__?: unknown }).__PIE_TTS_DEBUG__ === true
+		);
+	})();
+
 	constructor() {}
+
+	private debugLog(message: string, detail?: unknown): void {
+		if (!TTSService.debugEnabled) return;
+		if (detail === undefined) {
+			console.debug(message);
+		} else {
+			console.debug(message, detail);
+		}
+	}
 
 	private async emitTelemetry(
 		eventName: string,
@@ -221,11 +273,11 @@ export class TTSService {
 		}
 
 		// If the provider implementation has an updateSettings method, use it
-		if (
-			"updateSettings" in this.provider &&
-			typeof (this.provider as any).updateSettings === "function"
-		) {
-			await (this.provider as any).updateSettings(settings);
+		const provider = this.provider as {
+			updateSettings?: (settings: Partial<TTSConfig>) => Promise<void> | void;
+		};
+		if (typeof provider.updateSettings === "function") {
+			await provider.updateSettings(settings);
 			this.ttsConfig = { ...this.ttsConfig, ...settings };
 		} else {
 			// Fallback: Reinitialize with merged config
@@ -302,7 +354,9 @@ export class TTSService {
 		);
 		this.normalizedToDOM = map;
 
-		console.log("[TTSService] Text comparison:", {
+		if (!TTSService.debugEnabled) return;
+
+		this.debugLog("[TTSService] Text comparison:", {
 			spokenLength: spokenText.length,
 			normalizedDomLength: normalizedDomText.length,
 			match: spokenText === normalizedDomText,
@@ -337,7 +391,7 @@ export class TTSService {
 						})(),
 		});
 
-		console.log("[TTSService] Position map built:", {
+		this.debugLog("[TTSService] Position map built:", {
 			entries: this.normalizedToDOM.size,
 			spokenTextLength: spokenText.length,
 			normalizedDomLength: normalizedDomText.length,
@@ -415,13 +469,6 @@ export class TTSService {
 
 	private isElementHidden(element: Element): boolean {
 		return isElementHiddenForTTS(element);
-	}
-
-	private extractVisibleText(element: Element, language?: string): string {
-		return extractVisibleTextFromDOM(
-			element,
-			this.getTextProcessingOptions(language),
-		);
 	}
 
 	private getBoundaryStrength(element: Element): StructuralPauseStrength {
@@ -735,7 +782,9 @@ export class TTSService {
 			try {
 				await providerWithPlan.speakSegments(segments);
 			} finally {
-				this.provider.onWordBoundary = originalOnWordBoundary;
+				if (runId === this.speakRunId && this.provider === providerWithPlan) {
+					this.provider.onWordBoundary = originalOnWordBoundary;
+				}
 			}
 			return;
 		}
@@ -875,58 +924,58 @@ export class TTSService {
 			throw new Error("TTS service not initialized");
 		}
 		const runId = ++this.speakRunId;
-		await this.applyLanguageSettings(options);
-		if (runId !== this.speakRunId) return;
-		const resolvedContent = await this.resolveSpeechContent(text, options);
-		if (runId !== this.speakRunId) return;
-		const {
-			contentToSpeak,
-			speechText,
-			highlightText,
-			normalizedText,
-			usedCatalogSpoken,
-			speechSource,
-			speechMatchesVisibleText,
-			speechChunks,
-		} = resolvedContent;
-		this.logResolvedSpeechContent({
-			contentToSpeak,
-			speechSource,
-			catalogId: options?.catalogId,
-		});
-		this.initializeSpeakTracking(highlightText, options);
-		const highlightMode =
-			options?.highlightModeOverride ||
-			(speechMatchesVisibleText ? this.resolveHighlightMode() : "sentence");
-		this.activeHighlightMode = highlightMode;
-		const hasExplicitBreaks = this.hasExplicitBreakSemantics(contentToSpeak);
-		const shouldUsePlan =
-			!!this.currentContentElement &&
-			!usedCatalogSpoken &&
-			!hasExplicitBreaks &&
-			speechMatchesVisibleText;
-		this.seekSegments =
-			hasExplicitBreaks || !speechMatchesVisibleText
-				? []
-				: shouldUsePlan && this.currentContentElement
-					? this.createSpeechPlan(this.currentContentElement, normalizedText)
-					: this.createSeekSegmentsFromText(highlightText);
-		this.sentenceHighlightSegments = hasExplicitBreaks
-			? []
-			: this.createSentenceHighlightSegments({
-					contentToSpeak: highlightText,
-					shouldUsePlan,
-					playbackSegments: this.seekSegments,
-				});
-		this.setState(PlaybackState.LOADING);
-		this.prepareHighlightsForSpeak({
-			contentToSpeak: highlightText,
-			options,
-			highlightMode,
-			shouldUsePlan,
-		});
-
 		try {
+			await this.applyLanguageSettings(options);
+			if (runId !== this.speakRunId) return;
+			const resolvedContent = await this.resolveSpeechContent(text, options);
+			if (runId !== this.speakRunId) return;
+			const {
+				contentToSpeak,
+				speechText,
+				highlightText,
+				normalizedText,
+				usedCatalogSpoken,
+				speechSource,
+				speechMatchesVisibleText,
+				speechChunks,
+			} = resolvedContent;
+			this.logResolvedSpeechContent({
+				contentToSpeak,
+				speechSource,
+				catalogId: options?.catalogId,
+			});
+			this.initializeSpeakTracking(highlightText, options);
+			const highlightMode =
+				options?.highlightModeOverride ||
+				(speechMatchesVisibleText ? this.resolveHighlightMode() : "sentence");
+			this.activeHighlightMode = highlightMode;
+			const hasExplicitBreaks = this.hasExplicitBreakSemantics(contentToSpeak);
+			const shouldUsePlan =
+				!!this.currentContentElement &&
+				!usedCatalogSpoken &&
+				!hasExplicitBreaks &&
+				speechMatchesVisibleText;
+			this.seekSegments =
+				hasExplicitBreaks || !speechMatchesVisibleText
+					? []
+					: shouldUsePlan && this.currentContentElement
+						? this.createSpeechPlan(this.currentContentElement, normalizedText)
+						: this.createSeekSegmentsFromText(highlightText);
+			this.sentenceHighlightSegments = hasExplicitBreaks
+				? []
+				: this.createSentenceHighlightSegments({
+						contentToSpeak: highlightText,
+						shouldUsePlan,
+						playbackSegments: this.seekSegments,
+					});
+			this.setState(PlaybackState.LOADING);
+			this.prepareHighlightsForSpeak({
+				contentToSpeak: highlightText,
+				options,
+				highlightMode,
+				shouldUsePlan,
+			});
+
 			if (speechMatchesVisibleText) {
 				this.configureWordBoundaryHighlighting({
 					highlightMode,
@@ -1117,7 +1166,7 @@ export class TTSService {
 				const normalizedCatalogText = normalizeTextForSpeech(
 					catalogContent.content,
 				);
-				console.debug(
+				this.debugLog(
 					`[TTSService] Using catalog content for "${options.catalogId}" (${catalogContent.language})`,
 				);
 				return {
@@ -1132,7 +1181,7 @@ export class TTSService {
 					speechMatchesVisibleText: normalizedCatalogText === visibleText,
 				};
 			}
-			console.debug(
+			this.debugLog(
 				`[TTSService] No catalog found for "${options.catalogId}", falling back to generated TTS`,
 			);
 		}
@@ -1218,9 +1267,7 @@ export class TTSService {
 			});
 		};
 		const resolveCatalog = (element: Element): ResolvedCatalog | null => {
-			const catalogIdRef =
-				element.getAttribute("data-catalog-idref") ||
-				element.getAttribute("data-catalog-id");
+			const catalogIdRef = element.getAttribute("data-catalog-idref");
 			if (!catalogIdRef) return null;
 			return this.catalogResolver!.getAlternative(catalogIdRef, {
 				type: "spoken",
@@ -1228,6 +1275,31 @@ export class TTSService {
 				useFallback: true,
 				context: options.catalogContext,
 			});
+		};
+		const getSingleMathElementForAlignment = (
+			element: Element,
+			visibleText: string,
+		): Element | null => {
+			const mathElements = getMathElementsForAlignment(element);
+			if (mathElements.length !== 1) return null;
+			const mathElement = mathElements[0];
+			const mathVisibleText =
+				collectMathAwareTextAndMap(
+					mathElement,
+					this.getTextProcessingOptions(options.language),
+				).visibleText || normalizeTextForSpeech(mathElement.textContent || "");
+			const compact = (value: string) =>
+				normalizeTextForSpeech(value).replace(/\s+/g, "");
+			return compact(mathVisibleText) === compact(visibleText)
+				? mathElement
+				: null;
+		};
+		const getMathElementsForAlignment = (element: Element): Element[] => {
+			const mathElements = Array.from(element.querySelectorAll("math"));
+			if (element.localName?.toLowerCase() === "math") {
+				return [element, ...mathElements];
+			}
+			return mathElements;
 		};
 		const visit = (node: Node) => {
 			if (isNodeHiddenForTTS(node, root)) return;
@@ -1240,17 +1312,48 @@ export class TTSService {
 			const catalog = resolveCatalog(element);
 			if (catalog) {
 				flushTextBuffer();
+				const collectedVisible = collectMathAwareTextAndMap(
+					element,
+					this.getTextProcessingOptions(options.language),
+				);
 				const visibleText =
-					collectMathAwareTextAndMap(
-						element,
-						this.getTextProcessingOptions(options.language),
-					).visibleText || normalizeTextForSpeech(element.textContent || "");
+					collectedVisible.visibleText ||
+					normalizeTextForSpeech(element.textContent || "");
+				const alignment = createCatalogSpanAlignment({
+					speechText: catalog.content,
+					visibleText,
+				});
+				const mathElement = getSingleMathElementForAlignment(
+					element,
+					visibleText,
+				);
+				const mathAlignment = mathElement
+					? createMathAwareAlignment({
+							mathElement,
+							speechText: catalog.content,
+						})
+					: undefined;
+				const mathAlignments = mathAlignment
+					? undefined
+					: getMathElementsForAlignment(element).map((candidate) => ({
+							element: candidate,
+							alignment: createMathAwareAlignment({
+								mathElement: candidate,
+								speechText: catalog.content,
+							}),
+						}));
 				const speechText = normalizeTextForSpeech(catalog.content);
 				chunks.push({
 					speechText: catalog.content,
 					visibleText,
 					sourceElement: element,
+					regionElement: resolveReadableRegion(element, root),
 					speechMatchesVisibleText: speechText === visibleText,
+					playbackMode: alignment.playbackMode,
+					alignment,
+					mathAlignment,
+					mathAlignments,
+					visibleMap: collectedVisible.map,
 				});
 				return;
 			}
@@ -1277,6 +1380,7 @@ export class TTSService {
 			| "normalizedText"
 			| "containsMathMarkup"
 			| "speechMatchesVisibleText"
+			| "speechChunks"
 		>
 	> {
 		const extracted = collectMathAwareTextAndMap(
@@ -1295,10 +1399,61 @@ export class TTSService {
 				speechMatchesVisibleText: true,
 			};
 		}
-		const generated = await resolveMathSpeechFromChunks(extracted.chunks, {
-			language,
-		});
-		const speechText = generated.speechText || visibleText;
+		const speechChunks: SpeechCompositionChunk[] = [];
+		let visibleCursor = 0;
+		const nextVisibleSpan = (text: string): { start: number; end: number } => {
+			const normalized = normalizeTextForSpeech(text);
+			const found = visibleText.indexOf(normalized, visibleCursor);
+			const start = found >= 0 ? found : visibleCursor;
+			const end = start + normalized.length;
+			visibleCursor = end;
+			return { start, end };
+		};
+		for (const chunk of extracted.chunks) {
+			if (chunk.type === "text") {
+				const visibleSpan = nextVisibleSpan(chunk.text);
+				const alignment = createCatalogSpanAlignment({
+					speechText: chunk.text,
+					visibleText: chunk.text,
+				});
+				speechChunks.push({
+					speechText: chunk.text,
+					visibleText: chunk.text,
+					sourceElement: contentElement,
+					regionElement: resolveReadableRegion(contentElement, contentElement),
+					speechMatchesVisibleText: true,
+					playbackMode: alignment.playbackMode,
+					alignment,
+					visibleMap: this.sliceVisibleMap(
+						extracted.map,
+						visibleSpan.start,
+						visibleSpan.end,
+					),
+				});
+				continue;
+			}
+			nextVisibleSpan(chunk.fallbackText);
+			const generatedChunk = await resolveMathSpeechFromChunks([chunk], {
+				language,
+			});
+			const speechText = generatedChunk.speechText || chunk.fallbackText;
+			speechChunks.push({
+				speechText,
+				visibleText: chunk.fallbackText,
+				sourceElement: chunk.sourceElement || null,
+				regionElement: chunk.sourceElement || null,
+				speechMatchesVisibleText: speechText === chunk.fallbackText,
+				mathAlignment: chunk.sourceElement
+					? createMathAwareAlignment({
+							mathElement: chunk.sourceElement,
+							speechText,
+						})
+					: undefined,
+			});
+		}
+		const speechText = normalizeTextForSpeech(
+			speechChunks.map((chunk) => chunk.speechText).join(" "),
+		);
 		return {
 			contentToSpeak: speechText,
 			speechText,
@@ -1307,6 +1462,7 @@ export class TTSService {
 			normalizedText: visibleText,
 			containsMathMarkup: true,
 			speechMatchesVisibleText: speechText === visibleText,
+			speechChunks,
 		};
 	}
 
@@ -1319,7 +1475,7 @@ export class TTSService {
 			.replace(/\s+/g, " ")
 			.trim()
 			.slice(0, 200);
-		console.debug("[TTSService] Speak resolved content", {
+		this.debugLog("[TTSService] Speak resolved content", {
 			source: args.speechSource,
 			catalogId: args.catalogId || null,
 			length: args.contentToSpeak.length,
@@ -1361,7 +1517,7 @@ export class TTSService {
 				initialSegment.startOffset,
 				initialSegment.text,
 			);
-			console.log("[TTSService] Applied initial sentence highlighting");
+			this.debugLog("[TTSService] Applied initial sentence highlighting");
 		} else {
 			try {
 				const range = document.createRange();
@@ -1403,7 +1559,7 @@ export class TTSService {
 						highlightRange.start,
 						highlightRange.end,
 					) || "";
-				console.log(
+				this.debugLog(
 					`[TTSService] Highlighting "${highlightText}" (word: "${word}") at position ${globalIndex}`,
 				);
 				this.highlightCoordinator.highlightTTSWord(
@@ -1419,9 +1575,230 @@ export class TTSService {
 		};
 	}
 
+	private sliceVisibleMap(
+		map: NormalizedTextMap,
+		start: number,
+		end: number,
+	): NormalizedTextMap {
+		const sliced: NormalizedTextMap = new Map();
+		for (let index = start; index < end; index++) {
+			const mapping = map.get(index);
+			if (mapping) {
+				sliced.set(index - start, mapping);
+			}
+		}
+		return sliced;
+	}
+
 	private clearWordBoundaryHighlighting(): void {
 		if (this.provider) {
 			this.provider.onWordBoundary = undefined;
+		}
+	}
+
+	private highlightCatalogRegion(chunk: SpeechCompositionChunk): void {
+		const element = chunk.regionElement || chunk.sourceElement;
+		if (!element || !this.highlightCoordinator) return;
+		try {
+			const range = document.createRange();
+			range.selectNodeContents(element);
+			this.highlightCoordinator.clearHighlights?.(HighlightType.TTS_WORD);
+			this.highlightCoordinator.highlightTTSSentence([range]);
+		} catch {
+			// Continue playback even when a detached node cannot be highlighted.
+		}
+	}
+
+	private highlightCatalogActiveRange(range: Range): void {
+		if (!this.highlightCoordinator) return;
+		if (
+			range.startContainer === range.endContainer &&
+			range.startContainer.nodeType === Node.TEXT_NODE
+		) {
+			this.highlightCoordinator.highlightTTSWord(
+				range.startContainer as Text,
+				range.startOffset,
+				range.endOffset,
+			);
+			return;
+		}
+		this.highlightCoordinator.highlightRange(
+			range,
+			HighlightType.TTS_WORD,
+			HighlightColor.YELLOW,
+		);
+	}
+
+	private highlightRenderableRegionTarget(
+		target: RenderableHighlightTarget | null,
+	): void {
+		if (
+			!this.highlightCoordinator ||
+			!target ||
+			typeof document === "undefined"
+		) {
+			return;
+		}
+		try {
+			const range = document.createRange();
+			if (target.type === "element") {
+				range.selectNodeContents(target.element);
+			} else if (target.type === "range") {
+				this.highlightCoordinator.highlightTTSSentence([target.range]);
+				return;
+			} else {
+				range.setStart(target.node, target.startOffset);
+				range.setEnd(target.node, target.endOffset);
+			}
+			this.highlightCoordinator.highlightTTSSentence([range]);
+		} catch {
+			// Continue playback even when a detached node cannot be highlighted.
+		}
+	}
+
+	private highlightRenderableActiveTarget(
+		target: RenderableHighlightTarget | null,
+	): void {
+		if (!this.highlightCoordinator || typeof document === "undefined") {
+			return;
+		}
+		if (!target) {
+			// No active word for this boundary — an unresolved prose word, an SSML
+			// break/pause, or a token-mode equation still awaiting its first token.
+			// Clear the word layer so the previously spoken word does not stay
+			// highlighted. (The "hold last token" behavior returns a non-null
+			// target, so it does not reach here.)
+			this.highlightCoordinator.clearHighlights(HighlightType.TTS_WORD);
+			return;
+		}
+		if (target.type === "text-range") {
+			this.highlightCoordinator.highlightTTSWord(
+				target.node,
+				target.startOffset,
+				target.endOffset,
+			);
+			return;
+		}
+		if (target.type === "range") {
+			this.highlightCatalogActiveRange(target.range);
+			return;
+		}
+		// Element targets are atomic: a resolved math token, a whole-expression
+		// fallback, or a replaced element (image/svg). Paint exactly the resolved
+		// element. Native MathML / HTML tokens that expose a single text node keep
+		// the CSS-range underline (it reads more precisely than an element box);
+		// everything else — notably MathJax CHTML tokens (`<mjx-mi><mjx-c/>`),
+		// which have no text node, and expression fallbacks — is marked on the
+		// element itself. Crucially we no longer escalate to the enclosing
+		// `<math>` / `<mjx-container>`: that escalation is why MathJax math only
+		// ever highlighted as a full block while native MathML tracked per-token.
+		const onlyChild =
+			target.element.childNodes.length === 1 ? target.element.firstChild : null;
+		if (
+			target.quality === "semantic-token" &&
+			onlyChild?.nodeType === Node.TEXT_NODE
+		) {
+			this.highlightCoordinator.highlightTTSWord(
+				onlyChild as Text,
+				0,
+				onlyChild.textContent?.length || 0,
+			);
+			return;
+		}
+		this.highlightCoordinator.highlightTTSWordElement?.(target.element);
+	}
+
+	private renderHighlightDecision(decision: HighlightDecision): void {
+		this.highlightRenderableRegionTarget(decision.regionTarget);
+		this.highlightRenderableActiveTarget(decision.activeTarget);
+	}
+
+	private async speakCatalogChunk(
+		chunk: SpeechCompositionChunk,
+		runId: number,
+	): Promise<void> {
+		if (!this.provider) return;
+		const contentRoot =
+			chunk.regionElement || chunk.sourceElement || this.currentContentElement;
+		const pipelineChunk = contentRoot
+			? normalizeSpeechChunks({
+					contentRoot,
+					chunks: [chunk],
+				})[0]
+			: null;
+		const highlightPlan = pipelineChunk
+			? createTTSHighlightPlan({ chunks: [pipelineChunk] })
+			: null;
+		if (highlightPlan && pipelineChunk && chunk.mathAlignment) {
+			this.renderHighlightDecision(
+				highlightPlan.resolveInitial(pipelineChunk.id),
+			);
+		} else {
+			this.highlightCatalogRegion(chunk);
+		}
+		const canUseChunkBoundaries =
+			chunk.sourceElement &&
+			((chunk.mathAlignment && chunk.mathAlignment.speech.tokens.length > 0) ||
+				(chunk.mathAlignments && chunk.mathAlignments.length > 0) ||
+				(chunk.alignment &&
+					chunk.visibleMap &&
+					(chunk.playbackMode === "exact-word" ||
+						chunk.playbackMode === "anchor-span")));
+		if (!canUseChunkBoundaries) {
+			const provider = this.provider;
+			const previousOnWordBoundary = provider.onWordBoundary;
+			provider.onWordBoundary = undefined;
+			try {
+				await provider.speak(chunk.speechText);
+			} finally {
+				if (
+					this.provider === provider &&
+					runId === this.speakRunId &&
+					provider.onWordBoundary === undefined
+				) {
+					provider.onWordBoundary = previousOnWordBoundary;
+				}
+			}
+			return;
+		}
+
+		const provider = this.provider;
+		const previousOnWordBoundary = provider.onWordBoundary;
+		const installedHandler: NonNullable<
+			ITTSProviderImplementation["onWordBoundary"]
+		> = (word, position, length) => {
+			if (runId !== this.speakRunId) return;
+			if (highlightPlan && pipelineChunk) {
+				const providerOffsetSpace =
+					pipelineChunk.offsetSpace === "unsupported"
+						? "unknown"
+						: (pipelineChunk.offsetSpace as Exclude<
+								ChunkOffsetSpace,
+								"unsupported"
+							>);
+				this.renderHighlightDecision(
+					highlightPlan.resolveBoundary({
+						chunkId: pipelineChunk.id,
+						word,
+						position,
+						length,
+						providerOffsetSpace,
+					}),
+				);
+				return;
+			}
+		};
+		provider.onWordBoundary = installedHandler;
+		try {
+			await provider.speak(chunk.speechText);
+		} finally {
+			if (
+				this.provider === provider &&
+				runId === this.speakRunId &&
+				provider.onWordBoundary === installedHandler
+			) {
+				provider.onWordBoundary = previousOnWordBoundary;
+			}
 		}
 	}
 
@@ -1435,16 +1812,7 @@ export class TTSService {
 		if (args.speechChunks?.length && this.provider) {
 			for (const chunk of args.speechChunks) {
 				if (args.runId !== this.speakRunId) return;
-				if (chunk.sourceElement && this.highlightCoordinator) {
-					try {
-						const range = document.createRange();
-						range.selectNodeContents(chunk.sourceElement);
-						this.highlightCoordinator.highlightTTSSentence([range]);
-					} catch {
-						// Continue playback even when a detached node cannot be highlighted.
-					}
-				}
-				await this.provider.speak(chunk.speechText);
+				await this.speakCatalogChunk(chunk, args.runId);
 			}
 			return;
 		}
@@ -1519,7 +1887,7 @@ export class TTSService {
 			normalizedTextBeforeRange.length +
 			(/\s$/.test(textBeforeRange) && normalizedTextBeforeRange ? 1 : 0);
 
-		console.log("[TTSService] speakRange offset calculation:", {
+		this.debugLog("[TTSService] speakRange offset calculation:", {
 			selectedText: text,
 			textBeforeRange: textBeforeRange.substring(0, 100),
 			offset,
@@ -1580,6 +1948,7 @@ export class TTSService {
 		if (targetIndex === currentIndex) return;
 
 		this.speakRunId += 1;
+		this.provider.onWordBoundary = undefined;
 		this.provider.stop();
 		this.currentSeekSegmentIndex = targetIndex;
 		const runId = ++this.speakRunId;
@@ -1618,6 +1987,7 @@ export class TTSService {
 	stop(): void {
 		if (!this.provider) return;
 		this.speakRunId += 1;
+		this.provider.onWordBoundary = undefined;
 		this.provider.stop();
 		this.setState(PlaybackState.IDLE);
 		this.currentText = null;

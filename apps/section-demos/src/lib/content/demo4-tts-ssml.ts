@@ -1,5 +1,50 @@
 import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
 
+const mathml = (content: string, attributes = ""): string =>
+	`<math xmlns="http://www.w3.org/1998/Math/MathML"${attributes}>${content}</math>`;
+
+const standardQuadraticMath = mathml(`<mrow>
+                    <mi>a</mi><mo>&#x2062;</mo><msup><mi>x</mi><mn>2</mn></msup>
+                    <mo>+</mo><mi>b</mi><mo>&#x2062;</mo><mi>x</mi>
+                    <mo>+</mo><mi>c</mi><mo>=</mo><mn>0</mn>
+                  </mrow>`);
+
+const quadraticFormulaMath = mathml(
+	`<mrow>
+                    <mi>x</mi><mo>=</mo>
+                    <mfrac>
+                      <mrow>
+                        <mo>-</mo><mi>b</mi><mo>±</mo>
+                        <msqrt>
+                          <mrow>
+                            <msup><mi>b</mi><mn>2</mn></msup>
+                            <mo>-</mo><mn>4</mn><mo>&#x2062;</mo><mi>a</mi><mo>&#x2062;</mo><mi>c</mi>
+                          </mrow>
+                        </msqrt>
+                      </mrow>
+                      <mrow><mn>2</mn><mo>&#x2062;</mo><mi>a</mi></mrow>
+                    </mfrac>
+                  </mrow>`,
+	' display="block"',
+);
+
+const discriminantMath = mathml(`<mrow>
+                    <msup><mi>b</mi><mn>2</mn></msup>
+                    <mo>-</mo><mn>4</mn><mo>&#x2062;</mo><mi>a</mi><mo>&#x2062;</mo><mi>c</mi>
+                  </mrow>`);
+
+const q1EquationMath = mathml(`<mrow>
+                    <msup><mi>x</mi><mn>2</mn></msup>
+                    <mo>-</mo><mn>5</mn><mo>&#x2062;</mo><mi>x</mi>
+                    <mo>+</mo><mn>6</mn><mo>=</mo><mn>0</mn>
+                  </mrow>`);
+
+const factoredEquationMath = mathml(`<mrow>
+                    <mo>(</mo><mi>x</mi><mo>-</mo><mn>2</mn><mo>)</mo>
+                    <mo>&#x2062;</mo>
+                    <mo>(</mo><mi>x</mi><mo>-</mo><mn>3</mn><mo>)</mo>
+                  </mrow>`);
+
 /**
  * Demo 4: TTS with SSML Extraction
  *
@@ -44,20 +89,20 @@ export const demo4Section: AssessmentSection = {
 								content: `<speak xml:lang="en-US">
                   Given any quadratic equation written in the standard form
                   <prosody rate="slow">
-                    a x squared, plus b x, plus c, equals zero,
+                    A X squared, plus B X, plus C, equals zero,
                   </prosody>
                   <break time="300ms"/>
                   the quadratic formula returns the values of x that make the equation true:
                   <break time="400ms"/>
                   <prosody rate="slow">
-                    x equals, negative b, plus or minus,
-                    the square root of, b squared minus four a c,
+                    X equals, negative B, plus or minus,
+                    the square root of, B squared minus 4 A C,
                     <break time="150ms"/>
-                    all divided by, two a.
+                    all divided by, 2 A.
                   </prosody>
                   <break time="500ms"/>
                   The expression under the square root,
-                  <prosody rate="slow">b squared minus four a c,</prosody>
+                  <prosody rate="slow">B squared minus 4 A C,</prosody>
                   is called the <emphasis>discriminant</emphasis>, and it tells you
                   what kind of solutions to expect before you finish solving.
                 </speak>`,
@@ -65,47 +110,32 @@ export const demo4Section: AssessmentSection = {
 						],
 					},
 					{
-						identifier: "passage-quadratic-discriminant",
+						identifier: "passage-quadratic-method",
 						cards: [
 							{
 								catalog: "spoken",
 								language: "en-US",
-								content: `<speak xml:lang="en-US">
-                  When the discriminant is <emphasis>positive</emphasis>, the equation
-                  has two distinct real solutions; the parabola crosses the x-axis twice.
-                  <break time="300ms"/>
-                  When the discriminant is <emphasis>zero</emphasis>, there is exactly
-                  one real solution; the parabola just touches the x-axis.
-                  <break time="300ms"/>
-                  When the discriminant is <emphasis>negative</emphasis>, there are no
-                  real solutions; the parabola never crosses the axis, and the formula
-                  returns a pair of complex numbers instead.
-                  <break time="500ms"/>
-                  Factoring is faster when an equation factors cleanly, but most
-                  quadratic equations do not. The formula works <emphasis>every</emphasis> time.
-                </speak>`,
+								content: `<speak xml:lang="en-US">When a quadratic factors cleanly into two simple binomials, factoring is the quickest way to solve it. When it does not, the quadratic formula always works.</speak>`,
 							},
 						],
 					},
 				],
 				config: {
 					markup: `<div class="passage">
-            <h2>One Formula, Every Quadratic</h2>
-
             <div class="subsection">
               <h3>The Quadratic Formula</h3>
 
               <div class="passage-content" data-catalog-idref="passage-quadratic-formula">
                 <p>
                   Given any quadratic equation written in the standard form
-                  <em>ax² + bx + c = 0</em>, the quadratic formula returns the values
+                  ${standardQuadraticMath}, the quadratic formula returns the values
                   of <em>x</em> that make the equation true:
                 </p>
                 <p class="formula">
-                  x = (-b ± √(b² - 4ac)) / 2a
+                  ${quadraticFormulaMath}
                 </p>
                 <p>
-                  The expression under the square root, <em>b² - 4ac</em>, is called
+                  The expression under the square root, ${discriminantMath}, is called
                   the <strong>discriminant</strong>, and it tells you what kind of
                   solutions to expect before you finish solving.
                 </p>
@@ -113,26 +143,13 @@ export const demo4Section: AssessmentSection = {
             </div>
 
             <div class="subsection">
-              <h3>What the Discriminant Tells You</h3>
+              <h3>Choosing a Method</h3>
 
-              <div class="passage-content" data-catalog-idref="passage-quadratic-discriminant">
-                <ul>
-                  <li>
-                    If <em>b² - 4ac &gt; 0</em>, there are <strong>two</strong> distinct
-                    real solutions; the parabola crosses the x-axis twice.
-                  </li>
-                  <li>
-                    If <em>b² - 4ac = 0</em>, there is exactly <strong>one</strong> real
-                    solution; the parabola just touches the x-axis.
-                  </li>
-                  <li>
-                    If <em>b² - 4ac &lt; 0</em>, there are <strong>no</strong> real
-                    solutions; the formula returns a pair of complex numbers instead.
-                  </li>
-                </ul>
+              <div class="passage-content" data-catalog-idref="passage-quadratic-method">
                 <p>
-                  Factoring is faster when an equation factors cleanly, but most quadratic
-                  equations do not. The formula works <em>every</em> time.
+                  When a quadratic factors cleanly into two simple binomials, factoring is
+                  the quickest way to solve it. When it does not, the quadratic formula
+                  always works.
                 </p>
               </div>
             </div>
@@ -164,15 +181,26 @@ export const demo4Section: AssessmentSection = {
 							element: "multiple-choice",
 							accessibilityCatalogs: [
 								{
-									identifier: "q1-prompt",
+									identifier: "q1-prompt-text",
 									cards: [
 										{
 											catalog: "spoken",
 											language: "en-US",
 											content: `<speak xml:lang="en-US">
                   Based on the passage, which method should you use to solve
-                  <prosody rate="slow">x squared, minus five x, plus six,
-                  equals zero</prosody>?
+                </speak>`,
+										},
+									],
+								},
+								{
+									identifier: "q1-equation",
+									cards: [
+										{
+											catalog: "spoken",
+											language: "en-US",
+											content: `<speak xml:lang="en-US">
+                  <prosody rate="slow">X squared, minus 5 X, plus 6,
+                  equals zero?</prosody>
                 </speak>`,
 										},
 									],
@@ -189,13 +217,24 @@ export const demo4Section: AssessmentSection = {
 									],
 								},
 								{
-									identifier: "q1-choice-b",
+									identifier: "q1-choice-b-text",
 									cards: [
 										{
 											catalog: "spoken",
 											language: "en-US",
 											content:
-												'<speak><emphasis level="strong">Factoring</emphasis>, because this equation factors easily into <prosody rate="slow">x minus 2, times x minus 3</prosody></speak>',
+												'<speak><emphasis level="strong">Factoring</emphasis>, because this equation factors easily into</speak>',
+										},
+									],
+								},
+								{
+									identifier: "q1-choice-b-equation",
+									cards: [
+										{
+											catalog: "spoken",
+											language: "en-US",
+											content:
+												'<speak><prosody rate="slow">X minus 2, times X minus 3</prosody></speak>',
 										},
 									],
 								},
@@ -220,8 +259,9 @@ export const demo4Section: AssessmentSection = {
 									],
 								},
 							],
-							prompt: `<div data-catalog-idref="q1-prompt">
-                Based on the passage, which method should you use to solve x² - 5x + 6 = 0?
+							prompt: `<div>
+                <span data-catalog-idref="q1-prompt-text">Based on the passage, which method should you use to solve</span>
+                <span data-catalog-idref="q1-equation">${q1EquationMath}<span aria-hidden="true">?</span></span>
               </div>`,
 							choiceMode: "radio",
 							choices: [
@@ -234,8 +274,9 @@ export const demo4Section: AssessmentSection = {
 								},
 								{
 									value: "b",
-									label: `<div data-catalog-idref="q1-choice-b">
-                    Factoring, because this equation factors easily into (x - 2)(x - 3)
+									label: `<div>
+                    <span data-catalog-idref="q1-choice-b-text">Factoring, because this equation factors easily into</span>
+                    <span data-catalog-idref="q1-choice-b-equation">${factoredEquationMath}</span>
                   </div>`,
 									correct: true,
 								},

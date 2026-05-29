@@ -87,4 +87,47 @@ describe("tts-ssml demo catalog contract", () => {
 			}
 		}
 	});
+
+	test("authors visible math examples as MathML", () => {
+		const visibleMarkup = collectVisibleMarkup().join("\n");
+
+		expect(visibleMarkup).toContain(
+			'<math xmlns="http://www.w3.org/1998/Math/MathML"',
+		);
+		expect(visibleMarkup).not.toContain("ax² + bx + c = 0");
+		expect(visibleMarkup).not.toContain("x = (-b ± √(b² - 4ac)) / 2a");
+		expect(visibleMarkup).not.toContain("b² - 4ac");
+		expect(visibleMarkup).not.toContain("x² - 5x + 6 = 0");
+		expect(visibleMarkup).not.toContain("(x - 2)(x - 3)");
+		expect(visibleMarkup).toContain("<mo>&#x2062;</mo>");
+		expect(visibleMarkup).not.toContain("<mn>4</mn><mi>a</mi><mi>c</mi>");
+		expect(visibleMarkup).not.toContain("<mi>b</mi><mi>x</mi>");
+		expect(visibleMarkup).not.toContain("<mn>5</mn><mi>x</mi>");
+	});
+
+	test("scopes Q1 math expressions to their own MathML catalog refs", () => {
+		const q1Model = demo4Section.assessmentItemRefs?.[0]?.item?.config
+			?.models?.[0] as { prompt?: string; choices?: Array<{ label?: string }> };
+		const prompt = q1Model.prompt || "";
+		const choiceB = q1Model.choices?.find((choice) =>
+			choice.label?.includes("q1-choice-b-equation"),
+		)?.label;
+
+		expect(prompt).toContain('data-catalog-idref="q1-prompt-text"');
+		expect(prompt).toContain('data-catalog-idref="q1-equation"');
+		expect(prompt).not.toContain('data-catalog-idref="q1-prompt"');
+		expect(choiceB).toContain('data-catalog-idref="q1-choice-b-text"');
+		expect(choiceB).toContain('data-catalog-idref="q1-choice-b-equation"');
+		expect(choiceB).not.toContain('data-catalog-idref="q1-choice-b"');
+	});
+
+	test("authors catalog math speech with explicit letter pronunciation", () => {
+		const spokenCatalogContent = collectSpokenCatalogContent().join("\n");
+
+		expect(spokenCatalogContent).toContain("A X squared");
+		expect(spokenCatalogContent).toContain("B X");
+		expect(spokenCatalogContent).toContain("4 A C");
+		expect(spokenCatalogContent).not.toContain("a x squared");
+		expect(spokenCatalogContent).not.toContain("four a c");
+	});
 });

@@ -16,6 +16,7 @@ export type MathAwareSpeechChunk =
 			type: "math";
 			mathml: string;
 			fallbackText: string;
+			sourceElement?: Element;
 	  };
 
 export interface MathAwareTextResult {
@@ -329,6 +330,7 @@ const collectMathAware = (
 				type: "math",
 				mathml: canonicalMathML,
 				fallbackText,
+				sourceElement: element,
 			});
 			textChunkStart = acc.chars.length;
 			containsMathMarkup = true;

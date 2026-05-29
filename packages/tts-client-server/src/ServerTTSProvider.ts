@@ -206,6 +206,7 @@ interface WordTiming {
 	wordIndex: number;
 	charIndex: number; // Character position in text
 	length: number; // Word length in characters
+	word: string;
 }
 
 /**
@@ -600,23 +601,12 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 			return;
 		}
 
-		// Adjust word timing for playback rate
-		// Speech marks are at 1.0x speed, so we need to scale them
-		const playbackRate = this.config.rate || 1.0;
-		this.wordTimings = wordTimings.map((timing) => ({
-			...timing,
-			time: timing.time / playbackRate,
-		}));
+		this.wordTimings = wordTimings;
 
 		return new Promise((resolve, reject) => {
 			// Create audio element
 			const audio = new Audio(audioUrl);
 			this.currentAudio = audio;
-
-			// Apply rate from config
-			if (this.config.rate) {
-				audio.playbackRate = Math.max(0.25, Math.min(4.0, this.config.rate));
-			}
 
 			// Apply volume from config
 			if (this.config.volume !== undefined) {
@@ -894,6 +884,7 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 				wordIndex: index,
 				charIndex: mark.start,
 				length: mark.end - mark.start,
+				word: mark.value,
 			}));
 	}
 
@@ -959,8 +950,7 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 							"currentTime:",
 							currentTime,
 						);
-						// Pass the length as the "word" parameter so TTSService can use it
-						this.onWordBoundary("", timing.charIndex, timing.length);
+						this.onWordBoundary(timing.word, timing.charIndex, timing.length);
 					}
 					lastWordIndex = i;
 					break;
@@ -1039,13 +1029,6 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 		// Update config
 		if (settings.rate !== undefined) {
 			this.config.rate = settings.rate;
-			// Apply rate immediately to current playback if active
-			if (this.currentAudio) {
-				this.currentAudio.playbackRate = Math.max(
-					0.25,
-					Math.min(4.0, settings.rate),
-				);
-			}
 		}
 		if (settings.pitch !== undefined) {
 			// Server-side pitch is baked into audio, so this only affects next speak()

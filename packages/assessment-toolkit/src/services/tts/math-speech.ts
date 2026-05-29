@@ -51,6 +51,9 @@ const setupSre = async (
 	await sre.engineReady?.();
 };
 
+const normalizeMathVariablePronunciation = (speech: string): string =>
+	speech.replace(/\b([a-z])\b/g, (match) => match.toUpperCase());
+
 export const resolveMathSpeechFromChunks = async (
 	chunks: MathAwareSpeechChunk[],
 	options: ResolveMathSpeechOptions = {},
@@ -89,7 +92,9 @@ export const resolveMathSpeechFromChunks = async (
 				await setupSre(sre, options.language);
 				setupComplete = true;
 			}
-			const speech = normalizeTextForSpeech(sre.toSpeech(chunk.mathml));
+			const speech = normalizeTextForSpeech(
+				normalizeMathVariablePronunciation(sre.toSpeech(chunk.mathml)),
+			);
 			if (speech) {
 				speechParts.push(speech);
 				usedMathSpeech = true;

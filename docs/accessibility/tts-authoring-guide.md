@@ -83,6 +83,8 @@ Or use SSML in a catalog:
 
 **Default support:** PIE automatically looks for MathML in rendered content and converts supported expressions to natural-language speech before calling the configured TTS provider. This works across browser TTS and server-backed providers without a client-side "math support" setting.
 
+**Highlighting behavior:** PIE is conservative with math word tracking. It uses word/operator highlighting only when the spoken boundary can be mapped to the visible MathML token with very high confidence. If the mapping is ambiguous, provider-specific, or unsupported, PIE falls back to highlighting the full formula or nearest reliable expression region. This avoids visible bugs where the highlighted token lags, jumps, or points at the wrong part of the expression.
+
 **Optional override - Add SSML for controlled pacing:**
 ```json
 {
@@ -322,7 +324,7 @@ Use `<prosody rate="slow">` for:
 </speak>
 ```
 
-Authored spoken catalogs still take precedence over generated math speech.
+Authored spoken catalogs still take precedence over generated math speech. They can improve pronunciation and pacing, but they do not force word-level math tracking. If the authored SSML diverges too far from the rendered MathML for reliable mapping, PIE will still highlight the formula/expression region instead of guessing at individual words.
 
 ### 5. Test Your SSML
 

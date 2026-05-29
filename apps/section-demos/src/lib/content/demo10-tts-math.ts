@@ -31,20 +31,28 @@ export const demo10TtsMathSection: AssessmentSection = {
 						</p>
 						<p>
 							The slope formula is
-							<math>
+							<math xmlns="http://www.w3.org/1998/Math/MathML">
 								<mrow>
 									<mi>m</mi>
 									<mo>=</mo>
 									<mfrac>
-										<mrow><mi>y</mi><mn>2</mn><mo>-</mo><mi>y</mi><mn>1</mn></mrow>
-										<mrow><mi>x</mi><mn>2</mn><mo>-</mo><mi>x</mi><mn>1</mn></mrow>
+										<mrow>
+											<msub><mi>y</mi><mn>2</mn></msub>
+											<mo>-</mo>
+											<msub><mi>y</mi><mn>1</mn></msub>
+										</mrow>
+										<mrow>
+											<msub><mi>x</mi><mn>2</mn></msub>
+											<mo>-</mo>
+											<msub><mi>x</mi><mn>1</mn></msub>
+										</mrow>
 									</mfrac>
 								</mrow>
 							</math>.
 						</p>
 						<p>
 							A second example uses a square root:
-							<math>
+							<math xmlns="http://www.w3.org/1998/Math/MathML">
 								<msqrt>
 									<mrow><mi>x</mi><mo>+</mo><mn>9</mn></mrow>
 								</msqrt>
@@ -78,7 +86,7 @@ export const demo10TtsMathSection: AssessmentSection = {
 							prompt: `<div>
 								<p>
 									Which choice is equivalent to
-									<math>
+									<math xmlns="http://www.w3.org/1998/Math/MathML">
 										<mfrac><mn>1</mn><mn>2</mn></mfrac>
 									</math>
 									of 8?
@@ -89,17 +97,20 @@ export const demo10TtsMathSection: AssessmentSection = {
 							choices: [
 								{
 									value: "a",
-									label: "<math><mn>2</mn></math>",
+									label:
+										'<math xmlns="http://www.w3.org/1998/Math/MathML"><mn>2</mn></math>',
 									correct: false,
 								},
 								{
 									value: "b",
-									label: "<math><mn>4</mn></math>",
+									label:
+										'<math xmlns="http://www.w3.org/1998/Math/MathML"><mn>4</mn></math>',
 									correct: true,
 								},
 								{
 									value: "c",
-									label: "<math><mn>6</mn></math>",
+									label:
+										'<math xmlns="http://www.w3.org/1998/Math/MathML"><mn>6</mn></math>',
 									correct: false,
 								},
 							],
@@ -130,8 +141,12 @@ export const demo10TtsMathSection: AssessmentSection = {
 									Read the rendered expression
 									<span
 										class="MathJax"
-										data-mathml="<math><msup><mi>x</mi><mn>2</mn></msup></math>"
-									>x^2</span>
+										data-mathml='<math xmlns="http://www.w3.org/1998/Math/MathML"><msup><mi>x</mi><mn>2</mn></msup></math>'
+									>
+										<math xmlns="http://www.w3.org/1998/Math/MathML">
+											<msup><mi>x</mi><mn>2</mn></msup>
+										</math>
+									</span>
 									aloud with TTS.
 								</p>
 								<p><em>Expected TTS: "x squared" from the data-mathml attribute.</em></p>

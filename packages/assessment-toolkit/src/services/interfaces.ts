@@ -115,6 +115,20 @@ export interface HighlightCoordinatorApi {
 	): void;
 
 	/**
+	 * Highlight a single element as the active TTS word (temporary).
+	 *
+	 * Marks exactly the supplied element (via `data-pie-tts-word-element`)
+	 * without walking up to a containing ancestor. Used for atomic targets that
+	 * have no direct text node to range over — most notably MathJax CHTML tokens
+	 * (e.g. `<mjx-mi><mjx-c/></mjx-mi>`) and whole-expression fallbacks. Painting
+	 * the element itself is what lets a resolved math token highlight as a token
+	 * rather than escalating to the full `<math>` / `<mjx-container>`.
+	 *
+	 * Optional so lightweight coordinator mocks can omit it.
+	 */
+	highlightTTSWordElement?(element: Element): void;
+
+	/**
 	 * Highlight sentence(s) for TTS (background layer)
 	 */
 	highlightTTSSentence(ranges: Range[]): void;

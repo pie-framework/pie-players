@@ -253,7 +253,15 @@ This normalization:
 - Collapses multiple spaces/tabs/newlines into single spaces
 - Ensures character positions align between spoken text and DOM
 
-Math content is a special case. When PIE finds supported MathML in the read target, it converts that MathML to natural-language speech before provider playback. The visible DOM text still drives sentence/region highlighting and seek state. Word-level highlighting may downgrade for generated math speech because provider speech marks are not guaranteed to align with rendered mathematical notation.
+Math content is a special case. When PIE finds MathML in the read target, it converts that MathML to natural-language speech before provider playback and builds a math alignment plan for speech-mark highlighting. The alignment plan tokenizes the visible MathML structure, tokenizes the spoken/SSML source, normalizes provider boundary offsets, and only emits word-level targets when the boundary maps to a visible MathML token with very high local confidence.
+
+When that confidence is not available, PIE deliberately falls back to the smallest reliable visible target:
+
+1. exact token/operator target when mapping is safe
+2. MathML subtree or full formula target when token mapping is ambiguous
+3. surrounding TTS region when no smaller target is reliable
+
+This conservative fallback is intentional. A full formula highlight is preferable to a visibly wrong word highlight, stale highlight, or lagging boundary. Provider speech marks are treated as evidence, not as truth by assumption, because Polly/SchoolCity/browser boundaries may report raw SSML offsets, normalized spoken-text offsets, or provider-specific mark positions.
 
 #### Why Normalization is Critical
 

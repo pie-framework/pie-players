@@ -127,7 +127,7 @@ The PIE Players automatically extract embedded SSML from content at runtime:
           │                │
           ▼                ▼
     Extract SSML     Add catalog IDs
-    + language       (data-catalog-id)
+    + language       (data-catalog-idref)
           │                │
           └───────┬────────┘
                   │

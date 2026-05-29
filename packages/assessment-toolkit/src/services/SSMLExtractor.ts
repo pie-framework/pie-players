@@ -9,7 +9,7 @@
  * 1. Parses markup and finds all <speak> elements
  * 2. Extracts SSML content with language metadata
  * 3. Generates accessibility catalogs with unique IDs
- * 4. Cleans visual markup (removes SSML, adds data-catalog-id)
+ * 4. Cleans visual markup (removes SSML, adds data-catalog-idref)
  *
  * This enables proper pronunciation, emphasis, and pacing for TTS without
  * requiring authors to maintain separate catalog files.
@@ -322,7 +322,9 @@ export class SSMLExtractor {
 	extractFromItemConfig(config: ConfigEntity): ExtractionResult {
 		const allCatalogs: AccessibilityCatalog[] = [];
 
-		// Deep clone config to avoid mutating original
+		// Shallow clone of config + a fresh models array. The per-model/choice
+		// objects are replaced (not mutated in place) by the `.map` below, so the
+		// caller's original config and its models are never mutated.
 		const cleanedConfig: ConfigEntity = {
 			...config,
 			models: config.models ? [...config.models] : [],
@@ -457,9 +459,11 @@ export class SSMLExtractor {
 						speakEl.remove();
 					}
 
-					// Add catalog ID to wrapper element
+					// Tag the wrapper with the QTI-style catalog reference so the
+					// runtime can resolve this region's spoken content. Same attribute
+					// authored content uses (`data-catalog-idref`) — one canonical name.
 					if (wrapper) {
-						wrapper.setAttribute("data-catalog-id", catalogId);
+						wrapper.setAttribute("data-catalog-idref", catalogId);
 					}
 
 					// Create catalog entry

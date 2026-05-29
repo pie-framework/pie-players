@@ -10,6 +10,10 @@ import { TTSService } from "../src/services/TTSService";
 
 class CapturingTTSImpl implements ITTSProviderImplementation {
 	public speakCalls: string[] = [];
+	public boundariesByText = new Map<
+		string,
+		Array<{ word: string; position: number; length?: number }>
+	>();
 	public onWordBoundary?: (
 		word: string,
 		position: number,
@@ -18,6 +22,9 @@ class CapturingTTSImpl implements ITTSProviderImplementation {
 
 	async speak(text: string): Promise<void> {
 		this.speakCalls.push(text);
+		for (const boundary of this.boundariesByText.get(text) || []) {
+			this.onWordBoundary?.(boundary.word, boundary.position, boundary.length);
+		}
 	}
 	pause(): void {}
 	resume(): void {}
@@ -87,12 +94,48 @@ describe("TTSService automatic math speech", () => {
 			language: "en-US",
 		});
 
-		expect(impl.speakCalls).toHaveLength(1);
-		const spoken = impl.speakCalls[0].toLowerCase();
+		expect(impl.speakCalls.length).toBeGreaterThan(1);
+		const spoken = impl.speakCalls.join(" ").toLowerCase();
 		expect(spoken).toContain("solve");
 		expect(spoken).toContain("squared");
 		expect(spoken).toContain("now");
 		expect(spoken).not.toContain("<math");
 		expect(spoken).not.toBe("solve x 2 now.");
+	});
+
+	test("keeps prose word highlighting around generated MathML speech", async () => {
+		const impl = new CapturingTTSImpl();
+		const service = new TTSService();
+		const highlightedWords: string[] = [];
+		service.setHighlightCoordinator({
+			highlightTTSWord(node: Text, start: number, end: number) {
+				highlightedWords.push(node.textContent?.slice(start, end) || "");
+			},
+			highlightTTSSentence() {},
+			highlightRange(range: Range) {
+				highlightedWords.push(range.toString());
+			},
+			clearTTS() {},
+			clearHighlights() {},
+		} as any);
+		await service.initialize(new CapturingTTSProvider(impl), {});
+		const content = document.createElement("div");
+		content.innerHTML = `
+			<p>
+				Solve
+				<math><msup><mi>x</mi><mn>2</mn></msup></math>
+				now.
+			</p>
+		`;
+		impl.boundariesByText.set("Solve", [
+			{ word: "Solve", position: 0, length: "Solve".length },
+		]);
+
+		await service.speak(content.textContent || "", {
+			contentElement: content,
+			language: "en-US",
+		});
+
+		expect(highlightedWords).toContain("Solve");
 	});
 });

@@ -41,10 +41,33 @@ describe("TTS math speech generation", () => {
 			markup: "none",
 		});
 		expect(result).toEqual({
-			speechText: "Solve x squared now.",
+			speechText: "Solve X squared now.",
 			usedMathSpeech: true,
 			usedFallback: false,
 		});
+	});
+
+	test("normalizes isolated math variables to letter pronunciation", async () => {
+		const result = await resolveMathSpeechFromChunks(
+			[
+				{
+					type: "math",
+					mathml:
+						"<math><mrow><msup><mi>b</mi><mn>2</mn></msup><mo>-</mo><mn>4</mn><mi>a</mi><mi>c</mi></mrow></math>",
+					fallbackText: "b 2 - 4 a c",
+				},
+			],
+			{
+				language: "en-US",
+				loadSre: async () => ({
+					setupEngine: async () => {},
+					engineReady: async () => {},
+					toSpeech: () => "b squared minus 4 a c",
+				}),
+			},
+		);
+
+		expect(result.speechText).toBe("B squared minus 4 A C");
 	});
 
 	test("does not load SRE when there are no math chunks", async () => {

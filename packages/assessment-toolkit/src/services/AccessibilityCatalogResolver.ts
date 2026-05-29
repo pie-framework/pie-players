@@ -113,11 +113,20 @@ export class AccessibilityCatalogResolver {
 			catalogs: Map<string, AccessibilityCatalog>;
 		}
 	>();
-	private defaultLanguage: string = "en";
+	// Matches the language the extractor tags cards with and the TTSService
+	// passes on lookup ("en-US"), so the default-language fallback rung in
+	// findMatchingCard is actually reachable for the common case.
+	private defaultLanguage: string = "en-US";
+	// Egress sanitization cache. Catalogs are sanitized at registration, but that
+	// is a no-op when indexing runs without a DOM (SSR). Sanitizing again as
+	// spoken content leaves the resolver guarantees no raw author SSML reaches a
+	// provider regardless of where indexing happened; the cache keeps it to one
+	// pass per unique string (sanitizeSsmlString is idempotent).
+	private sanitizedSpokenCache = new Map<string, string>();
 
 	constructor(
 		assessmentCatalogs?: AccessibilityCatalog[],
-		defaultLanguage: string = "en",
+		defaultLanguage: string = "en-US",
 	) {
 		this.defaultLanguage = defaultLanguage;
 		this.indexCatalogs(assessmentCatalogs ?? [], "assessment");
@@ -240,29 +249,13 @@ export class AccessibilityCatalogResolver {
 			: null;
 		if (scopedCatalog) {
 			const card = this.findMatchingCard(scopedCatalog, options);
-			if (card) {
-				return {
-					catalogId,
-					type: card.catalog,
-					language: card.language,
-					content: card.content,
-					source: "item",
-				};
-			}
+			if (card) return this.resolveCard(catalogId, card, "item");
 		}
 		if (options.context) {
 			const candidates = this.findScopedCandidates(catalogId, options.context);
 			if (candidates.length === 1) {
 				const card = this.findMatchingCard(candidates[0], options);
-				if (card) {
-					return {
-						catalogId,
-						type: card.catalog,
-						language: card.language,
-						content: card.content,
-						source: "item",
-					};
-				}
+				if (card) return this.resolveCard(catalogId, card, "item");
 			} else if (candidates.length > 1) {
 				console.warn(
 					`[AccessibilityCatalogResolver] Ambiguous scoped catalog "${catalogId}" for owner context`,
@@ -276,33 +269,42 @@ export class AccessibilityCatalogResolver {
 		const itemCatalog = this.itemCatalogs.get(catalogId);
 		if (itemCatalog) {
 			const card = this.findMatchingCard(itemCatalog, options);
-			if (card) {
-				return {
-					catalogId,
-					type: card.catalog,
-					language: card.language,
-					content: card.content,
-					source: "item",
-				};
-			}
+			if (card) return this.resolveCard(catalogId, card, "item");
 		}
 
 		// Fallback to assessment-level
 		const assessmentCatalog = this.assessmentCatalogs.get(catalogId);
 		if (assessmentCatalog) {
 			const card = this.findMatchingCard(assessmentCatalog, options);
-			if (card) {
-				return {
-					catalogId,
-					type: card.catalog,
-					language: card.language,
-					content: card.content,
-					source: "assessment",
-				};
-			}
+			if (card) return this.resolveCard(catalogId, card, "assessment");
 		}
 
 		return null;
+	}
+
+	private resolveCard(
+		catalogId: string,
+		card: CatalogCard,
+		source: ResolvedCatalog["source"],
+	): ResolvedCatalog {
+		return {
+			catalogId,
+			type: card.catalog,
+			language: card.language,
+			content:
+				card.catalog === "spoken"
+					? this.ensureSpokenSanitized(card.content)
+					: card.content,
+			source,
+		};
+	}
+
+	private ensureSpokenSanitized(content: string): string {
+		const cached = this.sanitizedSpokenCache.get(content);
+		if (cached !== undefined) return cached;
+		const sanitized = sanitizeSsmlString(content);
+		this.sanitizedSpokenCache.set(content, sanitized);
+		return sanitized;
 	}
 
 	private getOwnerKey(context: CatalogOwnerContext): string {
@@ -315,6 +317,19 @@ export class AccessibilityCatalogResolver {
 			context.passageId || "",
 			context.modelId || "",
 		].join("|");
+	}
+
+	// Flattened [id, catalog] pairs for every context-scoped owner. The primary
+	// runtime path registers catalogs as scoped, so enumeration APIs must include
+	// these or they silently under-report what TTS content exists.
+	private scopedCatalogEntries(): Array<[string, AccessibilityCatalog]> {
+		const entries: Array<[string, AccessibilityCatalog]> = [];
+		for (const owner of this.scopedCatalogs.values()) {
+			for (const entry of owner.catalogs.entries()) {
+				entries.push(entry);
+			}
+		}
+		return entries;
 	}
 
 	private findScopedCandidates(
@@ -447,6 +462,26 @@ export class AccessibilityCatalogResolver {
 			}
 		}
 
+		// Add scoped (context-registered) alternatives. These resolve as "item"
+		// in getAlternative, so report them the same way here.
+		for (const [id, catalog] of this.scopedCatalogEntries()) {
+			if (id !== catalogId) continue;
+			for (const card of catalog.cards) {
+				const exists = results.some(
+					(r) => r.type === card.catalog && r.language === card.language,
+				);
+				if (!exists) {
+					results.push({
+						catalogId,
+						type: card.catalog,
+						language: card.language,
+						content: card.content,
+						source: "item",
+					});
+				}
+			}
+		}
+
 		return results;
 	}
 
@@ -454,11 +489,14 @@ export class AccessibilityCatalogResolver {
 	 * Get all catalog identifiers available (both assessment and item)
 	 */
 	getAllCatalogIds(): string[] {
-		const itemIds = Array.from(this.itemCatalogs.keys());
-		const assessmentIds = Array.from(this.assessmentCatalogs.keys());
-
-		// Combine and deduplicate
-		return Array.from(new Set([...itemIds, ...assessmentIds]));
+		const scopedIds = this.scopedCatalogEntries().map(([id]) => id);
+		return Array.from(
+			new Set([
+				...this.itemCatalogs.keys(),
+				...this.assessmentCatalogs.keys(),
+				...scopedIds,
+			]),
+		);
 	}
 
 	/**
@@ -530,6 +568,12 @@ export class AccessibilityCatalogResolver {
 			}
 		}
 
+		for (const [id, catalog] of this.scopedCatalogEntries()) {
+			if (catalog.cards.some((card) => card.catalog === type)) {
+				catalogIds.add(id);
+			}
+		}
+
 		return Array.from(catalogIds);
 	}
 
@@ -540,6 +584,7 @@ export class AccessibilityCatalogResolver {
 		this.assessmentCatalogs.clear();
 		this.itemCatalogs.clear();
 		this.scopedCatalogs.clear();
+		this.sanitizedSpokenCache.clear();
 	}
 
 	/**

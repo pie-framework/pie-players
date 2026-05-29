@@ -9,8 +9,8 @@ stabilized, moved, or removed.
 | Gate | Commands | Notes |
 | --- | --- | --- |
 | Pre-commit | `bun run check`, `bun run check:deps`, `bun run check:package-metadata`, `bun run check:svelte-runtime-deps` | Runs in parallel via `lefthook.yml`. `bun run check` is `turbo check`. |
-| Pre-push | `check:deps`, `check:svelte-runtime-deps`, `check:changeset-patch-only`, `check:publint`, `test:e2e:section-player:critical`, `test:e2e:item-player:multiple-choice`, `test:e2e:assessment-player`, `check:custom-elements`, `check:source-exports`, `check:consumer-boundaries` | Browser tests run locally and require Playwright outside the default sandbox. |
-| PR CI: Lint & Typecheck | dependency/metadata/export/CE checks, `bun run build`, `check:publint`, `check:types-publish`, `check:pack-exports`, `check:pack-smoke`, runtime/import checks, `bun run lint:all` | Some checks are repeated by `lint:all`. |
+| Pre-push | `check:changeset-patch-only`, `check:local-pr-gate`, `verify:ci-lint-typecheck`, `test:e2e:section-player:critical`, `test:e2e:item-player:multiple-choice`, `test:e2e:assessment-player`, `check:consumer-boundaries` | Browser tests run locally and require Playwright outside the default sandbox. `verify:ci-lint-typecheck` is the same package/build/type-publish gate used by PR CI. |
+| PR CI: Lint & Typecheck | `verify:ci-lint-typecheck` | Shared with pre-push so local and CI coverage do not drift. Includes dependency/metadata/export/CE checks, `bun run build`, `check:publint`, `check:types-publish`, `check:pack-exports`, `check:pack-smoke`, runtime/import checks, and `bun run lint:all`. |
 | PR CI: Build | dependency/metadata/export/CE checks, `bun run build`, `bun run test`, runtime/import checks, artifact upload | `bun run test` is unit/package tests only, not Playwright. |
 | PR CI: Isolated Linker | isolated install, dependency/metadata/export/CE checks, `bun run build`, runtime/import checks | Validates package graph under Bun isolated linker. |
 | PR CI: A11y Critical E2E | echo-only stub | The actual `bun run test:e2e:a11y:critical` suite is local-only today. |

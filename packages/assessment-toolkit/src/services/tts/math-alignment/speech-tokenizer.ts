@@ -2,7 +2,10 @@ import type {
 	BoundaryOffsetSpace,
 	SpeechAlignmentToken,
 } from "./types.js";
-import { normalizeTextForSpeech } from "../text-processing.js";
+import {
+	createSpeechAlignmentTokenPattern,
+	normalizeTextForSpeech,
+} from "../text-processing.js";
 
 interface SourceChar {
 	char: string;
@@ -39,8 +42,10 @@ const STRUCTURAL_SSML_TAGS = new Set([
 
 const UNSUPPORTED_SEMANTIC_SSML_TAGS = new Set(["audio", "phoneme"]);
 
-const TOKEN_PATTERN =
-	/[\p{L}]+|\d+(?:\.\d+)?|[±√=+\-*/()²³^×÷≤≥≠≈<>|%°'′\u2062]/gu;
+// Shared Unicode-aware tokenizer, identical to the catalog span aligner's, so
+// spoken text tokenizes the same way on both paths (see
+// `createSpeechAlignmentTokenPattern`).
+const TOKEN_PATTERN = createSpeechAlignmentTokenPattern();
 
 const NUMERIC_WORDS = new Map<string, string>([
 	["zero", "0"],

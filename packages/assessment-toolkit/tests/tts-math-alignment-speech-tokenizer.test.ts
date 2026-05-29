@@ -47,6 +47,20 @@ describe("math alignment speech tokenizer", () => {
 		);
 	});
 
+	test("keeps accented-Latin words as single Unicode tokens", () => {
+		const tokenization = tokenizeSpeechSource({
+			speechText: "café au lait",
+		});
+
+		// The shared \p{L} tokenizer must not split or drop accented letters the
+		// way the old [A-Za-z] pattern did ("café" -> "caf").
+		expect(tokenization.tokens.map((token) => token.normalized)).toEqual([
+			"café",
+			"au",
+			"lait",
+		]);
+	});
+
 	test("rejects control-tag provider marks and unsupported semantic SSML", () => {
 		const tokenization = tokenizeSpeechSource({
 			speechText: '<speak>Listen <audio src="tone.mp3"/> now.</speak>',

@@ -70,6 +70,50 @@ describe("TTS math speech generation", () => {
 		expect(result.speechText).toBe("B squared minus 4 A C");
 	});
 
+	test("uses the MathSpeak domain for non-English locales", async () => {
+		const setupCalls: Record<string, unknown>[] = [];
+
+		await resolveMathSpeechFromChunks(chunks, {
+			language: "es-ES",
+			loadSre: async () => ({
+				setupEngine: async (options: Record<string, unknown>) => {
+					setupCalls.push(options);
+				},
+				engineReady: async () => {},
+				toSpeech: () => "equis al cuadrado",
+			}),
+		});
+
+		// ClearSpeak is English-only in SRE; non-English locales get MathSpeak.
+		expect(setupCalls[0]).toMatchObject({
+			locale: "es",
+			domain: "mathspeak",
+		});
+	});
+
+	test("does not upper-case isolated letters for non-English locales", async () => {
+		const result = await resolveMathSpeechFromChunks(
+			[
+				{
+					type: "math",
+					mathml: "<math><mi>a</mi></math>",
+					fallbackText: "a",
+				},
+			],
+			{
+				language: "fr-FR",
+				loadSre: async () => ({
+					setupEngine: async () => {},
+					engineReady: async () => {},
+					toSpeech: () => "a",
+				}),
+			},
+		);
+
+		// The letter-pronunciation rewrite is an English-only disambiguation.
+		expect(result.speechText).toBe("a");
+	});
+
 	test("does not load SRE when there are no math chunks", async () => {
 		const result = await resolveMathSpeechFromChunks(
 			[{ type: "text", text: "Plain text only." }],

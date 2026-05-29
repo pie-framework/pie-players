@@ -5,6 +5,7 @@ import {
 	type TextProcessingOptions,
 	isNodeHiddenForTTS,
 	normalizeTextForSpeech,
+	shouldInsertWordBoundarySpace,
 } from "./text-processing.js";
 
 export type MathAwareSpeechChunk =
@@ -33,15 +34,19 @@ interface TextAccumulator {
 	inLeadingWhitespace: boolean;
 	lastCharWasWhitespace: boolean;
 	lastMapped: { node: Text; offset: number } | null;
+	options?: TextProcessingOptions;
 }
 
-const createAccumulator = (): TextAccumulator => ({
+const createAccumulator = (
+	options?: TextProcessingOptions,
+): TextAccumulator => ({
 	chars: [],
 	map: new Map(),
 	position: 0,
 	inLeadingWhitespace: true,
 	lastCharWasWhitespace: false,
 	lastMapped: null,
+	options,
 });
 
 const isMathJaxElement = (element: Element): boolean =>
@@ -135,7 +140,10 @@ const shouldInsertBoundarySpace = (
 		return false;
 	}
 	const previous = acc.chars[acc.chars.length - 1];
-	return /[A-Za-z0-9]/.test(previous) && /[A-Za-z0-9]/.test(nextCharacter);
+	// Defer to the shared locale-aware decision (Intl.Segmenter, falling back to
+	// alnum) so adjacent text nodes split into words consistently with the main
+	// visible-text collector, instead of an ASCII-only heuristic.
+	return shouldInsertWordBoundarySpace(previous, nextCharacter, acc.options);
 };
 
 const appendTextNode = (acc: TextAccumulator, textNode: Text): void => {
@@ -245,7 +253,7 @@ const collectVisibleMathFallback = (
 	canonicalMathML: string,
 	options?: TextProcessingOptions,
 ): { text: string; map: NormalizedTextMap } => {
-	const mathAcc = createAccumulator();
+	const mathAcc = createAccumulator(options);
 	const visit = (node: Node): void => {
 		if (isNodeHiddenForTTS(node, element)) return;
 		if (node.nodeType === 3) {
@@ -292,7 +300,7 @@ const collectMathAware = (
 	root: Element,
 	options?: TextProcessingOptions,
 ): MathAwareTextResult => {
-	const acc = createAccumulator();
+	const acc = createAccumulator(options);
 	const chunks: MathAwareSpeechChunk[] = [];
 	let textChunkStart = 0;
 	let containsMathMarkup = false;

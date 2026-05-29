@@ -38,21 +38,39 @@ const defaultLoadSre = async (): Promise<SpeechRuleEngineApi> => {
 	return sreLoadPromise;
 };
 
+// SRE's ClearSpeak rule set is English-only; MathSpeak is localized to many more
+// locales. Use ClearSpeak for English (highest-quality math prose) and MathSpeak
+// elsewhere, so non-English content gets locale-appropriate voicing instead of
+// silently falling back to English ClearSpeak rules.
+const domainForLocale = (locale: string): string =>
+	locale === "en" ? "clearspeak" : "mathspeak";
+
 const setupSre = async (
 	sre: SpeechRuleEngineApi,
 	language?: string,
 ): Promise<void> => {
+	const locale = normalizeLocale(language);
 	await sre.setupEngine?.({
-		locale: normalizeLocale(language),
-		domain: "clearspeak",
+		locale,
+		domain: domainForLocale(locale),
 		modality: "speech",
 		markup: "none",
 	});
 	await sre.engineReady?.();
 };
 
-const normalizeMathVariablePronunciation = (speech: string): string =>
-	speech.replace(/\b([a-z])\b/g, (match) => match.toUpperCase());
+// English-only normalization: SRE may render a lone italic variable as a single
+// lowercase letter ("a"), which an English TTS engine can voice as the article
+// "a" rather than the letter name. Upper-casing forces the letter reading. Other
+// locales do not share this ambiguity (and may use non-Latin variables), so the
+// rewrite is skipped for them.
+const normalizeMathVariablePronunciation = (
+	speech: string,
+	locale: string,
+): string =>
+	locale === "en"
+		? speech.replace(/\b([a-z])\b/g, (match) => match.toUpperCase())
+		: speech;
 
 export const resolveMathSpeechFromChunks = async (
 	chunks: MathAwareSpeechChunk[],
@@ -77,6 +95,7 @@ export const resolveMathSpeechFromChunks = async (
 	let usedMathSpeech = false;
 	let usedFallback = false;
 	const loadSre = options.loadSre || defaultLoadSre;
+	const locale = normalizeLocale(options.language);
 	const speechParts: string[] = [];
 
 	for (const chunk of chunks) {
@@ -93,7 +112,7 @@ export const resolveMathSpeechFromChunks = async (
 				setupComplete = true;
 			}
 			const speech = normalizeTextForSpeech(
-				normalizeMathVariablePronunciation(sre.toSpeech(chunk.mathml)),
+				normalizeMathVariablePronunciation(sre.toSpeech(chunk.mathml), locale),
 			);
 			if (speech) {
 				speechParts.push(speech);

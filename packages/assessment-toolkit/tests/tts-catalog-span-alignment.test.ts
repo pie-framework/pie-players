@@ -162,6 +162,25 @@ describe("catalog span alignment", () => {
 		).toBe("\u2062");
 	});
 
+	test("anchors accented-Latin words instead of dropping their accents", () => {
+		// Regression: the old [A-Za-z] tokenizer dropped accents, so "café"
+		// tokenized as "caf" and these words could not anchor. The shared \p{L}
+		// tokenizer keeps them whole, so exact-word matching aligns visible→spoken.
+		const visibleText = "el café está cerrado";
+		const alignment = createCatalogSpanAlignment({
+			speechText: visibleText,
+			visibleText,
+		});
+
+		expect(alignment.playbackMode).toBe("exact-word");
+		const cafeSpan = resolveVisibleSpanForBoundary(
+			alignment,
+			alignment.spokenText.indexOf("café"),
+		);
+		expect(cafeSpan).not.toBeNull();
+		expect(visibleText.slice(cafeSpan!.start, cafeSpan!.end)).toBe("café");
+	});
+
 	test("keeps duplicate anchors monotonic instead of jumping backward", () => {
 		const visibleText = "b + b + b";
 		const spokenText = "b plus b plus b";

@@ -1,4 +1,7 @@
-import { normalizeTextForSpeech } from "./text-processing.js";
+import {
+	createSpeechAlignmentTokenPattern,
+	normalizeTextForSpeech,
+} from "./text-processing.js";
 
 export type CatalogChunkPlaybackMode =
 	| "exact-word"
@@ -73,13 +76,13 @@ const UNSUPPORTED_SEMANTIC_SSML_TAGS = new Set([
 	"phoneme",
 ]);
 
-// LIMITATION (i18n): word-level catalog↔visible alignment is currently
-// English/Latin only — the tokenizer recognizes `[A-Za-z]` words and the phrase
-// table below is English. Non-Latin scripts and other locales still get speech,
-// they just degrade to coarse region highlighting rather than word tracking.
-// Generalizing this (locale-aware tokenization + phrase tables) is intentionally
-// out of scope here.
-const TOKEN_PATTERN = /[A-Za-z]+|\d+(?:\.\d+)?|[±√=+\-*/()²³^\u2062]/gu;
+// Shared Unicode-aware tokenizer (see `createSpeechAlignmentTokenPattern`), so
+// accented Latin and non-Latin words tokenize the same way here as in the math
+// speech tokenizer. LIMITATION (i18n): the phrase table below is still English,
+// so multi-word operator phrases ("plus or minus", "divided by") only align for
+// English speech; other locales degrade to coarse region highlighting. A fresh
+// pattern per call because of the global flag's mutable `lastIndex`.
+const TOKEN_PATTERN = createSpeechAlignmentTokenPattern();
 
 const NUMERIC_WORDS = new Map<string, string>([
 	["zero", "0"],

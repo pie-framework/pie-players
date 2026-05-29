@@ -9,6 +9,17 @@ export interface TextProcessingOptions {
 export const normalizeTextForSpeech = (text: string): string =>
 	text.trim().replace(/\s+/g, " ");
 
+// Single source of truth for aligning spoken text to visible / math text.
+// Letters are matched with `\p{L}` so the tokenizer is Unicode-aware — accented
+// Latin ("café") and non-Latin scripts stay one token instead of being split
+// or dropped, which is what previously limited word-level highlight alignment
+// to ASCII. Numbers cover integers and decimals; the trailing class lists the
+// math glyphs a TTS engine may surface as a single visible token. A fresh
+// RegExp is returned each call because the global flag carries mutable
+// `lastIndex` state that must not be shared across call sites.
+export const createSpeechAlignmentTokenPattern = (): RegExp =>
+	/[\p{L}]+|\d+(?:\.\d+)?|[±√=+\-*/()²³^×÷≤≥≠≈<>|%°'′\u2062]/gu;
+
 export const isElementHiddenForTTS = (element: Element): boolean => {
 	if ((element as HTMLElement).hidden) return true;
 	if (element.tagName?.toLowerCase() === "mjx-assistive-mml") return true;
@@ -69,7 +80,7 @@ export const isNodeHiddenForTTS = (
 	return false;
 };
 
-const shouldInsertBoundarySpace = (
+export const shouldInsertWordBoundarySpace = (
 	previousChar: string | null,
 	nextChar: string | null,
 	options?: TextProcessingOptions,
@@ -137,7 +148,7 @@ export const collectVisibleTextAndMap = (
 			if (
 				!inLeadingWhitespace &&
 				!lastCharWasWhitespace &&
-				shouldInsertBoundarySpace(
+				shouldInsertWordBoundarySpace(
 					previousVisibleChar,
 					firstVisibleChar,
 					options,

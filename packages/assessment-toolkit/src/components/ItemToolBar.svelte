@@ -112,7 +112,6 @@
 	// and our CORS-clean stylesheet wins.
 	const ROBOTO_HREF =
 		'https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap';
-	const FA_LIGHT_SHIM_ID = 'pie-nds-fa-light-shim';
 	let ndsAssetsInstalled = false;
 	const ensureNdsAssets = () => {
 		if (!isBrowser || ndsAssetsInstalled) return;
@@ -138,17 +137,6 @@
 			link.rel = 'stylesheet';
 			link.href = href;
 			document.head.appendChild(link);
-		}
-		if (!document.getElementById(FA_LIGHT_SHIM_ID)) {
-			// Map `fa-light` → FA Free Solid (weight 900) as the fallback
-			// effective when FA Pro isn't reachable. FA Pro's own stylesheet
-			// re-defines `.fa-light` to its weight-300 family, so when Pro
-			// loads after this rule it overrides the shim.
-			const style = document.createElement('style');
-			style.id = FA_LIGHT_SHIM_ID;
-			style.textContent =
-				'.fa-light{font-family:"Font Awesome 6 Free";font-weight:900;}';
-			document.head.appendChild(style);
 		}
 	};
 
@@ -1102,10 +1090,19 @@
 		// the design calls for a circular tertiary icon button. We dispatch
 		// onActivate from a click listener (the element fires `icon-button-click`,
 		// but it bubbles a regular `click` too via the inner <button>).
+		//
+		// `faVariant` overrides the FA family class on the rendered <i>. The
+		// nds bundle hardcodes `fa-light fa-${name}`; when FA Pro Light isn't
+		// reachable in prod our `.fa-light` shim falls back to FA Free Solid
+		// (weight 900), which renders the magnifying-glass with thick filled
+		// handles. Pass 'fa-regular' for those icons so they pick up the
+		// outline variant (Pro Regular when present, FA Free Regular as
+		// fallback — both ship the outline shape).
 		const createShellIconButton = (
 			label: string,
 			iconName: string,
-			onActivate: () => void
+			onActivate: () => void,
+			faVariant: 'fa-light' | 'fa-regular' | 'fa-solid' = 'fa-regular'
 		) => {
 			const button = document.createElement('nds-icon-button');
 			button.setAttribute('variant', 'tertiary');
@@ -1119,6 +1116,28 @@
 				onActivate();
 				bringToFront();
 			});
+			if (faVariant !== 'fa-light') {
+				// nds-icon-button renders into light DOM via createRenderRoot
+				// returning `this`, but the <i> only exists after Lit's first
+				// update cycle. Watch for it and swap classes once it appears.
+				const swapVariant = (icon: HTMLElement) => {
+					icon.classList.remove('fa-light');
+					icon.classList.add(faVariant);
+				};
+				const existing = button.querySelector<HTMLElement>('i.fa-light');
+				if (existing) {
+					swapVariant(existing);
+				} else {
+					const observer = new MutationObserver(() => {
+						const target = button.querySelector<HTMLElement>('i.fa-light');
+						if (target) {
+							swapVariant(target);
+							observer.disconnect();
+						}
+					});
+					observer.observe(button, { childList: true, subtree: true });
+				}
+			}
 			return button;
 		};
 
@@ -1402,11 +1421,17 @@
 			controlsEl.style.alignItems = 'center';
 			controlsEl.style.gap = isCalculatorShell ? '6px' : '4px';
 			const shellConfig = currentArgs.mounted.entry.shell;
-			const appendControl = (label: string, glyph: string, iconName: string, onActivate: () => void) => {
+			const appendControl = (
+				label: string,
+				glyph: string,
+				iconName: string,
+				onActivate: () => void,
+				faVariant: 'fa-light' | 'fa-regular' | 'fa-solid' = 'fa-regular'
+			) => {
 				if (!controlsEl) return;
 				controlsEl.appendChild(
 					isCalculatorShell
-						? createShellIconButton(label, iconName, onActivate)
+						? createShellIconButton(label, iconName, onActivate, faVariant)
 						: createShellControlButton(label, glyph, onActivate)
 				);
 			};
@@ -1442,16 +1467,9 @@
 			}
 
 			if (isCalculatorShell) {
-				closeButtonEl = document.createElement('nds-icon-button');
-				closeButtonEl.setAttribute('variant', 'tertiary');
-				closeButtonEl.setAttribute('size', 'small');
-				closeButtonEl.setAttribute('type', 'circle');
-				closeButtonEl.setAttribute('icon-name', 'xmark');
-				closeButtonEl.setAttribute('button-aria-label', 'Close tool');
-				closeButtonEl.title = 'Close tool';
+				closeButtonEl = createShellIconButton('Close tool', 'xmark', closeShell, 'fa-regular');
 				closeButtonEl.style.display =
 					currentArgs.mounted.entry.shell.closeable === false ? 'none' : 'inline-block';
-				closeButtonEl.addEventListener('click', closeShell);
 			} else {
 				const closeButton = document.createElement('button');
 				closeButton.type = 'button';
@@ -1703,7 +1721,7 @@
 									class="item-toolbar__calculator-icon"
 									aria-hidden="true"
 								>
-									<i class="fa-light fa-calculator"></i>
+									<i class="fa-regular fa-calculator"></i>
 								</span>
 							{:else if isInlineSvgIcon(item.icon)}
 								<span aria-hidden="true">{@html sanitizeSvgIcon(item.icon)}</span>
@@ -1737,7 +1755,7 @@
 									class="item-toolbar__calculator-icon"
 									aria-hidden="true"
 								>
-									<i class="fa-light fa-calculator"></i>
+									<i class="fa-regular fa-calculator"></i>
 								</span>
 							{:else if isInlineSvgIcon(item.icon)}
 								<span aria-hidden="true">{@html sanitizeSvgIcon(item.icon)}</span>

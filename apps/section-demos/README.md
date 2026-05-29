@@ -137,6 +137,7 @@ apps/section-demos/
 │   │   ├── (demos)/question-passage/[[id]]/
 │   │   ├── (demos)/three-questions/[[id]]/
 │   │   ├── (demos)/tts-ssml/[[id]]/
+│   │   ├── (demos)/tts-math/[[id]]/
 │   │   ├── (demos)/session-persistence/[[id]]/
 │   │   └── (demos)/session-hydrate-db/[[id]]/
 │   │       ├── +page.ts           # Load fixed demo data with shared helper
@@ -161,6 +162,7 @@ Each demo has a TypeScript file defining the QTI 3.0 assessment section:
 - `demo2-question-passage.ts` - Renaissance passage + question
 - `demo3-three-questions.ts` - Photosynthesis passage + 3 questions
 - `demo4-tts-ssml.ts` - TTS + SSML coverage with multi-level catalogs
+- `demo10-tts-math.ts` - TTS + automatic MathML/MathJax-style math speech coverage
 - `sections.ts` - Includes multi-page `session-persistence` and `session-hydrate-db` demo wiring
 
 ### Customizing Demos
@@ -206,7 +208,7 @@ Use `loaderOptions` only for module/bundle loading behavior. Use `loaderConfig` 
 
 ### SC TTS Proxy Demo Config
 
-The `tts-ssml` route defaults to an SC-style custom transport through the local proxy route:
+The `tts-ssml` and `tts-math` routes default to an SC-style custom transport through the local proxy route:
 
 - Client endpoint: `POST /api/tts/sc`
 - Required server env vars (no defaults):

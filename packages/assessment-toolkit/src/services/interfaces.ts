@@ -11,7 +11,9 @@
 import type { I18nServiceApi } from "@pie-players/pie-players-shared/i18n";
 import type {
 	AccessibilityCatalogResolver,
+	CatalogLookupContext,
 	CatalogLookupOptions,
+	CatalogOwnerContext,
 	CatalogStatistics,
 	CatalogType,
 	ResolvedCatalog,
@@ -111,6 +113,20 @@ export interface HighlightCoordinatorApi {
 		startOffset: number,
 		endOffset: number,
 	): void;
+
+	/**
+	 * Highlight a single element as the active TTS word (temporary).
+	 *
+	 * Marks exactly the supplied element (via `data-pie-tts-word-element`)
+	 * without walking up to a containing ancestor. Used for atomic targets that
+	 * have no direct text node to range over — most notably MathJax CHTML tokens
+	 * (e.g. `<mjx-mi><mjx-c/></mjx-mi>`) and whole-expression fallbacks. Painting
+	 * the element itself is what lets a resolved math token highlight as a token
+	 * rather than escalating to the full `<math>` / `<mjx-container>`.
+	 *
+	 * Optional so lightweight coordinator mocks can omit it.
+	 */
+	highlightTTSWordElement?(element: Element): void;
 
 	/**
 	 * Highlight sentence(s) for TTS (background layer)
@@ -243,6 +259,7 @@ export interface TtsServiceApi {
 		text: string,
 		options?: {
 			catalogId?: string;
+			catalogContext?: CatalogLookupContext;
 			language?: string;
 			contentElement?: Element;
 		},
@@ -361,6 +378,14 @@ export interface AccessibilityCatalogResolverApi {
 	 * Add item-level catalogs (called when rendering a new item)
 	 */
 	addItemCatalogs(catalogs: any[]): void;
+
+	/**
+	 * Register catalogs scoped to a mounted content owner.
+	 */
+	registerCatalogs?(
+		context: CatalogOwnerContext,
+		catalogs: any[],
+	): () => void;
 
 	/**
 	 * Clear item-level catalogs (called when leaving an item)

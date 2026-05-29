@@ -146,10 +146,10 @@
 			// Set the root element for highlighting
 			ttsService.setRootElement(container);
 
-			// Detect catalog ID from selected content (for SSML lookup)
+			// Detect catalog reference from selected content (for SSML lookup)
 			const catalogId = container
-				.closest('[data-catalog-id]')
-				?.getAttribute('data-catalog-id') || undefined;
+				.closest('[data-catalog-idref]')
+				?.getAttribute('data-catalog-idref') || undefined;
 
 			await ttsService.speak(selectedText, {
 				catalogId,  // Pass catalog ID for SSML resolution

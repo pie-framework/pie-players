@@ -13,7 +13,8 @@ export const SECTION_DEMOS_POLLY_TTS_TOOL_PROVIDER = {
 	defaultVoice: "Joanna",
 	language: "en-US",
 	rate: 1,
-	engine: "neural" as const,
+	// Polly neural rejects SSML tags used by these demos, such as prosody/emphasis.
+	engine: "standard" as const,
 	sampleRate: 24000,
 	format: "mp3" as const,
 	speechMarksMode: "word" as const,

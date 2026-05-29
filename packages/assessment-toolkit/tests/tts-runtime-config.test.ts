@@ -50,6 +50,32 @@ describe("tts-runtime-config defaults", () => {
 		});
 	});
 
+	test("forwards mathTokenHighlighting only when explicitly set", () => {
+		expect(
+			buildRuntimeTTSConfig(
+				resolveTTSRuntimeSettings({ enabled: true } as any),
+			),
+		).not.toHaveProperty("mathTokenHighlighting");
+
+		expect(
+			buildRuntimeTTSConfig(
+				resolveTTSRuntimeSettings({
+					enabled: true,
+					mathTokenHighlighting: false,
+				} as any),
+			),
+		).toMatchObject({ mathTokenHighlighting: false });
+
+		expect(
+			buildRuntimeTTSConfig(
+				resolveTTSRuntimeSettings({
+					enabled: true,
+					mathTokenHighlighting: true,
+				} as any),
+			),
+		).toMatchObject({ mathTokenHighlighting: true });
+	});
+
 	test("applies minimal Google defaults including apiEndpoint", () => {
 		const settings = resolveTTSRuntimeSettings({
 			enabled: true,

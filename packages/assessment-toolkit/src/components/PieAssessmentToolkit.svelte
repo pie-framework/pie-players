@@ -106,6 +106,7 @@
 		type RuntimeRegistrationDetail,
 	} from "../runtime/registration-events.js";
 	import { dispatchCrossBoundaryEvent } from "../runtime/tool-host-contract.js";
+	import { collectCatalogRegistrations } from "../runtime/catalog-registration.js";
 	import { SectionRuntimeEngine } from "../runtime/SectionRuntimeEngine.js";
 	import { connectSectionRuntimeEngineHostContext } from "../runtime/section-runtime-engine-host-context.js";
 	import { runStageEmitWithSuppression } from "../runtime/stage-emit-gate.js";
@@ -266,6 +267,8 @@ const DEFAULT_ENV = {
 	let pendingCompositionEmit = false;
 	let compositionEmitRaf: number | null = null;
 	let pendingCrossBoundaryEvents: Array<{ name: string; detail: unknown }> = [];
+	const runtimeRegistrationDetails = new Map<HTMLElement, RuntimeRegistrationDetail>();
+	const catalogRegistrationCleanups = new WeakMap<HTMLElement, Array<() => void>>();
 	const sessionEmitPolicyState = createSessionEmitPolicyState();
 
 	// M6 canonical stage tracker. Post-retro the toolkit applies the
@@ -945,6 +948,49 @@ const DEFAULT_ENV = {
 		queueMicrotask(flush);
 	}
 
+	function unregisterCatalogsForElement(element?: HTMLElement | null): void {
+		if (!element) return;
+		const cleanups = catalogRegistrationCleanups.get(element);
+		if (!cleanups) return;
+		for (const cleanup of cleanups) {
+			cleanup();
+		}
+		catalogRegistrationCleanups.delete(element);
+	}
+
+	function unregisterAllScopedCatalogs(): void {
+		for (const detail of runtimeRegistrationDetails.values()) {
+			unregisterCatalogsForElement(detail.element);
+		}
+	}
+
+	function registerCatalogsForDetail(detail: RuntimeRegistrationDetail): void {
+		unregisterCatalogsForElement(detail.element);
+		if (!effectiveCoordinator) return;
+		const resolver = effectiveCoordinator.getServiceBundle().catalogResolver as {
+			registerCatalogs?: (context: unknown, catalogs: unknown[]) => () => void;
+		};
+		if (typeof resolver.registerCatalogs !== "function") return;
+		const registrations = collectCatalogRegistrations(detail, {
+			assessmentId: effectiveAssessmentId,
+			sectionId: effectiveSectionId,
+		});
+		if (registrations.length === 0) return;
+		catalogRegistrationCleanups.set(
+			detail.element,
+			registrations.map((registration) =>
+				resolver.registerCatalogs!(registration.context, registration.catalogs),
+			),
+		);
+	}
+
+	function refreshCatalogRegistrations(): void {
+		unregisterAllScopedCatalogs();
+		for (const detail of runtimeRegistrationDetails.values()) {
+			registerCatalogsForDetail(detail);
+		}
+	}
+
 	function emitNormalizedSessionChanged(args: {
 		itemId: string;
 		canonicalItemId?: string;
@@ -1109,6 +1155,16 @@ const DEFAULT_ENV = {
 		if (runtimeContextValue) {
 			provider?.setValue(runtimeContextValue);
 		}
+	});
+
+	$effect(() => {
+		void effectiveCoordinator;
+		void effectiveAssessmentId;
+		void effectiveSectionId;
+		refreshCatalogRegistrations();
+		return () => {
+			unregisterAllScopedCatalogs();
+		};
 	});
 
 	$effect(() => {
@@ -1307,6 +1363,8 @@ const DEFAULT_ENV = {
 					const detail = getEventDetail<RuntimeRegistrationDetail>(event);
 					if (!detail?.element || !detail?.itemId) return;
 					const changed = sectionEngine.register(detail);
+					runtimeRegistrationDetails.set(detail.element, detail);
+					registerCatalogsForDetail(detail);
 					sectionEngine.handleContentRegistered(detail);
 					if (changed) emitCompositionChanged();
 				},
@@ -1320,6 +1378,10 @@ const DEFAULT_ENV = {
 					const changed = detail?.element
 						? sectionEngine.unregister(detail.element)
 						: false;
+					unregisterCatalogsForElement(detail.element);
+					if (detail.element) {
+						runtimeRegistrationDetails.delete(detail.element);
+					}
 					sectionEngine.handleContentUnregistered(detail);
 					if (changed) emitCompositionChanged();
 				},

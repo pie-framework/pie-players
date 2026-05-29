@@ -684,10 +684,40 @@ export class SchoolCityServerProvider extends BaseTTSProvider {
 			const audioContent = typeof body.audioContent === "string" ? body.audioContent : "";
 			const word = typeof body.word === "string" ? body.word : "";
 			if (!audioContent || !word) {
+				const bodyKeys = Object.keys(body || {});
+				const upstreamMessage =
+					typeof body.message === "string"
+						? body.message
+						: typeof body.error === "string"
+							? body.error
+							: "";
+				const missingParts = [
+					audioContent ? null : "audioContent",
+					word ? null : "word",
+				]
+					.filter(Boolean)
+					.join(", ");
+				const messageParts = [
+					`SchoolCity 200 response missing ${missingParts}`,
+					`bodyKeys=[${bodyKeys.join(",")}]`,
+					upstreamMessage ? `upstreamMessage=${JSON.stringify(upstreamMessage)}` : "",
+					`textLength=${payload.text.length}`,
+					`lang=${payload.lang_id}`,
+				].filter(Boolean);
 				throw new TTSError(
 					TTSErrorCode.PROVIDER_ERROR,
-					"SchoolCity response missing audioContent or word URL",
-					{ body },
+					messageParts.join("; "),
+					{
+						body,
+						bodyKeys,
+						upstreamMessage,
+						request: {
+							lang_id: payload.lang_id,
+							speedRate: payload.speedRate,
+							cache: payload.cache,
+							textLength: payload.text.length,
+						},
+					},
 					this.providerId,
 				);
 			}

@@ -437,12 +437,12 @@ export class TTSService implements ITTSService {
    * Enhanced speakRange method with catalog support
    */
   async speakRange(range: Range, options?: { language?: string }): Promise<void> {
-    // Check if the range contains an element with data-catalog-id
+    // Check if the range contains an element with data-catalog-idref
     const element = range.commonAncestorContainer as Element;
-    const catalogElement = element.closest?.('[data-catalog-id]') as HTMLElement;
+    const catalogElement = element.closest?.('[data-catalog-idref]') as HTMLElement;
 
     if (catalogElement) {
-      const catalogId = catalogElement.getAttribute('data-catalog-id');
+      const catalogId = catalogElement.getAttribute('data-catalog-idref');
       if (catalogId) {
         // Use catalog version
         return this.speak(range.toString(), { catalogId, language: options?.language });

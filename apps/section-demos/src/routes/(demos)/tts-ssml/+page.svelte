@@ -44,7 +44,7 @@
 		MODE_OPTIONS,
 		PLAYER_OPTIONS
 	} from '$lib/demo-runtime/demo-page-helpers';
-	import { SECTION_DEMOS_SC_TTS_TOOL_PROVIDER } from '$lib/demo-runtime/section-demos-default-tts';
+	import { SECTION_DEMOS_POLLY_TTS_TOOL_PROVIDER } from '$lib/demo-runtime/section-demos-default-tts';
 	import {
 		buildBundleKey,
 		collectElementTags,
@@ -86,7 +86,7 @@
 			strictness: 'error',
 			tools: {
 				providers: {
-					textToSpeech: SECTION_DEMOS_SC_TTS_TOOL_PROVIDER,
+					textToSpeech: SECTION_DEMOS_POLLY_TTS_TOOL_PROVIDER,
 					calculator: {
 						authFetcher: fetchDesmosAuthConfig
 					},
@@ -476,30 +476,6 @@ const sectionPlayerHooks = $derived.by(() =>
 	bind:instrumentationDebuggerElement
 	bind:pnpDebuggerElement
 >
-	{#snippet beforePlayer()}
-		<aside class="pie-demo-ssml-cues" aria-hidden="true" inert>
-			<h3 class="pie-demo-ssml-cues-title">SSML cues and tips</h3>
-			<ul class="pie-demo-ssml-cues-list">
-				<li>
-					<strong>Passage + Q1:</strong> includes SSML (`speak`, `break`, `prosody`, `emphasis`,
-					`phoneme`) with visible plain-text fallback.
-				</li>
-				<li><strong>Q2:</strong> intentionally plain text only to compare fallback behavior.</li>
-				<li>
-					<strong>Q3:</strong> includes AWS-specific SSML tags (`aws-break`, `aws-emphasis`, `aws-w`,
-					`aws-say-as`) that are most meaningful with Polly.
-				</li>
-				<li>
-					Use the <strong>TTS settings</strong> button (top-right) to switch backends and compare
-					output.
-				</li>
-				<li>
-					Use the dialog <strong>Preview</strong> area to test plain text vs SSML directly before
-					reading full content.
-				</li>
-			</ul>
-		</aside>
-	{/snippet}
 	{#if coordinatorReady && coordinator}
 		<pie-tool-annotation-toolbar
 			enabled={true}
@@ -575,28 +551,5 @@ const sectionPlayerHooks = $derived.by(() =>
 	.preload-status.error {
 		color: var(--color-error);
 		opacity: 1;
-	}
-
-	.pie-demo-ssml-cues {
-		margin: 0.6rem 1rem 0;
-		padding: 0.7rem 0.85rem;
-		border: 1px solid color-mix(in srgb, var(--color-info) 40%, var(--color-base-300));
-		border-radius: 0.5rem;
-		background: color-mix(in srgb, var(--color-info) 10%, var(--color-base-100));
-		color: var(--color-base-content);
-		font-size: 0.82rem;
-	}
-
-	.pie-demo-ssml-cues-title {
-		margin: 0 0 0.35rem;
-		font-size: 0.84rem;
-		font-weight: 700;
-	}
-
-	.pie-demo-ssml-cues-list {
-		margin: 0;
-		padding-left: 1rem;
-		display: grid;
-		gap: 0.2rem;
 	}
 </style>

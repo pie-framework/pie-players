@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import { HighlightCoordinator } from "../src/services/HighlightCoordinator";
 
 class MockHighlight {
@@ -79,6 +80,9 @@ describe("HighlightCoordinator TTS style contrast", () => {
 		expect(styleEl.textContent).toContain("--pie-tts-word-shadow");
 		expect(styleEl.textContent).toContain("--pie-tts-sentence-highlight");
 		expect(styleEl.textContent).toContain("--pie-tts-line-highlight");
+		expect(styleEl.textContent).toContain("data-pie-tts-sentence-element");
+		expect(styleEl.textContent).toContain("data-pie-tts-word-element");
+		expect(styleEl.textContent).toContain("border-bottom: 2px solid var(--pie-tts-word-underline");
 	});
 
 	test("updates all tts contrast variables from custom color", () => {
@@ -139,5 +143,148 @@ describe("HighlightCoordinator TTS style contrast", () => {
 		};
 
 		expect(() => new HighlightCoordinator()).not.toThrow();
+	});
+
+	test("marks MathML islands for coarse TTS region highlighting", () => {
+		if (!GlobalRegistrator.isRegistered) {
+			GlobalRegistrator.register();
+		}
+		try {
+			Object.defineProperty(globalThis, "CSS", {
+				value: { highlights: new Map() },
+				configurable: true,
+			});
+			Object.defineProperty(globalThis, "Highlight", {
+				value: MockHighlight,
+				configurable: true,
+			});
+			Object.defineProperty(globalThis, "MutationObserver", {
+				value: undefined,
+				configurable: true,
+			});
+			const coordinator = new HighlightCoordinator();
+			const root = document.createElement("div");
+			root.innerHTML = `
+				<span>solve</span>
+				<math xmlns="http://www.w3.org/1998/Math/MathML"><msup><mi>x</mi><mn>2</mn></msup></math>
+			`;
+			document.body.appendChild(root);
+			const math = root.querySelector("math");
+			const range = document.createRange();
+			range.selectNodeContents(root);
+
+			coordinator.highlightTTSSentence([range]);
+
+			expect(math?.getAttribute("data-pie-tts-sentence-element")).toBe("true");
+			coordinator.clearTTSSentence();
+			expect(math?.hasAttribute("data-pie-tts-sentence-element")).toBe(false);
+			root.remove();
+		} finally {
+			if (GlobalRegistrator.isRegistered) {
+				GlobalRegistrator.unregister();
+			}
+		}
+	});
+
+	test("does NOT escalate a TTS word range to the enclosing MathJax container", () => {
+		if (!GlobalRegistrator.isRegistered) {
+			GlobalRegistrator.register();
+		}
+		try {
+			Object.defineProperty(globalThis, "CSS", {
+				value: { highlights: new Map() },
+				configurable: true,
+			});
+			Object.defineProperty(globalThis, "Highlight", {
+				value: MockHighlight,
+				configurable: true,
+			});
+			Object.defineProperty(globalThis, "MutationObserver", {
+				value: undefined,
+				configurable: true,
+			});
+			const coordinator = new HighlightCoordinator();
+			const root = document.createElement("div");
+			root.innerHTML = `
+				<mjx-container>
+					<mjx-assistive-mml>
+						<math xmlns="http://www.w3.org/1998/Math/MathML"><mi>x</mi></math>
+					</mjx-assistive-mml>
+				</mjx-container>
+			`;
+			document.body.appendChild(root);
+			const math = root.querySelector("math");
+			const container = root.querySelector("mjx-container");
+			const range = document.createRange();
+			range.selectNodeContents(math!);
+
+			coordinator.highlightRange(range, "tts-word" as any);
+
+			// The word layer must never paint the whole equation: escalating a
+			// multi-node word range to the <mjx-container> is the whole-expression
+			// flash we removed. Math is tracked per token by the pipeline; the word
+			// fallback selector only covers replaced elements (svg/img/canvas).
+			expect(container?.hasAttribute("data-pie-tts-word-element")).toBe(false);
+			root.remove();
+		} finally {
+			if (GlobalRegistrator.isRegistered) {
+				GlobalRegistrator.unregister();
+			}
+		}
+	});
+
+	test("highlightTTSWordElement marks exactly the token, never the enclosing expression", () => {
+		if (!GlobalRegistrator.isRegistered) {
+			GlobalRegistrator.register();
+		}
+		try {
+			Object.defineProperty(globalThis, "CSS", {
+				value: { highlights: new Map() },
+				configurable: true,
+			});
+			Object.defineProperty(globalThis, "Highlight", {
+				value: MockHighlight,
+				configurable: true,
+			});
+			Object.defineProperty(globalThis, "MutationObserver", {
+				value: undefined,
+				configurable: true,
+			});
+			const coordinator = new HighlightCoordinator();
+			const root = document.createElement("div");
+			// MathJax CHTML: tokens wrap a font-driven <mjx-c>, never a text node.
+			root.innerHTML = `
+				<mjx-container>
+					<mjx-math aria-hidden="true"><mjx-mi><mjx-c></mjx-c></mjx-mi><mjx-mo><mjx-c></mjx-c></mjx-mo><mjx-mn><mjx-c></mjx-c></mjx-mn></mjx-math>
+				</mjx-container>
+			`;
+			document.body.appendChild(root);
+			const container = root.querySelector("mjx-container")!;
+			const firstToken = root.querySelector("mjx-mi")!;
+			const operator = root.querySelector("mjx-mo")!;
+
+			coordinator.highlightTTSWordElement(operator);
+
+			// The resolved token is painted...
+			expect(operator.getAttribute("data-pie-tts-word-element")).toBe("true");
+			// ...and crucially the whole expression is NOT escalated. This is the
+			// regression: MathJax math used to highlight as a full block because the
+			// active token escalated up to its <mjx-container>.
+			expect(container.hasAttribute("data-pie-tts-word-element")).toBe(false);
+
+			// Advancing to the next token clears the previous token mark.
+			coordinator.highlightTTSWordElement(firstToken);
+			expect(operator.hasAttribute("data-pie-tts-word-element")).toBe(false);
+			expect(firstToken.getAttribute("data-pie-tts-word-element")).toBe("true");
+			expect(container.hasAttribute("data-pie-tts-word-element")).toBe(false);
+
+			coordinator.clearTTSWord();
+			expect(firstToken.hasAttribute("data-pie-tts-word-element")).toBe(false);
+			root.remove();
+		} finally {
+			if (GlobalRegistrator.isRegistered) {
+				GlobalRegistrator.unregister();
+			}
+		}
 	});
 });

@@ -1,0 +1,23 @@
+[
+	{
+		"id": "simple-multiplication",
+		"description": "SmartBuild simple multiplication",
+		"visibleHtml": "<math xmlns=\"http://www.w3.org/1998/Math/MathML\"><mrow><mn>2</mn><mo>&#215;</mo><mn>7</mn></mrow></math>",
+		"speechText": "2 times 7",
+		"expectedTargetQuality": "exact-word"
+	},
+	{
+		"id": "stacked-multiplication",
+		"description": "SmartBuild stacked multiplication should not fake word-level row tracking",
+		"visibleHtml": "<math xmlns=\"http://www.w3.org/1998/Math/MathML\"><semantics><mtable columnalign=\"left\"><mtr><mtd><mn>5,147</mn></mtd></mtr><mtr><mtd><munder accentunder=\"true\"><mrow><mo>&#215;</mo><mtext>&#8201;</mtext><mn>4</mn></mrow><mo stretchy=\"true\">&#175;</mo></munder></mtd></mtr></mtable><annotation encoding=\"MathType-MTEF\"></annotation></semantics></math>",
+		"speechText": "Five thousand one hundred forty-seven times four",
+		"expectedTargetQuality": "region-fallback"
+	},
+	{
+		"id": "absolute-value",
+		"description": "SmartBuild absolute value with legacy mfenced",
+		"visibleHtml": "<math xmlns=\"http://www.w3.org/1998/Math/MathML\"><mfenced open=\"|\" close=\"|\"><mrow><mo>-</mo><mn>5</mn></mrow></mfenced></math>",
+		"speechText": "the absolute value of negative five",
+		"expectedTargetQuality": "region-fallback"
+	}
+]

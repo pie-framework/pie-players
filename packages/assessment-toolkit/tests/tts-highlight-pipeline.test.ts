@@ -72,6 +72,75 @@ describe("TTS highlight pipeline", () => {
 		});
 	});
 
+	test("normalizes raw SSML boundaries for a math chunk that has no catalog alignment", () => {
+		// The generated-SSML math path (PIE-623) sends a raw <speak> document as
+		// the chunk speechText and carries only a mathAlignment — no catalog span
+		// alignment. The provider's word offset is an index into that raw SSML, so
+		// the normalizer must map it back into the extracted spoken text rather
+		// than treating it as a spoken-text offset (which rejected every boundary).
+		const speechText =
+			'<speak version="1.1"><prosody rate="100%">x squared plus 1</prosody></speak>';
+		const chunk = makeChunk({
+			speechText,
+			visibleText: "x²+1",
+			offsetSpace: "raw-ssml",
+		});
+
+		const normalized = normalizeBoundaryEvent(chunk, {
+			chunkId: chunk.id,
+			word: "squared",
+			position: speechText.indexOf("squared"),
+			length: "squared".length,
+			providerOffsetSpace: "raw-ssml",
+		});
+
+		expect(normalized.normalizedWord).toBe("squared");
+		expect(normalized.chunkSpokenStart).not.toBeNull();
+		expect(normalized.confidence).toBe(1);
+		// The resolved offset is in spoken-text space ("x squared plus 1"), where
+		// "squared" starts at index 2 — not the raw-SSML index above.
+		expect(normalized.chunkSpokenStart).toBe("x ".length);
+	});
+
+	test("resolves a per-token math target from a raw-SSML chunk with no catalog alignment", () => {
+		const math = document.createElementNS(
+			"http://www.w3.org/1998/Math/MathML",
+			"math",
+		);
+		math.innerHTML = "<mi>x</mi><mo>+</mo><mn>1</mn>";
+		const speechText = "<speak><prosody rate=\"100%\">x plus 1</prosody></speak>";
+		const alignment = createMathAwareAlignment({
+			mathElement: math,
+			speechText,
+		});
+		const chunk = makeChunk({
+			speechText,
+			visibleText: "x+1",
+			sourceElement: math,
+			regionElement: math,
+			offsetSpace: "raw-ssml",
+			mathAlignments: [{ element: math, alignment }],
+		});
+
+		const decision = createTTSHighlightPlan({
+			chunks: [chunk],
+		}).resolveBoundary({
+			chunkId: chunk.id,
+			word: "plus",
+			position: speechText.indexOf("plus"),
+			length: "plus".length,
+			providerOffsetSpace: "raw-ssml",
+		});
+
+		expect(decision.activeTarget).toMatchObject({
+			type: "element",
+			quality: "semantic-token",
+		});
+		expect(
+			(decision.activeTarget as { element: Element }).element.localName,
+		).toBe("mo");
+	});
+
 	test("rejects contradictory provider boundary words", () => {
 		const chunk = makeChunk({
 			catalogAlignment: createCatalogSpanAlignment({

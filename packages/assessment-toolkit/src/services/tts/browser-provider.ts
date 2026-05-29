@@ -61,6 +61,8 @@ export class BrowserTTSProvider implements ITTSProvider {
 			supportsVoiceSelection: true,
 			supportsRateControl: true,
 			supportsPitchControl: true,
+			// The Web Speech API voices plain text only; SSML tags are read aloud.
+			supportsSSML: false,
 		};
 	}
 

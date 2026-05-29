@@ -241,6 +241,20 @@ export interface TTSProviderCapabilities {
 	supportsPitchControl: boolean;
 
 	/**
+	 * Supports SSML markup (W3C SSML 1.1) in the text passed to `speak`.
+	 *
+	 * When `true`, callers may pass an SSML document (e.g. `<speak>…</speak>`)
+	 * and the provider will voice the markup rather than read the tags aloud.
+	 * When `false` or omitted, callers must pass plain text — the browser Web
+	 * Speech API, for example, speaks tags literally.
+	 *
+	 * Optional for backward compatibility; treat a missing value as `false`.
+	 *
+	 * @standard W3C SSML 1.1
+	 */
+	supportsSSML?: boolean;
+
+	/**
 	 * Maximum text length (if limited)
 	 */
 	maxTextLength?: number;

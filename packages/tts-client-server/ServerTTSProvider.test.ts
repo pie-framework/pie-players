@@ -265,4 +265,50 @@ describe("ServerTTSProvider", () => {
 		expect(fetchMock).toHaveBeenCalledTimes(1);
 		expect(String(fetchMock.mock.calls[0]?.[0])).toBe("/api/tts/google/voices");
 	});
+
+	describe("getCapabilities supportsSSML", () => {
+		const capabilitiesFor = async (config: Record<string, unknown>) => {
+			const provider = new ServerTTSProvider();
+			await provider.initialize(config as any);
+			return provider.getCapabilities();
+		};
+
+		test("reports SSML support for Polly on the pie transport", async () => {
+			const caps = await capabilitiesFor({
+				apiEndpoint: "/api/tts",
+				provider: "polly",
+			});
+			expect(caps.supportsSSML).toBe(true);
+		});
+
+		test("reports SSML support for Google on the pie transport", async () => {
+			const caps = await capabilitiesFor({
+				apiEndpoint: "/api/tts",
+				provider: "google",
+			});
+			expect(caps.supportsSSML).toBe(true);
+		});
+
+		test("defaults to SSML support (pie transport defaults to Polly)", async () => {
+			const caps = await capabilitiesFor({ apiEndpoint: "/api/tts" });
+			expect(caps.supportsSSML).toBe(true);
+		});
+
+		test("does not report SSML support on the custom transport", async () => {
+			const caps = await capabilitiesFor({
+				apiEndpoint: "/api/tts",
+				provider: "custom",
+				transportMode: "custom",
+			});
+			expect(caps.supportsSSML).toBe(false);
+		});
+
+		test("stays conservative for unknown pie providers", async () => {
+			const caps = await capabilitiesFor({
+				apiEndpoint: "/api/tts",
+				provider: "elevenlabs",
+			});
+			expect(caps.supportsSSML).toBe(false);
+		});
+	});
 });

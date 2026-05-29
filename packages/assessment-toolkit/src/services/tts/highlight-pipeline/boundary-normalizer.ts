@@ -1,5 +1,8 @@
 import { resolveSpokenBoundaryOffset } from "../catalog-span-alignment.js";
-import { tokenizeSpeechSource } from "../math-alignment/speech-tokenizer.js";
+import {
+	resolveBoundaryToSpeechToken,
+	tokenizeSpeechSource,
+} from "../math-alignment/speech-tokenizer.js";
 import type {
 	NormalizedBoundaryEvent,
 	TTSBoundaryEvent,
@@ -13,18 +16,35 @@ const normalizeBoundaryWord = (word: string): string | null => {
 	);
 };
 
-const directBoundary = (
+// Resolve a provider boundary for a chunk that carries no catalog span
+// alignment — notably the generated-SSML math path, whose `speechText` is a
+// raw `<speak>` document. The provider's offset is an index into `speechText`
+// exactly as it was sent (which may include SSML tags), so we tokenize that
+// same string and let the shared speech tokenizer translate the offset into the
+// extracted spoken text. Returns the boundary in spoken-text space alongside
+// that spoken text, so the downstream word/offset checks share one coordinate
+// system. The previous "direct" path treated the raw-SSML offset as a
+// spoken-text offset and rejected every math boundary (PIE-623 regression).
+const speechSourceBoundary = (
 	chunk: TTSHighlightChunk,
 	event: TTSBoundaryEvent,
-): { start: number; length: number } | null => {
-	if (!Number.isFinite(event.position)) return null;
-	if (event.position < 0 || event.position >= chunk.speechText.length)
-		return null;
-	const length = Math.max(
-		1,
-		Number.isFinite(event.length) ? (event.length ?? 1) : 1,
-	);
-	return { start: event.position, length };
+): { boundary: { start: number; length: number } | null; spokenText: string } => {
+	const tokenization = tokenizeSpeechSource({ speechText: chunk.speechText });
+	if (!Number.isFinite(event.position)) {
+		return { boundary: null, spokenText: tokenization.spokenText };
+	}
+	const resolved = resolveBoundaryToSpeechToken({
+		tokenization,
+		position: event.position,
+		length: event.length,
+		boundaryWord: event.word,
+	});
+	return {
+		boundary: resolved
+			? { start: resolved.start, length: resolved.length }
+			: null,
+		spokenText: tokenization.spokenText,
+	};
 };
 
 const tokenAtOffsetMatches = (
@@ -67,14 +87,21 @@ export const normalizeBoundaryEvent = (
 			reason: "boundary offset space is unsupported",
 		};
 	}
-	const boundary = chunk.catalogAlignment
-		? resolveSpokenBoundaryOffset(
-				chunk.catalogAlignment,
-				event.position,
-				event.length,
-				event.word,
-			)
-		: directBoundary(chunk, event);
+	let boundary: { start: number; length: number } | null;
+	let spokenText: string;
+	if (chunk.catalogAlignment) {
+		boundary = resolveSpokenBoundaryOffset(
+			chunk.catalogAlignment,
+			event.position,
+			event.length,
+			event.word,
+		);
+		spokenText = chunk.catalogAlignment.spokenText;
+	} else {
+		const resolved = speechSourceBoundary(chunk, event);
+		boundary = resolved.boundary;
+		spokenText = resolved.spokenText;
+	}
 	if (!boundary) {
 		return {
 			chunkId: chunk.id,
@@ -85,7 +112,6 @@ export const normalizeBoundaryEvent = (
 			reason: "could not resolve provider boundary to chunk speech",
 		};
 	}
-	const spokenText = chunk.catalogAlignment?.spokenText || chunk.speechText;
 	if (!tokenAtOffsetMatches(spokenText, boundary.start, normalizedWord)) {
 		return {
 			chunkId: chunk.id,
@@ -104,6 +130,6 @@ export const normalizeBoundaryEvent = (
 		confidence: normalizedWord ? 1 : 0.75,
 		reason: chunk.catalogAlignment
 			? "resolved through catalog alignment"
-			: "resolved through direct chunk offsets",
+			: "resolved through speech tokenization",
 	};
 };

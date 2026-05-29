@@ -1,3 +1,4 @@
+import { extractSpokenText } from "./ssml/spoken-text.js";
 import {
 	createSpeechAlignmentTokenPattern,
 	normalizeTextForSpeech,
@@ -41,40 +42,12 @@ export interface CatalogSpanAlignment {
 	rawToSpokenOffsetMap: Map<number, number>;
 }
 
-interface SourceChar {
-	char: string;
-	rawOffset: number | null;
-}
-
-interface ExtractedCatalogSpeech {
-	spokenText: string;
-	rawToSpokenOffsetMap: Map<number, number>;
-	unsupportedSemantic: boolean;
-	hasMarkup: boolean;
-}
-
 interface MatchCandidate {
 	spokenStartToken: number;
 	spokenEndToken: number;
 	visibleToken: number;
 	score: number;
 }
-
-const STRUCTURAL_SSML_TAGS = new Set([
-	"speak",
-	"p",
-	"s",
-	"emphasis",
-	"prosody",
-	"say-as",
-	"voice",
-	"lang",
-]);
-
-const UNSUPPORTED_SEMANTIC_SSML_TAGS = new Set([
-	"audio",
-	"phoneme",
-]);
 
 // Shared Unicode-aware tokenizer (see `createSpeechAlignmentTokenPattern`), so
 // accented Latin and non-Latin words tokenize the same way here as in the math
@@ -118,156 +91,6 @@ const SPOKEN_PHRASE_TARGETS: Array<{
 	{ phrase: ["minus"], visible: "-", score: 5 },
 	{ phrase: ["plus"], visible: "+", score: 5 },
 ];
-
-const decodeXmlEntities = (value: string): string =>
-	value
-		.replace(/&quot;/g, '"')
-		.replace(/&apos;/g, "'")
-		.replace(/&lt;/g, "<")
-		.replace(/&gt;/g, ">")
-		.replace(/&amp;/g, "&");
-
-const appendSourceText = (
-	chars: SourceChar[],
-	value: string,
-	rawOffset: number | null,
-): void => {
-	for (let i = 0; i < value.length; i++) {
-		chars.push({
-			char: value[i],
-			rawOffset: rawOffset === null ? null : rawOffset + i,
-		});
-	}
-};
-
-const appendSpace = (chars: SourceChar[]): void => {
-	chars.push({ char: " ", rawOffset: null });
-};
-
-const normalizeSourceChars = (
-	chars: SourceChar[],
-): { text: string; rawToSpokenOffsetMap: Map<number, number> } => {
-	const rawToSpokenOffsetMap = new Map<number, number>();
-	const out: string[] = [];
-	let lastWasWhitespace = true;
-
-	for (const sourceChar of chars) {
-		const isWhitespace = /\s/.test(sourceChar.char);
-		if (isWhitespace) {
-			if (!lastWasWhitespace && out.length > 0) {
-				out.push(" ");
-				if (sourceChar.rawOffset !== null) {
-					rawToSpokenOffsetMap.set(sourceChar.rawOffset, out.length - 1);
-				}
-			}
-			lastWasWhitespace = true;
-			continue;
-		}
-		out.push(sourceChar.char);
-		if (sourceChar.rawOffset !== null) {
-			rawToSpokenOffsetMap.set(sourceChar.rawOffset, out.length - 1);
-		}
-		lastWasWhitespace = false;
-	}
-
-	while (out.length > 0 && out[out.length - 1] === " ") {
-		out.pop();
-	}
-
-	return { text: out.join(""), rawToSpokenOffsetMap };
-};
-
-const getTagName = (tagSource: string): string => {
-	const match = tagSource.match(/^<\/?\s*([A-Za-z0-9:-]+)/);
-	return match?.[1]?.toLowerCase() || "";
-};
-
-const getAttribute = (tagSource: string, name: string): string | null => {
-	const pattern = new RegExp(`${name}\\s*=\\s*("([^"]*)"|'([^']*)')`, "i");
-	const match = tagSource.match(pattern);
-	return decodeXmlEntities(match?.[2] ?? match?.[3] ?? "") || null;
-};
-
-const extractCatalogSpeech = (speechText: string): ExtractedCatalogSpeech => {
-	const sourceChars: SourceChar[] = [];
-	let unsupportedSemantic = false;
-	let hasMarkup = false;
-	let index = 0;
-
-	while (index < speechText.length) {
-		const char = speechText[index];
-		if (char !== "<") {
-			appendSourceText(sourceChars, char, index);
-			index++;
-			continue;
-		}
-
-		const closeIndex = speechText.indexOf(">", index + 1);
-		if (closeIndex < 0) {
-			appendSourceText(sourceChars, char, index);
-			index++;
-			continue;
-		}
-
-		hasMarkup = true;
-		const tagSource = speechText.slice(index, closeIndex + 1);
-		const tagName = getTagName(tagSource);
-		const isClosing = /^<\s*\//.test(tagSource);
-		const isSelfClosing = /\/\s*>$/.test(tagSource);
-
-		if (!isClosing && tagName === "sub") {
-			const alias = getAttribute(tagSource, "alias");
-			if (!alias) {
-				unsupportedSemantic = true;
-				index = closeIndex + 1;
-				continue;
-			}
-			appendSourceText(sourceChars, alias, null);
-			const closingSub = speechText
-				.toLowerCase()
-				.indexOf("</sub>", closeIndex + 1);
-			index = closingSub >= 0 ? closingSub + "</sub>".length : closeIndex + 1;
-			continue;
-		}
-
-		if (!isClosing && tagName === "break") {
-			appendSpace(sourceChars);
-			index = closeIndex + 1;
-			continue;
-		}
-
-		if (!isClosing && UNSUPPORTED_SEMANTIC_SSML_TAGS.has(tagName)) {
-			unsupportedSemantic = true;
-			if (isSelfClosing) {
-				index = closeIndex + 1;
-				continue;
-			}
-		}
-
-		if (
-			tagName &&
-			!STRUCTURAL_SSML_TAGS.has(tagName) &&
-			!UNSUPPORTED_SEMANTIC_SSML_TAGS.has(tagName) &&
-			tagName !== "break" &&
-			tagName !== "sub"
-		) {
-			unsupportedSemantic = true;
-		}
-
-		if (!isClosing && (tagName === "p" || tagName === "s")) {
-			appendSpace(sourceChars);
-		}
-		index = closeIndex + 1;
-	}
-
-	const normalized = normalizeSourceChars(sourceChars);
-	return {
-		spokenText: normalizeTextForSpeech(normalized.text),
-		rawToSpokenOffsetMap: normalized.rawToSpokenOffsetMap,
-		unsupportedSemantic,
-		hasMarkup,
-	};
-};
 
 const tokenize = (text: string): CatalogTextToken[] => {
 	const tokens: CatalogTextToken[] = [];
@@ -422,7 +245,7 @@ export const createCatalogSpanAlignment = (args: {
 	speechText: string;
 	visibleText: string;
 }): CatalogSpanAlignment => {
-	const extracted = extractCatalogSpeech(args.speechText);
+	const extracted = extractSpokenText(args.speechText);
 	const visibleText = normalizeTextForSpeech(args.visibleText);
 	const spokenText = extracted.spokenText;
 	const spokenTokens = tokenize(spokenText);

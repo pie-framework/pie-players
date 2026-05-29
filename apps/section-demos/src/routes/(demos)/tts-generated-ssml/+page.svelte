@@ -33,7 +33,7 @@
 		MODE_OPTIONS,
 		PLAYER_OPTIONS
 	} from '$lib/demo-runtime/demo-page-helpers';
-	import { SECTION_DEMOS_SC_TTS_TOOL_PROVIDER } from '$lib/demo-runtime/section-demos-default-tts';
+	import { SECTION_DEMOS_POLLY_TTS_TOOL_PROVIDER } from '$lib/demo-runtime/section-demos-default-tts';
 	import {
 		buildBundleKey,
 		collectElementPackages,
@@ -43,14 +43,14 @@
 
 	let { data }: { data: PageData } = $props();
 
-	const demoId = 'tts-math';
+	const demoId = 'tts-generated-ssml';
 	const sectionToolbarTools = 'theme,lineReader';
 	const toolsConfigResult = createToolsConfig({
-		source: 'section-demos.tts-math',
+		source: 'section-demos.tts-generated-ssml',
 		strictness: 'error',
 		tools: {
 			providers: {
-				textToSpeech: SECTION_DEMOS_SC_TTS_TOOL_PROVIDER,
+				textToSpeech: SECTION_DEMOS_POLLY_TTS_TOOL_PROVIDER,
 				annotationToolbar: {
 					enabled: true
 				}
@@ -63,7 +63,7 @@
 		}
 	});
 	if (toolsConfigResult.diagnostics.length > 0) {
-		console.warn('[tts-math demo] tools config diagnostics:', toolsConfigResult.diagnostics);
+		console.warn('[tts-generated-ssml demo] tools config diagnostics:', toolsConfigResult.diagnostics);
 	}
 	const toolkitToolsConfig = toolsConfigResult.config;
 	const sectionInstrumentationProvider = new CompositeInstrumentationProvider([
@@ -154,7 +154,7 @@
 		toolkitCoordinator = detail?.coordinator || null;
 		toolkitCoordinator?.setHooks?.({
 			onFrameworkError: (model) => {
-				console.error('[tts-math demo] Toolkit framework error:', model);
+				console.error('[tts-generated-ssml demo] Toolkit framework error:', model);
 			}
 		} satisfies ToolkitCoordinatorHooks);
 	}
@@ -270,7 +270,7 @@
 				persistBeforeDispose: false
 			});
 		} catch (error) {
-			console.warn('[tts-math demo] Failed to clear persistence during reset:', error);
+			console.warn('[tts-generated-ssml demo] Failed to clear persistence during reset:', error);
 		}
 		if (!browser) return;
 		const keysToRemove: string[] = [];

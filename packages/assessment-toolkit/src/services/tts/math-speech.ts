@@ -10,12 +10,25 @@ interface SpeechRuleEngineApi {
 export interface ResolveMathSpeechOptions {
 	language?: string;
 	loadSre?: () => Promise<SpeechRuleEngineApi>;
+	/**
+	 * Also produce SRE's SSML rendering (markup: "ssml") for the equation, for
+	 * the runtime generated-SSML path (PIE-623). Only populated when the input
+	 * is a single math chunk and SRE succeeds. The plain `speechText` is always
+	 * computed with markup: "none" so the plain path is unaffected.
+	 */
+	produceSsml?: boolean;
 }
 
 export interface ResolvedMathSpeech {
 	speechText: string;
 	usedMathSpeech: boolean;
 	usedFallback: boolean;
+	/**
+	 * SRE SSML rendering of the equation (a self-contained `<speak>` document),
+	 * present only when `produceSsml` was requested for a single math chunk and
+	 * SRE produced trackable SSML.
+	 */
+	ssml?: string;
 }
 
 let sreLoadPromise: Promise<SpeechRuleEngineApi> | null = null;
@@ -47,16 +60,46 @@ const domainForLocale = (locale: string): string =>
 
 const setupSre = async (
 	sre: SpeechRuleEngineApi,
-	language?: string,
+	language: string | undefined,
+	markup: "none" | "ssml",
 ): Promise<void> => {
 	const locale = normalizeLocale(language);
 	await sre.setupEngine?.({
 		locale,
 		domain: domainForLocale(locale),
 		modality: "speech",
-		markup: "none",
+		markup,
 	});
 	await sre.engineReady?.();
+};
+
+// SRE's SSML rendering wraps the spoken words in highlight-safe structural tags
+// (`speak`, `prosody`, `say-as interpret-as="character"`, `break`), all handled
+// by `extractSpokenText`, so word-boundary offsets into the raw SSML still map
+// back to spoken tokens. SRE also prepends an XML prolog (`<?xml …?>`); AWS
+// Polly and Google Cloud TTS reject SSML that does not begin with `<speak>`, so
+// we strip the prolog here. The stripped string is the single source of truth:
+// it is both what the provider receives and what the alignment tokenizes, so
+// offsets stay consistent. We only accept output that contains a `<speak>`
+// element, so a bad/empty render degrades to plain text.
+const stripXmlProlog = (ssml: string): string =>
+	ssml.replace(/^\s*<\?xml[^>]*\?>\s*/i, "");
+
+const generateMathSsml = async (
+	sre: SpeechRuleEngineApi,
+	mathml: string,
+	language?: string,
+): Promise<string | null> => {
+	try {
+		await setupSre(sre, language, "ssml");
+		const ssml = stripXmlProlog(sre.toSpeech(mathml));
+		return ssml.includes("<speak") ? ssml : null;
+	} catch (error) {
+		console.debug("[TTSService] Math SSML generation failed; using plain", {
+			message: error instanceof Error ? error.message : String(error),
+		});
+		return null;
+	}
 };
 
 // English-only normalization: SRE may render a lone italic variable as a single
@@ -108,7 +151,7 @@ export const resolveMathSpeechFromChunks = async (
 				sre = await loadSre();
 			}
 			if (!setupComplete) {
-				await setupSre(sre, options.language);
+				await setupSre(sre, options.language, "none");
 				setupComplete = true;
 			}
 			const speech = normalizeTextForSpeech(
@@ -133,9 +176,30 @@ export const resolveMathSpeechFromChunks = async (
 		}
 	}
 
+	// Generated-SSML path: only meaningful for a single math chunk (the runtime
+	// composes one chunk per equation). Computed after the plain pass so the
+	// markup: "none" `speechText` above is unchanged. The "none" → "ssml"
+	// engine reconfiguration happens sequentially within this call.
+	let ssml: string | undefined;
+	if (
+		options.produceSsml &&
+		sre &&
+		usedMathSpeech &&
+		chunks.length === 1 &&
+		chunks[0].type === "math"
+	) {
+		const generated = await generateMathSsml(
+			sre,
+			chunks[0].mathml,
+			options.language,
+		);
+		ssml = generated ?? undefined;
+	}
+
 	return {
 		speechText: normalizeTextForSpeech(speechParts.join(" ")),
 		usedMathSpeech,
 		usedFallback,
+		ssml,
 	};
 };

@@ -423,6 +423,7 @@ test.describe("section player demo tts-ssml", () => {
 	}) => {
 		await gotoDemo(page);
 		await openSessionPanel(page);
+		await forceBrowserTtsRuntime(page);
 
 		const ttsSettingsToggle = page.getByRole("button", {
 			name: "Toggle TTS settings panel",

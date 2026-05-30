@@ -137,7 +137,7 @@ apps/section-demos/
 │   │   ├── (demos)/question-passage/[[id]]/
 │   │   ├── (demos)/three-questions/[[id]]/
 │   │   ├── (demos)/tts-ssml/[[id]]/
-│   │   ├── (demos)/tts-math/[[id]]/
+│   │   ├── (demos)/tts-generated-ssml/[[id]]/
 │   │   ├── (demos)/session-persistence/[[id]]/
 │   │   └── (demos)/session-hydrate-db/[[id]]/
 │   │       ├── +page.ts           # Load fixed demo data with shared helper
@@ -162,7 +162,7 @@ Each demo has a TypeScript file defining the QTI 3.0 assessment section:
 - `demo2-question-passage.ts` - Renaissance passage + question
 - `demo3-three-questions.ts` - Photosynthesis passage + 3 questions
 - `demo4-tts-ssml.ts` - TTS + SSML coverage with multi-level catalogs
-- `demo10-tts-math.ts` - TTS + automatic MathML/MathJax-style math speech coverage
+- `demo10-tts-generated-ssml.ts` - Same content as `demo4-tts-ssml.ts`, minus the authored SSML/catalogs, so the toolkit generates math SSML on the fly
 - `sections.ts` - Includes multi-page `session-persistence` and `session-hydrate-db` demo wiring
 
 ### Customizing Demos
@@ -208,7 +208,10 @@ Use `loaderOptions` only for module/bundle loading behavior. Use `loaderConfig` 
 
 ### SC TTS Proxy Demo Config
 
-The `tts-ssml` and `tts-math` routes default to an SC-style custom transport through the local proxy route:
+Most demos default to an SC-style custom transport through the local proxy
+route. (The two TTS-focused routes are the exception: `tts-ssml` and
+`tts-generated-ssml` use the SSML-capable AWS Polly transport at `/api/tts` so
+authored and generated SSML are actually voiced.)
 
 - Client endpoint: `POST /api/tts/sc`
 - Required server env vars (no defaults):

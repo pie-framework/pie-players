@@ -282,6 +282,26 @@ const MAX_TEXT_LENGTH_BY_MODE: Record<TransportAdapter["id"], number> = {
 	custom: 3000,
 };
 
+/**
+ * Server providers whose SSML support is reliable enough to receive generated
+ * SSML (AWS Polly, Google Cloud TTS). This is an allow-list rather than a
+ * deny-list: the `custom` transport (and unknown providers) report
+ * `supportsSSML: false` so the toolkit falls back to plain text. Some custom
+ * backends advertise SSML support server-side but mis-voice or ignore parts of
+ * it, so we stay conservative at the client boundary.
+ */
+const SSML_CAPABLE_PIE_PROVIDERS = new Set(["polly", "google"]);
+
+const resolveSupportsSSML = (
+	config: ServerTTSProviderConfig | null,
+): boolean => {
+	if (!config) return false;
+	if (resolveTransportMode(config) !== "pie") return false;
+	// The pie transport defaults to Polly when no provider is named.
+	const provider = (config.provider || "polly").toLowerCase();
+	return SSML_CAPABLE_PIE_PROVIDERS.has(provider);
+};
+
 const trimTrailingSlash = (value: string): string => value.replace(/\/+$/, "");
 
 const resolveVoicesValidationUrl = (
@@ -1192,6 +1212,7 @@ export class ServerTTSProvider implements ITTSProvider {
 			supportsVoiceSelection: true,
 			supportsRateControl: true,
 			supportsPitchControl: false, // Depends on server provider
+			supportsSSML: resolveSupportsSSML(this.config),
 			maxTextLength: MAX_TEXT_LENGTH_BY_MODE[mode],
 		};
 	}

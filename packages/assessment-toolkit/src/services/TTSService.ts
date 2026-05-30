@@ -48,7 +48,12 @@ import {
 	type MathAwareAlignment,
 } from "./tts/math-alignment/index.js";
 import { collectMathAwareTextAndMap } from "./tts/math-aware-text-processing.js";
-import { resolveMathSpeechFromChunks } from "./tts/math-speech.js";
+import {
+	buildGeneratedSpeechFromRoot,
+	createMemoizedMathSpeechResolver,
+	planToCompositionChunkInputs,
+	type MathSpeechResolver,
+} from "./tts/generated-speech/index.js";
 import {
 	segmentSentences as segmentTextToSentences,
 	type SentenceSegment as SharedSentenceSegment,
@@ -124,6 +129,9 @@ interface SpeechCompositionChunk {
 	mathAlignment?: MathAwareAlignment;
 	mathAlignments?: Array<{ element: Element; alignment: MathAwareAlignment }>;
 	visibleMap?: NormalizedTextMap;
+	// Plain-text variant for speak-time fallback (generated SSML math chunks).
+	// If the provider rejects the SSML `speechText`, playback retries this.
+	plainFallback?: SpeechCompositionChunk;
 }
 
 interface ResolvedSpeechContent {
@@ -171,6 +179,12 @@ export class TTSService {
 				payload?: Record<string, unknown>,
 		  ) => void | Promise<void>)
 		| null = null;
+
+	// Memoized SRE resolver for the runtime generated-speech path (PIE-623).
+	// Caches DOM-free spoken text keyed by (locale, canonical MathML) across
+	// utterances within this service instance.
+	private readonly generatedMathSpeechResolver: MathSpeechResolver =
+		createMemoizedMathSpeechResolver();
 
 	// Verbose alignment/highlight tracing is opt-in: it is expensive (large
 	// objects, a full text diff per utterance) and noisy in production. Enable
@@ -1366,6 +1380,24 @@ export class TTSService {
 		return chunks;
 	}
 
+	/**
+	 * Decide the playback format for the generated (no authored catalog) math
+	 * path. SSML is only emitted to providers that report `supportsSSML`: the
+	 * browser Web Speech API speaks tags literally (capability `false`), and the
+	 * server bridge reports `true` only for SSML-reliable backends (Polly,
+	 * Google) — the `custom`/SchoolCity transport stays plain.
+	 *
+	 * A speak-time plain fallback (`SpeechCompositionChunk.plainFallback`) is the
+	 * defensive net if a capable provider still rejects a given SSML payload.
+	 */
+	private resolveGeneratedPlaybackFormat(): "plain" | "ssml" {
+		const provider = this.currentProvider;
+		if (!provider) return "plain";
+		// Belt-and-suspenders: the browser provider can never voice SSML.
+		if (provider.providerId?.toLowerCase() === "browser") return "plain";
+		return provider.getCapabilities?.().supportsSSML ? "ssml" : "plain";
+	}
+
 	private async resolveGeneratedSpeechContent(
 		contentElement: Element,
 		normalizedInputText: string,
@@ -1383,12 +1415,21 @@ export class TTSService {
 			| "speechChunks"
 		>
 	> {
-		const extracted = collectMathAwareTextAndMap(
-			contentElement,
-			this.getTextProcessingOptions(language),
-		);
-		const visibleText = extracted.visibleText || normalizedInputText;
-		if (!extracted.containsMathMarkup) {
+		// Delegate to the generated-speech module: a pure plan assembly + SRE
+		// memoization core, plus a DOM adapter that binds live-DOM anchors and
+		// emits playback chunks. The aggregate `contentToSpeak` stays plain text
+		// (`plan.plainSpeechText`) so seek/structural-pause planning is unaffected.
+		const playbackFormat = this.resolveGeneratedPlaybackFormat();
+		const { plan, containsMathMarkup, visibleText: collectedVisibleText } =
+			await buildGeneratedSpeechFromRoot({
+				contentRoot: contentElement,
+				language,
+				textProcessingOptions: this.getTextProcessingOptions(language),
+				produceSsml: playbackFormat === "ssml",
+				resolveMathSpeech: this.generatedMathSpeechResolver,
+			});
+		const visibleText = collectedVisibleText || normalizedInputText;
+		if (!containsMathMarkup) {
 			return {
 				contentToSpeak: visibleText,
 				speechText: visibleText,
@@ -1399,61 +1440,10 @@ export class TTSService {
 				speechMatchesVisibleText: true,
 			};
 		}
-		const speechChunks: SpeechCompositionChunk[] = [];
-		let visibleCursor = 0;
-		const nextVisibleSpan = (text: string): { start: number; end: number } => {
-			const normalized = normalizeTextForSpeech(text);
-			const found = visibleText.indexOf(normalized, visibleCursor);
-			const start = found >= 0 ? found : visibleCursor;
-			const end = start + normalized.length;
-			visibleCursor = end;
-			return { start, end };
-		};
-		for (const chunk of extracted.chunks) {
-			if (chunk.type === "text") {
-				const visibleSpan = nextVisibleSpan(chunk.text);
-				const alignment = createCatalogSpanAlignment({
-					speechText: chunk.text,
-					visibleText: chunk.text,
-				});
-				speechChunks.push({
-					speechText: chunk.text,
-					visibleText: chunk.text,
-					sourceElement: contentElement,
-					regionElement: resolveReadableRegion(contentElement, contentElement),
-					speechMatchesVisibleText: true,
-					playbackMode: alignment.playbackMode,
-					alignment,
-					visibleMap: this.sliceVisibleMap(
-						extracted.map,
-						visibleSpan.start,
-						visibleSpan.end,
-					),
-				});
-				continue;
-			}
-			nextVisibleSpan(chunk.fallbackText);
-			const generatedChunk = await resolveMathSpeechFromChunks([chunk], {
-				language,
-			});
-			const speechText = generatedChunk.speechText || chunk.fallbackText;
-			speechChunks.push({
-				speechText,
-				visibleText: chunk.fallbackText,
-				sourceElement: chunk.sourceElement || null,
-				regionElement: chunk.sourceElement || null,
-				speechMatchesVisibleText: speechText === chunk.fallbackText,
-				mathAlignment: chunk.sourceElement
-					? createMathAwareAlignment({
-							mathElement: chunk.sourceElement,
-							speechText,
-						})
-					: undefined,
-			});
-		}
-		const speechText = normalizeTextForSpeech(
-			speechChunks.map((chunk) => chunk.speechText).join(" "),
-		);
+		const speechChunks = planToCompositionChunkInputs(plan, {
+			format: playbackFormat,
+		});
+		const speechText = plan.plainSpeechText;
 		return {
 			contentToSpeak: speechText,
 			speechText,
@@ -1573,21 +1563,6 @@ export class TTSService {
 				);
 			}
 		};
-	}
-
-	private sliceVisibleMap(
-		map: NormalizedTextMap,
-		start: number,
-		end: number,
-	): NormalizedTextMap {
-		const sliced: NormalizedTextMap = new Map();
-		for (let index = start; index < end; index++) {
-			const mapping = map.get(index);
-			if (mapping) {
-				sliced.set(index - start, mapping);
-			}
-		}
-		return sliced;
 	}
 
 	private clearWordBoundaryHighlighting(): void {
@@ -1714,6 +1689,29 @@ export class TTSService {
 	}
 
 	private async speakCatalogChunk(
+		chunk: SpeechCompositionChunk,
+		runId: number,
+	): Promise<void> {
+		try {
+			await this.speakCatalogChunkOnce(chunk, runId);
+		} catch (error) {
+			// Speak-time fallback: if an SSML math chunk is rejected by the
+			// provider, retry once with its precomputed plain-text variant (same
+			// anchors, plain alignment). The fallback chunk carries no further
+			// fallback, so this cannot recurse.
+			if (chunk.plainFallback && runId === this.speakRunId) {
+				this.debugLog(
+					"[TTSService] SSML chunk speak failed; retrying plain text",
+					{ message: error instanceof Error ? error.message : String(error) },
+				);
+				await this.speakCatalogChunkOnce(chunk.plainFallback, runId);
+				return;
+			}
+			throw error;
+		}
+	}
+
+	private async speakCatalogChunkOnce(
 		chunk: SpeechCompositionChunk,
 		runId: number,
 	): Promise<void> {

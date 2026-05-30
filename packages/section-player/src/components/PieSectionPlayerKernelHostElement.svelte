@@ -362,7 +362,7 @@
 		box-sizing: border-box;
 	}
 
-	.pie-section-player-items-pane :global(.pie-section-player-scroll-hint) {
+	pie-section-player-items-pane :global(.pie-section-player-scroll-hint) {
 	    bottom: -0.5rem;
 	}
 

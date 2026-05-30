@@ -114,6 +114,64 @@ describe("TTS math speech generation", () => {
 		expect(result.speechText).toBe("a");
 	});
 
+	test("strips the SRE XML prolog so generated SSML starts with <speak>", async () => {
+		// SRE renders SSML with a leading `<?xml …?>` declaration. AWS Polly and
+		// Google reject SSML that does not begin with `<speak>`, so the generated
+		// SSML must have the prolog removed.
+		let markup: "none" | "ssml" = "none";
+		const result = await resolveMathSpeechFromChunks(
+			[
+				{
+					type: "math",
+					mathml: "<math><msup><mi>x</mi><mn>2</mn></msup></math>",
+					fallbackText: "x 2",
+				},
+			],
+			{
+				language: "en-US",
+				produceSsml: true,
+				loadSre: async () => ({
+					setupEngine: async (options: Record<string, unknown>) => {
+						markup = options.markup === "ssml" ? "ssml" : "none";
+					},
+					engineReady: async () => {},
+					toSpeech: (_mathml: string) =>
+						markup === "ssml"
+							? '<?xml version="1.0"?><speak version="1.1">x squared</speak>'
+							: "x squared",
+				}),
+			},
+		);
+
+		expect(result.speechText).toBe("X squared");
+		expect(result.ssml).toBeDefined();
+		expect(result.ssml?.startsWith("<speak")).toBe(true);
+		expect(result.ssml).not.toContain("<?xml");
+	});
+
+	test("rejects SSML that has no <speak> element after prolog stripping", async () => {
+		const result = await resolveMathSpeechFromChunks(
+			[
+				{
+					type: "math",
+					mathml: "<math><mi>x</mi></math>",
+					fallbackText: "x",
+				},
+			],
+			{
+				language: "en-US",
+				produceSsml: true,
+				loadSre: async () => ({
+					setupEngine: async () => {},
+					engineReady: async () => {},
+					toSpeech: (_mathml: string) => "x",
+				}),
+			},
+		);
+
+		expect(result.ssml).toBeUndefined();
+	});
+
 	test("does not load SRE when there are no math chunks", async () => {
 		const result = await resolveMathSpeechFromChunks(
 			[{ type: "text", text: "Plain text only." }],

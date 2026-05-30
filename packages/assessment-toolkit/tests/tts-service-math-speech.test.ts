@@ -10,6 +10,7 @@ import { TTSService } from "../src/services/TTSService";
 
 class CapturingTTSImpl implements ITTSProviderImplementation {
 	public speakCalls: string[] = [];
+	public rejectSsml = false;
 	public boundariesByText = new Map<
 		string,
 		Array<{ word: string; position: number; length?: number }>
@@ -22,6 +23,9 @@ class CapturingTTSImpl implements ITTSProviderImplementation {
 
 	async speak(text: string): Promise<void> {
 		this.speakCalls.push(text);
+		if (this.rejectSsml && text.includes("<speak")) {
+			throw new Error("SSML rejected by provider");
+		}
 		for (const boundary of this.boundariesByText.get(text) || []) {
 			this.onWordBoundary?.(boundary.word, boundary.position, boundary.length);
 		}
@@ -58,6 +62,7 @@ class CapturingTTSProvider implements ITTSProvider {
 			supportsVoiceSelection: true,
 			supportsRateControl: true,
 			supportsPitchControl: false,
+			supportsSSML: true,
 		};
 	}
 	destroy(): void {}
@@ -137,5 +142,44 @@ describe("TTSService automatic math speech", () => {
 		});
 
 		expect(highlightedWords).toContain("Solve");
+	});
+
+	test("emits SRE SSML to SSML-capable (non-browser) providers for math", async () => {
+		const impl = new CapturingTTSImpl();
+		const service = new TTSService();
+		await service.initialize(new CapturingTTSProvider(impl), {});
+		const content = document.createElement("div");
+		content.innerHTML = `<p>Solve <math><msup><mi>x</mi><mn>2</mn></msup></math> now.</p>`;
+
+		await service.speak(content.textContent || "", {
+			contentElement: content,
+			language: "en-US",
+		});
+
+		// The math chunk is voiced as SSML; prose chunks remain plain text.
+		expect(impl.speakCalls.some((text) => text.includes("<speak"))).toBe(true);
+		expect(impl.speakCalls.some((text) => text === "Solve")).toBe(true);
+	});
+
+	test("falls back to plain text when the provider rejects SSML", async () => {
+		const impl = new CapturingTTSImpl();
+		impl.rejectSsml = true;
+		const service = new TTSService();
+		await service.initialize(new CapturingTTSProvider(impl), {});
+		const content = document.createElement("div");
+		content.innerHTML = `<p>Solve <math><msup><mi>x</mi><mn>2</mn></msup></math> now.</p>`;
+
+		await service.speak(content.textContent || "", {
+			contentElement: content,
+			language: "en-US",
+		});
+
+		// It attempted SSML, was rejected, then retried the plain math variant.
+		expect(impl.speakCalls.some((text) => text.includes("<speak"))).toBe(true);
+		expect(
+			impl.speakCalls.some(
+				(text) => text.toLowerCase().includes("squared") && !text.includes("<speak"),
+			),
+		).toBe(true);
 	});
 });

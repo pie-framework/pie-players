@@ -8,7 +8,7 @@ import { demo6Section } from "./demo6-tabbed-layout";
 import { demo7Section } from "./demo7-heading-accessibility";
 import { demo8ToolVisibilitySection } from "./demo8-tool-visibility";
 import { demo9Section } from "./demo9-preloaded-fixed-elements";
-import { demo10TtsMathSection } from "./demo10-tts-math";
+import { demo10TtsGeneratedSsmlSection } from "./demo10-tts-generated-ssml";
 import { pie512SectionA, pie512SectionB } from "./pie-512-asymmetric-sections";
 import { demoKeyboardNavMcEbsrSection } from "./demo-keyboard-nav-mc-ebsr";
 
@@ -553,21 +553,21 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		],
 		section: demo4Section,
 	},
-	"tts-math": {
-		id: "tts-math",
-		name: "TTS with MathML",
+	"tts-generated-ssml": {
+		id: "tts-generated-ssml",
+		name: "TTS with Generated SSML",
 		description:
-			"Focused TTS demo for automatic MathML and MathJax-style math speech generation",
+			"Same content as the SSML demo, but with no authored SSML — the toolkit generates math SSML on the fly",
 		integrationLevel: 4,
-		integrationTheme: "Math-aware TTS",
+		integrationTheme: "Generated (on-the-fly) SSML TTS",
 		focus:
-			"Exercises PIE-native MathML-to-speech generation without requiring host or provider-specific math configuration.",
+			"Demonstrates PIE-native generation of math speech SSML for items that ship MathML but no authored `accessibilityCatalogs`, mirroring the `tts-ssml` demo content for an authored-vs-generated comparison.",
 		whatMakesItTick: [
-			"Passage and item prompts include structured MathML without embedded SSML.",
-			"One item uses a MathJax-style `data-mathml` attribute to exercise rendered-math extraction.",
+			"Reuses the `tts-ssml` quadratic content (passage, method-selection question, response directions) verbatim, minus every `<speak>` catalog and `data-catalog-idref` anchor.",
+			"Defaults to the SSML-capable AWS Polly transport (`/api/tts`) so generated math SSML is actually voiced; non-SSML providers fall back to plain text.",
 			"Toolkit tool config enables `textToSpeech` in item and passage placements.",
 		],
-		section: demo10TtsMathSection,
+		section: demo10TtsGeneratedSsmlSection,
 	},
 	"tabbed-layout": {
 		id: "tabbed-layout",

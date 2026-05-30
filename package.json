@@ -35,7 +35,7 @@
 		"lint:biome": "biome lint .",
 		"lint:svelte": "turbo check",
 		"lint:all": "bun run lint && bun run check && bun run typecheck && bun run check:package-metadata && bun run check:svelte-runtime-deps && bun run check:deps && bun run check:publish-surface && bun run check:sourcemaps",
-		"verify:ci-lint-typecheck": "bun run check:local-pr-gate && bun run check:deps && bun run check:package-metadata && bun run check:source-exports && bun run check:custom-elements && bun run check:ce-define-safety && bun run build && bun run check:publint && bun run check:types-publish && bun run check:pack-exports && bun run check:pack-smoke && bun run check:runtime-compat && bun run check:node-consumer-imports && bun run lint:all",
+		"verify:ci-lint-typecheck": "bun run check:local-pr-gate && bun run check:deps && bun run check:package-metadata && bun run check:source-exports && bun run check:custom-elements && bun run check:ce-define-safety && bun run check:speech-composition-purity && bun run build && bun run check:publint && bun run check:types-publish && bun run check:pack-exports && bun run check:pack-smoke && bun run check:runtime-compat && bun run check:node-consumer-imports && bun run lint:all",
 		"format:check": "biome format .",
 		"lint:fix": "biome check --write .",
 		"format": "biome format --write .",

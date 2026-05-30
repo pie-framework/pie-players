@@ -7,6 +7,7 @@ import {
 	planToCompositionChunkInputs,
 	type MathSpeechResolver,
 } from "../src/services/tts/generated-speech/index";
+import { createRangeFromVisibleMap } from "../src/services/tts/highlight-pipeline/visible-map-range";
 import type { MathAwareSpeechChunk } from "../src/services/tts/math-aware-text-processing";
 
 const stubMathSpeech =
@@ -27,6 +28,16 @@ afterAll(() => {
 	if (GlobalRegistrator.isRegistered) {
 		GlobalRegistrator.unregister();
 	}
+});
+
+describe("createRangeFromVisibleMap", () => {
+	test("returns null for empty visible spans", () => {
+		const node = document.createTextNode("alpha");
+		const visibleMap = new Map([[0, { node, offset: 0 }]]);
+
+		expect(createRangeFromVisibleMap(visibleMap, 0, 0)).toBeNull();
+		expect(createRangeFromVisibleMap(visibleMap, 1, 0)).toBeNull();
+	});
 });
 
 describe("assembleGeneratedSpeech (pure core)", () => {
@@ -352,7 +363,77 @@ describe("createMemoizedMathSpeechResolver", () => {
 		expect(calls).toBe(1);
 	});
 
-	test("caches by canonical MathML and locale, re-resolving on change", async () => {
+	test("keeps non-JSON engine option values distinct in cache keys", async () => {
+		let calls = 0;
+		const resolver = createMemoizedMathSpeechResolver({
+			resolve: async () => {
+				calls++;
+				return {
+					speechText: `call:${calls}`,
+					usedMathSpeech: true,
+					usedFallback: false,
+				};
+			},
+		});
+		const chunk = {
+			type: "math" as const,
+			mathml: "<math><mi>x</mi></math>",
+			fallbackText: "x",
+		};
+
+		const withoutValue = await resolver(chunk, {
+			language: "en-US",
+			mathSpeech: { engineOptions: {} },
+		});
+		const withUndefinedValue = await resolver(chunk, {
+			language: "en-US",
+			mathSpeech: { engineOptions: { experimental: undefined } },
+		});
+
+		expect(withoutValue.speechText).toBe("call:1");
+		expect(withUndefinedValue.speechText).toBe("call:2");
+		expect(calls).toBe(2);
+	});
+
+	test("does not collide non-JSON cache sentinels with literal option values", async () => {
+		let calls = 0;
+		const resolver = createMemoizedMathSpeechResolver({
+			resolve: async () => {
+				calls++;
+				return {
+					speechText: `call:${calls}`,
+					usedMathSpeech: true,
+					usedFallback: false,
+				};
+			},
+		});
+		const chunk = {
+			type: "math" as const,
+			mathml: "<math><mi>x</mi></math>",
+			fallbackText: "x",
+		};
+
+		await resolver(chunk, {
+			language: "en-US",
+			mathSpeech: { engineOptions: { value: undefined } },
+		});
+		await resolver(chunk, {
+			language: "en-US",
+			mathSpeech: { engineOptions: { value: "[undefined]" } },
+		});
+		await resolver(chunk, {
+			language: "en-US",
+			mathSpeech: { engineOptions: { value: Number.NaN } },
+		});
+		await resolver(chunk, {
+			language: "en-US",
+			mathSpeech: { engineOptions: { value: null } },
+		});
+
+		expect(calls).toBe(4);
+	});
+
+	test("caches by MathML source and locale, re-resolving on change", async () => {
 		let calls = 0;
 		const resolver = createMemoizedMathSpeechResolver({
 			resolve: async () => {
@@ -379,5 +460,39 @@ describe("createMemoizedMathSpeechResolver", () => {
 			{ language: "en-US" },
 		);
 		expect(calls).toBe(3);
+	});
+
+	test("seeds the plain cache from an SSML resolution", async () => {
+		let calls = 0;
+		const resolver = createMemoizedMathSpeechResolver({
+			resolve: async (_chunk, opts) => {
+				calls++;
+				return {
+					speechText: "x",
+					usedMathSpeech: true,
+					usedFallback: false,
+					ssml: opts.produceSsml ? "<speak>x</speak>" : undefined,
+				};
+			},
+		});
+		const chunk = {
+			type: "math" as const,
+			mathml: "<math><mi>x</mi></math>",
+			fallbackText: "x",
+		};
+
+		const ssmlResult = await resolver(chunk, {
+			language: "en-US",
+			produceSsml: true,
+		});
+		const plainResult = await resolver(chunk, { language: "en-US" });
+
+		expect(ssmlResult.ssml).toBe("<speak>x</speak>");
+		expect(plainResult).toEqual({
+			speechText: "x",
+			usedMathSpeech: true,
+			usedFallback: false,
+		});
+		expect(calls).toBe(1);
 	});
 });

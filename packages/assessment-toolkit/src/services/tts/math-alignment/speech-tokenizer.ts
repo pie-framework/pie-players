@@ -181,3 +181,33 @@ export const resolveBoundaryToSpeechToken = (args: {
 		? rawCandidate || plainCandidate
 		: plainCandidate || rawCandidate;
 };
+
+export const resolveSpokenOffsetToSpeechToken = (args: {
+	tokenization: SpeechSourceTokenization;
+	position: number;
+	length?: number;
+	boundaryWord?: string;
+}): ResolvedSpeechBoundary | null => {
+	if (
+		args.tokenization.boundaryOffsetSpace === "unsupported" ||
+		!Number.isFinite(args.position) ||
+		(args.boundaryWord && /^<[^>]+>$/.test(args.boundaryWord.trim()))
+	) {
+		return null;
+	}
+	const safeLength = Math.max(1, Number.isFinite(args.length) ? args.length! : 1);
+	const spokenCandidate = candidateForOffset(
+		args.tokenization,
+		args.position >= 0 && args.position < args.tokenization.spokenText.length
+			? args.position
+			: null,
+		safeLength,
+	);
+	if (candidateMatchesWord(spokenCandidate, args.boundaryWord)) {
+		return { ...spokenCandidate!, confidence: 1 };
+	}
+	if (args.boundaryWord && normalizeBoundaryWord(args.boundaryWord)) {
+		return null;
+	}
+	return spokenCandidate;
+};

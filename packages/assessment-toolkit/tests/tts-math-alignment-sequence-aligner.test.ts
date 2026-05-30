@@ -66,7 +66,7 @@ describe("math alignment sequence aligner", () => {
 		});
 	});
 
-	test("can return a confident expression-level target without word tracking", () => {
+	test("falls back to an expression range when word tracking is low confidence", () => {
 		const fixture = smartBuildFixtures.find(
 			(candidate) => candidate.id === "absolute-value",
 		);

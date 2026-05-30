@@ -514,6 +514,9 @@ export interface AssessmentSettings {
 			 * `style` is passed to SRE directly; ClearSpeak combines multiple
 			 * preferences with ":" (for example,
 			 * "ImpliedTimes_MoreImpliedTimes:Paren_Silent").
+			 *
+			 * Mirrors assessment-toolkit's SREMathSpeechOptions without importing
+			 * toolkit service types into the shared content contract package.
 			 */
 			mathSpeech?: {
 				domain?: string;

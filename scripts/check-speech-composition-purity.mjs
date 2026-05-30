@@ -25,6 +25,7 @@
 
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
+import ts from "typescript";
 
 const ROOT = process.cwd();
 const CORE_DIR = path.join(
@@ -38,31 +39,33 @@ const CORE_DIR = path.join(
 );
 const DOM_DIR = path.join(CORE_DIR, "dom");
 
-const FORBIDDEN_IMPORT_PATTERNS = [
+const FORBIDDEN_IMPORT_RULES = [
 	{
-		regex: /from\s+['"]svelte(?:\/[^'"]+)?['"]/g,
+		matches: (specifier) =>
+			specifier === "svelte" || specifier.startsWith("svelte/"),
 		reason: "imports from `svelte` (generated-speech core must be plain TS)",
 	},
 	{
-		regex: /from\s+['"][^'"]+\.svelte['"]/g,
+		matches: (specifier) => /\.svelte(?:[?#]|$)/.test(specifier),
 		reason: "imports from a `.svelte` source file",
 	},
 	{
-		regex: /from\s+['"][^'"]*TTSService[^'"]*['"]/g,
+		matches: (specifier) => specifier.includes("TTSService"),
 		reason:
 			"imports from `TTSService` (the runtime is downstream of the speech core)",
 	},
 	{
-		regex: /from\s+['"][^'"]*HighlightCoordinator[^'"]*['"]/g,
+		matches: (specifier) => specifier.includes("HighlightCoordinator"),
 		reason: "imports from `HighlightCoordinator` (rendering is a runtime concern)",
 	},
 	{
-		regex: /from\s+['"][^'"]*highlight-pipeline[^'"]*['"]/g,
+		matches: (specifier) => specifier.includes("highlight-pipeline"),
 		reason:
 			"imports from the `highlight-pipeline` renderer/plan (DOM-bound; belongs in ./dom/)",
 	},
 	{
-		regex: /from\s+['"]@pie-players\/pie-section-player[^'"]*['"]/g,
+		matches: (specifier) =>
+			specifier.startsWith("@pie-players/pie-section-player"),
 		reason:
 			"imports from `@pie-players/pie-section-player*` (wrong dependency direction)",
 	},
@@ -90,6 +93,49 @@ function rel(p) {
 	return path.relative(ROOT, p).replaceAll("\\", "/");
 }
 
+function stringLiteralValue(node) {
+	return ts.isStringLiteralLike(node) ? node.text : null;
+}
+
+function collectModuleSpecifiers(sourceFile) {
+	const specifiers = [];
+	const addSpecifier = (node) => {
+		const specifier = stringLiteralValue(node);
+		if (!specifier) return;
+		const { line, character } = sourceFile.getLineAndCharacterOfPosition(
+			node.getStart(sourceFile),
+		);
+		specifiers.push({
+			specifier,
+			location: `${line + 1}:${character + 1}`,
+		});
+	};
+
+	const visit = (node) => {
+		if (ts.isImportDeclaration(node) && node.moduleSpecifier) {
+			addSpecifier(node.moduleSpecifier);
+		} else if (ts.isExportDeclaration(node) && node.moduleSpecifier) {
+			addSpecifier(node.moduleSpecifier);
+		} else if (
+			ts.isImportEqualsDeclaration(node) &&
+			ts.isExternalModuleReference(node.moduleReference)
+		) {
+			addSpecifier(node.moduleReference.expression);
+		} else if (
+			ts.isCallExpression(node) &&
+			node.arguments.length === 1 &&
+			(node.expression.kind === ts.SyntaxKind.ImportKeyword ||
+				(ts.isIdentifier(node.expression) && node.expression.text === "require"))
+		) {
+			addSpecifier(node.arguments[0]);
+		}
+		ts.forEachChild(node, visit);
+	};
+
+	visit(sourceFile);
+	return specifiers;
+}
+
 const violations = [];
 const files = listCoreTsFiles(CORE_DIR);
 
@@ -99,12 +145,23 @@ for (const file of files) {
 	// anyway, but skipping keeps intent explicit.)
 	if (file === path.join(CORE_DIR, "index.ts")) continue;
 	const src = readFileSync(file, "utf8");
-	for (const { regex, reason } of FORBIDDEN_IMPORT_PATTERNS) {
-		regex.lastIndex = 0;
-		let match = regex.exec(src);
-		while (match) {
-			violations.push({ file: rel(file), match: match[0], reason });
-			match = regex.exec(src);
+	const sourceFile = ts.createSourceFile(
+		file,
+		src,
+		ts.ScriptTarget.Latest,
+		true,
+		ts.ScriptKind.TS,
+	);
+	for (const { specifier, location } of collectModuleSpecifiers(sourceFile)) {
+		for (const { matches, reason } of FORBIDDEN_IMPORT_RULES) {
+			if (matches(specifier)) {
+				violations.push({
+					file: rel(file),
+					location,
+					specifier,
+					reason,
+				});
+			}
 		}
 	}
 }
@@ -114,7 +171,9 @@ if (violations.length > 0) {
 		"[check-speech-composition-purity] purity violation(s) under packages/assessment-toolkit/src/services/tts/generated-speech/ (excluding dom/):",
 	);
 	for (const v of violations) {
-		console.error(`  ${v.file}: ${v.match} — ${v.reason}`);
+		console.error(
+			`  ${v.file}:${v.location}: "${v.specifier}" — ${v.reason}`,
+		);
 	}
 	console.error(
 		"\nThe generated-speech core is pure speech-composition logic by design. " +

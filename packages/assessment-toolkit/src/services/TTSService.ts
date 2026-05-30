@@ -152,6 +152,37 @@ interface ResolvedSpeechContent {
 	speechChunks?: SpeechCompositionChunk[];
 }
 
+const sameRange = (left: Range, right: Range): boolean =>
+	left === right ||
+	(left.startContainer === right.startContainer &&
+		left.startOffset === right.startOffset &&
+		left.endContainer === right.endContainer &&
+		left.endOffset === right.endOffset);
+
+const sameRenderableHighlightTarget = (
+	left: RenderableHighlightTarget | null,
+	right: RenderableHighlightTarget | null,
+): boolean => {
+	if (left === right) return true;
+	if (!left || !right || left.type !== right.type || left.quality !== right.quality) {
+		return false;
+	}
+	if (left.type === "range" && right.type === "range") {
+		return sameRange(left.range, right.range);
+	}
+	if (left.type === "element" && right.type === "element") {
+		return left.element === right.element;
+	}
+	if (left.type === "text-range" && right.type === "text-range") {
+		return (
+			left.node === right.node &&
+			left.startOffset === right.startOffset &&
+			left.endOffset === right.endOffset
+		);
+	}
+	return false;
+};
+
 /**
  * TTSService
  *
@@ -178,6 +209,7 @@ export class TTSService {
 	private currentSeekSegmentIndex = 0;
 	private activeSentenceStartOffset: number | null = null;
 	private activeHighlightMode: HighlightMode = "word";
+	private lastRenderedRegionTarget: RenderableHighlightTarget | null = null;
 	private telemetryReporter:
 		| ((
 				eventName: string,
@@ -186,7 +218,7 @@ export class TTSService {
 		| null = null;
 
 	// Memoized SRE resolver for the runtime generated-speech path (PIE-623).
-	// Caches DOM-free spoken text keyed by (locale, canonical MathML) across
+	// Caches DOM-free spoken text keyed by SRE settings and MathML source across
 	// utterances within this service instance.
 	private readonly generatedMathSpeechResolver: MathSpeechResolver =
 		createMemoizedMathSpeechResolver();
@@ -1604,6 +1636,7 @@ export class TTSService {
 		const element = chunk.regionElement || chunk.sourceElement;
 		if ((!element && !chunk.regionRange) || !this.highlightCoordinator) return;
 		try {
+			this.lastRenderedRegionTarget = null;
 			if (chunk.regionRange) {
 				this.highlightCoordinator.clearHighlights?.(HighlightType.TTS_WORD);
 				this.highlightCoordinator.highlightTTSSentence([chunk.regionRange]);
@@ -1649,18 +1682,23 @@ export class TTSService {
 		) {
 			return;
 		}
+		if (sameRenderableHighlightTarget(this.lastRenderedRegionTarget, target)) {
+			return;
+		}
 		try {
 			const range = document.createRange();
 			if (target.type === "element") {
 				range.selectNodeContents(target.element);
 			} else if (target.type === "range") {
 				this.highlightCoordinator.highlightTTSSentence([target.range]);
+				this.lastRenderedRegionTarget = target;
 				return;
 			} else {
 				range.setStart(target.node, target.startOffset);
 				range.setEnd(target.node, target.endOffset);
 			}
 			this.highlightCoordinator.highlightTTSSentence([range]);
+			this.lastRenderedRegionTarget = target;
 		} catch {
 			// Continue playback even when a detached node cannot be highlighted.
 		}
@@ -1751,6 +1789,7 @@ export class TTSService {
 		runId: number,
 	): Promise<void> {
 		if (!this.provider) return;
+		this.lastRenderedRegionTarget = null;
 		const contentRoot =
 			chunk.regionElement || chunk.sourceElement || this.currentContentElement;
 		const pipelineChunk = contentRoot
@@ -1761,9 +1800,7 @@ export class TTSService {
 			: null;
 		// Carried through the config channel (see buildRuntimeTTSConfig); defaults
 		// to per-token math highlighting unless a host explicitly disables it.
-		const mathTokenHighlighting =
-			(this.ttsConfig as { mathTokenHighlighting?: boolean })
-				.mathTokenHighlighting !== false;
+		const mathTokenHighlighting = this.ttsConfig.mathTokenHighlighting !== false;
 		const highlightPlan = pipelineChunk
 			? createTTSHighlightPlan({
 					chunks: [pipelineChunk],
@@ -1877,6 +1914,7 @@ export class TTSService {
 		if (this.highlightCoordinator) {
 			this.highlightCoordinator.clearTTS();
 		}
+		this.lastRenderedRegionTarget = null;
 		this.currentContentElement = null;
 		this.normalizedToDOM.clear();
 		this.currentBoundaryOffset = 0;
@@ -2039,6 +2077,7 @@ export class TTSService {
 		}
 
 		// Clear tracking
+		this.lastRenderedRegionTarget = null;
 		this.currentContentElement = null;
 		this.normalizedToDOM.clear();
 		this.currentBoundaryOffset = 0;

@@ -130,7 +130,6 @@ const resolveTextChunkSourceElement = (
 	let current = textNode.parentElement;
 	let best: Element | null = null;
 	while (current && current !== root) {
-		if (isNodeHiddenForTTS(current, root)) return root;
 		const role = (current.getAttribute("role") || "").toLowerCase();
 		const tagName = current.tagName.toUpperCase();
 		if (

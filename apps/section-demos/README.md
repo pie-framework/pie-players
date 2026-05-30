@@ -208,10 +208,10 @@ Use `loaderOptions` only for module/bundle loading behavior. Use `loaderConfig` 
 
 ### SC TTS Proxy Demo Config
 
-Most demos default to an SC-style custom transport through the local proxy
-route. (The two TTS-focused routes are the exception: `tts-ssml` and
-`tts-generated-ssml` use the SSML-capable AWS Polly transport at `/api/tts` so
-authored and generated SSML are actually voiced.)
+TTS-focused demos can opt into an SC-style custom transport through the local
+proxy route. The two SSML-focused routes (`tts-ssml` and `tts-generated-ssml`)
+use the SSML-capable AWS Polly transport at `/api/tts` so authored and generated
+SSML are actually voiced.
 
 - Client endpoint: `POST /api/tts/sc`
 - Required server env vars (no defaults):

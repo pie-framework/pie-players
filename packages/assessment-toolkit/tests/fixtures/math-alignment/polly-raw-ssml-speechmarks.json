@@ -6,15 +6,15 @@
 		{
 			"type": "word",
 			"value": "Hello",
-			"start": 29,
-			"end": 34,
+			"start": 28,
+			"end": 33,
 			"time": 100
 		},
 		{
 			"type": "word",
 			"value": "world",
-			"start": 35,
-			"end": 40,
+			"start": 34,
+			"end": 39,
 			"time": 420
 		}
 	]

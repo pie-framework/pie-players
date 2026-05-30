@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import {
 	resolveBoundaryToSpeechToken,
+	resolveSpokenOffsetToSpeechToken,
 	tokenizeSpeechSource,
 } from "../src/services/tts/math-alignment/speech-tokenizer";
 
@@ -28,6 +29,24 @@ describe("math alignment speech tokenizer", () => {
 		).toMatchObject({
 			token: expect.objectContaining({ normalized: "world" }),
 			confidence: 1,
+		});
+	});
+
+	test("resolves already-normalized spoken offsets without remapping raw SSML", () => {
+		const speechText =
+			'<speak><break time="250ms"/>alpha <emphasis>beta</emphasis></speak>';
+		const tokenization = tokenizeSpeechSource({ speechText });
+		const spokenOffset = tokenization.spokenText.indexOf("beta");
+
+		expect(
+			resolveSpokenOffsetToSpeechToken({
+				tokenization,
+				position: spokenOffset,
+				length: "beta".length,
+			}),
+		).toMatchObject({
+			token: expect.objectContaining({ normalized: "beta" }),
+			start: spokenOffset,
 		});
 	});
 

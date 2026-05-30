@@ -72,6 +72,12 @@ export interface TTSConfigExtensions {
 	 * @example { engine: 'neural' } for AWS Polly
 	 */
 	providerOptions?: Record<string, unknown>;
+
+	/**
+	 * Internal read-along hint used by the assessment toolkit to choose between
+	 * per-token math highlighting and expression-level math highlighting.
+	 */
+	mathTokenHighlighting?: boolean;
 }
 
 /**

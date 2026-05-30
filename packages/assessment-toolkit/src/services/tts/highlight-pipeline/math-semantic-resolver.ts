@@ -1,5 +1,5 @@
 import {
-	resolveMatchedHighlightTargetForBoundary,
+	resolveMatchedHighlightTargetForSpokenBoundary,
 	resolveUniqueMathTargetForBoundaryWord,
 } from "../math-alignment/index.js";
 import {
@@ -30,7 +30,7 @@ export const resolveMathBoundaryTarget = (
 	let expressionFallback: RenderableHighlightTarget | null = null;
 	for (const mathAlignment of candidates) {
 		const target =
-			resolveMatchedHighlightTargetForBoundary(mathAlignment.alignment, {
+			resolveMatchedHighlightTargetForSpokenBoundary(mathAlignment.alignment, {
 				position: boundary.chunkSpokenStart,
 				length: Math.max(
 					1,

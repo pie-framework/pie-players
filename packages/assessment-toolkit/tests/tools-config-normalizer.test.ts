@@ -48,4 +48,34 @@ describe("tools-config-normalizer", () => {
 			"off",
 		);
 	});
+
+	test("allows string runtime provider selectors for textToSpeech", () => {
+		const config = normalizeToolsConfig({
+			providers: {
+				textToSpeech: {
+					enabled: true,
+					provider: "polly",
+				},
+			},
+		});
+
+		expect(config.providers.textToSpeech).toMatchObject({
+			enabled: true,
+			provider: "polly",
+		});
+	});
+
+	test("rejects string provider selectors for non-TTS tools", () => {
+		expect(() =>
+			normalizeToolsConfig({
+				providers: {
+					calculator: {
+						provider: "polly",
+					},
+				},
+			}),
+		).toThrow(
+			'Invalid tools config at "providers.calculator.provider": expected an object.',
+		);
+	});
 });

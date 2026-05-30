@@ -6,6 +6,7 @@ export const createRangeFromVisibleMap = (
 	end: number,
 ): Range | null => {
 	if (!visibleMap || typeof document === "undefined") return null;
+	if (end <= start) return null;
 	const startMapping = visibleMap.get(start);
 	let endMapping = visibleMap.get(Math.max(start, end - 1));
 	if (!startMapping) return null;

@@ -156,6 +156,34 @@ export interface TTSToolConfig extends ToolConfig {
 	authFetcher?: () => Promise<Partial<TTSToolProviderConfig>>;
 }
 
+const isPlainRecord = (value: unknown): value is Record<string, unknown> =>
+	!!value && typeof value === "object" && !Array.isArray(value);
+
+const mergeToolConfigUpdate = (
+	toolId: string,
+	current: ToolConfig,
+	updates: Partial<ToolProviderConfig> | Partial<TTSToolConfig>,
+): ToolConfig => {
+	const next = { ...current, ...updates };
+	if (
+		toolId === "textToSpeech" &&
+		isPlainRecord(current.settings) &&
+		isPlainRecord(updates.settings)
+	) {
+		next.settings = { ...current.settings, ...updates.settings };
+		if (
+			isPlainRecord(current.settings.mathSpeech) &&
+			isPlainRecord(updates.settings.mathSpeech)
+		) {
+			next.settings.mathSpeech = {
+				...current.settings.mathSpeech,
+				...updates.settings.mathSpeech,
+			};
+		}
+	}
+	return next;
+};
+
 /**
  * Answer eliminator tool configuration
  */
@@ -2139,7 +2167,7 @@ export class ToolkitCoordinator {
 		}
 		const nextProviders = {
 			...((this.config.tools as any).providers || {}),
-			[toolId]: { ...current, ...updates },
+			[toolId]: mergeToolConfigUpdate(toolId, current, updates),
 		};
 		const validated = normalizeAndValidateToolsConfig(
 			{

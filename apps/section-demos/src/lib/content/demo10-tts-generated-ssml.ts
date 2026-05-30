@@ -55,9 +55,10 @@ const factoredEquationMath = mathml(`<mrow>
  * `<speak>` markup** and no `data-catalog-idref` anchors.
  *
  * With nothing authored, the assessment toolkit's generated-speech path takes
- * over: it converts the MathML to natural-language speech and, for SSML-capable
- * providers (AWS Polly, Google), serializes that math speech to SSML on the fly
- * before the provider receives it — reusing the same confidence-gated
+ * over: it lets Speech Rule Engine convert the MathML and, for SSML-capable
+ * providers (AWS Polly, Google), sends SRE's SSML on the fly. That preserves
+ * details such as `<say-as interpret-as="character">` for variables without
+ * toolkit-specific speech rewrites, while reusing the same confidence-gated
  * highlighting pipeline as the authored-SSML demo. Compare side by side with
  * the `tts-ssml` demo to see authored vs. generated SSML over identical content.
  */

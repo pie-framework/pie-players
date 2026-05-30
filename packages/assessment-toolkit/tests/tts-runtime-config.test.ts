@@ -76,6 +76,72 @@ describe("tts-runtime-config defaults", () => {
 		).toMatchObject({ mathTokenHighlighting: true });
 	});
 
+	test("forwards math speech SRE style through providerOptions", () => {
+		const runtimeConfig = buildRuntimeTTSConfig(
+			resolveTTSRuntimeSettings({
+				enabled: true,
+				settings: {
+					mathSpeech: {
+						domain: "clearspeak",
+						style: "ImpliedTimes_MoreImpliedTimes:Paren_Silent",
+					},
+				},
+			} as any),
+		);
+
+		expect(runtimeConfig.providerOptions).toMatchObject({
+			mathSpeech: {
+				domain: "clearspeak",
+				style: "ImpliedTimes_MoreImpliedTimes:Paren_Silent",
+			},
+		});
+	});
+
+	test("settings.mathSpeech overrides top-level mathSpeech", () => {
+		const runtimeConfig = buildRuntimeTTSConfig(
+			resolveTTSRuntimeSettings({
+				enabled: true,
+				mathSpeech: { domain: "mathspeak", style: "brief" },
+				settings: {
+					mathSpeech: {
+						domain: "clearspeak",
+						style: "Paren_Silent",
+					},
+				},
+			} as any),
+		);
+
+		expect(runtimeConfig.providerOptions).toMatchObject({
+			mathSpeech: {
+				domain: "clearspeak",
+				style: "Paren_Silent",
+			},
+		});
+	});
+
+	test("forwards normalized math speech engineOptions", () => {
+		const runtimeConfig = buildRuntimeTTSConfig(
+			resolveTTSRuntimeSettings({
+				enabled: true,
+				settings: {
+					mathSpeech: {
+						domain: " clearspeak ",
+						style: " Paren_Silent ",
+						engineOptions: { subiso: "us" },
+					},
+				},
+			} as any),
+		);
+
+		expect(runtimeConfig.providerOptions).toMatchObject({
+			mathSpeech: {
+				domain: "clearspeak",
+				style: "Paren_Silent",
+				engineOptions: { subiso: "us" },
+			},
+		});
+	});
+
 	test("applies minimal Google defaults including apiEndpoint", () => {
 		const settings = resolveTTSRuntimeSettings({
 			enabled: true,

@@ -305,6 +305,7 @@ export {
 	type TTSControlHandoffDetail,
 } from "./services/tts-control-events.js";
 export { BrowserTTSProvider } from "./services/tts/browser-provider.js";
+export type { SREMathSpeechOptions } from "./services/tts/math-speech.js";
 export type {
 	TTSHostToolbarLayout,
 	TTSLayoutMode,

@@ -12,6 +12,7 @@ export type MathAwareSpeechChunk =
 	| {
 			type: "text";
 			text: string;
+			sourceElement?: Element;
 	  }
 	| {
 			type: "math";
@@ -92,6 +93,57 @@ const findCanonicalMathML = (element: Element): string | null => {
 
 const isMathContainer = (element: Element): boolean =>
 	Boolean(findCanonicalMathML(element));
+
+const TEXT_CHUNK_SOURCE_TAGS = new Set([
+	"P",
+	"H1",
+	"H2",
+	"H3",
+	"H4",
+	"H5",
+	"H6",
+	"LI",
+	"TD",
+	"TH",
+	"DD",
+	"DT",
+	"FIGCAPTION",
+	"LABEL",
+	"BUTTON",
+]);
+
+const TEXT_CHUNK_SOURCE_ROLES = new Set([
+	"heading",
+	"listitem",
+	"option",
+	"radio",
+	"row",
+	"cell",
+	"columnheader",
+	"rowheader",
+]);
+
+const resolveTextChunkSourceElement = (
+	textNode: Text,
+	root: Element,
+): Element => {
+	let current = textNode.parentElement;
+	let best: Element | null = null;
+	while (current && current !== root) {
+		if (isNodeHiddenForTTS(current, root)) return root;
+		const role = (current.getAttribute("role") || "").toLowerCase();
+		const tagName = current.tagName.toUpperCase();
+		if (
+			TEXT_CHUNK_SOURCE_TAGS.has(tagName) ||
+			TEXT_CHUNK_SOURCE_ROLES.has(role)
+		) {
+			best = current;
+			break;
+		}
+		current = current.parentElement;
+	}
+	return best || root;
+};
 
 const hasMathCandidate = (element: Element): boolean =>
 	Boolean(
@@ -303,6 +355,7 @@ const collectMathAware = (
 	const acc = createAccumulator(options);
 	const chunks: MathAwareSpeechChunk[] = [];
 	let textChunkStart = 0;
+	let textChunkSourceElement: Element | undefined;
 	let containsMathMarkup = false;
 
 	const flushTextChunk = () => {
@@ -310,14 +363,23 @@ const collectMathAware = (
 			acc.chars.slice(textChunkStart, acc.chars.length).join(""),
 		);
 		if (text) {
-			chunks.push({ type: "text", text });
+			chunks.push({ type: "text", text, sourceElement: textChunkSourceElement });
 		}
 		textChunkStart = acc.chars.length;
+		textChunkSourceElement = undefined;
 	};
 
 	const processNode = (node: Node): void => {
 		if (isNodeHiddenForTTS(node, root)) return;
 		if (node.nodeType === Node.TEXT_NODE) {
+			const sourceElement = resolveTextChunkSourceElement(node as Text, root);
+			if (
+				textChunkSourceElement &&
+				sourceElement !== textChunkSourceElement
+			) {
+				flushTextChunk();
+			}
+			textChunkSourceElement = sourceElement;
 			appendTextNode(acc, node as Text);
 			return;
 		}

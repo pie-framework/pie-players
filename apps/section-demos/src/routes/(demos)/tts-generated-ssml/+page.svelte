@@ -50,7 +50,14 @@
 		strictness: 'error',
 		tools: {
 			providers: {
-				textToSpeech: SECTION_DEMOS_POLLY_TTS_TOOL_PROVIDER,
+				textToSpeech: {
+					...SECTION_DEMOS_POLLY_TTS_TOOL_PROVIDER,
+					settings: {
+						mathSpeech: {
+							style: 'ImpliedTimes_MoreImpliedTimes:Paren_Silent'
+						}
+					}
+				},
 				annotationToolbar: {
 					enabled: true
 				}

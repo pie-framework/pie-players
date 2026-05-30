@@ -2,8 +2,10 @@ import type { MathAwareSpeechChunk } from "../math-aware-text-processing.js";
 import {
 	resolveMathSpeechFromChunks,
 	type ResolvedMathSpeech,
+	type SREMathSpeechOptions,
 } from "../math-speech.js";
 import { normalizeTextForSpeech } from "../text-processing.js";
+import { segmentSentences as segmentTextToSentences } from "../text-segmentation.js";
 import type { AssembledSegment, AssembledSpeech } from "./types.js";
 
 type MathChunk = Extract<MathAwareSpeechChunk, { type: "math" }>;
@@ -15,7 +17,11 @@ type MathChunk = Extract<MathAwareSpeechChunk, { type: "math" }>;
  */
 export type MathSpeechResolver = (
 	chunk: MathChunk,
-	options: { language?: string; produceSsml?: boolean },
+	options: {
+		language?: string;
+		produceSsml?: boolean;
+		mathSpeech?: SREMathSpeechOptions;
+	},
 ) => Promise<ResolvedMathSpeech>;
 
 const defaultMathSpeechResolver: MathSpeechResolver = (chunk, options) =>
@@ -23,6 +29,37 @@ const defaultMathSpeechResolver: MathSpeechResolver = (chunk, options) =>
 
 const normalizeLocale = (language?: string): string =>
 	(language || "en").split("-")[0].toLowerCase() || "en";
+
+const PRESERVE_PROSE_CHUNK_TAGS = new Set([
+	"H1",
+	"H2",
+	"H3",
+	"H4",
+	"H5",
+	"H6",
+	"LI",
+	"LABEL",
+	"BUTTON",
+]);
+
+const PRESERVE_PROSE_CHUNK_ROLES = new Set([
+	"heading",
+	"listitem",
+	"option",
+	"radio",
+]);
+
+const shouldPreserveProseChunk = (
+	chunk: MathAwareSpeechChunk,
+): boolean => {
+	if (chunk.type !== "text" || !chunk.sourceElement) return false;
+	const tagName = chunk.sourceElement.tagName.toUpperCase();
+	const role = (chunk.sourceElement.getAttribute("role") || "").toLowerCase();
+	return (
+		PRESERVE_PROSE_CHUNK_TAGS.has(tagName) ||
+		PRESERVE_PROSE_CHUNK_ROLES.has(role)
+	);
+};
 
 /**
  * Assemble an anchor-free speech plan from already-collected math-aware chunks.
@@ -35,6 +72,7 @@ export const assembleGeneratedSpeech = async (args: {
 	chunks: ReadonlyArray<MathAwareSpeechChunk>;
 	visibleText: string;
 	language?: string;
+	mathSpeech?: SREMathSpeechOptions;
 	/** Request SRE SSML per math equation (used by the SSML playback format). */
 	produceSsml?: boolean;
 	resolveMathSpeech?: MathSpeechResolver;
@@ -62,23 +100,33 @@ export const assembleGeneratedSpeech = async (args: {
 	for (let index = 0; index < args.chunks.length; index++) {
 		const chunk = args.chunks[index];
 		if (chunk.type === "text") {
-			const visibleSpan = nextVisibleSpan(chunk.text);
-			segments.push({
-				sourceChunkIndex: index,
-				segment: {
-					kind: "prose",
-					spokenText: chunk.text,
-					visibleText: chunk.text,
-					visibleSpan,
-				},
-			});
-			speechParts.push(chunk.text);
+			const proseSegments = shouldPreserveProseChunk(chunk)
+				? [{ text: chunk.text, offset: 0 }]
+				: segmentTextToSentences(chunk.text, {
+						locale: args.language,
+					});
+			for (const prose of proseSegments) {
+				const text = normalizeTextForSpeech(prose.text);
+				if (!text) continue;
+				const visibleSpan = nextVisibleSpan(text);
+				segments.push({
+					sourceChunkIndex: index,
+					segment: {
+						kind: "prose",
+						spokenText: text,
+						visibleText: text,
+						visibleSpan,
+					},
+				});
+				speechParts.push(text);
+			}
 			continue;
 		}
 		const visibleSpan = nextVisibleSpan(chunk.fallbackText);
 		const generated = await resolveMathSpeech(chunk, {
 			language: args.language,
 			produceSsml: args.produceSsml,
+			mathSpeech: args.mathSpeech,
 		});
 		const usedFallback = !generated.speechText;
 		const spokenText = generated.speechText || chunk.fallbackText;

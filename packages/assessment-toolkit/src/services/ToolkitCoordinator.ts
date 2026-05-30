@@ -50,8 +50,10 @@ import { BrowserTTSProvider } from "./tts/browser-provider.js";
 import {
 	buildRuntimeTTSConfig,
 	resolveTTSBackend,
+	resolveTTSRuntimeSettings,
 	type TTSLayoutMode,
 } from "./tts-runtime-config.js";
+import type { SREMathSpeechOptions } from "./tts/math-speech.js";
 import { ToolProviderRegistry } from "./tool-providers/index.js";
 import type { ToolProviderApi } from "./tool-providers/ToolProviderApi.js";
 import type { TTSToolProviderConfig } from "./tool-providers/index.js";
@@ -148,6 +150,9 @@ export interface TTSToolConfig extends ToolConfig {
 	 */
 	speedOptions?: number[];
 	layoutMode?: TTSLayoutMode;
+	/** Speech Rule Engine options for generated MathML speech. */
+	mathSpeech?: SREMathSpeechOptions;
+	settings?: Record<string, unknown> & { mathSpeech?: SREMathSpeechOptions };
 	authFetcher?: () => Promise<Partial<TTSToolProviderConfig>>;
 }
 
@@ -1769,8 +1774,9 @@ export class ToolkitCoordinator {
 	private async _initializeTTS(config?: TTSToolConfig): Promise<void> {
 		if (this.ttsInitialized) return;
 		const resolvedToolConfig = this.resolveTTSToolConfig(config);
-		const resolvedBackend = resolveTTSBackend(resolvedToolConfig);
-		const runtimeTTSConfig = buildRuntimeTTSConfig(resolvedToolConfig);
+		const runtimeSettings = resolveTTSRuntimeSettings(resolvedToolConfig);
+		const resolvedBackend = resolveTTSBackend(runtimeSettings);
+		const runtimeTTSConfig = buildRuntimeTTSConfig(runtimeSettings);
 		await this.hooks.onBeforeTTSInit?.({
 			phase: "tts-init",
 			details: {
@@ -2109,7 +2115,15 @@ export class ToolkitCoordinator {
 	 * @param toolId Tool identifier
 	 * @param updates Partial configuration updates
 	 */
-	updateToolConfig(toolId: string, updates: Partial<ToolProviderConfig>): void {
+	updateToolConfig(
+		toolId: "textToSpeech",
+		updates: Partial<TTSToolConfig>,
+	): void;
+	updateToolConfig(toolId: string, updates: Partial<ToolProviderConfig>): void;
+	updateToolConfig(
+		toolId: string,
+		updates: Partial<ToolProviderConfig> | Partial<TTSToolConfig>,
+	): void {
 		// Update config
 		this.assertCanonicalToolId(toolId);
 		const current = this.getToolConfig(toolId) || {};
@@ -2512,7 +2526,7 @@ export class ToolkitCoordinator {
 	 */
 	private _applyToolConfigChange(
 		toolId: string,
-		_updates: Partial<ToolProviderConfig>,
+		_updates: Partial<ToolProviderConfig> | Partial<TTSToolConfig>,
 	): void {
 		// Apply configuration changes based on tool
 		switch (toolId) {

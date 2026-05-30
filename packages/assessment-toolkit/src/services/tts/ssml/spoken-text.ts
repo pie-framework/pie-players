@@ -74,6 +74,19 @@ const appendSourceText = (
 	}
 };
 
+const appendDecodedXmlEntity = (
+	chars: SourceChar[],
+	source: string,
+	rawOffset: number,
+): number => {
+	const match = source
+		.slice(rawOffset)
+		.match(/^&(quot|apos|lt|gt|nbsp|amp|#160);/i);
+	if (!match) return 0;
+	appendSourceText(chars, decodeXmlEntities(match[0]), rawOffset);
+	return match[0].length;
+};
+
 const appendSpace = (chars: SourceChar[]): void => {
 	chars.push({ char: " ", rawOffset: null });
 };
@@ -137,6 +150,13 @@ export const extractSpokenText = (speechText: string): ExtractedSpokenText => {
 	while (index < speechText.length) {
 		const char = speechText[index];
 		if (char !== "<") {
+			if (char === "&") {
+				const consumed = appendDecodedXmlEntity(sourceChars, speechText, index);
+				if (consumed > 0) {
+					index += consumed;
+					continue;
+				}
+			}
 			appendSourceText(sourceChars, char, index);
 			index++;
 			continue;

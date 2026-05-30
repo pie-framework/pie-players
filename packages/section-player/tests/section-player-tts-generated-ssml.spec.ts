@@ -592,12 +592,16 @@ test.describe("section player demo tts-generated-ssml", () => {
 
 		const ssmlRequest = await ssmlSynthRequest;
 		const ssmlBody = ssmlRequest.postData() || "";
+		const ssmlPayload = JSON.parse(ssmlBody) as { text?: string };
+		const generatedSsml = ssmlPayload.text || "";
 
 		// Generated math SSML reached the provider as a <speak> document...
-		expect(ssmlBody).toContain("<speak");
-		// ...voicing the quadratic math (SRE speech), not the literal MathML.
-		expect(ssmlBody).toMatch(/squared|equals/i);
-		expect(ssmlBody).not.toContain("<math");
+		expect(generatedSsml).toContain("<speak");
+		// ...voicing the quadratic math with SRE's own SSML character markup for
+		// variables, not literal MathML or toolkit-invented text rewrites.
+		expect(generatedSsml).toMatch(/squared|equals/i);
+		expect(generatedSsml).toContain('interpret-as="character"');
+		expect(generatedSsml).not.toContain("<math");
 
 		// Prose chunks are sent as plain text (no SSML wrapper) — confirming that
 		// only math is upgraded to SSML, not the whole passage.

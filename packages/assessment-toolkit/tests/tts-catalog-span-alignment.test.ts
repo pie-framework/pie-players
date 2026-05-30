@@ -50,6 +50,25 @@ describe("catalog span alignment", () => {
 		).toEqual({ start: 0, length: 5 });
 	});
 
+	test("decodes XML entities in SSML text while keeping raw offsets trackable", () => {
+		const speechText = "<speak>X &lt; 2 &amp; Y &gt; 1</speak>";
+		const alignment = createCatalogSpanAlignment({
+			speechText,
+			visibleText: "X < 2 & Y > 1",
+		});
+
+		expect(alignment.spokenText).toBe("X < 2 & Y > 1");
+		expect(alignment.playbackMode).toBe("exact-word");
+		expect(
+			resolveSpokenBoundaryOffset(
+				alignment,
+				speechText.indexOf("Y"),
+				"Y".length,
+				"Y",
+			),
+		).toEqual({ start: alignment.spokenText.indexOf("Y"), length: 1 });
+	});
+
 	test("uses boundary word to accept plain offsets for raw SSML chunks", () => {
 		const speechText = `<speak xml:lang="en-US">
 			Based on the passage, which method should you use to solve

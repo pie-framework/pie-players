@@ -1,4 +1,5 @@
 import { createCatalogSpanAlignment } from "../../catalog-span-alignment.js";
+import { createRangeFromVisibleMap } from "../../highlight-pipeline/visible-map-range.js";
 import { createMathAwareAlignment } from "../../math-alignment/index.js";
 import type {
 	GeneratedSpeechPlan,
@@ -31,6 +32,12 @@ const buildProseChunk = (
 		visibleText: segment.visibleText,
 		sourceElement: anchor.sourceElement,
 		regionElement: anchor.regionElement,
+		regionRange:
+			createRangeFromVisibleMap(
+				anchor.visibleMap,
+				0,
+				segment.visibleText.length,
+			) ?? undefined,
 		speechMatchesVisibleText: true,
 		playbackMode: alignment.playbackMode,
 		alignment,

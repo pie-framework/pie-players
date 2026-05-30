@@ -55,6 +55,10 @@ import {
 	type MathSpeechResolver,
 } from "./tts/generated-speech/index.js";
 import {
+	normalizeSREMathSpeechOptions,
+	type SREMathSpeechOptions,
+} from "./tts/math-speech.js";
+import {
 	segmentSentences as segmentTextToSentences,
 	type SentenceSegment as SharedSentenceSegment,
 } from "./tts/text-segmentation.js";
@@ -123,6 +127,7 @@ interface SpeechCompositionChunk {
 	visibleText: string;
 	sourceElement: Element | null;
 	regionElement?: Element | null;
+	regionRange?: Range;
 	speechMatchesVisibleText: boolean;
 	playbackMode?: CatalogChunkPlaybackMode;
 	alignment?: CatalogSpanAlignment;
@@ -291,8 +296,22 @@ export class TTSService {
 			updateSettings?: (settings: Partial<TTSConfig>) => Promise<void> | void;
 		};
 		if (typeof provider.updateSettings === "function") {
-			await provider.updateSettings(settings);
-			this.ttsConfig = { ...this.ttsConfig, ...settings };
+			const mergedSettings: Partial<TTSConfig> = {
+				...settings,
+				...(settings.providerOptions
+					? {
+							providerOptions: {
+								...((this.ttsConfig.providerOptions || {}) as Record<
+									string,
+									unknown
+								>),
+								...(settings.providerOptions as Record<string, unknown>),
+							},
+						}
+					: {}),
+			};
+			await provider.updateSettings(mergedSettings);
+			this.ttsConfig = { ...this.ttsConfig, ...mergedSettings };
 		} else {
 			// Fallback: Reinitialize with merged config
 			// This requires storing the original config, which we don't have
@@ -354,6 +373,15 @@ export class TTSService {
 				? textNormalization.locale
 				: undefined);
 		return { locale, boundarySpacingMode };
+	}
+
+	private getMathSpeechOptions(): SREMathSpeechOptions | undefined {
+		const providerOptions = (this.ttsConfig.providerOptions || {}) as Record<
+			string,
+			unknown
+		>;
+		const mathSpeech = providerOptions.mathSpeech;
+		return normalizeSREMathSpeechOptions(mathSpeech);
 	}
 
 	private buildPositionMap(
@@ -1424,6 +1452,7 @@ export class TTSService {
 			await buildGeneratedSpeechFromRoot({
 				contentRoot: contentElement,
 				language,
+				mathSpeech: this.getMathSpeechOptions(),
 				textProcessingOptions: this.getTextProcessingOptions(language),
 				produceSsml: playbackFormat === "ssml",
 				resolveMathSpeech: this.generatedMathSpeechResolver,
@@ -1573,8 +1602,14 @@ export class TTSService {
 
 	private highlightCatalogRegion(chunk: SpeechCompositionChunk): void {
 		const element = chunk.regionElement || chunk.sourceElement;
-		if (!element || !this.highlightCoordinator) return;
+		if ((!element && !chunk.regionRange) || !this.highlightCoordinator) return;
 		try {
+			if (chunk.regionRange) {
+				this.highlightCoordinator.clearHighlights?.(HighlightType.TTS_WORD);
+				this.highlightCoordinator.highlightTTSSentence([chunk.regionRange]);
+				return;
+			}
+			if (!element) return;
 			const range = document.createRange();
 			range.selectNodeContents(element);
 			this.highlightCoordinator.clearHighlights?.(HighlightType.TTS_WORD);

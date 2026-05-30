@@ -42,13 +42,19 @@ interface PlannedChunk {
 const regionTargetFor = (
 	chunk: TTSHighlightChunk,
 ): RenderableHighlightTarget | null =>
-	chunk.regionElement
+	chunk.regionRange
 		? {
-				type: "element",
+				type: "range",
 				quality: "region",
-				element: chunk.regionElement,
+				range: chunk.regionRange,
 			}
-		: null;
+		: chunk.regionElement
+			? {
+					type: "element",
+					quality: "region",
+					element: chunk.regionElement,
+				}
+			: null;
 
 const expressionTargetFor = (
 	planned: PlannedChunk,

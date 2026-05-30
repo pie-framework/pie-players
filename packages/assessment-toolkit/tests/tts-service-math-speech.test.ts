@@ -11,6 +11,7 @@ import { TTSService } from "../src/services/TTSService";
 class CapturingTTSImpl implements ITTSProviderImplementation {
 	public speakCalls: string[] = [];
 	public rejectSsml = false;
+	public settingsUpdates: Partial<TTSConfig>[] = [];
 	public boundariesByText = new Map<
 		string,
 		Array<{ word: string; position: number; length?: number }>
@@ -38,6 +39,9 @@ class CapturingTTSImpl implements ITTSProviderImplementation {
 	}
 	isPaused(): boolean {
 		return false;
+	}
+	updateSettings(settings: Partial<TTSConfig>): void {
+		this.settingsUpdates.push(settings);
 	}
 }
 
@@ -159,6 +163,31 @@ describe("TTSService automatic math speech", () => {
 		// The math chunk is voiced as SSML; prose chunks remain plain text.
 		expect(impl.speakCalls.some((text) => text.includes("<speak"))).toBe(true);
 		expect(impl.speakCalls.some((text) => text === "Solve")).toBe(true);
+	});
+
+	test("preserves mathSpeech provider options across partial settings updates", async () => {
+		const impl = new CapturingTTSImpl();
+		const service = new TTSService();
+		await service.initialize(new CapturingTTSProvider(impl), {
+			providerOptions: {
+				mathSpeech: {
+					domain: "clearspeak",
+					style: "Paren_Silent",
+				},
+			},
+		});
+
+		await service.updateSettings({
+			providerOptions: {
+				locale: "en-US",
+			},
+		});
+
+		expect(impl.settingsUpdates).toHaveLength(1);
+		expect((service as any).getMathSpeechOptions()).toEqual({
+			domain: "clearspeak",
+			style: "Paren_Silent",
+		});
 	});
 
 	test("falls back to plain text when the provider rejects SSML", async () => {

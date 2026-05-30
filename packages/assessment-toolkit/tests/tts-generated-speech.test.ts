@@ -108,8 +108,8 @@ describe("buildGeneratedSpeechFromRoot + planToCompositionChunkInputs (DOM adapt
 
 		const proseChunk = chunks.find((chunk) => chunk.alignment);
 		expect(proseChunk).toBeDefined();
-		expect(proseChunk?.sourceElement).toBe(content);
-		expect(proseChunk?.regionElement).toBe(content);
+		expect(proseChunk?.sourceElement).toBe(content.querySelector("p"));
+		expect(proseChunk?.regionRange?.toString()).toBe("Solve");
 		expect(proseChunk?.speechMatchesVisibleText).toBe(true);
 		expect(proseChunk?.playbackMode).toBeDefined();
 		expect(proseChunk?.visibleMap).toBeInstanceOf(Map);
@@ -123,6 +123,80 @@ describe("buildGeneratedSpeechFromRoot + planToCompositionChunkInputs (DOM adapt
 		// highlight via mathAlignment instead.
 		expect(mathChunk?.alignment).toBeUndefined();
 		expect(mathChunk?.visibleMap).toBeUndefined();
+	});
+
+	test("keeps structural prose chunks and highlight ranges around generated math", async () => {
+		const content = document.createElement("div");
+		content.innerHTML = `
+			<h3>The Quadratic Formula</h3>
+			<p>
+				Given any quadratic in standard form
+				<math><msup><mi>x</mi><mn>2</mn></msup></math>
+				now. Next sentence.
+			</p>
+		`;
+
+		const { plan } = await buildGeneratedSpeechFromRoot({
+			contentRoot: content,
+			language: "en-US",
+			resolveMathSpeech: stubMathSpeech("x squared"),
+		});
+		const chunks = planToCompositionChunkInputs(plan);
+
+		expect(chunks.map((chunk) => chunk.speechText)).toEqual([
+			"The Quadratic Formula",
+			"Given any quadratic in standard form",
+			"x squared",
+			"now.",
+			"Next sentence.",
+		]);
+		expect(chunks[0].sourceElement?.tagName).toBe("H3");
+		expect(chunks[0].regionRange?.toString()).toBe("The Quadratic Formula");
+		expect(chunks[1].sourceElement?.tagName).toBe("P");
+		expect(chunks[1].regionRange?.toString()).toBe(
+			"Given any quadratic in standard form",
+		);
+		expect(chunks[3].regionRange?.toString()).toBe("now.");
+		expect(chunks[4].regionRange?.toString()).toBe("Next sentence.");
+	});
+
+	test("does not split arbitrary inline wrappers, but preserves answer-choice labels", async () => {
+		const content = document.createElement("div");
+		content.innerHTML = `
+			<span>Based on the passage, </span><span>solve</span>
+			<math><mi>x</mi></math>
+			<label>A. The quadratic formula</label>
+			<label>B. Factoring into <math><mi>y</mi></math></label>
+		`;
+
+		const { plan } = await buildGeneratedSpeechFromRoot({
+			contentRoot: content,
+			language: "en-US",
+			resolveMathSpeech: async (chunk) => ({
+				speechText: chunk.fallbackText === "x" ? "x" : "y",
+				usedMathSpeech: true,
+				usedFallback: false,
+			}),
+		});
+		const chunks = planToCompositionChunkInputs(plan);
+
+		expect(chunks.map((chunk) => chunk.speechText)).toEqual([
+			"Based on the passage, solve",
+			"x",
+			"A. The quadratic formula",
+			"B. Factoring into",
+			"y",
+		]);
+		expect(chunks[0].sourceElement).toBe(content);
+		expect(chunks[0].regionRange?.toString()).toBe(
+			"Based on the passage, solve",
+		);
+		expect(chunks[2].sourceElement?.tagName).toBe("LABEL");
+		expect(chunks[2].regionRange?.toString()).toBe(
+			"A. The quadratic formula",
+		);
+		expect(chunks[3].sourceElement?.tagName).toBe("LABEL");
+		expect(chunks[3].regionRange?.toString()).toBe("B. Factoring into");
 	});
 
 	test("emits SRE SSML for math and attaches a plain fallback in ssml format", async () => {
@@ -210,6 +284,72 @@ describe("createMemoizedMathSpeechResolver", () => {
 		expect(ssmlResult.ssml).toBe("<speak>s</speak>");
 		await resolver(chunk, { language: "en-US", produceSsml: true });
 		expect(calls).toBe(2);
+	});
+
+	test("keys the cache on math speech settings", async () => {
+		let calls = 0;
+		const resolver = createMemoizedMathSpeechResolver({
+			resolve: async (_chunk, opts) => {
+				calls++;
+				return {
+					speechText: `style:${opts.mathSpeech?.style ?? "default"}`,
+					usedMathSpeech: true,
+					usedFallback: false,
+				};
+			},
+		});
+		const chunk = {
+			type: "math" as const,
+			mathml: "<math><mi>x</mi></math>",
+			fallbackText: "x",
+		};
+
+		const first = await resolver(chunk, { language: "en-US" });
+		const second = await resolver(chunk, {
+			language: "en-US",
+			mathSpeech: { style: "ImpliedTimes_MoreImpliedTimes" },
+		});
+		const third = await resolver(chunk, {
+			language: "en-US",
+			mathSpeech: { style: "ImpliedTimes_MoreImpliedTimes" },
+		});
+
+		expect(first.speechText).toBe("style:default");
+		expect(second.speechText).toBe("style:ImpliedTimes_MoreImpliedTimes");
+		expect(third.speechText).toBe(second.speechText);
+		expect(calls).toBe(2);
+	});
+
+	test("passes normalized math speech settings to the resolver", async () => {
+		let calls = 0;
+		const resolver = createMemoizedMathSpeechResolver({
+			resolve: async (_chunk, opts) => {
+				calls++;
+				return {
+					speechText: `${opts.mathSpeech?.domain}:${opts.mathSpeech?.style}`,
+					usedMathSpeech: true,
+					usedFallback: false,
+				};
+			},
+		});
+		const chunk = {
+			type: "math" as const,
+			mathml: "<math><mi>x</mi></math>",
+			fallbackText: "x",
+		};
+
+		const first = await resolver(chunk, {
+			language: "en-US",
+			mathSpeech: { domain: " clearspeak ", style: " Paren_Silent " },
+		});
+		const second = await resolver(chunk, {
+			language: "en-US",
+			mathSpeech: { domain: "clearspeak", style: "Paren_Silent" },
+		});
+
+		expect(first.speechText).toBe("clearspeak:Paren_Silent");
+		expect(second.speechText).toBe(first.speechText);
+		expect(calls).toBe(1);
 	});
 
 	test("caches by canonical MathML and locale, re-resolving on change", async () => {

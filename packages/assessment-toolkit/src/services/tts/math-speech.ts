@@ -11,12 +11,26 @@ export interface ResolveMathSpeechOptions {
 	language?: string;
 	loadSre?: () => Promise<SpeechRuleEngineApi>;
 	/**
+	 * Optional SRE configuration supplied by the host. This deliberately exposes
+	 * SRE's own knobs instead of adding toolkit speech rewrites.
+	 */
+	mathSpeech?: SREMathSpeechOptions;
+	/**
 	 * Also produce SRE's SSML rendering (markup: "ssml") for the equation, for
 	 * the runtime generated-SSML path (PIE-623). Only populated when the input
 	 * is a single math chunk and SRE succeeds. The plain `speechText` is always
 	 * computed with markup: "none" so the plain path is unaffected.
 	 */
 	produceSsml?: boolean;
+}
+
+export interface SREMathSpeechOptions {
+	/** SRE domain, e.g. "clearspeak" or "mathspeak". Defaults by locale. */
+	domain?: string;
+	/** Raw SRE style/preference string. ClearSpeak preferences are ":"-joined. */
+	style?: string;
+	/** Extra SRE setupEngine options for hosts that need a newly exposed SRE knob. */
+	engineOptions?: Record<string, unknown>;
 }
 
 export interface ResolvedMathSpeech {
@@ -32,6 +46,7 @@ export interface ResolvedMathSpeech {
 }
 
 let sreLoadPromise: Promise<SpeechRuleEngineApi> | null = null;
+let sreOperationQueue: Promise<unknown> = Promise.resolve();
 
 const normalizeLocale = (language?: string): string =>
 	(language || "en").split("-")[0].toLowerCase() || "en";
@@ -58,20 +73,70 @@ const defaultLoadSre = async (): Promise<SpeechRuleEngineApi> => {
 const domainForLocale = (locale: string): string =>
 	locale === "en" ? "clearspeak" : "mathspeak";
 
+const isPlainRecord = (value: unknown): value is Record<string, unknown> =>
+	!!value && typeof value === "object" && !Array.isArray(value);
+
+const trimOption = (value: unknown): string | undefined =>
+	typeof value === "string" && value.trim() ? value.trim() : undefined;
+
+export const normalizeSREMathSpeechOptions = (
+	options: unknown,
+): SREMathSpeechOptions | undefined => {
+	if (!isPlainRecord(options)) return undefined;
+	const domain = trimOption(options.domain);
+	const style = trimOption(options.style);
+	const engineOptions = isPlainRecord(options.engineOptions)
+		? options.engineOptions
+		: undefined;
+	if (!domain && !style && !engineOptions) return undefined;
+	return {
+		...(domain ? { domain } : {}),
+		...(style ? { style } : {}),
+		...(engineOptions ? { engineOptions } : {}),
+	};
+};
+
 const setupSre = async (
 	sre: SpeechRuleEngineApi,
 	language: string | undefined,
 	markup: "none" | "ssml",
+	mathSpeech?: SREMathSpeechOptions,
 ): Promise<void> => {
 	const locale = normalizeLocale(language);
+	const normalizedMathSpeech = normalizeSREMathSpeechOptions(mathSpeech);
 	await sre.setupEngine?.({
+		...(normalizedMathSpeech?.engineOptions || {}),
 		locale,
-		domain: domainForLocale(locale),
+		domain: normalizedMathSpeech?.domain || domainForLocale(locale),
+		...(normalizedMathSpeech?.style ? { style: normalizedMathSpeech.style } : {}),
 		modality: "speech",
 		markup,
 	});
 	await sre.engineReady?.();
 };
+
+const runSerializedSreOperation = async <T>(
+	operation: () => Promise<T>,
+): Promise<T> => {
+	const result = sreOperationQueue.then(operation, operation);
+	sreOperationQueue = result.then(
+		() => undefined,
+		() => undefined,
+	);
+	return result;
+};
+
+const toSpeechWithSreSettings = async (
+	sre: SpeechRuleEngineApi,
+	mathml: string,
+	language: string | undefined,
+	markup: "none" | "ssml",
+	mathSpeech?: SREMathSpeechOptions,
+): Promise<string> =>
+	runSerializedSreOperation(async () => {
+		await setupSre(sre, language, markup, mathSpeech);
+		return sre.toSpeech(mathml);
+	});
 
 // SRE's SSML rendering wraps the spoken words in highlight-safe structural tags
 // (`speak`, `prosody`, `say-as interpret-as="character"`, `break`), all handled
@@ -89,10 +154,12 @@ const generateMathSsml = async (
 	sre: SpeechRuleEngineApi,
 	mathml: string,
 	language?: string,
+	mathSpeech?: SREMathSpeechOptions,
 ): Promise<string | null> => {
 	try {
-		await setupSre(sre, language, "ssml");
-		const ssml = stripXmlProlog(sre.toSpeech(mathml));
+		const ssml = stripXmlProlog(
+			await toSpeechWithSreSettings(sre, mathml, language, "ssml", mathSpeech),
+		);
 		return ssml.includes("<speak") ? ssml : null;
 	} catch (error) {
 		console.debug("[TTSService] Math SSML generation failed; using plain", {
@@ -101,19 +168,6 @@ const generateMathSsml = async (
 		return null;
 	}
 };
-
-// English-only normalization: SRE may render a lone italic variable as a single
-// lowercase letter ("a"), which an English TTS engine can voice as the article
-// "a" rather than the letter name. Upper-casing forces the letter reading. Other
-// locales do not share this ambiguity (and may use non-Latin variables), so the
-// rewrite is skipped for them.
-const normalizeMathVariablePronunciation = (
-	speech: string,
-	locale: string,
-): string =>
-	locale === "en"
-		? speech.replace(/\b([a-z])\b/g, (match) => match.toUpperCase())
-		: speech;
 
 export const resolveMathSpeechFromChunks = async (
 	chunks: MathAwareSpeechChunk[],
@@ -134,11 +188,9 @@ export const resolveMathSpeechFromChunks = async (
 	}
 
 	let sre: SpeechRuleEngineApi | null = null;
-	let setupComplete = false;
 	let usedMathSpeech = false;
 	let usedFallback = false;
 	const loadSre = options.loadSre || defaultLoadSre;
-	const locale = normalizeLocale(options.language);
 	const speechParts: string[] = [];
 
 	for (const chunk of chunks) {
@@ -150,12 +202,14 @@ export const resolveMathSpeechFromChunks = async (
 			if (!sre) {
 				sre = await loadSre();
 			}
-			if (!setupComplete) {
-				await setupSre(sre, options.language, "none");
-				setupComplete = true;
-			}
 			const speech = normalizeTextForSpeech(
-				normalizeMathVariablePronunciation(sre.toSpeech(chunk.mathml), locale),
+				await toSpeechWithSreSettings(
+					sre,
+					chunk.mathml,
+					options.language,
+					"none",
+					options.mathSpeech,
+				),
 			);
 			if (speech) {
 				speechParts.push(speech);
@@ -180,6 +234,7 @@ export const resolveMathSpeechFromChunks = async (
 	// composes one chunk per equation). Computed after the plain pass so the
 	// markup: "none" `speechText` above is unchanged. The "none" → "ssml"
 	// engine reconfiguration happens sequentially within this call.
+	const speechText = normalizeTextForSpeech(speechParts.join(" "));
 	let ssml: string | undefined;
 	if (
 		options.produceSsml &&
@@ -192,12 +247,13 @@ export const resolveMathSpeechFromChunks = async (
 			sre,
 			chunks[0].mathml,
 			options.language,
+			options.mathSpeech,
 		);
 		ssml = generated ?? undefined;
 	}
 
 	return {
-		speechText: normalizeTextForSpeech(speechParts.join(" ")),
+		speechText,
 		usedMathSpeech,
 		usedFallback,
 		ssml,

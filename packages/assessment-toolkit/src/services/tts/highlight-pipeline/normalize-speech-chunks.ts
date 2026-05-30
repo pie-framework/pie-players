@@ -8,6 +8,7 @@ export interface SpeechCompositionChunkInput {
 	visibleText: string;
 	sourceElement: Element | null;
 	regionElement?: Element | null;
+	regionRange?: Range;
 	alignment?: CatalogSpanAlignment;
 	mathAlignment?: MathAwareAlignment;
 	mathAlignments?: Array<{ element: Element; alignment: MathAwareAlignment }>;
@@ -21,6 +22,7 @@ export interface NormalizeSpeechChunksArgs {
 	visibleText?: string;
 	sourceElement?: Element | null;
 	regionElement?: Element | null;
+	regionRange?: Range;
 	visibleMap?: NormalizedTextMap;
 }
 
@@ -57,6 +59,7 @@ export const normalizeSpeechChunks = (
 						sourceElement: args.sourceElement || args.contentRoot,
 						regionElement:
 							args.regionElement || args.sourceElement || args.contentRoot,
+						regionRange: args.regionRange,
 						visibleMap: args.visibleMap,
 					},
 				];
@@ -67,6 +70,7 @@ export const normalizeSpeechChunks = (
 		sourceElement: chunk.sourceElement,
 		contentRoot: args.contentRoot,
 		regionElement: chunk.regionElement ?? chunk.sourceElement,
+		regionRange: chunk.regionRange,
 		visibleMap: chunk.visibleMap,
 		catalogAlignment: chunk.alignment,
 		mathAlignments: mathAlignmentsFor(chunk),

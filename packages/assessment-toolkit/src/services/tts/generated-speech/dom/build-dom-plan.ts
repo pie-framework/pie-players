@@ -8,6 +8,7 @@ import {
 	assembleGeneratedSpeech,
 	type MathSpeechResolver,
 } from "../assemble-plan.js";
+import type { SREMathSpeechOptions } from "../../math-speech.js";
 import type { GeneratedSpeechPlan, PlanItem } from "../types.js";
 import type { DomAnchor } from "./types.js";
 
@@ -41,6 +42,7 @@ export interface BuildGeneratedSpeechResult {
 export const buildGeneratedSpeechFromRoot = async (args: {
 	contentRoot: Element;
 	language?: string;
+	mathSpeech?: SREMathSpeechOptions;
 	textProcessingOptions?: TextProcessingOptions;
 	/** Request SRE SSML per equation (for the SSML playback format). */
 	produceSsml?: boolean;
@@ -54,19 +56,25 @@ export const buildGeneratedSpeechFromRoot = async (args: {
 		chunks: extracted.chunks,
 		visibleText: extracted.visibleText,
 		language: args.language,
+		mathSpeech: args.mathSpeech,
 		produceSsml: args.produceSsml,
 		resolveMathSpeech: args.resolveMathSpeech,
 	});
 
 	const items: PlanItem<DomAnchor>[] = assembled.segments.map(
 		({ segment, sourceChunkIndex }) => {
+			const sourceChunk = extracted.chunks[sourceChunkIndex];
 			if (segment.kind === "prose") {
+				const sourceElement =
+					sourceChunk?.type === "text"
+						? (sourceChunk.sourceElement ?? args.contentRoot)
+						: args.contentRoot;
 				return {
 					segment,
 					anchor: {
-						sourceElement: args.contentRoot,
+						sourceElement,
 						regionElement: resolveReadableRegion(
-							args.contentRoot,
+							sourceElement,
 							args.contentRoot,
 						),
 						visibleMap: sliceVisibleMap(
@@ -77,7 +85,6 @@ export const buildGeneratedSpeechFromRoot = async (args: {
 					},
 				};
 			}
-			const sourceChunk = extracted.chunks[sourceChunkIndex];
 			const mathElement =
 				sourceChunk?.type === "math"
 					? (sourceChunk.sourceElement ?? null)

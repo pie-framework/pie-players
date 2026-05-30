@@ -1,5 +1,9 @@
 import type { TTSConfig } from "./TTSService.js";
 import type { ToolProviderConfig } from "./tools-config-normalizer.js";
+import {
+	normalizeSREMathSpeechOptions,
+	type SREMathSpeechOptions,
+} from "./tts/math-speech.js";
 
 export type TTSLayoutMode =
 	| "reserved-row"
@@ -60,6 +64,12 @@ export interface TTSRuntimeSettings {
 	 *   never broken into per-token highlights. Prose word tracking is unaffected.
 	 */
 	mathTokenHighlighting?: boolean;
+	/**
+	 * Speech Rule Engine options for generated MathML speech. Hosts can use these
+	 * to tune SRE itself (for example ClearSpeak ImpliedTimes/Paren preferences)
+	 * instead of relying on toolkit-specific speech rewrites.
+	 */
+	mathSpeech?: SREMathSpeechOptions;
 }
 
 const toRecord = (value: unknown): Record<string, unknown> =>
@@ -178,10 +188,10 @@ const applyRuntimeDefaults = (
 };
 
 export const resolveTTSRuntimeSettings = (
-	config: ToolProviderConfig | undefined,
+	config: ToolProviderConfig | TTSRuntimeSettings | undefined,
 ): TTSRuntimeSettings => {
 	const configRecord = toRecord(config);
-	const settingsRecord = toRecord(config?.settings);
+	const settingsRecord = toRecord(configRecord.settings);
 	return applyRuntimeDefaults({
 		...configRecord,
 		...settingsRecord,
@@ -215,6 +225,7 @@ export const buildRuntimeTTSConfig = (
 	const backend = resolveTTSBackend(config);
 	const runtimeProvider = resolveRuntimeProvider(config, backend);
 	const transportMode = resolveTransportMode(config, runtimeProvider);
+	const mathSpeech = normalizeSREMathSpeechOptions(config.mathSpeech);
 	return {
 		voice: config.defaultVoice,
 		rate: config.rate,
@@ -243,6 +254,7 @@ export const buildRuntimeTTSConfig = (
 			...(transportMode === "custom" && config.lang_id
 				? { lang_id: config.lang_id }
 				: {}),
+			...(mathSpeech ? { mathSpeech } : {}),
 		},
 		apiEndpoint: config.apiEndpoint,
 		provider: runtimeProvider,

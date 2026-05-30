@@ -22,6 +22,7 @@ export interface TTSHighlightChunk {
 	sourceElement: Element | null;
 	contentRoot: Element;
 	regionElement: Element | null;
+	regionRange?: Range;
 	visibleMap?: NormalizedTextMap;
 	catalogAlignment?: CatalogSpanAlignment;
 	mathAlignments: Array<{ element: Element; alignment: MathAwareAlignment }>;

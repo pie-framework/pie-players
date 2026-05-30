@@ -157,9 +157,9 @@ describe("math-aware TTS text processing", () => {
 
 		expect(result.visibleText).toBe("Solve x now.");
 		expect(result.chunks).toEqual([
-			{ type: "text", text: "Solve" },
+			expect.objectContaining({ type: "text", text: "Solve" }),
 			expect.objectContaining({ type: "math", fallbackText: "x" }),
-			{ type: "text", text: "now." },
+			expect.objectContaining({ type: "text", text: "now." }),
 		]);
 	});
 

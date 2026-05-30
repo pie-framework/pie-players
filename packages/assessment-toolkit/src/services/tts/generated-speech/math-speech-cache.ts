@@ -1,4 +1,5 @@
 import {
+	normalizeSREMathSpeechOptions,
 	resolveMathSpeechFromChunks,
 	type ResolvedMathSpeech,
 } from "../math-speech.js";
@@ -12,6 +13,19 @@ const normalizeLocale = (language?: string): string =>
 const SRE_CACHE_VERSION = "sre-v1";
 
 const DEFAULT_MAX_ENTRIES = 256;
+
+const stableStringify = (value: unknown): string => {
+	if (Array.isArray(value)) {
+		return `[${value.map(stableStringify).join(",")}]`;
+	}
+	if (value && typeof value === "object") {
+		return `{${Object.entries(value as Record<string, unknown>)
+			.sort(([left], [right]) => left.localeCompare(right))
+			.map(([key, entry]) => `${JSON.stringify(key)}:${stableStringify(entry)}`)
+			.join(",")}}`;
+	}
+	return JSON.stringify(value);
+};
 
 export interface MathSpeechCacheOptions {
 	maxEntries?: number;
@@ -39,9 +53,12 @@ export const createMemoizedMathSpeechResolver = (
 	const cache = new Map<string, ResolvedMathSpeech>();
 
 	return async (chunk, opts) => {
+		const mathSpeech = normalizeSREMathSpeechOptions(opts.mathSpeech);
 		const key = `${SRE_CACHE_VERSION}\u0000${normalizeLocale(
 			opts.language,
-		)}\u0000${opts.produceSsml ? "ssml" : "plain"}\u0000${chunk.mathml}`;
+		)}\u0000${opts.produceSsml ? "ssml" : "plain"}\u0000${stableStringify(
+			mathSpeech ?? null,
+		)}\u0000${chunk.mathml}`;
 		const cached = cache.get(key);
 		if (cached) {
 			// Refresh LRU recency.
@@ -49,7 +66,7 @@ export const createMemoizedMathSpeechResolver = (
 			cache.set(key, cached);
 			return cached;
 		}
-		const resolved = await resolve(chunk, opts);
+		const resolved = await resolve(chunk, { ...opts, mathSpeech });
 		cache.set(key, resolved);
 		if (cache.size > maxEntries) {
 			const oldest = cache.keys().next().value;

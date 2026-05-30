@@ -509,6 +509,19 @@ export interface AssessmentSettings {
 			pitch?: number;
 
 			/**
+			 * Speech Rule Engine options for generated MathML speech.
+			 *
+			 * `style` is passed to SRE directly; ClearSpeak combines multiple
+			 * preferences with ":" (for example,
+			 * "ImpliedTimes_MoreImpliedTimes:Paren_Silent").
+			 */
+			mathSpeech?: {
+				domain?: string;
+				style?: string;
+				engineOptions?: Record<string, unknown>;
+			};
+
+			/**
 			 * Provider-specific options (extensions)
 			 *
 			 * @extension Not portable across providers

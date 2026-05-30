@@ -2,6 +2,10 @@
 
 This guide shows how to integrate the server-side TTS with speech marks into your SvelteKit application.
 
+For the shared TTS architecture and package roles, see
+[TTS Architecture](../../../docs/accessibility/tts-architecture.md). This guide
+is the Polly-specific SvelteKit integration path.
+
 ## Overview
 
 The integration has three parts:
@@ -602,4 +606,4 @@ See the section-player demo for a complete working example:
 
 For issues or questions:
 - Check the [Tool Provider System](../../../docs/tools-and-accomodations/tool_provider_system.md)
-- See [TTS Synchronization Best Practices](../../../docs/accessibility/tts-synchronization-best-practices.md)
+- See [TTS Architecture](../../../docs/accessibility/tts-architecture.md)

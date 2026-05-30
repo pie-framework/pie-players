@@ -12,6 +12,9 @@ See also:
 - [`../wcag/wcag-2.2-aa-baseline.md`](../wcag/wcag-2.2-aa-baseline.md) for the criteria most likely to affect TTS work
 - [`../wcag/evaluation-method.md`](../wcag/evaluation-method.md) for evaluation guidance
 
+This document is the source of truth for cross-package TTS architecture. Package
+READMEs document package-specific APIs, configuration, and provider setup.
+
 ## Package Structure
 
 ### 1. @pie-players/pie-tts
@@ -74,6 +77,16 @@ The new architecture splits TTS into server-side and client-side components for 
 - Parallel audio + marks requests
 - Full SSML support
 
+**@pie-players/tts-server-google**
+- Google Cloud Text-to-Speech implementation for Node.js
+- Speech marks via SSML mark injection and timepoints
+- Supports Google authentication modes documented in the package README
+
+**@pie-players/tts-server-sc**
+- SchoolCity-backed reference implementation for custom server-side providers
+- Normalizes word marks returned by the SchoolCity service
+- Includes asset URL allow-listing and SSRF defenses
+
 #### Client-Side Package (Browser)
 
 **@pie-players/tts-client-server**
@@ -106,18 +119,17 @@ Browser → ServerTTSProvider (custom transport) → Custom root POST API
 - Supports word-level highlighting via speech marks
 - 50ms polling-based synchronization
 
-**@pie-players/tts-server-polly** (Server package)
+**@pie-players/tts-server-polly** / **@pie-players/tts-server-google** (Server packages)
 
-- AWS Polly implementation for Node.js
-- Native speech marks support (millisecond-precise)
-- Parallel audio + marks requests
-- Full SSML support
+- Server-side provider implementations for Node.js
+- Native or normalized speech marks for synchronized highlighting
+- Provider-specific SSML and voice support
 - Secure credential management
 
-**Integration:** SvelteKit API routes connect browser client to server-side provider
+**Integration:** SvelteKit API routes connect browser client to a server-side provider
 
 ```
-Browser → ServerTTSProvider → /api/tts/synthesize → PollyServerProvider → AWS Polly
+Browser → ServerTTSProvider → /api/tts/synthesize → server provider → TTS backend
 ```
 
 See [Server-Side TTS Integration Guide](../../packages/tts-server-polly/examples/INTEGRATION-GUIDE.md) for setup instructions.
@@ -493,9 +505,10 @@ See [Accessibility Catalogs Integration Guide](./accessibility-catalogs-integrat
 
 ## Additional Server-Side TTS Providers
 
-- **@pie-players/tts-server-google** - Google Cloud Text-to-Speech (implemented)
-- **@pie-players/tts-server-azure** - Azure Cognitive Services TTS (future)
-- **@pie-players/tts-server-elevenlabs** - ElevenLabs high-fidelity voices (future)
+- **@pie-players/tts-server-google** - Google Cloud Text-to-Speech
+- **@pie-players/tts-server-sc** - SchoolCity-backed reference provider
+- **Future provider packages** - Azure Cognitive Services, ElevenLabs, or other
+  backends can follow the same server-provider pattern when implemented.
 
 All server providers follow the same pattern:
 
@@ -510,6 +523,8 @@ All server providers follow the same pattern:
 - **Server-side architecture**: Secure, production-ready TTS with speech marks
   - **tts-server-core**: Server provider interfaces
   - **tts-server-polly**: AWS Polly implementation
+  - **tts-server-google**: Google Cloud implementation
+  - **tts-server-sc**: SchoolCity-backed reference implementation
   - **tts-client-server**: Browser client
 - **Pattern**: Try server-side TTS, fallback to browser TTS
 - **Benefit**: Always-working TTS with optional high-quality upgrades and precise word highlighting

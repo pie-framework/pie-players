@@ -2,6 +2,10 @@
 
 Core types, interfaces, and utilities for server-side Text-to-Speech (TTS) providers.
 
+For the cross-package TTS architecture and browser/server flow, see
+[TTS Architecture](../../docs/accessibility/tts-architecture.md). This README
+focuses on the shared server-provider contracts.
+
 ## Overview
 
 This package provides the foundation for building server-side TTS providers that return audio with precise word-level timing metadata (speech marks) for synchronized highlighting.

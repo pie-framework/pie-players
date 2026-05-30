@@ -45,20 +45,26 @@ Advanced math problem with constructed response input fields. Shows how math ren
 
 ## Running the Demos
 
+The canonical demo command list lives in
+[`../../docs/setup/demo_system.md`](../../docs/setup/demo_system.md). For this
+app:
+
 ```bash
-# From monorepo root
-bun install
-
-# First run on a fresh checkout (build package dist outputs + start demos)
 bun run dev:item -- --rebuild
-
-# Normal daily start
 bun run dev:item
-# Opens http://localhost:5301
+```
 
-# Optional: watch section/item shared package builds while iterating on libraries
+For section-player, toolkit, toolbar, and tool package iteration, run the build
+watcher in a second terminal:
+
+```bash
 bun run build:watch:section-tools
 ```
+
+For item-player or shared runtime changes, rebuild the changed package before
+refreshing so the demo does not load stale `dist` output.
+
+The item demos run on `http://localhost:5301` by default.
 
 Use root scripts rather than running `bun run dev` directly inside
 `apps/item-demos`; root scripts apply shared monorepo startup behavior.

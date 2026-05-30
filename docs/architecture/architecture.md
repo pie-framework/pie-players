@@ -526,7 +526,6 @@ but correctness is ownership-first by design.
 ### Architecture Documentation
 
 - [Tools & Accommodations Architecture](../tools-and-accomodations/architecture.md) - Tools system design
-- [Question Layout Engine Architecture](question-layout-engine-architecture.md) - Layout system design
 
 ### Package Documentation
 

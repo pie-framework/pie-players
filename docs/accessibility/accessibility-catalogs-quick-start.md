@@ -257,8 +257,6 @@ const spokenCatalogs = resolver.getCatalogsByType('spoken');
 ### Extract Catalog IDs from Markup
 
 ```typescript
-import { extractCatalogIdsFromMarkup } from '@pie-players/pie-assessment-toolkit/examples';
-
 const markup = `
   <pie-prompt>
     <div data-catalog-id="prompt-001">Question text</div>
@@ -269,7 +267,10 @@ const markup = `
   </pie-choices>
 `;
 
-const catalogIds = extractCatalogIdsFromMarkup(markup);
+const doc = new DOMParser().parseFromString(markup, 'text/html');
+const catalogIds = [...doc.querySelectorAll<HTMLElement>('[data-catalog-id]')]
+  .map((element) => element.dataset.catalogId)
+  .filter((catalogId): catalogId is string => Boolean(catalogId));
 // Returns: ['prompt-001', 'choice-A', 'choice-B']
 ```
 

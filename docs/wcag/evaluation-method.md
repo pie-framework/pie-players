@@ -99,20 +99,17 @@ Use demo apps to exercise integrated behavior:
 
 ### 3. Gather supporting automated evidence
 
-Use existing test harnesses and local evals as supporting evidence, not as proof of conformance.
+Use existing test harnesses as supporting evidence, not as proof of conformance.
 
 Relevant repo references:
 
-- [`../evals/readme.md`](../evals/readme.md)
 - `package.json` e2e scripts at the repo root
 - Playwright coverage under `packages/section-player/tests` and `packages/item-player/tests`
 
 Project rule:
 
 - passing an axe scan does **not** equal WCAG conformance
-- passing a local eval does **not** equal WCAG conformance
-
-They are evidence inputs, not the final conclusion.
+Automated checks are evidence inputs, not the final conclusion.
 
 ### 3.1 Run the critical automated baseline
 

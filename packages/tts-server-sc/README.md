@@ -2,6 +2,10 @@
 
 SchoolCity-backed server-side TTS provider for PIE projects.
 
+For the cross-package TTS architecture and browser/server flow, see
+[TTS Architecture](../../docs/accessibility/tts-architecture.md). This README
+focuses on the SchoolCity-backed reference provider and its SSRF defenses.
+
 This package uses SchoolCity as an internal Renaissance-backed reference implementation
 for custom server-side TTS integrations. The intent is to demonstrate a reusable
 "custom backend adapter" pattern you can apply to your own TTS service.

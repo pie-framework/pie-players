@@ -2,6 +2,9 @@
 
 TTS interfaces and types for PIE Assessment Toolkit - Pure TypeScript with no UI dependencies.
 
+For the cross-package TTS architecture, provider layering, and server/client
+runtime flow, see [TTS Architecture](../../docs/accessibility/tts-architecture.md).
+
 ## Purpose
 
 This package provides the foundational interfaces and types for building TTS (Text-to-Speech) providers in the PIE ecosystem. It has **zero dependencies** and no UI framework requirements, making it suitable for:

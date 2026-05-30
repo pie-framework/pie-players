@@ -102,7 +102,7 @@ dedupe is a safety net, not a substitute for clear ownership.
 
 ## Architecture Overview
 
-See [ToolkitCoordinator Architecture](../../docs/architecture/TOOLKIT_COORDINATOR.md) for complete design documentation.
+See the [ToolkitCoordinator section in the architecture overview](../../docs/architecture/architecture.md#toolkitcoordinator-centralized-service-management) for the current design documentation.
 
 ### Core Principles
 
@@ -1436,7 +1436,7 @@ from tool configuration. Two sanitization layers apply:
 
 - **[Tool Registry Architecture](docs/TOOL_REGISTRY.md)** - ⭐ NEW - Registry-based tool management and QTI 3.0 PNP support
 - **[PNP Configuration Guide](docs/PNP_CONFIGURATION.md)** - ⭐ NEW - How to configure student profiles, district policies, and governance rules
-- [ToolkitCoordinator Architecture](../../docs/architecture/TOOLKIT_COORDINATOR.md) - Design decisions and patterns
+- [ToolkitCoordinator Architecture](../../docs/architecture/architecture.md#toolkitcoordinator-centralized-service-management) - Design decisions and patterns
 - [Section Player README](../section-player/README.md) - Section player integration
 - [Section Player Architecture](../section-player/ARCHITECTURE.md#layered-runtime-engine-post-m7) - Layered runtime engine, kernel/toolkit wiring, single-engine invariant
 - [Framework-Owned Error Handling](../../docs/tools-and-accomodations/framework-owned-error-handling.md) - Canonical framework error model/events and fallback behavior

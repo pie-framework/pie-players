@@ -2,6 +2,10 @@
 
 This guide shows how to integrate the Google Cloud Text-to-Speech provider into your server-side application.
 
+For the shared TTS architecture and package roles, see
+[TTS Architecture](../../../docs/accessibility/tts-architecture.md). This guide
+is the Google Cloud-specific server integration path.
+
 ## Prerequisites
 
 1. **Google Cloud Project**: Create a project at [console.cloud.google.com](https://console.cloud.google.com)

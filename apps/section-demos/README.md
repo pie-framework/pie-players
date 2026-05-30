@@ -66,20 +66,22 @@ Demonstrates a restart/resume workflow with external server-side persistence. Th
 
 ## Running the Demos
 
+The canonical demo command list lives in
+[`../../docs/setup/demo_system.md`](../../docs/setup/demo_system.md). For this
+app:
+
 ```bash
-# From monorepo root
-bun install
-
-# First run on a fresh checkout (build package dist outputs + start demos)
 bun run dev:section -- --rebuild
-
-# Normal daily start
 bun run dev:section
-# Opens http://localhost:5300
+```
 
-# Optional: watch section-related package builds while iterating on tools/packages
+For tool/package iteration, run the build watcher in a second terminal:
+
+```bash
 bun run build:watch:section-tools
 ```
+
+The section demos run on `http://localhost:5300` by default.
 
 Use root scripts rather than running `bun run dev` directly inside
 `apps/section-demos`; root scripts apply the shared `.env` loading and

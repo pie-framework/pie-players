@@ -2,6 +2,10 @@
 
 A draggable, floating tool that reads selected text aloud with word-level highlighting for accessibility.
 
+For the shared TTS architecture and provider model, see
+[TTS Architecture](../../docs/accessibility/tts-architecture.md). This README
+focuses on the floating tool custom element API.
+
 ## Features
 
 - ✅ **Text Selection**: Automatically detects selected text on the page
@@ -27,7 +31,7 @@ A draggable, floating tool that reads selected text aloud with word-level highli
 
 ```svelte
 <script>
-  import '@pie-players/pie-tool-text-to-speech/components/tool-text-to-speech-element';
+  import '@pie-players/pie-tool-text-to-speech';
   import { toolCoordinator } from '@pie-players/pie-assessment-toolkit';
 
   let visible = $state(false);
@@ -155,7 +159,7 @@ The tool handles these error scenarios:
 
 ```svelte
 <script>
-  import '@pie-players/pie-tool-text-to-speech/components/tool-text-to-speech-element';
+  import '@pie-players/pie-tool-text-to-speech';
   import { toolCoordinator } from '@pie-players/pie-assessment-toolkit';
 
   let showTTS = $derived(
@@ -197,7 +201,7 @@ The tool handles these error scenarios:
 
 ## Related
 
-- [TTS Architecture](../../../docs/accessibility/tts-architecture.md) - TTS system overview
-- [TTS Server Polly](../../tts-server-polly/README.md) - AWS Polly server provider
-- [TTS Client Server](../../tts-client-server/README.md) - Server-backed client provider
-- [Tool Toolbar](../../toolbars/README.md) - Tool management
+- [TTS Architecture](../../docs/accessibility/tts-architecture.md) - TTS system overview
+- [TTS Server Polly](../tts-server-polly/README.md) - AWS Polly server provider
+- [TTS Client Server](../tts-client-server/README.md) - Server-backed client provider
+- [Toolbars package](../toolbars/) - Tool management

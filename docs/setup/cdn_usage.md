@@ -30,20 +30,20 @@ Example:
 
 ```html
 <script type="module">
-  import 'https://cdn.jsdelivr.net/npm/@pie-players/pie-toolbars@1.0.0/dist/tool-toolbar.js';
-  import { ToolCoordinator } from 'https://cdn.jsdelivr.net/npm/@pie-players/pie-assessment-toolkit@0.1.0/dist/index.js';
+  import 'https://cdn.jsdelivr.net/npm/@pie-players/pie-toolbars@x.y.z/dist/index.js';
+  import { ToolCoordinator } from 'https://cdn.jsdelivr.net/npm/@pie-players/pie-assessment-toolkit@x.y.z/dist/index.js';
 
-  // `pie-tool-toolbar` renders buttons without a coordinator, but the buttons won't do anything.
+  // `pie-item-toolbar` renders buttons without a coordinator, but the buttons won't do anything.
   // Wire a ToolCoordinator so tools can actually open/close.
   const coordinator = new ToolCoordinator();
 
   window.addEventListener('DOMContentLoaded', () => {
-    const toolbar = document.querySelector('pie-tool-toolbar');
+    const toolbar = document.querySelector('pie-item-toolbar');
     toolbar.toolCoordinator = coordinator; // JS property (NOT an attribute)
   });
 </script>
 
-<pie-tool-toolbar tools="protractor,ruler,graph"></pie-tool-toolbar>
+<pie-item-toolbar tools="protractor,ruler,graph"></pie-item-toolbar>
 ```
 
 ## Notes

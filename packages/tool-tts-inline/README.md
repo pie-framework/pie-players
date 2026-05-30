@@ -2,6 +2,10 @@
 
 Inline TTS (Text-to-Speech) tool component for PIE Players Assessment Toolkit.
 
+For the shared TTS architecture and provider model, see
+[TTS Architecture](../../docs/accessibility/tts-architecture.md). This README
+focuses on the inline custom element API.
+
 ## Overview
 
 `pie-tool-tts-inline` is a web component that renders an inline speaker trigger with an expanded floating control panel for reading controls. Unlike floating modal tools, this component renders at its natural position in the DOM (typically in passage/item headers).

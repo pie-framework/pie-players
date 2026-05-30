@@ -240,4 +240,3 @@ project-surfaces:
     docs:
       - "./project-surface-map.md"
       - "../tools-and-accomodations/architecture.md"
-      - "../evals/readme.md"

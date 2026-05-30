@@ -2,6 +2,10 @@
 
 Client-side TTS provider that calls a server API for synthesis with speech marks support.
 
+For the cross-package TTS architecture and provider layering, see
+[TTS Architecture](../../docs/accessibility/tts-architecture.md). This README
+focuses on the browser-side server provider API.
+
 ## Overview
 
 This package provides a browser-side TTS provider that offloads synthesis to a server API. The server handles provider selection (AWS Polly, Google Cloud TTS, etc.) and credential management, while the client plays audio and coordinates word highlighting.

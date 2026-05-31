@@ -113,7 +113,7 @@ The PIE Assessment Tools system provides:
 
 **Section Player Container** (Primary Interface)
 - Renders QTI 3.0 sections with passages and items
-- Automatic SSML extraction from embedded `<speak>` tags
+- Registers authored catalogs and preprocessed `extractedCatalogs`
 - Manages accessibility catalog lifecycle
 - Integrates toolkit services (TTS, tools, highlighting)
 - Renders TTS tools inline in passage/item headers
@@ -300,7 +300,7 @@ const coordinator = new ToolkitCoordinator({
     placement: {
       item: ['calculator', 'textToSpeech', 'answerEliminator'],
       passage: ['textToSpeech'],
-      section: ['calculator', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler', 'colorScheme']
+      section: ['calculator', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler', 'theme']
     },
     providers: {
       calculator: {
@@ -558,13 +558,15 @@ CSS.highlights.set('tts-current-word', highlight)
 Yellow highlight with border (::highlight CSS)
 ```
 
-**QTI 3.0 Catalog Integration:** TTS integrates with AccessibilityCatalogResolver for SSML support. The section player automatically extracts embedded `<speak>` tags from content and generates accessibility catalogs at runtime.
+**QTI 3.0 Catalog Integration:** TTS integrates with AccessibilityCatalogResolver for SSML support. The section player registers authored catalogs and `config.extractedCatalogs`; embedded `<speak>` extraction must run before render if that content style is used.
 
 **Multi-Level TTS Entry Points:**
-- **Content-Level TTS** (`tool-tts-inline`): Speaker icons in passage/item headers with explicit catalog IDs
-- **User-Selection TTS** (`tool-text-to-speech`): Triggered from annotation toolbar, detects nearest `data-catalog-id`
 
-**Design Decision:** TTS is a singleton service, not a tool. Multiple entry points (global button, selection toolbar, content buttons) all use the same service to prevent conflicts. Catalog resolution ensures consistent pronunciation across all entry points.
+- **Content-Level TTS** (`tool-tts-inline`): Speaker icons in passage/item headers pass catalog context and a live content element, allowing `TTSService` to resolve `data-catalog-idref` regions.
+- **Floating selection TTS** (`tool-text-to-speech`): Can detect the nearest `data-catalog-idref` and request a catalog-backed utterance.
+- **Annotation toolbar read-aloud**: Speaks the selected visible range and intentionally bypasses catalogs with `ignoreCatalogs`.
+
+**Design Decision:** TTS is a singleton service, not a tool. Multiple entry points all use the same service to prevent conflicts. Catalog resolution is shared for entry points that pass catalog IDs or content elements; selection-only read-aloud can intentionally use visible text.
 
 ---
 
@@ -884,7 +886,7 @@ Final Configuration:
 
 ### Why CSS Custom Highlight API?
 
-**Traditional Approach (legacy systems):**
+**DOM-Mutation Highlighting Pattern:**
 ```html
 <span class="highlight-yellow">Selected text</span>
 ```
@@ -907,7 +909,7 @@ CSS.highlights.set('annotation-yellow', highlight);
 - Framework-compatible
 - Screen reader friendly
 - Better performance
-- Simpler code (74% LOC reduction vs legacy TTS implementations)
+- Simpler code (74% LOC reduction vs prior TTS implementations)
 
 ### Why Singleton Services?
 

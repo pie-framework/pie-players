@@ -43,10 +43,8 @@ export interface PolicyPanelCoordinator {
 		level: ToolPlacementLevel;
 		scope: { level: ToolPlacementLevel; scopeId: string };
 	}) => ToolPolicyDecision;
-	getFloatingTools?: () => string[];
 	getPolicyInputs?: () => Readonly<ResolvedEngineInputs>;
 	updateToolPlacement?: (level: ToolPlacementLevel, toolIds: string[]) => void;
-	updateFloatingTools?: (toolIds: string[]) => void;
 	updateToolConfig?: (toolId: string, updates: Record<string, unknown>) => void;
 	updateAssessment?: (assessment: unknown) => void;
 	setPnpEnforcement?: (mode: "on" | "off" | null) => void;
@@ -239,18 +237,21 @@ export function flattenFeatureTrails(
 }
 
 /**
- * Resolve the floating-tools list shown in the panel. Order of
- * preference: live `floatingTools` from the `onFloatingToolsChange`
- * subscription → coordinator's `getFloatingTools()` → static
- * `tools.placement.section` config → empty list.
+ * Resolve the section placement list shown in the panel. Order of
+ * preference: live section tool ids, policy-engine decision, static
+ * `tools.placement.section` config, empty list.
  */
-export function resolveFloatingTools(
+export function resolveSectionToolIds(
 	coordinator: PolicyPanelCoordinator | null,
-	liveFloatingTools: string[],
+	liveSectionToolIds: string[],
+	scopeId = "section",
 ): string[] {
-	if (liveFloatingTools.length > 0) return [...liveFloatingTools];
-	const fromGetter = coordinator?.getFloatingTools?.();
-	if (Array.isArray(fromGetter) && fromGetter.length > 0) return [...fromGetter];
+	if (liveSectionToolIds.length > 0) return [...liveSectionToolIds];
+	const fromPolicy = fetchSectionPolicyDecision(coordinator, scopeId);
+	const fromDecision = fromPolicy?.visibleTools.map((entry) => entry.toolId);
+	if (Array.isArray(fromDecision)) {
+		return fromDecision;
+	}
 	const fromConfig = coordinator?.config?.tools?.placement?.section;
 	if (Array.isArray(fromConfig)) return [...fromConfig];
 	return [];
@@ -416,7 +417,11 @@ export function derivePnpPanelData(inputs: PnpPanelInputs): PnpPanelData {
 		decisions,
 	});
 
-	const effectiveFloatingTools = resolveFloatingTools(coordinator, floatingTools);
+	const effectiveFloatingTools = resolveSectionToolIds(
+		coordinator,
+		floatingTools,
+		scopeId,
+	);
 	const hasCatalogResolver = Boolean(coordinator?.catalogResolver);
 	const catalogStats = hasCatalogResolver
 		? (coordinator?.catalogResolver?.getStatistics?.() ?? null)

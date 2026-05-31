@@ -44,8 +44,8 @@ const toolkitCoordinator = new ToolkitCoordinator({
   }
 });
 
-// Pass single coordinator to player
-player.toolkitCoordinator = toolkitCoordinator;
+// Pass single coordinator to section-player through runtime
+player.runtime = { ...(player.runtime ?? {}), coordinator: toolkitCoordinator };
 ```
 
 ## What Does It Solve?
@@ -149,30 +149,24 @@ tier; the choice is about ergonomics, not capability.
       placement: { item: ["calculator", "textToSpeech"] },
     },
   });
-  el.coordinator = coordinator;
+  el.runtime = { ...(el.runtime ?? {}), coordinator };
   ```
 
 ### Naming rule
 
-The easy-tier attribute name is the kebab-cased version of the runtime /
-config key. `tool-config-strictness` ↔ `toolConfigStrictness`,
-`assessment-id` ↔ `assessmentId`, `player-type` ↔ `playerType`. Hosts can
-move a knob from the easy tier to the configuration object (or back)
-without renaming.
+Top-level attributes use kebab-case (`assessment-id`,
+`tool-config-strictness`). Section-player runtime configuration is grouped
+under the `runtime` object instead of duplicated as top-level props.
 
 ### Precedence rule
 
-The configuration object wins. When the same knob is set in both tiers,
-resolution is:
+The configuration object owns runtime fields. Section-player layout attributes
+cover identity, layout, diagnostics, and callback/event convenience:
 
-1. The constructed `ToolkitCoordinator` config (or `runtime.<key>` on a
-   consumer CE) if set
-2. Top-level attribute / property if set
-3. Documented default
-
-This applies symmetrically to `pie-assessment-toolkit` itself and to
-section-player CEs that embed it. New knobs MUST follow this precedence;
-do not add ad-hoc fall-throughs.
+1. Use `runtime.<key>` for player, tool, accessibility, coordinator, env,
+   isolation, and runtime factories.
+2. Use top-level layout attributes for section identity and layout controls.
+3. Use documented defaults when neither is provided.
 
 ### Canonical tier-1 attribute set
 
@@ -188,15 +182,9 @@ kebab-attribute  ↔  camelCaseProp  ↔  runtime.<sameCamelCaseKey>
 Common members include:
 
 - Identity: `assessment-id`, `section-id`, `attempt-id`
-- Player: `player-type`, `lazy-init`
-- Tools: `tools` (object property), `tool-registry` (object property),
-  `enabled-tools` (shorthand for `tools.placement.section`)
-- Coordination: `coordinator` (`createSectionController` is a
-  runtime-only key on the section-player layout CEs — see
-  "Documented exceptions" below; `<pie-assessment-toolkit>` accepts
-  it as a direct JS prop on its own composition surface)
-- Accessibility: `accessibility` (object property; the deprecated
-  `accessibility` *attribute* mapping was removed in M5)
+- Runtime config on section-player CEs: `runtime`
+- Toolkit-only object properties: `tools`, `tool-registry`, `coordinator`,
+  `accessibility`
 - Diagnostics: `tool-config-strictness`, `debug`. Framework-error
   delivery is via the canonical `onFrameworkError` callback prop and the
   `framework-error` DOM event dispatched on the layout CE host.
@@ -210,13 +198,10 @@ Documented exceptions to the mirror rule:
   `split-pane-collapse-strategy`): layout-CE rendering concerns.
 - Per-region toolbar tool placement: hosts populate
   `tools.placement.item` / `tools.placement.passage` (object form) or
-  `runtime.tools.placement.{item,passage}` directly. The previously
-  deprecated `item-toolbar-tools` / `passage-toolbar-tools` attribute
-  aliases were removed in the broad architecture review compat sweep.
+  `runtime.tools.placement.{item,passage}` directly.
 - Runtime-only keys on the section-player layout CEs
   (`createSectionController`, `isolation`): accepted only via
-  `runtime.<key>`. The top-level prop aliases were removed in the
-  broad architecture review compat sweep. `<pie-assessment-toolkit>`
+  `runtime.<key>`. `<pie-assessment-toolkit>`
   itself keeps `createSectionController` and `isolation` as JS-only
   props (no kebab-attribute surface): section-player layouts forward
   `runtime.isolation` and `runtime.createSectionController` to the
@@ -267,7 +252,7 @@ const coordinator = new ToolkitCoordinator({
 
 // Pass to section player
 const player = document.getElementById('player');
-player.toolkitCoordinator = coordinator;
+player.runtime = { ...(player.runtime ?? {}), coordinator };
 
 // Access services directly if needed
 const ttsService = coordinator.ttsService;
@@ -339,7 +324,7 @@ What this means in practice for typed integrations:
 - **Watch for double-replay if you re-subscribe on every `toolkit-ready`.** Hosts that detached and re-subscribed on every `toolkit-ready` event (the correct pre-Phase D pattern, since each subscription was pinned to a `sectionId`) will now observe **two snapshot replays per navigation**: one delivered automatically when Phase D migrates the existing listener to the new active cohort, and a second when the manual re-subscribe attaches a fresh listener that replays again. Listener handlers that are not strictly idempotent will fire twice — analytics `pageAction`s, non-Set counters, side-effecting hydration. The fix is a one-line guard (`if (this.controllerUnsubscribe) return;`) so the subscribe runs only on the first `toolkit-ready`.
 - **For intentionally-pinned subscriptions to inactive sections** (e.g. a host UI that wants to keep watching section A while the user views section B), the helper API does not support that pattern by design. Use `coordinator.getSectionController({ sectionId, attemptId })` and subscribe directly on the controller handle (`controller.subscribe?.(...)`) — that binding is pinned to one controller instance and does not migrate.
 
-If your local types were hand-rolled structural copies of the public arg types (e.g. an Angular wrapper duplicating the shape rather than importing the package types), the legacy keys will compile but are dead code at runtime — recommend dropping them as part of the upgrade.
+If your local types were hand-rolled structural copies of the public arg types (e.g. an Angular wrapper duplicating the shape rather than importing the package types), `sectionId` / `attemptId` keys will compile but are dead code at runtime — recommend dropping them as part of the upgrade.
 
 #### Pre-Phase D vs Phase D wrapper pattern
 
@@ -488,7 +473,7 @@ Tools that **float above the entire assessment** and persist across questions:
 ```typescript
 tools: {
   placement: {
-    section: ['calculator', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler', 'colorScheme']
+    section: ['calculator', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler', 'theme']
   },
   providers: {
     calculator: {
@@ -546,7 +531,7 @@ const coordinator = new ToolkitCoordinator({
       item: ['calculator', 'textToSpeech', 'answerEliminator'],
       passage: ['textToSpeech'],
       // Section-level utilities
-      section: ['calculator', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler', 'colorScheme']
+      section: ['calculator', 'graph', 'periodicTable', 'protractor', 'lineReader', 'ruler', 'theme']
     },
     providers: {
       calculator: {
@@ -760,7 +745,7 @@ The persistence strategy works with the same `SectionControllerSessionState` sha
 - **ToolkitCoordinator**: ⭐ NEW - Centralized service orchestration
 - **ElementToolStateStore**: ⭐ NEW - Element-level ephemeral tool state management
 - **ToolRegistry**: ⭐ NEW - Registry-based tool management with QTI 3.0 PNP support
-- **PNPToolResolver**: ⭐ REFACTORED - QTI 3.0 Personal Needs Profile tool resolution via registry
+- **ToolPolicyEngine**: QTI 3.0 Personal Needs Profile and host policy decisions via registry-backed policy sources
 - **ToolCoordinator**: Manages z-index layering and visibility for floating tools
 - **HighlightCoordinator**: Separate highlight layers for TTS (temporary) and annotations (persistent)
 - **TTSService**: Text-to-speech with QTI 3.0 catalog support
@@ -1067,7 +1052,7 @@ The section player provides automatic ToolkitCoordinator integration:
 
   // Pass to player
   const player = document.getElementById('player');
-  player.toolkitCoordinator = coordinator;
+  player.runtime = { ...(player.runtime ?? {}), coordinator };
   player.section = mySection;
 
   // Player automatically:
@@ -1206,6 +1191,8 @@ pick the stability surface that matches their use case:
   `SECTION_RUNTIME_ENGINE_KEY` (Svelte context), the cross-CE host
   context (`sectionRuntimeEngineHostContext`), and the consumer-side
   helper for that bridge (`connectSectionRuntimeEngineHostContext`).
+  The cross-CE host context exposes only a lifecycle handle; controller
+  methods stay on `SectionRuntimeEngine`.
 - **Internal surface — `@pie-players/pie-assessment-toolkit/runtime/internal`.**
   Wider, evolving surface for advanced hosts that need to construct an
   engine manually, inspect FSM state, or build alternate fan-out paths.
@@ -1217,30 +1204,28 @@ pick the stability surface that matches their use case:
   `resolveSectionEngineRuntimeState` helpers. Symbols here may change
   between minor versions with a changeset note.
 
-### Single-engine invariant
+### Lifecycle emit coordination
 
 When `<pie-assessment-toolkit>` is nested inside a section-player layout,
-the layout kernel publishes its engine reference via
-`sectionRuntimeEngineHostContext`. The toolkit detects that upstream
-engine and **suppresses its own external lifecycle DOM emits and stage
-tracker** in favor of the kernel's engine. From the outside, one cohort
-yields one `pie-stage-change` / `pie-loading-complete` chain on the
-layout CE host regardless of wrapper depth — even though, during the
-0.x line, the toolkit still constructs a local engine instance for its
-controller-side surface (`register`, `handleContent*`, `initialize`).
-A future release collapses the toolkit's controller-side surface onto
-the upstream engine; until then the externally observable invariant —
-**one cohort, one canonical event chain** — is what hosts should rely
-on. A standalone `<pie-assessment-toolkit>` (no upstream context)
-emits from its own engine.
+the layout kernel publishes a lifecycle handle via
+`sectionRuntimeEngineHostContext`. The toolkit detects that host
+lifecycle owner and **suppresses its own external lifecycle DOM emits
+and `onStageChange` callback** in favor of the layout CE host. From the
+outside, one cohort yields one `pie-stage-change` /
+`pie-loading-complete` chain on the layout CE host regardless of wrapper
+depth. Controller-side
+registration, content loading, session propagation, and persistence
+remain toolkit-local through its own `SectionRuntimeEngine` instance.
+A standalone `<pie-assessment-toolkit>` (no host context) emits from
+its own engine.
 
 **Detection.** If a custom layout shell emits two `pie-stage-change`
 events per stage transition (or two `pie-loading-complete` per cohort)
 on the same layout CE — typically with two distinct `detail.runtimeId`
 values — the shell has not published its engine via
 `sectionRuntimeEngineHostContext`, so the wrapped
-`<pie-assessment-toolkit>` falls back to its standalone path and
-constructs a second engine. Wire the bridge as shown below.
+`<pie-assessment-toolkit>` falls back to its standalone lifecycle emit
+path. Wire the bridge as shown below.
 
 ### Common-host wiring example
 
@@ -1272,12 +1257,17 @@ engine.attachHost({
   coordinator: toolkitCoordinator,
 });
 
-// 2. Publish the engine reference on the layout CE host so any
-//    wrapped <pie-assessment-toolkit> consumes it instead of
-//    constructing its own (single-engine invariant).
+// 2. Publish a lifecycle handle on the layout CE host so any wrapped
+//    <pie-assessment-toolkit> suppresses duplicate external lifecycle
+//    emits. The toolkit still owns its controller registration/session
+//    plumbing locally.
 const engineProvider = new ContextProvider(layoutHostElement, {
   context: sectionRuntimeEngineHostContext,
-  initialValue: { engine },
+  initialValue: {
+    engine: {
+      getRuntimeId: () => engine.getRuntimeId(),
+    },
+  },
 });
 engineProvider.connect();
 
@@ -1330,15 +1320,10 @@ listeners on `<pie-assessment-toolkit>` itself still see the toolkit's
 own emit (the toolkit dispatch reaches them before the kernel listener
 runs). The single-emit contract is pinned by
 `packages/section-player/tests/section-player-framework-error-dual-emit.test.ts`.
-The previous dual-emit on the layout host was removed in the broad
-architecture review compat sweep.
+The layout host emits one `framework-error` DOM event per framework error.
 
-The deprecated readiness aliases (`readiness-change`,
-`interaction-ready`, `ready`) and their `legacy-event-bridge` were
-removed in the broad architecture review compat sweep. Hosts that
-listened for them migrate to `pie-stage-change` (with the readiness
-detail also available via the kernel's `selectReadiness()`) and
-`pie-loading-complete`.
+Hosts should listen to `pie-stage-change` (with the readiness detail also
+available via the kernel's `selectReadiness()`) and `pie-loading-complete`.
 
 ## State Separation: Tool State vs Session Data
 
@@ -1438,7 +1423,7 @@ from tool configuration. Two sanitization layers apply:
 - **[PNP Configuration Guide](docs/PNP_CONFIGURATION.md)** - ⭐ NEW - How to configure student profiles, district policies, and governance rules
 - [ToolkitCoordinator Architecture](../../docs/architecture/architecture.md#toolkitcoordinator-centralized-service-management) - Design decisions and patterns
 - [Section Player README](../section-player/README.md) - Section player integration
-- [Section Player Architecture](../section-player/ARCHITECTURE.md#layered-runtime-engine-post-m7) - Layered runtime engine, kernel/toolkit wiring, single-engine invariant
+- [Section Player Architecture](../section-player/ARCHITECTURE.md#layered-runtime-engine-post-m7) - Layered runtime engine, kernel/toolkit wiring, lifecycle emit invariant
 - [Framework-Owned Error Handling](../../docs/tools-and-accomodations/framework-owned-error-handling.md) - Canonical framework error model/events and fallback behavior
 - [Safe Custom Tool Configuration](../../docs/tools-and-accomodations/safe-custom-tool-config.md) - Host-side config patterns and validation guidance
 - [Architecture Overview](../../docs/architecture/architecture.md) - Complete system architecture

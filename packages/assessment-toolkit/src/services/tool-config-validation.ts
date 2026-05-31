@@ -22,7 +22,7 @@ export interface ToolConfigDiagnostic {
 		| "tools.unknownToolId"
 		| "tools.unsupportedLevel"
 		| "tools.unknownProviderKey"
-		| "tools.deprecatedProviderKey"
+		| "tools.removedProviderKey"
 		| "tools.providerSanitizeFailed"
 		| "tools.providerValidateFailed"
 		| "tools.invalidProviderValidation";
@@ -263,13 +263,13 @@ function collectPolicyDiagnostics(
 function collectProviderKeyDiagnostics(
 	config: CanonicalToolsConfig,
 	toolMap: Map<string, ToolRegistration>,
-	hasDeprecatedTtsKey: boolean,
+	hasRemovedTtsKey: boolean,
 	diagnostics: ToolConfigDiagnostic[],
 ): void {
-	if (hasDeprecatedTtsKey) {
+	if (hasRemovedTtsKey) {
 		diagnostics.push(
 			createDiagnostic({
-				code: "tools.deprecatedProviderKey",
+				code: "tools.removedProviderKey",
 				severity: "error",
 				path: "providers.tts",
 				message:
@@ -326,7 +326,7 @@ export function normalizeAndValidateToolsConfig(
 	);
 	const normalized = normalizeToolsConfig(input);
 	const diagnostics: ToolConfigDiagnostic[] = [];
-	const hasDeprecatedTtsKey = Object.hasOwn(
+	const hasRemovedTtsKey = Object.hasOwn(
 		normalized.providers,
 		"tts",
 	);
@@ -358,13 +358,13 @@ export function normalizeAndValidateToolsConfig(
 	collectProviderKeyDiagnostics(
 		nextConfig,
 		registryTools,
-		hasDeprecatedTtsKey,
+		hasRemovedTtsKey,
 		diagnostics,
 	);
-	if (hasDeprecatedTtsKey) {
+	if (hasRemovedTtsKey) {
 		throwValidationError(
 			diagnostics.filter(
-				(entry) => entry.code === "tools.deprecatedProviderKey",
+				(entry) => entry.code === "tools.removedProviderKey",
 			),
 			source,
 		);

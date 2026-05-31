@@ -12,6 +12,7 @@
 		SECTION_RUNTIME_ENGINE_KEY,
 		SectionRuntimeEngine,
 		sectionRuntimeEngineHostContext,
+		type SectionRuntimeLifecycleHandle,
 	} from "@pie-players/pie-assessment-toolkit/runtime/engine";
 	import { ContextProvider } from "@pie-players/pie-context";
 	import {
@@ -64,7 +65,7 @@
 		// (`pie-stage-change` / `pie-loading-complete`) and
 		// `framework-error` are not dispatched here — the section
 		// runtime engine bridges those onto DOM events fired directly
-		// on the layout CE host. The deprecated readiness aliases
+		// on the layout CE host. The readiness aliases
 		// (`readiness-change` / `interaction-ready` / `ready`) and
 		// their DOM-event bridge were removed in the broad
 		// architecture review compat sweep.
@@ -82,17 +83,9 @@
 		section = null as AssessmentSection | null,
 		sectionId = "",
 		attemptId = "",
-		playerType,
-		player,
-		lazyInit,
-		tools,
-		accessibility,
-		coordinator,
-		env,
 		iifeBundleHost,
 		showToolbar = "false" as boolean | string | null | undefined,
 		toolbarPosition = "right",
-		enabledTools = "",
 		toolConfigStrictness = "error" as ToolConfigStrictness,
 		toolRegistry = null as ToolRegistry | null,
 		sectionHostButtons = [] as ToolbarItem[],
@@ -130,8 +123,7 @@
 		sourceCe = "pie-section-player" as string,
 		// Host element on which the section runtime engine should
 		// dispatch its DOM events (`pie-stage-change`,
-		// `pie-loading-complete`, `framework-error`, and the legacy
-		// readiness aliases). Each layout CE that mounts the kernel
+		// `pie-loading-complete`, `framework-error`). Each layout CE that mounts the kernel
 		// passes its own host element (`this`); defaults to `null` so
 		// the kernel keeps mounting before the layout CE has resolved
 		// its host. The engine attaches lazily once `host` is non-null.
@@ -183,7 +175,7 @@
 	// inputs from a single tracked `$effect` wrapped in `untrack`.
 	//
 	// Construction is cheap and side-effect free; `attachHost` is the
-	// step that actually wires the adapter (DOM/legacy/framework-error
+	// step that actually wires the adapter (DOM/framework-error
 	// bridges). We construct here so the engine reference is stable for
 	// `setContext` and so `getRuntimeId()` returns the canonical id used
 	// downstream (e.g. for the `runtimeId` field in event details).
@@ -196,17 +188,15 @@
 	// custom-element boundary into the toolkit CE.
 	setContext(SECTION_RUNTIME_ENGINE_KEY, engine);
 
-	// M7 PR 6: cross-CE bridge to the wrapped toolkit. The toolkit CE
-	// renders inside its own shadow root and reaches the engine through
-	// a `pie-context` handshake on the layout CE host. We install the
-	// `ContextProvider` once the layout CE host is available and
-	// disconnect on unmount; the consumer is on the toolkit side and
-	// uses `connectSectionRuntimeEngineHostContext`. Standalone
-	// toolkits never see this provider and continue using their own
-	// engine.
+	// Cross-CE lifecycle bridge to the wrapped toolkit. The toolkit CE renders
+	// inside its own shadow root and uses this context as a host lifecycle
+	// ownership signal. Controller/session registration stays toolkit-local.
 	let engineHostProvider: ContextProvider<
 		typeof sectionRuntimeEngineHostContext
 	> | null = null;
+	const engineHostLifecycleHandle: SectionRuntimeLifecycleHandle = {
+		getRuntimeId: () => engine.getRuntimeId(),
+	};
 
 	// Non-reactive bookkeeping for the engine-driver effect. `attached`
 	// gates the very first `attachHost` (per cohort the adapter handles
@@ -230,15 +220,7 @@
 	const runtimeState = $derived.by(() =>
 		resolveSectionPlayerRuntimeState({
 			assessmentId,
-			playerType,
-			player,
-			lazyInit,
-			tools,
-			accessibility,
-			coordinator,
-			env,
 			runtime,
-			enabledTools,
 			toolConfigStrictness,
 			onFrameworkError,
 			onStageChange,
@@ -253,10 +235,15 @@
 	// custom elements still consume these as comma-separated strings
 	// (the `<pie-item-toolbar tools="...">` attribute), so the kernel
 	// joins the canonical placement arrays back into strings and
-	// exposes them via the slot. The deprecated top-level
-	// `item-toolbar-tools` / `passage-toolbar-tools` aliases were
-	// removed in the broad architecture review compat sweep; hosts
-	// must populate `tools.placement.{item,passage}` directly.
+	// exposes them via the slot. Hosts populate `runtime.tools.placement`.
+	const effectiveSectionToolbarTools = $derived.by(() => {
+		const tools = effectiveToolsConfig as
+			| { placement?: { section?: unknown } }
+			| undefined
+			| null;
+		const section = tools?.placement?.section;
+		return Array.isArray(section) ? section.join(",") : "";
+	});
 	const effectiveItemToolbarTools = $derived.by(() => {
 		const tools = effectiveToolsConfig as
 			| { placement?: { item?: unknown } }
@@ -379,9 +366,7 @@
 		//
 		// The collapse is pinned by
 		// `tests/section-player-framework-error-dual-emit.test.ts`,
-		// which now asserts the single canonical emit on the layout
-		// host. The deprecated dual-emit was removed in the broad
-		// architecture review compat sweep.
+		// which now asserts the single canonical emit on the layout host.
 		if (!detail) return;
 		event.stopPropagation();
 		engine.dispatchInput({ kind: "framework-error", error: detail });
@@ -504,18 +489,16 @@
 		});
 	});
 
-	// Cross-CE engine context provider (M7 PR 6). Connects when the
-	// layout CE host is available; disconnects on unmount. The provider
-	// value carries this kernel's engine reference so the wrapped
-	// toolkit CE can route legacy controller-side calls (`register`,
-	// `handleContent*`, `initialize`) and FSM input dispatch
-	// (`framework-error`) through the same engine instance the kernel
-	// has already attached and is driving.
+	// Cross-CE lifecycle context provider. Connects when the layout CE host is
+	// available; disconnects on unmount. The provider value is intentionally a
+	// narrow lifecycle handle so the wrapped toolkit can suppress duplicate
+	// external lifecycle emits without gaining a controller API through this
+	// package seam.
 	$effect(() => {
 		if (!host) return;
 		engineHostProvider = new ContextProvider(host, {
 			context: sectionRuntimeEngineHostContext,
-			initialValue: { engine },
+			initialValue: { engine: engineHostLifecycleHandle },
 		});
 		engineHostProvider.connect();
 		return () => {
@@ -524,8 +507,7 @@
 		};
 	});
 
-	// Primary engine-driver effect (M7 PR 5). Replaces the legacy
-	// stage-tracker / cohort-change / readiness emit chain. Reads every
+	// Primary engine-driver effect. Reads every
 	// host-side input the engine cares about so Svelte tracks them as
 	// deps; performs the actual `attachHost` / `dispatchInput` calls
 	// inside `untrack` so the writes to the (non-reactive) `attached`
@@ -552,9 +534,9 @@
 	//        - cohort cleared (non-empty
 	//          → empty, e.g. host clears
 	//          `sectionId` while still
-	//          mounted)                     → no-op. Pre-PR-5 the
-	//                                         legacy stage tracker
-	//                                         emitted `disposed` here;
+	//          mounted)                     → no-op. Earlier stage
+	//                                         tracking emitted
+	//                                         `disposed` here;
 	//                                         the engine path
 	//                                         intentionally does not.
 	//                                         Hosts that need a
@@ -675,8 +657,8 @@
 	});
 
 	// Tear down the engine + framework-error bus on unmount. Dispatch a
-	// `dispose` input first so the engine emits `disposed` for the
-	// active cohort through the same DOM/legacy bridges as every other
+				// `dispose` input first so the engine emits `disposed` for the
+				// active cohort through the same DOM bridges as every other
 	// stage transition; then run the async adapter teardown (the
 	// promise is fire-and-forget — Svelte cleanup paths cannot await).
 	$effect(() => {
@@ -709,7 +691,7 @@
 	onToolkitReady={handleToolkitReady}
 	showToolbar={normalizedShowToolbar}
 	toolbarPosition={toolbarPosition}
-	enabledTools={enabledTools}
+	enabledTools={effectiveSectionToolbarTools}
 	{toolRegistry}
 	{sectionHostButtons}
 	cardRenderContext={cardRenderContextValue}

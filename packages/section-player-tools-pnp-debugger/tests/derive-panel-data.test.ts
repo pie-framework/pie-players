@@ -11,7 +11,7 @@ import {
 	deriveAllAvailablePlacement,
 	fetchSectionPolicyDecision,
 	flattenFeatureTrails,
-	resolveFloatingTools,
+	resolveSectionToolIds,
 	resolvePnpProfile,
 	type PolicyPanelCoordinator,
 } from "../derive-panel-data.js";
@@ -246,28 +246,48 @@ describe("flattenFeatureTrails", () => {
 	});
 });
 
-describe("resolveFloatingTools", () => {
-	test("prefers live floating tools when non-empty", () => {
-		const result = resolveFloatingTools(
-			{ getFloatingTools: () => ["a", "b"] },
-			["live-1"],
-		);
+describe("resolveSectionToolIds", () => {
+	test("prefers live section tool ids when non-empty", () => {
+		const result = resolveSectionToolIds(null, ["live-1"]);
 		expect(result).toEqual(["live-1"]);
 	});
 
-	test("falls back to coordinator.getFloatingTools()", () => {
-		const result = resolveFloatingTools(
-			{ getFloatingTools: () => ["a", "b"] },
+	test("falls back to the coordinator policy decision", () => {
+		const calls: unknown[] = [];
+		const result = resolveSectionToolIds(
+			{
+				decideToolPolicy: (request) => {
+					calls.push(request);
+					return {
+						visibleTools: [{ toolId: "a" }, { toolId: "b" }],
+					} as ToolPolicyDecision;
+				},
+			},
 			[],
+			"section-1",
 		);
 		expect(result).toEqual(["a", "b"]);
+		expect(calls).toEqual([
+			{ level: "section", scope: { level: "section", scopeId: "section-1" } },
+		]);
+	});
+
+	test("uses an empty policy decision instead of falling back to config", () => {
+		const result = resolveSectionToolIds(
+			{
+				decideToolPolicy: () =>
+					makeDecision([], makeProvenance([])),
+				config: { tools: { placement: { section: ["calculator"] } } },
+			},
+			[],
+		);
+		expect(result).toEqual([]);
 	});
 
 	test("falls back to tools.placement.section config", () => {
-		const result = resolveFloatingTools(
+		const result = resolveSectionToolIds(
 			{
 				config: { tools: { placement: { section: ["calculator"] } } },
-				getFloatingTools: () => [],
 			},
 			[],
 		);
@@ -275,7 +295,7 @@ describe("resolveFloatingTools", () => {
 	});
 
 	test("returns empty array when nothing is configured", () => {
-		expect(resolveFloatingTools(null, [])).toEqual([]);
+		expect(resolveSectionToolIds(null, [])).toEqual([]);
 	});
 });
 

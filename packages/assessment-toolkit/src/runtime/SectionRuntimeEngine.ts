@@ -9,13 +9,14 @@
  *     shells in document order, used for canonical-id lookup;
  *   - the **adapter** (`SectionEngineAdapter`) — single I/O seam over
  *     the pure FSM core, fanning outputs to the DOM, framework-error
- *     bus, legacy events, instrumentation hook, and host subscribers;
+ *     bus, instrumentation hook, and host subscribers;
  *   - the **resolver** (`resolveSectionEngineRuntimeState`) — the
  *     toolkit-side resolution helper that produces the effective
  *     runtime + tools snapshot a host feeds to the FSM core.
  *
- * **Two callsite generations.** During the M7 migration window the
- * facade carries two surface generations side-by-side:
+ * The facade exposes an engine-side surface for stage/lifecycle inputs and a
+ * controller-facing surface for item registration, session updates, and host
+ * controller commands:
  *
  *   1. The **engine-side** surface (`attachHost`, `dispatchInput`,
  *      `subscribe`, `getState`, `getEffectiveRuntime`,
@@ -28,28 +29,14 @@
  *      new layout shell) update the adapter's host element via
  *      `setHost(...)`.
  *
- *   2. The **legacy controller-side** surface (`initialize`,
+ *   2. The **controller-side** surface (`initialize`,
  *      `register`, `unregister`, `handleContent*`, `updateItemSession`,
  *      `navigateToItem`, `persist`, `hydrate`, `dispose`). The
- *      `PieAssessmentToolkit.svelte` CE still drives the seed via this
- *      surface in PR 3 — observable behavior is identical to pre-PR 3.
- *      PR 6 deletes the toolkit's reliance on this surface; PR 7
- *      removes the methods that the engine FSM has fully absorbed.
+ *      `PieAssessmentToolkit.svelte` CE drives section-controller and
+ *      item-shell events through this surface.
  *
- * The two surfaces share `RuntimeRegistry` (the only piece both
- * generations consult) and the resolved `SectionControllerHandle` the
- * legacy generation holds inline. The adapter holds its own
- * `coordinator-bridge` independently — the legacy `initialize(...)` and
- * the engine-side `dispatchInput({ kind: "initialize" })` do **not**
- * fight over the coordinator because PR 3 only activates one of them
- * per host (legacy from the toolkit CE, engine-side from the PR 5+
- * tests and the kernel/toolkit switches).
- *
- * **Why the legacy surface stays.** The plan's PR-3 acceptance criterion
- * is "existing toolkit tests still pass; no section-player or toolkit
- * CE code changes yet" — so PR 3 cannot delete the controller-side
- * methods. PR 6 (toolkit switch) and PR 7 (rip-out) will remove them
- * once the engine surface is the only consumer.
+ * The two surfaces share `RuntimeRegistry` and the resolved
+ * `SectionControllerHandle`.
  */
 
 import type { ToolkitCoordinator } from "../services/ToolkitCoordinator.js";
@@ -128,10 +115,8 @@ interface RuntimeController extends SectionControllerHandle {
 }
 
 /**
- * Legacy initialize args. Pre-PR 6 callers (the toolkit CE) drive the
- * coordinator + section controller through this method. PR 6 will
- * delete this in favor of the engine-side `attachHost` +
- * `dispatchInput({ kind: "initialize" })` flow.
+ * Initialize args used by the toolkit CE to resolve the coordinator-backed
+ * section controller.
  */
 interface EngineInitArgs {
 	coordinator: ToolkitCoordinator;
@@ -147,7 +132,7 @@ interface EngineInitArgs {
 /**
  * Engine-side `attachHost` args. The host element, framework-error bus,
  * and `sourceCe` together let the adapter dispatch DOM events and bus
- * fan-outs identically to the legacy kernel emit chain.
+ * fan-outs consistently with the kernel emit chain.
  */
 export interface SectionRuntimeEngineHostArgs {
 	host: EventTarget;
@@ -165,7 +150,7 @@ export class SectionRuntimeEngine {
 	// Engine-side state (PR 3+).
 	private adapter: SectionEngineAdapter | null = null;
 
-	// Legacy controller-side state (until PR 6).
+	// Controller-side state.
 	private controller: RuntimeController | null = null;
 	private coordinator: ToolkitCoordinator | null = null;
 	private sectionId = "";
@@ -224,7 +209,7 @@ export class SectionRuntimeEngine {
 	/**
 	 * Forward a host-constructed input to the FSM core via the adapter.
 	 * Returns the outputs the transition produced (subscribers and the
-	 * DOM/legacy/framework-error/instrumentation bridges have already
+	 * DOM/framework-error/instrumentation bridges have already
 	 * received them).
 	 *
 	 * No-op (returns `[]`) before `attachHost(...)` so callers that
@@ -291,8 +276,7 @@ export class SectionRuntimeEngine {
 	}
 
 	// ============================================================
-	// Legacy controller-side surface (kept until PR 6; behavior
-	// identical to pre-PR 3).
+	// Controller-side surface.
 	// ============================================================
 
 	async initialize(args: EngineInitArgs): Promise<void> {
@@ -457,7 +441,7 @@ export class SectionRuntimeEngine {
 		// delete keys round-trip identically. The `|| detail.kind`
 		// fallback is preserved for the controller-forwarded payload
 		// because the controller normalizes via `toSectionContentKind`
-		// and the legacy `kind` field is still meaningful there.
+		// and the `kind` field remains meaningful there.
 		this.loadedRenderableKeys.delete(
 			this.getLoadedKey(canonicalItemId, detail.contentKind),
 		);

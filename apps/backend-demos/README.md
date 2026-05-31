@@ -6,8 +6,8 @@ adapter.
 ## Delivery Demo
 
 The root route renders one `<pie-item-player>` and wires `backend.delivery` to a
-local, unauthenticated API that mirrors the subset of `pie-api-aws` used by the
-legacy `pie-api-player`:
+local, unauthenticated API that mirrors the subset of `pie-api-aws` used by
+`pie-api-player`:
 
 - `POST /api/player/load`
 - `POST /api/player/save`

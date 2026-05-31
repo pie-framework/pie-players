@@ -1,8 +1,7 @@
 /**
  * New Relic Instrumentation Provider
  *
- * Default provider that maintains backwards compatibility with existing
- * New Relic instrumentation.
+ * Default provider for existing New Relic Browser Agent instrumentation.
  *
  * This provider wraps the global `window.newrelic` object provided by
  * the New Relic Browser Agent.

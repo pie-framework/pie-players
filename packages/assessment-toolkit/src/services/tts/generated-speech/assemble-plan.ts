@@ -64,9 +64,9 @@ const shouldPreserveProseChunk = (
 /**
  * Assemble an anchor-free speech plan from already-collected math-aware chunks.
  *
- * PURE: no DOM walking, no app-service imports. Reproduces the spoken-text and
- * visible-span bookkeeping the legacy inline generated path performed, so the
- * runtime output is byte-identical once serialized to plain text.
+ * PURE: no DOM walking, no app-service imports. Preserves the spoken-text and
+ * visible-span bookkeeping from the inline generated path, so the runtime output
+ * is stable once serialized to plain text.
  */
 export const assembleGeneratedSpeech = async (args: {
 	chunks: ReadonlyArray<MathAwareSpeechChunk>;
@@ -81,7 +81,7 @@ export const assembleGeneratedSpeech = async (args: {
 	const { visibleText } = args;
 	const segments: AssembledSegment[] = [];
 
-	// Cursor-based span tracking, identical to the legacy `nextVisibleSpan`:
+	// Cursor-based span tracking:
 	// locate each chunk's normalized text within the aggregate visible text,
 	// advancing a cursor so math fallbacks reserve their span even though only
 	// prose spans are sliced for highlighting.

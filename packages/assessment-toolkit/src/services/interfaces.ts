@@ -768,7 +768,7 @@ export interface ToolkitCoordinatorApi {
 	/**
 	 * Subscribe to policy-engine change events. Fires whenever the
 	 * coordinator's bound policy inputs change (`updateToolConfig`,
-	 * `updateFloatingTools`, `updateAssessment`, `updateCurrentItemRef`,
+	 * `updateToolPlacement`, `updateAssessment`, `updateCurrentItemRef`,
 	 * `setPnpEnforcement`) or a custom `PolicySource` is registered /
 	 * removed. Listeners that need the new visible tool set should
 	 * call `decideToolPolicy(...)` with their level / scope.

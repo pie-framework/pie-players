@@ -42,14 +42,12 @@ export function parsePackageRequest(pathname: string): PackageRequest | null {
 /**
  * Resolve the entry file path for a package on disk (pie-elements-ng only)
  * @param pieElementsNgRoot - Root path to the pie-elements-ng repository
- * @param piePlayersRoot - Root path to the pie-players repository (unused, kept for compatibility)
  * @param pkg - Package name (e.g., "@pie-element/hotspot")
  * @param subpath - Subpath within the package (e.g., "controller/index")
  * @returns The absolute file path, or null if not found
  */
 export async function resolveEntryFile(
 	pieElementsNgRoot: string,
-	_piePlayersRoot: string,
 	pkg: string,
 	subpath: string,
 ): Promise<string | null> {
@@ -80,16 +78,7 @@ export async function resolveEntryFile(
 			"dist",
 		);
 	} else {
-		// @pie-players packages from pie-elements-ng/packages/shared/
-		// e.g. @pie-players/pie-player-events -> packages/shared/player-events
-		const packageName = name.replace(/^pie-/, "");
-		base = path.join(
-			pieElementsNgRoot,
-			"packages",
-			"shared",
-			packageName,
-			"dist",
-		);
+		return null;
 	}
 
 	const normalizedSubpath = subpath.replace(/^\/+/, "").replace(/\/+$/, "");

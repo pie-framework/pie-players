@@ -44,7 +44,6 @@
 	let { data }: { data: PageData } = $props();
 
 	const demoId = 'tts-generated-ssml';
-	const sectionToolbarTools = 'theme,lineReader';
 	const toolsConfigResult = createToolsConfig({
 		source: 'section-demos.tts-generated-ssml',
 		strictness: 'error',
@@ -339,15 +338,16 @@
 				assessment-id={DEMO_ASSESSMENT_ID}
 				section-id={sessionPanelSectionId}
 				attempt-id={attemptId}
-				player-type={selectedPlayerType}
-				lazy-init={true}
-				tools={toolkitToolsConfig}
-				player={sectionPlayerConfig}
+				runtime={ {
+					playerType: selectedPlayerType,
+					lazyInit: true,
+					tools: toolkitToolsConfig,
+					player: sectionPlayerConfig,
+					env: pieEnv
+				} }
 				section={resolvedSectionForPlayer}
-				env={pieEnv}
 				toolbar-position="right"
 				show-toolbar={true}
-				enabled-tools={sectionToolbarTools}
 				ontoolkit-ready={handleToolkitReady}
 			></pie-section-player-vertical>
 		{:else}
@@ -356,15 +356,16 @@
 				assessment-id={DEMO_ASSESSMENT_ID}
 				section-id={sessionPanelSectionId}
 				attempt-id={attemptId}
-				player-type={selectedPlayerType}
-				lazy-init={true}
-				tools={toolkitToolsConfig}
-				player={sectionPlayerConfig}
+				runtime={ {
+					playerType: selectedPlayerType,
+					lazyInit: true,
+					tools: toolkitToolsConfig,
+					player: sectionPlayerConfig,
+					env: pieEnv
+				} }
 				section={resolvedSectionForPlayer}
-				env={pieEnv}
 				toolbar-position="right"
 				show-toolbar={true}
-				enabled-tools={sectionToolbarTools}
 				ontoolkit-ready={handleToolkitReady}
 			></pie-section-player-splitpane>
 		{/if}

@@ -322,10 +322,7 @@ export interface SectionControllerLifecycleEvent {
  * cohort* automatically. The listener is bound to whatever section
  * controller is active at subscribe time and is migrated, with snapshot
  * replay, on every cohort transition. There is no per-subscription
- * `(sectionId, attemptId)` binding — those args are not part of the
- * Phase D shape. Hosts that previously passed them should drop them; the
- * runtime tolerates extra unknown properties to keep legacy call sites
- * working.
+ * `(sectionId, attemptId)` binding.
  */
 export interface SectionEventSubscriptionArgs {
 	listener: (event: SectionControllerEvent) => void;
@@ -435,8 +432,8 @@ export interface ToolkitCoordinatorHooks {
 	 *
 	 * Listeners should return synchronously and avoid throwing; a thrown
 	 * hook is caught and logged but does not stop fan-out to the other
-	 * subscribers (DOM event, prop callback, deprecated alias hooks,
-	 * `subscribeFrameworkErrors` listeners).
+	 * subscribers (DOM event, prop callback, `subscribeFrameworkErrors`
+	 * listeners).
 	 */
 	onFrameworkError?: (model: FrameworkErrorModel) => void;
 
@@ -643,9 +640,7 @@ export class ToolkitCoordinator {
 	 * rely on a `disposed` event being emitted on coordinator teardown.
 	 *
 	 * Hosts read decisions via {@link decideToolPolicy} or subscribe
-	 * to changes via {@link onPolicyChange}. The legacy
-	 * `resolveToolsForLevel` / `PnpToolResolver` paths still coexist
-	 * until the upcoming compat-removal sweep deletes them.
+	 * to changes via {@link onPolicyChange}.
 	 */
 	private readonly policyEngine: ToolPolicyEngine;
 
@@ -678,10 +673,6 @@ export class ToolkitCoordinator {
 	 * frozen snapshot.
 	 */
 	private boundCurrentItemRef: AssessmentItemRef | null = null;
-
-	/** Callback for floating tools changes */
-	private floatingToolsChangeCallback: ((toolIds: string[]) => void) | null =
-		null;
 
 	private static resolveConfig(
 		config: ToolkitCoordinatorConfig,
@@ -1201,10 +1192,7 @@ export class ToolkitCoordinator {
 		// cohort* automatically. We bind the listener to whichever
 		// controller is currently active and re-bind it on every
 		// `getOrCreateSectionController` / `disposeSectionController`
-		// transition, with snapshot replay on each migration. The
-		// pre-Phase-D `(sectionId, attemptId)` resolution path is gone;
-		// any such args on `args` are ignored at runtime (legacy hosts
-		// that still pass them keep working without a code change).
+		// transition, with snapshot replay on each migration.
 		if (this.activeCohortMapKey === null) {
 			throw new Error(
 				"[ToolkitCoordinator] subscribeSectionEvents requires an active section cohort; call getOrCreateSectionController first.",
@@ -1815,7 +1803,7 @@ export class ToolkitCoordinator {
 			backend: resolvedBackend,
 		});
 		await this.emitTelemetry("pie-tool-init-start", {
-			toolId: "tts",
+			toolId: "textToSpeech",
 			operation: "tts-init",
 			backend: resolvedBackend,
 		});
@@ -1830,7 +1818,7 @@ export class ToolkitCoordinator {
 					provider: "registry",
 				});
 				await this.emitTelemetry("pie-tool-init-success", {
-					toolId: "tts",
+					toolId: "textToSpeech",
 					operation: "tts-init",
 					backend: resolvedBackend,
 					provider: "registry",
@@ -1875,7 +1863,7 @@ export class ToolkitCoordinator {
 				provider: "browser-fallback",
 			});
 			await this.emitTelemetry("pie-tool-init-success", {
-				toolId: "tts",
+				toolId: "textToSpeech",
 				operation: "tts-init",
 				backend: resolvedBackend,
 				provider: "browser-fallback",
@@ -1888,7 +1876,7 @@ export class ToolkitCoordinator {
 				message: normalized.message,
 			});
 			await this.emitTelemetry("pie-tool-init-error", {
-				toolId: "tts",
+				toolId: "textToSpeech",
 				operation: "tts-init",
 				backend: resolvedBackend,
 				errorType: "TTSInitError",
@@ -1913,7 +1901,7 @@ export class ToolkitCoordinator {
 				payload?: Record<string, unknown>,
 			) => {
 				await this.emitTelemetry(eventName, {
-					toolId: "tts",
+					toolId: "textToSpeech",
 					...(payload || {}),
 				});
 			},
@@ -2200,9 +2188,7 @@ export class ToolkitCoordinator {
 	 * This is the generic placement companion to {@link updateToolConfig}:
 	 * it validates the next canonical tools config, keeps the policy
 	 * engine in lockstep, and emits the same policy-change event used by
-	 * live toolbars/debug panels. Section-level callers that still use
-	 * the legacy "floating tools" name can continue calling
-	 * {@link updateFloatingTools}.
+	 * live toolbars/debug panels.
 	 */
 	updateToolPlacement(level: ToolPlacementLevel, toolIds: string[]): void {
 		this.updateToolsPlacement({ [level]: [...toolIds] });
@@ -2245,96 +2231,12 @@ export class ToolkitCoordinator {
 		this.policyEngine.updateInputs({
 			tools: this.config.tools as CanonicalToolsConfig,
 		});
-
-		if (partial.section && this.floatingToolsChangeCallback) {
-			this.floatingToolsChangeCallback(this.getFloatingTools());
-		}
 	}
-
-	/**
-	 * Update the enabled tools list for floating tools (calculator, graph, etc.).
-	 * Used for PNP profile changes or dynamic tool configuration.
-	 *
-	 * @param toolIds Array of tool IDs to enable
-	 */
-	updateFloatingTools(toolIds: string[]): void {
-		this.updateToolPlacement("section", toolIds);
-	}
-
-	/**
-	 * Get currently enabled floating tools (section-level placement).
-	 *
-	 * @returns Array of enabled tool IDs.
-	 *
-	 * @remarks
-	 * As of M8 PR 2 this routes through the {@link ToolPolicyEngine}
-	 * rather than the legacy `resolveToolsForLevel(...)` shim. The two
-	 * paths agree on `placement → policy.allowed → policy.blocked`,
-	 * but the engine additionally enforces:
-	 *
-	 *   - **Provider veto** — `tools.providers[id].enabled === false`
-	 *     removes the tool from the visible set. The legacy resolver
-	 *     ignored this flag for floating tools.
-	 *   - **PNP/profile gates** — when `pnpEnforcement` is `"on"` (set by host
-	 *     via {@link setPnpEnforcement}, or auto-promoted when the
-	 *     bound `AssessmentEntity` / current `AssessmentItemRef`
-	 *     carries profile precedence material — see
-	 *     {@link resolveEffectivePnpEnforcement}) **and an assessment
-	 *     is bound**, the profile precedence (district block →
-	 *     test-admin override → item restriction/requirement →
-	 *     district requirement → PNP supports / prohibitions) is
-	 *     applied. `pnpEnforcement: "on"` without a bound assessment
-	 *     is a no-op for profile gating.
-	 *   - **Custom `PolicySource`s** registered via
-	 *     {@link registerPolicySource}.
-	 *
-	 * Under the default no-assessment, no-override, no-provider-veto
-	 * configuration the result still matches `resolveToolsForLevel(...)`
-	 * exactly — a parity asserted by the integration tests in
-	 * `tests/policy/coordinator-integration.test.ts`. Once PR 5 deletes
-	 * the legacy resolver this method becomes the canonical surface.
-	 *
-	 * Consumers that need the full decision (provenance, diagnostics)
-	 * should call {@link decideToolPolicy} instead.
-	 */
-	getFloatingTools(): string[] {
-		if (!this.config.tools) return [];
-		return this.policyEngine.getVisibleToolIds("section", "*");
-	}
-
-	/**
-	 * Set a callback to be notified when floating tools change.
-	 *
-	 * @param callback Function to call when floating tools are updated
-	 * @returns Unsubscribe function
-	 */
-	onFloatingToolsChange(callback: (toolIds: string[]) => void): () => void {
-		this.floatingToolsChangeCallback = callback;
-		// Call immediately with current value
-		callback(this.getFloatingTools());
-		// Return unsubscribe function
-		return () => {
-			this.floatingToolsChangeCallback = null;
-		};
-	}
-
-	// ----------------------------------------------------------------
-	// M8 PR 2 — Tool Policy Engine surface
-	//
-	// The methods below are additive in PR 2: hosts can already drive
-	// the unified ToolPolicyEngine, but the existing toolbar / section-
-	// player render paths still consume the legacy `resolveToolsForLevel`
-	// / `PnpToolResolver` chain. PR 3 switches consumers; PR 5 deletes
-	// the legacy path. See `.cursor/plans/m8-implementation-plan.md`.
-	// ----------------------------------------------------------------
 
 	/**
 	 * Resolve the visible tool set for a given placement level + scope.
 	 *
-	 * Thin shim over the owned tool-policy engine. Hosts that need
-	 * richer outputs (provenance, diagnostics) read this directly;
-	 * hosts that only need the section-level tool IDs can call
-	 * {@link getFloatingTools} instead.
+	 * Thin shim over the owned tool-policy engine.
 	 */
 	decideToolPolicy(request: ToolPolicyDecisionRequest): ToolPolicyDecision {
 		return this.policyEngine.decide(request);
@@ -2343,7 +2245,7 @@ export class ToolkitCoordinator {
 	/**
 	 * Subscribe to policy-engine change events. Fires whenever the
 	 * coordinator's bound inputs change (`updateToolConfig`,
-	 * `updateFloatingTools`, `updateAssessment`, `updateCurrentItemRef`,
+	 * `updateToolPlacement`, `updateAssessment`, `updateCurrentItemRef`,
 	 * `setPnpEnforcement`) or a custom `PolicySource` is registered /
 	 * removed via {@link registerPolicySource}.
 	 *
@@ -2529,9 +2431,8 @@ export class ToolkitCoordinator {
 	 * exactly when the bound assessment or current item ref carries
 	 * profile precedence material (PNP, district policy, test
 	 * administration, item-level required/restricted/parameters), and
-	 * `"off"` otherwise. Hosts that bind a bare assessment record
-	 * (just `id` / `name`) therefore keep the legacy floating-tools
-	 * behavior — profile gates engage the moment profile material is present.
+	 * `"off"` otherwise. Profile gates engage the moment profile material
+	 * is present.
 	 */
 	private resolveEffectivePnpEnforcement(): PnpEnforcementMode {
 		if (this.pnpEnforcementOverride !== null) {

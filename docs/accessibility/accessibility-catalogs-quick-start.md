@@ -113,7 +113,7 @@ Use for content shared across multiple items:
 
 // Item markup references the catalog
 <pie-stimulus>
-  <div data-catalog-id="shared-passage-1">
+  <div data-catalog-idref="shared-passage-1">
     <p>Photosynthesis is the process...</p>
   </div>
 </pie-stimulus>
@@ -144,10 +144,10 @@ Use for item-specific content like prompts and choices:
   ],
   markup: `
     <pie-prompt>
-      <div data-catalog-id="prompt-001">What is 2 + 2?</div>
+      <div data-catalog-idref="prompt-001">What is 2 + 2?</div>
     </pie-prompt>
     <pie-choices>
-      <pie-choice value="A" data-catalog-id="choice-A">4</pie-choice>
+      <pie-choice value="A" data-catalog-idref="choice-A">4</pie-choice>
     </pie-choices>
   `
 }
@@ -259,17 +259,17 @@ const spokenCatalogs = resolver.getCatalogsByType('spoken');
 ```typescript
 const markup = `
   <pie-prompt>
-    <div data-catalog-id="prompt-001">Question text</div>
+    <div data-catalog-idref="prompt-001">Question text</div>
   </pie-prompt>
   <pie-choices>
-    <pie-choice data-catalog-id="choice-A">Choice A</pie-choice>
-    <pie-choice data-catalog-id="choice-B">Choice B</pie-choice>
+    <pie-choice data-catalog-idref="choice-A">Choice A</pie-choice>
+    <pie-choice data-catalog-idref="choice-B">Choice B</pie-choice>
   </pie-choices>
 `;
 
 const doc = new DOMParser().parseFromString(markup, 'text/html');
-const catalogIds = [...doc.querySelectorAll<HTMLElement>('[data-catalog-id]')]
-  .map((element) => element.dataset.catalogId)
+const catalogIds = [...doc.querySelectorAll<HTMLElement>('[data-catalog-idref]')]
+  .map((element) => element.getAttribute('data-catalog-idref'))
   .filter((catalogId): catalogId is string => Boolean(catalogId));
 // Returns: ['prompt-001', 'choice-A', 'choice-B']
 ```

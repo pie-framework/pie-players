@@ -11,10 +11,13 @@ export type Health = {
 	pieElementsNgPath: string;
 	elementsReactPath: string;
 	libReactPath: string;
+	sharedPath: string;
 	builtElementPackages: number;
 	builtLibPackages: number;
+	builtSharedPackages: number;
 	sampleElement?: string;
 	sampleLib?: string;
+	sampleShared?: string;
 };
 
 /**
@@ -50,7 +53,8 @@ export async function findAnyBuiltPackages(
 /**
  * Cached health check result
  */
-let cachedHealth: { at: number; value: Health } | null = null;
+let cachedHealth: { at: number; pieElementsNgPath: string; value: Health } | null =
+	null;
 
 /**
  * Get the health status of the local ESM CDN
@@ -59,7 +63,13 @@ let cachedHealth: { at: number; value: Health } | null = null;
  */
 export async function getHealth(pieElementsNgPath: string): Promise<Health> {
 	const now = Date.now();
-	if (cachedHealth && now - cachedHealth.at < 1500) return cachedHealth.value;
+	if (
+		cachedHealth &&
+		cachedHealth.pieElementsNgPath === pieElementsNgPath &&
+		now - cachedHealth.at < 1500
+	) {
+		return cachedHealth.value;
+	}
 
 	const elementsReactPath = path.join(
 		pieElementsNgPath,
@@ -67,26 +77,32 @@ export async function getHealth(pieElementsNgPath: string): Promise<Health> {
 		"elements-react",
 	);
 	const libReactPath = path.join(pieElementsNgPath, "packages", "lib-react");
+	const sharedPath = path.join(pieElementsNgPath, "packages", "shared");
 
 	const elements = await findAnyBuiltPackages(elementsReactPath);
 	const libs = await findAnyBuiltPackages(libReactPath);
+	const shared = await findAnyBuiltPackages(sharedPath);
 
 	const ok =
 		existsSync(pieElementsNgPath) &&
-		existsSync(elementsReactPath) &&
-		elements.count > 0;
+		((existsSync(elementsReactPath) && elements.count > 0) ||
+			(existsSync(libReactPath) && libs.count > 0) ||
+			(existsSync(sharedPath) && shared.count > 0));
 
 	const value: Health = {
 		ok,
 		pieElementsNgPath,
 		elementsReactPath,
 		libReactPath,
+		sharedPath,
 		builtElementPackages: elements.count,
 		builtLibPackages: libs.count,
+		builtSharedPackages: shared.count,
 		sampleElement: elements.sample,
 		sampleLib: libs.sample,
+		sampleShared: shared.sample,
 	};
 
-	cachedHealth = { at: now, value };
+	cachedHealth = { at: now, pieElementsNgPath, value };
 	return value;
 }

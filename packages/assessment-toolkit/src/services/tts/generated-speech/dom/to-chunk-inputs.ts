@@ -12,7 +12,7 @@ export interface PlanToChunksOptions {
 	/**
 	 * Playback format:
 	 *   - "plain" (default): plain spoken text for every chunk (Phase A, the
-	 *     byte-identical legacy behavior).
+	 *     stable generated-speech behavior).
 	 *   - "ssml": math chunks with SRE SSML send that SSML to the provider (with
 	 *     a plain fallback attached); prose chunks always stay plain.
 	 */

@@ -382,26 +382,6 @@ export interface StimulusRef {
 }
 */
 
-/**
- * Reference to question and sorting info within a section.
- */
-export interface SectionQuestionRef {
-	questionId: string;
-	sort?: string;
-}
-
-/**
- * Questions can optionally be grouped in sections (legacy).
- */
-export interface LegacyAssessmentSection
-	extends SearchMetaDataEntity,
-		SettingsMetaDataEntity {
-	id?: string;
-	title?: string;
-	sort?: string;
-	questions: SectionQuestionRef[];
-}
-
 export interface AssessmentEntity extends BaseEntity, SearchMetaDataEntity {
 	name?: string;
 	title?: string;
@@ -422,12 +402,6 @@ export interface AssessmentEntity extends BaseEntity, SearchMetaDataEntity {
 
 	/** QTI 3.0: Personal Needs Profile (PNP 3.0) */
 	personalNeedsProfile?: PersonalNeedsProfile;
-
-	/** Legacy: Flat questions array */
-	questions?: QuestionEntity[];
-
-	/** Legacy: Simple sections */
-	sections?: LegacyAssessmentSection[];
 
 	/**
 	 * QTI 3.0: testParts structure (authoritative for QTI format).
@@ -538,7 +512,7 @@ export interface AssessmentSettings {
 
 	/** Theme configuration (not in PNP) */
 	themeConfig?: {
-		colorScheme?: "default" | "high-contrast" | "dark";
+		scheme?: "default" | "high-contrast" | "dark";
 		fontSize?: number;
 		fontFamily?: string;
 		lineHeight?: number;
@@ -600,7 +574,7 @@ export interface SanctionedVersionChangeEntity extends BaseEntity {
 	jobId: string;
 }
 
-export type PlayerMode = "gather" | "view" | "evaluate" | "browse" | "author";
+export type PlayerMode = "gather" | "view" | "evaluate" | "author";
 
 export type PlayerRole = "student" | "instructor";
 

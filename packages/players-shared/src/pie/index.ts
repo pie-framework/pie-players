@@ -1,7 +1,7 @@
 /**
  * PIE Utilities Index
  *
- * Barrel export for backward compatibility.
+ * Barrel export for public PIE runtime utilities.
  * Public consumers should import from this aggregate. The only supported
  * deep `pie/*` subpath is `pie/tag-names` for tag helper reuse.
  *

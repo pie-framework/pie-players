@@ -162,7 +162,7 @@ const result = await provider.synthesize({
 
 ## Dogfood adapter example (section-demos shape)
 
-If you need to keep legacy response shape (`audioContent`, `word`) while reusing provider logic:
+If you need to return the SchoolCity-style response shape (`audioContent`, `word`) while reusing provider logic:
 
 ```ts
 const assets = await provider.synthesizeWithAssets({

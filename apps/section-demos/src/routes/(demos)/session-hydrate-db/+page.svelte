@@ -56,7 +56,6 @@
 	let { data }: { data: PageData } = $props();
 
 	// Level 5: route-owned session hydration, save, and reset strategy.
-	const sectionToolbarTools = 'theme,graph,periodicTable,lineReader,ruler,protractor';
 	const sectionInstrumentationProvider = new CompositeInstrumentationProvider([
 		new NewRelicInstrumentationProvider(),
 		new DebugPanelInstrumentationProvider()
@@ -581,16 +580,17 @@
 					assessment-id={DEMO_ASSESSMENT_ID}
 					section-id={sessionPanelSectionId}
 					attempt-id={attemptId}
-					player-type={selectedPlayerType}
-					lazy-init={true}
-					tools={toolkitToolsConfig}
-					player={sectionPlayerConfig}
+					runtime={ {
+						playerType: selectedPlayerType,
+						lazyInit: true,
+						tools: toolkitToolsConfig,
+						player: sectionPlayerConfig,
+						env: pieEnv,
+						coordinator: coordinator
+					} }
 					section={resolvedSectionForPlayer}
-					env={pieEnv}
-					coordinator={coordinator}
 					toolbar-position="right"
 					show-toolbar={true}
-					enabled-tools={sectionToolbarTools}
 				></pie-section-player-vertical>
 			{:else}
 				<pie-section-player-splitpane
@@ -598,16 +598,17 @@
 					assessment-id={DEMO_ASSESSMENT_ID}
 					section-id={sessionPanelSectionId}
 					attempt-id={attemptId}
-					player-type={selectedPlayerType}
-					lazy-init={true}
-					tools={toolkitToolsConfig}
-					player={sectionPlayerConfig}
+					runtime={ {
+						playerType: selectedPlayerType,
+						lazyInit: true,
+						tools: toolkitToolsConfig,
+						player: sectionPlayerConfig,
+						env: pieEnv,
+						coordinator: coordinator
+					} }
 					section={resolvedSectionForPlayer}
-					env={pieEnv}
-					coordinator={coordinator}
 					toolbar-position="right"
 					show-toolbar={true}
-					enabled-tools={sectionToolbarTools}
 				></pie-section-player-splitpane>
 			{/if}
 		{/key}

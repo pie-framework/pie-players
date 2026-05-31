@@ -349,7 +349,7 @@ describe("TTS highlight pipeline", () => {
 		});
 	});
 
-	test("normalizes legacy speech composition chunks into stable pipeline chunks", () => {
+	test("normalizes speech composition chunks into stable pipeline chunks", () => {
 		const root = document.createElement("div");
 		const span = document.createElement("span");
 		span.textContent = "visible";

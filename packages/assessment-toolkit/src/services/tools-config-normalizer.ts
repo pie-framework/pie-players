@@ -301,14 +301,3 @@ export function normalizeToolsConfig(
 	return config;
 }
 
-export function resolveToolsForLevel(
-	config: CanonicalToolsConfig,
-	level: ToolPlacementLevel,
-): string[] {
-	const placement = normalizeToolList(config.placement[level]);
-	const allowed = normalizeToolList(config.policy.allowed);
-	const blocked = new Set(normalizeToolList(config.policy.blocked));
-	const passAllowed =
-		allowed.length === 0 ? placement : placement.filter((toolId) => allowed.includes(toolId));
-	return passAllowed.filter((toolId) => !blocked.has(toolId));
-}

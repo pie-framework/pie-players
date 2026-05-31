@@ -47,6 +47,8 @@ describe("tool-tag-map", () => {
 		expect(resolveToolTag("calculator")).toBe("pie-tool-calculator");
 		expect(resolveToolTag("textToSpeech")).toBe("pie-tool-text-to-speech");
 		expect(resolveToolTag("highlighter")).toBe("pie-tool-annotation-toolbar");
+		expect(resolveToolTag("theme")).toBe("pie-tool-theme");
+		expect("colorScheme" in DEFAULT_TOOL_TAG_MAP).toBe(false);
 	});
 
 	test("allows per-tool tag override", () => {

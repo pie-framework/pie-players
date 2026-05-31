@@ -142,11 +142,11 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 		expect(internals.ttsInitialized).toBe(true);
 	});
 
-	test("rejects deprecated providers.tts in strict error mode", async () => {
+	test("rejects removed providers.tts in strict error mode", async () => {
 		expect(
 			() =>
 				new ToolkitCoordinator({
-					assessmentId: "tts-deprecated-provider-key-test",
+				assessmentId: "tts-removed-provider-key-test",
 					lazyInit: true,
 					toolConfigStrictness: "error",
 					tools: {
@@ -161,11 +161,11 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 		).toThrow(`Provider key "tts" is no longer supported`);
 	});
 
-	test("rejects deprecated providers.tts by default strictness", () => {
+	test("rejects removed providers.tts by default strictness", () => {
 		expect(
 			() =>
 				new ToolkitCoordinator({
-					assessmentId: "tts-deprecated-default-strictness-test",
+				assessmentId: "tts-removed-default-strictness-test",
 					lazyInit: true,
 					tools: {
 						providers: {
@@ -476,7 +476,7 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 		).not.toThrow();
 	});
 
-	test("fails deprecated tts method ids deterministically", () => {
+	test("fails removed tts method ids deterministically", () => {
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: "tts-method-id-rejection-test",
 			lazyInit: true,

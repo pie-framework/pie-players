@@ -30,7 +30,7 @@ export interface PieLogger {
 
 	/**
 	 * Warning-level logging - always shown
-	 * Use for: recoverable errors, deprecated features, potential issues
+	 * Use for: recoverable errors, removed/unsupported features, potential issues
 	 */
 	warn: (message: string, ...args: any[]) => void;
 

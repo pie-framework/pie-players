@@ -2,7 +2,7 @@
  * Coordinator bridge for the section runtime engine adapter (M7 —
  * Variant C, layered).
  *
- * Unlike the DOM / legacy / framework-error bridges (which translate
+ * Unlike the DOM / framework-error bridges (which translate
  * **outputs** into I/O), the coordinator bridge is an **input source**:
  * it listens to a `ToolkitCoordinator` and feeds the resulting events
  * into the core via the `dispatchCoreInput` callback supplied by the

@@ -4,52 +4,15 @@ import { resolve } from "node:path";
 import type { RuntimeConfig } from "@pie-players/pie-assessment-toolkit/runtime/internal";
 
 /**
- * M5 mirror rule (CI guardrail).
+ * Runtime config boundary guardrail.
  *
  * Locks the contract whose canonical resolver lives in
  * `packages/assessment-toolkit/src/runtime/core/engine-resolver.ts`
- * (the `RuntimeConfig` type and the `resolveRuntime` /
- * `resolveToolsConfig` helpers). The contract is:
- *
- *   `kebab-attribute ↔ camelCaseProp ↔ runtime.<sameCamelCaseKey>`
- *
- * Every key in `RuntimeConfig` must:
- *
- *   1. Be settable through the `runtime` object (canonical, highest
- *      precedence).
- *   2. Be declared as a camelCase prop on at least one layout CE
- *      (tier-1 surface).
- *   3. When the prop has an HTML attribute mapping, the attribute name
- *      must match the camelCase-to-kebab conversion of the prop name.
- *   4. Be **read at the consumer site** as `runtime?.<key>` or
- *      `effectiveRuntime?.<key>` (or via `resolveOnFrameworkError(...)`
- *      for the M3 hook). Without this leg, a runtime-tier key is
- *      computed by `resolveRuntime` and silently discarded.
- *
- * Documented exceptions to the mirror rule (no `runtime.<key>`, by design):
- *   - Identity (`section-id`, `attempt-id`, `section`): per-attempt host
- *     state, not configuration.
- *   - Layout-only shell knobs (`show-toolbar`, `toolbar-position`,
- *     `narrow-layout-breakpoint`, `split-pane-collapse-strategy`,
- *     `content-max-width-no-passage`, `content-max-width-with-passage`,
- *     `split-pane-min-region-width`, `split-pane-initial-passage-width`,
- *     `iife-bundle-host`, `debug`): layout-CE rendering / preload-host
- *     concerns.
- *   - Layout-shell host data (`policies`, `hooks`, `toolRegistry`,
- *     `sectionHostButtons`, `itemHostButtons`, `passageHostButtons`):
- *     consumed by the layout kernel through its top-level prop, not via
- *     `runtime`. Demoted from the M5 mirror in the follow-up trim.
- *   - Runtime-only keys with no top-level mirror (`createSectionController`,
- *     `isolation`): accepted only via `runtime.<key>`. The top-level prop
- *     aliases were removed in the broad architecture review compat sweep
- *     and the runtime tier is the sole supported entry point. The
- *     deprecated per-region `itemToolbarTools` / `passageToolbarTools`
- *     aliases were removed in the same sweep — hosts must populate
- *     `tools.placement.{item,passage}` (object form) or
- *     `runtime.tools.placement.{item,passage}` directly. The kernel
- *     joins those arrays back into comma-separated strings to feed the
- *     internal card / pane custom elements that still consume the
- *     `<pie-item-toolbar tools="...">` attribute shape.
+ * owns the `RuntimeConfig` type and runtime config resolution. Host layout
+ * elements expose a narrow top-level surface for identity, layout knobs,
+ * callbacks, and host shell data. Runtime configuration such as player,
+ * tools, accessibility, coordinator, env, and runtime factories flows through
+ * the `runtime` object only.
  */
 
 const PACKAGE_ROOT = resolve(__dirname, "..");
@@ -91,7 +54,6 @@ const RUNTIME_CONFIG_KEYS_SENTINEL: Record<keyof RuntimeConfig, true> = {
 	onFrameworkError: true,
 	onStageChange: true,
 	onLoadingComplete: true,
-	enabledTools: true,
 };
 
 const RUNTIME_CONFIG_KEYS = Object.keys(RUNTIME_CONFIG_KEYS_SENTINEL) as Array<
@@ -251,16 +213,9 @@ const allPackageSource = readAllPackageSource();
  * the `RuntimeConfig` key to a unique source-text marker that proves the
  * runtime tier is honored at the consumer.
  *
- * Post M7 PR 7: `enabledTools` is honored inside the toolkit-side
- * `resolveSectionEngineRuntimeState` orchestrator — section-player no
- * longer holds a literal `runtime?.enabledTools` read of its own. The
- * marker proves the kernel's host-runtime wrapper still funnels through
- * that orchestrator (which is itself locked by the engine-resolver
- * tests in the toolkit suite).
  */
 const CONSUMER_HELPER_MARKERS: Partial<Record<keyof RuntimeConfig, string>> = {
 	onFrameworkError: "resolveOnFrameworkError({",
-	enabledTools: "resolveSectionEngineRuntimeState(args,",
 };
 
 const layoutsByFile = LAYOUT_CE_FILES.map((rel) => ({
@@ -281,15 +236,24 @@ for (const layout of layoutsByFile) {
  * sole entry point — hosts must set them via `runtime.<key>`.
  */
 const RUNTIME_ONLY_KEYS = new Set<keyof RuntimeConfig>([
+	"playerType",
+	"player",
+	"lazyInit",
+	"tools",
 	"createSectionController",
 	"isolation",
 	"toolContextResolvers",
+	"accessibility",
+	"coordinator",
+	"env",
 ]);
 
-describe("M5 mirror rule — RuntimeConfig coverage", () => {
+describe("RuntimeConfig boundary — top-level prop coverage", () => {
 	for (const key of RUNTIME_CONFIG_KEYS) {
 		if (RUNTIME_ONLY_KEYS.has(key)) {
-			test.skip(`RuntimeConfig key \`${key}\` is runtime-only (no top-level prop mirror by design)`, () => {});
+			test(`RuntimeConfig key \`${key}\` is not declared as a top-level layout prop`, () => {
+				expect(allDeclaredPropNames.has(key)).toBe(false);
+			});
 			continue;
 		}
 		test(`RuntimeConfig key \`${key}\` is declared as a prop on at least one layout CE`, () => {
@@ -298,7 +262,7 @@ describe("M5 mirror rule — RuntimeConfig coverage", () => {
 	}
 });
 
-describe("M5 mirror rule — kebab attribute matches camelCase prop", () => {
+describe("RuntimeConfig boundary — kebab attribute matches camelCase prop", () => {
 	for (const layout of layoutsByFile) {
 		for (const prop of layout.props) {
 			if (!prop.attribute) continue;
@@ -310,7 +274,7 @@ describe("M5 mirror rule — kebab attribute matches camelCase prop", () => {
 	}
 });
 
-describe("M5 mirror rule — runtime field is canonical", () => {
+describe("RuntimeConfig boundary — runtime field is canonical", () => {
 	for (const layout of layoutsByFile) {
 		test(`${layout.file} declares the \`runtime\` prop`, () => {
 			const found = layout.props.find((p) => p.name === "runtime");
@@ -319,7 +283,7 @@ describe("M5 mirror rule — runtime field is canonical", () => {
 	}
 });
 
-describe("M5 mirror rule — runtime tier is read by the consumer", () => {
+describe("RuntimeConfig boundary — runtime tier is read by the consumer", () => {
 	for (const key of RUNTIME_CONFIG_KEYS) {
 		test(`RuntimeConfig key \`${key}\` is consumed via \`runtime?.${key}\` / \`effectiveRuntime?.${key}\` (or a dedicated resolver helper)`, () => {
 			const helperMarker = CONSUMER_HELPER_MARKERS[key];
@@ -380,7 +344,7 @@ const sectionPlayerBaseSource = readFileSync(
 	"utf8",
 );
 
-describe("M5 mirror rule — runtime.tools.pnpEnforcement nested chain", () => {
+describe("RuntimeConfig boundary — runtime.tools.pnpEnforcement nested chain", () => {
 	test('`<pie-assessment-toolkit>` declares the `pnpEnforcement` prop with `attribute: "pnp-enforcement"`', () => {
 		const prop = toolkitProps.find((p) => p.name === "pnpEnforcement");
 		expect(prop).toBeDefined();
@@ -409,7 +373,7 @@ describe("M5 mirror rule — runtime.tools.pnpEnforcement nested chain", () => {
 		expect(
 			sectionPlayerBaseSource.includes("const effectiveTools = $derived"),
 		).toBe(true);
-		expect(sectionPlayerBaseSource.includes("runtime?.tools ?? tools")).toBe(
+		expect(sectionPlayerBaseSource.includes("runtime?.tools ?? null")).toBe(
 			true,
 		);
 		expect(sectionPlayerBaseSource.includes("tools={effectiveTools}")).toBe(

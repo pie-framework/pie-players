@@ -470,18 +470,18 @@ export class AssessmentPlayerDefaultElement
 			sectionEl.setAttribute("assessment-id", this.assessmentId);
 			sectionEl.setAttribute("section-id", currentSection.sectionIdentifier);
 			if (this.attemptId) sectionEl.setAttribute("attempt-id", this.attemptId);
-			sectionEl.setAttribute("player-type", this.playerType);
 			if (this.debug !== undefined && this.debug !== null) {
 				const debugValue =
 					typeof this.debug === "boolean" ? String(this.debug) : this.debug;
 				sectionEl.setAttribute("debug", debugValue);
 			}
 			(sectionEl as any).section = currentSection.section;
-			if (this.env) (sectionEl as any).env = this.env;
-			if (this.coordinator) (sectionEl as any).coordinator = this.coordinator;
-			if (this.sectionPlayerRuntime) {
-				(sectionEl as any).runtime = this.sectionPlayerRuntime;
-			}
+			(sectionEl as any).runtime = {
+				playerType: this.playerType,
+				...(this.env ? { env: this.env } : {}),
+				...(this.coordinator ? { coordinator: this.coordinator } : {}),
+				...(this.sectionPlayerRuntime || {}),
+			};
 			(sectionEl as any).hooks = {
 				cardTitleFormatter: this.hooks?.cardTitleFormatter,
 			};

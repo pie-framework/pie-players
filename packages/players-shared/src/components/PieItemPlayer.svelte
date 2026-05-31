@@ -125,8 +125,8 @@
      * `[data-heading]` continues to match.
      *
      * Fast path: when `baseHeadingLevel` is `undefined` **or** the markup
-     * contains no `data-heading=` substring, the input is returned unchanged
-     * (the common case for legacy content, so the transform is effectively free).
+     * contains no `data-heading=` substring, the input is returned unchanged,
+     * so the common case is effectively free.
      *
      * PIE elements can read this value by walking up the DOM:
      *
@@ -287,7 +287,7 @@
       onModelLoaded(detail);
     }
 
-    // Also dispatch DOM event for backward compatibility
+    // Also dispatch a DOM event so hosts can listen outside Svelte.
     const event = new CustomEvent(type, {
       detail,
       bubbles: true,
@@ -392,8 +392,8 @@
     if (!addCorrectResponse || !itemConfig || (correctResponsesAdded && !force))
       return;
 
-    // Keep evaluate mode behavior unchanged, but preserve legacy compatibility by
-    // forcing instructor role internally when generating correct responses.
+    // Keep evaluate mode behavior unchanged by forcing instructor role internally
+    // when generating correct responses.
     if (!canPopulateCorrectResponses(env)) {
       logger.debug(
         "[PieItemPlayer] Skipping populateCorrectResponses - env not suitable (mode=%s)",
@@ -809,9 +809,7 @@
     const currentEnv = env;
 
     if (addCorrectResponse && !correctResponsesAdded) {
-      // Need to populate correct responses
-      // populateCorrectResponses preserves legacy compatibility by forcing
-      // instructor role internally for createCorrectResponseSession.
+      // Generate correct responses with instructor role semantics.
       untrack(async () => {
         await populateCorrectResponses();
         // Elements will be updated by the env/session effect below

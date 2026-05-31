@@ -82,7 +82,6 @@ async function getPollyProvider(engine: PollyEngine): Promise<PollyServerProvide
  * - language: Filter by language code (e.g., 'en-US', 'es-ES')
  * - gender: Filter by gender ('male', 'female', 'neutral')
  * - engine: Filter by Polly engine ('standard' | 'neural')
- * - quality: Backward-compatible alias for engine
  */
 export const GET: RequestHandler = async ({ url }) => {
 	console.log("[Polly API] GET /api/tts/polly/voices");
@@ -94,13 +93,8 @@ export const GET: RequestHandler = async ({ url }) => {
 			| "female"
 			| "neutral"
 			| undefined;
-		const quality = url.searchParams.get("quality") as
-			| "standard"
-			| "neural"
-			| "premium"
-			| undefined;
 		const engineParam = url.searchParams.get("engine");
-		const engine = (engineParam || quality || "neural") as PollyEngine;
+		const engine = (engineParam || "neural") as PollyEngine;
 		if (!SUPPORTED_ENGINES.includes(engine)) {
 			return json(
 				{ error: `Unsupported Polly engine "${engine}". Use "neural" or "standard".` },

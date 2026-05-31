@@ -3,7 +3,7 @@
  *
  * Asserts that every `SectionEngineOutput` of canonical kind
  * (`stage-change`, `loading-complete`, `framework-error`) translates
- * into a single DOM `CustomEvent` dispatch on the host with the legacy
+ * into a single DOM `CustomEvent` dispatch on the host with the canonical
  * detail shape (`runtimeId`, `sourceCe`, `timestamp`, etc.) preserved
  * bit-for-bit.
  *

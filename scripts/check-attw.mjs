@@ -160,7 +160,7 @@ const shouldSuppressProblem = (problem) => {
 	const moduleSpecifier =
 		typeof problem.moduleSpecifier === "string" ? problem.moduleSpecifier : "";
 
-	// Legacy CJS resolver warning is already intentionally ignored in existing policy.
+	// CJS resolver warning is already intentionally ignored in existing policy.
 	if (problem.kind === "CJSResolvesToESM") return true;
 
 	if (problem.kind === "NoResolution") {

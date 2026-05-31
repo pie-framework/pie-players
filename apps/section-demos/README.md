@@ -144,7 +144,7 @@ apps/section-demos/
 │   │   └── (demos)/session-hydrate-db/[[id]]/
 │   │       ├── +page.ts           # Load fixed demo data with shared helper
 │   │       └── +page.svelte       # Demo host
-│   │   └── demo/[[id]]/           # Legacy host internals reused by new routes
+│   │   └── demo/[[id]]/           # Shared demo host internals reused by routes
 │   ├── lib/
 │   │   └── content/               # Demo content data
 │   │       ├── demo1-single-question.ts

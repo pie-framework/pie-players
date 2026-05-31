@@ -1,10 +1,8 @@
 /**
  * PNP Policy Source — precedence rule tests (M8 PR 1).
  *
- * Mirrors the precedence covered by `services/PNPToolResolver.ts`'s
- * `resolveSupport` body, exercised through the new `apply(...)` entry
- * point. PR 5 retires the legacy resolver; until then this file is
- * the canonical regression net for the PNP/profile precedence.
+ * Exercises the canonical `PnpPolicySource.apply(...)` entry point for
+ * PNP/profile precedence.
  */
 
 import { describe, expect, test } from "bun:test";

@@ -254,7 +254,7 @@ export interface TTSProviderCapabilities {
 	 * When `false` or omitted, callers must pass plain text — the browser Web
 	 * Speech API, for example, speaks tags literally.
 	 *
-	 * Optional for backward compatibility; treat a missing value as `false`.
+	 * Treat a missing value as `false`.
 	 *
 	 * @standard W3C SSML 1.1
 	 */

@@ -9,18 +9,10 @@
 			section: { type: "Object", reflect: false },
 			sectionId: { attribute: "section-id", type: "String" },
 			attemptId: { attribute: "attempt-id", type: "String" },
-			playerType: { attribute: "player-type", type: "String" },
-			player: { type: "Object", reflect: false },
-			lazyInit: { attribute: "lazy-init", type: "Boolean" },
-			tools: { type: "Object", reflect: false },
-			accessibility: { type: "Object", reflect: false },
-			coordinator: { type: "Object", reflect: false },
-			env: { type: "Object", reflect: false },
 			iifeBundleHost: { attribute: "iife-bundle-host", type: "String" },
 			debug: { attribute: "debug", type: "String" },
 			showToolbar: { attribute: "show-toolbar", type: "String" },
 			toolbarPosition: { attribute: "toolbar-position", type: "String" },
-			enabledTools: { attribute: "enabled-tools", type: "String" },
 			toolRegistry: { type: "Object", reflect: false },
 			sectionHostButtons: { type: "Object", reflect: false },
 			itemHostButtons: { type: "Object", reflect: false },
@@ -79,18 +71,10 @@
 		section = null,
 		sectionId = "",
 		attemptId = "",
-		playerType,
-		player = null as Record<string, unknown> | null,
-		lazyInit,
-		tools,
-		accessibility,
-		coordinator,
-		env,
 		iifeBundleHost,
 		debug = undefined as string | boolean | undefined,
 		showToolbar = "false",
 		toolbarPosition = "right",
-		enabledTools = "",
 		toolRegistry = null as ToolRegistry | null,
 		sectionHostButtons = [] as ToolbarItem[],
 		itemHostButtons = [] as ToolbarItem[],
@@ -134,7 +118,6 @@
 	const instrumentationProvider = $derived.by(() =>
 		resolveInstrumentationProvider({
 			runtimePlayer: runtime?.player,
-			player,
 			component: "pie-section-player-kernel-host",
 		}),
 	);
@@ -245,18 +228,10 @@
 	{section}
 	{sectionId}
 	{attemptId}
-	{playerType}
-	{player}
-	{lazyInit}
-	{tools}
-	{accessibility}
-	{coordinator}
-	{env}
 	{iifeBundleHost}
 	{debug}
 	{showToolbar}
 	{toolbarPosition}
-	{enabledTools}
 	{toolRegistry}
 	{sectionHostButtons}
 	{itemHostButtons}

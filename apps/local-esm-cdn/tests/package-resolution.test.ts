@@ -64,7 +64,6 @@ describe("local-esm-cdn package resolution and serving", () => {
 
 		const resolved = await resolveEntryFile(
 			fixture.pieElementsNgRoot,
-			fixture.piePlayersRoot,
 			"@pie-lib/render-ui",
 			"",
 		);
@@ -101,6 +100,33 @@ describe("local-esm-cdn package resolution and serving", () => {
 		);
 		const body = await response.text();
 		expect(body).toContain("https://esm.sh/react");
+	});
+
+	it("reports healthy when only shared packages are built", async () => {
+		const fixture = await createTempFixture();
+		cleanups.push(fixture.cleanup);
+		await writePackageFile({
+			pieElementsNgRoot: fixture.pieElementsNgRoot,
+			scope: "@pie-elements-ng",
+			name: "shared-math-rendering",
+			relativePath: "index.js",
+			content: "export const ok = true;",
+		});
+
+		const response = await handleRequest(
+			makeRequest("/health"),
+			createFixtureContext(fixture),
+		);
+
+		expect(response.status).toBe(200);
+		const body = await readJson<{
+			ok: boolean;
+			builtSharedPackages: number;
+			sampleShared?: string;
+		}>(response);
+		expect(body.ok).toBe(true);
+		expect(body.builtSharedPackages).toBe(1);
+		expect(body.sampleShared).toBe("math-rendering");
 	});
 
 	it("returns 404 json for missing package entry", async () => {

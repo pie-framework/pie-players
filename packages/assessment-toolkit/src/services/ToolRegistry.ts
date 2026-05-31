@@ -193,7 +193,7 @@ export interface ToolRegistration {
 
 	/**
 	 * PNP support IDs that enable this tool (optional)
-	 * Used by PNPToolResolver to determine if tool is allowed
+	 * Used by the tool policy engine to determine if a PNP support enables this tool.
 	 * Example: ['calculator', 'basic-calculator', 'scientific-calculator']
 	 */
 	pnpSupportIds?: string[];
@@ -545,7 +545,7 @@ export class ToolRegistry {
 	}
 
 	/**
-	 * Resolve tool activation with backward-compatible defaults.
+	 * Resolve tool activation, defaulting to toolbar-toggle.
 	 */
 	getToolActivation(toolId: string): ToolActivation {
 		return this.get(toolId)?.activation || "toolbar-toggle";

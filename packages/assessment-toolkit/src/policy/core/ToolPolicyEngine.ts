@@ -178,8 +178,7 @@ export class ToolPolicyEngine {
 	 * re-runs caused by unrelated tracked reads): no-op patches do not
 	 * fire `onPolicyChange` listeners. This contract is relied on by
 	 * `PieAssessmentToolkit.svelte`'s prop-forwarding effect and by the
-	 * coordinator's `getFloatingTools()` / `decideToolPolicy()` lockstep
-	 * tests.
+	 * coordinator's `decideToolPolicy()` tests.
 	 *
 	 * `pnpEnforcement` is stored on its own field and always emits with
 	 * a distinct `"pnp-enforcement"` reason when no other key changed,

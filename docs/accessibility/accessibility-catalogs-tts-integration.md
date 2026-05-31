@@ -20,10 +20,11 @@ This integration enables:
 
 ### 1. Initialize Services and Section Player
 
-> **Note:** `ToolkitCoordinator` is now the primary entry point for integrating the assessment toolkit.
+> **Note:** `ToolkitCoordinator` is the primary entry point for integrating the assessment toolkit.
 > It wraps and manages `ToolCoordinator`, `HighlightCoordinator`, `TTSService`, `AccessibilityCatalogResolver`,
-> and other services. You can still use the individual services directly (as shown below), but for new
-> integrations prefer `ToolkitCoordinator` which sets up and coordinates all services automatically.
+> and other services. The manual service wiring below is useful for focused tests
+> or advanced hosts; application integrations should prefer `ToolkitCoordinator`
+> so the services are set up and coordinated consistently.
 
 ```javascript
 import {
@@ -63,23 +64,24 @@ sectionPlayer.catalogResolver = catalogResolver;
 sectionPlayer.section = section;
 ```
 
-### 2. Automatic Catalog Management
+### 2. Catalog Management
 
-The section player **automatically**:
+The section player runtime:
 
-- **Extracts SSML** from embedded `<speak>` tags in passages and items
-- **Generates catalogs** with unique IDs and registers them
+- **Registers provided catalogs** from passages, items, models, and
+  `config.extractedCatalogs`
 - **Manages item-level catalogs** - adds on item load, clears on navigation
 - **Renders TTS tools** inline in passage/item headers when services present
 - **Resolves catalogs** with proper priority: extracted → item → assessment
 
 **You don't need to manually:**
 - Call `addItemCatalogs()` or `clearItemCatalogs()`
-- Extract SSML or generate catalog entries
 - Manage TTS tool visibility
 - Handle catalog lifecycle
 
-The section player does all of this automatically.
+If you author embedded `<speak>` tags, run `SSMLExtractor` or an equivalent
+preprocessing step before render so `config.extractedCatalogs` is present for
+runtime registration.
 
 ### 3. Using Server-Side TTS (Optional)
 
@@ -106,7 +108,10 @@ sectionPlayer.ttsService = ttsService;
 
 ## SSML Extraction Workflow
 
-The PIE Players automatically extract embedded SSML from content at runtime:
+`SSMLExtractor` can convert embedded SSML into cleaned visual markup plus
+`extractedCatalogs`. The current section-player runtime registers
+`extractedCatalogs` when they are already present; it does not invoke extraction
+itself during shell registration.
 
 ```
 ┌────────────────────────────────────────────┐
@@ -147,10 +152,10 @@ The PIE Players automatically extract embedded SSML from content at runtime:
 ```
 
 **Extraction Points:**
-- `ItemRenderer.svelte` - Processes item config on load
-- `PassageRenderer.svelte` - Processes passage config on load
-- Runs automatically in `$effect` hook
-- No author configuration required
+- Content import/preprocessing can call `SSMLExtractor`
+- The cleaned config carries `config.extractedCatalogs`
+- Runtime catalog registration registers those catalogs when item or passage
+  shells mount
 
 ## Catalog Resolution Flow
 
@@ -233,7 +238,7 @@ const assessment: AssessmentEntity = {
               view: 'candidate',
               use: 'instructions',
               // Reference catalog in HTML
-              content: '<div data-catalog-id="welcome-message"><h3>Welcome</h3><p>Welcome to your assessment.</p></div>'
+              content: '<div data-catalog-idref="welcome-message"><h3>Welcome</h3><p>Welcome to your assessment.</p></div>'
             }
           ],
           questionRefs: [...]
@@ -275,9 +280,9 @@ const item: ItemEntity = {
   ],
 
   config: {
-    prompt: '<div data-catalog-id="item-prompt">What is 2 + 2?</div>',
+    prompt: '<div data-catalog-idref="item-prompt">What is 2 + 2?</div>',
     choices: [
-      { label: '<span data-catalog-id="choice-a">3</span>', value: 'a' },
+      { label: '<span data-catalog-idref="choice-a">3</span>', value: 'a' },
       // ...
     ]
   }
@@ -316,14 +321,14 @@ const sectionPlayer = document.getElementById('section-player');
 sectionPlayer.ttsService = ttsService;
 sectionPlayer.toolCoordinator = toolCoordinator;
 sectionPlayer.highlightCoordinator = highlightCoordinator;
-sectionPlayer.catalogResolver = catalogResolver;  // Enables automatic SSML extraction
+sectionPlayer.catalogResolver = catalogResolver;  // Enables catalog resolution
 
 // Set section data
 sectionPlayer.section = section;
 ```
 
 **Key Points:**
-- The section player automatically extracts SSML from items and passages
+- The section player registers provided catalogs and `config.extractedCatalogs`
 - Item-level catalogs are registered/cleared automatically as items load/unload
 - TTS tools render inline in passage and item headers when services are provided
 - All catalog resolution happens transparently within the player
@@ -460,11 +465,11 @@ const item = {
 ```
 
 **At Runtime:**
-- SSML extracted automatically
+- A preprocessing step runs `SSMLExtractor`
 - Catalog generated with ID `auto-prompt-{modelId}-0`
 - Visual markup cleaned (SSML removed)
-- `data-catalog-id` attribute added
-- Catalog registered with resolver
+- `data-catalog-idref` attribute added
+- Runtime registration registers the extracted catalog with the resolver
 
 **Result:**
 - TTS buttons use extracted SSML
@@ -479,12 +484,12 @@ const item = {
 **Symptoms:** TTS uses plain text instead of SSML pronunciation
 
 **Possible Causes:**
-1. **SSML not detected during extraction**
+1. **SSML was not extracted before render**
    - Check: Does content have `<speak>` tags?
-   - Fix: Ensure SSML is properly wrapped in `<speak>` element
+   - Fix: Run `SSMLExtractor` or an equivalent preprocessing step before render
 
 2. **Catalog ID not passed to TTS**
-   - Check: Does element have `data-catalog-id` attribute?
+   - Check: Does element have `data-catalog-idref` attribute?
    - Fix: Verify SSMLExtractor ran (check `item.config.extractedCatalogs`)
 
 3. **Invalid SSML markup**
@@ -502,10 +507,10 @@ const item = {
 **Cause:** SSML extraction not running
 
 **Fix:**
-1. Verify `catalogResolver` prop is passed to section player
-2. Check ItemRenderer/PassageRenderer have extraction code
-3. Ensure `$effect` hook is executing
-4. Check browser console for extraction errors
+1. Run `SSMLExtractor` before rendering the content
+2. Verify the cleaned config is passed to the player
+3. Verify `item.config.extractedCatalogs` contains the generated catalogs
+4. Check browser console for catalog registration errors
 
 ### Catalog IDs Colliding
 

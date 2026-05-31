@@ -1,34 +1,12 @@
 /**
- * Tool Policy Provenance — generalization of `PnpResolutionProvenance`
- * (M8 — see `.cursor/plans/m8-design.md` § 4).
+ * Tool Policy Provenance (M8 — see `.cursor/plans/m8-design.md` § 4).
  *
- * Today's `PnpResolutionProvenance` (in `services/pnp-provenance.ts`)
- * tracks decisions made by `PnpToolResolver` only. M8 generalizes the
- * shape to track decisions from every Pass-1 contributor — host
- * placement, host policy, provider veto, PNP/profile gates, and custom policy
- * sources — without losing PNP debugger compatibility.
- *
- * **Compatibility posture.** This module is the new home of the shape;
- * the legacy `pnp-provenance.ts` module remains untouched in PR 1 and
- * is deleted in PR 5 (the rip-out PR) once every consumer has migrated
- * to the engine. The shape stays structurally compatible: existing
- * fields (`contextId`, `resolvedAt`, `sources`, `features`,
- * `decisionLog`, `summary`) are preserved verbatim. The rule
- * vocabulary expands, and `ResolutionDecision.precedence` widens from
- * `1 | 2 | 3 | 4 | 5 | 6` to a `number` so non-profile rules can fit
- * (the PNP/profile rules continue to use `1`–`6` exactly as before).
+ * Tracks decisions from every Pass-1 contributor: host placement, host policy,
+ * provider veto, PNP/profile gates, and custom policy sources.
  */
 
 /**
- * Expanded rule vocabulary for `ResolutionDecision.rule` in M8.
- *
- * The first six values map 1:1 onto `PnpResolutionProvenance`'s
- * existing rule names (the PNP/profile precedence ladder). The remaining
- * values capture the new contributors the M8 engine surfaces:
- * placement membership (step 1), provider veto (step 2), host policy
- * (steps 3 / 4), the required-tool conflict diagnostic (`required-tool-blocked`),
- * custom sources (step 6), and the catch-all `system-default` for the
- * "not configured at any level" fallback.
+ * Rule vocabulary for tool policy decisions.
  */
 export type ToolPolicyDecisionRule =
 	| "district-block"
@@ -61,10 +39,8 @@ export interface ToolPolicyResolutionDecision {
 	step: number;
 
 	/**
-	 * Precedence level. PNP/profile rules use `1`–`6` exactly as in today's
-	 * `PnpResolutionProvenance`. Non-profile rules use `0` (host-side
-	 * gates that always fire before PNP/profile policy) or `7+` (custom sources that
-	 * fire after PNP/profile policy).
+	 * Precedence level. PNP/profile rules use `1`–`6`; non-profile rules use `0`
+	 * for host-side gates or `7+` for custom sources that run after PNP/profile policy.
 	 */
 	precedence: number;
 
@@ -132,10 +108,7 @@ interface AddDecisionParams {
 }
 
 /**
- * Builder mirroring `PnpProvenanceBuilder` but emitting the expanded
- * `ToolPolicyProvenance` shape. Identical API where the field names
- * overlap so an `M8 PR 5` rename of the legacy builder is a near-pure
- * import-path swap.
+ * Builder for `ToolPolicyProvenance`.
  */
 export class ToolPolicyProvenanceBuilder {
 	private provenance: ToolPolicyProvenance;

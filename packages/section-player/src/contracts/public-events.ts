@@ -20,7 +20,7 @@
  * session forwarding stays in section-player because the shape is
  * section-player-specific and the engine has no opinion on it.
  *
- * **`framework-error` single-emit on the layout host (compat sweep).**
+ * **`framework-error` single-emit on the layout host.**
  * `<pie-assessment-toolkit>` nested inside a layout CE still
  * dispatches its own `framework-error` (with `bubbles: true,
  * composed: true`) so direct toolkit consumers keep working. The
@@ -30,13 +30,9 @@
  * layout host as the single canonical DOM surface for
  * section-player consumers. The single-emit contract is pinned by
  * `tests/section-player-framework-error-dual-emit.test.ts`. The
- * previous dual-emit was removed in the broad architecture review
- * compat sweep.
+ * layout host does not receive duplicate framework-error events.
  *
- * **Removed in the broad architecture review compat sweep.** The
- * deprecated readiness aliases (`readiness-change`,
- * `interaction-ready`, `ready`) and their `legacy-event-bridge.ts`
- * are gone. Hosts that previously listened for them migrate to:
+ * Lifecycle should be consumed through canonical events:
  *   - `readiness-change` → `pie-stage-change` (the readiness phase
  *     is also reachable via `selectReadiness()` /
  *     `getSnapshot().readiness`).
@@ -44,10 +40,9 @@
  *     `detail.stage === "interactive"`.
  *   - `ready` → `pie-loading-complete`.
  *
- * The deprecated `section-controller-ready` Svelte/DOM event was
- * also removed. Hosts that previously listened for it migrate to
- * `waitForSectionController(timeoutMs)` / `getSectionController()`
- * on the layout CE, or filter `pie-stage-change` for
+ * Controller readiness is available through
+ * `waitForSectionController(timeoutMs)` / `getSectionController()` on the
+ * layout CE, or by filtering `pie-stage-change` for
  * `detail.stage === "engine-ready"`.
  *
  * Source of truth for the names: `players-shared/src/pie/stages.ts`
@@ -89,10 +84,8 @@ export type SectionPlayerPublicEventName =
 
 /**
  * Readiness phase reported by the engine's readiness derivation. The
- * type is named after the deprecated `readiness-change` event for
- * backward compatibility with consumers that imported it via the
- * kernel's `selectReadiness()` selector — the *event name* is gone,
- * but the readiness payload itself is still the canonical shape.
+ * type preserves the readiness payload shape used by
+ * `selectReadiness()`.
  */
 export type SectionPlayerReadinessPhase =
 	| "bootstrapping"

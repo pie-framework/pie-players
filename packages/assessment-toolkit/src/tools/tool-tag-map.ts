@@ -32,7 +32,6 @@ export const DEFAULT_TOOL_TAG_MAP: ToolTagMap = {
 	highlighter: "pie-tool-annotation-toolbar",
 	lineReader: "pie-tool-line-reader",
 	theme: "pie-tool-theme",
-	colorScheme: "pie-tool-theme",
 	annotationToolbar: "pie-tool-annotation-toolbar",
 	graph: "pie-tool-graph",
 	periodicTable: "pie-tool-periodic-table",

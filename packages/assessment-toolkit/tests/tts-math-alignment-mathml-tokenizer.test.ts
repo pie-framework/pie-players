@@ -90,7 +90,7 @@ describe("MathML alignment tokenizer", () => {
 		);
 	});
 
-	test("normalizes legacy mfenced and geometry operators with aliases", () => {
+	test("normalizes mfenced and geometry operators with aliases", () => {
 		const math = mathFrom(`
 			<math xmlns="http://www.w3.org/1998/Math/MathML">
 				<mo>&#8736;</mo><mi>K</mi><mi>G</mi><mi>S</mi>

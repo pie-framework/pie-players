@@ -1,20 +1,11 @@
 /**
- * PNP Policy Source — refactor of `PnpToolResolver` for the M8 engine
- * (see `.cursor/plans/m8-design.md` § 3 step 5 and § 5 §).
+ * PNP Policy Source for the M8 engine
+ * (see `.cursor/plans/m8-design.md` § 3 step 5 and § 5).
  *
- * This source applies the PNP/profile precedence rules used by today's
- * `PnpToolResolver` but exposes them as a `(candidates, pnpPolicyInputs) →
+ * This source applies the PNP/profile precedence rules as a `(candidates, pnpPolicyInputs) →
  * (refinedCandidates, perToolFlags, mandates, decisions)` function the
  * engine can call once per `decide(...)` request, with all results
  * routed through the unified `ToolPolicyProvenanceBuilder`.
- *
- * **Why this lives next to the legacy resolver instead of replacing
- * it.** PR 1 introduces the engine without callers; the legacy
- * `PnpToolResolver` is still in active use by `<pie-item-toolbar>`
- * and by external tests. PR 5 deletes the legacy class once the
- * toolbar (PR 3) and the PNP default flip (PR 4) have landed and the
- * caller list is empty. Until then this source is the *canonical*
- * implementation and the legacy class is the deprecated mirror.
  */
 
 import type {
@@ -359,9 +350,7 @@ export class PnpPolicySource {
 	 *      strings for tools the registry does not (yet) carry without
 	 *      losing them in policy evaluation.
 	 *
-	 * The legacy `PnpToolResolver.resolveTool` had the same behavior;
-	 * see `tests/policy/PnpPolicySource.test.ts` for the regression
-	 * lock.
+	 * `tests/policy/PnpPolicySource.test.ts` locks this mapping behavior.
 	 */
 	private mapSupportToToolId(supportId: string): string {
 		const toolIds = this.toolRegistry.getToolsByPNPSupport(supportId);
@@ -373,15 +362,13 @@ export class PnpPolicySource {
 	 * Resolve tool-specific settings, item-level taking precedence over
 	 * assessment-level.
 	 *
-	 * Uses `??` (nullish-coalescing) rather than the legacy resolver's
-	 * `||`. Tool config values are typed `unknown` and may legitimately
+	 * Uses `??` (nullish-coalescing). Tool config values are typed `unknown` and may legitimately
 	 * be `false` / `0` / `""` (e.g. a tool whose canonical "off" config
 	 * is the literal `false`). `||` would treat those as missing and
 	 * silently fall through to the assessment-level config, masking the
 	 * authored item-level intent. `??` only falls through on
 	 * `null`/`undefined`, which matches the semantic of "value not
-	 * provided." This is a deliberate behavior delta from the legacy
-	 * `PnpToolResolver` (M8 PR 1).
+	 * provided."
 	 */
 	private resolveToolSettings(
 		supportId: string,

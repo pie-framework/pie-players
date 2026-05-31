@@ -15,7 +15,7 @@
 	},
 	{
 		"id": "absolute-value",
-		"description": "SmartBuild absolute value with legacy mfenced",
+		"description": "SmartBuild absolute value with mfenced",
 		"visibleHtml": "<math xmlns=\"http://www.w3.org/1998/Math/MathML\"><mfenced open=\"|\" close=\"|\"><mrow><mo>-</mo><mn>5</mn></mrow></mfenced></math>",
 		"speechText": "the absolute value of negative five",
 		"expectedTargetQuality": "region-fallback"

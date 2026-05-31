@@ -23,10 +23,10 @@
  * signals. Surfaced via the kernel's `selectReadiness()` /
  * `getSnapshot().readiness` selectors; M6 stages own the stage-level
  * transitions on `pie-stage-change` and use this phase as a
- * convenience label only. The deprecated `readiness-change` DOM
+ * convenience label only. The `readiness-change` DOM
  * event that used to surface this directly was removed in the broad
  * architecture review compat sweep alongside its
- * `legacy-event-bridge`.
+ * event bridge.
  */
 export type EngineReadinessPhase =
 	| "bootstrapping"

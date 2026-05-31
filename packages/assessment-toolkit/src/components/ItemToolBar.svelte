@@ -30,8 +30,7 @@
   - Pass 1: ToolkitCoordinator.decideToolPolicy(...) — placement,
     policy.allowed/blocked, provider veto, PNP/profile gates, and registered
     custom PolicySources are all applied inside the ToolPolicyEngine.
-    The legacy `pnpResolver` / `assessment` / `itemRef` props were
-    removed in M8 PR 3; hosts that need to drive PNP/profile inputs should
+    Hosts that need to drive PNP/profile inputs should
     bind `assessment` / `currentItemRef` on the parent
     `pie-assessment-toolkit` element instead.
   - Pass 2: tool-owned isVisibleInContext(context) — relevance gate,
@@ -1357,7 +1356,7 @@
 			// 28px / 12px horizontal padding (asymmetric: more space before the
 			// title, tighter at the close button), 8px vertical, and
 			// space-between layout pushing the controls + close cluster to the
-			// right edge. Other shells keep the legacy dense layout.
+			// right edge. Other shells keep the compact dense layout.
 			headerEl.style.padding = isCalculatorShell ? '12px 12px 12px 28px' : '10px 12px';
 			if (isCalculatorShell) {
 				headerEl.style.minHeight = '48px';
@@ -1414,7 +1413,7 @@
 			// so `space-between` on the header lays out as `title … [controls x]`.
 			// Cluster gap (6px) gives the same separation between any two
 			// circular buttons and between the controls group and the close.
-			// Other shells keep the legacy single-row append flow.
+			// Other shells keep the single-row append flow.
 			let rightClusterEl: HTMLDivElement | null = null;
 			if (isCalculatorShell) {
 				rightClusterEl = document.createElement('div');
@@ -1590,8 +1589,8 @@
 				if (!shellEl || !contentEl || !titleEl || !closeButtonEl) return;
 				titleEl.textContent = currentArgs.mounted.entry.shell?.title || currentArgs.mounted.toolId;
 				// nds-icon-button (calculator branch) is a custom element with
-				// inline-block default display; the legacy branch uses an
-				// inline-flex <button>. Pick the right open-state value so we
+				// inline-block default display; other shells use an inline-flex
+				// <button>. Pick the right open-state value so we
 				// don't clobber inline-block back to inline-flex on prop refresh.
 				const closeButtonOpenDisplay =
 					currentArgs.mounted.toolId === 'calculator' ? 'inline-block' : 'inline-flex';

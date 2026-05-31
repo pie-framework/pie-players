@@ -58,7 +58,6 @@
 	let { data }: { data: PageData } = $props();
 
 	// Level 4: CE setup plus controller JS API subscriptions.
-	const sectionToolbarTools = 'theme,graph,periodicTable,lineReader,ruler,protractor';
 	const sectionInstrumentationProvider = new CompositeInstrumentationProvider([
 		new NewRelicInstrumentationProvider(),
 		new DebugPanelInstrumentationProvider()
@@ -494,16 +493,17 @@ const sectionPlayerHooks = $derived.by(() =>
 				assessment-id={DEMO_ASSESSMENT_ID}
 				section-id={sessionPanelSectionId}
 				attempt-id={attemptId}
-				player-type={selectedPlayerType}
-				lazy-init={true}
-				tools={toolkitToolsConfig}
-				player={sectionPlayerConfig}
+				runtime={ {
+					playerType: selectedPlayerType,
+					lazyInit: true,
+					tools: toolkitToolsConfig,
+					player: sectionPlayerConfig,
+					env: pieEnv,
+					coordinator: coordinator
+				} }
 				section={resolvedSectionForPlayer}
-				env={pieEnv}
-				coordinator={coordinator}
 				toolbar-position="right"
 				show-toolbar={true}
-				enabled-tools={sectionToolbarTools}
 				hooks={sectionPlayerHooks}
 				ontoolkit-ready={handleToolkitReady}
 			></pie-section-player-vertical>
@@ -513,16 +513,17 @@ const sectionPlayerHooks = $derived.by(() =>
 				assessment-id={DEMO_ASSESSMENT_ID}
 				section-id={sessionPanelSectionId}
 				attempt-id={attemptId}
-				player-type={selectedPlayerType}
-				lazy-init={true}
-				tools={toolkitToolsConfig}
-				player={sectionPlayerConfig}
+				runtime={ {
+					playerType: selectedPlayerType,
+					lazyInit: true,
+					tools: toolkitToolsConfig,
+					player: sectionPlayerConfig,
+					env: pieEnv,
+					coordinator: coordinator
+				} }
 				section={resolvedSectionForPlayer}
-				env={pieEnv}
-				coordinator={coordinator}
 				toolbar-position="right"
 				show-toolbar={true}
-				enabled-tools={sectionToolbarTools}
 				hooks={sectionPlayerHooks}
 				ontoolkit-ready={handleToolkitReady}
 			></pie-section-player-splitpane>

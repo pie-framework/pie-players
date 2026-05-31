@@ -41,10 +41,6 @@
 			"types": "./dist/services/pnp-standard-features.d.ts",
 			"import": "./dist/services/pnp-standard-features.js"
 		},
-		"./services/pnp-provenance": {
-			"types": "./dist/services/pnp-provenance.d.ts",
-			"import": "./dist/services/pnp-provenance.js"
-		},
 		"./services/I18nService": {
 			"types": "./dist/services/I18nService.d.ts",
 			"import": "./dist/services/I18nService.js"

@@ -26,7 +26,7 @@
  *   3. `framework-error` outputs are independent of the stage chain
  *      and do not move the phase.
  *
- * The deprecated readiness output kinds (`readiness-change`,
+ * Readiness alias output kinds (`readiness-change`,
  * `interaction-ready`, `ready`) and their DOM-event bridge were
  * removed in the broad architecture review compat sweep. Hosts that
  * need the readiness detail read it via the kernel's `selectReadiness`

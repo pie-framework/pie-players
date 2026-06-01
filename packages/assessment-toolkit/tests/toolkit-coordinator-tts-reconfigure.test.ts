@@ -142,11 +142,11 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 		expect(internals.ttsInitialized).toBe(true);
 	});
 
-	test("rejects deprecated providers.tts in strict error mode", async () => {
+	test("rejects removed providers.tts in strict error mode", async () => {
 		expect(
 			() =>
 				new ToolkitCoordinator({
-					assessmentId: "tts-deprecated-provider-key-test",
+				assessmentId: "tts-removed-provider-key-test",
 					lazyInit: true,
 					toolConfigStrictness: "error",
 					tools: {
@@ -161,11 +161,11 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 		).toThrow(`Provider key "tts" is no longer supported`);
 	});
 
-	test("rejects deprecated providers.tts by default strictness", () => {
+	test("rejects removed providers.tts by default strictness", () => {
 		expect(
 			() =>
 				new ToolkitCoordinator({
-					assessmentId: "tts-deprecated-default-strictness-test",
+				assessmentId: "tts-removed-default-strictness-test",
 					lazyInit: true,
 					tools: {
 						providers: {
@@ -177,6 +177,24 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 					},
 				} as any),
 		).toThrow(`Provider key "tts" is no longer supported`);
+	});
+
+	test("accepts textToSpeech string runtime provider selectors", () => {
+		expect(
+			() =>
+				new ToolkitCoordinator({
+					assessmentId: "tts-string-provider-selector-test",
+					lazyInit: true,
+					tools: {
+						providers: {
+							textToSpeech: {
+								enabled: true,
+								provider: "polly",
+							},
+						},
+					},
+				} as any),
+		).not.toThrow();
 	});
 
 	test("waitUntilReady initializes TTS from textToSpeech-only config", async () => {
@@ -206,6 +224,184 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 		expect(capturedConfig?.backend).toBe("polly");
 		expect(capturedConfig?.apiEndpoint).toBe("/api/tts");
 		expect(coordinator.getInitStatus().coordinator).toBe(true);
+	});
+
+	test("initializes TTS with nested mathSpeech settings in providerOptions", async () => {
+		const coordinator = new ToolkitCoordinator({
+			assessmentId: "tts-math-speech-settings-init-test",
+			lazyInit: true,
+			tools: {
+				providers: {
+					textToSpeech: {
+						enabled: true,
+						backend: "browser",
+						settings: {
+							mathSpeech: {
+								domain: "clearspeak",
+								style: "ImpliedTimes_MoreImpliedTimes:Paren_Silent",
+							},
+						},
+					},
+				},
+			},
+		} as any);
+
+		const internals = coordinator as any;
+		let capturedConfig: any = null;
+		internals.toolProviderRegistry = { has: () => false };
+		internals.initializeTTSService = async (_provider: unknown, config: unknown) => {
+			capturedConfig = config;
+			internals.ttsInitialized = true;
+		};
+
+		await internals._initializeTTS();
+
+		expect(capturedConfig?.providerOptions?.mathSpeech).toEqual({
+			domain: "clearspeak",
+			style: "ImpliedTimes_MoreImpliedTimes:Paren_Silent",
+		});
+	});
+
+	test("reinitializes TTS with updated mathSpeech settings after reconfigure", async () => {
+		const coordinator = new ToolkitCoordinator({
+			assessmentId: "tts-math-speech-settings-reconfigure-test",
+			lazyInit: true,
+			tools: {
+				providers: {
+					textToSpeech: {
+						enabled: true,
+						backend: "browser",
+					},
+				},
+			},
+		} as any);
+
+		const internals = coordinator as any;
+		let capturedConfig: any = null;
+		internals.toolProviderRegistry = { has: () => false };
+		internals._reconfigureTTSProvider = async () => {
+			internals.ttsInitialized = false;
+		};
+		internals.initializeTTSService = async (_provider: unknown, config: unknown) => {
+			capturedConfig = config;
+			internals.ttsInitialized = true;
+		};
+
+		coordinator.updateToolConfig("textToSpeech", {
+			enabled: true,
+			backend: "browser",
+			settings: {
+				mathSpeech: {
+					domain: "clearspeak",
+					style: "Paren_Silent",
+				},
+			},
+		} as any);
+		await coordinator.ensureTTSReady(
+			coordinator.getToolConfig("textToSpeech") as any,
+		);
+
+		expect(capturedConfig?.providerOptions?.mathSpeech).toEqual({
+			domain: "clearspeak",
+			style: "Paren_Silent",
+		});
+	});
+
+	test("preserves nested mathSpeech settings across partial settings updates", async () => {
+		const coordinator = new ToolkitCoordinator({
+			assessmentId: "tts-math-speech-settings-partial-update-test",
+			lazyInit: true,
+			tools: {
+				providers: {
+					textToSpeech: {
+						enabled: true,
+						backend: "browser",
+						settings: {
+							mathSpeech: {
+								domain: "clearspeak",
+								style: "Paren_Silent",
+							},
+						},
+					},
+				},
+			},
+		} as any);
+
+		const internals = coordinator as any;
+		let capturedConfig: any = null;
+		internals.toolProviderRegistry = { has: () => false };
+		internals._reconfigureTTSProvider = async () => {
+			internals.ttsInitialized = false;
+		};
+		internals.initializeTTSService = async (_provider: unknown, config: unknown) => {
+			capturedConfig = config;
+			internals.ttsInitialized = true;
+		};
+
+		coordinator.updateToolConfig("textToSpeech", {
+			settings: {
+				rate: 1.25,
+			},
+		} as any);
+		await coordinator.ensureTTSReady(
+			coordinator.getToolConfig("textToSpeech") as any,
+		);
+
+		expect(capturedConfig?.rate).toBe(1.25);
+		expect(capturedConfig?.providerOptions?.mathSpeech).toEqual({
+			domain: "clearspeak",
+			style: "Paren_Silent",
+		});
+	});
+
+	test("deep-merges partial nested mathSpeech updates", async () => {
+		const coordinator = new ToolkitCoordinator({
+			assessmentId: "tts-math-speech-settings-nested-partial-update-test",
+			lazyInit: true,
+			tools: {
+				providers: {
+					textToSpeech: {
+						enabled: true,
+						backend: "browser",
+						settings: {
+							mathSpeech: {
+								domain: "clearspeak",
+								style: "Paren_Silent",
+								engineOptions: { modality: "speech" },
+							},
+						},
+					},
+				},
+			},
+		} as any);
+
+		const internals = coordinator as any;
+		let capturedConfig: any = null;
+		internals.toolProviderRegistry = { has: () => false };
+		internals._reconfigureTTSProvider = async () => {
+			internals.ttsInitialized = false;
+		};
+		internals.initializeTTSService = async (_provider: unknown, config: unknown) => {
+			capturedConfig = config;
+			internals.ttsInitialized = true;
+		};
+
+		coordinator.updateToolConfig("textToSpeech", {
+			settings: {
+				mathSpeech: {
+					style: "ImpliedTimes_MoreImpliedTimes",
+				},
+			},
+		} as any);
+		await coordinator.ensureTTSReady(
+			coordinator.getToolConfig("textToSpeech") as any,
+		);
+
+		expect(capturedConfig?.providerOptions?.mathSpeech).toEqual({
+			domain: "clearspeak",
+			style: "ImpliedTimes_MoreImpliedTimes",
+			engineOptions: { modality: "speech" },
+		});
 	});
 
 	test("retries initialization after a failed ensureTTSReady attempt", async () => {
@@ -280,7 +476,7 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 		).not.toThrow();
 	});
 
-	test("fails deprecated tts method ids deterministically", () => {
+	test("fails removed tts method ids deterministically", () => {
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: "tts-method-id-rejection-test",
 			lazyInit: true,

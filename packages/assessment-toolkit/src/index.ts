@@ -77,7 +77,10 @@ export type {
 
 // Accessibility Catalog Resolver (QTI 3.0 Accessibility Catalogs)
 export type {
+	CatalogLookupContext,
 	CatalogLookupOptions,
+	CatalogOwnerContext,
+	CatalogOwnerKind,
 	CatalogStatistics,
 	CatalogType,
 	ResolvedCatalog,
@@ -166,24 +169,6 @@ export {
 	resolveToolTag,
 	toToolIdFromTag,
 } from "./tools/tool-tag-map.js";
-// PNP Tool Resolution (QTI 3.0 Native)
-export type {
-	ResolvedToolConfig,
-	ToolResolutionResult,
-} from "./services/PNPToolResolver.js";
-export { PnpToolResolver } from "./services/PNPToolResolver.js";
-// PNP Provenance Tracking
-export type {
-	FeatureResolutionTrail,
-	PnpResolutionProvenance,
-	ResolutionDecision,
-} from "./services/pnp-provenance.js";
-export {
-	formatProvenanceAsJSON,
-	formatProvenanceAsMarkdown,
-	getFeatureExplanation,
-	PnpProvenanceBuilder,
-} from "./services/pnp-provenance.js";
 // QTI 3.0 Standard Access Features
 export {
 	ALL_STANDARD_ACCESS_FEATURES,
@@ -279,7 +264,6 @@ export {
 	normalizeToolAlias,
 	normalizeToolList,
 	parseToolList,
-	resolveToolsForLevel,
 } from "./services/tools-config-normalizer.js";
 export {
 	frameworkErrorFromToolConfigValidation,
@@ -302,6 +286,7 @@ export {
 	type TTSControlHandoffDetail,
 } from "./services/tts-control-events.js";
 export { BrowserTTSProvider } from "./services/tts/browser-provider.js";
+export type { SREMathSpeechOptions } from "./services/tts/math-speech.js";
 export type {
 	TTSHostToolbarLayout,
 	TTSLayoutMode,

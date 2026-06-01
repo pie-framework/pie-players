@@ -182,8 +182,8 @@ const updateRegisteredElement = (
  * already registered with `customElements`. This is the common case
  * when `pie-item-player` mounts inside `pie-section-player`: the
  * section player has already pre-warmed the bundle through the deep
- * `ElementLoader` primitive, so the legacy `window.pie.default`
- * requirement no longer applies for those tags.
+ * `ElementLoader` primitive, so the `window.pie.default` bundle-global
+ * path is not required for those tags.
  */
 const registerPieElementsFromBundle = (
 	elementModule: any | null,
@@ -498,7 +498,7 @@ const registerPieElementsFromBundle = (
 /**
  * Initialize PIE elements from a bundle that may already be loaded.
  *
- * `window.pie` is the legacy bundle-loading global populated by
+ * `window.pie` is the IIFE bundle-loading global populated by
  * `loadPieModule` / `loadBundleFromString`. When the host loaded the
  * bundle through the deep `ElementLoader` primitive instead — as
  * `pie-section-player` does — the global is irrelevant: the loader
@@ -507,7 +507,7 @@ const registerPieElementsFromBundle = (
  *
  * Behavior:
  * - `window.pie` available → register any new tags from the bundle and
- *   update bindings for already-registered tags (legacy fast path).
+ *   update bindings for already-registered tags.
  * - `window.pie` missing → fall back to the update-only path. Tags that
  *   are already registered get their model/session updated; tags that
  *   are not yet registered are logged at `warn` and left alone — the

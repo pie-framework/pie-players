@@ -273,7 +273,7 @@ See the [section-demos](../../apps/section-demos/) for complete examples:
 
 ## Related Documentation
 
-- [ToolkitCoordinator Architecture](../../docs/architecture/TOOLKIT_COORDINATOR.md) - Element-level state design
+- [ToolkitCoordinator Architecture](../../docs/architecture/architecture.md#toolkitcoordinator-centralized-service-management) - Element-level state design
 - [Assessment Toolkit README](../assessment-toolkit/README.md) - Toolkit overview
 - [Section Player README](../section-player/README.md) - Integration guide
 

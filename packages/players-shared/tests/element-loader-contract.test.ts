@@ -9,7 +9,7 @@
  *   it rejects with an `ElementLoaderError` carrying `unregisteredTags`
  *   and a per-tag `reasons` map.
  *
- * Every test here corresponds to a real failure mode in the legacy
+ * Every test here corresponds to a real failure mode in the prior
  * per-strategy loader families where the load promise resolved while tags
  * were not actually registered. The primitive is expected to catch each of
  * these through a combination of adapter-level rejections and a post-load

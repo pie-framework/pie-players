@@ -42,8 +42,6 @@ export interface Config {
 	options?: {
 		/** Role for rendering (affects answer visibility) */
 		role?: "student" | "instructor";
-		/** Legacy mode property (converted from role) */
-		mode?: "student" | "instructor";
 	};
 }
 

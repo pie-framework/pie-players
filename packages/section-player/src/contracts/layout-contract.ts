@@ -24,18 +24,10 @@ export type SectionPlayerBasicPropName =
 	| "contentMaxWidthWithPassage"
 	| "splitPaneMinRegionWidth"
 	| "splitPaneInitialPassageWidth"
-	| "splitPaneCollapseStrategy"
-	| "enabledTools";
+	| "splitPaneCollapseStrategy";
 
 export type SectionPlayerAdvancedPropName =
 	| "runtime"
-	| "playerType"
-	| "player"
-	| "lazyInit"
-	| "tools"
-	| "accessibility"
-	| "coordinator"
-	| "env"
 	| "iifeBundleHost"
 	| "toolRegistry"
 	| "sectionHostButtons"

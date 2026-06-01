@@ -1,4 +1,5 @@
 import { DEFAULT_TOOL_PLACEMENT } from "./tool-config-defaults.js";
+import type { SREMathSpeechOptions } from "./tts/math-speech.js";
 
 export type ToolPlacementLevel = "section" | "item" | "passage";
 
@@ -52,6 +53,8 @@ export interface ToolRuntimeProviderConfig {
 	runtime?: ToolRuntimeProviderBridge;
 }
 
+export type TextToSpeechRuntimeProviderId = "polly" | "google" | "custom";
+
 export interface ToolProviderConfig {
 	enabled?: boolean;
 	provider?: ToolRuntimeProviderConfig;
@@ -59,8 +62,22 @@ export interface ToolProviderConfig {
 	[key: string]: unknown;
 }
 
+export interface TextToSpeechToolProviderSettings
+	extends Record<string, unknown> {
+	mathSpeech?: SREMathSpeechOptions;
+}
+
+export interface TextToSpeechToolProviderConfig
+	extends Omit<ToolProviderConfig, "provider" | "settings"> {
+	provider?: ToolRuntimeProviderConfig | TextToSpeechRuntimeProviderId;
+	serverProvider?: TextToSpeechRuntimeProviderId;
+	mathSpeech?: SREMathSpeechOptions;
+	settings?: TextToSpeechToolProviderSettings;
+}
+
 export interface ToolProvidersConfig {
-	[key: string]: ToolProviderConfig | undefined;
+	textToSpeech?: TextToSpeechToolProviderConfig;
+	[key: string]: ToolProviderConfig | TextToSpeechToolProviderConfig | undefined;
 }
 
 /**
@@ -141,7 +158,7 @@ function assertPolicyConfig(value: unknown): ToolPolicyConfig | undefined {
 function assertProviderConfig(
 	providerId: string,
 	value: unknown,
-): ToolProviderConfig | undefined {
+): ToolProviderConfig | TextToSpeechToolProviderConfig | undefined {
 	if (value == null) return undefined;
 	if (!isPlainObject(value)) {
 		throw new Error(
@@ -149,6 +166,8 @@ function assertProviderConfig(
 		);
 	}
 	const config = value as ToolProviderConfig;
+	const isTTSRuntimeProviderId = (provider: unknown): boolean =>
+		provider === "polly" || provider === "google" || provider === "custom";
 	if (
 		"enabled" in config &&
 		config.enabled !== undefined &&
@@ -170,7 +189,8 @@ function assertProviderConfig(
 	if (
 		"provider" in config &&
 		config.provider !== undefined &&
-		!isPlainObject(config.provider)
+		!isPlainObject(config.provider) &&
+		!(providerId === "textToSpeech" && isTTSRuntimeProviderId(config.provider))
 	) {
 		throw new Error(
 			`Invalid tools config at "providers.${providerId}.provider": expected an object.`,
@@ -281,14 +301,3 @@ export function normalizeToolsConfig(
 	return config;
 }
 
-export function resolveToolsForLevel(
-	config: CanonicalToolsConfig,
-	level: ToolPlacementLevel,
-): string[] {
-	const placement = normalizeToolList(config.placement[level]);
-	const allowed = normalizeToolList(config.policy.allowed);
-	const blocked = new Set(normalizeToolList(config.policy.blocked));
-	const passAllowed =
-		allowed.length === 0 ? placement : placement.filter((toolId) => allowed.includes(toolId));
-	return passAllowed.filter((toolId) => !blocked.has(toolId));
-}

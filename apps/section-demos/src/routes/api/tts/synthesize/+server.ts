@@ -6,9 +6,9 @@
  */
 
 import { PollyServerProvider } from "@pie-players/tts-server-polly";
-import { GoogleCloudTTSProvider } from "@pie-players/tts-server-google";
 import { error, json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
+import type { GoogleCloudTTSProvider as GoogleCloudTTSProviderType } from "@pie-players/tts-server-google";
 
 type PollyEngine = "neural" | "standard";
 type PollyOutputFormat = "mp3" | "ogg" | "pcm";
@@ -16,12 +16,15 @@ type PollySpeechMarkType = "word" | "sentence" | "ssml";
 
 // Singleton provider instances (reused across requests)
 const pollyProviders = new Map<PollyEngine, PollyServerProvider>();
-let googleProvider: GoogleCloudTTSProvider | null = null;
+let googleProvider: GoogleCloudTTSProviderType | null = null;
+const GOOGLE_TTS_PROVIDER_PACKAGE = "@pie-players/tts-server-google";
 
 /**
  * Get or initialize the Polly provider
  */
-async function getPollyProvider(engine: PollyEngine): Promise<PollyServerProvider> {
+async function getPollyProvider(
+	engine: PollyEngine,
+): Promise<PollyServerProvider> {
 	const existing = pollyProviders.get(engine);
 	if (existing) return existing;
 
@@ -77,7 +80,9 @@ async function getPollyProvider(engine: PollyEngine): Promise<PollyServerProvide
 			defaultVoice: "Joanna",
 		});
 
-		console.log(`[TTS API] Polly provider initialized successfully (${engine})`);
+		console.log(
+			`[TTS API] Polly provider initialized successfully (${engine})`,
+		);
 		pollyProviders.set(engine, provider);
 	}
 	return pollyProviders.get(engine)!;
@@ -86,62 +91,66 @@ async function getPollyProvider(engine: PollyEngine): Promise<PollyServerProvide
 /**
  * Get or initialize the Google provider
  */
-async function getGoogleProvider(): Promise<GoogleCloudTTSProvider> {
-	if (!googleProvider) {
-		console.log("[TTS API] Initializing Google Cloud TTS provider...");
+async function getGoogleProvider(): Promise<GoogleCloudTTSProviderType> {
+	if (googleProvider) return googleProvider;
 
-		// Check for API key (simple method)
-		const hasApiKey = !!process.env.GOOGLE_API_KEY;
-		// Check for service account credentials (advanced method)
-		const hasServiceAccount = !!process.env.GOOGLE_APPLICATION_CREDENTIALS;
+	console.log("[TTS API] Initializing Google Cloud TTS provider...");
 
-		console.log(
-			"[TTS API] GOOGLE_API_KEY:",
-			hasApiKey
-				? `✓ Set (${process.env.GOOGLE_API_KEY?.substring(0, 8)}...)`
-				: "✗ Missing",
-		);
-		console.log(
-			"[TTS API] GOOGLE_APPLICATION_CREDENTIALS:",
-			hasServiceAccount ? "✓ Set" : "✗ Missing",
-		);
-		console.log(
-			"[TTS API] GOOGLE_CLOUD_PROJECT:",
-			process.env.GOOGLE_CLOUD_PROJECT ? "✓ Set" : "✗ Missing",
-		);
+	// Check for API key (simple method)
+	const hasApiKey = !!process.env.GOOGLE_API_KEY;
+	// Check for service account credentials (advanced method)
+	const hasServiceAccount = !!process.env.GOOGLE_APPLICATION_CREDENTIALS;
 
-		// Require at least one authentication method
-		if (!hasApiKey && !hasServiceAccount) {
-			const errorMsg =
-				"Google Cloud credentials not configured. Please set either:\n" +
-				"  - GOOGLE_API_KEY (simpler, for testing)\n" +
-				"  - GOOGLE_APPLICATION_CREDENTIALS (recommended for production, path to service account JSON)";
-			console.error(`[TTS API] ${errorMsg}`);
-			throw new Error(errorMsg);
-		}
+	console.log(
+		"[TTS API] GOOGLE_API_KEY:",
+		hasApiKey
+			? `✓ Set (${process.env.GOOGLE_API_KEY?.substring(0, 8)}...)`
+			: "✗ Missing",
+	);
+	console.log(
+		"[TTS API] GOOGLE_APPLICATION_CREDENTIALS:",
+		hasServiceAccount ? "✓ Set" : "✗ Missing",
+	);
+	console.log(
+		"[TTS API] GOOGLE_CLOUD_PROJECT:",
+		process.env.GOOGLE_CLOUD_PROJECT ? "✓ Set" : "✗ Missing",
+	);
 
-		googleProvider = new GoogleCloudTTSProvider();
-
-		// Build credentials object based on what's available
-		let credentials: string | { apiKey: string } | undefined;
-		if (hasApiKey) {
-			console.log("[TTS API] Using API key authentication");
-			credentials = { apiKey: process.env.GOOGLE_API_KEY! };
-		} else if (hasServiceAccount) {
-			console.log("[TTS API] Using service account authentication");
-			credentials = process.env.GOOGLE_APPLICATION_CREDENTIALS;
-		}
-
-		await googleProvider.initialize({
-			projectId: process.env.GOOGLE_CLOUD_PROJECT || "pie-tts-project",
-			credentials,
-			defaultVoice: "en-US-Wavenet-A",
-			voiceType: "wavenet",
-		});
-
-		console.log("[TTS API] Google provider initialized successfully");
+	// Require at least one authentication method
+	if (!hasApiKey && !hasServiceAccount) {
+		const errorMsg =
+			"Google Cloud credentials not configured. Please set either:\n" +
+			"  - GOOGLE_API_KEY (simpler, for testing)\n" +
+			"  - GOOGLE_APPLICATION_CREDENTIALS (recommended for production, path to service account JSON)";
+		console.error(`[TTS API] ${errorMsg}`);
+		throw new Error(errorMsg);
 	}
-	return googleProvider;
+
+	const { GoogleCloudTTSProvider } = await import(
+		/* @vite-ignore */ GOOGLE_TTS_PROVIDER_PACKAGE
+	);
+	const provider = new GoogleCloudTTSProvider();
+
+	// Build credentials object based on what's available
+	let credentials: string | { apiKey: string } | undefined;
+	if (hasApiKey) {
+		console.log("[TTS API] Using API key authentication");
+		credentials = { apiKey: process.env.GOOGLE_API_KEY! };
+	} else if (hasServiceAccount) {
+		console.log("[TTS API] Using service account authentication");
+		credentials = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+	}
+
+	await provider.initialize({
+		projectId: process.env.GOOGLE_CLOUD_PROJECT || "pie-tts-project",
+		credentials,
+		defaultVoice: "en-US-Wavenet-A",
+		voiceType: "wavenet",
+	});
+
+	console.log("[TTS API] Google provider initialized successfully");
+	googleProvider = provider;
+	return provider;
 }
 
 /**
@@ -230,8 +239,9 @@ export const POST: RequestHandler = async ({ request }) => {
 						? (format as PollyOutputFormat)
 						: undefined;
 				const requestedSpeechMarkTypes = Array.isArray(speechMarkTypes)
-					? speechMarkTypes.filter((entry): entry is PollySpeechMarkType =>
-							entry === "word" || entry === "sentence" || entry === "ssml",
+					? speechMarkTypes.filter(
+							(entry): entry is PollySpeechMarkType =>
+								entry === "word" || entry === "sentence" || entry === "ssml",
 						)
 					: undefined;
 				const polly = await getPollyProvider(requestedEngine);

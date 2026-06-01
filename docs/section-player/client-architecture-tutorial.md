@@ -66,7 +66,6 @@ In CE-first mode, you pass tool and section configuration directly as element at
   attempt-id="attempt-xyz"
   show-toolbar="true"
   toolbar-position="right"
-  enabled-tools="theme,graph,periodicTable,lineReader"
 ></pie-section-player-splitpane>
 ```
 
@@ -78,13 +77,9 @@ Key props you'll set via attributes:
 | `section-id` | `string` | Identifies this section |
 | `attempt-id` | `string` | Identifies the attempt (host-owned) |
 | `section` | `object` | Section content/composition model |
-| `env` | `object` | `{ mode: 'gather'/'view'/'evaluate', role: 'student'/'instructor' }` |
-| `tools` | `object` | Tool placement/provider config (see §5) |
+| `runtime` | `object` | Player, tool, environment, accessibility, and coordinator config |
 | `debug` | `boolean` | Verbose logging control (`true` to enable, `false`/`0` to disable) |
 | `show-toolbar` | `boolean` | Whether to render the section toolbar |
-| `enabled-tools` | `string` | Comma-separated list of tool IDs for the toolbar |
-| `player-type` | `string` | `'iife'` (default), `'esm'`, or `'preloaded'` |
-| `lazy-init` | `boolean` | Defer toolkit initialization (default: `true`) |
 
 To obtain the coordinator and attach any hooks:
 
@@ -125,11 +120,14 @@ const coordinator = new ToolkitCoordinator({
   },
 });
 
-// Pass to the element — no ontoolkit-ready handler needed
-playerEl.coordinator = coordinator;
+// Pass to the element through runtime — no ontoolkit-ready handler needed
+playerEl.runtime = {
+  ...(playerEl.runtime ?? {}),
+  coordinator,
+};
 ```
 
-The `coordinator` prop takes precedence over CE-generated coordinators. When you pass one, the `ontoolkit-ready` event still fires, but it carries the same coordinator reference you provided — use it for identity checks rather than initialization.
+The `runtime.coordinator` value takes precedence over CE-generated coordinators. When you pass one, the `ontoolkit-ready` event still fires, but it carries the same coordinator reference you provided. Use it for identity checks rather than initialization.
 
 ---
 
@@ -137,7 +135,7 @@ The `coordinator` prop takes precedence over CE-generated coordinators. When you
 
 The section player expects a `section` object describing the composition — items, passages, and their relationships. You set this as the `section` property on the element.
 
-Content items are rendered via `<pie-item-player>` elements. The `player-type` attribute on the section player maps directly to the item player's `strategy` and controls how PIE element bundles are fetched and registered.
+Content items are rendered via `<pie-item-player>` elements. `runtime.playerType` maps directly to the item player's `strategy` and controls how PIE element bundles are fetched and registered.
 
 - **`iife`** (default): Elements are loaded by injecting `<script>` tags that fetch IIFE bundles from a bundle host (default: `https://proxy.pie-api.com/bundles`). PIE was built during an era when IIFE was the most reliable cross-environment delivery format, and this remains the most widely deployed strategy. It is the safe default for any production system today.
 
@@ -145,7 +143,7 @@ Content items are rendered via `<pie-item-player>` elements. The `player-type` a
 
 - **`preloaded`**: All required PIE custom elements are assumed to be already registered in the browser — no loading occurs at runtime. This strategy is used with the `@pie-players/pie-preloaded-player` package, which is a pre-built project dependency containing a fixed set of elements bundled at build time. Because the element set and versions are locked to your application's CI/CD cycle, this trades flexibility for zero-network-request rendering: useful for offline environments, strict performance budgets, or controlled test harnesses. The downside is that updating an element version or adding a new element requires a redeployment — you lose the ability to hot-swap element versions dynamically without a full release cycle.
 
-For `loaderOptions` (custom bundle host URL, ESM CDN URL, import-map mode, etc.) see [docs/item-player/loading-strategies.md](./loading-strategies.md).
+For `loaderOptions` (custom bundle host URL, ESM CDN URL, import-map mode, etc.) see [docs/item-player/loading-strategies.md](../item-player/loading-strategies.md).
 
 ### Item-level observability wiring
 
@@ -189,7 +187,7 @@ Notes:
 - `instrumentationProvider: null` is an explicit no-op opt-out.
 - Ownership model: section-player instrumentation owns section runtime/public events; toolkit instrumentation covers toolkit lifecycle events. This avoids semantic overlap and duplicate telemetry.
 
-The player tracks loading through `totalRegistered` and `totalLoaded` counters (accessible via `getRuntimeState()`) and emits `pie-loading-complete` when all registered items have loaded. The canonical lifecycle stream is `pie-stage-change`, which carries the full transition sequence (`composed` → `engine-ready` → `interactive` → `disposed`) on a single typed event. The deprecated readiness aliases (`readiness-change`, `interaction-ready`, `ready`) and their `legacy-event-bridge` were removed in the broad architecture review compat sweep — see §10 for the migration mapping.
+The player tracks loading through `totalRegistered` and `totalLoaded` counters (accessible via `getRuntimeState()`) and emits `pie-loading-complete` when all registered items have loaded. The canonical lifecycle stream is `pie-stage-change`, which carries the full transition sequence (`composed` → `engine-ready` → `interactive` → `disposed`) on a single typed event. See §10 for the canonical host event mapping.
 
 ### Instrumentation (dedicated)
 
@@ -272,7 +270,7 @@ tools: {
 }
 ```
 
-Tool IDs (canonical aliases): `theme`, `graph`, `periodicTable`, `protractor`, `lineReader`, `ruler`, `calculator`, `textToSpeech`, `annotationToolbar`, `answerEliminator`, `colorScheme`.
+Tool IDs: `theme`, `graph`, `periodicTable`, `protractor`, `lineReader`, `ruler`, `calculator`, `textToSpeech`, `annotationToolbar`, `answerEliminator`.
 
 A typical multi-tool configuration:
 
@@ -311,7 +309,7 @@ coordinator.elementToolStateStore // ephemeral per-element tool state
 coordinator.catalogResolver      // QTI 3.0 accessibility catalog resolution
 ```
 
-The TTS service uses a pluggable provider architecture (browser Web Speech API by default, with AWS Polly and Google TTS as built-in alternatives, or implement `ITTSProvider` for your own backend). The highlight coordinator manages two independent layers — TTS word/sentence tracking and student-created annotations — using the browser's CSS Custom Highlight API for zero DOM mutation. See the `@pie-players/tts` and assessment toolkit package documentation for the full service APIs.
+The TTS service uses a pluggable provider architecture (browser Web Speech API by default, with AWS Polly and Google TTS as built-in alternatives, or implement `ITTSProvider` for your own backend). The highlight coordinator manages two independent layers — TTS word/sentence tracking and student-created annotations — using the browser's CSS Custom Highlight API for zero DOM mutation. See `@pie-players/pie-tts` and the assessment toolkit package documentation for the full service APIs.
 
 ### Custom TTS option (host-configured)
 
@@ -379,11 +377,12 @@ export const coordinator = new ToolkitCoordinator({
   assessment-id="my-assessment-id"
   section-id={sectionId}
   attempt-id={attemptId}
-  tools={coordinator.config.tools}
   section={section}
-  coordinator={coordinator}
+  runtime={{
+    coordinator,
+    tools: coordinator.config.tools
+  }}
   show-toolbar={true}
-  enabled-tools="theme,graph,periodicTable,protractor,lineReader,ruler,annotationToolbar"
 ></pie-section-player-splitpane>
 ```
 
@@ -513,7 +512,7 @@ The theme system uses a provider adapter model to read variables from an existin
 
 ### Color schemes and the theme tool
 
-Color schemes are overlays on top of the base theme — sets of `--pie-*` variable overrides designed for accessibility needs like high contrast or inverted colors. PIE ships several built-in schemes and supports custom scheme registration via `registerPieColorSchemes()`. The `colorScheme` toolbar tool lets students pick their preferred scheme at runtime; the selection is stored in tool state managed by the coordinator.
+Color schemes are overlays on top of the base theme — sets of `--pie-*` variable overrides designed for accessibility needs like high contrast or inverted colors. PIE ships several built-in schemes and supports custom scheme registration via `registerPieColorSchemes()`. The `theme` toolbar tool lets students pick their preferred scheme at runtime; the selection is stored in tool state managed by the coordinator.
 
 Separately, the `theme` toolbar tool is a student-facing control for switching between light and dark mode. This is distinct from the `<pie-theme>` element, which is developer-controlled and set at integration time. Both layers compose: your baseline sets the default, the student's runtime selection overrides it.
 
@@ -543,7 +542,7 @@ playerEl.addEventListener('pie-stage-change', (event) => {
 });
 ```
 
-The legacy `section-controller-ready` event was removed in the broad architecture review compat sweep, along with its `pie-section-controller-ready` instrumentation mapping. Hosts must use one of the two patterns above (`waitForSectionController(...)` / `getSectionController()`, or `pie-stage-change` filtered on `detail.stage === "engine-ready"`).
+Hosts must use one of the two patterns above (`waitForSectionController(...)` / `getSectionController()`, or `pie-stage-change` filtered on `detail.stage === "engine-ready"`) for controller readiness.
 
 ### Reading state
 
@@ -814,7 +813,7 @@ These are the events to build host integrations against. They are dispatched on 
 | Event name | Detail | Callback-prop mirror | When |
 | --- | --- | --- | --- |
 | `toolkit-ready` | `{ coordinator }` | — | Coordinator initialized — **CE-first only**: this is how you obtain the coordinator reference when you haven't constructed one yourself |
-| `pie-stage-change` | `StageChangeDetail` (`{ stage, status, runtimeId, sectionId, attemptId, sourceCe, timestamp }`) | `onStageChange(detail)` | One typed transition stream covering the full lifecycle: `composed` → `engine-ready` → `interactive` → `disposed`. Replaces the legacy readiness vocabulary with a single subscription that correlates across wrapper depths. |
+| `pie-stage-change` | `StageChangeDetail` (`{ stage, status, runtimeId, sectionId, attemptId, sourceCe, timestamp }`) | `onStageChange(detail)` | One typed transition stream covering the full lifecycle: `composed` → `engine-ready` → `interactive` → `disposed`, with a single subscription that correlates across wrapper depths. |
 | `pie-loading-complete` | `LoadingCompleteDetail` (`{ runtimeId, sectionId, attemptId, itemCount, loadedCount, sourceCe, timestamp }`) | `onLoadingComplete(detail)` | Fires once per cohort when every item has finished loading (gated on `interactive`). |
 | `framework-error` | `FrameworkErrorModel` | `onFrameworkError(model)` | Canonical error event for any failure crossing the framework boundary (coordinator init, runtime init, tool config, provider/TTS init, tool runtime). The callback prop, the package-internal `FrameworkErrorBus`, and the layout-host DOM event each deliver one notification per error. |
 
@@ -826,9 +825,9 @@ Recommended host wiring:
 - Show item-loading affordances until `pie-loading-complete` fires for the active cohort.
 - Surface `framework-error` to your error UX via `onFrameworkError(model)` (single-fire) or via the layout-host DOM event — both deliver each error exactly once.
 
-### Deprecated readiness events (removed)
+### Event Mapping
 
-The deprecated readiness aliases and their `legacy-event-bridge` were removed in the broad architecture review compat sweep. Hosts that listened for them migrate to the canonical events as follows:
+Build host integrations against the canonical events as follows:
 
 | Removed event name | Replacement | Notes |
 | --- | --- | --- |
@@ -837,7 +836,7 @@ The deprecated readiness aliases and their `legacy-event-bridge` were removed in
 | `ready` | `pie-loading-complete` | Same single-shot, cohort-scoped semantics. |
 | `section-controller-ready` | `waitForSectionController(timeoutMs)` / `getSectionController()` on the layout CE, or `pie-stage-change` filtered on `detail.stage === "engine-ready"` | Removed alongside its `pie-section-controller-ready` instrumentation mapping. |
 
-Note on `framework-error` (previously dual-emitted): in earlier releases, while a `<pie-assessment-toolkit>` was nested inside a layout CE, the layout host received **two** `framework-error` DOM events per error (one engine-bridge emit on the layout host plus the bubbled toolkit emit). The dual-emit was collapsed in the broad architecture review compat sweep — the kernel listener at `<pie-section-player-base>` now stops the bubbled toolkit emit, leaving the engine-bridge emit on the layout host as the single canonical DOM surface. The single-emit contract is pinned by `tests/section-player-framework-error-dual-emit.test.ts`. Direct listeners attached to `<pie-assessment-toolkit>` itself are unaffected — the toolkit's own emit reaches them before the kernel listener runs.
+Note on `framework-error`: while a `<pie-assessment-toolkit>` is nested inside a layout CE, the kernel listener at `<pie-section-player-base>` stops the bubbled toolkit emit, leaving the engine-bridge emit on the layout host as the single canonical DOM surface. The single-emit contract is pinned by `tests/section-player-framework-error-dual-emit.test.ts`. Direct listeners attached to `<pie-assessment-toolkit>` itself are unaffected — the toolkit's own emit reaches them before the kernel listener runs.
 
 ### Internal plumbing events (do not build host integrations against)
 

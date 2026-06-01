@@ -256,5 +256,5 @@ Use `<aws-say-as interpret-as='spell-out'>` for:
 
 - [AWS Polly SSML Documentation](https://docs.aws.amazon.com/polly/latest/dg/supportedtags.html)
 - [W3C SSML Specification](https://www.w3.org/TR/speech-synthesis/)
-- [Demo 4: TTS with SSML](../apps/section-demos/src/lib/content/demo4-tts-ssml.ts)
+- [Demo 4: TTS with SSML](../../apps/section-demos/src/lib/content/demo4-tts-ssml.ts)
 - [TTS Architecture](./tts-architecture.md)

@@ -132,6 +132,11 @@ export interface ConfigElements {
 export interface PieModel {
 	id: string;
 	element: string;
+	/**
+	 * QTI/APIP-style accessibility catalogs owned by this model's renderable fields
+	 * (prompt, choices, feedback, rationale, etc.).
+	 */
+	accessibilityCatalogs?: AccessibilityCatalog[];
 
 	[key: string]: any;
 }
@@ -161,6 +166,8 @@ export interface PassageEntity
 		ConfigContainerEntity,
 		SearchMetaDataEntity {
 	name: string;
+	/** QTI/APIP-style accessibility catalogs owned by this passage content. */
+	accessibilityCatalogs?: AccessibilityCatalog[];
 	retired?: boolean;
 	published?: boolean;
 	// Search result highlights from OpenSearch (keyed by field name)
@@ -173,6 +180,8 @@ export interface ItemEntity
 		SearchMetaDataEntity {
 	name?: string;
 	passage?: string | PassageEntity;
+	/** QTI/APIP-style accessibility catalogs owned by the item root. */
+	accessibilityCatalogs?: AccessibilityCatalog[];
 	retired?: boolean;
 	published?: boolean;
 	configuration?: any;
@@ -373,26 +382,6 @@ export interface StimulusRef {
 }
 */
 
-/**
- * Reference to question and sorting info within a section.
- */
-export interface SectionQuestionRef {
-	questionId: string;
-	sort?: string;
-}
-
-/**
- * Questions can optionally be grouped in sections (legacy).
- */
-export interface LegacyAssessmentSection
-	extends SearchMetaDataEntity,
-		SettingsMetaDataEntity {
-	id?: string;
-	title?: string;
-	sort?: string;
-	questions: SectionQuestionRef[];
-}
-
 export interface AssessmentEntity extends BaseEntity, SearchMetaDataEntity {
 	name?: string;
 	title?: string;
@@ -413,12 +402,6 @@ export interface AssessmentEntity extends BaseEntity, SearchMetaDataEntity {
 
 	/** QTI 3.0: Personal Needs Profile (PNP 3.0) */
 	personalNeedsProfile?: PersonalNeedsProfile;
-
-	/** Legacy: Flat questions array */
-	questions?: QuestionEntity[];
-
-	/** Legacy: Simple sections */
-	sections?: LegacyAssessmentSection[];
 
 	/**
 	 * QTI 3.0: testParts structure (authoritative for QTI format).
@@ -500,6 +483,22 @@ export interface AssessmentSettings {
 			pitch?: number;
 
 			/**
+			 * Speech Rule Engine options for generated MathML speech.
+			 *
+			 * `style` is passed to SRE directly; ClearSpeak combines multiple
+			 * preferences with ":" (for example,
+			 * "ImpliedTimes_MoreImpliedTimes:Paren_Silent").
+			 *
+			 * Mirrors assessment-toolkit's SREMathSpeechOptions without importing
+			 * toolkit service types into the shared content contract package.
+			 */
+			mathSpeech?: {
+				domain?: string;
+				style?: string;
+				engineOptions?: Record<string, unknown>;
+			};
+
+			/**
 			 * Provider-specific options (extensions)
 			 *
 			 * @extension Not portable across providers
@@ -513,7 +512,7 @@ export interface AssessmentSettings {
 
 	/** Theme configuration (not in PNP) */
 	themeConfig?: {
-		colorScheme?: "default" | "high-contrast" | "dark";
+		scheme?: "default" | "high-contrast" | "dark";
 		fontSize?: number;
 		fontFamily?: string;
 		lineHeight?: number;
@@ -575,7 +574,7 @@ export interface SanctionedVersionChangeEntity extends BaseEntity {
 	jobId: string;
 }
 
-export type PlayerMode = "gather" | "view" | "evaluate" | "browse" | "author";
+export type PlayerMode = "gather" | "view" | "evaluate" | "author";
 
 export type PlayerRole = "student" | "instructor";
 
@@ -1003,4 +1002,3 @@ export interface CmsBlueprintItemEntity extends BaseEntity {
 	details?: string;
 	assessmentId?: string;
 }
-

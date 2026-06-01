@@ -8,13 +8,7 @@
 			section: { type: "Object", reflect: false },
 			sectionId: { attribute: "section-id", type: "String" },
 			attemptId: { attribute: "attempt-id", type: "String" },
-			playerType: { attribute: "player-type", type: "String" },
-			player: { type: "Object", reflect: false },
-			lazyInit: { attribute: "lazy-init", type: "Boolean" },
-			tools: { type: "Object", reflect: false },
 			toolRegistry: { type: "Object", reflect: false },
-			accessibility: { type: "Object", reflect: false },
-			coordinator: { type: "Object", reflect: false },
 			toolConfigStrictness: {
 				attribute: "tool-config-strictness",
 				type: "String",
@@ -25,7 +19,6 @@
 			// Wired imperatively to the toolkit element so the resolved
 			// handler reaches the canonical stage emit point.
 			onStageChange: { type: "Object", reflect: false },
-			env: { type: "Object", reflect: false },
 		},
 	}}
 />
@@ -49,8 +42,6 @@
 		DEFAULT_ASSESSMENT_ID,
 		DEFAULT_ENV,
 		DEFAULT_ISOLATION,
-		DEFAULT_LAZY_INIT,
-		DEFAULT_PLAYER_TYPE,
 		resolveOnFrameworkError,
 		type RuntimeConfig,
 		type StageChangeHandler,
@@ -61,19 +52,12 @@
 		section = null as AssessmentSection | null,
 		sectionId = "",
 		attemptId = "",
-		playerType = DEFAULT_PLAYER_TYPE,
-		player = null as Record<string, unknown> | null,
-		lazyInit = DEFAULT_LAZY_INIT,
-		tools = null as Record<string, unknown> | null,
 		toolRegistry = null as ToolRegistry | null,
-		accessibility = null as Record<string, unknown> | null,
-		coordinator = null as unknown,
 		toolConfigStrictness = undefined as ToolConfigStrictness | undefined,
 		onFrameworkError = undefined as
 			| undefined
 			| ((model: FrameworkErrorModel) => void),
 		onStageChange = undefined as StageChangeHandler | undefined,
-		env = null as Record<string, unknown> | null,
 	} = $props();
 
 	let toolkitElement = $state<any>(null);
@@ -90,10 +74,10 @@
 	};
 	const dispatch = createEventDispatcher<BaseSectionPlayerEvents>();
 	const effectiveAssessmentId = $derived.by(() => runtime?.assessmentId ?? assessmentId);
-	const effectivePlayerType = $derived.by(() => runtime?.playerType ?? playerType);
-	const effectivePlayer = $derived.by(() => runtime?.player ?? player);
-	const effectiveLazyInit = $derived.by(() => runtime?.lazyInit ?? lazyInit);
-	const effectiveTools = $derived.by(() => runtime?.tools ?? tools);
+	const effectivePlayerType = $derived.by(() => runtime?.playerType);
+	const effectivePlayer = $derived.by(() => runtime?.player ?? null);
+	const effectiveLazyInit = $derived.by(() => runtime?.lazyInit);
+	const effectiveTools = $derived.by(() => runtime?.tools ?? null);
 	const effectiveToolContextResolvers = $derived.by(
 		() => runtime?.toolContextResolvers ?? null,
 	);
@@ -104,16 +88,16 @@
 			: "error";
 	});
 	const effectiveAccessibility = $derived.by(
-		() => runtime?.accessibility ?? accessibility,
+		() => runtime?.accessibility ?? null,
 	);
-	const effectiveCoordinator = $derived.by(() => runtime?.coordinator ?? coordinator);
+	const effectiveCoordinator = $derived.by(() => runtime?.coordinator ?? null);
 	const effectiveCreateSectionController = $derived.by(
 		() => runtime?.createSectionController,
 	);
 	const effectiveIsolation = $derived.by(
 		() => runtime?.isolation ?? DEFAULT_ISOLATION,
 	);
-	const effectiveEnv = $derived.by(() => runtime?.env ?? env ?? DEFAULT_ENV);
+	const effectiveEnv = $derived.by(() => runtime?.env ?? DEFAULT_ENV);
 	// Two-tier resolution. The base CE talks to the toolkit directly (no
 	// kernel layer), so it owns the resolver boundary in this path.
 	const effectiveOnFrameworkError = $derived.by(() =>

@@ -47,7 +47,6 @@ Use these local docs before exploring the entire codebase:
 - [`wcag-2.2-aa-baseline.md`](./wcag-2.2-aa-baseline.md)
 - [`patterns-and-widgets.md`](./patterns-and-widgets.md)
 - [`project-surface-map.md`](./project-surface-map.md)
-- [`../evals/readme.md`](../evals/readme.md)
 
 ## Reporting Rule
 

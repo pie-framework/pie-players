@@ -147,9 +147,7 @@ Any `/api/...` route referenced by a toolkit provider must be:
 - **New or custom providers.** Anything that adds an `authFetcher` or
   `apiEndpoint` inherits this contract. If the provider follows URLs
   returned by its backend, it must replicate the same origin-based
-  header-scrubbing that `ServerTTSProvider` does, and match
-  [`legacy-compatibility-boundaries.mdc`](../../.cursor/rules/legacy-compatibility-boundaries.mdc)
-  on any bridged surfaces.
+  header-scrubbing that `ServerTTSProvider` does.
 
 ### What's at risk if this is missed
 

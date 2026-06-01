@@ -55,8 +55,10 @@ This keeps runtime contracts stable while giving layout authors one clear compos
 
 Section-player no longer owns its own runtime resolver, readiness deriver, or
 stage-tracker. Those live in `@pie-players/pie-assessment-toolkit` as a
-layered runtime engine, and the section-player kernel + the toolkit CE both
-consume the same engine instance per cohort.
+layered runtime engine. The section-player kernel owns the canonical
+lifecycle-emitting engine for the layout host; the toolkit CE keeps local
+controller/session plumbing and coordinates external lifecycle emits with the
+kernel through a narrow host context.
 
 ### Architectural pieces
 
@@ -79,10 +81,8 @@ consume the same engine instance per cohort.
     `InstrumentationHook` on each `SectionEngineOutput`, with
     `runtimeId`, `sourceCe`, and `timestamp` stamped from the adapter.
 
-  Note: the deprecated readiness aliases (`readiness-change`,
-  `interaction-ready`, `ready`) and their `legacy-event-bridge`, plus
-  the deprecated `section-controller-ready` Svelte/DOM event, were
-  all removed in the broad architecture review compat sweep — see the
+  Note: hosts should build against `pie-stage-change`,
+  `pie-loading-complete`, and `waitForSectionController(...)`; see the
   Migration section below.
 - **`SectionRuntimeEngine`** — narrow, stable facade hosts use to mount,
   drive, and dispose a section runtime. Owns the registry, lazily constructs
@@ -103,10 +103,11 @@ Section-player owns two pieces of glue:
   drives `dispatchInput(...)` from a single tracked `$effect` wrapped in
   `untrack(...)`, and publishes the engine via a Svelte context
   (`SECTION_RUNTIME_ENGINE_KEY`) and a cross-CE host context
-  (`sectionRuntimeEngineHostContext`). When `pie-assessment-toolkit` is
-  nested inside the kernel-published host context, the toolkit consumes
-  the kernel's engine instead of constructing its own — guaranteeing one
-  `StageTracker` per cohort, not two.
+  (`sectionRuntimeEngineHostContext`). The cross-CE context is deliberately
+  narrow: nested `pie-assessment-toolkit` instances use it as a lifecycle
+  ownership signal so external lifecycle emits stay on the layout CE host,
+  while toolkit controller registration/session plumbing remains local to
+  the toolkit CE.
 - **`section-player-host-runtime.ts`**
   ([source](src/components/shared/section-player-host-runtime.ts)) — the
   player-coupled wrapper around the toolkit resolver. Holds
@@ -128,25 +129,23 @@ Section-player owns two pieces of glue:
   manually, inspect FSM state, or build alternate fan-out paths. Symbols
   here may change between minor versions with a changeset note.
 
-### Single-engine invariant
+### Lifecycle emit invariant
 
-A nested `pie-assessment-toolkit` detects the kernel-published engine
-via `sectionRuntimeEngineHostContext` and **suppresses its own external
-lifecycle DOM emits and stage tracker** in favor of the kernel's
-engine. A standalone `pie-assessment-toolkit` (no upstream context)
-emits from its own engine. Either way, the externally observable
-invariant is **one cohort = one canonical event chain on the layout
-host** (one `pie-stage-change` per stage, one `pie-loading-complete`
-per cohort), regardless of wrapper depth. During the current 0.x
-line the toolkit still constructs a local engine for its
-controller-side surface (`register`, `handleContent*`, `initialize`);
-a future release collapses that surface onto the upstream engine.
+A nested `pie-assessment-toolkit` detects the kernel-published lifecycle
+handle via `sectionRuntimeEngineHostContext` and **suppresses its own
+external lifecycle DOM emits and `onStageChange` callback** in favor of the
+layout host. A standalone `pie-assessment-toolkit` (no host context) emits
+from its own engine. Either way, the externally observable invariant is **one
+cohort = one canonical event chain on the layout host** (one
+`pie-stage-change` per stage, one `pie-loading-complete` per cohort),
+regardless of wrapper depth. Controller-side toolkit plumbing remains
+toolkit-local; the host context is not a controller API.
 
 **Detection.** If a custom layout shell sees two `pie-stage-change`
 per stage on the same layout host (typically with two distinct
 `detail.runtimeId` values) the shell has not published its engine via
 `sectionRuntimeEngineHostContext`; the wrapped toolkit fell back to
-its standalone path and constructed a second engine. See the
+its standalone lifecycle emit path. See the
 "Common-host wiring example" in
 [`packages/assessment-toolkit/README.md`](../assessment-toolkit/README.md#section-runtime-engine-advanced)
 for the publish step.
@@ -169,7 +168,6 @@ choice is about ergonomics, not capability.
   ```html
   <pie-section-player-splitpane
     section-id="s-1"
-    player-type="custom"
     toolbar-position="top"
     show-toolbar
   ></pie-section-player-splitpane>
@@ -188,32 +186,17 @@ choice is about ergonomics, not capability.
   };
   ```
 
-### Naming rule (strict mirror, locked in M5)
+### Runtime Configuration Rule
 
-Every tier-1 surface obeys the same shape:
-
-```
-kebab-attribute  ↔  camelCaseProp  ↔  runtime.<sameCamelCaseKey>
-```
-
-`tool-config-strictness` ↔ `toolConfigStrictness` prop ↔
-`runtime.toolConfigStrictness`. `enabled-tools` ↔ `enabledTools` prop ↔
-`runtime.enabledTools`. Hosts can move a knob from the easy tier to
-`runtime` (or back) without renaming.
+Top-level layout attributes are reserved for identity, layout, diagnostics,
+and callback/event convenience. Runtime configuration such as player strategy,
+tool placement, accessibility, coordinator, env, and factories belongs on
+`runtime.<key>`.
 
 This is enforced by
-[`tests/m5-mirror-rule.test.ts`](tests/m5-mirror-rule.test.ts), which
-parses the layout CE source files and asserts that every key in
-`RuntimeConfig` is reachable through both tiers and that every declared
-attribute is the camelCase-to-kebab conversion of its prop.
-
-### Precedence rule
-
-`runtime.<key>` wins. When the same knob is set in both tiers, resolution is:
-
-1. `runtime.<key>` if set
-2. Top-level attribute / property if set
-3. Documented default
+[`tests/m5-mirror-rule.test.ts`](tests/m5-mirror-rule.test.ts), which parses
+the layout CE source files and asserts that runtime-owned keys are not exposed
+as duplicate top-level layout props.
 
 This is implemented centrally in `resolveRuntime` / `resolveToolsConfig`,
 which now live in the toolkit at
@@ -255,9 +238,8 @@ design:
 - Per-region toolbar tool placement is configured directly on the
   canonical `tools` object as `tools.placement.item` /
   `tools.placement.passage` (or via `runtime.tools.placement.{item,passage}`).
-  The previously deprecated `item-toolbar-tools` /
-  `passage-toolbar-tools` attribute aliases were removed in the broad
-  architecture review compat sweep.
+  Per-region toolbar strings are derived from those placement arrays for
+  the internal card and pane custom elements.
 - **Runtime-only keys** (`createSectionController`, `isolation`):
   accepted only via `runtime.<key>` on every section-player layout CE.
   The top-level prop aliases were removed in the broad architecture
@@ -276,15 +258,7 @@ The tier-1 attribute set is the same shape across the
 `pie-assessment-toolkit`. Common members include:
 
 - Identity: `assessment-id`, `section-id`, `attempt-id`
-- Player: `player-type`, `lazy-init`
-- Tools: `tools` (object property) and `enabled-tools` (shorthand for
-  `tools.placement.section`). Per-region placement (`tools.placement.item`,
-  `tools.placement.passage`) is configured directly on the canonical
-  `tools` object.
-- Coordination: `coordinator` (`createSectionController` is a
-  runtime-only key on the layout CEs — see "Documented exceptions"
-  above; `<pie-assessment-toolkit>` accepts it as a direct JS prop)
-- Accessibility: `accessibility`
+- Runtime config: `runtime`
 - Diagnostics: `tool-config-strictness`, `debug`. Framework-error
   delivery is via the canonical `onFrameworkError` callback prop and the
   bubbling `framework-error` DOM event (see "Framework error contract"
@@ -309,10 +283,9 @@ Otherwise expose it through `runtime` only.
 
 ## Runtime contract normalization
 
-- `runtime` is the primary input for runtime fields.
-- Top-level runtime-like props on layout elements are compatibility/override inputs used when the corresponding `runtime` field is absent.
+- `runtime` is the input for runtime fields.
 - Toolbar visibility is normalized through shared boolean-like coercion before reaching `pie-section-player-shell`.
-- Toolbar placement overrides are normalized in `resolveToolsConfig` so section/item/passage tool lists remain predictable.
+- Toolbar placement comes from `runtime.tools.placement.{section,item,passage}`.
 
 ## Unidirectional flow invariants
 
@@ -394,10 +367,7 @@ Telemetry
 ## Readiness vocabulary (M6)
 
 `pie-stage-change` is the canonical readiness vocabulary across the
-section-player and the assessment toolkit. It replaced a heterogeneous
-mix of legacy events (`ready`, `interaction-ready`,
-`section-controller-ready`, `toolkit-ready`, `section-ready`) — all
-of which have been removed — with a single typed transition stream
+section-player and the assessment toolkit: a single typed transition stream
 that a host can subscribe to once and correlate across wrapper depths.
 
 Stages and order (post-retro: 4 canonical stages)
@@ -428,12 +398,7 @@ DOM events
 - Canonical: `pie-stage-change` (detail = `StageChangeDetail`).
 - Canonical: `pie-loading-complete` (detail = `LoadingCompleteDetail`)
   — kernel-only; fires once per cohort when every item has loaded.
-- Removed in the broad architecture review compat sweep: the
-  deprecated readiness aliases `readiness-change`, `interaction-ready`,
-  and `ready` (plus their `legacy-event-bridge`), and the deprecated
-  `section-controller-ready` Svelte/DOM event (plus its
-  `pie-section-controller-ready` instrumentation mapping). Migrate
-  consumers as follows:
+- Use the canonical events as follows:
   - `readiness-change` → listen for `pie-stage-change`; the readiness
     payload is also reachable via `selectReadiness()` /
     `getSnapshot().readiness` on the layout CE.
@@ -492,7 +457,6 @@ Minimal shape:
   <pie-section-player-shell
     show-toolbar={showToolbar}
     toolbar-position={toolbarPosition}
-    enabled-tools={enabledTools}
   >
     <pie-section-player-passage-card
       passage={passage}
@@ -511,12 +475,12 @@ Minimal shape:
 
 ## Removed architecture
 
-The legacy orchestration path has been removed:
+The earlier orchestration path has been removed:
 
 - `PieSectionPlayer.svelte`
 - layout element wrappers under `src/components/layout-elements/*`
 - internal layout components under `src/components/layouts/*`
-- legacy layout orchestrators and wrappers
+- previous layout orchestrators and wrappers
 
 ## Consumer boundary note
 

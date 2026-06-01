@@ -2,6 +2,10 @@
 
 Google Cloud Text-to-Speech provider for server-side text-to-speech with speech marks support.
 
+For the cross-package TTS architecture and browser/server flow, see
+[TTS Architecture](../../docs/accessibility/tts-architecture.md). This README
+focuses on Google Cloud provider configuration and behavior.
+
 ## Overview
 
 This package provides a server-side TTS provider that uses Google Cloud Text-to-Speech to generate high-quality neural speech with millisecond-precise word timing through SSML mark injection.

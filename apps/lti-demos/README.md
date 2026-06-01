@@ -9,17 +9,16 @@ Assignment and Grade Services.
 
 ## Running The Demo
 
+The canonical demo command list lives in
+[`../../docs/setup/demo_system.md`](../../docs/setup/demo_system.md). For this
+app:
+
 ```bash
-# From monorepo root
-bun install
-
-# First run on a fresh checkout
 bun run dev:lti -- --rebuild
-
-# Normal daily start
 bun run dev:lti
-# Opens http://localhost:5600
 ```
+
+The LTI demo runs on `http://localhost:5600` by default.
 
 The demo page fetches a server-approved launch context, maps it to
 `assessment-id` and `attempt-id`, mounts `pie-assessment-player-default`, and

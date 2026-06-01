@@ -65,7 +65,7 @@ When authoring assessment content for text-to-speech (TTS), you may notice that 
 Or use SSML in a catalog:
 ```json
 {
-  "prompt": "<div data-catalog-id=\"question-1-prompt\">...</div>",
+  "prompt": "<div data-catalog-idref=\"question-1-prompt\">...</div>",
   "accessibilityCatalogs": [{
     "identifier": "question-1-prompt",
     "cards": [{
@@ -81,7 +81,11 @@ Or use SSML in a catalog:
 
 **Problem:** "x² - 5x + 6 = 0" sounds like "x two minus five x plus six equals zero" (too fast, unclear)
 
-**Solution - Add SSML for controlled pacing:**
+**Default support:** PIE automatically looks for MathML in rendered content and converts supported expressions to natural-language speech before calling the configured TTS provider. This works across browser TTS and server-backed providers without a client-side "math support" setting.
+
+**Highlighting behavior:** PIE is conservative with math word tracking. It uses word/operator highlighting only when the spoken boundary can be mapped to the visible MathML token with very high confidence. If the mapping is ambiguous, provider-specific, or unsupported, PIE falls back to highlighting the full formula or nearest reliable expression region. This avoids visible bugs where the highlighted token lags, jumps, or points at the wrong part of the expression.
+
+**Optional override - Add SSML for controlled pacing:**
 ```json
 {
   "accessibilityCatalogs": [{
@@ -201,9 +205,11 @@ Specify exact pronunciation using IPA.
 
 ## Embedding SSML in PIE Content
 
-### Method 1: Inline SSML (Automatic Extraction)
+### Method 1: Inline SSML (Preprocessed Extraction)
 
-The PIE Players automatically extract SSML from content and generate accessibility catalogs.
+`SSMLExtractor` can extract SSML from content and generate accessibility
+catalogs before the item is rendered. Use this only when your import/render path
+explicitly runs that preprocessing step.
 
 **Example:**
 ```json
@@ -216,10 +222,10 @@ The PIE Players automatically extract SSML from content and generate accessibili
 ```
 
 **What happens:**
-1. System extracts `<speak>` content
+1. Preprocessing extracts `<speak>` content
 2. Generates catalog entry with ID `auto-prompt-q1`
 3. Removes `<speak>` tags from visual markup
-4. TTS uses catalog content automatically
+4. Runtime catalog registration registers the extracted catalog
 
 ### Method 2: Explicit Accessibility Catalogs (QTI 3.0 Standard)
 
@@ -229,7 +235,7 @@ The PIE Players automatically extract SSML from content and generate accessibili
 {
   "models": [{
     "id": "q1",
-    "prompt": "<div data-catalog-id=\"q1-prompt\"><h3>Question 1: Method Selection</h3><p>Based on the passage, which method should you use?</p></div>"
+    "prompt": "<div data-catalog-idref=\"q1-prompt\"><h3>Question 1: Method Selection</h3><p>Based on the passage, which method should you use?</p></div>"
   }],
   "accessibilityCatalogs": [{
     "identifier": "q1-prompt",
@@ -313,12 +319,14 @@ Use `<prosody rate="slow">` for:
 
 **Bad:** "x² - 5x + 6 = 0" → "x two minus five x plus six equals zero"
 
-**Good:**
+**Good:** Let PIE generate speech from MathML when the rendered item contains structured math. Use authored SSML only when content needs exact pacing or a content-specific wording:
 ```xml
 <speak>
   <prosody rate="slow">x squared<break time="150ms"/> minus five x<break time="150ms"/> plus six<break time="200ms"/> equals zero</prosody>
 </speak>
 ```
+
+Authored spoken catalogs still take precedence over generated math speech. They can improve pronunciation and pacing, but they do not force word-level math tracking. If the authored SSML diverges too far from the rendered MathML for reliable mapping, PIE will still highlight the formula/expression region instead of guessing at individual words.
 
 ### 5. Test Your SSML
 
@@ -359,9 +367,9 @@ SSML adds complexity. Skip it when:
 
 ---
 
-## Automatic vs Manual SSML
+## Extracted vs Manual SSML
 
-### Automatic Extraction (Inline SSML)
+### Preprocessed Extraction (Inline SSML)
 
 **Pros:**
 - Quick to author
@@ -373,7 +381,8 @@ SSML adds complexity. Skip it when:
 - Less control over catalog structure
 - Auto-generated catalog IDs
 
-**Best for:** Rapid prototyping, simple items
+**Best for:** Import pipelines or demos where the render path explicitly runs
+`SSMLExtractor`.
 
 ### Manual Catalogs (QTI 3.0)
 
@@ -408,7 +417,7 @@ SSML adds complexity. Skip it when:
 **With SSML:**
 ```json
 {
-  "prompt": "<div data-catalog-id=\"rect-area-1\"><p>A rectangle has length x+3 and width x-2. Write an expression for its area.</p></div>",
+  "prompt": "<div data-catalog-idref=\"rect-area-1\"><p>A rectangle has length x+3 and width x-2. Write an expression for its area.</p></div>",
   "accessibilityCatalogs": [{
     "identifier": "rect-area-1",
     "cards": [{
@@ -440,7 +449,7 @@ Question 2: "The author's main purpose..." (with 4 options)
 {
   "questions": [{
     "id": "q1",
-    "prompt": "<div data-catalog-id=\"q1-prompt\"><h4>Question 1: Reading Comprehension</h4><p>According to paragraph 2, what is the main benefit of urban gardens?</p></div>",
+    "prompt": "<div data-catalog-idref=\"q1-prompt\"><h4>Question 1: Reading Comprehension</h4><p>According to paragraph 2, what is the main benefit of urban gardens?</p></div>",
     "accessibilityCatalogs": [{
       "identifier": "q1-prompt",
       "cards": [{
@@ -645,7 +654,7 @@ If you're unsure whether to add SSML:
 
 - [TTS Architecture](./tts-architecture.md) - Technical implementation details
 - [Accessibility Catalogs Integration Guide](./accessibility-catalogs-integration-guide.md) - How to structure catalogs
-- [SSML Extraction](./accessibility-catalogs-tts-integration.md) - Automatic SSML processing
+- [SSML Extraction](./accessibility-catalogs-tts-integration.md) - SSML extraction and catalog registration
 - [AWS SSML Tags Reference](./aws-ssml-tags-reference.md) - Complete tag list
 
 ---

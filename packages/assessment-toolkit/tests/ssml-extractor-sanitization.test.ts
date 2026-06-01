@@ -1,7 +1,10 @@
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
 
-import { SSMLExtractor } from "../src/services/SSMLExtractor";
+import {
+	SSMLExtractor,
+	sanitizeSsmlString,
+} from "../src/services/SSMLExtractor";
 
 beforeAll(() => {
 	if (typeof (globalThis as unknown as { window?: unknown }).window === "undefined") {
@@ -103,5 +106,41 @@ describe("SSMLExtractor sanitization", () => {
 			'<p><speak><audio src="https://cdn.example.com/bell.mp3">bell</audio></speak></p>';
 		const ssml = extractSsml(markup);
 		expect(ssml).toContain('src="https://cdn.example.com/bell.mp3"');
+	});
+
+	test("preserves self-closing <break/> across HTML parse round-trip", () => {
+		// Regression: HTML5's parser does not treat <break> as void and
+		// silently drops the `/`, then nests every following sibling as
+		// its child. Round-trip used to emit `<break>…rest…</break>`,
+		// which AWS Polly rejects as InvalidSsmlException. Verify the
+		// serializer keeps the empty-element shape and does NOT swallow
+		// the trailing prose into the break.
+		const markup =
+			'<p><speak xml:lang="en-US">Before pause <break time="400ms"/> after pause</speak></p>';
+		const ssml = extractSsml(markup);
+		expect(ssml).toContain('<break time="400ms"/>');
+		expect(ssml).not.toContain("</break>");
+		expect(ssml).not.toMatch(/<break[^/]*>[^<]+after pause/);
+		expect(ssml).toContain("after pause");
+	});
+
+	test("preserves multiple self-closing <break/> elements", () => {
+		const markup =
+			'<p><speak>One <break time="200ms"/> two <break time="300ms"/> three</speak></p>';
+		const ssml = extractSsml(markup);
+		expect(ssml.match(/<break /g)?.length ?? 0).toBe(2);
+		expect(ssml).not.toContain("</break>");
+		expect(ssml).toContain("One");
+		expect(ssml).toContain("two");
+		expect(ssml).toContain("three");
+	});
+
+	test("sanitizeSsmlString fragment input preserves self-closing void tags", () => {
+		const fragment =
+			'Intro <prosody rate="slow">word</prosody> <break time="100ms"/> outro';
+		const sanitized = sanitizeSsmlString(fragment);
+		expect(sanitized).toContain('<break time="100ms"/>');
+		expect(sanitized).not.toContain("</break>");
+		expect(sanitized).toContain("outro");
 	});
 });

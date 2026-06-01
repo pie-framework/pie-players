@@ -15,14 +15,12 @@ export type {
 	Env,
 	ItemConfig,
 	ItemEntity,
-	LegacyAssessmentSection,
 	OutcomeResponse,
 	PassageEntity,
 	PieController,
 	PieModel,
 	QuestionEntity,
 	RubricBlock,
-	SectionQuestionRef,
 	TestPart,
 } from "./types/index.js";
 export { editorPostFix } from "./types/index.js";

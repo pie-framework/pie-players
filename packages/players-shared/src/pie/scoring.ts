@@ -95,7 +95,7 @@ export type ScorePieItemOptions = {
 	models?: PieModel[];
 	/**
 	 * Existing callers keep the historical scorePieItem controller call shape.
-	 * provideScore() opts into the legacy <pie-player> shape explicitly.
+	 * provideScore() opts into the item-player score result shape explicitly.
 	 */
 	outcomeArguments?: "session-env" | "model-session-env";
 	/**

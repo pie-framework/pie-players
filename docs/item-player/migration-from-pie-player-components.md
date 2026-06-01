@@ -1,5 +1,9 @@
 # Migration from pie-player-components
 
+> **Status:** Migration guide for legacy consumers. Use
+> [`packages/item-player/README.md`](../../packages/item-player/README.md) for
+> the current public API after migration.
+
 This project (`@pie-players/pie-item-player`) is a ground-up rebuild of the item player originally provided by [`@pie-framework/pie-player-components`](https://github.com/pie-framework/pie-player-components). This document summarizes what changed and why.
 
 ## Unified element
@@ -130,6 +134,24 @@ The new player uses `ItemController` to:
 - Normalize sessions into `{ id: string, data: Array<{ id, element, ... }> }`
 - Deduplicate `session-changed` events (metadata-only events are filtered out)
 - Prevent response data from being overwritten by structural re-renders
+
+## Delivery host compatibility
+
+The current player keeps a small set of legacy delivery-host aliases where they
+preserve the `pie-item` client contract:
+
+- `disableBundler={true}` maps to `strategy="preloaded"`.
+- `bundleHost` maps to `loaderOptions.bundleHost`.
+- `customClassname` maps to `customClassName`; prefer `custom-class-name` in new
+  markup.
+- Configs shaped as `{ pie, passage }` are still accepted, but a root
+  `ConfigEntity` remains the canonical input.
+- `allowedResize` is still accepted for opt-in passage resizing.
+- `bundleEndpoints` and `reFetchBundle` are accepted for old hosts but are not
+  used by the current loader boundary.
+
+For new integrations, use the canonical attributes and properties documented in
+the package README.
 
 ## What is not changing
 

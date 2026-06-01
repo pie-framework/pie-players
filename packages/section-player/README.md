@@ -6,7 +6,7 @@ Section rendering package with layout custom elements:
 - `pie-section-player-vertical`
 - `pie-section-player-tabbed`
 
-The package no longer exposes the legacy `pie-section-player` layout orchestration API.
+Use the layout custom elements listed above for section rendering.
 
 ## Install
 
@@ -58,9 +58,7 @@ const controller = await host.waitForSectionController?.(5000);
 `waitForSectionController(timeoutMs)` resolves when the layout CE has wired
 its controller (the same anchor `pie-stage-change` reaches with
 `detail.stage === "engine-ready"`). Use `getSectionController()` if you've
-already passed the readiness anchor synchronously. The legacy
-`section-controller-ready` event was removed; either of these helpers
-replaces it.
+already passed the readiness anchor synchronously.
 
 ### Session lifecycle
 
@@ -131,7 +129,7 @@ Both layout elements support:
 - `narrow-layout-breakpoint` (number, optional): viewport width in px below which the layout collapses (split pane: single column; vertical: toolbar moves to top). Clamped to 400–2000; default 1100.
 - `content-max-width-no-passage` (number, optional): max width in px when no passages exist. Clamped to 320–2200. Unset by default (layout uses available width).
 - `content-max-width-with-passage` (number, optional): max width in px when passages are present. Clamped to 320–2200. Unset by default (layout uses available width).
-- `split-pane-min-region-width` (number, optional): splitpane minimum pane width in px. Clamped to 160–1200. Unset by default (legacy split bounds stay at 20–80). (Ignored by vertical layout; supported for API parity.)
+- `split-pane-min-region-width` (number, optional): splitpane minimum pane width in px. Clamped to 160–1200. Unset by default (split bounds stay at 20–80). (Ignored by vertical layout; supported for API parity.)
 - `split-pane-collapse-strategy` (string, optional): splitpane stacked-mode strategy. Supported values: `tabbed` (default) and `vertical`. (Ignored by vertical/tabbed layouts; supported for API parity.)
 - `show-toolbar` (boolean-like): accepts `true/false` and common string forms (`"true"`, `"false"`, `"1"`, `"0"`, `"yes"`, `"no"`)
 - Host extension props (JS properties only): `toolRegistry`, `sectionHostButtons`, `itemHostButtons`, `passageHostButtons`, `hooks`
@@ -218,7 +216,6 @@ The intended usage model is:
   - `assessment-id`, `section`, `section-id`, `attempt-id`, `debug`
   - `show-toolbar`, `toolbar-position`, `narrow-layout-breakpoint`
   - `content-max-width-no-passage`, `content-max-width-with-passage`, `split-pane-min-region-width`, `split-pane-collapse-strategy`
-  - `enabled-tools` (per-region tool placement is configured via `tools.placement.{item,passage}`; the `item-toolbar-tools` / `passage-toolbar-tools` aliases were removed in the broad architecture review compat sweep)
 - **JS API for advanced customization**:
   - Get the controller handle via `getSectionController()` or `waitForSectionController()` (preferred)
   - Listen for `pie-stage-change` and filter on `detail.stage === "engine-ready"` for an event-driven entry point
@@ -241,7 +238,7 @@ host.hooks = {
 };
 ```
 
-Advanced CE props are still supported as escape hatches (`runtime`, `coordinator`, etc.), but hosts should prefer JS/controller composition for non-standard behavior. Note: `createSectionController` is **runtime-only** — set it on `runtime.createSectionController` rather than as a top-level CE prop (the prop alias was removed in the broad architecture review compat sweep).
+Advanced runtime configuration is supplied through the `runtime` object. Set player config, tools, accessibility, coordinator, env, and `createSectionController` on `runtime.<key>`.
 
 ### Host-owned focus
 
@@ -290,11 +287,10 @@ layout host) can call them directly.
 - `item-selected`: item-level navigation change within the current section in the `SectionController` broadcast stream (`itemIndex`, `currentItemId`, `totalItems`).
 - `section-navigation-change`: section-level navigation/selection change in the `SectionController` broadcast stream (`previousSectionId`, `currentSectionId`, `reason`).
 
-Runtime precedence is explicit:
+Runtime configuration is explicit:
 
-- `runtime` values are primary for runtime fields (`assessmentId`, `playerType`, `player`, `lazyInit`, `tools`, `accessibility`, `coordinator`, `isolation`, `env`). `createSectionController` is exposed only via `runtime.createSectionController`.
-- Top-level runtime-like props remain compatibility inputs and are merged with `runtime` values. For `player`, top-level values are merged first, then `runtime.player` overrides. Nested `loaderOptions` and `loaderConfig` are also merged with the same precedence.
-- The section-level toolbar placement override (`enabled-tools`) is normalized on top of the runtime tools config and merges into `tools.placement.section`. Per-region placement (`tools.placement.item` / `tools.placement.passage`) is configured directly on the canonical `tools` / `runtime.tools` object — the deprecated `item-toolbar-tools` / `passage-toolbar-tools` aliases were removed in the broad architecture review compat sweep.
+- `runtime` owns runtime fields (`assessmentId`, `playerType`, `player`, `lazyInit`, `tools`, `accessibility`, `coordinator`, `isolation`, `env`, `createSectionController`).
+- Tool placement is configured through `runtime.tools.placement.section`, `runtime.tools.placement.item`, and `runtime.tools.placement.passage`.
 - Tool configuration validation is canonical in toolkit initialization (`pie-assessment-toolkit`), including toolbar overlays. Use `runtime.toolConfigStrictness` (`off` | `warn` | `error`) to control warning-only vs fail-fast behavior.
 - TTS provider config must use `tools.providers.textToSpeech` (canonical). `tools.providers.tts` is rejected by validation.
 - Host tool overrides are additive:
@@ -350,7 +346,6 @@ Minimal pattern for package layout components:
   <pie-section-player-shell
     show-toolbar={showToolbar}
     toolbar-position={toolbarPosition}
-    enabled-tools={enabledTools}
     toolRegistry={toolRegistry}
     sectionHostButtons={sectionHostButtons}
   >
@@ -465,7 +460,7 @@ Canonical lifecycle stream (engine-routed, dispatched on the outer layout CE):
 
 - `pie-stage-change` — single typed transition stream covering
   `composed` → `engine-ready` → `interactive` → `disposed`. Payload is a
-  `StageChangeDetail`. Replaces the legacy readiness vocabulary.
+  `StageChangeDetail`.
 - `pie-loading-complete` — fires once per cohort when every item has
   loaded (kernel-routed; gated on `interactive`).
 - `framework-error` — canonical error event for any failure crossing the
@@ -479,9 +474,7 @@ Canonical lifecycle stream (engine-routed, dispatched on the outer layout CE):
   engine-bridge emit on the layout host. The single-emit contract is
   pinned by `tests/section-player-framework-error-dual-emit.test.ts`.
   Direct listeners attached to `<pie-assessment-toolkit>` itself
-  still see the toolkit's own emit. The previous dual-emit on the
-  layout host was removed in the broad architecture review compat
-  sweep.
+  still see the toolkit's own emit.
 
 Callback-prop mirrors with two-tier precedence (`runtime.<key>` wins over
 the top-level prop):
@@ -494,7 +487,7 @@ the top-level prop):
   `pie-section-player-base`. Fires exactly once per error regardless of
   wrapper depth (delivered through the package-internal
   `FrameworkErrorBus`). The `framework-error` DOM event on the layout
-  CE host is also single-fire post-compat-sweep; consume either.
+  CE host is also single-fire; consume either.
 
 Section-player owned instrumentation stream:
 
@@ -504,12 +497,7 @@ Section-player owned instrumentation stream:
 - `pie-section-composition-changed`
 - `pie-section-framework-error`
 
-The deprecated readiness aliases (`readiness-change`,
-`interaction-ready`, `ready`) and their `legacy-event-bridge`, along
-with the deprecated `section-controller-ready` Svelte/DOM event and
-its `pie-section-controller-ready` instrumentation mapping, were
-removed in the broad architecture review compat sweep. Migrate
-consumers as follows:
+Build consumers against these canonical lifecycle events:
 
 - `readiness-change` → listen for `pie-stage-change`. The readiness
   payload is also available via `selectReadiness()` /

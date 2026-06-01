@@ -2,28 +2,37 @@
 
 This file lists all non-private workspace packages currently considered publishable by the repository release checks.
 
-Source of truth for publishability:
+Source of truth for lockstep release membership:
+
+- `.changeset/config.json`
+
+Release validation also checks package artifacts via:
 
 - `scripts/check-pack-exports.mjs`
 - `scripts/check-pack-smoke.mjs`
 
-Publishable packages (35):
+All packages in this inventory participate in the fixed lockstep release set.
+While the project remains on the pre-1.0 `0.x.y` line, releases are patch-only;
+see [`publishing.md`](./publishing.md) for the full policy.
 
+Publishable packages (37):
+
+- `@pie-players/pie-assessment-player`
 - `@pie-players/pie-assessment-toolkit`
 - `@pie-players/pie-calculator`
 - `@pie-players/pie-calculator-desmos`
 - `@pie-players/pie-context`
 - `@pie-players/pie-default-tool-loaders`
 - `@pie-players/pie-item-player`
-- `@pie-players/pie-players-cli`
 - `@pie-players/pie-players-shared`
 - `@pie-players/pie-print-player`
 - `@pie-players/pie-section-player`
-- `@pie-players/pie-section-player-tools-shared`
 - `@pie-players/pie-section-player-tools-event-debugger`
+- `@pie-players/pie-section-player-tools-instrumentation-debugger`
 - `@pie-players/pie-section-player-tools-pnp-debugger`
 - `@pie-players/pie-section-player-tools-session-debugger`
 - `@pie-players/pie-section-player-tools-tts-settings`
+- `@pie-players/pie-section-player-tools-shared`
 - `@pie-players/pie-toolbars`
 - `@pie-players/pie-theme`
 - `@pie-players/pie-theme-daisyui`
@@ -31,7 +40,7 @@ Publishable packages (35):
 - `@pie-players/pie-tool-answer-eliminator`
 - `@pie-players/pie-tool-calculator-desmos`
 - `@pie-players/pie-tool-calculator-inline-desmos`
-- `@pie-players/pie-tool-color-scheme`
+- `@pie-players/pie-tool-theme`
 - `@pie-players/pie-tool-graph`
 - `@pie-players/pie-tool-line-reader`
 - `@pie-players/pie-tool-periodic-table`
@@ -44,3 +53,4 @@ Publishable packages (35):
 - `@pie-players/tts-server-core`
 - `@pie-players/tts-server-google`
 - `@pie-players/tts-server-polly`
+- `@pie-players/tts-server-sc`

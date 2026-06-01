@@ -1,7 +1,3 @@
-<script lang="ts">
-	import { base } from '$app/paths';
-</script>
-
 <svelte:head>
 	<title>PIE Players and Assessment Toolkit</title>
 	<meta
@@ -28,33 +24,22 @@
 			<p class="text-lg">
 				While elements represent individual question types, <strong>players</strong> orchestrate how
 				elements are rendered, managed, and integrated into assessment experiences. PIE provides players
-				at three levels of granularity.
+				at item, section, and assessment granularity.
 			</p>
-		</div>
-
-		<div class="my-8">
-			<img
-				src="{base}/images/docs/players/pie-item-players.png"
-				alt="PIE Item Players"
-				width="2816"
-				height="1536"
-				loading="lazy"
-				class="rounded-lg shadow-lg w-full max-w-4xl mx-auto"
-			/>
 		</div>
 
 		<div class="grid md:grid-cols-3 gap-6 mb-8">
 			<div class="card bg-base-100 shadow-xl border border-base-300">
 				<div class="card-body">
-					<h3 class="card-title text-primary">Element Player</h3>
+					<h3 class="card-title text-primary">Item Player</h3>
 					<p class="text-sm mb-3">
-						Renders a single element (one question type). Primarily used for testing and
-						development.
+						Renders one complete assessment item with one or more PIE elements, passages, and
+						rubrics.
 					</p>
 					<ul class="text-xs space-y-1">
-						<li>• Loads element JavaScript bundle</li>
-						<li>• Manages element state</li>
-						<li>• Handles mode transitions</li>
+						<li>• Supports IIFE, ESM, and preloaded strategies</li>
+						<li>• Handles delivery, evaluation, and authoring modes</li>
+						<li>• Manages item session state</li>
 						<li>• Emits session change events</li>
 					</ul>
 				</div>
@@ -62,15 +47,16 @@
 
 			<div class="card bg-base-100 shadow-xl border border-base-300">
 				<div class="card-body">
-					<h3 class="card-title text-primary">Item Player</h3>
+					<h3 class="card-title text-primary">Section Player</h3>
 					<p class="text-sm mb-3">
-						Renders complete assessment items with one or more questions, passages, and rubrics.
+						Renders a section made of items, passages, and rubrics, with layout custom elements
+						for split-pane, vertical, and tabbed delivery.
 					</p>
 					<ul class="text-xs space-y-1">
-						<li>• Manages multiple elements</li>
-						<li>• Handles passages and rubrics</li>
-						<li>• Unified session model</li>
-						<li>• Built-in layout system</li>
+						<li>• Owns in-section navigation</li>
+						<li>• Aggregates per-item sessions</li>
+						<li>• Integrates with assessment toolkit services</li>
+						<li>• Exposes a SectionController handle</li>
 					</ul>
 				</div>
 			</div>
@@ -79,14 +65,14 @@
 				<div class="card-body">
 					<h3 class="card-title text-primary">Assessment Player</h3>
 					<p class="text-sm mb-3">
-						Complete test delivery with navigation, tools, and accommodations. Reference
-						implementation.
+						Coordinates multi-section assessment attempts while delegating section rendering and
+						tooling to the section player and toolkit.
 					</p>
 					<ul class="text-xs space-y-1">
-						<li>• Item navigation</li>
+						<li>• Cross-section navigation</li>
+						<li>• Assessment session persistence</li>
 						<li>• Toolkit integration</li>
-						<li>• Timer and controls</li>
-						<li>• Multi-item orchestration</li>
+						<li>• AssessmentController event stream</li>
 					</ul>
 				</div>
 			</div>
@@ -95,38 +81,28 @@
 
 	<!-- Player Types -->
 	<section class="mb-12">
-		<h2 class="text-3xl font-bold text-secondary mb-6">Player Types</h2>
+		<h2 class="text-3xl font-bold text-secondary mb-6">Item Loading Strategies</h2>
 
 		<div class="prose max-w-none mb-6">
 			<p class="text-lg">
-				PIE provides multiple player implementations, each optimized for different deployment
-				scenarios. All implement the same Web Component interface, making them interchangeable.
+				The item player supports multiple loading strategies through one custom-element API. The
+				strategy controls how PIE element bundles are fetched and registered.
 			</p>
 		</div>
 
-		<div class="my-8">
-			<img
-				src="{base}/images/docs/players/pie-itemplayer-packaging-strategies.png"
-				alt="PIE Item Player Packaging Strategies"
-				width="2816"
-				height="1536"
-				loading="lazy"
-				class="rounded-lg shadow-lg w-full max-w-4xl mx-auto"
-			/>
-		</div>
-
 		<div class="space-y-6">
-			<!-- IIFE Player (Current Standard) -->
+			<!-- IIFE strategy -->
 			<div class="card bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-700">
 				<div class="card-body">
 					<div class="flex items-start justify-between">
 						<div class="flex-1">
 							<div class="flex items-center gap-3 mb-3">
-								<h3 class="card-title">IIFE Player</h3>
+								<h3 class="card-title">IIFE Strategy</h3>
 								<span class="badge badge-primary">Current Standard</span>
 							</div>
 							<p class="mb-4">
-								Loads pre-bundled element packages dynamically from a bundle hosting service. The current production-ready player with broad browser support and battle-tested reliability.
+								Loads pre-bundled element packages dynamically from a bundle hosting service. This
+								remains the safest default for production systems using PIE bundle infrastructure.
 							</p>
 							<div class="grid md:grid-cols-2 gap-4 text-sm">
 								<div>
@@ -142,9 +118,9 @@
 									<p class="font-semibold text-info mb-2">Status:</p>
 									<ul class="list-disc list-inside text-xs space-y-1">
 										<li>Current standard for production</li>
-										<li>Will transition to legacy in 2026</li>
-										<li>Fully supported through 2027+</li>
-										<li>Recommended for new projects today</li>
+										<li>Default item-player strategy</li>
+										<li>Uses script injection from a bundle host</li>
+										<li>Recommended when ESM element packages are not guaranteed</li>
 									</ul>
 								</div>
 							</div>
@@ -153,21 +129,22 @@
 				</div>
 			</div>
 
-			<!-- ESM Player (Future) -->
+			<!-- ESM strategy -->
 			<div class="card bg-base-100 border border-warning border-2">
 				<div class="card-body">
 					<div class="flex items-center gap-3 mb-3">
-						<h3 class="card-title">ESM Player</h3>
-						<span class="badge badge-warning">Coming Early 2026</span>
+						<h3 class="card-title">ESM Strategy</h3>
+						<span class="badge badge-warning">Modern ESM</span>
 					</div>
 					<div class="alert alert-warning mb-4">
 						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
 						</svg>
-						<span class="text-sm font-semibold">Not production-ready yet. Expected early 2026.</span>
+						<span class="text-sm font-semibold">Use when the target PIE element packages support ESM delivery.</span>
 					</div>
 					<p class="mb-4">
-						Uses native browser ESM (ECMAScript Modules) for loading PIE elements. Will offer smaller bundle sizes and better caching once ready for production.
+						Uses native browser ESM (ECMAScript Modules) for loading PIE elements from a CDN by
+						URL or import-map resolution.
 					</p>
 					<div class="grid md:grid-cols-2 gap-4 text-sm">
 						<div>
@@ -182,31 +159,31 @@
 						<div>
 							<p class="font-semibold text-warning mb-2">Current Status:</p>
 							<ul class="list-disc list-inside text-xs space-y-1">
-								<li>In development</li>
-								<li>Not recommended for production</li>
-								<li>Expected stable: early 2026</li>
-								<li>Will become new standard</li>
+								<li>Available through `strategy="esm"`</li>
+								<li>Depends on ESM-compatible element packages</li>
+								<li>IIFE remains the conservative production default</li>
+								<li>Configurable CDN and module-resolution mode</li>
 							</ul>
 						</div>
 					</div>
 				</div>
 			</div>
 
-			<!-- Fixed Player -->
+			<!-- Preloaded strategy -->
 			<div class="card bg-base-100 border border-base-300">
 				<div class="card-body">
 					<div class="flex items-center gap-3 mb-3">
-						<h3 class="card-title">Fixed Player</h3>
+						<h3 class="card-title">Preloaded Strategy</h3>
 					</div>
 					<p class="mb-4">
-						Elements are bundled directly into the player at build time. Optimal for
-						performance-critical deployments with known question type sets.
+						Elements are registered before the player renders. This removes runtime bundle
+						loading for static builds, offline environments, and controlled test harnesses.
 					</p>
 					<div class="grid md:grid-cols-2 gap-4 text-sm">
 						<div>
 							<p class="font-semibold text-success mb-2">Benefits:</p>
 							<ul class="list-disc list-inside text-xs space-y-1">
-								<li>Zero runtime bundle loading</li>
+								<li>Zero player-owned bundle loading</li>
 								<li>Smallest API payload (data only)</li>
 								<li>Fastest initial render</li>
 								<li>Deterministic builds</li>
@@ -215,43 +192,10 @@
 						<div>
 							<p class="font-semibold text-warning mb-2">Constraints:</p>
 							<ul class="list-disc list-inside text-xs space-y-1">
-								<li>Fixed element versions</li>
+								<li>Host owns element registration</li>
 								<li>Requires rebuild for updates</li>
-								<li>Larger player bundle</li>
+								<li>Missing tags fail assertion</li>
 								<li>Less flexible</li>
-							</ul>
-						</div>
-					</div>
-				</div>
-			</div>
-
-			<!-- Inline Player -->
-			<div class="card bg-base-100 border border-base-300">
-				<div class="card-body">
-					<div class="flex items-center gap-3 mb-3">
-						<h3 class="card-title">Inline Player</h3>
-						<span class="badge badge-secondary">Svelte Component</span>
-					</div>
-					<p class="mb-4">
-						Pure Svelte component implementation for direct framework integration. Use when you need tight integration with a Svelte application.
-					</p>
-					<div class="grid md:grid-cols-2 gap-4 text-sm">
-						<div>
-							<p class="font-semibold text-success mb-2">Benefits:</p>
-							<ul class="list-disc list-inside text-xs space-y-1">
-								<li>Native Svelte reactivity</li>
-								<li>TypeScript support</li>
-								<li>No Shadow DOM overhead</li>
-								<li>Direct component composition</li>
-							</ul>
-						</div>
-						<div>
-							<p class="font-semibold text-info mb-2">Use Cases:</p>
-							<ul class="list-disc list-inside text-xs space-y-1">
-								<li>SvelteKit applications</li>
-								<li>Svelte-based authoring tools</li>
-								<li>Component-level integration</li>
-								<li>Server-side rendering</li>
 							</ul>
 						</div>
 					</div>
@@ -270,17 +214,6 @@
 				Real-world assessments require more than question rendering. The PIE Assessment Toolkit
 				provides composable services for tools, accommodations, and complete test delivery.
 			</p>
-		</div>
-
-		<div class="my-8">
-			<img
-				src="{base}/images/docs/assessment-toolkit/pie-assessment-toolkit-arch.png"
-				alt="PIE Assessment Toolkit Architecture"
-				width="2816"
-				height="1536"
-				loading="lazy"
-				class="rounded-lg shadow-lg w-full max-w-4xl mx-auto"
-			/>
 		</div>
 
 		<div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -308,7 +241,7 @@
 				<div class="card-body">
 					<h4 class="font-bold text-primary mb-2">TTSService</h4>
 					<p class="text-sm">
-						Singleton text-to-speech service with word-level highlighting synchronization and voice
+						Coordinated text-to-speech service with word-level highlighting synchronization and voice
 						control.
 					</p>
 				</div>
@@ -328,8 +261,8 @@
 				<div class="card-body">
 					<h4 class="font-bold text-primary mb-2">ToolConfigResolver</h4>
 					<p class="text-sm">
-						Resolves three-tier accommodation configuration (student IEP/504, roster settings, item
-						requirements).
+						Resolves tool availability from placement, host policy, provider gates, profile data,
+						and custom policy sources.
 					</p>
 				</div>
 			</div>
@@ -342,36 +275,25 @@
 
 		<div class="prose max-w-none mb-6">
 			<p class="text-lg">
-				The toolkit includes 15+ assessment tools organized in three tiers based on dependencies and
-				functionality.
+				The toolkit coordinates assessment tools, toolbar shells, and debug panels through package
+				exports and runtime policy rather than a monolithic tool bundle.
 			</p>
-		</div>
-
-		<div class="my-8">
-			<img
-				src="{base}/images/docs/assessment-toolkit/pie-tool-tiers.png"
-				alt="PIE Tool Tiers"
-				width="2816"
-				height="1536"
-				loading="lazy"
-				class="rounded-lg shadow-lg w-full max-w-4xl mx-auto"
-			/>
 		</div>
 
 		<div class="grid md:grid-cols-3 gap-6 mb-8">
 			<div class="card bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700">
 				<div class="card-body">
 					<div class="badge badge-info mb-3">Tier 1</div>
-					<h4 class="font-bold mb-2">Standalone Tools</h4>
-					<p class="text-sm mb-3">Direct user interaction, no dependencies</p>
+					<h4 class="font-bold mb-2">Standalone Tool Packages</h4>
+					<p class="text-sm mb-3">Direct user interaction with toolkit runtime context</p>
 					<ul class="text-xs space-y-1">
 						<li>• Calculator (scientific, graphing)</li>
+						<li>• Graph</li>
 						<li>• Ruler (metric, imperial)</li>
 						<li>• Protractor</li>
 						<li>• Periodic Table</li>
 						<li>• Line Reader</li>
-						<li>• Magnifier</li>
-						<li>• Color Scheme selector</li>
+						<li>• Theme / color scheme selector</li>
 					</ul>
 				</div>
 			</div>
@@ -379,12 +301,12 @@
 			<div class="card bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700">
 				<div class="card-body">
 					<div class="badge badge-secondary mb-3">Tier 2</div>
-					<h4 class="font-bold mb-2">Orchestrator Tools</h4>
-					<p class="text-sm mb-3">Enable other tools by detecting user intent</p>
+					<h4 class="font-bold mb-2">Toolbar And Orchestrator Packages</h4>
+					<p class="text-sm mb-3">Coordinate selection, masking, and tool launch surfaces</p>
 					<ul class="text-xs space-y-1">
 						<li>• Annotation Toolbar (detects selection)</li>
 						<li>• Answer Eliminator (manages masking)</li>
-						<li>• Main Toolbar (launches tools)</li>
+						<li>• Item and section toolbars</li>
 					</ul>
 				</div>
 			</div>
@@ -392,12 +314,12 @@
 			<div class="card bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700">
 				<div class="card-body">
 					<div class="badge badge-warning mb-3">Tier 3</div>
-					<h4 class="font-bold mb-2">Dependent Tools</h4>
-					<p class="text-sm mb-3">Require Tier 2 input to function</p>
+					<h4 class="font-bold mb-2">Service-Backed Tools</h4>
+					<p class="text-sm mb-3">Use toolkit services or provider configuration</p>
 					<ul class="text-xs space-y-1">
-						<li>• Text-to-Speech (from selection)</li>
-						<li>• Dictionary lookup</li>
-						<li>• Translation</li>
+						<li>• Text-to-Speech tools</li>
+						<li>• Calculator provider integrations</li>
+						<li>• Debug and observability panels</li>
 					</ul>
 				</div>
 			</div>
@@ -440,17 +362,6 @@
 				Players communicate through standard DOM APIs: properties for configuration, events for
 				state changes, and methods for programmatic control.
 			</p>
-		</div>
-
-		<div class="my-8">
-			<img
-				src="{base}/images/docs/assessment-toolkit/pie-integration-flow.png"
-				alt="PIE Integration Flow"
-				width="2816"
-				height="1536"
-				loading="lazy"
-				class="rounded-lg shadow-lg w-full max-w-4xl mx-auto"
-			/>
 		</div>
 
 		<div class="grid md:grid-cols-3 gap-6 mb-8">
@@ -501,11 +412,16 @@ const outcome =
   await player
     .provideScore();
 
-// Reset state
-player.reset();
+// Preview an updated element model
+await player.updateElementModel({'{'}
+  id: modelId
+  // model fields to update
+{'}'});
 
-// Validate
-player.validate();</code></pre>
+// Authoring validation
+const validation =
+  await player
+    .validateModels();</code></pre>
 					</div>
 				</div>
 			</div>
@@ -521,11 +437,11 @@ player.validate();</code></pre>
 				/>
 			</svg>
 			<div>
-				<p class="font-semibold">Three-Tier Accommodation Configuration</p>
+				<p class="font-semibold">Policy-Based Tool Availability</p>
 				<p class="text-sm">
-					Tool availability is resolved from three sources with precedence rules: (1) Roster block
-					(highest), (2) Item restrictions/requirements, (3) Student accommodations (IEP/504), (4)
-					Roster defaults, (5) System defaults.
+					Tool availability is resolved through placement, host policy, provider vetoes, PNP/profile
+					gates, and custom policy sources. Hosts pass policy through the toolkit instead of hard-coding
+					tool visibility in each player.
 				</p>
 			</div>
 		</div>
@@ -570,7 +486,7 @@ bun install
 bun run dev:docs
 
 # Build for production
-bun run build
+bun run --cwd apps/docs build
 </code></pre>
 			</div>
 		</div>

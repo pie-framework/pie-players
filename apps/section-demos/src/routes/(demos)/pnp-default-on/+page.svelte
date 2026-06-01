@@ -114,11 +114,13 @@
 		</div>
 
 		<pie-section-player-splitpane
+			runtime={ {
+				tools: toolkitToolsConfig
+			} }
 			assessment-id={assessmentEntity.id}
 			{sectionId}
 			{attemptId}
 			section={data.section}
-			tools={toolkitToolsConfig}
 			show-toolbar={true}
 			data-testid="pnp-default-on-player"
 			ontoolkit-ready={handleToolkitReady}

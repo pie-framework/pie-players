@@ -8,11 +8,11 @@
 
 The **PIE Players** project provides a comprehensive, modern architecture for rendering and delivering Platform for Interactive Education (PIE) assessment content. The system consists of multiple **item players** (for rendering individual questions) and an **assessment toolkit** (for coordinating full test experiences with tools, accommodations, and navigation).
 
-Built with Bun, TypeScript, and Svelte 5, the architecture leverages modern web standards (Web Components, CSS Custom Highlight API) while maintaining framework independence and backwards compatibility with existing PIE content.
+Built with Bun, TypeScript, and Svelte 5, the architecture leverages modern web standards (Web Components, CSS Custom Highlight API) while maintaining framework independence and support for deployed PIE content.
 
 ### Key Capabilities
 
-- **Multiple Player Strategies**: IIFE (legacy compatible), ESM (modern), and Preloaded static (pre-bundled) delivery
+- **Multiple Player Strategies**: IIFE, ESM, and Preloaded static (pre-bundled) delivery
 - **Unified Authoring & Delivery**: Single players support both student/teacher delivery views and authoring/configuration modes
 - **Assessment Toolkit**: Composable services for full test delivery with navigation, tools, and accommodations
 - **Accessibility First**: WCAG 2.2 AA compliance, IEP/504 accommodation support
@@ -61,7 +61,7 @@ Item players are Web Components that render individual PIE assessment items. The
 
 #### 1. IIFE Strategy (`<pie-item-player strategy="iife">`)
 
-**Purpose**: Load PIE elements dynamically from IIFE bundles (legacy format).
+**Purpose**: Load PIE elements dynamically from IIFE bundles.
 
 **Architecture**:
 - Fetches IIFE bundles from PIE build service (PITS) or CDN
@@ -70,8 +70,8 @@ Item players are Web Components that render individual PIE assessment items. The
 - Initializes models via PIE controllers
 
 **Use Cases**:
-- Drop-in replacement for `@pie-framework/pie-player-components`
-- Backwards compatibility with existing PIE deployments
+- Migration path from `@pie-framework/pie-player-components`
+- Support for deployed PIE content that uses IIFE bundles
 - Dynamic element loading from PIE build service or CDN
 
 **Key Features**:
@@ -172,7 +172,7 @@ See: [packages/print-player/README.md](../../packages/print-player/README.md)
 | **Bundle Size**     | Large         | Small       | Smallest     | Small        |
 | **Performance**     | Medium        | Medium      | Fast         | Fast         |
 | **Interactivity**   | Yes           | Yes         | Yes          | No (static)  |
-| **Use Case**        | Legacy compat | Modern apps | Performance  | Print/PDF    |
+| **Use Case**        | IIFE bundles  | Modern apps | Performance  | Print/PDF    |
 
 ---
 
@@ -360,12 +360,13 @@ The toolkit provides six core services that work together:
 
 #### 4. AccessibilityCatalogResolver
 
-**Purpose**: QTI 3.0 accessibility catalog resolution with automatic SSML extraction.
+**Purpose**: QTI 3.0 accessibility catalog resolution for authored and preprocessed alternatives.
 
 **Architecture**:
 - Resolves catalogs with priority: extracted → item → assessment
 - Supports pre-recorded audio, sign language videos, braille
-- Integrates with section player for automatic SSML extraction
+- Integrates with section player runtime registration; `config.extractedCatalogs`
+  are registered when a preprocessing/import step has produced them
 
 ---
 
@@ -379,11 +380,11 @@ The toolkit provides six core services that work together:
 
 ---
 
-#### 6. PNPToolResolver
+#### 6. ToolPolicyEngine
 
-**Purpose**: QTI 3.0 Personal Needs Profile (PNP) tool resolution with precedence hierarchy.
+**Purpose**: QTI 3.0 Personal Needs Profile (PNP), host policy, provider, and placement decisions with precedence hierarchy.
 
-**Architecture**: Resolves tool availability following QTI 3.0 PNP precedence rules, mapping QTI support IDs to PIE tool IDs.
+**Architecture**: Resolves tool availability through policy sources, mapping QTI support IDs to PIE tool IDs and returning canonical `ToolPolicyDecision` results.
 
 ---
 
@@ -470,7 +471,8 @@ Use section player with full assessment toolkit for complete section delivery us
 **Architecture**:
 1. Initialize toolkit services (TTSService, catalogResolver, coordinators)
 2. Pass services to section player as JavaScript properties
-3. Section player automatically handles SSML extraction, catalog lifecycle, TTS tools, service coordination
+3. Section player handles catalog lifecycle, TTS tools, and service coordination;
+   embedded SSML extraction must happen before render if that authoring style is used
 
 **Complexity**: Medium
 **Use Case**: Production assessments with full accessibility support
@@ -526,7 +528,6 @@ but correctness is ownership-first by design.
 ### Architecture Documentation
 
 - [Tools & Accommodations Architecture](../tools-and-accomodations/architecture.md) - Tools system design
-- [Question Layout Engine Architecture](question-layout-engine-architecture.md) - Layout system design
 
 ### Package Documentation
 
@@ -561,5 +562,5 @@ The **PIE Players** architecture provides a comprehensive, modern foundation for
 
 By leveraging modern web standards (Web Components, CSS Custom Highlight API) and maintaining framework independence, the architecture ensures long-term maintainability, excellent performance, and broad compatibility.
 
-The toolkit approach (vs framework) gives products maximum flexibility while providing battle-tested reference implementations for common scenarios. The section player serves as the primary interface, automatically handling SSML extraction, catalog lifecycle, and service coordination.
+The toolkit approach (vs framework) gives products maximum flexibility while providing battle-tested reference implementations for common scenarios. The section player serves as the primary interface for catalog lifecycle and service coordination; embedded SSML extraction is a preprocessing concern when that authoring style is used.
 

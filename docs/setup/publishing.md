@@ -39,9 +39,11 @@ every release PR. This is expected and enforced.
   prepare a release bump scoped to only the changed packages; that would break
   the lockstep invariant. See
   [`.cursor/rules/release-version-alignment.mdc`](../../.cursor/rules/release-version-alignment.mdc).
-- A breaking change in any publishable package forces a major bump across every
-  publishable package. Plan breaking changes with that in mind, or consider
-  whether the change can be introduced additively first.
+- While the project remains on the pre-1.0 `0.x.y` line, every release is a
+  `patch` bump across every publishable package, even when a change is
+  breaking. Document breaking changes clearly in the changeset body, but do not
+  author `minor` or `major` changesets unless the maintainer explicitly updates
+  the release policy.
 - Changesets' `fixed` block in
   [`../../.changeset/config.json`](../../.changeset/config.json) is the source
   of truth for which packages are in the lockstep set. New publishable packages

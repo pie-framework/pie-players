@@ -9,16 +9,16 @@
  *
  *   - The kernel (`SectionPlayerLayoutKernel.svelte`) installs a
  *     `ContextProvider` for `sectionRuntimeEngineHostContext` on its
- *     `host` (the layout CE). The provider value carries the engine
- *     reference owned by that kernel mount.
+ *     `host` (the layout CE). The provider value carries a narrow
+ *     lifecycle handle for the engine owned by that kernel mount.
  *   - The toolkit CE installs a `ContextConsumer` on its own host. When
  *     wrapped by a section player layout, the consumer resolves to the
- *     kernel's engine and the toolkit treats it as the active engine
- *     for legacy controller-side calls (`register`, `handleContent*`,
- *     `initialize`, etc.) and for FSM input dispatch (e.g.
- *     `framework-error`). When standalone, no upstream provider
- *     responds and the toolkit keeps using its locally-constructed
- *     engine.
+ *     kernel's lifecycle handle and suppresses its standalone lifecycle
+ *     DOM emits in favor of the section-player host. Controller-side
+ *     calls (`register`, `handleContent*`, `initialize`, etc.) remain
+ *     owned by the toolkit's locally-constructed engine. When
+ *     standalone, no host provider responds and the toolkit keeps using
+ *     its standalone lifecycle path.
  *
  * The two engine-context surfaces (`SECTION_RUNTIME_ENGINE_KEY` and
  * this one) are deliberately distinct:
@@ -26,8 +26,8 @@
  *     single component tree (kernel + descendants in the same shadow
  *     root) and is the right hook for in-tree consumers.
  *   - `sectionRuntimeEngineHostContext` (DOM-event context) is the
- *     bridge for cross-CE consumers and only carries data that is
- *     safe to share across CE boundaries (a stable engine reference).
+ *     bridge for cross-CE consumers and only carries data that is safe
+ *     to share across CE boundaries (a stable lifecycle handle).
  *
  * **Stability.** This export is part of the stable runtime/engine
  * surface; the symbol identity and value shape are part of the
@@ -41,16 +41,24 @@ import {
 	createContext,
 	type UnknownContext,
 } from "@pie-players/pie-context";
-import type { SectionRuntimeEngine } from "./SectionRuntimeEngine.js";
+
+/**
+ * Narrow cross-CE handle published by section-player. Deliberately omits
+ * controller-facing methods (`initialize`, `register`, `handleContent*`,
+ * etc.) so the package seam cannot grow an accidental controller contract.
+ */
+export interface SectionRuntimeLifecycleHandle {
+	getRuntimeId(): string;
+}
 
 /**
  * Value shape published by the kernel and consumed by the wrapped
- * toolkit CE. Carries only the engine reference today; if more
- * cross-CE shared runtime state is needed later, fields can be added
- * here additively.
+ * toolkit CE. Carries only the lifecycle handle today; if more cross-CE
+ * shared runtime state is needed later, fields can be added here
+ * additively.
  */
 export interface SectionRuntimeEngineHostContextValue {
-	engine: SectionRuntimeEngine;
+	engine: SectionRuntimeLifecycleHandle;
 }
 
 /**

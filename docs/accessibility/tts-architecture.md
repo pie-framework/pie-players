@@ -8,9 +8,14 @@ The PIE Players TTS (Text-to-Speech) system uses a clean, layered architecture w
 
 See also:
 
+- [`./tts-deep-dive.md`](./tts-deep-dive.md) for a full runtime walkthrough with
+  diagrams
 - [`../wcag/readme.md`](../wcag/readme.md) for the WCAG reference library
 - [`../wcag/wcag-2.2-aa-baseline.md`](../wcag/wcag-2.2-aa-baseline.md) for the criteria most likely to affect TTS work
 - [`../wcag/evaluation-method.md`](../wcag/evaluation-method.md) for evaluation guidance
+
+This document is the source of truth for cross-package TTS architecture. Package
+READMEs document package-specific APIs, configuration, and provider setup.
 
 ## Package Structure
 
@@ -41,7 +46,7 @@ See also:
 - `services/tts/text-processing.ts` - provider-agnostic visible-text extraction, normalization, and DOM mapping
 - `BrowserTTSProvider` - Web Speech API adapter (always available)
 - `AccessibilityCatalogResolver` - QTI 3.0 catalog management
-- `SSMLExtractor` - Automatic SSML extraction and catalog generation
+- `SSMLExtractor` - Utility for converting embedded `<speak>` markup into catalogs
 - Playback state management
 
 **Dependencies:**
@@ -52,12 +57,14 @@ See also:
 - Re-exports all types from `tts` for convenience
 - Includes `BrowserTTSProvider` as the default, always-available fallback
 - Integrates with QTI 3.0 accessibility catalogs
-- **Automatic SSML extraction** from embedded `<speak>` tags
+- **Authored SSML/catalog support** through accessibility catalogs and
+  `data-catalog-idref`
+- **Automatic math speech generation** from rendered MathML via Speech Rule Engine
 - Coordinates with HighlightCoordinator for word highlighting
 
-### 3. Server-Side TTS Architecture (New)
+### 3. Server-Side TTS Architecture
 
-The new architecture splits TTS into server-side and client-side components for better security and reliability.
+The server-side architecture splits TTS into server-side and client-side components for better security and reliability.
 
 #### Server-Side Packages (Node.js)
 
@@ -72,6 +79,16 @@ The new architecture splits TTS into server-side and client-side components for 
 - Native speech marks support (millisecond-precise)
 - Parallel audio + marks requests
 - Full SSML support
+
+**@pie-players/tts-server-google**
+- Google Cloud Text-to-Speech implementation for Node.js
+- Speech marks via SSML mark injection and timepoints
+- Supports Google authentication modes documented in the package README
+
+**@pie-players/tts-server-sc**
+- SchoolCity-backed reference implementation for custom server-side providers
+- Normalizes word marks returned by the SchoolCity service
+- Includes asset URL allow-listing and SSRF defenses
 
 #### Client-Side Package (Browser)
 
@@ -94,9 +111,9 @@ Custom backend integrations can use:
 Browser → ServerTTSProvider (custom transport) → Custom root POST API
 ```
 
-### 4. Server-Side TTS Providers (Recommended)
+### 4. Server-Side TTS Providers
 
-**For production deployments**, use the new server-side architecture with speech marks support:
+**For production deployments**, use the server-side architecture with speech marks support:
 
 **@pie-players/tts-client-server** (Client package)
 
@@ -105,18 +122,17 @@ Browser → ServerTTSProvider (custom transport) → Custom root POST API
 - Supports word-level highlighting via speech marks
 - 50ms polling-based synchronization
 
-**@pie-players/tts-server-polly** (Server package)
+**@pie-players/tts-server-polly** / **@pie-players/tts-server-google** (Server packages)
 
-- AWS Polly implementation for Node.js
-- Native speech marks support (millisecond-precise)
-- Parallel audio + marks requests
-- Full SSML support
+- Server-side provider implementations for Node.js
+- Native or normalized speech marks for synchronized highlighting
+- Provider-specific SSML and voice support
 - Secure credential management
 
-**Integration:** SvelteKit API routes connect browser client to server-side provider
+**Integration:** SvelteKit API routes connect browser client to a server-side provider
 
 ```
-Browser → ServerTTSProvider → /api/tts/synthesize → PollyServerProvider → AWS Polly
+Browser → ServerTTSProvider → /api/tts/synthesize → server provider → TTS backend
 ```
 
 See [Server-Side TTS Integration Guide](../../packages/tts-server-polly/examples/INTEGRATION-GUIDE.md) for setup instructions.
@@ -252,6 +268,16 @@ This normalization:
 - Collapses multiple spaces/tabs/newlines into single spaces
 - Ensures character positions align between spoken text and DOM
 
+Math content is a special case. When PIE finds MathML in the read target, it converts that MathML to natural-language speech before provider playback and builds a math alignment plan for speech-mark highlighting. The alignment plan tokenizes the visible MathML structure, tokenizes the spoken/SSML source, normalizes provider boundary offsets, and only emits word-level targets when the boundary maps to a visible MathML token with very high local confidence.
+
+When that confidence is not available, PIE deliberately falls back to the smallest reliable visible target:
+
+1. exact token/operator target when mapping is safe
+2. MathML subtree or full formula target when token mapping is ambiguous
+3. surrounding TTS region when no smaller target is reliable
+
+This conservative fallback is intentional. A full formula highlight is preferable to a visibly wrong word highlight, stale highlight, or lagging boundary. Provider speech marks are treated as evidence, not as truth by assumption, because Polly/SchoolCity/browser boundaries may report raw SSML offsets, normalized spoken-text offsets, or provider-specific mark positions.
+
 #### Why Normalization is Critical
 
 JSON content often contains formatting whitespace:
@@ -291,7 +317,7 @@ This keeps `speak()`, `speakRange()`, and toolbar-triggered flows aligned and av
 
 1. **Bypassing `TTSService` normalization path** - custom pre-normalization can desync offsets
 2. **Extracting text from one element, highlighting in another** - Text content differs
-3. **Not rebuilding after TTSService changes** - Old code runs with bugs
+3. **Not rebuilding after TTSService changes** - stale integration code runs with bugs
 4. **Speech marks in wrong coordinate system** - Server returns trimmed positions, must match
 
 #### Testing Checklist
@@ -383,16 +409,20 @@ sectionPlayer.catalogResolver = catalogResolver;
 sectionPlayer.section = section;
 
 // TTS tools in the section player will automatically:
-// - Extract SSML from passages and items
+// - Use registered accessibility catalogs when available
 // - Use pre-authored SSML from catalogs if available
 // - Fall back to generated TTS if no catalog exists
 ```
 
-## SSML Extraction and Auto-Catalog Generation
+## SSML Extraction Utility And Catalog Generation
 
-The PIE Players automatically extract embedded SSML from item content and convert it into QTI 3.0 accessibility catalogs at runtime.
+`SSMLExtractor` can convert embedded SSML from item content into QTI 3.0
+accessibility catalogs. Runtime catalog registration will pick up
+`config.extractedCatalogs` when they are already present, but the current shell
+registration path does not automatically invoke extraction. For the current
+runtime flow, see [TTS Deep Dive](./tts-deep-dive.md).
 
-### Why Automatic Extraction?
+### Why Use Extraction?
 
 Authors can embed SSML directly in content for convenience:
 - Proper pronunciation of technical terms (e.g., "polynomial")
@@ -400,11 +430,11 @@ Authors can embed SSML directly in content for convenience:
 - Emphasis and pacing control
 - No need to maintain separate catalog files
 
-The system automatically:
-1. Extracts SSML during item/passage load
+An integration can:
+1. Extract SSML before rendering or registration
 2. Generates catalog entries with unique IDs
 3. Cleans visual markup (removes SSML tags)
-4. Registers catalogs with AccessibilityCatalogResolver
+4. Provide `config.extractedCatalogs` so runtime registration can register them
 
 ### Example: Before and After Extraction
 
@@ -425,12 +455,12 @@ The system automatically:
 }
 ```
 
-**After Extraction (Runtime):**
+**After Extraction (Preprocessed Config):**
 ```typescript
 {
   config: {
     models: [{
-      prompt: `<div data-catalog-id="auto-prompt-q1">
+      prompt: `<div data-catalog-idref="auto-prompt-q1">
         <p><strong>Which method should you use to solve x² - 5x + 6 = 0?</strong></p>
       </div>`
     }],
@@ -471,20 +501,24 @@ catalogResolver.addItemCatalogs(result.catalogs);
 ```
 
 **Integration Points:**
-- `pie-section-player-splitpane` - Primary interface for toolkit services
-- `PieSectionPlayerSplitPaneElement.svelte` - Composes passages/items and runtime wiring
-- Runs transparently during render (no author action needed)
+- A preprocessing/import step can run `SSMLExtractor`
+- Runtime registration reads `config.extractedCatalogs`
+- `TTSService` resolves the resulting catalog content during playback
 
 **Usage Pattern:**
-The splitpane section player is the primary container for assessment toolkit integration. Pass services as JavaScript properties, and the player handles SSML extraction, catalog management, and TTS tool rendering automatically.
+The section player is the primary container for assessment toolkit integration.
+Pass services as JavaScript properties, provide catalogs or `extractedCatalogs`
+on the content data, and the player handles catalog registration and TTS tool
+rendering.
 
 See [Accessibility Catalogs Integration Guide](./accessibility-catalogs-integration-guide.md) for complete examples.
 
 ## Additional Server-Side TTS Providers
 
-- **@pie-players/tts-server-google** - Google Cloud Text-to-Speech (implemented)
-- **@pie-players/tts-server-azure** - Azure Cognitive Services TTS (future)
-- **@pie-players/tts-server-elevenlabs** - ElevenLabs high-fidelity voices (future)
+- **@pie-players/tts-server-google** - Google Cloud Text-to-Speech
+- **@pie-players/tts-server-sc** - SchoolCity-backed reference provider
+- **Future provider packages** - Azure Cognitive Services, ElevenLabs, or other
+  backends can follow the same server-provider pattern when implemented.
 
 All server providers follow the same pattern:
 
@@ -499,6 +533,8 @@ All server providers follow the same pattern:
 - **Server-side architecture**: Secure, production-ready TTS with speech marks
   - **tts-server-core**: Server provider interfaces
   - **tts-server-polly**: AWS Polly implementation
+  - **tts-server-google**: Google Cloud implementation
+  - **tts-server-sc**: SchoolCity-backed reference implementation
   - **tts-client-server**: Browser client
 - **Pattern**: Try server-side TTS, fallback to browser TTS
 - **Benefit**: Always-working TTS with optional high-quality upgrades and precise word highlighting

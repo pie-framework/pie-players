@@ -6,9 +6,9 @@
  * event and invokes the runtime-tier `onStageChange` callback. PR 6
  * introduces the wrapped/standalone branch:
  *
- *   - **Standalone** (no upstream `SectionRuntimeEngine` provider on
+ *   - **Standalone** (no host lifecycle provider on
  *     the layout CE host): emit + `onStageChange` fire as before.
- *   - **Wrapped** (kernel publishes its engine via
+ *   - **Wrapped** (kernel publishes its lifecycle handle via
  *     `sectionRuntimeEngineHostContext` and the toolkit consumer
  *     resolves it): emit + `onStageChange` are suppressed on the
  *     toolkit CE, because the kernel's engine already emits the
@@ -32,7 +32,7 @@
  * unit test without mounting the toolkit CE — see
  * `tests/runtime/stage-emit-gate.test.ts`. The closure in the toolkit
  * passes thunks for `isSuppressed` and `getOnStageChange` so the live
- * Svelte reactive variables (`upstreamEngine`, `onStageChange`) are
+ * Svelte reactive variables (`hostLifecycleEngine`, `onStageChange`) are
  * read at emit time, not captured at construction time. This keeps the
  * pre-PR-6 behavior of always reading the latest `onStageChange` prop
  * value (cohort change, host swap, etc.) intact.
@@ -49,7 +49,7 @@ export type StageOnChangeHandler = (detail: StageChangeDetail) => void;
 export interface StageEmitGateContext {
 	/**
 	 * Reads the current suppression flag. Implemented as a thunk so
-	 * the reactive Svelte `$state(upstreamEngine)` is read at emit
+	 * the reactive Svelte `$state(hostLifecycleEngine)` is read at emit
 	 * time. Return `true` to suppress; `false` to fire.
 	 */
 	isSuppressed: () => boolean;

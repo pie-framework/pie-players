@@ -13,7 +13,7 @@
  *      `state.loadingCompleteEmitted`.
  *   3. `framework-error` is independent of stage progression.
  *
- * The deprecated readiness output kinds (`readiness-change`,
+ * Readiness alias output kinds (`readiness-change`,
  * `interaction-ready`, `ready`) and their DOM-event bridge were
  * removed in the broad architecture review compat sweep; assertions
  * here cover only the canonical surface that remains.

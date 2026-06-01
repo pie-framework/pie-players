@@ -9,7 +9,7 @@
  * 1. Parses markup and finds all <speak> elements
  * 2. Extracts SSML content with language metadata
  * 3. Generates accessibility catalogs with unique IDs
- * 4. Cleans visual markup (removes SSML, adds data-catalog-id)
+ * 4. Cleans visual markup (removes SSML, adds data-catalog-idref)
  *
  * This enables proper pronunciation, emphasis, and pacing for TTS without
  * requiring authors to maintain separate catalog files.
@@ -103,6 +103,42 @@ const SSML_ALLOWED_ATTRS = new Set([
 ]);
 
 /**
+ * SSML elements that are empty in practice (no child content). Authors
+ * typically write them as self-closing (`<break time="200ms"/>`). HTML's
+ * parser does NOT recognize them as void elements and silently drops the
+ * `/`, then nests every subsequent sibling as a child — producing
+ * malformed SSML like `<break>…rest of paragraph…</break>` when
+ * round-tripped. Pre-processing self-closing forms to explicit
+ * open+close pairs before HTML parsing avoids the reflow, and the
+ * serializer re-emits them as self-closing so providers see valid SSML.
+ *
+ * `audio` is intentionally excluded — SSML <audio> may carry fallback
+ * children (the spec's "alternate content"), so treating it as void
+ * would lose author intent.
+ */
+const SSML_VOID_TAGS = new Set(["break", "mark", "lexicon"]);
+
+/**
+ * Normalize self-closing forms of SSML void elements to explicit
+ * open+close pairs BEFORE handing the string to an HTML parser. The
+ * HTML5 parser ignores the `/` on non-void tags, so `<break/>` becomes
+ * a plain `<break>` open tag that swallows every following sibling.
+ * Rewriting to `<break></break>` preserves the empty-element shape
+ * across the HTML round-trip.
+ */
+function expandSelfClosingVoidTags(input: string): string {
+	let next = input;
+	for (const tag of SSML_VOID_TAGS) {
+		const selfClosing = new RegExp(`<${tag}\\b([^>/]*?)\\s*/>`, "gi");
+		next = next.replace(selfClosing, (_match, attrs: string) => {
+			const attrText = attrs ? attrs.replace(/\s+$/, "") : "";
+			return `<${tag}${attrText}></${tag}>`;
+		});
+	}
+	return next;
+}
+
+/**
  * Hosts that must never appear inside an SSML `<audio src>` because they
  * would cause the server-side TTS provider to fetch a private / metadata
  * endpoint on behalf of the request. Mirrors the SchoolCity provider's
@@ -145,7 +181,7 @@ function isSafeSsmlAudioSrc(raw: string): boolean {
  * replace disallowed elements with their text content (so phrasing order
  * is preserved but no scripts / iframes / unknown tags survive).
  */
-function sanitizeSsmlElement(element: Element): void {
+export function sanitizeSsmlElement(element: Element): void {
 	// Walk children snapshot first because we may replace nodes as we go.
 	const children = Array.from(element.children);
 	for (const child of children) {
@@ -188,12 +224,19 @@ function sanitizeSsmlElement(element: Element): void {
  * normalised and disallowed descendants cannot reappear through quirks
  * in the serializer.
  */
-function serializeSsmlElement(element: Element): string {
+export function serializeSsmlElement(element: Element): string {
 	const tagName = element.tagName.toLowerCase();
 	const attrs = Array.from(element.attributes)
 		.filter((attr) => SSML_ALLOWED_ATTRS.has(attr.name.toLowerCase()))
 		.map((attr) => ` ${attr.name}="${escapeXmlAttr(attr.value)}"`)
 		.join("");
+	// SSML void elements (e.g. <break>, <mark>) must be emitted as
+	// self-closing so providers like AWS Polly accept them. Emitting
+	// `<break></break>` parses fine on the SSML side but is wasteful;
+	// emitting `<break>` (open without close) is invalid SSML.
+	if (SSML_VOID_TAGS.has(tagName)) {
+		return `<${tagName}${attrs}/>`;
+	}
 	const childPieces: string[] = [];
 	for (const node of Array.from(element.childNodes)) {
 		if (node.nodeType === 3 /* text */) {
@@ -212,6 +255,39 @@ function serializeSsmlElement(element: Element): string {
 		}
 	}
 	return `<${tagName}${attrs}>${childPieces.join("")}</${tagName}>`;
+}
+
+export function sanitizeSsmlString(input: string): string {
+	const trimmed = String(input || "").trim();
+	if (!trimmed || !trimmed.includes("<")) return input;
+	if (typeof DOMParser === "undefined") return input;
+	const parser = new DOMParser();
+	const doc = parser.parseFromString(expandSelfClosingVoidTags(trimmed), "text/html");
+	const speakElement = doc.querySelector("speak");
+	if (speakElement) {
+		sanitizeSsmlElement(speakElement);
+		return serializeSsmlElement(speakElement);
+	}
+	const wrapper = doc.createElement("speak");
+	for (const node of Array.from(doc.body.childNodes)) {
+		wrapper.appendChild(node);
+	}
+	sanitizeSsmlElement(wrapper);
+	return Array.from(wrapper.childNodes)
+		.map((node) => {
+			if (node.nodeType === 3 /* text */) {
+				return escapeXmlText(node.nodeValue ?? "");
+			}
+			if (node.nodeType === 1 /* element */) {
+				const child = node as Element;
+				if (SSML_ALLOWED_TAGS.has(child.tagName.toLowerCase())) {
+					return serializeSsmlElement(child);
+				}
+				return escapeXmlText(child.textContent ?? "");
+			}
+			return "";
+		})
+		.join("");
 }
 
 function escapeXmlText(value: string): string {
@@ -246,7 +322,9 @@ export class SSMLExtractor {
 	extractFromItemConfig(config: ConfigEntity): ExtractionResult {
 		const allCatalogs: AccessibilityCatalog[] = [];
 
-		// Deep clone config to avoid mutating original
+		// Shallow clone of config + a fresh models array. The per-model/choice
+		// objects are replaced (not mutated in place) by the `.map` below, so the
+		// caller's original config and its models are never mutated.
 		const cleanedConfig: ConfigEntity = {
 			...config,
 			models: config.models ? [...config.models] : [],
@@ -331,7 +409,10 @@ export class SSMLExtractor {
 
 		try {
 			const parser = new DOMParser();
-			const doc = parser.parseFromString(markup, "text/html");
+			const doc = parser.parseFromString(
+				expandSelfClosingVoidTags(markup),
+				"text/html",
+			);
 
 			// Find all <speak> elements
 			const speakElements = Array.from(doc.querySelectorAll("speak"));
@@ -378,9 +459,11 @@ export class SSMLExtractor {
 						speakEl.remove();
 					}
 
-					// Add catalog ID to wrapper element
+					// Tag the wrapper with the QTI-style catalog reference so the
+					// runtime can resolve this region's spoken content. Same attribute
+					// authored content uses (`data-catalog-idref`) — one canonical name.
 					if (wrapper) {
-						wrapper.setAttribute("data-catalog-id", catalogId);
+						wrapper.setAttribute("data-catalog-idref", catalogId);
 					}
 
 					// Create catalog entry

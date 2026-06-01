@@ -66,6 +66,8 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 	private config: HighlightCoordinatorConfig;
 	private ttsWordHighlight: Highlight | null = null;
 	private ttsSentenceHighlight: Highlight | null = null;
+	private ttsWordElementHighlights = new Set<Element>();
+	private ttsSentenceElementHighlights = new Set<Element>();
 	private annotations = new Map<string, Annotation>();
 	// Shared highlights per color (one Highlight object per color, contains all ranges)
 	private colorHighlights = new Map<HighlightColor, Highlight>();
@@ -366,6 +368,25 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
         color: inherit;
       }
 
+      [data-pie-tts-sentence-element="true"] {
+        background-color: var(--pie-tts-line-highlight, var(--pie-tts-sentence-highlight, color-mix(in srgb, var(--pie-missing, #ffeb3b) 38%, transparent)));
+        border-radius: 0.12em;
+        box-decoration-break: clone;
+        -webkit-box-decoration-break: clone;
+      }
+
+      [data-pie-tts-word-element="true"] {
+        background-color: var(--pie-tts-word-highlight, color-mix(in srgb, var(--pie-missing, #ffeb3b) 68%, transparent));
+        text-decoration: underline 2px solid var(--pie-tts-word-underline, color-mix(in srgb, var(--pie-text, #111827) 70%, transparent));
+        text-underline-offset: 2px;
+        text-shadow: 0 0 1px var(--pie-tts-word-shadow, color-mix(in srgb, var(--pie-text, #111827) 35%, transparent));
+        border-bottom: 2px solid var(--pie-tts-word-underline, color-mix(in srgb, var(--pie-text, #111827) 70%, transparent));
+        padding-bottom: 1px;
+        border-radius: 0.12em;
+        box-decoration-break: clone;
+        -webkit-box-decoration-break: clone;
+      }
+
       /* Annotation highlights - persistent */
       ::highlight(annotation-yellow) {
         background-color: color-mix(in srgb, var(--pie-missing, #ffff00) 35%, transparent);
@@ -430,6 +451,34 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 	}
 
 	/**
+	 * Highlight a single element as the active TTS word (temporary).
+	 *
+	 * Unlike {@link highlightTTSWord} (which paints a CSS range over a text node)
+	 * this marks the element itself via `data-pie-tts-word-element`. It is used
+	 * for atomic targets that have no direct text node to range over — most
+	 * notably MathJax CHTML tokens (e.g. `<mjx-mi><mjx-c/></mjx-mi>`, whose glyph
+	 * lives in a font-driven pseudo-element a CSS range cannot paint) and
+	 * whole-expression fallbacks.
+	 *
+	 * The supplied element is painted exactly; we deliberately do NOT walk up to
+	 * a containing `<math>` / `<mjx-container>`. That escalation is what made
+	 * MathJax-rendered math highlight as a full block while native MathML tracked
+	 * per-token: a resolved single token must paint as a token, and only a
+	 * genuine expression fallback (where the element already is the container)
+	 * should paint the whole expression.
+	 */
+	highlightTTSWordElement(element: Element): void {
+		if (!this.ttsWordHighlight) return;
+		this.applyAdaptiveTTSStyle(element);
+
+		// Clear previous word highlight (CSS range and any element attributes)
+		this.clearTTSWord();
+
+		element.setAttribute("data-pie-tts-word-element", "true");
+		this.ttsWordElementHighlights.add(element);
+	}
+
+	/**
 	 * Highlight the coarse TTS read-along band (temporary).
 	 * Usually one Range per visual line; CSS layer `tts-sentence` for compatibility.
 	 *
@@ -451,6 +500,91 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 		for (const range of ranges) {
 			this.ttsSentenceHighlight.add(range);
 		}
+		this.highlightTTSElementFallbacks(ranges);
+	}
+
+	// The read-along (sentence) band legitimately covers whole equations and
+	// replaced elements, so it escalates to them.
+	private static readonly SENTENCE_FALLBACK_SELECTOR =
+		"math, mjx-container, svg, img, canvas, [role='img']";
+
+	// The word layer must NOT escalate a multi-node range to the enclosing
+	// `<math>` / `<mjx-container>`: that is what made an equation flash as a
+	// whole block whenever a spoken word's visible range crossed several math
+	// glyph nodes. Math is tracked per token (or held / region) by the highlight
+	// pipeline instead. Replaced elements (svg/img/canvas) still need the element
+	// fallback because a CSS range cannot paint them.
+	private static readonly WORD_FALLBACK_SELECTOR =
+		"svg, img, canvas, [role='img']";
+
+	private highlightTTSElementFallbacks(ranges: Range[]): void {
+		if (typeof Element === "undefined") return;
+		this.highlightElementFallbacks(
+			ranges,
+			"data-pie-tts-sentence-element",
+			this.ttsSentenceElementHighlights,
+			HighlightCoordinator.SENTENCE_FALLBACK_SELECTOR,
+		);
+	}
+
+	private highlightTTSWordElementFallbacks(ranges: Range[]): void {
+		if (typeof Element === "undefined") return;
+		this.highlightElementFallbacks(
+			ranges,
+			"data-pie-tts-word-element",
+			this.ttsWordElementHighlights,
+			HighlightCoordinator.WORD_FALLBACK_SELECTOR,
+		);
+	}
+
+	private highlightElementFallbacks(
+		ranges: Range[],
+		attributeName: string,
+		trackedElements: Set<Element>,
+		selector: string,
+	): void {
+		for (const range of ranges) {
+			const root =
+				range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE
+					? (range.commonAncestorContainer as Element)
+					: range.commonAncestorContainer.parentElement;
+			if (!root) continue;
+			const candidates: Element[] = [];
+			const rangeStartElement =
+				range.startContainer.nodeType === Node.ELEMENT_NODE
+					? (range.startContainer as Element)
+					: range.startContainer.parentElement;
+			const rangeEndElement =
+				range.endContainer.nodeType === Node.ELEMENT_NODE
+					? (range.endContainer as Element)
+					: range.endContainer.parentElement;
+			for (const element of [rangeStartElement, rangeEndElement]) {
+				let current: Element | null = element;
+				while (current) {
+					if (current.matches?.(selector)) candidates.push(current);
+					current = current.parentElement;
+				}
+			}
+			if (root.matches?.(selector)) {
+				candidates.push(root);
+			}
+			candidates.push(...Array.from(root.querySelectorAll(selector)));
+			for (const element of new Set(candidates)) {
+				try {
+					if (
+						!range.intersectsNode(element) &&
+						!element.contains(rangeStartElement) &&
+						!element.contains(rangeEndElement)
+					) {
+						continue;
+					}
+				} catch {
+					continue;
+				}
+				element.setAttribute(attributeName, "true");
+				trackedElements.add(element);
+			}
+		}
 	}
 
 	/**
@@ -459,6 +593,10 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 	clearTTSWord(): void {
 		if (!this.ttsWordHighlight) return;
 		this.ttsWordHighlight.clear();
+		for (const element of this.ttsWordElementHighlights) {
+			element.removeAttribute("data-pie-tts-word-element");
+		}
+		this.ttsWordElementHighlights.clear();
 	}
 
 	/**
@@ -467,6 +605,10 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 	clearTTSSentence(): void {
 		if (!this.ttsSentenceHighlight) return;
 		this.ttsSentenceHighlight.clear();
+		for (const element of this.ttsSentenceElementHighlights) {
+			element.removeAttribute("data-pie-tts-sentence-element");
+		}
+		this.ttsSentenceElementHighlights.clear();
 	}
 
 	/**
@@ -682,6 +824,13 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 				if (highlight) {
 					highlight.clear();
 					highlight.add(range);
+					if (type === HighlightType.TTS_WORD) {
+						for (const element of this.ttsWordElementHighlights) {
+							element.removeAttribute("data-pie-tts-word-element");
+						}
+						this.ttsWordElementHighlights.clear();
+						this.highlightTTSWordElementFallbacks([range]);
+					}
 				}
 				break;
 			}

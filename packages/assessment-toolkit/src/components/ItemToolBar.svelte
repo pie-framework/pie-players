@@ -63,7 +63,11 @@
 		type ToolbarItem
 	} from '../services/toolbar-items.js';
 	import { sanitizeSvgIcon } from '@pie-players/pie-players-shared/security';
-	import { createFocusTrap } from '@pie-players/pie-players-shared';
+	import {
+		createFocusTrap,
+		FOCUSABLE_SELECTOR,
+		isProgrammaticFocusTarget,
+	} from '@pie-players/pie-players-shared';
 	import { createPackagedToolRegistry } from '../services/createDefaultToolRegistry.js';
 	import { DEFAULT_TOOL_MODULE_LOADERS } from '../tools/default-tool-module-loaders.js';
 	import { parseToolList } from '../services/tools-config-normalizer.js';
@@ -1005,6 +1009,10 @@
 		// <nds-icon-button> here while other shells keep the inline <button>.
 		let closeButtonEl: HTMLElement | null = null;
 		let resizeHandleEl: HTMLDivElement | null = null;
+		let startFocusGuardEl: HTMLDivElement | null = null;
+		let endFocusGuardEl: HTMLDivElement | null = null;
+		let focusGuardRedirecting = false;
+		let calculatorBridgeAttached = false;
 		let mountedContentElement: HTMLElement | null = null;
 		let dragPointerId: number | null = null;
 		let resizePointerId: number | null = null;
@@ -1247,15 +1255,140 @@
 			if (!openerEl && active && !shellEl.contains(active)) {
 				openerEl = active;
 			}
+			const isCalculatorShellTrap = currentArgs.mounted.toolId === 'calculator';
+			if (isCalculatorShellTrap && !calculatorBridgeAttached) {
+				document.addEventListener('keydown', onCalculatorBridgeKeydown, true);
+				calculatorBridgeAttached = true;
+			}
 			focusTrapCleanup = createFocusTrap(shellEl, {
 				initialFocus: closeButtonEl,
 				onEscape: () => {
 					closeShell();
-				}
+				},
+				// Calculator shell: tab boundaries should fall through to the page so
+				// keyboard users can leave the calculator with Tab / Shift+Tab. The
+				// shell is appended to <body>, so the browser's natural tab order
+				// would skip back to the opener / forward to nothing useful — we relay
+				// to the opener button and to the first focusable in the item content.
+				wrap: !isCalculatorShellTrap,
+				onTabExit: isCalculatorShellTrap
+					? (direction, event) => {
+							if (direction === 'backward') {
+								if (openerEl?.isConnected) {
+									event.preventDefault();
+									try {
+										openerEl.focus();
+									} catch {
+										// ignore
+									}
+								}
+								return;
+							}
+							const next = findFirstQuestionFocusable();
+							if (next) {
+								event.preventDefault();
+								try {
+									next.focus();
+								} catch {
+									// ignore
+								}
+							}
+						}
+					: undefined
 			});
 		};
 
+		// Walks the scope element's DOM in document order, descending into shadow
+		// roots (PIE elements encapsulate their interaction controls), and returns
+		// the first focusable candidate outside the toolbar and calculator shell.
+		const findFirstQuestionFocusable = (): HTMLElement | null => {
+			const scope = toolbarContext.getScopeElement?.() ?? null;
+			if (!scope) return null;
+			const isExcluded = (el: HTMLElement): boolean => {
+				if (toolbarRootElement && toolbarRootElement.contains(el)) return true;
+				if (shellEl && shellEl.contains(el)) return true;
+				return false;
+			};
+			const visit = (node: Element): HTMLElement | null => {
+				if (node instanceof HTMLElement) {
+					if (isExcluded(node)) return null;
+					if (
+						node.matches?.(FOCUSABLE_SELECTOR) &&
+						isProgrammaticFocusTarget(node)
+					) {
+						return node;
+					}
+				}
+				const shadow = (node as Element & { shadowRoot?: ShadowRoot | null })
+					.shadowRoot;
+				if (shadow) {
+					for (let i = 0; i < shadow.children.length; i++) {
+						const found = visit(shadow.children[i]);
+						if (found) return found;
+					}
+				}
+				for (let i = 0; i < node.children.length; i++) {
+					const found = visit(node.children[i]);
+					if (found) return found;
+				}
+				return null;
+			};
+			return visit(scope);
+		};
+
+		// Real focusable elements inside the shell, in DOM order. The focus
+		// guards at the shell boundaries are filtered out so external entry
+		// points land on actual controls instead of bouncing right back out.
+		const getShellFocusables = (): HTMLElement[] => {
+			if (!shellEl) return [];
+			return Array.from(
+				shellEl.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)
+			)
+				.filter((el) => el !== startFocusGuardEl && el !== endFocusGuardEl)
+				.filter(isProgrammaticFocusTarget);
+		};
+
+		// Bridges the page's tab order into the calculator shell. The shell is
+		// appended to <body>, so the browser's natural tab order skips it — Tab
+		// from the calc toolbar button would land on the next toolbar item, and
+		// Shift+Tab from the question's first focusable would land on the last
+		// toolbar item. This handler intercepts both transitions and steers
+		// focus into the shell so the user-visible flow is
+		//   calculator button ↔ calculator ↔ first question focusable.
+		const onCalculatorBridgeKeydown = (event: KeyboardEvent) => {
+			if (event.key !== 'Tab') return;
+			if (!shellEl || !currentArgs.active) return;
+			const active = getDeepActiveElement();
+			if (!active) return;
+			// Inside the shell, the focus trap and focus guards handle navigation.
+			if (shellEl.contains(active)) return;
+			const focusables = getShellFocusables();
+			if (focusables.length === 0) return;
+			if (event.shiftKey) {
+				const firstQuestion = findFirstQuestionFocusable();
+				if (active !== firstQuestion) return;
+				event.preventDefault();
+				try {
+					focusables[focusables.length - 1].focus();
+				} catch {
+					// ignore
+				}
+				return;
+			}
+			if (active !== openerEl) return;
+			event.preventDefault();
+			try {
+				focusables[0].focus();
+			} catch {
+				// ignore
+			}
+		};
+
 		const removeFocusTrap = () => {
+			if (calculatorBridgeAttached) {
+				document.removeEventListener('keydown', onCalculatorBridgeKeydown, true);
+				calculatorBridgeAttached = false;
+			}
 			if (!focusTrapCleanup) return;
 			const cleanup = focusTrapCleanup;
 			focusTrapCleanup = null;
@@ -1561,8 +1694,76 @@
 			contentEl.style.flex = '1 1 auto';
 			contentEl.style.minHeight = '0';
 
+			// Focus guards (calculator shell only). Desmos calculators handle Tab
+			// inside their inputs themselves — the keydown often doesn't bubble to
+			// our focus trap, so we can't intercept boundary tabs that way. Instead,
+			// place tabindex=0 guards at the very start and end of the shell; when
+			// focus lands on either, redirect to the opener (start) or to the first
+			// question focusable (end). This works whether or not the inner keydown
+			// bubbled.
+			if (isCalculatorShell) {
+				const makeFocusGuard = (label: string): HTMLDivElement => {
+					const el = document.createElement('div');
+					el.tabIndex = 0;
+					el.setAttribute('aria-hidden', 'true');
+					el.setAttribute('data-pie-tool-shell-focus-guard', label);
+					el.style.position = 'absolute';
+					el.style.width = '1px';
+					el.style.height = '1px';
+					el.style.padding = '0';
+					el.style.margin = '-1px';
+					el.style.overflow = 'hidden';
+					el.style.clipPath = 'inset(50%)';
+					el.style.whiteSpace = 'nowrap';
+					el.style.border = '0';
+					return el;
+				};
+				startFocusGuardEl = makeFocusGuard('start');
+				endFocusGuardEl = makeFocusGuard('end');
+				startFocusGuardEl.addEventListener('focus', (event) => {
+					if (focusGuardRedirecting) return;
+					focusGuardRedirecting = true;
+					try {
+						event.stopPropagation();
+						if (openerEl?.isConnected) {
+							try {
+								openerEl.focus();
+							} catch {
+								// ignore
+							}
+						}
+					} finally {
+						queueMicrotask(() => {
+							focusGuardRedirecting = false;
+						});
+					}
+				});
+				endFocusGuardEl.addEventListener('focus', (event) => {
+					if (focusGuardRedirecting) return;
+					focusGuardRedirecting = true;
+					try {
+						event.stopPropagation();
+						const next = findFirstQuestionFocusable();
+						if (next) {
+							try {
+								next.focus();
+							} catch {
+								// ignore
+							}
+						}
+					} finally {
+						queueMicrotask(() => {
+							focusGuardRedirecting = false;
+						});
+					}
+				});
+				shellEl.appendChild(startFocusGuardEl);
+			}
 			shellEl.appendChild(headerEl);
 			shellEl.appendChild(contentEl);
+			if (isCalculatorShell && endFocusGuardEl) {
+				shellEl.appendChild(endFocusGuardEl);
+			}
 
 			if (currentArgs.mounted.entry.shell.resizable !== false) {
 				resizeHandleEl = document.createElement('div');
@@ -1624,6 +1825,10 @@
 				notifyHostedUnmount();
 				if (focusTrapCleanup) {
 					removeFocusTrap();
+				}
+				if (calculatorBridgeAttached) {
+					document.removeEventListener('keydown', onCalculatorBridgeKeydown, true);
+					calculatorBridgeAttached = false;
 				}
 				openerEl = null;
 				if (resizeHandleEl) {

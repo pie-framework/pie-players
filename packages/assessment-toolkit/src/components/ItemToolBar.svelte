@@ -63,7 +63,11 @@
 		type ToolbarItem
 	} from '../services/toolbar-items.js';
 	import { sanitizeSvgIcon } from '@pie-players/pie-players-shared/security';
-	import { createFocusTrap } from '@pie-players/pie-players-shared';
+	import {
+		createFocusTrap,
+		FOCUSABLE_SELECTOR,
+		isProgrammaticFocusTarget,
+	} from '@pie-players/pie-players-shared';
 	import { createPackagedToolRegistry } from '../services/createDefaultToolRegistry.js';
 	import { DEFAULT_TOOL_MODULE_LOADERS } from '../tools/default-tool-module-loaders.js';
 	import { parseToolList } from '../services/tools-config-normalizer.js';
@@ -1005,6 +1009,9 @@
 		// <nds-icon-button> here while other shells keep the inline <button>.
 		let closeButtonEl: HTMLElement | null = null;
 		let resizeHandleEl: HTMLDivElement | null = null;
+		let startSentinelEl: HTMLDivElement | null = null;
+		let endSentinelEl: HTMLDivElement | null = null;
+		let focusSentinelRedirecting = false;
 		let mountedContentElement: HTMLElement | null = null;
 		let dragPointerId: number | null = null;
 		let resizePointerId: number | null = null;
@@ -1247,12 +1254,81 @@
 			if (!openerEl && active && !shellEl.contains(active)) {
 				openerEl = active;
 			}
+			const isCalculatorShellTrap = currentArgs.mounted.toolId === 'calculator';
 			focusTrapCleanup = createFocusTrap(shellEl, {
 				initialFocus: closeButtonEl,
 				onEscape: () => {
 					closeShell();
-				}
+				},
+				// Calculator shell: tab boundaries should fall through to the page so
+				// keyboard users can leave the calculator with Tab / Shift+Tab. The
+				// shell is appended to <body>, so the browser's natural tab order
+				// would skip back to the opener / forward to nothing useful — we relay
+				// to the opener button and to the first focusable in the item content.
+				wrap: !isCalculatorShellTrap,
+				onTabExit: isCalculatorShellTrap
+					? (direction, event) => {
+							if (direction === 'backward') {
+								if (openerEl?.isConnected) {
+									event.preventDefault();
+									try {
+										openerEl.focus();
+									} catch {
+										// ignore
+									}
+								}
+								return;
+							}
+							const next = findFirstQuestionFocusable();
+							if (next) {
+								event.preventDefault();
+								try {
+									next.focus();
+								} catch {
+									// ignore
+								}
+							}
+						}
+					: undefined
 			});
+		};
+
+		// Walks the scope element's DOM in document order, descending into shadow
+		// roots (PIE elements encapsulate their interaction controls), and returns
+		// the first focusable candidate outside the toolbar and calculator shell.
+		const findFirstQuestionFocusable = (): HTMLElement | null => {
+			const scope = toolbarContext.getScopeElement?.() ?? null;
+			if (!scope) return null;
+			const isExcluded = (el: HTMLElement): boolean => {
+				if (toolbarRootElement && toolbarRootElement.contains(el)) return true;
+				if (shellEl && shellEl.contains(el)) return true;
+				return false;
+			};
+			const visit = (node: Element): HTMLElement | null => {
+				if (node instanceof HTMLElement) {
+					if (isExcluded(node)) return null;
+					if (
+						node.matches?.(FOCUSABLE_SELECTOR) &&
+						isProgrammaticFocusTarget(node)
+					) {
+						return node;
+					}
+				}
+				const shadow = (node as Element & { shadowRoot?: ShadowRoot | null })
+					.shadowRoot;
+				if (shadow) {
+					for (let i = 0; i < shadow.children.length; i++) {
+						const found = visit(shadow.children[i]);
+						if (found) return found;
+					}
+				}
+				for (let i = 0; i < node.children.length; i++) {
+					const found = visit(node.children[i]);
+					if (found) return found;
+				}
+				return null;
+			};
+			return visit(scope);
 		};
 
 		const removeFocusTrap = () => {
@@ -1561,8 +1637,76 @@
 			contentEl.style.flex = '1 1 auto';
 			contentEl.style.minHeight = '0';
 
+			// Focus sentinels (calculator shell only). Desmos calculators handle Tab
+			// inside their inputs themselves — the keydown often doesn't bubble to
+			// our focus trap, so we can't intercept boundary tabs that way. Instead,
+			// place tabindex=0 sentinels at the very start and end of the shell;
+			// when focus lands on either, redirect to the opener (start) or to the
+			// first question focusable (end). This works whether or not the inner
+			// keydown bubbled.
+			if (isCalculatorShell) {
+				const makeSentinel = (label: string): HTMLDivElement => {
+					const el = document.createElement('div');
+					el.tabIndex = 0;
+					el.setAttribute('aria-hidden', 'true');
+					el.setAttribute('data-pie-tool-shell-sentinel', label);
+					el.style.position = 'absolute';
+					el.style.width = '1px';
+					el.style.height = '1px';
+					el.style.padding = '0';
+					el.style.margin = '-1px';
+					el.style.overflow = 'hidden';
+					el.style.clipPath = 'inset(50%)';
+					el.style.whiteSpace = 'nowrap';
+					el.style.border = '0';
+					return el;
+				};
+				startSentinelEl = makeSentinel('start');
+				endSentinelEl = makeSentinel('end');
+				startSentinelEl.addEventListener('focus', (event) => {
+					if (focusSentinelRedirecting) return;
+					focusSentinelRedirecting = true;
+					try {
+						event.stopPropagation();
+						if (openerEl?.isConnected) {
+							try {
+								openerEl.focus();
+							} catch {
+								// ignore
+							}
+						}
+					} finally {
+						queueMicrotask(() => {
+							focusSentinelRedirecting = false;
+						});
+					}
+				});
+				endSentinelEl.addEventListener('focus', (event) => {
+					if (focusSentinelRedirecting) return;
+					focusSentinelRedirecting = true;
+					try {
+						event.stopPropagation();
+						const next = findFirstQuestionFocusable();
+						if (next) {
+							try {
+								next.focus();
+							} catch {
+								// ignore
+							}
+						}
+					} finally {
+						queueMicrotask(() => {
+							focusSentinelRedirecting = false;
+						});
+					}
+				});
+				shellEl.appendChild(startSentinelEl);
+			}
 			shellEl.appendChild(headerEl);
 			shellEl.appendChild(contentEl);
+			if (isCalculatorShell && endSentinelEl) {
+				shellEl.appendChild(endSentinelEl);
+			}
 
 			if (currentArgs.mounted.entry.shell.resizable !== false) {
 				resizeHandleEl = document.createElement('div');

@@ -57,6 +57,11 @@ const textTail = (value, length = DIAGNOSTIC_TAIL_LENGTH) => {
 	return `... ${text.length - length} earlier character(s) omitted ...\n${text.slice(-length)}`;
 };
 
+// Write attw's stdout to a temp file rather than relying on execSync's buffered
+// return value. Bun's `child_process` execSync truncates piped stdout for the
+// largest packages (observed reproducibly at ~219KiB on @pie-players/pie-section-player
+// even with maxBuffer set to 16 MiB), which corrupts the JSON tail and trips
+// `parseAttwReport`. File-redirected output is read back in one shot afterwards.
 const runAttw = (dir) => {
 	const tmpRoot = mkdtempSync(path.join(tmpdir(), "pie-attw-"));
 	const stdoutPath = path.join(tmpRoot, "stdout.json");

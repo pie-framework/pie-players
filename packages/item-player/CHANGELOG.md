@@ -1,5 +1,14 @@
 # @pie-players/pie-item-player
 
+## 0.3.45
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-players-shared@0.3.45
+  - @pie-players/pie-theme@0.3.45
+
 ## 0.3.44
 
 ### Patch Changes

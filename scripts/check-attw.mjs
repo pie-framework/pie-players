@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
 import { execSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 
 const ROOT = process.cwd();
@@ -38,44 +39,51 @@ const textTail = (value, length = DIAGNOSTIC_TAIL_LENGTH) => {
 	return `... ${text.length - length} earlier character(s) omitted ...\n${text.slice(-length)}`;
 };
 
+// Write attw's stdout to a temp file rather than relying on execSync's buffered
+// return value. Bun's `child_process` execSync truncates piped stdout for the
+// largest packages (observed reproducibly at ~219KiB on @pie-players/pie-section-player
+// even with maxBuffer set to 16 MiB), which corrupts the JSON tail and trips
+// `parseAttwReport`. File-redirected output is read back in one shot afterwards.
 const runAttw = (dir) => {
+	const tmpDir = mkdtempSync(path.join(tmpdir(), "pie-attw-"));
+	const stdoutFile = path.join(tmpDir, "stdout.json");
+	const stderrFile = path.join(tmpDir, "stderr.log");
 	const cmd =
-		"bunx attw --pack --ignore-rules cjs-resolves-to-esm --format json -- .";
+		'bunx attw --pack --ignore-rules cjs-resolves-to-esm --format json -- . ' +
+		`> ${JSON.stringify(stdoutFile)} 2> ${JSON.stringify(stderrFile)}`;
+	let status = 0;
+	let signal = null;
 	try {
-		const stdout = execSync(cmd, {
+		execSync(cmd, {
 			cwd: dir,
 			stdio: "pipe",
-			encoding: "utf8",
+			shell: true,
 			maxBuffer: ATTW_MAX_BUFFER,
 		});
-		return {
-			stdout,
-			stderr: "",
-			status: 0,
-			signal: null,
-		};
 	} catch (error) {
-		const stdout = error.stdout?.toString?.() ?? "";
-		const stderr = error.stderr?.toString?.() ?? "";
-		if (!stdout.trim()) {
-			throw new Error(
-				[
-					"ATTW produced no JSON output.",
-					`status=${error.status ?? "unknown"} signal=${error.signal ?? "none"}`,
-					stderr ? `stderr tail:\n${textTail(stderr)}` : null,
-					error.message,
-				]
-					.filter(Boolean)
-					.join("\n"),
-			);
-		}
-		return {
-			stdout,
-			stderr,
-			status: error.status ?? null,
-			signal: error.signal ?? null,
-		};
+		status = error.status ?? null;
+		signal = error.signal ?? null;
 	}
+	let stdout = "";
+	let stderr = "";
+	try {
+		stdout = existsSync(stdoutFile) ? readFileSync(stdoutFile, "utf8") : "";
+		stderr = existsSync(stderrFile) ? readFileSync(stderrFile, "utf8") : "";
+	} finally {
+		rmSync(tmpDir, { recursive: true, force: true });
+	}
+	if (!stdout.trim()) {
+		throw new Error(
+			[
+				"ATTW produced no JSON output.",
+				`status=${status ?? "unknown"} signal=${signal ?? "none"}`,
+				stderr ? `stderr tail:\n${textTail(stderr)}` : null,
+			]
+				.filter(Boolean)
+				.join("\n"),
+		);
+	}
+	return { stdout, stderr, status, signal };
 };
 
 const parseAttwReport = ({ pkg, dir, result, attempt }) => {

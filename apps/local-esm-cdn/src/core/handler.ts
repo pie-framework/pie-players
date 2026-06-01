@@ -21,7 +21,6 @@ Endpoints:
   GET  /health
   GET  /@pie-element/<name>@<version>[/<subpath>]
   GET  /@pie-lib/<name>@<version>[/<subpath>]
-  GET  /@pie-players/<name>@<version>[/<subpath>]
 
 Env:
   PIE_ELEMENTS_NG_PATH=${config.pieElementsNgRoot}
@@ -80,7 +79,7 @@ export async function handleRequest(
 		return json(
 			{
 				error: "Local ESM CDN is not ready: missing built artifacts.",
-				hint: "Run `bun run build` in pie-elements-ng and pie-players (or build the relevant packages) and try again.",
+				hint: "Run `bun run build` in pie-elements-ng (or build the relevant packages) and try again.",
 				health,
 			},
 			{ status: 503 },
@@ -90,7 +89,6 @@ export async function handleRequest(
 	// Resolve the entry file on disk
 	const entryFile = await resolveEntryFile(
 		context.config.pieElementsNgRoot,
-		context.config.piePlayersRoot,
 		parsed.pkg,
 		parsed.subpath,
 	);
@@ -103,7 +101,7 @@ export async function handleRequest(
 					pkg: parsed.pkg,
 					subpath: parsed.subpath,
 				},
-				hint: "Ensure pie-elements-ng and pie-players are built and the package exists.",
+				hint: "Ensure pie-elements-ng is built and the package exists.",
 			},
 			{ status: 404 },
 		);

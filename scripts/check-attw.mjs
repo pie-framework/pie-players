@@ -1,7 +1,15 @@
 #!/usr/bin/env node
 
-import { execSync } from "node:child_process";
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import {
+	closeSync,
+	existsSync,
+	mkdtempSync,
+	openSync,
+	readFileSync,
+	readdirSync,
+	rmSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -10,6 +18,16 @@ const POLICY_PATH = path.join(ROOT, "scripts", "publish-policy.json");
 const ATTW_PARSE_RETRIES = 1;
 const ATTW_MAX_BUFFER = 16 * 1024 * 1024;
 const DIAGNOSTIC_TAIL_LENGTH = 4000;
+const ATTW_ARGS = [
+	"attw",
+	"--pack",
+	"--ignore-rules",
+	"cjs-resolves-to-esm",
+	"--format",
+	"json",
+	"--",
+	".",
+];
 
 const readJson = (filePath) => JSON.parse(readFileSync(filePath, "utf8"));
 const policy = existsSync(POLICY_PATH) ? readJson(POLICY_PATH) : {};
@@ -45,45 +63,66 @@ const textTail = (value, length = DIAGNOSTIC_TAIL_LENGTH) => {
 // even with maxBuffer set to 16 MiB), which corrupts the JSON tail and trips
 // `parseAttwReport`. File-redirected output is read back in one shot afterwards.
 const runAttw = (dir) => {
-	const tmpDir = mkdtempSync(path.join(tmpdir(), "pie-attw-"));
-	const stdoutFile = path.join(tmpDir, "stdout.json");
-	const stderrFile = path.join(tmpDir, "stderr.log");
-	const cmd =
-		'bunx attw --pack --ignore-rules cjs-resolves-to-esm --format json -- . ' +
-		`> ${JSON.stringify(stdoutFile)} 2> ${JSON.stringify(stderrFile)}`;
-	let status = 0;
-	let signal = null;
+	const tmpRoot = mkdtempSync(path.join(tmpdir(), "pie-attw-"));
+	const stdoutPath = path.join(tmpRoot, "stdout.json");
+	const stdoutFd = openSync(stdoutPath, "w");
+	let result;
+
 	try {
-		execSync(cmd, {
+		result = spawnSync("bunx", ATTW_ARGS, {
 			cwd: dir,
-			stdio: "pipe",
-			shell: true,
+			stdio: ["ignore", stdoutFd, "pipe"],
+			encoding: "utf8",
 			maxBuffer: ATTW_MAX_BUFFER,
 		});
-	} catch (error) {
-		status = error.status ?? null;
-		signal = error.signal ?? null;
-	}
-	let stdout = "";
-	let stderr = "";
-	try {
-		stdout = existsSync(stdoutFile) ? readFileSync(stdoutFile, "utf8") : "";
-		stderr = existsSync(stderrFile) ? readFileSync(stderrFile, "utf8") : "";
 	} finally {
-		rmSync(tmpDir, { recursive: true, force: true });
+		closeSync(stdoutFd);
 	}
+
+	const stdout = existsSync(stdoutPath) ? readFileSync(stdoutPath, "utf8") : "";
+	rmSync(tmpRoot, { recursive: true, force: true });
+	const stderr = result.stderr?.toString?.() ?? "";
+
+	if (result.error) {
+		throw new Error(
+			[
+				"ATTW failed to run.",
+				`status=${result.status ?? "unknown"} signal=${result.signal ?? "none"}`,
+				stderr ? `stderr tail:\n${textTail(stderr)}` : null,
+				result.error.message,
+			]
+				.filter(Boolean)
+				.join("\n"),
+		);
+	}
+
+	if (result.status === 0) {
+		return {
+			stdout,
+			stderr,
+			status: 0,
+			signal: null,
+		};
+	}
+
 	if (!stdout.trim()) {
 		throw new Error(
 			[
 				"ATTW produced no JSON output.",
-				`status=${status ?? "unknown"} signal=${signal ?? "none"}`,
+				`status=${result.status ?? "unknown"} signal=${result.signal ?? "none"}`,
 				stderr ? `stderr tail:\n${textTail(stderr)}` : null,
 			]
 				.filter(Boolean)
 				.join("\n"),
 		);
 	}
-	return { stdout, stderr, status, signal };
+
+	return {
+		stdout,
+		stderr,
+		status: result.status ?? null,
+		signal: result.signal ?? null,
+	};
 };
 
 const parseAttwReport = ({ pkg, dir, result, attempt }) => {
@@ -126,7 +165,7 @@ const shouldSuppressProblem = (problem) => {
 	const moduleSpecifier =
 		typeof problem.moduleSpecifier === "string" ? problem.moduleSpecifier : "";
 
-	// Legacy CJS resolver warning is already intentionally ignored in existing policy.
+	// CJS resolver warning is already intentionally ignored in existing policy.
 	if (problem.kind === "CJSResolvesToESM") return true;
 
 	if (problem.kind === "NoResolution") {

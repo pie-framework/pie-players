@@ -52,7 +52,6 @@
 			passage: ['textToSpeech', 'annotationToolbar']
 		}
 	};
-	const sectionToolbarTools = 'theme,lineReader';
 	const sectionInstrumentationProvider = new CompositeInstrumentationProvider([
 		new NewRelicInstrumentationProvider(),
 		new DebugPanelInstrumentationProvider()
@@ -363,15 +362,16 @@
 				assessment-id={DEMO_ASSESSMENT_ID}
 				section-id={sessionPanelSectionId}
 				attempt-id={attemptId}
-				player-type={selectedPlayerType}
-				lazy-init={true}
-				tools={toolkitToolsConfig}
-				player={sectionPlayerConfig}
+				runtime={ {
+					playerType: selectedPlayerType,
+					lazyInit: true,
+					tools: toolkitToolsConfig,
+					player: sectionPlayerConfig,
+					env: pieEnv
+				} }
 				section={resolvedSectionForPlayer}
-				env={pieEnv}
 				toolbar-position="right"
 				show-toolbar={true}
-				enabled-tools={sectionToolbarTools}
 				ontoolkit-ready={handleToolkitReady}
 			></pie-section-player-vertical>
 		{:else}
@@ -380,15 +380,16 @@
 				assessment-id={DEMO_ASSESSMENT_ID}
 				section-id={sessionPanelSectionId}
 				attempt-id={attemptId}
-				player-type={selectedPlayerType}
-				lazy-init={true}
-				tools={toolkitToolsConfig}
-				player={sectionPlayerConfig}
+				runtime={ {
+					playerType: selectedPlayerType,
+					lazyInit: true,
+					tools: toolkitToolsConfig,
+					player: sectionPlayerConfig,
+					env: pieEnv
+				} }
 				section={resolvedSectionForPlayer}
-				env={pieEnv}
 				toolbar-position="right"
 				show-toolbar={true}
-				enabled-tools={sectionToolbarTools}
 				ontoolkit-ready={handleToolkitReady}
 			></pie-section-player-splitpane>
 		{/if}

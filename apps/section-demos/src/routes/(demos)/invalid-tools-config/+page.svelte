@@ -76,12 +76,14 @@
 		</div>
 
 		<pie-section-player-splitpane
+			runtime={ {
+				tools: rawToolsConfig as any
+			} }
 			bind:this={playerEl}
 			assessment-id="section-demos.invalid-tools-config"
 			{sectionId}
 			{attemptId}
 			section={data.section}
-			tools={rawToolsConfig as any}
 			tool-config-strictness="error"
 			show-toolbar={true}
 			data-testid="invalid-tools-player"

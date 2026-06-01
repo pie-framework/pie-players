@@ -15,10 +15,10 @@
  * item has finished loading. This mirrors today's
  * `pie-loading-complete` DOM event semantics.
  *
- * The deprecated readiness output kinds (`readiness-change`,
+ * Readiness alias output kinds (`readiness-change`,
  * `interaction-ready`, `ready`) were removed in the broad
  * architecture review compat sweep along with their DOM-event bridge
- * (`legacy-event-bridge.ts`). Stage and readiness changes now flow
+ * event bridge. Stage and readiness changes now flow
  * through `stage-change` (with `EngineReadinessDetail` available via
  * `SectionEngineCore.getState()` / kernel `selectReadiness()`); the
  * "all items loaded" signal flows through `loading-complete` only.

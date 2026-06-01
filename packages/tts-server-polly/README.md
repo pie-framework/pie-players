@@ -2,6 +2,10 @@
 
 AWS Polly provider for server-side text-to-speech with native speech marks support.
 
+For the cross-package TTS architecture and browser/server flow, see
+[TTS Architecture](../../docs/accessibility/tts-architecture.md). This README
+focuses on AWS Polly-specific provider configuration and behavior.
+
 ## Overview
 
 This package provides a server-side TTS provider that uses AWS Polly to generate high-quality neural speech with millisecond-precise word timing through speech marks.

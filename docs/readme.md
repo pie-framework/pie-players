@@ -1,6 +1,8 @@
 # Documentation Index
 
-This folder contains the active documentation set for `pie-players`. The focus is on current public APIs, runtime boundaries, and integration patterns rather than design history or migration notes.
+This folder contains the active documentation set for `pie-players`. The focus
+is on current public APIs, runtime boundaries, and integration patterns. Design
+history and completed implementation plans are intentionally excluded.
 
 ## Start Here
 
@@ -26,10 +28,7 @@ This folder contains the active documentation set for `pie-players`. The focus i
 - [`item-player/overview.md`](./item-player/overview.md) - Architecture and runtime behavior
 - [`item-player/loading-strategies.md`](./item-player/loading-strategies.md) - IIFE, ESM, and preloaded loading strategies
 - [`item-player/scoring-and-rubrics.md`](./item-player/scoring-and-rubrics.md) - Item scoring, multi-element aggregation, EBSR, and rubric/manual-scoring behavior
-- [`item-player/legacy-host-api-parity.md`](./item-player/legacy-host-api-parity.md) - Host API parity gaps across current item-player, open-source legacy player, and legacy API player
-- [`item-player/student-teacher-player-parity-plan.md`](./item-player/student-teacher-player-parity-plan.md) - Exact parity plan for student/teacher-facing open-source legacy player behavior
-- [`item-player/authoring-player-plan.md`](./item-player/authoring-player-plan.md) - Parity-informed redesign plan for authoring player behavior
-- [`item-player/migration-from-pie-player-components.md`](./item-player/migration-from-pie-player-components.md) - Upgrade guide from `@pie-framework/pie-player-components`
+- [`item-player/migration-from-pie-player-components.md`](./item-player/migration-from-pie-player-components.md) - Migration from `@pie-framework/pie-player-components`
 - [`preloaded-player/readme.md`](./preloaded-player/readme.md) - Preloaded bundle workflow
 
 ## Section Player
@@ -40,8 +39,6 @@ This folder contains the active documentation set for `pie-players`. The focus i
 ## Assessment Player
 
 - [`assessment-player/client-architecture-tutorial.md`](./assessment-player/client-architecture-tutorial.md) - Production-oriented integration guide and host boundary philosophy
-- [`assessment-player/architecture.md`](./assessment-player/architecture.md) - Target architecture for assessment-player layering, contracts, and extensibility
-- [`assessment-player/implementation-plan.md`](./assessment-player/implementation-plan.md) - Implementation and post-build conformance checklist
 
 ## Integrations
 
@@ -81,10 +78,6 @@ This folder contains the active documentation set for `pie-players`. The focus i
 - [`setup/demo_system.md`](./setup/demo_system.md) - Canonical root demo commands and run orchestration
 - [`setup/publishing.md`](./setup/publishing.md) - Publishing workflow
 - [`setup/publishable_packages.md`](./setup/publishable_packages.md) - Publishable package inventory
-- [`setup/library-packaging-strategy.md`](./setup/library-packaging-strategy.md) - Packaging strategy for bundler reliability and runtime boundary contract (standalone variants deferred)
+- [`setup/library-packaging-strategy.md`](./setup/library-packaging-strategy.md) - Packaging strategy for bundler reliability and runtime boundary contracts
 - [`setup/cdn_usage.md`](./setup/cdn_usage.md) - CDN and loader usage
 - [`setup/npm_token_setup.md`](./setup/npm_token_setup.md) - npm token setup
-
-## Supporting Specs
-
-- [`evals/readme.md`](./evals/readme.md) - Eval/spec documentation for local behavior checks

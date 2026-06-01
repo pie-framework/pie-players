@@ -28,7 +28,7 @@
  *     reassigned `onStageChange` is invoked next time.
  *
  * The toolkit-side wiring in `PieAssessmentToolkit.svelte` reads
- * `upstreamEngine` and `onStageChange` through the thunks below at
+ * `hostLifecycleEngine` and `onStageChange` through the thunks below at
  * emit time (not at construction time), preserving pre-PR-6 cohort /
  * host-swap semantics. These tests exercise that thunk discipline.
  */

@@ -53,8 +53,7 @@ function rewriteSpecifier(specifier: string, opts: RewriteOptions): string {
 	if (
 		specifier.startsWith("@pie-element/") ||
 		specifier.startsWith("@pie-lib/") ||
-		specifier.startsWith("@pie-elements-ng/") ||
-		specifier.startsWith("@pie-players/")
+		specifier.startsWith("@pie-elements-ng/")
 	) {
 		return specifier.replace("@pie-", "/@pie-");
 	}

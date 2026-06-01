@@ -15,18 +15,10 @@ const RECOMMENDED_BASIC_PROPS = [
 	"splitPaneMinRegionWidth",
 	"splitPaneInitialPassageWidth",
 	"splitPaneCollapseStrategy",
-	"enabledTools",
 ] as const;
 
 const ADVANCED_ESCAPE_HATCH_PROPS = [
 	"runtime",
-	"playerType",
-	"player",
-	"lazyInit",
-	"tools",
-	"accessibility",
-	"coordinator",
-	"env",
 	"iifeBundleHost",
 	"toolRegistry",
 	"sectionHostButtons",

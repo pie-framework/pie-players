@@ -32,6 +32,7 @@ export {
 export {
 	sectionRuntimeEngineHostContext,
 	connectSectionRuntimeEngineHostContext,
+	type SectionRuntimeLifecycleHandle,
 	type SectionRuntimeEngineHostContextValue,
 	type SectionRuntimeEngineHostContextListener,
 } from "./section-runtime-engine-host-context.js";

@@ -3,6 +3,33 @@ import type { RequestHandler } from "./$types";
 import { SchoolCityServerProvider } from "@pie-players/tts-server-sc";
 import { TTSError, TTSErrorCode } from "@pie-players/tts-server-core";
 
+const previewText = (value: unknown, max = 120): string => {
+	if (typeof value !== "string") return "";
+	const collapsed = value.replace(/\s+/g, " ").trim();
+	return collapsed.length > max ? `${collapsed.slice(0, max)}…` : collapsed;
+};
+
+const summarizeErrorDetails = (details: unknown): Record<string, unknown> => {
+	if (!details || typeof details !== "object") return {};
+	const out: Record<string, unknown> = {};
+	for (const [key, value] of Object.entries(details as Record<string, unknown>)) {
+		if (value === null || value === undefined) continue;
+		if (typeof value === "string") {
+			out[key] = value.length > 500 ? `${value.slice(0, 500)}…` : value;
+		} else if (typeof value === "number" || typeof value === "boolean") {
+			out[key] = value;
+		} else {
+			try {
+				const serialized = JSON.stringify(value);
+				out[key] = serialized.length > 500 ? `${serialized.slice(0, 500)}…` : serialized;
+			} catch {
+				out[key] = "[unserializable]";
+			}
+		}
+	}
+	return out;
+};
+
 interface SchoolCitySynthesizeRequest {
 	text: string;
 	speedRate?: "slow" | "medium" | "fast";
@@ -121,8 +148,25 @@ export const POST: RequestHandler = async ({ request }) => {
 			...(result.speechMarks.length > 0 ? { speechMarks: result.speechMarks } : {}),
 		});
 	} catch (err) {
-		throw error(toHttpStatus(err), {
-			message: err instanceof Error ? err.message : "SC TTS request failed",
+		const status = toHttpStatus(err);
+		const message = err instanceof Error ? err.message : "SC TTS request failed";
+		const detailsSummary =
+			err instanceof TTSError ? summarizeErrorDetails(err.details) : {};
+		const logPayload = {
+			status,
+			code: err instanceof TTSError ? err.code : undefined,
+			message,
+			textLength: body.text.length,
+			textPreview: previewText(body.text),
+			lang: body.lang_id,
+			speedRate: body.speedRate,
+			cache: body.cache,
+			details: detailsSummary,
+		};
+		console.error("[api/tts/sc] SchoolCity TTS request failed", logPayload);
+		throw error(status, {
+			message,
+			...(Object.keys(detailsSummary).length > 0 ? { details: detailsSummary } : {}),
 		});
 	}
 };

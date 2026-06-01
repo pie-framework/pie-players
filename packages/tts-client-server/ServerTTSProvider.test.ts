@@ -2,6 +2,7 @@ import { describe, expect, test, vi, beforeEach, afterEach } from "vitest";
 import { ServerTTSProvider } from "./src/ServerTTSProvider";
 
 class MockAudio {
+	static instances: MockAudio[] = [];
 	src = "";
 	currentTime = 0;
 	playbackRate = 1;
@@ -15,6 +16,7 @@ class MockAudio {
 
 	constructor(src: string) {
 		this.src = src;
+		MockAudio.instances.push(this);
 	}
 
 	play(): Promise<void> {
@@ -48,6 +50,7 @@ describe("ServerTTSProvider", () => {
 	const originalRevokeObjectURL = URL.revokeObjectURL;
 
 	beforeEach(() => {
+		MockAudio.instances = [];
 		(globalThis as Record<string, unknown>).Audio = MockAudio;
 		URL.createObjectURL = vi.fn(() => "blob:mock-audio");
 		URL.revokeObjectURL = vi.fn();
@@ -97,6 +100,47 @@ describe("ServerTTSProvider", () => {
 		const body = JSON.parse(String(options.body));
 		expect(body.provider).toBe("polly");
 		expect(body.includeSpeechMarks).toBe(true);
+	});
+
+	test("preserves speech mark word values in boundary callbacks", async () => {
+		const provider = new ServerTTSProvider();
+		const impl = await provider.initialize({ apiEndpoint: "/api/tts" } as any);
+		const timings = (impl as any).parseSpeechMarks([
+			{ time: 0, type: "word", start: 42, end: 43, value: "X" },
+		]);
+
+		expect(timings).toEqual([
+			{ time: 0, wordIndex: 0, charIndex: 42, length: 1, word: "X" },
+		]);
+	});
+
+	test("does not rescale server-generated audio playback rate", async () => {
+		const fetchMock = vi.fn(async () =>
+			createJSONResponse({
+				audio: btoa("audio-bytes"),
+				contentType: "audio/mpeg",
+				speechMarks: [
+					{ time: 1000, type: "word", start: 0, end: 5, value: "hello" },
+				],
+				metadata: {
+					providerId: "polly",
+					voice: "Joanna",
+					duration: 1,
+					charCount: 5,
+					cached: false,
+				},
+			}),
+		);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+		const provider = new ServerTTSProvider();
+		const impl = await provider.initialize({
+			apiEndpoint: "/api/tts",
+			rate: 0.8,
+		} as any);
+
+		await impl.speak("hello");
+
+		expect(MockAudio.instances[0]?.playbackRate).toBe(1);
 	});
 
 	test("supports custom transport with root POST and JSONL marks", async () => {
@@ -220,5 +264,51 @@ describe("ServerTTSProvider", () => {
 
 		expect(fetchMock).toHaveBeenCalledTimes(1);
 		expect(String(fetchMock.mock.calls[0]?.[0])).toBe("/api/tts/google/voices");
+	});
+
+	describe("getCapabilities supportsSSML", () => {
+		const capabilitiesFor = async (config: Record<string, unknown>) => {
+			const provider = new ServerTTSProvider();
+			await provider.initialize(config as any);
+			return provider.getCapabilities();
+		};
+
+		test("reports SSML support for Polly on the pie transport", async () => {
+			const caps = await capabilitiesFor({
+				apiEndpoint: "/api/tts",
+				provider: "polly",
+			});
+			expect(caps.supportsSSML).toBe(true);
+		});
+
+		test("reports SSML support for Google on the pie transport", async () => {
+			const caps = await capabilitiesFor({
+				apiEndpoint: "/api/tts",
+				provider: "google",
+			});
+			expect(caps.supportsSSML).toBe(true);
+		});
+
+		test("defaults to SSML support (pie transport defaults to Polly)", async () => {
+			const caps = await capabilitiesFor({ apiEndpoint: "/api/tts" });
+			expect(caps.supportsSSML).toBe(true);
+		});
+
+		test("does not report SSML support on the custom transport", async () => {
+			const caps = await capabilitiesFor({
+				apiEndpoint: "/api/tts",
+				provider: "custom",
+				transportMode: "custom",
+			});
+			expect(caps.supportsSSML).toBe(false);
+		});
+
+		test("stays conservative for unknown pie providers", async () => {
+			const caps = await capabilitiesFor({
+				apiEndpoint: "/api/tts",
+				provider: "elevenlabs",
+			});
+			expect(caps.supportsSSML).toBe(false);
+		});
 	});
 });

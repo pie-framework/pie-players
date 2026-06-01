@@ -66,20 +66,22 @@ Demonstrates a restart/resume workflow with external server-side persistence. Th
 
 ## Running the Demos
 
+The canonical demo command list lives in
+[`../../docs/setup/demo_system.md`](../../docs/setup/demo_system.md). For this
+app:
+
 ```bash
-# From monorepo root
-bun install
-
-# First run on a fresh checkout (build package dist outputs + start demos)
 bun run dev:section -- --rebuild
-
-# Normal daily start
 bun run dev:section
-# Opens http://localhost:5300
+```
 
-# Optional: watch section-related package builds while iterating on tools/packages
+For tool/package iteration, run the build watcher in a second terminal:
+
+```bash
 bun run build:watch:section-tools
 ```
+
+The section demos run on `http://localhost:5300` by default.
 
 Use root scripts rather than running `bun run dev` directly inside
 `apps/section-demos`; root scripts apply the shared `.env` loading and
@@ -137,11 +139,12 @@ apps/section-demos/
 │   │   ├── (demos)/question-passage/[[id]]/
 │   │   ├── (demos)/three-questions/[[id]]/
 │   │   ├── (demos)/tts-ssml/[[id]]/
+│   │   ├── (demos)/tts-generated-ssml/[[id]]/
 │   │   ├── (demos)/session-persistence/[[id]]/
 │   │   └── (demos)/session-hydrate-db/[[id]]/
 │   │       ├── +page.ts           # Load fixed demo data with shared helper
 │   │       └── +page.svelte       # Demo host
-│   │   └── demo/[[id]]/           # Legacy host internals reused by new routes
+│   │   └── demo/[[id]]/           # Shared demo host internals reused by routes
 │   ├── lib/
 │   │   └── content/               # Demo content data
 │   │       ├── demo1-single-question.ts
@@ -161,6 +164,7 @@ Each demo has a TypeScript file defining the QTI 3.0 assessment section:
 - `demo2-question-passage.ts` - Renaissance passage + question
 - `demo3-three-questions.ts` - Photosynthesis passage + 3 questions
 - `demo4-tts-ssml.ts` - TTS + SSML coverage with multi-level catalogs
+- `demo10-tts-generated-ssml.ts` - Same content as `demo4-tts-ssml.ts`, minus the authored SSML/catalogs, so the toolkit generates math SSML on the fly
 - `sections.ts` - Includes multi-page `session-persistence` and `session-hydrate-db` demo wiring
 
 ### Customizing Demos
@@ -206,7 +210,10 @@ Use `loaderOptions` only for module/bundle loading behavior. Use `loaderConfig` 
 
 ### SC TTS Proxy Demo Config
 
-The `tts-ssml` route defaults to an SC-style custom transport through the local proxy route:
+TTS-focused demos can opt into an SC-style custom transport through the local
+proxy route. The two SSML-focused routes (`tts-ssml` and `tts-generated-ssml`)
+use the SSML-capable AWS Polly transport at `/api/tts` so authored and generated
+SSML are actually voiced.
 
 - Client endpoint: `POST /api/tts/sc`
 - Required server env vars (no defaults):

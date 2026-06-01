@@ -106,8 +106,12 @@
 		type RuntimeRegistrationDetail,
 	} from "../runtime/registration-events.js";
 	import { dispatchCrossBoundaryEvent } from "../runtime/tool-host-contract.js";
+	import { collectCatalogRegistrations } from "../runtime/catalog-registration.js";
 	import { SectionRuntimeEngine } from "../runtime/SectionRuntimeEngine.js";
-	import { connectSectionRuntimeEngineHostContext } from "../runtime/section-runtime-engine-host-context.js";
+	import {
+		connectSectionRuntimeEngineHostContext,
+		type SectionRuntimeLifecycleHandle,
+	} from "../runtime/section-runtime-engine-host-context.js";
 	import { runStageEmitWithSuppression } from "../runtime/stage-emit-gate.js";
 	import {
 		createRuntimeId,
@@ -157,20 +161,13 @@
 
 	const runtimeId = createRuntimeId("toolkit");
 	const sectionEngine = new SectionRuntimeEngine();
-	// M7 PR 6: when wrapped by a section-player layout, the kernel
-	// publishes its engine via the cross-CE
-	// `sectionRuntimeEngineHostContext`. We track the upstream
-	// reference so wrapped-mode-specific behavior (stage-emit
-	// suppression to avoid double-emit on layout CE; framework-error
-	// FSM input forwarding) can branch off it. `null` means
-	// standalone — no upstream provider responded — and the toolkit
-	// keeps its existing pre-PR-6 behavior. The reference is set once
-	// per cohort by the cross-CE consumer effect below; it never
-	// becomes a substitute for `sectionEngine` (the local engine
-	// remains the controller-side facade for `register`,
-	// `handleContent*`, `initialize`, etc.). PR 7+ will collapse the
-	// local controller-side surface onto the upstream engine.
-	let upstreamEngine = $state<SectionRuntimeEngine | null>(null);
+	// When wrapped by a section-player layout, the kernel publishes a
+	// lifecycle engine handle via `sectionRuntimeEngineHostContext`. The
+	// toolkit uses that host lifecycle presence only to suppress duplicate
+	// external lifecycle emits on the toolkit CE. Controller registration,
+	// content loading, session propagation, and persistence still flow through
+	// the toolkit-local `sectionEngine` below.
+	let hostLifecycleEngine = $state<SectionRuntimeLifecycleHandle | null>(null);
 	// Per-CE-instance framework-error bus. Shared with the owned
 	// `ToolkitCoordinator` so coordinator-side failures (provider-init,
 	// tts-init, ...) flow through the same fan-out as CE-side failures
@@ -266,6 +263,8 @@ const DEFAULT_ENV = {
 	let pendingCompositionEmit = false;
 	let compositionEmitRaf: number | null = null;
 	let pendingCrossBoundaryEvents: Array<{ name: string; detail: unknown }> = [];
+	const runtimeRegistrationDetails = new Map<HTMLElement, RuntimeRegistrationDetail>();
+	const catalogRegistrationCleanups = new WeakMap<HTMLElement, Array<() => void>>();
 	const sessionEmitPolicyState = createSessionEmitPolicyState();
 
 	// M6 canonical stage tracker. Post-retro the toolkit applies the
@@ -307,7 +306,7 @@ const DEFAULT_ENV = {
 			//     degenerates into a series of suppressed emits in
 			//     wrapped mode without losing any latch transitions.
 			//
-			//     The reactive `upstreamEngine` is read inside the
+			//     The reactive `hostLifecycleEngine` is read inside the
 			//     thunk (i.e. at emit time, not at construction time)
 			//     and all callers of `stageTracker.enter(...)` are
 			//     themselves wrapped in `untrack(...)` (see effects
@@ -319,7 +318,7 @@ const DEFAULT_ENV = {
 			//     reach the latest handler.
 			runStageEmitWithSuppression(
 				{
-					isSuppressed: () => upstreamEngine !== null,
+					isSuppressed: () => hostLifecycleEngine !== null,
 					dispatchDomEvent: (d) => emit("pie-stage-change", d),
 					getOnStageChange: () => onStageChange,
 				},
@@ -945,6 +944,49 @@ const DEFAULT_ENV = {
 		queueMicrotask(flush);
 	}
 
+	function unregisterCatalogsForElement(element?: HTMLElement | null): void {
+		if (!element) return;
+		const cleanups = catalogRegistrationCleanups.get(element);
+		if (!cleanups) return;
+		for (const cleanup of cleanups) {
+			cleanup();
+		}
+		catalogRegistrationCleanups.delete(element);
+	}
+
+	function unregisterAllScopedCatalogs(): void {
+		for (const detail of runtimeRegistrationDetails.values()) {
+			unregisterCatalogsForElement(detail.element);
+		}
+	}
+
+	function registerCatalogsForDetail(detail: RuntimeRegistrationDetail): void {
+		unregisterCatalogsForElement(detail.element);
+		if (!effectiveCoordinator) return;
+		const resolver = effectiveCoordinator.getServiceBundle().catalogResolver as {
+			registerCatalogs?: (context: unknown, catalogs: unknown[]) => () => void;
+		};
+		if (typeof resolver.registerCatalogs !== "function") return;
+		const registrations = collectCatalogRegistrations(detail, {
+			assessmentId: effectiveAssessmentId,
+			sectionId: effectiveSectionId,
+		});
+		if (registrations.length === 0) return;
+		catalogRegistrationCleanups.set(
+			detail.element,
+			registrations.map((registration) =>
+				resolver.registerCatalogs!(registration.context, registration.catalogs),
+			),
+		);
+	}
+
+	function refreshCatalogRegistrations(): void {
+		unregisterAllScopedCatalogs();
+		for (const detail of runtimeRegistrationDetails.values()) {
+			registerCatalogsForDetail(detail);
+		}
+	}
+
 	function emitNormalizedSessionChanged(args: {
 		itemId: string;
 		canonicalItemId?: string;
@@ -1016,22 +1058,31 @@ const DEFAULT_ENV = {
 		});
 	});
 
-	// M7 PR 6: cross-CE engine bridge consumer. When the toolkit CE
-	// renders inside a section-player layout, the kernel publishes its
-	// `SectionRuntimeEngine` via `sectionRuntimeEngineHostContext` on
-	// the layout CE host. The consumer's `context-request` bubbles up
-	// across the toolkit's shadow boundary, the kernel's provider
-	// answers, and we record the upstream reference. When standalone,
-	// no provider responds within the consumer's retry window and
-	// `upstreamEngine` stays `null` — that is the standalone path's
-	// contract. `isolation === "force"` does not opt out of this
-	// bridge: it is a runtime-engine seam, not a coordinator-isolation
-	// seam, and `force` still wants the canonical engine path.
+	// Cross-CE lifecycle bridge consumer. When the toolkit CE renders inside a
+	// section-player layout, the kernel publishes a lifecycle handle via
+	// `sectionRuntimeEngineHostContext` on the layout CE host. The consumer's
+	// `context-request` bubbles across the toolkit's shadow boundary, the
+	// kernel's provider answers, and we record that host lifecycle ownership is
+	// present. When standalone, no provider responds within the consumer's
+	// retry window and `hostLifecycleEngine` stays `null` — that is the
+	// standalone path's contract. `isolation === "force"` does not opt out of
+	// this bridge: it is a lifecycle-emission seam, not a coordinator-isolation
+	// seam.
 	$effect(() => {
-		if (!host) return;
-		return connectSectionRuntimeEngineHostContext(host, (value) => {
-			if (value.engine === upstreamEngine) return;
-			upstreamEngine = value.engine;
+		const currentHost = host;
+		return untrack(() => {
+			if (!currentHost) {
+				hostLifecycleEngine = null;
+				return;
+			}
+			const detach = connectSectionRuntimeEngineHostContext(currentHost, (value) => {
+				if (value.engine === hostLifecycleEngine) return;
+				hostLifecycleEngine = value.engine;
+			});
+			return () => {
+				detach();
+				hostLifecycleEngine = null;
+			};
 		});
 	});
 
@@ -1109,6 +1160,16 @@ const DEFAULT_ENV = {
 		if (runtimeContextValue) {
 			provider?.setValue(runtimeContextValue);
 		}
+	});
+
+	$effect(() => {
+		void effectiveCoordinator;
+		void effectiveAssessmentId;
+		void effectiveSectionId;
+		refreshCatalogRegistrations();
+		return () => {
+			unregisterAllScopedCatalogs();
+		};
 	});
 
 	$effect(() => {
@@ -1307,6 +1368,8 @@ const DEFAULT_ENV = {
 					const detail = getEventDetail<RuntimeRegistrationDetail>(event);
 					if (!detail?.element || !detail?.itemId) return;
 					const changed = sectionEngine.register(detail);
+					runtimeRegistrationDetails.set(detail.element, detail);
+					registerCatalogsForDetail(detail);
 					sectionEngine.handleContentRegistered(detail);
 					if (changed) emitCompositionChanged();
 				},
@@ -1320,6 +1383,10 @@ const DEFAULT_ENV = {
 					const changed = detail?.element
 						? sectionEngine.unregister(detail.element)
 						: false;
+					unregisterCatalogsForElement(detail.element);
+					if (detail.element) {
+						runtimeRegistrationDetails.delete(detail.element);
+					}
 					sectionEngine.handleContentUnregistered(detail);
 					if (changed) emitCompositionChanged();
 				},

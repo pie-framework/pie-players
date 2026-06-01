@@ -45,7 +45,7 @@ function registerController(controller: Partial<PieController>) {
 }
 
 describe("scorePieItem", () => {
-	test("scopes element lookup to the supplied container and uses legacy outcome arguments", async () => {
+	test("scopes element lookup to the supplied container and uses item-player outcome arguments", async () => {
 		const calls: Array<{
 			modelId: string;
 			sessionValue: unknown;

@@ -226,7 +226,7 @@ export class TTSToolProvider
 		// Server backends are optional; load implementation only when requested.
 		const moduleLoadStartedAt = Date.now();
 		await this.emitTelemetry("pie-tool-library-load-start", {
-			toolId: "tts",
+			toolId: "textToSpeech",
 			operation: "server-provider-module-import",
 			backend: config.serverProvider || config.backend,
 		});
@@ -236,7 +236,7 @@ export class TTSToolProvider
 					ServerTTSProvider: new () => ITTSProvider;
 				};
 				await this.emitTelemetry("pie-tool-library-load-success", {
-					toolId: "tts",
+					toolId: "textToSpeech",
 					operation: "server-provider-module-import",
 					backend: config.serverProvider || config.backend,
 					duration: Date.now() - moduleLoadStartedAt,
@@ -244,7 +244,7 @@ export class TTSToolProvider
 				return loaded;
 			} catch (error) {
 				await this.emitTelemetry("pie-tool-library-load-error", {
-					toolId: "tts",
+				toolId: "textToSpeech",
 					operation: "server-provider-module-import",
 					backend: config.serverProvider || config.backend,
 					duration: Date.now() - moduleLoadStartedAt,

@@ -61,22 +61,26 @@
 		<div class="tabbed-layout-player-shell">
 			{#if isSplitpaneVariant}
 				<pie-section-player-splitpane
+					runtime={ {
+						env: pieEnv
+					} }
 					assessment-id="section-demos.tabbed-layout"
 					{sectionId}
 					{attemptId}
 					section={data.section}
-					env={pieEnv}
 					narrow-layout-breakpoint={1500}
 					split-pane-collapse-strategy="tabbed"
 					show-toolbar={true}
 				></pie-section-player-splitpane>
 			{:else}
 				<pie-section-player-tabbed
+					runtime={ {
+						env: pieEnv
+					} }
 					assessment-id="section-demos.tabbed-layout"
 					{sectionId}
 					{attemptId}
 					section={data.section}
-					env={pieEnv}
 					show-toolbar={true}
 				></pie-section-player-tabbed>
 			{/if}

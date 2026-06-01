@@ -6,8 +6,8 @@ adapter.
 ## Delivery Demo
 
 The root route renders one `<pie-item-player>` and wires `backend.delivery` to a
-local, unauthenticated API that mirrors the subset of `pie-api-aws` used by the
-legacy `pie-api-player`:
+local, unauthenticated API that mirrors the subset of `pie-api-aws` used by
+`pie-api-player`:
 
 - `POST /api/player/load`
 - `POST /api/player/save`
@@ -33,14 +33,12 @@ instead of that raw config. This demo therefore runs:
 The save endpoint remains intentionally simple: it persists the current session
 data and returns the saved session.
 
-Run locally:
+The canonical demo command list lives in
+[`../../docs/setup/demo_system.md`](../../docs/setup/demo_system.md). Run this
+demo from the monorepo root:
 
 ```bash
 bun run dev:backend
 ```
 
-Or from this app directory:
-
-```bash
-bun run dev
-```
+The backend demo runs on `http://localhost:5600` by default.

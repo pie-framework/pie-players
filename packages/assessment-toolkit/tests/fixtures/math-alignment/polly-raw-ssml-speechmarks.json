@@ -1,0 +1,21 @@
+{
+	"description": "Captured Polly-style word marks for raw SSML with an ignorable break tag",
+	"speechText": "<speak><break time=\"250ms\"/>Hello world</speak>",
+	"spokenText": "Hello world",
+	"marks": [
+		{
+			"type": "word",
+			"value": "Hello",
+			"start": 28,
+			"end": 33,
+			"time": 100
+		},
+		{
+			"type": "word",
+			"value": "world",
+			"start": 34,
+			"end": 39,
+			"time": 420
+		}
+	]
+}

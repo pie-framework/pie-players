@@ -145,7 +145,7 @@
 
 ### Patch Changes
 
-- 9ef211c: PIE-512 Phase D cleanup: drop legacy `sectionId` / `attemptId` args from internal subscribe call sites; sharpen the migration narrative for typed integrations.
+- 9ef211c: PIE-512 Phase D cleanup: drop prior `sectionId` / `attemptId` args from internal subscribe call sites; sharpen the migration narrative for typed integrations.
 
   This is a follow-up to `0.3.35` — same active-cohort contract, no functional behavior change. It cleans up internal code that was still passing the now-ignored args, and adds an explicit migration recipe for typed integrators.
 
@@ -320,7 +320,7 @@
     binding, migration with replay, replay ordering, the no-active-cohort
     throw, listener throw isolation, snapshot-safe unsubscribe during
     fan-out, same-cohort `updateInput` no-op, re-entrant subscribe during
-    migration replay, and back-compat tolerance of legacy `sectionId` args.
+    migration replay, and contract tolerance of prior `sectionId` args.
   - `packages/assessment-toolkit/tests/runtime/adapter/coordinator-bridge-cohort-handoff.test.ts`
     (new) — bridge + real-`ToolkitCoordinator` integration test mirroring
     Darin's persistent-host wrapper pattern: `resolveSectionController(A) →
@@ -341,7 +341,7 @@ resolveSectionController(B)` migrates a coordinator-bound listener with
   Before any production code changed, the new + edited tests were run against
   the pre-fix source: 10 of 17 targeted tests failed in the expected ways
   (ambiguous-section throws, missed migrations, no throw isolation, missing
-  back-compat tolerance, missing bridge replay). The 7 that passed against
+  contract tolerance, missing bridge replay). The 7 that passed against
   pre-fix source pin orthogonal invariants (single-cohort replay ordering,
   dispose-detach, snapshot-safe iteration). All 27 pass against the Phase D
   implementation.
@@ -566,7 +566,7 @@ resolveSectionController(B)` migrates a coordinator-bound listener with
 
   - **M8 — tool policy engine.** Allow/block + PNP/profile enforcement become a
     first-class policy surface on `ToolkitCoordinator`
-    (`onPolicyChange`, `decideToolPolicy`, `getFloatingTools`,
+    (`onPolicyChange`, `decideToolPolicy`, `updateToolPlacement`,
     `setPnpEnforcement`, `registerPolicySource`), with narrow profile
     auto-detection mirrored through `runtime.tools.pnpEnforcement`.
 
@@ -598,7 +598,7 @@ resolveSectionController(B)` migrates a coordinator-bound listener with
     framework-error contract) are unchanged.
 
   - **Deprecated Svelte-store-shaped `toolCoordinatorStore`** and the
-    legacy `ToolCoordinator` _interface_ (the z-index / visibility shape
+    prior `ToolCoordinator` _interface_ (the z-index / visibility shape
     in `packages/assessment-toolkit/src/tools/types.ts`, with
     `registerTool` / `showTool` / `hideTool` / `toggleTool` /
     `bringToFront` / `updateToolElement` / `hideAllTools` /
@@ -610,7 +610,7 @@ resolveSectionController(B)` migrates a coordinator-bound listener with
     All instance methods carry over verbatim, plus a `subscribe()` for
     reactive consumption that replaces the deleted Svelte-store derived
     views. Independently, `ToolkitCoordinator`'s tool-policy surface
-    (`onPolicyChange`, `decideToolPolicy`, `getFloatingTools`,
+    (`onPolicyChange`, `decideToolPolicy`, `updateToolPlacement`,
     `setPnpEnforcement`, `registerPolicySource`) is the canonical entry
     point for the _tool policy_ concern (allow/block + PNP/profile enforcement)
     — that is a different concern than the floating-tool z-index API
@@ -727,11 +727,11 @@ resolveSectionController(B)` migrates a coordinator-bound listener with
     `createRuntimeId` is the only re-export). Import from
     `@pie-players/pie-assessment-toolkit/runtime/internal` instead.
 
-  - **`warnDeprecatedOnce` deprecation-warning utility** and its
+  - **`one-time warning utility` deprecation-warning utility** and its
     public re-export from `@pie-players/pie-assessment-toolkit`
     (`packages/assessment-toolkit/src/services/deprecation-warnings.ts`,
-    along with the test-only `__resetDeprecationWarnings` and the
-    `warnDeprecatedOnce` test block in
+    along with the test-only `test reset helper` and the
+    `one-time warning utility` test block in
     `tests/framework-error-bus.test.ts`). Every internal callsite
     was removed earlier in this sweep; no in-tree code depends on the
     utility. External consumers that imported it from the package
@@ -756,11 +756,11 @@ resolveSectionController(B)` migrates a coordinator-bound listener with
     el.isolation = "shadow";
     ```
 
-  - **Deprecated `ToolkitCoordinatorHooks` error hooks**
+  - **Removed `ToolkitCoordinatorHooks` error hooks**
     (`onError`, `onTTSError`, `onProviderError`) and their
     subscription/dispatch logic on `ToolkitCoordinator`, plus the
-    internal helpers (`toCauseError`, `legacyContextFromModel`,
-    `providerIdFromSource`) that synthesized the legacy
+    internal helpers (`toCauseError`, `contextFromFrameworkErrorModel`,
+    `providerIdFromSource`) that synthesized the prior
     `(error, context)` payload from the canonical
     `FrameworkErrorModel`. The single canonical hook is
     `onFrameworkError(model: FrameworkErrorModel)`, which already

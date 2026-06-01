@@ -130,7 +130,6 @@ export const themeToolRegistration: ToolRegistration = {
 		"highContrastDisplay", // QTI 3.0 standard (visual.highContrastDisplay)
 		"colorContrast", // QTI 3.0 standard (visual.colorContrast)
 		"invertColors", // QTI 3.0 standard (visual.invertColors)
-		"colorScheme", // Legacy alias
 		"theme", // Canonical id
 		"highContrast", // Common variant
 		"customColors", // Common variant

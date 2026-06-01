@@ -42,8 +42,6 @@ export const ITEM_TOOL_MODULE_LOADERS: Record<string, ToolModuleLoader> = {
 	annotationToolbar: () =>
 		loadSideEffectModule(() => import("@pie-players/pie-tool-annotation-toolbar")),
 	theme: () => loadSideEffectModule(() => import("@pie-players/pie-tool-theme")),
-	colorScheme: () =>
-		loadSideEffectModule(() => import("@pie-players/pie-tool-theme")),
 };
 
 export const DEFAULT_TOOL_MODULE_LOADERS: Record<string, ToolModuleLoader> = {

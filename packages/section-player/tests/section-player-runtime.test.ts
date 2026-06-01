@@ -9,12 +9,11 @@
  *     it cannot move into the toolkit-side engine resolver.
  *   - `resolveSectionPlayerRuntimeState` — thin wrapper over the
  *     toolkit's `resolveSectionEngineRuntimeState` that supplies the
- *     local `resolvePlayerRuntime`. Pinning the propagation +
- *     precedence behavior here proves the wrapper still threads
- *     handlers through the engine-side orchestrator unchanged.
+ *     local `resolvePlayerRuntime`. Pinning propagation here proves the
+ *     wrapper still threads handlers through the engine-side orchestrator.
  *
- * The pure two-tier-mirror behavior of `resolveRuntime`,
- * `resolveToolsConfig`, and the per-key precedence rule lives in
+ * The pure runtime resolver behavior of `resolveRuntime`,
+ * `resolveToolsConfig`, and callback precedence lives in
  * `packages/assessment-toolkit/tests/runtime/core/engine-resolver.test.ts`
  * (re-pointed in M7 PR 1). This file deliberately does not re-cover
  * those — they have a single source of truth in the toolkit suite.
@@ -117,17 +116,9 @@ describe("resolveSectionPlayerRuntimeState", () => {
 		const handler = () => {};
 		const state = resolveSectionPlayerRuntimeState({
 			assessmentId: "a1",
-			playerType: "iife",
-			player: null,
-			lazyInit: true,
-			tools: null,
-			accessibility: null,
-			coordinator: null,
-			env: null,
 			toolConfigStrictness: "error",
 			onFrameworkError: handler,
 			runtime: null,
-			enabledTools: "",
 		});
 		expect((state.effectiveRuntime as any).onFrameworkError).toBe(handler);
 	});
@@ -137,17 +128,9 @@ describe("resolveSectionPlayerRuntimeState", () => {
 		const handler = () => {};
 		const state = resolveSectionPlayerRuntimeState({
 			assessmentId: "a1",
-			playerType: "iife",
-			player: null,
-			lazyInit: true,
-			tools: null,
-			accessibility: null,
-			coordinator: null,
-			env: null,
 			toolConfigStrictness: "error",
 			onStageChange: handler,
 			runtime: null,
-			enabledTools: "",
 		});
 		expect((state.effectiveRuntime as any).onStageChange).toBe(handler);
 	});
@@ -157,17 +140,9 @@ describe("resolveSectionPlayerRuntimeState", () => {
 		const handler = () => {};
 		const state = resolveSectionPlayerRuntimeState({
 			assessmentId: "a1",
-			playerType: "iife",
-			player: null,
-			lazyInit: true,
-			tools: null,
-			accessibility: null,
-			coordinator: null,
-			env: null,
 			toolConfigStrictness: "error",
 			onLoadingComplete: handler,
 			runtime: null,
-			enabledTools: "",
 		});
 		expect((state.effectiveRuntime as any).onLoadingComplete).toBe(handler);
 	});
@@ -178,17 +153,9 @@ describe("resolveSectionPlayerRuntimeState", () => {
 		const fromProp = () => {};
 		const state = resolveSectionPlayerRuntimeState({
 			assessmentId: "a1",
-			playerType: "iife",
-			player: null,
-			lazyInit: true,
-			tools: null,
-			accessibility: null,
-			coordinator: null,
-			env: null,
 			toolConfigStrictness: "error",
 			onStageChange: fromProp,
 			runtime: { onStageChange: fromRuntime },
-			enabledTools: "",
 		});
 		expect((state.effectiveRuntime as any).onStageChange).toBe(fromRuntime);
 	});
@@ -199,17 +166,9 @@ describe("resolveSectionPlayerRuntimeState", () => {
 		const fromProp = () => {};
 		const state = resolveSectionPlayerRuntimeState({
 			assessmentId: "a1",
-			playerType: "iife",
-			player: null,
-			lazyInit: true,
-			tools: null,
-			accessibility: null,
-			coordinator: null,
-			env: null,
 			toolConfigStrictness: "error",
 			onLoadingComplete: fromProp,
 			runtime: { onLoadingComplete: fromRuntime },
-			enabledTools: "",
 		});
 		expect((state.effectiveRuntime as any).onLoadingComplete).toBe(fromRuntime);
 	});
@@ -218,16 +177,8 @@ describe("resolveSectionPlayerRuntimeState", () => {
 		const { resolveSectionPlayerRuntimeState } = await loadHostRuntime();
 		const state = resolveSectionPlayerRuntimeState({
 			assessmentId: "a1",
-			playerType: "iife",
-			player: null,
-			lazyInit: true,
-			tools: null,
-			accessibility: null,
-			coordinator: null,
-			env: { mode: "gather" },
 			toolConfigStrictness: "error",
-			runtime: null,
-			enabledTools: "",
+			runtime: { playerType: "iife", env: { mode: "gather" } },
 		});
 		expect(state.playerRuntime.effectivePlayerType).toBe("iife");
 		expect(state.playerRuntime.resolvedPlayerTag).toBeDefined();

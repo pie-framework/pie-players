@@ -304,6 +304,25 @@
 		return asElement;
 	}
 
+	function resolveCatalogContext(): Record<string, string> | undefined {
+		if (!shellContext) return undefined;
+		if (shellContext.kind === 'passage') {
+			return {
+				ownerKind: 'passage',
+				assessmentId: runtimeContext?.assessmentId || '',
+				sectionId: runtimeContext?.sectionId || '',
+				passageId: shellContext.canonicalItemId || shellContext.itemId,
+			};
+		}
+		return {
+			ownerKind: 'itemModel',
+			assessmentId: runtimeContext?.assessmentId || '',
+			sectionId: runtimeContext?.sectionId || '',
+			itemId: shellContext.itemId,
+			canonicalItemId: shellContext.canonicalItemId || shellContext.itemId,
+		};
+	}
+
 	function startSpeaking(): void {
 		if (!ttsService) return;
 		const readingTarget = resolveReadingTarget();
@@ -322,13 +341,13 @@
 				ttsService.setHighlightCoordinator(highlightCoordinator);
 			}
 			(ttsService as any).setRootElement?.(readingTarget as HTMLElement);
-			const isPassageScope = Boolean(readingTarget.closest('pie-passage-shell'));
 			statusMessage = 'Reading started';
 			void ttsService.speak(text, {
-				catalogId: isPassageScope ? undefined : catalogId || undefined,
+				catalogId: catalogId || undefined,
+				catalogContext: resolveCatalogContext(),
 				language,
 				contentElement: readingTarget,
-			}).catch((error) => {
+			} as any).catch((error) => {
 				console.error('[TTS Inline] Error:', error);
 				statusMessage = 'Unable to start reading';
 				if (highlightCoordinator) {

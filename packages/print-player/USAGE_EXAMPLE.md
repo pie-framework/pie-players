@@ -2,7 +2,7 @@
 
 This document shows real-world usage of print views from the production pieoneer application.
 
-## Current Architecture (Legacy @pie-framework/pie-print)
+## Current Production Usage (`@pie-framework/pie-print`)
 
 ### 1. HTML Setup
 

@@ -140,7 +140,7 @@
 
   - **M8 — tool policy engine.** Allow/block + PNP/profile enforcement become a
     first-class policy surface on `ToolkitCoordinator`
-    (`onPolicyChange`, `decideToolPolicy`, `getFloatingTools`,
+    (`onPolicyChange`, `decideToolPolicy`, `updateToolPlacement`,
     `setPnpEnforcement`, `registerPolicySource`), with narrow profile
     auto-detection mirrored through `runtime.tools.pnpEnforcement`.
 
@@ -172,7 +172,7 @@
     framework-error contract) are unchanged.
 
   - **Deprecated Svelte-store-shaped `toolCoordinatorStore`** and the
-    legacy `ToolCoordinator` _interface_ (the z-index / visibility shape
+    prior `ToolCoordinator` _interface_ (the z-index / visibility shape
     in `packages/assessment-toolkit/src/tools/types.ts`, with
     `registerTool` / `showTool` / `hideTool` / `toggleTool` /
     `bringToFront` / `updateToolElement` / `hideAllTools` /
@@ -184,7 +184,7 @@
     All instance methods carry over verbatim, plus a `subscribe()` for
     reactive consumption that replaces the deleted Svelte-store derived
     views. Independently, `ToolkitCoordinator`'s tool-policy surface
-    (`onPolicyChange`, `decideToolPolicy`, `getFloatingTools`,
+    (`onPolicyChange`, `decideToolPolicy`, `updateToolPlacement`,
     `setPnpEnforcement`, `registerPolicySource`) is the canonical entry
     point for the _tool policy_ concern (allow/block + PNP/profile enforcement)
     — that is a different concern than the floating-tool z-index API
@@ -301,11 +301,11 @@
     `createRuntimeId` is the only re-export). Import from
     `@pie-players/pie-assessment-toolkit/runtime/internal` instead.
 
-  - **`warnDeprecatedOnce` deprecation-warning utility** and its
+  - **`one-time warning utility` deprecation-warning utility** and its
     public re-export from `@pie-players/pie-assessment-toolkit`
     (`packages/assessment-toolkit/src/services/deprecation-warnings.ts`,
-    along with the test-only `__resetDeprecationWarnings` and the
-    `warnDeprecatedOnce` test block in
+    along with the test-only `test reset helper` and the
+    `one-time warning utility` test block in
     `tests/framework-error-bus.test.ts`). Every internal callsite
     was removed earlier in this sweep; no in-tree code depends on the
     utility. External consumers that imported it from the package
@@ -330,11 +330,11 @@
     el.isolation = "shadow";
     ```
 
-  - **Deprecated `ToolkitCoordinatorHooks` error hooks**
+  - **Removed `ToolkitCoordinatorHooks` error hooks**
     (`onError`, `onTTSError`, `onProviderError`) and their
     subscription/dispatch logic on `ToolkitCoordinator`, plus the
-    internal helpers (`toCauseError`, `legacyContextFromModel`,
-    `providerIdFromSource`) that synthesized the legacy
+    internal helpers (`toCauseError`, `contextFromFrameworkErrorModel`,
+    `providerIdFromSource`) that synthesized the prior
     `(error, context)` payload from the canonical
     `FrameworkErrorModel`. The single canonical hook is
     `onFrameworkError(model: FrameworkErrorModel)`, which already

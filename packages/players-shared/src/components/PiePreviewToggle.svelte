@@ -26,7 +26,7 @@
 			onModeChange(newMode);
 		}
 
-		// Also dispatch DOM event for backward compatibility
+		// Also dispatch a DOM event so hosts can listen outside Svelte.
 		const event = new CustomEvent('mode-changed', {
 			detail: { mode: newMode },
 			bubbles: true,

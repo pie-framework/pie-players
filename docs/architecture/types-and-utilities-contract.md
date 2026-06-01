@@ -16,9 +16,6 @@ Pre-v1 policy applies: **no compatibility aliases** and **no transitional re-exp
 | `IElementToolStateStore` | `ElementToolStateStoreApi` | `packages/assessment-toolkit/src/services/interfaces.ts` |
 | `IToolkitCoordinator` | `ToolkitCoordinatorApi` | `packages/assessment-toolkit/src/services/interfaces.ts` |
 | `IToolProvider` | `ToolProviderApi` | `packages/assessment-toolkit/src/services/tool-providers/ToolProviderApi.ts` |
-| `PNPToolResolver` | `PnpToolResolver` | `packages/assessment-toolkit/src/services/PNPToolResolver.ts` |
-| `PNPResolutionProvenance` | `PnpResolutionProvenance` | `packages/assessment-toolkit/src/services/pnp-provenance.ts` |
-| `PNPProvenanceBuilder` | `PnpProvenanceBuilder` | `packages/assessment-toolkit/src/services/pnp-provenance.ts` |
 
 ## Type Ownership
 

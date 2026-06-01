@@ -67,7 +67,7 @@
 
 ### Patch Changes
 
-- 9ef211c: PIE-512 Phase D cleanup: drop legacy `sectionId` / `attemptId` args from internal subscribe call sites; sharpen the migration narrative for typed integrations.
+- 9ef211c: PIE-512 Phase D cleanup: drop prior `sectionId` / `attemptId` args from internal subscribe call sites; sharpen the migration narrative for typed integrations.
 
   This is a follow-up to `0.3.35` — same active-cohort contract, no functional behavior change. It cleans up internal code that was still passing the now-ignored args, and adds an explicit migration recipe for typed integrators.
 

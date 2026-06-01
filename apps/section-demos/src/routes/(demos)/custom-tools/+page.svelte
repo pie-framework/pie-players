@@ -63,7 +63,6 @@
 			toolsConfigResult.diagnostics,
 		);
 	}
-	const sectionToolbarTools = "sectionMetaInfo,theme";
 	const coordinator = new ToolkitCoordinator({
 		assessmentId: DEMO_ASSESSMENT_ID,
 		toolRegistry: customTools.toolRegistry,
@@ -276,16 +275,17 @@
 			assessment-id={DEMO_ASSESSMENT_ID}
 			section-id={sessionPanelSectionId}
 			attempt-id={attemptId}
-			player-type={selectedPlayerType}
-			lazy-init={true}
-			tools={toolkitToolsConfig}
-			player={sectionPlayerConfig}
+			runtime={ {
+				playerType: selectedPlayerType,
+				lazyInit: true,
+				tools: toolkitToolsConfig,
+				player: sectionPlayerConfig,
+				env: pieEnv,
+				coordinator: coordinator
+			} }
 			section={resolvedSectionForPlayer}
-			env={pieEnv}
-			coordinator={coordinator}
 			toolbar-position="right"
 			show-toolbar={true}
-			enabled-tools={sectionToolbarTools}
 			toolRegistry={customTools.toolRegistry}
 			sectionHostButtons={customTools.sectionHostButtons}
 			itemHostButtons={customTools.itemHostButtons}
@@ -298,16 +298,17 @@
 			assessment-id={DEMO_ASSESSMENT_ID}
 			section-id={sessionPanelSectionId}
 			attempt-id={attemptId}
-			player-type={selectedPlayerType}
-			lazy-init={true}
-			tools={toolkitToolsConfig}
-			player={sectionPlayerConfig}
+			runtime={ {
+				playerType: selectedPlayerType,
+				lazyInit: true,
+				tools: toolkitToolsConfig,
+				player: sectionPlayerConfig,
+				env: pieEnv,
+				coordinator: coordinator
+			} }
 			section={resolvedSectionForPlayer}
-			env={pieEnv}
-			coordinator={coordinator}
 			toolbar-position="right"
 			show-toolbar={true}
-			enabled-tools={sectionToolbarTools}
 			toolRegistry={customTools.toolRegistry}
 			sectionHostButtons={customTools.sectionHostButtons}
 			itemHostButtons={customTools.itemHostButtons}

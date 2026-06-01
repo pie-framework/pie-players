@@ -2,7 +2,7 @@
 
 PIE Players is the modern player project for the PIE ecosystem. It provides the runtime pieces that render PIE items, compose sections, orchestrate assessment attempts, coordinate tools and accommodations, support print workflows, and expose observability signals for production hosts.
 
-The project exists because the legacy player model solved item rendering, but it did not give us a clean foundation for modern module loading, authoring and delivery in one surface, section-level composition, assessment-level orchestration, or coordinated tool and accommodation support. PIE Players keeps compatibility with existing PIE content while giving new integrations clearer contracts and a better development experience.
+The project exists because the prior player model solved item rendering, but it did not give us a clean foundation for modern module loading, authoring and delivery in one surface, section-level composition, assessment-level orchestration, or coordinated tool and accommodation support. PIE Players supports deployed PIE content while giving new integrations clearer contracts and a better development experience.
 
 ## What PIE Players Covers
 
@@ -17,7 +17,7 @@ PIE Players is a project, not just a single custom element. It includes:
 
 ## Why a New Player Project
 
-The legacy open-source player model exposed separate components for delivery and authoring, relied primarily on IIFE bundle loading, and left many higher-level concerns to each consuming product. That made integration possible, but it also meant teams repeatedly rebuilt similar section layouts, tool coordination, session wiring, accessibility behavior, and telemetry conventions.
+The prior open-source player model exposed separate components for delivery and authoring, relied primarily on IIFE bundle loading, and left many higher-level concerns to each consuming product. That made integration possible, but it also meant teams repeatedly rebuilt similar section layouts, tool coordination, session wiring, accessibility behavior, and telemetry conventions.
 
 PIE Players modernizes that model around web components, TypeScript, Svelte 5, ESM-first package boundaries, standard build tooling, and explicit controller/event contracts. The result is easier for developers to reason about and easier for AI-supported development to navigate: fewer implicit conventions, clearer package responsibilities, and more runtime behavior expressed as typed events, policies, and coordinator APIs.
 
@@ -29,7 +29,7 @@ PIE Players modernizes that model around web components, TypeScript, Svelte 5, E
 
 ![PIE Players modernization diagram](./img/why-new-project-pie-players-modernization-1-1778213475112.jpg)
 
-| Area | Legacy player model | PIE Players model |
+| Area | Prior player model | PIE Players model |
 | --- | --- | --- |
 | Delivery and authoring | Separate delivery and authoring custom elements. | One item player surface supports delivery, evaluation, and authoring through mode. |
 | Loading | Primarily IIFE bundle loading through script injection. | Three strategies: IIFE for compatibility, ESM for modern module loading, and preloaded for zero runtime fetch paths. |
@@ -96,7 +96,7 @@ The release pipeline builds publishable packages, verifies package metadata and 
 
 ## Current Status
 
-PIE Players is the forward-looking player project for the PIE ecosystem. The item player provides the bridge from legacy-compatible rendering to ESM and preloaded strategies. The section player and assessment player add higher-level orchestration. The assessment toolkit brings tools and accommodations into the same runtime model. Together, they form the foundation for modern PIE assessment delivery.
+PIE Players is the forward-looking player project for the PIE ecosystem. The item player provides the bridge from IIFE bundle loading to ESM and preloaded strategies. The section player and assessment player add higher-level orchestration. The assessment toolkit brings tools and accommodations into the same runtime model. Together, they form the foundation for modern PIE assessment delivery.
 
 ## Quick Reference
 

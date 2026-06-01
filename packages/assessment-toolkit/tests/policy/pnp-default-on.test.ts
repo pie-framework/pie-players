@@ -5,8 +5,8 @@
  *
  *   `pnpEnforcement` defaults to `"on"` only when the bound inputs
  *   actually carry profile material. A bare assessment record (just
- *   `id` / `name` / `title`) keeps the legacy floating-tools path
- *   without profile gates engaged. Hosts opt out of auto-on by passing
+ *   `id` / `name` / `title`) leaves profile gates disengaged.
+ *   Hosts opt out of auto-on by passing
  *   `pnpEnforcement: "off"` explicitly (engine input or
  *   `ToolkitCoordinator.setPnpEnforcement("off")`).
  *

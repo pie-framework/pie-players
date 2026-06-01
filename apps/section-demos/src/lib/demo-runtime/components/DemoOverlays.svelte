@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { onMount } from "svelte";
 	import SourcePanel from './SourcePanel.svelte';
 	import SessionDbPanel from './SessionDbPanel.svelte';
 
@@ -237,22 +236,9 @@ function debugCustomProvider(event: string, payload?: Record<string, unknown>): 
 		}
 	];
 
-	const legacyTtsStorageKey = "pie:section-demos:tts-settings";
-
 	function getScopedTtsStorageKey(): string {
 		return `pie:debug-panels:v1:${panelPersistenceScope}:tts-settings`;
 	}
-
-	onMount(() => {
-		if (typeof window === "undefined") return;
-		const scopedKey = getScopedTtsStorageKey();
-		if (scopedKey === legacyTtsStorageKey) return;
-		const scopedValue = window.localStorage.getItem(scopedKey);
-		if (scopedValue !== null) return;
-		const legacyValue = window.localStorage.getItem(legacyTtsStorageKey);
-		if (legacyValue === null) return;
-		window.localStorage.setItem(scopedKey, legacyValue);
-	});
 </script>
 
 {#if showSessionPanel}

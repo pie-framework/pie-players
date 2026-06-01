@@ -14,7 +14,7 @@ pie/
 ├── updates.ts        - Element update functions
 ├── initialization.ts - Bundle loading and element initialization
 ├── logger.ts         - Logging utility with debug/info/warn/error levels
-├── index.ts          - Barrel export (backward compatibility)
+├── index.ts          - Barrel re-export
 └── README.md         - This file
 ```
 
@@ -45,7 +45,7 @@ import { updatePieElements } from './updates';
 - Better code splitting
 - 15-20% smaller bundle sizes
 
-### Backward Compatible (Convenience)
+### Barrel Import (Convenience)
 
 Import from barrel export:
 
@@ -88,7 +88,7 @@ enum BundleType {
 ```
 
 - **`player.js`**: Server-side controller processing, client receives pre-filtered models
-- **`client-player.js`**: Client-side controller processing (legacy, used for development)
+- **`client-player.js`**: Client-side controller processing for development
 - **`editor.js`**: Authoring UI (not used by players)
 
 ### Registry

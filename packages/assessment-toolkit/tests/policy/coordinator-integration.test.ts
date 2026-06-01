@@ -4,11 +4,10 @@
  * Verifies the additive engine surface introduced in PR 2 and the
  * auto-detection heuristic tightened in PR 4:
  *
- *   - `decideToolPolicy(...)` round-trips through the engine and
- *     stays consistent with `getFloatingTools()` for the section
- *     level under the no-assessment default.
+ *   - `decideToolPolicy(...)` round-trips through the engine for the
+ *     section level under the no-assessment default.
  *   - `onPolicyChange(...)` fires for `updateAssessment`,
- *     `updateCurrentItemRef`, `updateToolConfig`, `updateFloatingTools`,
+ *     `updateCurrentItemRef`, `updateToolConfig`, `updateToolPlacement`,
  *     and `setPnpEnforcement`.
  *   - `pnpEnforcement: "off"` short-circuits the PNP/profile source so a
  *     PNP-supported tool does NOT auto-promote to `alwaysAvailable`.
@@ -19,9 +18,6 @@
  *     item ref). A bare assessment record (just `id` / `name`) keeps
  *     `"off"`. Host overrides via {@link setPnpEnforcement} are
  *     sticky across assessment swaps.
- *   - PR 3 toolbars read decisions through this surface; the legacy
- *     `getFloatingTools()` shim agrees with the engine under the
- *     default (no-profile-policy) path so no consumer regresses.
  */
 
 import { describe, expect, test } from "bun:test";
@@ -32,8 +28,6 @@ import type {
 } from "@pie-players/pie-players-shared/types";
 
 import { ToolkitCoordinator } from "../../src/services/ToolkitCoordinator.js";
-import { resolveToolsForLevel } from "../../src/services/tools-config-normalizer.js";
-import type { CanonicalToolsConfig } from "../../src/services/tools-config-normalizer.js";
 import type {
 	PolicySource,
 	PolicySourceResult,
@@ -66,8 +60,21 @@ function makeCoordinator(extra?: {
 	});
 }
 
+function readVisibleToolIds(
+	coord: ToolkitCoordinator,
+	level: "section" | "item" | "passage" = "section",
+	scopeId = "*",
+): string[] {
+	return coord
+		.decideToolPolicy({
+			level,
+			scope: { level, scopeId },
+		})
+		.visibleTools.map((entry) => entry.toolId);
+}
+
 describe("ToolkitCoordinator policy-engine integration", () => {
-	test("decideToolPolicy returns the section placement and matches getFloatingTools", () => {
+	test("decideToolPolicy returns the section placement", () => {
 		const coord = makeCoordinator();
 
 		const decision = coord.decideToolPolicy({
@@ -77,7 +84,6 @@ describe("ToolkitCoordinator policy-engine integration", () => {
 		const decisionIds = decision.visibleTools.map((entry) => entry.toolId);
 
 		expect(decisionIds).toEqual(["graph", "theme"]);
-		expect(coord.getFloatingTools()).toEqual(decisionIds);
 	});
 
 	test("decideToolPolicy honors level scoping (item placement is independent)", () => {
@@ -214,19 +220,19 @@ describe("ToolkitCoordinator policy-engine integration", () => {
 		expect(events.length).toBeGreaterThanOrEqual(1);
 		expect(events.at(-1)?.reason).toBe("inputs");
 		// Provider veto removes the tool from the section decision.
-		expect(coord.getFloatingTools()).toEqual(["theme"]);
+		expect(readVisibleToolIds(coord)).toEqual(["theme"]);
 	});
 
-	test("updateFloatingTools rewrites section placement and emits a change event", () => {
+	test("updateToolPlacement rewrites section placement and emits a change event", () => {
 		const coord = makeCoordinator();
 		const events: ToolPolicyChangeEvent[] = [];
 		coord.onPolicyChange((event) => events.push(event));
 
-		coord.updateFloatingTools(["theme"]);
+		coord.updateToolPlacement("section", ["theme"]);
 
 		expect(events.length).toBeGreaterThanOrEqual(1);
 		expect(events.at(-1)?.reason).toBe("inputs");
-		expect(coord.getFloatingTools()).toEqual(["theme"]);
+		expect(readVisibleToolIds(coord)).toEqual(["theme"]);
 	});
 
 	test("updateToolPlacement rewrites non-section placement without changing floating tools", () => {
@@ -238,7 +244,7 @@ describe("ToolkitCoordinator policy-engine integration", () => {
 
 		expect(events.length).toBeGreaterThanOrEqual(1);
 		expect(events.at(-1)?.reason).toBe("inputs");
-		expect(coord.getFloatingTools()).toEqual(["graph", "theme"]);
+		expect(readVisibleToolIds(coord)).toEqual(["graph", "theme"]);
 		expect(
 			coord
 				.decideToolPolicy({
@@ -257,7 +263,7 @@ describe("ToolkitCoordinator policy-engine integration", () => {
 			passage: ["textToSpeech"],
 		});
 
-		expect(coord.getFloatingTools()).toEqual(["theme"]);
+		expect(readVisibleToolIds(coord)).toEqual(["theme"]);
 		expect(
 			coord
 				.decideToolPolicy({
@@ -363,10 +369,10 @@ describe("ToolkitCoordinator policy-engine integration", () => {
 
 		coord.setPnpEnforcement("off");
 		coord.updateAssessment(assessment);
-		expect(coord.getFloatingTools()).toEqual(["lineReader"]);
+		expect(readVisibleToolIds(coord)).toEqual(["lineReader"]);
 
 		coord.setPnpEnforcement("on");
-		expect(coord.getFloatingTools()).toEqual([]);
+		expect(readVisibleToolIds(coord)).toEqual([]);
 	});
 
 	test("setPnpEnforcement('on') opts in even before an assessment is bound", () => {
@@ -448,56 +454,13 @@ describe("ToolkitCoordinator policy-engine integration", () => {
 		const events: ToolPolicyChangeEvent[] = [];
 		const off = coord.onPolicyChange((event) => events.push(event));
 
-		coord.updateFloatingTools(["theme"]);
+		coord.updateToolPlacement("section", ["theme"]);
 		const beforeUnsub = events.length;
 		expect(beforeUnsub).toBeGreaterThan(0);
 
 		off();
-		coord.updateFloatingTools(["graph"]);
+		coord.updateToolPlacement("section", ["graph"]);
 		expect(events.length).toBe(beforeUnsub);
-	});
-
-	test("getFloatingTools matches legacy resolveToolsForLevel under no-extras default", () => {
-		// Under no-assessment, no-override, no-provider-veto config the
-		// engine path must equal the legacy `resolveToolsForLevel` path
-		// for `placement → policy.allowed → policy.blocked`. This is
-		// the contract PR 5 will inherit when the legacy resolver is
-		// deleted.
-		const tools: CanonicalToolsConfig = {
-			placement: { section: ["graph", "theme"] },
-			policy: { blocked: ["theme"] },
-		} as CanonicalToolsConfig;
-		const coord = makeCoordinator({ tools });
-
-		const legacy = resolveToolsForLevel(
-			coord["config"].tools as CanonicalToolsConfig,
-			"section",
-		);
-		expect(coord.getFloatingTools()).toEqual(legacy);
-		expect(coord.getFloatingTools()).toEqual(["graph"]);
-	});
-
-	test("getFloatingTools intentionally diverges from legacy when a provider is disabled (M8 PR 2 contract change)", () => {
-		// PR 2 routes `getFloatingTools()` through the engine, which
-		// applies provider-veto (Step 2 of `composeDecision`). The
-		// legacy `resolveToolsForLevel` did NOT honor provider-veto for
-		// floating tools. This is a deliberate, documented contract
-		// change — see the docblock on
-		// `ToolkitCoordinator.getFloatingTools()`. Lock it down so PR 3
-		// reviewers don't reintroduce the legacy semantics by accident.
-		const coord = makeCoordinator({
-			tools: {
-				placement: { section: ["graph", "theme"] },
-				providers: { graph: { enabled: false } },
-			},
-		});
-
-		const legacy = resolveToolsForLevel(
-			coord["config"].tools as CanonicalToolsConfig,
-			"section",
-		);
-		expect(legacy).toEqual(["graph", "theme"]); // legacy keeps disabled provider
-		expect(coord.getFloatingTools()).toEqual(["theme"]); // engine vetoes it
 	});
 
 	test("re-pushing the same input reference is a no-op (no spurious onPolicyChange events)", () => {

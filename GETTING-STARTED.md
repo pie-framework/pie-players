@@ -154,7 +154,7 @@ bun run build
 
 ### Architecture
 - [TTS Architecture](docs/accessibility/tts-architecture.md) - Text-to-Speech system
-- [TTS Synchronization Best Practices](docs/accessibility/tts-synchronization-best-practices.md) - Runtime behavior details
+- [TTS Authoring Guide](docs/accessibility/tts-authoring-guide.md) - Spoken alternative authoring guidance
 
 ### Integration Guides
 - [TTS Server API Integration](packages/tts-server-polly/examples/INTEGRATION-GUIDE.md) - Server-side TTS

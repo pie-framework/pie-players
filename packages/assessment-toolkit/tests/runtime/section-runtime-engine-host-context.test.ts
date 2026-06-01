@@ -43,10 +43,10 @@ import {
 	type ContextRequestEvent,
 } from "@pie-players/pie-context";
 
-import { SectionRuntimeEngine } from "../../src/runtime/SectionRuntimeEngine.js";
 import {
 	connectSectionRuntimeEngineHostContext,
 	sectionRuntimeEngineHostContext,
+	type SectionRuntimeLifecycleHandle,
 	type SectionRuntimeEngineHostContextValue,
 } from "../../src/runtime/section-runtime-engine-host-context.js";
 
@@ -127,6 +127,12 @@ function makeHost(): HTMLElement {
 	return new EventTarget() as unknown as HTMLElement;
 }
 
+function makeLifecycleHandle(runtimeId: string): SectionRuntimeLifecycleHandle {
+	return {
+		getRuntimeId: () => runtimeId,
+	};
+}
+
 interface Harness {
 	host: HTMLElement;
 	cleanups: Array<() => void>;
@@ -158,7 +164,7 @@ describe("connectSectionRuntimeEngineHostContext", () => {
 	});
 
 	test("wrapped: consumer resolves to the provider's engine on connect", () => {
-		const engine = new SectionRuntimeEngine();
+		const engine = makeLifecycleHandle("wrapped-engine");
 		const provider = makeFakeProvider(harness.host, { engine });
 		harness.cleanups.push(() => provider.disconnect());
 
@@ -200,7 +206,7 @@ describe("connectSectionRuntimeEngineHostContext", () => {
 
 		expect(received).toEqual([]);
 
-		const engine = new SectionRuntimeEngine();
+		const engine = makeLifecycleHandle("late-engine");
 		const provider = makeFakeProvider(harness.host, { engine });
 		harness.cleanups.push(() => provider.disconnect());
 		// The helper listens for `context-provider` announcements and
@@ -214,8 +220,8 @@ describe("connectSectionRuntimeEngineHostContext", () => {
 	});
 
 	test("subscribe: provider emits new engine value through the existing subscription", () => {
-		const engineA = new SectionRuntimeEngine();
-		const engineB = new SectionRuntimeEngine();
+		const engineA = makeLifecycleHandle("engine-a");
+		const engineB = makeLifecycleHandle("engine-b");
 		const provider = makeFakeProvider(harness.host, { engine: engineA });
 		harness.cleanups.push(() => provider.disconnect());
 
@@ -234,8 +240,8 @@ describe("connectSectionRuntimeEngineHostContext", () => {
 	});
 
 	test("cleanup: disconnect removes the listener and stops further deliveries", () => {
-		const engineA = new SectionRuntimeEngine();
-		const engineB = new SectionRuntimeEngine();
+		const engineA = makeLifecycleHandle("engine-a");
+		const engineB = makeLifecycleHandle("engine-b");
 		const provider = makeFakeProvider(harness.host, { engine: engineA });
 		harness.cleanups.push(() => provider.disconnect());
 

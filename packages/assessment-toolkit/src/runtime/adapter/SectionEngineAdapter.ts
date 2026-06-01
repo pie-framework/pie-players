@@ -29,8 +29,8 @@
  *   - public subscriber fan-out (batched, runs once per
  *     `core.dispatch`)
  *
- * The deprecated `readiness-change` / `interaction-ready` / `ready`
- * DOM events and their `legacy-event-bridge.ts` were removed in the
+ * The `readiness-change` / `interaction-ready` / `ready`
+ * DOM events and their event bridge were removed in the
  * broad architecture review compat sweep; the corresponding output
  * kinds are gone from `engine-output.ts`.
  *

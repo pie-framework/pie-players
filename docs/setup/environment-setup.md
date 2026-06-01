@@ -122,7 +122,7 @@ These are all in `.gitignore`.
 
 ### Best Practices
 
-1. **Use minimal IAM permissions** - See [aws-polly-iam-policy.json](./aws-polly-iam-policy.json)
+1. **Use minimal IAM permissions** - See [aws-polly-iam-policy.json](../accessibility/aws-polly-iam-policy.json)
 2. **Rotate keys regularly** - Every 90 days
 3. **Use IAM roles in production** - Never hardcode keys
 4. **Enable CloudTrail** - Monitor API usage
@@ -208,7 +208,7 @@ docker restart <redis-container-id>
 
 ## Adding New Environment Variables
 
-1. Add to [.env.example](../.env.example) with documentation
+1. Add to [.env.example](../../.env.example) with documentation
 2. Add to this document
 3. Update relevant package docs if needed
 

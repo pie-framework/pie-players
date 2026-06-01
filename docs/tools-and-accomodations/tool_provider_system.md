@@ -70,7 +70,6 @@ Use the current semantic tool IDs in docs and examples:
 - `periodicTable`
 - `protractor`
 - `theme`
-- `colorScheme`
 
 ## Basic Integration
 
@@ -276,7 +275,7 @@ The modern host boundary is:
 sectionPlayer.coordinator = coordinator;
 ```
 
-Do not use older docs that assign the coordinator through the removed legacy property name.
+Assign the coordinator through the canonical `coordinator` property.
 
 The public layout custom elements are:
 

@@ -16,7 +16,7 @@ The Tool Registry replaces hardcoded tool lists with a flexible, extensible syst
 - Toolkit APIs use semantic `toolId` values (for example `calculator`, `textToSpeech`).
 - Web component tags (for example `pie-tool-calculator`) are resolved through `toolTagMap`.
 - Integrators can override both tag mapping and creation logic via
-  `createDefaultToolRegistry({ toolTagMap, toolComponentFactories })`.
+  `createPackagedToolRegistry({ toolTagMap, toolComponentFactories })`.
 
 ## Architecture
 
@@ -280,21 +280,21 @@ isVisibleInContext(context: ToolContext): boolean {
 ### Creating a Registry
 
 ```typescript
-import { createDefaultToolRegistry } from '@pie-players/pie-assessment-toolkit';
+import { createPackagedToolRegistry } from '@pie-players/pie-assessment-toolkit';
 import {
   DEFAULT_TOOL_MODULE_LOADERS,
 } from '@pie-players/pie-default-tool-loaders';
 
-// Create registry with all 12 default PIE tools
-const toolRegistry = createDefaultToolRegistry();
+// Create registry with the packaged PIE tools
+const toolRegistry = createPackagedToolRegistry();
 
 // Optional: wire lazy module loaders at bootstrap
-const lazyRegistry = createDefaultToolRegistry({
+const lazyRegistry = createPackagedToolRegistry({
   toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS
 });
 
 // Optional: replace default tag mapping/factories for selected tools
-const customRegistry = createDefaultToolRegistry({
+const customRegistry = createPackagedToolRegistry({
   toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
   toolTagMap: {
     calculator: 'my-calculator-tool'
@@ -334,7 +334,7 @@ The default registry includes 12 tools organized by purpose:
 - Text-to-Speech - read content aloud
 - Line Reader - reading guide overlay
 - Annotation Toolbar - text highlighting with CSS Custom Highlight API
-- Highlighter - text highlighting (legacy)
+- Highlighter - text highlighting
 
 **Interaction-Specific Tools**:
 - Answer Eliminator - strike through choices (choice questions only)
@@ -346,23 +346,30 @@ The default registry includes 12 tools organized by purpose:
 ### PNP Resolution
 
 ```typescript
-import { PNPToolResolver } from '@pie-players/pie-assessment-toolkit';
+import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
 
-// Create resolver with tool registry
-const pnpResolver = new PNPToolResolver(toolRegistry);
+const coordinator = new ToolkitCoordinator({
+  assessmentId: assessment.id,
+  tools: { placement: { item: ["calculator", "textToSpeech", "theme"] } }
+});
+coordinator.updateAssessment(assessment);
+coordinator.updateCurrentItemRef(itemRef);
 
-// Get allowed tool IDs from QTI 3.0 PNP profile
-const allowedToolIds = pnpResolver.getAllowedToolIds(assessment, itemRef);
-// Returns: ["calculator", "textToSpeech", "colorScheme", ...]
+const allowedToolIds = coordinator
+  .decideToolPolicy({ level: "item", scope: { level: "item", scopeId: itemRef.identifier } })
+  .visibleTools.map((tool) => tool.toolId);
+// Returns: ["calculator", "textToSpeech", "theme", ...]
 ```
 
-The `PNPToolResolver` reads QTI 3.0 `accessibilityInfo.accessFeature` arrays and maps them to tool IDs using the tool registry's PNP index.
+The policy engine reads QTI 3.0 `accessibilityInfo.accessFeature` arrays and maps them to tool IDs using the tool registry's PNP index.
 
 ### Filtering by Context
 
 ```typescript
 // Pass 1: Orchestrator determines allowed tools
-const allowedToolIds = pnpResolver.getAllowedToolIds(assessment, itemRef);
+const allowedToolIds = coordinator
+  .decideToolPolicy({ level: "item", scope: { level: "item", scopeId: itemRef.identifier } })
+  .visibleTools.map((tool) => tool.toolId);
 
 // Pass 2: Filter by tool relevance
 const context: ItemToolContext = {
@@ -438,9 +445,9 @@ Individual button component:
 
 ### ItemToolBar
 
-The `ItemToolBar` component supports dual-mode operation:
+The `ItemToolBar` component supports registry-driven operation and explicit tool lists:
 
-**Registry Mode** (new architecture):
+**Registry-driven tools**:
 ```html
 <pie-item-toolbar
   .toolRegistry={toolRegistry}
@@ -451,7 +458,7 @@ The `ItemToolBar` component supports dual-mode operation:
 ></pie-item-toolbar>
 ```
 
-**Legacy Mode** (hardcoded tools):
+**Explicit tools list**:
 ```html
 <pie-item-toolbar
   tools="calculator,tts,answerEliminator"
@@ -499,8 +506,8 @@ The toolkit provides recommended tool placement by context level:
 ```typescript
 import { DEFAULT_TOOL_PLACEMENT } from '@pie-players/pie-assessment-toolkit';
 
-DEFAULT_TOOL_PLACEMENT.assessment  // ["colorScheme"]
-DEFAULT_TOOL_PLACEMENT.section     // ["colorScheme", "textToSpeech"]
+DEFAULT_TOOL_PLACEMENT.assessment  // ["theme"]
+DEFAULT_TOOL_PLACEMENT.section     // ["theme", "textToSpeech"]
 DEFAULT_TOOL_PLACEMENT.item        // ["calculator", "textToSpeech", "answerEliminator", ...]
 DEFAULT_TOOL_PLACEMENT.passage     // ["textToSpeech", "highlighter", "annotationToolbar", "lineReader"]
 DEFAULT_TOOL_PLACEMENT.rubric      // ["textToSpeech", "highlighter", "annotationToolbar", "lineReader"]
@@ -526,7 +533,7 @@ Tools are organized by purpose:
 - **Text-to-Speech** - Shows when readable text exists (10+ characters)
 - **Line Reader** - Shows when readable text exists
 - **Annotation Toolbar** - Singleton selection gateway (section-scoped)
-- **Highlighter** - Shows when readable text exists (legacy)
+- **Highlighter** - Shows when readable text exists
 
 ## Activation Models
 
@@ -625,9 +632,9 @@ import {
 } from '@pie-players/pie-assessment-toolkit';
 ```
 
-## Migration from Legacy
+## Registry-Based Configuration
 
-### Before (Hardcoded)
+### Explicit Static Lists
 
 ```typescript
 // Hardcoded tool list
@@ -637,15 +644,23 @@ const tools = "calculator,tts,answerEliminator";
 const toolIds = PNPMapper.mapPNPToTools(pnpProfile);
 ```
 
-### After (Registry-Based)
+### Registry-Based
 
 ```typescript
 // Create registry
-const toolRegistry = createDefaultToolRegistry();
+const toolRegistry = createPackagedToolRegistry();
 
-// PNP resolver uses registry
-const pnpResolver = new PNPToolResolver(toolRegistry);
-const allowedToolIds = pnpResolver.getAllowedToolIds(assessment, itemRef);
+// Policy engine uses registry + coordinator inputs
+const coordinator = new ToolkitCoordinator({
+  assessmentId: assessment.id,
+  toolRegistry,
+  tools: { placement: { item: ["calculator", "textToSpeech"] } }
+});
+coordinator.updateAssessment(assessment);
+coordinator.updateCurrentItemRef(itemRef);
+const allowedToolIds = coordinator
+  .decideToolPolicy({ level: "item", scope: { level: "item", scopeId: itemRef.identifier } })
+  .visibleTools.map((tool) => tool.toolId);
 
 // Filter by context
 const visibleTools = toolRegistry.filterVisibleInContext(allowedToolIds, context);
@@ -653,7 +668,7 @@ const visibleTools = toolRegistry.filterVisibleInContext(allowedToolIds, context
 
 ## PNP Precedence Hierarchy
 
-The `PNPToolResolver` implements a **precedence hierarchy** based on common assessment platform governance patterns. This hierarchy is **not defined by QTI 3.0 standards** but follows common practices in K-12 assessment platforms.
+The policy engine implements a **precedence hierarchy** based on common assessment platform governance patterns. This hierarchy is **not defined by QTI 3.0 standards** but follows common practices in K-12 assessment platforms.
 
 ### Standards-Based vs Implementation-Specific
 
@@ -715,8 +730,8 @@ This hierarchy aligns with typical **IEP/504 accommodation hierarchies** in US K
 
 - This is a **common pattern**, not a QTI 3.0 standard
 - Different assessment platforms may implement different precedence rules
-- The precedence logic is implemented in `PNPToolResolver.resolveSupport()`
-- Integrators can extend or modify this logic for their governance model
+- The precedence logic is implemented by `PnpPolicySource` inside the tool policy engine.
+- Integrators can extend policy decisions with custom `PolicySource` implementations.
 
 ## Best Practices
 

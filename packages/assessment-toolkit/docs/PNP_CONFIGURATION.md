@@ -226,15 +226,25 @@ Here's a complete example showing how all levels interact:
 
 ```typescript
 import {
-  createDefaultToolRegistry,
-  PNPToolResolver
+  createPackagedToolRegistry,
+  ToolkitCoordinator
 } from '@pie-players/pie-assessment-toolkit';
 
 // 1. Create tool registry
-const toolRegistry = createDefaultToolRegistry();
+const toolRegistry = createPackagedToolRegistry();
 
-// 2. Create PNP resolver
-const pnpResolver = new PNPToolResolver(toolRegistry);
+// 2. Create coordinator with the registry and configured placements
+const coordinator = new ToolkitCoordinator({
+  assessmentId: "spring-2024-ela",
+  toolRegistry,
+  tools: {
+    placement: {
+      item: ["calculator", "textToSpeech", "annotationToolbar"],
+      section: ["theme", "textToSpeech"],
+      passage: ["textToSpeech", "lineReader"]
+    }
+  }
+});
 
 // 3. Configure assessment with all governance levels
 const assessment: AssessmentEntity = {
@@ -402,12 +412,24 @@ When integrating the PNP system, ensure you:
 ### API Integration
 
 ```typescript
-// 1. Create registry and resolver
-const registry = createDefaultToolRegistry();
-const resolver = new PNPToolResolver(registry);
+// 1. Create registry and coordinator
+const registry = createPackagedToolRegistry();
+const coordinator = new ToolkitCoordinator({
+  assessmentId: assessment.id,
+  toolRegistry: registry,
+  tools: {
+    placement: {
+      item: ["calculator", "textToSpeech", "annotationToolbar"]
+    }
+  }
+});
+coordinator.updateAssessment(assessment);
+coordinator.updateCurrentItemRef(currentItem);
 
 // 2. Resolve tools for current context
-const allowedToolIds = resolver.getAllowedToolIds(assessment, currentItem);
+const allowedToolIds = coordinator
+  .decideToolPolicy({ level: "item", scope: { level: "item", scopeId: currentItem.identifier } })
+  .visibleTools.map((tool) => tool.toolId);
 
 // 3. Create tool context
 const context: ItemToolContext = {
@@ -439,7 +461,7 @@ IEP/504 Database
     ↓
 personalNeedsProfile.supports
     ↓
-PNPToolResolver → allowedToolIds
+ToolPolicyEngine → allowedToolIds
     ↓
 ToolRegistry → visibleTools
     ↓
@@ -502,16 +524,18 @@ Check:
 2. Is it in `itemSettings.requiredTools`?
 3. Is `toolOverrides` explicitly enabling it?
 
-### "Need custom precedence rules"
+### "Need custom policy rules"
 
-Extend `PNPToolResolver`:
+Register a custom `PolicySource` with the coordinator:
 ```typescript
-class CustomPNPResolver extends PNPToolResolver {
-  protected resolveSupport(supportId: string, context: ResolutionContext) {
-    // Custom precedence logic
-    // Then call super.resolveSupport() or implement fully
+coordinator.addPolicySource({
+  id: "district-window",
+  refine({ candidates }) {
+    return {
+      refinedCandidates: candidates.filter((toolId) => toolId !== "calculator")
+    };
   }
-}
+});
 ```
 
 ## References

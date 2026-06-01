@@ -10,9 +10,8 @@
  * lives here.
  *
  * Coverage:
- *   - `resolveRuntime` precedence (per-key M5 mirror) and the player
- *     merge.
- *   - `resolveToolsConfig` overlay behavior.
+ *   - `resolveRuntime` runtime-owned config and callback precedence.
+ *   - `resolveToolsConfig` runtime tools behavior.
  *   - `resolveSectionEngineRuntimeState` (the parametrized engine-side
  *     orchestrator) propagates handlers and applies precedence
  *     identically.
@@ -29,26 +28,13 @@ async function loadEngineResolver() {
 }
 
 describe("engine-resolver: resolveRuntime", () => {
-	test("merges top-level player config with runtime.player overrides", async () => {
+	test("uses runtime.player config directly", async () => {
 		const { resolveRuntime } = await loadEngineResolver();
 		const merged = resolveRuntime({
 			assessmentId: "a1",
-			playerType: "iife",
-			player: {
-				loaderConfig: {
-					trackPageActions: true,
-					maxResourceRetries: 2,
-				},
-				loaderOptions: {
-					bundleHost: "https://top-level.example",
-				},
-			},
-			lazyInit: true,
-			accessibility: null,
-			coordinator: null,
-			env: null,
 			runtime: {
 				toolConfigStrictness: "off",
+				playerType: "esm",
 				player: {
 					loaderConfig: {
 						resourceRetryDelay: 750,
@@ -62,15 +48,11 @@ describe("engine-resolver: resolveRuntime", () => {
 			toolConfigStrictness: "error",
 		});
 
-		expect((merged.player as any).loaderConfig.trackPageActions).toBe(true);
-		expect((merged.player as any).loaderConfig.maxResourceRetries).toBe(2);
 		expect((merged.player as any).loaderConfig.resourceRetryDelay).toBe(750);
-		expect((merged.player as any).loaderOptions.bundleHost).toBe(
-			"https://top-level.example",
-		);
 		expect((merged.player as any).loaderOptions.moduleResolution).toBe(
 			"import-map",
 		);
+		expect((merged as any).playerType).toBe("esm");
 		expect((merged as any).toolConfigStrictness).toBe("off");
 	});
 });
@@ -82,12 +64,6 @@ describe("engine-resolver: onFrameworkError precedence", () => {
 		const fromRuntime = () => {};
 		const merged = resolveRuntime({
 			assessmentId: "a1",
-			playerType: "iife",
-			player: null,
-			lazyInit: true,
-			accessibility: null,
-			coordinator: null,
-			env: null,
 			runtime: {
 				onFrameworkError: fromRuntime,
 			},
@@ -103,12 +79,6 @@ describe("engine-resolver: onFrameworkError precedence", () => {
 		const topLevel = () => {};
 		const merged = resolveRuntime({
 			assessmentId: "a1",
-			playerType: "iife",
-			player: null,
-			lazyInit: true,
-			accessibility: null,
-			coordinator: null,
-			env: null,
 			runtime: {},
 			effectiveToolsConfig: {},
 			toolConfigStrictness: "error",
@@ -130,17 +100,9 @@ describe("engine-resolver: resolveSectionEngineRuntimeState", () => {
 		const state = resolveSectionEngineRuntimeState(
 			{
 				assessmentId: "a1",
-				playerType: "iife",
-				player: null,
-				lazyInit: true,
-				tools: null,
-				accessibility: null,
-				coordinator: null,
-				env: null,
 				toolConfigStrictness: "error",
 				onFrameworkError: handler,
 				runtime: null,
-				enabledTools: "",
 			},
 			{ resolvePlayerRuntime: stubPlayerRuntime },
 		);
@@ -154,17 +116,9 @@ describe("engine-resolver: resolveSectionEngineRuntimeState", () => {
 		const state = resolveSectionEngineRuntimeState(
 			{
 				assessmentId: "a1",
-				playerType: "iife",
-				player: null,
-				lazyInit: true,
-				tools: null,
-				accessibility: null,
-				coordinator: null,
-				env: null,
 				toolConfigStrictness: "error",
 				onStageChange: handler,
 				runtime: null,
-				enabledTools: "",
 			},
 			{ resolvePlayerRuntime: () => ({}) },
 		);
@@ -177,17 +131,9 @@ describe("engine-resolver: resolveSectionEngineRuntimeState", () => {
 		const state = resolveSectionEngineRuntimeState(
 			{
 				assessmentId: "a1",
-				playerType: "iife",
-				player: null,
-				lazyInit: true,
-				tools: null,
-				accessibility: null,
-				coordinator: null,
-				env: null,
 				toolConfigStrictness: "error",
 				onLoadingComplete: handler,
 				runtime: null,
-				enabledTools: "",
 			},
 			{ resolvePlayerRuntime: () => ({}) },
 		);
@@ -201,17 +147,9 @@ describe("engine-resolver: resolveSectionEngineRuntimeState", () => {
 		const state = resolveSectionEngineRuntimeState(
 			{
 				assessmentId: "a1",
-				playerType: "iife",
-				player: null,
-				lazyInit: true,
-				tools: null,
-				accessibility: null,
-				coordinator: null,
-				env: null,
 				toolConfigStrictness: "error",
 				onStageChange: fromProp,
 				runtime: { onStageChange: fromRuntime },
-				enabledTools: "",
 			},
 			{ resolvePlayerRuntime: () => ({}) },
 		);
@@ -225,17 +163,9 @@ describe("engine-resolver: resolveSectionEngineRuntimeState", () => {
 		const state = resolveSectionEngineRuntimeState(
 			{
 				assessmentId: "a1",
-				playerType: "iife",
-				player: null,
-				lazyInit: true,
-				tools: null,
-				accessibility: null,
-				coordinator: null,
-				env: null,
 				toolConfigStrictness: "error",
 				onLoadingComplete: fromProp,
 				runtime: { onLoadingComplete: fromRuntime },
-				enabledTools: "",
 			},
 			{ resolvePlayerRuntime: () => ({}) },
 		);
@@ -260,16 +190,8 @@ describe("engine-resolver: resolveSectionEngineRuntimeState", () => {
 		const result = resolveSectionEngineRuntimeState(
 			{
 				assessmentId: "a1",
-				playerType: "esm",
-				player: null,
-				lazyInit: true,
-				tools: null,
-				accessibility: null,
-				coordinator: null,
-				env: { mode: "review" },
 				toolConfigStrictness: "error",
-				runtime: null,
-				enabledTools: "",
+				runtime: { playerType: "esm", env: { mode: "review" } },
 			},
 			{ resolvePlayerRuntime: stub },
 		);
@@ -280,91 +202,57 @@ describe("engine-resolver: resolveSectionEngineRuntimeState", () => {
 	});
 });
 
-/**
- * Per-key precedence guardrail (M5 strict mirror, post-trim) — mirror
- * of the section-player suite. The post-trim demoted keys
- * (`policies`, `hooks`, `toolRegistry`, `*HostButtons`,
- * `iifeBundleHost`, `debug`, `contentMaxWidthNoPassage`,
- * `contentMaxWidthWithPassage`, `splitPaneMinRegionWidth`) are
- * deliberately absent — they are layout-shell-only and the runtime
- * tier does not mirror them.
- */
-const PER_KEY_FIXTURES: ReadonlyArray<{
-	key: string;
-	runtimeValue: unknown;
-	topLevelValue: unknown;
-}> = [
-	{
-		key: "assessmentId",
-		runtimeValue: "from-runtime",
-		topLevelValue: "from-prop",
-	},
-	{ key: "playerType", runtimeValue: "esm", topLevelValue: "iife" },
-	{ key: "lazyInit", runtimeValue: false, topLevelValue: true },
-	{
-		key: "accessibility",
-		runtimeValue: { fontSize: "lg" },
-		topLevelValue: { fontSize: "sm" },
-	},
-	{
-		key: "coordinator",
-		runtimeValue: { id: "rt" },
-		topLevelValue: { id: "tp" },
-	},
-	{
-		key: "env",
-		runtimeValue: { mode: "review" },
-		topLevelValue: { mode: "gather" },
-	},
-	{ key: "toolConfigStrictness", runtimeValue: "off", topLevelValue: "error" },
-	{ key: "onStageChange", runtimeValue: () => {}, topLevelValue: () => {} },
-	{ key: "onLoadingComplete", runtimeValue: () => {}, topLevelValue: () => {} },
-];
-
-describe("engine-resolver: per-key precedence (M5 mirror)", () => {
-	for (const fixture of PER_KEY_FIXTURES) {
-		test(`runtime.${fixture.key} wins over top-level \`${fixture.key}\``, async () => {
-			const { resolveRuntime } = await loadEngineResolver();
-			const baseArgs: Record<string, unknown> = {
-				assessmentId: "a1",
-				playerType: "iife",
-				player: null,
-				lazyInit: true,
-				accessibility: null,
-				coordinator: null,
-				env: null,
-				runtime: { [fixture.key]: fixture.runtimeValue },
-				effectiveToolsConfig: {},
-				toolConfigStrictness: "error",
-			};
-			baseArgs[fixture.key] = fixture.topLevelValue;
-			const merged = resolveRuntime(baseArgs as never);
-			expect((merged as Record<string, unknown>)[fixture.key]).toBe(
-				fixture.runtimeValue as never,
-			);
+describe("engine-resolver: runtime-owned keys", () => {
+	test("runtime-owned values are exposed on the effective runtime", async () => {
+		const { resolveRuntime } = await loadEngineResolver();
+		const coordinator = { id: "rt" };
+		const accessibility = { fontSize: "lg" };
+		const env = { mode: "review" };
+		const merged = resolveRuntime({
+			assessmentId: "from-prop",
+			runtime: {
+				assessmentId: "from-runtime",
+				playerType: "esm",
+				lazyInit: false,
+				accessibility,
+				coordinator,
+				env,
+				toolConfigStrictness: "off",
+			},
+			effectiveToolsConfig: {},
+			toolConfigStrictness: "error",
 		});
 
-		test(`runtime falls back to top-level \`${fixture.key}\` when omitted`, async () => {
-			const { resolveRuntime } = await loadEngineResolver();
-			const baseArgs: Record<string, unknown> = {
-				assessmentId: "a1",
-				playerType: "iife",
-				player: null,
-				lazyInit: true,
-				accessibility: null,
-				coordinator: null,
-				env: null,
-				runtime: {},
-				effectiveToolsConfig: {},
-				toolConfigStrictness: "error",
-			};
-			baseArgs[fixture.key] = fixture.topLevelValue;
-			const merged = resolveRuntime(baseArgs as never);
-			expect((merged as Record<string, unknown>)[fixture.key]).toBe(
-				fixture.topLevelValue as never,
-			);
+		expect((merged as any).assessmentId).toBe("from-runtime");
+		expect((merged as any).playerType).toBe("esm");
+		expect((merged as any).lazyInit).toBe(false);
+		expect((merged as any).accessibility).toBe(accessibility);
+		expect((merged as any).coordinator).toBe(coordinator);
+		expect((merged as any).env).toBe(env);
+		expect((merged as any).toolConfigStrictness).toBe("off");
+	});
+
+	test("fills defaults when runtime omits runtime-owned values", async () => {
+		const {
+			DEFAULT_ENV,
+			DEFAULT_LAZY_INIT,
+			DEFAULT_PLAYER_TYPE,
+			resolveRuntime,
+		} = await loadEngineResolver();
+		const merged = resolveRuntime({
+			assessmentId: "a1",
+			runtime: {},
+			effectiveToolsConfig: {},
+			toolConfigStrictness: "error",
 		});
-	}
+
+		expect((merged as any).assessmentId).toBe("a1");
+		expect((merged as any).playerType).toBe(DEFAULT_PLAYER_TYPE);
+		expect((merged as any).lazyInit).toBe(DEFAULT_LAZY_INIT);
+		expect((merged as any).accessibility).toBeNull();
+		expect((merged as any).coordinator).toBeNull();
+		expect((merged as any).env).toEqual(DEFAULT_ENV);
+	});
 });
 
 /**
@@ -379,12 +267,6 @@ describe("engine-resolver: createSectionController is runtime-only", () => {
 		const factory = () => ({ kind: "from-runtime" });
 		const merged = resolveRuntime({
 			assessmentId: "a1",
-			playerType: "iife",
-			player: null,
-			lazyInit: true,
-			accessibility: null,
-			coordinator: null,
-			env: null,
 			runtime: { createSectionController: factory },
 			effectiveToolsConfig: {},
 			toolConfigStrictness: "error",
@@ -396,12 +278,6 @@ describe("engine-resolver: createSectionController is runtime-only", () => {
 		const { resolveRuntime } = await loadEngineResolver();
 		const merged = resolveRuntime({
 			assessmentId: "a1",
-			playerType: "iife",
-			player: null,
-			lazyInit: true,
-			accessibility: null,
-			coordinator: null,
-			env: null,
 			runtime: {},
 			effectiveToolsConfig: {},
 			toolConfigStrictness: "error",
@@ -416,12 +292,6 @@ describe("engine-resolver: toolContextResolvers is runtime-only", () => {
 		const resolvers = { calculator: () => ({ visible: true }) };
 		const merged = resolveRuntime({
 			assessmentId: "a1",
-			playerType: "iife",
-			player: null,
-			lazyInit: true,
-			accessibility: null,
-			coordinator: null,
-			env: null,
 			runtime: { toolContextResolvers: resolvers },
 			effectiveToolsConfig: {},
 			toolConfigStrictness: "error",
@@ -433,12 +303,6 @@ describe("engine-resolver: toolContextResolvers is runtime-only", () => {
 		const { resolveRuntime } = await loadEngineResolver();
 		const merged = resolveRuntime({
 			assessmentId: "a1",
-			playerType: "iife",
-			player: null,
-			lazyInit: true,
-			accessibility: null,
-			coordinator: null,
-			env: null,
 			runtime: {},
 			effectiveToolsConfig: {},
 			toolConfigStrictness: "error",
@@ -452,12 +316,6 @@ describe("engine-resolver: isolation is runtime-only", () => {
 		const { resolveRuntime } = await loadEngineResolver();
 		const merged = resolveRuntime({
 			assessmentId: "a1",
-			playerType: "iife",
-			player: null,
-			lazyInit: true,
-			accessibility: null,
-			coordinator: null,
-			env: null,
 			runtime: { isolation: "force" },
 			effectiveToolsConfig: {},
 			toolConfigStrictness: "error",
@@ -469,12 +327,6 @@ describe("engine-resolver: isolation is runtime-only", () => {
 		const { resolveRuntime, DEFAULT_ISOLATION } = await loadEngineResolver();
 		const merged = resolveRuntime({
 			assessmentId: "a1",
-			playerType: "iife",
-			player: null,
-			lazyInit: true,
-			accessibility: null,
-			coordinator: null,
-			env: null,
 			runtime: {},
 			effectiveToolsConfig: {},
 			toolConfigStrictness: "error",
@@ -484,26 +336,27 @@ describe("engine-resolver: isolation is runtime-only", () => {
 });
 
 describe("engine-resolver: resolveToolsConfig", () => {
-	test("applies toolbar overlays without validating tool ids", async () => {
+	test("returns runtime tools without validating tool ids", async () => {
 		const { resolveToolsConfig } = await loadEngineResolver();
 		const resolved = resolveToolsConfig({
 			runtime: {
 				toolConfigStrictness: "error",
+				tools: {
+					placement: {
+						section: ["unknownTool"],
+					},
+				},
 			},
-			tools: null,
-			enabledTools: "unknownTool",
 		});
 		expect(resolved.placement.section).toEqual(["unknownTool"]);
 	});
 
-	test("keeps overlay behavior when runtime is omitted", async () => {
+	test("returns empty placement object when runtime is omitted", async () => {
 		const { resolveToolsConfig } = await loadEngineResolver();
 		const resolved = resolveToolsConfig({
 			runtime: null,
-			tools: null,
-			enabledTools: "unknownTool",
 		});
-		expect(resolved.placement.section).toEqual(["unknownTool"]);
+		expect(resolved).toEqual({ placement: {} });
 	});
 
 	test("accepts canonical provider key textToSpeech", async () => {
@@ -511,17 +364,16 @@ describe("engine-resolver: resolveToolsConfig", () => {
 		const resolved = resolveToolsConfig({
 			runtime: {
 				toolConfigStrictness: "error",
-			},
-			tools: {
-				providers: {
-					textToSpeech: {
-						enabled: true,
-						backend: "browser",
-						layoutMode: "left-aligned",
+				tools: {
+					providers: {
+						textToSpeech: {
+							enabled: true,
+							backend: "browser",
+							layoutMode: "left-aligned",
+						},
 					},
 				},
 			},
-			enabledTools: "",
 		});
 		expect((resolved as any).providers.textToSpeech?.enabled).toBe(true);
 		expect((resolved as any).providers.textToSpeech?.layoutMode).toBe(

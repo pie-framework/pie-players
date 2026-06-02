@@ -110,6 +110,17 @@ export interface ToolWindowShellAction {
 	onClick: () => void;
 }
 
+/**
+ * Alignment corner for the initial shell position.
+ * The shell is offset by `initialMargin` (default 16 px) from the chosen corner.
+ */
+export type ToolWindowShellAlign =
+	| 'center'
+	| 'top-left'
+	| 'top-right'
+	| 'bottom-left'
+	| 'bottom-right';
+
 export interface ToolWindowShellConfig {
 	title?: string;
 	draggable?: boolean;
@@ -121,6 +132,10 @@ export interface ToolWindowShellConfig {
 	minHeight?: number;
 	maxWidth?: number;
 	maxHeight?: number;
+	/** Initial placement of the shell. Defaults to `'center'`. */
+	initialAlign?: ToolWindowShellAlign;
+	/** Distance (px) from the viewport edge when using a corner align. Defaults to 16. */
+	initialMargin?: number;
 	actions?: ToolWindowShellAction[];
 }
 

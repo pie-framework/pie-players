@@ -996,6 +996,7 @@
 		// HTMLElement (not HTMLButtonElement) so the calculator branch can use
 		// <nds-icon-button> here while other shells keep the inline <button>.
 		let closeButtonEl: HTMLElement | null = null;
+		let resizeHandleEl: HTMLDivElement | null = null;
 		let startFocusGuardEl: HTMLDivElement | null = null;
 		let endFocusGuardEl: HTMLDivElement | null = null;
 		let focusGuardRedirecting = false;
@@ -1312,6 +1313,37 @@
 				initialFocus: closeButtonEl,
 				onEscape: () => {
 					closeShell();
+				},
+				// Calculator shell: tab boundaries should fall through to the page so
+				// keyboard users can leave the calculator with Tab / Shift+Tab. The
+				// shell is appended to <body>, so the browser's natural tab order
+				// would skip back to the opener / forward to nothing useful — we relay
+				// to the opener button and to the first focusable in the item content.
+				wrap: !isCalculatorShellTrap,
+				onTabExit: isCalculatorShellTrap
+					? (direction, event) => {
+							if (direction === 'backward') {
+								if (openerEl?.isConnected) {
+									event.preventDefault();
+									try {
+										openerEl.focus();
+									} catch {
+										// ignore
+									}
+								}
+								return;
+							}
+							const next = findFirstQuestionFocusable();
+							if (next) {
+								event.preventDefault();
+								try {
+									next.focus();
+								} catch {
+									// ignore
+								}
+							}
+						}
+					: undefined
 				},
 				// Calculator shell: tab boundaries should fall through to the page so
 				// keyboard users can leave the calculator with Tab / Shift+Tab. The

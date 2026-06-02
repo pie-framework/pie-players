@@ -1344,38 +1344,7 @@
 							}
 						}
 					: undefined
-				},
-				// Calculator shell: tab boundaries should fall through to the page so
-				// keyboard users can leave the calculator with Tab / Shift+Tab. The
-				// shell is appended to <body>, so the browser's natural tab order
-				// would skip back to the opener / forward to nothing useful — we relay
-				// to the opener button and to the first focusable in the item content.
-				wrap: !isCalculatorShellTrap,
-				onTabExit: isCalculatorShellTrap
-					? (direction, event) => {
-							if (direction === 'backward') {
-								if (openerEl?.isConnected) {
-									event.preventDefault();
-									try {
-										openerEl.focus();
-									} catch {
-										// ignore
-									}
-								}
-								return;
-							}
-							const next = findFirstQuestionFocusable();
-							if (next) {
-								event.preventDefault();
-								try {
-									next.focus();
-								} catch {
-									// ignore
-								}
-							}
-						}
-					: undefined
-			});
+			});		
 		};
 
 		// Walks the scope element's DOM in document order, descending into shadow
@@ -1934,7 +1903,7 @@
 					top: string | null, right: string | null,
 					bottom: string | null, left: string | null,
 					cursor: string,
-					gradientAngle: string
+					gradientAngle: string | null
 				) => {
 					const el = document.createElement('div');
 					el.className = 'pie-tool-shell__resize';

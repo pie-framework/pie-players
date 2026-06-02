@@ -91,13 +91,18 @@ the result is the same either way under lockstep.
 `bun run release:with-version` is the canonical command. To run it locally
 you need:
 
+- **The current checkout is authoritative.** When the user asks to publish
+  locally, confirm the current branch and working tree state, then publish from
+  that exact codebase and branch. Do not route the request through the GitHub
+  workflow, `master`, `main`, or `develop` unless the user explicitly asks to
+  switch branches or use the workflow.
 - **NPM auth in `.env`.** The `release` step is wrapped in
   `dotenvx run -f .env`, and `check:npm-auth` (the first preflight step)
   also loads `.env` via `dotenvx`. The repo's `.env` contains the
   `NPM_TOKEN` for `@pie-players` publish access; no separate
   `npm login` is needed.
 - **A clean working tree on the branch you're releasing from** (typically
-  `master` after merge). The script writes to `package.json` and
+  the branch currently checked out). The script writes to `package.json` and
   `CHANGELOG.md` files during `version`.
 - **Outside the sandbox.** The command runs `bun run test`, which
   triggers Playwright and other browser-bound suites; invoke with

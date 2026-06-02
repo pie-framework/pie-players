@@ -122,8 +122,10 @@ Implications for agent-driven work:
   release blocker because the highest declared bump wins for the lockstep
   set.
 - Local publishing uses **`bun run release:with-version`** (NPM token comes
-  from `.env` via `dotenvx`). Do not invoke `bun run release` or
-  `npm publish` directly.
+  from `.env` via `dotenvx`). When the user asks to publish locally, publish
+  from the branch and working tree currently checked out; do not redirect to
+  `master`, `main`, `develop`, or the GitHub workflow unless explicitly asked.
+  Do not invoke `bun run release` or `npm publish` directly.
 - When adding a new publishable package under `packages/*`, add it to the
   `fixed` block in `.changeset/config.json` in the same change set.
 - The invariant is checked by `scripts/check-fixed-versioning.mjs` (run via

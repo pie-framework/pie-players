@@ -92,6 +92,10 @@ concrete package versions for publish, runs preflight checks/tests, publishes,
 then restores the original workspace ranges. This avoids leaking `workspace:*`
 into npm metadata while keeping local development ergonomics unchanged.
 
+Local publishing uses the codebase and branch currently checked out. Confirm the
+current branch and working tree state before publishing; do not switch to a
+different branch or use the GitHub workflow unless that is explicitly requested.
+
 Before release merges/publishes, run:
 
 ```bash

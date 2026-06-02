@@ -174,6 +174,11 @@ found).
 
 ## Manual publishing (local)
 
+Local publishing always uses the codebase and branch currently checked out.
+Before running the publish command, confirm `git branch --show-current` and
+`git status --short`; do not switch to `master`, `main`, `develop`, or the
+GitHub workflow unless that is explicitly requested.
+
 The canonical local-publish command is:
 
 ```bash
@@ -195,7 +200,7 @@ bun run release:with-version
    missing/expired or `@pie-players` access is unavailable.
 5. `bun run verify:publish` — full publish gate (build + every `check:*`).
 6. `bun run test` — workspace test suites.
-7. `bun run release` — `dotenvx run -f .env` wrapper around build + 
+7. `bun run release` — `dotenvx run -f .env` wrapper around build +
    `changeset publish` (with workspace ranges resolved) + preloaded-player
    bundle publish.
 8. `bun run restore:workspace-ranges` — restore `workspace:*` ranges in

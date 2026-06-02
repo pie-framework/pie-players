@@ -99,6 +99,12 @@ is always satisfied), runs `version`, restores workspace ranges, runs
 `check:npm-auth` + `verify:publish` + the workspace tests, publishes via
 `bun run release`, and restores ranges again — mirroring the CI release path.
 
+When the user asks to publish locally, the current working tree and checked-out
+branch are authoritative. Confirm the current branch and status, then publish
+from that exact checkout. Do not redirect local-publish requests to the GitHub
+workflow, `master`, `main`, or `develop` unless the user explicitly asks to
+switch branches or use the workflow.
+
 NPM authentication is loaded from the repo's `.env`: the `release` step is
 wrapped in `dotenvx run -f .env`, and `check:npm-auth` also loads `.env` via
 `dotenvx`. No separate `npm login` is needed when `.env` contains a valid
@@ -108,9 +114,11 @@ Because the command runs `bun run test` (which can trigger Playwright), invoke
 it with `required_permissions: ["all"]` per
 [`./playwright-sandbox.mdc`](./playwright-sandbox.mdc).
 
-Release/versioning commits should be prepared on `develop` (or on a feature
-branch targeting `develop`). Do not merge or push release changes directly to
-`main` / `master`.
+Release/versioning commits that are prepared for PR review should target
+`develop` (or a feature branch targeting `develop`). This branch workflow does
+not override local publishing: when the user asks to publish locally, publish
+from the current checkout unless they explicitly ask to switch branches. Do not
+merge or push release changes directly to `main` / `master`.
 
 Do not run `npm publish` directly, or invoke `bun run release` directly. Use
 `release:with-version` so the temporary changeset, workspace-range rewrite,

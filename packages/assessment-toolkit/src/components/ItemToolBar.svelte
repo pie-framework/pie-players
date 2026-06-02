@@ -1295,6 +1295,37 @@
 							}
 						}
 					: undefined
+				},
+				// Calculator shell: tab boundaries should fall through to the page so
+				// keyboard users can leave the calculator with Tab / Shift+Tab. The
+				// shell is appended to <body>, so the browser's natural tab order
+				// would skip back to the opener / forward to nothing useful — we relay
+				// to the opener button and to the first focusable in the item content.
+				wrap: !isCalculatorShellTrap,
+				onTabExit: isCalculatorShellTrap
+					? (direction, event) => {
+							if (direction === 'backward') {
+								if (openerEl?.isConnected) {
+									event.preventDefault();
+									try {
+										openerEl.focus();
+									} catch {
+										// ignore
+									}
+								}
+								return;
+							}
+							const next = findFirstQuestionFocusable();
+							if (next) {
+								event.preventDefault();
+								try {
+									next.focus();
+								} catch {
+									// ignore
+								}
+							}
+						}
+					: undefined
 			});
 		};
 

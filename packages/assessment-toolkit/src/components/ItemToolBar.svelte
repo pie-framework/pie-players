@@ -115,7 +115,6 @@
 	// and our CORS-clean stylesheet wins.
 	const ROBOTO_HREF =
 		'https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap';
-	const FA_LIGHT_SHIM_ID = 'pie-nds-fa-light-shim';
 	let ndsAssetsInstalled = false;
 	const ensureNdsAssets = () => {
 		if (!isBrowser || ndsAssetsInstalled) return;
@@ -141,17 +140,6 @@
 			link.rel = 'stylesheet';
 			link.href = href;
 			document.head.appendChild(link);
-		}
-		if (!document.getElementById(FA_LIGHT_SHIM_ID)) {
-			// Map `fa-light` → FA Free Solid (weight 900) as the fallback
-			// effective when FA Pro isn't reachable. FA Pro's own stylesheet
-			// re-defines `.fa-light` to its weight-300 family, so when Pro
-			// loads after this rule it overrides the shim.
-			const style = document.createElement('style');
-			style.id = FA_LIGHT_SHIM_ID;
-			style.textContent =
-				'.fa-light{font-family:"Font Awesome 6 Free";font-weight:900;}';
-			document.head.appendChild(style);
 		}
 	};
 
@@ -1008,7 +996,6 @@
 		// HTMLElement (not HTMLButtonElement) so the calculator branch can use
 		// <nds-icon-button> here while other shells keep the inline <button>.
 		let closeButtonEl: HTMLElement | null = null;
-		let resizeHandleEl: HTMLDivElement | null = null;
 		let startFocusGuardEl: HTMLDivElement | null = null;
 		let endFocusGuardEl: HTMLDivElement | null = null;
 		let focusGuardRedirecting = false;
@@ -1022,6 +1009,10 @@
 		let resizeStartHeight = 0;
 		let resizeStartX = 0;
 		let resizeStartY = 0;
+		let resizeStartShellX = 0;
+		let resizeStartShellY = 0;
+		let resizeCorner: 'se' | 'sw' | 'ne' | 'nw' | null = null;
+		const resizeHandleEls: Array<{ el: HTMLDivElement; handler: (e: PointerEvent) => void }> = [];
 		let x = 0;
 		let y = 0;
 		let width = currentArgs.mounted.entry.shell?.initialWidth ?? 720;
@@ -1029,6 +1020,7 @@
 		let focusTrapCleanup: (() => void) | null = null;
 		let openerEl: HTMLElement | null = null;
 		let previousActive = false;
+
 		const invokeElementUnmount = (value: HTMLElement | null) => {
 			if (!value) return;
 			const callback = (value as unknown as { [key: string]: unknown })[
@@ -1109,10 +1101,19 @@
 		// the design calls for a circular tertiary icon button. We dispatch
 		// onActivate from a click listener (the element fires `icon-button-click`,
 		// but it bubbles a regular `click` too via the inner <button>).
+		//
+		// `faVariant` overrides the FA family class on the rendered <i>. The
+		// nds bundle hardcodes `fa-light fa-${name}`; when FA Pro Light isn't
+		// reachable in prod our `.fa-light` shim falls back to FA Free Solid
+		// (weight 900), which renders the magnifying-glass with thick filled
+		// handles. Pass 'fa-regular' for those icons so they pick up the
+		// outline variant (Pro Regular when present, FA Free Regular as
+		// fallback — both ship the outline shape).
 		const createShellIconButton = (
 			label: string,
 			iconName: string,
-			onActivate: () => void
+			onActivate: () => void,
+			faVariant: 'fa-light' | 'fa-regular' | 'fa-solid' = 'fa-regular'
 		) => {
 			const button = document.createElement('nds-icon-button');
 			button.setAttribute('variant', 'tertiary');
@@ -1126,6 +1127,28 @@
 				onActivate();
 				bringToFront();
 			});
+			if (faVariant !== 'fa-light') {
+				// nds-icon-button renders into light DOM via createRenderRoot
+				// returning `this`, but the <i> only exists after Lit's first
+				// update cycle. Watch for it and swap classes once it appears.
+				const swapVariant = (icon: HTMLElement) => {
+					icon.classList.remove('fa-light');
+					icon.classList.add(faVariant);
+				};
+				const existing = button.querySelector<HTMLElement>('i.fa-light');
+				if (existing) {
+					swapVariant(existing);
+				} else {
+					const observer = new MutationObserver(() => {
+						const target = button.querySelector<HTMLElement>('i.fa-light');
+						if (target) {
+							swapVariant(target);
+							observer.disconnect();
+						}
+					});
+					observer.observe(button, { childList: true, subtree: true });
+				}
+			}
 			return button;
 		};
 
@@ -1215,8 +1238,33 @@
 		const centerShell = () => {
 			const viewportW = window.innerWidth;
 			const viewportH = window.innerHeight;
-			x = Math.max(0, Math.round((viewportW - width) / 2));
-			y = Math.max(0, Math.round((viewportH - height) / 2));
+			const shellConfig = currentArgs.mounted.entry.shell;
+			const align = shellConfig?.initialAlign ?? 'center';
+			const margin = shellConfig?.initialMargin ?? 16;
+			const verticalMargin = margin + 60; // footer or header height
+
+			switch (align) {
+				case 'top-left':
+					x = margin;
+					y = verticalMargin;
+					break;
+				case 'top-right':
+					x = Math.max(0, viewportW - width - margin);
+					y = verticalMargin;
+					break;
+				case 'bottom-left':
+					x = margin;
+					y = Math.max(0, viewportH - height - verticalMargin);
+					break;
+				case 'bottom-right':
+					x = Math.max(0, viewportW - width - margin);
+					y = Math.max(0, viewportH - height - verticalMargin);
+					break;
+				default:
+					x = Math.max(0, Math.round((viewportW - width) / 2));
+					y = Math.max(0, Math.round((viewportH - height) / 2));
+			}
+
 			applyPositionAndSize();
 		};
 
@@ -1407,9 +1455,12 @@
 
 		const onHeaderPointerDown = (event: PointerEvent) => {
 			if (!currentArgs.mounted.entry.shell?.draggable) return;
+
 			const target = event.target as HTMLElement;
-			if (target.closest('button')) return;
-			if (!shellEl) return;
+
+			if (target.closest('button') || !shellEl) return;
+
+			event.preventDefault();
 			dragPointerId = event.pointerId;
 			dragOffsetX = event.clientX - x;
 			dragOffsetY = event.clientY - y;
@@ -1417,21 +1468,27 @@
 			bringToFront();
 		};
 
-		const onResizePointerDown = (event: PointerEvent) => {
+		const createResizePointerDownHandler = (corner: 'se' | 'sw' | 'ne' | 'nw') => (event: PointerEvent) => {
 			if (!shellEl || !currentArgs.mounted.entry.shell?.resizable) return;
+			event.preventDefault();
 			event.stopPropagation();
 			resizePointerId = event.pointerId;
+			resizeCorner = corner;
 			resizeStartWidth = width;
 			resizeStartHeight = height;
 			resizeStartX = event.clientX;
 			resizeStartY = event.clientY;
+			resizeStartShellX = x;
+			resizeStartShellY = y;
 			shellEl.setPointerCapture(event.pointerId);
 			bringToFront();
 		};
 
 		const onShellPointerMove = (event: PointerEvent) => {
 			if (!shellEl) return;
+
 			if (dragPointerId === event.pointerId) {
+				event.preventDefault();
 				const maxX = Math.max(0, window.innerWidth - width);
 				const maxY = Math.max(0, window.innerHeight - height);
 				x = clamp(event.clientX - dragOffsetX, 0, maxX);
@@ -1439,22 +1496,63 @@
 				applyShellStyle();
 				return;
 			}
+
 			if (resizePointerId === event.pointerId) {
+				event.preventDefault();
 				const shellConfig = currentArgs.mounted.entry.shell;
 				const minWidth = shellConfig?.minWidth ?? 320;
 				const minHeight = shellConfig?.minHeight ?? 240;
 				const maxWidth = shellConfig?.maxWidth ?? window.innerWidth;
 				const maxHeight = shellConfig?.maxHeight ?? window.innerHeight;
-				width = clamp(
-					resizeStartWidth + (event.clientX - resizeStartX),
-					minWidth,
-					Math.max(minWidth, Math.min(maxWidth, window.innerWidth - x))
-				);
-				height = clamp(
-					resizeStartHeight + (event.clientY - resizeStartY),
-					minHeight,
-					Math.max(minHeight, Math.min(maxHeight, window.innerHeight - y))
-				);
+				const dx = event.clientX - resizeStartX;
+				const dy = event.clientY - resizeStartY;
+
+				if (resizeCorner === 'se') {
+					// Bottom-right: right and bottom edges move; origin (x, y) fixed.
+					width = clamp(
+						resizeStartWidth + dx,
+						minWidth,
+						Math.max(minWidth, Math.min(maxWidth, window.innerWidth - x))
+					);
+					height = clamp(
+						resizeStartHeight + dy,
+						minHeight,
+						Math.max(minHeight, Math.min(maxHeight, window.innerHeight - y))
+					);
+				} else if (resizeCorner === 'sw') {
+					// Bottom-left: left and bottom edges move; right edge and top fixed.
+					const rightEdge = resizeStartShellX + resizeStartWidth;
+					const newWidth = clamp(resizeStartWidth - dx, minWidth, Math.min(maxWidth, rightEdge));
+					x = rightEdge - newWidth;
+					width = newWidth;
+					height = clamp(
+						resizeStartHeight + dy,
+						minHeight,
+						Math.max(minHeight, Math.min(maxHeight, window.innerHeight - y))
+					);
+				} else if (resizeCorner === 'ne') {
+					// Top-right: right and top edges move; left edge and bottom fixed.
+					const bottomEdge = resizeStartShellY + resizeStartHeight;
+					width = clamp(
+						resizeStartWidth + dx,
+						minWidth,
+						Math.max(minWidth, Math.min(maxWidth, window.innerWidth - x))
+					);
+					const newHeight = clamp(resizeStartHeight - dy, minHeight, Math.min(maxHeight, bottomEdge));
+					y = bottomEdge - newHeight;
+					height = newHeight;
+				} else if (resizeCorner === 'nw') {
+					// Top-left: all four edges can move; right and bottom fixed.
+					const rightEdge = resizeStartShellX + resizeStartWidth;
+					const bottomEdge = resizeStartShellY + resizeStartHeight;
+					const newWidth = clamp(resizeStartWidth - dx, minWidth, Math.min(maxWidth, rightEdge));
+					x = rightEdge - newWidth;
+					width = newWidth;
+					const newHeight = clamp(resizeStartHeight - dy, minHeight, Math.min(maxHeight, bottomEdge));
+					y = bottomEdge - newHeight;
+					height = newHeight;
+				}
+
 				applyShellStyle();
 				notifyHostedResize();
 			}
@@ -1478,7 +1576,9 @@
 
 		if (isBrowser && currentArgs.mounted.entry.shell) {
 			const isCalculatorShell = currentArgs.mounted.toolId === 'calculator';
+
 			if (isCalculatorShell) ensureNdsAssets();
+
 			shellEl = document.createElement('div');
 			shellEl.className = 'pie-tool-shell';
 			shellEl.setAttribute('data-pie-tool-shell', currentArgs.mounted.toolId);
@@ -1489,15 +1589,32 @@
 			shellEl.style.borderRadius = '12px';
 			shellEl.style.boxShadow =
 				'0 10px 40px color-mix(in srgb, var(--pie-black, #000) 25%, transparent)';
-			shellEl.style.overflow = 'hidden';
+			// Keep overflow visible so the absolutely-positioned resize handles sit at
+			// the real corner pixels and are NOT clipped by the border-radius.
+			// Browsers do NOT dispatch pointer events to a child element in the area
+			// visually clipped by a parent's overflow:hidden + border-radius, so
+			// clicking/touching the corner tip of a handle would miss if this were hidden.
+			// Individual sections (header, content) carry their own overflow/radius.
+			shellEl.style.overflow = 'visible';
 			shellEl.style.display = currentArgs.active ? 'flex' : 'none';
 			shellEl.style.flexDirection = 'column';
+			// Prevent text selection and native drag ghost during drag/resize.
+			shellEl.style.userSelect = 'none';
+			(shellEl.style as CSSStyleDeclaration & { webkitUserSelect: string }).webkitUserSelect = 'none';
+			// Disable browser pan/zoom on touch so pointer-capture is the sole handler.
+			shellEl.style.touchAction = 'none';
+			// Belt-and-suspenders: suppress the HTML5 drag ghost via the attribute and
+			// a bubbling dragstart listener (pointerdown.preventDefault handles it in
+			// most paths, but some browser/OS combinations still fire dragstart).
+			shellEl.setAttribute('draggable', 'false');
+			shellEl.addEventListener('dragstart', (e) => e.preventDefault());
 
 			headerEl = document.createElement('div');
 			headerEl.className = 'pie-tool-shell__header';
 			headerEl.style.display = 'flex';
 			headerEl.style.alignItems = 'center';
 			headerEl.style.justifyContent = 'space-between';
+			headerEl.style.gap = '6px';
 			// Calculator header follows the Knowledge-Check Figma:
 			// 28px / 12px horizontal padding (asymmetric: more space before the
 			// title, tighter at the close button), 8px vertical, and
@@ -1522,6 +1639,18 @@
 			}
 			headerEl.style.cursor = currentArgs.mounted.entry.shell.draggable === false ? 'default' : 'move';
 			headerEl.style.flex = '0 0 auto';
+			// Clip the header background at the top rounded corners. Since shellEl now
+			// uses overflow:visible, each section must manage its own overflow/radius.
+			headerEl.style.borderRadius = '12px 12px 0 0';
+			headerEl.style.overflow = 'hidden';
+			// Prevent text selection (triggers drag ghost on some platforms).
+			headerEl.style.userSelect = 'none';
+			(headerEl.style as CSSStyleDeclaration & { webkitUserSelect: string }).webkitUserSelect = 'none';
+			// Disable touch panning so pointer-capture owns the entire touch stream.
+			// touch-action does NOT inherit — must be explicit on each interactive element.
+			headerEl.style.touchAction = 'none';
+			headerEl.setAttribute('draggable', 'false');
+			headerEl.addEventListener('dragstart', (e) => e.preventDefault());
 
 			titleEl = document.createElement('span');
 			titleEl.className = 'pie-tool-shell__title';
@@ -1534,11 +1663,17 @@
 			controlsEl.style.alignItems = 'center';
 			controlsEl.style.gap = isCalculatorShell ? '6px' : '4px';
 			const shellConfig = currentArgs.mounted.entry.shell;
-			const appendControl = (label: string, glyph: string, iconName: string, onActivate: () => void) => {
+			const appendControl = (
+				label: string,
+				glyph: string,
+				iconName: string,
+				onActivate: () => void,
+				faVariant: 'fa-light' | 'fa-regular' | 'fa-solid' = 'fa-regular'
+			) => {
 				if (!controlsEl) return;
 				controlsEl.appendChild(
 					isCalculatorShell
-						? createShellIconButton(label, iconName, onActivate)
+						? createShellIconButton(label, iconName, onActivate, faVariant)
 						: createShellControlButton(label, glyph, onActivate)
 				);
 			};
@@ -1574,16 +1709,9 @@
 			}
 
 			if (isCalculatorShell) {
-				closeButtonEl = document.createElement('nds-icon-button');
-				closeButtonEl.setAttribute('variant', 'tertiary');
-				closeButtonEl.setAttribute('size', 'small');
-				closeButtonEl.setAttribute('type', 'circle');
-				closeButtonEl.setAttribute('icon-name', 'xmark');
-				closeButtonEl.setAttribute('button-aria-label', 'Close tool');
-				closeButtonEl.title = 'Close tool';
+				closeButtonEl = createShellIconButton('Close tool', 'xmark', closeShell, 'fa-regular');
 				closeButtonEl.style.display =
 					currentArgs.mounted.entry.shell.closeable === false ? 'none' : 'inline-block';
-				closeButtonEl.addEventListener('click', closeShell);
 			} else {
 				const closeButton = document.createElement('button');
 				closeButton.type = 'button';
@@ -1693,6 +1821,9 @@
 			contentEl.style.width = '100%';
 			contentEl.style.flex = '1 1 auto';
 			contentEl.style.minHeight = '0';
+			// Clip tool content and round the bottom corners to match the shell.
+			contentEl.style.overflow = 'hidden';
+			contentEl.style.borderRadius = '0 0 12px 12px';
 
 			// Focus guards (calculator shell only). Desmos calculators handle Tab
 			// inside their inputs themselves — the keydown often doesn't bubble to
@@ -1766,19 +1897,50 @@
 			}
 
 			if (currentArgs.mounted.entry.shell.resizable !== false) {
-				resizeHandleEl = document.createElement('div');
-				resizeHandleEl.className = 'pie-tool-shell__resize';
-				resizeHandleEl.style.position = 'absolute';
-				resizeHandleEl.style.right = '0';
-				resizeHandleEl.style.bottom = '0';
-				resizeHandleEl.style.width = '24px';
-				resizeHandleEl.style.height = '24px';
-				resizeHandleEl.style.cursor = 'nwse-resize';
-				resizeHandleEl.style.background =
-					'linear-gradient(135deg, transparent 0%, transparent 40%, rgba(0,0,0,0.35) 40%, rgba(0,0,0,0.35) 60%, transparent 60%, transparent 100%)';
-				shellEl.appendChild(resizeHandleEl);
-				resizeHandleEl.addEventListener('pointerdown', onResizePointerDown);
+				const addResizeHandle = (
+					corner: 'se' | 'sw' | 'ne' | 'nw',
+					top: string | null, right: string | null,
+					bottom: string | null, left: string | null,
+					cursor: string,
+					gradientAngle: string
+				) => {
+					const el = document.createElement('div');
+					el.className = 'pie-tool-shell__resize';
+					el.style.position = 'absolute';
+					el.style.width = '24px';
+					el.style.height = '24px';
+					el.style.cursor = cursor;
+					// Sit above all tool content within the shell's stacking context.
+					el.style.zIndex = '10';
+					// Disable touch pan so pointer-capture owns the stream on mobile.
+					el.style.touchAction = 'none';
+					el.setAttribute('draggable', 'false');
+
+					if (top !== null) el.style.top = top;
+					if (right !== null) el.style.right = right;
+					if (bottom !== null) el.style.bottom = bottom;
+					if (left !== null) el.style.left = left;
+
+					if (gradientAngle !== null) {
+						el.style.background = `linear-gradient(${gradientAngle}, transparent 0%, transparent 40%, rgba(0,0,0,0.35) 40%, rgba(0,0,0,0.35) 60%, transparent 60%, transparent 100%)`;
+					}
+
+					const handler = createResizePointerDownHandler(corner);
+					el.addEventListener('pointerdown', handler);
+					shellEl!.appendChild(el);
+					resizeHandleEls.push({ el, handler });
+				};
+
+				// se: bottom-right
+				addResizeHandle('se', null, '0', '0', null, 'nwse-resize', null);
+				// nw: top-left
+				addResizeHandle('nw', '0', null, null, '0', 'nwse-resize', '135deg');
+				// ne: top-right
+				addResizeHandle('ne', '0', '0', null, null, 'nesw-resize', null);
+				// sw: bottom-left
+				addResizeHandle('sw', null, null, '0', '0', 'nesw-resize', null);
 			}
+
 
 			headerEl.addEventListener('pointerdown', onHeaderPointerDown);
 			shellEl.addEventListener('pointermove', onShellPointerMove);
@@ -1830,10 +1992,14 @@
 					document.removeEventListener('keydown', onCalculatorBridgeKeydown, true);
 					calculatorBridgeAttached = false;
 				}
-				openerEl = null;
-				if (resizeHandleEl) {
-					resizeHandleEl.removeEventListener('pointerdown', onResizePointerDown);
+
+				for (const { el, handler } of resizeHandleEls) {
+					el.removeEventListener('pointerdown', handler);
 				}
+
+				openerEl = null;
+				resizeHandleEls.length = 0;
+
 				if (headerEl) {
 					headerEl.removeEventListener('pointerdown', onHeaderPointerDown);
 					headerEl.onkeydown = null;
@@ -1907,7 +2073,7 @@
 									class="item-toolbar__calculator-icon"
 									aria-hidden="true"
 								>
-									<i class="fa-light fa-calculator"></i>
+									<i class="fa-regular fa-calculator"></i>
 								</span>
 							{:else if isInlineSvgIcon(item.icon)}
 								<span aria-hidden="true">{@html sanitizeSvgIcon(item.icon)}</span>
@@ -1941,7 +2107,7 @@
 									class="item-toolbar__calculator-icon"
 									aria-hidden="true"
 								>
-									<i class="fa-light fa-calculator"></i>
+									<i class="fa-regular fa-calculator"></i>
 								</span>
 							{:else if isInlineSvgIcon(item.icon)}
 								<span aria-hidden="true">{@html sanitizeSvgIcon(item.icon)}</span>

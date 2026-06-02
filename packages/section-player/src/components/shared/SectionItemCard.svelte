@@ -211,6 +211,7 @@
 		gap: 0.75rem;
 		padding: 0.75rem 1rem;
 		border-bottom: 1px solid var(--pie-border-light, #e5e7eb);
+
 		/* Header fill is intentionally transparent by default. Hosts/themes
 		   opt-in to a solid color via --pie-section-player-card-header-background
 		   (e.g. a brand Bluegreen tint) without this framework encoding a palette. */
@@ -221,7 +222,7 @@
 		margin: 0;
 		font-size: 0.95rem;
 		font-weight: 600;
-		color: var(--pie-text, #111827);
+		color: var(--pie-header-text, #111827);
 	}
 
 	.pie-section-player-content-card-header pie-item-toolbar {

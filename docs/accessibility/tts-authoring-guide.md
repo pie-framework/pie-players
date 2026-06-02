@@ -18,6 +18,10 @@ When authoring assessment content for text-to-speech (TTS), you may notice that 
 
 ## Quick Start: Common Patterns
 
+The small JSON snippets in this section show fields inside a PIE model. Full
+item payloads still use `config.markup`, `config.elements`, and
+`config.models[]`.
+
 ### Pattern 1: Question Title + Body Text
 
 **Problem:**
@@ -44,8 +48,8 @@ When authoring assessment content for text-to-speech (TTS), you may notice that 
 ```json
 {
   "choices": [
-    {"label": "A", "value": "a", "content": "The quadratic formula, because it works for all equations"},
-    {"label": "B", "value": "b", "content": "Factoring, because this equation factors easily"}
+    {"value": "a", "label": "A. The quadratic formula, because it works for all equations"},
+    {"value": "b", "label": "B. Factoring, because this equation factors easily"}
   ]
 }
 ```
@@ -56,8 +60,8 @@ When authoring assessment content for text-to-speech (TTS), you may notice that 
 ```json
 {
   "choices": [
-    {"label": "A", "value": "a", "content": "The quadratic formula, because it works for all equations."},
-    {"label": "B", "value": "b", "content": "Factoring, because this equation factors easily."}
+    {"value": "a", "label": "A. The quadratic formula, because it works for all equations."},
+    {"value": "b", "label": "B. Factoring, because this equation factors easily."}
   ]
 }
 ```
@@ -65,7 +69,6 @@ When authoring assessment content for text-to-speech (TTS), you may notice that 
 Or use SSML in a catalog:
 ```json
 {
-  "prompt": "<div data-catalog-idref=\"question-1-prompt\">...</div>",
   "accessibilityCatalogs": [{
     "identifier": "question-1-prompt",
     "cards": [{
@@ -73,7 +76,18 @@ Or use SSML in a catalog:
       "language": "en-US",
       "content": "<speak>Based on the passage, which method should you use? <break time=\"200ms\"/> Option A. <prosody rate=\"slow\">The quadratic formula</prosody>, because it works for all equations. <break time=\"200ms\"/> Option B...</speak>"
     }]
-  }]
+  }],
+  "config": {
+    "markup": "<multiple-choice id=\"q1\"></multiple-choice>",
+    "elements": {
+      "multiple-choice": "@pie-element/multiple-choice@latest"
+    },
+    "models": [{
+      "id": "q1",
+      "element": "multiple-choice",
+      "prompt": "<div data-catalog-idref=\"question-1-prompt\">...</div>"
+    }]
+  }
 }
 ```
 
@@ -88,14 +102,25 @@ Or use SSML in a catalog:
 **Optional override - Add SSML for controlled pacing:**
 ```json
 {
-  "accessibilityCatalogs": [{
-    "identifier": "equation-1",
-    "cards": [{
-      "catalog": "spoken",
-      "language": "en-US",
-      "content": "<speak><prosody rate=\"slow\">x squared<break time=\"200ms\"/> minus five x<break time=\"200ms\"/> plus six<break time=\"200ms\"/> equals zero</prosody></speak>"
+  "config": {
+    "markup": "<multiple-choice id=\"q1\"></multiple-choice>",
+    "elements": {
+      "multiple-choice": "@pie-element/multiple-choice@latest"
+    },
+    "models": [{
+      "id": "q1",
+      "element": "multiple-choice",
+      "prompt": "<div data-catalog-idref=\"equation-1\">x² - 5x + 6 = 0</div>",
+      "accessibilityCatalogs": [{
+        "identifier": "equation-1",
+        "cards": [{
+          "catalog": "spoken",
+          "language": "en-US",
+          "content": "<speak><prosody rate=\"slow\">x squared<break time=\"200ms\"/> minus five x<break time=\"200ms\"/> plus six<break time=\"200ms\"/> equals zero</prosody></speak>"
+        }]
+      }]
     }]
-  }]
+  }
 }
 ```
 
@@ -214,10 +239,17 @@ explicitly runs that preprocessing step.
 **Example:**
 ```json
 {
-  "models": [{
-    "id": "q1",
-    "prompt": "<div><speak xml:lang=\"en-US\">Question one:<break time=\"300ms\"/>Method Selection</speak><h3>Question 1: Method Selection</h3><p>Based on the passage...</p></div>"
-  }]
+  "config": {
+    "markup": "<multiple-choice id=\"q1\"></multiple-choice>",
+    "elements": {
+      "multiple-choice": "@pie-element/multiple-choice@latest"
+    },
+    "models": [{
+      "id": "q1",
+      "element": "multiple-choice",
+      "prompt": "<div><speak xml:lang=\"en-US\">Question one:<break time=\"300ms\"/>Method Selection</speak><h3>Question 1: Method Selection</h3><p>Based on the passage...</p></div>"
+    }]
+  }
 }
 ```
 
@@ -233,10 +265,6 @@ explicitly runs that preprocessing step.
 
 ```json
 {
-  "models": [{
-    "id": "q1",
-    "prompt": "<div data-catalog-idref=\"q1-prompt\"><h3>Question 1: Method Selection</h3><p>Based on the passage, which method should you use?</p></div>"
-  }],
   "accessibilityCatalogs": [{
     "identifier": "q1-prompt",
     "cards": [{
@@ -244,7 +272,18 @@ explicitly runs that preprocessing step.
       "language": "en-US",
       "content": "<speak xml:lang=\"en-US\">Question one:<break time=\"300ms\"/>Method Selection.<break time=\"500ms\"/><prosody rate=\"medium\">Based on the passage, which method should you use to solve x squared minus five x plus six equals zero?</prosody></speak>"
     }]
-  }]
+  }],
+  "config": {
+    "markup": "<multiple-choice id=\"q1\"></multiple-choice>",
+    "elements": {
+      "multiple-choice": "@pie-element/multiple-choice@latest"
+    },
+    "models": [{
+      "id": "q1",
+      "element": "multiple-choice",
+      "prompt": "<div data-catalog-idref=\"q1-prompt\"><h3>Question 1: Method Selection</h3><p>Based on the passage, which method should you use?</p></div>"
+    }]
+  }
 }
 ```
 
@@ -417,7 +456,6 @@ SSML adds complexity. Skip it when:
 **With SSML:**
 ```json
 {
-  "prompt": "<div data-catalog-idref=\"rect-area-1\"><p>A rectangle has length x+3 and width x-2. Write an expression for its area.</p></div>",
   "accessibilityCatalogs": [{
     "identifier": "rect-area-1",
     "cards": [{
@@ -425,7 +463,18 @@ SSML adds complexity. Skip it when:
       "language": "en-US",
       "content": "<speak>A rectangle has length <prosody rate=\"slow\">x plus three</prosody><break time=\"200ms\"/> and width <prosody rate=\"slow\">x minus two</prosody>.<break time=\"400ms\"/> Write an expression for its area.</speak>"
     }]
-  }]
+  }],
+  "config": {
+    "markup": "<multiple-choice id=\"q1\"></multiple-choice>",
+    "elements": {
+      "multiple-choice": "@pie-element/multiple-choice@latest"
+    },
+    "models": [{
+      "id": "q1",
+      "element": "multiple-choice",
+      "prompt": "<div data-catalog-idref=\"rect-area-1\"><p>A rectangle has length x+3 and width x-2. Write an expression for its area.</p></div>"
+    }]
+  }
 }
 ```
 
@@ -447,18 +496,25 @@ Question 2: "The author's main purpose..." (with 4 options)
 
 ```json
 {
-  "questions": [{
-    "id": "q1",
-    "prompt": "<div data-catalog-idref=\"q1-prompt\"><h4>Question 1: Reading Comprehension</h4><p>According to paragraph 2, what is the main benefit of urban gardens?</p></div>",
-    "accessibilityCatalogs": [{
-      "identifier": "q1-prompt",
-      "cards": [{
-        "catalog": "spoken",
-        "language": "en-US",
-        "content": "<speak>Question one:<break time=\"300ms\"/>Reading Comprehension.<break time=\"500ms\"/>According to paragraph two, what is the main benefit of urban gardens?</speak>"
-      }]
+  "accessibilityCatalogs": [{
+    "identifier": "q1-prompt",
+    "cards": [{
+      "catalog": "spoken",
+      "language": "en-US",
+      "content": "<speak>Question one:<break time=\"300ms\"/>Reading Comprehension.<break time=\"500ms\"/>According to paragraph two, what is the main benefit of urban gardens?</speak>"
     }]
-  }]
+  }],
+  "config": {
+    "markup": "<multiple-choice id=\"q1\"></multiple-choice>",
+    "elements": {
+      "multiple-choice": "@pie-element/multiple-choice@latest"
+    },
+    "models": [{
+      "id": "q1",
+      "element": "multiple-choice",
+      "prompt": "<div data-catalog-idref=\"q1-prompt\"><h4>Question 1: Reading Comprehension</h4><p>According to paragraph 2, what is the main benefit of urban gardens?</p></div>"
+    }]
+  }
 }
 ```
 
@@ -541,7 +597,7 @@ PIE Players with AWS Polly support these SSML tags:
 
 Test your content in the PIE section demos:
 ```
-http://localhost:5174/demo/your-item-id
+http://localhost:5300/tts-ssml?mode=candidate&layout=splitpane
 ```
 
 Click the TTS button and listen - does it sound natural?

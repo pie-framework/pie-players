@@ -106,12 +106,10 @@ Run a demo to verify TTS works:
 bun run dev:section
 ```
 
-Visit the demo and try the TTS feature. Check the browser console for:
-
-```
-[PollyServerProvider] Initialized with voice: Joanna
-[TTS API] Synthesis complete: 150ms
-```
+Visit the demo and try the TTS feature. Confirm that the browser request to
+your TTS API succeeds, audio plays, and speech-mark highlighting appears when
+the response includes marks. Server logs should show successful Polly synthesis;
+exact log text depends on the host API route.
 
 ## Security Best Practices
 

@@ -352,7 +352,9 @@ pause logic; SSML is applied per playback chunk.
   [`packages/assessment-toolkit/src/services/tool-providers/TTSToolProvider.ts`](../../packages/assessment-toolkit/src/services/tool-providers/TTSToolProvider.ts)
 - Speech resolution and playback:
   [`packages/assessment-toolkit/src/services/TTSService.ts`](../../packages/assessment-toolkit/src/services/TTSService.ts)
-- Inline TTS UI:
+- Inline TTS UI package:
+  `@pie-players/pie-tool-tts-inline` (registration entrypoint consumed through
+  package exports); source:
   [`packages/tool-tts-inline/tool-tts-inline.svelte`](../../packages/tool-tts-inline/tool-tts-inline.svelte)
 - Catalog registration:
   [`packages/assessment-toolkit/src/runtime/catalog-registration.ts`](../../packages/assessment-toolkit/src/runtime/catalog-registration.ts)

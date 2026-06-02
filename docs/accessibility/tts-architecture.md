@@ -182,11 +182,11 @@ const ttsService = new TTSService();
 
 try {
   // Try to initialize server-side TTS (preferred for production)
-  await ttsService.initialize(new ServerTTSProvider({
+  await ttsService.initialize(new ServerTTSProvider(), {
     apiEndpoint: '/api/tts',
     provider: 'polly',
     voice: 'Joanna',
-  }));
+  });
   console.log('Using server-side TTS with speech marks');
 } catch (error) {
   // Fallback to browser TTS
@@ -386,33 +386,37 @@ export class MyTTSProvider implements ITTSProvider {
 The TTS system integrates seamlessly with QTI 3.0 accessibility catalogs through the **PIE Section Player**:
 
 ```javascript
-import {
-  TTSService,
-  AccessibilityCatalogResolver,
-  BrowserTTSProvider
-} from '@pie-players/pie-assessment-toolkit';
+import '@pie-players/pie-section-player/components/section-player-splitpane-element';
+import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
 
-// Initialize services
-const ttsService = new TTSService();
-const catalogResolver = new AccessibilityCatalogResolver(
-  assessment.accessibilityCatalogs || [],
-  'en-US'
-);
+const coordinator = new ToolkitCoordinator({
+  assessmentId: assessment.id,
+  accessibility: {
+    catalogs: assessment.accessibilityCatalogs ?? [],
+    language: 'en-US',
+  },
+  tools: {
+    placement: { item: ['textToSpeech'], passage: ['textToSpeech'], section: [] },
+    providers: {
+      textToSpeech: {
+        settings: { backend: 'browser' },
+      },
+    },
+  },
+});
 
-await ttsService.initialize(new BrowserTTSProvider());
-ttsService.setCatalogResolver(catalogResolver);
-
-// Pass to section player - it handles the rest automatically
-const sectionPlayer = document.getElementById('section-player');
-sectionPlayer.ttsService = ttsService;
-sectionPlayer.catalogResolver = catalogResolver;
+const sectionPlayer = document.querySelector('pie-section-player-splitpane');
+sectionPlayer.runtime = {
+  ...(sectionPlayer.runtime ?? {}),
+  coordinator,
+  tools: coordinator.config.tools,
+};
 sectionPlayer.section = section;
-
-// TTS tools in the section player will automatically:
-// - Use registered accessibility catalogs when available
-// - Use pre-authored SSML from catalogs if available
-// - Fall back to generated TTS if no catalog exists
 ```
+
+The section player uses the coordinator-managed services to resolve registered
+spoken catalogs, play pre-authored SSML when available, and fall back to
+generated speech or visible text.
 
 ## SSML Extraction Utility And Catalog Generation
 
@@ -432,8 +436,8 @@ Authors can embed SSML directly in content for convenience:
 
 An integration can:
 1. Extract SSML before rendering or registration
-2. Generates catalog entries with unique IDs
-3. Cleans visual markup (removes SSML tags)
+2. Generate catalog entries with unique IDs
+3. Clean visual markup (removes SSML tags)
 4. Provide `config.extractedCatalogs` so runtime registration can register them
 
 ### Example: Before and After Extraction
@@ -442,7 +446,13 @@ An integration can:
 ```typescript
 {
   config: {
+    markup: '<multiple-choice id="q1"></multiple-choice>',
+    elements: {
+      'multiple-choice': '@pie-element/multiple-choice@latest'
+    },
     models: [{
+      id: 'q1',
+      element: 'multiple-choice',
       prompt: `<div>
         <speak xml:lang="en-US">
           Which method should you use to solve
@@ -459,7 +469,13 @@ An integration can:
 ```typescript
 {
   config: {
+    markup: '<multiple-choice id="q1"></multiple-choice>',
+    elements: {
+      'multiple-choice': '@pie-element/multiple-choice@latest'
+    },
     models: [{
+      id: 'q1',
+      element: 'multiple-choice',
       prompt: `<div data-catalog-idref="auto-prompt-q1">
         <p><strong>Which method should you use to solve x² - 5x + 6 = 0?</strong></p>
       </div>`
@@ -496,8 +512,6 @@ const result = extractor.extractFromItemConfig(item.config);
 item.config = result.cleanedConfig;
 item.config.extractedCatalogs = result.catalogs;
 
-// Register with resolver
-catalogResolver.addItemCatalogs(result.catalogs);
 ```
 
 **Integration Points:**
@@ -507,9 +521,9 @@ catalogResolver.addItemCatalogs(result.catalogs);
 
 **Usage Pattern:**
 The section player is the primary container for assessment toolkit integration.
-Pass services as JavaScript properties, provide catalogs or `extractedCatalogs`
-on the content data, and the player handles catalog registration and TTS tool
-rendering.
+Pass a `ToolkitCoordinator` through `runtime.coordinator`, provide catalogs or
+`extractedCatalogs` on the content data, and the player handles catalog
+registration and TTS tool rendering.
 
 See [Accessibility Catalogs Integration Guide](./accessibility-catalogs-integration-guide.md) for complete examples.
 

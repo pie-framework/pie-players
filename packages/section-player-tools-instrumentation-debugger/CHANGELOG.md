@@ -1,5 +1,15 @@
 # @pie-players/pie-section-player-tools-instrumentation-debugger
 
+## 0.3.46
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-players-shared@0.3.46
+  - @pie-players/pie-section-player-tools-shared@0.3.46
+  - @pie-players/pie-theme@0.3.46
+
 ## 0.3.45
 
 ### Patch Changes

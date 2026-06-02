@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-section-player-tools-pnp-debugger",
-	"version": "0.3.42",
+	"version": "0.3.45",
 	"type": "module",
 	"description": "PNP debugger panel for PIE section-player flows",
 	"repository": {
@@ -19,7 +19,6 @@
 		"debugger",
 		"web-component"
 	],
-	"svelte": "./PnpPanel.svelte",
 	"main": "./dist/section-player-tools-pnp-debugger.js",
 	"module": "./dist/section-player-tools-pnp-debugger.js",
 	"unpkg": "./dist/section-player-tools-pnp-debugger.js",
@@ -27,13 +26,11 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/section-player-tools-pnp-debugger.js",
-			"svelte": "./PnpPanel.svelte"
+			"import": "./dist/section-player-tools-pnp-debugger.js"
 		}
 	},
 	"files": [
 		"dist",
-		"PnpPanel.svelte",
 		"package.json"
 	],
 	"license": "MIT",

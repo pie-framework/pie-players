@@ -2,13 +2,17 @@
 	"compilerOptions": {
 		"target": "ES2022",
 		"module": "NodeNext",
-		"lib": ["ES2022", "DOM"],
+		"lib": [
+			"ES2022",
+			"DOM"
+		],
 		"moduleResolution": "NodeNext",
 		"outDir": "./dist",
 		"rootDir": "./src",
 		"declaration": true,
-		"declarationMap": true,
+		"declarationMap": false,
 		"sourceMap": true,
+		"inlineSources": true,
 		"composite": true,
 		"strict": true,
 		"esModuleInterop": true,
@@ -16,7 +20,17 @@
 		"forceConsistentCasingInFileNames": true,
 		"resolveJsonModule": true
 	},
-	"include": ["src/**/*"],
-	"exclude": ["node_modules", "dist", "**/*.test.ts"],
-	"references": [{ "path": "../tts" }]
+	"include": [
+		"src/**/*"
+	],
+	"exclude": [
+		"node_modules",
+		"dist",
+		"**/*.test.ts"
+	],
+	"references": [
+		{
+			"path": "../tts"
+		}
+	]
 }

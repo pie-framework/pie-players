@@ -55,7 +55,7 @@ export function createScopedToolId(
 
 export function parseScopedToolId(id: string): ParsedToolInstanceId | null {
 	const parts = id.split(":");
-	if (parts.length !== 3 && parts.length !== 4) return null;
+	if (parts.length !== 3) return null;
 	const [baseToolId, scopeLevelRaw, scopeId] = parts;
 	if (!baseToolId || !scopeId) return null;
 	if (!isRegisteredToolScopeLevel(scopeLevelRaw)) {

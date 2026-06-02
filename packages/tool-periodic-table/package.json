@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-tool-periodic-table",
-	"version": "0.3.42",
+	"version": "0.3.45",
 	"type": "module",
 	"description": "Interactive periodic table reference tool for PIE assessment player",
 	"repository": {
@@ -19,18 +19,15 @@
 		"chemistry",
 		"reference"
 	],
-	"svelte": "./tool-periodic-table.svelte",
 	"main": "./dist/tool-periodic-table.js",
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/tool-periodic-table.js",
-			"svelte": "./tool-periodic-table.svelte"
+			"import": "./dist/tool-periodic-table.js"
 		}
 	},
 	"files": [
 		"dist",
-		"tool-periodic-table.svelte",
 		"periodic-table-data.json",
 		"package.json"
 	],

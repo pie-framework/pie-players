@@ -1,5 +1,23 @@
 # @pie-players/pie-section-player-tools-event-debugger
 
+## 0.3.45
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-section-player-tools-shared@0.3.45
+  - @pie-players/pie-theme@0.3.45
+
+## 0.3.44
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-section-player-tools-shared@0.3.44
+  - @pie-players/pie-theme@0.3.44
+
 ## 0.3.42
 
 ### Patch Changes
@@ -58,7 +76,7 @@
 
 ### Patch Changes
 
-- 9ef211c: PIE-512 Phase D cleanup: drop legacy `sectionId` / `attemptId` args from internal subscribe call sites; sharpen the migration narrative for typed integrations.
+- 9ef211c: PIE-512 Phase D cleanup: drop prior `sectionId` / `attemptId` args from internal subscribe call sites; sharpen the migration narrative for typed integrations.
 
   This is a follow-up to `0.3.35` — same active-cohort contract, no functional behavior change. It cleans up internal code that was still passing the now-ignored args, and adds an explicit migration recipe for typed integrators.
 

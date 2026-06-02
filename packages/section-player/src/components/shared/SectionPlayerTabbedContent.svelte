@@ -245,8 +245,8 @@
 		position: relative;
 		border: none;
 		border-radius: 24px;
-		background: transparent;
-		color: var(--pie-text, #111827);
+		background: var(--pie-section-player-tab-background, transparent);
+		color: var(--pie-section-player-tab-color, #111827);
 		padding: var(--pie-section-player-tab-padding-block, 0.35rem) 12px;
 		font: inherit;
 		font-size: 12px;
@@ -261,8 +261,8 @@
 	}
 
 	.pie-section-player-tab--active {
-		background: var(--pie-section-player-card-header-background, #374151);
-		color: var(--pie-background, #ffffff);
+		background: var(--pie-section-player-tab-active-background, #1D7375);
+		color: var(--pie-section-player-tab-active-color, #ffffff);
 	}
 
 	.pie-section-player-tab:focus-visible {

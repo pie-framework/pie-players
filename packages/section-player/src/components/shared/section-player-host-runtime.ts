@@ -2,11 +2,8 @@
  * Section-player host runtime helpers (M7 PR 7).
  *
  * The Variant C engine resolver in
- * `@pie-players/pie-assessment-toolkit/runtime/internal` consolidated
- * `resolveRuntime`, `resolveToolsConfig`, and the two-tier mirror
- * helpers into the toolkit's runtime package (PR 1, PR 3). The
- * **player-coupled** parts of the legacy
- * `section-player-runtime.ts` cannot follow that move:
+ * `@pie-players/pie-assessment-toolkit/runtime/internal` owns runtime
+ * config resolution. The **player-coupled** parts stay here:
  *
  *   - `resolvePlayerRuntime` reads from
  *     `DEFAULT_PLAYER_DEFINITIONS` in
@@ -20,12 +17,10 @@
  *     `section-player-view-state.ts`. It belongs alongside the
  *     other host-runtime helpers, not in the toolkit core.
  *
- *   - `resolveSectionPlayerRuntimeState` is the historical orchestrator
- *     that hosts call when they need an effective runtime + a resolved
- *     player runtime in one shot. PR 7 keeps it as a thin wrapper over
- *     the toolkit's `resolveSectionEngineRuntimeState` so the
- *     two-tier-mirror path is owned by the toolkit and the
- *     player-coupling stays in section-player.
+ *   - `resolveSectionPlayerRuntimeState` is a thin wrapper over the
+ *     toolkit's `resolveSectionEngineRuntimeState` so runtime config
+ *     resolution is owned by the toolkit and player coupling stays in
+ *     section-player.
  *
  * Section-player imports for the relocated symbols (`DEFAULT_*`,
  * `resolveOnFrameworkError`, `RuntimeConfig`, the handler types,
@@ -54,10 +49,7 @@ import { DEFAULT_PLAYER_DEFINITIONS } from "../../component-definitions.js";
  * because of the `DEFAULT_PLAYER_DEFINITIONS` dependency, which
  * side-effect-imports `@pie-players/pie-item-player`.
  *
- * Verbatim absorption of the pre-PR-7 `resolvePlayerRuntime` from
- * `section-player-runtime.ts`; behavior is byte-for-byte identical
- * (the existing `tests/section-player-runtime.test.ts` test suite
- * pins this module's export at PR 7).
+ * Pinned by `tests/section-player-runtime.test.ts`.
  */
 export function resolvePlayerRuntime(args: {
 	effectiveRuntime: Record<string, unknown>;
@@ -134,13 +126,7 @@ export function mapRenderablesToItems(renderables: unknown[]): ItemEntity[] {
  * local `resolvePlayerRuntime` so the toolkit core never imports
  * `DEFAULT_PLAYER_DEFINITIONS`.
  *
- * Pre-PR-7 callers used the legacy
- * `resolveSectionPlayerRuntimeState` from `section-player-runtime.ts`;
- * post-PR-7 the legacy file is deleted and this wrapper is the only
- * orchestrator entry point.
- *
- * Behavior is byte-for-byte identical to the pre-PR-7 implementation
- * (pinned by `tests/section-player-runtime.test.ts`).
+ * Pinned by `tests/section-player-runtime.test.ts`.
  */
 export function resolveSectionPlayerRuntimeState(args: RuntimeInputs) {
 	return resolveSectionEngineRuntimeState(args, {

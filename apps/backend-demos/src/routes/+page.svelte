@@ -263,7 +263,7 @@
 					<p class="text-base-content/80">
 						This demo wires <code class="kbd kbd-sm">pie-item-player</code> to local
 						<code class="kbd kbd-sm">/api/player/*</code> endpoints shaped like the
-						delivery subset used by legacy <code class="kbd kbd-sm">pie-api-player</code>.
+						delivery subset used by <code class="kbd kbd-sm">pie-api-player</code>.
 						Auth, sanctioned versions, overrides, and PIE API release concerns are
 						intentionally absent.
 					</p>

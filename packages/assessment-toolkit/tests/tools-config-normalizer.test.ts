@@ -2,7 +2,6 @@ import { describe, expect, test } from "bun:test";
 import {
 	normalizeToolsConfig,
 	parseToolList,
-	resolveToolsForLevel,
 } from "../src/services/tools-config-normalizer";
 
 describe("tools-config-normalizer", () => {
@@ -14,7 +13,7 @@ describe("tools-config-normalizer", () => {
 		]);
 	});
 
-	test("applies policy allow/block to placement", () => {
+	test("normalizes policy and placement independently", () => {
 		const config = normalizeToolsConfig({
 			policy: {
 				allowed: ["calculator", "textToSpeech", "graph"],
@@ -25,9 +24,13 @@ describe("tools-config-normalizer", () => {
 			},
 		});
 
-		expect(resolveToolsForLevel(config, "item")).toEqual([
+		expect(config.policy.allowed).toEqual(["calculator", "textToSpeech", "graph"]);
+		expect(config.policy.blocked).toEqual(["graph"]);
+		expect(config.placement.item).toEqual([
 			"calculator",
 			"textToSpeech",
+			"graph",
+			"periodicTable",
 		]);
 	});
 
@@ -46,6 +49,36 @@ describe("tools-config-normalizer", () => {
 	test("normalizes pnpEnforcement", () => {
 		expect(normalizeToolsConfig({ pnpEnforcement: "off" }).pnpEnforcement).toBe(
 			"off",
+		);
+	});
+
+	test("allows string runtime provider selectors for textToSpeech", () => {
+		const config = normalizeToolsConfig({
+			providers: {
+				textToSpeech: {
+					enabled: true,
+					provider: "polly",
+				},
+			},
+		});
+
+		expect(config.providers.textToSpeech).toMatchObject({
+			enabled: true,
+			provider: "polly",
+		});
+	});
+
+	test("rejects string provider selectors for non-TTS tools", () => {
+		expect(() =>
+			normalizeToolsConfig({
+				providers: {
+					calculator: {
+						provider: "polly",
+					},
+				},
+			}),
+		).toThrow(
+			'Invalid tools config at "providers.calculator.provider": expected an object.',
 		);
 	});
 });

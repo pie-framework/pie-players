@@ -1,5 +1,9 @@
 import type { TTSConfig } from "./TTSService.js";
 import type { ToolProviderConfig } from "./tools-config-normalizer.js";
+import {
+	normalizeSREMathSpeechOptions,
+	type SREMathSpeechOptions,
+} from "./tts/math-speech.js";
 
 export type TTSLayoutMode =
 	| "reserved-row"
@@ -51,6 +55,21 @@ export interface TTSRuntimeSettings {
 	 */
 	speedOptions?: number[];
 	layoutMode?: TTSLayoutMode;
+	/**
+	 * Per-token highlighting of math expressions.
+	 * - `true` / omitted (default): when the spoken math aligns confidently to the
+	 *   rendered MathML, the formula is highlighted glyph by glyph; otherwise it
+	 *   safely falls back to a whole-formula block.
+	 * - `false`: every formula is highlighted as a single block (the fallback),
+	 *   never broken into per-token highlights. Prose word tracking is unaffected.
+	 */
+	mathTokenHighlighting?: boolean;
+	/**
+	 * Speech Rule Engine options for generated MathML speech. Hosts can use these
+	 * to tune SRE itself (for example ClearSpeak ImpliedTimes/Paren preferences)
+	 * instead of relying on toolkit-specific speech rewrites.
+	 */
+	mathSpeech?: SREMathSpeechOptions;
 }
 
 const toRecord = (value: unknown): Record<string, unknown> =>
@@ -169,10 +188,10 @@ const applyRuntimeDefaults = (
 };
 
 export const resolveTTSRuntimeSettings = (
-	config: ToolProviderConfig | undefined,
+	config: ToolProviderConfig | TTSRuntimeSettings | undefined,
 ): TTSRuntimeSettings => {
 	const configRecord = toRecord(config);
-	const settingsRecord = toRecord(config?.settings);
+	const settingsRecord = toRecord(configRecord.settings);
 	return applyRuntimeDefaults({
 		...configRecord,
 		...settingsRecord,
@@ -206,6 +225,7 @@ export const buildRuntimeTTSConfig = (
 	const backend = resolveTTSBackend(config);
 	const runtimeProvider = resolveRuntimeProvider(config, backend);
 	const transportMode = resolveTransportMode(config, runtimeProvider);
+	const mathSpeech = normalizeSREMathSpeechOptions(config.mathSpeech);
 	return {
 		voice: config.defaultVoice,
 		rate: config.rate,
@@ -234,6 +254,7 @@ export const buildRuntimeTTSConfig = (
 			...(transportMode === "custom" && config.lang_id
 				? { lang_id: config.lang_id }
 				: {}),
+			...(mathSpeech ? { mathSpeech } : {}),
 		},
 		apiEndpoint: config.apiEndpoint,
 		provider: runtimeProvider,
@@ -243,6 +264,13 @@ export const buildRuntimeTTSConfig = (
 		endpointValidationMode: config.endpointValidationMode,
 		includeAuthOnAssetFetch: config.includeAuthOnAssetFetch,
 		validateEndpoint: config.validateEndpoint,
+		// Toolkit-level highlight setting carried through the config channel
+		// (like apiEndpoint/transportMode); consumed by the highlight pipeline,
+		// ignored by providers. Only forwarded when set so the pipeline default
+		// (per-token enabled) applies otherwise.
+		...(typeof config.mathTokenHighlighting === "boolean"
+			? { mathTokenHighlighting: config.mathTokenHighlighting }
+			: {}),
 	} as Partial<TTSConfig>;
 };
 

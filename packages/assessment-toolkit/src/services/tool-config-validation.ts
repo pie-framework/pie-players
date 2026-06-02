@@ -3,6 +3,7 @@ import {
 	type CanonicalToolsConfig,
 	type ToolPlacementLevel,
 	type ToolProviderConfig,
+	type TextToSpeechToolProviderConfig,
 } from "./tools-config-normalizer.js";
 import {
 	frameworkErrorFromToolConfigDiagnostics,
@@ -21,7 +22,7 @@ export interface ToolConfigDiagnostic {
 		| "tools.unknownToolId"
 		| "tools.unsupportedLevel"
 		| "tools.unknownProviderKey"
-		| "tools.deprecatedProviderKey"
+		| "tools.removedProviderKey"
 		| "tools.providerSanitizeFailed"
 		| "tools.providerValidateFailed"
 		| "tools.invalidProviderValidation";
@@ -96,13 +97,15 @@ function getRegistryToolMap(
 
 function sanitizeProviderConfig(
 	providerId: string,
-	providerConfig: ToolProviderConfig | undefined,
+	providerConfig: ToolProviderConfig | TextToSpeechToolProviderConfig | undefined,
 	tool: ToolRegistration | undefined,
 	diagnostics: ToolConfigDiagnostic[],
-): ToolProviderConfig | undefined {
+): ToolProviderConfig | TextToSpeechToolProviderConfig | undefined {
 	if (!providerConfig || !tool?.provider?.sanitizeConfig) return providerConfig;
 	try {
-		const sanitized = tool.provider.sanitizeConfig(providerConfig);
+		const sanitized = tool.provider.sanitizeConfig(
+			providerConfig as ToolProviderConfig,
+		);
 		if (!sanitized || typeof sanitized !== "object" || Array.isArray(sanitized)) {
 			diagnostics.push(
 				createDiagnostic({
@@ -116,7 +119,7 @@ function sanitizeProviderConfig(
 			);
 			return providerConfig;
 		}
-		return sanitized as ToolProviderConfig;
+		return sanitized as ToolProviderConfig | TextToSpeechToolProviderConfig;
 	} catch (error) {
 		diagnostics.push(
 			createDiagnostic({
@@ -136,13 +139,15 @@ function sanitizeProviderConfig(
 
 function validateProviderConfig(
 	providerId: string,
-	providerConfig: ToolProviderConfig | undefined,
+	providerConfig: ToolProviderConfig | TextToSpeechToolProviderConfig | undefined,
 	tool: ToolRegistration | undefined,
 	diagnostics: ToolConfigDiagnostic[],
 ): void {
 	if (!providerConfig || !tool?.provider?.validateConfig) return;
 	try {
-		const providerDiagnostics = tool.provider.validateConfig(providerConfig);
+		const providerDiagnostics = tool.provider.validateConfig(
+			providerConfig as ToolProviderConfig,
+		);
 		if (!Array.isArray(providerDiagnostics)) {
 			diagnostics.push(
 				createDiagnostic({
@@ -258,13 +263,13 @@ function collectPolicyDiagnostics(
 function collectProviderKeyDiagnostics(
 	config: CanonicalToolsConfig,
 	toolMap: Map<string, ToolRegistration>,
-	hasDeprecatedTtsKey: boolean,
+	hasRemovedTtsKey: boolean,
 	diagnostics: ToolConfigDiagnostic[],
 ): void {
-	if (hasDeprecatedTtsKey) {
+	if (hasRemovedTtsKey) {
 		diagnostics.push(
 			createDiagnostic({
-				code: "tools.deprecatedProviderKey",
+				code: "tools.removedProviderKey",
 				severity: "error",
 				path: "providers.tts",
 				message:
@@ -321,7 +326,7 @@ export function normalizeAndValidateToolsConfig(
 	);
 	const normalized = normalizeToolsConfig(input);
 	const diagnostics: ToolConfigDiagnostic[] = [];
-	const hasDeprecatedTtsKey = Object.hasOwn(
+	const hasRemovedTtsKey = Object.hasOwn(
 		normalized.providers,
 		"tts",
 	);
@@ -353,13 +358,13 @@ export function normalizeAndValidateToolsConfig(
 	collectProviderKeyDiagnostics(
 		nextConfig,
 		registryTools,
-		hasDeprecatedTtsKey,
+		hasRemovedTtsKey,
 		diagnostics,
 	);
-	if (hasDeprecatedTtsKey) {
+	if (hasRemovedTtsKey) {
 		throwValidationError(
 			diagnostics.filter(
-				(entry) => entry.code === "tools.deprecatedProviderKey",
+				(entry) => entry.code === "tools.removedProviderKey",
 			),
 			source,
 		);

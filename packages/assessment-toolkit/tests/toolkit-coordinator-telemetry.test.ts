@@ -15,14 +15,14 @@ describe("ToolkitCoordinator telemetry listeners", () => {
 		});
 
 		await (coordinator as any).emitTelemetry("pie-tool-init-start", {
-			toolId: "tts",
+			toolId: "textToSpeech",
 			backend: "polly",
 		});
 		unsubscribe();
 
 		expect(received).toContainEqual({
 			eventName: "pie-tool-init-start",
-			payload: { toolId: "tts", backend: "polly" },
+			payload: { toolId: "textToSpeech", backend: "polly" },
 		});
 	});
 

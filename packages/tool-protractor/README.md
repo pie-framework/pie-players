@@ -18,7 +18,7 @@ A draggable and rotatable protractor overlay tool for geometry and measurement q
 
 ```svelte
 <script>
-  import '@pie-players/pie-tool-protractor/components/tool-protractor-element';
+  import '@pie-players/pie-tool-protractor';
   import { toolCoordinator } from '@pie-players/pie-assessment-toolkit';
 
   let showProtractor = $derived(

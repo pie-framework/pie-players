@@ -30,8 +30,7 @@
   - Pass 1: ToolkitCoordinator.decideToolPolicy(...) — placement,
     policy.allowed/blocked, provider veto, PNP/profile gates, and registered
     custom PolicySources are all applied inside the ToolPolicyEngine.
-    The legacy `pnpResolver` / `assessment` / `itemRef` props were
-    removed in M8 PR 3; hosts that need to drive PNP/profile inputs should
+    Hosts that need to drive PNP/profile inputs should
     bind `assessment` / `currentItemRef` on the parent
     `pie-assessment-toolkit` element instead.
   - Pass 2: tool-owned isVisibleInContext(context) — relevance gate,
@@ -64,7 +63,11 @@
 		type ToolbarItem
 	} from '../services/toolbar-items.js';
 	import { sanitizeSvgIcon } from '@pie-players/pie-players-shared/security';
-	import { createFocusTrap } from '@pie-players/pie-players-shared';
+	import {
+		createFocusTrap,
+		FOCUSABLE_SELECTOR,
+		isProgrammaticFocusTarget,
+	} from '@pie-players/pie-players-shared';
 	import { createPackagedToolRegistry } from '../services/createDefaultToolRegistry.js';
 	import { DEFAULT_TOOL_MODULE_LOADERS } from '../tools/default-tool-module-loaders.js';
 	import { parseToolList } from '../services/tools-config-normalizer.js';
@@ -112,7 +115,6 @@
 	// and our CORS-clean stylesheet wins.
 	const ROBOTO_HREF =
 		'https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap';
-	const FA_LIGHT_SHIM_ID = 'pie-nds-fa-light-shim';
 	let ndsAssetsInstalled = false;
 	const ensureNdsAssets = () => {
 		if (!isBrowser || ndsAssetsInstalled) return;
@@ -139,41 +141,41 @@
 			link.href = href;
 			document.head.appendChild(link);
 		}
-		if (!document.getElementById(FA_LIGHT_SHIM_ID)) {
-			// Map `fa-light` → FA Free Solid (weight 900) as the fallback
-			// effective when FA Pro isn't reachable. FA Pro's own stylesheet
-			// re-defines `.fa-light` to its weight-300 family, so when Pro
-			// loads after this rule it overrides the shim.
-			const style = document.createElement('style');
-			style.id = FA_LIGHT_SHIM_ID;
-			style.textContent =
-				'.fa-light{font-family:"Font Awesome 6 Free";font-weight:900;}';
-			document.head.appendChild(style);
-		}
 	};
 
 	// <nds-icon-button> renders into light DOM (createRenderRoot returns `this`),
 	// so document-scope FA stylesheets apply when the button is appended directly
 	// to document.body — which is how the calculator shell mounts its controls.
-	// The toolbar's NDS button, however, is rendered inside <pie-item-toolbar>'s
-	// own shadow root, and document.head <link> stylesheets don't cross that
-	// boundary. Replicate the FA cascade into the toolbar's shadow root the
-	// first time we mount an item that needs it.
+	// The toolbar's calculator glyph, however, is rendered inside
+	// <pie-item-toolbar>'s own shadow root, and document.head <link> stylesheets
+	// don't cross that boundary. Replicate the FA cascade into the toolbar's
+	// shadow root the first time we mount an item that needs it.
 	const FA_TOOLBAR_SHADOW_INSTALLED = '__pieFaToolbarShadowInstalled';
+	// Match any FA stylesheet href the host page already has loaded — covers
+	// `fontawesome.min.css`, `font-awesome.css`, `/_fa-pro/light.min.css`,
+	// `fontawesome-free@…`, etc. Cloning the host's actual FA <link> is what
+	// makes prod work: the previous hardcoded `/_fa-pro/` paths only resolve on
+	// hosts that proxy FA Pro themselves (e.g., section-demos dev server).
+	const FA_HREF_PATTERN = /font.?awesome|fa-?pro/i;
 	const installFaInToolbarShadow = (root: HTMLElement) => {
 		const shadow = root.getRootNode();
 		if (!(shadow instanceof ShadowRoot)) return;
 		const marker = shadow as ShadowRoot & { [FA_TOOLBAR_SHADOW_INSTALLED]?: boolean };
 		if (marker[FA_TOOLBAR_SHADOW_INSTALLED]) return;
 		marker[FA_TOOLBAR_SHADOW_INSTALLED] = true;
+		const seenHrefs = new Set<string>();
 		const appendLink = (href: string) => {
+			if (!href || seenHrefs.has(href)) return;
+			seenHrefs.add(href);
 			const link = document.createElement('link');
 			link.rel = 'stylesheet';
 			link.href = href;
 			shadow.appendChild(link);
 		};
-		appendLink(FA_FREE_HREF);
-		for (const href of FA_PRO_HREFS) appendLink(href);
+		const documentFaLinks = Array.from(
+			document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"][href]')
+		).filter((link) => FA_HREF_PATTERN.test(link.href));
+		for (const link of documentFaLinks) appendLink(link.href);
 		const shim = document.createElement('style');
 		shim.textContent =
 			'.fa-light{font-family:"Font Awesome 6 Free";font-weight:900;}';
@@ -184,6 +186,7 @@
 		installFaInToolbarShadow(node);
 		return {};
 	};
+
 	const fallbackToolRegistry = createPackagedToolRegistry({
 		toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS
 	});
@@ -804,10 +807,11 @@
 			controlsRowShouldExpandForActiveTool
 	);
 
-	// The toolbar's calculator button uses <nds-icon-button> as its icon glyph
-	// (Knowledge-Check Figma). Same vendored bundle the calculator shell header
-	// uses; FA + Roboto must be loaded before the inner <i class="fa-light
-	// fa-calculator"> can render.
+	// Prefetch FA + Roboto into document head as soon as we know a calculator
+	// icon will render. The shadow-root injection in `ndsIconButtonAction`
+	// clones whatever <link>s are already on the page; running this first means
+	// the prod-host's FA stylesheet is guaranteed to be present by the time the
+	// toolbar's calculator span mounts.
 	$effect(() => {
 		if (!isBrowser) return;
 		if (toolbarItems.some((item) => item.icon === 'calculator')) {
@@ -993,6 +997,10 @@
 		// <nds-icon-button> here while other shells keep the inline <button>.
 		let closeButtonEl: HTMLElement | null = null;
 		let resizeHandleEl: HTMLDivElement | null = null;
+		let startFocusGuardEl: HTMLDivElement | null = null;
+		let endFocusGuardEl: HTMLDivElement | null = null;
+		let focusGuardRedirecting = false;
+		let calculatorBridgeAttached = false;
 		let mountedContentElement: HTMLElement | null = null;
 		let dragPointerId: number | null = null;
 		let resizePointerId: number | null = null;
@@ -1002,6 +1010,10 @@
 		let resizeStartHeight = 0;
 		let resizeStartX = 0;
 		let resizeStartY = 0;
+		let resizeStartShellX = 0;
+		let resizeStartShellY = 0;
+		let resizeCorner: 'se' | 'sw' | 'ne' | 'nw' | null = null;
+		const resizeHandleEls: Array<{ el: HTMLDivElement; handler: (e: PointerEvent) => void }> = [];
 		let x = 0;
 		let y = 0;
 		let width = currentArgs.mounted.entry.shell?.initialWidth ?? 720;
@@ -1009,6 +1021,7 @@
 		let focusTrapCleanup: (() => void) | null = null;
 		let openerEl: HTMLElement | null = null;
 		let previousActive = false;
+
 		const invokeElementUnmount = (value: HTMLElement | null) => {
 			if (!value) return;
 			const callback = (value as unknown as { [key: string]: unknown })[
@@ -1089,10 +1102,19 @@
 		// the design calls for a circular tertiary icon button. We dispatch
 		// onActivate from a click listener (the element fires `icon-button-click`,
 		// but it bubbles a regular `click` too via the inner <button>).
+		//
+		// `faVariant` overrides the FA family class on the rendered <i>. The
+		// nds bundle hardcodes `fa-light fa-${name}`; when FA Pro Light isn't
+		// reachable in prod our `.fa-light` shim falls back to FA Free Solid
+		// (weight 900), which renders the magnifying-glass with thick filled
+		// handles. Pass 'fa-regular' for those icons so they pick up the
+		// outline variant (Pro Regular when present, FA Free Regular as
+		// fallback — both ship the outline shape).
 		const createShellIconButton = (
 			label: string,
 			iconName: string,
-			onActivate: () => void
+			onActivate: () => void,
+			faVariant: 'fa-light' | 'fa-regular' | 'fa-solid' = 'fa-regular'
 		) => {
 			const button = document.createElement('nds-icon-button');
 			button.setAttribute('variant', 'tertiary');
@@ -1106,6 +1128,28 @@
 				onActivate();
 				bringToFront();
 			});
+			if (faVariant !== 'fa-light') {
+				// nds-icon-button renders into light DOM via createRenderRoot
+				// returning `this`, but the <i> only exists after Lit's first
+				// update cycle. Watch for it and swap classes once it appears.
+				const swapVariant = (icon: HTMLElement) => {
+					icon.classList.remove('fa-light');
+					icon.classList.add(faVariant);
+				};
+				const existing = button.querySelector<HTMLElement>('i.fa-light');
+				if (existing) {
+					swapVariant(existing);
+				} else {
+					const observer = new MutationObserver(() => {
+						const target = button.querySelector<HTMLElement>('i.fa-light');
+						if (target) {
+							swapVariant(target);
+							observer.disconnect();
+						}
+					});
+					observer.observe(button, { childList: true, subtree: true });
+				}
+			}
 			return button;
 		};
 
@@ -1195,8 +1239,33 @@
 		const centerShell = () => {
 			const viewportW = window.innerWidth;
 			const viewportH = window.innerHeight;
-			x = Math.max(0, Math.round((viewportW - width) / 2));
-			y = Math.max(0, Math.round((viewportH - height) / 2));
+			const shellConfig = currentArgs.mounted.entry.shell;
+			const align = shellConfig?.initialAlign ?? 'center';
+			const margin = shellConfig?.initialMargin ?? 16;
+			const verticalMargin = margin + 60; // footer or header height
+
+			switch (align) {
+				case 'top-left':
+					x = margin;
+					y = verticalMargin;
+					break;
+				case 'top-right':
+					x = Math.max(0, viewportW - width - margin);
+					y = verticalMargin;
+					break;
+				case 'bottom-left':
+					x = margin;
+					y = Math.max(0, viewportH - height - verticalMargin);
+					break;
+				case 'bottom-right':
+					x = Math.max(0, viewportW - width - margin);
+					y = Math.max(0, viewportH - height - verticalMargin);
+					break;
+				default:
+					x = Math.max(0, Math.round((viewportW - width) / 2));
+					y = Math.max(0, Math.round((viewportH - height) / 2));
+			}
+
 			applyPositionAndSize();
 		};
 
@@ -1235,15 +1304,140 @@
 			if (!openerEl && active && !shellEl.contains(active)) {
 				openerEl = active;
 			}
+			const isCalculatorShellTrap = currentArgs.mounted.toolId === 'calculator';
+			if (isCalculatorShellTrap && !calculatorBridgeAttached) {
+				document.addEventListener('keydown', onCalculatorBridgeKeydown, true);
+				calculatorBridgeAttached = true;
+			}
 			focusTrapCleanup = createFocusTrap(shellEl, {
 				initialFocus: closeButtonEl,
 				onEscape: () => {
 					closeShell();
+				},
+				// Calculator shell: tab boundaries should fall through to the page so
+				// keyboard users can leave the calculator with Tab / Shift+Tab. The
+				// shell is appended to <body>, so the browser's natural tab order
+				// would skip back to the opener / forward to nothing useful — we relay
+				// to the opener button and to the first focusable in the item content.
+				wrap: !isCalculatorShellTrap,
+				onTabExit: isCalculatorShellTrap
+					? (direction, event) => {
+							if (direction === 'backward') {
+								if (openerEl?.isConnected) {
+									event.preventDefault();
+									try {
+										openerEl.focus();
+									} catch {
+										// ignore
+									}
+								}
+								return;
+							}
+							const next = findFirstQuestionFocusable();
+							if (next) {
+								event.preventDefault();
+								try {
+									next.focus();
+								} catch {
+									// ignore
+								}
+							}
+						}
+					: undefined
+			});		
+		};
+
+		// Walks the scope element's DOM in document order, descending into shadow
+		// roots (PIE elements encapsulate their interaction controls), and returns
+		// the first focusable candidate outside the toolbar and calculator shell.
+		const findFirstQuestionFocusable = (): HTMLElement | null => {
+			const scope = toolbarContext.getScopeElement?.() ?? null;
+			if (!scope) return null;
+			const isExcluded = (el: HTMLElement): boolean => {
+				if (toolbarRootElement && toolbarRootElement.contains(el)) return true;
+				if (shellEl && shellEl.contains(el)) return true;
+				return false;
+			};
+			const visit = (node: Element): HTMLElement | null => {
+				if (node instanceof HTMLElement) {
+					if (isExcluded(node)) return null;
+					if (
+						node.matches?.(FOCUSABLE_SELECTOR) &&
+						isProgrammaticFocusTarget(node)
+					) {
+						return node;
+					}
 				}
-			});
+				const shadow = (node as Element & { shadowRoot?: ShadowRoot | null })
+					.shadowRoot;
+				if (shadow) {
+					for (let i = 0; i < shadow.children.length; i++) {
+						const found = visit(shadow.children[i]);
+						if (found) return found;
+					}
+				}
+				for (let i = 0; i < node.children.length; i++) {
+					const found = visit(node.children[i]);
+					if (found) return found;
+				}
+				return null;
+			};
+			return visit(scope);
+		};
+
+		// Real focusable elements inside the shell, in DOM order. The focus
+		// guards at the shell boundaries are filtered out so external entry
+		// points land on actual controls instead of bouncing right back out.
+		const getShellFocusables = (): HTMLElement[] => {
+			if (!shellEl) return [];
+			return Array.from(
+				shellEl.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)
+			)
+				.filter((el) => el !== startFocusGuardEl && el !== endFocusGuardEl)
+				.filter(isProgrammaticFocusTarget);
+		};
+
+		// Bridges the page's tab order into the calculator shell. The shell is
+		// appended to <body>, so the browser's natural tab order skips it — Tab
+		// from the calc toolbar button would land on the next toolbar item, and
+		// Shift+Tab from the question's first focusable would land on the last
+		// toolbar item. This handler intercepts both transitions and steers
+		// focus into the shell so the user-visible flow is
+		//   calculator button ↔ calculator ↔ first question focusable.
+		const onCalculatorBridgeKeydown = (event: KeyboardEvent) => {
+			if (event.key !== 'Tab') return;
+			if (!shellEl || !currentArgs.active) return;
+			const active = getDeepActiveElement();
+			if (!active) return;
+			// Inside the shell, the focus trap and focus guards handle navigation.
+			if (shellEl.contains(active)) return;
+			const focusables = getShellFocusables();
+			if (focusables.length === 0) return;
+			if (event.shiftKey) {
+				const firstQuestion = findFirstQuestionFocusable();
+				if (active !== firstQuestion) return;
+				event.preventDefault();
+				try {
+					focusables[focusables.length - 1].focus();
+				} catch {
+					// ignore
+				}
+				return;
+			}
+			if (active !== openerEl) return;
+			event.preventDefault();
+			try {
+				focusables[0].focus();
+			} catch {
+				// ignore
+			}
 		};
 
 		const removeFocusTrap = () => {
+			if (calculatorBridgeAttached) {
+				document.removeEventListener('keydown', onCalculatorBridgeKeydown, true);
+				calculatorBridgeAttached = false;
+			}
 			if (!focusTrapCleanup) return;
 			const cleanup = focusTrapCleanup;
 			focusTrapCleanup = null;
@@ -1262,9 +1456,12 @@
 
 		const onHeaderPointerDown = (event: PointerEvent) => {
 			if (!currentArgs.mounted.entry.shell?.draggable) return;
+
 			const target = event.target as HTMLElement;
-			if (target.closest('button')) return;
-			if (!shellEl) return;
+
+			if (target.closest('button') || !shellEl) return;
+
+			event.preventDefault();
 			dragPointerId = event.pointerId;
 			dragOffsetX = event.clientX - x;
 			dragOffsetY = event.clientY - y;
@@ -1272,21 +1469,27 @@
 			bringToFront();
 		};
 
-		const onResizePointerDown = (event: PointerEvent) => {
+		const createResizePointerDownHandler = (corner: 'se' | 'sw' | 'ne' | 'nw') => (event: PointerEvent) => {
 			if (!shellEl || !currentArgs.mounted.entry.shell?.resizable) return;
+			event.preventDefault();
 			event.stopPropagation();
 			resizePointerId = event.pointerId;
+			resizeCorner = corner;
 			resizeStartWidth = width;
 			resizeStartHeight = height;
 			resizeStartX = event.clientX;
 			resizeStartY = event.clientY;
+			resizeStartShellX = x;
+			resizeStartShellY = y;
 			shellEl.setPointerCapture(event.pointerId);
 			bringToFront();
 		};
 
 		const onShellPointerMove = (event: PointerEvent) => {
 			if (!shellEl) return;
+
 			if (dragPointerId === event.pointerId) {
+				event.preventDefault();
 				const maxX = Math.max(0, window.innerWidth - width);
 				const maxY = Math.max(0, window.innerHeight - height);
 				x = clamp(event.clientX - dragOffsetX, 0, maxX);
@@ -1294,22 +1497,63 @@
 				applyShellStyle();
 				return;
 			}
+
 			if (resizePointerId === event.pointerId) {
+				event.preventDefault();
 				const shellConfig = currentArgs.mounted.entry.shell;
 				const minWidth = shellConfig?.minWidth ?? 320;
 				const minHeight = shellConfig?.minHeight ?? 240;
 				const maxWidth = shellConfig?.maxWidth ?? window.innerWidth;
 				const maxHeight = shellConfig?.maxHeight ?? window.innerHeight;
-				width = clamp(
-					resizeStartWidth + (event.clientX - resizeStartX),
-					minWidth,
-					Math.max(minWidth, Math.min(maxWidth, window.innerWidth - x))
-				);
-				height = clamp(
-					resizeStartHeight + (event.clientY - resizeStartY),
-					minHeight,
-					Math.max(minHeight, Math.min(maxHeight, window.innerHeight - y))
-				);
+				const dx = event.clientX - resizeStartX;
+				const dy = event.clientY - resizeStartY;
+
+				if (resizeCorner === 'se') {
+					// Bottom-right: right and bottom edges move; origin (x, y) fixed.
+					width = clamp(
+						resizeStartWidth + dx,
+						minWidth,
+						Math.max(minWidth, Math.min(maxWidth, window.innerWidth - x))
+					);
+					height = clamp(
+						resizeStartHeight + dy,
+						minHeight,
+						Math.max(minHeight, Math.min(maxHeight, window.innerHeight - y))
+					);
+				} else if (resizeCorner === 'sw') {
+					// Bottom-left: left and bottom edges move; right edge and top fixed.
+					const rightEdge = resizeStartShellX + resizeStartWidth;
+					const newWidth = clamp(resizeStartWidth - dx, minWidth, Math.min(maxWidth, rightEdge));
+					x = rightEdge - newWidth;
+					width = newWidth;
+					height = clamp(
+						resizeStartHeight + dy,
+						minHeight,
+						Math.max(minHeight, Math.min(maxHeight, window.innerHeight - y))
+					);
+				} else if (resizeCorner === 'ne') {
+					// Top-right: right and top edges move; left edge and bottom fixed.
+					const bottomEdge = resizeStartShellY + resizeStartHeight;
+					width = clamp(
+						resizeStartWidth + dx,
+						minWidth,
+						Math.max(minWidth, Math.min(maxWidth, window.innerWidth - x))
+					);
+					const newHeight = clamp(resizeStartHeight - dy, minHeight, Math.min(maxHeight, bottomEdge));
+					y = bottomEdge - newHeight;
+					height = newHeight;
+				} else if (resizeCorner === 'nw') {
+					// Top-left: all four edges can move; right and bottom fixed.
+					const rightEdge = resizeStartShellX + resizeStartWidth;
+					const bottomEdge = resizeStartShellY + resizeStartHeight;
+					const newWidth = clamp(resizeStartWidth - dx, minWidth, Math.min(maxWidth, rightEdge));
+					x = rightEdge - newWidth;
+					width = newWidth;
+					const newHeight = clamp(resizeStartHeight - dy, minHeight, Math.min(maxHeight, bottomEdge));
+					y = bottomEdge - newHeight;
+					height = newHeight;
+				}
+
 				applyShellStyle();
 				notifyHostedResize();
 			}
@@ -1333,7 +1577,9 @@
 
 		if (isBrowser && currentArgs.mounted.entry.shell) {
 			const isCalculatorShell = currentArgs.mounted.toolId === 'calculator';
+
 			if (isCalculatorShell) ensureNdsAssets();
+
 			shellEl = document.createElement('div');
 			shellEl.className = 'pie-tool-shell';
 			shellEl.setAttribute('data-pie-tool-shell', currentArgs.mounted.toolId);
@@ -1344,20 +1590,37 @@
 			shellEl.style.borderRadius = '12px';
 			shellEl.style.boxShadow =
 				'0 10px 40px color-mix(in srgb, var(--pie-black, #000) 25%, transparent)';
-			shellEl.style.overflow = 'hidden';
+			// Keep overflow visible so the absolutely-positioned resize handles sit at
+			// the real corner pixels and are NOT clipped by the border-radius.
+			// Browsers do NOT dispatch pointer events to a child element in the area
+			// visually clipped by a parent's overflow:hidden + border-radius, so
+			// clicking/touching the corner tip of a handle would miss if this were hidden.
+			// Individual sections (header, content) carry their own overflow/radius.
+			shellEl.style.overflow = 'visible';
 			shellEl.style.display = currentArgs.active ? 'flex' : 'none';
 			shellEl.style.flexDirection = 'column';
+			// Prevent text selection and native drag ghost during drag/resize.
+			shellEl.style.userSelect = 'none';
+			(shellEl.style as CSSStyleDeclaration & { webkitUserSelect: string }).webkitUserSelect = 'none';
+			// Disable browser pan/zoom on touch so pointer-capture is the sole handler.
+			shellEl.style.touchAction = 'none';
+			// Belt-and-suspenders: suppress the HTML5 drag ghost via the attribute and
+			// a bubbling dragstart listener (pointerdown.preventDefault handles it in
+			// most paths, but some browser/OS combinations still fire dragstart).
+			shellEl.setAttribute('draggable', 'false');
+			shellEl.addEventListener('dragstart', (e) => e.preventDefault());
 
 			headerEl = document.createElement('div');
 			headerEl.className = 'pie-tool-shell__header';
 			headerEl.style.display = 'flex';
 			headerEl.style.alignItems = 'center';
 			headerEl.style.justifyContent = 'space-between';
+			headerEl.style.gap = '6px';
 			// Calculator header follows the Knowledge-Check Figma:
 			// 28px / 12px horizontal padding (asymmetric: more space before the
 			// title, tighter at the close button), 8px vertical, and
 			// space-between layout pushing the controls + close cluster to the
-			// right edge. Other shells keep the legacy dense layout.
+			// right edge. Other shells keep the compact dense layout.
 			headerEl.style.padding = isCalculatorShell ? '12px 12px 12px 28px' : '10px 12px';
 			if (isCalculatorShell) {
 				headerEl.style.minHeight = '48px';
@@ -1377,6 +1640,18 @@
 			}
 			headerEl.style.cursor = currentArgs.mounted.entry.shell.draggable === false ? 'default' : 'move';
 			headerEl.style.flex = '0 0 auto';
+			// Clip the header background at the top rounded corners. Since shellEl now
+			// uses overflow:visible, each section must manage its own overflow/radius.
+			headerEl.style.borderRadius = '12px 12px 0 0';
+			headerEl.style.overflow = 'hidden';
+			// Prevent text selection (triggers drag ghost on some platforms).
+			headerEl.style.userSelect = 'none';
+			(headerEl.style as CSSStyleDeclaration & { webkitUserSelect: string }).webkitUserSelect = 'none';
+			// Disable touch panning so pointer-capture owns the entire touch stream.
+			// touch-action does NOT inherit — must be explicit on each interactive element.
+			headerEl.style.touchAction = 'none';
+			headerEl.setAttribute('draggable', 'false');
+			headerEl.addEventListener('dragstart', (e) => e.preventDefault());
 
 			titleEl = document.createElement('span');
 			titleEl.className = 'pie-tool-shell__title';
@@ -1389,11 +1664,17 @@
 			controlsEl.style.alignItems = 'center';
 			controlsEl.style.gap = isCalculatorShell ? '6px' : '4px';
 			const shellConfig = currentArgs.mounted.entry.shell;
-			const appendControl = (label: string, glyph: string, iconName: string, onActivate: () => void) => {
+			const appendControl = (
+				label: string,
+				glyph: string,
+				iconName: string,
+				onActivate: () => void,
+				faVariant: 'fa-light' | 'fa-regular' | 'fa-solid' = 'fa-regular'
+			) => {
 				if (!controlsEl) return;
 				controlsEl.appendChild(
 					isCalculatorShell
-						? createShellIconButton(label, iconName, onActivate)
+						? createShellIconButton(label, iconName, onActivate, faVariant)
 						: createShellControlButton(label, glyph, onActivate)
 				);
 			};
@@ -1414,7 +1695,7 @@
 			// so `space-between` on the header lays out as `title … [controls x]`.
 			// Cluster gap (6px) gives the same separation between any two
 			// circular buttons and between the controls group and the close.
-			// Other shells keep the legacy single-row append flow.
+			// Other shells keep the single-row append flow.
 			let rightClusterEl: HTMLDivElement | null = null;
 			if (isCalculatorShell) {
 				rightClusterEl = document.createElement('div');
@@ -1429,16 +1710,9 @@
 			}
 
 			if (isCalculatorShell) {
-				closeButtonEl = document.createElement('nds-icon-button');
-				closeButtonEl.setAttribute('variant', 'tertiary');
-				closeButtonEl.setAttribute('size', 'small');
-				closeButtonEl.setAttribute('type', 'circle');
-				closeButtonEl.setAttribute('icon-name', 'xmark');
-				closeButtonEl.setAttribute('button-aria-label', 'Close tool');
-				closeButtonEl.title = 'Close tool';
+				closeButtonEl = createShellIconButton('Close tool', 'xmark', closeShell, 'fa-regular');
 				closeButtonEl.style.display =
 					currentArgs.mounted.entry.shell.closeable === false ? 'none' : 'inline-block';
-				closeButtonEl.addEventListener('click', closeShell);
 			} else {
 				const closeButton = document.createElement('button');
 				closeButton.type = 'button';
@@ -1548,24 +1822,126 @@
 			contentEl.style.width = '100%';
 			contentEl.style.flex = '1 1 auto';
 			contentEl.style.minHeight = '0';
+			// Clip tool content and round the bottom corners to match the shell.
+			contentEl.style.overflow = 'hidden';
+			contentEl.style.borderRadius = '0 0 12px 12px';
 
+			// Focus guards (calculator shell only). Desmos calculators handle Tab
+			// inside their inputs themselves — the keydown often doesn't bubble to
+			// our focus trap, so we can't intercept boundary tabs that way. Instead,
+			// place tabindex=0 guards at the very start and end of the shell; when
+			// focus lands on either, redirect to the opener (start) or to the first
+			// question focusable (end). This works whether or not the inner keydown
+			// bubbled.
+			if (isCalculatorShell) {
+				const makeFocusGuard = (label: string): HTMLDivElement => {
+					const el = document.createElement('div');
+					el.tabIndex = 0;
+					el.setAttribute('aria-hidden', 'true');
+					el.setAttribute('data-pie-tool-shell-focus-guard', label);
+					el.style.position = 'absolute';
+					el.style.width = '1px';
+					el.style.height = '1px';
+					el.style.padding = '0';
+					el.style.margin = '-1px';
+					el.style.overflow = 'hidden';
+					el.style.clipPath = 'inset(50%)';
+					el.style.whiteSpace = 'nowrap';
+					el.style.border = '0';
+					return el;
+				};
+				startFocusGuardEl = makeFocusGuard('start');
+				endFocusGuardEl = makeFocusGuard('end');
+				startFocusGuardEl.addEventListener('focus', (event) => {
+					if (focusGuardRedirecting) return;
+					focusGuardRedirecting = true;
+					try {
+						event.stopPropagation();
+						if (openerEl?.isConnected) {
+							try {
+								openerEl.focus();
+							} catch {
+								// ignore
+							}
+						}
+					} finally {
+						queueMicrotask(() => {
+							focusGuardRedirecting = false;
+						});
+					}
+				});
+				endFocusGuardEl.addEventListener('focus', (event) => {
+					if (focusGuardRedirecting) return;
+					focusGuardRedirecting = true;
+					try {
+						event.stopPropagation();
+						const next = findFirstQuestionFocusable();
+						if (next) {
+							try {
+								next.focus();
+							} catch {
+								// ignore
+							}
+						}
+					} finally {
+						queueMicrotask(() => {
+							focusGuardRedirecting = false;
+						});
+					}
+				});
+				shellEl.appendChild(startFocusGuardEl);
+			}
 			shellEl.appendChild(headerEl);
 			shellEl.appendChild(contentEl);
+			if (isCalculatorShell && endFocusGuardEl) {
+				shellEl.appendChild(endFocusGuardEl);
+			}
 
 			if (currentArgs.mounted.entry.shell.resizable !== false) {
-				resizeHandleEl = document.createElement('div');
-				resizeHandleEl.className = 'pie-tool-shell__resize';
-				resizeHandleEl.style.position = 'absolute';
-				resizeHandleEl.style.right = '0';
-				resizeHandleEl.style.bottom = '0';
-				resizeHandleEl.style.width = '24px';
-				resizeHandleEl.style.height = '24px';
-				resizeHandleEl.style.cursor = 'nwse-resize';
-				resizeHandleEl.style.background =
-					'linear-gradient(135deg, transparent 0%, transparent 40%, rgba(0,0,0,0.35) 40%, rgba(0,0,0,0.35) 60%, transparent 60%, transparent 100%)';
-				shellEl.appendChild(resizeHandleEl);
-				resizeHandleEl.addEventListener('pointerdown', onResizePointerDown);
+				const addResizeHandle = (
+					corner: 'se' | 'sw' | 'ne' | 'nw',
+					top: string | null, right: string | null,
+					bottom: string | null, left: string | null,
+					cursor: string,
+					gradientAngle: string | null
+				) => {
+					const el = document.createElement('div');
+					el.className = 'pie-tool-shell__resize';
+					el.style.position = 'absolute';
+					el.style.width = '24px';
+					el.style.height = '24px';
+					el.style.cursor = cursor;
+					// Sit above all tool content within the shell's stacking context.
+					el.style.zIndex = '10';
+					// Disable touch pan so pointer-capture owns the stream on mobile.
+					el.style.touchAction = 'none';
+					el.setAttribute('draggable', 'false');
+
+					if (top !== null) el.style.top = top;
+					if (right !== null) el.style.right = right;
+					if (bottom !== null) el.style.bottom = bottom;
+					if (left !== null) el.style.left = left;
+
+					if (gradientAngle !== null) {
+						el.style.background = `linear-gradient(${gradientAngle}, transparent 0%, transparent 40%, rgba(0,0,0,0.35) 40%, rgba(0,0,0,0.35) 60%, transparent 60%, transparent 100%)`;
+					}
+
+					const handler = createResizePointerDownHandler(corner);
+					el.addEventListener('pointerdown', handler);
+					shellEl!.appendChild(el);
+					resizeHandleEls.push({ el, handler });
+				};
+
+				// se: bottom-right
+				addResizeHandle('se', null, '0', '0', null, 'nwse-resize', null);
+				// nw: top-left
+				addResizeHandle('nw', '0', null, null, '0', 'nwse-resize', '135deg');
+				// ne: top-right
+				addResizeHandle('ne', '0', '0', null, null, 'nesw-resize', null);
+				// sw: bottom-left
+				addResizeHandle('sw', null, null, '0', '0', 'nesw-resize', null);
 			}
+
 
 			headerEl.addEventListener('pointerdown', onHeaderPointerDown);
 			shellEl.addEventListener('pointermove', onShellPointerMove);
@@ -1590,8 +1966,8 @@
 				if (!shellEl || !contentEl || !titleEl || !closeButtonEl) return;
 				titleEl.textContent = currentArgs.mounted.entry.shell?.title || currentArgs.mounted.toolId;
 				// nds-icon-button (calculator branch) is a custom element with
-				// inline-block default display; the legacy branch uses an
-				// inline-flex <button>. Pick the right open-state value so we
+				// inline-block default display; other shells use an inline-flex
+				// <button>. Pick the right open-state value so we
 				// don't clobber inline-block back to inline-flex on prop refresh.
 				const closeButtonOpenDisplay =
 					currentArgs.mounted.toolId === 'calculator' ? 'inline-block' : 'inline-flex';
@@ -1613,10 +1989,18 @@
 				if (focusTrapCleanup) {
 					removeFocusTrap();
 				}
-				openerEl = null;
-				if (resizeHandleEl) {
-					resizeHandleEl.removeEventListener('pointerdown', onResizePointerDown);
+				if (calculatorBridgeAttached) {
+					document.removeEventListener('keydown', onCalculatorBridgeKeydown, true);
+					calculatorBridgeAttached = false;
 				}
+
+				for (const { el, handler } of resizeHandleEls) {
+					el.removeEventListener('pointerdown', handler);
+				}
+
+				openerEl = null;
+				resizeHandleEls.length = 0;
+
 				if (headerEl) {
 					headerEl.removeEventListener('pointerdown', onHeaderPointerDown);
 					headerEl.onkeydown = null;
@@ -1685,14 +2069,13 @@
 					>
 						{#if item.icon}
 							{#if item.icon === 'calculator'}
-								<nds-icon-button
+								<span
 									use:ndsIconButtonAction
-									variant="ghost"
-									size="small"
-									type="rounded"
-									icon-name="calculator"
-									button-aria-label="calculator"
-								></nds-icon-button>
+									class="item-toolbar__calculator-icon"
+									aria-hidden="true"
+								>
+									<i class="fa-regular fa-calculator"></i>
+								</span>
 							{:else if isInlineSvgIcon(item.icon)}
 								<span aria-hidden="true">{@html sanitizeSvgIcon(item.icon)}</span>
 							{:else if isExternalIconUrl(item.icon)}
@@ -1720,17 +2103,13 @@
 					>
 						{#if item.icon}
 							{#if item.icon === 'calculator'}
-								<nds-icon-button
+								<span
 									use:ndsIconButtonAction
-									class="item-toolbar__nds-icon"
-									variant="ghost"
-									size="small"
-									type="rounded"
-									icon-name="calculator"
-									button-aria-label="calculator"
+									class="item-toolbar__calculator-icon"
 									aria-hidden="true"
-									tabindex="-1"
-								></nds-icon-button>
+								>
+									<i class="fa-regular fa-calculator"></i>
+								</span>
 							{:else if isInlineSvgIcon(item.icon)}
 								<span aria-hidden="true">{@html sanitizeSvgIcon(item.icon)}</span>
 							{:else if isExternalIconUrl(item.icon)}
@@ -1946,10 +2325,19 @@
 		object-fit: contain;
 	}
 
-	/* Inner <nds-icon-button> is decorative — the outer item-toolbar button
-	   owns the click target, focus, and aria semantics. */
-	.item-toolbar__nds-icon {
+	/* Decorative only — the outer link/button owns focus and aria semantics. */
+	.item-toolbar__calculator-icon {
 		pointer-events: none;
 		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 100%;
+		height: 100%;
+	}
+
+	/* Defensive: if FA fails to load (shadow injection misses, CSP blocks the
+	   stylesheet, etc.), the <i> would otherwise render as italic text. */
+	.item-toolbar__calculator-icon > i {
+		font-style: normal;
 	}
 </style>

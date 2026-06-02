@@ -111,7 +111,7 @@ describe("tool-config-validation", () => {
 		).toThrow(`Unknown provider key "unknownProvider"`);
 	});
 
-	test("deprecated providers.tts always throws regardless of strictness", () => {
+	test("removed providers.tts always throws regardless of strictness", () => {
 		const registry = createPackagedToolRegistry();
 		expect(() =>
 			normalizeAndValidateToolsConfig(
@@ -164,6 +164,29 @@ describe("tool-config-validation", () => {
 		expect(result.diagnostics.some((entry) => entry.code === "tools.unsupportedLevel")).toBe(
 			true,
 		);
+	});
+
+	test("rejects removed colorScheme tool id", () => {
+		const registry = createPackagedToolRegistry();
+		const result = normalizeAndValidateToolsConfig(
+			{
+				placement: {
+					section: ["colorScheme"],
+				},
+			},
+			{
+				strictness: "off",
+				source: "test",
+				toolRegistry: registry,
+			},
+		);
+		expect(
+			result.diagnostics.some(
+				(entry) =>
+					entry.code === "tools.unknownToolId" &&
+					entry.toolId === "colorScheme",
+			),
+		).toBe(true);
 	});
 
 	test("allows section-capable tools in item placement without unsupported-level diagnostics", () => {

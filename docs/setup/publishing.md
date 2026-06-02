@@ -39,9 +39,11 @@ every release PR. This is expected and enforced.
   prepare a release bump scoped to only the changed packages; that would break
   the lockstep invariant. See
   [`.cursor/rules/release-version-alignment.mdc`](../../.cursor/rules/release-version-alignment.mdc).
-- A breaking change in any publishable package forces a major bump across every
-  publishable package. Plan breaking changes with that in mind, or consider
-  whether the change can be introduced additively first.
+- While the project remains on the pre-1.0 `0.x.y` line, every release is a
+  `patch` bump across every publishable package, even when a change is
+  breaking. Document breaking changes clearly in the changeset body, but do not
+  author `minor` or `major` changesets unless the maintainer explicitly updates
+  the release policy.
 - Changesets' `fixed` block in
   [`../../.changeset/config.json`](../../.changeset/config.json) is the source
   of truth for which packages are in the lockstep set. New publishable packages
@@ -88,7 +90,23 @@ bun run verify:publish
 - pack exports check (`npm pack --dry-run` + export target verification)
 - pack smoke check (`npm pack` tarball verification)
 - Node consumer import boundary checks (`scripts/check-node-consumer-imports.mjs`)
-- dependency, source export policy, and runtime boundary checks
+- dependency, publish-surface, sourcemap, and runtime boundary checks
+
+## Dist-only publish surface
+
+Publishable packages expose generated `dist` artifacts as their public API. Package
+`exports`, `main`, `module`, `types`, CDN fields, and packed source-bearing files
+must not point at raw source paths such as `src`, root `.ts`/`.tsx`, `.svelte`,
+`.svelte.ts`, or `development` conditions that resolve to source.
+
+Debuggability is provided by generated sourcemaps, not by importable source files.
+`bun run check:sourcemaps` rejects packed `.js.map` files that reference source
+files missing from the npm tarball unless the map embeds source content.
+
+The common gates are:
+
+- `bun run check:publish-surface`
+- `bun run check:sourcemaps`
 
 ## Release intent in CI
 
@@ -156,6 +174,11 @@ found).
 
 ## Manual publishing (local)
 
+Local publishing always uses the codebase and branch currently checked out.
+Before running the publish command, confirm `git branch --show-current` and
+`git status --short`; do not switch to `master`, `main`, `develop`, or the
+GitHub workflow unless that is explicitly requested.
+
 The canonical local-publish command is:
 
 ```bash
@@ -177,7 +200,7 @@ bun run release:with-version
    missing/expired or `@pie-players` access is unavailable.
 5. `bun run verify:publish` — full publish gate (build + every `check:*`).
 6. `bun run test` — workspace test suites.
-7. `bun run release` — `dotenvx run -f .env` wrapper around build + 
+7. `bun run release` — `dotenvx run -f .env` wrapper around build +
    `changeset publish` (with workspace ranges resolved) + preloaded-player
    bundle publish.
 8. `bun run restore:workspace-ranges` — restore `workspace:*` ranges in

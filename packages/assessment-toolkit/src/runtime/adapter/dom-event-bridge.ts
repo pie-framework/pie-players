@@ -14,7 +14,7 @@
  * outputs (`{ stage, status, cohort }`, `{ cohort, itemCount,
  * loadedCount }`). The bridge enriches them with `runtimeId`,
  * `sourceCe`, and `timestamp` so the dispatched DOM event detail
- * matches the legacy
+ * matches the canonical
  * `packages/players-shared/src/pie/stages.ts#StageChangeDetail` and
  * `LoadingCompleteDetail` shapes verbatim. `runtimeId` and `sourceCe`
  * are supplied at adapter construction time (one per engine instance);

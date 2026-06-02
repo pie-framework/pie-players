@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-tool-ruler",
-	"version": "0.3.42",
+	"version": "0.3.45",
 	"type": "module",
 	"description": "Ruler measurement tool for PIE assessment player",
 	"repository": {
@@ -20,18 +20,15 @@
 		"geometry",
 		"accessibility"
 	],
-	"svelte": "./tool-ruler.svelte",
 	"main": "./dist/tool-ruler.js",
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/tool-ruler.js",
-			"svelte": "./tool-ruler.svelte"
+			"import": "./dist/tool-ruler.js"
 		}
 	},
 	"files": [
 		"dist",
-		"tool-ruler.svelte",
 		"ruler-cm.svg",
 		"ruler-inches.svg",
 		"package.json",

@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-tool-calculator-inline-desmos",
-	"version": "0.3.42",
+	"version": "0.3.45",
 	"type": "module",
 	"description": "Inline calculator toggle button for PIE assessment player question headers",
 	"repository": {
@@ -20,19 +20,16 @@
 		"wcag",
 		"accessibility"
 	],
-	"svelte": "./tool-calculator-inline.svelte",
 	"main": "./dist/tool-calculator-inline.js",
 	"types": "./dist/tool-calculator-inline.svelte.d.ts",
 	"exports": {
 		".": {
 			"types": "./dist/tool-calculator-inline.svelte.d.ts",
-			"import": "./dist/tool-calculator-inline.js",
-			"svelte": "./tool-calculator-inline.svelte"
+			"import": "./dist/tool-calculator-inline.js"
 		}
 	},
 	"files": [
-		"dist",
-		"tool-calculator-inline.svelte"
+		"dist"
 	],
 	"license": "MIT",
 	"unpkg": "./dist/tool-calculator-inline.js",

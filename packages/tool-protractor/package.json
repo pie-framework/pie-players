@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-tool-protractor",
-	"version": "0.3.42",
+	"version": "0.3.45",
 	"type": "module",
 	"description": "Draggable and rotatable protractor tool for PIE assessment player",
 	"repository": {
@@ -19,18 +19,15 @@
 		"geometry",
 		"measurement"
 	],
-	"svelte": "./tool-protractor.svelte",
 	"main": "./dist/tool-protractor.js",
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/tool-protractor.js",
-			"svelte": "./tool-protractor.svelte"
+			"import": "./dist/tool-protractor.js"
 		}
 	},
 	"files": [
 		"dist",
-		"tool-protractor.svelte",
 		"protractor.svg",
 		"README.md"
 	],

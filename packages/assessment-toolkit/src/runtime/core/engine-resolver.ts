@@ -18,9 +18,8 @@
  *   `packages/section-player/src/components/shared/section-player-host-runtime.ts`)
  *   hands its local implementation in.
  *
- * The strict mirror rule (M5) and the `runtime.<key>` precedence rule
- * are preserved bit-for-bit; the per-key precedence test in
- * `engine-resolver.test.ts` is the guardrail.
+ * Runtime-owned configuration flows through `runtime.<key>`. Layout-only
+ * inputs stay on the section-player host elements.
  */
 
 import type { LoaderConfig } from "@pie-players/pie-players-shared/loader-config";
@@ -30,7 +29,6 @@ import type {
 } from "@pie-players/pie-players-shared/pie";
 import type { FrameworkErrorModel } from "../../services/framework-error.js";
 import type { ToolConfigStrictness } from "../../services/tool-config-validation.js";
-import { parseToolList } from "../../services/tools-config-normalizer.js";
 
 export const DEFAULT_ASSESSMENT_ID = "section-demo-direct";
 export const DEFAULT_PLAYER_TYPE = "iife";
@@ -52,10 +50,7 @@ export type StageChangeHandler = (detail: StageChangeDetail) => void;
 export type LoadingCompleteHandler = (detail: LoadingCompleteDetail) => void;
 
 /**
- * Two-tier section runtime config (M5 strict mirror, post-trim).
- *
- * Mirror rule: `kebab-attribute ↔ camelCaseProp ↔ runtime.<sameCamelCaseKey>`.
- * `runtime.<key>` always wins over the equivalent prop/attribute.
+ * Section runtime config.
  *
  * Documented exceptions (no runtime mirror, by design): identity
  * (`section-id`, `attempt-id`, `section`); layout-only shell knobs
@@ -78,20 +73,15 @@ export type RuntimeConfig = {
 	env?: Record<string, unknown>;
 	toolConfigStrictness?: ToolConfigStrictness;
 
-	// M3 mirror — canonical onFrameworkError handler.
+	// Canonical framework-error callback.
 	onFrameworkError?: FrameworkErrorHandler;
 
-	// M5 mirror — `enabledTools` is the canonical tier-1 shorthand for
-	// `tools.placement.section`; `resolveToolsConfig` reads it from
-	// `runtime?.enabledTools` when present.
-	enabledTools?: string;
-
-	// M6 mirror — canonical stage-change callback. The DOM event
+	// Canonical stage-change callback. The DOM event
 	// `pie-stage-change` remains the primary channel; this callback is
 	// the convenience surface that mirrors the event one-to-one.
 	onStageChange?: StageChangeHandler;
 
-	// M6 mirror — canonical loading-complete callback. Mirrors the
+	// Canonical loading-complete callback. Mirrors the
 	// `pie-loading-complete` DOM event, which the engine dispatches
 	// once per cohort when every item has finished loading.
 	onLoadingComplete?: LoadingCompleteHandler;
@@ -99,19 +89,11 @@ export type RuntimeConfig = {
 
 export type RuntimeInputs = {
 	assessmentId?: string;
-	playerType?: string;
-	player?: PlayerOverrides | null;
-	lazyInit?: boolean;
-	tools?: Record<string, unknown> | null;
-	accessibility?: Record<string, unknown> | null;
-	coordinator?: unknown;
-	env?: Record<string, unknown> | null;
 	toolConfigStrictness?: ToolConfigStrictness;
 	onFrameworkError?: FrameworkErrorHandler;
 	onStageChange?: StageChangeHandler;
 	onLoadingComplete?: LoadingCompleteHandler;
 	runtime: RuntimeConfig | null;
-	enabledTools: string;
 };
 
 /**
@@ -143,46 +125,16 @@ export function resolveOnFrameworkError(args: {
 
 export function resolveToolsConfig(args: {
 	runtime: RuntimeConfig | null;
-	tools: Record<string, unknown> | null;
-	enabledTools: string;
 }) {
-	const runtimeTools = (args.runtime?.tools || args.tools || {}) as Record<
-		string,
-		unknown
-	>;
-	// `runtime.enabledTools` is the canonical mirror; the kebab attribute is
-	// the easy-tier alias. Per Decision B1, it merges into
-	// `tools.placement.section`. The object form (`runtime.tools`) keeps
-	// precedence over both — that lock lives in the merge below.
-	//
-	// The deprecated `item-toolbar-tools` / `passage-toolbar-tools`
-	// per-region aliases were removed in the broad architecture review
-	// compat sweep; hosts must populate `tools.placement.item` /
-	// `tools.placement.passage` (object form) or
-	// `runtime.tools.placement.{item,passage}` directly.
-	const effectiveEnabledTools =
-		pick(args.runtime?.enabledTools, args.enabledTools) ?? "";
-	const sectionTools = parseToolList(effectiveEnabledTools);
+	const runtimeTools = (args.runtime?.tools || {}) as Record<string, unknown>;
 	const placement = (runtimeTools.placement || {}) as Record<string, unknown>;
-	const overlayToolsConfig = {
-		...runtimeTools,
-		placement: {
-			...placement,
-			...(sectionTools.length > 0 ? { section: sectionTools } : {}),
-		},
-	};
+	const overlayToolsConfig = { ...runtimeTools, placement: { ...placement } };
 	// Keep host-provided shape intact; framework-owned validation surfaces malformed config.
 	return overlayToolsConfig;
 }
 
 export function resolveRuntime(args: {
 	assessmentId: string;
-	playerType: string;
-	player: PlayerOverrides | null;
-	lazyInit: boolean;
-	accessibility: Record<string, unknown> | null;
-	coordinator: unknown;
-	env: Record<string, unknown> | null;
 	runtime: RuntimeConfig | null;
 	effectiveToolsConfig: unknown;
 	toolConfigStrictness?: ToolConfigStrictness;
@@ -191,52 +143,32 @@ export function resolveRuntime(args: {
 	onLoadingComplete?: LoadingCompleteHandler;
 }) {
 	const r = args.runtime || {};
-	const topLevelPlayer = (args.player || {}) as PlayerOverrides;
-	const runtimePlayer = (r.player || {}) as PlayerOverrides;
-	const mergedPlayerCandidate = {
-		...topLevelPlayer,
-		...runtimePlayer,
-		loaderOptions: {
-			...((topLevelPlayer.loaderOptions || {}) as Record<string, unknown>),
-			...((runtimePlayer.loaderOptions || {}) as Record<string, unknown>),
-		},
-		loaderConfig: {
-			...((topLevelPlayer.loaderConfig || {}) as Record<string, unknown>),
-			...((runtimePlayer.loaderConfig || {}) as Record<string, unknown>),
-		},
-	};
-	const mergedPlayer =
-		Object.keys(mergedPlayerCandidate).length > 0
-			? mergedPlayerCandidate
-			: null;
+	const runtimePlayer = r.player ? { ...r.player } : null;
 	return {
 		...r,
 		assessmentId: pick(r.assessmentId, args.assessmentId),
-		playerType: pick(r.playerType, args.playerType),
-		player: mergedPlayer,
-		lazyInit: pick(r.lazyInit, args.lazyInit),
-		accessibility: pick(r.accessibility, args.accessibility),
-		coordinator: pick(r.coordinator, args.coordinator),
+		playerType: r.playerType ?? DEFAULT_PLAYER_TYPE,
+		player: runtimePlayer,
+		lazyInit: r.lazyInit ?? DEFAULT_LAZY_INIT,
+		accessibility: r.accessibility ?? null,
+		coordinator: r.coordinator ?? null,
 		createSectionController: r.createSectionController,
 		isolation: r.isolation ?? DEFAULT_ISOLATION,
-		env: pick(r.env, args.env) ?? DEFAULT_ENV,
+		env: r.env ?? DEFAULT_ENV,
 		toolConfigStrictness:
 			pick(r.toolConfigStrictness, args.toolConfigStrictness) ?? "error",
 
-		// M3 mirror absorbed via the shared helper so every layout CE wires
-		// `onFrameworkError` identically.
+		// Runtime callback wins; top-level callback remains a layout CE event
+		// convenience for hosts that do not use DOM listeners.
 		onFrameworkError: resolveOnFrameworkError({
 			runtime: args.runtime,
 			onFrameworkError: args.onFrameworkError,
 		}),
 
-		// M6 mirror — `onStageChange` follows the same precedence as every
-		// other tier-1 surface: `runtime.onStageChange` wins over the
-		// top-level prop.
+		// Runtime callback wins over the top-level callback prop.
 		onStageChange: pick(r.onStageChange, args.onStageChange),
 
-		// M6 mirror — `onLoadingComplete` follows the same precedence
-		// rule.
+		// Runtime callback wins over the top-level callback prop.
 		onLoadingComplete: pick(r.onLoadingComplete, args.onLoadingComplete),
 
 		tools: args.effectiveToolsConfig,
@@ -252,13 +184,10 @@ export function resolveRuntime(args: {
 export type EffectiveRuntime = ReturnType<typeof resolveRuntime>;
 
 /**
- * Engine-side orchestrator that mirrors the legacy
- * `resolveSectionPlayerRuntimeState` from section-player but takes
+ * Engine-side orchestrator that powers `resolveSectionPlayerRuntimeState`
+ * from section-player and takes
  * `resolvePlayerRuntime` as an injected callable so the toolkit core
  * stays free of host-coupled defaults (`DEFAULT_PLAYER_DEFINITIONS`).
- *
- * The legacy section-player wrapper passes its local `resolvePlayerRuntime`
- * here in M7 PR 5 when the kernel switches onto the engine.
  */
 export function resolveSectionEngineRuntimeState<P>(
 	args: RuntimeInputs,
@@ -275,27 +204,12 @@ export function resolveSectionEngineRuntimeState<P>(
 	playerRuntime: P;
 } {
 	const assessmentId = args.assessmentId ?? DEFAULT_ASSESSMENT_ID;
-	const playerType = args.playerType ?? DEFAULT_PLAYER_TYPE;
-	const player = args.player ?? null;
-	const lazyInit = args.lazyInit ?? DEFAULT_LAZY_INIT;
-	const accessibility = args.accessibility ?? null;
-	const coordinator = args.coordinator ?? null;
-	const env = args.env ?? null;
-	const tools = args.tools ?? null;
 
 	const effectiveToolsConfig = resolveToolsConfig({
 		runtime: args.runtime,
-		tools,
-		enabledTools: args.enabledTools,
 	});
 	const effectiveRuntime = resolveRuntime({
 		assessmentId,
-		playerType,
-		player,
-		lazyInit,
-		accessibility,
-		coordinator,
-		env,
 		runtime: args.runtime,
 		effectiveToolsConfig,
 		toolConfigStrictness: args.toolConfigStrictness,
@@ -305,8 +219,8 @@ export function resolveSectionEngineRuntimeState<P>(
 	});
 	const playerRuntime = deps.resolvePlayerRuntime({
 		effectiveRuntime: effectiveRuntime as Record<string, unknown>,
-		playerType,
-		env,
+		playerType: String(effectiveRuntime.playerType ?? DEFAULT_PLAYER_TYPE),
+		env: (effectiveRuntime.env as Record<string, unknown> | null) ?? null,
 	});
 	return {
 		effectiveToolsConfig,

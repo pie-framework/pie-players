@@ -26,11 +26,9 @@ If a statement in this library is not backed by an official W3C/WAI URL, it must
 - [`evaluation-method.md`](./evaluation-method.md) - Accepted evaluation workflow for this project
 - [`patterns-and-widgets.md`](./patterns-and-widgets.md) - Official pattern guidance for dialogs, toolbars, splitters, landmarks, names, and keyboard behavior
 - [`project-surface-map.md`](./project-surface-map.md) - Where those requirements land in `assessment-toolkit`, `section-player`, and the tools
-- [`coverage-matrix.md`](./coverage-matrix.md) - Current automation/manual coverage status by review tier and surface
-- [`review-2026-03-20.md`](./review-2026-03-20.md) - Latest project-wide review execution record and findings
 - [`agent-reference.md`](./agent-reference.md) - Compact lookup guide for AI agents
 - [`reference-index.yaml`](./reference-index.yaml) - Machine-readable index of key sources, criteria, patterns, and repo tags
-- [`deferred-issues.md`](./deferred-issues.md) - Confirmed issues and follow-up work that were intentionally deferred from the current fix pass
+- [`deferred-issues.md`](./deferred-issues.md) - Confirmed active issues and evidence gaps that still need follow-up
 
 ## How To Use This Library
 
@@ -65,6 +63,5 @@ Use those docs for implementation architecture and product-specific behavior:
 - [`../accessibility/tts-authoring-guide.md`](../accessibility/tts-authoring-guide.md)
 - [`../tools-and-accomodations/architecture.md`](../tools-and-accomodations/architecture.md)
 
-Use `docs/evals/` for executable local checks and supporting evidence, not as the WCAG source of truth:
-
-- [`../evals/readme.md`](../evals/readme.md)
+Use Playwright tests and manual assistive-technology review as evidence inputs,
+not as standalone conformance proof.

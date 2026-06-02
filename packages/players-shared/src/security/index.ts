@@ -19,3 +19,4 @@ export {
 	sanitizeSvgIcon,
 } from "./sanitize-svg-icon.js";
 export { wrapOverwideImages } from "./wrap-overwide-images.js";
+export { wrapOverwideTables } from "./wrap-overwide-tables.js";

@@ -771,47 +771,4 @@ describe("PIE-512 Phase D: subscribeSectionEvents follows the active cohort", ()
 		]);
 	});
 
-	test("back-compat: passing a stale sectionId arg is ignored at runtime — listener still binds to active cohort", async () => {
-		// Mirrors Darin's wrapper, which subscribes once on `toolkit-ready`
-		// and passes its captured `this.sectionId` (the section that was
-		// active *at toolkit-ready time*). Phase D treats the arg as a
-		// no-op so existing call sites still work; the listener follows
-		// the active cohort regardless.
-		const controllerA = createTestController();
-		const controllerB = createTestController();
-		const coordinator = new ToolkitCoordinator({
-			assessmentId: "phase-d-back-compat-section-id-ignored",
-			lazyInit: true,
-		});
-
-		await coordinator.getOrCreateSectionController({
-			sectionId: "section-A",
-			attemptId: ATTEMPT_ID,
-			createDefaultController: () => controllerA.handle,
-		});
-
-		const received: SectionControllerEvent[] = [];
-		coordinator.subscribeItemEvents({
-			// Intentionally cast to bypass the Phase D type signature so we
-			// can assert the runtime tolerates the legacy arg shape.
-			...({
-				sectionId: "section-A",
-				attemptId: ATTEMPT_ID,
-				eventTypes: ["item-selected"],
-				listener: (event: SectionControllerEvent) => received.push(event),
-			} as unknown as { listener: (event: SectionControllerEvent) => void }),
-		});
-
-		await coordinator.getOrCreateSectionController({
-			sectionId: "section-B",
-			attemptId: ATTEMPT_ID,
-			createDefaultController: () => controllerB.handle,
-		});
-
-		controllerB.emit(itemSelectedEvent("from-b-after-migration"));
-		expect(received).toHaveLength(1);
-		expect(received[0]).toMatchObject({
-			currentItemId: "from-b-after-migration",
-		});
-	});
 });

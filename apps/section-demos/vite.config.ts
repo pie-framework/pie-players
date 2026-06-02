@@ -97,6 +97,10 @@ export default (async () => {
 					__dirname,
 					"../../packages/tool-text-to-speech/dist/tool-text-to-speech.js",
 				),
+				"@pie-players/pie-section-player-tools-shared": resolve(
+					__dirname,
+					"../../packages/section-player-tools-shared/index.ts",
+				),
 				"@pie-players/pie-tool-tts-inline": resolve(
 					__dirname,
 					"../../packages/tool-tts-inline/dist/tool-tts-inline.js",

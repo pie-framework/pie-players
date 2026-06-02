@@ -22,6 +22,11 @@ QTI 3.0 accessibility catalogs provide alternative representations of content fo
 
 ## 5-Minute Setup
 
+This quick start shows the direct `AccessibilityCatalogResolver` API for tests,
+content tooling, and custom hosts. Production section-player integrations should
+wire catalogs through `ToolkitCoordinator` and the player `runtime` property;
+see [Accessibility Catalogs Integration Guide](./accessibility-catalogs-integration-guide.md).
+
 ### 1. Import the Service
 
 ```typescript
@@ -111,12 +116,12 @@ Use for content shared across multiple items:
   ]
 }
 
-// Item markup references the catalog
-<pie-stimulus>
-  <div data-catalog-id="shared-passage-1">
+// Passage/rubric HTML references the catalog
+const passageHtml = `
+  <div data-catalog-idref="shared-passage-1">
     <p>Photosynthesis is the process...</p>
   </div>
-</pie-stimulus>
+`;
 ```
 
 ### Pattern 2: Item-Level Catalogs (Item-Specific)
@@ -142,14 +147,22 @@ Use for item-specific content like prompts and choices:
       ]
     }
   ],
-  markup: `
-    <pie-prompt>
-      <div data-catalog-id="prompt-001">What is 2 + 2?</div>
-    </pie-prompt>
-    <pie-choices>
-      <pie-choice value="A" data-catalog-id="choice-A">4</pie-choice>
-    </pie-choices>
-  `
+  config: {
+    markup: '<multiple-choice id="q1"></multiple-choice>',
+    elements: {
+      'multiple-choice': '@pie-element/multiple-choice@latest'
+    },
+    models: [
+      {
+        id: 'q1',
+        element: 'multiple-choice',
+        prompt: '<div data-catalog-idref="prompt-001">What is 2 + 2?</div>',
+        choices: [
+          { value: 'a', label: '<span data-catalog-idref="choice-A">4</span>' }
+        ]
+      }
+    ]
+  }
 }
 ```
 
@@ -204,8 +217,8 @@ await ttsService.speak('Hello world', {
 // Auto-detect from DOM element
 // Note: the actual method signature is ttsService.speak(text, { catalogId, contentElement }),
 // not ttsService.speakElement(). Example:
-const element = document.querySelector('[data-catalog-id]');
-const catalogId = element.getAttribute('data-catalog-id');
+const element = document.querySelector('[data-catalog-idref]');
+const catalogId = element.getAttribute('data-catalog-idref');
 await ttsService.speak(element.textContent, { catalogId, contentElement: element });
 // Automatically uses catalog if catalogId resolves
 ```
@@ -254,22 +267,23 @@ const spokenCatalogs = resolver.getCatalogsByType('spoken');
 // Returns: ['welcome-message', 'prompt-001', 'choice-A']
 ```
 
-### Extract Catalog IDs from Markup
+### Extract Catalog IDs from Model HTML
 
 ```typescript
-import { extractCatalogIdsFromMarkup } from '@pie-players/pie-assessment-toolkit/examples';
+const model = {
+  prompt: '<div data-catalog-idref="prompt-001">Question text</div>',
+  choices: [
+    { label: '<span data-catalog-idref="choice-A">Choice A</span>' },
+    { label: '<span data-catalog-idref="choice-B">Choice B</span>' }
+  ]
+};
 
-const markup = `
-  <pie-prompt>
-    <div data-catalog-id="prompt-001">Question text</div>
-  </pie-prompt>
-  <pie-choices>
-    <pie-choice data-catalog-id="choice-A">Choice A</pie-choice>
-    <pie-choice data-catalog-id="choice-B">Choice B</pie-choice>
-  </pie-choices>
-`;
+const html = [model.prompt, ...model.choices.map((choice) => choice.label)].join('');
 
-const catalogIds = extractCatalogIdsFromMarkup(markup);
+const doc = new DOMParser().parseFromString(html, 'text/html');
+const catalogIds = [...doc.querySelectorAll<HTMLElement>('[data-catalog-idref]')]
+  .map((element) => element.getAttribute('data-catalog-idref'))
+  .filter((catalogId): catalogId is string => Boolean(catalogId));
 // Returns: ['prompt-001', 'choice-A', 'choice-B']
 ```
 
@@ -441,7 +455,7 @@ See the examples in this guide and in [accessibility-catalogs-integration-guide.
 
 ### Q: What if a catalog isn't found?
 
-**A:** `getAlternative()` returns `null`. Your code should fall back to default rendering.
+**A:** `getAlternative()` returns `null`. Your code should fall back to visible text or generated TTS.
 
 ### Q: Can I use custom catalog types?
 
@@ -457,7 +471,10 @@ See the examples in this guide and in [accessibility-catalogs-integration-guide.
 
 ### Q: Can I update catalogs at runtime?
 
-**A:** Yes for item-level (use `addItemCatalogs()`). Assessment-level catalogs are set at initialization.
+**A:** In section-player delivery, put item/model catalogs on the item payload
+and let shell lifecycle register and unregister them. If you use
+`AccessibilityCatalogResolver` directly, `addItemCatalogs()` and
+`clearItemCatalogs()` are available for manual hosts and tests.
 
 ---
 
@@ -465,7 +482,7 @@ See the examples in this guide and in [accessibility-catalogs-integration-guide.
 
 1. **Lazy Loading:** Only load item catalogs when needed
 2. **Caching:** Resolver caches lookups internally
-3. **Cleanup:** Always call `clearItemCatalogs()` when navigating away
+3. **Cleanup:** Section-player shell lifecycle cleans scoped registrations; direct resolver users should call `clearItemCatalogs()` when changing items
 4. **Statistics:** Use `getStatistics()` to understand catalog usage
 
 ---

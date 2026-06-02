@@ -1,5 +1,27 @@
 # @pie-players/pie-tool-answer-eliminator
 
+## 0.3.45
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+- Updated dependencies [fd140a3]
+  - @pie-players/pie-assessment-toolkit@0.3.45
+  - @pie-players/pie-context@0.3.45
+  - @pie-players/pie-players-shared@0.3.45
+
+## 0.3.44
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+- Updated dependencies
+  - @pie-players/pie-assessment-toolkit@0.3.44
+  - @pie-players/pie-context@0.3.44
+  - @pie-players/pie-players-shared@0.3.44
+
 ## 0.3.42
 
 ### Patch Changes

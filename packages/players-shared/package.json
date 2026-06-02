@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-players-shared",
-	"version": "0.3.42",
+	"version": "0.3.45",
 	"type": "module",
 	"description": "Shared runtime + UI utilities for PIE players",
 	"license": "MIT",
@@ -41,9 +41,9 @@
 			"types": "./dist/pie/index.d.ts",
 			"import": "./dist/pie/index.js"
 		},
-		"./pie/*": {
-			"types": "./dist/pie/*.d.ts",
-			"import": "./dist/pie/*.js"
+		"./pie/tag-names": {
+			"types": "./dist/pie/tag-names.d.ts",
+			"import": "./dist/pie/tag-names.js"
 		},
 		"./loaders": {
 			"types": "./dist/loaders/index.d.ts",
@@ -53,59 +53,9 @@
 			"types": "./dist/server/npm-registry.d.ts",
 			"import": "./dist/server/npm-registry.js"
 		},
-		"./components": {
-			"types": "./dist/components/index.ts",
-			"import": "./dist/components/index.ts",
-			"svelte": "./dist/components/index.ts"
-		},
-		"./components/PieItemPlayer.svelte": {
-			"types": "./dist/components/PieItemPlayer.svelte",
-			"import": "./dist/components/PieItemPlayer.svelte",
-			"svelte": "./dist/components/PieItemPlayer.svelte"
-		},
-		"./components/PieSpinner.svelte": {
-			"types": "./dist/components/PieSpinner.svelte",
-			"import": "./dist/components/PieSpinner.svelte",
-			"svelte": "./dist/components/PieSpinner.svelte"
-		},
-		"./components/ToolSettingsButton.svelte": {
-			"types": "./dist/components/ToolSettingsButton.svelte",
-			"import": "./dist/components/ToolSettingsButton.svelte",
-			"svelte": "./dist/components/ToolSettingsButton.svelte"
-		},
-		"./components/ToolSettingsPanel.svelte": {
-			"types": "./dist/components/ToolSettingsPanel.svelte",
-			"import": "./dist/components/ToolSettingsPanel.svelte",
-			"svelte": "./dist/components/ToolSettingsPanel.svelte"
-		},
-		"./components/PiePreviewToggle.svelte": {
-			"types": "./dist/components/PiePreviewToggle.svelte",
-			"import": "./dist/components/PiePreviewToggle.svelte",
-			"svelte": "./dist/components/PiePreviewToggle.svelte"
-		},
-		"./components/PiePreviewLayout.svelte": {
-			"types": "./dist/components/PiePreviewLayout.svelte",
-			"import": "./dist/components/PiePreviewLayout.svelte",
-			"svelte": "./dist/components/PiePreviewLayout.svelte"
-		},
 		"./i18n": {
 			"types": "./dist/i18n/index.d.ts",
 			"import": "./dist/i18n/index.js"
-		},
-		"./i18n/use-i18n": {
-			"types": "./dist/i18n/use-i18n.svelte.ts",
-			"import": "./dist/i18n/use-i18n.svelte.ts",
-			"svelte": "./dist/i18n/use-i18n.svelte.ts"
-		},
-		"./i18n/use-i18n-standalone": {
-			"types": "./dist/i18n/use-i18n-standalone.svelte.ts",
-			"import": "./dist/i18n/use-i18n-standalone.svelte.ts",
-			"svelte": "./dist/i18n/use-i18n-standalone.svelte.ts"
-		},
-		"./ui/use-promise": {
-			"types": "./dist/ui/use-promise.svelte.ts",
-			"import": "./dist/ui/use-promise.svelte.ts",
-			"svelte": "./dist/ui/use-promise.svelte.ts"
 		}
 	},
 	"files": [
@@ -116,16 +66,8 @@
 		"dompurify": "^3.4.0",
 		"semver": "^7.7.4"
 	},
-	"peerDependencies": {
-		"svelte": "^5.54.0"
-	},
-	"peerDependenciesMeta": {
-		"svelte": {
-			"optional": true
-		}
-	},
 	"scripts": {
-		"build": "rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json && bun run scripts/copy-source-exports.mjs",
+		"build": "rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json",
 		"dev": "tsc -p tsconfig.json --watch",
 		"typecheck": "tsc -p tsconfig.json --noEmit",
 		"lint": "biome check .",
@@ -139,7 +81,7 @@
 		"@happy-dom/global-registrator": "^20.9.0",
 		"@types/semver": "^7.7.1",
 		"glob": "^13.0.0",
-		"svelte": "^5.54.0",
+		"svelte": "^5.55.4",
 		"typescript": "^5.9.3"
 	},
 	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/players-shared#readme",

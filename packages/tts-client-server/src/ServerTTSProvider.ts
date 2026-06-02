@@ -206,6 +206,7 @@ interface WordTiming {
 	wordIndex: number;
 	charIndex: number; // Character position in text
 	length: number; // Word length in characters
+	word: string;
 }
 
 /**
@@ -279,6 +280,26 @@ interface TransportAdapter {
 const MAX_TEXT_LENGTH_BY_MODE: Record<TransportAdapter["id"], number> = {
 	pie: 3000,
 	custom: 3000,
+};
+
+/**
+ * Server providers whose SSML support is reliable enough to receive generated
+ * SSML (AWS Polly, Google Cloud TTS). This is an allow-list rather than a
+ * deny-list: the `custom` transport (and unknown providers) report
+ * `supportsSSML: false` so the toolkit falls back to plain text. Some custom
+ * backends advertise SSML support server-side but mis-voice or ignore parts of
+ * it, so we stay conservative at the client boundary.
+ */
+const SSML_CAPABLE_PIE_PROVIDERS = new Set(["polly", "google"]);
+
+const resolveSupportsSSML = (
+	config: ServerTTSProviderConfig | null,
+): boolean => {
+	if (!config) return false;
+	if (resolveTransportMode(config) !== "pie") return false;
+	// The pie transport defaults to Polly when no provider is named.
+	const provider = (config.provider || "polly").toLowerCase();
+	return SSML_CAPABLE_PIE_PROVIDERS.has(provider);
 };
 
 const trimTrailingSlash = (value: string): string => value.replace(/\/+$/, "");
@@ -600,23 +621,12 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 			return;
 		}
 
-		// Adjust word timing for playback rate
-		// Speech marks are at 1.0x speed, so we need to scale them
-		const playbackRate = this.config.rate || 1.0;
-		this.wordTimings = wordTimings.map((timing) => ({
-			...timing,
-			time: timing.time / playbackRate,
-		}));
+		this.wordTimings = wordTimings;
 
 		return new Promise((resolve, reject) => {
 			// Create audio element
 			const audio = new Audio(audioUrl);
 			this.currentAudio = audio;
-
-			// Apply rate from config
-			if (this.config.rate) {
-				audio.playbackRate = Math.max(0.25, Math.min(4.0, this.config.rate));
-			}
 
 			// Apply volume from config
 			if (this.config.volume !== undefined) {
@@ -714,10 +724,31 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 		})();
 
 		if (!response.ok) {
-			const errorData = await response.json().catch(() => ({}));
+			const rawBody = await response.text().catch(() => "");
+			let errorData: Record<string, unknown> = {};
+			if (rawBody) {
+				try {
+					errorData = JSON.parse(rawBody) as Record<string, unknown>;
+				} catch (parseError) {
+					console.warn(
+						"[ServerTTSProvider] non-OK response body was not JSON",
+						{
+							status: response.status,
+							url: synthUrl,
+							rawBodyPreview: rawBody.slice(0, 500),
+							parseError:
+								parseError instanceof Error
+									? parseError.message
+									: String(parseError),
+						},
+					);
+				}
+			}
 			const errorMessage =
-				errorData.message ||
-				errorData.error?.message ||
+				(typeof errorData.message === "string" && errorData.message) ||
+				(typeof (errorData.error as { message?: string })?.message === "string"
+					? (errorData.error as { message: string }).message
+					: undefined) ||
 				`Server returned ${response.status}`;
 			await this.emitTelemetry("pie-tool-backend-call-error", {
 				toolId: "tts",
@@ -727,6 +758,17 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 				statusCode: response.status,
 				errorType: "TTSBackendRequestError",
 				message: errorMessage,
+			});
+			const textPreview = text.replace(/\s+/g, " ").trim().slice(0, 120);
+			console.error("[ServerTTSProvider] synthesize request failed", {
+				status: response.status,
+				url: synthUrl,
+				backend: this.config.provider || "server",
+				message: errorMessage,
+				responseBody: errorData,
+				textLength: text.length,
+				textPreview:
+					textPreview.length < text.length ? `${textPreview}…` : textPreview,
 			});
 			throw new Error(errorMessage);
 		}
@@ -862,6 +904,7 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 				wordIndex: index,
 				charIndex: mark.start,
 				length: mark.end - mark.start,
+				word: mark.value,
 			}));
 	}
 
@@ -927,8 +970,7 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 							"currentTime:",
 							currentTime,
 						);
-						// Pass the length as the "word" parameter so TTSService can use it
-						this.onWordBoundary("", timing.charIndex, timing.length);
+						this.onWordBoundary(timing.word, timing.charIndex, timing.length);
 					}
 					lastWordIndex = i;
 					break;
@@ -1007,13 +1049,6 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 		// Update config
 		if (settings.rate !== undefined) {
 			this.config.rate = settings.rate;
-			// Apply rate immediately to current playback if active
-			if (this.currentAudio) {
-				this.currentAudio.playbackRate = Math.max(
-					0.25,
-					Math.min(4.0, settings.rate),
-				);
-			}
 		}
 		if (settings.pitch !== undefined) {
 			// Server-side pitch is baked into audio, so this only affects next speak()
@@ -1177,6 +1212,7 @@ export class ServerTTSProvider implements ITTSProvider {
 			supportsVoiceSelection: true,
 			supportsRateControl: true,
 			supportsPitchControl: false, // Depends on server provider
+			supportsSSML: resolveSupportsSSML(this.config),
 			maxTextLength: MAX_TEXT_LENGTH_BY_MODE[mode],
 		};
 	}

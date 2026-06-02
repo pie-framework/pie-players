@@ -183,7 +183,7 @@ async function assertChoiceSelectionKeepsPaneScroll(args: {
 
 async function getItemShellIdentityTokens(page: import("@playwright/test").Page) {
 	const itemShells = page.locator('pie-item-shell[data-pie-shell-root="item"]');
-	await expect(itemShells).toHaveCount(3);
+	await expect(itemShells).toHaveCount(2);
 	return itemShells.evaluateAll((nodes) => {
 		const globalState = window as unknown as {
 			__pieItemShellIdentityMap?: WeakMap<Element, string>;

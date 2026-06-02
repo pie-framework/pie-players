@@ -175,6 +175,8 @@ type PreviewSpeechMark = { time: number; start: number; end: number; value?: str
 		layoutMode?: TTSLayoutMode;
 		/** Inline toolbar speed multipliers; `[]` hides speed buttons. */
 		speedOptions?: number[];
+		/** Per-token math highlighting; `false` highlights formulas as one block. */
+		mathTokenHighlighting?: boolean;
 		[key: string]: unknown;
 	};
 
@@ -199,6 +201,7 @@ type PreviewSpeechMark = { time: number; start: number; end: number; value?: str
 	let browserPitch = $state(1);
 	let layoutMode = $state<TTSLayoutMode>("left-aligned");
 	let speedOptionsText = $state("");
+	let mathTokenHighlighting = $state(true);
 
 	let pollyApiEndpoint = $state("");
 	let pollyLanguage = $state("en-US");
@@ -542,6 +545,7 @@ function debugPreview(event: string, payload?: Record<string, unknown>): void {
 						: "neural";
 		const sourceProviderOptions = (source?.providerOptions || {}) as Record<string, unknown>;
 		layoutMode = normalizeLayoutMode(source?.layoutMode);
+		mathTokenHighlighting = source?.mathTokenHighlighting !== false;
 		const runtimeForSpeed = resolveTTSRuntimeSettings(
 			source && typeof source === "object" ? (source as Record<string, unknown>) : undefined,
 		);
@@ -1489,12 +1493,14 @@ function normalizePreviewSpeechMarkOffsets(
 					...next.config,
 					layoutMode,
 					speedOptions: appliedSpeedOptions,
+					mathTokenHighlighting,
 				});
 				persistSettings({
 					backend: provider.id,
 					...(next.config || {}),
 					layoutMode,
 					speedOptions: appliedSpeedOptions,
+					mathTokenHighlighting,
 				});
 				applyMessage = next.message || `Applied ${provider.label} TTS settings.`;
 			} else if (activeTab === "browser") {
@@ -1508,6 +1514,7 @@ function normalizePreviewSpeechMarkOffsets(
 					transportMode: "pie" as const,
 					layoutMode,
 					speedOptions: appliedSpeedOptions,
+					mathTokenHighlighting,
 				};
 				toolkitCoordinator.updateToolConfig("textToSpeech", {
 					enabled: true,
@@ -1537,6 +1544,7 @@ function normalizePreviewSpeechMarkOffsets(
 					},
 					layoutMode,
 					speedOptions: appliedSpeedOptions,
+					mathTokenHighlighting,
 				};
 				toolkitCoordinator.updateToolConfig("textToSpeech", {
 					enabled: true,
@@ -1558,6 +1566,7 @@ function normalizePreviewSpeechMarkOffsets(
 					googleGender,
 					layoutMode,
 					speedOptions: appliedSpeedOptions,
+					mathTokenHighlighting,
 				};
 				toolkitCoordinator.updateToolConfig("textToSpeech", {
 					enabled: true,
@@ -1698,6 +1707,22 @@ function normalizePreviewSpeechMarkOffsets(
 					>
 						Reset to defaults
 					</button>
+				</div>
+			</div>
+			<div class="pie-tts-field">
+				<label class="pie-tts-label" for="tts-math-token-highlighting">Math highlighting</label>
+				<div class="pie-tts-toggle-row">
+					<input
+						id="tts-math-token-highlighting"
+						type="checkbox"
+						class="toggle toggle-sm"
+						bind:checked={mathTokenHighlighting}
+					/>
+					<span class="text-xs opacity-75">
+						{mathTokenHighlighting
+							? "Highlighting each part of a formula as it is read, falling back to the whole formula when alignment is uncertain."
+							: "Highlighting each formula as a single block instead of breaking it into parts."}
+					</span>
 				</div>
 			</div>
 		</div>
@@ -2092,6 +2117,13 @@ function normalizePreviewSpeechMarkOffsets(
 		grid-template-columns: repeat(3, minmax(0, 1fr));
 		gap: 0.45rem 0.65rem;
 		align-items: end;
+	}
+
+	.pie-tts-toggle-row {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		min-width: 0;
 	}
 
 	@media (max-width: 32rem) {

@@ -13,12 +13,13 @@
 
 <script lang="ts">
 	import '@pie-players/pie-theme/components.css';
-	import SharedFloatingPanel from '@pie-players/pie-section-player-tools-shared/SharedFloatingPanel.svelte';
-	import { createEventDispatcher } from 'svelte';
+	import { SharedFloatingPanel } from "@pie-players/pie-section-player-tools-shared";
+	import { createEventDispatcher, untrack } from 'svelte';
 	import { createDefaultPersonalNeedsProfile } from '@pie-players/pie-assessment-toolkit';
 	import {
 		createPatchedPnpProfile,
 		derivePnpPanelData,
+		resolveSectionToolIds,
 		TOOL_PLACEMENT_LEVELS,
 		type EditableToolRow,
 		type PnpEnforcementSelection,
@@ -51,21 +52,16 @@
 	let policyVersion = $state(0);
 
 	$effect(() => {
-		if (!toolkitCoordinator?.onFloatingToolsChange) {
-			floatingTools = toolkitCoordinator?.getFloatingTools?.() || [];
+		const coordinator = toolkitCoordinator as PolicyPanelCoordinator | null;
+		const scopeId = sectionData?.id || sectionData?.identifier || 'section';
+		untrack(() => {
+			floatingTools = resolveSectionToolIds(coordinator, [], scopeId);
+		});
+		if (typeof toolkitCoordinator?.onPolicyChange !== 'function') {
 			return;
 		}
-		const unsubscribe = toolkitCoordinator.onFloatingToolsChange((toolIds: string[]) => {
-			floatingTools = Array.isArray(toolIds) ? [...toolIds] : [];
-		});
-		return () => {
-			unsubscribe?.();
-		};
-	});
-
-	$effect(() => {
-		if (typeof toolkitCoordinator?.onPolicyChange !== 'function') return;
 		const unsubscribe = toolkitCoordinator.onPolicyChange(() => {
+			floatingTools = resolveSectionToolIds(coordinator, [], scopeId);
 			policyVersion += 1;
 		});
 		return () => {
@@ -111,8 +107,6 @@
 	function setPlacement(level: 'section' | 'item' | 'passage', toolIds: string[]) {
 		if (typeof toolkitCoordinator?.updateToolPlacement === 'function') {
 			toolkitCoordinator.updateToolPlacement(level, toolIds);
-		} else if (level === 'section' && typeof toolkitCoordinator?.updateFloatingTools === 'function') {
-			toolkitCoordinator.updateFloatingTools(toolIds);
 		}
 		policyVersion += 1;
 	}

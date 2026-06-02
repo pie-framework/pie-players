@@ -14,3 +14,6 @@ alwaysApply: true
 - Before release/versioning work, confirm the current branch and avoid
   preparing release commits from `main` unless the maintainer explicitly
   instructs otherwise.
+- Local publishing is different from PR/merge routing: when the user asks to
+  publish locally, use the codebase and branch currently checked out unless
+  they explicitly ask to switch branches or use the workflow.

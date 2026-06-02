@@ -18,26 +18,18 @@ describe("tool-instance-id", () => {
 		});
 	});
 
-	test("parses legacy inline ids", () => {
-		const id = "calculator:item:item-1:inline";
-		expect(parseScopedToolId(id)).toEqual({
-			baseToolId: "calculator",
-			scopeLevel: "item",
-			scopeId: "item-1",
-		});
-	});
-
-	test("converts inline id to overlay id", () => {
+	test("rejects non-canonical four-part ids", () => {
 		const inlineId = "calculator:item:item-1:inline";
-		expect(toOverlayToolId(inlineId)).toBe("calculator:item:item-1");
+		expect(parseScopedToolId(inlineId)).toBeNull();
+		expect(toOverlayToolId(inlineId)).toBe(inlineId);
 	});
 
 	test("supports built-in rubric and assessment scopes", () => {
 		expect(createScopedToolId("highlighter", "rubric", "rb-2")).toBe(
 			"highlighter:rubric:rb-2",
 		);
-		expect(createScopedToolId("colorScheme", "assessment", "assess-1")).toBe(
-			"colorScheme:assessment:assess-1",
+		expect(createScopedToolId("theme", "assessment", "assess-1")).toBe(
+			"theme:assessment:assess-1",
 		);
 	});
 

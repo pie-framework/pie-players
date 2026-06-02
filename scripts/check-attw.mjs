@@ -1,7 +1,16 @@
 #!/usr/bin/env node
 
-import { execSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import {
+	closeSync,
+	existsSync,
+	mkdtempSync,
+	openSync,
+	readFileSync,
+	readdirSync,
+	rmSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 
 const ROOT = process.cwd();
@@ -9,6 +18,16 @@ const POLICY_PATH = path.join(ROOT, "scripts", "publish-policy.json");
 const ATTW_PARSE_RETRIES = 1;
 const ATTW_MAX_BUFFER = 16 * 1024 * 1024;
 const DIAGNOSTIC_TAIL_LENGTH = 4000;
+const ATTW_ARGS = [
+	"attw",
+	"--pack",
+	"--ignore-rules",
+	"cjs-resolves-to-esm",
+	"--format",
+	"json",
+	"--",
+	".",
+];
 
 const readJson = (filePath) => JSON.parse(readFileSync(filePath, "utf8"));
 const policy = existsSync(POLICY_PATH) ? readJson(POLICY_PATH) : {};
@@ -38,43 +57,72 @@ const textTail = (value, length = DIAGNOSTIC_TAIL_LENGTH) => {
 	return `... ${text.length - length} earlier character(s) omitted ...\n${text.slice(-length)}`;
 };
 
+// Write attw's stdout to a temp file rather than relying on execSync's buffered
+// return value. Bun's `child_process` execSync truncates piped stdout for the
+// largest packages (observed reproducibly at ~219KiB on @pie-players/pie-section-player
+// even with maxBuffer set to 16 MiB), which corrupts the JSON tail and trips
+// `parseAttwReport`. File-redirected output is read back in one shot afterwards.
 const runAttw = (dir) => {
-	const cmd = "bunx attw --pack --ignore-rules cjs-resolves-to-esm --format json -- .";
+	const tmpRoot = mkdtempSync(path.join(tmpdir(), "pie-attw-"));
+	const stdoutPath = path.join(tmpRoot, "stdout.json");
+	const stdoutFd = openSync(stdoutPath, "w");
+	let result;
+
 	try {
-		const stdout = execSync(cmd, {
+		result = spawnSync("bunx", ATTW_ARGS, {
 			cwd: dir,
-			stdio: "pipe",
+			stdio: ["ignore", stdoutFd, "pipe"],
 			encoding: "utf8",
 			maxBuffer: ATTW_MAX_BUFFER,
 		});
-		return {
-			stdout,
-			stderr: "",
-			status: 0,
-			signal: null,
-		};
-	} catch (error) {
-		const stdout = error.stdout?.toString?.() ?? "";
-		const stderr = error.stderr?.toString?.() ?? "";
-		if (!stdout.trim()) {
-			throw new Error(
-				[
-					"ATTW produced no JSON output.",
-					`status=${error.status ?? "unknown"} signal=${error.signal ?? "none"}`,
-					stderr ? `stderr tail:\n${textTail(stderr)}` : null,
-					error.message,
-				]
-					.filter(Boolean)
-					.join("\n"),
-			);
-		}
+	} finally {
+		closeSync(stdoutFd);
+	}
+
+	const stdout = existsSync(stdoutPath) ? readFileSync(stdoutPath, "utf8") : "";
+	rmSync(tmpRoot, { recursive: true, force: true });
+	const stderr = result.stderr?.toString?.() ?? "";
+
+	if (result.error) {
+		throw new Error(
+			[
+				"ATTW failed to run.",
+				`status=${result.status ?? "unknown"} signal=${result.signal ?? "none"}`,
+				stderr ? `stderr tail:\n${textTail(stderr)}` : null,
+				result.error.message,
+			]
+				.filter(Boolean)
+				.join("\n"),
+		);
+	}
+
+	if (result.status === 0) {
 		return {
 			stdout,
 			stderr,
-			status: error.status ?? null,
-			signal: error.signal ?? null,
+			status: 0,
+			signal: null,
 		};
 	}
+
+	if (!stdout.trim()) {
+		throw new Error(
+			[
+				"ATTW produced no JSON output.",
+				`status=${result.status ?? "unknown"} signal=${result.signal ?? "none"}`,
+				stderr ? `stderr tail:\n${textTail(stderr)}` : null,
+			]
+				.filter(Boolean)
+				.join("\n"),
+		);
+	}
+
+	return {
+		stdout,
+		stderr,
+		status: result.status ?? null,
+		signal: result.signal ?? null,
+	};
 };
 
 const parseAttwReport = ({ pkg, dir, result, attempt }) => {
@@ -110,25 +158,21 @@ const flattenProblems = (problemsByKind) => {
 };
 
 const shouldSuppressProblem = (problem) => {
-	const entrypoint = typeof problem.entrypoint === "string" ? problem.entrypoint : "";
+	const entrypoint =
+		typeof problem.entrypoint === "string" ? problem.entrypoint : "";
 	const resolutionKind =
 		typeof problem.resolutionKind === "string" ? problem.resolutionKind : "";
 	const moduleSpecifier =
 		typeof problem.moduleSpecifier === "string" ? problem.moduleSpecifier : "";
 
-	// Legacy CJS resolver warning is already intentionally ignored in existing policy.
+	// CJS resolver warning is already intentionally ignored in existing policy.
 	if (problem.kind === "CJSResolvesToESM") return true;
 
 	if (problem.kind === "NoResolution") {
 		// Node10 is out of support for this repo (engines >=18 in publish policy checks).
 		if (resolutionKind === "node10") return true;
-		// ATTW cannot reliably model CSS-only and Svelte source entrypoints.
-		if (entrypoint.endsWith(".css") || entrypoint.endsWith(".svelte")) return true;
-	}
-
-	if (problem.kind === "InternalResolutionError") {
-		// Svelte source imports in declaration surfaces are a known ATTW limitation.
-		if (moduleSpecifier.endsWith(".svelte")) return true;
+		// ATTW cannot reliably model CSS-only entrypoints.
+		if (entrypoint.endsWith(".css")) return true;
 	}
 
 	return false;
@@ -164,7 +208,9 @@ const run = () => {
 				}
 			}
 			const problems = flattenProblems(report.problems);
-			const actionable = problems.filter((problem) => !shouldSuppressProblem(problem));
+			const actionable = problems.filter(
+				(problem) => !shouldSuppressProblem(problem),
+			);
 
 			for (const problem of problems) {
 				if (!shouldSuppressProblem(problem)) continue;
@@ -177,8 +223,9 @@ const run = () => {
 					name: pkg.name || path.basename(dir),
 					dir: path.relative(ROOT, dir),
 					error: actionable
-						.map((problem) =>
-							`${problem.kind} entrypoint=${problem.entrypoint || "n/a"} resolution=${problem.resolutionKind || problem.resolutionOption || "n/a"} module=${problem.moduleSpecifier || "n/a"}`,
+						.map(
+							(problem) =>
+								`${problem.kind} entrypoint=${problem.entrypoint || "n/a"} resolution=${problem.resolutionKind || problem.resolutionOption || "n/a"} module=${problem.moduleSpecifier || "n/a"}`,
 						)
 						.join("\n"),
 				});

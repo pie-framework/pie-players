@@ -175,9 +175,9 @@ element.dispatchEvent(
 ## Types and Utilities Ownership
 
 - Use the canonical contract map in `docs/architecture/types-and-utilities-contract.md` when adding or changing shared type/utility symbols.
-- Use canonical API names from `@pie-players/pie-assessment-toolkit` (`ToolCoordinatorApi`, `ToolkitCoordinatorApi`, `TtsServiceApi`, `ToolProviderApi`) and avoid legacy `I*` contracts.
+- Use canonical API names from `@pie-players/pie-assessment-toolkit` (`ToolCoordinatorApi`, `ToolkitCoordinatorApi`, `TtsServiceApi`, `ToolProviderApi`) instead of older `I*` interface names in new docs/examples.
 - Re-export shared contracts instead of re-defining near-identical shapes in multiple packages.
-- For cross-package constants (for example layering/z-index enums), import from the canonical package owner and re-export locally only when needed for compatibility.
+- For cross-package constants (for example layering/z-index enums), import from the canonical package owner and re-export locally only when needed for consumer convenience.
 
 ## E2E Test Stability
 

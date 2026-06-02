@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-tool-theme",
-	"version": "0.3.42",
+	"version": "0.3.45",
 	"type": "module",
 	"description": "Theme tool for PIE assessment player - provides accessible themes and color schemes",
 	"repository": {
@@ -21,18 +21,15 @@
 		"wcag",
 		"learnosity"
 	],
-	"svelte": "./tool-color-scheme.svelte",
 	"main": "./dist/tool-color-scheme.js",
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/tool-color-scheme.js",
-			"svelte": "./tool-color-scheme.svelte"
+			"import": "./dist/tool-color-scheme.js"
 		}
 	},
 	"files": [
 		"dist",
-		"tool-color-scheme.svelte",
 		"package.json"
 	],
 	"license": "MIT",

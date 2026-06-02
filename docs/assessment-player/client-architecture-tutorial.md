@@ -283,7 +283,7 @@ const assessment = {
 playerEl.assessment = assessment;
 ```
 
-Each section is passed to a `pie-section-player-splitpane` or `pie-section-player-vertical` element when it becomes active. Item element loading (IIFE/ESM/preloaded), bundle resolution, and registration tracking all happen at the section player level — assessment-player forwards `player-type` plus optional `sectionPlayerRuntime` pass-through overrides. See the [section player integration guide](../section-player/client-architecture-tutorial.md) §4 for full coverage of content loading strategies.
+Each section is passed to a `pie-section-player-splitpane` or `pie-section-player-vertical` element when it becomes active. Item element loading (IIFE/ESM/preloaded), bundle resolution, and registration tracking all happen at the section player level. Assessment-player maps its `player-type`, coordinator, environment, and optional `sectionPlayerRuntime` pass-through into the section player's `runtime` object. See the [section player integration guide](../section-player/client-architecture-tutorial.md) §4 for full coverage of content loading strategies.
 
 ---
 

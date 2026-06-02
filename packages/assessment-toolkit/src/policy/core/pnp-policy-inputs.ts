@@ -14,9 +14,8 @@
  *     carries profile policy material."
  *
  * The rule is intentionally narrow. Hosts that bind a bare assessment
- * record (only `id` / `name`, no PNP and no settings) get the legacy
- * floating-tools behavior — PNP/profile gates do not engage. The flip happens
- * the moment the assessment carries any of:
+ * record (only `id` / `name`, no PNP and no settings) do not engage
+ * PNP/profile gates. The flip happens the moment the assessment carries any of:
  *
  *   - `personalNeedsProfile` (any `supports`, `prohibitedSupports`, or
  *     `activateAtInit`),

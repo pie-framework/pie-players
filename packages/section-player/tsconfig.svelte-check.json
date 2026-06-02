@@ -5,6 +5,7 @@
 		"noUnusedParameters": false,
 		"checkJs": false,
 		"moduleResolution": "NodeNext",
+		"rootDir": "..",
 		"baseUrl": ".",
 		"paths": {
 			"@pie-players/pie-players-shared/loaders": [
@@ -12,6 +13,9 @@
 			],
 			"@pie-players/pie-players-shared/types": [
 				"../players-shared/dist/types/index.d.ts"
+			],
+			"@pie-players/pie-players-shared/ui/use-promise": [
+				"../players-shared/src/ui/use-promise.svelte.ts"
 			]
 		}
 	},

@@ -1,5 +1,69 @@
 # @pie-players/pie-assessment-toolkit
 
+## 0.3.45
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- fd140a3: TTS: generate spoken math as SSML for SSML-capable providers (PIE-623)
+
+  The generated (no authored `accessibilityCatalogs`) math speech path can now
+  emit Speech Rule Engine SSML to providers that voice it, while keeping the same
+  confidence-gated highlighting and plain-text behavior everywhere else.
+
+  - `@pie-players/pie-tts`: `TTSProviderCapabilities` gains an optional
+    `supportsSSML` flag. It is optional and defaults to `false`, so existing
+    provider implementations are unaffected.
+  - `@pie-players/tts-client-server`: `ServerTTSProvider.getCapabilities()` now
+    reports `supportsSSML`. It is conservative — `true` only for the SSML-reliable
+    `pie` transport backends (Polly, Google) and `false` for the `custom`
+    transport and unknown providers.
+  - `@pie-players/pie-assessment-toolkit`: the speech composition core assembles a
+    DOM-free plan and, for SSML-capable providers, sends SRE SSML for math
+    segments with a plain-text speak-time fallback if a provider rejects it. The
+    browser Web Speech provider always receives plain text.
+  - `@pie-players/pie-assessment-toolkit`: fixed word/token-level highlighting for
+    generated math SSML. Provider word boundaries on a generated math chunk (raw
+    SSML in `speechText`, no catalog span alignment) are now mapped from
+    raw-SSML offsets back into spoken-text space, so per-token tracking works the
+    same as the authored-SSML path instead of falling back to whole-formula
+    block highlighting.
+  - `@pie-players/pie-assessment-toolkit`: strip the leading `<?xml …?>` prolog
+    from Speech Rule Engine SSML so SSML-capable providers (AWS Polly, Google),
+    which require the payload to begin with `<speak>`, accept the generated math
+    SSML.
+
+- Updated dependencies
+- Updated dependencies [fd140a3]
+  - @pie-players/pie-calculator@0.3.45
+  - @pie-players/pie-calculator-desmos@0.3.45
+  - @pie-players/pie-context@0.3.45
+  - @pie-players/pie-players-shared@0.3.45
+  - @pie-players/pie-tts@0.3.45
+  - @pie-players/tts-client-server@0.3.45
+
+## 0.3.44
+
+### Patch Changes
+
+- Lockstep release covering develop since 0.3.42:
+
+  - PIE-548: Integrate `<nds-icon-button>` for the calculator icon in `ItemToolBar`.
+  - PIE-565: Add `splitPaneInitialPassageWidth` prop to section-player layout components (split-pane / tabbed / vertical).
+  - PIE-553: Section-demos keyboard-navigation demo page; align `partLabels` default with KC.
+  - Test stability: audit and wire package test coverage; stabilize item-source-editor and section TTS e2e flows; keep item-player test mocks in sync.
+
+  Note: 0.3.43 was published manually from feat/PIE-546 without merging back to develop. This release re-issues the develop branch onto npm at 0.3.44 and brings local manifests back in sync with the published lockstep version.
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/pie-calculator@0.3.44
+  - @pie-players/pie-calculator-desmos@0.3.44
+  - @pie-players/pie-context@0.3.44
+  - @pie-players/pie-players-shared@0.3.44
+  - @pie-players/pie-tts@0.3.44
+  - @pie-players/tts-client-server@0.3.44
+
 ## 0.3.42
 
 ### Patch Changes
@@ -112,7 +176,7 @@
 
 ### Patch Changes
 
-- 9ef211c: PIE-512 Phase D cleanup: drop legacy `sectionId` / `attemptId` args from internal subscribe call sites; sharpen the migration narrative for typed integrations.
+- 9ef211c: PIE-512 Phase D cleanup: drop prior `sectionId` / `attemptId` args from internal subscribe call sites; sharpen the migration narrative for typed integrations.
 
   This is a follow-up to `0.3.35` — same active-cohort contract, no functional behavior change. It cleans up internal code that was still passing the now-ignored args, and adds an explicit migration recipe for typed integrators.
 
@@ -283,7 +347,7 @@
     binding, migration with replay, replay ordering, the no-active-cohort
     throw, listener throw isolation, snapshot-safe unsubscribe during
     fan-out, same-cohort `updateInput` no-op, re-entrant subscribe during
-    migration replay, and back-compat tolerance of legacy `sectionId` args.
+    migration replay, and contract tolerance of prior `sectionId` args.
   - `packages/assessment-toolkit/tests/runtime/adapter/coordinator-bridge-cohort-handoff.test.ts`
     (new) — bridge + real-`ToolkitCoordinator` integration test mirroring
     Darin's persistent-host wrapper pattern: `resolveSectionController(A) →
@@ -304,7 +368,7 @@ resolveSectionController(B)` migrates a coordinator-bound listener with
   Before any production code changed, the new + edited tests were run against
   the pre-fix source: 10 of 17 targeted tests failed in the expected ways
   (ambiguous-section throws, missed migrations, no throw isolation, missing
-  back-compat tolerance, missing bridge replay). The 7 that passed against
+  contract tolerance, missing bridge replay). The 7 that passed against
   pre-fix source pin orthogonal invariants (single-cohort replay ordering,
   dispose-detach, snapshot-safe iteration). All 27 pass against the Phase D
   implementation.
@@ -536,7 +600,7 @@ resolveSectionController(B)` migrates a coordinator-bound listener with
 
   - **M8 — tool policy engine.** Allow/block + PNP/profile enforcement become a
     first-class policy surface on `ToolkitCoordinator`
-    (`onPolicyChange`, `decideToolPolicy`, `getFloatingTools`,
+    (`onPolicyChange`, `decideToolPolicy`, `updateToolPlacement`,
     `setPnpEnforcement`, `registerPolicySource`), with narrow profile
     auto-detection mirrored through `runtime.tools.pnpEnforcement`.
 
@@ -568,7 +632,7 @@ resolveSectionController(B)` migrates a coordinator-bound listener with
     framework-error contract) are unchanged.
 
   - **Deprecated Svelte-store-shaped `toolCoordinatorStore`** and the
-    legacy `ToolCoordinator` _interface_ (the z-index / visibility shape
+    prior `ToolCoordinator` _interface_ (the z-index / visibility shape
     in `packages/assessment-toolkit/src/tools/types.ts`, with
     `registerTool` / `showTool` / `hideTool` / `toggleTool` /
     `bringToFront` / `updateToolElement` / `hideAllTools` /
@@ -580,7 +644,7 @@ resolveSectionController(B)` migrates a coordinator-bound listener with
     All instance methods carry over verbatim, plus a `subscribe()` for
     reactive consumption that replaces the deleted Svelte-store derived
     views. Independently, `ToolkitCoordinator`'s tool-policy surface
-    (`onPolicyChange`, `decideToolPolicy`, `getFloatingTools`,
+    (`onPolicyChange`, `decideToolPolicy`, `updateToolPlacement`,
     `setPnpEnforcement`, `registerPolicySource`) is the canonical entry
     point for the _tool policy_ concern (allow/block + PNP/profile enforcement)
     — that is a different concern than the floating-tool z-index API
@@ -697,11 +761,11 @@ resolveSectionController(B)` migrates a coordinator-bound listener with
     `createRuntimeId` is the only re-export). Import from
     `@pie-players/pie-assessment-toolkit/runtime/internal` instead.
 
-  - **`warnDeprecatedOnce` deprecation-warning utility** and its
+  - **`one-time warning utility` deprecation-warning utility** and its
     public re-export from `@pie-players/pie-assessment-toolkit`
     (`packages/assessment-toolkit/src/services/deprecation-warnings.ts`,
-    along with the test-only `__resetDeprecationWarnings` and the
-    `warnDeprecatedOnce` test block in
+    along with the test-only `test reset helper` and the
+    `one-time warning utility` test block in
     `tests/framework-error-bus.test.ts`). Every internal callsite
     was removed earlier in this sweep; no in-tree code depends on the
     utility. External consumers that imported it from the package
@@ -726,11 +790,11 @@ resolveSectionController(B)` migrates a coordinator-bound listener with
     el.isolation = "shadow";
     ```
 
-  - **Deprecated `ToolkitCoordinatorHooks` error hooks**
+  - **Removed `ToolkitCoordinatorHooks` error hooks**
     (`onError`, `onTTSError`, `onProviderError`) and their
     subscription/dispatch logic on `ToolkitCoordinator`, plus the
-    internal helpers (`toCauseError`, `legacyContextFromModel`,
-    `providerIdFromSource`) that synthesized the legacy
+    internal helpers (`toCauseError`, `contextFromFrameworkErrorModel`,
+    `providerIdFromSource`) that synthesized the prior
     `(error, context)` payload from the canonical
     `FrameworkErrorModel`. The single canonical hook is
     `onFrameworkError(model: FrameworkErrorModel)`, which already

@@ -5,7 +5,7 @@
  * This script:
  * 1. Finds all pie-tool-* packages
  * 2. Adds Vite build configuration to each
- * 3. Updates package.json with build scripts and dual exports
+ * 3. Updates package.json with build scripts and dist-only exports
  * 4. Adds necessary devDependencies
  *
  * Usage: node scripts/setup-tool-builds.mjs
@@ -104,7 +104,6 @@ const indexTemplate = (packageName) => `/**
  *   import '${packageName}';
  *   // <${packageName} visible="true" tool-id="..."></${packageName}>
  *
- *   // Svelte component (from source) - check package exports
  */
 
 // Export TypeScript types if any are defined in the Svelte component
@@ -165,22 +164,18 @@ for (const pkg of toolPackages) {
 		const distFile = pkg.svelteName.replace(".svelte", ".js");
 		pkgJson.main = `./dist/${distFile}`;
 		pkgJson.types = "./dist/index.d.ts";
-		pkgJson.svelte = `./${pkg.svelteName}`; // Keep source for Svelte consumers
 
-		// Update exports to support both built and source
+		// Update exports to expose the compiled custom element only.
 		pkgJson.exports = {
 			".": {
 				types: "./dist/index.d.ts",
 				import: `./dist/${distFile}`,
-				svelte: `./${pkg.svelteName}`,
 			},
 		};
 
 		// Update files array
 		pkgJson.files = [
 			"dist",
-			pkg.svelteName,
-			"index.ts",
 			...(pkgJson.files || []).filter(
 				(f) => !["dist", pkg.svelteName, "index.ts"].includes(f),
 			),
@@ -218,7 +213,7 @@ for (const pkg of toolPackages) {
  * ${pkg.name} - PIE Assessment Tool
  *
  * This package exports a web component built from Svelte.
- * Import the built version for CDN usage, or the .svelte source for Svelte projects.
+ * Import the built version for CDN or application usage.
  */
 
 // Re-export any TypeScript types defined in the package

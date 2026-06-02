@@ -6,7 +6,8 @@
 		"composite": false,
 		"declaration": false,
 		"declarationMap": false,
-		"sourceMap": false
+		"sourceMap": false,
+		"inlineSources": false
 	},
 	"include": ["adapters/**/*.ts"],
 	"exclude": ["node_modules", "dist"]

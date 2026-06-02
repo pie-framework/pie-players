@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-section-player-tools-instrumentation-debugger",
-	"version": "0.3.42",
+	"version": "0.3.45",
 	"type": "module",
 	"description": "Instrumentation debugger panel for PIE players",
 	"repository": {
@@ -18,7 +18,6 @@
 		"debugger",
 		"web-component"
 	],
-	"svelte": "./InstrumentationPanel.svelte",
 	"main": "./dist/section-player-tools-instrumentation-debugger.js",
 	"module": "./dist/section-player-tools-instrumentation-debugger.js",
 	"unpkg": "./dist/section-player-tools-instrumentation-debugger.js",
@@ -26,13 +25,11 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/section-player-tools-instrumentation-debugger.js",
-			"svelte": "./InstrumentationPanel.svelte"
+			"import": "./dist/section-player-tools-instrumentation-debugger.js"
 		}
 	},
 	"files": [
 		"dist",
-		"InstrumentationPanel.svelte",
 		"package.json"
 	],
 	"license": "MIT",

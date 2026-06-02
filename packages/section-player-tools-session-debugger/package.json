@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-section-player-tools-session-debugger",
-	"version": "0.3.42",
+	"version": "0.3.45",
 	"type": "module",
 	"description": "Session debugger panel for PIE section-player flows",
 	"repository": {
@@ -19,7 +19,6 @@
 		"debugger",
 		"web-component"
 	],
-	"svelte": "./SectionSessionPanel.svelte",
 	"main": "./dist/section-player-tools-session-debugger.js",
 	"module": "./dist/section-player-tools-session-debugger.js",
 	"unpkg": "./dist/section-player-tools-session-debugger.js",
@@ -27,13 +26,11 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/section-player-tools-session-debugger.js",
-			"svelte": "./SectionSessionPanel.svelte"
+			"import": "./dist/section-player-tools-session-debugger.js"
 		}
 	},
 	"files": [
 		"dist",
-		"SectionSessionPanel.svelte",
 		"package.json"
 	],
 	"license": "MIT",

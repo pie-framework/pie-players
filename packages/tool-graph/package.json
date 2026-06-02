@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-tool-graph",
-	"version": "0.3.42",
+	"version": "0.3.45",
 	"type": "module",
 	"description": "Interactive coordinate grid graphing tool for PIE assessment player",
 	"repository": {
@@ -20,18 +20,15 @@
 		"coordinate",
 		"geometry"
 	],
-	"svelte": "./tool-graph.svelte",
 	"main": "./dist/tool-graph.js",
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/tool-graph.js",
-			"svelte": "./tool-graph.svelte"
+			"import": "./dist/tool-graph.js"
 		}
 	},
 	"files": [
 		"dist",
-		"tool-graph.svelte",
 		"package.json"
 	],
 	"license": "MIT",

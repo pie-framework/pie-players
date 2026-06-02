@@ -57,10 +57,10 @@ version number — there is no per-package version drift.
 - You will never need to reason about a compatibility matrix across
   `@pie-players/*` packages. If two `@pie-players/*` packages report the same
   version, they are designed and tested to work together.
-- A minor or major bump on any one package is reflected as a minor or major bump
-  on **all** publishable packages, including ones whose source did not change in
-  that release. This is expected — it is the cost of the lockstep guarantee
-  above.
+- While the project remains on the pre-1.0 `0.x.y` line, every release is a
+  **patch** release across **all** publishable packages, including ones whose
+  source did not change. This is expected — it is the cost of the lockstep
+  guarantee above.
 
 ### Why fixed versioning
 
@@ -86,10 +86,15 @@ compatibility bugs at the cost of more churn on unchanged packages per release.
 
 This monorepo keeps internal dependencies as `workspace:*` during development.
 
-On release, `bun run release` runs a publish wrapper that temporarily rewrites workspace
-ranges to concrete package versions, executes `changeset publish`, then restores the
-original workspace ranges. This avoids leaking `workspace:*` into npm metadata while
-keeping local development ergonomics unchanged.
+The canonical local release command is `bun run release:with-version`. It
+creates the temporary all-packages patch changeset, rewrites workspace ranges to
+concrete package versions for publish, runs preflight checks/tests, publishes,
+then restores the original workspace ranges. This avoids leaking `workspace:*`
+into npm metadata while keeping local development ergonomics unchanged.
+
+Local publishing uses the codebase and branch currently checked out. Confirm the
+current branch and working tree state before publishing; do not switch to a
+different branch or use the GitHub workflow unless that is explicitly requested.
 
 Before release merges/publishes, run:
 
@@ -116,7 +121,7 @@ private consumer installs when needed.
 NPM_CONFIG_REGISTRY=https://registry.npmjs.org npm whoami
 
 # publish path on npmjs
-NPM_CONFIG_REGISTRY=https://registry.npmjs.org bun run release
+NPM_CONFIG_REGISTRY=https://registry.npmjs.org bun run release:with-version
 
 # set current registry to npmjs
 npm config set registry https://registry.npmjs.org/
@@ -145,11 +150,11 @@ bun run release:label:push           # Create and push tag to origin
 ## Documentation
 
 - [Architecture](docs/architecture/architecture.md)
-- [Authoring Mode](docs/AUTHORING_MODE.md)
+- [Item Player Overview](docs/item-player/overview.md)
 - [Launching from LTI](docs/integrations/lti.md)
 - [NPM Token Setup](docs/setup/npm_token_setup.md)
 - [Publishing Contract](docs/setup/publishing.md)
-- [Docs Index](docs/README.md)
+- [Docs Index](docs/readme.md)
 
 ## License
 

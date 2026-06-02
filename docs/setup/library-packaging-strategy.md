@@ -1,8 +1,8 @@
 # Library Packaging Strategy (NodeJS Reliability First)
 
-This document captures a packaging direction for `@pie-players/*` that minimizes
-consumer breakage in NodeJS and app-bundler `node_modules` workflows. Direct
-browser standalone variants are explicitly deferred for a follow-up iteration.
+This document captures the current packaging contract for `@pie-players/*`
+packages that need to behave predictably in NodeJS and app-bundler
+`node_modules` workflows.
 
 ## Problem Summary
 
@@ -27,21 +27,20 @@ That recovery path is not an acceptable library contract.
 4. Standalone browser variants are deferred until Node reliability is stable.
 5. Custom-element registration must be race-safe under HMR/concurrent import paths.
 
-## Recommended Artifact Model
+## Artifact Model
 
-Publish one reliable default artifact model for this phase:
+Publish one reliable default artifact model:
 
 1. **Bundler/Node-consumer default entry (`.` export)**
    - ESM intended for app bundlers and NodeJS module resolution.
    - Deterministic filenames for emitted files.
    - Avoid hidden internal chunk renaming across equivalent builds.
 
-Standalone browser entry (`./standalone`) is deferred and tracked as future
-work after NodeJS reliability goals are met.
+Standalone browser entrypoints are not part of the current public contract.
 
-## Export Surface Recommendation
+## Export Surface
 
-For package `@pie-players/pie-section-player`, shape exports like:
+For package `@pie-players/pie-section-player`, exports follow this shape:
 
 ```json
 {
@@ -74,10 +73,10 @@ Notes:
 - Keep sourcemaps optional by release mode.
 - Avoid hashing for published library internals unless strictly required.
 
-### Standalone variant (deferred)
+### Standalone variant
 
-- Do not add `./standalone` in this implementation pass.
-- Revisit after NodeJS reliability checks and consumer import fixtures are stable.
+- Do not add `./standalone` entries unless the package explicitly documents and
+  tests that browser-file contract.
 
 ## Versioning and Compatibility
 
@@ -93,9 +92,9 @@ Notes:
   - import only Node-safe packages (for example `@pie-players/pie-assessment-toolkit`, `@pie-players/pie-context`, `@pie-players/pie-players-shared`)
 - Browser-only packages (`pie-item-player`, `pie-section-player`) must stay out of plain Node runtime imports.
 
-## Publish Gate Additions
+## Publish Gates
 
-Add/extend release checks to validate Node reliability:
+Release checks validate Node reliability:
 
 1. **Tarball contract check**
    - ensure all declared export targets exist in packed tarball
@@ -107,24 +106,6 @@ Add/extend release checks to validate Node reliability:
 4. **Custom-element define safety**
    - fail build if source files use direct `customElements.define(...)` outside approved wrappers
    - require shared race-safe registration helper for hand-written registration code
-
-## Incremental Rollout Plan
-
-Phase 1 (pilot):
-
-- implement deterministic artifact naming for `pie-section-player`
-- document Node-safe vs browser-only guidance
-- add Node consumer smoke checks for pilot package dependencies
-
-Phase 2:
-
-- apply same deterministic model to `pie-item-player`
-- evaluate related tool packages that currently emit split internal chunks
-
-Phase 3:
-
-- standardize build helper(s) so package configs are consistent
-- enforce with lint/check scripts
 
 ## Decision Record
 

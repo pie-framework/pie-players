@@ -48,45 +48,46 @@ QTI 3.0 Accessibility Catalogs provide standardized alternative representations 
 │  │  ┌─────────────────┐  ┌─────────────────┐       │ │
 │  │  │ Assessment-     │  │ Item-Level      │       │ │
 │  │  │ Level Catalogs  │  │ Catalogs        │       │ │
-│  │  │ (Shared)        │  │ (Auto-managed)  │       │ │
+│  │  │ (Coordinator)   │  │ (Shell-scoped)  │       │ │
 │  │  └─────────────────┘  └─────────────────┘       │ │
 │  │                                                   │ │
-│  │  Priority: Extracted > Item > Assessment         │ │
+│  │  Resolver: spoken and other catalog cards         │ │
 │  └───────────────────────────────────────────────────┘ │
 │                         │                               │
-│                         ├──────┬──────┬─────────────┐   │
-│                         ▼      ▼      ▼             ▼   │
-│                  ┌─────────────────────────────────────┤
-│                  │  TTSService (spoken)                │
-│                  │  VideoPlayer (sign-language)        │
-│                  │  BrailleRenderer (braille)          │
-│                  │  ContentTransformer (simplified)    │
+│                         ▼                               │
+│                  ┌─────────────────────────────────────┐
+│                  │  TTSService (spoken catalogs)       │
+│                  │  Host-owned consumers for other     │
+│                  │  catalog types when needed          │
 │                  └─────────────────────────────────────┘
 └─────────────────────────────────────────────────────────┘
 ```
 
 ### Data Flow
 
-1. **Service Initialization**: Create services and pass to section player
-2. **Section Load**: Section player receives assessment-level catalogs via resolver
-3. **Item/Passage Render**: Section player automatically:
-   - Extracts SSML from embedded `<speak>` tags
-   - Generates catalog entries with unique IDs
-   - Adds item-level catalogs to resolver
-4. **Content Request**: Resolve catalog by ID and type (extracted → item → assessment)
-5. **Service Integration**: Pass resolved content to appropriate service (TTS, video player, etc.)
-6. **Navigation**: Section player automatically clears item-level catalogs
-7. **Fallback**: If catalog not found, use default rendering
+1. **Coordinator Initialization**: Create `ToolkitCoordinator` with shared
+   assessment catalogs in `accessibility.catalogs`.
+2. **Section Load**: Pass the coordinator through `sectionPlayer.runtime`.
+3. **Item/Passage Render**: Runtime shells register catalogs already present on
+   passages, items, models, and `config.extractedCatalogs`.
+4. **Content Request**: `TTSService` resolves `data-catalog-idref` references
+   for spoken catalogs before falling back to generated speech or visible text.
+5. **Navigation/Unmount**: Shell lifecycle unregisters scoped item and passage
+   catalog registrations.
 
 ---
 
 ## Integration with PIE
 
-### Automatic SSML Extraction from PIE Content
+### SSML Extraction from PIE Content
 
-The PIE Players automatically extract embedded `<speak>` SSML tags from item content and convert them into QTI 3.0 accessibility catalogs at runtime.
+`SSMLExtractor` can convert embedded `<speak>` SSML tags from item content into
+QTI 3.0 accessibility catalogs. Run it as a preprocessing/import step before
+rendering, then pass the cleaned config and `config.extractedCatalogs` to the
+player. The runtime registers `extractedCatalogs` when shells mount, but it does
+not invoke extraction during shell registration.
 
-#### Why Automatic Extraction?
+#### Why Extraction?
 
 Authors can embed SSML directly in content for convenience:
 - Proper pronunciation of technical terms (e.g., "polynomial")
@@ -94,11 +95,11 @@ Authors can embed SSML directly in content for convenience:
 - Emphasis and pacing control
 - No need to maintain separate catalog files
 
-The system automatically:
-1. Extracts SSML during item/passage load
+The extraction step:
+1. Extracts SSML before render
 2. Generates catalog entries with unique IDs
 3. Cleans visual markup (removes SSML tags)
-4. Registers catalogs with AccessibilityCatalogResolver
+4. Stores catalogs on `config.extractedCatalogs` for runtime registration
 
 #### Complete Transformation Example
 
@@ -162,7 +163,7 @@ The system automatically:
 }
 ```
 
-**After (Automatic Extraction at Runtime):**
+**After (Preprocessed Extraction):**
 
 ```typescript
 {
@@ -183,22 +184,22 @@ The system automatically:
         {
           id: 'q1',
           element: 'multiple-choice',
-          prompt: `<div data-catalog-id="auto-prompt-q1-0">
+          prompt: `<div data-catalog-idref="auto-prompt-q1-0">
             <p><strong>Which method should you use to solve x² - 5x + 6 = 0?</strong></p>
           </div>`,
           choiceMode: 'radio',
           choices: [
             {
               value: 'a',
-              label: `<span data-catalog-id="auto-choice-q1-a-0">The quadratic formula</span>`
+              label: `<span data-catalog-idref="auto-choice-q1-a-0">The quadratic formula</span>`
             },
             {
               value: 'b',
-              label: `<span data-catalog-id="auto-choice-q1-b-0">Factoring, because it's easiest</span>`
+              label: `<span data-catalog-idref="auto-choice-q1-b-0">Factoring, because it's easiest</span>`
             },
             {
               value: 'c',
-              label: `<span data-catalog-id="auto-choice-q1-c-0">Completing the square</span>`
+              label: `<span data-catalog-idref="auto-choice-q1-c-0">Completing the square</span>`
             },
             {
               value: 'd',
@@ -266,7 +267,7 @@ The system automatically:
 | Aspect | Before | After |
 |--------|--------|-------|
 | **Visual Content** | Mixed SSML + HTML | Clean HTML only |
-| **Catalog IDs** | None | Auto-generated `data-catalog-id` |
+| **Catalog IDs** | None | Auto-generated `data-catalog-idref` |
 | **SSML Storage** | Embedded in markup | Separate `extractedCatalogs` array |
 | **Structure** | Dual content (speak + visual) | Single visual + catalog reference |
 
@@ -278,12 +279,15 @@ The system automatically:
    - Resolver finds SSML in `extractedCatalogs`
    - Polly/Browser speaks with proper math pronunciation and pacing
 
-2. **User-Selection TTS (annotation toolbar):**
+2. **Floating selection TTS tools that pass catalog IDs:**
    - User selects "The quadratic formula" text
-   - Tool detects nearest `data-catalog-id="auto-choice-q1-a-0"`
+   - Tool detects nearest `data-catalog-idref="auto-choice-q1-a-0"`
    - Calls `ttsService.speak(selectedText, { catalogId: 'auto-choice-q1-a-0' })`
    - Resolver finds SSML with `<emphasis>`
    - Speaks with proper emphasis
+
+   The annotation toolbar read-aloud path intentionally speaks the selected
+   visible range and bypasses catalogs.
 
 3. **Plain Text Fallback:**
    - User selects "Graphing" (choice d - no SSML)
@@ -306,44 +310,57 @@ const result = extractor.extractFromItemConfig(item.config);
 // Update config with cleaned content
 item.config = result.cleanedConfig;
 item.config.extractedCatalogs = result.catalogs;
-
-// Register with resolver
-catalogResolver.addItemCatalogs(result.catalogs);
 ```
 
 **Integration Points:**
-- `ItemRenderer.svelte` - Extracts SSML from items automatically
-- `PassageRenderer.svelte` - Extracts SSML from passages automatically
-- Runs transparently during render (no author action needed)
+- Content import/preprocessing can run `SSMLExtractor`
+- Runtime registration reads `config.extractedCatalogs`
+- Shell mount/unmount handles scoped catalog registration lifecycle
 
-### Catalog References in PIE Markup
+### Catalog References in PIE Content
 
-PIE items reference catalogs using the `data-catalog-id` attribute (either manually authored or auto-generated by SSML extraction):
+PIE elements provide the interaction capability. Authored content and catalog
+references live in item config model fields and passage/rubric HTML. Use
+`data-catalog-idref` in those HTML strings, and keep the PIE element `id`
+aligned with `config.models[].id`.
+
+```typescript
+const item = {
+  accessibilityCatalogs: [
+    {
+      identifier: 'prompt-001',
+      cards: [{ catalog: 'spoken', language: 'en-US', content: '<speak>What is the main idea?</speak>' }]
+    },
+    {
+      identifier: 'choice-001-A',
+      cards: [{ catalog: 'spoken', language: 'en-US', content: '<speak>Choice A. Plants need sunlight.</speak>' }]
+    }
+  ],
+  config: {
+    markup: '<multiple-choice id="q1"></multiple-choice>',
+    elements: {
+      'multiple-choice': '@pie-element/multiple-choice@latest'
+    },
+    models: [
+      {
+        id: 'q1',
+        element: 'multiple-choice',
+        prompt: '<div data-catalog-idref="prompt-001">What is the main idea?</div>',
+        choices: [
+          { value: 'a', label: '<span data-catalog-idref="choice-001-A">Plants need sunlight to grow.</span>' },
+          { value: 'b', label: '<span data-catalog-idref="choice-001-B">Water is essential for life.</span>' }
+        ]
+      }
+    ]
+  }
+};
+```
 
 ```html
-<!-- Prompt with catalog reference -->
-<pie-prompt>
-  <div data-catalog-id="prompt-001">
-    <p>What is the main idea of this passage?</p>
-  </div>
-</pie-prompt>
-
-<!-- Answer choices with catalog references -->
-<pie-choices>
-  <pie-choice value="A" data-catalog-id="choice-001-A">
-    Plants need sunlight to grow
-  </pie-choice>
-  <pie-choice value="B" data-catalog-id="choice-001-B">
-    Water is essential for life
-  </pie-choice>
-</pie-choices>
-
-<!-- Passage/stimulus with catalog reference -->
-<pie-stimulus>
-  <div data-catalog-id="passage-photosynthesis">
-    <p>Photosynthesis is the process by which...</p>
-  </div>
-</pie-stimulus>
+<!-- Passage or rubric HTML can also reference a shared catalog. -->
+<div data-catalog-idref="passage-photosynthesis">
+  <p>Photosynthesis is the process by which...</p>
+</div>
 ```
 
 ### Multi-Level Catalog Support
@@ -362,6 +379,10 @@ const assessment = {
   ]
 };
 
+const passage = {
+  content: '<div data-catalog-idref="shared-passage-001">Photosynthesis is the process...</div>'
+};
+
 // Item-level catalog (item-specific)
 const item = {
   accessibilityCatalogs: [
@@ -373,20 +394,24 @@ const item = {
       ]
     }
   ],
-  markup: `
-    <pie-stimulus>
-      <!-- References assessment-level catalog -->
-      <div data-catalog-id="shared-passage-001">...</div>
-    </pie-stimulus>
-    <pie-prompt>
-      <!-- References item-level catalog -->
-      <div data-catalog-id="prompt-photo-001">...</div>
-    </pie-prompt>
-  `
+  config: {
+    markup: '<multiple-choice id="photo-q1"></multiple-choice>',
+    elements: {
+      'multiple-choice': '@pie-element/multiple-choice@latest'
+    },
+    models: [
+      {
+        id: 'photo-q1',
+        element: 'multiple-choice',
+        prompt: '<div data-catalog-idref="prompt-photo-001">What do plants need?</div>',
+        choices: []
+      }
+    ]
+  }
 };
 ```
 
-**Resolution Priority:** Item-level catalogs override assessment-level for same identifier.
+**Resolution Priority:** Item/model-scoped catalogs override assessment-level catalogs for the same identifier.
 
 ---
 
@@ -394,67 +419,25 @@ const item = {
 
 ### Catalog-Aware TTS
 
-Extend `TTSService` to use accessibility catalogs for spoken content:
-
 ```typescript
-// packages/assessment-toolkit/src/services/TTSService.ts
+import { TTSService, AccessibilityCatalogResolver } from '@pie-players/pie-assessment-toolkit';
 
-export class TTSService implements ITTSService {
-  private catalogResolver?: AccessibilityCatalogResolver;
+const resolver = new AccessibilityCatalogResolver(assessmentCatalogs, 'en-US');
+const ttsService = new TTSService();
 
-  /**
-   * Set the accessibility catalog resolver
-   */
-  setCatalogResolver(resolver: AccessibilityCatalogResolver): void {
-    this.catalogResolver = resolver;
-  }
+ttsService.setCatalogResolver(resolver);
 
-  /**
-   * Enhanced speak method with catalog support
-   */
-  async speak(text: string, options?: { catalogId?: string; language?: string }): Promise<void> {
-    let contentToSpeak = text;
-
-    // Try to resolve from catalog first
-    if (options?.catalogId && this.catalogResolver) {
-      const alternative = this.catalogResolver.getAlternative(options.catalogId, {
-        type: 'spoken',
-        language: options.language,
-        useFallback: true
-      });
-
-      if (alternative) {
-        contentToSpeak = alternative.content;
-        console.debug(`[TTS] Using spoken catalog: ${options.catalogId}`);
-      }
-    }
-
-    // Speak the content (either from catalog or fallback to original text)
-    return this.speakText(contentToSpeak);
-  }
-
-  /**
-   * Enhanced speakRange method with catalog support
-   */
-  async speakRange(range: Range, options?: { language?: string }): Promise<void> {
-    // Check if the range contains an element with data-catalog-id
-    const element = range.commonAncestorContainer as Element;
-    const catalogElement = element.closest?.('[data-catalog-id]') as HTMLElement;
-
-    if (catalogElement) {
-      const catalogId = catalogElement.getAttribute('data-catalog-id');
-      if (catalogId) {
-        // Use catalog version
-        return this.speak(range.toString(), { catalogId, language: options?.language });
-      }
-    }
-
-    // Fallback to regular TTS
-    const text = range.toString();
-    return this.speakText(text);
-  }
-}
+await ttsService.speak('Visible fallback text', {
+  catalogId: 'prompt-001',
+  language: 'en-US',
+  contentElement: document.querySelector('[data-catalog-idref="prompt-001"]') ?? undefined
+});
 ```
+
+For normal section-player delivery, prefer `ToolkitCoordinator`; it creates and
+wires the resolver, TTS service, and highlighting service together. Use direct
+`TTSService` calls for tests, custom host controls, or focused service
+experiments.
 
 ### Integration with PNP
 
@@ -493,6 +476,7 @@ The **PIE Section Player** is the primary interface for integrating accessibilit
 ### Complete Integration Example
 
 ```javascript
+import '@pie-players/pie-section-player/components/section-player-splitpane-element';
 import {
   ToolkitCoordinator
 } from '@pie-players/pie-assessment-toolkit';
@@ -500,6 +484,10 @@ import {
 // Create a single runtime coordinator for the assessment surface.
 const coordinator = new ToolkitCoordinator({
   assessmentId: assessment.id,
+  accessibility: {
+    catalogs: assessment.accessibilityCatalogs ?? [],
+    language: 'en-US',
+  },
   tools: {
     placement: {
       item: ['textToSpeech'],
@@ -514,11 +502,18 @@ const coordinator = new ToolkitCoordinator({
   },
 });
 
-// Pass the coordinator to the section player via a JS property.
-const sectionPlayer = document.getElementById('section-player');
-sectionPlayer.coordinator = coordinator;
+// Pass the coordinator to the section player through runtime.
+const sectionPlayer = document.querySelector('pie-section-player-splitpane');
+sectionPlayer.runtime = {
+  ...(sectionPlayer.runtime ?? {}),
+  coordinator,
+  tools: coordinator.config.tools,
+};
 
 // Set section data
+sectionPlayer.assessmentId = assessment.id;
+sectionPlayer.sectionId = section.identifier;
+sectionPlayer.attemptId = attempt.id;
 sectionPlayer.section = section;
 
 // The section player now automatically:
@@ -531,11 +526,14 @@ sectionPlayer.section = section;
 
 When you configure catalog-aware TTS through the section player runtime:
 
-1. **SSML Extraction**: The section player scans passages and items for embedded `<speak>` tags
-2. **Catalog Generation**: Auto-generates QTI 3.0 catalog entries with IDs like `auto-prompt-q1-0`
-3. **Lifecycle Management**: Adds item catalogs on load, clears them on navigation
-4. **TTS Tool Rendering**: Shows inline TTS buttons when the coordinator enables `textToSpeech`
-5. **Catalog Resolution**: Uses extracted catalogs first, then item catalogs, then assessment catalogs
+1. **Catalog Registration**: Registers catalogs already present on passages,
+   items, models, and `config.extractedCatalogs`
+2. **Lifecycle Management**: Unregisters shell-scoped catalog registrations on
+   navigation/unmount
+3. **TTS Tool Rendering**: Shows inline TTS buttons when the coordinator enables
+   `textToSpeech`
+4. **Catalog Resolution**: Resolves `data-catalog-idref` for spoken catalogs,
+   then falls back to generated speech or visible text
 
 **You don't need to manually manage catalog lifecycle** - the section player handles it.
 
@@ -543,78 +541,63 @@ When you configure catalog-aware TTS through the section player runtime:
 
 ## PIE Element Authoring
 
-### Consuming Catalogs in PIE Elements
+### PIE Elements Provide Capabilities
 
-PIE element developers can access catalogs through the player context:
+PIE elements live in the sibling `../pie-elements-ng` repo and provide the
+interaction capability: multiple choice, drag-and-drop, constructed response,
+and so on. A player loads those element packages, registers the custom elements,
+and passes each element its `model`, `session`, and `env`.
+
+The authored content belongs in the item config. Catalog-aware TTS metadata is
+therefore carried by item-level catalogs, `config.extractedCatalogs`, and
+`data-catalog-idref` markers in model HTML. PIE elements should render their
+model content and preserve those markers; they do not need React hooks or
+element-local catalog resolver plumbing.
 
 ```typescript
-// Example PIE element controller
-import type { AccessibilityCatalogResolver } from '@pie-players/pie-assessment-toolkit';
+const item = {
+  id: 'item-1',
 
-export class MultipleChoiceController {
-  model(question: Question, session: Session, env: Environment) {
-    const catalogResolver = env.catalogResolver as AccessibilityCatalogResolver;
+  accessibilityCatalogs: [
+    {
+      identifier: 'item-prompt',
+      cards: [
+        {
+          catalog: 'spoken',
+          language: 'en-US',
+          content: '<speak>Question one. <break time="300ms"/> What is two plus two?</speak>'
+        }
+      ]
+    },
+    {
+      identifier: 'choice-a',
+      cards: [
+        {
+          catalog: 'spoken',
+          language: 'en-US',
+          content: '<speak>Choice A. <break time="200ms"/> Three</speak>'
+        }
+      ]
+    }
+  ],
 
-    // Enhance prompt with catalog metadata
-    if (question.prompt && catalogResolver) {
-      const promptElement = question.prompt as any;
-      const catalogId = promptElement.catalogId || this.extractCatalogId(promptElement.text);
-
-      if (catalogId && catalogResolver.hasCatalog(catalogId)) {
-        // Get available alternatives
-        const alternatives = catalogResolver.getAllAlternatives(catalogId);
-
-        promptElement.accessibilityAlternatives = alternatives.map(alt => ({
-          type: alt.type,
-          language: alt.language,
-          available: true
-        }));
+  config: {
+    markup: '<multiple-choice id="q1"></multiple-choice>',
+    elements: {
+      'multiple-choice': '@pie-element/multiple-choice@latest'
+    },
+    models: [
+      {
+        id: 'q1',
+        element: 'multiple-choice',
+        prompt: '<div data-catalog-idref="item-prompt">What is 2 + 2?</div>',
+        choices: [
+          { label: '<span data-catalog-idref="choice-a">3</span>', value: 'a' },
+          { label: '<span>4</span>', value: 'b' }
+        ]
       }
-    }
-
-    return question;
+    ]
   }
-
-  private extractCatalogId(html: string): string | null {
-    const match = html.match(/data-catalog-id=["']([^"']+)["']/);
-    return match ? match[1] : null;
-  }
-}
-```
-
-### React Component Example
-
-```typescript
-// Example PIE element React component
-import React, { useState, useEffect } from 'react';
-
-export const AccessiblePrompt: React.FC<{ content: string; catalogId?: string }> = ({
-  content,
-  catalogId
-}) => {
-  const [alternatives, setAlternatives] = useState<string[]>([]);
-  const catalogResolver = useCatalogResolver(); // Custom hook to access resolver
-
-  useEffect(() => {
-    if (catalogId && catalogResolver) {
-      const alts = catalogResolver.getAllAlternatives(catalogId);
-      setAlternatives(alts.map(a => a.type));
-    }
-  }, [catalogId, catalogResolver]);
-
-  return (
-    <div data-catalog-id={catalogId} className="accessible-prompt">
-      <div dangerouslySetInnerHTML={{ __html: content }} />
-
-      {alternatives.length > 0 && (
-        <div className="a11y-indicators" aria-hidden="true">
-          <span title={`Available in: ${alternatives.join(', ')}`}>
-            <AccessibilityIcon />
-          </span>
-        </div>
-      )}
-    </div>
-  );
 };
 ```
 
@@ -644,10 +627,14 @@ const coordinator = new ToolkitCoordinator({
 });
 
 const player = document.querySelector('pie-section-player-splitpane');
-player.coordinator = coordinator;
+player.runtime = {
+  ...(player.runtime ?? {}),
+  coordinator,
+  tools: coordinator.config.tools,
+};
 player.section = sectionWithAccessibilityCatalogs;
 
-// TTS uses authored alternatives when the rendered content exposes matching data-catalog-id values.
+// TTS uses authored alternatives when the rendered content exposes matching data-catalog-idref values.
 ```
 
 ### Example 2: Multi-Language Support
@@ -727,9 +714,9 @@ const german = resolver.getAlternative('welcome-message', {
 ### Performance
 
 1. **Lazy Loading:**
-   - Don't load all catalogs at once
-   - Load item-level catalogs on demand
-   - Clear item catalogs when navigating away
+   - Keep large item catalogs on the item/model payload that needs them
+   - Let shell mount/unmount register and unregister item-scoped catalogs
+   - Keep shared assessment catalogs in coordinator accessibility config
 
 2. **Caching:**
    - Cache resolved catalogs to avoid repeated lookups
@@ -744,10 +731,8 @@ const german = resolver.getAlternative('welcome-message', {
 
 1. **Indicate Alternative Availability:**
    ```html
-   <div data-catalog-id="prompt-001" class="has-alternatives">
-     <span class="a11y-badge" aria-label="Available in multiple formats">
-       <AccessibilityIcon />
-     </span>
+   <div data-catalog-idref="prompt-001" class="has-alternatives">
+     <span class="a11y-badge" aria-label="Available in multiple formats">A11y</span>
      Regular content here...
    </div>
    ```

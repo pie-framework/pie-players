@@ -110,6 +110,30 @@
 	outline-offset: 2px;
 }
 
+/*
+ * PIE-558: horizontal-scroll wrapper for authored tables. Mirrors `.pie-image-scroll`:
+ * the shared sanitizer wraps every `<table>` outside a `pie-*` custom element
+ * in `<div class="pie-table-scroll">`. When the table fits its column the
+ * scrollbar stays hidden; when it doesn't, the wrapper provides the sideways
+ * scroll needed to satisfy WCAG 1.4.10 Reflow at 400% zoom instead of forcing
+ * the section layout to scroll horizontally.
+ */
+.pie-table-scroll {
+	display: block;
+	max-width: 100%;
+	overflow-x: auto;
+	overflow-y: hidden;
+}
+
+.pie-table-scroll > table {
+	max-width: none;
+}
+
+.pie-table-scroll:focus-visible {
+	outline: 2px solid var(--pie-focus-ring-color, #1a73e8);
+	outline-offset: 2px;
+}
+
 /* These styles are used in the body content of an item -- they also appear in the item body editor. */
 
 .book-title-k5 {

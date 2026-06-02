@@ -11,6 +11,7 @@
 import DOMPurify from "dompurify";
 
 import { wrapOverwideImages } from "./wrap-overwide-images.js";
+import { wrapOverwideTables } from "./wrap-overwide-tables.js";
 
 export type ItemMarkupSanitizer = (markup: string) => string;
 
@@ -180,7 +181,9 @@ export function sanitizeItemMarkup(
 	// PIE-94: wrap overwide authored images in a horizontal-scroll container
 	// so they don't get clipped by ancestor `overflow-x: hidden` regions in
 	// the section player (and match WCAG 1.4.10 Reflow at 400% zoom).
-	return wrapOverwideImages(sanitized);
+	// Tables get the same treatment so wide data grids reflow into a
+	// scrollable region instead of forcing the page itself to scroll.
+	return wrapOverwideTables(wrapOverwideImages(sanitized));
 }
 
 /**

@@ -56,6 +56,10 @@
 		"./i18n": {
 			"types": "./dist/i18n/index.d.ts",
 			"import": "./dist/i18n/index.js"
+		},
+		"./vendor/nds/nds-icon-button": {
+			"types": "./dist/vendor/nds/nds-icon-button.d.ts",
+			"import": "./dist/vendor/nds/nds-icon-button.js"
 		}
 	},
 	"files": [
@@ -67,7 +71,7 @@
 		"semver": "^7.7.4"
 	},
 	"scripts": {
-		"build": "rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json",
+		"build": "rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json && mkdir -p dist/vendor/nds && cp src/vendor/nds/nds-icon-button.js src/vendor/nds/nds-icon-button.d.ts dist/vendor/nds/",
 		"dev": "tsc -p tsconfig.json --watch",
 		"typecheck": "tsc -p tsconfig.json --noEmit",
 		"lint": "biome check .",

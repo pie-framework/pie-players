@@ -1,5 +1,21 @@
 # @pie-players/tts-server-google
 
+## 0.3.47
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/tts-server-core@0.3.47
+
+## 0.3.46
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies
+  - @pie-players/tts-server-core@0.3.46
+
 ## 0.3.45
 
 ### Patch Changes

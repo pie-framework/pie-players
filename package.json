@@ -92,7 +92,7 @@
 		"changeset": "changeset",
 		"version": "changeset version",
 		"release:with-version": "bun run check:changeset-patch-only && bun ./scripts/create-temporary-release-changeset.mjs && bun run version && bun run restore:workspace-ranges && bun run check:npm-auth && bun run verify:publish && bun run test && bun run release && bun run restore:workspace-ranges",
-		"release": "dotenvx run -f .env -- sh -c \"bun run build && bun ./scripts/changeset-publish-resolved-workspaces.mjs && bun scripts/preloaded-player/publish-changed.mjs --all\"",
+		"release": "dotenvx run -f .env -- sh -c \"bun run build && bun run --cwd tools/cli build && bun ./scripts/changeset-publish-resolved-workspaces.mjs && bun scripts/preloaded-player/publish-changed.mjs --all\"",
 		"release:label": "bun ./scripts/create-release-label.mjs",
 		"release:label:push": "bun ./scripts/create-release-label.mjs --push",
 		"pack:local": "bun run build && bun run --cwd tools/cli build && bun ./scripts/pack-local.mjs",

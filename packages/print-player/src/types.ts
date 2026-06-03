@@ -59,6 +59,12 @@ export interface PkgResolution {
 	url: string;
 	/** Whether to load as ES module */
 	module: boolean;
+	/** Loader strategy for this resolution */
+	loader?: "dynamic-import" | "browser-esm";
+	/** CDN base used by the browser ESM loader */
+	cdnBaseUrl?: string;
+	/** CDN provider used by the browser ESM loader */
+	cdnProvider?: "jsdelivr" | "esm.sh" | (string & {});
 }
 
 /**

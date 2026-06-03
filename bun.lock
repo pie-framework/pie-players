@@ -336,6 +336,7 @@
       "name": "@pie-players/pie-print-player",
       "version": "0.3.45",
       "dependencies": {
+        "@pie-players/pie-players-shared": "workspace:*",
         "lit": "^3.2.1",
       },
       "devDependencies": {

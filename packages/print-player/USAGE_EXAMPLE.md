@@ -268,12 +268,12 @@ When you set `player.config = itemConfig`, the print player:
 1. **Resolves package URLs**
    ```
    'multiple-choice' → '@pie-element/multiple-choice@11.4.3'
-                    → 'https://cdn.jsdelivr.net/npm/@pie-element/multiple-choice@11.4.3/module/print.js'
+                    → 'https://cdn.jsdelivr.net/npm/@pie-element/multiple-choice@11.4.3/dist/browser/print/index.js'
    ```
 
 2. **Loads print modules dynamically**
    ```javascript
-   const mod = await import('https://cdn.jsdelivr.net/npm/@pie-element/multiple-choice@11.4.3/module/print.js');
+   const mod = await import('https://cdn.jsdelivr.net/npm/@pie-element/multiple-choice@11.4.3/dist/browser/print/index.js');
    const PrintElement = mod.default;
    ```
 
@@ -325,7 +325,8 @@ The new print player maintains the same API:
 + <script type="module" src="https://cdn.jsdelivr.net/npm/@pie-players/pie-print-player@1.0.0/dist/print-player.js"></script>
 ```
 
-The only change needed is the URL resolution for newer packages:
+The default resolver targets PIE-626 browser ESM print artifacts. Override
+`resolve` only when you need a different CDN or local development server:
 
 ```javascript
 player.resolve = (tagName, pkg) => {
@@ -333,8 +334,7 @@ player.resolve = (tagName, pkg) => {
   return Promise.resolve({
     tagName,
     pkg,
-    // New path for pie-elements-ng packages
-    url: `https://cdn.jsdelivr.net/npm/@pie-element/${name}@${version}/dist/print/index.js`,
+    url: `https://cdn.jsdelivr.net/npm/@pie-element/${name}@${version}/dist/browser/print/index.js`,
     module: true
   });
 };

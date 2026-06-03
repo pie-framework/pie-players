@@ -14,6 +14,11 @@ The print player is a specialized, non-interactive version of the PIE element pl
 
 Built with Lit 3.x and modern ESM architecture.
 
+By default, `@pie-element/*` packages are loaded from their PIE-626 browser ESM
+print artifacts at `dist/browser/print/index.js`. The player uses the shared
+PIE ESM loader so React and React DOM are resolved through the same import-map
+policy as the other browser ESM players.
+
 ## Installation
 
 ```bash
@@ -84,7 +89,7 @@ player.resolve = (tagName, pkg) => {
   return Promise.resolve({
     tagName,
     pkg,
-    url: `https://your-cdn.example.com/@pie-element/${name}@${version}/dist/print/index.js`,
+    url: `https://your-cdn.example.com/@pie-element/${name}@${version}/dist/browser/print/index.js`,
     module: true
   });
 };

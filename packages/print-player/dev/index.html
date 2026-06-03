@@ -181,7 +181,7 @@
             },
           };
 
-          // Custom resolver for pie-elements-ng packages
+          // Custom resolver example for alternate package hosts.
           const resolve = (tagName, pkg) => {
             const match = pkg.match(/@pie-element\/(.*?)@(.*)/);
             if (match) {
@@ -189,8 +189,8 @@
               return Promise.resolve({
                 tagName,
                 pkg,
-                // Point to your built packages - adjust this URL as needed
-                url: `https://cdn.jsdelivr.net/npm/@pie-element/${name}@${version}/dist/print/index.js`,
+                // Point to browser ESM print artifacts - adjust this URL as needed
+                url: `https://cdn.jsdelivr.net/npm/@pie-element/${name}@${version}/dist/browser/print/index.js`,
                 module: true,
               });
             }

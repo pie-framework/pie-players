@@ -94,6 +94,7 @@
 	} from "@pie-players/pie-players-shared";
 	import type {
 		EsmBackendConfig,
+		EsmCdnProviderOption,
 		IifeBackendConfig,
 	} from "@pie-players/pie-players-shared";
 	import { PieItemPlayer as PieItemRenderer, PieSpinner } from "@pie-players/pie-players-shared/components";
@@ -112,6 +113,7 @@
 	type UnifiedLoaderOptions = {
 		bundleHost?: string;
 		esmCdnUrl?: string;
+		esmCdnProvider?: EsmCdnProviderOption;
 		view?: string;
 		loadControllers?: boolean;
 		moduleResolution?: "url" | "import-map";
@@ -692,9 +694,12 @@
 		return {
 			kind: "esm",
 			cdnBaseUrl: resolvedEsmCdnUrl,
+			cdnProvider: loaderOptions?.esmCdnProvider,
 			moduleResolution,
 			view: view === "author" ? "author" : "delivery",
 			loadControllers: loaderOptions?.loadControllers ?? true,
+			trackPageActions: loaderConfig?.trackPageActions,
+			instrumentationProvider: resolvedInstrumentationProvider,
 		};
 	}
 

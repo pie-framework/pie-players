@@ -33,6 +33,7 @@ import {
 	type ElementMap,
 	ensureRegistered,
 	type EsmBackendConfig,
+	type EsmCdnProvider,
 	type IifeBackendConfig,
 	type IifeBundleRetryStatus,
 	type ItemEntity,
@@ -195,9 +196,12 @@ function logRenderableConfigWarnings(
 				? (renderable as { id: string }).id
 				: `renderable-${index}`;
 		const result = validatePieConfigContract(renderable?.config);
-		const maybeWarnings = (result as unknown as { warnings?: unknown }).warnings;
+		const maybeWarnings = (result as unknown as { warnings?: unknown })
+			.warnings;
 		const warnings = Array.isArray(maybeWarnings)
-			? maybeWarnings.filter((entry): entry is string => typeof entry === "string")
+			? maybeWarnings.filter(
+					(entry): entry is string => typeof entry === "string",
+				)
 			: [];
 		for (const warning of warnings) {
 			logger.warn(
@@ -228,9 +232,13 @@ export function buildBackendConfigFromProps(args: {
 		| undefined;
 
 	if (args.strategy === "esm") {
+		const esmCdnProvider = readEsmCdnProvider(loaderOptions?.esmCdnProvider);
 		return {
 			kind: "esm",
-			cdnBaseUrl: String(loaderOptions?.esmCdnUrl || "https://cdn.jsdelivr.net/npm"),
+			cdnBaseUrl: String(
+				loaderOptions?.esmCdnUrl || "https://cdn.jsdelivr.net/npm",
+			),
+			cdnProvider: esmCdnProvider,
 			moduleResolution:
 				loaderOptions?.moduleResolution === "import-map" ? "import-map" : "url",
 			view: getLoaderView(args.resolvedPlayerEnv),
@@ -245,7 +253,9 @@ export function buildBackendConfigFromProps(args: {
 		throw new Error("Missing iifeBundleHost for element preloading");
 	}
 
-	const mode = String((args.resolvedPlayerProps?.mode as string) || "").toLowerCase();
+	const mode = String(
+		(args.resolvedPlayerProps?.mode as string) || "",
+	).toLowerCase();
 	const bundleType: BundleType =
 		mode === "author"
 			? BundleType.editor
@@ -260,6 +270,21 @@ export function buildBackendConfigFromProps(args: {
 		needsControllers: true,
 		onBundleRetryStatus: args.onBundleRetryStatus,
 	};
+}
+
+function readEsmCdnProvider(
+	value: unknown,
+): EsmBackendConfig["cdnProvider"] | undefined {
+	if (typeof value === "string") return value;
+	if (!value || typeof value !== "object") return undefined;
+	const candidate = value as Partial<Record<keyof EsmCdnProvider, unknown>>;
+	return typeof candidate.name === "string" &&
+		typeof candidate.packageJsonUrl === "function" &&
+		typeof candidate.browserViewUrl === "function" &&
+		typeof candidate.browserControllerUrl === "function" &&
+		typeof candidate.sharedDependencyUrl === "function"
+		? (value as NonNullable<EsmBackendConfig["cdnProvider"]>)
+		: undefined;
 }
 
 /**
@@ -311,7 +336,8 @@ export async function warmupSectionElements(args: {
 	logger?: ReturnType<typeof createPieLogger>;
 	onBundleRetryStatus?: IifeBundleRetryStatusHandler;
 }): Promise<void> {
-	const logger = args.logger ?? getPreloadLogger("pie-section-player-items-pane");
+	const logger =
+		args.logger ?? getPreloadLogger("pie-section-player-items-pane");
 
 	try {
 		validateRenderableConfigContracts(args.renderables);

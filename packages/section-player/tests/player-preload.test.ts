@@ -15,7 +15,10 @@ mock.module("@pie-players/pie-item-player", () => ({
 }));
 
 beforeAll(() => {
-	if (typeof (globalThis as unknown as { window?: unknown }).window === "undefined") {
+	if (
+		typeof (globalThis as unknown as { window?: unknown }).window ===
+		"undefined"
+	) {
 		GlobalRegistrator.register();
 	}
 });
@@ -140,6 +143,21 @@ describe("player-preload: backend config", () => {
 		}
 	});
 
+	test("esm backend reads loaderOptions.esmCdnProvider", async () => {
+		const { buildBackendConfigFromProps } = await loadPlayerPreloadModule();
+		const backend = buildBackendConfigFromProps({
+			strategy: "esm",
+			resolvedPlayerProps: {
+				loaderOptions: { esmCdnProvider: "pie-proxy" },
+			},
+			resolvedPlayerEnv: {},
+		});
+		expect(backend.kind).toBe("esm");
+		if (backend.kind === "esm") {
+			expect(backend.cdnProvider).toBe("pie-proxy");
+		}
+	});
+
 	test("esm backend honors author env for view", async () => {
 		const { buildBackendConfigFromProps } = await loadPlayerPreloadModule();
 		const backend = buildBackendConfigFromProps({
@@ -174,7 +192,10 @@ describe("player-preload: backend config", () => {
 describe("player-preload: error helpers", () => {
 	test("formats stage-based element load errors like item-player", async () => {
 		const { formatElementLoadError } = await loadPlayerPreloadModule();
-		const message = formatElementLoadError("iife-load", new Error("network down"));
+		const message = formatElementLoadError(
+			"iife-load",
+			new Error("network down"),
+		);
 		expect(message).toBe("Error loading elements (iife-load): network down");
 	});
 
@@ -215,65 +236,59 @@ describe("player-preload: error helpers", () => {
 });
 
 describe("warmupSectionElements", () => {
-	test(
-		"preloaded strategy with all aggregate tags registered resolves without touching the loader",
-		async () => {
-			const { warmupSectionElements } = await loadPlayerPreloadModule();
-			definePreloadedTag("pie-mc-pa--version-1-0-0");
+	test("preloaded strategy with all aggregate tags registered resolves without touching the loader", async () => {
+		const { warmupSectionElements } = await loadPlayerPreloadModule();
+		definePreloadedTag("pie-mc-pa--version-1-0-0");
+		await warmupSectionElements({
+			strategy: "preloaded",
+			renderables: [
+				{
+					id: "item-1",
+					config: {
+						markup: '<pie-mc-pa id="m1"></pie-mc-pa>',
+						elements: { "pie-mc-pa": "@pie-element/multiple-choice@1.0.0" },
+						models: [{ id: "m1", element: "pie-mc-pa" }],
+					},
+				} as any,
+			],
+			resolvedPlayerProps: {},
+			resolvedPlayerEnv: {},
+		});
+	});
+
+	test("preloaded strategy with missing aggregate tags throws diagnostic-rich PreloadStageError(stage=preloaded-assert)", async () => {
+		const { warmupSectionElements, PreloadStageError } =
+			await loadPlayerPreloadModule();
+		let caught: Error | undefined;
+		try {
 			await warmupSectionElements({
 				strategy: "preloaded",
 				renderables: [
 					{
 						id: "item-1",
 						config: {
-							markup: '<pie-mc-pa id="m1"></pie-mc-pa>',
-							elements: { "pie-mc-pa": "@pie-element/multiple-choice@1.0.0" },
-							models: [{ id: "m1", element: "pie-mc-pa" }],
+							markup: '<pie-pa-missing id="m1"></pie-pa-missing>',
+							elements: {
+								"pie-pa-missing": "@pie-element/missing@1.2.3",
+							},
+							models: [{ id: "m1", element: "pie-pa-missing" }],
 						},
 					} as any,
 				],
 				resolvedPlayerProps: {},
 				resolvedPlayerEnv: {},
 			});
-		},
-	);
-
-	test(
-		"preloaded strategy with missing aggregate tags throws diagnostic-rich PreloadStageError(stage=preloaded-assert)",
-		async () => {
-			const { warmupSectionElements, PreloadStageError } =
-				await loadPlayerPreloadModule();
-			let caught: Error | undefined;
-			try {
-				await warmupSectionElements({
-					strategy: "preloaded",
-					renderables: [
-						{
-							id: "item-1",
-							config: {
-								markup: '<pie-pa-missing id="m1"></pie-pa-missing>',
-								elements: {
-									"pie-pa-missing": "@pie-element/missing@1.2.3",
-								},
-								models: [{ id: "m1", element: "pie-pa-missing" }],
-							},
-						} as any,
-					],
-					resolvedPlayerProps: {},
-					resolvedPlayerEnv: {},
-				});
-			} catch (err) {
-				caught = err as Error;
-			}
-			expect(caught).toBeInstanceOf(PreloadStageError);
-			if (caught instanceof PreloadStageError) {
-				expect(caught.stage).toBe("preloaded-assert");
-				const cause = caught.cause as { name?: string; message?: string };
-				expect(cause?.name).toBe("ElementAssertionError");
-				expect(String(cause?.message)).toContain("pie-pa-missing");
-			}
-		},
-	);
+		} catch (err) {
+			caught = err as Error;
+		}
+		expect(caught).toBeInstanceOf(PreloadStageError);
+		if (caught instanceof PreloadStageError) {
+			expect(caught.stage).toBe("preloaded-assert");
+			const cause = caught.cause as { name?: string; message?: string };
+			expect(cause?.name).toBe("ElementAssertionError");
+			expect(String(cause?.message)).toContain("pie-pa-missing");
+		}
+	});
 
 	test("no-op for preloaded strategy with empty renderables", async () => {
 		const { warmupSectionElements } = await loadPlayerPreloadModule();

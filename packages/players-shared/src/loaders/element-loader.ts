@@ -140,6 +140,8 @@ const DEFAULT_LOAD_TIMEOUT_MS = DEFAULT_IIFE_BUNDLE_RETRY_CONFIG.timeoutMs;
 // Module-scoped in-flight cache. Key: backend signature + sorted elements.
 // Keeps concurrent identical requests collapsed to one backend call.
 const inFlightRequests = new Map<string, Promise<void>>();
+const resolvedEsmBackends = new Map<string, ElementLoaderBackend>();
+const resolvedBackendOverrides = new Map<string, ElementLoaderBackend>();
 
 /**
  * Resolve iff every tag in `elements` is registered with `customElements`.
@@ -303,7 +305,16 @@ function resolveBackend(backend: BackendOption): ElementLoaderBackend {
 	if (isDirectBackend(backend)) return backend;
 	if ("kind" in backend) {
 		if (backend.kind === "iife") return createIifeBackend(backend);
-		if (backend.kind === "esm") return createEsmBackend(backend);
+		if (backend.kind === "esm") {
+			const backendKey = backendKeyOf(backend);
+			const override = resolvedBackendOverrides.get(backendKey);
+			if (override) return override;
+			const existing = resolvedEsmBackends.get(backendKey);
+			if (existing) return existing;
+			const created = createEsmBackend(backend);
+			resolvedEsmBackends.set(backendKey, created);
+			return created;
+		}
 	}
 	throw new Error("ElementLoader: invalid backend option");
 }
@@ -366,11 +377,14 @@ function backendKeyOf(backend: BackendOption): string {
 			return `esm#${fingerprintValue({
 				kind: "esm",
 				cdnBaseUrl: backend.cdnBaseUrl,
+				cdnProvider: backend.cdnProvider ?? null,
 				moduleResolution: backend.moduleResolution ?? "url",
 				view: backend.view ?? "delivery",
 				viewConfig: backend.viewConfig ?? null,
 				loadControllers: backend.loadControllers ?? true,
 				debugEnabled: backend.debugEnabled ?? null,
+				trackPageActions: backend.trackPageActions ?? false,
+				instrumentationProvider: backend.instrumentationProvider ?? null,
 			})}`;
 		}
 	}
@@ -521,11 +535,23 @@ function extractAdapterReason(
 export const __testing = {
 	resetDedupState(): void {
 		inFlightRequests.clear();
+		resolvedEsmBackends.clear();
+		resolvedBackendOverrides.clear();
 	},
 	inFlightCount(): number {
 		return inFlightRequests.size;
 	},
 	dedupKeyFor(elements: ElementMap, backend: BackendOption): string {
 		return buildDedupKey(backend, elements);
+	},
+	replaceResolvedBackendForTesting(
+		backend: BackendOption,
+		resolvedBackend: ElementLoaderBackend,
+	): void {
+		resolvedBackendOverrides.set(backendKeyOf(backend), resolvedBackend);
+	},
+	restoreResolvedBackendsForTesting(): void {
+		resolvedEsmBackends.clear();
+		resolvedBackendOverrides.clear();
 	},
 };

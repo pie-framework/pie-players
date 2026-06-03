@@ -36,6 +36,7 @@
 		ToolbarItem,
 	} from "@pie-players/pie-assessment-toolkit";
 	import "../section-player-item-card-element.js";
+	import "@pie-players/pie-players-shared/vendor/nds/nds-icon-button";
 	import type { ItemEntity } from "@pie-players/pie-players-shared/types";
 	import { usePromise } from "@pie-players/pie-players-shared/ui/use-promise";
 	import type { SectionCompositionModel } from "../../controllers/types.js";

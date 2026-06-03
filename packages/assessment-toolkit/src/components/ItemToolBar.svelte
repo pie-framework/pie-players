@@ -75,12 +75,11 @@
 	import type { AssessmentItemRef, AssessmentEntity, ItemEntity } from '@pie-players/pie-players-shared/types';
 	import type { ElementToolContext, ItemToolContext, ToolLevel, ToolContext } from '../services/tool-context.js';
 	import type { ToolPolicyDecision } from '../policy/engine.js';
-	// Side-effect import: registers <nds-icon-button>. Vendored prebuilt bundle —
-	// see src/components/vendor/nds/README in nextComponentLibrary for source.
-	// Self-contained (Lit + foundations CSS inlined); the build script copies
-	// this folder from src/components/vendor → dist/components/vendor so the CE
-	// bundler can inline it into the published custom element.
-	import './vendor/nds/nds-icon-button.js';
+	// Side-effect import: registers <nds-icon-button>.
+	// Canonical source lives in @pie-players/pie-players-shared/vendor/nds/.
+	// build-ce-components.mjs copies the file to dist/components/vendor/nds/ and
+	// rewrites this import to a local path so bun inlines it into the CE artifact.
+	import '@pie-players/pie-players-shared/vendor/nds/nds-icon-button';
 
 	const isBrowser = typeof window !== 'undefined';
 	// FontAwesome icon source, in load order:

@@ -26,46 +26,19 @@ rmSync(path.join(distComponents, ".generated"), {
 	force: true,
 });
 
-// Mirror non-TS asset directories (e.g. vendored 3rd-party CE bundles) from
-// src/components into dist/components so relative imports emitted by
-// Svelte resolve at bundle time. tsc only emits TypeScript; static JS
-// vendor bundles need to be copied explicitly.
-//
-// At copy time we also rewrite raw `customElements.define(...)` calls
-// inside vendored files into idempotent guards. The vendor bundles get
-// inlined into multiple toolkit CE artifacts (ItemToolBar / SectionToolBar
-// / PieAssessmentToolkit) and a host page can load more than one of them,
-// so the second register would otherwise throw NotSupportedError. This
-// matches the same guarantee the SAFE_DEFINE_HELPER below provides for
-// Svelte-compiled CEs, applied via source rewrite because we don't own
-// the upstream code.
-const guardVendorDefineCalls = (source) =>
-	source.replace(
-		/customElements\.define\((\w+),\s*(\w+)\)/g,
-		"customElements.get($1) || customElements.define($1, $2)",
-	);
-const vendorSrc = path.join(srcComponents, "vendor");
-const vendorDist = path.join(distComponents, "vendor");
-if (existsSync(vendorSrc)) {
-	rmSync(vendorDist, { recursive: true, force: true });
-	cpSync(vendorSrc, vendorDist, { recursive: true });
-	const walkAndPatch = (dir) => {
-		for (const entry of readdirSync(dir, { withFileTypes: true })) {
-			const absPath = path.join(dir, entry.name);
-			if (entry.isDirectory()) {
-				walkAndPatch(absPath);
-				continue;
-			}
-			if (!entry.name.endsWith(".js")) continue;
-			const original = readFileSync(absPath, "utf8");
-			const patched = guardVendorDefineCalls(original);
-			if (patched !== original) {
-				writeFileSync(absPath, patched, "utf8");
-			}
-		}
-	};
-	walkAndPatch(vendorDist);
-}
+// Copy vendor bundles from their canonical source in @pie-players/pie-players-shared
+// into dist/components/vendor/ so that the local import path the bundler sees
+// (after the string rewrite below) resolves at bun-bundle time.
+// @pie-players/pie-players-shared is marked --external in the bun build call, so
+// we can't let the import of that package make it into the final bundle as-is;
+// rewriting it to a local path before bundling ensures the file gets inlined.
+const vendorDist = path.join(distComponents, "vendor", "nds");
+const sharedVendorSrc = path.resolve(
+	packageRoot,
+	"node_modules/@pie-players/pie-players-shared/dist/vendor/nds/nds-icon-button.js",
+);
+mkdirSync(vendorDist, { recursive: true });
+cpSync(sharedVendorSrc, path.join(vendorDist, "nds-icon-button.js"));
 
 const entries = [
 	{
@@ -129,6 +102,12 @@ for (const entry of entries) {
 	sanitizedCode = sanitizedCode.replace(
 		/customElements\.define\s*\(/g,
 		"__pieDefineSafely(",
+	);
+	// Rewrite the players-shared vendor import to a local path so bun inlines
+	// it despite --external=@pie-players/*. The file was copied above.
+	sanitizedCode = sanitizedCode.replace(
+		/import\s+['"]@pie-players\/pie-players-shared\/vendor\/nds\/nds-icon-button['"]\s*;?/g,
+		"import './vendor/nds/nds-icon-button.js';",
 	);
 	sanitizedCode = `${SAFE_DEFINE_HELPER}\n${sanitizedCode}`;
 

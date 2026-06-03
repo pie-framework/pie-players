@@ -57,6 +57,10 @@
 			"types": "./dist/i18n/index.d.ts",
 			"import": "./dist/i18n/index.js"
 		},
+		"./ui/nds-assets": {
+			"types": "./dist/ui/nds-assets.d.ts",
+			"import": "./dist/ui/nds-assets.js"
+		},
 		"./vendor/nds/nds-icon-button": {
 			"types": "./dist/vendor/nds/nds-icon-button.d.ts",
 			"import": "./dist/vendor/nds/nds-icon-button.js"

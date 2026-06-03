@@ -97,22 +97,40 @@ jobs:
           set -euo pipefail
 
           # Are there any Changesets present in the repo at this commit?
-          if ls .changeset/*.md >/dev/null 2>&1; then
+          # Ignore the .changeset/README.md fixture file which is part of the
+          # changesets bootstrap and never represents a real changeset entry.
+          if find .changeset -maxdepth 1 -type f -name '*.md' ! -name 'README.md' -print -quit | grep -q .; then
             echo "has_changesets=true" >> "$GITHUB_OUTPUT"
           else
             echo "has_changesets=false" >> "$GITHUB_OUTPUT"
           fi
 
-          # Did this push include version/changelog changes (i.e. merged release PR)?
+          # Did this push include an actual package version bump (i.e. a merged
+          # release PR)? Only a real "version" field change in a non-private
+          # publishable manifest counts. A coarse "any package.json/CHANGELOG.md
+          # changed" check misfires on routine merges that touch a manifest for
+          # dependency/exports/script reasons: that sends a normal master merge
+          # down the publish path (a no-op republish) instead of generating the
+          # temporary changeset + version PR.
           before="${{ github.event.before }}"
           after="${{ github.sha }}"
-          changed="$(git diff --name-only "$before" "$after" || true)"
+          changed_manifests="$(git diff --name-only "$before" "$after" -- 'packages/**/package.json' 'tools/**/package.json' || true)"
 
-          if echo "$changed" | grep -Eq '^(packages|tools)/[^/]+/(package\.json|CHANGELOG\.md)$'; then
-            echo "has_version_bumps=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "has_version_bumps=false" >> "$GITHUB_OUTPUT"
-          fi
+          has_version_bumps=false
+          for manifest in $changed_manifests; do
+            if ! node -e 'const fs=require("fs"); const p=process.argv[1]; try { const pkg=JSON.parse(fs.readFileSync(p, "utf8")); process.exit(pkg.private ? 1 : 0); } catch { process.exit(1); }' "$manifest"; then
+              continue
+            fi
+            manifest_diff="$(git diff -U0 "$before" "$after" -- "$manifest" || true)"
+            # Require both a removed and an added "version" line so metadata-only
+            # manifest edits are not treated as a publish intent.
+            if echo "$manifest_diff" | grep -Eq '^-[[:space:]]*"version"[[:space:]]*:' && echo "$manifest_diff" | grep -Eq '^\+[[:space:]]*"version"[[:space:]]*:'; then
+              has_version_bumps=true
+              break
+            fi
+          done
+
+          echo "has_version_bumps=${has_version_bumps}" >> "$GITHUB_OUTPUT"
 
       - name: Validate manual release intent prerequisites
         if: github.event_name == 'workflow_dispatch'
@@ -226,8 +244,8 @@ jobs:
           commit: 'chore(release): version packages'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ env.PUBLISH_NPM_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ env.PUBLISH_NODE_AUTH_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_REGISTRY: https://registry.npmjs.org/
           LEFTHOOK: 0
 

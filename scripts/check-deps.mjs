@@ -3,6 +3,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { builtinModules } from "node:module";
+import { pathToFileURL } from "node:url";
+import ts from "typescript";
 
 const ROOT = process.cwd();
 const rootManifestPath = path.join(ROOT, "package.json");
@@ -69,7 +71,11 @@ const KNOWN_BIN_TO_PACKAGE = {
 
 const BUILTIN_SPECIFIERS = new Set(
 	builtinModules
-		.flatMap((mod) => [mod, mod.replace(/^node:/, ""), `node:${mod.replace(/^node:/, "")}`])
+		.flatMap((mod) => [
+			mod,
+			mod.replace(/^node:/, ""),
+			`node:${mod.replace(/^node:/, "")}`,
+		])
 		.filter(Boolean),
 );
 
@@ -101,7 +107,9 @@ function isIgnoredSpecifier(specifier, aliasPrefixes) {
 		specifier.startsWith("virtual:") ||
 		specifier.startsWith("vite/") ||
 		BUILTIN_SPECIFIERS.has(specifier) ||
-		aliasPrefixes.some((prefix) => specifier === prefix || specifier.startsWith(`${prefix}/`))
+		aliasPrefixes.some(
+			(prefix) => specifier === prefix || specifier.startsWith(`${prefix}/`),
+		)
 	);
 }
 
@@ -113,13 +121,67 @@ function toPackageName(specifier) {
 	return specifier.split("/")[0];
 }
 
-function stripComments(content) {
+export function stripComments(content) {
 	return content
 		.replace(/\/\*[\s\S]*?\*\//g, "")
 		.replace(/(^|[^\\:])\/\/.*$/gm, "$1");
 }
 
-function collectSpecifiers(content) {
+const scriptKindForPath = (filePath) => {
+	const ext = path.extname(filePath);
+	if (ext === ".tsx") return ts.ScriptKind.TSX;
+	if (ext === ".jsx") return ts.ScriptKind.JSX;
+	if (ext === ".js" || ext === ".mjs" || ext === ".cjs") {
+		return ts.ScriptKind.JS;
+	}
+	return ts.ScriptKind.TS;
+};
+
+const stringLiteralValue = (node) =>
+	ts.isStringLiteralLike(node) ? node.text : null;
+
+function collectSpecifiersFromAst(content, filePath) {
+	const out = new Set();
+	const sourceFile = ts.createSourceFile(
+		filePath,
+		content,
+		ts.ScriptTarget.Latest,
+		true,
+		scriptKindForPath(filePath),
+	);
+
+	const addSpecifier = (node) => {
+		const specifier = stringLiteralValue(node);
+		if (specifier) out.add(specifier);
+	};
+
+	const visit = (node) => {
+		if (ts.isImportDeclaration(node) && node.moduleSpecifier) {
+			addSpecifier(node.moduleSpecifier);
+		} else if (ts.isExportDeclaration(node) && node.moduleSpecifier) {
+			addSpecifier(node.moduleSpecifier);
+		} else if (
+			ts.isImportEqualsDeclaration(node) &&
+			ts.isExternalModuleReference(node.moduleReference)
+		) {
+			addSpecifier(node.moduleReference.expression);
+		} else if (
+			ts.isCallExpression(node) &&
+			node.arguments.length === 1 &&
+			(node.expression.kind === ts.SyntaxKind.ImportKeyword ||
+				(ts.isIdentifier(node.expression) &&
+					node.expression.text === "require"))
+		) {
+			addSpecifier(node.arguments[0]);
+		}
+		ts.forEachChild(node, visit);
+	};
+
+	visit(sourceFile);
+	return [...out];
+}
+
+function collectSpecifiersWithRegex(content) {
 	const out = new Set();
 	const cleanContent = stripComments(content);
 	const patterns = [
@@ -139,6 +201,13 @@ function collectSpecifiers(content) {
 	return [...out];
 }
 
+export function collectSpecifiers(content, filePath = "source.ts") {
+	if (path.extname(filePath) === ".svelte") {
+		return collectSpecifiersWithRegex(content);
+	}
+	return collectSpecifiersFromAst(content, filePath);
+}
+
 function walkFiles(startDir, result, workspaceRoot = startDir) {
 	for (const entry of fs.readdirSync(startDir, { withFileTypes: true })) {
 		if (IGNORED_DIRS.has(entry.name)) continue;
@@ -147,7 +216,11 @@ function walkFiles(startDir, result, workspaceRoot = startDir) {
 			const relativeDir = path.relative(workspaceRoot, fullPath);
 			const topLevelSegment = relativeDir.split(path.sep)[0];
 			if (["demo", "example", "examples"].includes(topLevelSegment)) continue;
-			if (fullPath !== workspaceRoot && fs.existsSync(path.join(fullPath, "package.json"))) continue;
+			if (
+				fullPath !== workspaceRoot &&
+				fs.existsSync(path.join(fullPath, "package.json"))
+			)
+				continue;
 			walkFiles(fullPath, result, workspaceRoot);
 			continue;
 		}
@@ -180,7 +253,11 @@ function firstExecutable(command) {
 
 function collectTsAliasPrefixes(pkgDir) {
 	const aliases = new Set();
-	const candidates = ["tsconfig.json", "tsconfig.base.json", "tsconfig.build.json"];
+	const candidates = [
+		"tsconfig.json",
+		"tsconfig.base.json",
+		"tsconfig.build.json",
+	];
 	for (const candidate of candidates) {
 		const tsconfigPath = path.join(pkgDir, candidate);
 		if (!fs.existsSync(tsconfigPath)) continue;
@@ -262,14 +339,15 @@ function main() {
 				continue;
 			}
 
-			for (const specifier of collectSpecifiers(content)) {
+			for (const specifier of collectSpecifiers(content, filePath)) {
 				if (!isExternalSpecifier(specifier)) continue;
 				if (isIgnoredSpecifier(specifier, aliasPrefixes)) continue;
 
 				const packageName = toPackageName(specifier);
 				const isSelfImport =
 					manifest.name &&
-					(packageName === manifest.name || specifier.startsWith(`${manifest.name}/`));
+					(packageName === manifest.name ||
+						specifier.startsWith(`${manifest.name}/`));
 
 				if (isSelfImport || workspacePackageNames.has(packageName)) continue;
 				if (declared.has(packageName)) continue;
@@ -303,7 +381,8 @@ function main() {
 				const executable = firstExecutable(command);
 				if (!executable || SHELL_BUILTINS.has(executable)) continue;
 				if (executable.includes("/") || executable.startsWith(".")) continue;
-				if (command.startsWith("bunx ") || command.startsWith("bun x ")) continue;
+				if (command.startsWith("bunx ") || command.startsWith("bun x "))
+					continue;
 				if (command.startsWith("bun run ")) continue;
 
 				const expectedPackage = KNOWN_BIN_TO_PACKAGE[executable];
@@ -323,7 +402,9 @@ function main() {
 	}
 
 	if (violations.length === 0) {
-		console.log("check-deps: OK - no undeclared imports or hoist-reliant script usage found.");
+		console.log(
+			"check-deps: OK - no undeclared imports or hoist-reliant script usage found.",
+		);
 		return;
 	}
 
@@ -347,4 +428,9 @@ function main() {
 	process.exit(1);
 }
 
-main();
+if (
+	process.argv[1] &&
+	import.meta.url === pathToFileURL(process.argv[1]).href
+) {
+	main();
+}

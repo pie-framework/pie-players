@@ -77,6 +77,14 @@ export default (async () => {
 					changeOrigin: true,
 					rewrite: (p) => p.replace(/^\/_fa-pro/, "/fonts/Font_Awesome_6_Pro"),
 				},
+				// Same-origin proxy for the Renaissance Roboto bundle. Same
+				// rationale as `/_fa-pro` above: the CSS loads cross-origin
+				// fine but the .ttf / .woff2 it references is CORS-blocked.
+				"/_roboto": {
+					target: "https://ui.renaissance.com",
+					changeOrigin: true,
+					rewrite: (p) => p.replace(/^\/_roboto/, "/fonts/Roboto"),
+				},
 			},
 		},
 		resolve: {

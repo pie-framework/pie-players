@@ -3,6 +3,20 @@
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+		<!-- Mirror the prod host's font setup so we can verify the toolbar's
+		     `hostHasFa` short-circuit (no Free injection when Pro is present).
+		     Loaded via Vite's `/_fa-pro` and `/_roboto` proxies (see
+		     vite.config.ts) so the CSS *and* the underlying woff2/ttf binaries
+		     are same-origin in dev — Renaissance's CDN serves the binaries
+		     without CORS headers, which would otherwise block them. -->
+		<link rel="stylesheet" href="/_roboto/style.css" />
+		<link rel="stylesheet" href="/_fa-pro/fontawesome.min.css" />
+		<link rel="stylesheet" href="/_fa-pro/light.min.css" />
+		<link rel="stylesheet" href="/_fa-pro/regular.min.css" />
+		<link rel="stylesheet" href="/_fa-pro/solid.min.css" />
+		<link rel="stylesheet" href="/_fa-pro/duotone-light.min.css" />
+
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">

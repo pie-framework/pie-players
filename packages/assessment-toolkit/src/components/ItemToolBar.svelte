@@ -115,6 +115,12 @@
 	// and our CORS-clean stylesheet wins.
 	const ROBOTO_HREF =
 		'https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap';
+	// Match any FA stylesheet href the host page already has loaded — covers
+	// `fontawesome.min.css`, `font-awesome.css`, `/_fa-pro/light.min.css`,
+	// `fontawesome-free@…`, etc. Cloning the host's actual FA <link> is what
+	// makes prod work: the previous hardcoded `/_fa-pro/` paths only resolve on
+	// hosts that proxy FA Pro themselves (e.g., section-demos dev server).
+	const FA_HREF_PATTERN = /font.?awesome|fa-?pro/i;
 	let ndsAssetsInstalled = false;
 	const ensureNdsAssets = () => {
 		if (!isBrowser || ndsAssetsInstalled) return;
@@ -125,9 +131,18 @@
 			link.href = ROBOTO_HREF;
 			document.head.appendChild(link);
 		}
-		// FA Free first, FA Pro second. Both stylesheets define `.fa-light`,
-		// and "later wins" — when Pro loads it overrides Free's font-family
-		// to "Font Awesome 6 Pro" at weight 300. If Pro 404s, Free stays.
+		// Only inject our FA stylesheets when the host page hasn't already
+		// loaded one. If we always appended Free, it would land later in the
+		// document cascade than the host's FA Pro and override Pro's
+		// `.fa-regular` / `.fa-solid` / `.far` / `.fas` font-family rules
+		// page-wide, swapping every Pro glyph for the Free fallback.
+		// `installFaInToolbarShadow` clones whatever FA <link>s the host has
+		// into the toolbar's shadow root, so our own calculator icon still
+		// renders correctly without us forcing Free into <head>.
+		const hostHasFa = Array.from(
+			document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"][href]')
+		).some((link) => FA_HREF_PATTERN.test(link.href));
+		if (hostHasFa) return;
 		if (!document.querySelector(`link[href="${FA_FREE_HREF}"]`)) {
 			const link = document.createElement('link');
 			link.rel = 'stylesheet';
@@ -151,12 +166,6 @@
 	// don't cross that boundary. Replicate the FA cascade into the toolbar's
 	// shadow root the first time we mount an item that needs it.
 	const FA_TOOLBAR_SHADOW_INSTALLED = '__pieFaToolbarShadowInstalled';
-	// Match any FA stylesheet href the host page already has loaded — covers
-	// `fontawesome.min.css`, `font-awesome.css`, `/_fa-pro/light.min.css`,
-	// `fontawesome-free@…`, etc. Cloning the host's actual FA <link> is what
-	// makes prod work: the previous hardcoded `/_fa-pro/` paths only resolve on
-	// hosts that proxy FA Pro themselves (e.g., section-demos dev server).
-	const FA_HREF_PATTERN = /font.?awesome|fa-?pro/i;
 	const installFaInToolbarShadow = (root: HTMLElement) => {
 		const shadow = root.getRootNode();
 		if (!(shadow instanceof ShadowRoot)) return;
@@ -176,10 +185,6 @@
 			document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"][href]')
 		).filter((link) => FA_HREF_PATTERN.test(link.href));
 		for (const link of documentFaLinks) appendLink(link.href);
-		const shim = document.createElement('style');
-		shim.textContent =
-			'.fa-light{font-family:"Font Awesome 6 Free";font-weight:900;}';
-		shadow.appendChild(shim);
 	};
 	const ndsIconButtonAction = (node: HTMLElement) => {
 		ensureNdsAssets();

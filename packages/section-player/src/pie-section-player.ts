@@ -8,6 +8,12 @@ import "./components/section-player-passages-pane-element";
 import "./components/section-player-shell-element";
 import "./components/section-player-kernel-host-element";
 
+import { setPiePlayersGlobalVersion } from "@pie-players/pie-players-shared";
+
+declare const __PIE_PLAYERS_VERSION__: string;
+
+setPiePlayersGlobalVersion(__PIE_PLAYERS_VERSION__);
+
 export type {
 	SectionPlayerLayoutContract,
 	SectionPlayerLayoutName,

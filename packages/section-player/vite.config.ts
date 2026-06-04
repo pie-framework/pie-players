@@ -4,6 +4,8 @@ import { resolve } from "path";
 import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
 
+import pkg from "./package.json" with { type: "json" };
+
 const sanitizeChunkKey = (value: string) =>
 	value
 		.replace(/\\/g, "/")
@@ -49,6 +51,9 @@ const assertNoEvalRequireInOutput = {
 };
 
 export default defineConfig({
+	define: {
+		__PIE_PLAYERS_VERSION__: JSON.stringify(pkg.version),
+	},
 	resolve: {
 		alias: {
 			"@pie-players/pie-players-shared/ui/use-promise": resolve(

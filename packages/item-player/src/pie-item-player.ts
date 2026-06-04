@@ -2,9 +2,14 @@ import PieItemPlayer from "./PieItemPlayer.svelte";
 import {
 	defineCustomElementSafely,
 	initializeMathRendering,
+	setPiePlayersGlobalVersion,
 } from "@pie-players/pie-players-shared";
 
 export type * from "./types.js";
+
+declare const __PIE_PLAYERS_VERSION__: string;
+
+setPiePlayersGlobalVersion(__PIE_PLAYERS_VERSION__);
 
 let itemPlayerMathReadyPromise: Promise<void> | null = null;
 

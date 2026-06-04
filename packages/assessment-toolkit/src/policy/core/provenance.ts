@@ -333,4 +333,3 @@ function generateExplanation(trail: ToolPolicyFeatureTrail): string {
 	}
 	return explanation;
 }
-

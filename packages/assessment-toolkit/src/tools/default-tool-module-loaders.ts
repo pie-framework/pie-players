@@ -1,8 +1,7 @@
 import type { ToolModuleLoader } from "../services/ToolRegistry.js";
 
-const loadSideEffectModule = (
-	load: () => Promise<unknown>,
-): Promise<void> => load().then(() => undefined);
+const loadSideEffectModule = (load: () => Promise<unknown>): Promise<void> =>
+	load().then(() => undefined);
 
 /**
  * Default lazy module loaders for built-in tools.

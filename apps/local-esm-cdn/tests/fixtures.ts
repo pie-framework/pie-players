@@ -72,7 +72,11 @@ export async function writePackageFile(params: {
 	relativePath: string;
 	content: string;
 }): Promise<string> {
-	const dir = packageBaseDir(params.pieElementsNgRoot, params.scope, params.name);
+	const dir = packageBaseDir(
+		params.pieElementsNgRoot,
+		params.scope,
+		params.name,
+	);
 	const target = path.join(dir, params.relativePath);
 	await mkdir(path.dirname(target), { recursive: true });
 	await writeFile(target, params.content, "utf8");
@@ -85,7 +89,11 @@ export async function writePackageJson(params: {
 	name: string;
 	content: Record<string, unknown>;
 }): Promise<string> {
-	const dir = packageBaseDir(params.pieElementsNgRoot, params.scope, params.name);
+	const dir = packageBaseDir(
+		params.pieElementsNgRoot,
+		params.scope,
+		params.name,
+	);
 	const packageRoot = path.dirname(dir);
 	const target = path.join(packageRoot, "package.json");
 	await mkdir(packageRoot, { recursive: true });

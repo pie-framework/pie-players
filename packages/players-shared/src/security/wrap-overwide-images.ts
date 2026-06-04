@@ -19,10 +19,7 @@
 const PIE_CUSTOM_ELEMENT_TAG_REGEX = /^pie-/i;
 const SCROLL_WRAPPER_CLASS = "pie-image-scroll";
 
-function isInsidePieCustomElement(
-	image: Element,
-	root: Element,
-): boolean {
+function isInsidePieCustomElement(image: Element, root: Element): boolean {
 	let ancestor: Element | null = image.parentElement;
 	while (ancestor && ancestor !== root) {
 		if (PIE_CUSTOM_ELEMENT_TAG_REGEX.test(ancestor.tagName)) {
@@ -82,10 +79,7 @@ export function wrapOverwideImages(markup: string): string {
 		if (!parent) continue;
 
 		// Idempotency — already wrapped.
-		if (
-			parent.classList &&
-			parent.classList.contains(SCROLL_WRAPPER_CLASS)
-		) {
+		if (parent.classList && parent.classList.contains(SCROLL_WRAPPER_CLASS)) {
 			continue;
 		}
 

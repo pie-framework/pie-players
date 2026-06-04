@@ -30,12 +30,16 @@ export class SectionSessionService {
 		visitedItemIdentifiers: string[];
 		itemSessions: Record<string, unknown>;
 	} {
-		const currentItemIndex = testAttemptSession.navigationState?.currentItemIndex ?? 0;
+		const currentItemIndex =
+			testAttemptSession.navigationState?.currentItemIndex ?? 0;
 		return {
 			currentItemIndex: currentItemIndex >= 0 ? currentItemIndex : 0,
 			visitedItemIdentifiers:
 				testAttemptSession.navigationState?.visitedItemIdentifiers || [],
-			itemSessions: (testAttemptSession.itemSessions || {}) as Record<string, unknown>,
+			itemSessions: (testAttemptSession.itemSessions || {}) as Record<
+				string,
+				unknown
+			>,
 		};
 	}
 
@@ -47,7 +51,10 @@ export class SectionSessionService {
 
 		return {
 			testAttemptSession,
-			itemSessions: toItemSessionsRecord(testAttemptSession) as Record<string, any>,
+			itemSessions: toItemSessionsRecord(testAttemptSession) as Record<
+				string,
+				any
+			>,
 		};
 	}
 

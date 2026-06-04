@@ -24,6 +24,7 @@
 		"serve": "bun x vite preview --port 8000"
 	},
 	"dependencies": {
+		"@pie-players/pie-players-shared": "workspace:*",
 		"lit": "^3.2.1"
 	},
 	"devDependencies": {

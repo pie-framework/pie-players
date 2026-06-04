@@ -285,7 +285,11 @@ function generateTypes(): string {
 `;
 }
 
-function generateReadme(config: BuildStaticConfig, version: string, hash: string): string {
+function generateReadme(
+	config: BuildStaticConfig,
+	version: string,
+	hash: string,
+): string {
 	const parsedElements = parseElements(config.elements);
 	const sortedElements = Object.entries(parsedElements).sort(([a], [b]) =>
 		a.localeCompare(b),
@@ -489,25 +493,19 @@ export async function buildPreloadedPlayerStaticPackage(
 	// Build required workspace outputs from this monorepo.
 	// For publish flows we do a full package rebuild, matching regular publish expectations.
 	// For local package generation we keep a narrower build for speed.
-	const itemPlayerPkgDir = join(
-		config.monorepoDir,
-		"packages",
-		"item-player",
-	);
+	const itemPlayerPkgDir = join(config.monorepoDir, "packages", "item-player");
 	if (!existsSync(itemPlayerPkgDir)) {
 		throw new Error(`pie-item-player package not found: ${itemPlayerPkgDir}`);
 	}
-	const buildCommand = config.publish ? "bun run build" : "bun run build:e2e:item-player";
+	const buildCommand = config.publish
+		? "bun run build"
+		: "bun run build:e2e:item-player";
 	execSync(buildCommand, {
 		cwd: config.monorepoDir,
 		stdio: "inherit",
 	});
 
-	const customElementSrc = join(
-		itemPlayerPkgDir,
-		"dist",
-		"pie-item-player.js",
-	);
+	const customElementSrc = join(itemPlayerPkgDir, "dist", "pie-item-player.js");
 	const customElementDest = join(outputDir, "dist", "pie-item-player.js");
 	await copyFile(customElementSrc, customElementDest);
 

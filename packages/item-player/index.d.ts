@@ -47,7 +47,9 @@ export type BackendDeliveryConfig = {
 				debounceMs?: number;
 		  };
 	client?: {
-		load?: (context: Record<string, unknown>) => Promise<Record<string, unknown>>;
+		load?: (
+			context: Record<string, unknown>,
+		) => Promise<Record<string, unknown>>;
 		saveSession?: (context: Record<string, unknown>) => Promise<unknown>;
 		model?: (context: Record<string, unknown>) => Promise<unknown>;
 		score?: (context: Record<string, unknown>) => Promise<unknown>;
@@ -100,7 +102,9 @@ export interface PieItemPlayerElement extends HTMLElement {
 	onDeleteSound?: (src: string, done: DeleteDone) => void;
 	loaderOptions?: Record<string, unknown>;
 	provideScore(): Promise<false | Array<Record<string, unknown> | undefined>>;
-	updateElementModel(update: Record<string, unknown> & { id: string }): Promise<void>;
+	updateElementModel(
+		update: Record<string, unknown> & { id: string },
+	): Promise<void>;
 	validateModels(): Promise<{ hasErrors: boolean; validatedModels: unknown[] }>;
 	loadFromBackend(scope?: BackendScope): Promise<void>;
 	saveSession(): Promise<void>;

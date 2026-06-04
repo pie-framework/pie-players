@@ -114,10 +114,7 @@ const publicDemos: DemoInfo[] = [
 	return pkg === 0 ? a.id.localeCompare(b.id) : pkg;
 });
 
-const routableDemos: DemoInfo[] = [
-	...publicDemos,
-	authoringContractFixture,
-];
+const routableDemos: DemoInfo[] = [...publicDemos, authoringContractFixture];
 
 export const demos: Record<string, DemoInfo> = Object.fromEntries(
 	routableDemos.map((demo) => [demo.id, demo]),

@@ -29,7 +29,9 @@ export function collectElementPackages(sectionData: unknown): string[] {
 	return [...packages].sort();
 }
 
-export function collectPieConfigs(sectionData: unknown): Array<Record<string, unknown>> {
+export function collectPieConfigs(
+	sectionData: unknown,
+): Array<Record<string, unknown>> {
 	const configs: Array<Record<string, unknown>> = [];
 	const seen = new WeakSet<object>();
 
@@ -80,7 +82,9 @@ export function collectElementTags(sectionData: unknown): string[] {
 		const valueAny = value as any;
 		const elements = valueAny?.config?.elements;
 		if (elements && typeof elements === "object") {
-			for (const [tagName, packageSpec] of Object.entries(elements as Record<string, unknown>)) {
+			for (const [tagName, packageSpec] of Object.entries(
+				elements as Record<string, unknown>,
+			)) {
 				if (typeof tagName !== "string" || tagName.length === 0) continue;
 				if (tagName.includes("--version-")) {
 					tags.add(tagName);
@@ -118,10 +122,15 @@ export async function waitForCustomElements(
 	tags: string[],
 	options?: { timeoutMs?: number },
 ): Promise<void> {
-	if (typeof window === "undefined" || typeof customElements === "undefined") return;
-	const requiredTags = [...new Set(tags.filter((tag) => typeof tag === "string" && tag.length > 0))];
+	if (typeof window === "undefined" || typeof customElements === "undefined")
+		return;
+	const requiredTags = [
+		...new Set(tags.filter((tag) => typeof tag === "string" && tag.length > 0)),
+	];
 	if (requiredTags.length === 0) return;
-	const unresolvedTags = requiredTags.filter((tag) => customElements.get(tag) === undefined);
+	const unresolvedTags = requiredTags.filter(
+		(tag) => customElements.get(tag) === undefined,
+	);
 	if (unresolvedTags.length === 0) return;
 
 	const timeoutMs = options?.timeoutMs ?? 30_000;
@@ -129,7 +138,9 @@ export async function waitForCustomElements(
 		Promise.all(unresolvedTags.map((tag) => customElements.whenDefined(tag))),
 		new Promise<never>((_, reject) => {
 			window.setTimeout(() => {
-				const stillMissing = unresolvedTags.filter((tag) => customElements.get(tag) === undefined);
+				const stillMissing = unresolvedTags.filter(
+					(tag) => customElements.get(tag) === undefined,
+				);
 				reject(
 					new Error(
 						`Timed out waiting for custom elements: ${stillMissing.join(", ") || unresolvedTags.join(", ")}`,
@@ -140,7 +151,9 @@ export async function waitForCustomElements(
 	]);
 }
 
-export async function fetchBundleWithRetry(bundleUrl: string): Promise<Response> {
+export async function fetchBundleWithRetry(
+	bundleUrl: string,
+): Promise<Response> {
 	let attempt = 0;
 	const maxAttempts = 12;
 	let lastStatus: number | "network" | null = null;
@@ -150,13 +163,19 @@ export async function fetchBundleWithRetry(bundleUrl: string): Promise<Response>
 			const response = await fetch(bundleUrl);
 			if (response.ok) return response;
 			lastStatus = response.status;
-			if (response.status === 429 || (response.status >= 500 && response.status <= 599)) {
+			if (
+				response.status === 429 ||
+				(response.status >= 500 && response.status <= 599)
+			) {
 				await new Promise((resolve) => setTimeout(resolve, 1000));
 				continue;
 			}
 			throw new Error(`Bundle preload failed: ${response.status}`);
 		} catch (error) {
-			if (error instanceof Error && error.message.startsWith("Bundle preload failed:")) {
+			if (
+				error instanceof Error &&
+				error.message.startsWith("Bundle preload failed:")
+			) {
 				throw error;
 			}
 			lastStatus = "network";

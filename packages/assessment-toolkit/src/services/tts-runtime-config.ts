@@ -107,7 +107,8 @@ export const normalizeTTSSpeedOptions = (value: unknown): number[] => {
 	if (value.length === 0) return [];
 	const deduped = new Set<number>();
 	for (const entry of value) {
-		if (typeof entry !== "number" || !Number.isFinite(entry) || entry <= 0) continue;
+		if (typeof entry !== "number" || !Number.isFinite(entry) || entry <= 0)
+			continue;
 		const rounded = Math.round(entry * 100) / 100;
 		if (rounded === 1) continue;
 		deduped.add(rounded);
@@ -180,7 +181,10 @@ const applyRuntimeDefaults = (
 	if (backend === "google") {
 		return {
 			...withServerDefaults,
-			defaultVoice: withDefault(withServerDefaults.defaultVoice, "en-US-Wavenet-A"),
+			defaultVoice: withDefault(
+				withServerDefaults.defaultVoice,
+				"en-US-Wavenet-A",
+			),
 		};
 	}
 
@@ -232,11 +236,15 @@ export const buildRuntimeTTSConfig = (
 		pitch: config.pitch,
 		providerOptions: {
 			...(config.language ? { locale: config.language } : {}),
-			...(backend === "polly" && config.engine ? { engine: config.engine } : {}),
+			...(backend === "polly" && config.engine
+				? { engine: config.engine }
+				: {}),
 			...(backend === "polly" && typeof config.sampleRate === "number"
 				? { sampleRate: config.sampleRate }
 				: {}),
-			...(backend === "polly" && config.format ? { format: config.format } : {}),
+			...(backend === "polly" && config.format
+				? { format: config.format }
+				: {}),
 			...(backend === "polly"
 				? {
 						speechMarkTypes:

@@ -13,7 +13,10 @@ export interface SectionControllerContext {
 export interface SectionSessionPersistenceStrategy {
 	loadSession(
 		context: SectionControllerContext,
-	): SectionControllerSessionState | null | Promise<SectionControllerSessionState | null>;
+	):
+		| SectionControllerSessionState
+		| null
+		| Promise<SectionControllerSessionState | null>;
 	saveSession(
 		context: SectionControllerContext,
 		session: SectionControllerSessionState | null,
@@ -142,14 +145,15 @@ export type SectionControllerContentLoadedEvent = SectionControllerEventBase & {
 	currentItemIndex: number;
 };
 
-export type SectionControllerItemPlayerErrorEvent = SectionControllerEventBase & {
-	type: "item-player-error";
-	contentKind: "item" | "passage" | "rubric" | "unknown";
-	itemId: string;
-	canonicalItemId: string;
-	error: unknown;
-	currentItemIndex: number;
-};
+export type SectionControllerItemPlayerErrorEvent =
+	SectionControllerEventBase & {
+		type: "item-player-error";
+		contentKind: "item" | "passage" | "rubric" | "unknown";
+		itemId: string;
+		canonicalItemId: string;
+		error: unknown;
+		currentItemIndex: number;
+	};
 
 export type SectionControllerItemCompleteChangedEvent =
 	SectionControllerEventBase & {

@@ -12,7 +12,9 @@ const previewText = (value: unknown, max = 120): string => {
 const summarizeErrorDetails = (details: unknown): Record<string, unknown> => {
 	if (!details || typeof details !== "object") return {};
 	const out: Record<string, unknown> = {};
-	for (const [key, value] of Object.entries(details as Record<string, unknown>)) {
+	for (const [key, value] of Object.entries(
+		details as Record<string, unknown>,
+	)) {
 		if (value === null || value === undefined) continue;
 		if (typeof value === "string") {
 			out[key] = value.length > 500 ? `${value.slice(0, 500)}…` : value;
@@ -21,7 +23,8 @@ const summarizeErrorDetails = (details: unknown): Record<string, unknown> => {
 		} else {
 			try {
 				const serialized = JSON.stringify(value);
-				out[key] = serialized.length > 500 ? `${serialized.slice(0, 500)}…` : serialized;
+				out[key] =
+					serialized.length > 500 ? `${serialized.slice(0, 500)}…` : serialized;
 			} catch {
 				out[key] = "[unserializable]";
 			}
@@ -145,11 +148,14 @@ export const POST: RequestHandler = async ({ request }) => {
 		return json({
 			audioContent: result.audioContent,
 			word: result.word,
-			...(result.speechMarks.length > 0 ? { speechMarks: result.speechMarks } : {}),
+			...(result.speechMarks.length > 0
+				? { speechMarks: result.speechMarks }
+				: {}),
 		});
 	} catch (err) {
 		const status = toHttpStatus(err);
-		const message = err instanceof Error ? err.message : "SC TTS request failed";
+		const message =
+			err instanceof Error ? err.message : "SC TTS request failed";
 		const detailsSummary =
 			err instanceof TTSError ? summarizeErrorDetails(err.details) : {};
 		const logPayload = {
@@ -166,7 +172,9 @@ export const POST: RequestHandler = async ({ request }) => {
 		console.error("[api/tts/sc] SchoolCity TTS request failed", logPayload);
 		throw error(status, {
 			message,
-			...(Object.keys(detailsSummary).length > 0 ? { details: detailsSummary } : {}),
+			...(Object.keys(detailsSummary).length > 0
+				? { details: detailsSummary }
+				: {}),
 		});
 	}
 };

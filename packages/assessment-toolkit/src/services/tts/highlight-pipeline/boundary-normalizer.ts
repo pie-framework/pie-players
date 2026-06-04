@@ -28,7 +28,10 @@ const normalizeBoundaryWord = (word: string): string | null => {
 const speechSourceBoundary = (
 	chunk: TTSHighlightChunk,
 	event: TTSBoundaryEvent,
-): { boundary: { start: number; length: number } | null; spokenText: string } => {
+): {
+	boundary: { start: number; length: number } | null;
+	spokenText: string;
+} => {
 	const tokenization = tokenizeSpeechSource({ speechText: chunk.speechText });
 	if (!Number.isFinite(event.position)) {
 		return { boundary: null, spokenText: tokenization.spokenText };

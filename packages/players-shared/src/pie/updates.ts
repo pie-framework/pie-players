@@ -41,23 +41,42 @@ const describeControllerShape = (controller: unknown): string => {
 
 const resolveControllerModelFunction = (
 	controller: unknown,
-): ((model: PieModel, session: any, env: Env, updateSession: any) => unknown) | null => {
+):
+	| ((model: PieModel, session: any, env: Env, updateSession: any) => unknown)
+	| null => {
 	if (!controller) return null;
 	if (typeof controller === "function") {
-		return controller as (model: PieModel, session: any, env: Env, updateSession: any) => unknown;
+		return controller as (
+			model: PieModel,
+			session: any,
+			env: Env,
+			updateSession: any,
+		) => unknown;
 	}
 	if (typeof controller !== "object") return null;
 	const direct = (controller as Record<string, unknown>).model;
 	if (typeof direct === "function") {
 		return (model, sessionData, env, updateSession) =>
-			(direct as Function).call(controller, model, sessionData, env, updateSession);
+			(direct as Function).call(
+				controller,
+				model,
+				sessionData,
+				env,
+				updateSession,
+			);
 	}
 	const fromDefault = (controller as Record<string, unknown>).default;
 	if (fromDefault && typeof fromDefault === "object") {
 		const nested = (fromDefault as Record<string, unknown>).model;
 		if (typeof nested === "function") {
 			return (model, sessionData, env, updateSession) =>
-				(nested as Function).call(fromDefault, model, sessionData, env, updateSession);
+				(nested as Function).call(
+					fromDefault,
+					model,
+					sessionData,
+					env,
+					updateSession,
+				);
 		}
 	}
 	return null;
@@ -87,6 +106,11 @@ const applyControllerToElement = async (
 	controller: unknown,
 	env: Env,
 	logPrefix: string,
+	onElementSessionUpdate?: (
+		elementId: string,
+		elementName: string,
+		properties: Record<string, unknown>,
+	) => void,
 ): Promise<void> => {
 	logger.debug(`${logPrefix} Using controller, env:`, env);
 	logger.debug(`${logPrefix} Model before filter:`, {
@@ -95,13 +119,19 @@ const applyControllerToElement = async (
 		hasCorrectResponse: "correctResponse" in model,
 	});
 
-	// Create updateSession callback for controller to save shuffle order
+	// Create updateSession callback for controller to save derived state (e.g.
+	// shuffle order). Mutate the in-flight element session so this render uses it,
+	// AND propagate the write to the authoritative session via the host callback
+	// so subsequent renders reuse it instead of regenerating it. The write-back is
+	// keyed by the canonical model id/element (the entry findOrAddSession resolved),
+	// which also tolerates controllers that pass an undefined id/element.
 	const updateSession = (id: string, _elementName: string, properties: any) => {
 		logger.debug(
 			`${logPrefix} updateSession called for ${id} with:`,
 			properties,
 		);
 		Object.assign(elementSession, properties);
+		onElementSessionUpdate?.(model.id, model.element, properties);
 		return Promise.resolve();
 	};
 
@@ -114,7 +144,12 @@ const applyControllerToElement = async (
 				)}`,
 			);
 		}
-		const controllerResult = await modelFunction(model, elementSession, env, updateSession);
+		const controllerResult = await modelFunction(
+			model,
+			elementSession,
+			env,
+			updateSession,
+		);
 
 		// Merge controller result with id and element (like server-side PieControllerExecutor does)
 		const controllerResultObject =
@@ -145,14 +180,25 @@ const applyControllerToElement = async (
 
 type ResolvedUpdateOptions = Pick<
 	UpdatePieElementOptions,
-	"config" | "session" | "env" | "eventListeners" | "invokeControllerForModel"
+	| "config"
+	| "session"
+	| "env"
+	| "eventListeners"
+	| "invokeControllerForModel"
+	| "onElementSessionUpdate"
 >;
 
 const resolveAndValidateUpdateOptions = (
 	opts: UpdatePieElementOptions,
 ): ResolvedUpdateOptions => {
-	const { config, session, env, eventListeners, invokeControllerForModel } =
-		mergeObjectsIgnoringNullUndefined(defaultPieElementOptions, opts);
+	const {
+		config,
+		session,
+		env,
+		eventListeners,
+		invokeControllerForModel,
+		onElementSessionUpdate,
+	} = mergeObjectsIgnoringNullUndefined(defaultPieElementOptions, opts);
 	if (!env) {
 		throw new Error("env is required");
 	}
@@ -162,17 +208,30 @@ const resolveAndValidateUpdateOptions = (
 	if (!config) {
 		throw new Error("config is required");
 	}
-	return { config, session, env, eventListeners, invokeControllerForModel };
+	return {
+		config,
+		session,
+		env,
+		eventListeners,
+		invokeControllerForModel,
+		onElementSessionUpdate,
+	};
 };
 
-const updateSinglePieElement = (
+const updateSinglePieElement = async (
 	pieElement: PieElement,
 	controllerLookupTag: string,
 	options: ResolvedUpdateOptions,
 	logContext: string,
-): void => {
-	const { config, session, env, eventListeners, invokeControllerForModel } =
-		options;
+): Promise<void> => {
+	const {
+		config,
+		session,
+		env,
+		eventListeners,
+		invokeControllerForModel,
+		onElementSessionUpdate,
+	} = options;
 	const model = config.models?.find((m) => m.id === pieElement.id) as
 		| PieModel
 		| undefined;
@@ -210,14 +269,21 @@ const updateSinglePieElement = (
 			},
 		);
 
-		applyControllerToElement(
-			pieElement,
-			model,
-			elementSession,
-			controller,
-			env,
-			`${logContext}(${controllerLookupTag}#${pieElement.id})`,
-		).catch((err) => {
+		// Await the controller so any updateSession write-back completes before the
+		// caller computes/emits the session signature; otherwise a late, async
+		// shuffle write lands after the cycle that read the session and the order
+		// never round-trips (PIE-631).
+		try {
+			await applyControllerToElement(
+				pieElement,
+				model,
+				elementSession,
+				controller,
+				env,
+				`${logContext}(${controllerLookupTag}#${pieElement.id})`,
+				onElementSessionUpdate,
+			);
+		} catch (err) {
 			const errorMessage = err instanceof Error ? err.message : String(err);
 			const isContractError = errorMessage.includes(
 				"Controller contract mismatch",
@@ -239,7 +305,7 @@ const updateSinglePieElement = (
 			// Fall back to raw model on controller error
 			pieElement.model = model;
 			pieElement.session = elementSession;
-		});
+		}
 	} else {
 		logger.debug(
 			`${logContext} Direct model assignment for ${controllerLookupTag}#${pieElement.id} (no controller invocation requested)`,
@@ -255,11 +321,11 @@ const updateSinglePieElement = (
 export const updatePieElementWithRef = (
 	el: Element,
 	opts: UpdatePieElementOptions,
-): void => {
+): Promise<void> => {
 	const options = resolveAndValidateUpdateOptions(opts);
 	const pieElement = el as PieElement;
 	const elName = pieElement.tagName.toLowerCase();
-	updateSinglePieElement(
+	return updateSinglePieElement(
 		pieElement,
 		elName,
 		options,
@@ -273,7 +339,7 @@ export const updatePieElementWithRef = (
 export const updatePieElement = (
 	elName: string,
 	opts: UpdatePieElementOptions,
-): void => {
+): Promise<void> => {
 	const options = resolveAndValidateUpdateOptions(opts);
 	const { container } = mergeObjectsIgnoringNullUndefined(
 		defaultPieElementOptions,
@@ -284,12 +350,18 @@ export const updatePieElement = (
 	const pieElements = searchRoot.querySelectorAll(elName);
 	if (!pieElements || pieElements.length === 0) {
 		logger.debug(`no elements found for ${elName}`);
-		return;
+		return Promise.resolve();
 	}
-	pieElements.forEach((el) => {
-		const pieElement = el as PieElement;
-		updateSinglePieElement(pieElement, elName, options, "[updatePieElement]");
-	});
+	return Promise.all(
+		Array.from(pieElements, (el) =>
+			updateSinglePieElement(
+				el as PieElement,
+				elName,
+				options,
+				"[updatePieElement]",
+			),
+		),
+	).then(() => undefined);
 };
 
 /**
@@ -300,9 +372,18 @@ export const updatePieElements = (
 	session: any[],
 	env: Env,
 	container?: Element | Document,
-): void => {
+	onElementSessionUpdate?: UpdatePieElementOptions["onElementSessionUpdate"],
+): Promise<void> => {
 	logger.debug("[updatePieElements] Updating all elements with env:", env);
-	Object.entries(config.elements).forEach(([elName, _pkg]) => {
-		updatePieElement(elName, { config, session, env, container });
-	});
+	return Promise.all(
+		Object.entries(config.elements).map(([elName, _pkg]) =>
+			updatePieElement(elName, {
+				config,
+				session,
+				env,
+				container,
+				onElementSessionUpdate,
+			}),
+		),
+	).then(() => undefined);
 };

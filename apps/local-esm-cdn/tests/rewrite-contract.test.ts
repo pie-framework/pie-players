@@ -15,9 +15,28 @@ describe("local-esm-cdn import rewriting contract", () => {
 			esmShBaseUrl: "https://esm.sh",
 		});
 
-		expect(rewritten).toContain('from "https://esm.sh/react"');
+		expect(rewritten).toContain('from "https://esm.sh/react@18.2.0"');
 		expect(rewritten).toContain('from "/@pie-lib/render-ui"');
 		expect(rewritten).toContain('from "/@pie-element/hotspot"');
+	});
+
+	it("pins React shared dependency subpaths to the player-owned browser versions", async () => {
+		const source = `
+      import ReactDom from "react-dom";
+      import { createRoot } from "react-dom/client";
+      import { jsx } from "react/jsx-runtime";
+    `;
+		const rewritten = await rewriteImports(source, {
+			esmShBaseUrl: "https://esm.sh",
+		});
+
+		expect(rewritten).toContain('from "https://esm.sh/react-dom@18.2.0"');
+		expect(rewritten).toContain(
+			'from "https://esm.sh/react-dom@18.2.0/client"',
+		);
+		expect(rewritten).toContain(
+			'from "https://esm.sh/react@18.2.0/jsx-runtime"',
+		);
 	});
 
 	it("rewrites relative imports to package absolute imports", async () => {
@@ -68,7 +87,7 @@ describe("local-esm-cdn import rewriting contract", () => {
 			subpath: "index.js",
 		});
 
-		expect(rewritten).toContain('import("https://esm.sh/react")');
+		expect(rewritten).toContain('import("https://esm.sh/react@18.2.0")');
 		expect(rewritten).toContain("import(dynamicSpecifier)");
 		expect(rewritten).toContain('import("/@pie-lib/render-ui/chunk.js")');
 	});

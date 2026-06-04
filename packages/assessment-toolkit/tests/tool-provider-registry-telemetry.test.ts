@@ -1,14 +1,14 @@
 import { describe, expect, test } from "bun:test";
-import {
-	ToolProviderRegistry,
-} from "../src/services/tool-providers/ToolProviderRegistry.js";
+import { ToolProviderRegistry } from "../src/services/tool-providers/ToolProviderRegistry.js";
 import type {
 	ToolCategory,
 	ToolProviderApi,
 	ToolProviderCapabilities,
 } from "../src/services/tool-providers/ToolProviderApi.js";
 
-class FakeProvider implements ToolProviderApi<Record<string, unknown>, unknown> {
+class FakeProvider
+	implements ToolProviderApi<Record<string, unknown>, unknown>
+{
 	readonly providerId = "fake-provider";
 	readonly providerName = "Fake Provider";
 	readonly category: ToolCategory = "tts";
@@ -54,7 +54,8 @@ class FakeProvider implements ToolProviderApi<Record<string, unknown>, unknown> 
 describe("ToolProviderRegistry telemetry", () => {
 	test("emits auth and init telemetry for successful provider initialization", async () => {
 		const registry = new ToolProviderRegistry();
-		const events: Array<{ name: string; payload?: Record<string, unknown> }> = [];
+		const events: Array<{ name: string; payload?: Record<string, unknown> }> =
+			[];
 
 		registry.register("tts-provider", {
 			provider: new FakeProvider({ requiresAuth: true }),
@@ -79,7 +80,8 @@ describe("ToolProviderRegistry telemetry", () => {
 
 	test("emits backend-call-error when auth fetch fails", async () => {
 		const registry = new ToolProviderRegistry();
-		const events: Array<{ name: string; payload?: Record<string, unknown> }> = [];
+		const events: Array<{ name: string; payload?: Record<string, unknown> }> =
+			[];
 
 		registry.register("calc-provider", {
 			provider: new FakeProvider({ requiresAuth: true }),
@@ -100,7 +102,8 @@ describe("ToolProviderRegistry telemetry", () => {
 
 	test("emits init-error when provider initialize fails", async () => {
 		const registry = new ToolProviderRegistry();
-		const events: Array<{ name: string; payload?: Record<string, unknown> }> = [];
+		const events: Array<{ name: string; payload?: Record<string, unknown> }> =
+			[];
 
 		registry.register("broken-provider", {
 			provider: new FakeProvider({ shouldFailInit: true }),

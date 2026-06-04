@@ -98,7 +98,8 @@ The demo route collects those package specs, builds one preloaded bundle URL, lo
 				baseId: "preloaded-fixed-categorize",
 				version: { major: 1, minor: 0, patch: 0 },
 				config: {
-					markup: '<categorize-element id="preloaded-categorize"></categorize-element>',
+					markup:
+						'<categorize-element id="preloaded-categorize"></categorize-element>',
 					elements: {
 						"categorize-element": "@pie-element/categorize@11.3.2",
 					},
@@ -129,13 +130,15 @@ The demo route collects those package specs, builds one preloaded bundle URL, lo
 							choices: [
 								{
 									id: "collect-packages",
-									content: "Collects package specs and injects the preloaded bundle",
+									content:
+										"Collects package specs and injects the preloaded bundle",
 									categoryCount: 1,
 									correctResponseCount: 1,
 								},
 								{
 									id: "pin-versions",
-									content: "Pins exact PIE element versions in <code>config.elements</code>",
+									content:
+										"Pins exact PIE element versions in <code>config.elements</code>",
 									categoryCount: 1,
 									correctResponseCount: 1,
 								},

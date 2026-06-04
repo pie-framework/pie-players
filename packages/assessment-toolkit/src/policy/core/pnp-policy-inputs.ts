@@ -57,10 +57,7 @@ export function assessmentHasPnpPolicyInputs(
 		) {
 			return true;
 		}
-		if (
-			Array.isArray(pnp.activateAtInit) &&
-			pnp.activateAtInit.length > 0
-		) {
+		if (Array.isArray(pnp.activateAtInit) && pnp.activateAtInit.length > 0) {
 			return true;
 		}
 	}

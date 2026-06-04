@@ -101,8 +101,11 @@ support targets default bundler entrypoints under `dist`.
 
 These are set via JavaScript, not HTML attributes.
 
-- `loaderOptions`: `{ bundleHost?: string, esmCdnUrl?: string, view?: string, loadControllers?: boolean }`.
-  Strategy-specific loader options.
+- `loaderOptions`: `{ bundleHost?: string, esmCdnUrl?: string, esmCdnProvider?: string | object, moduleResolution?: "url" | "import-map", view?: string, loadControllers?: boolean, runtimeSupportCheck?: "off" | "on" }`.
+  Strategy-specific loader options. For ESM, the default provider is jsDelivr
+  (`https://cdn.jsdelivr.net/npm`); use `esmCdnProvider: "esm.sh"` with
+  `esmCdnUrl: "https://esm.sh"` for esm.sh, or pass a provider object when
+  package artifacts and shared dependencies use custom routes.
 - `sanitizeMarkup`: `(markup: string) => string`. Replace the built-in
   DOMPurify sanitizer with a host-supplied function. Ignored when
   `trust-markup` is set.
@@ -177,6 +180,26 @@ el.backend = {
 
 For a runnable local backend demo, see
 [`docs/item-player/backend-support.md`](../../docs/item-player/backend-support.md).
+
+## PIE Element Packaging Contract
+
+The canonical producer-side contract for `@pie-element/*` packages lives in
+[`../pie-elements-ng/docs/PIE_ELEMENT_CONTRACT.md`](../../../pie-elements-ng/docs/PIE_ELEMENT_CONTRACT.md).
+`<pie-item-player strategy="esm">` assumes that contract is satisfied:
+
+- Element packages publish static browser ESM files such as
+  `dist/browser/delivery/index.js`, `dist/browser/author/index.js`, and
+  `dist/browser/controller/index.js`. The player imports those files directly;
+  it does not transform element package entrypoints through CDN `+esm` routes.
+- React-backed browser ESM packages declare exact shared browser singleton
+  versions in `package.json` under `pie.browserSharedDependencies`; dependency
+  and peer-dependency ranges are not used as fallback runtime contracts.
+- `./runtime-support` metadata is optional for ESM-capable packages unless they
+  need to disable a runtime strategy or view. Set
+  `loaderOptions.runtimeSupportCheck = "on"` when you want the player to read
+  those hints before loading.
+- `strategy="preloaded"` is not a separate package shape. It means the host has
+  already registered the versioned custom element tag before the player renders.
 
 ## Authoring configuration
 

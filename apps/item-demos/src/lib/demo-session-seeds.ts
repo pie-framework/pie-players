@@ -8,7 +8,9 @@ const seeds: Record<string, unknown> = {
 	// Add entries here only if iife delivery smoke fails without a seed.
 };
 
-export function getDemoSessionSeed(demoId: string | undefined): unknown | undefined {
+export function getDemoSessionSeed(
+	demoId: string | undefined,
+): unknown | undefined {
 	if (!demoId) return undefined;
 	return seeds[demoId];
 }

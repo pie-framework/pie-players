@@ -308,8 +308,12 @@ describe("tts-runtime-config defaults", () => {
 
 describe("normalizeTTSSpeedOptions", () => {
 	test("defaults when omitted or non-array", () => {
-		expect(normalizeTTSSpeedOptions(undefined)).toEqual([...DEFAULT_TTS_SPEED_OPTIONS]);
-		expect(normalizeTTSSpeedOptions("nope")).toEqual([...DEFAULT_TTS_SPEED_OPTIONS]);
+		expect(normalizeTTSSpeedOptions(undefined)).toEqual([
+			...DEFAULT_TTS_SPEED_OPTIONS,
+		]);
+		expect(normalizeTTSSpeedOptions("nope")).toEqual([
+			...DEFAULT_TTS_SPEED_OPTIONS,
+		]);
 	});
 
 	test("returns empty array for explicit empty input", () => {
@@ -317,11 +321,15 @@ describe("normalizeTTSSpeedOptions", () => {
 	});
 
 	test("dedupes and excludes 1.0, preserving order", () => {
-		expect(normalizeTTSSpeedOptions([2, 1, 1.5, 2, 0.8])).toEqual([2, 1.5, 0.8]);
+		expect(normalizeTTSSpeedOptions([2, 1, 1.5, 2, 0.8])).toEqual([
+			2, 1.5, 0.8,
+		]);
 	});
 
 	test("falls back to defaults when only invalid or 1.0 remain", () => {
-		expect(normalizeTTSSpeedOptions([1, "x", -1])).toEqual([...DEFAULT_TTS_SPEED_OPTIONS]);
+		expect(normalizeTTSSpeedOptions([1, "x", -1])).toEqual([
+			...DEFAULT_TTS_SPEED_OPTIONS,
+		]);
 	});
 });
 
@@ -336,8 +344,12 @@ describe("parseTTSSpeedOptionsFromText / formatTTSSpeedOptionsAsText", () => {
 	});
 
 	test("non-empty text with no parseable numbers falls back to defaults", () => {
-		expect(parseTTSSpeedOptionsFromText("foo, bar")).toEqual([...DEFAULT_TTS_SPEED_OPTIONS]);
-		expect(parseTTSSpeedOptionsFromText(",")).toEqual([...DEFAULT_TTS_SPEED_OPTIONS]);
+		expect(parseTTSSpeedOptionsFromText("foo, bar")).toEqual([
+			...DEFAULT_TTS_SPEED_OPTIONS,
+		]);
+		expect(parseTTSSpeedOptionsFromText(",")).toEqual([
+			...DEFAULT_TTS_SPEED_OPTIONS,
+		]);
 	});
 
 	test("formats round-trip", () => {

@@ -2,7 +2,11 @@ import { expect, test, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
 const DEMO_PATH = "/tts-ssml?mode=candidate&layout=splitpane";
-const KNOWN_A11Y_BASELINE_DEBT = new Set(["aria-allowed-attr", "aria-roles", "tabindex"]);
+const KNOWN_A11Y_BASELINE_DEBT = new Set([
+	"aria-allowed-attr",
+	"aria-roles",
+	"tabindex",
+]);
 // Keep playback windows short to avoid reading long passages in CI.
 const TTS_PREVIEW_MS = 250;
 
@@ -59,7 +63,9 @@ async function readSessionSnapshot(
 			async () => {
 				const text = (await snapshotPre.textContent()) || "";
 				try {
-					snapshot = JSON.parse(text) as { itemSessions?: Record<string, unknown> };
+					snapshot = JSON.parse(text) as {
+						itemSessions?: Record<string, unknown>;
+					};
 					return true;
 				} catch {
 					snapshot = null;
@@ -76,18 +82,20 @@ async function readSessionSnapshot(
 }
 
 async function forceBrowserTtsRuntime(page: Page): Promise<void> {
-	await page.locator("pie-section-player-tools-session-debugger").evaluate(async (element) => {
-		const coordinator = (element as any).toolkitCoordinator;
-		if (!coordinator?.updateToolConfig) return;
-		coordinator.updateToolConfig("textToSpeech", {
-			enabled: true,
-			backend: "browser",
-			transportMode: "pie",
+	await page
+		.locator("pie-section-player-tools-session-debugger")
+		.evaluate(async (element) => {
+			const coordinator = (element as any).toolkitCoordinator;
+			if (!coordinator?.updateToolConfig) return;
+			coordinator.updateToolConfig("textToSpeech", {
+				enabled: true,
+				backend: "browser",
+				transportMode: "pie",
+			});
+			await coordinator?.ensureTTSReady?.(
+				coordinator?.getToolConfig?.("textToSpeech"),
+			);
 		});
-		await coordinator?.ensureTTSReady?.(
-			coordinator?.getToolConfig?.("textToSpeech"),
-		);
-	});
 }
 
 async function requestTtsControlHandoff(page: Page): Promise<boolean> {
@@ -119,7 +127,9 @@ async function suppressAudibleBrowserTts(page: Page): Promise<void> {
 			speaking = false;
 			paused = false;
 		};
-		const dispatchSafe = (callback: ((event: SpeechSynthesisEvent) => void) | null | undefined) => {
+		const dispatchSafe = (
+			callback: ((event: SpeechSynthesisEvent) => void) | null | undefined,
+		) => {
 			if (!callback) return;
 			callback(new Event("speech") as SpeechSynthesisEvent);
 		};
@@ -190,25 +200,30 @@ async function mockPollyVoicesAvailability(page: Page): Promise<void> {
 }
 
 async function selectPassageText(page: Page): Promise<void> {
-	await page.locator("pie-passage-shell [data-region='content'] p").first().evaluate((node) => {
-		const textNode = node.firstChild;
-		if (!textNode || textNode.nodeType !== Node.TEXT_NODE) {
-			throw new Error("Passage paragraph is missing direct text node for selection.");
-		}
-		const text = textNode.textContent || "";
-		const start = Math.min(5, Math.max(0, text.length - 2));
-		const end = Math.min(start + 40, text.length);
-		const selection = window.getSelection();
-		if (!selection) {
-			throw new Error("Selection API unavailable.");
-		}
-		const range = document.createRange();
-		range.setStart(textNode, start);
-		range.setEnd(textNode, end);
-		selection.removeAllRanges();
-		selection.addRange(range);
-		document.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
-	});
+	await page
+		.locator("pie-passage-shell [data-region='content'] p")
+		.first()
+		.evaluate((node) => {
+			const textNode = node.firstChild;
+			if (!textNode || textNode.nodeType !== Node.TEXT_NODE) {
+				throw new Error(
+					"Passage paragraph is missing direct text node for selection.",
+				);
+			}
+			const text = textNode.textContent || "";
+			const start = Math.min(5, Math.max(0, text.length - 2));
+			const end = Math.min(start + 40, text.length);
+			const selection = window.getSelection();
+			if (!selection) {
+				throw new Error("Selection API unavailable.");
+			}
+			const range = document.createRange();
+			range.setStart(textNode, start);
+			range.setEnd(textNode, end);
+			selection.removeAllRanges();
+			selection.addRange(range);
+			document.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+		});
 }
 
 test.describe("section player demo tts-ssml", () => {
@@ -219,7 +234,11 @@ test.describe("section player demo tts-ssml", () => {
 		await forceBrowserTtsRuntime(page);
 
 		const modes: Array<{
-			mode: "reserved-row" | "expanding-row" | "floating-overlay" | "left-aligned";
+			mode:
+				| "reserved-row"
+				| "expanding-row"
+				| "floating-overlay"
+				| "left-aligned";
 			expectReserveBeforePlay: boolean;
 			expectActiveExpandOnPlay: boolean;
 			expectPanelPositionOnPlay: "absolute" | "static";
@@ -265,7 +284,9 @@ test.describe("section player demo tts-ssml", () => {
 							root.querySelectorAll("pie-item-toolbar"),
 						) as HTMLElement[];
 						collected.push(...localToolbars);
-						const allElements = Array.from(root.querySelectorAll("*")) as HTMLElement[];
+						const allElements = Array.from(
+							root.querySelectorAll("*"),
+						) as HTMLElement[];
 						for (const element of allElements) {
 							if (element.shadowRoot) visitNode(element.shadowRoot);
 						}
@@ -306,47 +327,57 @@ test.describe("section player demo tts-ssml", () => {
 				return {
 					found: true,
 					reserveClass:
-						controlsRow?.classList.contains("item-toolbar__controls-row--reserve") ===
-						true,
+						controlsRow?.classList.contains(
+							"item-toolbar__controls-row--reserve",
+						) === true,
 					activeClass:
-						controlsRow?.classList.contains("item-toolbar__controls-row--active") ===
-						true,
+						controlsRow?.classList.contains(
+							"item-toolbar__controls-row--active",
+						) === true,
 					panelPosition: panel ? window.getComputedStyle(panel).position : null,
 					containerDirection: container
 						? window.getComputedStyle(container).flexDirection
 						: null,
-					panelBeforeTrigger:
-						(() => {
-							if (!panel || !container) return null;
-							const trigger = container.querySelector(
-								".pie-tool-tts-inline__trigger",
-							) as HTMLElement | null;
-							if (!trigger) return null;
-							return Boolean(
-								panel.compareDocumentPosition(trigger) &
-									Node.DOCUMENT_POSITION_FOLLOWING,
-							);
-						})(),
+					panelBeforeTrigger: (() => {
+						if (!panel || !container) return null;
+						const trigger = container.querySelector(
+							".pie-tool-tts-inline__trigger",
+						) as HTMLElement | null;
+						if (!trigger) return null;
+						return Boolean(
+							panel.compareDocumentPosition(trigger) &
+								Node.DOCUMENT_POSITION_FOLLOWING,
+						);
+					})(),
 					panelLeftOfTrigger: (() => {
 						if (!panel || !container) return null;
 						const trigger = container.querySelector(
 							".pie-tool-tts-inline__trigger",
 						) as HTMLElement | null;
 						if (!trigger) return null;
-						return panel.getBoundingClientRect().left < trigger.getBoundingClientRect().left;
+						return (
+							panel.getBoundingClientRect().left <
+							trigger.getBoundingClientRect().left
+						);
 					})(),
 				};
 			});
 
 		const firstInlineTts = page
-			.locator('pie-item-shell[data-pie-shell-root="item"] pie-tool-tts-inline:visible')
+			.locator(
+				'pie-item-shell[data-pie-shell-root="item"] pie-tool-tts-inline:visible',
+			)
 			.first();
 		await expect(firstInlineTts).toBeVisible();
 
 		for (const layout of modes) {
-			await page.getByRole("button", { name: "Toggle TTS settings panel" }).click();
+			await page
+				.getByRole("button", { name: "Toggle TTS settings panel" })
+				.click();
 			const ttsDialog = page.locator(".pie-tts-dialog");
-			await expect(ttsDialog.getByRole("heading", { name: "TTS settings" })).toBeVisible();
+			await expect(
+				ttsDialog.getByRole("heading", { name: "TTS settings" }),
+			).toBeVisible();
 			await ttsDialog.locator("#tts-layout-mode").selectOption(layout.mode);
 			await ttsDialog.getByRole("button", { name: "Apply" }).click();
 			await expect(ttsDialog).toHaveCount(0);
@@ -357,7 +388,9 @@ test.describe("section player demo tts-ssml", () => {
 						.locator("pie-section-player-tools-session-debugger")
 						.evaluate((element) => {
 							const coordinator = (element as any).toolkitCoordinator;
-							return coordinator?.getToolConfig?.("textToSpeech")?.layoutMode || null;
+							return (
+								coordinator?.getToolConfig?.("textToSpeech")?.layoutMode || null
+							);
 						});
 				})
 				.toBe(layout.mode);
@@ -367,21 +400,31 @@ test.describe("section player demo tts-ssml", () => {
 			expect(beforePlay.reserveClass).toBe(layout.expectReserveBeforePlay);
 			expect(beforePlay.activeClass).toBe(false);
 
-			await firstInlineTts.getByRole("button", { name: "Play reading" }).click();
-			const panel = firstInlineTts.locator('[role="toolbar"][aria-label="Reading controls"]');
+			await firstInlineTts
+				.getByRole("button", { name: "Play reading" })
+				.click();
+			const panel = firstInlineTts.locator(
+				'[role="toolbar"][aria-label="Reading controls"]',
+			);
 			await expect(panel).toBeVisible();
 
 			const whilePlaying = await readItemToolbarSnapshot();
 			expect(whilePlaying.panelPosition).toBe(layout.expectPanelPositionOnPlay);
 			expect(whilePlaying.activeClass).toBe(layout.expectActiveExpandOnPlay);
 			if (layout.expectPanelBeforeTriggerOnPlay !== undefined) {
-				expect(whilePlaying.panelBeforeTrigger).toBe(layout.expectPanelBeforeTriggerOnPlay);
+				expect(whilePlaying.panelBeforeTrigger).toBe(
+					layout.expectPanelBeforeTriggerOnPlay,
+				);
 			}
 			if (layout.expectPanelLeftOfTriggerOnPlay !== undefined) {
-				expect(whilePlaying.panelLeftOfTrigger).toBe(layout.expectPanelLeftOfTriggerOnPlay);
+				expect(whilePlaying.panelLeftOfTrigger).toBe(
+					layout.expectPanelLeftOfTriggerOnPlay,
+				);
 			}
 			if (layout.expectContainerDirectionOnPlay) {
-				expect(whilePlaying.containerDirection).toBe(layout.expectContainerDirectionOnPlay);
+				expect(whilePlaying.containerDirection).toBe(
+					layout.expectContainerDirectionOnPlay,
+				);
 			}
 			const triggerA11y = await firstInlineTts.evaluate((host) => {
 				const root = host.shadowRoot;
@@ -404,7 +447,9 @@ test.describe("section player demo tts-ssml", () => {
 			const rewindButton = panel.getByRole("button", { name: "Rewind" });
 			await rewindButton.focus();
 			await page.keyboard.press("ArrowRight");
-			await expect(panel.getByRole("button", { name: "Fast-forward" })).toBeFocused();
+			await expect(
+				panel.getByRole("button", { name: "Fast-forward" }),
+			).toBeFocused();
 
 			await panel.getByRole("button", { name: "Stop reading" }).click();
 			await expect(panel).toHaveCount(0);
@@ -430,12 +475,16 @@ test.describe("section player demo tts-ssml", () => {
 		});
 		await ttsSettingsToggle.click();
 		const ttsDialog = page.locator(".pie-tts-dialog");
-		await expect(ttsDialog.getByRole("heading", { name: "TTS settings" })).toBeVisible();
+		await expect(
+			ttsDialog.getByRole("heading", { name: "TTS settings" }),
+		).toBeVisible();
 
 		const layoutModeSelect = ttsDialog.locator("#tts-layout-mode");
 		await expect(layoutModeSelect).toBeVisible();
 		await layoutModeSelect.selectOption("expanding-row");
-		await expect(ttsDialog.getByText("Item header row reservation: Disabled")).toBeVisible();
+		await expect(
+			ttsDialog.getByText("Item header row reservation: Disabled"),
+		).toBeVisible();
 		await ttsDialog.getByRole("button", { name: "Apply" }).click();
 		await expect(ttsDialog).toHaveCount(0);
 
@@ -447,7 +496,9 @@ test.describe("section player demo tts-ssml", () => {
 						root.querySelectorAll("pie-item-toolbar"),
 					) as HTMLElement[];
 					collected.push(...localToolbars);
-					const allElements = Array.from(root.querySelectorAll("*")) as HTMLElement[];
+					const allElements = Array.from(
+						root.querySelectorAll("*"),
+					) as HTMLElement[];
 					for (const element of allElements) {
 						if (element.shadowRoot) {
 							visitNode(element.shadowRoot);
@@ -462,13 +513,21 @@ test.describe("section player demo tts-ssml", () => {
 				toolbar.shadowRoot
 					?.querySelector(".item-toolbar")
 					?.getAttribute("data-level") || null;
-			const itemToolbars = toolbars.filter((toolbar) => resolveLevel(toolbar) === "item");
+			const itemToolbars = toolbars.filter(
+				(toolbar) => resolveLevel(toolbar) === "item",
+			);
 			const passageToolbars = toolbars.filter(
 				(toolbar) => resolveLevel(toolbar) === "passage",
 			);
 			const hasReservedControlsRow = (toolbar: HTMLElement): boolean => {
-				const controlsRow = toolbar.shadowRoot?.querySelector(".item-toolbar__controls-row");
-				return controlsRow?.classList.contains("item-toolbar__controls-row--reserve") === true;
+				const controlsRow = toolbar.shadowRoot?.querySelector(
+					".item-toolbar__controls-row",
+				);
+				return (
+					controlsRow?.classList.contains(
+						"item-toolbar__controls-row--reserve",
+					) === true
+				);
 			};
 			return {
 				itemToolbarCount: itemToolbars.length,
@@ -480,13 +539,17 @@ test.describe("section player demo tts-ssml", () => {
 
 		expect(reservationState.itemToolbarCount).toBeGreaterThan(0);
 		expect(reservationState.passageToolbarCount).toBeGreaterThan(0);
-		expect(reservationState.itemReservedFlags.every((flag) => flag === false)).toBe(true);
-		expect(reservationState.passageReservedFlags.every((flag) => flag === false)).toBe(
-			true,
-		);
+		expect(
+			reservationState.itemReservedFlags.every((flag) => flag === false),
+		).toBe(true);
+		expect(
+			reservationState.passageReservedFlags.every((flag) => flag === false),
+		).toBe(true);
 	});
 
-	test("covers passage, interactions, mode switching, and tools", async ({ page }) => {
+	test("covers passage, interactions, mode switching, and tools", async ({
+		page,
+	}) => {
 		test.setTimeout(180_000);
 		await suppressAudibleBrowserTts(page);
 		await mockPollyVoicesAvailability(page);
@@ -495,7 +558,9 @@ test.describe("section player demo tts-ssml", () => {
 
 		const passageRegion = page.getByRole("complementary", { name: "Passages" });
 		const itemsRegion = page.getByRole("main", { name: "Items" });
-		const itemShells = page.locator('pie-item-shell[data-pie-shell-root="item"]');
+		const itemShells = page.locator(
+			'pie-item-shell[data-pie-shell-root="item"]',
+		);
 		const q1 = itemShells.nth(0);
 		const q2 = itemShells.nth(1);
 
@@ -533,13 +598,17 @@ test.describe("section player demo tts-ssml", () => {
 
 		// Session panel reflects interactions.
 		const snapshotCandidate = await readSessionSnapshot(sessionPanel);
-		expect(Object.keys(snapshotCandidate.itemSessions || {}).length).toBeGreaterThanOrEqual(1);
+		expect(
+			Object.keys(snapshotCandidate.itemSessions || {}).length,
+		).toBeGreaterThanOrEqual(1);
 
 		// Keep core interaction checks independent from external provider credentials.
 		await forceBrowserTtsRuntime(page);
 
 		// TTS controls exist for passage and items (toolbar button or inline controls bar).
-		const passageInlineTts = passageRegion.locator("pie-tool-tts-inline:visible");
+		const passageInlineTts = passageRegion.locator(
+			"pie-tool-tts-inline:visible",
+		);
 		const itemInlineTts = q1.locator("pie-tool-tts-inline:visible");
 		const hasInlineTts = (await passageInlineTts.count()) > 0;
 		if (hasInlineTts) {
@@ -551,53 +620,71 @@ test.describe("section player demo tts-ssml", () => {
 			await expect(itemCalculatorButton).toBeVisible();
 			const itemPromptAnchor = q1.getByRole("radio").first();
 			await expect(itemPromptAnchor).toBeVisible();
-			const calcTopBefore = await itemCalculatorButton.evaluate((element) =>
-				element.getBoundingClientRect().top,
+			const calcTopBefore = await itemCalculatorButton.evaluate(
+				(element) => element.getBoundingClientRect().top,
 			);
-			const promptTopBefore = await itemPromptAnchor.evaluate((element) =>
-				element.getBoundingClientRect().top,
+			const promptTopBefore = await itemPromptAnchor.evaluate(
+				(element) => element.getBoundingClientRect().top,
 			);
 
 			// Inline bar flow: play shows controls, pause/resume keeps controls, stop hides controls.
-			const passageTrigger = passageInlineTts.getByRole("button", { name: "Play reading" }).first();
+			const passageTrigger = passageInlineTts
+				.getByRole("button", { name: "Play reading" })
+				.first();
 			await passageTrigger.click();
 			const passagePanel = passageInlineTts.locator(
 				'[role="toolbar"][aria-label="Reading controls"]',
 			);
 			await expect(passagePanel).toBeVisible();
-			const passageSpeedSlow = passagePanel.getByRole("button", { name: "Speed 0.8x" });
-			const passageSpeedFast = passagePanel.getByRole("button", { name: "Speed 1.25x" });
+			const passageSpeedSlow = passagePanel.getByRole("button", {
+				name: "Speed 0.8x",
+			});
+			const passageSpeedFast = passagePanel.getByRole("button", {
+				name: "Speed 1.25x",
+			});
 			await expect(passageSpeedSlow).toHaveAttribute("aria-pressed", "false");
 			await expect(passageSpeedFast).toHaveAttribute("aria-pressed", "false");
-			await passageSpeedSlow.evaluate((element) => (element as HTMLButtonElement).click());
+			await passageSpeedSlow.evaluate((element) =>
+				(element as HTMLButtonElement).click(),
+			);
 			await expect(passageSpeedSlow).toHaveAttribute("aria-pressed", "true");
 			await expect(passageSpeedFast).toHaveAttribute("aria-pressed", "false");
-			const calcTopWhileVisible = await itemCalculatorButton.evaluate((element) =>
-				element.getBoundingClientRect().top,
+			const calcTopWhileVisible = await itemCalculatorButton.evaluate(
+				(element) => element.getBoundingClientRect().top,
 			);
-			const promptTopWhileVisible = await itemPromptAnchor.evaluate((element) =>
-				element.getBoundingClientRect().top,
+			const promptTopWhileVisible = await itemPromptAnchor.evaluate(
+				(element) => element.getBoundingClientRect().top,
 			);
-			expect(Math.abs(calcTopWhileVisible - calcTopBefore)).toBeLessThanOrEqual(2);
-			expect(Math.abs(promptTopWhileVisible - promptTopBefore)).toBeLessThanOrEqual(2);
-			await passageSpeedFast.evaluate((element) => (element as HTMLButtonElement).click());
+			expect(Math.abs(calcTopWhileVisible - calcTopBefore)).toBeLessThanOrEqual(
+				2,
+			);
+			expect(
+				Math.abs(promptTopWhileVisible - promptTopBefore),
+			).toBeLessThanOrEqual(2);
+			await passageSpeedFast.evaluate((element) =>
+				(element as HTMLButtonElement).click(),
+			);
 			await expect(passageSpeedSlow).toHaveAttribute("aria-pressed", "false");
 			await expect(passageSpeedFast).toHaveAttribute("aria-pressed", "true");
-			await passageSpeedFast.evaluate((element) => (element as HTMLButtonElement).click());
+			await passageSpeedFast.evaluate((element) =>
+				(element as HTMLButtonElement).click(),
+			);
 			await expect(passageSpeedSlow).toHaveAttribute("aria-pressed", "false");
 			await expect(passageSpeedFast).toHaveAttribute("aria-pressed", "false");
 			await page.waitForTimeout(TTS_PREVIEW_MS);
 			await expect(passagePanel).toBeVisible();
 			await passagePanel.getByRole("button", { name: "Stop reading" }).click();
 			await expect(passagePanel).toHaveCount(0);
-			const calcTopAfterStop = await itemCalculatorButton.evaluate((element) =>
-				element.getBoundingClientRect().top,
+			const calcTopAfterStop = await itemCalculatorButton.evaluate(
+				(element) => element.getBoundingClientRect().top,
 			);
-			const promptTopAfterStop = await itemPromptAnchor.evaluate((element) =>
-				element.getBoundingClientRect().top,
+			const promptTopAfterStop = await itemPromptAnchor.evaluate(
+				(element) => element.getBoundingClientRect().top,
 			);
 			expect(Math.abs(calcTopAfterStop - calcTopBefore)).toBeLessThanOrEqual(2);
-			expect(Math.abs(promptTopAfterStop - promptTopBefore)).toBeLessThanOrEqual(2);
+			expect(
+				Math.abs(promptTopAfterStop - promptTopBefore),
+			).toBeLessThanOrEqual(2);
 
 			// Host-triggered handoff: collapse/deactivate active controls without toggling stop semantics.
 			await passageTrigger.click();
@@ -615,21 +702,29 @@ test.describe("section player demo tts-ssml", () => {
 						});
 				})
 				.toMatch(/playing|paused|loading/);
-			const expandedAfterProgrammaticHandoff = await passageInlineTts.evaluate((host) => {
-				const trigger = host.shadowRoot?.querySelector(
-					".pie-tool-tts-inline__trigger",
-				) as HTMLButtonElement | null;
-				return trigger?.getAttribute("aria-expanded") || null;
-			});
+			const expandedAfterProgrammaticHandoff = await passageInlineTts.evaluate(
+				(host) => {
+					const trigger = host.shadowRoot?.querySelector(
+						".pie-tool-tts-inline__trigger",
+					) as HTMLButtonElement | null;
+					return trigger?.getAttribute("aria-expanded") || null;
+				},
+			);
 			expect(expandedAfterProgrammaticHandoff).toBe("false");
-			await page.locator("pie-section-player-tools-session-debugger").evaluate((element) => {
-				const coordinator = (element as any).toolkitCoordinator;
-				coordinator?.ttsService?.stop?.();
-			});
+			await page
+				.locator("pie-section-player-tools-session-debugger")
+				.evaluate((element) => {
+					const coordinator = (element as any).toolkitCoordinator;
+					coordinator?.ttsService?.stop?.();
+				});
 
 			// Cross-instance inline flow: switching to another TTS trigger should close the current one first.
-			const itemTrigger = itemInlineTts.getByRole("button", { name: "Play reading" }).first();
-			const itemPanel = itemInlineTts.locator('[role="toolbar"][aria-label="Reading controls"]');
+			const itemTrigger = itemInlineTts
+				.getByRole("button", { name: "Play reading" })
+				.first();
+			const itemPanel = itemInlineTts.locator(
+				'[role="toolbar"][aria-label="Reading controls"]',
+			);
 			await passageTrigger.click();
 			await expect(passagePanel).toBeVisible();
 			await page.waitForTimeout(TTS_PREVIEW_MS);
@@ -639,8 +734,12 @@ test.describe("section player demo tts-ssml", () => {
 
 			// Paused-owner handoff: paused session should also be closed before switching.
 			await page.waitForTimeout(TTS_PREVIEW_MS);
-			const itemPauseButton = itemInlineTts.getByRole("button", { name: "Pause reading" });
-			const itemResumeButton = itemInlineTts.getByRole("button", { name: "Resume reading" });
+			const itemPauseButton = itemInlineTts.getByRole("button", {
+				name: "Pause reading",
+			});
+			const itemResumeButton = itemInlineTts.getByRole("button", {
+				name: "Resume reading",
+			});
 			const hasPauseOrResumeControl = await itemInlineTts
 				.getByRole("button", { name: /Pause reading|Resume reading/ })
 				.isVisible({ timeout: 5_000 })
@@ -673,9 +772,13 @@ test.describe("section player demo tts-ssml", () => {
 			await expect(pauseOrResume).toBeVisible({ timeout: 15_000 });
 			await pauseOrResume.focus();
 			await page.keyboard.press("ArrowDown");
-			await expect(passagePanel.getByRole("button", { name: "Fast-forward" })).toBeFocused();
+			await expect(
+				passagePanel.getByRole("button", { name: "Fast-forward" }),
+			).toBeFocused();
 			await page.keyboard.press("ArrowDown");
-			await expect(passagePanel.getByRole("button", { name: "Stop reading" })).toBeFocused();
+			await expect(
+				passagePanel.getByRole("button", { name: "Stop reading" }),
+			).toBeFocused();
 			await passagePanel.getByRole("button", { name: "Stop reading" }).click();
 			await expect(passagePanel).toHaveCount(0);
 		} else {
@@ -686,11 +789,15 @@ test.describe("section player demo tts-ssml", () => {
 			const itemTtsButton = q1.getByRole("button", { name: "Read aloud" });
 			await expect(itemTtsButton).toBeVisible();
 			await passageTtsButton.click();
-			const ttsStopButton = passageRegion.getByRole("button", { name: "Stop reading" });
+			const ttsStopButton = passageRegion.getByRole("button", {
+				name: "Stop reading",
+			});
 			await expect(ttsStopButton).toBeVisible({ timeout: 15_000 });
 			await ttsStopButton.click();
 			await itemTtsButton.click();
-			const itemTtsStopButton = q1.getByRole("button", { name: "Stop reading" });
+			const itemTtsStopButton = q1.getByRole("button", {
+				name: "Stop reading",
+			});
 			await expect(itemTtsStopButton).toBeVisible({ timeout: 15_000 });
 			await itemTtsStopButton.click();
 		}
@@ -701,7 +808,9 @@ test.describe("section player demo tts-ssml", () => {
 		});
 		await ttsSettingsToggle.click();
 		const ttsDialog = page.locator(".pie-tts-dialog");
-		await expect(ttsDialog.getByRole("heading", { name: "TTS settings" })).toBeVisible();
+		await expect(
+			ttsDialog.getByRole("heading", { name: "TTS settings" }),
+		).toBeVisible();
 		await ttsDialog.getByRole("button", { name: "Close TTS settings" }).focus();
 
 		// Focus remains trapped within dialog while open.
@@ -751,7 +860,9 @@ test.describe("section player demo tts-ssml", () => {
 		await expect(ttsDialog.locator("#tts-polly-rate")).toHaveCount(0);
 
 		await ttsDialog.getByRole("button", { name: "Google" }).click();
-		await expect(ttsDialog.locator("#tts-google-endpoint")).toHaveValue("/api/tts");
+		await expect(ttsDialog.locator("#tts-google-endpoint")).toHaveValue(
+			"/api/tts",
+		);
 		await expect(ttsDialog.locator("#tts-google-rate")).toHaveCount(0);
 
 		await ttsDialog.getByRole("button", { name: "Browser" }).click();
@@ -760,7 +871,9 @@ test.describe("section player demo tts-ssml", () => {
 		const layoutModeSelect = ttsDialog.locator("#tts-layout-mode");
 		await expect(layoutModeSelect).toBeVisible();
 		await layoutModeSelect.selectOption("floating-overlay");
-		await expect(ttsDialog.getByText("Item header row reservation: Disabled")).toBeVisible();
+		await expect(
+			ttsDialog.getByText("Item header row reservation: Disabled"),
+		).toBeVisible();
 		await ttsDialog.getByRole("button", { name: "Apply" }).click();
 		await expect(ttsDialog).toHaveCount(0);
 
@@ -769,7 +882,8 @@ test.describe("section player demo tts-ssml", () => {
 			.evaluate((element) => {
 				const coordinator = (element as any).toolkitCoordinator;
 				const toolConfig = coordinator?.getToolConfig?.("textToSpeech") || null;
-				const serviceConfig = (coordinator?.ttsService as any)?.ttsConfig || null;
+				const serviceConfig =
+					(coordinator?.ttsService as any)?.ttsConfig || null;
 				return { toolConfig, serviceConfig };
 			});
 		expect(ttsRuntimeSnapshot.toolConfig?.backend).toBe("browser");
@@ -778,8 +892,12 @@ test.describe("section player demo tts-ssml", () => {
 		expect(ttsRuntimeSnapshot.serviceConfig).toBeTruthy();
 
 		// Calculator is available in items, not in passage.
-		await expect(passageRegion.getByRole("button", { name: /calculator/i })).toHaveCount(0);
-		const itemCalculatorButton = q1.getByRole("button", { name: /open .* calculator/i });
+		await expect(
+			passageRegion.getByRole("button", { name: /calculator/i }),
+		).toHaveCount(0);
+		const itemCalculatorButton = q1.getByRole("button", {
+			name: /open .* calculator/i,
+		});
 		await expect(itemCalculatorButton).toBeVisible();
 
 		// Calculator opens and renders a real Desmos surface (not just a shell/loading state).
@@ -790,7 +908,9 @@ test.describe("section player demo tts-ssml", () => {
 		);
 		await itemCalculatorButton.click();
 		await desmosAuthResponse;
-		const calculatorHost = page.locator("pie-tool-calculator .pie-tool-calculator").last();
+		const calculatorHost = page
+			.locator("pie-tool-calculator .pie-tool-calculator")
+			.last();
 		await expect(calculatorHost).toBeVisible({ timeout: 20_000 });
 		const calculatorSurface = calculatorHost.locator(
 			[
@@ -801,10 +921,18 @@ test.describe("section player demo tts-ssml", () => {
 			].join(","),
 		);
 		await expect(calculatorSurface.first()).toBeVisible({ timeout: 20_000 });
-		await expect(calculatorHost.getByText(/failed to initialize/i)).toHaveCount(0);
-		await expect(calculatorHost.locator(".pie-tool-calculator__loading")).toHaveCount(0);
-		const calculatorShell = page.locator('[data-pie-tool-shell="calculator"]').first();
-		const calculatorCloseButton = calculatorShell.getByRole("button", { name: "Close tool" });
+		await expect(calculatorHost.getByText(/failed to initialize/i)).toHaveCount(
+			0,
+		);
+		await expect(
+			calculatorHost.locator(".pie-tool-calculator__loading"),
+		).toHaveCount(0);
+		const calculatorShell = page
+			.locator('[data-pie-tool-shell="calculator"]')
+			.first();
+		const calculatorCloseButton = calculatorShell.getByRole("button", {
+			name: "Close tool",
+		});
 		if (await calculatorCloseButton.isVisible()) {
 			await calculatorCloseButton.click();
 			await expect(calculatorShell).not.toBeVisible();
@@ -816,7 +944,10 @@ test.describe("section player demo tts-ssml", () => {
 		});
 		await expect(answerEliminatorButton).toBeVisible();
 		await answerEliminatorButton.click();
-		await expect(answerEliminatorButton).toHaveAttribute("aria-pressed", "true");
+		await expect(answerEliminatorButton).toHaveAttribute(
+			"aria-pressed",
+			"true",
+		);
 		await expect(
 			q1.getByRole("button", { name: /toggle elimination for/i }).first(),
 		).toBeVisible();
@@ -847,7 +978,9 @@ test.describe("section player demo tts-ssml", () => {
 		).toBeVisible();
 		await expect(q1ScorerInputs.first()).toBeDisabled();
 		await expect(q1ScorerInputs.first()).toHaveAttribute("checked", "");
-		const snapshotScorer = await readSessionSnapshot(await openSessionPanel(page));
+		const snapshotScorer = await readSessionSnapshot(
+			await openSessionPanel(page),
+		);
 		expect(Object.keys(snapshotScorer.itemSessions || {})).toEqual(
 			expect.arrayContaining(Object.keys(snapshotCandidate.itemSessions || {})),
 		);
@@ -858,9 +991,14 @@ test.describe("section player demo tts-ssml", () => {
 		await expect(itemShells).toHaveCount(2);
 		await expect(q1.getByRole("radio")).toHaveCount(4);
 		await expect(
-			q1.getByText(/The quadratic formula, because it works for all equations/i).first(),
+			q1
+				.getByText(/The quadratic formula, because it works for all equations/i)
+				.first(),
 		).toBeVisible();
-		await expect(q1.locator('input[type="radio"]').first()).toHaveAttribute("checked", "");
+		await expect(q1.locator('input[type="radio"]').first()).toHaveAttribute(
+			"checked",
+			"",
+		);
 
 		// Baseline keyboard operability and focus visibility.
 		await page.keyboard.press("Tab");
@@ -916,12 +1054,14 @@ test.describe("section player demo tts-ssml", () => {
 		});
 		await ttsSettingsToggle.click();
 		const ttsDialog = page.locator(".pie-tts-dialog");
-		await expect(ttsDialog.getByRole("heading", { name: "TTS settings" })).toBeVisible();
+		await expect(
+			ttsDialog.getByRole("heading", { name: "TTS settings" }),
+		).toBeVisible();
 		await ttsDialog.getByRole("button", { name: "Polly" }).click();
 		await ttsDialog.getByRole("button", { name: "Recheck" }).click();
-		await expect(
-			ttsDialog.getByText(/AWS Polly available/i),
-		).toBeVisible({ timeout: 10_000 });
+		await expect(ttsDialog.getByText(/AWS Polly available/i)).toBeVisible({
+			timeout: 10_000,
+		});
 		await ttsDialog.getByRole("button", { name: "Apply" }).click();
 		await expect(ttsDialog).toHaveCount(0);
 
@@ -930,8 +1070,10 @@ test.describe("section player demo tts-ssml", () => {
 			.evaluate((element) => {
 				const coordinator = (element as any).toolkitCoordinator;
 				return {
-					backend: coordinator?.getToolConfig?.("textToSpeech")?.backend || null,
-					providerId: coordinator?.ttsService?.currentProvider?.providerId || null,
+					backend:
+						coordinator?.getToolConfig?.("textToSpeech")?.backend || null,
+					providerId:
+						coordinator?.ttsService?.currentProvider?.providerId || null,
 				};
 			});
 		expect(providerSnapshot.backend).toBe("polly");
@@ -944,17 +1086,20 @@ test.describe("section player demo tts-ssml", () => {
 		await expect(passageInlineTts).toBeVisible();
 		const synthRequest = page.waitForRequest(
 			(request) =>
-				request.url().includes("/synthesize") &&
-				request.method() === "POST",
+				request.url().includes("/synthesize") && request.method() === "POST",
 		);
-		await passageInlineTts.getByRole("button", { name: "Play reading" }).click();
+		await passageInlineTts
+			.getByRole("button", { name: "Play reading" })
+			.click();
 		const passagePanel = passageInlineTts.locator(
 			'[role="toolbar"][aria-label="Reading controls"]',
 		);
 		await expect(passagePanel).toBeVisible();
 		await synthRequest;
 		await page.waitForTimeout(TTS_PREVIEW_MS);
-		const stopButton = passagePanel.getByRole("button", { name: "Stop reading" });
+		const stopButton = passagePanel.getByRole("button", {
+			name: "Stop reading",
+		});
 		if (await stopButton.isEnabled()) {
 			await stopButton.click();
 			await expect(passagePanel).toHaveCount(0);
@@ -975,24 +1120,30 @@ test.describe("section player demo tts-ssml", () => {
 			.first();
 		await expect(passageInlineTts).toBeVisible();
 
-		await page.locator("pie-section-player-tools-session-debugger").evaluate(async (element) => {
-			const coordinator = (element as any).toolkitCoordinator;
-			if (!coordinator?.updateToolConfig) return;
-			coordinator.updateToolConfig("textToSpeech", {
-				enabled: true,
-				backend: "browser",
-				speedOptions: [2, 1.25, 1.5, 2, 1],
+		await page
+			.locator("pie-section-player-tools-session-debugger")
+			.evaluate(async (element) => {
+				const coordinator = (element as any).toolkitCoordinator;
+				if (!coordinator?.updateToolConfig) return;
+				coordinator.updateToolConfig("textToSpeech", {
+					enabled: true,
+					backend: "browser",
+					speedOptions: [2, 1.25, 1.5, 2, 1],
+				});
+				await coordinator?.ensureTTSReady?.(
+					coordinator?.getToolConfig?.("textToSpeech"),
+				);
 			});
-			await coordinator?.ensureTTSReady?.(
-				coordinator?.getToolConfig?.("textToSpeech"),
-			);
-		});
-		await passageInlineTts.getByRole("button", { name: "Play reading" }).click();
+		await passageInlineTts
+			.getByRole("button", { name: "Play reading" })
+			.click();
 		const passagePanel = passageInlineTts.locator(
 			'[role="toolbar"][aria-label="Reading controls"]',
 		);
 		await expect(passagePanel).toBeVisible();
-		const speedButtons = passagePanel.locator(".pie-tool-tts-inline__control--speed");
+		const speedButtons = passagePanel.locator(
+			".pie-tool-tts-inline__control--speed",
+		);
 		await expect(speedButtons).toHaveCount(3);
 		await expect(speedButtons.nth(0)).toContainText("2x");
 		await expect(speedButtons.nth(1)).toContainText("1.25x");
@@ -1000,29 +1151,43 @@ test.describe("section player demo tts-ssml", () => {
 		await passagePanel.getByRole("button", { name: "Stop reading" }).click();
 		await expect(passagePanel).toHaveCount(0);
 
-		await page.locator("pie-section-player-tools-session-debugger").evaluate(async (element) => {
-			const coordinator = (element as any).toolkitCoordinator;
-			if (!coordinator?.updateToolConfig) return;
-			coordinator.updateToolConfig("textToSpeech", {
-				enabled: true,
-				backend: "browser",
-				speedOptions: [],
+		await page
+			.locator("pie-section-player-tools-session-debugger")
+			.evaluate(async (element) => {
+				const coordinator = (element as any).toolkitCoordinator;
+				if (!coordinator?.updateToolConfig) return;
+				coordinator.updateToolConfig("textToSpeech", {
+					enabled: true,
+					backend: "browser",
+					speedOptions: [],
+				});
+				await coordinator?.ensureTTSReady?.(
+					coordinator?.getToolConfig?.("textToSpeech"),
+				);
 			});
-			await coordinator?.ensureTTSReady?.(
-				coordinator?.getToolConfig?.("textToSpeech"),
-			);
-		});
-		await passageInlineTts.getByRole("button", { name: "Play reading" }).click();
+		await passageInlineTts
+			.getByRole("button", { name: "Play reading" })
+			.click();
 		await expect(passagePanel).toBeVisible();
-		await expect(passagePanel.locator(".pie-tool-tts-inline__control--speed")).toHaveCount(0);
-		await expect(passagePanel.getByRole("button", { name: "Rewind" })).toBeVisible();
-		await expect(passagePanel.getByRole("button", { name: "Fast-forward" })).toBeVisible();
-		await expect(passagePanel.getByRole("button", { name: "Stop reading" })).toBeVisible();
+		await expect(
+			passagePanel.locator(".pie-tool-tts-inline__control--speed"),
+		).toHaveCount(0);
+		await expect(
+			passagePanel.getByRole("button", { name: "Rewind" }),
+		).toBeVisible();
+		await expect(
+			passagePanel.getByRole("button", { name: "Fast-forward" }),
+		).toBeVisible();
+		await expect(
+			passagePanel.getByRole("button", { name: "Stop reading" }),
+		).toBeVisible();
 		await passagePanel.getByRole("button", { name: "Stop reading" }).click();
 		await expect(passagePanel).toHaveCount(0);
 	});
 
-	test("clears preview word highlight after browser preview ends", async ({ page }) => {
+	test("clears preview word highlight after browser preview ends", async ({
+		page,
+	}) => {
 		await page.addInitScript(() => {
 			const synth: SpeechSynthesis = {
 				...window.speechSynthesis,
@@ -1055,17 +1220,29 @@ test.describe("section player demo tts-ssml", () => {
 		});
 
 		await gotoDemo(page);
-		await page.getByRole("button", { name: "Toggle TTS settings panel" }).click();
+		await page
+			.getByRole("button", { name: "Toggle TTS settings panel" })
+			.click();
 		const ttsDialog = page.locator(".pie-tts-dialog");
-		await expect(ttsDialog.getByRole("heading", { name: "TTS settings" })).toBeVisible();
+		await expect(
+			ttsDialog.getByRole("heading", { name: "TTS settings" }),
+		).toBeVisible();
 		await ttsDialog.getByRole("button", { name: "Browser" }).click();
-		await ttsDialog.locator("#tts-preview-text").fill("Preview highlight should clear");
+		await ttsDialog
+			.locator("#tts-preview-text")
+			.fill("Preview highlight should clear");
 
 		const previewTrack = ttsDialog.locator(".pie-tts-preview-track");
 		await ttsDialog.getByRole("button", { name: "Preview voice" }).click();
-		await expect(previewTrack.locator(".pie-tts-preview-active")).toHaveCount(1);
-		await expect(ttsDialog.getByRole("button", { name: "Preview voice" })).toBeVisible();
-		await expect(previewTrack.locator(".pie-tts-preview-active")).toHaveCount(0);
+		await expect(previewTrack.locator(".pie-tts-preview-active")).toHaveCount(
+			1,
+		);
+		await expect(
+			ttsDialog.getByRole("button", { name: "Preview voice" }),
+		).toBeVisible();
+		await expect(previewTrack.locator(".pie-tts-preview-active")).toHaveCount(
+			0,
+		);
 	});
 
 	test("keeps baseline a11y regressions in check", async ({ page }) => {

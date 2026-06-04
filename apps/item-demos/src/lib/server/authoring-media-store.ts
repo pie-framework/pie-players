@@ -1,34 +1,37 @@
-import { randomUUID } from 'node:crypto';
-import { promises as fs } from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
+import { randomUUID } from "node:crypto";
+import { promises as fs } from "node:fs";
+import os from "node:os";
+import path from "node:path";
 
-const MEDIA_ROOT = path.join(os.tmpdir(), 'pie-item-demos-authoring-media');
-const URL_PREFIX = '/api/authoring-media/file/';
+const MEDIA_ROOT = path.join(os.tmpdir(), "pie-item-demos-authoring-media");
+const URL_PREFIX = "/api/authoring-media/file/";
 
 const MIME_EXTENSION_MAP: Record<string, string> = {
-	'image/jpeg': '.jpg',
-	'image/png': '.png',
-	'image/gif': '.gif',
-	'image/webp': '.webp',
-	'image/svg+xml': '.svg',
-	'audio/mpeg': '.mp3',
-	'audio/mp4': '.m4a',
-	'audio/wav': '.wav',
-	'audio/webm': '.webm',
-	'audio/ogg': '.ogg',
+	"image/jpeg": ".jpg",
+	"image/png": ".png",
+	"image/gif": ".gif",
+	"image/webp": ".webp",
+	"image/svg+xml": ".svg",
+	"audio/mpeg": ".mp3",
+	"audio/mp4": ".m4a",
+	"audio/wav": ".wav",
+	"audio/webm": ".webm",
+	"audio/ogg": ".ogg",
 };
 
 function normalizeFileNamePart(value: string): string {
-	return value.replace(/[^a-zA-Z0-9._-]/g, '-');
+	return value.replace(/[^a-zA-Z0-9._-]/g, "-");
 }
 
-function extensionFromNameOrType(fileName: string, contentType: string): string {
-	const extFromName = path.extname(fileName || '');
+function extensionFromNameOrType(
+	fileName: string,
+	contentType: string,
+): string {
+	const extFromName = path.extname(fileName || "");
 	if (extFromName) {
 		return normalizeFileNamePart(extFromName.toLowerCase());
 	}
-	return MIME_EXTENSION_MAP[contentType] || '';
+	return MIME_EXTENSION_MAP[contentType] || "";
 }
 
 export function mediaUrlFromFileName(fileName: string): string {
@@ -37,7 +40,10 @@ export function mediaUrlFromFileName(fileName: string): string {
 
 export function fileNameFromMediaUrl(src: string): string | null {
 	try {
-		const parsed = src.startsWith('http://') || src.startsWith('https://') ? new URL(src) : null;
+		const parsed =
+			src.startsWith("http://") || src.startsWith("https://")
+				? new URL(src)
+				: null;
 		const pathname = parsed ? parsed.pathname : src;
 		if (!pathname.startsWith(URL_PREFIX)) return null;
 		const encoded = pathname.slice(URL_PREFIX.length);
@@ -52,11 +58,15 @@ export async function ensureMediaRoot(): Promise<void> {
 	await fs.mkdir(MEDIA_ROOT, { recursive: true });
 }
 
-export async function saveUploadedFile(file: File): Promise<{ fileName: string; src: string }> {
+export async function saveUploadedFile(
+	file: File,
+): Promise<{ fileName: string; src: string }> {
 	await ensureMediaRoot();
-	const ext = extensionFromNameOrType(file.name || '', file.type || '');
-	const baseName = normalizeFileNamePart(path.basename(file.name || 'upload').replace(/\.[^.]+$/, ''));
-	const safeBase = baseName || 'upload';
+	const ext = extensionFromNameOrType(file.name || "", file.type || "");
+	const baseName = normalizeFileNamePart(
+		path.basename(file.name || "upload").replace(/\.[^.]+$/, ""),
+	);
+	const safeBase = baseName || "upload";
 	const fileName = `${safeBase}-${randomUUID()}${ext}`;
 	const absolutePath = path.join(MEDIA_ROOT, fileName);
 	const bytes = new Uint8Array(await file.arrayBuffer());
@@ -67,7 +77,9 @@ export async function saveUploadedFile(file: File): Promise<{ fileName: string; 
 	};
 }
 
-export async function readStoredFile(fileName: string): Promise<Uint8Array | null> {
+export async function readStoredFile(
+	fileName: string,
+): Promise<Uint8Array | null> {
 	const safeName = path.basename(fileName);
 	if (!safeName) return null;
 	try {

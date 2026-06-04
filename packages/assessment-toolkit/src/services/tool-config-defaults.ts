@@ -14,7 +14,13 @@ export const DEFAULT_TOOL_PLACEMENT = {
 export const PACKAGED_TOOL_PLACEMENT = {
 	assessment: ["theme"],
 	section: ["theme"],
-	item: ["textToSpeech", "highlighter", "annotationToolbar", "graph", "periodicTable"],
+	item: [
+		"textToSpeech",
+		"highlighter",
+		"annotationToolbar",
+		"graph",
+		"periodicTable",
+	],
 	passage: ["textToSpeech", "highlighter", "annotationToolbar", "lineReader"],
 	rubric: ["textToSpeech", "highlighter", "annotationToolbar", "lineReader"],
 	element: [

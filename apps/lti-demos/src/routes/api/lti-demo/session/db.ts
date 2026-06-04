@@ -100,6 +100,8 @@ export function saveAssessmentSessionSnapshot(
 	return getAssessmentSessionSnapshot(key);
 }
 
-export function deleteAssessmentSessionSnapshot(key: SessionPersistenceKey): void {
+export function deleteAssessmentSessionSnapshot(
+	key: SessionPersistenceKey,
+): void {
 	deleteSnapshot.run(key.assessmentId, key.attemptId);
 }

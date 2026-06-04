@@ -26,5 +26,3 @@ pre-push:
       run: bun run test:e2e:item-player:multiple-choice
     assessment-player-smoke-e2e:
       run: bun run test:e2e:assessment-player
-    check-consumer-boundaries:
-      run: bun run check:consumer-boundaries

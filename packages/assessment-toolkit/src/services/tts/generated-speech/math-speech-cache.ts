@@ -27,11 +27,14 @@ const stableStringify = (value: unknown): string => {
 	}
 	if (value === null) return "null:null";
 	if (typeof value === "undefined") return "undefined:";
-	if (typeof value === "function") return `function:${value.name || "anonymous"}`;
+	if (typeof value === "function")
+		return `function:${value.name || "anonymous"}`;
 	if (typeof value === "symbol") return `symbol:${String(value)}`;
 	if (typeof value === "bigint") return `bigint:${value.toString()}`;
 	if (typeof value === "number") {
-		return Number.isFinite(value) ? `number:${value}` : `number:${String(value)}`;
+		return Number.isFinite(value)
+			? `number:${value}`
+			: `number:${String(value)}`;
 	}
 	return `${typeof value}:${JSON.stringify(value)}`;
 };
@@ -95,14 +98,11 @@ export const createMemoizedMathSpeechResolver = (
 		}
 		const resolved = await resolve(chunk, { ...opts, mathSpeech });
 		if (produceSsml && resolved.ssml && maxEntries > 1) {
-			setCached(
-				cacheKeyFor(opts.language, false, mathSpeech, chunk.mathml),
-				{
-					speechText: resolved.speechText,
-					usedMathSpeech: resolved.usedMathSpeech,
-					usedFallback: resolved.usedFallback,
-				},
-			);
+			setCached(cacheKeyFor(opts.language, false, mathSpeech, chunk.mathml), {
+				speechText: resolved.speechText,
+				usedMathSpeech: resolved.usedMathSpeech,
+				usedFallback: resolved.usedFallback,
+			});
 		}
 		setCached(key, resolved);
 		return resolved;

@@ -156,7 +156,9 @@ export function frameworkErrorFromToolConfigDiagnostics(args: {
 	});
 }
 
-export function formatFrameworkErrorForConsole(error: FrameworkErrorModel): string {
+export function formatFrameworkErrorForConsole(
+	error: FrameworkErrorModel,
+): string {
 	const prefix = `[pie-framework:${error.kind}:${error.source}]`;
 	if (error.details.length === 0) return `${prefix} ${error.message}`;
 	return `${prefix} ${error.message}\n- ${error.details.join("\n- ")}`;

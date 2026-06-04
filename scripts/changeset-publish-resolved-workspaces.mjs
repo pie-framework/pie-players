@@ -71,7 +71,11 @@ const rewriteWorkspaceRanges = () => {
 
 		if (changed) {
 			backups.set(pkgJsonPath, original);
-			writeFileSync(pkgJsonPath, `${JSON.stringify(pkg, null, "\t")}\n`, "utf8");
+			writeFileSync(
+				pkgJsonPath,
+				`${JSON.stringify(pkg, null, "\t")}\n`,
+				"utf8",
+			);
 			changedFiles.push(pkgJsonPath);
 		}
 	}
@@ -108,7 +112,9 @@ const runChangesetPublish = async () => {
 
 	for (let attempt = 1; attempt <= maxAttempts; attempt++) {
 		try {
-			console.log(`[release] Running changeset publish (attempt ${attempt}/${maxAttempts})`);
+			console.log(
+				`[release] Running changeset publish (attempt ${attempt}/${maxAttempts})`,
+			);
 			await runChangesetPublishOnce();
 			return;
 		} catch (error) {

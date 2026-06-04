@@ -65,7 +65,10 @@ export const lineReaderToolRegistration: ToolRegistration = {
 		context: ToolContext,
 		toolbarContext: ToolbarContext,
 	): ToolToolbarRenderResult {
-		const visibility = createScopedVisibilityBinding(this.toolId, toolbarContext);
+		const visibility = createScopedVisibilityBinding(
+			this.toolId,
+			toolbarContext,
+		);
 		const button: ToolToolbarButtonDefinition = {
 			toolId: this.toolId,
 			label: this.name,
@@ -77,7 +80,9 @@ export const lineReaderToolRegistration: ToolRegistration = {
 			active: visibility.isActive(),
 		};
 		const componentOverrides =
-			(toolbarContext.componentOverrides as ToolComponentOverrides | undefined) ?? {};
+			(toolbarContext.componentOverrides as
+				| ToolComponentOverrides
+				| undefined) ?? {};
 		const overlay = createToolElement(
 			this.toolId,
 			context,
@@ -146,7 +151,10 @@ export const themeToolRegistration: ToolRegistration = {
 		context: ToolContext,
 		toolbarContext: ToolbarContext,
 	): ToolToolbarRenderResult {
-		const visibility = createScopedVisibilityBinding(this.toolId, toolbarContext);
+		const visibility = createScopedVisibilityBinding(
+			this.toolId,
+			toolbarContext,
+		);
 		const button: ToolToolbarButtonDefinition = {
 			toolId: this.toolId,
 			label: this.name,
@@ -158,7 +166,9 @@ export const themeToolRegistration: ToolRegistration = {
 			active: visibility.isActive(),
 		};
 		const componentOverrides =
-			(toolbarContext.componentOverrides as ToolComponentOverrides | undefined) ?? {};
+			(toolbarContext.componentOverrides as
+				| ToolComponentOverrides
+				| undefined) ?? {};
 		const overlay = createToolElement(
 			this.toolId,
 			context,
@@ -242,7 +252,10 @@ export const annotationToolbarRegistration: ToolRegistration = {
 		context: ToolContext,
 		toolbarContext: ToolbarContext,
 	): ToolToolbarRenderResult {
-		const visibility = createScopedVisibilityBinding(this.toolId, toolbarContext);
+		const visibility = createScopedVisibilityBinding(
+			this.toolId,
+			toolbarContext,
+		);
 		const button: ToolToolbarButtonDefinition = {
 			toolId: this.toolId,
 			label: this.name,
@@ -254,7 +267,9 @@ export const annotationToolbarRegistration: ToolRegistration = {
 			active: visibility.isActive(),
 		};
 		const componentOverrides =
-			(toolbarContext.componentOverrides as ToolComponentOverrides | undefined) ?? {};
+			(toolbarContext.componentOverrides as
+				| ToolComponentOverrides
+				| undefined) ?? {};
 		const overlay = createToolElement(
 			this.toolId,
 			context,

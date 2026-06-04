@@ -14,11 +14,14 @@ export type SectionPlayerCardRenderContext = {
 	cardTitleFormatter?: SectionPlayerCardTitleFormatter;
 };
 
-export const sectionPlayerCardRenderContext = createContext<SectionPlayerCardRenderContext>(
-	Symbol.for("@pie-players/pie-section-player/card-render-context"),
-);
+export const sectionPlayerCardRenderContext =
+	createContext<SectionPlayerCardRenderContext>(
+		Symbol.for("@pie-players/pie-section-player/card-render-context"),
+	);
 
-export function getHostElementFromAnchor(anchor: HTMLElement | null): HTMLElement | null {
+export function getHostElementFromAnchor(
+	anchor: HTMLElement | null,
+): HTMLElement | null {
 	if (!anchor) return null;
 	const rootNode = anchor.getRootNode();
 	if (rootNode && "host" in rootNode) {
@@ -94,7 +97,8 @@ export function createSectionPlayerCardRenderContextProvider(
 	const root = new ContextRoot(host);
 	root.attach();
 	return {
-		setValue: (value: SectionPlayerCardRenderContext) => provider.setValue(value),
+		setValue: (value: SectionPlayerCardRenderContext) =>
+			provider.setValue(value),
 		disconnect: () => {
 			root.detach();
 			provider.disconnect();

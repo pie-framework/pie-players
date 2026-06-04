@@ -1,10 +1,16 @@
-import { GoogleCloudTTSProvider } from "@pie-players/tts-server-google";
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
+import type { GoogleCloudTTSProvider as GoogleCloudTTSProviderType } from "@pie-players/tts-server-google";
 
-let googleProvider: GoogleCloudTTSProvider | null = null;
+// Load the Google provider lazily via a variable specifier + `@vite-ignore`
+// so its native `google-gax` dependency (which uses top-level `__dirname`)
+// stays external instead of being bundled into the ESM server build, where
+// `__dirname` is undefined. Mirrors apps/section-demos.
+const GOOGLE_TTS_PROVIDER_PACKAGE = "@pie-players/tts-server-google";
 
-async function getGoogleProvider(): Promise<GoogleCloudTTSProvider> {
+let googleProvider: GoogleCloudTTSProviderType | null = null;
+
+async function getGoogleProvider(): Promise<GoogleCloudTTSProviderType> {
 	if (googleProvider) return googleProvider;
 	const hasApiKey = !!process.env.GOOGLE_API_KEY;
 	const hasServiceAccount = !!process.env.GOOGLE_APPLICATION_CREDENTIALS;
@@ -13,17 +19,21 @@ async function getGoogleProvider(): Promise<GoogleCloudTTSProvider> {
 			"Google Cloud credentials not configured. Set GOOGLE_API_KEY or GOOGLE_APPLICATION_CREDENTIALS.",
 		);
 	}
-	googleProvider = new GoogleCloudTTSProvider();
+	const { GoogleCloudTTSProvider } = await import(
+		/* @vite-ignore */ GOOGLE_TTS_PROVIDER_PACKAGE
+	);
+	const provider: GoogleCloudTTSProviderType = new GoogleCloudTTSProvider();
 	const credentials = hasApiKey
 		? { apiKey: process.env.GOOGLE_API_KEY! }
 		: process.env.GOOGLE_APPLICATION_CREDENTIALS;
-	await googleProvider.initialize({
+	await provider.initialize({
 		projectId: process.env.GOOGLE_CLOUD_PROJECT || "pie-tts-project",
 		credentials,
 		defaultVoice: "en-US-Wavenet-A",
 		voiceType: "wavenet",
 	});
-	return googleProvider;
+	googleProvider = provider;
+	return provider;
 }
 
 export const GET: RequestHandler = async ({ url }) => {

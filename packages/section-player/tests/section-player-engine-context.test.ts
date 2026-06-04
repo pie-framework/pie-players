@@ -64,7 +64,9 @@ describe("section-player engine context provider — kernel invariants", () => {
 		const source = readFileSync(KERNEL_PATH, "utf8");
 		expect(source).toContain("engineHostLifecycleHandle");
 		expect(source).toContain("getRuntimeId: () => engine.getRuntimeId()");
-		expect(source).toContain("initialValue: { engine: engineHostLifecycleHandle }");
+		expect(source).toContain(
+			"initialValue: { engine: engineHostLifecycleHandle }",
+		);
 		expect(source).not.toContain("initialValue: { engine },");
 	});
 });

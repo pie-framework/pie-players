@@ -1,9 +1,8 @@
 import { afterEach, describe, expect, it } from "bun:test";
+import { mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
 import { handleRequest } from "../src/core/handler.ts";
-import {
-	parsePackageRequest,
-	resolveEntryFile,
-} from "../src/core/resolver.ts";
+import { parsePackageRequest, resolveEntryFile } from "../src/core/resolver.ts";
 import {
 	createFixtureContext,
 	createTempFixture,
@@ -30,7 +29,9 @@ describe("local-esm-cdn package resolution and serving", () => {
 			pkg: "@pie-element/hotspot",
 			subpath: "",
 		});
-		expect(parsePackageRequest("/@pie-lib/render-ui/controller/index.js")).toEqual({
+		expect(
+			parsePackageRequest("/@pie-lib/render-ui/controller/index.js"),
+		).toEqual({
 			pkg: "@pie-lib/render-ui",
 			subpath: "controller/index.js",
 		});
@@ -68,6 +69,47 @@ describe("local-esm-cdn package resolution and serving", () => {
 			"",
 		);
 		expect(resolved).toContain("/packages/lib-react/render-ui/dist/main.js");
+	});
+
+	it("resolves @pie-element packages from the Svelte element workspace", async () => {
+		const fixture = await createTempFixture();
+		cleanups.push(fixture.cleanup);
+		const packageRoot = path.join(
+			fixture.pieElementsNgRoot,
+			"packages",
+			"elements-svelte",
+			"simple-cloze",
+		);
+		await mkdir(path.join(packageRoot, "dist", "browser", "delivery"), {
+			recursive: true,
+		});
+		await writeFile(
+			path.join(packageRoot, "dist", "browser", "delivery", "index.js"),
+			"export default class SimpleClozeElement extends HTMLElement {};",
+			"utf8",
+		);
+		await writeFile(
+			path.join(packageRoot, "package.json"),
+			JSON.stringify({
+				name: "@pie-element/simple-cloze",
+				exports: {
+					"./browser/delivery": {
+						default: "./dist/browser/delivery/index.js",
+					},
+				},
+			}),
+			"utf8",
+		);
+
+		const resolved = await resolveEntryFile(
+			fixture.pieElementsNgRoot,
+			"@pie-element/simple-cloze",
+			"browser/delivery/index.js",
+		);
+
+		expect(resolved).toContain(
+			"/packages/elements-svelte/simple-cloze/dist/browser/delivery/index.js",
+		);
 	});
 
 	it("serves JS module with expected headers when package exists", async () => {

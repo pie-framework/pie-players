@@ -12,7 +12,10 @@ export const GET: RequestHandler = async ({ url }) => {
 	const key = parseSessionDemoKeyFromSearch(url.searchParams);
 	if (!isValidSessionDemoKey(key)) {
 		return json(
-			{ ok: false, error: "assessmentId, sectionId, and attemptId are required" },
+			{
+				ok: false,
+				error: "assessmentId, sectionId, and attemptId are required",
+			},
 			{ status: 400 },
 		);
 	}
@@ -20,18 +23,16 @@ export const GET: RequestHandler = async ({ url }) => {
 };
 
 export const PUT: RequestHandler = async ({ request }) => {
-	const body = (await request.json().catch(() => null)) as
-		| {
-				assessmentId?: string;
-				sectionId?: string;
-				attemptId?: string;
-				snapshot?: {
-					currentItemIndex?: number;
-					visitedItemIdentifiers?: string[];
-					itemSessions?: Record<string, unknown>;
-				};
-		  }
-		| null;
+	const body = (await request.json().catch(() => null)) as {
+		assessmentId?: string;
+		sectionId?: string;
+		attemptId?: string;
+		snapshot?: {
+			currentItemIndex?: number;
+			visitedItemIdentifiers?: string[];
+			itemSessions?: Record<string, unknown>;
+		};
+	} | null;
 	if (!body) {
 		return json({ ok: false, error: "Invalid JSON body" }, { status: 400 });
 	}
@@ -42,7 +43,10 @@ export const PUT: RequestHandler = async ({ request }) => {
 	};
 	if (!isValidSessionDemoKey(key)) {
 		return json(
-			{ ok: false, error: "assessmentId, sectionId, and attemptId are required" },
+			{
+				ok: false,
+				error: "assessmentId, sectionId, and attemptId are required",
+			},
 			{ status: 400 },
 		);
 	}
@@ -63,7 +67,10 @@ export const DELETE: RequestHandler = async ({ url }) => {
 	const key = parseSessionDemoKeyFromSearch(url.searchParams);
 	if (!isValidSessionDemoKey(key)) {
 		return json(
-			{ ok: false, error: "assessmentId, sectionId, and attemptId are required" },
+			{
+				ok: false,
+				error: "assessmentId, sectionId, and attemptId are required",
+			},
 			{ status: 400 },
 		);
 	}

@@ -144,28 +144,30 @@ describe("ServerTTSProvider", () => {
 	});
 
 	test("supports custom transport with root POST and JSONL marks", async () => {
-		const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-			const url = String(input);
-			if (url === "https://tts.custom.example/v1") {
-				return createJSONResponse({
-					audioContent: "https://cdn.custom.example/audio.mp3",
-					word: "https://cdn.custom.example/marks.jsonl",
-				});
-			}
-			if (url === "https://cdn.custom.example/marks.jsonl") {
-				return new Response(
-					'{"time":0,"type":"word","start":0,"end":4,"value":"Read"}\n',
-					{ status: 200, headers: { "Content-Type": "text/plain" } },
-				);
-			}
-			if (url === "https://cdn.custom.example/audio.mp3") {
-				expect(init?.headers).toMatchObject({
-					Authorization: "Bearer token-123",
-				});
-				return new Response(new Blob(["mp3-bytes"]), { status: 200 });
-			}
-			return new Response("not-found", { status: 404 });
-		});
+		const fetchMock = vi.fn(
+			async (input: RequestInfo | URL, init?: RequestInit) => {
+				const url = String(input);
+				if (url === "https://tts.custom.example/v1") {
+					return createJSONResponse({
+						audioContent: "https://cdn.custom.example/audio.mp3",
+						word: "https://cdn.custom.example/marks.jsonl",
+					});
+				}
+				if (url === "https://cdn.custom.example/marks.jsonl") {
+					return new Response(
+						'{"time":0,"type":"word","start":0,"end":4,"value":"Read"}\n',
+						{ status: 200, headers: { "Content-Type": "text/plain" } },
+					);
+				}
+				if (url === "https://cdn.custom.example/audio.mp3") {
+					expect(init?.headers).toMatchObject({
+						Authorization: "Bearer token-123",
+					});
+					return new Response(new Blob(["mp3-bytes"]), { status: 200 });
+				}
+				return new Response("not-found", { status: 404 });
+			},
+		);
 		globalThis.fetch = fetchMock as unknown as typeof fetch;
 
 		const provider = new ServerTTSProvider();
@@ -197,7 +199,10 @@ describe("ServerTTSProvider", () => {
 	test("aborts in-flight synthesis when stopped", async () => {
 		let aborted = false;
 		const fetchMock = vi.fn(
-			async (_input: RequestInfo | URL, init?: RequestInit): Promise<Response> =>
+			async (
+				_input: RequestInfo | URL,
+				init?: RequestInit,
+			): Promise<Response> =>
 				new Promise((_resolve, reject) => {
 					if (init?.signal?.aborted) {
 						aborted = true;

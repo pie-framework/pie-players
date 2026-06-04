@@ -100,7 +100,6 @@ pie-players/
 │   ├── pie-context/                     # Shared runtime context
 │   ├── theme/                           # Token contract (--pie-* CSS vars)
 │   ├── theme-daisyui/                   # DaisyUI theme bridge
-│   ├── toolbars/                        # Item / section toolbar shells
 │   ├── default-tool-loaders/
 │   ├── tool-*                           # 12 tool packages (calculator,
 │   │                                    # graph, ruler, protractor, TTS, …)

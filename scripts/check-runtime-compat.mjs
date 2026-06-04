@@ -3,27 +3,17 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import {
+	getNodeConsumerImportTargets,
+	readPublishPolicy,
+} from "./lib/pack-inspection.mjs";
 
 const ROOT = process.cwd();
-const POLICY_PATH = path.join(ROOT, "scripts", "publish-policy.json");
-
-const NODE_SAFE_PACKAGES = [
-	"@pie-players/pie-calculator",
-	"@pie-players/pie-calculator-desmos",
-	"@pie-players/pie-tts",
-	"@pie-players/tts-client-server",
-	"@pie-players/tts-server-core",
-	"@pie-players/tts-server-google",
-	"@pie-players/tts-server-polly",
-];
-
-const BROWSER_ONLY_PACKAGES = [
-	"@pie-players/pie-item-player",
-	"@pie-players/pie-section-player",
-];
 
 const readJson = (filePath) => JSON.parse(readFileSync(filePath, "utf8"));
-const policy = existsSync(POLICY_PATH) ? readJson(POLICY_PATH) : {};
+const policy = readPublishPolicy(ROOT);
+const { nodeSafe: NODE_SAFE_PACKAGES, browserOnly: BROWSER_ONLY_PACKAGES } =
+	getNodeConsumerImportTargets(policy);
 const WORKSPACE_ROOTS = Array.isArray(policy.workspaceRoots)
 	? policy.workspaceRoots
 	: ["packages"];

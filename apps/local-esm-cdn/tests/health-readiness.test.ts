@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, it } from "bun:test";
+import { mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
 import { handleRequest } from "../src/core/handler.ts";
 import {
 	createFixtureContext,
@@ -63,10 +65,41 @@ describe("local-esm-cdn health and readiness", () => {
 		// getHealth() caches for ~1.5s process-wide; wait to avoid stale unhealthy value.
 		await Bun.sleep(1600);
 
-		const healthyHealth = await handleRequest(makeRequest("/health"), healthyContext);
+		const healthyHealth = await handleRequest(
+			makeRequest("/health"),
+			healthyContext,
+		);
 		expect(healthyHealth.status).toBe(200);
 		const healthyBody = await readJson<HealthPayload>(healthyHealth);
 		expect(healthyBody.ok).toBe(true);
 		expect(healthyBody.builtElementPackages).toBeGreaterThan(0);
+	});
+
+	it("reports healthy when only Svelte element packages are built", async () => {
+		const fixture = await createTempFixture();
+		cleanups.push(fixture.cleanup);
+		const packageRoot = path.join(
+			fixture.pieElementsNgRoot,
+			"packages",
+			"elements-svelte",
+			"simple-cloze",
+		);
+		await mkdir(path.join(packageRoot, "dist"), { recursive: true });
+		await writeFile(
+			path.join(packageRoot, "dist", "index.js"),
+			"export const ok = true;",
+			"utf8",
+		);
+
+		await Bun.sleep(1600);
+		const response = await handleRequest(
+			makeRequest("/health"),
+			createFixtureContext(fixture),
+		);
+
+		expect(response.status).toBe(200);
+		const body = await readJson<HealthPayload>(response);
+		expect(body.ok).toBe(true);
+		expect(body.builtElementPackages).toBe(1);
 	});
 });

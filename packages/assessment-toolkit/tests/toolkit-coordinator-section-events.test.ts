@@ -6,7 +6,9 @@ import {
 	type SectionControllerRuntimeState,
 } from "../src/index.js";
 
-function createTestController(runtimeState?: SectionControllerRuntimeState | null) {
+function createTestController(
+	runtimeState?: SectionControllerRuntimeState | null,
+) {
 	const listeners = new Set<(event: SectionControllerEvent) => void>();
 	const handle: SectionControllerHandle = {
 		subscribe(listener) {

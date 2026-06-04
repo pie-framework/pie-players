@@ -12,29 +12,19 @@ import {
 } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import {
+	getNodeConsumerImportTargets,
+	parsePackJson,
+	readPublishPolicy,
+} from "./lib/pack-inspection.mjs";
 
 const ROOT = process.cwd();
 const ROOT_PACKAGE_JSON = path.join(ROOT, "package.json");
 
-const NODE_IMPORT_TARGETS = [
-	"@pie-players/pie-assessment-toolkit",
-	"@pie-players/pie-players-shared",
-	"@pie-players/pie-context",
-	"@pie-players/pie-calculator",
-	"@pie-players/pie-calculator-desmos",
-	"@pie-players/pie-tts",
-	"@pie-players/tts-client-server",
-	"@pie-players/tts-server-core",
-	"@pie-players/tts-server-google",
-	"@pie-players/tts-server-polly",
-];
-
-const BROWSER_ONLY_TARGETS = [
-	"@pie-players/pie-item-player",
-	"@pie-players/pie-section-player",
-];
-
 const readJson = (filePath) => JSON.parse(readFileSync(filePath, "utf8"));
+const policy = readPublishPolicy(ROOT);
+const { nodeSafe: NODE_IMPORT_TARGETS, browserOnly: BROWSER_ONLY_TARGETS } =
+	getNodeConsumerImportTargets(policy);
 const ALL_TARGETS = [...NODE_IMPORT_TARGETS, ...BROWSER_ONLY_TARGETS];
 
 const isNodeEntryTargetShapeSafe = (target) =>
@@ -43,7 +33,9 @@ const isNodeEntryTargetShapeSafe = (target) =>
 
 const workspacePackageMap = () => {
 	const rootPkg = readJson(ROOT_PACKAGE_JSON);
-	const workspaces = Array.isArray(rootPkg.workspaces) ? rootPkg.workspaces : [];
+	const workspaces = Array.isArray(rootPkg.workspaces)
+		? rootPkg.workspaces
+		: [];
 	const map = new Map();
 
 	for (const workspace of workspaces) {
@@ -78,21 +70,10 @@ const getRootImportTarget = (pkg) => {
 
 const isLikelyBrowserGlobalError = (error) => {
 	const message =
-		typeof error === "string"
-			? error
-			: String(error?.message || error || "");
+		typeof error === "string" ? error : String(error?.message || error || "");
 	return /(customElements|window|document|HTMLElement|navigator|Class extends value undefined|superclass is not a constructor)/i.test(
 		message,
 	);
-};
-
-const parsePackJson = (rawOutput) => {
-	const start = rawOutput.indexOf("[");
-	const end = rawOutput.lastIndexOf("]");
-	if (start < 0 || end < 0 || end < start) {
-		throw new Error("npm pack output did not include JSON payload");
-	}
-	return JSON.parse(rawOutput.slice(start, end + 1));
 };
 
 const getInternalWorkspaceDeps = (pkg) => {
@@ -185,10 +166,17 @@ const createPatchedFixtureTarball = (fixtureDir, sourceTarball, packageMap) => {
 		const manifest = readJson(manifestPath);
 		rewriteWorkspaceRangesForFixture(manifest, packageMap);
 		writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
-		const patchedTarballPath = path.join(tarballsDir, path.basename(sourceTarball));
-		execFileSync("tar", ["-czf", patchedTarballPath, "-C", unpackDir, "package"], {
-			stdio: ["ignore", "pipe", "pipe"],
-		});
+		const patchedTarballPath = path.join(
+			tarballsDir,
+			path.basename(sourceTarball),
+		);
+		execFileSync(
+			"tar",
+			["-czf", patchedTarballPath, "-C", unpackDir, "package"],
+			{
+				stdio: ["ignore", "pipe", "pipe"],
+			},
+		);
 		return patchedTarballPath;
 	} finally {
 		rmSync(unpackDir, { recursive: true, force: true });
@@ -292,7 +280,10 @@ const run = async () => {
 		process.exit(1);
 	}
 
-	const fixturePackageNames = collectFixturePackageNames(packageMap, ALL_TARGETS);
+	const fixturePackageNames = collectFixturePackageNames(
+		packageMap,
+		ALL_TARGETS,
+	);
 	const sourceTarballs = [];
 	const fixtureTarballs = [];
 	let fixtureDir = "";
@@ -303,7 +294,9 @@ const run = async () => {
 		for (const packageName of fixturePackageNames) {
 			const entry = packageMap.get(packageName);
 			if (!entry) {
-				failures.push(`[node-consumer] missing workspace package: ${packageName}`);
+				failures.push(
+					`[node-consumer] missing workspace package: ${packageName}`,
+				);
 				continue;
 			}
 			const sourceTarballPath = packWorkspacePackage(entry.dir);

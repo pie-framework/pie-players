@@ -283,4 +283,3 @@ export function unregisterPieColorScheme(schemeId: string): void {
 	}
 	customSchemeMap.delete(schemeId);
 }
-

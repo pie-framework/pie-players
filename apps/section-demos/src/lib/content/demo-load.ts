@@ -1,14 +1,14 @@
-import { error } from '@sveltejs/kit';
+import { error } from "@sveltejs/kit";
 import {
 	parseElementOverridesFromUrl,
-	type ElementOverrides
-} from '@pie-players/pie-players-shared/pie';
-import type { AssessmentSection } from '@pie-players/pie-players-shared/types';
-import { getSectionDemoById, type SectionDemoInfo } from './sections';
+	type ElementOverrides,
+} from "@pie-players/pie-players-shared/pie";
+import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
+import { getSectionDemoById, type SectionDemoInfo } from "./sections";
 import {
 	aggregateElementsAcrossPages,
-	applyOverridesToSection
-} from './apply-overrides';
+	applyOverridesToSection,
+} from "./apply-overrides";
 
 export type DemoPageEntry = {
 	id: string;
@@ -32,11 +32,14 @@ export function loadDemoRouteDataById(demoId: string, url: URL): DemoRouteData {
 	}
 
 	const demoPages = (demo.sections || []) as DemoPageEntry[];
-	const requestedPageId = (url.searchParams.get('page') || '').trim();
+	const requestedPageId = (url.searchParams.get("page") || "").trim();
 	const activeDemoPage =
-		demoPages.find((page) => page.id === requestedPageId) || demoPages[0] || null;
+		demoPages.find((page) => page.id === requestedPageId) ||
+		demoPages[0] ||
+		null;
 	const rawSection = activeDemoPage?.section || demo.section || null;
-	const allowElementVersionOverrides = demo.allowElementVersionOverrides !== false;
+	const allowElementVersionOverrides =
+		demo.allowElementVersionOverrides !== false;
 
 	const elementOverrides = allowElementVersionOverrides
 		? parseElementOverridesFromUrl(url.searchParams)
@@ -51,9 +54,9 @@ export function loadDemoRouteDataById(demoId: string, url: URL): DemoRouteData {
 	return {
 		demo,
 		demoPages,
-		activeDemoPageId: activeDemoPage?.id || '',
+		activeDemoPageId: activeDemoPage?.id || "",
 		section,
 		elementOverrides,
-		aggregatedElements
+		aggregatedElements,
 	};
 }

@@ -56,7 +56,8 @@ export function loadAssessmentSession(
 		const parsed = JSON.parse(raw) as AssessmentSession;
 		if (!parsed || parsed.version !== ASSESSMENT_SESSION_VERSION) return null;
 		if (
-			parsed.assessmentAttemptSessionIdentifier !== assessmentAttemptSessionIdentifier
+			parsed.assessmentAttemptSessionIdentifier !==
+			assessmentAttemptSessionIdentifier
 		) {
 			return null;
 		}
@@ -139,7 +140,9 @@ export function setCurrentSectionPosition(
 		currentSectionIdentifier?: string;
 	},
 ): AssessmentSession {
-	const visited = new Set(session.navigationState.visitedSectionIdentifiers || []);
+	const visited = new Set(
+		session.navigationState.visitedSectionIdentifiers || [],
+	);
 	if (args.currentSectionIdentifier) {
 		visited.add(args.currentSectionIdentifier);
 	}

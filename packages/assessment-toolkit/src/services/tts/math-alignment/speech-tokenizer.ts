@@ -1,8 +1,5 @@
 import { extractSpokenText } from "../ssml/spoken-text.js";
-import type {
-	BoundaryOffsetSpace,
-	SpeechAlignmentToken,
-} from "./types.js";
+import type { BoundaryOffsetSpace, SpeechAlignmentToken } from "./types.js";
 import { createSpeechAlignmentTokenPattern } from "../text-processing.js";
 
 export interface SpeechSourceTokenization {
@@ -104,7 +101,11 @@ const mapRawOffsetToSpokenOffset = (
 ): number | null => {
 	const direct = tokenization.rawToSpokenOffsetMap.get(position);
 	if (direct !== undefined) return direct;
-	for (let offset = position; offset < tokenization.speechText.length; offset++) {
+	for (
+		let offset = position;
+		offset < tokenization.speechText.length;
+		offset++
+	) {
 		const mapped = tokenization.rawToSpokenOffsetMap.get(offset);
 		if (mapped !== undefined) return mapped;
 		if (tokenization.speechText[offset] === ">") break;
@@ -153,7 +154,10 @@ export const resolveBoundaryToSpeechToken = (args: {
 	) {
 		return null;
 	}
-	const safeLength = Math.max(1, Number.isFinite(args.length) ? args.length! : 1);
+	const safeLength = Math.max(
+		1,
+		Number.isFinite(args.length) ? args.length! : 1,
+	);
 	const rawCandidate = candidateForOffset(
 		args.tokenization,
 		mapRawOffsetToSpokenOffset(args.tokenization, args.position),
@@ -195,7 +199,10 @@ export const resolveSpokenOffsetToSpeechToken = (args: {
 	) {
 		return null;
 	}
-	const safeLength = Math.max(1, Number.isFinite(args.length) ? args.length! : 1);
+	const safeLength = Math.max(
+		1,
+		Number.isFinite(args.length) ? args.length! : 1,
+	);
 	const spokenCandidate = candidateForOffset(
 		args.tokenization,
 		args.position >= 0 && args.position < args.tokenization.spokenText.length

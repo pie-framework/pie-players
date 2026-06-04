@@ -23,8 +23,14 @@ const preferredPort =
 		? Number(preferredArg)
 		: 0;
 
-if (!Number.isFinite(preferredPort) || preferredPort < 0 || preferredPort > 65535) {
-	console.error("Invalid preferred port. Provide a number between 0 and 65535.");
+if (
+	!Number.isFinite(preferredPort) ||
+	preferredPort < 0 ||
+	preferredPort > 65535
+) {
+	console.error(
+		"Invalid preferred port. Provide a number between 0 and 65535.",
+	);
 	process.exit(1);
 }
 

@@ -4,7 +4,9 @@ import { createNpmAuthEnvironment } from "./npm-auth-env.mjs";
 const REGISTRY = "https://registry.npmjs.org/";
 const SCOPE = "pie-players";
 const INTERACTIVE_TTY = Boolean(process.stdin.isTTY && process.stdout.isTTY);
-const TOKEN_FROM_ENV = String(process.env.NPM_TOKEN || process.env.NODE_AUTH_TOKEN || "").trim();
+const TOKEN_FROM_ENV = String(
+	process.env.NPM_TOKEN || process.env.NODE_AUTH_TOKEN || "",
+).trim();
 const HAS_TOKEN_FROM_ENV = TOKEN_FROM_ENV.length > 0;
 const AUTO_LOGIN_ENABLED =
 	INTERACTIVE_TTY &&
@@ -29,7 +31,9 @@ const fail = (message, details) => {
 	console.error("\n[publish-auth] Fix:");
 	console.error("- Run `npm config set registry https://registry.npmjs.org/`");
 	console.error("- Run `npm login --registry=https://registry.npmjs.org/`");
-	console.error("- Verify auth with `npm whoami --registry=https://registry.npmjs.org/`");
+	console.error(
+		"- Verify auth with `npm whoami --registry=https://registry.npmjs.org/`",
+	);
 	console.error(
 		"- Verify org access with `npm org ls pie-players --registry=https://registry.npmjs.org/`",
 	);

@@ -79,10 +79,7 @@ const computeMonotonicMatches = (
 			const consumed = matchPhraseLengthAt(speechTokens, speechIndex, phrases);
 			if (consumed > 0) {
 				matches.push({
-					speechTokens: speechTokens.slice(
-						speechIndex,
-						speechIndex + consumed,
-					),
+					speechTokens: speechTokens.slice(speechIndex, speechIndex + consumed),
 					math,
 				});
 				speechIndex += consumed;
@@ -93,10 +90,7 @@ const computeMonotonicMatches = (
 			const consumed = matchPhraseLengthAt(speechTokens, speechIndex, phrases);
 			if (consumed > 0) {
 				matches.push({
-					speechTokens: speechTokens.slice(
-						speechIndex,
-						speechIndex + consumed,
-					),
+					speechTokens: speechTokens.slice(speechIndex, speechIndex + consumed),
 					math,
 				});
 				speechIndex += consumed;

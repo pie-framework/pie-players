@@ -10,7 +10,9 @@ export function createSessionEmitPolicyState(): SessionEmitPolicyState {
 	};
 }
 
-export function resetSessionEmitPolicyState(state: SessionEmitPolicyState): void {
+export function resetSessionEmitPolicyState(
+	state: SessionEmitPolicyState,
+): void {
 	state.lastSessionEventSignatureByItemId.clear();
 	state.lastMetadataSignatureByItemId.clear();
 }
@@ -23,7 +25,8 @@ export function shouldEmitCanonicalSessionEvent(args: {
 	const { state, itemId, payload } = args;
 	if (isMetadataOnlyEvent(payload)) {
 		const metadataSignature = getMetadataOnlySignature(payload);
-		const previousMetadataSignature = state.lastMetadataSignatureByItemId.get(itemId);
+		const previousMetadataSignature =
+			state.lastMetadataSignatureByItemId.get(itemId);
 		if (previousMetadataSignature === metadataSignature) {
 			return false;
 		}
@@ -38,7 +41,9 @@ export function shouldEmitCanonicalSessionEvent(args: {
 	return true;
 }
 
-function getSessionEventSemanticSignature(payload: Record<string, unknown>): string {
+function getSessionEventSemanticSignature(
+	payload: Record<string, unknown>,
+): string {
 	const semanticPayload = { ...payload };
 	delete semanticPayload.timestamp;
 	delete semanticPayload.sourceRuntimeId;

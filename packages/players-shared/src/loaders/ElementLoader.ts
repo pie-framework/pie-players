@@ -70,12 +70,18 @@ export function aggregateElements(items: ItemEntity[]): ElementMap {
 				}
 			: { baseName: tagName };
 	};
-	const normalizeElementTag = (tagName: string, packageSpec: string): string => {
+	const normalizeElementTag = (
+		tagName: string,
+		packageSpec: string,
+	): string => {
 		const { baseName, existingEncodedVersion } = parseTagName(tagName);
 		const { version } = parsePackageName(packageSpec);
 		if (!version) return tagName;
 		const targetEncodedVersion = encodeVersionForTag(version);
-		if (!targetEncodedVersion || existingEncodedVersion === targetEncodedVersion) {
+		if (
+			!targetEncodedVersion ||
+			existingEncodedVersion === targetEncodedVersion
+		) {
 			return tagName;
 		}
 		return `${baseName}${VERSION_DELIMITER}${targetEncodedVersion}`;

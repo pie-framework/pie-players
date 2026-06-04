@@ -39,7 +39,8 @@ import { expect, test } from "@playwright/test";
  * inverted-order replay.
  */
 
-const DEMO_BASE = "/pie-512-asymmetric-sections?mode=candidate&layout=splitpane";
+const DEMO_BASE =
+	"/pie-512-asymmetric-sections?mode=candidate&layout=splitpane";
 const SECTION_A_PATH = `${DEMO_BASE}&page=pie-512-section-a`;
 const SECTION_B_PATH = `${DEMO_BASE}&page=pie-512-section-b`;
 const SECTION_A_ID = "pie-512-section-a";
@@ -110,9 +111,7 @@ async function openEventPanel(
 			'button[aria-label="Toggle event broadcast panel"]',
 		) as HTMLButtonElement | null;
 		if (!button) {
-			throw new Error(
-				"[pie-512 e2e] event broadcast toggle button not found",
-			);
+			throw new Error("[pie-512 e2e] event broadcast toggle button not found");
 		}
 		const pressed = button.getAttribute("aria-pressed") === "true";
 		if (!pressed) {
@@ -285,13 +284,10 @@ async function expectSectionEvents(
 				const events = await readEventsForSection(page, sectionId);
 				const types = events.map((entry) => entry.type);
 				const lastContentIdx = types.lastIndexOf("content-loaded");
-				const firstCompleteIdx = types.indexOf(
-					"section-loading-complete",
-				);
+				const firstCompleteIdx = types.indexOf("section-loading-complete");
 				return {
-					contentLoadedCount: types.filter(
-						(type) => type === "content-loaded",
-					).length,
+					contentLoadedCount: types.filter((type) => type === "content-loaded")
+						.length,
 					sectionLoadingCompleteCount: types.filter(
 						(type) => type === "section-loading-complete",
 					).length,

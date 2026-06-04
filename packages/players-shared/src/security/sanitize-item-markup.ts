@@ -176,8 +176,7 @@ export function sanitizeItemMarkup(
 		RETURN_TRUSTED_TYPE: false,
 	});
 
-	const sanitized =
-		typeof result === "string" ? result : String(result ?? "");
+	const sanitized = typeof result === "string" ? result : String(result ?? "");
 	// PIE-94: wrap overwide authored images in a horizontal-scroll container
 	// so they don't get clipped by ancestor `overflow-x: hidden` regions in
 	// the section player (and match WCAG 1.4.10 Reflow at 400% zoom).

@@ -60,7 +60,9 @@ describe("math alignment speech tokenizer", () => {
 			"The request comes from PTA and Doctor Lee.",
 		);
 		expect(tokenization.unsupportedSemantic).toBe(false);
-		expect(tokenization.tokens.map((token) => token.normalized)).toContain("pta");
+		expect(tokenization.tokens.map((token) => token.normalized)).toContain(
+			"pta",
+		);
 		expect(tokenization.tokens.map((token) => token.normalized)).toContain(
 			"doctor",
 		);

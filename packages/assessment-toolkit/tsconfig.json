@@ -11,12 +11,8 @@
 		"moduleResolution": "NodeNext",
 		"baseUrl": ".",
 		"paths": {
-			"@pie-players/pie-assessment-toolkit": [
-				"./src/index.ts"
-			],
-			"@pie-players/pie-assessment-toolkit/*": [
-				"./src/*"
-			],
+			"@pie-players/pie-assessment-toolkit": ["./src/index.ts"],
+			"@pie-players/pie-assessment-toolkit/*": ["./src/*"],
 			"@pie-players/pie-tool-calculator-desmos": [
 				"../tool-calculator-desmos/dist/index.d.ts"
 			],
@@ -28,15 +24,8 @@
 			]
 		}
 	},
-	"include": [
-		"src/**/*.ts",
-		"src/**/*.d.ts",
-		"src/**/*.svelte"
-	],
-	"exclude": [
-		"dist",
-		"node_modules"
-	],
+	"include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.svelte"],
+	"exclude": ["dist", "node_modules"],
 	"references": [
 		{
 			"path": "../pie-context"

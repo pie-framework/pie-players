@@ -21,5 +21,23 @@
 			"@pie-players/pie-tool-text-to-speech",
 			"@pie-players/pie-tool-tts-inline"
 		]
+	},
+	"nodeConsumerImportTargets": {
+		"nodeSafe": [
+			"@pie-players/pie-assessment-toolkit",
+			"@pie-players/pie-players-shared",
+			"@pie-players/pie-context",
+			"@pie-players/pie-calculator",
+			"@pie-players/pie-calculator-desmos",
+			"@pie-players/pie-tts",
+			"@pie-players/tts-client-server",
+			"@pie-players/tts-server-core",
+			"@pie-players/tts-server-google",
+			"@pie-players/tts-server-polly"
+		],
+		"browserOnly": [
+			"@pie-players/pie-item-player",
+			"@pie-players/pie-section-player"
+		]
 	}
 }

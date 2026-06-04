@@ -18,8 +18,9 @@ export type LayoutCompositionSnapshot = {
 };
 
 export function getCompositionFromEvent(event: Event): SectionCompositionModel {
-	const detail = (event as CustomEvent<{ composition?: SectionCompositionModel }>)
-		.detail;
+	const detail = (
+		event as CustomEvent<{ composition?: SectionCompositionModel }>
+	).detail;
 	return detail?.composition || EMPTY_COMPOSITION;
 }
 
@@ -32,7 +33,9 @@ export function deriveLayoutCompositionSnapshot(
 		passages: compositionModel.passages || [],
 		items: compositionModel.items || [],
 		renderables,
-		renderablesSignature: getRenderablesSignature(compositionModel.renderables || []),
+		renderablesSignature: getRenderablesSignature(
+			compositionModel.renderables || [],
+		),
 	};
 }
 

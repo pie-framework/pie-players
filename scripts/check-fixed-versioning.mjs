@@ -96,13 +96,17 @@ if (!existsSync(CHANGESET_CONFIG_PATH)) {
 }
 
 const changesetConfig = readJson(CHANGESET_CONFIG_PATH);
-const fixedGroups = Array.isArray(changesetConfig.fixed) ? changesetConfig.fixed : [];
+const fixedGroups = Array.isArray(changesetConfig.fixed)
+	? changesetConfig.fixed
+	: [];
 const fixedSet = new Set(
 	fixedGroups.flatMap((group) => (Array.isArray(group) ? group : [])),
 );
 const publishableSet = new Set(publishablePackages.map((pkg) => pkg.name));
 
-const missingFromFixed = [...publishableSet].filter((name) => !fixedSet.has(name));
+const missingFromFixed = [...publishableSet].filter(
+	(name) => !fixedSet.has(name),
+);
 const extraInFixed = [...fixedSet].filter((name) => !publishableSet.has(name));
 
 if (missingFromFixed.length > 0 || extraInFixed.length > 0) {
@@ -114,7 +118,9 @@ if (missingFromFixed.length > 0 || extraInFixed.length > 0) {
 		extraInFixed.length > 0
 			? `Unexpected in fixed group:\n${extraInFixed.map((p) => `- ${p}`).join("\n")}`
 			: "";
-	fail(`Changesets fixed group does not match publishable package set.\n${missingText}\n${extraText}`.trim());
+	fail(
+		`Changesets fixed group does not match publishable package set.\n${missingText}\n${extraText}`.trim(),
+	);
 }
 
 const versions = new Set(publishablePackages.map((pkg) => pkg.version));
@@ -131,7 +137,9 @@ if (versions.size !== 1) {
 		.map(([version, names]) => `- ${version}: ${names.join(", ")}`)
 		.join("\n");
 
-	fail(`Expected one lockstep version across publishable packages, found ${versions.size}:\n${details}`);
+	fail(
+		`Expected one lockstep version across publishable packages, found ${versions.size}:\n${details}`,
+	);
 }
 
 if (process.env.SKIP_NPM_VERSION_SEQUENCE_CHECK !== "1") {
@@ -209,7 +217,9 @@ for (const pkg of publishablePackages) {
 }
 
 if (violations.length > 0) {
-	fail(`Found ${violations.length} internal dependency invariant violation(s):\n${violations.join("\n")}`);
+	fail(
+		`Found ${violations.length} internal dependency invariant violation(s):\n${violations.join("\n")}`,
+	);
 }
 
 console.log(

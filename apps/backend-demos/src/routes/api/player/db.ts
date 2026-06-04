@@ -58,7 +58,8 @@ const seededItems: Array<{
 	{
 		id: DEFAULT_ITEM_ID,
 		name: "Largest Planet",
-		description: "Single-select multiple choice with correct-response data in the raw model.",
+		description:
+			"Single-select multiple choice with correct-response data in the raw model.",
 		config: {
 			id: DEFAULT_ITEM_ID,
 			markup: '<multiple-choice id="planet-choice"></multiple-choice>',
@@ -109,7 +110,8 @@ const seededItems: Array<{
 							},
 						},
 					],
-					prompt: "<p>Backend demo: which is the largest planet in our solar system?</p>",
+					prompt:
+						"<p>Backend demo: which is the largest planet in our solar system?</p>",
 					promptEnabled: true,
 					toolbarEditorPosition: "bottom",
 				},
@@ -119,7 +121,8 @@ const seededItems: Array<{
 	{
 		id: "backend-delivery-arithmetic",
 		name: "Arithmetic Check",
-		description: "A second item proving item selection comes from the backend database.",
+		description:
+			"A second item proving item selection comes from the backend database.",
 		config: {
 			id: "backend-delivery-arithmetic",
 			markup: '<multiple-choice id="sum-choice"></multiple-choice>',
@@ -148,7 +151,8 @@ const seededItems: Array<{
 	{
 		id: "backend-delivery-colors",
 		name: "Primary Color",
-		description: "A third seeded item with the same controller but distinct stored config.",
+		description:
+			"A third seeded item with the same controller but distinct stored config.",
 		config: {
 			id: "backend-delivery-colors",
 			markup: '<multiple-choice id="color-choice"></multiple-choice>',
@@ -194,7 +198,9 @@ const upsertItem = db.prepare(
 		updated_at = excluded.updated_at`,
 );
 const readSessionById = db.prepare(`SELECT * FROM demo_sessions WHERE id = ?`);
-const readSessions = db.prepare(`SELECT * FROM demo_sessions ORDER BY updated_at DESC`);
+const readSessions = db.prepare(
+	`SELECT * FROM demo_sessions ORDER BY updated_at DESC`,
+);
 const insertSession = db.prepare(
 	`INSERT INTO demo_sessions (id, item_id, data_json, created_at, updated_at)
 	 VALUES (?, ?, ?, ?, ?)`,
@@ -334,7 +340,13 @@ export function saveSession(
 		createdAt: now,
 		updatedAt: now,
 	};
-	insertSession.run(sessionId, resolvedItemId, JSON.stringify(session.data), now, now);
+	insertSession.run(
+		sessionId,
+		resolvedItemId,
+		JSON.stringify(session.data),
+		now,
+		now,
+	);
 	return clone(session);
 }
 

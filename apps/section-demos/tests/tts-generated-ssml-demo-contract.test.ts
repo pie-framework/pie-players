@@ -10,7 +10,8 @@ const collectVisibleMarkup = (): string[] => {
 		const passage = block.passage;
 		if (passage?.config?.markup) visible.push(passage.config.markup);
 	}
-	for (const itemRef of demo10TtsGeneratedSsmlSection.assessmentItemRefs ?? []) {
+	for (const itemRef of demo10TtsGeneratedSsmlSection.assessmentItemRefs ??
+		[]) {
 		for (const model of itemRef.item?.config?.models ?? []) {
 			if (typeof model.prompt === "string") visible.push(model.prompt);
 			for (const choice of model.choices ?? []) {

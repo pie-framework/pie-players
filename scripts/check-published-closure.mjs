@@ -12,7 +12,9 @@ const rawPublished =
 	readArgValue("--published-json") || process.env.PUBLISHED_PACKAGES_JSON || "";
 
 if (!rawPublished) {
-	console.log("[check-published-closure] No published package payload provided, skipping.");
+	console.log(
+		"[check-published-closure] No published package payload provided, skipping.",
+	);
 	process.exit(0);
 }
 
@@ -20,13 +22,17 @@ let publishedPackages;
 try {
 	publishedPackages = JSON.parse(rawPublished);
 } catch (error) {
-	console.error("[check-published-closure] Failed to parse published package JSON payload.");
+	console.error(
+		"[check-published-closure] Failed to parse published package JSON payload.",
+	);
 	console.error(String(error));
 	process.exit(1);
 }
 
 if (!Array.isArray(publishedPackages) || publishedPackages.length === 0) {
-	console.log("[check-published-closure] No published packages in payload, skipping.");
+	console.log(
+		"[check-published-closure] No published packages in payload, skipping.",
+	);
 	process.exit(0);
 }
 
@@ -68,18 +74,24 @@ for (const pkg of publishedPackages) {
 	for (const [depName, depRange] of Object.entries(deps)) {
 		if (!depName.startsWith("@pie-players/")) continue;
 		if (typeof depRange !== "string" || depRange.length === 0) {
-			failures.push(`${name}@${version} has invalid dependency range for ${depName}: ${String(depRange)}`);
+			failures.push(
+				`${name}@${version} has invalid dependency range for ${depName}: ${String(depRange)}`,
+			);
 			continue;
 		}
 		if (depRange.startsWith("workspace:")) {
-			failures.push(`${name}@${version} leaked workspace range for ${depName}: ${depRange}`);
+			failures.push(
+				`${name}@${version} leaked workspace range for ${depName}: ${depRange}`,
+			);
 			continue;
 		}
 
 		try {
 			const resolved = runNpmView(`${depName}@${depRange}`, "version");
 			if (!resolved || typeof resolved !== "string") {
-				failures.push(`${name}@${version} -> ${depName}@${depRange} did not resolve to a concrete version`);
+				failures.push(
+					`${name}@${version} -> ${depName}@${depRange} did not resolve to a concrete version`,
+				);
 			}
 		} catch (error) {
 			failures.push(

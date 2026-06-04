@@ -382,10 +382,7 @@ export interface AccessibilityCatalogResolverApi {
 	/**
 	 * Register catalogs scoped to a mounted content owner.
 	 */
-	registerCatalogs?(
-		context: CatalogOwnerContext,
-		catalogs: any[],
-	): () => void;
+	registerCatalogs?(context: CatalogOwnerContext, catalogs: any[]): () => void;
 
 	/**
 	 * Clear item-level catalogs (called when leaving an item)

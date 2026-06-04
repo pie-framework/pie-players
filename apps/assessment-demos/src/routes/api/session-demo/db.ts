@@ -165,7 +165,9 @@ const updateSection = db.prepare(
 const deleteSectionItems = db.prepare(
 	`DELETE FROM item_sessions WHERE section_session_id = ?`,
 );
-const deleteSectionById = db.prepare(`DELETE FROM section_sessions WHERE id = ?`);
+const deleteSectionById = db.prepare(
+	`DELETE FROM section_sessions WHERE id = ?`,
+);
 const insertItem = db.prepare(
 	`INSERT INTO item_sessions (
 		 section_session_id, item_id, canonical_item_id, session_payload, complete, updated_at
@@ -178,14 +180,20 @@ const readSectionItems = db.prepare(
 	 WHERE section_session_id = ?
 	 ORDER BY canonical_item_id ASC`,
 );
-const readAllAttempts = db.prepare(`SELECT * FROM attempt_sessions ORDER BY id ASC`);
-const readAllSections = db.prepare(`SELECT * FROM section_sessions ORDER BY id ASC`);
+const readAllAttempts = db.prepare(
+	`SELECT * FROM attempt_sessions ORDER BY id ASC`,
+);
+const readAllSections = db.prepare(
+	`SELECT * FROM section_sessions ORDER BY id ASC`,
+);
 const readAllItems = db.prepare(`SELECT * FROM item_sessions ORDER BY id ASC`);
 const clearItems = db.prepare(`DELETE FROM item_sessions`);
 const clearSections = db.prepare(`DELETE FROM section_sessions`);
 const clearAttempts = db.prepare(`DELETE FROM attempt_sessions`);
 
-const stateChangeListeners = new Set<(event: SessionDemoStateChangeEvent) => void>();
+const stateChangeListeners = new Set<
+	(event: SessionDemoStateChangeEvent) => void
+>();
 let pendingStateChangeReason: SessionDemoStateChangeReason = "update";
 let stateChangeNotifyQueued = false;
 
@@ -243,9 +251,17 @@ function normalizeItemEntry(
 				? asRecord.complete
 					? 1
 					: 0
-				: (sessionPayload.complete === true ? 1 : 0);
+				: sessionPayload.complete === true
+					? 1
+					: 0;
 	const persistWhenEmpty = asRecord.persistWhenEmpty === true;
-	return { itemId, canonicalItemId, sessionPayload, complete, persistWhenEmpty };
+	return {
+		itemId,
+		canonicalItemId,
+		sessionPayload,
+		complete,
+		persistWhenEmpty,
+	};
 }
 
 function isMeaningfulItemSessionEntry(entry: {
@@ -270,7 +286,9 @@ function withEnsuredSessionId(
 	fallbackId: string,
 ): Record<string, unknown> {
 	const currentId =
-		typeof payload.id === "string" && payload.id.trim() ? payload.id.trim() : "";
+		typeof payload.id === "string" && payload.id.trim()
+			? payload.id.trim()
+			: "";
 	if (currentId) return payload;
 	return {
 		...payload,
@@ -303,7 +321,10 @@ export function notifySessionDemoStateChanged(
 			try {
 				listener(event);
 			} catch (error) {
-				console.error("[AssessmentSessionDemoDB] state change listener failed:", error);
+				console.error(
+					"[AssessmentSessionDemoDB] state change listener failed:",
+					error,
+				);
 			}
 		}
 	});
@@ -345,10 +366,9 @@ function ensureSectionSessionId(
 	sectionId: string,
 	snapshot: SectionSessionSnapshot,
 ): number {
-	const existing = readSectionByKey.get(
-		attemptSessionId,
-		sectionId,
-	) as SectionSessionRow | undefined;
+	const existing = readSectionByKey.get(attemptSessionId, sectionId) as
+		| SectionSessionRow
+		| undefined;
 	const now = nowIso();
 	const currentItemIndex = clampIndex(snapshot.currentItemIndex);
 	const visited = JSON.stringify(snapshot.visitedItemIdentifiers || []);
@@ -364,17 +384,18 @@ function ensureSectionSessionId(
 		now,
 		now,
 	);
-	const created = readSectionByKey.get(
-		attemptSessionId,
-		sectionId,
-	) as SectionSessionRow | undefined;
+	const created = readSectionByKey.get(attemptSessionId, sectionId) as
+		| SectionSessionRow
+		| undefined;
 	if (!created) {
 		throw new Error("Failed to create assessment section session record");
 	}
 	return created.id;
 }
 
-function materializeSectionSnapshot(section: SectionSessionRow): SectionSessionSnapshot {
+function materializeSectionSnapshot(
+	section: SectionSessionRow,
+): SectionSessionSnapshot {
 	const itemRows = readSectionItems.all(section.id) as ItemSessionRow[];
 	const itemSessions: Record<string, unknown> = {};
 	for (const row of itemRows) {
@@ -424,7 +445,9 @@ function materializeAssessmentSnapshot(
 			session: materializeSectionSnapshot(section),
 		};
 	}
-	const persistedSectionIdentifiers = parseStringArray(attempt.section_identifiers);
+	const persistedSectionIdentifiers = parseStringArray(
+		attempt.section_identifiers,
+	);
 	const orderedSectionIdentifiers =
 		persistedSectionIdentifiers.length > 0
 			? persistedSectionIdentifiers
@@ -482,13 +505,18 @@ function resolveNavigationState(snapshot: AssessmentSessionSnapshot): {
 	sectionIdentifiers: string[];
 } {
 	const navigation = snapshot.navigationState || {};
-	const realizationSections = Array.isArray(snapshot.realization?.sectionIdentifiers)
+	const realizationSections = Array.isArray(
+		snapshot.realization?.sectionIdentifiers,
+	)
 		? snapshot.realization?.sectionIdentifiers?.filter(
 				(sectionId): sectionId is string =>
 					typeof sectionId === "string" && sectionId.length > 0,
 			)
 		: [];
-	const sectionPayload = (snapshot.sectionSessions || {}) as Record<string, unknown>;
+	const sectionPayload = (snapshot.sectionSessions || {}) as Record<
+		string,
+		unknown
+	>;
 	const sectionSessionIds = Object.keys(sectionPayload).filter(Boolean);
 	const sectionIdentifiers =
 		realizationSections.length > 0 ? realizationSections : sectionSessionIds;
@@ -539,23 +567,29 @@ export function upsertAssessmentSnapshot(
 			keySectionId;
 		if (!sectionId) continue;
 		targetSectionIds.add(sectionId);
-		const sectionSnapshot =
-			(rawValue.session as SectionSessionSnapshot | null | undefined) || {
-				currentItemIndex: 0,
-				visitedItemIdentifiers: [],
-				itemSessions: {},
-			};
+		const sectionSnapshot = (rawValue.session as
+			| SectionSessionSnapshot
+			| null
+			| undefined) || {
+			currentItemIndex: 0,
+			visitedItemIdentifiers: [],
+			itemSessions: {},
+		};
 		const sectionSessionId = ensureSectionSessionId(
 			attemptSessionId,
 			sectionId,
 			sectionSnapshot,
 		);
-		const priorItemRows = readSectionItems.all(sectionSessionId) as ItemSessionRow[];
+		const priorItemRows = readSectionItems.all(
+			sectionSessionId,
+		) as ItemSessionRow[];
 		const priorSessionIdByCanonicalItemId = new Map<string, string>();
 		for (const row of priorItemRows) {
 			const payload = parsePayload(row.session_payload);
 			const payloadId =
-				typeof payload.id === "string" && payload.id.trim() ? payload.id.trim() : "";
+				typeof payload.id === "string" && payload.id.trim()
+					? payload.id.trim()
+					: "";
 			if (payloadId) {
 				priorSessionIdByCanonicalItemId.set(row.canonical_item_id, payloadId);
 			}
@@ -678,7 +712,9 @@ export function getSessionDemoState(): {
 	const reconstructedSnapshots: Record<string, SectionSessionSnapshot> = {};
 
 	for (const section of sections) {
-		const attempt = attempts.find((entry) => entry.id === section.attempt_session_id);
+		const attempt = attempts.find(
+			(entry) => entry.id === section.attempt_session_id,
+		);
 		if (!attempt) continue;
 		const key = `${attempt.assessment_id}:${section.section_id}:${attempt.attempt_id}`;
 		reconstructedSnapshots[key] = materializeSectionSnapshot(section);

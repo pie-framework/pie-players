@@ -298,9 +298,9 @@ describe("PIE-512 Phase D: subscribeSectionEvents follows the active cohort", ()
 		]);
 		const bContentLoaded = received
 			.slice(typesAfterAReplay.length)
-			.filter(
-				(event) => event.type === "content-loaded",
-			) as Array<Extract<SectionControllerEvent, { type: "content-loaded" }>>;
+			.filter((event) => event.type === "content-loaded") as Array<
+			Extract<SectionControllerEvent, { type: "content-loaded" }>
+		>;
 		expect(bContentLoaded.map((event) => event.itemId)).toEqual([
 			"item-b-1",
 			"item-b-2",
@@ -695,10 +695,7 @@ describe("PIE-512 Phase D: subscribeSectionEvents follows the active cohort", ()
 			received.map((event) =>
 				event.type === "item-selected" ? event.currentItemId : event.type,
 			),
-		).toEqual([
-			"from-b-before-stale-a-update",
-			"from-b-after-stale-a-update",
-		]);
+		).toEqual(["from-b-before-stale-a-update", "from-b-after-stale-a-update"]);
 	});
 
 	test("subscribing a new listener from inside another listener's replay during cohort migration replays exactly once", async () => {
@@ -770,5 +767,4 @@ describe("PIE-512 Phase D: subscribeSectionEvents follows the active cohort", ()
 			"section-loading-complete",
 		]);
 	});
-
 });

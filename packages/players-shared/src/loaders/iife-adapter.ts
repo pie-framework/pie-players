@@ -150,10 +150,7 @@ export function createIifeBackend(config: IifeBackendConfig): IifeBackend {
 		},
 	};
 
-	async function ensureBundleLoaded(
-		url: string,
-		doc: Document,
-	): Promise<void> {
+	async function ensureBundleLoaded(url: string, doc: Document): Promise<void> {
 		const existing = inFlightBundleLoads.get(url);
 		if (existing) return existing;
 		const promise = loadBundleScriptWithRetry(url, doc).finally(() => {
@@ -441,8 +438,9 @@ function defaultLoadBundleScript(url: string, doc: Document): Promise<void> {
 }
 
 function readPieModule(): Record<string, any> | undefined {
-	const maybeWindow = (globalThis as { window?: { pie?: { default?: unknown } } })
-		.window;
+	const maybeWindow = (
+		globalThis as { window?: { pie?: { default?: unknown } } }
+	).window;
 	const pieDefault = maybeWindow?.pie?.default;
 	if (!pieDefault || typeof pieDefault !== "object") return undefined;
 	return pieDefault as Record<string, any>;

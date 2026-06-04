@@ -11,11 +11,7 @@
 		"moduleResolution": "NodeNext",
 		"stripInternal": true
 	},
-	"include": [
-		"src/**/*.ts",
-		"src/**/*.d.ts",
-		"src/**/*.json"
-	],
+	"include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.json"],
 	"exclude": [
 		"node_modules",
 		"dist",

@@ -17,17 +17,17 @@ const requiredCommands = [
 	"check:local-pr-gate",
 	"check:deps",
 	"check:package-metadata",
-	"check:source-exports",
+	"check:svelte-runtime-deps",
 	"check:custom-elements",
 	"check:ce-define-safety",
 	"check:speech-composition-purity",
+	"check:scripts",
 	"build",
 	"check:publint",
 	"check:types-publish",
-	"check:pack-exports",
-	"check:pack-smoke",
-	"check:runtime-compat",
+	"check:pack-integrity",
 	"check:node-consumer-imports",
+	"check:consumer-boundaries",
 	"lint:all",
 ];
 
@@ -58,13 +58,13 @@ if (typeof script !== "string") {
 }
 
 if (!lefthook.includes("run: bun run verify:ci-lint-typecheck")) {
-	failures.push(
-		"lefthook pre-push must run bun run verify:ci-lint-typecheck.",
-	);
+	failures.push("lefthook pre-push must run bun run verify:ci-lint-typecheck.");
 }
 
 if (!ciWorkflow.includes("run: bun run verify:ci-lint-typecheck")) {
-	failures.push("CI Lint & Typecheck must run bun run verify:ci-lint-typecheck.");
+	failures.push(
+		"CI Lint & Typecheck must run bun run verify:ci-lint-typecheck.",
+	);
 }
 
 if (failures.length > 0) {
@@ -75,4 +75,6 @@ if (failures.length > 0) {
 	process.exit(1);
 }
 
-console.log("[check-local-pr-gate] OK: pre-push mirrors CI lint/typecheck gate");
+console.log(
+	"[check-local-pr-gate] OK: pre-push mirrors CI lint/typecheck gate",
+);

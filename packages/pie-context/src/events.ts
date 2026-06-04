@@ -1,8 +1,4 @@
-import type {
-	ContextCallback,
-	ContextType,
-	UnknownContext,
-} from "./types.js";
+import type { ContextCallback, ContextType, UnknownContext } from "./types.js";
 
 export class ContextRequestEvent<
 	T extends UnknownContext = UnknownContext,

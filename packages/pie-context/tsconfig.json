@@ -8,12 +8,6 @@
 		"declarationMap": false,
 		"moduleResolution": "NodeNext"
 	},
-	"include": [
-		"src/**/*.ts",
-		"src/**/*.d.ts"
-	],
-	"exclude": [
-		"dist",
-		"node_modules"
-	]
+	"include": ["src/**/*.ts", "src/**/*.d.ts"],
+	"exclude": ["dist", "node_modules"]
 }

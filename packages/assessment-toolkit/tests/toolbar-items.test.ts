@@ -60,6 +60,9 @@ describe("toolbar-items validation", () => {
 			},
 		];
 		const valid = mixedInputs.filter((entry) => isValidToolbarItemShape(entry));
-		expect(valid.map((entry) => entry.id)).toEqual(["valid-button", "valid-link"]);
+		expect(valid.map((entry) => entry.id)).toEqual([
+			"valid-button",
+			"valid-link",
+		]);
 	});
 });

@@ -207,7 +207,8 @@ describe("TTSService automatic math speech", () => {
 		expect(impl.speakCalls.some((text) => text.includes("<speak"))).toBe(true);
 		expect(
 			impl.speakCalls.some(
-				(text) => text.toLowerCase().includes("squared") && !text.includes("<speak"),
+				(text) =>
+					text.toLowerCase().includes("squared") && !text.includes("<speak"),
 			),
 		).toBe(true);
 	});

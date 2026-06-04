@@ -10,9 +10,13 @@
 }
 
 [data-theme="dark"] {
-	--color-primary: oklch(0.67 0.24 27); /* #ff5733 — brighter orange for dark mode */
+	--color-primary: oklch(
+		0.67 0.24 27
+	); /* #ff5733 — brighter orange for dark mode */
 	--color-primary-content: oklch(1 0 0);
-	--color-secondary: oklch(0.62 0.24 250); /* #3b82f6 — lighter blue for dark mode */
+	--color-secondary: oklch(
+		0.62 0.24 250
+	); /* #3b82f6 — lighter blue for dark mode */
 	--color-secondary-content: oklch(1 0 0);
 }
 

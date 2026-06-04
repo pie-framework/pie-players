@@ -21,12 +21,8 @@
 
 import { describe, expect, test } from "bun:test";
 import type { CohortKey } from "../../../src/runtime/core/cohort.js";
-import type {
-	SectionEngineInput,
-} from "../../../src/runtime/core/engine-input.js";
-import type {
-	SectionEngineOutput,
-} from "../../../src/runtime/core/engine-output.js";
+import type { SectionEngineInput } from "../../../src/runtime/core/engine-input.js";
+import type { SectionEngineOutput } from "../../../src/runtime/core/engine-output.js";
 import {
 	createInitialEngineState,
 	type SectionEngineState,
@@ -69,7 +65,9 @@ function initialize(cohort: CohortKey, itemCount = 1): SectionEngineInput {
 
 describe("transition: idle → booting-section (initialize)", () => {
 	test("emits `composed` and stores cohort + runtime + tools", () => {
-		const { state, outputs } = fold(createInitialEngineState(), [initialize(COHORT_A, 3)]);
+		const { state, outputs } = fold(createInitialEngineState(), [
+			initialize(COHORT_A, 3),
+		]);
 		expect(state.phase).toBe("booting-section");
 		expect(state.cohort).toEqual(COHORT_A);
 		expect(state.itemCount).toBe(3);
@@ -123,7 +121,9 @@ describe("transition: idle → booting-section (initialize)", () => {
 describe("transition: section-controller-resolved", () => {
 	test("advances booting-section → engine-ready and emits stage", () => {
 		const start = fold(createInitialEngineState(), [initialize(COHORT_A)]);
-		const next = transition(start.state, { kind: "section-controller-resolved" });
+		const next = transition(start.state, {
+			kind: "section-controller-resolved",
+		});
 		expect(next.state.phase).toBe("engine-ready");
 		expect(next.state.controllerResolved).toBe(true);
 		expect(next.outputs).toEqual([
@@ -141,7 +141,9 @@ describe("transition: section-controller-resolved", () => {
 			initialize(COHORT_A),
 			{ kind: "section-controller-resolved" },
 		]);
-		const next = transition(ready.state, { kind: "section-controller-resolved" });
+		const next = transition(ready.state, {
+			kind: "section-controller-resolved",
+		});
 		expect(next.state.phase).toBe("engine-ready");
 		expect(next.state.controllerResolved).toBe(true);
 		expect(next.outputs).toEqual([]);
@@ -550,7 +552,10 @@ describe("transition: SectionEngineCore (subscribe + dispatch)", () => {
 		});
 		core.dispatch(initialize(COHORT_A));
 		core.dispatch({ kind: "section-controller-resolved" });
-		expect(seen.map((output) => output.kind)).toEqual(["stage-change", "stage-change"]);
+		expect(seen.map((output) => output.kind)).toEqual([
+			"stage-change",
+			"stage-change",
+		]);
 	});
 
 	test("disposer detaches the listener idempotently", async () => {

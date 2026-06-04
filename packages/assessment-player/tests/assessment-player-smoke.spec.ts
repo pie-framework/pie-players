@@ -12,9 +12,9 @@ test.describe("assessment player smoke", () => {
 
 		const host = page.locator("pie-assessment-player-default");
 		await expect(host).toBeVisible();
-		await expect(host.locator(".pie-assessment-player-current-position")).toHaveText(
-			"Section 1 of 3",
-		);
+		await expect(
+			host.locator(".pie-assessment-player-current-position"),
+		).toHaveText("Section 1 of 3");
 
 		await page.evaluate(() => {
 			const assessmentHost = document.querySelector(
@@ -36,17 +36,21 @@ test.describe("assessment player smoke", () => {
 				throw new Error("assessment tts service not available");
 			}
 			const originalStop = ttsService.stop?.bind(ttsService);
-			const originalHandoff = ttsService.requestControlHandoff?.bind(ttsService);
+			const originalHandoff =
+				ttsService.requestControlHandoff?.bind(ttsService);
 			(window as any).__ttsNavCleanup = {
 				stopCount: 0,
 				handoffCount: 0,
 			};
 			(window as any).__blockNextTtsCleanupNavigation = true;
-			assessmentHost.addEventListener("assessment-navigation-requested", (event) => {
-				if (!(window as any).__blockNextTtsCleanupNavigation) return;
-				event.preventDefault();
-				(window as any).__blockNextTtsCleanupNavigation = false;
-			});
+			assessmentHost.addEventListener(
+				"assessment-navigation-requested",
+				(event) => {
+					if (!(window as any).__blockNextTtsCleanupNavigation) return;
+					event.preventDefault();
+					(window as any).__blockNextTtsCleanupNavigation = false;
+				},
+			);
 			ttsService.stop = (...args: unknown[]) => {
 				(window as any).__ttsNavCleanup.stopCount += 1;
 				return originalStop?.(...args);
@@ -71,18 +75,18 @@ test.describe("assessment player smoke", () => {
 			handoffCount: 0,
 		});
 		await host.getByRole("button", { name: "Next" }).click();
-		await expect(host.locator(".pie-assessment-player-current-position")).toHaveText(
-			"Section 1 of 3",
-		);
+		await expect(
+			host.locator(".pie-assessment-player-current-position"),
+		).toHaveText("Section 1 of 3");
 		await expect.poll(getCleanupCounts).toEqual({
 			stopCount: 0,
 			handoffCount: 0,
 		});
 
 		await host.getByRole("button", { name: "Next" }).click();
-		await expect(host.locator(".pie-assessment-player-current-position")).toHaveText(
-			"Section 2 of 3",
-		);
+		await expect(
+			host.locator(".pie-assessment-player-current-position"),
+		).toHaveText("Section 2 of 3");
 		await expect.poll(getCleanupCounts).toEqual({
 			stopCount: 1,
 			handoffCount: 1,
@@ -120,7 +124,9 @@ test.describe("assessment player smoke", () => {
 		await expect(position).toHaveText("Section 3 of 3");
 	});
 
-	test("persists section route on refresh for same attempt", async ({ page }) => {
+	test("persists section route on refresh for same attempt", async ({
+		page,
+	}) => {
 		await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
 
 		const host = page.locator("pie-assessment-player-default");
@@ -142,9 +148,9 @@ test.describe("assessment player smoke", () => {
 
 		const host = page.locator("pie-assessment-player-default");
 		await expect(host).toBeVisible();
-		await expect(host.locator(".pie-assessment-player-current-position")).toHaveText(
-			"Section 1 of 3",
-		);
+		await expect(
+			host.locator(".pie-assessment-player-current-position"),
+		).toHaveText("Section 1 of 3");
 		await expect(page.locator("pie-item-player").first()).toBeVisible({
 			timeout: 30_000,
 		});
@@ -168,14 +174,14 @@ test.describe("assessment player smoke", () => {
 		});
 
 		await host.getByRole("button", { name: "Next" }).click();
-		await expect(host.locator(".pie-assessment-player-current-position")).toHaveText(
-			"Section 2 of 3",
-		);
+		await expect(
+			host.locator(".pie-assessment-player-current-position"),
+		).toHaveText("Section 2 of 3");
 
 		await page.waitForFunction(() => {
-			const players = Array.from(document.querySelectorAll("pie-item-player")) as Array<
-				HTMLElement & { loaderConfig?: Record<string, unknown> }
-			>;
+			const players = Array.from(
+				document.querySelectorAll("pie-item-player"),
+			) as Array<HTMLElement & { loaderConfig?: Record<string, unknown> }>;
 			if (!players.length) return false;
 			return players.every((player) => {
 				const cfg = player.loaderConfig;
@@ -205,20 +211,23 @@ test.describe("assessment player smoke", () => {
 			(window as any).__assessmentEvents = [];
 			(window as any).__blockNextNavigation = true;
 
-			assessmentHost.addEventListener("assessment-navigation-requested", (event) => {
-				const customEvent = event as CustomEvent<Record<string, unknown>>;
-				const shouldBlock = Boolean((window as any).__blockNextNavigation);
-				if (shouldBlock) {
-					event.preventDefault();
-					(window as any).__blockNextNavigation = false;
-				}
-				(window as any).__assessmentEvents.push({
-					name: event.type,
-					cancelable: event.cancelable,
-					defaultPrevented: event.defaultPrevented,
-					detail: customEvent.detail,
-				});
-			});
+			assessmentHost.addEventListener(
+				"assessment-navigation-requested",
+				(event) => {
+					const customEvent = event as CustomEvent<Record<string, unknown>>;
+					const shouldBlock = Boolean((window as any).__blockNextNavigation);
+					if (shouldBlock) {
+						event.preventDefault();
+						(window as any).__blockNextNavigation = false;
+					}
+					(window as any).__assessmentEvents.push({
+						name: event.type,
+						cancelable: event.cancelable,
+						defaultPrevented: event.defaultPrevented,
+						detail: customEvent.detail,
+					});
+				},
+			);
 
 			for (const name of [
 				"assessment-route-changed",
@@ -252,18 +261,26 @@ test.describe("assessment player smoke", () => {
 				(entry: { name?: string }) => entry.name === "assessment-route-changed",
 			);
 			const sessionChanged = events.some(
-				(entry: { name?: string }) => entry.name === "assessment-session-changed",
+				(entry: { name?: string }) =>
+					entry.name === "assessment-session-changed",
 			);
 			const progressChanged = events.some(
-				(entry: { name?: string }) => entry.name === "assessment-progress-changed",
+				(entry: { name?: string }) =>
+					entry.name === "assessment-progress-changed",
 			);
 			const blockedNavigation = events.some(
-				(entry: { name?: string; defaultPrevented?: boolean; cancelable?: boolean }) =>
+				(entry: {
+					name?: string;
+					defaultPrevented?: boolean;
+					cancelable?: boolean;
+				}) =>
 					entry.name === "assessment-navigation-requested" &&
 					entry.defaultPrevented === true &&
 					entry.cancelable === true,
 			);
-			return routeChanged && sessionChanged && progressChanged && blockedNavigation;
+			return (
+				routeChanged && sessionChanged && progressChanged && blockedNavigation
+			);
 		});
 	});
 
@@ -279,13 +296,16 @@ test.describe("assessment player smoke", () => {
 					detail: customEvent.detail || null,
 				});
 			});
-			document.addEventListener("assessment-submission-state-changed", (event) => {
-				const customEvent = event as CustomEvent<Record<string, unknown>>;
-				(window as any).__assessmentLifecycleEvents.push({
-					name: event.type,
-					detail: customEvent.detail || null,
-				});
-			});
+			document.addEventListener(
+				"assessment-submission-state-changed",
+				(event) => {
+					const customEvent = event as CustomEvent<Record<string, unknown>>;
+					(window as any).__assessmentLifecycleEvents.push({
+						name: event.type,
+						detail: customEvent.detail || null,
+					});
+				},
+			);
 		});
 
 		await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
@@ -293,19 +313,20 @@ test.describe("assessment player smoke", () => {
 		await expect(host).toBeVisible();
 
 		await host.getByRole("button", { name: "Next" }).click();
-		await expect(host.locator(".pie-assessment-player-current-position")).toHaveText(
-			"Section 2 of 3",
-		);
+		await expect(
+			host.locator(".pie-assessment-player-current-position"),
+		).toHaveText("Section 2 of 3");
 
 		await page.reload({ waitUntil: "networkidle" });
-		await expect(host.locator(".pie-assessment-player-current-position")).toHaveText(
-			"Section 2 of 3",
-		);
+		await expect(
+			host.locator(".pie-assessment-player-current-position"),
+		).toHaveText("Section 2 of 3");
 
 		await page.waitForFunction(() => {
 			const events = (window as any).__assessmentLifecycleEvents || [];
 			return events.some(
-				(entry: { name?: string }) => entry.name === "assessment-session-applied",
+				(entry: { name?: string }) =>
+					entry.name === "assessment-session-applied",
 			);
 		});
 
@@ -372,13 +393,13 @@ test.describe("assessment player smoke", () => {
 		});
 
 		await host.getByRole("button", { name: "Next" }).click();
-		await expect(host.locator(".pie-assessment-player-current-position")).toHaveText(
-			"Section 2 of 3",
-		);
+		await expect(
+			host.locator(".pie-assessment-player-current-position"),
+		).toHaveText("Section 2 of 3");
 		await host.getByRole("button", { name: "Back" }).click();
-		await expect(host.locator(".pie-assessment-player-current-position")).toHaveText(
-			"Section 1 of 3",
-		);
+		await expect(
+			host.locator(".pie-assessment-player-current-position"),
+		).toHaveText("Section 1 of 3");
 		await page.evaluate(() => {
 			const assessmentHost = document.querySelector(
 				"pie-assessment-player-default",
@@ -393,7 +414,8 @@ test.describe("assessment player smoke", () => {
 		});
 
 		await page.waitForFunction(() => {
-			const events = ((window as any).__assessmentProvider?.events || []) as string[];
+			const events = ((window as any).__assessmentProvider?.events ||
+				[]) as string[];
 			const navigationRequestedCount = events.filter(
 				(name) => name === "pie-assessment-navigation-requested",
 			).length;
@@ -417,15 +439,19 @@ test.describe("assessment player smoke", () => {
 		await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
 		const host = page.locator("pie-assessment-player-default");
 		await host.getByRole("button", { name: "Next" }).click();
-		await page.getByRole("button", { name: "Toggle instrumentation panel" }).click();
-		const panel = page.locator("pie-section-player-tools-instrumentation-debugger");
+		await page
+			.getByRole("button", { name: "Toggle instrumentation panel" })
+			.click();
+		const panel = page.locator(
+			"pie-section-player-tools-instrumentation-debugger",
+		);
 		await expect(
 			panel.locator(".pie-section-player-tools-instrumentation-debugger"),
 		).toBeVisible();
 		await expect(
-			panel.locator(
-				".pie-section-player-tools-instrumentation-debugger__row",
-			).first(),
+			panel
+				.locator(".pie-section-player-tools-instrumentation-debugger__row")
+				.first(),
 		).toBeVisible({ timeout: 30_000 });
 	});
 
@@ -436,8 +462,12 @@ test.describe("assessment player smoke", () => {
 		const host = page.locator("pie-assessment-player-default");
 		await expect(host).toBeVisible();
 
-		await page.getByRole("button", { name: "Toggle instrumentation panel" }).click();
-		const panel = page.locator("pie-section-player-tools-instrumentation-debugger");
+		await page
+			.getByRole("button", { name: "Toggle instrumentation panel" })
+			.click();
+		const panel = page.locator(
+			"pie-section-player-tools-instrumentation-debugger",
+		);
 		await expect(
 			panel.locator(".pie-section-player-tools-instrumentation-debugger"),
 		).toBeVisible();
@@ -447,7 +477,9 @@ test.describe("assessment player smoke", () => {
 				"pie-assessment-player-default",
 			) as HTMLElement & { coordinator?: { emitTelemetry?: Function } };
 			if (!assessmentHost?.coordinator?.emitTelemetry) {
-				throw new Error("assessment coordinator telemetry emitter not available");
+				throw new Error(
+					"assessment coordinator telemetry emitter not available",
+				);
 			}
 			await assessmentHost.coordinator.emitTelemetry(
 				"pie-tool-backend-call-success",

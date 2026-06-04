@@ -84,6 +84,7 @@
     onSessionChanged,
     onModelUpdated,
     onModelLoaded,
+    onElementSessionUpdate,
     baseHeadingLevel = undefined,
     includeSrHeading = true,
   }: {
@@ -116,6 +117,16 @@
     onSessionChanged?: (detail?: any) => void;
     onModelUpdated?: (detail?: any) => void;
     onModelLoaded?: (detail?: any) => void;
+    /**
+     * Invoked when an element controller persists derived session state (e.g. a
+     * shuffled-choice order) via its updateSession callback. The host writes it
+     * back to the authoritative session so re-renders reuse it (PIE-631).
+     */
+    onElementSessionUpdate?: (
+      elementId: string,
+      elementName: string,
+      properties: Record<string, unknown>,
+    ) => void;
     /**
      * The level of the first heading emitted inside this player.
      *
@@ -468,9 +479,21 @@
       // Svelte reactivity won't necessarily re-run effects on in-place mutation,
       // so we must push the updated session into the PIE elements explicitly.
       try {
-        updatePieElements(itemConfig, session, env, rootElement ?? undefined);
+        void updatePieElements(
+          itemConfig,
+          session,
+          env,
+          rootElement ?? undefined,
+          onElementSessionUpdate
+        );
         if (passageConfig) {
-          updatePieElements(passageConfig, session, env, rootElement ?? undefined);
+          void updatePieElements(
+            passageConfig,
+            session,
+            env,
+            rootElement ?? undefined,
+            onElementSessionUpdate
+          );
         }
       } catch (e) {
         logger.warn(
@@ -651,10 +674,22 @@
               session.length +
               ")"
           );
-          updatePieElements(itemConfig, session, env, rootElement ?? undefined);
+          void updatePieElements(
+            itemConfig,
+            session,
+            env,
+            rootElement ?? undefined,
+            onElementSessionUpdate
+          );
 
           if (passageConfig) {
-            updatePieElements(passageConfig, session, env, rootElement ?? undefined);
+            void updatePieElements(
+              passageConfig,
+              session,
+              env,
+              rootElement ?? undefined,
+              onElementSessionUpdate
+            );
           }
         }
 
@@ -841,10 +876,28 @@
     isUpdating = true;
     untrack(() => {
       try {
-        updatePieElements(itemConfig, session, env, rootElement ?? undefined);
+        // Fire-and-forget on purpose: do NOT await here. The controller's
+        // session write-back is propagated synchronously via onElementSessionUpdate
+        // (PIE-631), so awaiting is unnecessary for correctness and would defer the
+        // synchronous session-changed dispatch chain, reordering host events.
+        // updatePieElements never rejects (controller errors are reported
+        // per-element internally).
+        void updatePieElements(
+          itemConfig,
+          session,
+          env,
+          rootElement ?? undefined,
+          onElementSessionUpdate
+        );
 
         if (passageConfig) {
-          updatePieElements(passageConfig, session, env, rootElement ?? undefined);
+          void updatePieElements(
+            passageConfig,
+            session,
+            env,
+            rootElement ?? undefined,
+            onElementSessionUpdate
+          );
         }
       } catch (e: any) {
         reportPlayerError(

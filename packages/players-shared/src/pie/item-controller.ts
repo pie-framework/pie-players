@@ -6,6 +6,7 @@ import {
 import {
 	hasResponseField,
 	hasResponseValue,
+	mergeElementIntoSession,
 	normalizeItemSessionContainer as normalizeSessionContainer,
 } from "./item-session-contract.js";
 
@@ -43,9 +44,13 @@ export class ItemController {
 
 	constructor(options: ItemControllerOptions) {
 		this.storage = options.storage ?? new MemoryItemSessionStorage();
-		this.storageKey = options.storageKey ?? `pie:item-controller:v1:${options.itemId}`;
+		this.storageKey =
+			options.storageKey ?? `pie:item-controller:v1:${options.itemId}`;
 		this.sessionId = options.sessionId ?? DEFAULT_SESSION_ID;
-		this.session = normalizeSessionContainer(options.initialSession, this.sessionId);
+		this.session = normalizeSessionContainer(
+			options.initialSession,
+			this.sessionId,
+		);
 	}
 
 	async hydrate(): Promise<ItemSessionContainer> {
@@ -68,7 +73,10 @@ export class ItemController {
 		return cloneSession(this.session);
 	}
 
-	setSession(input: unknown, options: SetSessionOptions = {}): ItemSessionContainer {
+	setSession(
+		input: unknown,
+		options: SetSessionOptions = {},
+	): ItemSessionContainer {
 		const next = normalizeSessionContainer(input, this.sessionId);
 		const allowMetadataOverwrite = options.allowMetadataOverwrite ?? false;
 		if (
@@ -81,6 +89,35 @@ export class ItemController {
 		}
 		this.session = next;
 		if (options.persist !== false) {
+			void this.persist();
+		}
+		return this.getSession();
+	}
+
+	/**
+	 * Merge derived, non-response element state (e.g. a controller's persisted
+	 * shuffle order) into the authoritative session for a single element entry.
+	 *
+	 * Unlike {@link setSession}, this deliberately bypasses the response-protection
+	 * guard: the merged `properties` are element-derived metadata (no `value`), so
+	 * they must never be blocked by, nor mistaken for, a student response. The
+	 * shallow merge preserves any existing response on the entry.
+	 *
+	 * Defaults to `persist: false` — shuffle order rides along with the next genuine
+	 * response save rather than triggering its own persistence.
+	 */
+	mergeElementSession(
+		elementId: string,
+		properties: Record<string, unknown>,
+		options: { persist?: boolean } = {},
+	): ItemSessionContainer {
+		this.session = mergeElementIntoSession(
+			this.session.id || this.sessionId,
+			this.session,
+			elementId,
+			{ id: elementId, ...properties },
+		);
+		if (options.persist === true) {
 			void this.persist();
 		}
 		return this.getSession();

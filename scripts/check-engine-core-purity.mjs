@@ -32,12 +32,7 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 
 const ROOT = process.cwd();
-const TOOLKIT_SRC = path.join(
-	ROOT,
-	"packages",
-	"assessment-toolkit",
-	"src",
-);
+const TOOLKIT_SRC = path.join(ROOT, "packages", "assessment-toolkit", "src");
 const RUNTIME_BASE = path.join(TOOLKIT_SRC, "runtime");
 const POLICY_BASE = path.join(TOOLKIT_SRC, "policy");
 const SCOPED_DIRS = [

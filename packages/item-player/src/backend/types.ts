@@ -72,7 +72,9 @@ export type BackendDeliveryLoadResult = {
 };
 
 export type BackendDeliveryClient = {
-	load?: (context: BackendDeliveryLoadContext) => Promise<BackendDeliveryLoadResult>;
+	load?: (
+		context: BackendDeliveryLoadContext,
+	) => Promise<BackendDeliveryLoadResult>;
 	saveSession?: (context: BackendDeliverySessionContext) => Promise<unknown>;
 	model?: (context: BackendDeliverySessionContext) => Promise<unknown>;
 	score?: (context: BackendDeliveryScoreContext) => Promise<unknown>;

@@ -2,8 +2,10 @@ import { expect, test } from "@playwright/test";
 
 const DEMO_PATH = "/tts-ssml?mode=candidate&layout=splitpane";
 const VERTICAL_DEMO_PATH = "/tts-ssml?mode=candidate&layout=vertical";
-const LOADING_EVENT_DEMO_PATH = "/single-question?mode=candidate&layout=splitpane";
-const RESOURCE_DEMO_PATH = "/resource-observability?mode=candidate&layout=splitpane";
+const LOADING_EVENT_DEMO_PATH =
+	"/single-question?mode=candidate&layout=splitpane";
+const RESOURCE_DEMO_PATH =
+	"/resource-observability?mode=candidate&layout=splitpane";
 
 async function openEventPanel(page: import("@playwright/test").Page) {
 	const toggleButton = page.getByRole("button", {
@@ -13,7 +15,9 @@ async function openEventPanel(page: import("@playwright/test").Page) {
 	await expect(toggleButton).toBeEnabled();
 	await toggleButton.click();
 	const panel = page.locator("pie-section-player-tools-event-debugger");
-	await expect(panel.locator(".pie-section-player-tools-event-debugger")).toBeVisible();
+	await expect(
+		panel.locator(".pie-section-player-tools-event-debugger"),
+	).toBeVisible();
 	return panel;
 }
 
@@ -25,7 +29,9 @@ async function openSessionPanel(page: import("@playwright/test").Page) {
 	await expect(toggleButton).toBeEnabled();
 	await toggleButton.click();
 	const panel = page.locator("pie-section-player-tools-session-debugger");
-	await expect(panel.locator(".pie-section-player-tools-session-debugger")).toBeVisible();
+	await expect(
+		panel.locator(".pie-section-player-tools-session-debugger"),
+	).toBeVisible();
 	return panel;
 }
 
@@ -36,7 +42,9 @@ async function openInstrumentationPanel(page: import("@playwright/test").Page) {
 	await expect(toggleButton).toBeVisible();
 	await expect(toggleButton).toBeEnabled();
 	await toggleButton.click();
-	const panel = page.locator("pie-section-player-tools-instrumentation-debugger");
+	const panel = page.locator(
+		"pie-section-player-tools-instrumentation-debugger",
+	);
 	await expect(
 		panel.locator(".pie-section-player-tools-instrumentation-debugger"),
 	).toBeVisible();
@@ -89,8 +97,10 @@ async function focusPanelByHeader(args: {
 	if (!box) {
 		throw new Error("Panel header is not visible for focus interaction.");
 	}
-	const pointerX = box.x + Math.min(Math.max(12, box.width * 0.25), box.width - 8);
-	const pointerY = box.y + Math.min(Math.max(8, box.height * 0.5), box.height - 4);
+	const pointerX =
+		box.x + Math.min(Math.max(12, box.width * 0.25), box.width - 8);
+	const pointerY =
+		box.y + Math.min(Math.max(8, box.height * 0.5), box.height - 4);
 	await page.mouse.move(pointerX, pointerY);
 	await page.mouse.down();
 	await page.mouse.up();
@@ -108,8 +118,10 @@ async function dragPanelBy(args: {
 	if (!box) {
 		throw new Error("Panel header is not visible for drag interaction.");
 	}
-	const startX = box.x + Math.min(Math.max(20, box.width * 0.35), box.width - 10);
-	const startY = box.y + Math.min(Math.max(10, box.height * 0.5), box.height - 4);
+	const startX =
+		box.x + Math.min(Math.max(20, box.width * 0.35), box.width - 10);
+	const startY =
+		box.y + Math.min(Math.max(10, box.height * 0.5), box.height - 4);
 	await page.mouse.move(startX, startY);
 	await page.mouse.down();
 	await page.mouse.move(startX + deltaX, startY + deltaY, { steps: 10 });
@@ -154,14 +166,16 @@ async function assertChoiceSelectionKeepsPaneScroll(args: {
 		node.scrollTop = targetScrollTop;
 		return node.scrollTop;
 	});
-	await expect.poll(async () => pane.evaluate((node) => node.scrollTop)).toBe(
-		beforeSelectionScrollTop,
-	);
+	await expect
+		.poll(async () => pane.evaluate((node) => node.scrollTop))
+		.toBe(beforeSelectionScrollTop);
 
 	await pane.evaluate((node) => {
 		const paneRect = node.getBoundingClientRect();
 		const inputs = Array.from(
-			node.querySelectorAll<HTMLInputElement>('input[type="radio"], input[type="checkbox"]'),
+			node.querySelectorAll<HTMLInputElement>(
+				'input[type="radio"], input[type="checkbox"]',
+			),
 		);
 		const visibleInput = inputs.find((input) => {
 			const rect = input.getBoundingClientRect();
@@ -175,13 +189,17 @@ async function assertChoiceSelectionKeepsPaneScroll(args: {
 
 	await expect
 		.poll(async () => {
-			const afterSelectionScrollTop = await pane.evaluate((node) => node.scrollTop);
+			const afterSelectionScrollTop = await pane.evaluate(
+				(node) => node.scrollTop,
+			);
 			return Math.abs(afterSelectionScrollTop - beforeSelectionScrollTop);
 		})
 		.toBeLessThanOrEqual(24);
 }
 
-async function getItemShellIdentityTokens(page: import("@playwright/test").Page) {
+async function getItemShellIdentityTokens(
+	page: import("@playwright/test").Page,
+) {
 	const itemShells = page.locator('pie-item-shell[data-pie-shell-root="item"]');
 	await expect(itemShells).toHaveCount(2);
 	return itemShells.evaluateAll((nodes) => {
@@ -250,10 +268,12 @@ test.describe("section player controller event panel", () => {
 				| null;
 			const sectionId = eventPanel?.sectionId || "";
 			const attemptId = eventPanel?.attemptId;
-			const controller = eventPanel?.toolkitCoordinator?.getSectionController?.({
-				sectionId,
-				attemptId,
-			});
+			const controller = eventPanel?.toolkitCoordinator?.getSectionController?.(
+				{
+					sectionId,
+					attemptId,
+				},
+			);
 			const runtimeState = controller?.getRuntimeState?.() || null;
 			const itemIdentifiers = Array.isArray(runtimeState?.itemIdentifiers)
 				? runtimeState.itemIdentifiers
@@ -290,7 +310,9 @@ test.describe("section player controller event panel", () => {
 			.first();
 		await firstSelectable.click();
 
-		const panelRows = panel.locator(".pie-section-player-tools-event-debugger__row");
+		const panelRows = panel.locator(
+			".pie-section-player-tools-event-debugger__row",
+		);
 		await expect(
 			panelRows
 				.filter({ hasText: /item-session-data-changed|item-complete-changed/i })
@@ -302,7 +324,9 @@ test.describe("section player controller event panel", () => {
 	test("restores event panel position after page refresh", async ({ page }) => {
 		await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
 		const eventPanel = await openEventPanel(page);
-		const panelChrome = eventPanel.locator(".pie-section-player-tools-event-debugger");
+		const panelChrome = eventPanel.locator(
+			".pie-section-player-tools-event-debugger",
+		);
 		const panelHeader = page.getByRole("button", {
 			name: "Drag event debugger panel",
 		});
@@ -342,12 +366,12 @@ test.describe("section player controller event panel", () => {
 			.toBeLessThanOrEqual(16);
 
 		const restoredPosition = await getPanelPosition(restoredPanel);
-		expect(Math.abs(restoredPosition.left - savedPosition.left)).toBeLessThanOrEqual(
-			16,
-		);
-		expect(Math.abs(restoredPosition.top - savedPosition.top)).toBeLessThanOrEqual(
-			16,
-		);
+		expect(
+			Math.abs(restoredPosition.left - savedPosition.left),
+		).toBeLessThanOrEqual(16);
+		expect(
+			Math.abs(restoredPosition.top - savedPosition.top),
+		).toBeLessThanOrEqual(16);
 	});
 
 	test("restores instrumentation panel position after page refresh", async ({
@@ -447,11 +471,7 @@ test.describe("section player controller event panel", () => {
 				const eventZ = await getLocatorZIndex(
 					eventPanel.locator(".pie-section-player-tools-event-debugger"),
 				);
-				return (
-					ttsZ > sourceZ &&
-					ttsZ > sessionZ &&
-					ttsZ > eventZ
-				);
+				return ttsZ > sourceZ && ttsZ > sessionZ && ttsZ > eventZ;
 			})
 			.toBe(true);
 	});
@@ -476,7 +496,9 @@ test.describe("section player controller event panel", () => {
 			.locator('input[type="radio"], input[type="checkbox"]')
 			.nth(1);
 		await secondSelectable.click();
-		const panelRows = panel.locator(".pie-section-player-tools-event-debugger__row");
+		const panelRows = panel.locator(
+			".pie-section-player-tools-event-debugger__row",
+		);
 		await expect(
 			panelRows
 				.filter({ hasText: /item-session-data-changed|item-complete-changed/i })
@@ -484,7 +506,9 @@ test.describe("section player controller event panel", () => {
 		).toBeVisible({ timeout: 30_000 });
 	});
 
-	test("keeps items pane scroll position when selecting a choice", async ({ page }) => {
+	test("keeps items pane scroll position when selecting a choice", async ({
+		page,
+	}) => {
 		await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
 		await assertChoiceSelectionKeepsPaneScroll({
 			page,
@@ -536,7 +560,9 @@ test.describe("section player controller event panel", () => {
 				"session-changed",
 			]);
 			const originalDispatch = EventTarget.prototype.dispatchEvent;
-			EventTarget.prototype.dispatchEvent = function patchedDispatch(event: Event) {
+			EventTarget.prototype.dispatchEvent = function patchedDispatch(
+				event: Event,
+			) {
 				if (trackedEvents.has(event.type)) {
 					runtimeWindow.__pieEventHistory?.push(event.type);
 				}
@@ -588,9 +614,9 @@ test.describe("section player controller event panel", () => {
 			.first();
 		await firstSelectable.click();
 		await expect(
-			panel.locator(
-				".pie-section-player-tools-instrumentation-debugger__row",
-			).first(),
+			panel
+				.locator(".pie-section-player-tools-instrumentation-debugger__row")
+				.first(),
 		).toBeVisible({ timeout: 30_000 });
 	});
 

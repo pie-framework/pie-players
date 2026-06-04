@@ -30,7 +30,8 @@ Example:
 
 ```html
 <script type="module">
-  import 'https://cdn.jsdelivr.net/npm/@pie-players/pie-toolbars@x.y.z/dist/index.js';
+  import 'https://cdn.jsdelivr.net/npm/@pie-players/pie-assessment-toolkit@x.y.z/dist/components/item-toolbar-element.js';
+  import 'https://cdn.jsdelivr.net/npm/@pie-players/pie-assessment-toolkit@x.y.z/dist/components/section-toolbar-element.js';
   import { ToolCoordinator } from 'https://cdn.jsdelivr.net/npm/@pie-players/pie-assessment-toolkit@x.y.z/dist/index.js';
 
   // `pie-item-toolbar` renders buttons without a coordinator, but the buttons won't do anything.

@@ -44,7 +44,9 @@ function trackBridgeError(args: {
 		args.provider.trackError(
 			args.error instanceof Error
 				? args.error
-				: new Error(String(args.error ?? "Unknown instrumentation bridge error")),
+				: new Error(
+						String(args.error ?? "Unknown instrumentation bridge error"),
+					),
 			{
 				component: args.component,
 				errorType: "InstrumentationBridgeError",
@@ -130,9 +132,15 @@ export function attachInstrumentationEventBridge(
 			}
 		};
 
-		args.host.addEventListener(mapping.sourceEventName, handler as EventListener);
+		args.host.addEventListener(
+			mapping.sourceEventName,
+			handler as EventListener,
+		);
 		removeListeners.push(() => {
-			args.host?.removeEventListener(mapping.sourceEventName, handler as EventListener);
+			args.host?.removeEventListener(
+				mapping.sourceEventName,
+				handler as EventListener,
+			);
 		});
 	}
 

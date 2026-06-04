@@ -146,7 +146,7 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 		expect(
 			() =>
 				new ToolkitCoordinator({
-				assessmentId: "tts-removed-provider-key-test",
+					assessmentId: "tts-removed-provider-key-test",
 					lazyInit: true,
 					toolConfigStrictness: "error",
 					tools: {
@@ -165,7 +165,7 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 		expect(
 			() =>
 				new ToolkitCoordinator({
-				assessmentId: "tts-removed-default-strictness-test",
+					assessmentId: "tts-removed-default-strictness-test",
 					lazyInit: true,
 					tools: {
 						providers: {
@@ -249,7 +249,10 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 		const internals = coordinator as any;
 		let capturedConfig: any = null;
 		internals.toolProviderRegistry = { has: () => false };
-		internals.initializeTTSService = async (_provider: unknown, config: unknown) => {
+		internals.initializeTTSService = async (
+			_provider: unknown,
+			config: unknown,
+		) => {
 			capturedConfig = config;
 			internals.ttsInitialized = true;
 		};
@@ -282,7 +285,10 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 		internals._reconfigureTTSProvider = async () => {
 			internals.ttsInitialized = false;
 		};
-		internals.initializeTTSService = async (_provider: unknown, config: unknown) => {
+		internals.initializeTTSService = async (
+			_provider: unknown,
+			config: unknown,
+		) => {
 			capturedConfig = config;
 			internals.ttsInitialized = true;
 		};
@@ -333,7 +339,10 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 		internals._reconfigureTTSProvider = async () => {
 			internals.ttsInitialized = false;
 		};
-		internals.initializeTTSService = async (_provider: unknown, config: unknown) => {
+		internals.initializeTTSService = async (
+			_provider: unknown,
+			config: unknown,
+		) => {
 			capturedConfig = config;
 			internals.ttsInitialized = true;
 		};
@@ -381,7 +390,10 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 		internals._reconfigureTTSProvider = async () => {
 			internals.ttsInitialized = false;
 		};
-		internals.initializeTTSService = async (_provider: unknown, config: unknown) => {
+		internals.initializeTTSService = async (
+			_provider: unknown,
+			config: unknown,
+		) => {
 			capturedConfig = config;
 			internals.ttsInitialized = true;
 		};
@@ -420,7 +432,9 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 			internals.ttsInitialized = true;
 		};
 
-		await expect(coordinator.ensureTTSReady()).rejects.toThrow("simulated init failure");
+		await expect(coordinator.ensureTTSReady()).rejects.toThrow(
+			"simulated init failure",
+		);
 		expect(internals.ttsInitialized).toBe(false);
 
 		await coordinator.ensureTTSReady();
@@ -442,7 +456,10 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 			internals.ttsInitialized = true;
 		};
 
-		await Promise.all([coordinator.ensureTTSReady(), coordinator.ensureTTSReady()]);
+		await Promise.all([
+			coordinator.ensureTTSReady(),
+			coordinator.ensureTTSReady(),
+		]);
 		expect(initCalls).toBe(1);
 		expect(internals.ttsInitialized).toBe(true);
 	});

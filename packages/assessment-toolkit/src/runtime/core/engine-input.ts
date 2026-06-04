@@ -17,10 +17,7 @@
  */
 
 import type { CohortKey } from "./cohort.js";
-import type {
-	EffectiveRuntime,
-	RuntimeInputs,
-} from "./engine-resolver.js";
+import type { EffectiveRuntime, RuntimeInputs } from "./engine-resolver.js";
 import type { EngineReadinessSignals } from "./engine-readiness.js";
 import type { FrameworkErrorModel } from "../../services/framework-error.js";
 

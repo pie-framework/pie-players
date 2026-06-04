@@ -9,7 +9,9 @@ type PaneSelector =
 async function gotoDemo(page: Page) {
 	await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
 	await expect(page.getByRole("main", { name: "Items" })).toBeVisible();
-	await expect(page.locator("aside.pie-section-player-passages-pane")).toBeVisible();
+	await expect(
+		page.locator("aside.pie-section-player-passages-pane"),
+	).toBeVisible();
 }
 
 async function ensurePaneCanScroll(page: Page, selector: PaneSelector) {
@@ -37,7 +39,10 @@ async function ensurePaneCanScroll(page: Page, selector: PaneSelector) {
 	expect(metrics.scrollHeight).toBeGreaterThan(metrics.clientHeight);
 }
 
-async function assertPaneHasStableScrollbarStyling(page: Page, selector: PaneSelector) {
+async function assertPaneHasStableScrollbarStyling(
+	page: Page,
+	selector: PaneSelector,
+) {
 	const metrics = await page.evaluate((paneSelector) => {
 		const pane = document.querySelector(paneSelector) as HTMLElement | null;
 		if (!pane) {
@@ -54,7 +59,9 @@ async function assertPaneHasStableScrollbarStyling(page: Page, selector: PaneSel
 		return {
 			found: true,
 			overflowY: getComputedStyle(pane).overflowY,
-			hasTransientManagedClass: pane.classList.contains("pie-pane-scrollbars-managed"),
+			hasTransientManagedClass: pane.classList.contains(
+				"pie-pane-scrollbars-managed",
+			),
 			hasTransientScrollingClass: pane.classList.contains("pie-pane-scrolling"),
 			scrollbarWidth: pseudoScrollbarStyle.width,
 		};
@@ -86,10 +93,18 @@ test.describe("section player splitpane scrollbars", () => {
 			await assertPaneHasStableScrollbarStyling(page, paneSelector);
 
 			await page.evaluate((currentPaneSelector) => {
-				const currentPane = document.querySelector(currentPaneSelector) as HTMLElement | null;
+				const currentPane = document.querySelector(
+					currentPaneSelector,
+				) as HTMLElement | null;
 				if (!currentPane) return;
-				const maxScroll = Math.max(0, currentPane.scrollHeight - currentPane.clientHeight);
-				currentPane.scrollTop = Math.min(Math.max(48, currentPane.scrollTop + 48), maxScroll);
+				const maxScroll = Math.max(
+					0,
+					currentPane.scrollHeight - currentPane.clientHeight,
+				);
+				currentPane.scrollTop = Math.min(
+					Math.max(48, currentPane.scrollTop + 48),
+					maxScroll,
+				);
 			}, paneSelector);
 
 			await assertPaneHasStableScrollbarStyling(page, paneSelector);

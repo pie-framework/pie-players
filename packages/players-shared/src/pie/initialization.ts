@@ -248,13 +248,7 @@ const registerPieElementsFromBundle = (
 					elementTagName,
 					String(pkg),
 				);
-				updateRegisteredElement(
-					editorElName,
-					config,
-					session,
-					options,
-					true,
-				);
+				updateRegisteredElement(editorElName, config, session, options, true);
 			}
 			return;
 		}
@@ -405,12 +399,7 @@ const registerPieElementsFromBundle = (
 							if (mutation.type === "childList") {
 								mutation.addedNodes.forEach((node) => {
 									if (node.nodeType === Node.ELEMENT_NODE) {
-										if (
-											!isNodeWithinContainer(
-												node,
-												context.container,
-											)
-										) {
+										if (!isNodeWithinContainer(node, context.container)) {
 											return;
 										}
 										const tagName = (node as Element).tagName.toLowerCase();
@@ -428,10 +417,7 @@ const registerPieElementsFromBundle = (
 											.querySelectorAll("*")
 											.forEach((childNode) => {
 												if (
-													!isNodeWithinContainer(
-														childNode,
-														context.container,
-													)
+													!isNodeWithinContainer(childNode, context.container)
 												) {
 													return;
 												}

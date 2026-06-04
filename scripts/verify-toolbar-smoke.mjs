@@ -44,10 +44,7 @@ try {
 	}
 
 	// Check section toolbar buttons.
-	await page
-		.locator("pie-section-toolbar")
-		.first()
-		.waitFor({ timeout: 45000 });
+	await page.locator("pie-section-toolbar").first().waitFor({ timeout: 45000 });
 	const sectionButtons = page.locator(
 		"pie-section-toolbar .tool-button, pie-section-toolbar .item-toolbar__button",
 	);
@@ -98,4 +95,3 @@ try {
 } finally {
 	await browser.close();
 }
-

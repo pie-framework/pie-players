@@ -24,7 +24,9 @@ const parseDotEnvToken = (envPath: string, key: string): string => {
 };
 
 const resolveToken = (envPath?: string, baseEnv = process.env): string => {
-	const envToken = String(baseEnv.NPM_TOKEN || baseEnv.NODE_AUTH_TOKEN || "").trim();
+	const envToken = String(
+		baseEnv.NPM_TOKEN || baseEnv.NODE_AUTH_TOKEN || "",
+	).trim();
 	if (envToken) return envToken;
 	if (!envPath) return "";
 

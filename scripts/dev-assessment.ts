@@ -98,7 +98,9 @@ if (!shouldRebuild) {
 			console.error(`  - ${artifact}`);
 		}
 		console.error("");
-		console.error("[dev:assessment] Run one of these commands, then try again:");
+		console.error(
+			"[dev:assessment] Run one of these commands, then try again:",
+		);
 		console.error("  bun run dev:assessment -- --rebuild");
 		console.error("  bun run build && bun run dev:assessment");
 		process.exit(1);
@@ -110,4 +112,11 @@ if (!hasHostArg) {
 }
 
 console.log("[dev:assessment] Starting assessment demo dev server...");
-await runCommand(["bun", "run", "--cwd", "apps/assessment-demos", "dev", ...args]);
+await runCommand([
+	"bun",
+	"run",
+	"--cwd",
+	"apps/assessment-demos",
+	"dev",
+	...args,
+]);

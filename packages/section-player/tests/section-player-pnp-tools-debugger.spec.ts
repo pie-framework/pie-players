@@ -24,7 +24,9 @@ function firstItem(page: Page): Locator {
 }
 
 test.describe("PNP tools debugger", () => {
-	test("edits placement independently from PNP enforcement", async ({ page }) => {
+	test("edits placement independently from PNP enforcement", async ({
+		page,
+	}) => {
 		await gotoDemo(page);
 		const panel = await openPnpToolsEditor(page);
 
@@ -44,7 +46,9 @@ test.describe("PNP tools debugger", () => {
 		await expect(calculatorButton).toBeVisible();
 	});
 
-	test("applies PNP prohibitions only when enforcement is active", async ({ page }) => {
+	test("applies PNP prohibitions only when enforcement is active", async ({
+		page,
+	}) => {
 		await gotoDemo(page);
 		const panel = await openPnpToolsEditor(page);
 

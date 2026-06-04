@@ -5,7 +5,11 @@
  */
 
 import { cloneDeep } from "../object/index.js";
-import type { ConfigContainerEntity, ConfigEntity, PieModel } from "../types/index.js";
+import type {
+	ConfigContainerEntity,
+	ConfigEntity,
+	PieModel,
+} from "../types/index.js";
 import { parsePackageName } from "./utils.js";
 
 export type PieConfigContractValidationResult = {
@@ -76,7 +80,9 @@ export const validatePieConfigContract = (
 		try {
 			parsePackageName(packageSpec);
 		} catch {
-			errors.push(`Element "${tagName}" has invalid package spec "${packageSpec}".`);
+			errors.push(
+				`Element "${tagName}" has invalid package spec "${packageSpec}".`,
+			);
 		}
 	}
 
@@ -84,7 +90,9 @@ export const validatePieConfigContract = (
 	for (const [index, model] of modelList.entries()) {
 		const modelElement = model?.element;
 		if (typeof modelElement !== "string" || modelElement.trim().length === 0) {
-			errors.push(`Model at index ${index} is missing a valid "element" reference.`);
+			errors.push(
+				`Model at index ${index} is missing a valid "element" reference.`,
+			);
 			continue;
 		}
 		modelElementTags.add(modelElement);
@@ -102,7 +110,10 @@ export const validatePieConfigContract = (
 		}
 	}
 
-	const referencedTags = new Set<string>([...modelElementTags, ...markupElementTags]);
+	const referencedTags = new Set<string>([
+		...modelElementTags,
+		...markupElementTags,
+	]);
 	for (const tagName of elementTags) {
 		if (!referencedTags.has(tagName)) {
 			warnings.push(

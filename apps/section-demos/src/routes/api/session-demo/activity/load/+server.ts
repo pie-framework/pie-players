@@ -10,7 +10,9 @@ import {
 } from "../../db";
 import type { RequestHandler } from "./$types";
 
-function cloneSnapshot(snapshot: SessionDemoSnapshot | null): SessionDemoSnapshot {
+function cloneSnapshot(
+	snapshot: SessionDemoSnapshot | null,
+): SessionDemoSnapshot {
 	if (!snapshot) {
 		return {
 			currentItemIndex: 0,
@@ -27,7 +29,11 @@ function cloneSnapshot(snapshot: SessionDemoSnapshot | null): SessionDemoSnapsho
 	};
 }
 
-function seedIfNeeded(assessmentId: string, attemptId: string, reset: boolean): void {
+function seedIfNeeded(
+	assessmentId: string,
+	attemptId: string,
+	reset: boolean,
+): void {
 	if (!reset) {
 		const hasAllSections = _defaultSeedSections.every((entry) =>
 			Boolean(
@@ -74,9 +80,8 @@ function buildActivityLoadPayload(args: {
 	  }
 	| { ok: false; error: string } {
 	const demo = getSectionDemoById("session-hydrate-db");
-	const sections = ((demo?.sections || []).map((entry) => entry.section) || []) as unknown as Array<
-		Record<string, unknown>
-	>;
+	const sections = ((demo?.sections || []).map((entry) => entry.section) ||
+		[]) as unknown as Array<Record<string, unknown>>;
 	const requestedSection =
 		sections.find((section) => section.identifier === args.sectionId) || null;
 	if (!requestedSection) {
@@ -97,8 +102,12 @@ function buildActivityLoadPayload(args: {
 		const original = getSectionSnapshot(key);
 		const next = cloneSnapshot(original);
 		let changed = false;
-		for (const ref of (section.assessmentItemRefs as Array<Record<string, unknown>>) || []) {
-			const itemId = String(ref.identifier || (ref.item as Record<string, unknown>)?.id || "");
+		for (const ref of (section.assessmentItemRefs as Array<
+			Record<string, unknown>
+		>) || []) {
+			const itemId = String(
+				ref.identifier || (ref.item as Record<string, unknown>)?.id || "",
+			);
 			if (!itemId) continue;
 			const rawEntry = next.itemSessions[itemId];
 			if (!rawEntry || typeof rawEntry !== "object") continue;
@@ -138,8 +147,11 @@ function buildActivityLoadPayload(args: {
 	const totalItems = sections.reduce(
 		(count, section) =>
 			count +
-			((((section.assessmentItemRefs as Array<Record<string, unknown>> | undefined) || [])
-				.length as number) || 0),
+			(((
+				(section.assessmentItemRefs as
+					| Array<Record<string, unknown>>
+					| undefined) || []
+			).length as number) || 0),
 		0,
 	);
 
@@ -172,7 +184,10 @@ export const POST: RequestHandler = async ({ request }) => {
 	const sectionId = body.sectionId || "";
 	if (!assessmentId || !attemptId || !sectionId) {
 		return json(
-			{ ok: false, error: "assessmentId, attemptId, and sectionId are required" },
+			{
+				ok: false,
+				error: "assessmentId, attemptId, and sectionId are required",
+			},
 			{ status: 400 },
 		);
 	}
@@ -196,7 +211,10 @@ export const GET: RequestHandler = async ({ url }) => {
 	const sectionId = url.searchParams.get("sectionId") || "";
 	if (!assessmentId || !attemptId || !sectionId) {
 		return json(
-			{ ok: false, error: "assessmentId, attemptId, and sectionId are required" },
+			{
+				ok: false,
+				error: "assessmentId, attemptId, and sectionId are required",
+			},
 			{ status: 400 },
 		);
 	}

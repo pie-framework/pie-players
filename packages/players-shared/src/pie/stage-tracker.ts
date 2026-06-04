@@ -75,7 +75,9 @@ function defaultUnexpectedTransitionLogger(info: {
 	}
 }
 
-export function createStageTracker(opts: CreateStageTrackerOptions): StageTracker {
+export function createStageTracker(
+	opts: CreateStageTrackerOptions,
+): StageTracker {
 	const applicable = applicableStages(opts.sourceCeShape);
 	const applicableSet = new Set(applicable);
 	const now = opts.now ?? (() => new Date().toISOString());

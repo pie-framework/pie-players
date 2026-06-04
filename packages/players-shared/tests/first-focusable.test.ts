@@ -3,7 +3,10 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "bun:test";
 import { isProgrammaticFocusTarget } from "../src/ui/first-focusable.js";
 
 beforeAll(() => {
-	if (typeof (globalThis as unknown as { window?: unknown }).window === "undefined") {
+	if (
+		typeof (globalThis as unknown as { window?: unknown }).window ===
+		"undefined"
+	) {
 		GlobalRegistrator.register();
 	}
 });

@@ -35,16 +35,21 @@ async function openSessionPanel(page: Page) {
 }
 
 async function forceBrowserTtsRuntime(page: Page): Promise<void> {
-	await page.locator("pie-section-player-tools-session-debugger").evaluate(async (element) => {
-		const coordinator = (element as { toolkitCoordinator?: any }).toolkitCoordinator;
-		if (!coordinator?.updateToolConfig) return;
-		coordinator.updateToolConfig("textToSpeech", {
-			enabled: true,
-			backend: "browser",
-			transportMode: "pie",
+	await page
+		.locator("pie-section-player-tools-session-debugger")
+		.evaluate(async (element) => {
+			const coordinator = (element as { toolkitCoordinator?: any })
+				.toolkitCoordinator;
+			if (!coordinator?.updateToolConfig) return;
+			coordinator.updateToolConfig("textToSpeech", {
+				enabled: true,
+				backend: "browser",
+				transportMode: "pie",
+			});
+			await coordinator?.ensureTTSReady?.(
+				coordinator?.getToolConfig?.("textToSpeech"),
+			);
 		});
-		await coordinator?.ensureTTSReady?.(coordinator?.getToolConfig?.("textToSpeech"));
-	});
 }
 
 async function mockPollyVoices(page: Page): Promise<void> {
@@ -54,7 +59,12 @@ async function mockPollyVoices(page: Page): Promise<void> {
 			contentType: "application/json",
 			body: JSON.stringify({
 				voices: [
-					{ id: "Joanna", name: "Joanna", languageCode: "en-US", gender: "female" },
+					{
+						id: "Joanna",
+						name: "Joanna",
+						languageCode: "en-US",
+						gender: "female",
+					},
 				],
 			}),
 		});
@@ -137,9 +147,9 @@ async function captureBrowserUtterances(page: Page): Promise<void> {
 				] as unknown as SpeechSynthesisVoice[],
 			speak: (utterance: SpeechSynthesisUtterance) => {
 				try {
-					(window as unknown as { __ttsUtterances: string[] }).__ttsUtterances.push(
-						String(utterance.text || ""),
-					);
+					(
+						window as unknown as { __ttsUtterances: string[] }
+					).__ttsUtterances.push(String(utterance.text || ""));
 				} catch {
 					/* ignore */
 				}
@@ -395,7 +405,9 @@ async function installHighlightRecorder(page: Page): Promise<void> {
 			});
 			return true;
 		});
-	expect(installed, "highlight coordinator must be available to wrap").toBe(true);
+	expect(installed, "highlight coordinator must be available to wrap").toBe(
+		true,
+	);
 }
 
 interface RecordedHighlight {
@@ -510,7 +522,10 @@ test.describe("section player TTS highlighting parity (authored vs generated SSM
 	// highlighting went unnoticed.
 	for (const demo of [
 		{ name: "authored SSML (tts-ssml)", path: "/tts-ssml" },
-		{ name: "generated SSML (tts-generated-ssml)", path: "/tts-generated-ssml" },
+		{
+			name: "generated SSML (tts-generated-ssml)",
+			path: "/tts-generated-ssml",
+		},
 	]) {
 		test(`highlights prose words and math tokens during a passage read — ${demo.name}`, async ({
 			page,
@@ -569,11 +584,15 @@ test.describe("section player demo tts-generated-ssml", () => {
 
 		// Sanity: the quadratic-formula passage and its MathML render.
 		const passageRegion = page.getByRole("complementary", { name: "Passages" });
-		await expect(passageRegion.locator("p.formula math")).toBeVisible({ timeout: 15_000 });
+		await expect(passageRegion.locator("p.formula math")).toBeVisible({
+			timeout: 15_000,
+		});
 
 		// The demo defaults to the SSML-capable AWS Polly preset, so playing the
 		// passage must route generated math SSML through the synthesis endpoint.
-		const passageInlineTts = passageRegion.locator("pie-tool-tts-inline:visible").first();
+		const passageInlineTts = passageRegion
+			.locator("pie-tool-tts-inline:visible")
+			.first();
 		await expect(passageInlineTts).toBeVisible();
 
 		const ssmlSynthRequest = page.waitForRequest(
@@ -584,7 +603,9 @@ test.describe("section player demo tts-generated-ssml", () => {
 			{ timeout: 45_000 },
 		);
 
-		await passageInlineTts.getByRole("button", { name: "Play reading" }).click();
+		await passageInlineTts
+			.getByRole("button", { name: "Play reading" })
+			.click();
 		const passagePanel = passageInlineTts.locator(
 			'[role="toolbar"][aria-label="Reading controls"]',
 		);
@@ -611,7 +632,9 @@ test.describe("section player demo tts-generated-ssml", () => {
 		await expect(passagePanel).toBeVisible();
 	});
 
-	test("sends plain spoken math (no SSML markup) to the browser provider", async ({ page }) => {
+	test("sends plain spoken math (no SSML markup) to the browser provider", async ({
+		page,
+	}) => {
 		test.setTimeout(120_000);
 		await captureBrowserUtterances(page);
 		await gotoDemo(page);
@@ -619,10 +642,14 @@ test.describe("section player demo tts-generated-ssml", () => {
 		await forceBrowserTtsRuntime(page);
 
 		const passageRegion = page.getByRole("complementary", { name: "Passages" });
-		const passageInlineTts = passageRegion.locator("pie-tool-tts-inline:visible").first();
+		const passageInlineTts = passageRegion
+			.locator("pie-tool-tts-inline:visible")
+			.first();
 		await expect(passageInlineTts).toBeVisible();
 
-		await passageInlineTts.getByRole("button", { name: "Play reading" }).click();
+		await passageInlineTts
+			.getByRole("button", { name: "Play reading" })
+			.click();
 		const passagePanel = passageInlineTts.locator(
 			'[role="toolbar"][aria-label="Reading controls"]',
 		);
@@ -635,9 +662,9 @@ test.describe("section player demo tts-generated-ssml", () => {
 				async () =>
 					page.evaluate(
 						() =>
-							(window as unknown as { __ttsUtterances?: string[] }).__ttsUtterances?.join(
-								"\n",
-							) || "",
+							(
+								window as unknown as { __ttsUtterances?: string[] }
+							).__ttsUtterances?.join("\n") || "",
 					),
 				{
 					timeout: 45_000,
@@ -648,7 +675,9 @@ test.describe("section player demo tts-generated-ssml", () => {
 
 		const spoken = await page.evaluate(
 			() =>
-				(window as unknown as { __ttsUtterances?: string[] }).__ttsUtterances?.join("\n") || "",
+				(
+					window as unknown as { __ttsUtterances?: string[] }
+				).__ttsUtterances?.join("\n") || "",
 		);
 		expect(spoken).not.toContain("<speak");
 		expect(spoken).not.toContain("<math");

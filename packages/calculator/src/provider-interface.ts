@@ -10,10 +10,7 @@
 /**
  * Calculator types
  */
-export type CalculatorType =
-	| "basic"
-	| "scientific"
-	| "graphing";
+export type CalculatorType = "basic" | "scientific" | "graphing";
 
 /**
  * Desmos-specific calculator configuration options

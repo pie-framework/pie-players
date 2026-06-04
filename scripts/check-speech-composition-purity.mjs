@@ -56,7 +56,8 @@ const FORBIDDEN_IMPORT_RULES = [
 	},
 	{
 		matches: (specifier) => specifier.includes("HighlightCoordinator"),
-		reason: "imports from `HighlightCoordinator` (rendering is a runtime concern)",
+		reason:
+			"imports from `HighlightCoordinator` (rendering is a runtime concern)",
 	},
 	{
 		matches: (specifier) => specifier.includes("highlight-pipeline"),
@@ -125,7 +126,8 @@ function collectModuleSpecifiers(sourceFile) {
 			ts.isCallExpression(node) &&
 			node.arguments.length === 1 &&
 			(node.expression.kind === ts.SyntaxKind.ImportKeyword ||
-				(ts.isIdentifier(node.expression) && node.expression.text === "require"))
+				(ts.isIdentifier(node.expression) &&
+					node.expression.text === "require"))
 		) {
 			addSpecifier(node.arguments[0]);
 		}
@@ -171,9 +173,7 @@ if (violations.length > 0) {
 		"[check-speech-composition-purity] purity violation(s) under packages/assessment-toolkit/src/services/tts/generated-speech/ (excluding dom/):",
 	);
 	for (const v of violations) {
-		console.error(
-			`  ${v.file}:${v.location}: "${v.specifier}" — ${v.reason}`,
-		);
+		console.error(`  ${v.file}:${v.location}: "${v.specifier}" — ${v.reason}`);
 	}
 	console.error(
 		"\nThe generated-speech core is pure speech-composition logic by design. " +

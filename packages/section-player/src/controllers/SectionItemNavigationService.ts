@@ -20,8 +20,10 @@ export class SectionItemNavigationService {
 		const destinationItem = args.items[args.index];
 		const currentItemId = destinationItem?.id || "";
 		const itemLabel =
-			typeof (destinationItem as unknown as { title?: unknown })?.title === "string"
-				? ((destinationItem as unknown as { title: string }).title.trim() || undefined)
+			typeof (destinationItem as unknown as { title?: unknown })?.title ===
+			"string"
+				? (destinationItem as unknown as { title: string }).title.trim() ||
+					undefined
 				: undefined;
 		const nextTestAttemptSession = upsertVisitedItem(
 			setCurrentPosition(args.testAttemptSession, {

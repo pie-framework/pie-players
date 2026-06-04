@@ -20,7 +20,9 @@ const SECTION_META_ICON = `
 </svg>
 `;
 
-function resolveSectionPlayer(scopeElement: HTMLElement | null): SectionPlayerLike | null {
+function resolveSectionPlayer(
+	scopeElement: HTMLElement | null,
+): SectionPlayerLike | null {
 	const localHost = scopeElement?.closest<SectionPlayerLike>(
 		"pie-section-player-splitpane, pie-section-player-vertical, pie-section-player-kernel-host",
 	);
@@ -69,8 +71,14 @@ function readPlayerMeta(player: SectionPlayerLike | null): {
 		};
 	}
 	const composition = player.selectComposition?.() || {};
-	const mode = player.getAttribute("mode") || player.getAttribute("data-pie-mode") || "n/a";
-	const role = player.getAttribute("role") || player.getAttribute("data-pie-role") || "n/a";
+	const mode =
+		player.getAttribute("mode") ||
+		player.getAttribute("data-pie-mode") ||
+		"n/a";
+	const role =
+		player.getAttribute("role") ||
+		player.getAttribute("data-pie-role") ||
+		"n/a";
 	return {
 		playerType: player.getAttribute("player-type") || "n/a",
 		modeRole: `${mode}/${role}`,
@@ -79,7 +87,10 @@ function readPlayerMeta(player: SectionPlayerLike | null): {
 	};
 }
 
-function setMetadataRows(panel: HTMLElement, rows: Array<[string, string]>): void {
+function setMetadataRows(
+	panel: HTMLElement,
+	rows: Array<[string, string]>,
+): void {
 	const container = panel.querySelector<HTMLElement>("[data-meta-rows]");
 	if (!container) return;
 	container.innerHTML = "";
@@ -126,7 +137,8 @@ export const sectionMetaInfoToolRegistration: ToolRegistration = {
 		);
 		const panel = createPanelElement();
 		const createdAt = new Date().toISOString();
-		const resolvePlayer = () => resolveSectionPlayer(toolbarContext.getScopeElement?.() || null);
+		const resolvePlayer = () =>
+			resolveSectionPlayer(toolbarContext.getScopeElement?.() || null);
 		const button: ToolToolbarButtonDefinition = {
 			toolId: this.toolId,
 			label: this.name,

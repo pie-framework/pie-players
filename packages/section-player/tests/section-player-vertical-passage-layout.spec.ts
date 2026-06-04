@@ -15,7 +15,9 @@ test.describe("section player vertical passage layout", () => {
 		await expect(passageHeading).toBeVisible();
 
 		const passageContent = page
-			.locator("pie-section-player-passage-card .pie-section-player__passage-content")
+			.locator(
+				"pie-section-player-passage-card .pie-section-player__passage-content",
+			)
 			.first();
 		await expect(passageContent).toBeVisible();
 
@@ -40,7 +42,9 @@ test.describe("section player vertical passage layout", () => {
 	}) => {
 		await page.goto(VERTICAL_DEMO_PATH, { waitUntil: "networkidle" });
 
-		const verticalContainer = page.locator(".pie-section-player-vertical-content");
+		const verticalContainer = page.locator(
+			".pie-section-player-vertical-content",
+		);
 		await expect(verticalContainer).toBeVisible();
 
 		const metrics = await page.evaluate(() => {
@@ -48,7 +52,12 @@ test.describe("section player vertical passage layout", () => {
 				".pie-section-player-vertical-content",
 			) as HTMLElement | null;
 			if (!pane) {
-				return { found: false, canScroll: false, scrollbarWidth: "", overflowY: "" };
+				return {
+					found: false,
+					canScroll: false,
+					scrollbarWidth: "",
+					overflowY: "",
+				};
 			}
 
 			if (pane.scrollHeight <= pane.clientHeight + 1) {

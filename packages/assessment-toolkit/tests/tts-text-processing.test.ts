@@ -23,7 +23,7 @@ const makeElement = (attrs: {
 		classList: {
 			contains: (value: string) => (attrs.classes || []).includes(value),
 		},
-	} as unknown as Element);
+	}) as unknown as Element;
 
 describe("tts text-processing", () => {
 	afterEach(() => {

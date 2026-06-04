@@ -4,7 +4,10 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { wrapOverwideImages } from "../src/security/wrap-overwide-images.js";
 
 beforeAll(() => {
-	if (typeof (globalThis as unknown as { window?: unknown }).window === "undefined") {
+	if (
+		typeof (globalThis as unknown as { window?: unknown }).window ===
+		"undefined"
+	) {
 		GlobalRegistrator.register();
 	}
 });
@@ -17,10 +20,12 @@ afterAll(() => {
 
 describe("wrapOverwideImages", () => {
 	test("wraps a bare <img> in a .pie-image-scroll span", () => {
-		const out = wrapOverwideImages('<p>See diagram:</p><img src="/x.png" alt="cell">');
+		const out = wrapOverwideImages(
+			'<p>See diagram:</p><img src="/x.png" alt="cell">',
+		);
 		expect(out).toContain('<span class="pie-image-scroll"');
-		expect(out).toContain("tabindex=\"0\"");
-		expect(out).toContain("role=\"region\"");
+		expect(out).toContain('tabindex="0"');
+		expect(out).toContain('role="region"');
 		expect(out).toContain('aria-label="Scrollable image: cell"');
 		expect(out).toContain('src="/x.png"');
 		expect(out).toContain('alt="cell"');

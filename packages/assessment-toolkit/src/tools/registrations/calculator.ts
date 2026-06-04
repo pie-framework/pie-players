@@ -258,7 +258,7 @@ export const calculatorToolRegistration: ToolRegistration = {
 						initialHeight: 420,
 						minWidth: 380,
 						minHeight: 420,
-						initialAlign: 'bottom-right',
+						initialAlign: "bottom-right",
 						initialMargin: 16,
 					},
 				},

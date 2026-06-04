@@ -8,8 +8,10 @@ describe("ToolkitCoordinator telemetry listeners", () => {
 			lazyInit: true,
 		});
 
-		const received: Array<{ eventName: string; payload?: Record<string, unknown> }> =
-			[];
+		const received: Array<{
+			eventName: string;
+			payload?: Record<string, unknown>;
+		}> = [];
 		const unsubscribe = coordinator.subscribeTelemetry((event) => {
 			received.push(event);
 		});
@@ -48,8 +50,10 @@ describe("ToolkitCoordinator telemetry listeners", () => {
 			},
 		});
 
-		const received: Array<{ eventName: string; payload?: Record<string, unknown> }> =
-			[];
+		const received: Array<{
+			eventName: string;
+			payload?: Record<string, unknown>;
+		}> = [];
 		const unsubscribe = coordinator.subscribeTelemetry((event) => {
 			received.push(event);
 		});

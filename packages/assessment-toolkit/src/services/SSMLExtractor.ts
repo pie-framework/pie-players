@@ -262,7 +262,10 @@ export function sanitizeSsmlString(input: string): string {
 	if (!trimmed || !trimmed.includes("<")) return input;
 	if (typeof DOMParser === "undefined") return input;
 	const parser = new DOMParser();
-	const doc = parser.parseFromString(expandSelfClosingVoidTags(trimmed), "text/html");
+	const doc = parser.parseFromString(
+		expandSelfClosingVoidTags(trimmed),
+		"text/html",
+	);
 	const speakElement = doc.querySelector("speak");
 	if (speakElement) {
 		sanitizeSsmlElement(speakElement);

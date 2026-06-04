@@ -44,7 +44,11 @@ describe("assembleGeneratedSpeech (pure core)", () => {
 	test("assembles prose + math segments with visible spans and aggregate plain text", async () => {
 		const chunks: MathAwareSpeechChunk[] = [
 			{ type: "text", text: "Solve" },
-			{ type: "math", mathml: "<math><mi>x</mi></math>", fallbackText: "x squared" },
+			{
+				type: "math",
+				mathml: "<math><mi>x</mi></math>",
+				fallbackText: "x squared",
+			},
 			{ type: "text", text: "now" },
 		];
 		const assembled = await assembleGeneratedSpeech({
@@ -203,9 +207,7 @@ describe("buildGeneratedSpeechFromRoot + planToCompositionChunkInputs (DOM adapt
 			"Based on the passage, solve",
 		);
 		expect(chunks[2].sourceElement?.tagName).toBe("LABEL");
-		expect(chunks[2].regionRange?.toString()).toBe(
-			"A. The quadratic formula",
-		);
+		expect(chunks[2].regionRange?.toString()).toBe("A. The quadratic formula");
 		expect(chunks[3].sourceElement?.tagName).toBe("LABEL");
 		expect(chunks[3].regionRange?.toString()).toBe("B. Factoring into");
 	});
@@ -438,7 +440,11 @@ describe("createMemoizedMathSpeechResolver", () => {
 		const resolver = createMemoizedMathSpeechResolver({
 			resolve: async () => {
 				calls += 1;
-				return { speechText: `s${calls}`, usedMathSpeech: true, usedFallback: false };
+				return {
+					speechText: `s${calls}`,
+					usedMathSpeech: true,
+					usedFallback: false,
+				};
 			},
 		});
 		const chunk = {

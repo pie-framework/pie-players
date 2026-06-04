@@ -60,7 +60,10 @@ function nowIso(): string {
 	return new Date().toISOString();
 }
 
-function createAttemptSessionIdentifier(assessmentId: string, attemptId: string): string {
+function createAttemptSessionIdentifier(
+	assessmentId: string,
+	attemptId: string,
+): string {
 	return `aas_v1_${assessmentId.replace(/[^a-zA-Z0-9_-]/g, "-")}_${attemptId.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
 }
 
@@ -117,7 +120,9 @@ function keyQuery(assessmentId: string, attemptId: string): string {
 	return query.toString();
 }
 
-export async function bootstrapSessionDemoDb(payload: SessionDemoSeedPayload): Promise<void> {
+export async function bootstrapSessionDemoDb(
+	payload: SessionDemoSeedPayload,
+): Promise<void> {
 	const response = await fetch("/api/session-demo/bootstrap", {
 		method: "POST",
 		headers: {
@@ -191,7 +196,9 @@ export async function saveSnapshotToSessionDb(args: {
 		}),
 	});
 	if (!response.ok) {
-		throw new Error(`Failed to save assessment session snapshot (${response.status})`);
+		throw new Error(
+			`Failed to save assessment session snapshot (${response.status})`,
+		);
 	}
 }
 
@@ -206,6 +213,8 @@ export async function deleteSnapshotFromSessionDb(args: {
 		},
 	);
 	if (!response.ok) {
-		throw new Error(`Failed to delete assessment session snapshot (${response.status})`);
+		throw new Error(
+			`Failed to delete assessment session snapshot (${response.status})`,
+		);
 	}
 }

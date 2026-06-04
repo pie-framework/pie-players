@@ -75,7 +75,10 @@ export {
 export type { InstrumentationEventMapping } from "./instrumentation-event-map.js";
 // Item controller
 export type { ItemControllerOptions } from "./item-controller.js";
-export { ItemController, normalizeItemSessionContainer } from "./item-controller.js";
+export {
+	ItemController,
+	normalizeItemSessionContainer,
+} from "./item-controller.js";
 export type {
 	ItemSessionContainer as CanonicalItemSessionContainer,
 	ItemSessionUpdateIntent,

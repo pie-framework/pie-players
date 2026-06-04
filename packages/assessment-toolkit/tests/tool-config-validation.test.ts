@@ -1,6 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { createPackagedToolRegistry } from "../src/services/createDefaultToolRegistry.js";
-import { ToolRegistry, type ToolRegistration } from "../src/services/ToolRegistry.js";
+import {
+	ToolRegistry,
+	type ToolRegistration,
+} from "../src/services/ToolRegistry.js";
 import {
 	frameworkErrorFromToolConfigValidation,
 	normalizeAndValidateToolsConfig,
@@ -49,9 +52,11 @@ describe("tool-config-validation", () => {
 				toolRegistry: registry,
 			},
 		);
-		expect(result.diagnostics.some((entry) => entry.code === "tools.unknownProviderKey")).toBe(
-			true,
-		);
+		expect(
+			result.diagnostics.some(
+				(entry) => entry.code === "tools.unknownProviderKey",
+			),
+		).toBe(true);
 	});
 
 	test("normalizes invalid strictness to error behavior", () => {
@@ -161,9 +166,11 @@ describe("tool-config-validation", () => {
 				toolRegistry: registry,
 			},
 		);
-		expect(result.diagnostics.some((entry) => entry.code === "tools.unsupportedLevel")).toBe(
-			true,
-		);
+		expect(
+			result.diagnostics.some(
+				(entry) => entry.code === "tools.unsupportedLevel",
+			),
+		).toBe(true);
 	});
 
 	test("rejects removed colorScheme tool id", () => {
@@ -203,9 +210,11 @@ describe("tool-config-validation", () => {
 				toolRegistry: registry,
 			},
 		);
-		expect(result.diagnostics.some((entry) => entry.code === "tools.unsupportedLevel")).toBe(
-			false,
-		);
+		expect(
+			result.diagnostics.some(
+				(entry) => entry.code === "tools.unsupportedLevel",
+			),
+		).toBe(false);
 	});
 
 	test("runs provider sanitize and validate hooks", () => {
@@ -238,7 +247,10 @@ describe("tool-config-validation", () => {
 					},
 				}),
 				validateConfig: (config) => {
-					if ((config.settings as Record<string, unknown> | undefined)?.sanitized === true) {
+					if (
+						(config.settings as Record<string, unknown> | undefined)
+							?.sanitized === true
+					) {
 						return [];
 					}
 					return [
@@ -273,9 +285,10 @@ describe("tool-config-validation", () => {
 			},
 		);
 
-		expect((result.config.providers.customTool?.settings as Record<string, unknown>).sanitized).toBe(
-			true,
-		);
+		expect(
+			(result.config.providers.customTool?.settings as Record<string, unknown>)
+				.sanitized,
+		).toBe(true);
 		expect(result.diagnostics).toEqual([]);
 	});
 
@@ -308,5 +321,4 @@ describe("tool-config-validation", () => {
 		expect(model.source).toBe("test.framework");
 		expect(model.message).toBe("bad config");
 	});
-
 });

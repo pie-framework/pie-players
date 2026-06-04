@@ -44,14 +44,18 @@ async function openSessionPanel(page: Page) {
 }
 
 async function openInstrumentationPanel(page: Page) {
-	const panel = page.locator("pie-section-player-tools-instrumentation-debugger");
-	const firstRow = panel.locator(
-		".pie-section-player-tools-instrumentation-debugger__row",
-	).first();
+	const panel = page.locator(
+		"pie-section-player-tools-instrumentation-debugger",
+	);
+	const firstRow = panel
+		.locator(".pie-section-player-tools-instrumentation-debugger__row")
+		.first();
 	if (await firstRow.isVisible().catch(() => false)) {
 		return panel;
 	}
-	await page.getByRole("button", { name: "Toggle instrumentation panel" }).click();
+	await page
+		.getByRole("button", { name: "Toggle instrumentation panel" })
+		.click();
 	await expect(
 		panel.locator(".pie-section-player-tools-instrumentation-debugger"),
 	).toBeVisible();
@@ -89,29 +93,39 @@ async function readSessionState(page: Page): Promise<SessionSnapshot> {
 function selectedValueFromSession(session: SessionSnapshot): string | null {
 	const entry = session.data?.find((item) => item.id === SESSION_ENTRY_ID);
 	const value = entry?.value;
-	return Array.isArray(value) ? value[0] ?? null : null;
+	return Array.isArray(value) ? (value[0] ?? null) : null;
 }
 
 async function readChoiceStates(page: Page): Promise<ChoiceState[]> {
 	return await page.evaluate(() => {
-		const labels = Array.from(document.querySelectorAll('label[for^="choice-"]'));
+		const labels = Array.from(
+			document.querySelectorAll('label[for^="choice-"]'),
+		);
 		return labels.map((label) => {
 			const choiceId = label.getAttribute("for") || "";
-			const input = document.getElementById(choiceId) as HTMLInputElement | null;
+			const input = document.getElementById(
+				choiceId,
+			) as HTMLInputElement | null;
 			return {
 				text: (label.textContent || "").replace(/\s+/g, " ").trim(),
 				checked: Boolean(input?.checked),
 				disabled: Boolean(input?.disabled),
 				ariaChecked:
-					label.querySelector("[aria-checked]")?.getAttribute("aria-checked") || null,
+					label.querySelector("[aria-checked]")?.getAttribute("aria-checked") ||
+					null,
 			};
 		});
 	});
 }
 
-async function setDemoPerspective(page: Page, perspective: "student" | "scorer") {
+async function setDemoPerspective(
+	page: Page,
+	perspective: "student" | "scorer",
+) {
 	await page
-		.getByRole("link", { name: perspective === "student" ? "Student" : "Scorer" })
+		.getByRole("link", {
+			name: perspective === "student" ? "Student" : "Scorer",
+		})
 		.click();
 	if (perspective === "student") {
 		await expect(page).toHaveURL(/mode=gather/);
@@ -138,7 +152,9 @@ async function replaceSourcePrompt(page: Page, nextPrompt: string) {
 	currentConfig.models[0].prompt = nextPrompt;
 	const nextJson = JSON.stringify(currentConfig, null, 2);
 	await editor.click();
-	await page.keyboard.press(process.platform === "darwin" ? "Meta+A" : "Control+A");
+	await page.keyboard.press(
+		process.platform === "darwin" ? "Meta+A" : "Control+A",
+	);
 	await page.keyboard.press("Backspace");
 	await page.keyboard.insertText(nextJson);
 	await expect(editor).toContainText(nextPrompt);
@@ -233,34 +249,45 @@ test.describe("item-player demo multiple-choice", () => {
 		expect(noModelScore).toBe(false);
 
 		// Gather mode supports keyboard selection and session updates dynamically.
-		const checkedChoiceBeforeKeyboard = page.locator('input[type="radio"]:checked').first();
+		const checkedChoiceBeforeKeyboard = page
+			.locator('input[type="radio"]:checked')
+			.first();
 		await expect(checkedChoiceBeforeKeyboard).toBeVisible();
 		await checkedChoiceBeforeKeyboard.focus();
 		await page.keyboard.press("ArrowDown");
 		const sessionAfterKeyboard = await readSessionState(page);
-		const selectedAfterKeyboard = selectedValueFromSession(sessionAfterKeyboard);
+		const selectedAfterKeyboard =
+			selectedValueFromSession(sessionAfterKeyboard);
 		expect(selectedAfterKeyboard).not.toBeNull();
 		expect(selectedAfterKeyboard).not.toBe(selectedAfterMouse);
 
 		// Return to a deterministic wrong selection before evaluate mode assertions.
 		await selectChoiceByLabel(page, "Mars");
 		const sessionBeforeEvaluate = await readSessionState(page);
-		const selectedBeforeEvaluate = selectedValueFromSession(sessionBeforeEvaluate);
+		const selectedBeforeEvaluate = selectedValueFromSession(
+			sessionBeforeEvaluate,
+		);
 		expect(selectedBeforeEvaluate).not.toBeNull();
 
 		await setDemoPerspective(page, "scorer");
-		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({ timeout: 15_000 });
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({
+			timeout: 15_000,
+		});
 
 		// Evaluate mode keeps session state and exposes correct-answer affordance.
 		const evaluateChoiceStates = await readChoiceStates(page);
-		expect(evaluateChoiceStates.some((state) => state.checked && state.disabled)).toBe(true);
+		expect(
+			evaluateChoiceStates.some((state) => state.checked && state.disabled),
+		).toBe(true);
 		const sessionInEvaluate = await readSessionState(page);
 		const selectedInEvaluate = selectedValueFromSession(sessionInEvaluate);
 		expect(selectedInEvaluate).toBe(selectedBeforeEvaluate);
 
 		// Switching back to student carries session state from gather.
 		await setDemoPerspective(page, "student");
-		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({ timeout: 15_000 });
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({
+			timeout: 15_000,
+		});
 		await expect
 			.poll(async () => {
 				const states = await readChoiceStates(page);
@@ -268,9 +295,13 @@ test.describe("item-player demo multiple-choice", () => {
 			})
 			.not.toBeNull();
 		const gatherStatesAfterSwitchBack = await readChoiceStates(page);
-		expect(gatherStatesAfterSwitchBack.some((state) => state.checked)).toBe(true);
+		expect(gatherStatesAfterSwitchBack.some((state) => state.checked)).toBe(
+			true,
+		);
 		const sessionAfterSwitchBack = await readSessionState(page);
-		const selectedAfterSwitchBackValue = selectedValueFromSession(sessionAfterSwitchBack);
+		const selectedAfterSwitchBackValue = selectedValueFromSession(
+			sessionAfterSwitchBack,
+		);
 		expect(selectedAfterSwitchBackValue).toBe(selectedBeforeEvaluate);
 	});
 
@@ -281,10 +312,13 @@ test.describe("item-player demo multiple-choice", () => {
 		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible();
 
 		const updatedPrompt = "Updated through updateElementModel";
-		await page.evaluate(async ({ prompt, modelId }) => {
-			const player = document.querySelector("pie-item-player") as any;
-			await player.updateElementModel({ id: modelId, prompt });
-		}, { prompt: updatedPrompt, modelId: SESSION_ENTRY_ID });
+		await page.evaluate(
+			async ({ prompt, modelId }) => {
+				const player = document.querySelector("pie-item-player") as any;
+				await player.updateElementModel({ id: modelId, prompt });
+			},
+			{ prompt: updatedPrompt, modelId: SESSION_ENTRY_ID },
+		);
 		await expect(page.getByText(updatedPrompt)).toBeVisible();
 
 		await page.evaluate(async () => {
@@ -340,7 +374,9 @@ test.describe("item-player demo multiple-choice", () => {
 		expect(scopedClassName).not.toContain("legacy-class-should-not-win");
 	});
 
-	test("author route loads and stays in sync with delivery/source", async ({ page }) => {
+	test("author route loads and stays in sync with delivery/source", async ({
+		page,
+	}) => {
 		await gotoRoute(page, AUTHOR_PATH);
 		await expect(page).toHaveURL(/\/author/);
 		await expect(page.getByText("Configuration Error")).toHaveCount(0);
@@ -351,11 +387,16 @@ test.describe("item-player demo multiple-choice", () => {
 
 		await page.getByRole("link", { name: "Source" }).click();
 		await expect(page).toHaveURL(/\/source/);
-		await expect(page.locator(".ProseMirror").first()).toContainText(DELIVERY_PROMPT);
+		await expect(page.locator(".ProseMirror").first()).toContainText(
+			DELIVERY_PROMPT,
+		);
 	});
 
-	test("source edits apply and sync to delivery and author", async ({ page }) => {
-		const sourcePrompt = "Source test prompt: Select the planet with the greatest moon count.";
+	test("source edits apply and sync to delivery and author", async ({
+		page,
+	}) => {
+		const sourcePrompt =
+			"Source test prompt: Select the planet with the greatest moon count.";
 		await gotoRoute(page, SOURCE_PATH);
 		await expect(page).toHaveURL(/\/source/);
 
@@ -372,11 +413,15 @@ test.describe("item-player demo multiple-choice", () => {
 		await page.getByRole("link", { name: "Author" }).click();
 		await expect(page).toHaveURL(/\/author/);
 		await expect(page.getByText("Configuration Error")).toHaveCount(0);
-		await expect(page.getByText("Single Select (Radio) - Author")).toBeVisible();
+		await expect(
+			page.getByText("Single Select (Radio) - Author"),
+		).toBeVisible();
 
 		await page.getByRole("link", { name: "Source" }).click();
 		await expect(page).toHaveURL(/\/source/);
-		await expect(page.locator(".ProseMirror").first()).toContainText(sourcePrompt);
+		await expect(page.locator(".ProseMirror").first()).toContainText(
+			sourcePrompt,
+		);
 	});
 
 	test("keeps baseline a11y regressions in check", async ({ page }) => {
@@ -431,9 +476,9 @@ test.describe("item-player demo multiple-choice", () => {
 			);
 		});
 		await expect(
-			panel.locator(
-				".pie-section-player-tools-instrumentation-debugger__row",
-			).first(),
+			panel
+				.locator(".pie-section-player-tools-instrumentation-debugger__row")
+				.first(),
 		).toBeVisible({ timeout: 30_000 });
 	});
 });

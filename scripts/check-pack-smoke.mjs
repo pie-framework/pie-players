@@ -92,10 +92,12 @@ const run = () => {
 		if (pkg.private) continue;
 		checked += 1;
 		const declaredTargets = new Set();
-		["main", "module", "types", "unpkg", "jsdelivr", "svelte"].forEach((field) => {
-			const normalized = normalizeDeclaredPath(pkg[field]);
-			if (normalized) declaredTargets.add(normalized);
-		});
+		["main", "module", "types", "unpkg", "jsdelivr", "svelte"].forEach(
+			(field) => {
+				const normalized = normalizeDeclaredPath(pkg[field]);
+				if (normalized) declaredTargets.add(normalized);
+			},
+		);
 		collectExportTargets(pkg.exports, declaredTargets);
 
 		let tarballPath = null;

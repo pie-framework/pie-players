@@ -48,7 +48,9 @@ describe("MathML alignment tokenizer", () => {
 			"/",
 			"3",
 		]);
-		expect(result.tokens.find((token) => token.normalized === "/")).toMatchObject({
+		expect(
+			result.tokens.find((token) => token.normalized === "/"),
+		).toMatchObject({
 			kind: "structure",
 			role: "fraction",
 			spokenAliases: expect.arrayContaining(["over", "divided by"]),
@@ -103,10 +105,14 @@ describe("MathML alignment tokenizer", () => {
 
 		expect(result.tokens.map((token) => token.normalized)).toContain("∠");
 		expect(result.tokens.map((token) => token.normalized)).toContain("|");
-		expect(result.tokens.find((token) => token.normalized === "∠")).toMatchObject({
+		expect(
+			result.tokens.find((token) => token.normalized === "∠"),
+		).toMatchObject({
 			spokenAliases: expect.arrayContaining(["angle"]),
 		});
-		expect(result.tokens.find((token) => token.normalized === "|")).toMatchObject({
+		expect(
+			result.tokens.find((token) => token.normalized === "|"),
+		).toMatchObject({
 			spokenAliases: expect.arrayContaining(["absolute value"]),
 		});
 	});

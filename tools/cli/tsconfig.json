@@ -7,12 +7,6 @@
 		"declarationMap": false,
 		"moduleResolution": "NodeNext"
 	},
-	"include": [
-		"src/**/*.ts"
-	],
-	"exclude": [
-		"node_modules",
-		"dist",
-		"build"
-	]
+	"include": ["src/**/*.ts"],
+	"exclude": ["node_modules", "dist", "build"]
 }

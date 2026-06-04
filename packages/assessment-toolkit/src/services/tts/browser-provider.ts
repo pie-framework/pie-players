@@ -14,9 +14,7 @@ import type {
 	TTSFeature,
 	TTSProviderCapabilities,
 } from "@pie-players/pie-tts";
-import {
-	segmentSentences as segmentTextToSentences,
-} from "./text-segmentation.js";
+import { segmentSentences as segmentTextToSentences } from "./text-segmentation.js";
 
 interface TTSSpeechSegment {
 	text: string;
@@ -100,7 +98,11 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 			if (runId !== this.speakRunId) {
 				break;
 			}
-			const shouldContinue = await this.speakChunk(chunk.text, chunk.offset, runId);
+			const shouldContinue = await this.speakChunk(
+				chunk.text,
+				chunk.offset,
+				runId,
+			);
 			if (!shouldContinue) {
 				break;
 			}
@@ -138,7 +140,9 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 		return runId === this.speakRunId;
 	}
 
-	private splitIntoChunks(text: string): Array<{ text: string; offset: number }> {
+	private splitIntoChunks(
+		text: string,
+	): Array<{ text: string; offset: number }> {
 		const MAX_CHUNK_LENGTH = 260;
 		if (text.length <= MAX_CHUNK_LENGTH) {
 			return [{ text, offset: 0 }];
@@ -195,14 +199,17 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 			string,
 			unknown
 		>;
-		const segmenter = (providerOptions.segmenter || {}) as Record<string, unknown>;
+		const segmenter = (providerOptions.segmenter || {}) as Record<
+			string,
+			unknown
+		>;
 		const mode = segmenter.mode;
 		const useSegmenter = mode !== "regexOnly";
 		const locale =
 			typeof segmenter.locale === "string" && segmenter.locale.trim().length > 0
 				? segmenter.locale
 				: typeof providerOptions.locale === "string" &&
-					  providerOptions.locale.trim().length > 0
+						providerOptions.locale.trim().length > 0
 					? providerOptions.locale
 					: undefined;
 		return {
@@ -212,7 +219,9 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 		};
 	}
 
-	private segmentSentences(text: string): Array<{ text: string; offset: number }> {
+	private segmentSentences(
+		text: string,
+	): Array<{ text: string; offset: number }> {
 		const policy = this.getSegmentationPolicy();
 		return segmentTextToSentences(text, {
 			locale: policy.locale,
@@ -221,7 +230,10 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 	}
 
 	private inferWordLength(text: string, index: number): number {
-		const safeIndex = Math.max(0, Math.min(index, Math.max(0, text.length - 1)));
+		const safeIndex = Math.max(
+			0,
+			Math.min(index, Math.max(0, text.length - 1)),
+		);
 		const slice = text.slice(safeIndex);
 		const match = slice.match(/^\s*([^\s]+)/);
 		return match?.[1]?.length || 1;
@@ -318,7 +330,10 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 						? reportedLength
 						: inferredLength;
 				const word = chunkText
-					.substring(charIndex, Math.min(chunkText.length, charIndex + wordLength))
+					.substring(
+						charIndex,
+						Math.min(chunkText.length, charIndex + wordLength),
+					)
 					.trim();
 				const absoluteBoundaryStart = chunkOffset + charIndex;
 				console.log(

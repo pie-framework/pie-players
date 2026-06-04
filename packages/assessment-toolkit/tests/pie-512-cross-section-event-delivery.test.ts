@@ -148,9 +148,9 @@ describe("PIE-512 cross-section event delivery", () => {
 		controllerA.emit(contentLoadedEvent("pie-512-a-q1"));
 		controllerA.emit(sectionLoadingCompleteEvent(1, 1));
 
-		expect(
-			receivedA.some((event) => event.type === "content-loaded"),
-		).toBe(true);
+		expect(receivedA.some((event) => event.type === "content-loaded")).toBe(
+			true,
+		);
 		expect(
 			receivedA.some((event) => event.type === "section-loading-complete"),
 		).toBe(true);
@@ -290,11 +290,7 @@ describe("PIE-512 cross-section event delivery", () => {
 		const controllerB = createTestController(
 			loadedRuntimeState({
 				sectionId: "pie-512-section-b",
-				itemIdentifiers: [
-					"pie-512-b-q1",
-					"pie-512-b-q2",
-					"pie-512-b-q3",
-				],
+				itemIdentifiers: ["pie-512-b-q1", "pie-512-b-q2", "pie-512-b-q3"],
 			}),
 		);
 		const coordinator = new ToolkitCoordinator({

@@ -1,80 +1,78 @@
 import type { DemoInfo } from "./types";
 
 const demo: DemoInfo = {
-	"id": "ebsr-default",
-	"name": "What color is the sky?",
-	"description": "Basic EBSR configuration",
-	"sourcePackage": "ebsr",
-	"sourceVariantId": "default",
-	"tags": [
-		"ebsr",
-		"default"
-	],
-	"item": {
-		"id": "ebsr-default",
-		"name": "What color is the sky?",
-		"config": {
-			"id": "",
-			"markup": "<ebsr-element id=\"1\"></ebsr-element>",
-			"elements": {
-				"ebsr-element": "@pie-element/ebsr@latest"
+	id: "ebsr-default",
+	name: "What color is the sky?",
+	description: "Basic EBSR configuration",
+	sourcePackage: "ebsr",
+	sourceVariantId: "default",
+	tags: ["ebsr", "default"],
+	item: {
+		id: "ebsr-default",
+		name: "What color is the sky?",
+		config: {
+			id: "",
+			markup: '<ebsr-element id="1"></ebsr-element>',
+			elements: {
+				"ebsr-element": "@pie-element/ebsr@latest",
 			},
-			"models": [
+			models: [
 				{
-					"id": "1",
-					"element": "ebsr-element",
-					"partA": {
-						"choiceMode": "checkbox",
-						"choices": [
+					id: "1",
+					element: "ebsr-element",
+					partA: {
+						choiceMode: "checkbox",
+						choices: [
 							{
-								"value": "yellow",
-								"label": "Yellow"
+								value: "yellow",
+								label: "Yellow",
 							},
 							{
-								"value": "green",
-								"label": "Green"
+								value: "green",
+								label: "Green",
 							},
 							{
-								"correct": true,
-								"value": "blue",
-								"label": "Blue"
-							}
+								correct: true,
+								value: "blue",
+								label: "Blue",
+							},
 						],
-						"choicePrefix": "numbers",
-						"partialScoring": false,
-						"prompt": "What color is the sky?",
-						"promptEnabled": true
+						choicePrefix: "numbers",
+						partialScoring: false,
+						prompt: "What color is the sky?",
+						promptEnabled: true,
 					},
-					"partB": {
-						"choiceMode": "checkbox",
-						"choices": [
+					partB: {
+						choiceMode: "checkbox",
+						choices: [
 							{
-								"value": "orange",
-								"label": "Orange"
+								value: "orange",
+								label: "Orange",
 							},
 							{
-								"correct": true,
-								"value": "purple",
-								"label": "Purple"
+								correct: true,
+								value: "purple",
+								label: "Purple",
 							},
 							{
-								"value": "pink",
-								"label": "Pink"
+								value: "pink",
+								label: "Pink",
 							},
 							{
-								"value": "green",
-								"label": "Green"
-							}
+								value: "green",
+								label: "Green",
+							},
 						],
-						"choicePrefix": "numbers",
-						"partialScoring": false,
-						"prompt": "What color do you get when you mix Red with your answer in Part 1?",
-						"promptEnabled": true
-					}
-				}
-			]
-		}
-	}
+						choicePrefix: "numbers",
+						partialScoring: false,
+						prompt:
+							"What color do you get when you mix Red with your answer in Part 1?",
+						promptEnabled: true,
+					},
+				},
+			],
+		},
+	},
 };
 
 export default demo;

@@ -6,7 +6,9 @@ import type {
 	MetricAttributes,
 } from "../types.js";
 
-export class CompositeInstrumentationProvider implements InstrumentationProvider {
+export class CompositeInstrumentationProvider
+	implements InstrumentationProvider
+{
 	readonly providerId = "composite";
 	readonly providerName = "Composite Provider";
 
@@ -86,7 +88,9 @@ export class CompositeInstrumentationProvider implements InstrumentationProvider
 	}
 
 	setUserContext(userId: string, attributes?: Record<string, any>): void {
-		this.forEachProvider((provider) => provider.setUserContext?.(userId, attributes));
+		this.forEachProvider((provider) =>
+			provider.setUserContext?.(userId, attributes),
+		);
 	}
 
 	setGlobalAttributes(attributes: Record<string, any>): void {

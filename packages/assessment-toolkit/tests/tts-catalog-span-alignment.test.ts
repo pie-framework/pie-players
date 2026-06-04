@@ -82,9 +82,9 @@ describe("catalog span alignment", () => {
 		});
 		const plainOffset = alignment.spokenText.indexOf("X");
 
-		expect(
-			resolveSpokenBoundaryOffset(alignment, plainOffset, 1, "X"),
-		).toEqual({ start: plainOffset, length: 1 });
+		expect(resolveSpokenBoundaryOffset(alignment, plainOffset, 1, "X")).toEqual(
+			{ start: plainOffset, length: 1 },
+		);
 	});
 
 	test("falls back to region highlighting for unsupported semantic SSML", () => {
@@ -133,7 +133,9 @@ describe("catalog span alignment", () => {
 
 		expect(alignment.playbackMode).toBe("anchor-span");
 		const anchoredVisibleText = alignment.anchors
-			.map((anchor) => visibleText.slice(anchor.visibleStart, anchor.visibleEnd))
+			.map((anchor) =>
+				visibleText.slice(anchor.visibleStart, anchor.visibleEnd),
+			)
 			.join(" ");
 		expect(anchoredVisibleText).toContain("=");
 		expect(anchoredVisibleText).toContain("±");

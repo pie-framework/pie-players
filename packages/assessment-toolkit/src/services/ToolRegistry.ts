@@ -115,11 +115,11 @@ export interface ToolWindowShellAction {
  * The shell is offset by `initialMargin` (default 16 px) from the chosen corner.
  */
 export type ToolWindowShellAlign =
-	| 'center'
-	| 'top-left'
-	| 'top-right'
-	| 'bottom-left'
-	| 'bottom-right';
+	| "center"
+	| "top-left"
+	| "top-right"
+	| "bottom-left"
+	| "bottom-right";
 
 export interface ToolWindowShellConfig {
 	title?: string;

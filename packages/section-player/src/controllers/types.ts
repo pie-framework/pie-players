@@ -225,7 +225,8 @@ export interface ItemSelectedEvent extends ItemScopedControllerEventBase {
 	itemLabel?: string;
 }
 
-export interface SectionNavigationChangeEvent extends SectionControllerEventBase {
+export interface SectionNavigationChangeEvent
+	extends SectionControllerEventBase {
 	type: "section-navigation-change";
 	previousSectionId?: string;
 	currentSectionId?: string;
@@ -257,7 +258,8 @@ export interface ItemPlayerErrorEvent extends ItemScopedControllerEventBase {
 	error: unknown;
 }
 
-export interface ItemCompleteChangedEvent extends ItemScopedControllerEventBase {
+export interface ItemCompleteChangedEvent
+	extends ItemScopedControllerEventBase {
 	type: "item-complete-changed";
 	itemId: string;
 	canonicalItemId: string;
@@ -265,7 +267,8 @@ export interface ItemCompleteChangedEvent extends ItemScopedControllerEventBase 
 	previousComplete: boolean;
 }
 
-export interface SectionLoadingCompleteEvent extends ItemScopedControllerEventBase {
+export interface SectionLoadingCompleteEvent
+	extends ItemScopedControllerEventBase {
 	type: "section-loading-complete";
 	totalRegistered: number;
 	totalLoaded: number;

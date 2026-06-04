@@ -19,9 +19,15 @@ const WORD_COUNTER_ICON = `
 function resolveTextRoot(toolbarContext: ToolbarContext): HTMLElement | null {
 	const scope = toolbarContext.getScopeElement?.() || null;
 	if (!scope) return null;
-	const card = scope.closest<HTMLElement>("[data-section-item-card], [data-section-passage-card]");
+	const card = scope.closest<HTMLElement>(
+		"[data-section-item-card], [data-section-passage-card]",
+	);
 	if (card) {
-		return card.querySelector<HTMLElement>(".pie-section-player-content-card-body") || card;
+		return (
+			card.querySelector<HTMLElement>(
+				".pie-section-player-content-card-body",
+			) || card
+		);
 	}
 	return scope;
 }
@@ -64,7 +70,9 @@ function createPanelElement(): HTMLElement {
 
 function updatePanel(panel: HTMLElement, text: string): void {
 	const wordsNode = panel.querySelector<HTMLElement>("[data-count-words]");
-	const charactersNode = panel.querySelector<HTMLElement>("[data-count-characters]");
+	const charactersNode = panel.querySelector<HTMLElement>(
+		"[data-count-characters]",
+	);
 	if (!wordsNode || !charactersNode) return;
 	const normalized = normalizeText(text);
 	const words = countWords(normalized);
@@ -76,7 +84,8 @@ function updatePanel(panel: HTMLElement, text: string): void {
 export const wordCounterToolRegistration: ToolRegistration = {
 	toolId: "wordCounter",
 	name: "Word Counter",
-	description: "Show word and character counts for current item or passage text",
+	description:
+		"Show word and character counts for current item or passage text",
 	icon: WORD_COUNTER_ICON,
 	supportedLevels: ["item", "passage"],
 	isVisibleInContext(context: ToolContext): boolean {
@@ -110,8 +119,12 @@ export const wordCounterToolRegistration: ToolRegistration = {
 			const text = textRoot?.textContent || "";
 			panel.style.display = isActive ? "block" : "none";
 			button.active = isActive;
-			button.ariaLabel = isActive ? "Close word counter panel" : "Open word counter panel";
-			button.tooltip = isActive ? "Close word counter panel" : "Open word counter panel";
+			button.ariaLabel = isActive
+				? "Close word counter panel"
+				: "Open word counter panel";
+			button.tooltip = isActive
+				? "Close word counter panel"
+				: "Open word counter panel";
 			updatePanel(panel, text);
 		};
 

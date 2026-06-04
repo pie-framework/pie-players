@@ -25,7 +25,9 @@ test.describe("assessment toolkit observability integration", () => {
 				"session-changed",
 			]);
 			const originalDispatch = EventTarget.prototype.dispatchEvent;
-			EventTarget.prototype.dispatchEvent = function patchedDispatch(event: Event) {
+			EventTarget.prototype.dispatchEvent = function patchedDispatch(
+				event: Event,
+			) {
 				const tagName =
 					this && typeof (this as Element).tagName === "string"
 						? (this as Element).tagName.toLowerCase()
@@ -40,10 +42,8 @@ test.describe("assessment toolkit observability integration", () => {
 						detail:
 							typeof (event as CustomEvent<Record<string, unknown>>).detail ===
 							"object"
-								? ((event as CustomEvent<Record<string, unknown>>).detail as Record<
-										string,
-										unknown
-								  >)
+								? ((event as CustomEvent<Record<string, unknown>>)
+										.detail as Record<string, unknown>)
 								: null,
 					});
 				}
@@ -99,7 +99,9 @@ test.describe("assessment toolkit observability integration", () => {
 			runtimeWindow.__toolkitSessionDispatchPatched = true;
 			runtimeWindow.__toolkitSessionEvents = [];
 			const originalDispatch = EventTarget.prototype.dispatchEvent;
-			EventTarget.prototype.dispatchEvent = function patchedDispatch(event: Event) {
+			EventTarget.prototype.dispatchEvent = function patchedDispatch(
+				event: Event,
+			) {
 				const tagName =
 					this && typeof (this as Element).tagName === "string"
 						? (this as Element).tagName.toLowerCase()
@@ -137,5 +139,4 @@ test.describe("assessment toolkit observability integration", () => {
 			return canonicalEvents.length >= 1;
 		});
 	});
-
 });

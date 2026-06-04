@@ -70,9 +70,7 @@ import {
 	type SectionControllerEvent,
 	type SectionControllerHandle,
 } from "../src/index.js";
-import {
-	type RuntimeRegistrationDetail,
-} from "../src/runtime/registration-events.js";
+import type { RuntimeRegistrationDetail } from "../src/runtime/registration-events.js";
 import { SectionRuntimeEngine } from "../src/runtime/SectionRuntimeEngine.js";
 
 beforeAll(() => {

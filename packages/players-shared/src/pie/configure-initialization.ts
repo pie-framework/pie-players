@@ -27,7 +27,10 @@ const logger = createPieLogger("configure-init", () => isGlobalDebugEnabled());
 export function initializeConfiguresFromLoadedBundle(
 	config: ConfigEntity,
 	configuration: Record<string, any>,
-	options: { env: AuthoringEnv; container?: Pick<ParentNode, "querySelectorAll"> },
+	options: {
+		env: AuthoringEnv;
+		container?: Pick<ParentNode, "querySelectorAll">;
+	},
 ): InitializedConfigureModel[] {
 	logger.debug(
 		"[initializeConfiguresFromLoadedBundle] Starting initialization",
@@ -43,8 +46,13 @@ export function initializeConfiguresFromLoadedBundle(
 	// Ensure the PIE registry is initialized (side effects register global helpers).
 	void pieRegistry();
 
-	const initializedModels = initializeAuthoringConfigures(config, configuration, options);
-	logger.debug("[initializeConfiguresFromLoadedBundle] Initialization complete");
+	const initializedModels = initializeAuthoringConfigures(
+		config,
+		configuration,
+		options,
+	);
+	logger.debug(
+		"[initializeConfiguresFromLoadedBundle] Initialization complete",
+	);
 	return initializedModels;
 }
-

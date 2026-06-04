@@ -4,15 +4,17 @@ import {
 	TABBED_LAYOUT_CONTRACT,
 	VERTICAL_LAYOUT_CONTRACT,
 } from "../src/contracts/layout-parity-metadata.js";
-import {
-	SECTION_PLAYER_PUBLIC_EVENTS,
-} from "../src/contracts/public-events.js";
+import { SECTION_PLAYER_PUBLIC_EVENTS } from "../src/contracts/public-events.js";
 import { assertPublicEventName } from "../src/policies/guards.js";
 
 test.describe("section player contract parity", () => {
 	test("splitpane, vertical, and tabbed expose the same semantic contract surface", async () => {
-		expect(SPLITPANE_LAYOUT_CONTRACT.props).toEqual(VERTICAL_LAYOUT_CONTRACT.props);
-		expect(SPLITPANE_LAYOUT_CONTRACT.props).toEqual(TABBED_LAYOUT_CONTRACT.props);
+		expect(SPLITPANE_LAYOUT_CONTRACT.props).toEqual(
+			VERTICAL_LAYOUT_CONTRACT.props,
+		);
+		expect(SPLITPANE_LAYOUT_CONTRACT.props).toEqual(
+			TABBED_LAYOUT_CONTRACT.props,
+		);
 		expect(SPLITPANE_LAYOUT_CONTRACT.recommendedBasicProps).toEqual(
 			VERTICAL_LAYOUT_CONTRACT.recommendedBasicProps,
 		);
@@ -28,7 +30,9 @@ test.describe("section player contract parity", () => {
 		expect(SPLITPANE_LAYOUT_CONTRACT.events).toEqual(
 			VERTICAL_LAYOUT_CONTRACT.events,
 		);
-		expect(SPLITPANE_LAYOUT_CONTRACT.events).toEqual(TABBED_LAYOUT_CONTRACT.events);
+		expect(SPLITPANE_LAYOUT_CONTRACT.events).toEqual(
+			TABBED_LAYOUT_CONTRACT.events,
+		);
 		expect(SPLITPANE_LAYOUT_CONTRACT.commands).toEqual(
 			VERTICAL_LAYOUT_CONTRACT.commands,
 		);

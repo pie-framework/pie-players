@@ -1,4 +1,4 @@
-declare module '@pie-players/pie-item-player/components/item-session-debugger-element' {
+declare module "@pie-players/pie-item-player/components/item-session-debugger-element" {
 	export interface PieItemSessionDebuggerElement extends HTMLElement {
 		itemName?: string;
 		itemId?: string;
@@ -9,4 +9,4 @@ declare module '@pie-players/pie-item-player/components/item-session-debugger-el
 	}
 }
 
-declare module '@pie-players/pie-section-player-tools-instrumentation-debugger';
+declare module "@pie-players/pie-section-player-tools-instrumentation-debugger";

@@ -5,7 +5,12 @@ function coerceBooleanLike(
 	if (value == null) return fallback;
 	if (typeof value === "boolean") return value;
 	const normalized = value.trim().toLowerCase();
-	return normalized === "" || normalized === "true" || normalized === "1" || normalized === "yes";
+	return (
+		normalized === "" ||
+		normalized === "true" ||
+		normalized === "1" ||
+		normalized === "yes"
+	);
 }
 
 export class AssessmentPlayerShellElement extends HTMLElement {
@@ -16,11 +21,16 @@ export class AssessmentPlayerShellElement extends HTMLElement {
 	showNavigation: boolean | string | null | undefined = true;
 
 	connectedCallback() {
-		this.showNavigation = this.getAttribute("show-navigation") ?? this.showNavigation;
+		this.showNavigation =
+			this.getAttribute("show-navigation") ?? this.showNavigation;
 		this.render();
 	}
 
-	attributeChangedCallback(name: string, _oldValue: string | null, value: string | null) {
+	attributeChangedCallback(
+		name: string,
+		_oldValue: string | null,
+		value: string | null,
+	) {
 		if (name === "show-navigation") this.showNavigation = value;
 		this.render();
 	}

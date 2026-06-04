@@ -91,10 +91,7 @@ export function wrapOverwideTables(markup: string): string {
 		if (!parent) continue;
 
 		// Idempotency — already wrapped.
-		if (
-			parent.classList &&
-			parent.classList.contains(SCROLL_WRAPPER_CLASS)
-		) {
+		if (parent.classList && parent.classList.contains(SCROLL_WRAPPER_CLASS)) {
 			continue;
 		}
 

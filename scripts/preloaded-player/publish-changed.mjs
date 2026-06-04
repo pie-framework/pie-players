@@ -88,14 +88,17 @@ function determineTargets({ base, head, all }) {
 	const allConfigs = listConfigFiles();
 	if (!allConfigs.length) return { reason: "no-configs", configs: [] };
 	if (all) return { reason: "all", configs: allConfigs };
-	if (!base || !head) throw new Error("Provide --base and --head (or use --all).");
+	if (!base || !head)
+		throw new Error("Provide --base and --head (or use --all).");
 	if (/^0+$/.test(base)) return { reason: "base-is-zero", configs: allConfigs };
 	const changed = gitDiffNameOnly(base, head);
 	if (!changed.length) return { reason: "no-changes", configs: [] };
 	if (shouldRebuildAll(changed))
 		return { reason: "rebuild-all", configs: allConfigs };
 	const changedConfigs = changed
-		.filter((f) => f.startsWith("configs/preloaded-player/") && f.endsWith(".json"))
+		.filter(
+			(f) => f.startsWith("configs/preloaded-player/") && f.endsWith(".json"),
+		)
 		.map((f) => path.join(ROOT, f))
 		.filter((p) => existsSync(p))
 		.sort();
@@ -111,7 +114,9 @@ function validateUniqueCombinations(configPaths) {
 		existing.push(rel);
 		byHash.set(hash, existing);
 	}
-	const duplicates = [...byHash.entries()].filter(([, files]) => files.length > 1);
+	const duplicates = [...byHash.entries()].filter(
+		([, files]) => files.length > 1,
+	);
 	if (duplicates.length) {
 		const lines = duplicates
 			.map(([hash, files]) => `- ${hash}: ${files.join(", ")}`)

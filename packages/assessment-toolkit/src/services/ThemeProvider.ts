@@ -179,7 +179,10 @@ export class ThemeProvider implements ThemeProviderApi {
 		} = this.currentTheme;
 
 		// Font sizing
-		this.rootElement.style.setProperty("--pie-font-scale", String(FONT_SIZE_SCALE[fontSize]));
+		this.rootElement.style.setProperty(
+			"--pie-font-scale",
+			String(FONT_SIZE_SCALE[fontSize]),
+		);
 
 		// Canonical PIE variables
 		this.rootElement.style.setProperty("--pie-background", backgroundColor);
@@ -191,23 +194,62 @@ export class ThemeProvider implements ThemeProviderApi {
 		this.rootElement.style.setProperty("--pie-missing", warningColor);
 
 		// Derived surface tokens
-		this.rootElement.style.setProperty("--pie-background-dark", this.adjustOpacity(backgroundColor, 0.95));
-		this.rootElement.style.setProperty("--pie-secondary-background", this.adjustOpacity(backgroundColor, 0.92));
-		this.rootElement.style.setProperty("--pie-border", this.adjustOpacity(foregroundColor, 0.25));
-		this.rootElement.style.setProperty("--pie-border-light", this.adjustOpacity(foregroundColor, 0.16));
-		this.rootElement.style.setProperty("--pie-border-dark", this.adjustOpacity(foregroundColor, 0.4));
-		this.rootElement.style.setProperty("--pie-focus-checked", this.adjustOpacity(accentColor, 0.18));
-		this.rootElement.style.setProperty("--pie-focus-checked-border", accentColor);
+		this.rootElement.style.setProperty(
+			"--pie-background-dark",
+			this.adjustOpacity(backgroundColor, 0.95),
+		);
+		this.rootElement.style.setProperty(
+			"--pie-secondary-background",
+			this.adjustOpacity(backgroundColor, 0.92),
+		);
+		this.rootElement.style.setProperty(
+			"--pie-border",
+			this.adjustOpacity(foregroundColor, 0.25),
+		);
+		this.rootElement.style.setProperty(
+			"--pie-border-light",
+			this.adjustOpacity(foregroundColor, 0.16),
+		);
+		this.rootElement.style.setProperty(
+			"--pie-border-dark",
+			this.adjustOpacity(foregroundColor, 0.4),
+		);
+		this.rootElement.style.setProperty(
+			"--pie-focus-checked",
+			this.adjustOpacity(accentColor, 0.18),
+		);
+		this.rootElement.style.setProperty(
+			"--pie-focus-checked-border",
+			accentColor,
+		);
 
 		// Button tokens used by toolkit controls
 		this.rootElement.style.setProperty("--pie-button-bg", backgroundColor);
-		this.rootElement.style.setProperty("--pie-button-border", this.adjustOpacity(foregroundColor, 0.2));
+		this.rootElement.style.setProperty(
+			"--pie-button-border",
+			this.adjustOpacity(foregroundColor, 0.2),
+		);
 		this.rootElement.style.setProperty("--pie-button-color", foregroundColor);
-		this.rootElement.style.setProperty("--pie-button-hover-bg", this.adjustOpacity(accentColor, 0.1));
-		this.rootElement.style.setProperty("--pie-button-hover-border", this.adjustOpacity(accentColor, 0.5));
-		this.rootElement.style.setProperty("--pie-button-hover-color", foregroundColor);
-		this.rootElement.style.setProperty("--pie-button-active-bg", this.adjustOpacity(accentColor, 0.16));
-		this.rootElement.style.setProperty("--pie-button-focus-outline", accentColor);
+		this.rootElement.style.setProperty(
+			"--pie-button-hover-bg",
+			this.adjustOpacity(accentColor, 0.1),
+		);
+		this.rootElement.style.setProperty(
+			"--pie-button-hover-border",
+			this.adjustOpacity(accentColor, 0.5),
+		);
+		this.rootElement.style.setProperty(
+			"--pie-button-hover-color",
+			foregroundColor,
+		);
+		this.rootElement.style.setProperty(
+			"--pie-button-active-bg",
+			this.adjustOpacity(accentColor, 0.16),
+		);
+		this.rootElement.style.setProperty(
+			"--pie-button-focus-outline",
+			accentColor,
+		);
 	}
 
 	/**

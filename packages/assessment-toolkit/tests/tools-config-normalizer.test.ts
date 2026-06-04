@@ -6,11 +6,9 @@ import {
 
 describe("tools-config-normalizer", () => {
 	test("normalizes ids and removes duplicates", () => {
-		expect(parseToolList("calculator, textToSpeech, textToSpeech, graph")).toEqual([
-			"calculator",
-			"textToSpeech",
-			"graph",
-		]);
+		expect(
+			parseToolList("calculator, textToSpeech, textToSpeech, graph"),
+		).toEqual(["calculator", "textToSpeech", "graph"]);
 	});
 
 	test("normalizes policy and placement independently", () => {
@@ -24,7 +22,11 @@ describe("tools-config-normalizer", () => {
 			},
 		});
 
-		expect(config.policy.allowed).toEqual(["calculator", "textToSpeech", "graph"]);
+		expect(config.policy.allowed).toEqual([
+			"calculator",
+			"textToSpeech",
+			"graph",
+		]);
 		expect(config.policy.blocked).toEqual(["graph"]);
 		expect(config.placement.item).toEqual([
 			"calculator",

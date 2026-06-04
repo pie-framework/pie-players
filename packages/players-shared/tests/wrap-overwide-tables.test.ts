@@ -4,7 +4,10 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { wrapOverwideTables } from "../src/security/wrap-overwide-tables.js";
 
 beforeAll(() => {
-	if (typeof (globalThis as unknown as { window?: unknown }).window === "undefined") {
+	if (
+		typeof (globalThis as unknown as { window?: unknown }).window ===
+		"undefined"
+	) {
 		GlobalRegistrator.register();
 	}
 });

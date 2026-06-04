@@ -110,7 +110,10 @@ describe("math alignment facade", () => {
 			boundaryWord: "squared",
 		});
 		const xAfterFiveTarget = resolveHighlightTargetForBoundary(alignment, {
-			position: alignment.speech.spokenText.indexOf("X", alignment.speech.spokenText.indexOf("5")),
+			position: alignment.speech.spokenText.indexOf(
+				"X",
+				alignment.speech.spokenText.indexOf("5"),
+			),
 			length: "X".length,
 			boundaryWord: "X",
 		});
@@ -131,7 +134,9 @@ describe("math alignment facade", () => {
 		expect((xAfterFiveTarget as { element: Element }).element.localName).toBe(
 			"mi",
 		);
-		expect((equalsTarget as { element: Element }).element.textContent).toBe("=");
+		expect((equalsTarget as { element: Element }).element.textContent).toBe(
+			"=",
+		);
 	});
 
 	test("falls back to a visible expression target for spoken implicit multiplication", () => {

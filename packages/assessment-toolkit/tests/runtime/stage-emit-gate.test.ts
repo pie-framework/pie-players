@@ -212,8 +212,11 @@ describe("runStageEmitWithSuppression", () => {
 		expect(ran).toBe(true);
 		expect(recorder.domEvents.length).toBe(1);
 
-		(gate as { getOnStageChange: () => StageOnChangeHandler | null | undefined })
-			.getOnStageChange = () => undefined;
+		(
+			gate as {
+				getOnStageChange: () => StageOnChangeHandler | null | undefined;
+			}
+		).getOnStageChange = () => undefined;
 		const ran2 = runStageEmitWithSuppression(gate, makeDetail("interactive"));
 		expect(ran2).toBe(true);
 		expect(recorder.domEvents.length).toBe(2);

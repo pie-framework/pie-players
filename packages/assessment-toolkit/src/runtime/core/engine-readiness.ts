@@ -65,7 +65,8 @@ export function createReadinessDetail(args: {
 	reason?: string;
 }): EngineReadinessDetail {
 	// Final ready must always be gated by section lifecycle and complete loading.
-	const finalReady = args.signals.sectionReady && args.signals.allLoadingComplete;
+	const finalReady =
+		args.signals.sectionReady && args.signals.allLoadingComplete;
 	const interactionReady =
 		args.mode === "strict" ? finalReady : args.signals.interactionReady;
 	const phase = resolveReadinessPhase({

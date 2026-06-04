@@ -8,7 +8,14 @@
  */
 
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
-import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
+import {
+	afterAll,
+	beforeAll,
+	beforeEach,
+	describe,
+	expect,
+	test,
+} from "bun:test";
 
 import {
 	resetPurifierForTesting,
@@ -16,7 +23,10 @@ import {
 } from "@pie-players/pie-players-shared";
 
 beforeAll(() => {
-	if (typeof (globalThis as unknown as { window?: unknown }).window === "undefined") {
+	if (
+		typeof (globalThis as unknown as { window?: unknown }).window ===
+		"undefined"
+	) {
 		GlobalRegistrator.register();
 	}
 });
@@ -50,7 +60,9 @@ describe("section player authored image wrapping", () => {
 	test("passage markup: wraps overwide <img> in a .pie-image-scroll container", () => {
 		const out = sanitizeItemMarkup(PASSAGE_MARKUP);
 		expect(out).toContain('class="pie-image-scroll"');
-		expect(out).toContain('aria-label="Scrollable image: Labelled animal cell"');
+		expect(out).toContain(
+			'aria-label="Scrollable image: Labelled animal cell"',
+		);
 		expect(out).toContain('src="/fixtures/cell-diagram.png"');
 		// Image stays a child of the wrapper, not a sibling.
 		expect(out).toMatch(

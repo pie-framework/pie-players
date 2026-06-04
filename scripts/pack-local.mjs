@@ -34,8 +34,8 @@ const toolPackagesToPack = readdirSync(join(repoRoot, "packages"))
 	.filter((rel) => existsSync(join(repoRoot, rel, "package.json")))
 	.sort();
 
-const packagesToPack = [...basePackagesToPack, ...toolPackagesToPack].filter((rel) =>
-	existsSync(join(repoRoot, rel, "package.json")),
+const packagesToPack = [...basePackagesToPack, ...toolPackagesToPack].filter(
+	(rel) => existsSync(join(repoRoot, rel, "package.json")),
 );
 
 for (const rel of packagesToPack) {

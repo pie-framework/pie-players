@@ -85,10 +85,7 @@ export const getNpmPackageVersions = async (
 
 		return sorted;
 	} catch (error) {
-		console.warn(
-			`[npm-registry] failed package lookup for ${element}:`,
-			error,
-		);
+		console.warn(`[npm-registry] failed package lookup for ${element}:`, error);
 		return searchTerm ? [] : ["latest"];
 	}
 };

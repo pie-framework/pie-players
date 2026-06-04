@@ -83,6 +83,7 @@ export type EsmBackendConfig = {
 type PackageMetadata = {
 	exports?: Record<string, unknown>;
 	dependencies?: Record<string, string>;
+	optionalDependencies?: Record<string, string>;
 	peerDependencies?: Record<string, string>;
 	pie?: {
 		browserSharedDependencies?: Record<string, string>;
@@ -638,6 +639,18 @@ function declaredSharedDependencyVersion(
 	return version;
 }
 
+function packageUsesSharedDependency(
+	metadata: PackageMetadata | null,
+	dependencyName: (typeof SHARED_BROWSER_DEPENDENCIES)[number],
+): boolean {
+	return Boolean(
+		metadata?.pie?.browserSharedDependencies?.[dependencyName] ||
+			metadata?.peerDependencies?.[dependencyName] ||
+			metadata?.dependencies?.[dependencyName] ||
+			metadata?.optionalDependencies?.[dependencyName],
+	);
+}
+
 function addSharedDependencyImports(
 	imports: Record<string, string>,
 	selectedVersions: Record<string, string>,
@@ -820,6 +833,9 @@ async function buildImportMapJson(
 			cleanViewSubpath(viewConfig.subpath) ?? "delivery",
 		);
 		for (const dependencyName of SHARED_BROWSER_DEPENDENCIES) {
+			if (!packageUsesSharedDependency(metadata, dependencyName)) {
+				continue;
+			}
 			addSharedDependencyImports(
 				imports,
 				selectedVersions,

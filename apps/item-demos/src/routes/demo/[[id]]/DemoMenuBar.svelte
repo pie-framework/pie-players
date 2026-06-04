@@ -1,4 +1,6 @@
 <script lang="ts">
+	import ThemeSelect from '$lib/components/ThemeSelect.svelte';
+
 	interface Props {
 		demoName: string;
 		demoPackage: string;
@@ -137,6 +139,7 @@
 	</div>
 
 	<div class="navbar-end gap-2">
+		<ThemeSelect />
 		{#if showSessionToggle}
 			<button
 				class="btn btn-sm btn-outline btn-square"

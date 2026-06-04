@@ -3,7 +3,8 @@ import type { DemoInfo } from "./types";
 const demo: DemoInfo = {
 	id: "quadratic-equation",
 	name: "Quadratic Equation Solver",
-	description: "Advanced explicit constructed response with quadratic factoring.",
+	description:
+		"Advanced explicit constructed response with quadratic factoring.",
 	sourcePackage: "explicit-constructed-response",
 	sourceVariantId: "progressive-quadratic",
 	tags: ["progressive", "advanced", "math"],
@@ -12,7 +13,8 @@ const demo: DemoInfo = {
 		name: "Quadratic Equation Solver",
 		config: {
 			elements: {
-				"math-response-element": "@pie-element/explicit-constructed-response@latest",
+				"math-response-element":
+					"@pie-element/explicit-constructed-response@latest",
 			},
 			models: [
 				{

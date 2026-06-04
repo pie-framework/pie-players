@@ -13,7 +13,7 @@
 />
 
 <script lang="ts">
-	import "@pie-players/pie-toolbars/components/section-toolbar-element";
+	import "@pie-players/pie-assessment-toolkit/components/section-toolbar-element";
 	import type {
 		ToolRegistry,
 		ToolbarItem,

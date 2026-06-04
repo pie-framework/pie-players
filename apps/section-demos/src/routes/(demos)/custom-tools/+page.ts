@@ -3,4 +3,5 @@ import type { PageLoad } from "./$types";
 
 export const ssr = false;
 
-export const load: PageLoad = ({ url }) => loadDemoRouteDataById("custom-tools", url);
+export const load: PageLoad = ({ url }) =>
+	loadDemoRouteDataById("custom-tools", url);

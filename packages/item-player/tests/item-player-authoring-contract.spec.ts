@@ -24,28 +24,36 @@ async function readJson<T>(locator: Locator): Promise<T> {
 }
 
 async function gotoAuthoringContract(page: Page, query = "") {
-	await page.goto(`${AUTHORING_CONTRACT_PATH}${query}`, { waitUntil: "networkidle" });
+	await page.goto(`${AUTHORING_CONTRACT_PATH}${query}`, {
+		waitUntil: "networkidle",
+	});
 	await expect(
 		page.getByRole("heading", { name: "Authoring Contract Fixture" }),
 	).toBeVisible();
 	await expect(page.getByTestId("authoring-contract-harness")).toBeVisible();
 }
 
-async function readConfigureConfiguration(page: Page): Promise<Record<string, unknown> | null> {
+async function readConfigureConfiguration(
+	page: Page,
+): Promise<Record<string, unknown> | null> {
 	return await page.evaluate(() => {
-		const configureElement = Array.from(document.querySelectorAll("pie-item-player *")).find(
-			(element) => element.localName.endsWith("-config"),
-		) as any;
+		const configureElement = Array.from(
+			document.querySelectorAll("pie-item-player *"),
+		).find((element) => element.localName.endsWith("-config")) as any;
 		return configureElement?.configuration ?? null;
 	});
 }
 
-async function dispatchFromAuthoringRoot(page: Page, type: string, detail: Record<string, unknown>) {
+async function dispatchFromAuthoringRoot(
+	page: Page,
+	type: string,
+	detail: Record<string, unknown>,
+) {
 	await page.evaluate(
 		({ eventType, eventDetail }) => {
 			const target =
-				Array.from(document.querySelectorAll("pie-item-player *")).find((element) =>
-					element.localName.endsWith("-config"),
+				Array.from(document.querySelectorAll("pie-item-player *")).find(
+					(element) => element.localName.endsWith("-config"),
 				) ?? document.querySelector("pie-item-player");
 			const detail =
 				eventType === "insert.image"
@@ -166,7 +174,10 @@ test.describe("item-player authoring contract", () => {
 		await page.getByTestId("run-validation").click();
 		const validationResult = await readJson<{
 			hasErrors: boolean;
-			validatedModels: Array<{ id: string; validation?: { authoringOnly?: string } }>;
+			validatedModels: Array<{
+				id: string;
+				validation?: { authoringOnly?: string };
+			}>;
 		}>(page.getByTestId("validation-result"));
 		expect(validationResult.hasErrors).toBe(false);
 		expect(validationResult.validatedModels[0]).toMatchObject({
@@ -194,24 +205,27 @@ test.describe("item-player authoring contract", () => {
 			})
 			.toBe("Updated by authoring contract e2e");
 
-		await dispatchFromAuthoringRoot(page, "insert.image", {
-		});
+		await dispatchFromAuthoringRoot(page, "insert.image", {});
 		await dispatchFromAuthoringRoot(page, "delete.image", {
 			src: "/fixture/image.png",
 		});
-		await dispatchFromAuthoringRoot(page, "insert.sound", {
-		});
+		await dispatchFromAuthoringRoot(page, "insert.sound", {});
 		await dispatchFromAuthoringRoot(page, "delete.sound", {
 			src: "/fixture/sound.wav",
 		});
 		await expect
 			.poll(async () => {
-				const mediaCalls = await readJson<Array<{ type: string; src?: string }>>(
-					page.getByTestId("media-call-log"),
-				);
+				const mediaCalls = await readJson<
+					Array<{ type: string; src?: string }>
+				>(page.getByTestId("media-call-log"));
 				return mediaCalls.map((call) => call.type);
 			})
-			.toEqual(["insert-image", "delete-image", "insert-sound", "delete-sound"]);
+			.toEqual([
+				"insert-image",
+				"delete-image",
+				"insert-sound",
+				"delete-sound",
+			]);
 	});
 
 	test("required authoring backend blocks authoring UI when callbacks are missing", async ({
@@ -219,14 +233,17 @@ test.describe("item-player authoring contract", () => {
 	}) => {
 		await gotoAuthoringContract(page, "&missingBackend=1");
 
-		await expect(page.getByText("Authoring Backend Configuration Error")).toBeVisible();
+		await expect(
+			page.getByText("Authoring Backend Configuration Error"),
+		).toBeVisible();
 		await expect(page.getByTestId("authoring-fixture")).toHaveCount(0);
 		await expect
 			.poll(async () => {
 				const eventLog = await readJson<Array<{ type: string; detail: any }>>(
 					page.getByTestId("event-log"),
 				);
-				return eventLog.find((entry) => entry.type === "player-error")?.detail?.code;
+				return eventLog.find((entry) => entry.type === "player-error")?.detail
+					?.code;
 			})
 			.toBe("AUTHORING_BACKEND_CONFIG_ERROR");
 	});

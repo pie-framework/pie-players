@@ -18,7 +18,9 @@ function resolveLoaderConfig(playerLike: unknown): UnknownRecord | null {
 	return Object.keys(loaderConfig).length > 0 ? loaderConfig : null;
 }
 
-function resolveProviderFromLoaderConfig(loaderConfig: UnknownRecord | null): ProviderCandidate {
+function resolveProviderFromLoaderConfig(
+	loaderConfig: UnknownRecord | null,
+): ProviderCandidate {
 	if (!loaderConfig || !("instrumentationProvider" in loaderConfig)) {
 		return { kind: "unset" };
 	}

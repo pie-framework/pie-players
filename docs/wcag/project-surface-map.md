@@ -16,7 +16,7 @@ These tiers define the default project-wide review scope.
 
 | Tier | Scope | Notes |
 | --- | --- | --- |
-| Tier 1 (critical) | `packages/section-player`, `packages/item-player`, `packages/assessment-player`, `packages/assessment-toolkit`, `packages/toolbars`, `packages/tool-*`, `packages/theme`, `packages/print-player` | Primary learner-facing and shipped custom-element surfaces. |
+| Tier 1 (critical) | `packages/section-player`, `packages/item-player`, `packages/assessment-player`, `packages/assessment-toolkit`, `packages/tool-*`, `packages/theme`, `packages/print-player` | Primary learner-facing and shipped custom-element surfaces. |
 | Tier 2 (integration) | `apps/section-demos`, `apps/item-demos`, `apps/assessment-demos`, `apps/docs` | Integration wrappers and demo chrome that can add or hide accessibility defects. |
 | Tier 3 (support) | `packages/section-player-tools-*` and demo-only support panels | Lower learner impact, still reviewed when visible in supported demo flows. |
 

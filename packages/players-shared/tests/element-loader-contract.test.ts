@@ -864,6 +864,7 @@ describe("ESM adapter — contract", () => {
 			},
 			{
 				doc: createMockDocument(),
+				whenDefinedTimeoutMs: 50,
 			},
 		);
 
@@ -1243,6 +1244,61 @@ describe("ESM adapter — contract", () => {
 				},
 			),
 		).rejects.toThrow(/browserSharedDependencies/);
+	});
+
+	test("url mode does not require React metadata for browser ESM packages without React deps", async () => {
+		const backend = createEsmBackend({
+			kind: "esm",
+			cdnBaseUrl: "https://cdn.jsdelivr.net/npm",
+			view: "delivery",
+		});
+		const injectedMaps: string[] = [];
+		const imported: string[] = [];
+
+		const seams = (
+			backend as unknown as {
+				__seams: EsmBackendTestSeams & {
+					replacePackageMetadataLoader(
+						fn: (packageVersion: string) => Promise<unknown>,
+					): void;
+				};
+			}
+		).__seams;
+		seams.replacePackageMetadataLoader(async () => ({
+			exports: {
+				"./browser/delivery": {
+					default: "./dist/browser/delivery/index.js",
+				},
+				"./browser/controller": {
+					default: "./dist/browser/controller/index.js",
+				},
+			},
+		}));
+		seams.observeImportMapInjection((mapJson) => {
+			injectedMaps.push(mapJson);
+		});
+		seams.replaceImporter(async (specifier) => {
+			imported.push(specifier);
+			return {
+				default: createConstructorFor("simple-cloze--version-0-1-4"),
+			};
+		});
+
+		await backend.load(
+			{
+				"simple-cloze--version-0-1-4": "@pie-element/simple-cloze@0.1.4",
+			},
+			{
+				doc: createMockDocument(),
+				whenDefinedTimeoutMs: 50,
+			},
+		);
+
+		expect(injectedMaps).toEqual([]);
+		expect(imported).toEqual([
+			"https://cdn.jsdelivr.net/npm/@pie-element/simple-cloze@0.1.4/dist/browser/delivery/index.js",
+			"https://cdn.jsdelivr.net/npm/@pie-element/simple-cloze@0.1.4/dist/browser/controller/index.js",
+		]);
 	});
 
 	test("url mode rejects packages whose metadata does not expose browser ESM exports", async () => {

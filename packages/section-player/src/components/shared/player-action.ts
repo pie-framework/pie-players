@@ -115,7 +115,10 @@ function applyPlayerParams(
 	} as AppliedPlayerParams);
 }
 
-function getNodeState(node: HTMLElement, stateKey: string): AppliedPlayerParams {
+function getNodeState(
+	node: HTMLElement,
+	stateKey: string,
+): AppliedPlayerParams {
 	return playerActionStateCache.get(node)?.get(stateKey) || {};
 }
 
@@ -124,7 +127,8 @@ function setNodeState(
 	stateKey: string,
 	state: AppliedPlayerParams,
 ): void {
-	const byKey = playerActionStateCache.get(node) || new Map<string, AppliedPlayerParams>();
+	const byKey =
+		playerActionStateCache.get(node) || new Map<string, AppliedPlayerParams>();
 	byKey.set(stateKey, state);
 	playerActionStateCache.set(node, byKey);
 }

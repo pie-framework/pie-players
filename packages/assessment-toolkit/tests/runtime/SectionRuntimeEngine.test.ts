@@ -159,7 +159,10 @@ describe("SectionRuntimeEngine facade — common-host smoke", () => {
 
 		const subscribeStages = outputs
 			.filter((o) => o.kind === "stage-change")
-			.map((o) => (o as Extract<SectionEngineOutput, { kind: "stage-change" }>).stage);
+			.map(
+				(o) =>
+					(o as Extract<SectionEngineOutput, { kind: "stage-change" }>).stage,
+			);
 		expect(subscribeStages).toEqual([
 			"composed",
 			"engine-ready",

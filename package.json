@@ -11,8 +11,8 @@
 	],
 	"scripts": {
 		"build": "bun run clean:outputs && turbo build --filter='!./apps/*' --filter='!./tools/*'",
-		"build:watch:section-tools": "turbo watch build --filter=@pie-players/pie-section-player --filter=@pie-players/pie-assessment-toolkit --filter=@pie-players/pie-tool-* --filter=@pie-players/pie-toolbars --filter=@pie-players/pie-section-player-tools-*",
-		"build:e2e:section-player": "turbo build --filter=@pie-players/pie-section-player... --filter=@pie-players/pie-tool-* --filter=@pie-players/pie-toolbars --filter=@pie-players/pie-section-player-tools-*",
+		"build:watch:section-tools": "turbo watch build --filter=@pie-players/pie-section-player --filter=@pie-players/pie-assessment-toolkit --filter=@pie-players/pie-tool-* --filter=@pie-players/pie-section-player-tools-*",
+		"build:e2e:section-player": "turbo build --filter=@pie-players/pie-section-player... --filter=@pie-players/pie-tool-* --filter=@pie-players/pie-section-player-tools-*",
 		"build:e2e:item-player": "turbo build --filter=@pie-players/pie-item-player...",
 		"build:e2e:assessment-player": "turbo build --filter=@pie-players/pie-assessment-player... --filter=@pie-players/pie-section-player-tools-*",
 		"dev": "turbo dev --filter=section-demos",
@@ -28,6 +28,7 @@
 		"test:e2e:item-player:multiple-choice": "export ITEM_DEMOS_PORT=$(bun ./scripts/get-free-port.mjs 5400); bun run build:e2e:item-player && bunx playwright test packages/item-player/tests/item-player-multiple-choice.spec.ts --config packages/item-player/playwright.config.ts",
 		"test:e2e:a11y:critical": "bun run test:e2e:section-player:tts-ssml && bun run test:e2e:item-player:multiple-choice && bun run test:e2e:assessment-player",
 		"test:e2e:all": "bun run test:e2e:section-player && bun run test:e2e:item-player && bun run test:e2e:backend-demo && bun run test:e2e:assessment-player",
+		"test:esm:pie-elements-ng": "bun run build:e2e:item-player && bun ./scripts/smoke-pie-elements-ng-esm.mjs --pie-elements-ng-root ../pie-elements-ng --report ./tmp/pie-elements-ng-esm-smoke-report.json",
 		"test:local-esm-cdn": "bun run --cwd apps/local-esm-cdn test",
 		"cli": "bun --cwd tools/cli ./bin/run.js",
 		"local-esm-cdn": "bun run --cwd apps/local-esm-cdn dev",

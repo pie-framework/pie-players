@@ -4,11 +4,10 @@ export type ItemSessionContainer = {
 };
 
 export interface ItemSessionStorageStrategy {
-	load(key: string): ItemSessionContainer | null | Promise<ItemSessionContainer | null>;
-	save(
+	load(
 		key: string,
-		session: ItemSessionContainer,
-	): void | Promise<void>;
+	): ItemSessionContainer | null | Promise<ItemSessionContainer | null>;
+	save(key: string, session: ItemSessionContainer): void | Promise<void>;
 	clear?(key: string): void | Promise<void>;
 }
 

@@ -1,4 +1,7 @@
-import { normalizePieThemeVariables, type ThemeVariables } from "./theme-types.js";
+import {
+	normalizePieThemeVariables,
+	type ThemeVariables,
+} from "./theme-types.js";
 
 export interface ThemeProviderAdapter {
 	readonly id: string;
@@ -197,4 +200,3 @@ export function resolveProviderVariables(args: {
 
 	return {};
 }
-

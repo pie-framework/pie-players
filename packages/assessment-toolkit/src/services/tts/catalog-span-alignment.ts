@@ -116,7 +116,11 @@ const createCandidates = (
 ): MatchCandidate[] => {
 	const candidates: MatchCandidate[] = [];
 	for (let spokenIndex = 0; spokenIndex < spokenTokens.length; spokenIndex++) {
-		for (let visibleIndex = 0; visibleIndex < visibleTokens.length; visibleIndex++) {
+		for (
+			let visibleIndex = 0;
+			visibleIndex < visibleTokens.length;
+			visibleIndex++
+		) {
 			const spokenValue = normalizedTokenValue(spokenTokens[spokenIndex]);
 			const visibleValue = normalizedTokenValue(visibleTokens[visibleIndex]);
 			if (spokenValue === visibleValue) {
@@ -171,7 +175,8 @@ const computeAnchors = (
 		(left, right) =>
 			spokenTokens[left.spokenStartToken].start -
 				spokenTokens[right.spokenStartToken].start ||
-			visibleTokens[left.visibleToken].start - visibleTokens[right.visibleToken].start,
+			visibleTokens[left.visibleToken].start -
+				visibleTokens[right.visibleToken].start,
 	);
 	const bestScore = new Array(candidates.length).fill(0) as number[];
 	const previous = new Array(candidates.length).fill(-1) as number[];
@@ -233,7 +238,8 @@ const scoreConfidence = (
 ): number => {
 	if (anchors.length === 0) return 0;
 	const tokenCoverage =
-		anchors.length / Math.max(1, Math.min(spokenTokens.length, visibleTokens.length));
+		anchors.length /
+		Math.max(1, Math.min(spokenTokens.length, visibleTokens.length));
 	const averageScore =
 		anchors.reduce((total, anchor) => total + anchor.score, 0) /
 		anchors.length /
@@ -358,7 +364,10 @@ const resolvePlainBoundaryOffset = (
 	if (position < 0 || position >= alignment.spokenText.length) return null;
 	const token = findTokenAtOffset(alignment.spokenTokens, position);
 	if (!token) return null;
-	return { start: position, length: Math.min(safeLength, token.end - position) };
+	return {
+		start: position,
+		length: Math.min(safeLength, token.end - position),
+	};
 };
 
 export const resolveSpokenBoundaryOffset = (
@@ -387,9 +396,7 @@ export const resolveSpokenBoundaryOffset = (
 			safeLength,
 		);
 		if (boundaryWord) {
-			if (
-				candidateMatchesBoundaryWord(alignment, rawCandidate, boundaryWord)
-			) {
+			if (candidateMatchesBoundaryWord(alignment, rawCandidate, boundaryWord)) {
 				return rawCandidate;
 			}
 			if (
@@ -413,7 +420,8 @@ export const resolveVisibleSpanForBoundary = (
 ): { start: number; end: number } | null => {
 	if (alignment.playbackMode === "region-fallback") return null;
 	const exactAnchor = alignment.anchors.find(
-		(anchor) => anchor.spokenStart <= spokenOffset && spokenOffset < anchor.spokenEnd,
+		(anchor) =>
+			anchor.spokenStart <= spokenOffset && spokenOffset < anchor.spokenEnd,
 	);
 	if (exactAnchor) {
 		return { start: exactAnchor.visibleStart, end: exactAnchor.visibleEnd };

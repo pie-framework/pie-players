@@ -125,10 +125,12 @@ describe("QuizEngine client contract", () => {
 			createDefaultController: () => controller.handle,
 		});
 
-		expect(coordinator.getSectionController({
-			sectionId: "section-1",
-			attemptId: "attempt-1",
-		})).toBe(handle);
+		expect(
+			coordinator.getSectionController({
+				sectionId: "section-1",
+				attemptId: "attempt-1",
+			}),
+		).toBe(handle);
 		expect(
 			coordinator
 				.decideToolPolicy({
@@ -176,10 +178,18 @@ describe("QuizEngine client contract", () => {
 			timestamp: Date.now(),
 		});
 
-		expect(itemEvents.some((event) => event.type === "content-loaded")).toBe(true);
-		expect(itemEvents.some((event) => event.type === "item-session-data-changed")).toBe(true);
-		expect(sectionEvents.some((event) => event.type === "section-loading-complete")).toBe(true);
-		expect(sectionEvents.some((event) => event.type === "section-error")).toBe(true);
+		expect(itemEvents.some((event) => event.type === "content-loaded")).toBe(
+			true,
+		);
+		expect(
+			itemEvents.some((event) => event.type === "item-session-data-changed"),
+		).toBe(true);
+		expect(
+			sectionEvents.some((event) => event.type === "section-loading-complete"),
+		).toBe(true);
+		expect(sectionEvents.some((event) => event.type === "section-error")).toBe(
+			true,
+		);
 
 		await handle.applySession?.(
 			{

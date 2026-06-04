@@ -19,7 +19,10 @@ export function ensureItemPlayerMathRenderingReady(): Promise<void> {
 }
 
 void ensureItemPlayerMathRenderingReady().catch((error) => {
-	console.error("[pie-item-player] Failed to initialize math rendering:", error);
+	console.error(
+		"[pie-item-player] Failed to initialize math rendering:",
+		error,
+	);
 	itemPlayerMathReadyPromise = null;
 });
 

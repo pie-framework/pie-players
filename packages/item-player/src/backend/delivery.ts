@@ -38,7 +38,9 @@ function resolveLoadedConfig(result: BackendDeliveryLoadResult): unknown {
 	if (isRecord(result.item) && isConfigLike(result.item.pie)) {
 		return {
 			pie: result.item.pie,
-			passage: isConfigLike(result.item.passage) ? result.item.passage : undefined,
+			passage: isConfigLike(result.item.passage)
+				? result.item.passage
+				: undefined,
 		};
 	}
 	throw new Error("Backend delivery load did not return an item config.");
@@ -106,7 +108,9 @@ export async function loadFromDeliveryBackend(
 		throw new Error("Delivery backend is not configured.");
 	}
 	if (!delivery.itemId) {
-		throw new Error("backend.delivery.itemId is required to load from backend.");
+		throw new Error(
+			"backend.delivery.itemId is required to load from backend.",
+		);
 	}
 	const context = {
 		itemId: delivery.itemId,

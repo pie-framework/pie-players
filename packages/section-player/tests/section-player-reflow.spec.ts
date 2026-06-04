@@ -7,7 +7,9 @@ const REFLOW_ROUTES = [
 
 test.describe("section player splitpane reflow", () => {
 	for (const route of REFLOW_ROUTES) {
-		test(`avoids horizontal overflow at 320px for ${route}`, async ({ page }) => {
+		test(`avoids horizontal overflow at 320px for ${route}`, async ({
+			page,
+		}) => {
 			await page.setViewportSize({ width: 320, height: 900 });
 			await page.goto(route, { waitUntil: "networkidle" });
 
@@ -58,7 +60,10 @@ test.describe("section player splitpane reflow", () => {
 				.first();
 			if ((await tabbedPassageLabel.count()) > 0) {
 				await tabbedPassageLabel.click();
-				await expect(tabbedPassageLabel).toHaveAttribute("aria-selected", "true");
+				await expect(tabbedPassageLabel).toHaveAttribute(
+					"aria-selected",
+					"true",
+				);
 			}
 
 			const passagePane = page
@@ -85,16 +90,19 @@ test.describe("section player splitpane reflow", () => {
 		await page.goto("/question-passage?mode=candidate&layout=splitpane", {
 			waitUntil: "networkidle",
 		});
-		const splitpaneHostWithPassage = page.locator("pie-section-player-splitpane").first();
+		const splitpaneHostWithPassage = page
+			.locator("pie-section-player-splitpane")
+			.first();
 		const splitWithPassage = splitpaneHostWithPassage
 			.locator(".pie-section-player-split-frame")
 			.first();
 		await expect(splitWithPassage).toBeVisible();
 		await expect
-			.poll(async () =>
-				await splitWithPassage.evaluate(
-					(element) => (element as HTMLElement).getBoundingClientRect().width,
-				),
+			.poll(
+				async () =>
+					await splitWithPassage.evaluate(
+						(element) => (element as HTMLElement).getBoundingClientRect().width,
+					),
 			)
 			.toBeGreaterThan(1150);
 		const withPassageWidth = await splitWithPassage.evaluate(
@@ -105,16 +113,19 @@ test.describe("section player splitpane reflow", () => {
 		await page.goto("/single-question?mode=candidate&layout=splitpane", {
 			waitUntil: "networkidle",
 		});
-		const splitpaneHostNoPassage = page.locator("pie-section-player-splitpane").first();
+		const splitpaneHostNoPassage = page
+			.locator("pie-section-player-splitpane")
+			.first();
 		const splitNoPassage = splitpaneHostNoPassage
 			.locator(".pie-section-player-split-frame")
 			.first();
 		await expect(splitNoPassage).toBeVisible();
 		await expect
-			.poll(async () =>
-				await splitNoPassage.evaluate(
-					(element) => (element as HTMLElement).getBoundingClientRect().width,
-				),
+			.poll(
+				async () =>
+					await splitNoPassage.evaluate(
+						(element) => (element as HTMLElement).getBoundingClientRect().width,
+					),
 			)
 			.toBeGreaterThan(750);
 		const noPassageWidth = await splitNoPassage.evaluate(
@@ -129,16 +140,19 @@ test.describe("section player splitpane reflow", () => {
 		await page.goto("/question-passage?mode=candidate&layout=vertical", {
 			waitUntil: "networkidle",
 		});
-		const verticalHostWithPassage = page.locator("pie-section-player-vertical").first();
+		const verticalHostWithPassage = page
+			.locator("pie-section-player-vertical")
+			.first();
 		const verticalWithPassage = verticalHostWithPassage
 			.locator(".pie-section-player-vertical-frame")
 			.first();
 		await expect(verticalWithPassage).toBeVisible();
 		await expect
-			.poll(async () =>
-				await verticalWithPassage.evaluate(
-					(element) => (element as HTMLElement).getBoundingClientRect().width,
-				),
+			.poll(
+				async () =>
+					await verticalWithPassage.evaluate(
+						(element) => (element as HTMLElement).getBoundingClientRect().width,
+					),
 			)
 			.toBeGreaterThan(1150);
 		const withPassageWidth = await verticalWithPassage.evaluate(
@@ -149,16 +163,19 @@ test.describe("section player splitpane reflow", () => {
 		await page.goto("/single-question?mode=candidate&layout=vertical", {
 			waitUntil: "networkidle",
 		});
-		const verticalHostNoPassage = page.locator("pie-section-player-vertical").first();
+		const verticalHostNoPassage = page
+			.locator("pie-section-player-vertical")
+			.first();
 		const verticalNoPassage = verticalHostNoPassage
 			.locator(".pie-section-player-vertical-frame")
 			.first();
 		await expect(verticalNoPassage).toBeVisible();
 		await expect
-			.poll(async () =>
-				await verticalNoPassage.evaluate(
-					(element) => (element as HTMLElement).getBoundingClientRect().width,
-				),
+			.poll(
+				async () =>
+					await verticalNoPassage.evaluate(
+						(element) => (element as HTMLElement).getBoundingClientRect().width,
+					),
 			)
 			.toBeGreaterThan(750);
 		const noPassageWidth = await verticalNoPassage.evaluate(
@@ -175,7 +192,9 @@ test.describe("section player splitpane reflow", () => {
 		await page.goto("/question-passage?mode=candidate&layout=splitpane", {
 			waitUntil: "networkidle",
 		});
-		const splitpaneHostWithPassage = page.locator("pie-section-player-splitpane").first();
+		const splitpaneHostWithPassage = page
+			.locator("pie-section-player-splitpane")
+			.first();
 		const splitWithPassage = splitpaneHostWithPassage
 			.locator(".pie-section-player-split-frame")
 			.first();
@@ -186,10 +205,11 @@ test.describe("section player splitpane reflow", () => {
 			);
 		});
 		await expect
-			.poll(async () =>
-				await splitWithPassage.evaluate(
-					(element) => (element as HTMLElement).getBoundingClientRect().width,
-				),
+			.poll(
+				async () =>
+					await splitWithPassage.evaluate(
+						(element) => (element as HTMLElement).getBoundingClientRect().width,
+					),
 			)
 			.toBeLessThanOrEqual(1201);
 		const splitWithPassageWidth = await splitWithPassage.evaluate(
@@ -200,7 +220,9 @@ test.describe("section player splitpane reflow", () => {
 		await page.goto("/single-question?mode=candidate&layout=splitpane", {
 			waitUntil: "networkidle",
 		});
-		const splitpaneHostNoPassage = page.locator("pie-section-player-splitpane").first();
+		const splitpaneHostNoPassage = page
+			.locator("pie-section-player-splitpane")
+			.first();
 		const splitNoPassage = splitpaneHostNoPassage
 			.locator(".pie-section-player-split-frame")
 			.first();
@@ -211,10 +233,11 @@ test.describe("section player splitpane reflow", () => {
 			);
 		});
 		await expect
-			.poll(async () =>
-				await splitNoPassage.evaluate(
-					(element) => (element as HTMLElement).getBoundingClientRect().width,
-				),
+			.poll(
+				async () =>
+					await splitNoPassage.evaluate(
+						(element) => (element as HTMLElement).getBoundingClientRect().width,
+					),
 			)
 			.toBeLessThanOrEqual(801);
 		const splitNoPassageWidth = await splitNoPassage.evaluate(
@@ -225,7 +248,9 @@ test.describe("section player splitpane reflow", () => {
 		await page.goto("/question-passage?mode=candidate&layout=vertical", {
 			waitUntil: "networkidle",
 		});
-		const verticalHostWithPassage = page.locator("pie-section-player-vertical").first();
+		const verticalHostWithPassage = page
+			.locator("pie-section-player-vertical")
+			.first();
 		const verticalWithPassage = verticalHostWithPassage
 			.locator(".pie-section-player-vertical-frame")
 			.first();
@@ -236,10 +261,11 @@ test.describe("section player splitpane reflow", () => {
 			);
 		});
 		await expect
-			.poll(async () =>
-				await verticalWithPassage.evaluate(
-					(element) => (element as HTMLElement).getBoundingClientRect().width,
-				),
+			.poll(
+				async () =>
+					await verticalWithPassage.evaluate(
+						(element) => (element as HTMLElement).getBoundingClientRect().width,
+					),
 			)
 			.toBeLessThanOrEqual(1201);
 		const verticalWithPassageWidth = await verticalWithPassage.evaluate(
@@ -250,7 +276,9 @@ test.describe("section player splitpane reflow", () => {
 		await page.goto("/single-question?mode=candidate&layout=vertical", {
 			waitUntil: "networkidle",
 		});
-		const verticalHostNoPassage = page.locator("pie-section-player-vertical").first();
+		const verticalHostNoPassage = page
+			.locator("pie-section-player-vertical")
+			.first();
 		const verticalNoPassage = verticalHostNoPassage
 			.locator(".pie-section-player-vertical-frame")
 			.first();
@@ -261,10 +289,11 @@ test.describe("section player splitpane reflow", () => {
 			);
 		});
 		await expect
-			.poll(async () =>
-				await verticalNoPassage.evaluate(
-					(element) => (element as HTMLElement).getBoundingClientRect().width,
-				),
+			.poll(
+				async () =>
+					await verticalNoPassage.evaluate(
+						(element) => (element as HTMLElement).getBoundingClientRect().width,
+					),
 			)
 			.toBeLessThanOrEqual(801);
 		const verticalNoPassageWidth = await verticalNoPassage.evaluate(

@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import type { AssessmentSection, ItemEntity, PassageEntity } from "@pie-players/pie-players-shared";
+import type {
+	AssessmentSection,
+	ItemEntity,
+	PassageEntity,
+} from "@pie-players/pie-players-shared";
 import { SectionContentService } from "../src/controllers/SectionContentService";
 
 function makePassage(id: string): PassageEntity {
@@ -43,11 +47,9 @@ describe("SectionContentService renderables", () => {
 		const service = new SectionContentService();
 		const content = service.build(section, "candidate");
 
-		expect(content.renderables.map((r) => `${r.flavor}:${r.entity.id}`)).toEqual([
-			"passage:p1",
-			"item:i1",
-			"rubric:rb1",
-		]);
+		expect(
+			content.renderables.map((r) => `${r.flavor}:${r.entity.id}`),
+		).toEqual(["passage:p1", "item:i1", "rubric:rb1"]);
 	});
 
 	test("synthesizes ids when item and passage ids are missing", () => {
@@ -77,7 +79,9 @@ describe("SectionContentService renderables", () => {
 		} as unknown as PassageEntity;
 		const section = {
 			assessmentItemRefs: [{ item: itemWithoutId }],
-			rubricBlocks: [{ class: "rubric", view: ["candidate"], passage: rubricWithoutId }],
+			rubricBlocks: [
+				{ class: "rubric", view: ["candidate"], passage: rubricWithoutId },
+			],
 		} as unknown as AssessmentSection;
 
 		const service = new SectionContentService();

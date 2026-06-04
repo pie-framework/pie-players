@@ -72,7 +72,8 @@ function toPieDependency(packageSpec: string): PieDependency {
 	const slashIndex = packageSpec.indexOf("/");
 	const atIndex = packageSpec.lastIndexOf("@");
 	const hasScopedName = packageSpec.startsWith("@") && slashIndex > 0;
-	const versionSeparatorIndex = atIndex > (hasScopedName ? slashIndex : 0) ? atIndex : -1;
+	const versionSeparatorIndex =
+		atIndex > (hasScopedName ? slashIndex : 0) ? atIndex : -1;
 	if (versionSeparatorIndex < 0) {
 		return { name: packageSpec, version: "latest" };
 	}
@@ -93,7 +94,9 @@ async function resolveLatestVersion(packageName: string): Promise<string> {
 	}
 	const payload = (await response.json()) as { version?: string };
 	if (!payload.version) {
-		throw new Error(`Registry response for ${packageName} did not include a version.`);
+		throw new Error(
+			`Registry response for ${packageName} did not include a version.`,
+		);
 	}
 	return payload.version;
 }
@@ -119,7 +122,9 @@ async function fetchControllerJs(packageSpec: string): Promise<string> {
 	return response.text();
 }
 
-export function createControllerContext(controllerJs: string): ControllerContext {
+export function createControllerContext(
+	controllerJs: string,
+): ControllerContext {
 	const sandbox = {
 		exports: {},
 		module: { exports: {} },
@@ -141,7 +146,9 @@ export async function executeControllerModel(args: {
 }): Promise<ControllerModelResult> {
 	const context = createControllerContext(args.controllerJs);
 	if (typeof context.module.exports.model !== "function") {
-		throw new Error(`No model function found for element ${args.model.element}.`);
+		throw new Error(
+			`No model function found for element ${args.model.element}.`,
+		);
 	}
 	context.module.sessionUpdates = [];
 	const updateSession = async (id: string, element: string, data: unknown) => {
@@ -193,7 +200,9 @@ export async function executeControllerOutcome(args: {
 }): Promise<ControllerOutcomeResult> {
 	const context = createControllerContext(args.controllerJs);
 	if (typeof context.module.exports.outcome !== "function") {
-		throw new Error(`No outcome function found for element ${args.model.element}.`);
+		throw new Error(
+			`No outcome function found for element ${args.model.element}.`,
+		);
 	}
 	context.module.args = {
 		model: clone(args.model),
@@ -236,7 +245,9 @@ async function fetchControllers(
 }
 
 function validateConfig(config: DemoItemConfig): void {
-	const missing = config.models.filter((model) => !config.elements[model.element]);
+	const missing = config.models.filter(
+		(model) => !config.elements[model.element],
+	);
 	if (missing.length > 0) {
 		throw new Error(
 			`Missing element package for models: ${missing
@@ -298,7 +309,9 @@ export async function runOutcomeControllers(args: {
 	const controllers = await fetchControllers(args.config.elements);
 	const results: ControllerOutcomeResult[] = [];
 	for (const data of scoringData) {
-		const model = args.config.models.find((candidate) => candidate.id === data.id);
+		const model = args.config.models.find(
+			(candidate) => candidate.id === data.id,
+		);
 		if (!model) continue;
 		results.push(
 			await executeControllerOutcome({

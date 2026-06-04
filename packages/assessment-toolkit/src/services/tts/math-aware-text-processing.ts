@@ -362,7 +362,11 @@ const collectMathAware = (
 			acc.chars.slice(textChunkStart, acc.chars.length).join(""),
 		);
 		if (text) {
-			chunks.push({ type: "text", text, sourceElement: textChunkSourceElement });
+			chunks.push({
+				type: "text",
+				text,
+				sourceElement: textChunkSourceElement,
+			});
 		}
 		textChunkStart = acc.chars.length;
 		textChunkSourceElement = undefined;
@@ -372,10 +376,7 @@ const collectMathAware = (
 		if (isNodeHiddenForTTS(node, root)) return;
 		if (node.nodeType === Node.TEXT_NODE) {
 			const sourceElement = resolveTextChunkSourceElement(node as Text, root);
-			if (
-				textChunkSourceElement &&
-				sourceElement !== textChunkSourceElement
-			) {
+			if (textChunkSourceElement && sourceElement !== textChunkSourceElement) {
 				flushTextChunk();
 			}
 			textChunkSourceElement = sourceElement;

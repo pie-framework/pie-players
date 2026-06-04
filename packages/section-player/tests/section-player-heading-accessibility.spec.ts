@@ -13,7 +13,9 @@ import { expect, test } from "@playwright/test";
 const DEMO_PATH = "/heading-accessibility?mode=candidate&layout=splitpane";
 
 test.describe("heading-accessibility demo — baseHeadingLevel & includeSrHeading", () => {
-	test("demo page loads and renders the nordic countries question", async ({ page }) => {
+	test("demo page loads and renders the nordic countries question", async ({
+		page,
+	}) => {
 		await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
 
 		// The section player host should be present.
@@ -41,7 +43,9 @@ test.describe("heading-accessibility demo — baseHeadingLevel & includeSrHeadin
 	test("includeSrHeading checkbox defaults to checked", async ({ page }) => {
 		await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
 
-		const checkbox = page.locator('[data-testid="include-sr-heading-checkbox"]');
+		const checkbox = page.locator(
+			'[data-testid="include-sr-heading-checkbox"]',
+		);
 		await expect(checkbox).toBeChecked();
 	});
 
@@ -49,7 +53,9 @@ test.describe("heading-accessibility demo — baseHeadingLevel & includeSrHeadin
 		page,
 	}) => {
 		await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
-		await page.waitForSelector("pie-section-player-splitpane", { state: "attached" });
+		await page.waitForSelector("pie-section-player-splitpane", {
+			state: "attached",
+		});
 
 		// Wait for the PIE element to render (networkidle is not always enough for
 		// async bundle loading; poll for the prompt text).
@@ -84,7 +90,10 @@ test.describe("heading-accessibility demo — baseHeadingLevel & includeSrHeadin
 
 		// The section player should re-render; wait for the updated heading.
 		await expect(
-			page.getByRole("heading", { name: "Which of the following are Nordic countries?", level: 3 }),
+			page.getByRole("heading", {
+				name: "Which of the following are Nordic countries?",
+				level: 3,
+			}),
 		).toBeVisible({ timeout: 15_000 });
 
 		const result = await page.evaluate(() => {
@@ -116,7 +125,9 @@ test.describe("heading-accessibility demo — baseHeadingLevel & includeSrHeadin
 		expect(attributesPresent).toBe(true);
 	});
 
-	test("unchecking includeSrHeading removes the visually-hidden heading", async ({ page }) => {
+	test("unchecking includeSrHeading removes the visually-hidden heading", async ({
+		page,
+	}) => {
 		await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
 		await expect(
 			page.getByText("Which of the following are Nordic countries?"),
@@ -134,13 +145,17 @@ test.describe("heading-accessibility demo — baseHeadingLevel & includeSrHeadin
 		expect(srHeadingCount).toBe(0);
 	});
 
-	test("re-checking includeSrHeading restores the visually-hidden heading", async ({ page }) => {
+	test("re-checking includeSrHeading restores the visually-hidden heading", async ({
+		page,
+	}) => {
 		await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
 		await expect(
 			page.getByText("Which of the following are Nordic countries?"),
 		).toBeVisible({ timeout: 30_000 });
 
-		const checkbox = page.locator('[data-testid="include-sr-heading-checkbox"]');
+		const checkbox = page.locator(
+			'[data-testid="include-sr-heading-checkbox"]',
+		);
 
 		// Uncheck then re-check.
 		await checkbox.uncheck();

@@ -228,7 +228,10 @@ export class ResourceMonitor {
 		if (this.manageProviderLifecycle) {
 			this.provider.initialize().catch((err) => {
 				if (this.isDebugEnabled()) {
-					this.logger.warn("Failed to initialize instrumentation provider:", err);
+					this.logger.warn(
+						"Failed to initialize instrumentation provider:",
+						err,
+					);
 				}
 			});
 		} else if (this.isDebugEnabled()) {
@@ -458,7 +461,10 @@ export class ResourceMonitor {
 				this.provider.destroy();
 			} catch (error) {
 				if (this.isDebugEnabled()) {
-					this.logger.warn("Failed to destroy instrumentation provider:", error);
+					this.logger.warn(
+						"Failed to destroy instrumentation provider:",
+						error,
+					);
 				}
 			}
 		}
@@ -732,7 +738,13 @@ export class ResourceMonitor {
 
 		// Track failed loads
 		if (failed) {
-			this.handleFailedLoad(originalUrl, entry, duration, retryCount, wasRetried);
+			this.handleFailedLoad(
+				originalUrl,
+				entry,
+				duration,
+				retryCount,
+				wasRetried,
+			);
 		}
 	}
 
@@ -806,9 +818,10 @@ export class ResourceMonitor {
 		}
 	}
 
-	private resolveMediaTarget(
-		target: ResourceElement,
-	): { mediaEl: HTMLAudioElement | HTMLVideoElement; mediaTag: "audio" | "video" } | null {
+	private resolveMediaTarget(target: ResourceElement): {
+		mediaEl: HTMLAudioElement | HTMLVideoElement;
+		mediaTag: "audio" | "video";
+	} | null {
 		if (target instanceof HTMLAudioElement) {
 			return { mediaEl: target, mediaTag: "audio" };
 		}
@@ -868,8 +881,7 @@ export class ResourceMonitor {
 			const hasError = !!mediaEl.error;
 			const hasNoSource =
 				mediaEl.networkState === HTMLMediaElement.NETWORK_NO_SOURCE;
-			const isReady =
-				mediaEl.readyState >= HTMLMediaElement.HAVE_METADATA;
+			const isReady = mediaEl.readyState >= HTMLMediaElement.HAVE_METADATA;
 			if (!hasError && !hasNoSource && isReady) {
 				return true;
 			}
@@ -877,7 +889,10 @@ export class ResourceMonitor {
 		return false;
 	}
 
-	private finalizeRetrySuccess(url: string, detail: ResourceMonitorEventDetail): void {
+	private finalizeRetrySuccess(
+		url: string,
+		detail: ResourceMonitorEventDetail,
+	): void {
 		if (!this.retryAttempts.has(url)) return;
 		const successDetail: ResourceMonitorEventDetail = {
 			...detail,
@@ -1504,7 +1519,10 @@ export class ResourceMonitor {
 		}
 	}
 
-	private retryResourceLoad(element: ResourceElement, originalSrc: string): void {
+	private retryResourceLoad(
+		element: ResourceElement,
+		originalSrc: string,
+	): void {
 		this.getRetryTargets(originalSrc).add(element);
 		if (!this.started) return;
 		if (this.retryInFlight.has(originalSrc)) {

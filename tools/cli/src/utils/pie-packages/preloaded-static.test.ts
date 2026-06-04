@@ -21,7 +21,9 @@ describe("preloaded static utilities", () => {
 		await writeFile(
 			file,
 			JSON.stringify({
-				elements: [{ package: "@pie-element/multiple-choice", version: "11.4.3" }],
+				elements: [
+					{ package: "@pie-element/multiple-choice", version: "11.4.3" },
+				],
 			}),
 		);
 		const parsed = await parseElementsInput(file, undefined);

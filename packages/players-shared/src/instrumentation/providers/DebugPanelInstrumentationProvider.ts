@@ -51,7 +51,10 @@ export class DebugPanelInstrumentationProvider extends BaseInstrumentationProvid
 			return;
 		}
 		const rawMetricValue = attributes.metricValue;
-		if (typeof rawMetricValue !== "number" || !Number.isFinite(rawMetricValue)) {
+		if (
+			typeof rawMetricValue !== "number" ||
+			!Number.isFinite(rawMetricValue)
+		) {
 			return;
 		}
 		const metricName =

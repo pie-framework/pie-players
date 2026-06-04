@@ -27,7 +27,10 @@ const getChunkSourceKey = (chunkInfo: {
 		(Array.isArray(chunkInfo.moduleIds) ? chunkInfo.moduleIds[0] : undefined);
 	const sourceKey = sanitizeChunkKey(moduleSource || chunkInfo.name || "chunk");
 	const chunkName = sanitizeChunkKey(chunkInfo.name || "chunk");
-	const sourceHash = createHash("sha1").update(sourceKey).digest("hex").slice(0, 8);
+	const sourceHash = createHash("sha1")
+		.update(sourceKey)
+		.digest("hex")
+		.slice(0, 8);
 	return `${chunkName}-${sourceHash}`;
 };
 

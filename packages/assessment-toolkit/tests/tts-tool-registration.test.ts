@@ -82,7 +82,9 @@ describe("ttsToolRegistration speed options", () => {
 			language: "en-US",
 			toolCoordinator: null,
 			toolkitCoordinator: {
-				getToolConfig: () => ({ settings: { speedOptions: ["fast", null, -2, 1] } }),
+				getToolConfig: () => ({
+					settings: { speedOptions: ["fast", null, -2, 1] },
+				}),
 			} as any,
 			ttsService: null,
 			elementToolStateStore: null,
@@ -155,7 +157,9 @@ describe("ttsToolRegistration speed options", () => {
 		const firstElement = firstRender?.elements?.[0]?.element as {
 			[key: string]: unknown;
 		};
-		expect(typeof firstElement?.[TOOL_ELEMENT_UNMOUNT_CALLBACK_PROP]).toBe("function");
+		expect(typeof firstElement?.[TOOL_ELEMENT_UNMOUNT_CALLBACK_PROP]).toBe(
+			"function",
+		);
 		(firstElement?.[TOOL_ELEMENT_UNMOUNT_CALLBACK_PROP] as () => void)();
 
 		const secondRender = withFakeDocument(() =>
@@ -259,7 +263,9 @@ describe("ttsToolRegistration speed options", () => {
 			ttsToolRegistration.renderToolbar(itemContext, toolbarContext),
 		);
 		const entry = renderResult?.elements?.[0];
-		const element = entry?.element as { getAttribute: (name: string) => string | null };
+		const element = entry?.element as {
+			getAttribute: (name: string) => string | null;
+		};
 		expect(entry?.mount).toBe("before-buttons");
 		expect(entry?.layoutHints?.controlsRow?.reserveSpace).toBe(false);
 		expect(entry?.layoutHints?.controlsRow?.showWhenToolActive).toBe(false);
@@ -291,7 +297,9 @@ describe("ttsToolRegistration speed options", () => {
 			ttsToolRegistration.renderToolbar(itemContext, toolbarContext),
 		);
 		const entry = renderResult?.elements?.[0];
-		const element = entry?.element as { getAttribute: (name: string) => string | null };
+		const element = entry?.element as {
+			getAttribute: (name: string) => string | null;
+		};
 		expect(entry?.mount).toBe("before-buttons");
 		expect(entry?.layoutHints?.controlsRow?.reserveSpace).toBe(false);
 		expect(entry?.layoutHints?.controlsRow?.showWhenToolActive).toBe(false);
@@ -323,7 +331,9 @@ describe("ttsToolRegistration speed options", () => {
 			ttsToolRegistration.renderToolbar(itemContext, toolbarContext),
 		);
 		const entry = renderResult?.elements?.[0];
-		const element = entry?.element as { getAttribute: (name: string) => string | null };
+		const element = entry?.element as {
+			getAttribute: (name: string) => string | null;
+		};
 		expect(entry?.mount).toBe("before-buttons");
 		expect(entry?.layoutHints?.controlsRow?.reserveSpace).toBe(false);
 		expect(entry?.layoutHints?.controlsRow?.showWhenToolActive).toBe(true);
@@ -355,7 +365,9 @@ describe("ttsToolRegistration speed options", () => {
 			ttsToolRegistration.renderToolbar(itemContext, toolbarContext),
 		);
 		const entry = renderResult?.elements?.[0];
-		const element = entry?.element as { getAttribute: (name: string) => string | null };
+		const element = entry?.element as {
+			getAttribute: (name: string) => string | null;
+		};
 		expect(entry?.mount).toBe("before-buttons");
 		expect(entry?.layoutHints?.controlsRow?.reserveSpace).toBe(false);
 		expect(entry?.layoutHints?.controlsRow?.showWhenToolActive).toBe(false);
@@ -387,12 +399,13 @@ describe("ttsToolRegistration speed options", () => {
 			ttsToolRegistration.renderToolbar(itemContext, toolbarContext),
 		);
 		const entry = renderResult?.elements?.[0];
-		const element = entry?.element as { getAttribute: (name: string) => string | null };
+		const element = entry?.element as {
+			getAttribute: (name: string) => string | null;
+		};
 		expect(entry?.layoutHints?.controlsRow?.reserveSpace).toBe(false);
 		expect(entry?.layoutHints?.controlsRow?.showWhenToolActive).toBe(false);
 		expect(element?.getAttribute("layout-mode")).toBe("left-aligned");
 	});
-
 });
 
 describe("ttsToolRegistration sanitizeConfig", () => {
@@ -406,7 +419,9 @@ describe("ttsToolRegistration sanitizeConfig", () => {
 			settings: { speedOptions: [0.8, 1, 1.25] },
 		});
 		expect(out.speedOptions).toEqual([2, 1.5]);
-		expect((out.settings as { speedOptions: number[] }).speedOptions).toEqual([0.8, 1.25]);
+		expect((out.settings as { speedOptions: number[] }).speedOptions).toEqual([
+			0.8, 1.25,
+		]);
 	});
 
 	test("preserves explicit empty speedOptions in settings", () => {
@@ -416,6 +431,8 @@ describe("ttsToolRegistration sanitizeConfig", () => {
 		const out = sanitize({
 			settings: { speedOptions: [] },
 		});
-		expect((out.settings as { speedOptions: number[] }).speedOptions).toEqual([]);
+		expect((out.settings as { speedOptions: number[] }).speedOptions).toEqual(
+			[],
+		);
 	});
 });

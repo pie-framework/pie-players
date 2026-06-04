@@ -19,6 +19,7 @@
 		"@pie-players/pie-section-player-tools-instrumentation-debugger": "workspace:*",
 		"@pie-players/pie-section-player-tools-session-debugger": "workspace:*",
 		"@pie-players/pie-section-player-tools-shared": "workspace:*",
+		"@pie-players/pie-theme": "workspace:*",
 		"@pie-players/pie-tool-text-to-speech": "workspace:*",
 		"@pie-players/tts-server-google": "workspace:*",
 		"@pie-players/tts-server-polly": "workspace:*"

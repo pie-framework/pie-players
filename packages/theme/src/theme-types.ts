@@ -16,7 +16,9 @@ export function normalizePieThemeVariables(value: unknown): ThemeVariables {
 	}
 
 	const output: ThemeVariables = {};
-	for (const [key, rawValue] of Object.entries(value as Record<string, unknown>)) {
+	for (const [key, rawValue] of Object.entries(
+		value as Record<string, unknown>,
+	)) {
 		if (!key.startsWith("--pie-")) {
 			continue;
 		}
@@ -31,4 +33,3 @@ export function normalizePieThemeVariables(value: unknown): ThemeVariables {
 	}
 	return output;
 }
-

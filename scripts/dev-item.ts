@@ -9,7 +9,10 @@ type RunOptions = {
 
 const itemDemosDir = resolve(process.cwd(), "apps/item-demos");
 const workspaceRootDir = process.cwd();
-const svelteKitTsconfigPath = resolve(itemDemosDir, ".svelte-kit/tsconfig.json");
+const svelteKitTsconfigPath = resolve(
+	itemDemosDir,
+	".svelte-kit/tsconfig.json",
+);
 const requiredDistArtifacts = [
 	"packages/item-player/dist/pie-item-player.js",
 	"packages/players-shared/dist/index.js",

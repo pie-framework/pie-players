@@ -54,14 +54,17 @@ function packageBaseName(packageName: string): string {
 function lookupOwn(source: unknown, keys: string[]): unknown {
 	if (!isRecord(source)) return undefined;
 	for (const key of keys) {
-		if (Object.prototype.hasOwnProperty.call(source, key)) {
+		if (Object.hasOwn(source, key)) {
 			return source[key];
 		}
 	}
 	return undefined;
 }
 
-function mergeConfiguration(deliveryConfig: unknown, authoringConfig: unknown): unknown {
+function mergeConfiguration(
+	deliveryConfig: unknown,
+	authoringConfig: unknown,
+): unknown {
 	if (authoringConfig === undefined) {
 		return deliveryConfig ?? {};
 	}
@@ -114,7 +117,10 @@ function queryConfigureElements(
 export function initializeAuthoringConfigures(
 	config: ConfigEntity,
 	configuration: Record<string, any> = {},
-	options: { env: AuthoringEnv; container?: Pick<ParentNode, "querySelectorAll"> },
+	options: {
+		env: AuthoringEnv;
+		container?: Pick<ParentNode, "querySelectorAll">;
+	},
 ): InitializedConfigureModel[] {
 	const container = options.container ?? document;
 	const initializedModels: InitializedConfigureModel[] = [];
@@ -125,7 +131,9 @@ export function initializeAuthoringConfigures(
 	logger.debug("[initializeAuthoringConfigures] Env:", options.env);
 
 	if (!config?.elements || !config?.models) {
-		logger.warn("[initializeAuthoringConfigures] Invalid config - missing elements or models");
+		logger.warn(
+			"[initializeAuthoringConfigures] Invalid config - missing elements or models",
+		);
 		return initializedModels;
 	}
 
@@ -175,7 +183,9 @@ export function initializeAuthoringConfigures(
 	return initializedModels;
 }
 
-function resolveValidationController(configureElement: Element): PieController | undefined {
+function resolveValidationController(
+	configureElement: Element,
+): PieController | undefined {
 	return findPieController(configureElement.localName);
 }
 
@@ -229,13 +239,17 @@ export async function validateAuthoringModels(
 	}
 
 	return {
-		hasErrors: validatedModels.some((model) => hasValidationErrors(model.validation)),
+		hasErrors: validatedModels.some((model) =>
+			hasValidationErrors(model.validation),
+		),
 		validatedModels,
 	};
 }
 
 function toError(value: unknown): Error {
-	return value instanceof Error ? value : new Error(String(value ?? "Unknown authoring error"));
+	return value instanceof Error
+		? value
+		: new Error(String(value ?? "Unknown authoring error"));
 }
 
 export function createAuthoringAssetEventManager(

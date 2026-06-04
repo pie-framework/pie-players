@@ -119,13 +119,19 @@ const readSectionItems = db.prepare(
 	 WHERE section_session_id = ?
 	 ORDER BY canonical_item_id ASC`,
 );
-const readAllAttempts = db.prepare(`SELECT * FROM attempt_sessions ORDER BY id ASC`);
-const readAllSections = db.prepare(`SELECT * FROM section_sessions ORDER BY id ASC`);
+const readAllAttempts = db.prepare(
+	`SELECT * FROM attempt_sessions ORDER BY id ASC`,
+);
+const readAllSections = db.prepare(
+	`SELECT * FROM section_sessions ORDER BY id ASC`,
+);
 const readAllItems = db.prepare(`SELECT * FROM item_sessions ORDER BY id ASC`);
 const clearItems = db.prepare(`DELETE FROM item_sessions`);
 const clearSections = db.prepare(`DELETE FROM section_sessions`);
 const clearAttempts = db.prepare(`DELETE FROM attempt_sessions`);
-const stateChangeListeners = new Set<(event: SessionDemoStateChangeEvent) => void>();
+const stateChangeListeners = new Set<
+	(event: SessionDemoStateChangeEvent) => void
+>();
 let pendingStateChangeReason: SessionDemoStateChangeReason = "update";
 let stateChangeNotifyQueued = false;
 
@@ -210,9 +216,17 @@ function normalizeItemEntry(
 				? asRecord.complete
 					? 1
 					: 0
-				: (sessionPayload.complete === true ? 1 : 0);
+				: sessionPayload.complete === true
+					? 1
+					: 0;
 	const persistWhenEmpty = asRecord.persistWhenEmpty === true;
-	return { itemId, canonicalItemId, sessionPayload, complete, persistWhenEmpty };
+	return {
+		itemId,
+		canonicalItemId,
+		sessionPayload,
+		complete,
+		persistWhenEmpty,
+	};
 }
 
 function isMeaningfulItemSessionEntry(entry: {
@@ -237,7 +251,9 @@ function withEnsuredSessionId(
 	fallbackId: string,
 ): Record<string, unknown> {
 	const currentId =
-		typeof payload.id === "string" && payload.id.trim() ? payload.id.trim() : "";
+		typeof payload.id === "string" && payload.id.trim()
+			? payload.id.trim()
+			: "";
 	if (currentId) return payload;
 	return {
 		...payload,
@@ -268,12 +284,14 @@ function ensureAttemptSessionId(key: SessionDemoKey): number {
 	return created.id;
 }
 
-function ensureSectionSessionId(key: SessionDemoKey, snapshot: SessionDemoSnapshot): number {
+function ensureSectionSessionId(
+	key: SessionDemoKey,
+	snapshot: SessionDemoSnapshot,
+): number {
 	const attemptSessionId = ensureAttemptSessionId(key);
-	const existing = readSectionByKey.get(
-		attemptSessionId,
-		key.sectionId,
-	) as SectionSessionRow | undefined;
+	const existing = readSectionByKey.get(attemptSessionId, key.sectionId) as
+		| SectionSessionRow
+		| undefined;
 	const now = nowIso();
 	const currentItemIndex = clampIndex(snapshot.currentItemIndex);
 	const visited = JSON.stringify(snapshot.visitedItemIdentifiers || []);
@@ -281,11 +299,17 @@ function ensureSectionSessionId(key: SessionDemoKey, snapshot: SessionDemoSnapsh
 		updateSection.run(currentItemIndex, visited, now, existing.id);
 		return existing.id;
 	}
-	insertSection.run(attemptSessionId, key.sectionId, currentItemIndex, visited, now, now);
-	const created = readSectionByKey.get(
+	insertSection.run(
 		attemptSessionId,
 		key.sectionId,
-	) as SectionSessionRow | undefined;
+		currentItemIndex,
+		visited,
+		now,
+		now,
+	);
+	const created = readSectionByKey.get(attemptSessionId, key.sectionId) as
+		| SectionSessionRow
+		| undefined;
 	if (!created) {
 		throw new Error("Failed to create section session record");
 	}
@@ -315,17 +339,23 @@ export function upsertSectionSnapshot(
 	snapshot: SessionDemoSnapshot,
 ): void {
 	const sectionSessionId = ensureSectionSessionId(key, snapshot);
-	const existingRows = readSectionItems.all(sectionSessionId) as ItemSessionRow[];
+	const existingRows = readSectionItems.all(
+		sectionSessionId,
+	) as ItemSessionRow[];
 	const existingSessionIdByCanonicalItemId = new Map<string, string>();
 	for (const row of existingRows) {
 		const payload = parsePayload(row.session_payload);
 		const payloadId =
-			typeof payload.id === "string" && payload.id.trim() ? payload.id.trim() : "";
+			typeof payload.id === "string" && payload.id.trim()
+				? payload.id.trim()
+				: "";
 		if (!payloadId) continue;
 		existingSessionIdByCanonicalItemId.set(row.canonical_item_id, payloadId);
 	}
 	deleteSectionItems.run(sectionSessionId);
-	for (const [itemId, rawValue] of Object.entries(snapshot.itemSessions || {})) {
+	for (const [itemId, rawValue] of Object.entries(
+		snapshot.itemSessions || {},
+	)) {
 		const normalized = normalizeItemEntry(itemId, rawValue);
 		if (!normalized) continue;
 		if (!isMeaningfulItemSessionEntry(normalized)) continue;
@@ -350,17 +380,18 @@ export function upsertSectionSnapshot(
 	notifySessionDemoStateChanged("upsert");
 }
 
-export function getSectionSnapshot(key: SessionDemoKey): SessionDemoSnapshot | null {
+export function getSectionSnapshot(
+	key: SessionDemoKey,
+): SessionDemoSnapshot | null {
 	const attempt = readAttemptByKey.get(
 		key.assessmentId,
 		key.attemptId,
 		DEMO_USER_ID,
 	) as AttemptSessionRow | undefined;
 	if (!attempt) return null;
-	const section = readSectionByKey.get(
-		attempt.id,
-		key.sectionId,
-	) as SectionSessionRow | undefined;
+	const section = readSectionByKey.get(attempt.id, key.sectionId) as
+		| SectionSessionRow
+		| undefined;
 	if (!section) return null;
 	return materializeSnapshot(section);
 }
@@ -372,10 +403,9 @@ export function deleteSectionSnapshot(key: SessionDemoKey): void {
 		DEMO_USER_ID,
 	) as AttemptSessionRow | undefined;
 	if (!attempt) return;
-	const section = readSectionByKey.get(
-		attempt.id,
-		key.sectionId,
-	) as SectionSessionRow | undefined;
+	const section = readSectionByKey.get(attempt.id, key.sectionId) as
+		| SectionSessionRow
+		| undefined;
 	if (!section) return;
 	deleteSectionItems.run(section.id);
 	deleteSectionById.run(section.id);
@@ -413,8 +443,14 @@ export function getSessionDemoState(): {
 	demoUserId: string;
 	tables: {
 		attempt_sessions: AttemptSessionRow[];
-		section_sessions: Array<Omit<SectionSessionRow, "visited_item_identifiers"> & { visited_item_identifiers: unknown }>;
-		item_sessions: Array<Omit<ItemSessionRow, "session_payload"> & { session_payload: unknown }>;
+		section_sessions: Array<
+			Omit<SectionSessionRow, "visited_item_identifiers"> & {
+				visited_item_identifiers: unknown;
+			}
+		>;
+		item_sessions: Array<
+			Omit<ItemSessionRow, "session_payload"> & { session_payload: unknown }
+		>;
 	};
 	reconstructedSnapshots: Record<string, SessionDemoSnapshot>;
 } {
@@ -424,7 +460,9 @@ export function getSessionDemoState(): {
 	const reconstructedSnapshots: Record<string, SessionDemoSnapshot> = {};
 
 	for (const section of sections) {
-		const attempt = attempts.find((entry) => entry.id === section.attempt_session_id);
+		const attempt = attempts.find(
+			(entry) => entry.id === section.attempt_session_id,
+		);
 		if (!attempt) continue;
 		const key = `${attempt.assessment_id}:${section.section_id}:${attempt.attempt_id}`;
 		reconstructedSnapshots[key] = materializeSnapshot(section);
@@ -448,7 +486,9 @@ export function getSessionDemoState(): {
 	};
 }
 
-export function parseSessionDemoKeyFromSearch(searchParams: URLSearchParams): SessionDemoKey {
+export function parseSessionDemoKeyFromSearch(
+	searchParams: URLSearchParams,
+): SessionDemoKey {
 	return {
 		assessmentId: searchParams.get("assessmentId") || "",
 		sectionId: searchParams.get("sectionId") || "",

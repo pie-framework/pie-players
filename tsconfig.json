@@ -2,11 +2,7 @@
 	"compilerOptions": {
 		"target": "ES2022",
 		"module": "NodeNext",
-		"lib": [
-			"ES2022",
-			"DOM",
-			"DOM.Iterable"
-		],
+		"lib": ["ES2022", "DOM", "DOM.Iterable"],
 		"moduleResolution": "NodeNext",
 		"strict": true,
 		"esModuleInterop": true,
@@ -23,9 +19,7 @@
 		"noUnusedParameters": true,
 		"noImplicitReturns": true,
 		"noFallthroughCasesInSwitch": true,
-		"types": [
-			"@types/bun"
-		]
+		"types": ["@types/bun"]
 	},
 	"files": [],
 	"references": [
@@ -102,9 +96,5 @@
 			"path": "./packages/calculator-desmos"
 		}
 	],
-	"exclude": [
-		"node_modules",
-		"dist",
-		"build"
-	]
+	"exclude": ["node_modules", "dist", "build"]
 }

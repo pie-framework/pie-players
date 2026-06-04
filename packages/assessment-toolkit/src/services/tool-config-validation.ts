@@ -97,7 +97,10 @@ function getRegistryToolMap(
 
 function sanitizeProviderConfig(
 	providerId: string,
-	providerConfig: ToolProviderConfig | TextToSpeechToolProviderConfig | undefined,
+	providerConfig:
+		| ToolProviderConfig
+		| TextToSpeechToolProviderConfig
+		| undefined,
 	tool: ToolRegistration | undefined,
 	diagnostics: ToolConfigDiagnostic[],
 ): ToolProviderConfig | TextToSpeechToolProviderConfig | undefined {
@@ -106,7 +109,11 @@ function sanitizeProviderConfig(
 		const sanitized = tool.provider.sanitizeConfig(
 			providerConfig as ToolProviderConfig,
 		);
-		if (!sanitized || typeof sanitized !== "object" || Array.isArray(sanitized)) {
+		if (
+			!sanitized ||
+			typeof sanitized !== "object" ||
+			Array.isArray(sanitized)
+		) {
 			diagnostics.push(
 				createDiagnostic({
 					code: "tools.providerSanitizeFailed",
@@ -139,7 +146,10 @@ function sanitizeProviderConfig(
 
 function validateProviderConfig(
 	providerId: string,
-	providerConfig: ToolProviderConfig | TextToSpeechToolProviderConfig | undefined,
+	providerConfig:
+		| ToolProviderConfig
+		| TextToSpeechToolProviderConfig
+		| undefined,
 	tool: ToolRegistration | undefined,
 	diagnostics: ToolConfigDiagnostic[],
 ): void {
@@ -272,8 +282,7 @@ function collectProviderKeyDiagnostics(
 				code: "tools.removedProviderKey",
 				severity: "error",
 				path: "providers.tts",
-				message:
-					`Provider key "tts" is no longer supported. Use "providers.textToSpeech".`,
+				message: `Provider key "tts" is no longer supported. Use "providers.textToSpeech".`,
 				providerId: "tts",
 				toolId: "textToSpeech",
 			}),
@@ -312,7 +321,9 @@ function throwValidationError(
 	const formatted = diagnostics
 		.map((diagnostic) => `- ${diagnostic.path}: ${diagnostic.message}`)
 		.join("\n");
-	throw new Error(`[tool-config-validation:${source}] Invalid tools config:\n${formatted}`);
+	throw new Error(
+		`[tool-config-validation:${source}] Invalid tools config:\n${formatted}`,
+	);
 }
 
 export function normalizeAndValidateToolsConfig(
@@ -326,10 +337,7 @@ export function normalizeAndValidateToolsConfig(
 	);
 	const normalized = normalizeToolsConfig(input);
 	const diagnostics: ToolConfigDiagnostic[] = [];
-	const hasRemovedTtsKey = Object.hasOwn(
-		normalized.providers,
-		"tts",
-	);
+	const hasRemovedTtsKey = Object.hasOwn(normalized.providers, "tts");
 
 	const nextProviders: CanonicalToolsConfig["providers"] = {
 		...(normalized.providers || {}),
@@ -346,7 +354,12 @@ export function normalizeAndValidateToolsConfig(
 			tool,
 			diagnostics,
 		);
-		validateProviderConfig(providerId, nextProviders[providerId], tool, diagnostics);
+		validateProviderConfig(
+			providerId,
+			nextProviders[providerId],
+			tool,
+			diagnostics,
+		);
 	}
 	const nextConfig: CanonicalToolsConfig = {
 		...normalized,
@@ -363,9 +376,7 @@ export function normalizeAndValidateToolsConfig(
 	);
 	if (hasRemovedTtsKey) {
 		throwValidationError(
-			diagnostics.filter(
-				(entry) => entry.code === "tools.removedProviderKey",
-			),
+			diagnostics.filter((entry) => entry.code === "tools.removedProviderKey"),
 			source,
 		);
 	}

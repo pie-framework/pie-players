@@ -8,7 +8,9 @@ const DISALLOWED_DEMO_CHROME_VIOLATIONS = new Set([
 ]);
 
 test.describe("section demos chrome accessibility", () => {
-	test("avoids known chrome a11y regressions with debug panels open", async ({ page }) => {
+	test("avoids known chrome a11y regressions with debug panels open", async ({
+		page,
+	}) => {
 		await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
 
 		const eventToggle = page.getByRole("button", {
@@ -24,7 +26,9 @@ test.describe("section demos chrome accessibility", () => {
 		await eventToggle.click();
 		await instrumentationToggle.click();
 
-		const axeResults = await new AxeBuilder({ page }).disableRules(["region"]).analyze();
+		const axeResults = await new AxeBuilder({ page })
+			.disableRules(["region"])
+			.analyze();
 		const matched = axeResults.violations.filter((violation) =>
 			DISALLOWED_DEMO_CHROME_VIOLATIONS.has(violation.id),
 		);

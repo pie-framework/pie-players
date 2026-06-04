@@ -137,7 +137,8 @@ const ipv4BareToDotted = (hostname: string): string | null => {
 	} catch {
 		return null;
 	}
-	if (!Number.isFinite(asInt) || asInt < 0 || asInt > 0xff_ff_ff_ff) return null;
+	if (!Number.isFinite(asInt) || asInt < 0 || asInt > 0xff_ff_ff_ff)
+		return null;
 	return [
 		(asInt >>> 24) & 0xff,
 		(asInt >>> 16) & 0xff,
@@ -159,10 +160,7 @@ const normalizeHostnameForSafetyCheck = (hostname: string): string => {
 	return host;
 };
 
-const hostnameMatchesAny = (
-	hostname: string,
-	patterns: RegExp[],
-): boolean => {
+const hostnameMatchesAny = (hostname: string, patterns: RegExp[]): boolean => {
 	const normalized = normalizeHostnameForSafetyCheck(hostname);
 	const numericDotted = ipv4BareToDotted(normalized);
 	const candidates = [normalized.toLowerCase()];
@@ -309,7 +307,10 @@ const validateAssetUrl = (
 			"schoolcity-tts",
 		);
 	}
-	if (config.blockPrivateAssetHosts !== false && hostnameIsPrivate(parsed.hostname)) {
+	if (
+		config.blockPrivateAssetHosts !== false &&
+		hostnameIsPrivate(parsed.hostname)
+	) {
 		throw new TTSError(
 			TTSErrorCode.PROVIDER_ERROR,
 			"SchoolCity asset URL resolves to a private/internal host",
@@ -415,7 +416,10 @@ const toSpeedRate = (
 	request: SynthesizeRequest,
 	fallback: SchoolCitySpeedRate,
 ): SchoolCitySpeedRate => {
-	const providerOptions = (request.providerOptions || {}) as Record<string, unknown>;
+	const providerOptions = (request.providerOptions || {}) as Record<
+		string,
+		unknown
+	>;
 	const explicit = providerOptions.speedRate;
 	if (explicit === "slow" || explicit === "medium" || explicit === "fast") {
 		return explicit;
@@ -426,12 +430,15 @@ const toSpeedRate = (
 	return fallback;
 };
 
-const toLanguage = (
-	request: SynthesizeRequest,
-	fallback: string,
-): string => {
-	const providerOptions = (request.providerOptions || {}) as Record<string, unknown>;
-	if (typeof providerOptions.lang_id === "string" && providerOptions.lang_id.trim()) {
+const toLanguage = (request: SynthesizeRequest, fallback: string): string => {
+	const providerOptions = (request.providerOptions || {}) as Record<
+		string,
+		unknown
+	>;
+	if (
+		typeof providerOptions.lang_id === "string" &&
+		providerOptions.lang_id.trim()
+	) {
 		return providerOptions.lang_id.trim();
 	}
 	if (typeof request.language === "string" && request.language.trim()) {
@@ -444,7 +451,10 @@ const toCacheFlag = (
 	request: SynthesizeRequest,
 	fallback: boolean,
 ): boolean => {
-	const providerOptions = (request.providerOptions || {}) as Record<string, unknown>;
+	const providerOptions = (request.providerOptions || {}) as Record<
+		string,
+		unknown
+	>;
 	if (typeof providerOptions.cache === "boolean") {
 		return providerOptions.cache;
 	}
@@ -511,7 +521,10 @@ const normalizeMarkTimeUnits = (marks: SpeechMark[]): SpeechMark[] => {
 	return marks.map((mark) => ({ ...mark, time: mark.time * 1000 }));
 };
 
-const estimateOffsetShift = (marks: SpeechMark[], requestText: string): number => {
+const estimateOffsetShift = (
+	marks: SpeechMark[],
+	requestText: string,
+): number => {
 	if (!marks.length || !requestText.length) return 0;
 	const textLower = requestText.toLowerCase();
 	const candidates: number[] = [];
@@ -550,19 +563,28 @@ const rebaseOffsetsToRequestText = (
 	}));
 };
 
-const clampMarkRanges = (marks: SpeechMark[], requestText: string): SpeechMark[] => {
+const clampMarkRanges = (
+	marks: SpeechMark[],
+	requestText: string,
+): SpeechMark[] => {
 	if (!requestText.length) return marks;
 	const textLength = requestText.length;
 	return sortSpeechMarks(
 		marks.map((mark) => {
 			const start = Math.max(0, Math.min(textLength, Math.floor(mark.start)));
-			const end = Math.max(start + 1, Math.min(textLength, Math.floor(mark.end)));
+			const end = Math.max(
+				start + 1,
+				Math.min(textLength, Math.floor(mark.end)),
+			);
 			return { ...mark, start, end };
 		}),
 	);
 };
 
-const normalizeSpeechMarks = (raw: string, requestText: string): SpeechMark[] => {
+const normalizeSpeechMarks = (
+	raw: string,
+	requestText: string,
+): SpeechMark[] => {
 	const parsed = parseWordMarksJsonl(raw);
 	const withTimes = normalizeMarkTimeUnits(parsed);
 	const rebased = rebaseOffsetsToRequestText(withTimes, requestText);
@@ -616,7 +638,8 @@ export class SchoolCityServerProvider extends BaseTTSProvider {
 		this.defaultLanguage = config.defaultLanguage || DEFAULT_LANGUAGE;
 		this.defaultSpeedRate = config.defaultSpeedRate || DEFAULT_SPEED_RATE;
 		this.defaultCache = config.defaultCache ?? DEFAULT_CACHE;
-		this.requestTimeoutMs = config.requestTimeoutMs || DEFAULT_REQUEST_TIMEOUT_MS;
+		this.requestTimeoutMs =
+			config.requestTimeoutMs || DEFAULT_REQUEST_TIMEOUT_MS;
 		this.fetchImpl = config.fetchImpl || fetch;
 		this.initialized = true;
 	}
@@ -638,7 +661,12 @@ export class SchoolCityServerProvider extends BaseTTSProvider {
 		const speedRate = toSpeedRate(request, this.defaultSpeedRate);
 		const lang_id = toLanguage(request, this.defaultLanguage);
 		const cache = toCacheFlag(request, this.defaultCache);
-		const payload: SchoolCitySynthesizeRequest = { text, speedRate, lang_id, cache };
+		const payload: SchoolCitySynthesizeRequest = {
+			text,
+			speedRate,
+			lang_id,
+			cache,
+		};
 		if (request.voice) payload.voice = request.voice;
 		return payload;
 	}
@@ -670,7 +698,9 @@ export class SchoolCityServerProvider extends BaseTTSProvider {
 				body: JSON.stringify(payload),
 				signal: timeout.signal,
 			});
-			const body = (await parseResponseBody(response)) as SchoolCitySynthesizeResponse;
+			const body = (await parseResponseBody(
+				response,
+			)) as SchoolCitySynthesizeResponse;
 			if (!response.ok) {
 				throw new TTSError(
 					TTSErrorCode.PROVIDER_ERROR,
@@ -681,7 +711,8 @@ export class SchoolCityServerProvider extends BaseTTSProvider {
 					this.providerId,
 				);
 			}
-			const audioContent = typeof body.audioContent === "string" ? body.audioContent : "";
+			const audioContent =
+				typeof body.audioContent === "string" ? body.audioContent : "";
 			const word = typeof body.word === "string" ? body.word : "";
 			if (!audioContent || !word) {
 				const bodyKeys = Object.keys(body || {});
@@ -700,7 +731,9 @@ export class SchoolCityServerProvider extends BaseTTSProvider {
 				const messageParts = [
 					`SchoolCity 200 response missing ${missingParts}`,
 					`bodyKeys=[${bodyKeys.join(",")}]`,
-					upstreamMessage ? `upstreamMessage=${JSON.stringify(upstreamMessage)}` : "",
+					upstreamMessage
+						? `upstreamMessage=${JSON.stringify(upstreamMessage)}`
+						: "",
 					`textLength=${payload.text.length}`,
 					`lang=${payload.lang_id}`,
 				].filter(Boolean);
@@ -756,7 +789,9 @@ export class SchoolCityServerProvider extends BaseTTSProvider {
 		} catch (error) {
 			if (error instanceof TTSError) throw error;
 			const message =
-				error instanceof Error ? error.message : "Unknown SchoolCity synthesis error";
+				error instanceof Error
+					? error.message
+					: "Unknown SchoolCity synthesis error";
 			throw new TTSError(
 				TTSErrorCode.PROVIDER_ERROR,
 				`SchoolCity synthesis failed: ${message}`,
@@ -770,7 +805,8 @@ export class SchoolCityServerProvider extends BaseTTSProvider {
 
 	async synthesize(request: SynthesizeRequest): Promise<SynthesizeResponse> {
 		const startedAt = Date.now();
-		const { audioContent, speechMarks } = await this.synthesizeWithAssets(request);
+		const { audioContent, speechMarks } =
+			await this.synthesizeWithAssets(request);
 		const audioUrl = validateAssetUrl(
 			audioContent,
 			this.config as SchoolCityProviderConfig,

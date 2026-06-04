@@ -142,7 +142,10 @@ export default class PreloadedPlayerBuildAndTestPackage extends Command {
 
 		const monorepoDir = process.cwd();
 
-		const elements = await this.parseElements(flags.elementsFile, flags.elements);
+		const elements = await this.parseElements(
+			flags.elementsFile,
+			flags.elements,
+		);
 		const elementsArray = elements.map((e: any) => `${e.package}@${e.version}`);
 
 		if (flags.publish && !flags.iteration) {

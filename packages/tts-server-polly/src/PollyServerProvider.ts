@@ -110,10 +110,13 @@ export class PollyServerProvider extends BaseTTSProvider {
 		}
 	}
 
-	private resolveSpeechMarkTypes(request: SynthesizeRequest): Array<
-		"word" | "sentence" | "ssml"
-	> {
-		const providerOptions = (request.providerOptions || {}) as Record<string, unknown>;
+	private resolveSpeechMarkTypes(
+		request: SynthesizeRequest,
+	): Array<"word" | "sentence" | "ssml"> {
+		const providerOptions = (request.providerOptions || {}) as Record<
+			string,
+			unknown
+		>;
 		const configured = providerOptions.speechMarkTypes;
 		if (!Array.isArray(configured) || configured.length === 0) {
 			return ["word"];

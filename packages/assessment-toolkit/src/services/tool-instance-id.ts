@@ -71,5 +71,9 @@ export function parseScopedToolId(id: string): ParsedToolInstanceId | null {
 export function toOverlayToolId(id: string): string {
 	const parsed = parseScopedToolId(id);
 	if (!parsed) return id;
-	return createScopedToolId(parsed.baseToolId, parsed.scopeLevel, parsed.scopeId);
+	return createScopedToolId(
+		parsed.baseToolId,
+		parsed.scopeLevel,
+		parsed.scopeId,
+	);
 }

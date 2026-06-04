@@ -45,7 +45,7 @@ export default defineConfig({
 			},
 			output: {
 				format: "es",
-							},
+			},
 		},
 	},
 });

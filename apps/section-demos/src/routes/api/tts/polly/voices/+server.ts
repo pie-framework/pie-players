@@ -18,7 +18,9 @@ const pollyProviders = new Map<PollyEngine, PollyServerProvider>();
 /**
  * Get or initialize the Polly provider
  */
-async function getPollyProvider(engine: PollyEngine): Promise<PollyServerProvider> {
+async function getPollyProvider(
+	engine: PollyEngine,
+): Promise<PollyServerProvider> {
 	const existing = pollyProviders.get(engine);
 	if (existing) return existing;
 
@@ -97,7 +99,9 @@ export const GET: RequestHandler = async ({ url }) => {
 		const engine = (engineParam || "neural") as PollyEngine;
 		if (!SUPPORTED_ENGINES.includes(engine)) {
 			return json(
-				{ error: `Unsupported Polly engine "${engine}". Use "neural" or "standard".` },
+				{
+					error: `Unsupported Polly engine "${engine}". Use "neural" or "standard".`,
+				},
 				{ status: 400 },
 			);
 		}

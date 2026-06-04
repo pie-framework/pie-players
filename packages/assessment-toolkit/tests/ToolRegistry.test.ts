@@ -377,8 +377,12 @@ describe("ToolRegistry", () => {
 
 		test("returns configured activation and singleton scope", () => {
 			registry.register(mockSelectionGatewayTool);
-			expect(registry.getToolActivation("annotationToolbar")).toBe("selection-gateway");
-			expect(registry.getToolSingletonScope("annotationToolbar")).toBe("section");
+			expect(registry.getToolActivation("annotationToolbar")).toBe(
+				"selection-gateway",
+			);
+			expect(registry.getToolSingletonScope("annotationToolbar")).toBe(
+				"section",
+			);
 		});
 
 		test("filters tool IDs by activation", () => {
@@ -440,11 +444,11 @@ describe("ToolRegistry", () => {
 
 	describe("renderForToolbar", () => {
 		const toolbarContext: ToolbarContext = {
-		scope: {
-			level: "item",
-			scopeId: "item-1",
-			itemId: "item-1",
-		},
+			scope: {
+				level: "item",
+				scopeId: "item-1",
+				itemId: "item-1",
+			},
 			itemId: "item-1",
 			catalogId: "item-1",
 			language: "en",

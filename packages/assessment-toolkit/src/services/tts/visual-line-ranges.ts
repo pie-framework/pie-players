@@ -109,7 +109,11 @@ function extendLineEdge(
 	let lastGood: Range | null = null;
 	let x = startX;
 	if (direction === "left") {
-		for (let i = 0; i < MAX_HORIZONTAL_PROBES && x >= rootLeft + CARET_INSET; i++) {
+		for (
+			let i = 0;
+			i < MAX_HORIZONTAL_PROBES && x >= rootLeft + CARET_INSET;
+			i++
+		) {
 			const cr = caretRangeAtPoint(doc, x, midY);
 			if (!cr || !rootContainsNode(root, cr.startContainer)) break;
 			const t = collapsedRangeTop(cr);
@@ -118,7 +122,11 @@ function extendLineEdge(
 			x -= HORIZONTAL_PROBE_STEP;
 		}
 	} else {
-		for (let i = 0; i < MAX_HORIZONTAL_PROBES && x <= rootRight - CARET_INSET; i++) {
+		for (
+			let i = 0;
+			i < MAX_HORIZONTAL_PROBES && x <= rootRight - CARET_INSET;
+			i++
+		) {
 			const cr = caretRangeAtPoint(doc, x, midY);
 			if (!cr || !rootContainsNode(root, cr.startContainer)) break;
 			const t = collapsedRangeTop(cr);

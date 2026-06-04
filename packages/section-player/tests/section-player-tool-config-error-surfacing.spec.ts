@@ -14,7 +14,9 @@ test.describe("section demo invalid tools-config error surfacing", () => {
 		await expect(page.getByTestId("framework-error-last-meta")).toContainText(
 			"coordinator-init / pie-assessment-toolkit",
 		);
-		await expect(page.getByTestId("framework-error-last-message")).toContainText(
+		await expect(
+			page.getByTestId("framework-error-last-message"),
+		).toContainText(
 			'Invalid tools config at "placement.section": expected an array of tool ids.',
 		);
 	});

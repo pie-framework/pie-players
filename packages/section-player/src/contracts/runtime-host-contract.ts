@@ -1,6 +1,4 @@
-import type {
-	SectionPlayerReadinessChangeDetail,
-} from "./public-events.js";
+import type { SectionPlayerReadinessChangeDetail } from "./public-events.js";
 import type { SectionControllerHandle } from "@pie-players/pie-assessment-toolkit";
 
 export type SectionPlayerNavigationSnapshot = {

@@ -108,7 +108,9 @@ const setupSre = async (
 		...(normalizedMathSpeech?.engineOptions || {}),
 		locale,
 		domain: normalizedMathSpeech?.domain || domainForLocale(locale),
-		...(normalizedMathSpeech?.style ? { style: normalizedMathSpeech.style } : {}),
+		...(normalizedMathSpeech?.style
+			? { style: normalizedMathSpeech.style }
+			: {}),
 		modality: "speech",
 		markup,
 	});

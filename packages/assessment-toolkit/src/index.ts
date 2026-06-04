@@ -237,9 +237,7 @@ export {
 	frameworkErrorFromUnknown,
 	toFrameworkErrorModel,
 } from "./services/framework-error.js";
-export type {
-	FrameworkErrorListener,
-} from "./services/framework-error-bus.js";
+export type { FrameworkErrorListener } from "./services/framework-error-bus.js";
 export type {
 	ToolConfigDiagnostic,
 	ToolConfigDiagnosticSeverity,

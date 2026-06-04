@@ -173,7 +173,8 @@ export const createTTSHighlightPlan = (
 			const planned = plannedChunksById.get(chunkId);
 			if (!planned) return missingChunkDecision();
 			const alignments = planned.chunk.mathAlignments;
-			const soleElement = alignments.length === 1 ? alignments[0].element : null;
+			const soleElement =
+				alignments.length === 1 ? alignments[0].element : null;
 			const capability = soleElement
 				? planned.mathCapabilityByElement.get(soleElement)
 				: null;

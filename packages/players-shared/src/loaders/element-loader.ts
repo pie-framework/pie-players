@@ -28,14 +28,8 @@ import {
 	type ElementTag,
 	type RegistrationFailureReason,
 } from "./element-loader-types.js";
-import {
-	createEsmBackend,
-	type EsmBackendConfig,
-} from "./esm-adapter.js";
-import {
-	createIifeBackend,
-	type IifeBackendConfig,
-} from "./iife-adapter.js";
+import { createEsmBackend, type EsmBackendConfig } from "./esm-adapter.js";
+import { createIifeBackend, type IifeBackendConfig } from "./iife-adapter.js";
 
 export type {
 	BackendContext,
@@ -84,9 +78,7 @@ export class ElementAssertionError extends Error {
 		missing: ElementTag[],
 		currentlyRegistered: ElementTag[],
 	) {
-		super(
-			buildAssertionMessage(expected, missing, currentlyRegistered),
-		);
+		super(buildAssertionMessage(expected, missing, currentlyRegistered));
 		this.expectedTags = expected;
 		this.missingTags = missing;
 		this.currentlyRegisteredTags = currentlyRegistered;
@@ -319,7 +311,9 @@ function resolveBackend(backend: BackendOption): ElementLoaderBackend {
 	throw new Error("ElementLoader: invalid backend option");
 }
 
-function isDirectBackend(backend: BackendOption): backend is ElementLoaderBackend {
+function isDirectBackend(
+	backend: BackendOption,
+): backend is ElementLoaderBackend {
 	return (
 		typeof (backend as { load?: unknown }).load === "function" &&
 		!("kind" in backend)

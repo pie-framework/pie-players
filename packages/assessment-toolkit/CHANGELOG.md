@@ -1,5 +1,19 @@
 # @pie-players/pie-assessment-toolkit
 
+## 0.3.48
+
+### Patch Changes
+
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies [0c20d0f]
+- Updated dependencies
+  - @pie-players/pie-players-shared@0.3.48
+  - @pie-players/pie-calculator@0.3.48
+  - @pie-players/pie-calculator-desmos@0.3.48
+  - @pie-players/pie-context@0.3.48
+  - @pie-players/pie-tts@0.3.48
+  - @pie-players/tts-client-server@0.3.48
+
 ## 0.3.47
 
 ### Patch Changes

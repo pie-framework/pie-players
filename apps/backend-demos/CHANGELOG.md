@@ -1,5 +1,13 @@
 # @pie-players/backend-demos
 
+## 0.1.6
+
+### Patch Changes
+
+- Updated dependencies [0c20d0f]
+- Updated dependencies
+  - @pie-players/pie-item-player@0.3.48
+
 ## 0.1.5
 
 ### Patch Changes

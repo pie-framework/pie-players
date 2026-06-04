@@ -1,5 +1,22 @@
 # @pie-players/pie-section-player
 
+## 0.3.48
+
+### Patch Changes
+
+- 3a95675: Remove the separate `@pie-players/pie-toolbars` facade package. Section player now imports toolbar custom-element registration entrypoints directly from `@pie-players/pie-assessment-toolkit/components/item-toolbar-element` and `@pie-players/pie-assessment-toolkit/components/section-toolbar-element`.
+- Temporary release changeset: patch all publishable packages to keep lockstep versions.
+- Updated dependencies [0c20d0f]
+- Updated dependencies
+  - @pie-players/pie-players-shared@0.3.48
+  - @pie-players/pie-item-player@0.3.48
+  - @pie-players/pie-assessment-toolkit@0.3.48
+  - @pie-players/pie-context@0.3.48
+  - @pie-players/pie-tool-annotation-toolbar@0.3.48
+  - @pie-players/pie-tool-calculator-desmos@0.3.48
+  - @pie-players/pie-tool-text-to-speech@0.3.48
+  - @pie-players/pie-tool-tts-inline@0.3.48
+
 ## 0.3.47
 
 ### Patch Changes

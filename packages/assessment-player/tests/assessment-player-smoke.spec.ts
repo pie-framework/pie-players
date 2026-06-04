@@ -472,6 +472,16 @@ test.describe("assessment player smoke", () => {
 			panel.locator(".pie-section-player-tools-instrumentation-debugger"),
 		).toBeVisible();
 
+		// The demo's own TTS/tool backend telemetry can already have produced one
+		// or more `pie-tool-backend-call-success` rows by now, so assert that our
+		// manual emit ADDS a row rather than that exactly one exists (which would
+		// be a strict-mode violation against the app's pre-existing rows).
+		const backendCallRows = panel.locator(
+			".pie-section-player-tools-instrumentation-debugger__row",
+			{ hasText: "pie-tool-backend-call-success" },
+		);
+		const rowsBeforeEmit = await backendCallRows.count();
+
 		await page.evaluate(async () => {
 			const assessmentHost = document.querySelector(
 				"pie-assessment-player-default",
@@ -492,11 +502,9 @@ test.describe("assessment player smoke", () => {
 			);
 		});
 
-		await expect(
-			panel.locator(".pie-section-player-tools-instrumentation-debugger__row", {
-				hasText: "pie-tool-backend-call-success",
-			}),
-		).toBeVisible({ timeout: 30_000 });
+		await expect
+			.poll(() => backendCallRows.count(), { timeout: 30_000 })
+			.toBeGreaterThan(rowsBeforeEmit);
 	});
 
 	test("keeps baseline a11y regressions in check", async ({ page }) => {

@@ -61,6 +61,7 @@
 		ImageHandler,
 		SoundHandler,
 	} from "./types.js";
+	import { shouldProbeRuntimeSupport } from "./runtime-support-check.js";
 	import {
 		getDeliveryAutosaveOptions,
 		getDeliveryBackend,
@@ -821,6 +822,12 @@
 				(loaderOptions as UnifiedLoaderOptions | undefined)?.runtimeSupportCheck,
 				"off",
 			);
+			const effectiveRuntimeSupportCheck = shouldProbeRuntimeSupport(
+				normalizedStrategy,
+				runtimeSupportCheck,
+			)
+				? runtimeSupportCheck
+				: "off";
 			const runtimeSupportView =
 				(loaderOptions as UnifiedLoaderOptions | undefined)?.view ||
 				resolveItemPlayerView(env?.mode, "delivery");
@@ -828,7 +835,7 @@
 				mergeElementMaps(transformedConfig, transformedPassageConfig),
 				normalizedStrategy,
 				runtimeSupportView as "delivery" | "author" | "print",
-				runtimeSupportCheck,
+				effectiveRuntimeSupportCheck,
 			);
 			if (!isCurrentLoadRequest(requestToken)) return;
 			const strategyForChecks: "esm" | "iife" =
@@ -1293,7 +1300,13 @@
 			models: nextModels,
 		};
 		await tick();
-		updatePieElements(itemConfig, rendererSession, parseEnvValue(env), hostElement ?? undefined);
+		void updatePieElements(
+			itemConfig,
+			rendererSession,
+			parseEnvValue(env),
+			hostElement ?? undefined,
+			handleElementSessionUpdate,
+		);
 	}
 
 	export async function validateModels(): Promise<{ hasErrors: boolean; validatedModels: any[] }> {
@@ -1305,6 +1318,26 @@
 		}
 		return rendererElement.validateModels();
 	}
+
+	// An element controller persisted derived, non-response state (e.g. a shuffled
+	// choice order). Write it back to the authoritative session so subsequent
+	// renders reuse it instead of regenerating it (PIE-631). Reconcile the cached
+	// signature WITHOUT bumping sessionRevision: the in-flight element already has
+	// the order, so no re-render is needed, and bumping would re-trigger the update
+	// effect and reintroduce the churn we are fixing.
+	const handleElementSessionUpdate = (
+		elementId: string,
+		_elementName: string,
+		properties: Record<string, unknown>,
+	) => {
+		if (!sessionController) {
+			return;
+		}
+		const merged = sessionController.mergeElementSession(elementId, properties, {
+			persist: false,
+		});
+		sessionSignature = JSON.stringify(merged);
+	};
 
 	const handleSessionChanged = (detail: unknown) => {
 		const detailObj =
@@ -1422,6 +1455,7 @@
 					onPlayerError={(detail: unknown) =>
 						handlePlayerEvent(new CustomEvent("player-error", { detail }))}
 					onSessionChanged={(detail: unknown) => handleSessionChanged(detail)}
+					onElementSessionUpdate={handleElementSessionUpdate}
 					onModelUpdated={(detail: unknown) =>
 						handlePlayerEvent(new CustomEvent("model-updated", { detail }))}
 					onModelLoaded={(detail: unknown) =>

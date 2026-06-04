@@ -101,6 +101,24 @@
 		instrumentationPanelMaxRecordsByKind = {}
 	}: Props = $props();
 
+	// Stable handle on the live ToolkitCoordinator for e2e tests and manual
+	// debugging. The coordinator is otherwise only reachable from the DOM via
+	// transient debug/settings panels that mount and unmount with their dialogs
+	// (e.g. the TTS settings panel unmounts on Apply). Surfacing it here — the
+	// single chrome shared by every demo page — gives tests one source of truth
+	// that survives panel open/close. Demo-only; not a published API.
+	$effect(() => {
+		if (!browser) return;
+		const handle = window as unknown as { __pieDemoToolkitCoordinator?: unknown };
+		if (!toolkitCoordinator) return;
+		handle.__pieDemoToolkitCoordinator = toolkitCoordinator;
+		return () => {
+			if (handle.__pieDemoToolkitCoordinator === toolkitCoordinator) {
+				delete handle.__pieDemoToolkitCoordinator;
+			}
+		};
+	});
+
 	let showDemoInfoDialog = $state(false);
 	let hasHydratedPanelVisibility = $state(false);
 

@@ -22,6 +22,49 @@ interface TTSSpeechSegment {
 	pauseMsAfter?: number;
 }
 
+const normalizeLanguageCode = (value: unknown): string =>
+	String(value || "")
+		.trim()
+		.toLowerCase();
+
+const browserLanguage = (): string => {
+	const navigatorLanguage =
+		typeof navigator !== "undefined"
+			? navigator.language || navigator.languages?.[0]
+			: "";
+	return normalizeLanguageCode(navigatorLanguage || "en-US");
+};
+
+const findBrowserVoice = (
+	voices: SpeechSynthesisVoice[],
+	preferredName?: string,
+): SpeechSynthesisVoice | null => {
+	if (preferredName) {
+		const explicit = voices.find((voice) => voice.name === preferredName);
+		if (explicit) return explicit;
+	}
+	const language = browserLanguage();
+	const languagePrefix = language.split("-")[0] || "en";
+	const matchesLanguage = (voice: SpeechSynthesisVoice) => {
+		const voiceLanguage = normalizeLanguageCode(voice.lang);
+		return voiceLanguage === language || voiceLanguage.startsWith(`${languagePrefix}-`);
+	};
+	const ranked = [
+		(voice: SpeechSynthesisVoice) => voice.localService && matchesLanguage(voice),
+		(voice: SpeechSynthesisVoice) => voice.default && matchesLanguage(voice),
+		(voice: SpeechSynthesisVoice) => matchesLanguage(voice),
+		(voice: SpeechSynthesisVoice) => voice.localService,
+		(voice: SpeechSynthesisVoice) => voice.default,
+	];
+	for (const predicate of ranked) {
+		const voice = voices.find(predicate);
+		if (voice) return voice;
+	}
+	return voices[0] || null;
+};
+
+const shouldAssignBrowserVoice = (voice: SpeechSynthesisVoice): boolean => !voice.default;
+
 /**
  * Browser TTS Provider
  *
@@ -249,25 +292,33 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 				resolve(false);
 				return;
 			}
-			this.utterance = new SpeechSynthesisUtterance(chunkText);
+			const utterance = new SpeechSynthesisUtterance(chunkText);
+			this.utterance = utterance;
 
 			// Apply config
-			if (this.config?.voice) {
-				const voices = speechSynthesis.getVoices();
-				const voice = voices.find((v) => v.name === this.config!.voice);
-				if (voice) this.utterance!.voice = voice;
-			}
+			const voice = findBrowserVoice(
+				speechSynthesis.getVoices(),
+				this.config?.voice,
+			);
+			if (voice && shouldAssignBrowserVoice(voice)) utterance.voice = voice;
 
-			if (this.config?.rate) this.utterance.rate = this.config.rate;
-			if (this.config?.pitch) this.utterance.pitch = this.config.pitch;
+			if (this.config?.rate) utterance.rate = this.config.rate;
+			if (this.config?.pitch) utterance.pitch = this.config.pitch;
 
-			this.utterance.onstart = () => {
+			const clearOwnedUtterance = () => {
+				if (this.utterance === utterance) {
+					this.utterance = null;
+				}
+			};
+
+			utterance.onstart = () => {
 				if (runId !== this.speakRunId) return;
 				this._isPlaying = true;
 				this._isPaused = false;
 			};
 
-			this.utterance.onend = () => {
+			utterance.onend = () => {
+				clearOwnedUtterance();
 				if (runId !== this.speakRunId) {
 					resolve(false);
 					return;
@@ -277,7 +328,8 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 				resolve(true);
 			};
 
-			this.utterance.onerror = (event) => {
+			utterance.onerror = (event) => {
+				clearOwnedUtterance();
 				if (runId !== this.speakRunId) {
 					resolve(false);
 					return;
@@ -291,17 +343,17 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 				reject(new Error(`Speech synthesis error: ${event.error}`));
 			};
 
-			this.utterance.onpause = () => {
+			utterance.onpause = () => {
 				if (runId !== this.speakRunId) return;
 				this._isPaused = true;
 			};
 
-			this.utterance.onresume = () => {
+			utterance.onresume = () => {
 				if (runId !== this.speakRunId) return;
 				this._isPaused = false;
 			};
 
-			this.utterance.onboundary = (event) => {
+			utterance.onboundary = (event) => {
 				if (runId !== this.speakRunId) return;
 				console.log(
 					"[BrowserProvider] Boundary event:",
@@ -345,7 +397,7 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 				this.onWordBoundary(word, absoluteBoundaryStart, wordLength);
 			};
 
-			speechSynthesis.speak(this.utterance);
+			speechSynthesis.speak(utterance);
 		});
 	}
 
@@ -363,9 +415,10 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 
 	stop(): void {
 		this.speakRunId += 1;
-		if (this._isPlaying) {
+		if (this._isPlaying || this.utterance) {
 			speechSynthesis.cancel();
 		}
+		this.utterance = null;
 		this._isPlaying = false;
 		this._isPaused = false;
 	}

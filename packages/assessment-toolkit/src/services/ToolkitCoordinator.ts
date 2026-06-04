@@ -1929,32 +1929,37 @@ export class ToolkitCoordinator {
 		if (voices.length > 0) return;
 		await new Promise<void>((resolve) => {
 			let settled = false;
+			const canUseEventTarget =
+				typeof synth.addEventListener === "function" &&
+				typeof synth.removeEventListener === "function";
+			const canUseHandler = !canUseEventTarget && "onvoiceschanged" in synth;
+			const previousHandler = canUseHandler ? synth.onvoiceschanged : null;
+			let assignedHandler = false;
 			const finish = () => {
 				if (settled) return;
 				settled = true;
+				window.clearTimeout(timeoutId);
+				if (canUseEventTarget) {
+					synth.removeEventListener("voiceschanged", onVoicesChanged);
+				} else if (assignedHandler && synth.onvoiceschanged === onVoicesChanged) {
+					synth.onvoiceschanged = previousHandler;
+				}
 				resolve();
 			};
-			const timeoutId = window.setTimeout(() => {
-				synth.removeEventListener("voiceschanged", onVoicesChanged);
-				finish();
-			}, timeoutMs);
-			const onVoicesChanged = () => {
-				window.clearTimeout(timeoutId);
-				if (
-					typeof synth.removeEventListener === "function" &&
-					typeof synth.addEventListener === "function"
-				) {
-					synth.removeEventListener("voiceschanged", onVoicesChanged);
+			const onVoicesChanged = (event?: Event) => {
+				if (!canUseEventTarget && typeof previousHandler === "function" && event) {
+					previousHandler.call(synth, event);
 				}
 				finish();
 			};
-			if (
-				typeof synth.addEventListener === "function" &&
-				typeof synth.removeEventListener === "function"
-			) {
+			const timeoutId = window.setTimeout(finish, timeoutMs);
+			if (canUseEventTarget) {
 				synth.addEventListener("voiceschanged", onVoicesChanged, {
 					once: true,
 				});
+			} else if (canUseHandler) {
+				synth.onvoiceschanged = onVoicesChanged;
+				assignedHandler = true;
 			}
 		});
 		const voicesAfterWait = synth.getVoices();

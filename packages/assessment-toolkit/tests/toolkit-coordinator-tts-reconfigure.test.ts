@@ -95,6 +95,36 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 		}
 	});
 
+	test("browser readiness resolves when voice events are unavailable", async () => {
+		const coordinator = new ToolkitCoordinator({
+			assessmentId: "tts-browser-voice-no-events-test",
+			lazyInit: true,
+		});
+		const synthMock = {
+			getVoices: () => [] as SpeechSynthesisVoice[],
+		} as unknown as SpeechSynthesis;
+		const previousWindow = (globalThis as any).window;
+		(globalThis as any).window = {
+			setTimeout,
+			clearTimeout,
+			speechSynthesis: synthMock,
+		};
+		try {
+			const result = await Promise.race([
+				(coordinator as any).ensureBrowserVoicesReady(
+					{
+						providerId: "browser",
+					},
+					1,
+				).then(() => "ready"),
+				new Promise((resolve) => setTimeout(() => resolve("timeout"), 20)),
+			]);
+			expect(result).toBe("ready");
+		} finally {
+			(globalThis as any).window = previousWindow;
+		}
+	});
+
 	test("browser readiness is a no-op for non-browser providers", async () => {
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: "tts-browser-voice-prewarm-noop-test",

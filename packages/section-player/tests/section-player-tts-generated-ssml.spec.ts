@@ -23,33 +23,40 @@ async function gotoDemo(page: Page) {
 	await expect(page.getByRole("link", { name: "Student" })).toBeVisible();
 }
 
-async function openSessionPanel(page: Page) {
-	const toggle = page.getByRole("button", { name: "Toggle session panel" });
-	const panel = page.locator("pie-section-player-tools-session-debugger");
-	const heading = panel.getByRole("heading", { name: "Session Data" });
-	if (!(await heading.isVisible())) {
-		await toggle.click();
-	}
-	await expect(heading).toBeVisible();
-	return panel;
+/**
+ * Wait for the demo's page-lifetime ToolkitCoordinator to be exposed on the
+ * stable `window.__pieDemoToolkitCoordinator` seam. This survives panel
+ * open/close, so tests don't need to open the session panel just to reach the
+ * live coordinator.
+ */
+async function waitForCoordinator(page: Page): Promise<void> {
+	await page.waitForFunction(
+		() =>
+			Boolean(
+				(window as unknown as { __pieDemoToolkitCoordinator?: unknown })
+					.__pieDemoToolkitCoordinator,
+			),
+		undefined,
+		{ timeout: 15_000 },
+	);
 }
 
 async function forceBrowserTtsRuntime(page: Page): Promise<void> {
-	await page
-		.locator("pie-section-player-tools-session-debugger")
-		.evaluate(async (element) => {
-			const coordinator = (element as { toolkitCoordinator?: any })
-				.toolkitCoordinator;
-			if (!coordinator?.updateToolConfig) return;
-			coordinator.updateToolConfig("textToSpeech", {
-				enabled: true,
-				backend: "browser",
-				transportMode: "pie",
-			});
-			await coordinator?.ensureTTSReady?.(
-				coordinator?.getToolConfig?.("textToSpeech"),
-			);
+	await waitForCoordinator(page);
+	await page.evaluate(async () => {
+		const coordinator = (
+			window as unknown as { __pieDemoToolkitCoordinator?: any }
+		).__pieDemoToolkitCoordinator;
+		if (!coordinator?.updateToolConfig) return;
+		coordinator.updateToolConfig("textToSpeech", {
+			enabled: true,
+			backend: "browser",
+			transportMode: "pie",
 		});
+		await coordinator?.ensureTTSReady?.(
+			coordinator?.getToolConfig?.("textToSpeech"),
+		);
+	});
 }
 
 async function mockPollyVoices(page: Page): Promise<void> {
@@ -345,66 +352,66 @@ async function mockSynthesizeWithWordMarks(page: Page): Promise<void> {
  *    rather than only as a single block.
  */
 async function installHighlightRecorder(page: Page): Promise<void> {
-	const installed = await page
-		.locator("pie-section-player-tools-session-debugger")
-		.evaluate((element) => {
-			const coordinator = (element as { toolkitCoordinator?: any })
-				.toolkitCoordinator;
-			const hc = coordinator?.highlightCoordinator;
-			const store = {
-				proseWords: [] as Array<{ text: string; visible: boolean }>,
-				mathTokens: [] as Array<{ text: string; visible: boolean }>,
-				sentences: [] as string[],
-			};
-			(window as any).__hl = store;
-			if (!hc) return false;
-			const insideMath = (el: any): boolean =>
-				Boolean(el && typeof el.closest === "function" && el.closest("math"));
-			const isVisible = (el: any): boolean => {
+	await waitForCoordinator(page);
+	const installed = await page.evaluate(() => {
+		const coordinator = (
+			window as unknown as { __pieDemoToolkitCoordinator?: any }
+		).__pieDemoToolkitCoordinator;
+		const hc = coordinator?.highlightCoordinator;
+		const store = {
+			proseWords: [] as Array<{ text: string; visible: boolean }>,
+			mathTokens: [] as Array<{ text: string; visible: boolean }>,
+			sentences: [] as string[],
+		};
+		(window as any).__hl = store;
+		if (!hc) return false;
+		const insideMath = (el: any): boolean =>
+			Boolean(el && typeof el.closest === "function" && el.closest("math"));
+		const isVisible = (el: any): boolean => {
+			try {
+				const rect = el?.getBoundingClientRect?.();
+				return Boolean(rect && rect.width > 0 && rect.height > 0);
+			} catch {
+				return false;
+			}
+		};
+		const wrap = (name: string, record: (...args: any[]) => void) => {
+			const original = hc[name];
+			if (typeof original !== "function") return;
+			hc[name] = function patched(...args: any[]) {
 				try {
-					const rect = el?.getBoundingClientRect?.();
-					return Boolean(rect && rect.width > 0 && rect.height > 0);
+					record(...args);
 				} catch {
-					return false;
+					/* ignore */
 				}
+				return original.apply(hc, args);
 			};
-			const wrap = (name: string, record: (...args: any[]) => void) => {
-				const original = hc[name];
-				if (typeof original !== "function") return;
-				hc[name] = function patched(...args: any[]) {
-					try {
-						record(...args);
-					} catch {
-						/* ignore */
-					}
-					return original.apply(hc, args);
-				};
-			};
-			wrap("highlightTTSWord", (node: any, start: number, end: number) => {
-				const text = String(node?.textContent || "")
-					.slice(start, end)
-					.trim();
-				if (!text) return;
-				const parent = node?.parentElement;
-				const record = { text, visible: isVisible(parent) };
-				if (insideMath(parent)) store.mathTokens.push(record);
-				else store.proseWords.push(record);
-			});
-			wrap("highlightTTSWordElement", (el: any) => {
-				const record = {
-					text: String(el?.localName || "unknown"),
-					visible: isVisible(el),
-				};
-				if (insideMath(el)) store.mathTokens.push(record);
-				else store.proseWords.push(record);
-			});
-			wrap("highlightTTSSentence", (ranges: any[]) => {
-				for (const range of ranges || []) {
-					store.sentences.push(String(range?.toString?.() || ""));
-				}
-			});
-			return true;
+		};
+		wrap("highlightTTSWord", (node: any, start: number, end: number) => {
+			const text = String(node?.textContent || "")
+				.slice(start, end)
+				.trim();
+			if (!text) return;
+			const parent = node?.parentElement;
+			const record = { text, visible: isVisible(parent) };
+			if (insideMath(parent)) store.mathTokens.push(record);
+			else store.proseWords.push(record);
 		});
+		wrap("highlightTTSWordElement", (el: any) => {
+			const record = {
+				text: String(el?.localName || "unknown"),
+				visible: isVisible(el),
+			};
+			if (insideMath(el)) store.mathTokens.push(record);
+			else store.proseWords.push(record);
+		});
+		wrap("highlightTTSSentence", (ranges: any[]) => {
+			for (const range of ranges || []) {
+				store.sentences.push(String(range?.toString?.() || ""));
+			}
+		});
+		return true;
+	});
 	expect(installed, "highlight coordinator must be available to wrap").toBe(
 		true,
 	);
@@ -451,9 +458,6 @@ async function readPassageAndRecordHighlights(
 		timeout: 15_000,
 	});
 
-	// The session-debugger element (our handle on the live ToolkitCoordinator)
-	// only mounts once the session panel is opened.
-	await openSessionPanel(page);
 	await installHighlightRecorder(page);
 
 	const passageInlineTts = passageRegion
@@ -638,7 +642,6 @@ test.describe("section player demo tts-generated-ssml", () => {
 		test.setTimeout(120_000);
 		await captureBrowserUtterances(page);
 		await gotoDemo(page);
-		await openSessionPanel(page);
 		await forceBrowserTtsRuntime(page);
 
 		const passageRegion = page.getByRole("complementary", { name: "Passages" });

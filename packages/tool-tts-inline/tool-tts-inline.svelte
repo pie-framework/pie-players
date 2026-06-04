@@ -772,6 +772,14 @@
 	}
 
 	.pie-tool-tts-inline__icon {
+		/* Default explicit size so control-button icons (rewind/fast-forward/stop)
+		   render in WebKit, which sizes an inline SVG that has only a viewBox (no
+		   width/height attributes) to 0. The play/pause trigger icon already works
+		   because the __trigger--sm/md/lg rules below set these dimensions; this
+		   gives the control-panel icons the same treatment. Keep the SVG's default
+		   inline display — forcing display:block makes WebKit collapse it to 0. */
+		width: 1.25rem;
+		height: 1.25rem;
 		fill: currentColor;
 		color: currentColor;
 	}

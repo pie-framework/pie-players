@@ -228,6 +228,61 @@ test.describe("item-player authoring contract", () => {
 			]);
 	});
 
+	test("does not remount authoring renderer for cloned equivalent config", async ({
+		page,
+	}) => {
+		await gotoAuthoringContract(page);
+		await expect(page.getByTestId("authoring-fixture")).toBeVisible();
+
+		await page.evaluate(() => {
+			const player = document.querySelector("pie-item-player");
+			if (!(player instanceof HTMLElement)) {
+				throw new Error("pie-item-player host not found");
+			}
+			(window as any).__authoringRemountProbe = {
+				addedConfigureElements: 0,
+				removedConfigureElements: 0,
+			};
+			const isConfigureSubtree = (node: Node): boolean => {
+				if (!(node instanceof Element)) return false;
+				if (node.localName.endsWith("-config")) return true;
+				return !!node.querySelector("[data-testid='authoring-fixture']");
+			};
+			const observer = new MutationObserver((mutations) => {
+				const probe = (window as any).__authoringRemountProbe;
+				for (const mutation of mutations) {
+					for (const node of mutation.addedNodes) {
+						if (isConfigureSubtree(node)) {
+							probe.addedConfigureElements += 1;
+						}
+					}
+					for (const node of mutation.removedNodes) {
+						if (isConfigureSubtree(node)) {
+							probe.removedConfigureElements += 1;
+						}
+					}
+				}
+			});
+			observer.observe(player, { childList: true, subtree: true });
+			(window as any).__authoringRemountObserver = observer;
+		});
+
+		await page.evaluate(() => {
+			const player = document.querySelector("pie-item-player") as any;
+			player.config = JSON.parse(JSON.stringify(player.config));
+		});
+		await page.waitForTimeout(500);
+
+		const probe = await page.evaluate(() => {
+			(window as any).__authoringRemountObserver?.disconnect?.();
+			return (window as any).__authoringRemountProbe;
+		});
+		expect(probe).toEqual({
+			addedConfigureElements: 0,
+			removedConfigureElements: 0,
+		});
+	});
+
 	test("required authoring backend blocks authoring UI when callbacks are missing", async ({
 		page,
 	}) => {

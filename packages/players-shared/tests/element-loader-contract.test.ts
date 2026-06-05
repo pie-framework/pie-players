@@ -37,6 +37,7 @@ import {
 } from "../src/loaders/iife-adapter.js";
 import {
 	createEsmBackend,
+	mapEsmViewElements,
 	type EsmBackendTestSeams,
 } from "../src/loaders/esm-adapter.js";
 import { BundleType } from "../src/pie/types.js";
@@ -875,6 +876,79 @@ describe("ESM adapter — contract", () => {
 		expect(imported.some((specifier) => specifier.includes("+esm"))).toBe(
 			false,
 		);
+	});
+
+	test("author view registers the requested versioned config tag without double suffixing", async () => {
+		const backend = createEsmBackend({
+			kind: "esm",
+			cdnBaseUrl: "https://cdn.jsdelivr.net/npm",
+			view: "author",
+		});
+
+		const imported: string[] = [];
+		const seams = (backend as unknown as { __seams: EsmBackendTestSeams })
+			.__seams;
+		seams.replaceImporter(async (specifier) => {
+			imported.push(specifier);
+			return {
+				default: createConstructorFor("pie-mc--version-13-2-0-config"),
+				Configure: createConstructorFor("pie-mc--version-13-2-0-config"),
+			};
+		});
+
+		await ensureRegistered(
+			{
+				"pie-mc--version-13-2-0-config":
+					"@pie-element/multiple-choice@13.2.0",
+			},
+			{
+				backend,
+				doc: createMockDocument(),
+				whenDefinedTimeoutMs: 25,
+			},
+		);
+
+		expect(imported).toEqual([
+			"https://cdn.jsdelivr.net/npm/@pie-element/multiple-choice@13.2.0/dist/browser/author/index.js",
+			"https://cdn.jsdelivr.net/npm/@pie-element/multiple-choice@13.2.0/dist/browser/controller/index.js",
+		]);
+		expect(g.customElements?.get("pie-mc--version-13-2-0-config")).toBeDefined();
+		expect(
+			g.customElements?.get("pie-mc--version-13-2-0-config-config"),
+		).toBeUndefined();
+	});
+
+	test("maps requested element tags through generic ESM view configuration", () => {
+		const elements = {
+			"pie-mc--version-13-2-0": "@pie-element/multiple-choice@13.2.0",
+		};
+
+		expect(mapEsmViewElements(elements, "delivery")).toEqual(elements);
+		expect(mapEsmViewElements(elements, "author")).toEqual({
+			"pie-mc--version-13-2-0-config":
+				"@pie-element/multiple-choice@13.2.0",
+		});
+		expect(
+			mapEsmViewElements(
+				{
+					"pie-mc--version-1-0-0-config":
+						"@pie-element/multiple-choice@1.0.0-config",
+				},
+				"author",
+			),
+		).toEqual({
+			"pie-mc--version-1-0-0-config-config":
+				"@pie-element/multiple-choice@1.0.0-config",
+		});
+		expect(
+			mapEsmViewElements(elements, "rubric", {
+				subpath: "/rubric",
+				tagSuffix: "-rubric",
+			}),
+		).toEqual({
+			"pie-mc--version-13-2-0-rubric":
+				"@pie-element/multiple-choice@13.2.0",
+		});
 	});
 
 	test("import-map mode maps PIE specifiers to browser ESM files without +esm transforms", async () => {

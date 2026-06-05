@@ -61,7 +61,11 @@ export type {
 	EsmCdnProviderOption,
 	ViewConfig,
 } from "./esm-adapter.js";
-export { BUILT_IN_VIEWS, createEsmBackend } from "./esm-adapter.js";
+export {
+	BUILT_IN_VIEWS,
+	createEsmBackend,
+	mapEsmViewElements,
+} from "./esm-adapter.js";
 export type {
 	IifeBackend,
 	IifeBundleRetryStatus,

@@ -126,8 +126,7 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 	const moduleResolution = config.moduleResolution ?? "url";
 	const view = config.view ?? "delivery";
 	const loadControllers = config.loadControllers ?? true;
-	const viewConfig =
-		config.viewConfig ?? BUILT_IN_VIEWS[view] ?? BUILT_IN_VIEWS.delivery;
+	const viewConfig = resolveEsmViewConfig(view, config.viewConfig);
 
 	const injectedPackageVersions = new Set<string>();
 	const importMappedPackageVersions = new Map<string, string>();
@@ -222,7 +221,7 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 				let actualTag: string;
 				try {
 					actualTag = validateCustomElementTag(
-						`${tag}${viewConfig.tagSuffix}`,
+						tag,
 						`element tag for ${packageName}`,
 					);
 				} catch (err) {
@@ -404,6 +403,20 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+export function mapEsmViewElements(
+	elements: ElementMap,
+	view = "delivery",
+	viewConfig?: ViewConfig,
+): ElementMap {
+	const resolvedViewConfig = resolveEsmViewConfig(view, viewConfig);
+	return Object.fromEntries(
+		Object.entries(elements).map(([tag, packageVersion]) => [
+			`${tag}${resolvedViewConfig.tagSuffix}`,
+			packageVersion,
+		]),
+	);
+}
+
 function defaultImporter(specifier: string): Promise<unknown> {
 	// @vite-ignore — dynamic import resolved at runtime.
 	return import(/* @vite-ignore */ specifier);
@@ -504,6 +517,10 @@ function toRawEsmShBaseUrl(cdnBaseUrl: string): string {
 		// Fall through to the public raw endpoint for non-URL test fixtures.
 	}
 	return "https://raw.esm.sh";
+}
+
+function resolveEsmViewConfig(view: string, viewConfig?: ViewConfig): ViewConfig {
+	return viewConfig ?? BUILT_IN_VIEWS[view] ?? BUILT_IN_VIEWS.delivery;
 }
 
 function assertBrowserEsmExports(

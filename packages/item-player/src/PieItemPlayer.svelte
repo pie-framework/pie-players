@@ -84,13 +84,13 @@
 		ItemController,
 		isGlobalDebugEnabled,
 		initializeMathRendering,
+		mapEsmViewElements,
 		makeUniqueTags,
 		validatePieConfigContract,
 		normalizeItemSessionContainer,
 		normalizeItemPlayerStrategy,
 		parsePackageName,
 		resolveInstrumentationProvider,
-		resolveItemPlayerView,
 		scorePieItem,
 		updatePieElements,
 	} from "@pie-players/pie-players-shared";
@@ -471,7 +471,29 @@
 	}
 	function stableStringifyForKey(value: unknown): string {
 		try {
-			return JSON.stringify(value);
+			const seen = new WeakSet<object>();
+			return JSON.stringify(value, (_key, nestedValue) => {
+				if (
+					!nestedValue ||
+					typeof nestedValue !== "object" ||
+					Array.isArray(nestedValue)
+				) {
+					return nestedValue;
+				}
+				if (seen.has(nestedValue)) {
+					return "[Circular]";
+				}
+				seen.add(nestedValue);
+				return Object.keys(nestedValue as Record<string, unknown>)
+					.sort()
+					.reduce(
+						(acc, key) => {
+							acc[key] = (nestedValue as Record<string, unknown>)[key];
+							return acc;
+						},
+						{} as Record<string, unknown>,
+					);
+			});
 		} catch {
 			return String(value);
 		}
@@ -529,7 +551,7 @@
 	// so this guard exists purely to skip the outer pipeline (config parsing,
 	// transform, runtime-support, etc.) when the effect re-fires with the
 	// same props. It does not gate readiness.
-	let lastProcessedConfig: any = null;
+	let lastProcessedConfigSignature = "";
 	let lastProcessedStrategy = "";
 	let lastProcessedMode = "";
 	let lastProcessedLoaderRetrySignature = "";
@@ -716,11 +738,15 @@
 			cdnBaseUrl: resolvedEsmCdnUrl,
 			cdnProvider: loaderOptions?.esmCdnProvider,
 			moduleResolution,
-			view: view === "author" ? "author" : "delivery",
+			view: view || "delivery",
 			loadControllers: loaderOptions?.loadControllers ?? true,
 			trackPageActions: loaderConfig?.trackPageActions,
 			instrumentationProvider: resolvedInstrumentationProvider,
 		};
+	}
+
+	function resolveEffectiveEsmView(): string {
+		return loaderOptions?.view || (resolvedMode === "author" ? "author" : "delivery");
 	}
 
 	function tagsForConfig(
@@ -748,6 +774,7 @@
 	}
 
 	async function loadConfig(currentConfig: any) {
+		const configSignature = stableStringifyForKey(currentConfig);
 		const loaderOptionsSignature = JSON.stringify({
 			bundleHost: resolvedIifeBundleHost,
 			esmCdnUrl: resolvedEsmCdnUrl,
@@ -760,7 +787,7 @@
 			reFetchBundle,
 		});
 		if (
-			currentConfig === lastProcessedConfig &&
+			configSignature === lastProcessedConfigSignature &&
 			normalizedStrategy === lastProcessedStrategy &&
 			resolvedMode === lastProcessedMode &&
 			loaderRetrySignature === lastProcessedLoaderRetrySignature &&
@@ -777,6 +804,11 @@
 		};
 
 		if (!currentConfig) {
+			lastProcessedConfigSignature = configSignature;
+			lastProcessedStrategy = normalizedStrategy;
+			lastProcessedMode = resolvedMode;
+			lastProcessedLoaderRetrySignature = loaderRetrySignature;
+			lastProcessedLoaderOptionsSignature = loaderOptionsSignature;
 			commitIfCurrent(() => {
 				itemConfig = null;
 				passageConfig = null;
@@ -787,7 +819,7 @@
 			return;
 		}
 
-		lastProcessedConfig = currentConfig;
+		lastProcessedConfigSignature = configSignature;
 		lastProcessedStrategy = normalizedStrategy;
 		lastProcessedMode = resolvedMode;
 		lastProcessedLoaderRetrySignature = loaderRetrySignature;
@@ -847,9 +879,7 @@
 			)
 				? runtimeSupportCheck
 				: "off";
-			const runtimeSupportView =
-				(loaderOptions as UnifiedLoaderOptions | undefined)?.view ||
-				resolveItemPlayerView(env?.mode, "delivery");
+			const runtimeSupportView = resolveEffectiveEsmView();
 			const runtimeSupportHints = await collectRuntimeSupportHints(
 				mergeElementMaps(transformedConfig, transformedPassageConfig),
 				normalizedStrategy,
@@ -894,9 +924,12 @@
 				});
 			} else {
 				stage = "esm-load";
-				const view =
-					loaderOptions?.view || resolveItemPlayerView(env?.mode, "delivery");
-				await ensureRegistered(elementMap, {
+				const view = resolveEffectiveEsmView();
+				const expectedElements = mapEsmViewElements(
+					elementMap,
+					view,
+				);
+				await ensureRegistered(expectedElements, {
 					backend: buildEsmBackendConfig(view),
 				});
 			}

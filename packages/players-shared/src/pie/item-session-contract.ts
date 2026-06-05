@@ -93,6 +93,25 @@ export function hasResponseField(value: unknown): boolean {
 	return false;
 }
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+	return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function mergeSessionEntry(
+	existing: Record<string, unknown>,
+	incoming: Record<string, unknown>,
+): Record<string, unknown> {
+	const merged = { ...existing };
+	for (const [key, value] of Object.entries(incoming)) {
+		const previous = merged[key];
+		merged[key] =
+			isPlainObject(previous) && isPlainObject(value)
+				? mergeSessionEntry(previous, value)
+				: value;
+	}
+	return merged;
+}
+
 export function mergeElementIntoSession(
 	itemId: string,
 	previousItemSession: unknown,
@@ -109,7 +128,7 @@ export function mergeElementIntoSession(
 		const existing = nextData[existingIndex];
 		nextData[existingIndex] =
 			existing && typeof existing === "object"
-				? { ...(existing as Record<string, unknown>), ...entry }
+				? mergeSessionEntry(existing as Record<string, unknown>, entry)
 				: entry;
 	} else {
 		nextData.push(entry);

@@ -1372,23 +1372,29 @@
 	}
 
 	// An element controller persisted derived, non-response state (e.g. a shuffled
-	// choice order). Write it back to the authoritative session so subsequent
-	// renders reuse it instead of regenerating it (PIE-631). Reconcile the cached
-	// signature WITHOUT bumping sessionRevision: the in-flight element already has
-	// the order, so no re-render is needed, and bumping would re-trigger the update
-	// effect and reintroduce the churn we are fixing.
+	// choice order). Write it back to the authoritative session and notify the host
+	// so future prop updates/remounts reuse it instead of regenerating it (PIE-631).
+	// Do not bump sessionRevision: the in-flight element already has the order, and
+	// forcing an immediate re-render would re-trigger the controller update path.
 	const handleElementSessionUpdate = (
 		elementId: string,
 		_elementName: string,
 		properties: Record<string, unknown>,
 	) => {
-		if (!sessionController) {
-			return;
-		}
-		const merged = sessionController.mergeElementSession(elementId, properties, {
+		const controller = ensureSessionController(
+			itemConfig?.id || "pie-item-player",
+			parseSessionProp(effectiveSession),
+		);
+		const beforeSignature = sessionSignature;
+		const merged = controller.mergeElementSession(elementId, properties, {
 			persist: false,
 		});
-		sessionSignature = JSON.stringify(merged);
+		const nextSignature = JSON.stringify(merged);
+		if (nextSignature === beforeSignature) {
+			return;
+		}
+		sessionSignature = nextSignature;
+		handlePlayerEvent(new CustomEvent("session-changed", { detail: { session: merged } }));
 	};
 
 	const handleSessionChanged = (detail: unknown) => {

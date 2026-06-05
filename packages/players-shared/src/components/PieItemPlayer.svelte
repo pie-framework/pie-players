@@ -674,7 +674,7 @@
               session.length +
               ")"
           );
-          void updatePieElements(
+          await updatePieElements(
             itemConfig,
             session,
             env,
@@ -683,7 +683,7 @@
           );
 
           if (passageConfig) {
-            void updatePieElements(
+            await updatePieElements(
               passageConfig,
               session,
               env,
@@ -861,9 +861,56 @@
 
   // Update PIE elements when env or session changes (after initialization) - using $effect
   let isUpdating = false;
+  let updateQueued = false;
+  function runElementUpdate() {
+    if (isUpdating) {
+      updateQueued = true;
+      return;
+    }
+    isUpdating = true;
+    untrack(() => {
+      void updatePieElements(
+        itemConfig,
+        session,
+        env,
+        rootElement ?? undefined,
+        onElementSessionUpdate
+      )
+        .then(() =>
+          passageConfig
+            ? updatePieElements(
+                passageConfig,
+                session,
+                env,
+                rootElement ?? undefined,
+                onElementSessionUpdate
+              )
+            : undefined
+        )
+        .catch((e: any) => {
+          reportPlayerError(
+            {
+              code: "ITEM_PLAYER_UPDATE_ERROR",
+              message: e instanceof Error ? e.message : String(e),
+              cause: e instanceof Error ? e.stack || e.message : String(e),
+            },
+            "ITEM_PLAYER_UPDATE_ERROR"
+          );
+        })
+        .finally(() => {
+          isUpdating = false;
+          if (updateQueued) {
+            updateQueued = false;
+            setTimeout(() => {
+              runElementUpdate();
+            }, 0);
+          }
+        });
+    });
+  }
+
   $effect(() => {
     if (!initialized || !env || !itemConfig || !session) return;
-    if (isUpdating) return; // Prevent re-entry
 
     // Log changes
     logger.debug("[PieItemPlayer] Dependencies changed, updating elements");
@@ -873,45 +920,10 @@
       session
     );
 
-    isUpdating = true;
-    untrack(() => {
-      try {
-        // Fire-and-forget on purpose: do NOT await here. The controller's
-        // session write-back is propagated synchronously via onElementSessionUpdate
-        // (PIE-631), so awaiting is unnecessary for correctness and would defer the
-        // synchronous session-changed dispatch chain, reordering host events.
-        // updatePieElements never rejects (controller errors are reported
-        // per-element internally).
-        void updatePieElements(
-          itemConfig,
-          session,
-          env,
-          rootElement ?? undefined,
-          onElementSessionUpdate
-        );
-
-        if (passageConfig) {
-          void updatePieElements(
-            passageConfig,
-            session,
-            env,
-            rootElement ?? undefined,
-            onElementSessionUpdate
-          );
-        }
-      } catch (e: any) {
-        reportPlayerError(
-          {
-            code: "ITEM_PLAYER_UPDATE_ERROR",
-            message: e instanceof Error ? e.message : String(e),
-            cause: e instanceof Error ? e.stack || e.message : String(e),
-          },
-          "ITEM_PLAYER_UPDATE_ERROR"
-        );
-      } finally {
-        isUpdating = false;
-      }
-    });
+    // Keep the update guard active until controller-derived session writes have
+    // landed; if props change during that window, run once more with the latest
+    // state instead of dropping the update.
+    runElementUpdate();
   });
 
   $effect(() => {

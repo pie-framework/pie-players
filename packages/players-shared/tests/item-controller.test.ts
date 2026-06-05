@@ -171,6 +171,33 @@ describe("ItemController.mergeElementSession", () => {
 		]);
 	});
 
+	test("preserves existing nested shuffled values when merging a partial update", () => {
+		const controller = new ItemController({
+			itemId: "item-1",
+			initialSession: {
+				id: "",
+				data: [
+					{
+						id: "q1",
+						shuffledValues: { partA: ["b", "a"] },
+					},
+				],
+			},
+			storage: new FakeStorage(),
+		});
+
+		controller.mergeElementSession("q1", {
+			shuffledValues: { partB: ["d", "c"] },
+		});
+
+		expect(controller.getSession().data).toEqual([
+			{
+				id: "q1",
+				shuffledValues: { partA: ["b", "a"], partB: ["d", "c"] },
+			},
+		]);
+	});
+
 	test("does not persist by default", () => {
 		const storage = new FakeStorage();
 		const controller = new ItemController({

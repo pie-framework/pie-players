@@ -183,8 +183,8 @@ For a runnable local backend demo, see
 
 ## PIE Element Packaging Contract
 
-The canonical producer-side contract for `@pie-element/*` packages lives in
-[`../pie-elements-ng/docs/PIE_ELEMENT_CONTRACT.md`](../../../pie-elements-ng/docs/PIE_ELEMENT_CONTRACT.md).
+The canonical producer-side contract for `@pie-element/*` packages lives in the
+`pie-elements-ng` package contract.
 `<pie-item-player strategy="esm">` assumes that contract is satisfied:
 
 - Element packages publish static browser ESM files such as

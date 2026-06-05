@@ -171,7 +171,16 @@ export const demo2Section: AssessmentSection = {
 						{
 							id: "q1",
 							element: "multiple-choice",
-							prompt: `According to the passage, what was the primary significance of Gutenberg's printing press during the Renaissance?`,
+							prompt: `Review the overwide timeline image in this question prompt, then answer the question below.
+								<figure>
+									<img
+										src="/demo-assets/overwide-images/renaissance-timeline.jpg"
+										alt="Question prompt copy of the Renaissance timeline from 1300 to 1650"
+										width="1792"
+										height="592"
+									/>
+								</figure>
+								<p>According to the passage, what was the primary significance of Gutenberg's printing press during the Renaissance?</p>`,
 							choiceMode: "radio",
 							choices: [
 								{

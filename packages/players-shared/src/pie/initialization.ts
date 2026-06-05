@@ -7,6 +7,7 @@
 
 import { BUILDER_BUNDLE_URL } from "../config/profile.js";
 import { mergeObjectsIgnoringNullUndefined } from "../object/index.js";
+import { wrapModelRichContent } from "../security/wrap-model-rich-content.js";
 import type { ConfigEntity, Env, PieModel } from "../types/index.js";
 import { editorPostFix } from "../types/index.js";
 import { createPieLogger, isGlobalDebugEnabled } from "./logger.js";
@@ -130,7 +131,7 @@ const initializePieElement = (
 		});
 
 		// Set model directly - server already processed it
-		element.model = model;
+		element.model = wrapModelRichContent(model);
 	} else {
 		// Controller available - run client-side processing (client-player.js bundle)
 		// Note: updatePieElementWithRef handles controller invocation

@@ -31,6 +31,7 @@
 		MODE_OPTIONS,
 		PLAYER_OPTIONS
 	} from '$lib/demo-runtime/demo-page-helpers';
+	import { createSectionDemoToolRegistry } from '$lib/demo-runtime/default-tool-registry';
 	import {
 		buildBundleKey,
 		collectElementPackages,
@@ -39,12 +40,14 @@
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+	const toolRegistry = createSectionDemoToolRegistry();
 
 	// Minimal coordinator + tools config: the PIE-512 fixture only needs
 	// section-level reflow + cohort transitions to reproduce the regression.
 	const toolsConfigResult = createToolsConfig({
 		source: 'section-demos.pie-512-asymmetric-sections',
 		strictness: 'error',
+		toolRegistry,
 		tools: {
 			placement: {
 				section: ['theme'],
@@ -82,6 +85,7 @@
 	};
 	const coordinator = new ToolkitCoordinator({
 		assessmentId: DEMO_ASSESSMENT_ID,
+		toolRegistry,
 		toolConfigStrictness: 'error',
 		tools: toolkitToolsConfig
 	});
@@ -326,6 +330,7 @@
 					coordinator: coordinator
 				} }
 				section={resolvedSectionForPlayer}
+				{toolRegistry}
 				toolbar-position="right"
 				show-toolbar={true}
 			></pie-section-player-vertical>
@@ -344,6 +349,7 @@
 					coordinator: coordinator
 				} }
 				section={resolvedSectionForPlayer}
+				{toolRegistry}
 				toolbar-position="right"
 				show-toolbar={true}
 			></pie-section-player-splitpane>

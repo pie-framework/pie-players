@@ -277,6 +277,7 @@
 	let:preloadEnabled
 	let:itemToolbarTools
 	let:passageToolbarTools
+	let:toolRegistry={layoutToolRegistry}
 	let:readinessDetail
 	let:onItemsPaneElementsLoaded
 	let:onItemsPanePreloadRetry
@@ -292,7 +293,7 @@
 				{resolvedPlayerProps}
 				{playerStrategy}
 				passageToolbarTools={passageToolbarTools}
-				{toolRegistry}
+				toolRegistry={layoutToolRegistry}
 				hostButtons={passageHostButtons}
 			></pie-section-player-passages-pane>
 		{/if}
@@ -304,7 +305,7 @@
 			{resolvedPlayerProps}
 			{playerStrategy}
 			itemToolbarTools={itemToolbarTools}
-			{toolRegistry}
+			toolRegistry={layoutToolRegistry}
 			hostButtons={itemHostButtons}
 			iifeBundleHost={iifeBundleHost}
 			preloadedRenderables={preloadedRenderables}

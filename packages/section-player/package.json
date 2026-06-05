@@ -93,22 +93,12 @@
 		"lint": "biome check .",
 		"test": "bun test '.test.ts'"
 	},
-	"peerDependencies": {
-		"@pie-players/pie-tool-annotation-toolbar": "workspace:*"
-	},
-	"peerDependenciesMeta": {
-		"@pie-players/pie-tool-annotation-toolbar": {
-			"optional": true
-		}
-	},
 	"dependencies": {
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
+		"@pie-players/pie-default-tool-loaders": "workspace:*",
 		"@pie-players/pie-item-player": "workspace:*",
 		"@pie-players/pie-context": "workspace:*",
-		"@pie-players/pie-players-shared": "workspace:*",
-		"@pie-players/pie-tool-calculator-desmos": "workspace:*",
-		"@pie-players/pie-tool-text-to-speech": "workspace:*",
-		"@pie-players/pie-tool-tts-inline": "workspace:*"
+		"@pie-players/pie-players-shared": "workspace:*"
 	},
 	"devDependencies": {
 		"@axe-core/playwright": "^4.11.1",

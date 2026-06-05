@@ -199,6 +199,44 @@ async function mockPollyVoicesAvailability(page: Page): Promise<void> {
 	});
 }
 
+async function mockDesmosCalculatorScript(page: Page): Promise<void> {
+	await page.route("https://www.desmos.com/api/**/calculator.js**", async (route) => {
+		await route.fulfill({
+			status: 200,
+			contentType: "application/javascript",
+			body: `
+				(() => {
+					const createCalculator = (container) => {
+						const surface = document.createElement("div");
+						surface.className = "dcg-container dcg-calculator-api-container";
+						surface.style.width = "100%";
+						surface.style.height = "100%";
+						surface.style.minHeight = "220px";
+						surface.tabIndex = 0;
+						container.replaceChildren(surface);
+						return {
+							destroy() { container.replaceChildren(); },
+							resize() {},
+							setBlank() {},
+							getState() { return {}; },
+							setState() {},
+							setExpression() {},
+							removeExpression() {},
+							HelperExpression() { return { numericValue: 0 }; },
+							focusFirstExpression() { surface.focus(); }
+						};
+					};
+					window.Desmos = {
+						GraphingCalculator: createCalculator,
+						ScientificCalculator: createCalculator,
+						FourFunctionCalculator: createCalculator
+					};
+				})();
+			`,
+		});
+	});
+}
+
 async function selectPassageText(page: Page): Promise<void> {
 	await page
 		.locator("pie-passage-shell [data-region='content'] p")
@@ -552,6 +590,7 @@ test.describe("section player demo tts-ssml", () => {
 	}) => {
 		test.setTimeout(180_000);
 		await suppressAudibleBrowserTts(page);
+		await mockDesmosCalculatorScript(page);
 		await mockPollyVoicesAvailability(page);
 
 		await gotoDemo(page);
@@ -952,7 +991,8 @@ test.describe("section player demo tts-ssml", () => {
 			q1.getByRole("button", { name: /toggle elimination for/i }).first(),
 		).toBeVisible();
 
-		// Annotation toolbar should be enabled in demo placement and appear on text selection.
+		// Annotation toolbar should be owned by the toolkit placement, not by
+		// an extra demo-level toolbar mount.
 		await expect(page.locator("pie-tool-annotation-toolbar")).toHaveCount(1);
 		const annotationToolbar = page.locator(
 			"pie-tool-annotation-toolbar [role='toolbar'][aria-label='Text annotation toolbar']",

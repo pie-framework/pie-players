@@ -39,7 +39,7 @@ export const SECTION_TOOL_MODULE_LOADERS: Record<string, ToolModuleLoader> = {
 export const ITEM_TOOL_MODULE_LOADERS: Record<string, ToolModuleLoader> = {
 	calculator: loadCalculatorModule,
 	textToSpeech: () =>
-		loadSideEffectModule(() => import("@pie-players/pie-tool-text-to-speech")),
+		loadSideEffectModule(() => import("@pie-players/pie-tool-tts-inline")),
 	answerEliminator: () =>
 		loadSideEffectModule(
 			() => import("@pie-players/pie-tool-answer-eliminator"),

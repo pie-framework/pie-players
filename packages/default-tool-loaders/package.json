@@ -28,7 +28,8 @@
 		"build": "tsc -p tsconfig.json",
 		"dev": "tsc -p tsconfig.json --watch",
 		"typecheck": "tsc -p tsconfig.json --noEmit",
-		"lint": "biome check ."
+		"lint": "biome check .",
+		"test": "bun test"
 	},
 	"dependencies": {
 		"@pie-players/pie-tool-annotation-toolbar": "workspace:*",
@@ -40,7 +41,7 @@
 		"@pie-players/pie-tool-periodic-table": "workspace:*",
 		"@pie-players/pie-tool-protractor": "workspace:*",
 		"@pie-players/pie-tool-ruler": "workspace:*",
-		"@pie-players/pie-tool-text-to-speech": "workspace:*"
+		"@pie-players/pie-tool-tts-inline": "workspace:*"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.4.12",

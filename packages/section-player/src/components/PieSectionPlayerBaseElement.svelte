@@ -26,12 +26,14 @@
 <script lang="ts">
 	import "@pie-players/pie-assessment-toolkit/components/pie-assessment-toolkit-element";
 	import {
+		createPackagedToolRegistry,
 		createDefaultPersonalNeedsProfile,
 		type FrameworkErrorModel,
 		type ToolConfigStrictness,
 		type ToolkitCoordinatorApi,
 		type ToolRegistry,
 	} from "@pie-players/pie-assessment-toolkit";
+	import { DEFAULT_TOOL_MODULE_LOADERS } from "@pie-players/pie-default-tool-loaders";
 	import type { SectionControllerHandle } from "@pie-players/pie-assessment-toolkit";
 	import { createEventDispatcher } from "svelte";
 	import { SectionController } from "../controllers/SectionController.js";
@@ -98,6 +100,10 @@
 		() => runtime?.isolation ?? DEFAULT_ISOLATION,
 	);
 	const effectiveEnv = $derived.by(() => runtime?.env ?? DEFAULT_ENV);
+	const defaultToolRegistry = createPackagedToolRegistry({
+		toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
+	});
+	const effectiveToolRegistry = $derived(toolRegistry ?? defaultToolRegistry);
 	// Two-tier resolution. The base CE talks to the toolkit directly (no
 	// kernel layer), so it owns the resolver boundary in this path.
 	const effectiveOnFrameworkError = $derived.by(() =>
@@ -249,11 +255,16 @@
 	$effect(() => {
 		if (!shouldRenderAnnotationToolbar) return;
 		if (annotationToolbarModuleLoaded) return;
+		const registry = effectiveToolRegistry;
+		if (!registry) return;
 		let cancelled = false;
-		void import("@pie-players/pie-tool-annotation-toolbar")
+		void registry
+			.ensureToolModuleLoaded("annotationToolbar")
 			.then(() => {
 				if (!cancelled) {
-					annotationToolbarModuleLoaded = true;
+					annotationToolbarModuleLoaded =
+						typeof customElements === "undefined" ||
+						!!customElements.get("pie-tool-annotation-toolbar");
 				}
 			})
 			.catch(() => {
@@ -395,7 +406,7 @@
 	tool-config-strictness={effectiveToolConfigStrictness}
 	tools={effectiveTools}
 	toolContextResolvers={effectiveToolContextResolvers}
-	{toolRegistry}
+	toolRegistry={effectiveToolRegistry}
 	accessibility={effectiveAccessibility}
 	coordinator={effectiveCoordinator}
 	isolation={effectiveIsolation}

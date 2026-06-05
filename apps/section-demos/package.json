@@ -16,6 +16,7 @@
 	"dependencies": {
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
 		"@pie-players/pie-context": "workspace:*",
+		"@pie-players/pie-default-tool-loaders": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*",
 		"@pie-players/pie-section-player": "workspace:*",
 		"@pie-players/pie-section-player-tools-event-debugger": "workspace:*",

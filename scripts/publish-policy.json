@@ -15,16 +15,10 @@
 			"./ui/use-promise"
 		]
 	},
-	"allowedUndeclaredRuntimeImports": {
-		"@pie-players/pie-assessment-toolkit": [
-			"@pie-players/pie-tool-calculator-desmos",
-			"@pie-players/pie-tool-text-to-speech",
-			"@pie-players/pie-tool-tts-inline"
-		]
-	},
 	"nodeConsumerImportTargets": {
 		"nodeSafe": [
 			"@pie-players/pie-assessment-toolkit",
+			"@pie-players/pie-default-tool-loaders",
 			"@pie-players/pie-players-shared",
 			"@pie-players/pie-context",
 			"@pie-players/pie-calculator",

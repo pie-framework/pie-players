@@ -374,6 +374,53 @@ test.describe("item-player demo multiple-choice", () => {
 		expect(scopedClassName).not.toContain("legacy-class-should-not-win");
 	});
 
+	test("honors legacy config resources without dropping advanced config properties", async ({
+		page,
+	}) => {
+		await gotoRoute(page, DELIVERY_PATH);
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible();
+
+		await page.evaluate(async () => {
+			const player = document.querySelector("pie-item-player") as any;
+			const currentConfig = structuredClone(player.config);
+			const loaded = new Promise((resolve) => {
+				player.addEventListener("load-complete", resolve, { once: true });
+			});
+			player.config = {
+				id: "advanced-item-with-resources",
+				pie: {
+					...currentConfig,
+					resources: {
+						containerClass: "resource-container-class",
+						passageContainerClass: "resource-passage-class",
+					},
+				},
+				passage: {
+					id: "passage",
+					markup: '<p data-test-passage="true">Legacy resource passage</p>',
+					elements: {},
+					models: [],
+				},
+				defaultExtraModels: {
+					legacyExtra: { preserved: true },
+				},
+			};
+			await loaded;
+		});
+
+		await expect(
+			page.locator("pie-item-player .resource-container-class"),
+		).toBeVisible();
+		await expect(page.locator(".resource-passage-class")).toContainText(
+			"Legacy resource passage",
+		);
+		const defaultExtraModels = await page.evaluate(() => {
+			const player = document.querySelector("pie-item-player") as any;
+			return player.config.defaultExtraModels;
+		});
+		expect(defaultExtraModels).toEqual({ legacyExtra: { preserved: true } });
+	});
+
 	test("author route loads and stays in sync with delivery/source", async ({
 		page,
 	}) => {

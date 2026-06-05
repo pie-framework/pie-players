@@ -44,6 +44,7 @@
 <script lang="ts">
 	import type {
 		ConfigEntity,
+		ConfigResource,
 		Env,
 		IifeBundleRetryStatus,
 		ItemMarkupSanitizer,
@@ -362,6 +363,24 @@
 	let latestLoadRequestToken = 0;
 	const effectiveConfig = $derived(backendConfigOverride ?? config);
 	const effectiveSession = $derived(backendSessionOverride ?? session);
+	function configResourcesFor(configEntity: ConfigEntity | null): ConfigResource | null {
+		const resources = (configEntity as unknown as { resources?: unknown } | null)?.resources;
+		return resources && typeof resources === "object" ? (resources as ConfigResource) : null;
+	}
+
+	const itemConfigResources = $derived(configResourcesFor(itemConfig));
+	// pie-item contract compatibility: legacy <pie-player> let config.resources
+	// drive host and passage container classes.
+	const resolvedContainerClass = $derived(
+		typeof itemConfigResources?.containerClass === "string"
+			? itemConfigResources.containerClass
+			: containerClass,
+	);
+	const resolvedPassageContainerClass = $derived(
+		typeof itemConfigResources?.passageContainerClass === "string"
+			? itemConfigResources.passageContainerClass
+			: passageContainerClass,
+	);
 
 	function beginLoadRequest(): number {
 		latestLoadRequestToken += 1;
@@ -1424,7 +1443,7 @@
 			{/if}
 		</div>
 	{:else}
-		<div class="pie-player-item-container {containerClass}">
+		<div class="pie-player-item-container {resolvedContainerClass}">
 			{#key rendererKey}
 				<PieItemRenderer
 					bind:this={rendererElement}
@@ -1435,7 +1454,7 @@
 					{addCorrectResponse}
 					{allowedResize}
 					customClassName={scopeClass}
-					{passageContainerClass}
+					passageContainerClass={resolvedPassageContainerClass}
 					baseHeadingLevel={resolvedBaseHeadingLevel}
 					bundleType={resolvedMode === "author" ? BundleType.editor : BundleType.clientPlayer}
 					{loaderConfig}

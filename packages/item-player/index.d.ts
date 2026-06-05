@@ -1,5 +1,11 @@
 export type AuthoringBackendMode = "demo" | "required";
 
+import type {
+	Env,
+	ItemConfig,
+	ItemSession,
+} from "@pie-players/pie-players-shared/types";
+
 export type DeleteDone = (err?: Error) => void;
 export type BackendScope = "delivery" | "authoring";
 export type BackendProvider = "custom" | "pie-api";
@@ -88,9 +94,9 @@ export interface SoundHandler {
 }
 
 export interface PieItemPlayerElement extends HTMLElement {
-	config: unknown;
-	session: unknown;
-	env: unknown;
+	config: ItemConfig;
+	session: ItemSession;
+	env: Env;
 	strategy: "iife" | "esm" | "preloaded";
 	mode?: "view" | "author";
 	configuration?: Record<string, unknown>;

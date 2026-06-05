@@ -78,8 +78,8 @@ player.loaderOptions = {
 
 Loads ESM modules from a CDN with dynamic `import()`. By default, the player imports fully-qualified CDN URLs (`moduleResolution: "url"`), which avoids one-time import-map staleness across repeated loads. You can still opt into import-map mode with `moduleResolution: "import-map"`.
 
-The ESM loader consumes the static browser ESM package surface defined by
-[`pie-elements-ng/docs/PIE_ELEMENT_CONTRACT.md`](../../../pie-elements-ng/docs/PIE_ELEMENT_CONTRACT.md).
+The ESM loader consumes the static browser ESM package surface defined by the
+producer-side `pie-elements-ng` package contract.
 For an item element such as `@pie-element/multiple-choice@13.2.2`, it loads
 published files like:
 

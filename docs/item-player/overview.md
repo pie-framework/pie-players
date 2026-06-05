@@ -36,10 +36,10 @@ All loader, controller, and type code lives in `@pie-players/pie-players-shared`
 **IIFE backend** (`players-shared/src/loaders/iife-adapter.ts`) -- Loads IIFE bundles from a bundle host by injecting `<script>` tags. Supports bundle types `player` (elements only, hosted mode), `clientPlayer` (elements + controllers), and `editor` (authoring elements). Registers loaded elements in the global `window.PIE_REGISTRY`. Includes a configurable retry policy (`bundleRetry`, `onBundleRetryStatus`) for the bundle service's "still building" lifecycle.
 
 **ESM backend** (`players-shared/src/loaders/esm-adapter.ts`) -- Loads the
-static browser ESM package surface defined by
-[`pie-elements-ng/docs/PIE_ELEMENT_CONTRACT.md`](../../../pie-elements-ng/docs/PIE_ELEMENT_CONTRACT.md),
-using either fully-qualified CDN URLs or an injected import map plus dynamic
-`import()`. It supports `delivery`, `author`, and `print` views through
+static browser ESM package surface defined by the producer-side
+`pie-elements-ng` package contract, using either fully-qualified CDN URLs or an
+injected import map plus dynamic `import()`. It supports `delivery`, `author`,
+and `print` views through
 `dist/browser/<view>/index.js` entries and resolves shared browser singletons
 from exact `pie.browserSharedDependencies` metadata.
 

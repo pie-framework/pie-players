@@ -27,9 +27,9 @@ Supported subpaths are declared in `package.json`:
 
 ## Browser ESM Element Contract
 
-The canonical producer-side contract lives in
-`pie-elements-ng/docs/PIE_ELEMENT_CONTRACT.md`. The loader assumptions here must
-stay aligned with that document.
+The canonical producer-side contract lives with the `pie-elements-ng` package
+contract. The loader assumptions here must stay aligned with that producer
+surface.
 
 The ESM element loader consumes static `@pie-element/*` browser entries such as
 `dist/browser/delivery/index.js`; it does not transform element packages through

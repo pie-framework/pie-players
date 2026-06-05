@@ -90,6 +90,10 @@ export default defineConfig({
 		minify: "esbuild",
 		sourcemap: false,
 		rollupOptions: {
+			external: [
+				"@pie-players/pie-tool-tts-inline",
+				"@pie-players/pie-tool-calculator-desmos",
+			],
 			output: {
 				format: "es",
 				entryFileNames: "[name].js",

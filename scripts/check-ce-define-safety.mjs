@@ -11,13 +11,9 @@ const ALLOWED_DIRECT_DEFINE_FILES = new Set([
 	"packages/print-player/src/ce-registry.ts",
 	"packages/theme/src/theme-element.ts",
 	"packages/assessment-toolkit/scripts/build-ce-components.mjs",
-	// Vendored 3rd-party prebuilt bundle from nextComponentLibrary. We don't
-	// own the source so it can't be routed through defineCustomElementSafely.
-	// Limitation: if another loader on the page also registers <nds-icon-button>,
-	// whichever loads second throws. Acceptable today because the toolkit is
-	// the only known nds consumer in pie-players; revisit if/when a host page
-	// ships nds itself or we vendor more nds bundles in this folder.
-	"packages/assessment-toolkit/src/components/vendor/nds/nds-icon-button.js",
+	// Vendored 3rd-party prebuilt bundle from nextComponentLibrary. Canonical
+	// source lives in players-shared; we don't own it so it can't use defineCustomElementSafely.
+	"packages/players-shared/src/vendor/nds/nds-icon-button.js",
 ]);
 const DIRECT_DEFINE_PATTERN = /customElements\.define\s*\(/g;
 const LITERAL_DEFINE_PATTERN =

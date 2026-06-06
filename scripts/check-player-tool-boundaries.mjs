@@ -31,6 +31,7 @@ const DIST_IMPORT_TARGETS = [
 	"packages/section-player/dist",
 	"packages/assessment-toolkit/dist",
 ];
+const GENERATED_DIR_NAMES = new Set(["node_modules"]);
 
 const FORBIDDEN_MANIFESTS = [
 	"packages/section-player/package.json",
@@ -45,6 +46,7 @@ function collectFiles(dir, predicate = () => true) {
 		const absPath = path.join(dir, entry);
 		const stats = statSync(absPath);
 		if (stats.isDirectory()) {
+			if (GENERATED_DIR_NAMES.has(entry)) continue;
 			files.push(...collectFiles(absPath, predicate));
 			continue;
 		}

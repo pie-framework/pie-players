@@ -159,6 +159,17 @@ describe("check-player-tool-boundaries", () => {
 		);
 	});
 
+	test("ignores dependency internals nested under dist node_modules", () => {
+		const root = createFixtureRoot();
+		write(
+			root,
+			"packages/section-player/dist/node_modules/@pie-players/pie-tool-calculator-desmos/index.js",
+			'import "@pie-players/pie-tool-calculator-desmos";\n',
+		);
+
+		expect(checkPlayerToolBoundaries(root)).toEqual([]);
+	});
+
 	test("rejects bundled calculator internals in player/toolkit dist even when chunk names are opaque", () => {
 		const root = createFixtureRoot();
 		write(
